@@ -7,6 +7,7 @@ import { NativeNarratorOrchestrationAuthority } from '../../../src/native/orches
 import { createOrchestrationAuthoringService } from '../../../src/native/orchestration/authoring-service.js';
 import { validationDigest } from '../../../src/native/orchestration/plan-repository.js';
 import { RouteResolver } from '../../../src/native/model-prompt-runtime/route-resolver.js';
+import { createHttpGenerationProvider } from '../../../src/native/adapters/http-generation-provider.js';
 import { createResponsesGenerationProvider } from '../../../src/native/adapters/responses-generation-provider.js';
 import { attachNativeHostLifecycle } from '../../../src/storage/native-host-lifecycle.js';
 import { hashNativeDocument as hash } from '../../../src/native/repositories/common.js';
@@ -22,7 +23,7 @@ const limits = { maxRequests: 4, maxTokens: 100000, localWork: { maxJobs: 32, ma
 
 // The actual original interactive Executor, scheduler, source, Context, bank,
 // model Port and localhost Provider are used. Only remote content/usage is synthetic.
-export async function projectModelFixture(make, { responseBody = null, responseStatus = 200, configurePlan = async () => {}, changeRoute = route => route, maxModelRounds = 1 } = {}) {
+export async function projectModelFixture(make, { responseBody = null, responseStatus = 200, configurePlan = async () => {}, changeRoute = route => route, maxModelRounds = 1, format = 'openai-responses' } = {}) {
     const h = await make(), requests = [], effects = [], operations = new Map();
     let afterSend = async () => {}, afterRound = async () => {}, round = null, roundArgs = null;
     const server = http.createServer(async (request, response) => {
@@ -45,11 +46,11 @@ export async function projectModelFixture(make, { responseBody = null, responseS
         const project = await svc.studio.createProject(h.handle, original);
         const task = await svc.agent.createTask(h.handle, projectId, { intent: 'Describe the current Project using original Native authority.', baseRevision: project.revision.revision });
         const core = sessionServices(h).core;
-        const seeded = await seedGenerationProfiles({ ...h, roles: ['studio'], format: 'openai-responses', endpoint: `http://127.0.0.1:${server.address().port}/v1/responses` });
+        const seeded = await seedGenerationProfiles({ ...h, roles: ['studio'], format, endpoint: `http://127.0.0.1:${server.address().port}/v1/responses` });
         await seeded.persistence.saveRuntimeRoute(h.handle, changeRoute({ ...seeded.routes[0], policy: { timeoutMs: 10000, maxRetries: 0, maxFallbackAttempts: 0 },
             executionPolicy: { schemaVersion: 1, allowedModelProfileIds: [seeded.model.modelProfileId], continuity: 'none', reuse: 'disabled', computeBudget: limits } }));
         const route = await seeded.persistence.getRuntimeRoute(h.handle, seeded.routes[0].runtimeRouteId);
-        const providers = { 'provider.openai-responses': createResponsesGenerationProvider() };
+        const providers = format === 'openai-compatible' ? { 'provider.openai-compatible': createHttpGenerationProvider() } : { 'provider.openai-responses': createResponsesGenerationProvider() };
         const host = new NativeGenerationHost({ persistence: seeded.persistence, library: seeded.library, sessionCore: core, ...svc, providers,
             skillRepository: () => createSkillRepository(h.dirs.root), extensions: { settings: async () => ({ value: {} }) },
             secretPort: { resolveSecret: async () => 'synthetic-project-only-secret' } });

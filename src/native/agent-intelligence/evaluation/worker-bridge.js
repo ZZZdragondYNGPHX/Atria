@@ -1,3 +1,4 @@
+import { attachNativeHostLifecycle } from '../../../storage/native-host-lifecycle.js';
 import { createEvaluationStore } from './store.js';
 import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../../model-prompt-runtime/persistence.js';
 import { GenerationService } from '../../model-prompt-runtime/generation-service.js';
@@ -11,8 +12,9 @@ import { collectVersionedModelPromptResourceRefs } from '../../model-prompt-runt
 import { prepareRetrievalCompute } from '../../retrieval-compute.js';
 import { executeProjectSkillWork } from '../../skill-invocation.js';
 
-export async function createFrozenEvaluationBridge(config, send) {
-    const store = await createEvaluationStore(), { engine, handle } = store;
+export async function createFrozenEvaluationBridge(config, send, { nativePlan = null } = {}) {
+    const store = await createEvaluationStore(nativePlan ? { handle: nativePlan.revision.authorRef.handle } : {}), { engine, handle } = store;
+    if (nativePlan) attachNativeHostLifecycle(engine, { directoriesByHandle: owner => { if (owner !== handle) throw new Error('evaluation_owner_mismatch'); return store.dirs; } });
     const persistence = new NativeModelPromptPersistence({ engine }), library = new VersionedJsonResourceHandler({ engine });
     const pending = [...config.resources], committed = new Set();
     while (pending.length) {
@@ -34,8 +36,10 @@ export async function createFrozenEvaluationBridge(config, send) {
         },
         async send(rendered, { signal }) {
             if (!active || !prepared || signal.aborted) throw new Error('evaluation_send_unprepared');
-            const { onSend, ...packet } = active;
-            const raw = await send({ ...packet, ...prepared, rendered }); onSend?.();
+            const { onSend, onRendered, beforeSend, ...packet } = active;
+            const injected = beforeSend ? await beforeSend({ signal }) : null;
+            if (injected === null) onRendered?.(rendered);
+            const raw = injected ?? await send({ ...packet, ...prepared, rendered }); onSend?.();
             return { headers: { get: () => 'application/json' }, json: async () => raw };
         },
     };
@@ -43,7 +47,13 @@ export async function createFrozenEvaluationBridge(config, send) {
     const resolver = new RouteResolver({ persistence, library, providers }), compiler = new PromptCompiler();
     return {
         identity: { configurationHash: hash(config), promptHash: hash(config.resources), modelHash: hash(config.model) },
-        cleanup: () => store.cleanup(),
+        cleanup: async () => { await engine.close(); store.cleanup(); },
+        ...(nativePlan ? { native: { store, persistence, library, providers, resolver, secretPort },
+            async nativeTransport({ trialId, onRendered, beforeSend }, operation) {
+                if (active) throw new Error('evaluation_serial_transport_required');
+                active = { trialId, kind: 'model', onRendered, beforeSend };
+                try { return await operation(); } finally { active = null; }
+            } } : {}),
         async projectSkillWork({ studio, agent, repository, settings, request, signal }) {
             const compute = await prepareRetrievalCompute({ handle, context: request.computeContext, profile: { mode: 'embed', purpose: 'studio.skill.v1' },
                 persistence, agent, studio });

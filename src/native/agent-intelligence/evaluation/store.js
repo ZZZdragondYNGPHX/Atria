@@ -5,9 +5,9 @@ import { FsEngine } from '../../../storage/engines/fs-engine.js';
 import { USER_DIRECTORY_TEMPLATE } from '../../../constants.js';
 
 // Only the trusted evaluator creates these roots. No user path is accepted.
-export async function createEvaluationStore() {
+export async function createEvaluationStore({ handle = 'evaluation' } = {}) {
     const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atri-evaluation-'));
-    const handle = 'evaluation', userDir = path.join(dataRoot, handle);
+    const userDir = path.join(dataRoot, handle);
     const dirs = Object.fromEntries(Object.entries(USER_DIRECTORY_TEMPLATE).map(([key, value]) => [key, path.join(userDir, value)]));
     fs.mkdirSync(dirs.characters, { recursive: true }); fs.mkdirSync(dirs.chats, { recursive: true });
     const engine = new FsEngine({ directoriesByHandle: owner => {

@@ -16,8 +16,8 @@ const skillPort = new Proxy({}, { get(_target, name) {
 const emptyContext = () => ({ constants: { promptRoles: { SYSTEM: 0, USER: 1, ASSISTANT: 2 }, wiPosition: { before: 0, after: 1 } }, skills: skillPort });
 globalThis.Atria = { getContext: emptyContext };
 globalThis.fetch = async () => { throw new Error('evaluation_network_denied'); };
-// Load the original captured Skill port before selecting a private trial store.
-await import('../../../../public/scripts/agents/orchestrator/skill-resolution.js');
+// Legacy consumers are loaded only for their own historical evaluator. Native
+// Plan trials import only the Native Host adapters below, never Director.
 const pending = new Map(); let serial = 0;
 function rpc(payload) {
     const id = ++serial;
@@ -31,7 +31,10 @@ process.on('message', async message => {
     }
     if (message.type !== 'run') return;
     try {
-        const { runRp, runProject } = await import('./adapters.js');
+        const native = Boolean(message.settings?.baseline?.nativePlan);
+        if (native !== Boolean(message.settings?.candidate?.nativePlan) && message.selection?.mode !== 'source_probe') throw new Error('evaluation_mixed_protocols');
+        if (!native) await import('../../../../public/scripts/agents/orchestrator/skill-resolution.js');
+        const { runRp, runProject } = await import(native ? './native-adapters.js' : './adapters.js');
         const { selectCases, loadFixture, publicCaseScenario, hash, canonical } = await import('./cases.js');
         const { createFrozenEvaluationBridge } = await import('./worker-bridge.js');
         const { readSealedSource } = await import('./sealed-sources.js');
@@ -54,14 +57,14 @@ process.on('message', async message => {
             for (let repetition = 1; repetition <= selection.repetitions; repetition++) {
                 const pair = { case: entry, scenario: publicCaseScenario(entry, { sealedSource }), repetition, baseline: null, candidate: null, judge: null, human: null };
                 for (const arm of sourceProbe ? ['baseline'] : ['baseline', 'candidate']) {
-                    const config = message.configs[arm], bridge = await createFrozenEvaluationBridge(config, payload => rpc({ ...payload, arm }));
+                    const config = message.configs[arm], bridge = await createFrozenEvaluationBridge(config, payload => rpc({ ...payload, arm }), { nativePlan: message.settings[arm].nativePlan ?? null });
                     const capture = { trialId: `${message.jobId}:${entry.caseId}:${repetition}:${arm}`, refs: { runIds: [], requestIds: [], effectIds: [], taskIds: [], messageVariants: [] },
                         prompts: [], evidence: [], checks: {}, completeness: [], toolCalls: 0, repairCount: 0,
                         observe(name, observed, expected) { this.checks[name] = canonical(observed) === canonical(expected); this.evidence.push({ name, observed, expected }); } };
                     const settings = { rpPrompt: 'Express only the NPC response. Preserve the player choice and use the revised visible promise.',
                         projectSkill: 'Preserve the original Project authority and human Review gate.', roundLimit: 6, ...message.settings[arm] };
                     let error = null;
-                    try { await (message.domain === 'rp' ? runRp : runProject)(entry, structuredClone(fixture), capture, { bridge, settings, beforeSend: () => {} }); } catch (e) { error = /^[a-z_]{1,100}$/.test(e.code || '') ? e.code : 'evaluation_runtime_failed'; } finally { bridge.cleanup(); globalThis.Atria = { getContext: emptyContext }; }
+                    try { await (message.domain === 'rp' ? runRp : runProject)(entry, structuredClone(fixture), capture, { bridge, settings, beforeSend: () => {} }); } catch (e) { error = /^[a-z_]{1,100}$/.test(e.code || '') ? e.code : 'evaluation_runtime_failed'; } finally { await bridge.cleanup(); globalThis.Atria = { getContext: emptyContext }; }
                     pair[arm] = { trialId: capture.trialId, configurationHash: hash(config), settingsHash: hash(message.settings[arm]), output: capture.artifact?.output || '',
                         checks: { ...capture.checks, target_consumed: capture.artifact?.targetConsumed === true }, refs: capture.refs, evidence: capture.evidence, error, repairCount: capture.repairCount, requestHashes: capture.prompts.map(hash),
                         ...(sourceProbe || pairedProbe ? { completeness: capture.completeness, semanticAssessment: 'not_run' } : {}) };
@@ -85,7 +88,7 @@ process.on('message', async message => {
                     || Object.values(grade.deltas).some(v => !Number.isInteger(v) || v < -4 || v > 4)) throw new Error('invalid_grade');
                     pair.judge = { preference: grade.preference === 'tie' || grade.preference === 'uncertain' ? grade.preference : (grade.preference === 'left') === flipped ? 'candidate' : 'baseline',
                         deltas: Object.fromEntries(Object.entries(grade.deltas).map(([k, v]) => [k, flipped ? -v : v])), rationale: grade.rationale };
-                } catch { pair.judge = { preference: 'uncertain', deltas: {}, rationale: 'Grader response unavailable or invalid' }; } finally { judgeBridge.cleanup(); }
+                } catch { pair.judge = { preference: 'uncertain', deltas: {}, rationale: 'Grader response unavailable or invalid' }; } finally { await judgeBridge.cleanup(); }
                 pair.pairHash = hash({ ...pair, human: null }); pairs.push(pair);
                 process.send({ type: 'pair', pair });
             }

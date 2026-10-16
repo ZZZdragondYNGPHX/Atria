@@ -45,8 +45,9 @@ export class AgentEvolutionService {
     async catalog(handle, input) {
         fields(input, ['scope', 'subject']);
         await this.experience.inspect(handle, input);
-        return { choices: await this.targets.catalog(handle, input.scope, input.subject), routes: (await this.host.persistence.listRuntimeRoutes(handle))
-            .filter(r => r.role === (input.scope.domain === 'project' ? 'role.studio' : 'role.orchestrator')).map(r => ({ routeId: r.runtimeRouteId, role: r.role })) };
+        const choices = await this.targets.catalog(handle, input.scope, input.subject);
+        return { choices, routes: (await this.host.persistence.listRuntimeRoutes(handle))
+            .filter(r => r.role === (input.scope.domain === 'project' ? 'role.studio' : choices.some(choice => ['plan-strategy', 'plan-prompt'].includes(choice.target.kind)) ? 'role.narrator' : 'role.orchestrator')).map(r => ({ routeId: r.runtimeRouteId, role: r.role })) };
     }
     async preflight(handle, input) {
         fields(input, ['scope', 'subject']);
@@ -99,7 +100,10 @@ export class AgentEvolutionService {
         }
         const config = await this.evaluator.configuration(handle, input.routeId);
         if (input.mode === 'auto' && input.scope.domain === 'project' && input.target.kind !== 'project-prompt' && config.route.projectPromptBindings?.some(b => b.projectId === input.subject)) conflict('agent_evolution_combined_configuration_requires_review');
-        if (config.route.role !== (input.scope.domain === 'project' ? 'role.studio' : 'role.orchestrator')) throw new TypeError('Evaluation Route does not match this entrance');
+        const nativeTarget = ['plan-strategy', 'plan-prompt'].includes(input.target.kind);
+        if (nativeTarget && (await this.targets.evaluationSettings(handle, input.scope, input.subject, input.target)).runtimeRouteId !== input.routeId)
+            conflict('agent_evolution_model_route_mismatch');
+        if (config.route.role !== (input.scope.domain === 'project' ? 'role.studio' : nativeTarget ? 'role.narrator' : 'role.orchestrator')) throw new TypeError('Evaluation Route does not match this entrance');
         const price = assertEvolutionPrice(input.price);
         if (input.mode === 'auto' && !(await this.repository.owner(handle))?.limits) conflict('agent_evolution_budget_required');
         const old = await this.repository.get(handle, input.scope, input.subject);
@@ -252,6 +256,7 @@ export class AgentEvolutionService {
         try {
             const settings = { baseline: await this.targets.evaluationSettings(handle, scope, subject, job.target),
                 candidate: await this.targets.evaluationSettings(handle, scope, subject, job.target, candidate.candidateId) };
+            if (settings.baseline.nativePlan && settings.baseline.runtimeRouteId !== doc.policy.routeId) conflict('agent_evolution_model_route_mismatch');
             if (settings.baseline.rpProfile?.mainAgent?.nativeRouteRef?.runtimeRouteId && settings.baseline.rpProfile.mainAgent.nativeRouteRef.runtimeRouteId !== doc.policy.routeId) conflict('agent_evolution_model_route_mismatch');
             const configs = { baseline: await this.evaluator.configuration(handle, doc.policy.routeId, settings.baseline.projectPromptRef || null),
                 candidate: await this.evaluator.configuration(handle, doc.policy.routeId, settings.candidate.projectPromptRef || null) };

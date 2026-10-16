@@ -373,8 +373,15 @@ export class EvolutionTargets {
     async evaluationSettings(handle, scope, subject, target, candidateId = null) {
         if (['plan-strategy', 'plan-prompt'].includes(target.kind)) {
             const captured = await this.planSource(handle, scope, subject, target, candidateId);
-            return { nativePlan: { planRef: candidateId ? captured.desired.planRef : captured.base.planRef,
-                sourceSelector: captured.base.sourceSelector }, version: candidateId ?? hash(captured.base) };
+            const planRef = candidateId ? captured.desired.planRef : captured.base.planRef;
+            const revision = await this.nativePlans().getRevision(handle, planRef);
+            const agents = revision.definition.nodes.filter(node => node.kind === 'agent' && node.capabilities.includes('generation.send'));
+            const node = agents.find(node => node.nodeId === target.nodeId) ?? (agents.length === 1 ? agents[0] : null);
+            const pin = revision.dependencyPins.find(pin => pin.resourceRef.scope === 'player' && pin.pinId === node?.policy.agentPinId);
+            const original = candidateId && target.kind === 'plan-prompt' ? await this.prompts.check(handle, captured.candidate.promptCandidateRef.presetId, captured.candidate.promptCandidateRef.candidateId) : null;
+            return { nativePlan: { planRef, revision, sourceSelector: captured.base.sourceSelector },
+                ...(pin ? { runtimeRouteId: pin.resourceRef.runtimeRouteId } : {}), ...(original ? { projectPromptRef: original.desiredRoute.promptProgramRef } : {}),
+                version: candidateId ?? hash(captured.base) };
         }
         if ((await this.nativeBindings(handle, scope, subject)).length) throw new TypeError('native_orchestration_evaluation_unavailable');
         const c = candidateId ? (await this.check(handle, scope, subject, target, candidateId)).candidate : null;

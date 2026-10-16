@@ -15,9 +15,17 @@ import { qualityEnvelope, validateQualityReport, qualityProfile, requirePilotSou
 
 export function evolutionEvaluatorRevision() {
     return hash(['evolution-evaluator.js', 'evaluation/worker.js', 'evaluation/sealed-sources.js', 'evaluation/json.js', 'evaluation/worker-bridge.js', 'evaluation/adapters.js', 'evaluation/cases.js', 'evaluation/store.js',
-        'evaluation/libraries.js', 'evaluation/loader.js', 'evaluation/quality.js', 'evaluation/pilot-sources.js', 'evaluation/pilot-renewal-sources.js', 'evaluation/pilot-renewal-correction-sources.js', 'evaluation/pilot-continuation-sources.js', 'experience-repository.js', 'experience-service.js', 'evolution-service.js', 'evolution-targets.js', 'evolution-repository.js',
+        'evaluation/native-adapters.js', 'evaluation/libraries.js', 'evaluation/loader.js', 'evaluation/quality.js', 'evaluation/pilot-sources.js', 'evaluation/pilot-renewal-sources.js', 'evaluation/pilot-renewal-correction-sources.js', 'evaluation/pilot-continuation-sources.js', 'experience-repository.js', 'experience-service.js', 'evolution-service.js', 'evolution-targets.js', 'evolution-repository.js',
         '../adapters/generation-host.js', '../adapters/http-generation-provider.js', '../project-agent.js', '../skill-invocation.js', '../retrieval-compute.js', '../run-control.js', '../../../public/shared/native-compute-budget.js',
         '../orchestration/plan-repository.js', '../orchestration/plan-evolution-contracts.js', '../orchestration/authoring-service.js', '../../../public/shared/native-orchestration-contracts.js',
+        '../orchestration/native-rp-generation.js', '../orchestration/native-turn-orchestration.js', '../orchestration/native-project-orchestration.js',
+        '../orchestration/native-project-generation-authority.js', '../orchestration/execution-service.js', '../orchestration/run-repository.js',
+        '../orchestration/source-port.js', '../orchestration/context-port.js', '../orchestration/binding-source-authority.js', '../orchestration/model-port.js',
+        '../orchestration/model-capability-authority.js', '../orchestration/budget-port.js', '../orchestration/generation-local-work.js',
+        '../orchestration/attempt-controller.js', '../orchestration/transition-controller.js', '../orchestration/effect-controller.js', '../orchestration/effect-contracts.js',
+        '../orchestration/result-controller.js', '../orchestration/result-contracts.js', '../orchestration/rp-output-controller.js', '../orchestration/rp-output-completion-controller.js',
+        '../orchestration/project-review-output-controller.js', '../orchestration/project-review-output-contracts.js', '../orchestration/project-tool-contracts.js',
+        '../orchestration/project-tool-receipts.js', '../orchestration/project-round-contracts.js', '../project-agent-executor.js', '../rp-run-control.js', '../rp-output-protocol.js',
         '../model-prompt-runtime/prompt-compiler.js', '../model-prompt-runtime/route-resolver.js', '../model-prompt-runtime/generation-service.js', '../model-prompt-runtime/execution-utils.js',
         '../model-prompt-runtime/contracts.js', '../model-prompt-runtime/resources.js', '../../skills/repository.js', '../../skills/versions.js',
         '../../../public/scripts/agents/orchestrator/director-runtime.js', '../../../public/scripts/agents/orchestrator/skill-resolution.js',
@@ -206,7 +214,14 @@ export class EvolutionEvaluator {
         return this._evaluate(handle, job, configs, settings, signal, fresh, onPair, onTrial, selection);
     }
     async _evaluate(handle, job, configs, settings, signal, fresh, onPair, onTrial, selection) {
-        if (settings.baseline.nativePlan || settings.candidate?.nativePlan) throw Object.assign(new TypeError('native_orchestration_evaluation_unavailable'), { code: 'native_orchestration_evaluation_unavailable' });
+        if (settings.baseline.nativePlan || settings.candidate?.nativePlan) {
+            for (const arm of settings.candidate ? ['baseline', 'candidate'] : ['baseline']) {
+                const plan = settings[arm].nativePlan;
+                if (!plan || plan.sourceSelector.domain !== (job.domain === 'project' ? 'project' : 'rp_chat') || configs[arm].route.role !== (job.domain === 'project' ? 'role.studio' : 'role.narrator')
+                    || plan.revision.authorRef.handle !== handle || settings[arm].runtimeRouteId !== configs[arm].route.runtimeRouteId)
+                    throw Object.assign(new TypeError('native_orchestration_evaluation_unavailable'), { code: 'native_orchestration_evaluation_unavailable' });
+            }
+        }
         const sourceProbe = selection.mode === 'source_probe', pairedProbe = selection.mode === 'sealed_pair_probe';
         if (!['development', 'promotion'].includes(selection.split) || (pairedProbe
             ? !Number.isSafeInteger(selection.repetitions) || selection.repetitions < 1
@@ -235,7 +250,7 @@ export class EvolutionEvaluator {
                             } catch (error) { if (child.connected) child.send({ type: 'response', id: message.id, error: error.code || 'evaluation_send_failed' }); } finally { sending = false; }
                         } else if (message.type === 'trial') await onTrial(message);
                         else if (message.type === 'pair') await onPair(message.pair);
-                        else if (message.type === 'complete') { await fresh(); settled = true; resolve(message.pairs); } else if (message.type === 'failed') { settled = true; reject(new Error(message.code)); }
+                        else if (message.type === 'complete') { await fresh(); settled = true; resolve(message.pairs); } else if (message.type === 'failed') { await fresh(); settled = true; reject(new Error(message.code)); }
                     } catch (error) { settled = true; reject(error); child.kill(); }
                 });
                 child.send({ type: 'run', jobId: job.id, domain: job.domain, configs, settings, selection });
