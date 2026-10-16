@@ -934,3 +934,11 @@
 - 组合 Native/Plan strategy/Prompt/指纹/Skill 五 suites 34PASS/2FAIL（89.590s），另 Skill suite 因缺 browser-context 引导加载失败。两 FAIL 是撤权被原 GenerationService 脱敏为 generic error；在父 worker 失败结束处补真实 fresh 复验后，Native RP **2PASS/2filterSKIP（21.169s）**，含撤权后仅保留先前一笔收费、拒绝下一次发送及生产 Chat/Binding 不变。Project 两项在前述组合仍 PASS；没有重复宣称完整新 suite 最终重跑。
 - 原 Skill test 补明确 browser-context fixture 并等待异步清理；指纹扩充四种 Native 源码改变反例，与 Skill 共 **14PASS（3.072s）**。原 Evolution 主体 **41PASS（58.840s）**；同次 HTTP suite 缺 browser-context 引导，补后独立 **1PASS（1.677s）**。未新增产品 fallback；测试 bootstrap 只属于原 browser consumer 测试环境。
 - 12 个本组 JS 文件定向 ESLint、diff 检查通过；全部发送为 localhost 合成，没有真实外部账单、独立评审、SQL 全矩阵或三端通过声明。当前仍 P1–P4 IN_PROGRESS / 最终 Gate NOT_READY，后端剩余项保留，未向 Claude 交接。
+
+
+## 2026-10-16 — 用户要求换设备，保存 Codex 后端续接
+
+- 用户明确要求“推送上传，我换设备继续 Codex 后端开发”。当前暂停来自该换设备请求，不是后端完成或前端交接。
+- 真实核对：源码 `a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`、docs 快照前 `61b851b4e967e8602afe2f6f8bad5652a86bca15` 均 clean，并与远端同名分支一致；fetch/ls-remote 再核 `origin/main=c57fada6e`，未反向合 main。
+- 新建唯一 live `HANDOFF.md`，保存准确实现、测试限制、剩余后端、下一行动和跨设备 Codex 提示词；不沿用已撤销的第六十八组前端交接。后端先完成、Claude 后做页面/组装/结束分支的分工保持。
+- 本次仅文档快照与上传核对，无产品变更，不重跑无变化测试；保留活跃源码分支/工作树。HANDOFF/Record 与路由更新单独提交到 docs，再核远端 refs。
