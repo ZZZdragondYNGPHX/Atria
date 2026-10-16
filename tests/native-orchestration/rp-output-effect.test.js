@@ -32,7 +32,8 @@ describe.each(harnesses)('$name real RP output Host Effect', ({ make }) => {
             expect(control.outputReceipts[result.output.outputKey].status).toBe('committed');
             expect(bank.localWork.filter(row => row.kind === 'rp_output')).toEqual([expect.objectContaining({ status: 'settled', usage: expect.objectContaining({ outcome: 'completed' }) })]);
             expect(bank.attempts).toHaveLength(1); expect(f.requests).toHaveLength(1);
-            expect(root.status).toBe('running'); expect(root.outputClaims).toEqual([]);
+            expect(root.status).toBe('completed'); expect(root.outputClaims).toHaveLength(1);
+            expect(result.output.runStatus).toBe('completed');
         } finally { await f.cleanup(); }
     });
 
@@ -108,7 +109,7 @@ describe.each(harnesses)('$name real RP output Host Effect', ({ make }) => {
             const result = await f.run(); expect(injected).toBe(true);
             expect(result.output.status).toBe(ack === 'saved' ? 'committed' : 'unknown');
             const root = await f.authority.execution.runs.get(f.h.handle, result.runId);
-            expect(root.status).toBe(ack === 'saved' ? 'running' : 'reconciling');
+            expect(root.status).toBe(ack === 'saved' ? 'completed' : 'reconciling');
             expect((await f.chats.get(f.h.handle, 'Actor', 'main')).body).toHaveLength(3); expect(f.requests).toHaveLength(1);
         } finally { f.h.engine.withTransaction = transaction; await f.cleanup(); }
     });

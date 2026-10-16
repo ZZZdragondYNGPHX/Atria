@@ -4,7 +4,7 @@ import { assertNativeId } from '../identity.js';
 import { readRunControl } from '../run-control.js';
 import { fields } from '../../../public/shared/native-values.js';
 import { assertNativeTurnQuota } from './native-turn-quota.js';
-import { orchestrationComputeAttemptId, inspectComputeChildClosure, assertComputeBudget } from '../../../public/shared/native-compute-budget.js';
+import { orchestrationComputeAttemptId, inspectComputeChildClosure, inspectComputeEffectClosure, assertComputeBudget } from '../../../public/shared/native-compute-budget.js';
 import { RpRunControl } from '../rp-run-control.js';
 
 // V3 BudgetPort (interface §8.1/§13): a typed dispatcher onto the three original
@@ -239,6 +239,35 @@ export class BudgetPort {
         if (authority.authority === 'project_task') return (await this.projectRepository.get(handle, authority.projectId, authority.taskId))?.compute;
         if (!(this.rpControl instanceof RpRunControl)) fail('native_orchestration_budget_unavailable');
         return (await RpRunControl.prototype.status.call(this.rpControl, handle, authority.controlId, { tx }))?.operations[authority.operationId]?.compute;
+    }
+
+    /** Exact root Effect costs; unrelated Runs do not become this Run's receipts. */
+    async observeEffectClosure(handle, input, { tx } = {}) {
+        fields(input, ['authorityRef', 'effectIds'], 'Effect budget closure');
+        const { authorityRef, effectIds } = input;
+        assertBudgetAuthorityRef(authorityRef);
+        if (!tx || typeof tx.getResource !== 'function') fail('native_orchestration_budget_transaction_required');
+        const engine = authorityRef.domain === 'session' ? this.sessionCore?.runs.repo._engine
+            : authorityRef.authority === 'project_task' ? this.projectRepository?.engine : this.rpControl?._engine;
+        if (!engine) fail('native_orchestration_budget_unavailable');
+        return engine.withTransaction(handle, async active => {
+            if (active !== tx) fail('native_orchestration_budget_transaction_required');
+            const ledger = await this.#ledger(handle, tx, authorityRef);
+            if (!ledger) fail('native_orchestration_budget_unavailable');
+            const facts = inspectComputeEffectClosure({ compute: ledger }, effectIds);
+            const rows = [...facts.modelAttempts, ...facts.localWork].toSorted((a, b) => a.attemptId.localeCompare(b.attemptId));
+            const budgetAttemptRefs = rows.map(row => {
+                const marker = row.orchestration;
+                if (!marker || row.attemptId !== orchestrationComputeAttemptId(marker)) fail('native_orchestration_budget_attempt_invalid');
+                return assertBudgetAttemptRef({ ...(marker.kind === 'local_work' ? { kind: 'local_work', localWorkOrdinal: marker.ordinal } : { providerSendOrdinal: marker.ordinal }),
+                    authorityRef: structuredClone(authorityRef), effectId: marker.effectId, attemptId: row.attemptId, reservationId: row.reservationId ?? null });
+            });
+            return { authorityRef: structuredClone(authorityRef), effectIds: facts.effectIds, budgetAttemptRefs,
+                closed: !facts.overrun && facts.effectIds.every(id => rows.some(row => row.orchestration.effectId === id)) && rows.every(row => row.status === 'settled'),
+                snapshotDigest: hashNativeDocument({ authorityRef, effectIds: facts.effectIds,
+                    modelAttempts: facts.modelAttempts.toSorted((a, b) => a.attemptId.localeCompare(b.attemptId)),
+                    localWork: facts.localWork.toSorted((a, b) => a.attemptId.localeCompare(b.attemptId)), overrun: facts.overrun }) };
+        });
     }
 
     /** Historical original-bank observation; never releases or grants execution. */

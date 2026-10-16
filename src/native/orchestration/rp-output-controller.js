@@ -1,3 +1,4 @@
+import { RpOutputCompletionController } from './rp-output-completion-controller.js';
 import { performance } from 'node:perf_hooks';
 import { ConflictError } from '../../storage/errors.js';
 import { fields } from '../../../public/shared/native-values.js';
@@ -101,8 +102,11 @@ export class RpOutputController {
             const saved = await runs.engine.withTransaction(handle, tx => checkedRecord(tx, controlRecordKey(handle, identity.runId, 'receipt', receiptId)));
             if (saved && equal(saved.doc.dispatchEvidence, observation.dispatchEvidence)) effectReceiptRef = { runId: identity.runId, receiptId };
         }
+        const completed = committed.status === 'committed' && effectReceiptRef
+            ? await new RpOutputCompletionController({ host: this.host }).complete(handle, { capture })
+            : { runStatus: 'pending_output', outputClaimRef: null, outputReceiptRef: null };
         return immutable({ status: committed.status, outputKey: receipt.outputKey, operationId: receipt.operationId,
-            outputEffectId: spec.effectId, effectReceiptRef, domainReceiptRef: observation.domainReceiptRef });
+            outputEffectId: spec.effectId, effectReceiptRef, domainReceiptRef: observation.domainReceiptRef, ...completed });
     }
 
     /** Original domain commit and original local-work observation; never caller JSON. */

@@ -345,6 +345,15 @@ export function inspectComputeReservation(holder, reservationId = null) {
     return budgetState(assertComputeLedger(holder.compute), reservationId);
 }
 
+/** Exact original Effect work only. An observation grants no new admission. */
+export function inspectComputeEffectClosure(holder, effectIds) {
+    if (!Array.isArray(effectIds) || !effectIds.length || effectIds.length > 1024 || new Set(effectIds).size !== effectIds.length
+        || effectIds.some(id => typeof id !== 'string' || !/^oeffect_[a-f0-9]{32}$/.test(id))) fail('native_generation_attempt_conflict');
+    const ledger = assertComputeLedger(holder.compute), selected = row => effectIds.includes(row.orchestration?.effectId);
+    return structuredClone({ effectIds: effectIds.toSorted(), modelAttempts: ledger.attempts.filter(selected),
+        localWork: (ledger.localWork ?? []).filter(selected), overrun: inspectComputeReservation(holder).overrun });
+}
+
 /** Original-bank facts only. No release, admission, or second cost projection. */
 export function inspectComputeChildClosure(holder, reservationId) {
     const ledger = assertComputeLedger(holder.compute);

@@ -4,7 +4,7 @@ import { TransitionController } from './transition-controller.js';
 import { ModelPort, readModelCompletionReceipt } from './model-port.js';
 import { RpOutputController } from './rp-output-controller.js';
 import { readEffect, effectDecision } from './effect-contracts.js';
-import { rpNativeOutputKey, rpNativeOutputOperationId } from '../rp-output-protocol.js';
+import { rpNativeOutputKey, rpNativeOutputOperationId, rpNarrationPayload } from '../rp-output-protocol.js';
 import { ConflictError } from '../../storage/errors.js';
 import { ChatRepo } from '../../storage/repositories/chat-repo.js';
 import { RpRunControl, rpOperationInput } from '../rp-run-control.js';
@@ -287,10 +287,9 @@ export async function inspectNativeRpOutput(capture, expected = {}) {
         const control = await RpRunControl.prototype.status.call(saved.control, expected.handle, identity.controlId, { tx });
         const chat = await tx.getResource({ kind: 'chat', handle: expected.handle, ...control.locator });
         inspectNativeRpOutputIdentity(capture, expected);
-        return { ...identity, proof, outputDispatch, rootStamp: hash(root), payload: immutable({ name: 'Narrator', is_user: false, is_system: false, mes: result.generated.response.text,
-            memory_os_source_id: 'rpout_' + hash({ controlId: identity.controlId, source: identity.sourceRequest.source }).slice(0, 32) }),
-        chatIntegrity: chat.integrity, locator: control.locator, prefixDigest: identity.prefixDigest,
-        hostFence: { hostBootId: fence.hostBootId, generation: fence.generation } };
+        return { ...identity, proof, outputDispatch, rootStamp: hash(root), payload: immutable(rpNarrationPayload({ controlId: identity.controlId, source: identity.sourceRequest.source, text: result.generated.response.text })),
+            chatIntegrity: chat.integrity, locator: control.locator, prefixDigest: identity.prefixDigest,
+            hostFence: { hostBootId: fence.hostBootId, generation: fence.generation } };
     });
 }
 
@@ -476,6 +475,45 @@ export class NativeRpOrchestrationAuthority {
         if (!dispatchToken || intent.doc.dispatchToken !== dispatchToken || intent.doc.status !== 'dispatching'
             || !equal(effectDecision(intent.doc), state.outputDecision)) fail('native_rp_output_denied');
         state.outputDispatchToken = dispatchToken;
+    }
+
+    async authorizeRpOutputCompletion({ handle, tx, capture }) {
+        const identity = inspectNativeRpOutputIdentity(capture, { handle, rpControl: this.owner.rpControl }), saved = outputCaptures.get(capture);
+        const { state, execution } = saved;
+        if (this.#runs.get(identity.runId) !== state || !state.outputPublishing || !state.outputAttemptId || !state.outputEffectId
+            || hash(saved.result) !== saved.resultHash) fail('native_rp_output_denied');
+        const root = await execution.runs.get(handle, identity.runId), fence = await execution.runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
+        if (root.cancelRequested || root.status !== 'running' || root.epoch !== saved.proof.epoch
+            || root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation
+            || !equal(root.sourceBinding, state.sourceBinding) || !equal(root.planRef, state.selected.binding.planRef)
+            || root.pendingEffectRefs.length || root.pendingApprovalRefs.length) fail('native_rp_output_stale');
+        const published = await readRpNarrationResult(tx, handle, root);
+        const output = (await readAttempt(tx, handle, root, state.outputAttemptId)).doc;
+        const effect = (await readEffect(tx, handle, root, state.outputEffectId)).doc;
+        if (!published || published.record.payload !== saved.result.generated.response.text || published.producer.attemptId !== state.attemptId
+            || output.status !== 'running' || output.epoch !== root.epoch || output.nodeId !== root.graph.outputContract.ownerNodeId
+            || output.effectiveGrantDigest !== state.decision.grantDigest || !equal(output.inputRefs, [state.narrationResultRef])
+            || output.inputDigest !== hash([state.narrationResultRef]) || !equal(output.effectRefs, [state.outputEffectId]) || output.resultRefs.length
+            || effect.status !== 'confirmed' || effect.nodeAttemptId !== output.attemptId || effect.epoch !== root.epoch
+            || !equal(effectDecision(effect), state.outputDecision) || effect.dispatchToken !== state.outputDispatchToken) fail('native_rp_output_denied');
+        // Before consulting Binding, resolve original source removal explicitly.
+        const context = await RpRunControl.prototype.context.call(this.owner.rpControl, handle, identity.controlId, identity.sourceRequest.source, { tx });
+        if (context.prefixDigest !== identity.prefixDigest) fail('native_rp_output_stale');
+        const control = await RpRunControl.prototype.status.call(this.owner.rpControl, handle, identity.controlId, { tx });
+        const chat = await tx.getResource({ kind: 'chat', handle, ...control.locator });
+        if (chat?.body.length !== identity.sourceRequest.source.input.floor + 2) fail('native_rp_output_stale');
+        const outputKey = rpNativeOutputKey(identity.controlId, identity.sourceRequest.source), operationId = rpNativeOutputOperationId(outputKey);
+        const observed = await ChatRepo.prototype.observeNativeOutput.call(this.owner.rpControl._chatRepo, handle,
+            { controlId: identity.controlId, outputKey, operationId }, { tx });
+        const original = control.outputReceipts[outputKey];
+        if (original?.status !== 'committed' || observed.status !== 'committed' || hash(original.domainReceipt) !== hash(observed.receipt)) fail('native_rp_output_stale');
+        const selected = await this.#selection(state.host, handle, state.input);
+        if (!equal(selected.binding, state.selected.binding) || selected.configDigest !== state.selected.configDigest
+            || selected.child?.configDigest !== state.selected.child?.configDigest) fail('native_orchestration_source_stale');
+        inspectNativeRpOutputIdentity(capture, { handle, host: state.host, rpControl: this.owner.rpControl });
+        return { allowed: true, runId: root.runId, epoch: root.epoch, rootStamp: hash(root), resultRef: state.narrationResultRef,
+            grantDigest: state.decision.grantDigest, sourceBindingDigest: root.sourceBinding.bindingDigest, outputAttemptId: state.outputAttemptId,
+            modelEffectId: state.effectId, outputEffectId: state.outputEffectId, domainReceipt: original.domainReceipt };
     }
 
     async authorizeDelegation({ handle, tx, parent, parentAttempt, childPlan, inputRefs, effectiveGrantDigest, budgetCeiling, phase }) {

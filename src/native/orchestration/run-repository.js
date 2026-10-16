@@ -1,3 +1,4 @@
+import { readRpOutput } from './rp-output-contracts.js';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
@@ -417,8 +418,12 @@ export class RunRepository {
         assertPlanDefinition(record.doc.graph, revision.doc.dependencyPins);
         if (hashNativeDocument(record.doc.limits) !== hashNativeDocument(revision.doc.definition.limits)
             || hashNativeDocument(record.doc.graph.limits) !== hashNativeDocument(record.doc.limits)) throw new TypeError('RunRoot limits cannot exceed the immutable Plan');
+        for (const field of ['capabilityCeiling', 'graphChangePolicy', 'outputContract', 'entryNodeIds']) {
+            if (hashNativeDocument(record.doc.graph[field]) !== hashNativeDocument(revision.doc.definition[field]))
+                throw new TypeError('Run immutable graph contract differs from its Plan: ' + field);
+        }
         record.planRevision = revision.doc;
-        if (record.doc.outputClaims.length && !await readTaskLocalOutput(tx, handle, record.doc)) throw new TypeError('Run output lacks complete facts');
+        if (record.doc.outputClaims.length && !await (record.doc.graph.outputContract.kind === 'rp_narration' ? readRpOutput : readTaskLocalOutput)(tx, handle, record.doc)) throw new TypeError('Run output lacks complete facts');
         return record;
     }
 
@@ -458,7 +463,7 @@ export class RunRepository {
         check(root);
         assertRunRoot(root, handle);
         if ((root.outputClaims.length || ['completed', 'partial'].includes(root.status))
-            && !await readTaskLocalOutput(tx, handle, root)) throw new TypeError('Run completion requires verified output facts');
+            && !await (root.graph.outputContract.kind === 'rp_narration' ? readRpOutput : readTaskLocalOutput)(tx, handle, root)) throw new TypeError('Run completion requires verified output facts');
         const ancestors = [], seen = new Set([root.runId]);
         let parentId = root.parentRef?.parentRunId;
         while (parentId) {

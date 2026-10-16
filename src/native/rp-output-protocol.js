@@ -16,6 +16,9 @@ const DENIALS = new Set(['native_rp_output_stale', 'native_orchestration_source_
 export const rpNativeOutputKey = (controlId, source) => hash({ controlId, input: source.input, purpose: source.purpose, slot: source.outputSlot });
 export const rpNativeOutputOperationId = outputKey => hash({ protocol: 'rp_native_output_v1', outputKey });
 
+export const rpNarrationPayload = ({ controlId, source, text }) => ({ name: 'Narrator', is_user: false, is_system: false, mes: text,
+    memory_os_source_id: 'rpout_' + hash({ controlId, source }).slice(0, 32) });
+
 export function nativeOutputPayload(message) {
     const payload = structuredClone(message);
     if (payload?.extra) {
