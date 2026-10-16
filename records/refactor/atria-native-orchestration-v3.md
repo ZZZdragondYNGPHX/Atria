@@ -1031,3 +1031,9 @@
 - 新 suite 首轮因 fixture 缺 Atria bootstrap 未加载，0 test执行；补原 browser-context 入口后 3/3 PASS（3.873s）。原 funded worker source-probe case 1PASS/28filterSKIP（3.602s）。尝试运行旧 m1-grader 时其文件也缺 bootstrap；只覆盖 CLI setup 又漏掉原 jest.setup config，未有产品发送。保留原 setup并定位其 reasoning-low case：明确 generation_capability_unknown，原 fixture 未提供路径绑定 reasoning 能力，不能把增大 output 当能力许可。补该文件原 bootstrap，并把缺证据场景改为明确零发送/零收费的负例；其它 extended grader 场景仍检查原真实 ledger。没有放宽 Resolver 或伪造 reasoning 能力。
 - 最终新配置/原 grader/evaluator 指纹三 suites 34/34 PASS（10.459s）；四文件原 ESLint、staged diff check 通过。新配置测试的 worker 使用既有合成 RP 评测 fixture，只作为配置/收费隔离证据，不冒称 V3 产品质量。
 - 真实 Native Project source_probe 用明确8192 cap复测：2次200，11313 reported tokens，unknown=0；已不截断，但模型把获准 reset_operations/set_plan 放在同一响应，被原 one-proposal-last batch guard 拒绝（native_orchestration_project_tool_batch_unavailable）。保留guard，下一步让实际 Prompt说明这个原批次合同，不用扩大权限解决。当前仍失败，非后端完成或质量通过；未推送/交前端/main。
+
+## 2026-10-17 — 第八十五组：模型可见的原 Project 批次合同
+
+- 实现接口 §17.92，Source 57accfd1b → a90f48f6e，本地提交未推送。原 one-proposal-last 规则提到原 Project tool contract 这一处权威，实际检查/Context proof/Prompt 共用，原 Tool pins 和来源/费用/批次权限不扩大。
+- 新 FS/SQLite 三类真实原 Executor/Task/Effect 场景 6/6 PASS（25.161s）：read→单proposal 成功、双proposal与proposal→read均拒绝且原 calls为空，费用20保持。原 Context/shared builder/指纹三 suites 44/44 PASS（35.125s），实际多轮 Review Root 两参数项 2PASS/12filterSKIP（33.045s）；五文件原 ESLint/staged diff check 通过。
+- 真实 Native Project source_probe 再测8次200，41614 reported tokens、unknown=0。模型按单响应分开 get_project/reset_operations/set_plan，原批次错误消失；其中一条仍主动正文 stop，后续案例到project_save后触发 native_orchestration_limit_exhausted。已核对固定开发Plan仍为默认60秒；依据每案例4次Model请求及封闭Controller步数，可推断其未达200 steps/10 Attempts，下一步只调整新开发Plan的显式 deadline 并验证该推断，不能更改已运行Root deadline或放宽运行时检查。当前status=failed，不能计作完整工程/质量通过；其余后端继续。

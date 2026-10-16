@@ -1163,3 +1163,7 @@ Result 新增精确 session_task audience，绑定 Run/output node/epoch、原 s
 源码 57accfd1b 的原 source_probe 可由 Host 内部 sourceProbeConfiguration 从原 Route/Resolver 取得明确的有界非流式输出配置；上限必须在原 Model output/context 范围内。配置不可变，身份仅在该 Evaluator 私有 WeakSet，只有固定开发 probe 的活动 job 对象可用，且只准 baseline。复制配置、外来/结束 job、candidate/judge/extraction 和非 source_probe 比较均不能取得该能力；实际 rendered cap 须与本次预留输出一致，并继续同一原 Evolution ledger/Provider/Secret 边界。
 
 正常 configuration/compare/send 的1024上限、独立资料与价格/晋升 Gate 不变；开发 report 仍非 eligibility 证据。native-live 开发脚本不再把私有明确 output cap 截到1024，实际额度仍归共享 M1 quota/lock 和原 Source/Run/Model bank。没有 Browser 配置开关或自动扩额。
+
+## 17.92 Project 原批次合同的模型指引
+
+源码 a90f48f6e 的原 project-tool-contracts 定义唯一 PROJECT_TOOL_BATCH_POLICY：每个响应至多一个 proposal，且只能在所有 read 之后。原执行检查使用同一权威；Context currentness digest 与实际模型 Prompt 读取同一 policy，并只列当前 pins 中的 proposal 名称。模型须等上一个提案的原工具返回后再生成下一提案，不能同响应批量 reset/plan/write。原批次拒绝语义与 Tool/Task/Effect 权限没有扩展。
