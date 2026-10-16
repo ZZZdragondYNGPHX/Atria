@@ -14,6 +14,7 @@ import { inspectNativeProjectGeneration, prepareNativeProjectTaskTool, executeNa
 import { ProjectReviewOutputController } from './project-review-output-controller.js';
 import { readProjectToolDescriptor, projectToolCapability, projectToolAction, projectToolReason, projectToolResultPayload } from './project-tool-contracts.js';
 import { readProjectToolReceipt } from './project-tool-receipts.js';
+import { reconcileProjectToolEffect, verifyProjectToolReconciliation } from './project-tool-reconciliation.js';
 import { readProjectRoundReceipt, projectRoundReceiptId, projectRoundCommandId } from './project-round-contracts.js';
 import { inspectComputeEffectClosure } from '../../../public/shared/native-compute-budget.js';
 import { readAttempt } from './controller-common.js';
@@ -182,6 +183,8 @@ export class NativeProjectOrchestrationAuthority {
 
     async verifyObservation(args) {
         const state = this.#runs.get(args.root.runId);
+        if (!state && ['native_project_read', 'native_project_proposal'].includes(args.intent.actionRef.kind))
+            return verifyProjectToolReconciliation(this.#execution(), this.projectAgent, args);
         if (!state) fail('native_orchestration_model_completion_proof_required');
         if (['native_project_read', 'native_project_proposal'].includes(args.intent.actionRef.kind)) {
             const tool = state.tools?.get(args.intent.effectId);
@@ -192,6 +195,8 @@ export class NativeProjectOrchestrationAuthority {
         }
         return this.#port(state.host).verifyObservation(args);
     }
+
+    reconcileTool(handle, request) { return reconcileProjectToolEffect(this.#execution(), this.projectAgent, handle, request); }
 
     async prepare({ host, handle, projectCapture, selection, previousSystem }) {
         const selected = await this.#current(selection), identity = await inspectNativeProjectGeneration(projectCapture, { host, handle });

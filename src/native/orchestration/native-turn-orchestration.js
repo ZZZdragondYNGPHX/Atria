@@ -113,11 +113,12 @@ export class NativeNarratorOrchestrationAuthority {
 
     reconcileRpOutput(handle, request) { return this.#rpAuthority().reconcileOutput(handle, request); }
 
-    async reconcileOutput(handle, request) {
-        assertObject(request, ['runId', 'effectId'], 'Original output reconciliation');
+    async reconcileEffect(handle, request) {
+        assertObject(request, ['runId', 'effectId'], 'Original Effect reconciliation');
         const root = await this.execution.runs.get(handle, request.runId);
         if (root.sourceBinding.sourceAuthority === 'rp_chat') return this.reconcileRpOutput(handle, request);
         if (root.sourceBinding.sourceAuthority === 'native_session') return reconcileSessionOutputEffect(this.execution, this.sessionCore, handle, request);
+        if (root.sourceBinding.sourceAuthority === 'project') return this.#projectAuthority().reconcileTool(handle, request);
         fail('native_orchestration_reconcile_unavailable');
     }
 

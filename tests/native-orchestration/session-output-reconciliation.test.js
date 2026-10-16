@@ -15,7 +15,7 @@ const harnesses = CONTRACT_HARNESSES.filter(({ name }) => ['FsEngine', 'SqliteEn
 function api(f) {
     const engine = f.authority.execution.runs.engine;
     const observations = new RunObservationService({ engine, sessionCore: f.core, pollMs: 0,
-        reconcileOutput: (handle, input) => f.authority.reconcileOutput(handle, input) });
+        reconcileEffect: (handle, input) => f.authority.reconcileEffect(handle, input) });
     const service = { observations, hostBootId: engine.nativeHostLifecycle.hostBootId };
     const app = express(); app.use(express.json());
     app.use((req, _res, next) => { req.user = { profile: { handle: f.h.handle, enabled: true } }; next(); });
@@ -91,7 +91,7 @@ describe.each(harnesses)('$name original Session output cold reconciliation', ({
                 const key = controlRecordKey(f.h.handle, input.runId, 'effect', input.effectId), saved = await tx.getResource(key);
                 await putMutable(tx, key, { ...saved.doc, endpointBindingDigest: hash('foreign endpoint') }, { expectedIntegrity: saved.integrity });
             });
-            await expect(f.authority.reconcileOutput(f.h.handle, input)).rejects.toMatchObject({ code: 'native_orchestration_session_reconciliation_unavailable' });
+            await expect(f.authority.reconcileEffect(f.h.handle, input)).rejects.toMatchObject({ code: 'native_orchestration_session_reconciliation_unavailable' });
         } finally { await f.cleanup(); }
     }, 30000);
 
@@ -142,10 +142,10 @@ describe.each(harnesses)('$name original Session output cold reconciliation', ({
                 if (!injected && ack === 'saved' && matches(value)) { injected = true; throw new StorageCommitUnknownError(new Error('Session reconciliation ACK lost')); }
                 return value;
             };
-            const first = await f.authority.reconcileOutput(f.h.handle, input).then(value => ({ value, error: null }), error => ({ value: null, error }));
+            const first = await f.authority.reconcileEffect(f.h.handle, input).then(value => ({ value, error: null }), error => ({ value: null, error }));
             expect(injected).toBe(true); expect(first.error?.code ?? null).toBe(ack === 'saved' ? null : 'storage_commit_unknown');
             engine.withTransaction = transaction;
-            expect((await f.authority.reconcileOutput(f.h.handle, input)).status).toBe('confirmed');
+            expect((await f.authority.reconcileEffect(f.h.handle, input)).status).toBe('confirmed');
             const root = await runs.get(f.h.handle, input.runId);
             expect(root.status).toBe(ack === 'saved' ? 'cancelled' : 'blocked'); expect(root.outputClaims).toEqual([]);
             expect((await f.core.observe(f.h.handle, f.base.session.sessionId)).revision).toEqual(originalRevision);

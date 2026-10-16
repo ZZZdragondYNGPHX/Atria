@@ -2,17 +2,19 @@ import { ConflictError } from '../../storage/errors.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { readSessionTurnOutput } from '../session-turn-output.js';
+import { SessionRepo } from '../repositories/session-repo.js';
 import { readSessionOutputDescriptor, sessionOutputKey } from './session-output-contracts.js';
 import { readEffect } from './effect-contracts.js';
-import { controlRecordKey, readAttempt, runGuard } from './controller-common.js';
-import { checkedRecord } from './plan-repository.js';
+import { readAttempt } from './controller-common.js';
+import { observeReconciledEffect } from './effect-reconciliation.js';
 
 const fail = () => { throw new ConflictError('native_orchestration_session_reconciliation_unavailable'); };
 const equal = (left, right) => hash(left) === hash(right);
 
 async function observationFor(execution, sessionCore, handle, tx, root, intent) {
     const { runs, budgetPort } = execution, fence = await runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
-    if (sessionCore?._sessions?._engine !== runs.engine || budgetPort.sessionCore !== sessionCore
+    if (!(sessionCore?._sessions instanceof SessionRepo) || sessionCore._sessions._engine !== runs.engine
+        || sessionCore.runs?.repo !== sessionCore._sessions || budgetPort.sessionCore !== sessionCore
         || root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation
         || !['dispatching', 'unknown', 'confirmed'].includes(intent.status) || !intent.dispatchToken
         || intent.capability !== 'chat.output' || intent.risk !== 'R2' || intent.requiresApproval || intent.approvalRef !== null) fail();
@@ -62,20 +64,5 @@ export async function reconcileSessionOutputEffect(execution, sessionCore, handl
         const root = await runs.get(handle, request.runId), intent = (await readEffect(tx, handle, root, request.effectId)).doc;
         return { root, observation: await observationFor(execution, sessionCore, handle, tx, root, intent) };
     });
-    if (!current.observation) return { status: 'unknown', effectId: request.effectId, receiptRef: null, resumed: false };
-    let receiptId;
-    try {
-        const saved = await effects.observe(handle, { ...runGuard(current.root), effectId: request.effectId, observation: current.observation });
-        receiptId = saved.outcome.receiptId;
-    } catch (error) {
-        if (error.code !== 'storage_commit_unknown') throw error;
-        const id = 'oreceipt_' + hash({ effectId: request.effectId, observationId: current.observation.observationId }).slice(0, 32);
-        const saved = await runs.engine.withTransaction(handle, tx => checkedRecord(tx, controlRecordKey(handle, request.runId, 'receipt', id)));
-        const { observedAt, ...record } = saved?.doc ?? {};
-        if (!Number.isSafeInteger(observedAt) || observedAt < 0 || !equal(record, { schemaVersion: 1,
-            receiptId: id, effectId: request.effectId, runId: request.runId, ...current.observation })) throw error;
-        receiptId = id;
-    }
-    return { status: 'confirmed', effectId: request.effectId, receiptRef: { runId: request.runId, receiptId },
-        budgetSettled: current.observation.budgetObservationRef !== null, resumed: false };
+    return observeReconciledEffect(execution, handle, { ...current, effectId: request.effectId });
 }

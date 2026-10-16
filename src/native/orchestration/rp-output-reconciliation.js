@@ -2,19 +2,21 @@ import { ConflictError } from '../../storage/errors.js';
 import { fields } from '../../../public/shared/native-values.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { RpRunControl } from '../rp-run-control.js';
+import { ChatRepo } from '../../storage/repositories/chat-repo.js';
 import { rpNarrationPayload } from '../rp-output-protocol.js';
 import { readRpNarrationResult } from './rp-narration-result-contracts.js';
 import { rpOutputDomainRef } from './rp-output-contracts.js';
 import { readEffect } from './effect-contracts.js';
-import { controlRecordKey, readAttempt, runGuard } from './controller-common.js';
-import { checkedRecord } from './plan-repository.js';
+import { readAttempt } from './controller-common.js';
+import { observeReconciledEffect } from './effect-reconciliation.js';
 
 const fail = () => { throw new ConflictError('native_rp_output_reconciliation_unavailable'); };
 const equal = (left, right) => hash(left) === hash(right);
 
 /** Durable original facts only. This never recreates an output capture or permit. */
 async function facts({ runs, budgetPort, rpControl }, handle, tx, root, intent) {
-    if (!(rpControl instanceof RpRunControl) || rpControl._engine !== runs.engine || budgetPort.rpControl !== rpControl) fail();
+    if (!(rpControl instanceof RpRunControl) || rpControl._engine !== runs.engine || budgetPort.rpControl !== rpControl
+        || !(rpControl._chatRepo instanceof ChatRepo) || rpControl._chatRepo._engine !== runs.engine) fail();
     const fence = await runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
     if (root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation
         || root.sourceBinding.sourceAuthority !== 'rp_chat' || root.parentRef !== null || root.graph.outputContract.kind !== 'rp_narration'
@@ -85,20 +87,5 @@ export async function reconcileRpOutputEffect(execution, rpControl, handle, requ
         const root = await runs.get(handle, request.runId), intent = (await readEffect(tx, handle, root, request.effectId)).doc;
         return { root, observation: await observationFor(execution, rpControl, handle, tx, root, intent) };
     });
-    if (!current.observation) return { status: 'unknown', effectId: request.effectId, receiptRef: null, resumed: false };
-    let receiptId;
-    try {
-        const saved = await effects.observe(handle, { ...runGuard(current.root), effectId: request.effectId, observation: current.observation });
-        receiptId = saved.outcome.receiptId;
-    } catch (error) {
-        if (error.code !== 'storage_commit_unknown') throw error;
-        const id = 'oreceipt_' + hash({ effectId: request.effectId, observationId: current.observation.observationId }).slice(0, 32);
-        const saved = await runs.engine.withTransaction(handle, tx => checkedRecord(tx, controlRecordKey(handle, request.runId, 'receipt', id)));
-        const { observedAt, ...record } = saved?.doc ?? {};
-        if (!Number.isSafeInteger(observedAt) || observedAt < 0 || !equal(record, { schemaVersion: 1,
-            receiptId: id, effectId: request.effectId, runId: request.runId, ...current.observation })) throw error;
-        receiptId = id;
-    }
-    return { status: 'confirmed', effectId: request.effectId, receiptRef: { runId: request.runId, receiptId },
-        budgetSettled: current.observation.budgetObservationRef !== null, resumed: false };
+    return observeReconciledEffect(execution, handle, { ...current, effectId: request.effectId });
 }

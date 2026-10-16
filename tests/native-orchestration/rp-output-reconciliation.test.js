@@ -31,7 +31,7 @@ const coldAuthority = f => {
 };
 function api(f, cold) {
     const observations = new RunObservationService({ engine: f.h.engine, sessionCore: f.host.sessionCore, rpControl: cold.rpControl,
-        reconcileOutput: (handle, input) => cold.reconcileRpOutput(handle, input), pollMs: 0 });
+        reconcileEffect: (handle, input) => cold.reconcileRpOutput(handle, input), pollMs: 0 });
     const service = { observations, hostBootId: f.h.engine.nativeHostLifecycle.hostBootId };
     const app = express(); app.use(express.json());
     app.use((req, _res, next) => { req.user = { profile: { handle: f.h.handle, enabled: true } }; next(); });
@@ -112,9 +112,9 @@ describe.each(harnesses)('$name original RP output receipt cold reconciliation',
             const cold = coldAuthority(f), client = api(f, cold);
             await client.mutate('recover', runGuard(before)).expect(200);
             const body = runGuard(await cold.execution.runs.get(f.h.handle, result.runId)), id = createNativeId('orchestrationCommand');
-            const reconcile = client.observations.reconcileOutput;
+            const reconcile = client.observations.reconcileEffect;
             let queries = 0, injected = false;
-            client.observations.reconcileOutput = (...args) => { queries++; return reconcile(...args); };
+            client.observations.reconcileEffect = (...args) => { queries++; return reconcile(...args); };
             transaction = f.h.engine.withTransaction.bind(f.h.engine);
             const matches = value => value?.outcome?.runId === result.runId && value.outcome.effectId === result.output.outputEffectId
                 && value.outcome.status === undefined;
