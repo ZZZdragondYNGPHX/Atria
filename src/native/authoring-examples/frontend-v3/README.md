@@ -722,8 +722,7 @@ participant target: no new capability or parallel authority is implied by this
 cleanup. Shared/Realm/Continuity business services and Atria runtime plugins and
 Skills remain product assets. The bundled UI authoring Skill now uses v3 Source.
 
-`node scripts/check-a4-experience-runtime.mjs` is the existing workflow entry
-point for the v3 Hard Cut guard. `tests/native/frontend-hard-cut.test.js` rejects
-legacy/mismatched runtime identities and guards removed execution paths. The
-Native Frontend v3 workflow runs associated regressions plus Heavy/Studio browser
-acceptance; the repository PR workflow remains the full unit/storage CI gate.
+`tests/native/frontend-hard-cut.test.js` rejects legacy and mismatched runtime
+identities. Frontend v3 behavior is covered by the related `tests/native/frontend-*`
+tests and Native Session E2E. Run the relevant local regressions for the change;
+there is no active PR workflow or phase guard command.

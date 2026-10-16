@@ -1,26 +1,12 @@
-# tests/e2e/_lib
+# E2E helpers
 
-Shared helpers for the expanded e2e suite under `tests/e2e/<area>/`.
+- `server.js`: isolated data root, committed default YAML with scenario overrides,
+  local server startup, restart and teardown.
+- `mockLLM.js`: deterministic local provider responses; no external API keys.
+- `fixtures.js`: explicit settings/card/world/preset builders used by retained specs.
+- `page.js`: current product navigation and shared UI actions.
+- `storage-ui.js`, `sync.js`, `db-containers.js`: storage and synchronization flows.
 
-These helpers exist so each batch of e2e specs:
-- spawns its own Atria server on an isolated port + data directory
-- shares the same login/idle/send/restart primitives
-- uses the same RP-immersive fixtures (no "say hi" placeholder content)
-
-The legacy suites under `tests/frontend/` and `tests/skills-ui/playwright/`
-keep their inline `awaitMainUI` helpers. New e2e under `tests/e2e/` should
-import from here.
-
-## Modules
-
-- `server.js`   — spawn / probe-ready / restart / kill a Atria server on a
-  configurable port + dataRoot. Each spec calls `startServer({batchKey})`
-  which picks a port from the batch's reserved range and APFS-clones a
-  fresh data directory from the shared seed.
-- `page.js`     — `awaitMainUI(page)`, `loginIfNeeded(page)`, drawer toggles,
-  chat send helpers, swipe helpers, restart-then-reopen helper.
-- `fixtures.js` — programmatic builders for character cards, presets,
-  world books, connection profiles, MG schemas — built directly into the
-  spec's data directory so each spec controls its own corpus.
-- `ports.js`    — single source of truth for per-batch port ranges so two
-  batches running in parallel never collide.
+Use `tearDownServer` in teardown. A server started with `useExistingDataRoot`
+uses caller-owned data; the caller must remove it. Failed readiness and UI actions
+must surface as failures instead of being converted to successful no-ops.
