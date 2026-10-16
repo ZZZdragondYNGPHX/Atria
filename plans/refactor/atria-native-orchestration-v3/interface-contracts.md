@@ -990,3 +990,11 @@ Chat ACK未知只reconcile；domain收据ACK未知与Host Effect receipt ACK未�
 第五十七组产品工具Effect observation改用同一精确reader：原持久Root/Plan、原Task generation/call/nativeReceipt、Model Effect/Host completion/原Task observation snapshot、工具Effect/Attempt/原descriptor pin及typed原bank provider/local rows逐项交叉核验。原Task receipt与费用已完成但Host ACK缺失时只返回原事实及hostReceiptRef=null；要求Host确认则拒绝。无body、permit、Source推进或新工具权限。
 
 原活scope清理后可用重建的原服务读取历史；后来Project推进不抹去原调用事实，亦不能据旧事实重开执行。改变并重新hash原Task/Model/Effect/Attempt/费用/Host任一相关记录仍须满足其它原权威关联；缺receipt或费用不补造。后续提案Source推进必须另接原真实修改收据与同Run归属，本reader自身不授该能力。
+
+## 17.68 原Task计划写入与活操作owned Source推进
+
+第五十八组有限Project profile加入显式project.propose与精确atri_agent_set_plan原schema pin；目前只接原Task计划，不授正式Project/Workspace修改、Review或Commit。实际单个Model响应可先执行已准入只读调用，随后至多一次末尾计划写入；未授pin、改args、写后再调用或多个写入均拒绝，不暗中拆Run/重发Model。
+
+原executeTool同原Task CAS保存计划和nativeReceipt。原Task形返回值的hash绑定除原writer自增sequence/追加attempt metadata外的全部原返回字段，避免receipt自引用；其它JSON返回值仍完整hash。原真实wrapper/permit及精确原持久receipt核对通过后，只在同活operation/generation私有状态接受自己的from→to fingerprint；初始Source与原Root.sourceBinding/budgetAuthorityRef保持冻结。独立原Task编辑无法借用该推进，普通Source/Model/预算准入仍拒旧Source；尚未开放下一轮准入。
+
+专用Project Context消费沿私有已接受精确receipt链核当前Task指纹，归一化自己的calls/fingerprint以复验原Project/registry/tools/Skill/settings与原conversation。它不授新Model。原Task ACK未知saved/missing只观察原领域事实、不重复writer；末费用后独立用户编辑保留，但拒本次结果正文。Root仍未completed，多轮、其余提案/Review与正式出口继续实施。

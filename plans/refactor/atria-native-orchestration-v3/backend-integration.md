@@ -138,3 +138,5 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 第五十四组有限Session正式出口可经精确原费用/Domain/Result/Graph proof写OutputClaim并令Root completed（接口§17.64），Run历史reader按领域分派严格验证；尚无新HTTP/Browser RunProjection API。domain提交与Run终结仍分开：未知费用或Host receipt可有assistant但无claim，客户端不得据此重发。完整消费者/API与后续阶段继续实施，尚未发最终后端交付。
 
 第五十六组有限Project profile可执行显式project.read和原descriptor pin交集内的只读工具，经过实际Model completion→独立Effect/原bank→唯一原Task writer/耐久receipt→Context/Source消费复验（接口§17.66）。无新HTTP/Browser权限；原返回Task仍不代表V3 Root completed。提案、Review、多轮与Project OutputClaim继续在同任务实现，后端尚未最终交付。
+
+第五十八组显式project.propose仅开放精确pin的原set_plan，实际Task计划与receipt同CAS保存，并在同活operation内接受自己的Source推进（接口§17.68）。原Root Source/预算引用冻结，通用旧Source准入仍拒，尚未交付同Root多轮/其它提案/Review/正式出口。没有新增客户端权限或最终后端交付通知。

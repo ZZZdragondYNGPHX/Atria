@@ -839,3 +839,10 @@
 - Source 365bf3f73→5702d2da6；原工具Effect observation实际改用精确耐久reader，交叉核原Root/Plan、Task generation/call/receipt、Model Effect/completion/原Task snapshotHash、Tool Effect/Attempt/descriptor pin及原provider/local费用。只返回事实引用，无body、permit或Source推进grant；Host ACK缺失可见原Task事实但不伪称Host确认。
 - 新历史suite先4/4 PASS（11.958s），包含活scope结束后重建原服务的历史读取、后来Project更新仍读原事实、八种重新hash篡改的其它权威关联拒绝及foreign Root拒绝；不是进程重启或Engine冷开验收。追加missing Host ACK后，组合原Effect ACK saved/missing精选10PASS/32filterSKIP（28.365s），新六项全部通过。最初接产品reader后原工具阳性及两调用精选4PASS/32filterSKIP（12.368s）。五文件定向原插件ESLint和diff check通过；仅本地相关验证，无全仓/远端/独立审查或新增SQL/真实费用质量/三端证据。
 - 下一步仍为真实提案Task Source推进与同Root多轮，原Root未终结，P1–P4仍IN_PROGRESS、P5–P8未完成、Gate NOT_READY；继续开发，不停在本提交、不写HANDOFF、不合main。
+
+## 2026-10-16 — W07/P4第五十八组：原Task计划写入及同活操作owned Source推进
+
+- Source 5702d2da6→b6283a572。显式project.propose和精确原set_plan descriptor pin经真实Model wrapper/call→独立S2 Effect/原Task bank→原executeTool同CAS保存计划/receipt。原Task返回hash排除writer自增sequence和追加attempt metadata以避免自引用，绑定其余完整原返回字段。实际原持久receipt与私有返回对象匹配后，只更新同活operation/generation的accepted fingerprint；原Root Source/预算ref不改，原通用Source和旧ref新准入仍明确拒绝。
+- 同响应可先只读再以单次末尾set_plan结束，多个写或写后调用在Model已计费后、工具writer前拒绝。专用Context消费核私有精确receipt链及当前Task Source，同时保留原Project/registry/tools/Skill/settings/conversation复验；独立Task更新不能借用自己的收据，末预算后独立用户计划保留但正文拒绝。原Task ACK saved/missing只观察一次writer的原receipt，不重放；未授正式Project提交或其它提案/Review能力。
+- 新阳性/先读后写精选4PASS/10filterSKIP（15.129s）；最终完整suite18/18 PASS（56.591s），覆盖未授权pin、改args、两个写、写后读、末预算后的独立Task编辑及原writer ACK saved/missing。原只读阳性/多调用/重建历史/篡改proof与原Project Model/无工具授权相关精选，3 suites共12PASS/64filterSKIP（40.669s）。十文件定向原插件ESLint、diff check通过；本组无失败或扩大无关测试，无SQL/真实付费质量/三端、全仓或独立审查证据。
+- 这是原Task计划consumer，仍限单轮且Root running；不等于Project正式修改或P4 Gate。继续同Root有界多轮、其余Workspace提案/Review、其它消费者与P5–P8，既有授权持续，不在提交处停工、不写HANDOFF、不合main。
