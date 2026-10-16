@@ -132,3 +132,5 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 第五十一组产品GenerationHost.finalize已消费原Narrator prepared/Context专用复验（接口§17.61）。无新HTTP/Browser API；Model后撤权会阻止正式Session assistant，费用保留。正式Result/Effect/DomainReceipt/OutputClaim仍在实施，不将现有Session返回当V3 Run completed或最终后端交付。
 
 第五十二组原Session Turn提交具有精确稳定commit receipt，产品finalizer验证原Task/Variant/authority receipt及同操作Source推进，ACK未知只观察（接口§17.62）。没有新客户端API；native_session领域收据不能与RP混用，领域committed仍不等于V3 Run completed。正式Session Result/Graph Effect/OutputClaim继续在后端实施。
+
+第五十三组显式有限Session rp_narration profile在原finalizer内经过有来源Result→真实Graph output owner→原S2 Effect/银行→唯一Session writer→原DomainReceipt确认（接口§17.63）。没有新增客户端API。该domain输出与RP分派严格区分；Run最终OutputClaim/费用闭包仍在实施，不提前发最终后端交付。

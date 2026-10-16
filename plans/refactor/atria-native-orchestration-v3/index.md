@@ -99,7 +99,7 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 
 第三十九组664749309接真实RP独立child capture/受限Context/Model/原bank，并修根银行与叶reservation的额度接线，见[接口§17.49](interface-contracts.md#1749-真实rp独立child-model与根银行叶额度边界)。内部明确pending_result无正文，不把物理permit返回当durable return；正式Result/Output/Audience/return继续实施，P3 Gate仍NOT_READY。
 
-第四十组b4c06075a已接真实RP child Result publication，同原CAS写有界正文/发布收据/producer settlement，见[接口§17.50](interface-contracts.md#1750-真实rp-child-result发布与历史事实边界)。返回仅pending_output refs，原bank held、父waiting_child，output/return/正文消费仍IMPLEMENTATION_PENDING。用户本轮明确要求本组完成后推送停下换设备；当前暂停于第四十组，不启动第四十一组。最新已测HEAD、真实验证与下一队列见[唯一HANDOFF](../../../HANDOFF.md)及同一Record；P3 Gate仍NOT_READY，未集成main。
+第四十组b4c06075a已接真实RP child Result publication，同原CAS写有界正文/发布收据/producer settlement，见[接口§17.50](interface-contracts.md#1750-真实rp-child-result发布与历史事实边界)。返回仅pending_output refs，原bank held、父waiting_child，output/return/正文消费仍IMPLEMENTATION_PENDING。第四十组当时按用户要求暂停，现已恢复；该历史事实及后续实际进度见同一Record；P3 Gate仍NOT_READY，未集成main。
 
 第四十一组从最新远端第四十组b4c06075a恢复，接原Graph task-local output、独立原bank release/closed观察与严格OutputClaim/终结proof，见[接口§17.51](interface-contracts.md#1751-原graph-task-local-output与原银行闭包)。有明确费用闭包的child完成后返回pending_return；父仍waiting_child，durable return/父Result消费与continuation继续待接。当前恢复后持续实施，历史换设备暂停不作为限制；P3 Gate仍NOT_READY，未合main，真实提交与最小验证归同一Record第四十一组。
 
@@ -119,8 +119,10 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 
 第四十九组补原Narrator输出quota与同原operation finalizer的身份绑定（接口§17.59），实际原银行证明输出凭据不能新发送或加扣计数，已发生费用保留。继续Context输出复读与Session完整出口；Gate未通过。
 
-第五十组补原Native Session Context专用finalization复读（接口§17.60）：同原Narrator quota与实际finalizer绑定，继续拒运行态发送；原Memory/Binding/Source撤销保留合法事实和费用。产品Session完整出口仍待接入。本次按用户“到合适的时机停下，我要新建对话了”暂停于第五十组，更新HANDOFF，不启动第五十一组；恢复后继续既有授权，P1/P2/P3/P4 IN_PROGRESS，P5–P8 NOT_STARTED，最终Gate NOT_READY，未合main。
+第五十组补原Native Session Context专用finalization复读（接口§17.60）：同原Narrator quota与实际finalizer绑定，继续拒运行态发送；原Memory/Binding/Source撤销保留合法事实和费用。产品Session完整出口仍待接入。第五十组当时按用户换对话要求暂停，现已恢复并继续既有授权；P1/P2/P3/P4 IN_PROGRESS，P5–P8 NOT_STARTED，最终Gate NOT_READY，未合main。
 
 第五十一组0dcb97267已恢复后接入产品GenerationHost实际finalizer（接口§17.61）：原prepared对象一次私有绑定Narrator完成/Context，同原锁序复验Context/Model/银行后交唯一Session writer。合法末await撤权保留事实/费用；正式Session Result/Effect/DomainReceipt/OutputClaim继续实施。历史第五十组暂停不作为本次停止要求，P3/P4及最终Gate仍NOT_READY，未合main。
 
 第五十二组bf7127f43补原Session Turn稳定commit与精确原领域收据（接口§17.62），原writer ACK未知只观察同操作，合法后续Source推进/冷读不恢复scope。Session正式Result/Graph output Effect/费用闭包/OutputClaim继续实施，P3/P4及最终Gate仍NOT_READY，未合main。
+
+第五十三组f1261290f接显式有限Session正式Result/Graph output owner/原S2 Effect与原bank session_output（接口§17.63）。Result明确native_session来源与session_output audience，RP与Session消费者不混用；OutputClaim/Root终结继续实施。已恢复的HANDOFF暂停快照删除，历史事实保留同一Record，当前按用户要求持续至全阶段完成，不在分组提交后停工。

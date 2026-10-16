@@ -803,3 +803,11 @@
 - writer ACK未知只观察同稳定commit，无receipt保持原storage_commit_unknown且不二次调用writer/HTTP；完整receipt才观察当前原Session，必须同实际commit Revision。无原receipt的伪writer返回不能成为输出证明。冷开/合法后续输入可读历史事实，不恢复scope或把旧Source标current。
 - 新suite首轮6PASS/2FAIL，40.292s，两失败仅test误断言不存在的operation_finalize_unknown而实际是原storage_commit_unknown。改后只复跑该两Engine场景2PASS/6filterSKIP，并组合原typed authority/resolver精选4PASS，共6PASS/50filterSKIP，37.385s；新suite八个不同case有证据，未宣称完整八项重跑。原产品Context阳性/伪prepared+新ambient guard与无Binding路径精选6PASS/44filterSKIP，23.117s。五文件定向原ESLint0输出、diff check通过；原maintenance fixture关闭告警仍保留，无全仓/Actions/SQL/真实费用质量/三端/独立审查。
 - Session Result/Audience/Graph output Effect/原output费用/最终OutputClaim仍待接，领域committed不等于Run completed。继续同授权任务，不刷新HANDOFF；P1–P4 IN_PROGRESS、P5–P8 NOT_STARTED、最终Gate NOT_READY，未合main、未发前端最终交付。
+
+## 2026-10-16 — W06/P4第五十三组：Session正式Result、Graph output与原Effect
+
+- Source最终提交f1261290f，已推送；期间本任务分支包含既有测试清理同步提交57544ae9d/7196a3f07，未覆盖其内容。显式有限rp_narration/assistant/text output节点独占chat.output；原Narrator完成证明→同Run Result/publication receipt/producer settlement→原Graph edge→output Attempt→原S2 Effect/原bank session_output→唯一原SessionCore.finalizeTurn→精确DomainReceipt/费用结算→Effect confirmed。
+- Session Result来源/recipient为native_session/session_output，精确原source/outputKey/owner，与RP及parent封闭隔离。原Plan chat.output发布机制验证按实际可用SessionCore或RpRunControl记录不同原authority证据，未将发布机制当执行grant。最后原output预算await的Memory撤销经原withConsumption提交后拒正文，Model费用保留；未知Effect claim不触达writer，Result字节溢出在原Model已收费后拒写。
+- 新阳性首轮两Engine2FAIL（11.369s），仅新历史reader残留rp_narration_ready而产品写session_narration_ready；修正为Session精确reason后阳性2/2 PASS（11.832s）。扩展新output suite8与原Result合同52组合60/60 PASS（42.971s）；新增Session源/recipient封闭合同并组合原RP output/Graph owner、原Session Context精选7PASS/96filterSKIP（15.450s）。八文件定向原ESLint最终0输出、diff通过；先前lint为新增测试两行缩进，已修。仅本地最小验证，无全仓/Actions/SQL/真实费用质量/三端或独立审查。
+- 用户追问前一轮为何停下并明确继续至全阶段完成。没有提示词要求该次结束；执行代理误将两组交付视为轮次终点，已明确纠正。已恢复且不再需要的HANDOFF快照按治理§7删除，Plan中两处误写当前暂停的历史句改为已恢复；历史Record不删。当前继续，不把分组、提交或测试通过当停止条件。
+- 此组有正式Result/Effect但无Session OutputClaim/严格Root终结；下一步同原费用闭包与精确owned Source推进后写最终claim并核冷读，再推进Project/其它完整消费者及P5–P8。P1–P4 IN_PROGRESS、P5–P8 NOT_STARTED、最终Gate NOT_READY，未合main、未发最终前端通知。
