@@ -83,6 +83,7 @@ export function createNativeOrchestrationRouter(getServices = services) {
     for (const method of ['list', 'observe', 'details', 'diagnostics']) router.post('/runs/' + method,
         route(false, (observations, handle, input, options) => observations[method](handle, input.body, options), 'observations'));
     router.post('/runs/cancel', route(true, (observations, handle, input) => observations.cancel(handle, input.commandId, input.body), 'observations'));
+    router.post('/runs/recover', route(true, (observations, handle, input) => observations.recover(handle, input.commandId, input.body), 'observations'));
     router.post('/approvals/launch', (request, response, next) => {
         if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(request.socket.remoteAddress)) return response.sendStatus(503);
         next();

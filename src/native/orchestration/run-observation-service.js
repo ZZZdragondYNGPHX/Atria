@@ -195,7 +195,7 @@ export class RunObservationService {
                     edges: root.graph.edges.map(edge => ({ edgeId: edge.edgeId, from: edge.from, to: edge.to, loopBack: edge.loopBack })) },
                     attempts, effects, approvals, events: events.map(({ internalOrder: _order, ...event }) => event), costs, diagnostics,
                     controls: { cancel: !['completed', 'partial', 'failed', 'cancelled', 'stale'].includes(root.status) && !recoveryRequired,
-                        resume: false, reconcile: false, approve: false }, createdAt: root.createdAt, updatedAt: root.updatedAt };
+                        recover: recoveryRequired, resume: false, reconcile: false, approve: false }, createdAt: root.createdAt, updatedAt: root.updatedAt };
                 if (visibilityDigest !== await this.#authorize(handle, tx, root)) resync();
                 const current = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId }))?.doc;
                 if (hash(current) !== hash(root)) resync();
@@ -273,6 +273,14 @@ export class RunObservationService {
         // pending Effects/fees. Disconnection never calls this method.
         const root = await this.runs.cancel(handle, commandId, input);
         return { runId: root.runId, status: root.status, cancelRequested: root.cancelRequested,
+            versions: { epoch: root.epoch, stateVersion: root.stateVersion, graphRevision: root.graphRevision } };
+    }
+
+    async recover(handle, commandId, input) {
+        // Recovery rebinds only control metadata. Original domain receipts,
+        // budgets and fresh producer scopes still decide every later action.
+        const root = await this.runs.recover(handle, commandId, input);
+        return { runId: root.runId, status: root.status, cancelRequested: root.cancelRequested, resumed: false,
             versions: { epoch: root.epoch, stateVersion: root.stateVersion, graphRevision: root.graphRevision } };
     }
 }
