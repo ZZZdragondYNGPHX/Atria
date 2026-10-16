@@ -50,8 +50,9 @@ export function captureNativeTurnFinalizationPermit(request) {
 }
 
 /** An output-bound phase witness. Original generation permits remain rejected here. */
-export function assertNativeTurnFinalizationPermit(capture, expected = {}) {
+export function assertNativeTurnFinalizationPermit(capture, expected = {}, originalPermit) {
     const saved = finalizationPermits.get(capture), value = saved?.original;
+    if (originalPermit !== undefined && (!permits.has(originalPermit) || permits.get(originalPermit) !== value)) denied();
     if (!value || !expected || Object.keys(expected).some(key => !fields.includes(key))) denied();
     for (const field of ['host', 'selection']) if (Object.hasOwn(expected, field) && value[field] !== expected[field]) denied();
     for (const field of ['handle', 'sessionId', 'anchor', 'invocationId', 'requestHash'])

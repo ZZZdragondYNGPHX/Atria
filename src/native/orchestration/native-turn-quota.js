@@ -1,6 +1,6 @@
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { hashNativeDocument } from '../repositories/common.js';
-import { assertNativeTurnPermit } from './native-turn-permit.js';
+import { assertNativeTurnPermit, assertNativeTurnFinalizationPermit } from './native-turn-permit.js';
 import { inspectNativeBackgroundGenerationIdentity } from './native-background-generation.js';
 
 const proofs = new WeakMap();
@@ -36,16 +36,7 @@ export function mintNativeBackgroundQuota(capture, expected) {
     return proof;
 }
 
-export function assertNativeTurnQuota(proof, expected) {
-    const value = proofs.get(proof);
-    if (value?.backgroundCapture) {
-        const captured = inspectNativeBackgroundGenerationIdentity(value.backgroundCapture, { host: value.host, handle: value.handle });
-        if (Object.entries(expected ?? {}).some(([key, item]) => ['host', 'sessionCore'].includes(key) ? value[key] !== item
-            : key === 'policy' ? hashNativeDocument(item) !== captured.policyDigest
-                : hashNativeDocument(value[key] ?? null) !== hashNativeDocument(item))) denied();
-        return { ...value, quota: { request: { role: value.role, background: true, anchor: { invocationId: captured.input.invocationId } },
-            policy: captured.policy } };
-    }
+function assertTurnQuotaMetadata(value, expected) {
     if (!value || !expected || !['narrator', 'intent_resolver'].includes(value.role)
         || (expected.host !== undefined && value.host !== expected.host)
         || (expected.sessionCore !== undefined && value.sessionCore !== expected.sessionCore)
@@ -56,8 +47,34 @@ export function assertNativeTurnQuota(proof, expected) {
         || (expected.selection !== undefined && value.selection !== expected.selection)
         || (expected.anchor !== undefined && hashNativeDocument(value.anchor) !== hashNativeDocument(expected.anchor))
         || (Object.hasOwn(expected, 'policy') && hashNativeDocument(value.policy) !== hashNativeDocument(expected.policy))) denied();
+}
+
+export function assertNativeTurnQuota(proof, expected) {
+    const value = proofs.get(proof);
+    if (value?.backgroundCapture) {
+        const captured = inspectNativeBackgroundGenerationIdentity(value.backgroundCapture, { host: value.host, handle: value.handle });
+        if (Object.entries(expected ?? {}).some(([key, item]) => ['host', 'sessionCore'].includes(key) ? value[key] !== item
+            : key === 'policy' ? hashNativeDocument(item) !== captured.policyDigest
+                : hashNativeDocument(value[key] ?? null) !== hashNativeDocument(item))) denied();
+        return { ...value, quota: { request: { role: value.role, background: true, anchor: { invocationId: captured.input.invocationId } },
+            policy: captured.policy } };
+    }
+    assertTurnQuotaMetadata(value, expected);
     assertNativeTurnPermit(value.permit, { host: value.host, handle: value.handle, sessionId: value.sessionId, anchor: value.anchor,
         invocationId: value.invocationId, requestHash: value.requestHash, selection: value.selection });
+    return value;
+}
+
+/** Revalidate an existing Narrator's output disclosure at its exact original finalizer.
+ * No model/local admission uses this read-only phase witness.
+ */
+export function assertNativeTurnOutputQuota(proof, finalizationPermit, expected) {
+    const value = proofs.get(proof);
+    if (expected?.role !== 'narrator' || value?.role !== 'narrator' || value?.backgroundCapture
+        || Object.keys(expected).some(key => !['host', 'sessionCore', 'handle', 'sessionId', 'requestId', 'role', 'invocationId', 'requestHash', 'selection', 'anchor', 'policy'].includes(key))) denied();
+    assertTurnQuotaMetadata(value, expected);
+    assertNativeTurnFinalizationPermit(finalizationPermit, { host: value.host, handle: value.handle, sessionId: value.sessionId,
+        anchor: value.anchor, invocationId: value.invocationId, requestHash: value.requestHash, selection: value.selection }, value.permit);
     return value;
 }
 
