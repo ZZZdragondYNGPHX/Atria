@@ -17,7 +17,7 @@ import express from 'express';
 import git from 'isomorphic-git';
 
 import { readObjectForWire, writeObjectFromWireStream } from '../sync/objects.js';
-import { ensureShadowRepo, snapshotLiveToShadow, reconcileShadowToLive, assertSafePeerId } from '../sync/shadow.js';
+import { ensureShadowRepo, snapshotLiveToShadow, assertSafePeerId } from '../sync/shadow.js';
 import { createSyncSession, closeSyncSession, consumeSyncSession } from '../sync/session.js';
 import {
     runPull,
@@ -25,7 +25,7 @@ import {
     queueOnKey,
     undoLastSync,
 } from '../sync/orchestrator.js';
-import { materializeUserDataIntoWorkdir, dematerializeWorkdirIntoUserData, buildWorkdirDirectoriesView } from '../sync/materialize.js';
+import { materializeUserDataIntoWorkdir, publishShadowToUserData, buildWorkdirDirectoriesView } from '../sync/materialize.js';
 import { markSyncInProgress, clearSyncInProgress } from '../sync/in-progress-gate.js';
 import { readSyncState, recordPeer, removePeerCompletely, clearPeerAuth } from '../sync/state.js';
 import { SYNC_CATEGORIES } from '../sync/categories.js';
@@ -328,13 +328,9 @@ router.post('/session/ref', requireSyncToken, express.json(), async (request, re
         // edits land in our live tree a few seconds late", not data
         // loss.
         //
-        // Cross-peer races (peer P1 and peer P2 both pushing to this
-        // same user's live tree at the same time) are still possible:
-        // each (userRoot, peerId) pair has its own queue, so P1's and
-        // P2's reconciles can interleave. The spec §4.4 model assumes
-        // one peer sync at a time and `write-file-atomic` keeps
-        // per-file writes consistent; a per-userRoot live-write lock
-        // is more complexity than v1 needs.
+        // Per-peer queues cover transport/shadow state; the original owner
+        // domain additionally serializes live publication across peers and
+        // canonical chat writers.
         if (ref === 'refs/heads/main') {
             const { userRoot, peerId, categories, directories, handle } = request.syncSession;
             if (directories && Array.isArray(categories)) {
@@ -358,25 +354,10 @@ router.post('/session/ref', requireSyncToken, express.json(), async (request, re
                                 ref: 'main',
                                 force: true,
                             });
-                            await reconcileShadowToLive({
-                                userRoot,
-                                peerId,
-                                directories,
-                                enabledCategoryIds: categories,
+                            await publishShadowToUserData({
+                                handle, userRoot, peerId, directories, categories,
+                                workdir: shadow.workdir, engine: getStorageEngine(),
                             });
-                            // SQL-engine mode (spec §6.3): project the
-                            // reconciled workdir back into the engine so
-                            // the storage layer reflects the puller's
-                            // edits. Shared with the puller-side
-                            // orchestrator so both ends use one gating
-                            // rule (no-op when engine.kind === 'fs').
-                            const engine = getStorageEngine();
-                            if (engine.kind !== 'fs') {
-                                await dematerializeWorkdirIntoUserData({
-                                    handle, directories, categories,
-                                    workdir: shadow.workdir, engine,
-                                });
-                            }
                         } finally {
                             clearSyncInProgress(handle, peerId);
                         }

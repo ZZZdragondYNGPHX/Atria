@@ -29,6 +29,8 @@ import path from 'node:path';
 import { PRESET_FOLDER_BY_API_ID } from '../storage/repositories/preset-repo.js';
 import { BUCKET_TO_DIR } from '../storage/repositories/named-doc-repo.js';
 import { withReadOnlyBypass } from '../storage/read-only-mode.js';
+import { withChatWrite } from '../storage/repositories/chat-write-boundary.js';
+import { reconcileShadowToLive } from './shadow.js';
 import { buildSidecarFilename, parseSidecarFilename, SIDECAR_INFIX } from '../storage/engines/sidecar-naming.js';
 
 // One representative apiId per dirKey. Multiple apiIds share a folder
@@ -769,6 +771,15 @@ export async function materializeUserDataIntoWorkdir({
     return totals;
 }
 
+export async function publishShadowToUserData({ handle, userRoot, peerId, directories, categories, workdir, engine }) {
+    // Only local publication owns the domain lock; peer fetch/push stays
+    // outside. No consumer can enter between filesystem and SQL publication.
+    return withChatWrite(handle, async () => {
+        await reconcileShadowToLive({ handle, userRoot, peerId, directories, enabledCategoryIds: categories });
+        return dematerializeWorkdirIntoUserData({ handle, directories, categories, workdir, engine });
+    });
+}
+
 /**
  * Project the workdir tree back into the SQL engine. No-op for
  * `engine.kind === 'fs'`. Per-category transaction, wrapped in a
@@ -786,7 +797,11 @@ export async function materializeUserDataIntoWorkdir({
  * @param {{ kind: string, withTransaction: Function }} opts.engine
  * @returns {Promise<{recordsWritten: number, recordsDeleted: number}>}
  */
-export async function dematerializeWorkdirIntoUserData({
+export async function dematerializeWorkdirIntoUserData(args) {
+    return withChatWrite(args.handle, () => publishWorkdirIntoUserData(args));
+}
+
+async function publishWorkdirIntoUserData({
     handle, directories, categories, workdir, engine,
 }) {
     if (!engine || typeof engine.withTransaction !== 'function') {

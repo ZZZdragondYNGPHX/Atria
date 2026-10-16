@@ -251,6 +251,9 @@ export async function makeEndpointHarness({ mode, mount, profile, extraHandles, 
             if (current && typeof current.close === 'function') {
                 await current.close();
             }
+            // Dual-host sync fixtures replace the module's current Engine.
+            // This harness still owns its original Host lease/listener.
+            if (engine !== current) await engine.close();
         } catch { /* engine may already be torn down */ }
         if (mode === 'mysql') {
             try { await dropMysqlDatabase(dbName); } catch { /* best-effort */ }

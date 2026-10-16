@@ -5,6 +5,7 @@ import { sync as writeFileAtomicSync } from 'write-file-atomic';
 
 import { SYNC_CATEGORIES, resolveCategoryPaths } from './categories.js';
 import { isFsChatPatchArtifactName } from '../storage/engines/fs-chat-range.js';
+import { withChatWrite } from '../storage/repositories/chat-write-boundary.js';
 
 export const PEER_ID_PATTERN = /^[A-Za-z0-9._@-]+$/;
 
@@ -435,7 +436,11 @@ async function resolveHeadOidOrNull(dir, gitdir) {
  *   `directories.root`). Order is unspecified beyond "matches the walk order
  *   of the respective tree".
  */
-export async function reconcileShadowToLive({ userRoot, peerId, directories, enabledCategoryIds }) {
+export async function reconcileShadowToLive(args) {
+    return withChatWrite(args.handle ?? path.basename(args.directories.root), () => publishShadowToLive(args));
+}
+
+async function publishShadowToLive({ userRoot, peerId, directories, enabledCategoryIds }) {
     const paths = await ensureShadowRepo({ userRoot, peerId });
 
     const enabled = new Set(enabledCategoryIds);

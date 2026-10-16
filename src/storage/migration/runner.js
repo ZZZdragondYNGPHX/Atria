@@ -2,6 +2,7 @@ import { setReadOnly, withReadOnlyBypass } from '../read-only-mode.js';
 import { PRESET_FOLDER_BY_API_ID } from '../repositories/preset-repo.js';
 import { BUCKET_TO_DIR } from '../repositories/named-doc-repo.js';
 import { snapshotUser, restoreFromSnapshot, removeSnapshot } from './backup.js';
+import { withChatWrite } from '../repositories/chat-write-boundary.js';
 import { recordsEqual } from './equality.js';
 import { serializeNativeDocument } from '../../native/repositories/common.js';
 import { NATIVE_STORAGE_KINDS } from '../engines/native-resource-key.js';
@@ -174,7 +175,11 @@ export class MigrationRunner {
      * scratch source handle, which is correct because the runner is operating
      * ON the source.
      */
-    async migrateUser(srcHandle, { onProgress = () => {}, destHandle = null } = {}) {
+    async migrateUser(srcHandle, options = {}) {
+        return withChatWrite(options.destHandle ?? srcHandle, () => this.#migrateUser(srcHandle, options));
+    }
+
+    async #migrateUser(srcHandle, { onProgress = () => {}, destHandle = null } = {}) {
         const effectiveDestHandle = destHandle != null ? destHandle : srcHandle;
         const stats = {
             native: 0,

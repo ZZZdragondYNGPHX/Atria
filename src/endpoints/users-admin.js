@@ -1,5 +1,6 @@
 import { promises as fsPromises } from 'node:fs';
 import path from 'node:path';
+import { withChatWrite } from '../storage/repositories/chat-write-boundary.js';
 
 import storage from 'node-persist';
 import express from 'express';
@@ -388,8 +389,6 @@ router.post('/delete', requireAdminMiddleware, async (request, response) => {
             return response.status(400).json({ error: 'Sorry, but the default user cannot be deleted. It is required as a fallback.' });
         }
 
-        await storage.removeItem(toKey(request.body.handle));
-
         // Order: keyv first (admin can no longer log in even if a later step
         // throws), then engine rows, then the optional fs.rm dir wipe. If
         // engine.deleteUser throws after the keyv removal, the user is
@@ -400,13 +399,16 @@ router.post('/delete', requireAdminMiddleware, async (request, response) => {
         // can simply re-POST /delete to complete the cleanup. The engine
         // call runs BEFORE the optional fs.rm so sqlite can close+evict
         // its cached Database handle without racing the directory rm.
-        await getStorageEngine().deleteUser(request.body.handle);
+        await withChatWrite(request.body.handle, async () => {
+            await storage.removeItem(toKey(request.body.handle));
+            await getStorageEngine().deleteUser(request.body.handle);
 
-        if (request.body.purge) {
-            const directories = getUserDirectories(request.body.handle);
-            console.info('Deleting data directories for', request.body.handle);
-            await fsPromises.rm(directories.root, { recursive: true, force: true });
-        }
+            if (request.body.purge) {
+                const directories = getUserDirectories(request.body.handle);
+                console.info('Deleting data directories for', request.body.handle);
+                await fsPromises.rm(directories.root, { recursive: true, force: true });
+            }
+        });
 
         return response.sendStatus(204);
     } catch (error) {

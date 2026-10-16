@@ -35,7 +35,7 @@ import { StatsRepo } from '../repositories/stats-repo.js';
 import { ENGINE_DUMP_ENTRY, ENGINE_META_ENTRY, SCRATCH_HANDLE_PREFIX } from '../engine-backup-entries.js';
 import { setReadOnly, withReadOnlyBypass } from '../read-only-mode.js';
 import { MigrationRunner } from './runner.js';
-import { snapshotUser, restoreFromSnapshot } from './backup.js';
+import { snapshotUser, restoreFromSnapshot, assertSnapshotRestoreAllowed } from './backup.js';
 import { acquireMigrationLock, releaseMigrationLock, makeHolderId, startHeartbeat, stopHeartbeat } from './lock.js';
 import { materializeTransientSource } from './transient-source.js';
 import { pruneRestoreRecoveryPoints } from '../../backup-sync/restore-recovery-retention.js';
@@ -47,6 +47,7 @@ import { NATIVE_RESOURCE_KINDS } from '../../native/contracts.js';
 import { retainedBlobHashes, withRecoveryPublication } from '../../native/recovery-roots.js';
 import { nativeTaskScheduler } from '../../native/task-scheduler.js';
 import { pauseRecoveredRecord } from '../../native/recovery-effects.js';
+import { withChatWrite } from '../repositories/chat-write-boundary.js';
 import { accountQuotaLimit, AccountQuotaError } from '../account-quota.js';
 import { measureAccount } from '../resource-accounting.js';
 import { assertAccountPath } from '../path-boundary.js';
@@ -197,6 +198,13 @@ async function clearSelectedFsTreeCategories(dirs, selection, includeGlobalExten
  * @param {CrossModeRestoreOpts} opts
  */
 export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mode, opts) {
+    if (!dirs?.root) throw new Error('crossModeRestore: dirs.root is required');
+    // Drain live consumers before snapshot/clear, and keep publication and
+    // rollback in the same original domain. Scratch I/O cannot release it.
+    return withChatWrite(path.basename(dirs.root), () => restoreAcrossModes(zipPath, engineMeta, dirs, selection, mode, opts));
+}
+
+async function restoreAcrossModes(zipPath, engineMeta, dirs, selection, mode, opts) {
     const { dataRoot, currentEngine, onProgress, scratchCreds, signal = null } = opts;
     throwIfRestoreCancelled(signal);
     if (!zipPath) throw new Error('crossModeRestore: zipPath is required');
@@ -250,19 +258,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
 
     let cleanupWarning = null;
     try {
-        if (selection.native) {
-            const retainedRuns = await currentEngine.withTransaction(handle, async tx => [
-                ...await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.orchestrationRun, handle }),
-                ...await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.orchestrationRecord, handle }),
-            ]);
-            // Native merge also overwrites colliding raw metadata keys; neither
-            // mode can combine older Run/Effect history with the retained bank.
-            // Until the original
-            // restore authority can review the whole immutable source closure,
-            // refuse before snapshot/extraction/clear. Terminal unknown/history
-            // has no implicit retention release either.
-            if (retainedRuns.length) throw Object.assign(new Error('Native orchestration history requires restore retention review'), { code: 'native_orchestration_retention_review_required' });
-        }
+        await assertSnapshotRestoreAllowed({ engine: currentEngine, handle, userRoot: dirs.root });
         const quotaBytes = await accountQuotaLimit(currentEngine, handle);
         const initialUsage = quotaBytes >= 0 ? await measureAccount({ engine: currentEngine, handle, directories: dirs }) : null;
         if (initialUsage?.totalBytes === null) throw new AccountQuotaError('storage_usage_unavailable');
