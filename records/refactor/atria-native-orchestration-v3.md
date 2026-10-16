@@ -795,3 +795,11 @@
 - 本地输出Context suite从机制测试改为观察真实产品调用，首轮10/10 PASS，56.712s。新增prepared复制/改文/foreign/重放与末completion银行await Memory/Binding/Run撤权后，仅新增范围8PASS/10filterSKIP，52.753s；十八个不同case均有证据，未完整再跑十八项。原typed authority/resolver实际HTTP链精选4PASS/44filterSKIP，29.002s，确认原World/assistant仍单次由原finalizer提交、原quota/计费/幂等保持。
 - 最初定向ESLint仅新增测试三处conditional-expect错误；整理为先求观察值后统一expect，三文件最终原插件ESLint0输出、diff check通过。测试有既有maintenance在fixture关闭时writer_unavailable告警；各runner正常退出。没有全仓/远端Actions、SQL/真实外部费用质量/三端验收或独立审查。
 - 本组只有正式writer前的活scope/来源披露复验，未声称Session Result/Effect/领域receipt/OutputClaim完成。继续精确原领域耐久收据及本操作owned Source推进，再接完整出口和其它工作包；P1–P4 IN_PROGRESS、P5–P8 NOT_STARTED、最终Gate NOT_READY，未合main、不刷新HANDOFF、不发前端最终交付通知。
+
+## 2026-10-16 — W06/P4第五十二组：原Session Turn稳定commit与精确DomainReceipt
+
+- Source 0dcb97267→bf7127f43。原SessionCore.finalizeTurn用原session/branch/expectedRevision/invocation派生稳定commitId，原requestHash/envelope fingerprint进原commitReceipt fingerprint；仍由唯一原SessionRepo同事务保存正文/Task/receipt。产品finalizer明确拒ambient Engine事务，复验与publication保持原物理事务边界。
+- 新原领域只读reader交叉核原commit receipt、可达不可变Revision/parent、Task invocation/requestHash/fingerprint/provenance/outcomes/anchor/storedRevision、原assistant message/Variant/projection/diagnostics；authority Turn另核原action receipt的authorityId/inputHash/assistant/branch/source/commit。产品只有精确同原操作收据才能接受自己的Source推进，通用Source检查不放宽，RP authority不复用。
+- writer ACK未知只观察同稳定commit，无receipt保持原storage_commit_unknown且不二次调用writer/HTTP；完整receipt才观察当前原Session，必须同实际commit Revision。无原receipt的伪writer返回不能成为输出证明。冷开/合法后续输入可读历史事实，不恢复scope或把旧Source标current。
+- 新suite首轮6PASS/2FAIL，40.292s，两失败仅test误断言不存在的operation_finalize_unknown而实际是原storage_commit_unknown。改后只复跑该两Engine场景2PASS/6filterSKIP，并组合原typed authority/resolver精选4PASS，共6PASS/50filterSKIP，37.385s；新suite八个不同case有证据，未宣称完整八项重跑。原产品Context阳性/伪prepared+新ambient guard与无Binding路径精选6PASS/44filterSKIP，23.117s。五文件定向原ESLint0输出、diff check通过；原maintenance fixture关闭告警仍保留，无全仓/Actions/SQL/真实费用质量/三端/独立审查。
+- Session Result/Audience/Graph output Effect/原output费用/最终OutputClaim仍待接，领域committed不等于Run completed。继续同授权任务，不刷新HANDOFF；P1–P4 IN_PROGRESS、P5–P8 NOT_STARTED、最终Gate NOT_READY，未合main、未发前端最终交付。

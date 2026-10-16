@@ -122,3 +122,5 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 第五十组补原Native Session Context专用finalization复读（接口§17.60）：同原Narrator quota与实际finalizer绑定，继续拒运行态发送；原Memory/Binding/Source撤销保留合法事实和费用。产品Session完整出口仍待接入。本次按用户“到合适的时机停下，我要新建对话了”暂停于第五十组，更新HANDOFF，不启动第五十一组；恢复后继续既有授权，P1/P2/P3/P4 IN_PROGRESS，P5–P8 NOT_STARTED，最终Gate NOT_READY，未合main。
 
 第五十一组0dcb97267已恢复后接入产品GenerationHost实际finalizer（接口§17.61）：原prepared对象一次私有绑定Narrator完成/Context，同原锁序复验Context/Model/银行后交唯一Session writer。合法末await撤权保留事实/费用；正式Session Result/Effect/DomainReceipt/OutputClaim继续实施。历史第五十组暂停不作为本次停止要求，P3/P4及最终Gate仍NOT_READY，未合main。
+
+第五十二组bf7127f43补原Session Turn稳定commit与精确原领域收据（接口§17.62），原writer ACK未知只观察同操作，合法后续Source推进/冷读不恢复scope。Session正式Result/Graph output Effect/费用闭包/OutputClaim继续实施，P3/P4及最终Gate仍NOT_READY，未合main。
