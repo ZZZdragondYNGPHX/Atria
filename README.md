@@ -21,7 +21,7 @@ New product work starts from current `main` on a short-lived semantic task branc
 
 `docs`, `package`, `plugin`, and `skills` are isolated long-lived workspaces; do not merge `main` into them for convenience.
 
-New Atria-owned modules should prefer concise `atri_*` naming where practical while preserving real upstream/compatibility-sensitive contracts.
+New Atria-owned modules should prefer concise `atri_*` naming where practical. Implementation and compatibility boundaries follow `docs:README.md` §12.1.
 
 ## Upstream
 

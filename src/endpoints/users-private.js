@@ -780,8 +780,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     }
     // Note: the legacy-fs-on-db-server path now goes through crossModeRestore
     // above (synthesized engineMeta = fs). The `RestoreLegacyFsOnDbModeError`
-    // type is kept exported for defensive backward compat with consumers that
-    // still match on it, but the throw site has been removed.
+    // type remains exported; this path no longer throws it.
 
     return withChatWrite(handle, () => restoreFsUserBackup({ handle, directories, currentEngine, selection, mode, analysis,
         targetFiles, targetDirectories, targetRoot, options, signal, reportProgress, restoreStart, analyzeMs, uploadPath }));

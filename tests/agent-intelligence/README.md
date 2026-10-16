@@ -281,7 +281,7 @@ cover generic kind / key registration only. No UI, external database, model,
 build, device, or remote CI result is claimed.
 
 
-## S06 paired comparison and explicit live connection
+## S06 paired comparison (legacy fixture consumer)
 
 The comparison consumer accepts exactly one synthetic evaluator target:
 `rpPrompt`, `projectSkill`, or `roundLimit` (1–6, changed from the baseline).
@@ -295,55 +295,20 @@ synthetic task context, not a production Session generation replay.
 ```sh
 node tests/agent-intelligence/comparison.mjs --candidate /tmp/candidate.json --split development --repetitions 1 --output /tmp/comparison.json
 node tests/agent-intelligence/comparison.mjs --validate /tmp/comparison.json
-node tests/agent-intelligence/live.mjs --connection /private/test-connection.json --ledger /tmp/evaluation-ledger.json --phase pilot --trial-suffix :run1 --output /tmp/model-pilot.json
-node tests/agent-intelligence/live.mjs --connection /private/test-connection.json --ledger /tmp/evaluation-ledger.json --phase comparison --candidate /tmp/candidate.json --split promotion --repetitions 1 --baseline /tmp/independent-baseline.json --output /tmp/model-comparison.json
-node tests/agent-intelligence/live.mjs --connection /private/test-connection.json --ledger /tmp/evaluation-ledger.json --phase judge --comparison /tmp/model-comparison.json --output /tmp/model-judgments.json
 ```
 
-The private connection file contains `apiKey`, explicit `endpoint` (the `/v1`
-base URL, optionally with a trailing slash, or the complete chat completions
-URL), `model`, `tokenizer` (`cl100k_base` or `o200k_base`),
-`contextTokens`, `maxOutputTokens`, `maxRequests`, `maxTotalTokens`, and
-`timeoutMs`. The tokenizer is an explicit local estimate, not a verified gateway
-model tokenizer. No key, header, provider response body, or local credential path
-enters the report. Keep this file and all generated artifacts outside Git.
-The evaluator expands a `/v1` base URL once when creating the original Native
-connection profile; an already complete endpoint is preserved. Changing this
-configuration creates a new identity; earlier paid reports remain unchanged.
-The live CLI enforces paths outside this worktree; output targets are exclusive.
-
-Use the same ledger throughout pilot, comparison and retries. An explicit
-`--budget <file>` containing only `maxRequests` / `maxTotalTokens` can change the
-evaluation allowance while preserving the exact connection and model identity.
-It restores all earlier charges; it never starts a new allowance implicitly.
-The CLI enforces at least 3.15 seconds between admissions, with a durable
-rate checkpoint shared across phases (at most 20 admissions per rolling minute).
-Its finite cumulative ceiling (at most 252 requests) also bounds this evaluation
-well below the test API's 2000 requests per day. Reservations are
-atomically persisted before send and settled after directly reported usage.
-Transport cancellation / failure / missing counters retain the reserved upper
-bound. Unknown gateway retries, upstream identity, price and TTFT remain unknown.
-Provider usage above the local estimate records actual usage and blocks further
-sends. A process crash retains unsettled reservations; it cannot silently reset
-spend. The ledger has exclusive writer ownership; inspect an abandoned `.lock`
-after checking its process before removing it. New pilot attempts require a new
-explicit trial suffix. Comparison execution IDs are unique per invocation; all charges still share the
-same cumulative ledger.
-
-Live comparisons finish and persist every independent baseline slot before
-starting candidates. Freeze the candidate first; do not adapt it using promotion
-answers. Scripted comparisons counterbalance arm order across repetitions.
-Case / fixture / input / rubric, actual evaluator source bytes, tested HEAD,
-resource settings, request hashes, source / outcome, attempts and charges are
-validated together. Budget exhaustion preserves every planned failed / blocked
-slot. The progress JSONL and baseline sidecar permit inspection if collection
-fails; incomplete output is not a successful report.
+The old `live.mjs` consumer and cumulative evaluation budgets are historical
+fixtures, not current API-test instructions. For current model runs use the
+disposable consumers below and `private-test-run.js`; test limits and temporary
+material retention belong only to `docs:README.md` §13.1. Keep failed and missing
+results in the task Record; repair malformed-score consumers and retest only the
+affected behavior when needed.
 
 `blindPair` produces an evaluator-only pair for explicit human observations.
 `recordJudgment` binds votes to both artifacts and envelopes; disagreement requires
 review. This does not fabricate unrun behavior scores. The optional model judge makes one fresh, blind request per pair with both outputs,
-using the same explicit connection and cumulative grader budget. Missing outputs
-remain unavailable; malformed scores are retained without repair calls. Its strict
+using the configured connection. Missing outputs remain unavailable; malformed
+scores remain invalid and cannot count as quality evidence. Its strict
 report binds the full comparison, rule, public inputs, confidence, 0–4 dimension
 scores and actual usage. Failed authority remains visible. A single same-model
 judge is a model observation; human preference and judge disagreement remain

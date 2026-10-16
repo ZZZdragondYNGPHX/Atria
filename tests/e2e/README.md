@@ -67,19 +67,7 @@ LIVE=1 ANTHROPIC_API_KEY=... OPENAI_API_KEY=... PW_WORKERS=1 \
 
 ## Authoring conventions
 
-See `tests/e2e/AGENT_BRIEF.md` for the full briefing used when
-generating these specs. Quick rules:
-
-1. Every spec spawns its own Atria server via `startServer({ batchKey,
-   scenarioId })` — port + dataRoot are scenario-scoped.
-2. Mock LLM is `_lib/mockLLM.js`; `scriptReply(s)` / `scriptToolCall(t)`
-   queue responses, `mock.requests` records every request.
-3. Persistence assertions cross a `server.restart()` boundary, not just
-   in-memory reads.
-4. RP-immersive fixture content only — no "say hi" placeholders.
-5. `test.fail('<reason>')` for tests that lock a real product bug.
-6. `test.fixme('<blocker>')` for tests blocked on missing infrastructure
-   (mock embedder, worktree-symlink → squoosh-WASM, etc).
+See [AGENT_BRIEF.md](AGENT_BRIEF.md) for test scope, fixtures, provider simulation, persistence assertions and cleanup.
 
 ## Bugs locked
 
