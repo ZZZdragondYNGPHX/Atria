@@ -958,3 +958,9 @@
 - 最初经普通 compare 跑 M1 的两个 Engine 均被原 `requirePilotSources` 以 source_unready 拒绝（2FAIL，2.861s）；未移除独立来源条件，改用已有 source_probe 工程观察接口。FS/SQLite 各执行三条 M1 开发案例，参数测试 **2PASS/4filterSKIP（152.587s）**，共六条真实私有试验 Source、每 Engine 九次 localhost 合成 Provider 发送/原父 ledger，无 judge 或独立质量通过声明。
 - 随后将 fixture-source.js 纳入原 evaluator 指纹并追加旧报告拒绝用例；普通 Project 精选与指纹两 suites **15PASS/4filterSKIP（86.287s）**。新 M1 最终仅测试 conditional-expect 写法调整，未重新执行不受影响的模型场景；五文件原 ESLint 和 staged diff check 通过。没有 SQL、外部真实账单/独立质量、三端、前端或独立审查声明。
 - Native 自动配置/晋升、其余来源/producer/restore/release 等仍继续实现。P1–P4/最终 Gate NOT_READY；用户提供私有测试资料目录供后续核对，路径/凭据/私有材料不提交到仓库。后端整体尚未完成，不合 main、不结束分支。
+
+## 2026-10-16 — 第七十三组：原生后端真实 Provider 工程探测
+
+- Source `04197573b` → `ae865c1f3`，仅本地提交，尚未推送。增加显式本地 `native-live.mjs`，沿原 Native Host、原 Evolution source_probe、原父收费账和已有私有 24 小时/20 RPM 发送前限流做 RP/Project 工程观察。配置与凭据仅由运行参数读取，不提交私有资料、响应正文或临时 store；输出只包含脱敏状态、允许的工具名、使用量和工程不变量。Route 输出限额严格取原评测允许的 1024 tokens 上界，运行器未改产品权限。
+- 真实探测：主配置 RP 重试 HTTP 404 且响应只显示 `model` 提示，一次发送/unknown 用量；备用配置先因测试 Route 超出原 1024 上界在发送前失败，修正后一次 HTTP 503/unknown 用量；第三配置 RP 三条开发案例三次 HTTP 200，共报告 3804 tokens，全部工程不变量通过。第三配置 Project 两次各一笔 HTTP 200、均报告使用量；模型同轮调用了未声明工具，原 `native_orchestration_project_tool_scope_unavailable` 权限围栏拒绝后续，不能将 Project 记为通过。所有请求包括 404/503 都进入原私有限流 checkpoint；没有手动清零。
+- `node --check`、本文件原 ESLint 与 staged diff check 通过。真实观察不含独立 sealed 质量评测、货币价格、自动晋升、浏览器或三端证据；Provider 模型行为与可用性仍影响 Project 完整 Gate。P1–P4/最终 Gate 继续 NOT_READY，后端继续，不进入前端或 main 集成。
