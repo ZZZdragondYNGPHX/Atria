@@ -11,7 +11,7 @@ import { ContextPort } from './context-port.js';
 import { controlCommandId, runGuard, readAttempt } from './controller-common.js';
 import { TransitionController } from './transition-controller.js';
 import { validateModelCapability } from './model-capability-authority.js';
-import { assertNativeTurnQuota } from './native-turn-quota.js';
+import { assertNativeTurnQuota, assertNativeTurnOutputQuota } from './native-turn-quota.js';
 import { inspectNativeAuthorityResolver } from './authority-resolver-context.js';
 import { ModelPort } from './model-port.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
@@ -354,9 +354,12 @@ export class NativeNarratorOrchestrationAuthority {
                 role: 'role.' + role, lanePlan, authorityContext: lanePlan.authorityContext });
             const contextOptions = nativeContextCompilationOptions(state.request, selected.resolved, { ...this.contextOptions, ...nativeOptions });
             state.contextPort = new ContextPort({ sessionCore: this.sessionCore, memoryAuthority: this.memoryAuthority, contextOptions, authorityTurn, resolverCapture,
+                nativeOutputQuota: resolverRole ? null : { proof: quotaProof, expected: proofExpected },
                 compilationInputs: contextPackage ? { manifest: contextPackage.manifest, sourceFiles: [...contextPackage.sourceFiles] } : null,
-                authorizeContext: async ({ request: contextRequest }) => {
-                    await this.#current(selection); assertNativeTurnQuota(quotaProof, proofExpected);
+                authorizeContext: async ({ request: contextRequest, phase, finalizationPermit }) => {
+                    await this.#current(selection);
+                    if (phase === 'output') assertNativeTurnOutputQuota(quotaProof, finalizationPermit, proofExpected);
+                    else assertNativeTurnQuota(quotaProof, proofExpected);
                     if (contextRequest.taskPurpose !== taskPurpose || !equal(contextRequest.audience, audience) || contextRequest.grantDigest !== grantDigest
                 || !equal(contextRequest.sourceBinding, captured.sourceBinding) || !equal(contextRequest.inputRefs, [logicalInputRef])) fail('native_orchestration_context_denied');
                     return { allowed: true, grantDigest };

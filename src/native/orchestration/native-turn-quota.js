@@ -1,6 +1,7 @@
+import { fields } from '../../../public/shared/native-values.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { hashNativeDocument } from '../repositories/common.js';
-import { assertNativeTurnPermit, assertNativeTurnFinalizationPermit } from './native-turn-permit.js';
+import { assertNativeTurnPermit, assertNativeTurnFinalizationPermit, captureNativeTurnFinalizationPermit } from './native-turn-permit.js';
 import { inspectNativeBackgroundGenerationIdentity } from './native-background-generation.js';
 
 const proofs = new WeakMap();
@@ -63,6 +64,14 @@ export function assertNativeTurnQuota(proof, expected) {
     assertNativeTurnPermit(value.permit, { host: value.host, handle: value.handle, sessionId: value.sessionId, anchor: value.anchor,
         invocationId: value.invocationId, requestHash: value.requestHash, selection: value.selection });
     return value;
+}
+
+/** Exchange the original private quota's permit in the actual same finalizer. */
+export function captureNativeTurnOutputFinalization(proof, request) {
+    fields(request, ['host', 'handle', 'finalizationBoundary'], 'Narrator output finalizer');
+    const value = proofs.get(proof);
+    if (!value || value.role !== 'narrator' || value.backgroundCapture || value.host !== request.host || value.handle !== request.handle) denied();
+    return captureNativeTurnFinalizationPermit({ permit: value.permit, finalizationBoundary: request.finalizationBoundary });
 }
 
 /** Revalidate an existing Narrator's output disclosure at its exact original finalizer.

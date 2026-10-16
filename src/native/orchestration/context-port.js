@@ -1,3 +1,4 @@
+import { assertNativeNarratorQuota, assertNativeTurnOutputQuota, captureNativeTurnOutputFinalization } from './native-turn-quota.js';
 import { compileNativeContextPlan } from '../../../public/scripts/native/context-compiler.js';
 import { actorAvailability, informationContext } from '../../../public/shared/native-information-runtime.js';
 import { fields } from '../../../public/shared/native-values.js';
@@ -31,8 +32,9 @@ const rpHistoryItems = (messages, provenance) => messages.map((message, index) =
 export class ContextPort {
     #contexts = new WeakMap();
     #memoryDescriptors = new Map();
+    #nativeOutputQuota = null;
 
-    constructor({ sessionCore, projectAgent, projectCapture = null, rpControl = null, rpCapture = null, rpReturnCapture = null, resultPort = null, rpDelegationCapture = null, taskCapture = null, authorizeContext, contextOptions = {}, readMemoryEvidence, memoryAuthority = null, authorityTurn = null, resolverCapture = null, compilationInputs = null } = {}) {
+    constructor({ sessionCore, projectAgent, projectCapture = null, rpControl = null, rpCapture = null, rpReturnCapture = null, resultPort = null, rpDelegationCapture = null, taskCapture = null, authorizeContext, contextOptions = {}, readMemoryEvidence, memoryAuthority = null, authorityTurn = null, resolverCapture = null, compilationInputs = null, nativeOutputQuota = null } = {}) {
         if (typeof authorizeContext !== 'function') fail('native_orchestration_context_authority_required');
         if ((rpReturnCapture || resultPort) && (!rpCapture || !rpReturnCapture || !(resultPort instanceof ResultPort)
             || resultPort.execution.sourcePort.rpControl !== rpControl)) fail('native_orchestration_context_authority_conflict');
@@ -42,6 +44,14 @@ export class ContextPort {
         if (memoryAuthority && (!(memoryAuthority instanceof NativeMemoryAuthority) || memoryAuthority.core !== sessionCore || readMemoryEvidence
             || !(memoryAuthority.settingsRepo instanceof SettingsRepo) || memoryAuthority.settingsRepo._engine !== sessionCore?._sessions?._engine))
             fail('native_orchestration_memory_authority_invalid');
+        if (nativeOutputQuota) {
+            fields(nativeOutputQuota, ['proof', 'expected'], 'Native output quota');
+            const quota = assertNativeNarratorQuota(nativeOutputQuota.proof, nativeOutputQuota.expected);
+            if (quota.sessionCore !== sessionCore || nativeOutputQuota.expected.host !== quota.host
+                || projectCapture || rpCapture || rpDelegationCapture || taskCapture || resolverCapture) fail('native_orchestration_context_authority_conflict');
+            this.#nativeOutputQuota = Object.freeze({ proof: nativeOutputQuota.proof, expected: Object.freeze({ ...nativeOutputQuota.expected,
+                anchor: immutable(nativeOutputQuota.expected.anchor), policy: immutable(nativeOutputQuota.expected.policy) }) });
+        }
         Object.assign(this, { sessionCore, projectAgent, projectCapture, rpControl, rpCapture, rpReturnCapture, resultPort, rpDelegationCapture, taskCapture, authorizeContext, contextOptions: { ...contextOptions }, readMemoryEvidence, memoryAuthority, authorityTurn, resolverCapture, compilationInputs });
     }
 
@@ -69,10 +79,10 @@ export class ContextPort {
         return immutable(input);
     }
 
-    async #current(handle, request, phase, readInformation = true) {
+    async #current(handle, request, phase, readInformation = true, finalizationPermit = null) {
         // Delegation/grants are an original-domain decision, never inferred
         // from a model's audience string or an already compiled prompt.
-        const permission = await this.authorizeContext({ handle, request, phase });
+        const permission = await this.authorizeContext({ handle, request, phase, ...(finalizationPermit ? { finalizationPermit } : {}) });
         if (permission?.allowed !== true || permission.grantDigest !== request.grantDigest) fail('native_orchestration_context_denied');
         const binding = request.sourceBinding;
         if (this.rpDelegationCapture) {
@@ -281,10 +291,41 @@ export class ContextPort {
     }
 
     async revalidate(handle, { context, phase, audience = context?.request?.audience } = {}) {
+        if (!['send', 'consume'].includes(phase)) fail('native_orchestration_context_proof_invalid');
+        return this.#revalidateContext(handle, { context, phase, audience });
+    }
+
+    #nativeOutputContext(handle, context) {
+        const captured = this.#contexts.get(context), quota = this.#nativeOutputQuota;
+        if (!captured || captured.handle !== handle || !quota || captured.request.sourceBinding.sourceAuthority !== 'native_session'
+            || captured.request.audience.kind !== 'narrator' || captured.request.taskPurpose !== 'original_native_narrator') fail('native_orchestration_context_proof_invalid');
+        const ref = captured.request.sourceBinding.sourceRef, input = captured.request.inputRefs[0], expected = quota.expected;
+        if (ref.sessionId !== expected.sessionId || ref.branchId !== expected.anchor.branchId || ref.revisionId !== expected.anchor.revisionId
+            || captured.request.inputRefs.length !== 1 || input.kind !== 'native_turn_intent' || input.role !== 'narrator'
+            || input.invocationId !== expected.invocationId || input.requestHash !== expected.requestHash || expected.handle !== handle)
+            fail('native_orchestration_context_source_mismatch');
+        return quota;
+    }
+
+    captureNativeOutputFinalization(handle, request) {
+        fields(request, ['context', 'finalizationBoundary'], 'Native Context finalizer');
+        const quota = this.#nativeOutputContext(handle, request.context);
+        return captureNativeTurnOutputFinalization(quota.proof, { host: quota.expected.host, handle, finalizationBoundary: request.finalizationBoundary });
+    }
+
+    async revalidateNativeOutput(handle, request) {
+        fields(request, ['context', 'finalizationPermit'], 'Native output Context');
+        const quota = this.#nativeOutputContext(handle, request.context);
+        assertNativeTurnOutputQuota(quota.proof, request.finalizationPermit, quota.expected);
+        return this.#revalidateContext(handle, { context: request.context, phase: 'output', audience: request.context.request.audience,
+            finalizationPermit: request.finalizationPermit });
+    }
+
+    async #revalidateContext(handle, { context, phase, audience, finalizationPermit = null }) {
         const captured = this.#contexts.get(context);
-        if (!captured || captured.handle !== handle || !['send', 'consume'].includes(phase)) fail('native_orchestration_context_proof_invalid');
+        if (!captured || captured.handle !== handle) fail('native_orchestration_context_proof_invalid');
         if (hashNativeDocument(audience) !== captured.proof.audienceDigest) fail('native_orchestration_context_audience_mismatch');
-        const { information, authorityDigest, snapshot } = await this.#current(handle, captured.request, phase);
+        const { information, authorityDigest, snapshot } = await this.#current(handle, captured.request, phase, true, finalizationPermit);
         if (captured.project || captured.rp || captured.rpDelegation) {
             if (authorityDigest !== captured.proof.authorityDigest) fail('native_orchestration_context_source_stale');
             if (captured.rp && captured.memoryProof) await NativeMemoryAuthority.prototype.assertRpContextRecall.call(this.memoryAuthority, handle,
