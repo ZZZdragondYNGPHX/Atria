@@ -1145,3 +1145,9 @@ RP/Session/Project 共用仅处理原 Effect observe ACK 的 helper，保存未�
 Result 新增精确 session_task audience，绑定 Run/output node/epoch、原 session/branch/revision、invocation/task/variant、source/grant 和唯一用途。payload 只有原 adopted revision/Task record hash 的引用，不复制模型正文，不产生通用读取权。只读 reader 复核原不可变 revision/Task/outbox、冻结 intent/Plan/Route、Model/费用行、原命令与图遍历。Project 与后台 Task 复用同一个图遍历收据校验，领域批准与发布仍各自持有。
 
 已知 Task 采纳可保留 bounded Result，但原费用未关闭时不创建 OutputClaim 或完成 Root。原采纳的历史 receipt 总是保留 exact adopted revision，之后 await 中发生撤权/取消仍提交该事实和撤权，拒绝完成与正文返回；不恢复 source/scope。其它失败回滚同事务的原采纳和 V3 输出元数据，先前真实模型费用保持。未知事务 ACK 只读原 Task/Result/Output 事实；不能证明保存时继续 storage_commit_unknown，不重复 finalize/Task writer/Model。产品观察增加两个安全事件，无正文；新实现/共用规范化函数纳入 evaluator 指纹。
+
+## 17.89 原 Review 节点 maxRounds 策略候选
+
+源码 0342ffd76 将既有 plan-strategy 的封闭 fieldPath 扩为 reviewPolicy.maxRounds，物理值仍只有 exact Review node 的原 policy.maxRounds，不添加第二套 Review 配置。原 catalog 仅列大于一的节点；declaration/candidate 钉同一 nodeId/Binding/PlanRevision，候选只能减少且不低于一。其它 Node 类型、任意路径、增大或禁用 Review 均拒绝。
+
+捕获、candidate metadata、expected revision closure 共用同一受限字段 reader/applier；沿原 Plan immutable revision/作者 Draft、原依赖 validate、Evolution publication gate 和 Binding CAS/rollback/discard。限额、兄弟 Review、capabilities、Output owner、来源与 Route pin 不变。保存未知 ACK 沿原 exact command 观察/重放，不调用模型。此项只交付实际既有配置的策略候选，不代表 Review/Judge/Planner 运行 producer 或质量/晋升已通过；已获准 routeRef 的完整候选接入仍需原 authority。

@@ -1012,3 +1012,9 @@
 - 初版正向 2FAIL/14filterSKIP（11.806s）：原 readSessionSnapshot 不附带 manifest，不能误用需要完整 Package 的 validator；改为复核发送前冻结的 Task definition/class/sink、原 Task record/Model/intent/银行事实后正向 2PASS/14filterSKIP（13.654s）。随后旧后台 suite 16/16 PASS（127.214s）；共享 graph verifier 的 Project输出/Result/Run 三 suites 85PASS/4SKIP（310.974s）。
 - 新 Task suite 首批 2FAIL/2PASS/14filterSKIP（30.657s），失败是测试错用不存在的 orchestrationClaim ID family；修复后历史/真 Engine reopen 两参数项 2PASS/16filterSKIP（15.021s），ACK/撤权/取消/scope/回滚等 14PASS/4filterSKIP（85.816s），unknown usage 两项也有首轮通过。追加 normalized result hash 防篡改、projection 和原规范化函数复用后，最终新旧 Task 两 suites 36/36 PASS（250.361s）。再收紧 no_save ACK 继续原 storage_commit_unknown，其四参数项 4PASS/16filterSKIP（31.566s）。
 - 原 generationBudget 与 evaluator revision 两 suites 51/51 PASS（32.771s），其中 evaluator 指纹23项。16 文件原 ESLint 与 staged diff check 通过；中间三条测试 conditional-expect 和 try/catch brace lint 已修复。所有 Provider 为 localhost 合成；没有声称 SQL、真实 OS kill、独立质量/价格或全后端完成。用户要求持续实施，接着完成其余后端，未推送、未提前前端/main 或新建交接。
+
+## 2026-10-17 — 第八十二组：原 Review maxRounds 策略候选
+
+- Source 69cb70b27 → 0342ffd76，本地提交未推送。实现接口 §17.89，reviewPolicy.maxRounds 精确映射原 Review node.policy.maxRounds，只允许收紧到至少一；原 catalog/声明/不可变 revision/Binding 发布回滚复用。没有虚构新的 Review policy 或执行授权。
+- 原真实 Project Source/Route/Plan authoring 中构建两 Review 配置节点，新增 FS/SQLite 八参数项 8PASS/12filterSKIP（5.995s）。这些 Review 节点没有 generation.send，也没有调用 Review runtime，不能计作正式 Review producer。覆盖自己的声明/节点、兄弟保持、零/增长拒绝、用户 Binding 替换、saved/no_save ACK、rollback/consumed。
+- 原 limits 与 Prompt evolution 两 suites 32/32 PASS（35.802s），evaluator 指纹 24/24 PASS（1.994s）；五文件原 ESLint/staged diff check 通过，中间测试缩进 lint 已按原规则修复。全部新场景模型发送为零；没有独立质量/价格或自动晋升结论。继续其余后端，未推送、未提前交接或集成 main。

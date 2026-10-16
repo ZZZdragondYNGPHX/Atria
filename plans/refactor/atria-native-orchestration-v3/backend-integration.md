@@ -2,9 +2,11 @@
 
 > 2026-10-16。本文件属于同一 Plan Bundle，用于用户已授权的提示词预设/前端并行任务整合。详细合同仍归 [interface-contracts](interface-contracts.md)，阶段门槛仍归 [acceptance-matrix](acceptance-matrix.md)，精确源码提交/实测与失败只归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。本文不将 P3 子工作冒称完整 V3 后端完成。
 
-## 当前后端续作（第七十一至八十一组）
+## 当前后端续作（第七十一至八十二组）
 
 `826d2ba43` 已有显式 Host 元数据 recover、存储 generation 投影围栏，以及唯一顶层 RP/有限 Native Session 输出和原 Project 工具的收据核对命令；详细入口和不恢复执行的边界见[接口 §17.83–§17.86](interface-contracts.md#1783-显式-run-host-元数据恢复入口)。Project 工具核对见[接口 §17.87](interface-contracts.md#1787-原-project-工具冷收据核对)；其余核对与受权 resume 继续后端。
+
+`0342ffd76` 增加原 Review node 的 maxRounds 收紧候选，详见[接口 §17.89](interface-contracts.md#1789-原-review-节点-maxrounds-策略候选)。沿原 Evolution/Binding 发布回滚，不代表 Review runtime 已交付。
 
 `69cb70b27` 接入原 pending-outbox 后台 Task 的正式采纳/Result/Graph/OutputClaim/Root 闭包，详见[接口 §17.88](interface-contracts.md#1788-原后台-task-采纳与正式-v3-输出闭包)。费用未知不完成 Run，原采纳与输出元数据同事务，正文仍只归原 Task。其余 producer/受权恢复与 release/GC 继续。
 
