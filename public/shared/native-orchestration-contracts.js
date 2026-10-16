@@ -86,6 +86,18 @@ export function assertDependencyPins(pins) {
     return pins;
 }
 
+// An explicit payload bound, not a token estimate or a compute allowance.
+// Existing profiles without payload production need not declare this policy.
+export function assertResultPolicy(outputContract) {
+    if (outputContract?.kind !== 'result' || !Object.hasOwn(outputContract, 'resultPolicy'))
+        throw Object.assign(new TypeError('native_orchestration_result_policy_unavailable'), { code: 'native_orchestration_result_policy_unavailable' });
+    const policy = outputContract.resultPolicy;
+    assertObject(policy, ['outputType', 'maxBytes'], 'resultPolicy');
+    member(policy.outputType, ['text', 'json'], 'resultPolicy.outputType');
+    assertCounter(policy.maxBytes, 'resultPolicy.maxBytes', 1);
+    return policy;
+}
+
 export function assertPlanDefinition(value, pins, { draft = false } = {}) {
     assertObject(value, ['nodes', 'edges', 'entryNodeIds', 'capabilityCeiling', 'graphChangePolicy', 'limits', 'outputContract'], 'definition');
     assertObject(value.limits, ORCHESTRATION_LIMIT_FIELDS, 'limits');
@@ -167,8 +179,10 @@ export function assertPlanDefinition(value, pins, { draft = false } = {}) {
     for (const node of nodes) for (const port of node.inputs) {
         if (!draft && port.required && !incoming.has(node.nodeId + ':' + port.name) && !entryIds.includes(node.nodeId)) throw Object.assign(new TypeError('required input is unconnected'), { nodeId: node.nodeId, fieldPath: 'inputs.' + port.name });
     }
-    assertObject(value.outputContract, ['kind', 'ownerNodeId', 'slot', 'allowPartial'], 'outputContract');
+    assertObject(value.outputContract, ['kind', 'ownerNodeId', 'slot', 'allowPartial',
+        ...(Object.hasOwn(value.outputContract ?? {}, 'resultPolicy') ? ['resultPolicy'] : [])], 'outputContract');
     member(value.outputContract.kind, ['rp_narration', 'project_review', 'result'], 'outputContract.kind');
+    if (Object.hasOwn(value.outputContract, 'resultPolicy')) assertResultPolicy(value.outputContract);
     assertToken(value.outputContract.slot, 'outputContract.slot'); boolean(value.outputContract.allowPartial, 'outputContract.allowPartial');
     if (value.outputContract.ownerNodeId !== null) assertOrchestrationId(value.outputContract.ownerNodeId, 'onode', 'outputContract.ownerNodeId');
     if (!draft && (byId.get(value.outputContract.ownerNodeId)?.kind !== 'output' || nodes.filter(node => node.kind === 'output').length !== 1)) throw new TypeError('graph must have exactly one output owner');
