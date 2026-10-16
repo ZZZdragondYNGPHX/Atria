@@ -1064,3 +1064,10 @@
 
 - Source 4973e00ba → 8194b2847，本地提交未推送；接口 §17.95。真实异常令未终结的 formal Review Root 显示 blocked/reconciling，保留原错误、未知效果、费用、Attempt、Result与已有取消；无恢复执行/重发/退款或完成假象。先前成功停止与未知 ACK合同保持。
 - 新 FS/SQLite failure suite 10/10 PASS（18.590s），覆盖原 local-job准入拒绝零发送、模型已收费后原批次拒绝、失败元数据 saved/no_save ACK、末次银行 await 中取消。原 Review/stop 的正式 positive、terminal rollback与 ACK/取消精选14PASS/10filterSKIP（200.051s），旧 terminal rollback 预期更新为真实 blocked，原 Review/费用仍保留。evaluator 指纹25/25 PASS（1.995s），五文件原 ESLint/staged diff check 通过。无真实 Provider新增调用，无独立质量/价格/晋升结论；其余完整后端继续。
+
+
+## 2026-10-17 — 第九十组：隔离 worker 失败证据
+
+- Source 8194b2847 → 5512ead16，本地提交，未推送。原 Native Project adapter 在实际异常时只读取原 RunObservation 的 bounded owner 投影和封闭 Task 状态/校验数量，保存 native_execution=false 后继续抛原异常。onTrial 在 worker abort 前保留失败；没有成功 pair/report 或 eligibility。native-live 只输出白名单状态/数值，未知字段/正文不出私有试验。
+- 两个原隔离 worker/真实原 Root 的 FS/SQLite 参数2/2 PASS（16.958s）：原批次失败仍收费20，Root blocked，生产 Source/Task/Effect不变。summary隐私与 evaluator 指纹27/27 PASS（2.026s，其中指纹25），五文件原 ESLint/staged diff check通过。
+- 真 Provider诊断复测2次200、11189 reported tokens、unknown=0。第一案例 get_project+resource_closure 后调用 set_plan，worker evaluation_runtime_failed；失败投影确证原 Task仍repair、Root仍running，容量用了2 requests/14 jobs、余4 requests/18 jobs，deadline仍1800000ms。因此这次失败不是预算或deadline耗尽。已发现 executeTool 异常尚未进入第八十九组的异常捕获，下一步补该缺口并验证原 set_plan 与已保存 proposal 的引用约束；未将未知真实参数/报错内容当已确认根因。工程/独立质量仍未通过，继续后端，不推送/交前端/main。
