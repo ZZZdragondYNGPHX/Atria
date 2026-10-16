@@ -833,3 +833,9 @@
 - 新suite最初阳性2PASS/2filterSKIP（7.192s），扩展18/18 PASS（44.864s）；增加原Context及末消费撤权后精选8PASS/16filterSKIP（21.868s）。尝试把原writer包进Studio queue导致六项全部超时（91.615s），已移除该外层锁并保留验证事务先关闭、原Task→Studio队列顺序；该六项复跑6PASS/24filterSKIP（17.287s）。进程已自然结束，随后尝试按精确PID终止时返回不存在，无遗留进程。
 - 追加同fp无关调用、伪receipt permit及原Project推进测试，组合原Project Model/旧Task Review本地精选，9PASS/2FAIL/76filterSKIP（27.151s）；两失败为测试挂在被prototype精确调用绕过的Budget实例方法，改挂实际原Task settleLocalWork后仅两Engine场景2PASS/32filterSKIP（6.534s）。新增ambient guard和阳性精选4PASS/32filterSKIP（11.326s）。最终36个不同case均有通过证据，未声称最终完整36项一轮全绿；原Model/Task相关五项也通过。十一文件定向原插件ESLint、diff check通过，无全仓/远端Actions/独立审查/SQL/真实外部付费或三端新证据。
 - 原Root仍running，无Project OutputClaim、多轮Graph或提案/Review交付；下一步持续推进这些既有授权范围及其它消费者、P5–P8，不在本提交停下，不创建HANDOFF，不合main。
+
+## 2026-10-16 — W07/P4第五十七组：原Project工具收据与Model/费用耐久关联
+
+- Source 365bf3f73→5702d2da6；原工具Effect observation实际改用精确耐久reader，交叉核原Root/Plan、Task generation/call/receipt、Model Effect/completion/原Task snapshotHash、Tool Effect/Attempt/descriptor pin及原provider/local费用。只返回事实引用，无body、permit或Source推进grant；Host ACK缺失可见原Task事实但不伪称Host确认。
+- 新历史suite先4/4 PASS（11.958s），包含活scope结束后重建原服务的历史读取、后来Project更新仍读原事实、八种重新hash篡改的其它权威关联拒绝及foreign Root拒绝；不是进程重启或Engine冷开验收。追加missing Host ACK后，组合原Effect ACK saved/missing精选10PASS/32filterSKIP（28.365s），新六项全部通过。最初接产品reader后原工具阳性及两调用精选4PASS/32filterSKIP（12.368s）。五文件定向原插件ESLint和diff check通过；仅本地相关验证，无全仓/远端/独立审查或新增SQL/真实费用质量/三端证据。
+- 下一步仍为真实提案Task Source推进与同Root多轮，原Root未终结，P1–P4仍IN_PROGRESS、P5–P8未完成、Gate NOT_READY；继续开发，不停在本提交、不写HANDOFF、不合main。

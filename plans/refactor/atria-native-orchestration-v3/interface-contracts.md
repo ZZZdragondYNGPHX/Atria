@@ -984,3 +984,9 @@ Chat ACK未知只reconcile；domain收据ACK未知与Host Effect receipt ACK未�
 原实际返回body在私有permit保留，Task ACK未知只读原已保存精确receipt；无receipt拒绝且不重复writer。Host Effect ACK未知同样只观察精确原Host receipt，无收据保留pending。Context专用只读复验只归一化同活generation已接受的精确原read receipts，继续复验Task/Project/registry/tools/Skill/settings；普通Context/Source/Model不放宽。末消费用withConsumption提交合法同事务撤权后拒正文，原调用和费用保留。ambient Engine事务、clone/foreign/过期permit/凭证JSON/重复调用和同fingerprint无关调用均拒绝。
 
 验证与原Task writer物理事务分开；不能把原writer包进Studio queue，否则原getProject会等待同一queue。该能力不完成Project OutputClaim、多轮Graph、提案/Review/正式Commit或P4全域Gate。
+
+## 17.67 Project原工具耐久收据关联读取
+
+第五十七组产品工具Effect observation改用同一精确reader：原持久Root/Plan、原Task generation/call/nativeReceipt、Model Effect/Host completion/原Task observation snapshot、工具Effect/Attempt/原descriptor pin及typed原bank provider/local rows逐项交叉核验。原Task receipt与费用已完成但Host ACK缺失时只返回原事实及hostReceiptRef=null；要求Host确认则拒绝。无body、permit、Source推进或新工具权限。
+
+原活scope清理后可用重建的原服务读取历史；后来Project推进不抹去原调用事实，亦不能据旧事实重开执行。改变并重新hash原Task/Model/Effect/Attempt/费用/Host任一相关记录仍须满足其它原权威关联；缺receipt或费用不补造。后续提案Source推进必须另接原真实修改收据与同Run归属，本reader自身不授该能力。
