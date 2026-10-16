@@ -266,7 +266,7 @@ source changes during cleanup. No app-closed timer or automatic model work is
 registered; StorageEngine may load a full resource list before the bounded
 selection. New feedback UI and candidate publication are later-stage work.
 
-Run only the affected local cases:
+Local command:
 
 ```sh
 node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-intelligence/feedback.test.js tests/agent-intelligence/capture.test.js tests/agent-intelligence/project-recovery.test.js tests/agent-intelligence/sources.test.js tests/native/project-agent-http.test.js
@@ -279,7 +279,6 @@ checks use a synthetic snapshot port, while existing source / recovery suites
 retain their original real authority fixtures. MySQL / PostgreSQL assertions
 cover generic kind / key registration only. No UI, external database, model,
 build, device, or remote CI result is claimed.
-
 
 ## S06 paired comparison (legacy fixture consumer)
 
@@ -300,9 +299,7 @@ node tests/agent-intelligence/comparison.mjs --validate /tmp/comparison.json
 The old `live.mjs` consumer and cumulative evaluation budgets are historical
 fixtures, not current API-test instructions. For current model runs use the
 disposable consumers below and `private-test-run.js`; test limits and temporary
-material retention belong only to `docs:README.md` §13.1. Keep failed and missing
-results in the task Record; repair malformed-score consumers and retest only the
-affected behavior when needed.
+material retention belong only to `docs:README.md` §13.1.
 
 `blindPair` produces an evaluator-only pair for explicit human observations.
 `recordJudgment` binds votes to both artifacts and envelopes; disagreement requires
@@ -426,5 +423,4 @@ S27 compares the original undeclared text path with an authored
 ExpressionPlan and reports a blind model observation. S34 runs one development
 pair per domain through the original optimizer and isolated worker. Its report
 does not satisfy the independent production promotion gate, fabricate human
-labels or publish a candidate. Run the relevant consumer when its inputs or
-implementation change; these commands are not a mandatory repeated full suite.
+labels or publish a candidate.
