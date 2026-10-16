@@ -5,7 +5,9 @@ import { assertResultJson, assertResultRecord, resultDependencyDigest } from '..
 import { controlRecordKey } from '../../src/native/orchestration/controller-common.js';
 import { checkedRecord } from '../../src/native/orchestration/plan-repository.js';
 import { planFixture } from './fixtures.js';
-import { makeTempFsEngineHarness, makeTempSqliteEngineHarness } from '../storage/harness/contract-harness.js';
+import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
+
+const harnesses = CONTRACT_HARNESSES.filter(item => ['FsEngine', 'SqliteEngine'].includes(item.name) || process.env.ATRIA_TEST_RESULT_SQL === '1');
 
 function fixture(outputType = 'text', payload = 'Task-local model suggestion.') {
     const runId = createNativeId('orchestrationRun'), resultId = createNativeId('orchestrationResult');
@@ -79,7 +81,7 @@ describe('explicit Result policy and plain JSON validation', () => {
     });
 });
 
-describe.each([['FsEngine', makeTempFsEngineHarness], ['SqliteEngine', makeTempSqliteEngineHarness]])('%s task-local Result contract fixture', (_name, make) => {
+describe.each(harnesses)('$name task-local Result contract fixture', ({ make }) => {
     test.each(['text', 'json'])('strict %s record round-trips through the original native result kind', async outputType => {
         const h = await make(), f = fixture(outputType, outputType === 'text' ? 'Only the exact parent may consume this suggestion.' : { nested: [true, null, '雪'], count: 2 });
         try {

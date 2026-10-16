@@ -10,7 +10,9 @@ import { hashNativeDocument as hash, putImmutable } from '../../src/native/repos
 import { ORCHESTRATION_LIMIT_FIELDS } from '../../public/shared/native-orchestration-contracts.js';
 import { seedGenerationProfiles } from '../native/helpers/generation-fixture.js';
 import { planFixture, prepareControllerOwnerRoot } from './fixtures.js';
-import { makeTempFsEngineHarness, makeTempSqliteEngineHarness } from '../storage/harness/contract-harness.js';
+import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
+
+const harnesses = CONTRACT_HARNESSES.filter(item => ['FsEngine', 'SqliteEngine'].includes(item.name) || process.env.ATRIA_TEST_DELEGATION_PUBLICATION_SQL === '1');
 
 const id = kind => createNativeId('orchestration' + kind);
 const pinOf = (child, pinId = 'child.plan') => ({ pinId, port: 'plan', resourceRef: child.planRef, integrity: hash(child.revision) });
@@ -55,7 +57,7 @@ async function fixture(make) {
     return { h, validate, publish, storedRevision, get plans() { return plans; }, set plans(value) { plans = value; } };
 }
 
-describe.each([['FsEngine', makeTempFsEngineHarness], ['SqliteEngine', makeTempSqliteEngineHarness]])('%s exact delegation publication mechanism', (_name, make) => {
+describe.each(harnesses)('$name exact delegation publication mechanism', ({ make }) => {
     let f;
     beforeEach(async () => { f = await fixture(make); });
     afterEach(async () => { await f?.h.engine.close(); await f?.h.cleanup(); });
