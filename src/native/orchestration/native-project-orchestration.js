@@ -12,6 +12,7 @@ import { inspectNativeProjectGeneration, prepareNativeProjectTaskTool, executeNa
     finishNativeProjectGeneration, inspectNativeProjectRoundCompletion, confirmNativeProjectRoundSettlement,
     inspectNativeProjectReviewCompletion } from './native-project-generation-authority.js';
 import { ProjectReviewOutputController } from './project-review-output-controller.js';
+import { projectReviewCosts } from './project-review-output-contracts.js';
 import { readProjectToolDescriptor, projectToolCapability, projectToolAction, projectToolReason, projectToolResultPayload, projectToolBatchAllowed } from './project-tool-contracts.js';
 import { readProjectToolReceipt } from './project-tool-receipts.js';
 import { reconcileProjectToolEffect, verifyProjectToolReconciliation } from './project-tool-reconciliation.js';
@@ -393,6 +394,7 @@ export class NativeProjectOrchestrationAuthority {
                 throw error;
             }
         }, { withAuthority: this.#execution().sourcePort.consumptionBoundary(handle, state.sourceBinding, { engine: runs.engine }) });
+        let disposition;
         if (closure.closed) {
             const effects = [state.modelResult.receiptRef.receiptId, ...[...state.tools].map(([effectId, tool]) =>
                 'oreceipt_' + hash({ effectId, observationId: tool.observation.observationId }).slice(0, 32))];
@@ -407,7 +409,7 @@ export class NativeProjectOrchestrationAuthority {
                 if (!fact || digest !== closure.snapshotDigest || !equal(fact.receipt.toolReceiptRefs, descriptor.toolReceiptRefs)) fail('native_orchestration_project_round_completion_stale');
             } }).settle(handle, { ...runGuard(await runs.get(handle, runId)), attemptId: descriptor.nodeAttemptId,
                 outcome: 'completed', resultRefs: [], effectReceiptRefs: effects, reasonCode: 'project_round_ready' });
-            await confirmNativeProjectRoundSettlement(finished.completion);
+            disposition = await confirmNativeProjectRoundSettlement(finished.completion);
         }
         consumer.roundReceiptRef = { runId, receiptId };
         if (state.operation) state.operation.previous = consumer;
@@ -421,8 +423,59 @@ export class NativeProjectOrchestrationAuthority {
                     fail('native_orchestration_project_review_stale');
                 return fact.receipt;
             } }).complete(handle, await runs.get(handle, runId));
+        } else if (closure.closed && disposition?.stopReason && (await runs.get(handle, runId)).graph.outputContract.kind === 'project_review') {
+            await this.#stopRound(consumer, descriptor, disposition.stopReason);
         }
         return finished.task;
+    }
+
+    async #stopRound(consumer, descriptor, stopReason) {
+        const { state, runId, completion } = consumer, { handle } = state;
+        const { runs, sourcePort, budgetPort } = this.#execution();
+        const receiptId = 'oreceipt_' + hash({ kind: 'project_stop', runId, nodeAttemptId: descriptor.nodeAttemptId }).slice(0, 32);
+        const receiptKey = controlRecordKey(handle, runId, 'receipt', receiptId);
+        const detail = { nodeAttemptId: descriptor.nodeAttemptId, stopReason };
+        const commandId = controlCommandId('project.round.stop', { runId, nodeAttemptId: descriptor.nodeAttemptId });
+        let expected;
+        try {
+            const result = await runs.withSourceControl(handle, runId, () => runs.engine.withTransaction(handle, async tx => {
+                try {
+                    const root = await runs.get(handle, runId);
+                    if (root.status !== 'running' || root.cancelRequested || root.parentRef || root.pendingEffectRefs.length
+                        || root.pendingApprovalRefs.length || root.outputClaims.length || root.resultRefs.length) fail('native_orchestration_project_round_completion_stale');
+                    await this.#current(state.selection);
+                    const disposition = await confirmNativeProjectRoundSettlement(completion);
+                    if (!equal(disposition.descriptor, descriptor) || disposition.continueAllowed || disposition.stopReason !== stopReason)
+                        fail('native_orchestration_project_round_completion_stale');
+                    const costs = await projectReviewCosts(tx, handle, root);
+                    if (!costs.closed || !equal(costs, await budgetPort.observeEffectClosure(handle,
+                        { authorityRef: root.budgetAuthorityRef, effectIds: costs.effectIds }, { tx }))) fail('native_orchestration_project_round_completion_stale');
+                    await this.#current(state.selection);
+                    if (!equal(descriptor, (await confirmNativeProjectRoundSettlement(completion)).descriptor)
+                        || !equal(root, await runs.get(handle, runId))) fail('native_orchestration_project_round_completion_stale');
+                    for (const attemptId of root.attemptRefs) if ((await readAttempt(tx, handle, root, attemptId)).doc.status !== 'completed')
+                        fail('native_orchestration_project_round_completion_stale');
+                    return { value: await runs.control(handle, commandId, { ...runGuard(root), operation: 'project.round.stop', detail }, async ({ root, tx, now }) => {
+                        expected = { schemaVersion: 1, receiptKind: 'project_stop', receiptId, runId, epoch: root.epoch,
+                            roundReceiptRef: { runId, receiptId: projectRoundReceiptId(runId, descriptor.nodeAttemptId) },
+                            stopReason, costs, decisionSeq: root.eventSeq + 1, createdAt: now };
+                        await putImmutable(tx, receiptKey, expected);
+                        root.status = 'blocked';
+                        return { root, eventType: 'project_generation_stopped', reasonCode: stopReason,
+                            outcome: { receiptRef: { runId, receiptId }, status: 'blocked', stopReason } };
+                    }) };
+                } catch (error) {
+                    if (['native_orchestration_project_round_completion_stale', 'native_orchestration_project_round_not_ready', 'native_orchestration_project_selection_stale',
+                        'native_orchestration_source_stale', 'native_orchestration_project_producer_denied'].includes(error.code)) return { error };
+                    throw error;
+                }
+            }), { withAuthority: sourcePort.consumptionBoundary(handle, state.sourceBinding, { engine: runs.engine }) });
+            if (result.error) throw result.error;
+        } catch (error) {
+            if (error.code !== 'storage_commit_unknown' || !expected) throw error;
+            const saved = await runs.engine.withTransaction(handle, tx => checkedRecord(tx, receiptKey));
+            if (!saved || !equal(saved.doc, expected)) throw error;
+        }
     }
 
     async executeTool({ host, handle, roundToken, input }) {

@@ -365,16 +365,37 @@ export async function inspectNativeProjectRoundCompletion(completion, { host, ha
 export async function confirmNativeProjectRoundSettlement(completion) {
     const value = roundCompletions.get(completion); if (!value) fail('native_orchestration_project_round_completion_required');
     const { generation, port, descriptor } = value, { state } = generation;
-    await currentOperation(state, { host: state.host, handle: state.handle });
-    await port.runs.engine.withTransaction(state.handle, async tx => {
-        const root = await port.runs.get(state.handle, descriptor.runId), { doc: attempt } = await readAttempt(tx, state.handle, root, descriptor.nodeAttemptId);
-        const round = await readProjectRoundReceipt(tx, state.handle, root, descriptor.nodeAttemptId, { projectAgent: state.host.agent });
-        if (!round || round.receipt.modelPayloadHash !== descriptor.modelPayloadHash || attempt.status !== 'completed') fail('native_orchestration_project_round_not_ready');
-        const settlement = await readAttemptSettlement(tx, state.handle, root, attempt);
-        const costs = await port.budgetPort.observeEffectClosure(state.handle, { authorityRef: root.budgetAuthorityRef, effectIds: attempt.effectRefs }, { tx });
-        if (settlement.reasonCode !== 'project_round_ready' || !costs.closed || root.cancelRequested || root.status !== 'running') fail('native_orchestration_project_round_not_ready');
+    const current = async () => {
+        const original = await currentOperation(state, { host: state.host, handle: state.handle });
+        const attempt = original.task.attempts.find(item => item.attemptId === descriptor.projectAttemptId);
+        if (hash(value.result) !== value.resultHash || hash(attempt) !== descriptor.attemptDigest
+            || hash(original.task.conversation) !== descriptor.conversationDigest || original.task.executionFingerprint !== descriptor.toFingerprint)
+            fail('native_orchestration_project_round_completion_stale');
+    };
+    const checked = await port.runs.engine.withTransaction(state.handle, async tx => {
+        try {
+            await current();
+            const root = await port.runs.get(state.handle, descriptor.runId), { doc: attempt } = await readAttempt(tx, state.handle, root, descriptor.nodeAttemptId);
+            const round = await readProjectRoundReceipt(tx, state.handle, root, descriptor.nodeAttemptId, { projectAgent: state.host.agent });
+            if (!round || Object.entries(descriptor).some(([key, field]) => hash(round.receipt[key]) !== hash(field)) || attempt.status !== 'completed')
+                fail('native_orchestration_project_round_not_ready');
+            const settlement = await readAttemptSettlement(tx, state.handle, root, attempt);
+            const costs = await port.budgetPort.observeEffectClosure(state.handle, { authorityRef: root.budgetAuthorityRef, effectIds: attempt.effectRefs }, { tx });
+            await current();
+            if (settlement.reasonCode !== 'project_round_ready' || !costs.closed || root.cancelRequested || root.status !== 'running'
+                || hash(await port.runs.get(state.handle, descriptor.runId)) !== hash(root)) fail('native_orchestration_project_round_not_ready');
+            return {};
+        } catch (error) {
+            if (['native_orchestration_project_round_not_ready', 'native_orchestration_project_round_completion_stale',
+                'native_orchestration_source_stale', 'native_orchestration_project_producer_denied'].includes(error.code)) return { error };
+            throw error;
+        }
     });
+    if (checked.error) throw checked.error;
     generation.continueAllowed = !stopped(value.task) && descriptor.toolReceiptRefs.length > 0 && generation.round + 1 < state.preflight.maxModelRounds;
+    return { descriptor, continueAllowed: generation.continueAllowed, stopReason: value.task.status === 'review' ? null
+        : stopped(value.task) ? 'project_task_stopped' : descriptor.toolReceiptRefs.length === 0 ? 'project_model_stopped'
+            : generation.round + 1 >= state.preflight.maxModelRounds ? 'project_round_limit' : null };
 }
 
 /** Final Review is an original Task fact in this live operation, never a caller-supplied result. */
