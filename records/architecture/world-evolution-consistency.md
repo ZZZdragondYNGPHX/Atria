@@ -25,10 +25,11 @@
 
 ### Verification and evidence
 
-- GitHub connector 已返回上述三次 docs 分支文档提交 SHA。
+- GitHub connector 已返回上述三次 docs 分支文档提交 SHA，并额外确认 Plan 状态更新及双导航索引提交：abfb8c044c934cecdb09d2b0113c0ae28c303da1、6b7580c5aab60a3b0de5c36dd74ff2417d89da80、b90c5b3fcec20d58373e80fa51f0057252150de6。
+- 2026-10-17 再次通过 GitHub fetch_file(ref=docs) 分别验证 index.md、research.md、design.md、唯一 Record、plans/architecture/README.md、records/README.md **6 个文件均存在且可读**。
 - 仅静态代码核对 + 外部官方文档/论文阅读；未运行项目、Node 测试、CI、客户端、浏览器或真机。
 - 未更改 main/product、未创建开发分支、未合并长期分支。
-- 远端文档 fetch 核验与 index 状态更新在本工作轮末执行；仅以实际 fetch 结果为准。
+- Round 1 Plan 入口已标记“外部调研与初步静态核对完成 / 待讨论”。最近一次核验时的 docs 文档 HEAD 为 b90c5b3fcec20d58373e80fa51f0057252150de6（其后本 Record 更新会产生新提交）。
 
 ### Known limitations / unresolved
 
