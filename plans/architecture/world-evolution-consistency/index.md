@@ -13,7 +13,7 @@
 本 Plan 是同一主题持续迭代的**唯一入口**。每一轮先更新对应模块和本轮讨论状态、在 `docs` 分支提交并核实，再开展本轮讨论；直到用户明确认可完整方案，才将状态由 Draft 改为 Approved/定稿。不得把助理推荐误写为已获批准的冻结决议，亦不得在讨论阶段直接修改 `main` 产品实现。
 
 - [Research](research.md)：外部资料、机制比较、来源、局限和迁移适用性；讨论中持续补充。
-- [Design](design.md)：基础候选设计、§8 S2 范围扩展、**§9 S3 W1 已确认方向与 W2 实体/关系/断言/资料候选**；§9 的 W2 仍未批准。
+- [Design](design.md)：基础候选设计、§8 S2 范围扩展、§9 S3 W1/W2 建模方向、**§10 S4 W2 已确认与 W3 世界法则/事实演化权限候选**；W3 尚未批准。
 - [Record](../../../records/architecture/world-evolution-consistency.md)：按工作轮累积可核验的文档提交、调研结果、未完成内容。
 - 后续需要规模化时再按主题拆模块，本入口仍为唯一导航。
 
@@ -23,7 +23,7 @@
 
 原问题「静态设定和动态演化冲突」仍保留，**但现在必须以原生 World / Knowledge 整体重构为主线**。先明确 World（实体/关系/世界法则/初始基线）与 Knowledge（资料/断言/来源/语境）的真实边界，再设计事实演化、主体认知、有效上下文和 Library/Studio/Play 产品界面。已有 Native SessionCore/State/Event/Simulation/HCM/Context Compiler 是首先审查和复用的权威，不能平行再建一套真相库。
 
-本轮对照见 [design.md §8](design.md#8-scope-expansion-s2--从-lorebook-进一步重构原生-world--knowledge2026-10-17候选)，补充文献与代码证据见 [research.md §F](research.md#f-s2-扩域补充研究从-st-lorebook-到-native-world-model2026-10-17)。**方向 W1 已由用户选择 B · World Model + Source Library；属于已确认的顶层设计方向，不等于完整 Plan 定稿或授权实施。** 具体 Entity/Relation/Assertion/Rule/Source schema、动态事实锚点、UI 与切换清退边界仍待讨论；候选 W2 见 [design.md §9](design.md#9-s3--已确认架构方向与下一轮建模方案2026-10-17)。
+本轮对照见 [design.md §8](design.md#8-scope-expansion-s2--从-lorebook-进一步重构原生-world--knowledge2026-10-17候选)，补充文献与代码证据见 [research.md §F](research.md#f-s2-扩域补充研究从-st-lorebook-到-native-world-model2026-10-17)。**W1 已选择 B · World Model + Source Library，W2 已选择 B · 分层混合结构（自由文本一等公民 + 关键实体/关系/事实结构化）**。这两项是讨论中的已确认方向，不是完整 Plan 定稿或授权实施。W2 起点参见 [design.md §9](design.md)；W3 世界法则、初始事实、动态事实及 AI 创造事实的分级权限详见 [design.md §10](design.md)，**尚待讨论**。具体 Schema / State Binding / UI / E0 清退范围仍未冻结。
 
 需要回答：创作者的首要对象是若干触发条目，还是可以直接浏览、引用并演化的“世界”；Knowledge 应是同级世界书，还是世界引用的来源与证据？现有 free text 必须继续一等支持；不为未发布旧 ST 数据建立兼容双轨。
 
@@ -64,7 +64,7 @@
 
 ## 5. 状态与下一检查点
 
-- **当前：**S3 已记录用户选择 W1：B · World Model + Source Library。进入 W2 实体/关系/断言/自由文本混合建模讨论（[design.md §9](design.md#9-s3--已确认架构方向与下一轮建模方案2026-10-17)）；旧 R1 事实锚点细节仍未单独获批。
-- **已确认方向（W1）：** World Model 为创作核心，Knowledge 为可引用资料与来源；继续使用单 Native Host 的世界真相、保留自由文本一等地位。**已批准的具体接口/最终实施设计：无。** W2 推荐分层混合结构 + 动态事实绑定，但尚待用户决定。
+- **当前：**S4 已记录用户选择 W2-B 分层混合结构，与 W1-B 一致。进入 W3 [世界法则/初始事实/动态状态与 AI 创造事实权限的分级模型](design.md) 讨论；W3 推荐 B 分级约束 + 涌现世界，尚未获批。
+- **已确认设计方向（W1/W2）：** World Model + Source Library；分层混合结构，保留自由文本，显式结构化重要实体/关系/可变事实、Native Host 唯一状态权威。**已批准的具体接口/最终实施设计：无。** W3 及各项精确契约仍待用户决定。
 - **未授权：**修改 `main`、创建实现分支、给出实施已经通过的结论。
 - **完成标准：**用户在若干轮讨论后明确确认各核心决策及边界，并批准定稿。未经确认，不使用“Final/冻结/全面通过”描述。
