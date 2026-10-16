@@ -345,6 +345,19 @@ export function inspectComputeReservation(holder, reservationId = null) {
     return budgetState(assertComputeLedger(holder.compute), reservationId);
 }
 
+/** Original-bank facts only. No release, admission, or second cost projection. */
+export function inspectComputeChildClosure(holder, reservationId) {
+    const ledger = assertComputeLedger(holder.compute);
+    const index = new Map((ledger.reservations ?? []).map(row => [row.reservationId, row]));
+    const reservation = index.get(reservationId);
+    if (!reservation) fail('native_generation_attempt_conflict');
+    const selected = row => inSubtree(index, row.reservationId ?? null, reservationId);
+    return structuredClone({ reservation,
+        descendantReservations: [...index.values()].filter(row => row.reservationId !== reservationId && selected(row)),
+        modelAttempts: ledger.attempts.filter(selected), localWork: (ledger.localWork ?? []).filter(selected),
+        overrun: inspectComputeReservation(holder, reservationId).overrun });
+}
+
 export function admitComputeAttempt(holder, limits, attempt, options = {}) {
     fields(attempt, ['attemptId', 'requestId', 'targetFingerprint', 'estimatedTokens', 'inputFingerprint', 'orchestration', 'generationQuotaRef'], 'Compute admission');
     assertOrchestrationProvenance(attempt, 'provider_send');

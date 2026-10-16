@@ -4,7 +4,7 @@ import { assertNativeId } from '../identity.js';
 import { readRunControl } from '../run-control.js';
 import { fields } from '../../../public/shared/native-values.js';
 import { assertNativeTurnQuota } from './native-turn-quota.js';
-import { orchestrationComputeAttemptId } from '../../../public/shared/native-compute-budget.js';
+import { orchestrationComputeAttemptId, inspectComputeChildClosure } from '../../../public/shared/native-compute-budget.js';
 import { RpRunControl } from '../rp-run-control.js';
 
 // V3 BudgetPort (interface §8.1/§13): a typed dispatcher onto the three original
@@ -239,6 +239,52 @@ export class BudgetPort {
         if (authority.authority === 'project_task') return (await this.projectRepository.get(handle, authority.projectId, authority.taskId))?.compute;
         if (!(this.rpControl instanceof RpRunControl)) fail('native_orchestration_budget_unavailable');
         return (await RpRunControl.prototype.status.call(this.rpControl, handle, authority.controlId, { tx }))?.operations[authority.operationId]?.compute;
+    }
+
+    /** Historical original-bank observation; never releases or grants execution. */
+    async observeChildClosure(handle, input, { tx } = {}) {
+        fields(input, ['authorityRef', 'reservationId', 'expectedParentReservationId', 'expectedCeiling'], 'Child budget closure');
+        const { authorityRef, reservationId, expectedParentReservationId, expectedCeiling } = input;
+        assertBudgetAuthorityRef(authorityRef); assertNativeId(reservationId, 'orchestrationRun');
+        if (expectedParentReservationId !== null) assertNativeId(expectedParentReservationId, 'orchestrationRun');
+        if (!tx || typeof tx.getResource !== 'function') fail('native_orchestration_budget_transaction_required');
+        const engine = authorityRef.domain === 'session' ? this.sessionCore?.runs.repo._engine
+            : authorityRef.authority === 'project_task' ? this.projectRepository?.engine : this.rpControl?._engine;
+        if (!engine) fail('native_orchestration_budget_unavailable');
+        // Join the caller's actual original Engine transaction, rather than
+        // accepting an arbitrary object as a snapshot or opening a second read.
+        return engine.withTransaction(handle, async active => {
+            if (active !== tx) fail('native_orchestration_budget_transaction_required');
+            const ledger = await this.#ledger(handle, tx, authorityRef);
+            if (!ledger) fail('native_orchestration_child_budget_unavailable');
+            if (!ledger.reservations?.some(row => row.reservationId === reservationId)) fail('native_orchestration_child_budget_unavailable');
+            const facts = inspectComputeChildClosure({ compute: ledger }, reservationId);
+            if (facts.reservation.parentReservationId !== expectedParentReservationId
+                || hashNativeDocument(facts.reservation.limits) !== hashNativeDocument(expectedCeiling)) fail('native_orchestration_budget_reservation_mismatch');
+            const reservations = [facts.reservation, ...facts.descendantReservations].sort((a, b) => a.reservationId.localeCompare(b.reservationId));
+            for (const row of reservations) {
+                assertNativeId(row.reservationId, 'orchestrationRun');
+                if (row.consumerId !== row.reservationId) fail('native_orchestration_budget_reservation_mismatch');
+            }
+            const rows = [...facts.modelAttempts.map(row => ({ kind: 'provider_send', row })), ...facts.localWork.map(row => ({ kind: 'local_work', row }))]
+                .sort((a, b) => a.row.attemptId.localeCompare(b.row.attemptId));
+            const budgetAttemptRefs = rows.map(({ kind, row }) => {
+                const marker = row.orchestration;
+                if (!marker || marker.kind !== kind || orchestrationComputeAttemptId(marker) !== row.attemptId) fail('native_orchestration_budget_attempt_invalid');
+                return assertBudgetAttemptRef({ ...(kind === 'local_work' ? { kind, localWorkOrdinal: marker.ordinal } : { providerSendOrdinal: marker.ordinal }),
+                    authorityRef: structuredClone(authorityRef), effectId: marker.effectId, attemptId: row.attemptId, reservationId: row.reservationId });
+            });
+            const closed = facts.reservation.status === 'released' && !facts.overrun
+                && facts.descendantReservations.every(row => row.status === 'released') && rows.every(({ row }) => row.status === 'settled');
+            const snapshotDigest = hashNativeDocument({ schemaVersion: 1, kind: 'child_budget_closure', authorityRef,
+                reservationId, expectedParentReservationId, expectedCeiling, reservations,
+                modelAttempts: facts.modelAttempts.toSorted((a, b) => a.attemptId.localeCompare(b.attemptId)),
+                localWork: facts.localWork.toSorted((a, b) => a.attemptId.localeCompare(b.attemptId)), overrun: facts.overrun });
+            return { authorityRef: structuredClone(authorityRef), reservationId, parentReservationId: facts.reservation.parentReservationId,
+                status: facts.reservation.status, closed, overrun: facts.overrun,
+                reservationRefs: reservations.map(row => ({ reservationId: row.reservationId, parentReservationId: row.parentReservationId, status: row.status })),
+                budgetAttemptRefs, snapshotDigest };
+        });
     }
 
     /** Pure original-bank proof for a child whose metadata is already durable. */
