@@ -73,7 +73,10 @@ export function buildNativeProjectAgentSystemPrompt(context, skillEntries = [], 
         'Use A2 Resource Graph tools for discovery/references/dependency closure, A5 Skills for know-how, and plugin-defined Resource Registry descriptors when relevant.',
         available('atri_agent_api_catalog', 'atri_agent_api_read') ? 'Discover current Native Experience contracts with atri_agent_api_catalog and read relevant pages using atri_agent_api_read. This includes Native Frontend v3, Tasks, lifecycle, Activity/Scene, information, Continuity, Shared/Realm and Scenario. Never invent a field from a capability name.' : null,
         available('atri_agent_skill_files', 'atri_agent_read_skill') ? 'Skills may link supporting files: list them with atri_agent_skill_files, then read the relevant path with atri_agent_read_skill. Follow pagination when a file is truncated.' : null,
-        available('atri_agent_set_plan') ? 'Before proposing writes, call atri_agent_set_plan once with concrete semantic steps.' : null,
+        available('atri_agent_set_plan') ? task.plan
+            ? 'Reuse the current authoritative Task Plan and its step IDs. Do not call atri_agent_set_plan just to resume. A replacement Plan must preserve every step ID referenced by saved operations.'
+                + (available('atri_agent_reset_operations') ? ' To remove a referenced step, first call atri_agent_reset_operations and wait for its result.' : '')
+            : 'Before proposing writes, call atri_agent_set_plan once with concrete semantic steps.' : null,
         available('atri_agent_prepare_review') ? 'When your proposed operation set is coherent, call atri_agent_prepare_review. That dry-runs the Workspace, validates it and inspects Native Preview/simulation without committing.' : null,
         available('atri_agent_reset_operations', 'atri_agent_prepare_review') ? 'If validation/evaluation fails and Task status is repair, diagnose the diagnostics, call atri_agent_reset_operations, propose a corrected set, then call prepare_review again. Repair rounds are bounded by server policy.' : null,
         'High-impact edits still stop at the same human Review gate.',

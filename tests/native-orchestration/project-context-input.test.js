@@ -77,6 +77,19 @@ test('an explicit Native tool scope suppresses implicit Skill and unrelated tool
     expect(buildNativeProjectModelRound({ context }).tools.map(tool => tool.function.name)).toEqual(['atri_agent_skill_files', 'atri_agent_list_skills', 'atri_agent_read_skill']);
 });
 
+test('resume reuses the saved semantic Plan and explains the original proposal reference constraint', () => {
+    const { context } = runnerFixture();
+    const tools = ['atri_agent_set_plan', 'atri_agent_reset_operations'].map(name => ({ type: 'function', function: { name, parameters: { type: 'object' } } }));
+    expect(buildNativeProjectModelRound({ context, tools }).system).toContain('Before proposing writes, call atri_agent_set_plan once');
+    context.task.plan = { summary: 'Saved Plan', steps: [{ id: 'retained', title: 'Saved step' }] };
+    const round = buildNativeProjectModelRound({ context, tools });
+    expect(round.system).toContain('Reuse the current authoritative Task Plan and its step IDs');
+    expect(round.system).toContain('first call atri_agent_reset_operations and wait for its result');
+    expect(round.system).not.toContain('Before proposing writes, call atri_agent_set_plan once');
+    const narrowed = buildNativeProjectModelRound({ context, tools: tools.slice(0, 1) });
+    expect(narrowed.system).not.toContain('atri_agent_reset_operations');
+});
+
 test('original runner invokes admitted prepare hook after begin and uses its exact messages and closed tools', async () => {
     const f = runnerFixture();
     const result = await runNativeStudioAgentTask({ projectId: 'project', taskId: 'task', client: f.client, work: f.work, request: f.request,

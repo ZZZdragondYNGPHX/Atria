@@ -360,22 +360,22 @@ export class NativeProjectOrchestrationAuthority {
         }
     }
 
-    async #captureFailure(state, error) {
+    async #captureFailure(state, error, stage = 'execution') {
         // An unknown metadata ACK keeps its original recovery boundary. It is
         // never replaced by a second command claiming a different outcome.
         if (error.code === 'storage_commit_unknown') return;
-        try { await this.#recordFailure(state, error); } catch (captureError) { error.captureError ??= captureError; }
+        try { await this.#recordFailure(state, error, stage); } catch (captureError) { error.captureError ??= captureError; }
     }
 
-    async #recordFailure(state, error) {
+    async #recordFailure(state, error, stage) {
         const { handle, operation: { runId } } = state, { runs, budgetPort } = this.#execution();
         if (state.selected.plan.definition.outputContract.kind !== 'project_review' || this.#runs.get(runId) !== state) return;
         const reasons = { native_generation_budget_exhausted: 'project_budget_exhausted',
             native_generation_required_budget_reserved: 'project_budget_reserved', native_generation_required_budget_unknown: 'project_budget_unknown',
             native_orchestration_limit_exhausted: 'project_graph_limit', native_orchestration_tree_limit_exhausted: 'project_graph_limit',
             generation_context_budget_exceeded: 'project_context_limit', generation_response_invalid: 'project_response_invalid',
-            generation_cancelled: 'project_operation_cancelled' };
-        const reasonCode = reasons[error.code] ?? 'project_execution_failed';
+            generation_cancelled: 'project_operation_cancelled', project_agent_plan_proposals_conflict: 'project_plan_proposals_conflict' };
+        const reasonCode = reasons[error.code] ?? (stage === 'tool' ? 'project_tool_failed' : 'project_execution_failed');
         const receiptId = 'oreceipt_' + hash({ kind: 'project_failure', runId }).slice(0, 32), key = controlRecordKey(handle, runId, 'receipt', receiptId);
         const commandId = controlCommandId('project.execution.fail', runId);
         let expected;
@@ -542,6 +542,14 @@ export class NativeProjectOrchestrationAuthority {
     }
 
     async executeTool({ host, handle, roundToken, input }) {
+        try { return await this.#executeTool({ host, handle, roundToken, input }); } catch (error) {
+            const consumer = this.#consumers.get(roundToken);
+            if (consumer?.state.host === host && consumer.state.handle === handle) await this.#captureFailure(consumer.state, error, 'tool');
+            throw error;
+        }
+    }
+
+    async #executeTool({ host, handle, roundToken, input }) {
         assertObject(input, ['name', 'args', 'attemptId', 'callId'], 'Original Project tool input');
         const consumer = this.#consumers.get(roundToken);
         if (!consumer || consumer.state.host !== host || consumer.state.handle !== handle) fail('native_orchestration_project_tool_scope_unavailable');

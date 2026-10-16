@@ -1040,6 +1040,9 @@ export class ProjectAgentService {
         if (task.projectId !== projectId) throw new NotFoundError('native project agent task', { taskId: id, projectId });
         this._ensureDraftMutable(task);
         const plan = normalizePlan(planValue);
+        const ids = new Set(plan.steps.map(step => step.id));
+        if (task.proposals.some(proposal => proposal.stepId !== null && !ids.has(proposal.stepId)))
+            throw new ConflictError('project_agent_plan_proposals_conflict', { taskId: task.taskId });
         task.plan = plan;
         task.status = 'planned';
         task.updatedAt = Date.now();
