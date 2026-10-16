@@ -846,3 +846,10 @@
 - 同响应可先只读再以单次末尾set_plan结束，多个写或写后调用在Model已计费后、工具writer前拒绝。专用Context消费核私有精确receipt链及当前Task Source，同时保留原Project/registry/tools/Skill/settings/conversation复验；独立Task更新不能借用自己的收据，末预算后独立用户计划保留但正文拒绝。原Task ACK saved/missing只观察一次writer的原receipt，不重放；未授正式Project提交或其它提案/Review能力。
 - 新阳性/先读后写精选4PASS/10filterSKIP（15.129s）；最终完整suite18/18 PASS（56.591s），覆盖未授权pin、改args、两个写、写后读、末预算后的独立Task编辑及原writer ACK saved/missing。原只读阳性/多调用/重建历史/篡改proof与原Project Model/无工具授权相关精选，3 suites共12PASS/64filterSKIP（40.669s）。十文件定向原插件ESLint、diff check通过；本组无失败或扩大无关测试，无SQL/真实付费质量/三端、全仓或独立审查证据。
 - 这是原Task计划consumer，仍限单轮且Root running；不等于Project正式修改或P4 Gate。继续同Root有界多轮、其余Workspace提案/Review、其它消费者与P5–P8，既有授权持续，不在提交处停工、不写HANDOFF、不合main。
+
+## 2026-10-16 — W07/P4第五十九组：精确同Root Source链与唯一原银行连续性
+
+- Source b6283a572→b743c2d5c。原Task全部同Root receipts按原sequence/from→to链交叉验证Model/Effect/pin/原费用/Host确认，当前Task指纹及实际Project revision必须等于链尾。SourcePort显式接受实际Root才返回原冻结binding的currentness事实，通用不带Root仍拒旧Source；另一Root即使初始bindingDigest/预算引用完全相同亦不能借用。
+- 原BudgetPort仅在匹配银行引用且running、未取消的精确原receipt链上继续观察/准入同Task.compute，仍须实际发送者的原活scope，绝非收费引用授Model权。原Effect/GenerationSend/Model completion及Project调用点传实际Root复验；不改冻结Source、operationId或已收费用。第五十八组“旧ref不能新准入”的构建限制由本组精确连续性取代，不恢复过期scope或开始多轮。
+- 新Source suite8/8 PASS（26.669s），覆盖精确本Root/同Source sibling/过期实际round token、独立Task/Project编辑、缺Host确认和原费用，原账无新增行或重发HTTP。最初原计划阳性精选2PASS/16filterSKIP（8.356s）；接实际Model/Effect调用点后，组合新Source全八项、原计划、Session Graph输出和RP严格终结精选，4 suites共14PASS/52filterSKIP（45.902s）。八文件定向原插件ESLint、diff check通过，无新增失败。无全仓/远端/独立审查、SQL/真实外部费用质量/三端新证据。
+- 仍限原有限Project producer，Root未终结，下一步同Root有界多轮及原Task round完成收据、其余提案/Review/消费者和P5–P8持续实现。原授权持续，不在本组停止、不写HANDOFF、不合main。
