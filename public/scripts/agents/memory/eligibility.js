@@ -25,13 +25,13 @@ const snapshotFor = context => {
 };
 
 /** Resolve from the host's selected snapshot and Information authority, never caller-supplied source IDs/grants. */
-export function resolveMemoryEligibility(context, { requester = { kind: 'narrator' }, informationTaskId, at = null } = {}) {
+export function resolveMemoryEligibility(context, { requester = { kind: 'narrator' }, informationTaskId, at = null } = {}, readSnapshot = () => snapshotFor(context)) {
     if (!['narrator', 'actor', 'task'].includes(requester?.kind)
         || (requester.kind === 'actor' && !String(requester.id || '').trim())
         || (requester.kind === 'task' && !String(informationTaskId || '').trim())) throw denied();
     const target = Object.freeze({ kind: requester.kind, ...(requester.id ? { id: String(requester.id) } : {}) });
     const read = () => {
-        const snapshot = snapshotFor(context);
+        const snapshot = readSnapshot();
         if (!snapshot) {
             if (target.kind !== 'narrator' || !Array.isArray(context.chat)) throw denied();
             return { identity: { kind: 'conversation', requester: target, at }, ids: context.chat.map(sourceMessageId).filter(Boolean),

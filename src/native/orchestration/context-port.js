@@ -13,6 +13,8 @@ import { buildNativeProjectModelRound, projectAgentPromptInputs } from '../../..
 import { ProjectAgentService } from '../project-agent.js';
 import { inspectNativeRpGeneration } from './native-rp-generation.js';
 import { RpRunControl } from '../rp-run-control.js';
+import { NativeMemoryAuthority } from '../memory-authority.js';
+import { SettingsRepo } from '../../storage/repositories/settings-repo.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 const digest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
@@ -23,11 +25,15 @@ const packageDigestOf = installed => hashNativeDocument(JSON.parse(JSON.stringif
 /** Audience admission around the original compiler; no context/Memory writer. */
 export class ContextPort {
     #contexts = new WeakMap();
+    #memoryDescriptors = new Map();
 
-    constructor({ sessionCore, projectAgent, projectCapture = null, rpControl = null, rpCapture = null, authorizeContext, contextOptions = {}, readMemoryEvidence, authorityTurn = null, resolverCapture = null, compilationInputs = null } = {}) {
+    constructor({ sessionCore, projectAgent, projectCapture = null, rpControl = null, rpCapture = null, authorizeContext, contextOptions = {}, readMemoryEvidence, memoryAuthority = null, authorityTurn = null, resolverCapture = null, compilationInputs = null } = {}) {
         if (typeof authorizeContext !== 'function') fail('native_orchestration_context_authority_required');
         if ([authorityTurn, resolverCapture, projectCapture, rpCapture].filter(Boolean).length > 1) fail('native_orchestration_context_authority_conflict');
-        Object.assign(this, { sessionCore, projectAgent, projectCapture, rpControl, rpCapture, authorizeContext, contextOptions: { ...contextOptions }, readMemoryEvidence, authorityTurn, resolverCapture, compilationInputs });
+        if (memoryAuthority && (!(memoryAuthority instanceof NativeMemoryAuthority) || memoryAuthority.core !== sessionCore || readMemoryEvidence
+            || !(memoryAuthority.settingsRepo instanceof SettingsRepo) || memoryAuthority.settingsRepo._engine !== sessionCore?._sessions?._engine))
+            fail('native_orchestration_memory_authority_invalid');
+        Object.assign(this, { sessionCore, projectAgent, projectCapture, rpControl, rpCapture, authorizeContext, contextOptions: { ...contextOptions }, readMemoryEvidence, memoryAuthority, authorityTurn, resolverCapture, compilationInputs });
     }
 
     #request(handle, input) {
@@ -121,7 +127,9 @@ export class ContextPort {
             const installed = await this.#resolverPackage(handle, snapshot);
             return { request, snapshot, logicalDescriptor: resolver.logicalDescriptor, ...packageInputs(installed), contextOptions: this.contextOptions };
         }
-        return { request, snapshot, authorityContext, contextOptions: this.contextOptions, compilationInputs: this.compilationInputs };
+        const memoryDescriptor = this.memoryAuthority ? await NativeMemoryAuthority.prototype.contextDescriptor.call(this.memoryAuthority, handle, snapshot) : null;
+        if (memoryDescriptor) this.#memoryDescriptors.set(hashNativeDocument(request), memoryDescriptor);
+        return { request, snapshot, authorityContext, contextOptions: this.contextOptions, compilationInputs: this.compilationInputs, memoryDescriptor };
     }
 
     async #resolverPackage(handle, snapshot) {
@@ -183,16 +191,22 @@ export class ContextPort {
             this.#contexts.set(context, { handle, request, proof, resolver: { request: fixedRequest, select: original.select } });
             return context;
         }
-        const memoryEvidence = this.readMemoryEvidence ? await this.readMemoryEvidence({ handle, request, snapshot, information }) : this.contextOptions.memoryEvidence ?? [];
+        const descriptorKey = hashNativeDocument(request), expectedDescriptor = this.#memoryDescriptors.get(descriptorKey);
+        this.#memoryDescriptors.delete(descriptorKey);
+        const recall = this.memoryAuthority ? await NativeMemoryAuthority.prototype.recallContext.call(this.memoryAuthority, handle, {
+            snapshot, requester: request.audience, tokenBudget: request.tokenBudget, countTokens: this.contextOptions.countTokens,
+            expectedDescriptor, assertCurrent: () => this.#current(handle, request, 'recall') }) : null;
+        const memoryEvidence = recall?.evidence ?? (this.readMemoryEvidence ? await this.readMemoryEvidence({ handle, request, snapshot, information }) : this.contextOptions.memoryEvidence ?? []);
         const plan = await compileNativeContextPlan(snapshot, { ...this.contextOptions, ...request.tokenBudget,
             target: request.audience, informationTaskId: undefined, memoryEvidence, authorityTurn: Boolean(this.authorityTurn) });
         // Asynchronous retrieval/derivation can outlive Source or grants.
         await this.#current(handle, request, 'compiled');
+        if (recall) await NativeMemoryAuthority.prototype.assertContextRecall.call(this.memoryAuthority, handle, recall.proof, snapshot, request.audience);
         const proof = { sourceBindingDigest: request.sourceBinding.bindingDigest, grantDigest: request.grantDigest,
             audienceDigest: hashNativeDocument(request.audience), projectionDigest: hashNativeDocument(information.projection), authorityDigest };
         const context = immutable({ schemaVersion: 1, contextId: hashNativeDocument({ request, plan, proof }), request, plan,
             evidenceRefs: plan.included.flatMap(item => item.sourceRefs ?? []), currentnessProof: proof });
-        this.#contexts.set(context, { handle, request, proof });
+        this.#contexts.set(context, { handle, request, proof, memoryProof: recall?.proof });
         return context;
     }
 
@@ -211,6 +225,7 @@ export class ContextPort {
             return context.plan;
         }
         if (hashNativeDocument(information.projection) !== captured.proof.projectionDigest || authorityDigest !== captured.proof.authorityDigest) fail('native_orchestration_context_source_stale');
+        if (captured.memoryProof) await NativeMemoryAuthority.prototype.assertContextRecall.call(this.memoryAuthority, handle, captured.memoryProof, snapshot, captured.request.audience);
         return context.plan;
     }
 

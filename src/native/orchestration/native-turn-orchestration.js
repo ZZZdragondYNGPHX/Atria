@@ -49,9 +49,9 @@ export class NativeNarratorOrchestrationAuthority {
     #project;
     #rp;
 
-    constructor({ engine, sessionCore, projectAgent = null, projectRepository = null, rpControl = new RpRunControl({ engine }), plans = null, modelResolver = null, contextOptions = {} }) {
+    constructor({ engine, sessionCore, memoryAuthority = null, projectAgent = null, projectRepository = null, rpControl = new RpRunControl({ engine }), plans = null, modelResolver = null, contextOptions = {} }) {
         if (!engine || !sessionCore) throw new TypeError('Original Native Session/Engine required');
-        Object.assign(this, { engine, sessionCore, projectAgent, projectRepository, rpControl, plans, modelResolver, contextOptions });
+        Object.assign(this, { engine, sessionCore, memoryAuthority, projectAgent, projectRepository, rpControl, plans, modelResolver, contextOptions });
     }
 
     get execution() {
@@ -331,7 +331,7 @@ export class NativeNarratorOrchestrationAuthority {
             const nativeOptions = nativeSessionContextOptions({ handle, snapshot: contextSnapshot, resolver: this.modelResolver, contextPackage,
                 role: 'role.' + role, lanePlan, authorityContext: lanePlan.authorityContext });
             const contextOptions = nativeContextCompilationOptions(state.request, selected.resolved, { ...this.contextOptions, ...nativeOptions });
-            state.contextPort = new ContextPort({ sessionCore: this.sessionCore, contextOptions, authorityTurn, resolverCapture,
+            state.contextPort = new ContextPort({ sessionCore: this.sessionCore, memoryAuthority: this.memoryAuthority, contextOptions, authorityTurn, resolverCapture,
                 compilationInputs: contextPackage ? { manifest: contextPackage.manifest, sourceFiles: [...contextPackage.sourceFiles] } : null,
                 authorizeContext: async ({ request: contextRequest }) => {
                     await this.#current(selection); assertNativeTurnQuota(quotaProof, proofExpected);

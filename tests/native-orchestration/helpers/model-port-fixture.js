@@ -15,13 +15,15 @@ import { services } from '../../native/helpers/session-fixture.js';
 import { seedGenerationProfiles } from '../../native/helpers/generation-fixture.js';
 import { cancelSessionMaintenance } from '../../../src/native/session-maintenance.js';
 import { planFixture, prepareControllerOwnerRoot } from '../fixtures.js';
+import { SettingsRepo } from '../../../src/storage/repositories/settings-repo.js';
+import { NativeMemoryAuthority } from '../../../src/native/memory-authority.js';
 
 const id = kind => createNativeId('orchestration' + kind);
 const limits = { maxRequests: 4, maxTokens: 32000, localWork: { maxJobs: 32, maxItems: 100, maxInputBytes: 16777216 } };
 
 // Native Host, narrator producer, Binding/Plan, Provider HTTP/private lease,
 // original bank and Effect writer are real. The remote response is synthetic.
-export async function modelPortFixture(make, { usage = true, failure = false, responseStatus = null, responseBody = null, configurePlan = async () => {}, changeContract = () => {}, beforeBase = async () => {}, changeRoute = route => route, createSource = null, generationWithoutMaxTokens = false } = {}) {
+export async function modelPortFixture(make, { usage = true, failure = false, responseStatus = null, responseBody = null, configurePlan = async () => {}, changeContract = () => {}, beforeBase = async () => {}, changeRoute = route => route, createSource = null, generationWithoutMaxTokens = false, memorySettings = null } = {}) {
     const h = await make(), requests = [], chunks = []; let coldEngine, core, host, authority, port, effectRef;
     let afterSend = async () => {}, captureScope = null, transformRender = rendered => rendered;
     const server = http.createServer(async (req, res) => {
@@ -42,6 +44,7 @@ export async function modelPortFixture(make, { usage = true, failure = false, re
         core = f.core;
         await beforeBase({ fixture: f, core, handle: h.handle });
         const base = await core.observe(h.handle, f.snapshot.session.sessionId);
+        if (memorySettings) await new SettingsRepo({ engine: h.engine }).save(h.handle, { atri_capabilities: { memory_graph: memorySettings } });
         const seeded = await seedGenerationProfiles({ ...h, format: 'openai-responses', endpoint: `http://127.0.0.1:${server.address().port}/v1/responses` });
         if (generationWithoutMaxTokens) {
             const generation = { ...seeded.generation, revision: 'no-output-override', output: {} };
@@ -57,7 +60,8 @@ export async function modelPortFixture(make, { usage = true, failure = false, re
             host = new NativeGenerationHost({ persistence, library, sessionCore: core, packageInstaller: core._packages, providers, secretPort: { resolveSecret: async () => 'synthetic-model-secret' } });
             const modelResolver = new RouteResolver({ persistence, library, providers });
             const { plans } = createOrchestrationAuthoringService(engine, { sessionCore: core, modelResolver });
-            authority = new NativeNarratorOrchestrationAuthority({ engine, sessionCore: core, plans, modelResolver });
+            authority = new NativeNarratorOrchestrationAuthority({ engine, sessionCore: core, plans, modelResolver,
+                memoryAuthority: memorySettings ? new NativeMemoryAuthority({ core, settingsRepo: new SettingsRepo({ engine }) }) : null });
             port = new ModelPort({ host, ...authority.execution }); authority.setModelPort(port); host.turnOrchestration = authority;
             const originalPrepare = authority.prepareNarrator.bind(authority), originalObserve = authority.execution.effects.observe.bind(authority.execution.effects);
             const prepareEffect = authority.execution.effects.prepare.bind(authority.execution.effects);

@@ -15,6 +15,10 @@ import { hashNativeDocument, withNativeResourceWrite } from './repositories/comm
 import { assertNativeId } from './identity.js';
 import { assertWritable } from '../storage/read-only-mode.js';
 import { ConflictError } from '../storage/errors.js';
+import { resolveMemoryEligibility, eligibleMemorySnapshot } from '../../public/scripts/agents/memory/eligibility.js';
+import { retrieveMemory, memoryTokenBudget, memoryTokenCounter } from '../../public/scripts/agents/memory/hybrid-retrieval.js';
+import { informationContext } from '../../public/shared/native-information-runtime.js';
+import { nativeTurnMemoryQuery } from '../../public/scripts/native/experience/llm/memory-bridge.js';
 
 const factActions = new Set(['create', 'reinforce', 'merge', 'supersede']);
 const graphActions = new Set(['entity', 'alias', 'rename', 'merge_entity', 'split_entity', 'resolve_pending', 'relation', 'resolve_conflict']);
@@ -23,11 +27,57 @@ const validHash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(va
 
 /** Native facade over the existing Memory source lifecycle and Session store. */
 export class NativeMemoryAuthority {
+    #recalls = new WeakMap();
     constructor({ core, settingsRepo }) { Object.assign(this, { core, settingsRepo }); }
     async _settings(handle) {
         const stored = await this.settingsRepo.get(handle);
         const value = normalizeHybridMemorySettings(structuredClone(stored?.atri_capabilities?.memory_graph ?? {}));
         return { value, fingerprint: hashNativeDocument(value) };
+    }
+    async contextDescriptor(handle, snapshot) {
+        return { settings: await this._settings(handle), snapshotDigest: hashNativeDocument(snapshot) };
+    }
+    async assertContextRecall(handle, proof, snapshot, requester) {
+        const captured = this.#recalls.get(proof);
+        if (!captured || captured.handle !== handle || captured.requesterDigest !== hashNativeDocument(requester)
+            || captured.snapshotDigest !== hashNativeDocument(snapshot)
+            || captured.settingsFingerprint !== (await this._settings(handle)).fingerprint)
+            throw new ConflictError('native_orchestration_memory_source_stale');
+    }
+    /** Read-only original Hybrid work, enclosed by the caller's context_build bank. */
+    async recallContext(handle, { snapshot, requester, tokenBudget, countTokens, assertCurrent, expectedDescriptor }) {
+        const descriptor = await this.contextDescriptor(handle, snapshot);
+        if (expectedDescriptor && hashNativeDocument(descriptor) !== hashNativeDocument(expectedDescriptor))
+            throw new ConflictError('native_orchestration_memory_source_stale');
+        const proof = Object.freeze({});
+        this.#recalls.set(proof, { handle, requesterDigest: hashNativeDocument(requester), snapshotDigest: descriptor.snapshotDigest,
+            settingsFingerprint: descriptor.settings.fingerprint });
+        const settings = descriptor.settings.value, information = informationContext(snapshot, requester);
+        const current = async () => { await assertCurrent(); await this.assertContextRecall(handle, proof, snapshot, requester); };
+        await current();
+        if (!isHybridMemoryEnabled(settings) || settings.recallEnabled === false || !information?.memory) return { proof, evidence: [] };
+        // External retrieval requires its original scoped Provider consumer;
+        // never send from a Browser adapter or silently ignore an exact route.
+        if (settings.nativeRetrieval?.embed || settings.rerankEnabled && settings.nativeRetrieval?.rerank)
+            throw new ConflictError('native_orchestration_memory_retrieval_scope_unavailable');
+        const runtime = this._context(snapshot, settings);
+        try {
+            const eligibility = resolveMemoryEligibility(runtime.context, { requester }, () => snapshot);
+            const legal = eligibleMemorySnapshot(await runtime.lifecycle.retrievalSnapshot(runtime.context, { readOnly: true }), eligibility);
+            await current();
+            const query = nativeTurnMemoryQuery(snapshot, snapshot.timeline.at(-1)?.content, information);
+            const result = await retrieveMemory(legal, query, { countTokens: memoryTokenCounter({ getTokenCountAsync: countTokens }),
+                budget: Math.min(memoryTokenBudget(settings), tokenBudget.modelContextLimit - tokenBudget.responseReserve),
+                sceneText: legal.chat.filter(message => message.mes).slice(-2).map(message => message.mes).join('\n'),
+                computeContext: { kind: 'session', sessionId: snapshot.session.sessionId, revisionId: snapshot.revision.revisionId },
+                service: { admitCorpus: async () => { await current(); return { admitted: true, metered: false }; } } });
+            await current(); result.assertCurrent();
+            const evidence = result.evidence.map(item => ({ memoryId: 'native-hybrid:' + snapshot.revision.revisionId + ':' + item.id,
+                content: item.content, ...(item.atomicGroup ? { atomicGroup: item.atomicGroup } : {}),
+                sourceRefs: item.sourceMessageIds.map(messageId => ({ kind: 'timeline', messageId, branchId: snapshot.revision.branchId,
+                    revisionId: snapshot.revision.revisionId })), source: { kind: 'memory_graph', selectedId: item.id } }));
+            return { proof, evidence, diagnostics: result.diagnostics, metrics: result.metrics };
+        } finally { runtime.lifecycle.dispose(); }
     }
     _context(base, settings) {
         const states = structuredClone(base.states), chat = projectNativeSession(base).chat;

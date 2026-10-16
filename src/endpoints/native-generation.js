@@ -23,7 +23,8 @@ import { admitMemoryCorpusWork, prepareRetrievalCompute } from '../native/retrie
 import { executeProjectSkillWork } from '../native/skill-invocation.js';
 import { fields } from '../../public/shared/native-values.js';
 import { NATIVE_RETRIEVAL_SCOPE_ERRORS } from '../../public/scripts/native/retrieval-contracts.js';
-import { getStorageEngine } from '../storage/index.js';
+import { getStorageEngine, getSettingsRepo } from '../storage/index.js';
+import { NativeMemoryAuthority } from '../native/memory-authority.js';
 import { getUserDirectories } from '../users.js';
 import { readSecret, SECRET_KEYS, SecretManager } from './secrets.js';
 import { assertWritable } from '../storage/read-only-mode.js';
@@ -96,6 +97,7 @@ function services() {
         } }),
     });
     host.turnOrchestration = new NativeNarratorOrchestrationAuthority({ engine: persistence._engine, sessionCore: core,
+        memoryAuthority: new NativeMemoryAuthority({ core, settingsRepo: getSettingsRepo() }),
         projectAgent: agent, projectRepository: agent._repository,
         modelResolver: new RouteResolver({ persistence: host.persistence, library: host.library, providers: host.providers }) });
     return host;

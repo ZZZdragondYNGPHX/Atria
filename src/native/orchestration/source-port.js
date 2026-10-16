@@ -1,5 +1,5 @@
 import { ConflictError } from '../../storage/errors.js';
-import { hashNativeDocument } from '../repositories/common.js';
+import { hashNativeDocument, withNativeResourceWrite } from '../repositories/common.js';
 import { fields } from '../../../public/shared/native-values.js';
 import { assertRunAccess } from '../run-control.js';
 import { SessionRepo } from '../repositories/session-repo.js';
@@ -74,7 +74,8 @@ export class SourcePort {
             throw new ConflictError('native_orchestration_consumption_authority_unavailable');
         return operation => {
             if (typeof operation !== 'function') throw new TypeError('Original domain consumption requires an operation');
-            return withRuntimeWrite(handle, () => SessionRepo.prototype.withRunLock.call(repo, handle, sessionId, operation));
+            return withRuntimeWrite(handle, () => withNativeResourceWrite(handle, 'settings',
+                () => SessionRepo.prototype.withRunLock.call(repo, handle, sessionId, operation)));
         };
     }
 

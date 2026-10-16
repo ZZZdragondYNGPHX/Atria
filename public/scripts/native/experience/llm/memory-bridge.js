@@ -239,7 +239,7 @@ export function createMemoryRecallBridge(options = {}) {
 }
 
 
-function nativeTurnMemoryQuery(snapshot, userInput, information) {
+export function nativeTurnMemoryQuery(snapshot, userInput, information) {
     const parts = [];
     const input = String(userInput ?? '').trim();
     if (input) parts.push('User input: ' + truncate(input, 3000));
