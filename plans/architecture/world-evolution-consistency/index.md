@@ -1,10 +1,10 @@
-# Atria Dynamic World Evolution & Consistency — 方案入口
+# Atria Native World / Knowledge Reconstruction & Evolution — 方案入口
 
 - Task ID: `ARCH-DWE-01`
 - Primary Workspace: `docs`
 - Plan status: **Draft / Discussion (未冻结，未批准实施)**
 - Initiated: 2026-10-17
-- Scope: 静态世界/知识与长线游玩中的动态推演冲突
+- Scope: **原生世界 / 知识体系深度重构**，涵盖从 ST Lorebook 心智模型脱离、静态/动态一致性、实体/关系/法则/资料/认知/检索/演化/三域交互
 - Product changes: **不在本讨论阶段实施**
 - Permanent Record: [ARCH-DWE-01 Record](../../../records/architecture/world-evolution-consistency.md)
 
@@ -13,11 +13,19 @@
 本 Plan 是同一主题持续迭代的**唯一入口**。每一轮先更新对应模块和本轮讨论状态、在 `docs` 分支提交并核实，再开展本轮讨论；直到用户明确认可完整方案，才将状态由 Draft 改为 Approved/定稿。不得把助理推荐误写为已获批准的冻结决议，亦不得在讨论阶段直接修改 `main` 产品实现。
 
 - [Research](research.md)：外部资料、机制比较、来源、局限和迁移适用性；讨论中持续补充。
-- [Design](design.md)：候选设计、权威边界、接口草案、冲突案例、风险矩阵；均为**待议**，不是已确定实现。
+- [Design](design.md)：候选设计、权威边界、接口草案、冲突案例、风险矩阵，以及 **§8 S2 原生 World / Knowledge 扩域重构对照与 ST 语义清退清单**；均为**待议**。
 - [Record](../../../records/architecture/world-evolution-consistency.md)：按工作轮累积可核验的文档提交、调研结果、未完成内容。
 - 后续需要规模化时再按主题拆模块，本入口仍为唯一导航。
 
 每轮约定：①核查远端文档与当前轮议题；②先更新 Plan + 同一 Record，并提交 `docs`；③讨论新方案及取舍；④用户决定后于下一轮先写回决策。未决问题保留，不擅自推进至最终定稿。
+
+## 0.1 Scope Expansion S2（用户提出的新任务方向，仍属 Draft）
+
+原问题「静态设定和动态演化冲突」仍保留，**但现在必须以原生 World / Knowledge 整体重构为主线**。先明确 World（实体/关系/世界法则/初始基线）与 Knowledge（资料/断言/来源/语境）的真实边界，再设计事实演化、主体认知、有效上下文和 Library/Studio/Play 产品界面。已有 Native SessionCore/State/Event/Simulation/HCM/Context Compiler 是首先审查和复用的权威，不能平行再建一套真相库。
+
+本轮对照见 [design.md §8](design.md#8-scope-expansion-s2--从-lorebook-进一步重构原生-world--knowledge2026-10-17候选)，补充文献与代码证据见 [research.md §F](research.md#f-s2-扩域补充研究从-st-lorebook-到-native-world-model2026-10-17)。**新方案 A Semantic Lorebook / B World Model + Source Library / C Universal World Knowledge Graph 均未批准**；尤其不能将推荐 B 记成冻结决策。
+
+需要回答：创作者的首要对象是若干触发条目，还是可以直接浏览、引用并演化的“世界”；Knowledge 应是同级世界书，还是世界引用的来源与证据？现有 free text 必须继续一等支持；不为未发布旧 ST 数据建立兼容双轨。
 
 ## 1. 核心问题（问题定义，不是结论）
 
@@ -56,7 +64,7 @@
 
 ## 5. 状态与下一检查点
 
-- **当前：**入口与 [research.md](research.md)、[design.md](design.md)、唯一 Record 均已提交；第一轮的外部调研与对 main 相关权威的初步静态核对完成，已进入 **Round 1 待讨论**。
-- **已冻结设计决议：无。** 研究暂倾向关键动态事实绑定 + Effective View；需用户明确确认。
+- **当前：**S2 用户已提出扩大重构范围；[design.md §8](design.md) 和 [research.md §F](research.md) 已补充待议方案。前一轮关于动态事实锚点的 R1 尚未获用户批准，本轮围绕 World/Knowledge 原生定位讨论。
+- **已冻结设计决议：无。** 研究暂倾向 World Model + Source Library、关键动态事实绑定 + Effective View；均需用户明确确认。
 - **未授权：**修改 `main`、创建实现分支、给出实施已经通过的结论。
 - **完成标准：**用户在若干轮讨论后明确确认各核心决策及边界，并批准定稿。未经确认，不使用“Final/冻结/全面通过”描述。
