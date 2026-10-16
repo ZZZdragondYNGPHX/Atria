@@ -1037,3 +1037,10 @@
 - 实现接口 §17.92，Source 57accfd1b → a90f48f6e，本地提交未推送。原 one-proposal-last 规则提到原 Project tool contract 这一处权威，实际检查/Context proof/Prompt 共用，原 Tool pins 和来源/费用/批次权限不扩大。
 - 新 FS/SQLite 三类真实原 Executor/Task/Effect 场景 6/6 PASS（25.161s）：read→单proposal 成功、双proposal与proposal→read均拒绝且原 calls为空，费用20保持。原 Context/shared builder/指纹三 suites 44/44 PASS（35.125s），实际多轮 Review Root 两参数项 2PASS/12filterSKIP（33.045s）；五文件原 ESLint/staged diff check 通过。
 - 真实 Native Project source_probe 再测8次200，41614 reported tokens、unknown=0。模型按单响应分开 get_project/reset_operations/set_plan，原批次错误消失；其中一条仍主动正文 stop，后续案例到project_save后触发 native_orchestration_limit_exhausted。已核对固定开发Plan仍为默认60秒；依据每案例4次Model请求及封闭Controller步数，可推断其未达200 steps/10 Attempts，下一步只调整新开发Plan的显式 deadline 并验证该推断，不能更改已运行Root deadline或放宽运行时检查。当前status=failed，不能计作完整工程/质量通过；其余后端继续。
+
+
+## 2026-10-17 — 第八十六组：开发 Plan 的有限时长与原依赖闭包发现
+
+- Source a90f48f6e → f7767fc21，本地提交未推送。仅新建的 native-live 开发 Plan 按明确单次 timeout × 有限 Model rounds 设置 deadline；当前 Project 为6轮、1800000ms，原运行中 Root/产品限额不变。精确 pins 增加原 atri_agent_resource_closure，读取当前 Source 已引用 World/规则的名称与版本，不放开无关资源库。fixture 只在创建 Project/Task 前设置 Source 依赖，不重写旧 baseRevision。
+- 最初 query_resources 场景未建 Source 依赖，原 projectId 过滤合法返回空，2FAIL；改用原精确依赖闭包与正确原 Source 建模后 FS/SQLite 2/2 PASS（9.951s）。脱敏 summary 仅输出封闭状态、诊断数量与固定区段是否相等，隐私负例1/1 PASS（0.510s）；五文件原 ESLint、staged diff check 通过。
+- 真 Native Project source_probe：11次200，74256 reported tokens、unknown=0。deadline/未授权工具/批次异常消失，但工程检查仍 invariants_failed：一例 get_project+closure 后正文停止，一例经过 set_plan/reset/project_save/prepare_review 仍未有效 Review，另一例 reset/plan 后正文停止。未将失败改成成功或继续无限重试；下一步以脱敏原 Task 状态及多轮修复实证诊断。没有独立质量、价格或自动晋升结论，全部后端仍在实施，未推送/交前端/main。

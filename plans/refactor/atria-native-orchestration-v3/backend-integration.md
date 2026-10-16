@@ -2,11 +2,11 @@
 
 > 2026-10-16。本文件属于同一 Plan Bundle，用于用户已授权的提示词预设/前端并行任务整合。详细合同仍归 [interface-contracts](interface-contracts.md)，阶段门槛仍归 [acceptance-matrix](acceptance-matrix.md)，精确源码提交/实测与失败只归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。本文不将 P3 子工作冒称完整 V3 后端完成。
 
-## 当前后端续作（第七十一至八十五组）
+## 当前后端续作（第七十一至八十六组）
 
 `826d2ba43` 已有显式 Host 元数据 recover、存储 generation 投影围栏，以及唯一顶层 RP/有限 Native Session 输出和原 Project 工具的收据核对命令；详细入口和不恢复执行的边界见[接口 §17.83–§17.86](interface-contracts.md#1783-显式-run-host-元数据恢复入口)。Project 工具核对见[接口 §17.87](interface-contracts.md#1787-原-project-工具冷收据核对)；其余核对与受权 resume 继续后端。
 
-原 Project batch 现在由同一 policy 生成模型指引，见[接口 §17.92](interface-contracts.md#1792-project-原批次合同的模型指引)。真实调用已按该批次执行，下一处失败是开发Plan原60秒 deadline，尚未记作完成。
+原 Project batch 现在由同一 policy 生成模型指引，见[接口 §17.92](interface-contracts.md#1792-project-原批次合同的模型指引)。真实调用已按该批次执行；新开发 Plan 的明确 deadline 与原依赖闭包发现已补齐，探测仍未有效 Review，未记作完成。详见同一 Record 第八十六组。
 
 显式 source_probe 可使用原 Route 的准确输出cap，详见[接口 §17.91](interface-contracts.md#1791-显式开发探测的原-route-输出上限)。正式比较/晋升1024约束和独立质量Gate保持；真实8192 Project探测已越过截断，仍因原批次合同失败，继续后端。
 
