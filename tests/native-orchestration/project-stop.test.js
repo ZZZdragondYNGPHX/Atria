@@ -29,6 +29,10 @@ describe.each(harnesses)('$name original Project quiescence', ({ make }) => {
             expect(view.payload.status).toBe('blocked'); expect(view.payload.controls.resume).toBe(false);
             expect(view.payload.events.filter(event => event.type === 'project_generation_stopped')).toHaveLength(1);
             expect(view.payload.costs).toMatchObject({ closed: true, modelAttempts: 1, knownTotalTokens: 20 });
+            const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+            expect(view.payload.capacity).toMatchObject({ status: 'available', scope: 'original_bank', allocationStatus: 'bank',
+                ceiling: { requests: task.compute.limits.maxRequests, jobs: task.compute.limits.localWork.maxJobs },
+                used: { requests: 1, tokens: 20, jobs: task.compute.localWork.length } });
             expect((await f.studio.observeProject(f.h.handle, f.projectId)).source).toEqual(before);
         } finally { await f.cleanup(); }
     }, 60000);

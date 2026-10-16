@@ -4,7 +4,7 @@ import { assertNativeId } from '../identity.js';
 import { readRunControl } from '../run-control.js';
 import { fields } from '../../../public/shared/native-values.js';
 import { assertNativeTurnQuota } from './native-turn-quota.js';
-import { orchestrationComputeAttemptId, inspectComputeChildClosure, inspectComputeEffectClosure, assertComputeBudget } from '../../../public/shared/native-compute-budget.js';
+import { orchestrationComputeAttemptId, inspectComputeChildClosure, inspectComputeEffectClosure, inspectComputeReservation, assertComputeBudget } from '../../../public/shared/native-compute-budget.js';
 import { RpRunControl } from '../rp-run-control.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { checkedRecord } from './plan-repository.js';
@@ -261,6 +261,26 @@ export class BudgetPort {
         if (authority.authority === 'project_task') return (await this.projectRepository.get(handle, authority.projectId, authority.taskId))?.compute;
         if (!(this.rpControl instanceof RpRunControl)) fail('native_orchestration_budget_unavailable');
         return (await RpRunControl.prototype.status.call(this.rpControl, handle, authority.controlId, { tx }))?.operations[authority.operationId]?.compute;
+    }
+
+    /** Original allocation counters only; no attempt IDs, input or send permit. */
+    async observeCapacity(handle, input, { tx } = {}) {
+        fields(input, ['authorityRef', 'reservationId'], 'Budget capacity observation');
+        const { authorityRef, reservationId } = input;
+        assertBudgetAuthorityRef(authorityRef);
+        if (reservationId !== null) assertNativeId(reservationId, 'orchestrationRun');
+        if (!tx || typeof tx.getResource !== 'function') fail('native_orchestration_budget_transaction_required');
+        const engine = authorityRef.domain === 'session' ? this.sessionCore?.runs.repo._engine
+            : authorityRef.authority === 'project_task' ? this.projectRepository?.engine : this.rpControl?._engine;
+        if (!engine) fail('native_orchestration_budget_unavailable');
+        return engine.withTransaction(handle, async active => {
+            if (active !== tx) fail('native_orchestration_budget_transaction_required');
+            const ledger = await this.#ledger(handle, tx, authorityRef);
+            if (!ledger) return null;
+            const counters = inspectComputeReservation({ compute: ledger }, reservationId);
+            return { scope: reservationId === null ? 'original_bank' : 'child_reservation',
+                allocationStatus: reservationId === null ? 'bank' : ledger.reservations.find(row => row.reservationId === reservationId).status, ...counters };
+        });
     }
 
     /** Exact root Effect costs; unrelated Runs do not become this Run's receipts. */

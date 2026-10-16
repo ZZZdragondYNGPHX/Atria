@@ -81,6 +81,25 @@ describe.each(harnesses)('$name original Run metadata HTTP', ({ make }) => {
         expect((await runs.get(h.handle, root.runId)).budgetAuthorityRef).toEqual(root.budgetAuthorityRef);
     });
 
+    test('a deadline crossing emits safe counter diagnostics without rewriting history or granting execution', async () => {
+        const snapshot = (await observe().expect(200)).body.outcome;
+        expect(snapshot.payload.execution).toMatchObject({ limits: root.limits, progress: { steps: 0, attempts: 0, deadlineAt: root.progress.deadlineAt },
+            treeProgress: { steps: 0, attempts: 0 } });
+        expect(snapshot.payload.capacity).toEqual({ status: 'not_started' });
+        const before = hash(await runs.get(h.handle, root.runId));
+        now = root.progress.deadlineAt;
+        const delta = (await observe(snapshot.cursor).expect(200)).body.outcome;
+        expect(delta.seq).toBe(snapshot.seq + 1);
+        const current = delta.payload.changes.at(-1).snapshot;
+        expect(current.status).toBe('admitted'); expect(current.controls.resume).toBe(false);
+        expect(current.diagnostics).toContainEqual({ code: 'native_orchestration_deadline_reached', severity: 'blocking' });
+        expect((await read('diagnostics', { runId: root.runId }).expect(200)).body.outcome.diagnostics)
+            .toContainEqual({ code: 'native_orchestration_deadline_reached', severity: 'blocking' });
+        expect(hash(await runs.get(h.handle, root.runId))).toBe(before);
+        await mutation({ ...runGuard(root), reasonCode: 'cancel_expired_run' }).expect(200);
+        expect((await observe().expect(200)).body.outcome.payload.diagnostics.map(item => item.code)).not.toContain('native_orchestration_deadline_reached');
+    });
+
     test('same-Host storage generation changes disable stale controls and require recovery without changing history', async () => {
         await h.engine.nativeHostLifecycle.afterRestore(h.handle);
         const snapshot = (await observe().expect(200)).body.outcome;

@@ -122,14 +122,35 @@ describe.each([['FsEngine', makeTempFsEngineHarness], ['SqliteEngine', makeTempS
             });
             await port.settleAttempt(h.handle, localRef, { wallMs: 0, cpuUserMicros: 0, cpuSystemMicros: 0, cpuScope: 'process', outcome: 'completed' });
 
+            const capacity = await h.engine.withTransaction(h.handle, tx => port.observeCapacity(h.handle, { authorityRef, reservationId: childRunId }, { tx }));
+            expect(capacity).toMatchObject({ scope: 'child_reservation', allocationStatus: 'held', ceiling: { requests: 3, tokens: 300, jobs: 1 },
+                used: { requests: 2, tokens: 150, jobs: 1, items: 1, inputBytes: 10 }, remaining: { requests: 1, tokens: 150, jobs: 0 }, overrun: false });
+            expect(JSON.stringify(capacity)).not.toContain(effectId);
+            capacity.remaining.tokens = 0;
+            await h.engine.withTransaction(h.handle, async tx => {
+                expect((await port.observeCapacity(h.handle, { authorityRef, reservationId: childRunId }, { tx })).remaining.tokens).toBe(150);
+                expect(await port.observeCapacity(h.handle, { authorityRef, reservationId: null }, { tx })).toMatchObject({ scope: 'original_bank',
+                    used: { requests: 2, tokens: 150 }, delegated: { requests: 1, tokens: 150 }, remaining: { requests: 1, tokens: 100 } });
+                await expect(port.observeCapacity(h.handle, { authorityRef, reservationId: childRunId }, { tx: { getResource() {} } }))
+                    .rejects.toMatchObject({ code: 'native_orchestration_budget_transaction_required' });
+            });
+
             await bank.settle(first.budgetAttemptRef.attemptId, null);
             await move();
             await expect(bank.admit({ ...send, requestId: 'req-2' })).rejects.toMatchObject({ code: expect.not.stringMatching(/budget|replayed/) });
             expect(await port.observeAttempt(h.handle, first.budgetAttemptRef)).toMatchObject({ status: 'unknown', estimatedTokens: 100, reservationId: childRunId });
+            await h.engine.withTransaction(h.handle, async tx => {
+                expect((await port.observeCapacity(h.handle, { authorityRef, reservationId: childRunId }, { tx })).used.tokens).toBe(150);
+            });
             await port.settleAttempt(h.handle, first.budgetAttemptRef, { totalTokens: 60 });
             await expect(port.releaseUnused(h.handle, { authorityRef, reservationId: childRunId })).rejects.toMatchObject({ code: 'native_generation_reservation_unsettled' });
             await bank.settle(fallback.budgetAttemptRef.attemptId, { totalTokens: 10 });
             await expect(port.releaseUnused(h.handle, { authorityRef, reservationId: childRunId })).resolves.toMatchObject({ status: 'released', replayed: false });
+            await h.engine.withTransaction(h.handle, async tx => {
+                expect(await port.observeCapacity(h.handle, { authorityRef, reservationId: null }, { tx })).toMatchObject({ scope: 'original_bank',
+                    used: { requests: 2, tokens: 70 }, delegated: { requests: 0, tokens: 0 }, remaining: { requests: 2, tokens: 330 } });
+                expect((await port.observeCapacity(h.handle, { authorityRef, reservationId: childRunId }, { tx })).allocationStatus).toBe('released');
+            });
         } finally { await h.engine.close?.(); await h.cleanup(); }
     });
 });

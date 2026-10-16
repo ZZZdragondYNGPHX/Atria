@@ -8,7 +8,7 @@ import { assertObject, assertCounter, assertSourceSelector } from '../../../publ
 import { createBindingSourceAuthority } from './binding-source-authority.js';
 import { assertRunAccess } from '../run-control.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
-import { RunRepository, assertRunRoot } from './run-repository.js';
+import { RunRepository, assertRunRoot, TREE_LOGICAL_COUNTERS } from './run-repository.js';
 import { BudgetPort } from './budget-port.js';
 import { controlRecordKey, readAttempt } from './controller-common.js';
 import { readEffect, readApproval } from './effect-contracts.js';
@@ -204,6 +204,15 @@ export class RunObservationService {
                 }
                 events.sort((a, b) => a.internalOrder - b.internalOrder);
                 const costs = await this.#costs(handle, tx, root, effects);
+                let capacity;
+                try {
+                    const observed = await this.budget.observeCapacity(handle, { authorityRef: root.budgetAuthorityRef,
+                        reservationId: root.parentRef ? root.runId : null }, { tx });
+                    capacity = observed ? { status: 'available', ...observed } : { status: 'not_started' };
+                } catch (error) {
+                    if (error.code !== 'native_orchestration_budget_unavailable') throw error;
+                    capacity = { status: 'unavailable' };
+                }
                 const reconciliationRequest = reconcilable.length === 1 ? await readReconciliationRequest(tx, handle, root, reconcilable[0]) : null;
                 const diagnostics = [];
                 if (root.cancelRequested) diagnostics.push({ code: 'native_orchestration_cancel_requested', severity: 'info' });
@@ -212,8 +221,21 @@ export class RunObservationService {
                 if (costs.status === 'unavailable') diagnostics.push({ code: 'native_orchestration_budget_unavailable', severity: 'blocking' });
                 if (approvals.length) diagnostics.push({ code: 'native_orchestration_approval_channel_unavailable', severity: 'blocking' });
                 if (recoveryRequired) diagnostics.push({ code: 'native_orchestration_host_recovery_required', severity: 'blocking' });
+                if (!['completed', 'partial', 'failed', 'cancelled', 'stale'].includes(root.status)) {
+                    if (this.now() >= root.treeProgress.deadlineAt) diagnostics.push({ code: 'native_orchestration_deadline_reached', severity: 'blocking' });
+                    for (const [counter, limit] of [['steps', 'maxSteps'], ['attempts', 'maxAttempts']]) {
+                        if (root.treeProgress[counter] >= root.limits[limit]) diagnostics.push({ code: 'native_orchestration_' + counter + '_limit_reached', severity: 'info' });
+                    }
+                    if (capacity.status === 'available') {
+                        if (capacity.overrun) diagnostics.push({ code: 'native_orchestration_budget_overrun', severity: 'blocking' });
+                        for (const dimension of ['requests', 'tokens', 'jobs', 'items', 'inputBytes']) if (capacity.ceiling[dimension] > 0 && capacity.remaining[dimension] === 0)
+                            diagnostics.push({ code: 'native_orchestration_capacity_' + dimension + '_unavailable', severity: 'info' });
+                    }
+                }
+                const progress = value => Object.fromEntries([...TREE_LOGICAL_COUNTERS, 'depth', 'deadlineAt'].map(field => [field, value[field]]));
                 const payload = { status: root.status, cancelRequested: root.cancelRequested, source: selectorFor(root), planRef: root.planRef,
                     versions: { epoch: root.epoch, stateVersion: root.stateVersion, graphRevision: root.graphRevision },
+                    execution: { limits: root.limits, progress: progress(root.progress), treeProgress: progress(root.treeProgress) }, capacity,
                     graph: { nodes: root.graph.nodes.map(node => ({ nodeId: node.nodeId, kind: node.kind,
                         label: revision.definition.nodes.find(original => original.nodeId === node.nodeId)?.label ?? null })),
                     edges: root.graph.edges.map(edge => ({ edgeId: edge.edgeId, from: edge.from, to: edge.to, loopBack: edge.loopBack })) },
