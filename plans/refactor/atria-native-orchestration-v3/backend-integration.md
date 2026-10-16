@@ -102,3 +102,5 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 第三十六组显式Result policy/物理record/envelope见接口§17.46，只有validators与受控存储fixture；没有Result产品路由或writer。不能从Model返回/冷Effect摘要自行组装正文Result；实际原completion proof及领域currentness/父Audience仍待接。SQL精选补证不改变这一边界。
 
 第三十七组原Model实际wrapper可在有效scope内取得私有完成事实，原Run→Source支持合法元数据控制（接口§17.47）；复制或冷收据不恢复正文证明。无新增HTTP/前端API、正式Result writer或durable return，不能由客户端拼Result、把proof当批准或把Model confirmed当Run completed。正式领域producer/Audience与后续消费者仍在实施，尚未发送最终后端交付通知。
+
+第三十八组增加内部原银行child闭包只读观察（接口§17.48），无新客户端路由。held/unknown或released但overrun都不能投影为成功完成；closed费用事实也不授予正文读取/输出或控制权返回。正式Result/Output/return仍待后端完成后统一交付。
