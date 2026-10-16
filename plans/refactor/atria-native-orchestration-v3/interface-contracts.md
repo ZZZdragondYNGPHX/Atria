@@ -713,4 +713,16 @@ Project Source capture改用原ProjectAgentService._ensureDraftMutable的实际�
 
 在线活旁路同步处理：`/api/chats/state/patch`的原raw tx同样取外层聊天边界，保留FS无parent sidecar允许、SQLite原parent检查拒绝的差异；普通generation job自动保存使用原已认证`job.handle`，不能从没有handle的requestMeta落入FS直写；角色rename/delete的原Repo操作及随后原文件清理尾部持有同一边界，避免尾部删除后来新建聊天。不重写这些业务操作或迁移任何旧编排数据。
 
-**尚未封闭的管理旁路**：原sync shadow live publication、SQL dematerialize、cross-mode restore原raw clear、同FS extract/backup/recovery rollback仍有绕canonical Repo的写入。本组仅完成上述canonical和在线入口，不能声称所有原RP写入已原子，也不开放RP Model/正式输出consumer。下一组须在实际目标publication之前取得同Runtime/chat域围栏、避免跨网络等待和Engine→Runtime反序，再接原RP Context。准确路径与设备接续队列归同一Record第二十六组。可信Review、Hybrid、后台producer、Delegate/Handoff和正式业务闭包仍按既有阶段分账；本地隔离测试不替代外部费用/质量/真实客户端。
+第二十六组时尚未封闭的管理入口已在[§17.37](#1737-原rp同步恢复与管理写入围栏)接入同一边界。此处仍不授权RP Context/model、Actor或P4正式输出；它们保留各自原领域准入与后续实施队列。
+
+### 17.37 原RP同步、恢复与管理写入围栏
+
+复用§17.36唯一`withChatWrite`，不新建锁表、银行或业务writer。`reconcileShadowToLive`独立入口在修剪/替换live tree前进入Runtime→owner chat-domain；有原认证handle的调用直接传同一handle，独立内部调用从原directories.root解析。`dematerializeWorkdirIntoUserData`在任何SQL事务之前进入同一边界。新内部组合`publishShadowToUserData`跨文件发布与SQL写回持有同一边界；pull首次配对/fast-forward/merge、undo及responder ref publication均使用它。Peer HTTP fetch/push保持在边界之外，不持Runtime锁等待另一个Host。
+
+原cross-mode restore从live snapshot前到raw clear、MigrationRunner、文件提取、成功或失败回滚结束保持同一边界；同FS restore、原recovery apply和`restoreFromSnapshot`同样先drain消费再执行实际替换。MigrationRunner的公开入口在目标handle边界内执行整个copy/verify/rollback，内部实现为私有方法。没有EngineTx中反取Runtime；原read-only、migration lock和原Host maintenance继续按原职责工作，不能代替响应消费边界。
+
+原账户restore的失败回滚会替换全root，即使用户仅选择chats也可能覆盖V3元数据。因此复用已有`native_orchestration_retention_review_required`：cross-mode、同FS、recovery apply及直接snapshot replay在原Run或Record历史仍存在时，提前拒绝snapshot/clear/publication；recovery HTTP也返回409及原错误码。无法取得原Engine且root有Native目录时不推断“没有历史”。这保留现有安全拒绝语义，尚不是可信restore review或完整source闭包恢复。
+
+原Storage Management的edit/delete/recovery在检查实际文件、CAS与写入前进入同一边界，保留原quota、恢复点、原子rename、路径保护和权限。原reset-settings的raw delete与seed同scope；管理员删除从原账户身份撤销、Engine.deleteUser到可选purge同scope。原账户reset-step2在同scope复用原Host maintenance，先原Engine.deleteUser关闭SQLite/清SQL行，再清目录并重置原内容；保留原`native-host.identity`，避免旧打开连接和身份文件丢失使Host失效。账户删除purge则维持既有删除身份语义：旧Host拒绝重新读删除身份，冷重开才可检查空数据，不放松Owner协议。
+
+本组实际本地证据为CachyOS/Node24上的FS/SQLite并发与真实HTTP、原FS/SQLite同步及迁移回归。新管理入口SQL/Windows/Termux/真实Provider与质量仍NOT_RUN，完整P3 Gate未通过；RP模型或正文consumer仍不可由这些写围栏推定可用。精确提交、测试、失败和fixture清理修复归同一Record第二十七组。
