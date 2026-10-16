@@ -14,6 +14,7 @@
 - 第八轮状态：**D8 已冻结：U2 Graph Canvas + Inspector 双向编辑、原生 Plan Draft/Validate/Publish、运行 Timeline 默认/Graph 切换、Host RunProjection/Diagnostics、可信审批及 PC/移动等价编辑能力**。
 - 第九轮状态：**D9=E1，E0_DESIGN_READY。用户已于2026-10-15明确授权正式开发；同一实现分支已从当时最新main建立，P1/P2/P3均有局部实证，完整Gate未通过。P1–P8产品证据逐组取得，未测项仍NOT_RUN/BLOCKED。**
 - 文档性质：冻结设计与实施路由；开发已获授权。实际代码/测试/提交状态只归同一Record；最终验收通过后才集成main。
+- 最新实现与前端分工（2026-10-16）：`refactor/atria-native-orchestration-v3@08e523b6f` 已合入 `main@c57fada6e`；第六十四至六十八组补 Project Review Root 闭包、Run Projection/Timeline/取消/分页、RP 预检启动和有限 Plan strategy 演进。实际 HTTP/禁用范围以 [backend-integration 当前快照](backend-integration.md#当前接口快照第六十四至六十八组) 为准。用户将 P5 前端转交 Claude Code，本代理未实施页面；完整 P1–P4/最终 Gate 仍 NOT_READY，原生 Prompt/评测等后端剩余项不转嫁前端。源码未集成 main。
 - 外部技术参照核对日期：2026-10-15；只对比模式和契约，不宣称框架直接兼容 Atria。
 
 ## 目标与现状

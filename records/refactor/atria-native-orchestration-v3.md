@@ -872,3 +872,41 @@
 - Source 84bcdc1d7→248b75ad5。实际原Scheduler operation只建一个Root，1–12轮按发布self-loop与原steps/attempts/edge/loop上限经真实Transition/EdgeAdmission/settlement；Source和bank初始引用不变。私有继续许可要求原轮次receipt、工具事实及原费用closed。原Task编辑/Binding/取消/previousSystem篡改拒下轮，未知费用保留Task完成但不准下一轮。
 - 首次两轮阳性2FAIL（12.167s）：原fixture 16k模型容量不足，实际context预算正确拒绝；改测试使用原持久ModelProfile 65536容量，并让共享Task工具transcript省略compute噪声，未放宽预算。两轮2PASS（15.4s）。新suite其余精选10PASS/12filterSKIP（60.65s），再补12PASS/10filterSKIP（47.516s），最终22个不同case均通过，非完整22一轮复跑。原plain轮次2PASS；组合回归时误写不存在的native/studio-agent.test.js导致该suite ENOENT，改正确atria-shell/studio-agent-a8.test.js后原tool loop/authoritative continuation两项2PASS（0.643s）。七文件定向原ESLint与diff通过。
 - 用户更新停止边界：完成后端开发后停止、推送并提供交Claude Code的前端提示词；此后不实施P5前端。当前仍需Project提案/Review/最终输出、后端API及其它原消费者闭包，不把本提交当后端完成，不提前写HANDOFF。全产品/外部收费质量/三端/本轮SQL尚未验证，未合main。
+
+## 2026-10-16 — W07/P4第六十三组：原Project提案与Review评估
+
+- Source `248b75ad5`→`8ac83ba3e`；原有待提交记录随后续真实结果一并保存，源提交由 Git 核对。
+- 原提案/Resource/Source/frontend.patch、reuse/reset/prepare_review均要求project.propose及逐工具原schema pin，通过原Model实际call→S2 Effect/同Task bank→原Task/Workspace writer。仅自己的实际Review receipt允许本轮收尾，不授新generation或正式Commit。
+- 新suite首次阳性两项FAIL（30.009s），已执行到真实Review，测试误读公开snapshot不存在的proposals；改核workspace.operations。完整suite6PASS/2FAIL（107.963s），仅阳性又误核公开snapshot未暴露commitIntent；改原Repository纯读后两阳性2PASS/6filterSKIP（30.03s）。最终8个不同case均通过，包含缺pin和ACK saved/missing的一次原Workspace评估、无正式Project更改；未称完整8一轮重跑。原计划未授权/独立编辑相关4PASS/26filterSKIP（12.699s），Source suite因pattern无命中是整suite skip。五文件定向原ESLint及diff通过，无全仓/独立审查。
+- 继续正式Project输出/费用/Run闭包与后端API，不进入P5前端；后端完成后按用户要求推送、HANDOFF并交Claude Code提示词。本组不冒称后端完成或全产品Gate通过。
+
+## 2026-10-16 — W07/P4第六十四组：原Project Review的Result/Graph/费用/Run收口
+
+- Source `8ac83ba3e`→`d703706dc`（同提交含第六十五组）。接续工作区已有未提交收口代码，实现接口§17.74：活原完成对象、原Task Review、全部轮次银行事实→有界json Result→真实Graph output→单OutputClaim/Root.completed；原项目仍待用户Review，无正式Commit。
+- 阳性先后两轮各2FAIL（31.349s、30.958s）：先是在事务内过早读尚未保存的command，再是误将本次traversal的选中edge摘要与整个循环edge表比较；修正后2PASS（31.926s）。早期故障测试hook在已持Studio队列内再次排队而自等待，该轮被终止；移除此不可能并发hook，不记通过。完整14 case一次10PASS/4FAIL（266.525s），四失败是ACK hook在嵌套CAS、仍未物理提交时注入却称saved；改为真实外层transaction边界后，ACK及阳性精选6PASS/8filterSKIP（148.562s）。最终14个不同case有通过证据，未称完整14一轮重跑。
+- Binding/取消末await保留、terminal写后rollback、重hash外来Result/claim/traversal/command/原费用拒绝、合法后续Project变更仍读历史均有对应证据。追加Projection原费用/完整分页后，Project阳性与RP source阳性组合4PASS/16filterSKIP（31.906s）。无本轮SQL/真实外部费用质量/三端/全仓/独立审查证据。
+
+## 2026-10-16 — W08后端第六十五组：Authoring pins与Host Projection/Timeline/分页/取消
+
+- Source 同 `d703706dc`。实现接口§17.75：精确Plan revision、原依赖pin inspect、服务器validation digest header；Run按原Source列出、snapshot/delta、有界详情、封闭Timeline、原银行costs、脱敏diagnostics及原CAS取消。没有Browser runner、generic dispatch或approve。
+- 新HTTP suite首次10PASS/2FAIL（2.910s）：foreign测试用了只接受单handle的原harness而抛500；改为原多owner隔离目录映射后12/12 PASS（2.963s）。与authoring共20/20 PASS（4.070s）。Result原测试仍预期project_review policy未实现，组合78PASS/1FAIL（8.262s）；同步为新json-only合同后，Result/Plan/Binding/Run/Graph共126PASS/4SKIP（6.314s）。后续单次cursor/Timeline/类型和分页边界最终结果归第六十八组。
+- disconnect只结束观察，cursor并发重放/跨scope/过期/重启/版本不合需resnapshot。Source撤销/read-only、CAS重放及不暴露内部正文/凭据有反例；只实现数据/API，未实施P5页面或真实Browser流程。
+
+## 2026-10-16 — W06后端第六十六组：普通RP真实产品HTTP
+
+- Source `d703706dc`→`e1eaeeb22`。实现接口§17.76：原control source bind、零发送预检、boot及精确审核指纹启动、原Scheduler同request观察、安全status observation，正式正文仍由单Chat writer持有。RP完整模型wrapper不作为operation下载结果暴露。
+- 新suite6/6 PASS（4.640s）；补原source identity接口后阳性2PASS/4filterSKIP（4.241s）；最后与Project Projection阳性组合4PASS/16filterSKIP（31.906s）。验证原Host/银行/Chat+marker/Graph只发送一次，及Binding/Route/Host改变、缺review/owner注入/错误floor/禁用账户拒绝。请求与用量为localhost合成，不是外部收费或全端证据。
+
+## 2026-10-16 — W07后端第六十七组：原生Plan strategy与精确发布回滚
+
+- Source `e1eaeeb22`→`665906898`→`cf420a5c1`。实现接口§17.77：原PlanRoot耐久声明/候选、收紧limits的新immutable revision、原Binding CAS、精确owned rollback/discard；作者Draft、既有Run和原费用保留。原native Binding拒绝旧target/evaluator fallback；原生Prompt/worker未实现，不能用旧评测冒称新能力。
+- 首版10/10 PASS（8.198s）。随后与原Evolution组合53PASS，但另一原partial suite缺browser-context引导而加载失败（67.187s）；补引导后又暴露其仍发已废止whole-text proposal，修为原bounded edits协议后partial 1/1 PASS（3.825s）；原Evolution主体suite此前PASS（58.235s）。追加Route撤销/精确rollback/discard后新suite12/12 PASS（7.852s）；拒旧target guard后12/12 PASS（7.734s），再补catalog/原target拒绝断言精选2PASS/10filterSKIP（1.636s）。没有产品fallback或独立审查。
+- 原生plan-strategy自动评测/晋升仍unavailable；plan-prompt/其它策略/来源与完整W07未交付。这些是后端剩余项，Claude Code不能用UI绕过。
+
+## 2026-10-16 — 第六十八组：同步main与前端职责交接
+
+- fetch核对 `origin/main=c57fada6e`；由 `cf420a5c1` 合入main至 `efb072929`。处理四处冲突：GenerationHost保留V3实际producer lane关联，SQL scratch保留原Host lifecycle/显式topology，测试/说明采纳main实际API与精简治理。未引入编排新页面，未反向合main。
+- 合并后authoring/run-observation/RP HTTP/result-contracts/plan-repository/run-repository/plan-evolution七suites：**124PASS/4SKIP（15.471s）**；Project terminal（阳性/撤权/历史proof）与Session后续输入+冷重开proof精选：**10PASS/32filterSKIP（115.837s）**。合并前最后31文件原ESLint和diff检查通过；后续只做受影响验证，不虚构全仓/Actions/SQL/真实外部或三端通过。
+- 合并后的原resolver双HTTP/quota/World生产链精选 **2PASS/16filterSKIP（16.884s）**。扩大到两个冲突旧test文件的全文件lint发现27项；对origin/main逐文件stdin实核，原已有20项Jest规则和2项Boolean规则。修本任务fixture五处缩进后 `efb072929`→`08e523b6f`，这两个文件恰余与main同数的22项，不擅自改全文件断言或关规则；其余直接改动及关键合并生产模块定向ESLint、diff通过。最后只改缩进，未重跑无行为变化测试。
+- 用户将前端交给Claude Code；当前已有可接入真实API，本代理停止在页面实现前。完整P1–P4/最终Gate仍NOT_READY，P5未实施，P6–P8未完成。交接必须明确原生Prompt/完整Eval/其余producer/可信审批/restore等后端剩余项，不能把有限接口交接称为“全部后端完成”或由前端假实现。按本次明确交接请求写唯一HANDOFF及接手提示词，分支只push存储，保留活跃工作树。
+- 最终源码 `08e523b6f` 已推送同名远端任务分支；33个直接修改/关键合并JS文件定向ESLint通过，源码工作区clean。docs六份交接/接口/Record的本地Markdown目标检查无缺失，docs另行提交推送；不等待Actions，不合main，不清理仍活跃分支。

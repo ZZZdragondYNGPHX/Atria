@@ -1,5 +1,11 @@
 # D9 E1 — 实施状态
 
+## 2026-10-16 当前接口交接快照
+
+源码 `08e523b6f` 已合入 `main@c57fada6e`，未反向集成 main。有限 Project Review Root、Run observation/Timeline/分页/取消、RP reviewed HTTP 与手动 Plan strategy 已实现；实际开放范围见 [backend-integration](backend-integration.md#当前接口快照第六十四至六十八组)。合并后 authoring/Run/RP HTTP/Result/Plan repositories/Plan evolution 七 suites **124 PASS、4 SKIP**（15.471s）；Project terminal 与 Session historical proof 精选 **10 PASS、32 filter SKIP**（115.837s）。分轮证据不可叠成一次全仓通过。
+
+**P1–P4 与最终 Gate 仍 NOT_READY；P5 UI 未实施，按用户分工交 Claude Code 接已有 API。** plan-prompt/原生 evaluator/自动晋升、其余 producer/跨域组合、可信审批、完整恢复/释放、P6–P8 和实际三端/外部费用质量仍未完成。有限前端接口交接不核销这些后端工作，不将实现缺口转嫁给前端。
+
 ## 8.2 当前状态
 
 当前：L0 tracked scanner/AST，以及P1/P2/P3的部分L1与真实隔离存储/Host工程证据已取得，精确commit/测试数/故障范围归[同一Record](../../../records/refactor/atria-native-orchestration-v3.md)。包括四Engine authoring/Ledger/Owner、Windows测试Host进程kill、受控Graph/Effect/Join、三域原银行、实际GenerationHost本地HTTP发送、原Audience编译、原Tool协议、恢复保留与父子共享预算/逻辑计数。它们不构成完整V01–V10或任一完整P阶段PASS，更不代表L2所需完整installed Host+Browser流程。P4–P8、CL01–CL12完整客户端、真实外部Provider/Tool部署/费用、可信Review Origin及人工质量仍NOT_RUN；缺设备/账号/可信准入者BLOCKED。P3具体分账见§9.1，未集成main。

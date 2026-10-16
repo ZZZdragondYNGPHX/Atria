@@ -2,11 +2,70 @@
 
 > 2026-10-16。本文件属于同一 Plan Bundle，用于用户已授权的提示词预设/前端并行任务整合。详细合同仍归 [interface-contracts](interface-contracts.md)，阶段门槛仍归 [acceptance-matrix](acceptance-matrix.md)，精确源码提交/实测与失败只归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。本文不将 P3 子工作冒称完整 V3 后端完成。
 
+## 当前接口快照（第六十四至六十八组）
+
+本节覆盖下文历史分组中的“尚无 Run API”“Project 单轮”“RP 无产品入口”等旧描述。源码 `08e523b6f` 已合入 `main@c57fada6e`，仍在 `refactor/atria-native-orchestration-v3`，没有反向集成 main。**前端已有可接入的真实接口；完整 P1–P4/最终 Gate 仍 NOT_READY**。未交付后端项仍归后端，不由 Claude Code 用 Browser 逻辑补齐。
+
+用户当前分工：Codex 推进后端，前端交给 Claude Code；不由本任务实施 P5 页面。前端可在同任务分支基于下列已实现合同工作，未实现项显示真实 unavailable，不把有限接口交接当作完整 P4 验收。
+
+### Authoring
+
+下文 §2 的 Plan/Binding envelope 和路由保持。另有：
+
+| `/api/native/orchestration` POST 后缀 | read body / 返回 |
+| --- | --- |
+| `/plans/revision` | `{planRef}`；返回精确已发布修订，含 definition/dependencyPins |
+| `/dependencies/inspect` | `{pinId,port,resourceRef}`；只返回原 authority 算出的 `{pinId,port,resourceRef,integrity}`，不返回资源正文，不授运行权 |
+
+`/plans/validate` 的响应头 `X-Atria-Validation-Digest` 可直接用于 `/plans/publish` 的 validationDigest。Draft 保存返回的 definitionHash 用作下一次 CAS 的 expectedDefinitionHash；前端不需复制 Node 的 hash 实现。依赖 inspect 只表示精确数据指纹，机制可用性仍由完整 Validate/Publish 判断。
+
+### Run 观察与取消
+
+全部复用原登录/CSRF/owner、原 Source inspection 和 `private, no-store`。没有通用 Run 启动/任意 Effect/GraphPatch/approve dispatcher。
+
+| POST 后缀 | body |
+| --- | --- |
+| `/runs/list` | `{sourceSelector,cursor,limit}`；cursor 首次 null，limit 1–100；按精确原来源列 Run |
+| `/runs/observe` | `{runId,cursor,limit}`；首次 null 返回 snapshot，后续 deltaBatch；未变化可等约 1 秒后返回空 changes |
+| `/runs/details` | `{runId,collection,cursor,limit}`；collection 为 nodes/edges/attempts/effects/approvals/events；有界完整分页 |
+| `/runs/diagnostics` | `{runId}`；只返回状态推导的脱敏 code/controls |
+| `/runs/cancel` | mutation envelope；body `{runId,expectedEpoch,expectedStateVersion,expectedGraphRevision,reasonCode}`；沿原 Run CAS，未知费用/外部效果不退款、不假称撤销 |
+
+projection envelope 为 `{schemaVersion,runId,projectionId,hostBootId,epoch,projectionVersion,visibilityDigest,seq,cursor,kind,payload}`。snapshot payload 含 Source selector、planRef、CAS versions、Graph 元数据、Attempt/Effect/Approval 状态、events、原银行 costs、diagnostics、controls 和 hasMore。没有 Result/Context/模型正文、Secret、审批 nonce、dispatch token 或原输入。Timeline 只投影封闭事件类型与 opaque eventId，不返回内部 eventSeq/reasonCode。
+
+每个 collection 在 snapshot 内最多 limit 项，hasMore 为真时由 `/runs/details` 获取其余；分页绑定同一 Run stateVersion/epoch/visibility。deltaBatch payload 是 `{fromSeq,toSeq,baseProjectionVersion,changes:[{seq,snapshot}]}`，snapshot 同样带 hasMore，空批次不增加 seq。前端原子替换该有限窗口，并对仍需显示的 collection 重读同版本完整分页，不能拼不同版本的页。
+
+cursor 是 Host 内有界、约 5 分钟有效的 opaque token；观察 cursor 单次推进且固定 limit，重复/并发消费、改 limit、跨用户/Run/类型、重启或 epoch/visibility 变化返回 409 `native_orchestration_projection_resync_required`。重新以 null 取 snapshot；旧 projection/页立即丢弃。关闭观察请求不取消 Run。controls 中 resume/reconcile/approve 仍 false；Approval 的 reviewAvailable 仍 false。
+
+costs 来自原银行同事务事实：knownTotalTokens 与 unknownAttempts/reservedUpperTokens 分开，localJobs/localUnknownJobs/localWallMs 独立，不虚构货币费用或“已退款”。`settled/pending/unavailable/not_started` 不等于正式领域输出成功；以实际 Run/领域收据为准。
+
+### 普通 RP 与 Project
+
+普通 RP 在 `/api/native/generation` 新增：
+
+| POST 后缀 | 请求/行为 |
+| --- | --- |
+| `/rp/source` | `{locator:{charDir,name,isGroup,groupId},expectedHostBootId}` + 同值 `X-Atria-Host-Boot-Id`；通过原 RpRunControl.bind 取得/重读原 controlId；不调用模型，不转换旧模式或补历史消息 ID |
+| `/rp/preflight` | `{controlId,floor,requestId,routeRef}`；只读当前最后一条真实 user 输入与精确 Binding/有限 Plan/原 Route；返回 budget/childBudget/outputContract/Source 和配置指纹，头 `X-Atria-Preflight-Fingerprint` 为实际审核指纹 |
+| `/rp/start` | `{input:<同预检输入>,expectedPreflightFingerprint,expectedHostBootId}` + boot header；202 返回 `{operationId,hostBootId}`；只允许有正式 rp_narration/assistant 输出的有限图 |
+
+boot 可从原 authoring read envelope 取得。locator 对普通 chat 使用真实 charDir/name、isGroup:false、groupId:null；group 使用 charDir:null、真实 groupId、isGroup:true。字段不能用显示名称猜 ID。旧消息缺原合法 source ID 时明确拒绝，不在 UI 伪造。
+
+预检不收费。启动后沿原 Scheduler、ModelPort、费用、Chat 单正文+marker、Graph/OutputClaim/Run 闭包；HTTP 断连不主动取消。相同 requestId 的已知同预检操作只返回原 operationId，配置不同拒绝；冷启动未知不重发。沿原 `/operations/:id` 观察安全 observation；RP 不通过 `/operations/:id/result` 保留或暴露模型 wrapper，正式正文重读原 Chat。Run 列表再按 rp_chat sourceSelector 查其耐久状态。
+
+Project 继续沿原 Studio Task generation/preflight/start/status/cancel 和原 Review/Commit API。显式 project_review/json output policy 现可把实际 prepare_review 的最后一轮、所有原费用、真实 Graph output Attempt、Result/OutputClaim 关联成 Root.completed；Task 保持原 human Review，绝不自动提交 Project。中间 result profile、blocked/conflict 或费用未知不能显示为这一成功出口。
+
+### Evolution 与真实剩余项
+
+原 Evolution API 的 catalog/declare/capture/prepare/check/write/rollback/discard 现接有限 `plan-strategy`：target 精确绑定 bindingId/version、PlanRevision、nodeId、`limits.<field>`。只收紧 maxSteps/maxAttempts/maxReplans/maxReviews/maxDelegates/maxHandoffs/maxEdgeVisits/maxLoopIterations/deadlineMs。候选由原 PlanRepository 发布新的不可变修订，保留作者 Draft，最后 CAS 原 Binding；回滚只接受自己的精确绑定/command，不能覆盖用户新选择或复活已消费候选。当前原生 Binding 不回退旧 workspace/Director evaluator 或原旧 target 自动晋升。
+
+**仍未实现**：plan-prompt、其它 strategy 字段/来源、完整原生 Evaluation worker/自动晋升、其余 Actor/Task/Graph producer 组合、公开通用 resume/reconcile/Result read、可信 Review Origin 与再认证、完整 restore/release/GC、P6 清退和产品验收。原生 Plan 评测明确 unavailable，不能借旧报告、假资料、Browser runner 或 approved 布尔值打通。这些不是前端需要代写的后端工作；P5 先消费以上实际接口，缺能力就保持不可用。完整三端/真实外部收费与质量本轮未测。
+
 ## 1. 分支和职责
 
 V3 后端使用 `refactor/atria-native-orchestration-v3`，任务工作区 `tasks/atria-native-orchestration-v3/source`；本 Plan 和 Record 使用长期 `docs` 分支。没有集成 main。提示词预设/前端任务应按自己的 Governance 在可审查的整合分支组合两个后端改动，不覆盖任一任务的未提交内容；P7 未通过不得以“合并两个任务”替代 main 集成门槛。
 
-用户最新安排是：V3 后端工作与真实剩余项发给现有任务“继续 E0 并审计 Atria 前端”，把本方案的前端范围并入其统一前端设计，最终由该任务输出交给 Claude Code 的一个提示词。V3 后端本轮未实现新 UI。D8 的领域交互语义由 [graph-editor-experience](graph-editor-experience.md) 持有；通用视觉/Shell/提示词编辑按并行任务的现有设计与组件统合，避免另建一套工作台或主题。
+用户当前安排是：本分支继续后端，页面开发交 Claude Code，提供可直接接手的提示词。当前实际接口与未交付后端以顶部快照为准。D8 的领域交互由 [graph-editor-experience](graph-editor-experience.md) 持有；通用视觉/Shell/提示词编辑沿 Serene Canvas 与现有组件统合，不另建工作台或主题。
 
 ## 2. 实际已挂载的 HTTP
 
@@ -32,7 +91,7 @@ Binding 只保存用户选择，精确 sourceSelector 使用原共享合同的 n
 
 原`/api/native/generation/turn`与`/turn/start`已在有限Native profile消费真实Binding（接口§17.29–§17.30、§17.33），沿原请求/排程/结果接口，不新增V3 Run启动协议。普通Narrator及原authorityRuntime显式typed transaction继续精确Narrator→output图；含原generationBudget的free-text Authority增加精确resolver→Narrator→output三节点链，原角色quota/compute共用Turn bank。原selection复用只接受已有V3保留事实，缺失或无quota的free-text Package仍明确unavailable。精确Binding不支持或过期即拒绝，不回退默认；Task/stages/interpreter与其余后台profile未接，有限普通后台JSON图见§17.43。安全native_orchestration_*错误保持脱敏，unavailable为503、冲突/过期为409，detached结果由原operation读取；不能将这一有限入口显示为任意Graph/Actor/Tool可运行。
 
-**尚无产品 HTTP**：Run start/get/cancel/resume、GraphPatch、Effect dispatch、RunProjection/long-poll、Approval approve。不得为 UI 接入猜造这些路径。原 authoring 对generation.send支持原精确Narrator/intent_resolver/studio Route的有限机制证据（接口§17.26、§17.33、§17.35）；未接原 capability authority 的能力继续 unknown。可发布机制不是运行grant；publish 不能通过前端布尔值解除。设计原型可以使用明确的无副作用数据，但未接真实接口的产品功能必须显示其实际 unavailable 状态。
+**尚无通用产品 HTTP**：Run start/resume/reconcile、GraphPatch、Effect dispatch、Result body read、Approval approve。Run list/observe/details/diagnostics/cancel 已实现，执行沿原领域入口，详见顶部快照。原 authoring 对generation.send支持原精确Narrator/intent_resolver/studio Route的有限机制证据；未接原 capability authority 的能力继续 unknown。可发布机制不是运行grant，publish 不能通过前端布尔值解除。未接真实接口的产品功能显示实际 unavailable，不猜造路径。
 
 ## 3. 当前内部 Host 组合
 

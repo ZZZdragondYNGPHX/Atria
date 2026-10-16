@@ -1024,3 +1024,37 @@ Chat ACK未知只reconcile；domain收据ACK未知与Host Effect receipt ACK未�
 第六十二组支持显式agent→output及至多一条agent self-loop，原Plan maxVisits/maxLoopIterations与实际preflight maxModelRounds共同约束1–12轮。原Scheduler operation及外层requestId只创建一个Root；每轮消费原Task/Model/tool/project_round事实、原Attempt settlement与同Task银行closed后，才通过原TransitionController、EdgeAdmission和计数准入下一轮。初始Source/budget ref冻结，下一轮逻辑input显式绑定当时自己的Source指纹；previousSystem只能取同操作实际上轮值。
 
 私有继续许可由真实上轮工具数、实际耐久settlement和原费用闭合产生，序列化收据不授执行。历史reader逐轮核原Graph traversal/edge/command及前轮receipt，独立编辑/Binding改变/取消/改system拒下轮且保留费用。未知费用保留原Task已完成但producer未settled，不发下一次Model。共享tool transcript只省略Task形返回中既有conversation/attempts/timeline及compute，实际费用仍完整绑定原receipt/ledger。Root最终出口尚待实现。
+
+## 17.73 原Project提案与Workspace Review
+
+第六十三组为原project.save/resource attach/update/fork/source write/move/delete/frontend.patch、reuse_plan/reset_operations与prepare_review逐工具开放同project.propose的精确原descriptor pin；仍只能消费原Model实际call，单次响应只允许一个末尾Task修改。它们全部调用原Task提案/原Workspace评估，不能正式Commit。prepare_review产生的review/blocked/conflict只在同操作私有已接受精确receipt指纹上允许完成本轮元数据与结果消费；原新generation/提案仍经原Draft mutable guard，普通Source不接受此终止推进。
+
+SourcePort带同Root的currentness可核原Model/工具/Host收据链后观察自有Review终态，历史read不生成新permit。原Workspace内部评估中间持久化与最终Task receipt分开，ACK未知只接受真实最终receipt；缺失时不重复evaluateWorkspace，原恢复/repair继续归原Task。正式项目修改仍需原用户Review/Commit，V3不新增Commit工具。
+
+## 17.74 Project Review Result、Graph输出与完整原银行闭包
+
+`d703706dc` 为显式 project_review/json policy 接真实原 generation completion、prepare_review receipt、Task 对话/指纹和全部轮次的原银行事实。原 Task/Project reader 可在同 Engine transaction 内读耐久事实，历史读取不需要或恢复活 scope。发布有界 json Result 后经真实 TransitionController、EdgeAdmission、output Attempt activate，再同 CAS 保存 OutputClaim、费用摘要、output settlement 与 Root.completed。claim 的 domainReceiptRef 指向原 round/Task Review 链，不表示正式 Project Commit。
+
+每个 metadata 步骤前后复验活操作/精确 Binding/配置、原 Task Review 状态和 Root，原银行 await 后再检查；合法同事务 Binding 替换/取消先提交再拒成功。历史 proof 交叉核 Plan/Result/producer/round/工具/Host command/traversal/费用。command 物理保存前只允许同原事务的 terminal proof 跳过它自己尚未保存的 command；后续 get/历史事实读取必须有精确 command。发布、终结 ACK 未知只观察原事实，不重复 Task/Workspace writer 或 HTTP；写后失败回滚整组 Native metadata，已存在的原 human Review/费用保留。
+
+## 17.75 公开Authoring指纹与安全Run Projection
+
+同一原 authoring namespace 新增 `/plans/revision`、`/dependencies/inspect`；validate response 通过 `X-Atria-Validation-Digest` 提供 Host 的规范化指纹，前端不另建 hash 协议。inspect 复用验证器的原数据 reader，只返回精确 pin，不返原正文、不运行工具或模型。
+
+`RunObservationService` 通过原 owner/Source inspector 与原 RunRepository 实现 `/runs/list/observe/details/diagnostics/cancel`。payload 只有公开元数据和原银行费用汇总；Result、模型/Context 内容、Secret、nonce、input/grant/dispatch capability 不投影。封闭 Timeline 类型映射 opaque eventId，内部 eventSeq 不作为可见 stream seq。Cursor 在 Host bounded Map 中，5分钟过期；observe 单次推进、固定 limit，分页与状态版本/epoch/visibility绑定，断线/重启/过期/并发重放/权限变化要求重新 snapshot，断连不取消 Run。详细 wire body 与 delta/window 语义唯一见 [当前接口快照](backend-integration.md#run-观察与取消)。
+
+取消使用原 CAS guards（含 graphRevision），只围栏新派发，pending/unknown 原费用和外部事实仍保留；不开放通用 start/resume/reconcile/approve。Projection 只显示其真实 controls，可信 Review 仍 unavailable。
+
+## 17.76 普通RP显式预检、原来源身份与HTTP启动
+
+`e1eaeeb22` 在原 Native generation namespace 增加 `/rp/source`、`/rp/preflight`、`/rp/start`。source 只调用原 RpRunControl.bind；预检实际末条 user 输入、精确 PlanBinding、有限 rp_narration/assistant 图、原 Route/配置/预算，不发送 Provider。实际 Host boot 与预检规范化指纹在 HTTP start 双校验，随后交原 Scheduler/ModelPort/原银行及唯一 Chat writer；不从请求接受 grant 或 caller context。
+
+同一已知 requestId/原 input/预检操作只返回原 operationId，即使正文已推进；变化拒绝。新 Host/冷 Run 的未知结果沿耐久 Run/receipt 拒重发，不从 Scheduler 状态制造执行许可。RP Scheduler 不保留可公开下载的完整模型 wrapper，只给原 operation status 一份安全 refs/output observation；正式正文重读 Chat，耐久运行由 §17.75 观察。Wire 字段及指纹响应头见 [当前接口快照](backend-integration.md#普通-rp-与-project)。
+
+## 17.77 有限原生Plan strategy候选与原Evolution
+
+`665906898` / `cf420a5c1` 在原 PlanRoot 上保存有界 declaration/candidate 元数据，由原 PlanRepository 的 validator/hash/不可变 revision 与原 Binding CAS 完成发布。首版只接 plan-strategy 的九类 limits 字段收紧；不接受能力、输出、Source、Secret、任意 path 或额度增加。候选不改作者 Draft/current revision、不改既有 Run，原 Evolution journal 的 beforeCommit gate 先接受，再进行精确原 Binding CAS；未知 ACK 可由原 candidate/Binding/command 调和。
+
+rollback 只认当前自己的 desired Binding 或精确已保存 rollback command，不能覆盖用户重选；回滚后的候选不再次激活，discard 不删除已发布不可变历史。原数据和机制依赖在 capture/check/write 前复验，后来的用户 Route 变更保留，rollback 不改 Route。scope 必须同原 Project/Task 或普通 character RP chat subject。新原生 Binding 的 catalog/capture/evaluation/publication 不回退历史 workspace/Director 或旧 targets；未绑定旧域的构建期能力仍待 P6 一次清退。
+
+原生 plan-prompt、其它 strategy/来源、Native Evaluation worker 仍未接；新 nativePlan settings 在 evaluator worker 执行前明确 unavailable，auto configure 拒绝，旧 report 无新资格。evaluator revision 纳入原 Plan/authoring/contracts 实现指纹。这里只是有限手动 Review 候选/发布合同，不核销完整 W07 或后端 Gate。
