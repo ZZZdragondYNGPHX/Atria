@@ -25,7 +25,9 @@ describe.each(harnesses)('$name original Project Task plan Effect', ({ make }) =
                 { projectAgent: f.agent, requireHostReceipt: true }));
             expect(fact.receipt).toEqual(receipt); expect(fact.observation.reasonCode).toBe('project_proposal_completed');
             await expect(f.authority.execution.sourcePort.revalidate(f.h.handle, root.sourceBinding)).rejects.toThrow('native_orchestration_source_stale');
-            await expect(f.authority.execution.budgetPort.assertCurrent(f.h.handle, root.budgetAuthorityRef)).rejects.toThrow();
+            // Original-bank continuity is an accounting fact; generic Source
+            // and expired operation scopes still cannot grant another send.
+            await expect(f.authority.execution.budgetPort.assertCurrent(f.h.handle, root.budgetAuthorityRef)).resolves.toBeUndefined();
             expect(task.compute.localWork.find(item => item.kind === 'project_tool')).toMatchObject({ status: 'settled', usage: { outcome: 'completed' } });
             expect(task.conversation.some(item => item.role === 'tool')).toBe(true); expect(root.status).toBe('running'); expect(f.requests).toHaveLength(1);
             expect(task.changeSets).toEqual([]); expect((await f.studio.observeRevision(f.h.handle, f.projectId)).revision).toBe(f.task.baseRevision);

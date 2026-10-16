@@ -6,6 +6,9 @@ import { fields } from '../../../public/shared/native-values.js';
 import { assertNativeTurnQuota } from './native-turn-quota.js';
 import { orchestrationComputeAttemptId, inspectComputeChildClosure, inspectComputeEffectClosure, assertComputeBudget } from '../../../public/shared/native-compute-budget.js';
 import { RpRunControl } from '../rp-run-control.js';
+import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
+import { checkedRecord } from './plan-repository.js';
+import { readProjectOwnedSource } from './project-tool-receipts.js';
 
 // V3 BudgetPort (interface §8.1/§13): a typed dispatcher onto the three original
 // banks. It owns no ledger, price or limit; every decision is the original
@@ -115,7 +118,8 @@ export class BudgetPort {
         return hashNativeDocument({ projectId: ref.projectId, taskId: ref.taskId, revision: task.baseRevision, executionFingerprint: task.executionFingerprint });
     }
 
-    // Each admission call re-derives the current original source and refuses a moved operation.
+    // Admission uses the original source or its exact Root-owned receipt chain;
+    // these accounting facts do not replace a sender's live operation grant.
     async #session(handle, ref) {
         const snapshot = await this.sessionCore.observe(handle, ref.sessionId);
         const anchor = { branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId };
@@ -127,7 +131,25 @@ export class BudgetPort {
         // Final consumption already owns the original Task/Studio queues. The
         // original transaction reader avoids queuing behind our own boundary.
         const { task, project } = await this.projectAgent[tx ? 'observeComputeSource' : 'observeContext'](handle, ref.projectId, ref.taskId);
-        if (project.revision.revision !== task.baseRevision || this.#projectOperation(ref, task) !== ref.operationId) throw new ConflictError('native_generation_revision_conflict');
+        if (project.revision.revision !== task.baseRevision) throw new ConflictError('native_generation_revision_conflict');
+        if (this.#projectOperation(ref, task) !== ref.operationId) {
+            if (this.projectRepository !== this.projectAgent._repository) throw new ConflictError('native_generation_revision_conflict');
+            const check = async active => {
+                const ids = [...new Set(task.attempts.flatMap(attempt => attempt.calls.map(call => call.nativeReceipt?.runId).filter(Boolean)))];
+                for (const runId of ids) {
+                    const root = (await checkedRecord(active, { kind: K.orchestrationRun, handle, runId }))?.doc;
+                    if (!root || root.ownerRef.handle !== handle || root.cancelRequested || root.status !== 'running'
+                        || hashNativeDocument(root.budgetAuthorityRef) !== hashNativeDocument(ref)) continue;
+                    try {
+                        const progress = await readProjectOwnedSource(active, handle, root, { projectAgent: this.projectAgent });
+                        if (progress.currentFingerprint === task.executionFingerprint) return;
+                    } catch (error) { if (error.code !== 'native_orchestration_project_tool_receipt_invalid') throw error; }
+                }
+                throw new ConflictError('native_generation_revision_conflict');
+            };
+            if (tx) await check(tx);
+            else await this.projectRepository.engine.withTransaction(handle, check);
+        }
         return task;
     }
 

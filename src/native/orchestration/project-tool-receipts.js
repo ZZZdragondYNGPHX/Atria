@@ -36,7 +36,6 @@ export async function readProjectToolReceipt(tx, handle, root, effectId, { proje
     assertDigest(tool.inputRef.modelResultHash, 'modelResultHash');
     if (attempt.kind !== 'generation' || receipt.projectAttemptId !== attempt.attemptId || receipt.callId !== call.callId || receipt.name !== call.name
         || receipt.argsHash !== call.argsHash || receipt.toSequence > task.sequence || receipt.sourceBindingDigest !== root.sourceBinding.bindingDigest
-        || receipt.fromFingerprint !== source.executionFingerprint
         || receipt.nodeAttemptId !== tool.nodeAttemptId || !['dispatching', 'confirmed', 'unknown'].includes(tool.status) || !tool.dispatchToken
         || tool.capability !== projectToolCapability(call.name) || tool.actionRef.kind !== projectToolAction(call.name)
         || tool.risk !== 'R1' || tool.requiresApproval || tool.approvalRef !== null
@@ -88,4 +87,32 @@ export async function readProjectToolReceipt(tx, handle, root, effectId, { proje
     if (requireHostReceipt && (!host || tool.status !== 'confirmed')) invalid();
     return { receipt, domainReceiptRef, modelReceiptRef: modelFact.receiptRef, budgetAttemptRef: budget, observation,
         hostReceiptRef: host ? { runId: root.runId, receiptId } : null };
+}
+
+/** Exact Root-owned current Source facts. Historical receipts alone cannot start an operation. */
+export async function readProjectOwnedSource(tx, handle, root, { projectAgent } = {}) {
+    if (!(projectAgent instanceof ProjectAgentService) || !(projectAgent._repository instanceof ProjectTaskRepository)
+        || root.ownerRef.handle !== handle || root.sourceBinding.sourceAuthority !== 'project') invalid();
+    await projectAgent._repository.engine.withTransaction(handle, active => { if (active !== tx) invalid(); });
+    const stored = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: root.runId }))?.doc;
+    if (!stored || !equal(stored.sourceBinding, root.sourceBinding) || !equal(stored.planRef, root.planRef) || !equal(stored.graph, root.graph)) invalid();
+    const source = root.sourceBinding.sourceRef;
+    const task = await ProjectTaskRepository.prototype.get.call(projectAgent._repository, handle, source.projectId, source.taskId);
+    if (!task || task.baseRevision !== source.revision) invalid();
+    const receipts = task.attempts.flatMap(attempt => attempt.calls.map(call => call.nativeReceipt).filter(receipt => receipt?.runId === root.runId))
+        .toSorted((a, b) => a.fromSequence - b.fromSequence);
+    let fingerprint = source.executionFingerprint, sequence = -1;
+    const refs = [], ids = new Set();
+    for (const receipt of receipts) {
+        if (ids.has(receipt.effectId) || receipt.fromFingerprint !== fingerprint || receipt.fromSequence < sequence) invalid();
+        const fact = await readProjectToolReceipt(tx, handle, root, receipt.effectId, { projectAgent, requireHostReceipt: true });
+        if (!fact || !equal(fact.receipt, receipt)) invalid();
+        ids.add(receipt.effectId); fingerprint = receipt.toFingerprint; sequence = receipt.toSequence;
+        refs.push({ effectId: receipt.effectId, domainReceiptRef: fact.domainReceiptRef, hostReceiptRef: fact.hostReceiptRef });
+    }
+    const current = await ProjectAgentService.prototype.observeComputeSource.call(projectAgent, handle, source.projectId, source.taskId);
+    if (current.task.baseRevision !== source.revision || current.project.revision.revision !== source.revision
+        || current.task.executionFingerprint !== fingerprint) invalid();
+    return { runId: root.runId, sourceBindingDigest: root.sourceBinding.bindingDigest, initialFingerprint: source.executionFingerprint,
+        currentFingerprint: fingerprint, receiptRefs: refs };
 }

@@ -25,12 +25,12 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
         authorize: async ({ handle }) => { if (typeof handle !== 'string' || !handle) throw new TypeError('Authenticated owner is required'); },
         admit: ({ handle, tx, sourceRequest }) => sourcePort.capture(handle, sourceRequest, { tx }) });
     const effects = new EffectController({ runs,
-        authorizeEffect: async args => { await sourcePort.revalidate(args.handle, args.root.sourceBinding, { tx: args.tx }); return effectAuthority.authorize(args); },
+        authorizeEffect: async args => { await sourcePort.revalidate(args.handle, args.root.sourceBinding, { tx: args.tx, root: args.root }); return effectAuthority.authorize(args); },
         verifyBudgetAttempt: args => budgetPort.verifyBudgetAttempt(args),
         verifyObservation: args => effectAuthority.verifyObservation(args), verifyApproval: args => effectAuthority.verifyApproval(args) });
     const delegates = new DelegateController({ runs,
         authorizeDelegation: async args => {
-            await sourcePort.revalidate(args.handle, args.parent.sourceBinding, { tx: args.tx });
+            await sourcePort.revalidate(args.handle, args.parent.sourceBinding, { tx: args.tx, root: args.parent });
             if (typeof effectAuthority.authorizeDelegation !== 'function') fail('native_orchestration_delegation_unavailable');
             return effectAuthority.authorizeDelegation(args);
         }, verifyReservation: args => budgetPort.verifyReservation(args) });
@@ -44,7 +44,7 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
             if (!dispatchToken || root.cancelRequested || root.status !== 'running' || root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation
                 || intent.status !== 'dispatching' || intent.dispatchToken !== dispatchToken || intent.epoch !== root.epoch
                 || intent.hostBootId !== root.hostBootId || intent.hostGeneration !== root.hostGeneration) fail('native_orchestration_dispatch_stale');
-            await sourcePort.revalidate(handle, root.sourceBinding, { tx });
+            await sourcePort.revalidate(handle, root.sourceBinding, { tx, root });
             const decision = await effectAuthority.authorize({ handle, tx, root, intent, phase: 'dispatch' });
             if (hashNativeDocument(decision) !== hashNativeDocument(effectDecision(intent))) fail('native_orchestration_effect_authority_changed');
             return { root, intent };
@@ -60,7 +60,7 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
     async function generationSend(handle, { runId, effectId, reservationId = null, limits, context, quotaProof }) {
         const root = await runs.get(handle, runId);
         if (root.parentRef ? reservationId !== root.runId : reservationId !== null && reservationId !== root.runId) fail('native_orchestration_budget_reservation_mismatch');
-        await sourcePort.revalidate(handle, root.sourceBinding);
+        await sourcePort.revalidate(handle, root.sourceBinding, { root });
         const assertContext = async (candidate, current, intent) => {
             if (!(candidate?.port instanceof ContextPort) || candidate.compiled?.request?.sourceBinding.bindingDigest !== current.sourceBinding.bindingDigest
                 || candidate.compiled.request.grantDigest !== intent.grantDigest) fail('native_orchestration_context_denied');
@@ -74,7 +74,7 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
                 || current.hostBootId !== fence.hostBootId || current.hostGeneration !== fence.generation
                 || intent.hostBootId !== current.hostBootId || intent.hostGeneration !== current.hostGeneration
                 || intent.sourceBindingDigest !== current.sourceBinding.bindingDigest) fail('native_orchestration_effect_not_prepared');
-            await sourcePort.revalidate(handle, current.sourceBinding, { tx });
+            await sourcePort.revalidate(handle, current.sourceBinding, { tx, root: current });
             const decision = await effectAuthority.authorize({ handle, tx, root: current, intent, phase: 'prepare_context' });
             if (hashNativeDocument(decision) !== hashNativeDocument(effectDecision(intent))) fail('native_orchestration_effect_authority_changed');
             return { current, intent };
@@ -89,7 +89,7 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
         }
         const bank = budgetPort.sendBank(handle, { authorityRef: root.budgetAuthorityRef, reservationId, limits, effectId, firstOrdinal: 0, quotaProof,
             assertCurrent: async () => {
-                await sourcePort.revalidate(handle, root.sourceBinding);
+                await sourcePort.revalidate(handle, root.sourceBinding, { root });
                 if (token) await assertDispatch({ handle, runId, effectId, dispatchToken: token });
                 else await preparedEffect();
             } });
@@ -139,7 +139,7 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
             || hashNativeDocument(child.budgetAuthorityRef) !== hashNativeDocument(parent.budgetAuthorityRef)
             || child.sourceBinding.bindingDigest !== parent.sourceBinding.bindingDigest) fail('native_orchestration_child_authority_invalid');
         if (hashNativeDocument(ceiling) !== hashNativeDocument(child.parentRef.budgetCeiling)) fail('native_orchestration_budget_reservation_mismatch');
-        await sourcePort.revalidate(handle, parent.sourceBinding);
+        await sourcePort.revalidate(handle, parent.sourceBinding, { root: parent });
         return budgetPort.reserveChild(handle, { authorityRef: parent.budgetAuthorityRef, parentReservationId: parent.parentRef ? parent.runId : null, childRunId, ceiling, limits });
     }
     return { runs, effects, delegates, budgetPort, sourcePort, generationSend, assertDispatch, reserveChild };

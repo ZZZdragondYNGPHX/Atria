@@ -11,6 +11,7 @@ import { BudgetPort } from './budget-port.js';
 import { ATRIA_PROJECT_CONFLICT_CODE } from '../authoring-contracts.js';
 import { RpRunControl } from '../rp-run-control.js';
 import { ChatRepo } from '../../storage/repositories/chat-repo.js';
+import { readProjectOwnedSource } from './project-tool-receipts.js';
 
 const conflict = () => { throw new ConflictError('native_orchestration_source_stale'); };
 
@@ -113,6 +114,25 @@ export class SourcePort {
     }
 
     async revalidate(handle, binding, options) {
+        if (binding.sourceAuthority === 'project' && options?.root) {
+            const { root, tx } = options;
+            if (root.ownerRef.handle !== handle || hashNativeDocument(root.sourceBinding) !== hashNativeDocument(binding)) conflict();
+            const check = async active => {
+                let progress;
+                try { progress = await readProjectOwnedSource(active, handle, root, { projectAgent: this.projectAgent }); } catch (error) {
+                    if (error.code === 'native_orchestration_project_tool_receipt_invalid') conflict();
+                    throw error;
+                }
+                const { task, project } = await ProjectAgentService.prototype.observeComputeSource.call(this.projectAgent, handle, binding.sourceRef.projectId, binding.sourceRef.taskId);
+                if (task.executionFingerprint !== progress.currentFingerprint || project.revision.revision !== binding.sourceRef.revision) conflict();
+                try { ProjectAgentService.prototype._ensureDraftMutable.call(this.projectAgent, task); } catch (error) {
+                    if (error instanceof ConflictError && ['project_agent_task_closed', 'project_agent_repair_limit', 'project_agent_review_locked', ATRIA_PROJECT_CONFLICT_CODE].includes(error.code)) conflict();
+                    throw error;
+                }
+                return { sourceBinding: structuredClone(binding), budgetAuthorityRef: structuredClone(binding.budgetAuthorityRef), sourceProgress: progress };
+            };
+            return tx ? check(tx) : this.projectAgent._repository.engine.withTransaction(handle, check);
+        }
         const current = await this.capture(handle, binding.sourceRequest, options);
         if (hashNativeDocument(current.sourceBinding) !== hashNativeDocument(binding)) conflict();
         return current;

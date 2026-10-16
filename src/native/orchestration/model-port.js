@@ -277,7 +277,7 @@ export class ModelPort {
                 || saved.observation.dispatchEvidence.reference.responseHash !== completion.responseHash
                 || saved.observation.dispatchEvidence.reference.finalRequestHash !== completion.snapshotHash)
                 fail('native_orchestration_model_result_receipt_changed');
-            await SourcePort.prototype.revalidate.call(this.sourcePort, handle, root.sourceBinding, { tx });
+            await SourcePort.prototype.revalidate.call(this.sourcePort, handle, root.sourceBinding, { tx, root });
             await BudgetPort.prototype.assertCurrent.call(this.budgetPort, handle, root.budgetAuthorityRef, { tx });
             for (const send of saved.observation.dispatchEvidence.reference.attempts) {
                 const observed = await BudgetPort.prototype.verifyBudgetAttempt.call(this.budgetPort, { handle, tx, root, intent,
@@ -287,7 +287,7 @@ export class ModelPort {
                 if (send.status === 'settled' && observed.status !== 'settled' || send.status === 'unknown' && observed.status === 'charged')
                     fail('native_orchestration_model_result_budget_changed');
             }
-            await SourcePort.prototype.revalidate.call(this.sourcePort, handle, root.sourceBinding, { tx });
+            await SourcePort.prototype.revalidate.call(this.sourcePort, handle, root.sourceBinding, { tx, root });
             const finalFence = await this.runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
             const currentRoot = await this.runs.get(handle, runId);
             if (hash(currentRoot) !== rootStamp || finalFence.hostBootId !== fence.hostBootId || finalFence.generation !== fence.generation)

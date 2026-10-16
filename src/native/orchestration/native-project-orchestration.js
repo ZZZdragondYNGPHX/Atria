@@ -229,7 +229,7 @@ export class NativeProjectOrchestrationAuthority {
                 workDescriptor: { requestId: identity.requestId, pathFingerprint: selected.resolved.pathFingerprint },
                 assertCurrent: async () => {
                     await this.#current(selection); await inspectNativeProjectGeneration(projectCapture, { host, handle });
-                    await service.sourcePort.revalidate(handle, captured.sourceBinding);
+                    await service.sourcePort.revalidate(handle, captured.sourceBinding, { root: await service.runs.get(handle, root.runId) });
                 }, signal: identity.signal });
             state.context = metered.compiled; state.request = state.contextPort.projectRequest(handle, { context: state.context });
             await send.bindContext({ port: state.contextPort, compiled: state.context, compileProof: metered.proof });
@@ -255,7 +255,7 @@ export class NativeProjectOrchestrationAuthority {
                 logicalInputRef: immutable(logicalInputRef), logicalInputHash: state.decision.inputHash, nativeProjectCapture: state.projectCapture,
                 options: { scheduled: true, orchestrationSend: send }, revalidateConsume: async ({ tx } = {}) => {
                     await this.#current(state.selection); await inspectNativeProjectGeneration(state.projectCapture, { host, handle });
-                    await this.#execution().sourcePort.revalidate(handle, state.sourceBinding, tx ? { tx } : undefined);
+                    await this.#execution().sourcePort.revalidate(handle, state.sourceBinding, { tx, root: await this.#execution().runs.get(handle, runId) });
                     await state.contextPort.revalidate(handle, { context: state.context, phase: 'consume' });
                 } });
             const result = await this.#port(host).generate(handle, scope, { signal: identity.signal }), { generated } = result;
