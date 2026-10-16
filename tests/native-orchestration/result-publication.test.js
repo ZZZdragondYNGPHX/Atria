@@ -44,11 +44,11 @@ async function unpublished(f) {
 }
 
 describe.each(harnesses)('$name original RP child Result publication', ({ make }) => {
-    test.each([true, false])('actual Model usage=%s publishes protected text and complete facts without parent return or recipient disclosure', async usage => {
+    test.each([true, false])('actual Model usage=%s publishes protected text with exact recipient metadata and no disclosure', async usage => {
         const f = await rpDelegationFixture(make, { usage }); let controller, actual, result;
         try {
             result = await withPublication(f, async (port, _handle, request) => { controller = port; actual = request; });
-            expect(result.status).toBe(usage ? 'pending_return' : 'pending_output'); expect(JSON.stringify(result)).not.toContain(RP_MODEL_TEXT);
+            expect(result.status).toBe(usage ? 'pending_continuation' : 'pending_output'); expect(JSON.stringify(result)).not.toContain(RP_MODEL_TEXT);
             const root = await f.authority.execution.runs.get(f.h.handle, result.childRunId), parent = await f.authority.execution.runs.get(f.h.handle, result.parentRunId);
             const facts = await f.h.engine.withTransaction(f.h.handle, tx => readResultPublication(tx, f.h.handle, root, result.resultRef.resultId));
             expect(facts.record.payload).toBe(RP_MODEL_TEXT);
@@ -57,7 +57,7 @@ describe.each(harnesses)('$name original RP child Result publication', ({ make }
             disclosureConstraint: { kind: 'same_source_parent_only' } });
             expect(facts.attemptReceipt).toMatchObject({ outcome: 'completed', resultRefs: [result.resultRef], effectReceiptRefs: [result.receiptRef.receiptId] });
             expect(root.status).toBe(usage ? 'completed' : 'running'); expect(root.resultRefs).toEqual([result.resultRef]); expect(root.outputClaims).toHaveLength(usage ? 1 : 0);
-            expect((await f.h.engine.withTransaction(f.h.handle, tx => readAttempt(tx, f.h.handle, parent, result.parentAttemptId))).doc.status).toBe('waiting_child');
+            expect((await f.h.engine.withTransaction(f.h.handle, tx => readAttempt(tx, f.h.handle, parent, result.parentAttemptId))).doc.status).toBe(usage ? 'running' : 'waiting_child');
             const bank = (await operation(f)).compute;
             expect(bank.attempts[0].status).toBe(usage ? 'settled' : 'unknown');
             expect(bank.reservations[0].status).toBe(usage ? 'released' : 'held'); expect(bank.limits).toEqual(f.parentRoute.executionPolicy.computeBudget);
@@ -202,7 +202,7 @@ describe.each(harnesses)('$name original RP child Result publication', ({ make }
             expect(injected).toBe(true); armed = false;
             const effect = f.effects[0], resultRef = { runId: effect.runId, resultId: modelResultId(effect.runId, effect.effectId) };
             expect(completion.error === undefined).toBe(boundary === 'saved');
-            if (boundary === 'saved') expect(completion.value.status).toBe('pending_return');
+            if (boundary === 'saved') expect(completion.value.status).toBe('pending_continuation');
             else await unpublished(f);
             const bank = (await operation(f)).compute;
             await expect(originalPublish.call(controller, f.h.handle, actual)).rejects.toThrow();

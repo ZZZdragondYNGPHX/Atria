@@ -10,6 +10,7 @@ import { readApproval } from './effect-contracts.js';
 import { holdsConcurrencySlot, readAttempt } from './controller-common.js';
 import { readHandoff } from './handoff-contracts.js';
 import { readTaskLocalOutput } from './task-local-output-contracts.js';
+import { readHandoffReturn } from './handoff-return-contracts.js';
 
 export const RUN_STATUSES = Object.freeze(['admitted', 'running', 'waiting_approval', 'reconciling', 'blocked', 'completed', 'partial', 'failed', 'cancelled', 'stale']);
 const TERMINAL = new Set(['completed', 'partial', 'failed', 'cancelled', 'stale']);
@@ -364,7 +365,7 @@ export class RunRepository {
     async control(handle, commandId, body, reduce, { resourceIds = [] } = {}) {
         assertObject(body, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'operation', 'detail'], 'control');
         this.#assertGuard(body);
-        if (!['graph.patch', 'attempt.reserve', 'attempt.activate', 'attempt.settle', 'result.publish', 'output.publish', 'fanout.freeze', 'effect.prepare', 'effect.ready', 'effect.claim', 'effect.observe', 'approval.request', 'approval.decide', 'join.freeze', 'join.settle', 'loop.advance', 'run.resume', 'run.delegate', 'run.handoff', 'run.childBudget'].includes(body.operation)
+        if (!['graph.patch', 'attempt.reserve', 'attempt.activate', 'attempt.settle', 'result.publish', 'output.publish', 'fanout.freeze', 'effect.prepare', 'effect.ready', 'effect.claim', 'effect.observe', 'approval.request', 'approval.decide', 'join.freeze', 'join.settle', 'loop.advance', 'run.resume', 'run.delegate', 'run.handoff', 'run.returnHandoff', 'run.childBudget'].includes(body.operation)
             || typeof reduce !== 'function') throw new TypeError('Unsupported Host controller operation');
         const timestamp = this.now();
         return this.#command(handle, commandId, 'runs.control.' + body.operation, body, async (tx, input, fence) => {
@@ -374,6 +375,10 @@ export class RunRepository {
             const result = await reduce({ tx, root: cloneNativeDocument(root), plan: cloneNativeDocument(record.planRevision), fence, now: timestamp });
             assertObject(result, ['root', 'eventType', 'reasonCode', 'outcome'], 'controller result');
             const next = cloneNativeDocument(result.root);
+            if (input.operation === 'run.returnHandoff') {
+                const receipt = await readHandoffReturn(tx, handle, { ...next, eventSeq: root.eventSeq + 1 }, input.detail.childRunId);
+                if (!receipt || receipt.decisionSeq !== root.eventSeq + 1) throw new TypeError('Handoff return requires complete facts');
+            }
             if (hashNativeDocument(next.outputClaims) !== hashNativeDocument(root.outputClaims) && input.operation !== 'output.publish')
                 throw new TypeError('Only output publication may claim output');
             if (hashNativeDocument(next.treeProgress) !== hashNativeDocument(root.treeProgress)) throw new TypeError('Only RunRepository may accumulate treeProgress');

@@ -21,9 +21,12 @@ import { assertObject, assertResultPolicy } from '../../../public/shared/native-
 import { ResultController } from './result-controller.js';
 import { readResultPublication } from './result-publication-contracts.js';
 import { TaskLocalOutputController } from './task-local-output-controller.js';
+import { readTaskLocalOutput } from './task-local-output-contracts.js';
+import { HandoffReturnController } from './handoff-return-controller.js';
 
 const captures = new WeakMap();
 const delegationCaptures = new WeakMap();
+const returnCaptures = new WeakMap();
 const fail = (code = 'native_orchestration_rp_producer_denied') => { throw new ConflictError(code); };
 const equal = (left, right) => hash(left) === hash(right);
 const configuration = resolved => hash({ route: resolved.route, model: resolved.model, connection: resolved.connection,
@@ -153,6 +156,54 @@ async function inspectDelegation(capture, expected, output) {
     return state.control._engine.withTransaction(expected.handle, tx => {
         if (expected.tx !== undefined && expected.tx !== tx) fail('native_orchestration_rp_producer_denied');
         return read(tx);
+    });
+}
+
+/** Issued only after the actual parent Scheduler permit has been reacquired. */
+export function inspectNativeRpReturnIdentity(capture, { host, handle, rpControl } = {}) {
+    const state = returnCaptures.get(capture);
+    if (!state || state.handle !== handle || host !== undefined && state.host !== host || rpControl !== undefined && state.control !== rpControl
+        || state.parentState.returnCapture !== capture || !['waiting_child', 'resumed'].includes(state.parentState.phase)) fail('native_orchestration_return_denied');
+    const original = inspectNativeRpGenerationIdentity(state.parentState.capture, { host: state.host, handle, rpControl: state.control });
+    if (!equal(original.sourceRequest, state.identity.sourceRequest) || original.prefixDigest !== state.identity.prefixDigest
+        || original.request.requestId !== state.parentState.input.requestId) fail('native_orchestration_return_denied');
+    return Object.freeze({ ...state.identity, host: state.host, rpControl: state.control, signal: original.signal, operationId: original.operationId });
+}
+
+export async function inspectNativeRpReturn(capture, expected = {}) {
+    const identity = inspectNativeRpReturnIdentity(capture, expected), state = returnCaptures.get(capture), service = state.service;
+    return state.control._engine.withTransaction(expected.handle, async tx => {
+        if (expected.tx !== undefined && expected.tx !== tx) fail('native_orchestration_return_denied');
+        await state.assertCurrent();
+        const parent = await service.runs.get(expected.handle, identity.parentRunId), child = await service.runs.get(expected.handle, identity.childRunId);
+        const fence = await state.control._engine.nativeHostLifecycle.assertWriter(expected.handle, tx);
+        await assertChildRunCurrent(tx, expected.handle, child);
+        const attempt = (await readAttempt(tx, expected.handle, parent, identity.parentAttemptId)).doc;
+        if (parent.cancelRequested || parent.status !== 'running' || parent.epoch !== identity.parentEpoch
+            || child.cancelRequested || child.status !== 'completed' || child.epoch !== identity.childEpoch
+            || parent.hostBootId !== fence.hostBootId || parent.hostGeneration !== fence.generation
+            || child.hostBootId !== fence.hostBootId || child.hostGeneration !== fence.generation
+            || !equal(parent.planRef, identity.parentPlanRef) || !equal(child.planRef, identity.childPlanRef)
+            || child.parentRef?.parentRunId !== parent.runId || child.parentRef.nodeAttemptId !== attempt.attemptId
+            || child.parentRef.parentEpoch !== parent.epoch || !equal(parent.sourceBinding, identity.sourceBinding) || !equal(child.sourceBinding, identity.sourceBinding)
+            || attempt.epoch !== parent.epoch || attempt.status !== (state.parentState.phase === 'waiting_child' ? 'waiting_child' : 'running')
+            || attempt.inputDigest !== identity.parentInputDigest || !equal(attempt.inputRefs, identity.parentInputRefs)
+            || attempt.effectiveGrantDigest !== identity.parentGrantDigest || attempt.effectRefs.length || attempt.resultRefs.length
+            || !equal(attempt.budgetRef, parent.budgetAuthorityRef) || child.parentRef.effectiveGrantDigest !== identity.childGrantDigest)
+            fail('native_orchestration_return_stale');
+        const handoff = await readHandoff(tx, expected.handle, parent, attempt, child);
+        const output = await readTaskLocalOutput(tx, expected.handle, child);
+        if (!output || !equal(output.receipt.claimRef, identity.outputClaimRef) || !equal(output.claim.resultRef, identity.resultRef)
+            || !equal({ runId: child.runId, receiptId: output.receipt.receiptId }, identity.outputReceiptRef)) fail('native_orchestration_return_stale');
+        const closure = await BudgetPort.prototype.observeChildClosure.call(service.budgetPort, expected.handle, {
+            authorityRef: child.budgetAuthorityRef, reservationId: child.runId, expectedParentReservationId: null,
+            expectedCeiling: child.parentRef.budgetCeiling }, { tx });
+        if (!closure.closed || closure.snapshotDigest !== output.closure.snapshotDigest
+            || !equal(closure.budgetAttemptRefs, output.closure.budgetAttemptRefs) || !equal(closure.reservationRefs, output.closure.reservationRefs))
+            fail('native_orchestration_return_stale');
+        await state.assertCurrent();
+        inspectNativeRpReturnIdentity(capture, expected);
+        return { ...identity, parent, child, attempt, handoff, output };
     });
 }
 
@@ -304,6 +355,16 @@ export class NativeRpOrchestrationAuthority {
         return state.host;
     }
 
+    async authorizeRpReturn({ handle, tx, capture }) {
+        const state = returnCaptures.get(capture);
+        if (!state || state.owner !== this.owner || state.parentState.phase !== 'waiting_child'
+            || this.#runs.get(state.identity.parentRunId) !== state.parentState) fail('native_orchestration_return_denied');
+        const current = await inspectNativeRpReturn(capture, { host: state.host, handle, rpControl: this.owner.rpControl, tx });
+        return { allowed: true, parentGrantDigest: current.parentGrantDigest, childGrantDigest: current.childGrantDigest,
+            sourceBindingDigest: current.sourceBinding.bindingDigest, parentInputDigest: current.parentInputDigest,
+            resultRef: current.resultRef, outputReceiptRef: current.outputReceiptRef, controlToken: current.handoff.controlToken };
+    }
+
     verifyObservation(args) {
         const state = this.#runs.get(args.root.runId); if (!state) fail();
         return this.#port(state.host).verifyObservation(args);
@@ -348,11 +409,12 @@ export class NativeRpOrchestrationAuthority {
         const { host, handle, selected, capture } = state, service = this.#execution();
         const identity = await inspectNativeRpGeneration(capture, { host, handle });
         const { sourceBinding } = await service.sourcePort.capture(handle, identity.sourceRequest);
-        state.sourceBinding = sourceBinding; state.parentDelegation = true;
+        state.sourceBinding = sourceBinding; state.parentDelegation = true; state.phase = 'delegating';
         const parentInput = { kind: 'native_rp_delegation', sourceRef: sourceBinding.sourceRef, requestId: state.input.requestId,
             bindingRef: { bindingId: selected.binding.bindingId, version: selected.binding.version }, planRef: selected.binding.planRef,
             nodeId: selected.node.nodeId, childPlanRef: selected.child.planRef };
         state.parentGrantDigest = hash({ owner: handle, parentInput, sourceBindingDigest: sourceBinding.bindingDigest });
+        state.parentInputRefs = immutable([parentInput]); state.parentInputDigest = hash(state.parentInputRefs);
         state.childInputRefs = [immutable({ kind: 'rp_delegated_user_input', sourceRef: sourceBinding.sourceRef,
             input: identity.sourceRequest.source.input, taskPurpose: 'original_rp_delegated_text' })];
         state.childGrantDigest = hash({ parentGrantDigest: state.parentGrantDigest, childPlanRef: selected.child.planRef,
@@ -382,12 +444,28 @@ export class NativeRpOrchestrationAuthority {
             const childResources = [...await host.executionResources(handle, selected.child.resolved.route), 'rp:' + handle + ':' + identity.sourceRequest.controlId];
             const childExpected = { owner: handle, anchor: state.expected.anchor, kind: 'model_task', executionClass: 'interactive',
                 resources: childResources, key: 'rp-child:' + childRunId, fingerprint: hash({ childRunId, childPlanRef: selected.child.planRef }) };
-            return await NativeTaskScheduler.prototype.withResourceHandoff.call(this.scheduler, state.boundary, state.expected, {
+            state.phase = 'waiting_child';
+            const childResult = await NativeTaskScheduler.prototype.withResourceHandoff.call(this.scheduler, state.boundary, state.expected, {
                 ...Object.fromEntries(['kind', 'executionClass', 'resources', 'key', 'fingerprint'].map(key => [key, childExpected[key]])),
                 fresh: async () => {
                     const current = await RpRunControl.prototype.context.call(this.owner.rpControl, handle, identity.sourceRequest.controlId, identity.sourceRequest.source);
                     return current.prefixDigest === identity.prefixDigest;
                 }, run: boundary => this.#generateChild(state, { childRunId, childExpected, boundary, identity, parentRunId: root.runId }), finalize: value => value });
+            if (childResult.status !== 'pending_return') return childResult;
+            const child = await service.runs.get(handle, childRunId), returnCapture = Object.freeze({});
+            state.returnCapture = returnCapture;
+            returnCaptures.set(returnCapture, { owner: this.owner, host, handle, control: this.owner.rpControl, service, parentState: state,
+                assertCurrent: () => this.#current(state), identity: immutable({ sourceRequest: identity.sourceRequest,
+                    prefixDigest: identity.prefixDigest, sourceBinding, parentRunId: root.runId, parentAttemptId: attemptId,
+                    parentPlanRef: selected.binding.planRef, childPlanRef: selected.child.planRef,
+                    parentEpoch: state.parentEpoch, childRunId, childEpoch: child.epoch, parentGrantDigest: state.parentGrantDigest,
+                    childGrantDigest: state.childGrantDigest, parentInputRefs: state.parentInputRefs, parentInputDigest: state.parentInputDigest,
+                    resultRef: childResult.resultRef, outputClaimRef: childResult.outputClaimRef, outputReceiptRef: childResult.outputReceiptRef }) });
+            try {
+                const returned = await new HandoffReturnController({ host }).returnChild(handle, { capture: returnCapture });
+                state.phase = 'resumed';
+                return { ...childResult, status: 'pending_continuation', returnReceiptRef: returned.returnReceiptRef };
+            } finally { returnCaptures.delete(returnCapture); delete state.returnCapture; }
         } finally { this.#runs.delete(root.runId); }
     }
 

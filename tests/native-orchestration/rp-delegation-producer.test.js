@@ -70,12 +70,13 @@ describe.each(harnesses)('$name original RP delegated Model', ({ make }) => {
                 if (error.code === 'operation_child_failed' && error.cause) throw error.cause;
                 throw error;
             });
-            expect(result).toEqual({ status: 'pending_return',
+            expect(result).toEqual({ status: 'pending_continuation',
                 outputClaimRef: { runId: identity.childRunId, claimId: expect.any(String) },
                 outputReceiptRef: { runId: identity.childRunId, receiptId: expect.any(String) }, parentRunId: identity.parentRunId, parentAttemptId: identity.parentAttemptId,
                 childRunId: identity.childRunId, effectId: f.effects[0].effectId, receiptRef: { runId: identity.childRunId, receiptId: expect.any(String) },
                 resultRef: { runId: identity.childRunId, resultId: expect.any(String) },
-                publicationReceiptRef: { runId: identity.childRunId, receiptId: expect.any(String) } });
+                publicationReceiptRef: { runId: identity.childRunId, receiptId: expect.any(String) },
+                returnReceiptRef: { runId: identity.parentRunId, receiptId: expect.any(String) } });
             expect(JSON.stringify(result)).not.toContain(RP_MODEL_TEXT);
             expect(f.requests).toHaveLength(1);
             expect(JSON.stringify(f.requests[0])).toContain('Original RP input');
@@ -86,7 +87,7 @@ describe.each(harnesses)('$name original RP delegated Model', ({ make }) => {
             expect(parent.status).toBe('running'); expect(child.status).toBe('completed');
             expect(parent.resultRefs).toEqual([]); expect(child.resultRefs).toEqual([result.resultRef]); expect(parent.outputClaims).toEqual([]);
             await f.h.engine.withTransaction(f.h.handle, async tx => {
-                expect((await readAttempt(tx, f.h.handle, parent, identity.parentAttemptId)).doc.status).toBe('waiting_child');
+                expect((await readAttempt(tx, f.h.handle, parent, identity.parentAttemptId)).doc.status).toBe('running');
                 expect((await checkedRecord(tx, controlRecordKey(f.h.handle, child.runId, 'effect', result.effectId))).doc.status).toBe('confirmed');
             });
             const operation = await stateOf(f), compute = operation.compute;

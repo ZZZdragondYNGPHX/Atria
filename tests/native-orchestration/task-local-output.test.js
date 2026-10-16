@@ -34,14 +34,14 @@ describe.each(harnesses)('$name real RP task-local output', ({ make }) => {
         const f = await rpDelegationFixture(make, { usage });
         try {
             const result = await f.run(), service = f.authority.execution;
-            expect(result.status).toBe(usage ? 'pending_return' : 'pending_output');
+            expect(result.status).toBe(usage ? 'pending_continuation' : 'pending_output');
             expect(JSON.stringify(result)).not.toContain(RP_MODEL_TEXT);
             const child = await service.runs.get(f.h.handle, result.childRunId), parent = await service.runs.get(f.h.handle, result.parentRunId);
             const facts = await f.h.engine.withTransaction(f.h.handle, tx => readTaskLocalOutput(tx, f.h.handle, child));
             expect(facts !== null).toBe(usage);
             expect(child.status).toBe(usage ? 'completed' : 'running');
             expect(child.progress.edgeVisits).toBe(1); expect(child.attemptRefs).toHaveLength(2);
-            expect((await f.h.engine.withTransaction(f.h.handle, tx => readAttempt(tx, f.h.handle, parent, result.parentAttemptId))).doc.status).toBe('waiting_child');
+            expect((await f.h.engine.withTransaction(f.h.handle, tx => readAttempt(tx, f.h.handle, parent, result.parentAttemptId))).doc.status).toBe(usage ? 'running' : 'waiting_child');
             const bank = Object.values((await f.control.status(f.h.handle, f.controlId)).operations)[0].compute;
             expect(bank.reservations[0].status).toBe(usage ? 'released' : 'held');
             expect(bank.attempts[0].status).toBe(usage ? 'settled' : 'unknown');
@@ -64,7 +64,7 @@ describe.each(harnesses)('$name real RP task-local output', ({ make }) => {
                 expect((await bankOf(f)).reservations[0].status).toBe('held');
                 await expect(inspectNativeRpDelegationOutput(request.capture, { host: f.host, handle })).rejects.toMatchObject({ code: 'native_orchestration_child_budget_unclosed' });
             });
-            expect(result.status).toBe('pending_return');
+            expect(result.status).toBe('pending_continuation');
             await expect(complete.call(controller, f.h.handle, actual)).rejects.toThrow();
             expect(f.requests).toHaveLength(1);
         } finally { await f.cleanup(); }
@@ -92,7 +92,7 @@ describe.each(harnesses)('$name real RP task-local output', ({ make }) => {
         };
         try {
             const result = await atOutput(f, async (_port, _handle, request) => { capture = request.capture; });
-            expect(result.status).toBe(ack === 'saved' ? 'pending_return' : 'pending_output');
+            expect(result.status).toBe(ack === 'saved' ? 'pending_continuation' : 'pending_output');
             expect(calls).toBe(1); expect(f.requests).toHaveLength(1);
             expect((await bankOf(f)).reservations[0].status).toBe(ack === 'saved' ? 'released' : 'held');
             await expect(inspectNativeRpDelegation(capture, { host: f.host, handle: f.h.handle })).rejects.toThrow();
@@ -157,7 +157,7 @@ describe.each(harnesses)('$name real RP task-local output', ({ make }) => {
                 }
                 expect((await runs.get(handle, root.runId)).outputClaims).toEqual([]);
             });
-            expect(result.status).toBe('pending_return');
+            expect(result.status).toBe('pending_continuation');
         } finally { await f.cleanup(); }
     });
 

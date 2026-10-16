@@ -104,6 +104,7 @@ export class NativeNarratorOrchestrationAuthority {
 
     startRp(host, handle, input, options) { return this.#rpAuthority().start(host, handle, input, options); }
     authorizeTaskLocalOutput(args) { return this.#rpAuthority().authorizeTaskLocalOutput(args); }
+    authorizeRpReturn(args) { return this.#rpAuthority().authorizeRpReturn(args); }
 
     #backgroundAuthority() {
         this.#background ??= new NativeBackgroundOrchestrationAuthority({ owner: this, execution: () => this.execution, port: host => this.#port(host),
