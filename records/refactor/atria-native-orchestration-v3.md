@@ -975,3 +975,9 @@
 
 - Source `d4a6f00a6` → `61b68d009`，本地提交未推送。修正 RunProjection 只比较 bootId 的缺口：原 HostFence generation 变化也显示 recovery_required，关闭过期 cancel 控件；projection/list/details cursor 绑定当前存储 generation，恢复后旧 cursor 全部要求 resnapshot。没有新增恢复执行许可或修改历史 Run/费用。
 - 首版 Run HTTP 14/14 PASS（5.781s）；随后补三种 cursor 的 restore 反例，最终 16/16 PASS（7.097s），覆盖 FS/SQLite。两文件原 ESLint、staged diff check 通过；没有 SQL/三端或完整 resume/reconcile 通过声明。生产的重启恢复与其余后端闭包继续实现，完整 Gate 仍 NOT_READY。
+
+## 2026-10-16 — 第七十六组：显式原 Run Host 元数据恢复 HTTP
+
+- Source `61b68d009` → `e022f8d58`，本地提交未推送。新增接口 §17.83 的 `/runs/recover`，复用原 RunRepository/CAS、source inspection、Host fence 与 mutation envelope；只返回安全 metadata 和 `resumed:false`。没有公开通用 dispatcher、重建 scope 或执行任意 Effect。
+- 初版 Run HTTP 18/18 PASS（8.073s）。补 Engine 真关闭重开与显式 controlled pending Effect/Approval 测试，首轮 4PASS/2FAIL/18filterSKIP（3.791s）：测试批准 expiresAt 超过原 deadline，改用实际 root deadline 后 6PASS/18filterSKIP（3.914s）。随后 Run HTTP/RunRepository 组合 42PASS/4SKIP（14.981s）；再补 unknown recovery ACK 和测试断言整理后，ACK/pending Effect 精选 6PASS/20filterSKIP（3.517s），最终 26 个 Run HTTP case 分次均有通过证据，未称完整 26 一轮复跑。
+- 只读、foreign owner/boot、额外 grant 字段、source 删除、CAS payload 冲突均拒绝；恢复保留原银行/counters/source、未决 Effect 字节与 dispatch 历史，失效待批准；ACK丢失精确重放只保留一次 epoch/event。三文件原 ESLint、staged diff check 通过。pending Effect 测试使用明确 controlled Port/budget metadata，无外部发送；完整领域 reconcile/resume、独立质量及其他后端工作继续，最终 Gate NOT_READY。

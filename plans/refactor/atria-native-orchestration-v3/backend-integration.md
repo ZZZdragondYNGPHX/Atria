@@ -48,6 +48,7 @@
 | `/runs/details` | `{runId,collection,cursor,limit}`；collection 为 nodes/edges/attempts/effects/approvals/events；有界完整分页 |
 | `/runs/diagnostics` | `{runId}`；只返回状态推导的脱敏 code/controls |
 | `/runs/cancel` | mutation envelope；body `{runId,expectedEpoch,expectedStateVersion,expectedGraphRevision,reasonCode}`；沿原 Run CAS，未知费用/外部效果不退款、不假称撤销 |
+| `/runs/recover` | mutation envelope；body `{runId,expectedEpoch,expectedStateVersion,expectedGraphRevision}`；仅重绑 Host 控制元数据、失效旧批准，返回 `resumed:false`；后续执行和未知结果核对仍须原领域 authority，详见接口 §17.83 |
 
 projection envelope 为 `{schemaVersion,runId,projectionId,hostBootId,epoch,projectionVersion,visibilityDigest,seq,cursor,kind,payload}`。snapshot payload 含 Source selector、planRef、CAS versions、Graph 元数据、Attempt/Effect/Approval 状态、events、原银行 costs、diagnostics、controls 和 hasMore。没有 Result/Context/模型正文、Secret、审批 nonce、dispatch token 或原输入。Timeline 只投影封闭事件类型与 opaque eventId，不返回内部 eventSeq/reasonCode。
 

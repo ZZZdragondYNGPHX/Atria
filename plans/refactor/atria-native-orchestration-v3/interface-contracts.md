@@ -1101,3 +1101,9 @@ Review listener 不使用主 app middleware/cookie。它检查实际 Host、精�
 ## 17.82 存储 generation 与 Run 观察恢复边界
 
 `61b68d009` 将原 HostFence 的 `generation` 纳入 Run 观察判断及 Host 私有 cursor 状态。相同 boot 内 restore 后，旧 Run 仍须 recovery；不能仅因 bootId 相同就显示可取消。projection/list/details 的旧 generation cursor 返回 resync_required，重新读取 snapshot，不拼接恢复前后的分页或 stream。generation 不成为 Browser 可指定的执行授权；观察仍不 rebind Run、不恢复 scope、不写预算或派发 Effect。
+
+## 17.83 显式 Run Host 元数据恢复入口
+
+`e022f8d58` 新增受原登录/CSRF/boot mutation envelope 保护的 `POST /runs/recover`，body 为 `{runId,expectedEpoch,expectedStateVersion,expectedGraphRevision}`。沿原 source inspection、RunRepository.recover 和原 Engine CAS；新 boot/存储 generation 只重绑 root、增加 epoch、失效未消费批准，非 terminal Run 留在 blocked 或有 pending Effect 时 reconciling。原来源/Plan、Attempt、Effect/dispatch 历史、预算引用和逻辑计数不重建、不清零。
+
+响应只有 `{runId,status,cancelRequested,resumed:false,versions}`，没有正文、dispatch token 或新执行许可。客户端重取 snapshot，旧 epoch cursor 失效。相同 commandId 精确重放观察已有 outcome，unknown ACK 不换新 command 自动重发。Projection `controls.recover` 反映当前 HostFence 与 Run 是否不同；`resume/reconcile/approve` 仍需各自原领域能力，不能将此入口当成未知外部结果已核销或运行已经继续。
