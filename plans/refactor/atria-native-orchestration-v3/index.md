@@ -100,3 +100,5 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 第三十八组2f22e9b63补三域原银行精确child费用闭包只读观察，见[接口§17.48](interface-contracts.md#1748-原银行精确child闭包观察)。原unknown/local/后代/释放ACK/真实overrun保持，兄弟工作不改变该子树摘要；观察不是完成授权。实际RP child/Context并行接线尚待下一组验证提交，P3 Gate仍NOT_READY。
 
 第三十九组664749309接真实RP独立child capture/受限Context/Model/原bank，并修根银行与叶reservation的额度接线，见[接口§17.49](interface-contracts.md#1749-真实rp独立child-model与根银行叶额度边界)。内部明确pending_result无正文，不把物理permit返回当durable return；正式Result/Output/Audience/return继续实施，P3 Gate仍NOT_READY。
+
+第四十组b4c06075a已接真实RP child Result publication，同原CAS写有界正文/发布收据/producer settlement，见[接口§17.50](interface-contracts.md#1750-真实rp-child-result发布与历史事实边界)。返回仅pending_output refs，原bank held、父waiting_child，output/return/正文消费仍IMPLEMENTATION_PENDING。用户本轮明确要求本组完成后推送停下换设备；当前暂停于第四十组，不启动第四十一组。最新已测HEAD、真实验证与下一队列见[唯一HANDOFF](../../../HANDOFF.md)及同一Record；P3 Gate仍NOT_READY，未集成main。

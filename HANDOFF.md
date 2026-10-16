@@ -1,51 +1,59 @@
 # Native Orchestration V3 — 换设备续接
 
-用户于2026-10-16要求“完成本阶段后及时停下，我要换设备继续任务了”。已暂停在P3第三十三组实现、最小本地验证与源码推送完成处；整体任务未完成。新设备恢复后继续已授权剩余阶段，不恢复旧暂停指令。
+用户于2026-10-16明确要求“完成本组后停下并推送，我打算换设备进行了”。本次暂停于**P3第四十组**源码、验证、提交推送完成处；整体任务未完成。此快照替代第三十三组旧快照。新设备收到恢复指令后沿同一任务分支继续，不把历史暂停当持续禁止开发，也不逐阶段重新索权。
 
-## Task
+## 当前Git与入口
 
-- Task ID：`refactor/atria-native-orchestration-v3`；Primary Workspace：产品main；实现尚未集成main。
-- 源码工作树：`tasks/atria-native-orchestration-v3/source`，分支`refactor/atria-native-orchestration-v3`。
-- Source/Tested HEAD：`c7dce9660531e1fcd0d774c1fdaf0727f6ad63e3`，已推送origin；工作树干净。
-- 文档工作树：`docs`，分支`docs`；上个证据HEAD为`c43571fbc4c193ffd19f21a57bf2974adf8f5fff`，本快照随第三十三组Record/接口独立提交。实际最终docs HEAD以Git为准。
-- 当前：P3 IN_PROGRESS / Gate NOT_READY；P1/P2有局部实证，P4–P8未完成；没有main集成。
-- Plan入口：[index](plans/refactor/atria-native-orchestration-v3/index.md)；先读[接口§17.43](plans/refactor/atria-native-orchestration-v3/interface-contracts.md#1743-原pending-outbox后台model-producer与窗口周期额度)、[实施阶段](plans/refactor/atria-native-orchestration-v3/implementation-plan.md)、[验收§9.1](plans/refactor/atria-native-orchestration-v3/acceptance-matrix.md#91-p3后端子工作后的gate复核)。
-- 永久证据：[同一Record第三十三组及末尾暂停记录](records/refactor/atria-native-orchestration-v3.md)。本快照替代第二十八组旧快照，不重复已过工作。
+- Source：`tasks/atria-native-orchestration-v3/source`，分支`refactor/atria-native-orchestration-v3`。
+- 已测并推送origin：`b4c06075ad98b31e3a3f8f02a2c30c124c837e0b`（第四十组）。没有集成main。
+- Docs：`docs`分支；此前HEAD `543892245`，本快照随第四十组同一Plan/Record独立提交推送。最终docs HEAD以实际Git为准，不将docs合进main。
+- 当前：P1/P2/P3 IN_PROGRESS，**P3 Gate NOT_READY**；P4–P8未完成。第四十组是Result子能力收口，不是后端全部完成。
+- 续接次序：实际`git status`/branch/remote → 本HANDOFF → [docs治理](README.md) → [Plan index](plans/refactor/atria-native-orchestration-v3/index.md) → [接口§17.50](plans/refactor/atria-native-orchestration-v3/interface-contracts.md#1750-真实rp-child-result发布与历史事实边界)及下一工作涉及的§7/§14/§17.44–49 → [阶段/工作包](plans/refactor/atria-native-orchestration-v3/implementation-plan.md) → [验收§9.1](plans/refactor/atria-native-orchestration-v3/acceptance-matrix.md#91-p3后端子工作后的gate复核) → [同一Record第四十组末尾](records/refactor/atria-native-orchestration-v3.md)。不要全扫描历史或重做已过工作。
+- source仅保留原无关`CLAUDE.md`删除。docs还存在原无关`CLAUDE.md`删除、前端design-proposal HTML修改、`.playwright-mcp/`、`design-proposal/_build/`及`plans/feat/agent-experience-evolution/`未跟踪内容；均未提交，保护不清理、不覆盖。换设备先核实际状态，不能将“干净”扩大到用户其它修改。
 
-## Completed
+## 本次恢复后已完成
 
-- 第二十九/三十组：原Session/RP合法候选域→唯一Hybrid→原Context/实际工作费用，RP从原ChatRepo侧状态读取，不制造Session或Memory writer。
-- 第三十一组：原Scheduler真实父子资源让出/重新准入、取消/迟到/子失败不重试父操作；尚无正式Delegate producer调用。
-- 第三十二组：同事务Memory合法撤销先提交事实、再事务外拒已付费响应，原费用保留。
-- 第三十三组：原pending outbox普通background Task有限JSON图→原Scheduler私有capture→原Run/Attempt/Effect/Context/ModelPort→原Task adoption；同Host/Engine/Source/operation/attempt/resources身份严格检查。
-- Task Information view与唯一Hybrid的候选域隔离，复用原Task Context选择及Package Route合成纯helper；一次原context_build，真实outer/service请求及发送Context/config复验。HTTP期间scope/Binding变更或same-transaction Binding撤销拒响应，费用保留。
-- 原turn compute与background invocation/window/period quota共用唯一RunControl CAS。新增原quota只读预检避免not_due/当前窗口或周期额度满时先创建稳定Run；到期/新周期后同pending可继续。Task adoption失败并Engine冷重开仍unknown，不重发。
-- 原queued事件/证据捕获/Task writer保留；无新增HTTP/UI、费用银行或Memory/Secret/业务writer。
+- 第三十四组：原DelegateController耐久Handoff/父waiting_child/单并发逻辑槽，原Scheduler资源移交组合。
+- 第三十五组：有限agent.delegate发布闭包、逐父边limits/capabilities/exact pins、单次completed memo，不缓存授权。
+- 第三十六组：显式Result字节policy与严格record/envelope，原四Engine精选存储与相关Delegate证据。
+- 第三十七组：原Model wrapper私有完成证明、原Run祖先→Source控制边界，修同command锁逆序与末await Root取消过期证明。
+- 第三十八组：原BudgetPort精确child子树闭包观察；released但overrun/unknown/后代未闭合不能closed。
+- 第三十九组：真实RP独立child capture/受限user-only Context/原Model/原银行，修叶Route永久收紧根bank的问题；叶cap仍沿原reservation。
+- **第四十组**：真实callback内原wrapper→ResultController，复用原Delegate decision和Model completion receipt规则；同Engine/Run CAS写有界text Result、publication receipt、producer settlement和原计数。合法末await父取消/Binding/Chat正文编辑删除/整chat删除/header迁移先提交再拒Result，费用保留；写后故障整体回滚，ACK未知只观察完整metadata。内部状态变为`pending_output`，只返回refs，没有正文消费grant、output、Run completed或durable parent return。
 
-## Local validation
+## 当前实证与环境
 
-- 新后台FS/SQLite共16个不同case分次取得PASS，不是一次完整16绿：最后完整16轮14PASS/2FAIL（73.941s），两失败是test推进clock但未pump；补原pump后窗口/周期＋cold定向4PASS/12filterSKIP（48.331s）；最后共用queued路径整理后基础2PASS/14filterSKIP（11.573s）。原失败过程归Record。
-- Context13＋Turn quota proof8＋resolver quota proof6：27/27 PASS（5.449s，0skip）。原G2 App/Workflow接纳定向4PASS/52filterSKIP（1.348s）。过滤项不计通过。
-- 最终13文件定向ESLint与staged diff check通过。进程自然退出，暂停时无本任务残留server/Jest；无外部API/付费Provider或远端Actions。
-- 本组SQL、新设备/Windows/Termux、真实外部费用/质量NOT_RUN。此前原task-runtime-p3四个FS/SQLite已知失败未修，不宣称全仓全绿。无需为换设备重跑已过完整套件。
+- 第四十组最终新suite FS/SQLite **30/30 PASS**（57.139s）。随后仅测试before-hook错误诊断增强，相关最小6PASS/24filterSKIP（10.829s）；不要误称增强后再完整跑30。
+- 原Model精选12PASS/36filterSKIP（60.142s，docID guard前）；docID guard后原Delegate/producer/Context精选10PASS/97filterSKIP（12.720s）。精确先后/失败及增量范围在Record。
+- Docker原容器`atria-storage-center-mysql`、`atria-storage-center-pg`已实际运行（127.0.0.1:53306 / 55432）。第四十组MySQL/Pg各精选8PASS，共16个不同case；两轮各52filterSKIP，非完整SQL矩阵。凭据仅从实际Docker Env进入当前进程内存，禁止打印、落repo或保存带密码URL；新设备重新核自己的实际服务/凭据，不默认可用。
+- 七类语义mutants真实Killed，finally逐字/SHA恢复，恢复后6项通过；最终9文件targeted ESLint本工作树原插件0输出，staged diff check通过。源码已提交推送，没有未验证变异残留。
+- 当前Windows Node v24.18.0，`source/node_modules`、`source/tests/node_modules`复用原本机依赖Junction。跨设备按实际依赖重建，不复制Windows Junction/Linux symlink或机器缓存。
+- 在`source/tests`运行：`node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.config.json --runInBand --runTestsByPath <相关路径>`；plain npx jest不工作。正常FS/SQLite设置`ATRIA_DISABLE_MYSQL_TESTS=1`与`ATRIA_DISABLE_POSTGRES_TESTS=1`；SQL需删除这两个key（字符串0仍truthy）。第四十组SQL显式`ATRIA_TEST_RESULT_PUBLICATION_SQL=1`，测试60秒不改产品timeout/预算。原harness名称是`MysqlEngine`和`PgEngine`。
+- 定向lint须载本工作树原插件：`new ESLint({plugins:{atria:require('./eslint-rules/index.cjs')}})`，避免依赖Junction解析到main插件造成allowlist误报。不禁规则。
+- normal/SQL串行安排明确；**任何普通或SQL测试仍运行时禁止改源码做mutant**。mutant独占、保留真实语义失败、finally逐字/SHA恢复，然后最小复验。不要重跑未受影响全仓或远端Actions。
+- 本组只用localhost合成Provider，真实外部请求/费用/开放文本质量、Windows/CachyOS Host+Browser全流程和Android Termux实机验收仍NOT_RUN。原`task-runtime-p3`四个FS/SQLite既有失败未在本次修复，不声称全仓绿。guard-port Windows EACCES先复跑确认；真正服务不可用记BLOCKED/NOT_RUN。
 
-## Pending and next target
+## 下一工作：第四十一组起
 
-1. P3：先读原DelegateController/execution-service、Scheduler.withResourceHandoff及原领域grant，补实际Plan授权adapter、耐久child reservation/移交/Result/Audience与取消恢复，再核P3 Gate。低层Scheduler原语已实现，不再重写一套scheduler。
-2. 后台当前只支持真实普通pending、generationBudget、active scope、精确Route、agent→json output两节点、generation.send，retry/fallback=0、continuity=none/reuse=disabled。没有Binding保持原Native服务；有Binding但不支持明确拒绝。**同Session的有限Narrator text图与后台JSON图尚无通用联合Binding/profile**，其他Task/resultBinding和通用Graph调度未完成。补通用组合时不能悄悄忽略已绑定Plan。
-3. 外部embedding/rerank仍缺原受信retrieval producer，明确scope_unavailable，不走Browser transport或静默fallback。无quota/缺V3保留事实的free-text来源也仍有限制。
-4. P4：原Project多轮/Task Tool/正式Review/Commit、RP唯一正文slot/marker saga、Session/Project OutputClaim/Result与Evolution targets。原Task产物adoption或Model Effect confirmed不能冒充V3 Run completed；RP saga按接口§14，不假称FS聊天和Native journal单事务。
-5. P5：可信Review Origin/原身份再认证、Projection/Control HTTP及统一U2；P6：旧五模式全入口零兼容硬切；P7：实际适用验收；P8：真Gate通过后才main集成。当前没有Run/Projection/Approval产品HTTP，不为前端猜路由。
+1. **原Graph task-local output及原child预算闭包**。必须在当前真实child callback退出、capture失效前接实际调用点；不能从`pending_output`或cold observations恢复已丢opaque grant/正文proof，也不能重发Model。沿原TransitionController.advance真实agent→output边、原AttemptController.activate（银行仍held）→事务外原BudgetPort.releaseUnused→observeChildClosure确实closed→最终OutputClaim/closure receipt/output settlement/Root completed CAS。未知费用可保留Result和pending/running，不能硬释放或伪造completed。
+2. 发送/Context原`inspectNativeRpDelegation`继续必须held，不得为output放宽成released。新增专用`inspectNativeRpDelegationOutput(capture,{host,handle,rpControl,tx})`，复用完整原scope/source/Plan/祖先/Audience核对但固定要求原closed。父NativeNarrator authority新增薄`authorizeTaskLocalOutput({handle,tx,capture,phase:'prepare'|'publish',identity,publication})`转原private RP authority；prepare检查held，publish检查closed，精确activeChildCapture与parentMap，返回原inputRefs/resultRef/inputDigest/childGrant/budgetRef，禁止默认allow或调用方自定义grant。
+3. 仅metadata参考设计（**下一组实施/验证前不算已冻结实现**）：root.outputClaims严格own-run唯一`{runId,claimId}`；claimId `oclaim_+H({kind:'task_local_output_claim',runId,outputKey})前32位`作为现有output record token；outputKey绑定task-local run/source/output node/slot/完整parent consumer，排除变化的Attempt/result ID，绝非RP assistant正式slot。OutputClaim沿§7，operationRef.kind=task_local_output，domainReceiptRef=null。`child_budget_closed` receipt只记原authority/reservation/parent/ceiling/typed refs/snapshotDigest，无复制金额；`task_local_output` receipt关联claim integrity、Result publication、原traversal/edge/producer+output Attempt receipts与budget closure。Run控制新增output.publish、首次terminal提交必须验完整proof；历史reader只核旧proof相互一致且不领先root，不重新授消费grant。
+4. 原Engine ALS会合并嵌套事务。prepare元数据、release原银行、publish最终CAS不得包在同一个ambient Engine事务；使用原Run ancestry/Source边界但物理退出Engine各阶段。所有live grant的末await应在任何metadata写之前，明确撤权deny先提交合法原写，写后错误必须rollback。原银行ACK未知只观察同reservation，不能重复发送或从冷scope造grant。恢复后的新epoch不得继承旧正文消费权限。
+5. 然后补**durable parent return**：验证child真实terminal+budgetclosed、精确Result/Audience与原source/grant，再写单次耐久return，父Scheduler真实重新准入。父初始Attempt.inputRefs/inputDigest/effectiveGrantDigest不被Result覆盖；父private phase应delegating→waiting_child→resumed，原物理permit回来不等于resumed。
+6. 再接**ResultPort/父Context/实际Narrator continuation**：可信实际parent callback签rpReturnCapture；`readForParent`不得仅收裸ResultRef或调用方grant。每send/consume重读原Result/receipts/current source/epoch/Audience/grant，Result作为有provenance的user data加入Context，真实bytes计费，不混system/tool/Memory。复用原父rpCapture/requestId/Route/native_rp_intent，不另造Model principal；新Effect输入绑定acceptedResultRef/returnReceiptRef/parentInputDigest，保持根bank envelope。
 
-## Key decisions and environment
+第四十一组曾由子代理只预备三个**新文件**的草稿，只有静态lint，所有normal/SQL/mutants均NOT_RUN。用户要求暂停后已确认仅其本人未跟踪文件并移出source至原设备TEMP，未集成未提交，**新设备不能依赖该本机备份存在**；按以上合同、原代码和Plan实施即可，不把草稿当已完成证据。
 
-- D1–D9/HCM冻结；单Native Host，不复制Memory/Secret/World/费用writer；旧Single/Spec/Loop/Agenda/Director无迁移/fallback/shim/模板化。原服务/数据保护继续保留。
-- 每阶段及任务完成只做最小相关本地验证，已过且未受影响的检查不重跑；不恢复逐阶段审批、远端Actions或全仓测试。开发授权已存在。
-- 本组环境CachyOS Linux、Node v24.21.0；本机依赖symlink复用主源码和其tests/node_modules，未改共享依赖。新设备重建自身依赖，不复制Linux symlink或旧Windows Junction。
-- 在source/tests运行：`ATRIA_DISABLE_MYSQL_TESTS=1 ATRIA_DISABLE_POSTGRES_TESTS=1 node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.config.json --runInBand --runTestsByPath <相关路径>`；plain npx jest不可用。detectOpenHandles只在定位未退出时使用，不默认扩大已过检查。
-- SQL只在新设备实际服务/凭据可用且改动需要时做必要项；无凭据写repo/输出。Windows/Termux真实证据缺失保持NOT_RUN/BLOCKED，不伪造，也不停止其余独立实现。
-- 并行提示词预设/前端任务为“继续 E0 并审计 Atria 前端”，thread `01a13f16-23af-75e1-b8b3-e95b3b5d348d`，提示词后端`760327891`。V3尚未全交付，不发送最终后端整合通知；最终整合前重核两任务实际HEAD。保护其它活工作树和未提交内容，不把docs合进main。
+## 后续队列与限制
+
+- P3 retrieval embedding/rerank仍缺原受信producer，保持scope_unavailable，禁Browser transport/静默fallback。同Session有限Narrator text与后台JSON profile仍无通用联合Binding，不能忽略已绑定Plan；其它Task/领域完整消费者继续待接。
+- P4 RP正式Chat输出仍未实现§14 saga：原ChatRepo唯一writer，原RpRunControl.outputReceipts需prepared→writing→观察marker/写body→committed；未知writing只观察、不自动重写。正式RP outputKey来自controlId/原input source/message/floor/variant/content/purpose/slot，**排除runId/attemptId**，与task-local outputKey不同。保护原ChatRepo所有save/append/patch路径的Native marker，不能只保护新endpoint；FS Chat与Native journal不是一个原子事务。初版仅有明确授权的narration/assistant append，不擅自改旧assistant variant。原Session finalize/commit receipt和Project Review/Commit/Git receipt复用，不另写业务权威。
+- P4还缺Project多轮/Task Tool/ReviewCommit、Session/Project OutputClaim/Result及NativeGame/Evolution正式消费者；P5可信Review Origin/原身份再认证/Projection/Control HTTP；P6旧Single/Spec/Loop/Agenda/Director全入口零兼容硬切；P7真实费用/质量/三端验收；P8仅真正最终Gate通过再main集成。目前无Run/Projection/Approval产品HTTP，不给前端猜路由。
+- Model消费阶段其它合法RP撤权码是否也需精确deny，应另以真实末await用例检查，**当前NOT_RUN待核**；本组已证修复的是Result publication preflight，不把该修复扩大声称所有消费阶段均安全。
+- D1–D9、HCM-01–08、单Native Host继续冻结；重用原RunControl/ProjectAgentService/RpRunControl/BudgetPort/Memory/Secret/Chat/World，禁止第二ledger/价格表/writer、旧模式兼容层、旧数据迁移和静默fallback。R3没有可信Approval必须拒绝。
+- 每组实现→真实FS/SQLite→关键语义mutants→相关原suite→targeted lint/diff→source提交推送→同一Plan/中文Record docs提交推送，不逐阶段询问；当前按用户本次明确暂停要求停止，等待其恢复。
+- 并行前端/提示词任务上次已核标题“继续 E0 并审计 Atria 前端”，thread `01a13f16-23af-75e1-b8b3-e95b3b5d348d`，提示词分支`refactor/atria-native-prompt-preset-deepening`。V3后端尚未整体交付，本组没有发最终通知。后端全部完成后用户已授权将接口/证据/前端余项发该任务，再由对方整合交ClaudeCode；发送前重核实际thread标题/HEAD和两branch冲突，不沿旧760327891或旧冲突预览假定当前状态，不提前merge main。
 
 ## New-chat bootstrap prompt
 
-读取docs/HANDOFF.md、docs/README.md治理、Plan index、接口§17.43、验收§9.1和同一Record第三十三组末尾，核实际Git后继续Atria原生编排V3。源码在tasks/atria-native-orchestration-v3/source，分支refactor/atria-native-orchestration-v3，已测已推c7dce9660531e1fcd0d774c1fdaf0727f6ad63e3。P3第三十三组原pending outbox有限后台Model/Task Context/原窗口周期额度已完成，16个不同本地case分次通过，原27＋4相关回归与定向lint通过；P3 Gate仍NOT_READY、未合main。下一项是正式Delegate/Handoff的原领域授权、原Scheduler资源交接与耐久child Result/Audience，再持续推进P4–P8可独立工作。保留有限Narrator text与后台JSON profile尚无通用联合Binding的缺口，不冒称全部后台/Graph完成。新设备使用实际环境依赖和真实Git，不重复旧快照工作或已过全套验证；本次暂停仅为换设备，恢复后不逐阶段索权。
+拉取远端Atria同一任务分支与docs（先git status保护用户修改，安全fast-forward，不reset/clean），读docs/HANDOFF.md、docs/README.md治理、Plan index、接口§17.50/下一工作相关§7/§14/§17.44–49、验收§9.1及Record第四十组末尾。source分支refactor/atria-native-orchestration-v3已测已推b4c06075ad98b31e3a3f8f02a2c30c124c837e0b。P3第四十组真实child Result发布已收口，最终FS/SQLite30PASS、SQL精选MySQL/Pg各8PASS、七类守卫mutants与恢复检查通过；精确版本/过滤/失败见Record。当前pending_output仅refs，bank held、child running、父waiting_child，无output/return/正文消费grant，P3 Gate NOT_READY。继续第四十一组原Graph task-local output+原bank闭包，接耐久parent return/受限ResultPort与父Context，再推进P4–P8已授权后端；尽量只改后端，不造第二权威/兼容层，不合main。旧task-local-output草稿未提交且只在原机TEMP，按Plan重新实施验证，不当完成。新设备核真实依赖和Docker，无实证标NOT_RUN/BLOCKED；本次暂停只为换设备，恢复后不重新逐阶段索权。全部后端完成后再按授权将接口与前端余项交并行任务，由其整合后给用户ClaudeCode提示词。
