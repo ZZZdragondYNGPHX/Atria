@@ -120,6 +120,8 @@ export class RunObservationService {
         const scope = hash(sourceSelector), previous = input.cursor === null ? null : this.#lookup(input.cursor, handle, 'list', scope);
         return this.engine.withTransaction(handle, async tx => {
             await this.authorizeSource({ handle, tx, body: { sourceSelector } });
+            const fence = await this.engine.nativeHostLifecycle.assertWriter(handle, tx);
+            if (previous && previous.hostGeneration !== fence.generation) resync();
             const rows = [];
             for (const listed of await tx.listResources({ kind: K.orchestrationRun, handle })) {
                 const root = (await checkedRecord(tx, listed.key))?.doc;
@@ -139,7 +141,7 @@ export class RunObservationService {
                 status: root.status, cancelRequested: root.cancelRequested, createdAt: root.createdAt, updatedAt: root.updatedAt }));
             const last = selected.at(-1);
             return { items, cursor: remaining.length > selected.length ? this.#remember({ handle, kind: 'list', scope,
-                hostBootId: this.hostBootId, after: { runId: last.runId, createdAt: last.createdAt } }) : null };
+                hostBootId: this.hostBootId, hostGeneration: fence.generation, after: { runId: last.runId, createdAt: last.createdAt } }) : null };
         });
     }
 
@@ -147,6 +149,8 @@ export class RunObservationService {
         const result = await this.engine.withTransaction(handle, async tx => {
             try {
                 const root = await this.runs.get(handle, runId), revision = await readPlanRevision(tx, handle, root.planRef);
+                const fence = await this.engine.nativeHostLifecycle.assertWriter(handle, tx);
+                const recoveryRequired = root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation;
                 const visibilityDigest = await this.#authorize(handle, tx, root), attempts = [], effects = [], approvals = [];
                 for (const id of root.attemptRefs) {
                     const attempt = (await readAttempt(tx, handle, root, id)).doc;
@@ -183,19 +187,19 @@ export class RunObservationService {
                 if (costs.status === 'pending') diagnostics.push({ code: 'native_orchestration_budget_unsettled', severity: 'blocking' });
                 if (costs.status === 'unavailable') diagnostics.push({ code: 'native_orchestration_budget_unavailable', severity: 'blocking' });
                 if (approvals.length) diagnostics.push({ code: 'native_orchestration_approval_channel_unavailable', severity: 'blocking' });
-                if (root.hostBootId !== this.hostBootId) diagnostics.push({ code: 'native_orchestration_host_recovery_required', severity: 'blocking' });
+                if (recoveryRequired) diagnostics.push({ code: 'native_orchestration_host_recovery_required', severity: 'blocking' });
                 const payload = { status: root.status, cancelRequested: root.cancelRequested, source: selectorFor(root), planRef: root.planRef,
                     versions: { epoch: root.epoch, stateVersion: root.stateVersion, graphRevision: root.graphRevision },
                     graph: { nodes: root.graph.nodes.map(node => ({ nodeId: node.nodeId, kind: node.kind,
                         label: revision.definition.nodes.find(original => original.nodeId === node.nodeId)?.label ?? null })),
                     edges: root.graph.edges.map(edge => ({ edgeId: edge.edgeId, from: edge.from, to: edge.to, loopBack: edge.loopBack })) },
                     attempts, effects, approvals, events: events.map(({ internalOrder: _order, ...event }) => event), costs, diagnostics,
-                    controls: { cancel: !['completed', 'partial', 'failed', 'cancelled', 'stale'].includes(root.status) && root.hostBootId === this.hostBootId,
+                    controls: { cancel: !['completed', 'partial', 'failed', 'cancelled', 'stale'].includes(root.status) && !recoveryRequired,
                         resume: false, reconcile: false, approve: false }, createdAt: root.createdAt, updatedAt: root.updatedAt };
                 if (visibilityDigest !== await this.#authorize(handle, tx, root)) resync();
                 const current = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId }))?.doc;
                 if (hash(current) !== hash(root)) resync();
-                return { view: { root, visibilityDigest, payload: cloneNativeDocument(payload) } };
+                return { view: { root, visibilityDigest, hostGeneration: fence.generation, payload: cloneNativeDocument(payload) } };
             } catch (error) {
                 // Preserve lawful reentrant source/control changes even when
                 // they revoke this observer during its final read.
@@ -213,10 +217,10 @@ export class RunObservationService {
         let view = await this.#view(handle, input.runId);
         const previous = input.cursor === null ? null : this.#lookup(input.cursor, handle, 'projection', input.runId);
         if (previous && previous.limit !== input.limit) resync();
-        if (previous && (previous.epoch !== view.root.epoch || previous.visibilityDigest !== view.visibilityDigest)) resync();
+        if (previous && (previous.hostGeneration !== view.hostGeneration || previous.epoch !== view.root.epoch || previous.visibilityDigest !== view.visibilityDigest)) resync();
         if (previous && previous.digest === hash(view.payload) && this.pollMs > 0) {
             await delay(this.pollMs, undefined, { signal }); view = await this.#view(handle, input.runId);
-            if (previous.epoch !== view.root.epoch || previous.visibilityDigest !== view.visibilityDigest) resync();
+            if (previous.hostGeneration !== view.hostGeneration || previous.epoch !== view.root.epoch || previous.visibilityDigest !== view.visibilityDigest) resync();
         }
         const changed = !previous || previous.digest !== hash(view.payload), seq = previous ? previous.seq + (changed ? 1 : 0) : 0;
         const projectionId = previous?.projectionId ?? randomUUID();
@@ -227,7 +231,7 @@ export class RunObservationService {
             this.#cursors.delete(input.cursor);
         }
         const cursor = this.#remember({ handle, kind: 'projection', scope: input.runId, hostBootId: this.hostBootId,
-            projectionId, epoch: view.root.epoch, visibilityDigest: view.visibilityDigest, digest: hash(view.payload), seq, limit: input.limit });
+            hostGeneration: view.hostGeneration, projectionId, epoch: view.root.epoch, visibilityDigest: view.visibilityDigest, digest: hash(view.payload), seq, limit: input.limit });
         return { schemaVersion: 1, runId: input.runId, projectionId, hostBootId: this.hostBootId, epoch: view.root.epoch,
             projectionVersion: 1, visibilityDigest: view.visibilityDigest, seq, cursor, kind: previous ? 'deltaBatch' : 'snapshot',
             payload: previous ? { fromSeq: previous.seq, toSeq: seq, baseProjectionVersion: 1,
@@ -249,13 +253,13 @@ export class RunObservationService {
         if (!['nodes', 'edges', 'attempts', 'effects', 'approvals', 'events'].includes(input.collection)) throw new TypeError('Invalid Run metadata collection');
         const scope = hash({ runId: input.runId, collection: input.collection });
         const previous = input.cursor === null ? null : this.#lookup(input.cursor, handle, 'details', scope);
-        const { root, payload, visibilityDigest } = await this.#view(handle, input.runId);
-        if (previous && (previous.version !== root.stateVersion || previous.epoch !== root.epoch || previous.visibilityDigest !== visibilityDigest)) resync();
+        const { root, payload, visibilityDigest, hostGeneration } = await this.#view(handle, input.runId);
+        if (previous && (previous.hostGeneration !== hostGeneration || previous.version !== root.stateVersion || previous.epoch !== root.epoch || previous.visibilityDigest !== visibilityDigest)) resync();
         const collection = ['nodes', 'edges'].includes(input.collection) ? payload.graph[input.collection] : payload[input.collection];
         const start = previous?.offset ?? 0, items = collection.slice(start, start + input.limit);
         return { runId: input.runId, collection: input.collection, versions: payload.versions, items,
             cursor: start + items.length < collection.length ? this.#remember({ handle, kind: 'details', scope, hostBootId: this.hostBootId,
-                version: root.stateVersion, epoch: root.epoch, visibilityDigest, offset: start + items.length }) : null };
+                hostGeneration, version: root.stateVersion, epoch: root.epoch, visibilityDigest, offset: start + items.length }) : null };
     }
 
     async diagnostics(handle, input) {

@@ -78,6 +78,29 @@ describe.each(harnesses)('$name original Run metadata HTTP', ({ make }) => {
         expect((await runs.get(h.handle, root.runId)).budgetAuthorityRef).toEqual(root.budgetAuthorityRef);
     });
 
+    test('same-Host storage generation changes disable stale controls and require recovery without changing history', async () => {
+        await h.engine.nativeHostLifecycle.afterRestore(h.handle);
+        const snapshot = (await observe().expect(200)).body.outcome;
+        expect(snapshot.payload.controls.cancel).toBe(false);
+        expect(snapshot.payload.diagnostics).toContainEqual({ code: 'native_orchestration_host_recovery_required', severity: 'blocking' });
+        expect(await runs.get(h.handle, root.runId)).toEqual(root);
+        await mutation({ ...runGuard(root), reasonCode: 'stale_restore' }).expect(409);
+    });
+
+    test('restore generation changes invalidate observation, list and details cursors', async () => {
+        await start();
+        const listed = (await read('list', { sourceSelector, cursor: null, limit: 1 }).expect(200)).body.outcome;
+        await mutation({ ...runGuard(root), reasonCode: 'user_cancelled' }).expect(200);
+        const snapshot = (await observe().expect(200)).body.outcome;
+        const detail = (await read('details', { runId: root.runId, collection: 'events', cursor: null, limit: 1 }).expect(200)).body.outcome;
+        expect(listed.cursor).not.toBeNull(); expect(detail.cursor).not.toBeNull();
+        await h.engine.nativeHostLifecycle.afterRestore(h.handle);
+        await observe(snapshot.cursor).expect(409);
+        await read('list', { sourceSelector, cursor: listed.cursor, limit: 1 }).expect(409);
+        await read('details', { runId: root.runId, collection: 'events', cursor: detail.cursor, limit: 1 }).expect(409);
+        expect((await observe().expect(200)).body.outcome.kind).toBe('snapshot');
+    });
+
     test('cursor scope, expiry, service restart and owner isolation cannot read another stream', async () => {
         const snapshot = (await observe().expect(200)).body.outcome, other = await start();
         await read('observe', { runId: other.runId, cursor: snapshot.cursor, limit: 10 }).expect(409);
