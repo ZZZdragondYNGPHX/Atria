@@ -1078,3 +1078,9 @@
 - Source 5512ead16 → 03c019a87，本地提交，未推送；接口 §17.96。已复现原 setPlan 删除 proposal 引用步骤时直到持久 validator 才抛 Invalid task proposal authority；新增写前原权威冲突，不破坏原提案，不将真实调用参数猜测当作已证实根因。Prompt 续跑复用已保存Plan，executeTool异常补入原保守 Root失败记录。
 - 新原引用/Context两个 suites 12/12 PASS（12.383s），包括 FS/SQLite 零发送原写前拒绝、合法保留引用/reset后替换、真实Model工具冲突留下原费用/待核对Effect与 reconciling。原 Project Agent 与 evaluator 指纹44/44 PASS（14.381s）；原失败suite10PASS/另一suite及case过滤10SKIP（20.472s）。五文件原 ESLint/staged diff check通过，没有冒称被名称筛掉的冷核对suite已执行。
 - 真 Provider复测4次200、24708 reported tokens、unknown=0。模型已按 get_project+closure→reset→project_save→prepare_review；原 Task/Root均如实 blocked，validation.failed，jobs26余6，确认该次并非预算耗尽。related_proposal=false，随后 worker runtime_failed；依据已出现检查顺序，正在核对 grader 是否对不完整 proposal 的 entryPoint 直接解引用。真实调用仍未通过，不再把 Scope工程错误和模型提案错误混为一项；独立质量/价格/晋升Gate不变，后端继续。
+
+
+## 2026-10-17 — 第九十二组：不完整提案的确定性评分
+
+- Source 03c019a87 → d3e62ee70，本地提交，未推送。原两个 Project grader 共用 preservation helper，缺失/错误 entryPoint 直接失败证据，不再抛异常或填补结构。恢复授权字段时保留原 optional 字段是否存在；最初 pure case 1FAIL 发现直接添加 undefined primaryWorldId 会改变 canonical hash，修正为精确原字段存在性。没有放宽 related_proposal、Review、preservation 或独立质量 Gate。新 helper 纳入 evaluator 指纹。
+- pure malformed/精确保留与指纹两 suites 34/34 PASS（2.129s，指纹26）；实际 Native worker 两 Engine 不完整提案场景2PASS/2filterSKIP（137.675s），每个三案例均完整运行，全部正确 preservation/review/target=false，Source隔离、费用9次原ledger保持。原 Native 合法 related_pilot 精选1PASS/5filterSKIP（75.332s），原 Project来源/长窗口4PASS/25filterSKIP（10.646s）。七文件原 ESLint/staged diff check通过。都是 localhost合成，未因修 grader 重新重复真实调用或宣称质量通过；接着继续 Cognition及其它实际后端消费者，未交前端/main。
