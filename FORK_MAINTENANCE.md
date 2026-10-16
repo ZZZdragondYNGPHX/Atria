@@ -18,7 +18,7 @@ Atria is maintained as a SillyTavern-based modified product. The stable product 
 ## Normal development flow
 
 1. Verify current `main` and read the active workspace `AGENTS.md`.
-2. For a resumed/multi-stage task, read `docs:HANDOFF.md` and its named Plan/Record.
+2. Read the relevant Plan/Record as needed; use `docs:HANDOFF.md` only when resuming a user-requested interruption.
 3. Create/use the appropriate short-lived semantic branch.
 4. Implement the isolated task and run minimal relevant local validation.
 5. Write/update the permanent Record under `docs:records/**`.
@@ -34,7 +34,7 @@ Reference and update permission are separate. Read a `reference/<project>` only 
 
 ## Verification
 
-Run the smallest sufficient local checks for the touched surface and report only checks actually executed. Prefer automation and simulators; manual device checks require a specific essential gap. Do not repeat passed checks without a relevant new change. Android/device, Docker, paid-provider and real-UI validation are not implied by ordinary source validation.
+Implementation, compatibility and test scope follow `docs:README.md` §12.1. Run the smallest sufficient local checks for the touched surface and report only checks actually executed. Prefer automation and simulators; manual device checks require a specific essential gap. Do not repeat passed checks without a relevant new change. Android/device, Docker, paid-provider and real-UI validation are not implied by ordinary source validation.
 
 ## Documentation
 

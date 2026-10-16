@@ -32,10 +32,6 @@ const mockPresetManager = {
 jest.unstable_mockModule('../../public/scripts/preset-manager.js', () => ({
     getPresetManager: () => mockPresetManager,
     presetManagerRegistry: { openai: mockPresetManager },
-    // A few oai_settings-related helpers preset-manager.js may re-export.
-    // The st-context.js import site only takes `getPresetManager`, so any
-    // additional names live-mocked here are defensive — stripping them
-    // avoids polluting the surface.
 }));
 
 // -------------------------------------------------------------------------
