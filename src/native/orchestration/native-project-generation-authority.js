@@ -15,7 +15,7 @@ import { readAttempt } from './controller-common.js';
 import { projectAgentRoundConversation } from '../../../public/shared/project-agent-conversation.js';
 import { readProjectRoundReceipt } from './project-round-contracts.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
-import { assertProjectToolReceipt, readProjectToolDescriptor, projectToolCapability, projectToolAction, projectToolResultPayload } from './project-tool-contracts.js';
+import { assertProjectToolReceipt, readProjectToolDescriptor, projectToolCapability, projectToolAction, projectToolResultPayload, projectReviewSource } from './project-tool-contracts.js';
 
 const operations = new WeakMap(), starts = new WeakMap(), generations = new WeakMap();
 const toolPermits = new WeakMap();
@@ -58,7 +58,8 @@ async function currentOperation(state, expected) {
     if (hash(await NativeProjectAgentExecutor.prototype.configuration.call(state.executor, state.handle)) !== state.preflight.configurationFingerprint)
         fail('native_orchestration_source_stale');
     const current = await ProjectAgentService.prototype.observeComputeSource.call(state.host.agent, state.handle, state.projectId, state.taskId);
-    if (stopped(current.task) || current.task.baseRevision !== state.preflight.baseRevision || current.project.revision.revision !== state.preflight.baseRevision
+    if (stopped(current.task) && !projectReviewSource(current.task, state.lastGeneration?.toolReceipts.at(-1))
+        || current.task.baseRevision !== state.preflight.baseRevision || current.project.revision.revision !== state.preflight.baseRevision
         || (state.currentSourceFingerprint !== null && current.task.executionFingerprint !== state.currentSourceFingerprint))
         fail('native_orchestration_source_stale');
     assertFrame(state, expected);

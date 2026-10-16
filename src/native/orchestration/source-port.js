@@ -125,7 +125,7 @@ export class SourcePort {
                 }
                 const { task, project } = await ProjectAgentService.prototype.observeComputeSource.call(this.projectAgent, handle, binding.sourceRef.projectId, binding.sourceRef.taskId);
                 if (task.executionFingerprint !== progress.currentFingerprint || project.revision.revision !== binding.sourceRef.revision) conflict();
-                try { ProjectAgentService.prototype._ensureDraftMutable.call(this.projectAgent, task); } catch (error) {
+                try { if (!progress.reviewSource) ProjectAgentService.prototype._ensureDraftMutable.call(this.projectAgent, task); } catch (error) {
                     if (error instanceof ConflictError && ['project_agent_task_closed', 'project_agent_repair_limit', 'project_agent_review_locked', ATRIA_PROJECT_CONFLICT_CODE].includes(error.code)) conflict();
                     throw error;
                 }

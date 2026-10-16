@@ -3,7 +3,7 @@ import { ProjectAgentService } from '../project-agent.js';
 import { ProjectTaskRepository } from '../agent-intelligence/project-task-repository.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { assertObject, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
-import { assertProjectToolReceipt, projectToolCapability, projectToolAction, projectToolReason } from './project-tool-contracts.js';
+import { assertProjectToolReceipt, projectToolCapability, projectToolAction, projectToolReason, projectReviewSource } from './project-tool-contracts.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { controlRecordKey, readAttempt } from './controller-common.js';
 import { readEffect } from './effect-contracts.js';
@@ -115,5 +115,5 @@ export async function readProjectOwnedSource(tx, handle, root, { projectAgent } 
     if (current.task.baseRevision !== source.revision || current.project.revision.revision !== source.revision
         || current.task.executionFingerprint !== fingerprint) invalid();
     return { runId: root.runId, sourceBindingDigest: root.sourceBinding.bindingDigest, initialFingerprint: source.executionFingerprint,
-        currentFingerprint: fingerprint, receiptRefs: refs };
+        currentFingerprint: fingerprint, reviewSource: projectReviewSource(current.task, receipts.at(-1)), receiptRefs: refs };
 }
