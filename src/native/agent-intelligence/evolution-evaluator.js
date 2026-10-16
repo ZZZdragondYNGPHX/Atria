@@ -12,6 +12,7 @@ import { parseEvaluationJson, applyEvolutionProposal } from './evaluation/json.j
 import { EVOLUTION_RULE, evolutionFields as fields, evolutionHash as hash, evolutionInteger as integer, evolutionText as text, sameEvolutionValue as same } from './evolution-repository.js';
 import { createNativeId } from '../identity.js';
 import { qualityEnvelope, validateQualityReport, qualityProfile, requirePilotSources } from './evaluation/quality.js';
+import { immutable } from '../model-prompt-runtime/execution-utils.js';
 
 export function evolutionEvaluatorRevision() {
     return hash(['evolution-evaluator.js', 'evaluation/worker.js', 'evaluation/sealed-sources.js', 'evaluation/json.js', 'evaluation/worker-bridge.js', 'evaluation/adapters.js', 'evaluation/cases.js', 'evaluation/store.js',
@@ -107,22 +108,44 @@ export function promotionDecision(report, { policyFingerprint, targetPin, budget
 // Paid work occurs only in the parent Host. The child receives immutable public
 // configuration/fixtures, never credentials, production stores or writer ports.
 export class EvolutionEvaluator {
+    #sourceProbeConfigurations = new WeakSet();
+    #sourceProbeJobs = new WeakMap();
     constructor({ host, repository }) { this.host = host; this.repository = repository; }
     async configuration(handle, routeId, projectPromptRef = null) {
+        return this.#configuration(handle, routeId, projectPromptRef, false);
+    }
+    /** Exact user Route ceiling for engineering observations only. No promotion. */
+    async sourceProbeConfiguration(handle, routeId) {
+        const config = immutable(await this.#configuration(handle, routeId, null, true));
+        this.#sourceProbeConfigurations.add(config);
+        return config;
+    }
+    async #configuration(handle, routeId, projectPromptRef, sourceProbe) {
         const original = await this.host.persistence.getRuntimeRoute(handle, routeId);
         const route = projectPromptRef ? { ...original, promptProgramRef: projectPromptRef } : original;
         const persistence = Object.create(this.host.persistence);
         persistence.getRuntimeRoute = async (owner, id) => id === routeId ? route : this.host.persistence.getRuntimeRoute(owner, id);
         const resolver = new RouteResolver({ persistence, library: this.host.library, providers: this.host.providers });
         const resolved = await resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: routeId }, role: route.role, requirements: ['generation.tools'] });
+        const output = resolved.generation.output.maxTokens;
         if (resolved.connection.providerAdapter !== 'provider.openai-compatible' || resolved.resources.some(r => r.ref.scope !== 'library')
-            || resolved.generation.output.maxTokens > 1024 || resolved.generation.streaming.enabled) throw new TypeError('Evaluation requires a supported exact bounded nonstreaming user Route');
+            || (sourceProbe ? !Number.isSafeInteger(output) || output < 1 || output > resolved.model.limits.outputTokens
+                || output >= resolved.model.limits.contextTokens : output > 1024)
+            || resolved.generation.streaming.enabled) throw new TypeError('Evaluation requires a supported exact bounded nonstreaming user Route');
         return structuredClone({ route: resolved.route, connection: resolved.connection, model: resolved.model, generation: resolved.generation,
             resources: resolved.resources.map(({ ref, resource }) => ({ ref, resource })) });
     }
     async send(handle, job, config, payload, signal, fresh) {
+        const sourceProbe = this.#sourceProbeConfigurations.has(config);
+        if (sourceProbe && (this.#sourceProbeJobs.get(config) !== job || payload.arm !== 'baseline')) throw new TypeError('Source probe baseline only');
         await fresh();
-        integer(payload.inputTokens, 1, config.model.limits.contextTokens); integer(payload.outputTokens, 1, 1024);
+        if (sourceProbe && this.#sourceProbeJobs.get(config) !== job) throw new TypeError('Source probe baseline only');
+        integer(payload.inputTokens, 1, config.model.limits.contextTokens); integer(payload.outputTokens, 1, sourceProbe ? config.generation.output.maxTokens : 1024);
+        if (sourceProbe) {
+            const body = payload.rendered?.body;
+            if (!body || ['max_tokens', 'max_completion_tokens'].filter(key => Object.hasOwn(body, key)).length !== 1
+                || (body.max_completion_tokens ?? body.max_tokens) !== payload.outputTokens) throw new TypeError('Source probe output ceiling changed');
+        }
         if (payload.rendered.endpoint !== config.connection.endpoint || payload.rendered.body.model !== config.model.remoteModelId
             || payload.outputTokens > config.generation.output.maxTokens || hash(payload.rendered) !== payload.requestHash) throw new TypeError('Evaluation transport fingerprint changed');
         const id = randomUUID(), kind = payload.arm === 'judge' ? 'judge' : payload.arm === 'extraction' ? 'extraction' : payload.arm;
@@ -152,6 +175,7 @@ export class EvolutionEvaluator {
         } finally { await this.repository.settle(handle, id, usage?.totalTokens ?? null, { usage: usage || null, cost: usageCost(usage, job.price) }); }
     }
     async extract(handle, job, config, signal, fresh, publicInput) {
+        if (this.#sourceProbeConfigurations.has(config)) throw new TypeError('Source probe configuration is observation only');
         let prepared, lastCharge;
         const assessment = publicInput.kind === 'quality_assessment';
         if (assessment) qualityProfile(publicInput.profile, job.domain);
@@ -204,7 +228,12 @@ export class EvolutionEvaluator {
         if (!['rp.m1.information', 'project.m1.related'].includes(selection.profileId) || selection.split !== 'development'
             || selection.repetitions !== 1 || selection.mode !== 'source_probe'
             || selectCases({ purpose: 'evaluation', split: selection.split, profileId: selection.profileId, caseSetRevision: selection.caseSetRevision }).some(c => c.entrance !== job.domain)) throw new TypeError('Invalid source probe');
-        return this._evaluate(handle, job, { baseline: config }, { baseline: settings }, signal, fresh, onPair, onTrial, selection);
+        const extended = this.#sourceProbeConfigurations.has(config);
+        if (extended && this.#sourceProbeJobs.has(config)) throw new TypeError('Source probe already active');
+        if (extended) this.#sourceProbeJobs.set(config, job);
+        try { return await this._evaluate(handle, job, { baseline: config }, { baseline: settings }, signal, fresh, onPair, onTrial, selection); } finally {
+            if (extended) this.#sourceProbeJobs.delete(config);
+        }
     }
     // Explicit engineering observation port, not an automatic promotion path.
     // Both arms are freshly executed; grading is separately calibrated by the
@@ -217,6 +246,8 @@ export class EvolutionEvaluator {
         return this._evaluate(handle, job, configs, settings, signal, fresh, onPair, onTrial, selection);
     }
     async _evaluate(handle, job, configs, settings, signal, fresh, onPair, onTrial, selection) {
+        if (selection.mode !== 'source_probe' && Object.values(configs).some(config => this.#sourceProbeConfigurations.has(config)))
+            throw new TypeError('Source probe configuration is observation only');
         if (settings.baseline.nativePlan || settings.candidate?.nativePlan) {
             for (const arm of settings.candidate ? ['baseline', 'candidate'] : ['baseline']) {
                 const plan = settings[arm].nativePlan;

@@ -1,3 +1,4 @@
+import '../util/browser-context.js';
 import { afterEach, expect, test } from '@jest/globals';
 import { evolutionFixture, testConfig } from './evolution-fixture.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
@@ -34,13 +35,13 @@ test('authorized extraction uses 8000 on the original compiler/provider with a s
     expect(restarted.state(old).stopped).toBe('m1_response_incomplete'); expect(restarted.state(revised).recent).toEqual([false]);
 });
 
-test.each([{ failure: false, output: 8192 }, { failure: true, output: 8192 }, { failure: false, output: 16384 }, { failure: false, output: 16384, effort: 'low' }])('extended independent grader funds the original provider: failure=$failure output=$output effort=$effort', async ({ failure, output, effort }) => {
+test.each([{ failure: false, output: 8192 }, { failure: true, output: 8192 }, { failure: false, output: 16384 }])('extended independent grader funds the original provider: failure=$failure output=$output', async ({ failure, output }) => {
     let sends = 0, reserved;
     const f = await evolutionFixture(makeTempFsEngineHarness, 'project-strategy', { fetchImpl: async (_url, options) => {
         sends++;
         const body = JSON.parse(options.body);
-        expect(body[effort ? 'max_completion_tokens' : 'max_tokens']).toBe(output);
-        expect(body.reasoning_effort).toBe(effort);
+        expect(body.max_tokens).toBe(output);
+        expect(body.reasoning_effort).toBeUndefined();
         reserved = (await f.repository.owner(f.h.handle)).attempts.at(-1);
         expect(reserved.status).toBe('reserved');
         if (failure) throw new Error('fixture_transport_failure');
@@ -52,7 +53,7 @@ test.each([{ failure: false, output: 8192 }, { failure: true, output: 8192 }, { 
     const route = (await f.host.persistence.listRuntimeRoutes(f.h.handle)).find(r => r.role === 'role.orchestrator' && r.runtimeRouteId !== f.route.runtimeRouteId
         && r.modelProfileRef.modelProfileId !== f.route.modelProfileRef.modelProfileId);
     const resolved = await m1GraderConfiguration(f.host, f.h.handle, route.runtimeRouteId);
-    const config = effort ? f2JudgeTransport(resolved, output, effort) : resolved;
+    const config = resolved;
     await expect(f.evaluator.configuration(f.h.handle, route.runtimeRouteId)).rejects.toThrow('supported exact bounded');
     const doc = await f.repository.get(f.h.handle, f.scope, f.subject), job = { id: 'fixture:independent', scopeId: doc.scopeId, price: null };
     let paid;
@@ -75,6 +76,23 @@ test.each([{ failure: false, output: 8192 }, { failure: true, output: 8192 }, { 
     expect(owner.attempts).toHaveLength(1);
     expect(owner.attempts[0]).toMatchObject({ id: reserved.id, jobId: job.id, kind: 'judge', status: failure ? 'unknown' : 'reported', tokens: failure ? reserved.upperBound : 2100, cost: null });
     expect(paid?.charge.tokens).toBe(failure ? undefined : 2100);
+});
+
+test('an extended output limit cannot invent a path-bound reasoning capability or reserve a paid grader send', async () => {
+    let sends = 0;
+    const f = await evolutionFixture(makeTempFsEngineHarness, 'project-strategy', { realEvaluator: true, fetchImpl: async () => {
+        sends++; throw new Error('Unverified reasoning must not send');
+    } });
+    cleanup.push(f.h.cleanup);
+    const original = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId), before = hash(original);
+    const config = f2JudgeTransport(original, 16384, 'low');
+    const doc = await f.repository.get(f.h.handle, f.scope, f.subject), job = { id: 'fixture:independent', scopeId: doc.scopeId, price: null };
+    const bridge = await createFrozenEvaluationBridge(config, payload => sendM1Grader(f.evaluator, f.h.handle, job, config,
+        { ...payload, arm: 'judge' }, new AbortController().signal, async () => {}));
+    cleanup.push(bridge.cleanup);
+    await expect(bridge.rp({ requestId: 'unverified-grader', trialId: 'unverified-pair', fixtureHash: hash('fixture'),
+        messages: [{ role: 'user', content: 'Return a grade.' }], tools: [], kind: 'grader' })).rejects.toMatchObject({ code: 'generation_capability_unknown' });
+    expect(sends).toBe(0); expect((await f.repository.owner(f.h.handle)).attempts).toEqual([]); expect(hash(original)).toBe(before);
 });
 
 test('single explicit diagnostic caps a legacy 8192 route at 8000 before reserving the original provider send', async () => {

@@ -82,8 +82,8 @@ try {
     f.host.secretPort = { resolveSecret: async ref => { if (ref.secretId !== f.connection.secretRef.secretId) throw new TypeError('Unexpected test Secret ref'); return apiKey; } };
     await f.persistence.saveConnectionProfile(handle, { ...f.connection, endpoint: url.toString() });
     await f.persistence.saveModelProfile(handle, { ...f.model, remoteModelId: config.model, tokenizer: { encoding: config.tokenizer, source: 'explicit_private_test_config' },
-        limits: { contextTokens: config.contextTokens, outputTokens: Math.min(config.maxOutputTokens, 1024) } });
-    const generation = { ...f.generation, revision: 'native-live', output: { maxTokens: Math.min(config.maxOutputTokens, 1024) } };
+        limits: { contextTokens: config.contextTokens, outputTokens: config.maxOutputTokens } });
+    const generation = { ...f.generation, revision: 'native-live', output: { maxTokens: config.maxOutputTokens } };
     summary.outputTokenLimit = generation.output.maxTokens;
     await f.library.commit(handle, 'core.generation-profile', generation);
     const pin = (await f.plans.getRevision(handle, f.planRef)).dependencyPins.find(pin => pin.port === 'model');
@@ -108,7 +108,7 @@ try {
     const settings = await targets.evaluationSettings(handle, scope, subject, choice.target);
     repository = new M1AdvisoryRepository({ engine: f.h.engine });
     await repository.limits(handle, { maxRequests: 2000, maxTokens: 10000000, minIntervalMs: 3000 }, 0);
-    const evaluator = new EvolutionEvaluator({ host: f.host, repository }), frozen = await evaluator.configuration(handle, route.runtimeRouteId);
+    const evaluator = new EvolutionEvaluator({ host: f.host, repository }), frozen = await evaluator.sourceProbeConfiguration(handle, route.runtimeRouteId);
     const report = await evaluator.probe(handle, { id: 'native-live:' + randomUUID(), scopeId: 'private-test', domain,
         policyFingerprint: 'engineering-observation', targetPin: hash(settings), price: null }, frozen, settings, new AbortController().signal,
     async () => {}, async () => {}, async () => {}, { profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related',
