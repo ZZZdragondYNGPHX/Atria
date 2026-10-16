@@ -9,6 +9,7 @@ import { fields, text } from './contracts.js';
 import { assertProjectAgentConversation } from '../../../public/shared/project-agent-conversation.js';
 import { assertProjectStrategyVersions } from './project-strategy.js';
 import { assertComputeLedger } from '../../../public/shared/native-compute-budget.js';
+import { assertProjectToolReceipt } from '../orchestration/project-tool-contracts.js';
 
 const key = (handle, projectId, taskId) => ({ kind: NATIVE_RESOURCE_KINDS.projectAgentTask, handle, projectId, taskId });
 const STATES = new Set(['planning', 'planned', 'working', 'evaluating', 'repair', 'blocked', 'review', 'committing', 'completed', 'conflict', 'taken_over', 'cancelled']);
@@ -138,7 +139,13 @@ export function assertProjectTask(value) {
         }
         const calls = new Set();
         for (const call of attempt.calls) {
-            fields(call, ['callId', 'name', 'argsHash'], 'Attempt tool call'); text(call.callId, 'Call identity'); text(call.name, 'Call name');
+            fields(call, ['callId', 'name', 'argsHash', ...(Object.hasOwn(call, 'nativeReceipt') ? ['nativeReceipt'] : [])], 'Attempt tool call'); text(call.callId, 'Call identity'); text(call.name, 'Call name');
+            if (Object.hasOwn(call, 'nativeReceipt')) {
+                assertProjectToolReceipt(call.nativeReceipt);
+                if (attempt.kind !== 'generation' || call.nativeReceipt.projectAttemptId !== attempt.attemptId || call.nativeReceipt.callId !== call.callId
+                    || call.nativeReceipt.name !== call.name || call.nativeReceipt.argsHash !== call.argsHash
+                    || call.nativeReceipt.toSequence > task.sequence) throw new TypeError('Project tool receipt call mismatch');
+            }
             if (calls.has(call.callId) || !/^[a-f0-9]{64}$/.test(call.argsHash)) throw new TypeError('Invalid attempt call');
             calls.add(call.callId);
         }

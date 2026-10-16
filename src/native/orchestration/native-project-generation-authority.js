@@ -9,8 +9,13 @@ import { hashNativeDocument as hash } from '../repositories/common.js';
 import { executeProjectSkillWork } from '../skill-invocation.js';
 import { prepareRetrievalCompute } from '../retrieval-compute.js';
 import { pinSkillEntries, loadAlwaysSkills, boundSkillFile } from '../../../public/shared/skill-invocation.js';
+import { ModelPort } from './model-port.js';
+import { readEffect } from './effect-contracts.js';
+import { readAttempt } from './controller-common.js';
+import { assertProjectToolReceipt, readProjectToolDescriptor } from './project-tool-contracts.js';
 
 const operations = new WeakMap(), starts = new WeakMap(), generations = new WeakMap();
+const toolPermits = new WeakMap();
 const fail = (code = 'native_orchestration_project_producer_denied') => { throw Object.assign(new TypeError(code), { code }); };
 const stopped = task => ['review', 'blocked', 'conflict', 'taken_over', 'completed', 'committing', 'cancelled'].includes(task.status);
 
@@ -112,7 +117,7 @@ export async function captureNativeProjectGeneration(capture, { started, round }
     await ProjectAgentService.prototype.recordGenerationRequest.call(state.host.agent, state.handle, state.projectId, state.taskId, original.attemptId, requestId);
     const projectCapture = Object.freeze({});
     generations.set(projectCapture, { state, projectAttemptId: original.attemptId, requestId, round,
-        sourceFingerprint: original.sourceFingerprint, conversationDigest: original.conversationDigest, callsDigest: original.callsDigest });
+        sourceFingerprint: original.sourceFingerprint, conversationDigest: original.conversationDigest, callsDigest: original.callsDigest, readToolReceipts: [] });
     state.nextRound++;
     await inspectNativeProjectGeneration(projectCapture, { host: state.host, handle: state.handle });
     return projectCapture;
@@ -120,7 +125,7 @@ export async function captureNativeProjectGeneration(capture, { started, round }
 
 export function inspectNativeProjectGenerationIdentity(capture, expected) {
     const generation = generations.get(capture); if (!generation) fail();
-    const { state, ...metadata } = generation, active = assertFrame(state, expected);
+    const { state, readToolReceipts: _reads, ...metadata } = generation, active = assertFrame(state, expected);
     const request = immutable({ projectId: state.projectId, taskId: state.taskId, revision: state.preflight.baseRevision,
         projectAttemptId: generation.projectAttemptId, requestId: generation.requestId, role: 'studio',
         routeRef: { scope: 'player', runtimeRouteId: state.startInput.runtimeRouteId } });
@@ -138,7 +143,7 @@ export async function inspectNativeProjectGeneration(capture, expected) {
     if (current.task.executionFingerprint !== generation.sourceFingerprint || hash(current.task.conversation) !== generation.conversationDigest
         || attempt?.status !== 'started' || attempt.kind !== 'generation' || attempt.requestId !== generation.requestId
         || hash(attempt.calls) !== generation.callsDigest) fail('native_orchestration_source_stale');
-    return Object.freeze({ ...identity, conversation: immutable(current.task.conversation),
+    return Object.freeze({ ...identity, conversation: immutable(current.task.conversation), readToolReceipts: immutable(generation.readToolReceipts),
         skillWorkRecords: immutable(generation.state.skillWorkRecords) });
 }
 
@@ -174,4 +179,100 @@ export async function readNativeProjectSkillInventory(capture, expected) {
     for (const entry of entries) if ((await state.repository.get(entry.name, entry.scope))?.installedHash !== entry.version) fail('native_orchestration_source_stale');
     await inspectNativeProjectGeneration(capture, expected);
     return immutable(entries);
+}
+
+/** Captures the actual Model wrapper before a subsequent tool Effect changes its producer state. */
+export async function prepareNativeProjectReadTool(capture, { port, result, modelEffectId, input, toolEffectId }) {
+    const generation = generations.get(capture); if (!generation || !(port instanceof ModelPort)) fail();
+    const { state } = generation, identity = await inspectNativeProjectGeneration(capture, { host: port.host, handle: state.handle });
+    const root = await port.runs.get(state.handle, result.receiptRef?.runId);
+    const proof = await ModelPort.prototype.inspectResultCompletion.call(port, state.handle, { result, runId: root.runId, effectId: modelEffectId });
+    const calls = result.generated.response.toolCalls ?? [], matches = calls.filter(call => (call.raw?.id || call.id) === input.callId);
+    if (proof.outputType !== 'json' || proof.sourceBinding.sourceAuthority !== 'project' || input.attemptId !== identity.projectAttemptId
+        || matches.length !== 1 || matches[0].name !== input.name || hash(matches[0].args) !== hash(input.args)
+        || root.sourceBinding.sourceRef.executionFingerprint !== identity.sourceFingerprint) fail();
+    const attempt = await port.runs.engine.withTransaction(state.handle, async tx => (await readAttempt(tx, state.handle, root, proof.producerAttemptId)).doc);
+    const node = root.graph.nodes.find(item => item.nodeId === attempt.nodeId);
+    const pins = (await state.host.turnOrchestration.plans.getRevision(state.handle, root.planRef)).dependencyPins;
+    const pin = pins.find(item => item.port === 'tool' && node?.dependencyPinIds.includes(item.pinId) && item.resourceRef.name === input.name);
+    if (!node?.capabilities.includes('project.read') || !root.graph.capabilityCeiling.includes('project.read') || !pin
+        || pin.resourceRef.projectId !== identity.projectId || pin.resourceRef.taskId !== identity.taskId) fail();
+    if (hash(await readProjectToolDescriptor(state.handle, pin.resourceRef, state.host.agent)) !== pin.integrity) fail();
+    const permit = Object.freeze({});
+    toolPermits.set(permit, { generation, capture, port, input: immutable(input), root, result, resultHash: hash(result), pin,
+        modelEffectId, nodeAttemptId: proof.producerAttemptId, operationId: identity.operationId, toolEffectId, used: false, completed: null });
+    return permit;
+}
+
+/** Invoked by the original Task writer while it owns its Task lock. */
+export async function consumeNativeProjectReadPermit(permit, { agent, handle, projectId, taskId, task, input }) {
+    const value = toolPermits.get(permit), state = value?.generation.state;
+    if (!value || value.used || state.host.agent !== agent || state.handle !== handle || state.projectId !== projectId || state.taskId !== taskId
+        || hash(value.input) !== hash(input) || hash(value.result) !== value.resultHash) fail();
+    await inspectNativeProjectGeneration(value.capture, { host: state.host, handle });
+    await value.port.runs.engine.withTransaction(handle, async tx => {
+        const root = await value.port.runs.get(handle, value.root.runId);
+        const fence = await value.port.runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
+        const intent = (await readEffect(tx, handle, root, value.toolEffectId)).doc;
+        const model = (await readEffect(tx, handle, root, value.modelEffectId)).doc;
+        if (root.cancelRequested || root.status !== 'running' || root.epoch !== value.root.epoch || root.hostBootId !== fence.hostBootId
+            || root.hostGeneration !== fence.generation || intent.status !== 'dispatching' || !intent.dispatchToken || intent.nodeAttemptId !== value.nodeAttemptId
+            || intent.actionRef.kind !== 'native_project_read' || intent.capability !== 'project.read'
+            || intent.inputHash !== hash(intent.inputRef) || hash(intent.inputRef.call) !== hash(input)
+            || intent.inputRef.modelEffectId !== value.modelEffectId || intent.inputRef.modelResultHash !== value.resultHash
+            || intent.grantDigest !== model.grantDigest || intent.risk !== 'R1' || intent.requiresApproval || intent.approvalRef !== null
+            || hash(intent.targetRef) !== hash({ projectId, taskId, name: input.name })
+            || intent.sourceBindingDigest !== root.sourceBinding.bindingDigest
+            || hash(intent.budgetAttemptRef?.authorityRef) !== hash(root.budgetAuthorityRef)
+            || root.sourceBinding.bindingDigest !== value.root.sourceBinding.bindingDigest) fail();
+        await value.port.budgetPort.verifyBudgetAttempt({ handle, tx, root, intent, budgetAttemptRef: intent.budgetAttemptRef });
+        await inspectNativeProjectGeneration(value.capture, { host: state.host, handle });
+        if (hash(value.result) !== value.resultHash) fail();
+    });
+    value.used = true;
+    return immutable({ schemaVersion: 1, runId: value.root.runId, effectId: value.toolEffectId, nodeAttemptId: value.nodeAttemptId,
+        sourceBindingDigest: value.root.sourceBinding.bindingDigest, operationId: value.operationId,
+        projectAttemptId: input.attemptId, callId: input.callId, name: input.name, argsHash: hash(input.args),
+        fromFingerprint: task.executionFingerprint, fromSequence: task.sequence });
+}
+
+/** Captures the original writer's actual body before its persistence ACK. No caller can mint this permit. */
+export function completeNativeProjectReadPermit(permit, { receipt, result }) {
+    const value = toolPermits.get(permit);
+    if (!value?.used || value.completed) fail();
+    assertProjectToolReceipt(receipt);
+    if (receipt.runId !== value.root.runId || receipt.effectId !== value.toolEffectId || receipt.resultHash !== hash(result)) fail();
+    value.completed = immutable({ receipt, result });
+}
+
+export async function executeNativeProjectReadTool(permit) {
+    const value = toolPermits.get(permit), state = value?.generation.state;
+    if (!value || value.used) fail();
+    if (value.port.runs.engine.hasActiveTransaction(state.handle)) fail('native_orchestration_project_tool_ambient_transaction');
+    try {
+        let result;
+        try {
+            // The original writer acquires Task then its own Studio queues.
+            // Keep the preceding validation transaction physically closed;
+            // enclosing this writer in the Studio queue would self-deadlock.
+            result = await ProjectAgentService.prototype.executeTool.call(state.host.agent, state.handle, state.projectId, state.taskId,
+                { ...value.input, nativeEffectPermit: permit, effectPolicy: 'no-background-model' });
+        } catch (error) {
+            if (error.code !== 'storage_commit_unknown' || !value.completed) throw error;
+            const task = await state.host.agent._repository.get(state.handle, state.projectId, state.taskId);
+            const saved = task?.attempts.find(item => item.attemptId === value.input.attemptId)?.calls.find(item => item.callId === value.input.callId)?.nativeReceipt;
+            if (hash(saved ?? null) !== hash(value.completed.receipt)) throw error;
+            result = value.completed.result;
+        }
+        const current = await currentOperation(state, { host: state.host, handle: state.handle });
+        const attempt = current.task.attempts.find(item => item.attemptId === value.input.attemptId);
+        const call = attempt?.calls.find(item => item.callId === value.input.callId), receipt = call?.nativeReceipt;
+        assertProjectToolReceipt(receipt);
+        if (!value.completed || hash(receipt) !== hash(value.completed.receipt) || receipt.runId !== value.root.runId || receipt.effectId !== value.toolEffectId || receipt.resultHash !== hash(result)
+            || receipt.toFingerprint !== current.task.executionFingerprint || receipt.fromFingerprint !== value.generation.sourceFingerprint) fail();
+        value.generation.callsDigest = hash(attempt.calls);
+        value.generation.readToolReceipts.push(immutable(receipt));
+        await inspectNativeProjectGeneration(value.capture, { host: state.host, handle: state.handle });
+        return { result, receipt };
+    } finally { toolPermits.delete(permit); }
 }

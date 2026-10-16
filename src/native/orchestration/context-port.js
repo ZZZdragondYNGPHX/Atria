@@ -80,7 +80,7 @@ export class ContextPort {
         return immutable(input);
     }
 
-    async #current(handle, request, phase, readInformation = true, finalizationPermit = null) {
+    async #current(handle, request, phase, readInformation = true, finalizationPermit = null, projectRead = false) {
         // Delegation/grants are an original-domain decision, never inferred
         // from a model's audience string or an already compiled prompt.
         const permission = await this.authorizeContext({ handle, request, phase, ...(finalizationPermit ? { finalizationPermit } : {}) });
@@ -125,8 +125,13 @@ export class ContextPort {
             if (task.executionFingerprint !== projectIdentity.sourceFingerprint || hashNativeDocument(task.conversation) !== projectIdentity.conversationDigest
                 || task.baseRevision !== projectIdentity.revision || project.revision.revision !== projectIdentity.revision
                 || attempt?.status !== 'started' || attempt.requestId !== projectIdentity.requestId) fail('native_orchestration_context_source_stale');
+            const accepted = projectRead ? projectIdentity.readToolReceipts : [];
+            if (accepted.some(receipt => receipt.fromFingerprint !== task.executionFingerprint || receipt.toFingerprint !== task.executionFingerprint
+                || receipt.sourceBindingDigest !== binding.bindingDigest || !attempt.calls.some(call => hashNativeDocument(call.nativeReceipt ?? null) === hashNativeDocument(receipt))))
+                fail('native_orchestration_context_source_stale');
+            const calls = attempt.calls.filter(call => !accepted.some(receipt => hashNativeDocument(call.nativeReceipt ?? null) === hashNativeDocument(receipt)));
             const projectDigest = hashNativeDocument({ sourceFingerprint: task.executionFingerprint, conversation: task.conversation,
-                attempt: { attemptId: attempt.attemptId, kind: attempt.kind, status: attempt.status, requestId: attempt.requestId, calls: attempt.calls },
+                attempt: { attemptId: attempt.attemptId, kind: attempt.kind, status: attempt.status, requestId: attempt.requestId, calls },
                 project, registry, tools, skillWorkRecords: projectIdentity.skillWorkRecords });
             return { modelContext, projectIdentity, authorityDigest: projectDigest, information: null };
         }
@@ -373,6 +378,17 @@ export class ContextPort {
         if (hashNativeDocument(information.projection) !== captured.proof.projectionDigest || authorityDigest !== captured.proof.authorityDigest) fail('native_orchestration_context_source_stale');
         if (captured.memoryProof) await NativeMemoryAuthority.prototype.assertContextRecall.call(this.memoryAuthority, handle, captured.memoryProof, snapshot, captured.request.audience);
         return context.plan;
+    }
+
+    /** Same live Project capture only; exact original read receipts may advance its calls list. No Model grant. */
+    async revalidateProjectRead(handle, request) {
+        fields(request, ['context'], 'Project read Context');
+        const captured = this.#contexts.get(request.context);
+        if (!captured?.project || captured.handle !== handle) fail('native_orchestration_context_proof_invalid');
+        await readNativeProjectSkillInventory(this.projectCapture, { projectAgent: this.projectAgent, handle });
+        const current = await this.#current(handle, captured.request, 'consume', true, null, true);
+        if (current.authorityDigest !== captured.proof.authorityDigest) fail('native_orchestration_context_source_stale');
+        return request.context.plan;
     }
 
     assertSource(handle, { context, source } = {}) {

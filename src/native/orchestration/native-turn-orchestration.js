@@ -104,6 +104,8 @@ export class NativeNarratorOrchestrationAuthority {
     projectSelectionDescriptor(selection) { return this.#projectAuthority().descriptor(selection); }
     prepareProjectRound(args) { return this.#projectAuthority().prepare(args); }
     executeProjectRound(args) { return this.#projectAuthority().execute(args); }
+    executeProjectTool(args) { return this.#projectAuthority().executeTool(args); }
+    closeProjectRound(args) { return this.#projectAuthority().closeRound(args); }
 
     #rpAuthority() {
         this.#rp ??= new NativeRpOrchestrationAuthority({ owner: this, execution: () => this.execution,

@@ -7,6 +7,7 @@ import { assertObject } from '../../../public/shared/native-orchestration-contra
 import { createBindingSourceAuthority } from './binding-source-authority.js';
 import { validateModelCapability } from './model-capability-authority.js';
 import { validateDelegationCapability } from './delegation-capability-authority.js';
+import { readProjectToolDescriptor } from './project-tool-contracts.js';
 
 /** Authoring uses existing Native resource readers; validation never sends. */
 export function createOrchestrationAuthoringService(engine, sources = {}) {
@@ -33,6 +34,14 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
                 evidence.push(...result.evidence); issues.push(...result.issues);
                 continue;
             }
+            if (capability === 'project.read') {
+                const nodes = definition.nodes.filter(node => node.capabilities.includes(capability));
+                const valid = nodes.length > 0 && nodes.every(node => node.kind === 'agent' && node.dependencyPinIds.some(id =>
+                    dependencyPins.some(pin => pin.pinId === id && pin.port === 'tool' && pin.resourceRef.kind === 'project_agent_tool')));
+                evidence.push({ capability, status: valid ? 'available' : 'invalid' });
+                if (!valid) issues.push({ code: 'native_orchestration_project_tool_pin_required', severity: 'blocking', fieldPath: 'capabilityCeiling.' + capability });
+                continue;
+            }
             issues.push({ code: 'native_orchestration_capability_authority_unavailable', severity: 'unknown', fieldPath: 'capabilityCeiling.' + capability });
             evidence.push({ capability, status: 'unknown' });
         }
@@ -49,6 +58,8 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
                 } else if (pin.port === 'model' && ref.scope === 'player') {
                     assertObject(ref, ['scope', 'runtimeRouteId'], 'routeRef');
                     value = await runtime.getRuntimeRoute(handle, ref.runtimeRouteId);
+                } else if (pin.port === 'tool' && ref.kind === 'project_agent_tool') {
+                    value = await readProjectToolDescriptor(handle, ref, sources.projectAgent);
                 } else {
                     issues.push({ code: 'native_orchestration_dependency_authority_unavailable', severity: 'unknown', fieldPath: 'dependencyPins.' + pin.pinId });
                     evidence.push({ pinId: pin.pinId, status: 'unknown' });

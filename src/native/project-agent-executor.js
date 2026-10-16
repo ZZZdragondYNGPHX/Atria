@@ -47,43 +47,50 @@ export async function executeNativeProjectAgent({ host, handle, projectId, taskI
             return started;
         },
         finishAgentGeneration: (project, task, input) => agent.finishGeneration(handle, project, task, input),
-        executeAgentTool: async (project, task, input) => { await current(); return agent.executeTool(handle, project, task, { ...input, effectPolicy: 'no-background-model' }); },
-    };
-    return runNativeStudioAgentTask({ projectId, taskId, abortSignal: signal, maxModelRounds, client,
-        ...(principal ? { prepareModelRound: async ({ attemptId, round, previousSystem }) => {
-            const started = beginnings.get(attemptId); if (!started) throw new ConflictError('native_orchestration_project_producer_denied');
-            beginnings.delete(attemptId);
-            const projectCapture = await captureNativeProjectGeneration(projectOperation, { started, round });
-            const prepared = await host.turnOrchestration.prepareProjectRound({ host, handle, projectCapture, selection: principal.selection, previousSystem });
-            const { roundToken, ...actualRound } = prepared;
-            if (!roundToken || typeof roundToken !== 'object') throw new ConflictError('native_orchestration_project_producer_denied');
-            preparedRounds.set(attemptId, roundToken); return actualRound;
-        } } : {}),
-        request: async () => ({ routes: (await host.persistence.listRuntimeRoutes(handle)).filter(route => !routeRef || route.runtimeRouteId === routeRef.runtimeRouteId) }),
-        work: async (context, operation, input) => {
+        executeAgentTool: async (project, task, input) => {
             await current();
-            if (principal) return runNativeProjectSkillWork(projectOperation, { context, operation, input });
-            const compute = await prepareRetrievalCompute({ handle, context, profile: { mode: 'embed', purpose: 'studio.skill.v1' }, persistence: host.persistence, core: host.sessionCore, agent, studio });
-            return executeProjectSkillWork({ operation, input, compute, repository: host.skillRepository(handle), projectId,
-                settings: operation === 'list' ? (await host.extensions.settings(handle)).value : undefined, signal });
+            if (principal) return host.turnOrchestration.executeProjectTool({ host, handle, roundToken: preparedRounds.get(input.attemptId), input });
+            return agent.executeTool(handle, project, task, { ...input, effectPolicy: 'no-background-model' });
         },
-        generate: async ({ source, ...request }) => {
-            if (principal) {
-                const roundToken = preparedRounds.get(source.projectAttemptId);
-                if (!roundToken) throw new ConflictError('native_orchestration_project_producer_denied');
-                preparedRounds.delete(source.projectAttemptId);
-                const result = await host.turnOrchestration.executeProjectRound({ host, handle, roundToken, source,
-                    role: request.role, messages: request.messages, tools: request.tools });
-                await observe(); return { ...result.response, snapshot: result.snapshot, routing: result.routing };
-            }
-            await current(); const extra = await contextMessage();
-            const result = await host.execute(handle, { ...source, role: request.role, messages: extra ? [request.messages[0], extra, ...request.messages.slice(1)] : request.messages,
-                tools: request.tools, ...(routeRef ? { routeRef } : {}), requestId: requestId(round++) }, signal, undefined,
-            { scheduled: true, ...(routeRef ? { effectPolicy: 'no-background-model' } : {}) });
-            await observe();
-            return { ...result.response, snapshot: result.snapshot, routing: result.routing };
-        },
-    });
+    };
+    try {
+        return await runNativeStudioAgentTask({ projectId, taskId, abortSignal: signal, maxModelRounds, client,
+            ...(principal ? { prepareModelRound: async ({ attemptId, round, previousSystem }) => {
+                const started = beginnings.get(attemptId); if (!started) throw new ConflictError('native_orchestration_project_producer_denied');
+                beginnings.delete(attemptId);
+                const projectCapture = await captureNativeProjectGeneration(projectOperation, { started, round });
+                const prepared = await host.turnOrchestration.prepareProjectRound({ host, handle, projectCapture, selection: principal.selection, previousSystem });
+                const { roundToken, ...actualRound } = prepared;
+                if (!roundToken || typeof roundToken !== 'object') throw new ConflictError('native_orchestration_project_producer_denied');
+                preparedRounds.set(attemptId, roundToken); return actualRound;
+            } } : {}),
+            request: async () => ({ routes: (await host.persistence.listRuntimeRoutes(handle)).filter(route => !routeRef || route.runtimeRouteId === routeRef.runtimeRouteId) }),
+            work: async (context, operation, input) => {
+                await current();
+                if (principal) return runNativeProjectSkillWork(projectOperation, { context, operation, input });
+                const compute = await prepareRetrievalCompute({ handle, context, profile: { mode: 'embed', purpose: 'studio.skill.v1' }, persistence: host.persistence, core: host.sessionCore, agent, studio });
+                return executeProjectSkillWork({ operation, input, compute, repository: host.skillRepository(handle), projectId,
+                    settings: operation === 'list' ? (await host.extensions.settings(handle)).value : undefined, signal });
+            },
+            generate: async ({ source, ...request }) => {
+                if (principal) {
+                    const roundToken = preparedRounds.get(source.projectAttemptId);
+                    if (!roundToken) throw new ConflictError('native_orchestration_project_producer_denied');
+                    const result = await host.turnOrchestration.executeProjectRound({ host, handle, roundToken, source,
+                        role: request.role, messages: request.messages, tools: request.tools });
+                    await observe(); return { ...result.response, snapshot: result.snapshot, routing: result.routing };
+                }
+                await current(); const extra = await contextMessage();
+                const result = await host.execute(handle, { ...source, role: request.role, messages: extra ? [request.messages[0], extra, ...request.messages.slice(1)] : request.messages,
+                    tools: request.tools, ...(routeRef ? { routeRef } : {}), requestId: requestId(round++) }, signal, undefined,
+                { scheduled: true, ...(routeRef ? { effectPolicy: 'no-background-model' } : {}) });
+                await observe();
+                return { ...result.response, snapshot: result.snapshot, routing: result.routing };
+            },
+        });
+    } finally {
+        for (const roundToken of preparedRounds.values()) host.turnOrchestration.closeProjectRound({ host, handle, roundToken });
+    }
 }
 
 export class NativeProjectAgentExecutor {
