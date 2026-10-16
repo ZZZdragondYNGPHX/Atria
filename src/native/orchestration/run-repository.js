@@ -162,8 +162,13 @@ export class RunRepository {
         // are guards, not a new action; exact semantic payload stays bound.
         const payloadHash = hashNativeDocument({ operation, body: replayFlag ? { runId: input.runId, operation: input.operation, detail: input.detail } : input });
         const commandKey = { kind: K.orchestrationCommand, handle, commandId };
+        const runResourceIds = resourceIds.map(id => assertNativeId(id, 'orchestrationRun'));
         const lineageIds = input.runId ? await this.#lineageIds(handle, input.runId) : [];
-        return withNativeResourceWrites(handle, [commandId, ...resourceIds, ...lineageIds], () => this.engine.withTransaction(handle, async tx => {
+        // A source/control scope may already hold its Run ancestry. Every
+        // command must acquire those same Run resources before its command ID;
+        // otherwise an independent replay can hold command -> wait Run while
+        // the existing Run holder needs that command to commit its own facts.
+        return withNativeResourceWrites(handle, [...runResourceIds, ...lineageIds], () => withNativeResourceWrites(handle, [commandId], () => this.engine.withTransaction(handle, async tx => {
             assertWritable();
             const fence = await this.assertWriter(handle, tx);
             await this.authorize({ handle, operation, body: input, tx });
@@ -177,7 +182,7 @@ export class RunRepository {
             assertWritable();
             await putImmutable(tx, commandKey, { schemaVersion: 1, commandId, operation, target: input.runId ?? outcome.runId, payloadHash, outcome });
             return replayFlag ? { outcome, replayed: false } : outcome;
-        }, { retryMode: 'known_rollback_only' }));
+        }, { retryMode: 'known_rollback_only' })));
     }
 
     async #lineageIds(handle, runId) {
@@ -194,6 +199,18 @@ export class RunRepository {
             }
             return ids;
         });
+    }
+
+    /** Order same-source metadata control without turning a lock into a grant.
+     * The trusted caller supplies the original domain boundary and opens its
+     * own fresh Engine control transaction inside operation. Unlike ephemeral
+     * consumption, a legitimate control write may change this Run's stamps.
+     */
+    async withSourceControl(handle, runId, operation, { withAuthority } = {}) {
+        if (typeof operation !== 'function' || typeof withAuthority !== 'function')
+            throw new TypeError('Source control requires an operation and original authority boundary');
+        const lineageIds = await this.#lineageIds(handle, runId);
+        return withNativeResourceWrites(handle, lineageIds, () => withAuthority(operation));
     }
 
     /** Serialize ephemeral body consumption with the original Run command tree. */

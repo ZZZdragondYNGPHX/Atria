@@ -9,7 +9,7 @@ import { BudgetPort, sendAttemptId } from './budget-port.js';
 import { EffectController } from './effect-controller.js';
 import { readEffect, effectDecision } from './effect-contracts.js';
 import { checkedRecord } from './plan-repository.js';
-import { controlRecordKey, runGuard } from './controller-common.js';
+import { controlRecordKey, runGuard, readAttempt } from './controller-common.js';
 import { RunRepository, assertChildRunCurrent } from './run-repository.js';
 import { resolveNativeNarratorScope } from './native-turn-orchestration.js';
 import { assertNativeTurnPermit } from './native-turn-permit.js';
@@ -33,6 +33,7 @@ const CONSUME_DENIALS = new Set(['native_orchestration_source_stale', 'native_or
 export class ModelPort {
     #active = new Map();
     #responses = new WeakMap();
+    #resultCompletions = new WeakMap();
     #executeNative;
 
     constructor({ host, runs, effects, budgetPort, sourcePort }) {
@@ -177,7 +178,8 @@ export class ModelPort {
                 const saved = await this.observe(handle, { runId, effectId });
                 if (!saved.observation || hash(saved.observation) !== hash(current.observation)) throw error;
             }
-            return await this.runs.withConsumption(handle, runId, async ({ tx, root, fence, deny }) => {
+            let completion;
+            const result = await this.runs.withConsumption(handle, runId, async ({ tx, root, fence, deny }) => {
                 assertPermit();
                 const intent = (await readEffect(tx, handle, root, effectId)).doc;
                 if (root.cancelRequested || root.epoch !== intent.epoch || root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation
@@ -197,12 +199,79 @@ export class ModelPort {
                 if (pending.binding !== digest(finalIntent) || !finalSaved || hash(finalSaved.observation) !== hash(pending.observation)) return deny();
                 assertPermit();
                 checkCancellation(signal);
+                if (typeof generated.response.text === 'string' && (generated.response.toolCalls === undefined
+                    || Array.isArray(generated.response.toolCalls) && generated.response.toolCalls.length === 0)) {
+                    completion = immutable({ handle, hostBootId: root.hostBootId, hostGeneration: root.hostGeneration,
+                        binding: pending.binding, observationHash: hash(pending.observation),
+                        responseHash: hash(generated.response), snapshotHash: hash(generated.snapshot), providerRowsHash: hash(generated.routing.compute.attempts),
+                        descriptor: { runId, effectId, producerAttemptId: finalIntent.nodeAttemptId, epoch: root.epoch,
+                            sourceBinding: root.sourceBinding, receiptRef: finalSaved.receiptRef, payloadHash: hash(generated.response.text), outputType: 'text' } });
+                }
                 return { generated, receiptRef: saved.receiptRef };
             }, { withAuthority });
+            // Only the actual successfully returned wrapper witnesses this completion.
+            // A callback value rejected by withConsumption never gets branded.
+            if (completion) this.#resultCompletions.set(result, completion);
+            return result;
         } finally {
             if (pending.generated) this.#responses.delete(pending.generated);
             this.#active.delete(activeKey);
         }
+    }
+
+    #assertResultPayload(completion, result) {
+        const descriptor = completion.descriptor, generated = result.generated;
+        if (!generated || typeof generated.response?.text !== 'string' || hash(generated.response.text) !== descriptor.payloadHash
+            || hash(generated.response) !== completion.responseHash || hash(generated.snapshot) !== completion.snapshotHash
+            || hash(generated.routing?.compute?.attempts) !== completion.providerRowsHash || hash(result.receiptRef) !== hash(descriptor.receiptRef))
+            fail('native_orchestration_model_result_payload_changed');
+    }
+
+    /** Completion facts only. A Result writer must separately authorize its recipient. */
+    async inspectResultCompletion(handle, request) {
+        fields(request, ['result', 'runId', 'effectId'], 'Model Result completion');
+        const { result, runId, effectId } = request, completion = this.#resultCompletions.get(result);
+        if (!completion || completion.handle !== handle || completion.descriptor.runId !== runId || completion.descriptor.effectId !== effectId)
+            fail('native_orchestration_model_result_completion_required');
+        const descriptor = completion.descriptor;
+        this.#assertResultPayload(completion, result);
+        return this.runs.engine.withTransaction(handle, async tx => {
+            const root = await this.runs.get(handle, runId), rootStamp = hash(root);
+            const fence = await this.runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
+            const { doc: intent } = await readEffect(tx, handle, root, effectId);
+            const { doc: attempt } = await readAttempt(tx, handle, root, descriptor.producerAttemptId);
+            if (root.ownerRef.handle !== handle || root.cancelRequested || root.status !== 'running' || root.epoch !== descriptor.epoch
+                || root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation
+                || root.hostBootId !== completion.hostBootId || root.hostGeneration !== completion.hostGeneration
+                || intent.hostBootId !== root.hostBootId || intent.hostGeneration !== root.hostGeneration
+                || hash(root.sourceBinding) !== hash(descriptor.sourceBinding) || intent.nodeAttemptId !== attempt.attemptId
+                || attempt.status !== 'running' || attempt.epoch !== root.epoch || attempt.sourceBindingDigest !== root.sourceBinding.bindingDigest
+                || attempt.effectiveGrantDigest !== intent.grantDigest || !attempt.effectRefs.includes(effectId)
+                || intent.epoch !== root.epoch || intent.status !== 'confirmed' || completion.binding !== digest(intent))
+                fail('native_orchestration_model_result_completion_stale');
+            const saved = await this.#saved(handle, tx, root, intent);
+            if (!saved || hash(saved.receiptRef) !== hash(descriptor.receiptRef) || hash(saved.observation) !== completion.observationHash
+                || saved.observation.dispatchEvidence.reference.responseHash !== completion.responseHash
+                || saved.observation.dispatchEvidence.reference.finalRequestHash !== completion.snapshotHash)
+                fail('native_orchestration_model_result_receipt_changed');
+            await SourcePort.prototype.revalidate.call(this.sourcePort, handle, root.sourceBinding, { tx });
+            await BudgetPort.prototype.assertCurrent.call(this.budgetPort, handle, root.budgetAuthorityRef, { tx });
+            for (const send of saved.observation.dispatchEvidence.reference.attempts) {
+                const observed = await BudgetPort.prototype.verifyBudgetAttempt.call(this.budgetPort, { handle, tx, root, intent,
+                    budgetAttemptRef: send.budgetAttemptRef, expectedSend: Object.fromEntries(['requestId', 'targetFingerprint', 'inputFingerprint'].map(field => [field, send[field]])) });
+                // Original late settlement may advance charged/unknown facts;
+                // it cannot turn a settled bill back into an unsettled one.
+                if (send.status === 'settled' && observed.status !== 'settled' || send.status === 'unknown' && observed.status === 'charged')
+                    fail('native_orchestration_model_result_budget_changed');
+            }
+            await SourcePort.prototype.revalidate.call(this.sourcePort, handle, root.sourceBinding, { tx });
+            const finalFence = await this.runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
+            const currentRoot = await this.runs.get(handle, runId);
+            if (hash(currentRoot) !== rootStamp || finalFence.hostBootId !== fence.hostBootId || finalFence.generation !== fence.generation)
+                fail('native_orchestration_model_result_completion_stale');
+            this.#assertResultPayload(completion, result);
+            return immutable(descriptor);
+        });
     }
 
     async verifyObservation({ handle, tx, root, intent, observation }) {
