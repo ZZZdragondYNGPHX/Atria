@@ -1,3 +1,5 @@
+import { readRpNarrationResult } from '../../src/native/orchestration/rp-narration-result-contracts.js';
+import { readAttempt } from '../../src/native/orchestration/controller-common.js';
 import { RpOutputController } from '../../src/native/orchestration/rp-output-controller.js';
 import { ChatRepo } from '../../src/storage/repositories/chat-repo.js';
 import { BudgetPort } from '../../src/native/orchestration/budget-port.js';
@@ -11,7 +13,8 @@ import { readEffect } from '../../src/native/orchestration/effect-contracts.js';
 
 const harnesses = CONTRACT_HARNESSES.filter(({ name }) => ['FsEngine', 'SqliteEngine'].includes(name));
 const configurePlan = plan => {
-    plan.definition.nodes[0].capabilities.push('chat.output'); plan.definition.capabilityCeiling = plan.definition.nodes[0].capabilities;
+    plan.definition.nodes.find(node => node.kind === 'output').capabilities = ['chat.output'];
+    plan.definition.capabilityCeiling = [...plan.definition.nodes[0].capabilities, 'chat.output'];
     Object.assign(plan.definition.outputContract, { kind: 'rp_narration', slot: 'assistant', resultPolicy: { outputType: 'text', maxBytes: 65536 } });
 };
 describe.each(harnesses)('$name real RP output Host Effect', ({ make }) => {
@@ -177,6 +180,46 @@ describe.each(harnesses)('$name real RP output Host Effect', ({ make }) => {
             if (change === 'missing_policy') delete plan.definition.outputContract.resultPolicy;
             else plan.definition.outputContract.slot = 'another_slot';
         } })).rejects.toThrow('native_orchestration_rp_output_policy_invalid');
+    });
+
+
+    test('the actual output owner consumes the durable source-scoped Narrator Result through one graph edge', async () => {
+        const f = await rpModelFixture(make, { configurePlan });
+        try {
+            const result = await f.run(), root = await f.authority.execution.runs.get(f.h.handle, result.runId);
+            const facts = await f.h.engine.withTransaction(f.h.handle, async tx => {
+                const published = await readRpNarrationResult(tx, f.h.handle, root);
+                const outputIntent = (await readEffect(tx, f.h.handle, root, result.output.outputEffectId)).doc;
+                const output = (await readAttempt(tx, f.h.handle, root, outputIntent.nodeAttemptId)).doc;
+                return { published, output, outputIntent };
+            });
+            expect(facts.published.record.payload).toBe(RP_MODEL_TEXT);
+            expect(facts.published.record.envelope.audienceConstraint).toMatchObject({ kind: 'rp_output', runId: root.runId,
+                nodeId: root.graph.outputContract.ownerNodeId, outputKey: result.output.outputKey });
+            expect(facts.published.producer.status).toBe('completed'); expect(facts.published.producer.effectRefs).toEqual([result.effectId]);
+            expect(facts.output.nodeId).toBe(root.graph.outputContract.ownerNodeId); expect(facts.output.inputRefs).toEqual(root.resultRefs);
+            expect(facts.output.effectRefs).toEqual([result.output.outputEffectId]); expect(root.progress.edgeVisits).toBe(1);
+            expect(root.progress.attempts).toBe(2); expect(root.attemptRefs).toHaveLength(2); expect(f.requests).toHaveLength(1);
+        } finally { await f.cleanup(); }
+    });
+
+    test.each(['attempt.settle', 'loop.advance'])('%s write failure keeps the separate prior facts and never reaches Chat', async operation => {
+        const f = await rpModelFixture(make, { configurePlan }), runs = f.authority.execution.runs, control = runs.control.bind(runs); let injected = false;
+        runs.control = (handle, id, body, reduce, ...rest) => control(handle, id, body, async args => {
+            const value = await reduce(args);
+            if (body.operation === operation) { injected = true; throw new Error('After native RP graph writes'); }
+            return value;
+        }, ...rest);
+        try {
+            const failure = await f.run().then(() => null, error => error); expect(failure).not.toBeNull(); expect(injected).toBe(true);
+            const root = await runs.get(f.h.handle, f.effects[0].runId), producer = (await f.h.engine.withTransaction(f.h.handle, tx => readAttempt(tx, f.h.handle, root, root.attemptRefs[0]))).doc;
+            expect(root.attemptRefs).toHaveLength(1); expect(root.progress.edgeVisits).toBe(0);
+            expect(root.resultRefs).toHaveLength(operation === 'attempt.settle' ? 0 : 1);
+            expect(producer.status).toBe(operation === 'attempt.settle' ? 'running' : 'completed');
+            expect((await f.chats.get(f.h.handle, 'Actor', 'main')).body).toHaveLength(2); expect(f.requests).toHaveLength(1);
+            const bank = Object.values((await f.control.status(f.h.handle, f.controlId)).operations)[0].compute;
+            expect(bank.attempts[0]).toMatchObject({ status: 'settled', usage: { totalTokens: 20 } });
+        } finally { runs.control = control; await f.cleanup(); }
     });
 
 });

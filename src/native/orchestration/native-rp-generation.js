@@ -1,3 +1,6 @@
+import { rpNarrationResult, rpNarrationPublicationId, readRpNarrationResult } from './rp-narration-result-contracts.js';
+import { writeAttemptSettlement, readAttemptSettlement } from './attempt-settlement.js';
+import { TransitionController } from './transition-controller.js';
 import { ModelPort, readModelCompletionReceipt } from './model-port.js';
 import { RpOutputController } from './rp-output-controller.js';
 import { readEffect, effectDecision } from './effect-contracts.js';
@@ -7,7 +10,7 @@ import { ChatRepo } from '../../storage/repositories/chat-repo.js';
 import { RpRunControl, rpOperationInput } from '../rp-run-control.js';
 import { NativeGenerationHost } from '../adapters/generation-host.js';
 import { NativeTaskScheduler, nativeTaskScheduler } from '../task-scheduler.js';
-import { hashNativeDocument as hash, cloneNativeDocument } from '../repositories/common.js';
+import { hashNativeDocument as hash, cloneNativeDocument, putImmutable } from '../repositories/common.js';
 import { fields } from '../../../public/shared/native-values.js';
 import { assertNativeId } from '../identity.js';
 import { immutable, checkCancellation, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
@@ -41,11 +44,11 @@ const sameSet = (left, right) => left.length === right.length && left.every(valu
 
 function finiteProfile(plan, { delegated = false, explicitResult = false } = {}) {
     const graph = plan.definition, node = graph.nodes.find(item => item.kind === 'agent'), output = graph.nodes.find(item => item.kind === 'output');
-    const capabilities = ['generation.send', ...(delegated ? ['agent.delegate'] : []), ...(graph.outputContract.kind === 'rp_narration' ? ['chat.output'] : [])];
+    const capabilities = ['generation.send', ...(delegated ? ['agent.delegate'] : [])], outputCapabilities = graph.outputContract.kind === 'rp_narration' ? ['chat.output'] : [];
     if (graph.nodes.length !== 2 || !node || !output || graph.edges.length !== 1
-        || !equal(graph.entryNodeIds, [node.nodeId]) || !sameSet(graph.capabilityCeiling, capabilities)
+        || !equal(graph.entryNodeIds, [node.nodeId]) || !sameSet(graph.capabilityCeiling, [...capabilities, ...outputCapabilities])
         || !sameSet(node.capabilities, capabilities) || node.inputs.length || node.outputs.length !== 1 || node.outputs[0].type !== 'text'
-        || node.dependencyPinIds.length !== (delegated ? 2 : 1) || output.capabilities.length || output.inputs.length !== 1
+        || node.dependencyPinIds.length !== (delegated ? 2 : 1) || !sameSet(output.capabilities, outputCapabilities) || output.inputs.length !== 1
         || output.inputs[0].type !== 'text' || !output.inputs[0].required || output.outputs.length || output.dependencyPinIds.length
         || plan.dependencyPins.length !== (delegated ? 2 : 1) || !['result', 'rp_narration'].includes(graph.outputContract.kind) || graph.outputContract.allowPartial
         || graph.graphChangePolicy.allowedOperations.length || graph.edges[0].condition !== 'always'
@@ -252,16 +255,31 @@ export async function inspectNativeRpOutput(capture, expected = {}) {
         if (saved.completionHash && saved.completionHash !== completionHash) fail('native_rp_output_denied');
         saved.completionHash = completionHash;
         const attempt = (await readAttempt(tx, expected.handle, root, state.attemptId)).doc;
-        if (!['running', 'waiting_effect'].includes(attempt.status) || attempt.epoch !== root.epoch
-            || attempt.effectiveGrantDigest !== state.decision.grantDigest
-            || !equal(attempt.effectRefs, [state.effectId, ...(state.outputEffectId ? [state.outputEffectId] : [])])) fail('native_rp_output_denied');
+        if (attempt.epoch !== root.epoch || attempt.effectiveGrantDigest !== state.decision.grantDigest
+            || !equal(attempt.effectRefs, [state.effectId])) fail('native_rp_output_denied');
+        if (state.outputPublishing) {
+            if (attempt.status !== 'completed') fail('native_rp_output_denied');
+            const settlement = await readAttemptSettlement(tx, expected.handle, root, attempt);
+            const published = await readRpNarrationResult(tx, expected.handle, root);
+            if (!published || settlement.reasonCode !== 'rp_narration_ready' || !equal(settlement.resultRefs, [state.narrationResultRef])
+                || hash(published.record.payload) !== proof.payloadHash || published.record.payload !== result.generated.response.text
+                || !equal(settlement.effectReceiptRefs, [proof.receiptRef.receiptId])) fail('native_rp_output_denied');
+        } else if (attempt.status !== 'running') fail('native_rp_output_denied');
         let outputDispatch = false;
-        if (state.outputEffectId && attempt.effectRefs.includes(state.outputEffectId)) {
-            const outputIntent = (await readEffect(tx, expected.handle, root, state.outputEffectId)).doc;
-            if (!equal(effectDecision(outputIntent), state.outputDecision)) fail('native_rp_output_denied');
-            outputDispatch = outputIntent.status === 'dispatching' && outputIntent.dispatchToken === state.outputDispatchToken && !!state.outputDispatchToken;
-            if (outputDispatch) await execution.budgetPort.verifyBudgetAttempt({ handle: expected.handle, tx, root, intent: outputIntent, budgetAttemptRef: outputIntent.budgetAttemptRef });
+        if (state.outputAttemptId) {
+            const output = (await readAttempt(tx, expected.handle, root, state.outputAttemptId)).doc;
+            if (output.nodeId !== root.graph.outputContract.ownerNodeId || output.epoch !== root.epoch
+                || !['running', 'waiting_effect'].includes(output.status) || !equal(output.inputRefs, state.outputInputRefs)
+                || output.effectiveGrantDigest !== state.decision.grantDigest || output.inputDigest !== hash(state.outputInputRefs)
+                || !equal(output.effectRefs, state.outputEffectId ? [state.outputEffectId] : [])) fail('native_rp_output_denied');
+            if (state.outputEffectId) {
+                const outputIntent = (await readEffect(tx, expected.handle, root, state.outputEffectId)).doc;
+                if (!equal(effectDecision(outputIntent), state.outputDecision) || outputIntent.nodeAttemptId !== output.attemptId) fail('native_rp_output_denied');
+                outputDispatch = outputIntent.status === 'dispatching' && outputIntent.dispatchToken === state.outputDispatchToken && !!state.outputDispatchToken;
+                if (outputDispatch) await execution.budgetPort.verifyBudgetAttempt({ handle: expected.handle, tx, root, intent: outputIntent, budgetAttemptRef: outputIntent.budgetAttemptRef });
+            }
         }
+
         await BudgetPort.prototype.assertCurrent.call(execution.budgetPort, expected.handle, root.budgetAuthorityRef, { tx });
         await saved.assertCurrent();
         if (!equal(root, await execution.runs.get(expected.handle, root.runId))) fail('native_rp_output_stale');
@@ -338,6 +356,7 @@ export class NativeRpOrchestrationAuthority {
     }
 
     async #current(state) {
+        if (state.outputPublishing) return this.#baseCurrent(state);
         if (state.delegationCapture) return inspectNativeRpDelegation(state.delegationCapture, { host: state.host, handle: state.handle });
         if (state.phase === 'resumed' && state.returnCapture) return inspectNativeRpReturn(state.returnCapture, { host: state.host, handle: state.handle });
         return this.#baseCurrent(state);
@@ -357,6 +376,12 @@ export class NativeRpOrchestrationAuthority {
         if (!state || state.handle !== handle || !equal(root.planRef, state.selected.binding.planRef)
             || root.sourceBinding.bindingDigest !== state.sourceBinding.bindingDigest) fail();
         await this.#current(state);
+        if (state.outputPublishing && attempt?.attemptId === state.outputAttemptId && !proposal && !intent) {
+            if (attempt.nodeId !== root.graph.outputContract.ownerNodeId || !equal(attempt.inputRefs, state.outputInputRefs)
+                || attempt.inputDigest !== hash(state.outputInputRefs) || attempt.effectiveGrantDigest !== state.decision.grantDigest
+                || !equal(attempt.budgetRef, root.budgetAuthorityRef)) fail('native_rp_output_denied');
+            return { allowed: true, grantDigest: state.decision.grantDigest };
+        }
         if (state.parentDelegation && state.phase !== 'resumed') {
             if (attempt && (attempt.nodeId !== state.selected.node.nodeId || attempt.effectiveGrantDigest !== state.parentGrantDigest)
                 || proposal || intent) fail('native_orchestration_delegation_denied');
@@ -364,19 +389,73 @@ export class NativeRpOrchestrationAuthority {
         }
         const decision = (proposal?.actionRef.kind ?? intent?.actionRef.kind) === 'native_rp_output' ? state.outputDecision : state.decision;
         if (!decision) fail();
-        if (attempt && (attempt.nodeId !== state.selected.node.nodeId || attempt.effectiveGrantDigest !== decision.grantDigest)) fail();
+        const outputAction = decision === state.outputDecision;
+        if (attempt && (attempt.nodeId !== (outputAction ? root.graph.outputContract.ownerNodeId : state.selected.node.nodeId)
+            || attempt.effectiveGrantDigest !== decision.grantDigest)) fail();
         if (proposal && !equal(proposal, Object.fromEntries(['actionRef', 'targetRef', 'inputRef', 'inputHash'].map(key => [key, decision[key]])))) fail();
-        if (intent && (intent.nodeAttemptId !== state.attemptId || intent.inputHash !== decision.inputHash)) fail();
+        if (intent && (intent.nodeAttemptId !== (outputAction ? state.outputAttemptId : state.attemptId) || intent.inputHash !== decision.inputHash)) fail();
         return cloneNativeDocument(decision);
+    }
+
+    async #prepareOutputGraph(handle, capture, saved, identity) {
+        const { state, execution } = saved, { runs, sourcePort } = execution;
+        const withAuthority = sourcePort.consumptionBoundary(handle, identity.sourceBinding, { engine: runs.engine });
+        return runs.withSourceControl(handle, identity.runId, async () => {
+            const checked = await runs.engine.withTransaction(handle, async tx => {
+                try { return { current: await inspectNativeRpOutput(capture, { handle, rpControl: this.owner.rpControl, tx }) }; } catch (error) {
+                    if (['native_rp_output_stale', 'native_orchestration_source_stale', 'native_orchestration_return_stale',
+                        'native_generation_revision_conflict', 'native_rp_source_missing', 'native_rp_control_relocated',
+                        'native_orchestration_model_result_completion_stale'].includes(error.code)) return { denied: true };
+                    throw error;
+                }
+            });
+            if (checked.denied) fail('native_rp_output_stale');
+            const current = checked.current;
+            const published = await runs.control(handle, controlCommandId('rp.narrator.settle', { runId: identity.runId, attemptId: state.attemptId }), {
+                ...runGuard(await runs.get(handle, identity.runId)), operation: 'attempt.settle', detail: { reason: 'rp_narration_ready' } }, async ({ tx, root, now }) => {
+                const record = await readAttempt(tx, handle, root, state.attemptId);
+                if (root.cancelRequested || root.status !== 'running' || root.pendingEffectRefs.length || record.doc.status !== 'running'
+                    || root.progress.steps >= root.limits.maxSteps || now >= root.progress.deadlineAt
+                    || !equal(record.doc.effectRefs, [state.effectId]) || record.doc.resultRefs.length) fail('native_rp_output_denied');
+                const result = rpNarrationResult({ root, proof: current.proof, payload: saved.result.generated.response.text, grantDigest: state.decision.grantDigest, now });
+                const publication = { schemaVersion: 1, receiptKind: 'rp_narration_result', receiptId: rpNarrationPublicationId(result.resultRef.resultId),
+                    runId: root.runId, epoch: root.epoch, producerAttemptId: state.attemptId, resultRef: result.resultRef, resultIntegrity: hash(result.record),
+                    modelEffectId: state.effectId, modelReceiptRef: current.proof.receiptRef, grantDigest: state.decision.grantDigest,
+                    sourceBindingDigest: root.sourceBinding.bindingDigest, audienceDigest: hash(result.record.envelope.audienceConstraint), decisionSeq: root.eventSeq + 1, createdAt: now };
+                await putImmutable(tx, controlRecordKey(handle, root.runId, 'result', result.resultRef.resultId), result.record);
+                await putImmutable(tx, controlRecordKey(handle, root.runId, 'receipt', publication.receiptId), publication);
+                await writeAttemptSettlement({ tx, handle, root, record, outcome: 'completed', resultRefs: [result.resultRef],
+                    effectReceiptRefs: [current.proof.receiptRef.receiptId], reasonCode: 'rp_narration_ready', now });
+                root.resultRefs.push(result.resultRef); root.progress.steps++;
+                return { root, eventType: 'rp_narration_ready', reasonCode: 'rp_narration_ready', outcome: { resultRef: result.resultRef } };
+            });
+            state.outputPublishing = true; state.narrationResultRef = immutable(published.outcome.resultRef);
+            state.outputInputRefs = immutable([state.narrationResultRef]);
+            const root = await runs.get(handle, identity.runId), edge = root.graph.edges[0];
+            const traversal = await new TransitionController({ runs, authorizeTransition: async ({ tx, root: active, target, producers }) => {
+                await this.#baseCurrent(state);
+                if (target.nodeId !== active.graph.outputContract.ownerNodeId || producers.length !== 1
+                    || producers[0].attempt.attemptId !== state.attemptId || producers[0].receipt.reasonCode !== 'rp_narration_ready'
+                    || !equal(producers[0].receipt.effectReceiptRefs, [current.proof.receiptRef.receiptId])
+                    || !equal(producers[0].receipt.resultRefs, [state.narrationResultRef]) || !await readRpNarrationResult(tx, handle, active)) fail('native_rp_output_denied');
+                await BudgetPort.prototype.assertCurrent.call(execution.budgetPort, handle, active.budgetAuthorityRef, { tx });
+                return { inputRefs: state.outputInputRefs, inputDigest: hash(state.outputInputRefs),
+                    effectiveGrantDigest: state.decision.grantDigest, budgetRef: active.budgetAuthorityRef };
+            } }).advance(handle, { ...runGuard(root), bindings: [{ edgeId: edge.edgeId, producerAttemptId: state.attemptId }], reservedAttemptId: null });
+            state.outputAttemptId = traversal.outcome.attemptId;
+            await new AttemptController({ runs, authorizeAttempt: args => this.authorize(args) }).activate(handle,
+                { ...runGuard(await runs.get(handle, identity.runId)), attemptId: state.outputAttemptId });
+            return current;
+        }, { withAuthority });
     }
 
     async prepareRpOutputEffect({ handle, capture }) {
         const saved = outputCaptures.get(capture), identity = inspectNativeRpOutputIdentity(capture, { handle, rpControl: this.owner.rpControl });
         if (!saved || this.#runs.get(identity.runId) !== saved.state || saved.state.outputEffectId) fail('native_rp_output_denied');
-        const current = await inspectNativeRpOutput(capture, { handle, rpControl: this.owner.rpControl });
+        const current = await this.#prepareOutputGraph(handle, capture, saved, identity);
         const { state } = saved, outputKey = rpNativeOutputKey(identity.controlId, identity.sourceRequest.source);
         const operationId = rpNativeOutputOperationId(outputKey);
-        const inputRef = { kind: 'native_rp_narration', modelEffectId: state.effectId, modelReceiptRef: current.proof.receiptRef,
+        const inputRef = { kind: 'native_rp_narration', resultRef: state.narrationResultRef, modelEffectId: state.effectId, modelReceiptRef: current.proof.receiptRef,
             controlId: identity.controlId, outputKey, operationId, payloadHash: hash(current.payload), sourceDigest: identity.prefixDigest,
             inputAnchor: identity.sourceRequest.source.input };
         state.outputEffectId = 'oeffect_' + hash({ runId: identity.runId, outputKey, operationId }).slice(0, 32);
@@ -386,7 +465,7 @@ export class NativeRpOrchestrationAuthority {
             risk: 'R2', requiresApproval: false, egressDigest: hash({ domain: 'local_chat', controlId: identity.controlId, outputKey }),
             budgetEnvelopeDigest: hash(state.selected.resolved.route.executionPolicy.computeBudget),
             dispatchPolicy: { idempotency: 'domain_key', operationKey: operationId, reconcile: 'domain_status' } });
-        return immutable({ runId: identity.runId, attemptId: state.attemptId, effectId: state.outputEffectId, decision: state.outputDecision,
+        return immutable({ runId: identity.runId, attemptId: state.outputAttemptId, effectId: state.outputEffectId, decision: state.outputDecision,
             limits: state.selected.resolved.route.executionPolicy.computeBudget, requestId: state.request.requestId, payloadBytes: Buffer.byteLength(JSON.stringify(current.payload), 'utf8') });
     }
 

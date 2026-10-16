@@ -42,19 +42,33 @@ describe('explicit Result policy and plain JSON validation', () => {
         expect(() => assertResultRecord(f.record, f)).toThrow('native_orchestration_result_policy_unavailable');
     });
 
-    test('only result output contracts may carry an explicit positive byte policy', () => {
+    test('result and RP narration output contracts use explicit bounded policies', () => {
         for (const policy of [{ outputType: 'text', maxBytes: 1 }, { outputType: 'json', maxBytes: Number.MAX_SAFE_INTEGER }]) {
             const plan = planFixture(); plan.definition.outputContract.resultPolicy = policy;
             expect(assertPlanDefinition(plan.definition, plan.dependencyPins)).toBe(plan.definition);
         }
         for (const maxBytes of [0, -1, 1.1, Infinity, Number.MAX_SAFE_INTEGER + 1])
             expect(() => assertResultPolicy({ kind: 'result', resultPolicy: { outputType: 'text', maxBytes } })).toThrow();
-        for (const kind of ['rp_narration', 'project_review']) {
+        for (const kind of ['project_review']) {
             const plan = planFixture(); plan.definition.outputContract = { ...plan.definition.outputContract, kind, resultPolicy: { outputType: 'text', maxBytes: 1 } };
             expect(() => assertPlanDefinition(plan.definition, plan.dependencyPins)).toThrow('native_orchestration_result_policy_unavailable');
         }
+        expect(assertResultPolicy({ kind: 'rp_narration', resultPolicy: { outputType: 'text', maxBytes: 20 } })).toEqual({ outputType: 'text', maxBytes: 20 });
+        expect(() => assertResultPolicy({ kind: 'rp_narration', resultPolicy: { outputType: 'json', maxBytes: 20 } })).toThrow();
         expect(() => assertResultPolicy({ kind: 'result', resultPolicy: { outputType: 'xml', maxBytes: 20 } })).toThrow();
         expect(() => assertResultPolicy({ kind: 'result', resultPolicy: { outputType: 'text', maxBytes: 20, defaultAllow: true } })).toThrow();
+    });
+
+    test('RP output disclosure stays in its exact source Run/owner contract and cannot become a parent delegation result', () => {
+        const f = fixture(), source = f.record.envelope.sourceRefs[0];
+        f.record.envelope.audienceConstraint = { kind: 'rp_output', runId: f.record.runId, nodeId: f.outputContract.ownerNodeId,
+            epoch: source.epoch, controlId: source.sourceRef.controlId, outputKey: hash({ slot: 'synthetic' }),
+            sourceBindingDigest: source.sourceBindingDigest, grantDigest: hash({ grant: 'original RP test grant' }), taskPurpose: 'original_rp_narration' };
+        f.record.envelope.disclosureConstraint = { kind: 'same_source_rp_output_only' }; rebind(f.record);
+        expect(() => assertResultRecord(f.record, f)).toThrow();
+        f.outputContract.kind = 'rp_narration'; expect(assertResultRecord(f.record, f)).toBe(f.record);
+        f.record.envelope.audienceConstraint.nodeId = createNativeId('orchestrationNode'); rebind(f.record);
+        expect(() => assertResultRecord(f.record, f)).toThrow();
     });
 
     test.each([undefined, NaN, Infinity, 1n, () => {}, new Date(), new Map(), Object.create({ inherited: true }),

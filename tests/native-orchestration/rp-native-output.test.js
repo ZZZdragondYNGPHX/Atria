@@ -9,7 +9,8 @@ import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecyc
 import { rpNativeOutputKey } from '../../src/native/rp-output-protocol.js';
 
 const harnesses = CONTRACT_HARNESSES.filter(({ name }) => ['FsEngine', 'SqliteEngine'].includes(name));
-const configurePlan = plan => { plan.definition.nodes[0].capabilities.push('chat.output'); plan.definition.capabilityCeiling = plan.definition.nodes[0].capabilities; Object.assign(plan.definition.outputContract, { kind: 'rp_narration', slot: 'assistant', resultPolicy: { outputType: 'text', maxBytes: 65536 } }); };
+const configurePlan = plan => { plan.definition.nodes.find(node => node.kind === 'output').capabilities = ['chat.output'];
+    plan.definition.capabilityCeiling = [...plan.definition.nodes[0].capabilities, 'chat.output']; Object.assign(plan.definition.outputContract, { kind: 'rp_narration', slot: 'assistant', resultPolicy: { outputType: 'text', maxBytes: 65536 } }); };
 
 const complete = RpOutputController.prototype.complete;
 beforeEach(() => {

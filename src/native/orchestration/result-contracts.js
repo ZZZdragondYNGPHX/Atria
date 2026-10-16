@@ -41,6 +41,14 @@ export function resultDependencyDigest(envelope) {
 }
 
 export function assertResultAudience(value) {
+    if (value?.kind === 'rp_output') {
+        assertObject(value, ['kind', 'runId', 'nodeId', 'epoch', 'controlId', 'outputKey', 'sourceBindingDigest', 'grantDigest', 'taskPurpose'], 'RP Result audience');
+        assertNativeId(value.runId, 'orchestrationRun'); assertNativeId(value.nodeId, 'orchestrationNode'); assertNativeId(value.controlId, 'rpControl');
+        assertCounter(value.epoch, 'recipient epoch'); assertDigest(value.outputKey, 'outputKey');
+        assertDigest(value.sourceBindingDigest, 'sourceBindingDigest'); assertDigest(value.grantDigest, 'grantDigest');
+        if (value.taskPurpose !== 'original_rp_narration') fail('RP output task purpose');
+        return value;
+    }
     assertObject(value, ['kind', 'parentRunId', 'parentAttemptId', 'parentEpoch', 'sourceBindingDigest', 'grantDigest', 'taskPurpose'], 'Result audience');
     if (value.kind !== 'parent_attempt') fail('only an exact parent Attempt recipient is supported');
     assertNativeId(value.parentRunId, 'orchestrationRun'); assertNativeId(value.parentAttemptId, 'orchestrationAttempt');
@@ -84,10 +92,13 @@ export function assertResultEnvelope(envelope, { policy, expected = {} }) {
     assertSources(envelope.sourceRefs, envelope);
     const source = envelope.sourceRefs[0];
     assertResultAudience(envelope.audienceConstraint);
-    if (envelope.audienceConstraint.parentRunId === envelope.runId
-        || envelope.audienceConstraint.sourceBindingDigest !== source.sourceBindingDigest) fail('recipient must be a different Run on the same source');
+    const audience = envelope.audienceConstraint;
+    if (audience.sourceBindingDigest !== source.sourceBindingDigest) fail('recipient source mismatch');
     assertObject(envelope.disclosureConstraint, ['kind'], 'Result disclosure');
-    if (envelope.disclosureConstraint.kind !== 'same_source_parent_only') fail('disclosure scope');
+    if (audience.kind === 'parent_attempt') {
+        if (audience.parentRunId === envelope.runId || envelope.disclosureConstraint.kind !== 'same_source_parent_only') fail('parent disclosure scope');
+    } else if (audience.runId !== envelope.runId || audience.epoch !== source.epoch || audience.controlId !== source.sourceRef.controlId
+        || envelope.disclosureConstraint.kind !== 'same_source_rp_output_only') fail('RP output disclosure scope');
     if (!Array.isArray(envelope.qualityRefs) || envelope.qualityRefs.length) fail('quality evidence is not supported by this profile');
     assertCounter(envelope.createdAt, 'createdAt'); assertDigest(envelope.dependencyDigest, 'dependencyDigest');
     if (resultDependencyDigest(envelope) !== envelope.dependencyDigest) fail('dependency digest');
@@ -108,6 +119,9 @@ export function assertResultRecord(record, { outputContract, expected = {} }) {
     assertObject(record, ['schemaVersion', 'runId', 'resultId', 'envelope', 'payload'], 'Result record');
     if (record.schemaVersion !== 1) fail('record schemaVersion');
     assertResultEnvelope(record.envelope, { policy, expected });
+    if (outputContract.kind === 'rp_narration'
+        ? record.envelope.audienceConstraint.kind !== 'rp_output' || record.envelope.audienceConstraint.nodeId !== outputContract.ownerNodeId
+        : record.envelope.audienceConstraint.kind !== 'parent_attempt') fail('audience differs from OutputContract');
     if (record.runId !== record.envelope.runId || record.resultId !== record.envelope.resultId) fail('record identity');
     const hasBody = ['complete', 'partial'].includes(record.envelope.status);
     if (!hasBody && record.payload !== null) fail('unknown/unavailable must have no body');
