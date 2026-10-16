@@ -874,3 +874,11 @@ child_budget_closed receipt闭集为{schemaVersion,receiptKind,receiptId,runId,e
 HandoffReturnReceipt闭集为{schemaVersion,receiptKind:'handoff_return',receiptId,runId,epoch,parentAttemptId,parentInputDigest,parentGrantDigest,childRunId,childEpoch,childGrantDigest,sourceBindingDigest,controlToken,handoffReceiptRef,outputReceiptRef,budgetClosureReceiptRef,resultRef,resultIntegrity,audienceDigest,decisionSeq,createdAt}。receiptId为oreceipt_+H({kind:'handoff_return',childRunId})前32位，存原父receipt kind；没有第二正文或费用writer。历史reader核严格物理identity、父原输入/Plan/子Plan、Handoff token、完整output/closure/Result和父Audience，不要求当前Source活跃，也不授active parent capability。ACK未知只观察同一稳定receipt，saved/no-save区分；冷开只读历史，不恢复scope/正文proof或发送。
 
 内部startRp在成功return后返回pending_continuation及原refs并新增returnReceiptRef；父Root仍running，原Attempt running，未增加第二Model/send、Result展开、父Context/Memory、正式RP聊天正文、Root completed或新HTTP。费用未闭合仍pending_output，不签return scope。下一步必须在本真实父callback、private phase=resumed且capture失效前接受限ResultPort→原父Context→原Narrator continuation，不能从pending_continuation或冷metadata重新造grant；每次compile/send/consume仍需完整原Result/source/Audience/epoch/grant复验。具体分次FS/SQLite、ACK/cold、撤权/写后失败及最小相关回归归同一Record第四十二组；SQL/真实外部费用/质量/三端全流程未测，P3 Gate仍NOT_READY。
+
+## 17.53 原父Result消费与真实Narrator continuation
+
+第四十三组在同一parent callback/phase=resumed、opaque return capture仍有效时调用ResultPort.readForParent；只收capture，拒caller ResultRef/body/Audience/grant。核原Host/owner/Run→Source边界、父子Plan/epoch、原父input/grant、HandoffReturn/Result publication/Audience/closed bank。历史receipt不能重建当前读取或发送权。
+
+原ContextPort每descriptor/compile/send/consume重验该consumer，将Result作为带provenance的user建议数据加入原父Context，bytes纳入唯一原context_build计费。原父rpCapture/request/Route与native_rp_intent保留，新Effect绑定acceptedResultRef/returnReceiptRef/parentInputDigest；复用原父Attempt/input/grant，不另开父Run或预算。真实父Model请求发生在Scheduler permit归还及durable return之后。
+
+成功返回原父Model wrapper/runId/effectId，delegation字段只含child已return的metadata。尚无正式Chat写或父Root.completed；P4唯一slot/marker saga继续实施。模型消费最后bank await期间合法撤权按固定明确deny提交，TypeError/完整性/存储错误不宽吞。

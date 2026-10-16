@@ -106,3 +106,5 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 第四十一组从最新远端第四十组b4c06075a恢复，接原Graph task-local output、独立原bank release/closed观察与严格OutputClaim/终结proof，见[接口§17.51](interface-contracts.md#1751-原graph-task-local-output与原银行闭包)。有明确费用闭包的child完成后返回pending_return；父仍waiting_child，durable return/父Result消费与continuation继续待接。当前恢复后持续实施，历史换设备暂停不作为限制；P3 Gate仍NOT_READY，未合main，真实提交与最小验证归同一Record第四十一组。
 
 第四十二组接原Scheduler父permit实际重新取得后的耐久Handoff return（[接口§17.52](interface-contracts.md#1752-原父permit重新准入后的耐久handoff-return)），父原Attempt/input/grant保留，内部返回pending_continuation及returnReceiptRef。尚无父ResultPort/Context/实际Narrator continuation或正式Chat输出，下一步沿同真实parent callback接入，不能从metadata冷恢复scope。P3及最终Gate仍NOT_READY，未合main；实际源码与最小相关本地验证归同一Record第四十二组。
+
+第四十三组接原ResultPort精确父recipient、带来源建议Context与真实父Narrator continuation（接口§17.53）。父原Attempt/input/grant与根银行保留，内部成功返回父Model结果及delegation metadata；正式Chat输出/父Run终结尚待P4。用户明确要求持续至全阶段完成，继续所有已授权实现，不在分组检查点停工；最终Gate尚未通过，不合main。
