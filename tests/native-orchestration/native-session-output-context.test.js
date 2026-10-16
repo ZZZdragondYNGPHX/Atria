@@ -107,6 +107,9 @@ describe.each(harnesses)('$name Native Session finalization Context', ({ make })
                 actual = value;
                 const args = { host: f.host, handle: f.h.handle, prepared: value.prepared, requestHash: hash(f.input),
                     expectedRevisionId: f.base.revision.revisionId, finalizationBoundary: value.finalizationBoundary };
+                await f.h.engine.withTransaction(f.h.handle, async () => {
+                    await expect(f.authority.finalizeNarrator(args)).rejects.toThrow('native_orchestration_output_ambient_transaction');
+                });
                 for (const changed of [{ prepared: structuredClone(value.prepared) }, { handle: 'foreign' }, { host: {} },
                     { requestHash: 'a'.repeat(64) }, { expectedRevisionId: createNativeId('revision') }])
                     await expect(f.authority.finalizeNarrator({ ...args, ...changed })).rejects.toThrow('native_orchestration_output_scope_invalid');
