@@ -591,3 +591,12 @@
 - 最终合成Provider新RP Memory **10/10 PASS（suite13.135s）**，原RP Model **12/12 PASS（suite18.197s）**，合计 **22/22，31.370s，0skip，detectOpenHandles自然退出**。覆盖原真实sidecar事实进入HTTP、未来候选不泄漏、状态零写、原tx纯读、HTTP期间设置/ledger更新拒正文而provider20tokens仍settled、缺历史ID零发送/零补ID。相关原Source消费56、原reader14、原ChatRepo sidecar12三suite **82/82 PASS，4.372s，自然退出**。这些与前序相同case有重叠不累计为新验收数。
 - 首新8case为6PASS/2FAIL（6.009s）：历史缺ID会在原prefix hash对undefined抛无code TypeError，被local-work包装为generation_execution_failed，尚未进入Memory helper。修原prefix在hash前校每个唯一来源并保留原native_rp_source_unavailable明确拒绝，未放宽source或把测试改成接受泛化失败；补原tx与未来候选后最终10通过。初定向lint4项为新增多行Context options的缩进，修复后8文件ESLint/diff check通过。
 - 全部测试仅本地FS/SQLite、localhost合成HTTP，无外部API/真实费用/质量；SQL/Windows/Termux未测。第二十九组及同docs已推送存储，本组随后同样同步。P3 IN_PROGRESS / Gate NOT_READY；后台role/window/period scope、Delegate/Handoff实际资源/授权/child Result/Audience与P4–P8仍未交付，没有main集成或最终前端整合通知。继续下一独立后台/资源工作，不更新历史HANDOFF。
+
+## 2026-10-16 — W03/P2–P3第三十一组：原Scheduler资源handoff原语
+
+- Source `58ff31eeb` → `9ba42699b` → `4f96c7637`，同两文件。原NativeTaskScheduler内部增加withResourceHandoff，不新建Scheduler/permit/bank。实际opaque parent boundary捕获固定owner/source/class/资源，子继承同scope和资源子集；waiting_child时让出实际全局/资源容量，保留原owner工作、operation/attempt/deadline。结束后用原队列重新准入parent continuation，不重新执行parent.run、不额外占容量。
+- 原cancel/retention/owner-work/stream路径计入suspended工作；父取消传播给child，但忽略abort的worker仍持资源到退出，child已finalizing不被假称撤回。等待reacquire时取消不清掉其它worker。子失败包装operation_child_failed保留cause，禁止原Scheduler按generation_provider_failed重试整个父操作而重发子效果。同child key在原retention内拒绝再次dispatch；不是进程重启的耐久Result恢复证明。
+- 静态复核补固定原assertActiveBoundary返回的immutable身份，不能继续共享caller的expected对象；作为独立fix提交，未amend原commit。子callback改caller anchor不会改变实际child source或父恢复身份。
+- 最终新handoff **13/13 PASS，0.302s，detectOpenHandles自然退出**；此前首次9/9（0.306s）及增case12/12（0.300s）为同case扩展不累计。原Host scheduler过滤 **11PASS/29filterSKIP（40total），1.037s，自然退出**，只覆盖原coalescing/cap/取消/迟到/重试/优先级/deadline，未运行原Session authority的四个已知失败，不宣称修复或整suite全绿。两文件定向ESLint/diff check通过，无外部API/费用或设备验收。
+- 第三十组source首次push遇TLS unexpected EOF，docs已推；本组sourcepush正常重试并包含第三十组，最终`4f96c7637`已推送。远端仅存储，不运行Actions/远端验证。
+- 本组是原Scheduler资源基础，尚无正式V3 producer调用，不自授Delegate领域权限、耐久HandoffReceipt/Result或OutputClaim。后台role/window/period原bank与producer、Delegate授权/child Result/Audience和P4–P8仍待接，P3 IN_PROGRESS / NOT_READY。继续复核Memory新增consumer的same-transaction撤销闭包，之后回到后台原bank/producer；没有更新历史HANDOFF或集成main。

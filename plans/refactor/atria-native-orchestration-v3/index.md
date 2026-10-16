@@ -82,3 +82,5 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 2026-10-16第二十九组`0414b623e`完成原Session合法候选域/唯一Hybrid/原Context bank组合，见接口§17.39。RP Memory与外部retrieval仍待接；后台/Delegate及P4–P8队列和P3 NOT_READY不变。当前已从HANDOFF恢复持续开发，不更新旧中断快照。
 
 第三十组`58ff31eeb`沿原ChatRepo/Engine状态完成RP Memory prefix候选域/唯一Hybrid/原context_build/send-consume复核，见接口§17.40。缺历史source ID明确原拒绝，无新ID或Session伪装。继续后台scope、Delegate/Handoff与P4–P8；P3仍NOT_READY。
+
+第三十一组`4f96c7637`完成唯一原Scheduler父资源让出/child准入/父permit恢复及取消保护原语，见接口§17.41；仍未接正式Delegate producer/grant/Result，不能核销全P3。
