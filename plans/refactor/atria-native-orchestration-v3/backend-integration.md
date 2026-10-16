@@ -108,3 +108,5 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 第三十九组内部startRp可执行有限真实child Model/Context，返回pending_result及原父/子/effect/receipt refs（接口§17.49），没有正文Result或新HTTP。前端不能把Scheduler completed、pending refs或已结清费用当Run completed/父已返回；原父Attempt仍waiting_child。正式Result/输出/可信消费与控制权归还继续实施，最终后端交付尚未发出。
 
 第四十组b4c06075a内部startRp返回改为pending_output及parent/child/effect/Model receipt/Result/publication receipt refs（接口§17.50），不含正文，不新增HTTP。正文虽已受保护耐久保存，child仍running、原reservation仍held、父仍waiting_child；前端不可据此显示Run已完成或直接读正文。task-local output闭包、可信父Result/Audience消费/return及P4正式聊天slot saga未交付。用户要求本组推送后暂停换设备，未向并行前端任务发送最终后端交付；续接队列见唯一HANDOFF。
+
+第四十一组接通有限RP child task-local output（接口§17.51）。内部startRp对原bank.closed=true且Graph/output proofs完整的child返回pending_return，增加outputClaimRef/outputReceiptRef；unknown/overrun继续pending_output，保留费用与Result。child completed不表示父已恢复或正式RP正文已写：父仍waiting_child，durable return、可信ResultPort/父Context与continuation尚未交付。没有新增HTTP/UI或前端可拼的grant；本任务后端未完成，不发送最终整合通知。

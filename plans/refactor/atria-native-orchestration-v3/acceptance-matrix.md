@@ -189,3 +189,5 @@ IMPLEMENTATION_PENDING表示已有设计和授权、仍需本任务后续实现�
 第三十九组真实RP child/Context/根银行叶reservation接线（接口§17.49）取得最终普通33PASS、跨原Session/Project/后台/Resolver精选12PASS、MySQL/Pg精选8PASS及八类语义守卫证据，精确失败/诊断/分次与跳过范围归同一Record。只有pending refs，正式Result/output/return继续IMPLEMENTATION_PENDING；本地合成HTTP不核销真实外部费用/质量/三端全流程，P3 Gate不变。
 
 第四十组真实RP child Result发布（接口§17.50）：最终新suite FS/SQLite 30/30 PASS，精选MySQL/Pg各8PASS，原Model相关12与原Delegate/producer/Context相关10定向PASS；七类语义守卫变异并逐字/SHA恢复，恢复后最小6PASS。失败、修复、SQL分次筛选及过滤项唯一归同一Record。本组只核销有界Result保存/producer settlement/历史证明，未知费用仍unknown、原reservation仍held，正式OutputClaim/Run completed/父Audience消费/return仍IMPLEMENTATION_PENDING。外部费用/质量/三端正式客户端NOT_RUN；P3 Gate保持NOT_READY。本组后按用户明确要求暂停换设备，见唯一HANDOFF，不把暂停当任务或阶段完成。
+
+第四十一组接原Graph→output Attempt→独立原bank release/closed→task-local claim/child completed（接口§17.51），仅核销该有限child闭包；父仍waiting_child，durable return/受权Result消费/父continuation及P4正式RP输出继续IMPLEMENTATION_PENDING。实际FS/SQLite正反例、ACK/冷开、守卫与修复验证归同一Record。本机无Docker，SQL本组NOT_RUN；此前设备SQL结果保留为此前证据，不冒称本轮通过。P3 Gate和最终产品仍NOT_READY。

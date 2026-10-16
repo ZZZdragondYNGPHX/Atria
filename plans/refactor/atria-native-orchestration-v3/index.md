@@ -102,3 +102,5 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 第三十九组664749309接真实RP独立child capture/受限Context/Model/原bank，并修根银行与叶reservation的额度接线，见[接口§17.49](interface-contracts.md#1749-真实rp独立child-model与根银行叶额度边界)。内部明确pending_result无正文，不把物理permit返回当durable return；正式Result/Output/Audience/return继续实施，P3 Gate仍NOT_READY。
 
 第四十组b4c06075a已接真实RP child Result publication，同原CAS写有界正文/发布收据/producer settlement，见[接口§17.50](interface-contracts.md#1750-真实rp-child-result发布与历史事实边界)。返回仅pending_output refs，原bank held、父waiting_child，output/return/正文消费仍IMPLEMENTATION_PENDING。用户本轮明确要求本组完成后推送停下换设备；当前暂停于第四十组，不启动第四十一组。最新已测HEAD、真实验证与下一队列见[唯一HANDOFF](../../../HANDOFF.md)及同一Record；P3 Gate仍NOT_READY，未集成main。
+
+第四十一组从最新远端第四十组b4c06075a恢复，接原Graph task-local output、独立原bank release/closed观察与严格OutputClaim/终结proof，见[接口§17.51](interface-contracts.md#1751-原graph-task-local-output与原银行闭包)。有明确费用闭包的child完成后返回pending_return；父仍waiting_child，durable return/父Result消费与continuation继续待接。当前恢复后持续实施，历史换设备暂停不作为限制；P3 Gate仍NOT_READY，未合main，真实提交与最小验证归同一Record第四十一组。
