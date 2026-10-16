@@ -25,7 +25,7 @@ import {
 } from '../../public/scripts/agents/orchestrator/loop-tools.js';
 import {
     registerOrchestrationTool,
-    __getExtensionRegistryForTest,
+    getExtensionRegistry,
 } from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
 import {
     isStructuredToolError,
@@ -70,11 +70,11 @@ describe('sim state (Task 2)', () => {
 
 describe('sim-mode write interception (Task 2)', () => {
     beforeEach(() => {
-        __getExtensionRegistryForTest().clear();
+        getExtensionRegistry().clear();
     });
     afterEach(() => {
         endSimulation();
-        __getExtensionRegistryForTest().clear();
+        getExtensionRegistry().clear();
     });
 
     test('write tool without simulate returns the generic noop payload and skips exec', async () => {

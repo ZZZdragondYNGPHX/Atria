@@ -82,8 +82,8 @@ describe.each(CONTRACT_HARNESSES)('P5 Activity / $name', ({ make }) => {
         expect(activity(base).status).toBe('completed'); expect(state(base).clocks.world).toBe(0); expect(state(base).outbox).toEqual([]);
     });
     test('fork/restore view never leaks later Activity facts or narrative', async () => {
-        await open(); await ready(); const start = base; await command(settle()); base = await finalize();
-        base = await f.core.forkBranch(h.handle, base.session.sessionId, { revisionId: start.revision.revisionId, expectedRevisionId: base.revision.revisionId });
+        await open(); await ready(); const start = base; const checkpointSave = await f.core.createSavePoint(h.handle, base.session.sessionId); await command(settle()); base = await finalize();
+        base = await f.core.restoreSavePoint(h.handle, base.session.sessionId, checkpointSave.saveId, { expectedRevisionId: base.revision.revisionId });
         expect(activity(base).status).toBe('active'); expect(state(base).domains.notes.records).toEqual([]); expect(base.timeline).toEqual(start.timeline);
         await command(settle()); expect(activity(base).observation.branchId).toBe(base.revision.branchId);
     });

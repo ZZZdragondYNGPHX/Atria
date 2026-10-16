@@ -9,7 +9,6 @@ import { NativeGenerationHost } from '../../src/native/adapters/generation-host.
 import { seedGenerationProfiles } from './helpers/generation-fixture.js';
 import { createHttpGenerationProvider } from '../../src/native/adapters/http-generation-provider.js';
 import http from 'node:http';
-import { lowerDeclarativeMutations } from '../../public/scripts/native/experience/logic/mutations.js';
 import { AgentEvidenceRepository } from '../../src/native/agent-intelligence/evidence-repository.js';
 import { AgentEvidenceService } from '../../src/native/agent-intelligence/evidence-service.js';
 
@@ -164,12 +163,13 @@ describe.each(CONTRACT_HARNESSES)('P3 Session authority - $name', ({ make }) => 
     const envelope = () => ({ schemaVersion: 1, narrative: 'You recover.', outcomes: [{ requestId: 'outcome', interpretation: { decision: 'event', eventType: 'healed', confidence: 1 } }], diagnostics: [] });
     test('finalizes narrative, deterministic outcome and receipt atomically; replay is immutable', async () => {
         const request = { envelope: envelope(), invocationId: 'turn-one' };
+        const checkpointSave = await f.core.createSavePoint(h.handle, base.session.sessionId);
         const next = await f.core.finalizeTurn(h.handle, base.session.sessionId, request, { expectedRevisionId: base.revision.revisionId });
         expect(next.timeline.at(-1).content).toBe('You recover.');
         expect(next.states.atri_world_state.worlds[f.worldId].state.hp).toBe(9);
         expect(next.states.atri_task_results.records[0].storedRevisionId).toBe(next.revision.revisionId);
         expect((await f.core.finalizeTurn(h.handle, base.session.sessionId, request, { expectedRevisionId: base.revision.revisionId })).revision).toEqual(next.revision);
-        const fork = await f.core.forkBranch(h.handle, base.session.sessionId, { revisionId: base.revision.revisionId, expectedRevisionId: next.revision.revisionId });
+        const fork = await f.core.restoreSavePoint(h.handle, base.session.sessionId, checkpointSave.saveId, { expectedRevisionId: next.revision.revisionId });
         expect(fork.states.atri_task_results).toBeUndefined(); expect(fork.states.atri_world_state.worlds[f.worldId].state.hp).toBe(8);
     });
     test('invalid outcomes and generic append cannot publish provisional prose', async () => {
@@ -296,38 +296,7 @@ describe.each(CONTRACT_HARNESSES)('P3 Session authority - $name', ({ make }) => 
         expect(actual.states.atri_world_state.worlds[f.worldId].state.hp).toBe(8);
         expect(actual.timeline.some(item => item.content === 'Provisional text')).toBe(false);
     });
-    test('authority-first resolves typed commands before narration using existing World engine', async () => {
-        let server;
-        try {
-            const manifest = structuredClone(f.manifest);
-            manifest.packageVersionId = createNativeId('packageVersion');
-            manifest.resources.forEach(item => { item.origin.packageVersionId = manifest.packageVersionId; });
-            manifest.runtime.experienceContract.taskRuntime.turn = { policy: 'authority-first', stages: [] };
-            const installed = await f.packageInstaller.open(h.handle, f.manifest.packageId, f.manifest.packageVersionId);
-            const logic = lowerDeclarativeMutations(JSON.parse(installed.sourceFiles.get('logic.json')));
-            logic.commands[0].llm = { expose: true };
-            const { archive } = buildAtriaPackageContainer({ manifest, sourceFiles: new Map([['logic.json', Buffer.from(JSON.stringify(logic))]]), assetPayloads: new Map() });
-            await f.packageInstaller.install(h.handle, archive);
-            const initial = await f.core.create(h.handle, { packageId: manifest.packageId, packageVersionId: manifest.packageVersionId, entryPointId: f.entryPointId });
-            const observations = [];
-            server = http.createServer(async (req, res) => {
-                const chunks = []; for await (const chunk of req) chunks.push(chunk);
-                const body = JSON.parse(Buffer.concat(chunks));
-                const snapshot = await f.core.load(h.handle, initial.session.sessionId);
-                observations.push(snapshot.states.atri_world_state.worlds[f.worldId].state.hp);
-                const message = body.tools?.length ? { content: '', tool_calls: [{ id: 'call_one', type: 'function', function: { name: 'game_command_heal', arguments: '{}' } }] } : { content: 'Committed recovery.' };
-                res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ choices: [{ message }] }));
-            });
-            await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-            const seeded = await seedGenerationProfiles({ ...h, endpoint: `http://127.0.0.1:${server.address().port}/v1/chat/completions`, roles: ['narrator', 'intent_resolver'] });
-            const host = new NativeGenerationHost({ ...seeded, sessionCore: f.core, packageInstaller: f.packageInstaller,
-                providers: { 'provider.openai-compatible': createHttpGenerationProvider() }, secretPort: { resolveSecret: async () => 'synthetic-secret' } });
-            const result = await host.executeTurn(h.handle, { sessionId: initial.session.sessionId, revisionId: initial.revision.revisionId, userInput: 'Heal me', invocationId: 'authority-first', slotBindings: {} });
-            expect(observations).toEqual([8, 9]);
-            expect(result.timeline.at(-1).content).toBe('Committed recovery.');
-            expect(result.states.atri_task_results.records.at(-1).outcomes).toEqual([]);
-        } finally { if (server) await new Promise(resolve => { server.closeAllConnections(); server.close(resolve); }); }
-    });
+
 });
 
 describe('P3 Model Execution Lane', () => {

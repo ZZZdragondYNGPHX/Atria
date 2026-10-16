@@ -95,7 +95,7 @@ describe.each(CONTRACT_HARNESSES)('C4 integrated authority gate - $name', ({ mak
         expect(durable(await other.host.executeTurn(target.handle, f.input, undefined, undefined, options))).toEqual(durable(result));
         expect(seen).toHaveLength(count);
     });
-    test.each(['intent', 'typed'])('%s committed save retains idempotency and coherent Branch Retry, not prose reroll', async source => {
+    test.each(['intent', 'typed'])('%s committed save preserves exact idempotent receipts across import', async source => {
         f = await authorityTurnFixture(h, endpoint);
         const options = source === 'typed' ? { transaction: f.selection } : {};
         const committed = await f.host.executeTurn(h.handle, f.input, undefined, undefined, options);
@@ -107,15 +107,7 @@ describe.each(CONTRACT_HARNESSES)('C4 integrated authority gate - $name', ({ mak
         await expect(other.host.executeTurn(target.handle, { ...f.input, userInput: 'different' }, undefined, undefined, options)).rejects.toThrow('conflict');
         await expect(other.host.executeTurn(target.handle, { ...f.input, invocationId: 'new-stale' }, undefined, undefined, options)).rejects.toThrow('conflict');
         expect(seen).toHaveLength(count); expect(commit).not.toHaveBeenCalled();
-        const retry = await other.core.retryReply(target.handle, committed.session.sessionId,
-            { messageId: committed.timeline.at(-1).messageId, expectedRevisionId: committed.revision.revisionId });
-        expect(retry.revision.branchId).not.toBe(committed.revision.branchId);
-        expect(retry.states.atri_lifecycle.clocks.world).toBe(0);
-        const result = await other.host.executeTurn(target.handle, { ...f.input, revisionId: retry.revision.revisionId,
-            invocationId: 'restored-branch-retry', userInput: retry.timeline.at(-1).content });
-        expect(result.states.atri_lifecycle.clocks.world).toBe(1);
-        expect(receipt(result).authorityId).not.toBe(receipt(committed).authorityId);
-        expect(durable(await other.core.load(target.handle, committed.session.sessionId, { revisionId: committed.revision.revisionId }))).toEqual(durable(committed));
+
     });
     test.each(['computed', 'expanded'])('%s invalid effect fails before Narrator and publishes nothing', async kind => {
         f = await authorityTurnFixture(h, endpoint, value => {

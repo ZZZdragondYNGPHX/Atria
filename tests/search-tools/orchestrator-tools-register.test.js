@@ -1,14 +1,15 @@
+import '../util/orchestrator-context.js';
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import {
     registerSearchToolsOrchestrationTools,
     unregisterSearchToolsOrchestrationTools,
     SEARCH_TOOL_NAMES,
 } from '../../public/scripts/extensions/search-tools/orchestrator-tools.js';
-import { __getExtensionRegistryForTest } from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
+import { getExtensionRegistry } from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
 
 describe('search-tools orchestrator tools', () => {
     beforeEach(async () => {
-        __getExtensionRegistryForTest().clear();
+        getExtensionRegistry().clear();
         // The register implementation is async (it dynamically imports
         // the orchestrator API). Tests await register/unregister.
         await unregisterSearchToolsOrchestrationTools();
@@ -20,14 +21,14 @@ describe('search-tools orchestrator tools', () => {
 
     test('register populates the orchestrator extension registry with both as read tools', async () => {
         await registerSearchToolsOrchestrationTools();
-        const reg = __getExtensionRegistryForTest();
+        const reg = getExtensionRegistry();
         expect(reg.get('search_search')?.mode).toBe('read');
         expect(reg.get('search_visit')?.mode).toBe('read');
     });
 
     test('neither registered entry carries a simulate hook (both are read tools)', async () => {
         await registerSearchToolsOrchestrationTools();
-        const reg = __getExtensionRegistryForTest();
+        const reg = getExtensionRegistry();
         // Registry normalizes a missing simulate hook to `null` (see
         // register-custom-tool.js), so the read-tool contract is
         // "no callable simulate", not "key absent".
@@ -38,14 +39,14 @@ describe('search-tools orchestrator tools', () => {
     test('unregister removes both', async () => {
         await registerSearchToolsOrchestrationTools();
         await unregisterSearchToolsOrchestrationTools();
-        const reg = __getExtensionRegistryForTest();
+        const reg = getExtensionRegistry();
         expect(reg.has('search_search')).toBe(false);
         expect(reg.has('search_visit')).toBe(false);
     });
 
     test('exec forwards through context.__searchAdapter (test injection path)', async () => {
         await registerSearchToolsOrchestrationTools();
-        const reg = __getExtensionRegistryForTest();
+        const reg = getExtensionRegistry();
         const adapter = {
             getSettings: () => ({ enabled: true }),
             search: async (args) => ({ ok: true, query: args?.query }),
@@ -62,7 +63,7 @@ describe('search-tools orchestrator tools', () => {
 
     test('exec surfaces structured errors when the adapter is missing', async () => {
         await registerSearchToolsOrchestrationTools();
-        const reg = __getExtensionRegistryForTest();
+        const reg = getExtensionRegistry();
         const searchEntry = reg.get('search_search');
         await expect(searchEntry.exec({ query: 'x' }, {})).rejects.toMatchObject({
             name: 'ToolError',
@@ -72,7 +73,7 @@ describe('search-tools orchestrator tools', () => {
 
     test('search_search rejects empty / whitespace-only query with SEARCH_QUERY_EMPTY', async () => {
         await registerSearchToolsOrchestrationTools();
-        const reg = __getExtensionRegistryForTest();
+        const reg = getExtensionRegistry();
         const adapter = {
             getSettings: () => ({ enabled: true }),
             search: async () => ({ results: [] }),
@@ -97,7 +98,7 @@ describe('search-tools orchestrator tools', () => {
 
     test('search_visit rejects empty / missing url with SEARCH_URL_INVALID', async () => {
         await registerSearchToolsOrchestrationTools();
-        const reg = __getExtensionRegistryForTest();
+        const reg = getExtensionRegistry();
         const adapter = {
             getSettings: () => ({ enabled: true }),
             visit: async () => ({ content: '' }),
@@ -123,7 +124,7 @@ describe('search-tools orchestrator tools', () => {
 
     test('exec ignores the plugin enabled / preRequestEnabled flags (those gate unrelated internal surfaces)', async () => {
         await registerSearchToolsOrchestrationTools();
-        const reg = __getExtensionRegistryForTest();
+        const reg = getExtensionRegistry();
         const adapter = {
             getSettings: () => ({ enabled: false, preRequestEnabled: false }),
             search: async (args) => ({ ok: true, query: args?.query }),
@@ -138,7 +139,7 @@ describe('search-tools orchestrator tools', () => {
 
     test('exec wraps non-ToolError adapter failures as SEARCH_FAILED', async () => {
         await registerSearchToolsOrchestrationTools();
-        const reg = __getExtensionRegistryForTest();
+        const reg = getExtensionRegistry();
         const adapter = {
             getSettings: () => ({ enabled: true }),
             search: async () => { throw new Error('network blew up'); },
@@ -167,7 +168,7 @@ describe('search-tools orchestrator tools', () => {
 
     test('provider status can disable agent Web Access without coupling to main-model toggle', async () => {
         await registerSearchToolsOrchestrationTools();
-        const reg = __getExtensionRegistryForTest();
+        const reg = getExtensionRegistry();
         const adapter = {
             getStatus: () => ({ available: false, provider: 'brave', reason: 'Brave Search API key is not configured.' }),
             getSettings: () => ({ enabled: false, preRequestEnabled: false, provider: 'brave' }),
@@ -179,7 +180,7 @@ describe('search-tools orchestrator tools', () => {
 
     test('same-run identical searches share one in-flight provider request', async () => {
         await registerSearchToolsOrchestrationTools();
-        const reg = __getExtensionRegistryForTest();
+        const reg = getExtensionRegistry();
         let release;
         const gate = new Promise(resolve => { release = resolve; });
         const search = jest.fn(async args => {
@@ -208,7 +209,7 @@ describe('search-tools orchestrator tools', () => {
 
     test('web evidence cache is run-scoped and never shared across unrelated runs', async () => {
         await registerSearchToolsOrchestrationTools();
-        const reg = __getExtensionRegistryForTest();
+        const reg = getExtensionRegistry();
         const search = jest.fn(async args => ({ query: args.query }));
         const adapter = {
             getStatus: () => ({ available: true, provider: 'ddg' }),
@@ -222,7 +223,7 @@ describe('search-tools orchestrator tools', () => {
 
     test('failed web request is evicted so a later call can recover', async () => {
         await registerSearchToolsOrchestrationTools();
-        const reg = __getExtensionRegistryForTest();
+        const reg = getExtensionRegistry();
         const search = jest.fn()
             .mockRejectedValueOnce(new Error('temporary network failure'))
             .mockResolvedValueOnce({ ok: true });

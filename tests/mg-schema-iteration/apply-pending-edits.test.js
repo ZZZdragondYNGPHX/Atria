@@ -1,3 +1,4 @@
+import '../util/browser-context.js';
 // tests/mg-schema-iteration/apply-pending-edits.test.js
 //
 // Guards the three critical fixes that landed in the MG schema studio's

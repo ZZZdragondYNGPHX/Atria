@@ -37,7 +37,7 @@ test.describe.serial('N10 Native Product UI hard-cutover acceptance', () => {
             window.Atria.shell.getWorkspaceHost().openLibrarySection('works');
         });
         await expect(page.locator('[data-atria-native-library="works"]')).toBeVisible();
-        const workCard = page.locator('[data-atria-work-id]').first();
+        const workCard = page.locator(`[data-atria-work-id="${seeded.start.packageId}"]`);
         await expect(workCard).toBeVisible();
         await expect(page.locator('#right-nav-panel[data-atria-workspace-embedded="true"]')).toHaveCount(0);
 
@@ -54,13 +54,12 @@ test.describe.serial('N10 Native Product UI hard-cutover acceptance', () => {
         await expect(toolbar).toBeVisible();
         await toolbar.locator('summary').click();
         for (const label of [
-            'Retry Reply',
-            'Re-enter Turn',
-            'Restart From Here',
+            'Recent stories',
+            'History & saves',
+            'Prompt choices',
             'Save',
             'Quick Save',
             'Load',
-            'Timeline',
             'Context',
         ]) {
             await expect(toolbar.getByRole('button', { name: label, exact: true })).toBeVisible();
@@ -90,7 +89,7 @@ test.describe.serial('N10 Native Product UI hard-cutover acceptance', () => {
         }
 
         await toolbar.locator('summary').click();
-        await toolbar.getByRole('button', { name: 'Timeline', exact: true }).click();
+        await toolbar.getByRole('button', { name: 'History & saves', exact: true }).click();
         await expect(page.locator('[data-atria-native-play-drawer="true"]')).toBeVisible();
         await expect(page.locator('[data-atria-timeline-message-id]').first()).toBeVisible();
 
@@ -135,21 +134,20 @@ test.describe.serial('N10 Native Product UI hard-cutover acceptance', () => {
         await expect(page.locator('[data-atria-domain-workspace="runtime"]')).toBeVisible();
 
         await navigate('openUtility', 'plugins');
-        await expect(page.locator('[data-atria-utility-workspace="plugins"]')).toBeVisible();
+        await expect(page.locator('[data-atria-utility-workspace="extensions"]')).toBeVisible();
 
         await navigate('openUtility', 'settings');
         await expect(page.locator('[data-atria-utility-workspace="settings"]')).toBeVisible();
 
         await navigate('openPlay');
         await expect(toolbar).toBeVisible();
-        await expect(page.locator('#atria-native-play-host > #sheld')).toBeVisible();
+        await expect(page.locator('#atria-native-play-host > #sheld')).toHaveAttribute('aria-hidden', 'true');
 
         await page.setViewportSize({ width: 390, height: 844 });
         await expect(toolbar).toBeVisible();
         await expect(page.locator('#atria-native-play-host')).toBeVisible();
         await expect(page.locator('#atria-app-shell')).toHaveAttribute('data-atria-viewport', 'compact');
         await expect(page.locator('[data-atria-primitive="BottomNavigation"]')).toBeVisible();
-        await expect(page.locator('#atria-native-play-host > #sheld')).toBeVisible();
 
         expect(await page.evaluate(() => ({
             sheld: document.querySelectorAll('#sheld').length,

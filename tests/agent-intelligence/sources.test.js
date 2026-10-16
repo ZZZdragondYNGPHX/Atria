@@ -117,7 +117,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         expect((await service.evaluate(h.handle, scope, nativeSet, budget, { expand: true })).content[0].content).toBe('Opening');
         const wrongBranch = structuredClone(nativeSet); wrongBranch.references[0].anchor.branchId = createNativeId('branch');
         expect((await service.evaluate(h.handle, scope, resign(wrongBranch), budget)).checks[0].status).toBe('stale');
-        await fixture.core.forkBranch(h.handle, scope.sessionId, { revisionId: initial.revision.revisionId, expectedRevisionId: initial.revision.revisionId });
+        await fixture.core.restoreSavePoint(h.handle, scope.sessionId, (await fixture.core.createSavePoint(h.handle, scope.sessionId, { expectedRevisionId: initial.revision.revisionId })).saveId, { expectedRevisionId: initial.revision.revisionId });
         expect((await service.evaluate(h.handle, scope, nativeSet, budget)).checks[0].status).toBe('stale');
         const fresh = await service.capture(h.handle, scope, [selected], budget);
         await h.engine.withTransaction(h.handle, tx => tx.deleteResource({ kind: 'atri_session', handle: h.handle, sessionId: scope.sessionId }));

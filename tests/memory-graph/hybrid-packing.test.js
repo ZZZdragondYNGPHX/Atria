@@ -73,9 +73,9 @@ test('Information-backed source groups survive Package and final Context whole-g
     const bridge = await recallNativePackageTurnMemory({ context: f.context, snapshot: f.snapshot, memoryApi: api, userInput: '收据？' });
     const admitted = await compileNativeContextPlan(f.snapshot, { modelContextLimit: 16000, responseReserve: 1000, memoryEvidence: bridge.evidence });
     expect(admitted.included.some(item => item.atomicGroup === 'commitment-chain')).toBe(true);
-    const exhausted = await compileNativeContextPlan(f.snapshot, { modelContextLimit: 1024, responseReserve: 1000, memoryEvidence: bridge.evidence });
-    expect(exhausted.included.some(item => item.atomicGroup === 'commitment-chain')).toBe(false);
-    report.consumers.push({ path: 'Package_atomic', result, bridge, admitted, exhausted }); save();
+    await expect(compileNativeContextPlan(f.snapshot, { modelContextLimit: 1024, responseReserve: 1000, memoryEvidence: bridge.evidence }))
+        .rejects.toMatchObject({ code: 'native_context_hard_reserve_overflow' });
+    report.consumers.push({ path: 'Package_atomic', result, bridge, admitted }); save();
     f.snapshot.states.atri_lifecycle.domains.memories.records.find(r => r.id === 's06-chain-b').value.actor = 'other';
     const revoked = await legal(f);
     expect(Object.values(revoked.state.episodes).flatMap(e => e.messageIds).some(id => chain.includes(id))).toBe(false);
@@ -102,7 +102,7 @@ test('requested-time source applicability survives ranked and coverage Package C
             const context = await compileNativeContextPlan(f.snapshot, { modelContextLimit: 16000, responseReserve: 1000, memoryEvidence: bridge.evidence });
             const consumed = context.included.filter(item => item.metadata?.recalled);
             expect(consumed).toHaveLength(bridge.evidence.length);
-            expect(consumed.map(item => item.content).sort()).toEqual(bridge.evidence.map(item => item.content).sort());
+            expect(consumed.map(item => JSON.parse(item.content).content).sort()).toEqual(bridge.evidence.map(item => item.content).sort());
         }
     }
     for (const record of f.snapshot.states.atri_lifecycle.domains.memories.records) record.value.actor = 'other';
@@ -143,7 +143,7 @@ test('long fixture untimed commitment retains its legal source and unknown appli
         const bridge = await recallNativePackageTurnMemory({ context: f.context, snapshot: f.snapshot,
             memoryApi: { openSession: async () => ({ recallMemory: async () => result }) }, userInput: query.text });
         const context = await compileNativeContextPlan(f.snapshot, { modelContextLimit: 16000, responseReserve: 1000, memoryEvidence: bridge.evidence });
-        expect(context.included.some(entry => entry.metadata?.recalled && entry.content === item.content)).toBe(true);
+        expect(context.included.some(entry => entry.metadata?.recalled && JSON.parse(entry.content).content === item.content)).toBe(true);
     }
 });
 

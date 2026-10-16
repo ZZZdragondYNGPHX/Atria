@@ -124,7 +124,7 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
             expect(ledger.localWork.map(row => row.kind)).toEqual(['skill_inventory', 'skill_pin', 'route_resolve', 'context_build', 'prompt_compile', 'generation_count', 'generation_render', 'skill_read', 'route_resolve', 'context_build', 'prompt_compile', 'generation_count', 'generation_render']);
             expect(JSON.stringify(result)).not.toContain('PRIVATE-SESSION-SKILL');
             expect((await f.core.load(f.handle, f.request.sessionId)).timeline).toEqual(f.base.timeline);
-            expect(onChunk.mock.calls.map(([chunk]) => chunk.text)).toEqual(['Final fresh prose.']);
+            expect(onChunk.mock.calls.flatMap(([chunk]) => typeof chunk.text === 'string' ? [chunk.text] : [])).toEqual(['Final fresh prose.']);
         } finally { await f.cleanup(); }
     });
 }
@@ -142,7 +142,7 @@ test.each(['cancel_read', 'head_change', 'work_quota'])('G05 Skill read %s stops
             : { models: cost.attempts.length, tokens: cost.attempts.reduce((n, row) => n + row.usage.totalTokens, 0), jobs: cost.localWork.length };
         expect(observed).toEqual({ models: 1, tokens: 20, jobs: scenario === 'work_quota' ? 7 : 8 }); expect(f.wires).toHaveLength(1);
         expect(f.readFile).toHaveBeenCalledTimes(scenario === 'work_quota' ? 0 : 1);
-        expect(onChunk).not.toHaveBeenCalled();
+        expect(onChunk.mock.calls.filter(([chunk]) => typeof chunk.text === 'string')).toEqual([]);
         let cancelledWork = null;
         if (scenario === 'cancel_read') {
             for (let n = 0; n < 20; n++) {

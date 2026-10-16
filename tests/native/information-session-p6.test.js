@@ -86,7 +86,7 @@ describe.each(CONTRACT_HARNESSES)('P6 exact Session information - $name', ({ mak
     });
     test('fork restores source records but cannot reuse foreign-Branch rollup', async () => {
         const scene = await apply(base, rollup(base));
-        const fork = await f.core.forkBranch(h.handle, base.session.sessionId, { revisionId: scene.revision.revisionId, expectedRevisionId: scene.revision.revisionId });
+        const fork = await f.core.restoreSavePoint(h.handle, base.session.sessionId, (await f.core.createSavePoint(h.handle, base.session.sessionId, { expectedRevisionId: scene.revision.revisionId })).saveId, { expectedRevisionId: scene.revision.revisionId });
         expect(fork.revision.branchId).not.toBe(scene.revision.branchId);
         expect(projectInformation(fork, 'pov').items.some(item => item.id === 'beliefs:rumor')).toBe(true);
         expect(projectInformation(fork, 'pov').items.some(item => item.semantic === 'rollup')).toBe(false);
@@ -123,7 +123,7 @@ describe.each(CONTRACT_HARNESSES)('P6 exact Session information - $name', ({ mak
     test('narrative Skill context cannot implicitly expose private P6 facts or enter unrelated Tasks', async () => {
         const { host, request } = await hostFixture();
         const skill = { name: 'procedural', scope: { kind: 'global' }, installedHash: '1'.repeat(64), metadata: { 'atria-paths': 'narrative' } };
-        host.skillRepository = () => ({ list: async () => [skill], pin: async ({ expectedHash }) => ({ version: expectedHash }) });
+        host.skillRepository = () => ({ list: async () => [skill], get: async () => skill, pin: async ({ expectedHash }) => ({ version: expectedHash }) });
         host.extensions = { settings: async () => ({ value: { skills: {} } }) };
         const preview = await host.execute(h.handle, request, undefined, undefined, { preview: true });
         const originalItems = preview.snapshot.contextPlan.items.filter(item => item.id !== 'atri.skills');

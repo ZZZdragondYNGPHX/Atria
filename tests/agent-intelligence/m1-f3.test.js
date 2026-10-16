@@ -1,3 +1,4 @@
+import '../util/browser-context.js';
 import { expect, test } from '@jest/globals';
 import { selectCases, publicCaseScenario, hash, PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';

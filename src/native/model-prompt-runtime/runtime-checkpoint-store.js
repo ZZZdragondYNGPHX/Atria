@@ -205,12 +205,8 @@ export class RuntimeCheckpointStore {
                     }
                 }
                 if (removed.length !== (this.sessionTaskHistory?.() ?? []).filter(message => message.role === 'assistant').length) unavailable();
-                const rollback = async () => { for (const row of removed) await tx.putResource(row.key, row); };
-                try { for (const row of removed) await tx.deleteResource(row.key); } catch (error) {
-                    if (this.engine.kind === 'fs') await rollback();
-                    throw error;
-                }
-                return { ids: removed.map(row => row.doc.checkpointId), authorityFingerprint: authority, rollback };
+                for (const row of removed) await tx.deleteResource(row.key);
+                return { ids: removed.map(row => row.doc.checkpointId), authorityFingerprint: authority };
             }));
         } catch { return unavailable(); }
     }

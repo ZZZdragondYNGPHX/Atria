@@ -1,3 +1,4 @@
+import '../util/browser-context.js';
 import { test, expect } from '@jest/globals';
 import {
     createWorkspaceFactoryPreset, getWorkspaceLibrary, workspaceHostProfile,

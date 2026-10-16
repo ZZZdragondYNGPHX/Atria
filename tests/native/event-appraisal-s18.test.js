@@ -157,7 +157,7 @@ test('S18 caller JSON cannot forge Host provenance or direct model adoption', as
     } finally { await h.cleanup(); }
 });
 
-test('S18 withdrawal and original Save restoration preserve old state while current-source interpretation becomes stale', async () => {
+test('S18 withdrawal and original Save restoration preserve authored state and rebase current-source interpretation', async () => {
     const h = await makeTempFsEngineHarness();
     try {
         const f = await installAppraisalFixture(h, { publicAppraisal: true }); await f.ready(); const base = await f.queue(), r = await runtime(h, f);
@@ -170,8 +170,9 @@ test('S18 withdrawal and original Save restoration preserve old state while curr
         const withdrawn = await write(h, f, 'emotions', old.id, { ...old.value, status: 'withdrawn' });
         expect(projectInformation(withdrawn, 'actor', { purpose: 'context' }).items.find(item => item.semantic === 'emotion').cognition.status).toBe('withdrawn');
         const restored = await f.core.restoreSavePoint(h.handle, active.session.sessionId, save.saveId, { expectedRevisionId: withdrawn.revision.revisionId });
-        expect(restored.states.atri_lifecycle.domains.emotions.records[0]).toEqual(old);
-        expect(projectInformation(restored, 'actor', { purpose: 'context' }).items.find(item => item.semantic === 'emotion').cognition.status).toBe('stale');
+        expect(restored.states.atri_lifecycle.domains.emotions.records[0]).toEqual({ ...old, value: { ...old.value, basis: { ...old.value.basis,
+            anchor: { ...old.value.basis.anchor, branchId: restored.revision.branchId, revisionId: restored.revision.revisionId } } } });
+        expect(projectInformation(restored, 'actor', { purpose: 'context' }).items.find(item => item.semantic === 'emotion').cognition.status).toBe('active');
         expect((await r.host.executeLifecycle(h.handle, r.input(restored))).results).toEqual([]); expect(r.fetchImpl).toHaveBeenCalledTimes(1);
         expect((await services(h).core.runs.status(h.handle, active.session.sessionId)).retiredCompute).toMatchObject({ modelAttempts: 1, knownTotalTokens: 150 });
     } finally { await h.cleanup(); }

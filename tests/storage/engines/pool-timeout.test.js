@@ -6,11 +6,11 @@ import { PgEngine } from '../../../src/storage/engines/postgres-engine.js';
 
 // Match the harness's DB/connection-string defaults; the controller's docker
 // containers expose mysql on 53306 and postgres on 55432 against these roles.
-const MYSQL_ROOT_URL = process.env.ATRIA_TEST_MYSQL_ROOT_URL || 'mysql://root:root@127.0.0.1:53306';
-const PG_ROOT_URL = process.env.ATRIA_TEST_POSTGRES_URL || 'postgresql://atria:postgres@127.0.0.1:55432/atria_test';
+const MYSQL_ROOT_URL = process.env.ATRIA_TEST_MYSQL_ROOT_URL;
+const PG_ROOT_URL = process.env.ATRIA_TEST_POSTGRES_URL;
 
-const describeMysql = process.env.ATRIA_DISABLE_MYSQL_TESTS ? describe.skip : describe;
-const describePg = process.env.ATRIA_DISABLE_POSTGRES_TESTS ? describe.skip : describe;
+const describeMysql = !process.env.ATRIA_TEST_MYSQL_ROOT_URL ? describe.skip : describe;
+const describePg = !process.env.ATRIA_TEST_POSTGRES_URL ? describe.skip : describe;
 
 // MysqlEngine bootstraps schema on first withTransaction/ping. The pool-timeout
 // test deliberately holds the only pool slot with a controllable promise, so

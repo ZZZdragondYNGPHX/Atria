@@ -1,3 +1,4 @@
+/** @jest-environment jsdom */
 import { describe, test, expect, beforeEach } from '@jest/globals';
 
 // public/lib.js is redirected to tests/util/lib-stub.js via jest config's
@@ -29,6 +30,10 @@ describe('iteration-library/render', () => {
         expect(ok).toBe(true);
         const out = renderMessageMarkdown('hello world');
         expect(out).toBe('<p>hello world</p>');
+        const malicious = renderMessageMarkdown('<img src=x onerror=alert(1)><script>alert(1)</script>');
+        const container = document.createElement('div');
+        container.innerHTML = malicious;
+        expect(container.querySelector('script, [onerror]')).toBeNull();
     });
 
     test('empty / nullish input returns empty string short-circuit', () => {

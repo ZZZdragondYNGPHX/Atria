@@ -202,7 +202,6 @@ export class RunControl {
         const operation = hashNativeDocument({ lane: 'turn', anchor }), id = hashNativeDocument(identity.invocationId);
         return this.repo.withRunLock(handle, snapshot.session.sessionId, () => this.repo._engine.withTransaction(handle, async tx => {
             assertWritable();
-            const resourceKey = key(handle, snapshot.session.sessionId), before = await tx.getResource(resourceKey);
             const control = await assertRunAccess(tx, handle, snapshot.session.sessionId, 'write');
             const previous = selectSessionTaskHistory(control, snapshot, operation, id, identity);
             if (!previous || previous.compaction || !completeSessionTaskHistory(previous.messages)
@@ -210,24 +209,13 @@ export class RunControl {
             const next = structuredClone(assertSessionTaskHistory({ ...identity, messages: [], compaction: { schemaVersion: 1, reason: 'context_budget',
                 sourceMessages: previous.messages, sourcePrefixFingerprint: expectedPrefix,
                 summary: sessionTaskPublicSummary(previous.messages), runtimeAuthorityFingerprint: '0'.repeat(64), sourceCheckpointIds: [] } }));
-            let discarded;
-            try {
-                discarded = await discardCheckpoints(tx);
-                next.compaction.sourceCheckpointIds = discarded.ids;
-                next.compaction.runtimeAuthorityFingerprint = discarded.authorityFingerprint;
-                assertSessionTaskHistory(next);
-                control.operations[operation].taskHistories[id] = structuredClone(next);
-                await writeRunControl(tx, handle, snapshot.session.sessionId, control);
-                return structuredClone(next);
-            } catch (error) {
-                // FS transactions publish individual atomic files, not SQL rollback.
-                // Compensate this bounded reset before either authority lock releases.
-                if (this.repo._engine.kind === 'fs' && discarded) {
-                    await discarded.rollback();
-                    await tx.putResource(resourceKey, before);
-                }
-                throw error;
-            }
+            const discarded = await discardCheckpoints(tx);
+            next.compaction.sourceCheckpointIds = discarded.ids;
+            next.compaction.runtimeAuthorityFingerprint = discarded.authorityFingerprint;
+            assertSessionTaskHistory(next);
+            control.operations[operation].taskHistories[id] = structuredClone(next);
+            await writeRunControl(tx, handle, snapshot.session.sessionId, control);
+            return structuredClone(next);
         }));
     }
     async charge(handle, snapshot, request, policy) {

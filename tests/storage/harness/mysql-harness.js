@@ -7,7 +7,7 @@ import { MysqlEngine } from '../../../src/storage/engines/mysql-engine.js';
 
 // Local dev container default. Override with ATRIA_TEST_MYSQL_ROOT_URL if the
 // docker-compose port mapping changes.
-const ROOT_URL = process.env.ATRIA_TEST_MYSQL_ROOT_URL || 'mysql://root:root@127.0.0.1:53306';
+const ROOT_URL = process.env.ATRIA_TEST_MYSQL_ROOT_URL;
 
 // Stub directory map. MysqlEngine stores nothing on disk, but the Repo contract
 // tests share their beforeEach with FsEngine, which means they call

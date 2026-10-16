@@ -30,12 +30,12 @@ export const capabilitySettings = defaultCapabilitySettings();
 const retainedKeys = new Set(['disabledPlugins', 'regex', 'regex_presets', 'regex_section_collapsed', 'note', 'variables', 'attachments', 'character_attachments', 'disabled_attachments', 'orchestrator', 'memory_graph', 'game-runtime', 'search_tools']);
 export function primeCapabilitySettings(settings) {
     // Retain already-authored Atria capabilities once; never hydrate retired extension settings.
-    const source = structuredClone(settings.atri_capabilities || settings.extension_settings || {});
+    const source = structuredClone(settings.atri_capabilities || {});
     for (const key of Object.keys(capabilitySettings)) delete capabilitySettings[key];
     Object.assign(capabilitySettings, defaultCapabilitySettings());
     for (const [key, value] of Object.entries(source)) if (retainedKeys.has(key)) capabilitySettings[key] = value;
     capabilitySettings.regex_presets = normalizeRegexPresets(capabilitySettings.regex_presets, capabilitySettings.regex);
-    const disabled = source.disabledPlugins || source.disabledExtensions;
+    const disabled = source.disabledPlugins;
     capabilitySettings.disabledPlugins = (Array.isArray(disabled) ? disabled : []).filter(name => globalPluginNames.includes(name));
 }
 export function serializeCapabilitySettings() { return { ...Object.fromEntries(Object.entries(capabilitySettings).filter(([key]) => retainedKeys.has(key))), regex_presets: normalizeRegexPresets(capabilitySettings.regex_presets, capabilitySettings.regex) }; }

@@ -1,3 +1,4 @@
+import '../util/browser-context.js';
 import { afterEach, expect, test } from '@jest/globals';
 import { emptyPresetLibrary, updatePresetLibrary, validatePresetLibrary, normalizeWorkspacePreset } from '../../public/scripts/lib/agent-workspace/presets.js';
 import { updateWorkspacePromptVersions, checkWorkspacePromptCandidate } from '../../public/scripts/lib/agent-workspace/prompt-versions.js';

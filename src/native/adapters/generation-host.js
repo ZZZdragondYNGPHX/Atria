@@ -28,8 +28,6 @@ import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime
 import { assertTaskValue } from '../../../public/shared/native-task-contract.js';
 import { nativeTaskScheduler } from '../task-scheduler.js';
 import { hashNativeDocument } from '../repositories/common.js';
-import { createTaskWorld } from '../task-authority.js';
-import { createGameLlmRuntime } from '../../../public/scripts/native/experience/llm/runtime.js';
 import { assertTurnEnvelope } from '../../../public/shared/native-message-contract.js';
 import { AgentEvidenceRepository } from '../agent-intelligence/evidence-repository.js';
 import { AgentEvidenceService } from '../agent-intelligence/evidence-service.js';
@@ -399,22 +397,6 @@ export class NativeGenerationHost {
             authorityTurn = await this.prepareAuthoritySelection(handle, base, input, lanePlan, signal);
             base = authorityTurn.prepared.candidate;
             lanePlan = { ...lanePlan, authorityContext: { snapshot: base, receipt: authorityTurn.prepared.receipt, mode: 'narrator' } };
-        } else if (runtime.turn.policy === 'authority-first' && input.userInput?.trim() && (base.entryPoint.runtime?.game?.logic ?? base.manifest.runtime?.game?.logic)) {
-            const installed = await this.packageInstaller.open(handle, base.session.packageId, base.session.packageVersionId);
-            const { world, candidate } = await createTaskWorld(base, { ...installed, entryPoint: base.entryPoint }, async (patch, revisionId) => {
-                checkCancellation(signal);
-                const next = await this.sessionCore.applyRuntimeCommit(handle, input.sessionId, { statePatch: patch }, { expectedRevisionId: revisionId });
-                onAnchor(next.revision.revisionId);
-                return next;
-            });
-            const llm = createGameLlmRuntime({ worldSession: world, generateTask: async request => {
-                const result = await this.execute(handle, { sessionId: input.sessionId, revisionId: candidate.revision.revisionId,
-                    role: 'intent_resolver', requestId: input.invocationId + ':intent', messages: request.taskMessages, tools: request.tools }, signal, undefined, { scheduled: true, lanePlan });
-                return result.response;
-            } });
-            await llm.runFreeText({ userInput: input.userInput, requestOptions: { abortSignal: signal } });
-            base = candidate;
-            input = { ...input, revisionId: base.revision.revisionId };
         }
         const stages = [];
         const provenance = [];

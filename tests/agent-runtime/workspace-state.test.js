@@ -1,3 +1,4 @@
+import '../util/browser-context.js';
 import { test, expect, jest } from '@jest/globals';
 import { RuntimeProjection, replayRuntimeEvents } from '../../public/scripts/lib/agent-runtime/projection.js';
 import { createWorkspaceFactoryPreset, workspaceHostProfile } from '../../public/scripts/agents/orchestrator/workspace/host-presets.js';

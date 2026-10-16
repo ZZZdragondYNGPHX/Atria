@@ -66,14 +66,14 @@ import { buildToolCatalog, normalizeToolCallToEdit, CONTROL_TOOL_NAMES, isMgSche
 import { MG_SCHEMA_TOOL_DISPLAY } from './tool-display.js';
 import { DEFAULT_SCHEMA_ITER_SYSTEM_PROMPT } from './system-prompt.js';
 import { createMgSchemaSessionStore, makeMessageId, normalizeMessageShape } from './session-store.js';
-import { dispatchMgSchemaReadFields } from './read-fields-dispatcher.js';
+import { readFieldsByPaths } from '../../../iteration-library/read-fields-helper.js';
 import {
     isReplayableIterationMessage,
 } from '../../../iteration-library/iter-message-filter.js';
 import {
     buildEditToolResultPayload,
-    buildPayloadForOutcome,
-} from '../../orchestrator/iter-studio/edit-tool-result-envelope.js';
+    applyOutcomesToToolResults,
+} from '../../../iteration-library/edit-tool-results.js';
 
 const MODULE = 'mg-schema-iteration';
 const STYLESHEET_ID = 'mg_schema_it_studio_stylesheet';
@@ -93,7 +93,7 @@ async function runLorebookReadTool(call, avatar = '') {
 // inline-executed — the popup dispatches it synchronously and persists
 // the tool_result on the assistant message so the next round's
 // taskMessages replay carries it back to the model. See
-// read-fields-dispatcher.js for the sanitization-boundary call-out.
+// read-fields-helper.js for the shared read contract.
 const SCHEMA_READ_TOOL_NAME = 'mg_schema_read_fields';
 const SCHEMA_READ_TOOL_DEF = {
     type: 'function',
@@ -906,95 +906,6 @@ export async function openSchemaIterationStudio(deps) {
         return false;
     }
 
-    // Build the assistant-message index used by the drain-outcome
-    // tool_result updater. Returns two maps:
-    //   - callIdToMsg: tool_call_id → owning assistant message id
-    //   - msgById:     assistant message id → the message object
-    // Walk state.session.messages once so applyOutcomesToToolResults can
-    // reuse both maps; they stay valid until the next mutation of the
-    // messages array. Mirror of orchestrator/iter-studio/studio.js's
-    // helper of the same name.
-    function buildAssistantMessageIndex() {
-        const callIdToMsg = new Map();
-        const msgById = new Map();
-        const msgs = state.session?.messages || [];
-        for (const m of msgs) {
-            if (!m || m.role !== 'assistant') continue;
-            const mid = String(m.id || '');
-            if (mid) msgById.set(mid, m);
-            const calls = Array.isArray(m.toolCalls) ? m.toolCalls : [];
-            for (const tc of calls) {
-                const id = String(tc?.id || '');
-                if (id) callIdToMsg.set(id, mid);
-            }
-        }
-        return { callIdToMsg, msgById };
-    }
-
-    // Apply a batch of bus outcomes to persisted assistant-message
-    // tool_results. For each outcome, find the owning assistant message
-    // (via sourceCallId → callIdToMsg) and swap the pending tool_result
-    // envelope at matching tool_call_id to the resolved payload.
-    //
-    // Multi-edit cascade: MG schema iter-studio coalesces N chained
-    // edit-tool calls per turn into ONE bus entry keyed to the first
-    // callId (see runIterationTurn's `bus.propose` site — one profile-edit
-    // proposal per turn regardless of how many set/remove/reorder tool
-    // calls landed). When a profile-edit outcome fires, cascade its
-    // resolved status to every other still-`pending` edit tool_result in
-    // the same assistant message so the batch shares fate in the LLM's
-    // protocol view. Read-tool results (status:'ok' with concrete
-    // payloads) are never clobbered because the cascade only touches
-    // envelopes whose current content.status === 'proposal_pending'.
-    function applyOutcomesToToolResults(outcomes) {
-        if (!Array.isArray(outcomes) || outcomes.length === 0) return;
-        const { callIdToMsg, msgById } = buildAssistantMessageIndex();
-        const profileEditOutcomeByMsg = new Map();
-        for (const outcome of outcomes) {
-            const sourceCallId = String(outcome?.sourceCallId || '');
-            if (!sourceCallId) continue;
-            const mid = callIdToMsg.get(sourceCallId);
-            if (!mid) continue;
-            const msg = msgById.get(mid);
-            if (!msg) continue;
-            const results = Array.isArray(msg.toolResults) ? msg.toolResults : null;
-            if (!results) continue;
-            const idx = results.findIndex((r) => String(r?.tool_call_id || '') === sourceCallId);
-            if (idx < 0) continue;
-            const payload = buildPayloadForOutcome(outcome);
-            const nextStatus = outcome?.status === 'committed' ? 'ok' : 'fail';
-            results[idx] = {
-                tool_call_id: sourceCallId,
-                content: payload,
-                status: nextStatus,
-            };
-            if (outcome?.kind === 'profile-edit') {
-                profileEditOutcomeByMsg.set(mid, outcome);
-            }
-        }
-        for (const [mid, outcome] of profileEditOutcomeByMsg) {
-            const msg = msgById.get(mid);
-            if (!msg) continue;
-            const results = Array.isArray(msg.toolResults) ? msg.toolResults : null;
-            if (!results) continue;
-            const payload = buildPayloadForOutcome(outcome);
-            const nextStatus = outcome?.status === 'committed' ? 'ok' : 'fail';
-            for (let i = 0; i < results.length; i++) {
-                const r = results[i];
-                const content = r?.content;
-                const isPending = content
-                    && typeof content === 'object'
-                    && content.status === 'proposal_pending';
-                if (!isPending) continue;
-                results[i] = {
-                    tool_call_id: String(r?.tool_call_id || ''),
-                    content: payload,
-                    status: nextStatus,
-                };
-            }
-        }
-    }
-
     async function drainBusOutcomes() {
         if (drainScheduled) return;
         const outcomes = bus.drainOutcomes();
@@ -1030,7 +941,7 @@ export async function openSchemaIterationStudio(deps) {
         // cascade the same status to every other still-pending edit
         // tool_result in the same assistant message. Only profile-edit
         // outcomes cascade; 1:1 kinds match by sourceCallId alone.
-        applyOutcomesToToolResults(allOutcomes);
+        applyOutcomesToToolResults(state.session.messages, allOutcomes);
         const hadUpdate = allOutcomes.length > 0;
         if (!hadUpdate) return;
         drainScheduled = true;
@@ -1941,14 +1852,7 @@ export async function openSchemaIterationStudio(deps) {
             let statusLabel = 'ok';
             try {
                 if (isSchemaReadTool(call?.name)) {
-                    // Schema read — pure read against `state.live`.
-                    // `dispatchMgSchemaReadFields` throws `invalid_args`
-                    // on a non-array `paths`; anything else lands here
-                    // as a tool reply the AI can inspect and retry.
-                    resultPayload = await dispatchMgSchemaReadFields({
-                        liveSchema: state.live,
-                        args: call?.args,
-                    });
+                    resultPayload = readFieldsByPaths(state.live, call.args.paths);
                 } else {
                     const out = await runLorebookReadTool({ id: callId, name: call?.name, args: call?.args }, avatarForReads);
                     if (out?.ok) {

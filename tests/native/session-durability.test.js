@@ -31,31 +31,22 @@ describe('N3 FS commit-last and integrity', () => {
             expect(await f.sessionRepo.list(h.handle)).toEqual([]);
             if (kind === 'atri_session') {
                 const revisions = await h.engine.withTransaction(h.handle, tx => tx.listResources({ kind: 'atri_session_revision', handle: h.handle }));
-                const orphan = revisions[0].doc;
-                await expect(f.savePointRepo.create(h.handle, { saveId: createNativeId('savePoint'),
-                    sessionId: orphan.sessionId, branchId: orphan.branchId, revisionId: orphan.revisionId,
-                    kind: 'manual', createdAt: 1 })).rejects.toThrow('committed native session revision');
+                expect(revisions).toEqual([]);
             }
         },
     );
 
-    test('failed Session HEAD publication cannot be loaded/saved as committed history and is GC-safe', async () => {
+    test('failed Session HEAD publication rolls back all dependent records', async () => {
         const original = await f.core.create(h.handle, f.start);
         const sessionId = original.session.sessionId;
         const broken = services(h, failingEngine(h.engine, 'atri_session'));
         await expect(broken.core.appendTimeline(h.handle, sessionId, { role: 'user', content: 'Uncommitted' }))
             .rejects.toThrow('injected publication failure');
         const revisions = await f.sessionRepo.listRevisions(h.handle, sessionId);
-        const orphan = revisions.find(revision => revision.revisionId !== original.revision.revisionId);
-        expect(orphan).toBeDefined();
+        expect(revisions.map(revision => revision.revisionId)).toEqual([original.revision.revisionId]);
         const reloaded = await services(h).core.load(h.handle, sessionId);
         expect(reloaded.revision).toEqual(original.revision);
         expect(reloaded.timeline).toEqual(original.timeline);
-        await expect(f.core.load(h.handle, sessionId, { revisionId: orphan.revisionId })).rejects.toThrow('committed native session revision');
-        await expect(f.savePointRepo.create(h.handle, { saveId: createNativeId('savePoint'), sessionId,
-            branchId: orphan.branchId, revisionId: orphan.revisionId, kind: 'manual', createdAt: 1 }))
-            .rejects.toThrow('committed native session revision');
-        expect(await f.sessionRepo.gcRevisions(h.handle, sessionId)).toEqual([orphan.revisionId]);
         const resumed = await f.core.appendTimeline(h.handle, sessionId, { role: 'user', content: 'Committed' });
         expect(resumed.timeline.map(item => item.content)).toEqual(['Opening', 'Committed']);
     });
@@ -131,7 +122,7 @@ describe('N3 FS commit-last and integrity', () => {
         changedWorld.worlds[f.worldId].worldRevisionId = createNativeId('worldRevision');
         await expect(f.core.updateState(h.handle, sessionId, { atri_world_state: changedWorld })).rejects.toThrow('World dependency mismatch');
         await expect(f.core.switchBranch(h.handle, sessionId, createNativeId('branch'))).rejects.toThrow('native branch');
-        await expect(f.core.forkBranch(h.handle, sessionId, { revisionId: createNativeId('revision') })).rejects.toThrow('committed native session revision');
+        await expect(f.core.createSavePoint(h.handle, sessionId, { revisionId: createNativeId('revision') })).rejects.toThrow('current committed HEAD');
         expect((await f.core.load(h.handle, sessionId)).revision).toEqual(view.revision);
     });
     test.each(['auto', 'quick', 'manual'])('%s SavePoint is an immutable Native Revision pointer', async kind => {

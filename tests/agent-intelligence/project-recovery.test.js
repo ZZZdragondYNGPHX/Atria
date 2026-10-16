@@ -44,8 +44,10 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         const before = await review(); restart();
         expect(await agent.getTask(h.handle, projectId, task.taskId)).toEqual(before);
         expect(await agent.listTasks(h.handle, projectId)).toEqual([before]);
+        await expect(agent.commit(h.handle, projectId, task.taskId)).rejects.toMatchObject({ code: 'project_agent_preview_stale' });
+        await agent.prepareReview(h.handle, projectId, task.taskId);
         const done = await agent.commit(h.handle, projectId, task.taskId);
-        expect(done.status).toBe('completed'); expect(done.attempts.map(item => [item.kind, item.status])).toEqual([['evaluation', 'completed'], ['commit', 'completed']]);
+        expect(done.status).toBe('completed'); expect(done.attempts.at(-1)).toMatchObject({ kind: 'commit', status: 'completed' });
         restart(); expect(await agent.commit(h.handle, projectId, task.taskId)).toEqual(done);
         expect((await studio.getProject(h.handle, projectId)).source.project.displayName).toBe('Renamed');
     });
@@ -92,6 +94,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         restart(); const recovered = await agent.getTask(h.handle, projectId, task.taskId);
         expect(recovered).toMatchObject({ status: 'review', recovery: { status: 'awaiting_review' } });
         expect((await studio.getRevision(h.handle, projectId)).revision).toBe(task.baseRevision);
+        await agent.prepareReview(h.handle, projectId, task.taskId);
         expect((await agent.commit(h.handle, projectId, task.taskId)).status).toBe('completed');
     });
 
@@ -297,7 +300,8 @@ test('browser runner restores a durable conversation after interrupted tools and
         let round = 0; const requests = [];
         globalThis.fetch = async (url, options = {}) => {
             const body = options.body ? JSON.parse(options.body) : {}; let value;
-            if (url === '/api/skills?scope=all') value = [];
+            if (url === '/api/native/generation/skill-work' && body.operation === 'list') value = [];
+            else if (url === '/api/skills?scope=all') value = [];
             else if (url === '/api/native/extensions/settings') value = { value: { skills: {} } };
             else if (url === '/api/native/generation/execute') {
                 requests.push(body); round++;

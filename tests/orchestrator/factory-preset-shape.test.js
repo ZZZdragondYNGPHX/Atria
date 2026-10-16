@@ -1,3 +1,4 @@
+import '../util/browser-context.js';
 import { describe, test, expect } from '@jest/globals';
 import {
     createFactoryPresetForMode,

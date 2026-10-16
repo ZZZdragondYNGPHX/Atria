@@ -223,7 +223,7 @@ describe.each(HARNESS)('P2 committed projection - %s', (_name, make) => {
         source.flow[1].data.value = 42;
         await expect(f.sessionRepo.putVariant(h.handle, { ...original, projection: source })).rejects.toMatchObject({ code: 'native_immutable_conflict' });
         const save = await f.core.createSavePoint(h.handle, sessionId);
-        const fork = await f.core.forkBranch(h.handle, sessionId);
+        const fork = await f.core.restoreSavePoint(h.handle, sessionId, save.saveId);
         expect(fork.variants.at(-1)).toEqual(original);
         await f.core.appendTimeline(h.handle, sessionId, { role: 'user', content: 'Future' });
         const restored = await f.core.restoreSavePoint(h.handle, sessionId, save.saveId);

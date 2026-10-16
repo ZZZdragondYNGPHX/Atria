@@ -46,19 +46,19 @@ const {
     unbridgeSillyTavernTool,
     listAvailableSillyTavernTools,
     rehydrateBridgedSillyTavernTools,
-    __getExtensionRegistryForTest,
+    getExtensionRegistry,
 } = await import('../../public/scripts/agents/orchestrator/register-custom-tool.js');
 const { executeLoopTool } = await import('../../public/scripts/agents/orchestrator/loop-tools.js');
 
 describe('ST bridge', () => {
     beforeEach(() => {
-        __getExtensionRegistryForTest().clear();
+        getExtensionRegistry().clear();
         mockInvoke.mockClear();
     });
 
     test('bridges a ST tool with st_ prefix', async () => {
         await bridgeSillyTavernTool('GenerateImage', { mode: 'write' });
-        const entry = __getExtensionRegistryForTest().get('st_GenerateImage');
+        const entry = getExtensionRegistry().get('st_GenerateImage');
         expect(entry).toBeTruthy();
         expect(entry.mode).toBe('write');
         expect(entry.schema.function.name).toBe('st_GenerateImage');
@@ -67,7 +67,7 @@ describe('ST bridge', () => {
 
     test('default mode is write', async () => {
         await bridgeSillyTavernTool('WebSearch');
-        expect(__getExtensionRegistryForTest().get('st_WebSearch').mode).toBe('write');
+        expect(getExtensionRegistry().get('st_WebSearch').mode).toBe('write');
     });
 
     test('exec proxies to ToolManager.invokeFunctionTool', async () => {
@@ -81,7 +81,7 @@ describe('ST bridge', () => {
     test('unbridge removes the entry', async () => {
         await bridgeSillyTavernTool('GenerateImage');
         unbridgeSillyTavernTool('GenerateImage');
-        expect(__getExtensionRegistryForTest().get('st_GenerateImage')).toBeUndefined();
+        expect(getExtensionRegistry().get('st_GenerateImage')).toBeUndefined();
     });
 
     test('bridging an unknown ST tool throws', async () => {
@@ -98,7 +98,7 @@ describe('ST bridge', () => {
 });
 
 describe('ST bridge rehydration', () => {
-    beforeEach(() => { __getExtensionRegistryForTest().clear(); });
+    beforeEach(() => { getExtensionRegistry().clear(); });
 
     test('replays settings.bridgedSillyTavernTools[] into the registry', async () => {
         await rehydrateBridgedSillyTavernTools({
@@ -107,8 +107,8 @@ describe('ST bridge rehydration', () => {
                 { name: 'WebSearch', mode: 'read' },
             ],
         });
-        expect(__getExtensionRegistryForTest().get('st_GenerateImage')?.mode).toBe('write');
-        expect(__getExtensionRegistryForTest().get('st_WebSearch')?.mode).toBe('read');
+        expect(getExtensionRegistry().get('st_GenerateImage')?.mode).toBe('write');
+        expect(getExtensionRegistry().get('st_WebSearch')?.mode).toBe('read');
     });
 
     test('skips entries whose ST tool is no longer registered', async () => {
@@ -118,13 +118,13 @@ describe('ST bridge rehydration', () => {
                 { name: 'GhostTool', mode: 'read' },
             ],
         });
-        expect(__getExtensionRegistryForTest().get('st_GenerateImage')).toBeTruthy();
-        expect(__getExtensionRegistryForTest().get('st_GhostTool')).toBeUndefined();
+        expect(getExtensionRegistry().get('st_GenerateImage')).toBeTruthy();
+        expect(getExtensionRegistry().get('st_GhostTool')).toBeUndefined();
     });
 
     test('missing settings field is a no-op', async () => {
         await rehydrateBridgedSillyTavernTools({});
         await rehydrateBridgedSillyTavernTools(null);
-        expect(__getExtensionRegistryForTest().size).toBe(0);
+        expect(getExtensionRegistry().size).toBe(0);
     });
 });

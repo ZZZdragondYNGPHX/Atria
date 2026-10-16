@@ -5,7 +5,7 @@ import { renderPromptMessages } from '../../src/native/model-prompt-runtime/prom
 
 function fixture(format, overrides = {}) {
     const resolved = {
-        pathFingerprint: 'a'.repeat(64), route: {},
+        pathFingerprint: 'a'.repeat(64), route: { role: 'studio' },
         connection: { connectionProfileId: 'conn-test', endpoint: 'https://example.invalid/v1beta', options: {}, networkPolicy: {} },
         model: { remoteModelId: 'test-model', providerHints: {}, messageFormat: {} },
         generation: { sampling: {}, output: { maxTokens: 4096 }, streaming: {}, reasoning: {}, cache: {}, stop: {}, toolChoice: {}, providerExtensions: {}, ...overrides },

@@ -1099,7 +1099,8 @@ export class ProjectAgentService {
     async _prepareReview(handle, projectId, id, options = {}) {
         const task = this._task(handle, projectId, id);
         if (task.projectId !== projectId) throw new NotFoundError('native project agent task', { taskId: id, projectId });
-        this._ensureDraftMutable(task);
+        this._ensureMutable(task);
+        if (task.status === 'committing') throw new ConflictError('project_agent_review_locked', { taskId: task.taskId, status: task.status });
         if (!task.plan) throw new TypeError('Project Agent requires a Plan before review');
         if (!task.proposals.length) throw new TypeError('Project Agent requires proposed operations before review');
         await this._assertTaskBaseRevision(handle, task);
@@ -1112,6 +1113,7 @@ export class ProjectAgentService {
             operations: task.proposals.map(item => item.operation),
         });
         task.workspace = workspace;
+        task.commitIntent = null;
         task.status = 'evaluating';
         task.updatedAt = Date.now();
         this._event(task, 'workspace', { workspace });

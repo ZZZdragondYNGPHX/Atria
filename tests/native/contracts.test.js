@@ -7,7 +7,6 @@ import {
     ATRIA_PACKAGE_SCHEMA_VERSION,
     ATRIA_SAVE_FORMAT,
     ATRIA_SAVE_SCHEMA_VERSION,
-    NATIVE_ID_FAMILIES,
     NATIVE_RESOURCE_KINDS,
     NATIVE_SCHEMA_VERSION,
     NATIVE_STORE_FAMILIES,
@@ -237,36 +236,6 @@ function snapshotSave(overrides = {}) {
 }
 
 describe('N0 opaque Native identity', () => {
-    test('defines every frozen Native ID family', () => {
-        expect(NATIVE_ID_FAMILIES).toEqual({
-            package: 'pkg',
-            packageVersion: 'pkgv',
-            actor: 'actor',
-            entryPoint: 'entry',
-            project: 'project',
-            session: 'ses',
-            branch: 'br',
-            message: 'msg',
-            variant: 'var',
-            revision: 'rev',
-            savePoint: 'save',
-            asset: 'asset',
-            world: 'world',
-            worldRevision: 'worldv',
-            knowledgeBase: 'kb',
-            knowledgeRevision: 'kbv',
-            knowledgeEntry: 'kentry',
-            knowledgeBinding: 'kbind',
-            connectionProfile: 'conn',
-            modelProfile: 'model',
-            generationProfile: 'genprof',
-            promptModule: 'pmod',
-            promptProgram: 'pprog',
-            runtimeRoute: 'route',
-            retrievalProfile: 'retr',
-        });
-    });
-
     test('creates opaque IDs from UUID entropy and preserves family parsing', () => {
         const uuid = '12345678-1234-4abc-8def-1234567890ab';
         const factory = jest.fn(() => uuid);

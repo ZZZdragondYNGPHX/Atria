@@ -565,17 +565,16 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
         } finally { await f.cleanup(); }
     });
 }
-test.each(['fork', 'restore'])('G05 retired work actual Session %s during provider HTTP retains usage without publishing', async action => {
+test('G05 retired work actual Session restore during provider HTTP retains usage without publishing', async () => {
     const f = await fixture(makeTempFsEngine, 2, localLimits);
     try {
         const body = await embeddingBody(f), saved = await f.core.createSavePoint(f.handle, f.base.session.sessionId);
-        if (action === 'restore') {
+        {
             const current = await f.core.appendTimeline(f.handle, f.base.session.sessionId, { role: 'user', content: 'Work after saved history' });
             body.computeContext = { ...body.computeContext, revisionId: current.revision.revisionId };
         }
         f.respondEmbedding(async () => {
-            if (action === 'fork') await f.core.forkBranch(f.handle, f.base.session.sessionId, { revisionId: f.base.revision.revisionId, expectedRevisionId: f.base.revision.revisionId });
-            else await f.core.restoreSavePoint(f.handle, f.base.session.sessionId, saved.saveId, { expectedRevisionId: body.computeContext.revisionId });
+            await f.core.restoreSavePoint(f.handle, f.base.session.sessionId, saved.saveId, { expectedRevisionId: body.computeContext.revisionId });
             return { data: [{ index: 0, embedding: [1, 0] }], usage: { total_tokens: 5 } };
         });
         await f.request.post('/insert').send(body).expect(500);

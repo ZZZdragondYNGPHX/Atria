@@ -1,3 +1,4 @@
+import { browserContext } from '../../util/browser-context.js';
 /**
  * Shared mock stack for tests that import
  * `public/scripts/agents/memory/main.js` under jest.
@@ -61,7 +62,7 @@ jest.unstable_mockModule('../../public/lib.js', async () => {
     return {
         lodash,
         showdown: { Converter: class { makeHtml(t) { return String(t || ''); } } },
-        DOMPurify: { sanitize: (h) => h },
+        DOMPurify: { sanitize() { throw new Error('DOM rendering requires a browser test'); } },
     };
 });
 jest.unstable_mockModule('../../public/scripts/request-compression.js', () => ({
@@ -127,3 +128,15 @@ jest.unstable_mockModule(
 
 
 export { extensionSettingsMock };
+
+Object.assign(browserContext, {
+    eventTypes: {},
+    eventSource: { on() {}, off() {}, emit: async () => {} },
+    capabilitySettings: extensionSettingsMock,
+    resolveChatStateTarget: () => ({ is_group: false, avatar_url: 'avatar.png', file_name: 'chat' }),
+    saveSettings: async () => {},
+    saveSettingsDebounced() {},
+    performFuzzySearch: () => [],
+    download() {}, getFileText: async () => '', getStringHash: () => '',
+    worldInfoEntry: { template: () => ({}), setGlobalSelection() {} },
+});

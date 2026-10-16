@@ -8,7 +8,7 @@ import { PgEngine } from '../../../src/storage/engines/postgres-engine.js';
 // Local dev container default. The atria role (DB owner) can both create and
 // drop schemas inside the atria_test database, so we use it end-to-end rather
 // than splitting between a superuser-for-DDL and a least-privilege app role.
-const ROOT_URL = process.env.ATRIA_TEST_POSTGRES_URL || 'postgresql://atria:postgres@127.0.0.1:55432/atria_test';
+const ROOT_URL = process.env.ATRIA_TEST_POSTGRES_URL;
 
 // Stub directory map. PgEngine stores nothing on disk, but the Repo contract
 // tests share their beforeEach with FsEngine, which means they call

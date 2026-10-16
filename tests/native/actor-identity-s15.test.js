@@ -33,7 +33,7 @@ test('S15 installed Host consumes public identity across model changes and resto
         await seeded.persistence.saveModelProfile(h.handle, { ...seeded.model, remoteModelId: 'different-model' });
         expect(slot(await preview(base)).content).toBe(slot(first).content);
         const save = await f.core.createSavePoint(h.handle, base.session.sessionId, { expectedRevisionId: base.revision.revisionId });
-        const fork = await f.core.forkBranch(h.handle, base.session.sessionId, { expectedRevisionId: base.revision.revisionId });
+        const fork = await f.core.restoreSavePoint(h.handle, base.session.sessionId, (await f.core.createSavePoint(h.handle, base.session.sessionId, { expectedRevisionId: base.revision.revisionId })).saveId, { expectedRevisionId: base.revision.revisionId });
         expect(projectNativeSession(fork).character.atri_native.source).toEqual(projectNativeSession(base).character.atri_native.source);
         const forkPlan = await compileNativeContextPlan(fork, budget);
         expect(identities(forkPlan)[0].sourceRefs[0]).toMatchObject({ revisionId: fork.revision.revisionId, branchId: fork.revision.branchId });

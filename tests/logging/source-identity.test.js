@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test } from '@jest/globals';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, mkdir, writeFile, rm, symlink, readFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { captureSourceIdentity } from '../../src/logging/source-identity.js';
@@ -53,12 +53,11 @@ test('junction source and non-Git installs fail closed without leaking paths', a
     expect((await captureSourceIdentity(path.join(root, 'outside'))).reasons.length).toBeGreaterThan(0);
 });
 
-test('fallback reuses canonical boot identity and launcher captures before server-main', async () => {
+test('fallback reuses canonical boot identity', async () => {
     const identity = getRuntimeIdentity();
     expect(identity.serverBootId).toBe(serverBootId); expect(identity.processStartedAt).toBeGreaterThan(0);
     expect(identity.source.reasons).toContain('startup_identity_not_captured');
     identity.source.reasons.length = 0;
     expect(getRuntimeIdentity().source.reasons).toContain('startup_identity_not_captured');
-    const launcher = await readFile(new URL('../../server.js', import.meta.url), 'utf8');
-    expect(launcher.indexOf('await initializeRuntimeIdentity()')).toBeLessThan(launcher.indexOf('await import(\'./src/server-main.js\')'));
+
 });

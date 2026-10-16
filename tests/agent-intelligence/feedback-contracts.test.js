@@ -1,3 +1,4 @@
+import '../util/browser-context.js';
 import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals';
 import { AgentExperienceService } from '../../src/native/agent-intelligence/experience-service.js';
 import { DAY, experienceIdentity } from '../../src/native/agent-intelligence/experience-repository.js';

@@ -1,9 +1,5 @@
 import { defineConfig } from '@playwright/test';
-import { fileURLToPath } from 'node:url';
-import { setConfigFilePath } from '../src/util.js';
-
-// Native fixtures import server modules during discovery, before hooks run.
-setConfigFilePath(fileURLToPath(new URL('../default/config.yaml', import.meta.url)));
+import './util/config.js';
 
 // Each spec owns an isolated server/data root through e2e/_lib/server.js.
 export default defineConfig({
