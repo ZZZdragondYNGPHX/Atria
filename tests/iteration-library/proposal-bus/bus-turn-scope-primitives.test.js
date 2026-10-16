@@ -6,14 +6,8 @@
 //
 // The gate itself lives in each studio's drainBusOutcomes and joins
 // bus data with the studio's session.messages to compute the owning
-// assistant message — the true "batch boundary" is per-assistant-
-// message, not per-tool-call. See
-// tests/e2e/regression/118-iter-studio-batch-approval-gate.e2e.js
-// for the black-box behavior under real DOM + rAF + LLM.
-//
-// hasPendingSiblingsFor is retained for backwards compat but
-// intentionally NOT re-covered here as a public contract; a
-// deprecation JSDoc lives on it in bus.js.
+// assistant message. Production message updates are covered by
+// tests/iteration-library/edit-tool-results.test.js.
 
 import { jest } from '@jest/globals';
 import { createBus } from '/scripts/iteration-library/proposal-bus/bus.js';

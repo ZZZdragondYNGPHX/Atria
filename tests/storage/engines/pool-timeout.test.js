@@ -4,8 +4,7 @@ import pg from 'pg';
 import { MysqlEngine } from '../../../src/storage/engines/mysql-engine.js';
 import { PgEngine } from '../../../src/storage/engines/postgres-engine.js';
 
-// Match the harness's DB/connection-string defaults; the controller's docker
-// containers expose mysql on 53306 and postgres on 55432 against these roles.
+// External database cases run only with explicit test database credentials.
 const MYSQL_ROOT_URL = process.env.ATRIA_TEST_MYSQL_ROOT_URL;
 const PG_ROOT_URL = process.env.ATRIA_TEST_POSTGRES_URL;
 

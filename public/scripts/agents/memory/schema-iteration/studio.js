@@ -874,8 +874,7 @@ export async function openSchemaIterationStudio(deps) {
     // ──────────────────────────────────────────────────────────────────
     let drainScheduled = false;
 
-    // Turn-scope gate helper. See orchestrator/iter-studio/studio.js
-    // hasPendingInSameAssistantTurnAs for the full rationale.
+    // Hold feedback until every proposal from the owning assistant turn resolves.
     function hasPendingInSameAssistantTurnAs(outcomes) {
         const outcomeCallIds = new Set();
         for (const o of outcomes || []) {
@@ -918,9 +917,7 @@ export async function openSchemaIterationStudio(deps) {
             __pendingDrainStash.push(...outcomes);
             return;
         }
-        // Batch gate: same-turn siblings still pending → hold. See
-        // orchestrator/iter-studio/studio.js drainBusOutcomes for the
-        // full rationale.
+        // Hold outcomes while same-turn siblings still await a decision.
         if (hasPendingInSameAssistantTurnAs(outcomes)) {
             __pendingDrainStash.push(...outcomes);
             return;
@@ -1896,9 +1893,7 @@ export async function openSchemaIterationStudio(deps) {
         const edits = [];
         const editToolResults = [];
         let chainedLive = state.live;
-        // Round-local monotonic counter — see the same-named comment in
-        // orchestrator/iter-studio/studio.js's edit-loop for why this can't
-        // reuse `editToolResults.length` as the index.
+        // Count all edit calls, including those that produce no result entry.
         let editCallSeq = 0;
         for (const call of editToolCalls) {
             const name = String(call?.name || '');
@@ -1937,29 +1932,8 @@ export async function openSchemaIterationStudio(deps) {
                     // unknown_tool all throw upstream and land in the
                     // catch arm below as `{error: '...'}` replies.
                     //
-                    // Shape note: the orch iter-studio uses the shared
-                    // `interpretSandboxOutcome` + `buildEditCallReply`
-                    // helpers at
-                    // `public/scripts/agents/orchestrator/iter-studio/sandbox-result.js`
-                    // to disambiguate 4 outcomes (edits / failure /
-                    // throw / noop) because its `executeAiIterationToolCalls`
-                    // executor returns a `{toolResults:[{ok:false,...}]}`
-                    // envelope that must be inspected separately from the
-                    // before/after snapshot. MG schema's
-                    // `normalizeToolCallToEdit` (tools.js:318) THROWS on
-                    // real failures (see `applyToolCallToSandbox` at
-                    // tools.js:294 for the unknown_tool throw, and the
-                    // per-tool throw arms documented at tools.js:307-312)
-                    // and returns `[]` only on true noops, so the 4-way
-                    // discrimination collapses to 3 here (edits / noop /
-                    // catch). Adopting the helpers directly would require
-                    // rewriting `normalizeToolCallToEdit` to return
-                    // envelope outcomes instead of throwing — out of
-                    // scope for now. AUDIT: this branch only fires when
-                    // normalize returned an empty array AFTER successfully
-                    // executing the call; executor failures land in the
-                    // catch arm below — there is no path here where an
-                    // executor failure is silently surfaced as a noop.
+                    // normalizeToolCallToEdit throws for failed calls and
+                    // returns an empty array only after a successful no-op.
                     editToolResults.push({
                         tool_call_id: callId,
                         content: { status: 'noop', message: 'No edits produced. The target schema state already matches what you requested; an earlier round may have already applied this change. Re-read the live schema before retrying — do not re-issue the same call. If you genuinely intended a different result, verify args (node_type identifier, value shape).' },
@@ -2115,8 +2089,7 @@ export async function openSchemaIterationStudio(deps) {
 
         // Roll back disk commits the discarded assistant turns made. Abort
         // on any failure: a half-rolled-back schema would mislead the next
-        // regenerate. See orchestrator/iter-studio/studio.js for the full
-        // rationale — both popups share `bus.rollbackAllInMessages`.
+        // regenerate. rollbackAllInMessages reports partial failures.
         const discardedRange = messages.slice(userIdx);
         if (bus.countCommittedInMessages(discardedRange) > 0) {
             const rollbackOutcome = await bus.rollbackAllInMessages(discardedRange);
@@ -2168,9 +2141,7 @@ export async function openSchemaIterationStudio(deps) {
     }
 
     // editUserMessage(messageId): edit a prior user message + auto-regenerate.
-    // See orchestrator/iter-studio/studio.js for the rationale; all four
-    // popups share the prompt() → rollback → truncate → handleSendMessage
-    // flow.
+    // Prompt, roll back committed edits, truncate history and regenerate.
     async function editUserMessage(messageId) {
         if (state.isBusy) return;
         const messages = state.session.messages || [];
