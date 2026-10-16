@@ -960,3 +960,13 @@ Chat ACK未知只reconcile；domain收据ACK未知与Host Effect receipt ACK未�
 第五十三组为显式有限rp_narration/assistant/text policy接原Session正式消费者；output节点独占chat.output，agent仍只持generation.send。Plan发布机制证据按可用原SessionCore或RpRunControl分别标记，实际运行必须走精确领域producer，不从发布证据生成grant。现有有限result profile仍处于P6前构建中，不作为完整Session出口。
 
 原Narrator完成wrapper在同finalizer复验后，同原Run CAS保存有字节界限的Session Result/发布收据/producer settlement，sourceAuthority=native_session、Audience=session_output，绑定精确session/branch/revision/outputKey/owner；与RP/parent audience封闭隔离。真实TransitionController经过原edge创建output Attempt，原S2 Effect prepare/ready/claim及唯一原bank session_output local work先于SessionCore writer。末预算await后复读Context、Run与prepared正文/proofs；合法同事务Memory撤销提交后拒写。只有原领域commit receipt与原local结算才确认output Effect。此组尚无最终OutputClaim/Run终结。
+
+## 17.64 Session原费用闭包、OutputClaim与owned Source复验
+
+第五十四组在同实际finalizer内由原Session reader的真实返回对象私有标记同次commit事实；clone/JSON/foreign/过期finalizer不能借用。Context专用revalidateNativeOutputCommit只接受该原reader身份及原quota/permit，核原session/branch/source revision/invocation/requestHash与当前HEAD恰同次commit；使用原Context私有不可变编译snapshot复读Information/Memory与authority candidate，原Binding/Plan/Route仍复验。普通Context/Source/Model路径继续拒旧Source，不冷恢复执行scope。
+
+独立只读preflight复验原DomainReceipt/Result/Host Effect及同Run全部原Effect费用闭包，末bank await后再次复验Context/Source/Root/fence。合法Memory/Binding撤销、新输入或取消先提交其事实再拒terminal metadata，不回滚原domain输出/费用。费用unknown/overrun或Host receipt未知保持未终结，不虚构claim；已有domain输出不重发。
+
+随后原Native output.publish CAS同组保存Session OutputClaim、cost closure receipt、output receipt、output Attempt settlement及Root.completed。原Run reader按sourceAuthority明确分派RP/Session；Session proof逐项关联原Plan、Result/producer/各Attempt/真实Graph edge与traversal、原Session commit/Task/Variant/authority receipt、Host Effect和typed costs，冷读不授scope。resolver profile核同Run resolver费用，原retained selection reuse另核原RunControl selection事实。
+
+领域commit ACK、Host receipt ACK、terminal CAS ACK均只观察同稳定操作；Native终结写后失败回滚完整metadata组，既有domain输出/费用保留。保留adapter即使Host receipt尚未确认也沿原Effect的精确commitId/原DomainReceipt钉住实际output Revision，防GC漏pin。该闭包限显式有限Session profile，不代表全部Session/Project/后台/通用Graph及最终Gate完成。

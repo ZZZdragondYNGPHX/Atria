@@ -126,3 +126,5 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 第五十二组bf7127f43补原Session Turn稳定commit与精确原领域收据（接口§17.62），原writer ACK未知只观察同操作，合法后续Source推进/冷读不恢复scope。Session正式Result/Graph output Effect/费用闭包/OutputClaim继续实施，P3/P4及最终Gate仍NOT_READY，未合main。
 
 第五十三组f1261290f接显式有限Session正式Result/Graph output owner/原S2 Effect与原bank session_output（接口§17.63）。Result明确native_session来源与session_output audience，RP与Session消费者不混用；OutputClaim/Root终结继续实施。已恢复的HANDOFF暂停快照删除，历史事实保留同一Record，当前按用户要求持续至全阶段完成，不在分组提交后停工。
+
+第五十四组fff849695接有限Session严格OutputClaim/原费用闭包/Root终结与冷读（接口§17.64），包括typed resolver和原selection复用。费用/Host receipt未知不签claim，合法post-commit撤权保留domain输出，原Effect稳定commit pin保护未知窗口。继续Project多轮/Task tools/Review、其余完整消费者及P5–P8；P3/P4及最终Gate仍NOT_READY，未合main。

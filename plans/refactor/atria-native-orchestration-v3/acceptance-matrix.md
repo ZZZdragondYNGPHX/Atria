@@ -65,3 +65,5 @@ IMPLEMENTATION_PENDING表示已有设计和授权、仍需本任务后续实现�
 第五十二组原Session输出收据新suite首轮6PASS/2FAIL（40.292s）；两项仅错误预期不存在的operation_finalize_unknown，改核原storage_commit_unknown后两Engine定向2PASS/6filterSKIP，连同typed authority/resolver精选共6PASS/50filterSKIP（37.385s）。新suite八个不同case有通过证据，未完整再跑八项。ambient事务/原产品Context与无Binding路径精选6PASS/44filterSKIP（23.117s），五文件定向原ESLint与diff通过。正式Result/Effect/claim及完整P4/Gate尚未通过。
 
 第五十三组新Session output Effect与原Result合同组合60/60 PASS（42.971s）；补Session来源/recipient隔离后，原RP output/Graph owner、原产品Session Context与该合同精选7PASS/96filterSKIP（15.450s）。此前阳性首轮两Engine因新reader残留RP settlement reason而2FAIL，修正为session_narration_ready后阳性2/2（11.832s）；失败和修正均归Record。八文件定向原ESLint、diff通过。正式Session Result/Effect不等于OutputClaim或完整P4/Gate通过。
+
+第五十四组新Session terminal suite首轮20PASS/2FAIL（128.162s），两失败仅fixture冷开后误用已关闭旧Engine；修为新原Engine后结合写后rollback与selection复用定向6PASS/18filterSKIP（39.521s）。追加Host receipt ACK/原commit pin与冷开负例后定向6PASS/22filterSKIP（33.993s）；新suite最终28个不同case有通过证据，未完整重跑28项。原output Effect、原DomainReceipt与RP terminal精选12PASS/36filterSKIP（52.788s）；最初新terminal阳性2PASS/6filterSKIP（11.548s）。十文件定向原ESLint及diff通过。仅有限Session闭包，完整P3/P4/SQL/外部费用质量/三端及最终Gate未通过。
