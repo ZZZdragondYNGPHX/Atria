@@ -3,7 +3,7 @@ import { PRESET_FOLDER_BY_API_ID } from '../repositories/preset-repo.js';
 import { BUCKET_TO_DIR } from '../repositories/named-doc-repo.js';
 import { snapshotUser, restoreFromSnapshot, removeSnapshot } from './backup.js';
 import { recordsEqual } from './equality.js';
-import { isDeepStrictEqual } from 'node:util';
+import { serializeNativeDocument } from '../../native/repositories/common.js';
 import { NATIVE_STORAGE_KINDS } from '../engines/native-resource-key.js';
 
 // Canonical category shape — every section the runner can copy. Callers
@@ -338,7 +338,7 @@ export class MigrationRunner {
                         await this._dstEngine.withTransaction(dstHandle, async tx => {
                             await tx.putResource(key, record);
                             const restored = await tx.getResource(key);
-                            if (!isDeepStrictEqual(restored?.doc, record.doc)
+                            if (!restored || serializeNativeDocument(restored.doc) !== serializeNativeDocument(record.doc)
                                 || restored?.integrity !== record.integrity
                                 || restored?.createdAt !== record.createdAt
                                 || restored?.updatedAt !== record.updatedAt) {

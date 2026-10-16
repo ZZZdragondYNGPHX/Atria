@@ -78,6 +78,14 @@ export const CORE_RESOURCE_DESCRIPTORS = Object.freeze([
         schema: { type: 'object' },
         metadata: { category: 'work', ownership: ['library'], immutableRevision: true },
     },
+    ...[
+        ['core.image-target', 'Image Target', 'visual-target'],
+        ['core.image-rendering', 'Image Rendering', 'visual-rendering'],
+    ].map(([resourceType, displayName, category]) => ({
+        resourceType, displayName, provider: { kind: 'core' }, authority: 'native-library',
+        capabilities: ['create', 'read', 'update', 'delete', 'attach', 'fork', 'publish', 'validate'],
+        schema: { type: 'object' }, metadata: { category, ownership: ['project', 'library'], immutableRevision: true },
+    })),
     {
         resourceType: 'core.prompt-module',
         displayName: 'Prompt Module',

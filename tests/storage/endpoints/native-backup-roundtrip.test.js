@@ -13,7 +13,7 @@ import { NATIVE_RESOURCE_KINDS, getNativeResourceKeyFields } from '../../../src/
 import { AssetStore, ProjectStore, createNativeId } from '../../../src/native/index.js';
 
 const nativeOnly = Object.fromEntries(Object.keys(USER_BACKUP_SELECTION_DEFAULTS).map(key => [key, key === 'native']));
-const otherValues = { namespace: 'atri_backup', head: 'head-1', resourceType: 'core.prompt-module', resourceId: 'pmod-test', revision: 'rev-1' };
+const otherValues = { scopeId: 'a'.repeat(64), evidenceId: 'b'.repeat(64), sourceDigest: 'c'.repeat(64), checkpointId: 'd'.repeat(64), scope: 'backup-probe', taskId: 'task-1', goalId: 'goal-1', commitId: 'commit-1', namespace: 'atri_backup', head: 'head-1', resourceType: 'core.prompt-module', resourceId: 'pmod-test', revision: 'rev-1' };
 
 async function harness(mode) {
     const h = await makeEndpointHarness({ mode, mount(app, { dirs }) {

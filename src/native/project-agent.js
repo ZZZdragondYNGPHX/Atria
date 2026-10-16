@@ -1213,6 +1213,13 @@ export class ProjectAgentService {
         if (task.status !== 'review' || !task.workspace || task.review?.required !== true) {
             throw new ConflictError('project_agent_review_required', { taskId: id, status: task.status });
         }
+        const assertPreview = () => {
+            if (!task.preview?.previewId) return;
+            let current;
+            try { current = this._studio.getPreviewUi(handle, task.preview.previewId); } catch { throw new ConflictError('project_agent_preview_stale'); }
+            if (current.packageVersionId !== task.preview.packageVersionId) throw new ConflictError('project_agent_preview_stale');
+        };
+        assertPreview();
         await this._assertTaskBaseRevision(handle, task);
         const attempt = this._startAttempt(task, 'commit');
         task.commitIntent = { changeSetId: 'changeset_' + String(this._idFactory()).replaceAll('-', '').toLowerCase(), workspaceHash: hashNativeDocument(task.workspace) };
@@ -1223,6 +1230,7 @@ export class ProjectAgentService {
         try {
             result = await this._studio.executeWorkspace(handle, task.workspace, { changeSetId: task.commitIntent.changeSetId,
                 beforeCommit: receipt => {
+                    assertPreview();
                     const candidate = clone(task);
                     // Git SHA-1 IDs have the same length; this placeholder is never stored or consumed.
                     this._completeCommit(candidate, { ...receipt, resultingRevision: task.baseRevision });

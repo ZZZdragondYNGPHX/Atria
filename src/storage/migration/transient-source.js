@@ -132,12 +132,13 @@ async function buildFsTransient({ scratchRoot, scratchHandle, zipPath }) {
     for (const kind of NATIVE_STORAGE_KINDS) {
         const root = path.join(scratchDirs.nativeResources, kind);
         if (!fs.existsSync(root)) continue;
-        for (const file of fs.readdirSync(root)) {
+        for (const file of fs.readdirSync(root, { recursive: true })) {
             if (!file.endsWith('.json')) continue;
             const target = path.join(root, file);
             const envelope = JSON.parse(fs.readFileSync(target, 'utf8'));
             const key = normalizeNativeResourceKey(envelope.key);
-            if (key.kind !== kind || file !== nativeResourceFileId(key) + '.json') throw new Error('Invalid Native backup resource identity');
+            const expectedPath = path.join(...(key.sessionId ? [key.sessionId] : []), nativeResourceFileId(key) + '.json');
+            if (key.kind !== kind || path.normalize(file) !== expectedPath) throw new Error('Invalid Native backup resource identity');
             envelope.key = { ...key, handle: scratchHandle };
             fs.writeFileSync(target, JSON.stringify(envelope));
         }
