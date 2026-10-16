@@ -96,3 +96,5 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 第三十三组将原pending outbox普通后台Task接入有限JSON图的内部producer（接口§17.43），沿原executeLifecycle/executeTask、原Task adoption与queued事件；没有新增HTTP。原counter/window/period共享原bank，未到期/额度已满保持pending，到期后可继续，生成后adoption失败则unknown而不自动重发。同Session有限Narrator text图和后台JSON图尚不支持通用组合，正式Delegate/Result/OutputClaim仍待接。本组后按用户要求暂停换设备，不向前端任务发送最终后端交付通知；实际HEAD/验证归同一Record，下一设备按HANDOFF恢复。
 
 第三十四组按当前用户指令恢复并实现内部耐久Handoff起始（接口§17.44），没有新增HTTP/UI或实际child Result。Scheduler完成只返回调度permit，不给前端child正式完成/父已恢复语义；正式领域producer/Result/Audience/return未开放。最新源码与验证归同一Record第三十四组，继续后端而不发送最终交付通知。
+
+第三十五组原Plan validate/publish可验证有限agent.delegate精确允许闭包（接口§17.45），仍不表示任何绑定领域已支持运行该profile。无新HTTP；前端不得根据发布成功推断child可执行或生成自身grant。完整后端未交付。

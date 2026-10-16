@@ -177,3 +177,5 @@ IMPLEMENTATION_PENDING表示已有设计和授权、仍需本任务后续实现�
 第三十三组接入原pending outbox有限后台Model/Task Context与原turn compute、background invocation/window/period quota（接口§17.43）。FS/SQLite发送、隔离、窗口/周期恢复、撤销及cold防重发有分次实际证据；有限JSON图不等于Narrator/后台共用通用Plan，也没有正式Delegate授权/child Result或P4 OutputClaim。上述表中background待接范围现收窄为其余Task/profile及通用组合，完整P3仍NOT_READY；用户要求本组完成后暂停换设备。
 
 第三十四组已恢复并补耐久Handoff起始（接口§17.44）：原CAS父waiting_child/精确收据、原预算确认与真实单槽Scheduler组合取得Windows FS/SQLite子证据，普通delegate容量不放宽。Scheduler返回不恢复耐久父Attempt；正式领域授权/child输入编译、Result/Audience/控制权归还仍IMPLEMENTATION_PENDING。本设备Docker服务不可连接，本组SQL NOT_RUN，不将历史Linux或四Engine局部证据混称本轮通过；P3 Gate保持NOT_READY。
+
+第三十五组有限Delegate发布校验/单次闭包memo见接口§17.45；FS/SQLite明确子Plan能力/全limits/精确完整性、递归原Route漂移、DAG复用仍核逐父边及跨调用失效。该机制与运行grant分离，未实现producer/Result/return，相关Gate不核销，SQL/外部收费NOT_RUN。

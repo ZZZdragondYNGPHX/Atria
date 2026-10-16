@@ -90,3 +90,5 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 第三十三组接入原pending outbox有限后台Model/Task Context/原bank与窗口、周期额度，见[接口§17.43](interface-contracts.md#1743-原pending-outbox后台model-producer与窗口周期额度)。原产物adoption与费用保留，不开放通用Graph/Run API或P4 OutputClaim/Result。用户要求本组完成后暂停换设备；最新已测/已推HEAD和下一工作以同一Record及HANDOFF为准，P3 Gate仍NOT_READY，未集成main。
 
 2026-10-16已按当前指令fetch/fast-forward源码与docs并读HANDOFF恢复；历史暂停不再限制执行。第三十四组6bbc4c01f补原DelegateController耐久Handoff起始、单并发父逻辑槽让出和精确祖先收据验证，见[接口§17.44](interface-contracts.md#1744-耐久handoff起始与父逻辑槽让出)。继续有限Plan发布校验、真实领域producer与child Result/Audience/return闭包；没有将调度回调当正式完成。P3 IN_PROGRESS / Gate NOT_READY，未集成main。
+
+第三十五组185cb7799补有限agent.delegate原Plan发布机制及单次闭包memo，见[接口§17.45](interface-contracts.md#1745-有限delegate发布机制与单次依赖闭包)。真实执行仍需原领域capture/grant、child输入编译和Result/Audience/return，不将发布成功当执行授权。继续已授权后端工作，P3 Gate NOT_READY。
