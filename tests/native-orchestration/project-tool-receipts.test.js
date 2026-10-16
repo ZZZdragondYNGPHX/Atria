@@ -5,7 +5,7 @@ import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { hashNativeDocument as hash } from '../../src/native/repositories/common.js';
 import { controlRecordKey } from '../../src/native/orchestration/controller-common.js';
 import { readProjectToolReceipt } from '../../src/native/orchestration/project-tool-receipts.js';
-import { executeNativeProjectReadTool } from '../../src/native/orchestration/native-project-generation-authority.js';
+import { executeNativeProjectTaskTool } from '../../src/native/orchestration/native-project-generation-authority.js';
 
 const harnesses = CONTRACT_HARNESSES.filter(({ name }) => ['FsEngine', 'SqliteEngine'].includes(name));
 
@@ -20,7 +20,7 @@ describe.each(harnesses)('$name original Project durable tool receipt', ({ make 
             const before = await agent.observeTask(f.h.handle, f.projectId, f.task.taskId), fact = await read();
             expect(fact.receipt).toMatchObject({ runId: root.runId, effectId: f.effects[1].effectId, operationId: expect.any(String) });
             expect(fact).not.toHaveProperty('result'); expect(fact).not.toHaveProperty('permit');
-            await expect(executeNativeProjectReadTool(structuredClone(fact))).rejects.toThrow('native_orchestration_project_producer_denied');
+            await expect(executeNativeProjectTaskTool(structuredClone(fact))).rejects.toThrow('native_orchestration_project_producer_denied');
             await f.writeProject(); expect(await read()).toEqual(fact);
             expect((await agent.observeTask(f.h.handle, f.projectId, f.task.taskId)).compute).toEqual(before.compute); expect(f.requests).toHaveLength(1);
         } finally { await f.cleanup(); }

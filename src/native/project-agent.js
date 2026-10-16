@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { consumeNativeProjectReadPermit, completeNativeProjectReadPermit } from './orchestration/native-project-generation-authority.js';
+import { consumeNativeProjectToolPermit, completeNativeProjectToolPermit } from './orchestration/native-project-generation-authority.js';
+import { projectToolResultPayload } from './orchestration/project-tool-contracts.js';
 import { listAuthoringReferences, readAuthoringReference } from './authoring-reference.js';
 
 import { ConflictError, NotFoundError } from '../storage/errors.js';
@@ -567,7 +568,7 @@ export class ProjectAgentService {
         return this._operate(handle, projectId, id, async task => {
             fields(input, ['name', 'args', 'attemptId', 'callId', 'expectedSequence', 'effectPolicy', 'nativeEffectPermit'], 'Project Agent tool request');
             const originalInput = Object.fromEntries(['name', 'args', 'attemptId', 'callId'].map(field => [field, input[field]]));
-            const nativeReceipt = input.nativeEffectPermit === undefined ? null : await consumeNativeProjectReadPermit(input.nativeEffectPermit,
+            const nativeReceipt = input.nativeEffectPermit === undefined ? null : await consumeNativeProjectToolPermit(input.nativeEffectPermit,
                 { agent: this, handle, projectId, taskId: id, task: this._snapshot(task), input: originalInput });
             let attempt;
             if (input.attemptId !== undefined || input.callId !== undefined) {
@@ -582,8 +583,8 @@ export class ProjectAgentService {
             const result = await this._executeTool(handle, projectId, id, input);
             if (attempt && !attempt.calls.some(item => item.callId === input.callId)) attempt.calls.push({ callId: input.callId, name: input.name, argsHash: hashNativeDocument(input.args || {}),
                 ...(nativeReceipt ? { nativeReceipt: { ...nativeReceipt, toFingerprint: this._snapshot(task).executionFingerprint,
-                    toSequence: task.sequence + 1, resultHash: hashNativeDocument(result) } } : {}) });
-            if (nativeReceipt) completeNativeProjectReadPermit(input.nativeEffectPermit, { result, receipt: attempt.calls.at(-1).nativeReceipt });
+                    toSequence: task.sequence + 1, resultHash: hashNativeDocument(projectToolResultPayload(input.name, result)) } } : {}) });
+            if (nativeReceipt) completeNativeProjectToolPermit(input.nativeEffectPermit, { result, receipt: attempt.calls.at(-1).nativeReceipt });
             return result;
         }, { expectedSequence: input.expectedSequence, effectPolicy: input.effectPolicy });
     }

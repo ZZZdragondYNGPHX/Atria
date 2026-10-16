@@ -122,15 +122,20 @@ export class ContextPort {
             const modelContext = await ProjectAgentService.prototype.observeModelContext.call(this.projectAgent, handle, projectIdentity.projectId, projectIdentity.taskId);
             const { task, project, registry, tools } = modelContext;
             const attempt = task.attempts.find(item => item.attemptId === projectIdentity.projectAttemptId && item.kind === 'generation');
-            if (task.executionFingerprint !== projectIdentity.sourceFingerprint || hashNativeDocument(task.conversation) !== projectIdentity.conversationDigest
+            if (task.executionFingerprint !== (projectRead ? projectIdentity.currentSourceFingerprint : projectIdentity.sourceFingerprint)
+                || hashNativeDocument(task.conversation) !== projectIdentity.conversationDigest
                 || task.baseRevision !== projectIdentity.revision || project.revision.revision !== projectIdentity.revision
                 || attempt?.status !== 'started' || attempt.requestId !== projectIdentity.requestId) fail('native_orchestration_context_source_stale');
-            const accepted = projectRead ? projectIdentity.readToolReceipts : [];
-            if (accepted.some(receipt => receipt.fromFingerprint !== task.executionFingerprint || receipt.toFingerprint !== task.executionFingerprint
-                || receipt.sourceBindingDigest !== binding.bindingDigest || !attempt.calls.some(call => hashNativeDocument(call.nativeReceipt ?? null) === hashNativeDocument(receipt))))
-                fail('native_orchestration_context_source_stale');
+            const accepted = projectRead ? projectIdentity.toolReceipts : [];
+            let fingerprint = projectIdentity.sourceFingerprint;
+            for (const receipt of accepted) {
+                if (receipt.fromFingerprint !== fingerprint || receipt.sourceBindingDigest !== binding.bindingDigest
+                    || !attempt.calls.some(call => hashNativeDocument(call.nativeReceipt ?? null) === hashNativeDocument(receipt))) fail('native_orchestration_context_source_stale');
+                fingerprint = receipt.toFingerprint;
+            }
+            if (projectRead && fingerprint !== task.executionFingerprint) fail('native_orchestration_context_source_stale');
             const calls = attempt.calls.filter(call => !accepted.some(receipt => hashNativeDocument(call.nativeReceipt ?? null) === hashNativeDocument(receipt)));
-            const projectDigest = hashNativeDocument({ sourceFingerprint: task.executionFingerprint, conversation: task.conversation,
+            const projectDigest = hashNativeDocument({ sourceFingerprint: projectRead ? projectIdentity.sourceFingerprint : task.executionFingerprint, conversation: task.conversation,
                 attempt: { attemptId: attempt.attemptId, kind: attempt.kind, status: attempt.status, requestId: attempt.requestId, calls },
                 project, registry, tools, skillWorkRecords: projectIdentity.skillWorkRecords });
             return { modelContext, projectIdentity, authorityDigest: projectDigest, information: null };
@@ -380,8 +385,8 @@ export class ContextPort {
         return context.plan;
     }
 
-    /** Same live Project capture only; exact original read receipts may advance its calls list. No Model grant. */
-    async revalidateProjectRead(handle, request) {
+    /** Same live Project capture only; exact original receipts explain owned Task progress. No Model grant. */
+    async revalidateProjectTool(handle, request) {
         fields(request, ['context'], 'Project read Context');
         const captured = this.#contexts.get(request.context);
         if (!captured?.project || captured.handle !== handle) fail('native_orchestration_context_proof_invalid');

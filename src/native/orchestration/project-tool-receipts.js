@@ -3,7 +3,7 @@ import { ProjectAgentService } from '../project-agent.js';
 import { ProjectTaskRepository } from '../agent-intelligence/project-task-repository.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { assertObject, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
-import { assertProjectToolReceipt } from './project-tool-contracts.js';
+import { assertProjectToolReceipt, projectToolCapability, projectToolAction, projectToolReason } from './project-tool-contracts.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { controlRecordKey, readAttempt } from './controller-common.js';
 import { readEffect } from './effect-contracts.js';
@@ -21,7 +21,7 @@ export async function readProjectToolReceipt(tx, handle, root, effectId, { proje
     const saved = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: root.runId }))?.doc;
     if (!saved || !equal(saved.sourceBinding, root.sourceBinding) || !equal(saved.planRef, root.planRef) || !equal(saved.graph, root.graph)) invalid();
     const tool = (await readEffect(tx, handle, root, effectId)).doc;
-    if (tool.actionRef.kind !== 'native_project_read') return null;
+    if (!['native_project_read', 'native_project_proposal'].includes(tool.actionRef.kind)) return null;
     const source = root.sourceBinding.sourceRef, bank = root.budgetAuthorityRef;
     const task = await ProjectTaskRepository.prototype.get.call(projectAgent._repository, handle, source.projectId, source.taskId);
     if (!task || task.baseRevision !== source.revision || bank.authority !== 'project_task' || bank.projectId !== source.projectId
@@ -38,8 +38,9 @@ export async function readProjectToolReceipt(tx, handle, root, effectId, { proje
         || receipt.argsHash !== call.argsHash || receipt.toSequence > task.sequence || receipt.sourceBindingDigest !== root.sourceBinding.bindingDigest
         || receipt.fromFingerprint !== source.executionFingerprint
         || receipt.nodeAttemptId !== tool.nodeAttemptId || !['dispatching', 'confirmed', 'unknown'].includes(tool.status) || !tool.dispatchToken
-        || tool.capability !== 'project.read' || tool.risk !== 'R1' || tool.requiresApproval || tool.approvalRef !== null
-        || tool.inputRef.kind !== 'native_project_read' || !equal(tool.targetRef, { projectId: source.projectId, taskId: source.taskId, name: call.name })
+        || tool.capability !== projectToolCapability(call.name) || tool.actionRef.kind !== projectToolAction(call.name)
+        || tool.risk !== 'R1' || tool.requiresApproval || tool.approvalRef !== null
+        || tool.inputRef.kind !== projectToolAction(call.name) || !equal(tool.targetRef, { projectId: source.projectId, taskId: source.taskId, name: call.name })
         || tool.sourceBindingDigest !== root.sourceBinding.bindingDigest || tool.inputHash !== hash(tool.inputRef)
         || !equal(tool.inputRef.call, { name: call.name, args: tool.inputRef.call?.args, attemptId: attempt.attemptId, callId: call.callId })
         || hash(tool.inputRef.call.args) !== receipt.argsHash) invalid();
@@ -47,7 +48,7 @@ export async function readProjectToolReceipt(tx, handle, root, effectId, { proje
     const node = root.graph.nodes.find(item => item.nodeId === nodeAttempt.nodeId);
     const pins = plan.dependencyPins.filter(pin => pin.port === 'tool' && node?.dependencyPinIds.includes(pin.pinId)
         && equal(pin.resourceRef, { kind: 'project_agent_tool', projectId: source.projectId, taskId: source.taskId, name: call.name }));
-    if (!node?.capabilities.includes('project.read') || !root.graph.capabilityCeiling.includes('project.read') || pins.length !== 1
+    if (!node?.capabilities.includes(tool.capability) || !root.graph.capabilityCeiling.includes(tool.capability) || pins.length !== 1
         || nodeAttempt.effectiveGrantDigest !== tool.grantDigest || nodeAttempt.sourceBindingDigest !== receipt.sourceBindingDigest
         || nodeAttempt.epoch !== tool.epoch || !nodeAttempt.effectRefs.includes(effectId)) invalid();
     const model = (await readEffect(tx, handle, root, tool.inputRef.modelEffectId)).doc;
@@ -78,7 +79,7 @@ export async function readProjectToolReceipt(tx, handle, root, effectId, { proje
     const domainReceiptRef = { projectId: source.projectId, taskId: source.taskId, projectAttemptId: attempt.attemptId, callId: call.callId, receiptHash: hash(receipt) };
     const observation = { observationId: 'project.tool:' + effectId, observedEpoch: tool.epoch, outcome: 'confirmed',
         dispatchEvidence: { kind: 'original_domain_receipt', reference: domainReceiptRef }, domainReceiptRef, remoteOperationRef: null,
-        budgetObservationRef: { ...budget, status: row.status, usageHash: hash(row.usage) }, resultRefs: [], sourceRefs: [root.sourceBinding.sourceRef], reasonCode: 'project_read_completed' };
+        budgetObservationRef: { ...budget, status: row.status, usageHash: hash(row.usage) }, resultRefs: [], sourceRefs: [root.sourceBinding.sourceRef], reasonCode: projectToolReason(call.name) };
     const receiptId = 'oreceipt_' + hash({ effectId, observationId: observation.observationId }).slice(0, 32);
     const host = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
     if (host && (host.schemaVersion !== 1 || host.receiptId !== receiptId || host.runId !== root.runId || host.effectId !== effectId

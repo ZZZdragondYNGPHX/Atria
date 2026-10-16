@@ -8,8 +8,8 @@ import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { projectRuntimeRoute } from '../adapters/project-runtime-route.js';
 import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
 import { immutable, checkCancellation, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
-import { inspectNativeProjectGeneration, prepareNativeProjectReadTool, executeNativeProjectReadTool } from './native-project-generation-authority.js';
-import { readProjectToolDescriptor } from './project-tool-contracts.js';
+import { inspectNativeProjectGeneration, prepareNativeProjectTaskTool, executeNativeProjectTaskTool } from './native-project-generation-authority.js';
+import { readProjectToolDescriptor, projectToolCapability, projectToolAction, projectToolReason, projectToolResultPayload } from './project-tool-contracts.js';
 import { readProjectToolReceipt } from './project-tool-receipts.js';
 import { BudgetPort, localWorkAttemptId } from './budget-port.js';
 import { readEffect } from './effect-contracts.js';
@@ -65,7 +65,7 @@ export class NativeProjectOrchestrationAuthority {
         const plan = await this.#authoring().getRevision(handle, binding.planRef), graph = plan.definition;
         const node = graph.nodes.find(item => item.kind === 'agent'), output = graph.nodes.find(item => item.kind === 'output');
         const toolPins = plan.dependencyPins.filter(item => item.port === 'tool');
-        const capabilities = toolPins.length ? ['generation.send', 'project.read'] : ['generation.send'];
+        const capabilities = ['generation.send', ...['project.read', 'project.propose'].filter(capability => toolPins.some(pin => projectToolCapability(pin.resourceRef.name) === capability))];
         if (graph.nodes.length !== 2 || !node || !output || graph.edges.length !== 1
             || !equal(graph.entryNodeIds, [node.nodeId]) || !equal(graph.capabilityCeiling, capabilities)
             || !equal(node.capabilities, capabilities) || node.inputs.length || node.outputs.length !== 1 || node.outputs[0].type !== 'json'
@@ -167,7 +167,7 @@ export class NativeProjectOrchestrationAuthority {
     async verifyObservation(args) {
         const state = this.#runs.get(args.root.runId);
         if (!state) fail('native_orchestration_model_completion_proof_required');
-        if (args.intent.actionRef.kind === 'native_project_read') {
+        if (['native_project_read', 'native_project_proposal'].includes(args.intent.actionRef.kind)) {
             const tool = state.tools?.get(args.intent.effectId);
             if (!tool?.receipt || !equal(tool.observation, args.observation)) fail('native_orchestration_project_tool_proof_required');
             const fact = await readProjectToolReceipt(args.tx, args.handle, args.root, args.intent.effectId, { projectAgent: state.host.agent });
@@ -262,6 +262,9 @@ export class NativeProjectOrchestrationAuthority {
             if (generated.response.toolCalls?.length) {
                 if (generated.response.toolCalls.some(call => !state.selected.toolPins.some(pin => pin.resourceRef.name === call.name)))
                     fail('native_orchestration_project_tool_scope_unavailable');
+                const proposals = generated.response.toolCalls.filter(call => projectToolCapability(call.name) === 'project.propose');
+                if (proposals.length > 1 || proposals.length === 1 && generated.response.toolCalls.at(-1) !== proposals[0])
+                    fail('native_orchestration_project_tool_batch_unavailable');
                 state.modelResult = result; state.modelResultHash = hash(result); state.tools = new Map();
                 this.#consumers.set(roundToken, { state, identity, runId });
             }
@@ -285,7 +288,7 @@ export class NativeProjectOrchestrationAuthority {
             return await service.runs.withConsumption(handle, runId, async ({ deny }) => {
                 try {
                     await this.#current(state.selection); await inspectNativeProjectGeneration(state.projectCapture, { host, handle });
-                    await ContextPort.prototype.revalidateProjectRead.call(state.contextPort, handle, { context: state.context });
+                    await ContextPort.prototype.revalidateProjectTool.call(state.contextPort, handle, { context: state.context });
                     if (hash(state.modelResult) !== state.modelResultHash) fail('native_orchestration_project_input_stale');
                     return await operation();
                 } catch (error) {
@@ -305,11 +308,11 @@ export class NativeProjectOrchestrationAuthority {
         if (runs.engine.hasActiveTransaction(handle)) fail('native_orchestration_project_tool_ambient_transaction');
         const effectId = 'oeffect_' + hash({ runId, projectAttemptId: identity.projectAttemptId, callId: input.callId }).slice(0, 32);
         if (state.tools.has(effectId)) fail('native_orchestration_project_tool_replayed');
-        const permit = await prepareNativeProjectReadTool(state.projectCapture, { port: this.#port(host), result: state.modelResult,
+        const permit = await prepareNativeProjectTaskTool(state.projectCapture, { port: this.#port(host), result: state.modelResult,
             modelEffectId: state.effectId, input, toolEffectId: effectId });
-        const root = await runs.get(handle, runId), inputRef = { kind: 'native_project_read', call: input, modelEffectId: state.effectId, modelResultHash: state.modelResultHash };
-        const decision = immutable({ ...state.decision, actionRef: { kind: 'native_project_read' },
-            targetRef: { projectId: identity.projectId, taskId: identity.taskId, name: input.name }, inputRef, inputHash: hash(inputRef), capability: 'project.read',
+        const root = await runs.get(handle, runId), inputRef = { kind: projectToolAction(input.name), call: input, modelEffectId: state.effectId, modelResultHash: state.modelResultHash };
+        const decision = immutable({ ...state.decision, actionRef: { kind: projectToolAction(input.name) },
+            targetRef: { projectId: identity.projectId, taskId: identity.taskId, name: input.name }, inputRef, inputHash: hash(inputRef), capability: projectToolCapability(input.name),
             endpointBindingDigest: hash({ projectId: identity.projectId, taskId: identity.taskId, name: input.name }) });
         const tool = { input: immutable(input), decision }; state.tools.set(effectId, tool);
         await effects.prepare(handle, { ...runGuard(root), effectId, nodeAttemptId: state.attemptId,
@@ -328,7 +331,7 @@ export class NativeProjectOrchestrationAuthority {
             await this.#consumeTool(consumer, async () => {
                 if (hash(state.modelResult) !== state.modelResultHash) fail('native_orchestration_project_input_stale');
             });
-            completed = await executeNativeProjectReadTool(permit); outcome = 'completed'; tool.receipt = completed.receipt;
+            completed = await executeNativeProjectTaskTool(permit); outcome = 'completed'; tool.receipt = completed.receipt;
         } finally {
             const used = process.cpuUsage(cpu);
             await BudgetPort.prototype.settleLocalWork.call(budgetPort, handle, root.budgetAuthorityRef, attemptId,
@@ -340,7 +343,7 @@ export class NativeProjectOrchestrationAuthority {
         tool.observation = immutable({ observationId: 'project.tool:' + effectId, observedEpoch: root.epoch, outcome: 'confirmed',
             dispatchEvidence: { kind: 'original_domain_receipt', reference: receiptRef }, domainReceiptRef: receiptRef, remoteOperationRef: null,
             budgetObservationRef: { ...budgetAttemptRef, status: observed.status, usageHash: hash(observed.usage) }, resultRefs: [], sourceRefs: [root.sourceBinding.sourceRef],
-            reasonCode: 'project_read_completed' });
+            reasonCode: projectToolReason(input.name) });
         try { await effects.observe(handle, { ...runGuard(await runs.get(handle, runId)), effectId, observation: tool.observation }); } catch (error) {
             if (error.code !== 'storage_commit_unknown') throw error;
             const saved = await runs.engine.withTransaction(handle, async tx => {
@@ -352,7 +355,7 @@ export class NativeProjectOrchestrationAuthority {
             if (!saved) throw error;
         }
         return this.#consumeTool(consumer, async () => {
-            if (hash(completed.result) !== completed.receipt.resultHash) fail('native_orchestration_project_tool_result_changed');
+            if (hash(projectToolResultPayload(input.name, completed.result)) !== completed.receipt.resultHash) fail('native_orchestration_project_tool_result_changed');
             return completed.result;
         });
     }
