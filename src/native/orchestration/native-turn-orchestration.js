@@ -33,6 +33,7 @@ import { NativeProjectOrchestrationAuthority } from './native-project-orchestrat
 import { NativeRpOrchestrationAuthority } from './native-rp-generation.js';
 import { RpRunControl } from '../rp-run-control.js';
 import { NativeBackgroundOrchestrationAuthority } from './native-background-generation.js';
+import { reconcileSessionOutputEffect, verifySessionOutputReconciliation } from './session-output-reconciliation.js';
 
 const selections = new WeakMap();
 const modelScopes = new WeakMap();
@@ -77,6 +78,8 @@ export class NativeNarratorOrchestrationAuthority {
                     : args.root.sourceBinding.sourceAuthority === 'project' ? this.#projectAuthority().verifySend(args)
                         : this.#backgroundAuthority().hasRun(args.root.runId) ? this.#backgroundAuthority().verifySend(args) : this.#verifySend(args),
                 verifyObservation: args => {
+                    if (args.intent.actionRef.kind === 'native_session_output' && args.observation.reasonCode === 'session_output_reconciled')
+                        return verifySessionOutputReconciliation(this.execution, this.sessionCore, args);
                     if (args.root.sourceBinding.sourceAuthority === 'rp_chat') return this.#rpAuthority().verifyObservation(args);
                     if (args.root.sourceBinding.sourceAuthority === 'project') return this.#projectAuthority().verifyObservation(args);
                     if (this.#backgroundAuthority().hasRun(args.root.runId)) return this.#backgroundAuthority().verifyObservation(args);
@@ -109,6 +112,14 @@ export class NativeNarratorOrchestrationAuthority {
     finishProjectRound(args) { return this.#projectAuthority().finishRound(args); }
 
     reconcileRpOutput(handle, request) { return this.#rpAuthority().reconcileOutput(handle, request); }
+
+    async reconcileOutput(handle, request) {
+        assertObject(request, ['runId', 'effectId'], 'Original output reconciliation');
+        const root = await this.execution.runs.get(handle, request.runId);
+        if (root.sourceBinding.sourceAuthority === 'rp_chat') return this.reconcileRpOutput(handle, request);
+        if (root.sourceBinding.sourceAuthority === 'native_session') return reconcileSessionOutputEffect(this.execution, this.sessionCore, handle, request);
+        fail('native_orchestration_reconcile_unavailable');
+    }
 
     #rpAuthority() {
         this.#rp ??= new NativeRpOrchestrationAuthority({ owner: this, execution: () => this.execution,

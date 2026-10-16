@@ -23,6 +23,22 @@ export const sessionOutputClosureId = runId => 'oreceipt_' + hash({ kind: 'sessi
 export const sessionOutputConsumer = root => ({ kind: 'native_session', sessionId: root.sourceBinding.sourceRef.sessionId,
     nodeId: root.graph.outputContract.ownerNodeId, slot: 'assistant' });
 
+/** Reconstruct the one original Turn descriptor from verified publication facts. */
+export async function readSessionOutputDescriptor(tx, handle, root) {
+    if (root.graph.outputContract.kind !== 'rp_narration' || root.sourceBinding.sourceAuthority !== 'native_session' || root.parentRef !== null) return null;
+    const published = await readSessionNarrationResult(tx, handle, root);
+    if (!published) return null;
+    const modelInput = published.modelIntent.inputRef;
+    const model = await readModelCompletionReceipt(handle, tx, root, published.modelIntent);
+    if (!model) invalid();
+    const envelope = { schemaVersion: 1, narrative: published.record.payload, outcomes: [], diagnostics: [] };
+    const expected = { ...root.sourceBinding.sourceRef, expectedRevisionId: root.sourceBinding.sourceRef.revisionId,
+        invocationId: modelInput.invocationId, requestHash: modelInput.requestHash, envelope,
+        provenance: [{ taskId: 'narrator', requestSnapshotHash: model.observation.dispatchEvidence.reference.finalRequestHash,
+            deliveryReceipt: { kind: 'model_delivery', invocationId: modelInput.invocationId, delivered: true } }] };
+    return { published, expected, identity: sessionTurnCommitIdentity({ ...expected, fingerprint: hash(envelope) }) };
+}
+
 /** Historical consistency only; it issues no current body or execution capability. */
 export async function readSessionOutput(tx, handle, root) {
     if (root.graph.outputContract.kind !== 'rp_narration' || root.sourceBinding.sourceAuthority !== 'native_session' || root.parentRef !== null) return null;
@@ -63,8 +79,10 @@ export async function readSessionOutput(tx, handle, root) {
         || receipt.budgetClosureReceiptRef.receiptId !== closure.receiptId || closure.epoch !== receipt.epoch
         || closure.decisionSeq !== receipt.decisionSeq || closure.createdAt !== receipt.createdAt || !equal(closure.authorityRef, root.budgetAuthorityRef)) invalid();
     assertBudgetAuthorityRef(closure.authorityRef);
-    const published = await readSessionNarrationResult(tx, handle, root);
-    if (!published || !equal(claim.resultRef, published.receipt.resultRef) || published.receipt.epoch !== receipt.epoch
+    const descriptor = await readSessionOutputDescriptor(tx, handle, root);
+    if (!descriptor) invalid();
+    const { published, expected, identity } = descriptor, { envelope } = expected;
+    if (!equal(claim.resultRef, published.receipt.resultRef) || published.receipt.epoch !== receipt.epoch
         || receipt.publicationReceiptRef.receiptId !== published.receipt.receiptId || receipt.producerReceiptRef.receiptId !== published.settlement.receiptId) invalid();
     const output = (await readAttempt(tx, handle, root, claim.nodeAttemptId)).doc;
     const settlement = await readAttemptSettlement(tx, handle, root, output);
@@ -76,14 +94,7 @@ export async function readSessionOutput(tx, handle, root) {
         || !equal(settlement.effectReceiptRefs, [receipt.outputEffectReceiptRef.receiptId])
         || receipt.outputAttemptReceiptRef.receiptId !== attemptReceiptId(root.runId, output.attemptId)) invalid();
     const intent = (await readEffect(tx, handle, root, receipt.outputEffectId)).doc;
-    const input = intent.inputRef, modelInput = published.modelIntent.inputRef;
-    const envelope = { schemaVersion: 1, narrative: published.record.payload, outcomes: [], diagnostics: [] };
-    const model = await readModelCompletionReceipt(handle, tx, root, published.modelIntent);
-    const expected = { ...root.sourceBinding.sourceRef, expectedRevisionId: root.sourceBinding.sourceRef.revisionId,
-        invocationId: modelInput.invocationId, requestHash: modelInput.requestHash, envelope,
-        provenance: [{ taskId: 'narrator', requestSnapshotHash: model.observation.dispatchEvidence.reference.finalRequestHash,
-            deliveryReceipt: { kind: 'model_delivery', invocationId: modelInput.invocationId, delivered: true } }] };
-    const identity = sessionTurnCommitIdentity({ ...expected, fingerprint: hash(envelope) });
+    const input = intent.inputRef;
     const originalRow = await checkedRecord(tx, { kind: K.commitReceipt, handle, sessionId: expected.sessionId, commitId: identity.commitId });
     const sessionRow = await checkedRecord(tx, { kind: K.session, handle, sessionId: expected.sessionId });
     const revisionRow = await checkedRecord(tx, { kind: K.sessionRevision, handle, sessionId: expected.sessionId, revisionId: domainRef.revisionId });

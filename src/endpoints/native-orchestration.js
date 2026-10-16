@@ -21,7 +21,7 @@ const services = () => {
     let observations = observationServices.get(engine);
     if (!observations || observations.hostBootId !== engine.nativeHostLifecycle.hostBootId) {
         observations = new RunObservationService({ engine, ...sources, review: review.authority,
-            reconcileOutput: (handle, request) => host.turnOrchestration.reconcileRpOutput(handle, request) }); observationServices.set(engine, observations);
+            reconcileOutput: (handle, request) => host.turnOrchestration.reconcileOutput(handle, request) }); observationServices.set(engine, observations);
     }
     return { ...createOrchestrationAuthoringService(engine, sources), observations, review };
 };

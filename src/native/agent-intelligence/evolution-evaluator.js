@@ -24,6 +24,7 @@ export function evolutionEvaluatorRevision() {
         '../orchestration/model-capability-authority.js', '../orchestration/budget-port.js', '../orchestration/generation-local-work.js',
         '../orchestration/attempt-controller.js', '../orchestration/transition-controller.js', '../orchestration/effect-controller.js', '../orchestration/effect-contracts.js',
         '../orchestration/result-controller.js', '../orchestration/result-contracts.js', '../orchestration/rp-output-controller.js', '../orchestration/rp-output-completion-controller.js', '../orchestration/rp-output-reconciliation.js',
+        '../orchestration/session-output-reconciliation.js', '../orchestration/session-output-contracts.js',
         '../orchestration/project-review-output-controller.js', '../orchestration/project-review-output-contracts.js', '../orchestration/project-tool-contracts.js',
         '../orchestration/project-tool-receipts.js', '../orchestration/project-round-contracts.js', '../project-agent-executor.js', '../rp-run-control.js', '../rp-output-protocol.js',
         '../model-prompt-runtime/prompt-compiler.js', '../model-prompt-runtime/route-resolver.js', '../model-prompt-runtime/generation-service.js', '../model-prompt-runtime/execution-utils.js',
