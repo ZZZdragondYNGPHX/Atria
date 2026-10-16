@@ -964,3 +964,8 @@
 - Source `04197573b` → `ae865c1f3`，仅本地提交，尚未推送。增加显式本地 `native-live.mjs`，沿原 Native Host、原 Evolution source_probe、原父收费账和已有私有 24 小时/20 RPM 发送前限流做 RP/Project 工程观察。配置与凭据仅由运行参数读取，不提交私有资料、响应正文或临时 store；输出只包含脱敏状态、允许的工具名、使用量和工程不变量。Route 输出限额严格取原评测允许的 1024 tokens 上界，运行器未改产品权限。
 - 真实探测：主配置 RP 重试 HTTP 404 且响应只显示 `model` 提示，一次发送/unknown 用量；备用配置先因测试 Route 超出原 1024 上界在发送前失败，修正后一次 HTTP 503/unknown 用量；第三配置 RP 三条开发案例三次 HTTP 200，共报告 3804 tokens，全部工程不变量通过。第三配置 Project 两次各一笔 HTTP 200、均报告使用量；模型同轮调用了未声明工具，原 `native_orchestration_project_tool_scope_unavailable` 权限围栏拒绝后续，不能将 Project 记为通过。所有请求包括 404/503 都进入原私有限流 checkpoint；没有手动清零。
 - `node --check`、本文件原 ESLint 与 staged diff check 通过。真实观察不含独立 sealed 质量评测、货币价格、自动晋升、浏览器或三端证据；Provider 模型行为与可用性仍影响 Project 完整 Gate。P1–P4/最终 Gate 继续 NOT_READY，后端继续，不进入前端或 main 集成。
+
+## 2026-10-16 — 第七十四组：隔离 Review 引导与再认证 ID 修复
+
+- Source `ae865c1f3` → `d682423df`，本地提交，尚未推送。`GET /review` 先验证 launchRef 对应仍有效的原 Approval 和账户，再分配隔离会话；伪造/过期引用 404 且不下发 cookie。再认证 `contextId` 改为 256-bit 随机十六进制并加合法前缀，满足原 `assertToken`；原 base64url 偶发 `_` 或非字母起始会令合法决定 400，未更改审批合同或放宽验证。
+- 初次完整 Review suite 20PASS/2FAIL（8.343s）；定向再现偶发 400，脱敏定位 `contextId must be a token`；修复后完整 Review 22/22 PASS（8.374s），与原 Effect Approval 组合 44/44 PASS（14.596s）。三个修改文件定向原 ESLint 和 staged diff check 通过。没有 Browser 三端、真实 R2/R3 领域动作或独立质量通过声明；后端整体继续。
