@@ -1018,3 +1018,9 @@
 - Source 69cb70b27 → 0342ffd76，本地提交未推送。实现接口 §17.89，reviewPolicy.maxRounds 精确映射原 Review node.policy.maxRounds，只允许收紧到至少一；原 catalog/声明/不可变 revision/Binding 发布回滚复用。没有虚构新的 Review policy 或执行授权。
 - 原真实 Project Source/Route/Plan authoring 中构建两 Review 配置节点，新增 FS/SQLite 八参数项 8PASS/12filterSKIP（5.995s）。这些 Review 节点没有 generation.send，也没有调用 Review runtime，不能计作正式 Review producer。覆盖自己的声明/节点、兄弟保持、零/增长拒绝、用户 Binding 替换、saved/no_save ACK、rollback/consumed。
 - 原 limits 与 Prompt evolution 两 suites 32/32 PASS（35.802s），evaluator 指纹 24/24 PASS（1.994s）；五文件原 ESLint/staged diff check 通过，中间测试缩进 lint 已按原规则修复。全部新场景模型发送为零；没有独立质量/价格或自动晋升结论。继续其余后端，未推送、未提前交接或集成 main。
+
+## 2026-10-17 — 第八十三组：Project 实际请求工具目录与 Plan pins 对齐
+
+- Source 0342ffd76 → 8d33bfb3d，本地提交未推送。实现接口 §17.90，修复真实 Provider 曾按完整目录调用未授权工具的问题；不放宽执行围栏，不默认授 Skill 能力。实际有零/单/多 pins 的 round 使用同一授权范围。
+- 首批原 Project Model/Context 精选 4PASS/42filterSKIP（16.147s）。Context/原 shared round/指纹三个 suites 44/44 PASS（34.451s），其中 fingerprint 25 项。新目录外工具测试首轮 4FAIL/3PASS/40filterSKIP（23.566s），预期错误码仍写旧 scope guard，实际原 GenerationService 因目录已收窄而更早 generation_response_invalid；修正后四参数项 4PASS/36filterSKIP（14.279s），真实费用20仍保留、原 Task calls 为空。原 Tool Effect全suite与实际多轮Review Root精选 42PASS/12filterSKIP（179.059s）。九文件原 ESLint/staged diff check 通过。
+- 使用同一私有第三配置与原 M1 quota/lock 跑真实 Project source_probe：6次200，24656 reported tokens，unknown=0；三个案例每条先调用获准 get_project，下一轮 finish_reason:length，无目录外调用。因测试 runner/evaluator 的1024输出cap导致未进入Review/proposal，status=invariants_failed，不能算工程通过。私有配置明确 maxOutputTokens=8192，后续只修开发探测受限配置，不解除正式比较/质量/晋升条件。此次没有独立评分或价格，私有正文/密钥未输出/提交，继续后端。

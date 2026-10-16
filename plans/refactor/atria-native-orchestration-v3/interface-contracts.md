@@ -1151,3 +1151,9 @@ Result 新增精确 session_task audience，绑定 Run/output node/epoch、原 s
 源码 0342ffd76 将既有 plan-strategy 的封闭 fieldPath 扩为 reviewPolicy.maxRounds，物理值仍只有 exact Review node 的原 policy.maxRounds，不添加第二套 Review 配置。原 catalog 仅列大于一的节点；declaration/candidate 钉同一 nodeId/Binding/PlanRevision，候选只能减少且不低于一。其它 Node 类型、任意路径、增大或禁用 Review 均拒绝。
 
 捕获、candidate metadata、expected revision closure 共用同一受限字段 reader/applier；沿原 Plan immutable revision/作者 Draft、原依赖 validate、Evolution publication gate 和 Binding CAS/rollback/discard。限额、兄弟 Review、capabilities、Output owner、来源与 Route pin 不变。保存未知 ACK 沿原 exact command 观察/重放，不调用模型。此项只交付实际既有配置的策略候选，不代表 Review/Judge/Planner 运行 producer 或质量/晋升已通过；已获准 routeRef 的完整候选接入仍需原 authority。
+
+## 17.90 Project Model 请求的精确工具目录
+
+源码 8d33bfb3d 修复原 Context round 向模型展示完整 Project/Skill 工具、执行却只允许 Plan pins 的不一致。原 Context 授权回调提供 exact 已复核 Project tool pins；Context 从原 ModelContext 核对同 Project/Task 的实际 descriptor/hash，目录只包含这些 pins，并将该范围加入 currentness digest。缺失/重复/外来 descriptor 拒绝。
+
+共享原 Prompt/round builder 接收显式 tools 时不再自动追加 Skill 工具，并省略不可用的具名操作指引；原始无 scope Native 服务的完整目录保持原行为。实际请求、编译 descriptor、费用 fingerprint 和消费重验使用同一目录，不给模型或 Browser 新授权。模型仍编造目录外工具时，原 GenerationService 已在响应规范化阶段拒绝，后面的原 Tool/Effect 围栏继续存在。新共享 Prompt 实现纳入 evaluator 指纹。
