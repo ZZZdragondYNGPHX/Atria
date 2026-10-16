@@ -156,7 +156,7 @@ Review Origin语义遵守D8完整可审查交互；主app仍显示Timeline/脱�
 
 ### 9.1 P3后端子工作后的Gate复核
 
-2026-10-16复核：**P3=IN_PROGRESS / Gate=NOT_READY**。第五至第三十二组的测试详细列表和失败/变异证据唯一保留于同一Record；第二十七组已在CachyOS续接，历史第二十六组暂停换机不再是当前停止要求，仍非阶段PASS。此表只给出剩余准入关系。设计与开发授权均已满足，不用尚未取得的产品证据倒挂E0。
+2026-10-16复核：**P3=IN_PROGRESS / Gate=NOT_READY**。第五至第三十三组的测试详细列表和失败/变异证据唯一保留于同一Record；第二十七组已在CachyOS续接，历史第二十六组暂停换机不再是当前停止要求，仍非阶段PASS。此表只给出剩余准入关系。设计与开发授权均已满足，不用尚未取得的产品证据倒挂E0。
 
 | 维度 | 已有实际子证据 | 未完成与准入状态 |
 | --- | --- | --- |
@@ -173,3 +173,5 @@ IMPLEMENTATION_PENDING表示已有设计和授权、仍需本任务后续实现�
 第三十一组只增加原Scheduler资源handoff的Linux局部实证（接口§17.41）；不能据此将Delegate领域授权、child Result/Audience或完整后台producer改为PASS。
 
 第三十二组增加Session/RP Memory同事务合法撤销先提交后拒正文的FS/SQLite实际证据（接口§17.42）。这不核销后台/Delegate授权、正式Output/Result、真实外部费用/质量或缺失设备验收；P3 Gate仍NOT_READY。
+
+第三十三组接入原pending outbox有限后台Model/Task Context与原turn compute、background invocation/window/period quota（接口§17.43）。FS/SQLite发送、隔离、窗口/周期恢复、撤销及cold防重发有分次实际证据；有限JSON图不等于Narrator/后台共用通用Plan，也没有正式Delegate授权/child Result或P4 OutputClaim。上述表中background待接范围现收窄为其余Task/profile及通用组合，完整P3仍NOT_READY；用户要求本组完成后暂停换设备。
