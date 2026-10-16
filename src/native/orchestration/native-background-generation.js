@@ -1,7 +1,7 @@
 import { ConflictError } from '../../storage/errors.js';
 import { NativeGenerationHost } from '../adapters/generation-host.js';
 import { nativeTaskScheduler } from '../task-scheduler.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
 import { immutable, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
 import { createOrchestrationAuthoringService } from './authoring-service.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
@@ -12,9 +12,12 @@ import { ContextPort } from './context-port.js';
 import { nativeSessionContextOptions, nativeContextCompilationOptions } from '../adapters/native-session-context.js';
 import { compileNativeContextMetered } from './generation-local-work.js';
 import { AttemptController } from './attempt-controller.js';
-import { controlCommandId, runGuard } from './controller-common.js';
+import { controlCommandId, controlRecordKey, runGuard } from './controller-common.js';
 import { mintNativeBackgroundQuota } from './native-turn-quota.js';
 import { RunControl } from '../run-control.js';
+import { assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
+import { BackgroundTaskOutputController } from './background-task-output-controller.js';
+import { backgroundOutputId, readBackgroundTaskDelivery, readBackgroundTaskResult, readBackgroundTaskOutput } from './background-task-output-contracts.js';
 
 const captures = new WeakMap();
 const fail = code => { throw new ConflictError(code); };
@@ -35,12 +38,13 @@ function pendingTask(snapshot, input) {
     return { task, variant, intent, slot: contract.taskRuntime.slots.find(item => item.id === task.bindingSlotId), payload: intent.input };
 }
 
-export function inspectNativeBackgroundGenerationIdentity(capture, { host, handle, sessionCore } = {}) {
+export function inspectNativeBackgroundGenerationIdentity(capture, { host, handle, sessionCore, finalizationBoundary } = {}) {
     const value = captures.get(capture);
     if (!value || value.handle !== handle || host !== undefined && value.host !== host || sessionCore !== undefined && value.host.sessionCore !== sessionCore
         || !(value.host instanceof NativeGenerationHost) || value.host.turnOrchestration !== value.owner
         || value.host.persistence._engine !== value.owner.engine) fail('native_orchestration_background_producer_denied');
-    const active = nativeTaskScheduler.assertActiveBoundary(value.boundary, value.expected);
+    const active = finalizationBoundary === undefined ? nativeTaskScheduler.assertActiveBoundary(value.boundary, value.expected)
+        : nativeTaskScheduler.assertFinalizationBoundary(finalizationBoundary, value.boundary, value.expected);
     if (active.attempt !== 0 || nativeTaskScheduler.operations.get(active.operationId)?.retry !== false)
         fail('native_orchestration_background_producer_denied');
     return { ...value, signal: active.signal, operationId: active.operationId };
@@ -57,6 +61,7 @@ export async function inspectNativeBackgroundGeneration(capture, expected) {
 /** Original durable outbox producer; model work only, original Task owns adoption. */
 export class NativeBackgroundOrchestrationAuthority {
     #runs = new Map();
+    #finalizations = new WeakMap();
     constructor({ owner, execution, port, issueScope }) { Object.assign(this, { owner, execution, port, issueScope }); }
     hasRun(runId) { return this.#runs.has(runId); }
     async #select(host, handle, snapshot, input) {
@@ -71,6 +76,7 @@ export class NativeBackgroundOrchestrationAuthority {
         const taskPlan = pendingTask(snapshot, input);
         if (input.fallbackMode !== undefined && input.fallbackMode !== 'disabled') fail('native_orchestration_background_route_mismatch');
         const plan = await this.owner.plans.getRevision(handle, binding.planRef), graph = plan.definition;
+        if (assertResultPolicy(graph.outputContract).outputType !== 'json') fail('native_orchestration_background_plan_unavailable');
         const node = graph.nodes.find(item => item.kind === 'agent'), output = graph.nodes.find(item => item.kind === 'output');
         if (!node || !output || graph.nodes.length !== 2 || graph.edges.length !== 1 || !equal(graph.entryNodeIds, [node.nodeId])
             || !equal(graph.capabilityCeiling, ['generation.send']) || !equal(node.capabilities, ['generation.send']) || node.inputs.length
@@ -105,8 +111,8 @@ export class NativeBackgroundOrchestrationAuthority {
             requirements: [...taskPlan.slot.requiredCapabilities, ...taskPlan.variant.requiredCapabilities, 'generation.structured-output'] });
         return { binding, plan, node, pin, resolved, taskPlan, configDigest: configuration(resolved) };
     }
-    async #current(state) {
-        const captured = await inspectNativeBackgroundGeneration(state.capture, { host: state.host, handle: state.handle });
+    async #current(state, finalizationBoundary) {
+        const captured = await inspectNativeBackgroundGeneration(state.capture, { host: state.host, handle: state.handle, finalizationBoundary });
         let selected;
         try { selected = await this.#select(state.host, state.handle, captured.snapshot, state.input); } catch (error) {
             if (['native_orchestration_background_plan_unavailable', 'native_orchestration_background_route_mismatch',
@@ -150,16 +156,25 @@ export class NativeBackgroundOrchestrationAuthority {
             || work.anchor.sessionId !== input.sessionId || work.anchor.revisionId !== input.revisionId)
             fail('native_orchestration_background_producer_denied');
         const expected = immutable(Object.fromEntries(['owner', 'anchor', 'kind', 'executionClass', 'key', 'fingerprint', 'resources'].map(key => [key, work[key]])));
-        return nativeTaskScheduler.submit({ ...work, retry: false, run: async boundary => {
-            const capture = Object.freeze({}), request = immutable({ sessionId: input.sessionId, revisionId: input.revisionId, requestId: input.invocationId,
+        let capture;
+        const operation = nativeTaskScheduler.submit({ ...work, retry: false, run: async boundary => {
+            capture = Object.freeze({});
+            const request = immutable({ sessionId: input.sessionId, revisionId: input.revisionId, requestId: input.invocationId,
                 role: selected.resolved.route.role.replace(/^role\./, ''), routeRef: selected.pin.resourceRef,
                 fallbackMode: 'disabled', outputContract: { name: 'atria_task', schema: selected.taskPlan.variant.outputSchema } });
             captures.set(capture, { host, owner: this.owner, handle, input: immutable(input), request, taskPlan: immutable(selected.taskPlan), boundary, expected,
                 policy: immutable(snapshot.manifest.runtime.experienceContract.generationBudget), policyDigest: hash(snapshot.manifest.runtime.experienceContract.generationBudget),
                 snapshotDigest: hash(snapshot), sourceRequest: { domain: 'native_session', sessionId: input.sessionId,
                     branchId: snapshot.revision.branchId, revisionId: input.revisionId } });
-            try { return await this.#generate({ host, handle, input, snapshot, selected, capture, request, lanePlan: captured }); } finally { captures.delete(capture); }
-        } });
+            return this.#generate({ host, handle, input, snapshot, selected, capture, request, lanePlan: captured });
+        }, finalize: (result, receipt, boundary) => this.#finalize(handle, result, receipt, boundary, work.finalize) });
+        const release = () => {
+            const runId = captures.get(capture)?.runId;
+            if (runId) this.#runs.delete(runId);
+            if (capture) captures.delete(capture);
+        };
+        operation.result.then(release, release);
+        return operation;
     }
     async #generate({ host, handle, input, snapshot, selected, capture, request, lanePlan }) {
         await inspectNativeBackgroundGeneration(capture, { host, handle });
@@ -170,6 +185,9 @@ export class NativeBackgroundOrchestrationAuthority {
             domain: 'native_session', sessionId: input.sessionId, branchId: snapshot.revision.branchId, revisionId: input.revisionId });
         const logicalInputRef = immutable({ kind: 'native_background_intent', sourceBindingDigest: captured.sourceBinding.bindingDigest,
             invocationId: input.invocationId, requestId: request.requestId, role: request.role, taskId: input.taskId, variantId: input.variantId,
+            taskDefinitionHash: hash(selected.taskPlan.task), taskResultClass: selected.taskPlan.task.resultPolicy.resultClass,
+            taskResultSink: selected.taskPlan.task.resultPolicy.sink,
+            schedulerOperationId: captures.get(capture).boundary.operationId,
             inputDigest: hash(input.input), intentDigest: hash(selected.taskPlan.intent), configDigest: selected.configDigest,
             planRef: selected.binding.planRef, nodeId: selected.node.nodeId, routePin: selected.pin });
         const grantDigest = hash({ principal: 'original_native_pending_outbox', logicalInputRef });
@@ -186,6 +204,7 @@ export class NativeBackgroundOrchestrationAuthority {
             retentionPolicyRef: { policyId: 'retain_native_background_until_explicit_release' } })).runId);
         if (root.status !== 'admitted' || root.attemptRefs.length || root.pendingEffectRefs.length) fail('native_orchestration_background_request_replayed');
         const state = { host, handle, input, selected, capture, request, sourceBinding: captured.sourceBinding, decision };
+        captures.get(capture).runId = root.runId;
         this.#runs.set(root.runId, state);
         try {
             const { attemptId } = await service.runs.beginAttempt(handle, controlCommandId('native.background.attempt', commandIdentity), {
@@ -222,7 +241,82 @@ export class NativeBackgroundOrchestrationAuthority {
                     await this.#current(state); await service.sourcePort.revalidate(handle, state.sourceBinding, tx ? { tx } : undefined);
                     await port.revalidate(handle, { context: compiled.compiled, phase: 'consume' });
                 } });
-            return (await this.port(host).generate(handle, scope, { signal: captures.get(capture).boundary.signal })).generated;
-        } finally { this.#runs.delete(root.runId); }
+            const result = await this.port(host).generate(handle, scope, { signal: captures.get(capture).boundary.signal });
+            this.#finalizations.set(result, { state, snapshot, root });
+            return result;
+        } catch (error) { this.#runs.delete(root.runId); throw error; }
+    }
+
+    async #finalize(handle, result, receipt, boundary, finalize) {
+        const completion = this.#finalizations.get(result);
+        if (!completion || completion.state.handle !== handle) fail('native_orchestration_background_completion_required');
+        const { state, snapshot, root: admitted } = completion, service = this.execution(), { runs } = service;
+        const { runId } = admitted;
+        let finalized, domainRef;
+        const authorize = async ({ tx, root }) => {
+            inspectNativeBackgroundGenerationIdentity(state.capture, { host: state.host, handle, finalizationBoundary: boundary });
+            const fence = await runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
+            const selected = await this.#select(state.host, handle, snapshot, state.input);
+            await this.owner.sessionCore.runs.assert(handle, state.input.sessionId, 'generate');
+            const current = await this.owner.sessionCore.observe(handle, state.input.sessionId);
+            if (!selected || !equal(selected.binding, state.selected.binding) || selected.configDigest !== state.selected.configDigest
+                || root.runId !== runId || root.epoch !== admitted.epoch || !equal(root.sourceBinding, state.sourceBinding)
+                || root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation
+                || !finalized || hash(current) !== hash(finalized.snapshot)) fail('native_orchestration_background_completion_stale');
+        };
+        try {
+            const outcome = await runs.withSourceControl(handle, runId, () => runs.engine.withTransaction(handle, async tx => {
+                try {
+                    await this.#current(state, boundary);
+                    const root = await runs.get(handle, runId), stamp = hash(root);
+                    const descriptor = await this.port(state.host).inspectResultCompletion(handle, { result, runId, effectId: state.effectId });
+                    await this.#current(state, boundary);
+                    if (hash(await runs.get(handle, runId)) !== stamp || descriptor.producerAttemptId !== state.attemptId) fail('native_orchestration_background_completion_stale');
+                } catch (error) {
+                    // Commit reentrant withdrawal before refusing any Task adoption.
+                    if (['native_orchestration_background_source_stale', 'native_orchestration_background_completion_stale',
+                        'native_orchestration_model_result_completion_stale', 'native_orchestration_source_stale'].includes(error.code)) return { error };
+                    throw error;
+                }
+                finalized = await finalize(result.generated, receipt);
+                const record = finalized?.record;
+                if (!record || !finalized.snapshot || record.invocationId !== state.input.invocationId) fail('native_orchestration_background_completion_required');
+                domainRef = { kind: 'native_background_task', sessionId: state.input.sessionId, revisionId: record.storedRevisionId,
+                    invocationId: record.invocationId, taskId: record.taskId, variantId: record.variantId, recordHash: hash(record) };
+                const root = await runs.get(handle, runId), delivered = await readBackgroundTaskDelivery(tx, handle, root, state.effectId, domainRef);
+                // Historical retention remains even if authority is withdrawn in
+                // a later await. This receipt never grants completion or reuse.
+                const receiptId = backgroundOutputId('delivery', runId);
+                await putImmutable(tx, controlRecordKey(handle, runId, 'receipt', receiptId), {
+                    schemaVersion: 1, receiptKind: 'background_task_delivery', receiptId, runId, epoch: root.epoch,
+                    effectId: state.effectId, domainRef, modelReceiptRef: delivered.model.receiptRef });
+                try {
+                    await new BackgroundTaskOutputController({ ...service, authorize }).complete(handle, runId, { effectId: state.effectId, domainRef });
+                } catch (error) {
+                    if (error.code === 'native_orchestration_background_completion_stale') return { error };
+                    throw error;
+                }
+                return { value: finalized };
+            }), { withAuthority: service.sourcePort.consumptionBoundary(handle, state.sourceBinding, { engine: runs.engine }) });
+            if (outcome.error) throw outcome.error;
+            return outcome.value;
+        } catch (error) {
+            if (error.code !== 'storage_commit_unknown' || !domainRef) throw error;
+            // Observe the exact original adoption/closure after an unknown ACK.
+            // No second finalize, Task writer, Provider send or command is issued.
+            let saved;
+            try {
+                saved = await runs.engine.withTransaction(handle, async tx => {
+                    const root = await runs.get(handle, runId);
+                    await authorize({ tx, root });
+                    const delivered = await readBackgroundTaskDelivery(tx, handle, root, state.effectId, domainRef);
+                    if (!await readBackgroundTaskResult(tx, handle, root)) throw error;
+                    if (root.status === 'completed' && !await readBackgroundTaskOutput(tx, handle, root)) throw error;
+                    return equal(delivered.record, finalized.record);
+                });
+            } catch { throw error; }
+            if (!saved) throw error;
+            return finalized;
+        } finally { this.#finalizations.delete(result); }
     }
 }

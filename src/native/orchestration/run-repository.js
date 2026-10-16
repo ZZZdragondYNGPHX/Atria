@@ -1,6 +1,7 @@
 import { readRpOutput } from './rp-output-contracts.js';
 import { readSessionOutput } from './session-output-contracts.js';
 import { readProjectReviewOutput } from './project-review-output-contracts.js';
+import { readBackgroundTaskOutput } from './background-task-output-contracts.js';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
@@ -27,7 +28,8 @@ const readRunOutput = (tx, handle, root, options) => root.graph.outputContract.k
     ? root.sourceBinding.sourceAuthority === 'native_session' ? readSessionOutput(tx, handle, root)
         : root.sourceBinding.sourceAuthority === 'rp_chat' ? readRpOutput(tx, handle, root) : null
     : root.graph.outputContract.kind === 'project_review' ? readProjectReviewOutput(tx, handle, root, options)
-        : readTaskLocalOutput(tx, handle, root);
+        : root.sourceBinding.sourceAuthority === 'native_session' && root.parentRef === null
+            ? readBackgroundTaskOutput(tx, handle, root, options) : readTaskLocalOutput(tx, handle, root);
 export const childBudgetReceiptId = runId => 'oreceipt_' + hashNativeDocument({ kind: 'child_budget_ready', runId }).slice(0, 32);
 
 /** Admission bound from original durable Attempts, never a second scheduler. */

@@ -26,6 +26,7 @@ export function evolutionEvaluatorRevision() {
         '../orchestration/result-controller.js', '../orchestration/result-contracts.js', '../orchestration/rp-output-controller.js', '../orchestration/rp-output-completion-controller.js', '../orchestration/rp-output-reconciliation.js',
         '../orchestration/session-output-reconciliation.js', '../orchestration/session-output-contracts.js',
         '../orchestration/project-tool-reconciliation.js', '../orchestration/effect-reconciliation.js',
+        '../orchestration/native-background-generation.js', '../orchestration/background-task-output-controller.js', '../orchestration/background-task-output-contracts.js', '../orchestration/output-transition-contracts.js', '../../../public/shared/native-task-contract.js',
         '../orchestration/project-review-output-controller.js', '../orchestration/project-review-output-contracts.js', '../orchestration/project-tool-contracts.js',
         '../orchestration/project-tool-receipts.js', '../orchestration/project-round-contracts.js', '../project-agent-executor.js', '../rp-run-control.js', '../rp-output-protocol.js',
         '../model-prompt-runtime/prompt-compiler.js', '../model-prompt-runtime/route-resolver.js', '../model-prompt-runtime/generation-service.js', '../model-prompt-runtime/execution-utils.js',

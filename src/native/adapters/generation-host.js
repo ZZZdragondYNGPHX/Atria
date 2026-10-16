@@ -31,7 +31,7 @@ import { createNativeSessionContextAdapter, nativeSessionContextOptions } from '
 import { assertInformationActorAvailable, informationDefinition, informationContext, informationSourceMessageIds, memoryEvidenceApplicability } from '../../../public/shared/native-information-runtime.js';
 import { immutable, ProviderFailure, GenerationError, checkCancellation, containsSecret } from '../model-prompt-runtime/execution-utils.js';
 import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
-import { assertTaskValue } from '../../../public/shared/native-task-contract.js';
+import { assertTaskValue, normalizeTaskGenerationResult } from '../../../public/shared/native-task-contract.js';
 import { nativeTaskScheduler } from '../task-scheduler.js';
 import { hashNativeDocument } from '../repositories/common.js';
 import { assertTurnEnvelope } from '../../../public/shared/native-message-contract.js';
@@ -211,7 +211,7 @@ export class NativeGenerationHost {
             finalize: async generated => {
                 await assertPredictionCaptureCurrent(capture);
                 if (preview) return generated;
-                const payload = assertTaskValue(generated.response.jsonData ?? generated.response.json ?? JSON.parse(generated.response.text), variant.outputSchema);
+                const payload = normalizeTaskGenerationResult(generated.response, variant.outputSchema);
                 if (generated.response.toolCalls?.length || generated.response.tool_calls?.length) fail('native_prediction_tools_denied');
                 return immutable({ record: { invocationId: input.requestId, taskId: task.id, variantId: variant.id, fingerprint, payload,
                     definitionHash: hashNativeDocument(task), contextHash: hashNativeDocument(generated.snapshot.contextPlan),
@@ -926,7 +926,7 @@ export class NativeGenerationHost {
                 return taskWorker;
             },
             finalize: async (result, deliveryReceipt) => {
-                const parse = () => assertTaskValue(result.response.jsonData ?? result.response.json ?? JSON.parse(result.response.text), variant.outputSchema);
+                const parse = () => normalizeTaskGenerationResult(result.response, variant.outputSchema);
                 const payload = appraisal ? await appraisalWork('appraisal_parse', result.response, parse) : parse();
                 const record = { ...(production ? { production } : {}), invocationId: input.invocationId, taskId: task.id, variantId: variant.id, fingerprint, payload,
                     definitionHash: hashNativeDocument(task), contextHash: hashNativeDocument(result.snapshot.contextPlan),

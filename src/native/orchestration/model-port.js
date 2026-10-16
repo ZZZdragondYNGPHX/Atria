@@ -1,4 +1,5 @@
 import { fields } from '../../../public/shared/native-values.js';
+import { normalizeTaskGenerationResult } from '../../../public/shared/native-task-contract.js';
 import { inspectNativeRpGenerationIdentity, inspectNativeRpDelegationIdentity } from './native-rp-generation.js';
 import { inspectNativeBackgroundGenerationIdentity } from './native-background-generation.js';
 import { NativeGenerationHost } from '../adapters/generation-host.js';
@@ -88,9 +89,16 @@ export class ModelPort {
                 compiledBindingFingerprint: send.compiledBinding.fingerprint, requestSnapshotHash: hash(send.snapshot) });
         }
         const responseHash = hash(generated.response), finalRequestHash = hash(generated.snapshot);
+        let taskResultHash = null;
+        if (pending.backgroundSchema) {
+            try { taskResultHash = hash(normalizeTaskGenerationResult(generated.response, pending.backgroundSchema)); } catch (error) {
+                if (!(error instanceof TypeError || error instanceof SyntaxError)) throw error;
+            }
+        }
         return { observationId: 'model.completed:' + intent.effectId, observedEpoch: intent.epoch, outcome: 'confirmed',
             dispatchEvidence: { kind: 'original_port_observation', reference: { protocol: 'generation', completionBindingDigest: binding,
-                responseHash, finalRequestHash, attempts, ...(pending.project ? { resultOutputType: 'json', resultPayloadHash: hash(resultPayload(generated.response, 'json')) } : {}) } }, remoteOperationRef: null, domainReceiptRef: null,
+                responseHash, finalRequestHash, attempts, ...(pending.project ? { resultOutputType: 'json', resultPayloadHash: hash(resultPayload(generated.response, 'json')) } : {}),
+                ...(pending.backgroundSchema ? { taskResultHash } : {}) } }, remoteOperationRef: null, domainReceiptRef: null,
             budgetObservationRef: { authorityRef: root.budgetAuthorityRef, attempts: attempts.map(({ budgetAttemptRef, status, usageHash }) => ({ budgetAttemptRef, status, usageHash })) },
             resultRefs: [], sourceRefs: [root.sourceBinding.sourceRef], reasonCode: 'generation_response_validated' };
     }
@@ -166,7 +174,8 @@ export class ModelPort {
             || hash(logicalInputRef) !== hash(intent.inputRef)) fail('native_orchestration_model_scope_invalid');
         const activeKey = key(handle, intent);
         if (this.#active.size >= 64 || this.#active.has(activeKey)) fail('native_orchestration_model_busy');
-        const pending = { binding: digest(intent), sends: [], generated: null, observation: null, project };
+        const pending = { binding: digest(intent), sends: [], generated: null, observation: null, project,
+            backgroundSchema: background ? assertPermit().taskPlan.variant.outputSchema : null };
         this.#active.set(activeKey, pending);
         try {
             const originalSend = options.orchestrationSend;

@@ -19,7 +19,9 @@ describe.each(CONTRACT_HARNESSES)('$name original background producer', ({ make 
             expect(result.results[0].payload.text).toBe('Original background artifact');
             const root = await f.authority.execution.runs.get(f.h.handle, f.effectRef.runId);
             expect(root.sourceBinding.sourceRef.sessionId).toBe(f.base.session.sessionId);
-            expect(root.status).not.toBe('completed');
+            expect(root.status).toBe('completed');
+            expect(root.resultRefs).toHaveLength(1);
+            expect(root.outputClaims).toHaveLength(1);
             const control = await f.core.runs.status(f.h.handle, f.base.session.sessionId);
             expect(operation.lane).toBe('turn');
             expect(operation.compute.attempts[0]).toMatchObject({ status: 'settled', usage: { totalTokens: 20 }, generationQuotaRef: { background: true } });
