@@ -970,3 +970,7 @@ Chat ACK未知只reconcile；domain收据ACK未知与Host Effect receipt ACK未�
 随后原Native output.publish CAS同组保存Session OutputClaim、cost closure receipt、output receipt、output Attempt settlement及Root.completed。原Run reader按sourceAuthority明确分派RP/Session；Session proof逐项关联原Plan、Result/producer/各Attempt/真实Graph edge与traversal、原Session commit/Task/Variant/authority receipt、Host Effect和typed costs，冷读不授scope。resolver profile核同Run resolver费用，原retained selection reuse另核原RunControl selection事实。
 
 领域commit ACK、Host receipt ACK、terminal CAS ACK均只观察同稳定操作；Native终结写后失败回滚完整metadata组，既有domain输出/费用保留。保留adapter即使Host receipt尚未确认也沿原Effect的精确commitId/原DomainReceipt钉住实际output Revision，防GC漏pin。该闭包限显式有限Session profile，不代表全部Session/Project/后台/通用Graph及最终Gate完成。
+
+## 17.65 Project结构化Model完成证明
+
+第五十五组仅为实际Project principal扩展Model completion的json payload为{text,toolCalls:[{id,name,args}]}，保留真实wrapper私有身份及完整response/snapshot/Provider rows/receipt hash约束；其它principal的工具响应不能成为text Result。最多32个调用与原Task attempt上限一致。该证明只证明原Provider响应，不授工具执行权；原Project consumer仍拒工具，需后续原Task Effect/收据与同操作Source推进接入。

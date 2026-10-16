@@ -819,3 +819,9 @@
 - 新terminal首轮20PASS/2FAIL（128.162s），两失败仅冷开fixture误用旧Engine导致writer_unavailable；改用新原Engine后，结合新增Native写后rollback和selection复用，定向6PASS/18filterSKIP（39.521s）。追加Host receipt ACK与保留pin后定向6PASS/22filterSKIP（33.993s）。最终28个不同case有通过证据，未称一次完整28绿。原output Effect/DomainReceipt与RP terminal精选12PASS/36filterSKIP（52.788s）；最初新terminal阳性2PASS/6filterSKIP（11.548s）。十文件定向原ESLint最终0输出、diff check通过；最初lint只指出测试conditional-expect，已整理，不禁规则。
 - 覆盖cold/新输入历史读取、unknown Model费用不terminal、post-commit末费用await撤权事实保留、terminal ACK before/after只观察、Native终结写后完整rollback、重新hash但foreign claim/缺费用/错Graph拒绝、resolver两HTTP与retained selection复用。原Host receipt ACK saved/missing保持一次domain输出；保留adapter沿原Effect稳定commit读原receipt，未知Host窗口也pin实际output Revision。没有二次writer/HTTP、第二ledger、全仓/Actions/独立审查或本轮SQL/真实付费/三端证据。
 - 本组只完成显式有限Session profile的完整闭包，旧有限result构建路径仍待P6替换；通用Session/Graph、Project多轮/Task Tool/Review、其它消费者、P5可信UI/API、P6硬切、真实全矩阵和P8仍未完成。继续全部既有授权，不在本组停下，不创建HANDOFF；P1–P4 IN_PROGRESS，最终Gate NOT_READY，未合main、不发前端最终交付。
+
+## 2026-10-16 — W07/P4第五十五组：原Project结构化Model完成证明
+
+- Source fff849695→32421e8a2，已推送。只有实际原Project principal的Model响应可产生json完成证明，规范payload绑定text和最多32个{id,name,args}；同原wrapper/response/snapshot/Provider rows/receipt均复核。其它领域继续只接受无toolCalls的text证明。原Project consumer暂仍明确拒工具响应，证明本身不授Task工具。
+- 新Project suite四项FS/SQLite正向及结构化响应均通过（10.572s）；包含clone/foreign wrapper、snapshot及toolCalls篡改拒绝、原Model20tokens结算、无Task工具及无正式Project提交。最初四项失败是测试修改冻结generated.snapshot，修为替换外层wrapper.generated并恢复原对象；产品未为测试放宽。原Model相关六项PASS/十四项filter SKIP（26.481s），两文件定向原插件ESLint与diff check通过。中断前一次测试输出未取得，本记录引用恢复后实际复跑结果。
+- 继续原Task工具Effect/领域收据、owned Source推进和多轮Graph，不把此次提交当停止条件。P1–P4 IN_PROGRESS、P5–P8未完成、最终Gate NOT_READY，未合main。
