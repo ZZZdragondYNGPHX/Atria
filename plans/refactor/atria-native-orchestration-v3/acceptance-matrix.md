@@ -191,3 +191,5 @@ IMPLEMENTATION_PENDING表示已有设计和授权、仍需本任务后续实现�
 第四十组真实RP child Result发布（接口§17.50）：最终新suite FS/SQLite 30/30 PASS，精选MySQL/Pg各8PASS，原Model相关12与原Delegate/producer/Context相关10定向PASS；七类语义守卫变异并逐字/SHA恢复，恢复后最小6PASS。失败、修复、SQL分次筛选及过滤项唯一归同一Record。本组只核销有界Result保存/producer settlement/历史证明，未知费用仍unknown、原reservation仍held，正式OutputClaim/Run completed/父Audience消费/return仍IMPLEMENTATION_PENDING。外部费用/质量/三端正式客户端NOT_RUN；P3 Gate保持NOT_READY。本组后按用户明确要求暂停换设备，见唯一HANDOFF，不把暂停当任务或阶段完成。
 
 第四十一组接原Graph→output Attempt→独立原bank release/closed→task-local claim/child completed（接口§17.51），仅核销该有限child闭包；父仍waiting_child，durable return/受权Result消费/父continuation及P4正式RP输出继续IMPLEMENTATION_PENDING。实际FS/SQLite正反例、ACK/冷开、守卫与修复验证归同一Record。本机无Docker，SQL本组NOT_RUN；此前设备SQL结果保留为此前证据，不冒称本轮通过。P3 Gate和最终产品仍NOT_READY。
+
+第四十二组接实际父Scheduler permit重新准入与单次durable return（接口§17.52）；FS/SQLite证明父原input/grant保留、精确父子Plan/Handoff/Result/Audience/closed bank、撤权先提交、写后rollback与ACK/cold边界，精确分次与相关回归归同一Record。本组只恢复父控制状态，不展开Result或发送父Narrator；ResultPort/Context/continuation与P4正式输出继续IMPLEMENTATION_PENDING。SQL/真实账单/质量/三端全流程NOT_RUN，P3 Gate保持NOT_READY。

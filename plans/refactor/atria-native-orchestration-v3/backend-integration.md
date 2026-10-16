@@ -110,3 +110,5 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 第四十组b4c06075a内部startRp返回改为pending_output及parent/child/effect/Model receipt/Result/publication receipt refs（接口§17.50），不含正文，不新增HTTP。正文虽已受保护耐久保存，child仍running、原reservation仍held、父仍waiting_child；前端不可据此显示Run已完成或直接读正文。task-local output闭包、可信父Result/Audience消费/return及P4正式聊天slot saga未交付。用户要求本组推送后暂停换设备，未向并行前端任务发送最终后端交付；续接队列见唯一HANDOFF。
 
 第四十一组接通有限RP child task-local output（接口§17.51）。内部startRp对原bank.closed=true且Graph/output proofs完整的child返回pending_return，增加outputClaimRef/outputReceiptRef；unknown/overrun继续pending_output，保留费用与Result。child completed不表示父已恢复或正式RP正文已写：父仍waiting_child，durable return、可信ResultPort/父Context与continuation尚未交付。没有新增HTTP/UI或前端可拼的grant；本任务后端未完成，不发送最终整合通知。
+
+第四十二组原父permit重新取得后写耐久Handoff return（接口§17.52），内部成功状态变为pending_continuation，增加returnReceiptRef；父Attempt恢复running但原input/grant不改，父Root未完成。正文仍未展开，原Narrator continuation/父Context与正式Chat输出未交付；无新HTTP/UI，不允许前端用ResultRef/returnReceipt自行组正文或生成执行grant，后端最终通知仍未发送。
