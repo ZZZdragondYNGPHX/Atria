@@ -29,7 +29,7 @@ E0的设计证据清单：
 1. main SHA、静态扫描范围/方法、C01–C18与151文件manifest、未解析动态加载和外部安装边界明确；每类consumer都有删/留/抽离/替代及P4/P6实测责任。
 2. Plan/Binding/Run/GraphPatch/Effect/Receipt/Approval/Result/Projection具备严格身份、原生key/存储/CAS/恢复/RPC和错误合同；原服务扩展位置明确，无第二World/Context/收费/Secret writer。
 3. Host排他、普通RP预算、Output原consumer幂等、Evolution发布、可信批准、SQL commit unknown、UI三端这些**工程设计本身**已有确定的实现策略或范围内默认拒绝策略，不能只写“以后决定”。
-4. 每个设计项映射到真实实施阶段、验收case、失败恢复/不开放条件；测试没有运行就保持NOT_RUN，设备/账号实际不可用则对应验收BLOCKED。
+4. 按实际行为和风险关联实施阶段与验收证据，复用能证明同一契约的检查；不为每个设计项单建用例。未执行保留NOT_RUN，真实环境缺口如实记录。
 5. 当前明确开发授权已满足；最终验收通过后才集成main。授权不改变数据保护/旧编排零兼容及未测不称PASS的约束。
 
 唯一详细接口仍归 [interface-contracts](interface-contracts.md)，R01–R08拆分、设计核销与最终结论归 [e0-audit §11](e0-audit.md#11-r01r08-设计与实施证据分账)。
@@ -115,7 +115,7 @@ P2 不需要提前实作一套影子预算；P3 的预算接口合同在 P1/P2 �
 | W08 UI/Shell | W01 authoring + W02 projection + W05 trusted interaction + W06/W07 | Graph+Inspector/完整移动 List、Timeline 默认/Graph toggle、Source/Cost/Approval/Diagnostics、Search/deep-link/history/Back；旧 panel/CSS/labels 消除 | P5；原 Serene Canvas/Settings Theme 只引用不另建；真实功能等价后进 P6 |
 | W09 Hard Cut/Evidence | C01–C18、两个审计附件、所有工作包替代接口 | 逐路径处置核对、AST/语义零旧执行引用、测试适用性分类、三端/Store/服务 evidence manifest、main delta复核 | P6 清退→P7验证→P8集成；不得把 grep 无命中等同端到端通过 |
 
-已有测试复用入口见 acceptance §8；新 `tests/native-orchestration/` 在当前已授权任务分支建立。不能原样搬旧 mode/preset/recovery suite 后改名，必须验证新的 Host 权威和原 Domain receipt。
+已有测试复用入口见 acceptance §8；围绕新的 Host 权威和原 Domain receipt 补足实际证据缺口，不要求新建目录或逐文件补测试；旧 mode 专项随清退删除，不搬运改名续存。
 
 ## 8. 同期领域方案边界与最终开发就绪复核
 

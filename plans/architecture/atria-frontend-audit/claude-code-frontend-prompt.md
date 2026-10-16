@@ -101,7 +101,7 @@ V3 任务报告对历史 `4a62ba5cc` 与 Prompt `760327891` 的 merge-tree 预�
 | `generation_provider_content_blocked` | 明确 Provider 协议拒绝，显示真实原因等级/已发生用量；不给自动跨 Provider 重发。普通自然语言拒答只能是怀疑/unknown，不冒充确定事实 |
 | 受信 Node Program | Browser 不传 programSelection、Draft authority 或伪造 Grant。精确 Node binding 走原 V3 Plan/Host；没接通的 Node/Run/发布状态如实阻塞 |
 
-Draft 冲突要保留用户文本并刷新 exact base/source；重复点击、取消、卸载、晚结果、加载/失败/空状态都有合法恢复路径。不要把缓存 fingerprint 当权限、Provider cache hit 或零费用证据。
+Draft 冲突要保留用户文本并刷新 exact base/source；只处理实际异步请求中的取消、卸载和晚响应，加载/失败/空状态准确反馈，不为每种状态另建恢复机制。不要把缓存 fingerprint 当权限、Provider cache hit 或零费用证据。
 
 ## 当前不能假装完成的部分
 

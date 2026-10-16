@@ -41,6 +41,6 @@ Required reading:
 
 ## Validation strategy
 
-描述本任务的验收目标与相关检查；通用验证方式见 [Governance §12](../../README.md#12-execution-adapters)。
+描述本任务的验收目标与相关检查；实现与测试取舍见 [Governance §12 / §12.1](../../README.md#121-minimal-implementation)。
 
 ## Material routing/design changes

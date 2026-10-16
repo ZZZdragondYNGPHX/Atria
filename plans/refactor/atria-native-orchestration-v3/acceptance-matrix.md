@@ -111,7 +111,7 @@
 
 以下测试入口是复用资产映射；哪些实际已运行及其范围只以同一Record为准，不由表格中出现文件名推断PASS。
 
-| v1 case group | 现有可复用证据/测试入口 | 必须新增或重接的关键断言 | 阶段 |
+| v1 case group | 现有可复用证据/测试入口 | 需要证明的关键行为（可复用已有断言） | 阶段 |
 | --- | --- | --- | --- |
 | V01 Plan/Store/Owner | `tests/storage/harness/contract-harness.js`，`tests/native/durable-commit.test.js`、`helpers/durable-commit-process.mjs` | 6 kinds、PlanRoot/revision/command 同 tx；same-ID different-payload 冲突；第二 Host拒绝；FS 5 fault stages；SQLite busy/commit；SQL 原 conditional CAS | P1 |
 | V02 Graph/control | 旧 agent-runtime/kernel/races/parallel/policy-controller 测试的仍有效不变量 | whole patch atomicity、active effect不可改、bounded循环累计、Review依赖闭包、父子持久身份、五种Join与late cutoff | P2 |
