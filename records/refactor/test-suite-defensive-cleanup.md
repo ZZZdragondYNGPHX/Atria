@@ -48,10 +48,11 @@
 - 发现并修复：Playwright Native fixture 在测试发现期导入 server 模块，未设置 config 时真实退出 1。配置现显式使用 committed default config，成功重新发现；未复制开发者 config 掩盖问题。
 - Next checkpoint: 简化真实生产读取/消息更新实现、孤立 iter-studio 模块、Jest 与 E2E 环境，运行直接相关行为验证。
 
-## Stage 2 — 生产边界与测试环境简化（进行中）
+## Stage 2 — 生产边界与测试环境简化
 
 - Start HEAD: `f436302a5`；期间外部治理任务追加指令同步提交，未覆盖其修改。
-- Status: Active
+- End HEAD: `7eb7565e3912cf11b45ec685e17f0a1d0f4c0ca7`；末尾引用/兼容 API 清理 `9d224819f`。
+- Status: Complete
 - 用户追加范围：清理同步到三个当前开发分支；已只读核对它们的 HEAD、dirty 状态与新增文件。最终同步后记录各分支提交和验证。
 - 删除没有生产消费者的 Orchestrator iter-studio 会话/显示/沙箱/读取模块，移动仍被 Memory Schema Studio 使用的 edit payload 至共享 iteration-library；删除两份测试中的镜像实现，直接执行生产消息更新函数，保留全批审批、拒绝、冲突、回滚、跨消息隔离与只读结果。
 - 读取字段去掉重复 stringify、未使用 enum 读取与虚构 circular/BigInt 截断信封；保留长文本原样读取、工具入参校验和 own-property 访问边界。
@@ -69,6 +70,49 @@
 - Native UI 测试实际捕获过期夹具：`.first()` 选中了新增内置作品，触发正确 Runtime 配置门禁；改为明确选择本测试 Package。又修正已变动的 toolbar/Extensions 名称与隐藏 ABI 的可访问性断言；没有移除产品任务绑定门禁。
 - Memory Context 真实新增了 applicability/displayGrant 信封与 hard-reserve 失败契约，旧字符串相等/预算不足成功断言过期；测试现在验证信封内完整源内容与明确的 overflow 拒绝。相应行为测试通过。
 
+### Runtime, persistence and security repairs
+
+- Native 旧 forkBranch/retryReply 接口已从当前生产实现删除。有效状态、历史、权限、认知与成本回归改用真实 Save → Restore；不恢复兼容接口。同 HEAD Restore 也生成新 Branch；恢复认知证据保留作者数据和引用、验证新 Branch/revision 锚点。
+- FS Native journal 当前提供原子事务，删除 Run Control/Runtime checkpoint 的重复人工补偿，失败断言改为没有部分发布。故障注入通过继承 transaction 后重写方法，避免 Journal Proxy 忽略直接赋值而假造测试成功。可移植导入失败不留下成本记录，最后定向 2/2 通过。
+- Project 重启恢复 Review 后，主动重新 Review 曾被 draft-only 门禁错误拒绝。改为允许显式重新准备、清除旧 commitIntent，仍拒绝 committing 期间修改和过期 Preview 提交。保留任务隔离、未知提交结果、CAS、真实文件与 Git 收据测试。
+- 删除 Generation Host 已被 AuthorityTransaction 替代的 free-text resolver 分支；保留当前权威选择、签名 replay、预算、权限及取消路径。
+- 实际修复 provider 夹具的 Anthropic/Gemini 终止事件、capture 执行绑定与 Native Studio role；修复后台任务夹具异常未释放 gate 而污染后续测试的问题。
+- 最后全仓搜索确认 `hasPendingSiblingsFor` 没有调用方，删除仅为历史测试保留的 API；2 文件 11 用例通过。清理指向已删除 Studio/E2E 的注释与数据库固定端口说明。
+
+### Actual local validation
+
+以下为各次直接相关执行的实际结果，有重复路径，不合计为独立用例总数：
+
+| 范围 | 最终结果 |
+| --- | --- |
+| Memory Graph、iteration library、schema iteration | 104 suites / 1,033 tests passed |
+| 工具真实注册边界 | 6 suites / 49 tests passed |
+| provider capture、Project recovery、authoring/experience actions | 4 suites / 110 tests passed |
+| authority/history/information/FS durability/capability retirement 修复组 | 5 suites / 70 tests passed |
+| Save、消息投影、actor/activity/turn、Agent sources 等有效契约 | 先前综合组 8 文件 / 354 passed；余下 4 文件失败随后包含于上一行的修复组，不把原综合组称为通过 |
+| Generation/DB/恢复边界定向组 | 10 文件 / 233 passed、2 skipped；其中 evolution 冲突断言后续定向 2 passed |
+| Retrieval、desire、continuation、background、cognition | 最终综合组 4 文件通过、288 passed、1 skipped、1 failed；最后 cognition FS 原子导入断言修复并另行 2 passed |
+| Runtime checkpoint consumer | 该文件通过，仍覆盖实时预算、权限/当前性和不透明 checkpoint |
+| Node `.test.mjs` contracts | 8/8 passed |
+| 当前 Native Product 浏览器 UI | 1 passed，真实本地服务与 Chromium |
+| Basic auth / CSRF E2E | 4 passed，真实本地服务 |
+| proposal bus 最后清理 | 2 suites / 11 tests passed |
+| 最终 Playwright discovery | 102 files / 300 tests 被发现；不是执行通过 |
+
+Native/storage 扩展组发现多处陈旧接口和 gate 泄漏，曾终止两次本任务的长时执行，保存失败事实后分组修复；未宣称完整套件通过。共享环境广泛执行的失败数字保留在前段，不用最终定向结果改写为原运行全绿。
+
+未运行完整 `npm test`、全量构建、全部 E2E、Android/客户端设备矩阵及 MySQL/Postgres 实库测试。Docker 与测试数据库凭证不可用；未配置的外部 DB 仅排除/显式跳过，不是通过。全部模型 HTTP 测试使用本地合成 fixture，无外部模型 API 调用。
+
+## Stage 3 — 开发分支同步与最终集成
+
+- Status: Active
+- 用户随后明确归档并删除 skill-routing，不再同步该分支。原工作树无未提交/未跟踪/忽略内容，原 HEAD `b0005b68dc113e068501047f478e54c0b3a13bf7` 已保存并推送 tag `archive/atria-project-skill-routing-2026-10-16`，删除本地/远端 `feat/atria-project-skill-routing` 和原工作树；清理未交付的本任务 sync-skills 工作树/分支。
+- 另两个开发分支先在隔离的 refactor 同步工作树应用本次语义提交，不合并 main。保留其新增测试与实现；新增分支测试/工具的逐文件静态清单见 [编排](test-suite-defensive-cleanup/development-orchestration.tsv)、[视觉](test-suite-defensive-cleanup/development-visual.tsv)。这些覆盖实际预算/权限/并发/CAS/未知提交/当前模型生产者，不因故障路径多而删除。
+- 编排起点 `0dcb97267a267ac05242bbb8a8bcbc7aad4ee104`：保留 turn producer proof 与 lane provenance、SQL host topology/lifecycle，采用显式数据库 URL。7 suites / 253 passed、5 skipped（未配置外部 DB），包含真实 Authority turn producer、generation send、turn finalization、Project producer、retrieval 和 migration。
+- 视觉起点 `00edac0a3ed93c70b676d6691ad042126eee6c5e`：首次有效组 4 passed / 2 failed；失败暴露资源类型未注册、Preview 过期保护缺失与 FS migration 原型比较问题。修复真实注册、提交前和副作用边界上的 Preview 复验、canonical JSON 对比；不弱化有效回归。复测继续记录。
+- 同步冲突自动处理脚本曾误截断文件，第一次执行语法错误未运行相关套件；恢复完整原始文件后重新解决冲突、逐文件语法检查并重新执行。错误修正于未推送的同步提交，不把失败计为通过。
+- [最终逐文件处理清单](test-suite-defensive-cleanup/final.tsv)、[最终汇总](test-suite-defensive-cleanup/final-summary.json)、[失效导入核对](test-suite-defensive-cleanup/reference-audit.json)。新增失效静态相对导入 0；基线原有缺失未作为新缺陷伪报。没有 workflows，CI 运行时间未测量。
+
 ### Next checkpoint
 
-完成共享配置影响范围的必要验证与余下实际失败修复，持久化实现；随后同步开发分支并处理各自差异，更新最终清单与统计。
+完成两个开发分支差异验证与同步，保存最终计数和各目标 HEAD，本地主线集成、远端存储并清理本任务临时分支/工作树。并行开发产生的提交及 dirty changes 保留。

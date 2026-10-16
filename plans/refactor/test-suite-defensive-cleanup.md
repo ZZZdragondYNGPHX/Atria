@@ -29,3 +29,5 @@
 ## Material design changes
 
 用户追加明确要求：本次清理同步到 `refactor/atria-native-orchestration-v3`、`feat/native-visual-generation-deepening`、`feat/atria-project-skill-routing`。主清理仍沿用原分支与本 Record；对开发分支的当前新增代码核对消费者、处理冲突并做最小相关验证，保留各自开发内容，不以 merge main 同步，不覆盖并行产生的未提交改动。
+
+用户随后取消 skill-routing 同步并授权删除该已归档分支；保留原 HEAD 的归档标签，删除开发分支及工作树。开发分支同步范围收敛为 native-orchestration-v3 与 native-visual-generation-deepening。

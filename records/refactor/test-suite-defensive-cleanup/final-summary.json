@@ -1,0 +1,24 @@
+{
+  "head": "7eb7565e3912cf11b45ec685e17f0a1d0f4c0ca7",
+  "files": 1314,
+  "test_tree_files": 1280,
+  "test_tree_lines": 222497,
+  "test_spec_files": 992,
+  "test_spec_lines": 174065,
+  "mock_module_calls": 424,
+  "repeated_distinct_8_line_blocks": 2031,
+  "files_with_repeated_blocks": 257,
+  "workflow_files": [],
+  "actions": {
+    "保留": 1205,
+    "重写": 104,
+    "删除": 303,
+    "新增": 5,
+    "合并": 4
+  },
+  "cleanup_commits": [
+    "f436302a5",
+    "7eb7565e3"
+  ],
+  "metric_notes": "物理行数包含注释、JSON、锁文件；连续8非空非注释行完全相同的块为文本指标，不代表等价测试比例。"
+}

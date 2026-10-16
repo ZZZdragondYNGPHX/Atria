@@ -1,0 +1,13 @@
+{
+  "head": "622068c7fe4087d09546c71dff28b2ad907564e6",
+  "files": 1420,
+  "test_tree_files": 1386,
+  "test_tree_lines": 237148,
+  "test_spec_files": 1087,
+  "test_spec_lines": 187883,
+  "mock_module_calls": 424,
+  "repeated_distinct_8_line_blocks": 2037,
+  "files_with_repeated_blocks": 264,
+  "workflow_files": [],
+  "start_head": "0dcb97267a267ac05242bbb8a8bcbc7aad4ee104"
+}

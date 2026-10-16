@@ -1,0 +1,1622 @@
+path	baseline_lines	final_lines	action	mock_modules	shared_8_line_blocks	reason
+.github/ISSUE_TEMPLATE/bug-report.yml	93	93	保留	0	0	当前测试关联配置
+.github/ISSUE_TEMPLATE/feature-request.yml	92	92	保留	0	0	当前测试关联配置
+.github/copilot-instructions.md	11	9	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+.github/issues-auto-comments.yml	69	69	保留	0	0	当前测试关联配置
+.github/issues-auto-labels.yml	20	20	保留	0	0	当前测试关联配置
+.github/pr-auto-comments.yml	61	61	保留	0	0	当前测试关联配置
+.github/pr-auto-labels-by-branch.yml	83	83	保留	0	0	当前测试关联配置
+.github/pr-auto-labels-by-files.yml	46	46	保留	0	0	当前测试关联配置
+.github/pull_request_template.md	11	7	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+.github/readme-de_de.md	103	103	保留	0	0	当前测试关联配置
+.github/readme-ja_jp.md	104	104	保留	0	0	当前测试关联配置
+.github/readme-ko_kr.md	103	103	保留	0	0	当前测试关联配置
+.github/readme-ru_ru.md	103	103	保留	0	0	当前测试关联配置
+.github/readme-zh_cn.md	104	104	保留	0	0	当前测试关联配置
+.github/readme-zh_tw.md	104	104	保留	0	0	当前测试关联配置
+.github/readme.md	105	105	保留	0	0	当前测试关联配置
+scripts/analyze-learning.js	32	32	保留	0	0	当前工具入口；本轮无已证实的冗余行为
+scripts/audit-storage-names.js	277	277	保留	0	7	当前工具入口；本轮无已证实的冗余行为
+scripts/check-a0-native-authoring-hard-cutover.mjs	106	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-a1-native-authoring-backend.mjs	106	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-a2-library-resource-architecture.mjs	53	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-a3-native-game-runtime-cutover.mjs	107	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-a4-experience-runtime.mjs	24	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-a5-plugin-skill-platform.mjs	66	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-a6-native-product-frontend.mjs	121	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-a7-studio-authoring-ux.mjs	102	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-a8-project-agent.mjs	128	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-a9-hard-cutover-product-finalization.mjs	119	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-atria-namespace.sh	37	37	保留	0	0	当前工具入口；本轮无已证实的冗余行为
+scripts/check-atria-workspace-ui.sh	36	36	保留	0	0	当前工具入口；本轮无已证实的冗余行为
+scripts/check-n10-native-hard-cutover.mjs	215	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-n9-native-product-authority.mjs	100	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-native-continuity-content.mjs	27	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-native-experience-contract-foundation.mjs	27	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-native-information-runtime.mjs	27	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-native-lifecycle-runtime.mjs	35	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-native-message-presentation.mjs	24	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-native-presentation-runtime.mjs	30	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-native-product-localization.mjs	195	195	保留	0	0	当前工具入口；本轮无已证实的冗余行为
+scripts/check-native-shared-runtime.mjs	23	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-native-studio-health.mjs	19	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-native-task-runtime.mjs	19	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-p0-model-prompt-runtime-architecture.mjs	118	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-p1-model-prompt-resource-foundation.mjs	89	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-p2-generation-core.mjs	74	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-p3-prompt-compiler.mjs	33	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-p4-native-generation.mjs	38	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-p5-native-runtime-ui.mjs	28	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-p6-native-authoring.mjs	18	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-p7-product-cleanup.mjs	24	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-p8-model-prompt-integration.mjs	45	0	删除	0	0	历史阶段门禁；源码字符串/物理缺席断言与运行时行为重复，非现行产品命令
+scripts/check-plugin-imports.js	252	252	保留	0	0	当前工具入口；本轮无已证实的冗余行为
+scripts/check-skill-intensity.js	143	143	保留	0	0	当前工具入口；本轮无已证实的冗余行为
+scripts/prebuild-frontend-cache.js	32	32	保留	0	0	当前工具入口；本轮无已证实的冗余行为
+scripts/storage-migrate.js	693	693	保留	0	12	当前工具入口；本轮无已证实的冗余行为
+scripts/sync-real-data-verify.js	531	531	保留	0	30	当前工具入口；本轮无已证实的冗余行为
+scripts/termux/TOOLBOX_REFACTOR_V0.3.0.md	36	36	保留	0	0	当前工具入口；本轮无已证实的冗余行为
+scripts/termux/atria.sh	443	443	保留	0	0	当前工具入口；本轮无已证实的冗余行为
+scripts/termux/atria_toolbox.runtime.sh.gz	482	482	保留	0	0	当前工具入口；本轮无已证实的冗余行为
+scripts/termux/atria_toolbox.sh	712	712	保留	0	0	当前工具入口；本轮无已证实的冗余行为
+scripts/termux/dist/atria_toolbox_v0.3.0.b64.part1	1	1	保留	0	0	当前工具入口；本轮无已证实的冗余行为
+scripts/termux/dist/atria_toolbox_v0.3.0.b64.part2	1	1	保留	0	0	当前工具入口；本轮无已证实的冗余行为
+scripts/termux/fix-better-sqlite3.sh	77	77	保留	0	0	当前工具入口；本轮无已证实的冗余行为
+scripts/termux/setup.sh	85	85	保留	0	0	当前工具入口；本轮无已证实的冗余行为
+tests/.eslintrc.cjs	78	66	重写	0	0	简化环境/脚本/共享工具或移除混合文件内历史字符串断言
+tests/README.md	0	36	新增	0	0	真实生产函数契约或显式测试环境；新增当前执行入口
+tests/agent-intelligence/README.md	465	426	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/agent-intelligence/adapters.js	300	300	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/baseline.mjs	33	33	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/baseline.test.js	169	169	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/budget.js	94	94	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/capture.test.js	230	232	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/agent-intelligence/cases.js	70	70	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/comparison.js	275	275	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/comparison.mjs	34	34	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/comparison.test.js	146	146	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/evaluation-json.test.js	11	11	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/evaluation-revision.test.js	26	26	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/evaluation-settings.js	36	36	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/evaluation-skill-work.test.js	56	56	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/evolution-consumers.test.js	109	109	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/evolution-edits.test.js	28	28	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/evolution-fixture.js	204	204	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/evolution-http.test.js	25	25	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/evolution-partial.test.js	34	34	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/evolution.test.js	203	204	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/agent-intelligence/f2-sources.test.js	449	450	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/agent-intelligence/feedback-contracts.test.js	240	241	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/agent-intelligence/feedback.test.js	335	335	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/judge.js	130	130	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/judge.test.js	79	79	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/learning-cli.test.js	92	92	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/learning-optimizer.test.js	140	140	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/learning-trajectory.test.js	154	154	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/live-bridge.js	145	145	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/live-bridge.test.js	165	165	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/live.mjs	103	103	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-acceptance.js	72	72	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-acceptance.test.js	103	103	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-body-timeout.test.js	41	41	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-development-selection.test.js	78	78	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-f2.js	375	375	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-f3-lifecycle.test.js	165	165	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-f3-promotion.js	252	252	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-f3-promotion.test.js	122	122	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-f3.js	639	639	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-f3.test.js	529	530	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/agent-intelligence/m1-grader.js	97	97	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-grader.test.js	104	104	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-live.mjs	711	711	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-private-access.js	13	13	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-quota.js	83	83	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-quota.test.js	67	67	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-renewal.test.js	87	87	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-response.js	51	51	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-response.test.js	16	16	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-resume.js	9	9	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-resume.test.js	101	101	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-retry.js	92	92	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-retry.test.js	180	180	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-secrets.js	13	13	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-transport-key.js	13	13	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m1-transport-key.test.js	46	46	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/m4-live.js	259	259	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/private-test-run.js	33	33	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/private-test-run.test.js	37	37	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/project-fixture.js	19	19	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/project-recovery.test.js	327	331	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/agent-intelligence/project-strategy.test.js	170	170	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/recovery-budget.test.js	50	50	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/report.js	186	186	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/runner-failure.test.js	23	23	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/runner.js	133	133	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/s21-live.mjs	200	200	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/s21-longitudinal-live.js	261	261	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/s23-live.mjs	142	142	保留	0	8	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/s25-live.js	240	240	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/s26-live.js	315	315	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/s27-live.js	197	197	保留	0	8	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/s34-live.js	139	139	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/sealed-pairs.test.js	54	54	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/session-copy.js	53	53	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-intelligence/sources.test.js	275	275	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/agent-runtime/atri-agenda-defaults.test.js	82	83	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/agent-runtime/context-ports.test.js	84	84	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-runtime/durable-recovery.test.js	197	197	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-runtime/engine-kernel.test.js	155	155	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-runtime/engine-mode-recovery.test.js	105	105	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-runtime/fakes.js	29	29	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-runtime/handoff-routing.test.js	122	122	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-runtime/kernel.test.js	161	161	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-runtime/legacy-adapter.test.js	45	45	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-runtime/legacy-workflow.test.js	85	85	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-runtime/native-orchestration-prompts.test.js	85	86	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/agent-runtime/parallel.test.js	225	225	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-runtime/policy-controller.test.js	87	87	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-runtime/prepared-context.test.js	65	65	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-runtime/preset-compiler.test.js	22	22	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-runtime/projection.test.js	128	128	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-runtime/races.test.js	55	55	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-runtime/tool-batch.test.js	93	93	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-runtime/workspace-agent-editing.test.js	89	90	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/agent-runtime/workspace-call-counts.test.js	42	42	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-runtime/workspace-host.test.js	62	63	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/agent-runtime/workspace-preset-help.test.js	102	102	保留	4	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-runtime/workspace-presets.test.js	65	65	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/agent-runtime/workspace-prompt-versions.test.js	131	132	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/agent-runtime/workspace-state.test.js	121	122	重写	1	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/agent-runtime/workspace-strategy-versions.test.js	186	187	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/announcements.test.js	224	224	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-android-debug-trail.test.js	85	85	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/chat-completions-handler.test.js	162	162	保留	0	9	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/context.test.js	289	289	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/gemini-history-cache.test.js	134	134	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/job-events-shape.test.js	261	261	保留	0	9	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/providers/ai21.test.js	173	173	保留	0	72	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/providers/aimlapi.test.js	174	174	保留	0	76	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/providers/azure-openai.test.js	185	185	保留	0	58	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/providers/chutes.test.js	171	171	保留	0	72	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/providers/claude.test.js	356	356	保留	0	41	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/providers/cohere.test.js	229	229	保留	0	37	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/providers/deepseek.test.js	174	174	保留	0	72	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/providers/electronhub.test.js	173	173	保留	0	72	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/providers/kobold.test.js	368	368	保留	0	31	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/providers/makersuite.test.js	459	459	保留	0	31	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/providers/minimax.test.js	176	176	保留	0	56	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/providers/mistralai.test.js	188	188	保留	0	72	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/providers/novelai.test.js	220	220	保留	0	26	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/providers/openai-compatible.test.js	779	779	保留	0	20	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/providers/openai-responses.test.js	161	161	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/providers/text-completions.test.js	456	456	保留	0	27	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/providers/xai.test.js	172	172	保留	0	72	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/response-stream.test.js	87	87	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/runner-close-hooks.test.js	167	167	保留	0	4	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/runner-trailer-persisted.test.js	111	111	保留	1	11	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/runner-trailer.test.js	131	131	保留	0	11	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-dispatch/runner.test.js	222	222	保留	0	9	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-generation-task-store.test.js	64	64	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-generation.test.js	639	639	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/app-shell.test.js	311	311	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/appearance.test.js	50	50	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/asset-editor.test.js	46	46	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/back-resolver.test.js	81	81	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/command-registry.test.js	70	70	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/conversation-window.test.js	36	36	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/embedded-knowledge-promotion.test.js	27	27	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/entry-localization.test.js	24	24	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/environment.test.js	96	96	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/extension-runtime.test.js	157	157	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/hard-cutover-a9.test.js	62	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/atria-shell/knowledge-binding-manager.test.js	37	37	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/knowledge-browser.test.js	24	24	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/knowledge-editor.test.js	67	67	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/learning-center.test.js	26	26	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/library-import-flow.test.js	82	82	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/library-interactions.test.js	89	89	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/library-revision-history.test.js	13	13	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/library-runtime-workspaces.test.js	184	184	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/localization.test.js	62	62	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/memory-native-routing.test.js	47	47	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/memory-workspace-lifecycle.test.js	18	18	保留	2	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/native-generation-controller.test.js	64	64	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/native-generation-p4.test.js	64	64	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/native-keyboard-compatibility.test.js	26	26	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/native-personas.test.js	56	56	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/native-play-controls.test.js	236	236	保留	0	7	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/native-play-host.test.js	210	210	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/native-play-product.test.js	353	353	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/native-product-workspaces.test.js	445	445	保留	0	12	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/native-reply-variants.test.js	131	131	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/native-runtime-p5.test.js	372	372	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/navigation-authority.test.js	114	114	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/package-library-resources.test.js	25	25	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/package-permissions.test.js	23	23	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/paper-transition.test.js	30	30	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/preference-controls.test.js	34	34	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/preference-save-state.test.js	16	16	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/product-errors.test.js	40	40	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/product-localization-coverage.test.js	57	57	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/product-search.test.js	160	160	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/project-lifecycle.test.js	31	31	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/prompt-authoring-p6.test.js	178	178	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/prompt-preset-receipt.test.js	28	28	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/prompt-runtime-controls.test.js	47	47	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/prompt-semantics.test.js	43	43	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/reference-remediation.test.js	29	29	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/regex-scope-readiness.test.js	43	43	保留	4	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/resource-bundle-controls.test.js	25	25	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/resource-reference-rows.test.js	39	39	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/runtime-readiness.test.js	68	68	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/runtime-route-picker.test.js	31	31	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/save-dependency-recovery.test.js	17	17	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/session-history.test.js	20	20	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/session-naming.test.js	24	24	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/settings-workspace.test.js	40	40	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/skill-declarations-editor.test.js	51	51	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/source-editor.test.js	74	74	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/structure.test.js	121	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/atria-shell/studio-actors-editor.test.js	67	67	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/studio-agent-a8.test.js	408	408	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/studio-authoring.test.js	69	69	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/studio-entrypoints-editor.test.js	83	83	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/studio-experience-p9.test.js	51	51	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/studio-frontend-editor.test.js	20	20	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/studio-knowledge-editor.test.js	64	64	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/studio-runtime-cp2.test.js	57	57	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/studio-value-editor.test.js	77	77	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/studio-workspace-a7.test.js	554	554	保留	0	8	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/studio-worlds-editor.test.js	70	70	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/theme-model.test.js	49	49	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/theme-service.test.js	97	97	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/utility-workspaces.test.js	187	187	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/visual-gallery-states.test.js	66	66	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/workspace-host.test.js	700	700	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/workspace-leave-guard.test.js	112	112	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/atria-shell/world-editor.test.js	60	60	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/backup-retention.test.js	203	203	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/backup-sync/jobs/manager.test.js	62	62	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/backup-sync/providers/registry.test.js	45	45	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/backup-sync/restore-cancel.test.js	40	40	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/backup-sync/restore-entry-extractor.test.js	222	222	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/backup-sync/restore-recovery-retention.test.js	83	83	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/backup-sync/restore-staging.test.js	98	98	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/backup-sync/restore-targets.test.js	50	50	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/basicAuth.test.js	166	166	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/bookmarks/_mocks/checkpoint-module-stack.js	256	256	保留	18	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/bookmarks/_mocks/group-chats-exports.js	46	46	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/bookmarks/_mocks/script-exports.js	333	333	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/bookmarks/checkpoint-group.test.js	44	44	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/bookmarks/checkpoint-nosource.test.js	25	25	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/bookmarks/checkpoint-solo.test.js	62	62	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/bootstrap-version-snapshot.test.js	22	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/byaf-import.test.js	73	73	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/character-presets/character-bound-preset-state-active.test.js	192	192	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/character-presets/codec.test.js	29	29	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/character-presets/ctx-dispatch.test.js	627	628	重写	46	306	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/character-presets/ctx-selected-live-state.test.js	541	546	重写	47	306	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/character-presets/inspect-bound-preset-tool.test.js	180	180	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/character-presets/inspect-bound-preset-wiring.test.js	30	30	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/character-presets/main-chat-selector.test.js	76	76	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/character-presets/openai-has-unsaved-changes.test.js	191	191	保留	2	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/character-presets/orchestrator-collect-unembedded.test.js	150	150	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/character-presets/rename-character-bound-preset.test.js	133	133	保留	2	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/character-presets/save-dispatch.test.js	103	103	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/character-presets/unit.test.js	273	273	保留	2	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/characters-merge-attributes.test.js	167	167	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/chat-backups.test.js	78	78	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/chat-info.test.js	130	130	保留	0	4	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/chat-integrity.test.js	167	167	保留	0	4	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/chats-recent-index.test.js	56	56	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/client-startup-telemetry.test.js	77	77	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/client/openai-responses.test.js	85	85	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/compression-policy.test.js	32	32	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/config-init.test.js	42	42	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/cpa-ide-mode/apply.test.js	40	40	保留	0	8	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/cpa-ide-mode/drift.test.js	77	77	保留	0	8	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/cpa-ide-mode/promise-clone-safety.test.js	80	80	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/cpa-ide-mode/rollback.test.js	62	62	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/debug-export-android-bridge.test.js	76	76	保留	6	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/AGENT_BRIEF.md	161	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/e2e/README.md	89	23	重写	0	0	简化环境/脚本/共享工具或移除混合文件内历史字符串断言
+tests/e2e/_lib/README.md	26	12	重写	0	0	简化环境/脚本/共享工具或移除混合文件内历史字符串断言
+tests/e2e/_lib/db-containers.js	153	153	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/_lib/fixtures.js	482	143	重写	0	0	简化环境/脚本/共享工具或移除混合文件内历史字符串断言
+tests/e2e/_lib/mockLLM.js	939	939	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/_lib/mockllm-responses.test.js	74	74	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/_lib/page.js	963	378	重写	0	1	简化环境/脚本/共享工具或移除混合文件内历史字符串断言
+tests/e2e/_lib/ports.js	60	13	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/e2e/_lib/server.js	381	106	重写	0	0	简化环境/脚本/共享工具或移除混合文件内历史字符串断言
+tests/e2e/_lib/storage-ui.js	63	63	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/_lib/sync.js	332	332	保留	0	21	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/_lib/ui-character.js	294	99	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/e2e/_lib/ui-chat-merge-split.js	178	0	删除	0	0	实施核对后删除无消费者辅助模块/其自测，或退役 Orchestrator iter-studio 专属测试；共享实际行为保留
+tests/e2e/_lib/ui-iter-studio.js	217	0	删除	0	0	实施核对后删除无消费者辅助模块/其自测，或退役 Orchestrator iter-studio 专属测试；共享实际行为保留
+tests/e2e/_lib/ui-mg-varops.js	184	0	删除	0	0	实施核对后删除无消费者辅助模块/其自测，或退役 Orchestrator iter-studio 专属测试；共享实际行为保留
+tests/e2e/_lib/ui-persona-preset.js	172	0	删除	0	0	实施核对后删除无消费者辅助模块/其自测，或退役 Orchestrator iter-studio 专属测试；共享实际行为保留
+tests/e2e/_lib/ui-worldinfo.js	319	0	删除	0	0	实施核对后删除无消费者辅助模块/其自测，或退役 Orchestrator iter-studio 专属测试；共享实际行为保留
+tests/e2e/_smoke/sanity-sqlite.e2e.js	79	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/_smoke/sanity.e2e.js	69	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/atria-shell/01-foundation.e2e.js	384	384	保留	0	4	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/atria-shell/02-native-actions.e2e.js	248	248	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/atria-shell/03-game-surfaces.e2e.js	116	116	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/atria-shell/04-navigation.e2e.js	459	459	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/atria-shell/05-workspaces.e2e.js	155	155	保留	0	10	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/atria-shell/06-library-runtime.e2e.js	85	85	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/atria-shell/07-plugins-settings.e2e.js	242	242	保留	0	10	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/atria-shell/08-final-hardening.e2e.js	103	103	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/atria-shell/08-personas.e2e.js	138	138	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/atria-shell/09-immersive-integration.e2e.js	197	197	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/atria-shell/10-edge-dock.e2e.js	161	161	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/atria-shell/11-settings-themes.e2e.js	243	243	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/backup-sync-center/01-shell-and-preflight.e2e.js	348	348	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/browser-storage-inspector/01-enumerate-and-drill.e2e.js	106	106	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/browser-storage-inspector/02-delete-localstorage-key.e2e.js	70	70	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/browser-storage-inspector/03-delete-indexeddb.e2e.js	91	91	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/browser-storage-inspector/04-delete-cachestorage.e2e.js	50	50	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/browser-storage-inspector/05-mobile-and-cancel.e2e.js	63	63	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/browser-storage-inspector/06-crud-records.e2e.js	161	161	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/browser-storage-inspector/_helpers.js	117	117	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/character/15-import-png.e2e.js	173	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/character/16-import-json.e2e.js	104	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/character/17-import-charx.e2e.js	109	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/character/18-import-byaf.e2e.js	149	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/character/19-create-blank.e2e.js	208	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/character/20-edit-fields.e2e.js	86	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/character/21-avatar-upload.e2e.js	103	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/character/22-duplicate.e2e.js	138	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/character/22b-merge-attributes.e2e.js	142	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/character/23-delete-cascade.e2e.js	151	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/character/23b-bulk-edit.e2e.js	170	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/character/24-replace-world-book-entries.e2e.js	162	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/character/25-replace-popup-three-choices.e2e.js	517	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/character/26-replace-world-book-paths.e2e.js	341	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/character/27-import-embedded-persists-binding.e2e.js	205	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/character/28-replace-real-llm-sweep.e2e.js	786	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/character/_helpers.js	235	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/01-first-turn-persistence.e2e.js	107	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/02-streaming-vs-non-streaming.e2e.js	189	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/03-multi-swipe.e2e.js	192	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/04-edit-user-message.e2e.js	86	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/05-edit-assistant-message.e2e.js	84	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/06-delete-single-message.e2e.js	131	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/07-delete-from-here-truncate.e2e.js	143	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/08-continue.e2e.js	67	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/09-regenerate.e2e.js	105	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/10-impersonate.e2e.js	63	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/11-abort-mid-stream.e2e.js	99	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/12-branch-regression.e2e.js	151	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/13-rename-chat.e2e.js	116	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/13c-recent-index.e2e.js	157	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/14-export-import-roundtrip.e2e.js	259	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/15-merge-basic.e2e.js	138	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/16-merge-three-reorder.e2e.js	124	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/17-merge-name-conflict.e2e.js	145	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/18-merge-trim-ranges.e2e.js	143	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/19-merge-repeat-source.e2e.js	109	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/20-split-basic.e2e.js	148	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/21-split-merge-roundtrip.e2e.js	124	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/22-merge-state-isolation.e2e.js	129	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/23-merge-db-mode.e2e.js	132	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/chat/openai-responses.e2e.js	513	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/entry/01-entry-surfaces.e2e.js	288	288	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/entry/02-settings-profile.e2e.js	79	79	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/entry/03-account-backup.e2e.js	148	148	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/entry/04-account-signout.e2e.js	43	43	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/extensions/89-regex-pre-and-post.e2e.js	159	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/extensions/91-authors-note-depth.e2e.js	158	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/extensions/97-slash-commands.e2e.js	375	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/extensions/98-function-call-runtime.e2e.js	152	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/generation-basic/abort.e2e.js	142	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/generation-basic/basic.e2e.js	101	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/generation-basic/close-tab-ui-recovery.e2e.js	222	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/generation-basic/close-tab.e2e.js	268	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/generation-basic/iframe-fetch-proxy.e2e.js	197	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/generation-basic/kimi-partial.e2e.js	218	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/generation-basic/persist-to-disk.e2e.js	202	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/generation-basic/plugin-reconnect.e2e.js	173	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/generation-basic/plugin-request.e2e.js	169	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/generation-basic/reconnect.e2e.js	147	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/groups/84-rotation.e2e.js	137	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/groups/86-disable-member.e2e.js	92	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/groups/87-director-pick-speaker.e2e.js	211	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/groups/88-persist-branch-export.e2e.js	366	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/groups/89-group-merge.e2e.js	260	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/groups/_helpers.js	574	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/iterstudio/79-cpa-apply-global-persist.e2e.js	112	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/iterstudio/80-mg-schema-apply-persist.e2e.js	112	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/iterstudio/81-orch-director-apply-persist.e2e.js	124	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/iterstudio/82-cea-character-apply-persist.e2e.js	128	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/iterstudio/83-apply-paths-canonical-write-audit.e2e.js	196	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/iterstudio/84-migration-from-v2.e2e.js	134	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/iterstudio/85-cea-wi-entry-edit.e2e.js	101	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/iterstudio/86-orch-loop-apply-persist.e2e.js	135	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/iterstudio/87-orch-agenda-apply-persist.e2e.js	109	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/iterstudio/88-orch-spec-apply-persist.e2e.js	115	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/iterstudio/89-orch-director-read-first-flow.e2e.js	212	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/iterstudio/90-orch-anchor-drift-diagnosis.e2e.js	186	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/iterstudio/_helpers.js	5	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/memorygraph/52-extract-render-persist.e2e.js	218	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/memorygraph/53-session-write-floor-anchor.e2e.js	266	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/memorygraph/54-mg-apply-multi-edit.e2e.js	278	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/memorygraph/55-branch-isolates-source-mg.e2e.js	243	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/memorygraph/56-schema-add-field-persists.e2e.js	143	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/memorygraph/57-import-no-id-collision.e2e.js	230	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/memorygraph/58-vector-index-rebuild.e2e.js	253	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/memorygraph/59-read-api-search.e2e.js	211	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/memorygraph/60-mg-var-ops-cooperation.e2e.js	182	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/memorygraph/65-extract-payload-keeps-old-floors.e2e.js	183	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/memorygraph/66-plugin-lane-applied-once.e2e.js	219	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/memorygraph/67-crawl-mode-extract.e2e.js	248	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/memorygraph/memory-os-enabled.e2e.js	116	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/native-session/01-live-runtime.e2e.js	582	582	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/02-product-ui.e2e.js	163	161	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/e2e/native-session/03-native-generation-p4.e2e.js	118	118	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/04-native-runtime-p5.e2e.js	99	99	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/05-compute-budget-g06.e2e.js	49	49	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/05-native-authoring-p6.e2e.js	99	99	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/06-native-cleanup-p7.e2e.js	67	67	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/07-play-redesign.e2e.js	401	401	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/08-library-redesign.e2e.js	276	276	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/08-prompt-controls.e2e.js	90	90	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/09-runtime-redesign.e2e.js	307	307	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/10-studio-redesign.e2e.js	343	343	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/11-utilities-redesign.e2e.js	286	286	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/12-native-agent-routes.e2e.js	245	245	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/13-native-knowledge.e2e.js	430	430	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/14-native-authoring.e2e.js	260	260	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/14-native-controls.e2e.js	208	208	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/15-knowledge-workflows.e2e.js	75	75	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/15-native-portability.e2e.js	277	277	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/16-native-search.e2e.js	54	54	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/16-prompt-presets.e2e.js	368	368	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/17-knowledge-originals.e2e.js	100	100	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/17-native-localization.e2e.js	68	68	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/17-regex-scopes.e2e.js	174	174	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/18-experience-p9.e2e.js	168	168	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/19-extension-runtime.e2e.js	74	74	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/20-extensions-ui.e2e.js	129	129	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/21-task-binding-preflight.e2e.js	163	163	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/22-visual-media.e2e.js	111	111	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/28-studio-actors.e2e.js	133	133	保留	0	12	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/29-studio-entrypoints.e2e.js	153	153	保留	0	15	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/30-studio-worlds.e2e.js	116	116	保留	0	14	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/31-studio-knowledge.e2e.js	115	115	保留	0	14	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/native-session/_helpers.js	285	285	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/orchestrator/49-director-cardbound-roundtrip.e2e.js	294	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/orchestrator/67-director-rp-roundtrip-bubble-fidelity.e2e.js	126	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/orchestrator/68-run-panel-stream-final-commit.e2e.js	145	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/orchestrator/71-critic-regex-search-flow.e2e.js	221	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/orchestrator/74-capsule-injection-main-and-sub-share.e2e.js	278	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/orchestrator/75-abort-mid-run.e2e.js	203	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/orchestrator/78-multi-skill-visible-director-and-subagent.e2e.js	172	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/orchestrator/79-lorebook-filter-loop.e2e.js	433	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/orchestrator/80-lorebook-filter-director.e2e.js	336	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/orchestrator/81-dispatch-barrier-first-chunk-serialization.e2e.js	331	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/personas/100-persona-character-binding.e2e.js	247	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/personas/101-persona-avatar-upload.e2e.js	131	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/personas/102-settings-panels-persist.e2e.js	139	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/personas/103-i18n-language-switch.e2e.js	123	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/personas/104-user-create-and-password.e2e.js	142	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/personas/105-per-user-isolation-ui.e2e.js	211	211	保留	0	23	用户隔离与认证安全契约；不随旧 Persona UI 一并删除
+tests/e2e/personas/105-per-user-isolation.e2e.js	168	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/personas/106-announcements-broadcast.e2e.js	151	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/personas/106-oauth-login-hardening.e2e.js	240	240	保留	0	0	用户隔离与认证安全契约；不随旧 Persona UI 一并删除
+tests/e2e/personas/107-default-avatar-resolves.e2e.js	129	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/personas/107b-oauth-avatar-seed.e2e.js	259	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/personas/99-create-and-switch-persona.e2e.js	102	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/personas/_helpers.js	150	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/33-save-switch-reflect.e2e.js	99	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/33b-character-default-preset.e2e.js	103	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/34-export-import-roundtrip.e2e.js	121	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/35-character-bound-auto-switch.e2e.js	102	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/36-embedded-skills-roundtrip.e2e.js	215	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/37-iter-studio-apply-global.e2e.js	112	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/38-patch-threshold-persistence.e2e.js	139	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/39-character-bound-edit-sync.e2e.js	180	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/40-card-multi-slot-optgroup.e2e.js	127	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/41-prompt-manager-card-bound-edit.e2e.js	170	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/42-cpa-card-bound-transparent.e2e.js	166	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/43-bind-and-manage.e2e.js	494	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/43b-clear-with-salvage.e2e.js	401	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/45-card-vs-local-same-name.e2e.js	184	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/47-orch-inspect-bound-preset.e2e.js	269	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/48-cea-inspect-bound-preset.e2e.js	212	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/49-card-bound-preset-export-import.e2e.js	228	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/50-iter-studio-apply-embed-summary.e2e.js	359	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/50b-cardbound-active-desync.e2e.js	233	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/51-cardbound-export.e2e.js	228	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/52-cardbound-export-import-roundtrip.e2e.js	272	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/53-cardbound-rename.e2e.js	143	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/54-cardbound-rename-collision-in-card.e2e.js	99	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/55-cardbound-rename-collision-across-origin.e2e.js	120	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/56-cardbound-delete-guard.e2e.js	221	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/58-hasUnsavedChanges-collision.e2e.js	190	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/59-hasUnsavedChanges-name-mismatch.e2e.js	142	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/60-cardbound-active-onSettingsPresetChange.e2e.js	170	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/61-cardbound-rename-from-dialog.e2e.js	160	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/62-cardbound-remove-promote-to-global.e2e.js	449	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/63-prompt-group-drag-into.e2e.js	262	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/64-card-bound-third-party-compat.e2e.js	289	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/64b-jsr-live-integration.e2e.js	189	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/preset/_helpers.js	190	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/regression/107-uploads-enoent-selfheal.e2e.js	136	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/regression/112-worldinfo-cache-key-trim.e2e.js	113	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/regression/116-ios-keyboard-viewport.e2e.js	101	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/regression/118-iter-studio-batch-approval-gate.e2e.js	393	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/regression/118-recent-chat-phantom-mint.e2e.js	133	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/regression/125-orch-preset-switch-persist.e2e.js	113	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/regression/126-tiktoken-worker-offthread.e2e.js	158	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/regression/127-branch-reload-recent-chat.e2e.js	158	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/regression/128-rebuild-keeps-chat-pointer.e2e.js	122	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/regression/129-welcome-rename-pointer.e2e.js	139	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/server/39-connection-profile-switch.e2e.js	170	170	保留	0	40	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/server/41-four-backend-sources.e2e.js	254	254	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/server/42-empty-url-error.e2e.js	97	97	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/server/43-profile-isolation.e2e.js	167	167	保留	0	44	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/server/44-live-three-backends.e2e.js	114	114	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/server/45-uploads-self-heal.e2e.js	117	117	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/server/46-multi-user-isolation.e2e.js	233	233	保留	0	5	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/server/47-basic-auth-csrf.e2e.js	231	231	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/server/48-private-filter-ws-proxy.e2e.js	100	100	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/server/49-attachment-in-prompt.e2e.js	107	107	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/server/50-large-character-import.e2e.js	170	170	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/server/51-data-maid-orphan.e2e.js	102	102	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/server/52-additional-params-save-and-update-bug.e2e.js	301	301	保留	0	21	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage-center/center.e2e.js	316	316	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage-inspector/01-self-drilldown.e2e.js	142	142	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage-inspector/02-sensitive-and-refresh.e2e.js	107	107	保留	0	6	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage-inspector/03-mobile-viewport.e2e.js	69	69	保留	0	5	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage-inspector/_helpers.js	74	74	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage/cross-mode-recovery/01-fs-to-sqlite.e2e.js	29	29	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage/cross-mode-recovery/02-sqlite-to-fs.e2e.js	23	23	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage/cross-mode-recovery/03-fs-to-mysql.e2e.js	21	21	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage/cross-mode-recovery/04-mysql-to-fs.e2e.js	19	19	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage/cross-mode-recovery/05-fs-to-postgres.e2e.js	19	19	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage/cross-mode-recovery/06-postgres-to-fs.e2e.js	19	19	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage/cross-mode-recovery/07-sqlite-to-mysql.e2e.js	19	19	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage/cross-mode-recovery/08-mysql-to-sqlite.e2e.js	19	19	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage/cross-mode-recovery/09-sqlite-to-postgres.e2e.js	19	19	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage/cross-mode-recovery/10-postgres-to-sqlite.e2e.js	19	19	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage/cross-mode-recovery/11-mysql-to-postgres.e2e.js	19	19	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage/cross-mode-recovery/12-postgres-to-mysql.e2e.js	19	19	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage/cross-mode-recovery/99-real-data-sqlite-to-fs.e2e.js	275	275	保留	0	39	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage/cross-mode-recovery/_lib/parity-verify.js	608	608	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage/cross-mode-recovery/_lib/real-data.js	186	186	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage/cross-mode-recovery/_lib/recovery-flow.js	407	407	保留	0	39	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage/migrate-fs-to-sqlite.e2e.js	90	90	保留	0	6	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/storage/migrate-sqlite-to-fs.e2e.js	82	82	保留	0	6	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/sync/01-pair-and-first-sync.e2e.js	130	130	保留	0	8	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/sync/02-disjoint-clean-sync.e2e.js	121	121	保留	0	11	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/sync/03-conflict-bothModified.e2e.js	145	145	保留	0	24	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/sync/04-delete-vs-edit.e2e.js	125	125	保留	0	24	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/sync/05-category-toggle-and-undo.e2e.js	121	121	保留	0	18	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/sync/06-sqlite-per-record-conflict.e2e.js	237	237	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/sync/07-multi-user-pair-and-sync.e2e.js	206	206	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/sync/08-handle-mismatch-rejection.e2e.js	165	165	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/sync/09-mysql-mode-pair-and-sync.e2e.js	186	186	保留	0	58	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/sync/10-postgres-mode-pair-and-sync.e2e.js	148	148	保留	0	44	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/sync/11-cross-engine-sync.e2e.js	196	196	保留	0	55	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/sync/walkthrough-screenshots.e2e.js	280	280	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/e2e/varops/61-multiple-var-ops-per-turn.e2e.js	150	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/varops/61b-conditional-var-op.e2e.js	127	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/varops/62-floor-state-inspector-ui.e2e.js	116	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/varops/63-rollback-one-turn.e2e.js	205	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/varops/64-vars-persist-across-restart.e2e.js	168	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/varops/65-malformed-op-no-pollute.e2e.js	159	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/varops/66-variable-op-log-e2e.e2e.js	160	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/worldinfo/25-activation-strategies.e2e.js	312	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/worldinfo/26-cache-key-trim.e2e.js	247	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/worldinfo/27-bind-character-switch.e2e.js	246	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/worldinfo/28-chat-lore-binding.e2e.js	319	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/worldinfo/29-import-export-roundtrip.e2e.js	280	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/worldinfo/30-bulk-edit.e2e.js	196	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/worldinfo/31-recursive-activation.e2e.js	294	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/worldinfo/32-vectorized-entries.e2e.js	387	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/worldinfo/33-import-array-form-entries.e2e.js	209	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/worldinfo/34-workspace-ui.e2e.js	400	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/e2e/worldinfo/_helpers.js	266	0	删除	0	0	旧 Chat/Character/扩展 UI 入口已隐藏或退役；Native Play/Session/Studio 回归替代，数据与协议单测保留
+tests/edits/engine.test.js	66	66	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/edits/inverse.test.js	76	76	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/edits/ops/list-insert.test.js	96	96	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/edits/ops/list-move.test.js	95	95	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/edits/ops/list-remove.test.js	96	96	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/edits/ops/set.test.js	112	112	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/edits/ops/str-delete.test.js	70	70	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/edits/ops/str-insert.test.js	71	71	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/edits/ops/str-replace.test.js	107	107	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/edits/ops/unset.test.js	97	97	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/edits/registry.test.js	70	70	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/endpoints/chats-group-merge-split.test.js	180	180	保留	3	29	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/endpoints/chats-merge.test.js	167	167	保留	3	50	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/endpoints/chats-split.test.js	163	163	保留	3	50	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/endpoints/generation-control.test.js	126	126	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/endpoints/skills.test.js	235	235	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/endpoints/users-admin-migration.test.js	402	406	重写	16	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/extension-field-write-semantics.test.js	152	152	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/floor-state/compaction-floor-anchor.test.js	350	350	保留	0	16	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/floor-state/core.test.js	351	351	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/floor-state/instance.test.js	1840	1840	保留	0	87	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend-bootstrap-order.test.js	20	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/frontend-bootstrap-ws-overlap.test.js	20	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/frontend-dom-ready-bootstrap.test.js	18	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/frontend-lazy-account-management.test.js	36	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/frontend-lazy-audio-player.test.js	22	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/frontend-lazy-bulk-edit-overlay.test.js	37	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/frontend-lazy-chat-skill-tools.test.js	47	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/frontend-lazy-cropper.test.js	36	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/frontend-lazy-request-inspector.test.js	29	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/frontend-lazy-select2.test.js	104	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/frontend-lazy-variable-ops-panel.test.js	43	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/frontend-module-preload.test.js	17	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/frontend-on-demand-tools.test.js	44	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/frontend-post-visible-modules.test.js	50	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/frontend-startup-loader.test.js	51	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/frontend/AddSwipeNoReload.e2e.js	106	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/CpaPromiseCloneRegression.e2e.js	51	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/DeleteToolCalls.e2e.js	76	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/ExecutionModes.e2e.js	98	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/IterWorkspaceSplit.e2e.js	532	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/IterationLibraryTextDiffSmoke.e2e.js	162	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/IterationStudioAdapterSmoke.e2e.js	253	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/MessageFormatter.e2e.js	323	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/QuickReplyOverwriteCancel.e2e.js	78	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/ReasoningHiddenBlocks.e2e.js	741	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/WorldInfoRenameChatLore.e2e.js	79	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/WorldInfoRenamePersonaLore.e2e.js	85	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/a2ui-s32.smoke.mjs	143	143	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/agenda-tool-safety.smoke.mjs	52	52	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/agenda-world-info.smoke.mjs	79	79	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/agent-evolution-ui.smoke.mjs	81	81	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/agent-goals-ui.smoke.mjs	84	84	保留	0	2	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/agent-runtime-parallel.smoke.mjs	105	105	保留	0	14	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/agent-runtime-projection.smoke.mjs	81	81	保留	0	12	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/agent-runtime-recovery.smoke.mjs	155	155	保留	0	14	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/agent-runtime.smoke.mjs	99	99	保留	0	5	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/agent-workspace-call-counts.smoke.mjs	57	57	保留	0	4	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/agent-workspace-host.smoke.mjs	78	78	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/agent-workspace-ui.smoke.mjs	347	347	保留	0	9	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/agent-workspace.smoke.mjs	113	113	保留	0	15	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/expression-frontend-s29.smoke.mjs	140	140	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/frontent-test-utils.js	50	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/game-runtime-r4.smoke.mjs	203	203	保留	0	7	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/hm1-memory.smoke.mjs	77	77	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/immersive-experience.smoke.mjs	234	234	保留	0	7	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/iteration-library-exposure.test.js	63	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/macro-each.test.js	126	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/macro-engine.test.js	3411	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/macro-env-builder.test.js	499	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/macro-registry.test.js	719	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/macro-slash-commands.test.js	177	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/macro-story-string.test.js	82	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/macros-parser.test.js	50	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/frontend/memory-extract-transaction.smoke.mjs	57	57	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/memory-os-graph.smoke.mjs	105	105	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/memory-os-history.smoke.mjs	96	96	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/memory-os-performance.smoke.mjs	47	47	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/memory-os-source.smoke.mjs	215	215	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/native-frontend-authoring.smoke.mjs	75	75	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/native-frontend-bridge.smoke.mjs	82	82	保留	0	21	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/native-frontend-conversation.smoke.mjs	103	103	保留	0	21	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/native-frontend-heavy.smoke.mjs	156	156	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/native-frontend-platform.smoke.mjs	93	93	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/native-frontend-script.smoke.mjs	123	123	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/native-frontend-v3.smoke.mjs	121	121	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/native-play-window.smoke.mjs	65	65	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/orchestration-engine.smoke.mjs	2	2	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/project-agent-recovery.smoke.mjs	90	90	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/speech-completion.smoke.mjs	152	152	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/frontend/workspace-baseline-check.mjs	20	20	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/function-call-runtime.test.js	124	124	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/command-registry.test.js	117	117	保留	0	2	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/continuity-host-p7.test.js	54	54	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/declarative-observations.test.js	87	87	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/declarative.test.js	321	321	保留	0	16	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/experience-ready-p4.test.js	135	135	保留	7	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/formula.test.js	86	86	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/helpers/session-world-adapter.js	150	150	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/information-ui-p6.test.js	15	15	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/interpretation-mapping.test.js	93	93	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/lifecycle-client-p4.test.js	250	250	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/llm-event-interpreter.test.js	257	257	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/llm-intent-resolver.test.js	244	244	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/llm-memory-bridge.test.js	131	131	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/llm-memory-ingestion.test.js	225	225	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/llm-model-runtime-config.test.js	79	79	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/llm-observation.test.js	129	129	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/llm-orchestrator-narrative.test.js	321	321	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/llm-roles.test.js	184	184	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/llm-runtime.test.js	862	862	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/llm-tools.test.js	123	123	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/llm-turn-context.test.js	100	100	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/llm-turn-controller.test.js	201	201	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/logic-package.test.js	87	87	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/logic-rules-integration.test.js	193	193	保留	0	19	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/logic-runtime.test.js	370	370	保留	0	20	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/package-loader.test.js	164	164	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/plugin-contributions.test.js	35	35	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/presentation-host-p5.test.js	147	147	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/r3-exit-matrix.test.js	228	228	保留	0	22	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/r5-exit-matrix.test.js	479	479	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/reducers.test.js	74	74	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/rng.test.js	71	71	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/rules.test.js	138	138	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/shared-host-p8.test.js	92	92	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/transactions.test.js	212	212	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/ui-environment.test.js	110	110	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/ui-full-host.test.js	160	160	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/ui-host-surfaces.test.js	108	108	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/ui-surfaces.test.js	66	66	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/validators.test.js	52	52	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/world-package.test.js	95	95	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/game-runtime/world-session.test.js	265	265	保留	0	4	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/generate-task/dispatch.test.js	329	329	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/generate-task/integration.test.js	418	418	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/generate-task/pure.test.js	408	408	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/generate-task/response-failures.test.js	90	90	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/git-client.test.js	151	151	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/google-models.test.js	123	123	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/immersive/composer-message-actions.test.js	106	106	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/immersive/controller.test.js	127	127	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/immersive/diagnostics-breathing.test.js	53	53	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/immersive/provider-hud.test.js	132	132	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/immersive/structure.test.js	73	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/immersive/visuals.test.js	63	63	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iter-workspace/resizer-bind.test.js	211	211	保留	0	10	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iter-workspace/runner-callbacks.test.js	257	257	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/anchor-diagnostic.test.js	92	92	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/ctx-and-docs-discovery-boot-order.test.js	72	72	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/ctx-and-docs-discovery.test.js	194	194	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/edit-tool-results.test.js	0	38	新增	0	0	真实生产函数契约或显式测试环境；新增当前执行入口
+tests/iteration-library/lorebook-writes.test.js	206	206	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/markdown-escape.test.js	70	70	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/proposal-bus/bus-approve-flow.test.js	81	81	保留	0	7	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/proposal-bus/bus-auto-approve.test.js	66	66	保留	0	6	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/proposal-bus/bus-conflict-actions.test.js	174	174	保留	0	12	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/proposal-bus/bus-conflict.test.js	116	116	保留	0	4	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/proposal-bus/bus-drain-no-onchange.test.js	55	55	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/proposal-bus/bus-pending-chain.test.js	61	61	保留	0	4	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/proposal-bus/bus-propose-and-gate.test.js	83	83	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/proposal-bus/bus-reject-reset.test.js	85	85	保留	0	4	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/proposal-bus/bus-rollback.test.js	85	85	保留	0	7	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/proposal-bus/bus-serialize-hydrate.test.js	89	89	保留	0	4	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/proposal-bus/bus-turn-actions.test.js	108	108	保留	0	6	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/proposal-bus/bus-turn-scope-primitives.test.js	125	119	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/iteration-library/proposal-bus/diff-bodies/preset-clone.test.js	34	34	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/proposal-bus/event-router.test.js	80	80	保留	0	10	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/proposal-bus/kinds/lorebook-write.test.js	20	20	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/proposal-bus/kinds/preset-clone.test.js	20	20	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/proposal-bus/kinds/profile-edit.test.js	20	20	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/proposal-bus/kinds/skill-author.test.js	20	20	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/proposal-bus/render-card.test.js	244	244	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/proposal-bus/render-turn.test.js	55	55	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/read-fields-helper.test.js	130	20	重写	0	0	简化环境/脚本/共享工具或移除混合文件内历史字符串断言
+tests/iteration-library/render-scheduler.test.js	193	193	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/render.test.js	39	44	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/iteration-library/runner-onfirstchunk.test.js	210	210	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/runner.test.js	141	141	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/simulation-review/annotation-engine.test.js	358	358	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/simulation-review/feedback-builder.test.js	104	104	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/simulation-review/i18n-smoke.test.js	50	50	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/simulation-review/popup.test.js	331	331	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/simulation-review/renderers.test.js	312	312	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/simulation-review/wi-hits.test.js	121	121	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/storage.test.js	69	69	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/storage/fixtures/cea-v2-session.json	94	94	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/storage/fixtures/cpa-v2-session.json	64	64	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/storage/fixtures/mg-v2-session.json	63	63	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/storage/fixtures/orch-v2-session.json	82	82	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/storage/migrate-v3.test.js	222	222	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/storage/patch-codec.test.js	199	199	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/storage/target-registry-dual-lorebook.test.js	51	50	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/iteration-library/storage/target-registry.test.js	52	52	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/text-diff-narrow-cache.test.js	164	164	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/text-diff.test.js	318	318	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/ui-apply.test.js	89	89	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/ui-diff.test.js	494	494	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/ui-index.test.js	24	24	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/ui-message.test.js	226	226	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/ui-toolcall.test.js	218	218	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/iteration-library/zoom-overlay.test.js	307	307	保留	0	10	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/jest.config.json	27	25	重写	0	0	简化环境/脚本/共享工具或移除混合文件内历史字符串断言
+tests/jest.setup.js	197	9	重写	0	0	简化环境/脚本/共享工具或移除混合文件内历史字符串断言
+tests/jsconfig.json	5	5	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/last-usage.test.js	47	47	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/lazy-router.test.js	45	45	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/lint/no-raw-fs-in-endpoint.test.js	175	175	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/logging/backend-consolidation.test.js	62	36	重写	0	0	简化环境/脚本/共享工具或移除混合文件内历史字符串断言
+tests/logging/backend-module-migration.test.js	29	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/logging/console-compat.test.js	21	21	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/logging/diagnostics-api.test.js	175	175	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/logging/diagnostics-mounting.test.js	17	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/logging/foundation.test.js	128	128	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/logging/frontend-adapters.test.js	72	72	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/logging/frontend-consolidation.test.js	18	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/logging/frontend-startup-migration.test.js	19	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/logging/l08-attribution-fixtures.test.js	70	70	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/logging/l08-high-value-wiring.test.js	37	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/logging/l08-module-terminal-incidents.test.js	37	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/logging/l08-residual-coverage.test.js	19	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/logging/l09-cleanup.test.js	36	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/logging/l09-destructive-actions.test.js	13	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/logging/l09-incident-retention.test.js	58	58	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/logging/l09-inspector-privacy.test.js	32	32	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/logging/normalization-regressions.test.js	37	37	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/logging/ownership-incidents.test.js	118	118	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/logging/redact-cross-realm.test.js	18	18	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/logging/runtime-incidents.test.js	47	47	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/logging/source-identity.test.js	64	63	重写	0	0	简化环境/脚本/共享工具或移除混合文件内历史字符串断言
+tests/logging/startup-analysis-model.test.js	92	92	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/logging/startup-analysis-structure.test.js	35	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/logging/startup-integration.test.js	22	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/logging/startup-store.test.js	155	155	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/logging/workspace-i18n.test.js	78	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/logging/workspace-model.test.js	50	50	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/logging/workspace-structure.test.js	42	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/logging/worldinfo-mobile-anchor.test.js	12	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/logging/worldinfo-mobile-bulk-state.test.js	11	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/macros/escape-sink.test.js	198	198	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/macros/iteration.test.js	174	174	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/macros/macro-lexer.test.js	1340	1340	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/macros/macro-parser.test.js	965	965	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/macros/var-path.test.js	124	124	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/_mocks/main-module-stack.js	129	142	重写	14	28	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/memory-graph/adapter.test.js	805	805	保留	0	97	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/atomic-facts.test.js	103	103	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/benchmark.mjs	17	17	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/cognition-eligibility-s16.test.js	34	34	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/compaction-floor-range-rollup.test.js	102	102	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/create-node-floor-range.test.js	146	146	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/external-api.test.js	65	65	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/extract-link-seqto.test.js	14	14	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/extract-transaction-schema-retry.test.js	424	424	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/extraction-floor-range.test.js	122	122	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/fact-extraction-pipeline.test.js	218	218	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/fixtures/h0-samples.json	5931	5931	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/fixtures/large-memory.js	16	16	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/graph-inspector.test.js	125	125	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/graph-ops-edge-seqto.test.js	23	23	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/graph-ops-remove-edge.test.js	40	40	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/guarded-session.test.js	39	39	保留	6	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/h0-baseline.test.js	135	135	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/history-build.test.js	222	222	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/hm1-fixture.js	107	107	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/hybrid-eligibility.test.js	117	117	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/hybrid-packing.test.js	155	155	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/memory-graph/hybrid-retrieval.test.js	231	231	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/hybrid-settings.test.js	15	15	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/in-flight-anchor.test.js	61	61	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/index-reuse-h4.test.js	118	118	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/injection-window.test.js	379	379	保留	0	18	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/invocation-g05.test.js	12	12	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/list-candidates-no-seq-window.test.js	43	43	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/memory-os-adapter.test.js	76	76	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/normalize-isolation.test.js	121	121	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/op-link-delete.test.js	21	21	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/optimization.test.js	101	101	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/orchestrator-tools-register.test.js	119	120	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/memory-graph/per-type-cadence.test.js	139	139	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/persistent-injection-recency-horizon.test.js	485	436	重写	0	18	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/memory-graph/primitives.test.js	33	33	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/read-api.test.js	1141	1141	保留	2	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/role-split-floor-provenance.test.js	45	45	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/schema-floor-range-flag.test.js	56	56	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/schema-iteration-session-store.test.js	290	290	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/schema-iteration-tools.test.js	145	145	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/session-commit-anchor.test.js	155	59	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/memory-graph/source-lifecycle.test.js	516	516	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/source-provenance.test.js	101	101	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/source-vector.test.js	47	47	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/state-providers.test.js	165	165	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/temporal-graph.test.js	169	169	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/tool-output-floor-range.test.js	263	263	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/vector-index-core.test.js	471	471	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/vector-index-persistence.test.js	92	92	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/wi-scan-listeners.test.js	199	199	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/memory-graph/write-api.test.js	585	585	保留	14	28	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/message-delete-compat.test.js	68	68	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/message-takeover.test.js	469	469	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/messages.test.js	560	560	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/mg-schema-iteration/apply-pending-edits.test.js	377	378	重写	3	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/mg-schema-iteration/control-tools.test.js	72	72	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/mg-schema-iteration/read-fields.test.js	117	0	合并	0	0	重复包装层或测试内镜像实现；改为共享真实生产函数的行为测试
+tests/mg-schema-iteration/session-store.test.js	151	151	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/mg-schema-iteration/task-messages-toolcall-roundtrip.test.js	580	0	合并	0	0	重复包装层或测试内镜像实现；改为共享真实生产函数的行为测试
+tests/mg-schema-iteration/tool-display.test.js	49	49	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/mg-schema-iteration/tools.test.js	183	183	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/middleware/storage-errors.test.js	98	98	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/mock-server.test.js	40	0	删除	0	0	实施核对后删除无消费者辅助模块/其自测，或退役 Orchestrator iter-studio 专属测试；共享实际行为保留
+tests/nai-settings.test.js	88	88	保留	8	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/a2a-consumer-s31.test.js	300	300	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/a2a-http-client-s31.test.js	184	184	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/a2a-policy-s31.test.js	49	49	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/a2a-scheduler-s31.test.js	31	31	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/a2ui-s32.test.js	109	109	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/a2ui-stream-completion.test.js	44	44	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/activity-host-p5.test.js	59	59	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/activity-runtime-p5.test.js	115	115	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/actor-identity-s15.test.js	106	106	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/agent-goals-s11.test.js	178	178	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/agent-goals-s12.test.js	183	183	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/agent-goals-s13.test.js	209	209	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/agent-goals-s14.test.js	107	107	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/agent-settings.test.js	34	34	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/asset-delivery-p5.test.js	41	41	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/async-cognition-s25.test.js	194	194	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/authoring-contracts.test.js	417	400	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/authority-bounds-c2.test.js	210	210	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/authority-candidate-c2.test.js	115	115	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/authority-contract-c1.test.js	85	85	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/authority-frontend-c3.test.js	115	115	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/authority-integration-c4.test.js	195	187	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/authority-narrator-c3.test.js	57	57	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/authority-publication-c3.test.js	75	75	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/authority-resources-c1.test.js	89	89	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/authority-session-c2.test.js	57	57	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/authority-turn-c3.test.js	133	133	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/background-task-app-bridge-g2.test.js	269	273	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/browser-retrieval.test.js	59	59	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/bundled-authoring-skills.test.js	113	113	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/candidate-comparison-s24.test.js	246	246	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/capability-retirement.test.js	55	29	重写	6	0	简化环境/脚本/共享工具或移除混合文件内历史字符串断言
+tests/native/chronicle-host.test.js	89	89	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/closed-authority-preflight.test.mjs	11	11	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/cognition-disclosure-s16.test.js	121	121	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/cognition-inspection-s21.test.js	141	141	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/cognition-recovery-s21.test.js	315	316	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/cognition-simulation-s21.test.js	208	208	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/comparison-http-s24.test.js	74	74	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/computed-value-reference.test.mjs	17	17	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/content-composition-p7.test.js	102	102	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/context-compilation-g02.test.js	120	120	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/context-compiler.test.js	385	385	保留	0	6	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/context-derived.test.js	224	224	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/context-history.test.js	133	133	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/continuity-runtime-p7.test.js	206	208	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/contracts.test.js	561	530	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/credential-target-review-ui.test.js	122	122	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/desire-intention-s17.test.js	235	235	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/durable-commit.test.js	52	52	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/durable-maintenance.test.js	68	68	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/enterprise-session.test.js	97	97	保留	0	46	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/enterprise.test.js	173	173	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/entrypoints-start.test.js	51	51	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/event-appraisal-s18.test.js	251	252	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/execution-evidence-g01.test.js	164	164	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/experience-actions.test.js	96	97	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/experience-resources.test.js	104	104	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/expression-frontend-s29.test.js	76	76	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/expression-host-s27.test.js	111	111	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/expression-runtime-s27.test.js	157	157	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/extensions-foundation.test.js	130	130	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/extensions-workspace.test.js	107	107	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/fixtures/experience-contract-v1.json	15	15	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/frontend-audio-host.test.mjs	22	22	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/frontend-authoring.test.js	201	201	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/frontend-bridge-client.test.js	137	137	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/frontend-bridge.test.js	192	192	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/frontend-conversation.test.js	101	101	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/frontend-hard-cut.test.js	38	23	重写	0	0	简化环境/脚本/共享工具或移除混合文件内历史字符串断言
+tests/native/frontend-heavy.test.js	95	95	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/frontend-platform.test.js	182	182	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/frontend-presentation.test.js	214	214	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/frontend-prose.test.js	49	49	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/frontend-scope-disposal.test.mjs	13	13	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/frontend-script.test.js	124	124	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/frontend-transaction-catalogue.test.js	25	25	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/frontend-v3.test.js	246	246	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/game-regex.test.js	66	66	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/generation-budget-p2.test.js	173	173	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/generation-local-work.test.js	277	277	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/a2ui-s32-fixture.js	37	37	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/activity-fixture.js	37	37	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/appraisal-fixture.js	79	79	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/authority-candidate-fixture.js	32	32	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/authority-fixture.js	37	37	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/authority-restore-process.js	22	22	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/authority-turn-fixture.js	32	32	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/cognition-fixture.js	54	54	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/continuity-fixture.js	20	20	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/durable-commit-process.mjs	13	13	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/durable-maintenance-process.mjs	10	10	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/enterprise-fixture.js	33	33	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/enterprise-policy.js	11	11	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/expression-frontend-fixture.js	54	54	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/frontend-authoring-fixture.js	15	15	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/frontend-bridge-fixture.js	35	35	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/frontend-conversation-fixture.js	32	32	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/frontend-fixture.js	10	10	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/frontend-heavy-fixture.js	97	97	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/frontend-heavy-harness.js	54	54	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/frontend-platform-fixture.js	25	25	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/frontend-presentation-fixture.js	36	36	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/frontend-script-fixture.js	25	25	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/generation-fixture.js	27	27	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/illustration-browser-fixture.js	48	48	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/information-fixture.js	53	53	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/intention-fixture.js	83	83	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/lifecycle-fixture.js	42	42	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/lifetime-policy.js	8	8	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/memory-fixture.js	55	55	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/package-computation-fixture.js	39	39	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/prediction-fixture.js	49	49	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/regional-policy.js	15	15	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/renewal-policy.js	17	17	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/run-fixture.js	51	51	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/runtime-checkpoint-restart-worker.mjs	23	23	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/session-fixture.js	88	88	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/session-task-restart-worker.mjs	52	52	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/shared-fixture.js	26	26	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/simulation-candidate-fixture.js	25	25	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/simulation-task-fixture.js	28	28	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/task-artifact-fixture.js	29	29	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/task-binding-fixture.js	29	29	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/tom-fixture.js	44	44	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/helpers/visual-fixture.js	39	39	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/history-session.test.js	96	96	保留	0	7	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/history.test.js	163	163	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/hypothetical-http-s22.test.js	96	96	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/hypothetical-s22.test.js	149	149	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/illustration-core.test.js	257	257	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/illustration-image.test.js	88	88	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/illustration-plugin.test.js	274	274	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/illustration-prompt.test.js	230	230	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/illustration-renderer.test.js	68	68	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/illustration-settings.test.js	54	54	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/information-runtime-p6.test.js	191	191	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/information-session-p6.test.js	147	147	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/knowledge-binding-management.test.js	44	44	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/knowledge-contracts.test.js	69	69	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/knowledge-runtime.test.js	365	365	保留	0	6	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/knowledge-selection.test.js	88	88	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/library-authoring.test.js	280	280	保留	0	27	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/library-build-closure.test.js	96	96	保留	0	12	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/library-resource.test.js	138	138	保留	0	6	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/library-revision-actions.test.js	40	40	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/library-revisions.test.js	37	37	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/lifecycle-contract-p4.test.js	459	459	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/lifecycle-runtime-p4.test.js	630	632	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/lifecycle-scheduler-p4.test.js	167	167	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/lifetime-session.test.js	69	69	保留	0	21	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/lifetime.test.js	85	85	保留	0	2	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/long-memory-turn-consumer-g06.test.js	116	116	保留	0	10	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/long-term-storage.test.js	98	98	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/long-turn-consumer-g06.test.js	86	86	保留	0	10	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-artifacts.test.js	158	158	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-cognition-lifecycle.test.js	92	92	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-consumer-s30.test.js	301	301	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-credential-targets.test.js	99	99	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-delegated-generation.test.js	134	134	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-extension-source.test.js	125	125	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-extensions.test.js	112	112	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-generation-lifecycle.test.js	60	60	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-high-risk.test.js	17	17	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-http-client-s30.test.js	172	172	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-media-binary.test.js	106	106	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-media-observe.test.js	37	37	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-memory-adapter.test.js	96	96	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-memory-authority.test.js	127	127	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-policy-s30.test.js	51	51	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-project-adapter.test.js	108	108	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-project-generation.test.js	168	168	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-resource-bundles.test.js	158	158	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-runtime-observe.test.js	87	87	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-scheduler-s30.test.js	25	25	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-session-archives.test.js	182	182	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-session-history.test.js	73	73	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-session-observe.test.js	119	119	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-skills.test.js	273	273	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-source-staging.test.js	43	43	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/mcp-turn-review.test.js	180	180	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/memory-applicability-s20.test.js	216	216	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/message-projection-contract.test.js	349	349	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/model-prompt-runtime-contracts.test.js	390	390	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/model-prompt-runtime-p1.test.js	394	394	保留	0	9	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/model-prompt-runtime-p2.test.js	365	365	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/model-prompt-runtime-p3.test.js	434	434	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/model-prompt-runtime-p4.test.js	521	521	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/model-prompt-runtime-p6.test.js	103	103	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/model-prompt-runtime-persistence.test.js	269	269	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/native-provider-matrix.test.js	266	266	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/native-secret-flow.test.js	46	46	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/native-skill-platform.test.js	163	163	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/optional-budget-http-s26.test.js	38	38	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/optional-budget-s26.test.js	138	138	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/package-build-install.test.js	491	491	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/package-computation-session.test.js	42	42	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/package-computation.test.js	61	61	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/package-container.test.js	138	138	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/package-context-computation.test.js	91	91	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/package-experience-cp2.test.js	53	53	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/package-knowledge-edit.test.js	74	74	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/package-processing-cp2.test.js	119	119	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/package-runtime-cp1.test.js	89	89	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/package-runtime-cp3.test.js	204	204	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/package-turn-memory-bridge-g3.test.js	223	223	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/performance-preparation.test.js	56	56	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/persona-account-backup.test.js	97	97	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/persona-context.test.js	78	78	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/persona-migration.test.js	103	103	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/persona-resources.test.js	105	105	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/persona-save-backup.test.js	67	67	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/persona-session.test.js	102	102	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/persona-shared-host.test.js	73	73	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/persona-storage.test.js	74	74	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/plugin-build-play.test.js	126	126	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/plugin-platform.test.js	189	189	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/prediction-host-s23.test.js	162	162	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/prediction-http-s23.test.js	74	74	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/prediction-s23.test.js	126	126	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/presentation-contract-p5.test.js	62	62	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/presentation-task-history.test.mjs	11	11	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/product-cleanup-p7.test.js	40	40	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/product-http.test.js	234	234	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/product-service.test.js	400	400	保留	0	5	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/project-agent-http.test.js	170	170	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/project-agent.test.js	466	466	保留	0	17	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/project-async-s25.test.js	50	50	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/project-comparison-s24.test.js	255	255	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/project-composition.test.js	336	336	保留	0	24	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/project-git-metadata-s24.test.js	19	19	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/prompt-candidates.test.js	270	270	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/prompt-presets.test.js	154	154	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/protocol-stream-completion.test.js	108	108	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/provider-discovery.test.js	66	66	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/regional-session.test.js	100	100	保留	0	46	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/regional.test.js	120	120	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/renewal-session.test.js	101	101	保留	0	22	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/renewal.test.js	108	108	保留	0	2	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/resource-bundle.test.js	139	139	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/resource-graph.test.js	300	300	保留	0	12	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/resource-registry.test.js	41	41	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/resource-setup.test.js	57	57	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/responses-provider-g04.test.js	284	284	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/retrieval-client.test.js	56	56	保留	2	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/retrieval-compute-g05.test.js	1435	1434	重写	4	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/retrieval-runtime.test.js	139	139	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/run-compute-retirement.test.js	79	79	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/run-contract-p2.test.js	42	42	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/run-policy-p2.test.js	401	401	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/runtime-checkpoint-consumer.test.js	517	488	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/runtime-checkpoint-store.test.js	135	135	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/runtime-descriptor.test.js	204	204	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/runtime-http.test.js	160	160	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/runtime-lifecycle.test.js	62	62	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/save-system.test.js	471	471	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/session-core.contract.test.js	305	305	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/session-durability.test.js	146	137	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/session-history-p2.test.js	171	153	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/session-knowledge.test.js	120	120	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/session-maintenance.test.js	127	127	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/session-projection.test.js	814	811	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/session-runtime-http.test.js	320	320	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/session-skill-continuation.test.js	234	234	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/session-task-continuation.test.js	583	565	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/shared-runtime-p8.test.js	246	249	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/simulation-candidate.test.js	111	111	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/simulation-contract.test.js	79	79	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/simulation-session.test.js	86	86	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/simulation-task.test.js	49	49	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/skill-invocation.test.js	97	97	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/speech-consumer-s28.test.js	246	246	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/speech-provider-s28.test.js	133	133	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/startup-play-readiness.test.js	36	36	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/storage-commit-last.test.js	173	173	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/storage-foundation.contract.test.js	272	272	保留	0	4	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/storage-gc.contract.test.js	160	160	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/storage-references.contract.test.js	200	200	保留	0	7	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/storage-round-trip.test.js	107	107	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/studio-health-p9.test.js	141	141	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/studio-http.test.js	283	283	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/studio-native-envelope-g04.test.js	123	123	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/studio-preview-experience.test.js	47	47	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/studio-resource-http.test.js	135	135	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/studio-service.test.js	403	403	保留	0	23	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/task-artifact-consumption.test.js	69	69	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/task-binding-preflight.test.js	123	123	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/task-binding-ui.test.js	97	97	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/task-runtime-p3.test.js	364	333	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/theory-of-mind-s19.test.js	272	273	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/transformers-local-work-g05.test.js	188	188	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/turn-app-outcome-g1.test.js	144	146	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/native/ui-state-storage.test.js	22	22	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/user-data-layout.test.js	45	45	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/visual-contract.test.js	46	46	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/visual-director.test.js	47	47	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/visual-kernel.test.js	90	90	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/visual-media.test.js	187	187	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/visual-novelai-slice.test.js	83	83	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/visual-p0-adapters.test.js	87	87	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/visual-p1-adapters.test.js	152	152	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/visual-s6-browser.mjs	47	47	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/world-evidence-use-g06.test.js	64	64	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/native/world-knowledge.test.js	485	485	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/openai-streaming-usage.test.js	179	179	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orch-iteration/assistantmsg-edits-v3.test.js	57	0	删除	0	0	实施核对后删除无消费者辅助模块/其自测，或退役 Orchestrator iter-studio 专属测试；共享实际行为保留
+tests/orch-iteration/control-tools.test.js	66	0	删除	0	0	实施核对后删除无消费者辅助模块/其自测，或退役 Orchestrator iter-studio 专属测试；共享实际行为保留
+tests/orch-iteration/popup-bug-regression.test.js	218	0	删除	0	0	实施核对后删除无消费者辅助模块/其自测，或退役 Orchestrator iter-studio 专属测试；共享实际行为保留
+tests/orch-iteration/read-fields.test.js	208	0	合并	0	0	重复包装层或测试内镜像实现；改为共享真实生产函数的行为测试
+tests/orch-iteration/sandbox-result.test.js	358	0	删除	0	0	实施核对后删除无消费者辅助模块/其自测，或退役 Orchestrator iter-studio 专属测试；共享实际行为保留
+tests/orch-iteration/session-store.test.js	165	0	删除	0	0	实施核对后删除无消费者辅助模块/其自测，或退役 Orchestrator iter-studio 专属测试；共享实际行为保留
+tests/orch-iteration/task-messages-filter.test.js	109	109	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orch-iteration/task-messages-toolcall-roundtrip.test.js	613	0	合并	0	0	重复包装层或测试内镜像实现；改为共享真实生产函数的行为测试
+tests/orch-iteration/tool-display.test.js	65	0	删除	0	0	实施核对后删除无消费者辅助模块/其自测，或退役 Orchestrator iter-studio 专属测试；共享实际行为保留
+tests/orchestrator-agent-preset-resolver/unit.test.js	198	198	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator-skills/skill-orchestration-tools.test.js	197	197	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator-skills/skill-resolution.test.js	261	261	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/abort-mid-run.test.js	122	122	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/agenda-host-gate.test.js	76	76	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/orchestrator/agenda-spec-customs-seed.test.js	152	152	保留	4	32	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/agenda-tool-safety.test.js	159	159	保留	4	49	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/agenda-world-info.test.js	48	48	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/agent-prompt-preset-routing-data.test.js	187	187	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/api-fallback.test.js	115	115	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/chat-read-range-pair-expansion.test.js	73	73	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/critic-regex-search-tool-primitives.test.js	76	76	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/custom-tool-bridge-st.test.js	130	130	重写	1	2	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/orchestrator/custom-tool-flags.test.js	59	59	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/custom-tool-iter-studio.test.js	493	493	保留	1	5	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/custom-tool-per-run.test.js	100	100	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/custom-tool-portable-roundtrip.test.js	111	111	保留	4	33	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/custom-tool-register.test.js	144	144	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/orchestrator/custom-tool-runtime-agenda.test.js	271	271	保留	6	51	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/custom-tool-runtime-director.test.js	175	175	保留	0	2	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/custom-tool-runtime-loop.test.js	81	81	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/orchestrator/custom-tool-runtime-spec.test.js	337	337	保留	5	24	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/custom-tool-sanitize.test.js	238	238	保留	4	43	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/custom-tool-studio-prompt.test.js	171	171	保留	0	5	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/default-custom-tools.test.js	209	209	保留	4	6	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/delegated-run.test.js	52	52	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director-default-prompt-presets.test.js	68	68	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director-factory-presets.test.js	150	150	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director-load-shape.test.js	92	92	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director-preset-swap.test.js	380	380	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director-tools-draft-search.test.js	80	80	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director-tools-runround-settle.test.js	76	76	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director/abort.test.js	270	270	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director/agent-task-messages.test.js	321	321	保留	0	8	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director/content-payload.test.js	57	57	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director/default-prompt.test.js	237	237	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director/digest.test.js	77	77	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director/dispatch-claim.test.js	209	209	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director/integration.test.js	1447	1447	保留	0	4	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director/memory-scout-iou.test.js	147	147	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director/notes-subagents.test.js	41	41	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director/profile-shape.test.js	124	124	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director/studio-adapter.test.js	122	122	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director/sub-messages.test.js	350	350	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director/subagent-max-rounds.test.js	193	193	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/director/tools.test.js	982	982	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/dispatch-barrier/dispatch-barrier.test.js	199	199	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/editor-ops/context-replace.test.js	108	108	保留	0	7	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/editor-ops/error.test.js	13	13	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/editor-ops/patch.test.js	52	52	保留	0	7	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/editor-ops/pipe-from.test.js	88	88	保留	0	2	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/editor-ops/reasoning-sections.test.js	228	228	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/editor-ops/slicing.test.js	116	116	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/ensure-settings-migration.test.js	342	342	保留	42	236	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/execution-mode-contract.test.js	61	61	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/factory-preset-shape.test.js	63	64	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/orchestrator/get-effective-profile-presets.test.js	340	340	保留	42	236	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/grep-tool.test.js	82	82	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/iter-arg-validator.test.js	84	84	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/iter-studio-lorebook-filter.test.js	35	35	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/iter-studio-session-store.test.js	276	0	删除	0	0	实施核对后删除无消费者辅助模块/其自测，或退役 Orchestrator iter-studio 专属测试；共享实际行为保留
+tests/orchestrator/loop-integration.test.js	652	653	重写	0	12	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/orchestrator/loop-iteration.test.js	300	300	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/loop-runtime.test.js	573	573	保留	0	2	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/loop-tools-chat.test.js	218	218	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/loop-tools-lorebook-filter.test.js	188	188	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/loop-tools-lorebook-force-activate.test.js	278	278	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/loop-tools-lorebook.test.js	810	810	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/loop-tools-note.test.js	677	677	保留	0	11	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/loop-tools-registration.test.js	45	45	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/loop-tools-simulation.test.js	277	277	重写	0	2	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/orchestrator/lorebook-filter-persistence.test.js	110	110	保留	4	41	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/lorebook-filter.test.js	203	203	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/main-on-world-info-finalized-filter.test.js	78	78	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/multi-skill-visible-resolver.test.js	185	185	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/notes-panel-refresh.test.js	187	187	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/open-notes-cross-mode-injection.test.js	399	399	保留	7	42	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/open-notes-injection.test.js	167	167	保留	0	7	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/per-run-custom-tools-isolation.test.js	107	107	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/persistence-loop.test.js	293	293	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/persistence.test.js	540	540	保留	0	151	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/resolve-tool-source.test.js	106	106	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/orchestrator/run-state-helpers.test.js	67	67	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/run-state-store.test.js	318	318	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/runtime-trace-export.test.js	89	89	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/schema/director-fields.test.js	702	702	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/simulation-payload-adapter.test.js	316	316	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/simulation-review-envelope.test.js	78	78	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/skill-resolution-runtime-plumbing.test.js	252	252	保留	7	44	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/skill-resolution-scope-precedence.test.js	265	265	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/snapshot-cache-hits-invalidates.test.js	110	110	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/spec-agenda-loop-three-modes.test.js	259	260	重写	1	6	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/orchestrator/system-prompt-patch.test.js	81	81	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/orchestrator/tool-call-source-tagging.test.js	180	180	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/orchestrator/tool-calling-fallback.test.js	57	57	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/package-lock.json	6917	6916	重写	0	0	简化环境/脚本/共享工具或移除混合文件内历史字符串断言
+tests/package.json	27	26	重写	0	0	简化环境/脚本/共享工具或移除混合文件内历史字符串断言
+tests/performance/chat-snapshot-cache.test.js	87	87	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/performance/fs-chat-range.test.js	219	219	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/performance/itemized-prompt-store.test.js	187	187	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/performance/memory-preparation-bench.mjs	26	26	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/performance/message-depth.test.js	49	49	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/performance/native-long-term-bench.mjs	64	64	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/performance/native-startup-bench.mjs	105	105	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/performance/runtime-smoke.mjs	555	555	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/performance/worldbook-performance-bench.mjs	144	144	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/playwright.config.js	103	19	重写	0	0	简化环境/脚本/共享工具或移除混合文件内历史字符串断言
+tests/popup-lifecycle.test.js	17	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/private-request-filter.test.js	199	199	保留	5	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/prompt-converters.test.js	1676	1676	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/prompt-injections.test.js	319	319	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/prompt-token-estimate.test.js	136	136	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/regex-engine/execution-plan.test.js	248	248	保留	5	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/regex-engine/game-runtime-boundary.test.js	45	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/regex-engine/lane-semantics.test.js	142	142	保留	7	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/regex-engine/native-scopes.test.js	83	83	保留	5	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/regex-engine/plugin-floors.test.js	216	216	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/regex-engine/plugin-lane-dispatch.test.js	205	205	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/regex-engine/preset-groups.test.js	11	11	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/request-inspector.test.js	205	205	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/request-retry.test.js	529	529	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sample.e2e.js	12	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/scripts/storage-migrate-from-zip.test.js	206	206	保留	0	6	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/scripts/storage-migrate.test.js	310	310	保留	0	29	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/search-tools/orchestrator-tools-register.test.js	242	243	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/search-tools/persistence.test.js	494	494	保留	0	151	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/search-visit.test.js	97	97	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/secret-inputs.test.js	35	35	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/server-lazy-horde-router.test.js	14	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/server-lazy-search-router.test.js	14	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/server-lazy-sync-router.test.js	22	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/settings-observation.test.js	22	22	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/settings-patch-threshold.test.js	83	83	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/settings.test.js	108	108	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills-ui/bundled-browser.test.js	470	470	保留	0	121	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills-ui/embed-export-helper.test.js	152	152	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills-ui/embed-import-dialog.test.js	454	454	保留	0	51	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills-ui/embed-lifecycle.test.js	482	482	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills-ui/memory-index-production.test.js	101	101	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills-ui/playwright/card-bound-cleanup.spec.js	187	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/character-export-with-skills.spec.js	162	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/cpa-orchestrator-optimize-proactive-sweep.spec.js	411	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/cpa-orchestrator-optimize-skill.spec.js	366	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/critic-regex-search.spec.js	593	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/director-with-skills.spec.js	348	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/embed-import-flow.spec.js	204	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/fixtures/embed-payload.json	16	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/helpers.js	402	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/iter-bus-regression.spec.js	304	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/iter-studio-create-skill.spec.js	209	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/iter-studio-skill-proposal-card.spec.js	175	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/orchestrator-skill-chips.spec.js	179	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/preset-export-with-skills.spec.js	177	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/proposal-bus-flows.spec.js	455	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/refresh-defaults.spec.js	231	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/rp-demo-manual-flow.spec.js	534	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/run-panel-live.spec.js	455	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/scope-migration.spec.js	244	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/skill-conflict.spec.js	215	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/skill-edit-content-diff.spec.js	322	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/playwright/skill-manager-flow.spec.js	150	0	删除	0	0	依赖开发者 seed/旧扩展页面或 SillyTavern 标题；保留 Native browser smoke 与原生 E2E
+tests/skills-ui/scope-picker.test.js	351	351	保留	0	22	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills-ui/skill-chips.test.js	483	483	保留	0	101	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills-ui/skill-editor.test.js	664	664	保留	0	71	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills-ui/skill-iter-studio-tools.test.js	1021	1021	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills-ui/skill-manager-panel.test.js	818	818	保留	0	116	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/.gitkeep	0	0	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/api-rest.test.js	685	685	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/api.test.js	336	336	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/bundled.test.js	156	156	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/embed-export-hook-orch-preset.test.js	199	199	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/embed-lifecycle-orch-preset.test.js	87	87	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/embed.test.js	289	289	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/fixtures/.gitkeep	0	0	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/fixtures/invalid-no-frontmatter.md	3	3	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/fixtures/invalid-no-name.md	4	4	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/fixtures/repo-root/skills/character/alice.png/char-skill/SKILL.md	4	4	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/fixtures/repo-root/skills/global/test-skill-a/SKILL.md	5	5	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/fixtures/repo-root/skills/global/test-skill-b/SKILL.md	8	8	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/fixtures/repo-root/skills/preset/test-preset/preset-skill/SKILL.md	4	4	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/fixtures/valid-skill.md	6	6	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/fixtures/valid-with-metadata.md	11	11	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/frontmatter-parser.test.js	64	64	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/integration-smoke.test.js	124	118	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/skills/memory-index.test.js	71	71	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/repository.test.js	790	790	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/run-pins.test.js	124	124	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/scope-picker.test.js	123	123	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/scope.test.js	205	205	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/url-import.test.js	63	63	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/skills/versions.test.js	276	276	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/slash-commands/parser-hot-paths.test.js	419	419	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/startup-launcher-telemetry.test.js	46	46	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/startup-milestone-telemetry.test.js	72	47	重写	0	0	简化环境/脚本/共享工具或移除混合文件内历史字符串断言
+tests/state-errors/format.test.js	38	38	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/state-errors/state-errors.test.js	71	71	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage-inspector/_fixture-helper.js	141	141	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage-inspector/enumerate-basic-timeout.test.js	92	92	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage-inspector/enumerate-basic.test.js	264	264	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage-inspector/enumerate-characters.test.js	88	88	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage-inspector/enumerate-chats.test.js	146	146	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage-inspector/enumerate-other.test.js	49	49	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage-inspector/primitives.test.js	109	109	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage-inspector/resolve-path.test.js	213	213	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage-management/accounting.test.js	162	162	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage-management/catalog.test.js	30	30	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage-management/center.test.js	108	108	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage-management/recovery.test.js	348	348	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage-management/service.test.js	136	136	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/chaos/fs-engine-corruption.test.js	99	99	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/chaos/migration-partial-failure.test.js	153	153	保留	0	6	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/chaos/permission-errors.test.js	68	68	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/chaos/read-only-under-load.test.js	55	55	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/config-persistence.test.js	282	282	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/endpoints/backup-roundtrip.parity.test.js	357	357	保留	0	5	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/endpoints/bundled-package-seed.test.js	98	98	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/endpoints/character-lifecycle-parity.test.js	106	106	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/endpoints/characters-byaf-import.parity.test.js	139	139	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/endpoints/chat-incremental-backup.parity.test.js	173	173	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/endpoints/chat-read-parity.test.js	263	263	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/endpoints/chats-get-probe.parity.test.js	61	61	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/endpoints/chats-import.parity.test.js	276	276	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/endpoints/content-manager-seed.parity.test.js	106	106	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/endpoints/cross-mode-endpoint.parity.test.js	212	212	保留	0	8	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/endpoints/cross-mode-restore-errors.test.js	136	136	保留	0	4	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/endpoints/cross-mode-restore.parity.test.js	366	366	重写	0	12	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/storage/endpoints/group-chat-parity.test.js	183	183	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/endpoints/native-backup-roundtrip.test.js	197	197	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/storage/endpoints/recent-chat-index.parity.test.js	92	92	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/endpoints/settings-endpoint-parity.test.js	250	250	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/endpoints/settings-snapshot-parity.test.js	100	100	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/endpoints/stats-parity.test.js	68	68	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/endpoints/storage-health.parity.test.js	82	82	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/endpoints/users-admin-delete.parity.test.js	252	252	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engine-backup-entries.test.js	21	21	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engine-logger.test.js	47	47	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/delete-user.parity.test.js	170	170	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/dump-restore.parity.test.js	221	221	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/fail-fast.test.js	58	58	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/fs-chat-patch.test.js	255	255	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/fs-engine-chat.test.js	153	153	保留	0	7	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/fs-engine-group.test.js	137	137	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/fs-engine-list.test.js	60	60	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/fs-engine-named-doc.test.js	73	73	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/fs-engine-preset.test.js	179	179	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/fs-engine-settings.test.js	62	62	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/fs-engine-state.test.js	86	86	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/fs-engine-stats.test.js	52	52	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/fs-engine-world.test.js	185	185	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/fs-engine.test.js	138	138	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/mysql-schema.test.js	112	112	重写	0	1	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/storage/engines/mysql-transaction.smoke.test.js	455	455	重写	0	1	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/storage/engines/pool-timeout.test.js	151	150	重写	0	1	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/storage/engines/postgres-schema.test.js	93	93	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/storage/engines/sidecar-naming.test.js	16	16	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/sqlite-close-handle.test.js	154	154	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/sqlite-engine-chat.test.js	361	361	保留	0	8	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/sqlite-engine-group.test.js	183	183	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/sqlite-engine-named-doc.test.js	105	105	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/sqlite-engine-preset.test.js	135	135	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/sqlite-engine-settings.test.js	69	69	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/sqlite-engine-stats.test.js	64	64	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/sqlite-engine-world.test.js	114	114	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/engines/sqlite-engine.test.js	86	86	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/errors.test.js	19	19	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/harness/contract-harness.js	174	171	重写	0	34	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/storage/harness/endpoint-harness.js	298	298	重写	0	40	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/storage/harness/fs-harness.js	37	37	保留	0	1	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/harness/mysql-harness.js	71	71	重写	0	6	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/storage/harness/pg-harness.js	84	84	重写	0	6	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/storage/init-storage-mode.test.js	167	167	重写	0	1	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/storage/migration/auto-rollback-engine.test.js	242	242	保留	0	6	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/migration/auto-rollback.test.js	247	247	保留	0	90	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/migration/backup.test.js	157	157	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/migration/cross-mode-errors.test.js	90	90	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/migration/cross-mode-restore.test.js	526	526	保留	0	4	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/migration/equality.test.js	122	122	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/migration/gc-scratch.test.js	74	74	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/migration/lock-heartbeat.test.js	117	117	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/migration/lock.test.js	195	195	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/migration/preflight.test.js	99	99	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/migration/runner.test.js	813	813	保留	0	78	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/migration/selection-mapping.test.js	99	99	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/migration/snapshot-engine-dump.test.js	172	172	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/migration/snapshot-gc.test.js	238	238	保留	0	64	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/migration/state.test.js	165	165	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/migration/transient-source.test.js	405	405	重写	0	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/storage/name-validation.test.js	110	110	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/read-only-mode.test.js	194	194	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/repositories/chat-repo-append.test.js	60	60	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/repositories/chat-repo-extensions.test.js	334	334	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/repositories/chat-repo-misc.test.js	59	59	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/repositories/chat-repo-patch.test.js	161	161	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/repositories/chat-repo-state.test.js	52	52	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/repositories/chat-repo.test.js	131	131	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/repositories/group-repo.test.js	184	184	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/repositories/json-patch.test.js	115	115	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/repositories/list-with-docs.test.js	124	124	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/repositories/named-doc-repo.test.js	102	102	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/repositories/preset-repo.test.js	204	204	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/repositories/settings-repo.test.js	48	48	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/repositories/stats-repo.test.js	27	27	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/repositories/world-info-repo.test.js	191	191	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/retry.test.js	87	87	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/round-trip-mysql.test.js	650	650	重写	0	60	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/storage/round-trip-postgres.test.js	651	651	重写	0	60	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/storage/round-trip.test.js	512	512	保留	0	14	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/storage/schema-runner.test.js	212	212	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/categories.test.js	144	144	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/conflicts.test.js	172	172	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/handle-mismatch.test.js	352	352	保留	0	36	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/in-progress-gate.test.js	280	280	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/integration/full-flow.test.js	385	385	保留	0	33	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/integration/http-multi-user-offer.test.js	162	162	保留	0	18	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/integration/http-objects.test.js	225	225	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/integration/http-session-lifecycle.test.js	140	140	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/integration/http-skeleton.test.js	90	90	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/integration/http-storage-gate.test.js	116	118	重写	2	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/sync/integration/in-progress-gate.test.js	407	407	保留	0	17	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/integration/peer-admin.test.js	525	525	保留	0	18	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/integration/peer-auth-routes.test.js	390	390	保留	0	42	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/integration/recovery.test.js	178	178	保留	0	25	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/integration/sqlite-mode.test.js	286	286	保留	0	39	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/materialize-cross-engine.test.js	411	411	重写	0	39	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/sync/materialize.test.js	1027	1027	保留	0	14	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/objects.test.js	221	221	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/orchestrator-primitives.test.js	79	79	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/peer-auth-storage.test.js	222	222	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/session.test.js	47	47	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/shadow-paths.test.js	53	53	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/shadow-reconcile.test.js	134	134	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/shadow-snapshot.test.js	352	352	保留	0	3	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/sync/state.test.js	120	120	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/tavern-card-validator.test.js	251	251	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/termux/toolbox-uninstall.test.js	84	84	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/termux/toolbox-update-guard.test.js	166	166	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/usage-normalize.test.js	255	255	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/users.test.js	152	152	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/util-fs.test.js	136	136	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/util-pure.test.js	726	726	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/util.test.js	440	440	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/util/browser-context.js	0	22	新增	0	0	真实生产函数契约或显式测试环境；新增当前执行入口
+tests/util/config.js	0	4	新增	0	0	真实生产函数契约或显式测试环境；新增当前执行入口
+tests/util/dialog-polyfill-stub.js	7	7	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/util/lib-stub.js	84	71	重写	1	0	同步真实 Save/Restore、持久化和明确 host/DB 契约，或裁剪仍被调用的 helper；保留业务断言
+tests/util/mock-server.js	108	0	删除	0	0	实施核对后删除无消费者辅助模块/其自测，或退役 Orchestrator iter-studio 专属测试；共享实际行为保留
+tests/util/orchestrator-context.js	0	5	新增	0	0	真实生产函数契约或显式测试环境；新增当前执行入口
+tests/util/structured-clone.js	3	3	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/variable-op-log/apply.test.js	201	201	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/variable-op-log/extractor.test.js	352	352	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/variable-op-log/floor-ops.test.js	196	196	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/variable-op-log/integration.test.js	324	324	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/variable-op-log/path-ops.test.js	452	452	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/variable-op-log/rebuilder.test.js	215	215	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/variable-op-log/resolver.test.js	191	191	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/variable-op-log/scanner.test.js	448	448	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/variables/path.test.js	178	178	保留	15	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/vectors/native-local-model.test.js	20	20	保留	1	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/vectors/source-settings.test.js	9	9	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/version-cache.test.js	18	18	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/webpack-serve-cache.test.js	177	177	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/world-info-bulk-edit.test.js	172	172	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/world-info/prompt-fixture.js	24	24	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/world-info/provenance.test.js	258	258	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/world-info/selection-strategy.test.js	195	195	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/world-info/state-conditions.test.js	127	127	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/world-info/state-events-floor-state.test.js	158	158	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/world-info/state-events.test.js	147	147	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/world-info/timed-effects-baseline.test.js	161	161	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/world-info/workspace-boot-order.test.js	24	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/world-info/workspace-diagnostics.test.js	103	103	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/world-info/workspace-embedded-contract.test.js	29	0	删除	0	0	绑定源码拼写/导入顺序/已删除文件的断言；行为由 loader/router/logging/Native 测试与 E2E 覆盖
+tests/worldinfo.test.js	178	178	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/ws-delivery-client.test.js	262	262	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/ws-delivery-e2e.test.js	69	69	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/ws-delivery-fetch-proxy.test.js	77	77	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/ws-delivery.test.js	276	276	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据
+tests/ws-ticket-router.test.js	196	196	保留	0	0	保留现行业务/持久化/安全/Runtime/Agent/性能契约及其仍被引用的资源；没有删除依据

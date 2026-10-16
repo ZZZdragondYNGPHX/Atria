@@ -1,0 +1,132 @@
+path	lines	mock_modules	shared_8_line_blocks	action	reason
+.github/copilot-instructions.md	9	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+.github/pull_request_template.md	7	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+scripts/audit-storage-names.js	284	0	9	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+scripts/storage-migrate.js	702	0	14	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/agent-intelligence/README.md	426	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/character-presets/ctx-dispatch.test.js	628	46	306	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/e2e/README.md	23	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/endpoints/users-admin-migration.test.js	416	16	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/iteration-library/storage/target-registry-dual-lorebook.test.js	50	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/native-orchestration/a2a-effect-observation.test.js	225	0	1	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/attempt-reservation.test.js	170	0	1	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/authoring-http.test.js	91	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/authority-turn-producer.test.js	189	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/background-model-producer.test.js	135	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/binding-authoring.test.js	137	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/budget-port.test.js	143	0	1	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/budget-retention.test.js	144	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/child-budget-closure.test.js	193	0	1	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/consume-fault-classification.test.js	79	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/consume-linearization.test.js	167	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/context-port.test.js	96	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/context-send.test.js	102	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/delegate-controller.test.js	566	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/delegation-publication.test.js	233	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/domain-consume-linearization.test.js	125	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/domain-consume-same-scope.test.js	180	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/effect-approval.test.js	259	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/execution-context.test.js	65	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/execution-service.test.js	200	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/fanout-controller.test.js	222	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/fixtures.js	42	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/fixtures/crash-child.mjs	42	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/generation-local-work.test.js	127	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/generation-quota.test.js	255	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/generation-send.test.js	269	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/graph-controller.test.js	148	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/handoff-return.test.js	246	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/helpers/background-model-fixture.js	65	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/helpers/model-port-fixture.js	106	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/helpers/project-consumption-fixture.js	66	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/helpers/project-model-fixture.js	104	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/helpers/resolver-turn-fixture.js	45	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/helpers/rp-consumption-fixture.js	75	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/helpers/rp-delegation-fixture.js	61	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/helpers/rp-model-fixture.js	101	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/helpers/tool-completion-fixture.js	123	0	1	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/host-lifecycle.test.js	218	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/host-startup.test.js	106	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/join-controller.test.js	272	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/memory-consume-same-scope.test.js	51	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/memory-context.test.js	101	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/memory-model-producer.test.js	35	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/model-capability.test.js	137	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/model-port.test.js	177	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/model-result-completion.test.js	250	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/native-session-output-context.test.js	155	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/native-turn-finalization.test.js	121	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/native-turn-grant-locks.test.js	22	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/native-turn-orchestration.test.js	142	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/native-turn-output-quota.test.js	105	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/native-turn-permit.test.js	132	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/p3-sql.test.js	70	0	2	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/plan-pins.test.js	91	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/plan-repository.test.js	125	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/process-crash.test.js	61	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/project-budget-current-transaction.test.js	107	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/project-consumption-boundary.test.js	139	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/project-context-input.test.js	90	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/project-context.test.js	179	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/project-generation-proof.test.js	163	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/project-model-producer.test.js	204	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/resolver-context.test.js	151	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/resolver-quota-proof.test.js	111	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/resolver-turn-identity.test.js	63	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/resolver-turn-producer.test.js	135	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/result-contracts.test.js	173	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/result-publication.test.js	238	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/rp-consumption-boundary.test.js	120	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/rp-delegation-context.test.js	134	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/rp-delegation-producer.test.js	169	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/rp-memory-producer.test.js	69	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/rp-model-producer.test.js	65	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/rp-native-output.test.js	217	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/rp-output-completion.test.js	229	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/rp-output-effect.test.js	226	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/rp-result-continuation.test.js	119	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/rp-transaction-reader.test.js	124	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/run-reference-roots.test.js	83	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/run-repository.test.js	134	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/same-scope-cancel-consume.test.js	119	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/scheduler-handoff.test.js	152	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/session-budget-restore.test.js	95	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/source-control-boundary.test.js	190	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/source-port-locks.test.js	47	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/sql-administration.test.js	42	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/sql-commit-outcome.test.js	66	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/sql-owner-loss.test.js	56	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/sql-topology.test.js	102	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/storage-foundation.test.js	131	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/storage-policy.test.js	56	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/task-local-output.test.js	241	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/tool-completion.test.js	162	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/tool-port.test.js	248	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/transition-controller.test.js	220	0	1	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/turn-http.test.js	49	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/turn-producer-proof.test.js	81	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native-orchestration/turn-quota-proof.test.js	43	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/compute-reservations-project.test.js	82	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/compute-reservations-rp.test.js	120	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/compute-reservations-storage.test.js	53	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/compute-reservations.test.js	135	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/package-context-computation.test.js	91	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/project-agent-http.test.js	170	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/project-agent.test.js	467	0	17	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/retrieval-compute-g05.test.js	1443	4	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/session-maintenance.test.js	127	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/skills/integration-smoke.test.js	118	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage-management/accounting.test.js	179	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/endpoints/cross-mode-restore-errors.test.js	137	0	4	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/endpoints/native-backup-roundtrip.test.js	206	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/endpoints/rp-restore-write-boundary.test.js	144	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/endpoints/rp-write-boundaries.test.js	147	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/endpoints/users-admin-delete.parity.test.js	277	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/harness/endpoint-harness.js	301	0	40	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/harness/mysql-harness.js	71	0	6	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/harness/pg-harness.js	84	0	6	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/init-storage-mode.test.js	173	0	1	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/migration/cross-mode-restore.test.js	522	0	4	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/migration/transient-source.test.js	451	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/rp-chat-write-boundary.test.js	162	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/rp-management-write-boundary.test.js	169	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
