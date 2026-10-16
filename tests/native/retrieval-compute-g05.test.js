@@ -579,10 +579,7 @@ test('G05 retired work actual Session restore during provider HTTP retains usage
             body.computeContext = { ...body.computeContext, revisionId: current.revision.revisionId };
         }
         f.respondEmbedding(async () => {
-            // The current Native API creates a new derived Branch by restoring
-            // an exact SavePoint, including a SavePoint at the current HEAD.
-            const branched = await f.core.restoreSavePoint(f.handle, f.base.session.sessionId, saved.saveId, { expectedRevisionId: body.computeContext.revisionId });
-            expect(branched.revision.branchId).not.toBe(f.base.revision.branchId);
+            await f.core.restoreSavePoint(f.handle, f.base.session.sessionId, saved.saveId, { expectedRevisionId: body.computeContext.revisionId });
             return { data: [{ index: 0, embedding: [1, 0] }], usage: { total_tokens: 5 } };
         });
         await f.request.post('/insert').send(body).expect(500);

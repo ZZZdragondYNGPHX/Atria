@@ -13,7 +13,7 @@ npm run test:e2e -- native-session/02-product-ui.e2e.js --workers=1
 npm run test:e2e -- storage-center/ --workers=1
 ```
 
-Select only the relevant specs. MySQL/Postgres scenarios need Docker;
+MySQL/Postgres scenarios need Docker;
 explicit real-data/live-provider scenarios document their additional inputs.
 Skipped external scenarios are not passing evidence.
 
