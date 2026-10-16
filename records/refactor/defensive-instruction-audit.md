@@ -78,3 +78,18 @@ main 没有 `.github/workflows/`；现有 CI 说明已明确停用 Actions，没
 - 两工作区 `git diff --check` 通过；23 个修改 Markdown 的代码围栏和 16 个新增相对链接通过检查（不含本 Record）。
 - 11 个 JavaScript 文件通过 `node --check`；使用现有 TypeScript 解析/移除注释后比较执行 token，前后相同。未运行产品全量测试、浏览器、构建或 API 测试；本次没有运行行为变更。
 - 本地 main 合并无冲突；与已验证任务树相同。docs 独立提交，不将 main 合入 docs。远端同步与临时分支/工作树清理由本任务执行，结果可从最终 Git refs 核对。
+
+## 用户追加：同步当前开发分支
+
+用户明确选择“同步规范整改，保留开发工作”。只迁移本次规范与注释差异，不合入 main 的产品功能，不删除开发分支或工作树。
+
+| 当前开发分支 | 同步提交 | 文件数 |
+| --- | --- | --- |
+| `refactor/atria-native-orchestration-v3` | `50dffc4c6` | 25 |
+| `feat/native-visual-generation-deepening` | `dd99c57ea` | 25 |
+| `feat/atria-project-skill-routing` | `eb18fa12a` | 24 |
+| `refactor/test-suite-defensive-cleanup` | `c9e13f33a` | 21 |
+
+项目 Skill 分支保留自己的 AGENTS 路由；缺失的 Agent Intelligence README 不创建。测试清理分支的已删除 Brief/浏览器测试不恢复，正在删除的旧 roundtrip 测试不触碰，已重写的 E2E README 保留其原生产品说明。其余 31 个原未提交路径与原暂存状态在本次同步前后相同；开发工作继续保留。
+
+四个提交的差异空白、Markdown 围栏及九个新增相对链接检查通过；42 处 JavaScript 注释同步通过语法与去注释执行 token 一致性检查，未引入运行行为或断言变更。四分支分别推送同名远端，不作为产品实现集成回 main。
