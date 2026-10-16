@@ -54,18 +54,25 @@ export function assertPlanRef(value) {
 }
 
 export function assertSourceSelector(value) {
-    const fields = { rp_chat: ['domain', 'controlId'], native_session: ['domain', 'sessionId', 'entryPointId'], project: ['domain', 'projectId', 'taskId'] }[value?.domain];
+    const fields = { rp_chat: ['domain', 'controlId'], native_session: ['domain', 'sessionId', 'entryPointId', ...Object.hasOwn(value ?? {}, 'taskRef') ? ['taskRef'] : []], project: ['domain', 'projectId', 'taskId'] }[value?.domain];
     if (!fields) throw new TypeError('sourceSelector.domain is unsupported');
     assertObject(value, fields, 'sourceSelector');
     if (value.domain === 'rp_chat') assertOrchestrationId(value.controlId, 'rpctl', 'sourceSelector.controlId');
     if (value.domain === 'native_session') {
         assertOrchestrationId(value.sessionId, 'ses', 'sourceSelector.sessionId');
         if (value.entryPointId !== null) assertOrchestrationId(value.entryPointId, 'entry', 'sourceSelector.entryPointId');
+        if (Object.hasOwn(value, 'taskRef')) assertSessionTaskRef(value.taskRef);
     }
     if (value.domain === 'project') {
         assertOrchestrationId(value.projectId, 'project', 'sourceSelector.projectId');
         if (value.taskId !== null) assertToken(value.taskId, 'sourceSelector.taskId');
     }
+    return value;
+}
+
+export function assertSessionTaskRef(value) {
+    assertObject(value, ['taskId', 'variantId'], 'Session Task reference');
+    assertToken(value.taskId, 'taskRef.taskId'); assertToken(value.variantId, 'taskRef.variantId');
     return value;
 }
 

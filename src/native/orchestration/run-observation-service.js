@@ -23,15 +23,17 @@ const RECONCILIATION_PROTOCOLS = Object.freeze({
 const reconciliationProtocol = root => Object.hasOwn(RECONCILIATION_PROTOCOLS, root.sourceBinding.sourceAuthority) ? RECONCILIATION_PROTOCOLS[root.sourceBinding.sourceAuthority] : null;
 const selectorFor = root => {
     const source = root.sourceBinding.sourceRef;
-    if (root.sourceBinding.sourceAuthority === 'native_session') return { domain: 'native_session', sessionId: source.sessionId, entryPointId: null };
+    if (root.sourceBinding.sourceAuthority === 'native_session') return { domain: 'native_session', sessionId: source.sessionId, entryPointId: null,
+        ...root.sourceBinding.sourceRequest.taskRef ? { taskRef: root.sourceBinding.sourceRequest.taskRef } : {} };
     if (root.sourceBinding.sourceAuthority === 'project') return { domain: 'project', projectId: source.projectId, taskId: source.taskId };
     if (root.sourceBinding.sourceAuthority === 'rp_chat') return { domain: 'rp_chat', controlId: source.controlId };
     throw new TypeError('Unsupported original Run source');
 };
 const matches = (root, selector) => {
     const source = selectorFor(root);
-    return source.domain === selector.domain && Object.entries(source).every(([field, value]) => field === 'entryPointId'
-        || field === 'taskId' && selector.taskId === null || selector[field] === value);
+    return source.domain === selector.domain && !(selector.taskRef && !source.taskRef)
+        && Object.entries(source).every(([field, value]) => field === 'entryPointId'
+            || field === 'taskId' && selector.taskId === null || field === 'taskRef' && !selector.taskRef || hash(selector[field]) === hash(value));
 };
 const boundedLimit = limit => {
     assertCounter(limit, 'limit', 1);

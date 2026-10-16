@@ -1,8 +1,16 @@
-import { assertSourceSelector } from '../../../public/shared/native-orchestration-contracts.js';
+import { assertSourceSelector, assertSessionTaskRef } from '../../../public/shared/native-orchestration-contracts.js';
 import { NotFoundError } from '../../storage/errors.js';
 
 const unavailable = () => { throw Object.assign(new Error('Original binding source authority is required'), { code: 'native_orchestration_source_unavailable' }); };
 const missing = () => { throw new NotFoundError('orchestration_binding_source'); };
+
+export function assertSessionTaskSource(snapshot, taskRef) {
+    assertSessionTaskRef(taskRef);
+    const task = snapshot.manifest?.runtime?.experienceContract?.taskRuntime?.tasks?.find(item => item.id === taskRef.taskId);
+    const variant = task?.variants?.find(item => item.id === taskRef.variantId);
+    if (!task || !variant) missing();
+    return { task, variant };
+}
 
 /** Validate a saved user selection, never grant model/Actor/Tool execution. */
 export function createBindingSourceAuthority({ sessionCore, projectAgent, studio, rpControl } = {}) {
@@ -13,6 +21,7 @@ export function createBindingSourceAuthority({ sessionCore, projectAgent, studio
             const snapshot = await sessionCore.observe(handle, selector.sessionId);
             if (!snapshot || snapshot.session.sessionId !== selector.sessionId
                 || (selector.entryPointId !== null && snapshot.session.entryPointId !== selector.entryPointId)) missing();
+            if (selector.taskRef) assertSessionTaskSource(snapshot, selector.taskRef);
         } else if (selector.domain === 'project') {
             if (selector.taskId === null) {
                 if (typeof studio?.observeRevision !== 'function') unavailable();

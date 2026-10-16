@@ -1,7 +1,7 @@
 import { modelPortFixture } from './model-port-fixture.js';
 import { installAppraisalFixture, appraisalCandidate } from '../../native/helpers/appraisal-fixture.js';
 
-export async function appraisalModelFixture(make, { usage = true, maxJobs = 32, mutateCandidate = value => value } = {}) {
+export async function appraisalModelFixture(make, { usage = true, maxJobs = 32, afterAppraisalText = null, mutateCandidate = value => value } = {}) {
     let product;
     const f = await modelPortFixture(make, {
         createSource: async h => {
@@ -16,8 +16,8 @@ export async function appraisalModelFixture(make, { usage = true, maxJobs = 32, 
             plan.definition.limits.maxSteps = 50;
         }, changeRoute: route => ({ ...route, policy: { ...route.policy, maxFallbackAttempts: 0 }, executionPolicy: { ...route.executionPolicy,
             computeBudget: { ...route.executionPolicy.computeBudget, localWork: { ...route.executionPolicy.computeBudget.localWork, maxJobs } } } }),
-        responseBody: () => ({ id: 'appraisal-model-response', status: 'completed', output: [{ id: 'appraisal-model-message', type: 'message', status: 'completed', role: 'assistant',
-            content: [{ type: 'output_text', text: JSON.stringify(mutateCandidate(appraisalCandidate(product))), annotations: [] }] }],
+        responseBody: ({ index }) => ({ id: 'appraisal-model-response', status: 'completed', output: [{ id: 'appraisal-model-message', type: 'message', status: 'completed', role: 'assistant',
+            content: [{ type: 'output_text', text: index > 0 && afterAppraisalText !== null ? afterAppraisalText : JSON.stringify(mutateCandidate(appraisalCandidate(product))), annotations: [] }] }],
         ...usage ? { usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } } : {} }),
     });
     const sessionId = f.base.session.sessionId, slotBindings = { structured: { scope: 'player', runtimeRouteId: f.route.runtimeRouteId } };

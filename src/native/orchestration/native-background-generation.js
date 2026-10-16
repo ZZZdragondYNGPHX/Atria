@@ -75,8 +75,16 @@ export class NativeBackgroundOrchestrationAuthority {
         this.owner.plans ??= createOrchestrationAuthoringService(this.owner.engine, { sessionCore: this.owner.sessionCore,
             projectAgent: this.owner.projectAgent, rpControl: this.owner.rpControl, modelResolver: this.owner.modelResolver }).plans;
         const selector = { domain: 'native_session', sessionId: snapshot.session.sessionId, entryPointId: null };
-        let binding = await this.owner.plans.getBinding(handle, selector);
-        if (!binding) binding = await this.owner.plans.getBinding(handle, { ...selector, sessionId: null, entryPointId: snapshot.session.entryPointId });
+        const taskRef = { taskId: input.taskId, variantId: input.variantId };
+        let binding;
+        // A task-specific selection takes precedence over the general Session
+        // selection; all scopes still name this exact owned Session.
+        const selectors = [taskRef, null].flatMap(task => [snapshot.session.entryPointId, null]
+            .map(entryPointId => ({ ...selector, entryPointId, ...task ? { taskRef: task } : {} })));
+        for (const sourceSelector of selectors) {
+            binding = await this.owner.plans.getBinding(handle, sourceSelector);
+            if (binding) break;
+        }
         if (!binding) return null;
         const taskPlan = pendingTask(snapshot, input);
         if (input.fallbackMode !== undefined && input.fallbackMode !== 'disabled') fail('native_orchestration_background_route_mismatch');
@@ -170,7 +178,7 @@ export class NativeBackgroundOrchestrationAuthority {
             captures.set(capture, { host, owner: this.owner, handle, input: immutable(input), request, taskPlan: immutable(selected.taskPlan), boundary, expected,
                 policy: immutable(snapshot.manifest.runtime.experienceContract.generationBudget), policyDigest: hash(snapshot.manifest.runtime.experienceContract.generationBudget),
                 snapshotDigest: hash(snapshot), sourceRequest: { domain: 'native_session', sessionId: input.sessionId,
-                    branchId: snapshot.revision.branchId, revisionId: input.revisionId } });
+                    branchId: snapshot.revision.branchId, revisionId: input.revisionId, taskRef: { taskId: input.taskId, variantId: input.variantId } } });
             return this.#generate({ host, handle, input, snapshot, selected, capture, request, lanePlan: captured });
         }, finalize: (result, receipt, boundary) => this.#finalize(handle, result, receipt, boundary, work.finalize) });
         const release = () => {
@@ -187,8 +195,7 @@ export class NativeBackgroundOrchestrationAuthority {
         await RunControl.prototype.checkGenerationQuota.call(this.owner.sessionCore.runs, handle, snapshot,
             { background: true, role: request.role, anchor: { invocationId: input.invocationId } },
             snapshot.manifest.runtime.experienceContract.generationBudget);
-        const service = this.execution(), captured = await service.sourcePort.capture(handle, {
-            domain: 'native_session', sessionId: input.sessionId, branchId: snapshot.revision.branchId, revisionId: input.revisionId });
+        const service = this.execution(), captured = await service.sourcePort.capture(handle, captures.get(capture).sourceRequest);
         const logicalInputRef = immutable({ kind: 'native_background_intent', sourceBindingDigest: captured.sourceBinding.bindingDigest,
             invocationId: input.invocationId, requestId: request.requestId, role: request.role, taskId: input.taskId, variantId: input.variantId,
             taskDefinitionHash: hash(selected.taskPlan.task), taskResultClass: selected.taskPlan.task.resultPolicy.resultClass,

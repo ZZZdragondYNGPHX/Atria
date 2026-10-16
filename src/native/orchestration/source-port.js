@@ -9,6 +9,7 @@ import { ProjectTaskRepository } from '../agent-intelligence/project-task-reposi
 import { StudioService } from '../authoring/studio-service.js';
 import { BudgetPort } from './budget-port.js';
 import { ATRIA_PROJECT_CONFLICT_CODE } from '../authoring-contracts.js';
+import { assertSessionTaskSource } from './binding-source-authority.js';
 import { RpRunControl } from '../rp-run-control.js';
 import { ChatRepo } from '../../storage/repositories/chat-repo.js';
 import { readProjectOwnedSource } from './project-tool-receipts.js';
@@ -84,9 +85,10 @@ export class SourcePort {
     async capture(handle, sourceRequest, { tx } = {}) {
         let budgetSource, sourceRef;
         if (sourceRequest?.domain === 'native_session') {
-            fields(sourceRequest, ['domain', 'sessionId', 'branchId', 'revisionId'], 'Session SourceRequest');
+            fields(sourceRequest, ['domain', 'sessionId', 'branchId', 'revisionId', 'taskRef'], 'Session SourceRequest');
             const snapshot = await this.sessionCore.observe(handle, sourceRequest.sessionId);
             if (snapshot.revision.branchId !== sourceRequest.branchId || snapshot.revision.revisionId !== sourceRequest.revisionId) conflict();
+            if (Object.hasOwn(sourceRequest, 'taskRef')) assertSessionTaskSource(snapshot, sourceRequest.taskRef);
             if (tx) await assertRunAccess(tx, handle, sourceRequest.sessionId, 'generate');
             else await this.sessionCore.runs.assert(handle, sourceRequest.sessionId, 'generate');
             budgetSource = { domain: 'native_session', sessionId: sourceRequest.sessionId };
