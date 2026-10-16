@@ -802,3 +802,13 @@ HandoffReceipt钉父/子Run、父Attempt/epoch、Host boot/generation、source�
 首版来源只接精确两ref：run_source{runId,epoch,sourceBindingDigest,sourceAuthority:'rp_chat',sourceRef:{controlId,prefixDigest}}与effect_receipt{runId,effectId,receiptId,observedEpoch}；二者同producer Run/epoch。audienceConstraint={kind:'parent_attempt',parentRunId,parentAttemptId,parentEpoch,sourceBindingDigest,grantDigest,taskPurpose}，disclosureConstraint={kind:'same_source_parent_only'}，限定同source精确父Attempt、不转发。dependencyDigest绑定除自身字段外的完整Envelope，payload hash另外校验。expected精确producer/source/receipt/recipient参数只能做一致性核对，不是授权。
 
 本组只有严格物理validators与原FS/SQLite/MySQL/Pg明确存储fixture，没有生产Result writer、Model completion proof、领域授权、child Context或returnHandoff。不能把形状或哈希合法当可读/可写grant，也不能从cold Effect observation恢复丢失正文或授权重发。实际验证与SQL精选范围归同一Record第三十六组，P3 Gate仍NOT_READY。
+
+### 17.47 原Model完成事实与同source元数据控制边界
+
+ModelPort.generate仅在原withConsumption真正成功返回后，以实际返回wrapper为私有WeakMap key登记完成事实；被最终消费围栏拒绝的callback候选值不登记。只接真实text且无toolCalls的响应，原工具响应交付不变但没有text Result proof。inspectResultCompletion(handle,{result,runId,effectId})要求同Port/owner及原对象，核response/snapshot/provider rows/receipt摘要、当前Run/Attempt/EffectReceipt、Host fence、Source及原BudgetPort每send provenance；末次await后再次核Root stamp/fence和对象。冷Port、JSON/浅复制、历史observe、替换正文/receipt不能取得证明。没有正文副本、新ledger、余额或收费；原unknown事实不变，不冒称已结清。
+
+返回descriptor只有runId/effectId/producerAttemptId/epoch/sourceBinding/receiptRef/payloadHash/outputType。这是完成事实，不是Result写权限、父Audience、child祖先授权或业务提交。实际writer必须持原wrapper在领域scope仍有效时调用，并另核当前完整lineage、Plan/outputPolicy、收件人及原银行闭包；不能先spread返回再用副本恢复证明。独立合法Source/取消撤销后拒消费，费用保留。若同Engine事务内合法cancel发生于最终bank await，末Root检查拒绝；消费方须在原事务内把这个明确拒绝封装为deny、先提交合法控制事实再事务外拒绝，不能用宽catch或声称裸throw保留同事务写。
+
+RunRepository.withSourceControl(handle,runId,operation,{withAuthority})要求两callback，复用完整原Run祖先锁→调用方原Source领域边界；不打开事务、生成grant或新锁。可信调用方在内部自行开fresh Engine控制事务并复验Source/currentness，允许本次合法元数据改变Root，不挪用withConsumption的原stamp不变语义。此helper只覆盖目标Run祖先链，不授予任意新sibling资源嵌套调度权。
+
+原Run命令锁统一先Run资源/祖先再command ID，修复外层已持Run、独立相同command先占command再等Run的真实逆序。无lineage的Run.start仍以原command去重，原Runtime/Session/Engine顺序与PlanRepository不另改。FS/SQLite、精选SQL、真实竞态失败修复和语义变异范围归同一Record第三十七组。当前尚无Result发布、正式child producer/return或新HTTP；P3 Gate仍NOT_READY。

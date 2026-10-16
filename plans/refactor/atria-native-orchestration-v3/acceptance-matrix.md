@@ -181,3 +181,5 @@ IMPLEMENTATION_PENDING表示已有设计和授权、仍需本任务后续实现�
 第三十五组有限Delegate发布校验/单次闭包memo见接口§17.45；FS/SQLite明确子Plan能力/全limits/精确完整性、递归原Route漂移、DAG复用仍核逐父边及跨调用失效。该机制与运行grant分离，未实现producer/Result/return，相关Gate不核销，SQL/外部收费NOT_RUN。
 
 第三十六组补Result显式正文policy及最窄物理validators（接口§17.46）。用户启动Docker后启动现有两SQL容器，精选原handoff/银行/单槽调度/收据/取消/嵌套、Delegate发布闭包与Result roundtrip/改写哈希共22项真实MySQL/Pg通过，304filterSKIP；只更新这些场景证据，先前当时服务不可用记录保留。完整SQL矩阵、实际Result生产者/受权消费与return仍未完成，P3 Gate不变。
+
+第三十七组补原Model wrapper完成事实、fresh bank provenance、末await对象/Root复验与原Run→Source控制边界（接口§17.47）；FS/SQLite及精选MySQL/Pg证据、锁逆序/同事务取消反例和守卫变异精确范围归同一Record。证明不授予收件人权限，不持久正文，不替代正式Result/OutputClaim/child producer/return；这些验收继续IMPLEMENTATION_PENDING，外部费用/质量/三端全流程NOT_RUN，P3 Gate仍NOT_READY。

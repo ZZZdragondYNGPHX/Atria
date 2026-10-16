@@ -94,3 +94,5 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 第三十五组185cb7799补有限agent.delegate原Plan发布机制及单次闭包memo，见[接口§17.45](interface-contracts.md#1745-有限delegate发布机制与单次依赖闭包)。真实执行仍需原领域capture/grant、child输入编译和Result/Audience/return，不将发布成功当执行授权。继续已授权后端工作，P3 Gate NOT_READY。
 
 第三十六组1afab4875/1543e859c补显式Result字节policy、严格record/envelope与最窄RP→父Attempt范围，见[接口§17.46](interface-contracts.md#1746-有界task-local-result物理合同)。用户启动Docker后本机相关SQL22项取得实际证据；完整矩阵和正式producer/Result写入与消费未通过，继续后端，未合main。
+
+第三十七组补原Model实际wrapper的私有完成证明及原Run→Source元数据控制边界，见[接口§17.47](interface-contracts.md#1747-原model完成事实与同source元数据控制边界)。修复相同command锁逆序和末预算await期间同事务取消的过期证明；完成事实不替代Result/Audience授权。最新源码/实测范围归同一Record，继续实际RP child producer及正式Result/return，P3 Gate仍NOT_READY。
