@@ -17,11 +17,14 @@ import { validationDigest } from '../../src/native/orchestration/plan-repository
 import { createNativeId } from '../../src/native/identity.js';
 import { hashNativeDocument as hash } from '../../src/native/repositories/common.js';
 import { PILOT_CASE_SET_REVISION } from '../../src/native/agent-intelligence/evaluation/cases.js';
+import { projectProbeSummary } from './helpers/native-live-summary.js';
 
 const [domain, configFile, quotaFile] = process.argv.slice(2);
 if (!['rp', 'project'].includes(domain) || !path.isAbsolute(configFile ?? '') || !path.isAbsolute(quotaFile ?? ''))
     throw new TypeError('Usage: native-live.mjs rp|project <absolute-private-api-config> <absolute-private-api-quota>');
 const command = () => createNativeId('orchestrationCommand');
+const projectToolNames = Object.freeze(['atri_agent_get_project', 'atri_agent_resource_closure', 'atri_agent_set_plan',
+    'atri_agent_reset_operations', 'atri_agent_project_save', 'atri_agent_prepare_review']);
 let fixture, repository, lock, descriptor, handle, requests = 0;
 const summary = { domain, origin: 'native_backend_source_probe', semanticQuality: 'not_graded', monetaryPrice: 'unavailable', status: 'failed', transport: [] };
 try {
@@ -32,6 +35,9 @@ try {
     if (url.protocol !== 'https:' || url.username || url.password || url.search || !apiKey || typeof config.model !== 'string'
         || ![config.contextTokens, config.maxOutputTokens, config.timeoutMs].every(value => Number.isSafeInteger(value) && value > 0)
         || config.maxOutputTokens >= config.contextTokens) throw new TypeError('Invalid explicit test connection');
+    const maxModelRounds = domain === 'project' ? 6 : 1, deadlineMs = config.timeoutMs * maxModelRounds;
+    if (!Number.isSafeInteger(deadlineMs)) throw new TypeError('Invalid bounded source probe duration');
+    summary.maxModelRounds = maxModelRounds; summary.planDeadlineMs = deadlineMs;
     if (/\/v1\/?$/.test(url.pathname)) url.pathname = url.pathname.replace(/\/$/, '') + '/chat/completions';
     const quota = new M1ApiQuota(JSON.parse(fs.readFileSync(quotaFile, 'utf8')),
         value => writeFileAtomic.sync(quotaFile, JSON.stringify(value) + '\n', { mode: 0o600 }));
@@ -47,8 +53,7 @@ try {
                 metadata.hints = ['max_tokens', 'max_completion_tokens', 'api key', 'model', 'quota', 'billing', 'stream', 'rate limit'].filter(value => raw.toLowerCase().includes(value));
             } else if (domain === 'project' && metadata.json) {
                 const observed = await response.clone().json();
-                const allowed = new Set(['atri_agent_get_project', 'atri_agent_set_plan', 'atri_agent_reset_operations',
-                    'atri_agent_project_save', 'atri_agent_prepare_review']);
+                const allowed = new Set(projectToolNames);
                 metadata.toolCalls = observed.choices?.[0]?.message?.tool_calls?.map(call => allowed.has(call.function?.name) ? call.function.name : 'unrecognized') ?? [];
                 metadata.finishReason = ['stop', 'tool_calls', 'length'].includes(observed.choices?.[0]?.finish_reason)
                     ? observed.choices[0].finish_reason : 'other';
@@ -67,14 +72,15 @@ try {
         Object.assign(plan.definition.outputContract, { kind: domain === 'rp' ? 'rp_narration' : 'project_review',
             ...(domain === 'rp' ? { slot: 'assistant' } : {}), resultPolicy: { outputType: domain === 'rp' ? 'text' : 'json', maxBytes: 65536 } });
         plan.definition.limits.maxSteps = 200;
+        plan.definition.limits.deadlineMs = deadlineMs;
     };
     fixture = domain === 'rp' ? await rpModelFixture(makeTempFsEngineHarness, { configurePlan }) : await projectModelFixture(makeTempFsEngineHarness, {
-        format: 'openai-compatible', maxModelRounds: 6, configurePlan: async args => {
-            await configureProjectToolPlan(['atri_agent_get_project', 'atri_agent_set_plan', 'atri_agent_reset_operations', 'atri_agent_project_save', 'atri_agent_prepare_review'])(args);
+        format: 'openai-compatible', maxModelRounds, configurePlan: async args => {
+            await configureProjectToolPlan(projectToolNames)(args);
             configurePlan(args.plan);
             const node = args.plan.definition.nodes[0]; node.inputs.push({ name: 'continuation', type: 'json', required: false });
             args.plan.definition.edges.push({ edgeId: createNativeId('orchestrationEdge'), from: { nodeId: node.nodeId, port: 'response' },
-                to: { nodeId: node.nodeId, port: 'continuation' }, condition: 'always', maxVisits: 5, loopBack: true });
+                to: { nodeId: node.nodeId, port: 'continuation' }, condition: 'always', maxVisits: maxModelRounds - 1, loopBack: true });
         },
     });
     const f = fixture; handle = f.h.handle;
@@ -113,7 +119,8 @@ try {
         policyFingerprint: 'engineering-observation', targetPin: hash(settings), price: null }, frozen, settings, new AbortController().signal,
     async () => {}, async () => {}, async () => {}, { profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related',
         caseSetRevision: PILOT_CASE_SET_REVISION, split: 'development', repetitions: 1, mode: 'source_probe' });
-    summary.cases = report.pairs.map(pair => ({ caseId: pair.case.caseId, checks: pair.baseline.checks, charges: pair.baseline.charges.length }));
+    summary.cases = report.pairs.map(pair => ({ caseId: pair.case.caseId, checks: pair.baseline.checks, charges: pair.baseline.charges.length,
+        ...(domain === 'project' ? { diagnostic: projectProbeSummary(pair.baseline) } : {}) }));
     summary.status = summary.cases.every(value => Object.values(value.checks).every(Boolean)) ? 'passed' : 'invariants_failed';
 } catch (error) {
     summary.error = /^[a-z][a-z0-9_:.]{0,100}$/.test(error.code ?? '') ? error.code : /^[a-z][a-z0-9_]{0,100}$/.test(error.message ?? '') ? error.message : 'native_live_failed';

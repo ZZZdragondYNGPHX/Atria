@@ -23,7 +23,7 @@ const limits = { maxRequests: 4, maxTokens: 100000, localWork: { maxJobs: 32, ma
 
 // The actual original interactive Executor, scheduler, source, Context, bank,
 // model Port and localhost Provider are used. Only remote content/usage is synthetic.
-export async function projectModelFixture(make, { responseBody = null, responseStatus = 200, configurePlan = async () => {}, changeRoute = route => route, maxModelRounds = 1, format = 'openai-responses' } = {}) {
+export async function projectModelFixture(make, { responseBody = null, responseStatus = 200, configureSource = async () => {}, configurePlan = async () => {}, changeRoute = route => route, maxModelRounds = 1, format = 'openai-responses' } = {}) {
     const h = await make(), requests = [], effects = [], operations = new Map();
     let afterSend = async () => {}, afterRound = async () => {}, round = null, roundArgs = null;
     const server = http.createServer(async (request, response) => {
@@ -43,6 +43,7 @@ export async function projectModelFixture(make, { responseBody = null, responseS
     try {
         await prepareControllerOwnerRoot(h.dirs.root); attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
         const svc = projectServices(h), original = projectSource(), projectId = original.project.projectId;
+        await configureSource({ h, ...svc, source: original });
         const project = await svc.studio.createProject(h.handle, original);
         const task = await svc.agent.createTask(h.handle, projectId, { intent: 'Describe the current Project using original Native authority.', baseRevision: project.revision.revision });
         const core = sessionServices(h).core;
