@@ -1084,3 +1084,11 @@
 
 - Source 03c019a87 → d3e62ee70，本地提交，未推送。原两个 Project grader 共用 preservation helper，缺失/错误 entryPoint 直接失败证据，不再抛异常或填补结构。恢复授权字段时保留原 optional 字段是否存在；最初 pure case 1FAIL 发现直接添加 undefined primaryWorldId 会改变 canonical hash，修正为精确原字段存在性。没有放宽 related_proposal、Review、preservation 或独立质量 Gate。新 helper 纳入 evaluator 指纹。
 - pure malformed/精确保留与指纹两 suites 34/34 PASS（2.129s，指纹26）；实际 Native worker 两 Engine 不完整提案场景2PASS/2filterSKIP（137.675s），每个三案例均完整运行，全部正确 preservation/review/target=false，Source隔离、费用9次原ledger保持。原 Native 合法 related_pilot 精选1PASS/5filterSKIP（75.332s），原 Project来源/长窗口4PASS/25filterSKIP（10.646s）。七文件原 ESLint/staged diff check通过。都是 localhost合成，未因修 grader 重新重复真实调用或宣称质量通过；接着继续 Cognition及其它实际后端消费者，未交前端/main。
+
+
+## 2026-10-17 — 第九十三组：原 Cognition appraisal 正式输出
+
+- Source d3e62ee70 → e6b1da4fc，本地提交，未推送；接口 §17.97。支持原非 simulation pending appraisal，仍限有限background JSON图/原Task/Actor view与原封闭Domain authority。尚未交付通用Actor/Planner/Judge图或与Narrator共存的独立Task binding，继续后端。
+- 首批正向FS/SQLite 2/2 PASS（19.462s）；扩展首轮10PASS/2FAIL/2filterSKIP（106.147s），两FAIL是错误假定原receipt有rejected计数，按原decisions数组修正。复制lane/非finalizer/重复parse阶段加入后16/16 PASS（141.355s）。自检发现若在领域事务内收费会随rollback丢失实际本地工作，已改为事务外持久准入/实际结算，先Actor+Result、后费用闭包/OutputClaim；不改原32 job硬上限。
+- 事务外收费首批正向/Domain ACK/回滚8PASS/10filterSKIP（76.908s）；新settlement ACK四参数PASS，headroom两参数初版错误取7（实际五个Model/Context工作加两个finalizer刚好可执行），改6后2PASS/22filterSKIP（17.802s）。最终24/24 PASS（222.133s），含Actor撤权、uncited候选原域拒绝、usage unknown、取消后保留已采纳状态、saved/no_save领域与费用 ACK、publication回滚仍留CPU费用、有限准入拒绝不重发。
+- 原普通后台两个完整 suites36/36 PASS（213.867s）；事务外生命周期改动后再与指纹跑三个 suites62/62 PASS（220.256s，指纹26）。最新reader新增原 parse/adopt target/ID/usage 行证明及诚实重hash缺行/外来/失败记录拒绝后，相关 appraisal正向/ACK/回滚12PASS/12filterSKIP（111.145s）。六文件原ESLint、staged diff check通过。Provider都是localhost合成；没有真实Actor语义质量、价格或自动晋升结论，完整后端Gate仍NOT_READY，未交前端/main。

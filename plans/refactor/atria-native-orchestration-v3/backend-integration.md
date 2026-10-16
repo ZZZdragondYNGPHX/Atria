@@ -2,7 +2,7 @@
 
 > 2026-10-16。本文件属于同一 Plan Bundle，用于用户已授权的提示词预设/前端并行任务整合。详细合同仍归 [interface-contracts](interface-contracts.md)，阶段门槛仍归 [acceptance-matrix](acceptance-matrix.md)，精确源码提交/实测与失败只归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。本文不将 P3 子工作冒称完整 V3 后端完成。
 
-## 当前后端续作（第七十一至九十一组）
+## 当前后端续作（第七十一至九十三组）
 
 `826d2ba43` 已有显式 Host 元数据 recover、存储 generation 投影围栏，以及唯一顶层 RP/有限 Native Session 输出和原 Project 工具的收据核对命令；详细入口和不恢复执行的边界见[接口 §17.83–§17.86](interface-contracts.md#1783-显式-run-host-元数据恢复入口)。Project 工具核对见[接口 §17.87](interface-contracts.md#1787-原-project-工具冷收据核对)；其余核对与受权 resume 继续后端。
 
@@ -27,6 +27,8 @@
 原 Project 运行异常另写 conservative blocked/reconciling 元数据，见[接口 §17.95](interface-contracts.md#1795-原-project-异常退出元数据)。未知 ACK、费用和 Effect 保持，原异常返回；此状态不是正式完成或自动恢复许可。
 
 原 Task Plan 续跑复用已保存步骤，去掉旧 proposal 引用前须显式 reset，写前 conflict 与 Tool异常闭包见[接口 §17.96](interface-contracts.md#1796-原-task-plan-提案引用与工具异常)。
+
+有限 background JSON Plan 已支持原非 simulation cognition.appraise Task，见[接口 §17.97](interface-contracts.md#1797-原-pending-appraisal-的受限-task-消费者)。Task Context/原Actor域/费用与引用Result/Output闭包均由原Host执行，不提供通用Actor控制或正文API。Task与Narrator独立绑定、其它Graph/恢复/GC继续后端。
 
 ## 第六十九至七十组基础
 

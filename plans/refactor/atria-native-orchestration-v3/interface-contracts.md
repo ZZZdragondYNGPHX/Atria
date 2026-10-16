@@ -1195,3 +1195,12 @@ Run snapshot 新增 execution，包含 immutable Plan limits、原 progress 与 
 原 ProjectAgentService.setPlan 在写入前拒绝删除仍被原 proposal.stepId 引用的步骤，返回 project_agent_plan_proposals_conflict；保留原 Task/Plan/proposal/sequence。保留旧引用的步骤可修改；只有原显式 resetOperations 清空提案后才可去掉该引用。原 Task 存储校验继续存在，不用更换步骤 ID 隐式重绑 proposal。
 
 实际 Prompt 在已存在 Task Plan 时指引复用当前语义步骤，避免续跑无谓重建 Plan；移除引用前只在原工具目录允许时说明 reset_operations。Native Project executeTool 的实际异常也进入 §17.95 的相同保守失败元数据，封闭 reason 可区分 Plan/proposal 冲突；原工具拒绝/已费用/待核对 Effect 不伪装为正式完成或释放。
+
+
+## 17.97 原 pending appraisal 的受限 Task 消费者
+
+在已有有限 background JSON Plan 下，支持原非 simulation、executionClass=background 的 cognition.appraise Task。原 outbox/active scope/epoch/input、appraisalEventCurrent、Actor Task Information view、Task definition/resultBinding、原 Route/Model/Secret/egress 和背景窗口/周期仍逐项复验；不新增心理/World writer，不将建议作为 World Truth，不开放通用 Actor/Graph。原 appraisal_gate 在 Run 准入前沿既有原域 background bank执行；Run的 exact Effect costs 只归准入后的工作，不伪装为整个 Source 的累计费用。
+
+原 Native Host finalizer 的 appraisal_parse/adopt 使用私有 lane identity、真正 Scheduler finalization boundary 和一次性顺序；复制 lane、非 finalizer、重复/乱序阶段不能取得回调。两份稳定 local job 在领域事务外先持久准入，parse精确输入字节、adopt保守有界字节上界，执行前检查实际输入不越界。实际 CPU/wall observation 在领域事务结束后沿同一原银行结算；即使领域/Result事务回滚、ACK no_save，本次真实工作费用也保留。已准入而未执行的阶段记实际零执行/failed，不返还 job额度；单个 settlement ACK未知不阻止另一实际工作结算，仅观察同 exact usage，未知继续保留。
+
+原 SessionCore.recordTaskResult/prepareAppraisalDelivery/原 cognition commands 是唯一采纳权威。Actor状态、原 Task record、delivery marker和有界引用 Result 共用原 Engine事务；费用关闭后再通过同一原 Output controller 的稳定命令补闭 Graph/OutputClaim。unknown Model/local费用可保留已采纳 Actor状态与引用Result，不完成Root、不重发。取消/撤权保留已发生事实；历史 reader 严核原 appraisalEvidence/profile/config/Task/事件，以及 exact parse/adopt费用行、target指纹、稳定ID与合法 usage。Result只有原 Task引用，原 Information展示规则继续隔离 Actor私域、玩家投影和其它Actor。
