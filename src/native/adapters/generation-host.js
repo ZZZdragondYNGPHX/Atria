@@ -417,8 +417,10 @@ export class NativeGenerationHost {
                 if (producer.selection) producer.permit = captureNativeTurnPermit({ ...producer, boundary, resources });
                 return this.prepareTurn(handle, input, boundary.signal, boundary.onChunk, revisionId => { expectedRevisionId = revisionId; }, lanePlan);
             },
-            finalize: prepared => this.sessionCore.finalizeTurn(handle, input.sessionId, { ...prepared, requestHash }, { expectedRevisionId,
-                ...(controlledReview ? { effectPolicy: 'no-background-model' } : {}) }),
+            finalize: (prepared, _receipt, finalizationBoundary) => orchestrationSelection
+                ? this.turnOrchestration.finalizeNarrator({ host: this, handle, prepared, requestHash, expectedRevisionId, finalizationBoundary })
+                : this.sessionCore.finalizeTurn(handle, input.sessionId, { ...prepared, requestHash }, { expectedRevisionId,
+                    ...(controlledReview ? { effectPolicy: 'no-background-model' } : {}) }),
         });
         evidenceCapture?.append({ type: 'operation.queued', eventId: operation.operationId + '/queued', effectId: operation.operationId, status: 'queued' });
         try { onChunk?.({ operationId: operation.operationId, status: 'queued', provisional: true }); } catch { /* Observer only. */ }
@@ -576,7 +578,7 @@ export class NativeGenerationHost {
             (id, index, preparationSignal) => invoke(id, input.stageInputs?.[id] ?? {}, 'stage' + index, preparationSignal), { signal });
         for (const stage of preparedStages) { stages.push(stage.record.payload); provenance.push(stage.turnProvenance); }
         checkCancellation(signal);
-        let draft, knowledgeProof;
+        let draft, knowledgeProof, nativeNarration;
         if (runtime.turn.narratorTaskId) {
             const result = await invoke(runtime.turn.narratorTaskId, { stages }, 'narrator');
             provenance.push(result.turnProvenance);
@@ -602,6 +604,7 @@ export class NativeGenerationHost {
                     authorityTurn: authorityTurn ? { base: committedBase, proof: authorityTurn.proof } : null,
                     selection: producer.selection, signal, onChunk });
                 if (!narration) fail('native_orchestration_turn_producer_unavailable');
+                nativeNarration = narration;
             } else narration = await this.execute(handle, request, signal, onChunk, { scheduled: true, lanePlan });
             provenance.push({ taskId: 'narrator', requestSnapshotHash: hashNativeDocument(narration.snapshot),
                 deliveryReceipt: { kind: 'model_delivery', invocationId: input.invocationId, delivered: true } });
@@ -627,7 +630,9 @@ export class NativeGenerationHost {
             outcomes.push({ requestId: task.interpretation.id, interpretation: interpreted.record.payload });
         }
         checkCancellation(signal);
-        return { invocationId: input.invocationId, provenance, knowledgeProof, envelope: { ...draft, outcomes }, ...(authorityTurn ? { authorityProof: authorityTurn.proof } : {}) };
+        const prepared = { invocationId: input.invocationId, provenance, knowledgeProof, envelope: { ...draft, outcomes }, ...(authorityTurn ? { authorityProof: authorityTurn.proof } : {}) };
+        if (nativeNarration) this.turnOrchestration.bindNarratorOutput({ host: this, handle, narration: nativeNarration, prepared });
+        return prepared;
     }
 
     async preflightTurnRoutes(handle, opened, snapshot) {

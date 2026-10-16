@@ -14,6 +14,7 @@ import { validateModelCapability } from './model-capability-authority.js';
 import { assertNativeTurnQuota, assertNativeTurnOutputQuota } from './native-turn-quota.js';
 import { inspectNativeAuthorityResolver } from './authority-resolver-context.js';
 import { ModelPort } from './model-port.js';
+import { SourcePort } from './source-port.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { immutable, checkCancellation, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
 import { selectNativeRuntimeRoute } from '../adapters/generation-host.js';
@@ -50,6 +51,8 @@ export class NativeNarratorOrchestrationAuthority {
     #project;
     #rp;
     #background;
+    #narrations = new WeakMap();
+    #outputs = new WeakMap();
 
     constructor({ engine, sessionCore, memoryAuthority = null, projectAgent = null, projectRepository = null, rpControl = new RpRunControl({ engine }), plans = null, modelResolver = null, contextOptions = {} }) {
         if (!engine || !sessionCore) throw new TypeError('Original Native Session/Engine required');
@@ -459,10 +462,49 @@ export class NativeNarratorOrchestrationAuthority {
     async executeNarrator(args) {
         const scope = await this.prepareNarrator(args);
         if (scope === null) return null;
-        const { runId } = modelScopes.get(scope).principal;
+        const { runId } = modelScopes.get(scope).principal, state = this.#runs.get(runId), port = this.#port(args.host);
         try {
-            const { generated } = await this.#port(args.host).generate(args.handle, scope, { signal: args.signal });
-            return generated;
+            const result = await port.generate(args.handle, scope, { signal: args.signal });
+            await port.inspectResultCompletion(args.handle, { result, runId, effectId: state.effectId });
+            this.#narrations.set(result.generated, { state, port, result, runId });
+            return result.generated;
         } finally { this.#runs.delete(runId); modelScopes.delete(scope); }
+    }
+
+    bindNarratorOutput({ host, handle, narration, prepared }) {
+        const output = this.#narrations.get(narration);
+        if (!output || output.state.host !== host || output.state.handle !== handle || this.#outputs.has(prepared)
+            || prepared.invocationId !== output.state.proofExpected.invocationId || prepared.envelope.narrative !== narration.response.text
+            || prepared.envelope.outcomes.length || prepared.envelope.diagnostics.length) fail('native_orchestration_output_scope_invalid');
+        this.#narrations.delete(narration);
+        this.#outputs.set(prepared, { ...output, payloadHash: hash({ invocationId: prepared.invocationId, envelope: prepared.envelope, provenance: prepared.provenance }),
+            authorityProof: prepared.authorityProof, knowledgeProof: prepared.knowledgeProof });
+    }
+
+    async finalizeNarrator({ host, handle, prepared, requestHash, expectedRevisionId, finalizationBoundary }) {
+        const output = this.#outputs.get(prepared);
+        if (!output || output.state.host !== host || output.state.handle !== handle
+            || requestHash !== output.state.proofExpected.requestHash || expectedRevisionId !== output.state.proofExpected.anchor.revisionId
+            || output.payloadHash !== hash({ invocationId: prepared.invocationId, envelope: prepared.envelope, provenance: prepared.provenance })
+            || prepared.authorityProof !== output.authorityProof || prepared.knowledgeProof !== output.knowledgeProof) fail('native_orchestration_output_scope_invalid');
+        this.#outputs.delete(prepared);
+        const { state, port, result, runId } = output, service = this.execution;
+        const finalizationPermit = state.contextPort.captureNativeOutputFinalization(handle, { context: state.context, finalizationBoundary });
+        const withAuthority = SourcePort.prototype.consumptionBoundary.call(service.sourcePort, handle, state.sourceBinding, { engine: this.engine });
+        // Keep the original Run -> Runtime -> Settings -> Session ordering,
+        // but close the validation transaction before the domain publication.
+        return service.runs.withSourceControl(handle, runId, async () => {
+            let rejected;
+            try {
+                await service.runs.withConsumption(handle, runId, async ({ deny }) => {
+                    try {
+                        await state.contextPort.revalidateNativeOutput(handle, { context: state.context, finalizationPermit });
+                        await port.inspectResultCompletion(handle, { result, runId, effectId: state.effectId });
+                        await state.contextPort.revalidateNativeOutput(handle, { context: state.context, finalizationPermit });
+                    } catch (error) { rejected = error; return deny(); }
+                });
+            } catch (error) { throw rejected && error.code === 'native_orchestration_consumption_stale' ? rejected : error; }
+            return this.sessionCore.finalizeTurn(handle, state.proofExpected.sessionId, { ...prepared, requestHash }, { expectedRevisionId });
+        }, { withAuthority });
     }
 }
