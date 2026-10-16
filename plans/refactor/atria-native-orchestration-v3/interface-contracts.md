@@ -1113,3 +1113,11 @@ Review listener 不使用主 app middleware/cookie。它检查实际 Host、精�
 `2c5155a4e` 在原 Narrator Authority 增加内部 `reconcileRpOutput(handle,{runId,effectId})`。只接受正式顶层 RP narration 的原 output intent、已发布 Result/Model 收据、精确输入/作用域/端点/egress/预算、原 output Attempt 与原 RPControl WAL；原 Chat marker 核对继续由 `RpRunControl.reconcileNativeOutput` 执行，不调用 Chat writer。
 
 原域已提交时，可在新 Host fence 下以旧 observedEpoch 追加 `rp_output_reconciled` EffectReceipt；这是历史事实核对，不还原输出 capture、scope、OutputClaim 或 Run 完成权。原 local work 未结算则 budgetObservationRef 保持 null，Root 继续 reconciling；原 usage/费用不改为推测值。marker 缺失或 WAL 仍 prepared 继续 unknown，不重发。合法后续聊天编辑不抹除原已提交事实，原未知 receipt 保留；取消后核对只归拢事实，不能恢复运行。ACK未知只观察同稳定 receipt，完整核对实现纳入 evaluator 指纹。此组尚为内部接口，产品命令接线继续。
+
+## 17.85 受限 RP 收据核对产品命令
+
+`317c75d4f` 将 §17.84 接到受保护的 `POST /runs/reconcile`，mutation body 为 `{runId,expectedEpoch,expectedStateVersion,expectedGraphRevision}`。Host 只从该 Run 的 pending Effect 中选择唯一正式顶层 RP 输出，不接收 caller EffectRef/observation/正文/grant。旧 Host fence 须先 recover；当前只支持此 RP 输出协议，其余领域不借此获得通用核对或执行能力。
+
+在查询原域之前，同原 Run CAS 写 `reconciliation_requested` 和原 orchestrationRecord 中的耐久请求；同一 Run epoch/Effect 只允许一个请求。unknown request ACK 不继续原域查询，调用者显式重放同 commandId。仍 pending 时，snapshot 的 `reconciliationRequest:{commandId,effectId}` 让重开页面沿同请求和当前 CAS guards 重试；新 commandId 返回 reconcile_request_exists，不增加事件或新请求。原域核对只观察稳定操作，已提交的历史事实与原费用按 §17.84 保留。
+
+响应为 `{runId,status,resumed:false,observation,versions}`，observation 只有结果状态/安全 receiptRef/budgetSettled；不返回输出正文或 dispatch token。`controls.reconcile` 只表示同 Host 已接安全原 RP 收据能力且有唯一可核对 pending 输出；它不表示 unknown 可以重发或 Run 可以续跑。请求与 receipt ACK 的 saved/no_save 窗口均不重复模型/聊天操作，原取消继续有效。

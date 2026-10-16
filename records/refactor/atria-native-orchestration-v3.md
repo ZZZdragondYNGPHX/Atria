@@ -987,3 +987,9 @@
 - Source `e022f8d58` → `2c5155a4e`，本地提交未推送。实现接口 §17.84 的内部原 Authority 核对：实际 Chat/WAL/Result/Model/Output Attempt/原银行事实全部复核，追加历史 EffectReceipt，不恢复执行或输出 capture。缺 marker 仍 unknown，local work charged 仍保留未知成本；原 committed receipt 即使当前聊天合法编辑也保留历史，取消后仍可核对实际提交而不恢复运行。无公共 arbitrary observation/Effect dispatcher。
 - 首版新 suite 2/2 PASS（4.469s），扩充窗口后 8/8 PASS（13.729s）；再补合法编辑/重 hash 篡改及 saved/no_save ACK，精选 6PASS/6filterSKIP（10.357s）。随后新 suite 全 12 项及旧 live RP 输出精选组合 18PASS/26filterSKIP（28.327s），原 evaluator 指纹 14/14 PASS（1.400s）。最后收紧 unknown ACK receipt envelope 校验，其四 ACK 参数项 4PASS/8filterSKIP（7.395s）。六文件原 ESLint 和 staged diff check 通过。
 - 使用真实原 RP fixture/Native Host/Chat writer/原银行，但 Provider 为 localhost 合成；新 Authority 在同 Engine 的新 generation 下没有旧 capture。每条试验始终一次模型发送、最多一次 Chat append，domain writing/Host receipt/claim/local usage 中断与旧 unknown receipt 均保留。未声称真实 OS重启/SQL/独立质量/前端或全部后端通过；产品 API 和其余恢复/消费者继续。
+
+## 2026-10-16 — 第七十八组：受限 RP 收据核对 HTTP 与耐久请求
+
+- Source `2c5155a4e` → `317c75d4f`，本地提交未推送。实现接口 §17.85：原 source inspection/Host boot/Run CAS 下选取唯一原 RP 输出，在查询原域前持久记录请求；原控制命令精确重放，pending snapshot 暴露安全 request commandId 以便页面重开后续查，同 epoch 不新增第二请求。没有 Browser observation 输入或通用 Effect dispatcher，响应仍 `resumed:false`。
+- 首版 HTTP 两参数项 2FAIL（4.373s）：内部 `run.reconcile` 尚未注册到原封闭 control allowlist；补具体操作后 2PASS/12filterSKIP（4.639s）。request ACK saved/no_save 精选 4PASS/14filterSKIP（7.641s）。加入取消、unknown marker/usage HTTP 场景后，RP reconciliation/Run HTTP/RunRepository 三 suites 66PASS/4SKIP（47.438s）；随后增加同 epoch 请求去重及公开重用 pointer，受影响 HTTP 两 suites 36PASS/12filterSKIP（25.846s）。五文件原 ESLint、staged diff check 通过。
+- ACK未知时原域查询次数为零，显式相同命令重放后才核对；已取消请求只归拢历史结果，不恢复运行。仍 unknown 或成本 charged 的接口保持 reconciling/pending，可重用同请求而不扩日志。所有模型发送为 localhost 合成，每条仍一次模型/最多一次 Chat append；未声称 Session/Project/通用 resume、SQL/三端或独立质量完成。其余后端继续，完整 Gate NOT_READY。

@@ -2,7 +2,9 @@
 
 > 2026-10-16。本文件属于同一 Plan Bundle，用于用户已授权的提示词预设/前端并行任务整合。详细合同仍归 [interface-contracts](interface-contracts.md)，阶段门槛仍归 [acceptance-matrix](acceptance-matrix.md)，精确源码提交/实测与失败只归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。本文不将 P3 子工作冒称完整 V3 后端完成。
 
-## 当前后端续作（第七十一至七十四组）
+## 当前后端续作（第七十一至七十八组）
+
+`317c75d4f` 增加显式 Host 元数据 recover、存储 generation 投影围栏，以及唯一顶层 RP 输出的原收据核对命令；详细入口和不恢复执行的边界见[接口 §17.83–§17.85](interface-contracts.md#1783-显式-run-host-元数据恢复入口)。Session/Project 等其余核对与受权 resume 继续后端。
 
 `d4a6f00a6` 收紧隔离 Review 引导：只有仍有效的原 Approval 可获得会话；同一引导重开替换旧 cookie/CSRF；再认证 context ID 满足原审批 token 合同。真实 Provider 的有限 RP source_probe 三条开发案例已通过，Project 因模型调用未声明工具由原权限围栏拒绝；这不是独立质量或正式自动晋升证据，详见同一 Record 第七十三至七十四组。
 
@@ -49,12 +51,13 @@
 | `/runs/diagnostics` | `{runId}`；只返回状态推导的脱敏 code/controls |
 | `/runs/cancel` | mutation envelope；body `{runId,expectedEpoch,expectedStateVersion,expectedGraphRevision,reasonCode}`；沿原 Run CAS，未知费用/外部效果不退款、不假称撤销 |
 | `/runs/recover` | mutation envelope；body `{runId,expectedEpoch,expectedStateVersion,expectedGraphRevision}`；仅重绑 Host 控制元数据、失效旧批准，返回 `resumed:false`；后续执行和未知结果核对仍须原领域 authority，详见接口 §17.83 |
+| `/runs/reconcile` | 同 recover body；目前只核对唯一正式顶层 RP 输出的原 marker/DomainReceipt/银行事实；沿同耐久请求重放，返回 `resumed:false`，详见接口 §17.85 |
 
 projection envelope 为 `{schemaVersion,runId,projectionId,hostBootId,epoch,projectionVersion,visibilityDigest,seq,cursor,kind,payload}`。snapshot payload 含 Source selector、planRef、CAS versions、Graph 元数据、Attempt/Effect/Approval 状态、events、原银行 costs、diagnostics、controls 和 hasMore。没有 Result/Context/模型正文、Secret、审批 nonce、dispatch token 或原输入。Timeline 只投影封闭事件类型与 opaque eventId，不返回内部 eventSeq/reasonCode。
 
 每个 collection 在 snapshot 内最多 limit 项，hasMore 为真时由 `/runs/details` 获取其余；分页绑定同一 Run stateVersion/epoch/visibility。deltaBatch payload 是 `{fromSeq,toSeq,baseProjectionVersion,changes:[{seq,snapshot}]}`，snapshot 同样带 hasMore，空批次不增加 seq。前端原子替换该有限窗口，并对仍需显示的 collection 重读同版本完整分页，不能拼不同版本的页。
 
-cursor 是 Host 内有界、约 5 分钟有效的 opaque token；观察 cursor 单次推进且固定 limit，重复/并发消费、改 limit、跨用户/Run/类型、重启或 epoch/visibility 变化返回 409 `native_orchestration_projection_resync_required`。重新以 null 取 snapshot；旧 projection/页立即丢弃。关闭观察请求不取消 Run。controls 中 resume/reconcile/approve 仍 false；第七十一组后 Approval 的 reviewAvailable 只在同 Host 有效挑战存在时显示 true，最终批准仍由隔离 listener 与原领域复核。
+cursor 是 Host 内有界、约 5 分钟有效的 opaque token；观察 cursor 单次推进且固定 limit，重复/并发消费、改 limit、跨用户/Run/类型、重启或 epoch/visibility/storage generation 变化返回 409 `native_orchestration_projection_resync_required`。重新以 null 取 snapshot；旧 projection/页立即丢弃。关闭观察请求不取消 Run。resume/approve 仍 false；recover 与受限 RP reconcile 按接口 §17.83–§17.85 的实际能力显示。仍 pending 的核对请求可从 `reconciliationRequest` 取回同 commandId。Approval 的 reviewAvailable 只在同 Host 有效挑战存在时显示 true，最终批准仍由隔离 listener 与原领域复核。
 
 costs 来自原银行同事务事实：knownTotalTokens 与 unknownAttempts/reservedUpperTokens 分开，localJobs/localUnknownJobs/localWallMs 独立，不虚构货币费用或“已退款”。`settled/pending/unavailable/not_started` 不等于正式领域输出成功；以实际 Run/领域收据为准。
 
