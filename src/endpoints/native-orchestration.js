@@ -20,7 +20,8 @@ const services = () => {
     const review = getNativeReviewOrigin(engine);
     let observations = observationServices.get(engine);
     if (!observations || observations.hostBootId !== engine.nativeHostLifecycle.hostBootId) {
-        observations = new RunObservationService({ engine, ...sources, review: review.authority }); observationServices.set(engine, observations);
+        observations = new RunObservationService({ engine, ...sources, review: review.authority,
+            reconcileOutput: (handle, request) => host.turnOrchestration.reconcileRpOutput(handle, request) }); observationServices.set(engine, observations);
     }
     return { ...createOrchestrationAuthoringService(engine, sources), observations, review };
 };
@@ -84,6 +85,7 @@ export function createNativeOrchestrationRouter(getServices = services) {
         route(false, (observations, handle, input, options) => observations[method](handle, input.body, options), 'observations'));
     router.post('/runs/cancel', route(true, (observations, handle, input) => observations.cancel(handle, input.commandId, input.body), 'observations'));
     router.post('/runs/recover', route(true, (observations, handle, input) => observations.recover(handle, input.commandId, input.body), 'observations'));
+    router.post('/runs/reconcile', route(true, (observations, handle, input) => observations.reconcile(handle, input.commandId, input.body), 'observations'));
     router.post('/approvals/launch', (request, response, next) => {
         if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(request.socket.remoteAddress)) return response.sendStatus(503);
         next();

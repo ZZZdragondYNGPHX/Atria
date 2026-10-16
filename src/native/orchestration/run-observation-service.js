@@ -3,17 +3,18 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertNativeId } from '../identity.js';
-import { hashNativeDocument as hash, cloneNativeDocument } from '../repositories/common.js';
+import { hashNativeDocument as hash, cloneNativeDocument, putImmutable } from '../repositories/common.js';
 import { assertObject, assertCounter, assertSourceSelector } from '../../../public/shared/native-orchestration-contracts.js';
 import { createBindingSourceAuthority } from './binding-source-authority.js';
 import { assertRunAccess } from '../run-control.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { RunRepository, assertRunRoot } from './run-repository.js';
 import { BudgetPort } from './budget-port.js';
-import { readAttempt } from './controller-common.js';
+import { controlRecordKey, readAttempt } from './controller-common.js';
 import { readEffect, readApproval } from './effect-contracts.js';
 
 const resync = () => { throw new ConflictError('native_orchestration_projection_resync_required'); };
+const reconcileUnavailable = () => { throw new ConflictError('native_orchestration_reconcile_unavailable'); };
 const selectorFor = root => {
     const source = root.sourceBinding.sourceRef;
     if (root.sourceBinding.sourceAuthority === 'native_session') return { domain: 'native_session', sessionId: source.sessionId, entryPointId: null };
@@ -30,21 +31,34 @@ const boundedLimit = limit => {
     assertCounter(limit, 'limit', 1);
     if (limit > 100) throw new TypeError('limit must be <= 100');
 };
+const reconciliationKey = (handle, root, effectId) => controlRecordKey(handle, root.runId, 'receipt',
+    'oreceipt_' + hash({ kind: 'rp_output_reconciliation_request', runId: root.runId, epoch: root.epoch, effectId }).slice(0, 32));
+async function readReconciliationRequest(tx, handle, root, effectId) {
+    const record = await checkedRecord(tx, reconciliationKey(handle, root, effectId));
+    if (!record) return null;
+    const request = record.doc;
+    assertObject(request, ['schemaVersion', 'receiptKind', 'runId', 'epoch', 'effectId', 'commandId', 'decisionSeq', 'createdAt'], 'Reconciliation request');
+    assertNativeId(request.commandId, 'orchestrationCommand');
+    assertCounter(request.decisionSeq, 'decisionSeq', 1); assertCounter(request.createdAt, 'createdAt');
+    if (request.schemaVersion !== 1 || request.receiptKind !== 'rp_output_reconciliation_request' || request.runId !== root.runId
+        || request.epoch !== root.epoch || request.effectId !== effectId || request.decisionSeq > root.eventSeq) throw new TypeError('Invalid reconciliation request');
+    return request;
+}
 const timelineTypes = new Set(['admitted', 'attempt_prepared', 'attempt_identity_reserved', 'attempt_activated', 'attempt_settled',
     'effect_prepared', 'effect_ready', 'effect_dispatch_claimed', 'effect_observed', 'approval_requested', 'approval_decided',
     'graph_transition_admitted', 'graph_patch_accepted', 'graph_patch_rejected', 'fanout_group_frozen', 'join_membership_frozen', 'join_settled',
     'child_delegated', 'child_budget_confirmed', 'control_handed_off', 'handoff_returned', 'result_published', 'task_local_output_committed',
     'rp_narration_ready', 'rp_output_completed', 'session_narration_ready', 'session_output_completed', 'project_round_finished',
-    'project_review_published', 'project_review_completed', 'cancel_requested', 'host_recovered']);
+    'project_review_published', 'project_review_completed', 'cancel_requested', 'host_recovered', 'reconciliation_requested']);
 
 /** Owner/source metadata projection. No Result bodies, provider inputs, grants or dispatch tokens. */
 export class RunObservationService {
     #cursors = new Map();
     #eventSalt = randomUUID();
 
-    constructor({ engine, sessionCore, projectAgent, studio, rpControl, review = null, now = Date.now, pollMs = 1000 }) {
+    constructor({ engine, sessionCore, projectAgent, studio, rpControl, review = null, reconcileOutput = null, now = Date.now, pollMs = 1000 }) {
         if (!engine.nativeHostLifecycle) throw new TypeError('Original Host ownership required');
-        this.engine = engine; this.now = now; this.pollMs = pollMs; this.review = review;
+        this.engine = engine; this.now = now; this.pollMs = pollMs; this.review = review; this.reconcileOutput = reconcileOutput;
         this.hostBootId = engine.nativeHostLifecycle.hostBootId;
         this.authorizeSource = createBindingSourceAuthority({ sessionCore, projectAgent, studio, rpControl });
         this.budget = new BudgetPort({ sessionCore, projectAgent, projectRepository: projectAgent?._repository, rpControl });
@@ -151,7 +165,7 @@ export class RunObservationService {
                 const root = await this.runs.get(handle, runId), revision = await readPlanRevision(tx, handle, root.planRef);
                 const fence = await this.engine.nativeHostLifecycle.assertWriter(handle, tx);
                 const recoveryRequired = root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation;
-                const visibilityDigest = await this.#authorize(handle, tx, root), attempts = [], effects = [], approvals = [];
+                const visibilityDigest = await this.#authorize(handle, tx, root), attempts = [], effects = [], approvals = [], reconcilable = [];
                 for (const id of root.attemptRefs) {
                     const attempt = (await readAttempt(tx, handle, root, id)).doc;
                     for (const field of ['startedAt', 'endedAt']) if (attempt[field] !== null) assertCounter(attempt[field], field);
@@ -160,6 +174,8 @@ export class RunObservationService {
                     for (const effectId of attempt.effectRefs) {
                         const effect = (await readEffect(tx, handle, root, effectId)).doc;
                         effects.push({ effectId, nodeAttemptId: id, status: effect.status, risk: effect.risk, requiresApproval: effect.requiresApproval });
+                        if (root.pendingEffectRefs.includes(effectId) && effect.actionRef.kind === 'native_rp_output'
+                            && ['dispatching', 'unknown', 'confirmed'].includes(effect.status)) reconcilable.push(effectId);
                     }
                 }
                 for (const id of root.pendingApprovalRefs) {
@@ -181,6 +197,7 @@ export class RunObservationService {
                 }
                 events.sort((a, b) => a.internalOrder - b.internalOrder);
                 const costs = await this.#costs(handle, tx, root, effects);
+                const reconciliationRequest = reconcilable.length === 1 ? await readReconciliationRequest(tx, handle, root, reconcilable[0]) : null;
                 const diagnostics = [];
                 if (root.cancelRequested) diagnostics.push({ code: 'native_orchestration_cancel_requested', severity: 'info' });
                 if (effects.some(effect => ['unknown', 'dispatching'].includes(effect.status))) diagnostics.push({ code: 'native_orchestration_effect_reconcile_required', severity: 'blocking' });
@@ -194,8 +211,12 @@ export class RunObservationService {
                         label: revision.definition.nodes.find(original => original.nodeId === node.nodeId)?.label ?? null })),
                     edges: root.graph.edges.map(edge => ({ edgeId: edge.edgeId, from: edge.from, to: edge.to, loopBack: edge.loopBack })) },
                     attempts, effects, approvals, events: events.map(({ internalOrder: _order, ...event }) => event), costs, diagnostics,
+                    reconciliationRequest: reconciliationRequest ? { commandId: reconciliationRequest.commandId, effectId: reconciliationRequest.effectId } : null,
                     controls: { cancel: !['completed', 'partial', 'failed', 'cancelled', 'stale'].includes(root.status) && !recoveryRequired,
-                        recover: recoveryRequired, resume: false, reconcile: false, approve: false }, createdAt: root.createdAt, updatedAt: root.updatedAt };
+                        recover: recoveryRequired, resume: false, reconcile: typeof this.reconcileOutput === 'function' && !recoveryRequired
+                            && root.sourceBinding.sourceAuthority === 'rp_chat' && root.parentRef === null && root.graph.outputContract.kind === 'rp_narration'
+                            && !['completed', 'partial', 'failed', 'cancelled', 'stale'].includes(root.status) && reconcilable.length === 1,
+                        approve: false }, createdAt: root.createdAt, updatedAt: root.updatedAt };
                 if (visibilityDigest !== await this.#authorize(handle, tx, root)) resync();
                 const current = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId }))?.doc;
                 if (hash(current) !== hash(root)) resync();
@@ -281,6 +302,35 @@ export class RunObservationService {
         // budgets and fresh producer scopes still decide every later action.
         const root = await this.runs.recover(handle, commandId, input);
         return { runId: root.runId, status: root.status, cancelRequested: root.cancelRequested, resumed: false,
+            versions: { epoch: root.epoch, stateVersion: root.stateVersion, graphRevision: root.graphRevision } };
+    }
+
+    async reconcile(handle, commandId, input) {
+        assertObject(input, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision'], 'Run reconcile');
+        if (typeof this.reconcileOutput !== 'function' || this.engine.hasActiveTransaction(handle)) reconcileUnavailable();
+        // Persist this exact owner request before querying the original domain.
+        // A lost ACK replays this same request; subsequent work can only inspect
+        // its stable output operation and append verified historical receipts.
+        const accepted = await this.runs.control(handle, commandId, { ...input, operation: 'run.reconcile',
+            detail: { kind: 'original_rp_output_receipt' } }, async ({ tx, root, now, deny }) => {
+            if (root.sourceBinding.sourceAuthority !== 'rp_chat' || root.parentRef !== null || root.graph.outputContract.kind !== 'rp_narration') reconcileUnavailable();
+            const outputs = [];
+            for (const effectId of root.pendingEffectRefs) {
+                const effect = (await readEffect(tx, handle, root, effectId)).doc;
+                if (effect.actionRef.kind === 'native_rp_output' && ['dispatching', 'unknown', 'confirmed'].includes(effect.status)) outputs.push(effectId);
+            }
+            if (outputs.length !== 1) reconcileUnavailable();
+            if (await readReconciliationRequest(tx, handle, root, outputs[0])) return deny(new ConflictError('native_orchestration_reconcile_request_exists'));
+            await putImmutable(tx, reconciliationKey(handle, root, outputs[0]), { schemaVersion: 1, receiptKind: 'rp_output_reconciliation_request',
+                runId: root.runId, epoch: root.epoch, effectId: outputs[0], commandId, decisionSeq: root.eventSeq + 1, createdAt: now });
+            return { root, eventType: 'reconciliation_requested', reasonCode: null, outcome: { runId: root.runId, effectId: outputs[0] } };
+        });
+        // Recheck source visibility after the durable request. No Model, Tool,
+        // output body, caller-supplied observation or new dispatch enters here.
+        await this.runs.get(handle, input.runId);
+        const observation = await this.reconcileOutput(handle, { runId: accepted.outcome.runId, effectId: accepted.outcome.effectId });
+        const root = await this.runs.get(handle, input.runId);
+        return { runId: root.runId, status: root.status, resumed: false, observation,
             versions: { epoch: root.epoch, stateVersion: root.stateVersion, graphRevision: root.graphRevision } };
     }
 }

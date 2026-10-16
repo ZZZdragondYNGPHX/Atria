@@ -239,7 +239,8 @@ describe.each(harnesses)('$name original Run metadata HTTP', ({ make }) => {
         const detail = (await read('details', { runId: root.runId, collection: 'nodes', cursor: null, limit: 1 }).expect(200)).body.outcome;
         expect(detail.items).toEqual([{ nodeId: root.graph.nodes[0].nodeId, kind: 'output', label: 'Result' }]); expect(detail.cursor).toBeNull();
         for (const collection of ['result', 'inputRef', 'receipt', 'approvalProof']) await read('details', { runId: root.runId, collection, cursor: null, limit: 10 }).expect(400);
-        for (const method of ['start', 'resume', 'reconcile']) await read(method, {}).expect(404);
+        for (const method of ['start', 'resume']) await read(method, {}).expect(404);
+        await mutation(runGuard(root), { method: 'reconcile' }).expect(503);
         expect((await read('diagnostics', { runId: root.runId }).expect(200)).body.outcome.diagnostics).toEqual([]);
     });
 

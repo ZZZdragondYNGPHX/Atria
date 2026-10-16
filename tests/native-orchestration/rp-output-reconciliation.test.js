@@ -8,6 +8,11 @@ import { controlRecordKey, runGuard } from '../../src/native/orchestration/contr
 import { readEffect } from '../../src/native/orchestration/effect-contracts.js';
 import { BudgetPort, localWorkAttemptId } from '../../src/native/orchestration/budget-port.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
+import express from 'express';
+import httpRequest from 'supertest';
+import { RunObservationService } from '../../src/native/orchestration/run-observation-service.js';
+import { createNativeOrchestrationRouter } from '../../src/endpoints/native-orchestration.js';
+import { setReadOnly } from '../../src/storage/read-only-mode.js';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 import { rpModelFixture } from './helpers/rp-model-fixture.js';
 
@@ -24,6 +29,21 @@ const coldAuthority = f => {
         rpControl: new RpRunControl({ engine: f.h.engine, chatRepo: f.chats }) });
     return host.turnOrchestration;
 };
+function api(f, cold) {
+    const observations = new RunObservationService({ engine: f.h.engine, sessionCore: f.host.sessionCore, rpControl: cold.rpControl,
+        reconcileOutput: (handle, input) => cold.reconcileRpOutput(handle, input), pollMs: 0 });
+    const service = { observations, hostBootId: f.h.engine.nativeHostLifecycle.hostBootId };
+    const app = express(); app.use(express.json());
+    app.use((req, _res, next) => { req.user = { profile: { handle: f.h.handle, enabled: true } }; next(); });
+    app.use('/api/native/orchestration', createNativeOrchestrationRouter(() => service));
+    return { observations,
+        mutate: (method, body, { id = createNativeId('orchestrationCommand'), boot = service.hostBootId } = {}) => httpRequest(app)
+            .post('/api/native/orchestration/runs/' + method).set('X-Atria-Host-Boot-Id', boot)
+            .send({ schemaVersion: 1, commandId: id, expectedHostBootId: boot, body }),
+        observe: runId => httpRequest(app).post('/api/native/orchestration/runs/observe')
+            .send({ schemaVersion: 1, body: { runId, cursor: null, limit: 100 } }),
+    };
+}
 
 async function interruptOutput(f, stage) {
     let undo;
@@ -51,6 +71,101 @@ async function interruptOutput(f, stage) {
 }
 
 describe.each(harnesses)('$name original RP output receipt cold reconciliation', ({ make }) => {
+    test('protected HTTP accepts only the pending original output and a durable exact reconciliation request', async () => {
+        const f = await rpModelFixture(make, { configurePlan }), effects = f.authority.execution.effects, observe = effects.observe.bind(effects);
+        effects.observe = (handle, input) => input.observation.reasonCode === 'rp_output_committed'
+            ? Promise.reject(new StorageCommitUnknownError(new Error('Before Host output receipt commit'))) : observe(handle, input);
+        try {
+            const result = await f.run(), before = await f.authority.execution.runs.get(f.h.handle, result.runId);
+            effects.observe = observe;
+            await f.h.engine.nativeHostLifecycle.afterRestore(f.h.handle);
+            const cold = coldAuthority(f), client = api(f, cold);
+            await client.mutate('reconcile', runGuard(before)).expect(409);
+            await client.mutate('recover', runGuard(before)).expect(200);
+            const root = await cold.execution.runs.get(f.h.handle, result.runId), body = runGuard(root), id = createNativeId('orchestrationCommand');
+            expect((await client.observe(result.runId).expect(200)).body.outcome.payload.controls.reconcile).toBe(true);
+            await client.mutate('reconcile', body, { boot: 'foreign-boot' }).expect(409);
+            await client.mutate('reconcile', { ...body, observation: { confirmed: true } }).expect(400);
+            setReadOnly(true); await client.mutate('reconcile', body).expect(503); setReadOnly(false);
+            const response = (await client.mutate('reconcile', body, { id }).expect(200)).body.outcome;
+            expect(response).toMatchObject({ status: 'blocked', resumed: false, observation: { status: 'confirmed', budgetSettled: true, resumed: false } });
+            expect((await client.mutate('reconcile', body, { id }).expect(200)).body.outcome).toEqual(response);
+            const snapshot = (await client.observe(result.runId).expect(200)).body.outcome;
+            expect(snapshot.payload.controls).toMatchObject({ recover: false, reconcile: false, resume: false });
+            expect(snapshot.payload.events.filter(event => event.type === 'reconciliation_requested')).toHaveLength(1);
+            const text = JSON.stringify(response);
+            for (const field of ['dispatchToken', 'payloadHash', 'budgetAuthorityRef', 'inputHash']) expect(text).not.toContain(field);
+            expect(f.requests).toHaveLength(1); expect((await f.chats.get(f.h.handle, 'Actor', 'main')).body).toHaveLength(3);
+            expect((await cold.execution.runs.get(f.h.handle, result.runId)).outputClaims).toEqual([]);
+        } finally { setReadOnly(false); effects.observe = observe; await f.cleanup(); }
+    }, 30000);
+
+    test.each(['saved', 'no_save'])('HTTP reconciliation request ACK %s waits for explicit replay before querying the original operation', async ack => {
+        const f = await rpModelFixture(make, { configurePlan }), effects = f.authority.execution.effects, observe = effects.observe.bind(effects);
+        effects.observe = (handle, input) => input.observation.reasonCode === 'rp_output_committed'
+            ? Promise.reject(new StorageCommitUnknownError(new Error('Before Host output receipt commit'))) : observe(handle, input);
+        let transaction;
+        try {
+            const result = await f.run(), before = await f.authority.execution.runs.get(f.h.handle, result.runId);
+            effects.observe = observe;
+            await f.h.engine.nativeHostLifecycle.afterRestore(f.h.handle);
+            const cold = coldAuthority(f), client = api(f, cold);
+            await client.mutate('recover', runGuard(before)).expect(200);
+            const body = runGuard(await cold.execution.runs.get(f.h.handle, result.runId)), id = createNativeId('orchestrationCommand');
+            const reconcile = client.observations.reconcileOutput;
+            let queries = 0, injected = false;
+            client.observations.reconcileOutput = (...args) => { queries++; return reconcile(...args); };
+            transaction = f.h.engine.withTransaction.bind(f.h.engine);
+            const matches = value => value?.outcome?.runId === result.runId && value.outcome.effectId === result.output.outputEffectId
+                && value.outcome.status === undefined;
+            f.h.engine.withTransaction = async (handle, callback, ...options) => {
+                const value = await transaction(handle, async tx => {
+                    const applied = await callback(tx);
+                    if (!injected && ack === 'no_save' && matches(applied)) { injected = true; throw new StorageCommitUnknownError(new Error('Request rollback')); }
+                    return applied;
+                }, ...options);
+                if (!injected && ack === 'saved' && matches(value)) { injected = true; throw new StorageCommitUnknownError(new Error('Request ACK lost')); }
+                return value;
+            };
+            await client.mutate('reconcile', body, { id }).expect(409);
+            expect(injected).toBe(true); expect(queries).toBe(0);
+            f.h.engine.withTransaction = transaction;
+            if (ack === 'saved') await cold.execution.runs.cancel(f.h.handle, createNativeId('orchestrationCommand'), {
+                ...runGuard(await cold.execution.runs.get(f.h.handle, result.runId)), reasonCode: 'cancel_after_reconcile_request' });
+            const reconciled = (await client.mutate('reconcile', body, { id }).expect(200)).body.outcome;
+            expect(reconciled.observation.status).toBe('confirmed'); expect(reconciled.status).toBe(ack === 'saved' ? 'cancelled' : 'blocked');
+            expect(queries).toBe(1); expect(f.requests).toHaveLength(1);
+            const snapshot = (await client.observe(result.runId).expect(200)).body.outcome;
+            expect(snapshot.payload.events.filter(event => event.type === 'reconciliation_requested')).toHaveLength(1);
+            expect((await f.chats.get(f.h.handle, 'Actor', 'main')).body).toHaveLength(3);
+        } finally { if (transaction) f.h.engine.withTransaction = transaction; effects.observe = observe; await f.cleanup(); }
+    }, 30000);
+
+    test.each(['claim_ack', 'local_usage'])('HTTP %s reconciliation keeps unresolved output or cost pending', async stage => {
+        const f = await rpModelFixture(make, { configurePlan });
+        try {
+            await interruptOutput(f, stage);
+            const runId = f.effects[1].runId, before = await f.authority.execution.runs.get(f.h.handle, runId);
+            await f.h.engine.nativeHostLifecycle.afterRestore(f.h.handle);
+            const cold = coldAuthority(f), client = api(f, cold);
+            await client.mutate('recover', runGuard(before)).expect(200);
+            const root = await cold.execution.runs.get(f.h.handle, runId), id = createNativeId('orchestrationCommand');
+            const result = (await client.mutate('reconcile', runGuard(root), { id }).expect(200)).body.outcome;
+            expect(result).toMatchObject({ status: 'reconciling', resumed: false,
+                observation: { status: stage === 'claim_ack' ? 'unknown' : 'confirmed', resumed: false } });
+            expect(result.observation.budgetSettled ?? false).toBe(false);
+            const snapshot = (await client.observe(runId).expect(200)).body.outcome;
+            expect(snapshot.payload.costs.status).toBe('pending'); expect(snapshot.payload.controls.reconcile).toBe(true);
+            expect(snapshot.payload.reconciliationRequest).toEqual({ commandId: id, effectId: f.effects[1].effectId });
+            const current = await cold.execution.runs.get(f.h.handle, runId);
+            expect((await client.mutate('reconcile', runGuard(current)).expect(409)).body.error).toBe('native_orchestration_reconcile_request_exists');
+            await client.mutate('reconcile', runGuard(current), { id: snapshot.payload.reconciliationRequest.commandId }).expect(200);
+            expect((await cold.execution.runs.get(f.h.handle, runId)).stateVersion).toBe(current.stateVersion);
+            expect(snapshot.payload.controls.resume).toBe(false); expect(f.requests).toHaveLength(1);
+            expect((await f.chats.get(f.h.handle, 'Actor', 'main')).body).toHaveLength(stage === 'claim_ack' ? 2 : 3);
+        } finally { await f.cleanup(); }
+    }, 30000);
+
     test('a committed original Chat receipt confirms its pending Effect without restoring output or model authority', async () => {
         const f = await rpModelFixture(make, { configurePlan }), effects = f.authority.execution.effects, observe = effects.observe.bind(effects);
         effects.observe = (handle, input) => input.observation.reasonCode === 'rp_output_committed'
