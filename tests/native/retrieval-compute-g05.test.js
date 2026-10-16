@@ -39,11 +39,11 @@ async function fixture(make, maxRequests = 2, localWork) {
     let respondEmbedding = body => ({ data: body.input.map((_, index) => ({ index, embedding: [1, 0] })), usage: { prompt_tokens: 3, total_tokens: 3 } });
     const server = createServer(async (req, res) => {
         try {
-        let raw = ''; for await (const chunk of req) raw += chunk;
-        seen.push({ path: req.url, body: JSON.parse(raw) });
-        const body = req.url.endsWith('/rerank') ? await respond() : req.url.endsWith('/embeddings') ? await respondEmbedding(JSON.parse(raw))
-            : { choices: [{ message: { role: 'assistant', content: 'Fresh answer.' } }], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } };
-        res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body));
+            let raw = ''; for await (const chunk of req) raw += chunk;
+            seen.push({ path: req.url, body: JSON.parse(raw) });
+            const body = req.url.endsWith('/rerank') ? await respond() : req.url.endsWith('/embeddings') ? await respondEmbedding(JSON.parse(raw))
+                : { choices: [{ message: { role: 'assistant', content: 'Fresh answer.' } }], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } };
+            res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body));
         } catch (error) {
             providerErrors.push(error);
             res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Synthetic provider callback failed' }));
