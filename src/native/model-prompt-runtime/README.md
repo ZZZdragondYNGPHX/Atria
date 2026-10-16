@@ -239,15 +239,11 @@ restored. The complete design and verification record is maintained on `docs` in
 
 ## Validation / maintenance
 
-`node scripts/check-p8-model-prompt-integration.mjs` runs P0-P7, A0-A9, N9/N10 plus
-final no-write/exact-read/Native-fallback checks. Earlier N0-N8 invariants are covered
-by applicable Native contract/Session/Context/Save/Package tests and N9/N10 guards;
-there are no separate N0-N8 guard scripts in this repository. GitHub Actions are
-disabled. Select relevant local guards and tests for the changed surface; the
-integration command is available when its full scope is needed. Runtime/resource
-HTTP tests, poisoned-legacy/concurrency/Secret/fallback tests, offline Package
-tests and desktop/mobile browser automation remain available locally. Manual
-device checks require a specific essential gap that automation cannot cover.
+Run the relevant local tests under `tests/native/` for contracts, HTTP boundaries,
+resource persistence, exact revision reads, permissions and generation failures.
+`tests/e2e/native-session/` exercises the current product through its Native UI.
+The old phase-numbered source-string guards have been retired. GitHub Actions
+are disabled; verification is local and scoped to the changed behavior.
 Historical completed evidence and exclusions remain on the docs branch.
 
 OpenAI-compatible Connection `options.toolSchemaMode` defaults to `json-schema`.
