@@ -17,6 +17,7 @@ import { applyPatch as applyJsonPatch } from '../../public/scripts/util/fast-jso
 import { getChatRepo, getGroupRepo, getStorageEngine } from '../storage/index.js';
 import { ConflictError, InvalidArgumentError, NotFoundError } from '../storage/errors.js';
 import { assertSafeRepoName } from '../storage/name-validation.js';
+import { withChatWrite } from '../storage/repositories/chat-write-boundary.js';
 
 const isBackupEnabled = !!getConfigValue('backups.chat.enabled', true, 'boolean');
 const maxTotalChatBackups = Number(getConfigValue('backups.chat.maxTotalBackups', -1, 'number'));
@@ -3002,9 +3003,9 @@ router.post('/state/patch', async function (request, response) {
             return response.status(400).send({ error: 'No state patch operations found. Expected body.operations or body.operation.' });
         }
 
-        // Use the storage engine transaction directly: legacy behavior is permissive and
-        // allows writing a sidecar even when the parent chat does not exist, which the
-        // ChatRepo.setState wrapper guards against with a NotFoundError.
+        // Keep the original Engine operation: FS permits a sidecar without a
+        // parent, while relational engines retain their existing parent check.
+        // ChatRepo.setState would require a parent for every engine.
         const engine = getStorageEngine();
         const repoKeyForEngine = {
             kind: 'chat',
@@ -3014,14 +3015,14 @@ router.post('/state/patch', async function (request, response) {
             isGroup: repoKey.isGroup,
             groupId: repoKey.groupId,
         };
-        const { applied, created } = await engine.withTransaction(repoKey.handle, async (tx) => {
+        const { applied, created } = await withChatWrite(repoKey.handle, () => engine.withTransaction(repoKey.handle, async (tx) => {
             const existing = await tx.getChatState(repoKeyForEngine, namespace);
             const existed = existing !== null && existing !== undefined;
             const state = (_.isObjectLike(existing) && !Array.isArray(existing)) ? existing : {};
             const result = applyChatStatePatch(state, operations);
             await tx.putChatState(repoKeyForEngine, namespace, result.state);
             return { applied: result.applied, created: !existed };
-        });
+        }));
 
         // State-only mutations don't change the chat document itself, but we
         // still trigger a backup so any state change has a recoverable point

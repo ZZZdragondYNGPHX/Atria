@@ -9,6 +9,8 @@ import { ProjectTaskRepository } from '../agent-intelligence/project-task-reposi
 import { StudioService } from '../authoring/studio-service.js';
 import { BudgetPort } from './budget-port.js';
 import { ATRIA_PROJECT_CONFLICT_CODE } from '../authoring-contracts.js';
+import { RpRunControl } from '../rp-run-control.js';
+import { ChatRepo } from '../../storage/repositories/chat-repo.js';
 
 const conflict = () => { throw new ConflictError('native_orchestration_source_stale'); };
 
@@ -22,6 +24,24 @@ export class SourcePort {
     // Constructing it is pure; RunRepository acquires its ancestry locks before
     // invoking this original-domain boundary and only then opens its transaction.
     consumptionBoundary(handle, binding, { engine } = {}) {
+        if (binding?.sourceAuthority === 'rp_chat') {
+            const control = this.rpControl, chats = control?._chatRepo, request = binding.sourceRequest, ref = binding.sourceRef, bank = binding.budgetAuthorityRef;
+            const { bindingDigest, ...source } = binding;
+            if (typeof handle !== 'string' || !handle || !engine || typeof engine.withTransaction !== 'function'
+                || !(control instanceof RpRunControl) || control._engine !== engine || !(chats instanceof ChatRepo) || chats._engine !== engine
+                || !(this.budgetPort instanceof BudgetPort) || this.budgetPort.rpControl !== control
+                || request?.domain !== 'rp_chat' || typeof request.controlId !== 'string' || !request.controlId || ref?.controlId !== request.controlId
+                || typeof ref.prefixDigest !== 'string' || !/^[a-f0-9]{64}$/.test(ref.prefixDigest)
+                || bank?.authority !== 'run_control' || bank.domain !== 'rp_chat' || bank.controlId !== request.controlId
+                || hashNativeDocument(bank.source) !== hashNativeDocument(request.source)
+                || bank.operationId !== hashNativeDocument({ controlId: request.controlId, input: request.source?.input, purpose: request.source?.purpose, outputSlot: request.source?.outputSlot })
+                || typeof bindingDigest !== 'string' || hashNativeDocument(source) !== bindingDigest)
+                throw new ConflictError('native_orchestration_consumption_authority_unavailable');
+            return operation => {
+                if (typeof operation !== 'function') throw new TypeError('Original domain consumption requires an operation');
+                return ChatRepo.prototype.withWriteLock.call(chats, handle, operation);
+            };
+        }
         if (binding?.sourceAuthority === 'project') {
             const agent = this.projectAgent, studio = agent?._studio, request = binding.sourceRequest, ref = binding.sourceRef, bank = binding.budgetAuthorityRef;
             const { bindingDigest, ...source } = binding;
@@ -80,7 +100,8 @@ export class SourcePort {
             sourceRef = { projectId: sourceRequest.projectId, taskId: sourceRequest.taskId, revision: sourceRequest.revision, executionFingerprint: sourceRequest.executionFingerprint };
         } else if (sourceRequest?.domain === 'rp_chat') {
             fields(sourceRequest, ['domain', 'controlId', 'source'], 'RP SourceRequest');
-            const context = await this.rpControl.context(handle, sourceRequest.controlId, sourceRequest.source);
+            if (!(this.rpControl instanceof RpRunControl)) throw Object.assign(new TypeError('Original RP control required'), { code: 'native_orchestration_source_unavailable' });
+            const context = await RpRunControl.prototype.context.call(this.rpControl, handle, sourceRequest.controlId, sourceRequest.source, tx ? { tx } : undefined);
             sourceRef = { controlId: sourceRequest.controlId, prefixDigest: context.prefixDigest };
             budgetSource = sourceRequest;
         } else throw Object.assign(new TypeError('Unsupported original source'), { code: 'native_orchestration_source_unavailable' });

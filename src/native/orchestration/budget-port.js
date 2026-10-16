@@ -5,6 +5,7 @@ import { readRunControl } from '../run-control.js';
 import { fields } from '../../../public/shared/native-values.js';
 import { assertNativeTurnQuota } from './native-turn-quota.js';
 import { orchestrationComputeAttemptId } from '../../../public/shared/native-compute-budget.js';
+import { RpRunControl } from '../rp-run-control.js';
 
 // V3 BudgetPort (interface §8.1/§13): a typed dispatcher onto the three original
 // banks. It owns no ledger, price or limit; every decision is the original
@@ -80,6 +81,11 @@ export class BudgetPort {
         Object.assign(this, { sessionCore, projectAgent, projectRepository, rpControl });
     }
 
+    #rpContext(handle, controlId, source, tx) {
+        if (!(this.rpControl instanceof RpRunControl)) fail('native_orchestration_budget_unavailable');
+        return RpRunControl.prototype.context.call(this.rpControl, handle, controlId, source, tx ? { tx } : undefined);
+    }
+
     /** Admission-time authority for one source operation. A source without an original bank is refused. */
     async authorityFor(handle, source, { tx } = {}) {
         if (source?.domain === 'native_session') {
@@ -99,7 +105,7 @@ export class BudgetPort {
             fields(source, ['domain', 'controlId', 'source'], 'RP budget source');
             const ref = { authority: 'run_control', domain: 'rp_chat', controlId: source.controlId, source: structuredClone(source.source),
                 operationId: hashNativeDocument({ controlId: source.controlId, input: source.source.input, purpose: source.source.purpose, outputSlot: source.source.outputSlot }) };
-            await this.rpControl.context(handle, source.controlId, source.source);
+            await this.#rpContext(handle, source.controlId, source.source, tx);
             return assertBudgetAuthorityRef(ref);
         }
         fail('native_orchestration_budget_unavailable');
@@ -225,13 +231,14 @@ export class BudgetPort {
         assertBudgetAuthorityRef(authorityRef);
         if (authorityRef.domain === 'session') await this.#session(handle, authorityRef);
         else if (authorityRef.authority === 'project_task') await this.#project(handle, authorityRef, { tx });
-        else await this.rpControl.context(handle, authorityRef.controlId, authorityRef.source);
+        else await this.#rpContext(handle, authorityRef.controlId, authorityRef.source, tx);
     }
 
     async #ledger(handle, tx, authority) {
         if (authority.domain === 'session') return (await readRunControl(tx, handle, authority.sessionId))?.operations[authority.operationId]?.compute;
         if (authority.authority === 'project_task') return (await this.projectRepository.get(handle, authority.projectId, authority.taskId))?.compute;
-        return (await this.rpControl.status(handle, authority.controlId))?.operations[authority.operationId]?.compute;
+        if (!(this.rpControl instanceof RpRunControl)) fail('native_orchestration_budget_unavailable');
+        return (await RpRunControl.prototype.status.call(this.rpControl, handle, authority.controlId, { tx }))?.operations[authority.operationId]?.compute;
     }
 
     /** Pure original-bank proof for a child whose metadata is already durable. */
@@ -286,7 +293,7 @@ export class BudgetPort {
             assertCurrent: async () => {
                 await this.assertCurrent(handle, authorityRef);
                 if (authorityRef.domain === 'rp_chat') {
-                    const context = await this.rpControl.context(handle, authorityRef.controlId, authorityRef.source);
+                    const context = await this.#rpContext(handle, authorityRef.controlId, authorityRef.source);
                     if (rpPrefixDigest !== null && rpPrefixDigest !== context.prefixDigest) throw new ConflictError('native_generation_revision_conflict');
                     rpPrefixDigest = context.prefixDigest;
                 }
@@ -294,7 +301,7 @@ export class BudgetPort {
             },
             rpContext: () => {
                 if (authorityRef.domain !== 'rp_chat') fail('native_orchestration_budget_unavailable');
-                return this.rpControl.context(handle, authorityRef.controlId, authorityRef.source);
+                return this.#rpContext(handle, authorityRef.controlId, authorityRef.source);
             },
             admit: async ({ requestId, targetFingerprint, inputFingerprint, upperBound, reserve, limits: routeLimits }) => {
                 const providerSendOrdinal = ordinal++;

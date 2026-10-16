@@ -3,12 +3,19 @@ import _ from 'lodash';
 import { ConflictError, NotFoundError } from '../errors.js';
 import { assertWritable } from '../read-only-mode.js';
 import { applyJsonPatch } from './json-patch.js';
+import { withChatWrite } from './chat-write-boundary.js';
 
 export class ChatRepo {
     // Milliseconds, matching FsEngine's stat.mtimeMs reads and the SQL engines' Date.now() writes.
     constructor({ engine, now = () => Date.now() }) {
         this._engine = engine;
         this._now = now;
+    }
+
+    withWriteLock(handle, operation) { return withChatWrite(handle, operation); }
+
+    #writeTransaction(handle, operation) {
+        return withChatWrite(handle, () => this._engine.withTransaction(handle, operation));
     }
 
     async get(handle, charDir, name, { isGroup = false, groupId } = {}) {
@@ -53,7 +60,7 @@ export class ChatRepo {
         const key = this._key(handle, charDir, name, { isGroup, groupId });
         const newIntegrity = randomUUID();
         const now = this._now();
-        return this._engine.withTransaction(handle, async (tx) => {
+        return this.#writeTransaction(handle, async (tx) => {
             const existing = await tx.getResource(key);
             if (expectedIntegrity !== null && expectedIntegrity !== undefined) {
                 if (!existing) throw new NotFoundError('chat', { handle, charDir, name });
@@ -83,7 +90,7 @@ export class ChatRepo {
     async saveRaw(handle, charDir, name, record, { isGroup = false, groupId } = {}) {
         assertWritable();
         const key = this._key(handle, charDir, name, { isGroup, groupId });
-        return this._engine.withTransaction(handle, async (tx) =>
+        return this.#writeTransaction(handle, async (tx) =>
             tx.putResource(key, record));
     }
 
@@ -92,7 +99,7 @@ export class ChatRepo {
         const key = this._key(handle, charDir, name, { isGroup, groupId });
         const newIntegrity = randomUUID();
         const now = this._now();
-        return this._engine.withTransaction(handle, async (tx) => {
+        return this.#writeTransaction(handle, async (tx) => {
             if (typeof tx.appendChatMessages === 'function') {
                 const native = await tx.appendChatMessages(key, newMessages, {
                     expectedIntegrity,
@@ -169,7 +176,7 @@ export class ChatRepo {
         const now = this._now();
         const ops = Array.isArray(operations) ? operations : [];
 
-        return this._engine.withTransaction(handle, async (tx) => {
+        return this.#writeTransaction(handle, async (tx) => {
             if (typeof tx.patchChatMessages !== 'function') {
                 return { status: 'unsupported' };
             }
@@ -205,7 +212,7 @@ export class ChatRepo {
         const key = this._key(handle, charDir, name, { isGroup, groupId });
         const newIntegrity = randomUUID();
         const now = this._now();
-        return this._engine.withTransaction(handle, async (tx) => {
+        return this.#writeTransaction(handle, async (tx) => {
             const existing = await tx.getResource(key);
             if (!existing) throw new NotFoundError('chat', { handle, charDir, name });
             if (expectedIntegrity !== null && expectedIntegrity !== undefined) {
@@ -233,7 +240,7 @@ export class ChatRepo {
     async delete(handle, charDir, name, { isGroup = false, groupId } = {}) {
         assertWritable();
         const key = this._key(handle, charDir, name, { isGroup, groupId });
-        await this._engine.withTransaction(handle, async (tx) => {
+        await this.#writeTransaction(handle, async (tx) => {
             await tx.deleteResource(key);
         });
     }
@@ -246,7 +253,7 @@ export class ChatRepo {
     async setState(handle, charDir, name, namespace, doc, { isGroup = false, groupId } = {}) {
         assertWritable();
         const key = this._key(handle, charDir, name, { isGroup, groupId });
-        await this._engine.withTransaction(handle, async (tx) => {
+        await this.#writeTransaction(handle, async (tx) => {
             const existing = await tx.getResource(key);
             if (!existing) throw new NotFoundError('chat', { handle, charDir, name });
             await tx.putChatState(key, namespace, doc);
@@ -256,7 +263,7 @@ export class ChatRepo {
     async deleteState(handle, charDir, name, namespace, { isGroup = false, groupId } = {}) {
         assertWritable();
         const key = this._key(handle, charDir, name, { isGroup, groupId });
-        await this._engine.withTransaction(handle, async (tx) => tx.deleteChatState(key, namespace));
+        await this.#writeTransaction(handle, async (tx) => tx.deleteChatState(key, namespace));
     }
 
     async getStateBatch(handle, charDir, name, namespaces, { isGroup = false, groupId } = {}) {
@@ -272,7 +279,7 @@ export class ChatRepo {
         assertWritable();
         const oldKey = this._key(handle, charDir, oldName, { isGroup, groupId });
         const newKey = this._key(handle, charDir, newName, { isGroup, groupId });
-        await this._engine.withTransaction(handle, async (tx) => {
+        await this.#writeTransaction(handle, async (tx) => {
             const existing = await tx.getResource(oldKey);
             if (!existing) throw new NotFoundError('chat', { handle, charDir, name: oldName });
             const conflict = await tx.getResource(newKey);
@@ -333,7 +340,7 @@ export class ChatRepo {
     async deleteAllForCharacter(handle, charDir) {
         assertWritable();
         if (typeof charDir !== 'string' || !charDir) throw new Error('deleteAllForCharacter: charDir required');
-        return this._engine.withTransaction(handle, async (tx) => {
+        return this.#writeTransaction(handle, async (tx) => {
             const entries = await tx.listResources({
                 kind: 'chat', handle, charDir, isGroup: false,
             });
@@ -353,7 +360,7 @@ export class ChatRepo {
         if (typeof oldCharDir !== 'string' || !oldCharDir) throw new Error('renameCharDir: oldCharDir required');
         if (typeof newCharDir !== 'string' || !newCharDir) throw new Error('renameCharDir: newCharDir required');
         if (oldCharDir === newCharDir) return 0;
-        return this._engine.withTransaction(handle, async (tx) => {
+        return this.#writeTransaction(handle, async (tx) => {
             const entries = await tx.listResources({
                 kind: 'chat', handle, charDir: oldCharDir, isGroup: false,
             });
@@ -462,7 +469,7 @@ export class ChatRepo {
         const key = this._key(handle, charDir, name, { isGroup, groupId });
         const newIntegrity = randomUUID();
         const now = this._now();
-        return this._engine.withTransaction(handle, async (tx) => {
+        return this.#writeTransaction(handle, async (tx) => {
             const existing = await tx.getResource(key);
             if (!existing) throw new NotFoundError('chat', { handle, charDir, name });
             if (expectedIntegrity !== null && expectedIntegrity !== undefined) {

@@ -28,6 +28,7 @@ import cacheBuster from '../middleware/cacheBuster.js';
 import { deleteRecentChatIndexEntriesUnderDirectory, invalidateRecentChatIndex, refreshRecentChatIndexEntry } from './chats.js';
 import { PatchTestFailedError, PatchMissingParentError, UnsupportedPatchOpError } from '../storage/errors.js';
 import { getChatRepo, getWorldInfoRepo } from '../storage/index.js';
+import { withChatWrite } from '../storage/repositories/chat-write-boundary.js';
 
 // With 100 MB limit it would take roughly 3000 characters to reach this limit
 const memoryCacheCapacity = getConfigValue('performance.memoryCacheCapacity', '100mb');
@@ -1476,17 +1477,18 @@ router.post('/rename', validateAvatarUrlMiddleware, async function (request, res
         // sidecars (avatar PNGs and any third-party content that lives next
         // to chats on disk).
         const handle = request.user.profile.handle;
-        await getChatRepo().renameCharDir(handle, oldInternalName, newInternalName);
+        await withChatWrite(handle, async () => {
+            await getChatRepo().renameCharDir(handle, oldInternalName, newInternalName);
 
-        // Rename on-disk chats folder if present. In db modes this folder
-        // may be empty (chats live in the engine), but legacy fs-mode users
-        // and imported chats sit on disk.
-        if (fs.existsSync(oldChatsPath) && !fs.existsSync(newChatsPath)) {
-            // Supplying a filter avoids a Node.js Windows copyDir crash while preserving all entries.
-            // https://github.com/nodejs/node/issues/63970
-            fs.cpSync(oldChatsPath, newChatsPath, { recursive: true, filter: () => true });
-            fs.rmSync(oldChatsPath, { recursive: true, force: true });
-        }
+            // Keep the original sidecar move in the same domain scope as the
+            // Repo move, so it cannot remove a newly created old-path chat.
+            if (fs.existsSync(oldChatsPath) && !fs.existsSync(newChatsPath)) {
+                // Supplying a filter avoids a Node.js Windows copyDir crash while preserving all entries.
+                // https://github.com/nodejs/node/issues/63970
+                fs.cpSync(oldChatsPath, newChatsPath, { recursive: true, filter: () => true });
+                fs.rmSync(oldChatsPath, { recursive: true, force: true });
+            }
+        });
         // Recent-chat cache holds entries keyed by the now-removed paths and
         // tagged with the old avatar; force a rebuild so the renamed chats
         // resurface under the new avatar.
@@ -2021,8 +2023,10 @@ router.post('/delete', validateAvatarUrlMiddleware, async function (request, res
             // Drop every Repo-resident chat under this character (db modes
             // store them in the engine — the fs.rm below only touches legacy
             // jsonl files).
-            await getChatRepo().deleteAllForCharacter(handle, dir_name);
-            await fs.promises.rm(removedChatsDir, { recursive: true, force: true });
+            await withChatWrite(handle, async () => {
+                await getChatRepo().deleteAllForCharacter(handle, dir_name);
+                await fs.promises.rm(removedChatsDir, { recursive: true, force: true });
+            });
         } catch (err) {
             console.error(err);
             return response.sendStatus(500);

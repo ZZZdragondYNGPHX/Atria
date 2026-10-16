@@ -4,6 +4,8 @@ import { createNativeId, assertNativeId } from './identity.js';
 import { hashNativeDocument, putMutable, withNativeResourceWrite } from './repositories/common.js';
 import { ConflictError } from '../storage/errors.js';
 import { assertWritable } from '../storage/read-only-mode.js';
+import { withChatWrite } from '../storage/repositories/chat-write-boundary.js';
+import { ChatRepo } from '../storage/repositories/chat-repo.js';
 import { admitComputeAttempt, assertComputeLedger, assertRetiredCompute, chargeLocalWork, hasOpenComputeReservations, hasRetainedOrchestrationCompute, releaseComputeChild, reserveComputeChild,
     retireComputeLedger, settleComputeAttempt, settleLocalWork } from '../../public/shared/native-compute-budget.js';
 import { fields } from '../../public/shared/native-values.js';
@@ -58,10 +60,15 @@ export function rpOperationInput(message, floor) {
 }
 
 export class RpRunControl {
-    constructor({ engine }) { this._engine = engine; }
+    constructor({ engine, chatRepo = new ChatRepo({ engine }) }) {
+        if (!(chatRepo instanceof ChatRepo) || chatRepo._engine !== engine) fail('native_rp_chat_authority_unavailable');
+        this._engine = engine;
+        this._chatRepo = chatRepo;
+    }
 
-    // Ownership: one writer per chat locator, then per control.
-    _locked(handle, id, operation) { return withNativeResourceWrite(handle, 'rp-run-control:' + id, operation); }
+    // Chat edits and RP bank writes share the original domain boundary before
+    // acquiring the control key or opening an Engine transaction.
+    _locked(handle, id, operation) { return withChatWrite(handle, () => withNativeResourceWrite(handle, 'rp-run-control:' + id, operation)); }
 
     /** Bind the current chat to its control, completing a bounded partial init or a rename. Never sends. */
     async bind(handle, locator) {
@@ -122,23 +129,25 @@ export class RpRunControl {
         await tx.putResource(chatKey(handle, locator), { header, body: chat.body, integrity: randomUUID(), updatedAt: Date.now(), createdAt: chat.createdAt });
     }
 
-    async status(handle, controlId) {
+    async status(handle, controlId, { tx } = {}) {
         assertNativeId(controlId, 'rpControl');
-        return this._engine.withTransaction(handle, async tx => structuredClone(assertControl(await tx.getResource(controlKey(handle, controlId)), handle, controlId)));
+        const read = async transaction => structuredClone(assertControl(await transaction.getResource(controlKey(handle, controlId)), handle, controlId));
+        return tx ? read(tx) : this._engine.withTransaction(handle, read);
     }
 
     /** Read the original chat under the same source proof used by admission. No caller-supplied dialogue. */
-    async context(handle, controlId, source) {
+    async context(handle, controlId, source, { tx } = {}) {
         assertNativeId(controlId, 'rpControl');
-        return this._engine.withTransaction(handle, async tx => {
-            const { control } = await this._source(tx, handle, controlId, source);
-            const chat = await tx.getResource(chatKey(handle, control.locator));
+        const read = async transaction => {
+            const { control } = await this._source(transaction, handle, controlId, source);
+            const chat = await transaction.getResource(chatKey(handle, control.locator));
             const prefix = chat.body.slice(0, source.input.floor + 1);
             return { prefixDigest: hashNativeDocument(prefix.map(message => ({ messageId: sourceMessageId(message), content: sourceContent(message) }))),
                 messages: prefix.map(message => ({
                     role: message.is_system ? 'system' : message.is_user ? 'user' : 'assistant', content: String(message.mes ?? ''),
                 })) };
-        });
+        };
+        return tx ? read(tx) : this._engine.withTransaction(handle, read);
     }
 
     // Host-only source proof: the control's own locator, the header claim and the
@@ -226,14 +235,15 @@ export class RpRunControl {
         });
     }
 
-    async observeCompute(handle, controlId, operation, attemptId) {
+    async observeCompute(handle, controlId, operation, attemptId, { tx } = {}) {
         assertNativeId(controlId, 'rpControl');
-        return this._engine.withTransaction(handle, async tx => {
-            const control = assertControl(await tx.getResource(controlKey(handle, controlId)), handle, controlId);
+        const read = async transaction => {
+            const control = assertControl(await transaction.getResource(controlKey(handle, controlId)), handle, controlId);
             const ledger = control?.operations[operation]?.compute, compute = ledger?.attempts.find(row => row.attemptId === attemptId);
             if (!compute) fail('native_generation_attempt_conflict');
             return structuredClone({ operation, compute, limits: ledger.limits });
-        });
+        };
+        return tx ? read(tx) : this._engine.withTransaction(handle, read);
     }
 
     settleCompute(handle, controlId, operation, attemptId, usage) {
