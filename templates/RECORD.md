@@ -10,9 +10,8 @@
 ## Stage 1 — <name>
 
 - Start HEAD:
-- End/Tested HEAD:
+- End HEAD:
 - Status:
-- Local validation:
 
 ### Completed
 

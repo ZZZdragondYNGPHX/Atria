@@ -48,8 +48,8 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 | [e0-consumer-inventory.md](e0-consumer-inventory.md) / [e0-import-graph.md](e0-import-graph.md) | 最新 main 全仓逐文件/行号、151 文件清退 manifest、AST 直接/间接依赖及动态表达式证据附件；处置仍归 e0-audit | E0 / P6 引用闭包复核 |
 | [interface-contracts.md](interface-contracts.md) | **物理合同 v1（设计冻结）**：6个编排metadata kinds及原Storage/RunControl域扩展；§12–16收束HostOwner/RP预算/Chat输出/ReviewOrigin/SQL未知；实证未通过 | E0 物理接口核查与实施 P1–P4 |
 | [backend-integration.md](backend-integration.md) | 实际已挂载API、内部Host接口、前端并行任务整合边界与真实未交付项 | 跨任务整合/前端接入前 |
-| [implementation-plan.md](implementation-plan.md) | **D9 E1 正式路线**：E0 建分支前置、P1–P8 依赖/验收门槛、全域消费者硬切及工作包 | E0 审核、正式交接与实施期间 |
-| [acceptance-matrix.md](acceptance-matrix.md) | **D9 冻结验收目标**：L0–L4、Graph/Effect/预算/安全/RP/Studio/UI 与三端真实客户端 Gate | 每阶段/最终收口与 Record 证据 |
+| [implementation-plan.md](implementation-plan.md) | **D9 E1 正式路线**：实施依赖、全域消费者硬切及工作包 | E0 审核、正式交接与实施期间 |
+| [acceptance-matrix.md](acceptance-matrix.md) | 实施状态与既有结果 | 当前状态 |
 | [decisions.md](decisions.md) | 仅跨模块的用户冻结决定、明确未定项 | 每轮先读、选择后更新 |
 
 已存在的其他方案只是依赖，不复制详细契约：
@@ -71,11 +71,9 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 | **8 已完成** | Graph+Inspector 双向编辑、原生 Plan 发布、Timeline/Diagnostics、可信审批与全端体验 | **D8 = U2** |
 | **9 方案已冻结 / E0设计就绪** | R01–R07设计关闭，运行/故障/三端验收按P阶段取得 | **D9=E1；E0_DESIGN_READY，开发AUTHORIZED，P1 IN_PROGRESS** |
 
-D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代码发现见 [e0-audit.md](e0-audit.md)，Plan/Run/Effect/Receipt/Projection 关键接口方向见 [interface-contracts.md](interface-contracts.md)，E1 实施阶段/前置审核唯一来源见 [implementation-plan.md](implementation-plan.md)，实际验收 Gate 唯一来源见 [acceptance-matrix.md](acceptance-matrix.md)**。其他 HCM、Agent Intelligence、Game Runtime、Serene Canvas、独立 MCP 的权威不复制。D9 设计冻结绝不等于 E0 引用闭包/用户实际开工授权。
+D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代码发现见 [e0-audit.md](e0-audit.md)，Plan/Run/Effect/Receipt/Projection 关键接口方向见 [interface-contracts.md](interface-contracts.md)，E1 实施阶段/前置审核唯一来源见 [implementation-plan.md](implementation-plan.md)，实施状态见见 [acceptance-matrix.md](acceptance-matrix.md)**。其他 HCM、Agent Intelligence、Game Runtime、Serene Canvas、独立 MCP 的权威不复制。D9 设计冻结绝不等于 E0 引用闭包/用户实际开工授权。
 
 ## E1 正式开发审查入口（E0设计与授权分开）
-
-必读本 `index.md` → [decisions.md](decisions.md) D9 → [e0-audit §11](e0-audit.md#11-r01r08-设计与实施证据分账) 当前设计核销 → [interface-contracts](interface-contracts.md) 物理合同 → [implementation-plan §2](implementation-plan.md#2-e0-设计门槛开发授权与实施验收三者分离) 独立Gate → [acceptance-matrix](acceptance-matrix.md) 实施后验证。开发前重核main delta及相关authority；真实consumer trace、故障/预算/审批和三端验证在各P阶段取得。未执行项目不写PASS；**当前已在任务分支开发，P7通过前不集成main**。
 
 当前生效状态：**E0_DESIGN=DESIGN_READY；DEVELOPMENT_AUTHORIZATION=AUTHORIZED；P1/P2/P3/P4=IN_PROGRESS；P5–P8=NOT_STARTED；P3阶段Gate及最终产品验收NOT_READY**。2026-10-16已按用户要求拉取同一远端任务分支，从`6865d0a08`恢复；第二十七组`5df345aee`补原RP管理写围栏（接口§17.37），第二十八组`2cf8c97d4`接原RP prefix Context/受信Model producer与原银行实际计费（接口§17.38）。同一Record保留此前三域原银行、真实GenerationHost稳定发送、Source/Effect/Context/Tool、父子Run、Binding、有限Session/Project producer与本次管理入口的实际子证据。先前暂停换机记录只保留为历史，不是当前停止要求。Hybrid/后台producer/Delegate资源交接及P4正式消费者仍待接；局部通过不等于完整领域授权/可信Review/三端通过。接口/并行前端入口见[backend-integration](backend-integration.md)，Gate见[acceptance §9.1](acceptance-matrix.md#91-p3后端子工作后的gate复核)，真实环境/剩余队列见同一Record最新组。不接真实付费或未授权外部mutation，未集成main。
 
@@ -105,7 +103,7 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 
 第四十一组从最新远端第四十组b4c06075a恢复，接原Graph task-local output、独立原bank release/closed观察与严格OutputClaim/终结proof，见[接口§17.51](interface-contracts.md#1751-原graph-task-local-output与原银行闭包)。有明确费用闭包的child完成后返回pending_return；父仍waiting_child，durable return/父Result消费与continuation继续待接。当前恢复后持续实施，历史换设备暂停不作为限制；P3 Gate仍NOT_READY，未合main，真实提交与最小验证归同一Record第四十一组。
 
-第四十二组接原Scheduler父permit实际重新取得后的耐久Handoff return（[接口§17.52](interface-contracts.md#1752-原父permit重新准入后的耐久handoff-return)），父原Attempt/input/grant保留，内部返回pending_continuation及returnReceiptRef。尚无父ResultPort/Context/实际Narrator continuation或正式Chat输出，下一步沿同真实parent callback接入，不能从metadata冷恢复scope。P3及最终Gate仍NOT_READY，未合main；实际源码与最小相关本地验证归同一Record第四十二组。
+第四十二组接原Scheduler父permit实际重新取得后的耐久Handoff return（[接口§17.52](interface-contracts.md#1752-原父permit重新准入后的耐久handoff-return)），父原Attempt/input/grant保留，内部返回pending_continuation及returnReceiptRef。尚无父ResultPort/Context/实际Narrator continuation或正式Chat输出，下一步沿同真实parent callback接入，不能从metadata冷恢复scope。P3及最终Gate仍NOT_READY，未合main；实际源码归同一Record第四十二组。
 
 第四十三组接原ResultPort精确父recipient、带来源建议Context与真实父Narrator continuation（接口§17.53）。父原Attempt/input/grant与根银行保留，内部成功返回父Model结果及delegation metadata；正式Chat输出/父Run终结尚待P4。用户明确要求持续至全阶段完成，继续所有已授权实现，不在分组检查点停工；最终Gate尚未通过，不合main。
 

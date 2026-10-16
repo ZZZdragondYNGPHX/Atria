@@ -77,13 +77,11 @@ V3 不拥有独立的“余额真相”；其 Run/NodeAttempt/Effect 显示的�
 - Provider managed alias/opaque gateway 状态不可见时保持 `loss/unknown`；合法 fallback 需要新 attempt / 预算准入，不用旧 continuation 证明新请求费用或质量。
 - 旧正式 World/Studio action 已提交并有原 DomainCommitReceipt 时，不因 Fallback/Retry/Run Replay 自动重复写入；中断时先 reconcile 未知 Effect。
 
-## 7. 观察、收益归因与后续验收范围
+## 7. 观察与收益归因
 
 模型发送前必须记录可执行的需求/触发、当前有效 evidence、ReuseDecision/proof、allowed target 及 Routing 选择依据、source/Plan/TaskGraph/audience、estimated cost/latency/预算 reservation、原能力版本；发送后附真实 EffectReceipt、reported/gateway usage/错误、charge unknown、TTL/cache-read/write、TTFT/E2E/queue wait/本地工作与实际费用。
 
 质量底线先看：World/Actor/Source/Disclosure/玩家自主权、真实 Project/Session Outcome 和 Tool/Output Contract；然后比较实际 model/tool calls、Token/金额、TTFT/E2E p50/p90/尾延迟、并行失败/取消、cache valid hit/false reuse、Provider reported cache usage、恢复正确性。没有可审计对照的节省为 `estimated`，未获 usage 的成本为 `unknown`，不能假装 zero 或由低延迟推断 cache hit。
-
-最小反例：四个 sibling 同预算并发准入、崩溃后预算不可重新使用；Gateway 内部未知 retry；Fallback 改变隐私/模型/工具能力；私密 Actor cache 跨 Branch 污染；Source revoke 与 Consumer currentness；已发送但未知结果不可重发；局部重做不重复已提交业务；普通 RP 不固定昂贵 Planner/Judge；Windows、Linux、Android Termux 共用 Host 合约。全部是**后续工程验收计划**，本轮没有运行产品代码、模型测试、CI 或三端验证。
 
 物理 Schema、具体额度、Target 列表、Node 质量阈值、缓存 TTL、请求价格/金额硬限、性能 SLO 均未在 D5 固定，不应擅自将示例数值或工程建议提升为用户审批门槛。
 

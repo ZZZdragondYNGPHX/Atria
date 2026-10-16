@@ -90,12 +90,9 @@ Authorized Author Instructions / Scene & Genre preferences
 - 文笔、语气、叙事节奏、人物声音、合法成熟题材误拒等**创作质量维度**分别评价；Source/World/Display/玩家自主权等**硬约束**不可被文学评分平均抵消。
 - Reviewer 只能提出局部改写候选，不能隐性降低作者文学强度、擅自改变正式 World/Player 决策、重复副作用或借改写越过 Provider 的真实限制。
 
-## 8. 讨论实例与未来验证建议（均 NOT_RUN）
+## 8. 讨论实例
 
 1. **人物不同声线**：同一场景中寡言 NPC 与热烈 NPC 保留语言差异；总体叙事风格变化不覆盖角色稳定人格。
 2. **秘密信息差**：NPC A 知道密信，NPC B 无证据知道；B 可以可观察地怀疑，但不能突然复述秘密；受限的 Narrator/玩家输出尊重 DisplayGrant。
 3. **用户自主权**：玩家输入“我看着她”；NPC 可以发起行为、旁白渲染气氛，但不能直接判定玩家接受拥抱、承诺关系或采取未获准行动。
 4. **合法成熟题材**：允许深入的成人情绪关系描写与作者风格，不额外强制说教；同时不把主题激烈推断成角色同意或既定事件。
-5. **Agent 效率**：正常单模型路径，与疑难回合受控多 Agent 实际 Token/延迟/创作收益比较；所有指标需原 Experience/Eval 证据。
-
-**D3 E2 + A2 + K2 + G1 已正式冻结（仅设计）。** 实现/测试仍为 NOT_RUN；D4 Node 精确 Binding/Behavior Program/继承/Host 编译方案单独在 [agent-behavior-binding.md](agent-behavior-binding.md) 中开放讨论，不提前批准。后续每轮继续先更新同一 Plan/Record、提交 docs，再讨论下一轮；不修改 main、不建立产品实现分支、正式重构零旧兼容。

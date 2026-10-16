@@ -7,7 +7,7 @@
 - 正式工作分支：`refactor/atria-platform-architecture-modernization`
 - 当前分支用途：**预留分支名，不允许在 R7 合并前提交 R8 功能代码**
 - 当前预留基线：`main@63da3141a3895d3386ed1bebc30876c9766315ba`
-- 真正实施基线：**R0-R7 全部完成、验证并合并后的最新 `main`**
+- 真正实施基线：**R0-R7 全部完成并合并后的最新 `main`**
 - R8 不从 `refactor/atria-game-first-shell-redesign`、`refactor/game-runtime-architecture` 或任何候选 HEAD 直接开发。
 - Astra 开始任何功能改动前，必须先令 R8 分支 HEAD 与当时最新 `origin/main` **完全相同**。
 
@@ -30,7 +30,6 @@ Atria 已经明显超出原 SillyTavern 宿主架构的规模和职责边界。
 3. 不通过 React/Vue/Vite/全 TypeScript 重写来“现代化”。
 4. 将 Atria 自己已经形成的新内核逐步提升为真正的应用骨架。
 5. 将有效职责迁入现有原生模块，更新真实调用方并删除失效全局模块、DOM、事件和旧入口。
-6. 阶段按实际风险验证；仅在数据变更或外部副作用需要时设计恢复措施。
 
 ---
 
@@ -284,8 +283,6 @@ R8 默认明确排除：
   - orchestration bridge
   - UI/controller
 
-拆分前核对现有契约和真实调用方；复用相关检查，仅在重要行为缺乏证据时补测试。
-
 ### R8E — Backend Application Services
 
 重点拆：
@@ -331,7 +328,7 @@ URL、response shape 和状态码按当前契约调整，同步真实调用方�
 Express 4 → 5：
 
 - 独立兼容性 checkpoint；
-- 执行 codemod，并在本地验证受影响 API/E2E；
+- 执行 codemod；
 - 若收益有限而 blast radius 明显，可以正式 defer；
 - Express 5 **不是 R8 成功的硬依赖**。
 
@@ -345,7 +342,6 @@ Express 4 → 5：
 - 巨型模块职责显著收敛；
 - architecture guards 生效；
 - Node/ESLint 受支持；
-- 受影响的当前契约完成最小相关本地验证；
 - final residual/dependency/cycle scan。
 
 完成后才允许合并 `main`。
@@ -355,24 +351,6 @@ Express 4 → 5：
 ## 9. 性能原则和门槛
 
 R8 不追求“所有指标都更快”，而要求任何复杂化都由数据支持。
-
-### 必测
-
-- Server listening；
-- frontend bootstrap；
-- first visible；
-- Play ready；
-- first chat usable；
-- cold Workspace open；
-- warm Workspace open；
-- route switch；
-- generation setup；
-- World Info evaluation；
-- Memory retrieval；
-- large chat edit/append；
-- JS long tasks；
-- heap growth；
-- listener/DOM leaks。
 
 ### 判断规则
 
@@ -395,65 +373,6 @@ Compatibility floor: Node 22 LTS（仅在实际平台需要时保留）
 Node 20: remove
 ```
 
-R8A 必须验证：
-
-- Windows/macOS/Linux；
-- Termux；
-- Android bundled Node；
-- Docker；
-- native addons（尤其 better-sqlite3 / tokenizer 相关）；
-- CI matrix。
-
-只有验证完成后修改 `engines.node`。
-
----
-
-## 11. 分支策略
-
-长期开发分支：
-
-`refactor/atria-platform-architecture-modernization`
-
-### 当前阶段
-
-该分支只是从“当前 main”预留名称，**不能用于实现**。
-
-### R7 合并后
-
-Astra 必须：
-
-```bash
-git fetch origin
-git switch main
-git pull --ff-only origin main
-git switch refactor/atria-platform-architecture-modernization
-git merge --ff-only origin/main
-git push origin refactor/atria-platform-architecture-modernization
-```
-
-然后验证：
-
-```bash
-git rev-parse HEAD
-git rev-parse origin/main
-```
-
-两者必须完全相同。
-
-若不能 fast-forward，说明预留分支被污染；不要 merge/rebase 复杂历史，先诊断并恢复为干净的 `main` 基线。
-
-### 阶段提交
-
-R8A-R8H 继续使用这一条长期 R8 分支，不在每个子阶段创建永久分支。
-
-需要实验性高风险 PoC 时，可创建短命 `spike/*`，结论确认后删除。
-
-最终：
-
-`R8 final validated branch -> main`
-
-合并验证后删除 R8 临时/长期重构分支，只保留 `main`、`docs` 和上游参考分支。
-
 ---
 
 ## 12. 文档规则
@@ -462,17 +381,11 @@ R8A-R8H 继续使用这一条长期 R8 分支，不在每个子阶段创建永�
 
 ---
 
-## 13. 验证矩阵
-
-按实际改动与风险选择现有静态检查、契约测试或浏览器流程，复用已取得且未受影响的证据；不把模块清单转成每阶段全套测试。性能改动测对应热路径，持久化改动检查相关引擎的一致性，设备特性改动按实际证据缺口验证。通用验证方式只归 [Governance §12 / §12.1](../../README.md#121-minimal-implementation)。
-
----
-
 ## 14. Astra 执行纪律
 
 执行与真实阻塞分别见 [Governance §8](../../README.md#8-task-lifecycle) / [§13](../../README.md#13-stop-conditions)。
 
-优先保持小步、可验证的架构切片，禁止一次跨越多个 ownership boundary 的大爆炸提交。
+优先保持小步架构切片，禁止一次跨越多个 ownership boundary 的大爆炸提交。
 
 ---
 
@@ -482,7 +395,6 @@ R8 不以“某个框架迁完”为完成标准。
 
 完成意味着：
 
-- 当前有效业务契约和数据完整性得到验证；
 - Atria Application Kernel 成为新功能的默认宿主；
 - 已替代的 legacy 入口和失效依赖已删除；
 - 首屏不再无条件初始化大量非 Play 功能；
@@ -491,6 +403,5 @@ R8 不以“某个框架迁完”为完成标准。
 - state/event/service ownership 明确；
 - Node / ESLint 回到受支持版本；
 - 性能结果有 before/after 证据；
-- 受影响的当前 plugin / data / Game Runtime / Shell 契约完成相关验证，复用有效证据；
 - 没有引入第二套核心 authority；
 - 最终 R8 分支可安全合入 `main`。

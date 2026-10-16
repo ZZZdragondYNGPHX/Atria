@@ -81,20 +81,6 @@ S2 冻结以**动作的实际后果**分级，而不是由名字、HTTP method�
 - 外部系统没有可信 operation status/idempotency/reconcile 的情况下，明确停留在 `unknown/blocked/waiting_review`，由可信人工决定后续动作；不能许诺全世界第三方 Tool exactly-once。取消/超时与原实际费用按 D5 保守处理。
 - 版本化 Schema、数据保留、物理审批存储、支持的协议版本与实际跨端恢复证据在第八/九轮工程计划及实施时冻结，不凭本轮描述宣称已存在。
 
-## 7. 未来验收矩阵（未执行）
-
-| 领域 | 必须覆盖的反例/真实边界 |
-| --- | --- |
-| Discovery / grant | 远端 Tool 改名/schema 漂移、伪造只读 annotation、父子/Handoff 提权、未授权 Resource/Skill 尝试使用、过期 PlanRevision |
-| Authorization / Approval | 原 owner/author/project 权限收紧、无可信 UI、伪批准/重放/过期 Lease、不同 target/参数/版本、等待审批时取消与控制面可达 |
-| Egress / Secrets | Private Actor/Narrator context 经 MCP/A2A/Web 外发、SecretRef 指向新恶意 Endpoint、redirect/SSRF/非 TLS、长敏感输入/返回与日志/回执泄露 |
-| Injection / isolation | 恶意 Skill、Agent Card、Tool metadata、网页/Issue 指令提权、无沙箱代码执行、Host Plugin/Browser Extension 与 Package 权限混淆 |
-| Effect/Receipt/Recovery | Write-ahead 后崩溃、收到远端结果前断线、外部未知写入、已有原 DomainCommit、A2A 有 task id/无 task id、MCP 冷重启、cancel 不撤销、不退款、旧 epoch/Branch 迟到 |
-| Workflow/Cost | G2 图重规划/并行 Join、C2 隔离、F2 原预算、Step budget 耗尽不能绕过独立 Approval；无关只读不因此中止，Project Review 不自动获得 Commit 权限 |
-| Client/Platforms | Windows/CachyOS Linux/Termux 的 Host 行为与权限一致性；真实 Browser/mobile 审批与恢复、MCP/A2A 客户端/协议协商/外部 Provider 能力分别给出可复核实测，不以 fixture 或截图冒称其他层通过 |
-
-安全底线不随质量/Token/吞吐收益放宽；只在原授信路径对真实 Action 作针对性最小验证。当前没有修改 main 产品代码、没有执行真实 MCP/A2A 写调用或人工审批测试。
-
 ## 8. D7 下一轮接口（未冻结）
 
 第七轮将讨论 RP Narrator、多角色 Cognition/ToM/Expression、Knowledge/Player Disclosure、玩家行动归属与反全知、Project Agent 的任务与正式 Review、Judge/Review 的质量评价以及 V3 原生创作体验。**本 D6 只是安全执行前置合同，不替第七轮冻结具体叙事编排、默认 Agent 数量、质量量表、角色自主权或 UI 交互**。

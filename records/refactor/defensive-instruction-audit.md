@@ -93,3 +93,18 @@ main 没有 `.github/workflows/`；现有 CI 说明已明确停用 Actions，没
 项目 Skill 分支保留自己的 AGENTS 路由；缺失的 Agent Intelligence README 不创建。测试清理分支的已删除 Brief/浏览器测试不恢复，正在删除的旧 roundtrip 测试不触碰，已重写的 E2E README 保留其原生产品说明。其余 31 个原未提交路径与原暂存状态在本次同步前后相同；开发工作继续保留。
 
 四个提交的差异空白、Markdown 围栏及九个新增相对链接检查通过；42 处 JavaScript 注释同步通过语法与去注释执行 token 一致性检查，未引入运行行为或断言变更。四分支分别推送同名远端，不作为产品实现集成回 main。
+
+## 用户更正：直接删除验证提示词
+
+用户要求删除所有面向开发 AI 的验证提示，而非保留“最小相关验证”或测试复用建议。本节是后续改动事实；前述保留策略是上一轮历史结果。
+
+删除 Governance 的验证策略/测试建议、任务和 PR 模板的验证步骤/报告栏、E2E Agent Brief、V3 未来测试矩阵/阶段验证门槛、Prompt 深化的未来验证建议，以及 Atria 自有前端 Skill 的验证流程。API 资源限额、隐私资料保留规则、运行时权限/输入校验/持久化契约和既有结果事实不变。没有新增替代验证规范。
+
+产品文字提交 `09f5bc18f`，main 集成 `5618cd8fa`；package `11d4e7a1b`、plugin `e84727e6f`、skills `44f7b806d` 分别在所属工作空间提交。开发分支同步如下，原开发工作与未提交内容保留：
+
+- `refactor/atria-native-orchestration-v3`：`5a95c7461`。
+- `feat/native-visual-generation-deepening`：`00edac0a3`。
+- `feat/atria-project-skill-routing`：`b0005b68d`。
+- `refactor/test-suite-defensive-cleanup`：`d7d5002b3`。
+
+本轮仅修改或删除 Markdown；差异空白检查通过。实际历史 Record 只追加本节，另一任务 HANDOFF 未改。

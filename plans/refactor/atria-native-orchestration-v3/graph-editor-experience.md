@@ -76,20 +76,6 @@
 - 优先现有 DOM/ESM、Atria Primitives/Patterns 和 Serene Canvas 视觉基线，不默认引入另一 SPA 框架。Cytoscape 已安装只是候选；完整交互/触控/无障碍/性能需单独 PoC。没有验收不能声称支持千节点流畅或移动端完整可用。
 - 只缓存非权威作者 Draft/画布几何/选择等；受保护 Source/Run 审计/Model Secret/Provider opaque state/费用真相不得拷贝到本地 UI 作为第二持久层。项目/Owner 切换、Source 撤销、旧 Stream 迟到时基于 Host 真实权益失效展示。
 
-## 9. 未来验收目标（尚未执行）
-
-| 维度 | 核验反例和出口 |
-| --- | --- |
-| 双向创作 | Desktop Canvas 和 Inspector/List 对同 Draft 同步；节点/边/类型/源错误、Undo/Redo、保存冲突、离开警告与手机等价完整操作 |
-| Validate/Publish | 无环或有界 loop、端口/Output/Source/权限/预算/Route invalid；纯 Validate 不调用付费模型/Secret/外部 Tool；Publish 产生 immutable Revision，旧 Draft 不能污染 Run |
-| Host Projection | Timeline 默认/Graph 切换、GraphPatch/new nodes、Join/Effect/Review/Usage、断联重连、snapshot+乱序 delta 与旧 epoch 防污染 |
-| 审批/安全 | 审阅真实 Diff/外发/预算/来源/Target，审批变更后 stale，可信按钮往返、Cancel 不等于回滚，Unknown 不盲重发，私密 Actor/Secret/Reasoning 不泄漏 |
-| 质量与业务 | RP Narrator 唯一正文、玩家自主权/防全知、Project Agent 只到 Review、正式 Commit 独立，不能用模型 Judge 的高分跳过 Domain |
-| 大图/可访问 | 多节点多边布局、虚拟列表/搜索、键盘可达、触控/safe-area/Back/软键盘/reduced-motion、长 Run 事件和控制通道响应 |
-| 三端 | Windows/CachyOS Linux/Termux 真实客户端完成 Draft→Validate→Publish→Run→Approval→Result/Recovery 全流程；真实 Source/权限/重启/费用回执，保留未完成项 |
-
-此为规划验收标准，不代表新 V3 功能已实现或测试通过。可根据已接受 Serene Canvas 参考稿做专项 V3 视觉讨论/原型，但不得由未经同意的截图或假控件替代产品真实行为。
-
 ## 10. D9 下一轮 E0（未冻结）
 
 第九轮将核对实际 main 的 Plan/Run/Effect/Receipt/Output/Projection 接口与旧依赖，绘制完全删除旧 Orchestrator modes、mode adapters、Browser Runner/Checkpoint、legacy UI、capsule/takeover 的消费者清单与实现阶段依赖；列出失效/恢复/权限/质量/性能/PC 与 Mobile/Termux 真机验收矩阵与交付阻塞。**D9 还没有获得选择，不能提前宣称所有接口/工程阶段已审计闭合，也不得开始改 main。**

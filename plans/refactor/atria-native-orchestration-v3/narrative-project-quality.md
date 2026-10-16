@@ -94,18 +94,6 @@
 - 普通 RP 玩家默认只需阅读叙事正文、参与游戏选择和必要的明确批准；复杂 Graph/Run/Join/Judge/Tool Trace 可以由作者/高级用户查看**脱敏的 Host Projection**，不能泄漏模型 opaque reasoning/Secret/私有 Actor 内容。
 - PC、Linux/Windows、手机 Termux 保持同一 Native Host Graph/Effect/Output 契约；具体 Graph Editor 工作台、Run Inspector、Node 设置、审批交互、移动触控与视觉系统由第八轮 D8 讨论后冻结。
 
-## 9. 未来定向验收与保证等级（本轮未运行）
-
-- **事实和单一正文**：已提交事件与 World 观察优先、模型/旧 guidance 不写世界；一回合恰一最终正文；旧 Director/Spec/Agenda/Loop 等运行主路径彻底不存在。
-- **信息隔离和反全知**：A 看到秘密/B 不知道、旁白较宽/玩家 display 拒绝、私有 Exposure 被暗示泄露、ToM 被误认作他人内心的正反例；检查真实输入来源与自由文本审稿，二者证据不同。
-- **玩家自主权**：未授权玩家新行动/情绪/承诺、真实用户主动选择、原 Native World 后果三种场景；硬写入禁止与语义审读分开报告。
-- **多角色/长剧情**：Context audience/Branch/Actor 隔离；当前 World Tick、Event-driven cognition、记忆适用性/遗忘、旧承诺；普通 RP 不固定多 Agent；Project 不混入 RP 私有状态。
-- **Project**：任务提案、Validation/Preview、ChangeSet/Review/正式 Commit、源版本冲突、未知写入恢复；自动 Agent 无直接正式提交权。
-- **Quality/Review**：原受审 profile、模型 Judge 偏差和独立案例、用户反馈来源、硬错误无法被文笔抵消、局部重做不重复已提交 Effect；真实模型成本、原反例和不利结果完整保留。
-- **体验**：新 Native Graph 编辑、用户角色权限反馈、正文与专家诊断分层；PC/移动/Termux 的实际交互、可访问性和性能留到 D8/D9 工程/实机验收。
-
-这是设计冻结与未来检查要求，不能将历史其它模块的通过或当前 main 的局部能力冒充 V3 产品/质量完成。
-
 ## 10. D8 下一轮开放议题
 
 第八轮围绕全新 Graph Editor、Agent/Node/Edge 配置、Run Inspector/Timeline/Diagnostics、权限/审批/成本预览、可解释的 Host Projection、PC/移动触控/响应式设计、无障碍与长图性能讨论。具体布局、组件库、技术路线、操作方式与默认分层界面 **尚未冻结**，不得提前将本模块变成 UI 实现批准。

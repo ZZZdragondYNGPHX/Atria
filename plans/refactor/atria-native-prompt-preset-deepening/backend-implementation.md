@@ -21,11 +21,11 @@
 
 ## 实施与交接
 
-1. 编译语义、信任降权、来源证据和定向测试。
+1. 编译语义、信任降权、来源证据。
 2. 可信 Program selection / fallback 与消费前复验。
 3. 未发布 Draft Preview、同源三层差异及 HTTP 负例。
 4. 原质量合同与候选链实施；未接通的依赖逐项记录具体原因。
-5. 按实际改动验证，更新同一 Record、E0 与产品 API 文档。
+5. 更新同一 Record、E0 与产品 API 文档。
 6. 完成独立工作后按用户要求交接 Claude Code：实有接口、状态/错误、缺口与完整功能范围，不能用 mock/HTML 销账后端阻塞。
 
 零 ST / 旧 Workspace / 旧 Agent Director 兼容继续生效。旧容器中的 Memory/Goals/Experience/Visual Director 等原生能力必须保留；V3 替代未接通时不能把清退写成完成。HTML 未展示的功能仍按审计与冻结合同实现。

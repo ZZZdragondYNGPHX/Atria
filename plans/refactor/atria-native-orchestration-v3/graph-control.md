@@ -78,14 +78,3 @@ Host Run authority 无论 Delegate/Handoff 都不移交。Handoff 必须是受�
 V3 原生 Graph Editor 配置允许的动态变化和 Review/Join/Output 合同；Run Inspector 只投影 `TaskGraphRevision、active NodeAttempt、各子 Run 的 status、Join/EffectReceipt refs、GraphPatch 拒绝原因、等待审批、实测用量及来源失效状态`。**不使用旧模式名称或旧 Run Panel 状态格式**。
 
 D4 已选择 C2 并冻结 Audience-scoped Context 与通过受控 Result/SourceRef 传播；合法候选域、Narrator/Actor/Task 分离、Disclosure 和跨 Branch 失效详细规则见 [context-sharing.md](context-sharing.md)。本模块只持有 D3 控制流边界，跨 Agent **先授权、后编译、默认最小化** 不变。
-
-## 9. 未来最小相关验收矩阵（尚未执行）
-
-- **图**：非法依赖、无界环、死路、重复 Patch/CAS 冲突、已在执行/已结算节点变动不得越界；合法 Patch 在恢复后只生效一次。
-- **委派**：父子权限交集、Handoff 的转移/返回、子任务取消与迟到结果不改变过期主 Run。
-- **Join**：五类策略，部分成功、非法 quorum、并发 receipt 竞态、固定结算与旧 branch 的迟到结果。
-- **Review**：只重做影响闭包；旧 EffectReceipt 不被删除；不可重复提交的正式业务操作不重发。
-- **恢复**：Effect write-ahead 后崩溃、receipt 后崩溃、unknown 外部写入、Host 冷启动与源版本切换均 fail-closed。
-- **预算/体验**：深度与循环累积无绕过，普通 RP 不固定产生额外模型调用，PC/Linux/Termux 共享 Host 合同；真实设备与 UI 分别验收。
-
-目前只是设计冻结，所有产品代码、单元/集成测试、CI、UI 与真机验证均**未在本轮执行**。

@@ -13,7 +13,7 @@
 1. 先看 Git status、fetch 后的 main/docs/V3 与任务语义分支 HEAD，保护所有无关改动。完整治理为 `docs:README.md`，先读适用 AGENTS。不要重置/清理其他人的工作树或未提交资料。
 2. 后端实现分支为 `refactor/atria-native-prompt-preset-deepening`，基于 main@695acf3bc。**它不是 V3 分支，也尚未集成 main**。具体已提交 SHA/实测事实见唯一 `docs:records/refactor/atria-native-prompt-preset-deepening.md`。建立你自己的前端语义分支前先核对依赖；不要将整个活跃 V3 或 docs 分支 merge 到源码。
 3. 先读 `docs:plans/refactor/atria-native-prompt-preset-deepening/index.md` → `preset-studio-experience.md`、`backend-implementation.md`、`e0-audit.md` §8。V3 的 Graph/Plan/Run/Approval 合同读原 V3 index 路由，不复制另一套运行时。
-4. V3 追加必读：[后端整合入口](../../refactor/atria-native-orchestration-v3/backend-integration.md)、[D8 领域交互](../../refactor/atria-native-orchestration-v3/graph-editor-experience.md)、[验收矩阵](../../refactor/atria-native-orchestration-v3/acceptance-matrix.md) §9.1、[接口合同](../../refactor/atria-native-orchestration-v3/interface-contracts.md) §17.15–17.34 及原 V3 Record 第五至二十四组。最终前端交接前再次读取原任务的新 SHA/接口变化，不能把本次中间同步当全部后端完成。
+4. V3 追加必读：[后端整合入口](../../refactor/atria-native-orchestration-v3/backend-integration.md)、[D8 领域交互](../../refactor/atria-native-orchestration-v3/graph-editor-experience.md)、[实施状态](../../refactor/atria-native-orchestration-v3/acceptance-matrix.md) §9.1、[接口合同](../../refactor/atria-native-orchestration-v3/interface-contracts.md) §17.15–17.34 及原 V3 Record 第五至二十四组。最终前端交接前再次读取原任务的新 SHA/接口变化，不能把本次中间同步当全部后端完成。
 
 ## 设计输入与完整范围
 
@@ -73,9 +73,9 @@ Binding get 的 body 为 `{sourceSelector}`，save 为 `{sourceSelector,planRef,
 | 最后实际发送的诊断 | 使用 Host 返回的最后成功 send snapshot；retry/fallback 后不能继续展示首次 render 为实际请求。逻辑 Effect inputHash 与实际 bank inputFingerprint 含义不同；最终 requestId/targetFingerprint/inputFingerprint 严格绑定由原 Host/银行验证，Browser 不自行拼 hash、回执或完整 body writer |
 | 有限 `generation.send` 可发布机制 | 第十六组为原 agent 的 exact player narrator Route pin；第二十三组 §17.33 扩展到实际声明 role.intent_resolver 且有 generation.tools 证据的原 Route。原显式 computeBudget、无 fallback 等机制条件仍必需；其他角色/capability 按真实 unknown/invalid 表现。路径/资源变化后旧 validationDigest 不得继续发布。可发布、已发布、已选择、运行获准必须分开，不以 Publish 成功暗示 Source/Actor/Task/Tool/Delegate 已授权 |
 
-原 V3 继续负责缺失领域 adapter、角色/后台 quota、完整 Scheduler/Handoff/Result/Disclosure、P4 正文/Project/Evolution、Tool 其余真实消费者闭包、可信 Review/restore/release 及 P6 硬切。前端负责统一呈现与真实接口接入，不能以永久禁用占位替代最终 P5/P7 的完整产品验收。P7 未通过不得集成 main。
+原 V3 继续负责缺失领域 adapter、角色/后台 quota、完整 Scheduler/Handoff/Result/Disclosure、P4 正文/Project/Evolution、Tool 其余真实消费者闭包、可信 Review/restore/release 及 P6 硬切。前端负责统一呈现与真实接口接入，不能以永久禁用占位替代最终 P5/P7 的完整产品验收。
 
-V3 任务报告对历史 `4a62ba5cc` 与 Prompt `760327891` 的 merge-tree 预演存在 `generation-host.js`、`execution-utils.js` 内容冲突，`contracts.js` / `prompt-candidates.js` 双方也有修改。该预演不是当前 `6a5e46a21` 的完整冲突清单。**尚未实际合并或解决**；整合须按实际 HEAD 重核，并同时保留 `orchestrationSend` 原银行/稳定 model 与 local 身份/ACK 未知只观察/最终实际请求绑定/Source/Context/Effect 与本任务 `programSelection`/Typed lowering/currentness/Draft/Browser projection/明确拒答语义，防止重复准入/计费，自动合并也须定向验证。不得将冲突留给一边覆盖另一边的方式“修绿”。
+V3 任务报告对历史 `4a62ba5cc` 与 Prompt `760327891` 的 merge-tree 预演存在 `generation-host.js`、`execution-utils.js` 内容冲突，`contracts.js` / `prompt-candidates.js` 双方也有修改。该预演不是当前 `6a5e46a21` 的完整冲突清单。**尚未实际合并或解决**；整合须按实际 HEAD 重核，并同时保留 `orchestrationSend` 原银行/稳定 model 与 local 身份/ACK 未知只观察/最终实际请求绑定/Source/Context/Effect 与本任务 `programSelection`/Typed lowering/currentness/Draft/Browser projection/明确拒答语义，防止重复准入/计费。不得将冲突留给一边覆盖另一边的方式“修绿”。
 
 ## 必须保留的架构和原生功能
 
@@ -109,13 +109,11 @@ E0 整体 NOT_CLOSED。V3 活跃分支已逐步取得原 Budget/Source/Audience 
 
 先核最新 HEAD 可能出现的新证据，然后按原端口接线；不从“类存在/测试注入/HTML 可点击”得出 ready。新前端可以实现编辑、可用的原生功能和准确 blocked/unknown 状态，但不得在 Browser 造运行/审批/候选发布器。旧清退需跟 V3 真实替代入口同切；不能为了删旧目录误删有效业务。
 
-## 交互与三端验收
+## 交互与三端功能
 
-- 以功能矩阵逐项记录保留/整合/重组/确认废弃、真实消费者、状态/权限与验证；不另建重复状态权威。所有菜单、Sheet、面板、弹窗、输入、快捷键、工具栏和恢复链都需可达。
+- 以功能矩阵逐项记录保留/整合/重组/确认废弃、真实消费者、状态/权限；不另建重复状态权威。所有菜单、Sheet、面板、弹窗、输入、快捷键、工具栏和恢复链都需可达。
 - Windows、CachyOS Linux、Android Termux 功能等价。手机有完整编辑、Raw/Structured、三层 Preview/Diff、Review/Apply/Commit 与审批，不是只读版本；Graph 需列表/表单等价路径。
 - IME 不误发，Stop 在软键盘上方可达；Back/Escape 一次只处理一层并归还焦点；触控、无障碍、键盘、reduced-motion、长文本、窗口化列表与滚动锚点依真实源码和参考。
 - 分开 Editor Undo、恢复资源修订、Trash Restore、Save/Fork、停止生成和停止清理任务；停止不撤销已提交对象、不退还已发生费用。费用/数据共享/凭证/写入审批按真实原 authority，不能合成万能“允许”。
-- 重大 UI 修改在真实可用浏览器验证 desktop/mobile 布局、完整流程、焦点/滚动/Back/IME相关路径、错误/权限/取消/晚响应；模拟视口、mock、真实服务/设备证据分账，不伪称跨端全部 PASS。
-- 不因后端本地测试通过而跳过前端验收。使用相关本地 Skill、已有组件/token与用户参考，避免无依据换框架或加依赖。
 
-完成可用前端与必要验证、同一任务 Record、提交/推送后停止，汇报真实完成/阻塞与未测项。不要发布最终视觉冻结结论，也不要因阶段通过就留下无说明的半成品。
+完成可用前端、同一任务 Record、提交/推送后停止，汇报真实完成/阻塞与未测项。不要发布最终视觉冻结结论，也不要因阶段通过就留下无说明的半成品。
