@@ -15,6 +15,7 @@ import { assertNativeTurnQuota, assertNativeTurnOutputQuota } from './native-tur
 import { inspectNativeAuthorityResolver } from './authority-resolver-context.js';
 import { ModelPort } from './model-port.js';
 import { SourcePort } from './source-port.js';
+import { readSessionTurnOutput } from '../session-turn-output.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { immutable, checkCancellation, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
 import { selectNativeRuntimeRoute } from '../adapters/generation-host.js';
@@ -482,6 +483,7 @@ export class NativeNarratorOrchestrationAuthority {
     }
 
     async finalizeNarrator({ host, handle, prepared, requestHash, expectedRevisionId, finalizationBoundary }) {
+        if (this.engine.hasActiveTransaction(handle)) fail('native_orchestration_output_ambient_transaction');
         const output = this.#outputs.get(prepared);
         if (!output || output.state.host !== host || output.state.handle !== handle
             || requestHash !== output.state.proofExpected.requestHash || expectedRevisionId !== output.state.proofExpected.anchor.revisionId
@@ -504,7 +506,22 @@ export class NativeNarratorOrchestrationAuthority {
                     } catch (error) { rejected = error; return deny(); }
                 });
             } catch (error) { throw rejected && error.code === 'native_orchestration_consumption_stale' ? rejected : error; }
-            return this.sessionCore.finalizeTurn(handle, state.proofExpected.sessionId, { ...prepared, requestHash }, { expectedRevisionId });
+            const sessionId = state.proofExpected.sessionId, branchId = state.proofExpected.anchor.branchId;
+            let snapshot, uncertain;
+            try { snapshot = await this.sessionCore.finalizeTurn(handle, sessionId, { ...prepared, requestHash }, { expectedRevisionId }); } catch (error) {
+                if (error.code !== 'storage_commit_unknown') throw error;
+                uncertain = error;
+            }
+            // A lost ACK permits only observation of this exact domain commit.
+            // Source advancement alone, or an assistant-shaped return, is no receipt.
+            const committed = await readSessionTurnOutput(this.sessionCore._sessions, handle, {
+                sessionId, branchId, expectedRevisionId, invocationId: prepared.invocationId, requestHash,
+                envelope: prepared.envelope, provenance: prepared.provenance });
+            if (!committed) throw uncertain ?? new ConflictError('native_session_turn_receipt_required');
+            if (!snapshot) snapshot = await this.sessionCore.observe(handle, sessionId);
+            if (snapshot.revision.revisionId !== committed.domainReceiptRef.revisionId || snapshot.revision.branchId !== branchId)
+                fail('native_session_turn_receipt_invalid');
+            return snapshot;
         }, { withAuthority });
     }
 }
