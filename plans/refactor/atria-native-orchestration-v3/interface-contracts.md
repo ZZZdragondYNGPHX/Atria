@@ -1188,3 +1188,10 @@ Run snapshot 新增 execution，包含 immutable Plan limits、原 progress 与 
 显式 project_review 的原 prepare/execute/finish 捕获实际异常时，只有当前私有 operation 的 state 可将同 Root 记为阻塞：pending Effect 或未关闭费用保留 reconciling，否则 blocked。唯一 project_failure receipt/command/event 记录封闭 reason 与原 exact Effect 费用观察；不清空/结算 Effect/Attempt、预算或审批，不发布 Result/Output，不给 resume，不重试模型/工具。原错误仍返回。
 
 已取消/终结/已阻塞的 Root 不覆盖；原 Host/epoch/不可变 Source/Plan 与 CAS 仍由 RunRepository 围栏约束。只沿 Root 锁→Engine 的原控制事务，最后 await 期间合法取消先提交，本次失败元数据拒绝。storage_commit_unknown 保留其原恢复边界，不以另一失败命令代替未知结果；失败元数据自己的 ACK未知仅观察同 exact receipt，仍不发送。Projection 只增加封闭 project_execution_failed 事件，无异常正文/stack/Provider内容。
+
+
+## 17.96 原 Task Plan 提案引用与工具异常
+
+原 ProjectAgentService.setPlan 在写入前拒绝删除仍被原 proposal.stepId 引用的步骤，返回 project_agent_plan_proposals_conflict；保留原 Task/Plan/proposal/sequence。保留旧引用的步骤可修改；只有原显式 resetOperations 清空提案后才可去掉该引用。原 Task 存储校验继续存在，不用更换步骤 ID 隐式重绑 proposal。
+
+实际 Prompt 在已存在 Task Plan 时指引复用当前语义步骤，避免续跑无谓重建 Plan；移除引用前只在原工具目录允许时说明 reset_operations。Native Project executeTool 的实际异常也进入 §17.95 的相同保守失败元数据，封闭 reason 可区分 Plan/proposal 冲突；原工具拒绝/已费用/待核对 Effect 不伪装为正式完成或释放。

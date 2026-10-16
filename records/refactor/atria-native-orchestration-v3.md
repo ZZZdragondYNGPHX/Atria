@@ -1071,3 +1071,10 @@
 - Source 8194b2847 → 5512ead16，本地提交，未推送。原 Native Project adapter 在实际异常时只读取原 RunObservation 的 bounded owner 投影和封闭 Task 状态/校验数量，保存 native_execution=false 后继续抛原异常。onTrial 在 worker abort 前保留失败；没有成功 pair/report 或 eligibility。native-live 只输出白名单状态/数值，未知字段/正文不出私有试验。
 - 两个原隔离 worker/真实原 Root 的 FS/SQLite 参数2/2 PASS（16.958s）：原批次失败仍收费20，Root blocked，生产 Source/Task/Effect不变。summary隐私与 evaluator 指纹27/27 PASS（2.026s，其中指纹25），五文件原 ESLint/staged diff check通过。
 - 真 Provider诊断复测2次200、11189 reported tokens、unknown=0。第一案例 get_project+resource_closure 后调用 set_plan，worker evaluation_runtime_failed；失败投影确证原 Task仍repair、Root仍running，容量用了2 requests/14 jobs、余4 requests/18 jobs，deadline仍1800000ms。因此这次失败不是预算或deadline耗尽。已发现 executeTool 异常尚未进入第八十九组的异常捕获，下一步补该缺口并验证原 set_plan 与已保存 proposal 的引用约束；未将未知真实参数/报错内容当已确认根因。工程/独立质量仍未通过，继续后端，不推送/交前端/main。
+
+
+## 2026-10-17 — 第九十一组：原 Plan 引用约束与 Tool 异常闭包
+
+- Source 5512ead16 → 03c019a87，本地提交，未推送；接口 §17.96。已复现原 setPlan 删除 proposal 引用步骤时直到持久 validator 才抛 Invalid task proposal authority；新增写前原权威冲突，不破坏原提案，不将真实调用参数猜测当作已证实根因。Prompt 续跑复用已保存Plan，executeTool异常补入原保守 Root失败记录。
+- 新原引用/Context两个 suites 12/12 PASS（12.383s），包括 FS/SQLite 零发送原写前拒绝、合法保留引用/reset后替换、真实Model工具冲突留下原费用/待核对Effect与 reconciling。原 Project Agent 与 evaluator 指纹44/44 PASS（14.381s）；原失败suite10PASS/另一suite及case过滤10SKIP（20.472s）。五文件原 ESLint/staged diff check通过，没有冒称被名称筛掉的冷核对suite已执行。
+- 真 Provider复测4次200、24708 reported tokens、unknown=0。模型已按 get_project+closure→reset→project_save→prepare_review；原 Task/Root均如实 blocked，validation.failed，jobs26余6，确认该次并非预算耗尽。related_proposal=false，随后 worker runtime_failed；依据已出现检查顺序，正在核对 grader 是否对不完整 proposal 的 entryPoint 直接解引用。真实调用仍未通过，不再把 Scope工程错误和模型提案错误混为一项；独立质量/价格/晋升Gate不变，后端继续。
