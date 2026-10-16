@@ -79,7 +79,7 @@ export class EffectController {
     async claim(handle, input) {
         assertObject(input, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'effectId'], 'claimEffect');
         const { effectId, ...guard } = input, dispatchToken = randomUUID();
-        const ack = await this.runs.control(handle, controlCommandId('effect.claim', effectId), { ...guard, operation: 'effect.claim', detail: { effectId } }, async ({ tx, root, now }) => {
+        const ack = await this.runs.control(handle, controlCommandId('effect.claim', effectId), { ...guard, operation: 'effect.claim', detail: { effectId } }, async ({ tx, root, now, deny }) => {
             const record = await readEffect(tx, handle, root, effectId), intent = record.doc;
             this.#current(root, intent);
             if (intent.status !== 'ready' || !intent.budgetAttemptRef) conflict('native_orchestration_effect_not_ready');
@@ -94,7 +94,11 @@ export class EffectController {
                 if (approval.status !== 'approved' || approval.expiresAt <= now || approval.hostBootId !== root.hostBootId || approval.hostGeneration !== root.hostGeneration
                     || approval.epoch !== root.epoch || approval.bindingHash !== currentApprovalBinding(intent, approval) || decision?.doc.decision !== 'approve'
                     || decision.doc.bindingHash !== approval.bindingHash || decision.doc.expiresAt <= now) conflict('native_orchestration_approval_invalid');
-                await this.verifyApproval({ handle, tx, root, intent, approval, decision: decision.doc });
+                try { await this.verifyApproval({ handle, tx, root, intent, approval, decision: decision.doc }); } catch (error) {
+                    if (error.code === 'native_orchestration_review_unavailable') return deny(error);
+                    throw error;
+                }
+                if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== hashNativeDocument(root)) return deny(new ConflictError('native_orchestration_effect_stale'));
                 await putMutable(tx, controlRecordKey(handle, root.runId, 'approval', approval.approvalId), { ...approval, status: 'consumed' }, { expectedIntegrity: approvalRecord.integrity });
                 root.pendingApprovalRefs = root.pendingApprovalRefs.filter(id => id !== approval.approvalId);
             }

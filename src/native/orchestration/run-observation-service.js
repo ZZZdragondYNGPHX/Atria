@@ -42,9 +42,9 @@ export class RunObservationService {
     #cursors = new Map();
     #eventSalt = randomUUID();
 
-    constructor({ engine, sessionCore, projectAgent, studio, rpControl, now = Date.now, pollMs = 1000 }) {
+    constructor({ engine, sessionCore, projectAgent, studio, rpControl, review = null, now = Date.now, pollMs = 1000 }) {
         if (!engine.nativeHostLifecycle) throw new TypeError('Original Host ownership required');
-        this.engine = engine; this.now = now; this.pollMs = pollMs;
+        this.engine = engine; this.now = now; this.pollMs = pollMs; this.review = review;
         this.hostBootId = engine.nativeHostLifecycle.hostBootId;
         this.authorizeSource = createBindingSourceAuthority({ sessionCore, projectAgent, studio, rpControl });
         this.budget = new BudgetPort({ sessionCore, projectAgent, projectRepository: projectAgent?._repository, rpControl });
@@ -162,7 +162,7 @@ export class RunObservationService {
                     const approval = (await readApproval(tx, handle, root, id)).doc;
                     if (!['R0', 'R1', 'R2', 'R3'].includes(approval.risk)) throw new TypeError('Invalid approval risk');
                     approvals.push({ approvalId: id, effectId: approval.effectId, status: approval.status, risk: approval.risk, expiresAt: approval.expiresAt,
-                        reviewAvailable: false });
+                        reviewAvailable: this.review?.available(handle, root, approval) ?? false });
                 }
                 const events = [];
                 for (const row of await tx.listResources({ kind: K.orchestrationRecord, handle, runId, recordType: 'event' })) {

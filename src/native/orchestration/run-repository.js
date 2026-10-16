@@ -164,6 +164,12 @@ export function assertRunRoot(root, handle) {
     return root;
 }
 
+// A pre-write authority denial must commit legitimate reentrant cancellation /
+// revocation facts, without recording this rejected command as successful.
+class ControlDenial {
+    constructor(error) { this.error = error; }
+}
+
 /** Durable Host control metadata. Original domain admission supplies source/budget truth. */
 export class RunRepository {
     constructor({ engine, authorize, admit, assertWriter, now = Date.now }) {
@@ -196,6 +202,7 @@ export class RunRepository {
                 return replayFlag ? { outcome, replayed: true } : outcome;
             }
             const outcome = await apply(tx, input, fence);
+            if (outcome instanceof ControlDenial) return outcome;
             assertWritable();
             await putImmutable(tx, commandKey, { schemaVersion: 1, commandId, operation, target: input.runId ?? outcome.runId, payloadHash, outcome });
             return replayFlag ? { outcome, replayed: false } : outcome;
@@ -232,6 +239,15 @@ export class RunRepository {
 
     /** Serialize ephemeral body consumption with the original Run command tree. */
     async withConsumption(handle, runId, consume, { withAuthority = operation => operation() } = {}) {
+        return this.#withCurrent(handle, runId, consume, withAuthority, ['running']);
+    }
+
+    /** Review reads metadata while waiting; this never grants body consumption or dispatch. */
+    async withApprovalReview(handle, runId, inspect) {
+        return this.#withCurrent(handle, runId, inspect, operation => operation(), ['waiting_approval']);
+    }
+
+    async #withCurrent(handle, runId, consume, withAuthority, statuses) {
         if (typeof consume !== 'function' || typeof withAuthority !== 'function') throw new TypeError('Run consumption requires a consumer and authority boundary');
         const lineageIds = await this.#lineageIds(handle, runId);
         return withNativeResourceWrites(handle, lineageIds, async () => {
@@ -244,7 +260,7 @@ export class RunRepository {
                 const initial = [];
                 for (const id of lineageIds) initial.push(await this.#root(tx, handle, id));
                 const root = cloneNativeDocument(initial[0].doc);
-                if (root.cancelRequested || root.status !== 'running' || root.hostBootId !== fence.hostBootId
+                if (root.cancelRequested || !statuses.includes(root.status) || root.hostBootId !== fence.hostBootId
                     || root.hostGeneration !== fence.generation) throw new ConflictError('native_orchestration_consumption_stale');
                 await assertChildRunCurrent(tx, handle, root);
                 const stamps = initial.map(record => record.integrity), denied = Symbol('consumption denied');
@@ -376,11 +392,13 @@ export class RunRepository {
         if (!['graph.patch', 'attempt.reserve', 'attempt.activate', 'attempt.settle', 'result.publish', 'output.publish', 'project.round.finish', 'fanout.freeze', 'effect.prepare', 'effect.ready', 'effect.claim', 'effect.observe', 'approval.request', 'approval.decide', 'join.freeze', 'join.settle', 'loop.advance', 'run.resume', 'run.delegate', 'run.handoff', 'run.returnHandoff', 'run.childBudget'].includes(body.operation)
             || typeof reduce !== 'function') throw new TypeError('Unsupported Host controller operation');
         const timestamp = this.now();
-        return this.#command(handle, commandId, 'runs.control.' + body.operation, body, async (tx, input, fence) => {
+        const ack = await this.#command(handle, commandId, 'runs.control.' + body.operation, body, async (tx, input, fence) => {
             const record = await this.#root(tx, handle, input.runId), root = record.doc;
             this.#guard(root, input, fence);
             if (root.parentRef && input.operation !== 'effect.observe') await assertChildRunCurrent(tx, handle, root, { requireBudget: input.operation !== 'run.childBudget' });
-            const result = await reduce({ tx, root: cloneNativeDocument(root), plan: cloneNativeDocument(record.planRevision), fence, now: timestamp });
+            const result = await reduce({ tx, root: cloneNativeDocument(root), plan: cloneNativeDocument(record.planRevision), fence, now: timestamp,
+                deny: error => new ControlDenial(error) });
+            if (result instanceof ControlDenial) return result;
             assertObject(result, ['root', 'eventType', 'reasonCode', 'outcome'], 'controller result');
             const next = cloneNativeDocument(result.root);
             if (input.operation === 'run.returnHandoff') {
@@ -412,6 +430,8 @@ export class RunRepository {
             const updated = await this.#commit(tx, handle, record, next, result.eventType, result.reasonCode, timestamp);
             return { runId: root.runId, ...cloneNativeDocument(result.outcome), versions: { epoch: updated.epoch, stateVersion: updated.stateVersion, graphRevision: updated.graphRevision } };
         }, { replayFlag: true, resourceIds });
+        if (ack instanceof ControlDenial) throw ack.error;
+        return ack;
     }
 
     async #root(tx, handle, runId) {

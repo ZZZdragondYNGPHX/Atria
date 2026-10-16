@@ -18,21 +18,24 @@ export class ApprovalController {
         assertObject(input, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'effectId', 'approvalId', 'expiresAt'], 'requestApproval');
         const { effectId, approvalId, expiresAt, ...guard } = input;
         assertNativeId(effectId, 'orchestrationEffect'); assertNativeId(approvalId, 'orchestrationApproval'); assertCounter(expiresAt, 'expiresAt');
-        return this.runs.control(handle, controlCommandId('approval.request', approvalId), { ...guard, operation: 'approval.request', detail: { effectId, approvalId, expiresAt } }, async ({ tx, root, now }) => {
+        return this.runs.control(handle, controlCommandId('approval.request', approvalId), { ...guard, operation: 'approval.request', detail: { effectId, approvalId, expiresAt } }, async ({ tx, root, now, deny }) => {
             const effectRecord = await readEffect(tx, handle, root, effectId), intent = effectRecord.doc;
             if (root.cancelRequested || !['running', 'waiting_approval'].includes(root.status) || intent.status !== 'ready' || !intent.requiresApproval || !intent.budgetAttemptRef
                 || intent.epoch !== root.epoch || intent.hostBootId !== root.hostBootId || intent.hostGeneration !== root.hostGeneration) conflict('native_orchestration_approval_not_admitted');
             if (expiresAt <= now || expiresAt > root.progress.deadlineAt || root.progress.steps >= root.limits.maxSteps) conflict('native_orchestration_approval_expired');
-            if (intent.approvalRef) {
-                const prior = await readApproval(tx, handle, root, intent.approvalRef);
+            const prior = intent.approvalRef ? await readApproval(tx, handle, root, intent.approvalRef) : null;
+            if (prior) {
                 if (['pending', 'approved', 'consumed'].includes(prior.doc.status) && prior.doc.expiresAt > now) conflict('native_orchestration_approval_already_pending');
-                await putMutable(tx, controlRecordKey(handle, root.runId, 'approval', prior.doc.approvalId), { ...prior.doc, status: prior.doc.expiresAt <= now ? 'expired' : 'invalidated' }, { expectedIntegrity: prior.integrity });
-                root.pendingApprovalRefs = root.pendingApprovalRefs.filter(id => id !== prior.doc.approvalId);
             }
             // The original Review Port supplies an idempotent, private nonce
             // challenge for this exact approvalId. Its plaintext never enters
             // this repository, command outcome, Context or main-origin API.
-            const challenge = cloneNativeDocument(await this.authorizeRequest({ handle, tx, root, intent, approvalId, expiresAt }));
+            let challenge;
+            try { challenge = cloneNativeDocument(await this.authorizeRequest({ handle, tx, root, intent, approvalId, expiresAt })); } catch (error) {
+                if (error.code === 'native_orchestration_review_unavailable') return deny(error);
+                throw error;
+            }
+            if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== hashNativeDocument(root)) return deny(new ConflictError('native_orchestration_approval_invalid'));
             assertObject(challenge, ['actorRequirement', 'requestNonceHash'], 'ApprovalChallenge');
             assertObject(challenge.actorRequirement, ['handle'], 'actorRequirement');
             if (challenge.actorRequirement.handle !== root.ownerRef.handle) throw new TypeError('Approval actor must be the original authorized owner');
@@ -42,6 +45,10 @@ export class ApprovalController {
                 ...challenge, hostBootId: root.hostBootId, hostGeneration: root.hostGeneration, epoch: root.epoch, sourceBindingDigest: intent.sourceBindingDigest,
                 endpointBindingDigest: intent.endpointBindingDigest, inputHash: intent.inputHash, budgetEnvelopeDigest: intent.budgetEnvelopeDigest,
                 risk: intent.risk, expiresAt, status: 'pending', decisionRef: null };
+            if (prior) {
+                await putMutable(tx, controlRecordKey(handle, root.runId, 'approval', prior.doc.approvalId), { ...prior.doc, status: prior.doc.expiresAt <= now ? 'expired' : 'invalidated' }, { expectedIntegrity: prior.integrity });
+                root.pendingApprovalRefs = root.pendingApprovalRefs.filter(id => id !== prior.doc.approvalId);
+            }
             await putImmutable(tx, controlRecordKey(handle, root.runId, 'approval', approvalId), approval);
             await putMutable(tx, controlRecordKey(handle, root.runId, 'effect', effectId), { ...intent, approvalRef: approvalId }, { expectedIntegrity: effectRecord.integrity });
             root.pendingApprovalRefs.push(approvalId); root.status = 'waiting_approval'; root.progress.steps++;
@@ -57,13 +64,18 @@ export class ApprovalController {
         assertObject(proof, ['nonce', 'contextRef'], 'trusted decision proof');
         if (typeof proof.nonce !== 'string' || proof.nonce.length < 32 || proof.nonce.length > 256) throw new TypeError('Trusted approval challenge nonce is required');
         const proofDigest = hashNativeDocument(proof);
-        return this.runs.control(handle, controlCommandId('approval.decide', approvalId), { ...guard, operation: 'approval.decide', detail: { approvalId, decision, proofDigest } }, async ({ tx, root, now }) => {
+        return this.runs.control(handle, controlCommandId('approval.decide', approvalId), { ...guard, operation: 'approval.decide', detail: { approvalId, decision, proofDigest } }, async ({ tx, root, now, deny }) => {
             const record = await readApproval(tx, handle, root, approvalId), approval = record.doc;
             const effectRecord = await readEffect(tx, handle, root, approval.effectId), intent = effectRecord.doc;
             if (root.cancelRequested || approval.status !== 'pending' || approval.expiresAt <= now || intent.status !== 'ready'
                 || approval.hostBootId !== root.hostBootId || approval.hostGeneration !== root.hostGeneration || approval.epoch !== root.epoch
                 || approval.bindingHash !== currentApprovalBinding(intent, approval) || hashNativeDocument(proof.nonce) !== approval.requestNonceHash) conflict('native_orchestration_approval_invalid');
-            const principal = cloneNativeDocument(await this.verifyDecision({ handle, tx, root, intent, approval, decision, proof }));
+            let principal;
+            try { principal = cloneNativeDocument(await this.verifyDecision({ handle, tx, root, intent, approval, decision, proof })); } catch (error) {
+                if (error.code === 'native_orchestration_review_unavailable') return deny(error);
+                throw error;
+            }
+            if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== hashNativeDocument(root)) return deny(new ConflictError('native_orchestration_approval_invalid'));
             assertObject(principal, ['principalRef', 'authenticationContextRef'], 'ApprovalPrincipal');
             assertObject(principal.principalRef, ['handle'], 'principalRef');
             if (principal.principalRef.handle !== approval.actorRequirement.handle) conflict('native_orchestration_approval_principal_mismatch');

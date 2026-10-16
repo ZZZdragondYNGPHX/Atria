@@ -7,6 +7,7 @@ import dns from 'node:dns';
 import process from 'node:process';
 import http from 'node:http';
 import https from 'node:https';
+import { getNativeReviewOrigin } from './native/orchestration/review-origin.js';
 
 import cors from 'cors';
 import { csrfSync } from 'csrf-sync';
@@ -842,6 +843,7 @@ async function preSetupTasks() {
             await cleanupPlugins();
         }
         diskCache.dispose();
+        await getNativeReviewOrigin(getStorageEngine()).close();
         await getStorageEngine().close();
         setWindowTitle(consoleTitle);
         process.exit();

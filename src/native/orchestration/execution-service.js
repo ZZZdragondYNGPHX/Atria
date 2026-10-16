@@ -11,6 +11,7 @@ import { compiledSendIdentity } from '../model-prompt-runtime/compiled-binding.j
 import { ContextPort } from './context-port.js';
 import { fields } from '../../../public/shared/native-values.js';
 import { assertContextCompilation } from './generation-local-work.js';
+import { getNativeReviewOrigin } from './review-origin.js';
 
 const fail = code => { throw new ConflictError(code); };
 
@@ -21,13 +22,18 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
     for (const method of ['authorize', 'verifySend', 'verifyObservation', 'verifyApproval']) if (typeof effectAuthority?.[method] !== 'function') throw new TypeError('Original Effect authority requires ' + method);
     const budgetPort = new BudgetPort({ sessionCore, projectAgent, projectRepository, rpControl });
     const sourcePort = new SourcePort({ budgetPort, sessionCore, projectAgent, rpControl });
+    const review = getNativeReviewOrigin(engine);
     const runs = new RunRepository({ engine, assertWriter: (handle, tx) => lifecycle.assertWriter(handle, tx),
         authorize: async ({ handle }) => { if (typeof handle !== 'string' || !handle) throw new TypeError('Authenticated owner is required'); },
         admit: ({ handle, tx, sourceRequest }) => sourcePort.capture(handle, sourceRequest, { tx }) });
     const effects = new EffectController({ runs,
         authorizeEffect: async args => { await sourcePort.revalidate(args.handle, args.root.sourceBinding, { tx: args.tx, root: args.root }); return effectAuthority.authorize(args); },
         verifyBudgetAttempt: args => budgetPort.verifyBudgetAttempt(args),
-        verifyObservation: args => effectAuthority.verifyObservation(args), verifyApproval: args => effectAuthority.verifyApproval(args) });
+        verifyObservation: args => effectAuthority.verifyObservation(args), verifyApproval: async args => {
+            await effectAuthority.verifyApproval(args);
+            await review.authority.verifyApproval(args);
+        } });
+    const approvals = review.authority.connect({ runs, effects, describeReview: effectAuthority.describeReview?.bind(effectAuthority) });
     const delegates = new DelegateController({ runs,
         authorizeDelegation: async args => {
             await sourcePort.revalidate(args.handle, args.parent.sourceBinding, { tx: args.tx, root: args.parent });
@@ -142,5 +148,5 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
         await sourcePort.revalidate(handle, parent.sourceBinding, { root: parent });
         return budgetPort.reserveChild(handle, { authorityRef: parent.budgetAuthorityRef, parentReservationId: parent.parentRef ? parent.runId : null, childRunId, ceiling, limits });
     }
-    return { runs, effects, delegates, budgetPort, sourcePort, generationSend, assertDispatch, reserveChild };
+    return { runs, effects, approvals, delegates, budgetPort, sourcePort, generationSend, assertDispatch, reserveChild };
 }

@@ -9,6 +9,7 @@ import { RpRunControl } from '../native/rp-run-control.js';
 import { getNativeGenerationHost } from './native-generation.js';
 import { RouteResolver } from '../native/model-prompt-runtime/route-resolver.js';
 import { RunObservationService } from '../native/orchestration/run-observation-service.js';
+import { getNativeReviewOrigin } from '../native/orchestration/review-origin.js';
 
 const observationServices = new WeakMap();
 const services = () => {
@@ -16,11 +17,12 @@ const services = () => {
     const host = getNativeGenerationHost();
     const modelResolver = new RouteResolver({ persistence: host.persistence, library: host.library, providers: host.providers });
     const sources = { sessionCore: core, studio, projectAgent: agent, rpControl: new RpRunControl({ engine }), modelResolver };
+    const review = getNativeReviewOrigin(engine);
     let observations = observationServices.get(engine);
     if (!observations || observations.hostBootId !== engine.nativeHostLifecycle.hostBootId) {
-        observations = new RunObservationService({ engine, ...sources }); observationServices.set(engine, observations);
+        observations = new RunObservationService({ engine, ...sources, review: review.authority }); observationServices.set(engine, observations);
     }
-    return { ...createOrchestrationAuthoringService(engine, sources), observations };
+    return { ...createOrchestrationAuthoringService(engine, sources), observations, review };
 };
 
 /** Original app auth + CSRF middleware precedes this Native namespace. */
@@ -81,6 +83,10 @@ export function createNativeOrchestrationRouter(getServices = services) {
     for (const method of ['list', 'observe', 'details', 'diagnostics']) router.post('/runs/' + method,
         route(false, (observations, handle, input, options) => observations[method](handle, input.body, options), 'observations'));
     router.post('/runs/cancel', route(true, (observations, handle, input) => observations.cancel(handle, input.commandId, input.body), 'observations'));
+    router.post('/approvals/launch', (request, response, next) => {
+        if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(request.socket.remoteAddress)) return response.sendStatus(503);
+        next();
+    }, route(true, (review, handle, input) => review.launch(handle, input.body), 'review'));
     // No generic method dispatch, direct GraphPatch/Effect endpoint or approve
     // route. Admission uses the original reviewed domain endpoints.
     return router;
