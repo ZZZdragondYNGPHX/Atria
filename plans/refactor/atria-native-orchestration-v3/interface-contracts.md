@@ -1107,3 +1107,9 @@ Review listener 不使用主 app middleware/cookie。它检查实际 Host、精�
 `e022f8d58` 新增受原登录/CSRF/boot mutation envelope 保护的 `POST /runs/recover`，body 为 `{runId,expectedEpoch,expectedStateVersion,expectedGraphRevision}`。沿原 source inspection、RunRepository.recover 和原 Engine CAS；新 boot/存储 generation 只重绑 root、增加 epoch、失效未消费批准，非 terminal Run 留在 blocked 或有 pending Effect 时 reconciling。原来源/Plan、Attempt、Effect/dispatch 历史、预算引用和逻辑计数不重建、不清零。
 
 响应只有 `{runId,status,cancelRequested,resumed:false,versions}`，没有正文、dispatch token 或新执行许可。客户端重取 snapshot，旧 epoch cursor 失效。相同 commandId 精确重放观察已有 outcome，unknown ACK 不换新 command 自动重发。Projection `controls.recover` 反映当前 HostFence 与 Run 是否不同；`resume/reconcile/approve` 仍需各自原领域能力，不能将此入口当成未知外部结果已核销或运行已经继续。
+
+## 17.84 原 RP 输出 Effect 的冷收据核对
+
+`2c5155a4e` 在原 Narrator Authority 增加内部 `reconcileRpOutput(handle,{runId,effectId})`。只接受正式顶层 RP narration 的原 output intent、已发布 Result/Model 收据、精确输入/作用域/端点/egress/预算、原 output Attempt 与原 RPControl WAL；原 Chat marker 核对继续由 `RpRunControl.reconcileNativeOutput` 执行，不调用 Chat writer。
+
+原域已提交时，可在新 Host fence 下以旧 observedEpoch 追加 `rp_output_reconciled` EffectReceipt；这是历史事实核对，不还原输出 capture、scope、OutputClaim 或 Run 完成权。原 local work 未结算则 budgetObservationRef 保持 null，Root 继续 reconciling；原 usage/费用不改为推测值。marker 缺失或 WAL 仍 prepared 继续 unknown，不重发。合法后续聊天编辑不抹除原已提交事实，原未知 receipt 保留；取消后核对只归拢事实，不能恢复运行。ACK未知只观察同稳定 receipt，完整核对实现纳入 evaluator 指纹。此组尚为内部接口，产品命令接线继续。

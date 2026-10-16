@@ -981,3 +981,9 @@
 - Source `61b68d009` → `e022f8d58`，本地提交未推送。新增接口 §17.83 的 `/runs/recover`，复用原 RunRepository/CAS、source inspection、Host fence 与 mutation envelope；只返回安全 metadata 和 `resumed:false`。没有公开通用 dispatcher、重建 scope 或执行任意 Effect。
 - 初版 Run HTTP 18/18 PASS（8.073s）。补 Engine 真关闭重开与显式 controlled pending Effect/Approval 测试，首轮 4PASS/2FAIL/18filterSKIP（3.791s）：测试批准 expiresAt 超过原 deadline，改用实际 root deadline 后 6PASS/18filterSKIP（3.914s）。随后 Run HTTP/RunRepository 组合 42PASS/4SKIP（14.981s）；再补 unknown recovery ACK 和测试断言整理后，ACK/pending Effect 精选 6PASS/20filterSKIP（3.517s），最终 26 个 Run HTTP case 分次均有通过证据，未称完整 26 一轮复跑。
 - 只读、foreign owner/boot、额外 grant 字段、source 删除、CAS payload 冲突均拒绝；恢复保留原银行/counters/source、未决 Effect 字节与 dispatch 历史，失效待批准；ACK丢失精确重放只保留一次 epoch/event。三文件原 ESLint、staged diff check 通过。pending Effect 测试使用明确 controlled Port/budget metadata，无外部发送；完整领域 reconcile/resume、独立质量及其他后端工作继续，最终 Gate NOT_READY。
+
+## 2026-10-16 — 第七十七组：原 RP 输出 Effect 冷收据核对
+
+- Source `e022f8d58` → `2c5155a4e`，本地提交未推送。实现接口 §17.84 的内部原 Authority 核对：实际 Chat/WAL/Result/Model/Output Attempt/原银行事实全部复核，追加历史 EffectReceipt，不恢复执行或输出 capture。缺 marker 仍 unknown，local work charged 仍保留未知成本；原 committed receipt 即使当前聊天合法编辑也保留历史，取消后仍可核对实际提交而不恢复运行。无公共 arbitrary observation/Effect dispatcher。
+- 首版新 suite 2/2 PASS（4.469s），扩充窗口后 8/8 PASS（13.729s）；再补合法编辑/重 hash 篡改及 saved/no_save ACK，精选 6PASS/6filterSKIP（10.357s）。随后新 suite 全 12 项及旧 live RP 输出精选组合 18PASS/26filterSKIP（28.327s），原 evaluator 指纹 14/14 PASS（1.400s）。最后收紧 unknown ACK receipt envelope 校验，其四 ACK 参数项 4PASS/8filterSKIP（7.395s）。六文件原 ESLint 和 staged diff check 通过。
+- 使用真实原 RP fixture/Native Host/Chat writer/原银行，但 Provider 为 localhost 合成；新 Authority 在同 Engine 的新 generation 下没有旧 capture。每条试验始终一次模型发送、最多一次 Chat append，domain writing/Host receipt/claim/local usage 中断与旧 unknown receipt 均保留。未声称真实 OS重启/SQL/独立质量/前端或全部后端通过；产品 API 和其余恢复/消费者继续。
