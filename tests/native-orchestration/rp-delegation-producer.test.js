@@ -1,7 +1,7 @@
 /* eslint-disable jest/no-conditional-expect -- Assertions inspect the actual child-only callback and parameterized original control writes. */
 import { jest } from '@jest/globals';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
-import { rpDelegationFixture } from './helpers/rp-delegation-fixture.js';
+import { rpDelegationFixture, runDelegationMetadata } from './helpers/rp-delegation-fixture.js';
 import { RP_MODEL_TEXT } from './helpers/rp-model-fixture.js';
 import { inspectNativeRpDelegationIdentity, inspectNativeRpDelegation } from '../../src/native/orchestration/native-rp-generation.js';
 import { ContextPort } from '../../src/native/orchestration/context-port.js';
@@ -63,14 +63,14 @@ describe.each(harnesses)('$name original RP delegated Model', ({ make }) => {
             try { return await observeCompile.apply(this, args); } catch (error) { compileFailure = error; throw error; }
         };
         try {
-            const result = await f.run().catch(error => {
+            const result = await runDelegationMetadata(f).catch(error => {
                 // Metered local work translates errors; retain its real hook
                 // failure for diagnostics without replacing any success value.
                 if (compileFailure) throw compileFailure;
                 if (error.code === 'operation_child_failed' && error.cause) throw error.cause;
                 throw error;
             });
-            expect(result).toEqual({ status: 'pending_continuation',
+            expect(result).toEqual({ status: 'returned',
                 outputClaimRef: { runId: identity.childRunId, claimId: expect.any(String) },
                 outputReceiptRef: { runId: identity.childRunId, receiptId: expect.any(String) }, parentRunId: identity.parentRunId, parentAttemptId: identity.parentAttemptId,
                 childRunId: identity.childRunId, effectId: f.effects[0].effectId, receiptRef: { runId: identity.childRunId, receiptId: expect.any(String) },
@@ -78,10 +78,10 @@ describe.each(harnesses)('$name original RP delegated Model', ({ make }) => {
                 publicationReceiptRef: { runId: identity.childRunId, receiptId: expect.any(String) },
                 returnReceiptRef: { runId: identity.parentRunId, receiptId: expect.any(String) } });
             expect(JSON.stringify(result)).not.toContain(RP_MODEL_TEXT);
-            expect(f.requests).toHaveLength(1);
+            expect(f.requests).toHaveLength(2);
             expect(JSON.stringify(f.requests[0])).toContain('Original RP input');
             expect(JSON.stringify(f.requests[0])).not.toContain('Original RP context');
-            expect(f.effects).toHaveLength(1); expect(f.effects[0].runId).toBe(identity.childRunId);
+            expect(f.effects).toHaveLength(2); expect(f.effects[0].runId).toBe(identity.childRunId);
             const parent = await f.authority.execution.runs.get(f.h.handle, identity.parentRunId);
             const child = await f.authority.execution.runs.get(f.h.handle, identity.childRunId);
             expect(parent.status).toBe('running'); expect(child.status).toBe('completed');
@@ -92,9 +92,9 @@ describe.each(harnesses)('$name original RP delegated Model', ({ make }) => {
             });
             const operation = await stateOf(f), compute = operation.compute;
             expect(Object.keys((await f.control.status(f.h.handle, f.controlId)).operations)).toHaveLength(1);
-            expect(compute.attempts).toHaveLength(1);
+            expect(compute.attempts).toHaveLength(2);
             expect(compute.attempts[0]).toMatchObject({ reservationId: child.runId, status: 'settled', usage: { totalTokens: 20 } });
-            expect(compute.localWork.every(row => row.reservationId === child.runId && row.status === 'settled')).toBe(true);
+            expect(compute.localWork.every(row => row.status === 'settled')).toBe(true);
             expect(compute.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released' })]);
             expect(compute.reservations[0].limits).toEqual(f.childRoute.executionPolicy.computeBudget);
             expect(compute.limits).toEqual(f.parentRoute.executionPolicy.computeBudget);
@@ -103,7 +103,7 @@ describe.each(harnesses)('$name original RP delegated Model', ({ make }) => {
             await f.h.engine.withTransaction(f.h.handle, async tx => {
                 await expect(f.authority.execution.delegates.authorizeDelegation({ ...parentAuthorityArgs, tx })).rejects.toThrow('native_orchestration_delegation_denied');
             });
-            await expect(f.run()).rejects.toThrow(); expect(f.requests).toHaveLength(1);
+            await expect(runDelegationMetadata(f)).rejects.toThrow(); expect(f.requests).toHaveLength(2);
         } finally { ContextPort.prototype.compile = original; await f.cleanup(); }
     });
 
@@ -112,7 +112,7 @@ describe.each(harnesses)('$name original RP delegated Model', ({ make }) => {
             if (change === 'missing_result_policy') delete plan.definition.outputContract.resultPolicy;
         }, configureChildRoute: route => { if (change === 'multiple_sends') route.executionPolicy.computeBudget.maxRequests = 2; } });
         try {
-            await expect(f.run()).rejects.toThrow(); expect(f.requests).toEqual([]); expect(f.effects).toEqual([]);
+            await expect(runDelegationMetadata(f)).rejects.toThrow(); expect(f.requests).toEqual([]); expect(f.effects).toEqual([]);
             expect((await f.control.status(f.h.handle, f.controlId)).operations).toEqual({});
         } finally { await f.cleanup(); }
     });
@@ -125,13 +125,13 @@ describe.each(harnesses)('$name original RP delegated Model', ({ make }) => {
             throw Object.assign(new Error('Synthetic lost reserve ACK after actual original commit'), { code: 'storage_commit_unknown' });
         };
         try {
-            await expect(f.run()).rejects.toThrow(); expect(reservation.status).toBe('held'); expect(f.requests).toEqual([]); expect(f.effects).toEqual([]);
+            await expect(runDelegationMetadata(f)).rejects.toThrow(); expect(reservation.status).toBe('held'); expect(f.requests).toEqual([]); expect(f.effects).toEqual([]);
             const before = (await stateOf(f)).compute;
             expect(before.attempts).toEqual([]); expect(before.localWork ?? []).toEqual([]);
             expect(before.reservations).toEqual([expect.objectContaining({ reservationId: childRunId, status: 'held' })]);
             const child = await service.runs.get(f.h.handle, childRunId);
             expect(child.status).toBe('admitted'); expect(child.attemptRefs).toEqual([]);
-            await expect(f.run()).rejects.toThrow(); expect((await stateOf(f)).compute).toEqual(before);
+            await expect(runDelegationMetadata(f)).rejects.toThrow(); expect((await stateOf(f)).compute).toEqual(before);
             expect(f.requests).toEqual([]);
         } finally { service.reserveChild = original; await f.cleanup(); }
     });
@@ -158,7 +158,7 @@ describe.each(harnesses)('$name original RP delegated Model', ({ make }) => {
             return value;
         };
         try {
-            await expect(f.run()).rejects.toThrow(); expect(injected).toBe(true); expect(f.requests).toHaveLength(1);
+            await expect(runDelegationMetadata(f)).rejects.toThrow(); expect(injected).toBe(true); expect(f.requests).toHaveLength(1);
             const child = await service.runs.get(f.h.handle, childRunId), parent = await service.runs.get(f.h.handle, child.parentRef.parentRunId);
             if (change === 'parent_cancel') expect(parent.cancelRequested).toBe(true);
             else expect((await f.plans.getBinding(f.h.handle, f.sourceSelector)).version).toBe(2);

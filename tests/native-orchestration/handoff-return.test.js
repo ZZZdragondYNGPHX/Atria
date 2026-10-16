@@ -1,5 +1,5 @@
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
-import { rpDelegationFixture } from './helpers/rp-delegation-fixture.js';
+import { rpDelegationFixture, runDelegationMetadata } from './helpers/rp-delegation-fixture.js';
 import { HandoffReturnController } from '../../src/native/orchestration/handoff-return-controller.js';
 import { readHandoffReturn, handoffReturnReceiptId } from '../../src/native/orchestration/handoff-return-contracts.js';
 import { inspectNativeRpReturn, inspectNativeRpReturnIdentity } from '../../src/native/orchestration/native-rp-generation.js';
@@ -26,7 +26,7 @@ async function withReturn(f, before, after = async () => {}) {
             const result = await returnChild.call(this, handle, request); await after(this, handle, request, result); return result;
         } catch (error) { hookError = error; throw error; }
     };
-    try { return await f.run(); } catch (error) { throw hookError ?? error; }
+    try { return await runDelegationMetadata(f); } catch (error) { throw hookError ?? error; }
     finally { HandoffReturnController.prototype.returnChild = returnChild; }
 }
 
@@ -48,16 +48,16 @@ describe.each(harnesses)('$name real RP durable parent return', ({ make }) => {
                 expect((await f.authority.execution.runs.get(handle, root.runId)).stateVersion).toBe(version);
                 expect(returned.status).toBe('returned');
             });
-            expect(result.status).toBe('pending_continuation'); expect(JSON.stringify(result)).not.toContain(RP_MODEL_TEXT);
+            expect(result.status).toBe('returned'); expect(JSON.stringify(result)).not.toContain(RP_MODEL_TEXT);
             const parent = await f.authority.execution.runs.get(f.h.handle, result.parentRunId);
             const after = await f.h.engine.withTransaction(f.h.handle, tx => readAttempt(tx, f.h.handle, parent, result.parentAttemptId));
-            expect(after.doc).toEqual({ ...original, status: 'running' });
+            expect(after.doc).toEqual({ ...original, status: 'running', effectRefs: [f.effects[1].effectId], reasonCode: 'generation_response_validated' });
             const receipt = await f.h.engine.withTransaction(f.h.handle, tx => readHandoffReturn(tx, f.h.handle, parent, result.childRunId));
             expect(receipt).toMatchObject({ receiptKind: 'handoff_return', parentInputDigest: original.inputDigest,
                 parentGrantDigest: original.effectiveGrantDigest, resultRef: result.resultRef });
             expect(result.returnReceiptRef).toEqual({ runId: parent.runId, receiptId: receipt.receiptId });
             expect(parent.resultRefs).toEqual([]); expect(parent.outputClaims).toEqual([]);
-            expect((await bankOf(f)).attempts).toHaveLength(1); expect(f.requests).toHaveLength(1);
+            expect((await bankOf(f)).attempts).toHaveLength(2); expect(f.requests).toHaveLength(2);
             expect((await f.chats.get(f.h.handle, 'Actor', 'main')).body).toHaveLength(2);
             expect(() => inspectNativeRpReturnIdentity(capture, { host: f.host, handle: f.h.handle })).toThrow();
             await expect(returnChild.call(controller, f.h.handle, { capture })).rejects.toThrow();
@@ -97,7 +97,7 @@ describe.each(harnesses)('$name real RP durable parent return', ({ make }) => {
                     } finally { await tx.putResource(key, original); }
                 });
             });
-            expect(f.requests).toHaveLength(1);
+            expect(f.requests).toHaveLength(2);
         } finally { await f.cleanup(); }
     });
 
@@ -118,7 +118,7 @@ describe.each(harnesses)('$name real RP durable parent return', ({ make }) => {
                 try { await expect(returnChild.call(port, handle, request)).rejects.toThrow('native_orchestration_return_denied'); }
                 finally { NativeNarratorOrchestrationAuthority.prototype.authorizeRpReturn = authorize; }
             });
-            expect(f.requests).toHaveLength(1);
+            expect(f.requests).toHaveLength(2);
         } finally { await f.cleanup(); }
     });
 
@@ -165,7 +165,7 @@ describe.each(harnesses)('$name real RP durable parent return', ({ make }) => {
     test('return receipt corruption with honest hashes cannot become historical evidence', async () => {
         const f = await rpDelegationFixture(make);
         try {
-            const result = await f.run(), parent = await f.authority.execution.runs.get(f.h.handle, result.parentRunId);
+            const result = await runDelegationMetadata(f), parent = await f.authority.execution.runs.get(f.h.handle, result.parentRunId);
             await f.h.engine.withTransaction(f.h.handle, async tx => {
                 const key = controlRecordKey(f.h.handle, parent.runId, 'receipt', handoffReturnReceiptId(result.childRunId)), saved = await tx.getResource(key);
                 for (const field of ['parentInputDigest', 'parentGrantDigest', 'controlToken', 'resultIntegrity', 'audienceDigest']) {
@@ -174,7 +174,7 @@ describe.each(harnesses)('$name real RP durable parent return', ({ make }) => {
                     finally { await tx.putResource(key, saved); }
                 }
             });
-            expect(f.requests).toHaveLength(1);
+            expect(f.requests).toHaveLength(2);
         } finally { await f.cleanup(); }
     });
 
@@ -208,7 +208,7 @@ describe.each(harnesses)('$name real RP durable parent return', ({ make }) => {
                 const stored = (await tx.getResource({ kind: K.orchestrationRun, handle: f.h.handle, runId: parent.runId })).doc;
                 return readHandoffReturn(tx, f.h.handle, stored, identity.childRunId);
             });
-            expect(facts !== null).toBe(ack === 'saved'); expect(f.requests).toHaveLength(1);
+            expect(facts !== null).toBe(ack === 'saved'); expect(f.requests).toHaveLength(ack === 'saved' ? 2 : 1);
         } finally { armed = false; f.h.engine.withTransaction = transaction; await cold?.close(); await f.cleanup(); }
     });
 

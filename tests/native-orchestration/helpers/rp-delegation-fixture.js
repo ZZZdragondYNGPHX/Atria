@@ -52,3 +52,9 @@ export async function rpDelegationFixture(make, options = {}) {
         return { ...f, planRef, childPlanRef, parentPlan, childPlan, parentRoute, childRoute };
     } catch (error) { await f.cleanup(); throw error; }
 }
+
+/** Observe durable child metadata while the real workflow also continues the parent. */
+export async function runDelegationMetadata(fixture, change) {
+    const result = await fixture.run(change);
+    return result.delegation ?? result;
+}

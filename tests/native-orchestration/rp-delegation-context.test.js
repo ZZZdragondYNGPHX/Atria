@@ -6,7 +6,7 @@ import { SettingsRepo } from '../../src/storage/repositories/settings-repo.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { hashNativeDocument as hash } from '../../src/native/repositories/common.js';
 import { PROVENANCE_NAMESPACE } from '../../public/scripts/agents/memory/source-lifecycle.js';
-import { rpDelegationFixture } from './helpers/rp-delegation-fixture.js';
+import { rpDelegationFixture, runDelegationMetadata } from './helpers/rp-delegation-fixture.js';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 
 const sql = process.env.ATRIA_TEST_RP_DELEGATION_SQL === '1';
@@ -30,7 +30,7 @@ async function withChildCompile(f, observe) {
     ContextPort.prototype.compile = async function (...args) {
         try { return await observeCompile.apply(this, args); } catch (error) { compileFailure = error; throw error; }
     };
-    try { return await f.run(); } catch (error) {
+    try { return await runDelegationMetadata(f); } catch (error) {
         if (compileFailure) throw compileFailure;
         if (error.code === 'operation_child_failed' && error.cause) throw error.cause;
         throw error;
@@ -76,14 +76,14 @@ describe.each(harnesses)('$name actual RP delegated Context', ({ make }) => {
                 expect(() => port.assertSource(handle, { context: compiled, source: { kind: 'rp_chat', controlId: createNativeId('rpControl') } }))
                     .toThrow('native_orchestration_context_source_mismatch');
             });
-            expect(f.requests).toHaveLength(1);
+            expect(f.requests).toHaveLength(2);
             const wire = JSON.stringify(f.requests[0]); expect(wire).toContain('Original RP input');
             expect(wire).not.toContain('Original RP context'); expect(wire).not.toContain('FUTURE FORBIDDEN MEMORY');
             expect(wire).not.toContain('Original RP remembered context promise');
             expect(hash(await f.chats.getState(f.h.handle, f.locator.charDir, f.locator.name, PROVENANCE_NAMESPACE))).toBe(memoryBefore);
             const after = await f.control.status(f.h.handle, f.controlId);
             expect(after.sequence).toBeGreaterThan(before.sequence);
-            expect(Object.values(after.operations).flatMap(op => op.compute?.attempts ?? [])).toEqual([expect.objectContaining({ status: 'settled', usage: expect.objectContaining({ totalTokens: 20 }) })]);
+            expect(Object.values(after.operations).flatMap(op => op.compute?.attempts ?? [])).toEqual([expect.objectContaining({ status: 'settled', usage: expect.objectContaining({ totalTokens: 20 }) }), expect.objectContaining({ status: 'settled', usage: expect.objectContaining({ totalTokens: 20 }) })]);
         } finally { await f.cleanup(); }
     });
 
@@ -106,7 +106,7 @@ describe.each(harnesses)('$name actual RP delegated Context', ({ make }) => {
                 await expect(port.compilationDescriptor(handle, { ...request, grantDigest: 'f'.repeat(64) })).rejects.toThrow();
                 await expect(port.compilationDescriptor(handle, { ...request, taskPurpose: 'caller-narration' })).rejects.toThrow();
             });
-            expect(f.requests).toHaveLength(1);
+            expect(f.requests).toHaveLength(2);
         } finally { await f.cleanup(); }
     });
 

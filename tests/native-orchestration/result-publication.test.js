@@ -1,7 +1,7 @@
 /* eslint-disable jest/no-conditional-expect -- Parameterized real authority changes and ACK boundaries have distinct persisted outcomes. */
 import { jest } from '@jest/globals';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
-import { rpDelegationFixture } from './helpers/rp-delegation-fixture.js';
+import { rpDelegationFixture, runDelegationMetadata } from './helpers/rp-delegation-fixture.js';
 import { RP_MODEL_TEXT } from './helpers/rp-model-fixture.js';
 import { ResultController } from '../../src/native/orchestration/result-controller.js';
 import { ModelPort } from '../../src/native/orchestration/model-port.js';
@@ -27,7 +27,7 @@ async function withPublication(f, before) {
         try { await before(this, handle, request); } catch (error) { hookError = error; throw error; }
         return originalPublish.call(this, handle, request);
     };
-    try { return await f.run(); } catch (error) { throw hookError ?? error; }
+    try { return await runDelegationMetadata(f); } catch (error) { throw hookError ?? error; }
     finally { ResultController.prototype.publishModelResult = originalPublish; }
 }
 async function unpublished(f) {
@@ -48,7 +48,7 @@ describe.each(harnesses)('$name original RP child Result publication', ({ make }
         const f = await rpDelegationFixture(make, { usage }); let controller, actual, result;
         try {
             result = await withPublication(f, async (port, _handle, request) => { controller = port; actual = request; });
-            expect(result.status).toBe(usage ? 'pending_continuation' : 'pending_output'); expect(JSON.stringify(result)).not.toContain(RP_MODEL_TEXT);
+            expect(result.status).toBe(usage ? 'returned' : 'pending_output'); expect(JSON.stringify(result)).not.toContain(RP_MODEL_TEXT);
             const root = await f.authority.execution.runs.get(f.h.handle, result.childRunId), parent = await f.authority.execution.runs.get(f.h.handle, result.parentRunId);
             const facts = await f.h.engine.withTransaction(f.h.handle, tx => readResultPublication(tx, f.h.handle, root, result.resultRef.resultId));
             expect(facts.record.payload).toBe(RP_MODEL_TEXT);
@@ -66,7 +66,7 @@ describe.each(harnesses)('$name original RP child Result publication', ({ make }
             expect(observed).toEqual({ status: 'published', resultRef: result.resultRef, publicationReceiptRef: result.publicationReceiptRef });
             expect(JSON.stringify(observed)).not.toContain(RP_MODEL_TEXT);
             await expect(originalPublish.call(controller, f.h.handle, actual)).rejects.toThrow();
-            await expect(f.run()).rejects.toThrow(); expect((await operation(f)).compute).toEqual(bank); expect(f.requests).toHaveLength(1);
+            await expect(runDelegationMetadata(f)).rejects.toThrow(); expect((await operation(f)).compute).toEqual(bank); expect(f.requests).toHaveLength(usage ? 2 : 1);
         } finally { await f.cleanup(); }
     });
 
@@ -111,7 +111,7 @@ describe.each(harnesses)('$name original RP child Result publication', ({ make }
                     } finally { await tx.putResource(effectKey, effect); }
                 }
             });
-            expect(f.requests).toHaveLength(1);
+            expect(f.requests).toHaveLength(2);
         } finally { await f.cleanup(); }
     });
 
@@ -127,13 +127,13 @@ describe.each(harnesses)('$name original RP child Result publication', ({ make }
             expect(await controller.observe(f.h.handle, published.resultRef)).toEqual({ status: 'published', resultRef: published.resultRef,
                 publicationReceiptRef: published.publicationReceiptRef });
             await expect(originalPublish.call(controller, f.h.handle, actual)).rejects.toThrow();
-            expect((await operation(f)).compute).toEqual(before); expect(f.requests).toHaveLength(1); expect(child.outputClaims).toHaveLength(1);
+            expect((await operation(f)).compute).toEqual(before); expect(f.requests).toHaveLength(2); expect(child.outputClaims).toHaveLength(1);
         } finally { await f.cleanup(); }
     });
 
     test('an explicit byte bound rejects the actual oversized Model text without any Result or settlement fragment', async () => {
         const f = await rpDelegationFixture(make, { configureChildPlan: plan => { plan.definition.outputContract.resultPolicy.maxBytes = 1; } });
-        try { await expect(f.run()).rejects.toThrow(); await unpublished(f); }
+        try { await expect(runDelegationMetadata(f)).rejects.toThrow(); await unpublished(f); }
         finally { await f.cleanup(); }
     });
 
@@ -202,7 +202,7 @@ describe.each(harnesses)('$name original RP child Result publication', ({ make }
             expect(injected).toBe(true); armed = false;
             const effect = f.effects[0], resultRef = { runId: effect.runId, resultId: modelResultId(effect.runId, effect.effectId) };
             expect(completion.error === undefined).toBe(boundary === 'saved');
-            if (boundary === 'saved') expect(completion.value.status).toBe('pending_continuation');
+            if (boundary === 'saved') expect(completion.value.status).toBe('returned');
             else await unpublished(f);
             const bank = (await operation(f)).compute;
             await expect(originalPublish.call(controller, f.h.handle, actual)).rejects.toThrow();
@@ -220,7 +220,7 @@ describe.each(harnesses)('$name original RP child Result publication', ({ make }
                 .rejects.toMatchObject({ code: 'native_orchestration_model_result_completion_required' });
             const storedControl = await cold.withTransaction(f.h.handle, tx => tx.getResource({ kind: K.rpRunControl, handle: f.h.handle, controlId: f.controlId }));
             expect(Object.values(storedControl.doc.operations)[0].compute).toEqual(bank);
-            expect(f.requests).toHaveLength(1);
+            expect(f.requests).toHaveLength(boundary === 'saved' ? 2 : 1);
         } finally { armed = false; f.h.engine.withTransaction = transaction; await cold?.close(); await f.cleanup(); }
     });
 
@@ -232,7 +232,7 @@ describe.each(harnesses)('$name original RP child Result publication', ({ make }
             if (body.operation === 'result.publish') { injected = true; throw new Error('Synthetic writer failure after Result/receipt/settlement writes'); }
             return result;
         }, ...options);
-        try { await expect(f.run()).rejects.toThrow(); expect(injected).toBe(true); await unpublished(f); }
+        try { await expect(runDelegationMetadata(f)).rejects.toThrow(); expect(injected).toBe(true); await unpublished(f); }
         finally { service.runs.control = control; await f.cleanup(); }
     });
 });

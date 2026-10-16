@@ -11,6 +11,7 @@ import { inspectNativeAuthorityResolver } from './authority-resolver-context.js'
 import { inspectNativeProjectGeneration, inspectNativeProjectGenerationIdentity, readNativeProjectSkillInventory } from './native-project-generation-authority.js';
 import { buildNativeProjectModelRound, projectAgentPromptInputs } from '../../../public/shared/project-agent-prompt.js';
 import { ProjectAgentService } from '../project-agent.js';
+import { ResultPort } from './result-port.js';
 import { inspectNativeRpGeneration, inspectNativeRpDelegation, inspectNativeRpDelegationIdentity } from './native-rp-generation.js';
 import { RpRunControl } from '../rp-run-control.js';
 import { NativeMemoryAuthority } from '../memory-authority.js';
@@ -31,15 +32,17 @@ export class ContextPort {
     #contexts = new WeakMap();
     #memoryDescriptors = new Map();
 
-    constructor({ sessionCore, projectAgent, projectCapture = null, rpControl = null, rpCapture = null, rpDelegationCapture = null, taskCapture = null, authorizeContext, contextOptions = {}, readMemoryEvidence, memoryAuthority = null, authorityTurn = null, resolverCapture = null, compilationInputs = null } = {}) {
+    constructor({ sessionCore, projectAgent, projectCapture = null, rpControl = null, rpCapture = null, rpReturnCapture = null, resultPort = null, rpDelegationCapture = null, taskCapture = null, authorizeContext, contextOptions = {}, readMemoryEvidence, memoryAuthority = null, authorityTurn = null, resolverCapture = null, compilationInputs = null } = {}) {
         if (typeof authorizeContext !== 'function') fail('native_orchestration_context_authority_required');
+        if ((rpReturnCapture || resultPort) && (!rpCapture || !rpReturnCapture || !(resultPort instanceof ResultPort)
+            || resultPort.execution.sourcePort.rpControl !== rpControl)) fail('native_orchestration_context_authority_conflict');
         if ([authorityTurn, resolverCapture, projectCapture, rpCapture, rpDelegationCapture, taskCapture].filter(Boolean).length > 1) fail('native_orchestration_context_authority_conflict');
         if (rpDelegationCapture && (memoryAuthority || readMemoryEvidence || Object.keys(contextOptions).length || compilationInputs !== null))
             fail('native_orchestration_context_delegation_scope_invalid');
         if (memoryAuthority && (!(memoryAuthority instanceof NativeMemoryAuthority) || memoryAuthority.core !== sessionCore || readMemoryEvidence
             || !(memoryAuthority.settingsRepo instanceof SettingsRepo) || memoryAuthority.settingsRepo._engine !== sessionCore?._sessions?._engine))
             fail('native_orchestration_memory_authority_invalid');
-        Object.assign(this, { sessionCore, projectAgent, projectCapture, rpControl, rpCapture, rpDelegationCapture, taskCapture, authorizeContext, contextOptions: { ...contextOptions }, readMemoryEvidence, memoryAuthority, authorityTurn, resolverCapture, compilationInputs });
+        Object.assign(this, { sessionCore, projectAgent, projectCapture, rpControl, rpCapture, rpReturnCapture, resultPort, rpDelegationCapture, taskCapture, authorizeContext, contextOptions: { ...contextOptions }, readMemoryEvidence, memoryAuthority, authorityTurn, resolverCapture, compilationInputs });
     }
 
     #request(handle, input) {
@@ -96,7 +99,8 @@ export class ContextPort {
             if (binding.sourceAuthority !== 'rp_chat' || !binding.sourceRequest || hashNativeDocument(binding.sourceRequest) !== hashNativeDocument(rpIdentity.sourceRequest)
                 || binding.sourceRef.controlId !== rpIdentity.sourceRequest.controlId || binding.sourceRef.prefixDigest !== rpIdentity.context.prefixDigest)
                 fail('native_orchestration_context_source_mismatch');
-            return { rpIdentity, authorityDigest: hashNativeDocument({ source: rpIdentity.sourceRequest, context: rpIdentity.context }) };
+            const parentResult = this.rpReturnCapture ? await ResultPort.prototype.readForParent.call(this.resultPort, handle, { capture: this.rpReturnCapture }) : null;
+            return { rpIdentity, parentResult, authorityDigest: hashNativeDocument({ source: rpIdentity.sourceRequest, context: rpIdentity.context, ...(parentResult ? { parentResult } : {}) }) };
         }
         if (this.projectCapture) {
             const projectIdentity = await inspectNativeProjectGeneration(this.projectCapture, { projectAgent: this.projectAgent, handle });
@@ -154,7 +158,7 @@ export class ContextPort {
     // inside the admitted work; this pure read establishes its input bound.
     async compilationDescriptor(handle, input) {
         const request = this.#request(handle, input);
-        const { snapshot, authorityContext, resolver, modelContext, projectIdentity, rpIdentity, rpDelegation } = await this.#current(handle, request, 'compile_descriptor', false);
+        const { snapshot, authorityContext, resolver, modelContext, projectIdentity, rpIdentity, rpDelegation, parentResult } = await this.#current(handle, request, 'compile_descriptor', false);
         if (rpDelegation) return { request, source: rpDelegation.sourceRequest, context: rpDelegation.context,
             parentRunId: rpDelegation.parentRunId, parentAttemptId: rpDelegation.parentAttemptId, parentEpoch: rpDelegation.parentEpoch,
             childRunId: rpDelegation.childRunId, childEpoch: rpDelegation.childEpoch, childPlanRef: rpDelegation.childPlanRef,
@@ -163,7 +167,7 @@ export class ContextPort {
         if (rpIdentity) {
             const memoryDescriptor = this.memoryAuthority ? await NativeMemoryAuthority.prototype.rpContextDescriptor.call(this.memoryAuthority, handle, this.rpControl, rpIdentity.sourceRequest) : null;
             if (memoryDescriptor) this.#memoryDescriptors.set(hashNativeDocument(request), memoryDescriptor);
-            return { request, source: rpIdentity.sourceRequest, context: rpIdentity.context, memoryDescriptor };
+            return { request, source: rpIdentity.sourceRequest, context: rpIdentity.context, memoryDescriptor, ...(parentResult ? { parentResult } : {}) };
         }
         if (projectIdentity) return { request, modelContext: projectAgentPromptInputs(modelContext), skillWorkRecords: projectIdentity.skillWorkRecords };
         if (resolver) {
@@ -187,7 +191,7 @@ export class ContextPort {
 
     async compile(handle, input) {
         const request = this.#request(handle, input);
-        const { snapshot, information, authorityDigest, resolver, modelContext, projectIdentity, rpIdentity, taskIdentity, rpDelegation } = await this.#current(handle, request, 'compile');
+        const { snapshot, information, authorityDigest, resolver, modelContext, projectIdentity, rpIdentity, taskIdentity, rpDelegation, parentResult } = await this.#current(handle, request, 'compile');
         if (rpDelegation) {
             const source = { kind: 'rp_chat', controlId: rpDelegation.sourceRequest.controlId };
             const selected = emptyNativeContextPlan(rpDelegation.request, { model: { limits: {
@@ -214,7 +218,7 @@ export class ContextPort {
                 contextTokens: request.tokenBudget.modelContextLimit, outputTokens: request.tokenBudget.responseReserve } } }, source);
             const plan = { ...selected, items: [...rpHistoryItems(rpIdentity.context.messages, { source: 'native.rp-chat', ref: rpIdentity.context.prefixDigest }),
                 ...(recall?.evidence ?? []).map(item => ({ kind: 'context.history', id: item.memoryId, content: { role: 'user', content: item.content },
-                    provenance: [{ source: 'native.rp-memory', ref: item.memoryId }] }))] };
+                    provenance: [{ source: 'native.rp-memory', ref: item.memoryId }] })), ...(parentResult ? [parentResult.item] : [])] };
             const after = await this.#current(handle, request, 'compiled');
             if (after.authorityDigest !== authorityDigest) fail('native_orchestration_context_source_stale');
             if (recall) await NativeMemoryAuthority.prototype.assertRpContextRecall.call(this.memoryAuthority, handle, recall.proof, this.rpControl, rpIdentity.sourceRequest);

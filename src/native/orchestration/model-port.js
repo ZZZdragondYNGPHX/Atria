@@ -204,10 +204,14 @@ export class ModelPort {
                 const saved = await this.#saved(handle, tx, root, intent);
                 if (!saved || hash(saved.observation) !== hash(pending.observation)) fail('native_orchestration_model_consume_denied');
                 checkCancellation(signal);
-                await revalidateConsume({ tx });
-                await this.budgetPort.assertCurrent(handle, root.budgetAuthorityRef, { tx });
-                try { await revalidateConsume({ tx }); } catch (error) {
-                    if (CONSUME_DENIALS.has(error.code)) return deny();
+                try {
+                    await revalidateConsume({ tx });
+                    await this.budgetPort.assertCurrent(handle, root.budgetAuthorityRef, { tx });
+                    await revalidateConsume({ tx });
+                } catch (error) {
+                    if (CONSUME_DENIALS.has(error.code) || (rp || delegated) && ['native_generation_revision_conflict', 'native_rp_source_missing',
+                        'native_rp_control_relocated', 'native_orchestration_return_stale', 'native_orchestration_consumption_stale',
+                        'native_orchestration_result_consume_denied'].includes(error.code)) return deny();
                     throw error;
                 }
                 const finalIntent = (await readEffect(tx, handle, root, effectId)).doc;

@@ -1,5 +1,5 @@
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
-import { rpDelegationFixture } from './helpers/rp-delegation-fixture.js';
+import { rpDelegationFixture, runDelegationMetadata } from './helpers/rp-delegation-fixture.js';
 import { TaskLocalOutputController } from '../../src/native/orchestration/task-local-output-controller.js';
 import { readTaskLocalOutput } from '../../src/native/orchestration/task-local-output-contracts.js';
 import { readAttempt } from '../../src/native/orchestration/controller-common.js';
@@ -23,7 +23,7 @@ async function atOutput(f, callback) {
         try { await callback(this, handle, request); } catch (error) { hookError = error; throw error; }
         return complete.call(this, handle, request);
     };
-    try { return await f.run(); } catch (error) { throw hookError ?? error; }
+    try { return await runDelegationMetadata(f); } catch (error) { throw hookError ?? error; }
     finally { TaskLocalOutputController.prototype.complete = complete; }
 }
 const bankOf = async f => Object.values((await f.control.status(f.h.handle, f.controlId)).operations)[0].compute;
@@ -33,8 +33,8 @@ describe.each(harnesses)('$name real RP task-local output', ({ make }) => {
     test.each([true, false])('usage=%s closes Graph output only when the original child bank is closed', async usage => {
         const f = await rpDelegationFixture(make, { usage });
         try {
-            const result = await f.run(), service = f.authority.execution;
-            expect(result.status).toBe(usage ? 'pending_continuation' : 'pending_output');
+            const result = await runDelegationMetadata(f), service = f.authority.execution;
+            expect(result.status).toBe(usage ? 'returned' : 'pending_output');
             expect(JSON.stringify(result)).not.toContain(RP_MODEL_TEXT);
             const child = await service.runs.get(f.h.handle, result.childRunId), parent = await service.runs.get(f.h.handle, result.parentRunId);
             const facts = await f.h.engine.withTransaction(f.h.handle, tx => readTaskLocalOutput(tx, f.h.handle, child));
@@ -46,7 +46,7 @@ describe.each(harnesses)('$name real RP task-local output', ({ make }) => {
             expect(bank.reservations[0].status).toBe(usage ? 'released' : 'held');
             expect(bank.attempts[0].status).toBe(usage ? 'settled' : 'unknown');
             expect((await f.chats.get(f.h.handle, 'Actor', 'main')).body).toHaveLength(2);
-            expect(f.requests).toHaveLength(1);
+            expect(f.requests).toHaveLength(usage ? 2 : 1);
             expect((await new TaskLocalOutputController({ host: f.host }).observe(f.h.handle, { runId: child.runId })).status).toBe(usage ? 'completed' : 'unknown');
         } finally { await f.cleanup(); }
     });
@@ -64,16 +64,16 @@ describe.each(harnesses)('$name real RP task-local output', ({ make }) => {
                 expect((await bankOf(f)).reservations[0].status).toBe('held');
                 await expect(inspectNativeRpDelegationOutput(request.capture, { host: f.host, handle })).rejects.toMatchObject({ code: 'native_orchestration_child_budget_unclosed' });
             });
-            expect(result.status).toBe('pending_continuation');
+            expect(result.status).toBe('returned');
             await expect(complete.call(controller, f.h.handle, actual)).rejects.toThrow();
-            expect(f.requests).toHaveLength(1);
+            expect(f.requests).toHaveLength(2);
         } finally { await f.cleanup(); }
     });
 
     test('actual Provider overrun remains paid and released but cannot complete output', async () => {
         const f = await rpDelegationFixture(make, { totalTokens: 50001 });
         try {
-            const result = await f.run(), bank = await bankOf(f);
+            const result = await runDelegationMetadata(f), bank = await bankOf(f);
             expect(result.status).toBe('pending_output'); expect(bank.reservations[0].status).toBe('released');
             expect(bank.attempts[0]).toMatchObject({ status: 'settled', usage: { totalTokens: 50001 } });
             const root = await f.authority.execution.runs.get(f.h.handle, result.childRunId);
@@ -92,8 +92,8 @@ describe.each(harnesses)('$name real RP task-local output', ({ make }) => {
         };
         try {
             const result = await atOutput(f, async (_port, _handle, request) => { capture = request.capture; });
-            expect(result.status).toBe(ack === 'saved' ? 'pending_continuation' : 'pending_output');
-            expect(calls).toBe(1); expect(f.requests).toHaveLength(1);
+            expect(result.status).toBe(ack === 'saved' ? 'returned' : 'pending_output');
+            expect(calls).toBe(1); expect(f.requests).toHaveLength(ack === 'saved' ? 2 : 1);
             expect((await bankOf(f)).reservations[0].status).toBe(ack === 'saved' ? 'released' : 'held');
             await expect(inspectNativeRpDelegation(capture, { host: f.host, handle: f.h.handle })).rejects.toThrow();
         } finally { BudgetPort.prototype.releaseUnused = release; await f.cleanup(); }
@@ -126,7 +126,7 @@ describe.each(harnesses)('$name real RP task-local output', ({ make }) => {
             return facts;
         };
         try {
-            const failure = await f.run().then(() => null, error => error);
+            const failure = await runDelegationMetadata(f).then(() => null, error => error);
             expect(failure).not.toBeNull(); expect(changed).toBe(true);
             const observed = change === 'parent_cancel' ? (await f.authority.execution.runs.get(f.h.handle, parentRunId)).cancelRequested
                 : change === 'binding' ? (await f.plans.getBinding(f.h.handle, f.sourceSelector)).version
@@ -157,7 +157,7 @@ describe.each(harnesses)('$name real RP task-local output', ({ make }) => {
                 }
                 expect((await runs.get(handle, root.runId)).outputClaims).toEqual([]);
             });
-            expect(result.status).toBe('pending_continuation');
+            expect(result.status).toBe('returned');
         } finally { await f.cleanup(); }
     });
 
@@ -170,7 +170,7 @@ describe.each(harnesses)('$name real RP task-local output', ({ make }) => {
             return result;
         }, ...rest);
         try {
-            await expect(f.run()).rejects.toThrow(); expect(injected).toBe(true);
+            await expect(runDelegationMetadata(f)).rejects.toThrow(); expect(injected).toBe(true);
             const root = await runs.get(f.h.handle, f.effects[0].runId);
             expect(root.status).toBe('running'); expect(root.outputClaims).toEqual([]);
             expect((await bankOf(f)).reservations[0].status).toBe('released');
@@ -211,14 +211,14 @@ describe.each(harnesses)('$name real RP task-local output', ({ make }) => {
                 const stored = (await checkedRecord(tx, { kind: K.orchestrationRun, handle: f.h.handle, runId: root.runId })).doc;
                 return readTaskLocalOutput(tx, f.h.handle, stored);
             });
-            expect(facts !== null).toBe(ack === 'saved'); expect(f.requests).toHaveLength(1);
+            expect(facts !== null).toBe(ack === 'saved'); expect(f.requests).toHaveLength(ack === 'saved' ? 2 : 1);
         } finally { armed = false; f.h.engine.withTransaction = transaction; await cold?.close(); await f.cleanup(); }
     });
 
     test('historical claims/closure/traversal facts reject honest-hash corruption and never grant a cold recipient', async () => {
         const f = await rpDelegationFixture(make);
         try {
-            const result = await f.run(), runs = f.authority.execution.runs, root = await runs.get(f.h.handle, result.childRunId);
+            const result = await runDelegationMetadata(f), runs = f.authority.execution.runs, root = await runs.get(f.h.handle, result.childRunId);
             await f.h.engine.withTransaction(f.h.handle, async tx => {
                 const output = await checkedRecord(tx, controlRecordKey(f.h.handle, root.runId, 'receipt', taskLocalReceiptId(root.runId)));
                 const cases = [[controlRecordKey(f.h.handle, root.runId, 'output', result.outputClaimRef.claimId), 'outputKey', 'b'.repeat(64)],
@@ -235,7 +235,7 @@ describe.each(harnesses)('$name real RP task-local output', ({ make }) => {
             });
             await runs.cancel(f.h.handle, createNativeId('orchestrationCommand'), { ...runGuard(await runs.get(f.h.handle, result.parentRunId)), reasonCode: 'after_child_completed' });
             expect((await new TaskLocalOutputController({ host: f.host }).observe(f.h.handle, { runId: root.runId })).status).toBe('completed');
-            expect(f.requests).toHaveLength(1);
+            expect(f.requests).toHaveLength(2);
         } finally { await f.cleanup(); }
     });
 });
