@@ -89,11 +89,11 @@ export function assertDependencyPins(pins) {
 // An explicit payload bound, not a token estimate or a compute allowance.
 // Existing profiles without payload production need not declare this policy.
 export function assertResultPolicy(outputContract) {
-    if (outputContract?.kind !== 'result' || !Object.hasOwn(outputContract, 'resultPolicy'))
+    if (!['result', 'rp_narration'].includes(outputContract?.kind) || !Object.hasOwn(outputContract, 'resultPolicy'))
         throw Object.assign(new TypeError('native_orchestration_result_policy_unavailable'), { code: 'native_orchestration_result_policy_unavailable' });
     const policy = outputContract.resultPolicy;
     assertObject(policy, ['outputType', 'maxBytes'], 'resultPolicy');
-    member(policy.outputType, ['text', 'json'], 'resultPolicy.outputType');
+    member(policy.outputType, outputContract.kind === 'rp_narration' ? ['text'] : ['text', 'json'], 'resultPolicy.outputType');
     assertCounter(policy.maxBytes, 'resultPolicy.maxBytes', 1);
     return policy;
 }

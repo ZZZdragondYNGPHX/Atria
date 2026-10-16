@@ -1,3 +1,4 @@
+import { ModelPort } from './model-port.js';
 import { ConflictError } from '../../storage/errors.js';
 import { ChatRepo } from '../../storage/repositories/chat-repo.js';
 import { RpRunControl, rpOperationInput } from '../rp-run-control.js';
@@ -25,6 +26,7 @@ import { readTaskLocalOutput } from './task-local-output-contracts.js';
 import { HandoffReturnController } from './handoff-return-controller.js';
 import { ResultPort } from './result-port.js';
 
+const outputCaptures = new WeakMap();
 const captures = new WeakMap();
 const delegationCaptures = new WeakMap();
 const returnCaptures = new WeakMap();
@@ -42,11 +44,13 @@ function finiteProfile(plan, { delegated = false, explicitResult = false } = {})
         || !sameSet(node.capabilities, capabilities) || node.inputs.length || node.outputs.length !== 1 || node.outputs[0].type !== 'text'
         || node.dependencyPinIds.length !== (delegated ? 2 : 1) || output.capabilities.length || output.inputs.length !== 1
         || output.inputs[0].type !== 'text' || !output.inputs[0].required || output.outputs.length || output.dependencyPinIds.length
-        || plan.dependencyPins.length !== (delegated ? 2 : 1) || graph.outputContract.kind !== 'result' || graph.outputContract.allowPartial
+        || plan.dependencyPins.length !== (delegated ? 2 : 1) || !['result', 'rp_narration'].includes(graph.outputContract.kind) || graph.outputContract.allowPartial
         || graph.graphChangePolicy.allowedOperations.length || graph.edges[0].condition !== 'always'
         || graph.edges[0].loopBack || graph.edges[0].maxVisits !== 1
         || graph.edges[0].from.nodeId !== node.nodeId || graph.edges[0].to.nodeId !== output.nodeId
         || graph.edges[0].from.port !== node.outputs[0].name || graph.edges[0].to.port !== output.inputs[0].name) fail('native_orchestration_rp_plan_unavailable');
+    if (graph.outputContract.kind === 'rp_narration' && (explicitResult || graph.outputContract.slot !== 'assistant'
+        || assertResultPolicy(graph.outputContract).outputType !== 'text')) fail('native_orchestration_rp_plan_unavailable');
     if (explicitResult && assertResultPolicy(graph.outputContract).outputType !== 'text') fail('native_orchestration_rp_plan_unavailable');
     return node;
 }
@@ -207,6 +211,40 @@ export async function inspectNativeRpReturn(capture, expected = {}) {
         await state.assertCurrent();
         inspectNativeRpReturnIdentity(capture, expected);
         return { ...identity, parent, child, attempt, handoff, output };
+    });
+}
+
+/** A live final Narrator completion can prepare one original-domain output. */
+export function inspectNativeRpOutputIdentity(capture, { handle, rpControl, host } = {}) {
+    const saved = outputCaptures.get(capture);
+    if (!saved || saved.state.handle !== handle || rpControl !== undefined && saved.control !== rpControl
+        || host !== undefined && saved.state.host !== host || saved.state.outputCapture !== capture) fail('native_rp_output_scope_required');
+    const identity = inspectNativeRpGenerationIdentity(saved.state.capture, { handle, host: saved.state.host, rpControl: saved.control });
+    return { ...identity, controlId: identity.sourceRequest.controlId, runId: saved.runId, sourceBinding: saved.state.sourceBinding,
+        execution: saved.execution };
+}
+
+export async function inspectNativeRpOutput(capture, expected = {}) {
+    const identity = inspectNativeRpOutputIdentity(capture, expected), saved = outputCaptures.get(capture), { state, execution, port, result } = saved;
+    return saved.control._engine.withTransaction(expected.handle, async tx => {
+        if (expected.tx !== undefined && expected.tx !== tx) fail('native_rp_output_scope_required');
+        await saved.assertCurrent();
+        const proof = await ModelPort.prototype.inspectResultCompletion.call(port, expected.handle, { result, runId: saved.runId, effectId: state.effectId });
+        const root = await execution.runs.get(expected.handle, saved.runId), policy = assertResultPolicy(root.graph.outputContract);
+        if (root.graph.outputContract.kind !== 'rp_narration' || root.graph.outputContract.slot !== 'assistant'
+            || proof.outputType !== 'text' || proof.producerAttemptId !== state.attemptId || proof.epoch !== root.epoch
+            || root.cancelRequested || root.status !== 'running' || root.parentRef !== null || !equal(root.planRef, state.selected.binding.planRef)
+            || !equal(proof.sourceBinding, state.sourceBinding) || Buffer.byteLength(result.generated.response.text, 'utf8') > policy.maxBytes)
+            fail('native_rp_output_denied');
+        await saved.assertCurrent();
+        const fence = await saved.control._engine.nativeHostLifecycle.assertWriter(expected.handle, tx);
+        const control = await RpRunControl.prototype.status.call(saved.control, expected.handle, identity.controlId, { tx });
+        const chat = await tx.getResource({ kind: 'chat', handle: expected.handle, ...control.locator });
+        inspectNativeRpOutputIdentity(capture, expected);
+        return { ...identity, payload: immutable({ name: 'Narrator', is_user: false, is_system: false, mes: result.generated.response.text,
+            memory_os_source_id: 'rpout_' + hash({ controlId: identity.controlId, source: identity.sourceRequest.source }).slice(0, 32) }),
+        chatIntegrity: chat.integrity, locator: control.locator, prefixDigest: identity.prefixDigest,
+        hostFence: { hostBootId: fence.hostBootId, generation: fence.generation } };
     });
 }
 
@@ -618,7 +656,16 @@ export class NativeRpOrchestrationAuthority {
                     await state.contextPort.revalidate(handle, { context: state.context, phase: 'consume' });
                 } });
             checkCancellation(identity.signal);
-            const result = await this.#port(host).generate(handle, scope, { signal: identity.signal });
+            const port = this.#port(host), result = await port.generate(handle, scope, { signal: identity.signal });
+            if (root.graph.outputContract.kind === 'rp_narration') {
+                const outputCapture = Object.freeze({}); state.outputCapture = outputCapture;
+                outputCaptures.set(outputCapture, { state, control: this.owner.rpControl, execution: service, port, result, runId: root.runId,
+                    assertCurrent: () => this.#current(state) });
+                try {
+                    const prepared = await RpRunControl.prototype.prepareNativeOutput.call(this.owner.rpControl, handle, { capture: outputCapture });
+                    return { ...result, runId: root.runId, effectId, output: { status: prepared.status, outputKey: prepared.outputKey, operationId: prepared.operationId } };
+                } finally { outputCaptures.delete(outputCapture); delete state.outputCapture; }
+            }
             return { ...result, runId: root.runId, effectId };
         } finally { if (!continuation) this.#runs.delete(root.runId); }
     }

@@ -1,3 +1,10 @@
+import { preserveNativeOutputMarkers, rejectNativeOutputMarkers } from './native-output-markers.js';
+import { consumeRpNativeOutputPermit, withRpNativeOutputWrite, assertRpOutputReceipts, nativeOutputPayload } from '../../native/rp-output-protocol.js';
+import { NATIVE_RESOURCE_KINDS as K } from '../../native/contracts.js';
+import { hashNativeDocument as hash } from '../../native/repositories/common.js';
+import { rpOperationInput } from '../../native/rp-run-control.js';
+import { sourceMessageId, sourceContent } from '../../../public/scripts/agents/memory/source-provenance.js';
+import { fields } from '../../../public/shared/native-values.js';
 import { randomUUID } from 'node:crypto';
 import _ from 'lodash';
 import { ConflictError, NotFoundError } from '../errors.js';
@@ -16,6 +23,71 @@ export class ChatRepo {
 
     #writeTransaction(handle, operation) {
         return withChatWrite(handle, () => this._engine.withTransaction(handle, operation));
+    }
+
+    /** Original single-chat writer; the permit cannot be serialized or reused. */
+    async commitNativeOutput(handle, request) {
+        fields(request, ['permit'], 'Native chat output');
+        assertWritable();
+        if (this._engine.hasActiveTransaction(handle)) throw new ConflictError('native_rp_output_ambient_transaction');
+        const outcome = await withRpNativeOutputWrite(request.permit, { engine: this._engine, handle }, () => this.#writeTransaction(handle, async tx => {
+            let state;
+            try { state = await consumeRpNativeOutputPermit(request.permit, { engine: this._engine, handle, tx }); } catch (error) {
+                if (['native_orchestration_source_stale', 'native_orchestration_return_stale', 'native_generation_revision_conflict',
+                    'native_rp_source_missing', 'native_rp_control_relocated', 'native_orchestration_model_result_completion_stale'].includes(error.code)) return { denied: true };
+                throw error;
+            }
+            const { receipt, locator, payload, controlId } = state;
+            const observed = await this.observeNativeOutput(handle, { controlId, operationId: receipt.operationId, outputKey: receipt.outputKey }, { tx });
+            if (observed.status === 'committed') return observed;
+            if (observed.status === 'conflict') throw new ConflictError('native_rp_output_conflict');
+            const key = this._key(handle, locator.charDir, locator.name, locator), existing = await tx.getResource(key);
+            const anchor = receipt.inputAnchor;
+            if (!existing || existing.integrity !== receipt.expectedIntegrity || existing.header?.chat_metadata?.nativeControlId !== controlId
+                || existing.body.length !== anchor.floor + 1 || !existing.body[anchor.floor]?.is_user || existing.body[anchor.floor]?.is_system
+                || hash(rpOperationInput(existing.body[anchor.floor], anchor.floor)) !== hash(anchor)
+                || hash(existing.body.map(message => ({ messageId: sourceMessageId(message), content: sourceContent(message) }))) !== receipt.sourceDigest)
+                throw new ConflictError('native_rp_output_stale');
+            const fence = await this._engine.nativeHostLifecycle.assertWriter(handle, tx);
+            if (hash({ hostBootId: fence.hostBootId, generation: fence.generation }) !== hash(receipt.hostFence)) throw new ConflictError('native_rp_output_stale');
+            const marker = { schemaVersion: 1, operationId: receipt.operationId, outputKey: receipt.outputKey, payloadHash: receipt.payloadHash,
+                sourceDigest: receipt.sourceDigest, controlId };
+            const message = { ...payload, extra: { ...(payload.extra ?? {}), gen_id: 'native-output:' + receipt.outputKey, atri_output: marker } };
+            const integrity = randomUUID();
+            await tx.putResource(key, { ...existing, body: [...existing.body, message], integrity, updatedAt: this._now() });
+            return { status: 'committed', receipt: nativeChatReceipt(controlId, receipt, locator, message, integrity) };
+        }));
+        if (outcome.denied) throw new ConflictError('native_rp_output_stale');
+        return outcome;
+    }
+
+    /** Marker and actual bytes are observed together; no write or replay right. */
+    async observeNativeOutput(handle, request, { tx } = {}) {
+        fields(request, ['controlId', 'operationId', 'outputKey'], 'Native output observation');
+        const read = async transaction => {
+            const record = await transaction.getResource({ kind: K.rpRunControl, handle, controlId: request.controlId });
+            if (!record || hash(record.doc) !== record.integrity) throw new ConflictError('native_rp_output_integrity');
+            assertRpOutputReceipts(record.doc);
+            const receipt = record.doc.outputReceipts[request.outputKey];
+            if (!receipt || receipt.operationId !== request.operationId) throw new ConflictError('native_rp_output_missing');
+            const locator = record.doc.locator, chat = await transaction.getResource(this._key(handle, locator.charDir, locator.name, locator));
+            if (!chat || chat.header?.chat_metadata?.nativeControlId !== request.controlId) return { status: 'unknown', receipt: null };
+            const prefix = chat.body.slice(0, receipt.inputAnchor.floor + 1);
+            if (!sourceMessageId(prefix[receipt.inputAnchor.floor]) || prefix[receipt.inputAnchor.floor]?.atri_native?.messageId || hash(rpOperationInput(prefix[receipt.inputAnchor.floor], receipt.inputAnchor.floor)) !== hash(receipt.inputAnchor)
+                || hash(prefix.map(message => ({ messageId: sourceMessageId(message), content: sourceContent(message) }))) !== receipt.sourceDigest)
+                return { status: 'unknown', receipt: null };
+            const matches = chat.body.filter(message => message?.extra?.atri_output?.outputKey === request.outputKey
+                || message?.extra?.gen_id === 'native-output:' + request.outputKey);
+            if (!matches.length) return { status: 'unknown', receipt: null };
+            const message = matches[0], marker = message?.extra?.atri_output;
+            const expectedMarker = { schemaVersion: 1, operationId: request.operationId, outputKey: request.outputKey, payloadHash: receipt.payloadHash,
+                sourceDigest: receipt.sourceDigest, controlId: request.controlId };
+            if (matches.length !== 1 || hash(marker) !== hash(expectedMarker) || hash(nativeOutputPayload(message)) !== receipt.payloadHash
+                || message.extra.gen_id !== 'native-output:' + request.outputKey || message.is_user || message.is_system
+                || chat.body.indexOf(message) !== receipt.inputAnchor.floor + 1) return { status: 'conflict', receipt: null };
+            return { status: 'committed', receipt: nativeChatReceipt(request.controlId, receipt, locator, message, chat.integrity) };
+        };
+        return tx ? read(tx) : this._engine.withTransaction(handle, read);
     }
 
     async get(handle, charDir, name, { isGroup = false, groupId } = {}) {
@@ -73,7 +145,7 @@ export class ChatRepo {
             }
             await tx.putResource(key, {
                 header,
-                body: messages,
+                body: preserveNativeOutputMarkers(existing?.body, messages),
                 integrity: newIntegrity,
                 updatedAt: now,
                 createdAt: existing?.createdAt ?? now,
@@ -96,6 +168,7 @@ export class ChatRepo {
 
     async append(handle, charDir, name, newMessages, expectedIntegrity, { isGroup = false, groupId } = {}) {
         assertWritable();
+        rejectNativeOutputMarkers(newMessages);
         const key = this._key(handle, charDir, name, { isGroup, groupId });
         const newIntegrity = randomUUID();
         const now = this._now();
@@ -180,7 +253,20 @@ export class ChatRepo {
             if (typeof tx.patchChatMessages !== 'function') {
                 return { status: 'unsupported' };
             }
-            const result = await tx.patchChatMessages(key, ops, {
+            const existing = await tx.getResource(key);
+            let body = existing?.body ?? [];
+            const protectedOps = ops.map(op => {
+                if (!/^\/(0|[1-9]\d*)$/.test(String(op?.path)) || !['test', 'replace', 'remove'].includes(op.op)) return op;
+                const index = Number(op.path.slice(1));
+                if (op.op === 'replace' && index < body.length) {
+                    const [value] = preserveNativeOutputMarkers([body[index]], [op.value]);
+                    body = [...body]; body[index] = value;
+                    return { ...op, value };
+                }
+                if (op.op === 'remove') body = body.filter((_, at) => at !== index);
+                return op;
+            });
+            const result = await tx.patchChatMessages(key, protectedOps, {
                 expectedIntegrity,
                 newIntegrity,
                 updatedAt: now,
@@ -228,7 +314,7 @@ export class ChatRepo {
             const docAfter = applyJsonPatch(docBefore, rewrittenOps);
             await tx.putResource(key, {
                 header: docAfter.header,
-                body: docAfter.body,
+                body: preserveNativeOutputMarkers(existing.body, docAfter.body),
                 integrity: newIntegrity,
                 updatedAt: now,
                 createdAt: existing.createdAt,
@@ -567,4 +653,10 @@ function makeIdempotent(ops, doc) {
         }
         return op;
     });
+}
+
+function nativeChatReceipt(controlId, receipt, locator, message, integrity) {
+    return { schemaVersion: 1, controlId, operationId: receipt.operationId, outputKey: receipt.outputKey, payloadHash: receipt.payloadHash,
+        sourceDigest: receipt.sourceDigest, inputAnchor: receipt.inputAnchor, locator, outputFloor: receipt.inputAnchor.floor + 1,
+        messageId: sourceMessageId(message), integrity };
 }

@@ -1,3 +1,4 @@
+import { assertRpOutputReceipts, prepareRpNativeOutput, beginRpNativeOutput, reconcileRpNativeOutput } from './rp-output-protocol.js';
 import { randomUUID } from 'node:crypto';
 import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
 import { createNativeId, assertNativeId } from './identity.js';
@@ -50,6 +51,7 @@ function assertControl(record, handle, controlId) {
         fields(op.anchor, ['messageId', 'floor', 'variantId', 'contentHash', 'purpose', 'outputSlot'], 'RP operation anchor');
         if (op.compute !== undefined) assertComputeLedger(op.compute);
     }
+    assertRpOutputReceipts(doc);
     return doc;
 }
 
@@ -71,6 +73,10 @@ export class RpRunControl {
         this._engine = engine;
         this._chatRepo = chatRepo;
     }
+
+    prepareNativeOutput(handle, request) { return prepareRpNativeOutput(this, handle, request); }
+    beginNativeOutput(handle, request) { return beginRpNativeOutput(this, handle, request); }
+    reconcileNativeOutput(handle, request) { return reconcileRpNativeOutput(this, handle, request); }
 
     // Chat edits and RP bank writes share the original domain boundary before
     // acquiring the control key or opening an Engine transaction.

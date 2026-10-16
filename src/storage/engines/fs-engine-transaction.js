@@ -1,3 +1,4 @@
+import { durableWrite } from '../durable-file.js';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
@@ -221,7 +222,7 @@ function registerChatHandler(tx) {
             };
             const lines = [JSON.stringify(headerWithIntegrity)];
             for (const msg of record.body) lines.push(JSON.stringify(msg));
-            writeFileAtomic(filePath, lines.join('\n') + '\n');
+            durableWrite(filePath, lines.join('\n') + '\n');
             invalidateFsChatRangeIndex(filePath);
             // Restore the caller-supplied updatedAt as the file mtime so a
             // migration-time saveRaw doesn't reset every chat's "last edited"
