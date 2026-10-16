@@ -45,7 +45,9 @@ export class NativeTaskScheduler {
     }
     /** Scheduling only: the domain must authorize its durable child before calling. */
     async withResourceHandoff(boundary, expected, child) {
-        this.assertActiveBoundary(boundary, expected);
+        const parent = this.assertActiveBoundary(boundary, expected);
+        expected = immutable(Object.fromEntries(['owner', 'anchor', 'kind', 'executionClass', 'key', 'fingerprint', 'resources']
+            .map(field => [field, parent[field]])));
         const allowed = ['kind', 'executionClass', 'resources', 'key', 'fingerprint', 'run', 'finalize', 'fresh'];
         if (!child || Object.keys(child).some(key => !allowed.includes(key)) || child.key === expected.key
             || typeof child.key !== 'string' || !child.key || typeof child.fingerprint !== 'string' || !child.fingerprint

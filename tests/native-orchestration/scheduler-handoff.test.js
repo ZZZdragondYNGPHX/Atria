@@ -105,6 +105,17 @@ test('completed child key cannot be dispatched a second time by the same live pa
     await parent.result; expect(childRuns).toBe(1);
 });
 
+test('child inherits the captured original source, not mutable caller expected fields', async () => {
+    const scheduler = new NativeTaskScheduler({ concurrency: 1, perResource: 1, timeoutMs: 1000 });
+    const request = structuredClone(expected);
+    const parent = submit(scheduler, boundary => scheduler.withResourceHandoff(boundary, request, child(async childBoundary => {
+        request.anchor.revisionId = 'caller mutation';
+        expect(scheduler.project(expected.owner, childBoundary.operationId).anchor).toEqual(expected.anchor);
+        return 'fixed original source';
+    })));
+    await expect(parent.result).resolves.toBe('fixed original source');
+});
+
 test('cancellation while waiting to reacquire removes only the parent continuation, not another worker', async () => {
     const scheduler = new NativeTaskScheduler({ concurrency: 1, perResource: 1, timeoutMs: 1000 });
     const childStarted = deferred(), childRelease = deferred(), otherStarted = deferred(), otherRelease = deferred();
