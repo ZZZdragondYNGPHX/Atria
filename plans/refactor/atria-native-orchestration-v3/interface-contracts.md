@@ -1058,3 +1058,24 @@ SourcePort带同Root的currentness可核原Model/工具/Host收据链后观察�
 rollback 只认当前自己的 desired Binding 或精确已保存 rollback command，不能覆盖用户重选；回滚后的候选不再次激活，discard 不删除已发布不可变历史。原数据和机制依赖在 capture/check/write 前复验，后来的用户 Route 变更保留，rollback 不改 Route。scope 必须同原 Project/Task 或普通 character RP chat subject。新原生 Binding 的 catalog/capture/evaluation/publication 不回退历史 workspace/Director 或旧 targets；未绑定旧域的构建期能力仍待 P6 一次清退。
 
 原生 plan-prompt、其它 strategy/来源、Native Evaluation worker 仍未接；新 nativePlan settings 在 evaluator worker 执行前明确 unavailable，auto configure 拒绝，旧 report 无新资格。evaluator revision 纳入原 Plan/authoring/contracts 实现指纹。这里只是有限手动 Review 候选/发布合同，不核销完整 W07 或后端 Gate。
+
+## 17.78 原生 Plan Prompt 候选与原存储发布
+
+第六十九组将原 Plan evolution core 扩展为 `plan-strategy | plan-prompt`：Prompt target 精确到绑定版本、PlanRevision、Agent 节点与 Library 模块，当前消费原选定 Prompt Preset 中的 `system.style` 模块。声明复用原 PromptCandidateStore，候选由原版本资源 authority 生成 exact module/program；Plan 只更新对应原 RuntimeRoute pin 的完整 integrity，图、能力、额度及作者 Draft 不变。候选机制验证只在受信内部使用原候选的 desired route 做纯验证，不授予运行权限。
+
+新 immutable PlanRevision 的可选 `evolutionSource:{target,promptCandidateRef,resourceRefs}` 保留原候选与 exact refs，供原资源删除/GC 作为保留根；策略修订继续继承它。原 Prompt candidate discard 不能删除仍由历史 Plan 引用的资源。
+
+当前这些原存储共享同一 Engine；原 Evolution journal 的 intent/finalizing gate 先提交，再在同一原 Engine 事务内精确 CAS 原 Route 和 PlanBinding，最后由原 journal 写 receipt。没有宣称独立存储引擎之间原子提交。中途写入失败回滚这一实际共享事务；ACK 未知重新读取两项权威。发布会修改所选原 Route 的 Prompt 指针；复用该 Route 的其它固定旧 pin 会过期并拒绝准入，不能静默转用新 Prompt。并发 Route 或 Binding 变化均拒绝，回滚只接受自己的精确 Route/Binding；已运行的 Plan 和费用不回退。
+
+原生 Eval worker、其它 Prompt 模块/策略/来源仍继续实施；当前两类原生 target 都明确禁止自动配置，不能借旧报告晋升。并非完整 W07 或后端完成。
+
+
+## 17.79 有限原生 RP/Project 隔离评测
+
+`a7cb649d0` 的 `evaluationSettings` 输出 `nativePlan:{planRef,revision,sourceSelector}`、`runtimeRouteId`、version，Prompt 候选额外指原 exact desired program。原 Evolution review 配置/实际比较强制使用选定 Route；普通 RP 使用原 narrator 角色，不能改用旧 orchestrator evaluator。worker 对 Native settings 只加载 `evaluation/native-adapters.js`，不调用旧 Director/MessageTakeover；历史 evaluator 仍留给尚未 hard cut 的旧非 Native 路径，Native binding 不 fallback。
+
+固定 worker 只取得不可变公开配置/Plan/试验资料，复制并核验 exact revision/hash，原 Source service 在自己的私有 FsEngine 里创建试验 Chat 或 Project/Task。它运行同一 Native Host/Run/Effect/Context/预算/Output controllers，不复制生产授权活 scope，不接生产 writer/Secret，不由 Browser 回调拼成功凭证。Project 的原 idFactory 在私有域创建 exact Task identity，以消费原 Plan 工具 pin，不改写冻结图或伪造 Task receipt。原生试验配额属于这些原服务；真实 Provider 发送仍仅由父 Host 经原 Evolution ledger 先 reserve、再 Secret/send、最后 settle，report 的费用只采用父账本，未报告费用仍 unknown。每次 RPC 和成功/失败结束均由父 Host 复验原 source/job。
+
+当前执行范围：无 child 的有限普通 RP `rp_narration`，真实 Chat 单输出/Root completed，或原 Scheduler 取消后注入晚到 completion，再运行新请求并核对旧 Run 无 claim；这个控制挑战不发送父 Provider、不虚计真实费用。Project 为有限 `project_review` 图，精确原工具、同 Root 有界多轮及原 Review 出口；私有 fixture reviewer 可以在模型结束后调用原正式 commit 来验证单 ChangeSet，但模型流程无该权限。原 conflict/repair 试验分支依实际原 Task/source 准备；不支持的图或 M1 Project pilot 仍明确拒绝，未测项不核销。
+
+评测指纹增加实际 Native adapters、Controller/Context/Source/预算和 RP/Project 正式输出依赖，旧实现报告不能延用。Native 自动配置/晋升仍未开放，缺独立资料、完整场景、真实质量/价格等证据不能用合成正例或手工批准冒充 eligible。此组不是完整 W07 或后端完成。

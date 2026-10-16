@@ -2,11 +2,21 @@
 
 > 2026-10-16。本文件属于同一 Plan Bundle，用于用户已授权的提示词预设/前端并行任务整合。详细合同仍归 [interface-contracts](interface-contracts.md)，阶段门槛仍归 [acceptance-matrix](acceptance-matrix.md)，精确源码提交/实测与失败只归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。本文不将 P3 子工作冒称完整 V3 后端完成。
 
+## 当前后端续作（第六十九至七十组）
+
+源码 `a7cb649d0`，继续同一分支；失效的提前交接 HANDOFF 已删除，尚未进入前端交接。
+
+- `e82fde3a8`：原 `EvolutionTargets` 已有受声明的 `plan-prompt`（所选 Preset 的 exact style module）与九项收紧 limits 的 `plan-strategy`。候选/发布/回滚均复用原 Prompt、Plan、Binding 和 Evolution journal；具体影响及同 Engine 事务边界见[接口 §17.78](interface-contracts.md#1778-原生-plan-prompt-候选与原存储发布)。
+- `a7cb649d0`：`evaluationSettings` 钉 exact PlanRevision、原 Source selector 和实际选定 Route。固定隔离 worker 使用原 Native Host/Controller/Ports 重新创建私有试验 Source，运行有限普通 RP 的正式输出、取消晚到挑战，以及有限 Project 工具/Review Root；父 Host 仍是唯一真实收费发送和 Evolution ledger authority。见[接口 §17.79](interface-contracts.md#1779-有限原生-rpproject-隔离评测)。这修正此前“所有 nativePlan 一律 unavailable”，不代表所有图、来源或 M1 场景均已交付。
+- Native target 的自动配置/晋升仍明确 unavailable，完整独立质量、可信 Review backend、其余 Actor/Task/Graph producer、通用恢复/受权结果读取及 release/GC 等继续实施。P1–P4/最终 Gate 未通过。Codex 完成后端后才向 Claude Code 提供前端与组装交接。
+
+下方保留第六十四至六十八组的 HTTP 快照；这些 HTTP 本组没有新增或改为通用执行授权。其未交付清单中的 Prompt/评测状态以上述更新为准。
+
 ## 当前接口快照（第六十四至六十八组）
 
 本节覆盖下文历史分组中的“尚无 Run API”“Project 单轮”“RP 无产品入口”等旧描述。源码 `08e523b6f` 已合入 `main@c57fada6e`，仍在 `refactor/atria-native-orchestration-v3`，没有反向集成 main。**前端已有可接入的真实接口；完整 P1–P4/最终 Gate 仍 NOT_READY**。未交付后端项仍归后端，不由 Claude Code 用 Browser 逻辑补齐。
 
-用户当前分工：Codex 推进后端，前端交给 Claude Code；不由本任务实施 P5 页面。前端可在同任务分支基于下列已实现合同工作，未实现项显示真实 unavailable，不把有限接口交接当作完整 P4 验收。
+用户当前分工：Codex 先完成全部后端；到真实前端阶段才推送并交 Claude Code 实施页面、组装前后端及结束开发分支。当前继续后端，尚未到交接点；接口存在不等于后端已完成。
 
 ### Authoring
 
@@ -59,13 +69,13 @@ Project 继续沿原 Studio Task generation/preflight/start/status/cancel 和原
 
 原 Evolution API 的 catalog/declare/capture/prepare/check/write/rollback/discard 现接有限 `plan-strategy`：target 精确绑定 bindingId/version、PlanRevision、nodeId、`limits.<field>`。只收紧 maxSteps/maxAttempts/maxReplans/maxReviews/maxDelegates/maxHandoffs/maxEdgeVisits/maxLoopIterations/deadlineMs。候选由原 PlanRepository 发布新的不可变修订，保留作者 Draft，最后 CAS 原 Binding；回滚只接受自己的精确绑定/command，不能覆盖用户新选择或复活已消费候选。当前原生 Binding 不回退旧 workspace/Director evaluator 或原旧 target 自动晋升。
 
-**仍未实现**：plan-prompt、其它 strategy 字段/来源、完整原生 Evaluation worker/自动晋升、其余 Actor/Task/Graph producer 组合、公开通用 resume/reconcile/Result read、可信 Review Origin 与再认证、完整 restore/release/GC、P6 清退和产品验收。原生 Plan 评测明确 unavailable，不能借旧报告、假资料、Browser runner 或 approved 布尔值打通。这些不是前端需要代写的后端工作；P5 先消费以上实际接口，缺能力就保持不可用。完整三端/真实外部收费与质量本轮未测。
+**仍未实现**：plan-prompt、其它 strategy 字段/来源、完整原生 Evaluation worker/自动晋升、其余 Actor/Task/Graph producer 组合、公开通用 resume/reconcile/Result read、可信 Review Origin 与再认证、完整 restore/release/GC、P6 清退和产品验收。原生 Plan 评测明确 unavailable，不能借旧报告、假资料、Browser runner 或 approved 布尔值打通。这些不是前端需要代写的后端工作；这些后端工作须由 Codex 完成后才进入前端交接。完整三端/真实外部收费与质量本轮未测。
 
 ## 1. 分支和职责
 
 V3 后端使用 `refactor/atria-native-orchestration-v3`，任务工作区 `tasks/atria-native-orchestration-v3/source`；本 Plan 和 Record 使用长期 `docs` 分支。没有集成 main。提示词预设/前端任务应按自己的 Governance 在可审查的整合分支组合两个后端改动，不覆盖任一任务的未提交内容；P7 未通过不得以“合并两个任务”替代 main 集成门槛。
 
-用户当前安排是：本分支继续后端，页面开发交 Claude Code，提供可直接接手的提示词。当前实际接口与未交付后端以顶部快照为准。D8 的领域交互由 [graph-editor-experience](graph-editor-experience.md) 持有；通用视觉/Shell/提示词编辑沿 Serene Canvas 与现有组件统合，不另建工作台或主题。
+用户当前安排是：本分支先完成后端，之后提供交接提示词，由 Claude Code 开发前端并组装、结束开发分支。当前实际接口与未交付后端以顶部快照为准。D8 的领域交互由 [graph-editor-experience](graph-editor-experience.md) 持有；通用视觉/Shell/提示词编辑沿 Serene Canvas 与现有组件统合，不另建工作台或主题。
 
 ## 2. 实际已挂载的 HTTP
 

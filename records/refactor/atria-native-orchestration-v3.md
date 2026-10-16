@@ -910,3 +910,27 @@
 - 合并后的原resolver双HTTP/quota/World生产链精选 **2PASS/16filterSKIP（16.884s）**。扩大到两个冲突旧test文件的全文件lint发现27项；对origin/main逐文件stdin实核，原已有20项Jest规则和2项Boolean规则。修本任务fixture五处缩进后 `efb072929`→`08e523b6f`，这两个文件恰余与main同数的22项，不擅自改全文件断言或关规则；其余直接改动及关键合并生产模块定向ESLint、diff通过。最后只改缩进，未重跑无行为变化测试。
 - 用户将前端交给Claude Code；当前已有可接入真实API，本代理停止在页面实现前。完整P1–P4/最终Gate仍NOT_READY，P5未实施，P6–P8未完成。交接必须明确原生Prompt/完整Eval/其余producer/可信审批/restore等后端剩余项，不能把有限接口交接称为“全部后端完成”或由前端假实现。按本次明确交接请求写唯一HANDOFF及接手提示词，分支只push存储，保留活跃工作树。
 - 最终源码 `08e523b6f` 已推送同名远端任务分支；33个直接修改/关键合并JS文件定向ESLint通过，源码工作区clean。docs六份交接/接口/Record的本地Markdown目标检查无缺失，docs另行提交推送；不等待Actions，不合main，不清理仍活跃分支。
+
+
+## 2026-10-16 — 第六十九组起：纠正提前交接并恢复全部后端实施
+
+- 用户明确要求先完成后端，再由 Claude Code 做前端、组装及结束开发分支。第六十八组的有限接口交接早于所要求的后端完成节点；已有接口及禁用状态不构成完整后端交付。
+- 从真实 clean / synced 源码 `08e523b6f`、docs `9ec6e1362` 恢复同一任务；删除已失效 live HANDOFF，修正当前入口。历史第六十八组事实保留，但不再是停止指令。
+- 当前继续 W07 原生 Plan Prompt / Evaluation 与其余后端工作，P1–P4 未通过前不生成前端交接；不实施 P5 页面、不提前合 main 或清理活跃分支。后续实现、失败与必要自查继续记录于此。
+
+### 第六十九组实际实现与验证
+
+- 实现接口 §17.78：原 PromptCandidateStore exact 候选 → immutable Plan → 原 Route/Binding 精确发布/回滚，保留 Draft、既有 Run 与历史资源。复用原 Evolution gate 与实际同 Engine 事务，没有新增费用权威或前端页面。
+- 新 Prompt suite FS/SQLite **12/12 PASS（8.532s）**；策略与 Plan 仓库最初 **27/27 PASS（8.423s）**；组合新 Prompt/strategy/authoring HTTP/Plan repository **47/47 PASS（17.593s）**。组合命令另带了不存在的 `tests/native/model-prompt-candidates.test.js`，Jest 未发现该路径；随后定位实际 `tests/native/prompt-candidates.test.js` 单独 **20/20 PASS（2.114s）**，不将未发现路径计作测试。
+- 场景包括真实原 Project Executor 消费新 Prompt、旧 preflight 失效、作者 Draft 不变、Gate 内用户 Binding CAS、原 Route 写后 Binding 故障整事务回滚、保存/未保存未知回执、用户 Route 编辑拒绝回滚、历史 Plan 阻止删 exact Prompt。直接改动 ESLint 与 diff 检查通过；没有外部付费请求、独立审查、全端或 SQL 全量声明。
+- 后端整体继续，尚未进入前端交接；下一步可信 Review backend 与原生评测链路。
+
+
+## 2026-10-16 — 第七十组：有限原生 RP/Project worker 与原 Evolution 费用
+
+- Source `e82fde3a8` → `a7cb649d0`。实现接口 §17.79：固定 worker 按 Native / 历史协议选择原执行器，Native 路径不加载旧 Director；exact Plan/Route、原隔离 Source/Scope、实际 Run/Effect/Context/Output、父 Host 唯一收费 ledger，原 source/job 在 RPC 与结束重新校验。原生 target 仍禁止自动配置；没有新增前端页面、公开任意运行授权或交接。
+- 新 suite 首先因测试 scope 的 groupId 使用 null / 省略而各 2FAIL（1.160s / 1.177s）；按原 Evidence scope 的普通 RP `groupId:''` 修正后 RP **2PASS（8.564s）**。增加实际取消晚到挑战后，普通 RP 两 case/两 arm 均产生真实 Native proof，只有实际 RPC 记父费用。
+- Project 初次 2FAIL（4.616s），局部诊断 1FAIL（2.901s）：观察 prepare hook 错读 inputRef，改读真实 proposal。后续 2FAIL（32.141s）、诊断 1FAIL（16.910s）显示测试模型未消费原 Resume 转为 user 的 tool observation；修正合成响应读取真实协议。再 2FAIL（32.502s）证明每轮最多一项提案守卫生效；测试改为三轮、每轮一项提案，保留产品守卫，Project **2PASS/2filterSKIP（53.387s）**。
+- 组合 Native/Plan strategy/Prompt/指纹/Skill 五 suites 34PASS/2FAIL（89.590s），另 Skill suite 因缺 browser-context 引导加载失败。两 FAIL 是撤权被原 GenerationService 脱敏为 generic error；在父 worker 失败结束处补真实 fresh 复验后，Native RP **2PASS/2filterSKIP（21.169s）**，含撤权后仅保留先前一笔收费、拒绝下一次发送及生产 Chat/Binding 不变。Project 两项在前述组合仍 PASS；没有重复宣称完整新 suite 最终重跑。
+- 原 Skill test 补明确 browser-context fixture 并等待异步清理；指纹扩充四种 Native 源码改变反例，与 Skill 共 **14PASS（3.072s）**。原 Evolution 主体 **41PASS（58.840s）**；同次 HTTP suite 缺 browser-context 引导，补后独立 **1PASS（1.677s）**。未新增产品 fallback；测试 bootstrap 只属于原 browser consumer 测试环境。
+- 12 个本组 JS 文件定向 ESLint、diff 检查通过；全部发送为 localhost 合成，没有真实外部账单、独立评审、SQL 全矩阵或三端通过声明。当前仍 P1–P4 IN_PROGRESS / 最终 Gate NOT_READY，后端剩余项保留，未向 Claude 交接。

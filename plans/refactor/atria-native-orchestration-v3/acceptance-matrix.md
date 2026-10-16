@@ -1,10 +1,14 @@
 # D9 E1 — 实施状态
 
-## 2026-10-16 当前接口交接快照
+## 2026-10-16 第六十九至七十组后端续作
+
+原生 Plan Prompt 已有有限原存储发布/回滚；原生 RP / Project 已有有限隔离评测，实际范围见 [backend-integration](backend-integration.md)。新 Prompt suite 12 项、有限 Native evaluation 的 RP/Project 各 2 项已分别取得 FS/SQLite 实证；精确分次、失败、修复与相关回归只归同一 Record。没有完整 Gate、SQL/真实付费/三端或自动晋升通过声明。Codex 继续全部后端，当前不生成前端交接。
+
+## 2026-10-16 当前后端实施快照
 
 源码 `08e523b6f` 已合入 `main@c57fada6e`，未反向集成 main。有限 Project Review Root、Run observation/Timeline/分页/取消、RP reviewed HTTP 与手动 Plan strategy 已实现；实际开放范围见 [backend-integration](backend-integration.md#当前接口快照第六十四至六十八组)。合并后 authoring/Run/RP HTTP/Result/Plan repositories/Plan evolution 七 suites **124 PASS、4 SKIP**（15.471s）；Project terminal 与 Session historical proof 精选 **10 PASS、32 filter SKIP**（115.837s）。分轮证据不可叠成一次全仓通过。
 
-**P1–P4 与最终 Gate 仍 NOT_READY；P5 UI 未实施，按用户分工交 Claude Code 接已有 API。** plan-prompt/原生 evaluator/自动晋升、其余 producer/跨域组合、可信审批、完整恢复/释放、P6–P8 和实际三端/外部费用质量仍未完成。有限前端接口交接不核销这些后端工作，不将实现缺口转嫁给前端。
+**P1–P4 与最终 Gate 仍 NOT_READY；P5 UI 未实施。Codex 继续完成后端，完成后才交 Claude Code 开发前端并组装、结束分支。** plan-prompt/原生 evaluator/自动晋升、其余 producer/跨域组合、可信审批、完整恢复/释放、P6–P8 和实际三端/外部费用质量仍未完成。有限前端接口交接不核销这些后端工作，不将实现缺口转嫁给前端。
 
 ## 8.2 当前状态
 
