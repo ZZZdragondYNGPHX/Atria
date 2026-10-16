@@ -1,5 +1,5 @@
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
-import { modelPortFixture } from './helpers/model-port-fixture.js';
+import { sessionOutputFixture as setup } from './helpers/session-output-fixture.js';
 import { controlRecordKey } from '../../src/native/orchestration/controller-common.js';
 import { checkedRecord } from '../../src/native/orchestration/plan-repository.js';
 import { readSessionNarrationResult } from '../../src/native/orchestration/session-narration-result-contracts.js';
@@ -7,13 +7,9 @@ import { StorageCommitUnknownError } from '../../src/storage/errors.js';
 import { BudgetPort } from '../../src/native/orchestration/budget-port.js';
 import { SettingsRepo } from '../../src/storage/repositories/settings-repo.js';
 import { readEffect } from '../../src/native/orchestration/effect-contracts.js';
+import { readSessionOutput } from '../../src/native/orchestration/session-output-contracts.js';
 
 const harnesses = CONTRACT_HARNESSES.filter(({ name }) => ['FsEngine', 'SqliteEngine'].includes(name));
-const setup = (make, options = {}) => modelPortFixture(make, { ...options, configurePlan: ({ plan }) => {
-    plan.definition.nodes.find(node => node.kind === 'output').capabilities = ['chat.output'];
-    plan.definition.capabilityCeiling = ['generation.send', 'chat.output'];
-    Object.assign(plan.definition.outputContract, { kind: 'rp_narration', slot: 'assistant', resultPolicy: { outputType: 'text', maxBytes: options.maxBytes ?? 65536 } });
-} });
 
 describe.each(harnesses)('$name original Session output Effect', ({ make }) => {
     test('the Session Result crosses the real Graph edge to the output owner and original domain receipt and bank confirm its Effect', async () => {
@@ -35,7 +31,9 @@ describe.each(harnesses)('$name original Session output Effect', ({ make }) => {
             const bank = (await f.core.runs.status(f.h.handle, f.base.session.sessionId)).operations[root.budgetAuthorityRef.operationId].compute;
             expect(bank.localWork.filter(row => row.kind === 'session_output')).toMatchObject([{ status: 'settled', usage: { outcome: 'completed' } }]);
             expect(result.timeline.at(-1).content).toBe('Synthetic native narrator response.');
-            expect(root.status).not.toBe('completed'); expect(f.requests).toHaveLength(1);
+            expect(root.status).toBe('completed'); expect(root.outputClaims).toHaveLength(1); expect(f.requests).toHaveLength(1);
+            const closed = await f.h.engine.withTransaction(f.h.handle, tx => readSessionOutput(tx, f.h.handle, root));
+            expect(closed.claim.domainReceiptRef).toMatchObject({ domain: 'native_session', revisionId: result.revision.revisionId });
         } finally { await f.cleanup(); }
     });
 

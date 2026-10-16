@@ -23,7 +23,7 @@ export const rpOutputConsumer = root => ({ kind: 'rp_chat', controlId: root.sour
 
 /** Historical consistency only; it issues no current body or execution capability. */
 export async function readRpOutput(tx, handle, root) {
-    if (root.graph.outputContract.kind !== 'rp_narration' || root.parentRef !== null) return null;
+    if (root.graph.outputContract.kind !== 'rp_narration' || root.sourceBinding.sourceAuthority !== 'rp_chat' || root.parentRef !== null) return null;
     const claimId = rpOutputClaimId(root), claimRow = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'output', claimId));
     const receiptRow = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', rpOutputReceiptId(root.runId)));
     const closureRow = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', rpOutputClosureId(root.runId)));

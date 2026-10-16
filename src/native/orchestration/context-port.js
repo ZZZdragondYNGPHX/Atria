@@ -19,6 +19,7 @@ import { NativeMemoryAuthority } from '../memory-authority.js';
 import { SettingsRepo } from '../../storage/repositories/settings-repo.js';
 import { inspectNativeBackgroundGeneration } from './native-background-generation.js';
 import { selectNativeTaskContext } from '../adapters/task-context-items.js';
+import { inspectSessionTurnOutput } from '../session-turn-output.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 const digest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
@@ -286,7 +287,9 @@ export class ContextPort {
             audienceDigest: hashNativeDocument(request.audience), projectionDigest: hashNativeDocument(information.projection), authorityDigest };
         const context = immutable({ schemaVersion: 1, contextId: hashNativeDocument({ request, plan, proof }), request, plan,
             evidenceRefs: plan.included.flatMap(item => item.sourceRefs ?? []), currentnessProof: proof });
-        this.#contexts.set(context, { handle, request, proof, memoryProof: recall?.proof, task: taskIdentity ? { request: taskIdentity.request, taskPlan: taskIdentity.taskPlan } : null });
+        this.#contexts.set(context, { handle, request, proof, memoryProof: recall?.proof,
+            outputSnapshot: this.#nativeOutputQuota ? immutable(snapshot) : null,
+            task: taskIdentity ? { request: taskIdentity.request, taskPlan: taskIdentity.taskPlan } : null });
         return context;
     }
 
@@ -319,6 +322,36 @@ export class ContextPort {
         assertNativeTurnOutputQuota(quota.proof, request.finalizationPermit, quota.expected);
         return this.#revalidateContext(handle, { context: request.context, phase: 'output', audience: request.context.request.audience,
             finalizationPermit: request.finalizationPermit });
+    }
+
+    async revalidateNativeOutputCommit(handle, request) {
+        fields(request, ['context', 'finalizationPermit', 'committed'], 'Committed Native output Context');
+        const { context, finalizationPermit, committed } = request, quota = this.#nativeOutputContext(handle, context);
+        const captured = this.#contexts.get(context), input = captured.request.inputRefs[0];
+        const expected = { repo: this.sessionCore._sessions, handle, sessionId: quota.expected.sessionId,
+            branchId: quota.expected.anchor.branchId, expectedRevisionId: quota.expected.anchor.revisionId,
+            invocationId: input.invocationId, requestHash: input.requestHash };
+        const check = async () => {
+            assertNativeTurnOutputQuota(quota.proof, finalizationPermit, quota.expected);
+            const own = inspectSessionTurnOutput(committed, expected);
+            const now = await this.sessionCore.observe(handle, expected.sessionId);
+            if (now.revision.revisionId !== own.revisionId || now.revision.branchId !== own.branchId) fail('native_orchestration_context_source_stale');
+            return own;
+        };
+        await check();
+        const permission = await this.authorizeContext({ handle, request: captured.request, phase: 'output_committed', finalizationPermit, committed });
+        if (permission?.allowed !== true || permission.grantDigest !== captured.request.grantDigest) fail('native_orchestration_context_denied');
+        const snapshot = captured.outputSnapshot;
+        if (!snapshot || hashNativeDocument(informationContext(snapshot, captured.request.audience, undefined, this.authorityTurn ? { includeRollups: false } : {}).projection) !== captured.proof.projectionDigest)
+            fail('native_orchestration_context_source_stale');
+        if (this.authorityTurn) {
+            const original = authorityTurnProof(this.sessionCore, handle, this.authorityTurn.base, this.authorityTurn.proof);
+            if (hashNativeDocument({ candidate: original.prepared.candidate, receipt: original.prepared.receipt, identity: original.prepared.identity }) !== captured.proof.authorityDigest)
+                fail('native_orchestration_context_source_stale');
+        }
+        if (captured.memoryProof) await NativeMemoryAuthority.prototype.assertContextRecall.call(this.memoryAuthority, handle, captured.memoryProof, snapshot, captured.request.audience);
+        await check();
+        return context.plan;
     }
 
     async #revalidateContext(handle, { context, phase, audience, finalizationPermit = null }) {

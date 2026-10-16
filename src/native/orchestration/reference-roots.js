@@ -33,6 +33,21 @@ export async function orchestrationSessionRoots(tx, handle, sessionId) {
             for (const child of Object.values(value)) visit(child);
         };
         visit(row.doc);
+        // The original domain may have committed before its Host receipt ACK.
+        // Follow that exact stable operation even while the Effect is pending.
+        if (row.key.recordType === 'effect' && row.doc.actionRef?.kind === 'native_session_output'
+            && row.doc.actionRef.sessionId === sessionId) {
+            const root = roots.get(row.key.runId), input = row.doc.inputRef;
+            const committed = await checkedRecord(tx, { kind: K.commitReceipt, handle, sessionId, commitId: input.commitId });
+            if (committed) {
+                const receipt = committed.doc;
+                if (root.sourceBinding.sourceAuthority !== 'native_session' || receipt.schemaVersion !== 1 || receipt.status !== 'committed'
+                    || receipt.sessionId !== sessionId || receipt.branchId !== root.sourceBinding.sourceRef.branchId
+                    || receipt.expectedRevisionId !== root.sourceBinding.sourceRef.revisionId || receipt.commitId !== input.commitId
+                    || receipt.fingerprint !== input.requestFingerprint) throw new TypeError('Invalid Session output retention receipt');
+                visit(receipt);
+            }
+        }
         if (!mentioned) continue;
         for (const id of revisions) revisionIds.add(id);
         for (const id of branches) branchIds.add(id);

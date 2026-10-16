@@ -15,9 +15,10 @@ import { assertNativeTurnQuota, assertNativeTurnOutputQuota } from './native-tur
 import { inspectNativeAuthorityResolver } from './authority-resolver-context.js';
 import { ModelPort } from './model-port.js';
 import { SourcePort } from './source-port.js';
-import { readSessionTurnOutput, sessionTurnCommitIdentity } from '../session-turn-output.js';
+import { readSessionTurnOutput, sessionTurnCommitIdentity, inspectSessionTurnOutput } from '../session-turn-output.js';
 import { sessionNarrationResult, sessionNarrationPublicationId, readSessionNarrationResult, sessionOutputKey } from './session-narration-result-contracts.js';
-import { writeAttemptSettlement } from './attempt-settlement.js';
+import { writeAttemptSettlement, attemptReceiptId } from './attempt-settlement.js';
+import { sessionOutputClaimId, sessionOutputReceiptId, sessionOutputClosureId, sessionOutputConsumer, readSessionOutput } from './session-output-contracts.js';
 import { BudgetPort, localWorkAttemptId } from './budget-port.js';
 import { readEffect, effectDecision } from './effect-contracts.js';
 import { performance } from 'node:perf_hooks';
@@ -172,16 +173,19 @@ export class NativeNarratorOrchestrationAuthority {
         if (!authority && input.userInput !== undefined && (base.timeline.at(-1)?.role !== 'user' || input.userInput !== base.timeline.at(-1).content)) fail('native_orchestration_turn_input_stale');
     }
 
-    async #describe(host, handle, base, input, transaction) {
+    async #describe(host, handle, base, input, transaction, committed = null) {
         const binding = await this.#binding(handle, base);
         if (!binding) return null;
         this.#supported(base, input, transaction);
+        const own = committed ? inspectSessionTurnOutput(committed, { repo: this.sessionCore._sessions, handle, sessionId: base.session.sessionId,
+            branchId: base.revision.branchId, expectedRevisionId: base.revision.revisionId, invocationId: input.invocationId }) : null;
         const current = await this.sessionCore.observe(handle, base.session.sessionId);
-        if (!equal(sourceOf(current), sourceOf(base)) || current.session.packageVersionId !== base.session.packageVersionId) fail('native_orchestration_source_stale');
+        const expectedSource = own ? { ...sourceOf(base), revisionId: own.revisionId } : sourceOf(base);
+        if (!equal(sourceOf(current), expectedSource) || current.session.packageVersionId !== base.session.packageVersionId) fail('native_orchestration_source_stale');
         // This pure authority read also runs inside Effect/consume Engine
         // transactions. Taking the Session write lock here would invert the
         // original Session -> Engine order against a concurrent publication.
-        await this.engine.withTransaction(handle, tx => assertRunAccess(tx, handle, base.session.sessionId, 'generate'));
+        await this.engine.withTransaction(handle, tx => assertRunAccess(tx, handle, base.session.sessionId, own ? 'inspect' : 'generate'));
         if (!(this.modelResolver instanceof RouteResolver) || host.turnOrchestration !== this || host.sessionCore !== this.sessionCore || host.persistence._engine !== this.engine) fail('native_orchestration_model_authority_unavailable');
         this.plans ??= createOrchestrationAuthoringService(this.engine, { sessionCore: this.sessionCore,
             projectAgent: this.projectAgent, studio: this.projectAgent?._studio, rpControl: this.rpControl, modelResolver: this.modelResolver }).plans;
@@ -242,10 +246,10 @@ export class NativeNarratorOrchestrationAuthority {
         return selection;
     }
 
-    async #current(selection) {
+    async #current(selection, committed = null) {
         const state = selections.get(selection);
         if (!state || state.authority !== this) fail('native_orchestration_turn_selection_invalid');
-        const current = await this.#describe(state.host, state.handle, state.base, state.input, state.transaction);
+        const current = await this.#describe(state.host, state.handle, state.base, state.input, state.transaction, committed);
         if (!current || !equal(current.binding, state.binding) || current.topologyDigest !== state.topologyDigest || current.plan.definitionHash !== state.plan.definitionHash)
             fail('native_orchestration_turn_selection_stale');
         return state;
@@ -379,9 +383,9 @@ export class NativeNarratorOrchestrationAuthority {
             state.contextPort = new ContextPort({ sessionCore: this.sessionCore, memoryAuthority: this.memoryAuthority, contextOptions, authorityTurn, resolverCapture,
                 nativeOutputQuota: resolverRole ? null : { proof: quotaProof, expected: proofExpected },
                 compilationInputs: contextPackage ? { manifest: contextPackage.manifest, sourceFiles: [...contextPackage.sourceFiles] } : null,
-                authorizeContext: async ({ request: contextRequest, phase, finalizationPermit }) => {
-                    await this.#current(selection);
-                    if (phase === 'output') assertNativeTurnOutputQuota(quotaProof, finalizationPermit, proofExpected);
+                authorizeContext: async ({ request: contextRequest, phase, finalizationPermit, committed = null }) => {
+                    await this.#current(selection, committed);
+                    if (['output', 'output_committed'].includes(phase)) assertNativeTurnOutputQuota(quotaProof, finalizationPermit, proofExpected);
                     else assertNativeTurnQuota(quotaProof, proofExpected);
                     if (contextRequest.taskPurpose !== taskPurpose || !equal(contextRequest.audience, audience) || contextRequest.grantDigest !== grantDigest
                 || !equal(contextRequest.sourceBinding, captured.sourceBinding) || !equal(contextRequest.inputRefs, [logicalInputRef])) fail('native_orchestration_context_denied');
@@ -644,7 +648,15 @@ export class NativeNarratorOrchestrationAuthority {
                 remoteOperationRef: null, domainReceiptRef: committed.committed.domainReceiptRef,
                 budgetObservationRef: { ...budgetAttemptRef, status: observed.status, usageHash: hash(observed.usage) }, resultRefs: [state.outputResultRef],
                 sourceRefs: [root.sourceBinding.sourceRef], reasonCode: 'session_output_committed' });
-            await effects.observe(handle, { ...runGuard(await runs.get(handle, runId)), effectId: state.outputEffectId, observation: state.outputObservation });
+            try {
+                await effects.observe(handle, { ...runGuard(await runs.get(handle, runId)), effectId: state.outputEffectId, observation: state.outputObservation });
+            } catch (error) {
+                if (error.code !== 'storage_commit_unknown') throw error;
+                const receiptId = 'oreceipt_' + hash({ effectId: state.outputEffectId, observationId: state.outputObservation.observationId }).slice(0, 32);
+                const saved = await this.engine.withTransaction(handle, tx => checkedRecord(tx, controlRecordKey(handle, runId, 'receipt', receiptId)));
+                if (!saved) return committed.snapshot;
+            }
+            await this.#finishSessionOutput(handle, output, committed.committed);
             return committed.snapshot;
         } finally { this.#runs.delete(runId); }
     }
@@ -662,5 +674,70 @@ export class NativeNarratorOrchestrationAuthority {
         await BudgetPort.prototype.verifyBudgetAttempt.call(this.execution.budgetPort, { handle, tx, root, intent, budgetAttemptRef: intent.budgetAttemptRef });
         const row = await BudgetPort.prototype.observeAttempt.call(this.execution.budgetPort, handle, intent.budgetAttemptRef);
         if (observation.budgetObservationRef.status !== row.status || observation.budgetObservationRef.usageHash !== hash(row.usage)) fail('native_orchestration_session_output_denied');
+    }
+
+    async #finishSessionOutput(handle, output, committed) {
+        const { state, runId } = output, { runs, budgetPort } = this.execution;
+        const current = () => state.contextPort.revalidateNativeOutputCommit(handle, { context: state.context, finalizationPermit: state.finalizationPermit, committed });
+        // Commit lawful revocations from asynchronous preflight before refusing
+        // completion. No metadata publication is inside this denial transaction.
+        const checked = await this.engine.withTransaction(handle, async tx => {
+            try {
+                const root = await runs.get(handle, runId), stamp = hash(root), fence = await runs.assertWriter(handle, tx);
+                if (root.cancelRequested || root.status !== 'running' || root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation
+                    || root.outputClaims.length || root.pendingEffectRefs.length || root.pendingApprovalRefs.length) fail('native_orchestration_session_output_stale');
+                await current();
+                await this.#verifySessionOutput({ handle, tx, root, intent: (await readEffect(tx, handle, root, state.outputEffectId)).doc, observation: state.outputObservation }, state);
+                const effectIds = [];
+                for (const ref of root.attemptRefs) effectIds.push(...(await readAttempt(tx, handle, root, ref)).doc.effectRefs);
+                const closure = await BudgetPort.prototype.observeEffectClosure.call(budgetPort, handle, { authorityRef: root.budgetAuthorityRef, effectIds }, { tx });
+                await current();
+                const finalFence = await runs.assertWriter(handle, tx);
+                if (stamp !== hash(await runs.get(handle, runId)) || finalFence.hostBootId !== fence.hostBootId || finalFence.generation !== fence.generation)
+                    fail('native_orchestration_session_output_stale');
+                return { root, closure };
+            } catch (error) { return { denied: error }; }
+        });
+        if (checked.denied) throw checked.denied;
+        if (!checked.closure.closed) return;
+        const { root: original, closure } = checked;
+        try {
+            await runs.control(handle, controlCommandId('session.output.complete', { runId, outputKey: sessionOutputKey(original) }), {
+                ...runGuard(original), operation: 'output.publish', detail: { outputKey: sessionOutputKey(original) } }, async ({ tx, root, now }) => {
+                if (!equal(root, original) || root.cancelRequested || root.status !== 'running' || root.outputClaims.length
+                    || root.pendingEffectRefs.length || root.pendingApprovalRefs.length || root.progress.steps >= root.limits.maxSteps || now >= root.progress.deadlineAt)
+                    fail('native_orchestration_session_output_stale');
+                const published = await readSessionNarrationResult(tx, handle, root), record = await readAttempt(tx, handle, root, state.outputAttemptId);
+                if (!published || record.doc.status !== 'running' || !equal(record.doc.inputRefs, [state.outputResultRef])
+                    || !equal(record.doc.effectRefs, [state.outputEffectId])) fail('native_orchestration_session_output_denied');
+                const outputKey = sessionOutputKey(root), claimId = sessionOutputClaimId(root), claimRef = { runId, claimId }, domainRef = committed.domainReceiptRef;
+                const claim = { schemaVersion: 1, claimId, runId, nodeAttemptId: record.doc.attemptId, outputKey, sourceBindingDigest: root.sourceBinding.bindingDigest,
+                    resultRef: state.outputResultRef, consumerRef: sessionOutputConsumer(root), operationRef: { kind: 'native_session_output', ...domainRef, outputKey },
+                    status: 'committed', domainReceiptRef: domainRef };
+                const closed = { schemaVersion: 1, receiptKind: 'session_output_costs_closed', receiptId: sessionOutputClosureId(runId), runId,
+                    epoch: root.epoch, authorityRef: closure.authorityRef, effectIds: closure.effectIds, budgetAttemptRefs: closure.budgetAttemptRefs,
+                    snapshotDigest: closure.snapshotDigest, decisionSeq: root.eventSeq + 1, createdAt: now };
+                const edge = root.graph.edges.find(edge => edge.from.nodeId === published.producer.nodeId && edge.to.nodeId === record.doc.nodeId);
+                const traversalId = 'oreceipt_' + hash({ runId, bindings: [{ edgeId: edge.edgeId, producerAttemptId: published.producer.attemptId }], reservedAttemptId: null }).slice(0, 32);
+                const hostReceiptId = 'oreceipt_' + hash({ effectId: state.outputEffectId, observationId: 'session.output:' + state.outputEffectId }).slice(0, 32);
+                const ref = receiptId => ({ runId, receiptId });
+                const receipt = { schemaVersion: 1, receiptKind: 'session_output', receiptId: sessionOutputReceiptId(runId), runId, epoch: root.epoch,
+                    graphRevision: root.graphRevision, claimRef, claimIntegrity: hash(claim), publicationReceiptRef: ref(published.receipt.receiptId),
+                    producerReceiptRef: ref(published.settlement.receiptId), traversalReceiptRef: ref(traversalId), outputAttemptReceiptRef: ref(attemptReceiptId(runId, record.doc.attemptId)),
+                    outputEffectId: state.outputEffectId, outputEffectReceiptRef: ref(hostReceiptId), domainReceiptIntegrity: hash(committed.receipt),
+                    budgetClosureReceiptRef: ref(closed.receiptId), decisionSeq: root.eventSeq + 1, createdAt: now };
+                await putImmutable(tx, controlRecordKey(handle, runId, 'output', claimId), claim);
+                await putImmutable(tx, controlRecordKey(handle, runId, 'receipt', closed.receiptId), closed);
+                await putImmutable(tx, controlRecordKey(handle, runId, 'receipt', receipt.receiptId), receipt);
+                await writeAttemptSettlement({ tx, handle, root, record, outcome: 'completed', resultRefs: [state.outputResultRef],
+                    effectReceiptRefs: [hostReceiptId], reasonCode: 'session_output_committed', now });
+                root.outputClaims.push(claimRef); root.status = 'completed'; root.progress.steps++;
+                return { root, eventType: 'session_output_completed', reasonCode: 'session_output_committed', outcome: { claimRef, outputReceiptRef: ref(receipt.receiptId) } };
+            });
+        } catch (error) {
+            if (error.code !== 'storage_commit_unknown') throw error;
+            const saved = await this.engine.withTransaction(handle, async tx => readSessionOutput(tx, handle, await runs.get(handle, runId)));
+            if (!saved) throw error;
+        }
     }
 }
