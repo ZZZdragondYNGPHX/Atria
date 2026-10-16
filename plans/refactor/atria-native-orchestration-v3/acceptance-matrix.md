@@ -156,7 +156,7 @@ Review Origin语义遵守D8完整可审查交互；主app仍显示Timeline/脱�
 
 ### 9.1 P3后端子工作后的Gate复核
 
-2026-10-16复核：**P3=IN_PROGRESS / Gate=NOT_READY**。第五至第三十一组的测试详细列表和失败/变异证据唯一保留于同一Record；第二十七组已在CachyOS续接，历史第二十六组暂停换机不再是当前停止要求，仍非阶段PASS。此表只给出剩余准入关系。设计与开发授权均已满足，不用尚未取得的产品证据倒挂E0。
+2026-10-16复核：**P3=IN_PROGRESS / Gate=NOT_READY**。第五至第三十二组的测试详细列表和失败/变异证据唯一保留于同一Record；第二十七组已在CachyOS续接，历史第二十六组暂停换机不再是当前停止要求，仍非阶段PASS。此表只给出剩余准入关系。设计与开发授权均已满足，不用尚未取得的产品证据倒挂E0。
 
 | 维度 | 已有实际子证据 | 未完成与准入状态 |
 | --- | --- | --- |
@@ -171,3 +171,5 @@ Review Origin语义遵守D8完整可审查交互；主app仍显示Timeline/脱�
 IMPLEMENTATION_PENDING表示已有设计和授权、仍需本任务后续实现的工作，不是假称外部阻塞或再请求开发授权。后端与前端并行整合按[接口交接入口](backend-integration.md)推进，缺失API须先由Host实现；P7通过前不集成main。
 
 第三十一组只增加原Scheduler资源handoff的Linux局部实证（接口§17.41）；不能据此将Delegate领域授权、child Result/Audience或完整后台producer改为PASS。
+
+第三十二组增加Session/RP Memory同事务合法撤销先提交后拒正文的FS/SQLite实际证据（接口§17.42）。这不核销后台/Delegate授权、正式Output/Result、真实外部费用/质量或缺失设备验收；P3 Gate仍NOT_READY。

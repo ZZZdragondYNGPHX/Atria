@@ -600,3 +600,11 @@
 - 最终新handoff **13/13 PASS，0.302s，detectOpenHandles自然退出**；此前首次9/9（0.306s）及增case12/12（0.300s）为同case扩展不累计。原Host scheduler过滤 **11PASS/29filterSKIP（40total），1.037s，自然退出**，只覆盖原coalescing/cap/取消/迟到/重试/优先级/deadline，未运行原Session authority的四个已知失败，不宣称修复或整suite全绿。两文件定向ESLint/diff check通过，无外部API/费用或设备验收。
 - 第三十组source首次push遇TLS unexpected EOF，docs已推；本组sourcepush正常重试并包含第三十组，最终`4f96c7637`已推送。远端仅存储，不运行Actions/远端验证。
 - 本组是原Scheduler资源基础，尚无正式V3 producer调用，不自授Delegate领域权限、耐久HandoffReceipt/Result或OutputClaim。后台role/window/period原bank与producer、Delegate授权/child Result/Audience和P4–P8仍待接，P3 IN_PROGRESS / NOT_READY。继续复核Memory新增consumer的same-transaction撤销闭包，之后回到后台原bank/producer；没有更新历史HANDOFF或集成main。
+
+## 2026-10-16 — W04/P3第三十二组：Memory同事务撤销闭包
+
+- Source `4f96c7637` → `cde07ac66`，2文件。复核本轮新增Memory消费者发现真实遗漏：原ModelPort最终bank await后合法same-ALS Memory写入与消费共享原Engine事务；新memory_source_stale未加入原明确deny集合，响应拒绝却同时回滚合法设置撤销/sidecar更新。不是只缺测试，也不是原四个task-runtime失败。
+- 新FS/SQLite三类反例初 **6/6 FAIL，13.628s**：错误以memory_source_stale从事务内抛出，而非原consumption_stale事务外拒绝。将实际持久复读断言放在错误断言之前，定位SQLite RP ledger单case另 **1FAIL/5filterSKIP，1.888s**，真正读到旧Original RP remembered context promise而非合法marker，证实回滚，不仅错误码差异。
+- 只把一个明确native_orchestration_memory_source_stale加入原CONSUME_DENIALS。同事务合法SettingsRepo或ChatRepo Memory写入提交，随后原withConsumption在事务外拒正文；原银行已settled20tokens/context_build事实保留。存储unknown、authority/integrity或任意TypeError处理不变，没有宽catch、退款、第二writer或新bank。
+- 最终 **6/6 PASS，32.413s，0skip，detectOpenHandles自然退出**，每Engine Session设置/RP设置/RP ledger各1，全部在真实effect confirmed后的最终原银行复验中写入、拒正文后原Repo重新读取持久事实并核已发生费用。只有localhost合成Provider，不是实际外部费用/质量/SQL/跨设备证据。定向ESLint初两条conditional-expect，改为同值单次无条件expect后两文件lint/diff check通过，未改测试语义或重复已过全套。
+- 同一source分支与Record持续推进，无main集成、远端Actions/全仓验证或新HANDOFF。原Session/RP本地Hybrid已接、Scheduler资源原语已证，但外部retrieval、后台role/window/period原bank及真实producer、Delegate/Handoff领域授权/child Result/Audience、P4正式输出/Review/Commit、P5可信Review/UI、P6硬切与P7–P8仍未完成。当前P3 IN_PROGRESS / Gate NOT_READY；当前Linux之外设备缺证保持NOT_RUN/BLOCKED，不伪通过或因此取消可独立工作。

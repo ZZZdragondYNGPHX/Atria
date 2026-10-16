@@ -84,3 +84,5 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 第三十组`58ff31eeb`沿原ChatRepo/Engine状态完成RP Memory prefix候选域/唯一Hybrid/原context_build/send-consume复核，见接口§17.40。缺历史source ID明确原拒绝，无新ID或Session伪装。继续后台scope、Delegate/Handoff与P4–P8；P3仍NOT_READY。
 
 第三十一组`4f96c7637`完成唯一原Scheduler父资源让出/child准入/父permit恢复及取消保护原语，见接口§17.41；仍未接正式Delegate producer/grant/Result，不能核销全P3。
+
+第三十二组`cde07ac66`修复Memory新增consumer在最终bank await同事务合法撤销被回滚的问题，见接口§17.42；原Settings/sidecar事实提交后拒正文，真实费用保留。当前最新实现/验证归同一Record，继续后台scope/原bank producer、Delegate正式授权与P4–P8；P3 IN_PROGRESS / Gate NOT_READY未变。
