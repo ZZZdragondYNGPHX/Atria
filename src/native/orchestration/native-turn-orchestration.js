@@ -106,6 +106,7 @@ export class NativeNarratorOrchestrationAuthority {
     executeProjectRound(args) { return this.#projectAuthority().execute(args); }
     executeProjectTool(args) { return this.#projectAuthority().executeTool(args); }
     closeProjectRound(args) { return this.#projectAuthority().closeRound(args); }
+    finishProjectRound(args) { return this.#projectAuthority().finishRound(args); }
 
     #rpAuthority() {
         this.#rp ??= new NativeRpOrchestrationAuthority({ owner: this, execution: () => this.execution,

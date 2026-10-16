@@ -1,6 +1,6 @@
 import { ConflictError } from '../../storage/errors.js';
 import { performance } from 'node:perf_hooks';
-import { hashNativeDocument as hash, cloneNativeDocument } from '../repositories/common.js';
+import { hashNativeDocument as hash, cloneNativeDocument, putImmutable } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { createOrchestrationAuthoringService } from './authoring-service.js';
 import { validateModelCapability } from './model-capability-authority.js';
@@ -8,9 +8,11 @@ import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { projectRuntimeRoute } from '../adapters/project-runtime-route.js';
 import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
 import { immutable, checkCancellation, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
-import { inspectNativeProjectGeneration, prepareNativeProjectTaskTool, executeNativeProjectTaskTool } from './native-project-generation-authority.js';
+import { inspectNativeProjectGeneration, prepareNativeProjectTaskTool, executeNativeProjectTaskTool,
+    finishNativeProjectGeneration, inspectNativeProjectRoundCompletion } from './native-project-generation-authority.js';
 import { readProjectToolDescriptor, projectToolCapability, projectToolAction, projectToolReason, projectToolResultPayload } from './project-tool-contracts.js';
 import { readProjectToolReceipt } from './project-tool-receipts.js';
+import { readProjectRoundReceipt, projectRoundReceiptId, projectRoundCommandId } from './project-round-contracts.js';
 import { BudgetPort, localWorkAttemptId } from './budget-port.js';
 import { readEffect } from './effect-contracts.js';
 import { checkedRecord } from './plan-repository.js';
@@ -265,9 +267,9 @@ export class NativeProjectOrchestrationAuthority {
                 const proposals = generated.response.toolCalls.filter(call => projectToolCapability(call.name) === 'project.propose');
                 if (proposals.length > 1 || proposals.length === 1 && generated.response.toolCalls.at(-1) !== proposals[0])
                     fail('native_orchestration_project_tool_batch_unavailable');
-                state.modelResult = result; state.modelResultHash = hash(result); state.tools = new Map();
-                this.#consumers.set(roundToken, { state, identity, runId });
             }
+            state.modelResult = result; state.modelResultHash = hash(result); state.tools = new Map();
+            this.#consumers.set(roundToken, { state, identity, runId });
             return generated;
         } finally {
             if (!this.#consumers.has(roundToken)) { this.#runs.delete(runId); this.#releasePort(host); }
@@ -298,6 +300,43 @@ export class NativeProjectOrchestrationAuthority {
                 }
             }, { withAuthority: service.sourcePort.consumptionBoundary(handle, state.sourceBinding, { engine: service.runs.engine }) });
         } catch (error) { throw rejected && error.code === 'native_orchestration_consumption_stale' ? rejected : error; }
+    }
+
+    async finishRound({ host, handle, roundToken, input }) {
+        assertObject(input, ['attemptId', 'status', 'conversation'], 'Original Project round finish');
+        const consumer = this.#consumers.get(roundToken);
+        if (!consumer || consumer.state.host !== host || consumer.state.handle !== handle || consumer.finished)
+            fail('native_orchestration_project_round_finish_denied');
+        const { state, runId } = consumer, { runs } = this.#execution();
+        await this.#consumeTool(consumer, async () => {
+            if (input.attemptId !== consumer.identity.projectAttemptId || input.status !== 'completed') fail('native_orchestration_project_round_finish_denied');
+        });
+        consumer.finished = true;
+        const finished = await finishNativeProjectGeneration(state.projectCapture, { port: this.#port(host), result: state.modelResult, effectId: state.effectId, input });
+        consumer.completion = finished.completion;
+        const descriptor = await inspectNativeProjectRoundCompletion(finished.completion, { host, handle, runId });
+        const receiptId = projectRoundReceiptId(runId, descriptor.nodeAttemptId);
+        try {
+            await runs.control(handle, projectRoundCommandId(runId, descriptor.nodeAttemptId), {
+                ...runGuard(await runs.get(handle, runId)), operation: 'project.round.finish', detail: descriptor,
+            }, async ({ tx, root, now }) => {
+                if (root.cancelRequested || root.status !== 'running' || root.progress.steps >= root.limits.maxSteps || now >= root.progress.deadlineAt)
+                    fail('native_orchestration_project_round_completion_stale');
+                await this.#current(state.selection);
+                const current = await inspectNativeProjectRoundCompletion(finished.completion, { host, handle, runId });
+                if (hash(current) !== hash(descriptor) || root.sourceBinding.bindingDigest !== descriptor.sourceBindingDigest) fail('native_orchestration_project_round_completion_stale');
+                const receipt = { schemaVersion: 1, receiptKind: 'project_round', receiptId, ...descriptor, createdAt: now };
+                await putImmutable(tx, controlRecordKey(handle, runId, 'receipt', receiptId), receipt);
+                root.progress.steps++;
+                return { root, eventType: 'project_round_finished', reasonCode: null, outcome: { receiptRef: { runId, receiptId }, receiptIntegrity: hash(receipt) } };
+            });
+        } catch (error) {
+            if (error.code !== 'storage_commit_unknown') throw error;
+            const saved = await runs.engine.withTransaction(handle, async tx => readProjectRoundReceipt(tx, handle, await runs.get(handle, runId),
+                descriptor.nodeAttemptId, { projectAgent: host.agent }));
+            if (!saved || Object.entries(descriptor).some(([key, value]) => !equal(saved.receipt[key], value))) throw error;
+        }
+        return finished.task;
     }
 
     async executeTool({ host, handle, roundToken, input }) {

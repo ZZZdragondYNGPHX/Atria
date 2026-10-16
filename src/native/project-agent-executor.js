@@ -24,6 +24,7 @@ export async function executeNativeProjectAgent({ host, handle, projectId, taskI
     if (!principal && await host.turnOrchestration?.preflightProjectBinding?.({ host, handle, projectId, taskId, routeRef, maxModelRounds }))
         throw new ConflictError('native_orchestration_project_producer_denied');
     const beginnings = new Map(), preparedRounds = new Map();
+    const finishedNativeRounds = new Set();
     let contextFingerprint, contextSequence, firstContext = true, round = 0;
     const current = async () => { signal?.throwIfAborted(); await check(); };
     const observe = async () => { signal?.throwIfAborted(); await observeCheck(); };
@@ -46,7 +47,13 @@ export async function executeNativeProjectAgent({ host, handle, projectId, taskI
             if (principal) beginnings.set(started.attempts.at(-1).attemptId, started);
             return started;
         },
-        finishAgentGeneration: (project, task, input) => agent.finishGeneration(handle, project, task, input),
+        finishAgentGeneration: (project, task, input) => {
+            if (!principal) return agent.finishGeneration(handle, project, task, input);
+            if (finishedNativeRounds.has(input.attemptId)) throw new ConflictError('native_orchestration_project_round_finish_consumed');
+            if (input.status !== 'completed') return agent.finishGeneration(handle, project, task, input);
+            finishedNativeRounds.add(input.attemptId);
+            return host.turnOrchestration.finishProjectRound({ host, handle, roundToken: preparedRounds.get(input.attemptId), input });
+        },
         executeAgentTool: async (project, task, input) => {
             await current();
             if (principal) return host.turnOrchestration.executeProjectTool({ host, handle, roundToken: preparedRounds.get(input.attemptId), input });

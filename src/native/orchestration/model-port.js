@@ -90,7 +90,7 @@ export class ModelPort {
         const responseHash = hash(generated.response), finalRequestHash = hash(generated.snapshot);
         return { observationId: 'model.completed:' + intent.effectId, observedEpoch: intent.epoch, outcome: 'confirmed',
             dispatchEvidence: { kind: 'original_port_observation', reference: { protocol: 'generation', completionBindingDigest: binding,
-                responseHash, finalRequestHash, attempts } }, remoteOperationRef: null, domainReceiptRef: null,
+                responseHash, finalRequestHash, attempts, ...(pending.project ? { resultOutputType: 'json', resultPayloadHash: hash(resultPayload(generated.response, 'json')) } : {}) } }, remoteOperationRef: null, domainReceiptRef: null,
             budgetObservationRef: { authorityRef: root.budgetAuthorityRef, attempts: attempts.map(({ budgetAttemptRef, status, usageHash }) => ({ budgetAttemptRef, status, usageHash })) },
             resultRefs: [], sourceRefs: [root.sourceBinding.sourceRef], reasonCode: 'generation_response_validated' };
     }
@@ -166,7 +166,7 @@ export class ModelPort {
             || hash(logicalInputRef) !== hash(intent.inputRef)) fail('native_orchestration_model_scope_invalid');
         const activeKey = key(handle, intent);
         if (this.#active.size >= 64 || this.#active.has(activeKey)) fail('native_orchestration_model_busy');
-        const pending = { binding: digest(intent), sends: [], generated: null, observation: null };
+        const pending = { binding: digest(intent), sends: [], generated: null, observation: null, project };
         this.#active.set(activeKey, pending);
         try {
             const originalSend = options.orchestrationSend;

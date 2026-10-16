@@ -1,5 +1,46 @@
 import { fields as allowedFields } from './native-values.js';
 
+export function normalizeProjectAgentToolCalls(result) {
+    return (Array.isArray(result?.toolCalls) ? result.toolCalls : [])
+        .map((call, index) => ({ id: String(call?.raw?.id || call?.id || `agent_call_${Date.now()}_${index}`),
+            name: String(call?.name || '').trim(), args: call?.args && typeof call.args === 'object' ? call.args : {},
+            arguments: typeof call?.raw?.function?.arguments === 'string' ? call.raw.function.arguments : JSON.stringify(call?.args || {}) }))
+        .filter(call => call.name);
+}
+
+export function projectAgentAssistantToolMessage(text, calls, providerState) {
+    return { role: 'assistant', content: text || '', ...(providerState ? { providerState } : {}),
+        tool_calls: calls.map(call => ({ id: call.id, type: 'function', function: { name: call.name, arguments: call.arguments } })) };
+}
+
+export function projectAgentToolResultMessage(call, result) {
+    if (result?.taskId) {
+        const { conversation: _conversation, attempts: _attempts, timeline: _timeline, ...task } = result;
+        result = task;
+    }
+    return { role: 'tool', tool_call_id: call.id, name: call.name, content: JSON.stringify(result) };
+}
+
+/** The public transcript of one actual response and its original tool results. */
+export function projectAgentRoundConversation({ conversation, intent, response, results }) {
+    const transcript = [...conversation];
+    if (!transcript.length) transcript.push({ role: 'user', content: intent });
+    const text = response.providerState ? String(response.assistantText || '') : String(response.assistantText || '').trim();
+    const calls = normalizeProjectAgentToolCalls(response);
+    if (calls.length !== results.length || new Set(results.map(item => item.callId)).size !== results.length) throw new TypeError('Original Project tool results required');
+    if (!calls.length) {
+        if (text) transcript.push({ role: 'assistant', content: text });
+    } else {
+        transcript.push(projectAgentAssistantToolMessage(text, calls));
+        for (const call of calls) {
+            const result = results.find(item => item.callId === call.id);
+            if (!result) throw new TypeError('Original Project tool result missing');
+            transcript.push(projectAgentToolResultMessage(call, result.result));
+        }
+    }
+    return projectAgentConversation(transcript);
+}
+
 function fields(value, keys, label) {
     try { allowedFields(value, keys, label); } catch (error) { throw new TypeError(error.message); }
 }

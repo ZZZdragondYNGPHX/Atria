@@ -7,7 +7,8 @@ import { translateShellText as t } from '../atria-shell/localization.js';
 import { executeNativeGeneration } from './generation-client.js';
 import { runtimeRequest } from './runtime-client.js';
 import { nativeStudioClient } from './studio-client.js';
-import { projectAgentConversation, completeProjectAgentConversation, projectAgentResumeMessages } from '../../shared/project-agent-conversation.js';
+import { projectAgentConversation, completeProjectAgentConversation, projectAgentResumeMessages, normalizeProjectAgentToolCalls as normalizeToolCalls,
+    projectAgentAssistantToolMessage as assistantToolMessage, projectAgentToolResultMessage as toolResultMessage } from '../../shared/project-agent-conversation.js';
 import { buildNativeProjectModelRound, summarizeProjectAgentSkills as summarizeSkills } from '../../shared/project-agent-prompt.js';
 export { buildNativeProjectAgentSystemPrompt } from '../../shared/project-agent-prompt.js';
 
@@ -50,46 +51,6 @@ async function readNativeSkill(entries, name, { path = 'SKILL.md', offset = 1, l
     const result = await work(computeContext, list ? 'files' : 'read', { scope: entry.scope, name: entry.name, ...versionQuery,
         ...(list ? {} : full ? { path, full: true } : { path, offset, limit }) }, signal);
     return list ? result : boundSkillFile(result);
-}
-
-function normalizeToolCalls(result) {
-    return (Array.isArray(result?.toolCalls) ? result.toolCalls : [])
-        .map((call, index) => ({
-            id: String(call?.raw?.id || call?.id || `agent_call_${Date.now()}_${index}`),
-            name: String(call?.name || '').trim(),
-            args: call?.args && typeof call.args === 'object' ? call.args : {},
-            arguments: typeof call?.raw?.function?.arguments === 'string' ? call.raw.function.arguments : JSON.stringify(call?.args || {}),
-        }))
-        .filter(call => call.name);
-}
-
-function assistantToolMessage(text, calls, providerState) {
-    return {
-        role: 'assistant',
-        content: text || '',
-        ...(providerState ? { providerState } : {}),
-        tool_calls: calls.map(call => ({
-            id: call.id,
-            type: 'function',
-            function: {
-                name: call.name,
-                arguments: call.arguments,
-            },
-        })),
-    };
-}
-
-function toolResultMessage(call, result) {
-    if (result?.taskId) {
-        const { conversation: _conversation, attempts: _attempts, timeline: _timeline, ...task } = result;
-        result = task;
-    }
-    return {
-        role: 'tool',
-        tool_call_id: call.id,
-        name: call.name,
-        content: JSON.stringify(result),
-    };
 }
 
 async function executeModelTool(projectId, taskId, call, skillEntries, attemptId, computeContext, signal, client = nativeStudioClient, work = projectSkillWork) {
