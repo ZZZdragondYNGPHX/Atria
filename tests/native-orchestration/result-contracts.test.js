@@ -71,6 +71,25 @@ describe('explicit Result policy and plain JSON validation', () => {
         expect(() => assertResultRecord(f.record, f)).toThrow();
     });
 
+    test('Session output requires its exact tagged source, original input anchor and unique owner rather than an RP or parent audience', () => {
+        const f = fixture(), source = f.record.envelope.sourceRefs[0];
+        source.sourceAuthority = 'native_session';
+        source.sourceRef = { sessionId: createNativeId('session'), branchId: createNativeId('branch'), revisionId: createNativeId('revision') };
+        f.outputContract.kind = 'rp_narration';
+        f.record.envelope.audienceConstraint = { kind: 'session_output', runId: f.record.runId, nodeId: f.outputContract.ownerNodeId, epoch: source.epoch,
+            ...source.sourceRef, outputKey: hash({ kind: 'native_session_output', ...source.sourceRef, slot: 'assistant' }),
+            sourceBindingDigest: source.sourceBindingDigest, grantDigest: hash({ sessionGrant: true }), taskPurpose: 'original_native_narrator' };
+        f.record.envelope.disclosureConstraint = { kind: 'same_source_session_output_only' }; rebind(f.record);
+        expect(assertResultRecord(f.record, f)).toBe(f.record);
+        for (const [field, value] of [['sessionId', createNativeId('session')], ['branchId', createNativeId('branch')], ['revisionId', createNativeId('revision')],
+            ['nodeId', createNativeId('orchestrationNode')], ['outputKey', hash({ foreignOutput: true })], ['kind', 'rp_output'], ['taskPurpose', 'original_rp_narration']]) {
+            const changed = structuredClone(f.record); changed.envelope.audienceConstraint[field] = value; rebind(changed);
+            expect(() => assertResultRecord(changed, f)).toThrow();
+        }
+        const changed = structuredClone(f.record); changed.envelope.sourceRefs[0].sourceAuthority = 'rp_chat'; rebind(changed);
+        expect(() => assertResultRecord(changed, f)).toThrow();
+    });
+
     test.each([undefined, NaN, Infinity, 1n, () => {}, new Date(), new Map(), Object.create({ inherited: true }),
         { value: undefined }, [undefined], Array(1), Object.assign([], { extra: true }), new (class Payload { constructor() { this.value = 1; } })()])('non-JSON payload example %# is rejected', value => { expect(() => assertResultJson(value)).toThrow(); });
 

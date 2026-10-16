@@ -1,4 +1,4 @@
-import { validateRpOutputCapability } from './rp-output-capability-authority.js';
+import { validateOutputCapability } from './output-capability-authority.js';
 import { PlanRepository, readPlanRevision } from './plan-repository.js';
 import { hashNativeDocument } from '../repositories/common.js';
 import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../model-prompt-runtime/persistence.js';
@@ -24,7 +24,7 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
                 continue;
             }
             if (capability === 'chat.output') {
-                const result = validateRpOutputCapability({ definition, rpControl: sources.rpControl, engine });
+                const result = validateOutputCapability({ definition, rpControl: sources.rpControl, sessionCore: sources.sessionCore, engine });
                 evidence.push(...result.evidence); issues.push(...result.issues);
                 continue;
             }
