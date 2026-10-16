@@ -25,3 +25,7 @@
 3. 配置/文档/最终核对：验证 runner 命令、保留的关键 Native E2E、源码差异及资源引用；不默认全量 build/lint 或设备矩阵。未运行项明确记录。
 
 阶段持续推进，同一分支、同一 Record。交付遵循 Governance §14；其它活跃任务与 HANDOFF 保持原状。
+
+## Material design changes
+
+用户追加明确要求：本次清理同步到 `refactor/atria-native-orchestration-v3`、`feat/native-visual-generation-deepening`、`feat/atria-project-skill-routing`。主清理仍沿用原分支与本 Record；对开发分支的当前新增代码核对消费者、处理冲突并做最小相关验证，保留各自开发内容，不以 merge main 同步，不覆盖并行产生的未提交改动。
