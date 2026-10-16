@@ -1127,3 +1127,11 @@ Review listener 不使用主 app middleware/cookie。它检查实际 Host、精�
 `1101bd454` 将 §17.85 的同一命令机制扩为 RP 与有限正式 Native Session 输出的封闭协议选择。Session 的 request kind 为 `session_output_reconciliation_request`，不改变原 RP request identity。Host 从 Run 自身选 `native_session_output`，不接受 Browser 选择任意协议。
 
 `readSessionOutputDescriptor` 复用原已发布 Narrator Result/Model receipt 重建精确 Turn descriptor；正式完成 reader 与冷核对使用同一描述。冷核对只经原 `readSessionTurnOutput` 验证 exact commit/revision、Task turn record、Variant、Narrator/authority provenance，另验冻结 intent、原 output Attempt、grant/endpoint/egress/预算和原银行 local work。已知提交可追加 `session_output_reconciled` 旧 epoch 的历史 EffectReceipt；缺 commit 继续 unknown，缺成本继续 reconciling。没有调用 Session writer、恢复 Model/output scope 或创建 OutputClaim，响应仍 `resumed:false`。原取消与后续合法输入保留，原货币价格不推测。新实现和共享 descriptor 纳入 evaluator 指纹。
+
+## 17.87 原 Project 工具冷收据核对
+
+源码 826d2ba43 将同一受保护 /runs/reconcile 的封闭协议扩为原顶层 Project 的 native_project_read/native_project_proposal；请求使用 project_tool_reconciliation_request。Host 自选唯一 pending Effect，不接收 caller 工具参数或 observation。
+
+核对复用原 readProjectToolReceipt，逐项验证原 Task/call/nativeReceipt、Model 收据、Plan pin、冻结输入/授权/端点/egress 和原银行。只有原 local work 已 settled 且 completed 才能确认；成本或 Task 原收据缺失继续 unknown。使用原稳定 project.tool observation identity，正常消费 reader 保持同一收据协议，不另建领域权威。合法后续 Project 编辑不抹除历史结果，也不恢复执行资格。
+
+RP/Session/Project 共用仅处理原 Effect observe ACK 的 helper，保存未知时只读并严格匹配同稳定 receipt。所有路径继续 resumed:false，不调用 Model/Tool/Workspace evaluator/领域 writer，不创建 OutputClaim 或完成 Root；取消保持有效。新实现纳入 evaluator 指纹。

@@ -999,3 +999,9 @@
 - Source `317c75d4f` → `1101bd454`，本地提交未推送。实现接口 §17.86，原正式完成 reader/冷核对共用 Turn descriptor，复用原 exact commit/revision/Variant/Task provenance 读取；通过同一产品核对命令机制，不调用 Session writer，不恢复 scope 或 OutputClaim。RP 请求 identity 保留，Session 使用自己的明确 request kind。
 - 新 suite 首批三类窗口 FS/SQLite 6/6 PASS（38.743s），实际关闭旧 Engine 并以新 Host/Engine 重开：原 Host receipt 未保存、claim ACK丢失、local usage未结算。后续 Session核对 ACK saved/no_save 与原 Session 正式输出/历史 proof 精选三 suites 8PASS/38filterSKIP（51.968s）；最终新 suite 10 个不同 case 分次均通过，未称完整10重跑。评测指纹扩充为 16/16 PASS（1.563s），含新核对实现和共享合同变更的旧报告拒绝。
 - 扩展原域协议后，原 RP/通用 Run HTTP 精选 36PASS/12filterSKIP（25.818s），八文件原 ESLint、staged diff check 通过。合法后续 user input 不改变已提交原 revision 的事实；cancel 后仅核对历史；重 hash 外来 endpoint 拒绝，原费用/unknown保持，每条仍一次 localhost合成 Model send。用户确认目前没有独立质量资料，相关质量/晋升验收继续未通过；Project/其余恢复/受权续跑/GC 等后端继续，未推送、未进入前端或 main 集成。
+
+## 2026-10-16 — 第八十组：原 Project 工具冷收据核对
+
+- Source 1101bd454 → 826d2ba43，本地提交未推送。实现接口 §17.87，原 Task receipt reader 与原费用事实复用；共享 RP/Session 的 ACK 处理，不重跑原工具或 Workspace evaluate，不自动提交 Project 或恢复执行。原 Authority/Repo/Engine 指针仍严格核对。
+- 新 Project suite 首轮 read 2PASS/8filterSKIP（9.920s），其余 unknown/Review 8PASS/2filterSKIP（80.345s），10 个不同 case 分次通过。随后合法 Project 编辑及原工具/Review/ACK 精选三 suites 10PASS/44filterSKIP（74.480s）；共享 helper 的 RP/Session 精选 16PASS/16filterSKIP（61.123s）；evaluator 指纹 18/18 PASS（1.782s）。最后新增 Authority 指针与 projection controls 断言后，三域精选 10PASS/32filterSKIP（45.107s）。上一进程输出在上下文切换时丢失，未计其结果，以本次重跑为准。
+- Review 每场景原 Workspace evaluate 始终一次；缺 Task receipt 或成本继续 unknown。13 文件原 ESLint、staged diff check 通过。模型均 localhost 合成；Project 冷核对用同 Engine 新 generation/新 Authority，未声称真 Engine 重开、独立质量或全部后端完成。后台 Task 闭包、受权恢复/结果读取、其余消费者及 release/GC 等继续，完整 Gate NOT_READY。
