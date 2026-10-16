@@ -14,16 +14,16 @@ export class NativeTaskScheduler {
     constructor({ concurrency = 4, perResource = 2, queueLimit = 64, retention = 256, timeoutMs = NATIVE_GENERATION_DEFAULTS.timeoutMs, retries = 1, backoffMs = 250 } = {}) {
         for (const value of [concurrency, perResource, queueLimit, retention, timeoutMs]) if (!Number.isSafeInteger(value) || value < 1) throw new TypeError('Invalid scheduler limit');
         Object.assign(this, { concurrency, perResource, queueLimit, retention, timeoutMs, retries, backoffMs });
-        this.operations = new Map(); this.running = new Set(); this.queue = []; this.serial = 0;
+        this.operations = new Map(); this.running = new Set(); this.suspended = new Set(); this.queue = []; this.serial = 0;
     }
     hasSessionWork(owner, sessionId) {
         return [...this.operations.values()].some(operation => operation.owner === owner && operation.view.anchor?.sessionId === sessionId
-            && (!terminal.has(operation.view.status) || this.running.has(operation)));
+            && (!terminal.has(operation.view.status) || this.running.has(operation) || this.suspended.has(operation)));
     }
-    hasOwnerWork(owner) { return [...this.operations.values()].some(operation => operation.owner === owner && (!terminal.has(operation.view.status) || this.running.has(operation))); }
-    hasProjectWork(owner, projectId) { return [...this.operations.values()].some(operation => operation.owner === owner && operation.view.anchor?.projectId === projectId && (!terminal.has(operation.view.status) || this.running.has(operation))); }
+    hasOwnerWork(owner) { return [...this.operations.values()].some(operation => operation.owner === owner && (!terminal.has(operation.view.status) || this.running.has(operation) || this.suspended.has(operation))); }
+    hasProjectWork(owner, projectId) { return [...this.operations.values()].some(operation => operation.owner === owner && operation.view.anchor?.projectId === projectId && (!terminal.has(operation.view.status) || this.running.has(operation) || this.suspended.has(operation))); }
     hasForegroundWork(owner) {
-        return [...this.running, ...this.queue].some(item => (owner === undefined || item.owner === owner)
+        return [...this.running, ...this.suspended, ...this.queue].some(item => (owner === undefined || item.owner === owner)
             && ['turn_blocking', 'interactive'].includes(item.view.executionClass));
     }
     assertActiveBoundary(boundary, expected) {
@@ -42,6 +42,40 @@ export class NativeTaskScheduler {
         return Object.freeze({ ...immutable({ operationId: operation.view.operationId, owner: operation.owner,
             anchor: operation.view.anchor, kind: operation.view.kind, executionClass: operation.view.executionClass,
             key: operation.key, fingerprint: operation.fingerprint, resources: resourceSet(operation.resources), attempt: captured.attempt }), signal: boundary.signal });
+    }
+    /** Scheduling only: the domain must authorize its durable child before calling. */
+    async withResourceHandoff(boundary, expected, child) {
+        this.assertActiveBoundary(boundary, expected);
+        const allowed = ['kind', 'executionClass', 'resources', 'key', 'fingerprint', 'run', 'finalize', 'fresh'];
+        if (!child || Object.keys(child).some(key => !allowed.includes(key)) || child.key === expected.key
+            || typeof child.key !== 'string' || !child.key || typeof child.fingerprint !== 'string' || !child.fingerprint
+            || !Array.isArray(child.resources) || !child.resources.length || child.resources.some(resource => !expected.resources.includes(resource))
+            || child.executionClass !== expected.executionClass || !['model_task', 'auxiliary_task'].includes(child.kind)
+            || ['run', 'finalize', 'fresh'].some(key => typeof child[key] !== 'function')) throw failure('operation_handoff_denied');
+        if ([...this.operations.values()].some(item => item.owner === expected.owner && item.key === child.key))
+            throw failure('operation_handoff_duplicate');
+        const operation = boundaries.get(boundary).operation;
+        this.suspended.add(operation); this.running.delete(operation);
+        operation.view.status = 'waiting_child'; operation.view.provisionalPresentation = '';
+        let result, childError;
+        try {
+            try {
+                const submitted = this.submit({ ...child, owner: expected.owner, anchor: expected.anchor, signal: boundary.signal, retry: false });
+                result = await submitted.result;
+            } catch (error) { childError = error; }
+            if (!boundary.signal.aborted) await new Promise((resolve, reject) => {
+                const abort = () => reject(failure('operation_cancelled'));
+                boundary.signal.addEventListener('abort', abort, { once: true });
+                operation.resume = () => { boundary.signal.removeEventListener('abort', abort); resolve(); };
+                operation.view.status = 'queued'; this.queue.push(operation); this.drain();
+            });
+        } finally { this.suspended.delete(operation); delete operation.resume; }
+        if (boundary.signal.aborted) throw failure('operation_cancelled');
+        this.assertActiveBoundary(boundary, expected);
+        // A failed child is not an invitation to retry the whole parent and
+        // dispatch its already charged/possibly unknown effects again.
+        if (childError) throw Object.assign(failure('operation_child_failed'), { cause: childError });
+        return result;
     }
     releaseOperation(operation) {
         for (const field of ['run', 'finalize', 'fresh', 'onChunk', 'resolve', 'reject', 'handle', 'controller', 'cleanup', 'timer', 'signal']) delete operation[field];
@@ -64,7 +98,7 @@ export class NativeTaskScheduler {
         operation.view.status = status;
         operation.view.provisionalPresentation = '';
         operation.controller.abort(); operation.reject(failure('operation_' + status));
-        if (!this.running.has(operation)) { operation.cleanup(); this.releaseOperation(operation); }
+        if (!this.running.has(operation) && !this.suspended.has(operation)) { operation.cleanup(); this.releaseOperation(operation); }
         this.queue = this.queue.filter(item => item !== operation); this.drain(); return true;
     }
     submit({ owner, anchor, kind = 'model_task', executionClass, resources, key, fingerprint, supersede = false, retry = true, timeoutMs = this.timeoutMs, signal, run, finalize, fresh, onChunk, projectResult = null, retainResult = false }) {
@@ -81,7 +115,7 @@ export class NativeTaskScheduler {
         if (this.queue.length >= this.queueLimit) throw failure('operation_backpressure');
         for (const [id, operation] of this.operations) {
             if (this.operations.size < this.retention) break;
-            if (terminal.has(operation.view.status) && !this.running.has(operation)) this.operations.delete(id);
+            if (terminal.has(operation.view.status) && !this.running.has(operation) && !this.suspended.has(operation)) this.operations.delete(id);
         }
         if (this.operations.size >= this.retention) throw failure('operation_retention_limit');
         const operationId = randomUUID();
@@ -112,6 +146,7 @@ export class NativeTaskScheduler {
             if (index < 0) return;
             const operation = this.queue.splice(index, 1)[0];
             this.running.add(operation);
+            if (operation.resume) { operation.view.status = 'running'; operation.resume(); continue; }
             void this.execute(operation);
         }
     }
@@ -129,7 +164,7 @@ export class NativeTaskScheduler {
                 await check(); view.status = 'running'; view.attempt = attempt;
                 try {
                     const boundary = Object.freeze({ signal: controller.signal, operationId: view.operationId, onChunk: chunk => {
-                        if (controller.signal.aborted || terminal.has(view.status)) return;
+                        if (controller.signal.aborted || terminal.has(view.status) || !this.running.has(operation)) return;
                         if (typeof chunk.text !== 'string' || chunk.text.length > 65536 || !chunk.text.startsWith(view.provisionalPresentation)) throw failure('operation_stream_invalid');
                         view.status = 'streaming'; view.provisionalPresentation = chunk.text;
                         try { operation.onChunk?.(immutable({ ...chunk, operationId: view.operationId, provisional: true, attempt })); } catch { /* Observer only. */ }
