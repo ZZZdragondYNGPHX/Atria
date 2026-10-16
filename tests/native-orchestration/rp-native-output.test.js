@@ -1,3 +1,4 @@
+import { RpOutputController } from '../../src/native/orchestration/rp-output-controller.js';
 import fs from 'node:fs';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 import { rpModelFixture, RP_MODEL_TEXT } from './helpers/rp-model-fixture.js';
@@ -8,7 +9,16 @@ import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecyc
 import { rpNativeOutputKey } from '../../src/native/rp-output-protocol.js';
 
 const harnesses = CONTRACT_HARNESSES.filter(({ name }) => ['FsEngine', 'SqliteEngine'].includes(name));
-const configurePlan = plan => { Object.assign(plan.definition.outputContract, { kind: 'rp_narration', slot: 'assistant', resultPolicy: { outputType: 'text', maxBytes: 65536 } }); };
+const configurePlan = plan => { plan.definition.nodes[0].capabilities.push('chat.output'); plan.definition.capabilityCeiling = plan.definition.nodes[0].capabilities; Object.assign(plan.definition.outputContract, { kind: 'rp_narration', slot: 'assistant', resultPolicy: { outputType: 'text', maxBytes: 65536 } }); };
+
+const complete = RpOutputController.prototype.complete;
+beforeEach(() => {
+    RpOutputController.prototype.complete = async function (handle, request) {
+        const { receipt } = await this.prepare(handle, request);
+        return { status: receipt.status, outputKey: receipt.outputKey, operationId: receipt.operationId };
+    };
+});
+afterEach(() => { RpOutputController.prototype.complete = complete; });
 
 describe.each(harnesses)('$name original RP native output protocol', ({ make }) => {
     test('final Narrator prepares a stable source slot without writing Chat or completing the Run', async () => {
@@ -26,17 +36,17 @@ describe.each(harnesses)('$name original RP native output protocol', ({ make }) 
     });
 
     test('one original permit writes atomic body+marker and reconciles only the actual marker', async () => {
-        const f = await rpModelFixture(make, { configurePlan }), prepare = RpRunControl.prototype.prepareNativeOutput;
+        const f = await rpModelFixture(make, { configurePlan }), prepare = RpOutputController.prototype.prepare;
         let permit, receipt, expired, hookError, second;
-        RpRunControl.prototype.prepareNativeOutput = async function (handle, request) {
-            const saved = await prepare.call(this, handle, request);
+        RpOutputController.prototype.prepare = async function (handle, request) {
+            const prepared = await prepare.call(this, handle, request), control = this.control;
             try {
                 expired = request.capture;
-                const first = await this.beginNativeOutput(handle, request); permit = first.permit; receipt = first.receipt;
-                second = await this.beginNativeOutput(handle, request);
-                await this._chatRepo.commitNativeOutput(handle, { permit });
+                const first = await control.beginNativeOutput(handle, request); permit = first.permit; receipt = first.receipt;
+                second = await control.beginNativeOutput(handle, request);
+                await control._chatRepo.commitNativeOutput(handle, { permit });
             } catch (error) { hookError = error; throw error; }
-            return saved;
+            return prepared;
         };
         try {
             await f.run().catch(error => { throw hookError ?? error; });
@@ -58,7 +68,7 @@ describe.each(harnesses)('$name original RP native output protocol', ({ make }) 
             await f.chats.delete(f.h.handle, 'Actor', 'main');
             expect(await f.control.reconcileNativeOutput(f.h.handle, request)).toMatchObject({ status: 'committed', current: false });
             expect(f.requests).toHaveLength(1);
-        } finally { RpRunControl.prototype.prepareNativeOutput = prepare; await f.cleanup(); }
+        } finally { RpOutputController.prototype.prepare = prepare; await f.cleanup(); }
     });
 
     test('different Runs for the exact same slot share the original output identity', async () => {
@@ -72,7 +82,7 @@ describe.each(harnesses)('$name original RP native output protocol', ({ make }) 
     });
 
     test.each(['saved', 'no_save'])('writing CAS ACK %s never recreates a permit from a missing marker, including cold reopen', async ack => {
-        const f = await rpModelFixture(make, { configurePlan }), prepare = RpRunControl.prototype.prepareNativeOutput;
+        const f = await rpModelFixture(make, { configurePlan }), prepare = RpOutputController.prototype.prepare;
         const transaction = f.h.engine.withTransaction.bind(f.h.engine);
         let armed = false, injected = false, receipt, expired, cold;
         f.h.engine.withTransaction = async (handle, callback, ...options) => {
@@ -88,9 +98,9 @@ describe.each(harnesses)('$name original RP native output protocol', ({ make }) 
             }
             return result;
         };
-        RpRunControl.prototype.prepareNativeOutput = async function (handle, request) {
-            receipt = await prepare.call(this, handle, request); expired = request.capture; armed = true;
-            return this.beginNativeOutput(handle, request);
+        RpOutputController.prototype.prepare = async function (handle, request) {
+            const prepared = await prepare.call(this, handle, request), control = this.control; receipt = prepared.receipt; expired = request.capture; armed = true;
+            return control.beginNativeOutput(handle, request);
         };
         try {
             const failure = await f.run().then(() => null, error => error); armed = false;
@@ -105,11 +115,11 @@ describe.each(harnesses)('$name original RP native output protocol', ({ make }) 
             expect((await control.reconcileNativeOutput(f.h.handle, request)).status).toBe(ack === 'saved' ? 'unknown' : 'prepared');
             await expect(control.beginNativeOutput(f.h.handle, { capture: expired })).rejects.toThrow();
             expect(f.requests).toHaveLength(1);
-        } finally { armed = false; RpRunControl.prototype.prepareNativeOutput = prepare; f.h.engine.withTransaction = transaction; await cold?.close(); await f.cleanup(); }
+        } finally { armed = false; RpOutputController.prototype.prepare = prepare; f.h.engine.withTransaction = transaction; await cold?.close(); await f.cleanup(); }
     });
 
     test('Chat ACK loss is reconciled from one complete marker without a second physical commit', async () => {
-        const f = await rpModelFixture(make, { configurePlan }), prepare = RpRunControl.prototype.prepareNativeOutput;
+        const f = await rpModelFixture(make, { configurePlan }), prepare = RpOutputController.prototype.prepare;
         const transaction = f.h.engine.withTransaction.bind(f.h.engine); let armed = false, injected = false, receipt;
         f.h.engine.withTransaction = async (handle, callback, ...options) => {
             const value = await transaction(handle, callback, ...options);
@@ -118,10 +128,10 @@ describe.each(harnesses)('$name original RP native output protocol', ({ make }) 
             }
             return value;
         };
-        RpRunControl.prototype.prepareNativeOutput = async function (handle, request) {
-            const saved = await prepare.call(this, handle, request); receipt = saved;
-            const { permit } = await this.beginNativeOutput(handle, request); armed = true;
-            await this._chatRepo.commitNativeOutput(handle, { permit }); return saved;
+        RpOutputController.prototype.prepare = async function (handle, request) {
+            const prepared = await prepare.call(this, handle, request), control = this.control; receipt = prepared.receipt;
+            const { permit } = await control.beginNativeOutput(handle, request); armed = true;
+            await control._chatRepo.commitNativeOutput(handle, { permit }); return prepared;
         };
         try {
             const failure = await f.run().then(() => null, error => error); armed = false;
@@ -129,14 +139,14 @@ describe.each(harnesses)('$name original RP native output protocol', ({ make }) 
             const request = { controlId: f.controlId, outputKey: receipt.outputKey, operationId: receipt.operationId };
             expect(await f.control.reconcileNativeOutput(f.h.handle, request)).toMatchObject({ status: 'committed', current: true });
             expect((await f.chats.get(f.h.handle, 'Actor', 'main')).body).toHaveLength(3); expect(f.requests).toHaveLength(1);
-        } finally { armed = false; RpRunControl.prototype.prepareNativeOutput = prepare; f.h.engine.withTransaction = transaction; await f.cleanup(); }
+        } finally { armed = false; RpOutputController.prototype.prepare = prepare; f.h.engine.withTransaction = transaction; await f.cleanup(); }
     });
 
     test('save/append/whole and nested patches cannot forge or clear an output marker while legitimate edits persist', async () => {
-        const f = await rpModelFixture(make, { configurePlan }), prepare = RpRunControl.prototype.prepareNativeOutput;
-        RpRunControl.prototype.prepareNativeOutput = async function (handle, request) {
-            const saved = await prepare.call(this, handle, request), { permit } = await this.beginNativeOutput(handle, request);
-            await this._chatRepo.commitNativeOutput(handle, { permit }); return saved;
+        const f = await rpModelFixture(make, { configurePlan }), prepare = RpOutputController.prototype.prepare;
+        RpOutputController.prototype.prepare = async function (handle, request) {
+            const prepared = await prepare.call(this, handle, request), control = this.control, { permit } = await control.beginNativeOutput(handle, request);
+            await control._chatRepo.commitNativeOutput(handle, { permit }); return prepared;
         };
         try {
             await f.run(); let chat = await f.chats.get(f.h.handle, 'Actor', 'main'); const original = chat.body[2];
@@ -150,11 +160,11 @@ describe.each(harnesses)('$name original RP native output protocol', ({ make }) 
             chat = await f.chats.get(f.h.handle, 'Actor', 'main'); expect(chat.body[2].extra).toEqual(original.extra);
             await f.chats.patchMessages(f.h.handle, 'Actor', 'main', [{ op: 'remove', path: '/2' }], chat.integrity);
             expect((await f.chats.get(f.h.handle, 'Actor', 'main')).body).toHaveLength(2);
-        } finally { RpRunControl.prototype.prepareNativeOutput = prepare; await f.cleanup(); }
+        } finally { RpOutputController.prototype.prepare = prepare; await f.cleanup(); }
     });
 
     test('a lawful edit at the final Model bank await persists before the one-use Chat permit is denied', async () => {
-        const f = await rpModelFixture(make, { configurePlan }), prepare = RpRunControl.prototype.prepareNativeOutput;
+        const f = await rpModelFixture(make, { configurePlan }), prepare = RpOutputController.prototype.prepare;
         const assertCurrent = BudgetPort.prototype.assertCurrent; let armed = false, injected = false;
         BudgetPort.prototype.assertCurrent = async function (handle, ref, options) {
             const result = await assertCurrent.call(this, handle, ref, options);
@@ -164,9 +174,9 @@ describe.each(harnesses)('$name original RP native output protocol', ({ make }) 
             }
             return result;
         };
-        RpRunControl.prototype.prepareNativeOutput = async function (handle, request) {
-            const saved = await prepare.call(this, handle, request), { permit } = await this.beginNativeOutput(handle, request); armed = true;
-            await this._chatRepo.commitNativeOutput(handle, { permit }); return saved;
+        RpOutputController.prototype.prepare = async function (handle, request) {
+            const prepared = await prepare.call(this, handle, request), control = this.control, { permit } = await control.beginNativeOutput(handle, request); armed = true;
+            await control._chatRepo.commitNativeOutput(handle, { permit }); return prepared;
         };
         try {
             const failure = await f.run().then(() => null, error => error); armed = false;
@@ -174,7 +184,7 @@ describe.each(harnesses)('$name original RP native output protocol', ({ make }) 
             const chat = await f.chats.get(f.h.handle, 'Actor', 'main'); expect(chat.body[1].mes).toBe('Lawful last-await edit'); expect(chat.body).toHaveLength(2);
             const control = await f.control.status(f.h.handle, f.controlId); expect(Object.values(control.outputReceipts)[0].status).toBe('writing');
             expect(Object.values(control.operations)[0].compute.attempts[0].usage.totalTokens).toBe(20);
-        } finally { armed = false; BudgetPort.prototype.assertCurrent = assertCurrent; RpRunControl.prototype.prepareNativeOutput = prepare; await f.cleanup(); }
+        } finally { armed = false; BudgetPort.prototype.assertCurrent = assertCurrent; RpOutputController.prototype.prepare = prepare; await f.cleanup(); }
     });
 
 
@@ -182,16 +192,16 @@ describe.each(harnesses)('$name original RP native output protocol', ({ make }) 
 
 describe.each(harnesses.filter(({ name }) => name === 'FsEngine'))('$name output file durability', ({ make }) => {
     test('a directory durability failure after rename leaves one complete marker for observation, never an automatic replay', async () => {
-        const f = await rpModelFixture(make, { configurePlan }), prepare = RpRunControl.prototype.prepareNativeOutput, sync = fs.fsyncSync;
+        const f = await rpModelFixture(make, { configurePlan }), prepare = RpOutputController.prototype.prepare, sync = fs.fsyncSync;
         let armed = false, injected = false, receipt;
         fs.fsyncSync = fd => {
             if (armed && !injected && fs.fstatSync(fd).isDirectory()) { injected = true; throw Object.assign(new Error('Directory barrier failed after rename'), { code: 'EIO' }); }
             return sync(fd);
         };
-        RpRunControl.prototype.prepareNativeOutput = async function (handle, request) {
-            const saved = await prepare.call(this, handle, request); receipt = saved;
-            const { permit } = await this.beginNativeOutput(handle, request); armed = true;
-            await this._chatRepo.commitNativeOutput(handle, { permit }); return saved;
+        RpOutputController.prototype.prepare = async function (handle, request) {
+            const prepared = await prepare.call(this, handle, request), control = this.control; receipt = prepared.receipt;
+            const { permit } = await control.beginNativeOutput(handle, request); armed = true;
+            await control._chatRepo.commitNativeOutput(handle, { permit }); return prepared;
         };
         try {
             const failure = await f.run().then(() => null, error => error); armed = false;
@@ -200,7 +210,7 @@ describe.each(harnesses.filter(({ name }) => name === 'FsEngine'))('$name output
             expect(await f.control.reconcileNativeOutput(f.h.handle, { controlId: f.controlId, operationId: receipt.operationId, outputKey: receipt.outputKey }))
                 .toMatchObject({ status: 'committed', current: true });
             expect(f.requests).toHaveLength(1);
-        } finally { armed = false; fs.fsyncSync = sync; RpRunControl.prototype.prepareNativeOutput = prepare; await f.cleanup(); }
+        } finally { armed = false; fs.fsyncSync = sync; RpOutputController.prototype.prepare = prepare; await f.cleanup(); }
     });
 
 });

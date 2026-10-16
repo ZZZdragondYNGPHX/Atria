@@ -46,6 +46,7 @@ export async function rpDelegationFixture(make, options = {}) {
         const childPlanRef = await publish(f.plans, f.h.handle, childPlan);
         const childRevision = await f.plans.getRevision(f.h.handle, childPlanRef);
         const parentPlan = textPlan(parentRoute, { delegatePin: { planRef: childPlanRef, revision: childRevision } });
+        options.configureParentPlan?.(parentPlan);
         const planRef = await publish(f.plans, f.h.handle, parentPlan);
         const binding = await f.plans.getBinding(f.h.handle, f.sourceSelector);
         await f.plans.saveBinding(f.h.handle, id('Command'), { sourceSelector: f.sourceSelector, planRef, expectedVersion: binding.version });

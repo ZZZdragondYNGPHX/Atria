@@ -33,7 +33,7 @@ export class ChatRepo {
         const outcome = await withRpNativeOutputWrite(request.permit, { engine: this._engine, handle }, () => this.#writeTransaction(handle, async tx => {
             let state;
             try { state = await consumeRpNativeOutputPermit(request.permit, { engine: this._engine, handle, tx }); } catch (error) {
-                if (['native_orchestration_source_stale', 'native_orchestration_return_stale', 'native_generation_revision_conflict',
+                if (['native_rp_output_stale', 'native_orchestration_source_stale', 'native_orchestration_return_stale', 'native_generation_revision_conflict',
                     'native_rp_source_missing', 'native_rp_control_relocated', 'native_orchestration_model_result_completion_stale'].includes(error.code)) return { denied: true };
                 throw error;
             }
@@ -50,6 +50,9 @@ export class ChatRepo {
                 throw new ConflictError('native_rp_output_stale');
             const fence = await this._engine.nativeHostLifecycle.assertWriter(handle, tx);
             if (hash({ hostBootId: fence.hostBootId, generation: fence.generation }) !== hash(receipt.hostFence)) throw new ConflictError('native_rp_output_stale');
+            const finalRoot = await state.authorization.execution.runs.get(handle, state.authorization.runId);
+            const finalChat = await tx.getResource(key);
+            if (hash(finalRoot) !== state.authorization.rootStamp || finalChat?.integrity !== existing.integrity) return { denied: true };
             const marker = { schemaVersion: 1, operationId: receipt.operationId, outputKey: receipt.outputKey, payloadHash: receipt.payloadHash,
                 sourceDigest: receipt.sourceDigest, controlId };
             const message = { ...payload, extra: { ...(payload.extra ?? {}), gen_id: 'native-output:' + receipt.outputKey, atri_output: marker } };

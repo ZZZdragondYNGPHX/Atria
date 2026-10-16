@@ -1,3 +1,4 @@
+import { validateRpOutputCapability } from './rp-output-capability-authority.js';
 import { PlanRepository, readPlanRevision } from './plan-repository.js';
 import { hashNativeDocument } from '../repositories/common.js';
 import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../model-prompt-runtime/persistence.js';
@@ -19,6 +20,11 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
         for (const capability of definition.capabilityCeiling) {
             if (capability === 'generation.send') {
                 const result = await validateModelCapability({ handle, definition, dependencyPins, resolver: sources.modelResolver });
+                evidence.push(...result.evidence); issues.push(...result.issues);
+                continue;
+            }
+            if (capability === 'chat.output') {
+                const result = validateRpOutputCapability({ definition, rpControl: sources.rpControl, engine });
                 evidence.push(...result.evidence); issues.push(...result.issues);
                 continue;
             }

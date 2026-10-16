@@ -11,7 +11,7 @@ const permits = new WeakMap();
 const fail = code => { throw new ConflictError(code); };
 const key = (handle, controlId) => ({ kind: K.rpRunControl, handle, controlId });
 const equal = (a, b) => hash(a) === hash(b);
-const DENIALS = new Set(['native_orchestration_source_stale', 'native_orchestration_return_stale', 'native_generation_revision_conflict',
+const DENIALS = new Set(['native_rp_output_stale', 'native_orchestration_source_stale', 'native_orchestration_return_stale', 'native_generation_revision_conflict',
     'native_rp_source_missing', 'native_rp_control_relocated', 'native_orchestration_model_result_completion_stale']);
 export const rpNativeOutputKey = (controlId, source) => hash({ controlId, input: source.input, purpose: source.purpose, slot: source.outputSlot });
 export const rpNativeOutputOperationId = outputKey => hash({ protocol: 'rp_native_output_v1', outputKey });
@@ -112,6 +112,7 @@ export async function beginRpNativeOutput(control, handle, request) {
         const record = await tx.getResource(key(handle, current.controlId)), doc = await control.status(handle, current.controlId, { tx });
         const candidate = entry(doc, current), original = doc.outputReceipts[candidate.outputKey];
         if (!original || original.payloadHash !== candidate.payloadHash || original.sourceDigest !== candidate.sourceDigest) fail('native_rp_output_conflict');
+        if (!current.outputDispatch) fail('native_rp_output_effect_required');
         if (original.status !== 'prepared') return { receipt: original, issued: false };
         const receipt = { ...original, status: 'writing' }; doc.outputReceipts[receipt.outputKey] = receipt; doc.sequence++;
         await putMutable(tx, key(handle, doc.controlId), doc, { expectedIntegrity: record.integrity });
@@ -139,10 +140,11 @@ export async function consumeRpNativeOutputPermit(permit, { engine, handle, tx }
     const state = permits.get(permit);
     if (!state || state.used || state.control._engine !== engine || state.handle !== handle) fail('native_rp_output_permit_required');
     state.used = true;
-    await inspectNativeRpOutput(state.capture, { handle, rpControl: state.control, tx });
+    const authorized = await inspectNativeRpOutput(state.capture, { handle, rpControl: state.control, tx });
+    if (!authorized.outputDispatch) fail('native_rp_output_effect_required');
     const current = await state.control.status(handle, inspectNativeRpOutputIdentity(state.capture, { handle }).controlId, { tx });
     if (!equal(current.outputReceipts[state.receipt.outputKey], state.receipt) || !equal(current.locator, state.locator)) fail('native_rp_output_stale');
-    return { ...state, controlId: current.controlId };
+    return { ...state, authorization: authorized, controlId: current.controlId };
 }
 
 /** Reconciliation observes one marker; missing marker never authorizes an append. */
