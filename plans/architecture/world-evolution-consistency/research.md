@@ -100,3 +100,51 @@
 [A16]: https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/scripts/native/experience/llm/orchestrator-bridge.js
 [A17]: https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/scripts/native/experience/llm/runtime.js
 [A18]: https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/repositories/save-point-repo.js
+
+
+---
+
+## F. S2 扩域补充研究：从 ST Lorebook 到 Native World Model（2026-10-17）
+
+> 本节是“要不要彻底改变世界/知识创作模型”的新增调研，不替代前述事实。只进行外部文档与 main 静态源核对；没有进行项目构建、运行、CI 或真实客户端验收。
+
+### F.1 外部系统对比
+
+| 案例 | 经原始文档确认的核心机制 | 可借鉴部分 | 不宜照搬 |
+| --- | --- | --- | --- |
+| [ST World Info][S1] | 默认以 keys/regex/递归/排序/预算动态注入知识文本，World Info 是 Prompt 引导工具；即使注入也不保证模型表现 | 全文召回、编辑自由度和 token 预算 | 触发次数/位置/概率不是事实真伪、实体或时态模型 |
+| [W3C SHACL][S17] | 以 shapes 约束图数据的类型/边界，并给验证报告 | 显式规则、关键实体/关系 schema、错误路径清晰 | 不要求 Atria 采用 RDF 或全图化 |
+| [W3C PROV-O][S18] | 区分 entity/activity/agent，提供“来源、派生、失效、责任归属”等出处关系 | 一个事实为何成立、从哪个事件/文件/修订而来 | 不复制 PROV-O 全套本体到 Runtime |
+| [W3C RDF datasets][S19] | 允许默认图和命名图，但多图语义需要明确选择 | 认知/世界/来源范围不能靠简单拼在一起解决 | named graph 不会自动决定谁对谁可见或谁是真理 |
+| [XTDB valid/system time][S4] | valid time 是事实生效期，system time 是何时记录/改变该声明 | 区分历史事实、后来发现、修订与 as-of 查询 | 不直接引入 XTDB 或要求所有属性都有双时间列 |
+| [Concordia components][S20] | agents 含记忆/观察/计划；GM 有 event resolution、world state、make observation | 行动意图、环境结算、感知传播的职责边界 | Atria 已有 Native Authority / HCM，不应再造 GM 实体持有第二真相 |
+| [inkle ink variables][S21] | 剧情逻辑能引用明确世界变量，并可让文本条件分支 | 自由叙事和确定状态连接，关键 facts 可以 anchor | 开放 RP 无法将所有叙事写成固定变量 |
+| [Generative Agents][S12] | 记录经历、从记忆提炼反思并形成计划 | HCM 主体记忆与行动推演 | 不将主体观察自动变成世界全局真相 |
+
+### F.2 Atria 原生契约的精确静态事实
+
+- main:src/native/world-knowledge.js 的 WorldRevision 当前含 worldRevisionId/worldId/schema/baseline/knowledgeBindingIds/assetIds/metadata；KnowledgeEntry 含 content/discovery/applicability/lifecycle/relations/delivery/metadata，且显式禁止旧 ST 身份字段。这说明**现有确是原生资源模型**，不是简单复用 ST JSON 记录，但知识语义仍以条目为中心。[A19]
+- main:public/scripts/native/knowledge-contracts.js 中 discovery 可用 keywords/aliases/regex，lifecycle 包含 probability/sticky/cooldown/delay，delivery 包含 before/after 和 target，state applicability 支持 typed scalar predicates；World Info conditions 的操作符常量仍被引用。[A20]
+- main:public/scripts/native/knowledge-runtime.js 中 currentState、eventJournal、knowledgeOverride、packageCanonical、libraryAugment、sessionAugment、memoryEvidence 有明确权威阶梯；排序不自动解析自由文本的语义矛盾。[A5]
+- main:public/scripts/native/experience/world/session.js 可见 projectEvents 通过原生 reducers 检查后提交，包含 branchId、seq，维护 currentWorldState；不是缺少状态/事件的空白系统。[A1]
+- main:docs/features/native-knowledge.md 已明确 Native Knowledge 读取 committed snapshot、拒绝 legacy World Info baselines，并具有 Library/Studio revision 编辑、Binding manager、Session Knowledge 提升、语义 editor。[A6]
+- main:public/scripts/native/knowledge-selection.js 可见关键词/regex 的选择流程；此类检索逻辑可被新检索器取代或降为召回层，但在 E0 前不能声称已找到全部实际消费者。[A7]
+
+**综合判断：** 应重点改革“World / Knowledge 的语义边界、实体识别、可变事实锚点、来源、检索、作者心智模型、有效视图与 UI”；原生 Session authority、Save/Branch、Simulation、HCM 是复用对象，不是拟重建的对手。该判断是架构提议，不是已验证的最终 cutover 清单。
+
+### F.3 进一步研究的反证/成本
+
+1. **仅新增关系图**不保证模型输出永不矛盾：不可信自由文本、缓存、受众隔离与未提交叙事仍需要治理。
+2. **仅给知识打“高优先级”**不能解决历史片段在当前时间的语义失效。
+3. **全自动事实抽取**有同名人物、隐喻、反事实、梦境、谎言导致的误判；默认不能静默发布为事实。
+4. **每回合语义全检**成本可能线性随文本量增加，尤其长篇 RP；应讨论发布时离线构建锚点与增量受影响查询。
+5. **全图谱/本体技术**会明显增加作者录入和 schema 协作成本。原生 Hybrid 模型更适合同时承载规则游戏和纯文字叙事，但需实际 E0 和产品审查验证。
+
+[S17]: https://www.w3.org/TR/shacl/
+[S18]: https://www.w3.org/TR/prov-o/
+[S19]: https://www.w3.org/TR/rdf11-datasets/
+[S20]: https://github.com/google-deepmind/concordia/blob/main/concordia/components/README.md
+[S21]: https://github.com/inkle/ink/blob/master/Documentation/WritingWithInk.md
+
+[A19]: https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/world-knowledge.js
+[A20]: https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/scripts/native/knowledge-contracts.js
