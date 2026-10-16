@@ -58,13 +58,7 @@ describe('Skills integration smoke', () => {
     test('fresh install populates bundled skills in global scope', async () => {
         const res = await request(app).get('/api/skills?scope=global');
         expect(res.status).toBe(200);
-        // Bundled set: 5 mode-baseline (anti-cliche, character-voice, no-meta,
-        // output-discipline, zh-style) + 3 main-agent (turn-workflow, dispatch-
-        // protocol, draft-writer-style) + 12 per-sub-agent method skills (one
-        // per real sub-agent in buildDefaultDirectorSubAgents) = 20. Use >= so
-        // the assertion stays future-proof when new bundled scaffolds ship;
-        // tighten to an exact count only if we ever need to detect accidental
-        // scaffold deletions.
+        // Checks a minimum bundled set; it does not assert a complete inventory.
         expect(res.body.length).toBeGreaterThanOrEqual(20);
         const names = res.body.map(e => e.name).sort();
         // Sample three of the bundled set — one mode-level, one main-agent, one sub-agent.

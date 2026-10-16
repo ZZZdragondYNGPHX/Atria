@@ -21,8 +21,7 @@ import {
 //     (`INSERT ... AS new ON DUPLICATE KEY UPDATE col = new.col`), avoiding
 //     the deprecated `VALUES(col)` reference
 //   - JSON columns are auto-parsed by mysql2 into JS objects on SELECT;
-//     `coerceJson` defensively handles the rare case where a driver upgrade
-//     starts returning strings, so we don't have to re-audit every handler
+//     `coerceJson` also accepts JSON strings.
 //   - chats.integrity is a STORED GENERATED column, populated automatically
 //     by MySQL from the JSON path the schema declares
 export class MysqlTransaction {
@@ -88,10 +87,8 @@ export class MysqlTransaction {
     }
 }
 
-// mysql2 auto-parses JSON columns to JS objects, but be defensive: a future
-// connection-flag change or driver upgrade could revert to raw strings. This
-// helper covers both shapes uniformly so each handler keeps a single read
-// path. Returns the parsed object or null on parse failure / non-object.
+// Accepts objects or JSON strings; returns null for nullish values, other
+// primitive types or parse failures.
 function coerceJson(value) {
     if (value == null) return null;
     if (typeof value === 'object') return value;

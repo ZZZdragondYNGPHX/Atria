@@ -246,8 +246,7 @@ export class MysqlEngine {
      *
      * Tables are emitted in PARENT-FIRST order (DUMP_TABLES) so a streaming
      * restore can INSERT in receive order without buffering: `chats` before
-     * `chat_states` (FK CASCADE), `presets` before `preset_states` (no FK
-     * today, future-proofed). The `integrity` column on `chats` is omitted
+     * `chat_states` (FK CASCADE), `presets` before `preset_states`. The `integrity` column on `chats` is omitted
      * because it is GENERATED STORED — MySQL rejects explicit writes to it.
      *
      * Uses `Readable.from(asyncGenerator)` so backpressure flows naturally

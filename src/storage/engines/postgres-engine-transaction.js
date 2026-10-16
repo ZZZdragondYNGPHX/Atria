@@ -23,8 +23,7 @@ import {
 //     instead of MySQL's aliased-row form (`AS new ... DO UPDATE SET col =
 //     new.col`). Semantics identical.
 //   - JSONB columns return parsed JS objects from the driver by default;
-//     `coerceJson` defensively handles the rare case where a driver upgrade
-//     starts returning strings, mirroring the MysqlTransaction helper.
+//     `coerceJson` also accepts JSON strings, matching MysqlTransaction.
 //   - For BIGINT timestamps, postgres-engine.js installs a process-global type
 //     parser converting OID 20 → Number, so updated_at/created_at arrive as JS
 //     numbers (same shape as mysql2 / better-sqlite3).
@@ -99,10 +98,8 @@ export class PgTransaction {
     }
 }
 
-// pg auto-parses JSONB columns to JS objects, but be defensive: a future
-// connection-flag change or driver upgrade could revert to raw strings. This
-// helper covers both shapes uniformly so each handler keeps a single read
-// path. Returns the parsed object or null on parse failure / non-object.
+// Accepts objects or JSON strings; returns null for nullish values, other
+// primitive types or parse failures.
 function coerceJson(value) {
     if (value == null) return null;
     if (typeof value === 'object') return value;

@@ -749,8 +749,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     }
     // Note: the legacy-fs-on-db-server path now goes through crossModeRestore
     // above (synthesized engineMeta = fs). The `RestoreLegacyFsOnDbModeError`
-    // type is kept exported for defensive backward compat with consumers that
-    // still match on it, but the throw site has been removed.
+    // type remains exported; this path no longer throws it.
 
     // Same-mode fs restore mutates the live user tree directly. Hold the same
     // migration lock/read-only gate used by cross-mode restore so the

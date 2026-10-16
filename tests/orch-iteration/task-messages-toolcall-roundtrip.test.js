@@ -508,9 +508,7 @@ describe('applyOutcomesToToolResults contract — in-place update semantics', ()
             status: 'committed',
             // sourceCallId missing
         }]);
-        // No change — pending stays pending. The batch gate ensures we
-        // don't reach this path in practice; the defensive skip keeps
-        // the mutation loop safe.
+        // An outcome without a sourceCallId leaves the proposal pending.
         expect(messages[0].toolResults[0].content.status).toBe('proposal_pending');
     });
 

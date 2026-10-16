@@ -36,7 +36,7 @@ router.post('/something', async function (req, res) {
 ## Adding behavior
 
 1. Add the method to the Repo first.
-2. Add a test case with a real `makeTempFsEngine()` harness (no mocks).
+2. Reuse relevant contract checks; add a case when changed persistence behavior leaves a meaningful risk unverified. Use `makeTempFsEngine()` when real filesystem semantics matter.
 3. If the Engine doesn't already expose the primitives the new Repo method needs, add them to `FsTransaction` and route through a `registerXxxHandler(tx)` function at the bottom of `fs-engine-transaction.js`.
 4. Wire the endpoint to call the new Repo method.
 
