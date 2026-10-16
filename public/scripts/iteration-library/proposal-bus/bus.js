@@ -186,38 +186,6 @@ export function createBus(opts = {}) {
         return out;
     }
 
-    /**
-     * @deprecated retained for the primitive's unit-tests. The
-     * studios now compute the gate via `listPending()` +
-     * `messageResolver` because the "batch" boundary is the assistant
-     * MESSAGE (many tool_calls per message), not the tool_call
-     * (`sourceCallId`) alone. hasPendingSiblingsFor's tool-call-grouped
-     * semantics only match reality when a single message emits a
-     * single tool_call — the trivial case — so keeping it as a bus
-     * primitive would mislead future callers. See the studios'
-     * `hasPendingInSameAssistantTurn` for the correct gate.
-     */
-    function hasPendingSiblingsFor(outcomeEntryIds) {
-        const idSet = new Set();
-        for (const id of outcomeEntryIds || []) {
-            if (id) idSet.add(String(id));
-        }
-        if (idSet.size === 0) return false;
-        const callIds = new Set();
-        for (const e of entries) {
-            if (!idSet.has(String(e.id))) continue;
-            const cid = String(e.sourceCallId || '');
-            if (cid) callIds.add(cid);
-        }
-        if (callIds.size === 0) return false;
-        for (const e of entries) {
-            if (e.status !== 'pending') continue;
-            if (idSet.has(String(e.id))) continue;
-            if (callIds.has(String(e.sourceCallId || ''))) return true;
-        }
-        return false;
-    }
-
     function deepTargetMatch(a, b) {
         if (a === b) return true;
         if (!a || !b) return false;
@@ -747,7 +715,6 @@ export function createBus(opts = {}) {
             return out;
         },
         hasOutstanding,
-        hasPendingSiblingsFor,
         listPending,
         getCurrentPendingState,
         approve,
