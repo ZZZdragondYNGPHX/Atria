@@ -103,9 +103,7 @@ test.describe('Skills: manager panel flow', () => {
         const bundledCount = await bundledRows.count();
         // eslint-disable-next-line no-console
         console.log(`[smoke] bundled rows = ${bundledCount}`);
-        // 18 bundled skills ship in default/skills/global/. Be defensive
-        // and assert ≥ 1 so renaming a scaffold doesn't sink the suite,
-        // but log the count for doc review.
+        // This smoke check proves the bundled browser renders a row.
         expect(bundledCount).toBeGreaterThanOrEqual(1);
 
         await page.screenshot({

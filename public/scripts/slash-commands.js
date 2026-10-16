@@ -3631,7 +3631,7 @@ export function initDefaultSlashCommands() {
                 throw new SlashCommandExecutionError(t`Closures are not supported as unnamed arguments for /array-wrap. Did you forget to call the closure with parentheses?`);
             }
 
-            // Multiple unnamed arguments are not supported since acceptsMultiple is false, but check just in case
+            // Reject multiple unnamed arguments.
             if (Array.isArray(value)) {
                 throw new SlashCommandExecutionError(t`/array-wrap does not support multiple unnamed arguments.`);
             }
@@ -3688,7 +3688,7 @@ export function initDefaultSlashCommands() {
                 throw new SlashCommandExecutionError(t`Closures are not supported as unnamed arguments for /array-unwrap. Did you forget to call the closure with parentheses?`);
             }
 
-            // Multiple unnamed arguments are not supported since acceptsMultiple is false, but check just in case
+            // Reject multiple unnamed arguments.
             if (Array.isArray(value)) {
                 throw new SlashCommandExecutionError(t`/array-unwrap does not support multiple unnamed arguments.`);
             }
