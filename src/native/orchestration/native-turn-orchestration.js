@@ -24,6 +24,7 @@ import { nativeSessionContextOptions, nativeContextCompilationOptions } from '..
 import { NativeProjectOrchestrationAuthority } from './native-project-orchestration.js';
 import { NativeRpOrchestrationAuthority } from './native-rp-generation.js';
 import { RpRunControl } from '../rp-run-control.js';
+import { NativeBackgroundOrchestrationAuthority } from './native-background-generation.js';
 
 const selections = new WeakMap();
 const modelScopes = new WeakMap();
@@ -48,6 +49,7 @@ export class NativeNarratorOrchestrationAuthority {
     #runs = new Map();
     #project;
     #rp;
+    #background;
 
     constructor({ engine, sessionCore, memoryAuthority = null, projectAgent = null, projectRepository = null, rpControl = new RpRunControl({ engine }), plans = null, modelResolver = null, contextOptions = {} }) {
         if (!engine || !sessionCore) throw new TypeError('Original Native Session/Engine required');
@@ -59,12 +61,15 @@ export class NativeNarratorOrchestrationAuthority {
             projectAgent: this.projectAgent, projectRepository: this.projectRepository, rpControl: this.rpControl,
             effectAuthority: {
                 authorize: args => args.root.sourceBinding.sourceAuthority === 'rp_chat' ? this.#rpAuthority().authorize(args)
-                    : args.root.sourceBinding.sourceAuthority === 'project' ? this.#projectAuthority().authorize(args) : this.#authorize(args),
+                    : args.root.sourceBinding.sourceAuthority === 'project' ? this.#projectAuthority().authorize(args)
+                        : this.#backgroundAuthority().hasRun(args.root.runId) ? this.#backgroundAuthority().authorize(args) : this.#authorize(args),
                 verifySend: args => args.root.sourceBinding.sourceAuthority === 'rp_chat' ? this.#rpAuthority().verifySend(args)
-                    : args.root.sourceBinding.sourceAuthority === 'project' ? this.#projectAuthority().verifySend(args) : this.#verifySend(args),
+                    : args.root.sourceBinding.sourceAuthority === 'project' ? this.#projectAuthority().verifySend(args)
+                        : this.#backgroundAuthority().hasRun(args.root.runId) ? this.#backgroundAuthority().verifySend(args) : this.#verifySend(args),
                 verifyObservation: args => {
                     if (args.root.sourceBinding.sourceAuthority === 'rp_chat') return this.#rpAuthority().verifyObservation(args);
                     if (args.root.sourceBinding.sourceAuthority === 'project') return this.#projectAuthority().verifyObservation(args);
+                    if (this.#backgroundAuthority().hasRun(args.root.runId)) return this.#backgroundAuthority().verifyObservation(args);
                     const state = this.#runs.get(args.root.runId);
                     if (!state) fail('native_orchestration_model_completion_proof_required');
                     return this.#port(state.host).verifyObservation(args);
@@ -96,6 +101,15 @@ export class NativeNarratorOrchestrationAuthority {
     }
 
     startRp(host, handle, input, options) { return this.#rpAuthority().start(host, handle, input, options); }
+
+    #backgroundAuthority() {
+        this.#background ??= new NativeBackgroundOrchestrationAuthority({ owner: this, execution: () => this.execution, port: host => this.#port(host),
+            issueScope: (host, handle, principal) => {
+                const scope = Object.freeze({}); modelScopes.set(scope, { host, handle, consumed: false, principal }); return scope;
+            } });
+        return this.#background;
+    }
+    startBackgroundTask(host, handle, input) { return this.#backgroundAuthority().start(host, handle, input); }
 
     setModelPort(port) {
         if (!(port instanceof ModelPort) || port.runs !== this.execution.runs) throw new TypeError('Original ModelPort required');

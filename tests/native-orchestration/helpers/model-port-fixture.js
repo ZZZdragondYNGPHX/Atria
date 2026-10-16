@@ -100,7 +100,7 @@ export async function modelPortFixture(make, { usage = true, failure = false, re
                 attachNativeHostLifecycle(coldEngine, { directoriesByHandle: () => h.dirs }); core = services(h, coldEngine).core;
                 rebuild(coldEngine, new NativeModelPromptPersistence({ engine: coldEngine }), new VersionedJsonResourceHandler({ engine: coldEngine }));
             },
-            cleanup: async () => { cancelSessionMaintenance(f.sessionRepo, h.handle, base.session.sessionId); server.closeAllConnections();
+            cleanup: async () => { cancelSessionMaintenance(core._sessions, h.handle, base.session.sessionId); server.closeAllConnections();
                 await new Promise(resolve => server.close(resolve)); await coldEngine?.close(); await h.engine.close(); await h.cleanup(); } };
     } catch (error) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await h.engine.close(); await h.cleanup(); throw error; }
 }

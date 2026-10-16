@@ -1,6 +1,7 @@
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { hashNativeDocument } from '../repositories/common.js';
 import { assertNativeTurnPermit } from './native-turn-permit.js';
+import { inspectNativeBackgroundGenerationIdentity } from './native-background-generation.js';
 
 const proofs = new WeakMap();
 const denied = () => { throw Object.assign(new Error('Trusted original Turn producer is required'), { code: 'native_generation_budget_lane_denied' }); };
@@ -26,8 +27,25 @@ function mintNativeTurnQuota(role, { host, handle, request, snapshot, anchor, in
 export function mintNativeNarratorQuota(args) { return mintNativeTurnQuota('narrator', args); }
 export function mintNativeResolverQuota(args) { return mintNativeTurnQuota('intent_resolver', args); }
 
+export function mintNativeBackgroundQuota(capture, expected) {
+    const value = inspectNativeBackgroundGenerationIdentity(capture, expected);
+    const proof = Object.freeze({});
+    proofs.set(proof, { backgroundCapture: capture, host: value.host, sessionCore: value.host.sessionCore, handle: value.handle,
+        sessionId: value.input.sessionId, requestId: value.request.requestId, role: value.request.role,
+        anchor: { branchId: value.expected.anchor.branchId, revisionId: value.expected.anchor.revisionId } });
+    return proof;
+}
+
 export function assertNativeTurnQuota(proof, expected) {
     const value = proofs.get(proof);
+    if (value?.backgroundCapture) {
+        const captured = inspectNativeBackgroundGenerationIdentity(value.backgroundCapture, { host: value.host, handle: value.handle });
+        if (Object.entries(expected ?? {}).some(([key, item]) => ['host', 'sessionCore'].includes(key) ? value[key] !== item
+            : key === 'policy' ? hashNativeDocument(item) !== captured.policyDigest
+                : hashNativeDocument(value[key] ?? null) !== hashNativeDocument(item))) denied();
+        return { ...value, quota: { request: { role: value.role, background: true, anchor: { invocationId: captured.input.invocationId } },
+            policy: captured.policy } };
+    }
     if (!value || !expected || !['narrator', 'intent_resolver'].includes(value.role)
         || (expected.host !== undefined && value.host !== expected.host)
         || (expected.sessionCore !== undefined && value.sessionCore !== expected.sessionCore)

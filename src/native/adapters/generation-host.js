@@ -43,6 +43,8 @@ import { beginHostCapture } from '../agent-intelligence/host-capture.js';
 import { appraisalEventCurrent, prepareAppraisalDelivery } from '../appraisal-authority.js';
 import { assertPredictionCapture, assertPredictionCaptureCurrent } from '../prediction-service.js';
 import { projectRuntimeRoute } from './project-runtime-route.js';
+import { taskRuntimeRoute } from './task-runtime-route.js';
+import { selectNativeTaskContext } from './task-context-items.js';
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const predictionLanes = new WeakSet();
@@ -954,7 +956,9 @@ export class NativeGenerationHost {
             checkCancellation(signal);
             return work.finalize(result, { kind: 'model_delivery', invocationId: input.invocationId, delivered: true });
         }
-        const operation = nativeTaskScheduler.submit(work);
+        const original = ordinaryLifecycle && this.turnOrchestration
+            ? await this.turnOrchestration.startBackgroundTask(this, handle, { input, snapshot, taskPlan, captured, work }) : null;
+        const operation = original ?? nativeTaskScheduler.submit(work);
         evidenceCapture?.append({ type: 'operation.queued', eventId: operation.operationId + '/queued', effectId: operation.operationId, status: 'queued' });
         try { onChunk?.({ operationId: operation.operationId, status: 'queued', provisional: true }); } catch { /* Observer only. */ }
         return operation.result.catch(async error => {
@@ -968,7 +972,8 @@ export class NativeGenerationHost {
         const scopedContext = orchestrationSend?.context;
         const quotaProof = orchestrationSend?.quotaProof;
         if (value.orchestrationSend !== undefined) fail('native_generation_host_readonly');
-        if (orchestrationSend && (!sendBank || preview || preflight || taskPlan || illustrationPlan || (lanePlan?.budgetContext && !quotaProof))) fail('native_generation_budget_lane_denied');
+        if (orchestrationSend && (!sendBank || preview || preflight || taskPlan && scopedContext?.compiled.request.audience.kind !== 'task'
+            || illustrationPlan || (lanePlan?.budgetContext && !quotaProof))) fail('native_generation_budget_lane_denied');
         if (quotaProof !== undefined) assertNativeTurnQuota(quotaProof, { host: this, sessionCore: this.sessionCore, handle,
             sessionId: value.sessionId, requestId: value.requestId, role: value.role });
         if (scopedContext && (value.messages?.length || value.prompt)) fail('native_generation_context_denied');
@@ -1114,9 +1119,7 @@ export class NativeGenerationHost {
             persistence.getRuntimeRoute = async (owner, id) => projectRuntimeRoute(lanePlan ? lanePlan.routes[id] : await this.persistence.getRuntimeRoute(owner, id), input.projectId);
         }
         if (taskPlan) {
-            const compose = lane => ({ ...lane, role, promptParameters: {},
-                promptProgramRef: { ...taskPlan.variant.prompt, resourceType: 'core.prompt-program', scope: 'package', packageId: packageIdentity.packageId, packageVersionId: packageIdentity.packageVersionId },
-                generationProfileRef: { ...taskPlan.variant.generation, resourceType: 'core.generation-profile', scope: 'package', packageId: packageIdentity.packageId, packageVersionId: packageIdentity.packageVersionId } });
+            const compose = lane => taskRuntimeRoute(lane, role, taskPlan, packageIdentity);
             route = compose(route);
             persistence.getRuntimeRoute = async (owner, id) => compose(lanePlan ? lanePlan.routes[id] : await this.persistence.getRuntimeRoute(owner, id));
         }
@@ -1224,15 +1227,7 @@ export class NativeGenerationHost {
             // A task/tool transcript follows the selected turn input. Do not
             // append the original user turn again after a tool result.
             const safeItems = authorityContextItems(selected, snapshot, authorityContext);
-            const exposed = taskPlan ? safeItems.filter(item => {
-                const context = taskPlan.task.context;
-                if (item.kind === 'context.player-persona') return context.includes('player_persona');
-                if (item.id.startsWith('projection:')) return context.includes('projection');
-                if (item.id.startsWith('memory:')) return true;
-                return item.kind === 'context.history' ? context.includes('history')
-                    : item.id.startsWith('knowledge:') ? context.includes('knowledge')
-                        : item.id === 'state:atri_world_state' && context.includes('world');
-            }) : safeItems;
+            const exposed = taskPlan ? selectNativeTaskContext(safeItems, taskPlan.task) : safeItems;
             const items = exposed.map(item => (input.messages?.length || skillTranscript.length) && item.kind === 'context.input'
                 ? { ...item, kind: 'context.history', content: { role: 'user', content: item.content } } : item);
             // Host-owned task dialogue is supplemental context, never a second fact scan.

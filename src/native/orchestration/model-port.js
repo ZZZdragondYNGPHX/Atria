@@ -1,5 +1,6 @@
 import { fields } from '../../../public/shared/native-values.js';
 import { inspectNativeRpGenerationIdentity } from './native-rp-generation.js';
+import { inspectNativeBackgroundGenerationIdentity } from './native-background-generation.js';
 import { NativeGenerationHost } from '../adapters/generation-host.js';
 import { immutable, checkCancellation } from '../model-prompt-runtime/execution-utils.js';
 import { compiledSendIdentity } from '../model-prompt-runtime/compiled-binding.js';
@@ -25,6 +26,7 @@ const CONSUME_DENIALS = new Set(['native_orchestration_source_stale', 'native_or
     'native_orchestration_project_selection_stale', 'native_orchestration_project_grant_denied', 'native_orchestration_project_route_mismatch',
     'native_orchestration_context_source_stale', 'native_orchestration_context_denied', 'native_orchestration_context_audience_denied',
     'native_orchestration_memory_source_stale',
+    'native_orchestration_background_source_stale', 'native_orchestration_background_grant_denied',
     'native_run_restore_review_required', 'native_run_terminal', 'native_run_dead', 'native_story_not_started', 'native_run_rewind_denied']);
 
 /** Original sealed model consumer; hashes are facts, never another send grant. */
@@ -92,20 +94,28 @@ export class ModelPort {
         // No raw prompt, audience, callback response or approval Boolean can
         // substitute for the capability minted at an original domain model point.
         const principal = await resolveNativeNarratorScope(scope, this.host, handle);
-        const { runId, effectId, request, options, revalidateConsume, logicalInputRef, logicalInputHash, nativeTurnPermit, nativeProjectCapture, nativeRpCapture } = principal;
+        const { runId, effectId, request, options, revalidateConsume, logicalInputRef, logicalInputHash, nativeTurnPermit, nativeProjectCapture, nativeRpCapture, nativeBackgroundCapture } = principal;
         const project = logicalInputRef.kind === 'native_project_intent';
         const rp = logicalInputRef.kind === 'native_rp_intent';
-        if (rp ? logicalInputRef.role !== 'narrator' || request.role !== 'narrator' || request.requestId !== logicalInputRef.requestId
+        const background = logicalInputRef.kind === 'native_background_intent';
+        if (background ? request.role !== logicalInputRef.role || request.requestId !== logicalInputRef.invocationId
+            || nativeTurnPermit !== undefined || nativeProjectCapture !== undefined || nativeRpCapture !== undefined
+            : rp ? logicalInputRef.role !== 'narrator' || request.role !== 'narrator' || request.requestId !== logicalInputRef.requestId
             || nativeTurnPermit !== undefined || nativeProjectCapture !== undefined
-            : project ? logicalInputRef.role !== 'studio' || request.role !== 'studio' || request.requestId !== logicalInputRef.requestId
+                : project ? logicalInputRef.role !== 'studio' || request.role !== 'studio' || request.requestId !== logicalInputRef.requestId
             || request.projectAttemptId !== logicalInputRef.projectAttemptId || nativeTurnPermit !== undefined
-                : !['narrator', 'intent_resolver'].includes(logicalInputRef.role) || request.role !== logicalInputRef.role
+                    : !['narrator', 'intent_resolver'].includes(logicalInputRef.role) || request.role !== logicalInputRef.role
             || typeof logicalInputRef.invocationId !== 'string' || !logicalInputRef.invocationId
             || request.requestId !== (logicalInputRef.role === 'narrator' ? logicalInputRef.invocationId : logicalInputRef.invocationId + ':intent'))
             fail('native_orchestration_model_scope_invalid');
         const permitExpected = { host: this.host, handle, sessionId: request.sessionId,
             invocationId: logicalInputRef.invocationId, requestHash: logicalInputRef.requestHash };
-        const assertPermit = rp ? () => {
+        const assertPermit = background ? () => {
+            const identity = inspectNativeBackgroundGenerationIdentity(nativeBackgroundCapture, { host: this.host, handle });
+            if (hash(identity.request) !== hash(request) || identity.input.invocationId !== logicalInputRef.invocationId
+                || identity.input.taskId !== logicalInputRef.taskId) fail('native_orchestration_model_scope_invalid');
+            return identity;
+        } : rp ? () => {
             const identity = inspectNativeRpGenerationIdentity(nativeRpCapture, { host: this.host, handle });
             if (identity.request.requestId !== request.requestId || identity.sourceRequest.controlId !== logicalInputRef.sourceRef.controlId
                 || identity.prefixDigest !== logicalInputRef.sourceRef.prefixDigest || hash(identity.request) !== hash(request))

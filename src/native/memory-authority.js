@@ -95,14 +95,14 @@ export class NativeMemoryAuthority {
             throw new ConflictError('native_orchestration_memory_source_stale');
     }
     /** Read-only original Hybrid work, enclosed by the caller's context_build bank. */
-    async recallContext(handle, { snapshot, requester, tokenBudget, countTokens, assertCurrent, expectedDescriptor }) {
+    async recallContext(handle, { snapshot, requester, informationTaskId, tokenBudget, countTokens, assertCurrent, expectedDescriptor }) {
         const descriptor = await this.contextDescriptor(handle, snapshot);
         if (expectedDescriptor && hashNativeDocument(descriptor) !== hashNativeDocument(expectedDescriptor))
             throw new ConflictError('native_orchestration_memory_source_stale');
         const proof = Object.freeze({});
         this.#recalls.set(proof, { handle, requesterDigest: hashNativeDocument(requester), snapshotDigest: descriptor.snapshotDigest,
             settingsFingerprint: descriptor.settings.fingerprint });
-        const settings = descriptor.settings.value, information = informationContext(snapshot, requester);
+        const settings = descriptor.settings.value, information = informationContext(snapshot, requester, informationTaskId);
         const current = async () => { await assertCurrent(); await this.assertContextRecall(handle, proof, snapshot, requester); };
         await current();
         if (!isHybridMemoryEnabled(settings) || settings.recallEnabled === false || !information?.memory) return { proof, evidence: [] };
@@ -112,7 +112,7 @@ export class NativeMemoryAuthority {
             throw new ConflictError('native_orchestration_memory_retrieval_scope_unavailable');
         const runtime = this._context(snapshot, settings);
         try {
-            const eligibility = resolveMemoryEligibility(runtime.context, { requester }, () => snapshot);
+            const eligibility = resolveMemoryEligibility(runtime.context, { requester, informationTaskId }, () => snapshot);
             const legal = eligibleMemorySnapshot(await runtime.lifecycle.retrievalSnapshot(runtime.context, { readOnly: true }), eligibility);
             await current();
             const query = nativeTurnMemoryQuery(snapshot, snapshot.timeline.at(-1)?.content, information);

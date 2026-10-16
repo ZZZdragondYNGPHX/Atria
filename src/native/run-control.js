@@ -290,6 +290,20 @@ export class RunControl {
             }
         }));
     }
+    /** Observation only. Final admission still charges this same original CAS. */
+    async checkGenerationQuota(handle, snapshot, request, policy) {
+        assertGenerationBudget(policy, snapshot.manifest.runtime?.experienceContract?.lifecycleRuntime);
+        if (hashNativeDocument(policy) !== hashNativeDocument(snapshot.manifest.runtime?.experienceContract?.generationBudget))
+            throw runFailure('native_generation_budget_lane_denied');
+        return this.repo.withRunLock(handle, snapshot.session.sessionId, () => this.repo._engine.withTransaction(handle, async tx => {
+            const session = await getNativeDocument(tx, { kind: K.session, handle, sessionId: snapshot.session.sessionId });
+            if (session?.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
+            const control = await assertRunAccess(tx, handle, snapshot.session.sessionId, 'write');
+            chargeGenerationQuota(structuredClone(control ?? { schemaVersion: 1, operations: {}, background: {}, highWaterTurn: 0,
+                headRevisionId: session.headRevisionId }), snapshot, request, policy);
+        }));
+    }
+
     async charge(handle, snapshot, request, policy) {
         return this.update(handle, snapshot.session.sessionId, value => {
             const { id, op } = chargeGenerationQuota(value, snapshot, request, policy);
