@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { createSourceLifecycle, NATIVE_PROVENANCE_NAMESPACE } from '../../public/scripts/agents/memory/source-lifecycle.js';
-import { captureEpisodes } from '../../public/scripts/agents/memory/source-provenance.js';
+import { createSourceLifecycle, NATIVE_PROVENANCE_NAMESPACE, PROVENANCE_NAMESPACE } from '../../public/scripts/agents/memory/source-lifecycle.js';
+import { captureEpisodes, sourceMessageId } from '../../public/scripts/agents/memory/source-provenance.js';
 import { projectFacts } from '../../public/scripts/agents/memory/atomic-facts.js';
 import { projectTemporalGraph } from '../../public/scripts/agents/memory/temporal-graph.js';
 import { normalizeHybridMemorySettings } from '../../public/scripts/agents/memory/settings.js';
@@ -19,6 +19,7 @@ import { resolveMemoryEligibility, eligibleMemorySnapshot } from '../../public/s
 import { retrieveMemory, memoryTokenBudget, memoryTokenCounter } from '../../public/scripts/agents/memory/hybrid-retrieval.js';
 import { informationContext } from '../../public/shared/native-information-runtime.js';
 import { nativeTurnMemoryQuery } from '../../public/scripts/native/experience/llm/memory-bridge.js';
+import { RpRunControl } from './rp-run-control.js';
 
 const factActions = new Set(['create', 'reinforce', 'merge', 'supersede']);
 const graphActions = new Set(['entity', 'alias', 'rename', 'merge_entity', 'split_entity', 'resolve_pending', 'relation', 'resolve_conflict']);
@@ -36,6 +37,55 @@ export class NativeMemoryAuthority {
     }
     async contextDescriptor(handle, snapshot) {
         return { settings: await this._settings(handle), snapshotDigest: hashNativeDocument(snapshot) };
+    }
+    async rpContextDescriptor(handle, control, request) {
+        if (!(control instanceof RpRunControl) || control._engine !== this.settingsRepo._engine)
+            throw new TypeError('Original RP Memory authority required');
+        const memory = await RpRunControl.prototype.memoryContext.call(control, handle, request.controlId, request.source);
+        return { settings: await this._settings(handle), memory };
+    }
+    async assertRpContextRecall(handle, proof, control, request) {
+        const captured = this.#recalls.get(proof);
+        if (!captured || captured.handle !== handle || captured.control !== control || captured.requestDigest !== hashNativeDocument(request)
+            || captured.descriptorDigest !== hashNativeDocument(await this.rpContextDescriptor(handle, control, request)))
+            throw new ConflictError('native_orchestration_memory_source_stale');
+    }
+    async recallRpContext(handle, { control, request, tokenBudget, countTokens, assertCurrent, expectedDescriptor }) {
+        const descriptor = await this.rpContextDescriptor(handle, control, request), descriptorDigest = hashNativeDocument(descriptor);
+        if (expectedDescriptor && descriptorDigest !== hashNativeDocument(expectedDescriptor))
+            throw new ConflictError('native_orchestration_memory_source_stale');
+        const proof = Object.freeze({});
+        this.#recalls.set(proof, { handle, control, requestDigest: hashNativeDocument(request), descriptorDigest });
+        const current = async () => { await assertCurrent(); await this.assertRpContextRecall(handle, proof, control, request); };
+        await current();
+        const settings = descriptor.settings.value;
+        if (!isHybridMemoryEnabled(settings) || settings.recallEnabled === false) return { proof, evidence: [] };
+        if (settings.nativeRetrieval?.embed || settings.rerankEnabled && settings.nativeRetrieval?.rerank)
+            throw new ConflictError('native_orchestration_memory_retrieval_scope_unavailable');
+        const chat = descriptor.memory.chat;
+        if (chat.some(message => !sourceMessageId(message) || message.atri_native?.messageId)
+            || new Set(chat.map(sourceMessageId)).size !== chat.length) throw new ConflictError('native_orchestration_memory_source_unavailable');
+        const key = 'rp:' + request.controlId;
+        const context = { chat, capabilitySettings: { memory_graph: settings }, getChatState: async namespace => {
+            if (![PROVENANCE_NAMESPACE, graphNamespaces.STATE_NAMESPACE, graphNamespaces.META_NAMESPACE].includes(namespace))
+                throw new TypeError('Unsupported RP Memory namespace');
+            return { ok: true, state: structuredClone(descriptor.memory.states[namespace] ?? null) };
+        }, updateChatState: async () => { throw new TypeError('RP Context Memory is read-only'); },
+        saveChat: async () => { throw new TypeError('RP Context Memory may not rewrite source messages'); } };
+        const lifecycle = createSourceLifecycle({ getContext: () => context, resolveScope: () => ({ key, target: { key } }),
+            enabled: () => isHybridMemoryEnabled(settings), writeEnabled: () => false });
+        try {
+            const eligibility = resolveMemoryEligibility(context, { requester: { kind: 'narrator' } }, () => null);
+            const legal = eligibleMemorySnapshot(await lifecycle.retrievalSnapshot(context, { readOnly: true }), eligibility);
+            const result = await retrieveMemory(legal, chat.at(-1).mes, { countTokens: memoryTokenCounter({ getTokenCountAsync: countTokens }),
+                budget: Math.min(memoryTokenBudget(settings), tokenBudget.modelContextLimit - tokenBudget.responseReserve),
+                sceneText: legal.chat.filter(message => message.mes).slice(-2).map(message => message.mes).join('\n'),
+                computeContext: { kind: 'rp_chat', controlId: request.controlId },
+                service: { admitCorpus: async () => { await current(); return { admitted: true, metered: false }; } } });
+            await current(); result.assertCurrent();
+            return { proof, evidence: result.evidence.map(item => ({ memoryId: 'rp-hybrid:' + item.id, content: item.content,
+                sourceRefs: item.sourceRefs, source: { kind: 'memory_graph', selectedId: item.id } })), diagnostics: result.diagnostics, metrics: result.metrics };
+        } finally { lifecycle.dispose(); }
     }
     async assertContextRecall(handle, proof, snapshot, requester) {
         const captured = this.#recalls.get(proof);

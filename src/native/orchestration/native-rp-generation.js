@@ -191,12 +191,13 @@ export class NativeRpOrchestrationAuthority {
             const effectId = 'oeffect_' + hash({ runId: root.runId, attemptId, taskPurpose }).slice(0, 32); state.effectId = effectId;
             await service.effects.prepare(handle, { ...runGuard(await service.runs.get(handle, root.runId)), effectId, nodeAttemptId: attemptId,
                 proposal: Object.fromEntries(['actionRef', 'targetRef', 'inputRef', 'inputHash'].map(key => [key, state.decision[key]])) });
-            state.contextPort = new ContextPort({ rpControl: this.owner.rpControl, rpCapture: capture, authorizeContext: async ({ request }) => {
-                await this.#current(state);
-                if (request.taskPurpose !== taskPurpose || !equal(request.audience, audience) || request.grantDigest !== grantDigest
-                    || !equal(request.sourceBinding, captured.sourceBinding) || !equal(request.inputRefs, [logicalInputRef])) fail('native_orchestration_context_denied');
-                return { allowed: true, grantDigest };
-            } });
+            state.contextPort = new ContextPort({ sessionCore: this.owner.sessionCore, memoryAuthority: this.owner.memoryAuthority,
+                rpControl: this.owner.rpControl, rpCapture: capture, authorizeContext: async ({ request }) => {
+                    await this.#current(state);
+                    if (request.taskPurpose !== taskPurpose || !equal(request.audience, audience) || request.grantDigest !== grantDigest
+                        || !equal(request.sourceBinding, captured.sourceBinding) || !equal(request.inputRefs, [logicalInputRef])) fail('native_orchestration_context_denied');
+                    return { allowed: true, grantDigest };
+                } });
             const request = { ownerRef: { handle }, sourceBinding: captured.sourceBinding, audience, taskPurpose, grantDigest, inputRefs: [logicalInputRef],
                 tokenBudget: { modelContextLimit: selected.resolved.model.limits.contextTokens, responseReserve: effectiveOutputReserve(selected.resolved) } };
             const limits = selected.resolved.route.executionPolicy.computeBudget;

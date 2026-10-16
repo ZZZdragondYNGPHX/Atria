@@ -39,7 +39,8 @@ export class SourcePort {
                 throw new ConflictError('native_orchestration_consumption_authority_unavailable');
             return operation => {
                 if (typeof operation !== 'function') throw new TypeError('Original domain consumption requires an operation');
-                return ChatRepo.prototype.withWriteLock.call(chats, handle, operation);
+                return withRuntimeWrite(handle, () => withNativeResourceWrite(handle, 'settings',
+                    () => ChatRepo.prototype.withWriteLock.call(chats, handle, operation)));
             };
         }
         if (binding?.sourceAuthority === 'project') {

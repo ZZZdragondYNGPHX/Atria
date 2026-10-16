@@ -121,7 +121,11 @@ export class ContextPort {
     async compilationDescriptor(handle, input) {
         const request = this.#request(handle, input);
         const { snapshot, authorityContext, resolver, modelContext, projectIdentity, rpIdentity } = await this.#current(handle, request, 'compile_descriptor', false);
-        if (rpIdentity) return { request, source: rpIdentity.sourceRequest, context: rpIdentity.context };
+        if (rpIdentity) {
+            const memoryDescriptor = this.memoryAuthority ? await NativeMemoryAuthority.prototype.rpContextDescriptor.call(this.memoryAuthority, handle, this.rpControl, rpIdentity.sourceRequest) : null;
+            if (memoryDescriptor) this.#memoryDescriptors.set(hashNativeDocument(request), memoryDescriptor);
+            return { request, source: rpIdentity.sourceRequest, context: rpIdentity.context, memoryDescriptor };
+        }
         if (projectIdentity) return { request, modelContext: projectAgentPromptInputs(modelContext), skillWorkRecords: projectIdentity.skillWorkRecords };
         if (resolver) {
             const installed = await this.#resolverPackage(handle, snapshot);
@@ -146,17 +150,26 @@ export class ContextPort {
         const request = this.#request(handle, input);
         const { snapshot, information, authorityDigest, resolver, modelContext, projectIdentity, rpIdentity } = await this.#current(handle, request, 'compile');
         if (rpIdentity) {
+            const descriptorKey = hashNativeDocument(request), expectedDescriptor = this.#memoryDescriptors.get(descriptorKey);
+            this.#memoryDescriptors.delete(descriptorKey);
+            const recall = this.memoryAuthority ? await NativeMemoryAuthority.prototype.recallRpContext.call(this.memoryAuthority, handle, {
+                control: this.rpControl, request: rpIdentity.sourceRequest, tokenBudget: request.tokenBudget, countTokens: this.contextOptions.countTokens,
+                expectedDescriptor, assertCurrent: () => this.#current(handle, request, 'recall') }) : null;
             const source = { kind: 'rp_chat', controlId: rpIdentity.sourceRequest.controlId };
             const selected = emptyNativeContextPlan(rpIdentity.request, { model: { limits: {
                 contextTokens: request.tokenBudget.modelContextLimit, outputTokens: request.tokenBudget.responseReserve } } }, source);
-            const plan = { ...selected, items: rpIdentity.context.messages.map((message, index) => ({ kind: 'context.history', id: 'rp-message-' + index,
-                content: { ...message, role: message.role === 'system' ? 'user' : message.role }, provenance: [{ source: 'native.rp-chat', ref: rpIdentity.context.prefixDigest }] })) };
+            const plan = { ...selected, items: [...rpIdentity.context.messages.map((message, index) => ({ kind: 'context.history', id: 'rp-message-' + index,
+                content: { ...message, role: message.role === 'system' ? 'user' : message.role }, provenance: [{ source: 'native.rp-chat', ref: rpIdentity.context.prefixDigest }] })),
+            ...(recall?.evidence ?? []).map(item => ({ kind: 'context.history', id: item.memoryId, content: { role: 'user', content: item.content },
+                provenance: [{ source: 'native.rp-memory', ref: item.memoryId }] }))] };
             const after = await this.#current(handle, request, 'compiled');
             if (after.authorityDigest !== authorityDigest) fail('native_orchestration_context_source_stale');
+            if (recall) await NativeMemoryAuthority.prototype.assertRpContextRecall.call(this.memoryAuthority, handle, recall.proof, this.rpControl, rpIdentity.sourceRequest);
             const proof = { sourceBindingDigest: request.sourceBinding.bindingDigest, grantDigest: request.grantDigest,
                 audienceDigest: hashNativeDocument(request.audience), projectionDigest: authorityDigest, authorityDigest };
-            const context = immutable({ schemaVersion: 1, contextId: hashNativeDocument({ request, plan, proof }), request, plan, evidenceRefs: [], currentnessProof: proof });
-            this.#contexts.set(context, { handle, request, proof, rp: { request: rpIdentity.request } });
+            const context = immutable({ schemaVersion: 1, contextId: hashNativeDocument({ request, plan, proof }), request, plan,
+                evidenceRefs: (recall?.evidence ?? []).flatMap(item => item.sourceRefs), currentnessProof: proof });
+            this.#contexts.set(context, { handle, request, proof, rp: { request: rpIdentity.request }, memoryProof: recall?.proof });
             return context;
         }
         if (projectIdentity) {
@@ -217,6 +230,8 @@ export class ContextPort {
         const { information, authorityDigest, snapshot } = await this.#current(handle, captured.request, phase);
         if (captured.project || captured.rp) {
             if (authorityDigest !== captured.proof.authorityDigest) fail('native_orchestration_context_source_stale');
+            if (captured.rp && captured.memoryProof) await NativeMemoryAuthority.prototype.assertRpContextRecall.call(this.memoryAuthority, handle,
+                captured.memoryProof, this.rpControl, captured.request.sourceBinding.sourceRequest);
             return context.plan;
         }
         if (captured.resolver) {

@@ -266,13 +266,14 @@ export class ChatRepo {
         await this.#writeTransaction(handle, async (tx) => tx.deleteChatState(key, namespace));
     }
 
-    async getStateBatch(handle, charDir, name, namespaces, { isGroup = false, groupId } = {}) {
+    async getStateBatch(handle, charDir, name, namespaces, { isGroup = false, groupId, tx } = {}) {
         const key = this._key(handle, charDir, name, { isGroup, groupId });
-        return this._engine.withTransaction(handle, async (tx) => {
+        const read = async tx => {
             const out = {};
             for (const ns of namespaces) out[ns] = await tx.getChatState(key, ns);
             return out;
-        });
+        };
+        return tx ? read(tx) : this._engine.withTransaction(handle, read);
     }
 
     async rename(handle, charDir, oldName, newName, { isGroup = false, groupId } = {}) {

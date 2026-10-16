@@ -10,12 +10,18 @@ import { admitComputeAttempt, assertComputeLedger, assertRetiredCompute, chargeL
     retireComputeLedger, settleComputeAttempt, settleLocalWork } from '../../public/shared/native-compute-budget.js';
 import { fields } from '../../public/shared/native-values.js';
 import { sourceContent, sourceMessageId } from '../../public/scripts/agents/memory/source-provenance.js';
+import { PROVENANCE_NAMESPACE } from '../../public/scripts/agents/memory/source-lifecycle.js';
+import { constants as memoryNamespaces } from '../../public/scripts/agents/memory/persistence.js';
 
 // Ordinary RP extension of the original RunControl bank (interface §13).
 // The chat header names the control; this record holds the only compute
 // ledger for that chat. It never reads or converts old Orchestrator data.
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 const MAX_OPERATIONS = 128;
+const assertRpPrefix = prefix => {
+    if (prefix.some(message => !sourceMessageId(message) || message.atri_native?.messageId)
+        || new Set(prefix.map(sourceMessageId)).size !== prefix.length) fail('native_rp_source_unavailable');
+};
 const controlKey = (handle, controlId) => ({ kind: K.rpRunControl, handle, controlId });
 const chatKey = (handle, locator) => ({ kind: 'chat', handle, charDir: locator.charDir, name: locator.name, isGroup: locator.isGroup, groupId: locator.groupId });
 
@@ -142,10 +148,25 @@ export class RpRunControl {
             const { control } = await this._source(transaction, handle, controlId, source);
             const chat = await transaction.getResource(chatKey(handle, control.locator));
             const prefix = chat.body.slice(0, source.input.floor + 1);
+            assertRpPrefix(prefix);
             return { prefixDigest: hashNativeDocument(prefix.map(message => ({ messageId: sourceMessageId(message), content: sourceContent(message) }))),
                 messages: prefix.map(message => ({
                     role: message.is_system ? 'system' : message.is_user ? 'user' : 'assistant', content: String(message.mes ?? ''),
                 })) };
+        };
+        return tx ? read(tx) : this._engine.withTransaction(handle, read);
+    }
+
+    /** Original RP source and Memory sidecars in one pure Engine read. */
+    async memoryContext(handle, controlId, source, { tx } = {}) {
+        assertNativeId(controlId, 'rpControl');
+        const read = async transaction => {
+            const { control } = await this._source(transaction, handle, controlId, source);
+            const chat = await transaction.getResource(chatKey(handle, control.locator)), { charDir, name, isGroup, groupId } = control.locator;
+            assertRpPrefix(chat.body.slice(0, source.input.floor + 1));
+            const states = await ChatRepo.prototype.getStateBatch.call(this._chatRepo, handle, charDir, name,
+                [PROVENANCE_NAMESPACE, memoryNamespaces.STATE_NAMESPACE, memoryNamespaces.META_NAMESPACE], { isGroup, groupId, tx: transaction });
+            return structuredClone({ chat: chat.body.slice(0, source.input.floor + 1), states });
         };
         return tx ? read(tx) : this._engine.withTransaction(handle, read);
     }
