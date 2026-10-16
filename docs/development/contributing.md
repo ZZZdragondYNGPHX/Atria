@@ -1,6 +1,6 @@
 # Contributing Guide
 
-Local development, validation, commits and integration are the default. The remote stores committed results; GitHub Actions are disabled, including manual runs, APK/Docker builds and branch cleanup.
+Local development, commits and integration are the default. The remote stores committed results; GitHub Actions are disabled, including manual runs, APK/Docker builds and branch cleanup.
 
 Repository governance is maintained in `docs:README.md` (read locally with `git show docs:README.md`). This guide describes contribution steps; current user instructions and governance define the active task boundaries. Plans, implementation records and the live handoff are maintained only in the independent `docs` branch; `main:docs/` contains product and development documentation.
 
@@ -80,9 +80,9 @@ docs(extension-api): add examples for registerExtensionApi
 ## Local Development Workflow
 
 1. Check Git status, protect unrelated work and create/use the appropriate task branch.
-2. Implement the change and run the smallest sufficient local checks.
+2. Implement the change.
 3. Commit locally and write/update the task Record in the independent `docs` branch.
-4. Integrate completed product work into local `main`; verify the integration without repeating unaffected checks.
+4. Integrate completed product work into local `main`.
 5. Push committed results for storage and clean up completed local/remote task branches.
 6. For a multi-stage task, update the same Record and continue under Governance §8; write a HANDOFF only when the user requests interruption.
 
@@ -144,10 +144,6 @@ Atria/
 │   └── zh-TW/             # Traditional Chinese documentation
 └── config.yaml            # Server configuration
 ```
-
-## Testing
-
-Follow `docs:README.md` §12 / §12.1 for risk-based validation and test additions. Reuse relevant checks; report what ran and any essential missing evidence.
 
 ## Documentation Contributions
 
