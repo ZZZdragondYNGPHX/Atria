@@ -37,7 +37,7 @@ export class NativeProjectOrchestrationAuthority {
 
     #authoring() {
         return this.owner.plans ??= createOrchestrationAuthoringService(this.owner.engine, { sessionCore: this.owner.sessionCore,
-            projectAgent: this.projectAgent, studio: this.projectAgent?._studio, modelResolver: this.owner.modelResolver }).plans;
+            projectAgent: this.projectAgent, studio: this.projectAgent?._studio, rpControl: this.owner.rpControl, modelResolver: this.owner.modelResolver }).plans;
     }
 
     async #describe({ host, handle, projectId, taskId, routeRef, maxModelRounds }) {

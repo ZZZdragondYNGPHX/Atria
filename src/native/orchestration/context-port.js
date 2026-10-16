@@ -11,6 +11,8 @@ import { inspectNativeAuthorityResolver } from './authority-resolver-context.js'
 import { inspectNativeProjectGeneration, inspectNativeProjectGenerationIdentity, readNativeProjectSkillInventory } from './native-project-generation-authority.js';
 import { buildNativeProjectModelRound, projectAgentPromptInputs } from '../../../public/shared/project-agent-prompt.js';
 import { ProjectAgentService } from '../project-agent.js';
+import { inspectNativeRpGeneration } from './native-rp-generation.js';
+import { RpRunControl } from '../rp-run-control.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 const digest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
@@ -22,10 +24,10 @@ const packageDigestOf = installed => hashNativeDocument(JSON.parse(JSON.stringif
 export class ContextPort {
     #contexts = new WeakMap();
 
-    constructor({ sessionCore, projectAgent, projectCapture = null, authorizeContext, contextOptions = {}, readMemoryEvidence, authorityTurn = null, resolverCapture = null, compilationInputs = null } = {}) {
+    constructor({ sessionCore, projectAgent, projectCapture = null, rpControl = null, rpCapture = null, authorizeContext, contextOptions = {}, readMemoryEvidence, authorityTurn = null, resolverCapture = null, compilationInputs = null } = {}) {
         if (typeof authorizeContext !== 'function') fail('native_orchestration_context_authority_required');
-        if ([authorityTurn, resolverCapture, projectCapture].filter(Boolean).length > 1) fail('native_orchestration_context_authority_conflict');
-        Object.assign(this, { sessionCore, projectAgent, projectCapture, authorizeContext, contextOptions: { ...contextOptions }, readMemoryEvidence, authorityTurn, resolverCapture, compilationInputs });
+        if ([authorityTurn, resolverCapture, projectCapture, rpCapture].filter(Boolean).length > 1) fail('native_orchestration_context_authority_conflict');
+        Object.assign(this, { sessionCore, projectAgent, projectCapture, rpControl, rpCapture, authorizeContext, contextOptions: { ...contextOptions }, readMemoryEvidence, authorityTurn, resolverCapture, compilationInputs });
     }
 
     #request(handle, input) {
@@ -37,6 +39,7 @@ export class ContextPort {
             || hashNativeDocument(Object.fromEntries(Object.entries(binding).filter(([key]) => key !== 'bindingDigest'))) !== binding.bindingDigest) fail('native_orchestration_context_source_invalid');
         fields(audience, ['kind', 'id'], 'Context audience');
         const resolver = this.resolverCapture !== null;
+        if (this.rpCapture && (audience.kind !== 'narrator' || audience.id !== undefined)) fail('native_orchestration_context_audience_invalid');
         if (!(this.projectCapture ? audience.kind === 'project_task' : resolver ? audience.kind === 'authority_intent' : ['narrator', 'actor'].includes(audience.kind))
             || (['actor', 'project_task'].includes(audience.kind) ? typeof audience.id !== 'string' || !audience.id : audience.id !== undefined)) fail('native_orchestration_context_audience_invalid');
         if (resolver) inspectNativeAuthorityResolver(this.resolverCapture, { sessionCore: this.sessionCore, handle, sourceBinding: binding });
@@ -53,6 +56,14 @@ export class ContextPort {
         const permission = await this.authorizeContext({ handle, request, phase });
         if (permission?.allowed !== true || permission.grantDigest !== request.grantDigest) fail('native_orchestration_context_denied');
         const binding = request.sourceBinding;
+        if (this.rpCapture) {
+            if (!(this.rpControl instanceof RpRunControl)) fail('native_orchestration_context_domain_unavailable');
+            const rpIdentity = await inspectNativeRpGeneration(this.rpCapture, { rpControl: this.rpControl, handle });
+            if (binding.sourceAuthority !== 'rp_chat' || !binding.sourceRequest || hashNativeDocument(binding.sourceRequest) !== hashNativeDocument(rpIdentity.sourceRequest)
+                || binding.sourceRef.controlId !== rpIdentity.sourceRequest.controlId || binding.sourceRef.prefixDigest !== rpIdentity.context.prefixDigest)
+                fail('native_orchestration_context_source_mismatch');
+            return { rpIdentity, authorityDigest: hashNativeDocument({ source: rpIdentity.sourceRequest, context: rpIdentity.context }) };
+        }
         if (this.projectCapture) {
             const projectIdentity = await inspectNativeProjectGeneration(this.projectCapture, { projectAgent: this.projectAgent, handle });
             if (['compiled', 'send', 'consume'].includes(phase))
@@ -103,7 +114,8 @@ export class ContextPort {
     // inside the admitted work; this pure read establishes its input bound.
     async compilationDescriptor(handle, input) {
         const request = this.#request(handle, input);
-        const { snapshot, authorityContext, resolver, modelContext, projectIdentity } = await this.#current(handle, request, 'compile_descriptor', false);
+        const { snapshot, authorityContext, resolver, modelContext, projectIdentity, rpIdentity } = await this.#current(handle, request, 'compile_descriptor', false);
+        if (rpIdentity) return { request, source: rpIdentity.sourceRequest, context: rpIdentity.context };
         if (projectIdentity) return { request, modelContext: projectAgentPromptInputs(modelContext), skillWorkRecords: projectIdentity.skillWorkRecords };
         if (resolver) {
             const installed = await this.#resolverPackage(handle, snapshot);
@@ -124,7 +136,21 @@ export class ContextPort {
 
     async compile(handle, input) {
         const request = this.#request(handle, input);
-        const { snapshot, information, authorityDigest, resolver, modelContext, projectIdentity } = await this.#current(handle, request, 'compile');
+        const { snapshot, information, authorityDigest, resolver, modelContext, projectIdentity, rpIdentity } = await this.#current(handle, request, 'compile');
+        if (rpIdentity) {
+            const source = { kind: 'rp_chat', controlId: rpIdentity.sourceRequest.controlId };
+            const selected = emptyNativeContextPlan(rpIdentity.request, { model: { limits: {
+                contextTokens: request.tokenBudget.modelContextLimit, outputTokens: request.tokenBudget.responseReserve } } }, source);
+            const plan = { ...selected, items: rpIdentity.context.messages.map((message, index) => ({ kind: 'context.history', id: 'rp-message-' + index,
+                content: { ...message, role: message.role === 'system' ? 'user' : message.role }, provenance: [{ source: 'native.rp-chat', ref: rpIdentity.context.prefixDigest }] })) };
+            const after = await this.#current(handle, request, 'compiled');
+            if (after.authorityDigest !== authorityDigest) fail('native_orchestration_context_source_stale');
+            const proof = { sourceBindingDigest: request.sourceBinding.bindingDigest, grantDigest: request.grantDigest,
+                audienceDigest: hashNativeDocument(request.audience), projectionDigest: authorityDigest, authorityDigest };
+            const context = immutable({ schemaVersion: 1, contextId: hashNativeDocument({ request, plan, proof }), request, plan, evidenceRefs: [], currentnessProof: proof });
+            this.#contexts.set(context, { handle, request, proof, rp: { request: rpIdentity.request } });
+            return context;
+        }
         if (projectIdentity) {
             const skillEntries = await readNativeProjectSkillInventory(this.projectCapture, { projectAgent: this.projectAgent, handle });
             const round = buildNativeProjectModelRound({ context: modelContext, skillEntries });
@@ -175,7 +201,7 @@ export class ContextPort {
         if (!captured || captured.handle !== handle || !['send', 'consume'].includes(phase)) fail('native_orchestration_context_proof_invalid');
         if (hashNativeDocument(audience) !== captured.proof.audienceDigest) fail('native_orchestration_context_audience_mismatch');
         const { information, authorityDigest, snapshot } = await this.#current(handle, captured.request, phase);
-        if (captured.project) {
+        if (captured.project || captured.rp) {
             if (authorityDigest !== captured.proof.authorityDigest) fail('native_orchestration_context_source_stale');
             return context.plan;
         }
@@ -190,6 +216,10 @@ export class ContextPort {
 
     assertSource(handle, { context, source } = {}) {
         const captured = this.#contexts.get(context), ref = captured?.request.sourceBinding.sourceRef;
+        if (captured?.rp) {
+            if (captured.handle !== handle || source?.kind !== 'rp_chat' || source.controlId !== ref.controlId) fail('native_orchestration_context_source_mismatch');
+            return;
+        }
         if (captured?.project) {
             if (captured.handle !== handle || source?.kind !== 'task' || source.projectId !== ref.projectId || source.taskId !== ref.taskId || source.revision !== ref.revision)
                 fail('native_orchestration_context_source_mismatch');
@@ -265,6 +295,16 @@ export class ContextPort {
     // Use this provider as the actual generation input. Checking this plan and
     // then compiling another (broader) audience would not protect the send.
     provider(handle, { context, source } = {}) {
+        if (this.#contexts.get(context)?.rp) return { buildRequestContextPlan: async (request, resolved) => {
+            const fixed = this.#contexts.get(context).rp.request;
+            const expected = request.role === 'role.narrator' ? { requestId: fixed.requestId, role: 'role.narrator', routeRef: fixed.routeRef,
+                requirements: [], tools: [], outputContract: null, fallbackMode: 'disabled', unknownCapabilityOverrides: [],
+                prompt: { host: { role: 'role.narrator', sourceKind: 'rp_chat', sessionId: '', branchId: '', revisionId: '', projectId: '', projectRevision: '' } } } : fixed;
+            if (hashNativeDocument(request) !== hashNativeDocument(expected)) fail('native_orchestration_rp_request_mismatch');
+            if (source !== undefined) this.assertSource(handle, { context, source });
+            const plan = await this.revalidate(handle, { context, phase: 'send' });
+            return immutable({ ...plan, budget: emptyNativeContextPlan(request, resolved, plan.source).budget });
+        } };
         if (this.#contexts.get(context)?.project) return { buildRequestContextPlan: async (request, resolved) => {
             if (request?.role === 'role.studio') this.#assertProjectExecution(handle, context, request, resolved);
             else this.assertProjectRequest(handle, { context, request });

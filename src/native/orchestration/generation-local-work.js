@@ -88,9 +88,10 @@ export async function assertContextCompilation({ proof, handle, port, compiled, 
         || intent.sourceBindingDigest !== value.sourceBinding.bindingDigest || intent.grantDigest !== value.grantDigest))
         fail('native_orchestration_context_compile_proof_invalid');
     const ref = value?.sourceBinding.sourceRef;
-    if (source && (value.sourceBinding.sourceAuthority === 'project'
-        ? source.kind !== 'task' || source.projectId !== ref.projectId || source.taskId !== ref.taskId || source.revision !== ref.revision
-        : source.kind !== 'session' || source.sessionId !== ref.sessionId || source.branchId !== ref.branchId || source.revisionId !== ref.revisionId))
+    if (source && (value.sourceBinding.sourceAuthority === 'rp_chat'
+        ? source.kind !== 'rp_chat' || source.controlId !== ref.controlId : value.sourceBinding.sourceAuthority === 'project'
+            ? source.kind !== 'task' || source.projectId !== ref.projectId || source.taskId !== ref.taskId || source.revision !== ref.revision
+            : source.kind !== 'session' || source.sessionId !== ref.sessionId || source.branchId !== ref.branchId || source.revisionId !== ref.revisionId))
         fail('native_orchestration_context_compile_proof_invalid');
     const row = await value.budgetPort.observeAttempt(handle, value.ref);
     if (row.status !== 'settled' || row.usage?.outcome !== 'completed' || hash(row) !== value.rowHash)
