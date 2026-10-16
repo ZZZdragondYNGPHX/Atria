@@ -2,7 +2,7 @@
 
 > 2026-10-16。本文件属于同一 Plan Bundle，用于用户已授权的提示词预设/前端并行任务整合。详细合同仍归 [interface-contracts](interface-contracts.md)，阶段门槛仍归 [acceptance-matrix](acceptance-matrix.md)，精确源码提交/实测与失败只归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。本文不将 P3 子工作冒称完整 V3 后端完成。
 
-## 当前后端续作（第七十一至八十八组）
+## 当前后端续作（第七十一至八十九组）
 
 `826d2ba43` 已有显式 Host 元数据 recover、存储 generation 投影围栏，以及唯一顶层 RP/有限 Native Session 输出和原 Project 工具的收据核对命令；详细入口和不恢复执行的边界见[接口 §17.83–§17.86](interface-contracts.md#1783-显式-run-host-元数据恢复入口)。Project 工具核对见[接口 §17.87](interface-contracts.md#1787-原-project-工具冷收据核对)；其余核对与受权 resume 继续后端。
 
@@ -23,6 +23,8 @@
 源码 `81a3a5fba` 本地提交，隔离 Review Origin 的 listener、原账户密码再认证、独立 cookie/CSRF/nonce、原 Approval 决定和 dispatch 再验已实现，见[接口 §17.80](interface-contracts.md#1780-隔离-review-origin-后端与原用户再认证)。主 origin 仅 `/approvals/launch`，隔离页面尚未实施，GET 当前只返回 bootstrap JSON；没有提前开发前端。原领域 `describeReview` 与安全能力缺失仍不可批准，现有只读 ToolPort ceiling 不扩大。完整领域消费者、Eval、恢复/释放和最终 Gate 继续后端，尚未交 Claude。
 
 有限 Project 已结算轮次在模型主动停止、原 Task 阻塞或有限 rounds 结束时持久显示 blocked，详见[接口 §17.93](interface-contracts.md#1793-原-project-已结算轮次的持久阻塞)。这不授 resume、Result 正文读取或 Project Commit；未知费用/未核对效果不能伪装关闭。
+
+原 Project 运行异常另写 conservative blocked/reconciling 元数据，见[接口 §17.95](interface-contracts.md#1795-原-project-异常退出元数据)。未知 ACK、费用和 Effect 保持，原异常返回；此状态不是正式完成或自动恢复许可。
 
 ## 第六十九至七十组基础
 

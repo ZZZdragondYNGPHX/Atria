@@ -1058,3 +1058,9 @@
 
 - Source 7b28b24ce → 4973e00ba，本地提交未推送，接口 §17.94。新增封闭 execution 计数/原 Plan limits 与原 BudgetPort 同事务容量观察，复用 inspectComputeReservation，显式区分原共享银行/child allocation 和 held/released。unknown 估算仍占用，原 exact Effect costs 不与共享银行容量混为同一费用。
 - 首批三域原银行参数6PASS/7filterSKIP（4.395s），HTTP deadline/no-store/集合6PASS/22filterSKIP（3.369s）。补 allocationStatus/未知和撤权后历史观察后，原 BudgetPort/Run HTTP/evaluator 指纹三个完整 suites 66/66 PASS（18.519s）；Project 原执行/停止投影精选4PASS/6filterSKIP（18.616s），五文件原 ESLint/staged diff check 通过。deadline 仅生成新投影 delta，Root hash 保持；cancelled 历史不补虚假超时。没有模型真实发送、独立质量/价格结论或新执行权限，继续其余后端。
+
+
+## 2026-10-17 — 第八十九组：原 Project 异常退出事实
+
+- Source 4973e00ba → 8194b2847，本地提交未推送；接口 §17.95。真实异常令未终结的 formal Review Root 显示 blocked/reconciling，保留原错误、未知效果、费用、Attempt、Result与已有取消；无恢复执行/重发/退款或完成假象。先前成功停止与未知 ACK合同保持。
+- 新 FS/SQLite failure suite 10/10 PASS（18.590s），覆盖原 local-job准入拒绝零发送、模型已收费后原批次拒绝、失败元数据 saved/no_save ACK、末次银行 await 中取消。原 Review/stop 的正式 positive、terminal rollback与 ACK/取消精选14PASS/10filterSKIP（200.051s），旧 terminal rollback 预期更新为真实 blocked，原 Review/费用仍保留。evaluator 指纹25/25 PASS（1.995s），五文件原 ESLint/staged diff check 通过。无真实 Provider新增调用，无独立质量/价格/晋升结论；其余完整后端继续。

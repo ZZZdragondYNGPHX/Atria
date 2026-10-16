@@ -1181,3 +1181,10 @@ Result 新增精确 session_task audience，绑定 Run/output node/epoch、原 s
 Run snapshot 新增 execution，包含 immutable Plan limits、原 progress 与 treeProgress 的封闭数值字段（不返回内部 edgeVisitCounts）；capacity 沿 BudgetPort 的同一原 Engine 事务读取原三域银行 inspectComputeReservation。顶层明确 original_bank、子 Run 明确 child_reservation，allocationStatus 区分 bank/held/released。ceiling/used/delegated/remaining/overrun 直接来自原 reducer，不另算费用或重置预约。未知 Model 仍扣原 estimatedTokens，释放仅反映原 released 事实；原 costs 继续只归本 Run 的 exact Effect 闭包。
 
 只有仍未终结的 Run 才列 deadline、steps/attempts 或 requests/tokens/local jobs/items/inputBytes 无剩余容量诊断；这些是只读解释，不自动失败/取消/退款/准入或 resume。时间过 deadline 可以更新投影 delta，但不改耐久 Root/状态/历史。没有开始的银行显示 not_started，缺 authority 显示 unavailable，既有 Source/owner/历史可见性/分页与 no-store 不变。
+
+
+## 17.95 原 Project 异常退出元数据
+
+显式 project_review 的原 prepare/execute/finish 捕获实际异常时，只有当前私有 operation 的 state 可将同 Root 记为阻塞：pending Effect 或未关闭费用保留 reconciling，否则 blocked。唯一 project_failure receipt/command/event 记录封闭 reason 与原 exact Effect 费用观察；不清空/结算 Effect/Attempt、预算或审批，不发布 Result/Output，不给 resume，不重试模型/工具。原错误仍返回。
+
+已取消/终结/已阻塞的 Root 不覆盖；原 Host/epoch/不可变 Source/Plan 与 CAS 仍由 RunRepository 围栏约束。只沿 Root 锁→Engine 的原控制事务，最后 await 期间合法取消先提交，本次失败元数据拒绝。storage_commit_unknown 保留其原恢复边界，不以另一失败命令代替未知结果；失败元数据自己的 ACK未知仅观察同 exact receipt，仍不发送。Projection 只增加封闭 project_execution_failed 事件，无异常正文/stack/Provider内容。
