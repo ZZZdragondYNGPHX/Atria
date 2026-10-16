@@ -7,7 +7,7 @@
 | Features | [Features](feat/README.md) |
 | Fixes | [Fixes](fix/README.md) |
 | Refactors | [Refactors](refactor/README.md) |
-| Architecture | [Native Package Runtime](architecture/native-package-runtime.md) |
+| Architecture | [Native Package Runtime](architecture/native-package-runtime.md); [Dynamic World Evolution & Consistency](architecture/world-evolution-consistency.md) (Draft) |
 | Packages | [Packages](package/README.md) |
 | Tools | [Plugins](plugin/README.md) |
 
