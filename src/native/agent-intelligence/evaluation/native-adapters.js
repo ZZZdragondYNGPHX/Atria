@@ -4,7 +4,7 @@ import { ProjectStore, StudioService, StudioPreviewHost, WorldRepo, ProjectAgent
 import { ProjectTaskRepository } from '../project-task-repository.js';
 import { NativeProjectAgentExecutor } from '../../project-agent-executor.js';
 import { createSkillRepository } from '../../../skills/repository.js';
-import { projectFixtureSource } from './fixture-source.js';
+import { projectFixtureSource, seedProjectPilot } from './fixture-source.js';
 import { NativeGenerationHost } from '../../adapters/generation-host.js';
 import { NativeNarratorOrchestrationAuthority } from '../../orchestration/native-turn-orchestration.js';
 import { createOrchestrationAuthoringService } from '../../orchestration/authoring-service.js';
@@ -125,7 +125,7 @@ export async function runRp(entry, fixture, capture, evaluation) {
 
 export async function runProject(entry, fixture, capture, evaluation) {
     const { bridge, settings } = evaluation, frozen = settings.nativePlan, n = bridge.native;
-    if (!n || !frozen || frozen.sourceSelector.domain !== 'project' || frozen.revision.definition.outputContract.kind !== 'project_review' || fixture.pilot) unavailable();
+    if (!n || !frozen || frozen.sourceSelector.domain !== 'project' || frozen.revision.definition.outputContract.kind !== 'project_review') unavailable();
     const { engine, handle, dirs } = n.store, projectId = frozen.sourceSelector.projectId;
     const exactTasks = new Set(frozen.revision.dependencyPins.filter(pin => pin.port === 'tool').map(pin => pin.resourceRef.taskId));
     if (exactTasks.size > 1 || exactTasks.size && frozen.sourceSelector.taskId !== null && !exactTasks.has(frozen.sourceSelector.taskId)) unavailable();
@@ -138,9 +138,11 @@ export async function runProject(entry, fixture, capture, evaluation) {
     let named = false;
     const agent = new ProjectAgentService({ studio, repository, maxRepairRounds: entry.limits.maxRepairRounds,
         idFactory: () => { if (taskId && !named) { named = true; return taskId.slice('agenttask_'.length); } return randomUUID(); } });
-    const source = projectFixtureSource(fixture.projectName, entry.fixtureHash); source.project.projectId = projectId;
+    let source = projectFixtureSource(fixture.projectName, entry.fixtureHash); source.project.projectId = projectId;
+    const resources = fixture.pilot ? await seedProjectPilot({ engine, handle, fixture, fixtureHash: entry.fixtureHash, source }) : null;
     const created = await studio.createProject(handle, source); let baseRevision = created.revision.revision, prior = null;
-    if (entry.caseId.startsWith('project_conflict')) {
+    if (fixture.pilot) source = (await studio.getProject(handle, projectId)).source;
+    if (fixture.pilot || entry.caseId.startsWith('project_conflict')) {
         const earlier = new ProjectAgentService({ studio, repository, maxRepairRounds: entry.limits.maxRepairRounds });
         prior = await earlier.createTask(handle, projectId, { intent: 'Prior reviewed proposal', baseRevision });
         await earlier.setPlan(handle, projectId, prior.taskId, { summary: 'Prior proposal', steps: [{ id: 'previous', title: 'Preserve Project', impact: 'low' }] });
@@ -154,16 +156,24 @@ export async function runProject(entry, fixture, capture, evaluation) {
             { baseRevision, status: 'conflict', commits: 0 });
         baseRevision = (await studio.getRevision(handle, projectId)).revision;
     }
-    const task = await agent.createTask(handle, projectId, { intent: fixture.input + (prior ? '\nThe previous Task remains conflicted; this is a new explicit Task at the current human revision.' : ''), baseRevision });
+    const conflictTask = prior ? await agent.getTask(handle, projectId, prior.taskId) : null;
+    const conflictEvidence = conflictTask ? '\nPublic original authority evidence: ' + canonical({ taskId: prior.taskId, status: conflictTask.status,
+        baseRevision: conflictTask.baseRevision, actualRevision: baseRevision, review: conflictTask.review, changeSets: conflictTask.changeSets }) : '';
+    const task = await agent.createTask(handle, projectId, { intent: fixture.input + conflictEvidence, baseRevision });
     if (taskId && task.taskId !== taskId) throw new Error('evaluation_task_identity_mismatch');
     capture.refs.taskIds.push(task.taskId);
     const repairing = entry.caseId.startsWith('project_repair');
     if (repairing) {
         await agent.setPlan(handle, projectId, task.taskId, { summary: 'Repair metadata proposal', steps: [{ id: 'repair', title: 'Repair bounded metadata', impact: 'low' }] });
-        const invalid = structuredClone(source); invalid.project.projectId = 'invalid-project-id';
+        const invalid = structuredClone((await studio.getProject(handle, projectId)).source); invalid.project.projectId = 'invalid-project-id';
+        if (fixture.pilot) {
+            invalid.project.projectId = projectId;
+            invalid.package.entryPoints[0].knowledgeBindingIds = [createNativeId('knowledgeBinding', () => hash(entry.fixtureHash).slice(0, 32))];
+        }
         await agent.executeTool(handle, projectId, task.taskId, { name: 'atri_agent_project_save', args: { source: invalid, stepId: 'repair' } });
         const failed = await agent.prepareReview(handle, projectId, task.taskId);
-        capture.observe('validation_error', failed.validation.status, 'invalid');
+        capture.observe('validation_error', { status: failed.status, validation: failed.validation.status, round: failed.repairRound },
+            { status: 'repair', validation: 'failed', round: 1 });
     }
     const currentSource = (await studio.getProject(handle, projectId)).source, before = hash(currentSource);
     const host = new NativeGenerationHost({ persistence: n.persistence, library: n.library, providers: n.providers, secretPort: n.secretPort,
@@ -198,6 +208,30 @@ export async function runProject(entry, fixture, capture, evaluation) {
         capture.observe('ownership', rejected, true);
         if (repairing) capture.observe('repair_bound', reviewed.repairRound <= entry.limits.maxRepairRounds, true);
         if (prior) capture.observe('human_revision', (await studio.getRevision(handle, projectId)).revision, baseRevision);
+        if (fixture.pilot) {
+            const proposed = structuredClone(currentSource);
+            for (const edit of fixture.projectEdits) {
+                const item = proposed.package.entryPoints[edit.index];
+                if (edit.worldIndex !== undefined) { item.worldIds = [resources.worldRefs[edit.worldIndex].worldId]; item.primaryWorldId = resources.worldRefs[edit.worldIndex].worldId; }
+                if (edit.bindingIndices) item.knowledgeBindingIds = edit.bindingIndices.map(index => resources.bindingIds[index]);
+            }
+            const validated = reviewed.operations.find(item => item.operation.operationType === 'project.save')?.operation.input.source;
+            capture.observe('related_proposal', hash(validated ?? null), hash(proposed));
+            const preserved = structuredClone(validated ?? {});
+            if (preserved.package?.entryPoints) for (const edit of fixture.projectEdits) {
+                const target = preserved.package.entryPoints[edit.index], original = currentSource.package.entryPoints[edit.index];
+                if (edit.worldIndex !== undefined) { target.worldIds = structuredClone(original.worldIds); target.primaryWorldId = original.primaryWorldId; }
+                if (edit.bindingIndices) target.knowledgeBindingIds = structuredClone(original.knowledgeBindingIds);
+            }
+            capture.observe('preservation', hash(preserved), hash(currentSource));
+            const previous = await agent.getTask(handle, projectId, prior.taskId);
+            capture.observe('no_silent_rebase', { status: previous.status, base: previous.baseRevision, commits: previous.changeSets.length, freshBase: reviewed.baseRevision },
+                { status: 'conflict', base: conflictTask.baseRevision, commits: 0, freshBase: baseRevision });
+            capture.evidence.push({ name: 'native_project_pilot', observed: { originalSource: currentSource, validatedProposal: validated ?? null,
+                validation: reviewed.validation, priorTask: { taskId: prior.taskId, status: previous.status, baseRevision: previous.baseRevision },
+                currentTask: { taskId: task.taskId, status: reviewed.status, baseRevision: reviewed.baseRevision, commits: reviewed.changeSets.length } }, expected: { proposed } });
+            capture.completeness.push('native_project_related_review');
+        }
         // Only this explicit fixture reviewer may commit, after the Native
         // model workflow has ended at Review. No Model/Tool has this writer.
         if (entry.caseId.startsWith('project_authoring') && reviewed.status === 'review') {
