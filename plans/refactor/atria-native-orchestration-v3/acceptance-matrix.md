@@ -6,7 +6,7 @@
 
 执行顺序和两次交接条件只引用[实施分工](implementation-plan.md#2-执行分工与两次交接)：Codex 完成 P1–P4 后端 → Claude Code 完成 P5 前端与组装 → Codex 执行 P6 硬切、清退与最终验证。当前不提前前端、P6、合 main 或结束分支。
 
-**P3 Gate = PASS（`01ef2053b`）；P1–P4 后端首次交接 Gate = READY_FOR_P5；最终产品 Gate = NOT_READY。** `581dc9f44` 的共享Result/Source矩阵通过后，实际SQL检索消费者发现目录接线缺陷，已用原Host生命周期修复并补MySQL/PG正常与失败路径；没有靠夹具伪装属性或后移已声明端口需求。五种Join策略与Session失败终结已按P2/P4完成，不据此宣称任意业务图全组合或最终质量合格。Record第44组已进入P4，后续组数不代表全部属于P3。
+**P3 Gate = PASS（`01ef2053b`）；P1–P4 后端首次交接 Gate = READY_FOR_P5；P5 前端与组装 = 完成并回交（`94d677c6d`，含 3 项待 Codex 修复的后端缺陷）；最终产品 Gate = NOT_READY。** `581dc9f44` 的共享Result/Source矩阵通过后，实际SQL检索消费者发现目录接线缺陷，已用原Host生命周期修复并补MySQL/PG正常与失败路径；没有靠夹具伪装属性或后移已声明端口需求。五种Join策略与Session失败终结已按P2/P4完成，不据此宣称任意业务图全组合或最终质量合格。Record第44组已进入P4，后续组数不代表全部属于P3。
 
 ## P3 — Native Ports & Budgets
 
@@ -27,7 +27,7 @@
 | --- | --- |
 | P1/P2 后端 | Host/Plan/Run/Graph/Effect/审批基础及GraphPatch/Planner/Judge/Review/有界重做、Delegate/Handoff已由真实消费者使用；五种Join与fail_fast同机制接通。末版Join/Fanout SQL36项整轮通过，FS/SQLite36项分次通过；共享控制/输出和原Planner/Judge/Review相邻验证完成。支持范围按原有限profile/owned pins与接口§18，不推导任意嵌套/跨领域图或串行Evolution worker支持Fanout。 |
 | P4 / W06–W07 | RP/Session正式输出、后台Task/Actor appraisal、Project多轮/工具/Review、有限正式Commit、Plan Prompt/原自动evaluation已实现。同一已付费Model Task→Review→fresh批准→Commit→真实Package/Session消费已取得四Engine分次证据，原银行/预算不重置。Join early-close/partial/late全集费用、Session已知失败与unknown的原Attempt/Root终结已完成；零Result/World越权、cold不重发有证据。原Eval质量/价格不足必须拒晋升，不另建质量authority；完整业务语义不能塞回P3内核。 |
-| P5 / W08 | Claude Code 完成真实页面、Graph/List/Inspector、可信批准界面及前后端组装；后端缺口由 Codex 修复。 |
+| P5 / W08 | 已完成并回交（`94d677c6d`）：Agents › Plans（Library、Graph/List/Inspector、Validate/Publish/冲突/未知、固定依赖、Binding）与 Agents › Runs（来源 Run 列表、RP 审阅启动、Timeline/Graph、费用/额度/诊断、取消/恢复/核对、Project commit 写入）、隔离 Review 文档与可信批准；真实 Host（模拟 Provider）桌面与模拟手机视口取证见 Record。待 Codex：RP 预发送失败后 Run 不结算、authoring 路由解析缺 package 范围资源、`commit/prepare` 的 reviewHash 无读取接口（另 3 项次要）。真机、Linux/Termux、真实读屏/输入法、真实 Provider 与大图性能 NOT_RUN。 |
 | P6 / W09 | 组装回交后由 Codex 原子硬切并清退旧编排入口/配置/资产/专用测试；不保留兼容路径，不提前删除仍有业务用途的共享服务与未知效果/费用历史。 |
 | 最终验证 / P7 → P8 | installed Host+Browser、Windows/Linux/Termux、声明支持的 Engine、必要外部服务/性能/人工质量按原验收取得证据；不是全部倒挂为 P3 端口 Gate。尚未取得的证据保留 NOT_RUN/BLOCKED，完成整体核对后才处理集成收尾。 |
 
@@ -35,7 +35,7 @@
 
 `01ef2053b` 的已冻结后端范围无已知实施阻塞：每项必需端口有生产入口、原权威/银行、可信receipt/Result和必要验证；明确剩余消费者闭环已完成。当前合理停止后端扩展并进入Claude Code P5，不能再因未声明的理论全组合、新微小边界或测试数量重开阶段。组装若发现真实权限、一致性、冻结合同或消费者缺陷，仍由Codex修复。
 
-P5真实Browser/可信批准展示与组装、P6原子硬切/旧链清退、Windows/Linux/Termux组装后验证、必要性能/人工质量和最终集成仍未完成。原Evolution独立质量来源/真实价格不足时拒晋升，eligible自动晋升仍NOT_RUN；opaque cache/continuation/价格按原证据unknown/miss/reset。它们不伪记通过，也不由前端补造后端权威。R3无独立原生防线仍按冻结D6默认拒绝。
+P5前端与组装已完成（证据与待修后端缺陷见Record）；P6原子硬切/旧链清退、Windows/Linux/Termux组装后验证、必要性能/人工质量和最终集成仍未完成。原Evolution独立质量来源/真实价格不足时拒晋升，eligible自动晋升仍NOT_RUN；opaque cache/continuation/价格按原证据unknown/miss/reset。它们不伪记通过，也不由前端补造后端权威。R3无独立原生防线仍按冻结D6默认拒绝。
 
 ## 验证口径
 

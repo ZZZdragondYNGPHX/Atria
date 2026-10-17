@@ -1530,3 +1530,46 @@
 - 后端首次交接冻结于`01ef2053b`：P3已修复真实SQL缺陷并恢复PASS；本次审计收敛的P2/P4明确剩余闭环均已完成，P1–P4后端Gate=READY_FOR_P5。保留所有原单Host/权限/预算计费/unknown/CAS/失败恢复及必要测试，无新平行服务/权威、无旧模式兼容或产品范围暗减。支持限于原明确profile与消费者，未宣称任意业务图全组合、串行Eval worker Fanout或未取证的独立质量/价格合格。
 - 下一阶段仍为Claude Code P5真实前端与组装，之后回交Codex执行P6硬切/旧链清退与最终验证。当前不实施P5/P6、不合main/推送/关闭分支；Windows/Linux/Termux组装后验证、真实Browser/性能/人工质量/eligible自动晋升等未取得证据保留原阶段NOT_RUN，不倒挂为无限后端范围或伪记最终Gate通过。换机HANDOFF保持已消费，不覆盖为新交接文件；接口/状态/版本由本Plan入口及同一Record续接。
 - 最终源码工作树clean，HEAD为01ef2053b（本地ahead41，未推送）；已停止本轮独占临时PostgreSQL/MySQL并删除所属SQL目录、P3冻结归档及合成验证日志，未操作系统服务/用户库或本机其它修改。无活动验证进程；最后所有必要失败均已定位、修复或按实际unknown事实加强断言并取得对应通过证据，不声称全仓单轮通过。真实Provider只用前述primary一次增补、secondary零调用；私密配置与原滚动账本留在仓库外，无新增daily/RPM硬上限。
+
+
+## 2026-10-18 — P5 前端与组装（Claude Code）
+
+- Start：Source `01ef2053b`（与 origin 同步）/ docs `4d35520ee`（与 origin 同步），fetch 后核对一致。保留本机既有 dirty：Source `D CLAUDE.md`；docs `D CLAUDE.md`、`atria-visual-direction.html` 修改及 `.playwright-mcp/`、`design-proposal/_build/`、`plans/feat/agent-experience-evolution/` 未跟踪内容，均未提交、未修改。读取 docs `README`、两份 AGENTS、Plan index→backend-integration、acceptance-matrix、implementation-plan、graph-editor-experience 及本 Record 末节；换机 HANDOFF 视为已消费。
+- 前端基线核对：本地与远端 refs 中不存在独立的“前端重设计”实现分支；已集成的视觉实现只有 main 系列 Serene Canvas、Settings/Themes、Storage Center（`--atri-*` tokens、Shell Dock/Sheet、atria-components）。较新的方向只存在于 `docs:plans/architecture/atria-frontend-audit/design-proposal/` 三份提案（非冻结）。用户确认：按提案的布局与账本语法实现，并表达在现有 `--atri-*` 体系内；不建 V3 主题、Shell 或 Token 系统，不改全产品配色与字体。
+- End/Tested Source HEAD：`94d677c6d`（本地 5 个提交，未推送）：`3565442cc` 主体实现、`7ecc1d605` 真实浏览器验证后的修正、`bdd4a63c6` RP 审阅效果文案与 Run 头部、`4b31962a4` Shell Search 收录 V3 Plan、`94d677c6d` Project 来源选择修正。
+
+### 实现
+
+- 入口：Agents 域新增 `plans`、`plans:<planId>`、`runs`、`runs:<runId>` 子路由（`public/scripts/native/orchestration/agents-v3.js`）；Agents 无子路由时默认进入 V3 Plans（原默认为旧 Run）。沿用 domain-workspace 页头与分区导航；Inspector 直接复用 Shell Dock（桌面右侧）与 compact 三档 Sheet（手机），Back/Escape 先关闭内联确认。旧 Orchestration/Run 面板、命令与搜索域保持原样，留待 P6 硬切。
+- 传输：`client.js` 只用 backend-integration 的 read/mutation envelope；HostBootId 只取自真实响应并随 409 更新；commandId 为 `ocmd_`+32hex。突变网络中断、无 JSON 的 5xx 或 `storage_commit_unknown` 一律显示“结果未知”，只允许用户显式以同一 commandId 与同一 body 重查，绝不换新 command 重发。
+- Plan 创作：`plan-draft.js` 维护单一 PlanDraft 事务与 Undo/Redo（几何也入历史，dirty 区分语义与布局）；形状只调用共享 `assertPlanDefinition(draft:true)`，本地只给“预检”提示，校验、哈希与发布全部归 Host。`graph-view.js` 为自研 SVG（未引入 Cytoscape 或新框架）：分层自动布局、方向键节点漫游、Alt+方向键移动、Enter 编辑、Delete 删除、拖拽连线、平移缩放与适配、回边虚线与“↺ ≤N”、类型不匹配标红；列表视图提供与画布等价的增删、重排和按同类型端口连线。Inspector 分 Plan、节点或连线、固定依赖、版本四区：输出合同、能力上限、14 项上限、图变更策略、节点策略（模型/操作 pin、Join/Fanout/Review/Router/Wait 字段、委派允许集）、端口编辑、固定依赖经 `/dependencies/inspect` 取 Host 指纹（含路由与已发布 Plan 选择助手）、修订对比、来源 Binding（`expectedVersion` CAS，成功文案明确“未启动 Run、未授予权限”）。冲突与 Host 重启：保留草稿→与 Host 对比→“使用 Host 草稿 / 保留我的并覆盖（内联确认）/ Host 未变则直接再保存”。脏草稿受 Shell 离开守卫与新增 `beforeunload` 保护。
+- Run：按精确 Source（会话、项目任务、对话）列 Run（后端无全量列表）；对话来源从 `/api/chats/recent` 取真实 charDir/name，再经 `/rp/source` 取 controlId。新增对话来源的“先审阅再启动”：读取最后一条用户消息→Binding→已发布修订入口 agent 的路由 pin→`/rp/preflight`（零发送、零费用）展示预算、效果、输出与指纹→显式“启动付费 Run”`/rp/start`；随后按来源 Run 列表差集打开新 Run，若操作在 Run 出现前失败则显示其 errorCode。Run 详情：`/runs/observe` snapshot+deltaBatch 长轮询，hasMore 集合按同一 versions 用 `/runs/details` 补齐，版本不符即重同步；resync 或 host_changed 自动丢弃旧投影重读；页面隐藏时暂停；Timeline 默认、Graph 切换（节点按最新未取代 Attempt 着色）；Inspector 显示审批、费用（已知、未知、预留上限分开，未知不写 0）、预算额度、上限进度、诊断与效果。控制只依 Host `controls`：取消（内联确认，说明不撤销已发送效果与费用）、Host 恢复、回执核对（复用已记录 commandId）、Project commit resume；另有 Project commit “写入已批准的提交”（仅当 Host 显示该效果 ready 且对应审批 approved）与“核对提交回执”。
+- 可信审批：Run 中 `reviewAvailable` 时“打开可信审阅”调用 `/approvals/launch` 并在新窗口打开隔离 Review Origin。后端 `review-origin.js` 的 `GET /review` 按 Accept 协商：浏览器导航只得到不含 launchRef、nonce 或任何数据的静态文档（CSP `default-src 'none'; script-src 'self'; style-src 'self'…`），原 JSON bootstrap、会话、CSRF、再认证与决定逻辑不变；文档资产仅白名单 3 个文件与 2 个字体。审阅页（`review/review.js|css`）：密码再认证→Host description、精确输入、风险、过期、精确身份→未预选的同意框→批准或拒绝→一次性结果；语言随 `navigator.language`，深色随系统。
+- 视觉：主题模型 `createPalette` 新增 info、committed、history、unknown 及其 soft 语义色（按表面 ≥4.5:1 自动修正，跟随亮暗与自定义主题）；`atria-orchestration.css` 只用 `--atri-*`，印记 seal（实线、虚线草稿、斜纹历史、点线未知、阻塞）与状态片 chip 均为形状+图标+文字，live 呼吸点受 reduced-motion 停止，forced-colors 保留形状。新增 minus、arrow-up、arrow-down 图标。Shell Search 收录 V3 Plans（`openPlan`）。zh-CN 目录补齐全部新文案（另补 `retrieval-contracts.js` 两条既有缺失），本地化检查器纳入 `native/orchestration/`。
+
+### 验证（真实后端，本机）
+
+- 环境：本 worktree 源码 `server.js`，独立 scratch configPath/dataRoot（端口 8123；后开启账户并为 default-user 设置测试密码）；Windows 11 + Playwright Chromium，桌面 1440×900 与模拟手机 390×844（模拟视口，不是真机）。模型 Provider 为本地模拟 OpenAI-compatible 服务（固定文本、usage 40 tokens，延迟 4 s 或 25 s），经现有 Runtime UI 建立连接、Secret、凭据目的地授权、模型与路由；不是真实 Provider，无真实费用。
+- Plan：经 UI 创建→钉路由（Host 指纹）→配置能力、输出与节点→保存→Host 校验（先报 stale pin，重钉后 valid）→发布。冲突（双标签页）、Host 重启后保存（409 host_changed→草稿保留→再保存）、保存响应丢失（Playwright 拦截，请求到达 Host 后断连→“结果未知”→同一 commandId、同一 body 重查→Host 返回原 v8 结果，未重复写入）均通过。键盘：方向键漫游、Alt+方向键移动、Ctrl+Z 恢复到已保存状态且焦点保留；CDP IME 组合输入在提交与重渲染后文本和焦点完整（Playwright 合成按键，非真实输入法）。
+- Binding 与 RP Run：对话来源 Binding v0→v1 CAS；预检零发送；真实 Run `orun_727e453d9cd048818336b0af92295133` 经 delta 观察从 Running/费用未结算到 Completed/费用已结算（40 tokens、1 次生成调用、6 项本地任务），Graph 与 Inspector 一致，叙述由 Host 写入原 Chat。取消 Run `orun_2a64d3d5a90c4811ad2df16aef3789c4`：Reconciling+已请求取消，进行中的调用结束后为 Cancelled，40 tokens 费用保留，未显示退款或撤销。
+- 可信审批（Project metadata Commit）：Studio 项目与任务经现有 Studio agent tool API 播种 plan、project_save、prepare_review（代替模型步骤）；在编辑器内完成 effect→output 提交 Plan 并发布。因 `expectedReviewHash` 无读取接口（见缺陷 3），`commit/prepare` 的该值由 scratch 验证脚本调用 Host 自身 `hashNativeDocument` 计算后经 HTTP 提交（仅验证工具，非产品路径）。随后全部在 UI 完成：Run `orun_d1ad10fb01f4417facf43e9c40796147` 显示 R2 待审→“打开可信审阅”→隔离源（127.0.0.1 随机端口，≠8123）→错误密码被拒→正确密码显示精确 before/after→未勾选时“批准”不可用→批准→主页面实时显示 Approved 与“写入已批准的提交”→内联确认→Host 写入 Git，项目名变为批准值，Run Completed、费用已结算；刷新已用审阅链接被拒。
+- 其它：手机宽度下 Plans、编辑器列表、Sheet Inspector、Run 时间线与详情 Sheet 无横向溢出；深色、减少动态（live 动画 none、时长 Token 1ms）、forced-colors（形状保留）已检查；zh-CN 渲染已检查；Ctrl+K 搜索 Plan 名可打开编辑器；离开守卫在脏草稿时拦截。
+- 自动化：新增/修改的 JS 经 ESLint；本地化检查器 0 项；Jest `atria-shell` 全部与 `native-orchestration/{review-origin,review-document,authoring-http,run-observation-http,binding-authoring}` 共 83 suites / 510 tests PASS（新增 `orchestration-plan-draft`、`orchestration-client`、`review-document`；`workspace-host`、`product-search` 按 V3 默认入口与 Plans 搜索更新预期）。未运行全仓、SQL Engine 或其它 native-orchestration 套件（本组后端只改 review-origin 文档路由）。
+
+### 交 Codex 的后端缺陷（未在前端补造）
+
+1. RP 预发送失败后 Run 不结算：`orun_32130567a23f4add8ecfd1ec4082b326` 的操作以 `generation_adapter_output_budget`（测试配置：模型输出上限 512 小于 Generation 预算）在 Effect prepared 之后失败，未发 Provider 请求；Root 持续 `running`、Effect `prepared`、诊断 `native_orchestration_budget_unavailable`（blocking），唯一控制为取消。期望按原 Attempt/Root 失败终结（零发送费用闭合）。
+2. Authoring 无法校验引用 package 范围资源的路由：`native-orchestration.js` 为 authoring 构造的 `RouteResolver` 未提供 `getScopedResource`，引用 package 范围 Prompt/Generation 的玩家路由（Runtime 路由编辑器在只有内置作品资源时只提供这类选项）校验时报 `native_orchestration_dependency_invalid`；且 `validateModelCapability` 吞掉具体 `GenerationError` 代码，前端无法说明原因。改用 Library 预设资源后通过。
+3. `commit/prepare` 需要的 `expectedReviewHash` 无读取接口：该值为 `hash({workspace, review, validation})`，Studio task 读取不返回它，`/dependencies/inspect` 只返回 integrity；Browser 只有复制 Host 哈希才能调用，违反“前端不复制 hash”。需原权威暴露（例如任务观察或 commit descriptor 只读接口）后，前端再接入 Studio/Run 中的“准备可信提交”。
+4. 投影 `controls.recover` 在 Host 重启后对已 `completed` 的 Run 仍为 true（前端已降为次要按钮并说明“只重绑控制记录”）；请确认是否应限于非终态。
+5. 诊断只要存在审批就推 `native_orchestration_approval_channel_unavailable`（blocking），即使 `reviewAvailable=true` 或已批准；前端文案为“批准待处理”，建议后端区分“通道不可用”与“待决定”。
+6. `/operations/:id` 完成前不暴露 runId；前端以来源 Run 列表差集定位新 Run（合法但非直接关联）。
+
+### 已知前端限制与未取证项
+
+- 未实现：Project 侧“准备可信提交”入口（受缺陷 3 阻断）；群聊来源的 RP 审阅启动（只读选择可用）；Session 来源选择器已实现，但本机未能创建会话，实时验证 NOT_RUN；画布连线没有独立 Tab 焦点（键盘路径在列表与 Inspector）；大图虚拟化与千节点性能 NOT_RUN；时间线事件为不透明 eventId，无法跳转节点（投影无节点引用）。
+- 审阅页语言与主题取浏览器设置，不读取主应用偏好（隔离源设计所致）。
+- NOT_RUN：Android Termux 真机触控与软键盘、CachyOS Linux、APK、真实读屏软件、真实输入法、真实 Provider 与费用、SQL Engine 组装后验证。以上均不记为通过。
+- P6 需清理（本组未动）：旧 Agents 面板内的 Orchestration/Run 分区与 hub、`workspace.orchestration`/`workspace.agent-run` 命令、Search 的旧 `Orchestration` 预设域与 `openOrchestration`、旧 orchestrator workspace 资产、`observeAtriaDrafts` 中的旧编辑器选择器；`check-native-product-localization` 仍扫描旧 `orchestrator/workspace`。
+- 临时证据：scratch 数据根、模拟 Provider、验证脚本与截图仅在本机临时目录，本节记录后清理，不提交。
+- 状态：P5 前端与组装完成，回交 Codex。缺陷 1–3 需 Codex 修复，修复后前端补“准备可信提交”入口（或在 P6 一并核对）。P6 硬切、旧链清退、三端组装后验证与最终 Gate 仍归 Codex；最终产品 Gate = NOT_READY。未合 main、未推送、未结束分支。

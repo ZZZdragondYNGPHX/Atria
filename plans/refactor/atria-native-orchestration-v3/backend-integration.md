@@ -113,7 +113,7 @@ POST `/api/native/orchestration/approvals/launch` 复用 mutation envelope，bod
 
 P5 由 Claude Code 完成 Plan Library、Graph+Inspector、同语义 Node/Edge List 与移动 Sheet、Draft/Validate/Publish 冲突处理；Run Timeline/Graph、Source/Audience/成本/未知/诊断、可信 Approval、Cancel/Status；Shell Search/deep-link/history/Back 与移动键盘/IME/无障碍。沿 Serene Canvas 和现有组件，不另建主题或 Browser 编排权威。布局不改变同一 Draft/definitionHash 和同一 Host Projection；移动端保留相同语义。
 
-两次交接与条件只归 [实施方案 §2](implementation-plan.md#2-执行分工与两次交接)：Codex 后端完成 → Claude Code 前端及组装 → 回交 Codex 做 P6 清退和最终验证。当前P1–P4后端首次交接已就绪，下一步由Claude Code完成P5前端与组装。P6等回交Codex后执行；main集成/推送/结束分支仍待后续指令。准确Gate只见acceptance-matrix，不把后端就绪等同最终产品完成。
+两次交接与条件只归 [实施方案 §2](implementation-plan.md#2-执行分工与两次交接)：Codex 后端完成 → Claude Code 前端及组装 → 回交 Codex 做 P6 清退和最终验证。P5前端与组装已完成并回交（源码`94d677c6d`）：前端只消费本页列出的接口；Review Origin `GET /review` 现按 Accept 返回不含数据的静态审阅文档，JSON bootstrap 不变。组装发现的后端缺口（RP 预发送失败后 Run 不结算、authoring 解析 package 范围路由资源、`commit/prepare` 所需 reviewHash 无读取接口等）记录于同一 Record，由 Codex 修复。P6等回交Codex后执行；main集成/推送/结束分支仍待后续指令。准确Gate只见acceptance-matrix，不把后端就绪等同最终产品完成。
 
 ## 同期源码整合
 

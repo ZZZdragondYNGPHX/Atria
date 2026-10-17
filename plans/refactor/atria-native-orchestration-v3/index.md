@@ -2,7 +2,7 @@
 
 > **唯一入口**。Task ID：`refactor/atria-native-orchestration-v3`。Primary Workspace：`main`（未来实现）；实现使用同一任务分支 `refactor/atria-native-orchestration-v3`，企划/Record继续在长期 `docs` 工作空间。规则只引用 [Repository Governance](../../../README.md)，不在本 Plan 复制执行规则。
 
-2026-10-17 后端源码冻结于 `01ef2053b`；P3 Gate=PASS，P1–P4后端首次交接Gate=READY_FOR_P5。五种Join/partial、Session失败终结与真实SQL检索目录缺口均已完成必要验证；最后SQL Join/Fanout36项与检索正常/失败4项通过。最终产品Gate仍NOT_READY，下一阶段由Claude Code完成P5前端与组装，再回交Codex执行P6及最终验证。当前能力与剩余项只读 [acceptance-matrix](acceptance-matrix.md)，范围与停止条件只读 [实施方案 §6](implementation-plan.md#6-p3-收敛边界与结束条件)，精确提交、失败与分次证据归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。
+2026-10-17 后端源码冻结于 `01ef2053b`；P3 Gate=PASS，P1–P4后端首次交接Gate=READY_FOR_P5。五种Join/partial、Session失败终结与真实SQL检索目录缺口均已完成必要验证；最后SQL Join/Fanout36项与检索正常/失败4项通过。2026-10-18 Claude Code 完成 P5 前端与组装（源码本地 `94d677c6d`，未推送）并回交 Codex；组装中发现的后端缺陷与真实浏览器证据归同一 Record。最终产品Gate仍NOT_READY，下一阶段由Codex执行P6及最终验证。当前能力与剩余项只读 [acceptance-matrix](acceptance-matrix.md)，范围与停止条件只读 [实施方案 §6](implementation-plan.md#6-p3-收敛边界与结束条件)，精确提交、失败与分次证据归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。
 
 - 创建/调研日期：2026-10-15。
 - 第一轮状态：**D1 已定案：方案 B（原生 Orchestration V3）**。
@@ -78,6 +78,6 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 
 ## E1 当前执行入口
 
-E0_DESIGN=DESIGN_READY；DEVELOPMENT_AUTHORIZATION=AUTHORIZED。源码`01ef2053b`的P1–P4后端范围READY_FOR_P5，P3已核销；P5–P8未开始，最终产品Gate未通过。后端接口见 [backend-integration](backend-integration.md)，当前Gate与后续项只见 [acceptance-matrix](acceptance-matrix.md)，不在入口累积重复历史状态。
+E0_DESIGN=DESIGN_READY；DEVELOPMENT_AUTHORIZATION=AUTHORIZED。源码`01ef2053b`的P1–P4后端范围READY_FOR_P5，P3已核销；P5前端与组装已于`94d677c6d`完成并回交Codex（含待修后端缺陷）；P6–P8未开始，最终产品Gate未通过。后端接口见 [backend-integration](backend-integration.md)，当前Gate与后续项只见 [acceptance-matrix](acceptance-matrix.md)，不在入口累积重复历史状态。
 
 执行顺序：**Codex 完成后端 → Claude Code 完成前端与组装 → Codex 做 P6 硬切、清退与最终验证**，详情只归 [实施分工](implementation-plan.md#2-执行分工与两次交接)。当前不提前前端、P6、合 main 或结束分支。阶段核销不是自动停止点，执行与真实阻塞统一遵循 Repository Governance。
