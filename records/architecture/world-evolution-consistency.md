@@ -286,6 +286,25 @@
 - **现实验证限制**：本轮使用 GitHub 文件读取和有上限的代码搜索，未将 `main` 所有文件绑定在一个固定 commit SHA 下进行完整调用图审计；没有运行 Node/单测/E2E/CI/前端/Windows/CachyOS/Termux。**E0 当前状态 PARTIAL / BLOCKED；任何已通过的结论都没有证据。**
 - **下一 checkpoint**：用户选择 W15-A/B/C 后继续先更新同一 Plan+Record 的确认状态，再针对 E0-01～09 的真实产物开展更进一步的开发交接前审查、最后 API/Owner/Consumer/Deletion/验收闭环及必要阶段计划；如有前端/Orchestration 或主线更新，须再次核对当前 HEAD。全案是否最终定稿与是否创建实现分支由用户将来明确批准。
 
+
+## Stage 17 — W15-B 确认与 W16 跨分支 E0 集成前审查（2026-10-17）
+
+- **用户已确认的范围**：本轮“认同”是对上一轮唯一推荐 **W15-B「证据门槛式 E0 收口 + 可执行交接清单」**的正式认可；连同 W1-B～W14-B，共有 W1-B～W15-B 的总体架构/审查方法获用户确认。**W16-B 是新一轮研究推荐，尚未获批；完整方案 Draft，E0-01～09 继续 PARTIAL/BLOCKED，不能把“方法选定”写成 E0 PASS、全端测试通过或正式开发授权**。
+- **本轮作业方式**：继续同一 `ARCH-DWE-01` Plan Bundle、此唯一 Record 与 `docs` Primary Workspace；仅从 GitHub 读 main、未合并分支并在 docs 提交文档，没有修改 `main`、建立实现分支、改动 Package/Skills/Plugin/引用分支或交接单例。
+- **已锁定的 GitHub SHA**：`main` `c57fada6edeea255b29d857ba2585c1dbc9c098b`；Orchestration V3 `refactor/atria-native-orchestration-v3` `a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`（ahead 97, behind 0, 比较返回 297 个变更文件）；Prompt Preset `refactor/atria-native-prompt-preset-deepening` `760327891149216dffdc1e3fa0c846496007a013`（ahead 1, behind 10，43 个变更文件）；Visual `feat/native-visual-generation-deepening` `ae587be0c64487ba922528bdd0146444bcf5e92e`（ahead 6, behind 48，Compare 返回 300 项，可能受限）；`feat/agent-intelligence-plan` `8fb5ad0e14be311558b6011e57b2634e3eed6f2f` 与 main 无共同祖先、不能正常差分。锁定的 SHA 只用于本次审查，开发前必须重新核验集成 HEAD。
+- **已核对 Orchestration V3 接口**：新 `src/native/orchestration/native-turn-orchestration.js` 的 `finalizeNarrator/#commitSessionOutput` 使用 `sessionCore.finalizeTurn` 和 `readSessionTurnOutput` 验证原 Native Session Domain Receipt，`storage_commit_unknown` 优先读凭据；`effect-controller.js` 用 `prepare/ready/claim/observe` 及 confirmed/unknown/failed 等状态跟踪编排效果；`context-port.js` 持有 Source Binding/Audience/Grant 的 Host 授权和 `compileNativeContextPlan` / Information 接入；`native-rp-generation.js` 有 `rp_chat` 原领域输出校验。**编排 Effect Receipt ≠ 原 World Fact/Subject Domain Commit，也不意味着任意 World State/叙事在一个原子事务中已完成**。
+- **已核对 Prompt Preset 分支接口**：`src/native/model-prompt-runtime/prompt-compiler.js` 的 World/Memory/Narrative Use Policy，新增 `semantic-blocks.js` 的有来源消息投影和 `draft-preview.js` 的 Authored/Effective/Provider Wire 编译/预览，**都不等价于 Host-owned World Fact 的有效时态裁决**。W14 Native EffectiveWorldView → Orchestration V3 ContextPort → Prompt Compiler/Provider Wire 的来源/权限链需据最终集成 SHA 定义，不能抢先为各方建立重复 authority。
+- **Legacy E0 限制**：main 中 `atri-world-info-selection.js`、`atri-world-info-prompt.js`、旧 Orchestrator `legacy-runtime-adapter.js`、`capsule-injection.js` 仍存在；代码搜索表明 `runLegacySingleRequest` 在部分生产旧编排文件内被引用，而 `nativeKnowledgePromptChannels` 只检出声明/测试。GitHub 索引和静态引用不保证完整动态链；**本轮没有任何旧产品文件有充足依据可直接删除**，只能将旧消费者分类保留/替换/待查，正式 hard cutover 要保障原生插件/业务入口。
+- **已收敛但未通过的 Source-of-Truth/Consumer Map**：SessionCore/Repo 与 World reducer 仍是目标 World 真相写入域；Orchestration 管 Plan/Run/Effect/Receipt 证据而非平行 World 真相；Information/HCM/Cognition 保持角色知识/来源权限；Knowledge Context 须处理 Source Claim/历史时态；Prompt 的 Effective/Wire 是消息编译层不是世界有效状态；Timeline/Play/Speech/Visual 等 `actorId` 消费者仍受静态 Package 角色边界；Studio/Library 需正式 Authored→Effective/Source Inspector。
+- **本阶段 docs 提交**：
+  - `59741295eae654054f5b5f667e66b71b18226eea` — 在 W15 `e0-final-closure.md` §8 记录 W15-B 已确认，明确 E0 部分审查与 W16 路由；
+  - `54903d9d5a71a9528b24eb6e6cadeee85976e2d7` — 在同一 Plan Bundle 创建 W16 `e0-integration-readiness.md`，记录固定 SHA/分支对比、Domain Receipt↔Orchestration Result、ContextPort/Prompt 分层、实际 Source/Consumer/Deletion 表、W16-A/B/C 和 E0 阻塞；
+  - `d4a4ec63cb18eeb0f5e35cf0db326ba605b70769` — 同一 `design.md` §23 记录 W15-B 决议与 W16 消费者/接口路线；
+  - `adc51df4d56e188fac9a638bc56a7ddd2e0eaf17` — 更新同一 `index.md`：W1–W15 确认，W16 候选未批准，保持 Draft。
+- **W16 当前推荐但未确认**：W16-B「跨分支锚定 E0，先确认 Native Domain/Context/Receipt 所有权，再冻结最小 Subject/Fact/Temporal/EffectiveView 接口」。与 W16-A 仅按旧 main 接口冻结、W16-C 构建旧新平行 Adapter 对比；避免无效双轨，同时不把所有无关分支完工当作前置条件。**本轮只形成推荐，不替用户批准 W16**。
+- **验证及真实性**：仅 GitHub branch refs/compare、指定 SHA 下的静态文件审查和 docs Contents API 写入/再读校验。未执行完整 repository call graph、Node、CI、真实 RP/Studio/Play UI、长会话基准、Windows/CachyOS/Android Termux 实测。E0-01～09 尚无全项可标为 PASS；外部开发分支未来可能变动，实施前必须取当前 HEAD 重查。
+- **下一检查点**：用户确认 W16-A/B/C 后，下一轮依约先更新同一 Plan Bundle/本 Record，再优先完成 E0-01/02/04/05 的最小 Owner/接口与 `Domain Effect → Subject/Participant → Host EffectiveWorld → V3 Context → Prompt Effective/Wire` 读写/权限边界，并以完整固定 HEAD 生产调用图和真实分支合入依赖判定 E0-06 的删除/保留清单。全案继续 Draft；不直接创建实现分支或合并产品代码。
+
 ## Final state
 
 Not yet applicable. Discussion in progress.
