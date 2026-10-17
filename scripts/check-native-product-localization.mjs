@@ -149,7 +149,7 @@ export function auditProductLocalization() {
         const key = SHELL_TEXT_KEYS[text] || text;
         for (let index = 0; index < locales.length; index++) if (!locales[index][key]) findings.push({ filename: 'public/login.html', key, locale: index, reason: 'missing entry translation' });
     }
-    for (const directory of ['public/scripts/native', 'public/scripts/atria-shell']) {
+    for (const directory of ['public/scripts/native', 'public/scripts/native/orchestration', 'public/scripts/atria-shell']) {
         for (const name of fs.readdirSync(path.join(root, directory)).filter(file => file.endsWith('.js'))) {
             if (name === 'localization.js') continue;
             const filename = directory + '/' + name;

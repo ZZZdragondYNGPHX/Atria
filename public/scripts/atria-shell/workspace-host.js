@@ -27,6 +27,8 @@ function createLocalizedStatePanel(documentRef, kind, options = {}) {
 
 const AGENT_SECTION_LABELS = Object.freeze({
     home: 'Agents',
+    plans: 'Plans',
+    runs: 'Runs',
     orchestration: 'Orchestration',
     run: 'Run',
     memory: 'Memory',
@@ -34,6 +36,8 @@ const AGENT_SECTION_LABELS = Object.freeze({
 });
 
 const AGENT_SECTION_DESCRIPTIONS = Object.freeze({
+    plans: 'Author agent graphs, validate them on the Host and publish immutable revisions.',
+    runs: 'Follow Runs recorded by the Native Host: timeline, graph, fees and approvals.',
     orchestration: 'Configure orchestration presets, agents and workflows.',
     run: 'Inspect the current agent run, graph and execution timeline.',
     memory: 'Browse long-term memory, evidence and knowledge maintenance.',
@@ -49,7 +53,8 @@ const UTILITY_LABELS = Object.freeze({
 
 function normalizeAgentSection(route) {
     const childId = String(route?.child?.id || '').trim();
-    if (!childId) return 'run';
+    if (!childId) return 'plans';
+    if (['plans', 'runs'].includes(childId.split(':')[0])) return childId.split(':')[0];
     if (childId.split(':')[0] === 'orchestration') return 'orchestration';
     if (childId === 'memory') return 'memory';
     if (childId === 'run') return 'run';
@@ -73,6 +78,7 @@ function routeDescriptor(route) {
     }
     if (route?.domain === 'agents') {
         const section = normalizeAgentSection(route);
+        if (section === 'plans' || section === 'runs') return Object.freeze({ key: 'agents:v3', kind: 'agents-v3', section, title: AGENT_SECTION_LABELS[section] });
         return Object.freeze({
             key: section === 'home' ? 'agents:home' : 'agents:workspace',
             kind: 'agents',
@@ -160,7 +166,7 @@ function mountAgentsHub({ document: documentRef, slot, host }) {
 
     const grid = documentRef.createElement('div');
     grid.className = 'atria-agents-hub__grid';
-    for (const section of ['orchestration', 'run', 'memory', 'diagnostics']) {
+    for (const section of ['plans', 'runs', 'memory', 'diagnostics']) {
         const card = documentRef.createElement('button');
         card.type = 'button';
         card.className = 'atria-agents-hub__card';
@@ -170,7 +176,7 @@ function mountAgentsHub({ document: documentRef, slot, host }) {
         cardTitle.textContent = translateShellText(AGENT_SECTION_LABELS[section]);
         const description = documentRef.createElement('span');
         description.textContent = translateShellText(AGENT_SECTION_DESCRIPTIONS[section]);
-        const symbol = createAtriaIcon(documentRef, { orchestration: 'agents', run: 'play', memory: 'library', diagnostics: 'diagnostics' }[section]);
+        const symbol = createAtriaIcon(documentRef, { plans: 'agents', runs: 'timeline', memory: 'library', diagnostics: 'diagnostics' }[section]);
         symbol.classList.add('atria-agents-hub__card-icon');
         card.append(symbol, cardTitle, description);
         card.addEventListener('click', () => host.openAgentSection(section));
@@ -212,6 +218,13 @@ async function mountAgentsWorkspace({ document: documentRef, slot, descriptor, h
     };
 }
 
+async function mountAgentsV3Workspace(args) {
+    const { mountAgentsV3 } = await import('../native/orchestration/agents-v3.js');
+    if (!args.isCurrent()) return {};
+    // Section routes are resolved from the live route, never the cached descriptor.
+    return mountAgentsV3({ ...args, route: args.navigation.getRoute() });
+}
+
 async function mountBuildWorkspace(args) {
     const studio = await import('../native/studio-workspace.js');
     return studio.mountNativeStudioWorkspace(args);
@@ -232,6 +245,7 @@ async function mountDiagnosticsWorkspace({ slot, isCurrent = () => true }) {
 export function createAtriaWorkspaceAdapters() {
     return Object.freeze({
         agents: mountAgentsWorkspace,
+        'agents-v3': mountAgentsV3Workspace,
         build: mountBuildWorkspace,
         library: mountLibraryDomainWorkspace,
         runtime: mountRuntimeDomainWorkspace,
@@ -278,6 +292,8 @@ export function createAtriaWorkspaceHost({
     }
 
     function setWorkspaceContext(descriptor) {
+        // Plan and Run surfaces put their own Inspector into the Shell dock.
+        if (descriptor.kind === 'agents-v3') { if (active?.controller?.ownsContext) active.controller.refreshContext?.(); return; }
         const current = contextState();
         const detail = descriptor.kind === 'agents'
             ? formatShellText('Current Agents view: ${0}', [translateShellText(AGENT_SECTION_LABELS[descriptor.section] || descriptor.section)], undefined, 'atria.shell.context.agents')
@@ -776,6 +792,22 @@ export function createAtriaWorkspaceHost({
             group: translateShellText('Workspaces'),
             keywords: ['agents', 'orchestration', 'runs'],
             run: () => openAgentSection('home'),
+        }),
+        shell.registry.register({
+            id: 'workspace.plans',
+            title: translateShellText('Open Agent Plans'),
+            description: translateShellText('Author agent graphs, validate them on the Host and publish immutable revisions.'),
+            group: translateShellText('Workspaces'),
+            keywords: ['agents', 'plans', 'graph', 'orchestration', 'publish'],
+            run: () => openAgentSection('plans'),
+        }),
+        shell.registry.register({
+            id: 'workspace.runs',
+            title: translateShellText('Open Agent Runs'),
+            description: translateShellText('Follow Runs recorded by the Native Host: timeline, graph, fees and approvals.'),
+            group: translateShellText('Workspaces'),
+            keywords: ['agents', 'runs', 'timeline', 'approval', 'fees'],
+            run: () => openAgentSection('runs'),
         }),
         shell.registry.register({
             id: 'workspace.orchestration',

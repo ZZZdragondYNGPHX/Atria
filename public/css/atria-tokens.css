@@ -67,6 +67,15 @@
     --atri-ink-hover: #39393b;
     --atri-ink-pressed: #141416;
     --atri-blue: #3273f6;
+    /* Ledger tones: one meaning each; always paired with a shape and text. */
+    --atri-info: #2f5bb7;
+    --atri-info-soft: #e6ebf6;
+    --atri-committed: #226f4e;
+    --atri-committed-soft: #e4eeea;
+    --atri-history: #7a5a3c;
+    --atri-history-soft: #efebe8;
+    --atri-unknown: #5b4f9e;
+    --atri-unknown-soft: #ebeaf3;
 
     /* Typography */
     --atri-font-sans: "Plus Jakarta Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;

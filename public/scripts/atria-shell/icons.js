@@ -58,6 +58,7 @@ const ICONS = Object.freeze({
     'chevron-up': [['path', { d: 'M5.5 14.75 12 8.25l6.5 6.5' }]],
     close: [['path', { d: 'M6.5 6.5l11 11M17.5 6.5l-11 11' }]],
     plus: [['path', { d: 'M12 5v14M5 12h14' }]],
+    minus: [['path', { d: 'M5 12h14' }]],
     inspector: [
         ['rect', { x: 3.5, y: 4.5, width: 17, height: 15, rx: 2.75 }],
         ['path', { d: 'M14.75 4.5v15' }],

@@ -185,21 +185,28 @@ describe('R7G WorkspaceHost', () => {
             account: makeAdapter('account', records),
             placeholder: makeAdapter('placeholder', records),
         };
+        adapters['agents-v3'] = makeAdapter('agents-v3', records);
         const host = createAtriaWorkspaceHost({ document, window, shell, navigation, adapters });
 
+        // The Agents primary route opens the V3 Plan surface, not the legacy Run panel.
         shell.navigate('agents');
         await flushWorkspace();
 
         expect(host.getActiveWorkspace()).toMatchObject({
-            key: 'agents:workspace',
-            kind: 'agents',
-            section: 'run',
+            key: 'agents:v3',
+            kind: 'agents-v3',
+            section: 'plans',
         });
-        expect(adapters.agents).toHaveBeenCalledTimes(1);
-        expect(shell.slots.workspace.querySelector('[data-test-workspace="agents"]')).not.toBeNull();
+        expect(adapters['agents-v3']).toHaveBeenCalledTimes(1);
+        expect(adapters.agents).toHaveBeenCalledTimes(0);
+        host.openAgentSection('runs');
+        await flushWorkspace();
+        expect(navigation.getRoute().child?.id).toBe('runs');
+        expect(adapters['agents-v3']).toHaveBeenCalledTimes(1);
 
         host.openAgentSection('memory');
         await flushWorkspace();
+        expect(shell.slots.workspace.querySelector('[data-test-workspace="agents"]')).not.toBeNull();
 
         expect(navigation.getRoute()).toMatchObject({
             domain: 'agents',
@@ -214,6 +221,8 @@ describe('R7G WorkspaceHost', () => {
         expect(adapters.agents).toHaveBeenCalledTimes(1);
         expect(records.at(-1).controller.updateRoute).toHaveBeenCalled();
         expect(registry.get('workspace.memory')).not.toBeNull();
+        expect(registry.get('workspace.plans')).not.toBeNull();
+        expect(registry.get('workspace.runs')).not.toBeNull();
         expect(registry.get('workspace.orchestration')).not.toBeNull();
         expect(registry.get('workspace.agent-run')).not.toBeNull();
         expect(registry.get('workspace.agent-diagnostics')).not.toBeNull();
@@ -223,7 +232,7 @@ describe('R7G WorkspaceHost', () => {
         navigation.dispose();
     });
 
-    test('Agents primary route opens Run and keeps all session workspace navigation', async () => {
+    test('the legacy Agents Run section keeps all session workspace navigation until the hard cut', async () => {
         const navigation = createAtriaNavigationAuthority({ window });
         const shell = createAtriaAppShell({
             document,
@@ -233,14 +242,14 @@ describe('R7G WorkspaceHost', () => {
         });
         const host = createAtriaWorkspaceHost({ document, window, shell, navigation });
 
-        host.openAgents();
+        host.openAgentSection('run');
         await flushWorkspace();
 
         const workspace = shell.slots.workspace.querySelector('#agent-memory-workspace');
         expect(workspace).not.toBeNull();
         expect(workspace.querySelectorAll('.atria-workspace-nav [data-section]')).toHaveLength(4);
         expect(workspace.textContent).toContain('No active run');
-        expect(navigation.getRoute()).toMatchObject({ domain: 'agents', child: null });
+        expect(navigation.getRoute()).toMatchObject({ domain: 'agents', child: { id: 'run' } });
 
         workspace.querySelector('[data-section="memory"]').click();
         await flushWorkspace();
@@ -389,7 +398,7 @@ describe('R7G WorkspaceHost', () => {
             },
         });
 
-        host.openAgents();
+        host.openAgentSection('memory');
         await flushWorkspace();
         expect(agents).toHaveBeenCalledTimes(1);
         expect(shell.slots.dock.querySelector('[data-atria-workspace-context="true"]')).not.toBeNull();
@@ -436,7 +445,7 @@ describe('R7G WorkspaceHost', () => {
         };
         const host = createAtriaWorkspaceHost({ document, window, shell, navigation, adapters });
 
-        host.openAgents();
+        host.openAgentSection('memory');
         await flushWorkspace();
         const agentsController = records.find(item => item.kind === 'agents').controller;
 
@@ -656,7 +665,7 @@ describe('R7G WorkspaceHost', () => {
             child: { id: 'utility.account', label: 'Account', kind: 'workspace' },
         })).toMatchObject({ key: 'utility:account', kind: 'account', title: 'Account' });
         expect(routeDescriptor({ domain: 'agents', child: null, breadcrumb: ['Agents'] }))
-            .toMatchObject({ key: 'agents:workspace', kind: 'agents', section: 'run', title: 'Run' });
+            .toMatchObject({ key: 'agents:v3', kind: 'agents-v3', section: 'plans', title: 'Plans' });
         expect(routeDescriptor({
             domain: 'agents',
             child: { id: 'orchestration', label: 'Orchestration', kind: 'workspace' },

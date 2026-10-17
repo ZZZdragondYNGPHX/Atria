@@ -1,4 +1,6 @@
 import http from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import express from 'express';
 import storage from 'node-persist';
@@ -6,6 +8,20 @@ import { getAccountVersion, getPasswordHash, toKey } from '../../users.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { ReviewAuthority } from './review-authority.js';
+
+// Static, data-free Review document. It carries no launchRef, nonce or Run
+// data; its script fetches the JSON bootstrap from this same origin.
+const publicFile = relative => fileURLToPath(new URL('../../../public/' + relative, import.meta.url));
+const DOCUMENT_ASSETS = Object.freeze({
+    'review.js': ['scripts/native/orchestration/review/review.js', 'text/javascript; charset=utf-8'],
+    'review.css': ['scripts/native/orchestration/review/review.css', 'text/css; charset=utf-8'],
+    'tokens.css': ['css/atria-tokens.css', 'text/css; charset=utf-8'],
+});
+const DOCUMENT_FONTS = Object.freeze({ 'PlayfairDisplay%5Bwght%5D.ttf': 'PlayfairDisplay[wght].ttf', 'PlusJakartaSans%5Bwght%5D.ttf': 'PlusJakartaSans[wght].ttf' });
+const REVIEW_DOCUMENT = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
+    + '<meta name="referrer" content="no-referrer"><title>Atria review</title><link rel="stylesheet" href="/review/assets/tokens.css"><link rel="stylesheet" href="/review/assets/review.css">'
+    + '<script type="module" src="/review/assets/review.js"></script></head><body><div id="review"></div><div id="review-live" class="visually-hidden" aria-live="polite"></div></body></html>';
+const DOCUMENT_CSP = 'default-src \'none\'; script-src \'self\'; style-src \'self\'; font-src \'self\'; connect-src \'self\'; frame-ancestors \'none\'; base-uri \'none\'; form-action \'none\'';
 
 const unavailable = () => { throw Object.assign(new Error('Review authentication unavailable'), { code: 'native_orchestration_review_unavailable' }); };
 const token = () => randomBytes(32).toString('base64url');
@@ -58,9 +74,22 @@ export class ReviewOrigin {
             };
             // Frontend will render the built-in Review document at this path.
             // Until then this is the page's JSON bootstrap, with no approval nonce.
+            app.get('/review/assets/:name', async (req, res) => {
+                const asset = DOCUMENT_ASSETS[req.params.name];
+                if (!asset) return res.sendStatus(404);
+                res.type(asset[1]).send(await readFile(publicFile(asset[0])));
+            });
+            app.get('/review/webfonts/Serene/:name', async (req, res) => {
+                const font = DOCUMENT_FONTS[encodeURIComponent(req.params.name)];
+                if (!font) return res.sendStatus(404);
+                res.type('font/ttf').send(await readFile(publicFile('webfonts/Serene/' + font)));
+            });
             app.get('/review', async (req, res) => {
                 prune();
                 if (Object.keys(req.query).length !== 1 || typeof req.query.launchRef !== 'string' || !/^[\w-]{43}$/.test(req.query.launchRef)) return res.sendStatus(400);
+                // A browser navigation receives only the static document. The
+                // session/CSRF bootstrap below is created by its JSON request.
+                if (req.accepts(['json', 'html']) === 'html') return res.set('Content-Security-Policy', DOCUMENT_CSP).type('html').send(REVIEW_DOCUMENT);
                 try { await this.authority.validateLaunch(req.query.launchRef); } catch { return res.sendStatus(404); }
                 for (const [key, session] of this.#sessions) if (session.launchRef === req.query.launchRef) this.#sessions.delete(key);
                 if (this.#sessions.size >= 256) return res.sendStatus(503);

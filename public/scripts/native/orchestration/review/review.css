@@ -1,0 +1,51 @@
+/* Trusted Review document on the isolated Review Origin. It reuses the shared
+ * --atri-* tokens (served from the same origin); this origin cannot read the
+ * main app's theme, so dark mode follows the system with the built-in night palette. */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --atri-canvas: #171717; --atri-surface-1: #242424; --atri-surface-2: #1d1d1d; --atri-surface-3: #363635; --atri-elevated: #242424;
+        --atri-text-primary: #eee9e2; --atri-text-secondary: #b5b0aa; --atri-text-tertiary: #b5b0aa; --atri-text-on-ink: #171717;
+        --atri-separator: #3c3c3b; --atri-separator-strong: #898783; --atri-fill: #2c2c2c; --atri-fill-hover: #343433;
+        --atri-ink: #eee9e2; --atri-ink-hover: #d6d1cb; --atri-warning: #edc477; --atri-warning-soft: #3c372e; --atri-danger: #ff9c90; --atri-danger-soft: #3e3231;
+        --atri-committed: #7fcfa9; --atri-committed-soft: #2f3934; --atri-info: #92b1f4; --atri-accent-text: #ff936d; color-scheme: dark;
+    }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--atri-canvas); color: var(--atri-text-primary); font-family: var(--atri-font-sans); font-size: 15px; line-height: 1.5; -webkit-text-size-adjust: 100%; }
+#review { max-width: 640px; margin: 0 auto; padding: max(32px, env(safe-area-inset-top)) 16px max(48px, env(safe-area-inset-bottom)); }
+.review-head { display: grid; gap: 6px; margin-bottom: 24px; }
+.review-eyebrow { margin: 0; color: var(--atri-text-tertiary); font: 600 12px/1 var(--atri-font-sans); letter-spacing: .06em; text-transform: uppercase; }
+.review-title { margin: 0; font: 400 34px/1.15 var(--atri-font-serif); letter-spacing: -.02em; }
+.review-lead, .review-muted { margin: 0; color: var(--atri-text-secondary); font-size: 14px; }
+.review-body { display: grid; gap: 16px; }
+.review-card { display: grid; gap: 14px; padding: 20px; border: 1px solid var(--atri-separator-strong); border-radius: 14px; background: var(--atri-surface-1); box-shadow: var(--atri-shadow-1); }
+.review-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.review-subtitle { margin: 0; font-size: 18px; font-weight: 650; }
+.review-risk { display: inline-flex; align-items: center; min-height: 24px; padding: 0 9px; border: 1px solid currentColor; border-radius: 5px; color: var(--atri-warning); font: 600 12px var(--atri-font-mono); }
+.review-risk[data-risk="R3"] { color: var(--atri-danger); }
+.review-label { font-size: 13px; font-weight: 600; color: var(--atri-text-secondary); }
+.review-input { width: 100%; min-height: 44px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--atri-fill); box-shadow: inset 0 0 0 1px var(--atri-separator); color: inherit; font: 16px var(--atri-font-sans); }
+.review-input:focus { outline: none; box-shadow: inset 0 0 0 1px var(--atri-ink), 0 0 0 3px color-mix(in srgb, var(--atri-info) 35%, transparent); }
+.review-input[aria-invalid="true"] { box-shadow: inset 0 0 0 1px var(--atri-danger); }
+.review-error { margin: 0; color: var(--atri-danger); font-size: 14px; }
+.review-facts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; margin: 0; }
+.review-facts dt { color: var(--atri-text-tertiary); font-size: 12px; font-weight: 600; margin-top: 8px; }
+.review-facts dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.review-mono { padding: 8px 10px; border-radius: 6px; background: var(--atri-fill); font: 12.5px/1.5 var(--atri-font-mono); max-height: 50vh; overflow: auto; }
+.review-details > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--atri-text-secondary); font-size: 14px; }
+.review-consent { display: flex; gap: 10px; align-items: flex-start; min-height: 44px; padding: 10px 12px; border: 1px dashed var(--atri-separator-strong); border-radius: 8px; cursor: pointer; font-size: 14px; }
+.review-consent input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--atri-ink); }
+.review-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.review-button { min-height: 44px; padding: 0 18px; border: 1px solid var(--atri-separator-strong); border-radius: 999px; background: transparent; color: inherit; font: 600 15px var(--atri-font-sans); cursor: pointer; }
+.review-button[data-variant="primary"] { border-color: transparent; background: var(--atri-ink); color: var(--atri-text-on-ink); }
+.review-button:disabled { opacity: .4; cursor: default; }
+.review-button:focus-visible, .review-consent:focus-within, .review-details > summary:focus-visible { outline: 2px solid var(--atri-info); outline-offset: 2px; }
+.review-notice { padding: 14px 16px; border-radius: 10px; background: var(--atri-fill); font-size: 15px; }
+.review-notice[data-tone="danger"] { background: var(--atri-danger-soft); color: var(--atri-text-primary); box-shadow: inset 3px 0 0 var(--atri-danger); }
+.review-notice[data-tone="warning"] { background: var(--atri-warning-soft); box-shadow: inset 3px 0 0 var(--atri-warning); }
+.review-notice[data-tone="committed"] { background: var(--atri-committed-soft); box-shadow: inset 3px 0 0 var(--atri-committed); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media (forced-colors: active) { .review-card, .review-button, .review-risk { border: 1px solid CanvasText; } }
+.review-details > summary::before { content: "▸"; margin-inline-end: 8px; transition: transform .15s; }
+.review-details[open] > summary::before { transform: rotate(90deg); }
