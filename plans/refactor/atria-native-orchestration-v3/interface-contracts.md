@@ -1395,3 +1395,18 @@ Planner 停止重规划后，Host 由原 TaskGraphRevision/Patch/命令重建实
 共用 retrievalSendIdentity 验证已有原协议的目标构造，包括 custom Rerank 预填 /rerank 时不重复追加。不同目标在银行准入与 HTTP 之前拒绝；redirect:error、取消信号与原 reported/unknown usage 结算保持。既有内部无 transport 的 interrupted compute 调用维持原历史目标关联和新输入hash，不能冒称拥有实际 target proof；未来 V3 producer 必须取得真实协议提供的 transport。
 
 native_retrieval_send_target_mismatch 属于原检索 scope refusal，在 Hybrid vector/rerank 中直接传播，不能当作可选 Provider 故障退回 lexical。目标合同源码纳入 evaluator 指纹。此为 V3 附属 Effect 实际端点/输入核对的原协议接线，未解除 Memory scope_unavailable，未增加调用硬上限；完整私有消费者与费用/Result/Output闭包继续实施。
+
+
+### 17.120 原单 Narrator RP 的实际 Context Rerank
+
+原同来源顶层两节点 RP profile 可显式声明 memory.retrieve 和一个 context Rerank Profile pin。它继续由原 Scheduler opaque capture、选定 Model Route/原银行和 ContextPort 编译器启动；不从 Browser/投影/JSON恢复执行。新 ContextRetrievalPort 只在原 metered compile 的同一 original send bank 上签发实例私有的一次性 Context scope，绑定 owner、Root/Model Effect/Attempt、Source/grant、原 Memory descriptor 和原预算。复制 token、其它实例、重复 recall、外来 pin 均不能派发。
+
+原 NativeMemoryAuthority 先完成合法来源、时间/分支和 Narrator eligibility，再沿原 Hybrid retrieval 做选择性 rerank。只有原策略判定存在竞争的因果来源时才调用；单一来源保持 skip，不准备额外 Effect。实际 query/documents 必须属于该次私有合法 corpus，原请求正文不进入 RunLedger。每次实际 rerank 经原 exact Profile/Secret、原三协议与最终 POST 身份，使用独立 memory.retrieve Effect 和原银行 provider ordinal；原主 Model Effect 在 Context 完成前保持 prepared，不借其目标向检索端点收费。
+
+原 protocol 返回、原费用已 settled 和私有实际响应证明同时成立，才能确认检索并消费 Context。usage未知、ACK未知、撤权/取消或未完成调用阻止后续 Model/Chat；已发生费用保留，未知事实不自动重发。原必要 corpus/rank/pack CPU 工作仍包在同一实际 context_build，不建立第二检索服务/银行。原 Route 的 rerank optionalWork.requiredCompute 继续适用：在准备附属 Effect 之前只读原容量，保留的必要额度不足或未知时零检索派发并沿原 lexical/Narrator；此决定只在原实例私有 WeakSet 中认证，不能伪造为已派发动作的免核对许可，真正发送仍由原银行原子准入。Secret 只按原 exact SecretRef 解析，ledger/receipt 只含 hash、ref、结算与来源事实。生产者结束会释放私有 scope/回调的内存持有并使旧proof失效，不改变耐久 Effect/费用/unknown事实或伪造预算释放。
+
+正式 Narrator settlement 与 Result reader 核对全部附属 Effect 收据；唯一 Chat/OutputClaim 的原费用闭包纳入检索、Model和输出工作。历史 reader 由同一原 Profile/Plan、parent Model、实际 target/input/grant、响应收据和原 RP 银行重建，不能用重hash的 parent/request/usage 替换真实事实；Source删除/冷启动仅能历史读取。原 Root/Context 最后费用 await 后再次核对原授权和 Memory descriptor；Model消费及原 RP output prepare/physical writer 共用拒绝码，保留同事务取消/Memory撤回，而不是回滚合法撤权。最终 RP 发布沿同一 ContextPort 的私有 Memory metadata proof复验，不返回 Context/Result正文，也不再消费接收 Attempt 已settled 的Graph Result；图与输出事实仍沿原历史reader逐项核对。
+
+本机一次真实 Rerank API 已经该 V3 scope、原银行、Result与唯一 Chat/Root completed 路径验证，Model采用 localhost合成，次数及私密账本归同一Record；不是整条真实 Chat API/质量/价格通过。孤立 evaluator 尚无原检索父Host收费RPC，显式拒绝 memory.retrieve profile，避免把未执行的能力核销为质量证据。新消费者/合同纳入 evaluator revision。
+
+边界仍为顶层单 Narrator RP、rerank-only；Embedding/向量索引、Session/Project/Actor、Delegate/控制图组合及 evaluator 原检索RPC继续同任务实施，相关 scope_unavailable 保持。P1–P4及最终Gate未通过，不作为前端交接或分支结束。
