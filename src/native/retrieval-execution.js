@@ -2,10 +2,40 @@ import fetch from 'node-fetch';
 import { NativeRetrievalPersistence } from './retrieval-persistence.js';
 import { getStorageEngine } from '../storage/index.js';
 import { readSecret, SECRET_KEYS } from '../endpoints/secrets.js';
-import { assertRetrievalRef, NATIVE_RETRIEVAL_SCOPE_ERRORS, NATIVE_RETRIEVAL_COMPUTE_ERRORS } from '../../public/scripts/native/retrieval-contracts.js';
+import { assertRetrievalRef, assertRetrievalProfile, NATIVE_RETRIEVAL_SCOPE_ERRORS, NATIVE_RETRIEVAL_COMPUTE_ERRORS } from '../../public/scripts/native/retrieval-contracts.js';
 import { assertWritable } from '../storage/read-only-mode.js';
 import { prepareRetrievalCompute } from './retrieval-compute.js';
-import { supportsOpenAIEmbeddingSource } from '../vectors/openai-vectors.js';
+import { getOpenAIBatchVector, supportsOpenAIEmbeddingSource } from '../vectors/openai-vectors.js';
+import { insertNativeIndex, queryNativeIndexes, nativeRetrievalIndexPath } from './vector-index-work.js';
+import { hashNativeDocument } from './repositories/common.js';
+import { embeddingBatches } from '../vectors/embedding-batches.js';
+
+/** Original Native protocol/index execution, shared without an HTTP roundtrip.
+ * Callers supply their original compute/source authority; this mints no grant. */
+export async function executeNativeEmbedding({ directories, profile: value, compute, signal, secret = '', request }, operation, input) {
+    const profile = assertRetrievalProfile(value);
+    if (profile.mode !== 'embed' || !['list', 'insert', 'query', 'delete'].includes(operation)
+        || ['insert', 'query'].includes(operation) && !supportsOpenAIEmbeddingSource(profile.source))
+        throw Object.assign(new TypeError('Native embedding execution unavailable'), { code: 'native_retrieval_compute_unavailable' });
+    const indexScope = profile.retrievalProfileId + '_' + profile.revision;
+    const indexPath = nativeRetrievalIndexPath(directories, input.collectionId, indexScope);
+    if (request && (!request.nativeRetrieval || hashNativeDocument(request.nativeRetrieval.profile ?? null) !== hashNativeDocument(profile)
+        || request.nativeRetrieval.compute !== compute || request.nativeRetrieval.signal !== signal || (request.nativeRetrieval.secret ?? '') !== secret))
+        throw Object.assign(new TypeError('Native retrieval carrier mismatch'), { code: 'native_retrieval_send_target_mismatch' });
+    const carrier = request ?? { nativeRetrieval: { profile, compute, signal } };
+    const settings = { reverseProxy: profile.endpoint, proxyPassword: secret };
+    const vectors = async texts => {
+        const result = [];
+        for (const batch of embeddingBatches(texts)) result.push(...await getOpenAIBatchVector(batch, profile.source, directories, profile.model, settings, carrier));
+        return result;
+    };
+    if (operation === 'list') return queryNativeIndexes({ indexes: [{ collectionId: input.collectionId, indexPath }], mode: 'list', compute, signal });
+    if (operation === 'delete') return insertNativeIndex({ indexPath, deleteHashes: input.hashes, compute, signal });
+    if (operation === 'insert') return insertNativeIndex({ indexPath, items: input.items, getVectors: () => vectors(input.items.map(item => item.text)), compute, signal });
+    return (await queryNativeIndexes({ indexes: [{ collectionId: input.collectionId, indexPath }], query: input.searchText,
+        topK: input.topK, threshold: input.threshold, includeVectors: input.includeVectors === true, compute, signal,
+        getVector: async () => (await vectors([input.searchText]))[0] })).single;
+}
 
 export function resolveRetrievalSecret(directories, ref) {
     if (!ref) return '';

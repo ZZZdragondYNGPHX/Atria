@@ -306,6 +306,10 @@ async function digest(text) {
         .map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
+export const memoryVectorCollectionId = (key, profile, eligibility = null) => digest(JSON.stringify([key, profile, eligibility]))
+    .then(value => 'memory_hybrid_v1_' + value);
+export const retiredMemoryVectorCollectionIds = async (key, profile) => [buildCollectionId(key), 'memory_os_' + await digest(JSON.stringify([key, profile]))];
+
 /** Content-addressed vectors, isolated by chat and embedding configuration. */
 export async function retrieveMemory(snapshot, query, { service, profile, rerankProfile, countTokens,
     budget = RETRIEVAL_DEFAULTS.tokenBudget, corePacket = '', existingStateText = '', signal, at = null, rebuildVectors = false,
@@ -400,12 +404,12 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
     }
     if (vectorAdmitted) {
         try {
-            const collectionId = `memory_hybrid_v1_${await digest(JSON.stringify([snapshot.key, profile, snapshot.eligibility?.identity ?? null]))}`;
+            const collectionId = await memoryVectorCollectionId(snapshot.key, profile, snapshot.eligibility?.identity ?? null);
             guard();
             // Only identified derived namespaces are cleared. Source/World/
             // Timeline storage is outside this retrieval service entirely.
             if (snapshot.eligibility) {
-                for (const retired of [buildCollectionId(snapshot.key), `memory_os_${await digest(JSON.stringify([snapshot.key, profile]))}`]) {
+                for (const retired of await retiredMemoryVectorCollectionIds(snapshot.key, profile)) {
                     guard();
                     const hashes = await callService('listHashes', { collectionId: retired, profile, signal,
                         ...(computeContext ? { computeContext } : {}) }); guard();

@@ -6,7 +6,8 @@ import { makeTempSqliteEngineHarness } from '../storage/harness/contract-harness
 import { NativeRetrievalPersistence } from '../../src/native/retrieval-persistence.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { assertRetrievalProfile, retrievalRef, RETRIEVAL_PROVIDERS } from '../../public/scripts/native/retrieval-contracts.js';
-import { createRetrievalMiddleware, resolveRetrievalSecret } from '../../src/native/retrieval-execution.js';
+import { createRetrievalMiddleware, resolveRetrievalSecret, executeNativeEmbedding } from '../../src/native/retrieval-execution.js';
+import { prepareRetrievalCompute } from '../../src/native/retrieval-compute.js';
 import { router as vectors } from '../../src/endpoints/vectors.js';
 import { SecretManager, SECRET_KEYS } from '../../src/endpoints/secrets.js';
 import { setReadOnly } from '../../src/storage/read-only-mode.js';
@@ -54,8 +55,8 @@ for (const [kind, create] of [['fs', makeTempFsEngine], ['sqlite', makeTempSqlit
         await expect(store.commit(h.handle, profile())).rejects.toMatchObject({ code: 'storage_read_only' });
     });
 }
-async function fixture() {
-    const h = await makeTempFsEngine(); cleanups.push(h.cleanup);
+async function fixture(make = makeTempFsEngine) {
+    const h = await make(); cleanups.push(h.cleanup);
     const store = new NativeRetrievalPersistence({ engine: h.engine }); const value = profile(); await store.commit(h.handle, value);
     const app = express(); app.use(express.json()); app.use((req, _res, next) => { req.user = { profile: { handle: h.handle }, directories: h.dirs }; next(); });
     let computeServices;
@@ -76,6 +77,44 @@ test('real vector IO isolates exact revisions and Native purge from compatibilit
     expect((await f.request.post('/list').send(body).expect(200)).body).toEqual([1]);
     await f.request.post('/delete').send({ ...body, hashes: [1] }).expect(200);
     expect((await f.request.post('/list').send(body).expect(200)).body).toEqual([]);
+});
+
+test.each([['FS', makeTempFsEngine], ['SQLite', makeTempSqliteEngineHarness]])('%s original Host and HTTP consumers share the same exact index and Session bank', async (_kind, make) => {
+    const f = await fixture(make), calls = [], provider = express(); provider.use(express.json());
+    provider.use((req, res) => {
+        calls.push({ input: req.body.input, model: req.body.model, authorization: req.headers.authorization });
+        res.json({ data: req.body.input.map((_, index) => ({ index, embedding: [1, 0] })), usage: { total_tokens: 3 } });
+    });
+    const server = await new Promise(resolve => { const current = provider.listen(0, '127.0.0.1', () => resolve(current)); });
+    cleanups.push(() => new Promise(resolve => server.close(resolve)));
+    const baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
+    const installed = await installFixture(f), base = await installed.core.create(f.handle, installed.start);
+    const seeded = await seedGenerationProfiles({ ...f, endpoint: baseUrl + '/chat/completions' });
+    await seeded.persistence.saveRuntimeRoute(f.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1,
+        allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget: { maxRequests: 4, maxTokens: 32000, localWork: { maxJobs: 16, maxItems: 100, maxInputBytes: 1048576 } } } });
+    const services = { core: installed.core, persistence: seeded.persistence }; f.useComputeServices(services);
+    const manager = new SecretManager(f.dirs), secretId = manager.writeSecret(SECRET_KEYS.ATRIA_RUNTIME, 'shared-exact-secret', 'Shared original consumer', { activate: false });
+    const value = profile({ source: 'openai', model: 'shared-exact-embedding', endpoint: baseUrl, secretRef: { secretId } }); await f.store.commit(f.handle, value);
+    const context = { kind: 'session', sessionId: base.session.sessionId, revisionId: base.revision.revisionId };
+    const body = { nativeRetrievalRef: retrievalRef(value), collectionId: 'shared-original-index', computeContext: context };
+    await f.request.post('/insert').send({ ...body, items: [{ hash: 1, text: 'Original legal source', index: 0 }] }).expect(200);
+    const compute = await prepareRetrievalCompute({ handle: f.handle, context, profile: value, ...services });
+    const signal = new AbortController().signal, secret = resolveRetrievalSecret(f.dirs, value.secretRef);
+    const work = { directories: f.dirs, profile: value, compute, signal, secret };
+    expect(await executeNativeEmbedding(work, 'list', { collectionId: body.collectionId })).toEqual([1]);
+    const query = await executeNativeEmbedding(work, 'query', { collectionId: body.collectionId, searchText: 'Read legal source', topK: 1, threshold: 0, includeVectors: true });
+    expect(query.hashes).toEqual([1]); expect(query.metadata[0].text).toBe('Original legal source');
+    await executeNativeEmbedding(work, 'delete', { collectionId: body.collectionId, hashes: [1] });
+    expect((await f.request.post('/list').send(body).expect(200)).body).toEqual([]);
+    expect(calls).toHaveLength(2); expect(calls.every(row => row.model === value.model && row.authorization === 'Bearer shared-exact-secret')).toBe(true);
+    const bank = Object.values((await installed.core.runs.status(f.handle, base.session.sessionId)).operations)[0].compute;
+    expect(bank.attempts).toHaveLength(2); expect(bank.attempts.every(row => row.status === 'settled')).toBe(true);
+    expect(bank.localWork.map(row => row.kind)).toEqual(['index_insert', 'index_list', 'index_query', 'index_delete', 'index_list']);
+    const request = { nativeRetrieval: { profile: value, compute: { ...compute }, signal, secret } };
+    await expect(executeNativeEmbedding({ ...work, request }, 'query', { collectionId: body.collectionId, searchText: 'Never sent', topK: 1, threshold: 0 }))
+        .rejects.toMatchObject({ code: 'native_retrieval_send_target_mismatch' });
+    expect(Object.values((await installed.core.runs.status(f.handle, base.session.sessionId)).operations)[0].compute).toEqual(bank);
+    expect(calls).toHaveLength(2);
 });
 test('Native boundary rejects configuration injection, wrong task, unknown refs and readonly mutations', async () => {
     const f = await fixture(); const body = { nativeRetrievalRef: retrievalRef(f.value), collectionId: 'memory' };

@@ -20,7 +20,7 @@ test.each(['controller-common', 'review-controller', 'graph-controller', 'graph-
     expect(evolutionEvaluatorRevision()).toBe(revision);
 });
 
-test.each(['../../src/native/orchestration/retrieval-capability-authority.js', '../../src/native/retrieval-send-contracts.js', '../../src/native/orchestration/context-retrieval-port.js', '../../src/native/orchestration/context-retrieval-contracts.js'])('evaluator includes exact Retrieval authority %s', dependency => {
+test.each(['../../src/native/orchestration/retrieval-capability-authority.js', '../../src/native/retrieval-send-contracts.js', '../../src/native/orchestration/context-retrieval-port.js', '../../src/native/orchestration/context-retrieval-contracts.js', '../../src/native/vector-index-work.js', '../../src/vectors/embedding-batches.js'])('evaluator includes exact Retrieval authority %s', dependency => {
     const revision = evolutionEvaluatorRevision();
     try {
         changedSource = fileURLToPath(new URL(dependency, import.meta.url));

@@ -5,12 +5,17 @@ import { performance } from 'node:perf_hooks';
 import vectra from 'vectra';
 import { sync as writeFileAtomic } from 'write-file-atomic';
 import { assertWritable } from '../storage/read-only-mode.js';
+import sanitize from 'sanitize-filename';
 
 const writes = new Map();
 let queued = 0;
 const MAX_BYTES = 16777216;
 const indexIdentity = value => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
 const unavailable = () => Object.assign(new Error('Bounded Native index work unavailable'), { code: 'native_retrieval_compute_unavailable' });
+
+/** Same existing physical namespace for HTTP and trusted Context consumers. */
+export const nativeRetrievalIndexPath = (directories, collectionId, indexScope) => path.resolve(directories.vectors, 'atri-retrieval', sanitize(collectionId), sanitize(indexScope));
+
 function indexValues(doc) {
     if (!Array.isArray(doc?.items) || doc.items.length > 10000 || doc.metadata_config?.indexed?.length) throw unavailable();
     let values = 0;

@@ -3,13 +3,14 @@ import fs from 'node:fs';
 
 import vectra from 'vectra';
 import express from 'express';
-import { createRetrievalMiddleware } from '../native/retrieval-execution.js';
+import { createRetrievalMiddleware, executeNativeEmbedding } from '../native/retrieval-execution.js';
 import { NATIVE_RETRIEVAL_SCOPE_ERRORS, NATIVE_RETRIEVAL_COMPUTE_ERRORS } from '../../public/scripts/native/retrieval-contracts.js';
-import { insertNativeIndex, queryNativeIndexes, purgeNativeIndex } from '../native/vector-index-work.js';
+import { insertNativeIndex, queryNativeIndexes, purgeNativeIndex, nativeRetrievalIndexPath } from '../native/vector-index-work.js';
 import sanitize from 'sanitize-filename';
+import { embeddingBatches } from '../vectors/embedding-batches.js';
 
 import { getNomicAIBatchVector, getNomicAIVector } from '../vectors/nomicai-vectors.js';
-import { getOpenAIVector, getOpenAIBatchVector } from '../vectors/openai-vectors.js';
+import { getOpenAIVector, getOpenAIBatchVector, supportsOpenAIEmbeddingSource } from '../vectors/openai-vectors.js';
 import { getTransformersVector, getTransformersBatchVector } from '../vectors/embedding.js';
 import { getExtrasVector, getExtrasBatchVector } from '../vectors/extras-vectors.js';
 import { getMakerSuiteVector, getMakerSuiteBatchVector } from '../vectors/google-vectors.js';
@@ -144,8 +145,7 @@ async function getBatchVector(source, sourceSettings, texts, isQuery, directorie
         return getTransformersBatchVector(texts, sourceSettings.native ? sourceSettings.model : undefined,
             { compute: request?.nativeRetrieval?.compute, signal: request?.nativeRetrieval?.signal });
     }
-    const batchSize = 10;
-    const batches = Array(Math.ceil(texts.length / batchSize)).fill(undefined).map((_, i) => texts.slice(i * batchSize, i * batchSize + batchSize));
+    const batches = embeddingBatches(texts);
 
     let results = [];
     for (let batch of batches) {
@@ -242,8 +242,12 @@ async function getIndex(directories, collectionId, source, sourceSettings) {
     return store;
 }
 function getIndexPath(directories, collectionId, source, sourceSettings) {
-    return path.resolve(directories.vectors, sanitize(sourceSettings.native ? 'atri-retrieval' : source), sanitize(collectionId), sanitize(getModelScope(sourceSettings)));
+    return sourceSettings.native ? nativeRetrievalIndexPath(directories, collectionId, getModelScope(sourceSettings))
+        : path.resolve(directories.vectors, sanitize(source), sanitize(collectionId), sanitize(getModelScope(sourceSettings)));
 }
+
+const nativeEmbeddingExecution = (directories, request) => ({ directories, profile: request.nativeRetrieval.profile, secret: request.nativeRetrieval.secret,
+    compute: request.nativeRetrieval.compute, signal: request.nativeRetrieval.signal, request });
 
 /**
  * Inserts items into the vector collection
@@ -255,6 +259,8 @@ function getIndexPath(directories, collectionId, source, sourceSettings) {
  * @param {import('express').Request} [request] - Inspector-carrying request
  */
 async function insertVectorItems(directories, collectionId, source, sourceSettings, items, request = null) {
+    if (sourceSettings.native && request?.nativeRetrieval?.profile && supportsOpenAIEmbeddingSource(source))
+        return executeNativeEmbedding(nativeEmbeddingExecution(directories, request), 'insert', { collectionId, items });
     if (sourceSettings.native) return insertNativeIndex({ indexPath: getIndexPath(directories, collectionId, source, sourceSettings), items,
         compute: request?.nativeRetrieval?.compute, signal: request?.nativeRetrieval?.signal,
         getVectors: () => getBatchVector(source, sourceSettings, items.map(x => x.text), false, directories, request) });
@@ -295,6 +301,8 @@ async function insertVectorItems(directories, collectionId, source, sourceSettin
  * @returns {Promise<number[]>} - The hashes of the items in the collection
  */
 async function getSavedHashes(directories, collectionId, source, sourceSettings, request = null) {
+    if (sourceSettings.native && request?.nativeRetrieval?.profile)
+        return executeNativeEmbedding(nativeEmbeddingExecution(directories, request), 'list', { collectionId });
     if (sourceSettings.native) return queryNativeIndexes({ indexes: [{ collectionId, indexPath: getIndexPath(directories, collectionId, source, sourceSettings) }], mode: 'list',
         compute: request?.nativeRetrieval?.compute, signal: request?.nativeRetrieval?.signal });
     const store = await getIndex(directories, collectionId, source, sourceSettings);
@@ -340,6 +348,8 @@ async function deleteVectorItems(directories, collectionId, source, sourceSettin
  * @returns {Promise<{hashes: number[], metadata: object[]}>} - The metadata of the items that match the search text
  */
 async function queryCollection(directories, collectionId, source, sourceSettings, searchText, topK, threshold, includeVectors = false, request = null) {
+    if (sourceSettings.native && request?.nativeRetrieval?.profile && supportsOpenAIEmbeddingSource(source))
+        return executeNativeEmbedding(nativeEmbeddingExecution(directories, request), 'query', { collectionId, searchText, topK, threshold, includeVectors });
     if (sourceSettings.native) return (await queryNativeIndexes({ indexes: [{ collectionId, indexPath: getIndexPath(directories, collectionId, source, sourceSettings) }],
         query: searchText, topK, threshold, includeVectors, compute: request?.nativeRetrieval?.compute, signal: request?.nativeRetrieval?.signal,
         getVector: () => getVector(source, sourceSettings, searchText, true, directories, request) })).single;
@@ -682,7 +692,8 @@ router.post('/delete', async (req, res) => {
         const source = String(req.body.source) || 'transformers';
         const sourceSettings = getSourceSettings(source, req);
 
-        if (req.nativeRetrieval) await insertNativeIndex({ indexPath: getIndexPath(req.user.directories, collectionId, source, sourceSettings),
+        if (req.nativeRetrieval?.profile) await executeNativeEmbedding(nativeEmbeddingExecution(req.user.directories, req), 'delete', { collectionId, hashes: req.body.hashes });
+        else if (req.nativeRetrieval) await insertNativeIndex({ indexPath: getIndexPath(req.user.directories, collectionId, source, sourceSettings),
             deleteHashes: req.body.hashes, compute: req.nativeRetrieval.compute, signal: req.nativeRetrieval.signal });
         else await deleteVectorItems(req.user.directories, collectionId, source, sourceSettings, req.body.hashes.map(x => Number(x)));
         return res.sendStatus(200);
