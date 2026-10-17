@@ -10,6 +10,8 @@
 
 第九十七组 `3a2f38361` 补同节点已发布 model pins 内的 routeRef 策略候选、原Project实际消费/Skill预算选择和隔离worker比较，见[接口 §17.101](interface-contracts.md#17101-同节点已声明-route-的原-plan-策略候选)。没有新Route/权限、异Model配置价格或自动晋升结论；RP/Session组合、完整Graph及恢复释放继续实施。
 
+第九十八组 `767db55ac` 补原RP/Session Narrator/Resolver/后台Task的同节点备选Route，以及同一私有Plan selection驱动的Scheduler资源lanes，见[接口 §17.102](interface-contracts.md#17102-有限原消费者的-exact-node-route-选择)。有限消费者与RP worker已取FS/SQLite实证；完整后端仍继续，未推送或合main。
+
 - 创建/调研日期：2026-10-15。
 - 第一轮状态：**D1 已定案：方案 B（原生 Orchestration V3）**。
 - 第二轮状态：**D2 已冻结：T2 Native Host 唯一运行权威、Plan/Run/Effect/Receipt 边界和旧编排零兼容硬切**。

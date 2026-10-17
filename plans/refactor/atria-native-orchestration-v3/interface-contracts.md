@@ -1232,3 +1232,11 @@ plan-strategy 增加 routeRef。候选仅为精确 {scope:'player',runtimeRouteI
 catalog/capture 的 allowedValues 和实际提案 Prompt共用原节点 pins，结构化提案 parser 不接受任意 JSON object编辑。候选评测配置读取真正选中的候选 Route；原 paired Model/Connection/Generation 相等检查保留，异配置仍 unavailable，不虚构可比价格或自动晋升。独立质量/价格与已有 Native auto拒绝保持。
 
 Project 的有限消费者允许同节点预声明多个 Model pins，但每次只按 policy.agentPinId 和原 operation 显式 runtimeRouteId 执行，原 tool pins/Source/Model/预算/egress不扩大。原 Project Skill 本地工作也固定使用该私有 operation 的已选 Route，拒绝 caller 替换，不再用“全局唯一 studio Route”猜预算。当前实际产品和隔离 worker证据覆盖 Project；RP/Session消费者的备选 Route组合仍继续接入。
+
+## 17.102 有限原消费者的 exact node Route 选择
+
+原 RP、Session Narrator/Resolver 和后台 Task现接受同一节点拥有的多个已发布 player Model pins。共用 nodeModelRoutePins 只投影已验证声明，不发运行权限；active Route始终为原 policy.agentPinId，caller显式 Route若不同仍拒。仅在 Plan 全局存在、没有归属该执行节点的 pin 不可借用。有限图的节点/边/输出与 capability边界不变；RP委派仍只有原一个 exact child Plan pin，不因 Model备选而增加 child权限。
+
+Session 的 Narrator与Resolver分别按自己的 active pin选择原角色 Route，不再用全局唯一角色推断。原 Host为 Scheduler收集资源时，从同一个 preflightBinding 的私有 selection重验 Source/owner/Host/input/typed transaction后取已选 lanes；JSON复制、外来Owner/Host/Source/input拒绝，返回原有界 route配置不授 dispatch。typed transaction也在 capture时冻结。随后原资源 permits、Model/Secret、费用、Context、finalizer和 OutputClaim继续逐项围栏；未选备选不发送、不多花次数。
+
+现有实际证据包括RP策略发布/原单Chat输出/回滚历史、Narrator冷读、Resolver+Narrator各选其Route的原World提交、后台单Task/银行闭包，以及RP隔离worker的原Plan/Effect/Chat与父Evolution账本。它们仍是有限原消费者，不是通用Graph/Planner/Judge/Review runtime；受控Review/恢复组合继续各自验收。

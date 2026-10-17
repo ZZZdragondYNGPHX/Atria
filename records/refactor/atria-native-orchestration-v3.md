@@ -1119,3 +1119,10 @@
 - 新实际 Project positive首轮2FAIL/6filterSKIP（3.040s），发现原 Skill 本地工作仍猜全局唯一 studio Route；改为原私有 operation 已选择 Route，并拒 caller换 Route。第二轮2FAIL/6filterSKIP（9.437s）已实际发送一次，失败仅测试读 setup spread 时已失去的 roundArgs getter；改用原 durable Effect actionRef作为证据。四 suites最终70/70 PASS（46.959s，Route新8项，指纹30项），含执行原 Project、新旧策略/Prompt、ACK/回滚兼容。
 - 新 alternative Route已变更的拒绝与 typed proposal反例5PASS/8filterSKIP（2.585s），原文本/数字提案与JSON两 suites7/7 PASS（0.647s）。Route新suite合计10项分批通过。新增实际隔离 worker baseline/candidate Route 比较，FS/SQLite2PASS/6filterSKIP（76.254s）：每边三轮原工具/Review/Root闭合，原父 Evolution账本7行、生产Project/Task/Binding保持；没有伪造成功pair/自动eligibility。十文件原ESLint及最新两个测试lint、staged diff check通过。
 - 都是localhost合成，无新增真实Provider调用。实际组合目前覆盖Project，继续RP/Session已声明Route组合与其它后端；不交前端/main。
+
+## 2026-10-17 — 第九十八组：原 RP/Session/后台节点 Route 与 Scheduler lanes
+
+- Source 3a2f38361 → 767db55ac，本地提交，未推送。
+- 复用原有限消费者和共用 nodeModelRoutePins；active policy只选同一节点已声明的精确Model pin，未选不发，Plan全局未归属pin拒绝。RP原单child Plan上限与Source/权限/输出保持。修正 Session #describe 及 Host资源收集仍按唯一role猜 Route；Host收集资源改由同一私有 preflight selection重验后返回已选 lanes，typed transaction冻结。JSON/跨Owner/Host/Source/input不能复用该选择，详见接口 §17.102。
+- 新suite首轮4FAIL/10filterSKIP（6.336s），RP已完成但测试误读receipt.costs（实际为独立closure），Session定位到原 _turnLanes全局角色歧义；按原closure与私有选择接线修正。新14/14 PASS（55.431s），含RP策略单输出/回滚、Narrator冷读、Resolver+Narrator实际World结果、普通后台Task与三类未归属pin零发送。补私有 Scheduler selection反例后，与RP隔离workerRoute比较分批4PASS/22filterSKIP（35.333s），新suite合计16项通过。
+- RP父子Result消费、typed Authority原Turn/伪JSON或跨Core拒绝、Project Route实际执行及指纹四 suites精选42PASS/44filterSKIP（43.737s，指纹30）。十一文件lint最初仅native-evaluation新callback的九行缩进失败，原ESLint --fix后通过；其它文件无lint错误，staged diff check通过。Provider均localhost合成，无新增真实付费/独立质量/价格/自动晋升结论，后端继续，不交前端/main。
