@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · W10 定义实例化与动态 NPC 能力绑定（讨论草案）
 
 - Task ID：`ARCH-DWE-01`；Primary Workspace：`docs`；[Plan 入口](index.md) / [总体设计](design.md) / [W9 统一身份](entity-identity-authority.md) / [唯一 Record](../../../records/architecture/world-evolution-consistency.md)。
-- **状态：Draft。** W1-B～W9-B 是用户已确认的设计方向；W10 的路线与具体实现合同尚未确认。**仅 docs 架构讨论**；不修改 `main`、不创建实现分支、无代码测试或三端实测。
+- **状态：Draft。** W1-B～W10-B 是用户已确认的顶层设计方向；W11 合同路线与具体实现仍未选择。本文 §7 保留当时的三选讨论历史，正式 W10-B 用户确认见 §10。**仅 docs 架构讨论**，不修改 `main`、不创建实现分支、无代码测试或三端实测。
 - **问题**：已选 W9-B 确定“同一真实世界主体有一个 Canonical Subject 引用，其他领域以受控引用/投影关联”；但预设世界对象和角色卡在游戏开始时**如何实例化**，自由游戏过程中生成的 NPC **如何获得对话、认知、行动等有限能力**，才不会因 Package Actor、World Entity、HCM Entity、Lifetime Person、Timeline Actor ID 各自不同而断线？
 
 ## 1. 四种“实体出现”事件不可混同
@@ -137,3 +137,17 @@ Library / Studio (immutable authored revisions)
 6. 单 Native commit、来源证据与权限校验之间的顺序、重试/失败和动态实体工作预算如何形成可验证的最小契约？
 
 **状态：Draft，W10 未批准**。文档只是候选设计与代码静态审查，不包含任何已通过的真实客户端或 CI 证据。
+
+## 10. W10-B 用户确认（2026-10-17）
+
+用户对上一轮明确推荐的 **W10-B「固定定义 → Session Subject 实例化 + 类型化能力绑定」**回复「认同」，故 W10-B 已是 ARCH-DWE-01 的已确认**架构设计方向**：
+
+- World/Actor/Package 的 Authored 定义与表达模板保持固定版本；Session 创建时由 Native Host 将作者指定的初始正式世界成员实例化为可追踪的 World Subject。纯文字 Worldless、多 World 和“未预先定义的动态 NPC”不因选择 W10-B 而被否定。
+- W4-B 产生持续世界后果的动态对象，经现有 Native 提交入口获得稳定 Subject 与事实；它可按权限另外绑定表达资料、合法 Perspective/HCM 证据与有限的 Task/Simulation 能力。**世界身份不等于 Actor 模板身份、认知读取权限或深度 LLM Agent 资格**。
+- 一份已创作表达模板可以被显式复用于不同 Subject；同一 Subject 可以改名/伪装/改变外观，但个人世界身份不变。全部绑定均需版本、来源、分支、受众可见性；创作者资产不被 Session 写回。
+- 角色加入已提交 Timeline/事件必须经受控 Participant 身份与合法来源；不能为了兼容旧 `actorId` 在 `manifest.actors` 临时注册游戏 NPC 或借用 Narrator 视角。
+- Save/Branch 继承分叉前 Subject，后续情报、互动、关系和能力授权沿各分支生效；HCM/认知/Visual 的本地 ID 仍按有来源映射处理。
+
+**本轮没有批准**新的 `subject_* / participant_*` 等具体 ID 格式、任何 API/Schema、硬编码权限等级、Timeline/信息 ABI 修改，或正式实现开工与测试通过的结论。整份企划继续 Draft。
+
+**W11 下一轮**进入 [subject-contracts-e0.md](subject-contracts-e0.md)：讨论 `Subject / ActorProfile / Perspective / Participant` 的接口语义与 Host capability 解析，列出确切已读消费者、真实 E0 未完成事项及 W11-A/B/C 方案（推荐 B，尚未选择）。
