@@ -9,6 +9,7 @@ import { assertRpControlWork } from './rp-control-work-contracts.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { rpJudgeProfile } from './rp-judge-profile.js';
+import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP Judge completion facts'); };
@@ -24,6 +25,7 @@ export async function readRpJudgeCompletion(tx, handle, root, attemptId) {
     if (root.graphRevision !== 0 || !equal(root.graph, plan.definition)) invalid();
     const producer = (await readAttempt(tx, handle, root, attemptId)).doc, settlement = await readAttemptSettlement(tx, handle, root, producer);
     const intent = (await readEffect(tx, handle, root, receipt.modelEffectId)).doc, model = await readModelCompletionReceipt(handle, tx, root, intent);
+    const retrievalCompletions = await readContextRetrievalCompletions(tx, handle, root, intent, producer);
     let parsed;
     try { parsed = JSON.parse(receipt.responseText); } catch { invalid(); }
     assertObject(parsed, ['selectedCandidate', 'reasonCode'], 'Judge response');
@@ -31,13 +33,13 @@ export async function readRpJudgeCompletion(tx, handle, root, attemptId) {
         || receipt.schemaVersion !== 1 || receipt.receiptKind !== 'rp_graph_judge_model' || receipt.receiptId !== receiptId || receipt.runId !== root.runId
         || receipt.producerAttemptId !== attemptId || producer.nodeId !== profile.judge.nodeId || producer.status !== 'completed' || receipt.epoch !== producer.epoch || receipt.epoch > root.epoch
         || producer.sourceBindingDigest !== root.sourceBinding.bindingDigest || receipt.sourceBindingDigest !== root.sourceBinding.bindingDigest
-        || receipt.grantDigest !== producer.effectiveGrantDigest || !equal(producer.effectRefs, [receipt.modelEffectId]) || producer.resultRefs.length
+        || receipt.grantDigest !== producer.effectiveGrantDigest || !equal(producer.effectRefs, [receipt.modelEffectId, ...retrievalCompletions.map(item => item.effectId)]) || producer.resultRefs.length
         || !Array.isArray(receipt.candidateRefs) || receipt.candidateRefs.length !== 2 || equal(receipt.candidateRefs[0], receipt.candidateRefs[1])
         || !equal(receipt.selectedResultRef, receipt.candidateRefs[parsed.selectedCandidate])
         || intent.nodeAttemptId !== attemptId || intent.epoch !== producer.epoch || intent.grantDigest !== producer.effectiveGrantDigest || intent.sourceBindingDigest !== root.sourceBinding.bindingDigest
         || !model || !equal(model.receiptRef, receipt.modelReceiptRef) || hash(receipt.responseText) !== receipt.modelPayloadHash
         || model.observation.dispatchEvidence.reference.resultPayloadHash !== receipt.modelPayloadHash
-        || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId]) || settlement.reasonCode !== 'rp_graph_judge_selected'
+        || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId, ...retrievalCompletions.map(item => item.receiptId)]) || settlement.reasonCode !== 'rp_graph_judge_selected'
         || settlement.decisionSeq !== receipt.decisionSeq || settlement.createdAt !== receipt.createdAt || receipt.decisionSeq > root.eventSeq) invalid();
     const candidates = [];
     for (const [index, ref] of receipt.candidateRefs.entries()) {
@@ -55,5 +57,5 @@ export async function readRpJudgeCompletion(tx, handle, root, attemptId) {
     await assertOutputTransition(tx, handle, root, { published: candidates[0], additionalProducers: [candidates[1]], output: producer,
         receipt: { decisionSeq: receipt.decisionSeq, traversalReceiptRef: { runId: root.runId, receiptId: traversalId } } });
     await assertRpControlWork(tx, handle, root, receipt.modelEffectId, receipt.localWork);
-    return { receipt, producer, settlement, candidates, modelEffectId: receipt.modelEffectId };
+    return { receipt, producer, settlement, candidates, retrievalCompletions, modelEffectId: receipt.modelEffectId };
 }

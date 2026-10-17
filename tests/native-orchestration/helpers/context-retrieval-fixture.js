@@ -11,7 +11,7 @@ import { PROVENANCE_NAMESPACE } from '../../../public/scripts/agents/memory/sour
 import { emptyProvenance, captureEpisodes } from '../../../public/scripts/agents/memory/source-provenance.js';
 import { applyFactOperations } from '../../../public/scripts/agents/memory/atomic-facts.js';
 
-export async function contextRetrievalFixture(make, { usage = true, singleSource = false, reservePolicy, embedding = false, reranking = !embedding, malformed = false, query = 'Why did Alice leave?', declareRetrieval = true, providerUsage = { total_tokens: 7 }, afterPlan = null } = {}) {
+export async function contextRetrievalFixture(make, { usage = true, singleSource = false, reservePolicy, embedding = false, reranking = !embedding, malformed = false, query = 'Why did Alice leave?', declareRetrieval = true, providerUsage = { total_tokens: 7 }, afterPlan = null, responsePayload } = {}) {
     const calls = [];
     let onRerank = async () => {};
     const server = createServer(async (req, res) => {
@@ -24,7 +24,7 @@ export async function contextRetrievalFixture(make, { usage = true, singleSource
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     try {
-        const f = await rpModelFixture(make, { seedMemory: true, memorySettings: { enabled: true, memoryOsTokenBudget: 2400 }, configurePlan: async (plan, { h, host, route, seeded }) => {
+        const f = await rpModelFixture(make, { responsePayload, seedMemory: true, memorySettings: { enabled: true, memoryOsTokenBudget: 2400 }, configurePlan: async (plan, { h, host, route, seeded }) => {
             if (reservePolicy !== undefined) {
                 await host.persistence.saveRuntimeRoute(h.handle, { ...route, executionPolicy: { ...route.executionPolicy,
                     optionalWork: { mode: 'preserve_required', roles: ['rerank'], ...(reservePolicy === null ? {} : { requiredCompute: reservePolicy }) } } });

@@ -5,6 +5,7 @@ import { retrievalSendIdentity, retrievalPostTarget } from '../retrieval-send-co
 import { retrievalRef } from '../../../public/scripts/native/retrieval-contracts.js';
 import { hashNativeDocument as hash, cloneNativeDocument } from '../repositories/common.js';
 import { rpAgentGraphProfile } from './rp-agent-graph-profile.js';
+import { rpJudgeProfile } from './rp-judge-profile.js';
 import { ContextPort } from './context-port.js';
 import { assertOriginalSendBank, BudgetPort } from './budget-port.js';
 import { readEffect, effectDecision } from './effect-contracts.js';
@@ -75,7 +76,7 @@ export class ContextRetrievalPort {
             memoryDescriptorDigest: hash(actualInput.memoryDescriptor), limits: cloneNativeDocument(limits), signal, bank, used: false, effectIds: [], localJobs: [], unresolvedLocal: false };
         const { parent, plan } = await this.runs.engine.withTransaction(handle, async tx => ({ parent: (await readEffect(tx, handle, root, modelEffectId)).doc,
             plan: await readPlanRevision(tx, handle, root.planRef) }));
-        if (root.graphRevision !== 0 || !equal(plan.definition, root.graph) || root.graph.nodes.length !== 2 && !rpAgentGraphProfile(plan)) fail();
+        if (root.graphRevision !== 0 || !equal(plan.definition, root.graph) || root.graph.nodes.length !== 2 && !rpJudgeProfile(plan) && !rpAgentGraphProfile(plan)) fail();
         scope.attemptId = parent.nodeAttemptId;
         if (parent.budgetEnvelopeDigest !== hash(limits)) fail();
         const route = await this.persistence.getRuntimeRoute(handle, parent.actionRef.runtimeRouteId);

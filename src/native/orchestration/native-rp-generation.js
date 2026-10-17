@@ -1221,12 +1221,13 @@ export class NativeRpOrchestrationAuthority {
         const receiptId = rpJudgeReceiptId(runId, attemptId), withAuthority = service.sourcePort.consumptionBoundary(handle, root.sourceBinding, { engine: service.runs.engine });
         try {
             const saved = await service.runs.withSourceControl(handle, runId, () => service.runs.engine.withTransaction(handle, async tx => {
-                let active, record;
+                let active, record, retrieval;
                 try {
                     active = await service.runs.get(handle, runId); record = await readAttempt(tx, handle, active, attemptId);
                     await this.#current(state);
+                    retrieval = await readContextRetrievalCompletions(tx, handle, active, (await readEffect(tx, handle, active, effectId)).doc, record.doc);
                     if (active.cancelRequested || active.status !== 'running' || active.epoch !== proof.epoch || active.pendingEffectRefs.length
-                        || record.doc.status !== 'running' || !equal(record.doc.effectRefs, [effectId]) || record.doc.resultRefs.length
+                        || record.doc.status !== 'running' || !equal(record.doc.effectRefs, [effectId, ...retrieval.map(item => item.effectId)]) || record.doc.resultRefs.length
                         || record.doc.nodeId !== state.selected.judge.node.nodeId || record.doc.effectiveGrantDigest !== state.decision.grantDigest
                         || !equal(proof, await port.inspectResultCompletion(handle, { result, runId, effectId }))) fail('native_orchestration_judge_producer_denied');
                     for (const ref of candidateRefs) if (!await readGraphNodeResult(tx, handle, active, ref.resultId, { recipient: record.doc })) fail('native_orchestration_judge_producer_denied');
@@ -1245,7 +1246,7 @@ export class NativeRpOrchestrationAuthority {
                         modelReceiptRef: proof.receiptRef, modelPayloadHash: proof.payloadHash, responseText, candidateRefs, selectedResultRef,
                         localWork: workRows, decisionSeq: current.eventSeq + 1, createdAt: now };
                     await putImmutable(tx, controlRecordKey(handle, runId, 'receipt', receiptId), receipt);
-                    await writeAttemptSettlement({ tx, handle, root: current, record, outcome: 'completed', resultRefs: [], effectReceiptRefs: [proof.receiptRef.receiptId], reasonCode: 'rp_graph_judge_selected', now });
+                    await writeAttemptSettlement({ tx, handle, root: current, record, outcome: 'completed', resultRefs: [], effectReceiptRefs: [proof.receiptRef.receiptId, ...retrieval.map(item => item.receiptId)], reasonCode: 'rp_graph_judge_selected', now });
                     current.progress.steps++;
                     return { root: current, eventType: 'rp_graph_judge_completed', reasonCode: 'candidate_selected', outcome: { judgeReceiptRef: { runId, receiptId } } };
                 });
@@ -1437,7 +1438,7 @@ export class NativeRpOrchestrationAuthority {
                 workDescriptor: { requestId: state.request.requestId, pathFingerprint: selected.resolved.pathFingerprint },
                 assertCurrent: () => this.#current(state), signal: identity.signal });
             state.context = compiled.compiled;
-            if (this.#graphProfile(state)) {
+            if (this.#graphProfile(state) || state.selected.judge) {
                 const digest = await ContextPort.prototype.revalidateRpMemory.call(state.contextPort, handle, { context: state.context });
                 if (state.memoryDescriptorDigest && state.memoryDescriptorDigest !== digest) fail('native_orchestration_memory_source_stale');
                 state.memoryDescriptorDigest = digest;
@@ -1453,7 +1454,9 @@ export class NativeRpOrchestrationAuthority {
             const port = this.#port(host), result = await port.generate(handle, scope, { signal: identity.signal });
             if (planner) return this.#completePlanner(state, { root, port, result, send, limits, signal: identity.signal });
             if (review) return this.#completeReview(state, { root, port, result, send, limits, signal: identity.signal });
-            if (judge) return this.#completeJudge(state, { root, port, result, send, limits, signal: identity.signal });
+            // Judge completion still consumes the private retrieval proofs;
+            // keep them alive until adoption/settlement has finished.
+            if (judge) return await this.#completeJudge(state, { root, port, result, send, limits, signal: identity.signal });
             if (graphNode) {
                 const published = await new ResultController({ host, modelPort: port }).publishGraphModelResult(handle, { capture, result, runId: root.runId, effectId });
                 state.graphResultRef = immutable(published.resultRef); state.prologueAttemptId = state.attemptId; state.prologueSelection = selected;

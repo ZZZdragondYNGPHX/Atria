@@ -18,8 +18,10 @@ export function rpJudgeProfile(plan) {
         || narrator.inputs.filter(port => port.type === 'text' && !port.required).length !== 2 || narrator.inputs.filter(port => port.type === 'json' && port.required).length !== 1
         || graph.graphChangePolicy.allowedOperations.length || graph.graphChangePolicy.allowedNodeKinds.length || graph.limits.maxAttempts < 5) fail();
     for (const node of [...candidates, judge]) {
-        if (hash(node.capabilities) !== hash(['generation.send']) || !nodeModelRoutePins(node, plan.dependencyPins).length
-            || node.dependencyPinIds.length !== nodeModelRoutePins(node, plan.dependencyPins).length) fail();
+        const retrievalPins = node.capabilities.includes('memory.retrieve') ? plan.dependencyPins.filter(pin => node.dependencyPinIds.includes(pin.pinId)
+            && pin.port === 'context' && pin.resourceRef.scope === 'player' && pin.resourceRef.retrievalProfileId) : [];
+        if (hash([...node.capabilities].sort()) !== hash(['generation.send', ...retrievalPins.length ? ['memory.retrieve'] : []].sort()) || !nodeModelRoutePins(node, plan.dependencyPins).length
+            || node.dependencyPinIds.length !== nodeModelRoutePins(node, plan.dependencyPins).length + retrievalPins.length) fail();
     }
     const edge = (from, to, type) => graph.edges.find(item => item.from.nodeId === from.nodeId && item.to.nodeId === to.nodeId
         && from.outputs.some(port => port.name === item.from.port && port.type === type) && to.inputs.some(port => port.name === item.to.port && port.type === type));
@@ -30,7 +32,7 @@ export function rpJudgeProfile(plan) {
     const used = new Set([...candidates, judge, narrator].flatMap(node => node.dependencyPinIds));
     if (plan.dependencyPins.some(pin => !used.has(pin.pinId))) fail();
     return { candidates, judge, inputs, transfers, gate, narration: { ...plan, definition: { ...graph,
-        nodes: [{ ...narrator, inputs: [] }, output], entryNodeIds: [narrator.nodeId], edges: graph.edges.filter(item => !edges.includes(item)) },
+        nodes: [{ ...narrator, inputs: [] }, output], capabilityCeiling: [...new Set([...narrator.capabilities, ...output.capabilities])], entryNodeIds: [narrator.nodeId], edges: graph.edges.filter(item => !edges.includes(item)) },
     dependencyPins: plan.dependencyPins.filter(pin => narrator.dependencyPinIds.includes(pin.pinId)) } };
 }
 
