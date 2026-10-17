@@ -1,3 +1,8 @@
+import { NativeMemoryAuthority } from '../../memory-authority.js';
+import { SettingsRepo } from '../../../storage/repositories/settings-repo.js';
+import { PROVENANCE_NAMESPACE } from '../../../../public/scripts/agents/memory/source-lifecycle.js';
+import { emptyProvenance, captureEpisodes } from '../../../../public/scripts/agents/memory/source-provenance.js';
+import { applyFactOperations } from '../../../../public/scripts/agents/memory/atomic-facts.js';
 import { randomUUID } from 'node:crypto';
 import { createGitClient } from '../../../git/client.js';
 import { ProjectStore, StudioService, StudioPreviewHost, WorldRepo, ProjectAgentService } from '../../index.js';
@@ -39,7 +44,7 @@ function sessionCore(store) {
 export async function runRp(entry, fixture, capture, evaluation) {
     const { bridge, settings } = evaluation, frozen = settings.nativePlan, n = bridge.native;
     if (!n || !frozen || frozen.revision.definition.outputContract.kind !== 'rp_narration'
-        || frozen.revision.definition.nodes.some(node => node.capabilities.some(capability => ['agent.delegate', 'memory.retrieve'].includes(capability)))) unavailable();
+        || frozen.revision.definition.nodes.some(node => node.capabilities.includes('agent.delegate'))) unavailable();
     const { engine, handle } = n.store, chats = new ChatRepo({ engine }), control = new RpRunControl({ engine, chatRepo: chats });
     const locator = { charDir: fixture.actor, name: 'native-evaluation', isGroup: false, groupId: null };
     const player = { name: 'Player', mes: fixture.input, is_user: true, memory_os_source_id: 'eval-player' };
@@ -47,6 +52,15 @@ export async function runRp(entry, fixture, capture, evaluation) {
     const original = hash(player), pending = [];
     await chats.save(handle, locator.charDir, locator.name, {}, [history, player], null);
     const { controlId } = await control.bind(handle, locator);
+    const memorySettings = bridge.memorySettings;
+    if (memorySettings) {
+        await new SettingsRepo({ engine }).save(handle, { atri_capabilities: { memory_graph: memorySettings } });
+        const state = emptyProvenance(); state.scopeId = 'rp:' + controlId;
+        const episodeIds = captureEpisodes(state, [history, player], [0], state.scopeId); let serial = 0;
+        const written = applyFactOperations(state, fixture.memory.visible.map(item => ({ action: 'create', type: 'inferred', text: item.text,
+            evidence: [{ episodeId: episodeIds[0], excerpt: history.mes }] })), { scopeId: state.scopeId, episodeIds }, [history, player], () => 'eval-memory-' + ++serial, 1000);
+        await chats.setState(handle, locator.charDir, locator.name, PROVENANCE_NAMESPACE, written.state);
+    }
     const host = new NativeGenerationHost({ persistence: n.persistence, library: n.library, providers: n.providers, secretPort: n.secretPort, sessionCore: sessionCore(n.store) });
     const { plans } = createOrchestrationAuthoringService(engine, { rpControl: control, modelResolver: n.resolver });
     await engine.withTransaction(handle, async tx => {
@@ -55,10 +69,13 @@ export async function runRp(entry, fixture, capture, evaluation) {
         await readPlanRevision(tx, handle, ref);
     });
     await plans.saveBinding(handle, createNativeId('orchestrationCommand'), { sourceSelector: { domain: 'rp_chat', controlId }, planRef: frozen.planRef, expectedVersion: null });
-    const authority = new NativeNarratorOrchestrationAuthority({ engine, sessionCore: host.sessionCore, rpControl: control, plans, modelResolver: n.resolver });
+    const authority = new NativeNarratorOrchestrationAuthority({ engine, sessionCore: host.sessionCore, rpControl: control, plans, modelResolver: n.resolver, retrievalTransport: n.retrievalTransport,
+        memoryAuthority: memorySettings ? new NativeMemoryAuthority({ core: host.sessionCore, settingsRepo: new SettingsRepo({ engine }) }) : null });
     host.turnOrchestration = authority;
     const preparedEffects = [], prepare = authority.execution.effects.prepare.bind(authority.execution.effects);
     authority.execution.effects.prepare = async (...args) => { const saved = await prepare(...args); preparedEffects.push({ runId: args[1].runId, effectId: args[1].effectId }); return saved; };
+    const prepareRetrieval = authority.execution.effects.prepareContextRetrieval.bind(authority.execution.effects);
+    authority.execution.effects.prepareContextRetrieval = async (...args) => { const saved = await prepareRetrieval(...args); preparedEffects.push({ runId: args[1].runId, effectId: args[1].effectId }); return saved; };
     const roots = [], variant = entry.caseId.startsWith('rp_variant');
     let enter, deliverLate, injected = false, stale = null;
     const entered = new Promise(resolve => { enter = resolve; });

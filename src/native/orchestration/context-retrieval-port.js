@@ -36,8 +36,8 @@ export class ContextRetrievalPort {
     #observations = new WeakMap();
     #proofs = new WeakMap();
     #skips = new WeakSet();
-    constructor({ runs, effects, budgetPort, sourcePort, authorizeModel }) {
-        Object.assign(this, { runs, effects, budgetPort, sourcePort, authorizeModel });
+    constructor({ runs, effects, budgetPort, sourcePort, authorizeModel, transport = null }) {
+        Object.assign(this, { runs, effects, budgetPort, sourcePort, authorizeModel, transport });
         this.retrieval = new NativeRetrievalPersistence({ engine: runs.engine });
         this.persistence = new NativeModelPromptPersistence({ engine: runs.engine });
     }
@@ -270,10 +270,12 @@ export class ContextRetrievalPort {
             if (actualTicket !== ticket || !state.budgetAttemptRef) fail();
             await bank.settle(state.budgetAttemptRef.attemptId, usage);
         } };
-        const dirs = this.runs.engine._directoriesByHandle(handle), secret = resolveRetrievalSecret(dirs, profile.secretRef);
+        const dirs = this.runs.engine._directoriesByHandle(handle), secret = this.transport ? 'parent-transport-placeholder' : resolveRetrievalSecret(dirs, profile.secretRef);
         let response;
         try {
-            const carrier = { nativeRetrieval: { profile, compute, signal: scope.signal } };
+            const carrier = { nativeRetrieval: { profile, compute, signal: scope.signal, ...(this.transport ? { fetch: (endpoint, options) =>
+                this.transport.fetch({ profile, endpoint: new URL(endpoint).href, method: options.method, body: JSON.parse(options.body), signal: scope.signal,
+                    effectRef: { runId: scope.runId, effectId, nodeAttemptId: scope.attemptId, modelEffectId: scope.modelEffectId } }) } : {}) } };
             response = profile.mode === 'embed' ? await getOpenAIBatchVector(body.input, profile.source, dirs, profile.model,
                 { reverseProxy: profile.endpoint, proxyPassword: secret }, carrier)
                 : await rerank(profile.source, { model: profile.model, reverseProxy: profile.endpoint, proxyPassword: secret,

@@ -62,14 +62,14 @@ export class NativeNarratorOrchestrationAuthority {
     #narrations = new WeakMap();
     #outputs = new WeakMap();
 
-    constructor({ engine, sessionCore, memoryAuthority = null, projectAgent = null, projectRepository = null, rpControl = new RpRunControl({ engine }), plans = null, modelResolver = null, contextOptions = {} }) {
+    constructor({ engine, sessionCore, memoryAuthority = null, projectAgent = null, projectRepository = null, rpControl = new RpRunControl({ engine }), plans = null, modelResolver = null, contextOptions = {}, retrievalTransport = null }) {
         if (!engine || !sessionCore) throw new TypeError('Original Native Session/Engine required');
-        Object.assign(this, { engine, sessionCore, memoryAuthority, projectAgent, projectRepository, rpControl, plans, modelResolver, contextOptions });
+        Object.assign(this, { engine, sessionCore, memoryAuthority, projectAgent, projectRepository, rpControl, plans, modelResolver, contextOptions, retrievalTransport });
     }
 
     get execution() {
         this.#execution ??= createOrchestrationExecutionService({ engine: this.engine, sessionCore: this.sessionCore,
-            projectAgent: this.projectAgent, projectRepository: this.projectRepository, rpControl: this.rpControl,
+            projectAgent: this.projectAgent, projectRepository: this.projectRepository, rpControl: this.rpControl, retrievalTransport: this.retrievalTransport,
             effectAuthority: {
                 authorize: args => args.root.sourceBinding.sourceAuthority === 'rp_chat' ? this.#rpAuthority().authorize(args)
                     : args.root.sourceBinding.sourceAuthority === 'project' ? this.#projectAuthority().authorize(args)

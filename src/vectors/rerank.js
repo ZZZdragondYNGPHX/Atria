@@ -13,7 +13,7 @@ async function sendRerank(url, headers, body, request) {
     try {
         request?.nativeRetrieval?.signal?.throwIfAborted();
         ticket = await compute?.beforeSend(JSON.parse(serializedBody), { endpoint: new URL(url).href, method: 'POST' });
-        const response = await fetch(url, { method: 'POST', headers: { ...headers, ...nativeRetrievalHeaders(request) }, body: serializedBody,
+        const response = await (request?.nativeRetrieval?.fetch ?? fetch)(url, { method: 'POST', headers: { ...headers, ...nativeRetrievalHeaders(request) }, body: serializedBody,
             ...(request?.nativeRetrieval ? { redirect: 'error', signal: request.nativeRetrieval.signal } : {}) });
         if (!response.ok) throw new Error(`Rerank provider failed: ${response.status}`);
         const data = await response.json();

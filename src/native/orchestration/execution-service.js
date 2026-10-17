@@ -17,7 +17,7 @@ import { ContextRetrievalPort } from './context-retrieval-port.js';
 const fail = code => { throw new ConflictError(code); };
 
 /** Internal Host composition. No generic HTTP dispatcher or permissive default authority. */
-export function createOrchestrationExecutionService({ engine, sessionCore, projectAgent, projectRepository, rpControl, effectAuthority }) {
+export function createOrchestrationExecutionService({ engine, sessionCore, projectAgent, projectRepository, rpControl, effectAuthority, retrievalTransport = null }) {
     const lifecycle = engine.nativeHostLifecycle;
     if (!lifecycle) throw new TypeError('Original Native Host ownership is required');
     for (const method of ['authorize', 'verifySend', 'verifyObservation', 'verifyApproval']) if (typeof effectAuthority?.[method] !== 'function') throw new TypeError('Original Effect authority requires ' + method);
@@ -38,7 +38,7 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
             await effectAuthority.verifyApproval(args);
             await review.authority.verifyApproval(args);
         } });
-    contextRetrieval = new ContextRetrievalPort({ runs, effects, budgetPort, sourcePort, authorizeModel: args => effectAuthority.authorize(args) });
+    contextRetrieval = new ContextRetrievalPort({ runs, effects, budgetPort, sourcePort, transport: retrievalTransport, authorizeModel: args => effectAuthority.authorize(args) });
     const approvals = review.authority.connect({ runs, effects, describeReview: effectAuthority.describeReview?.bind(effectAuthority) });
     const delegates = new DelegateController({ runs,
         authorizeDelegation: async args => {

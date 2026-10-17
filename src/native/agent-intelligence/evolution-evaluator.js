@@ -1,3 +1,4 @@
+import { frozenEvaluationRetrieval, sendEvaluationRetrieval } from './evaluation/retrieval-transport.js';
 import { fork } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -16,7 +17,7 @@ import { immutable } from '../model-prompt-runtime/execution-utils.js';
 
 export function evolutionEvaluatorRevision() {
     return hash(['evolution-evaluator.js', 'evaluation/worker.js', 'evaluation/sealed-sources.js', 'evaluation/json.js', 'evaluation/worker-bridge.js', 'evaluation/adapters.js', 'evaluation/cases.js', 'evaluation/store.js',
-        'evaluation/native-adapters.js', 'evaluation/project-preservation.js', 'evaluation/fixture-source.js', 'evaluation/libraries.js', 'evaluation/loader.js', 'evaluation/quality.js', 'evaluation/pilot-sources.js', 'evaluation/pilot-renewal-sources.js', 'evaluation/pilot-renewal-correction-sources.js', 'evaluation/pilot-continuation-sources.js', 'experience-repository.js', 'experience-service.js', 'evolution-service.js', 'evolution-targets.js', 'evolution-repository.js',
+        'evaluation/native-adapters.js', 'evaluation/retrieval-transport.js', 'evaluation/network-denied.js', 'evaluation/project-preservation.js', 'evaluation/fixture-source.js', 'evaluation/libraries.js', 'evaluation/loader.js', 'evaluation/quality.js', 'evaluation/pilot-sources.js', 'evaluation/pilot-renewal-sources.js', 'evaluation/pilot-renewal-correction-sources.js', 'evaluation/pilot-continuation-sources.js', 'experience-repository.js', 'experience-service.js', 'evolution-service.js', 'evolution-targets.js', 'evolution-repository.js',
         '../adapters/generation-host.js', '../adapters/http-generation-provider.js', '../simulation-authority.js', '../authority-transaction.js', '../appraisal-authority.js', '../session-core.js', '../project-agent.js', '../skill-invocation.js', '../retrieval-compute.js', '../run-control.js', '../../../public/shared/native-compute-budget.js',
         '../memory-authority.js', '../retrieval-execution.js', '../retrieval-persistence.js', '../retrieval-send-contracts.js', '../vector-index-work.js', '../../../public/scripts/native/retrieval-contracts.js',
         '../../vectors/source-settings.js', '../../vectors/embedding-batches.js', '../../vectors/openai-vectors.js', '../../vectors/rerank.js', '../../vectors/cohere-vectors.js', '../../vectors/jina-vectors.js', '../../vectors/nomicai-vectors.js', '../../vectors/ollama-vectors.js', '../../vectors/llamacpp-vectors.js', '../../vectors/vllm-vectors.js', '../../vectors/extras-vectors.js', '../../vectors/google-vectors.js',
@@ -132,7 +133,7 @@ export class EvolutionEvaluator {
         }
         if (!routes.has(routeId)) throw new TypeError('native_orchestration_evaluation_unavailable');
         const nativeRoutes = [...routes].filter(([id]) => id !== routeId).sort(([a], [b]) => a.localeCompare(b)).map(([, config]) => config);
-        return nativeRoutes.length ? { ...primary, nativeRoutes } : primary;
+        return { ...primary, ...(nativeRoutes.length ? { nativeRoutes } : {}), ...await frozenEvaluationRetrieval(this.host, handle, nativePlan) };
     }
     /** Exact user Route ceiling for engineering observations only. No promotion. */
     async sourceProbeConfiguration(handle, routeId) {
@@ -274,6 +275,9 @@ export class EvolutionEvaluator {
                 if (!plan || plan.sourceSelector.domain !== (job.domain === 'project' ? 'project' : 'rp_chat') || configs[arm].route.role !== (job.domain === 'project' ? 'role.studio' : 'role.narrator')
                     || plan.revision.authorRef.handle !== handle || settings[arm].runtimeRouteId !== configs[arm].route.runtimeRouteId)
                     throw Object.assign(new TypeError('native_orchestration_evaluation_unavailable'), { code: 'native_orchestration_evaluation_unavailable' });
+                const retrieval = await frozenEvaluationRetrieval(this.host, handle, plan);
+                if (!same(retrieval, Object.fromEntries(['retrievalProfiles', 'memorySettings'].filter(key => configs[arm][key] !== undefined).map(key => [key, configs[arm][key]]))))
+                    throw new TypeError('native_orchestration_evaluation_retrieval_denied');
                 const declared = new Map();
                 for (const node of plan.revision.definition.nodes.filter(node => node.capabilities.includes('generation.send'))) {
                     const pin = plan.revision.dependencyPins.find(pin => pin.pinId === node.policy.agentPinId && node.dependencyPinIds.includes(pin.pinId));
@@ -310,7 +314,10 @@ export class EvolutionEvaluator {
                             const config = message.payload.nativeRouteId ? [primary, ...(primary.nativeRoutes ?? [])].find(config => config.route.runtimeRouteId === message.payload.nativeRouteId) : primary;
                             if (!config || message.payload.nativeRouteId && (message.payload.arm === 'judge' || message.payload.arm === 'extraction')) throw new Error('evaluation_route_unavailable');
                             try {
-                                const result = await this.send(handle, job, config, message.payload, signal, fresh); charges.push(result.charge);
+                                const result = message.payload.kind === 'retrieval'
+                                    ? await sendEvaluationRetrieval({ host: this.host, repository: this.repository, handle, job, config, payload: message.payload, signal, fresh })
+                                    : await this.send(handle, job, config, message.payload, signal, fresh);
+                                charges.push(result.charge);
                                 if (child.connected) child.send({ type: 'response', id: message.id, raw: result.raw });
                             } catch (error) { if (child.connected) child.send({ type: 'response', id: message.id, error: error.code || 'evaluation_send_failed' }); } finally { sending = false; }
                         } else if (message.type === 'trial') await onTrial(message);

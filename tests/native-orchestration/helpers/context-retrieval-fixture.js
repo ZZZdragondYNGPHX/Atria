@@ -11,7 +11,7 @@ import { PROVENANCE_NAMESPACE } from '../../../public/scripts/agents/memory/sour
 import { emptyProvenance, captureEpisodes } from '../../../public/scripts/agents/memory/source-provenance.js';
 import { applyFactOperations } from '../../../public/scripts/agents/memory/atomic-facts.js';
 
-export async function contextRetrievalFixture(make, { usage = true, singleSource = false, reservePolicy, embedding = false, reranking = !embedding, malformed = false, query = 'Why did Alice leave?' } = {}) {
+export async function contextRetrievalFixture(make, { usage = true, singleSource = false, reservePolicy, embedding = false, reranking = !embedding, malformed = false, query = 'Why did Alice leave?', declareRetrieval = true, providerUsage = { total_tokens: 7 } } = {}) {
     const calls = [];
     let onRerank = async () => {};
     const server = createServer(async (req, res) => {
@@ -20,7 +20,7 @@ export async function contextRetrievalFixture(make, { usage = true, singleSource
         await onRerank();
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ...(body.input ? { data: body.input.map((_, index) => ({ index, embedding: malformed ? [] : [1, 0, 0] })) }
-            : { results: body.documents.map((_, index) => ({ index, relevance_score: index })) }), ...(usage ? { usage: { total_tokens: 7 } } : {}) }));
+            : { results: body.documents.map((_, index) => ({ index, relevance_score: index })) }), ...(usage ? { usage: providerUsage } : {}) }));
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     try {
@@ -38,10 +38,12 @@ export async function contextRetrievalFixture(make, { usage = true, singleSource
                     endpoint: `http://127.0.0.1:${server.address().port}/v1`, secretRef: { secretId }, options: {} };
                 await new NativeRetrievalPersistence({ engine: h.engine }).commit(h.handle, profile);
                 refs[mode] = retrievalRef(profile);
-                plan.definition.nodes[0].dependencyPinIds.push('memory.' + mode);
-                plan.dependencyPins.push({ pinId: 'memory.' + mode, port: 'context', resourceRef: retrievalRef(profile), integrity: hash(profile) });
+                if (declareRetrieval) {
+                    plan.definition.nodes[0].dependencyPinIds.push('memory.' + mode);
+                    plan.dependencyPins.push({ pinId: 'memory.' + mode, port: 'context', resourceRef: retrievalRef(profile), integrity: hash(profile) });
+                }
             }
-            plan.definition.nodes[0].capabilities.push('memory.retrieve'); plan.definition.capabilityCeiling.push('memory.retrieve');
+            if (declareRetrieval) { plan.definition.nodes[0].capabilities.push('memory.retrieve'); plan.definition.capabilityCeiling.push('memory.retrieve'); }
             plan.definition.nodes[1].capabilities.push('chat.output'); plan.definition.capabilityCeiling.push('chat.output');
             Object.assign(plan.definition.outputContract, { kind: 'rp_narration', slot: 'assistant', resultPolicy: { outputType: 'text', maxBytes: 16384 } });
             await new SettingsRepo({ engine: h.engine }).save(h.handle, { atri_capabilities: { memory_graph: { enabled: true, memoryOsTokenBudget: 2400,

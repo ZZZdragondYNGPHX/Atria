@@ -10,6 +10,8 @@ import { hash } from './cases.js';
 import { createNativeId } from '../../identity.js';
 import { collectVersionedModelPromptResourceRefs } from '../../model-prompt-runtime/resources.js';
 import { prepareRetrievalCompute } from '../../retrieval-compute.js';
+import { evaluationRetrievalTransport } from './retrieval-transport.js';
+import { NativeRetrievalPersistence } from '../../retrieval-persistence.js';
 import { executeProjectSkillWork } from '../../skill-invocation.js';
 
 export async function createFrozenEvaluationBridge(config, send, { nativePlan = null } = {}) {
@@ -40,7 +42,10 @@ export async function createFrozenEvaluationBridge(config, send, { nativePlan = 
         const connection = { ...candidate.connection, secretRef: { scope: 'player', secretId: 'evaluation-parent-port' } };
         await persistence.saveConnectionProfile(handle, connection); await persistence.saveModelProfile(handle, candidate.model); await persistence.saveRuntimeRoute(handle, candidate.route);
     }
+    if (nativePlan && config.retrievalProfiles) for (const profile of config.retrievalProfiles)
+        await new NativeRetrievalPersistence({ engine }).commit(handle, profile);
     let active = null, prepared = null;
+    const retrievalTransport = evaluationRetrievalTransport(config, send, () => active);
     const transport = createHttpGenerationProvider();
     const provider = { ...transport,
         renderRequest(input) {
@@ -62,9 +67,10 @@ export async function createFrozenEvaluationBridge(config, send, { nativePlan = 
     const providers = { 'provider.openai-compatible': provider }, secretPort = { resolveSecret: async () => 'parent-port' };
     const resolver = new RouteResolver({ persistence, library, providers }), compiler = new PromptCompiler();
     return {
+        ...(config.memorySettings ? { memorySettings: config.memorySettings } : {}),
         identity: { configurationHash: hash(config), promptHash: hash(config.resources), modelHash: hash(config.model) },
         cleanup: async () => { await engine.close(); store.cleanup(); },
-        ...(nativePlan ? { native: { store, persistence, library, providers, resolver, secretPort },
+        ...(nativePlan ? { native: { store, persistence, library, providers, resolver, secretPort, retrievalTransport },
             async nativeTransport({ trialId, onRendered, beforeSend }, operation) {
                 if (active) throw new Error('evaluation_serial_transport_required');
                 active = { trialId, kind: 'model', onRendered, beforeSend };

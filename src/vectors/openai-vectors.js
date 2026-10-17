@@ -145,7 +145,7 @@ export async function getOpenAIBatchVector(texts, source, directories, model = '
     try {
         request?.nativeRetrieval?.signal?.throwIfAborted();
         ticket = await compute?.beforeSend(JSON.parse(serializedBody), { endpoint: new URL(embeddingsUrl).href, method: 'POST' });
-        const response = await fetch(embeddingsUrl, {
+        const response = await (request?.nativeRetrieval?.fetch ?? fetch)(embeddingsUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

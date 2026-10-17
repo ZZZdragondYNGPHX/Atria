@@ -167,7 +167,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         } finally { await cold?.close(); await f.cleanup(); }
     }, 60000);
 
-    test('the isolated evaluator refuses an unconnected retrieval consumer before any parent RPC or paid trial', async () => {
+    test('the isolated evaluator retains the original Rerank skip policy in its actual private Host', async () => {
         const f = await setup(make);
         try {
             const handle = f.h.handle, targets = new EvolutionTargets({ host: f.host }), scope = { domain: 'rp_chat', charDir: 'Actor', name: 'main', isGroup: false, groupId: '' };
@@ -181,10 +181,11 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
             await repository.limits(handle, { maxRequests: 12, maxTokens: 100000, minIntervalMs: 1000 }, 0);
             const config = await evaluator.configuration(handle, settings.baseline.runtimeRouteId, null, settings.baseline.nativePlan);
             const job = { id: 'context-rerank-evaluation', scopeId: 'context-scope', domain: 'rp', policyFingerprint: 'test-policy', targetPin: 'test-target', price: null };
-            await expect(evaluator.compare(handle, job, { baseline: config, candidate: config }, settings, new AbortController().signal,
-                async () => {}, async () => {}, async () => {}, { split: 'development', repetitions: 1, caseIds: ['rp_agency_d1'] })).rejects.toThrow('native_orchestration_evaluation_unavailable');
-            expect(f.calls).toHaveLength(0); expect(f.requests).toHaveLength(0);
-            expect((await repository.owner(handle)).attempts).toEqual([]);
+            const report = await evaluator.compare(handle, job, { baseline: config, candidate: config }, settings, new AbortController().signal,
+                async () => {}, async () => {}, async () => {}, { split: 'development', repetitions: 1, caseIds: ['rp_agency_d1'] });
+            expect(report.pairs[0].baseline.checks.target_consumed).toBe(true); expect(report.pairs[0].candidate.checks.target_consumed).toBe(true);
+            expect(f.calls).toHaveLength(0); expect(f.requests).toHaveLength(3);
+            expect((await repository.owner(handle)).attempts).toHaveLength(3);
             expect((await f.plans.getBinding(handle, f.sourceSelector)).planRef).toEqual(f.planRef);
         } finally { await f.cleanup(); }
     }, 60000);
