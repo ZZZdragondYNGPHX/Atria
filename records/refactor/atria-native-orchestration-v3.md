@@ -1132,3 +1132,10 @@
 
 - Source 767db55ac → 00b893f1a，本地提交，未推送；接口 §17.103。Planner/Judge/Review JSON 机制复用原 RouteResolver，新增 structured-output 要求，普通 text 控制输出拒绝；graph.patch 使用原 Host producer kinds 与显式图修改策略。纯机制证据不铸造任何 Source/运行/审批权限，完整后端继续。
 - 首轮新测试18FAIL/6PASS，因测试错误引用不存在的 outputContract.resultPolicy；修正后新42/42 PASS（9.585s）。完整机制回归又发现旧测试 service keys 未计已有 dependencies inspector，按真实只读接口修正。最终 model-capability 与 graph-controller 两完整 suites144/144 PASS（29.595s），四文件原 ESLint与 diff check通过。一次编辑相对路径错误失败，随后准确路径修复。均本地合成零外发，无真实Provider或独立质量结论；接着实现 Review/局部重做与实际Graph链路，不交前端/main。
+
+
+## 2026-10-17 — 第一百组：Review 耐久控制与局部重做
+
+- Source 00b893f1a → 739374b42，本地提交，未推送；接口 §17.104。复用原 Run/control/tree counters/Attempt/immutable receipts，新增 Review 判定与保守因果 invalidation；原费用和历史不改，只有新尝试可重新准入。原 Source/实际 Model/Result/Audience callback 必须由真实producer提供，尚未接通通用Model runtime；不增加HTTP或审批authority。
+- 新 suite 首轮24FAIL因fixture两个生产者连同一Output端口，被原合法图校验拒绝；修正为不同端口。第二轮21PASS/3FAIL是测试直接 putResource 未按原doc/integrity封装，改原 putMutable 后24/24 PASS（9.358s）。加 rerun 不能直接输出与原 Transition/Join回归，三个完整 suites90/90 PASS（29.102s）。补不可逆/unknown/需审批Effect与跨新Attempt maxRounds八参数8PASS（4.423s）；原费用引用保持，authority doubles 不冒称真实银行/Model证据。
+- 耐久reader、投影与 evaluator七项指纹补全后，Review/Run HTTP/指纹三个完整 suites97/97 PASS（23.613s，Review32项、指纹37项）。最后缺Review判定/approve可通行四参数4PASS/32filterSKIP（2.764s），新suite共36项分批通过。十文件原ESLint通过（曾修fixture条件expect规则），diff check通过。无新增真实Provider调用，后端继续，不交前端/main。

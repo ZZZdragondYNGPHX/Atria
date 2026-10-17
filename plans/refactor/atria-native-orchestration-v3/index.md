@@ -143,3 +143,6 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 
 
 第九十九组 00b893f1a 补控制节点 JSON/structured-output 与 graph.patch 的原 Host 发布机制证据，见[接口 §17.103](interface-contracts.md#17103-控制-model-与-graphpatch-的发布机制证据)。实际通用 Graph runtime 与完整后端仍在实施，发布成功不等于运行授权。
+
+
+第一百组 739374b42 补原 Host Review 判定、局部重做/旧分支失效与元数据投影，见[接口 §17.104](interface-contracts.md#17104-review-耐久判定与局部重做控制)。真实控制 Model runtime 与完整后端继续实施。

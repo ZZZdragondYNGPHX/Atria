@@ -1247,3 +1247,12 @@ Session 的 Narrator与Resolver分别按自己的 active pin选择原角色 Rout
 Planner/Judge/Review 的 generation.send 复用原 RouteResolver/player Model pin、原角色、完整性与 Compute 预算校验；控制节点必须恰有一个 JSON 输出，且 Provider 必须声明 generation.structured-output。mechanism evidence 记录 nodeKind 与 original_native_graph_producer_required，不生成 Scheduler producer、Source grant、Context 或运行许可。
 
 graph.patch 发布校验复用原 GraphController 的 producer kinds（planner/agent/review），必须有显式非空 graphChangePolicy.allowedOperations。实际 whole-patch 提交继续要求原 Source callback、running Attempt、epoch/graph CAS、能力交集、原预算与输出保护。发布成功不表示通用 Graph runtime 已接通。
+
+
+### 17.104 Review 耐久判定与局部重做控制
+
+内部 ReviewController.decide 接受 exact running review Attempt、approve/rerun、非空 settled targetAttemptIds、reasonCode 与 Result evidenceRefs。原 authorizeReview 必须验证实际 Model producer/JSON、Source/Audience/Result，admitRerun 只复核原预算及最新合法输入；没有 HTTP、Model producer 或宽松默认 callback。一次 Review Attempt 只有一次稳定判定，重放不重复计 reviews；全 Run/tree 的 maxReviews、steps、attempts、deadline 和节点 maxRounds 累计生效。
+
+approve 只记模型评价，不批准任何 Effect。rerun 计算目标及下游已存在尝试的保守影响闭包，活动依赖先拒绝；除明确未派发或已终结 R1 generation.send 外的 Effect 均拒绝局部重算。原 Attempt/Result/收据/银行保持不变；耐久 invalidation 引用使旧工作不能再推动 Transition/Join，目标获得新 pending Attempt、新输入/grant与原预算身份，下游由新的生产者收据重新准入。旧 Result 不得当重做输入。重复因果 target、撤权或重新准入失败整体回滚。
+
+历史 reader 仍可读旧收据；消费检查独立。Review 没有持久判定不能越过控制节点，rerun 判定不能直接推进 Output。Run 元数据 Attempt 投影新增 superseded:boolean 与 reviewDecision:approve|rerun|null，不包含评价正文或证据正文。evaluator 指纹覆盖 Review/common/Graph/settlement/Join/Fanout/edge-cost 实际实现。此组只有原 Host 控制与明确 authority doubles 的存储证明；真实 Planner/Judge/Review Model runtime 仍继续实施，不能据此宣称完整后端完成。
