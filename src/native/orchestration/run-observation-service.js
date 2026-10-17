@@ -39,6 +39,11 @@ const boundedLimit = limit => {
     assertCounter(limit, 'limit', 1);
     if (limit > 100) throw new TypeError('limit must be <= 100');
 };
+const providerWorkKind = effect => effect.capability === 'generation.send' ? 'generation'
+    : effect.capability === 'memory.retrieve' && effect.actionRef.kind === 'context_retrieval'
+        ? effect.actionRef.mode === 'embed' ? 'embedding' : effect.actionRef.mode === 'rerank' ? 'rerank' : 'other' : 'other';
+const emptyProviderWork = () => Object.fromEntries(['generation', 'embedding', 'rerank', 'other']
+    .map(kind => [kind, { attempts: 0, knownTotalTokens: 0, unknownAttempts: 0, reservedUpperTokens: 0 }]));
 const reconciliationKey = (handle, root, effectId) => controlRecordKey(handle, root.runId, 'receipt',
     'oreceipt_' + hash({ kind: reconciliationProtocol(root).requestKind, runId: root.runId, epoch: root.epoch, effectId }).slice(0, 32));
 async function readReconciliationRequest(tx, handle, root, effectId) {
@@ -107,9 +112,9 @@ export class RunObservationService {
         return entry;
     }
 
-    async #costs(handle, tx, root, effects) {
+    async #costs(handle, tx, root, effects, providerKinds) {
         const costs = { status: 'not_started', closed: false, modelAttempts: 0, knownTotalTokens: 0, unknownAttempts: 0, reservedUpperTokens: 0,
-            localJobs: 0, localUnknownJobs: 0, localWallMs: 0 };
+            localJobs: 0, localUnknownJobs: 0, localWallMs: 0, providerWork: emptyProviderWork() };
         if (!effects.length) return costs;
         costs.closed = true;
         try {
@@ -123,9 +128,15 @@ export class RunObservationService {
                         costs.localJobs++; costs.localWallMs += row.usage?.wallMs ?? 0;
                         if (row.status !== 'settled') costs.localUnknownJobs++;
                     } else {
+                        // Original provider rows include generation and retrieval.
+                        // Classify with the protected Effect, never request labels.
+                        const work = costs.providerWork[providerKinds.get(ref.effectId) ?? 'other'];
+                        work.attempts++;
                         costs.modelAttempts++;
-                        if (row.status === 'settled') costs.knownTotalTokens += row.usage.totalTokens;
-                        else { costs.unknownAttempts++; costs.reservedUpperTokens += row.estimatedTokens; }
+                        if (row.status === 'settled') { costs.knownTotalTokens += row.usage.totalTokens; work.knownTotalTokens += row.usage.totalTokens; } else {
+                            costs.unknownAttempts++; costs.reservedUpperTokens += row.estimatedTokens;
+                            work.unknownAttempts++; work.reservedUpperTokens += row.estimatedTokens;
+                        }
                     }
                 }
             }
@@ -174,7 +185,7 @@ export class RunObservationService {
                 const root = await this.runs.get(handle, runId), revision = await readPlanRevision(tx, handle, root.planRef);
                 const fence = await this.engine.nativeHostLifecycle.assertWriter(handle, tx);
                 const recoveryRequired = root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation;
-                const visibilityDigest = await this.#authorize(handle, tx, root), attempts = [], effects = [], approvals = [], reconcilable = [];
+                const visibilityDigest = await this.#authorize(handle, tx, root), attempts = [], effects = [], approvals = [], reconcilable = [], providerKinds = new Map();
                 for (const id of root.attemptRefs) {
                     const attempt = (await readAttempt(tx, handle, root, id)).doc;
                     for (const field of ['startedAt', 'endedAt']) if (attempt[field] !== null) assertCounter(attempt[field], field);
@@ -183,6 +194,7 @@ export class RunObservationService {
                         startedAt: attempt.startedAt, endedAt: attempt.endedAt, superseded: invalidation !== null, reviewDecision: review?.decision ?? null });
                     for (const effectId of attempt.effectRefs) {
                         const effect = (await readEffect(tx, handle, root, effectId)).doc;
+                        providerKinds.set(effectId, providerWorkKind(effect));
                         effects.push({ effectId, nodeAttemptId: id, status: effect.status, risk: effect.risk, requiresApproval: effect.requiresApproval });
                         if (root.pendingEffectRefs.includes(effectId) && reconciliationProtocol(root)?.actions.includes(effect.actionRef.kind)
                             && ['dispatching', 'unknown', 'confirmed'].includes(effect.status)) reconcilable.push(effectId);
@@ -206,7 +218,7 @@ export class RunObservationService {
                         type: event.type, createdAt: event.createdAt, epoch: event.epoch, graphRevision: event.graphRevision });
                 }
                 events.sort((a, b) => a.internalOrder - b.internalOrder);
-                const costs = await this.#costs(handle, tx, root, effects);
+                const costs = await this.#costs(handle, tx, root, effects, providerKinds);
                 let capacity;
                 try {
                     const observed = await this.budget.observeCapacity(handle, { authorityRef: root.budgetAuthorityRef,
