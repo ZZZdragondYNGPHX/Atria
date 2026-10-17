@@ -1509,3 +1509,12 @@ Review完成与历史reader核对全部检索子Effect、收据和Attempt settle
 实际选用的Draft逐次使用同一原Hybrid、原物理索引及独立检索Effect/费用/响应证明，Draft Result和最终Narrator/Chat纳入完整费用；不选用时没有该Draft的Context/Provider工作。replan后新增模板也按原修订独立验证，早轮费用保持。未知usage保留已采用图/原费用，拒后继且不重发；冷历史不恢复已释放的私有检索证明。
 
 原隔离worker可沿同一范围执行，检索Secret与真实发送仍只在原父Host/原Evolution账本；Model价格不替检索定价，也不把合成工程fixture当独立质量。准确测试与源码HEAD归同一Record。其它Source/Actor、通用图、高风险消费者与完整恢复/释放继续，尚非完整后端或最终Gate通过，不交前端/main或结束分支。
+
+
+### 17.130 原 Model 完成后的检索事实封存
+
+原RP Narrator进入唯一Chat输出前，可在真实Model完成证明成立后封存该次Context检索事实。封存先沿原私有scope复验当前Source/Model与全部检索/index费用，再核对原Model完成收据、原子检索Effect/收据与原bank，并复验末当前性；尚未完成Model或未核对费用不能封存。随后释放实际Provider scope与回调持有。
+
+原Memory recall的实例私有opaque proof只保留最小费用身份/摘要，后续读取原受保护历史收据与原银行；不保存新的Provider响应或正文快照，不返回新Model/Provider/Context grant。JSON副本不能恢复proof，原Model或检索Effect不能借封存重新派发。独立Source/Memory/recipient/Output许可仍必须由原消费者检查；费用事实可在Source删除后核对，不等于继续读取或输出正文。
+
+main Model usage未知仍按原政策保留合法领域输出与unknown费用，不伪造完整费用闭包/终结claim；检索Provider或实际index作业未知仍在更早原边界拒后继。封存只改变完成证明生命周期，没有第二费用权威或新恢复入口。准确FS/SQLite与组合验证归同一Record；Session/其它Source的检索与其原quota/领域完成接线继续，不把封存基础当完整Session消费者或后端完成。

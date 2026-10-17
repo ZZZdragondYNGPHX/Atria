@@ -1385,3 +1385,11 @@
 - 原隔离Planner worker不选可选Draft的两store验证2PASS/30filterSKIP（35.503s）：两臂各2Model+3Embedding，另pair Judge1，共11笔原父ledger费用；原生产Chat/Binding不变，worker无Secret/直接网络。6笔检索cost=null，不能晋升或冒充独立质量；未为了覆盖更大图绕开原case/Owner余量，也未新增API测试总量限额。
 - 原无检索动态expansion完整34项与原指纹67项两suite101/101 PASS（107.682s）。七JS原ESLint及staged diff check通过；本组生产源码在上述worker配置/执行期间冻结，没有中途改指纹。无新增真实API，私密总数12、备用Chat0、测试daily/RPM配置null保持。
 - 后端继续其它Source/Actor与Delegate检索、通用图、高风险消费者、完整恢复/释放；P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。
+
+
+## 2026-10-17 — 第一百二十七组：完成检索事实封存与发送 scope 释放
+
+- Source `6fe12a953` → `236d1533c`，本地提交、未推送；接口§17.130。RP Narrator实际Model完成后、正式输出前，原ContextRetrievalPort沿原私有scope及typed Model完成收据、全部检索/index费用核对并末次复验，随后释放Provider scope/回调。原recall opaque proof只保留最小费用身份/摘要，后续重读同一受保护历史/原银行；不生成新发送、正文或Context grant，无新账本/恢复口。Session完整消费者及原quota接线仍待下一组。
+- 新FS/SQLite六参数6/6 PASS（18.09s）：在原输出入口确认scope已释放，原Context重编译拒绝、JSON proof拒绝；真实opaque proof只返回费用Effect IDs，Source Chat删除后仍能核对，原费用及Provider次数不变。最终Memory撤回仍拒Chat并保留修改/已费。main Model usage未知时保留合法原领域输出和unknown，不造终结claim；检索未知的更早拒后继规则保持。
+- 先取动态模板未选用两参数2PASS/12filterSKIP（18.699s）。原Embedding/检索Effect/执行指纹三完整suite147/147 PASS（60.35s）；静态Agent/菱形、Judge、Review、Planner loop与loop+图四suite精选12PASS/54filterSKIP（316.959s）。所有Provider为localhost合成；四JS原ESLint及staged diff check通过。
+- 无新增真实API，私密总数12、备用Chat0、daily/RPM配置null保持。继续原Session检索与原Retrieval compute/Model quota分工、其它Source/Actor与Delegate、高风险及完整恢复/释放。P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。
