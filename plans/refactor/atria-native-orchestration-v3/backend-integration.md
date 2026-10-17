@@ -2,9 +2,9 @@
 
 > 2026-10-16。本文件属于同一 Plan Bundle，用于用户已授权的提示词预设/前端并行任务整合。详细合同仍归 [interface-contracts](interface-contracts.md)，阶段门槛仍归 [acceptance-matrix](acceptance-matrix.md)，精确源码提交/实测与失败只归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。本文不将 P3 子工作冒称完整 V3 后端完成。
 
-## 第104–110组当前续作
+## 第104–111组当前续作
 
-源码本地 `926fb0352`（未推送），已恢复同一后端任务；原 RP Review/有界重做与实际 Judge 选择、所选节点多 Route 的隔离评测、同事务取消/撤权保留边界见接口 [§17.108–§17.110](interface-contracts.md#17108-原-rp-model-review-与有界局部重做)。Judge 只在显式五节点静态 Plan 上执行；Narrator 仅展开选中的受权候选，原费用包含两个候选、Judge、Narrator 与唯一 Chat 输出。原图修订重建见 §17.111；显式多个 Draft→唯一 Narrator 的静态链见 §17.112，每步只展开直接前驱的原 Result，全部费用和转移核对闭合。该生产者现统一为静态 Agent DAG（§17.113），支持显式分支、多个独立入口与 distinct-port 多输入后继，仍顺序执行；原 Transition 的同事务撤销边界同步加固。配置与验证事实、准确源码 HEAD 归同一 Record，所有通用图/其余 Source、可信高风险消费者、完整恢复/释放和独立质量/自动晋升仍继续。当前不是前端交接，P1–P4 与最终 Gate 尚未通过。
+源码本地 `5b519d923`（未推送），已恢复同一后端任务；原 RP Review/有界重做与实际 Judge 选择、所选节点多 Route 的隔离评测、同事务取消/撤权保留边界见接口 [§17.108–§17.110](interface-contracts.md#17108-原-rp-model-review-与有界局部重做)。Judge 只在显式五节点静态 Plan 上执行；Narrator 仅展开选中的受权候选，原费用包含两个候选、Judge、Narrator 与唯一 Chat 输出。原图修订重建见 §17.111；显式多个 Draft→唯一 Narrator 的静态链见 §17.112，每步只展开直接前驱的原 Result，全部费用和转移核对闭合。该生产者现统一为静态 Agent DAG（§17.113），支持显式分支、多个独立入口与 distinct-port 多输入后继，仍顺序执行；原 Transition 的同事务撤销边界同步加固。显式 Planner self-loop 已接原有界重规划与全部历史费用闭包（§17.114）；没有回边时不会隐式重复。配置与验证事实、准确源码 HEAD 归同一 Record，所有通用图/其余 Source、可信高风险消费者、完整恢复/释放和独立质量/自动晋升仍继续。当前不是前端交接，P1–P4 与最终 Gate 尚未通过。
 
 ## 当前后端续作（第七十一至九十三组）
 

@@ -1227,3 +1227,12 @@
 - 改动后原线性正向/预算精选8PASS/26filterSKIP（31.235s）。新增菱形、先合后续、三个独立入口六正向 PASS；同时末授权撤销四参数 FAIL（整轮6PASS/4FAIL，69.023s）：Binding 后仍残留 successor Attempt，Root cancel 被回滚。复现后补原 Transition 的两次 readonly admission/Root stamp 与 ControlDenial，以及原RP callback末预算await后Source/配置复验。原 Transition 全suite28项加四反例共32PASS/6filterSKIP（25.179s），不关闭失败反例。
 - 冷 merged 历史、Source 删除、诚实重hash错误 upstream edge、第二分支publication saved/no_save ACK 和三前驱 unknown usage 新八参数8PASS/10filterSKIP（56.666s）。conditional/optional input 两类零Model准入四参数4PASS/18filterSKIP（1.388s）。新增Graph suite最终22项分批取得通过证据。原隔离 Judge 与新Agent DAG baseline/candidate 实际私有Host执行、冻结Route拒绝和指纹两完整suite56/56 PASS（67.517s）；每次比较仍包含原 pair Judge 第9次收费，不以生产图替代独立评测资料。
 - 共享 Transition 的 RP Planner/Review approve与rerun/Judge、Native Session/Project Review/后台Task和父子continuation七suite精选18PASS/162filterSKIP（141.035s）。十个JS原ESLint与staged diff check通过。所有Provider均localhost合成，真实API总数未增加，备用对话站点仍0次。整个后端尚未完成；动态修改执行、完整控制组合、其它Source/Actor、受权恢复释放和可信高风险消费者等继续，不交前端、main 或结束分支。
+
+
+## 2026-10-17 — 第一百一十一组：显式 Planner 有界重规划
+
+- Source `926fb0352` → `5b519d923`，本地提交、未推送；接口 §17.114。原 Planner profile 支持显式受限 self-loop，以原 GraphController Patch、Transition/edge admission、新 Attempt/Model Effect、原银行和唯一 Narrator/Chat 闭合。无回边不隐式重复，模型失败不借此重发；canonical operations 无进展停止。下一轮只读原 bank/Plan 余量，为最终 Narrator/Output 留足已声明的执行容量，不改测试 API 无硬上限配置。
+- 原 Planner 配置抽为共用测试 helper；新回路首轮8项中4PASS/4FAIL（29.28s），四个正向失败定位最终 RP reader 仍把 loopIteration 写死为0；原 Planner 完整20PASS（27.243s），组合总24PASS/4FAIL（56.678s）。改为全部原回路收据和精确循环数、全部 Planner 费用后，新8/8 PASS（29.695s）。此前 ESLint 首轮缺新增 reader import及五行缩进，补原导入/原规则fix后通过，未放宽规则。
+- 新零隐式回路、JSON空白无进展、Source删除冷读/首轮诚实rehash、settlement同事务Binding/Root撤销、第二轮Patch saved/no_save ACK、unknown usage 精选16PASS/6filterSKIP（37.256s）。再加原预算余量四参数时，八个所选场景8FAIL/18filterSKIP（10.47s），明确暴露 observeCapacity 缺原tx参数；补同原Engine事务只读，并在每轮后清理阶段capture、恢复同operation原capture。新完整26/26 PASS（74.326s），所有实际发生费用仍保留。
+- 随后进一步严格核对每轮完整图修订、replan/loop/edge计数；最新正向二次循环、冷读伪计数/篡改、unknown及原request/attempt余量十参数，加原隔离worker Planner-loop 两参数，组合12PASS/22filterSKIP（56.755s）。worker baseline/candidate各三次Model加独立pair Judge一笔，共7次合成收费均归父ledger，生产Chat/Binding保持；不是独立质量或价格通过结论。
+- 原静态DAG三种正向、Planner、Review approve/rerun、Judge和指纹五suite精选66PASS/108filterSKIP（125.645s）；这轮与计数加强有并行时间，最新严格计数另有上述定向实证。十一文件原ESLint与staged diff检查通过。均localhost合成，没有新增真实外部API请求，备用站点仍0次。完整后端尚未完成，混合/动态图、其它Source、可信高风险消费者及恢复释放等继续，不交前端、main 或结束分支。

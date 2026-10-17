@@ -1335,3 +1335,14 @@ readTaskGraphRevision 从原不可变 Plan、按 decisionSeq 排列的已保存 
 Host 依据原图拓扑确定顺序，每个节点只引用和展开直接前驱已保存的原 Result。分支共享不扩大 audience；兄弟节点和祖先正文不隐式复制。多输入不固定为两份，其数量受原已发布节点/端口/边、Plan limits、Result/Audience 与原 Context token budget 约束；每一份仍经活 ResultPort 私有捕获授权。所有节点共用原 Scheduler operation、完整资源与费用闭包，当前不声明并发 fanout/Join barrier。历史 reader 核对完整拓扑顺序、精确每步输入和全部原 Transition/edge admission/command，冷读不给执行权。原隔离 Native evaluator 可执行相同图，全部发送和费用仍归原父 Evolution ledger。
 
 TransitionController 在原授权后及写入前再次核对原 admission 和 Root stamp；合法 Binding 撤销/Root cancel 经原 RunRepository ControlDenial 保留，拒绝当前转移而不残留 successor Attempt/edge receipt。原 RP transition 的预算末 await 后再验私有 Source/配置。没有改变取消、预算或审批 authority，已发生费用不回滚/重发。通用动态图、混合控制节点、其它 Source/Actor 与完整后端继续实施。
+
+
+### 17.114 原 RP 显式有界 Planner 重规划回路
+
+原三节点 Planner→Narrator→Output profile 可显式声明一个 Planner self-loop：optional json feedback 输入、always/loopBack、精确原 json 输出和显式 maxVisits/maxLoopIterations。原 graphChangePolicy 继续只准 §17.105 的控制操作，不增加节点/边、Actor、Tool、Source 或审批权限。没有该回边的 requestReplan 仍保存原事实后保守阻塞，不隐式重试。模型调用失败也不触发此回路。
+
+每次受权 requestReplan 经原 GraphController 落 Patch 后，Planner 完成独立 settlement；原 Transition/edge admission 生成新 Attempt，再沿原私有 Scheduler/Context/ModelPort/银行执行下一次 Planner。新请求只接前次精确原收据引用、当前图修订和原 nodeControl 元数据，不复制任意模型反馈正文。重复 canonical operations（含仅改 JSON 空白）视为无进展；Graph 原 replan/loop/edge/step/deadline/attempt 计数与原银行继续限制执行。下一轮前要求原 bank 保留下一次 Planner+最终 Narrator 的 request 余量，并保留原 Plan 的新 Planner/Narrator/Output Attempt 余量。这只核对已经声明的产品执行预算，不新增测试 API 调用硬上限。
+
+readRpPlannerCompletion 核对原不可变 Plan 与完整 Patch 重建、每次 Model/parse/adopt/settlement、精确前驱 controlReceiptRef、全部原回边 Command/Traversal/Admission，并返回全部 history 和最新一轮；图修订、replan/loop/edge 计数必须与历史一致。最终 Narrator 只消费已停止重规划的精确末轮原收据；Output closure 包含全部 Planner Model、Narrator 与唯一 Chat Effect。冷读不恢复 scope，未知费用不签 completed claim，ACK unknown 不重发付费工作。
+
+Planner settlement 在最后 Model/Source 授权和 Root stamp 复验后才写入，合法同事务 Binding 撤销/Root cancel 经原 ControlDenial 保留；已应用 Patch 和费用仍保留，后续零发送。原隔离 Native evaluator 可执行此回路，所有真实发送和计费仍归原父 Evolution ledger；工程合成验证不替代独立质量/价格或自动晋升 Gate。混合控制图、动态图增边/节点、其它 Source/Actor 与完整后端继续实施。
