@@ -30,6 +30,7 @@ const CONSUME_DENIALS = new Set(['native_orchestration_source_stale', 'native_or
     'native_orchestration_project_selection_stale', 'native_orchestration_project_grant_denied', 'native_orchestration_project_route_mismatch',
     'native_orchestration_context_source_stale', 'native_orchestration_context_denied', 'native_orchestration_context_audience_denied',
     'native_orchestration_memory_source_stale',
+    'native_orchestration_context_retrieval_denied', 'native_orchestration_context_retrieval_unresolved',
     'native_orchestration_background_source_stale', 'native_orchestration_background_grant_denied',
     'native_run_restore_review_required', 'native_run_terminal', 'native_run_dead', 'native_story_not_started', 'native_run_rewind_denied']);
 

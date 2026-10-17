@@ -11,8 +11,10 @@ const permits = new WeakMap();
 const fail = code => { throw new ConflictError(code); };
 const key = (handle, controlId) => ({ kind: K.rpRunControl, handle, controlId });
 const equal = (a, b) => hash(a) === hash(b);
-const DENIALS = new Set(['native_rp_output_stale', 'native_orchestration_source_stale', 'native_orchestration_return_stale', 'native_generation_revision_conflict',
-    'native_rp_source_missing', 'native_rp_control_relocated', 'native_orchestration_model_result_completion_stale']);
+export const RP_OUTPUT_DENIAL_CODES = Object.freeze(['native_rp_output_stale', 'native_orchestration_source_stale', 'native_orchestration_return_stale', 'native_generation_revision_conflict',
+    'native_rp_source_missing', 'native_rp_control_relocated', 'native_orchestration_model_result_completion_stale',
+    'native_orchestration_memory_source_stale', 'native_orchestration_context_retrieval_denied', 'native_orchestration_context_retrieval_unresolved']);
+const DENIALS = new Set(RP_OUTPUT_DENIAL_CODES);
 export const rpNativeOutputKey = (controlId, source) => hash({ controlId, input: source.input, purpose: source.purpose, slot: source.outputSlot });
 export const rpNativeOutputOperationId = outputKey => hash({ protocol: 'rp_native_output_v1', outputKey });
 

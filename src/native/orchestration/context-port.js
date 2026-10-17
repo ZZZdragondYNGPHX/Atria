@@ -233,7 +233,7 @@ export class ContextPort {
         return installed;
     }
 
-    async compile(handle, input) {
+    async compile(handle, input, retrieval) {
         const request = this.#request(handle, input);
         const { snapshot, information, authorityDigest, resolver, modelContext, projectIdentity, rpIdentity, taskIdentity, taskInputOnly, rpDelegation, parentResult, graphResults } = await this.#current(handle, request, 'compile');
         if (rpDelegation) {
@@ -256,7 +256,7 @@ export class ContextPort {
             this.#memoryDescriptors.delete(descriptorKey);
             const recall = this.memoryAuthority ? await NativeMemoryAuthority.prototype.recallRpContext.call(this.memoryAuthority, handle, {
                 control: this.rpControl, request: rpIdentity.sourceRequest, tokenBudget: request.tokenBudget, countTokens: this.contextOptions.countTokens,
-                expectedDescriptor, assertCurrent: () => this.#current(handle, request, 'recall') }) : null;
+                expectedDescriptor, retrieval, assertCurrent: () => this.#current(handle, request, 'recall') }) : null;
             const source = { kind: 'rp_chat', controlId: rpIdentity.sourceRequest.controlId };
             const selected = emptyNativeContextPlan(rpIdentity.request, { model: { limits: {
                 contextTokens: request.tokenBudget.modelContextLimit, outputTokens: request.tokenBudget.responseReserve } } }, source);
@@ -421,6 +421,16 @@ export class ContextPort {
         if (hashNativeDocument(information.projection) !== captured.proof.projectionDigest || authorityDigest !== captured.proof.authorityDigest) fail('native_orchestration_context_source_stale');
         if (captured.memoryProof) await NativeMemoryAuthority.prototype.assertContextRecall.call(this.memoryAuthority, handle, captured.memoryProof, snapshot, captured.request.audience);
         return context.plan;
+    }
+
+    /** Final RP publication checks Memory facts without consuming settled Graph
+     * inputs again. This returns no Context/Result body or fresh Model grant. */
+    async revalidateRpMemory(handle, request) {
+        fields(request, ['context'], 'RP output Memory proof');
+        const captured = this.#contexts.get(request.context);
+        if (!captured || captured.handle !== handle || !captured.rp) fail('native_orchestration_context_proof_invalid');
+        if (captured.memoryProof) await NativeMemoryAuthority.prototype.assertRpContextRecall.call(this.memoryAuthority, handle,
+            captured.memoryProof, this.rpControl, captured.request.sourceBinding.sourceRequest);
     }
 
     /** Same live Project capture only; exact original receipts explain owned Task progress. No Model grant. */

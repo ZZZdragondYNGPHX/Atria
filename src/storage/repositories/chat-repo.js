@@ -1,5 +1,5 @@
 import { preserveNativeOutputMarkers, rejectNativeOutputMarkers } from './native-output-markers.js';
-import { consumeRpNativeOutputPermit, withRpNativeOutputWrite, assertRpOutputReceipts, nativeOutputPayload } from '../../native/rp-output-protocol.js';
+import { consumeRpNativeOutputPermit, withRpNativeOutputWrite, assertRpOutputReceipts, nativeOutputPayload, RP_OUTPUT_DENIAL_CODES } from '../../native/rp-output-protocol.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../native/contracts.js';
 import { hashNativeDocument as hash } from '../../native/repositories/common.js';
 import { rpOperationInput } from '../../native/rp-run-control.js';
@@ -33,8 +33,7 @@ export class ChatRepo {
         const outcome = await withRpNativeOutputWrite(request.permit, { engine: this._engine, handle }, () => this.#writeTransaction(handle, async tx => {
             let state;
             try { state = await consumeRpNativeOutputPermit(request.permit, { engine: this._engine, handle, tx }); } catch (error) {
-                if (['native_rp_output_stale', 'native_orchestration_source_stale', 'native_orchestration_return_stale', 'native_generation_revision_conflict',
-                    'native_rp_source_missing', 'native_rp_control_relocated', 'native_orchestration_model_result_completion_stale'].includes(error.code)) return { denied: true };
+                if (RP_OUTPUT_DENIAL_CODES.includes(error.code)) return { denied: true };
                 throw error;
             }
             const { receipt, locator, payload, controlId } = state;

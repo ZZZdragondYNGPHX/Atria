@@ -12,6 +12,7 @@ import { ContextPort } from './context-port.js';
 import { fields } from '../../../public/shared/native-values.js';
 import { assertContextCompilation } from './generation-local-work.js';
 import { getNativeReviewOrigin } from './review-origin.js';
+import { ContextRetrievalPort } from './context-retrieval-port.js';
 
 const fail = code => { throw new ConflictError(code); };
 
@@ -26,13 +27,18 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
     const runs = new RunRepository({ engine, assertWriter: (handle, tx) => lifecycle.assertWriter(handle, tx),
         authorize: async ({ handle }) => { if (typeof handle !== 'string' || !handle) throw new TypeError('Authenticated owner is required'); },
         admit: ({ handle, tx, sourceRequest }) => sourcePort.capture(handle, sourceRequest, { tx }) });
+    let contextRetrieval;
     const effects = new EffectController({ runs,
-        authorizeEffect: async args => { await sourcePort.revalidate(args.handle, args.root.sourceBinding, { tx: args.tx, root: args.root }); return effectAuthority.authorize(args); },
+        authorizeEffect: async args => {
+            await sourcePort.revalidate(args.handle, args.root.sourceBinding, { tx: args.tx, root: args.root });
+            return (args.proposal ?? args.intent)?.actionRef.kind === 'context_retrieval' ? contextRetrieval.authorize(args) : effectAuthority.authorize(args);
+        },
         verifyBudgetAttempt: args => budgetPort.verifyBudgetAttempt(args),
-        verifyObservation: args => effectAuthority.verifyObservation(args), verifyApproval: async args => {
+        verifyObservation: args => args.intent.actionRef.kind === 'context_retrieval' ? contextRetrieval.verifyObservation(args) : effectAuthority.verifyObservation(args), verifyApproval: async args => {
             await effectAuthority.verifyApproval(args);
             await review.authority.verifyApproval(args);
         } });
+    contextRetrieval = new ContextRetrievalPort({ runs, effects, budgetPort, sourcePort, authorizeModel: args => effectAuthority.authorize(args) });
     const approvals = review.authority.connect({ runs, effects, describeReview: effectAuthority.describeReview?.bind(effectAuthority) });
     const delegates = new DelegateController({ runs,
         authorizeDelegation: async args => {
@@ -148,5 +154,5 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
         await sourcePort.revalidate(handle, parent.sourceBinding, { root: parent });
         return budgetPort.reserveChild(handle, { authorityRef: parent.budgetAuthorityRef, parentReservationId: parent.parentRef ? parent.runId : null, childRunId, ceiling, limits });
     }
-    return { runs, effects, approvals, delegates, budgetPort, sourcePort, generationSend, assertDispatch, reserveChild };
+    return { runs, effects, approvals, delegates, budgetPort, sourcePort, generationSend, assertDispatch, reserveChild, contextRetrieval };
 }

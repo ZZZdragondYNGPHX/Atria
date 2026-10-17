@@ -39,7 +39,7 @@ function sessionCore(store) {
 export async function runRp(entry, fixture, capture, evaluation) {
     const { bridge, settings } = evaluation, frozen = settings.nativePlan, n = bridge.native;
     if (!n || !frozen || frozen.revision.definition.outputContract.kind !== 'rp_narration'
-        || frozen.revision.definition.nodes.some(node => node.capabilities.includes('agent.delegate'))) unavailable();
+        || frozen.revision.definition.nodes.some(node => node.capabilities.some(capability => ['agent.delegate', 'memory.retrieve'].includes(capability)))) unavailable();
     const { engine, handle } = n.store, chats = new ChatRepo({ engine }), control = new RpRunControl({ engine, chatRepo: chats });
     const locator = { charDir: fixture.actor, name: 'native-evaluation', isGroup: false, groupId: null };
     const player = { name: 'Player', mes: fixture.input, is_user: true, memory_os_source_id: 'eval-player' };

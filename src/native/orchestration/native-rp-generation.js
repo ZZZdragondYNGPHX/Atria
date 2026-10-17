@@ -5,7 +5,7 @@ import { ModelPort, readModelCompletionReceipt } from './model-port.js';
 import { RpOutputController } from './rp-output-controller.js';
 import { reconcileRpOutputEffect, verifyRpOutputReconciliation } from './rp-output-reconciliation.js';
 import { readEffect, effectDecision } from './effect-contracts.js';
-import { rpNativeOutputKey, rpNativeOutputOperationId, rpNarrationPayload } from '../rp-output-protocol.js';
+import { rpNativeOutputKey, rpNativeOutputOperationId, rpNarrationPayload, RP_OUTPUT_DENIAL_CODES } from '../rp-output-protocol.js';
 import { ConflictError } from '../../storage/errors.js';
 import { ChatRepo } from '../../storage/repositories/chat-repo.js';
 import { RpRunControl, rpOperationInput } from '../rp-run-control.js';
@@ -44,6 +44,8 @@ import { readRpReviewCompletion, rpReviewModelReceiptId } from './rp-review-cont
 import { rpJudgeProfile, rpJudgeOutputContract } from './rp-judge-profile.js';
 import { readRpJudgeCompletion, rpJudgeReceiptId } from './rp-judge-contracts.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
+import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
+import { ContextRetrievalPort } from './context-retrieval-port.js';
 
 const outputCaptures = new WeakMap();
 const captures = new WeakMap();
@@ -62,14 +64,15 @@ const rpModelGrant = (handle, sourceBinding, logicalInputRef) => hash({ owner: h
 function finiteProfile(plan, { delegated = false, explicitResult = false } = {}) {
     const graph = plan.definition, node = graph.nodes.find(item => item.kind === 'agent'), output = graph.nodes.find(item => item.kind === 'output');
     const modelPins = nodeModelRoutePins(node, plan.dependencyPins);
-    const capabilities = ['generation.send', ...(delegated ? ['agent.delegate'] : [])], outputCapabilities = graph.outputContract.kind === 'rp_narration' ? ['chat.output'] : [];
+    const retrievalPins = !delegated && !explicitResult && node?.capabilities.includes('memory.retrieve') ? plan.dependencyPins.filter(pin => pin.port === 'context' && pin.resourceRef.scope === 'player' && pin.resourceRef.retrievalProfileId) : [];
+    const capabilities = ['generation.send', ...(delegated ? ['agent.delegate'] : []), ...(retrievalPins.length ? ['memory.retrieve'] : [])], outputCapabilities = graph.outputContract.kind === 'rp_narration' ? ['chat.output'] : [];
     if (graph.nodes.length !== 2 || !node || !output || graph.edges.length !== 1
         || !equal(graph.entryNodeIds, [node.nodeId]) || !sameSet(graph.capabilityCeiling, [...capabilities, ...outputCapabilities])
         || !sameSet(node.capabilities, capabilities) || node.inputs.length || node.outputs.length !== 1 || node.outputs[0].type !== 'text'
-        || !modelPins.length || node.dependencyPinIds.length !== modelPins.length + (delegated ? 1 : 0)
+        || !modelPins.length || node.dependencyPinIds.length !== modelPins.length + retrievalPins.length + (delegated ? 1 : 0)
         || plan.dependencyPins.some(pin => !node.dependencyPinIds.includes(pin.pinId)) || !sameSet(output.capabilities, outputCapabilities) || output.inputs.length !== 1
         || output.inputs[0].type !== 'text' || !output.inputs[0].required || output.outputs.length || output.dependencyPinIds.length
-        || plan.dependencyPins.length !== modelPins.length + (delegated ? 1 : 0) || !['result', 'rp_narration'].includes(graph.outputContract.kind) || graph.outputContract.allowPartial
+        || plan.dependencyPins.length !== modelPins.length + retrievalPins.length + (delegated ? 1 : 0) || !['result', 'rp_narration'].includes(graph.outputContract.kind) || graph.outputContract.allowPartial
         || graph.graphChangePolicy.allowedOperations.length || graph.edges[0].condition !== 'always'
         || graph.edges[0].loopBack || graph.edges[0].maxVisits !== 1
         || graph.edges[0].from.nodeId !== node.nodeId || graph.edges[0].to.nodeId !== output.nodeId
@@ -274,15 +277,17 @@ export async function inspectNativeRpOutput(capture, expected = {}) {
         if (saved.completionHash && saved.completionHash !== completionHash) fail('native_rp_output_denied');
         saved.completionHash = completionHash;
         const attempt = (await readAttempt(tx, expected.handle, root, state.attemptId)).doc;
+        const retrievalCompletions = await readContextRetrievalCompletions(tx, expected.handle, root, modelIntent, attempt);
+        const effectReceiptRefs = [proof.receiptRef.receiptId, ...retrievalCompletions.map(item => item.receiptId)];
         if (attempt.epoch !== root.epoch || attempt.effectiveGrantDigest !== state.decision.grantDigest
-            || !equal(attempt.effectRefs, [state.effectId])) fail('native_rp_output_denied');
+            || !equal(attempt.effectRefs, [state.effectId, ...retrievalCompletions.map(item => item.effectId)])) fail('native_rp_output_denied');
         if (state.outputPublishing) {
             if (attempt.status !== 'completed') fail('native_rp_output_denied');
             const settlement = await readAttemptSettlement(tx, expected.handle, root, attempt);
             const published = await readRpNarrationResult(tx, expected.handle, root);
             if (!published || settlement.reasonCode !== 'rp_narration_ready' || !equal(settlement.resultRefs, [state.narrationResultRef])
                 || hash(published.record.payload) !== proof.payloadHash || published.record.payload !== result.generated.response.text
-                || !equal(settlement.effectReceiptRefs, [proof.receiptRef.receiptId])) fail('native_rp_output_denied');
+                || !equal(settlement.effectReceiptRefs, effectReceiptRefs)) fail('native_rp_output_denied');
         } else if (attempt.status !== 'running') fail('native_rp_output_denied');
         let outputDispatch = false;
         if (state.outputAttemptId) {
@@ -306,7 +311,7 @@ export async function inspectNativeRpOutput(capture, expected = {}) {
         const control = await RpRunControl.prototype.status.call(saved.control, expected.handle, identity.controlId, { tx });
         const chat = await tx.getResource({ kind: 'chat', handle: expected.handle, ...control.locator });
         inspectNativeRpOutputIdentity(capture, expected);
-        return { ...identity, proof, outputDispatch, rootStamp: hash(root), payload: immutable(rpNarrationPayload({ controlId: identity.controlId, source: identity.sourceRequest.source, text: result.generated.response.text })),
+        return { ...identity, proof, effectReceiptRefs, retrievalEffectIds: retrievalCompletions.map(item => item.effectId), outputDispatch, rootStamp: hash(root), payload: immutable(rpNarrationPayload({ controlId: identity.controlId, source: identity.sourceRequest.source, text: result.generated.response.text })),
             chatIntegrity: chat.integrity, locator: control.locator, prefixDigest: identity.prefixDigest,
             hostFence: { hostBootId: fence.hostBootId, generation: fence.generation } };
     });
@@ -452,9 +457,7 @@ export class NativeRpOrchestrationAuthority {
         return runs.withSourceControl(handle, identity.runId, async () => {
             const checked = await runs.engine.withTransaction(handle, async tx => {
                 try { return { current: await inspectNativeRpOutput(capture, { handle, rpControl: this.owner.rpControl, tx }) }; } catch (error) {
-                    if (['native_rp_output_stale', 'native_orchestration_source_stale', 'native_orchestration_return_stale',
-                        'native_generation_revision_conflict', 'native_rp_source_missing', 'native_rp_control_relocated',
-                        'native_orchestration_model_result_completion_stale'].includes(error.code)) return { denied: true };
+                    if (RP_OUTPUT_DENIAL_CODES.includes(error.code)) return { denied: true };
                     throw error;
                 }
             });
@@ -465,7 +468,7 @@ export class NativeRpOrchestrationAuthority {
                 const record = await readAttempt(tx, handle, root, state.attemptId);
                 if (root.cancelRequested || root.status !== 'running' || root.pendingEffectRefs.length || record.doc.status !== 'running'
                     || root.progress.steps >= root.limits.maxSteps || now >= root.progress.deadlineAt
-                    || !equal(record.doc.effectRefs, [state.effectId]) || record.doc.resultRefs.length) fail('native_rp_output_denied');
+                    || !equal(record.doc.effectRefs, [state.effectId, ...current.retrievalEffectIds]) || record.doc.resultRefs.length) fail('native_rp_output_denied');
                 const result = rpNarrationResult({ root, proof: current.proof, payload: saved.result.generated.response.text, grantDigest: state.decision.grantDigest, now });
                 const publication = { schemaVersion: 1, receiptKind: 'rp_narration_result', receiptId: rpNarrationPublicationId(result.resultRef.resultId),
                     runId: root.runId, epoch: root.epoch, producerAttemptId: state.attemptId, resultRef: result.resultRef, resultIntegrity: hash(result.record),
@@ -474,7 +477,7 @@ export class NativeRpOrchestrationAuthority {
                 await putImmutable(tx, controlRecordKey(handle, root.runId, 'result', result.resultRef.resultId), result.record);
                 await putImmutable(tx, controlRecordKey(handle, root.runId, 'receipt', publication.receiptId), publication);
                 await writeAttemptSettlement({ tx, handle, root, record, outcome: 'completed', resultRefs: [result.resultRef],
-                    effectReceiptRefs: [current.proof.receiptRef.receiptId], reasonCode: 'rp_narration_ready', now });
+                    effectReceiptRefs: current.effectReceiptRefs, reasonCode: 'rp_narration_ready', now });
                 root.resultRefs.push(result.resultRef); root.progress.steps++;
                 return { root, eventType: 'rp_narration_ready', reasonCode: 'rp_narration_ready', outcome: { resultRef: result.resultRef } };
             });
@@ -485,7 +488,7 @@ export class NativeRpOrchestrationAuthority {
                 await this.#baseCurrent(state);
                 if (target.nodeId !== active.graph.outputContract.ownerNodeId || producers.length !== 1
                     || producers[0].attempt.attemptId !== state.attemptId || producers[0].receipt.reasonCode !== 'rp_narration_ready'
-                    || !equal(producers[0].receipt.effectReceiptRefs, [current.proof.receiptRef.receiptId])
+                    || !equal(producers[0].receipt.effectReceiptRefs, current.effectReceiptRefs)
                     || !equal(producers[0].receipt.resultRefs, [state.narrationResultRef]) || !await readRpNarrationResult(tx, handle, active)) fail('native_rp_output_denied');
                 await BudgetPort.prototype.assertCurrent.call(execution.budgetPort, handle, active.budgetAuthorityRef, { tx });
                 return { inputRefs: state.outputInputRefs, inputDigest: hash(state.outputInputRefs),
@@ -1423,6 +1426,7 @@ export class NativeRpOrchestrationAuthority {
             const limits = selected.resolved.route.executionPolicy.computeBudget;
             const send = await service.generationSend(handle, { runId: root.runId, effectId, limits });
             const compiled = await compileNativeContextMetered({ handle, port: state.contextPort, request, bank: send.bank, budgetPort: service.budgetPort,
+                contextRetrieval: service.contextRetrieval,
                 root: await service.runs.get(handle, root.runId), effectId, limits,
                 workDescriptor: { requestId: state.request.requestId, pathFingerprint: selected.resolved.pathFingerprint },
                 assertCurrent: () => this.#current(state), signal: identity.signal });
@@ -1449,7 +1453,10 @@ export class NativeRpOrchestrationAuthority {
             if (root.graph.outputContract.kind === 'rp_narration') {
                 const outputCapture = Object.freeze({}); state.outputCapture = outputCapture;
                 outputCaptures.set(outputCapture, { state, control: this.owner.rpControl, execution: service, port, result, runId: root.runId,
-                    assertCurrent: () => this.#current(state) });
+                    assertCurrent: async () => {
+                        await this.#current(state);
+                        await ContextPort.prototype.revalidateRpMemory.call(state.contextPort, handle, { context: state.context });
+                    } });
                 try {
                     state.outputPort = new RpOutputController({ host });
                     const output = await state.outputPort.complete(handle, { capture: outputCapture });
@@ -1457,6 +1464,9 @@ export class NativeRpOrchestrationAuthority {
                 } finally { outputCaptures.delete(outputCapture); delete state.outputCapture; }
             }
             return { ...result, runId: root.runId, effectId };
-        } finally { if (!continuation && !state.selected.planner && !state.selected.chain) this.#runs.delete(root.runId); }
+        } finally {
+            if (state.effectId) ContextRetrievalPort.prototype.releaseCompilation.call(service.contextRetrieval, handle, { runId: root.runId, modelEffectId: state.effectId });
+            if (!continuation && !state.selected.planner && !state.selected.chain) this.#runs.delete(root.runId);
+        }
     }
 }

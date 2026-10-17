@@ -105,10 +105,10 @@ export async function readRpOutput(tx, handle, root) {
         || !equal(host.sourceRefs, [root.sourceBinding.sourceRef]) || !equal(host.resultRefs, []) || host.reasonCode !== 'rp_output_committed'
         || host.observedAt > receipt.createdAt || host.budgetObservationRef.status !== 'settled'
         || !equal(Object.fromEntries(Object.keys(intent.budgetAttemptRef).map(field => [field, host.budgetObservationRef[field]])), intent.budgetAttemptRef)) invalid();
-    const planner = await readRpPlannerCompletion(tx, handle, root), modelIds = [published.receipt.modelEffectId, ...(planner?.history.map(item => item.modelEffectId) ?? []),
+    const planner = await readRpPlannerCompletion(tx, handle, root), providerIds = [published.receipt.modelEffectId, ...(planner?.history.map(item => item.modelEffectId) ?? []),
         ...published.graphResults.map(item => item.receipt.modelEffectId), ...published.reviewCompletions.map(item => item.modelEffectId),
-        ...(published.judgeCompletion ? [published.judgeCompletion.modelEffectId] : [])];
-    if (!equal(closure.effectIds, [...modelIds, intent.effectId].sort()) || !Array.isArray(closure.budgetAttemptRefs)) invalid();
+        ...(published.judgeCompletion ? [published.judgeCompletion.modelEffectId] : []), ...published.retrievalCompletions.map(item => item.effectId)];
+    if (!equal(closure.effectIds, [...providerIds, intent.effectId].sort()) || !Array.isArray(closure.budgetAttemptRefs)) invalid();
     const ids = new Set();
     for (const ref of closure.budgetAttemptRefs) {
         assertBudgetAttemptRef(ref);
@@ -117,7 +117,7 @@ export async function readRpOutput(tx, handle, root) {
     }
     const sends = closure.budgetAttemptRefs.filter(ref => ref.kind !== 'local_work');
     const local = closure.budgetAttemptRefs.filter(ref => ref.kind === 'local_work');
-    if (sends.length !== modelIds.length || modelIds.some(id => !sends.some(ref => ref.effectId === id && ref.providerSendOrdinal === 0))
+    if (sends.length !== providerIds.length || providerIds.some(id => !sends.some(ref => ref.effectId === id && ref.providerSendOrdinal === 0))
         || !local.some(ref => ref.effectId === published.receipt.modelEffectId && ref.localWorkOrdinal === 0)
         || local.filter(ref => ref.effectId === intent.effectId).length !== 1 || !local.some(ref => equal(ref, intent.budgetAttemptRef))) invalid();
     const edge = root.graph.edges.find(item => item.from.nodeId === published.producer.nodeId && item.to.nodeId === output.nodeId);

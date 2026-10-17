@@ -20,6 +20,7 @@ import { retrieveMemory, memoryTokenBudget, memoryTokenCounter } from '../../pub
 import { informationContext } from '../../public/shared/native-information-runtime.js';
 import { nativeTurnMemoryQuery } from '../../public/scripts/native/experience/llm/memory-bridge.js';
 import { RpRunControl } from './rp-run-control.js';
+import { ContextRetrievalPort } from './orchestration/context-retrieval-port.js';
 
 const factActions = new Set(['create', 'reinforce', 'merge', 'supersede']);
 const graphActions = new Set(['entity', 'alias', 'rename', 'merge_entity', 'split_entity', 'resolve_pending', 'relation', 'resolve_conflict']);
@@ -49,8 +50,13 @@ export class NativeMemoryAuthority {
         if (!captured || captured.handle !== handle || captured.control !== control || captured.requestDigest !== hashNativeDocument(request)
             || captured.descriptorDigest !== hashNativeDocument(await this.rpContextDescriptor(handle, control, request)))
             throw new ConflictError('native_orchestration_memory_source_stale');
+        if (captured.retrieval) {
+            await ContextRetrievalPort.prototype.assertRecall.call(captured.retrieval.port, handle, captured.retrieval.proof);
+            if (captured.descriptorDigest !== hashNativeDocument(await this.rpContextDescriptor(handle, control, request)))
+                throw new ConflictError('native_orchestration_memory_source_stale');
+        }
     }
-    async recallRpContext(handle, { control, request, tokenBudget, countTokens, assertCurrent, expectedDescriptor }) {
+    async recallRpContext(handle, { control, request, tokenBudget, countTokens, assertCurrent, expectedDescriptor, retrieval }) {
         const descriptor = await this.rpContextDescriptor(handle, control, request), descriptorDigest = hashNativeDocument(descriptor);
         if (expectedDescriptor && descriptorDigest !== hashNativeDocument(expectedDescriptor))
             throw new ConflictError('native_orchestration_memory_source_stale');
@@ -60,7 +66,7 @@ export class NativeMemoryAuthority {
         await current();
         const settings = descriptor.settings.value;
         if (!isHybridMemoryEnabled(settings) || settings.recallEnabled === false) return { proof, evidence: [] };
-        if (settings.nativeRetrieval?.embed || settings.rerankEnabled && settings.nativeRetrieval?.rerank)
+        if (settings.nativeRetrieval?.embed || settings.rerankEnabled && settings.nativeRetrieval?.rerank && !(retrieval?.port instanceof ContextRetrievalPort))
             throw new ConflictError('native_orchestration_memory_retrieval_scope_unavailable');
         const chat = descriptor.memory.chat;
         if (chat.some(message => !sourceMessageId(message) || message.atri_native?.messageId)
@@ -77,11 +83,15 @@ export class NativeMemoryAuthority {
         try {
             const eligibility = resolveMemoryEligibility(context, { requester: { kind: 'narrator' } }, () => null);
             const legal = eligibleMemorySnapshot(await lifecycle.retrievalSnapshot(context, { readOnly: true }), eligibility);
+            const scoped = settings.rerankEnabled && settings.nativeRetrieval?.rerank ? await ContextRetrievalPort.prototype.openRecall.call(retrieval.port, handle,
+                retrieval.scope, { descriptor, legal, query: chat.at(-1).mes, assertCurrent: current }) : null;
             const result = await retrieveMemory(legal, chat.at(-1).mes, { countTokens: memoryTokenCounter({ getTokenCountAsync: countTokens }),
                 budget: Math.min(memoryTokenBudget(settings), tokenBudget.modelContextLimit - tokenBudget.responseReserve),
                 sceneText: legal.chat.filter(message => message.mes).slice(-2).map(message => message.mes).join('\n'),
                 computeContext: { kind: 'rp_chat', controlId: request.controlId },
-                service: { admitCorpus: async () => { await current(); return { admitted: true, metered: false }; } } });
+                ...(scoped ? { rerankProfile: scoped.rerankProfile } : {}),
+                service: scoped?.service ?? { admitCorpus: async () => { await current(); return { admitted: true, metered: false }; } } });
+            if (scoped) this.#recalls.get(proof).retrieval = { port: retrieval.port, proof: await scoped.finish() };
             await current(); result.assertCurrent();
             return { proof, evidence: result.evidence.map(item => ({ memoryId: 'rp-hybrid:' + item.id, content: item.content,
                 sourceRefs: item.sourceRefs, source: { kind: 'memory_graph', selectedId: item.id } })), diagnostics: result.diagnostics, metrics: result.metrics };

@@ -3,6 +3,7 @@ import { GenerationError, checkCancellation } from '../model-prompt-runtime/exec
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { ContextPort } from './context-port.js';
 import { BudgetPort, localWorkAttemptId, assertOriginalSendBank } from './budget-port.js';
+import { ContextRetrievalPort } from './context-retrieval-port.js';
 
 const compilations = new WeakMap();
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
@@ -42,7 +43,7 @@ export async function runGenerationLocalWork({ signal, attempt, admit, settle, a
 }
 
 /** Pay for the actual existing compiler once, using the send's original bank. */
-export async function compileNativeContextMetered({ handle, port, request, bank, budgetPort, root, effectId, limits, workDescriptor, assertCurrent, signal }) {
+export async function compileNativeContextMetered({ handle, port, request, bank, budgetPort, root, effectId, limits, workDescriptor, assertCurrent, signal, contextRetrieval }) {
     if (!(port instanceof ContextPort) || !(budgetPort instanceof BudgetPort) || typeof assertCurrent !== 'function'
         || root.ownerRef.handle !== handle || hash(root.sourceBinding) !== hash(request.sourceBinding)
         || hash(bank.authorityRef) !== hash(root.budgetAuthorityRef) || !limits?.localWork
@@ -55,6 +56,13 @@ export async function compileNativeContextMetered({ handle, port, request, bank,
     await bank.assertCurrent();
     checkCancellation(signal);
     const actualInput = await ContextPort.prototype.compilationDescriptor.call(port, handle, request);
+    let retrievalScope;
+    const node = root.graph.nodes.find(node => node.nodeId === request.inputRefs[0]?.nodeId);
+    if (node?.capabilities.includes('memory.retrieve')) {
+        if (!(contextRetrieval instanceof ContextRetrievalPort) || contextRetrieval.budgetPort !== budgetPort) fail('native_orchestration_context_retrieval_denied');
+        retrievalScope = await ContextRetrievalPort.prototype.createCompilation.call(contextRetrieval, handle,
+            { port, request, bank, root, modelEffectId: effectId, limits, actualInput, signal });
+    }
     checkCancellation(signal);
     const attempt = { attemptId: bank.nextLocalWorkAttemptId(), requestId: workDescriptor.requestId, kind: 'context_build', estimatedItems: 1,
         estimatedInputBytes: Buffer.byteLength(JSON.stringify({ requestId: workDescriptor.requestId, pathFingerprint: workDescriptor.pathFingerprint, input: actualInput }), 'utf8'),
@@ -64,7 +72,8 @@ export async function compileNativeContextMetered({ handle, port, request, bank,
     const compiled = await runGenerationLocalWork({ signal, attempt, requireAdmission: true, assertCurrent: compileCurrent,
         admit: work => bank.chargeLocalWork(limits, work),
         settle: ({ attempt, usage }) => bank.settleLocalWork(attempt.attemptId, usage),
-        onAdmitted: row => { entry = row; } }, () => ContextPort.prototype.compile.call(port, handle, request));
+        onAdmitted: row => { entry = row; } }, () => ContextPort.prototype.compile.call(port, handle, request,
+        retrievalScope ? { port: contextRetrieval, scope: retrievalScope } : undefined));
     if (!entry?.orchestration || entry.orchestration.kind !== 'local_work' || entry.orchestration.effectId !== effectId
         || entry.attemptId !== localWorkAttemptId(effectId, entry.orchestration.ordinal)
         || hash(compiled.request) !== hash(request)) fail('native_orchestration_context_compile_invalid');

@@ -18,6 +18,7 @@ import { readRpJudgeCompletion } from './rp-judge-contracts.js';
 import { rpAgentGraphProfile, rpAgentGraphOrder } from './rp-agent-graph-profile.js';
 import { rpPlannerProfile } from './rp-planner-profile.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
+import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP Narrator Result facts'); };
@@ -70,6 +71,7 @@ export async function readRpNarrationResult(tx, handle, root) {
     const settlement = await readAttemptSettlement(tx, handle, root, producer);
     const intent = (await readEffect(tx, handle, root, receipt.modelEffectId)).doc;
     const model = await readModelCompletionReceipt(handle, tx, root, intent);
+    const retrievalCompletions = await readContextRetrievalCompletions(tx, handle, root, intent, producer);
     const source = root.sourceBinding, audience = { ...rpNarrationAudience(root, producer.effectiveGrantDigest), epoch: receipt.epoch };
     if (receipt.schemaVersion !== 1 || receipt.receiptKind !== 'rp_narration_result' || receipt.receiptId !== rpNarrationPublicationId(resultRef.resultId)
         || receipt.runId !== root.runId || receipt.epoch > root.epoch || receipt.epoch !== producer.epoch || producer.status !== 'completed'
@@ -77,9 +79,9 @@ export async function readRpNarrationResult(tx, handle, root) {
         || receipt.resultIntegrity !== saved.integrity || receipt.resultIntegrity !== hash(record) || record.envelope.status !== 'complete'
         || record.envelope.producerAttemptId !== producer.attemptId || !equal(record.envelope.audienceConstraint, audience)
         || receipt.audienceDigest !== hash(audience) || receipt.grantDigest !== producer.effectiveGrantDigest
-        || receipt.sourceBindingDigest !== source.bindingDigest || !equal(producer.resultRefs, [resultRef]) || !equal(producer.effectRefs, [receipt.modelEffectId])
+        || receipt.sourceBindingDigest !== source.bindingDigest || !equal(producer.resultRefs, [resultRef]) || !equal(producer.effectRefs, [receipt.modelEffectId, ...retrievalCompletions.map(item => item.effectId)])
         || settlement.reasonCode !== 'rp_narration_ready' || settlement.decisionSeq !== receipt.decisionSeq || settlement.createdAt !== receipt.createdAt
-        || receipt.decisionSeq > root.eventSeq || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId])
+        || receipt.decisionSeq > root.eventSeq || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId, ...retrievalCompletions.map(item => item.receiptId)])
         || !model || !equal(model.receiptRef, receipt.modelReceiptRef)
         || model.observation.dispatchEvidence.reference.resultPayloadHash !== undefined && model.observation.dispatchEvidence.reference.resultPayloadHash !== hash(record.payload)
         || intent.nodeAttemptId !== producer.attemptId
@@ -185,5 +187,5 @@ export async function readRpNarrationResult(tx, handle, root) {
         if (!reviewed) invalid(); reviewCompletions.push(reviewed);
     }
     if (reviewCompletions.length && !input.reviewReceiptRef || root.graph.nodes.some(node => node.kind === 'judge') && !judgeCompletion) invalid();
-    return { record, receipt, settlement, producer, graphResults, reviewCompletions, judgeCompletion };
+    return { record, receipt, settlement, producer, graphResults, reviewCompletions, judgeCompletion, retrievalCompletions };
 }
