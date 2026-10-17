@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · W12 接口级 E0 消费者审计、事务一致性与原生切换策略（讨论草案）
 
 - **任务与路由**：`ARCH-DWE-01` · `docs`；[唯一 Plan](index.md) · [设计主文](design.md) · [W11 类型化身份](subject-contracts-e0.md) · [唯一 Record](../../../records/architecture/world-evolution-consistency.md)。
-- **审批状态**：**Draft**。用户已确认 W1-B 至 W11-B 的总方向；**本轮 W12 方案、确切接口/Schema、E0 Completion/开发启动均未获批准**。本文只是部分远端源码静态审阅与设计候选，不修改任何产品代码。
+- **审批状态**：**Draft**。W1-B 至 W12-B 的顶层方向均获用户确认，但**确切接口/Schema、E0 Completion、事件时态契约与开发启动仍未批准**。§7 保留当轮选项对比，正式选择见 §9；静态源码审阅不等于测试或正式 E0 验收。
 - **当前问题**：如何把世界成员与动态 NPC 的身份、能力、事件和时态从“设计概念”落到 Atria 现有唯一 Native Session/Host 的实际消费者，既不变成“独立世界引擎 + 并行记忆库”，也不留下旧 Static Actor / ST lorebook 的长久兼容双轨？
 
 ## 1. 本轮遵循的已确认不变量
@@ -116,3 +116,14 @@ User/AI/NPC proposes story action
 - 所有真实消费者、API、测试和跨端缺口如何定义 E0 完成标准及退出 gate，尤其产品主线正在演化时要重新读取最新 HEAD。
 
 **保持 Draft；只更新 `docs`，不创建实现分支、不修改产品代码、不宣称 E0/CI/全端已通过。**
+
+## 9. W12-B 用户确认（2026-10-17）
+
+用户对上一轮推荐的 **W12-B「E0 证据驱动的原生硬切 + 单权威提交收口」**回复「认同」。此轮将它记录为**已确认的顶层架构/执行原则**，不是“E0 已完成”。
+
+- **实施策略**：全面核对当前产品 `main` / 当时相关进行中分支的实际生产调用链和数据权威，再决定最小 Native ID/事件/身份/时态契约和需要清退的旧 Actor-only/World/Knowledge 路径；实现时依赖顺序分阶段验证，最后完成单权威原生 hard cutover，不维持未经产品需要证明的旧数据兼容双轨。
+- **单 Native 权威**：正式 Subject、世界关系、已发生事件与事实有效状态仍通过 Session/Branch/Revision 的验证与发布进行；HCM/Knowledge、Prompt 和 Visual/Media 提供证据或呈现，不能自行成为第二个可写 World Truth。
+- **安全与长会话**：授权来源、Branch/Revision、并发提交/CAS/Receipt、游戏时间/历史一致性、有限预算、三端真实客户端是必须检查的门槛；不会为了避免“防御代码”删掉真正的信任/一致性边界。
+- **现状限制**：当前有 `SessionRepo.commitSnapshot` 统一发布机制、World reducer state patch 与部分 History/Chronicle 能力，但**尚未实际穷尽 E0 Consumer Map**，也没有确认 Narrator/Task/World Effect/Participant/Cognition 端到端原子出版、通用双时间视图或跨端通过。选择 W12-B 不等于 API 冻结或代码实施授权。
+
+**W13 下一轮**：同一 Plan 的 [event-temporality-branch.md](event-temporality-branch.md) 将深入讨论“事件提议 vs 已提交后果”、Native 一次 Revision 中的身份/事实/参与者/事件收口，`valid game time` 与 `recorded revision` / `observed time` 的差异，历史纠错、Save/Branch 继承、缓存/索引失效和故障/重试。**W13 方案尚未由用户选择**。整体继续 Draft，仅修改 docs。
