@@ -200,6 +200,24 @@
 - **E0 阻塞与下一检查点**：Timeline `actorId` / Actor Profile、Context Compiler/Generation Host/Orchestrator、Information/Cognition/ToM/HCM、Lifetimes、Visual/Speech/Persona、SavePoint/Branch 和 Story UI 的真实消费者/权限切换尚未进行全面接口审计。用户确认 W10 候选后，下一轮仍须**先更新此 Plan/Record，提交并验证 docs，再继续讨论精确映射和实现收口**。
 - **验证状态**：GitHub Contents API 已提交上述四次 docs 变更，本 Record 随后提交；读取 docs 五份文件作存在性与内容核验。仅静态源码检查，无 Node 测试、CI、浏览器/UI 或 Windows/CachyOS/Android Termux 真机证据。**未修改产品代码，完整企划仍 Draft**。
 
+
+## Stage 12 — W10-B 确认与 W11 类型化身份/能力契约及 E0 准备（2026-10-17）
+
+- **本轮用户选择**：回复「认同」，对应上轮唯一推荐 **W10-B「固定定义 → Session Subject 实例化 + 类型化能力绑定」**。因此 W1-B～W10-B 是用户明确确认的**顶层设计路线**；不是 W11-B 批准、不是具体 ABI/权限接口定稿，不授权产品开发。
+- **主要已确认原则**：固定 Authoring World/Package/Actor Profile 只提供来源、起始事实和表达模板；Native Session 创建正式 Subject，运行时新增 NPC 仅在持续后果出现后经 W4-B 原生受控提交接纳；表达模板、对话 Participant、私有 Perspective 和可执行 Task/Simulation 能力均分别鉴权、按事件和分支版本追溯，不通过 Runtime 反向编辑 Package 或将单一 `actorId` 强制兼任所有角色。
+- **唯一工作空间/资产**：继续 `ARCH-DWE-01`，Primary Workspace `docs`；沿用一份 Plan Bundle、一份 Record。新子模块 `subject-contracts-e0.md` 在同一 Plan 下，仅处理 W11。本轮未创建第二企划、HANDOFF、实现分支、兼容层或产品文件。
+- **本轮 docs 提交顺序**：
+  - `43d6af5f4389b282e1614c451bbd66efe248862d`：新增 W11 子模块 `subject-contracts-e0.md`，包含 Subject/Definition/ActorProfile/Perspective/Participant/DomainLocalRef 逻辑接口、权限矩阵、W11-A/B/C 取舍、真实代码 E0 探针与未核验的调用方列表。
+  - `4329647fd381694cd2ede7914b1a9e4a908c1ba5`：原 W10 `subject-instantiation.md` §10 正式记录 W10-B 用户确认，保留具体 Schema/API 未决。
+  - `8e0c4f1e3b601c7cc7373e8a0001ebf145844f9b`：同一总设计 `design.md` §18 写入 W10-B 方向及 W11 讨论路由。
+  - `257df0e3bb1186e230929e1bc414d6848eabf2c3`：同一 `index.md` 更新至 W1–W10 已确认、W11 候选未决，保持 Draft。
+- **局部 main 静态证据**：SessionCore `_newEntry` 仍拒绝不属于 Manifest Actors 的 `draft.actorId`；ActorProfile 取材固定 EntryPoint/Package；`assertInformationClosure` 要求 Info Actors 是 Manifest Actors；Information/Cognition/ToM 及 Goal Contracts 使用 Actor 身份和来源权限；`public/shared/native-frontend-host.js` Message ABI / `public/scripts/native/session-projection.js` committed fingerprint 暴露 actorId；Speech 校验 `Timeline.actorId` 和 Expression Actor，Visual/Goal 有自己的身份路径；HCM Evidence Entity/Lifetime 局部 ID 不等同于 Subject。以上仅是选择性静态读和搜索，**不是完整 E0 caller census**，也没有自动证明新 NPC 已可合法发言或维护私人记忆。
+- **W11 建议（未获用户批准）**：W11-B「Typed Subject / Participant / Perspective + Native Host Capability Resolution」。受控实体与已提交对话/事件分离，表达 Profile 与个人记忆/任务授权单独授予、分支/修订/受众解析；要最小化对现有 Authority 的改动、一次性切换旧 Actor 强耦合真实消费者，而不是新建多套可写 DB、向 Narrator 申请全知或在运行时重写 Package。
+- **风险/E0 保留**：Timeline/Context Compiler/Generation Host/Orchestration、HCM/Information/Cognition/ToM、Native Host 前端 ABI、Goal/Lifetime/Task/Simulation、Visual/Speech/Persona、Studio/Library/Play 与 Save/Branch 的**生产调用方、权限、跨分支、版本、预算、UI**尚未全量审查。下一阶段须具体列出真实消费者、原契约/目标契约/删除路径和验收矩阵；不能以“发现文件路径”代替运行时接线确认。
+- **验证边界**：通过 GitHub connector 对部分 main 文件做静态核对，并在 docs 更新后重新 fetch 验证 `index.md`、`design.md`、W10/W11 模块与 Record 可读。不运行 Node/test、CI、浏览器、真实 UI、Windows/CachyOS/Android Termux，未修改任何产品代码或其它长期分支。
+- **下一 checkpoint**：用户明确选择 W11-A/B/C 后，下一轮依约先更新同一 Plan 和唯一 Record，再讨论 W11 目标接口粒度、静态 Actor → 动态 Subject 的真实 caller cutover、权限边界与正式 E0 清单，以及最后设计定稿前剩余必须确认的实现前置条件。
+- **状态**：完整企划继续 **Draft**，未授权开工。 
+
 ## Final state
 
 Not yet applicable. Discussion in progress.
