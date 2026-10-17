@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · W22-B 可执行 Gate 0 Preflight / 条件化开发交接清单
 
 - **归属**：唯一 [Plan 入口](index.md) · [累计 Design](design.md) · [W22-B 确认及技术前提](e0-final-implementation-handoff.md) · [E0 总阻塞](e0-final-closure.md) · [唯一 Record](../../../records/architecture/world-evolution-consistency.md)；仅在 `docs` 分支维护，不是独立 Plan/HANDOFF。
-- **状态（2026-10-17）**：`Draft`。已确认 **W1-B～W22-B 总体方向与有界证据收口方法**；**Gate 0 = PARTIAL / BLOCKED**，本文件是一份具名 Preflight 与有证据的待办，不是 E0 PASS、实施 API 最终冻结或全案 Final。没有授权创建代码实现分支、改动 `main`、删文件或发布软件。
+- **状态（2026-10-17）**：**Draft / Paused，当前不执行**。用户明确要求等待 Native Orchestration、Prompt Preset、整体前端重构完成，之后由用户让 Codex 接手；W1-B～W22-B 已确认的总体方向不变。**Gate 0 = PARTIAL / BLOCKED**，以下是未来可执行的检查清单，当前不得依据本文件自动开展审查/开发或标 E0 PASS。
 - **本次完成的工作**：在固定 GitHub SHA 下对 Native Session/Repo/Save/History/Information、Orchestration V3/Prompt、Frontend/Legacy 相关源码进行针对性静态阅读，按关键名称检索主线消费者，比较未合并分支文件交集；形成以下**实际证据 + 待证明差异 + 所需交付物**。这不能冒充完整本地 `git/rg` 调用图、动态插件运行或 Node/CI/三端测试。
 - **禁止的偷换**：`已找到函数` ≠ `完整生产调用图`；`有 CommitReceipt` ≠ `Game World + Narrator 同一事务`；`同一 SessionState` ≠ `已授权写入`；`高权威 Rank` ≠ `语义过期已过滤`；`实施期测试计划` ≠ `已 PASS`。
 
@@ -160,3 +160,14 @@ deletion. Return the exact remaining blockers and whether Gate 0 is design-ready
 - **已完成**：W22-B 确认、当前 HEAD 再检、V3/Prompt/Visual 重叠文件与部分实际生产符号命中、P2 Writer/Save/GC 的真实源码 Owner、各 E0-01～09 对应具名 preflight 工作/退出材料。
 - **仍阻塞 Gate 0**：最终作为开发输入的**实际集成 HEAD/全生产 call graph**，P2 的业务身份 Schema/Typed Authority 全模式验证落点，跨 World/Game/Narrator Effect 的因果/回执一致性合同，动态 Perspective 的 Host grant/源权限接线及旧 Legacy/Plugin 的确定清退表。
 - **下一阶段**：只有上述设计证据按要求完成后才能建议用户正式批准 ARCH-DWE-01 Final 并授权实施。本次不额外创建一个 W23 世界机制讨论，不虚称 Gate 0 PASS。保持 `Draft`。
+
+
+## 暂缓执行 · S25（用户明确中断）
+
+- 本清单和英文 Codex 指令已**封存为未来恢复输入**，不再继续执行本轮 P0～P7 调用链审查。
+- **恢复条件**：用户确认排队的编排重构、提示词重构以及整体前端重构完成，并明确指示 Codex 接手 `ARCH-DWE-01`。没有自动通知/后台巡检任务。
+- **先做的事**：重新核验实际 `main` 和所有接口重叠分支 HEAD；旧 `c57fada6`/`a7cb649d`/`76032789`/`ae587be0` 仅为当时静态审阅版本，不能作为未来实时状态。执行预先写明的受保护 P2/Domain Receipt/Perspective/Context/Frontend/Legacy 真实消费者 Preflight，按证据更新同一 Plan 与唯一 Record。
+- **仍不允许**：未经另行明确批准，不能将 Plan 从 Draft 改 Final、创建实现分支、修改 `main` 或声称 Gate 0/CI/三端测试通过。
+- **唯一恢复说明**：[`handoff/ARCH-DWE-01.md`](../../../handoff/ARCH-DWE-01.md)（因用户此次明确中断而创建，不是第二 Plan/Record）。
+
+**当前状态：Paused / E0 PARTIAL-BLOCKED**。
