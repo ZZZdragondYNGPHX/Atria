@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · Candidate Design & Discussion Agenda
 
-- 状态：**Draft（W1–W13 的 B 顶层方向均已获确认；W14 世界有效视图与 Context/UI 方案、E0 完整审计及最终实施仍未获批）**。旧章节保留当时提案历史，当前决策以最新章节与 index 为准。
-- 当前讨论轮次：W14 — World/Knowledge Effective View、来源冲突判定、Context Compiler 和 Library/Studio/Play UI（见 [effective-world-view.md](effective-world-view.md)）。
+- 状态：**Draft（W1–W14 的 B 顶层方向均已获确认；W15 E0 完整消费者/接口收口、实际验收及最终实施均未获批准）**。既往选型段落保留历史，本次确认以最新决策与 index 为准。
+- 当前讨论轮次：W15 — Source-of-Truth/Consumer/Contract/Deletion/Acceptance Gate 证据收口（见 [e0-final-closure.md](e0-final-closure.md)）。
 - 入口：[index.md](index.md)；材料：[research.md](research.md)
 
 ## 1. 问题的正确切分
@@ -723,3 +723,35 @@ W12 本轮继续**仅更新 docs 同一 Plan 和唯一 Record，保持 Draft，�
 当前 `knowledge-runtime.js` 已定义来源权威排序、State Conditions/Exclusive Group 和有限的 memory conflict filtering；`context-compiler.js` 已有 `current_state_event`、`knowledge`、`memory` 等预算 lane，当前部分情况下将完整 `atri_world_state` JSON 和已选知识正文一起纳入 Context。**Rank/priority 并非通用自然语言事实语义验证器**，且 Library/Studio 编辑器仍以 Source/JSON 资源为主。这些静态代码事实为 W14 设计基础，不能冒称当前已有通用、按任意实体时态/角色视角的 Effective World View。
 
 **W14 待用户决定；W15 还需 E0 完整 Source-of-Truth/ABI/Consumer/Deletion/Gate 收口，所有真实客户端与实施仍为阻塞**。仅 docs 同一 Plan Bundle/唯一 Record 被更新，不创建实现分支。
+
+
+---
+
+## 22. S16 · W14-B 确认与 W15 E0 架构收口审查（2026-10-17）
+
+### 22.1 已确认 W14-B
+
+用户明确认可上一轮推荐的 **W14-B「Effective World View First + Claim/Source-Aware Context」**。目前 **W1-B 至 W14-B 均属于已获用户选择的顶层设计方向**；完整企划仍为 **Draft**，并未批准具体 Projection API、Claim/Fact/Persona Schema、代码实现、E0 完整审计或三端验收。
+
+W14-B 的稳定原则：在现有 Native Host 的受众合法只读投影上先识别固定 Hard Law、初始但可变事实、已提交当前/历史事实、Source Claim 和私人 Belief，再把有关的自由文本/Knowledge/HCM 来源按有效性、来源、时态、场景与权限带入 Context/Library/Studio/Play。Context rank/关键词激活不等于自然语言事实失效；作者原始资料不可被 Play 覆写，真正硬法则不能被低权限事件突破。详细确认见 [effective-world-view.md §10](effective-world-view.md)。
+
+### 22.2 W15 核心目标：使既定方案有可核验的实施边界
+
+此轮不再扩展新的平行世界架构，集中审查 **哪份数据由谁写入、哪些真实生产消费者读取、目标合同如何与现有 Native SessionCore/Knowledge/Information/HCM/Context/Media/Frontend 融合、哪些旧 actorId/world-info/Orchestrator 适配需要根据活入口证据进行清退**，以及开发前/实施期应分别取得什么验收证据。
+
+完整 Source-of-Truth/Owner/Consumer/Contract/Deletion 表、实际 main 静态代码探针、E0-01～09 未解决阻塞和 Gate 0～4 只维护在 [e0-final-closure.md](e0-final-closure.md)，它是同一 Plan Bundle 的 W15 子模块，不创建另一个 Plan 或 Record。
+
+**当前特别明确的代码事实与局限**：
+- `knowledge-runtime.js` 既有 rank/部分状态条件；`context-compiler.js` 将当前 `atri_world_state` 与原始知识正文分 lane 输入。这并未证明旧文本被语义级淘汰。
+- `SessionCore/SessionRepo` 有 CAS/Receipt/Revision 发布基础，但不能在未审真实调用链前宣称所有 World Effect/Narrative/Participant/Cognition 都处于相同原子提交。
+- `actorId` 仍贯穿 Timeline/Information/Frontend/Play/Speech/Visual；HCM/Lifetime 另有本地身份；动态 Subject 的类型化接线须逐个消费者证明，而非盲目字段替换。
+- `public/scripts/atri-world-info-*`、`agents/orchestrator/legacy-*` 和 `native/knowledge-prompt-channels.js` 等源码仍存在。静态搜索发现部分 Legacy Orchestrator 生产引用，但**不能因此声称所有旧 World Info/Orchestrator 路径都正活跃**；应按真实 call graph 分类保留/替换/删除，不能为硬切误杀现役插件能力。
+- 本次 GitHub 远端代码搜索有条数上限、多文件读取不在同一个固定 `main` commit 快照，且未运行 Node、CI、UI 或 Windows/CachyOS/Android Termux；**E0 是 PARTIAL / BLOCKED，不是 PASS**。
+
+### 22.3 W15 候选路线及审批边界
+
+- W15-A：直接把十四轮方向性决策当作 E0 完成、标记 Final 并创建实现分支，当前缺可靠消费者/事务/权限证据，不推荐。
+- **W15-B：以证据门槛 E0 收口并形成可执行交接清单（研究推荐，尚未获用户批准）**。逐项获得完整固定 HEAD 的真实生产调用图、Authority/Contract/Consumer/Deletion 与权限/时态/存档/跨端验收门槛，审明实际阻塞，最后再向用户申请全案定稿与开发授权。
+- W15-C：仅继续抽象设计而不建立退出 Gate，会扩大范围并让方案长期无法交接，不推荐。
+
+**重要**：此轮只确认 W14-B。W15-B 仍是助手推荐；E0-01～09 和目标 API、业务归属/清退表/验证计划没有被宣布已通过。下轮讨论 W15 后仍需完整 E0/最终交接审计，才能决定正式实现前置条件。当前只修改 `docs`，不修改 `main`。
