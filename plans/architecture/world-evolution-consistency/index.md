@@ -13,7 +13,7 @@
 本 Plan 是同一主题持续迭代的**唯一入口**。每一轮先更新对应模块和本轮讨论状态、在 `docs` 分支提交并核实，再开展本轮讨论；直到用户明确认可完整方案，才将状态由 Draft 改为 Approved/定稿。不得把助理推荐误写为已获批准的冻结决议，亦不得在讨论阶段直接修改 `main` 产品实现。
 
 - [Research](research.md)：外部资料、机制比较、来源、局限和迁移适用性；讨论中持续补充。
-- [Design](design.md)：历史累计讨论 §8–§25；**§26 记录已确认 W18-B 并路由 W19 Gate 0 原生物理事实与历史查询审查**；当前状态以后续用户明确选择为准。
+- [Design](design.md)：累计历史讨论 §8–§26；**§27 记录已确认 W19-B 并路由 W20 受保护物理契约与 Gate 0 工程包**。旧选型仅为历史，现行状态以后续用户决议为准。
 - [Runtime Emergence & Fact Lifecycle](runtime-emergence.md)：**W4 方向已确认，§8 记录 W4-B**。仅当本轮需要核对实体注册/事件基础时阅读。
 - [NPC Autonomy & Scheduling](npc-autonomy.md)：**W5 已确认 B 方向**；§10 明确选型与待收口接口，复核 NPC 调度时按需读取。
 - [NPC Social Cognition](npc-social-cognition.md)：**W6 已确认 B 方向**；§10 记录社会关系真相、私人认知及来源事件边界。仅在当前模块需要这些依赖时读取。
@@ -29,7 +29,8 @@
 - [E0 Integration Readiness](e0-integration-readiness.md)：**W16-B 已确认方向**，§9 记录跨分支固定 HEAD/Native Domain、ContextPort、Receipt/Prompt 权威划分和待解决消费者。
 - [E0 Domain → World → Context Contract](e0-domain-world-context-contract.md)：**W17-B 已确认方向**；§8 记录 Domain-first 提交/Authorized Effective World 投影和现有跨接口 E0 缺口。
 - [E0 Minimal Typed ABI & Consumer Cutover](e0-minimal-contract-cutover.md)：**W18-B 已确认方向**；§7 记录最小 Typed ABI 和真实消费者验收驱动原生硬切，具体物理字段/实施仍未批准。
-- [E0 Gate 0 / Physical Subject & Temporal Fact](e0-gate0-physical-contracts.md)：**W19 当前阶段模块**，审计 `atri_world_state` / Game Event/Receipt/History/StateDelta/Save 的真实物理基础，讨论 Session 原生最小 Subject/Fact Transition、`asKnownRevision/asOfGameTick` 与 E0 Gate 0 退出标准及 W19-A/B/C（Draft）。
+- [E0 Gate 0 / Physical Subject & Temporal Fact](e0-gate0-physical-contracts.md)：**W19-B 已确认方向**；§7 记录 Session 原生最小 Subject/Fact、Revision/GameTick 双锚与 Gate 0 审查原则，确切物理合同仍待决定。
+- [E0 Gate 0 Integration Work Packages](e0-gate0-integration-workpackages.md)：**W20 当前阶段模块**。原生 Reserved/Typed Subject 物理布局 P1/P2、Domain Fact/两段查询、WP-A～F 生产消费者、Gate 0 与实施 Gate 分工、W20-A/B/C 选型（Draft）。
 - [Record](../../../records/architecture/world-evolution-consistency.md)：按工作轮累积可核验的文档提交、调研结果、未完成内容。
 - 后续需要规模化时再按主题拆模块，本入口仍为唯一导航。
 
@@ -39,7 +40,7 @@
 
 原问题「静态设定和动态演化冲突」仍保留，**但现在必须以原生 World / Knowledge 整体重构为主线**。先明确 World（实体/关系/世界法则/初始基线）与 Knowledge（资料/断言/来源/语境）的真实边界，再设计事实演化、主体认知、有效上下文和 Library/Studio/Play 产品界面。已有 Native SessionCore/State/Event/Simulation/HCM/Context Compiler 是首先审查和复用的权威，不能平行再建一套真相库。
 
-**已确认方向：W1-B 至 W18-B。** Native World/Knowledge、动态 NPC/Subject/Participant/Perspective、来源保真记忆/社会认知、Native Domain Revision/双时间/Branch、受众安全 Effective World View、跨 Orchestration/Prompt 的事实权威边界，以及最小 Typed ABI/消费者验证驱动硬切。**W19 的 Session 原生物理 Subject/Fact、时态查询和 Gate 0 路线尚待选择**，见 [e0-gate0-physical-contracts.md](e0-gate0-physical-contracts.md)。完整 Plan 仍 Draft，E0-01～09 PARTIAL / BLOCKED，未授权开发。
+**已确认方向：W1-B 至 W19-B。** 固定 World/Knowledge 源、涌现 NPC/个人认知/事实来源、Canonical Subject、Native Domain 唯一写权、Revision/分支/受众受控双时间投影、Effective World View 与 V3 Context/Prompt、消费者验收驱动最小原生 hard cutover、Session-owned 最小实体及 Fact 转换/两段历史查询。**W20 受保护存储落点、完整旧接口切线与开发 Gate 0 未批准**，见 [e0-gate0-integration-workpackages.md](e0-gate0-integration-workpackages.md)。全案 Draft，E0-01～09 PARTIAL/BLOCKED。
 
 需要回答：创作者的首要对象是若干触发条目，还是可以直接浏览、引用并演化的“世界”；Knowledge 应是同级世界书，还是世界引用的来源与证据？现有 free text 必须继续一等支持；不为未发布旧 ST 数据建立兼容双轨。
 
@@ -80,7 +81,7 @@
 
 ## 5. 状态与下一检查点
 
-- **当前：**S20 已记录用户选择 **W18-B**；进入 W19 [Gate 0、Session 原生 Subject + Fact Transition、Revision/GameTick 双锚与 Consumer/Deletion Map](e0-gate0-physical-contracts.md)。当前研究推荐 **W19-B**，**尚未获用户确认**；E0-01～09 仍 PARTIAL / BLOCKED。
-- **已确认设计方向（W1–W18）：** 唯一 Native Host 权威、固定源与动态 Session 实例分离、正式 Subject 与可选表达/私人 Perspective/已提交参与者类型化分工、受控事实时态与历史分支、有效世界只读视图、基于真实 consumer 的最小合约 hard cutover。**未冻结 W19 物理存储/Query ABI、E0/CI/三端验收或正式实现阶段**。
+- **当前：**S21 已记录用户选择 **W19-B**；进入 W20 [Protected Session Subject、Domain Fact Transition、as-of 查询与 WP-A～F Consumer / Gate 0](e0-gate0-integration-workpackages.md)。研究推荐 **W20-B**，**尚未获用户批准**；E0-01～09 持续 PARTIAL / BLOCKED。
+- **已确认设计方向（W1–W19）：** 唯一 Native Host 事实写权、固定作者资源/动态 Session 分离、正式 Subject/Participant/Perspective 与来源记忆、Domain Fact+游戏时间/记录修订、授权有效世界只读投影、适用 Knowledge/Prompt、原生 Session 最小物理持久化及开发前 Gate 0 证据审查。**未冻结 W20 受保护 Namespace/Root 决策、正式查询 API、全量 Consumer/Deletion/三端/CI 证据或实施分支。**
 - **未授权：**修改 `main`、创建实现分支、给出实施已经通过的结论。
 - **完成标准：**用户在若干轮讨论后明确确认各核心决策及边界，并批准定稿。未经确认，不使用“Final/冻结/全面通过”描述。
