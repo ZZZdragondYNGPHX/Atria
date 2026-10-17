@@ -1403,3 +1403,11 @@
 - 新可选Rerank竞争因果候选两参数先原预算拒绝（58.32s），fixture在Plan/Run建立前声明5请求（旧默认4不变），2PASS（74.385s）：Resolver+2Embedding+Rerank+Narrator，5笔settled、Model quota仍2、3个检索收据/6个Effect，完整proof与费用冷开相同。原非因果skip及Resolver持pin四参数已通过；missing pin两参数初错误假定Resolver亦零调用（组合4PASS/2FAIL，77.039s），修正为仅合法Resolver1/Narrator0/检索0后ownership四参数4PASS（20.447s）。新增Session20项与原银行授权6项均分别通过，没有改变原稀疏检索决策或扩大Actor域。
 - 原预算/Turn quota/Session Context/终结/最终化五suite75PASS/2FAIL（393.554s），仅两个FS Resolver用例超过默认15秒测试期限；单独用runner 60秒期限复测四store参数4PASS/24skip（47.288s），产品timeout/retry未改。原Context13项PASS（4.423s），同命令两个猜测路径ENOENT没有执行；改真实路径后检索Effect/封存两suite58/58 PASS（30.268s），原执行身份67/67 PASS（7.965s），原RP Embedding/Rerank正向组合6PASS/72skip（24.406s）。相关11个JS原ESLint、staged diff check通过。
 - 用户明确要求后按文件范围并行实际实现/测试，没有独立审查流程。并行Project原writer当前性修复与后台Task检索不在本提交，分别继续。所有新Provider为localhost合成，无新增真实API；私密总数12、备用Chat0、daily/RPM配置null保持。其它Source/Actor/Delegate、通用图、高风险与完整恢复/释放继续，P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。
+
+
+## 2026-10-17 — 第一百二十九组：原 Project writer 完成许可
+
+- Source `10b56105a` → `2e86c6f57`，本地提交、未推送；接口§17.132。并行实际实现沿原Task writer加入实例私有一次性completion permit，真正Task锁中Studio读取结束、mutable Task/cache载入前重验实际Model/producer/Source/Route/Skill；同步修改对话前核同Task对象、Source指纹、conversation、attempt/request/calls。原存储CAS保留，恢复/撤回期间人类编辑不能被旧cache错误回写。JSON/外Agent/改正文/重复消费不写Task、不新增Provider。
+- 基线Source/config四参数4FAIL（15.55s）：旧assistant先写入后才报过期。较早writer前复验先4PASS（15.535s），增加原Skill设置/installed version后8PASS（28.294s）；但原writer实际Studio await中同Task重入编辑两参数仍2FAIL（10.878s）。因此删除被覆盖的较早检查，改原Task锁内permit与实际同步guard，不把writer前回调当物理CAS。Task load/recovery反例一起覆盖；Task-load初误预计native_write_conflict，实际更早source_stale，修正测试期待，没有放宽保留人类编辑断言。
+- 最终新Source/config/Skill及实际Project读取/Task载入/恢复撤回14/14 PASS（50.246s）；opaque permit两store参数2PASS/14skip（12.805s），新增16项均分别通过。原round-finish完整18/18 PASS（74.855s），原三轮Review输出正向2PASS/12skip（50.957s）；之前较早版本的原round-finish80.68s及Review正向54.644s不冒称最终字节。三个相关JS原ESLint、staged diff check通过。
+- 原Project没有可直接复用的Memory候选域/descriptor/query，本组没有假接Session权限或新增Project检索。Skill/config异步当前性与原Task CAS不等于跨文件系统原子事务。所有新Provider均localhost合成，无新增真实API；私密总数12、备用Chat0、daily/RPM配置null保持。后台Task检索和其余Source/Actor/Delegate、通用图、高风险、完整恢复释放继续；P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。

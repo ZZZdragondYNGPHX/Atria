@@ -1529,3 +1529,12 @@ main Model usage未知仍按原政策保留合法领域输出与unknown费用，
 Model 完成后封存该次检索费用证明并释放发送 scope；正式 Session finalization 仍重验原 Source/Memory/输出许可。Narrator Result、Attempt settlement、原唯一领域输出与终结 claim 历史纳入全部子检索收据、Provider 与 index 本地费用；合法自己的 Session revision 推进不会恢复 scope 或重发。检索 usage 未知/Memory 撤回在原更早边界拒 Model 或输出，已付费用保留；主 Model usage 未知仍可保留原合法领域输出但无完整 claim，暖重试与冷读不得重发。
 
 原编译输入的 optional metadata/实现 callback 按原 context_build 的 JSON 数据表示比较，合法 Session projected chat 的省略字段亦按同一表示计算 corpus 摘要；原持久资源、Memory descriptor、Settings 与真实授权摘要继续严格校验，不把任意 callback/JSON 声明当权限。准确验证与源码 HEAD 归同一 Record；其它 Source/Actor、通用图、高风险消费者和完整恢复/释放仍继续，P1–P4/最终 Gate 未通过。
+
+
+### 17.132 原 Project generation writer 的完成许可
+
+原Project完成Model与工具返回的transcript后，由真实producer签发实例私有的一次性completion permit，交给原ProjectAgentService.finishGeneration；JSON副本、其它Agent实例、改transcript或重复消费均拒绝。permit只证明该次真实Model完成、原Source/config/Skill与Task身份，不提供新Model/Tool/Project提交权限，也不进入HTTP/Browser输入。
+
+原Task锁取得后、Studio异步读取结束且mutable Task/cache载入前，消费该permit并重读真实Model完成证明、原生产者Source/Route和实际Skill inventory。原Task载入/恢复之后，实际同步修改对话前再核Task对象、Source executionFingerprint、baseRevision、conversation、原generation attempt/request/calls；原Repository CAS继续保存。恢复/异步间隙中的合法人类Task修改必须保留，旧cache不能在拒绝catch中覆盖新的Task。真实已发生Model费用不退款或重发。
+
+此接口堵住最后Model授权或原writer异步读取期间撤回后先写旧回复的问题，不宣称Task与外部Skill文件系统跨域原子事务。Project原Context仍只消费合法Task/Project/registry/tools和原Skill；没有Session/RP Memory corpus、descriptor或query时不能借其授权接检索。准确FS/SQLite和多轮/Review验证归同一Record；其它消费者/通用图/恢复释放继续，后端与最终Gate仍未完成。
