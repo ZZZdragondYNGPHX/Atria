@@ -1634,3 +1634,23 @@ D4允许由原领域授予明确SourceRef/ResultRef权限；当前真实RP Deleg
 源码 `2325f2a35` 将 §17.138 的 rename-only 限制扩到同一 Project 已有 Actor profile 的 description/personality/scenario，以及已有 assistant initialTimeline 项的 content；ID、role、timeline 元数据、所有其它 Source 字节须保持。已有资源未变可用；混入权限、systemPrompt、模型、运行代码、文件或其它未分类差异，即使原 Review/Validation passed 也拒绝。没有增加风险服务或凭 highImpact=false 授任意 project.save。
 
 原隔离 Review 显示精确 target/field/before/after 及原 Project/Task/baseRevision/Workspace/Review/ChangeSet 绑定，大小使用原可信 Review 字段限制。描述符 changeKind/changeDigest 和 owned pin 冻结这些原数据。原账户再认证、fresh R2 一次批准、Source/Review/hash、原Task银行两项local费、Studio writer/Git CAS/DomainReceipt、typed Result/OutputClaim与cold只读保持。实际 Package/Session 消费及各Engine证据见同一Record；没有把其它 Project 结构区推导为支持。
+
+### 同一 Scheduler 的真实 Fanout / Join
+
+源码 `83f4d6a03` 的明确 RP profile 为一个 entry Fanout → 至少两个独立 owned Model Agent → all-success Join → 唯一 Narrator → output。每个分支独立私有 capture、Attempt、Effect 与 Result，共用原 Root 银行；支线间不读取彼此结果。原 FanoutFrame 冻结成员/并发/父预算，原 JoinReceipt 及 settlement 是 Narrator 的唯一控制前置；不能以普通串行 Agent 多输入冒充 Join。
+
+原 NativeTaskScheduler 的 resource fanout 和单 child handoff 复用同一队列/permits；passive 父让出资源槽，分组并发取原 Plan/Run 上限，忽略取消的真实 worker settle 前仍持 permit。同 Root activate/prepare、ready/claim 和 observation 沿原 SourceControl 短临界区；HTTP 不持锁，CAS 不削弱。首版等待实际全组结算，才接 Narrator 与单 Chat；只按实际策略核销，不据此宣称其它冻结 Join 策略完成。
+
+unknown usage 保留原费用，可有合法 Join/Narrator/Chat 但无终结 claim。撤权/取消拒后继及正式输出，已费不退款。冷 reader 核原 Frame/barrier/Join、分支 Model/Result、控制 command、边计数与 typed traversal，不产生新授权。原 Evolution IPC worker仍串行，费用前拒Fanout/Join，不从发布成功推导 worker 支持；两个新profile/reader计入原evaluator源码指纹。其它策略在同一原控制机制持续实施，准确版本只见同一Record。
+
+### 明确 Model 拒绝与未消费响应的事实
+
+源码 `269fe16a3` 在原 HTTP adapter 的实际拒绝点保存仅含数字状态/规范 usage 的进程内事件；Host 将真实 send 的最终原 error 绑定实际 receiver、Engine/boot/handle、compiled sends 和原 fee refs。不能凭 error.code、ProviderFailure 类名、任意 error.usage 或重新拼 JSON 取得证明。原 Project 合法 scoped receiver 仍可用，不依赖只能由直接 class instance 持有的私有字段。所有发送均确证 HTTP 拒绝时，ModelPort 才可逐原 ordinal/银行核验并保存 `failed` observation；其中缺 usage 仍保留 unknown，费用 `closed:false`，不会伪退款或抹掉上界。混合拒绝→transport/timeout、解析失败或未知提交不冒充全部明确失败。
+
+实际规范化响应在原 Source/Context 撤权后被拒绝消费，可保存 `confirmed` 的 `generation_response_not_consumed` 事实，只含 response/snapshot hash 和原发送/费用 refs；没有正文、正常 Model completion 或 Result 品牌。旧 `generation_response_validated` reader 不接收此类证明，后继不能借它发布/读取 Result。既存 Result 的授权、source/currentness 和接收方复验保持。
+
+`readModelTerminalFact` 只读受保护历史元数据，不给费用 closed 或接收权限；`readModelTerminalReceipt` 必须提供原 BudgetPort 并核每笔实际银行，closed 只表示费用事实；`readModelFailureReceipt` 只收明确拒绝。Receipt ACK未知按原Effect/observation身份查询保存事实，无原receipt则保持未知，不重发。业务 Attempt/Join 结算仍由原消费者独立验证，不塞入 ModelPort。准确四Engine和相邻Provider/Project证据归同一Record。
+
+### 原 Project 历史费用观察
+
+源码 `74c112e84` 的原 ProjectAgent.observeCompute 只读取原 TaskRepository、严格 Task schema 和原银行行并 clone 返回，不通过 _observe 重排 Studio writer/cache。它供已有Source锁中的历史费用核对，避免真实自锁；新准入、原账户/Project/Task当前性、修改和收费仍由各原 authority 检查，历史数字不是新执行权。同一三轮Model Task→Review→批准→Commit→Package/Session四Engine证据见Record，原预算和所有已费不重置。
