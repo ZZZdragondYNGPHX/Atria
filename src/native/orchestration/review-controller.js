@@ -5,6 +5,7 @@ import { assertObject, assertDigest, assertToken } from '../../../public/shared/
 import { controlCommandId, controlRecordKey, graphReachable, readAttempt, assertAttemptCurrent, readAttemptInvalidation, attemptInvalidationId, graphReviewReceiptId, readReviewAdmission } from './controller-common.js';
 import { readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
+import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 
 const deny = code => { throw new ConflictError(code); };
 export const reviewReceiptId = graphReviewReceiptId;
@@ -69,10 +70,22 @@ export class ReviewController {
                     if (!SETTLED_ATTEMPT_STATUSES.includes(attempt.status)) deny('native_orchestration_review_active_dependency');
                     await assertAttemptCurrent(tx, handle, root, attempt);
                     await readAttemptSettlement(tx, handle, root, attempt);
-                    for (const effectId of attempt.effectRefs) {
-                        const { doc: effect } = await readEffect(tx, handle, root, effectId);
+                    const effects = [];
+                    for (const effectId of attempt.effectRefs) effects.push((await readEffect(tx, handle, root, effectId)).doc);
+                    // Only completed, independently metered original Context retrieval
+                    // can accompany redoable Model work. A capability label is insufficient.
+                    let retrieval = [];
+                    if (effects.some(effect => effect.capability === 'memory.retrieve')) {
+                        try { retrieval = await readContextRetrievalCompletions(tx, handle, root, effects[0], attempt); } catch (error) {
+                            if (error instanceof TypeError) deny('native_orchestration_review_irreversible_dependency');
+                            throw error;
+                        }
+                    }
+                    const retrievalIds = new Set(retrieval.map(item => item.effectId));
+                    for (const effect of effects) {
+                        const effectId = effect.effectId;
                         if (root.pendingEffectRefs.includes(effectId) || !['confirmed', 'failed', 'not_dispatched'].includes(effect.status)
-                            || effect.status !== 'not_dispatched' && (effect.capability !== 'generation.send' || effect.risk !== 'R1' || effect.requiresApproval))
+                            || effect.status !== 'not_dispatched' && (effect.capability !== 'generation.send' && !retrievalIds.has(effectId) || effect.risk !== 'R1' || effect.requiresApproval))
                             deny('native_orchestration_review_irreversible_dependency');
                     }
                     invalidated.push(attempt.attemptId);

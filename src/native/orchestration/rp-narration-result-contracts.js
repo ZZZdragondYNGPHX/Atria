@@ -187,5 +187,5 @@ export async function readRpNarrationResult(tx, handle, root) {
         if (!reviewed) invalid(); reviewCompletions.push(reviewed);
     }
     if (reviewCompletions.length && !input.reviewReceiptRef || root.graph.nodes.some(node => node.kind === 'judge') && !judgeCompletion) invalid();
-    return { record, receipt, settlement, producer, graphResults, reviewCompletions, judgeCompletion, retrievalCompletions: [...graphResults.flatMap(item => item.retrievalCompletions), ...(judgeCompletion?.retrievalCompletions ?? []), ...retrievalCompletions] };
+    return { record, receipt, settlement, producer, graphResults, reviewCompletions, judgeCompletion, retrievalCompletions: [...graphResults.flatMap(item => item.retrievalCompletions), ...reviewCompletions.flatMap(item => item.retrievalCompletions), ...(judgeCompletion?.retrievalCompletions ?? []), ...retrievalCompletions] };
 }

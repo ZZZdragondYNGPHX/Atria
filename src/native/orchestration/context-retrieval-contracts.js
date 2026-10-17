@@ -8,6 +8,7 @@ import { controlRecordKey } from './controller-common.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { rpAgentGraphProfile } from './rp-agent-graph-profile.js';
 import { rpJudgeProfile } from './rp-judge-profile.js';
+import { rpReviewProfile } from './rp-review-profile.js';
 import { sendAttemptId } from './budget-port.js';
 
 const equal = (a, b) => hash(a) === hash(b);
@@ -38,7 +39,7 @@ export async function readContextRetrievalCompletions(tx, handle, root, parent, 
         || parent.nodeAttemptId !== producer.attemptId || parent.capability !== 'generation.send') invalid();
     const plan = await readPlanRevision(tx, handle, root.planRef), node = plan.definition.nodes.find(node => node.nodeId === producer.nodeId);
     if (!equal(plan.definition, root.graph) || !node?.capabilities.includes('memory.retrieve')
-        || root.graph.nodes.length !== 2 && !rpJudgeProfile(plan) && !rpAgentGraphProfile(plan)) invalid();
+        || root.graph.nodes.length !== 2 && !rpJudgeProfile(plan) && !rpReviewProfile(plan) && !rpAgentGraphProfile(plan)) invalid();
     const completed = [];
     const modelReceiptId = 'oreceipt_' + hash({ effectId: parent.effectId, observationId: 'model.completed:' + parent.effectId }).slice(0, 32);
     const modelReceipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', modelReceiptId)))?.doc;

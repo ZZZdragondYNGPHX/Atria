@@ -134,12 +134,12 @@ describe.each(CONTRACT_HARNESSES)('$name durable graph Review and local rerun', 
         const saved = await current(), replay = await reviews.decide(h.handle, input);
         expect(replay.replayed).toBe(true); expect(saved.progress.reviews).toBe(1); expect(await current()).toEqual(saved);
     });
-    test.each(['domain-write', 'unknown-send', 'approval-required'])('%s dependency cannot be locally rerun or erased', async problem => {
+    test.each(['domain-write', 'unknown-send', 'approval-required', 'memory-label'])('%s dependency cannot be locally rerun or erased', async problem => {
         const root = await current(), effectId = id('Effect');
         const effect = { schemaVersion: 1, runId, effectId, nodeAttemptId: ra, epoch: root.epoch, graphRevision: root.graphRevision,
             hostBootId: root.hostBootId, hostGeneration: root.hostGeneration, sourceBindingDigest: root.sourceBinding.bindingDigest,
             actionRef: { kind: 'controlled-test-effect' }, targetRef: { id: 'original-target' }, inputRef: { id: 'original-input' }, inputHash: hash([]),
-            capability: problem === 'domain-write' ? 'world.write' : 'generation.send', endpointBindingDigest: hash([]), grantDigest: hash([]),
+            capability: problem === 'domain-write' ? 'world.write' : problem === 'memory-label' ? 'memory.retrieve' : 'generation.send', endpointBindingDigest: hash([]), grantDigest: hash([]),
             risk: problem === 'approval-required' ? 'R3' : problem === 'domain-write' ? 'R2' : 'R1', egressDigest: hash([]), budgetEnvelopeDigest: hash([]),
             dispatchPolicy: { idempotency: 'none', operationKey: null, reconcile: 'manual' }, requiresApproval: problem === 'approval-required',
             approvalRef: null, budgetAttemptRef: { authorityRef: root.budgetAuthorityRef, charged: 'retained' }, status: problem === 'unknown-send' ? 'unknown' : 'confirmed', dispatchToken: null, createdAt: clock };

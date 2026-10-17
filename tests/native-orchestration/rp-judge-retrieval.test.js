@@ -1,6 +1,7 @@
 import { jest } from '@jest/globals';
 import { contextRetrievalFixture } from './helpers/context-retrieval-fixture.js';
 import { configureJudge } from './helpers/rp-judge-fixture.js';
+import { configureControlRetrieval } from './helpers/rp-control-retrieval-fixture.js';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 import { hashNativeDocument as hash, putMutable } from '../../src/native/repositories/common.js';
 import { readRpOutput } from '../../src/native/orchestration/rp-output-contracts.js';
@@ -18,19 +19,7 @@ const responsePayload = (_body, ordinal) => ['CANDIDATE_A_PRIVATE_TEXT', 'CANDID
 const setup = (make, options = {}) => contextRetrievalFixture(make, { embedding: true, responsePayload, ...options,
     afterPlan: async (plan, args) => {
         await configureJudge(plan, args);
-        const pins = plan.dependencyPins.filter(pin => pin.port === 'context').map(pin => pin.pinId);
-        for (const node of plan.definition.nodes.filter(node => node.kind !== 'output')) {
-            node.capabilities = ['generation.send', 'memory.retrieve'];
-            node.dependencyPinIds = [...new Set([...node.dependencyPinIds, ...pins])];
-        }
-        plan.definition.capabilityCeiling.push('memory.retrieve');
-        for (const pin of plan.dependencyPins.filter(pin => pin.port === 'model')) {
-            const route = await args.host.persistence.getRuntimeRoute(args.h.handle, pin.resourceRef.runtimeRouteId);
-            await args.host.persistence.saveRuntimeRoute(args.h.handle, { ...route, executionPolicy: { ...route.executionPolicy,
-                computeBudget: { ...route.executionPolicy.computeBudget, maxRequests: 16,
-                    localWork: { ...route.executionPolicy.computeBudget.localWork, maxJobs: 48 } } } });
-            pin.integrity = hash(await args.host.persistence.getRuntimeRoute(args.h.handle, route.runtimeRouteId));
-        }
+        await configureControlRetrieval(plan, args);
     } });
 const rootOf = f => f.h.engine.withTransaction(f.h.handle, async tx => (await tx.listResources({ kind: K.orchestrationRun, handle: f.h.handle }))[0].doc);
 const bankOf = async f => Object.values((await f.control.status(f.h.handle, f.controlId)).operations)[0].compute;
