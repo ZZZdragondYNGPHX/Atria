@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · Candidate Design & Discussion Agenda
 
-- 状态：**Draft（W1–W17 的 B 总体方向均已获用户认可，W18 具体 ID/ABI/Schema/硬切方法、全量 E0 和正式开发仍未获批准）**。各旧章节保留当时选型的讨论历史，以最新决议和 index 为当前权威。
-- 当前讨论轮次：W18 — Subject/Participant/Perspective/Fact/EffectiveWorld 最小类型与生产消费者硬切矩阵（见 [e0-minimal-contract-cutover.md](e0-minimal-contract-cutover.md)）。
+- 状态：**Draft（W1–W18 的 B 总体方向已获用户确认；W19 物理 Subject/Fact/双时间与 Gate 0 路线、全量 E0 和开发仍未批准）**。早期选型保留历史，现行决议以后续明确记录与 index 为准。
+- 当前讨论轮次：W19 — Session 原生主体/事实转换的最小物理表示、按 Revision/GameTick 的授权查询和 Gate 0 消费者收口（见 [e0-gate0-physical-contracts.md](e0-gate0-physical-contracts.md)）。
 - 入口：[index.md](index.md)；材料：[research.md](research.md)
 
 ## 1. 问题的正确切分
@@ -858,3 +858,35 @@ W17 详细 Source/Owner/Receipt/Read-Projections/Context Binding/候选 ABI、�
 - W18-C：为旧/新全部 ID 造万能 SubjectAdapter，长期保持新旧语义混合，与 W12/W16 已确认的单权威冲突。
 
 **E0-01～09 仍 PARTIAL / BLOCKED**。以上均为 GitHub 静态代码审查及 docs 文档调整，没有运行 CI、Node、浏览器或 Windows/CachyOS/Termux 实测，未修改 `main` 或开发分支。若用户后续选择 W18-B，下一阶段应转为真正的 Gate 0 最终消费者/字段 cutover 审计与通用有效期合约验证，不无限延长抽象架构讨论。
+
+
+---
+
+## 26. S20 · W18-B 确认与 W19 Gate 0 最小物理/历史查询收口（2026-10-17）
+
+### 26.1 用户确认 W18-B（总体架构方向，非物理 API 冻结）
+
+用户对上一轮推荐 **W18-B「差异最小的 Typed ABI + 实际消费者验收驱动硬切」**明确回复「认同」。因此 W1-B～W18-B 为已确认总体方向，重点是：**Subject/Participant/Expression/Perspective/DurableFact/EffectiveRead 的语义分离 + 原生单 Domain Authority + 以实际消费接口差异和可信验收为依据的硬切**。不因架构概念数量而增加同等数量的数据库、服务或 ID family；只有对照现有版本证明缺口才能添加。
+
+W18-B 不是批准具体 `subject_*`、`participantRef`、FactKey/valid-time 字段、Command 或 Host ABI、旧生产代码删除，也不代表 E0-01～09、三端真实验收或正式开发已获批准。
+
+### 26.2 W19：对原生物理数据和通用 as-of 查询的更具体核对
+
+本轮冻结的 `main=c57fada6edeea255b29d857ba2585c1dbc9c098b` 与 Orchestration V3/Prompt/Visual 分支 HEAD 未改变；定向源码审读新增了：
+
+- `SessionCore.initialWorldState` 支持 `worlds[worldId].{worldRevisionId,state}`、多 World/可选 primary 和 Worldless `initialState`。正式动态主体不可天然等同某一书籍的名称或作者 Actor 模板。
+- `atri_game_runtime.events` 当前 Event 具有 branch/sequence/type/payload 和可选 meta，`commitEvents` 将其与 World State 一起提交；`_publishLocked` 的 Action Receipt 在合格情形下记录 `committedRevisionId/branchId/eventRefs`。**Event payload 并未证明已经有通用 FactKey、游戏有效期、最终修订和来源的可查询联接**。
+- 在 `authority-first` 环境，`SessionCore.applyRuntimeCommit` 明确阻止对 `atri_world_state / atri_game_runtime` 的不合法 Raw Patch，抛出 `native_authority_typed_publication_required`。**该权限边界应保留**；不能以“补一个开放世界写 API”为名绕过原生领域准备/提交。
+- `atri_lifecycle.history.facts/heads` 现有特定领域 `key/value/tick/eventId/previousId` 的结构与来源，`queryHistory` 仅接受 `kind/facet/value/id/limit/cursor/memory`，并将 Cursor 锚定当前 Snapshot Revision。不能声称已提供任意 `asOfGameTick/asKnownRevision` 的通用查询；应先查询准确旧 Revision，再在合法的 Domain facts/transitions 上按 GameTick 判有效。
+- `state-delta.js` 已经为 `atri_world_state` 提供 Snapshot/Delta 与深度控制。其存在不等于旧 Revision 永久保留，也不能仅靠二进制差分猜测某条事实的客观有效期或某 NPC 何时得知。
+- `src/endpoints/native-session.js → SessionCore.applyRuntimeCommit`、`experience/logic/runtime.js → world/session.commitEvents → session-runtime.commitStatePatch`、`authority-transaction.js → SessionCore publication` 等实际生产符号路径已定位，但由于尚未穷尽动态插件/集成分支的完整调用图，**E0-06 仍是 PARTIAL/OPEN**。
+
+W19 的物理候选、查询算法轮廓、真实调用边界、Gate 0 和实施后 Gate 1～4 的区别均只在 [e0-gate0-physical-contracts.md](e0-gate0-physical-contracts.md) 维护。特别注意**开发前 Gate 0 要求可实施的 ABI/Owner/Consumer/删除及测试计划，而尚未编写的新功能的 Node/CI/三端实测只能在正式实施后完成**；不能陷入“要求先实测未实现功能才可写代码”的逻辑循环。
+
+### 26.3 W19 待议方向
+
+- W19-A：依赖 Snapshot/聊天/HCM 与 LLM 自然语言追忆全部历史，不保留足够稳定的 Fact/Subject 转换；便宜但无法可靠给出 W13 双时间和 W14 事实适用性。
+- **W19-B：Session 原生最小 Subject + 来源型 Fact Transition / Revision-Tick 双锚查询 + Gate 0 证据收口（本轮推荐，尚未获用户批准）**：有条件复用已有 Session State/Events/Receipts/History，必要时仅补稳定主体/事实转换记录，以 `asKnownRevision → asOfGameTick → AuthorizedAudience` 计算有效投影；旧 History 不承担未经声明的万能数据库职责。
+- W19-C：另建完整通用 Bitemporal EventStore，与 Native Session 双写异步协调，不符合单权威/轻量 Dev 原生硬切。
+
+W19 仍为用户待选方案；本阶段未修改 `main` 或其它代码分支，未运行测试/CI/Windows/CachyOS/Android Termux，E0-01～09 仍 PARTIAL / BLOCKED。用户若选择 W19 后，下一轮应评估 Gate 0 是否已具备可执行交接条件，以及最终物理字段/Owner/Consumer 的剩余最小阻塞，不继续平行扩建架构。
