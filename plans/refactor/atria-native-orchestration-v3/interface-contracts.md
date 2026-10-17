@@ -1432,3 +1432,16 @@ index_list/index_delete/index_insert/index_query本地工作在同一原Model ba
 Result/Narrator settlement/唯一Chat费用闭包核对全部Embedding及Rerank子收据；历史reader核对各原pin/profile mode/parent和原银行，冷启动或Source删除只读历史，重hash mode/profile不恢复scope。生产者结束释放私有内存持有，持久费用和unknown事实保留。原Source Memory没有写入副作用。
 
 FS/SQLite合成消费者和实际原嵌入API的插入/查询两次调用已验证到Root completed，Model为localhost合成；准确费用、测试与源码HEAD归同一Record。此项不是完整真实Chat/质量/价格结论；静态/控制/动态图、其它Source/Actor、evaluator检索RPC和完整恢复/释放继续，P1–P4/最终Gate仍NOT_READY。
+
+
+### 17.123 原隔离 RP 检索与父 Host 费用通道
+
+原fixed evaluator worker可为§17.122支持的单Narrator RP读取冻结的owned exact Retrieval Profiles和原Memory settings；这些配置不含生产Memory或Secret。无memory.retrieve时仍复制存在的原Memory配置，不能通过在隔离环境关掉全局检索伪造target_consumed。私有fixture Memory只由公开/封存fixture的合法visible history，经原Chat/Provenance/原MemoryAuthority构建，不读生产Source；不是独立质量资料或生产记忆正确性的替代证明。
+
+worker继续使用原Native Host、ContextPort、私有ContextRetrievalPort、原Effect/原RP bank和物理索引；仅原server composition可提供检索transport，JSON/HTTP无此配置。原协议完成真实scope/beforeSend准入后，受限RPC只携带原exact ref/integrity、Effect身份、最终POST/输入及hash，不传Secret/header。父Host核对冻结Profile/settings、字段和有界正文、当前原存储、fresh/cancel与无ambient transaction，再沿原Evolution repository先耐久reserve、解析原Secret并调用同一原Embedding/Rerank协议。原job+scope+child Effect稳定身份防止RPC换arm/trial后重发；不会把重复admission当新send许可。
+
+父Host只返回已校验数值向量/排序结果和标准已报告token计数，Provider附带usage字段不跨入worker。usage缺失或只报告部分计数仍未知，保留原上界；准入/结算ACK未知、原配置撤回/取消或失败时不返回可消费响应，不重发。实际发生费用在原Evolution账本保留；最后settlement await之后再复验。worker再经原协议和原本地bank/Effect观察、Result/唯一Chat闭包，不能用父端成功绕过本地当前性。原固定loader禁止worker直接node-fetch，global fetch原拒绝保持；实际网络与Secret只在父Host。
+
+所有实际检索Provider费用归原baseline/candidate arm/trial，与原Model和独立pair Judge一起进入report/原owner ledger；没有新增第二评测收费权威。现有确认的Model price不定价Embedding/Rerank，检索cost维持null，因此不能通过价格/晋升Gate。原稀疏Rerank策略保持：fixture无竞争因果来源时不为了证明端点而强制发送；独立父端Rerank协议/费用测试与worker真实Embedding证据分开记。
+
+本组为FS/SQLite与localhost合成验证，没有新增真实API调用，也不升级历史synthetic fixture的independence。Delegate、含检索的控制/通用图、其它Source/Actor及完整恢复/释放继续按原拒绝边界处理；P1–P4/最终Gate仍NOT_READY，不交前端/main、不结束分支。
