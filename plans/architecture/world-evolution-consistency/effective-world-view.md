@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · W14 Effective World View、World/Knowledge 创作与上下文一致性（讨论草案）
 
 - Task ID：`ARCH-DWE-01`；Primary Workspace：`docs`；[唯一 Plan](index.md) / [总设计](design.md) / [W13 世界时态](event-temporality-branch.md) / [唯一 Record](../../../records/architecture/world-evolution-consistency.md)。
-- **状态：Draft**。W1-B 至 W13-B 已获用户确认的是顶层架构方向；W14-A/B/C、具体 Projection API、Context Compiler/Library/Studio/Play 交互与实施阶段均**尚未确认**。本模块只是同一 Plan Bundle 的新一轮研究，不修改 `main`、不创建实现分支。
+- **状态：Draft**。W1-B 至 W14-B 的总体方向均已获用户确认；具体 Effective World View、Source Claim、Context Compiler/Library/Studio/Play API/UX、完整 E0 和实施仍待讨论。§8 是此前的选型比较，W14-B 正式确认见 §10。本模块仍属同一 Plan Bundle；不修改 `main`、不创建实现分支。
 - **W14 主问题**：WorldRevision 与 Knowledge Source 是静态的，但 Canonical Subject/事实/社会关系不断变化。怎样为指定 `Session + Branch + Revision + GameTick + Audience` 计算**有效世界视图（Effective World View）**，然后让 Prompt/Library/Studio/Play 只消费适用的事实与资料，并解释为何某条旧资料不能继续被当作当前事实？
 
 ## 1. 必须区分“固定作者资料”中的五种语义
@@ -162,3 +162,16 @@ Pinned PackageVersion / WorldRevision(s) / KnowledgeRevision(s)
 若用户确认 W14 的总体方向，下一轮建议正式按`World / Knowledge / Native Runtime / Cognition / Context / Library- Studio-Play`收敛剩余的**Owner/Contract/Consumer/Deletion/Acceptance Gates**，同时核查其他并行开发项目/Native Orchestration V3 的真实 HEAD；列阻塞与实施顺序，避免只靠几轮方向选型就宣布全部可开工。完整方案定稿/创建实现分支/修改 main 仍须用户明确批准。
 
 **状态继续 Draft。** 每轮更新同一 Plan Bundle 和唯一 Record；本阶段不改动产品代码、不执行全量 CI 或三端测试。
+
+## 10. W14-B 用户确认（2026-10-17）
+
+用户对上一轮推荐的 **W14-B「Effective World View First + Claim/Source-Aware Context」**答复「认同」，将其记为已确认的**总体设计方向**。当前 W1-B 至 W14-B 均已获得用户的路线认可；**不代表全案 Final、具体 ABI 已冻结或已授权产品代码开发**。
+
+- **事实/来源先分语义**：固定的 Hard Law、可变 Initial State、Native 当前事实、Historical Fact、文献/谣言的 Source Claim 和私人 Actor Belief 分开；普通动态新事实不能用提示词 Rank 违反高约束规则，旧起点声明也不能因被关键词命中而覆盖已提交的后续有效状态。
+- **Host-owned 只读有效视图**：由当前 Session/Branch/Revision/GameTick/World scope/获授权的 Audience/Perspective 结合固定 WorldRevision、正式 World State/Event/History 生成相关当前/历史/法则/未决资料的合法投影；不另建一份可写 World Truth/Effective State DB。
+- **Source/Claim-aware 上下文**：Knowledge/HCM 保留自由文本为一等入口，但重要可变声明需要受控关联 Subject/事实来源与有效期；已过期文本可以转为历史/证据，不再无条件等同“当前事实”。来源授权过滤优先于检索、摘要和 Token 筛选；不让 Narrator 的内部真相泄漏给玩家/NPC。
+- **已有代码能力须复用**：`knowledge-runtime.js` 中 rank/状态条件/排他组、`state-conditions.js` 三态校验、`context-compiler.js` 分 lane 预算和 SourceRefs 可以继续使用；但不把排名高低冒充自然语言语义纠错器，不靠 LLM 每轮自由重写世界书。
+- **Library / Studio / Play**：固定作者资源、场景/EntryPoint 装配及真实 Session 动态世界应共享合法 Effective View/Inspector 概念；保留自由文本和未来整体前端重构的视觉主权，不要求普通作者手工维护庞大的实体/ID 图。
+- **未批准事项**：完整 Source Claim 绑定 Schema、FactKey/valid-time、Host 投影和缓存 API、旧 Knowledge 激活清退范围、上下文必需事实/预算、UI 的详细控件/授权差异、真实 E0 Consumer Census 与 Windows/CachyOS/Termux 验收。
+
+**W15 下一轮**进入同一 Plan Bundle 的 [e0-final-closure.md](e0-final-closure.md)，进一步核对 World/Knowledge/Session/Event/Actor/HCM/Context/Studio/Play 各方 Source-of-Truth、Contract、真正 Consumer、目标/删除路径和验收阻塞，形成可转交正式实施的 E0 检查清单。W15 的候选路线未获用户批准；完整 Plan 仍为 Draft。
