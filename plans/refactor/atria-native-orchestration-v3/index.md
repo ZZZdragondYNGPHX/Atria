@@ -2,7 +2,7 @@
 
 > **唯一入口**。Task ID：`refactor/atria-native-orchestration-v3`。Primary Workspace：`main`（未来实现）；实现使用同一任务分支 `refactor/atria-native-orchestration-v3`，企划/Record继续在长期 `docs` 工作空间。规则只引用 [Repository Governance](../../../README.md)，不在本 Plan 复制执行规则。
 
-2026-10-17 当前已提交源码 `581dc9f44`；P3端口生产链、明确失败/未消费响应、all-success真并发及同一付费Project Task正式提交已取得分次四Engine证据。P3共享Result/Source末版矩阵已核销，P3 Gate=PASS；其它冻结Join策略与Session失败终结按P2/P4消费者继续。后端首次交接与最终产品验收均未通过。当前能力与剩余清单只读 [acceptance-matrix](acceptance-matrix.md)，收敛范围和停止条件只读 [实施方案 §6](implementation-plan.md#6-p3-收敛边界与结束条件)，精确提交和分次验证归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。不以累计工作组衡量完成度。
+2026-10-17 后端源码冻结于 `01ef2053b`；P3 Gate=PASS，P1–P4后端首次交接Gate=READY_FOR_P5。五种Join/partial、Session失败终结与真实SQL检索目录缺口均已完成必要验证；最后SQL Join/Fanout36项与检索正常/失败4项通过。最终产品Gate仍NOT_READY，下一阶段由Claude Code完成P5前端与组装，再回交Codex执行P6及最终验证。当前能力与剩余项只读 [acceptance-matrix](acceptance-matrix.md)，范围与停止条件只读 [实施方案 §6](implementation-plan.md#6-p3-收敛边界与结束条件)，精确提交、失败与分次证据归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。
 
 - 创建/调研日期：2026-10-15。
 - 第一轮状态：**D1 已定案：方案 B（原生 Orchestration V3）**。
@@ -16,7 +16,7 @@
 - 第八轮状态：**D8 已冻结：U2 Graph Canvas + Inspector 双向编辑、原生 Plan Draft/Validate/Publish、运行 Timeline 默认/Graph 切换、Host RunProjection/Diagnostics、可信审批及 PC/移动等价编辑能力**。
 - 第九轮状态：**D9=E1，E0_DESIGN_READY。用户已于2026-10-15明确授权正式开发；同一实现分支已从当时最新main建立，P1/P2/P3均有局部实证，完整Gate未通过。P1–P8产品证据逐组取得，未测项仍NOT_RUN/BLOCKED。**
 - 文档性质：冻结设计与实施路由；开发已获授权。实际代码/测试/提交状态只归同一Record；最终验收通过后才集成main。
-- 当前仍为 Codex 后端阶段；换机 HANDOFF 已消费。执行分工和两次交接只归 [实施方案 §2](implementation-plan.md#2-执行分工与两次交接)，实际接口归 [backend-integration](backend-integration.md)，当前 Gate 只归 [acceptance-matrix](acceptance-matrix.md)。
+- Codex后端首次交接已就绪；换机HANDOFF已消费，不重写为当前状态。执行分工和两次交接只归 [实施方案 §2](implementation-plan.md#2-执行分工与两次交接)，实际接口归 [backend-integration](backend-integration.md)，当前 Gate 只归 [acceptance-matrix](acceptance-matrix.md)。
 - 外部技术参照核对日期：2026-10-15；只对比模式和契约，不宣称框架直接兼容 Atria。
 
 ## 目标与现状
@@ -78,6 +78,6 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 
 ## E1 当前执行入口
 
-E0_DESIGN=DESIGN_READY；DEVELOPMENT_AUTHORIZATION=AUTHORIZED。P3已按版本核销；P1/P2/P4后端整体交接尚未核销，P5–P8 未开始；当前持续推进已明确的P2/P4消费者闭环。后端接口快照见 [backend-integration](backend-integration.md)，Gate 与真实缺口只见 [acceptance-matrix](acceptance-matrix.md)，不在入口累积重复历史状态。
+E0_DESIGN=DESIGN_READY；DEVELOPMENT_AUTHORIZATION=AUTHORIZED。源码`01ef2053b`的P1–P4后端范围READY_FOR_P5，P3已核销；P5–P8未开始，最终产品Gate未通过。后端接口见 [backend-integration](backend-integration.md)，当前Gate与后续项只见 [acceptance-matrix](acceptance-matrix.md)，不在入口累积重复历史状态。
 
 执行顺序：**Codex 完成后端 → Claude Code 完成前端与组装 → Codex 做 P6 硬切、清退与最终验证**，详情只归 [实施分工](implementation-plan.md#2-执行分工与两次交接)。当前不提前前端、P6、合 main 或结束分支。阶段核销不是自动停止点，执行与真实阻塞统一遵循 Repository Governance。

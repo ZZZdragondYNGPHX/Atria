@@ -1641,7 +1641,7 @@ D4允许由原领域授予明确SourceRef/ResultRef权限；当前真实RP Deleg
 
 原 NativeTaskScheduler 的 resource fanout 和单 child handoff 复用同一队列/permits；passive 父让出资源槽，分组并发取原 Plan/Run 上限，忽略取消的真实 worker settle 前仍持 permit。同 Root activate/prepare、ready/claim 和 observation 沿原 SourceControl 短临界区；HTTP 不持锁，CAS 不削弱。首版等待实际全组结算，才接 Narrator 与单 Chat；只按实际策略核销，不据此宣称其它冻结 Join 策略完成。
 
-unknown usage 保留原费用，可有合法 Join/Narrator/Chat 但无终结 claim。撤权/取消拒后继及正式输出，已费不退款。冷 reader 核原 Frame/barrier/Join、分支 Model/Result、控制 command、边计数与 typed traversal，不产生新授权。原 Evolution IPC worker仍串行，费用前拒Fanout/Join，不从发布成功推导 worker 支持；两个新profile/reader计入原evaluator源码指纹。其它策略在同一原控制机制持续实施，准确版本只见同一Record。
+unknown usage 保留原费用，可有合法 Join/Narrator/Chat 但无终结 claim。撤权/取消拒后继及正式输出，已费不退款。冷 reader 核原 Frame/barrier/Join、分支 Model/Result、控制 command、边计数与 typed traversal，不产生新授权。原 Evolution IPC worker仍串行，费用前拒Fanout/Join，不从发布成功推导 worker 支持；两个新profile/reader计入原evaluator源码指纹。其它策略在同一原控制机制接线，准确版本与最终核销只见同一Record。
 
 ### 明确 Model 拒绝与未消费响应的事实
 
@@ -1654,3 +1654,21 @@ unknown usage 保留原费用，可有合法 Join/Narrator/Chat 但无终结 cla
 ### 原 Project 历史费用观察
 
 源码 `74c112e84` 的原 ProjectAgent.observeCompute 只读取原 TaskRepository、严格 Task schema 和原银行行并 clone 返回，不通过 _observe 重排 Studio writer/cache。它供已有Source锁中的历史费用核对，避免真实自锁；新准入、原账户/Project/Task当前性、修改和收费仍由各原 authority 检查，历史数字不是新执行权。同一三轮Model Task→Review→批准→Commit→Package/Session四Engine证据见Record，原预算和所有已费不重置。
+
+### Session Model 失败的正式消费者
+
+原 NativeNarratorOrchestrationAuthority 在 Resolver/Narrator 的私有scope释放前，消费同一ModelPort实际terminal receipt。只有原明确HTTP拒绝证明可结算原Attempt.failed；必须核原run/attempt/effect/decision、Source与银行、全部实际Model和owned Context检索费用收据。失败不生成正常Model completion、Result、OutputClaim或Session/World提交。Resolver已完成而Narrator失败时，原Resolver事实与费用保留，选定动作不因此执行。
+
+原注册的graph.execution.fail写原Run耐久失败事实：所有实际Effect终结且费用closed才Root.failed；明确失败但费用unknown保留Attempt.failed/Root.reconciling；提交unknown保持Effect.dispatching、Attempt.blocked及pendingEffectRefs。取消不被覆写，人类Source编辑保留，不因失败取得新grant或重发。Context检索历史reader仅以严格Model terminal fact补足失败场景的原时间边界；正常Result消费者仍要求正常Model completion，不把失败提升为正文许可。准确源码与验证归同一Record。
+
+### 同一 Join 的 early-close、partial 与费用闭包
+
+原JoinController与冷reader共用同一个纯策略计算，基于冻结成员及持久settlement顺序结算all-success/all-settled/any-success/count-quorum/deadline。fail_fast仅停止后续派发并取消实际尚未发送的成员，不撤销已发HTTP或退款；原AttemptController.cancelPending必须证明同一Frame、当前epoch/Source/银行、pending/reserved且无startedAt/Effect/Result，以及原fail_fast失败收据或原Join excluded决定。复用已注册attempt.settle，不授GraphPatch或任意取消能力。
+
+原Scheduler的被动Join决定不占Model slot，也不铸造Model boundary；结算后Narrator重新取得实际permit。早关门时只使用不可变Join接受的Results，第三queued成员可不发送；已运行且未采纳的worker保留其permit、原Effect、真实Result和全部费用，不能修改旧Join或Narrator输入。正式Chat writer前原父任务让出slot并等该组实际worker终结，不留下Root completed后的秘密后台任务。deadline即使全部worker早完成仍等原冻结cutoff。
+
+partial仅授精确owned RP Fanout/Join正式输出profile，实际Join outcome逐层进入Narrator Attempt/Result envelope/Root身份；ordinary RP、Session或任意图不会因allowPartial=true获权。已知费用闭合可正式partial；任何未采纳/late Model费用unknown或提交unknown均保留原pending_output、占用与pending Effect，没有终结OutputClaim。冷reader复核原cutoff/成员/选中与排除/后到事实，不重新选择、不重发。
+
+### 各 Engine 的原 Context 检索目录
+
+ContextRetrievalPort的index路径与Secret读取只向原NativeHostLifecycle.directoriesForHandle请求目录，不依赖FS/SQLite Engine私有字段。该只读accessor要求原Host active、handle已有原fence，并保留paused/blocked/privateHandle/closed拒绝，返回原配置冻结浅副本；不新建Fence、准入、权限或目录服务。MySQL/PG与文件Engine复用同一原目录authority，原Secret/Endpoint、Memory audience、Source、额度与费用收据检查不变。

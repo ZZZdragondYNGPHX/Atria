@@ -4,7 +4,7 @@
 
 ## 当前收敛入口
 
-当前能力状态、真实缺口和阶段核销只见 [acceptance-matrix](acceptance-matrix.md)，停止条件只见 [实施方案 §6](implementation-plan.md#6-p3-收敛边界与结束条件)，精确源码/失败/分次验证归同一 Record。下文较早快照保留具体协议参考，不再把每组历史追加为当前无限待办；后续实现以当前源码及下表为准。
+当前能力状态、真实缺口和阶段核销只见 [acceptance-matrix](acceptance-matrix.md)，停止条件只见 [实施方案 §6](implementation-plan.md#6-p3-收敛边界与结束条件)，精确源码/失败/分次验证归同一 Record。下文保留当前具体协议，不再把每组历史追加为当前无限待办；实现以当前源码及本表为准。
 
 | 当前后端接口增补 | 合同与限制 |
 | --- | --- |
@@ -16,7 +16,7 @@
 | Delegate Context pin | 原`native_rp_message`精确message/variant/contentHash；父/子独立owned pin交集，接收方重新授权。默认brief-only，父Memory与private Context不可继承。 |
 | RP / Session / Project Model失败策略 | 仅预声明owned候选、原Route policy与原能力/Source/预算准入。每send稳定ordinal、原银行保留失败/unknown；opaque cache/价格/continuation如实unknown/miss/reset。三域正式消费者已接，精确支持范围见[接口§18](interface-contracts.md#18-工程收敛后的端口合同)，不从发布成功推导任意组合执行支持。 |
 
-以上不是P1–P4后端完成或前端交接声明；完整代码版本和验证以同一Record实际证据为准。
+首次后端交接源码为`01ef2053b`，状态READY_FOR_P5；精确验证与限制归同一Record和acceptance-matrix。最终产品Gate仍未通过。
 
 ## Authoring 与公共 envelope
 
@@ -99,6 +99,10 @@ Project 继续沿原 Studio Task generation/preflight/start/status/cancel 和原
 
 原 Session 的 Narrator/Resolver、后台声明式 Task、Actor appraisal 和 World Simulation 使用各自原来源、quota、采纳/Command/World writer。RP 使用原 Chat 单正文+marker；Project 使用原 Task Workspace/Review/Studio receipt。Effect confirmed、模型生成、领域 committed 与 Root completed 必须分开显示；费用未知或 Host receipt 缺失不能伪造 OutputClaim，也不能为了补元数据重放原 writer。当前有限图及恢复支持只按实际物理合同，不从 authoring 有效推导任意业务图可执行。
 
+RP Fanout/Join使用原Scheduler和原Root银行，支持边界只按接口§18及实际Record核销：early-close不采纳late结果，正式Chat前等待实际worker终结，所有实际费用纳入闭包。partial是明确原Join/Result/Run身份，unknown仍pending_output；界面不能用有正文推导Root completed。
+
+Session Resolver/Narrator最终Model明确拒绝时，原Attempt失败，所有费用闭合后Root.failed；unknown费用/提交保持reconciling，取消与人类Source编辑保留。失败不生成Session/World输出或Result，冷观察不重发。
+
 原用户 Project Commit 已有 prepare/dispatch/observe/resume。固定 effect→output Plan 的 owned project pin 必须精确绑定当前 Task/Review/Workspace；Model 工具无 commit 权限。除 metadata rename 外，当前支持同 Project 已有 Actor 的 description/personality/scenario 和已有 assistant opening 的 content，可信 Review 展示精确 before/after。任何其它 Source 差异、权限、代码、模型、资源、外部/文件操作仍拒绝；不据 Review.highImpact=false 推导任意 project.save 安全。实际 API、fresh R2 批准、两项原 local fee、Git CAS 和冷 receipt 规则见接口 §17.138、§18 及同一 Record。
 
 原 Evolution Plan strategy/Prompt target、候选发布/回滚与 Native auto evaluator 已接；不是旧 Workspace/Director evaluator 回退。原独立质量来源、价格、反馈与资格 Gate 保持，缺证据不得自动晋升。完整支持矩阵见接口 §18；原 worker 不支持的图在费用前拒绝，不由 Browser 补跑或自造报告。
@@ -109,7 +113,7 @@ POST `/api/native/orchestration/approvals/launch` 复用 mutation envelope，bod
 
 P5 由 Claude Code 完成 Plan Library、Graph+Inspector、同语义 Node/Edge List 与移动 Sheet、Draft/Validate/Publish 冲突处理；Run Timeline/Graph、Source/Audience/成本/未知/诊断、可信 Approval、Cancel/Status；Shell Search/deep-link/history/Back 与移动键盘/IME/无障碍。沿 Serene Canvas 和现有组件，不另建主题或 Browser 编排权威。布局不改变同一 Draft/definitionHash 和同一 Host Projection；移动端保留相同语义。
 
-两次交接与条件只归 [实施方案 §2](implementation-plan.md#2-执行分工与两次交接)：Codex 后端完成 → Claude Code 前端及组装 → 回交 Codex 做 P6 清退和最终验证。当前仍推进后端，不提前前端、P6、main 集成或结束分支。当前真实缺口只见 acceptance-matrix，不能以本接口已挂载宣称 P1–P4 或最终 Gate 完成。
+两次交接与条件只归 [实施方案 §2](implementation-plan.md#2-执行分工与两次交接)：Codex 后端完成 → Claude Code 前端及组装 → 回交 Codex 做 P6 清退和最终验证。当前P1–P4后端首次交接已就绪，下一步由Claude Code完成P5前端与组装。P6等回交Codex后执行；main集成/推送/结束分支仍待后续指令。准确Gate只见acceptance-matrix，不把后端就绪等同最终产品完成。
 
 ## 同期源码整合
 
