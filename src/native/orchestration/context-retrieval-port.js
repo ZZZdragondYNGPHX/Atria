@@ -135,7 +135,7 @@ export class ContextRetrievalPort {
         if (profile) {
             const collectionId = await memoryVectorCollectionId(legal.key, profile, legal.eligibility?.identity ?? null);
             const allowed = new Set([collectionId, ...legal.eligibility ? await retiredMemoryVectorCollectionIds(legal.key, profile) : []]);
-            const listed = new Map(), embed = profiles.embed, directories = this.runs.engine._directoriesByHandle(handle);
+            const listed = new Map(), embed = profiles.embed, directories = this.runs.engine.nativeHostLifecycle.directoriesForHandle(handle);
             const execute = async (operation, input) => {
                 if (!equal(input.profile, profile) || !allowed.has(input.collectionId)) fail();
                 await current();
@@ -291,7 +291,7 @@ export class ContextRetrievalPort {
             if (actualTicket !== ticket || !state.budgetAttemptRef) fail();
             await bank.settle(state.budgetAttemptRef.attemptId, usage);
         } };
-        const dirs = this.runs.engine._directoriesByHandle(handle), secret = this.transport ? 'parent-transport-placeholder' : resolveRetrievalSecret(dirs, profile.secretRef);
+        const dirs = this.runs.engine.nativeHostLifecycle.directoriesForHandle(handle), secret = this.transport ? 'parent-transport-placeholder' : resolveRetrievalSecret(dirs, profile.secretRef);
         let response;
         try {
             const carrier = { nativeRetrieval: { profile, compute, signal: scope.signal, ...(this.transport ? { fetch: (endpoint, options) =>

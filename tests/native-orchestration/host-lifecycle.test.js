@@ -41,6 +41,24 @@ describe.each(CONTRACT_HARNESSES)('$name shared Native Host ownership', ({ make 
         expect(() => oldTransaction.putResource(key, nativeRecord({ late: true }))).toThrow();
     });
 
+    test('configured directories require the original admitted handle and active lifecycle without creating a fence', async () => {
+        expect(() => lifecycle.directoriesForHandle(h.handle)).toThrow(expect.objectContaining({ code: 'native_orchestration_writer_unavailable' }));
+        await h.engine.withTransaction(h.handle, async () => {});
+        expect(lifecycle.directoriesForHandle(h.handle)).toEqual(h.dirs);
+        expect(Object.isFrozen(lifecycle.directoriesForHandle(h.handle))).toBe(true);
+        expect(lifecycle.directoriesForHandle(h.handle)).not.toBe(h.dirs);
+        expect(() => lifecycle.directoriesForHandle('unadmitted-owner')).toThrow(/fence/);
+        let entered, release;
+        const started = new Promise(resolve => { entered = resolve; }), gate = new Promise(resolve => { release = resolve; });
+        const copying = lifecycle.withMaintenance(async () => { entered(); await gate; });
+        await started;
+        try { expect(() => lifecycle.directoriesForHandle(h.handle)).toThrow(/fence/); }
+        finally { release(); await copying; }
+        expect(lifecycle.directoriesForHandle(h.handle)).toEqual(h.dirs);
+        await h.engine.close();
+        expect(() => lifecycle.directoriesForHandle(h.handle)).toThrow(expect.objectContaining({ code: 'native_orchestration_writer_unavailable' }));
+    });
+
     test('ownership loss rejects original writes and rolls back the whole pending transaction', async () => {
         const key = { kind: K.orchestrationCommand, handle: h.handle, commandId: createNativeId('orchestrationCommand') };
         await expect(h.engine.withTransaction(h.handle, async tx => {
@@ -172,12 +190,15 @@ describe.each(CONTRACT_HARNESSES)('$name shared Native Host ownership', ({ make 
         const control = lifecycle.attachStorageEngine(scratch, { directoriesByHandle: () => dirs, privateHandle: handle });
         const key = { kind: K.orchestrationCommand, handle, commandId: createNativeId('orchestrationCommand') };
         await scratch.withTransaction(handle, tx => tx.putResource(key, nativeRecord({ marker: 'private' })));
+        expect(control.directoriesForHandle(handle)).toEqual(dirs);
+        expect(() => control.directoriesForHandle(h.handle)).toThrow(/fence/);
         await expect(control.retirePrivateHandle()).rejects.toThrow('delete its isolated namespace');
         await expect(scratch.withTransaction(h.handle, async () => {})).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
         await scratch.deleteUser(handle);
         if (await raw(handle, tx => tx.getResource(key))) {
             // FS deleteUser preserves the tree and SQLite closes its file.
             // Neither is evidence that private Native objects were removed.
+            // eslint-disable-next-line jest/no-conditional-expect -- FS and SQLite preserve different private storage after deleteUser.
             await expect(control.retirePrivateHandle()).rejects.toThrow('still contains Native resources');
             await scratch.withTransaction(handle, tx => tx.deleteResource(key));
             await scratch.deleteUser(handle);

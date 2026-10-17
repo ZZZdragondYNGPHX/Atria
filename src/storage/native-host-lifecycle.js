@@ -115,6 +115,11 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
 
     const lifecycle = {
         hostBootId: owner.hostBootId,
+        directoriesForHandle(handle) {
+            assertActive(handle);
+            if (!fences.has(handle)) throw error();
+            return Object.freeze({ ...directoriesByHandle(handle) });
+        },
         attachStorageEngine(other, options = {}) {
             owner.assertActive();
             if (closing) throw error();
