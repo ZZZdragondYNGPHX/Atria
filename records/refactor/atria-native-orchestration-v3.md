@@ -1126,3 +1126,9 @@
 - 复用原有限消费者和共用 nodeModelRoutePins；active policy只选同一节点已声明的精确Model pin，未选不发，Plan全局未归属pin拒绝。RP原单child Plan上限与Source/权限/输出保持。修正 Session #describe 及 Host资源收集仍按唯一role猜 Route；Host收集资源改由同一私有 preflight selection重验后返回已选 lanes，typed transaction冻结。JSON/跨Owner/Host/Source/input不能复用该选择，详见接口 §17.102。
 - 新suite首轮4FAIL/10filterSKIP（6.336s），RP已完成但测试误读receipt.costs（实际为独立closure），Session定位到原 _turnLanes全局角色歧义；按原closure与私有选择接线修正。新14/14 PASS（55.431s），含RP策略单输出/回滚、Narrator冷读、Resolver+Narrator实际World结果、普通后台Task与三类未归属pin零发送。补私有 Scheduler selection反例后，与RP隔离workerRoute比较分批4PASS/22filterSKIP（35.333s），新suite合计16项通过。
 - RP父子Result消费、typed Authority原Turn/伪JSON或跨Core拒绝、Project Route实际执行及指纹四 suites精选42PASS/44filterSKIP（43.737s，指纹30）。十一文件lint最初仅native-evaluation新callback的九行缩进失败，原ESLint --fix后通过；其它文件无lint错误，staged diff check通过。Provider均localhost合成，无新增真实付费/独立质量/价格/自动晋升结论，后端继续，不交前端/main。
+
+
+## 2026-10-17 — 第九十九组：控制 Model 与图修改发布证据
+
+- Source 767db55ac → 00b893f1a，本地提交，未推送；接口 §17.103。Planner/Judge/Review JSON 机制复用原 RouteResolver，新增 structured-output 要求，普通 text 控制输出拒绝；graph.patch 使用原 Host producer kinds 与显式图修改策略。纯机制证据不铸造任何 Source/运行/审批权限，完整后端继续。
+- 首轮新测试18FAIL/6PASS，因测试错误引用不存在的 outputContract.resultPolicy；修正后新42/42 PASS（9.585s）。完整机制回归又发现旧测试 service keys 未计已有 dependencies inspector，按真实只读接口修正。最终 model-capability 与 graph-controller 两完整 suites144/144 PASS（29.595s），四文件原 ESLint与 diff check通过。一次编辑相对路径错误失败，随后准确路径修复。均本地合成零外发，无真实Provider或独立质量结论；接着实现 Review/局部重做与实际Graph链路，不交前端/main。

@@ -1240,3 +1240,10 @@ Project 的有限消费者允许同节点预声明多个 Model pins，但每次�
 Session 的 Narrator与Resolver分别按自己的 active pin选择原角色 Route，不再用全局唯一角色推断。原 Host为 Scheduler收集资源时，从同一个 preflightBinding 的私有 selection重验 Source/owner/Host/input/typed transaction后取已选 lanes；JSON复制、外来Owner/Host/Source/input拒绝，返回原有界 route配置不授 dispatch。typed transaction也在 capture时冻结。随后原资源 permits、Model/Secret、费用、Context、finalizer和 OutputClaim继续逐项围栏；未选备选不发送、不多花次数。
 
 现有实际证据包括RP策略发布/原单Chat输出/回滚历史、Narrator冷读、Resolver+Narrator各选其Route的原World提交、后台单Task/银行闭包，以及RP隔离worker的原Plan/Effect/Chat与父Evolution账本。它们仍是有限原消费者，不是通用Graph/Planner/Judge/Review runtime；受控Review/恢复组合继续各自验收。
+
+
+### 17.103 控制 Model 与 GraphPatch 的发布机制证据
+
+Planner/Judge/Review 的 generation.send 复用原 RouteResolver/player Model pin、原角色、完整性与 Compute 预算校验；控制节点必须恰有一个 JSON 输出，且 Provider 必须声明 generation.structured-output。mechanism evidence 记录 nodeKind 与 original_native_graph_producer_required，不生成 Scheduler producer、Source grant、Context 或运行许可。
+
+graph.patch 发布校验复用原 GraphController 的 producer kinds（planner/agent/review），必须有显式非空 graphChangePolicy.allowedOperations。实际 whole-patch 提交继续要求原 Source callback、running Attempt、epoch/graph CAS、能力交集、原预算与输出保护。发布成功不表示通用 Graph runtime 已接通。
