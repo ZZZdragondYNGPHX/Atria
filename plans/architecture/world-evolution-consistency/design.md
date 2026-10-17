@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · Candidate Design & Discussion Agenda
 
-- 状态：**Draft（W1–W16 的 B 总体方向均获用户认可，W17 Domain-first 具体路线、最终 ABI/E0/开发仍未获批准）**。早期选型章节为当时的候选历史，以最新用户确认状态和 index 为准。
-- 当前讨论轮次：W17 — 原生 Domain Effect/Subject/Participant 发布、Revision-anchored Effective World View、V3 ContextPort 与 Prompt Effective/Wire 的接口和 E0 门槛（见 [e0-domain-world-context-contract.md](e0-domain-world-context-contract.md)）。
+- 状态：**Draft（W1–W17 的 B 总体方向均已获用户认可，W18 具体 ID/ABI/Schema/硬切方法、全量 E0 和正式开发仍未获批准）**。各旧章节保留当时选型的讨论历史，以最新决议和 index 为当前权威。
+- 当前讨论轮次：W18 — Subject/Participant/Perspective/Fact/EffectiveWorld 最小类型与生产消费者硬切矩阵（见 [e0-minimal-contract-cutover.md](e0-minimal-contract-cutover.md)）。
 - 入口：[index.md](index.md)；材料：[research.md](research.md)
 
 ## 1. 问题的正确切分
@@ -823,3 +823,38 @@ W17 详细 Source/Owner/Receipt/Read-Projections/Context Binding/候选 ABI、�
 - W17-C：从 Prompt/LLM 自由语义判断推断新的 World Fact，违背来源及写入权限。
 
 **W17-B 当前是推荐方案，不是用户已批准决定。** E0-01～09 仍为 PARTIAL / BLOCKED，`main` 及活动分支全部保持原样；本轮只修改 `docs` 同一企划与唯一 Record，不运行 CI/测试/真实 UI/三端验收。
+
+
+---
+
+## 25. S19 · W17-B 确认与 W18 最小 ABI / 真实消费者硬切讨论（2026-10-17）
+
+### 25.1 W17-B 正式确认
+
+用户对上一轮明确推荐的 **W17-B「Domain-first Commit + Revision-anchored Authorized Effective Projection」**回复「认同」。**W1-B 至 W17-B 均获总体方向确认**，但整体企划仍为 **Draft**，尚未批准物理 ID/Schema、所有 API、生产代码切线、E0 完整验证与开发实施。
+
+确认的硬边界：
+- 只有现有 Native Session/Domain Authority 能正式提交 World Subject、Fact/Relation、有效 Event/State 和 Domain Receipt，Orchestration V3 的 Plan/Run/Effect 负责执行与观察凭据，Prompt 的 Effective/Wire 只负责已获授权来源的表达。
+- `World Game reducer.commitEvents` 与 `SessionCore.finalizeTurn` 各有现存合法事务，但**跨两条独立调用路径的全局原子提交尚未证明**。具有持续效果的对话/世界事件在正式发表前应以原 Domain Receipt/Revision 为依据，不用模型文本或编排 Effect `confirmed` 冒充世界事实。
+- Host-owned Effective World 是受限只读投影，按确切 Session/Branch/Revision/GameTick/Source/Audience/Scope 构建，经 V3 `ContextPort` SourceBinding/Grant/Currentness 校验后传入 Knowledge/HCM/Context Compiler；Prompt 不获得额外秘密权限或写权。
+- 最小类型按真正缺口加入，不建立独立 FactStore/EntityRegistry/万能 Adapter；固定作者角色卡仍是资源，不因新 NPC 出现而由 Play 修改 Package Manifest。
+
+### 25.2 W18 已定位的实际 Schema 约束
+
+本轮以同一冻结的 `main=c57fada6edeea255b29d857ba2585c1dbc9c098b` 与 V3/Prompt 分支 SHA 读取更多实际合约：
+
+- `src/native/identity.js` 现在未定义独立 World Subject ID family（已有 Actor/World/Session/Branch/Revision）；如何分配 `SubjectRef` 必须由 E0 确认，不能假称 `subject_*` 已存在。
+- `src/native/contracts.js` `assertTimelineEntry` 校验可选 `actorId` 为 `actor_*`；`SessionCore._newEntry` 还约束其必须属于 Package Manifest；`native-frontend-host.js` `MESSAGE_SCHEMA`、`play-product.js`、`speech-service.js` 和 `visual-continuity.js` 均依赖相关身份/表达。需要拆分真实 Participant 与 AuthoredActor Expression，而**不是所有 actorId 全局字符串替换**。
+- `native-information-contract.js` `assertInformationClosure` 强制 Actor 属 Manifest，动态 NPC 不会自动合法拥有 Perspective；`native-information-runtime.js` 对未声明 Actor 判 unavailable，Source/Scope Epoch 与受众权限应复用而非跳过。
+- `src/native/world-knowledge.js` `WorldRevision` 和 `KnowledgeEntry` 还没有通用 FactKey/valid interval 语义；`native-chronicle-host.js` 的 `WORLD_QUERY` 只是特定 Lifestyle/History/World View 类别，不能宣称已提供任意 Subject 的双时间 as-of 查询。
+- V3 `ContextPort` 已明确 `sourceBinding/audience/grantDigest/tokenBudget` 并在 Memory/Context 编译后复核；Prompt 分支的 worldUsePolicy/semanticBlocks 是语义/编译层而非世界事实签发权威。
+
+完整逐代码 old→target/retain/replace/investigate、最小逻辑类型、测试目标与 W18-A/B/C 候选**只在** [e0-minimal-contract-cutover.md](e0-minimal-contract-cutover.md) 维护，避免总设计与专题重复。
+
+### 25.3 W18 方案待选
+
+- W18-A：立即冻结一整套全新 ID/Schema，忽略有界缺口和未合入消费者，易创建冗余模型和后续重构。
+- **W18-B：差异最小的 Typed ABI + 实际消费者验收驱动硬切（推荐，尚未获用户确认）**。先定清楚 Subject/Participant/Expression/Perspective/Fact/EffectiveRead 的语义及唯一 Domain Owner，再以最终真实集成 HEAD 定义最少新增字段/合同并逐消费者验证，保留作者自由文本、既有权限/Receipt/History，清退确证的旧权威，不保留旧数据兼容双轨。
+- W18-C：为旧/新全部 ID 造万能 SubjectAdapter，长期保持新旧语义混合，与 W12/W16 已确认的单权威冲突。
+
+**E0-01～09 仍 PARTIAL / BLOCKED**。以上均为 GitHub 静态代码审查及 docs 文档调整，没有运行 CI、Node、浏览器或 Windows/CachyOS/Termux 实测，未修改 `main` 或开发分支。若用户后续选择 W18-B，下一阶段应转为真正的 Gate 0 最终消费者/字段 cutover 审计与通用有效期合约验证，不无限延长抽象架构讨论。
