@@ -2,7 +2,7 @@
 
 > **唯一入口**。Task ID：`refactor/atria-native-orchestration-v3`。Primary Workspace：`main`（未来实现）；实现使用同一任务分支 `refactor/atria-native-orchestration-v3`，企划/Record继续在长期 `docs` 工作空间。规则只引用 [Repository Governance](../../../README.md)，不在本 Plan 复制执行规则。
 
-2026-10-17 用户要求换设备中断：Source **`1b243b8a4` 为第一百零四组 WIP**，真实 RP Review/局部重做已保存，但 ACK 结果与最新计数改动后的消费者回归尚未确认；详见同一 Record 与活跃 `docs:HANDOFF.md`。本次提前推送仅获换机存储授权，**不代表后端完成或转入前端**；恢复后继续全部后端。
+2026-10-17 已恢复同一任务，源码本地最新 `89dc2e6a3`（未推送），含真实有限 RP Judge、所选节点多 Route 隔离评测，以及 Review/Attempt 同事务撤销保留修复；§17.108–17.110 与同一 Record 第105–107组记录准确边界和测试。用户提供的测试 API 已在仓库外重建，按主站优先/失败备用，当前无调用硬上限。已消费换机 HANDOFF 删除；后端仍在实施，P1–P4及最终Gate NOT_READY，不进入前端、main 或结束分支。
 
 最新后端实证：第九十四组 `1e1281224` 支持同一原 Session 内 Task/variant 专属 Binding 与 Narrator 的独立 Plan，范围见[接口 §17.98](interface-contracts.md#1798-原-session-内的-task-专属-plan-binding)和同一 Record。完整后端继续实施；此项不核销通用 Graph/Simulation/可信高风险消费者、恢复释放与最终 Gate。
 

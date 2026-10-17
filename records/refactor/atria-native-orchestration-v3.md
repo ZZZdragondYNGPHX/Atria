@@ -1170,3 +1170,38 @@
 - 最近将 Review 计数从 decide 移至原 Attempt.activate 同事务 review_admission receipt；invalid JSON/失败也消耗已准入名额。纯 review-controller 完整36 PASS（13.636s）。接口 §17.104 的详细描述尚待续接时随验证同步，旧历史不覆盖新代码。evaluator 增三个文件指纹，预计47项但未运行；共享 Attempt/Transition 对 Planner/chain/Project/background 等的回归尚未执行。
 - 最后新加 admission/decision/settlement × saved/no_save × 两 Engine 的12 ACK项；suite现38项。最后 ACK进程已结束，但最终输出因上下文切换丢失，结果 **UNCONFIRMED**，不计通过。新设备先运行并诊断，再回归最新计数语义。当前17个明确修改实现/测试文件 ESLint、工作区与 staged diff check 实际通过。
 - 本组均 localhost 合成响应，无新增真实 Provider调用或独立质量/价格/晋升结论。用户确认没有独立 sealed/human preference资料。用户无关 dirty（两个 CLAUDE.md 删除、audit HTML/未跟踪目录等）保持且未纳入提交。docs 在独立干净工作树安全 merge `origin/docs@d0bbcd7ab`，保留远端其它任务历史，不 force push；不操作 main、不结束分支。
+
+
+## 2026-10-17 — 第一百零五组：换机恢复与 Review WIP 验证
+
+- 初始本机源码 `a7cb649d0`、docs `81650b3b1` 均干净；fetch 后只做 fast-forward，分别恢复 `1b243b8a4` / `fc3a7c515`，未 reset 或覆盖任何本机修改。读最新 Governance/HANDOFF/Plan/同一 Record，继续后端；已消费的换机快照删除，不创建新交接。
+- 本机 Node v24.21.0，依赖沿现有本地链接，FS/SQLite 实际执行；未配置外部 SQL 测试 URL，不把其它设备 SQL 证据当本次通过。`rp-review-producer --testNamePattern ACK` 30 PASS / 8 filter SKIP（98.129s）：pattern 同时匹配 feedback 测试，含所需 admission/decision/settlement × saved/no_save × FS/SQLite 的12项 ACK。未知提交保守阻塞，未自动重发。
+- 最新计数及共享 Attempt/Transition 消费者的10个完整 suites（Review producer/controller、Planner、Graph Result chain、parent continuation、Transition、Project Review Output、后台 Task Output、Run HTTP、evaluator 指纹）265/265 PASS（651.683s）。该轮期间后续 Judge 接线开始进入工作区；其中 Review producer 最新38项完整通过。接口 §17.104 已按真实 admission 计数语义同步，§17.108 记实际有限 RP Review 合同。没有真实外部 Provider/独立质量/价格/晋升结论；后端继续，未推送、交前端或集成 main。
+
+
+## 2026-10-17 — 第一百零六组：原 RP Judge 与多 Route 隔离评测
+
+- Source `1b243b8a4` → `89dc2e6a3`（与第107组同一本地提交，未推送）；实际有限合同见接口 §17.109。新增两个独立 Draft→Judge→唯一 Narrator/Chat，复用原 Scheduler、Route/Context/ModelPort、Graph Result/Transition、原银行与 OutputClaim。只在明确选中该静态 Plan 时发生额外调用；普通 RP 默认路径不添加模型。Model 仅选精确候选编号，不铸造事实、审批或跨 audience 权限。
+- 最初 positive 2FAIL，定位原 ContextPort 只接1个 Graph Result；改为最多2个唯一引用、每份仍经原 ResultPort 私有 capture/recipient 授权后，positive 2PASS（18.167s）。新完整 producer 原24项24PASS（151.477s），包括两种选择、非法 JSON/类型/字段/反馈、冷读/源删除/诚实重hash篡改、晚到撤权/取消、settlement saved/no_save ACK 与 unknown usage。另补同事务 Binding/Root 撤销四参数4PASS（24.778s）；本轮组合也运行隔离评测，评测当时2FAIL，不将组合误记全绿。
+- 隔离评测首轮2FAIL，暴露多 Agent Settings 无执行入口 Route、原 worker 只装1条 Route。补唯一直接 Output 前 Narrator入口与全部 active model pins 的冻结配置、私有 worker 存储闭包及父 Host Route ID 白名单，费用仍唯一归原 Evolution ledger。不同 Model/Connection/Generation 价格配置拒绝。后续执行两arm各4次真实合成Model均成功，但测试错漏原独立 pair Judge 第9次收费，修 fixture期望与合成grader；不是少记真实调用。再一轮2PASS/2FAIL（31.758s）：真实隔离执行2PASS，唯一拒绝测试错读尚未创建的 owner ledger 为数组；改按真实 null 后拒绝两参数2PASS（1.536s）。新评测suite4项已分批通过。均localhost合成，不是独立质量/价格/晋升资料。
+- 原有 Native Evaluation/Plan Prompt/Source Probe/指纹四完整 suites74/74 PASS（255.347s，Native Evaluation本身242.577s）。用户要求暂停后收集时，该组合已自行结束，未再启动新测试。原 Evolution/HTTP 两 suite42PASS（58.502s），同时运行的 evolution-consumers suite 因原浏览器 Atria 全局未初始化而未能加载，整次组合不是全绿。本组实现未推送；整个后端仍未完成，不交前端、不合 main、不结束分支。
+
+
+## 2026-10-17 — 用户要求暂停后端、先重建本机 API 配置
+
+- 用户答复本机配置路径询问后，明确要求没有配置就暂且停下，接下来由用户发送测试 API 并保存到私密文件夹；明确不设调用硬上限，不额外新增限制。当前先暂停实现，不启动新测试或外部调用；收到配置后处理仓库外私密文件，不在文档记录凭据。
+- 当前 Source HEAD 仍 `1b243b8a4`，新增 Judge/隔离多 Route 实现及测试保留为未提交工作区；docs HEAD 仍 `fc3a7c515`，恢复/接口/Record 修改及已消费 HANDOFF 删除尚未提交，未 push/main 集成。没有覆盖本机已有修改（恢复时两工作树均干净）。
+- 暂停前最后新增 Review 同事务 decision/settlement × Binding/cancel × FS/SQLite 的8参数实际4PASS/4FAIL/38filterSKIP（25.239s）。四个取消反例证实已有 Review 控制路径会在晚到证明失败时回滚同事务合法 Root cancel；Binding四项通过。保留失败测试，后续须按原 RunRepository ControlDenial/写前复验修复，不能将拒绝作为回滚取消的理由。尚未进行该修复。新 Judge 的同事务取消/撤权四参数已通过，不能混称旧 Review 同样通过。
+- 本次 Evaluation 回归在暂停收拢时已自行结束，实际收集四 suite74PASS；随后停止信号返回进程已不存在，没有终止其它进程。没有留下主动 Provider 请求。当前工作不宣称后端完成，也不生成前端交接。
+
+## 2026-10-17 — 第一百零七组：恢复私有 API 配置及 Review 同事务撤销修复
+
+- 用户提供仓库外 api.txt：对话按原1→2顺序优先、第二站仅在第一站实际调用失败后作为备用，不因提供两个站点而要求分别测试。已规范保存私有配置及滚动调用记录，文件权限600、目录700；凭据/响应正文不进入 Git。对话主站1次成功，备用0次；嵌入/重排序初各403，明确客户端标识后嵌入诊断200，再结构验证分别200（4096维向量、2个重排结果）。本次配置连通验证共6次HTTP调用，不冒称 Native Host/独立质量/价格通过。临时诊断脚本已清理，只留配置、滚动状态与阶段摘要。
+- 用户明确当前测试API无调用硬上限。Governance §13.1 同步为按当前实际配置，旧每日2000/20RPM不自动继承；测试发送端 M1ApiQuota 改为只对显式额度排队，未配置/null为无硬上限，仍保留有效窗口内既有carry、未知调用与去重。没有取消产品原 Run/Effect 的预算、计费或持久一致性约束。
+- 恢复后先修已复现 Review decision/settlement 取消回滚：原 ReviewController 的 rerun 新 Attempt 先准备、最后原Source/Model授权与Root stamp复验后才写入；合法同事务撤销通过原 RunRepository ControlDenial 提交独立事实并拒绝当前命令。原RP Review settlement同样在写前复验，保留原费用和历史。初次精选两个 suites44PASS/38filterSKIP（29.365s），含8个实际 Model同事务反例及原纯Review36项。
+- 追加rerun预算await与Review activation撤权测试：rerun四参数PASS，activation四参数FAIL（18.334s，8项中4PASS/4FAIL/46filterSKIP），确证共享 Attempt.activate 也会回滚同事务Root cancel，或在Binding已失效后消耗Review轮数。随后补同原ControlDenial与最后Source/Root复验；16个实际同事务反例全部通过，未以关闭测试掩盖问题。
+- 原 evolution-consumers 测试因缺浏览器全局无法加载，按原测试宿主补显式 browser-context import，未改产品前端。新API quota测试也补同原宿主；一次相对路径错误未改动目标文件，已用正确路径修复。必要回归继续，未提前推送/交前端/main。
+
+- 第107组最终 Source 与第106组一并本地提交为 `89dc2e6a3`。最新 Review producer54项、原 Review controller、Attempt reservation 三完整 suites107PASS/1既有SKIP（186.330s）；RP/Project/background/Session 输出、Planner/Graph Result chain六suite精选28PASS/98filterSKIP（95.646s），准确范围只覆盖所选正常/撤销/unknown场景。M1 quota7项与实际Review同事务16项的组合23PASS/38filterSKIP（42.851s）。22个提交内JS文件定向ESLint与staged diff检查通过；没有新增SQL/三端或完整质量验收结论。
+- 原Evolution consumers首次可加载后5PASS/1FAIL（65.305s）；失败场景在声明 compute budget 时未创建原 Task，原Host正确拒绝budget lane。补两个Project各自的真实Task后该场景1PASS/5filterSKIP（4.086s），五个已通过且未改场景未重复测试，不冒称最终整suite再跑通过。
+- 本地源码工作区干净、领先远端1提交，未推送；README API策略、接口/Record/index与已消费HANDOFF删除在独立docs保存。继续通用Graph/其它Source、完整恢复释放与可信高风险消费者等剩余后端；P1–P4及最终Gate仍NOT_READY，不进入前端或main。

@@ -2,6 +2,10 @@
 
 > 2026-10-16。本文件属于同一 Plan Bundle，用于用户已授权的提示词预设/前端并行任务整合。详细合同仍归 [interface-contracts](interface-contracts.md)，阶段门槛仍归 [acceptance-matrix](acceptance-matrix.md)，精确源码提交/实测与失败只归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。本文不将 P3 子工作冒称完整 V3 后端完成。
 
+## 第104–107组当前续作
+
+源码本地 `89dc2e6a3`（未推送），已恢复同一后端任务；原 RP Review/有界重做与实际 Judge 选择、所选节点多 Route 的隔离评测、同事务取消/撤权保留边界见接口 [§17.108–§17.110](interface-contracts.md#17108-原-rp-model-review-与有界局部重做)。Judge 只在显式五节点静态 Plan 上执行；Narrator 仅展开选中的受权候选，原费用包含两个候选、Judge、Narrator 与唯一 Chat 输出。配置与验证事实、准确源码 HEAD 归同一 Record，所有通用图/其余 Source、可信高风险消费者、完整恢复/释放和独立质量/自动晋升仍继续。当前不是前端交接，P1–P4 与最终 Gate 尚未通过。
+
 ## 当前后端续作（第七十一至九十三组）
 
 `826d2ba43` 已有显式 Host 元数据 recover、存储 generation 投影围栏，以及唯一顶层 RP/有限 Native Session 输出和原 Project 工具的收据核对命令；详细入口和不恢复执行的边界见[接口 §17.83–§17.86](interface-contracts.md#1783-显式-run-host-元数据恢复入口)。Project 工具核对见[接口 §17.87](interface-contracts.md#1787-原-project-工具冷收据核对)；其余核对与受权 resume 继续后端。

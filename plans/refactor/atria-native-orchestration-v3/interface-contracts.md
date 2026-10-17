@@ -1251,7 +1251,7 @@ graph.patch 发布校验复用原 GraphController 的 producer kinds（planner/a
 
 ### 17.104 Review 耐久判定与局部重做控制
 
-内部 ReviewController.decide 接受 exact running review Attempt、approve/rerun、非空 settled targetAttemptIds、reasonCode 与 Result evidenceRefs。原 authorizeReview 必须验证实际 Model producer/JSON、Source/Audience/Result，admitRerun 只复核原预算及最新合法输入；没有 HTTP、Model producer 或宽松默认 callback。一次 Review Attempt 只有一次稳定判定，重放不重复计 reviews；全 Run/tree 的 maxReviews、steps、attempts、deadline 和节点 maxRounds 累计生效。
+内部 ReviewController.decide 接受 exact running review Attempt、approve/rerun、非空 settled targetAttemptIds、reasonCode 与 Result evidenceRefs。原 authorizeReview 必须验证实际 Model producer/JSON、Source/Audience/Result，admitRerun 只复核原预算及最新合法输入；没有 HTTP 或宽松默认 callback。Review 名额在原 AttemptController.activate 的同事务 review_admission 收据中消耗；已准入后的无效 JSON、失败与取消同样占用名额。decide 只记录一次稳定判定，不重复计 reviews；全 Run/tree 的 maxReviews、steps、attempts、deadline 和节点 maxRounds 累计生效。真实 RP Model 接线见 §17.108。
 
 approve 只记模型评价，不批准任何 Effect。rerun 计算目标及下游已存在尝试的保守影响闭包，活动依赖先拒绝；除明确未派发或已终结 R1 generation.send 外的 Effect 均拒绝局部重算。原 Attempt/Result/收据/银行保持不变；耐久 invalidation 引用使旧工作不能再推动 Transition/Join，目标获得新 pending Attempt、新输入/grant与原预算身份，下游由新的生产者收据重新准入。旧 Result 不得当重做输入。重复因果 target、撤权或重新准入失败整体回滚。
 
@@ -1287,3 +1287,27 @@ Planner 请求、结构化输出 schema 与控制任务由活 Scheduler callback
 正式出口仍为原 Narrator/Chat consumer，Root保留两个Result，原closure核对两个Model加Output三个Effect。Reader绑定 exact topology transfer、原Model payload/Source/epoch、Result audience与物理费用；后续编辑/删除Source及冷启动不丢历史。ACK saved只观察原耐久记录后继续，no_save保留实际Model费用但无Result/后续send；usage unknown可以保留合法领域提交，不能claim completed。
 
 发布/消费中的合法同事务Binding撤销或Root取消以denied preflight保留独立写入；不通过抛异常把撤销回滚。waiting_effect不是新grant，必须绑定当前私有消费者的原Model Effect。当前只接通静态同RP直接后继，真实Judge/Review/局部重做循环及其它完整Graph/Source仍继续实施。
+
+### 17.108 原 RP Model Review 与有界局部重做
+
+原 Host 支持显式静态 Draft→Review、Draft+Review→Narrator→Output 四节点图。Draft 在发布前即声明 Review 和 Narrator 为直接后继；Review 不扩大旧 Result Audience。每次真实 Review 经原 Route/Context/ModelPort 与原银行完成，JSON 只接受 decision、固定 reasonCode；approve 配 quality_ready，rerun 配固定反馈码。评价不是高风险 Effect 的批准。原 ReviewController 绑定实际 Draft Result/Traversal、Model completion、Review admission 与 settlement；parse/adopt 本地工作仍在原银行计费。
+
+rerun 生成新 Draft Attempt/Effect/grant，使旧因果工作失效而保留历史正文与费用。新 Draft 只接有界反馈码和引用，不接旧草稿正文。剩余 review、attempt、edge、request 额度不足、重复重做或正文无进展时保守阻塞，不重置计数。Narrator 只接受当前 Draft 与已批准的精确 Review；Output closure 覆盖所有历史 Draft/Review 及最终 Narrator/Chat Effect，unknown usage 不签 completed claim。Review admission/decision/settlement 的提交 ACK 未知目前保守阻塞，读取既有事实不能重发付费工作或恢复私有 scope。
+
+实际测试范围、设备及局部失败归同一 Record；此静态 profile 不代表通用动态图、跨 Source 或后端完成。
+
+### 17.109 原 RP Judge 精确候选选择与隔离评测配置
+
+原 Host 新增显式静态五节点 profile：两个独立 entry Draft→Judge，以及候选/选择→唯一 Narrator→Output。两个 Draft 顺序使用同一真实 Scheduler operation 和原资源/银行，各有独立 Attempt/Effect/Result；不是新增 fanout 权威或并发结论。两份 Result 发布前即声明 Judge 与 Narrator 直接后继，每个接收节点/typed port 独立。Judge 的 JSON 仅 selectedCandidate=0|1 和固定 candidate_selected；候选 ResultRefs 由 Host 填充，不能由 Model 发明外国结果、source、grant、任意反馈或批准字段。
+
+Judge 通过原 Route/Context/ModelPort 获取两份受权低信任正文；parse/adopt 在原银行计费，精确 Model payload/Result/Traversal/settlement 组成耐久选择收据。Narrator 的 inputRefs/Context 只展开所选候选，未选正文不复制；原 Graph 同时消费所选 Draft settlement 与 Judge settlement。完整输出费用包含两个 Draft、Judge、Narrator 与 Chat 五个 Effect。历史读取复核原 Plan/静态图、原 Result/Model、选择 JSON、原本地工作与转移收据；冷读不恢复私有 Scheduler scope。Judge settlement ACK saved 只观察既有精确事实后前进，no_save/unknown 不重发。未知用量保留领域事实而不签 completed claim，同事务合法撤权/取消先保留再拒采纳。
+
+原 EvolutionSettings 对有限多 Agent RP 图取唯一直接 Output 前的 Narrator 作为执行入口 Route，而不是目标节点 Route。Evaluator 冻结所选节点全部精确 Model Route 配置闭包，worker 只在私有 Engine 装载这些配置；每次 RPC 带实际 Route ID，父 Host 仅允许冻结集合内发送、解析 Secret 并使用原 Evolution ledger 计费。遗漏/重复/过期 Route 拒绝，指纹与配置 hash 包含新增合同和辅助配置。当前单一确认价格只接受相同 Model/Connection/Generation 的多 Route；不同价格配置明确 unavailable，不将其冒充价格证据。Prompt 候选 override 只作用于原 target Route，仍由原候选检查产生，不改生产 Route。
+
+此处只记录有限原 RP profile 与工程评测路径。独立质量资料、正式自动晋升、通用动态图/Actor/跨 Source、完整恢复/释放及整个后端验收仍按同一 Record 继续。
+
+### 17.110 Review 与 Attempt 准入的同事务撤销边界
+
+原 AttemptController.activate、ReviewController.decide 和原 RP Review settlement 在最后一次原 Source/Model/预算授权后复核 Root stamp；来源授权仍用原 authority 复读。合法同事务 Root cancel/Binding 撤销先经原 RunRepository ControlDenial 保留，再拒绝当前准入/判定/结算；不能让异常回滚撤销自身。未准入的 Review 不消耗轮数；已准入且后来失败的 Review 仍按 §17.104 保留已发生名额和费用。
+
+rerun 在内存准备新 Attempt 与输入/grant，所有目标及下游影响检查、原预算与最后Source/Root复验通过后才写入，避免后续目标撤权时残留孤立 replacement。拒绝不创建新 Effect、Result、invalidation、批准或完成收据，原已发生费用/领域事实保持。这个边界使用原 Native Engine/命令事务，没有建立新的事务、取消或审批 authority。
