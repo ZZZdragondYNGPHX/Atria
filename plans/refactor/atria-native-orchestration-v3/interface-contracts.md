@@ -1317,3 +1317,12 @@ rerun 在内存准备新 Attempt 与输入/grant，所有目标及下游影响�
 readTaskGraphRevision 从原不可变 Plan、按 decisionSeq 排列的已保存 Patch 和原 runs.control.graph.patch 命令重建指定图修订。接受记录绑定原 proposal payloadHash、完整命令语义hash、producer/input/source、前后revision和requests；拒绝记录不改变图。当前Root.graph/nodeControl及累计patch数必须与原事实闭合。指定旧revision只返回当时图与nodeControl，后加节点/边或priority不追溯进入旧图。
 
 原 GraphController 在下一次 Propose 前复用此重建校验，旧分散的浅层history检查移除；graphPatchHash归同一合同并同步原调用方。原图提案最后Source/Model授权与Root stamp变化通过同一ControlDenial保留合法撤销再拒绝，不在失效授权下落拓扑。这个历史读取没有Source/Audience/producer/派发权限；Graph Result目前的静态限制仍保持，未来动态publication须明确冻结其原发布修订后才能开放。
+
+
+### 17.112 原 RP 显式多 Draft 静态链
+
+原 rpResultChainProfile 从单 Draft 扩展为原 Plan 已声明的有限线性 Agent 链，最后 Agent 为唯一 Narrator，之后只有唯一 rp_narration Output。各 Agent 为 generation.send/text、单直接后继、非回环且 maxVisits=1；入口无 Graph Result 输入，其余节点恰有一个 required text 输入。分叉、未经过节点、未归属 Model pins 和动态图策略不属于此 profile。原 Plan/银行预算、deadline、Source/Binding/所有 active Route 指纹与 Scheduler 资源闭包继续统一复验，最少请求数超过原预算时零准入拒绝。
+
+每个中间 Agent 通过原 Transition/Attempt、Context/ModelPort 与 ResultController 生产自己的原 Result；Context 只展开直接前驱的受权低信任正文，不复制更早节点正文或把 Result 当指令/权限。每步有独立原 Model Effect/费用，最后 Narrator 仍经原 Chat/OutputClaim 唯一出口。历史 reader 从原不可变 Plan 核对完整节点顺序、每步精确 acceptedGraphResultRefs、原 Model input/Source/audience 与每一条原 traversal/edge admission/command，最终 closure 包含所有已发生 Effect。
+
+中途 Source/Binding 撤销或取消停止后续发送，已发生费用和早期 Result 保留；unknown usage 允许合法领域输出但不签 completed claim。冷读不恢复 grant/执行 scope，Source 删除不删除原历史证明。本项没有增加通用 DAG、动态图、其它 Source/Actor 或公开 Result 正文权限，后端其余工作继续。

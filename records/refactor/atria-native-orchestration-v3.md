@@ -1211,3 +1211,11 @@
 - Source `89dc2e6a3` → `3082f2ce0`，本地提交，未推送。新增 graph-revision-contracts，直接由原 PlanRevision、按决策顺序的全部 Patch receipt、精确原命令 payload/outcome、原producer/input/source 与累计图修订重建历史Graph及nodeControl，核对当前Root缓存；没有第二图存储/runner。GraphController 在下一提案前使用该原事实重建，拒绝只重算hash的Root/receipt/command篡改。历史revision不会包含后加节点/边/priority；仍不据此放开动态图Result audience或执行授权。
 - 移动 graphPatchHash 到该合同唯一实现并同步实际调用方/指纹。原Graph suite16PASS（1.895s）；新增冻结revision/拒绝Patch间隔/冷Engine读取/metadata诚实重hash四类参数后26PASS（2.352s）。Graph/Delegate/reservation/指纹四完整suite180PASS（25.935s），原真实RP Planner16PASS（24.508s）。定向ESLint暴露原reservation动态选择test/test.skip注册无法识别断言，改为只注册FS专用故障case，保留原测试正文，SQL本来不支持该FS故障机制；没有关闭任何可运行反例。一处ESLint相对路径错误已修正。
 - 新增真实Planner采纳期间同事务Binding/Root撤销四参数初4FAIL（5.673s）：Binding变更仍采纳Patch、Root取消被异常回滚。补原GraphController最后Source/Model复读与Root stamp/ControlDenial；全部拓扑与pending更新仍最后统一写入，费用不重发/退款。最终真实Planner与Graph两个完整suite46PASS（29.580s，含新增四参数）；共享child GraphPatch预算/reserved边变化精选4PASS/100filterSKIP（3.056s）。9文件定向ESLint及staged diff检查通过。本组没有新增真实外部Provider调用；通用动态图/Result动态audience仍未交付。
+
+
+## 2026-10-17 — 第一百零九组：显式多 Draft 原 RP 链
+
+- Source `3082f2ce0` → `3293e8e45`，本地提交、未推送；接口 §17.112。原两 Agent profile 扩展为 Plan 已明确声明的有限线性 Draft 链，各节点自身 Model pins/Route、原 Scheduler/银行/Source 与直接前驱 Result 授权不变。只按 Plan 执行，不给普通 RP 默认增加调用；全部 active Route 纳入资源、预检指纹与晚到复验。
+- 两/三个 Draft 新正向四参数先4PASS/20filterSKIP（26.711s），精确验证每步请求只包含直接前驱的私有标记，最终唯一 Chat 与所有原付费 Effect 闭合。追加撤权/取消、Source 删除冷读、诚实重hash篡改早期 traversal、unknown usage 八参数，首次输出在上下文切换时丢失未计结果；定向重新执行8PASS/24filterSKIP（30.707s）。
+- 最新 reader 的首节点 refs 缺席校验后，原20项与新正向四项合并24PASS/8filterSKIP（64.167s）；新最少请求数超过原预算两参数2PASS/32filterSKIP（1.388s），零 Model/Effect 准入。最终 suite34项分批取得通过证据，未声称同一完整重跑。共享 runtime 的 Planner 正向、Review approve/rerun 与 Judge 两候选选择三个 suite 精选10PASS/92filterSKIP（71.967s）。四文件原 ESLint 和 staged diff check 通过。一次搜索误引用不存在的旧测试文件返回 exit2，未影响产品/测试，后按实际路径核对。
+- 本组均 localhost 合成调用，没有新增真实外部 API 请求，备用对话站点仍0次；不冒称通用动态图、独立质量/价格、SQL/三端或整个后端通过。继续剩余后端，不交前端、推送、main 集成或结束分支。
