@@ -15,7 +15,7 @@ const edge = (from, to, input) => ({ edgeId: id('Edge'), from: { nodeId: from.no
     to: { nodeId: to.nodeId, port: input }, condition: 'always', maxVisits: 1, loopBack: false });
 
 /** Real original Host/Plan/Source/HTTP/Scheduler/quota and bank, with synthetic model bodies. */
-export async function sessionDelegationFixture(make, { childSteps = 2, foreignActor = false, childRequests = childSteps, maxConcurrency = 1, childFailure = null, childUsage = true, configureChild = async () => {} } = {}) {
+export async function sessionDelegationFixture(make, { childSteps = 2, foreignActor = false, childRequests = childSteps, maxConcurrency = 1, childFailure = null, childUsage = true, upstreamAudience = null, configureChild = async () => {} } = {}) {
     if (![1, 2].includes(childSteps)) throw new TypeError('This necessary fixture has one/two authored child tasks');
     let topology;
     const f = await modelPortFixture(make, {
@@ -26,7 +26,7 @@ export async function sessionDelegationFixture(make, { childSteps = 2, foreignAc
             const originalParentRoute = await seeded.persistence.getRuntimeRoute(h.handle, seeded.routes[0].runtimeRouteId);
             const parentRoute = { ...originalParentRoute,
                 executionPolicy: { ...originalParentRoute.executionPolicy, schemaVersion: 1, allowedModelProfileIds: [seeded.model.modelProfileId],
-                    computeBudget: { maxRequests: childSteps + 2, maxTokens: 64000,
+                    computeBudget: { maxRequests: childSteps + 2 + (upstreamAudience ? 1 : 0), maxTokens: 64000,
                         localWork: { maxJobs: 256, maxItems: 10000, maxInputBytes: 16777216 } } } };
             await seeded.persistence.saveRuntimeRoute(h.handle, parentRoute);
             plan.dependencyPins[0].integrity = hash(parentRoute);
@@ -74,14 +74,25 @@ export async function sessionDelegationFixture(make, { childSteps = 2, foreignAc
             narrator.inputs = [port('advice', 'text')]; narrator.dependencyPinIds.push(finalSource.pinId); narrator.policy.audiencePinId = finalSource.pinId;
             plan.definition.nodes = [delegator, narrator, output]; plan.definition.entryNodeIds = [delegator.nodeId];
             plan.definition.edges = [edge(delegator, narrator, 'advice'), ...plan.definition.edges];
+            let upstream;
+            if (upstreamAudience) {
+                const source = upstreamAudience === 'actor' ? parentSource : finalSource;
+                upstream = { nodeId: id('Node'), kind: 'agent', label: 'Original upstream evidence producer', inputs: [], outputs: [port('advice', 'text', false)],
+                    dependencyPinIds: ['narrator.route', source.pinId], capabilities: ['generation.send'],
+                    policy: { agentPinId: 'narrator.route', audiencePinId: source.pinId } };
+                delegator.inputs = [port('upstream', 'text')];
+                plan.definition.nodes.unshift(upstream); plan.definition.entryNodeIds = [upstream.nodeId];
+                plan.definition.edges.unshift(edge(upstream, delegator, 'upstream'));
+            }
             plan.definition.capabilityCeiling.push('agent.delegate');
             plan.dependencyPins.push(parentSource, finalSource, { pinId: 'delegate.child', port: 'plan', resourceRef: childPlanRef, integrity: hash(childRevision) });
-            topology = { delegator, narrator, output, child, children, childOutput, childPlanRef, parentSource, childSource, parentRoute, childRoute, actorA, actorB };
+            topology = { delegator, upstream, narrator, output, child, children, childOutput, childPlanRef, parentSource, childSource, parentRoute, childRoute, actorA, actorB };
         },
         responseBody: ({ body, index }) => ({ id: 'delegate-fixture-' + index, status: 'completed', output: [{ id: 'message-' + index,
             type: 'message', status: 'completed', role: 'assistant', content: [{ type: 'output_text',
-                text: body.model === 'session-delegated-distinct-model' ? 'DELEGATED_ADVICE_' + index : JSON.stringify(body.input).includes('Game source-scoped delegate parent')
-                    ? 'PARENT_ACCEPTED_DELEGATE_ADVICE' : 'The NPC waits for the player choice.', annotations: [] }] }], ...(childUsage ? { usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } } : {}) }),
+                text: body.model === 'session-delegated-distinct-model' ? 'DELEGATED_ADVICE_' + index : JSON.stringify(body.input).includes('Original upstream evidence producer')
+                    ? 'ORIGINAL_UPSTREAM_EVIDENCE_BODY' : JSON.stringify(body.input).includes('Game source-scoped delegate parent')
+                        ? 'PARENT_ACCEPTED_DELEGATE_ADVICE' : 'The NPC waits for the player choice.', annotations: [] }] }], ...(childUsage ? { usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } } : {}) }),
     });
     return { ...f, get effectRef() { return f.effectRef; }, get authority() { return f.authority; }, get core() { return f.core; }, topology };
 }

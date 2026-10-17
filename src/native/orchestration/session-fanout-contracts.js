@@ -1,7 +1,8 @@
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
-import { readPlanRevision } from './plan-repository.js';
 import { readGraphFanoutCompletion } from './graph-fanout-completion.js';
+import { readGraphNodeResult } from './graph-result-contracts.js';
+import { assertOutputTransition } from './output-transition-contracts.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt, readModelTerminalFact } from './model-port.js';
 import { assertAudienceRunCapture } from './audience-source-contracts.js';
@@ -15,19 +16,49 @@ const invalid = () => { throw new TypeError('Invalid original Session Fanout Joi
 export async function readSessionFanoutCompletion(tx, handle, root, joinAttemptId) {
     if (!root.graph.nodes.some(node => node.kind === 'fanout')) return null;
     if (root.parentRef !== null || root.sourceBinding.sourceAuthority !== 'native_session') invalid();
-    const plan = await readPlanRevision(tx, handle, root.planRef);
     return readGraphFanoutCompletion(tx, handle, root, joinAttemptId, {
-        verifyMemberInput: async (_tx, _handle, _root, attempt, { frame, branch, results }) => {
-            const node = root.graph.nodes.find(node => node.nodeId === attempt.nodeId), input = attempt.inputRefs[0];
+        verifyMemberInput: async (_tx, _handle, _root, attempt, { frame, branch, results, reservation, settlement, graphSnapshot, plan }) => {
+            if (attempt.inputState === 'reserved') {
+                if (!reservation || attempt.status !== 'cancelled' || attempt.inputRefs !== null || attempt.effectiveGrantDigest !== null
+                    || attempt.budgetRef !== null || attempt.reservationRef.producerAttemptId !== frame.fanoutAttemptId
+                    || !branch.scopeNodeIds.includes(attempt.nodeId)) invalid();
+                return;
+            }
+            const graph = graphSnapshot.graph, node = graph.nodes.find(node => node.nodeId === attempt.nodeId), input = attempt.inputRefs[0];
             const pin = plan.dependencyPins.find(pin => pin.pinId === node.policy.agentPinId);
-            if (node.kind !== 'agent' || branch.scopeNodeIds.length !== 1 || branch.memberAttemptIds.length !== 1
-                || branch.entryAttemptId !== attempt.attemptId || branch.memberAttemptIds[0] !== attempt.attemptId
-                || attempt.inputRefs.length !== 1 || input.kind !== 'native_turn_intent' || input.nodeId !== node.nodeId || input.role !== 'narrator'
+            if (node.kind !== 'agent' || !branch.scopeNodeIds.includes(node.nodeId) || !same(node.capabilities, ['generation.send'])
+                || input.kind !== 'native_turn_intent' || input.nodeId !== node.nodeId || input.role !== 'narrator'
                 || !same(input.planRef, root.planRef) || !['sessionId', 'branchId', 'revisionId'].every(field => input.sourceRef[field] === root.sourceBinding.sourceRef[field])
-                || !same(input.routeRef, pin.resourceRef) || !same(input.acceptedGraphResultRefs, []) || input.fanoutAttemptId !== frame.fanoutAttemptId
-                || attempt.inputDigest !== hash(attempt.inputRefs) || attempt.effectRefs.length > 1
+                || !same(input.routeRef, pin.resourceRef) || input.routeIntegrity !== pin.integrity || input.fanoutAttemptId !== frame.fanoutAttemptId
+                || !same(attempt.inputRefs, [input, ...input.acceptedGraphResultRefs]) || (input.acceptedControlRefs ?? []).length
+                || attempt.inputDigest !== hash(attempt.inputRefs) || attempt.effectiveGrantDigest !== input.grantDigest || attempt.effectRefs.length > 1
                 || (attempt.status === 'completed' ? results.length !== 1 : results.length !== 0)) invalid();
             assertAudienceRunCapture(root, node, plan.dependencyPins, input);
+            if (attempt.attemptId === branch.entryAttemptId) {
+                if (!same(input.acceptedGraphResultRefs, []) || Object.hasOwn(input, 'fanoutGraphBindings') || attempt.inputRefs.length !== 1) invalid();
+                return;
+            }
+            const sources = [];
+            for (const ref of input.acceptedGraphResultRefs) {
+                const saved = await readGraphNodeResult(tx, handle, root, ref.resultId);
+                if (!saved || !same(ref, saved.receipt.resultRef) || !branch.scopeNodeIds.includes(saved.producer.nodeId)
+                    || !saved.record.envelope.audienceConstraint.nodeIds.includes(node.nodeId)) invalid();
+                sources.push(saved);
+            }
+            const incoming = graph.edges.filter(edge => edge.to.nodeId === node.nodeId).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
+            const bindings = incoming.flatMap(edge => {
+                const source = sources.find(source => source.producer.nodeId === edge.from.nodeId);
+                if (!source && !node.inputs.find(port => port.name === edge.to.port)?.required) return [];
+                if (!source || !branch.scopeNodeIds.includes(edge.from.nodeId)) invalid();
+                return [{ edgeId: edge.edgeId, producerAttemptId: source.producer.attemptId }];
+            });
+            if (!sources.length || !same(input.fanoutGraphBindings, bindings) || sources.length !== bindings.length
+                || !same(input.acceptedGraphResultRefs, bindings.map(binding => sources.find(source => source.producer.attemptId === binding.producerAttemptId).receipt.resultRef))
+                || attempt.reservationRef?.producerAttemptId !== frame.fanoutAttemptId) invalid();
+            const identity = hash({ runId: root.runId, bindings, reservedAttemptId: attempt.attemptId });
+            await assertOutputTransition(tx, handle, { ...root, graph }, { published: sources[0], additionalProducers: sources.slice(1), output: attempt,
+                producerBindings: bindings, reservedAttemptId: attempt.attemptId, receipt: { decisionSeq: settlement.decisionSeq,
+                    traversalReceiptRef: { runId: root.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } } });
         },
         verifyMemberCost: async (_tx, _handle, _root, attempt, { settlement, results }) => {
             if (!attempt.effectRefs.length) {

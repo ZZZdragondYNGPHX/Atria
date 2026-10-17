@@ -1,13 +1,13 @@
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { assertObject, assertCounter } from '../../../public/shared/native-orchestration-contracts.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
-import { checkedRecord } from './plan-repository.js';
+import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { controlCommandId, controlRecordKey, readAttempt, graphReachable, assertAttemptConsumable } from './controller-common.js';
 import { readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 import { readFanoutFrame, readFanoutMembership, isFanoutBranchExcluded } from './fanout-controller.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { joinIdForAttempt, decideJoinOutcome } from './join-controller.js';
-import { readGraphNodeResult } from './graph-result-contracts.js';
+import { readGraphNodeResults } from './graph-result-contracts.js';
 import { readEffect } from './effect-contracts.js';
 
 const same = (a, b) => hash(a) === hash(b);
@@ -195,7 +195,15 @@ export async function readGraphFanoutCompletion(tx, handle, root, joinAttemptId,
     verifyMemberInput, verifyControlInput, verifyMemberCost, recipient = null,
 }) {
     if ([verifyMemberInput, verifyControlInput, verifyMemberCost].some(fn => typeof fn !== 'function')) invalid();
-    const join = (await readAttempt(tx, handle, root, joinAttemptId)).doc;
+    // Reuse only this invocation's read-only historical facts. Live recipient,
+    // Source, Model, bank and permission checks below and at the consumer's
+    // original boundary remain fresh; no evidence survives this function.
+    const attempts = new Map();
+    const attemptAt = async id => {
+        if (!attempts.has(id)) attempts.set(id, (await readAttempt(tx, handle, root, id)).doc);
+        return attempts.get(id);
+    };
+    const join = await attemptAt(joinAttemptId);
     const joinId = joinIdForAttempt(join.attemptId);
     const barrierRow = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', 'barrier:' + joinId));
     const receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', joinId)))?.doc;
@@ -207,11 +215,17 @@ export async function readGraphFanoutCompletion(tx, handle, root, joinAttemptId,
         'memberReceiptRefs', 'barrierDigest', 'policy', 'quorum', 'deadlineAt', 'cutoffSeq', 'decisionSeq', 'acceptedResultRefs', 'excluded', 'reasons', 'outcome'], 'JoinReceipt');
     for (const field of ['epoch', 'graphRevision', 'deadlineAt', 'frozenSeq', 'createdAt']) assertCounter(barrier[field], field);
     for (const field of ['cutoffSeq', 'decisionSeq']) assertCounter(receipt[field], field, 1);
-    const fanout = (await readAttempt(tx, handle, root, barrier.fanoutAttemptId)).doc;
+    const fanout = await attemptAt(barrier.fanoutAttemptId);
     const frame = await readFanoutFrame(tx, handle, root, fanout.attemptId);
     if (!frame) invalid();
     const frozen = await readTaskGraphRevision(tx, handle, root, frame.graphRevision);
-    const joinedGraph = await readTaskGraphRevision(tx, handle, root, barrier.graphRevision);
+    const joinedGraph = barrier.graphRevision === frame.graphRevision ? frozen : await readTaskGraphRevision(tx, handle, root, barrier.graphRevision);
+    const plan = await readPlanRevision(tx, handle, root.planRef);
+    const snapshots = new Map([[frame.graphRevision, frozen], [barrier.graphRevision, joinedGraph]]);
+    const snapshotAt = async revision => {
+        if (!snapshots.has(revision)) snapshots.set(revision, await readTaskGraphRevision(tx, handle, root, revision));
+        return snapshots.get(revision);
+    };
     const fanoutNode = frozen.graph.nodes.find(node => node.nodeId === fanout.nodeId);
     const joinNode = joinedGraph.graph.nodes.find(node => node.nodeId === join.nodeId);
     const settlement = await readAttemptSettlement(tx, handle, root, join);
@@ -234,9 +248,23 @@ export async function readGraphFanoutCompletion(tx, handle, root, joinAttemptId,
         || receipt.cutoffSeq + 1 !== receipt.decisionSeq || receipt.decisionSeq !== settlement.decisionSeq || receipt.decisionSeq > root.eventSeq
         || settlement.outcome !== receipt.outcome || !same(receipt.acceptedResultRefs, join.resultRefs) || settlement.effectReceiptRefs.length || join.effectRefs.length) invalid();
     const transferIn = [], terminalIds = [], scopeAttempts = [], providerEffects = [], graphResults = [];
+    const branchAttempts = new Map(), assigned = new Set();
+    for (const branch of frame.branches) {
+        const members = [];
+        for (const id of root.attemptRefs) {
+            if (assigned.has(id)) continue;
+            const attempt = await attemptAt(id);
+            if (attempt.epoch !== frame.epoch || !branch.scopeNodeIds.includes(attempt.nodeId)
+                || !(await readFanoutMembership(tx, handle, root, frame, id))) continue;
+            members.push(attempt); assigned.add(id);
+        }
+        branchAttempts.set(branch, members);
+    }
+    const resultFacts = await readGraphNodeResults(tx, handle, root,
+        [...branchAttempts.values()].flatMap(members => members.flatMap(attempt => attempt.resultRefs.map(ref => ref.resultId))));
     const entries = new Set();
     for (const branch of frame.branches) {
-        const entry = (await readAttempt(tx, handle, root, branch.entryAttemptId)).doc;
+        const entry = await attemptAt(branch.entryAttemptId);
         if (entries.has(entry.nodeId) || !branch.scopeNodeIds.includes(entry.nodeId) || entry.graphRevision !== frame.graphRevision || entry.epoch !== frame.epoch) invalid();
         entries.add(entry.nodeId);
         const scope = { nodes: frozen.graph.nodes, edges: frozen.graph.edges.filter(edge => branch.scopeNodeIds.includes(edge.from.nodeId) && branch.scopeNodeIds.includes(edge.to.nodeId)) };
@@ -245,16 +273,12 @@ export async function readGraphFanoutCompletion(tx, handle, root, joinAttemptId,
         if (!edges.length || edges.some(edge => !['always', 'success'].includes(edge.condition))) invalid();
         transferIn.push(...edges.map(edge => ({ edgeId: edge.edgeId, producerAttemptId: fanout.attemptId, nodeAttemptId: entry.attemptId })));
         for (const id of branch.memberAttemptIds) {
-            const member = (await readAttempt(tx, handle, root, id)).doc;
+            const member = await attemptAt(id);
             if (terminalIds.includes(id) || !branch.scopeNodeIds.includes(member.nodeId) || !graphReachable(scope, entry.nodeId, member.nodeId)
                 || member.graphRevision !== barrier.graphRevision || member.epoch !== frame.epoch) invalid();
             if (joinedGraph.graph.edges.some(edge => edge.from.nodeId === member.nodeId && edge.to.nodeId === join.nodeId)) terminalIds.push(id);
         }
-        for (const id of root.attemptRefs) {
-            if (scopeAttempts.some(item => item.attempt.attemptId === id)) continue;
-            const attempt = (await readAttempt(tx, handle, root, id)).doc;
-            if (attempt.epoch !== frame.epoch || !branch.scopeNodeIds.includes(attempt.nodeId)
-                || !(await readFanoutMembership(tx, handle, root, frame, id))) continue;
+        for (const attempt of branchAttempts.get(branch)) {
             const completed = SETTLED_ATTEMPT_STATUSES.includes(attempt.status) ? await readAttemptSettlement(tx, handle, root, attempt) : null;
             if (!completed || completed.decisionSeq <= frame.decisionSeq) invalid();
             const reservation = await reservationFact(tx, handle, root, frame, attempt);
@@ -264,11 +288,12 @@ export async function readGraphFanoutCompletion(tx, handle, root, joinAttemptId,
                     : !same(attempt.budgetRef, fanout.budgetRef))) invalid();
             const results = [];
             for (const ref of attempt.resultRefs) {
-                const fact = await readGraphNodeResult(tx, handle, root, ref.resultId);
+                const fact = resultFacts.get(ref.resultId);
                 if (!fact || fact.producer.attemptId !== attempt.attemptId || !same(fact.receipt.resultRef, ref)) invalid();
                 results.push(fact); graphResults.push(fact);
             }
-            await verifyMemberInput(tx, handle, root, attempt, { frame, barrier, branch, settlement: completed, results, reservation });
+            await verifyMemberInput(tx, handle, root, attempt, { frame, barrier, branch, settlement: completed, results, reservation,
+                graphSnapshot: await snapshotAt(attempt.graphRevision), plan });
             await verifyMemberCost(tx, handle, root, attempt, { frame, barrier, branch, settlement: completed, results, reservation });
             for (const effectId of attempt.effectRefs) {
                 const effect = (await readEffect(tx, handle, root, effectId)).doc;
@@ -330,7 +355,7 @@ export async function readGraphFanoutCompletion(tx, handle, root, joinAttemptId,
     await commandFact(tx, handle, root, 'fanout.freeze', frame.receiptId, { fanoutAttemptId: fanout.attemptId, branches: frame.branches }, 'fanoutFrame', frame);
     await commandFact(tx, handle, root, 'join.freeze', joinId, { fanoutAttemptId: fanout.attemptId, nodeAttemptId: join.attemptId, memberAttemptIds: barrier.memberAttemptIds }, 'joinBarrier', barrier);
     const settled = await commandFact(tx, handle, root, 'join.settle', joinId, { joinId }, 'joinReceipt', receipt);
-    const settlementGraph = await readTaskGraphRevision(tx, handle, root, settled.outcome.versions.graphRevision);
+    const settlementGraph = await snapshotAt(settled.outcome.versions.graphRevision);
     await assertEdgeHistory(tx, handle, root);
     await edgeFacts(tx, handle, root, frozen.graph, transferIn, frame.edgeAdmissionRefs, frame.decisionSeq, frame.graphRevision);
     await edgeFacts(tx, handle, root, settlementGraph.graph, transferOut, receipt.edgeAdmissionRefs, receipt.decisionSeq, settlementGraph.graphRevision);

@@ -14,6 +14,7 @@ import { readEffect } from './effect-contracts.js';
 import { readRunControl } from '../run-control.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { sessionOutputReceiptId } from './session-output-contracts.js';
+import { readSessionDelegationInputs } from './session-delegation-inputs.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid Session delegation facts'); };
@@ -87,6 +88,7 @@ export async function readSessionDelegation(tx, handle, parent, childRunId) {
     if (input.delegationScope.parentPinId !== pin.pinId
         || !equal(input.delegationScope.sourceRef, capture?.sourceRef ?? pin.resourceRef)
         || input.delegationScope.integrity !== (capture?.integrity ?? pin.integrity)) invalid();
+    await readSessionDelegationInputs(tx, handle, parent, facts.parentAttempt);
     const delegated = await readSessionDelegatedPlan(tx, handle, child);
     const entryPin = delegated.plan.dependencyPins.find(pin => pin.pinId === input.delegationScope.childPinId);
     if (entryPin?.port !== 'context' || !delegated.graph.entryNodeIds.some(id => delegated.graph.nodes.find(node => node.nodeId === id)?.policy.audiencePinId === entryPin.pinId)) invalid();

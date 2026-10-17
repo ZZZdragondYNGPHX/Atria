@@ -1,3 +1,4 @@
+import { ContextPort } from '../orchestration/context-port.js';
 import { VisualStore } from '../visual-store.js';
 import { VisualDirector } from '../visual-director.js';
 import { registerVisualWake } from '../visual-events.js';
@@ -1008,7 +1009,8 @@ export class NativeGenerationHost {
             sessionId: value.sessionId, requestId: value.requestId, role: value.role });
         if (scopedContext && (value.messages?.length || value.prompt)) fail('native_generation_context_denied');
         if (scopedContext && value.tools?.length) {
-            if (scopedContext.compiled.request.audience.kind === 'project_task') scopedContext.port.assertProjectRequest(handle, { context: scopedContext.compiled, request: value });
+            if (scopedContext.compiled.request.audience.kind === 'project_task'
+                || ContextPort.prototype.isProjectDelegation.call(scopedContext.port, handle, { context: scopedContext.compiled })) scopedContext.port.assertProjectRequest(handle, { context: scopedContext.compiled, request: value });
             else scopedContext.port.assertResolverRequest(handle, { context: scopedContext.compiled, request: value });
         }
         if (sendBank) {
@@ -1055,7 +1057,8 @@ export class NativeGenerationHost {
                 projectTaskEvidence = { source: 'native.project-task', ref: input.taskId + ':' + context.task.executionFingerprint };
                 projectConversation = context.task.conversation;
                 if (context.task.baseRevision !== input.revision || ['review', 'blocked', 'conflict', 'taken_over', 'completed'].includes(context.task.status)) fail('native_generation_task_stopped');
-                if (scopedContext?.compiled.request.audience.kind === 'project_task') projectWorker = scopedContext.port.inspectProjectWorker(handle, { context: scopedContext.compiled, request: input });
+                if (scopedContext && (scopedContext.compiled.request.audience.kind === 'project_task'
+                    || ContextPort.prototype.isProjectDelegation.call(scopedContext.port, handle, { context: scopedContext.compiled }))) projectWorker = scopedContext.port.inspectProjectWorker(handle, { context: scopedContext.compiled, request: input });
                 if (projectWorker && !context.task.attempts.some(attempt => attempt.attemptId === input.projectAttemptId && attempt.status === 'started'
                     && attempt.requestId === projectWorker.originalRequestId)) fail('native_generation_task_stopped');
                 if (!preview && input.projectAttemptId && !projectWorker) await this.agent.recordGenerationRequest(handle, input.projectId, input.taskId, input.projectAttemptId, input.requestId);

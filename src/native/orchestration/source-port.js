@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { ConflictError } from '../../storage/errors.js';
 import { hashNativeDocument, withNativeResourceWrite } from '../repositories/common.js';
 import { fields } from '../../../public/shared/native-values.js';
@@ -13,6 +14,8 @@ import { assertSessionTaskSource } from './binding-source-authority.js';
 import { RpRunControl } from '../rp-run-control.js';
 import { ChatRepo } from '../../storage/repositories/chat-repo.js';
 import { readProjectOwnedSource } from './project-tool-receipts.js';
+
+const heldProjectBoundaries = new AsyncLocalStorage();
 
 const conflict = () => { throw new ConflictError('native_orchestration_source_stale'); };
 
@@ -62,8 +65,20 @@ export class SourcePort {
             const { projectId, taskId } = request;
             return operation => {
                 if (typeof operation !== 'function') throw new TypeError('Original domain consumption requires an operation');
-                return withRuntimeWrite(handle, () => ProjectAgentService.prototype.withTaskLock.call(agent, handle, projectId, taskId,
-                    () => StudioService.prototype.withProjectWrite.call(studio, handle, projectId, operation)));
+                return withRuntimeWrite(handle, () => {
+                    const held = heldProjectBoundaries.getStore() ?? [];
+                    if (held.some(scope => scope.open && scope.engine === engine && scope.agent === agent && scope.studio === studio
+                        && scope.handle === handle && scope.projectId === projectId && scope.taskId === taskId && scope.bindingDigest === bindingDigest)) return operation();
+                    return ProjectAgentService.prototype.withTaskLock.call(agent, handle, projectId, taskId,
+                        () => StudioService.prototype.withProjectWrite.call(studio, handle, projectId, async () => {
+                            // Queue ownership only. Every nested consumer still
+                            // performs its original fresh Source/grant/bank checks.
+                            const scope = { engine, agent, studio, handle, projectId, taskId, bindingDigest, open: true };
+                            return heldProjectBoundaries.run([...held, scope], async () => {
+                                try { return await operation(); } finally { scope.open = false; }
+                            });
+                        }));
+                });
             };
         }
         const repo = this.sessionCore?.runs?.repo, sessionId = binding?.sourceRef?.sessionId;

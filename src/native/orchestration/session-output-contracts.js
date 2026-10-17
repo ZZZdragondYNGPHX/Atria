@@ -131,10 +131,13 @@ export async function readSessionOutput(tx, handle, root) {
     if (root.attemptRefs.length < root.graph.nodes.length) invalid();
     for (const ref of root.attemptRefs) {
         const attempt = (await readAttempt(tx, handle, root, ref)).doc;
-        const fanoutGroup = published.fanoutCompletions.find(item => item.allMembers.some(member => member.attempt.attemptId === attempt.attemptId));
-        const fanoutMember = fanoutGroup?.allMembers.find(item => item.attempt.attemptId === attempt.attemptId);
+        const fanoutGroup = published.fanoutCompletions.find(item => item.scopeAttempts.some(member => member.attempt.attemptId === attempt.attemptId));
+        const scopeMember = fanoutGroup?.scopeAttempts.find(item => item.attempt.attemptId === attempt.attemptId);
+        const fanoutMember = fanoutGroup?.allMembers.find(item => item.attempt.attemptId === attempt.attemptId)
+            ?? (scopeMember ? { attempt: scopeMember.attempt, receipt: scopeMember.completed } : null);
         if ((attempt.status !== 'completed' && (!fanoutMember || !['failed', 'cancelled'].includes(attempt.status))) || attempt.epoch !== receipt.epoch
-            || attempt.sourceBindingDigest !== root.sourceBinding.bindingDigest || !equal(attempt.budgetRef, root.budgetAuthorityRef)) invalid();
+            || attempt.sourceBindingDigest !== root.sourceBinding.bindingDigest
+            || !equal(attempt.budgetRef, root.budgetAuthorityRef) && !(fanoutMember && attempt.inputState === 'reserved' && attempt.budgetRef === null)) invalid();
         if (nodes.has(attempt.nodeId) && (attempt.nodeId === output.nodeId || attempt.nodeId === published.producer.nodeId
             || !published.graphResults.some(result => result.producer.nodeId === attempt.nodeId)
                 && !published.reviewCompletions.some(result => result.producer.nodeId === attempt.nodeId))) invalid();
@@ -144,13 +147,17 @@ export async function readSessionOutput(tx, handle, root) {
             const graphResult = published.graphResults.find(result => result.producer.attemptId === attempt.attemptId);
             const reviewed = published.reviewCompletions.find(result => result.producer.attemptId === attempt.attemptId);
             const planned = published.plannerCompletions.find(result => result.producer.attemptId === attempt.attemptId);
-            const resolverInput = attempt.inputRefs[0];
+            const judged = published.judgeCompletions.find(result => result.producer.attemptId === attempt.attemptId);
+            const resolverInput = attempt.inputRefs?.[0];
             const control = published.fanoutCompletions.find(item => [item.producer.attemptId, item.fanout.attemptId].includes(attempt.attemptId));
             if (control) {
                 if (attempt.effectRefs.length || !['fanout', 'join'].includes(root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind)) invalid();
             } else if (fanoutMember && attempt.status !== 'completed') {
                 if (!equal(fanoutMember.attempt, attempt) || (fanoutMember.receipt ? !equal(fanoutMember.receipt, settled)
                     : settled.decisionSeq <= fanoutGroup.joinReceipt.cutoffSeq)) invalid();
+            } else if (judged) {
+                if (settled.reasonCode !== 'graph_judge_selected' || resolverInput.invocationId !== expected.invocationId
+                    || resolverInput.requestHash !== expected.requestHash || !equal(judged.producer, attempt)) invalid();
             } else if (planned) {
                 if (settled.reasonCode !== 'graph_planner_patch_accepted') invalid();
             } else if (reviewed) {

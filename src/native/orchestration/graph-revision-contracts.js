@@ -11,11 +11,23 @@ const equal = (a, b) => hash(a) === hash(b);
 /** Replay original accepted patch facts, never issue a producer or Result grant.
  * Later edges appear only in their own revision, not an earlier publication. */
 export async function readTaskGraphRevision(tx, handle, root, graphRevision = root.graphRevision) {
-    assertCounter(graphRevision, 'graphRevision');
-    if (graphRevision > root.graphRevision) invalid();
+    return (await readTaskGraphRevisions(tx, handle, root, [graphRevision])).get(graphRevision);
+}
+
+/** Reconstruct several requested revisions in one complete original replay.
+ * All Plan, patch, producer, command and final Root checks still execute; the
+ * returned snapshots are independent data and cannot authorize a consumer. */
+export async function readTaskGraphRevisions(tx, handle, root, graphRevisions) {
+    const requested = new Set(graphRevisions);
+    for (const revision of requested) {
+        assertCounter(revision, 'graphRevision');
+        if (revision > root.graphRevision) invalid();
+    }
     const plan = await readPlanRevision(tx, handle, root.planRef), graph = cloneNativeDocument(plan.definition);
     const nodeControl = Object.fromEntries(graph.nodes.map(node => [node.nodeId, { disposition: 'eligible', priority: 0, reasonCode: null }]));
-    let revision = 0, decisionSeq = 0, selected = graphRevision === 0 ? { graph: cloneNativeDocument(graph), nodeControl: cloneNativeDocument(nodeControl), graphRevision: 0 } : null;
+    let revision = 0, decisionSeq = 0;
+    const selected = new Map();
+    if (requested.has(0)) selected.set(0, { graph: cloneNativeDocument(graph), nodeControl: cloneNativeDocument(nodeControl), graphRevision: 0 });
     const rows = await tx.listResources({ kind: K.orchestrationRecord, handle, runId: root.runId, recordType: 'patch' });
     rows.sort((a, b) => a.doc.decisionSeq - b.doc.decisionSeq);
     for (const row of rows) {
@@ -72,8 +84,8 @@ export async function readTaskGraphRevision(tx, handle, root, graphRevision = ro
         if (!equal(receipt.requests, requests)) invalid();
         assertPlanDefinition(graph, plan.dependencyPins);
         revision++;
-        if (revision === graphRevision) selected = { graph: cloneNativeDocument(graph), nodeControl: cloneNativeDocument(nodeControl), graphRevision: revision };
+        if (requested.has(revision)) selected.set(revision, { graph: cloneNativeDocument(graph), nodeControl: cloneNativeDocument(nodeControl), graphRevision: revision });
     }
-    if (revision !== root.graphRevision || root.progress.patches !== revision || !equal(graph, root.graph) || !equal(nodeControl, root.nodeControl) || !selected) invalid();
+    if (revision !== root.graphRevision || root.progress.patches !== revision || !equal(graph, root.graph) || !equal(nodeControl, root.nodeControl) || selected.size !== requested.size) invalid();
     return selected;
 }

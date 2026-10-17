@@ -9,7 +9,7 @@ import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
-import { readGraphNodeResult } from './graph-result-contracts.js';
+import { readGraphNodeResults } from './graph-result-contracts.js';
 import { assertAudienceRunCapture } from './audience-source-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 
@@ -72,9 +72,10 @@ export async function readGraphJudgeCompletion(tx, handle, root, attemptId, { ve
         assertAudienceRunCapture(root, node, plan.dependencyPins, input);
     }
     const candidates = [], bindings = [];
+    const candidateFacts = await readGraphNodeResults(tx, handle, root, receipt.candidateRefs.map(ref => ref.resultId));
     for (const ref of receipt.candidateRefs) {
         if (ref.runId !== root.runId) invalid();
-        const fact = await readGraphNodeResult(tx, handle, root, ref.resultId);
+        const fact = candidateFacts.get(ref.resultId);
         const edges = snapshot.graph.edges.filter(edge => edge.from.nodeId === fact?.producer.nodeId && edge.to.nodeId === producer.nodeId && !edge.loopBack);
         if (!fact || !equal(fact.receipt.resultRef, ref) || !fact.record.envelope.audienceConstraint.nodeIds.includes(producer.nodeId)
             || !edges.length || fact.receipt.decisionSeq >= receipt.decisionSeq) invalid();

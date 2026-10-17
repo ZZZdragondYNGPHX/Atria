@@ -145,7 +145,7 @@ export async function readRpOutput(tx, handle, root) {
     const edgeId = 'oreceipt_' + hash({ kind: 'edge_admission', runId: root.runId, edgeId: edge.edgeId,
         producerAttemptId: published.producer.attemptId, nodeAttemptId: output.attemptId }).slice(0, 32);
     const admission = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', edgeId)))?.doc;
-    const completedLoops = published.producer.inputRefs[0].controlGraph ? 0 : Math.max(0, published.plannerCompletions.length - 1);
+    const completedLoops = published.producer.inputRefs[0].controlGraph ? published.loopIterations : Math.max(0, published.plannerCompletions.length - 1);
     if (!admission) invalid();
     assertObject(admission, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'graphRevision', 'edgeId', 'producerAttemptId',
         'nodeAttemptId', 'sourceBindingDigest', 'edgeVisit', 'loopIteration', 'decisionSeq', 'createdAt'], 'RP edge admission');

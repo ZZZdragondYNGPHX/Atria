@@ -18,6 +18,7 @@ import { readContextRetrievalCompletions } from './context-retrieval-contracts.j
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readPlanRevision } from './plan-repository.js';
 import { readSessionDelegatedGraphHistory, sessionDelegationResultSources } from './session-delegation-contracts.js';
+import { readProjectDelegatedGraphHistory } from './project-delegation-contracts.js';
 
 const fail = code => { throw new ConflictError(code); };
 const equal = (a, b) => hash(a) === hash(b);
@@ -52,7 +53,7 @@ export class ResultController {
             inputRefs: before.inputRefs, effectiveGrantDigest: before.grantDigest, budgetCeiling: before.root.parentRef.budgetCeiling, phase: 'confirm_budget' };
         assertDelegationDecision(await delegates.authorizeDelegation(scope), scope, before.grantDigest);
         const proof = await ModelPort.prototype.inspectResultCompletion.call(this.modelPort, handle, { result, runId: before.childRunId, effectId });
-        if (proof.runId !== before.childRunId || proof.epoch !== before.childEpoch || proof.outputType !== 'text'
+        if (proof.runId !== before.childRunId || proof.epoch !== before.childEpoch || proof.outputType !== (before.root.sourceBinding.sourceAuthority === 'project' ? 'json' : 'text')
             || !equal(proof.sourceBinding, before.sourceBinding)) fail('native_orchestration_result_publication_stale');
         await SourcePort.prototype.revalidate.call(sourcePort, handle, before.sourceBinding, { tx });
         const current = await NativeNarratorOrchestrationAuthority.prototype.inspectDelegation.call(this.host.turnOrchestration, capture, { host: this.host, handle, tx });
@@ -62,10 +63,15 @@ export class ResultController {
         if (rootStamp !== hash(finalRoot) || parentStamp !== hash(finalParent)
             || fence.hostBootId !== finalRoot.hostBootId || fence.generation !== finalRoot.hostGeneration) fail('native_orchestration_result_publication_stale');
         const payload = result.generated?.response?.text;
-        if (typeof payload !== 'string' || hash(payload) !== proof.payloadHash) fail('native_orchestration_model_result_payload_changed');
+        const project = finalRoot.sourceBinding.sourceAuthority === 'project';
+        if (typeof payload !== 'string' || project && !equal(result.generated.response.toolCalls ?? [], [])
+            || hash(project ? { text: payload, toolCalls: [] } : payload) !== proof.payloadHash) fail('native_orchestration_model_result_payload_changed');
         if (finalRoot.sourceBinding.sourceAuthority === 'native_session') {
             const producer = (await readAttempt(tx, handle, finalRoot, proof.producerAttemptId)).doc;
             await readSessionDelegatedGraphHistory(tx, handle, finalRoot, { pendingProducer: producer });
+        } else if (project) {
+            const producer = (await readAttempt(tx, handle, finalRoot, proof.producerAttemptId)).doc;
+            await readProjectDelegatedGraphHistory(tx, handle, finalRoot, { pendingProducer: producer });
         }
         return { identity: current, root: finalRoot, proof, payload, childPlan };
     }
@@ -102,7 +108,8 @@ export class ResultController {
                             grantDigest: current.parentGrantDigest, taskPurpose: current.parentTaskPurpose };
                         const resultEnvelope = { schemaVersion: 1, runId, resultId, producerAttemptId: record.doc.attemptId, outputType: 'text',
                             outputSchemaRef: { kind: 'native_builtin', schema: 'text' },
-                            payloadRef: { kind: 'orchestration_result_payload', runId, resultId, integrity: proof.payloadHash },
+                            payloadRef: { kind: 'orchestration_result_payload', runId, resultId,
+                                integrity: root.sourceBinding.sourceAuthority === 'project' ? hash(payload) : proof.payloadHash },
                             sourceRefs: [{ kind: 'run_source', runId, epoch: root.epoch, sourceBindingDigest: root.sourceBinding.bindingDigest,
                                 sourceAuthority: root.sourceBinding.sourceAuthority, sourceRef: root.sourceBinding.sourceRef },
                             { kind: 'effect_receipt', runId, effectId, receiptId: proof.receiptRef.receiptId, observedEpoch: root.epoch },

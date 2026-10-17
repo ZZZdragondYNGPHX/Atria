@@ -138,7 +138,8 @@ function assertSources(refs, envelope) {
         assertNativeId(source.sourceRef.projectId, 'project'); assertDigest(source.sourceRef.executionFingerprint, 'Project Source fingerprint');
         if (typeof source.sourceRef.taskId !== 'string' || !source.sourceRef.taskId || typeof source.sourceRef.revision !== 'string' || !source.sourceRef.revision
             || !['project_review', 'project_commit'].includes(envelope.audienceConstraint?.kind)
-                && !(envelope.audienceConstraint?.kind === 'graph_nodes' && envelope.audienceConstraint.taskPurpose === 'original_native_project_graph_result' && refs.length === 2)) fail('Project source recipient');
+                && !(envelope.audienceConstraint?.kind === 'graph_nodes' && envelope.audienceConstraint.taskPurpose === 'original_native_project_graph_result' && refs.length === 2)
+                && !(envelope.audienceConstraint?.kind === 'parent_attempt' && envelope.audienceConstraint.taskPurpose === 'original_native_project_delegation' && refs.length === 2)) fail('Project source recipient');
     } else fail('producer source authority');
     if (source.kind !== 'run_source' || source.runId !== envelope.runId) fail('producer source identity');
     assertCounter(source.epoch, 'producerEpoch'); assertDigest(source.sourceBindingDigest, 'sourceBindingDigest');

@@ -8,6 +8,7 @@ import { handoffReceiptId } from './handoff-contracts.js';
 import { readTaskLocalOutput } from './task-local-output-contracts.js';
 import { assertRunRoot } from './run-repository.js';
 import { readSessionDelegation } from './session-delegation-contracts.js';
+import { readProjectDelegation } from './project-delegation-contracts.js';
 
 export const handoffReturnReceiptId = childRunId => 'oreceipt_' + hash({ kind: 'handoff_return', childRunId }).slice(0, 32);
 const equal = (a, b) => hash(a) === hash(b);
@@ -40,7 +41,7 @@ export async function readHandoffReturn(tx, handle, parent, childRunId) {
     if (receipt.childEpoch > child.epoch || child.parentRef?.parentRunId !== parent.runId || child.parentRef.nodeAttemptId !== attempt.attemptId
         || child.parentRef.parentEpoch !== receipt.epoch || child.parentRef.effectiveGrantDigest !== receipt.childGrantDigest
         || attempt.epoch !== receipt.epoch || attempt.inputDigest !== receipt.parentInputDigest || attempt.effectiveGrantDigest !== receipt.parentGrantDigest
-        || attempt.inputRefs[0]?.kind !== ({ rp_chat: 'native_rp_delegation', native_session: 'native_session_delegation' })[parent.sourceBinding.sourceAuthority]
+        || attempt.inputRefs[0]?.kind !== ({ rp_chat: 'native_rp_delegation', native_session: 'native_session_delegation', project: 'native_project_delegation' })[parent.sourceBinding.sourceAuthority]
         || !equal(attempt.inputRefs[0].planRef, parent.planRef)
         || !equal(attempt.inputRefs[0].childPlanRef, child.planRef) || attempt.inputRefs[0].nodeId !== attempt.nodeId
         || !equal(attempt.budgetRef, child.budgetAuthorityRef) || !equal(parent.budgetAuthorityRef, child.budgetAuthorityRef)
@@ -55,13 +56,13 @@ export async function readHandoffReturn(tx, handle, parent, childRunId) {
         || result.integrity !== receipt.resultIntegrity || hash(result.doc.envelope.audienceConstraint) !== receipt.audienceDigest
         || !equal(result.doc.envelope.audienceConstraint, { kind: 'parent_attempt', parentRunId: parent.runId, parentAttemptId: attempt.attemptId,
             parentEpoch: receipt.epoch, sourceBindingDigest: receipt.sourceBindingDigest, grantDigest: receipt.parentGrantDigest,
-            taskPurpose: parent.sourceBinding.sourceAuthority === 'native_session' ? 'original_native_session_delegation' : 'original_rp_delegation' })) invalid();
-    if (parent.sourceBinding.sourceAuthority === 'native_session') {
+            taskPurpose: ({ native_session: 'original_native_session_delegation', project: 'original_native_project_delegation', rp_chat: 'original_rp_delegation' })[parent.sourceBinding.sourceAuthority] })) invalid();
+    if (['native_session', 'project'].includes(parent.sourceBinding.sourceAuthority)) {
         // The parent supplied by the return writer may have its staged next
         // event sequence. Lineage is checked against the actual original row.
         const actual = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: parent.runId }))?.doc;
-        const lineage = actual && await readSessionDelegation(tx, handle, actual, childRunId);
+        const lineage = actual && await (parent.sourceBinding.sourceAuthority === 'native_session' ? readSessionDelegation : readProjectDelegation)(tx, handle, actual, childRunId);
         if (!lineage || lineage.mode !== 'handoff' || !equal(lineage.handoffReceiptRef, receipt.handoffReceiptRef)) invalid();
     }
-    return parent.sourceBinding.sourceAuthority === 'native_session' ? { ...receipt, output, publication: output.publication } : receipt;
+    return ['native_session', 'project'].includes(parent.sourceBinding.sourceAuthority) ? { ...receipt, output, publication: output.publication } : receipt;
 }

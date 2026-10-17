@@ -107,7 +107,7 @@ export async function readRpNarrationResult(tx, handle, root) {
     if (input.controlGraph) {
         if (partial) invalid();
         const history = await readRpControlGraphHistory(tx, handle, root, { record, receipt, settlement, producer });
-        return { record, receipt, settlement, producer, ...history, judgeCompletion: null, fanout: null,
+        return { record, receipt, settlement, producer, ...history, judgeCompletion: null,
             retrievalCompletions: [...history.graphResults.flatMap(item => item.retrievalCompletions),
                 ...history.plannerCompletions.flatMap(item => item.retrievalCompletions), ...history.reviewCompletions.flatMap(item => item.retrievalCompletions),
                 ...history.judgeCompletions.flatMap(item => item.retrievalCompletions), ...retrievalCompletions] };

@@ -11,6 +11,7 @@ import { childBudgetReceiptId, assertRunRoot } from './run-repository.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readSessionDelegation, sessionDelegationResultSources, readSessionDelegatedGraphHistory } from './session-delegation-contracts.js';
+import { readProjectDelegation, readProjectDelegatedGraphHistory } from './project-delegation-contracts.js';
 
 export const modelResultId = (runId, effectId) => 'oresult_' + hash({ runId, effectId }).slice(0, 32);
 export const resultPublicationReceiptId = (runId, resultId) => 'oreceipt_' + hash({ kind: 'result_publication', runId, resultId }).slice(0, 32);
@@ -56,7 +57,7 @@ export async function readResultPublication(tx, handle, root, resultId) {
         || receipt.epoch > root.epoch || receipt.decisionSeq > root.eventSeq || !root.resultRefs.some(item => equal(item, receipt.resultRef))
         || envelope.status !== 'complete' || envelope.audienceConstraint.parentRunId !== root.parentRef.parentRunId
         || envelope.audienceConstraint.parentAttemptId !== root.parentRef.nodeAttemptId || envelope.audienceConstraint.parentEpoch !== root.parentRef.parentEpoch
-        || envelope.audienceConstraint.taskPurpose !== ({ rp_chat: 'original_rp_delegation', native_session: 'original_native_session_delegation' })[root.sourceBinding.sourceAuthority]) invalid();
+        || envelope.audienceConstraint.taskPurpose !== ({ rp_chat: 'original_rp_delegation', native_session: 'original_native_session_delegation', project: 'original_native_project_delegation' })[root.sourceBinding.sourceAuthority]) invalid();
     const attempt = (await readAttempt(tx, handle, root, receipt.producerAttemptId)).doc;
     const settlement = await readAttemptSettlement(tx, handle, root, attempt);
     const intent = (await readEffect(tx, handle, root, receipt.effectId)).doc;
@@ -72,17 +73,20 @@ export async function readResultPublication(tx, handle, root, resultId) {
         || !equal(envelope.sourceRefs[1], { kind: 'effect_receipt', runId: root.runId, effectId: receipt.effectId,
             receiptId: receipt.effectReceiptRef.receiptId, observedEpoch: receipt.epoch })) invalid();
     const parentRunId = root.parentRef.parentRunId;
-    if (root.sourceBinding.sourceAuthority === 'native_session') {
+    if (['native_session', 'project'].includes(root.sourceBinding.sourceAuthority)) {
+        const session = root.sourceBinding.sourceAuthority === 'native_session';
         const parent = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: parentRunId }))?.doc;
         if (!parent) invalid();
-        const lineage = await readSessionDelegation(tx, handle, parent, root.runId);
+        const lineage = await (session ? readSessionDelegation : readProjectDelegation)(tx, handle, parent, root.runId);
         if (!lineage || attempt.nodeId !== lineage.terminalNodeId || receipt.producerGrantDigest !== root.parentRef.effectiveGrantDigest
             || envelope.audienceConstraint.grantDigest !== lineage.parentAttempt.effectiveGrantDigest
             || !equal(receipt.handoffReceiptRef, lineage.handoffReceiptRef)
             || !equal(receipt.delegationReceiptRef, lineage.delegationReceiptRef)
             || !equal(receipt.budgetReadyReceiptRef, lineage.budgetReadyReceiptRef)
             || lineage.budgetReady.decisionSeq > receipt.decisionSeq
-            || !equal(envelope.sourceRefs.slice(2), sessionDelegationResultSources(root, attempt, lineage.plan))) invalid();
+            || !equal(envelope.sourceRefs.slice(2), session ? sessionDelegationResultSources(root, attempt, lineage.plan) : [])
+            || !session && (completion.observation.dispatchEvidence.reference.resultOutputType !== 'json'
+                || completion.observation.dispatchEvidence.reference.resultPayloadHash !== hash({ text: result.doc.payload, toolCalls: [] }))) invalid();
         const publication = { record: result.doc, receipt, attemptReceipt: settlement, producer: attempt };
         const outputAttempts = [];
         for (const id of root.attemptRefs) {
@@ -90,7 +94,7 @@ export async function readResultPublication(tx, handle, root, resultId) {
             if (actual.nodeId === lineage.output.nodeId) outputAttempts.push(actual);
         }
         if (outputAttempts.length > 1) invalid();
-        const graphHistory = await readSessionDelegatedGraphHistory(tx, handle, root, { finalPublication: publication, output: outputAttempts[0] ?? null });
+        const graphHistory = await (session ? readSessionDelegatedGraphHistory : readProjectDelegatedGraphHistory)(tx, handle, root, { finalPublication: publication, output: outputAttempts[0] ?? null });
         return { ...publication, graphHistory };
     }
     if (!equal(receipt.handoffReceiptRef, { runId: parentRunId, receiptId: handoffReceiptId(root.runId) })

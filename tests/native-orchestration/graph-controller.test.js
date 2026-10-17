@@ -2,7 +2,7 @@ import { PlanRepository, validationDigest } from '../../src/native/orchestration
 import { RunRepository } from '../../src/native/orchestration/run-repository.js';
 import { AttemptController } from '../../src/native/orchestration/attempt-controller.js';
 import { GraphController } from '../../src/native/orchestration/graph-controller.js';
-import { graphPatchHash, readTaskGraphRevision } from '../../src/native/orchestration/graph-revision-contracts.js';
+import { graphPatchHash, readTaskGraphRevision, readTaskGraphRevisions } from '../../src/native/orchestration/graph-revision-contracts.js';
 import { runGuard, controlRecordKey, controlCommandId } from '../../src/native/orchestration/controller-common.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { hashNativeDocument, putMutable } from '../../src/native/repositories/common.js';
@@ -99,6 +99,10 @@ describe.each(CONTRACT_HARNESSES)('$name G2 Host whole-patch control', ({ make }
         await graph.propose(h.handle, await proposal([...second.operations, { op: 'setPendingPriority', nodeId: first.nodeId, priority: 7 }]));
         const root = await current();
         const snapshots = await h.engine.withTransaction(h.handle, async tx => Promise.all([0, 1, 2].map(revision => readTaskGraphRevision(tx, h.handle, root, revision))));
+        const batch = await h.engine.withTransaction(h.handle, tx => readTaskGraphRevisions(tx, h.handle, root, [0, 1, 2, 1]));
+        expect([...batch.values()]).toEqual(snapshots);
+        batch.get(2).graph.nodes[0].label = 'Batch caller mutation';
+        expect(batch.get(1)).toEqual(snapshots[1]);
         expect(snapshots[0].graph).toEqual(original.graph); expect(snapshots[1].graph).toEqual(middle.graph); expect(snapshots[2].graph).toEqual(root.graph);
         expect(snapshots[1].nodeControl[first.nodeId].priority).toBe(0); expect(snapshots[2].nodeControl[first.nodeId].priority).toBe(7);
         expect(snapshots[0].graph.edges.some(edge => edge.to.nodeId === first.nodeId)).toBe(false);
@@ -110,6 +114,8 @@ describe.each(CONTRACT_HARNESSES)('$name G2 Host whole-patch control', ({ make }
         attachNativeHostLifecycle(cold, { directoriesByHandle: () => h.dirs });
         try {
             expect(await cold.withTransaction(h.handle, tx => readTaskGraphRevision(tx, h.handle, root, 1))).toEqual(saved);
+            expect((await cold.withTransaction(h.handle, tx => readTaskGraphRevisions(tx, h.handle, root, [0, 1, 2]))).get(1)).toEqual(saved);
+            await expect(cold.withTransaction(h.handle, tx => readTaskGraphRevisions(tx, h.handle, root, [1, 3]))).rejects.toMatchObject({ code: 'native_orchestration_graph_history_unavailable' });
             await expect(cold.withTransaction(h.handle, tx => readTaskGraphRevision(tx, h.handle, root, 3))).rejects.toMatchObject({ code: 'native_orchestration_graph_history_unavailable' });
         } finally { await cold.close(); }
     });

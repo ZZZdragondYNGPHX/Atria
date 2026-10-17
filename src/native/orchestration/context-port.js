@@ -44,20 +44,25 @@ export class ContextPort {
     #projectRoundPreviousSystem;
     #sessionGraphInputs = null;
 
-    constructor({ sessionCore, projectAgent, projectCapture = null, rpControl = null, rpCapture = null, rpReturnCapture = null, rpGraphResults = [], resultPort = null, rpDelegationCapture = null, sessionDelegationCapture = null, sessionDelegationHost = null, taskCapture = null, authorizeContext, contextOptions = {}, readMemoryEvidence, memoryAuthority = null, authorityTurn = null, resolverCapture = null, compilationInputs = null, nativeOutputQuota = null, sessionModelPolicy = null, projectModelPolicy = null, projectRoundPreviousSystem = undefined, sessionGraphInputs = null } = {}) {
+    constructor({ sessionCore, projectAgent, projectCapture = null, projectDelegationCapture = null, projectDelegationHost = null, rpControl = null, rpCapture = null, rpReturnCapture = null, rpGraphResults = [], resultPort = null, rpDelegationCapture = null, sessionDelegationCapture = null, sessionDelegationHost = null, taskCapture = null, authorizeContext, contextOptions = {}, readMemoryEvidence, memoryAuthority = null, authorityTurn = null, resolverCapture = null, compilationInputs = null, nativeOutputQuota = null, sessionModelPolicy = null, projectModelPolicy = null, projectRoundPreviousSystem = undefined, sessionGraphInputs = null } = {}) {
         if (typeof authorizeContext !== 'function') fail('native_orchestration_context_authority_required');
         if (!Array.isArray(rpGraphResults) || new Set(rpGraphResults.map(hashNativeDocument)).size !== rpGraphResults.length
             || rpGraphResults.length && rpReturnCapture) fail('native_orchestration_context_authority_conflict');
         if ((rpReturnCapture || resultPort || rpGraphResults.length) && (!rpCapture || !(rpReturnCapture || rpGraphResults.length) || !(resultPort instanceof ResultPort)
             || resultPort.execution.sourcePort.rpControl !== rpControl)) fail('native_orchestration_context_authority_conflict');
-        if ([authorityTurn, resolverCapture, projectCapture, rpCapture, rpDelegationCapture, sessionDelegationCapture, taskCapture].filter(Boolean).length > 1) fail('native_orchestration_context_authority_conflict');
-        if ((rpDelegationCapture || sessionDelegationCapture) && (memoryAuthority || readMemoryEvidence || Object.keys(contextOptions).length || compilationInputs !== null || sessionGraphInputs !== null))
+        if ([authorityTurn, resolverCapture, projectCapture, projectDelegationCapture, rpCapture, rpDelegationCapture, sessionDelegationCapture, taskCapture].filter(Boolean).length > 1) fail('native_orchestration_context_authority_conflict');
+        if ((rpDelegationCapture || sessionDelegationCapture || projectDelegationCapture) && (memoryAuthority || readMemoryEvidence || Object.keys(contextOptions).length || compilationInputs !== null || sessionGraphInputs !== null))
             fail('native_orchestration_context_delegation_scope_invalid');
         if (Boolean(sessionDelegationCapture) !== Boolean(sessionDelegationHost)
             || sessionDelegationCapture && (!(sessionDelegationHost instanceof NativeGenerationHost)
                 || !(sessionDelegationHost.turnOrchestration instanceof NativeNarratorOrchestrationAuthority)
                 || sessionDelegationHost.sessionCore !== sessionCore
                 || sessionDelegationHost.persistence._engine !== sessionCore?._sessions?._engine))
+            fail('native_orchestration_context_delegation_scope_invalid');
+        if (Boolean(projectDelegationCapture) !== Boolean(projectDelegationHost)
+            || projectDelegationCapture && (!(projectDelegationHost instanceof NativeGenerationHost)
+                || !(projectDelegationHost.turnOrchestration instanceof NativeNarratorOrchestrationAuthority)
+                || projectDelegationHost.agent !== projectAgent || projectDelegationHost.persistence._engine !== projectAgent?._repository?.engine))
             fail('native_orchestration_context_delegation_scope_invalid');
         if (memoryAuthority && (!(memoryAuthority instanceof NativeMemoryAuthority) || memoryAuthority.core !== sessionCore || readMemoryEvidence
             || !(memoryAuthority.settingsRepo instanceof SettingsRepo) || memoryAuthority.settingsRepo._engine !== sessionCore?._sessions?._engine))
@@ -66,7 +71,7 @@ export class ContextPort {
             fields(nativeOutputQuota, ['proof', 'expected'], 'Native output quota');
             const quota = assertNativeNarratorQuota(nativeOutputQuota.proof, nativeOutputQuota.expected);
             if (quota.sessionCore !== sessionCore || nativeOutputQuota.expected.host !== quota.host
-                || projectCapture || rpCapture || rpDelegationCapture || sessionDelegationCapture || taskCapture || resolverCapture) fail('native_orchestration_context_authority_conflict');
+                || projectCapture || projectDelegationCapture || rpCapture || rpDelegationCapture || sessionDelegationCapture || taskCapture || resolverCapture) fail('native_orchestration_context_authority_conflict');
             this.#nativeOutputQuota = Object.freeze({ proof: nativeOutputQuota.proof, expected: Object.freeze({ ...nativeOutputQuota.expected,
                 anchor: immutable(nativeOutputQuota.expected.anchor), policy: immutable(nativeOutputQuota.expected.policy) }) });
         }
@@ -79,14 +84,14 @@ export class ContextPort {
         }
         if (projectModelPolicy) {
             fields(projectModelPolicy, ['fallbackMode', 'routes'], 'Native Project model policy');
-            if (!projectCapture || sessionModelPolicy || !['disabled', 'automatic'].includes(projectModelPolicy.fallbackMode)
+            if (!(projectCapture || projectDelegationCapture) || sessionModelPolicy || !['disabled', 'automatic'].includes(projectModelPolicy.fallbackMode)
                 || !Array.isArray(projectModelPolicy.routes) || !projectModelPolicy.routes.length) fail('native_orchestration_context_authority_conflict');
             this.#projectModelPolicy = immutable(projectModelPolicy);
         }
         if (projectRoundPreviousSystem !== undefined && (!projectCapture || typeof projectRoundPreviousSystem !== 'string')) fail('native_orchestration_context_authority_conflict');
         this.#projectRoundPreviousSystem = projectRoundPreviousSystem;
         this.#sessionGraphInputs = sessionGraphInputs ? immutable(sessionGraphInputs) : null;
-        Object.assign(this, { sessionCore, projectAgent, projectCapture, rpControl, rpCapture, rpReturnCapture, rpGraphResults: immutable(rpGraphResults), resultPort, rpDelegationCapture, sessionDelegationCapture, sessionDelegationHost, taskCapture, authorizeContext, contextOptions: { ...contextOptions }, readMemoryEvidence, memoryAuthority, authorityTurn, resolverCapture, compilationInputs });
+        Object.assign(this, { sessionCore, projectAgent, projectCapture, projectDelegationCapture, projectDelegationHost, rpControl, rpCapture, rpReturnCapture, rpGraphResults: immutable(rpGraphResults), resultPort, rpDelegationCapture, sessionDelegationCapture, sessionDelegationHost, taskCapture, authorizeContext, contextOptions: { ...contextOptions }, readMemoryEvidence, memoryAuthority, authorityTurn, resolverCapture, compilationInputs });
     }
 
     #request(handle, input) {
@@ -98,7 +103,7 @@ export class ContextPort {
             || hashNativeDocument(Object.fromEntries(Object.entries(binding).filter(([key]) => key !== 'bindingDigest'))) !== binding.bindingDigest) fail('native_orchestration_context_source_invalid');
         fields(audience, ['kind', 'id'], 'Context audience');
         const resolver = this.resolverCapture !== null;
-        if (!(this.taskCapture || this.rpDelegationCapture || this.sessionDelegationCapture ? audience.kind === 'task' : this.projectCapture ? audience.kind === 'project_task' : resolver ? audience.kind === 'authority_intent' : ['narrator', 'actor'].includes(audience.kind))
+        if (!(this.taskCapture || this.rpDelegationCapture || this.sessionDelegationCapture || this.projectDelegationCapture ? audience.kind === 'task' : this.projectCapture ? audience.kind === 'project_task' : resolver ? audience.kind === 'authority_intent' : ['narrator', 'actor'].includes(audience.kind))
             || (['actor', 'project_task', 'task'].includes(audience.kind) ? typeof audience.id !== 'string' || !audience.id : audience.id !== undefined)) fail('native_orchestration_context_audience_invalid');
         if (resolver) inspectNativeAuthorityResolver(this.resolverCapture, { sessionCore: this.sessionCore, handle, sourceBinding: binding });
         if (this.rpDelegationCapture) {
@@ -108,6 +113,11 @@ export class ContextPort {
         if (this.sessionDelegationCapture) {
             const identity = NativeNarratorOrchestrationAuthority.prototype.inspectDelegationIdentity.call(this.sessionDelegationHost.turnOrchestration,
                 this.sessionDelegationCapture, { host: this.sessionDelegationHost, handle });
+            if (audience.id !== identity.childRunId) fail('native_orchestration_context_audience_denied');
+        }
+        if (this.projectDelegationCapture) {
+            const identity = NativeNarratorOrchestrationAuthority.prototype.inspectDelegationIdentity.call(this.projectDelegationHost.turnOrchestration,
+                this.projectDelegationCapture, { host: this.projectDelegationHost, handle });
             if (audience.id !== identity.childRunId) fail('native_orchestration_context_audience_denied');
         }
         if (!digest(input.grantDigest) || typeof input.taskPurpose !== 'string' || !input.taskPurpose.trim() || !Array.isArray(input.inputRefs)) fail('native_orchestration_context_request_invalid');
@@ -185,13 +195,26 @@ export class ContextPort {
                 ...(graphResults.length ? { graphResults } : {}),
                 ...(rpIdentity.controlTask ? { controlTask: rpIdentity.controlTask } : {}), ...(parentResult ? { parentResult } : {}) }) };
         }
-        if (this.projectCapture) {
-            const projectIdentity = await inspectNativeProjectGeneration(this.projectCapture, { projectAgent: this.projectAgent, handle });
+        let projectDelegation = null;
+        if (this.projectDelegationCapture) {
+            projectDelegation = await NativeNarratorOrchestrationAuthority.prototype.inspectDelegation.call(this.projectDelegationHost.turnOrchestration,
+                this.projectDelegationCapture, { host: this.projectDelegationHost, handle });
+            if (binding.sourceAuthority !== 'project' || hashNativeDocument(binding) !== hashNativeDocument(projectDelegation.sourceBinding)
+                || request.audience.kind !== 'task' || request.audience.id !== projectDelegation.childRunId
+                || request.taskPurpose !== 'original_native_project_delegated_analysis' || request.taskPurpose !== projectDelegation.taskPurpose
+                || request.grantDigest !== projectDelegation.grantDigest
+                || hashNativeDocument(request.inputRefs) !== hashNativeDocument(projectDelegation.contextInputRefs))
+                fail('native_orchestration_context_delegation_scope_invalid');
+        }
+        const currentProjectCapture = this.projectCapture ?? projectDelegation?.projectCapture;
+        if (currentProjectCapture) {
+            const projectIdentity = await inspectNativeProjectGeneration(currentProjectCapture, { projectAgent: this.projectAgent, handle });
             if (['compiled', 'send', 'consume'].includes(phase))
-                await readNativeProjectSkillInventory(this.projectCapture, { projectAgent: this.projectAgent, handle });
-            if (binding.sourceAuthority !== 'project' || request.audience.id !== projectIdentity.taskId
+                await readNativeProjectSkillInventory(currentProjectCapture, { projectAgent: this.projectAgent, handle });
+            if (binding.sourceAuthority !== 'project' || request.audience.id !== (projectDelegation?.childRunId ?? projectIdentity.taskId)
                 || hashNativeDocument(binding.sourceRequest) !== hashNativeDocument(projectIdentity.sourceRequest)) fail('native_orchestration_context_source_mismatch');
             const original = await ProjectAgentService.prototype.observeModelContext.call(this.projectAgent, handle, projectIdentity.projectId, projectIdentity.taskId);
+            if (projectDelegation && permission.projectToolPins?.length) fail('native_orchestration_context_denied');
             if (!Array.isArray(permission.projectToolPins)) fail('native_orchestration_context_denied');
             const names = new Set();
             const tools = permission.projectToolPins.map(pin => {
@@ -202,7 +225,9 @@ export class ContextPort {
             });
             const modelContext = { ...original, tools, ...(permission.projectGraphTask ? { graphTask: immutable(permission.projectGraphTask) } : {}),
                     ...(permission.projectGraphItems?.length ? { graphItems: immutable(permission.projectGraphItems) } : {}),
-                    ...(projectIdentity.workerStage ? { workerStage: projectIdentity.workerStage } : {}) }, { task, project, registry } = modelContext;
+                    ...(projectIdentity.workerStage ? { workerStage: projectIdentity.workerStage } : {}),
+                    ...(projectDelegation ? { graphItems: projectDelegation.context.results.map(item => ({ kind: 'context.history',
+                        content: { role: 'user', content: item.content }, provenance: [{ source: 'native.project-child', ref: hashNativeDocument(item.resultRef ?? item.controlRef) }] })) } : {}) }, { task, project, registry } = modelContext;
             const attempt = task.attempts.find(item => item.attemptId === projectIdentity.projectAttemptId && item.kind === 'generation');
             if (task.executionFingerprint !== (projectRead ? projectIdentity.currentSourceFingerprint : projectIdentity.sourceFingerprint)
                 || hashNativeDocument(task.conversation) !== projectIdentity.conversationDigest
@@ -220,8 +245,8 @@ export class ContextPort {
             const projectDigest = hashNativeDocument({ sourceFingerprint: projectRead ? projectIdentity.sourceFingerprint : task.executionFingerprint, conversation: task.conversation,
                 attempt: { attemptId: attempt.attemptId, kind: attempt.kind, status: attempt.status, requestId: attempt.requestId, calls },
                 project, registry, tools, ...(permission.projectGraphTask ? { graphTask: permission.projectGraphTask } : {}),
-                ...(modelContext.graphItems ? { graphItems: modelContext.graphItems } : {}), ...(modelContext.workerStage ? { workerStage: modelContext.workerStage } : {}), toolPins: permission.projectToolPins, toolBatchPolicy: PROJECT_TOOL_BATCH_POLICY, skillWorkRecords: projectIdentity.skillWorkRecords });
-            return { modelContext, projectIdentity, authorityDigest: projectDigest, information: null };
+                ...(modelContext.graphItems ? { graphItems: modelContext.graphItems } : {}), ...(modelContext.workerStage ? { workerStage: modelContext.workerStage } : {}), ...(projectDelegation ? { delegation: { parentRunId: projectDelegation.parentRunId, childRunId: projectDelegation.childRunId, contextInputRefs: projectDelegation.contextInputRefs, mode: projectDelegation.mode, handoffReceiptRef: projectDelegation.handoffReceiptRef, delegationReceiptRef: projectDelegation.delegationReceiptRef, budgetReadyReceiptRef: projectDelegation.budgetReadyReceiptRef } } : {}), toolPins: permission.projectToolPins, toolBatchPolicy: PROJECT_TOOL_BATCH_POLICY, skillWorkRecords: projectIdentity.skillWorkRecords });
+            return { modelContext, projectIdentity, projectCapture: currentProjectCapture, projectDelegation, authorityDigest: projectDigest, information: null };
         }
         if (binding.sourceAuthority !== 'native_session' || !this.sessionCore) fail('native_orchestration_context_domain_unavailable');
         const committed = await this.sessionCore.observe(handle, binding.sourceRef.sessionId);
@@ -334,7 +359,7 @@ export class ContextPort {
 
     async compile(handle, input, retrieval) {
         const request = this.#request(handle, input);
-        const { snapshot, information, authorityDigest, resolver, modelContext, projectIdentity, rpIdentity, taskIdentity, taskInputOnly, rpDelegation, sessionDelegation, parentResult, graphResults } = await this.#current(handle, request, 'compile');
+        const { snapshot, information, authorityDigest, resolver, modelContext, projectIdentity, projectCapture, projectDelegation, rpIdentity, taskIdentity, taskInputOnly, rpDelegation, sessionDelegation, parentResult, graphResults } = await this.#current(handle, request, 'compile');
         if (sessionDelegation) {
             const { context: delegated } = sessionDelegation, ref = request.sourceBinding.sourceRef;
             const source = { kind: 'session', sessionId: ref.sessionId, branchId: ref.branchId, revisionId: ref.revisionId };
@@ -348,7 +373,7 @@ export class ContextPort {
             { kind: 'context.input', id: 'native-delegated-task', content: JSON.stringify(delegated.task),
                 provenance: [{ source: 'native.session-delegation', ref: hashNativeDocument(delegated.task) }] },
             ...delegated.results.map(item => ({ kind: 'context.history', id: 'delegated-result:' + item.resultRef.resultId,
-                content: { role: 'user', content: item.content }, provenance: [{ source: 'native.session-graph-result', ref: hashNativeDocument(item.resultRef) }] }))] };
+                content: { role: 'user', content: item.content }, provenance: [{ source: 'native.session-graph-result', ref: hashNativeDocument(item.resultRef ?? item.controlRef) }] }))] };
             if ((await this.#current(handle, request, 'compiled')).authorityDigest !== authorityDigest) fail('native_orchestration_context_source_stale');
             const proof = { sourceBindingDigest: request.sourceBinding.bindingDigest, grantDigest: request.grantDigest,
                 audienceDigest: hashNativeDocument(request.audience), projectionDigest: hashNativeDocument(information.projection), authorityDigest };
@@ -412,7 +437,7 @@ export class ContextPort {
             return context;
         }
         if (projectIdentity) {
-            const skillEntries = await readNativeProjectSkillInventory(this.projectCapture, { projectAgent: this.projectAgent, handle });
+            const skillEntries = await readNativeProjectSkillInventory(projectCapture, { projectAgent: this.projectAgent, handle });
             const toolBatchPolicy = { ...PROJECT_TOOL_BATCH_POLICY,
                 proposalToolNames: modelContext.tools.map(tool => tool.function.name).filter(name => projectToolCapability(name) === 'project.propose') };
             const round = buildNativeProjectModelRound({ context: modelContext, skillEntries, tools: modelContext.tools, toolBatchPolicy, previousSystem: this.#projectRoundPreviousSystem });
@@ -430,7 +455,7 @@ export class ContextPort {
             const proof = { sourceBindingDigest: request.sourceBinding.bindingDigest, grantDigest: request.grantDigest,
                 audienceDigest: hashNativeDocument(request.audience), projectionDigest: authorityDigest, authorityDigest };
             const context = immutable({ schemaVersion: 1, contextId: hashNativeDocument({ request, plan, proof }), request, plan, evidenceRefs: [], currentnessProof: proof });
-            this.#contexts.set(context, { handle, request, proof, project: { request: fixedRequest, round: immutable(round), runtime: modelContext.project.source.package.runtime ?? null } });
+            this.#contexts.set(context, { handle, request, proof, project: { request: fixedRequest, capture: projectCapture, delegation: Boolean(projectDelegation), round: immutable(round), runtime: modelContext.project.source.package.runtime ?? null } });
             return context;
         }
         if (resolver) {
@@ -609,7 +634,7 @@ export class ContextPort {
         fields(request, ['context'], 'Project read Context');
         const captured = this.#contexts.get(request.context);
         if (!captured?.project || captured.handle !== handle) fail('native_orchestration_context_proof_invalid');
-        await readNativeProjectSkillInventory(this.projectCapture, { projectAgent: this.projectAgent, handle });
+        await readNativeProjectSkillInventory(this.projectCapture ?? captured.project.capture, { projectAgent: this.projectAgent, handle });
         const current = await this.#current(handle, captured.request, 'consume', true, null, true);
         if (current.authorityDigest !== captured.proof.authorityDigest) fail('native_orchestration_context_source_stale');
         return request.context.plan;
@@ -630,11 +655,21 @@ export class ContextPort {
             || source.branchId !== ref.branchId || source.revisionId !== ref.revisionId) fail('native_orchestration_context_source_mismatch');
     }
 
+    /** Read-only identification from this Context's private compilation proof. */
+    isProjectDelegation(handle, { context } = {}) {
+        const captured = this.#contexts.get(context);
+        if (!captured?.project?.delegation) return false;
+        if (captured.handle !== handle || !this.projectDelegationCapture) fail('native_orchestration_context_proof_invalid');
+        NativeNarratorOrchestrationAuthority.prototype.inspectDelegationIdentity.call(this.projectDelegationHost.turnOrchestration,
+            this.projectDelegationCapture, { host: this.projectDelegationHost, handle });
+        return true;
+    }
+
     /** Sealed read-only stage witness. JSON flags cannot suppress Task writers. */
     inspectProjectWorker(handle, { context, request }) {
         const captured = this.#contexts.get(context);
         if (!captured?.project || captured.handle !== handle) fail('native_orchestration_context_proof_invalid');
-        const identity = inspectNativeProjectGenerationIdentity(this.projectCapture, { projectAgent: this.projectAgent, handle });
+        const identity = inspectNativeProjectGenerationIdentity(this.projectCapture ?? captured.project.capture, { projectAgent: this.projectAgent, handle });
         if (!identity.workerStage) return null;
         for (const field of ['requestId', 'projectId', 'taskId', 'projectAttemptId']) {
             if (request[field] !== captured.project.request[field] || request[field] !== identity.request[field]) fail('native_orchestration_project_request_mismatch');
@@ -645,7 +680,7 @@ export class ContextPort {
     projectRequest(handle, { context } = {}) {
         const captured = this.#contexts.get(context);
         if (!captured?.project || captured.handle !== handle) fail('native_orchestration_context_proof_invalid');
-        inspectNativeProjectGenerationIdentity(this.projectCapture, { projectAgent: this.projectAgent, handle });
+        inspectNativeProjectGenerationIdentity(this.projectCapture ?? captured.project.capture, { projectAgent: this.projectAgent, handle });
         return captured.project.request;
     }
 

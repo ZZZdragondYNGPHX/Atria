@@ -25,6 +25,7 @@ import { readResultPublication } from './result-publication-contracts.js';
 import { assertNativeTurnPermit } from './native-turn-permit.js';
 import { childBudgetReceiptId, assertChildRunCurrent } from './run-repository.js';
 import { readSessionDelegation, readSessionDelegationContinuation } from './session-delegation-contracts.js';
+import { readSessionDelegationInputs } from './session-delegation-inputs.js';
 
 const fail = (code = 'native_orchestration_delegation_denied') => { throw new ConflictError(code); };
 const equal = (a, b) => hash(a) === hash(b);
@@ -169,7 +170,9 @@ export class SessionDelegationAuthority {
                     expectedParentReservationId: parentRoot.parentRef ? parentRoot.runId : null, expectedCeiling: root.parentRef.budgetCeiling }, { tx });
                 if (!closure.closed) fail('native_orchestration_child_budget_unclosed');
             } else await service.budgetPort.verifyReservation({ handle: identity.handle, tx, root, parent: parentRoot });
-            const results = [];
+            const upstream = await readSessionDelegationInputs(tx, identity.handle, parentRoot, parentAttempt,
+                { base: state.parent.selectionState.base, node: state.model.node, pins: state.child.plan.dependencyPins });
+            const results = [...upstream.results];
             for (const binding of state.bindings ?? []) {
                 const saved = await readGraphNodeResult(tx, identity.handle, root, binding.resultRef.resultId);
                 if (!saved || saved.producer.attemptId !== binding.attemptId) fail();
@@ -182,7 +185,9 @@ export class SessionDelegationAuthority {
                 delegationReceiptRef: { runId: parentRoot.runId, receiptId: lineage.delegation.receiptId },
                 budgetReadyReceiptRef: { runId: root.runId, receiptId: childBudgetReceiptId(root.runId) },
                 ...(output ? { closure } : { context: { snapshot: state.parent.selectionState.base, sourceAudience: state.model.audienceSource.audience,
-                    task: { nodeId: state.model.node.nodeId, label: state.model.node.label, purpose: 'Provide advisory analysis only. Never write official world facts or speak for the player.' }, results } }) };
+                    task: { nodeId: state.model.node.nodeId, label: state.model.node.label,
+                        ...(upstream.controls.length ? { inputs: upstream.controls } : {}),
+                        purpose: 'Provide advisory analysis only. Never write official world facts or speak for the player.' }, results } }) };
         });
     }
     inspectDelegation(capture, expected = {}) { return this.#inspect(capture, expected, false); }
@@ -277,6 +282,9 @@ export class SessionDelegationAuthority {
             resultRef: value.resultRef, outputReceiptRef: value.outputReceiptRef, controlToken: value.handoff.controlToken };
     }
     async authorizeParentResult({ capture, handle, tx }) {
+        return (await this.inspectParentResult(capture, { handle, tx })).decision;
+    }
+    async inspectParentResult(capture, { handle, tx } = {}) {
         const value = await this.inspectReturn(capture, { handle, tx });
         if (!['running', 'waiting_effect'].includes(value.parentAttempt.status)) fail();
         if (value.parentAttempt.status === 'waiting_effect') {
@@ -284,8 +292,8 @@ export class SessionDelegationAuthority {
             const intent = (await readEffect(tx, handle, value.parentRoot, value.parentAttempt.effectRefs[0])).doc;
             await readSessionDelegationContinuation(tx, handle, value.parentRoot, value.parentAttempt, intent);
         }
-        return { allowed: true, grantDigest: value.parentGrantDigest, inputDigest: value.parentInputDigest,
-            sourceBindingDigest: value.sourceBinding.bindingDigest, resultRef: value.resultRef };
+        return { current: value, decision: { allowed: true, grantDigest: value.parentGrantDigest, inputDigest: value.parentInputDigest,
+            sourceBindingDigest: value.sourceBinding.bindingDigest, resultRef: value.resultRef } };
     }
     async continuation(capture, state) {
         const identity = this.inspectReturnIdentity(capture, { host: state.host, handle: state.handle });

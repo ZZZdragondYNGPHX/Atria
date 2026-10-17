@@ -16,6 +16,38 @@ import { hashNativeDocument as hash } from '../../src/native/repositories/common
 import { readSessionOutput } from '../../src/native/orchestration/session-output-contracts.js';
 
 // These exercise the existing original Host and controllers, not mocked grants.
+test.each(['actor', 'narrator'])('Game delegated child freshly consumes original %s upstream under its own Actor scope', async upstreamAudience => {
+    const f = await sessionDelegationFixture(makeTempSqliteEngineHarness, { childSteps: 1, upstreamAudience });
+    try {
+        await f.start();
+        const root = await f.authority.execution.runs.get(f.h.handle, f.effectRef.runId);
+        expect(root.status).toBe('completed'); expect(f.requests).toHaveLength(4);
+        expect(f.requests[1].model).toBe('session-delegated-distinct-model');
+        const childInput = JSON.stringify(f.requests[1].input);
+        expect({ body: childInput.includes('ORIGINAL_UPSTREAM_EVIDENCE_BODY'), referenceOnly: childInput.includes('reference-only') })
+            .toEqual({ body: upstreamAudience === 'actor', referenceOnly: upstreamAudience !== 'actor' });
+        expect(childInput).toContain('阿岚听说'); expect(childInput).not.toContain('沈墨怀疑');
+        const proof = await f.h.engine.withTransaction(f.h.handle, tx => readSessionOutput(tx, f.h.handle, root)); expect(proof).toBeTruthy();
+        await f.cold();
+        const cold = await f.authority.execution.runs.get(f.h.handle, root.runId);
+        expect((await f.authority.engine.withTransaction(f.h.handle, tx => readSessionOutput(tx, f.h.handle, cold))).receipt).toEqual(proof.receipt);
+        await f.authority.engine.withTransaction(f.h.handle, async tx => {
+            const upstream = (await Promise.all(cold.attemptRefs.map(id => readAttempt(tx, f.h.handle, cold, id)))).map(item => item.doc)
+                .find(item => item.nodeId === f.topology.upstream.nodeId);
+            const key = controlRecordKey(f.h.handle, cold.runId, 'result', upstream.resultRefs[0].resultId);
+            const stored = await tx.getResource(key), changed = structuredClone(stored.doc);
+            changed.payload += '_TAMPERED'; changed.envelope.payloadRef.integrity = hash(changed.payload);
+            changed.envelope.dependencyDigest = resultDependencyDigest(changed.envelope);
+            try {
+                await tx.putResource(key, { ...stored, doc: changed, integrity: hash(changed) });
+                await expect(readSessionOutput(tx, f.h.handle, cold)).rejects.toThrow();
+            } finally { await tx.putResource(key, stored); }
+            expect((await readSessionOutput(tx, f.h.handle, cold)).receipt).toEqual(proof.receipt);
+        });
+        expect(f.requests).toHaveLength(4);
+    } finally { await f.cleanup(); }
+}, 180000);
+
 test.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarness],
     ...CONTRACT_HARNESSES.filter(item => ['MysqlEngine', 'PgEngine'].includes(item.name)).map(item => [item.name, item.make])])('%s Game Handoff runs the pinned two-Agent Actor DAG in the original child reservation', async (_name, make) => {
     const f = await sessionDelegationFixture(make);

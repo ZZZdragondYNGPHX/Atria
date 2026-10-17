@@ -1,6 +1,6 @@
 import { createNativeId } from '../../src/native/identity.js';
 import { hashNativeDocument as hash, putImmutable, putMutable } from '../../src/native/repositories/common.js';
-import { graphResultContract, graphNodeResult, readGraphNodeResult, graphResultPublicationId } from '../../src/native/orchestration/graph-result-contracts.js';
+import { graphResultContract, graphNodeResult, readGraphNodeResult, readGraphNodeResults, graphResultPublicationId } from '../../src/native/orchestration/graph-result-contracts.js';
 import { assertResultRecord, resultDependencyDigest } from '../../src/native/orchestration/result-contracts.js';
 import { controlRecordKey } from '../../src/native/orchestration/controller-common.js';
 import { writeAttemptSettlement, attemptReceiptId } from '../../src/native/orchestration/attempt-settlement.js';
@@ -138,7 +138,13 @@ describe.each(CONTRACT_HARNESSES)('$name Graph Result history and recipient cons
             });
             root.eventSeq = 6;
             const read = options => h.engine.withTransaction(h.handle, tx => readGraphNodeResult(tx, h.handle, root, result.resultId, options));
+            const readBatch = () => h.engine.withTransaction(h.handle, tx => readGraphNodeResults(tx, h.handle, root, [result.resultId, result.resultId]));
             expect((await read()).record).toEqual(storedResult);
+            const batch = await readBatch();
+            expect(batch.size).toBe(1);
+            expect(batch.get(result.resultId).record).toEqual(storedResult);
+            batch.get(result.resultId).record.payload = 'caller mutation';
+            expect((await readBatch()).get(result.resultId).record).toEqual(storedResult);
             expect((await read({ recipient })).record).toEqual(storedResult);
             await expect(read({ recipient: { ...recipient, nodeId: f.c } })).rejects.toThrow('Invalid Graph Result facts');
             const keys = {
@@ -155,6 +161,7 @@ describe.each(CONTRACT_HARNESSES)('$name Graph Result history and recipient cons
                 const changed = Object.keys(copies).filter(name => hash(copies[name]) !== originals[name].integrity);
                 await h.engine.withTransaction(h.handle, async tx => { for (const name of changed) await putMutable(tx, keys[name], copies[name], { expectedIntegrity: originals[name].integrity }); });
                 await expect(read()).rejects.toThrow('Invalid Graph Result facts');
+                await expect(readBatch()).rejects.toThrow('Invalid Graph Result facts');
                 await h.engine.withTransaction(h.handle, async tx => { for (const name of changed) { const current = await tx.getResource(keys[name]); await putMutable(tx, keys[name], originals[name].doc, { expectedIntegrity: current.integrity }); } });
             };
             await mutateAndRestore(rows => {
@@ -170,6 +177,7 @@ describe.each(CONTRACT_HARNESSES)('$name Graph Result history and recipient cons
             const changed = { ...model, dispatchEvidence: { ...model.dispatchEvidence, reference: { ...model.dispatchEvidence.reference, resultPayloadHash: hash('other') } } };
             await h.engine.withTransaction(h.handle, async tx => { const key = controlRecordKey(h.handle, root.runId, 'receipt', modelReceiptId); const row = await tx.getResource(key); await putMutable(tx, key, changed, { expectedIntegrity: row.integrity }); });
             await expect(read()).rejects.toThrow('Invalid Graph Result facts');
+            await expect(readBatch()).rejects.toThrow('Invalid Graph Result facts');
         } finally { await h.engine.close(); await h.cleanup(); }
     });
 });

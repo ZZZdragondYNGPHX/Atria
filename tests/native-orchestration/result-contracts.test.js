@@ -90,6 +90,24 @@ describe('explicit Result policy and plain JSON validation', () => {
         expect(() => assertResultRecord(changed, f)).toThrow();
     });
 
+    test('a Project advisory child has exactly the original parent purpose and two original Source references', () => {
+        const f = fixture(), source = f.record.envelope.sourceRefs[0];
+        source.sourceAuthority = 'project';
+        source.sourceRef = { projectId: createNativeId('project'), taskId: 'original-task', revision: 'original-revision',
+            executionFingerprint: hash({ originalTask: true }) };
+        f.record.envelope.audienceConstraint.taskPurpose = 'original_native_project_delegation'; rebind(f.record);
+        expect(assertResultRecord(f.record, f)).toBe(f.record);
+        for (const purpose of ['delegate_suggestion', 'original_rp_delegation', 'original_native_session_delegation']) {
+            const changed = structuredClone(f.record); changed.envelope.audienceConstraint.taskPurpose = purpose; rebind(changed);
+            expect(() => assertResultRecord(changed, f)).toThrow('Project source recipient');
+        }
+        const changed = structuredClone(f.record);
+        changed.envelope.sourceRefs.push({ kind: 'native_information_context', pinId: 'foreign-information',
+            sourceRef: { kind: 'native_information_context', sessionId: createNativeId('session'), branchId: createNativeId('branch'),
+                revisionId: createNativeId('revision'), audience: { kind: 'actor', id: 'foreign-actor' } }, integrity: hash({ foreign: true }) });
+        rebind(changed); expect(() => assertResultRecord(changed, f)).toThrow();
+    });
+
     test.each([undefined, NaN, Infinity, 1n, () => {}, new Date(), new Map(), Object.create({ inherited: true }),
         { value: undefined }, [undefined], Array(1), Object.assign([], { extra: true }), new (class Payload { constructor() { this.value = 1; } })()])('non-JSON payload example %# is rejected', value => { expect(() => assertResultJson(value)).toThrow(); });
 

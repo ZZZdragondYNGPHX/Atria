@@ -1,3 +1,4 @@
+import { ProjectDelegationAuthority } from './project-delegation-authority.js';
 import { ConflictError } from '../../storage/errors.js';
 import { performance } from 'node:perf_hooks';
 import { hashNativeDocument as hash, cloneNativeDocument, putImmutable } from '../repositories/common.js';
@@ -46,6 +47,7 @@ const config = resolved => hash({ route: resolved.route, model: resolved.model, 
 
 /** Fixed original interactive Project producer. No Task runner or business writer. */
 export class NativeProjectOrchestrationAuthority {
+    #delegation;
     #selections = new WeakMap();
     #rounds = new WeakMap();
     #consumers = new WeakMap();
@@ -61,6 +63,29 @@ export class NativeProjectOrchestrationAuthority {
         Object.assign(this, { owner, projectAgent, projectRepository });
         this.#execution = execution; this.#port = port; this.#releasePort = releasePort; this.#issueScope = issueScope;
     }
+
+    #delegate() {
+        this.#delegation ??= new ProjectDelegationAuthority({ owner: this.owner, execution: this.#execution, port: this.#port,
+            issueScope: this.#issueScope, assertSelection: selection => this.#current(selection) });
+        return this.#delegation;
+    }
+    ownsDelegationCapture(capture) { return this.#delegation?.ownsDelegationCapture(capture) ?? false; }
+    ownsReturnCapture(capture) { return this.#delegation?.ownsReturnCapture(capture) ?? false; }
+    ownsGraphCapture(capture) { return this.#delegation?.ownsGraphCapture(capture) ?? false; }
+    hasDelegatedRun(runId) { return this.#delegation?.hasRun(runId) ?? false; }
+    authorizeDelegation(args) { return this.#delegate().authorizeDelegation(args); }
+    authorizeChildAttempt(args) { return this.#delegate().authorizeChildAttempt(args); }
+    inspectDelegationIdentity(capture, expected) { return this.#delegate().inspectDelegationIdentity(capture, expected); }
+    inspectDelegation(capture, expected) { return this.#delegate().inspectDelegation(capture, expected); }
+    inspectDelegationOutput(capture, expected) { return this.#delegate().inspectDelegationOutput(capture, expected); }
+    inspectReturnIdentity(capture, expected) { return this.#delegate().inspectReturnIdentity(capture, expected); }
+    inspectReturn(capture, expected) { return this.#delegate().inspectReturn(capture, expected); }
+    authorizeTaskLocalOutput(args) { return this.#delegate().authorizeTaskLocalOutput(args); }
+    authorizeHandoffReturn(args) { return this.#delegate().authorizeHandoffReturn(args); }
+    inspectParentResult(capture, expected) { return this.#delegate().inspectParentResult(capture, expected); }
+    authorizeParentResult(args) { return this.#delegate().authorizeParentResult(args); }
+    authorizeGraphResult(args) { return this.#delegate().authorizeGraphResult(args); }
+    runDelegation(args) { return this.#delegate().run(args); }
 
     #authoring() {
         return this.owner.plans ??= createOrchestrationAuthoringService(this.owner.engine, { sessionCore: this.owner.sessionCore,
@@ -155,12 +180,12 @@ export class NativeProjectOrchestrationAuthority {
             routes.push({ routeRef: candidate.routeRef, configDigest: config(current) });
         }
         if (!resolved.route.executionPolicy?.computeBudget?.localWork) fail('native_orchestration_context_budget_unavailable');
-        const resolveControlModel = async control => {
-            const controlPin = plan.dependencyPins.find(item => item.pinId === control.policy.agentPinId && control.dependencyPinIds.includes(item.pinId));
+        const resolveControlModel = async (control, controlPlan = plan) => {
+            const controlPin = controlPlan.dependencyPins.find(item => item.pinId === control.policy.agentPinId && control.dependencyPinIds.includes(item.pinId));
             if (controlPin?.port !== 'model' || controlPin.resourceRef.scope !== 'player') fail('native_orchestration_project_route_mismatch');
             const controlRequirements = [...(['planner', 'review', 'judge'].includes(control.kind) ? ['generation.structured-output'] : []),
                 ...(project.source.package.runtime?.modelPrompt?.roles.find(item => item.role === 'role.studio')?.requiredCapabilities ?? [])];
-            const failure = await resolveModelFailurePlan({ handle, node: control, dependencyPins: plan.dependencyPins, resolver: this.owner.modelResolver,
+            const failure = await resolveModelFailurePlan({ handle, node: control, dependencyPins: controlPlan.dependencyPins, resolver: this.owner.modelResolver,
                 routeRef: controlPin.resourceRef, role: 'role.studio', requirements: controlRequirements });
             let primary; const candidates = [];
             for (const candidate of failure.routes) {
@@ -173,9 +198,27 @@ export class NativeProjectOrchestrationAuthority {
             if (!primary.route.executionPolicy?.computeBudget?.localWork) fail('native_orchestration_context_budget_unavailable');
             return { pin: controlPin, resolved: primary, failurePlan: { routes: candidates }, configDigest: candidates.length === 1 ? config(primary) : hash(candidates) };
         };
-        const controlModelDigests = [];
+        const controlModelDigests = [], delegations = new Map(), delegationPlans = new Map(), delegationDigests = [];
         for (const control of (controlGraph?.pure ?? []).filter(node => node.capabilities.includes('generation.send'))) controlModelDigests.push([control.nodeId, (await resolveControlModel(control)).configDigest]);
-        return { binding, plan, node, pin, loop, toolPins, collaboration, quality, controlGraph, resolveControlModel, controlModelDigests, resolved,
+        for (const control of controlGraph?.pure ?? []) {
+            if (!control.capabilities.includes('agent.delegate')) continue;
+            for (const pinId of control.policy.allowedPlanPinIds) {
+                if (!control.dependencyPinIds.includes(pinId)) fail('native_orchestration_delegation_denied');
+                if (!delegationPlans.has(pinId)) {
+                    const child = await this.#delegate().planSelection(handle, plan, pinId, resolveControlModel);
+                    delegationPlans.set(pinId, child);
+                    delegationDigests.push([pinId, { pin: child.pin, models: child.profiles.map(model => ({ nodeId: model.node.nodeId, configDigest: model.configDigest })) }]);
+                }
+            }
+            if (control.kind === 'agent') delegations.set(control.nodeId, delegationPlans.get(control.policy.allowedPlanPinIds[0]));
+        }
+        const resolveDelegation = control => {
+            if (!control.capabilities.includes('agent.delegate') || control.kind === 'planner') return null;
+            const ids = control.policy.allowedPlanPinIds ?? [], child = ids.length === 1 && delegationPlans.get(ids[0]);
+            if (control.kind !== 'agent' || !child || !control.dependencyPinIds.includes(child.pin.pinId)) fail('native_orchestration_delegation_denied');
+            return child;
+        };
+        return { binding, plan, node, pin, loop, toolPins, collaboration, quality, controlGraph, resolveControlModel, resolveDelegation, controlModelDigests, delegations, delegationPlans, delegationDigests, resolved,
             failurePlan: { routes }, configDigest: routes.length === 1 ? config(resolved) : hash(routes) };
     }
 
@@ -201,6 +244,7 @@ export class NativeProjectOrchestrationAuthority {
             if (!route || hash(route) !== pin.integrity) fail('native_orchestration_project_route_mismatch');
             resources.push(...await host.executionResources(handle, route));
         }
+        for (const child of state.delegationPlans.values()) for (const model of child.profiles) resources.push(...await host.executionResources(handle, model.resolved.route));
         return [...new Set(resources)].sort();
     }
 
@@ -209,7 +253,7 @@ export class NativeProjectOrchestrationAuthority {
         if (!state) fail('native_orchestration_project_selection_invalid');
         const current = await this.#describe(state.args);
         if (!current || !equal(current.binding, state.binding) || current.plan.definitionHash !== state.plan.definitionHash
-            || current.configDigest !== state.configDigest || !equal(current.controlModelDigests, state.controlModelDigests)) fail('native_orchestration_project_selection_stale');
+            || current.configDigest !== state.configDigest || !equal(current.controlModelDigests, state.controlModelDigests) || !equal(current.delegationDigests, state.delegationDigests)) fail('native_orchestration_project_selection_stale');
         return state;
     }
 
@@ -227,6 +271,7 @@ export class NativeProjectOrchestrationAuthority {
     }
 
     async authorize({ handle, root, attempt, proposal, intent }) {
+        if (this.hasDelegatedRun(root.runId)) return this.#delegate().authorize(arguments[0]);
         const state = this.#stage(root, { attempt, proposal, intent });
         if (!state || state.handle !== handle || !equal(root.planRef, state.selected.binding.planRef)
             || root.sourceBinding.bindingDigest !== state.sourceBinding.bindingDigest) fail('native_orchestration_project_grant_denied');
@@ -248,6 +293,7 @@ export class NativeProjectOrchestrationAuthority {
     }
 
     async verifySend({ handle, root, intent, resolved, snapshot, compiledBinding }) {
+        if (this.hasDelegatedRun(root.runId)) return this.#delegate().verifySend(arguments[0]);
         await this.authorize({ handle, root, intent });
         const state = this.#stage(root, { intent });
         const candidate = state.selected.failurePlan.routes.find(item => equal(item.routeRef, { scope: 'player', runtimeRouteId: resolved.route.runtimeRouteId }));
@@ -262,6 +308,7 @@ export class NativeProjectOrchestrationAuthority {
     }
 
     async verifyObservation(args) {
+        if (this.hasDelegatedRun(args.root.runId)) return this.#delegate().verifyObservation(args);
         const state = this.#stage(args.root, args);
         if (!state && ['native_project_read', 'native_project_proposal'].includes(args.intent.actionRef.kind))
             return verifyProjectToolReconciliation(this.#execution(), this.projectAgent, args);
@@ -322,7 +369,7 @@ export class NativeProjectOrchestrationAuthority {
         try {
             if (selected.controlGraph) {
                 activeOperation.controlGraph ??= await new ProjectControlGraphWork({ service, state, identity, logicalInputRef, port: this.#port(host),
-                    issueScope: this.#issueScope, install: active => this.#installStage(root.runId, active), current: async ({ capture = projectCapture, controlPermit = null } = {}) => {
+                    issueScope: this.#issueScope, delegation: this.#delegate(), install: active => this.#installStage(root.runId, active), current: async ({ capture = projectCapture, controlPermit = null } = {}) => {
                         await this.#current(selection);
                         if (controlPermit) await inspectNativeProjectFanoutControl(projectCapture, controlPermit, { host, handle });
                         else await inspectNativeProjectGeneration(capture, { host, handle });
@@ -339,7 +386,7 @@ export class NativeProjectOrchestrationAuthority {
             }
             if (selected.quality) {
                 activeOperation.qualityApproval ??= await new ProjectQualityWork({ service, state, identity, logicalInputRef, port: this.#port(host),
-                    issueScope: this.#issueScope, install: active => this.#installStage(root.runId, active), current: async ({ capture = projectCapture, controlPermit = null } = {}) => {
+                    issueScope: this.#issueScope, delegation: this.#delegate(), install: active => this.#installStage(root.runId, active), current: async ({ capture = projectCapture, controlPermit = null } = {}) => {
                         await this.#current(selection);
                         if (controlPermit) await inspectNativeProjectFanoutControl(projectCapture, controlPermit, { host, handle });
                         else await inspectNativeProjectGeneration(capture, { host, handle });

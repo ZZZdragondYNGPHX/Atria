@@ -183,6 +183,21 @@ describe.each(mechanisms)('%s original %s mechanism validation', (_name, role, m
         await expect(service.plans.publish(h.handle, id('Command'), { ...expected, validationDigest: validationDigest(report) })).rejects.toThrow();
         expect(sends).toBe(0);
     });
+    if (role === 'studio') test('an explicit pure advisory Result validates without tools and grants no original Task or Run', async () => {
+        await seeded.persistence.saveModelProfile(h.handle, { ...seeded.model, capabilities: [{ capability: 'generation.tools', state: 'unsupported',
+            provenance: [{ kind: 'adapter-metadata', source: 'Actual pure advisory model does not support tools' }] }] });
+        const plan = input();
+        plan.definition.outputContract.resultPolicy = { outputType: 'text', maxBytes: 4096 };
+        const { expected, report } = await validate(plan);
+        expect(report).toMatchObject({ status: 'valid', issues: [] });
+        await expect(service.plans.publish(h.handle, id('Command'), { ...expected, validationDigest: validationDigest(report) })).resolves.toHaveProperty('planRef');
+        expect(sends).toBe(0);
+        expect(await h.engine.withTransaction(h.handle, tx => tx.listResources({ kind: 'atri_orchestration_run', handle: h.handle }))).toEqual([]);
+        // Removing the explicit Result contract retains the original Studio
+        // mechanism guard; this publication alone cannot create a producer.
+        delete plan.definition.outputContract.resultPolicy;
+        expect((await validate(plan)).report.status).toBe('invalid');
+    });
     test('original path/resource evidence changes validationDigest despite the same exact route reference', async () => {
         const { expected, report } = await validate();
         await seeded.persistence.saveConnectionProfile(h.handle, { ...seeded.connection, endpoint: 'http://127.0.0.1:2/changed-path' });

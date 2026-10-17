@@ -465,8 +465,8 @@ export class NativeRpOrchestrationAuthority {
         return this.#baseCurrent(state);
     }
 
-    async #baseCurrent(state) {
-        const identity = await inspectNativeRpGeneration(state.capture, { host: state.host, handle: state.handle, rpControl: this.owner.rpControl });
+    async #baseCurrent(state, originalIdentity = null) {
+        const identity = originalIdentity ?? await inspectNativeRpGeneration(state.capture, { host: state.host, handle: state.handle, rpControl: this.owner.rpControl });
         const selected = await this.#selection(state.host, state.handle, state.input);
         if (!equal(selected.binding, state.selected.binding) || selected.configDigest !== state.selected.configDigest
             || !equal(selected.audienceSources, state.selected.audienceSources)
@@ -735,7 +735,16 @@ export class NativeRpOrchestrationAuthority {
             resultRef: current.resultRef, sourceBindingDigest: current.sourceBinding.bindingDigest };
     }
 
-    async authorizeGraphResult({ handle, tx, capture, root, phase, effectId, producer, resultRef }) {
+    async authorizeGraphResult(args) {
+        return (await this.#inspectGraphResult(args, false)).permission;
+    }
+
+    async inspectGraphResult(args) {
+        if (args.phase !== 'consume') fail('native_orchestration_result_consume_denied');
+        return this.#inspectGraphResult(args, true);
+    }
+
+    async #inspectGraphResult({ handle, tx, capture, root, phase, effectId, producer, resultRef }, includePublication) {
         const state = this.#runState(root.runId, { capture });
         const identity = inspectNativeRpGenerationIdentity(capture, { host: state?.host, handle, rpControl: this.owner.rpControl });
         if (!(state?.selected.controlGraph || state?.selected.chain || state?.graphSteps?.length) || state.capture !== capture || state.handle !== handle || state.graphRunId !== root.runId
@@ -745,11 +754,11 @@ export class NativeRpOrchestrationAuthority {
             if (phase === 'publish') {
                 if (state.activeSelection?.node.kind !== 'agent' || producer.attemptId !== state.attemptId || effectId !== state.effectId
                     || producer.nodeId !== state.activeSelection.node.nodeId || producer.effectiveGrantDigest !== state.decision.grantDigest) fail('native_orchestration_result_not_publishable');
-                return { allowed: true, grantDigest: state.decision.grantDigest };
+                return { permission: { allowed: true, grantDigest: state.decision.grantDigest } };
             }
             if (phase !== 'consume' || !state.controlBundle.evidenceRefs.some(ref => equal(ref, resultRef))) fail('native_orchestration_result_consume_denied');
             const recipient = (await readAttempt(tx, handle, root, state.attemptId)).doc;
-            const published = await readGraphNodeResult(tx, handle, root, resultRef.resultId);
+            const published = await readGraphNodeResult(tx, handle, root, resultRef.resultId, includePublication ? { recipient } : {});
             if (!published) fail('native_orchestration_result_consume_denied');
             const readable = await audienceResultAccess(handle, root.graph.nodes.find(node => node.nodeId === published.producer.nodeId),
                 root.graph.nodes.find(node => node.nodeId === recipient.nodeId), state.selected.plan.dependencyPins, state.host.sessionCore);
@@ -760,19 +769,19 @@ export class NativeRpOrchestrationAuthority {
                 || intent.nodeAttemptId !== recipient.attemptId || intent.capability !== 'generation.send' || intent.epoch !== root.epoch
                 || !['prepared', 'ready', 'dispatching', 'confirmed'].includes(intent.status) || !equal(effectDecision(intent), state.decision)) fail('native_orchestration_result_consume_denied');
             checkCancellation(identity.signal);
-            return { allowed: true, recipient, readable };
+            return { permission: { allowed: true, recipient, readable }, publication: published };
         }
         if (phase === 'publish') {
             if (!(state.selected.judge?.candidates ?? state.graphSteps ?? state.selected.chainSteps).includes(state.activeSelection) || producer.attemptId !== state.attemptId || effectId !== state.effectId
                 || producer.nodeId !== state.activeSelection.node.nodeId || producer.effectiveGrantDigest !== state.decision.grantDigest) fail('native_orchestration_result_not_publishable');
-            return { allowed: true, grantDigest: state.decision.grantDigest };
+            return { permission: { allowed: true, grantDigest: state.decision.grantDigest } };
         }
         const accepted = this.#graphProfile(state) || state.selected.fanout ? this.#graphInputs(state, state.activeSelection ?? state.selected).map(item => item.resultRef)
             : state.activeSelection === state.selected.judge ? state.candidateResults?.map(item => item.resultRef) : [state.graphResultRef];
         if (phase !== 'consume' || state.activeSelection && ![state.selected.review, state.selected.judge, ...(state.graphSteps ?? state.selected.chainSteps)].includes(state.activeSelection)
             || !accepted?.some(ref => ref && equal(ref, resultRef))) fail('native_orchestration_result_consume_denied');
         const recipient = (await readAttempt(tx, handle, root, state.attemptId)).doc;
-        const published = await readGraphNodeResult(tx, handle, root, resultRef.resultId);
+        const published = await readGraphNodeResult(tx, handle, root, resultRef.resultId, includePublication ? { recipient } : {});
         if (!published) fail('native_orchestration_result_consume_denied');
         const readable = await audienceResultAccess(handle, root.graph.nodes.find(node => node.nodeId === published.producer.nodeId),
             root.graph.nodes.find(node => node.nodeId === recipient.nodeId), state.selected.plan.dependencyPins, state.host.sessionCore);
@@ -784,7 +793,7 @@ export class NativeRpOrchestrationAuthority {
             || intent.nodeAttemptId !== recipient.attemptId || intent.capability !== 'generation.send' || intent.epoch !== root.epoch
             || !['prepared', 'ready', 'dispatching', 'confirmed'].includes(intent.status) || !equal(effectDecision(intent), state.decision)) fail('native_orchestration_result_consume_denied');
         checkCancellation(identity.signal);
-        return { allowed: true, recipient, readable };
+        return { permission: { allowed: true, recipient, readable }, publication: published };
     }
 
     verifyObservation(args) {
@@ -871,32 +880,7 @@ export class NativeRpOrchestrationAuthority {
                 try {
                     if (selected.controlGraph) {
                         const state = { host, handle, input, selected, capture };
-                        const work = new RpControlGraphWork({ state, service: this.#execution(), current: () => this.#current(state),
-                            identity: () => inspectNativeRpGeneration(state.capture, { host, handle }),
-                            controlWork: (args, rows) => this.#controlWork(state, args, rows), generate: args => this.#generate(state, args),
-                            canReadControl: (producer, recipient) => audienceResultAccess(handle, producer, recipient, selected.plan.dependencyPins, host.sessionCore),
-                            revalidateResult: async (tx, root, recipient, resultRef) => {
-                                const permission = await this.authorizeGraphResult({ handle, tx, capture: state.capture, root,
-                                    phase: 'consume', effectId: state.effectId, resultRef });
-                                if (!permission.readable || !await readGraphNodeResult(tx, handle, root, resultRef.resultId, { recipient }))
-                                    fail('native_orchestration_result_consume_denied');
-                                await this.#current(state);
-                            },
-                            register: runId => { this.#associateOperation(capture, runId); this.#runs.set(runId, state); },
-                            prepareRerun: async (root, target, attemptId, bundle, feedback) => {
-                                const stage = await selected.resolveGraphModel(root.graph.nodes.find(node => node.nodeId === target.nodeId));
-                                const request = immutable({ requestId: 'rp-control-redo:' + hash({ runId: root.runId, attemptId }).slice(0, 32), role: 'narrator', routeRef: stage.pin.resourceRef });
-                                const input = { ...rpModelInput(request, root.sourceBinding, stage), acceptedGraphResultRefs: bundle.evidenceRefs, controlGraph: bundle, reviewFeedbackRef: feedback };
-                                return { input, grantDigest: rpModelGrant(handle, root.sourceBinding, input), request };
-                            },
-                            withCapture: async (stage, task, operation) => {
-                                const request = state.controlRequest ?? immutable({ requestId: 'rp-control:' + hash({ input, runId: state.graphRunId, nodeId: stage.node.nodeId, ordinal: state.controlOrdinal }).slice(0, 32),
-                                    role: 'narrator', routeRef: stage.pin.resourceRef, ...(stage.node.kind === 'planner' ? { outputContract: rpPlannerOutputContract }
-                                        : stage.node.kind === 'review' ? { outputContract: rpControlReviewOutputContract }
-                                            : stage.node.kind === 'judge' ? { outputContract: rpControlJudgeOutputContract } : {}) });
-                                const next = this.#stageCapture(state, capture, request, task); state.capture = next;
-                                try { return await operation(); } finally { captures.delete(next); state.capture = capture; }
-                            } });
+                        const work = this.#rpControlWork(state, capture);
                         state.controlWork = work;
                         try { return await work.run(); } catch (error) { await this.#failGraph(state, error); throw error; } finally {
                             if (state.graphRunId) this.#runs.delete(state.graphRunId);
@@ -1233,6 +1217,105 @@ export class NativeRpOrchestrationAuthority {
         }, { withAuthority });
     }
 
+    #rpControlWork(state, capture) {
+        const { host, handle, input, selected } = state;
+        return new RpControlGraphWork({ state, service: this.#execution(), current: () => this.#current(state), currentFanout: () => this.#currentRpControlFanout(state),
+            initializeFanoutBank: async root => {
+                const service = this.#execution(), authority = root.budgetAuthorityRef;
+                const capacity = await service.runs.engine.withTransaction(handle, tx => service.budgetPort.observeCapacity(handle,
+                    { authorityRef: authority, reservationId: null }, { tx }));
+                if (capacity) return;
+                await service.runs.withSourceControl(handle, root.runId, async () => {
+                    await this.#current(state);
+                    const active = await service.runs.get(handle, root.runId);
+                    if (active.attemptRefs.length || !equal(active.budgetAuthorityRef, authority) || !equal(active.sourceBinding, state.sourceBinding))
+                        fail('native_orchestration_rp_control_stale');
+                    await RpRunControl.prototype.bindComputeBudget.call(this.owner.rpControl, handle, authority.controlId, authority.source,
+                        selected.resolved.route.executionPolicy.computeBudget);
+                    await this.#current(state);
+                }, { withAuthority: service.sourcePort.consumptionBoundary(handle, root.sourceBinding, { engine: service.runs.engine }) });
+            },
+            prepareBranch: (node, root, bundle, fanoutAttemptId) => {
+                return selected.resolveGraphModel(node).then(stage => {
+                    const request = immutable({ requestId: 'rp-control-branch:' + hash({ runId: root.runId, fanoutAttemptId, nodeId: node.nodeId }).slice(0, 32), role: 'narrator', routeRef: stage.pin.resourceRef });
+                    const input = { ...rpModelInput(request, root.sourceBinding, stage), acceptedGraphResultRefs: bundle.evidenceRefs, controlGraph: bundle, fanoutAttemptId };
+                    return { stage, request, input, grantDigest: rpModelGrant(handle, root.sourceBinding, input) };
+                });
+            },
+            withFanout: (workers, options) => this.#withRpControlFanout(state, capture, workers, options),
+            identity: () => inspectNativeRpGeneration(state.capture, { host, handle }),
+            controlWork: (args, rows) => this.#controlWork(state, args, rows), generate: args => this.#generate(state, args),
+            canReadControl: (producer, recipient) => audienceResultAccess(handle, producer, recipient, selected.plan.dependencyPins, host.sessionCore),
+            revalidateResult: async (tx, root, recipient, resultRef) => {
+                const permission = await this.authorizeGraphResult({ handle, tx, capture: state.capture, root,
+                    phase: 'consume', effectId: state.effectId, resultRef });
+                if (!permission.readable || !await readGraphNodeResult(tx, handle, root, resultRef.resultId, { recipient }))
+                    fail('native_orchestration_result_consume_denied');
+                await this.#current(state);
+            },
+            register: runId => { this.#associateOperation(capture, runId); this.#runs.set(runId, state); },
+            prepareRerun: async (root, target, attemptId, bundle, feedback) => {
+                const stage = await selected.resolveGraphModel(root.graph.nodes.find(node => node.nodeId === target.nodeId));
+                const request = immutable({ requestId: 'rp-control-redo:' + hash({ runId: root.runId, attemptId }).slice(0, 32), role: 'narrator', routeRef: stage.pin.resourceRef });
+                const input = { ...rpModelInput(request, root.sourceBinding, stage), acceptedGraphResultRefs: bundle.evidenceRefs, controlGraph: bundle, reviewFeedbackRef: feedback };
+                return { input, grantDigest: rpModelGrant(handle, root.sourceBinding, input), request };
+            },
+            withCapture: async (stage, task, operation) => {
+                const request = state.controlRequest ?? immutable({ requestId: 'rp-control:' + hash({ input, runId: state.graphRunId, nodeId: stage.node.nodeId, ordinal: state.controlOrdinal }).slice(0, 32),
+                    role: 'narrator', routeRef: stage.pin.resourceRef, ...(stage.node.kind === 'planner' ? { outputContract: rpPlannerOutputContract }
+                        : stage.node.kind === 'review' ? { outputContract: rpControlReviewOutputContract }
+                            : stage.node.kind === 'judge' ? { outputContract: rpControlJudgeOutputContract } : {}) });
+                const next = this.#stageCapture(state, capture, request, task); state.capture = next;
+                try { return await operation(); } finally { captures.delete(next); state.capture = capture; }
+            } });
+    }
+
+    async #currentRpControlFanout(state) {
+        const original = captures.get(state.capture), service = this.#execution();
+        if (!original) fail('native_orchestration_fanout_stale');
+        const active = NativeTaskScheduler.prototype.assertFanoutControlBoundary.call(this.scheduler, original.boundary, original.expected);
+        checkCancellation(active.signal);
+        const root = await service.runs.get(state.handle, state.graphRunId);
+        if (root.cancelRequested || !['admitted', 'running'].includes(root.status)) fail('native_orchestration_fanout_stale');
+        await service.runs.engine.withTransaction(state.handle, async tx => {
+            const fence = await service.runs.engine.nativeHostLifecycle.assertWriter(state.handle, tx);
+            if (root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation) fail('native_orchestration_fanout_stale');
+            await service.sourcePort.revalidate(state.handle, root.sourceBinding, { tx, root });
+            await BudgetPort.prototype.assertCurrent.call(service.budgetPort, state.handle, root.budgetAuthorityRef, { tx });
+        });
+        await this.#baseCurrent(state, original.identity);
+        NativeTaskScheduler.prototype.assertFanoutControlBoundary.call(this.scheduler, original.boundary, original.expected);
+        return service.runs.get(state.handle, state.graphRunId);
+    }
+
+    async #withRpControlFanout(state, capture, workers, options) {
+        const original = captures.get(capture), { host, handle } = state;
+        const children = await Promise.all(workers.map(async worker => {
+            const resources = [...new Set((await Promise.all(worker.models.map(model => host.executionResources(handle, model.resolved.route)))).flat())].sort();
+            const expected = immutable({ owner: handle, anchor: original.expected.anchor, kind: 'model_task', executionClass: original.expected.executionClass,
+                resources, key: worker.key, fingerprint: worker.fingerprint });
+            return { kind: expected.kind, executionClass: expected.executionClass, resources, key: expected.key, fingerprint: expected.fingerprint,
+                fresh: async () => { await this.#currentRpControlFanout(state); return true; }, finalize: value => value,
+                run: async boundary => {
+                    NativeTaskScheduler.prototype.assertFanoutChildBoundary.call(this.scheduler, original.boundary, original.expected, boundary, expected);
+                    const childCapture = Object.freeze({}), branch = { ...state, capture: childCapture, fanoutBranches: null, fanoutParent: { fanoutAttemptId: worker.fanoutAttemptId },
+                        activeSelection: null, controlBundle: null, controlFeedback: null, controlRequest: null, attemptId: null, effectId: null, decision: null };
+                    captures.set(childCapture, { ...original, boundary, expected });
+                    state.fanoutBranches.set(worker.key, branch);
+                    branch.controlWork = this.#rpControlWork(branch, childCapture);
+                    try {
+                        return await worker.run({ signal: boundary.signal, generate: async (spec, bundle, args) => {
+                            branch.activeSelection = spec.stage; branch.controlBundle = bundle; branch.controlRequest = spec.request;
+                            return branch.controlWork.withCapture(spec.stage, { kind: 'native_rp_graph_draft',
+                                instruction: 'Perform this declared advisory branch task using only authorized inputs. Frozen sibling Results are unavailable until Join.' },
+                            () => this.#generate(branch, { graphNode: true, graphRunId: state.graphRunId, ...args }));
+                        }, settleFailure: () => this.#settleFanoutFailure(branch) });
+                    } finally { captures.delete(childCapture); }
+                } };
+        }));
+        return this.scheduler.withResourceFanout(original.boundary, original.expected, children, options);
+    }
+
     async #runFanout(state, boundary, expected) {
         const { host, handle, selected, capture } = state, service = this.#execution(), profile = selected.fanout;
         const identity = await inspectNativeRpGeneration(capture, { host, handle }), original = captures.get(capture);
@@ -1409,11 +1492,11 @@ export class NativeRpOrchestrationAuthority {
         await this.#current(state);
     }
 
-    async #graphStepTransition(state, root, selected, inputRefs, grantDigest, { review = false, judge = false } = {}) {
+    async #graphStepTransition(state, root, selected, inputRefs, grantDigest, { review = false, judge = false, reservedAttemptId = null } = {}) {
         const service = this.#execution(), { handle } = state;
         if (state.selected.controlGraph) {
             return (await new TransitionController({ runs: service.runs, authorizeTransition: args => state.controlWork.authorizeTransition(args, inputRefs, grantDigest) })
-                .advance(handle, { ...runGuard(root), bindings: state.controlBundle.bindings, reservedAttemptId: null })).outcome;
+                .advance(handle, { ...runGuard(root), bindings: state.controlBundle.bindings, reservedAttemptId })).outcome;
         }
         if (state.selected.fanout) {
             const profile = state.selected.fanout, joined = state.joinCompletion;
@@ -1765,7 +1848,7 @@ export class NativeRpOrchestrationAuthority {
         }, { withAuthority: sourcePort.consumptionBoundary(handle, state.sourceBinding, { engine: runs.engine }) });
     }
 
-    async #generate(state, { continuation = null, planner = false, graphNode = false, review = false, judge = false, graphRunId = null, preparedAttemptId = null } = {}) {
+    async #generate(state, { continuation = null, planner = false, graphNode = false, review = false, judge = false, graphRunId = null, preparedAttemptId = null, reservedAttemptId = null } = {}) {
         if (this.#runs.size >= 64) fail('native_orchestration_model_busy');
         const { host, handle, capture } = state, selected = state.activeSelection ?? state.selected;
         const identity = await inspectNativeRpGeneration(capture, { host, handle }), service = this.#execution();
@@ -1821,11 +1904,11 @@ export class NativeRpOrchestrationAuthority {
             if (!continuation && !graphRunId && (root.status !== 'admitted' || root.attemptRefs.length)) fail('native_orchestration_rp_request_replayed');
             const prepare = async () => {
                 if (!continuation) {
-                    const admissionRoot = state.selected.fanout ? await service.runs.get(handle, root.runId) : root;
+                    const admissionRoot = state.selected.fanout || state.fanoutParent ? await service.runs.get(handle, root.runId) : root;
                     const independentEntry = state.selected.controlGraph ? !state.controlBundle.bindings.length
                         : graphNode && (state.selected.judge || !state.selected.planner && this.#graphProfile(state) && !this.#graphProfile(state).inputs[selected.node.nodeId].length);
                     const { attemptId } = preparedAttemptId ? { attemptId: preparedAttemptId } : graphRunId && !independentEntry
-                        ? await this.#graphStepTransition(state, admissionRoot, selected, inputRefs, grantDigest, { review, judge })
+                        ? await this.#graphStepTransition(state, admissionRoot, selected, inputRefs, grantDigest, { review, judge, reservedAttemptId })
                         : await service.runs.beginAttempt(handle, controlCommandId('native.rp.attempt', state.selected.controlGraph || state.selected.planner || state.selected.chain ? { ...commandIdentity, nodeId: selected.node.nodeId, ...(state.selected.controlGraph ? { requestId: state.request.requestId } : {}) } : commandIdentity), {
                             ...runGuard(root), nodeId: selected.node.nodeId, inputRefs, inputDigest: hash(inputRefs),
                             effectiveGrantDigest: grantDigest, budgetRef: root.budgetAuthorityRef }); state.attemptId = attemptId;
@@ -1842,7 +1925,7 @@ export class NativeRpOrchestrationAuthority {
                 await service.effects.prepare(handle, { ...runGuard(await service.runs.get(handle, root.runId)), effectId, nodeAttemptId: state.attemptId,
                     proposal: Object.fromEntries(['actionRef', 'targetRef', 'inputRef', 'inputHash'].map(key => [key, state.decision[key]])) });
             };
-            if (state.selected.fanout) await service.runs.withSourceControl(handle, root.runId, prepare,
+            if (state.selected.fanout || state.fanoutParent) await service.runs.withSourceControl(handle, root.runId, prepare,
                 { withAuthority: service.sourcePort.consumptionBoundary(handle, captured.sourceBinding, { engine: service.runs.engine }) });
             else await prepare();
             const effectId = state.effectId;

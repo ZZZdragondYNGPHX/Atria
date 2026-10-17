@@ -72,7 +72,16 @@ export async function validateModelCapability({ handle, definition, dependencyPi
             // The private pure Project stages cannot call the original Task
             // tools. Only that graph's real tool owner needs their mechanism;
             // direct Studio execution and Resolver keep their original guard.
-            const pureProject = route.role === 'role.studio' && definition.outputContract.kind === 'project_review'
+            const advisoryResult = definition.outputContract.kind === 'result' && !definition.outputContract.allowPartial
+                && definition.outputContract.resultPolicy?.outputType === 'text'
+                && definition.capabilityCeiling.length === 1 && definition.capabilityCeiling[0] === 'generation.send'
+                && !definition.graphChangePolicy.allowedOperations.length && !definition.graphChangePolicy.allowedNodeKinds.length
+                && definition.edges.every(edge => !edge.loopBack)
+                && definition.nodes.every(item => item.kind === 'output' && !item.capabilities.length && !item.dependencyPinIds.length
+                    || item.kind === 'agent' && item.capabilities.length === 1 && item.capabilities[0] === 'generation.send'
+                        && item.outputs.length === 1 && item.outputs[0].type === 'text')
+                && dependencyPins.every(pin => pin.port === 'model');
+            const pureProject = route.role === 'role.studio' && (definition.outputContract.kind === 'project_review' || advisoryResult)
                 && !node.capabilities.some(capability => ['project.read', 'project.propose'].includes(capability))
                 && !dependencyPins.some(pin => pin.port === 'tool' && node.dependencyPinIds.includes(pin.pinId));
             const requirements = [...route.role === 'role.intent_resolver' || route.role === 'role.studio' && !pureProject ? ['generation.tools'] : [],

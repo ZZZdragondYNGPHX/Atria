@@ -44,4 +44,50 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
             await h.engine.close?.(); await h.cleanup();
         }
     });
+    test.each(['nested', 'escaped'])('Project %s source boundary retains actual queue ownership without suppressing Source validation', async mode => {
+        const h = await make(), events = [], observed = []; let timer, nested, independent, release, trigger;
+        try {
+            await prepareControllerOwnerRoot(h.dirs.root);
+            attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
+            const f = services(h), src = projectSource(), project = await f.studio.createProject(h.handle, src);
+            const task = await f.agent.createTask(h.handle, src.project.projectId, { intent: 'Nested source read', baseRevision: project.revision.revision });
+            const port = new SourcePort({ budgetPort: new BudgetPort({ projectAgent: f.agent, projectRepository: f.repository }), projectAgent: f.agent });
+            const source = { domain: 'project', projectId: src.project.projectId, taskId: task.taskId,
+                revision: project.revision.revision, executionFingerprint: task.executionFingerprint };
+            const { sourceBinding } = await port.capture(h.handle, source);
+            const boundary = () => port.consumptionBoundary(h.handle, sourceBinding, { engine: h.engine });
+            const request = new Promise(resolve => { trigger = resolve; });
+            if (mode === 'nested') {
+                // Register outside the original async lock scope: an unrelated
+                // writer must remain queued throughout both nested reads.
+                independent = request.then(() => f.studio.withProjectWrite(h.handle, src.project.projectId, () => { events.push('writer'); }));
+                await boundary()(async () => {
+                    trigger(); await new Promise(resolve => setImmediate(resolve)); observed.push([...events]);
+                    nested = boundary()(async () => {
+                        await h.engine.withTransaction(h.handle, tx => port.revalidate(h.handle, sourceBinding, { tx }));
+                        events.push('nested');
+                    });
+                    await Promise.race([nested, new Promise((_resolve, reject) => {
+                        timer = setTimeout(() => reject(new Error('Nested Project Source boundary deadlocked')), 2000);
+                    })]);
+                    clearTimeout(timer); observed.push([...events]);
+                });
+                await independent; observed.push([...events]);
+            } else {
+                await boundary()(() => { nested = request.then(() => boundary()(async () => {
+                    await h.engine.withTransaction(h.handle, tx => port.revalidate(h.handle, sourceBinding, { tx })); events.push('escaped');
+                })); });
+                let entered;
+                const ready = new Promise(resolve => { entered = resolve; }), held = new Promise(resolve => { release = resolve; });
+                independent = f.studio.withProjectWrite(h.handle, src.project.projectId, async () => { entered(); await held; events.push('writer'); });
+                await ready; trigger(); await new Promise(resolve => setImmediate(resolve)); observed.push([...events]);
+                release(); await independent; await nested; observed.push([...events]);
+            }
+            expect(observed).toEqual(mode === 'nested' ? [[], ['nested'], ['nested', 'writer']] : [[], ['writer', 'escaped']]);
+        } finally {
+            clearTimeout(timer); release?.(); trigger?.(); await Promise.allSettled([independent, nested]);
+            await h.engine.close?.(); await h.cleanup();
+        }
+    });
+
 });

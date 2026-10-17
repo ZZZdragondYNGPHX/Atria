@@ -168,6 +168,30 @@ export async function captureNativeProjectWorker(capture, { requestId, task, out
     return stage;
 }
 
+/** Original Task child boundary only. A JSON child id cannot mint this worker. */
+export async function captureNativeProjectDelegatedWorker(capture, permit, { requestId, task, routeRef, nodeId }) {
+    const original = generations.get(capture), child = fanoutChildren.get(permit);
+    if (!original?.workerStage || original.state.fanoutChildPermit || child?.generation !== original || !child.nodeIds.includes(nodeId)
+        || typeof requestId !== 'string' || !requestId.startsWith('project-quality:')) fail();
+    const route = await original.state.host.persistence.getRuntimeRoute(original.state.handle, routeRef.runtimeRouteId);
+    if ((await original.state.host.executionResources(original.state.handle, route)).some(resource => !child.expected.resources.includes(resource))) fail();
+    const state = { ...original.state, fanoutChildPermit: permit, fanoutParentState: original.state };
+    const stage = Object.freeze({});
+    generations.set(stage, { ...original, state, requestId, originalRequestId: original.originalRequestId ?? original.requestId,
+        workerStage: immutable({ task, routeRef }), toolReceipts: [], toolResults: [] });
+    await inspectNativeProjectGeneration(stage, { host: state.host, handle: state.handle });
+    return stage;
+}
+
+/** Independent proof of the active original child Scheduler allocation. */
+export function inspectNativeProjectDelegatedBoundary(capture, permit, expected) {
+    const generation = generations.get(capture), child = fanoutChildren.get(permit);
+    if (!generation?.workerStage || child?.generation !== generation || !fanoutControls.get(child.controlPermit)?.active
+        || expected.handle !== generation.state.handle || expected.host !== generation.state.host) fail();
+    return NativeTaskScheduler.prototype.assertFanoutChildBoundary.call(generation.state.executor.scheduler, generation.state.boundary,
+        frameExpected(generation.state), child.boundary, child.expected);
+}
+
 export function inspectNativeProjectGenerationIdentity(capture, expected) {
     const generation = generations.get(capture); if (!generation) fail();
     const { state, toolReceipts: _reads, toolResults: _results, finished: _finished, continueAllowed: _continue, ...metadata } = generation, active = assertFrame(state, expected);
@@ -197,8 +221,16 @@ export async function inspectNativeProjectGeneration(capture, expected) {
 /** Scheduling bridge for pure workers within the existing original Task.
  * Both witnesses are private; the control witness never permits a Model send. */
 export async function withNativeProjectFanout(capture, workers, options) {
+    return withProjectChildren(capture, workers, options, false);
+}
+
+export async function withNativeProjectDelegation(capture, worker) {
+    return (await withProjectChildren(capture, [worker], { maxConcurrency: 1 }, true))[0];
+}
+
+async function withProjectChildren(capture, workers, options, delegated) {
     const generation = generations.get(capture);
-    if (!generation || generation.workerStage || !Array.isArray(workers) || !workers.length) fail();
+    if (!generation || Boolean(generation.workerStage) !== delegated || generation.state.fanoutChildPermit || !Array.isArray(workers) || !workers.length) fail();
     const { state } = generation, expected = frameExpected(state);
     await inspectNativeProjectGeneration(capture, { host: state.host, handle: state.handle });
     const controlPermit = Object.freeze({}), control = { generation, active: true };

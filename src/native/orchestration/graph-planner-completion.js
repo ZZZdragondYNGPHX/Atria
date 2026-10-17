@@ -7,7 +7,7 @@ import { readAttempt, controlCommandId, controlRecordKey, assertAttemptConsumabl
 import { readAttemptSettlement } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
-import { readTaskGraphRevision, graphPatchHash } from './graph-revision-contracts.js';
+import { readTaskGraphRevisions, graphPatchHash } from './graph-revision-contracts.js';
 import { assertAudienceRunCapture } from './audience-source-contracts.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 
@@ -25,7 +25,8 @@ export async function readGraphPlannerCompletion(tx, handle, root, attemptId, { 
     if (!receipt) return null;
     assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'producerAttemptId', 'sourceBindingDigest', 'grantDigest',
         'modelEffectId', 'modelReceiptRef', 'modelPayloadHash', 'responseText', 'patchId', 'patchIntegrity', 'localWork', 'decisionSeq', 'createdAt'], 'Graph Planner receipt');
-    const before = await readTaskGraphRevision(tx, handle, root, producer.graphRevision), node = before.graph.nodes.find(node => node.nodeId === producer.nodeId);
+    const revisions = await readTaskGraphRevisions(tx, handle, root, [producer.graphRevision, producer.graphRevision + 1]);
+    const before = revisions.get(producer.graphRevision), node = before.graph.nodes.find(node => node.nodeId === producer.nodeId);
     const intent = (await readEffect(tx, handle, root, receipt.modelEffectId)).doc, model = await readModelCompletionReceipt(handle, tx, root, intent);
     const retrieval = await readContextRetrievalCompletions(tx, handle, root, intent, producer), settlement = await readAttemptSettlement(tx, handle, root, producer);
     const patch = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'patch', receipt.patchId)))?.doc;
@@ -73,7 +74,6 @@ export async function readGraphPlannerCompletion(tx, handle, root, attemptId, { 
     if (!command || command.operation !== 'runs.control.graph.patch' || command.target !== root.runId
         || command.payloadHash !== hash({ operation: command.operation, body: { runId: root.runId, operation: 'graph.patch', detail: proposal } })
         || !equal(command.outcome?.patchReceipt, patch)) invalid();
-    await readTaskGraphRevision(tx, handle, root, patch.newGraphRevision);
     await verifyControlWork(tx, handle, root, receipt.modelEffectId, receipt.localWork);
     const controlRef = graphPlannerControlRef(root.runId, producer.attemptId);
     if (recipient) {

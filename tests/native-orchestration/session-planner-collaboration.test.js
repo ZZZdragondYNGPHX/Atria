@@ -4,6 +4,43 @@ import { makeTempFsEngineHarness, makeTempSqliteEngineHarness, CONTRACT_HARNESSE
 import { readSessionPlannerCompletion } from '../../src/native/orchestration/session-planner-contracts.js';
 import { readSessionOutput } from '../../src/native/orchestration/session-output-contracts.js';
 
+test('Game Planner cannot transfer its private free task label into an unreadable Actor Source', async () => {
+    const secret = 'SECRET_ALAN_BELIEF_FROM_PLANNER 阿岚听说寄信者是林舟';
+    const f = await sessionFanoutFixture(makeTempSqliteEngineHarness, { planner: true, plannerAudience: 0, dynamicAudience: 1,
+        plannerPatch: operations => operations.map(operation => operation.op === 'addNode' ? { ...operation, node: { ...operation.node, label: secret } } : operation) });
+    try {
+        let failure;
+        try { await f.start(); } catch (error) { failure = error; }
+        const leaked = f.requests.slice(1).filter(body => JSON.stringify(body.input).includes(secret));
+        expect(leaked).toEqual([]); expect(failure).toBeTruthy(); expect(f.requests).toHaveLength(1);
+        const root = await f.authority.execution.runs.get(f.h.handle, f.effectRef.runId);
+        expect(root.graphRevision).toBe(0); expect(root.outputClaims).toEqual([]);
+        const bank = (await f.core.runs.status(f.h.handle, f.base.session.sessionId)).operations[root.budgetAuthorityRef.operationId].compute;
+        expect(bank.attempts).toHaveLength(1); expect(bank.attempts[0].status).toBe('settled');
+        expect((await f.core.observe(f.h.handle, f.base.session.sessionId)).timeline).toEqual(f.base.timeline);
+    } finally { await f.cleanup(); }
+}, 120000);
+
+test('Game successor Planner reads only references for another Actor creator free graph metadata', async () => {
+    const secret = 'SECRET_ALAN_DYNAMIC_TASK_METADATA';
+    const f = await sessionFanoutFixture(makeTempSqliteEngineHarness, { planner: true, plannerAudience: 0, dynamicAudience: 0, secondPlanner: true,
+        plannerPatch: operations => operations.map(operation => operation.op === 'addNode' ? { ...operation, node: { ...operation.node, label: secret } } : operation) });
+    try {
+        await f.start(); expect(f.requests).toHaveLength(6);
+        const body = f.requests.find(body => body.input.some(item => { try { return JSON.parse(item.content).nodeId === f.topology.secondPlanner.nodeId; } catch { return false; } }));
+        expect(body).toBeTruthy(); expect(JSON.stringify(body.input)).toContain('沈墨怀疑'); expect(JSON.stringify(body.input)).not.toContain(secret);
+        expect(JSON.stringify(body.input)).not.toContain('阿岚听说'); expect(JSON.stringify(body.input)).toContain('reference-only');
+        const root = await f.authority.execution.runs.get(f.h.handle, f.effectRef.runId);
+        expect(root.status).toBe('completed'); expect(root.graphRevision).toBe(2); expect(root.outputClaims).toHaveLength(1);
+        expect(root.graph.nodes.find(node => node.nodeId === f.topology.added.nodeId).label).toBe(secret);
+        const proof = await f.h.engine.withTransaction(f.h.handle, tx => readSessionOutput(tx, f.h.handle, root));
+        expect(proof.published.plannerCompletions).toHaveLength(2); expect(proof.closure.effectIds).toHaveLength(7);
+        await f.cold(); const cold = await f.authority.execution.runs.get(f.h.handle, root.runId);
+        expect((await f.authority.engine.withTransaction(f.h.handle, tx => readSessionOutput(tx, f.h.handle, cold))).receipt).toEqual(proof.receipt);
+        expect(f.requests).toHaveLength(6);
+    } finally { await f.cleanup(); }
+}, 180000);
+
 // Original Host/Source/Controllers/HTTP permits/Turn bank/Output writer are real;
 // synthetic localhost model bodies prove mechanism, not remote model quality.
 test.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarness], ...CONTRACT_HARNESSES.filter(item => ['MysqlEngine', 'PgEngine'].includes(item.name)).map(item => [item.name, item.make])])('%s Game Planner adds a source-bound Agent DAG branch and composes original Fanout/Join/Review', async (_name, make) => {

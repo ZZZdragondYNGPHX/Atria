@@ -1,5 +1,6 @@
 import { readSessionDelegationContinuation } from './session-delegation-contracts.js';
 import { readSessionPlannerCompletion } from './session-planner-contracts.js';
+import { readSessionJudgeCompletion, assertSessionJudgeSelections } from './session-judge-contracts.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readSessionFanoutCompletion } from './session-fanout-contracts.js';
 import { assertAudienceRunCapture } from './audience-source-contracts.js';
@@ -112,13 +113,21 @@ export async function readSessionNarrationResult(tx, handle, root) {
         const completed = await readSessionPlannerCompletion(tx, handle, root, id);
         if (!completed) invalid(); plannerCompletions.push(completed);
     }
+    const judgeCompletions = [];
+    for (const id of root.attemptRefs) {
+        const attempt = (await readAttempt(tx, handle, root, id)).doc;
+        if (root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind !== 'judge') continue;
+        const completed = await readSessionJudgeCompletion(tx, handle, root, id);
+        if (!completed) invalid(); judgeCompletions.push(completed);
+    }
     if (root.graphRevision !== plannerCompletions.length) invalid();
-    for (const fact of [...graphResults, ...reviewCompletions, ...plannerCompletions, { producer, receipt }]) {
+    for (const fact of [...graphResults, ...reviewCompletions, ...plannerCompletions, ...judgeCompletions, { producer, receipt }]) {
         const effect = (await readEffect(tx, handle, root, fact.receipt.modelEffectId)).doc, modelInput = effect.inputRef;
         const snapshot = await readTaskGraphRevision(tx, handle, root, fact.producer.graphRevision);
         const incoming = snapshot.graph.edges.filter(edge => edge.to.nodeId === fact.producer.nodeId
-            && snapshot.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind === 'planner').sort((a, b) => a.edgeId.localeCompare(b.edgeId));
-        const controls = incoming.map(edge => plannerCompletions.find(item => item.producer.nodeId === edge.from.nodeId));
+            && ['planner', 'judge'].includes(snapshot.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind)).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
+        const controls = incoming.map(edge => [...plannerCompletions, ...judgeCompletions].find(item => item.producer.nodeId === edge.from.nodeId));
+        assertSessionJudgeSelections(root, snapshot.graph.nodes.find(node => node.nodeId === fact.producer.nodeId), modelInput.acceptedGraphResultRefs ?? [], controls.filter(item => item?.candidates));
         const delegated = fact.producer.inputRefs[0]?.kind === 'native_session_delegation';
         if (delegated) await readSessionDelegationContinuation(tx, handle, root, fact.producer, effect);
         if (controls.some(item => !item || item.receipt.decisionSeq >= fact.receipt.decisionSeq)
@@ -133,12 +142,21 @@ export async function readSessionNarrationResult(tx, handle, root) {
         if (!completion) invalid(); fanoutCompletions.push(completion);
     }
     if (graphResults.length) {
-        const incoming = root.graph.edges.filter(edge => edge.to.nodeId === producer.nodeId && !['review', 'planner'].includes(root.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind)).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
+        const incoming = root.graph.edges.filter(edge => edge.to.nodeId === producer.nodeId && !['review', 'planner', 'judge'].includes(root.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind)).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
         const current = [];
         for (const result of graphResults) if (!await readAttemptInvalidation(tx, handle, root, result.producer)) current.push(result);
         if (new Set(current.map(result => result.producer.nodeId)).size !== current.length) invalid();
         const accepted = incoming.flatMap(edge => {
-            if (root.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind !== 'join') return [current.find(result => result.producer.nodeId === edge.from.nodeId)];
+            if (root.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind !== 'join') {
+                const result = current.find(result => result.producer.nodeId === edge.from.nodeId);
+                const selectors = judgeCompletions.filter(judge => root.graph.edges.some(item => item.from.nodeId === judge.producer.nodeId && item.to.nodeId === producer.nodeId));
+                if (result && selectors.some(judge => judge.candidates.some(candidate => equal(candidate.receipt.resultRef, result.receipt.resultRef))
+                    && !equal(judge.selectedResultRef, result.receipt.resultRef))) {
+                    if (narratorNode.inputs.find(port => port.name === edge.to.port)?.required) invalid();
+                    return [];
+                }
+                return [result];
+            }
             const joined = fanoutCompletions.find(item => item.producer.nodeId === edge.from.nodeId);
             if (!joined || joined.joinReceipt.outcome !== 'completed'
                 || !input.joinReceiptRefs?.some(ref => equal(ref, { runId: root.runId, joinId: joined.joinReceipt.joinId }))) invalid();
@@ -157,5 +175,5 @@ export async function readSessionNarrationResult(tx, handle, root) {
                 || !equal(approved.review.targetAttemptIds, accepted.map(result => result.producer.attemptId))) invalid();
         } else if (Object.hasOwn(input, 'reviewReceiptRef')) invalid();
     } else if (Object.hasOwn(input, 'acceptedGraphResultRefs') && (!plannerCompletions.length || !equal(input.acceptedGraphResultRefs, []))) invalid();
-    return { record, receipt, settlement, producer, retrievalCompletions, graphResults, reviewCompletions, plannerCompletions, fanoutCompletions, modelIntent: intent };
+    return { record, receipt, settlement, producer, retrievalCompletions, graphResults, reviewCompletions, plannerCompletions, judgeCompletions, fanoutCompletions, modelIntent: intent };
 }

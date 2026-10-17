@@ -15,6 +15,7 @@ import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { assertTaskLocalClaim, taskLocalOutputKey, taskLocalClaimId, taskLocalConsumer,
     taskLocalReceiptId, childClosureReceiptId, readTaskLocalOutput } from './task-local-output-contracts.js';
 import { assertSessionDelegatedClosure } from './session-delegation-contracts.js';
+import { assertProjectDelegatedClosure } from './project-delegation-contracts.js';
 
 const fail = code => { throw new ConflictError(code); };
 const equal = (a, b) => hash(a) === hash(b);
@@ -65,14 +66,20 @@ export class TaskLocalOutputController {
         const runId = identity.childRunId, withAuthority = SourcePort.prototype.consumptionBoundary.call(sourcePort, handle, identity.sourceBinding, { engine });
         const pending = () => immutable({ status: 'pending_output', outputClaimRef: null, outputReceiptRef: null });
         const transaction = operation => engine.withTransaction(handle, operation);
+        const sourceControl = operation => RunRepository.prototype.withSourceControl.call(runs, handle, runId, operation, { withAuthority });
+        const project = identity.sourceBinding.sourceAuthority === 'project';
+        // The original Project bank release takes its Task/Studio queues.
+        // Each metadata stage retains a fresh original Source critical section;
+        // the financial saga must not hold that non-reentrant Studio queue.
+        const stage = operation => project ? sourceControl(operation) : operation();
         // Catch only preflight denials, before any metadata write. Lawful same-
         // transaction source/cancel writes must commit before the caller rejects.
         const preflight = async (tx, phase) => {
             try { return await this.#preflight(handle, tx, capture, publication, phase); } catch (error) { if (DENIALS.has(error.code)) return { denied: true }; throw error; }
         };
         try {
-            return await RunRepository.prototype.withSourceControl.call(runs, handle, runId, async () => {
-                const prepared = await transaction(async tx => {
+            const complete = async () => {
+                const prepared = await stage(() => transaction(async tx => {
                     const checked = await preflight(tx, 'prepare');
                     if (checked.denied) return checked;
                     const { root, admission, published } = checked;
@@ -93,7 +100,7 @@ export class TaskLocalOutputController {
                     } }).activate(handle, { ...runGuard(await runs.get(handle, runId)), attemptId });
                     return { denied: false, attemptId, root, producerReceiptRef: { runId, receiptId: published.attemptReceipt.receiptId },
                         traversalReceiptRef: { runId, receiptId: traversal.outcome.traversalReceipt.receiptId } };
-                });
+                }));
                 if (prepared.denied) fail('native_orchestration_task_output_stale');
                 // Graph output has no send capability. The original active
                 // producer remains scoped, but no new Model Attempt can enter.
@@ -110,7 +117,7 @@ export class TaskLocalOutputController {
                     expectedCeiling: prepared.root.parentRef.budgetCeiling }, { tx }));
                 if (!closure.closed) return pending();
                 if (releaseError && releaseError.code !== 'storage_commit_unknown') throw releaseError;
-                const publishedOutput = await transaction(async tx => {
+                const publishedOutput = await stage(() => transaction(async tx => {
                     const checked = await preflight(tx, 'publish');
                     if (checked.denied) return checked;
                     if (!equal(checked.current.closure, closure)) fail('native_orchestration_task_output_stale');
@@ -128,6 +135,8 @@ export class TaskLocalOutputController {
                             fail('native_orchestration_task_output_denied');
                         if (root.sourceBinding.sourceAuthority === 'native_session') {
                             assertSessionDelegatedClosure(root, checked.published.graphHistory, closure);
+                        } else if (root.sourceBinding.sourceAuthority === 'project') {
+                            assertProjectDelegatedClosure(root, checked.published.graphHistory, closure);
                         }
                         const claimId = taskLocalClaimId(root), claimRef = { runId, claimId };
                         const claim = assertTaskLocalClaim({ schemaVersion: 1, runId, claimId, nodeAttemptId: attempt.attemptId,
@@ -157,10 +166,11 @@ export class TaskLocalOutputController {
                             outcome: { outputClaimRef: claimRef, outputReceiptRef: { runId, receiptId: receipt.receiptId } } };
                     });
                     return { denied: false, status: 'completed', outputClaimRef: saved.outcome.outputClaimRef, outputReceiptRef: saved.outcome.outputReceiptRef };
-                });
+                }));
                 if (publishedOutput.denied) fail('native_orchestration_task_output_stale');
                 return immutable({ status: publishedOutput.status, outputClaimRef: publishedOutput.outputClaimRef, outputReceiptRef: publishedOutput.outputReceiptRef });
-            }, { withAuthority });
+            };
+            return await (project ? complete() : sourceControl(complete));
         } catch (error) {
             if (error.code !== 'storage_commit_unknown') throw error;
             const saved = await this.observe(handle, { runId });

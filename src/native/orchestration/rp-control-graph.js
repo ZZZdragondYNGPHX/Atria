@@ -12,6 +12,23 @@ const equal = (a, b) => hash(a) === hash(b);
  * Other model DAGs use the dependency consumer below, without a shape limit. */
 function existingResponseProtocol(graph) {
     const allowed = ['agent', 'review', 'judge', 'output'];
+    if (graph.nodes.some(node => ['fanout', 'join'].includes(node.kind))) {
+        // Preserve the original codec only for its original one-step group.
+        const fanouts = graph.nodes.filter(node => node.kind === 'fanout'), joins = graph.nodes.filter(node => node.kind === 'join');
+        if (fanouts.length === 1 && joins.length === 1 && !graph.nodes.some(node => ['planner', 'review', 'judge'].includes(node.kind))
+            && equal(graph.entryNodeIds, [fanouts[0].nodeId])) {
+            const terminal = graph.edges.filter(edge => edge.to.nodeId === graph.outputContract.ownerNodeId);
+            const narrator = graph.nodes.find(node => node.nodeId === terminal[0]?.from.nodeId);
+            const branches = graph.nodes.filter(node => node.kind === 'agent' && node !== narrator);
+            const outgoing = graph.edges.filter(edge => edge.from.nodeId === joins[0].nodeId);
+            if (terminal.length === 1 && narrator?.kind === 'agent' && outgoing.length === 1 && outgoing[0].to.nodeId === narrator.nodeId
+                && graph.edges.length === branches.length * 2 + 2 && branches.every(node => {
+                const incoming = graph.edges.filter(edge => edge.to.nodeId === node.nodeId), leaving = graph.edges.filter(edge => edge.from.nodeId === node.nodeId);
+                return incoming.length === 1 && incoming[0].from.nodeId === fanouts[0].nodeId && leaving.length === 1 && leaving[0].to.nodeId === joins[0].nodeId;
+            })) return true;
+        }
+        return false;
+    }
     if (graph.nodes.some(node => !allowed.includes(node.kind))) return true;
     const agents = graph.nodes.filter(node => node.kind === 'agent'), reviews = graph.nodes.filter(node => node.kind === 'review'),
         judges = graph.nodes.filter(node => node.kind === 'judge'), outputs = graph.nodes.filter(node => node.kind === 'output');
@@ -45,7 +62,7 @@ function existingResponseProtocol(graph) {
 export function rpControlGraph(plan, { force = false } = {}) {
     const graph = plan.definition, planners = graph.nodes.filter(node => node.kind === 'planner');
     if (!force && (!planners.length ? existingResponseProtocol(graph)
-        : !graph.nodes.some(node => ['review', 'judge'].includes(node.kind)) && planners.length === 1 && graph.entryNodeIds.length === 1
+        : !graph.nodes.some(node => ['review', 'judge', 'fanout', 'join'].includes(node.kind)) && planners.length === 1 && graph.entryNodeIds.length === 1
             && graph.entryNodeIds[0] === planners[0].nodeId && !graph.edges.some(edge => !edge.loopBack && edge.to.nodeId === planners[0].nodeId))) return null;
     const output = graph.nodes.find(node => node.nodeId === graph.outputContract.ownerNodeId);
     const terminal = graph.edges.filter(edge => edge.to.nodeId === output?.nodeId);
@@ -55,9 +72,13 @@ export function rpControlGraph(plan, { force = false } = {}) {
         || !equal(output.capabilities, ['chat.output']) || output.dependencyPinIds.length || output.outputs.length
         || narrator.outputs.length !== 1 || narrator.outputs[0].type !== 'text'
         || audienceContextPin(narrator, plan.dependencyPins)?.resourceRef.audience.kind === 'actor'
-        || graph.edges.some(edge => edge.loopBack || !['always', 'success'].includes(edge.condition)
+        || graph.edges.some(edge => edge.loopBack && (edge.from.nodeId !== edge.to.nodeId
+            || !planners.some(node => node.nodeId === edge.from.nodeId)) || !['always', 'success'].includes(edge.condition)
             || edge.from.nodeId === output.nodeId || edge.from.nodeId === narrator.nodeId && edge.to.nodeId !== output.nodeId)) fail();
-    const models = graph.nodes.filter(node => node !== output);
+    const controls = graph.nodes.filter(node => ['fanout', 'join'].includes(node.kind));
+    for (const node of controls) if (node.capabilities.length || node.dependencyPinIds.length || node.outputs.length !== 1
+        || node.outputs[0].type !== (node.kind === 'fanout' ? 'task.result' : 'text')) fail();
+    const models = graph.nodes.filter(node => node !== output && !controls.includes(node));
     for (const node of models) {
         const routes = nodeModelRoutePins(node, plan.dependencyPins), audience = audienceContextPin(node, plan.dependencyPins);
         const retrieval = plan.dependencyPins.filter(pin => node.dependencyPinIds.includes(pin.pinId) && pin.port === 'context'
@@ -68,7 +89,7 @@ export function rpControlGraph(plan, { force = false } = {}) {
     }
     const used = new Set(models.flatMap(node => node.dependencyPinIds));
     if (plan.dependencyPins.some(pin => !used.has(pin.pinId)) || planners.length && !graph.graphChangePolicy.allowedOperations.length) fail();
-    return { models, narrator, output };
+    return { models, narrator, output, fanouts: rpControlFanoutGroups(graph, narrator.nodeId) };
 }
 
 export function rpControlPlannerTask(graph, dependencyPins) {
@@ -84,3 +105,39 @@ export const rpControlReviewOutputContract = Object.freeze({ name: 'atria_graph_
 export const rpControlJudgeOutputContract = Object.freeze({ name: 'atria_graph_judge', schema: { type: 'object', properties: {
     selectedResultRef: { type: 'object', properties: { runId: { type: 'string' }, resultId: { type: 'string' } }, required: ['runId', 'resultId'], additionalProperties: false },
     reasonCode: { type: 'string', enum: ['candidate_selected'] } }, required: ['selectedResultRef', 'reasonCode'], additionalProperties: false } });
+
+/** Read-only published branch topology. All admission stays in original controllers. */
+export function rpControlFanoutGroups(graph, finalWorkerId) {
+    const groups = [], used = new Set(), joins = new Set();
+    for (const fanout of graph.nodes.filter(node => node.kind === 'fanout')) {
+        const transfers = graph.edges.filter(edge => edge.from.nodeId === fanout.nodeId && !edge.loopBack);
+        if (!transfers.length) fail();
+        const branches = transfers.map(transfer => {
+            const entry = graph.nodes.find(node => node.nodeId === transfer.to.nodeId), scope = new Set(), ends = new Set(), pending = [entry?.nodeId];
+            while (pending.length) {
+                const id = pending.pop(), node = graph.nodes.find(node => node.nodeId === id);
+                if (scope.has(id)) continue;
+                if (node?.kind === 'join') { ends.add(id); continue; }
+                if (node?.kind !== 'agent' || id === finalWorkerId || used.has(id)) fail();
+                scope.add(id);
+                const outgoing = graph.edges.filter(edge => edge.from.nodeId === id);
+                if (!outgoing.length || outgoing.some(edge => edge.loopBack)) fail();
+                pending.push(...outgoing.map(edge => edge.to.nodeId));
+            }
+            if (ends.size !== 1 || !entry || graph.edges.some(edge => edge.to.nodeId === entry.nodeId && edge.edgeId !== transfer.edgeId)) fail();
+            for (const id of scope) {
+                if (id !== entry.nodeId && graph.edges.some(edge => edge.to.nodeId === id && !scope.has(edge.from.nodeId))) fail();
+            }
+            return { entry, scopeNodeIds: [...scope].sort(), joinId: [...ends][0], transfer };
+        });
+        const joinId = branches[0].joinId, join = graph.nodes.find(node => node.nodeId === joinId);
+        if (joins.has(joinId) || branches.some(branch => branch.joinId !== joinId) || join.policy.quorum > branches.reduce((count, branch) =>
+            count + graph.edges.filter(edge => branch.scopeNodeIds.includes(edge.from.nodeId) && edge.to.nodeId === joinId).length, 0)) fail();
+        for (const branch of branches) for (const id of branch.scopeNodeIds) { if (used.has(id)) fail(); used.add(id); }
+        const members = graph.edges.filter(edge => edge.to.nodeId === joinId);
+        if (!members.length || members.some(edge => !branches.some(branch => branch.scopeNodeIds.includes(edge.from.nodeId)) || edge.condition !== 'always')) fail();
+        joins.add(joinId); groups.push({ fanout, join, branches, members });
+    }
+    if (graph.nodes.some(node => node.kind === 'join' && !joins.has(node.nodeId))) fail();
+    return groups;
+}

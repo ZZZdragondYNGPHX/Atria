@@ -1,3 +1,4 @@
+import { ResultPort } from './result-port.js';
 import { hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
 import { immutable, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
 import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
@@ -22,8 +23,8 @@ const equal = (a, b) => hash(a) === hash(b);
 /** Private work inside the original Project operation and Task capture.
  * No Task generation is finished and no tool or domain writer runs here. */
 export class ProjectQualityWork {
-    constructor({ service, state, identity, logicalInputRef, port, issueScope, current, install, readControls = null }) {
-        Object.assign(this, { service, state, identity, baseInput: logicalInputRef, port, issueScope, current, install, readControls });
+    constructor({ service, state, identity, logicalInputRef, port, issueScope, current, install, readControls = null, delegation = null }) {
+        Object.assign(this, { service, state, identity, baseInput: logicalInputRef, port, issueScope, current, install, readControls, delegation });
     }
 
     #input(node, token, evidenceRefs = [], feedback = null, controlRefs = [], controlTask = null) {
@@ -43,6 +44,8 @@ export class ProjectQualityWork {
         // Send/consume already hold the original Project boundary. Re-entering
         // its non-reentrant Studio queue would deadlock. Compile-time reads
         // remain ephemeral and are revalidated by that same boundary before send.
+        const delegated = stage.delegationContinuation ? await new ResultPort({ host: stage.host }).readForParent(handle,
+            { capture: stage.delegationContinuation.capture }) : null;
         return runs.withConsumption(handle, runId, async ({ tx, root }) => {
             await this.current({ capture: stage.projectCapture }); await sourcePort.revalidate(handle, root.sourceBinding, { tx, root });
             const recipient = (await readAttempt(tx, handle, root, stage.attemptId)).doc;
@@ -56,6 +59,10 @@ export class ProjectQualityWork {
                     provenance: [{ source: 'native.project-graph-result', ref: hash(fact.receipt) }] });
             }
             if (this.readControls && request.inputRefs[0].acceptedControlRefs?.length) items.push(...await this.readControls(tx, root, recipient, request.inputRefs[0].acceptedControlRefs));
+            if (delegated) {
+                items.push({ kind: 'context.history', id: 'project-child:' + delegated.resultRef.resultId,
+                    content: delegated.item.content, provenance: delegated.item.provenance });
+            }
             return items;
         });
     }
@@ -69,7 +76,15 @@ export class ProjectQualityWork {
             Object.assign(spec.input, { routeRef: model.pin.resourceRef, routeIntegrity: model.pin.integrity, configDigest: model.configDigest });
             spec.grantDigest = hash({ handle: this.state.handle, input: { ...spec.input, grantDigest: null } }); spec.input.grantDigest = spec.grantDigest;
         }
-        return { ...spec, model };
+        const child = this.state.selected.resolveDelegation?.(node) ?? null;
+        if (child) {
+            if (fanoutAttemptId) fail('native_orchestration_project_delegation_scope_invalid');
+            spec.continuationInput = spec.input;
+            spec.input = this.delegation.parentInput(this.state, node, child, spec.input, bindings);
+            spec.grantDigest = hash({ handle: this.state.handle, input: spec.input });
+            spec.continuationInput.grantDigest = spec.grantDigest;
+        }
+        return { ...spec, model, child };
     }
 
     generateStage(node, token, options) { return this.#generate(node, token, options); }
@@ -82,12 +97,12 @@ export class ProjectQualityWork {
         const inputRefs = [spec.input, ...evidenceRefs, ...controlRefs];
         const capture = await captureNativeProjectWorker(base.projectCapture, { requestId: spec.requestId, task: spec.task, ...(controlTask ? { routeRef: model.pin.resourceRef } : {}), ...(fanoutPermit ? { fanoutPermit, nodeId: node.nodeId } : {}),
             ...(outputContract || node.kind === 'review' ? { outputContract: outputContract ?? projectQualityOutputContract } : {}) });
-        const decision = immutable({ ...base.decision, ...(controlTask ? { actionRef: { kind: 'native_model_send', runtimeRouteId: model.resolved.route.runtimeRouteId },
+        let decision = immutable({ ...base.decision, ...(controlTask ? { actionRef: { kind: 'native_model_send', runtimeRouteId: model.resolved.route.runtimeRouteId },
             targetRef: { connectionProfileId: model.resolved.connection.connectionProfileId, modelProfileId: model.resolved.model.modelProfileId, pathFingerprint: model.resolved.pathFingerprint },
             endpointBindingDigest: hash({ pathFingerprint: model.resolved.pathFingerprint, configDigest: model.configDigest }),
             budgetEnvelopeDigest: hash(model.resolved.route.executionPolicy.computeBudget) } : {}), inputRef: spec.input, inputHash: hash(spec.input), grantDigest: spec.grantDigest,
         egressDigest: hash({ sourceBinding: base.sourceBinding, input: spec.input }) });
-        const stage = { ...base, signal, selected: { ...base.selected, ...model, node, toolPins: [] }, projectCapture: capture, decision, qualityStage: true };
+        const stage = { ...base, signal, selected: { ...base.selected, ...model, node, toolPins: [] }, projectCapture: capture, decision, qualityStage: true, runId, child: spec.child, ownerLimits: base.selected.resolved.route.executionPolicy.computeBudget };
         const release = this.install(stage);
         try {
             const prepare = async () => {
@@ -116,6 +131,16 @@ export class ProjectQualityWork {
                     if (args.attempt.attemptId !== attemptId || args.attempt.nodeId !== node.nodeId || !equal(args.attempt.inputRefs, inputRefs)
                         || args.attempt.effectiveGrantDigest !== spec.grantDigest) fail('native_orchestration_project_quality_stale');
                 } }).activate(handle, { ...runGuard(await service.runs.get(handle, runId)), attemptId });
+                if (spec.child) {
+                    const continuation = await host.turnOrchestration.runProjectDelegation({ parentState: stage, childPlanPinId: spec.child.pin.pinId, mode: 'handoff' });
+                    stage.delegationContinuation = continuation;
+                    const logical = { ...spec.continuationInput, acceptedResultRef: continuation.acceptedResultRef,
+                        returnReceiptRef: continuation.returnReceiptRef, parentInputDigest: continuation.parentInputDigest };
+                    decision = immutable({ ...decision, inputRef: logical, inputHash: hash(logical),
+                        egressDigest: hash({ sourceBinding: base.sourceBinding, input: logical }) });
+                    stage.decision = decision;
+                    await this.delegation.continuation(continuation.capture, stage);
+                }
                 const effectId = 'oeffect_' + hash({ runId, attemptId, purpose: 'project_quality' }).slice(0, 32); stage.effectId = effectId;
                 await service.effects.prepare(handle, { ...runGuard(await service.runs.get(handle, runId)), effectId, nodeAttemptId: attemptId,
                     proposal: Object.fromEntries(['actionRef', 'targetRef', 'inputRef', 'inputHash'].map(key => [key, decision[key]])) });
@@ -146,7 +171,7 @@ export class ProjectQualityWork {
                 workDescriptor: { requestId: spec.requestId, pathFingerprint: stage.selected.resolved.pathFingerprint }, assertCurrent: () => this.current({ capture }) });
             stage.context = metered.compiled; stage.request = stage.contextPort.projectRequest(handle, { context: stage.context });
             await send.bindContext({ port: stage.contextPort, compiled: stage.context, compileProof: metered.proof });
-            const scope = this.issueScope(host, handle, { runId, effectId, request: stage.request, logicalInputRef: immutable(spec.input), logicalInputHash: decision.inputHash,
+            const scope = this.issueScope(host, handle, { runId, effectId, request: stage.request, logicalInputRef: decision.inputRef, logicalInputHash: decision.inputHash,
                 nativeProjectCapture: capture, options: { scheduled: true, orchestrationSend: send }, revalidateConsume: async ({ tx } = {}) => {
                     await this.current({ capture }); await service.sourcePort.revalidate(handle, base.sourceBinding, { tx, root: await service.runs.get(handle, runId) });
                     await stage.contextPort.revalidate(handle, { context: stage.context, phase: 'consume' });
@@ -160,7 +185,7 @@ export class ProjectQualityWork {
             if (complete) return await complete(stage, { result, proof, send, limits });
             if (node.kind === 'review') return await this.#review(stage, { result, proof, send, limits, draftAttemptId, evidenceRefs });
             return await this.#publish(stage, result, proof);
-        } finally { if (release) release(); else this.install(base); }
+        } finally { if (spec.child) this.delegation.release(stage); if (release) release(); else this.install(base); }
     }
 
     async #publish(stage, result, proof) {

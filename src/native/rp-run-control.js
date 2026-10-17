@@ -7,7 +7,7 @@ import { ConflictError } from '../storage/errors.js';
 import { assertWritable } from '../storage/read-only-mode.js';
 import { withChatWrite } from '../storage/repositories/chat-write-boundary.js';
 import { ChatRepo } from '../storage/repositories/chat-repo.js';
-import { admitComputeAttempt, assertComputeLedger, assertRetiredCompute, chargeLocalWork, hasOpenComputeReservations, hasRetainedOrchestrationCompute, releaseComputeChild, reserveComputeChild,
+import { bindComputeBudget as bindOriginalComputeBudget, admitComputeAttempt, assertComputeLedger, assertRetiredCompute, chargeLocalWork, hasOpenComputeReservations, hasRetainedOrchestrationCompute, releaseComputeChild, reserveComputeChild,
     retireComputeLedger, settleComputeAttempt, settleLocalWork } from '../../public/shared/native-compute-budget.js';
 import { fields } from '../../public/shared/native-values.js';
 import { sourceContent, sourceMessageId } from '../../public/scripts/agents/memory/source-provenance.js';
@@ -236,6 +236,13 @@ export class RpRunControl {
             await putMutable(tx, controlKey(handle, controlId), control, { expectedIntegrity: record.integrity });
             return result;
         }));
+    }
+
+    // Bind the original operation's declared limits before pure graph control.
+    // No provider send, local-work row or reservation is invented here.
+    bindComputeBudget(handle, controlId, source, limits) {
+        return this._admit(handle, controlId, source, (op, operation) => ({ operation,
+            limits: structuredClone(bindOriginalComputeBudget(op, limits).limits) }));
     }
 
     reserveComputeChild(handle, controlId, source, limits, input) {

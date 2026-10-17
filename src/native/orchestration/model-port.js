@@ -143,7 +143,7 @@ export class ModelPort {
         // substitute for the capability minted at an original domain model point.
         const principal = await resolveNativeNarratorScope(scope, this.host, handle);
         const { runId, effectId, request, options, revalidateConsume, logicalInputRef, logicalInputHash, nativeTurnPermit, nativeProjectCapture, nativeRpCapture, nativeRpDelegationCapture, nativeBackgroundCapture } = principal;
-        const project = logicalInputRef.kind === 'native_project_intent';
+        const project = ['native_project_intent', 'native_project_delegated_intent'].includes(logicalInputRef.kind);
         const rp = logicalInputRef.kind === 'native_rp_intent';
         const delegated = logicalInputRef.kind === 'native_rp_delegated_intent';
         const background = logicalInputRef.kind === 'native_background_intent';

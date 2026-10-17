@@ -165,7 +165,10 @@ export class ProjectControlGraphWork {
                         if (operation.op === 'addEdge') candidate.edges.push(operation.edge);
                     }
                     const admission = projectControlGraph({ ...stage.selected.plan, definition: candidate });
-                    for (const control of admission.pure.filter(node => node.capabilities.includes('generation.send'))) await this.state.selected.resolveControlModel(control);
+                    for (const control of admission.pure.filter(node => node.capabilities.includes('generation.send'))) {
+                        await this.state.selected.resolveControlModel(control);
+                        this.state.selected.resolveDelegation(control);
+                    }
                     if (!equal(admission.worker, active.graph.nodes.find(node => node.nodeId === this.state.selected.node.nodeId))) fail('native_orchestration_project_planner_writer_denied');
                     // An added edge cannot retroactively expand a published Result's audience.
                     for (const operation of actual.operations.filter(operation => operation.op === 'addEdge')) {
@@ -176,7 +179,8 @@ export class ProjectControlGraphWork {
                         }
                     }
                     const capacity = await budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: null }, { tx });
-                    const required = admission.pure.filter(node => node.capabilities.includes('generation.send') && !this.records.has(node.nodeId) && node.nodeId !== producer.nodeId).length + 1;
+                    const remaining = admission.pure.filter(node => node.capabilities.includes('generation.send') && !this.records.has(node.nodeId) && node.nodeId !== producer.nodeId);
+                    const required = remaining.reduce((requests, node) => requests + 1 + (this.state.selected.resolveDelegation(node)?.ceiling.maxRequests ?? 0), 1);
                     if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_project_graph_budget_unavailable');
                     await sourcePort.revalidate(handle, active.sourceBinding, { tx, root: active });
                 } }).propose(handle, { expectedStateVersion: root.stateVersion, patch });
@@ -398,7 +402,7 @@ export class ProjectControlGraphWork {
                     : judge ? 'Select exactly one of the supplied direct typed candidate Result references. Return selectedResultRef and reasonCode candidate_selected. This advisory choice cannot change any Audience, tool authority or Project source.'
                         : 'Perform this declared advisory Project task using only the explicitly supplied source and results. No tools or domain writes are available.',
             ...(planner ? { graphView: { graphRevision: root.graphRevision, graph: root.graph, nodeControl: root.nodeControl,
-                dependencyPins: this.state.selected.plan.dependencyPins.filter(pin => pin.port === 'model') } } : {}) };
+                dependencyPins: this.state.selected.plan.dependencyPins.filter(pin => pin.port === 'model' || this.state.selected.delegationPlans.has(pin.pinId)) } } : {}) };
     }
 
     async #review(stage, { result, proof, send, limits }, bundle) {
@@ -426,7 +430,8 @@ export class ProjectControlGraphWork {
             }
             // Graph control decisions cannot be repeated as local Model redo.
             // Keep every already-published GraphPatch receipt authoritative.
-            if (decision === 'rerun' && [...this.records.entries()].some(([nodeId, fact]) => ['graph_planner_control', 'graph_join_control'].includes(fact.controlRef?.kind) && fact.attemptId !== reviewer.attemptId
+            if (decision === 'rerun' && [...this.records.entries()].some(([nodeId, fact]) => (['graph_planner_control', 'graph_join_control'].includes(fact.controlRef?.kind)
+                || root.graph.nodes.find(node => node.nodeId === nodeId).capabilities.includes('agent.delegate')) && fact.attemptId !== reviewer.attemptId
                 && targets.some(target => graphReachable(root.graph, target.nodeId, nodeId)))) fail('native_orchestration_review_irreversible_dependency');
         }, admitRerun: async ({ tx, root, reviewer, target, attemptId, invalidatedAttemptIds }) => {
             const capacity = await budgetPort.observeCapacity(handle, { authorityRef: root.budgetAuthorityRef, reservationId: null }, { tx });

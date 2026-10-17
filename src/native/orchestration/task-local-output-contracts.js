@@ -7,6 +7,7 @@ import { readResultPublication } from './result-publication-contracts.js';
 import { readAttemptSettlement, attemptReceiptId } from './attempt-settlement.js';
 import { assertBudgetAttemptRef, assertBudgetAuthorityRef } from './budget-port.js';
 import { assertSessionDelegatedClosure } from './session-delegation-contracts.js';
+import { assertProjectDelegatedClosure } from './project-delegation-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
@@ -97,10 +98,10 @@ export async function readTaskLocalOutput(tx, handle, root) {
         || !equal(output.budgetRef, root.budgetAuthorityRef) || !equal(output.inputRefs, [claim.resultRef]) || output.inputDigest !== hash([claim.resultRef])
         || !equal(output.resultRefs, [claim.resultRef]) || settled.effectReceiptRefs.length || settled.decisionSeq !== receipt.decisionSeq
         || settled.createdAt !== receipt.createdAt || published.receipt.epoch !== receipt.epoch) invalid();
-    if (root.sourceBinding.sourceAuthority === 'native_session') {
+    if (['native_session', 'project'].includes(root.sourceBinding.sourceAuthority)) {
         const producer = (await readAttempt(tx, handle, root, published.receipt.producerAttemptId)).doc;
         await assertOutputTransition(tx, handle, root, { published: { ...published, producer, settlement: published.attemptReceipt }, output, receipt });
-        assertSessionDelegatedClosure(root, published.graphHistory, closure);
+        (root.sourceBinding.sourceAuthority === 'native_session' ? assertSessionDelegatedClosure : assertProjectDelegatedClosure)(root, published.graphHistory, closure);
         return { claim, receipt, closure, publication: published };
     }
     const traversal = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receipt.traversalReceiptRef.receiptId)))?.doc;

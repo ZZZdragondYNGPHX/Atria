@@ -13,10 +13,12 @@ import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readRpFanoutCompletion } from './rp-fanout-contracts.js';
+import { readRpControlFanoutCompletion } from './rp-control-fanout-contracts.js';
 import { readProjectFanoutCompletion } from './project-fanout-contracts.js';
 import { graphFanoutModelScope, readGraphFanoutInput } from './graph-fanout-completion.js';
 import { audienceContextPin, assertAudienceRunCapture } from './audience-source-contracts.js';
 import { readSessionDelegatedModelInput, readSessionDelegationContinuation } from './session-delegation-contracts.js';
+import { readProjectDelegatedModelInput, readProjectDelegationContinuation } from './project-delegation-contracts.js';
 
 const kinds = ['agent', 'planner', 'judge', 'review'];
 const equal = (a, b) => hash(a) === hash(b);
@@ -27,24 +29,23 @@ export function graphResultContract(root, producer, graphSnapshot = null) {
     const graph = graphSnapshot?.graph ?? root.graph, revision = graphSnapshot?.graphRevision ?? 0;
     const node = graph.nodes.find(item => item.nodeId === producer.nodeId), policy = assertResultPolicy(graph.outputContract);
     if (!['rp_chat', 'native_session', 'project'].includes(root.sourceBinding.sourceAuthority)
-        || root.parentRef !== null && !(root.sourceBinding.sourceAuthority === 'native_session' && graph.outputContract.kind === 'result' && node?.kind === 'agent')
+        || root.parentRef !== null && !(['native_session', 'project'].includes(root.sourceBinding.sourceAuthority) && graph.outputContract.kind === 'result' && node?.kind === 'agent')
         || producer.graphRevision !== revision || revision > root.graphRevision
         || root.sourceBinding.sourceAuthority !== root.sourceBinding.sourceRequest?.domain
         || !graphSnapshot && (root.graphRevision !== 0 || root.graph.graphChangePolicy.allowedOperations.length) || !kinds.includes(node?.kind)
         || node.outputs.length !== 1 || !['text', 'json'].includes(node.outputs[0].type)) invalid();
     const direct = graph.edges.filter(edge => edge.from.nodeId === node.nodeId && !edge.loopBack).map(edge => graph.nodes.find(item => item.nodeId === edge.to.nodeId));
     const recipients = direct.flatMap(item => {
-        if (item?.kind === 'fanout' && root.sourceBinding.sourceAuthority === 'project') {
+        if (item?.kind === 'fanout' && ['project', 'rp_chat'].includes(root.sourceBinding.sourceAuthority)) {
             return [item, ...graphFanoutModelScope(graph, item.nodeId).map(id => graph.nodes.find(node => node.nodeId === id))];
         }
         if (item?.kind !== 'join') return [item];
         const successors = graph.edges.filter(edge => edge.from.nodeId === item.nodeId && !edge.loopBack).map(edge => graph.nodes.find(node => node.nodeId === edge.to.nodeId));
-        if (!successors.length || successors.some(node => !kinds.includes(node?.kind))
-            || root.sourceBinding.sourceAuthority === 'rp_chat' && successors.length !== 1) invalid();
+        if (!successors.length || successors.some(node => !kinds.includes(node?.kind))) invalid();
         return [item, ...successors];
     });
     if (!recipients.length || recipients.some(item => !kinds.includes(item?.kind) && item?.kind !== 'join'
-        && !(item?.kind === 'fanout' && root.sourceBinding.sourceAuthority === 'project'))) invalid();
+        && !(item?.kind === 'fanout' && ['project', 'rp_chat'].includes(root.sourceBinding.sourceAuthority)))) invalid();
     return { output: { kind: 'result', ownerNodeId: node.nodeId, slot: 'graph_result', allowPartial: false,
         resultPolicy: { outputType: node.outputs[0].type, maxBytes: policy.maxBytes } },
     audience: { kind: 'graph_nodes', runId: root.runId, nodeIds: [...new Set(recipients.map(item => item.nodeId))].sort(), epoch: producer.epoch,
@@ -81,6 +82,22 @@ export function graphNodeResult({ root, producer, proof, text, now, graphSnapsho
 /** Historical read; the live recipient separately checks Source/grant/epoch and
  * invalidation. A durable Result or its audience list never grants a new read. */
 export async function readGraphNodeResult(tx, handle, root, resultId, { recipient = null } = {}) {
+    return readGraphResultFacts(tx, handle, root, resultId, recipient, new Map());
+}
+
+/** One historical batch may replay each graph revision once. The private map
+ * contains only graphs read here from the original Plan and patch receipts;
+ * callers cannot supply a graph or retain a reader across boundaries. Every
+ * Result, Model, retrieval and settlement fact is still read and checked. */
+export async function readGraphNodeResults(tx, handle, root, resultIds) {
+    const snapshots = new Map(), results = new Map();
+    for (const id of resultIds) {
+        if (!results.has(id)) results.set(id, await readGraphResultFacts(tx, handle, root, id, null, snapshots));
+    }
+    return results;
+}
+
+async function readGraphResultFacts(tx, handle, root, resultId, recipient, snapshots) {
     assertNativeId(resultId, 'orchestrationResult');
     const stored = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'result', resultId));
     const publication = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', graphResultPublicationId(root.runId, resultId)));
@@ -90,7 +107,11 @@ export async function readGraphNodeResult(tx, handle, root, resultId, { recipien
     assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'producerAttemptId', 'resultRef', 'resultIntegrity', 'modelEffectId',
         'modelReceiptRef', 'modelPayloadHash', 'producerGrantDigest', 'sourceBindingDigest', 'audienceDigest', 'decisionSeq', 'createdAt',
         ...(Object.hasOwn(receipt, 'graphRevision') ? ['graphRevision'] : [])], 'Graph Result publication');
-    const snapshot = Object.hasOwn(receipt, 'graphRevision') ? await readTaskGraphRevision(tx, handle, root, receipt.graphRevision) : null;
+    let snapshot = null;
+    if (Object.hasOwn(receipt, 'graphRevision')) {
+        if (!snapshots.has(receipt.graphRevision)) snapshots.set(receipt.graphRevision, await readTaskGraphRevision(tx, handle, root, receipt.graphRevision));
+        snapshot = snapshots.get(receipt.graphRevision);
+    }
     if (snapshot) {
         const commandId = controlCommandId('graph.result.publish', { runId: root.runId, effectId: receipt.modelEffectId });
         const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
@@ -135,6 +156,10 @@ export async function readGraphNodeResult(tx, handle, root, resultId, { recipien
         await readSessionDelegatedModelInput(tx, handle, root, producer, intent, receipt.decisionSeq);
     } else if (producer.inputRefs[0]?.kind === 'native_session_delegation') {
         await readSessionDelegationContinuation(tx, handle, root, producer, intent);
+    } else if (root.sourceBinding.sourceAuthority === 'project' && root.parentRef) {
+        await readProjectDelegatedModelInput(tx, handle, root, producer, intent, receipt.decisionSeq);
+    } else if (producer.inputRefs[0]?.kind === 'native_project_delegation') {
+        await readProjectDelegationContinuation(tx, handle, root, producer, intent);
     }
     if (recipient) {
         await assertAttemptConsumable(tx, handle, root, producer);
@@ -171,12 +196,32 @@ export async function readGraphNodeResult(tx, handle, root, resultId, { recipien
                 }
                 if (!accepted) invalid();
             } else {
-                const joined = await readRpFanoutCompletion(tx, handle, root);
-                if (!joined || joined.profile.transfer.to.nodeId !== recipient.nodeId || !joined.joinReceipt.acceptedResultRefs.some(ref => equal(ref, receipt.resultRef))
-                    || !equal(input.joinReceiptRef, { runId: root.runId, joinId: joined.joinReceipt.joinId })
-                    || !equal(input.acceptedGraphResultRefs, joined.joinReceipt.acceptedResultRefs)) invalid();
+                let accepted = false;
+                if (input.fanoutAttemptId) {
+                    await readGraphFanoutInput(tx, handle, root, input.fanoutAttemptId, recipient, receipt.resultRef, { producer, settlement, receipt });
+                    accepted = true;
+                }
+                for (const ref of input.acceptedControlRefs ?? input.controlGraph?.controlRefs ?? []) {
+                    if (ref.kind !== 'graph_join_control' || ref.runId !== root.runId) continue;
+                    const joined = await readRpControlFanoutCompletion(tx, handle, root, ref.attemptId, { recipient });
+                    if (joined && equal(joined.controlRef, ref) && ['completed', 'partial'].includes(joined.joinReceipt.outcome)
+                        && joined.joinReceipt.acceptedResultRefs.some(actual => equal(actual, receipt.resultRef))
+                        && joined.joinReceipt.acceptedResultRefs.every(actual => input.acceptedGraphResultRefs?.some(selected => equal(selected, actual)))) accepted = true;
+                }
+                // The older published single-Join wire contract remains exact.
+                if (!accepted && input.joinReceiptRef) {
+                    const joined = await readRpFanoutCompletion(tx, handle, root);
+                    accepted = Boolean(joined && joined.profile.transfer.to.nodeId === recipient.nodeId
+                        && joined.joinReceipt.acceptedResultRefs.some(ref => equal(ref, receipt.resultRef))
+                        && equal(input.joinReceiptRef, { runId: root.runId, joinId: joined.joinReceipt.joinId })
+                        && equal(input.acceptedGraphResultRefs, joined.joinReceipt.acceptedResultRefs));
+                }
+                if (!accepted) invalid();
             }
         }
     }
-    return { record, receipt, producer, settlement, retrievalCompletions };
+    // These are this call's fully checked historical facts, not send, Source
+    // or bank grants. A containing Join proof can reuse them before checking
+    // the actual original bank, without reading the same Model receipt twice.
+    return { record, receipt, producer, settlement, retrievalCompletions, modelEffect: intent, modelCompletion: model };
 }
