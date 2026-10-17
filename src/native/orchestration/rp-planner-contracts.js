@@ -5,8 +5,7 @@ import { checkedRecord } from './plan-repository.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
-import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
-import { localWorkAttemptId } from './budget-port.js';
+import { assertRpControlWork } from './rp-control-work-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP Planner completion facts'); };
@@ -35,14 +34,6 @@ export async function readRpPlannerCompletion(tx, handle, root) {
         || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId]) || producer.resultRefs.length
         || !equal(producer.effectRefs, [receipt.modelEffectId]) || intent.nodeAttemptId !== producer.attemptId || intent.grantDigest !== producer.effectiveGrantDigest
         || !model || !equal(model.receiptRef, receipt.modelReceiptRef) || model.observation.dispatchEvidence.reference.resultPayloadHash !== receipt.payloadHash) invalid();
-    const control = (await checkedRecord(tx, { kind: K.rpRunControl, handle, controlId: root.budgetAuthorityRef.controlId }))?.doc;
-    const local = control?.operations[root.budgetAuthorityRef.operationId]?.compute?.localWork;
-    if (!Array.isArray(receipt.localWork) || receipt.localWork.length !== 2) invalid();
-    for (const [index, job] of receipt.localWork.entries()) {
-        const row = local?.find(item => item.attemptId === job.attemptId);
-        if (job.kind !== ['graph_control_parse', 'graph_control_adopt'][index] || !row || hash(row) !== job.rowHash || row.kind !== job.kind
-            || row.targetFingerprint !== job.targetFingerprint || row.attemptId !== localWorkAttemptId(receipt.modelEffectId, job.ordinal)
-            || !equal(row.orchestration, { kind: 'local_work', effectId: receipt.modelEffectId, ordinal: job.ordinal }) || row.status !== 'settled' || row.usage?.outcome !== 'completed') invalid();
-    }
+    await assertRpControlWork(tx, handle, root, receipt.modelEffectId, receipt.localWork);
     return { receipt, producer, settlement, patch, modelEffectId: receipt.modelEffectId };
 }

@@ -155,6 +155,7 @@ describe.each(CONTRACT_HARNESSES)('$name durable graph Review and local rerun', 
     });
     test('per-review-node rounds persist across fresh Attempts and cannot reset with another command', async () => {
         const transitions = new TransitionController({ runs, authorizeTransition: async ({ root }) => ({ inputRefs: [], inputDigest: hash([]), effectiveGrantDigest: hash([]), budgetRef: root.budgetAuthorityRef }) });
+        const activations = [];
         for (let round = 0; round < 2; round++) {
             const decision = await reviews.decide(h.handle, await request('rerun', [rb]));
             await attempts.settle(h.handle, { ...runGuard(await current()), attemptId: rr, outcome: 'completed', resultRefs: [], effectReceiptRefs: [], reasonCode: null });
@@ -163,10 +164,11 @@ describe.each(CONTRACT_HARNESSES)('$name durable graph Review and local rerun', 
             const root = await current(), edge = root.graph.edges.find(item => item.from.nodeId === b);
             const next = await transitions.advance(h.handle, { ...runGuard(root), bindings: [{ edgeId: edge.edgeId, producerAttemptId: rb }], reservedAttemptId: null });
             rr = next.outcome.attemptId;
-            await attempts.activate(h.handle, { ...runGuard(await current()), attemptId: rr });
+            activations.push(await attempts.activate(h.handle, { ...runGuard(await current()), attemptId: rr }).then(() => 'running', error => error.code));
         }
         const before = await current();
-        await expect(reviews.decide(h.handle, await request('approve', [rb]))).rejects.toMatchObject({ code: 'native_orchestration_limit_exhausted' });
+        expect(activations).toEqual(['running', 'native_orchestration_review_limit_exhausted']);
+        await expect(reviews.decide(h.handle, await request('approve', [rb]))).rejects.toMatchObject({ code: 'native_orchestration_review_not_admitted' });
         expect(before.progress.reviews).toBe(2); expect(await current()).toEqual(before);
     });
     test('corrupt invalidation cannot be used as live permission while immutable history remains', async () => {

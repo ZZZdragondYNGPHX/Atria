@@ -2,7 +2,7 @@ import { ConflictError } from '../../storage/errors.js';
 import { cloneNativeDocument, hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
 import { assertNativeId } from '../identity.js';
 import { assertObject, assertDigest, assertToken } from '../../../public/shared/native-orchestration-contracts.js';
-import { controlCommandId, controlRecordKey, graphReachable, readAttempt, assertAttemptCurrent, readAttemptInvalidation, attemptInvalidationId, graphReviewReceiptId, readGraphReviewReceipt } from './controller-common.js';
+import { controlCommandId, controlRecordKey, graphReachable, readAttempt, assertAttemptCurrent, readAttemptInvalidation, attemptInvalidationId, graphReviewReceiptId, readReviewAdmission } from './controller-common.js';
 import { readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 
@@ -35,14 +35,13 @@ export class ReviewController {
             if (root.cancelRequested || root.status !== 'running' || node.kind !== 'review' || reviewer.status !== 'running'
                 || reviewer.epoch !== root.epoch || reviewer.sourceBindingDigest !== root.sourceBinding.bindingDigest
                 || root.outputClaims.length) deny('native_orchestration_review_not_admitted');
-            let rounds = 0;
+            const admission = await readReviewAdmission(tx, handle, root, reviewer);
             const attempts = [];
             for (const id of root.attemptRefs) {
                 const { doc } = await readAttempt(tx, handle, root, id); attempts.push(doc);
-                if (doc.nodeId === node.nodeId && await readGraphReviewReceipt(tx, handle, root, doc)) rounds++;
             }
-            if (now >= root.progress.deadlineAt || root.progress.steps >= root.limits.maxSteps || root.progress.reviews >= root.limits.maxReviews
-                || rounds >= node.policy.maxRounds) deny('native_orchestration_limit_exhausted');
+            if (!admission || admission.round > node.policy.maxRounds || root.progress.reviews < admission.round) deny('native_orchestration_review_not_admitted');
+            if (now >= root.progress.deadlineAt || root.progress.steps >= root.limits.maxSteps) deny('native_orchestration_limit_exhausted');
             const targets = [];
             for (const id of targetAttemptIds) {
                 const target = attempts.find(item => item.attemptId === id);
@@ -97,7 +96,7 @@ export class ReviewController {
             await putImmutable(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId), receipt);
             for (const attemptId of invalidated) await putImmutable(tx, controlRecordKey(handle, root.runId, 'receipt', attemptInvalidationId(root.runId, attemptId)), {
                 schemaVersion: 1, receiptKind: 'attempt_invalidation', runId: root.runId, attemptId, reviewReceiptId: receiptId, reviewIntegrity: hash(receipt) });
-            root.progress.steps++; root.progress.reviews++; root.progress.attempts += replacements.length;
+            root.progress.steps++; root.progress.attempts += replacements.length;
             return { root, eventType: 'graph_review_decided', reasonCode, outcome: { reviewReceipt: receipt } };
         });
     }

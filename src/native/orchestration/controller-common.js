@@ -10,6 +10,21 @@ export const runGuard = root => ({ runId: root.runId, expectedEpoch: root.epoch,
 export const controlRecordKey = (handle, runId, recordType, recordId) => ({ kind: K.orchestrationRecord, handle, runId, recordType, recordId });
 export const attemptInvalidationId = (runId, attemptId) => 'oreceipt_' + hashNativeDocument({ kind: 'attempt_invalidation', runId, attemptId }).slice(0, 32);
 export const graphReviewReceiptId = (runId, attemptId) => 'oreceipt_' + hashNativeDocument({ kind: 'graph_review', runId, attemptId }).slice(0, 32);
+export const reviewAdmissionId = (runId, attemptId) => 'oreceipt_' + hashNativeDocument({ kind: 'review_admission', runId, attemptId }).slice(0, 32);
+
+export async function readReviewAdmission(tx, handle, root, attempt) {
+    const receiptId = reviewAdmissionId(root.runId, attempt.attemptId), stored = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId));
+    if (!stored) return null;
+    const receipt = stored.doc;
+    assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'nodeId', 'nodeAttemptId', 'epoch', 'sourceBindingDigest', 'grantDigest', 'round', 'decisionSeq', 'createdAt'], 'Review admission');
+    if (receipt.schemaVersion !== 1 || receipt.receiptKind !== 'review_admission' || receipt.receiptId !== receiptId || receipt.runId !== root.runId
+        || receipt.nodeId !== attempt.nodeId || receipt.nodeAttemptId !== attempt.attemptId || receipt.epoch !== attempt.epoch
+        || receipt.sourceBindingDigest !== attempt.sourceBindingDigest || receipt.grantDigest !== attempt.effectiveGrantDigest || receipt.createdAt !== attempt.startedAt
+        || root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind !== 'review') throw new TypeError('Invalid Review admission facts');
+    for (const field of ['round', 'decisionSeq']) assertCounter(receipt[field], field, 1);
+    if (receipt.decisionSeq > root.eventSeq) throw new TypeError('Review admission is ahead of durable Run');
+    return receipt;
+}
 
 export async function readGraphReviewReceipt(tx, handle, root, attempt) {
     const id = graphReviewReceiptId(root.runId, attempt.attemptId), record = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', id));
@@ -26,6 +41,7 @@ export async function readGraphReviewReceipt(tx, handle, root, attempt) {
         || review.decision === 'approve' && (review.invalidatedAttemptIds.length || review.replacements.length)) throw new TypeError('Invalid Graph Review facts');
     for (const field of ['decisionSeq', 'createdAt', 'graphRevision', 'epoch']) assertCounter(review[field], field);
     if (review.decisionSeq > root.eventSeq || review.decisionSeq < 1) throw new TypeError('Graph Review is ahead of durable Run');
+    if (!await readReviewAdmission(tx, handle, root, attempt)) throw new TypeError('Graph Review lacks its original admission');
     for (const id of [...review.targetAttemptIds, ...review.invalidatedAttemptIds]) if (!root.attemptRefs.includes(id)) throw new TypeError('Graph Review target does not belong to Run');
     return review;
 }

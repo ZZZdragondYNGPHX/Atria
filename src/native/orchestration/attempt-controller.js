@@ -2,7 +2,7 @@ import { ConflictError } from '../../storage/errors.js';
 import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
 import { assertNativeId } from '../identity.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
-import { controlCommandId, controlRecordKey, graphReachable, holdsConcurrencySlot, readAttempt, assertAttemptCurrent } from './controller-common.js';
+import { controlCommandId, controlRecordKey, graphReachable, holdsConcurrencySlot, readAttempt, assertAttemptCurrent, readReviewAdmission, reviewAdmissionId } from './controller-common.js';
 import { checkedRecord } from './plan-repository.js';
 import { readEffect } from './effect-contracts.js';
 import { assertResultRefs, writeAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
@@ -59,17 +59,30 @@ export class AttemptController {
             await assertAttemptCurrent(tx, handle, root, attempt);
             if (root.cancelRequested || !['admitted', 'running'].includes(root.status) || root.nodeControl[attempt.nodeId].disposition !== 'eligible'
                 || attempt.status !== 'pending' || attempt.epoch !== root.epoch || now >= root.progress.deadlineAt) throw new ConflictError('native_orchestration_attempt_not_admitted');
-            let activeCount = 0;
+            const node = root.graph.nodes.find(item => item.nodeId === attempt.nodeId);
+            let activeCount = 0, reviewRound = 0;
             for (const id of root.attemptRefs) {
                 const { doc } = await readAttempt(tx, handle, root, id);
                 if (holdsConcurrencySlot(root, doc)) activeCount++;
+                if (node.kind === 'review' && doc.nodeId === node.nodeId && doc.startedAt !== null) {
+                    if (!await readReviewAdmission(tx, handle, root, doc)) throw new TypeError('Review Attempt lacks its admission');
+                    reviewRound++;
+                }
             }
+            if (node.kind === 'review' && (root.progress.reviews >= root.limits.maxReviews || reviewRound >= node.policy.maxRounds)) throw new ConflictError('native_orchestration_review_limit_exhausted');
             if (holdsConcurrencySlot(root, { ...attempt, status: 'running' }) && activeCount >= root.limits.maxConcurrency
                 || root.progress.steps >= root.limits.maxSteps) throw new ConflictError('native_orchestration_limit_exhausted');
             await assertRunTreeConcurrency(tx, handle, root, { additionalSlots: holdsConcurrencySlot(root, { ...attempt, status: 'running' }) ? 1 : 0 });
             await assertFanoutAdmission({ tx, handle, root, attempt });
             await this.authorizeAttempt({ handle, tx, root, attempt });
             await putMutable(tx, controlRecordKey(handle, root.runId, 'attempt', attemptId), { ...attempt, status: 'running', startedAt: now }, { expectedIntegrity: record.integrity });
+            if (node.kind === 'review') {
+                const receiptId = reviewAdmissionId(root.runId, attemptId);
+                await putImmutable(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId), { schemaVersion: 1, receiptKind: 'review_admission', receiptId,
+                    runId: root.runId, nodeId: node.nodeId, nodeAttemptId: attemptId, epoch: attempt.epoch, sourceBindingDigest: attempt.sourceBindingDigest,
+                    grantDigest: attempt.effectiveGrantDigest, round: reviewRound + 1, decisionSeq: root.eventSeq + 1, createdAt: now });
+                root.progress.reviews++;
+            }
             root.status = 'running'; root.progress.steps++;
             return { root, eventType: 'attempt_activated', reasonCode: null, outcome: { attemptId, status: 'running' } };
         }, { resourceIds: [observed.rootRunId] });
