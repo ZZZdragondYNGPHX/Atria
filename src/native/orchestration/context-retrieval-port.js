@@ -67,7 +67,8 @@ export class ContextRetrievalPort {
         if (this.runs.engine.hasActiveTransaction(handle)) fail('native_orchestration_context_retrieval_ambient_transaction');
         if (!(port instanceof ContextPort) || !(this.budgetPort instanceof BudgetPort) || root.ownerRef.handle !== handle
             || !['rp_chat', 'native_session'].includes(root.sourceBinding.sourceAuthority) || root.parentRef !== null
-            || root.sourceBinding.sourceAuthority === 'native_session' && (request.audience.kind !== 'narrator' || request.inputRefs[0]?.role !== 'narrator')
+            || root.sourceBinding.sourceAuthority === 'native_session' && !(request.audience.kind === 'narrator' && request.inputRefs[0]?.kind === 'native_turn_intent' && request.inputRefs[0].role === 'narrator'
+                || request.audience.kind === 'task' && request.inputRefs[0]?.kind === 'native_background_intent' && request.audience.id === request.inputRefs[0].taskId)
             || !equal(root.sourceBinding, request.sourceBinding)) fail();
         assertOriginalSendBank(bank, { budgetPort: this.budgetPort, handle, authorityRef: root.budgetAuthorityRef, effectId: modelEffectId });
         // Match the original context_build accounting envelope. Native compiler

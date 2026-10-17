@@ -40,7 +40,12 @@ export async function readContextRetrievalPlan(tx, handle, root, parent) {
     if (parent.graphRevision > root.graphRevision) invalid();
     if (root.sourceBinding.sourceAuthority === 'native_session') {
         if (root.parentRef !== null || root.graphRevision !== 0 || parent.graphRevision !== 0 || !equal(plan.definition, root.graph)
-            || plan.definition.graphChangePolicy.allowedOperations.length || parent.inputRef.kind !== 'native_turn_intent' || parent.inputRef.role !== 'narrator') invalid();
+            || plan.definition.graphChangePolicy.allowedOperations.length) invalid();
+        const input = parent.inputRef, task = root.sourceBinding.sourceRequest.taskRef;
+        if (input.kind === 'native_background_intent') {
+            if (!task || input.taskId !== task.taskId || input.variantId !== task.variantId || !equal(input.planRef, root.planRef)
+                || input.sourceBindingDigest !== root.sourceBinding.bindingDigest || input.nodeId !== root.graph.entryNodeIds[0]) invalid();
+        } else if (input.kind !== 'native_turn_intent' || input.role !== 'narrator' || task) invalid();
         return plan;
     }
     if (planner) {

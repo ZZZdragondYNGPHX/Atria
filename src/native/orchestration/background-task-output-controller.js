@@ -20,9 +20,11 @@ export class BackgroundTaskOutputController {
         if (root.status !== 'running' || root.cancelRequested || root.parentRef || root.pendingEffectRefs.length || root.pendingApprovalRefs.length) fail();
         await this.authorize({ tx, root });
         const first = await readBackgroundTaskDelivery(tx, handle, root, descriptor.effectId, descriptor.domainRef);
-        const costs = await this.budgetPort.observeEffectClosure(handle, { authorityRef: root.budgetAuthorityRef, effectIds: [descriptor.effectId] }, { tx });
+        const costs = await this.budgetPort.observeEffectClosure(handle, { authorityRef: root.budgetAuthorityRef,
+            effectIds: [descriptor.effectId, ...first.retrievalCompletions.map(item => item.effectId)] }, { tx });
         await this.authorize({ tx, root });
         const final = await readBackgroundTaskDelivery(tx, handle, root, descriptor.effectId, descriptor.domainRef);
+        await this.authorize({ tx, root });
         if (!equal(root, await this.runs.get(handle, root.runId)) || !equal(first, final)) fail();
         return { delivery: final, costs };
     }
@@ -37,10 +39,11 @@ export class BackgroundTaskOutputController {
             return operation({ tx, root, ...facts });
         });
         const published = await step(({ root, delivery }) => runs.control(handle, controlCommandId('native.background.result', runId), {
-            ...runGuard(root), operation: 'result.publish', detail: { effectId: descriptor.effectId } }, async ({ tx, root, now }) => {
+            ...runGuard(root), operation: 'result.publish', detail: { effectId: descriptor.effectId } }, async ({ tx, root, now, deny }) => {
             if (root.resultRefs.length || root.progress.steps >= root.limits.maxSteps || now >= root.progress.deadlineAt) fail();
             const producer = await readAttempt(tx, handle, root, delivery.intent.nodeAttemptId);
-            if (producer.doc.status !== 'running' || !equal(producer.doc.effectRefs, [descriptor.effectId])) fail();
+            if (producer.doc.status !== 'running' || !equal(producer.doc.effectRefs, [descriptor.effectId, ...delivery.retrievalCompletions.map(item => item.effectId)])) fail();
+            try { await this.#current(handle, tx, root, descriptor); } catch (error) { return deny(error); }
             const record = backgroundTaskResult(root, producer.doc, descriptor.effectId, delivery.model.receiptRef, descriptor.domainRef, now);
             const resultRef = { runId, resultId: record.resultId };
             const receipt = { schemaVersion: 1, receiptKind: 'background_task_publication', receiptId: backgroundOutputId('publication', runId),
@@ -49,7 +52,7 @@ export class BackgroundTaskOutputController {
             await putImmutable(tx, controlRecordKey(handle, runId, 'result', record.resultId), record);
             await putImmutable(tx, controlRecordKey(handle, runId, 'receipt', receipt.receiptId), receipt);
             await writeAttemptSettlement({ tx, handle, root, record: producer, outcome: 'completed', resultRefs: [resultRef],
-                effectReceiptRefs: [delivery.model.receiptRef.receiptId], reasonCode: 'background_task_adopted', now });
+                effectReceiptRefs: [delivery.model.receiptRef.receiptId, ...delivery.retrievalCompletions.map(item => item.receiptId)], reasonCode: 'background_task_adopted', now });
             root.resultRefs.push(resultRef); root.progress.steps++;
             return { root, eventType: 'background_task_published', reasonCode: null, outcome: { resultRef } };
         }), false);
@@ -68,10 +71,11 @@ export class BackgroundTaskOutputController {
             if (attempt.attemptId !== attemptId || attempt.nodeId !== root.graph.outputContract.ownerNodeId) fail();
         } }).activate(handle, { ...runGuard(root), attemptId }))) return;
         await step(({ root, costs }) => runs.control(handle, controlCommandId('native.background.output', runId), {
-            ...runGuard(root), operation: 'output.publish', detail: { attemptId } }, async ({ tx, root, now }) => {
+            ...runGuard(root), operation: 'output.publish', detail: { attemptId } }, async ({ tx, root, now, deny }) => {
             if (root.outputClaims.length || root.progress.steps >= root.limits.maxSteps || now >= root.progress.deadlineAt) fail();
             const fact = await readBackgroundTaskResult(tx, handle, root), output = await readAttempt(tx, handle, root, attemptId);
             if (!fact || output.doc.status !== 'running') fail();
+            try { await this.#current(handle, tx, root, descriptor); } catch (error) { return deny(error); }
             const claimId = backgroundOutputId('claim', runId), claimRef = { runId, claimId };
             const claim = { schemaVersion: 1, claimId, runId, nodeAttemptId: attemptId,
                 outputKey: hash({ kind: 'native_background_task', runId, slot: root.graph.outputContract.slot }),

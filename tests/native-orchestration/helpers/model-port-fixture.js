@@ -27,6 +27,9 @@ export async function modelPortFixture(make, { usage = true, failure = false, re
     const h = await make(), requests = [], chunks = []; let coldEngine, core, host, authority, port, effectRef;
     let afterSend = async () => {}, captureScope = null, transformRender = rendered => rendered;
     const server = http.createServer(async (req, res) => {
+        if (req.method !== 'POST' || req.url !== '/v1/responses') {
+            res.writeHead(404, { Connection: 'close' }); res.end(); return;
+        }
         const parts = []; for await (const part of req) parts.push(part);
         const body = JSON.parse(Buffer.concat(parts).toString()); requests.push(body); await afterSend();
         res.writeHead(responseStatus ? responseStatus(requests.length) : failure ? 503 : 200, { 'content-type': 'application/json' });

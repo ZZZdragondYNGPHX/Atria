@@ -12,6 +12,7 @@ import { readModelCompletionReceipt } from './model-port.js';
 import { controlCommandId, controlRecordKey, readAttempt } from './controller-common.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
+import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original background Task output facts'); };
@@ -113,7 +114,9 @@ export async function readBackgroundTaskDelivery(tx, handle, root, effectId, dom
             || row.inputFingerprint !== send.inputFingerprint || (row.reservationId ?? null) !== ref.reservationId
             || !['charged', 'unknown', 'settled'].includes(row.status) || send.status === 'settled' && (row.status !== 'settled' || hash(row.usage) !== send.usageHash)) invalid();
     }
-    return { snapshot, record, intent, model, domainRef };
+    const producer = (await readAttempt(tx, handle, root, intent.nodeAttemptId)).doc;
+    const retrievalCompletions = await readContextRetrievalCompletions(tx, handle, root, intent, producer);
+    return { snapshot, record, intent, model, domainRef, retrievalCompletions };
 }
 
 export function backgroundTaskResult(root, producer, effectId, modelReceiptRef, domainRef, now) {
@@ -135,7 +138,9 @@ export async function backgroundTaskCosts(tx, handle, root, effectId) {
     const bank = root.budgetAuthorityRef, control = await readRunControl(tx, handle, bank.sessionId);
     const compute = control?.operations[bank.operationId]?.compute;
     if (bank.authority !== 'run_control' || bank.domain !== 'session' || !compute) invalid();
-    return effectBudgetClosure(bank, inspectComputeEffectClosure({ compute }, [effectId]));
+    const intent = (await readEffect(tx, handle, root, effectId)).doc, producer = (await readAttempt(tx, handle, root, intent.nodeAttemptId)).doc;
+    const retrieval = await readContextRetrievalCompletions(tx, handle, root, intent, producer);
+    return effectBudgetClosure(bank, inspectComputeEffectClosure({ compute }, [effectId, ...retrieval.map(item => item.effectId)]));
 }
 
 async function command(tx, handle, root, kind, operation, detail, outcome, epoch) {
@@ -166,11 +171,11 @@ export async function readBackgroundTaskResult(tx, handle, root) {
         || receipt.resultIntegrity !== row.integrity || !equal(receipt.resultRef, root.resultRefs[0]) || !equal(receipt.modelReceiptRef, delivery.model.receiptRef)
         || producer.status !== 'completed' || producer.nodeId !== root.graph.entryNodeIds[0] || producer.inputRefs.length !== 1
         || !equal(producer.inputRefs[0], delivery.intent.inputRef) || producer.inputDigest !== hash(producer.inputRefs)
-        || !equal(producer.effectRefs, [receipt.effectId]) || !equal(producer.resultRefs, [receipt.resultRef])
+        || !equal(producer.effectRefs, [receipt.effectId, ...delivery.retrievalCompletions.map(item => item.effectId)]) || !equal(producer.resultRefs, [receipt.resultRef])
         || producer.epoch !== delivery.intent.epoch || producer.sourceBindingDigest !== root.sourceBinding.bindingDigest
         || producer.effectiveGrantDigest !== delivery.intent.grantDigest || delivery.intent.nodeAttemptId !== producer.attemptId
         || !equal(producer.budgetRef, root.budgetAuthorityRef) || settlement.reasonCode !== 'background_task_adopted'
-        || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId]) || settlement.decisionSeq !== receipt.decisionSeq || settlement.createdAt !== receipt.createdAt
+        || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId, ...delivery.retrievalCompletions.map(item => item.receiptId)]) || settlement.decisionSeq !== receipt.decisionSeq || settlement.createdAt !== receipt.createdAt
         || !equal(record, backgroundTaskResult(root, producer, receipt.effectId, delivery.model.receiptRef, delivery.domainRef, receipt.createdAt))) invalid();
     await command(tx, handle, root, 'result', 'result.publish', { effectId: receipt.effectId }, { resultRef: receipt.resultRef }, receipt.epoch);
     return { record, receipt, producer, settlement, delivery };

@@ -423,15 +423,21 @@ export class BudgetPort {
                 || hashNativeDocument(root.budgetAuthorityRef) !== value.authorityDigest || root.sourceBinding.sourceAuthority !== 'native_session'
                 || root.sourceBinding.sourceRef.sessionId !== snapshot.session.sessionId) fail('native_generation_budget_lane_denied');
             const parent = (await readEffect(tx, handle, root, value.parentEffectId)).doc, child = (await readEffect(tx, handle, root, value.effectId)).doc;
-            if (parent.capability !== 'generation.send' || parent.status !== 'prepared' || parent.inputRef.kind !== 'native_turn_intent' || parent.inputRef.role !== 'narrator'
+            const input = parent.inputRef, task = root.sourceBinding.sourceRequest.taskRef;
+            const background = input.kind === 'native_background_intent';
+            if (parent.capability !== 'generation.send' || parent.status !== 'prepared'
+                || (background ? !task || input.taskId !== task.taskId || input.variantId !== task.variantId
+                    || hashNativeDocument(input.planRef) !== hashNativeDocument(root.planRef) || input.nodeId !== root.graph.entryNodeIds[0]
+                    || input.sourceBindingDigest !== root.sourceBinding.bindingDigest
+                    : input.kind !== 'native_turn_intent' || input.role !== 'narrator' || task)
                 || child.capability !== 'memory.retrieve' || child.actionRef.kind !== 'context_retrieval' || child.status !== 'prepared'
                 || child.inputRef.contextForEffectId !== parent.effectId || child.nodeAttemptId !== parent.nodeAttemptId || child.graphRevision !== parent.graphRevision
                 || child.sourceBindingDigest !== parent.sourceBindingDigest || attempt.requestId !== 'retrieval:' + child.effectId
                 || attempt.targetFingerprint !== child.endpointBindingDigest || attempt.inputFingerprint !== child.inputRef.providerInputFingerprint)
                 fail('native_generation_budget_lane_denied');
-            assertNativeTurnQuota(value.quotaProof, { sessionCore: this.sessionCore, handle, sessionId: snapshot.session.sessionId,
-                requestId: parent.inputRef.invocationId, invocationId: parent.inputRef.invocationId, requestHash: parent.inputRef.requestHash,
-                role: 'narrator', anchor, policy });
+            assertNativeTurnQuota(value.quotaProof, { sessionCore: this.sessionCore, handle, sessionId: snapshot.session.sessionId, anchor, policy,
+                ...(background ? { requestId: input.requestId, role: input.role, sourceRequest: root.sourceBinding.sourceRequest }
+                    : { requestId: input.invocationId, invocationId: input.invocationId, requestHash: input.requestHash, role: 'narrator' }) });
         });
     }
 

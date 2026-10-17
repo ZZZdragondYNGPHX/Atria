@@ -337,6 +337,7 @@ export class ContextPort {
             evidenceRefs: plan.included.flatMap(item => item.sourceRefs ?? []), currentnessProof: proof });
         this.#contexts.set(context, { handle, request, proof, memoryProof: recall?.proof,
             outputSnapshot: this.#nativeOutputQuota ? immutable(snapshot) : null,
+            taskSnapshot: taskIdentity ? immutable(snapshot) : null,
             task: taskIdentity ? { request: taskIdentity.request, taskPlan: taskIdentity.taskPlan } : null });
         return context;
     }
@@ -421,6 +422,18 @@ export class ContextPort {
         if (hashNativeDocument(information.projection) !== captured.proof.projectionDigest || authorityDigest !== captured.proof.authorityDigest) fail('native_orchestration_context_source_stale');
         if (captured.memoryProof) await NativeMemoryAuthority.prototype.assertContextRecall.call(this.memoryAuthority, handle, captured.memoryProof, snapshot, captured.request.audience);
         return context.plan;
+    }
+
+    /** Original Task adoption advances its own Source. This only rechecks the
+     * captured Memory facts; the Task finalizer separately guards that advance. */
+    async revalidateBackgroundMemory(handle, request) {
+        fields(request, ['context'], 'Background Task Memory proof');
+        const captured = this.#contexts.get(request.context);
+        if (!captured || captured.handle !== handle || !captured.task || !this.taskCapture
+            || captured.request.sourceBinding.sourceAuthority !== 'native_session' || captured.request.audience.kind !== 'task')
+            fail('native_orchestration_context_proof_invalid');
+        if (captured.memoryProof) await NativeMemoryAuthority.prototype.assertContextRecall.call(this.memoryAuthority, handle,
+            captured.memoryProof, captured.taskSnapshot, captured.request.audience);
     }
 
     /** Final RP publication checks Memory facts without consuming settled Graph

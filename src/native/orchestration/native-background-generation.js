@@ -9,6 +9,7 @@ import { taskRuntimeRoute } from '../adapters/task-runtime-route.js';
 import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
 import { assertTaskValue } from '../../../public/shared/native-task-contract.js';
 import { ContextPort } from './context-port.js';
+import { ContextRetrievalPort } from './context-retrieval-port.js';
 import { nativeSessionContextOptions, nativeContextCompilationOptions } from '../adapters/native-session-context.js';
 import { compileNativeContextMetered } from './generation-local-work.js';
 import { AttemptController } from './attempt-controller.js';
@@ -100,11 +101,15 @@ export class NativeBackgroundOrchestrationAuthority {
         if (assertResultPolicy(graph.outputContract).outputType !== 'json') fail('native_orchestration_background_plan_unavailable');
         const node = graph.nodes.find(item => item.kind === 'agent'), output = graph.nodes.find(item => item.kind === 'output');
         const modelPins = nodeModelRoutePins(node, plan.dependencyPins);
+        const retrievalPins = plan.dependencyPins.filter(pin => pin.port === 'context' && pin.resourceRef.scope === 'player' && pin.resourceRef.retrievalProfileId
+            && node?.dependencyPinIds.includes(pin.pinId));
+        const capabilities = ['generation.send', ...(retrievalPins.length ? ['memory.retrieve'] : [])].sort();
         if (!node || !output || graph.nodes.length !== 2 || graph.edges.length !== 1 || !equal(graph.entryNodeIds, [node.nodeId])
-            || !equal(graph.capabilityCeiling, ['generation.send']) || !equal(node.capabilities, ['generation.send']) || node.inputs.length
+            || !equal([...graph.capabilityCeiling].sort(), capabilities) || !equal([...node.capabilities].sort(), capabilities) || node.inputs.length
             || node.outputs.length !== 1 || node.outputs[0].type !== 'json' || output.inputs.length !== 1 || output.inputs[0].type !== 'json'
             || !output.inputs[0].required || output.capabilities.length || output.outputs.length || output.dependencyPinIds.length
-            || !modelPins.length || node.dependencyPinIds.length !== modelPins.length || plan.dependencyPins.length !== modelPins.length
+            || equal(taskPlan.task.context, ['input']) && retrievalPins.length
+            || !modelPins.length || node.dependencyPinIds.length !== modelPins.length + retrievalPins.length || plan.dependencyPins.length !== modelPins.length + retrievalPins.length
             || graph.outputContract.kind !== 'result' || graph.outputContract.allowPartial
             || graph.graphChangePolicy.allowedOperations.length || graph.edges[0].from.nodeId !== node.nodeId || graph.edges[0].to.nodeId !== output.nodeId
             || graph.edges[0].condition !== 'always' || graph.edges[0].loopBack || graph.edges[0].maxVisits !== 1)
@@ -258,7 +263,8 @@ export class NativeBackgroundOrchestrationAuthority {
             state.bank = send.bank; state.limits = limits;
             if (selected.taskPlan.declared) { state.taskWorkPhase = 0; this.#taskLanes.set(lanePlan, state); }
             const compiled = await compileNativeContextMetered({ handle, port, request: contextRequest, bank: send.bank, budgetPort: service.budgetPort, root: await service.runs.get(handle, root.runId),
-                effectId, limits, workDescriptor: { requestId: request.requestId, pathFingerprint: selected.resolved.pathFingerprint }, assertCurrent: () => this.#current(state), signal: captures.get(capture).boundary.signal });
+                effectId, limits, workDescriptor: { requestId: request.requestId, pathFingerprint: selected.resolved.pathFingerprint }, assertCurrent: () => this.#current(state),
+                contextRetrieval: service.contextRetrieval, signal: captures.get(capture).boundary.signal });
             state.contextPort = port; state.context = compiled.compiled;
             await send.bindContext({ port, compiled: compiled.compiled, compileProof: compiled.proof });
             const scope = this.issueScope(host, handle, { runId: root.runId, effectId, request, logicalInputRef, logicalInputHash: hash(logicalInputRef), nativeBackgroundCapture: capture,
@@ -267,9 +273,13 @@ export class NativeBackgroundOrchestrationAuthority {
                     await port.revalidate(handle, { context: compiled.compiled, phase: 'consume' });
                 } });
             const result = await this.port(host).generate(handle, scope, { signal: captures.get(capture).boundary.signal });
+            await this.port(host).inspectResultCompletion(handle, { result, runId: root.runId, effectId });
+            await ContextRetrievalPort.prototype.sealCompilation.call(service.contextRetrieval, handle, { runId: root.runId, modelEffectId: effectId });
             this.#finalizations.set(result, { state, snapshot, root });
             return result;
-        } catch (error) { this.#runs.delete(root.runId); throw error; }
+        } catch (error) { this.#runs.delete(root.runId); throw error; } finally {
+            if (state.effectId) ContextRetrievalPort.prototype.releaseCompilation.call(service.contextRetrieval, handle, { runId: root.runId, modelEffectId: state.effectId });
+        }
     }
 
     /** Original declared Task parse/adoption work in the real Scheduler finalizer.
@@ -300,6 +310,7 @@ export class NativeBackgroundOrchestrationAuthority {
         let delivered, error;
         try {
             try {
+                await ContextPort.prototype.revalidateBackgroundMemory.call(state.contextPort, handle, { context: state.context });
                 if (state.selected.taskPlan.declared) await this.#prepareTaskWork(completion, result, receipt);
                 delivered = await this.#deliver(handle, result, receipt, boundary, finalize);
             } catch (cause) { error = cause; }
@@ -358,7 +369,7 @@ export class NativeBackgroundOrchestrationAuthority {
                         { effectId: state.effectId, domainRef: delivered.domainRef });
                     return {};
                 } catch (error) {
-                    if (error.code === 'native_orchestration_background_completion_stale') return { error };
+                    if (['native_orchestration_background_completion_stale', 'native_orchestration_memory_source_stale'].includes(error.code)) return { error };
                     throw error;
                 }
             }), { withAuthority: service.sourcePort.consumptionBoundary(handle, state.sourceBinding, { engine: runs.engine }) });
@@ -395,6 +406,7 @@ export class NativeBackgroundOrchestrationAuthority {
                 || root.runId !== runId || root.epoch !== admitted.epoch || !equal(root.sourceBinding, state.sourceBinding)
                 || root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation
                 || !finalized || hash(current) !== hash(finalized.snapshot)) fail('native_orchestration_background_completion_stale');
+            await ContextPort.prototype.revalidateBackgroundMemory.call(state.contextPort, handle, { context: state.context });
         };
         try {
             const outcome = await runs.withSourceControl(handle, runId, () => runs.engine.withTransaction(handle, async tx => {
@@ -403,11 +415,12 @@ export class NativeBackgroundOrchestrationAuthority {
                     const root = await runs.get(handle, runId), stamp = hash(root);
                     const descriptor = await this.port(state.host).inspectResultCompletion(handle, { result, runId, effectId: state.effectId });
                     await this.#current(state, boundary);
+                    await ContextPort.prototype.revalidateBackgroundMemory.call(state.contextPort, handle, { context: state.context });
                     if (hash(await runs.get(handle, runId)) !== stamp || descriptor.producerAttemptId !== state.attemptId) fail('native_orchestration_background_completion_stale');
                 } catch (error) {
                     // Commit reentrant withdrawal before refusing any Task adoption.
                     if (['native_orchestration_background_source_stale', 'native_orchestration_background_completion_stale',
-                        'native_orchestration_model_result_completion_stale', 'native_orchestration_source_stale'].includes(error.code)) return { error };
+                        'native_orchestration_model_result_completion_stale', 'native_orchestration_source_stale', 'native_orchestration_memory_source_stale'].includes(error.code)) return { error };
                     throw error;
                 }
                 finalized = await finalize(result.generated, receipt);
@@ -425,7 +438,7 @@ export class NativeBackgroundOrchestrationAuthority {
                 try {
                     await new BackgroundTaskOutputController({ ...service, authorize }).complete(handle, runId, { effectId: state.effectId, domainRef });
                 } catch (error) {
-                    if (error.code === 'native_orchestration_background_completion_stale') return { error };
+                    if (['native_orchestration_background_completion_stale', 'native_orchestration_memory_source_stale'].includes(error.code)) return { error };
                     throw error;
                 }
                 return { value: finalized };

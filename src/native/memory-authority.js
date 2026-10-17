@@ -129,7 +129,7 @@ export class NativeMemoryAuthority {
             const eligibility = resolveMemoryEligibility(runtime.context, { requester, informationTaskId }, () => snapshot);
             const legal = eligibleMemorySnapshot(await runtime.lifecycle.retrievalSnapshot(runtime.context, { readOnly: true }), eligibility);
             await current();
-            const query = nativeTurnMemoryQuery(snapshot, snapshot.timeline.at(-1)?.content, information);
+            const query = nativeTurnMemoryQuery(snapshot, legal.chat.filter(message => message.mes).at(-1)?.mes, information);
             const scoped = settings.nativeRetrieval?.embed || settings.rerankEnabled && settings.nativeRetrieval?.rerank ? await ContextRetrievalPort.prototype.openRecall.call(retrieval.port, handle,
                 retrieval.scope, { descriptor, legal, query, assertCurrent: current }) : null;
             const result = await retrieveMemory(legal, query, { countTokens: memoryTokenCounter({ getTokenCountAsync: countTokens }),

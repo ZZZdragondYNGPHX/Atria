@@ -39,6 +39,7 @@ export function mintNativeBackgroundQuota(capture, expected) {
 
 function assertTurnQuotaMetadata(value, expected) {
     if (!value || !expected || !['narrator', 'intent_resolver'].includes(value.role)
+        || Object.hasOwn(expected, 'sourceRequest')
         || (expected.host !== undefined && value.host !== expected.host)
         || (expected.sessionCore !== undefined && value.sessionCore !== expected.sessionCore)
         || value.handle !== expected.handle || value.sessionId !== expected.sessionId || value.requestId !== expected.requestId
@@ -56,7 +57,8 @@ export function assertNativeTurnQuota(proof, expected) {
         const captured = inspectNativeBackgroundGenerationIdentity(value.backgroundCapture, { host: value.host, handle: value.handle });
         if (Object.entries(expected ?? {}).some(([key, item]) => ['host', 'sessionCore'].includes(key) ? value[key] !== item
             : key === 'policy' ? hashNativeDocument(item) !== captured.policyDigest
-                : hashNativeDocument(value[key] ?? null) !== hashNativeDocument(item))) denied();
+                : key === 'sourceRequest' ? hashNativeDocument(item) !== hashNativeDocument(captured.sourceRequest)
+                    : hashNativeDocument(value[key] ?? null) !== hashNativeDocument(item))) denied();
         return { ...value, quota: { request: { role: value.role, background: true, anchor: { invocationId: captured.input.invocationId } },
             policy: captured.policy } };
     }
