@@ -13,6 +13,7 @@ import { rpPlannerProfile } from './rp-planner-profile.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { sendAttemptId } from './budget-port.js';
 import { readRunControl } from '../run-control.js';
+import { readModelTerminalFact } from './model-terminal-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original Context retrieval completion'); };
@@ -72,8 +73,12 @@ export async function readContextRetrievalCompletions(tx, handle, root, parent, 
     if (!node?.capabilities.includes('memory.retrieve')) invalid();
     const completed = [];
     const modelReceiptId = 'oreceipt_' + hash({ effectId: parent.effectId, observationId: 'model.completed:' + parent.effectId }).slice(0, 32);
-    const modelReceipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', modelReceiptId)))?.doc;
-    if (!modelReceipt || modelReceipt.outcome !== 'confirmed') invalid();
+    let modelReceipt = parent.status === 'confirmed' ? (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', modelReceiptId)))?.doc : null;
+    if (!modelReceipt) {
+        const terminal = await readModelTerminalFact(handle, tx, root, parent);
+        modelReceipt = terminal ? (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', terminal.receiptRef.receiptId)))?.doc : null;
+    }
+    if (!modelReceipt || !['confirmed', 'failed'].includes(modelReceipt.outcome)) invalid();
     const bank = root.budgetAuthorityRef;
     const session = root.sourceBinding.sourceAuthority === 'native_session';
     if (bank.authority !== 'run_control' || (session ? bank.domain !== 'session' || bank.sessionId !== root.sourceBinding.sourceRef.sessionId

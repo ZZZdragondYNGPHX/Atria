@@ -1,6 +1,6 @@
 import { ConflictError } from '../../storage/errors.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
-import { hashNativeDocument as hash, cloneNativeDocument, putImmutable } from '../repositories/common.js';
+import { hashNativeDocument as hash, cloneNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
 import { assertObject, assertCounter, assertPlanRef, assertSourceSelector, assertResultPolicy, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { hasRetainedOrchestrationCompute } from '../../../public/shared/native-compute-budget.js';
 import { createOrchestrationAuthoringService } from './authoring-service.js';
@@ -15,7 +15,7 @@ import { TransitionController } from './transition-controller.js';
 import { validateModelCapability, resolveModelFailurePlan } from './model-capability-authority.js';
 import { assertNativeTurnQuota, assertNativeTurnOutputQuota } from './native-turn-quota.js';
 import { inspectNativeAuthorityResolver } from './authority-resolver-context.js';
-import { ModelPort } from './model-port.js';
+import { ModelPort, readModelTerminalReceipt, readModelFailureReceipt } from './model-port.js';
 import { SourcePort } from './source-port.js';
 import { readSessionTurnOutput, sessionTurnCommitIdentity, inspectSessionTurnOutput } from '../session-turn-output.js';
 import { sessionNarrationResult, sessionNarrationPublicationId, readSessionNarrationResult, sessionOutputKey } from './session-narration-result-contracts.js';
@@ -506,6 +506,70 @@ export class NativeNarratorOrchestrationAuthority {
         return attemptId;
     }
 
+    async #finishModelFailure(state, error) {
+        const { handle } = state, { runs, budgetPort, sourcePort } = this.execution;
+        const observed = await runs.get(handle, state.runId);
+        if (observed.cancelRequested || !['running', 'reconciling'].includes(observed.status) || observed.outputClaims.length) return;
+        const withAuthority = SourcePort.prototype.consumptionBoundary.call(sourcePort, handle, state.sourceBinding, { engine: this.engine });
+        await runs.withSourceControl(handle, observed.runId, async () => {
+            const root = await runs.get(handle, observed.runId);
+            if (root.cancelRequested || !['running', 'reconciling'].includes(root.status)) return;
+            const terminal = await this.engine.withTransaction(handle, async tx => {
+                const intent = (await readEffect(tx, handle, root, state.effectId)).doc;
+                return readModelTerminalReceipt(handle, tx, root, intent, budgetPort);
+            });
+            if (terminal?.kind === 'rejected' && root.status === 'running') {
+                const effectReceiptRefs = await this.engine.withTransaction(handle, async tx => {
+                    const producer = (await readAttempt(tx, handle, root, state.attemptId)).doc;
+                    const intent = (await readEffect(tx, handle, root, state.effectId)).doc;
+                    const retrieval = await readContextRetrievalCompletions(tx, handle, root, intent, producer);
+                    return [terminal.receiptRef.receiptId, ...retrieval.map(item => item.receiptId)];
+                });
+                await new AttemptController({ runs, authorizeAttempt: args => this.#authorize(args),
+                    verifySettlement: async ({ handle: owner, tx, root: current, attempt, outcome, resultRefs, receipts, reasonCode }) => {
+                        const intent = (await readEffect(tx, owner, current, state.effectId)).doc;
+                        const proof = await readModelFailureReceipt(owner, tx, current, intent, budgetPort);
+                        const retrieval = await readContextRetrievalCompletions(tx, owner, current, intent, attempt);
+                        if (owner !== handle || current.runId !== root.runId || attempt.attemptId !== state.attemptId
+                            || attempt.nodeId !== state.selectionState.node.nodeId || attempt.effectiveGrantDigest !== state.decision.grantDigest
+                            || current.sourceBinding.bindingDigest !== state.sourceBinding.bindingDigest || !equal(effectDecision(intent), state.decision)
+                            || !proof || proof.receiptRef.receiptId !== terminal.receiptRef.receiptId || outcome !== 'failed'
+                            || resultRefs.length || reasonCode !== 'generation_provider_rejected'
+                            || !equal(receipts.map(item => item.receiptId), [proof.receiptRef.receiptId, ...retrieval.map(item => item.receiptId)]))
+                            fail('native_orchestration_model_completion_proof_required');
+                    } }).settle(handle, { ...runGuard(await runs.get(handle, root.runId)), attemptId: state.attemptId,
+                    outcome: 'failed', resultRefs: [], effectReceiptRefs, reasonCode: 'generation_provider_rejected' });
+            }
+            const reasonCode = terminal?.kind === 'rejected' ? 'generation_provider_rejected'
+                : error.code === 'generation_provider_submission_unknown' ? error.code : 'native_orchestration_session_model_unresolved';
+            await runs.control(handle, controlCommandId('native.turn.failure', { runId: root.runId, attemptId: state.attemptId }), {
+                ...runGuard(await runs.get(handle, root.runId)), operation: 'graph.execution.fail', detail: { attemptId: state.attemptId, reasonCode } }, async ({ tx, root: current, now }) => {
+                if (current.cancelRequested || !['running', 'reconciling'].includes(current.status) || current.outputClaims.length) fail('native_orchestration_turn_grant_denied');
+                const effectIds = [], unresolved = [], statuses = [];
+                for (const id of current.attemptRefs) {
+                    const record = await readAttempt(tx, handle, current, id); statuses.push(record.doc.status);
+                    for (const effectId of record.doc.effectRefs) {
+                        effectIds.push(effectId);
+                        if (!['confirmed', 'failed', 'not_dispatched'].includes((await readEffect(tx, handle, current, effectId)).doc.status)) unresolved.push(effectId);
+                    }
+                    if (record.doc.attemptId === state.attemptId && !['completed', 'partial', 'failed', 'cancelled', 'stale'].includes(record.doc.status))
+                        await putMutable(tx, controlRecordKey(handle, current.runId, 'attempt', id), { ...record.doc, status: 'blocked', reasonCode }, { expectedIntegrity: record.integrity });
+                }
+                const costs = await budgetPort.observeEffectClosure(handle, { authorityRef: current.budgetAuthorityRef, effectIds }, { tx });
+                current.pendingEffectRefs = [...new Set([...current.pendingEffectRefs, ...unresolved])];
+                current.status = current.pendingEffectRefs.length || !costs.closed ? 'reconciling'
+                    : terminal?.kind === 'rejected' && statuses.every(status => ['completed', 'partial', 'failed', 'cancelled', 'stale'].includes(status)) ? 'failed' : 'blocked';
+                const receiptId = 'oreceipt_' + hash({ kind: 'native_session_failure', runId: current.runId, attemptId: state.attemptId }).slice(0, 32);
+                await putImmutable(tx, controlRecordKey(handle, current.runId, 'receipt', receiptId), { schemaVersion: 1,
+                    receiptKind: 'native_session_failure', receiptId, runId: current.runId, epoch: current.epoch, nodeAttemptId: state.attemptId,
+                    reasonCode, status: current.status, effectIds, costs, modelReceiptRef: terminal?.receiptRef ?? null,
+                    decisionSeq: current.eventSeq + 1, createdAt: now });
+                return { root: current, eventType: 'session_model_failed', reasonCode,
+                    outcome: { status: current.status, receiptRef: { runId: current.runId, receiptId } } };
+            });
+        }, { withAuthority });
+    }
+
     async executeResolver(args) {
         const scope = await this.prepareResolver(args);
         if (scope === null) return null;
@@ -525,7 +589,9 @@ export class NativeNarratorOrchestrationAuthority {
                 } }).settle(args.handle, { ...runGuard(await this.execution.runs.get(args.handle, runId)), attemptId: state.attemptId,
                 outcome: 'completed', resultRefs: [], effectReceiptRefs: [receiptRef.receiptId], reasonCode: null });
             return selected;
-        } finally { this.#runs.delete(runId); modelScopes.delete(scope); }
+        } catch (error) { await this.#finishModelFailure({ ...state, runId }, error); throw error; } finally {
+            this.#runs.delete(runId); modelScopes.delete(scope);
+        }
     }
 
     async executeNarrator(args) {
@@ -538,7 +604,7 @@ export class NativeNarratorOrchestrationAuthority {
             await ContextRetrievalPort.prototype.sealCompilation.call(this.execution.contextRetrieval, args.handle, { runId, modelEffectId: state.effectId });
             this.#narrations.set(result.generated, { state, port, result, runId });
             return result.generated;
-        } finally {
+        } catch (error) { await this.#finishModelFailure({ ...state, runId }, error); throw error; } finally {
             ContextRetrievalPort.prototype.releaseCompilation.call(this.execution.contextRetrieval, args.handle, { runId, modelEffectId: state.effectId });
             this.#runs.delete(runId); modelScopes.delete(scope);
         }
