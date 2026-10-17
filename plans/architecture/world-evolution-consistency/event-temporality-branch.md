@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · W13 世界事件提交、历史有效期与分支一致性（讨论草案）
 
 - Task ID：`ARCH-DWE-01`；Primary Workspace：`docs`；[唯一 Plan 入口](index.md) · [总体设计](design.md) · [W12 原生硬切与 E0](e0-consumer-cutover.md) · [唯一 Record](../../../records/architecture/world-evolution-consistency.md)。
-- **状态：Draft，W13 方案待议**。此前 W1-B～W12-B 均为用户已确认的方向；W13-A/B/C、具体事务合约和双时间 Schema 未获批准。不修改 `main`、不开实现分支，也不称 E0/跨端测试通过。
+- **状态：Draft，W13-B 顶层方向已获用户确认；W14 与事务/时态的精确 API 尚待讨论**。W1-B～W13-B 已确认；§7 保留当轮选型对照，正式 W13 决议见 §9。不修改 `main`，不开实现分支，不宣称 E0 或跨端测试通过。
 - **本轮范围**：一个运行时新 NPC 引发可持续后果时，怎样将身份、事件、状态、参与者、历史修订、分支和可见来源联系起来？事实“何时发生”“何时被正式确认”“某主体何时获知”如何区分？怎样在 Native Host 已有持久化基础上完成，而非重做一套 EventStore？
 - **已确认依赖**：W3 分级事实权限、W4 关键交互即时接纳、W5 有界 NPC 事件推演、W6/W7 认知与来源隔离、W8 来源保真记忆、W9/W10 Canonical Subject 实例化、W11 类型化 Participant/Perspective/Host Capabilities、W12 E0 证据驱动的 Native 单源硬切。
 
@@ -129,3 +129,16 @@ User / NPC / Simulation / Orchestration proposes an intention
 - 随后转向 Library / Studio / Play **原生 World/Knowledge Effective View 与 Inspector 的产品交互**，以及最终 E0 全消费者硬切、阶段门槛和真实三端验收计划。当前仍无全量代码审计或实现授权。
 - 此轮只修改 `docs` 的同一 Plan Bundle / 唯一 Record；完整 ARCH-DWE-01 企划保持 Draft，等待用户明确选择 W13 方向。
 
+## 9. W13-B 用户确认（2026-10-17）
+
+用户对上一轮明确推荐的 **W13-B「Native Revision 一致性提交 + 双时间/分支受控投影」**回复「认同」，将此方案**顶层架构方向**纳入已确认 W1-B～W13-B。其关键语义为：
+
+- 长期有效的 Subject 接纳、正式世界效果/关系/事件、确需一致的参与者身份优先在现有单 Native Session/Revision 的受控发布/Receipt/CAS 边界协调，不新建平行的可写 EventStore 或 Temporal DB；`HCM`/Context 派生可以后续构建，但不构成第二份世界真相。
+- 区分**客观生效的游戏时间及其有效区间**、**正式写入的 Revision/提交证据**、**各主体的合法观察/认知时间**；按 `Session/Branch/Revision/GameTick/Audience` 获得合法当前、历史及 as-known 视图。历史揭露、事实纠错和真正改写过去分别受规则/来源与权限约束。
+- 分叉点前正式存在的主体及已提交事实可沿合法祖先继承，分叉后的状态、认知/秘密和事件/延迟模型结果独立；旧 revision 结果不能在切档后以最新状态名义提交。
+- 事件候选和描述性文本不是已发生世界效果；Model/Orchestration 只能提案，必须以受控 Native 结果为准。对“成功与否未知”的提交应优先查已有 Receipt，而不是盲目重放副作用。
+- **强一致的边界不覆盖任意外部媒体/LLM/检索服务的数据库事务**；外部 HCM/索引或视觉资源可以是可恢复的派生内容，但成功提交的世界后果与其实际叙事承认不可长期矛盾。
+
+**尚未获批准**：Event/Fact 的确切 Schema/ID/valid-time 字段、所有 Narrator/Task/World/Cognition 的端到端单修订发布范围、统一历史查询 API、历史纠错事务/Retcon 依赖、真实 E0 全消费者验收、跨平台实测和产品实现启动。
+
+**W14 下一轮**：详见同一 Plan Bundle 的 [effective-world-view.md](effective-world-view.md)，深入讨论固定 World/Knowledge 与当前 Native 世界事实的**有效视图、Source Claim 的适用性、Context Compiler 的冲突过滤和 Library/Studio/Play 交互**。本阶段推荐 W14-B，仅为候选、**尚未获用户确认**。完整 Plan 保持 Draft。
