@@ -32,7 +32,7 @@ export async function readRpPlannerCompletion(tx, handle, root) {
         const input = entry.input;
         if (profile.expansion) {
             const snapshot = await readTaskGraphRevision(tx, handle, root, producer.graphRevision);
-            assertRpPlannerExpansionOperations(snapshot.graph, input.graphTemplates, entry.patch.appliedOperations);
+            assertRpPlannerExpansionOperations(snapshot.graph, input.graphTemplates, entry.patch.appliedOperations, plan.dependencyPins);
         }
         if (input.kind !== 'native_rp_intent' || input.nodeId !== node.nodeId || input.role !== 'narrator'
             || !equal(input.planRef, root.planRef) || !equal(input.sourceRef, root.sourceBinding.sourceRef)

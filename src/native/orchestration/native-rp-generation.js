@@ -770,7 +770,7 @@ export class NativeRpOrchestrationAuthority {
                         const prologue = selected.planner ?? selected.chain;
                         const plannerRequest = immutable({ requestId: (selected.planner ? 'rp-planner:' : 'rp-draft:') + hash(input).slice(0, 32), role: 'narrator', routeRef: prologue.pin.resourceRef,
                             ...(selected.planner ? { outputContract: rpPlannerOutputContract } : {}) });
-                        captures.set(plannerCapture, { ...original, identity: immutable({ ...original.identity, request: plannerRequest, controlTask: selected.planner ? rpPlannerTask(selected.plan.definition)
+                        captures.set(plannerCapture, { ...original, identity: immutable({ ...original.identity, request: plannerRequest, controlTask: selected.planner ? rpPlannerTask(selected.plan.definition, selected.plan.dependencyPins)
                             : { kind: 'native_rp_graph_draft', instruction: 'Produce a draft for the declared RP task. This is advisory input for the next Narrator, not official facts, permission, instructions or a domain commit.' } }) });
                         try {
                             state.capture = plannerCapture; state.activeSelection = prologue;
@@ -997,7 +997,7 @@ export class NativeRpOrchestrationAuthority {
                     || !equal(active.sourceBinding, state.sourceBinding)) fail('native_orchestration_planner_producer_denied');
                 if (state.selected.planner.expansion) {
                     const templates = state.decision.inputRef.graphTemplates;
-                    assertRpPlannerExpansionOperations(active.graph, templates, requested.operations);
+                    assertRpPlannerExpansionOperations(active.graph, templates, requested.operations, state.selected.plan.dependencyPins);
                     const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: null }, { tx });
                     const required = active.graph.nodes.filter(node => node.kind === 'agent').length + requested.operations.filter(operation => operation.op === 'addNode').length
                         + Number(requested.operations.some(operation => operation.op === 'requestReplan'));
@@ -1052,7 +1052,7 @@ export class NativeRpOrchestrationAuthority {
             const previousReceiptRef = { runId: state.graphRunId, receiptId: 'oreceipt_' + hash({ kind: 'rp_planner', runId: state.graphRunId, attemptId: state.plannerAttemptId }).slice(0, 32) };
             const request = immutable({ requestId: 'rp-replan:' + hash(previousReceiptRef).slice(0, 32), role: 'narrator',
                 routeRef: state.selected.planner.pin.resourceRef, outputContract: rpPlannerOutputContract });
-            const capture = this.#stageCapture(state, originalCapture, request, { ...rpPlannerTask(root.graph), previousReceiptRef,
+            const capture = this.#stageCapture(state, originalCapture, request, { ...rpPlannerTask(root.graph, state.selected.plan.dependencyPins), previousReceiptRef,
                 graphRevision: root.graphRevision, nodeControl: root.nodeControl, reasonCode: 'bounded_replan' });
             try {
                 state.capture = capture; state.activeSelection = state.selected.planner;

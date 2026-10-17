@@ -11,6 +11,8 @@ import { createNativeId } from '../../src/native/identity.js';
 import { StorageCommitUnknownError } from '../../src/storage/errors.js';
 import { retrievalPostTarget } from '../../src/native/retrieval-send-contracts.js';
 import { configureRetrievalAgentGraph } from './helpers/rp-agent-graph-retrieval-fixture.js';
+import { configurePlannerExpansion } from './helpers/rp-planner-fixture.js';
+import { configureControlRetrieval } from './helpers/rp-control-retrieval-fixture.js';
 
 async function setup(make, options = {}) {
     const f = await contextRetrievalFixture(make, { embedding: true, ...options }), handle = f.h.handle;
@@ -66,6 +68,27 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
             expect(await f.plans.getBinding(f.h.handle, f.sourceSelector)).toEqual(binding);
         } finally { await f.cleanup(); }
     }, 60000);
+
+    test('private Planner workers retain exact template retrieval pins even when no optional Draft is selected', async () => {
+        const f = await setup(make, { afterPlan: async (plan, args) => {
+            await configurePlannerExpansion(plan, args); await configureControlRetrieval(plan, args); plan.definition.limits.maxSteps = 160;
+        }, responsePayload: (_body, ordinal) => ordinal === 5
+            ? JSON.stringify({ preference: 'tie', deltas: { player_agency: 0 }, rationale: 'Synthetic engineering fixture only.' })
+            : ordinal % 2 === 1 ? JSON.stringify({ operations: [{ op: 'requestFinalize' }] }) : 'Final optional narration.' });
+        try {
+            const original = await f.chats.get(f.h.handle, 'Actor', 'main'), report = await f.compare(), ledger = await f.repository.owner(f.h.handle);
+            expect(f.calls).toHaveLength(6); expect(f.requests).toHaveLength(5); expect(report.charges).toHaveLength(11);
+            expect(ledger.attempts).toHaveLength(11); expect(ledger.attempts.every(row => row.status === 'reported')).toBe(true);
+            for (const arm of ['baseline', 'candidate']) {
+                const trial = report.pairs[0][arm];
+                expect(trial.error).toBeNull(); expect(trial.checks).toMatchObject({ target_consumed: true, isolation: true, request_exposure: true, single_completion: true });
+                expect(trial.charges).toHaveLength(5); expect(trial.refs.effectIds).toHaveLength(6);
+            }
+            expect(report.charges.filter(row => row.cost === null)).toHaveLength(6);
+            expect(promotionDecision(report, { ...f.job, ledger, jobId: f.job.id }).eligible).toBe(false);
+            expect(await f.chats.get(f.h.handle, 'Actor', 'main')).toEqual(original); expect(f.effects).toEqual([]);
+        } finally { await f.cleanup(); }
+    }, 120000);
 
     test('private Agent graph workers close original Draft retrieval/Result fees and reuse each arm own index', async () => {
         const f = await setup(make, { afterPlan: (plan, args) => configureRetrievalAgentGraph(plan, args, 'one-draft') });

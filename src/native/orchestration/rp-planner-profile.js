@@ -66,12 +66,12 @@ export function rpPlannerProfile(plan) {
     dependencyPins: plan.dependencyPins.filter(pin => narrator.dependencyPinIds.includes(pin.pinId)) } };
 }
 
-export function rpPlannerTask(graph) {
+export function rpPlannerTask(graph, dependencyPins = []) {
     return { kind: 'native_rp_graph_planner', instruction: 'Propose one bounded GraphPatch for the current RP task. This is a control proposal, not narration, approval, a tool call or an official fact. Return only the requested JSON. Use only the listed node IDs and allowed operations. Do not invent permissions, budgets or nodes.'
         + (graph.graphChangePolicy.allowedOperations.includes('addNode') ? ' Add advisory work only when needed; additions must copy one exact Host nodeTemplate and both of its edges as an atomic batch. Unchosen templates execute no Model.' : ''),
     nodes: graph.nodes.map(({ nodeId, kind, label }) => ({ nodeId, kind, label })), allowedOperations: graph.graphChangePolicy.allowedOperations,
     outputOwnerNodeId: graph.outputContract.ownerNodeId,
-    ...(graph.graphChangePolicy.allowedOperations.includes('addNode') ? { nodeTemplates: rpPlannerExpansionTemplates(graph) } : {}) };
+    ...(graph.graphChangePolicy.allowedOperations.includes('addNode') ? { nodeTemplates: rpPlannerExpansionTemplates(graph, dependencyPins) } : {}) };
 }
 
 export const rpPlannerOutputContract = Object.freeze({ name: 'atria_graph_patch', schema: { type: 'object', properties: {

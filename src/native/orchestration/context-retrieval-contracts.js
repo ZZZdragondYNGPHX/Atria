@@ -38,9 +38,12 @@ export async function readContextRetrievalPlan(tx, handle, root, parent) {
     const plan = await readPlanRevision(tx, handle, root.planRef), planner = rpPlannerProfile(plan);
     if (parent.graphRevision > root.graphRevision) invalid();
     if (planner) {
-        // Advisory addNode templates still require their own exact owned pins.
-        if (planner.expansion) invalid();
         const snapshot = await readTaskGraphRevision(tx, handle, root, parent.graphRevision);
+        if (planner.expansion) {
+            const activePlan = { ...plan, definition: snapshot.graph };
+            if (!rpPlannerProfile(activePlan)?.expansion) invalid();
+            return activePlan;
+        }
         if (!equal(snapshot.graph, plan.definition)) invalid();
     } else if (root.graphRevision !== 0 || parent.graphRevision !== 0 || !equal(plan.definition, root.graph)
         || root.graph.nodes.length !== 2 && !rpJudgeProfile(plan) && !rpReviewProfile(plan) && !rpAgentGraphProfile(plan)) invalid();

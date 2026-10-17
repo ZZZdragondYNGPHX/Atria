@@ -5,6 +5,15 @@ import { rpAgentGraphProfile } from './rp-agent-graph-profile.js';
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_rp_planner_expansion_unavailable'), { code: 'native_orchestration_rp_planner_expansion_unavailable' }); };
 const equal = (a, b) => hash(a) === hash(b);
 
+// Only the selected Narrator Model pin and its explicitly owned retrieval
+// pins can appear in a Host template. This data grants no runtime scope.
+function templateAuthority(narrator, dependencyPins) {
+    const pins = narrator.capabilities.includes('memory.retrieve') ? dependencyPins.filter(pin => narrator.dependencyPinIds.includes(pin.pinId)
+        && pin.port === 'context' && pin.resourceRef.scope === 'player' && pin.resourceRef.retrievalProfileId).map(pin => pin.pinId).sort() : [];
+    if (narrator.capabilities.includes('memory.retrieve') && !pins.length) fail();
+    return { dependencyPinIds: [narrator.policy.agentPinId, ...pins], capabilities: ['generation.send', ...pins.length ? ['memory.retrieve'] : []] };
+}
+
 /** Same-source advisory additions reuse only the already selected Narrator Model. */
 export function rpPlannerExpansionProfile(plan, { planner, output, loop, allowed }) {
     const graph = plan.definition, terminal = graph.edges.filter(edge => edge.to.nodeId === output?.nodeId);
@@ -12,6 +21,7 @@ export function rpPlannerExpansionProfile(plan, { planner, output, loop, allowed
     if (!output || !narrator || terminal.length !== 1 || graph.nodes.length !== agents.length + 2 || graph.outputContract.kind !== 'rp_narration'
         || !equal(graph.graphChangePolicy.allowedNodeKinds, ['agent']) || !['addNode', 'addEdge'].every(op => graph.graphChangePolicy.allowedOperations.includes(op))
         || graph.graphChangePolicy.allowedOperations.some(op => ![...allowed, 'addNode', 'addEdge'].includes(op))) fail();
+    const authority = templateAuthority(narrator, plan.dependencyPins);
     const controls = graph.edges.filter(edge => edge.from.nodeId === planner.nodeId && !edge.loopBack);
     for (const node of agents) {
         const control = controls.filter(edge => edge.to.nodeId === node.nodeId), ports = node.inputs.filter(port => port.type === 'json');
@@ -20,8 +30,8 @@ export function rpPlannerExpansionProfile(plan, { planner, output, loop, allowed
         if (node === narrator) {
             if (node.inputs.some(port => port !== ports[0] && (port.type !== 'text' || port.required))) fail();
         } else {
-            if (node.inputs.length !== 1 || !equal(node.capabilities, ['generation.send']) || node.outputs.length !== 1 || node.outputs[0].type !== 'text'
-                || !equal(node.dependencyPinIds, [narrator.policy.agentPinId]) || node.policy.agentPinId !== narrator.policy.agentPinId) fail();
+            if (node.inputs.length !== 1 || !equal(node.capabilities, authority.capabilities) || node.outputs.length !== 1 || node.outputs[0].type !== 'text'
+                || !equal(node.dependencyPinIds, authority.dependencyPinIds) || node.policy.agentPinId !== narrator.policy.agentPinId) fail();
             const outgoing = graph.edges.filter(edge => edge.from.nodeId === node.nodeId);
             if (outgoing.length !== 1 || outgoing[0].to.nodeId !== narrator.nodeId || outgoing[0].from.port !== node.outputs[0].name
                 || outgoing[0].condition !== 'always' || outgoing[0].loopBack || outgoing[0].maxVisits !== 1
@@ -43,24 +53,24 @@ export function rpPlannerExpansionProfile(plan, { planner, output, loop, allowed
 }
 
 /** Host-allocated metadata, never a scope or a permission from Model JSON. */
-export function rpPlannerExpansionTemplates(graph) {
+export function rpPlannerExpansionTemplates(graph, dependencyPins = []) {
     const planner = graph.nodes.find(node => node.kind === 'planner');
     const terminal = graph.edges.find(edge => edge.to.nodeId === graph.outputContract.ownerNodeId);
     const narrator = graph.nodes.find(node => node.nodeId === terminal.from.nodeId);
     const slots = Math.max(0, graph.limits.maxNodes - graph.nodes.length);
     return narrator.inputs.filter(port => port.type === 'text' && !port.required && !graph.edges.some(edge => edge.to.nodeId === narrator.nodeId && edge.to.port === port.name)).slice(0, slots)
-        .map(port => templateData(planner, narrator, port.name, createNativeId('orchestrationNode'), [createNativeId('orchestrationEdge'), createNativeId('orchestrationEdge')]));
+        .map(port => templateData(planner, narrator, port.name, createNativeId('orchestrationNode'), [createNativeId('orchestrationEdge'), createNativeId('orchestrationEdge')], dependencyPins));
 }
 
-function templateData(planner, narrator, slot, nodeId, edgeIds) {
+function templateData(planner, narrator, slot, nodeId, edgeIds, dependencyPins) {
     const node = { nodeId, kind: 'agent', label: 'Declared advisory draft', inputs: [{ name: 'plan', type: 'json', required: true }],
-        outputs: [{ name: 'response', type: 'text', required: false }], dependencyPinIds: [narrator.policy.agentPinId], capabilities: ['generation.send'], policy: { agentPinId: narrator.policy.agentPinId } };
+        outputs: [{ name: 'response', type: 'text', required: false }], ...templateAuthority(narrator, dependencyPins), policy: { agentPinId: narrator.policy.agentPinId } };
     const edge = (id, from, to) => ({ edgeId: id, from, to, condition: 'always', maxVisits: 1, loopBack: false });
     return { node, edges: [edge(edgeIds[0], { nodeId: planner.nodeId, port: planner.outputs[0].name }, { nodeId, port: 'plan' }),
         edge(edgeIds[1], { nodeId, port: 'response' }, { nodeId: narrator.nodeId, port: slot })] };
 }
 
-export function assertRpPlannerExpansionOperations(graph, templates, operations) {
+export function assertRpPlannerExpansionOperations(graph, templates, operations, dependencyPins = []) {
     if (!Array.isArray(templates)) fail();
     const planner = graph.nodes.find(node => node.kind === 'planner'), terminal = graph.edges.find(edge => edge.to.nodeId === graph.outputContract.ownerNodeId);
     const narrator = graph.nodes.find(node => node.nodeId === terminal.from.nodeId), nodes = new Set(), edges = new Set(), ports = new Set();
@@ -77,7 +87,7 @@ export function assertRpPlannerExpansionOperations(graph, templates, operations)
             if (edges.has(edge.edgeId) || graph.edges.some(item => item.edgeId === edge.edgeId)) fail();
             edges.add(edge.edgeId);
         }
-        if (!equal(template, templateData(planner, narrator, slot, nodeId, template.edges.map(edge => edge.edgeId)))) fail();
+        if (!equal(template, templateData(planner, narrator, slot, nodeId, template.edges.map(edge => edge.edgeId), dependencyPins))) fail();
     }
     for (const operation of operations) {
         if (operation.op === 'addNode' && !templates.some(template => equal(template.node, operation.node))
