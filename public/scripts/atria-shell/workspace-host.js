@@ -588,6 +588,10 @@ export function createAtriaWorkspaceHost({
         return navigateToChild('agents', { id: 'orchestration:' + encodeURIComponent(presetId), label, kind: 'detail' }, { history: 'push', reason: 'workspace-orchestration-preset' });
     }
 
+    function openPlan(planId, label = '') {
+        return navigateToChild('agents', { id: 'plans:' + String(planId || '').trim(), label: label || 'Plan', kind: 'detail' }, { history: 'push', reason: 'workspace-agents-plan' });
+    }
+
     function openLibraryResource(ref, label = '') {
         if (ref?.scope === 'package' && ['core.world', 'core.knowledge'].includes(ref.resourceType) && ref.resourceId && ref.revision && ref.packageId && ref.packageVersionId) {
             return openLibraryDetail((ref.resourceType === 'core.world' ? 'world' : 'knowledge') + ':package:' + encodeURIComponent(JSON.stringify(ref)), label || ref.resourceId, 'detail', 'workspace-library-package-original');
@@ -747,6 +751,7 @@ export function createAtriaWorkspaceHost({
         openKnowledgeEntry,
         openSkill,
         openOrchestration,
+        openPlan,
         openLibraryResource,
         openRuntimeSection,
         openRuntimeRepair, returnFromRuntimeRepair, hasRuntimeRepair: () => Boolean(runtimeRepair),

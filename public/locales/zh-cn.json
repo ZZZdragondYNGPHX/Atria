@@ -10656,5 +10656,6 @@
     "Paid quality selection": "付费质量选择",
     "Paid candidate generation": "付费候选生成",
     "Bounded local rerun": "有上限的本地重跑",
-    "Writes one assistant message to this chat": "向此对话写入一条助手消息"
+    "Writes one assistant message to this chat": "向此对话写入一条助手消息",
+    "Agent Plan": "智能体计划"
 }

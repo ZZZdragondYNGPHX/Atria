@@ -10,7 +10,7 @@ function safeId(value) {
     return clean(value).replace(/[^a-zA-Z0-9._:-]+/g, '-');
 }
 
-export const PRODUCT_SEARCH_DOMAINS = Object.freeze(['Works', 'Worlds', 'Knowledge Bases', 'Projects', 'Runtime', 'Prompt resources', 'Sessions', 'SavePoints', 'Knowledge entries', 'Skills', 'Orchestration', 'Personas']);
+export const PRODUCT_SEARCH_DOMAINS = Object.freeze(['Works', 'Worlds', 'Knowledge Bases', 'Projects', 'Runtime', 'Prompt resources', 'Sessions', 'SavePoints', 'Knowledge entries', 'Skills', 'Orchestration', 'Personas', 'Plans']);
 
 function fulfilled(result) {
     return result.status === 'fulfilled' && Array.isArray(result.value) ? result.value : [];
@@ -23,6 +23,13 @@ function fulfilled(result) {
  */
 export function createProductSearchIndex({ registry, host, productClient = nativeProductClient, loadRuntime = runtimeRequest, loadResources = () => runtimeRequest('/resources'),
     loadSkills = () => globalThis.Atria.getContext().skills.list({ scope: 'all' }),
+    loadPlans = async () => {
+        const { createOrchestrationClient } = await import('../native/orchestration/client.js');
+        const client = createOrchestrationClient(), items = [];
+        let cursor = null;
+        do { const page = await client.listPlans(cursor, 100); items.push(...page.items); cursor = page.cursor; } while (cursor && items.length < 1000);
+        return items;
+    },
     loadOrchestration = () => {
         const settings = globalThis.Atria.getContext().capabilitySettings.orchestrator;
         if (!settings?.agentWorkspace) throw new Error('Orchestration is not ready');
@@ -152,6 +159,11 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
             add({ id: 'orchestration.' + encodeURIComponent(item.id), title: item.name, description: 'Orchestration', group: 'Agents', keywords: ['orchestration', item.mode, item.id],
                 run: () => host.openOrchestration(item.id, item.name) });
         }
+        for (const item of fulfilled(result[12])) {
+            const title = clean(item.viewState?.title) || tl('Untitled Plan');
+            add({ id: 'plan.' + safeId(item.planId), title, description: tl('Agent Plan'), group: 'Agents', keywords: ['plan', 'orchestration', 'agents', item.planId, title],
+                run: () => host.openPlan(item.planId, title) });
+        }
         registry.setSearchStatus?.({
             loading: sources.some(source => source.loading), domains: PRODUCT_SEARCH_DOMAINS,
             sources: sources.map(({ domain, loading }) => ({ domain, loading })),
@@ -187,6 +199,7 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
         () => productClient.listProjects(), loadRuntime, loadResources, () => productClient.listSessions(),
         null, null, loadSkills, loadOrchestration,
         async () => { const items = []; let cursor = null; do { const page = await productClient.listPersonas({ cursor, limit: 100, includeArchived: true }); items.push(...page.items); cursor = page.nextCursor; } while (cursor); return items; },
+        loadPlans,
     ];
 
     async function loadSource(index, load, { owner = null, batch = revision } = {}) {

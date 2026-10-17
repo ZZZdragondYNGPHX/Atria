@@ -80,12 +80,13 @@ function completeSources() {
         loadRuntime: async () => ({}), loadResources: async () => [],
         loadSkills: async () => [{ name: 'Moon skill', scope: { kind: 'package', packageId: 'pkg', packageVersionId: 'v1' } }],
         loadOrchestration: async () => [{ id: 'preset', name: 'Moon orchestration', mode: 'spec' }],
+        loadPlans: async () => [{ planId: 'oplan_' + 'a'.repeat(32), viewState: { title: 'Moon plan' } }],
     };
 }
 
 test('search covers navigable entities with exact identity and SavePoint inspection without restoring', async () => {
     const registry = createCommandRegistry();
-    const host = Object.fromEntries(['openLibraryKnowledge', 'openSession', 'openKnowledgeEntry', 'openSkill', 'openOrchestration'].map(name => [name, jest.fn()]));
+    const host = Object.fromEntries(['openLibraryKnowledge', 'openSession', 'openKnowledgeEntry', 'openSkill', 'openOrchestration', 'openPlan'].map(name => [name, jest.fn()]));
     const sources = completeSources();
     const index = createProductSearchIndex({ registry, host, ...sources });
     await index.refresh();
@@ -95,6 +96,7 @@ test('search covers navigable entities with exact identity and SavePoint inspect
     expect(sources.productClient.getKnowledge).toHaveBeenCalledWith('kb', 'exact-r1');
     expect(host.openSkill).toHaveBeenCalledWith({ kind: 'package', packageId: 'pkg', packageVersionId: 'v1' }, 'Moon skill');
     expect(host.openOrchestration).toHaveBeenCalledWith('preset', 'Moon orchestration');
+    expect(host.openPlan).toHaveBeenCalledWith('oplan_' + 'a'.repeat(32), 'Moon plan');
     expect(registry.search('Secret valley')).toHaveLength(1);
     expect(registry.getSearchStatus().failures).toEqual([]);
     index.dispose();
