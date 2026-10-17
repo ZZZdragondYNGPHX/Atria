@@ -1275,4 +1275,15 @@ Planner 请求、结构化输出 schema 与控制任务由活 Scheduler callback
 
 当前限制为无 graphChangePolicy 操作、graphRevision=0 的静态原 RP Root，生产/接收节点均为 agent/planner/judge/review，接收者只取直接非回环后继，不能是正式Output。跨Session/Project/child或动态修改暂不支持，避免在后续新增边时追溯扩大既有Result audience。节点输出text/json，字节上限继承原 Plan 显式 resultPolicy；JSON保留原generation响应{text,toolCalls:[]}，控制JSON另需实际收费解析，不把Model文字当官方事实。
 
-历史核对精确原 Model payload hash、Effect、producer grant、同一settlement/publication decisionSeq、Result hash/Source/Audience；消费一致性进一步要求真实已存 running recipient、exact input ResultRef、当前epoch，及未被Review失效的producer。原 Source/Audience/Context授权仍须由后续活producer/ResultPort复核。本组只有纯合同与明确受控存储证据，真实生产者/消费者接线继续。
+历史核对精确原 Model payload hash、Effect、producer grant、同一settlement/publication decisionSeq、Result hash/Source/Audience；消费一致性进一步要求真实已存 recipient（running，或由原私有 Model producer 绑定 generation.send Effect 的 waiting_effect）、exact input ResultRef、当前epoch，及未被Review失效的producer。原 Source/Audience/Context授权仍须由后续活producer/ResultPort复核。本组只有纯合同与明确受控存储证据，真实生产者/消费者接线继续。
+
+
+### 17.107 原 RP Graph Result 的实际生产与消费
+
+原 RP增加显式静态 draft Agent(text)→Narrator(text)→唯一 rp_narration Output profile；两个 Agent各使用自身已声明 player Model pins、原narrator角色与同一原RP Source/Audience/银行。实际配置、Node roles、预算、资源与deadline在原preflight及活Scheduler中复验；不增加HTTP、Actor/跨Source权限或新runner。
+
+原 ResultController.publishGraphModelResult 只接受原 ModelPort 实际完成对象及当前私有 producer capture，以原Model/Effect→保护Result→publication→settlement→Root refs同事务持久化。复制完成对象、JSON capture与外来ResultRef不能发布或读取。后继通过原 ResultPort.readForGraph，在原 Source-fenced Run消费中复核活 Scheduler、精确recipient/原 generation Effect、Source/预算/Binding/输入ref；最后一次异步读取后再验grant与Root。Context使用原RP prefix/Memory并附带明确低信任Result，不当官方事实/权限/指令；详细record合同仍归 §17.106。
+
+正式出口仍为原 Narrator/Chat consumer，Root保留两个Result，原closure核对两个Model加Output三个Effect。Reader绑定 exact topology transfer、原Model payload/Source/epoch、Result audience与物理费用；后续编辑/删除Source及冷启动不丢历史。ACK saved只观察原耐久记录后继续，no_save保留实际Model费用但无Result/后续send；usage unknown可以保留合法领域提交，不能claim completed。
+
+发布/消费中的合法同事务Binding撤销或Root取消以denied preflight保留独立写入；不通过抛异常把撤销回滚。waiting_effect不是新grant，必须绑定当前私有消费者的原Model Effect。当前只接通静态同RP直接后继，真实Judge/Review/局部重做循环及其它完整Graph/Source仍继续实施。

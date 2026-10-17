@@ -1153,3 +1153,11 @@
 
 - Source bcf5d65e8 → ea2359901，本地提交，未推送；接口 §17.106。原 Result record新增 exact graph_nodes audience，复用原 Model/Effect/Attempt/settlement 证据；只限静态原RP同Source直接后继，正式Output、动态图、跨领域和child拒绝。历史读取不授消费权；活recipient必须等于真实running记录并持ResultRef，仍需原Source/grant检查。尚无真实Graph Result writer/消费者，继续接线，不宣称Judge/Review已运行。
 - 首轮新/旧Result contracts74PASS/1FAIL，唯一失败是JSON正确先报output type而测试错期待audience错误文案，改为只断言拒绝。新pure22PASS（1.352s），补FS/SQLite原Model/settlement/receipt物理一致性与外国recipient/诚实重hash反例后26PASS（1.488s）。增加crossRun Model/receipt拒绝后，新旧完整两suite81/81 PASS（2.15s），evaluator完整40/40 PASS（2.62s）。五文件原ESLint及diff check通过。直接存储fixture不冒称真实Model/Source/银行授权；无新增真实Provider调用，后端继续。
+
+
+## 2026-10-17 — 第一百零三组：原 RP Graph Result 的真实生产与消费
+
+- Source ea2359901 → 50d4061b5，本地提交，未推送；接口 §17.107。原Host/ModelPort/ResultController/ResultPort/Context与原银行组成实际两Agent→唯一Chat路径。D4只同Source的直接后继；Context标明低信任，Root历史两个Result与三个Effect费用完整。初次两参数FAIL定位原Model Effect prepare会将recipient置waiting_effect；补实际绑定generation Effect的私有复验后2PASS（7.732s），没有用普通metadata角色冒充grant。
+- 新8/8 PASS（24.053s）：原真实Model链、假capture/外来ref/复制完成对象零额外发送，同事务Binding撤权保持。冷读、Source编辑删除、publication saved/no_save ACK与unknown扩展14/14 PASS（39.971s）。强化publication二次授权时测试暴露一次局部intent未透出变量作用域，修正后正向及publish/consume撤权6PASS/10filterSKIP（14.29s）。
+- 与原Planner、父子continuation、GraphResult合同、evaluator五完整 suites120/120 PASS（158.046s；新链16、指纹44）。追加Root同事务取消四参数4PASS（7.45s），撤销/取消不回滚，后继零发送；新的Root stamp防线后正常/ACK六参数6PASS（17.385s），新链20项分批全通过。历史reader再补原producer/intent Source与精确envelope Effect关联，包含诚实重hash交叉替换反例的完整GraphResult28/28 PASS（1.631s）。十四文件原ESLint/diff check通过。
+- 全是localhost实际工程调用；没有新增真实Provider或独立质量/价格通过结论。接着实施实际Review与有界重做、Judge/通用Graph、其它Source及可信高风险/恢复释放，后端未完成，不推送/交前端/main。

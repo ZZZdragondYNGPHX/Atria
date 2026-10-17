@@ -152,3 +152,6 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 
 
 第一百零二组 ea2359901 补同来源静态Graph直接后继的原Result audience/物理事实合同，见[接口 §17.106](interface-contracts.md#17106-同来源直接后继的-graph-result-合同)。真实Graph Result writer与消费仍在接线，完整后端继续。
+
+
+第一百零三组 50d4061b5 接通原RP静态两Agent的受保护Result生产/消费、原Context与唯一Chat出口，见[接口 §17.107](interface-contracts.md#17107-原-rp-graph-result-的实际生产与消费)。撤权/取消/ACK/unknown与冷读有FS/SQLite实证，实际Review/Judge及完整后端继续。
