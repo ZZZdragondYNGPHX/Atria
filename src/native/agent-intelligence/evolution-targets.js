@@ -14,7 +14,7 @@ import { ExtensionsStore } from '../extensions-store.js';
 import { ConflictError } from '../../storage/errors.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { createOrchestrationAuthoringService } from '../orchestration/authoring-service.js';
-import { assertPlanEvolutionTarget, EVOLVABLE_PLAN_LIMITS } from '../orchestration/plan-evolution-contracts.js';
+import { assertPlanEvolutionTarget, EVOLVABLE_PLAN_LIMITS, planNodeRouteChoices } from '../orchestration/plan-evolution-contracts.js';
 
 const conflict = () => { throw new ConflictError('agent_evolution_target_conflict'); };
 const candidateFields = kind => kind === 'workspace-prompt' ? 'promptVersions' : 'strategyVersions';
@@ -78,6 +78,11 @@ export class EvolutionTargets {
         const plans = this.nativePlans(), choices = [];
         for (const binding of bindings) {
             const revision = await plans.getRevision(handle, binding.planRef);
+            for (const node of revision.definition.nodes.filter(node => planNodeRouteChoices(revision.definition, revision.dependencyPins, node.nodeId).length > 1)) {
+                const target = { kind: 'plan-strategy', bindingId: binding.bindingId, expectedBindingVersion: binding.version,
+                    planRef: binding.planRef, nodeId: node.nodeId, fieldPath: 'routeRef' };
+                choices.push({ label: 'Native Plan · ' + node.label + ' · routeRef', target, baseHash: hash(await plans.captureEvolution(handle, target)) });
+            }
             for (const node of revision.definition.nodes.filter(node => node.kind === 'agent' && node.capabilities.includes('generation.send'))) {
                 const pin = revision.dependencyPins.find(pin => pin.pinId === node.policy.agentPinId);
                 if (pin?.resourceRef.scope !== 'player') continue;

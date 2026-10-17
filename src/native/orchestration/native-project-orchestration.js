@@ -75,14 +75,16 @@ export class NativeProjectOrchestrationAuthority {
         const plan = await this.#authoring().getRevision(handle, binding.planRef), graph = plan.definition;
         const node = graph.nodes.find(item => item.kind === 'agent'), output = graph.nodes.find(item => item.kind === 'output');
         const toolPins = plan.dependencyPins.filter(item => item.port === 'tool');
+        const modelPins = plan.dependencyPins.filter(item => item.port === 'model' && item.resourceRef.scope === 'player');
         const forward = graph.edges.find(edge => !edge.loopBack), loop = graph.edges.find(edge => edge.loopBack);
         const capabilities = ['generation.send', ...['project.read', 'project.propose'].filter(capability => toolPins.some(pin => projectToolCapability(pin.resourceRef.name) === capability))];
         if (graph.nodes.length !== 2 || !node || !output || graph.edges.length !== (loop ? 2 : 1)
             || !equal(graph.entryNodeIds, [node.nodeId]) || !equal(graph.capabilityCeiling, capabilities)
             || !equal(node.capabilities, capabilities) || node.inputs.length !== (loop ? 1 : 0) || node.outputs.length !== 1 || node.outputs[0].type !== 'json'
-            || node.dependencyPinIds.length !== 1 + toolPins.length || output.capabilities.length || output.inputs.length !== 1
+            || !modelPins.length || node.dependencyPinIds.length !== modelPins.length + toolPins.length
+            || plan.dependencyPins.some(pin => !node.dependencyPinIds.includes(pin.pinId)) || output.capabilities.length || output.inputs.length !== 1
             || output.inputs[0].type !== 'json' || !output.inputs[0].required || output.outputs.length || output.dependencyPinIds.length
-            || plan.dependencyPins.length !== 1 + toolPins.length || !['result', 'project_review'].includes(graph.outputContract.kind) || graph.outputContract.allowPartial
+            || plan.dependencyPins.length !== modelPins.length + toolPins.length || !['result', 'project_review'].includes(graph.outputContract.kind) || graph.outputContract.allowPartial
             || graph.graphChangePolicy.allowedOperations.length || !forward || forward.condition !== 'always' || forward.maxVisits !== 1
             || forward.from.nodeId !== node.nodeId || forward.to.nodeId !== output.nodeId
             || !loop && maxModelRounds !== 1

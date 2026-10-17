@@ -69,8 +69,9 @@ describe.each(harnesses)('$name isolated original Native RP evaluation', ({ make
 
 
 describe.each(harnesses)('$name isolated original Native Project evaluation', ({ make }) => {
-    test.each(['ordinary', 'related_pilot'])('%s exact Plan executes original Task tools, Review and Root in private source', async profile => {
+    test.each(['ordinary', 'related_pilot', 'route_selection'])('%s exact Plan executes original Task tools, Review and Root in private source', async profile => {
         const pilot = profile === 'related_pilot';
+        const routeSelection = profile === 'route_selection'; let routeAlternative;
         const entries = pilot ? selectCases({ purpose: 'evaluation', split: 'development', profileId: 'project.m1.related', caseSetRevision: PILOT_CASE_SET_REVISION }) : [];
         const fixtures = entries.map(entry => loadFixture(entry, { purpose: 'evaluation' }));
         const f = await projectModelFixture(make, { format: 'openai-compatible', maxModelRounds: 3, configurePlan: async args => {
@@ -78,6 +79,13 @@ describe.each(harnesses)('$name isolated original Native Project evaluation', ({
             Object.assign(args.plan.definition.outputContract, { kind: 'project_review', resultPolicy: { outputType: 'json', maxBytes: 16384 } });
             args.plan.definition.limits.maxSteps = 100;
             const node = args.plan.definition.nodes[0]; node.inputs.push({ name: 'continuation', type: 'json', required: false });
+            if (routeSelection) {
+                const alternative = { ...args.route, runtimeRouteId: createNativeId('runtimeRoute'), displayName: 'Predeclared evaluation Route' };
+                await args.host.persistence.saveRuntimeRoute(args.h.handle, alternative);
+                routeAlternative = { scope: 'player', runtimeRouteId: alternative.runtimeRouteId };
+                args.plan.dependencyPins.push({ pinId: 'studio.route-alternative', port: 'model', resourceRef: routeAlternative, integrity: hash(alternative) });
+                node.dependencyPinIds.push('studio.route-alternative');
+            }
             args.plan.definition.edges.push({ edgeId: createNativeId('orchestrationEdge'), from: { nodeId: node.nodeId, port: 'response' },
                 to: { nodeId: node.nodeId, port: 'continuation' }, condition: 'always', maxVisits: 2, loopBack: true });
             await args.seeded.persistence.saveModelProfile(args.h.handle, { ...args.seeded.model, limits: { ...args.seeded.model.limits, contextTokens: 65536 } });
@@ -108,19 +116,20 @@ describe.each(harnesses)('$name isolated original Native Project evaluation', ({
         const handle = f.h.handle;
         try {
             const targets = new EvolutionTargets({ host: f.host }), scope = { domain: 'project', projectId: f.projectId };
-            const choice = (await targets.catalog(handle, scope, f.projectId)).find(item => item.target.fieldPath === 'limits.maxSteps');
+            const choice = (await targets.catalog(handle, scope, f.projectId)).find(item => item.target.fieldPath === (routeSelection ? 'routeRef' : 'limits.maxSteps'));
             await targets.declare(handle, scope, f.projectId, choice.target, choice.baseHash);
-            const capture = await targets.capture(handle, scope, f.projectId, choice.target), candidate = await targets.prepare(handle, scope, f.projectId, choice.target, capture, capture.body - 1);
+            const capture = await targets.capture(handle, scope, f.projectId, choice.target), candidate = await targets.prepare(handle, scope, f.projectId, choice.target, capture, routeSelection ? routeAlternative : capture.body - 1);
             const settings = { baseline: await targets.evaluationSettings(handle, scope, f.projectId, choice.target),
                 candidate: await targets.evaluationSettings(handle, scope, f.projectId, choice.target, candidate.candidateId) };
             const repository = new AgentEvolutionRepository({ engine: f.h.engine }), evaluator = new EvolutionEvaluator({ host: f.host, repository });
             await repository.limits(handle, { maxRequests: 10, maxTokens: 500000, minIntervalMs: 1000 }, 0);
             const config = await evaluator.configuration(handle, settings.baseline.runtimeRouteId), before = hash((await f.studio.getProject(handle, f.projectId)).source);
+            const configs = { baseline: config, candidate: routeSelection ? await evaluator.configuration(handle, settings.candidate.runtimeRouteId) : config };
             const job = { id: 'native-project-eval', scopeId: 'native-project-evaluation', domain: 'project', policyFingerprint: 'test-policy', targetPin: 'test-target', price: null };
             const signal = new AbortController().signal, fresh = async () => {};
             const report = pilot ? await evaluator.probe(handle, job, config, settings.baseline, signal, fresh, async () => {}, async () => {},
                 { profileId: 'project.m1.related', caseSetRevision: PILOT_CASE_SET_REVISION, split: 'development', repetitions: 1, mode: 'source_probe' }) : await evaluator.compare(handle, job,
-                { baseline: config, candidate: config }, settings, new AbortController().signal, async () => {}, async () => {}, async () => {},
+                configs, settings, new AbortController().signal, async () => {}, async () => {}, async () => {},
                 { split: 'development', repetitions: 1, caseIds: ['project_authoring_d1'] });
             expect(report.pairs).toHaveLength(pilot ? 3 : 1);
             for (const pair of report.pairs) for (const arm of pilot ? ['baseline'] : ['baseline', 'candidate']) {

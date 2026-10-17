@@ -164,8 +164,10 @@ export async function runNativeProjectSkillWork(capture, { context, operation, i
     const state = operations.get(capture); if (!state) fail();
     const current = await currentOperation(state, { host: state.host, handle: state.handle });
     if (context.kind !== 'project' || context.projectId !== state.projectId || context.taskId !== state.taskId || context.revision !== state.preflight.baseRevision) fail();
+    const routeRef = { scope: 'player', runtimeRouteId: state.startInput.runtimeRouteId };
+    if (context.routeRef && hash(context.routeRef) !== hash(routeRef)) fail();
     const settings = operation === 'list' ? (await state.host.extensions.settings(state.handle)).value : undefined;
-    const compute = await prepareRetrievalCompute({ handle: state.handle, context, profile: { mode: 'embed', purpose: 'studio.skill.v1' },
+    const compute = await prepareRetrievalCompute({ handle: state.handle, context: { ...context, routeRef }, profile: { mode: 'embed', purpose: 'studio.skill.v1' },
         persistence: state.host.persistence, core: state.host.sessionCore, agent: state.host.agent, studio: state.host.studio });
     const result = await executeProjectSkillWork({ operation, input, compute, repository: state.repository, projectId: state.projectId, settings, signal: current.active.signal });
     await currentOperation(state, { host: state.host, handle: state.handle });
