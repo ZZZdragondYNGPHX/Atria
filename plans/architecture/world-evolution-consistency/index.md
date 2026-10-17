@@ -2,7 +2,7 @@
 
 - Task ID: `ARCH-DWE-01`
 - Primary Workspace: `docs`
-- Plan status: **Draft / Discussion (未冻结，未批准实施)**
+- Plan status: **Draft / Paused (暂缓，未定稿，未批准实施)**
 - Initiated: 2026-10-17
 - Scope: **原生世界 / 知识体系深度重构**，涵盖从 ST Lorebook 心智模型脱离、静态/动态一致性、实体/关系/法则/资料/认知/检索/演化/三域交互
 - Product changes: **不在本讨论阶段实施**
@@ -33,7 +33,7 @@
 - [E0 Gate 0 Integration Work Packages](e0-gate0-integration-workpackages.md)：**W20-B 已确认方向**；§8 记录受保护 Session-owned Subject、各领域事实所有权、Revision/GameTick 双锚与 WP-A～F 工程包原则。
 - [Final E0 Handoff Readiness](e0-handoff-evidence-review.md)：**W21-B 已确认方向**；§8 记录 P2 优先且必须具备原生 Reserved/Typed 写入、Session Revision、Save/Restore/GC 闭包及 WP-A～F 真实消费者证据，P1 仅为有依据的备选。
 - [Final Gate 0 Implementation Handoff](e0-final-implementation-handoff.md)：**W22-B 已确认收口方向**；§8 记录「具名阻塞 + 可执行 Preflight + 条件化交接」及授权边界，详细检查执行路由见 Preflight 模块。
-- [Gate 0 Preflight Execution](e0-preflight-execution.md)：**当前有界审查与可执行交接清单**。P0–P7 按真实 SHA/代码 Ownership 记录分支集成、受保护 P2/DomainReceipt、双锚事实查询、动态 Perspective/Prompt、Host/Media/Legacy 消费者、退出证据与只读 Codex 指令。**尚未 PASS**，不是第二 Plan。
+- [Gate 0 Preflight Execution](e0-preflight-execution.md)：**已暂缓的 Gate 0 检查清单**。P0–P7 按真实 SHA/代码 Ownership 记录分支集成、P2/DomainReceipt/Fact/Context/Legacy 消费者、退出证据及 Codex 只读审查指令。**等待用户完成编排、提示词与整体前端重构并明确要求 Codex 接手后再执行；尚未 PASS**。
 - [Record](../../../records/architecture/world-evolution-consistency.md)：按工作轮累积可核验的文档提交、调研结果、未完成内容。
 - 后续需要规模化时再按主题拆模块，本入口仍为唯一导航。
 
@@ -84,7 +84,7 @@
 
 ## 5. 状态与下一检查点
 
-- **当前：**S24 已确认用户选择 **W22-B**，不再扩展新的抽象 W23 世界架构轮次。当前唯一下一检查点是 [有界 Gate 0 Preflight](e0-preflight-execution.md)：固定目标集成 HEAD、P2 Typed Writer/Save/GC、World/Narrator Domain Receipt、动态 Perspective/有效 Context、六个 WP 的生产 Consumer/Legacy 清退证据。**Preflight 清单已提交 ≠ Gate 0 已通过**；最终定稿与开发需用户另行批准。
+- **当前：**S25 用户明确要求 **暂缓 ARCH-DWE-01**，停止当前 Gate 0 Preflight 与新架构讨论。等待排队的 **Native Orchestration 重构、Prompt Preset 重构、整体前端重构**完成，由用户届时明确指定 **Codex 接手**。恢复时从 [Preflight 清单](e0-preflight-execution.md) 和 [暂停交接](../../../handoff/ARCH-DWE-01.md) 继续，先以全新集成 HEAD 重新核对代码和 E0-01～09，不复用旧 SHA 当现行实现。**Gate 0 仍 PARTIAL / BLOCKED，完整企划 Draft，不授权产品开发。**
 - **已确认设计方向（W1–W22）：** 单 Native Host Truth、固定 World/Knowledge Authoring 与动态 Session Subject/社会事实分离、P2 Protected Native Session Subject 优先、独立 Domain Fact Source/Temporal/Receipt、授权 Perspective/EffectiveWorld/Prompt/Media 视图、实证旧路径硬切与具名 Gate 0 退出条件。**仍未冻结物理 Namespace/ID/Schema/查询 API、最终综合调用图/DELETE 文件、E0/CI/三端测试；当前 Draft，不创建实现分支。**
 - **未授权：**修改 `main`、创建实现分支、给出实施已经通过的结论。
 - **完成标准：**用户在若干轮讨论后明确确认各核心决策及边界，并批准定稿。未经确认，不使用“Final/冻结/全面通过”描述。
