@@ -54,7 +54,7 @@ V3 不拥有独立的“余额真相”；其 Run/NodeAttempt/Effect 显示的�
 - **并行不是超支借口**：父子预算/帐号/Session/Project/foreground/background 等只能收紧，不能因为同一余额被多个 Agent 同时读取就分别准入。无法证明原子许可时保守拒绝并行派发或串行调度。
 - **外部未知**：已发但 usage 缺失/网关自身 retry 不可见时保留 `unknown` 和当前已知保守上界。Gateway 内部请求是否可硬封顶需要确实的网关支持；否则金额只能 estimated，不能把 token 限额称为货币硬上限。
 - **跨域存储事实**：FS/SQL 原权限/费用/正式业务提交不自动跨域原子化，Host 使用 idempotent identities + durable intent + reconcile 串联，不能谎称“整个图一笔事务”。
-- **本地/Termux**：本地 LLM、Memory 索引、Embedding、cache IO、compaction、CPU/GPU/能耗的可见性取决于宿主。登记真实可观测开销与设备拒绝理由；没独立 CPU 计数不冒充 CPU 硬限。开发 API 测试硬限制仍只归 [Governance `13.1](../../../README.md#131-api-测试执行规则) 的 2000/day、20 RPM，**不等于产品默认调用额度**。
+- **本地/Termux**：本地 LLM、Memory 索引、Embedding、cache IO、compaction、CPU/GPU/能耗的可见性取决于宿主。登记真实可观测开销与设备拒绝理由；没独立 CPU 计数不冒充 CPU 硬限。开发 API 测试执行约束只引用 [Repository Governance §13.1](../../../README.md#131-api-测试执行规则)，以用户当前任务的实际配置为准；本 Plan 不设置或复制测试调用限额，它与产品 Route/Run 的预算分开。
 
 ## 5. 三层 Cache 分离 + 有效性证明
 
