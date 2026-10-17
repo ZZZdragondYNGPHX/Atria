@@ -3,7 +3,7 @@ import { hashNativeDocument as hash, putImmutable, putMutable } from '../../src/
 import { graphResultContract, graphNodeResult, readGraphNodeResult, graphResultPublicationId } from '../../src/native/orchestration/graph-result-contracts.js';
 import { assertResultRecord, resultDependencyDigest } from '../../src/native/orchestration/result-contracts.js';
 import { controlRecordKey } from '../../src/native/orchestration/controller-common.js';
-import { writeAttemptSettlement } from '../../src/native/orchestration/attempt-settlement.js';
+import { writeAttemptSettlement, attemptReceiptId } from '../../src/native/orchestration/attempt-settlement.js';
 import { effectDecision } from '../../src/native/orchestration/effect-contracts.js';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 
@@ -121,6 +121,32 @@ describe.each(CONTRACT_HARNESSES)('$name Graph Result history and recipient cons
             expect((await read()).record).toEqual(storedResult);
             expect((await read({ recipient })).record).toEqual(storedResult);
             await expect(read({ recipient: { ...recipient, nodeId: f.c } })).rejects.toThrow('Invalid Graph Result facts');
+            const keys = {
+                producer: controlRecordKey(h.handle, root.runId, 'attempt', attempt.attemptId),
+                settlement: controlRecordKey(h.handle, root.runId, 'receipt', attemptReceiptId(root.runId, attempt.attemptId)),
+                intent: controlRecordKey(h.handle, root.runId, 'effect', intent.effectId),
+                model: controlRecordKey(h.handle, root.runId, 'receipt', modelReceiptId),
+                result: controlRecordKey(h.handle, root.runId, 'result', result.resultId),
+                publication: controlRecordKey(h.handle, root.runId, 'receipt', graphResultPublicationId(root.runId, result.resultId)),
+            };
+            const mutateAndRestore = async mutate => {
+                const originals = await h.engine.withTransaction(h.handle, async tx => Object.fromEntries(await Promise.all(Object.entries(keys).map(async ([name, key]) => [name, await tx.getResource(key)]))));
+                const copies = Object.fromEntries(Object.entries(originals).map(([name, row]) => [name, structuredClone(row.doc)])); mutate(copies);
+                const changed = Object.keys(copies).filter(name => hash(copies[name]) !== originals[name].integrity);
+                await h.engine.withTransaction(h.handle, async tx => { for (const name of changed) await putMutable(tx, keys[name], copies[name], { expectedIntegrity: originals[name].integrity }); });
+                await expect(read()).rejects.toThrow('Invalid Graph Result facts');
+                await h.engine.withTransaction(h.handle, async tx => { for (const name of changed) { const current = await tx.getResource(keys[name]); await putMutable(tx, keys[name], originals[name].doc, { expectedIntegrity: current.integrity }); } });
+            };
+            await mutateAndRestore(rows => {
+                rows.result.envelope.sourceRefs[1].effectId = id('Effect');
+                rows.result.envelope.dependencyDigest = resultDependencyDigest(rows.result.envelope); rows.publication.resultIntegrity = hash(rows.result);
+            });
+            await mutateAndRestore(rows => { rows.producer.sourceBindingDigest = rows.settlement.sourceBindingDigest = hash('foreign-source'); });
+            await mutateAndRestore(rows => {
+                rows.intent.sourceBindingDigest = hash('foreign-source');
+                rows.model.dispatchEvidence.reference.completionBindingDigest = hash({ runId: intent.runId, effectId: intent.effectId, epoch: intent.epoch, hostBootId: intent.hostBootId,
+                    hostGeneration: intent.hostGeneration, sourceBindingDigest: rows.intent.sourceBindingDigest, decision: effectDecision(rows.intent) });
+            });
             const changed = { ...model, dispatchEvidence: { ...model.dispatchEvidence, reference: { ...model.dispatchEvidence.reference, resultPayloadHash: hash('other') } } };
             await h.engine.withTransaction(h.handle, async tx => { const key = controlRecordKey(h.handle, root.runId, 'receipt', modelReceiptId); const row = await tx.getResource(key); await putMutable(tx, key, changed, { expectedIntegrity: row.integrity }); });
             await expect(read()).rejects.toThrow('Invalid Graph Result facts');

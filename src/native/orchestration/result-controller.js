@@ -14,6 +14,7 @@ import { readEffect } from './effect-contracts.js';
 import { assertResultRecord, resultDependencyDigest } from './result-contracts.js';
 import { modelResultId, resultPublicationReceiptId, assertResultPublicationReceipt, readResultPublication } from './result-publication-contracts.js';
 import { assertDelegationDecision } from './delegate-controller.js';
+import { graphNodeResult, readGraphNodeResult, graphResultPublicationId } from './graph-result-contracts.js';
 
 const fail = code => { throw new ConflictError(code); };
 const equal = (a, b) => hash(a) === hash(b);
@@ -141,5 +142,54 @@ export class ResultController {
             return saved ? immutable({ status: 'published', resultRef: saved.receipt.resultRef,
                 publicationReceiptRef: { runId: root.runId, receiptId: saved.receipt.receiptId } }) : { status: 'unknown', resultRef: null, publicationReceiptRef: null };
         });
+    }
+
+    async publishGraphModelResult(handle, request) {
+        fields(request, ['capture', 'result', 'runId', 'effectId'], 'Graph Model Result publication');
+        const { capture, result, runId, effectId } = request, { runs, sourcePort } = this.execution;
+        const proof = await ModelPort.prototype.inspectResultCompletion.call(this.modelPort, handle, { result, runId, effectId });
+        const withAuthority = sourcePort.consumptionBoundary(handle, proof.sourceBinding, { engine: runs.engine });
+        const resultId = modelResultId(runId, effectId);
+        try {
+            const published = await runs.withSourceControl(handle, runId, () => runs.engine.withTransaction(handle, async tx => {
+                let checked;
+                try {
+                    const root = await runs.get(handle, runId), current = await ModelPort.prototype.inspectResultCompletion.call(this.modelPort, handle, { result, runId, effectId });
+                    if (!equal(proof, current) || root.cancelRequested || root.status !== 'running') fail('native_orchestration_result_publication_stale');
+                    const record = await readAttempt(tx, handle, root, proof.producerAttemptId), intent = (await readEffect(tx, handle, root, effectId)).doc;
+                    const authorize = () => NativeNarratorOrchestrationAuthority.prototype.authorizeGraphResult.call(this.host.turnOrchestration,
+                        { handle, tx, root, capture, phase: 'publish', effectId, producer: record.doc });
+                    const permission = await authorize();
+                    if (!equal(permission, { allowed: true, grantDigest: intent.grantDigest }) || record.doc.status !== 'running' || record.doc.resultRefs.length
+                        || !equal(record.doc.effectRefs, [effectId]) || record.doc.effectiveGrantDigest !== intent.grantDigest || root.pendingEffectRefs.includes(effectId)) fail('native_orchestration_result_not_publishable');
+                    await sourcePort.revalidate(handle, root.sourceBinding, { tx, root });
+                    if (!equal(await authorize(), permission)) return { denied: true };
+                    if (!equal(await runs.get(handle, runId), root)) return { denied: true };
+                    checked = { root, record, intent };
+                } catch (error) { if (DENIALS.has(error.code)) return { denied: true }; throw error; }
+                const { root, record, intent } = checked;
+                return runs.control(handle, controlCommandId('graph.result.publish', { runId, effectId }), { ...runGuard(root), operation: 'result.publish', detail: { effectId, resultId } }, async ({ tx, root: active, now }) => {
+                    if (!equal(active, root) || active.progress.steps >= active.limits.maxSteps || now >= active.progress.deadlineAt) fail('native_orchestration_result_publication_stale');
+                    const body = graphNodeResult({ root: active, producer: record.doc, proof, text: result.generated.response.text, now });
+                    const resultRef = { runId, resultId }, receiptId = graphResultPublicationId(runId, resultId);
+                    const receipt = { schemaVersion: 1, receiptKind: 'graph_node_result', receiptId, runId, epoch: active.epoch, producerAttemptId: record.doc.attemptId,
+                        resultRef, resultIntegrity: hash(body), modelEffectId: effectId, modelReceiptRef: proof.receiptRef, modelPayloadHash: proof.payloadHash,
+                        producerGrantDigest: intent.grantDigest, sourceBindingDigest: active.sourceBinding.bindingDigest,
+                        audienceDigest: hash(body.envelope.audienceConstraint), decisionSeq: active.eventSeq + 1, createdAt: now };
+                    await putImmutable(tx, controlRecordKey(handle, runId, 'result', resultId), body);
+                    await putImmutable(tx, controlRecordKey(handle, runId, 'receipt', receiptId), receipt);
+                    await writeAttemptSettlement({ tx, handle, root: active, record, outcome: 'completed', resultRefs: [resultRef], effectReceiptRefs: [proof.receiptRef.receiptId], reasonCode: 'graph_result_published', now });
+                    active.resultRefs.push(resultRef); active.progress.steps++;
+                    return { root: active, eventType: 'result_published', reasonCode: 'graph_result_published', outcome: { status: 'published', resultRef, publicationReceiptRef: { runId, receiptId } } };
+                });
+            }), { withAuthority });
+            if (published.denied) fail('native_orchestration_result_publication_stale');
+            return immutable(published.outcome);
+        } catch (error) {
+            if (error.code !== 'storage_commit_unknown') throw error;
+            const saved = await runs.engine.withTransaction(handle, async tx => readGraphNodeResult(tx, handle, await runs.get(handle, runId), resultId));
+            if (!saved) throw error;
+            return immutable({ status: 'published', resultRef: saved.receipt.resultRef, publicationReceiptRef: { runId, receiptId: saved.receipt.receiptId } });
+        }
     }
 }

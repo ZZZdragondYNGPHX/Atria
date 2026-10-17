@@ -63,10 +63,13 @@ export async function readGraphNodeResult(tx, handle, root, resultId, { recipien
     if (record.envelope.outputType === 'json') { assertObject(record.payload, ['text', 'toolCalls'], 'Graph generation result'); if (!equal(record.payload.toolCalls, [])) invalid(); }
     if (receipt.schemaVersion !== 1 || receipt.receiptKind !== 'graph_node_result' || receipt.receiptId !== graphResultPublicationId(root.runId, resultId)
         || receipt.runId !== root.runId || receipt.epoch !== producer.epoch || receipt.epoch > root.epoch || producer.status !== 'completed'
+        || producer.sourceBindingDigest !== root.sourceBinding.bindingDigest || record.envelope.status !== 'complete'
         || receipt.resultIntegrity !== stored.integrity || receipt.producerGrantDigest !== producer.effectiveGrantDigest || receipt.sourceBindingDigest !== root.sourceBinding.bindingDigest
         || receipt.audienceDigest !== hash(contract.audience) || !equal(receipt.resultRef, { runId: root.runId, resultId })
         || resultId !== modelResultId(root.runId, receipt.modelEffectId) || !equal(producer.resultRefs, [receipt.resultRef]) || !root.resultRefs.some(ref => equal(ref, receipt.resultRef))
         || !equal(producer.effectRefs, [receipt.modelEffectId]) || intent.nodeAttemptId !== producer.attemptId || intent.grantDigest !== producer.effectiveGrantDigest
+        || intent.epoch !== producer.epoch || intent.sourceBindingDigest !== root.sourceBinding.bindingDigest
+        || !equal(record.envelope.sourceRefs[1], { kind: 'effect_receipt', runId: root.runId, effectId: intent.effectId, receiptId: receipt.modelReceiptRef.receiptId, observedEpoch: producer.epoch })
         || !model || !equal(model.receiptRef, receipt.modelReceiptRef) || receipt.modelPayloadHash !== hash(text)
         || model.observation.dispatchEvidence.reference.resultPayloadHash !== receipt.modelPayloadHash
         || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId]) || settlement.decisionSeq !== receipt.decisionSeq
@@ -75,7 +78,7 @@ export async function readGraphNodeResult(tx, handle, root, resultId, { recipien
     if (recipient) {
         await assertAttemptConsumable(tx, handle, root, producer);
         const actual = (await readAttempt(tx, handle, root, recipient.attemptId)).doc;
-        if (!equal(actual, recipient) || root.cancelRequested || root.status !== 'running' || recipient.status !== 'running') invalid();
+        if (!equal(actual, recipient) || root.cancelRequested || root.status !== 'running' || !['running', 'waiting_effect'].includes(recipient.status)) invalid();
         if (recipient.epoch !== root.epoch || producer.epoch !== root.epoch || !contract.audience.nodeIds.includes(recipient.nodeId)
             || recipient.sourceBindingDigest !== root.sourceBinding.bindingDigest || !recipient.inputRefs.some(ref => equal(ref, receipt.resultRef))) invalid();
     }

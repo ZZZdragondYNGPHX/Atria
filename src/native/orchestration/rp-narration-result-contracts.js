@@ -12,6 +12,7 @@ import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { readRpPlannerCompletion } from './rp-planner-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
+import { readGraphNodeResult, graphResultPublicationId } from './graph-result-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP Narrator Result facts'); };
@@ -39,8 +40,15 @@ export function rpNarrationResult({ root, proof, payload, grantDigest, now }) {
 export async function readRpNarrationResult(tx, handle, root) {
     if (!root.resultRefs.length) return null;
     if (root.parentRef !== null || root.graph.outputContract.kind !== 'rp_narration' || root.sourceBinding.sourceAuthority !== 'rp_chat'
-        || root.resultRefs.length !== 1) invalid();
-    const [resultRef] = root.resultRefs;
+    ) invalid();
+    const candidates = [], graphResults = [];
+    for (const ref of root.resultRefs) {
+        if (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', rpNarrationPublicationId(ref.resultId)))) candidates.push(ref);
+        else if (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', graphResultPublicationId(root.runId, ref.resultId)))) graphResults.push(await readGraphNodeResult(tx, handle, root, ref.resultId));
+        else invalid();
+    }
+    if (candidates.length !== 1) invalid();
+    const [resultRef] = candidates;
     const saved = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'result', resultRef.resultId));
     const publication = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', rpNarrationPublicationId(resultRef.resultId)));
     if (!saved || !publication) invalid();
@@ -85,7 +93,16 @@ export async function readRpNarrationResult(tx, handle, root) {
             || !equal(input.returnReceiptRef, { runId: root.runId, receiptId: returned.receiptId })
             || returned.parentAttemptId !== producer.attemptId || returned.parentGrantDigest !== producer.effectiveGrantDigest
             || returned.decisionSeq >= receipt.decisionSeq) invalid();
-    } else if (!equal(producer.inputRefs, [input])) invalid();
+    } else if (input.acceptedGraphResultRefs) {
+        if (graphResults.length !== 1 || !equal(input.acceptedGraphResultRefs, graphResults.map(item => item.receipt.resultRef))
+            || !equal(producer.inputRefs, [input, ...input.acceptedGraphResultRefs])) invalid();
+        const [draft] = graphResults;
+        if (!draft.record.envelope.audienceConstraint.nodeIds.includes(producer.nodeId)) invalid();
+        const edge = root.graph.edges.find(item => item.from.nodeId === draft.producer.nodeId && item.to.nodeId === producer.nodeId);
+        if (!edge) invalid();
+        const traversalId = 'oreceipt_' + hash({ runId: root.runId, bindings: [{ edgeId: edge.edgeId, producerAttemptId: draft.producer.attemptId }], reservedAttemptId: null }).slice(0, 32);
+        await assertOutputTransition(tx, handle, root, { published: draft, output: producer, receipt: { traversalReceiptRef: { runId: root.runId, receiptId: traversalId } } });
+    } else if (!equal(producer.inputRefs, [input]) || graphResults.length) invalid();
     if (root.graph.nodes.some(node => node.kind === 'planner')) {
         const planner = await readRpPlannerCompletion(tx, handle, root);
         if (!planner || !equal(input.controlReceiptRef, { runId: root.runId, receiptId: planner.receipt.receiptId })) invalid();
@@ -94,5 +111,5 @@ export async function readRpNarrationResult(tx, handle, root) {
         const traversalId = 'oreceipt_' + hash({ runId: root.runId, bindings: [{ edgeId: edge.edgeId, producerAttemptId: planner.producer.attemptId }], reservedAttemptId: null }).slice(0, 32);
         await assertOutputTransition(tx, handle, root, { published: planner, output: producer, receipt: { traversalReceiptRef: { runId: root.runId, receiptId: traversalId } } });
     }
-    return { record, receipt, settlement, producer };
+    return { record, receipt, settlement, producer, graphResults };
 }

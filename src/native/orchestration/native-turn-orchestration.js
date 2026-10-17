@@ -138,6 +138,7 @@ export class NativeNarratorOrchestrationAuthority {
     prepareRpOutputEffect(args) { return this.#rpAuthority().prepareRpOutputEffect(args); }
     registerRpOutputClaim(args) { return this.#rpAuthority().registerRpOutputClaim(args); }
     authorizeParentResult(args) { return this.#rpAuthority().authorizeParentResult(args); }
+    authorizeGraphResult(args) { return this.#rpAuthority().authorizeGraphResult(args); }
 
     #backgroundAuthority() {
         this.#background ??= new NativeBackgroundOrchestrationAuthority({ owner: this, execution: () => this.execution, port: host => this.#port(host),

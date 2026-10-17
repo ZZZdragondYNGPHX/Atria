@@ -36,9 +36,10 @@ export class ContextPort {
     #memoryDescriptors = new Map();
     #nativeOutputQuota = null;
 
-    constructor({ sessionCore, projectAgent, projectCapture = null, rpControl = null, rpCapture = null, rpReturnCapture = null, resultPort = null, rpDelegationCapture = null, taskCapture = null, authorizeContext, contextOptions = {}, readMemoryEvidence, memoryAuthority = null, authorityTurn = null, resolverCapture = null, compilationInputs = null, nativeOutputQuota = null } = {}) {
+    constructor({ sessionCore, projectAgent, projectCapture = null, rpControl = null, rpCapture = null, rpReturnCapture = null, rpGraphResults = [], resultPort = null, rpDelegationCapture = null, taskCapture = null, authorizeContext, contextOptions = {}, readMemoryEvidence, memoryAuthority = null, authorityTurn = null, resolverCapture = null, compilationInputs = null, nativeOutputQuota = null } = {}) {
         if (typeof authorizeContext !== 'function') fail('native_orchestration_context_authority_required');
-        if ((rpReturnCapture || resultPort) && (!rpCapture || !rpReturnCapture || !(resultPort instanceof ResultPort)
+        if (!Array.isArray(rpGraphResults) || rpGraphResults.length > 1 || rpGraphResults.length && rpReturnCapture) fail('native_orchestration_context_authority_conflict');
+        if ((rpReturnCapture || resultPort || rpGraphResults.length) && (!rpCapture || !(rpReturnCapture || rpGraphResults.length) || !(resultPort instanceof ResultPort)
             || resultPort.execution.sourcePort.rpControl !== rpControl)) fail('native_orchestration_context_authority_conflict');
         if ([authorityTurn, resolverCapture, projectCapture, rpCapture, rpDelegationCapture, taskCapture].filter(Boolean).length > 1) fail('native_orchestration_context_authority_conflict');
         if (rpDelegationCapture && (memoryAuthority || readMemoryEvidence || Object.keys(contextOptions).length || compilationInputs !== null))
@@ -54,7 +55,7 @@ export class ContextPort {
             this.#nativeOutputQuota = Object.freeze({ proof: nativeOutputQuota.proof, expected: Object.freeze({ ...nativeOutputQuota.expected,
                 anchor: immutable(nativeOutputQuota.expected.anchor), policy: immutable(nativeOutputQuota.expected.policy) }) });
         }
-        Object.assign(this, { sessionCore, projectAgent, projectCapture, rpControl, rpCapture, rpReturnCapture, resultPort, rpDelegationCapture, taskCapture, authorizeContext, contextOptions: { ...contextOptions }, readMemoryEvidence, memoryAuthority, authorityTurn, resolverCapture, compilationInputs });
+        Object.assign(this, { sessionCore, projectAgent, projectCapture, rpControl, rpCapture, rpReturnCapture, rpGraphResults: immutable(rpGraphResults), resultPort, rpDelegationCapture, taskCapture, authorizeContext, contextOptions: { ...contextOptions }, readMemoryEvidence, memoryAuthority, authorityTurn, resolverCapture, compilationInputs });
     }
 
     #request(handle, input) {
@@ -112,7 +113,9 @@ export class ContextPort {
                 || binding.sourceRef.controlId !== rpIdentity.sourceRequest.controlId || binding.sourceRef.prefixDigest !== rpIdentity.context.prefixDigest)
                 fail('native_orchestration_context_source_mismatch');
             const parentResult = this.rpReturnCapture ? await ResultPort.prototype.readForParent.call(this.resultPort, handle, { capture: this.rpReturnCapture }) : null;
-            return { rpIdentity, parentResult, authorityDigest: hashNativeDocument({ source: rpIdentity.sourceRequest, context: rpIdentity.context,
+            const graphResults = await Promise.all(this.rpGraphResults.map(resultRef => ResultPort.prototype.readForGraph.call(this.resultPort, handle, { capture: this.rpCapture, resultRef })));
+            return { rpIdentity, parentResult, graphResults, authorityDigest: hashNativeDocument({ source: rpIdentity.sourceRequest, context: rpIdentity.context,
+                ...(graphResults.length ? { graphResults } : {}),
                 ...(rpIdentity.controlTask ? { controlTask: rpIdentity.controlTask } : {}), ...(parentResult ? { parentResult } : {}) }) };
         }
         if (this.projectCapture) {
@@ -196,7 +199,7 @@ export class ContextPort {
     // inside the admitted work; this pure read establishes its input bound.
     async compilationDescriptor(handle, input) {
         const request = this.#request(handle, input);
-        const { snapshot, authorityContext, resolver, modelContext, projectIdentity, rpIdentity, rpDelegation, parentResult, taskIdentity, taskInputOnly } = await this.#current(handle, request, 'compile_descriptor', false);
+        const { snapshot, authorityContext, resolver, modelContext, projectIdentity, rpIdentity, rpDelegation, parentResult, graphResults, taskIdentity, taskInputOnly } = await this.#current(handle, request, 'compile_descriptor', false);
         if (taskInputOnly) return { request, taskPlan: taskIdentity.taskPlan };
         if (rpDelegation) return { request, source: rpDelegation.sourceRequest, context: rpDelegation.context,
             parentRunId: rpDelegation.parentRunId, parentAttemptId: rpDelegation.parentAttemptId, parentEpoch: rpDelegation.parentEpoch,
@@ -207,7 +210,7 @@ export class ContextPort {
             const memoryDescriptor = this.memoryAuthority ? await NativeMemoryAuthority.prototype.rpContextDescriptor.call(this.memoryAuthority, handle, this.rpControl, rpIdentity.sourceRequest) : null;
             if (memoryDescriptor) this.#memoryDescriptors.set(hashNativeDocument(request), memoryDescriptor);
             return { request, source: rpIdentity.sourceRequest, context: rpIdentity.context, memoryDescriptor,
-                ...(rpIdentity.controlTask ? { controlTask: rpIdentity.controlTask } : {}), ...(parentResult ? { parentResult } : {}) };
+                ...(rpIdentity.controlTask ? { controlTask: rpIdentity.controlTask } : {}), ...(parentResult ? { parentResult } : {}), ...(graphResults.length ? { graphResults } : {}) };
         }
         if (projectIdentity) return { request, modelContext: projectAgentPromptInputs(modelContext), skillWorkRecords: projectIdentity.skillWorkRecords };
         if (resolver) {
@@ -231,7 +234,7 @@ export class ContextPort {
 
     async compile(handle, input) {
         const request = this.#request(handle, input);
-        const { snapshot, information, authorityDigest, resolver, modelContext, projectIdentity, rpIdentity, taskIdentity, taskInputOnly, rpDelegation, parentResult } = await this.#current(handle, request, 'compile');
+        const { snapshot, information, authorityDigest, resolver, modelContext, projectIdentity, rpIdentity, taskIdentity, taskInputOnly, rpDelegation, parentResult, graphResults } = await this.#current(handle, request, 'compile');
         if (rpDelegation) {
             const source = { kind: 'rp_chat', controlId: rpDelegation.sourceRequest.controlId };
             const selected = emptyNativeContextPlan(rpDelegation.request, { model: { limits: {
@@ -258,7 +261,7 @@ export class ContextPort {
                 contextTokens: request.tokenBudget.modelContextLimit, outputTokens: request.tokenBudget.responseReserve } } }, source);
             const plan = { ...selected, items: [...rpHistoryItems(rpIdentity.context.messages, { source: 'native.rp-chat', ref: rpIdentity.context.prefixDigest }),
                 ...(recall?.evidence ?? []).map(item => ({ kind: 'context.history', id: item.memoryId, content: { role: 'user', content: item.content },
-                    provenance: [{ source: 'native.rp-memory', ref: item.memoryId }] })), ...(parentResult ? [parentResult.item] : []),
+                    provenance: [{ source: 'native.rp-memory', ref: item.memoryId }] })), ...(parentResult ? [parentResult.item] : []), ...graphResults.map(item => item.item),
                 ...(rpIdentity.controlTask ? [{ kind: 'context.input', id: 'native-graph-task', content: JSON.stringify(rpIdentity.controlTask),
                     provenance: [{ source: 'native.rp-graph-task', ref: hashNativeDocument(rpIdentity.controlTask) }] }] : [])] };
             const after = await this.#current(handle, request, 'compiled');
