@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · Candidate Design & Discussion Agenda
 
-- 状态：**Draft（W1–W6 的 B 方向已获确认；W7 的选型与具体契约待批准）**。早期章节保留当时的提案历史，以最新决策章节和 index 的当前状态为准。
-- 当前讨论轮次：W7 — NPC 个人记忆、秘密/谣言、受众资格与证据驱动信息流（见 [npc-memory-information-flow.md](npc-memory-information-flow.md)）。
+- 状态：**Draft（W1–W7 的 B 方向已获确认；W8 选型和全部具体实现契约仍待批准）**。早期章节留存当轮候选历史，以后续决策和 index 为当前权威。
+- 当前讨论轮次：W8 — NPC 长期记忆、遗忘、人格连续性与 Native/HCM 权威边界（见 [npc-memory-continuity.md](npc-memory-continuity.md)）。
 - 入口：[index.md](index.md)；材料：[research.md](research.md)
 
 ## 1. 问题的正确切分
@@ -504,3 +504,32 @@ W7 专属模块：[npc-memory-information-flow.md](npc-memory-information-flow.m
 ### 14.3 本轮授权与状态
 
 只在 `docs` 同一 Plan Bundle / 唯一 Record 中持续讨论。W7 的身份绑定、记忆语义、消息传播事件、保密级别、延迟到达、纠错与分支一致性仍未批准；**不修改 main、不创建实现分支、不声称测试/CI/UI 验收**。用户明确确认全案后才允许标记 Approved/最终定稿。
+
+
+---
+
+## 15. S9 · W7-B 确认与 W8 长期记忆/人格连续性议程（2026-10-17）
+
+### 15.1 W7-B 为已确认的设计方向
+
+用户对上一轮推荐的 **W7-B「动态受众资格 + 证据驱动信息流」**答复「认同」，记录为已确认方向。运行时 NPC 可在合法接纳及授权后获得个人 Perspective；实际发送、送达、听闻、相信与更正必须区分，并由有来源的事件/主体认知实现；接纳世界身份不自动获取他人私密资料或主动思考资格。HCM/Information/Cognition 只维护各自认知与证据，Native Session/Branch/Revision 继续拥有客观事实的唯一发布权。
+
+目前 **W1-B 至 W7-B 均已获得用户方向性确认**；整体企划依旧 **Draft**，具体 Schema、动态受众发放方式、Memory/HCM 读写责任、传播协议和正式实施未批准。
+
+### 15.2 W8 研究的关键边界
+
+新议题：在长期 RP 和游戏时间跳跃中，如何使 NPC 既保持可信的过去与人格成长，又能遗忘细节、不全知、不因记忆压缩篡改客观事件？特别需要明确 **“世界曾发生什么” ≠ “某 NPC 现在记得/相信什么” ≠ “记忆索引目前召回了什么”**。
+
+完整研究、原生代码依据、角色例子与方案对照均集中在同一 Plan 的 [npc-memory-continuity.md](npc-memory-continuity.md)，本节不复制其详细设计。候选方向：
+
+- W8-A：全部正式 NPC 永久完整回忆；
+- **W8-B：来源保真 + 分层回忆与人格连续性（研究推荐，尚未批准）**；客观历史与持续义务不可因模糊/压缩消失，个人回忆和态度可在合法证据、时间与相关性下变化；
+- W8-C：用单一不断覆盖的 NPC 摘要作为人格和记忆的唯一权威。
+
+### 15.3 既有实现与未解决部分
+
+`public/shared/native-memory-contract.js` 已有受保护 identity/commitment/relationship/key_event 与可淡忘的 detail、`fadeAfter`/clarity/use；`public/shared/native-cognition-runtime.js` 按游戏时间推导部分淡化状态；HCM 已有 Episode 证据、图谱/检索和可选压缩；Information/Cognition 有源权限及 revision/scope 绑定。不能谎称 Atria 缺少所有上述能力或另建第二套记忆数据库。
+
+仍需审计：W7 新 NPC 动态 Perspective 与 `actor_[...]` 的真实消费者、保护记忆与受控遗忘差异、人格变化所需的经验/证据、合法事件/记忆源与 Branch 绑定、Context 编译预算及源失效机制。未运行测试或进行产品实现。
+
+**状态与边界：** W8 所有选择均待用户讨论确认；只修改 `docs`，不更改 `main`，最终定稿需用户另行明确批准。
