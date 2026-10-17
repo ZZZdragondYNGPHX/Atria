@@ -15,7 +15,7 @@ import { AttemptController } from './attempt-controller.js';
 import { controlCommandId, controlRecordKey, runGuard } from './controller-common.js';
 import { mintNativeBackgroundQuota } from './native-turn-quota.js';
 import { RunControl } from '../run-control.js';
-import { assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
+import { assertResultPolicy, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { BackgroundTaskOutputController } from './background-task-output-controller.js';
 import { backgroundOutputId, backgroundTaskWorkTarget, backgroundTaskWorkKinds, readBackgroundTaskDelivery, readBackgroundTaskResult, readBackgroundTaskOutput } from './background-task-output-contracts.js';
 import { appraisalEventCurrent } from '../appraisal-authority.js';
@@ -99,11 +99,13 @@ export class NativeBackgroundOrchestrationAuthority {
         const plan = await this.owner.plans.getRevision(handle, binding.planRef), graph = plan.definition;
         if (assertResultPolicy(graph.outputContract).outputType !== 'json') fail('native_orchestration_background_plan_unavailable');
         const node = graph.nodes.find(item => item.kind === 'agent'), output = graph.nodes.find(item => item.kind === 'output');
+        const modelPins = nodeModelRoutePins(node, plan.dependencyPins);
         if (!node || !output || graph.nodes.length !== 2 || graph.edges.length !== 1 || !equal(graph.entryNodeIds, [node.nodeId])
             || !equal(graph.capabilityCeiling, ['generation.send']) || !equal(node.capabilities, ['generation.send']) || node.inputs.length
             || node.outputs.length !== 1 || node.outputs[0].type !== 'json' || output.inputs.length !== 1 || output.inputs[0].type !== 'json'
             || !output.inputs[0].required || output.capabilities.length || output.outputs.length || output.dependencyPinIds.length
-            || node.dependencyPinIds.length !== 1 || plan.dependencyPins.length !== 1 || graph.outputContract.kind !== 'result' || graph.outputContract.allowPartial
+            || !modelPins.length || node.dependencyPinIds.length !== modelPins.length || plan.dependencyPins.length !== modelPins.length
+            || graph.outputContract.kind !== 'result' || graph.outputContract.allowPartial
             || graph.graphChangePolicy.allowedOperations.length || graph.edges[0].from.nodeId !== node.nodeId || graph.edges[0].to.nodeId !== output.nodeId
             || graph.edges[0].condition !== 'always' || graph.edges[0].loopBack || graph.edges[0].maxVisits !== 1)
             fail('native_orchestration_background_plan_unavailable');

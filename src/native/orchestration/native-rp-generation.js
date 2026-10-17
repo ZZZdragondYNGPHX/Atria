@@ -25,7 +25,7 @@ import { assertChildRunCurrent, childBudgetReceiptId } from './run-repository.js
 import { checkedRecord } from './plan-repository.js';
 import { readHandoff } from './handoff-contracts.js';
 import { BudgetPort } from './budget-port.js';
-import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
+import { assertObject, assertResultPolicy, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { ResultController } from './result-controller.js';
 import { readResultPublication } from './result-publication-contracts.js';
 import { TaskLocalOutputController } from './task-local-output-controller.js';
@@ -45,13 +45,15 @@ const sameSet = (left, right) => left.length === right.length && left.every(valu
 
 function finiteProfile(plan, { delegated = false, explicitResult = false } = {}) {
     const graph = plan.definition, node = graph.nodes.find(item => item.kind === 'agent'), output = graph.nodes.find(item => item.kind === 'output');
+    const modelPins = nodeModelRoutePins(node, plan.dependencyPins);
     const capabilities = ['generation.send', ...(delegated ? ['agent.delegate'] : [])], outputCapabilities = graph.outputContract.kind === 'rp_narration' ? ['chat.output'] : [];
     if (graph.nodes.length !== 2 || !node || !output || graph.edges.length !== 1
         || !equal(graph.entryNodeIds, [node.nodeId]) || !sameSet(graph.capabilityCeiling, [...capabilities, ...outputCapabilities])
         || !sameSet(node.capabilities, capabilities) || node.inputs.length || node.outputs.length !== 1 || node.outputs[0].type !== 'text'
-        || node.dependencyPinIds.length !== (delegated ? 2 : 1) || !sameSet(output.capabilities, outputCapabilities) || output.inputs.length !== 1
+        || !modelPins.length || node.dependencyPinIds.length !== modelPins.length + (delegated ? 1 : 0)
+        || plan.dependencyPins.some(pin => !node.dependencyPinIds.includes(pin.pinId)) || !sameSet(output.capabilities, outputCapabilities) || output.inputs.length !== 1
         || output.inputs[0].type !== 'text' || !output.inputs[0].required || output.outputs.length || output.dependencyPinIds.length
-        || plan.dependencyPins.length !== (delegated ? 2 : 1) || !['result', 'rp_narration'].includes(graph.outputContract.kind) || graph.outputContract.allowPartial
+        || plan.dependencyPins.length !== modelPins.length + (delegated ? 1 : 0) || !['result', 'rp_narration'].includes(graph.outputContract.kind) || graph.outputContract.allowPartial
         || graph.graphChangePolicy.allowedOperations.length || graph.edges[0].condition !== 'always'
         || graph.edges[0].loopBack || graph.edges[0].maxVisits !== 1
         || graph.edges[0].from.nodeId !== node.nodeId || graph.edges[0].to.nodeId !== output.nodeId

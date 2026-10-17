@@ -76,6 +76,10 @@ export function assertSessionTaskRef(value) {
     return value;
 }
 
+// A projection of already validated Plan data, never a runtime grant.
+export const nodeModelRoutePins = (node, pins) => node ? pins.filter(pin => pin.port === 'model' && pin.resourceRef.scope === 'player'
+    && node.dependencyPinIds.includes(pin.pinId)) : [];
+
 export function assertDependencyPins(pins) {
     const ids = new Set();
     for (const pin of array(pins, 'dependencyPins')) {

@@ -1,7 +1,7 @@
 import { ConflictError } from '../../storage/errors.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { hashNativeDocument as hash, cloneNativeDocument, putImmutable } from '../repositories/common.js';
-import { assertObject, assertCounter, assertPlanRef, assertSourceSelector, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
+import { assertObject, assertCounter, assertPlanRef, assertSourceSelector, assertResultPolicy, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { hasRetainedOrchestrationCompute } from '../../../public/shared/native-compute-budget.js';
 import { createOrchestrationAuthoringService } from './authoring-service.js';
 import { checkedRecord } from './plan-repository.js';
@@ -213,6 +213,7 @@ export class NativeNarratorOrchestrationAuthority {
         if (!equal(await this.plans.getBinding(handle, binding.sourceSelector), binding)) fail('native_orchestration_binding_changed');
         const plan = await this.plans.getRevision(handle, binding.planRef), graph = plan.definition;
         const agents = graph.nodes.filter(node => node.kind === 'agent'), outputs = graph.nodes.filter(node => node.kind === 'output');
+        const modelPins = plan.dependencyPins.filter(pin => pin.port === 'model' && pin.resourceRef.scope === 'player');
         const needsResolver = Boolean(base.manifest.runtime.experienceContract.authorityRuntime && !transaction && !base.timeline.at(-1)?.metadata?.atri_authority_retry);
         if (needsResolver && !base.manifest.runtime.experienceContract.generationBudget) fail('native_orchestration_turn_scope_unavailable');
         const count = needsResolver ? 2 : 1;
@@ -220,9 +221,10 @@ export class NativeNarratorOrchestrationAuthority {
         if (formalOutput && (graph.outputContract.slot !== 'assistant' || assertResultPolicy(graph.outputContract).outputType !== 'text')) fail('native_orchestration_turn_plan_unavailable');
         if (agents.length !== count || outputs.length !== 1 || graph.nodes.length !== count + 1 || graph.edges.length !== count
             || !equal(graph.capabilityCeiling, ['generation.send', ...(formalOutput ? ['chat.output'] : [])])
-            || agents.some(node => !equal(node.capabilities, ['generation.send']) || node.outputs.length !== 1 || node.dependencyPinIds.length !== 1)
+            || agents.some(node => !equal(node.capabilities, ['generation.send']) || node.outputs.length !== 1 || !node.dependencyPinIds.length
+                || node.dependencyPinIds.length !== nodeModelRoutePins(node, plan.dependencyPins).length)
             || !equal(outputs[0].capabilities, formalOutput ? ['chat.output'] : []) || outputs[0].inputs.length !== 1 || outputs[0].outputs.length
-            || plan.dependencyPins.length !== count || outputs[0].dependencyPinIds.length
+            || plan.dependencyPins.length !== modelPins.length || modelPins.some(pin => !agents.some(node => node.dependencyPinIds.includes(pin.pinId))) || outputs[0].dependencyPinIds.length
             || !['result', 'rp_narration'].includes(graph.outputContract.kind) || graph.outputContract.allowPartial
             || graph.edges.some(edge => edge.condition !== 'always' || edge.loopBack || edge.maxVisits !== 1)
             || graph.graphChangePolicy.allowedOperations.length) fail('native_orchestration_turn_plan_unavailable');
@@ -239,7 +241,7 @@ export class NativeNarratorOrchestrationAuthority {
                 assertObject(explicit, ['scope', 'runtimeRouteId'], 'Original narrator route');
                 if (explicit.scope !== 'player' || explicit.runtimeRouteId !== pin.resourceRef.runtimeRouteId) fail('native_orchestration_turn_route_mismatch');
             }
-            const route = selectNativeRuntimeRoute(routes, role, explicit);
+            const route = selectNativeRuntimeRoute(routes, role, pin.resourceRef);
             if (route.runtimeRouteId !== pin.resourceRef.runtimeRouteId || hash(route) !== pin.integrity) fail('native_orchestration_turn_route_mismatch');
             const resolved = await this.modelResolver.resolve({ handle, routeRef: pin.resourceRef, role,
                 ...(role === 'role.intent_resolver' ? { requirements: ['generation.tools'] } : {}) });
@@ -261,8 +263,16 @@ export class NativeNarratorOrchestrationAuthority {
         const description = await this.#describe(host, handle, base, input, transaction);
         if (!description) return null;
         const selection = Object.freeze({});
-        selections.set(selection, { ...description, authority: this, host, handle, base, input: immutable(input), transaction });
+        selections.set(selection, { ...description, authority: this, host, handle, base, input: immutable(input), transaction: immutable(transaction) });
         return selection;
+    }
+
+    async selectedTurnLanes({ host, handle, base, input, transaction = null, selection }) {
+        const state = selections.get(selection);
+        if (!state || state.authority !== this || state.host !== host || state.handle !== handle || !equal(state.base, base)
+            || !equal(state.input, input) || !equal(state.transaction, transaction)) fail('native_orchestration_turn_selection_invalid');
+        await this.#current(selection);
+        return immutable([state.resolved.route, ...state.resolver ? [state.resolver.resolved.route] : []]);
     }
 
     async #current(selection, committed = null) {

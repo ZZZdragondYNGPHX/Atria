@@ -5,7 +5,7 @@ import { authorityFixture } from '../../native/helpers/authority-fixture.js';
 // Reuse the real original Host/Engine/Route/Provider fixture, replacing only its
 // product source/Plan. The HTTP Provider remains a localhost synthetic response.
 export async function backgroundModelFixture(make, { effectiveTurns = 4, recurring = false, usage = true, maxBytes = 65536,
-    configureSource = () => {}, prepareReady = async (_fixture, _h, base) => base, responsePayload = { text: 'Original background artifact' } } = {}) {
+    configureSource = () => {}, prepareReady = async (_fixture, _h, base) => base, configurePlan = async () => {}, responsePayload = { text: 'Original background artifact' } } = {}) {
     const f = await modelPortFixture(make, {
         createSource: async h => {
             const fixture = await installCognitionFixture(h, 'limited', null, ({ contract, fixture }) => {
@@ -43,10 +43,12 @@ export async function backgroundModelFixture(make, { effectiveTurns = 4, recurri
             base = await prepareReady(fixture, h, base);
             return { ...fixture, snapshot: base };
         },
-        configurePlan: async ({ plan, route }) => {
+        configurePlan: async args => {
+            const { plan } = args;
             plan.definition.nodes[0].outputs[0].type = 'json'; plan.definition.nodes[1].inputs[0].type = 'json';
             plan.definition.outputContract.resultPolicy = { outputType: 'json', maxBytes };
             plan.definition.limits.maxSteps = 50;
+            await configurePlan(args);
         },
         changeRoute: route => ({ ...route, policy: { ...route.policy, maxFallbackAttempts: 0 } }),
         responseBody: async () => ({ id: 'native-response', status: 'completed', output: [{ id: 'native-message', type: 'message', status: 'completed', role: 'assistant',

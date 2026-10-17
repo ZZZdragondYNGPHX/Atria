@@ -1,7 +1,7 @@
 import { ConflictError } from '../../storage/errors.js';
 import { performance } from 'node:perf_hooks';
 import { hashNativeDocument as hash, cloneNativeDocument, putImmutable } from '../repositories/common.js';
-import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
+import { assertObject, assertResultPolicy, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { createOrchestrationAuthoringService } from './authoring-service.js';
 import { validateModelCapability } from './model-capability-authority.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
@@ -75,7 +75,7 @@ export class NativeProjectOrchestrationAuthority {
         const plan = await this.#authoring().getRevision(handle, binding.planRef), graph = plan.definition;
         const node = graph.nodes.find(item => item.kind === 'agent'), output = graph.nodes.find(item => item.kind === 'output');
         const toolPins = plan.dependencyPins.filter(item => item.port === 'tool');
-        const modelPins = plan.dependencyPins.filter(item => item.port === 'model' && item.resourceRef.scope === 'player');
+        const modelPins = nodeModelRoutePins(node, plan.dependencyPins);
         const forward = graph.edges.find(edge => !edge.loopBack), loop = graph.edges.find(edge => edge.loopBack);
         const capabilities = ['generation.send', ...['project.read', 'project.propose'].filter(capability => toolPins.some(pin => projectToolCapability(pin.resourceRef.name) === capability))];
         if (graph.nodes.length !== 2 || !node || !output || graph.edges.length !== (loop ? 2 : 1)

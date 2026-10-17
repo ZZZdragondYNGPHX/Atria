@@ -399,7 +399,8 @@ export class NativeGenerationHost {
         if (authority && runtime.turn.policy !== 'authority-first') fail('native_authority_turn_policy_required');
         if (controlledReview) await this._assertControlledTurn(handle, base, controlledReview);
         const orchestrationSelection = this.turnOrchestration ? await this.turnOrchestration.preflightBinding({ host: this, handle, base, input, transaction }) : null;
-        const lanes = await this._turnLanes(handle, base, input, transaction);
+        const lanes = orchestrationSelection ? await this.turnOrchestration.selectedTurnLanes({ host: this, handle, base, input, transaction, selection: orchestrationSelection })
+            : await this._turnLanes(handle, base, input, transaction);
         const lanePlan = { budgetContext: { snapshot: base, anchor: { branchId: base.revision.branchId, revisionId: base.revision.revisionId } }, memoryEvidence: normalizeHostMemoryEvidence(input.hostMemoryEvidence, base), transaction, evidenceCapture,
             ...(controlledReview ? { effectPolicy: 'no-background-model', controlledTurn: { check: async () => this._assertControlledTurn(handle, await this.sessionCore.observe(handle, input.sessionId), controlledReview) } } : {}) };
         turnProducerLanes.set(lanePlan, { host: this, handle, sessionId: base.session.sessionId, invocationId: input.invocationId, requestHash,

@@ -77,7 +77,7 @@ export async function rpModelFixture(make, { memorySettings = null, seedMemory =
         plan.definition.edges = [{ edgeId: id('Edge'), from: { nodeId, port: 'response' }, to: { nodeId: output.nodeId, port: 'response' }, condition: 'always', maxVisits: 1, loopBack: false }];
         plan.definition.limits.maxSteps = 50;
         plan.dependencyPins = [{ pinId: 'rp.route', port: 'model', resourceRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, integrity: hash(route) }];
-        configurePlan?.(plan);
+        await configurePlan?.(plan, { h, host, route, seeded });
         const draft = await plans.create(h.handle, id('Command'), plan), expected = { planId: draft.planId, expectedDraftVersion: draft.draftVersion, expectedDefinitionHash: draft.definitionHash };
         const report = await plans.validate(h.handle, expected);
         if (report.status !== 'valid') throw new Error(JSON.stringify(report.issues));

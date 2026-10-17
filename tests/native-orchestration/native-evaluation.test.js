@@ -17,22 +17,34 @@ function configurePlan(plan) {
 }
 
 describe.each(harnesses)('$name isolated original Native RP evaluation', ({ make }) => {
-    test('exact baseline/candidate Plans use real Native Run/Effect/Chat output while only the parent original Evolution ledger pays', async () => {
-        const f = await rpModelFixture(make, { configurePlan }), handle = f.h.handle;
+    test.each(['limits', 'route_selection'])('%s exact baseline/candidate Plans use real Native Run/Effect/Chat output while only the parent original Evolution ledger pays', async strategy => {
+        let routeAlternative;
+        const routeSelection = strategy === 'route_selection';
+        const f = await rpModelFixture(make, { configurePlan: async (plan, args) => {
+                configurePlan(plan);
+                if (routeSelection) {
+                    const alternative = { ...args.route, runtimeRouteId: createNativeId('runtimeRoute'), displayName: 'Predeclared RP evaluation Route' };
+                    await args.host.persistence.saveRuntimeRoute(args.h.handle, alternative);
+                    routeAlternative = { scope: 'player', runtimeRouteId: alternative.runtimeRouteId };
+                    plan.dependencyPins.push({ pinId: 'rp.route-alternative', port: 'model', resourceRef: routeAlternative, integrity: hash(alternative) });
+                    plan.definition.nodes[0].dependencyPinIds.push('rp.route-alternative');
+                }
+            } }), handle = f.h.handle;
         try {
             const targets = new EvolutionTargets({ host: f.host }), scope = { domain: 'rp_chat', charDir: 'Actor', name: 'main', isGroup: false, groupId: '' };
-            const choice = (await targets.catalog(handle, scope, 'Actor')).find(item => item.target.fieldPath === 'limits.maxSteps');
+            const choice = (await targets.catalog(handle, scope, 'Actor')).find(item => item.target.fieldPath === (routeSelection ? 'routeRef' : 'limits.maxSteps'));
             await targets.declare(handle, scope, 'Actor', choice.target, choice.baseHash);
             const capture = await targets.capture(handle, scope, 'Actor', choice.target);
-            const candidate = await targets.prepare(handle, scope, 'Actor', choice.target, capture, capture.body - 1);
+            const candidate = await targets.prepare(handle, scope, 'Actor', choice.target, capture, routeSelection ? routeAlternative : capture.body - 1);
             const settings = { baseline: await targets.evaluationSettings(handle, scope, 'Actor', choice.target),
                 candidate: await targets.evaluationSettings(handle, scope, 'Actor', choice.target, candidate.candidateId) };
             const repository = new AgentEvolutionRepository({ engine: f.h.engine }), evaluator = new EvolutionEvaluator({ host: f.host, repository });
             await repository.limits(handle, { maxRequests: 10, maxTokens: 100000, minIntervalMs: 1000 }, 0);
             const config = await evaluator.configuration(handle, settings.baseline.runtimeRouteId);
+            const configs = { baseline: config, candidate: routeSelection ? await evaluator.configuration(handle, settings.candidate.runtimeRouteId) : config };
             const job = { id: 'native-evaluation-case', scopeId: 'native-evaluation-scope', domain: 'rp', policyFingerprint: 'test-policy', targetPin: 'test-target', price: null };
             let checks = 0;
-            const report = await evaluator.compare(handle, job, { baseline: config, candidate: config }, settings, new AbortController().signal, async () => { checks++; },
+            const report = await evaluator.compare(handle, job, configs, settings, new AbortController().signal, async () => { checks++; },
                 async () => {}, async () => {}, { split: 'development', repetitions: 1, caseIds: ['rp_agency_d1', 'rp_variant_d1'] });
             expect(report.origin).toBe('host_evaluator'); expect(report.pairs).toHaveLength(2);
             for (const arm of ['baseline', 'candidate']) {
@@ -55,7 +67,7 @@ describe.each(harnesses)('$name isolated original Native RP evaluation', ({ make
             expect(promotionDecision(report, { policyFingerprint: job.policyFingerprint, targetPin: job.targetPin }).eligible).toBe(false);
             let revoked = false;
             f.onResponse(async () => { revoked = true; });
-            await expect(evaluator.compare(handle, { ...job, id: 'native-evaluation-revoked' }, { baseline: config, candidate: config }, settings,
+            await expect(evaluator.compare(handle, { ...job, id: 'native-evaluation-revoked' }, configs, settings,
                 new AbortController().signal, async () => { if (revoked) throw Object.assign(new Error('native_orchestration_source_stale'), { code: 'native_orchestration_source_stale' }); },
                 async () => {}, async () => {}, { split: 'development', repetitions: 1, caseIds: ['rp_agency_d1'] })).rejects.toThrow('native_orchestration_source_stale');
             expect(f.requests).toHaveLength(7);

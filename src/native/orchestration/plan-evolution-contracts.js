@@ -1,4 +1,4 @@
-import { assertObject, assertCounter, assertDigest, assertPlanRef, assertSourceSelector } from '../../../public/shared/native-orchestration-contracts.js';
+import { assertObject, assertCounter, assertDigest, assertPlanRef, assertSourceSelector, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertExactResourceRef } from '../model-prompt-runtime/contracts.js';
 import { assertNativeId } from '../identity.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
@@ -37,7 +37,7 @@ export function assertPlanRouteValue(value) {
 export function planNodeRouteChoices(definition, dependencyPins, nodeId) {
     const node = definition.nodes.find(node => node.nodeId === nodeId);
     if (!['agent', 'planner', 'judge', 'review'].includes(node?.kind) || !node.capabilities.includes('generation.send')) return [];
-    const refs = dependencyPins.filter(pin => pin.port === 'model' && pin.resourceRef.scope === 'player' && node.dependencyPinIds.includes(pin.pinId))
+    const refs = nodeModelRoutePins(node, dependencyPins)
         .map(pin => assertPlanRouteValue(pin.resourceRef));
     return [...new Map(refs.map(ref => [hash(ref), ref])).values()];
 }
