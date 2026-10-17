@@ -6,7 +6,7 @@ import { rpNativeOutputKey } from '../rp-output-protocol.js';
 import { assertResultRecord, resultDependencyDigest } from './result-contracts.js';
 import { modelResultId } from './result-publication-contracts.js';
 import { controlRecordKey, readAttempt, assertAttemptCurrent } from './controller-common.js';
-import { checkedRecord } from './plan-repository.js';
+import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
@@ -15,6 +15,7 @@ import { assertOutputTransition } from './output-transition-contracts.js';
 import { readGraphNodeResult, graphResultPublicationId } from './graph-result-contracts.js';
 import { readRpReviewCompletion } from './rp-review-contracts.js';
 import { readRpJudgeCompletion } from './rp-judge-contracts.js';
+import { rpResultChainProfile } from './rp-result-chain-profile.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP Narrator Result facts'); };
@@ -117,7 +118,26 @@ export async function readRpNarrationResult(tx, handle, root) {
             if (!reviewed || reviewed.review.decision !== 'approve' || !equal(reviewed.receipt.reviewReceiptRef, input.reviewReceiptRef)
                 || !equal(reviewed.review.evidenceRefs, [draft.receipt.resultRef])) invalid();
             additionalProducers.push(reviewed);
-        } else if (graphResults.length !== 1) invalid();
+        } else {
+            const plan = await readPlanRevision(tx, handle, root.planRef), chain = rpResultChainProfile(plan);
+            if (!chain || !equal(root.graph, plan.definition) || graphResults.length !== chain.drafts.length
+                || !equal(graphResults.map(item => item.producer.nodeId), chain.drafts.map(node => node.nodeId))) invalid();
+            for (const [index, source] of graphResults.entries()) {
+                await assertAttemptCurrent(tx, handle, root, source.producer);
+                const effect = (await readEffect(tx, handle, root, source.receipt.modelEffectId)).doc, input = effect.inputRef;
+                const previous = graphResults[index - 1], refs = previous ? [previous.receipt.resultRef] : [];
+                if (input.kind !== 'native_rp_intent' || input.role !== 'narrator' || input.nodeId !== source.producer.nodeId
+                    || !equal(input.planRef, root.planRef) || !equal(input.sourceRef, root.sourceBinding.sourceRef)
+                    || !equal(input.audience, { kind: 'narrator' }) || (previous ? !equal(input.acceptedGraphResultRefs, refs) : Object.hasOwn(input, 'acceptedGraphResultRefs'))
+                    || !equal(source.producer.inputRefs, [input, ...refs])) invalid();
+                if (!previous) continue;
+                if (!previous.record.envelope.audienceConstraint.nodeIds.includes(source.producer.nodeId)) invalid();
+                const bindings = [{ edgeId: chain.transfers[index - 1].edgeId, producerAttemptId: previous.producer.attemptId }];
+                const traversalId = 'oreceipt_' + hash({ runId: root.runId, bindings, reservedAttemptId: null }).slice(0, 32);
+                await assertOutputTransition(tx, handle, root, { published: previous, output: source.producer,
+                    receipt: { decisionSeq: source.receipt.decisionSeq, traversalReceiptRef: { runId: root.runId, receiptId: traversalId } } });
+            }
+        }
         if (!equal(producer.inputRefs, [input, ...input.acceptedGraphResultRefs])) invalid();
         const edges = [draft, ...additionalProducers].map(source => root.graph.edges.find(item => item.from.nodeId === source.producer.nodeId && item.to.nodeId === producer.nodeId));
         if (edges.some(edge => !edge)) invalid();

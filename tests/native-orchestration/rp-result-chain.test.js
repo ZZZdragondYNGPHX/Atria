@@ -1,7 +1,7 @@
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 import { rpModelFixture } from './helpers/rp-model-fixture.js';
 import { createNativeId } from '../../src/native/identity.js';
-import { hashNativeDocument as hash } from '../../src/native/repositories/common.js';
+import { hashNativeDocument as hash, putMutable } from '../../src/native/repositories/common.js';
 import { readRpOutput } from '../../src/native/orchestration/rp-output-contracts.js';
 import { readGraphNodeResult } from '../../src/native/orchestration/graph-result-contracts.js';
 import { jest } from '@jest/globals';
@@ -15,6 +15,22 @@ import { StorageCommitUnknownError } from '../../src/storage/errors.js';
 import { runGuard } from '../../src/native/orchestration/controller-common.js';
 
 const id = kind => createNativeId('orchestration' + kind);
+async function configureLongChain(plan, args, draftCount) {
+    await configureChain(plan, args);
+    const narrator = plan.definition.nodes[1]; let previous = plan.definition.nodes[0];
+    for (let index = 1; index < draftCount; index++) {
+        const route = { ...args.route, runtimeRouteId: createNativeId('runtimeRoute'), displayName: 'Graph step ' + index };
+        await args.seeded.persistence.saveRuntimeRoute(args.h.handle, route);
+        const persisted = await args.seeded.persistence.getRuntimeRoute(args.h.handle, route.runtimeRouteId), pinId = 'step' + index + '.route';
+        plan.dependencyPins.push({ pinId, port: 'model', resourceRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, integrity: hash(persisted) });
+        const node = { ...previous, nodeId: id('Node'), label: 'Graph step ' + index, inputs: [{ name: 'draft', type: 'text', required: true }],
+            dependencyPinIds: [pinId], policy: { agentPinId: pinId } };
+        const transfer = plan.definition.edges.find(edge => edge.from.nodeId === previous.nodeId && edge.to.nodeId === narrator.nodeId);
+        transfer.to = { nodeId: node.nodeId, port: 'draft' };
+        plan.definition.edges.push({ ...transfer, edgeId: id('Edge'), from: { nodeId: node.nodeId, port: 'draft' }, to: { nodeId: narrator.nodeId, port: 'draft' } });
+        plan.definition.nodes.splice(plan.definition.nodes.indexOf(narrator), 0, node); previous = node;
+    }
+}
 async function configureChain(plan, { h, seeded, route }) {
     const narrator = plan.definition.nodes[0], output = plan.definition.nodes[1], draftId = id('Node');
     const draftRoute = { ...route, runtimeRouteId: createNativeId('runtimeRoute'), displayName: 'Explicit graph draft Route' };
@@ -30,6 +46,80 @@ async function configureChain(plan, { h, seeded, route }) {
 }
 
 describe.each(CONTRACT_HARNESSES)('$name real RP graph Result chain', ({ make }) => {
+    test('a declared chain exceeding the original request budget is rejected before any Model admission', async () => {
+        const f = await rpModelFixture(make, { configurePlan: (...args) => configureLongChain(...args, 4) });
+        try {
+            await expect(f.run()).rejects.toThrow('native_orchestration_graph_budget_unavailable');
+            expect(f.requests).toEqual([]); expect(f.effects).toEqual([]);
+            expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(2);
+        } finally { await f.cleanup(); }
+    });
+    test.each([2, 3])('%s Draft nodes pass only their own direct Result to the next original Model and close every paid Effect', async draftCount => {
+        const f = await rpModelFixture(make, { configurePlan: (...args) => configureLongChain(...args, draftCount),
+            responsePayload: (_body, ordinal) => ordinal <= draftCount ? 'STAGE_' + ordinal + '_PRIVATE' : 'Final multi-step narration.' });
+        try {
+            const result = await f.run(), root = await f.authority.execution.runs.get(f.h.handle, result.runId);
+            expect(result.output.runStatus).toBe('completed'); expect(f.requests.length).toBe(draftCount + 1);
+            for (const [index, request] of f.requests.entries()) {
+                const text = JSON.stringify(request);
+                for (let stage = 1; stage <= draftCount; stage++) {
+                    expect(text.includes('STAGE_' + stage + '_PRIVATE')).toBe(stage === index);
+                }
+            }
+            expect(root.resultRefs).toHaveLength(draftCount + 1); expect(root.attemptRefs).toHaveLength(draftCount + 2);
+            const output = await f.h.engine.withTransaction(f.h.handle, tx => readRpOutput(tx, f.h.handle, root));
+            expect(output.published.graphResults).toHaveLength(draftCount); expect(output.closure.effectIds).toHaveLength(draftCount + 2);
+            expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(3);
+        } finally { await f.cleanup(); }
+    });
+    test.each(['binding', 'cancel'])('withdrawing %s during an intermediate Model preserves earlier Result/cost facts and stops the rest of the chain', async change => {
+        const f = await rpModelFixture(make, { configurePlan: (...args) => configureLongChain(...args, 2), responsePayload: (_body, ordinal) => 'STAGE_' + ordinal });
+        f.onResponse(async () => {
+            if (f.requests.length !== 2) return;
+            if (change === 'binding') {
+                const binding = await f.plans.getBinding(f.h.handle, f.sourceSelector);
+                await f.plans.saveBinding(f.h.handle, id('Command'), { sourceSelector: f.sourceSelector, planRef: f.planRef, expectedVersion: binding.version });
+            } else {
+                const [row] = await f.h.engine.withTransaction(f.h.handle, tx => tx.listResources({ kind: K.orchestrationRun, handle: f.h.handle }));
+                await f.authority.execution.runs.cancel(f.h.handle, id('Command'), { ...runGuard(row.doc), reasonCode: 'controlled_user_cancel' });
+            }
+        });
+        try {
+            await expect(f.run()).rejects.toThrow(); expect(f.requests.length).toBe(2);
+            const [row] = await f.h.engine.withTransaction(f.h.handle, tx => tx.listResources({ kind: K.orchestrationRun, handle: f.h.handle }));
+            expect(row.doc.resultRefs).toHaveLength(1); expect(row.doc.outputClaims).toEqual([]); expect(row.doc.cancelRequested).toBe(change === 'cancel');
+            const compute = Object.values((await f.control.status(f.h.handle, f.controlId)).operations)[0].compute;
+            expect(compute.attempts).toHaveLength(2); expect(compute.attempts.every(row => row.status === 'settled')).toBe(true);
+            expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(2);
+        } finally { await f.cleanup(); }
+    });
+    test('cold history retains a completed multi-step chain after Source deletion and rejects a rehashed earlier traversal', async () => {
+        const f = await rpModelFixture(make, { configurePlan: (...args) => configureLongChain(...args, 2), responsePayload: (_body, ordinal) => 'STAGE_' + ordinal });
+        let cold;
+        try {
+            const result = await f.run(), root = await f.authority.execution.runs.get(f.h.handle, result.runId);
+            const output = await f.h.engine.withTransaction(f.h.handle, tx => readRpOutput(tx, f.h.handle, root));
+            await f.chats.delete(f.h.handle, f.locator.charDir, f.locator.name); await f.h.engine.close();
+            cold = new f.h.engine.constructor({ url: f.h.url, nativeHostTopology: 'direct_single_primary', directoriesByHandle: () => f.h.dirs });
+            attachNativeHostLifecycle(cold, { directoriesByHandle: () => f.h.dirs });
+            expect((await cold.withTransaction(f.h.handle, tx => readRpOutput(tx, f.h.handle, root))).claim).toEqual(output.claim);
+            await cold.withTransaction(f.h.handle, async tx => {
+                const rows = await tx.listResources({ kind: K.orchestrationRecord, handle: f.h.handle, runId: root.runId, recordType: 'receipt' });
+                const row = rows.find(row => row.doc.receiptKind === 'graph_transition' && row.doc.nodeAttemptId === root.attemptRefs[1]);
+                await putMutable(tx, row.key, { ...row.doc, inputDigest: '0'.repeat(64) }, { expectedIntegrity: row.integrity });
+            });
+            await expect(cold.withTransaction(f.h.handle, tx => readRpOutput(tx, f.h.handle, root))).rejects.toThrow('Invalid original output graph traversal');
+            expect(f.requests.length).toBe(3);
+        } finally { await cold?.close(); await f.cleanup(); }
+    });
+    test('unknown usage across the chain keeps the legal Chat output while all paid Models remain unclosed', async () => {
+        const f = await rpModelFixture(make, { configurePlan: (...args) => configureLongChain(...args, 2), usage: false });
+        try {
+            const result = await f.run(), root = await f.authority.execution.runs.get(f.h.handle, result.runId);
+            expect(result.output.runStatus).toBe('pending_output'); expect(root.outputClaims).toEqual([]); expect(f.requests.length).toBe(3);
+            expect(root.resultRefs).toHaveLength(3); expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(3);
+        } finally { await f.cleanup(); }
+    });
     test('original draft becomes an exact successor Result; Narrator consumes it as untrusted input and closes one Chat output', async () => {
         const f = await rpModelFixture(make, { configurePlan: configureChain,
             responsePayload: (_body, ordinal) => ordinal === 1 ? 'GRAPH_DRAFT_UNTRUSTED_BODY' : 'Final narrator after original Result.' });
