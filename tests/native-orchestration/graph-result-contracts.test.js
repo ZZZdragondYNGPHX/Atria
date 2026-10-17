@@ -76,6 +76,15 @@ describe('same-source RP graph Result data contracts', () => {
         f.root.graph.outputContract.resultPolicy.maxBytes--;
         expect(() => build(f)).toThrow('byte bound');
     });
+    test('an original graph snapshot freezes recipients while later edges cannot enlarge it or publish a stale producer', () => {
+        const f = fixture(), snapshot = { graphRevision: 0, graph: structuredClone(f.root.graph) };
+        const later = id('Node'); f.root.graphRevision = 1;
+        f.root.graph.nodes.push({ nodeId: later, kind: 'agent' });
+        f.root.graph.edges.push({ from: { nodeId: f.producer.nodeId }, to: { nodeId: later }, loopBack: false });
+        expect(graphResultContract(f.root, f.producer, snapshot).audience.nodeIds).toEqual([f.b, f.c].sort());
+        expect(() => graphNodeResult({ ...f, graphSnapshot: snapshot, now: 100 })).toThrow('Invalid Graph Result facts');
+        expect(() => graphResultContract(f.root, f.producer, { ...snapshot, graphRevision: 1 })).toThrow('Invalid Graph Result facts');
+    });
 });
 
 describe.each(CONTRACT_HARNESSES)('$name Graph Result history and recipient consistency', ({ make }) => {

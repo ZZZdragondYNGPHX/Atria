@@ -44,3 +44,15 @@ export function rpAgentGraphProfile(plan) {
         nodes: [{ ...narrator, inputs: [] }, output], entryNodeIds: [narrator.nodeId], edges: terminal },
     dependencyPins: plan.dependencyPins.filter(pin => narrator.dependencyPinIds.includes(pin.pinId)) } };
 }
+
+/** Derive only order; priorities never grant a node or Result permission. */
+export function rpAgentGraphOrder(profile, nodeControl) {
+    const nodes = [...profile.drafts, profile.narration.definition.nodes[0]], ordered = [];
+    while (ordered.length < nodes.length) {
+        const ready = nodes.filter(node => !ordered.includes(node) && profile.inputs[node.nodeId].every(edge => ordered.some(source => source.nodeId === edge.from.nodeId)));
+        ready.sort((a, b) => nodeControl[b.nodeId].priority - nodeControl[a.nodeId].priority);
+        if (!ready.length) fail();
+        ordered.push(ready[0]);
+    }
+    return ordered;
+}

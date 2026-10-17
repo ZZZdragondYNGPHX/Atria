@@ -15,6 +15,7 @@ import { assertResultRecord, resultDependencyDigest } from './result-contracts.j
 import { modelResultId, resultPublicationReceiptId, assertResultPublicationReceipt, readResultPublication } from './result-publication-contracts.js';
 import { assertDelegationDecision } from './delegate-controller.js';
 import { graphNodeResult, readGraphNodeResult, graphResultPublicationId } from './graph-result-contracts.js';
+import { readTaskGraphRevision } from './graph-revision-contracts.js';
 
 const fail = code => { throw new ConflictError(code); };
 const equal = (a, b) => hash(a) === hash(b);
@@ -162,20 +163,21 @@ export class ResultController {
                     const permission = await authorize();
                     if (!equal(permission, { allowed: true, grantDigest: intent.grantDigest }) || record.doc.status !== 'running' || record.doc.resultRefs.length
                         || !equal(record.doc.effectRefs, [effectId]) || record.doc.effectiveGrantDigest !== intent.grantDigest || root.pendingEffectRefs.includes(effectId)) fail('native_orchestration_result_not_publishable');
+                    const graphSnapshot = await readTaskGraphRevision(tx, handle, root);
                     await sourcePort.revalidate(handle, root.sourceBinding, { tx, root });
                     if (!equal(await authorize(), permission)) return { denied: true };
                     if (!equal(await runs.get(handle, runId), root)) return { denied: true };
-                    checked = { root, record, intent };
+                    checked = { root, record, intent, graphSnapshot };
                 } catch (error) { if (DENIALS.has(error.code)) return { denied: true }; throw error; }
-                const { root, record, intent } = checked;
+                const { root, record, intent, graphSnapshot } = checked;
                 return runs.control(handle, controlCommandId('graph.result.publish', { runId, effectId }), { ...runGuard(root), operation: 'result.publish', detail: { effectId, resultId } }, async ({ tx, root: active, now }) => {
                     if (!equal(active, root) || active.progress.steps >= active.limits.maxSteps || now >= active.progress.deadlineAt) fail('native_orchestration_result_publication_stale');
-                    const body = graphNodeResult({ root: active, producer: record.doc, proof, text: result.generated.response.text, now });
+                    const body = graphNodeResult({ root: active, producer: record.doc, proof, text: result.generated.response.text, now, graphSnapshot });
                     const resultRef = { runId, resultId }, receiptId = graphResultPublicationId(runId, resultId);
                     const receipt = { schemaVersion: 1, receiptKind: 'graph_node_result', receiptId, runId, epoch: active.epoch, producerAttemptId: record.doc.attemptId,
                         resultRef, resultIntegrity: hash(body), modelEffectId: effectId, modelReceiptRef: proof.receiptRef, modelPayloadHash: proof.payloadHash,
                         producerGrantDigest: intent.grantDigest, sourceBindingDigest: active.sourceBinding.bindingDigest,
-                        audienceDigest: hash(body.envelope.audienceConstraint), decisionSeq: active.eventSeq + 1, createdAt: now };
+                        audienceDigest: hash(body.envelope.audienceConstraint), graphRevision: active.graphRevision, decisionSeq: active.eventSeq + 1, createdAt: now };
                     await putImmutable(tx, controlRecordKey(handle, runId, 'result', resultId), body);
                     await putImmutable(tx, controlRecordKey(handle, runId, 'receipt', receiptId), receipt);
                     await writeAttemptSettlement({ tx, handle, root: active, record, outcome: 'completed', resultRefs: [resultRef], effectReceiptRefs: [proof.receiptRef.receiptId], reasonCode: 'graph_result_published', now });

@@ -1,5 +1,6 @@
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
+import { rpAgentGraphProfile } from './rp-agent-graph-profile.js';
 
 const allowed = ['setPendingPriority', 'markBlocked', 'requestFinalize', 'requestReplan'];
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_rp_planner_plan_unavailable'), { code: 'native_orchestration_rp_planner_plan_unavailable' }); };
@@ -14,6 +15,27 @@ export function rpPlannerProfile(plan) {
     if (loops.length > 1 || loop && (loop.from.nodeId !== planner.nodeId || loop.to.nodeId !== planner.nodeId
         || loop.from.port !== planner.outputs[0]?.name || loop.condition !== 'always' || loop.maxVisits > graph.limits.maxLoopIterations
         || planner.inputs.length !== 1 || planner.inputs[0].name !== loop.to.port || planner.inputs[0].type !== 'json' || planner.inputs[0].required)) fail();
+    if (graph.nodes.filter(node => node.kind === 'agent').length > 1) {
+        if ((!loop && planner.inputs.length) || planner.outputs.length !== 1 || planner.outputs[0].type !== 'json'
+            || hash([...planner.capabilities].sort()) !== hash(['generation.send', 'graph.patch'].sort())
+            || !nodeModelRoutePins(planner, plan.dependencyPins).length || planner.dependencyPinIds.length !== nodeModelRoutePins(planner, plan.dependencyPins).length
+            || hash(graph.entryNodeIds) !== hash([planner.nodeId]) || graph.graphChangePolicy.allowedNodeKinds.length || !graph.graphChangePolicy.allowedOperations.length
+            || graph.graphChangePolicy.allowedOperations.some(op => !allowed.includes(op))) fail();
+        const transfers = graph.edges.filter(edge => edge.from.nodeId === planner.nodeId && !edge.loopBack);
+        if (!transfers.length || new Set(transfers.map(edge => edge.to.nodeId)).size !== transfers.length) fail();
+        for (const edge of transfers) {
+            const target = graph.nodes.find(node => node.nodeId === edge.to.nodeId);
+            if (target?.kind !== 'agent' || edge.from.port !== planner.outputs[0].name || edge.condition !== 'always' || edge.maxVisits !== 1
+                || !target.inputs.some(port => port.name === edge.to.port && port.type === 'json' && port.required)) fail();
+        }
+        const nodes = graph.nodes.filter(node => node !== planner).map(node => ({ ...node, inputs: node.inputs.filter(port => !transfers.some(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name)) }));
+        const used = new Set(nodes.flatMap(node => node.dependencyPinIds));
+        if (plan.dependencyPins.some(pin => !used.has(pin.pinId) && !planner.dependencyPinIds.includes(pin.pinId))) fail();
+        const agentGraph = rpAgentGraphProfile({ ...plan, definition: { ...graph, nodes, edges: graph.edges.filter(edge => edge.from.nodeId !== planner.nodeId),
+            entryNodeIds: transfers.map(edge => edge.to.nodeId), capabilityCeiling: graph.capabilityCeiling.filter(capability => capability !== 'graph.patch'),
+            graphChangePolicy: { allowedOperations: [], allowedNodeKinds: [] } }, dependencyPins: plan.dependencyPins.filter(pin => used.has(pin.pinId)) });
+        return { planner, transfer: transfers[0], transfers, loop: loop ?? null, agentGraph, narration: agentGraph.narration };
+    }
     if (graph.nodes.length !== 3 || !narrator || !output || graph.outputContract.kind !== 'rp_narration' || graph.edges.length !== 2 + loops.length || hash(graph.entryNodeIds) !== hash([planner.nodeId])
         || !loop && planner.inputs.length || planner.outputs.length !== 1 || planner.outputs[0].type !== 'json'
         || narrator.inputs.length !== 1 || narrator.inputs[0].type !== 'json' || !narrator.inputs[0].required

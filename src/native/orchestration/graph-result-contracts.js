@@ -2,24 +2,27 @@ import { hashNativeDocument as hash } from '../repositories/common.js';
 import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertResultRecord, resultDependencyDigest } from './result-contracts.js';
 import { modelResultId } from './result-publication-contracts.js';
-import { controlRecordKey, readAttempt, assertAttemptConsumable } from './controller-common.js';
+import { controlCommandId, controlRecordKey, readAttempt, assertAttemptConsumable } from './controller-common.js';
 import { checkedRecord } from './plan-repository.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { assertNativeId } from '../identity.js';
+import { readTaskGraphRevision } from './graph-revision-contracts.js';
+import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 
 const kinds = ['agent', 'planner', 'judge', 'review'];
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid Graph Result facts'); };
 export const graphResultPublicationId = (runId, resultId) => 'oreceipt_' + hash({ kind: 'graph_node_result', runId, resultId }).slice(0, 32);
 
-export function graphResultContract(root, producer) {
-    const node = root.graph.nodes.find(item => item.nodeId === producer.nodeId), policy = assertResultPolicy(root.graph.outputContract);
-    if (root.sourceBinding.sourceAuthority !== 'rp_chat' || root.parentRef !== null || root.graphRevision !== 0 || producer.graphRevision !== 0
-        || root.graph.graphChangePolicy.allowedOperations.length || !kinds.includes(node?.kind)
+export function graphResultContract(root, producer, graphSnapshot = null) {
+    const graph = graphSnapshot?.graph ?? root.graph, revision = graphSnapshot?.graphRevision ?? 0;
+    const node = graph.nodes.find(item => item.nodeId === producer.nodeId), policy = assertResultPolicy(graph.outputContract);
+    if (root.sourceBinding.sourceAuthority !== 'rp_chat' || root.parentRef !== null || producer.graphRevision !== revision || revision > root.graphRevision
+        || !graphSnapshot && (root.graphRevision !== 0 || root.graph.graphChangePolicy.allowedOperations.length) || !kinds.includes(node?.kind)
         || node.outputs.length !== 1 || !['text', 'json'].includes(node.outputs[0].type)) invalid();
-    const recipients = root.graph.edges.filter(edge => edge.from.nodeId === node.nodeId && !edge.loopBack).map(edge => root.graph.nodes.find(item => item.nodeId === edge.to.nodeId));
+    const recipients = graph.edges.filter(edge => edge.from.nodeId === node.nodeId && !edge.loopBack).map(edge => graph.nodes.find(item => item.nodeId === edge.to.nodeId));
     if (!recipients.length || recipients.some(item => !kinds.includes(item?.kind))) invalid();
     return { output: { kind: 'result', ownerNodeId: node.nodeId, slot: 'graph_result', allowPartial: false,
         resultPolicy: { outputType: node.outputs[0].type, maxBytes: policy.maxBytes } },
@@ -29,8 +32,9 @@ export function graphResultContract(root, producer) {
 
 /** The JSON representation preserves the original generation response, just
  * as the existing Project Result does; control parsing remains separately metered. */
-export function graphNodeResult({ root, producer, proof, text, now }) {
-    const contract = graphResultContract(root, producer), outputType = contract.output.resultPolicy.outputType;
+export function graphNodeResult({ root, producer, proof, text, now, graphSnapshot = null }) {
+    if (graphSnapshot && graphSnapshot.graphRevision !== root.graphRevision) invalid();
+    const contract = graphResultContract(root, producer, graphSnapshot), outputType = contract.output.resultPolicy.outputType;
     if (proof.runId !== root.runId || proof.receiptRef.runId !== root.runId || proof.producerAttemptId !== producer.attemptId || proof.epoch !== producer.epoch || proof.outputType !== 'text' || hash(text) !== proof.payloadHash
         || !equal(proof.sourceBinding, root.sourceBinding)) invalid();
     const resultId = modelResultId(root.runId, proof.effectId), payload = outputType === 'text' ? text : { text, toolCalls: [] };
@@ -54,8 +58,19 @@ export async function readGraphNodeResult(tx, handle, root, resultId, { recipien
     if (!stored || !publication) invalid();
     const receipt = publication.doc;
     assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'producerAttemptId', 'resultRef', 'resultIntegrity', 'modelEffectId',
-        'modelReceiptRef', 'modelPayloadHash', 'producerGrantDigest', 'sourceBindingDigest', 'audienceDigest', 'decisionSeq', 'createdAt'], 'Graph Result publication');
-    const { doc: producer } = await readAttempt(tx, handle, root, receipt.producerAttemptId), contract = graphResultContract(root, producer);
+        'modelReceiptRef', 'modelPayloadHash', 'producerGrantDigest', 'sourceBindingDigest', 'audienceDigest', 'decisionSeq', 'createdAt',
+        ...(Object.hasOwn(receipt, 'graphRevision') ? ['graphRevision'] : [])], 'Graph Result publication');
+    const snapshot = Object.hasOwn(receipt, 'graphRevision') ? await readTaskGraphRevision(tx, handle, root, receipt.graphRevision) : null;
+    if (snapshot) {
+        const commandId = controlCommandId('graph.result.publish', { runId: root.runId, effectId: receipt.modelEffectId });
+        const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+        if (!command || command.schemaVersion !== 1 || command.commandId !== commandId || command.target !== root.runId || command.operation !== 'runs.control.result.publish'
+            || command.payloadHash !== hash({ operation: command.operation, body: { runId: root.runId, operation: 'result.publish', detail: { effectId: receipt.modelEffectId, resultId } } })
+            || command.outcome?.status !== 'published' || command.outcome.runId !== root.runId || command.outcome.versions?.graphRevision !== receipt.graphRevision
+            || command.outcome.versions.epoch !== receipt.epoch || !equal(command.outcome.resultRef, receipt.resultRef)
+            || !equal(command.outcome.publicationReceiptRef, { runId: root.runId, receiptId: receipt.receiptId })) invalid();
+    }
+    const { doc: producer } = await readAttempt(tx, handle, root, receipt.producerAttemptId), contract = graphResultContract(root, producer, snapshot);
     const record = assertResultRecord(stored.doc, { outputContract: contract.output, expected: { runId: root.runId, resultId, producerAttemptId: producer.attemptId,
         producerEpoch: producer.epoch, sourceBindingDigest: root.sourceBinding.bindingDigest, sourceRef: root.sourceBinding.sourceRef, audienceConstraint: contract.audience } });
     const intent = (await readEffect(tx, handle, root, receipt.modelEffectId)).doc, model = await readModelCompletionReceipt(handle, tx, root, intent);
@@ -68,7 +83,7 @@ export async function readGraphNodeResult(tx, handle, root, resultId, { recipien
         || receipt.audienceDigest !== hash(contract.audience) || !equal(receipt.resultRef, { runId: root.runId, resultId })
         || resultId !== modelResultId(root.runId, receipt.modelEffectId) || !equal(producer.resultRefs, [receipt.resultRef]) || !root.resultRefs.some(ref => equal(ref, receipt.resultRef))
         || !equal(producer.effectRefs, [receipt.modelEffectId]) || intent.nodeAttemptId !== producer.attemptId || intent.grantDigest !== producer.effectiveGrantDigest
-        || intent.epoch !== producer.epoch || intent.sourceBindingDigest !== root.sourceBinding.bindingDigest
+        || intent.epoch !== producer.epoch || intent.graphRevision !== producer.graphRevision || intent.sourceBindingDigest !== root.sourceBinding.bindingDigest
         || !equal(record.envelope.sourceRefs[1], { kind: 'effect_receipt', runId: root.runId, effectId: intent.effectId, receiptId: receipt.modelReceiptRef.receiptId, observedEpoch: producer.epoch })
         || !model || !equal(model.receiptRef, receipt.modelReceiptRef) || receipt.modelPayloadHash !== hash(text)
         || model.observation.dispatchEvidence.reference.resultPayloadHash !== receipt.modelPayloadHash

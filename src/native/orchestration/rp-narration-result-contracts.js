@@ -15,7 +15,8 @@ import { assertOutputTransition } from './output-transition-contracts.js';
 import { readGraphNodeResult, graphResultPublicationId } from './graph-result-contracts.js';
 import { readRpReviewCompletion } from './rp-review-contracts.js';
 import { readRpJudgeCompletion } from './rp-judge-contracts.js';
-import { rpAgentGraphProfile } from './rp-agent-graph-profile.js';
+import { rpAgentGraphProfile, rpAgentGraphOrder } from './rp-agent-graph-profile.js';
+import { rpPlannerProfile } from './rp-planner-profile.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP Narrator Result facts'); };
@@ -120,9 +121,10 @@ export async function readRpNarrationResult(tx, handle, root) {
                 || !equal(reviewed.review.evidenceRefs, [draft.receipt.resultRef])) invalid();
             additionalProducers.push(reviewed);
         } else {
-            const plan = await readPlanRevision(tx, handle, root.planRef), graph = rpAgentGraphProfile(plan);
+            const plan = await readPlanRevision(tx, handle, root.planRef), prefix = rpPlannerProfile(plan), graph = prefix?.agentGraph ?? rpAgentGraphProfile(plan);
+            const planner = prefix ? await readRpPlannerCompletion(tx, handle, root) : null;
             if (!graph || !equal(root.graph, plan.definition) || graphResults.length !== graph.drafts.length
-                || !equal(graphResults.map(item => item.producer.nodeId), graph.drafts.map(node => node.nodeId))) invalid();
+                || !equal(graphResults.map(item => item.producer.nodeId), rpAgentGraphOrder(graph, root.nodeControl).slice(0, -1).map(node => node.nodeId))) invalid();
             const direct = nodeId => graph.inputs[nodeId].map(edge => graphResults.find(item => item.producer.nodeId === edge.from.nodeId));
             if (!equal(input.acceptedGraphResultRefs, direct(producer.nodeId).map(item => item.receipt.resultRef))) invalid();
             additionalProducers.push(...accepted.slice(1));
@@ -134,7 +136,18 @@ export async function readRpNarrationResult(tx, handle, root) {
                     || !equal(input.planRef, root.planRef) || !equal(input.sourceRef, root.sourceBinding.sourceRef)
                     || !equal(input.audience, { kind: 'narrator' }) || (refs.length ? !equal(input.acceptedGraphResultRefs, refs) : Object.hasOwn(input, 'acceptedGraphResultRefs'))
                     || !equal(source.producer.inputRefs, [input, ...refs])) invalid();
-                if (!predecessors.length) continue;
+                if (planner && !equal(input.controlReceiptRef, { runId: root.runId, receiptId: planner.receipt.receiptId })) invalid();
+                if (!predecessors.length) {
+                    if (planner) {
+                        const edge = prefix.transfers.find(edge => edge.to.nodeId === source.producer.nodeId);
+                        if (!edge || planner.patch.requests.replan) invalid();
+                        const bindings = [{ edgeId: edge.edgeId, producerAttemptId: planner.producer.attemptId }];
+                        const receiptId = 'oreceipt_' + hash({ runId: root.runId, bindings, reservedAttemptId: null }).slice(0, 32);
+                        await assertOutputTransition(tx, handle, root, { published: planner, output: source.producer,
+                            receipt: { decisionSeq: source.receipt.decisionSeq, traversalReceiptRef: { runId: root.runId, receiptId } } });
+                    }
+                    continue;
+                }
                 if (predecessors.some(item => !item.record.envelope.audienceConstraint.nodeIds.includes(source.producer.nodeId))) invalid();
                 const bindings = graph.inputs[source.producer.nodeId].map((edge, index) => ({ edgeId: edge.edgeId, producerAttemptId: predecessors[index].producer.attemptId }));
                 const traversalId = 'oreceipt_' + hash({ runId: root.runId, bindings, reservedAttemptId: null }).slice(0, 32);
@@ -154,9 +167,11 @@ export async function readRpNarrationResult(tx, handle, root) {
         const planner = await readRpPlannerCompletion(tx, handle, root);
         if (!planner || planner.patch.requests.replan || !equal(input.controlReceiptRef, { runId: root.runId, receiptId: planner.receipt.receiptId })) invalid();
         const edge = root.graph.edges.find(item => item.from.nodeId === planner.producer.nodeId && item.to.nodeId === producer.nodeId);
-        if (!edge) invalid();
-        const traversalId = 'oreceipt_' + hash({ runId: root.runId, bindings: [{ edgeId: edge.edgeId, producerAttemptId: planner.producer.attemptId }], reservedAttemptId: null }).slice(0, 32);
-        await assertOutputTransition(tx, handle, root, { published: planner, output: producer, receipt: { decisionSeq: receipt.decisionSeq, traversalReceiptRef: { runId: root.runId, receiptId: traversalId } } });
+        if (!graphResults.length) {
+            if (!edge) invalid();
+            const traversalId = 'oreceipt_' + hash({ runId: root.runId, bindings: [{ edgeId: edge.edgeId, producerAttemptId: planner.producer.attemptId }], reservedAttemptId: null }).slice(0, 32);
+            await assertOutputTransition(tx, handle, root, { published: planner, output: producer, receipt: { decisionSeq: receipt.decisionSeq, traversalReceiptRef: { runId: root.runId, receiptId: traversalId } } });
+        }
     }
     const reviewCompletions = [];
     for (const id of root.attemptRefs) {
