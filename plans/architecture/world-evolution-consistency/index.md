@@ -13,7 +13,7 @@
 本 Plan 是同一主题持续迭代的**唯一入口**。每一轮先更新对应模块和本轮讨论状态、在 `docs` 分支提交并核实，再开展本轮讨论；直到用户明确认可完整方案，才将状态由 Draft 改为 Approved/定稿。不得把助理推荐误写为已获批准的冻结决议，亦不得在讨论阶段直接修改 `main` 产品实现。
 
 - [Research](research.md)：外部资料、机制比较、来源、局限和迁移适用性；讨论中持续补充。
-- [Design](design.md)：累计讨论见 §8–§22；**§23 已记录 W15-B 选择并路由 W16 跨分支 E0 接口审查**。早期选型是历史，当前用户确认状态以最新章节为准。
+- [Design](design.md)：历史讨论汇总 §8–§23；**§24 记录 W16-B 正式确认并路由 W17 Domain-first 接口收口**。旧候选为历史，以后续用户决议为准。
 - [Runtime Emergence & Fact Lifecycle](runtime-emergence.md)：**W4 方向已确认，§8 记录 W4-B**。仅当本轮需要核对实体注册/事件基础时阅读。
 - [NPC Autonomy & Scheduling](npc-autonomy.md)：**W5 已确认 B 方向**；§10 明确选型与待收口接口，复核 NPC 调度时按需读取。
 - [NPC Social Cognition](npc-social-cognition.md)：**W6 已确认 B 方向**；§10 记录社会关系真相、私人认知及来源事件边界。仅在当前模块需要这些依赖时读取。
@@ -26,7 +26,8 @@
 - [Event Temporality & Branch Integrity](event-temporality-branch.md)：**W13-B 已确认方向**；§9 记录 Revision 提交、事实有效期与分支受控投影，精确 API 未冻结。
 - [Effective World View & Knowledge Context](effective-world-view.md)：**W14-B 已确认方向**；§10 记录有效世界视图优先、Claim/Source-Aware Context 和 Library/Studio/Play 的设计原则；完整 E0 尚未通过。
 - [E0 Final Closure / Evidence Gates](e0-final-closure.md)：**W15-B 已确认收口方法**；§8 记录证据门槛式 E0/可执行交接原则，现有 E0-01～09 仍为 PARTIAL / BLOCKED。
-- [E0 Integration Readiness](e0-integration-readiness.md)：**W16 当前阶段模块**。锁定 main/Orchestration V3/Prompt/Visual HEAD、真实 Domain Effect↔Run Receipt、ContextPort/Prompt 责任及 Consumer/Deletion 阻塞，比较 W16-A/B/C（Draft）。
+- [E0 Integration Readiness](e0-integration-readiness.md)：**W16-B 已确认方向**，§9 记录跨分支固定 HEAD/Native Domain、ContextPort、Receipt/Prompt 权威划分和待解决消费者。
+- [E0 Domain → World → Context Contract](e0-domain-world-context-contract.md)：**W17 当前阶段模块**，以 main/V3/Prompt 固定 SHA 的 Native commit 与 Domain Receipt 为起点，核对世界读写/动态 Subject/合法 Context/Prompt 接线及 E0-01/02/04/05 阻塞；W17-A/B/C 均为候选（Draft）。
 - [Record](../../../records/architecture/world-evolution-consistency.md)：按工作轮累积可核验的文档提交、调研结果、未完成内容。
 - 后续需要规模化时再按主题拆模块，本入口仍为唯一导航。
 
@@ -36,7 +37,7 @@
 
 原问题「静态设定和动态演化冲突」仍保留，**但现在必须以原生 World / Knowledge 整体重构为主线**。先明确 World（实体/关系/世界法则/初始基线）与 Knowledge（资料/断言/来源/语境）的真实边界，再设计事实演化、主体认知、有效上下文和 Library/Studio/Play 产品界面。已有 Native SessionCore/State/Event/Simulation/HCM/Context Compiler 是首先审查和复用的权威，不能平行再建一套真相库。
 
-**已确认方向：W1-B 至 W15-B。** Native World/Knowledge、涌现实体/个人认知、Canonical Subject/Participant/Perspective、双时间 Native Revision、Effective World View First、E0 证据门槛式原生硬切均已获方向性认可。**W16 跨分支 Owner/Consumer/Host Context/Receipt 的具体接口路线未确认**，详见 [e0-integration-readiness.md](e0-integration-readiness.md)。完整 Plan 保持 Draft；E0 没有 PASS，也未授权产品开发。
+**已确认方向：W1-B 至 W16-B。** 固定 World/Knowledge 来源、涌现世界实体和私人认知、Canonical Subject/Participant/Perspective、原 Native Session/Revision/双时间/分支、Source Claim-aware Effective World View、跨分支证据门槛 E0 与单权威原生硬切均已获方向性批准。**W17 Domain Effect → EffectiveWorld → V3 Context → Prompt 的最小合同及实际 E0/开发仍未批准**，见 [e0-domain-world-context-contract.md](e0-domain-world-context-contract.md)。Plan 仍 Draft；E0-01～09 PARTIAL / BLOCKED。
 
 需要回答：创作者的首要对象是若干触发条目，还是可以直接浏览、引用并演化的“世界”；Knowledge 应是同级世界书，还是世界引用的来源与证据？现有 free text 必须继续一等支持；不为未发布旧 ST 数据建立兼容双轨。
 
@@ -77,7 +78,7 @@
 
 ## 5. 状态与下一检查点
 
-- **当前：**S17 已记录用户选择 **W15-B**；W16 当前讨论为 [固定 main/Native Orchestration V3/Prompt/Visual 分支 HEAD、核心领域提交与消费者边界](e0-integration-readiness.md)。W16-B 是**研究推荐，尚未获用户选择**；E0-01～09 继续 PARTIAL / BLOCKED。
-- **已确认设计方向（W1–W15）：** 已确认原生 World/Knowledge 及 Source Claim、NPC/Subject/Perspective、Native Revision/双时间/分支、受众安全 Effective View 和“固定真实 HEAD + 全消费者 E0 + 无旧双轨硬切”审查方法。**未批准 W16、具体 ID/ABI/API、全量 E0、真实 CI/三端验收或开发分支**。
+- **当前：**S18 已确认用户选择 **W16-B**；W17 [原生 Domain Fact/Participant 提交、Revision-anchored Authorized Effective World View、V3 ContextPort 和 Prompt](e0-domain-world-context-contract.md) 待讨论。当前建议 **W17-B Domain-first Commit + Authorized Projection**，**尚未获用户确认**。E0-01～09 仍 PARTIAL / BLOCKED。
+- **已确认设计方向（W1–W16）：** 唯一 Native Host World Truth、固定 Authoring 与动态 Session 实例、受控主体/社交/记忆/历史、双时间和分支正确性、合法 Effective World View 先于 Context/Prompt、E0 按真实 main 和未合并分支固定 SHA 做 Owner/Consumer/Deletion 收口，之后最小合约原生硬切。**未批准 W17 Schema/API、E0 全量通过、未来工程阶段/三端验收或开发分支。**
 - **未授权：**修改 `main`、创建实现分支、给出实施已经通过的结论。
 - **完成标准：**用户在若干轮讨论后明确确认各核心决策及边界，并批准定稿。未经确认，不使用“Final/冻结/全面通过”描述。
