@@ -396,6 +396,29 @@
 - **开发前后证据边界**：Gate 0 可在最终 HEAD 的 Authority/Consumer/最小合约/写入安全/清退和实测计划有足够可执行依据时退出；未实现的新行为的 Node/Provider Wire/Play/Studio/性能/跨端 PASS 属实施期 Gate 1～4，不应设为目前没有代码就不能开工的前置条件，也不可凭计划称已通过。
 - **下一 checkpoint**：用户若认可 W20-A/B/C，下一轮先更新原 Plan 和唯一 Record，再直接进入**正式工程交接前 E0 收口**：做最终需要决断的 Protected Namespace 与 Fact owner/Query 方案、Caller→Target 工作包/依赖、具体 Gate 0 剩余阻塞及正式企划是否具备定稿授权条件。继续 Draft，不创造产品分支，除非用户另行明确批准整份方案及启动。
 
+
+## Stage 22 — W20-B 确认与 W21 最终 Gate 0 交接前审查（2026-10-17）
+
+- **用户明确批准的方向**：本轮“认同”对应上一轮唯一推荐 **W20-B「受保护 Session-owned Identity + Domain-owned Fact transitions / Two-anchor Query + Consumer Work Packages」**。至此 ARCH-DWE-01 **W1-B～W20-B 的总体架构/收口路线均已获认可**，但 **W21-B、P2 具体物理位置、SubjectID 前缀、Schema/ABI、E0 PASS、Final 和产品开发尚未获批准**。
+- **资产纪律**：Primary Workspace `docs`；只继续原有 `plans/architecture/world-evolution-consistency/` Plan Bundle + 当前唯一累计 Record。没有改动产品 `main`、任何 Orchestration/Prompt/Visual 分支、Package/Plugin/Skills，也未创建实现分支、另一份 Plan/Record 或 HANDOFF。
+- **冻结的静态代码锚点**：此轮 GitHub Branch GET 核对 `main=c57fada6edeea255b29d857ba2585c1dbc9c098b`、`refactor/atria-native-orchestration-v3=a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`、`refactor/atria-native-prompt-preset-deepening=760327891149216dffdc1e3fa0c846496007a013`、`feat/native-visual-generation-deepening=ae587be0c64487ba922528bdd0146444bcf5e92e`，均与上轮相同。这些只是观察版本，开发前仍须重新确认最新集成 HEAD。
+- **本轮 docs 提交顺序**：
+  - `a06ca67d60aa5908aef9d8490ad2cdd2cc509b36` — `e0-gate0-integration-workpackages.md` §8 正式记录 W20-B 已确认与未冻结 P1/P2、明确 Native protected writer/Domain Fact Owner/History/授权和 Gate 0。
+  - `3bff5a15e258a8d30c37c2c2960fe698c6e23b87` — 同一 Plan Bundle 新增 W21 `e0-handoff-evidence-review.md`，逐源码比较 P1/P2 安全/存储代价、Session State/GC/Save 的现实复用、最小 Subject/Fact/EffectiveRead 字段示意、WP-A～F 的 Owner/消费者/验收及 E0-01～09 交接阻塞和 W21-A/B/C 候选。
+  - `ddd40567e099c1939dab91bc12527b2c71cb6865` — 同一总设计 `design.md` §28 同步 W20-B 确认及 W21 条件性 P2 优选问题。
+  - `265d318cf618594916c4672901e3b06cd6129683` — 同一 `index.md` 同步 W1–W20 已确认方向，路由 W21，继续保留 Draft 和 E0 PARTIAL/BLOCKED。
+- **P1/P2 新的静态证据**：
+  - `SessionCore.validateRuntimeStateChanges` 根据 `RESERVED_SESSION_NAMESPACES` 阻止 Generic Patch；`authority-first` 保护特定原生世界 Patch，但**不能推断 P1 新子树对所有合法 Game/Worldless 模式已全覆盖**。
+  - `SessionRepo.commitSnapshot` 在一个原生 Native Session Revision 中提交多个命名空间；`readSessionSnapshot` 遍历 `revision.stateHeads` 读取资源和校验 Hash，不自动校验新增 Subject 业务语义；**P2 在同一 Revision 下是一个受保护状态，不是独立真相数据库**。
+  - `save-system.js` `portableNamespace` 排除某些缓存 namespace 而收集正式状态；`SessionRepo.reachabilitySnapshot` 从所有保留 Revision 的 `stateHeads` 标记依赖，`session-maintenance.js` GC 以 `sessionState` 资源类型清理无效状态；`SessionRepo.loadSnapshot` 校验指定旧 Revision 是否可达。这提供 P2 复用基础但**不等于新增身份的 Schema/Typed Writer/Scope/导入校验已经实现**。
+  - `state-delta.js` 目前仅对 `atri_world_state` 有专用 Delta/深度压缩，**P2 新 state 缺少同等优化，长会话性能/存储体积是明确代价**。P1 又有 `SessionCore.updateResources` 世界选择重建与普通 Game reducer 写入，Subject 身份被错误重置/覆盖的风险需要真实审查。
+  - `src/native/history-authority.js` 的公开/私有 Domain History 受已声明 Source/Policy 管理，不是新的通用历史 TruthDB；`queryHistory` 无通用 as-of tick；`native-information-contract.js`/Timeline/Frontend/Play/Media Actor 引用仍需真实 Typed Consumer cutover。
+- **本轮工程候选与建议，未获用户认可**：W21-B「**P2 作为首选**、显式 Reserved/Typed Session Subject 最小身份索引 + 各原 Domain 事实/时态 + 证据门槛式最终交接」。P2 不是新 FactDB，额外 validator/save/GC/性能负担必须纳入工作包；若 Gate 0 发现 P1 完整保护更简单，可以基于实际证据重新比较。W21-A 立即 P1 优先和 W21-C 全部物理位置延后均为对照。
+- **WP-A～F 交接目标**：WP-A Native Domain typed submission + 原 Domain Receipt、WP-B Subject/History/Save/GC、WP-C Information/Cognition/HCM/ContextPort 动态 Perspective、WP-D EffectiveWorld/Knowledge/Prompt、WP-E Timeline/Media/Play/Frontend ABI、WP-F Library/Studio/Legacy 切换。每个工作包需在最终集成 HEAD 下说明真实 Caller/Owner/Target/保留/替换/删除/计划测试，不要新建 parallel Authority 或毫无证据保留 Dev 旧数据双写。
+- **Gate 0 的当前结论**：`E0-01` Protected P1/P2 物理位置与 Schema、`E0-02` World reducer/Authority Turn/Narrator 的正式 Domain Receipt/发表、`E0-03` 有限历史时态/无时钟策略、`E0-04/05` 动态 Perspective 和有效 Knowledge/Prompt、`E0-06/09` 真实全生产调用图和合流 HEAD、`E0-07/08` Studio/Play、长会话/Save/GC 验收计划均未完全闭合。**E0 当前 PARTIAL / BLOCKED，Gate 0 尚未 PASS**；后续可执行新功能的 Node/CI/真 UI/Windows/CachyOS/Termux 必须在正式实施后完成 Gate 1～4，不能假称当前通过。
+- **本轮验证限制**：仅 GitHub 远端冻结 SHA 下定向静态文件阅读和 docs 更新/最终再读核验。没有本地完整 repository call graph，未运行 Node/CI/浏览器、UI 截图、长会话基准或三端客户端，也没有创建/修改产品代码文件。
+- **下一 checkpoint**：用户选择 W21-A/B/C 后继续先更新同一 Plan Bundle/本 Record，再对确定的 Protected Subject 布局、最小物理 schema、Native Domain/History Query/Context 真实合约与 WP-A～F 的 Gate 0 工作包作最后一轮可交接证据审计；达到要求后再请用户明确认可整份企划 Final 和正式开发。未获最终授权继续 Draft，不创建 `feat/*`。
+
 ## Final state
 
 Not yet applicable. Discussion in progress.
