@@ -1,0 +1,153 @@
+# ARCH-DWE-01 · W10 定义实例化与动态 NPC 能力绑定（讨论草案）
+
+- Task ID：`ARCH-DWE-01`；Primary Workspace：`docs`；[Plan 入口](index.md) / [总体设计](design.md) / [W9 统一身份](entity-identity-authority.md) / [唯一 Record](../../../records/architecture/world-evolution-consistency.md)。
+- **状态：Draft。** W1-B～W10-B 是用户已确认的顶层设计方向；W11 合同路线与具体实现仍未选择。本文 §7 保留当时的三选讨论历史，正式 W10-B 用户确认见 §10。**仅 docs 架构讨论**，不修改 `main`、不创建实现分支、无代码测试或三端实测。
+- **问题**：已选 W9-B 确定“同一真实世界主体有一个 Canonical Subject 引用，其他领域以受控引用/投影关联”；但预设世界对象和角色卡在游戏开始时**如何实例化**，自由游戏过程中生成的 NPC **如何获得对话、认知、行动等有限能力**，才不会因 Package Actor、World Entity、HCM Entity、Lifetime Person、Timeline Actor ID 各自不同而断线？
+
+## 1. 四种“实体出现”事件不可混同
+
+| 发生 | 事实含义 | 建议权限/来源 |
+| --- | --- | --- |
+| Authoring：写入“莱恩是皇帝” | World/Package 固定修订中声明了人物定义与起点属性 | 创作者权威，但尚非某个正在游玩的 Session 实例 |
+| Instantiate：新 Session 从已选 WorldRevision 派生“莱恩” | 此游戏分支起点明确存在一个正式 World Subject，绑定起点状态及源修订 | Session 创建/初始化的现有单 Native Host 提交权威 |
+| Introduce/Discover：玩家首次认识莱恩/阿洛 | 角色视角第一次知道该对象，或观察/宣称某个候选对象 | Perspective 的合法来源；**首次登场不是出生** |
+| Admit/Emerge：玩家承诺向新出现的阿洛还钱 | 持续后果要求世界正式确立一个此前未预设的 Subject 和债务 | W4-B 已选：原生 event/effect、身份绑定和持续影响在单受控事务形成 |
+
+对已有 Subject 关联一份角色卡、生成语音形象、授予某种认知视角、升级 A1→A3，自身都不意味着世界新增了第二个人。区分 `define`、`instantiate`、`admit`、`observe`、`bind`、`speak`。
+
+## 2. 推荐的逻辑关系（W10-B 候选，非 API）
+
+```text
+Library / Studio (immutable authored revisions)
+   WorldEntityDefinition ---- AuthoredActorProfile? ---- Knowledge sources
+                  \            /
+                   explicit author binding (if needed)
+                              |
+             PackageVersion / EntryPoint pinned selection
+                              |
+       Native Session create / World admission transaction
+                              |
+          Canonical SubjectRef (stable in Session ancestry)
+                  + initial / current Native world facts
+                  + origin: WorldRevision.EntityRef OR admitted event
+                              |
+            allowed typed bindings and capabilities
+              +----------------+----------------+
+              |                |                |
+       Actor expression   Cognition/Memory    Lifecycle/Actions
+        source/ref           Perspective        domain record
+              |                |                |
+       Timeline speaker   actor view/task     rules/simulation
+              +----------------+----------------+
+                              |
+        exact branch/revision + source/permission projection
+                              |
+         target-safe context, committed events & UI
+```
+
+**主体世界身份、角色表达模板、认知许可、自主性等级必须分开**。这是逻辑建模，不要求新建并列实体数据库或把同一个 ID 强迫塞进各类现存字段。
+
+## 3. Authored Entity、Actor Profile 和 Session Instance 的关系
+
+### 3.1 单复用源，不是全局共享动态实例
+
+- 一个 `WorldEntityDefinition` 可在多个 Session 创建不同的 `Subject` 实例。不同游戏会话彼此独立，**不跨 Session 共享动态世界状态**。
+- 一个 `AuthoredActorProfile` 是表达/创作资产，不必与 Subject 一对一。它可以被不同 Session 重用，甚至用于同一世界里的两个双胞胎模板（若作者明确如此配置），而这两个角色仍是两个 Subject。
+- 一名 Subject 可在剧情中改名、伪装、采用不同对外表达或语音形象；这些是经授权的呈现关系/认知可见性变化，不是换一个真实世界身份。角色卡源文不能被玩法反向覆盖。
+- 某个作者已预设的人物即使不参与当前对话/没有独立 Perspective，也可作为已存在的 Subject 被国家统治者、地图、事件或任务引用。
+- 可以使用“无世界书/世界选择”的纯叙事起点与多 World Package；此时哪个作用域拥有 Subject Identity 需结合实际主机的 `worldSelection/initialState` E0 审核，不能擅自禁止这一现有入口或凭空增加跨世界全局实例。
+
+### 3.2 初始化与显式绑定
+
+候选流程：`World Revision / Actor Definition` 经 Studio 明确引用和作品发布时固定版本 → 新 Session 创建时选取需要立即成为世界事实的实体 → 由 Native Session 初始化起点状态并产生或稳定分配 Subject ID → 只读投影引用 Authored Origin → 可选授予 actor expression / perspective / domain capability。
+
+**不要求把每条背景文案的名字都实例化**：一份历史文献里的“民间传闻有个黑骑士”，应先是 Source Claim；一条已确定的历史事实如“老皇帝早已逝世”可保留历史主体引用，但不是必需的活跃 NPC；预设的地理/组织/物品也应遵从各自可追踪用途和成本。
+
+需单独讨论初始化的确定性：创建新 Session 时，从相同 PackageRevision 派生的实例可以拥有不同 Session Subject ID，但起始内容/已知事实在相同规则下可复核。具体生成 UUID、稳定索引、origin binding 的协议待 E0 决定，不预设当前 `entity_*` ID 已存在。
+
+## 4. 运行时新 NPC 的能力接纳：严格分离三类动作
+
+**W4-B 先解决“存在”；W7-B 解决“合法受众”；W5-B 决定“是否需要深入推理”**。
+
+1. **World Admission**：仅在可持续交互/后果成立时，确立 Subject 与必要世界事实、来源、版本，受 Native Host 唯一事务约束。
+2. **Presentation / Participation Binding**：当此 Subject 需要发言/呈现头像/语音时，确定其合法的表达来源。可以选择已创作 Actor 模板、受控制的运行时风格描述或默认呈现规则，**不修改原始 Package Manifest**。说话者应映射到实际 Subject，不因模板 ActorId 相同而串人。
+3. **Perspective / Task Admission**：根据存在事实、角色/作用域权限和证据授予该 Subject 当前合法的 Memory/Cognition/Task 视图与有限行动能力；没有准入就只能按既有公开世界逻辑存在，不能借用 Narrator 全知身份。
+
+**重要的已知断点**：当前 [SessionCore](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/session-core.js) 在 Timeline entry 的 `actorId` 校验要求确切 `manifest.actors`，且 [Actor Profile projector](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-actor-profile.js) 只读固定作者资源；[Information Contract](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-information-contract.js) 的 actor/view 定义有静态列表限制。W10 不得宣称动态 NPC 已经能够使用全部这些消费者。最终实施可在消费者审计后考虑**把发言者身份和表达模板引用分开**，但不是先决定具体 `ParticipantRef` Schema。
+
+### E0 必审的消费者矩阵
+
+| 消费者 | 当前静态证据/待确认问题 |
+| --- | --- |
+| SessionCore / Timeline | `actorId` 限定 `manifest.actors`；如何既保持已预设 Actor 的输入权限，又安全支持新 Subject 为剧情参与者？ |
+| Native Context Compiler / Generation Host / Orchestrator | 能否在编译时区分“实际发言/行动 Subject”和“可选表达 Profile”，且不由模型提供未授权 Subject？ |
+| Information / Cognition / Theory-of-Mind | `actor_*` 身份、声明式 view/scope 与 SourceRef 权限下，动态 Subject 的合法 Perspective 由谁签发？ |
+| Native Lifetimes / Task / Simulation | 域内 `life.person.*`、静态任务/作用域能否最小映射到动态主体，是否需要有界批处理而非每 NPC 一个 Job？ |
+| HCM memory graph / eligibility | HCM 独立 Entity 是来源证据/候选身份。什么时候能依据确认的 Native Subject 建立绑定，何时保持 Unresolved？ |
+| Visual continuity / Speech / Persona / UI | 若动态 Subject 可说话，图像、语音、人物名、角色切换、上下文归属等消费者能否正确识别主体，且分支/版本不串线？ |
+
+当前只核对了部分真实源码；**不得把整张矩阵标记为已审通过**。具体升级需要 E0 逐个定位消费者，并避免旧 ST 双轨或永不清退的兼容 wrapper。
+
+## 5. 身份绑定何时成立、可撤销或保密？
+
+- **Binding 的真假**：`AuthoredActorProfileRef → SubjectRef` 是确定性的创作者绑定还是临时拟用模板？`HcmEntityRef → SubjectRef` 是有证据的确定关联还是候选？需要显式类型及 `confirmed/candidate/disputed/revoked` 等审查语义，不把它们写成统一“等于”。
+- **来源与 Scope**：有固定作者修订的绑定应引用 `PackageVersion/WorldRevision/ActorRef`；运行时建立的身份映射必须有 Native Receipt/Revision 和相应 Session/Branch/受众。不能以名称近似直接跨 World/Session 合并。
+- **秘密与伪装**：Host 可以在内部持有“苍鹰 == 阿洛”的已确认真身绑定；阿洛的敌人若只见到苍鹰，个人 Perspective 不得自动读取阿洛的身份及其私有记忆。身份消歧与事实曝光必须是分开的操作。
+- **死亡/离开/改名**：同一 Subject 不需要重新分配身份；角色死亡后保留可回溯历史，仅行为和可访问资源按当前能力规则改变。NPC 归档不会抹掉它参与过的世界事件。
+- **关系写入一致性**：如果主体登记与债务/职位/通话行动是同一次产生持续后果的情节，身份的存在、绑定和世界效果应尽可能通过 Native 原子事务发布；失败不能出现公开剧情承认交易却未登记债务/人物的分裂状态。需要复用 CAS / event receipt / idempotency，而非另造第二套 Saga。
+- **认知权限不随绑定自动扩大**：给 Subject 换个 Profile 或升级自主性不能绕过 W7-B 信息授权；从同一 Subject 派生的不同输出（Inspector/玩家/NPC）必须各自按合法可见源编译。
+
+## 6. 分支、回档与重播示例
+
+**同一阿洛两个故事线**：
+
+- `T0` 已将阿洛作为 Subject 正式接纳、绑其表达资料，但没欠款。
+- `T1` 玩家赊账，提交 Debt。此时 SavePoint-A（早于借款）和 SavePoint-B（借款之后）都可回溯精确 Revision。
+- 从 SavePoint-A 分叉：仍可见“阿洛”这个继承的 Subject，但**没有那笔债务**，其认知/行为后果也不能泄漏。
+- 从阿洛第一次被正式接纳之前的 SavePoint 分叉：该分支不可引用另一分支才产生的阿洛 Subject；如果后来同名者登场，必须通过合法身份接纳/源映射核验。
+- Player 只知道“苍鹰”，Host 知道他是阿洛，但不能把秘密映射展示给不知情 NPC。
+- `HCM Entity` 在旧分支里曾经把“阿洛”和“苍鹰”合并：新分支若无对应合法证据，**不能**照搬该主观图的确认结果。
+
+**核心检查**：Canonical Subject 标识是否源自公共祖先？所处 Branch/Revision 是否能在当前权威状态回放到？该绑定是否合法/生效且有足够来源？如果无，则返回 unknown/disputed 而不是凭姓名猜测“当然是他”。
+
+## 7. W10 三条候选路线（尚未选定）
+
+| 候选 | 设计 | 优点 | 主要缺陷 |
+| --- | --- | --- | --- |
+| W10-A：运行时把新 NPC 写进 Package Actor Manifest | 将所有新角色视为持久修改后的 Actor 资产，通过既有静态 actorId 继续消费 | 看似复用静态接口 | 篡改固定 PackageRevision、跨 Session 污染、每新增 NPC 需重新配置主机 |
+| **W10-B：固定定义 → Session 主体实例化 + 类型化能力绑定（推荐）** | World/Actor 源版本不动；Session Host 统一接纳 Subject，各消费者经受控绑定获得表达、认知和任务能力；能为不具备 ActorProfile 的新 NPC 自动选安全最低表达模式 | 与 W1–W9 一致、支持纯文字游戏、同模板多实例、来源审计、按需能力与分支隔离 | 需实际改变部分强绑定 manifest Actor 的消费者，E0 审计和权限映射较复杂 |
+| W10-C：全部通过 Narrator/HCM 的临时角色分身表现 | 不正式链接运行时 NPC 的表达与认知，反复基于剧情让 LLM 代演 | 初期工程少 | 角色同一性不稳、认知泄密、Speaker/任务身份飘移，失去正式世界成员价值 |
+
+**本轮推荐 W10-B，但用户“认同”仅授权记录 W9-B，不能将 W10-B 写为已确认**。路线选择后再精确讨论 ID/Binding/API 与消费者 cutover，不提前冻结接口。
+
+## 8. Library / Studio / Play 的自然创作体验（候选）
+
+- **Library**：World 描述人物、地点、组织等静态来源和重要结构；Actor Profile 负责表达、文风与角色预设。所有资产可继续完全自由文本编辑，不强制每次写文案就新建 Entity。
+- **Studio**：用户明确绑定“这张角色卡代表世界中的某个人”或“这张卡只是角色表达模板”；预览已配置的首次实例化和潜在同名/秘密映射歧义，确定 EntryPoint 起始成员。
+- **Play**：新 NPC 由剧情触发正式接纳后可保持身份、被任务/人物关系系统认识，并按条件获得表达、私人记忆与有限行动能力。玩家默认只看到符合故事知识条件的资料；可授权的 Inspector 能解释绑定来源、版本、权限与分支。
+- **不显示系统内部 ID 为主界面**；高阶审查可以查看 `Source / Subject / Actor template / Perspective / event receipts` 的关系与差异。
+
+## 9. 下一轮需要进一步确定的权威边界
+
+1. 如何区分 **DefinitionEntity、RuntimeSubject、AuthoredActorTemplate、Perspective 与 Timeline Participant** 的正式类型和生命周期；能否仅增加少量原生合约而不引入第二套状态权威？
+2. 一名正式 Subject 是否可绑定多个表达来源及切换，授权与 UI 怎样避免秘密和跨角色串话？
+3. 什么类型的 Session/世界起点需要立即实例化实体，哪些仅在剧情发生持续影响时才接纳（W4-B 已确认的范围仍需精细化）？
+4. 如何合法让新 NPC 成为 Timeline speaker 和受限 Cognition/Task requester，避免让它假冒 Authored ActorId 或 Narrator；真实消费者适配范围是多少？
+5. Save/Branch 分叉后如何确保所有 BoundRef 指向可达的 Subject，HCM 未决实体和伪装身份如何审计，不发生同名误绑定？
+6. 单 Native commit、来源证据与权限校验之间的顺序、重试/失败和动态实体工作预算如何形成可验证的最小契约？
+
+**状态：Draft，W10 未批准**。文档只是候选设计与代码静态审查，不包含任何已通过的真实客户端或 CI 证据。
+
+## 10. W10-B 用户确认（2026-10-17）
+
+用户对上一轮明确推荐的 **W10-B「固定定义 → Session Subject 实例化 + 类型化能力绑定」**回复「认同」，故 W10-B 已是 ARCH-DWE-01 的已确认**架构设计方向**：
+
+- World/Actor/Package 的 Authored 定义与表达模板保持固定版本；Session 创建时由 Native Host 将作者指定的初始正式世界成员实例化为可追踪的 World Subject。纯文字 Worldless、多 World 和“未预先定义的动态 NPC”不因选择 W10-B 而被否定。
+- W4-B 产生持续世界后果的动态对象，经现有 Native 提交入口获得稳定 Subject 与事实；它可按权限另外绑定表达资料、合法 Perspective/HCM 证据与有限的 Task/Simulation 能力。**世界身份不等于 Actor 模板身份、认知读取权限或深度 LLM Agent 资格**。
+- 一份已创作表达模板可以被显式复用于不同 Subject；同一 Subject 可以改名/伪装/改变外观，但个人世界身份不变。全部绑定均需版本、来源、分支、受众可见性；创作者资产不被 Session 写回。
+- 角色加入已提交 Timeline/事件必须经受控 Participant 身份与合法来源；不能为了兼容旧 `actorId` 在 `manifest.actors` 临时注册游戏 NPC 或借用 Narrator 视角。
+- Save/Branch 继承分叉前 Subject，后续情报、互动、关系和能力授权沿各分支生效；HCM/认知/Visual 的本地 ID 仍按有来源映射处理。
+
+**本轮没有批准**新的 `subject_* / participant_*` 等具体 ID 格式、任何 API/Schema、硬编码权限等级、Timeline/信息 ABI 修改，或正式实现开工与测试通过的结论。整份企划继续 Draft。
+
+**W11 下一轮**进入 [subject-contracts-e0.md](subject-contracts-e0.md)：讨论 `Subject / ActorProfile / Perspective / Participant` 的接口语义与 Host capability 解析，列出确切已读消费者、真实 E0 未完成事项及 W11-A/B/C 方案（推荐 B，尚未选择）。
