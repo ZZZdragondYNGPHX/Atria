@@ -1375,3 +1375,13 @@
 - 再补最后一次Patch授权await同事务Memory撤回，2FAIL/16filterSKIP（10.465s）：Memory与费用保留、没有后继请求，但Patch已先采用导致Root修订1，正确预期为仍0。将原authorizePatch末次current检查从仅expansion的容量分支移到所有Planner，修复后六种修订/证明时点参数6PASS/12filterSKIP（26.03s）。同时在新增检索历史await之后、Planner settlement写前复验同一原Source/Memory及Root stamp，合法撤回沿原deny结果保留，不回滚独立事实。
 - 最终新完整18/18 PASS（236.654s），覆盖普通Planner、loop、静态Agent图与loop+图组合、可选Rerank、第二Planner unknown不重发、Patch前两授权时点与Patch后撤回、冷历史。最后原Planner生产者/指纹再完整87/87 PASS（41.541s）。原loop/graph/expansion三完整suite78/78 PASS（340.512s）；该轮先启动、各suite按加载时源码执行，末授权修复前的两suite证据与最后代码的新18项/原87项区分，不冒称全78在最终字节上重跑。九JS原ESLint及staged diff check通过。
 - 全部新增Provider为localhost合成，无新增真实API；私密总数12、备用Chat0、测试daily/RPM配置null保持。后端继续动态模板owned检索pins、其它Source/Actor、高风险消费者及完整恢复/释放；P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。
+
+
+## 2026-10-17 — 第一百二十六组：动态 Draft 模板的 owned 检索 pins
+
+- Source `5453197ba` → `6fe12a953`，本地提交、未推送；接口§17.129。原Host模板只从不可变Plan原Narrator导出所选Model pin和显式owned context检索pins，能力/pin集合规范化；原逻辑输入固定模板，采用与历史reader同算法核对。Model JSON不能发明或删改Profile/能力/受众；原Context检索按父Model原GraphRevision读取受保护accepted拓扑，实际scope仍由原Host私有producer和原Source/Memory/bank签发。没有第二运行器、索引、费用权威或HTTP执行口。
+- 选用/不选用动态Draft、原Result/唯一Chat全部费用、冷Source删除/重启及重hash旧Model模板pin篡改拒绝四参数4PASS/8filterSKIP（49.724s）。普通选用3Model+4Embedding、8Effects；不选用2Model+3Embedding、6Effects，不执行未选Draft。原replan后新增Draft、模板删pin/能力两反例和dynamic Draft unknown保留已采用图/费用不重发八参数8PASS/4filterSKIP（68.065s）。
+- 新动态Draft同持owned Embedding/Rerank两参数2PASS/12filterSKIP（39.203s），实际3Model+4Embedding+3Rerank，原闭包11Effects；新suite全部14项已分别覆盖通过。所有Provider均localhost合成，原memory源没有写入副作用，冷历史不恢复scope。
+- 原隔离Planner worker不选可选Draft的两store验证2PASS/30filterSKIP（35.503s）：两臂各2Model+3Embedding，另pair Judge1，共11笔原父ledger费用；原生产Chat/Binding不变，worker无Secret/直接网络。6笔检索cost=null，不能晋升或冒充独立质量；未为了覆盖更大图绕开原case/Owner余量，也未新增API测试总量限额。
+- 原无检索动态expansion完整34项与原指纹67项两suite101/101 PASS（107.682s）。七JS原ESLint及staged diff check通过；本组生产源码在上述worker配置/执行期间冻结，没有中途改指纹。无新增真实API，私密总数12、备用Chat0、测试daily/RPM配置null保持。
+- 后端继续其它Source/Actor与Delegate检索、通用图、高风险消费者、完整恢复/释放；P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。

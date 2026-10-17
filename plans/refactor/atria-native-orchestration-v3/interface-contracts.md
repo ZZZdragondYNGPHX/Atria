@@ -1498,3 +1498,14 @@ Review完成与历史reader核对全部检索子Effect、收据和Attempt settle
 每轮Planner收据与Attempt settlement核对全部实际Embedding/Rerank子收据和原bank费用，最终Narrator/唯一Chat费用闭包汇总全部Planner轮次、Agent和Narrator费用，早轮费用不能随replan消失。异步Planner采用/结算完成后才释放私有检索scope；同次图原Memory摘要跨轮次/后继复验。usage未知、Memory撤回、原Patch已采用但最终证明失效均保留已发生事实及费用，不签后继许可、不重发；冷历史只验证事实，不能恢复scope。
 
 准确FS/SQLite与原消费者验证归同一Record。其它动态模板/Source/Actor、高风险消费者与完整恢复/释放继续，尚非完整后端或最终Gate通过，不交前端/main或结束分支。
+
+
+### 17.129 原 Host 动态 Draft 模板的 owned 检索 pins
+
+原RP Planner addNode/addEdge模板可携带原Narrator所明确持有的context检索pins。模板继续只用原所选Narrator Model pin；检索能力与pin集合由Host从不可变Plan的原Narrator声明导出并规范化，不从Model JSON接受新Profile、endpoint、Secret、query或正文受众。Planner原逻辑输入绑定准确模板，采用与冷历史reader使用同一模板构造/核对。模型选择已有模板或不选；删改检索pin/能力、替换Model或只提交部分边继续拒绝，不产生新动态运行许可。
+
+原Context检索创建与历史reader可按父Model所属的原GraphRevision读取该次已采用拓扑；原Plan dependencyPins不变，重放原accepted Patch/命令后，重新检查有限expansion profile和每个新增节点的准确模板pins。真正Context/Model scope仍只由原Host私有捕获、Source/Memory/Attempt/银行核对产生，快照与模板数据不能恢复scope。普通静态/控制图的原修订围栏保持。
+
+实际选用的Draft逐次使用同一原Hybrid、原物理索引及独立检索Effect/费用/响应证明，Draft Result和最终Narrator/Chat纳入完整费用；不选用时没有该Draft的Context/Provider工作。replan后新增模板也按原修订独立验证，早轮费用保持。未知usage保留已采用图/原费用，拒后继且不重发；冷历史不恢复已释放的私有检索证明。
+
+原隔离worker可沿同一范围执行，检索Secret与真实发送仍只在原父Host/原Evolution账本；Model价格不替检索定价，也不把合成工程fixture当独立质量。准确测试与源码HEAD归同一Record。其它Source/Actor、通用图、高风险消费者与完整恢复/释放继续，尚非完整后端或最终Gate通过，不交前端/main或结束分支。
