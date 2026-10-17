@@ -1346,3 +1346,12 @@ TransitionController 在原授权后及写入前再次核对原 admission 和 Ro
 readRpPlannerCompletion 核对原不可变 Plan 与完整 Patch 重建、每次 Model/parse/adopt/settlement、精确前驱 controlReceiptRef、全部原回边 Command/Traversal/Admission，并返回全部 history 和最新一轮；图修订、replan/loop/edge 计数必须与历史一致。最终 Narrator 只消费已停止重规划的精确末轮原收据；Output closure 包含全部 Planner Model、Narrator 与唯一 Chat Effect。冷读不恢复 scope，未知费用不签 completed claim，ACK unknown 不重发付费工作。
 
 Planner settlement 在最后 Model/Source 授权和 Root stamp 复验后才写入，合法同事务 Binding 撤销/Root cancel 经原 ControlDenial 保留；已应用 Patch 和费用仍保留，后续零发送。原隔离 Native evaluator 可执行此回路，所有真实发送和计费仍归原父 Evolution ledger；工程合成验证不替代独立质量/价格或自动晋升 Gate。混合控制图、动态图增边/节点、其它 Source/Actor 与完整后端继续实施。
+
+
+### 17.115 原 Graph Result 发布修订与 Planner→Agent 图组合
+
+原 Graph Result 新发布收据保存 graphRevision；ResultController 在最后 Source/Model/Root 复验前通过原 readTaskGraphRevision 重建该修订，producer 必须仍属于发布时当前修订。历史 reader 从原 Plan/全部 Patch 命令重建发布修订，并核对原 graph.result.publish 命令的精确逻辑 payload、outcome、epoch/revision、Model Effect/producer/settlement 与原 audience。后加边/节点不回填旧 Result 的直接后继集合；落后当前修订的 producer 不据此发布新 audience。未携修订的既有 V3 静态历史仍限原 revision0/无修改策略核对，不恢复执行权限。纯 snapshot/JSON 数据不能替代实际私有 Model completion 或 Source/recipient 授权。
+
+原 Planner profile 可在唯一正式 Narrator 前接同一静态 Agent DAG：Planner 的 json 控制端口只接所声明入口 Agent 的 required json 端口，后续 Agent text 结果仍经原 ResultPort 给精确直接后继。Planner 只执行已有控制操作；已有有限 self-loop 可组合，但不据此开放 addNode/addEdge 或其它Source/Actor。所有实际 Model pins/Route/资源在同一原 Scheduler operation 预检与复验，最小请求数包含 Planner 和全部必要 Agent，重规划余量包含整个后继图。每个入口必须有原 Planner settlement→Transition/edge admission，所有后继必须有原 Graph Result→Transition，历史 reader 分别核完整链路。
+
+就绪 Agent 按原 nodeControl pending priority 排序，同优先级保留原图顺序，依赖不能越过；reader 从原 Patch 事实和同一排序规则重建生产顺序。必需 Draft 或 Narrator 已 blocked/cancelled 时不启动已知不能闭合的后继 Model。正式正文仍只经原 Narrator/Chat，费用闭包包含全部 Planner、Draft、Narrator 和唯一 Output Effect。unknown usage 可保留合法输出而无 completed claim；中途撤权/取消和未知 ACK 不回滚费用、不重发。此有限组合、发布修订和冷读不代表通用动态图执行、全控制组合或完整后端通过。

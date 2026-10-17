@@ -1236,3 +1236,14 @@
 - 新零隐式回路、JSON空白无进展、Source删除冷读/首轮诚实rehash、settlement同事务Binding/Root撤销、第二轮Patch saved/no_save ACK、unknown usage 精选16PASS/6filterSKIP（37.256s）。再加原预算余量四参数时，八个所选场景8FAIL/18filterSKIP（10.47s），明确暴露 observeCapacity 缺原tx参数；补同原Engine事务只读，并在每轮后清理阶段capture、恢复同operation原capture。新完整26/26 PASS（74.326s），所有实际发生费用仍保留。
 - 随后进一步严格核对每轮完整图修订、replan/loop/edge计数；最新正向二次循环、冷读伪计数/篡改、unknown及原request/attempt余量十参数，加原隔离worker Planner-loop 两参数，组合12PASS/22filterSKIP（56.755s）。worker baseline/candidate各三次Model加独立pair Judge一笔，共7次合成收费均归父ledger，生产Chat/Binding保持；不是独立质量或价格通过结论。
 - 原静态DAG三种正向、Planner、Review approve/rerun、Judge和指纹五suite精选66PASS/108filterSKIP（125.645s）；这轮与计数加强有并行时间，最新严格计数另有上述定向实证。十一文件原ESLint与staged diff检查通过。均localhost合成，没有新增真实外部API请求，备用站点仍0次。完整后端尚未完成，混合/动态图、其它Source、可信高风险消费者及恢复释放等继续，不交前端、main 或结束分支。
+
+
+## 2026-10-17 — 第一百一十二组：发布图修订与 Planner→Agent 图组合
+
+- 在同一原 Host/Graph/Model/Result/银行上接通 Planner→静态 Agent DAG→唯一 Narrator/Chat，并可组合已声明的有限 Planner 回路。Graph Result 新收据冻结发布 graphRevision，历史核对原 Plan/Patch 重建与精确原 result.publish 命令、Model/producer/settlement；Source 与最终Root复验在图重建之后，避免引入新的授权间隙。既有 V3 revision0静态历史维持原严格读取，不转换旧编排模式或恢复scope。实际Source HEAD及最终回归另记本组末段，接口 §17.115。
+- 原 Graph Result 合同和菱形正向首轮30PASS/20filterSKIP（19.86s）。新增混合图初2PASS/2FAIL（21.718s）：无回路已完成，两回路case暴露旧转移判断把 Planner settlement 当成 Draft Result，并对 undefined 做hash；按原Planner/Result不同事实分支修复。两个回路case、原菱形和新增纯snapshot冻结/拒绝旧producer合同组合33PASS/22filterSKIP（41.775s）。纯snapshot场景只证明元数据计算，未冒称真实动态图增边执行。
+- 新混合图 Source删除冷读、同步改写 publication/producer/settlement/effect graphRevision 的诚实rehash拒绝、Draft中Binding撤销/Root cancel及unknown usage八参数8PASS/4filterSKIP（55.567s）；没有借费用未知签completed claim。新混合图suite原12项分批有通过证据。新隔离 Planner graph实际worker两参数与指纹两suite52PASS/8filterSKIP（37.819s），每边4次Model加pair Judge共9次合成收费均归父ledger，生产Source保持。
+- 原 Review approve/rerun、Judge两选择、Planner两次回路、线性多Draft与publication ACK四suite精选18PASS/124filterSKIP（118.765s）。把图重建读取移至最后原Source授权之前后，再验无回路混合图与原Graph Result同事务Root cancel六参数6PASS/40filterSKIP（24.242s）。
+- 混合执行补原pending priority就绪排序，以及任何必需Draft/Narrator已blocked时零后继Model；新优先级/两类阻塞六参数6PASS/12filterSKIP（24.472s）。历史reader使用同一原控制事实派生顺序；新增suite现18项分批通过。全组仍localhost合成，无新增真实API调用，备用站点仍0次。通用动态增节点/边、其它控制组合/Source、可信高风险与完整恢复释放继续，不交前端、main 或结束分支。
+
+- 第112组最终 Source `5b519d923` → `929a3c59a`，本地提交、未推送。最后排序接线后的原静态三图正向、线性两/三Draft、Review rerun、混合图隔离worker与指纹五suite精选64PASS/106filterSKIP（132.324s）。十文件原ESLint及staged diff检查通过。Source/docs继续独立分支，整个后端继续实施，P1–P4/最终Gate仍NOT_READY。
