@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · W9 统一世界身份与跨域引用权威（讨论草案）
 
 - Task ID：`ARCH-DWE-01`；Primary Workspace：`docs`；[Plan index](index.md) / [总设计](design.md) / [W8 记忆连续性](npc-memory-continuity.md) / [唯一 Record](../../../records/architecture/world-evolution-consistency.md)。
-- 当前状态：**Draft；W1-B 至 W8-B 已获用户方向性确认；W9-A/B/C 与所有接口设计尚未批准**，不修改 `main` 或创建实现分支。
+- 当前状态：**Draft；W1-B 至 W9-B 已获用户方向性确认；W10 的实例化与能力绑定候选及所有具体接口未批准**。此前 §6 的 W9-A/B/C 为原始选型历史，正式确认见 §11；不修改 `main` 或创建实现分支。
 - 当前问题：同一个“人”可能同时出现在 World Definition、Package Actor、运行时 NPC、Lifetime、Native Cognition、HCM Entity、Timeline 以及玩家角色卡中；怎样让它们正确地引用同一名世界主体，避免重复身份、名称冲突、权限泄漏和跨分支污染，同时不把各种不同记录都强制转成一个对象/数据库？
 
 ## 1. 必须先区分“主体身份”与“各域的表示”
@@ -159,4 +159,16 @@ ProjectedActorView:
 
 本轮选择 W9-A/B/C。重点应确定：**世界身份的稳定范围、World Definition ↔ Session Instance 的实例化关系、Authored Actor ↔ Runtime NPC 的语义映射、HCM 证据消歧与跨分支身份继承**。确认总体路线以后再决定是否需要最小新增 ID family、受控的 Binding/Projection 类型、Timeline/Information 消费者的实施计划和验收。
 
-**状态仍为 Draft**。用户未明确批准 W9 选择、整份方案最终定稿或代码实施；此阶段禁止改动 `main` 和其他长期工作空间。 
+**状态仍为 Draft**。用户未明确批准 W9 选择、整份方案最终定稿或代码实施；此阶段禁止改动 `main` 和其他长期工作空间。
+
+## 11. W9-B 已确认（2026-10-17）
+
+用户对上一轮明确推荐的 **W9-B：Canonical World Subject + 受控跨域映射与投影**回复「认同」。纳入 `ARCH-DWE-01` 已确认的**总体设计方向**：
+
+- 已由 Native Host 正式接纳的世界对象拥有稳定、可追溯的世界主体引用。不同领域继续维护其本地职责：Authored Actor 是创作/表达资产、Lifetime 是业务域记录、Cognition/Perspective 是授权主体视角、HCM Entity 是有证据的语义指称。
+- 映射不是通过同名自动合并，须有明确来源、版本、权限与受众界限。可保留候选、歧义与不同主体对身份的误解；Host 内部知道同一真身不自动向角色/玩家泄露。
+- 存档分叉继承分叉点前已存在的主体与绑定，分叉后的状态、秘密和新增实体按各自分支隔离。固定 World/Actor Profile 不随 Play 写回。
+- 统一的是世界对象的 **identity reference authority**，并不意味着所有领域使用同一 ID 字符串、同一张表，或创建独立于 Native SessionCore 的第二个可写实体数据库。
+- 本决定**不等于** W9 相关 ID family、绑定 Schema、动态 Speaker/ToM/Memory/Visual/Speech 的 API、实施阶段或 E0 验收已获批准。
+
+**下一轮 W10** 专门讨论定义到实例的实体创建/复用和运行时功能准入：`World/Actor Definition → Session Subject`、角色表达资源绑定、NPC 对话参与者与合法 Cognition/Task 权限、HCM 证据节点是否/怎样受控映射、分支恢复的跨域一致性。候选见同一 Plan 的 [subject-instantiation.md](subject-instantiation.md)。W10 尚未获用户选择，完整企划继续 Draft。
