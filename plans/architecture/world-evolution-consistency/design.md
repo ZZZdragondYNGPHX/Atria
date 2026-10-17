@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · Candidate Design & Discussion Agenda
 
-- 状态：**Draft（W1–W10 的 B 顶层方向已获确认；W11 的类型化身份与能力接口、E0 及开发均未批准）**。历史候选章节保留当时状态，当前决策参见最新 index。
-- 当前讨论轮次：W11 — Subject / ActorProfile / Perspective / Participant 契约与 E0 消费者核对（见 [subject-contracts-e0.md](subject-contracts-e0.md)）。
+- 状态：**Draft（W1–W11 的 B 顶层方向已获确认；W12 路线、完整 E0 审查与精确接口/实施仍未批准）**。旧章节保留讨论时的候选状态，当前以最新决议与 index 为准。
+- 当前讨论轮次：W12 — E0 真实消费者矩阵、Native 单权威事件/时态、硬切迁移与跨端验收门槛（见 [e0-consumer-cutover.md](e0-consumer-cutover.md)）。
 - 入口：[index.md](index.md)；材料：[research.md](research.md)
 
 ## 1. 问题的正确切分
@@ -629,3 +629,29 @@ W11 讨论不再单纯描述“应该统一身份”，而是确定哪些接口�
 定向静态核对 `src/native/session-core.js` Timeline `actorId` 属于 `manifest.actors`、`public/shared/native-actor-profile.js` 仅作者定义、`public/shared/native-information-contract.js` assertInformationClosure 需要声明 actor 属于 manifest、`src/native/cognition-authority.js` / `tom-authority.js` 的部分权限及身份校验，以及 `public/shared/native-frontend-host.js` Message schema / `src/native/speech-service.js` / `src/native/visual-continuity.js` 仍涉及 `actorId` 或临时视觉身份；`src/native/agent-intelligence/goal-contracts.js` 的 actor Goal 也使用 Native Actor ID。**这些是部分可核验的路径，不构成全量 E0 或 E0 通过证据。**
 
 下一步要完成完整 caller/callee map、允许 Subject→表达/Perspective/Participant 的最小原生契约、版本和保密约束、上下文编译与回档安全、最终 cutover 阶段/验收规则；必须先由用户在讨论后批准设计定稿才能授权产品代码变更。当前只在 `docs` 修改方案和唯一 Record。
+
+
+---
+
+## 19. S13 · W11-B 确认与 W12 E0 消费者/原生收口议程（2026-10-17）
+
+### 19.1 W11-B 已确认的架构方向
+
+用户对上一轮明确推荐的 **W11-B「Typed Subject / Participant / Perspective + Native Host Capability Resolution」**回复“认同”，故 W1-B 至 W11-B 均为当前已获用户确认的**顶层架构方向**。世界 Subject、表达 Actor Profile、私人受限 Perspective、正式对话/事件 Participant 有不同含义，通过现有单 Native Host 结合 Session/Branch/Revision/受众合法解析；按实际调用方最小重构，不能新建平行可写真相权威、不能将旧 Actor 全域一体化、不能用 Narrator 代演来冒充事实写入。
+
+该确认**不意味着**用户已批准精确字段/ID family、受众动态签发实现、事务边界、UI、E0 全消费者审查结论、任何跨端验收或正式开发。
+
+### 19.2 进入 W12：接口级 E0 与硬切边界
+
+W12 的**唯一详细模块**为 [e0-consumer-cutover.md](e0-consumer-cutover.md)，包括已核对生产源码路径、Source-of-Truth/Consumer Matrix、Native World event / state / Receipt / Timeline 出版事务、游戏时间有效期、Save/Branch/认知隔离、世界/知识创作 UI 以及分阶段 Cutover 的候选 Gate。不要把它写成另一份独立 Plan 或已完成审计。
+
+W12 方案暂列：
+- W12-A：不先完成实际 E0 便大范围同时重写所有领域 Schema，消费者漏改和事务一致性风险高；
+- **W12-B：E0 证据驱动的原生硬切 + 单权威提交收口（研究推荐，尚待用户选择）**；先实际查清生产调用方和权威来源，必要最小 Native 合约原子接线，最后清退旧双轨；明确时态、分支、受众与端上验收阻塞；
+- W12-C：为了老数据长期维持新的 World Subject 与旧 Actor/World/Knowledge 并行的真相或兼容引擎，不适合当前 Dev 项目。
+
+### 19.3 已有证据不是 E0 通过
+
+定向读 `src/native/repositories/session-repo.js`：`commitSnapshot` 的现有资源事务负责 immutable dependencies/commit receipt/expectedRevision/Session root 发布；`public/scripts/native/experience/world/session.js` 的 `commitEvents` 同步 World State 和 Game Runtime Journal 的 state patch。**但所有 Narrative + Task/Authority + World Effects/Cognition 的具体端到端原子性尚未核验**，不能从两处代码直接推断全域一致。当前 `public/shared/native-chronicle-host.js` 的世界视图主要围绕特定 Lifetime 查询，尚非通用可任意游戏规则使用的 World Entity 时态 Inspector；`public/scripts/native/world-editor.js` 仍以 World revision `schema/baseline` 等为主。W12 必须同时考虑 Library/Studio/Play 的实际消费重构，而非只写新的数据类型。
+
+W12 本轮继续**仅更新 docs 同一 Plan 和唯一 Record，保持 Draft，不创建实现分支、不修改 main、未执行 E0 完整审计或跨端测试**。后续用户明确选择 W12 后下一轮才按协议写回已确认方向和讨论更细 Gate。
