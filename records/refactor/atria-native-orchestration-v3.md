@@ -1112,3 +1112,10 @@
 - 修正用例后精选2PASS/4FAIL/10filterSKIP（20.239s），Task 改为 input-only 后必须移除原 projection Task view；再测2PASS/2FAIL/12filterSKIP（7.814s）发现真实 ContextPort 仍强制读取 Information view。补专用空 selection/原 typed input 与同 Source/grant currentness；不会调 Memory/宽历史编译。首个 input-only positive2PASS/14filterSKIP（23.636s）；最终新18/18 PASS（144.606s），包括原Source晚到拒绝、无私域外发、冷读、排期实际pump交付、Domain失败保留解析/采纳费用、saved/no_save ACK及usage unknown。
 - 原 G2 writer/restart/排期/Workflow精选加 evaluator 指纹40PASS/46filterSKIP（5.083s）；原 appraisal/Simulation精选20PASS/22filterSKIP（230.467s，Context最小输入补丁前）。最新 Context授权/撤权与普通后台精选17PASS/16filterSKIP（37.068s，execution-context suite被名称过滤，未声称其执行）。最新 result sink/binding reader检查后，appraisal/input-only正向与指纹三 suites34PASS/38filterSKIP（53.806s，指纹30项）。七文件原ESLint、staged diff check通过。
 - Provider均localhost合成，无新增真实调用、独立质量/价格或自动晋升通过。完整Graph/Planner/Judge/Review、可信高风险consumer及恢复释放等继续实施，后端未完成，不交前端/main。
+
+## 2026-10-17 — 第九十七组：预声明 Route 的 Plan 策略与 Project 消费
+
+- Source e434b42b2 → 3a2f38361，本地提交，未推送；接口 §17.101。只在原节点已发布的 Model pins 间选择 agentPinId；同值/未声明/外来/额外字段拒绝，原声明/候选/Binding CAS与回滚复用，Draft/pins/权限不变。提案只接受 typed Route ref；实际比较使用候选已选 Route，原同 Model/Connection/Generation 条件保留，独立质量/价格/自动晋升不放宽。
+- 新实际 Project positive首轮2FAIL/6filterSKIP（3.040s），发现原 Skill 本地工作仍猜全局唯一 studio Route；改为原私有 operation 已选择 Route，并拒 caller换 Route。第二轮2FAIL/6filterSKIP（9.437s）已实际发送一次，失败仅测试读 setup spread 时已失去的 roundArgs getter；改用原 durable Effect actionRef作为证据。四 suites最终70/70 PASS（46.959s，Route新8项，指纹30项），含执行原 Project、新旧策略/Prompt、ACK/回滚兼容。
+- 新 alternative Route已变更的拒绝与 typed proposal反例5PASS/8filterSKIP（2.585s），原文本/数字提案与JSON两 suites7/7 PASS（0.647s）。Route新suite合计10项分批通过。新增实际隔离 worker baseline/candidate Route 比较，FS/SQLite2PASS/6filterSKIP（76.254s）：每边三轮原工具/Review/Root闭合，原父 Evolution账本7行、生产Project/Task/Binding保持；没有伪造成功pair/自动eligibility。十文件原ESLint及最新两个测试lint、staged diff check通过。
+- 都是localhost合成，无新增真实Provider调用。实际组合目前覆盖Project，继续RP/Session已声明Route组合与其它后端；不交前端/main。

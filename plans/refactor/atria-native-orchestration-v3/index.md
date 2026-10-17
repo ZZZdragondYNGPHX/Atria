@@ -8,6 +8,8 @@
 
 第九十六组 `e434b42b2` 接原声明式固定命令/交互排期和精确 input-only Task Context，见[接口 §17.100](interface-contracts.md#17100-原声明式-task-命令交互与最小输入)与同一 Record。原 Simulation 静态命令可用，其原 interaction-job 拒绝保持；真实输入/采纳/费用/ACK闭包已有有限FS/SQLite证据，全部后端仍在继续。
 
+第九十七组 `3a2f38361` 补同节点已发布 model pins 内的 routeRef 策略候选、原Project实际消费/Skill预算选择和隔离worker比较，见[接口 §17.101](interface-contracts.md#17101-同节点已声明-route-的原-plan-策略候选)。没有新Route/权限、异Model配置价格或自动晋升结论；RP/Session组合、完整Graph及恢复释放继续实施。
+
 - 创建/调研日期：2026-10-15。
 - 第一轮状态：**D1 已定案：方案 B（原生 Orchestration V3）**。
 - 第二轮状态：**D2 已冻结：T2 Native Host 唯一运行权威、Plan/Run/Effect/Receipt 边界和旧编排零兼容硬切**。

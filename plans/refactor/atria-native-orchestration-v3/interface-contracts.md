@@ -1224,3 +1224,11 @@ native_session SourceSelector 可显式增加 taskRef:{taskId,variantId}，只�
 所有声明式结果沿 §17.97 的真正 finalizer 私有身份及两阶段闭包；非 appraisal 的阶段名为 task_result_parse/adopt，注册到原 localWork kind 并使用原稳定 attempt/Effect/target 与实际费用，未新增银行或扩大上限。原 Domain 回滚仍保留真实解析/采纳 CPU；ACK未知只读同事实，不再写命令或发模型。历史 reader 严核 result sink/binding、原 receipt 的决定/目标/Source与 committed revision，以及对应两行原费用。schedule 的 Root 完成只证明原排期已采纳，实际交付仍由原 clock.advance 后的显式 pump 决定，不能当作已交付或用墙钟补交。
 
 精确 context:['input'] 的真实 Task capture 使用空 Context selection 加原 typed Task input；不会读取 Information view、Session history/Knowledge/Memory，也不以缺 view 回落为宽上下文。描述、编译、发送与消费继续核同 Source/Task/variant/input/grant digest、原银行和 Scope；私有 Context 对象/既有 Model request 复验不变。此路径不授 Actor/World 读取权，也不创建通用 Graph runtime。
+
+## 17.101 同节点已声明 Route 的原 Plan 策略候选
+
+plan-strategy 增加 routeRef。候选仅为精确 {scope:'player',runtimeRouteId}，且必须来自该原节点 dependencyPinIds 中已发布的 model pins；至少两个不同的原 Route 才列目标，同值、外来节点/未声明/新造 Route 或额外授权字段拒绝。变化只选择 node.policy.agentPinId，pins/integrity、capabilities、limits、Output owner和作者 Draft保持。原 declaration、Binding CAS、不可变候选 revision、发布 gate、ACK重放及回滚继续复用；准备前复制候选值，Route 引用按 canonical hash 比较，不凭对象身份。
+
+catalog/capture 的 allowedValues 和实际提案 Prompt共用原节点 pins，结构化提案 parser 不接受任意 JSON object编辑。候选评测配置读取真正选中的候选 Route；原 paired Model/Connection/Generation 相等检查保留，异配置仍 unavailable，不虚构可比价格或自动晋升。独立质量/价格与已有 Native auto拒绝保持。
+
+Project 的有限消费者允许同节点预声明多个 Model pins，但每次只按 policy.agentPinId 和原 operation 显式 runtimeRouteId 执行，原 tool pins/Source/Model/预算/egress不扩大。原 Project Skill 本地工作也固定使用该私有 operation 的已选 Route，拒绝 caller 替换，不再用“全局唯一 studio Route”猜预算。当前实际产品和隔离 worker证据覆盖 Project；RP/Session消费者的备选 Route组合仍继续接入。
