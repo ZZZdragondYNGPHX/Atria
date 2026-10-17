@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · Candidate Design & Discussion Agenda
 
-- 状态：**Draft（W1–W7 的 B 方向已获确认；W8 选型和全部具体实现契约仍待批准）**。早期章节留存当轮候选历史，以后续决策和 index 为当前权威。
-- 当前讨论轮次：W8 — NPC 长期记忆、遗忘、人格连续性与 Native/HCM 权威边界（见 [npc-memory-continuity.md](npc-memory-continuity.md)）。
+- 状态：**Draft（W1–W8 的 B 方向均已获确认；W9 选型和完整实现契约未批准）**。早期候选章节保留历史，当前决议与模块路由参见最新 index。
+- 当前讨论轮次：W9 — World Entity/Actor/动态 NPC/Lifetime/HCM 统一主体身份与受控映射（见 [entity-identity-authority.md](entity-identity-authority.md)）。
 - 入口：[index.md](index.md)；材料：[research.md](research.md)
 
 ## 1. 问题的正确切分
@@ -533,3 +533,40 @@ W7 专属模块：[npc-memory-information-flow.md](npc-memory-information-flow.m
 仍需审计：W7 新 NPC 动态 Perspective 与 `actor_[...]` 的真实消费者、保护记忆与受控遗忘差异、人格变化所需的经验/证据、合法事件/记忆源与 Branch 绑定、Context 编译预算及源失效机制。未运行测试或进行产品实现。
 
 **状态与边界：** W8 所有选择均待用户讨论确认；只修改 `docs`，不更改 `main`，最终定稿需用户另行明确批准。
+
+
+---
+
+## 16. S10 · W8-B 确认与 W9 身份及跨域引用权威（2026-10-17）
+
+### 16.1 用户已确认 W8-B
+
+用户对上一轮推荐的 **W8-B：来源保真 + 分层回忆与人格连续性**答复「认同」，现记录为已确认的架构方向；因此 W1-B 至 W8-B 的总体选型均已获得明确认可。其含义是：
+
+- 世界事件、正式债务/承诺/关系的客观权威由 Native Session 的历史和状态维持，不因私人遗忘、记忆压缩/检索结果改变；
+- HCM 有来源的 Episode、实体/事实/关系检索与 Native Memory/Cognition 对主体的信念、记忆清晰度、适用性、人格倾向按职责复用；不建立独立的 NPC 心智真相数据库；
+- 重要人格变化由相关经历、时间及主体视角支撑；普通细节可以随合法的游戏时间推导模糊或难取回，不能因此覆写原始作者设定或秘密权限；
+- 原有 Memory Contract 的 `identity/commitment/relationship/key_event/detail`、`fadeAfter/clarity/use` 等是**已存在的机制**，不应被视作尚未实现的设计。
+
+该确认仍属**总体方案方向**，尚未批准 Memory/HCM 存储所有权的精确映射、演化/人格公式、运行时动态 Actor 接入、实际成本阈值或全端实施。
+
+### 16.2 当前 W9：跨域主体身份
+
+此次讨论的核心断点是：一个 World 里的人物可能同时拥有 authored Actor、Native World Session 主体、可选 Lifetime person、HCM evidence Entity、Cognition Perspective 和 Timeline participant，不能让多套本地 ID 变成彼此冲突的多份世界真相，也不应强迫它们变为同一个万能对象。
+
+**W9 详细候选与精确静态代码核对仅在 [entity-identity-authority.md](entity-identity-authority.md) 维护**。当前研究倾向：
+
+- W9-A：所有系统强制共用一个 ID 和实体对象；容易混淆 HCM 假设与 Native 客观身份。
+- **W9-B：Canonical World Subject + 受控跨域映射/投影（推荐，尚未获用户批准）**；正式持久世界对象有单一 Native 可审计主体引用，不同领域保留有权限/来源/版本的 LocalRef 和独立业务所有权。
+- W9-C：各系统身份保持独立，遇到同名靠 AI/Prompt 临时判断；分支、角色复用和历史误配风险高。
+
+`src/native/identity.js` 当前确有 `actor`/World/Session/Branch 等 ID family，但静态阅读未发现统一 World Entity family；`src/native/session-core.js` 的 Timeline actorId 要求 manifest Actor，`src/native/lifetime-authority.js` 的人名采用 `life.person.*` 域内身份，HCM 图谱有证据支持的独立实体 ID / unresolved/merge/split 能力，而信息与认知接口部分仍依赖已声明 actor。**具体改造前必须完成 E0 消费者审计，不能伪称这些已经统一。**
+
+### 16.3 讨论边界
+
+- 先冻结“同一个世界主体为何能够跨模块统一引用”的权限/来源原则，再考虑 ID 表达和有限 Schema；不通过姓名直接绑定/合并。
+- 作者预设 Actor/Profile 与真实 Session 内实例需要区分：一份模板可用于多个角色；读档/分支不同状态绝不回写共享 Package 或跨线泄漏。
+- NPC 获得世界身份、合法 Cognition 受众和独立自主权限仍为不同能力，任何映射都不能扩展私人信息访问。
+- 保持 W1–W8 确认方向、唯一 Native Host 写入权威与 Draft；未修改 main、未创建实施分支、未运行正式测试。
+
+**W9-B 仅为本轮建议，不因用户选择 W8-B 而自动获批。**
