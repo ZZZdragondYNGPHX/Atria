@@ -1161,3 +1161,12 @@
 - 新8/8 PASS（24.053s）：原真实Model链、假capture/外来ref/复制完成对象零额外发送，同事务Binding撤权保持。冷读、Source编辑删除、publication saved/no_save ACK与unknown扩展14/14 PASS（39.971s）。强化publication二次授权时测试暴露一次局部intent未透出变量作用域，修正后正向及publish/consume撤权6PASS/10filterSKIP（14.29s）。
 - 与原Planner、父子continuation、GraphResult合同、evaluator五完整 suites120/120 PASS（158.046s；新链16、指纹44）。追加Root同事务取消四参数4PASS（7.45s），撤销/取消不回滚，后继零发送；新的Root stamp防线后正常/ACK六参数6PASS（17.385s），新链20项分批全通过。历史reader再补原producer/intent Source与精确envelope Effect关联，包含诚实重hash交叉替换反例的完整GraphResult28/28 PASS（1.631s）。十四文件原ESLint/diff check通过。
 - 全是localhost实际工程调用；没有新增真实Provider或独立质量/价格通过结论。接着实施实际Review与有界重做、Judge/通用Graph、其它Source及可信高风险/恢复释放，后端未完成，不推送/交前端/main。
+
+## 2026-10-17 — 第一百零四组 WIP：真实 RP Review 与用户要求换机中断
+
+- Source `50d4061b5` → **`1b243b8a4`**。用户明确要求及时停止、换设备继续，并单独授权此次提前推送未完成 Source/docs；这只改变本次存储时机，不构成后端完成、前端或 main 集成授权。按 Governance §7 创建活跃 `HANDOFF.md`，没有继续启动开发/长回归。
+- 保存静态四节点 Draft→Review、Draft+Review→Narrator→Output 的原 Scheduler/Context/ModelPort/Graph Result/银行实际链路。Review JSON 只允许 decision 与固定 reasonCode；Host 填精确目标/证据，原 ReviewController 做有界失效与新尝试，旧正文不进入重做，质量 approve 不授高风险批准。实际 parse/adopt 原账单及 Model/D3/settlement 历史证明、最终多 producer transition/全部 Effect 闭包随实现保存。完整通用图、Judge、跨领域和恢复释放等继续未完成。
+- 初 approve/rerun 四参数4 PASS（34.625s）；八类拒绝/有界停止16 PASS（71s）；冷读/Source 编辑删除/诚实重hash篡改/撤权/取消/unknown usage 精选8 PASS（40.159s，含两个已有正向）。新 Model Review suite 原26项分批已过，但这些结果在最近 admission 计数修改之前；不能冒称最新提交已完整回归。
+- 最近将 Review 计数从 decide 移至原 Attempt.activate 同事务 review_admission receipt；invalid JSON/失败也消耗已准入名额。纯 review-controller 完整36 PASS（13.636s）。接口 §17.104 的详细描述尚待续接时随验证同步，旧历史不覆盖新代码。evaluator 增三个文件指纹，预计47项但未运行；共享 Attempt/Transition 对 Planner/chain/Project/background 等的回归尚未执行。
+- 最后新加 admission/decision/settlement × saved/no_save × 两 Engine 的12 ACK项；suite现38项。最后 ACK进程已结束，但最终输出因上下文切换丢失，结果 **UNCONFIRMED**，不计通过。新设备先运行并诊断，再回归最新计数语义。当前17个明确修改实现/测试文件 ESLint、工作区与 staged diff check 实际通过。
+- 本组均 localhost 合成响应，无新增真实 Provider调用或独立质量/价格/晋升结论。用户确认没有独立 sealed/human preference资料。用户无关 dirty（两个 CLAUDE.md 删除、audit HTML/未跟踪目录等）保持且未纳入提交。docs 在独立干净工作树安全 merge `origin/docs@d0bbcd7ab`，保留远端其它任务历史，不 force push；不操作 main、不结束分支。
