@@ -1467,3 +1467,12 @@ worker继续使用原Native Host、ContextPort、私有ContextRetrievalPort、�
 原bind/tighten reducer继续只收紧已有operation，不因后来更大的Route/调用参数提高原余额。超过当前额度的历史、unknown及实际结算继续可读取/保留；收紧后呈overrun而不是删除旧费用。父子reservation沿同一原bank竞争、单次charge和晚到settlement，只有明确可释放的未用部分归还；没有新账本、预算复制或新scope。
 
 FS/SQLite原Session/Project/RP银行各40条本地费用经Source撤回和冷重启保留。有限五Agent RP检索链在预先声明48 jobs及相应Plan步骤后完成37个实际原本地工作、5次合成Model/6次合成Embedding及12个Effect闭包；相同图声明32 jobs时停止并保留原费，不通过重请求重置。准确源码HEAD及所有验证归同一Record。原前端后续须按共享schema适配该字段；本组为后端合同，P1–P4/最终Gate继续，不作前端交接或main/分支结束。
+
+
+### 17.126 原静态 RP Judge 的检索与判定费用闭包
+
+原显式双候选→Judge→Narrator静态RP图允许各Model节点持有自己的memory.retrieve及owned exact context Profiles。仍为同Source、原Narrator audience、graphRevision0及原Plan声明的候选/消费者，不开放新Actor/Delegate或动态控制scope。Judge只选择原已授权候选，检索不能增加候选正文传播范围、Effect审批或正式事实权威。原稀疏Rerank政策保持。
+
+原ContextRetrievalPort继续逐实际Embedding batch/Rerank创建独立原Effect、原bank准入和实际响应证明。Judge完成reader核对其全部检索Effect/原收据与Attempt settlement；最终Narrator及唯一Chat原费用闭包汇总两候选、Judge及Narrator的所有Model/检索费用。旧无检索Judge合同仍适用，无第二银行、索引或执行入口。
+
+真实编译产生的私有Memory descriptor摘要贯穿同次Judge图；scope释放后的候选正文/判定/后继仍检查原Memory当前性。Judge的异步判定与结算结束后才释放私有检索证明。原Source/Memory撤回、取消、usage未知及ACK未知保留事实和费用；不以冷历史或重新请求恢复scope/发送。准确FS/SQLite实测与源码HEAD归同一Record；Review、Planner/动态图、其它Source与完整恢复/释放继续，尚非完整后端或最终Gate通过。

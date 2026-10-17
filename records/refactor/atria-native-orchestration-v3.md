@@ -1348,3 +1348,12 @@
 - 新五Agent链首轮2FAIL/2PASS/20filterSKIP（153.846s），原Plan maxSteps50先到限额，未放宽产品准入。fixture预声明相应Plan maxSteps100后4PASS/20filterSKIP（156.571s）：48 jobs额度完成37个实际local jobs、5次合成Model+6次合成Embedding、12个Effect闭包；相同图32 jobs按原额度停止、无Chat且重请求不重置费用。原24项图suite中的旧20项已在前组完整通过，本组仅新增四参数。
 - 最终原银行/reservation/子闭包/指纹八完整suite154/154 PASS（26.667s）；原Legacy/V3实际count/render/localWork两完整suite51/51 PASS（23.969s）。六JS原ESLint及staged diff check通过；拆分正负测试以遵守原lint，未禁用规则。
 - 全部新增Provider为localhost合成，真实API总数12、备用Chat0保持，API无daily/RPM硬上限。继续控制/动态图与其它Source/Actor检索、可信高风险消费者、完整恢复/释放等后端；P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。
+
+
+## 2026-10-17 — 第一百二十三组：原静态 RP Judge 检索与判定费用
+
+- Source `a22a36e12` → `75da2b972`，本地提交、未推送；接口§17.126。原双候选/Judge/Narrator每节点owned exact Context Profiles及原私有检索scope接通；Judge历史reader/Attempt settlement及最终唯一Chat费用纳入全部附属检索收据。真实编译Memory摘要固定同次图的原Memory身份；异步Judge采用/结算结束后才释放私有scope，历史不能恢复scope或派发。Review/Planner及动态图边界未扩展。
+- FS/SQLite不带Rerank的正向、删除Source后冷读及重hash子Effect parent篡改拒绝2PASS/6filterSKIP（60.065s）。预声明原Route maxRequests16/local jobs48供测试实际图消费，不给已有operation增加余额或另设API测试总量上限。两候选、Judge、Narrator实际4次合成Model+5次合成Embedding，闭包10个Effect；带原可选Rerank时再4次原Rerank、闭包14个Effect，选中候选正文范围保持。
+- 新Rerank、Judge embedding usage未知、selection settlement ACK saved/no_save与Memory末证明同事务撤回十参数10PASS/2filterSKIP（246.637s），新增suite全部12项均通过。补明确撤回后无Judge判定收据断言再2PASS/10filterSKIP（42.022s）。真实发生费用保持；无判定/后继/重发，独立合法Memory修改保留。全部Provider为localhost合成。
+- 原Judge完整消费者28项及原执行指纹67项两suite95/95 PASS（212.659s）；Context/Graph Result两完整suite42/42 PASS（5.501s）。八JS原ESLint、staged diff check通过。期间查找两个旧不存在路径仅ENOENT，无对应suite执行或通过声称。
+- 无新增真实API，私密总数12、备用Chat0、daily/RPM配置null保持。继续Review局部重做、Planner/动态图及其它Source/Actor检索、可信高风险与完整恢复/释放；P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。
