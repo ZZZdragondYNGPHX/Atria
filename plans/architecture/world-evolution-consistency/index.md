@@ -13,10 +13,11 @@
 本 Plan 是同一主题持续迭代的**唯一入口**。每一轮先更新对应模块和本轮讨论状态、在 `docs` 分支提交并核实，再开展本轮讨论；直到用户明确认可完整方案，才将状态由 Draft 改为 Approved/定稿。不得把助理推荐误写为已获批准的冻结决议，亦不得在讨论阶段直接修改 `main` 产品实现。
 
 - [Research](research.md)：外部资料、机制比较、来源、局限和迁移适用性；讨论中持续补充。
-- [Design](design.md)：§8 S2 扩域、§9 W1/W2、§10 W3、§11 W4、§12 W5，**§13 已确认 W5-B 并路由 W6**；旧章节作为当轮候选历史，不覆盖后续决策。
+- [Design](design.md)：§8 S2 扩域、§9 W1/W2、§10 W3、§11 W4、§12 W5、§13 W6，**§14 已记录 W6-B 并路由 W7**；早期章节作为历史讨论，后续已确认决策优先。
 - [Runtime Emergence & Fact Lifecycle](runtime-emergence.md)：**W4 方向已确认，§8 记录 W4-B**。仅当本轮需要核对实体注册/事件基础时阅读。
 - [NPC Autonomy & Scheduling](npc-autonomy.md)：**W5 已确认 B 方向**；§10 明确选型与待收口接口，复核 NPC 调度时按需读取。
-- [NPC Social Cognition](npc-social-cognition.md)：**W6 当前阶段模块**。NPC 私人认知、非对称社交态度、正式共同关系、谣言/秘密传播、动态身份与 HCM/Information/ToM 权限边界；W6-A/B/C 均为待议。
+- [NPC Social Cognition](npc-social-cognition.md)：**W6 已确认 B 方向**；§10 记录社会关系真相、私人认知及来源事件边界。仅在当前模块需要这些依赖时读取。
+- [NPC Memory & Information Flow](npc-memory-information-flow.md)：**W7 当前阶段模块**。动态 NPC 合法受众资格、个人记忆生命周期、秘密/谣言传播、可信证据、游戏时间与存档分支隔离；W7-A/B/C 均为待议。
 - [Record](../../../records/architecture/world-evolution-consistency.md)：按工作轮累积可核验的文档提交、调研结果、未完成内容。
 - 后续需要规模化时再按主题拆模块，本入口仍为唯一导航。
 
@@ -26,7 +27,7 @@
 
 原问题「静态设定和动态演化冲突」仍保留，**但现在必须以原生 World / Knowledge 整体重构为主线**。先明确 World（实体/关系/世界法则/初始基线）与 Knowledge（资料/断言/来源/语境）的真实边界，再设计事实演化、主体认知、有效上下文和 Library/Studio/Play 产品界面。已有 Native SessionCore/State/Event/Simulation/HCM/Context Compiler 是首先审查和复用的权威，不能平行再建一套真相库。
 
-本轮对照见 [design.md §8](design.md#8-scope-expansion-s2--从-lorebook-进一步重构原生-world--knowledge2026-10-17候选)，补充文献与代码证据见 [research.md §F](research.md#f-s2-扩域补充研究从-st-lorebook-到-native-world-model2026-10-17)。**已确认：W1-B World Model + Source Library、W2-B 分层混合结构、W3-B 分级约束 + 涌现世界、W4-B 渐进接纳 + 关键交互即时提交、W5-B 分层事件驱动自主性。** 新 NPC 在持续后果发生时正式取得身份；绝大多数主体由游戏时钟/规则/有限反应推进，只有少量重点角色需要有界 LLM。Native Host 仍为世界真相唯一权威，HCM/Information 表达认知；**W6 社会关系/信息传播的具体选型尚未获批**，见 [npc-social-cognition.md](npc-social-cognition.md)。整体 Plan 仍为 Draft，未授权实现。
+本轮对照见 [design.md §8](design.md#8-scope-expansion-s2--从-lorebook-进一步重构原生-world--knowledge2026-10-17候选)，补充文献与代码证据见 [research.md §F](research.md#f-s2-扩域补充研究从-st-lorebook-到-native-world-model2026-10-17)。**已确认：W1-B World Model + Source Library、W2-B 分层混合结构、W3-B 分级约束 + 涌现世界、W4-B 渐进接纳 + 关键交互即时提交、W5-B 分层事件驱动自主性、W6-B 世界关系事实 + 主体认知 + 来源事件。** 社会关系的客观效力由唯一 Native Host/Session 提交，主观感受和知识由受众限定的 Information/HCM 表示。**W7 个人记忆、秘密传播和动态 NPC 受众资格尚待讨论**，详见 [npc-memory-information-flow.md](npc-memory-information-flow.md)。整体 Plan 继续 Draft，未授权实现。
 
 需要回答：创作者的首要对象是若干触发条目，还是可以直接浏览、引用并演化的“世界”；Knowledge 应是同级世界书，还是世界引用的来源与证据？现有 free text 必须继续一等支持；不为未发布旧 ST 数据建立兼容双轨。
 
@@ -67,7 +68,7 @@
 
 ## 5. 状态与下一检查点
 
-- **当前：**S7 已记录用户选择 **W5-B**；进入 W6 [NPC 认知、单方态度、共同社会关系、信息传播、动态 Perspective](npc-social-cognition.md) 讨论。当前 W6 推荐 B（世界关系事实 + 主体认知 + 来源事件），**尚未获用户批准**。
-- **已确认设计方向（W1–W5）：** World Model + Source Library；分层混合结构；分级约束 + 涌现世界；关键持续后果即时接纳实体；分层事件驱动 NPC 自主性。坚持自由文本、硬法则、现有 Native Host 唯一状态权威及有限预算。**已批准的具体接口/最终实施设计：无。** W6 与动态身份、认知、社交事件、持久化/分支的精确契约仍待讨论。
+- **当前：**S8 已记录用户选择 **W6-B**；进入 W7 [NPC 个人记忆、秘密与谣言传播、动态受众身份、分支权限](npc-memory-information-flow.md) 讨论。当前推荐 W7-B「动态受众资格 + 证据驱动信息流」，**尚未获用户批准**。
+- **已确认设计方向（W1–W6）：** World Model + Source Library；分层混合结构；分级约束 + 涌现世界；重要持续事件即时接纳实体；分层事件驱动 NPC 自主性；社会关系客观事实与个体认知/来源事件分离。自由文本和硬约束保留，现有 Native Host 是唯一真相权威，认知/预算必须限定。**已批准的具体接口/最终实施设计：无。** W7 与动态受众权限、记忆、消息传播、持久化与分支的精确契约未批准。
 - **未授权：**修改 `main`、创建实现分支、给出实施已经通过的结论。
 - **完成标准：**用户在若干轮讨论后明确确认各核心决策及边界，并批准定稿。未经确认，不使用“Final/冻结/全面通过”描述。
