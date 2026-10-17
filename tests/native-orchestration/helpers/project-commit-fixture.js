@@ -15,7 +15,10 @@ import { planFixture, prepareControllerOwnerRoot } from '../fixtures.js';
 
 const command = () => createNativeId('orchestrationCommand');
 export async function projectCommitAccount(h) {
-    await storage.init({ dir: path.join(h.dataRoot, 'commit-review-test-accounts') });
+    // Synthetic accounts have no TTL. Their temporary directory is removed
+    // after each fixture, so no maintenance timer may outlive that fixture.
+    await storage.init({ dir: path.join(h.dataRoot, 'commit-review-test-accounts'), expiredInterval: 0, writeQueue: false });
+    storage.stopWriteQueueInterval();
     const salt = getPasswordSalt(), account = { handle: h.handle, enabled: true, admin: false, salt, password: getPasswordHash('project-commit-test-password', salt) };
     await storage.setItem(toKey(h.handle), account); return account;
 }
