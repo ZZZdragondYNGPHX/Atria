@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · W22 最终 Gate 0 交接证据、原生 P2 Schema 安全与实施分工（讨论草案）
 
 - **任务**：`ARCH-DWE-01`，Primary Workspace `docs`；唯一 [Plan 入口](index.md)、[累计 Design](design.md)、[W21 P2 优选方向](e0-handoff-evidence-review.md)、[E0-01～09 总表](e0-final-closure.md)、[唯一 Record](../../../records/architecture/world-evolution-consistency.md)。
-- **状态：Draft / E0 PARTIAL-BLOCKED**。用户明确认可 **W1-B～W21-B** 的总体设计/收口方向。**W22-B、具体 Namespace/ID/物理 Schema、最终完整 Gate 0 PASS、整份 Plan Approved/Final、授权创建代码分支、测试通过**均未得到用户批准。本模块不修改 `main` 或任何开发分支。
+- **状态：Draft / E0 PARTIAL-BLOCKED**。用户已确认 **W1-B～W22-B** 总体设计与证据收口路线；本文件 §6 的 W22 A/B/C 属讨论历史，最新明确确认见 §8。**完整 Gate 0 PASS、物理 Namespace/ID/Schema、全案 Approved/Final、开发分支与测试通过仍未获批准**。本模块不修改任何产品代码。
 - **目标**：将先前二十一轮讨论压缩为可复核的最后一组工程交接前置证据，不再为避免做决策不断引入全新架构概念；特别补齐 **P2 单 SessionRevision 下的受保护身份证明、Source Fact/History 双锚读接口、Typed Effect 的合法入口、跨六个工作包的真实生产消费者/清退计划**。
 - **静态源码锚点（2026-10-17，经 Branch GET 再确认）**：
   - `main=c57fada6edeea255b29d857ba2585c1dbc9c098b`；
@@ -130,3 +130,18 @@ type AuthorizedWorldAsOf = {
 - 仍缺 Gate 0 的关键证据：**最终实际集成 HEAD / 全活跃生产入口、正式 P2 Schema/Typed Publish、World reducer 与 Narrator Domain 收据协调、动态 Perspective 的合法创建及全消费者切线**。部分只能由未来最终集成分支与可执行审计核实，不能假设当前静态锚点永久有效。
 - 真实运行 E2E/CI/三端、长会话持久化/GC 与 Provider Wire 都留待获授权实现之后。本轮没执行，不能写 PASS。
 - 只有用户明确批准完整企划、满足真正的开发前 Gate 0 后，才可创建任务实现分支；本轮仍是 **Draft**，`main`、V3、Prompt、Visual 均未更改。
+
+
+## 8. W22-B 用户确认：停止无限设计，形成可执行 Preflight（2026-10-17）
+
+用户对上一轮唯一推荐的 **W22-B「具名阻塞 + 可执行 Preflight + 条件化开发交接」**回复「认同」。正式记录为 ARCH-DWE-01 第 22 轮已确认的**方案收口与下一步工作方式**。当前 W1-B～W22-B 均已得到方向性认可；**本次确认不是全案定稿、Gate 0 PASS、具体接口冻结或实施授权**。
+
+W22-B 已确认的操作边界：
+
+- **不再扩张抽象新架构轮次**。剩余讨论必须落到可执行 preflight：固定当前 Git HEAD、受保护 P2 Session Subject 的 Type/Validator/Writer/Save/GC、原 Domain Fact/Receipt/两段历史查询、非 Manifest NPC 的 Perspective/Participant、Knowledge/Prompt 的合法 Context 及 Legacy/插件消费者清退。
+- **具名阻塞**。每项未闭合 E0-01～09 都指定实际目标 Owner、生产入口/依赖、可交付证据、退出条件以及是否必须在开发前解决；不能只列概念或凭静态 grep 将其标 PASS。
+- **条件化交接**。在代码基线与接口所有权可确认、P2 安全与消费链方案具有可实施合同、Gate 0 的开发前责任已闭合后，才提出全案 Final/正式开发授权；若缺少证据，明确最小阻塞，保持 Draft，不能代用户创建 `feat/*`。
+- **Gate 0 与实施期分离**。尚未实现功能的 Node/数据库/真实 UI/CI/Windows/CachyOS/Termux 验收属于实施后的 Gate 1～4；不能凭空填写 PASS，也不应把“先通过未实现功能的 E2E”设为开工门槛。
+- **单 Native Host/原生硬切**。不添加独立 World Truth/EventStore、通用 SubjectAdapter 或永久 ST 双轨；仅对真实现役 Legacy/Plugin 接口在当前集成 HEAD 下判断 RETAIN/REPLACE/DELETE/INVESTIGATE。
+
+**本轮 Preflight 执行记录与具名交接清单**见同一 Plan Bundle 的 [e0-preflight-execution.md](e0-preflight-execution.md)；该文件不是第二份 Plan，也不是用户已经授权实施的 HANDOFF。W22-B 确认本身**不自动批准** Preflight 中新增的具体 ABI/Owner 实施方案，整份 Plan 仍 **Draft**。
