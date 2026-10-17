@@ -60,7 +60,11 @@ export function createSourcePicker(doc, { client, signal, onChange = () => {}, i
     async function renderProjects() {
         status.textContent = tl('Reading Projects…');
         let projects = [];
-        try { const result = await nativeStudioClient.listProjects({ summary: true }); projects = Array.isArray(result) ? result : result.projects ?? result.items ?? []; status.textContent = ''; } catch (error) { status.textContent = describeError(error); return; }
+        try {
+            const result = await nativeStudioClient.listProjects({ summary: true });
+            projects = (Array.isArray(result) ? result : result.projects ?? result.items ?? []).map(item => item.project ?? item).filter(item => item?.projectId);
+            status.textContent = '';
+        } catch (error) { status.textContent = describeError(error); return; }
         if (!projects.length) { status.textContent = tl('No Studio Projects yet.'); return; }
         const choose = select(doc, [['', tl('Choose a Project')], ...projects.map(item => [item.projectId, item.displayName || item.name || shortId(item.projectId)])], { value: initial?.projectId ?? '' });
         field(doc, tl('Project'), choose, { parent: detail, key: 'source.project' });
@@ -73,7 +77,7 @@ export function createSourcePicker(doc, { client, signal, onChange = () => {}, i
             emit({ domain: 'project', projectId: choose.value, taskId: null });
             try {
                 const result = await nativeStudioClient.listAgentTasks(choose.value);
-                for (const item of Array.isArray(result) ? result : result.tasks ?? result.items ?? []) el(doc, 'option', '', item.title || item.taskId, task).value = item.taskId;
+                for (const item of Array.isArray(result) ? result : result.tasks ?? result.items ?? []) el(doc, 'option', '', fmt('${0} · ${1}', [item.intent || item.title || shortId(item.taskId), item.status ?? '']), task).value = item.taskId;
             } catch (error) { status.textContent = describeError(error); }
         });
         task.addEventListener('change', () => { if (choose.value) emit({ domain: 'project', projectId: choose.value, taskId: task.value || null }); });
