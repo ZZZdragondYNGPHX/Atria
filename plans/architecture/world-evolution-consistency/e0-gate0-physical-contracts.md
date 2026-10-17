@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · W19 Gate 0 消费者收口与最小物理主体/事实/双时间契约（讨论草案）
 
 - **任务与导航**：`ARCH-DWE-01` · Primary Workspace `docs` · [唯一 Plan Index](index.md) · [累计设计](design.md) · [W18 最小 Typed ABI](e0-minimal-contract-cutover.md) · [W17 Domain-first](e0-domain-world-context-contract.md) · [唯一 Record](../../../records/architecture/world-evolution-consistency.md)。
-- **审批状态**：**Draft**。**W1-B 至 W18-B** 已被用户认可为总体方向；**W19-A/B/C、物理数据结构、原生写入/查询 API、需要删除的具体生产代码、阶段实施计划均未获批准**。E0-01～09 仍 PARTIAL / BLOCKED；未创建产品实现分支，未运行 Node/CI/真实三端测试。
+- **审批状态**：**Draft**。**W1-B 至 W19-B** 已被用户认可为总体方向；§6 保留当轮候选 A/B/C 的历史，用户对 W19-B 的确认见 §7。**W20 的受保护物理布局、具体写入/查询 API、旧代码清退与工程授权尚未批准**。E0-01～09 仍 PARTIAL / BLOCKED；未修改 `main`、未建实现分支、未跑 Node/CI/三端测试。
 - **本轮任务**：从抽象 `Subject/Fact/Perspective` 退到真实的存储和调用关系，回答四个可实施问题：谁在现有 Native Session Revision 中为新 NPC 登记身份？长期事实的事实键/游戏时效/提交修订怎样最小落地？旧 History/World Event/Save 是否可被复用构建 `as-of` 查询？进入正式开发前，Gate 0 的 Consumer/Owner/Deletion Map 到什么程度才足够，而哪些验证应该留给实施期？
 - **本次来源版本**（由 GitHub Branch API 再次核对）：`main=c57fada6edeea255b29d857ba2585c1dbc9c098b`、`refactor/atria-native-orchestration-v3=a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`、`refactor/atria-native-prompt-preset-deepening=760327891149216dffdc1e3fa0c846496007a013`、`feat/native-visual-generation-deepening=ae587be0c64487ba922528bdd0146444bcf5e92e`。未来合流后必须以新 HEAD 重验。此次仅 GitHub 远端源码定向读取/搜索，非完整可执行 call graph。
 
@@ -127,3 +127,17 @@ ViewQuery = {
 **W19-C · 一次性打造全领域独立 Bitemporal FactStore**：所有历史、NPC 认知、World State、HCM 和 Knowledge 强制写入新的通用数据库，再异步同步 Native Session；查询看似统一，但会造成双权威、GC/事务分叉和大量旧数据适配，与 W12/W17 相冲突。
 
 **研究推荐 W19-B，尚未获用户批准**。本轮讨论聚焦 ① Session-owned 最小物理事实持久化候选，② 原生两段历史查询语义，③ Gate 0 的真正退出和实施后验收分界。若确认 W19-B，下一轮应按约定先写入同一 Plan/唯一 Record，再针对目标 HEAD 明确最小 Schema/接口命名及实际生产消费者的按文件 cutover 工程包，并作完整企划能否最终交接的审计，而不是继续增加任意新架构。
+
+
+## 7. W19-B 用户确认（2026-10-17）
+
+用户明确回复「认同」上一轮推荐的 **W19-B「Session 原生最小 Subject + 来源型 Fact Transition / Revision-Tick 双锚查询 + Gate 0 证据收口」**。将其记录为 ARCH-DWE-01 **已确认的总体架构方向**，因此 W1-B 至 W19-B 均获得用户方向性认可。
+
+- **单 Session 正式身份**：对产生持久后果的已接纳对象，在现有 Native Session/Revision 体系内部维护可追溯、稳定的 Subject 身份和合法 origin；Author WorldRevision / ActorProfile 是固定创作引用，HCM Entity 是来源证据假设，不产生第二个可写权威。
+- **最小持久性**：具备持续因果/规则/历史用途的关键 Fact 需要来源型变化/终止/纠错语义；优先复用现有 WorldState/Event/Receipt、特定 Domain History/Clock 与 StateDelta/Save。不能因设计了 `FactTransition` 逻辑类型就要求每条普通自由文本都创建同名 DB 记录。
+- **双锚 + 授权查询**：先校验请求的 `asKnownRevision` 与合法 Session/Branch 祖先和可用 Snapshot，再按已声明的 canonical GameTick/事实有效期求 `asOfGameTick`；最后经 Host Perspective/Source grant 过滤秘密。没有有效游戏时钟的 Worldless RP 不伪造精确 Tick，可保留 Revision 顺序查询。
+- **保留已有 Native 受保护提交**：正式 Effect/Subject/Fact 通过合法原生 Domain Authority 提交，严格保留 `native_authority_typed_publication_required` 等现有 guard，不可向普通 Runtime/插件开放绕过规则的 World truth patch。
+- **Gate 0 是开发交接前准备**：要求实际最终 HEAD、精确生产 caller/Owner/Target/Deletion、可实施数据/权限契约及测试计划。只有编写实现后才可能取得新增功能的 Node/DB/CI/UI/Windows/CachyOS/Termux 真实验收，不能将尚未实现系统的 E2E PASS 设为 Gate 0 先决条件。
+- **未批准内容**：主体物理存放于哪个 Namespace/World Root，是否增加新 Native ID family，具体字段/时态索引/GC/正式查询 ABI，如何覆盖 Worldless/Multiworld/动态 Perspective、确切删除清单、全量 E0 PASS 和任何产品开发。
+
+**下一轮 W20**：[e0-gate0-integration-workpackages.md](e0-gate0-integration-workpackages.md) 将以已核对源码补齐原生受保护写入位置的安全约束、有限物理字段、事实双时间查询的最小读写责任、对 `World/Game/Authority/Narrator/Information/Frontend` 的精确消费者分包，以及 Gate 0 真正剩余的最小阻塞。当前候选建议 **W20-B**，**尚未获用户批准**。整份 Plan **Draft**，E0 仍 **PARTIAL / BLOCKED**，仅 `docs` 修改。
