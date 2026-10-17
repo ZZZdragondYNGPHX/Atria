@@ -2,7 +2,7 @@
 
 > **唯一入口**。Task ID：`refactor/atria-native-orchestration-v3`。Primary Workspace：`main`（未来实现）；实现使用同一任务分支 `refactor/atria-native-orchestration-v3`，企划/Record继续在长期 `docs` 工作空间。规则只引用 [Repository Governance](../../../README.md)，不在本 Plan 复制执行规则。
 
-2026-10-17 已恢复同一任务，源码本地最新 `dadafc7e6`（未推送），含真实有限 RP Judge、所选节点多 Route 隔离评测、Review/Attempt 同事务撤销保留修复、原图修订重建、显式静态 Agent DAG 和 Planner 有界重规划回路、发布图修订及 Planner→Agent 图组合及Host限定的动态Draft增补；Context附属检索Effect、原Profile pin、实际POST目标/冻结请求及单Narrator RP的实际Context Rerank及原Embedding执行/物理索引共用、V3单Narrator RP实际Embedding与原索引计量、原隔离worker检索RPC/父Host费用闭包、静态RP Agent DAG逐节点检索与Memory撤回、原银行声明式localWork额度及静态RP Judge检索/判定费用闭包、原Review检索及局部重做费用保留；§17.108–17.127 与同一 Record 第105–124组记录准确边界和测试。用户提供的测试 API 已在仓库外重建，按主站优先/失败备用，当前无调用硬上限。已消费换机 HANDOFF 删除；后端仍在实施，P1–P4及最终Gate NOT_READY，不进入前端、main 或结束分支。
+2026-10-17 已恢复同一任务，源码本地最新 `5453197ba`（未推送），含真实有限 RP Judge、所选节点多 Route 隔离评测、Review/Attempt 同事务撤销保留修复、原图修订重建、显式静态 Agent DAG 和 Planner 有界重规划回路、发布图修订及 Planner→Agent 图组合及Host限定的动态Draft增补；Context附属检索Effect、原Profile pin、实际POST目标/冻结请求及单Narrator RP的实际Context Rerank及原Embedding执行/物理索引共用、V3单Narrator RP实际Embedding与原索引计量、原隔离worker检索RPC/父Host费用闭包、静态RP Agent DAG逐节点检索与Memory撤回、原银行声明式localWork额度及静态RP Judge检索/判定费用闭包、原Review检索及局部重做费用保留、Planner原修订检索/replan/静态图费用与末授权当前性；§17.108–17.128 与同一 Record 第105–125组记录准确边界和测试。用户提供的测试 API 已在仓库外重建，按主站优先/失败备用，当前无调用硬上限。已消费换机 HANDOFF 删除；后端仍在实施，P1–P4及最终Gate NOT_READY，不进入前端、main 或结束分支。
 
 最新后端实证：第九十四组 `1e1281224` 支持同一原 Session 内 Task/variant 专属 Binding 与 Narrator 的独立 Plan，范围见[接口 §17.98](interface-contracts.md#1798-原-session-内的-task-专属-plan-binding)和同一 Record。完整后端继续实施；此项不核销通用 Graph/Simulation/可信高风险消费者、恢复释放与最终 Gate。
 

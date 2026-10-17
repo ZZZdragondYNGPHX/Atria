@@ -1366,3 +1366,12 @@
 - 新可选Rerank/unknown/Memory撤回精选初2PASS/4FAIL/4filterSKIP（82.34s）；追加第二Review unknown两参数2FAIL/10filterSKIP（40.293s）。请求/费用及拒后继断言已通过，失败为测试将原Review准入计数误当判定数：原Attempt准入即消耗轮次，失败不归零。按原AttemptController修正预期并直接断言当前Review无决策收据，六参数6PASS/6filterSKIP（72.752s）；新suite全部12项已分别覆盖通过，未改原轮次规则或放宽后继断言。
 - 原Review Controller38项（含新增伪造memory.retrieve标签两store拒绝）与原指纹67项两完整suite105/105 PASS（11.33s）；原Review真实消费者54项完整PASS（204.923s）。共用fixture抽出后的Judge正向及Context/Graph Result三suite43PASS/11filterSKIP（65.472s）。十三JS原ESLint和staged diff check通过。
 - 无新增真实API，私密总数12、备用Chat0、测试daily/RPM配置null保持。继续Planner/受控动态图及其它Source/Actor检索、可信高风险与完整恢复/释放后端；P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。
+
+
+## 2026-10-17 — 第一百二十五组：Planner 原修订检索及末授权当前性
+
+- Source `dadafc7e6` → `5453197ba`，本地提交、未推送；接口§17.128。普通RP Planner、有限replan与Planner后静态Agent图使用同一原Context/检索Effect/bank。scope创建与历史reader共用原Plan/readTaskGraphRevision，按父Model所属修订核对原accepted Patch/命令；prepared Model发送前必须仍匹配当前Root修订，子检索也必须匹配原Attempt修订。Planner合法采用Patch之后，原已完成Model私有证明仅为该次控制/结算保留到结束，不恢复新scope。每轮Planner settlement/history及最终Narrator/Chat纳入全部原检索费用。动态addNode/addEdge检索仍保留拒绝，待模板owned pins接线。
+- 最初普通Planner/有限loop四参数4PASS/10filterSKIP（41.533s），原Planner生产者20项与指纹67项两完整suite87/87 PASS（35.837s）。新增初完整14/14 PASS（144.848s），含Rerank、unknown、Memory在Patch前/后证明中撤回、冷Source删除及子Effect绑定篡改拒绝。追加replan后两Draft→Narrator图两参数2PASS/14filterSKIP（83.448s），共5Model+6Embedding/12Effect闭包；fixture预声明原local jobs48/Plan步骤160，不增加旧运行余额或API测试硬限额。
+- 再补最后一次Patch授权await同事务Memory撤回，2FAIL/16filterSKIP（10.465s）：Memory与费用保留、没有后继请求，但Patch已先采用导致Root修订1，正确预期为仍0。将原authorizePatch末次current检查从仅expansion的容量分支移到所有Planner，修复后六种修订/证明时点参数6PASS/12filterSKIP（26.03s）。同时在新增检索历史await之后、Planner settlement写前复验同一原Source/Memory及Root stamp，合法撤回沿原deny结果保留，不回滚独立事实。
+- 最终新完整18/18 PASS（236.654s），覆盖普通Planner、loop、静态Agent图与loop+图组合、可选Rerank、第二Planner unknown不重发、Patch前两授权时点与Patch后撤回、冷历史。最后原Planner生产者/指纹再完整87/87 PASS（41.541s）。原loop/graph/expansion三完整suite78/78 PASS（340.512s）；该轮先启动、各suite按加载时源码执行，末授权修复前的两suite证据与最后代码的新18项/原87项区分，不冒称全78在最终字节上重跑。九JS原ESLint及staged diff check通过。
+- 全部新增Provider为localhost合成，无新增真实API；私密总数12、备用Chat0、测试daily/RPM配置null保持。后端继续动态模板owned检索pins、其它Source/Actor、高风险消费者及完整恢复/释放；P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。

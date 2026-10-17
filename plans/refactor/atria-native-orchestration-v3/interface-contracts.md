@@ -1487,3 +1487,14 @@ Review完成与历史reader核对全部检索子Effect、收据和Attempt settle
 原ReviewController只对有完整原Context检索收据、已确认响应及原bank结算证明的附属检索接通redo检查。单独的memory.retrieve标签、unknown/未核对动作、审批或领域写入不能借此通过原不可逆依赖围栏。原派生索引仍共用，不写Memory/World；Provider调用不能撤销或退款，原费用与历史保留。未知用量、Memory撤回及旧Result失效保持拒后继、不重发；新Draft只收到原固定原因标签与引用，不转发旧正文。
 
 准确FS/SQLite、冷历史/篡改与原消费者验证归同一Record。Planner/受控动态图、其它Source/Actor与完整恢复/释放继续，尚非完整后端或最终Gate通过，不交前端/main或结束分支。
+
+
+### 17.128 原 RP Planner 修订与检索费用历史
+
+原同来源RP Planner、有限replan回路及Planner后静态Agent图可逐Model节点使用owned exact context检索Profiles。原Planner的generation.send/graph.patch与原Memory grant独立核对，仍为原Narrator audience；检索不能扩大Patch操作、预算、Actor/正文受众或Effect审批。带动态addNode/addEdge模板的检索仍须其独立pin接线，暂沿原拒绝边界。
+
+创建检索scope与历史reader共用原Plan和原readTaskGraphRevision：依原Model所属graphRevision重放受保护accepted Patch，核对不可变静态拓扑及原命令/producer/Root事实；不是从新Root修订签旧Model的权限。prepared Model在任何实际检索发送前必须与当前Root修订一致。末次Model完成证明及检索历史核对之后继续复验原Source/Memory，采用Patch前不能沿用较早证明。Model已完成后，Planner合法采用Patch可推进Root修订，原私有证明只为该已完成Model的控制/结算继续验证；子检索Effect仍绑定同一原Attempt/Model修订。
+
+每轮Planner收据与Attempt settlement核对全部实际Embedding/Rerank子收据和原bank费用，最终Narrator/唯一Chat费用闭包汇总全部Planner轮次、Agent和Narrator费用，早轮费用不能随replan消失。异步Planner采用/结算完成后才释放私有检索scope；同次图原Memory摘要跨轮次/后继复验。usage未知、Memory撤回、原Patch已采用但最终证明失效均保留已发生事实及费用，不签后继许可、不重发；冷历史只验证事实，不能恢复scope。
+
+准确FS/SQLite与原消费者验证归同一Record。其它动态模板/Source/Actor、高风险消费者与完整恢复/释放继续，尚非完整后端或最终Gate通过，不交前端/main或结束分支。
