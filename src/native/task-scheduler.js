@@ -62,15 +62,17 @@ export class NativeTaskScheduler {
     async withResourceHandoff(boundary, expected, child) {
         return (await this.withResourceFanout(boundary, expected, [child], { maxConcurrency: 1 }))[0];
     }
-    /** A domain-authorized durable Fanout uses the same queue and resource
-     * permits. Its passive parent releases its slot until every real worker
-     * has settled, including a worker which ignores cancellation. */
-    async withResourceFanout(boundary, expected, children, { maxConcurrency, timeoutMs = this.timeoutMs } = {}) {
+    /** The passive callback only decides the original durable Join. Model
+     * work resumes after reacquiring the real parent permit. Unselected
+     * workers retain theirs; wait() yields before the final domain write. */
+    async withResourceFanout(boundary, expected, children, { maxConcurrency, timeoutMs = this.timeoutMs, until = null, deadlineAt = null, onSettled = null } = {}) {
         const parent = this.assertActiveBoundary(boundary, expected);
         expected = immutable(Object.fromEntries(['owner', 'anchor', 'kind', 'executionClass', 'key', 'fingerprint', 'resources'].map(field => [field, parent[field]])));
         const allowed = ['kind', 'executionClass', 'resources', 'key', 'fingerprint', 'run', 'finalize', 'fresh'];
         const keys = new Set();
-        if (!Number.isSafeInteger(maxConcurrency) || maxConcurrency < 1 || !Array.isArray(children) || !children.length) throw failure('operation_handoff_denied');
+        if (!Number.isSafeInteger(maxConcurrency) || maxConcurrency < 1 || !Array.isArray(children) || !children.length
+            || until !== null && typeof until !== 'function' || onSettled !== null && typeof onSettled !== 'function'
+            || deadlineAt !== null && (!until || !Number.isSafeInteger(deadlineAt) || deadlineAt < 0)) throw failure('operation_handoff_denied');
         for (const child of children) {
             if (!child || Object.keys(child).some(key => !allowed.includes(key)) || child.key === expected.key
                 || typeof child.key !== 'string' || !child.key || keys.has(child.key) || typeof child.fingerprint !== 'string' || !child.fingerprint
@@ -80,9 +82,42 @@ export class NativeTaskScheduler {
             if ([...this.operations.values()].some(item => item.owner === expected.owner && item.key === child.key)) throw failure('operation_handoff_duplicate');
             keys.add(child.key);
         }
-        const operation = boundaries.get(boundary).operation, group = { maxConcurrency }, submitted = [];
-        this.suspended.add(operation); this.running.delete(operation); operation.view.status = 'waiting_child'; operation.view.provisionalPresentation = '';
-        let admissionError;
+        const operation = boundaries.get(boundary).operation, group = { maxConcurrency, pauseForDecision: !!until, paused: false }, submitted = [];
+        const suspend = () => {
+            this.suspended.add(operation); this.running.delete(operation);
+            if (!boundary.signal.aborted) operation.view.status = 'waiting_child';
+            operation.view.provisionalPresentation = ''; this.drain();
+        };
+        const resume = async () => {
+            if (boundary.signal.aborted) return;
+            await new Promise((resolve, reject) => {
+                const abort = () => reject(failure('operation_cancelled'));
+                boundary.signal.addEventListener('abort', abort, { once: true });
+                operation.resume = () => { boundary.signal.removeEventListener('abort', abort); resolve(); };
+                operation.view.status = 'queued'; this.queue.push(operation); this.drain();
+            });
+            this.suspended.delete(operation); delete operation.resume;
+            this.assertActiveBoundary(boundary, expected);
+        };
+        suspend();
+        let admissionError, callbackError, finished = false, revision = 0, wake = null;
+        const results = [], cancelRemaining = () => { for (const item of submitted) this.cancel(expected.owner, item.handle.operationId); };
+        const notify = () => { revision++; wake?.(); };
+        let settled;
+        const wait = async () => {
+            try {
+                if (!finished) { group.pauseForDecision = false; group.paused = false; suspend(); await settled; await resume(); }
+                return results;
+            } finally { this.suspended.delete(operation); delete operation.resume; }
+        };
+        const cancelPending = () => {
+            const cancelled = [];
+            for (const [index, item] of submitted.entries()) {
+                const child = this.operations.get(item.handle.operationId);
+                if (this.queue.includes(child) && !this.running.has(child) && !this.suspended.has(child) && this.cancel(expected.owner, item.handle.operationId)) cancelled.push(index);
+            }
+            return cancelled;
+        };
         try {
             for (const child of children) {
                 try {
@@ -91,25 +126,43 @@ export class NativeTaskScheduler {
                     submitted.push({ handle, completion: operationCompletions.get(this.operations.get(handle.operationId)).promise });
                 } catch (error) { admissionError = error; break; } finally { this.#submittingGroup = null; }
             }
-            if (admissionError) for (const item of submitted) this.cancel(expected.owner, item.handle.operationId);
-            const results = await Promise.allSettled(submitted.map(async item => {
+            if (admissionError) cancelRemaining();
+            settled = Promise.all(submitted.map(async (item, index) => {
                 const result = await item.handle.result.then(value => ({ value }), error => ({ error }));
                 await item.completion;
-                if (result.error) throw result.error;
-                return result.value;
-            }));
-            if (!boundary.signal.aborted) await new Promise((resolve, reject) => {
-                const abort = () => reject(failure('operation_cancelled'));
-                boundary.signal.addEventListener('abort', abort, { once: true });
-                operation.resume = () => { boundary.signal.removeEventListener('abort', abort); resolve(); };
-                operation.view.status = 'queued'; this.queue.push(operation); this.drain();
-            });
+                results[index] = result.error ? { status: 'rejected', reason: result.error } : { status: 'fulfilled', value: result.value };
+                try { await onSettled?.({ index, ...results[index] }, { cancelRemaining }); } catch (error) { callbackError ??= error; cancelRemaining(); }
+                notify();
+            })).then(() => { finished = true; notify(); });
+            if (until && !admissionError) {
+                let seen = 0;
+                while (true) {
+                    if (seen === revision && (!finished || deadlineAt !== null) && (deadlineAt === null || Date.now() < deadlineAt)) await new Promise(resolve => {
+                        let timer;
+                        const done = () => { clearTimeout(timer); boundary.signal.removeEventListener('abort', done); wake = null; resolve(); };
+                        wake = done; boundary.signal.addEventListener('abort', done, { once: true });
+                        if (deadlineAt !== null) timer = setTimeout(done, Math.max(0, deadlineAt - Date.now()));
+                    });
+                    seen = revision;
+                    if (boundary.signal.aborted || callbackError) break;
+                    if (await until({ finished, expired: deadlineAt !== null && Date.now() >= deadlineAt })) { await resume(); return { wait, cancelRemaining, cancelPending }; }
+                    if (finished && deadlineAt === null || deadlineAt !== null && Date.now() >= deadlineAt) throw failure('operation_handoff_unready');
+                    group.paused = false;
+                    suspend();
+                }
+            }
+            await settled;
+            await resume();
             if (boundary.signal.aborted) throw failure('operation_cancelled');
-            this.assertActiveBoundary(boundary, expected);
             if (admissionError) throw admissionError;
+            if (callbackError) throw callbackError;
             const failed = results.find(result => result.status === 'rejected');
             if (failed) throw Object.assign(failure('operation_child_failed'), { cause: failed.reason });
             return results.map(result => result.value);
+        } catch (error) {
+            cancelRemaining();
+            if (settled) { suspend(); await settled; }
+            throw error;
         } finally { this.suspended.delete(operation); delete operation.resume; }
     }
     releaseOperation(operation) {
@@ -182,7 +235,7 @@ export class NativeTaskScheduler {
         while (this.running.size < this.concurrency) {
             const index = this.queue.findIndex(item => {
                 const group = operationGroups.get(item);
-                return (!group || [...this.running].filter(active => operationGroups.get(active) === group).length < group.maxConcurrency)
+                return (!group || !group.paused && [...this.running].filter(active => operationGroups.get(active) === group).length < group.maxConcurrency)
                     && item.resources.every(resource => [...this.running].filter(active => active.resources.includes(resource)).length < this.perResource);
             });
             if (index < 0) return;
@@ -249,7 +302,10 @@ export class NativeTaskScheduler {
             if (/^(?:native_illustration_|native_speech_|native_mcp_|native_a2a_|native_generation_|native_orchestration_|generation_|operation_|prompt_)[a-z_]{1,100}$/.test(error.code ?? '')) view.errorCode = error.code;
             view.provisionalPresentation = ''; operation.reject(error);
         } finally {
-            clearTimeout(timer); operation.cleanup(); this.running.delete(operation); this.releaseOperation(operation); operationCompletions.get(operation)?.resolve(); this.drain();
+            clearTimeout(timer); operation.cleanup(); this.running.delete(operation); this.releaseOperation(operation);
+            const group = operationGroups.get(operation);
+            if (group?.pauseForDecision) group.paused = true;
+            operationCompletions.get(operation)?.resolve(); this.drain();
         }
     }
 }

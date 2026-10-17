@@ -5,14 +5,67 @@ import { assertObject } from '../../../public/shared/native-orchestration-contra
 import { controlCommandId, controlRecordKey, graphReachable, holdsConcurrencySlot, readAttempt, assertAttemptCurrent, readReviewAdmission, reviewAdmissionId } from './controller-common.js';
 import { checkedRecord } from './plan-repository.js';
 import { readEffect } from './effect-contracts.js';
-import { assertResultRefs, writeAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
-import { assertFanoutAdmission } from './fanout-controller.js';
+import { assertResultRefs, writeAttemptSettlement, readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
+import { assertFanoutAdmission, readFanoutFrame } from './fanout-controller.js';
 import { assertRunTreeConcurrency } from './run-repository.js';
 
 export class AttemptController {
-    constructor({ runs, authorizeAttempt, verifySettlement, authorizeReservation }) {
+    constructor({ runs, authorizeAttempt, verifySettlement, authorizeReservation, authorizePendingCancellation }) {
         if (!runs || typeof authorizeAttempt !== 'function') throw new TypeError('AttemptController requires original admission checks');
-        Object.assign(this, { runs, authorizeAttempt, verifySettlement, authorizeReservation });
+        Object.assign(this, { runs, authorizeAttempt, verifySettlement, authorizeReservation, authorizePendingCancellation });
+    }
+
+    /** Only an unsent member of this exact failed durable group can be
+     * cancelled here. Running/unknown effects retain their original receipts. */
+    async cancelPending(handle, input) {
+        if (typeof this.authorizePendingCancellation !== 'function') throw new TypeError('Pending cancellation requires original Source and budget authority');
+        assertObject(input, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'fanoutAttemptId', 'failedAttemptId', 'joinId', 'attemptId'], 'cancelPendingFanout');
+        const { fanoutAttemptId, failedAttemptId, joinId, attemptId, ...guard } = cloneNativeDocument(input);
+        for (const id of [fanoutAttemptId, attemptId]) assertNativeId(id, 'orchestrationAttempt');
+        if ((failedAttemptId === null) === (joinId === null)) throw new TypeError('Cancellation requires one original group decision');
+        if (failedAttemptId !== null) assertNativeId(failedAttemptId, 'orchestrationAttempt');
+        if (joinId !== null) assertNativeId(joinId, 'orchestrationJoin');
+        const identity = { runId: guard.runId, fanoutAttemptId, failedAttemptId, joinId, attemptId };
+        return this.runs.control(handle, controlCommandId('fanout.cancelPending', identity), { ...guard, operation: 'attempt.settle', detail: { fanoutAttemptId, failedAttemptId, joinId, attemptId } }, async ({ tx, root, now, deny }) => {
+            const frame = await readFanoutFrame(tx, handle, root, fanoutAttemptId), record = await readAttempt(tx, handle, root, attemptId);
+            const failed = failedAttemptId === null ? null : (await readAttempt(tx, handle, root, failedAttemptId)).doc, attempt = record.doc;
+            const members = frame?.branches.flatMap(branch => [branch.entryAttemptId, ...branch.memberAttemptIds]) ?? [];
+            if (!frame || frame.epoch !== root.epoch || frame.sourceBindingDigest !== root.sourceBinding.bindingDigest
+                || root.cancelRequested || root.status !== 'running' || !members.includes(attemptId) || attemptId === failedAttemptId
+                || !['pending', 'reserved'].includes(attempt.status) || attempt.startedAt !== null || attempt.effectRefs.length || attempt.resultRefs.length
+                || attempt.epoch !== root.epoch || attempt.sourceBindingDigest !== root.sourceBinding.bindingDigest
+                || root.progress.steps >= root.limits.maxSteps) throw new ConflictError('native_orchestration_fanout_cancellation_denied');
+            let failure = null, join = null;
+            if (failed) {
+                if (frame.failurePolicy !== 'fail_fast' || !members.includes(failedAttemptId) || failed.status !== 'failed' || failed.epoch !== root.epoch
+                    || failed.sourceBindingDigest !== root.sourceBinding.bindingDigest) throw new ConflictError('native_orchestration_fanout_cancellation_denied');
+                failure = await readAttemptSettlement(tx, handle, root, failed);
+                if (failure.outcome !== 'failed' || failure.decisionSeq <= frame.decisionSeq) throw new ConflictError('native_orchestration_fanout_cancellation_denied');
+            } else {
+                join = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', joinId)))?.doc;
+                const barrier = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', 'barrier:' + joinId)))?.doc;
+                if (!join || !barrier || join.schemaVersion !== 1 || join.joinId !== joinId || join.runId !== root.runId || join.epoch !== root.epoch
+                    || join.decisionSeq > root.eventSeq || !['completed', 'partial', 'failed'].includes(join.outcome)
+                    || barrier.fanoutAttemptId !== fanoutAttemptId || barrier.sourceBindingDigest !== root.sourceBinding.bindingDigest
+                    || hashNativeDocument(barrier.fanoutFrameRef) !== hashNativeDocument({ receiptId: frame.receiptId, integrity: hashNativeDocument(frame) })
+                    || !join.memberAttemptIds.includes(attemptId) || !join.excluded.some(item => item.nodeAttemptId === attemptId))
+                    throw new ConflictError('native_orchestration_fanout_cancellation_denied');
+            }
+            const stamp = hashNativeDocument(root), request = { handle, tx, root, frame, failed, failure, join, attempt };
+            try {
+                await this.authorizePendingCancellation(request);
+                if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(new ConflictError('native_orchestration_fanout_cancellation_denied'));
+                await this.authorizePendingCancellation(request);
+                if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(new ConflictError('native_orchestration_fanout_cancellation_denied'));
+            } catch (error) {
+                if (error instanceof ConflictError || error.code === 'native_rp_source_missing') return deny(error);
+                throw error;
+            }
+            const reasonCode = failed ? 'fanout_fail_fast' : 'join_member_excluded';
+            const receipt = await writeAttemptSettlement({ tx, handle, root, record, outcome: 'cancelled', resultRefs: [], effectReceiptRefs: [], reasonCode, now });
+            root.progress.steps++;
+            return { root, eventType: 'fanout_pending_cancelled', reasonCode, outcome: { attemptReceipt: receipt } };
+        });
     }
 
     async reserve(handle, input) {

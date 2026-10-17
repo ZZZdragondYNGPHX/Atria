@@ -66,7 +66,7 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
                 continue;
             }
             if (capability === 'chat.output') {
-                const result = validateOutputCapability({ definition, rpControl: sources.rpControl, sessionCore: sources.sessionCore, engine });
+                const result = validateOutputCapability({ definition, dependencyPins, rpControl: sources.rpControl, sessionCore: sources.sessionCore, engine });
                 evidence.push(...result.evidence); issues.push(...result.issues);
                 continue;
             }

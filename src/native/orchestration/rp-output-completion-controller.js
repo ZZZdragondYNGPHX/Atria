@@ -37,7 +37,7 @@ export class RpOutputCompletionController {
         const narration = await readRpNarrationResult(tx, handle, root);
         const closure = await BudgetPort.prototype.observeEffectClosure.call(budgetPort, handle, {
             authorityRef: root.budgetAuthorityRef, effectIds: [first.modelEffectId, first.outputEffectId, ...(planner?.history.map(item => item.modelEffectId) ?? []),
-                ...narration.graphResults.map(item => item.receipt.modelEffectId), ...narration.reviewCompletions.map(item => item.modelEffectId),
+                ...(narration.fanout?.providerEffects ?? narration.graphResults.map(item => item.receipt.modelEffectId)), ...narration.reviewCompletions.map(item => item.modelEffectId),
                 ...(narration.judgeCompletion ? [narration.judgeCompletion.modelEffectId] : []), ...narration.retrievalCompletions.map(item => item.effectId)] }, { tx });
         const current = await authorize();
         if (!equal(current, first) || !equal(root, await runs.get(handle, first.runId))) fail('native_rp_output_stale');
@@ -87,11 +87,12 @@ export class RpOutputCompletionController {
                     await putImmutable(tx, controlRecordKey(handle, root.runId, 'output', claimId), claim);
                     await putImmutable(tx, controlRecordKey(handle, root.runId, 'receipt', closed.receiptId), closed);
                     await putImmutable(tx, controlRecordKey(handle, root.runId, 'receipt', receipt.receiptId), receipt);
-                    await writeAttemptSettlement({ tx, handle, root, record, outcome: 'completed', resultRefs: [authority.resultRef],
+                    const status = published.record.envelope.status === 'partial' ? 'partial' : 'completed';
+                    await writeAttemptSettlement({ tx, handle, root, record, outcome: status, resultRefs: [authority.resultRef],
                         effectReceiptRefs: [hostReceiptId], reasonCode: 'rp_output_committed', now });
-                    root.outputClaims.push(claimRef); root.status = 'completed'; root.progress.steps++;
+                    root.outputClaims.push(claimRef); root.status = status; root.progress.steps++;
                     return { root, eventType: 'rp_output_completed', reasonCode: 'rp_output_committed',
-                        outcome: { runStatus: 'completed', outputClaimRef: claimRef, outputReceiptRef: ref(receipt.receiptId) } };
+                        outcome: { runStatus: status, outputClaimRef: claimRef, outputReceiptRef: ref(receipt.receiptId) } };
                 });
                 return { denied: false, ...saved.outcome };
             }), { withAuthority });
@@ -99,7 +100,7 @@ export class RpOutputCompletionController {
             if (error.code !== 'storage_commit_unknown') throw error;
             const observed = await runs.engine.withTransaction(handle, async tx => readRpOutput(tx, handle, await runs.get(handle, identity.runId)));
             if (!observed) throw error;
-            return immutable({ runStatus: 'completed', outputClaimRef: observed.receipt.claimRef,
+            return immutable({ runStatus: observed.published.record.envelope.status === 'partial' ? 'partial' : 'completed', outputClaimRef: observed.receipt.claimRef,
                 outputReceiptRef: { runId: identity.runId, receiptId: observed.receipt.receiptId } });
         }
         if (result.denied) fail('native_rp_output_stale');

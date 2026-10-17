@@ -12,6 +12,34 @@ export const joinIdForAttempt = attemptId => 'ojoin_' + hashNativeDocument({ nod
 const barrierKey = (handle, runId, joinId) => controlRecordKey(handle, runId, 'join', 'barrier:' + joinId);
 const compare = (a, b) => a.receipt.decisionSeq - b.receipt.decisionSeq || a.attempt.attemptId.localeCompare(b.attempt.attemptId);
 
+/** The single deterministic policy calculation, shared with historical
+ * receipt validation. Callers supply original, authorized member facts. */
+export function decideJoinOutcome({ policy, quorum, allowPartial, deadlineAt, now, members }) {
+    const success = members.filter(member => member.valid && member.receipt.outcome === 'completed').sort(compare);
+    const usable = members.filter(member => member.valid).sort(compare);
+    const settled = members.filter(member => member.receipt).length, remaining = members.length - settled;
+    const expired = now >= deadlineAt;
+    let selected = [], outcome = null, reason = null;
+    if (policy === 'all-success') {
+        if (success.length === members.length) { outcome = 'completed'; selected = success; } else if (settled > success.length || expired) { outcome = 'failed'; reason = expired ? 'join_deadline' : 'join_member_unsuccessful'; }
+    } else if (policy === 'all-settled') {
+        if (!remaining || expired) {
+            selected = usable;
+            outcome = success.length === members.length ? 'completed' : allowPartial && usable.some(member => member.receipt.resultRefs.length) ? 'partial' : 'failed';
+            reason = outcome === 'completed' ? null : expired ? 'join_deadline' : 'join_member_unsuccessful';
+        }
+    } else if (policy === 'any-success' || policy === 'count-quorum') {
+        const required = policy === 'any-success' ? 1 : quorum;
+        if (success.length >= required) { outcome = 'completed'; selected = success.slice(0, required); } else if (success.length + remaining < required || expired) { outcome = 'failed'; reason = expired ? 'join_deadline' : 'join_quorum_unreachable'; }
+    } else if (policy === 'deadline' && expired) {
+        selected = usable;
+        outcome = success.length === members.length ? 'completed' : allowPartial && usable.some(member => member.receipt.resultRefs.length) ? 'partial' : 'failed';
+        reason = outcome === 'completed' ? null : 'join_deadline';
+    }
+    if (outcome === 'failed') selected = [];
+    return { selected, outcome, reason };
+}
+
 function assertLive(root) {
     if (root.cancelRequested || !['admitted', 'running', 'waiting_approval'].includes(root.status)) throw new ConflictError('native_orchestration_join_not_admitted');
     if (root.progress.steps >= root.limits.maxSteps) throw new ConflictError('native_orchestration_limit_exhausted');
@@ -132,29 +160,9 @@ export class JoinController {
                 }
                 members.push({ attempt, receipt, valid });
             }
-            const success = members.filter(member => member.valid && member.receipt.outcome === 'completed').sort(compare);
-            const usable = members.filter(member => member.valid).sort(compare);
-            const settled = members.filter(member => member.receipt).length, remaining = members.length - settled;
-            const expired = now >= barrier.deadlineAt;
-            let selected = [], outcome = null, reason = null;
-            if (barrier.policy === 'all-success') {
-                if (success.length === members.length) { outcome = 'completed'; selected = success; } else if (settled > success.length || expired) { outcome = 'failed'; reason = expired ? 'join_deadline' : 'join_member_unsuccessful'; }
-            } else if (barrier.policy === 'all-settled') {
-                if (!remaining || expired) {
-                    selected = usable;
-                    outcome = success.length === members.length ? 'completed' : root.graph.outputContract.allowPartial && usable.some(member => member.receipt.resultRefs.length) ? 'partial' : 'failed';
-                    reason = outcome === 'completed' ? null : expired ? 'join_deadline' : 'join_member_unsuccessful';
-                }
-            } else if (barrier.policy === 'any-success' || barrier.policy === 'count-quorum') {
-                const required = barrier.policy === 'any-success' ? 1 : barrier.quorum;
-                if (success.length >= required) { outcome = 'completed'; selected = success.slice(0, required); } else if (success.length + remaining < required || expired) { outcome = 'failed'; reason = expired ? 'join_deadline' : 'join_quorum_unreachable'; }
-            } else if (barrier.policy === 'deadline' && expired) {
-                selected = usable;
-                outcome = success.length === members.length ? 'completed' : root.graph.outputContract.allowPartial && usable.some(member => member.receipt.resultRefs.length) ? 'partial' : 'failed';
-                reason = outcome === 'completed' ? null : 'join_deadline';
-            }
+            const { selected, outcome, reason } = decideJoinOutcome({ policy: barrier.policy, quorum: barrier.quorum,
+                allowPartial: root.graph.outputContract.allowPartial, deadlineAt: barrier.deadlineAt, now, members });
             if (outcome === null) throw new ConflictError('native_orchestration_join_not_ready');
-            if (outcome === 'failed') selected = [];
             // Closing the barrier accounts for each frozen dependency once,
             // including an explicit absence/cancellation at the cutoff. This
             // is logical control work, never evidence of an external send.

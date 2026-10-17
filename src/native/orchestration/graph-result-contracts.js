@@ -28,7 +28,7 @@ export function graphResultContract(root, producer, graphSnapshot = null) {
     const recipients = direct.flatMap(item => {
         if (item?.kind !== 'join') return [item];
         const successors = graph.edges.filter(edge => edge.from.nodeId === item.nodeId && !edge.loopBack).map(edge => graph.nodes.find(node => node.nodeId === edge.to.nodeId));
-        if (item.policy.strategy !== 'all-success' || successors.length !== 1 || successors[0]?.kind !== 'agent') invalid();
+        if (successors.length !== 1 || successors[0]?.kind !== 'agent') invalid();
         return [item, ...successors];
     });
     if (!recipients.length || recipients.some(item => !kinds.includes(item?.kind) && item?.kind !== 'join')) invalid();

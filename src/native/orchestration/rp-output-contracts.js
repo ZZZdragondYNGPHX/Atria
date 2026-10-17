@@ -11,6 +11,7 @@ import { attemptReceiptId, readAttemptSettlement } from './attempt-settlement.js
 import { assertBudgetAttemptRef, assertBudgetAuthorityRef, sendAttemptId } from './budget-port.js';
 import { readRpPlannerCompletion } from './rp-planner-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
+import { readModelTerminalFact } from './model-port.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP output completion facts'); };
@@ -65,7 +66,7 @@ export async function readRpOutput(tx, handle, root) {
         || receipt.publicationReceiptRef.receiptId !== published.receipt.receiptId || receipt.producerReceiptRef.receiptId !== published.settlement.receiptId) invalid();
     const output = (await readAttempt(tx, handle, root, claim.nodeAttemptId)).doc;
     const settlement = await readAttemptSettlement(tx, handle, root, output);
-    if (output.nodeId !== root.graph.outputContract.ownerNodeId || output.status !== 'completed' || output.epoch !== receipt.epoch
+    if (output.nodeId !== root.graph.outputContract.ownerNodeId || output.status !== (published.record.envelope.status === 'partial' ? 'partial' : 'completed') || output.epoch !== receipt.epoch
         || output.graphRevision !== receipt.graphRevision || output.effectiveGrantDigest !== published.receipt.grantDigest
         || !equal(output.inputRefs, [claim.resultRef]) || output.inputDigest !== hash([claim.resultRef]) || !equal(output.resultRefs, [claim.resultRef])
         || !equal(output.budgetRef, root.budgetAuthorityRef) || !equal(output.effectRefs, [receipt.outputEffectId])
@@ -107,7 +108,7 @@ export async function readRpOutput(tx, handle, root) {
         || host.observedAt > receipt.createdAt || host.budgetObservationRef.status !== 'settled'
         || !equal(Object.fromEntries(Object.keys(intent.budgetAttemptRef).map(field => [field, host.budgetObservationRef[field]])), intent.budgetAttemptRef)) invalid();
     const planner = await readRpPlannerCompletion(tx, handle, root), providerIds = [published.receipt.modelEffectId, ...(planner?.history.map(item => item.modelEffectId) ?? []),
-        ...published.graphResults.map(item => item.receipt.modelEffectId), ...published.reviewCompletions.map(item => item.modelEffectId),
+        ...(published.fanout?.providerEffects ?? published.graphResults.map(item => item.receipt.modelEffectId)), ...published.reviewCompletions.map(item => item.modelEffectId),
         ...(published.judgeCompletion ? [published.judgeCompletion.modelEffectId] : []), ...published.retrievalCompletions.map(item => item.effectId)];
     if (!equal(closure.effectIds, [...providerIds, intent.effectId].sort()) || !Array.isArray(closure.budgetAttemptRefs)) invalid();
     const ids = new Set();
@@ -122,7 +123,7 @@ export async function readRpOutput(tx, handle, root) {
     for (const id of providerIds) {
         const effect = (await readEffect(tx, handle, root, id)).doc;
         if (effect.capability === 'memory.retrieve') { expectedSends.push(effect.budgetAttemptRef); continue; }
-        const completed = await readModelCompletionReceipt(handle, tx, root, effect);
+        const completed = await readModelCompletionReceipt(handle, tx, root, effect) ?? await readModelTerminalFact(handle, tx, root, effect);
         const attempts = completed?.observation.dispatchEvidence.reference.attempts;
         if (!Array.isArray(attempts) || !attempts.length) invalid();
         for (const [ordinal, attempt] of attempts.entries()) {

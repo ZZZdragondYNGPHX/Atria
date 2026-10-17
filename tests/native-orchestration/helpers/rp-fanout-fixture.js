@@ -6,16 +6,21 @@ const id = kind => createNativeId('orchestration' + kind);
 const port = (name, type, required = true) => ({ name, type, required });
 const edge = (from, out, to, input) => ({ edgeId: id('Edge'), from: { nodeId: from.nodeId, port: out }, to: { nodeId: to.nodeId, port: input }, condition: 'always', maxVisits: 1, loopBack: false });
 
-export async function rpFanoutFixture(make, { maxConcurrency = 2, strategy = 'all-success', ...options } = {}) {
+export async function rpFanoutFixture(make, { maxConcurrency = 2, strategy = 'all-success', branchCount = 2, quorum = branchCount,
+    joinDeadlineMs = 60000, allowPartial = false, failurePolicy = 'continue', ...options } = {}) {
     let profile;
     const f = await rpModelFixture(make, { ...options, configurePlan: async (plan, { h, seeded, route }) => {
+        route = { ...route, policy: { ...route.policy, timeoutMs: 60000 } };
+        await seeded.persistence.saveRuntimeRoute(h.handle, route);
+        route = await seeded.persistence.getRuntimeRoute(h.handle, route.runtimeRouteId);
+        plan.dependencyPins[0].integrity = hash(route);
         const narrator = plan.definition.nodes[0], output = plan.definition.nodes[1];
         const fanout = { nodeId: id('Node'), kind: 'fanout', label: 'Authorized advisory branches', inputs: [], outputs: [port('task', 'task.result', false)],
-            dependencyPinIds: [], capabilities: [], policy: { maxConcurrency, failurePolicy: 'continue' } };
+            dependencyPinIds: [], capabilities: [], policy: { maxConcurrency, failurePolicy } };
         const join = { nodeId: id('Node'), kind: 'join', label: 'All advisory branches', inputs: [], outputs: [port('joined', 'text', false)],
-            dependencyPinIds: [], capabilities: [], policy: { strategy, quorum: 2, deadlineMs: 60000 } };
+            dependencyPinIds: [], capabilities: [], policy: { strategy, quorum, deadlineMs: joinDeadlineMs } };
         const branches = [];
-        for (let i = 0; i < 2; i++) {
+        for (let i = 0; i < branchCount; i++) {
             const next = { ...route, runtimeRouteId: createNativeId('runtimeRoute'), displayName: 'Declared branch ' + i };
             await seeded.persistence.saveRuntimeRoute(h.handle, next);
             const current = await seeded.persistence.getRuntimeRoute(h.handle, next.runtimeRouteId), pinId = 'branch' + i + '.route';
@@ -29,7 +34,7 @@ export async function rpFanoutFixture(make, { maxConcurrency = 2, strategy = 'al
             edge(join, 'joined', narrator, 'joined'), ...plan.definition.edges];
         plan.definition.capabilityCeiling = ['generation.send', 'chat.output'];
         Object.assign(plan.definition.limits, { maxSteps: 100, maxConcurrency });
-        Object.assign(plan.definition.outputContract, { kind: 'rp_narration', slot: 'assistant', resultPolicy: { outputType: 'text', maxBytes: 65536 } });
+        Object.assign(plan.definition.outputContract, { kind: 'rp_narration', slot: 'assistant', allowPartial, resultPolicy: { outputType: 'text', maxBytes: 65536 } });
         profile = { fanout, join, narrator, branches };
     } });
     return { ...f, profile };

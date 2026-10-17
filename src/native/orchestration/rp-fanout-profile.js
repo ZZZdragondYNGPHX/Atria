@@ -4,8 +4,8 @@ import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_rp_fanout_unavailable'), { code: 'native_orchestration_rp_fanout_unavailable' }); };
 const same = (a, b) => hash(a) === hash(b);
 
-/** One explicit same-Source advisory group. Other Join policies remain the
- * original Controller's contract, not an implicit RP consumer profile. */
+/** One explicit same-Source advisory group using the original Join policies.
+ * Other graph shapes do not acquire an implicit RP consumer. */
 export function rpFanoutProfile(plan) {
     const graph = plan.definition;
     if (!graph.nodes.some(node => ['fanout', 'join'].includes(node.kind))) return null;
@@ -15,8 +15,8 @@ export function rpFanoutProfile(plan) {
         || graph.outputContract.kind !== 'rp_narration' || graph.graphChangePolicy.allowedOperations.length || graph.graphChangePolicy.allowedNodeKinds.length) fail();
     const [fanout] = fanouts, [join] = joins, [output] = outputs;
     if (!same(graph.entryNodeIds, [fanout.nodeId]) || fanout.inputs.length || fanout.outputs.length !== 1 || fanout.outputs[0].type !== 'task.result'
-        || fanout.policy.failurePolicy !== 'continue' || fanout.capabilities.length || fanout.dependencyPinIds.length
-        || join.policy.strategy !== 'all-success' || join.capabilities.length || join.dependencyPinIds.length || join.outputs.length !== 1 || join.outputs[0].type !== 'text') fail();
+        || !['continue', 'fail_fast'].includes(fanout.policy.failurePolicy) || fanout.capabilities.length || fanout.dependencyPinIds.length
+        || join.capabilities.length || join.dependencyPinIds.length || join.outputs.length !== 1 || join.outputs[0].type !== 'text') fail();
     const joinEdges = graph.edges.filter(edge => edge.from.nodeId === join.nodeId), terminal = graph.edges.filter(edge => edge.to.nodeId === output.nodeId);
     const narrator = joinEdges.length === 1 ? agents.find(node => node.nodeId === joinEdges[0].to.nodeId) : null;
     const branches = agents.filter(node => node !== narrator).sort((a, b) => a.nodeId.localeCompare(b.nodeId));

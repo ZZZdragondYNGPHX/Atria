@@ -8,6 +8,10 @@ import { createNativeId } from '../../src/native/identity.js';
 import { controlRecordKey, runGuard } from '../../src/native/orchestration/controller-common.js';
 import { putMutable } from '../../src/native/repositories/common.js';
 import { AgentEvolutionService } from '../../src/native/agent-intelligence/evolution-service.js';
+import { jest } from '@jest/globals';
+import { nativeTaskScheduler } from '../../src/native/task-scheduler.js';
+import { readEffect } from '../../src/native/orchestration/effect-contracts.js';
+import { inspectComputeReservation } from '../../public/shared/native-compute-budget.js';
 
 const bankOf = async f => Object.values((await f.control.status(f.h.handle, f.controlId)).operations)[0].compute;
 const rootOf = async f => (await f.h.engine.withTransaction(f.h.handle, tx => tx.listResources({ kind: K.orchestrationRun, handle: f.h.handle })))[0].doc;
@@ -86,11 +90,19 @@ describe.each(CONTRACT_HARNESSES)('$name original RP explicit Fanout Join', ({ m
 
     test.each(['binding', 'cancel'])('real %s withdrawal while both HTTP branches are pending retains their fees and never admits the Join successor or Chat output', async change => {
         const f = await rpFanoutFixture(make);
-        let release, changed = false;
+        let release, admitted, changed = false;
+        const cancellations = [], originalCancel = nativeTaskScheduler.cancel;
+        const cancel = jest.spyOn(nativeTaskScheduler, 'cancel').mockImplementation(function (owner, id, ...args) {
+            const operation = this.operations.get(id), cancelled = originalCancel.call(this, owner, id, ...args);
+            if (cancelled && operation.key.startsWith('rp-fanout:')) cancellations.push({ key: operation.key,
+                retained: this.running.has(operation), aborted: operation.controller?.signal.aborted === true });
+            return cancelled;
+        });
         const both = new Promise(resolve => { release = resolve; });
         f.onResponse(async () => {
             if (f.requests.length === 2 && !changed) {
                 changed = true;
+                admitted = await bankOf(f);
                 if (change === 'binding') {
                     const binding = await f.plans.getBinding(f.h.handle, f.sourceSelector);
                     await f.plans.saveBinding(f.h.handle, createNativeId('orchestrationCommand'), { sourceSelector: f.sourceSelector, planRef: f.planRef, expectedVersion: binding.version });
@@ -105,9 +117,25 @@ describe.each(CONTRACT_HARNESSES)('$name original RP explicit Fanout Join', ({ m
             expect(root.outputClaims).toEqual([]); expect(root.resultRefs).toEqual([]); expect(root.attemptRefs).toHaveLength(4);
             expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(2);
             const bank = await bankOf(f); expect(bank.attempts).toHaveLength(2);
-            expect(bank.attempts.every(attempt => attempt.status === 'settled' && attempt.usage.totalTokens === 20)).toBe(true);
+            expect(admitted.attempts).toHaveLength(2); expect(admitted.attempts.every(attempt => attempt.status === 'charged')).toBe(true);
+            expect(bank.reservations).toEqual(admitted.reservations); expect(bank.limits).toEqual(admitted.limits);
+            for (const row of bank.attempts) {
+                const original = admitted.attempts.find(attempt => attempt.attemptId === row.attemptId);
+                expect(original.estimatedTokens).toBeGreaterThan(0); expect(['settled', 'unknown']).toContain(row.status);
+                expect(row).toEqual({ ...original, status: row.status,
+                    usage: row.status === 'settled' ? { totalTokens: 20, inputTokens: 12, outputTokens: 8 } : null });
+            }
+            expect(inspectComputeReservation({ compute: bank }).used).toMatchObject({ requests: 2,
+                tokens: bank.attempts.reduce((total, row) => total + (row.status === 'settled' ? 20 : admitted.attempts.find(item => item.attemptId === row.attemptId).estimatedTokens), 0) });
+            for (const row of bank.attempts.filter(item => item.status === 'unknown')) {
+                const effect = await f.h.engine.withTransaction(f.h.handle, tx => readEffect(tx, f.h.handle, root, row.orchestration.effectId));
+                const key = 'rp-fanout:' + root.runId + ':' + effect.doc.nodeAttemptId;
+                expect(cancellations).toContainEqual({ key, retained: true, aborted: true });
+                const operation = [...nativeTaskScheduler.operations.values()].find(item => item.key === key);
+                expect(operation.view.status).toBe('cancelled'); expect(nativeTaskScheduler.running.has(operation)).toBe(false);
+            }
             expect(root.cancelRequested).toBe(change === 'cancel');
-        } finally { release(); await f.cleanup(); }
+        } finally { release(); await f.cleanup(); cancel.mockRestore(); }
     }, 60000);
 
     test('a failed paid branch cannot masquerade as an accepted Join member or trigger a Narrator retry', async () => {
@@ -117,18 +145,20 @@ describe.each(CONTRACT_HARNESSES)('$name original RP explicit Fanout Join', ({ m
         const both = new Promise(resolve => { release = resolve; });
         f.onResponse(async body => { first ??= body; if (f.requests.length === 2) release(); await both; });
         try {
-            await expect(f.run()).rejects.toThrow('operation_child_failed'); expect(f.requests).toHaveLength(2);
+            await expect(f.run()).rejects.toThrow('native_orchestration_join_unsuccessful'); expect(f.requests).toHaveLength(2);
             const root = await rootOf(f);
             expect(root.outputClaims).toEqual([]); expect(root.resultRefs).toHaveLength(1); expect(root.attemptRefs).toHaveLength(4);
-            expect(await f.h.engine.withTransaction(f.h.handle, tx => readRpFanoutCompletion(tx, f.h.handle, root))).toBeNull();
+            const joined = await f.h.engine.withTransaction(f.h.handle, tx => readRpFanoutCompletion(tx, f.h.handle, root));
+            expect(joined.joinReceipt.outcome).toBe('failed'); expect(joined.joinReceipt.acceptedResultRefs).toEqual([]);
+            expect(joined.allMembers.filter(item => item.terminal?.kind === 'rejected')).toHaveLength(1);
             expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(2);
             const bank = await bankOf(f); expect(bank.attempts).toHaveLength(2); expect(bank.attempts.every(attempt => attempt.status === 'settled')).toBe(true);
-            expect(root.pendingEffectRefs).toHaveLength(1); expect(root.status).toBe('reconciling');
+            expect(root.pendingEffectRefs).toHaveLength(0); expect(root.status).toBe('blocked');
         } finally { release(); await f.cleanup(); }
     }, 60000);
 
-    test('a Join policy without this concrete RP consumer is rejected before any Model or bank work', async () => {
-        const f = await rpFanoutFixture(make, { strategy: 'all-settled' });
+    test('a single-branch shape without this concrete RP group consumer is rejected before any Model or bank work', async () => {
+        const f = await rpFanoutFixture(make, { branchCount: 1 });
         try {
             await expect(f.run()).rejects.toThrow('native_orchestration_rp_fanout_unavailable');
             expect(f.requests).toEqual([]); expect((await f.control.status(f.h.handle, f.controlId)).operations).toEqual({});
