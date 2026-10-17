@@ -269,6 +269,23 @@
 - **本轮验证范围**：仅在 GitHub 远端静态阅读 `main` 代码与更新 `docs` 文档；最终用 `fetch_file(ref=docs)` 对入口、设计、W13、W14 和此 Record 作可见内容核验。不执行产品测试、CI、真实 UI 或跨平台验收。
 - **下一 checkpoint**：用户明确选择 W14-A/B/C 后，下一轮**先更新同一 Plan 与唯一 Record、提交并核验 docs**，随后进入统一 Source-of-Truth/Contracts/Consumers/Old Deletion/Acceptance Gates 的最后 E0 收口讨论；继续 Draft，不授权开发、不创建实现分支。
 
+
+## Stage 16 — W14-B 确认与 W15 E0 证据收口审查（2026-10-17）
+
+- **用户本轮决定**：对第十四轮唯一推荐的 **W14-B「Effective World View First + Claim/Source-Aware Context」**回复「认同」。W1-B～W14-B 均是已获用户选择的**总体设计方向**，并非具体接口、全量 E0、跨端验证已通过；**W15-B 目前只是下一轮研究推荐，不是用户已批准事项**。
+- **资产和范围**：沿用唯一 `ARCH-DWE-01`、唯一 Plan Bundle `plans/architecture/world-evolution-consistency/` 和本 Record；本轮所有写操作限制在 `docs`，不修改 `main`、不创建实施分支/第二企划/第二 Record/HANDOFF，不执行实际产品代码或测试。
+- **本轮 docs 提交顺序**：
+  - `e88fb347fb23442343109c3635ac957b9dc7898c`：原 W14 `effective-world-view.md` §10 正式记录 W14-B 决议：世界 Hard Law/起点/当前/历史/Claim/Belief 各有来源和适用语境，Native Host-owned 只读 Effective View 先于检索/Token/Prompt，保留自由文本，不伪造全自动自然语言真值判断。
+  - `cafa185ec0c48c17f2252de3379c809641e77a38`：同一 Plan Bundle 新增 W15 `e0-final-closure.md`，构建已观察 Production Authority/Consumer/Target/Deletion 部分矩阵、E0-01～09 明确阻塞、Gate 0～4 未来工作包，以及 W15-A/B/C 未批选项。该模块**不是新的平行 Plan 或已完成 E0 报告**。
+  - `c8556493f8e10505391a55ac72e0ebd7f7cea443`：更新同一 `design.md` §22，记录 W14-B 已确认与 W15 审查方向，详细内容仍只在当前 W15 子模块维护。
+  - `be1faab966b89de6b84d26b3e846d19c2363990a`：更新同一 `index.md` 路由 W15、W1～W14 已确认，Plan 保留 Draft，E0 显示 PARTIAL / BLOCKED。
+- **本轮 main 静态核对（非测试）**：`knowledge-runtime.js` 有权威 ranks、显式 State Conditions / Exclusive Group；`knowledge-selection.js` 基于关键词/Regex/关系/Token 注入文本；`context-compiler.js` `currentStateItems` 含当前原生 World State JSON/近期事件，同时可将选中的 Knowledge 原文直接编入独立 lane。**Rank/条件不能自动证明所有未标注自由文本旧事实已失效**，因此 W14-B 仍有真正的 Source Claim/FactKey/Valid-time 接口缺口。
+- **生产消费者搜索结果的严格边界**：`actorId` 横跨 `src/native/session-core.js` / `public/shared/native-information-contract.js` / `public/shared/native-frontend-host.js` / `public/scripts/native/play-product.js` / Speech/Visual/Cognition/Goal；HCM、Lifetime 使用本地证据与生命周期 ID。旧 ST `atri-world-info-selection.js`、`atri-world-info-prompt.js`、旧 Orchestrator `capsule-injection.js`、`legacy-runtime-adapter.js` 等源码仍存在；搜索看到 `runLegacySingleRequest` 在旧编排生产模块里有引用，同时某些 WI/prompt 辅助只在测试里出现。**未证明所有旧文件是活路径，不能直接批量删除或声称只剩 Native**；W15 要在固定 HEAD 的真实入口/调用图中分类 retain/replace/delete/investigate。
+- **其它真实基础与未闭合部分**：`SessionRepo.commitSnapshot` 现有单事务/CAS/Receipt/Revision，`world/session.js` 有 World/Event state patch；`native-chronicle-host.js` 的世界界面还偏专用 Lifetime/History；`world-editor.js`、Studio World/EntryPoint 主要围绕 WorldRevision schema/baseline/JSON 和固定引用；Play 显示仍优先从 Manifest Actor 找人名。完整 Subject/Participant/Fact 有效时态、动态 Perspective、当前世界 Host 投影和前端新用法尚未通过 E0。
+- **W15 当前推荐、尚未获用户批准**：**W15-B「证据门槛式 E0 收口 + 可执行交接清单」**。定义 W15 的责任为锁定版本并逐项核实 E0-01～09：Subject/Fact Contracts、Native Publication、Temporal/Branch、Capability security、Claim-aware Context、全 Consumer/Deletion Map、Library/Studio/Play、性能/持久化、Native Orchestration V3 和 Windows/CachyOS/Termux 的真实验收。Gate 0～4 是未来依赖与验收顺序，不是已经执行的产物，也不强迫每阶段停止。
+- **现实验证限制**：本轮使用 GitHub 文件读取和有上限的代码搜索，未将 `main` 所有文件绑定在一个固定 commit SHA 下进行完整调用图审计；没有运行 Node/单测/E2E/CI/前端/Windows/CachyOS/Termux。**E0 当前状态 PARTIAL / BLOCKED；任何已通过的结论都没有证据。**
+- **下一 checkpoint**：用户选择 W15-A/B/C 后继续先更新同一 Plan+Record 的确认状态，再针对 E0-01～09 的真实产物开展更进一步的开发交接前审查、最后 API/Owner/Consumer/Deletion/验收闭环及必要阶段计划；如有前端/Orchestration 或主线更新，须再次核对当前 HEAD。全案是否最终定稿与是否创建实现分支由用户将来明确批准。
+
 ## Final state
 
 Not yet applicable. Discussion in progress.
