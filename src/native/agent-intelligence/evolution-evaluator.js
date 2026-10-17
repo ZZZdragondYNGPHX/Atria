@@ -118,12 +118,22 @@ export class EvolutionEvaluator {
     async configuration(handle, routeId, projectPromptRef = null, nativePlan = null) {
         const primary = await this.#configuration(handle, routeId, projectPromptRef, false);
         if (!nativePlan) return primary;
+        // These are the existing isolated Native consumers, not arbitrary
+        // Graph execution or a second approval/publication authority.
+        const domain = nativePlan.sourceSelector.domain, definition = nativePlan.revision.definition;
+        if (!['rp_chat', 'project'].includes(domain) || definition.outputContract.kind !== (domain === 'project' ? 'project_review' : 'rp_narration')
+            || definition.nodes.some(node => node.capabilities.includes('agent.delegate')))
+            throw new TypeError('native_orchestration_evaluation_unavailable');
         const pins = nativePlan.revision.dependencyPins, routes = new Map();
         for (const node of nativePlan.revision.definition.nodes.filter(node => node.capabilities.includes('generation.send'))) {
             const pin = pins.find(item => item.pinId === node.policy.agentPinId && node.dependencyPinIds.includes(item.pinId));
             if (pin?.port !== 'model' || pin.resourceRef.scope !== 'player') throw new TypeError('native_orchestration_evaluation_unavailable');
             const id = pin.resourceRef.runtimeRouteId, override = nativePlan.routeOverride?.runtimeRouteId === id ? nativePlan.routeOverride : null;
             const config = id === routeId ? primary : routes.get(id) ?? await this.#configuration(handle, id, override?.promptProgramRef ?? null, false);
+            // The current worker bridge sends each trial request exactly once.
+            // It cannot certify a failure graph or a retried remote operation.
+            if (config.route.fallbackRouteRefs.length || config.route.policy.maxRetries !== 0)
+                throw new TypeError('native_orchestration_evaluation_unavailable');
             if (hash(config.route) !== pin.integrity || override && hash(config.route) !== hash(override)) throw new TypeError('native_orchestration_evaluation_unavailable');
             // The existing confirmed price names one paired configuration.
             // Distinct model/provider/generation prices need their own evidence.

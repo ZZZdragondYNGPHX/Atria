@@ -93,16 +93,17 @@ export class AgentEvolutionService {
         if (!experience?.feedback.some(f => f.applicability === 'current')) conflict('agent_evolution_source_required');
         if (input.target.kind === 'project-strategy' && experience.feedback.some(f => f.applicability === 'current' && f.source.id === input.target.taskId)) conflict('agent_evolution_separate_source_task_required');
         const targetPin = hash(await this.targets.capture(handle, input.scope, input.subject, input.target));
-        if (input.mode === 'auto' && ['plan-strategy', 'plan-prompt'].includes(input.target.kind)) conflict('native_orchestration_evaluation_unavailable');
-        if (input.mode === 'auto') {
-            const settings = await this.targets.evaluationSettings(handle, input.scope, input.subject, input.target);
-            if (settings.rpProfile && settings.rpProfile.mainAgent.nativeRouteRef?.runtimeRouteId !== input.routeId) conflict('agent_evolution_model_route_mismatch');
-        }
-        const config = await this.evaluator.configuration(handle, input.routeId);
-        if (input.mode === 'auto' && input.scope.domain === 'project' && input.target.kind !== 'project-prompt' && config.route.projectPromptBindings?.some(b => b.projectId === input.subject)) conflict('agent_evolution_combined_configuration_requires_review');
         const nativeTarget = ['plan-strategy', 'plan-prompt'].includes(input.target.kind);
-        if (nativeTarget && (await this.targets.evaluationSettings(handle, input.scope, input.subject, input.target)).runtimeRouteId !== input.routeId)
-            conflict('agent_evolution_model_route_mismatch');
+        const settings = input.mode === 'auto' || nativeTarget ? await this.targets.evaluationSettings(handle, input.scope, input.subject, input.target) : null;
+        if (settings) {
+            if (settings.rpProfile && settings.rpProfile.mainAgent.nativeRouteRef?.runtimeRouteId !== input.routeId) conflict('agent_evolution_model_route_mismatch');
+            if (nativeTarget && settings.runtimeRouteId !== input.routeId) conflict('agent_evolution_model_route_mismatch');
+        }
+        // Use the same frozen Native configuration for admission and comparison.
+        // A configured automatic policy never grants quality eligibility.
+        const config = await this.evaluator.configuration(handle, input.routeId, input.mode === 'auto' && nativeTarget ? settings?.projectPromptRef ?? null : null,
+            input.mode === 'auto' && nativeTarget ? settings?.nativePlan ?? null : null);
+        if (input.mode === 'auto' && input.scope.domain === 'project' && input.target.kind !== 'project-prompt' && config.route.projectPromptBindings?.some(b => b.projectId === input.subject)) conflict('agent_evolution_combined_configuration_requires_review');
         if (config.route.role !== (input.scope.domain === 'project' ? 'role.studio' : nativeTarget ? 'role.narrator' : 'role.orchestrator')) throw new TypeError('Evaluation Route does not match this entrance');
         const price = assertEvolutionPrice(input.price);
         if (input.mode === 'auto' && !(await this.repository.owner(handle))?.limits) conflict('agent_evolution_budget_required');
@@ -225,7 +226,9 @@ export class AgentEvolutionService {
     async _run(handle, scope, subject, id, capture, signal, fresh) {
         let { doc, job } = await fresh();
         await this.repository.mutate(handle, scope, subject, d => { d.jobs.find(j => j.id === id).status = 'running'; });
-        const config = await this.evaluator.configuration(handle, doc.policy.routeId);
+        const nativeSettings = doc.policy.mode === 'auto' && ['plan-strategy', 'plan-prompt'].includes(job.target.kind)
+            ? await this.targets.evaluationSettings(handle, scope, subject, job.target) : null;
+        const config = await this.evaluator.configuration(handle, doc.policy.routeId, nativeSettings?.projectPromptRef ?? null, nativeSettings?.nativePlan ?? null);
         if (!same(await this.targets.capture(handle, scope, subject, job.target), capture)) conflict('agent_evolution_base_changed');
         const raw = await this._sourceFresh(handle, doc, job), diagnosis = raw.diagnoses.find(d => d.id === job.diagnosisId);
         const feedback = job.dependencies.feedbackRefs.map(r => raw.feedback.find(f => f.id === r.id)).map(({ kind, signal, dimension, note, origin, assessment }) => ({ kind, signal, dimension, note, origin, ...(assessment ? { assessment } : {}) }));
