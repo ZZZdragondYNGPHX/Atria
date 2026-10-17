@@ -8,6 +8,7 @@ import { checkedRecord } from './plan-repository.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
+import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid Session Narrator Result facts'); };
@@ -53,6 +54,7 @@ export async function readSessionNarrationResult(tx, handle, root) {
     const settlement = await readAttemptSettlement(tx, handle, root, producer);
     const intent = (await readEffect(tx, handle, root, receipt.modelEffectId)).doc;
     const model = await readModelCompletionReceipt(handle, tx, root, intent);
+    const retrievalCompletions = await readContextRetrievalCompletions(tx, handle, root, intent, producer);
     const source = root.sourceBinding, audience = { ...sessionNarrationAudience(root, producer.effectiveGrantDigest), epoch: receipt.epoch };
     if (receipt.schemaVersion !== 1 || receipt.receiptKind !== 'session_narration_result' || receipt.receiptId !== sessionNarrationPublicationId(resultRef.resultId)
         || receipt.runId !== root.runId || receipt.epoch > root.epoch || receipt.epoch !== producer.epoch || producer.status !== 'completed'
@@ -60,9 +62,9 @@ export async function readSessionNarrationResult(tx, handle, root) {
         || receipt.resultIntegrity !== saved.integrity || receipt.resultIntegrity !== hash(record) || record.envelope.status !== 'complete'
         || record.envelope.producerAttemptId !== producer.attemptId || !equal(record.envelope.audienceConstraint, audience)
         || receipt.audienceDigest !== hash(audience) || receipt.grantDigest !== producer.effectiveGrantDigest
-        || receipt.sourceBindingDigest !== source.bindingDigest || !equal(producer.resultRefs, [resultRef]) || !equal(producer.effectRefs, [receipt.modelEffectId])
+        || receipt.sourceBindingDigest !== source.bindingDigest || !equal(producer.resultRefs, [resultRef]) || !equal(producer.effectRefs, [receipt.modelEffectId, ...retrievalCompletions.map(item => item.effectId)])
         || settlement.reasonCode !== 'session_narration_ready' || settlement.decisionSeq !== receipt.decisionSeq || settlement.createdAt !== receipt.createdAt
-        || receipt.decisionSeq > root.eventSeq || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId])
+        || receipt.decisionSeq > root.eventSeq || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId, ...retrievalCompletions.map(item => item.receiptId)])
         || !model || !equal(model.receiptRef, receipt.modelReceiptRef) || intent.nodeAttemptId !== producer.attemptId
         || intent.epoch !== receipt.epoch || intent.grantDigest !== receipt.grantDigest || intent.sourceBindingDigest !== source.bindingDigest
         || !equal(record.envelope.sourceRefs, [{ kind: 'run_source', runId: root.runId, epoch: receipt.epoch,
@@ -74,5 +76,5 @@ export async function readSessionNarrationResult(tx, handle, root) {
         || !['sessionId', 'branchId', 'revisionId'].every(field => input.sourceRef[field] === source.sourceRef[field])
         || !equal(input.audience, { kind: 'narrator' }) || input.grantDigest !== producer.effectiveGrantDigest) invalid();
     assertNativeId(input.sourceRef.packageId, 'package'); assertNativeId(input.sourceRef.packageVersionId, 'packageVersion');
-    return { record, receipt, settlement, producer, modelIntent: intent };
+    return { record, receipt, settlement, producer, retrievalCompletions, modelIntent: intent };
 }

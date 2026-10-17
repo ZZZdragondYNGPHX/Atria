@@ -103,9 +103,13 @@ export class NativeMemoryAuthority {
             || captured.snapshotDigest !== hashNativeDocument(snapshot)
             || captured.settingsFingerprint !== (await this._settings(handle)).fingerprint)
             throw new ConflictError('native_orchestration_memory_source_stale');
+        if (captured.retrieval) {
+            await ContextRetrievalPort.prototype.assertRecall.call(captured.retrieval.port, handle, captured.retrieval.proof);
+            if (captured.settingsFingerprint !== (await this._settings(handle)).fingerprint) throw new ConflictError('native_orchestration_memory_source_stale');
+        }
     }
     /** Read-only original Hybrid work, enclosed by the caller's context_build bank. */
-    async recallContext(handle, { snapshot, requester, informationTaskId, tokenBudget, countTokens, assertCurrent, expectedDescriptor }) {
+    async recallContext(handle, { snapshot, requester, informationTaskId, tokenBudget, countTokens, assertCurrent, expectedDescriptor, retrieval }) {
         const descriptor = await this.contextDescriptor(handle, snapshot);
         if (expectedDescriptor && hashNativeDocument(descriptor) !== hashNativeDocument(expectedDescriptor))
             throw new ConflictError('native_orchestration_memory_source_stale');
@@ -118,7 +122,7 @@ export class NativeMemoryAuthority {
         if (!isHybridMemoryEnabled(settings) || settings.recallEnabled === false || !information?.memory) return { proof, evidence: [] };
         // External retrieval requires its original scoped Provider consumer;
         // never send from a Browser adapter or silently ignore an exact route.
-        if (settings.nativeRetrieval?.embed || settings.rerankEnabled && settings.nativeRetrieval?.rerank)
+        if ((settings.nativeRetrieval?.embed || settings.rerankEnabled && settings.nativeRetrieval?.rerank) && !(retrieval?.port instanceof ContextRetrievalPort))
             throw new ConflictError('native_orchestration_memory_retrieval_scope_unavailable');
         const runtime = this._context(snapshot, settings);
         try {
@@ -126,11 +130,15 @@ export class NativeMemoryAuthority {
             const legal = eligibleMemorySnapshot(await runtime.lifecycle.retrievalSnapshot(runtime.context, { readOnly: true }), eligibility);
             await current();
             const query = nativeTurnMemoryQuery(snapshot, snapshot.timeline.at(-1)?.content, information);
+            const scoped = settings.nativeRetrieval?.embed || settings.rerankEnabled && settings.nativeRetrieval?.rerank ? await ContextRetrievalPort.prototype.openRecall.call(retrieval.port, handle,
+                retrieval.scope, { descriptor, legal, query, assertCurrent: current }) : null;
             const result = await retrieveMemory(legal, query, { countTokens: memoryTokenCounter({ getTokenCountAsync: countTokens }),
                 budget: Math.min(memoryTokenBudget(settings), tokenBudget.modelContextLimit - tokenBudget.responseReserve),
                 sceneText: legal.chat.filter(message => message.mes).slice(-2).map(message => message.mes).join('\n'),
                 computeContext: { kind: 'session', sessionId: snapshot.session.sessionId, revisionId: snapshot.revision.revisionId },
-                service: { admitCorpus: async () => { await current(); return { admitted: true, metered: false }; } } });
+                ...(scoped ? { profile: scoped.profile, rerankProfile: scoped.rerankProfile } : {}),
+                service: scoped?.service ?? { admitCorpus: async () => { await current(); return { admitted: true, metered: false }; } } });
+            if (scoped) this.#recalls.get(proof).retrieval = { port: retrieval.port, proof: await scoped.finish() };
             await current(); result.assertCurrent();
             const evidence = result.evidence.map(item => ({ memoryId: 'native-hybrid:' + snapshot.revision.revisionId + ':' + item.id,
                 content: item.content, ...(item.atomicGroup ? { atomicGroup: item.atomicGroup } : {}),

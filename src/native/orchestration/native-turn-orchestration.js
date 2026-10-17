@@ -8,6 +8,8 @@ import { checkedRecord } from './plan-repository.js';
 import { createOrchestrationExecutionService } from './execution-service.js';
 import { AttemptController } from './attempt-controller.js';
 import { ContextPort } from './context-port.js';
+import { ContextRetrievalPort } from './context-retrieval-port.js';
+import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 import { controlCommandId, controlRecordKey, runGuard, readAttempt } from './controller-common.js';
 import { TransitionController } from './transition-controller.js';
 import { validateModelCapability } from './model-capability-authority.js';
@@ -215,17 +217,19 @@ export class NativeNarratorOrchestrationAuthority {
         const plan = await this.plans.getRevision(handle, binding.planRef), graph = plan.definition;
         const agents = graph.nodes.filter(node => node.kind === 'agent'), outputs = graph.nodes.filter(node => node.kind === 'output');
         const modelPins = plan.dependencyPins.filter(pin => pin.port === 'model' && pin.resourceRef.scope === 'player');
+        const retrievalPins = plan.dependencyPins.filter(pin => pin.port === 'context' && pin.resourceRef.scope === 'player' && pin.resourceRef.retrievalProfileId);
+        const ownedRetrieval = node => node.capabilities.includes('memory.retrieve') ? retrievalPins.filter(pin => node.dependencyPinIds.includes(pin.pinId)) : [];
         const needsResolver = Boolean(base.manifest.runtime.experienceContract.authorityRuntime && !transaction && !base.timeline.at(-1)?.metadata?.atri_authority_retry);
         if (needsResolver && !base.manifest.runtime.experienceContract.generationBudget) fail('native_orchestration_turn_scope_unavailable');
         const count = needsResolver ? 2 : 1;
         const formalOutput = graph.outputContract.kind === 'rp_narration';
         if (formalOutput && (graph.outputContract.slot !== 'assistant' || assertResultPolicy(graph.outputContract).outputType !== 'text')) fail('native_orchestration_turn_plan_unavailable');
         if (agents.length !== count || outputs.length !== 1 || graph.nodes.length !== count + 1 || graph.edges.length !== count
-            || !equal(graph.capabilityCeiling, ['generation.send', ...(formalOutput ? ['chat.output'] : [])])
-            || agents.some(node => !equal(node.capabilities, ['generation.send']) || node.outputs.length !== 1 || !node.dependencyPinIds.length
-                || node.dependencyPinIds.length !== nodeModelRoutePins(node, plan.dependencyPins).length)
+            || !equal([...graph.capabilityCeiling].sort(), ['generation.send', ...(formalOutput ? ['chat.output'] : []), ...(retrievalPins.length ? ['memory.retrieve'] : [])].sort())
+            || agents.some(node => !equal([...node.capabilities].sort(), ['generation.send', ...(ownedRetrieval(node).length ? ['memory.retrieve'] : [])].sort()) || node.outputs.length !== 1 || !node.dependencyPinIds.length
+                || node.dependencyPinIds.length !== nodeModelRoutePins(node, plan.dependencyPins).length + ownedRetrieval(node).length)
             || !equal(outputs[0].capabilities, formalOutput ? ['chat.output'] : []) || outputs[0].inputs.length !== 1 || outputs[0].outputs.length
-            || plan.dependencyPins.length !== modelPins.length || modelPins.some(pin => !agents.some(node => node.dependencyPinIds.includes(pin.pinId))) || outputs[0].dependencyPinIds.length
+            || plan.dependencyPins.length !== modelPins.length + retrievalPins.length || [...modelPins, ...retrievalPins].some(pin => !agents.some(node => node.dependencyPinIds.includes(pin.pinId))) || outputs[0].dependencyPinIds.length
             || !['result', 'rp_narration'].includes(graph.outputContract.kind) || graph.outputContract.allowPartial
             || graph.edges.some(edge => edge.condition !== 'always' || edge.loopBack || edge.maxVisits !== 1)
             || graph.graphChangePolicy.allowedOperations.length) fail('native_orchestration_turn_plan_unavailable');
@@ -236,6 +240,7 @@ export class NativeNarratorOrchestrationAuthority {
             const pin = plan.dependencyPins.find(pin => pin.pinId === node.policy.agentPinId && node.dependencyPinIds.includes(pin.pinId));
             if (pin?.port !== 'model' || pin.resourceRef.scope !== 'player') fail('native_orchestration_model_authority_unavailable');
             const pinned = routes.find(route => route.runtimeRouteId === pin.resourceRef.runtimeRouteId), role = pinned?.role;
+            if (role !== 'role.narrator' && ownedRetrieval(node).length) fail('native_orchestration_turn_plan_unavailable');
             if (!['role.narrator', ...(needsResolver ? ['role.intent_resolver'] : [])].includes(role) || profiles[role]) fail('native_orchestration_turn_route_mismatch');
             const explicit = role === 'role.narrator' ? input.routeRef : undefined;
             if (explicit !== undefined) {
@@ -427,7 +432,7 @@ export class NativeNarratorOrchestrationAuthority {
             const orchestrationSend = await service.generationSend(handle, { runId: root.runId, effectId, limits: selected.resolved.route.executionPolicy.computeBudget,
                 quotaProof });
             const metered = await compileNativeContextMetered({ handle, port: state.contextPort, request: contextRequest, bank: orchestrationSend.bank,
-                budgetPort: service.budgetPort, root: await service.runs.get(handle, root.runId), effectId, limits: selected.resolved.route.executionPolicy.computeBudget,
+                budgetPort: service.budgetPort, contextRetrieval: service.contextRetrieval, root: await service.runs.get(handle, root.runId), effectId, limits: selected.resolved.route.executionPolicy.computeBudget,
                 workDescriptor: { requestId: state.request.requestId, pathFingerprint: selected.resolved.pathFingerprint },
                 assertCurrent: async () => {
                     await this.#current(selection); assertNativeTurnQuota(quotaProof, proofExpected);
@@ -445,7 +450,10 @@ export class NativeNarratorOrchestrationAuthority {
                     await state.contextPort.revalidate(handle, { context: state.context, phase: 'consume' });
                 } } });
             return scope;
-        } catch (error) { this.#runs.delete(root.runId); throw error; }
+        } catch (error) {
+            if (state.effectId) ContextRetrievalPort.prototype.releaseCompilation.call(service.contextRetrieval, handle, { runId: root.runId, modelEffectId: state.effectId });
+            this.#runs.delete(root.runId); throw error;
+        }
     }
 
     async #originalSelection(handle, base, expected) {
@@ -520,9 +528,13 @@ export class NativeNarratorOrchestrationAuthority {
         try {
             const result = await port.generate(args.handle, scope, { signal: args.signal });
             await port.inspectResultCompletion(args.handle, { result, runId, effectId: state.effectId });
+            await ContextRetrievalPort.prototype.sealCompilation.call(this.execution.contextRetrieval, args.handle, { runId, modelEffectId: state.effectId });
             this.#narrations.set(result.generated, { state, port, result, runId });
             return result.generated;
-        } finally { this.#runs.delete(runId); modelScopes.delete(scope); }
+        } finally {
+            ContextRetrievalPort.prototype.releaseCompilation.call(this.execution.contextRetrieval, args.handle, { runId, modelEffectId: state.effectId });
+            this.#runs.delete(runId); modelScopes.delete(scope);
+        }
     }
 
     bindNarratorOutput({ host, handle, narration, prepared }) {
@@ -592,11 +604,14 @@ export class NativeNarratorOrchestrationAuthority {
         const current = () => state.contextPort.revalidateNativeOutput(handle, { context: state.context, finalizationPermit });
         try {
             const published = await runs.control(handle, controlCommandId('session.narrator.settle', { runId, attemptId: state.attemptId }), {
-                ...runGuard(await runs.get(handle, runId)), operation: 'attempt.settle', detail: { reason: 'session_narration_ready' } }, async ({ tx, root, now }) => {
+                ...runGuard(await runs.get(handle, runId)), operation: 'attempt.settle', detail: { reason: 'session_narration_ready' } }, async ({ tx, root, now, deny }) => {
                 const record = await readAttempt(tx, handle, root, state.attemptId);
+                const retrieval = await readContextRetrievalCompletions(tx, handle, root, (await readEffect(tx, handle, root, state.effectId)).doc, record.doc);
                 if (root.cancelRequested || root.status !== 'running' || root.pendingEffectRefs.length || root.resultRefs.length
-                    || record.doc.status !== 'running' || !equal(record.doc.effectRefs, [state.effectId]) || record.doc.resultRefs.length
+                    || record.doc.status !== 'running' || !equal(record.doc.effectRefs, [state.effectId, ...retrieval.map(item => item.effectId)]) || record.doc.resultRefs.length
                     || root.progress.steps >= root.limits.maxSteps || now >= root.progress.deadlineAt) fail('native_orchestration_session_output_denied');
+                try { await current(); } catch (error) { return deny(error); }
+                if (!equal(root, await runs.get(handle, runId))) return deny(new ConflictError('native_orchestration_session_output_denied'));
                 const result = sessionNarrationResult({ root, proof, payload: prepared.envelope.narrative, grantDigest: state.decision.grantDigest, now });
                 const publication = { schemaVersion: 1, receiptKind: 'session_narration_result', receiptId: sessionNarrationPublicationId(result.resultRef.resultId),
                     runId, epoch: root.epoch, producerAttemptId: state.attemptId, resultRef: result.resultRef, resultIntegrity: hash(result.record),
@@ -605,7 +620,7 @@ export class NativeNarratorOrchestrationAuthority {
                 await putImmutable(tx, controlRecordKey(handle, runId, 'result', result.resultRef.resultId), result.record);
                 await putImmutable(tx, controlRecordKey(handle, runId, 'receipt', publication.receiptId), publication);
                 await writeAttemptSettlement({ tx, handle, root, record, outcome: 'completed', resultRefs: [result.resultRef],
-                    effectReceiptRefs: [proof.receiptRef.receiptId], reasonCode: 'session_narration_ready', now });
+                    effectReceiptRefs: [proof.receiptRef.receiptId, ...retrieval.map(item => item.receiptId)], reasonCode: 'session_narration_ready', now });
                 root.resultRefs.push(result.resultRef); root.progress.steps++;
                 return { root, eventType: 'session_narration_ready', reasonCode: 'session_narration_ready', outcome: { resultRef: result.resultRef } };
             });

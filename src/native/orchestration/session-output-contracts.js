@@ -125,6 +125,7 @@ export async function readSessionOutput(tx, handle, root) {
         || !equal(host.sourceRefs, [root.sourceBinding.sourceRef]) || !equal(host.resultRefs, [claim.resultRef]) || host.reasonCode !== 'session_output_committed'
         || host.observedAt > receipt.createdAt || host.budgetObservationRef.status !== 'settled'
         || !equal(Object.fromEntries(Object.keys(intent.budgetAttemptRef).map(field => [field, host.budgetObservationRef[field]])), intent.budgetAttemptRef)) invalid();
+    const retrieval = published.retrievalCompletions, retrievalIds = new Set(retrieval.map(item => item.effectId));
     const modelIds = [], effectIds = [], nodes = new Set();
     if (root.attemptRefs.length !== root.graph.nodes.length) invalid();
     for (const ref of root.attemptRefs) {
@@ -152,11 +153,12 @@ export async function readSessionOutput(tx, handle, root) {
         for (const effectId of attempt.effectRefs) {
             effectIds.push(effectId);
             if (effectId === intent.effectId) continue;
+            if (retrievalIds.has(effectId)) { if (attempt.attemptId !== published.producer.attemptId) invalid(); continue; }
             const generation = (await readEffect(tx, handle, root, effectId)).doc;
             const completion = await readModelCompletionReceipt(handle, tx, root, generation);
             if (generation.capability !== 'generation.send' || !completion || generation.nodeAttemptId !== attempt.attemptId
                 || generation.epoch !== receipt.epoch || generation.sourceBindingDigest !== root.sourceBinding.bindingDigest
-                || !equal(settled.effectReceiptRefs, [completion.receiptRef.receiptId])) invalid();
+                || !equal(settled.effectReceiptRefs, [completion.receiptRef.receiptId, ...(attempt.attemptId === published.producer.attemptId ? retrieval.map(item => item.receiptId) : [])])) invalid();
             modelIds.push(effectId);
         }
     }
@@ -169,7 +171,7 @@ export async function readSessionOutput(tx, handle, root) {
     }
     const sends = closure.budgetAttemptRefs.filter(ref => ref.kind !== 'local_work');
     const local = closure.budgetAttemptRefs.filter(ref => ref.kind === 'local_work');
-    if (sends.length !== modelIds.length || modelIds.some(effectId => sends.filter(ref => ref.effectId === effectId && ref.providerSendOrdinal === 0).length !== 1
+    if (sends.length !== modelIds.length + retrievalIds.size || [...retrievalIds].some(effectId => sends.filter(ref => ref.effectId === effectId && ref.providerSendOrdinal === 0).length !== 1) || modelIds.some(effectId => sends.filter(ref => ref.effectId === effectId && ref.providerSendOrdinal === 0).length !== 1
         || !local.some(ref => ref.effectId === effectId && ref.localWorkOrdinal === 0))
         || local.filter(ref => ref.effectId === intent.effectId).length !== 1 || !local.some(ref => equal(ref, intent.budgetAttemptRef))) invalid();
     const edge = root.graph.edges.find(item => item.from.nodeId === published.producer.nodeId && item.to.nodeId === output.nodeId);

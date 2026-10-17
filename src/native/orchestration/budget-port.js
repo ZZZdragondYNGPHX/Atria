@@ -8,6 +8,7 @@ import { orchestrationComputeAttemptId, inspectComputeChildClosure, inspectCompu
 import { RpRunControl } from '../rp-run-control.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { checkedRecord } from './plan-repository.js';
+import { readEffect } from './effect-contracts.js';
 import { readProjectOwnedSource } from './project-tool-receipts.js';
 
 // V3 BudgetPort (interface §8.1/§13): a typed dispatcher onto the three original
@@ -17,6 +18,7 @@ const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 const digest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const ADMITTED = new Set(['charged', 'unknown', 'settled']);
 const sendBanks = new WeakMap();
+const retrievalGrants = new WeakMap();
 
 /** Original adapter provenance only; this is neither a balance nor a grant. */
 export function assertOriginalSendBank(bank, { budgetPort, handle, authorityRef, effectId }) {
@@ -167,7 +169,9 @@ export class BudgetPort {
         return { reservationId: result.reservation.reservationId, status: result.reservation.status, ceiling: result.reservation.limits, replayed: result.replayed };
     }
 
-    async admitAttempt(handle, { authorityRef, reservationId = null, effectId, providerSendOrdinal, requestId, targetFingerprint, inputFingerprint, upperBound, limits, reserve, quotaProof }) {
+    async admitAttempt(handle, input) { return this.#admitAttempt(handle, input); }
+
+    async #admitAttempt(handle, { authorityRef, reservationId = null, effectId, providerSendOrdinal, requestId, targetFingerprint, inputFingerprint, upperBound, limits, reserve, quotaProof }, retrievalGrant) {
         assertBudgetAuthorityRef(authorityRef);
         const attempt = { attemptId: sendAttemptId(effectId, providerSendOrdinal), requestId, targetFingerprint, estimatedTokens: upperBound, inputFingerprint,
             orchestration: { kind: 'provider_send', effectId, ordinal: providerSendOrdinal } };
@@ -176,8 +180,10 @@ export class BudgetPort {
         if (authorityRef.domain === 'session') {
             const { snapshot, anchor } = await this.#session(handle, authorityRef);
             const policy = snapshot.manifest.runtime?.experienceContract?.generationBudget ?? null;
-            const quota = policy !== null || quotaProof !== undefined ? assertNativeTurnQuota(quotaProof,
-                { sessionCore: this.sessionCore, handle, sessionId: snapshot.session.sessionId, requestId, anchor, policy }).quota : null;
+            let quota = null;
+            if (retrievalGrant) await this.#verifyRetrievalGrant(handle, retrievalGrant, { authorityRef, snapshot, anchor, policy, attempt });
+            else if (policy !== null || quotaProof !== undefined) quota = assertNativeTurnQuota(quotaProof,
+                { sessionCore: this.sessionCore, handle, sessionId: snapshot.session.sessionId, requestId, anchor, policy }).quota;
             result = await this.sessionCore.runs.admitCompute(handle, snapshot, anchor, limits, attempt, options, quota);
         } else if (authorityRef.authority === 'project_task') {
             if (quotaProof !== undefined) fail('native_generation_budget_lane_denied');
@@ -387,8 +393,52 @@ export class BudgetPort {
         return { status: row.status };
     }
 
+    /** Original Context adapter only. Retrieval uses the same original compute
+     * reducer as the original retrieval consumer; the parent's real quota proves
+     * its producer and is never charged as a second Model invocation. */
+    contextRetrievalBank(handle, { parentBank, root, effectId, limits, assertCurrent }) {
+        const original = sendBanks.get(parentBank);
+        assertOriginalSendBank(parentBank, { budgetPort: this, handle, authorityRef: root.budgetAuthorityRef, effectId: original?.effectId });
+        if (typeof assertCurrent !== 'function' || root.parentRef !== null) fail('native_generation_budget_lane_denied');
+        let retrievalGrant;
+        if (root.sourceBinding.sourceAuthority === 'native_session') {
+            if (root.budgetAuthorityRef.domain !== 'session' || !original.quotaProof) fail('native_generation_budget_lane_denied');
+            retrievalGrant = Object.freeze({});
+            retrievalGrants.set(retrievalGrant, { budgetPort: this, handle, runId: root.runId, parentEffectId: original.effectId,
+                effectId, authorityDigest: original.authorityDigest, quotaProof: original.quotaProof, epoch: root.epoch,
+                hostBootId: root.hostBootId, hostGeneration: root.hostGeneration });
+        } else if (root.sourceBinding.sourceAuthority !== 'rp_chat' || root.budgetAuthorityRef.domain !== 'rp_chat') fail('native_generation_budget_lane_denied');
+        return this.#sendBank(handle, { authorityRef: root.budgetAuthorityRef, limits, effectId, firstOrdinal: 0, assertCurrent, retrievalGrant });
+    }
+
+    async #verifyRetrievalGrant(handle, proof, { authorityRef, snapshot, anchor, policy, attempt }) {
+        const value = retrievalGrants.get(proof);
+        if (!value || value.budgetPort !== this || value.handle !== handle || value.authorityDigest !== hashNativeDocument(authorityRef)
+            || value.effectId !== attempt.orchestration.effectId || attempt.orchestration.ordinal !== 0) fail('native_generation_budget_lane_denied');
+        const engine = this.sessionCore.runs.repo._engine;
+        await engine.withTransaction(handle, async tx => {
+            const root = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: value.runId }))?.doc;
+            if (!root || root.cancelRequested || root.status !== 'running' || root.parentRef !== null || root.epoch !== value.epoch
+                || root.hostBootId !== value.hostBootId || root.hostGeneration !== value.hostGeneration
+                || hashNativeDocument(root.budgetAuthorityRef) !== value.authorityDigest || root.sourceBinding.sourceAuthority !== 'native_session'
+                || root.sourceBinding.sourceRef.sessionId !== snapshot.session.sessionId) fail('native_generation_budget_lane_denied');
+            const parent = (await readEffect(tx, handle, root, value.parentEffectId)).doc, child = (await readEffect(tx, handle, root, value.effectId)).doc;
+            if (parent.capability !== 'generation.send' || parent.status !== 'prepared' || parent.inputRef.kind !== 'native_turn_intent' || parent.inputRef.role !== 'narrator'
+                || child.capability !== 'memory.retrieve' || child.actionRef.kind !== 'context_retrieval' || child.status !== 'prepared'
+                || child.inputRef.contextForEffectId !== parent.effectId || child.nodeAttemptId !== parent.nodeAttemptId || child.graphRevision !== parent.graphRevision
+                || child.sourceBindingDigest !== parent.sourceBindingDigest || attempt.requestId !== 'retrieval:' + child.effectId
+                || attempt.targetFingerprint !== child.endpointBindingDigest || attempt.inputFingerprint !== child.inputRef.providerInputFingerprint)
+                fail('native_generation_budget_lane_denied');
+            assertNativeTurnQuota(value.quotaProof, { sessionCore: this.sessionCore, handle, sessionId: snapshot.session.sessionId,
+                requestId: parent.inputRef.invocationId, invocationId: parent.inputRef.invocationId, requestHash: parent.inputRef.requestHash,
+                role: 'narrator', anchor, policy });
+        });
+    }
+
     /** Send-bound adapter for the trusted GenerationHost path. The ordinal advances on every real send, retry or fallback. */
-    sendBank(handle, { authorityRef, reservationId = null, limits, effectId, firstOrdinal, assertCurrent, quotaProof }) {
+    sendBank(handle, input) { return this.#sendBank(handle, input); }
+
+    #sendBank(handle, { authorityRef, reservationId = null, limits, effectId, firstOrdinal, assertCurrent, quotaProof, retrievalGrant }) {
         assertBudgetAuthorityRef(authorityRef);
         // A reservation already carries the leaf Route ceiling. Passing that
         // ceiling to bindComputeBudget would tighten the entire original bank
@@ -418,7 +468,8 @@ export class BudgetPort {
                 const providerSendOrdinal = ordinal++;
                 let result;
                 try {
-                    result = await this.admitAttempt(handle, { authorityRef, reservationId, effectId, providerSendOrdinal, requestId, targetFingerprint, inputFingerprint, upperBound, limits: rootLimits ?? routeLimits ?? limits, reserve, quotaProof });
+                    const input = { authorityRef, reservationId, effectId, providerSendOrdinal, requestId, targetFingerprint, inputFingerprint, upperBound, limits: rootLimits ?? routeLimits ?? limits, reserve, quotaProof };
+                    result = await (retrievalGrant ? this.#admitAttempt(handle, input, retrievalGrant) : this.admitAttempt(handle, input));
                 } catch (error) {
                     if (error.code !== 'storage_commit_unknown') throw error;
                     const budgetAttemptRef = { authorityRef: structuredClone(authorityRef), effectId, providerSendOrdinal,
@@ -460,7 +511,7 @@ export class BudgetPort {
             settleLocalWork: (attemptId, usage) => this.settleLocalWork(handle, authorityRef, attemptId, usage),
             nextOrdinal: () => ordinal,
         };
-        sendBanks.set(bank, { budgetPort: this, handle, effectId, authorityDigest: hashNativeDocument(authorityRef) });
+        sendBanks.set(bank, { budgetPort: this, handle, effectId, authorityDigest: hashNativeDocument(authorityRef), quotaProof });
         return bank;
     }
 }

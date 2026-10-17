@@ -12,6 +12,7 @@ import { rpReviewProfile } from './rp-review-profile.js';
 import { rpPlannerProfile } from './rp-planner-profile.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { sendAttemptId } from './budget-port.js';
+import { readRunControl } from '../run-control.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original Context retrieval completion'); };
@@ -37,6 +38,11 @@ export function contextRetrievalDecision({ sourceBindingDigest, parentGrantDiges
 export async function readContextRetrievalPlan(tx, handle, root, parent) {
     const plan = await readPlanRevision(tx, handle, root.planRef), planner = rpPlannerProfile(plan);
     if (parent.graphRevision > root.graphRevision) invalid();
+    if (root.sourceBinding.sourceAuthority === 'native_session') {
+        if (root.parentRef !== null || root.graphRevision !== 0 || parent.graphRevision !== 0 || !equal(plan.definition, root.graph)
+            || plan.definition.graphChangePolicy.allowedOperations.length || parent.inputRef.kind !== 'native_turn_intent' || parent.inputRef.role !== 'narrator') invalid();
+        return plan;
+    }
     if (planner) {
         const snapshot = await readTaskGraphRevision(tx, handle, root, parent.graphRevision);
         if (planner.expansion) {
@@ -55,7 +61,7 @@ export async function readContextRetrievalCompletions(tx, handle, root, parent, 
     if (producer.effectRefs[0] !== parent.effectId || new Set(producer.effectRefs).size !== producer.effectRefs.length) invalid();
     const refs = producer.effectRefs.slice(1);
     if (!refs.length) return [];
-    if (root.sourceBinding.sourceAuthority !== 'rp_chat' || root.parentRef !== null
+    if (!['rp_chat', 'native_session'].includes(root.sourceBinding.sourceAuthority) || root.parentRef !== null
         || parent.nodeAttemptId !== producer.attemptId || parent.graphRevision !== producer.graphRevision || parent.capability !== 'generation.send') invalid();
     const plan = await readContextRetrievalPlan(tx, handle, root, parent), node = plan.definition.nodes.find(node => node.nodeId === producer.nodeId);
     if (!node?.capabilities.includes('memory.retrieve')) invalid();
@@ -64,8 +70,10 @@ export async function readContextRetrievalCompletions(tx, handle, root, parent, 
     const modelReceipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', modelReceiptId)))?.doc;
     if (!modelReceipt || modelReceipt.outcome !== 'confirmed') invalid();
     const bank = root.budgetAuthorityRef;
-    if (bank.authority !== 'run_control' || bank.domain !== 'rp_chat' || bank.controlId !== root.sourceBinding.sourceRequest.controlId) invalid();
-    const control = (await checkedRecord(tx, { kind: K.rpRunControl, handle, controlId: bank.controlId }))?.doc;
+    const session = root.sourceBinding.sourceAuthority === 'native_session';
+    if (bank.authority !== 'run_control' || (session ? bank.domain !== 'session' || bank.sessionId !== root.sourceBinding.sourceRef.sessionId
+        : bank.domain !== 'rp_chat' || bank.controlId !== root.sourceBinding.sourceRequest.controlId)) invalid();
+    const control = session ? await readRunControl(tx, handle, bank.sessionId) : (await checkedRecord(tx, { kind: K.rpRunControl, handle, controlId: bank.controlId }))?.doc;
     const ledger = control?.operations[bank.operationId]?.compute;
     if (!ledger) invalid();
     for (const effectId of refs) {
@@ -97,7 +105,7 @@ export async function readContextRetrievalCompletions(tx, handle, root, parent, 
             || !equal(evidence.expectedSend, { targetFingerprint: intent.endpointBindingDigest, inputFingerprint: input.providerInputFingerprint })) invalid();
         assertDigest(evidence.responseHash, 'retrieval response'); assertDigest(receipt.budgetObservationRef.usageHash, 'retrieval usage');
         const row = ledger.attempts.find(row => row.attemptId === budgetAttemptRef.attemptId);
-        if (!row || row.status !== 'settled' || !equal(row.orchestration, { kind: 'provider_send', effectId, ordinal: 0 })
+        if (!row || row.status !== 'settled' || session && row.generationQuotaRef !== undefined || !equal(row.orchestration, { kind: 'provider_send', effectId, ordinal: 0 })
             || row.requestId !== 'retrieval:' + effectId || row.targetFingerprint !== intent.endpointBindingDigest
             || row.inputFingerprint !== input.providerInputFingerprint || (row.reservationId ?? null) !== null
             || hash(row.usage) !== receipt.budgetObservationRef.usageHash) invalid();

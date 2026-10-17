@@ -23,6 +23,7 @@ import { nativeRetrievalIndexPath } from '../vector-index-work.js';
 
 const fail = (code = 'native_orchestration_context_retrieval_denied') => { throw new ConflictError(code); };
 const equal = (a, b) => hash(a) === hash(b);
+const jsonData = value => JSON.parse(JSON.stringify(value));
 const binding = root => hash({ runId: root.runId, ownerRef: root.ownerRef, epoch: root.epoch, hostBootId: root.hostBootId,
     hostGeneration: root.hostGeneration, planRef: root.planRef, sourceBinding: root.sourceBinding, budgetAuthorityRef: root.budgetAuthorityRef });
 const proposalOf = value => Object.fromEntries(['actionRef', 'targetRef', 'inputRef', 'inputHash'].map(field => [field, value[field]]));
@@ -65,10 +66,15 @@ export class ContextRetrievalPort {
     async createCompilation(handle, { port, request, bank, root, modelEffectId, limits, actualInput, signal }) {
         if (this.runs.engine.hasActiveTransaction(handle)) fail('native_orchestration_context_retrieval_ambient_transaction');
         if (!(port instanceof ContextPort) || !(this.budgetPort instanceof BudgetPort) || root.ownerRef.handle !== handle
-            || root.sourceBinding.sourceAuthority !== 'rp_chat' || root.parentRef !== null
+            || !['rp_chat', 'native_session'].includes(root.sourceBinding.sourceAuthority) || root.parentRef !== null
+            || root.sourceBinding.sourceAuthority === 'native_session' && (request.audience.kind !== 'narrator' || request.inputRefs[0]?.role !== 'narrator')
             || !equal(root.sourceBinding, request.sourceBinding)) fail();
         assertOriginalSendBank(bank, { budgetPort: this.budgetPort, handle, authorityRef: root.budgetAuthorityRef, effectId: modelEffectId });
-        if (!equal(await ContextPort.prototype.compilationDescriptor.call(port, handle, request), actualInput)) fail();
+        // Match the original context_build accounting envelope. Native compiler
+        // options also contain implementation callbacks and omitted values;
+        // they are not serializable resource or permission documents.
+        const currentInput = await ContextPort.prototype.compilationDescriptor.call(port, handle, request);
+        if (!equal(jsonData(currentInput), jsonData(actualInput))) fail();
         const key = hash({ handle, runId: root.runId, modelEffectId });
         if (this.#models.has(key)) fail('native_orchestration_context_retrieval_replayed');
         const scope = { handle, runId: root.runId, rootBinding: binding(root), modelEffectId, request: cloneNativeDocument(request),
@@ -83,7 +89,8 @@ export class ContextRetrievalPort {
         if (!route?.executionPolicy || !equal(route.executionPolicy.computeBudget, limits)) fail();
         scope.computeOptions = cloneNativeDocument(optionalComputeOptions(route.executionPolicy, 'rerank'));
         const node = root.graph.nodes.find(node => node.nodeId === request.inputRefs[0]?.nodeId);
-        if (!node?.capabilities.includes('memory.retrieve') || node.nodeId !== (await this.runs.engine.withTransaction(handle, tx => readAttempt(tx, handle, root, parent.nodeAttemptId))).doc.nodeId) fail();
+        const attempt = (await this.runs.engine.withTransaction(handle, tx => readAttempt(tx, handle, root, parent.nodeAttemptId))).doc;
+        if (!node?.capabilities.includes('memory.retrieve') || node.nodeId !== attempt.nodeId || !equal(attempt.effectRefs, [modelEffectId])) fail();
         await this.#current(scope);
         const token = Object.freeze({}); this.#scopes.set(token, scope); this.#models.set(key, scope); return token;
     }
@@ -118,7 +125,7 @@ export class ContextRetrievalPort {
             legal.chat.filter(message => message.mes).slice(-2).map(message => message.mes).join('\n'));
         applyMemoryCorpusEligibility(legal, corpus, seeds);
         const permitted = new Set(corpus.documents.map(doc => doc.text));
-        const descriptorDigest = hash(descriptor), corpusDigest = hash({ key: legal.key, state: legal.state, chat: legal.chat, eligibility: legal.eligibility?.identity ?? null });
+        const descriptorDigest = hash(descriptor), corpusDigest = hash(jsonData({ key: legal.key, state: legal.state, chat: legal.chat, eligibility: legal.eligibility?.identity ?? null }));
         const current = async () => { scope.signal?.throwIfAborted(); await assertCurrent(); await this.#current(scope); };
         await current();
         let invoked = false, completed = false, queried = false;
@@ -265,8 +272,8 @@ export class ContextRetrievalPort {
         this.#effects.set(effectId, state);
         scope.effectIds.push(effectId);
         await this.effects.prepareContextRetrieval(handle, { ...runGuard(await this.runs.get(handle, scope.runId)), effectId, nodeAttemptId: scope.attemptId, proposal: proposalOf(decision) });
-        const bank = this.budgetPort.sendBank(handle, { authorityRef: (await this.runs.get(handle, scope.runId)).budgetAuthorityRef,
-            limits: scope.limits, effectId, firstOrdinal: 0, assertCurrent: current });
+        const bank = this.budgetPort.contextRetrievalBank(handle, { parentBank: scope.bank, root: await this.runs.get(handle, scope.runId),
+            limits: scope.limits, effectId, assertCurrent: current });
         let ticket, dispatchToken;
         const compute = { beforeSend: async (actualBody, transport) => {
             if (ticket || !equal(retrievalSendIdentity(profile, actualBody, transport), expectedSend)) fail();

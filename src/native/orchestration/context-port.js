@@ -324,7 +324,7 @@ export class ContextPort {
         this.#memoryDescriptors.delete(descriptorKey);
         const recall = this.memoryAuthority ? await NativeMemoryAuthority.prototype.recallContext.call(this.memoryAuthority, handle, {
             snapshot, requester: request.audience, informationTaskId: taskIdentity?.input.taskId, tokenBudget: request.tokenBudget, countTokens: this.contextOptions.countTokens,
-            expectedDescriptor, assertCurrent: () => this.#current(handle, request, 'recall') }) : null;
+            expectedDescriptor, retrieval, assertCurrent: () => this.#current(handle, request, 'recall') }) : null;
         const memoryEvidence = recall?.evidence ?? (this.readMemoryEvidence ? await this.readMemoryEvidence({ handle, request, snapshot, information }) : this.contextOptions.memoryEvidence ?? []);
         const plan = await compileNativeContextPlan(snapshot, { ...this.contextOptions, ...request.tokenBudget,
             target: taskIdentity ? { kind: 'narrator' } : request.audience, informationTaskId: taskIdentity?.input.taskId, memoryEvidence, authorityTurn: Boolean(this.authorityTurn) });
