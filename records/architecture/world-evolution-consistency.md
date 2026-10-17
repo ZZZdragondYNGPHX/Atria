@@ -419,6 +419,29 @@
 - **本轮验证限制**：仅 GitHub 远端冻结 SHA 下定向静态文件阅读和 docs 更新/最终再读核验。没有本地完整 repository call graph，未运行 Node/CI/浏览器、UI 截图、长会话基准或三端客户端，也没有创建/修改产品代码文件。
 - **下一 checkpoint**：用户选择 W21-A/B/C 后继续先更新同一 Plan Bundle/本 Record，再对确定的 Protected Subject 布局、最小物理 schema、Native Domain/History Query/Context 真实合约与 WP-A～F 的 Gate 0 工作包作最后一轮可交接证据审计；达到要求后再请用户明确认可整份企划 Final 和正式开发。未获最终授权继续 Draft，不创建 `feat/*`。
 
+
+## Stage 23 — W21-B 确认与 W22 Gate 0 最终交接 Preflight 审查（2026-10-17）
+
+- **用户本轮明确选择**：对 W21 唯一推荐 **W21-B「P2 优先、Native Reserved/Typed Session Identity + Domain Fact Owner + 证据门槛式交接」**回复「认同」。W1-B～W21-B 由此成为已确认的总体设计方向，**仅 P2 优先/单 Native Revision 受保护身份 + 各原 Domain 真相和 Gate 0 证据收口方向**获认可。**未**确认 W22-B、具体 Namespace/Native ID/Schema、E0/CI/真实客户端 PASS、整份 Plan Final、创建实现分支或修改产品代码。
+- **唯一文档纪律**：Primary Workspace 仍 `docs`，沿用同一 `plans/architecture/world-evolution-consistency/` Plan Bundle + 本唯一 Record。没有创建平行方案、第二 Record 或新的 HANDOFF；未修改 `main`、Orchestration/Prompt/Visual/其它长期或临时开发分支。
+- **本轮 GitHub 静态代码锚点**（2026-10-17 GitHub Branch GET 复核，未变）：`main=c57fada6edeea255b29d857ba2585c1dbc9c098b`，`refactor/atria-native-orchestration-v3=a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`，`refactor/atria-native-prompt-preset-deepening=760327891149216dffdc1e3fa0c846496007a013`，`feat/native-visual-generation-deepening=ae587be0c64487ba922528bdd0146444bcf5e92e`。这是局部静态源码对照基线，不是全仓完整调用图，也不是未来合流后的最终实施 HEAD。
+- **本轮 docs 提交顺序**：
+  - `bea6e345bfe9b91bd6f4861a60d5b9f84e7c0c56`：原 W21 `e0-handoff-evidence-review.md` §8 确认 W21-B，限制 P2 优先、保留 P1 有证据回退、Typed Authority/Save/GC 与事实单权威边界。
+  - `846ba00de1181bf8524092c9d0d8826d84787faf`：在同一 Plan Bundle 新增 W22 `e0-final-implementation-handoff.md`（虽名 Final，内容状态仍是 Draft），详述 P2 Native SessionState 的最小物理合同、Guard/Validator/Init/Save/GC、实际 Domain/History/Context/Frontend 消费者、WP-A～F 实施依赖和 Gate 0 可交接/不可交接证据，以及 W22-A/B/C 候选。
+  - `a2ba8249c78bd4b28f031390fbaa17e7104c768c`：`design.md` §29 写入 W21-B 确认和 W22 最终 Gate 0 交接前技术审查目标。
+  - `5a0b7f9a79f04be28ad8a67b372d70d0dc20fd00`：`index.md` 记录 W1–W21 已确认，路由 W22，明确 Plan Draft 与 E0 PARTIAL/BLOCKED。
+- **静态源码新发现与 P2 的关键优势/约束**：
+  - `SessionCore.validateRuntimeStateChanges` 使用 `RESERVED_SESSION_NAMESPACES` 拒绝 Generic Patch；`_publishLocked` 与 `SessionRepo.commitSnapshot` 统一 Native Revision、状态不可变资源和 Domain Receipt，`readSessionSnapshot` 从 `revision.stateHeads` 读取并校验。P2 因而可以是既有 `sessionState` 的正式受保护内容，但新的 Subject 业务校验和 Typed Writer/完整模式权限**目前不存在，不能跳过 E0**。
+  - `NativeSaveSystem` 对可移植 Namespace 的 Revision State Heads 构造依赖闭包；`SessionRepo.reachabilitySnapshot` 标记保留 Revision 的各 State Heads 和来源资源，`session-maintenance` GC 处理 `sessionState`，`loadSnapshot` 验证旧 Revision 的可达性。P2 是复用这些机制，不需要新数据库，但仍要确保新身份状态被合法初始化、导出/导入、恢复、转存和 GC，没有引入未标记的额外子资源。
+  - `state-delta.js` 仅为 `atri_world_state` 做专用增量压缩；P2 的平铺身份状态体积/长期写放大需作为实施期性能验证，最小索引原则可减少变化频率。
+  - `SessionCore.updateResources` 被 `ProductService.saveResourceSetup` 实际消费。它能切换 WorldSelection；需要为 P2 Subject/worldScope 解绑或变化定义合法行为，不得因更新 World Root 而丢失人物历史，也不得保留无权限/不存在的 World 引用。
+  - `NativeSessionObservation.history` 从指定可达 Revision 读 `queryHistory`，为 `asKnownRevision` 提供部分基础；通用 `asOfGameTick` Fact/Source、动态 Perspective/私密 Inspector 仍没有完整 ABI。
+  - `projectInformation` 在 Cognition/SharedAuthority/Expression/Visual/Task/Goal/Context 多个主线生产调用方中使用；`actorAvailability` 静态 Manifest 限制仍存在。WP-C 的合法动态 Perspective 改造不能靠解禁一个 Actor 检查完成。
+  - `worldInfoBefore` 等旧 WI 字段在一些真实生产源码中仍出现；`nativeKnowledgePromptChannels` 默认分支源码搜索只见定义/测试。**没有足够证据宣布全部 Legacy 模块都无现役消费者，也没有凭据列出任一明确可立刻删除的产品文件**。
+- **W22 当前推荐尚未获用户确认**：**W22-B「具名阻塞 + 可执行 Preflight + 条件化开发交接」**。不再增加新抽象系统，将 E0-01～09 剩余阻塞落实为 P2 专用 Typed Native Writer/合法 Subject Schema、跨 Game Reducer/Narrator Domain Receipt、Fact/Revision-Tick as-of、动态 Perspective/Prompt、最终 V3/Prompt/Visual 消费者与 Legacy 公共 ABI、Library/Studio/Play/性能验收责任和退出条件，交付可执行 WP-A～F。W22-A 未充分审查即 Final/开工、W22-C 继续无限新设计均不推荐。
+- **E0 当前状态和现实限制**：`E0-01～09` 仍 PARTIAL / BLOCKED，Gate 0 **没有 PASS**。本轮仅 GitHub 文件读取/代码检索 + docs Contents API 提交与再读验证，不执行 Node 单测、CI、完整本地工作树审查、Provider、真实 UI、Windows/CachyOS/Android Termux 或长期压力测试。新增功能的真实验证只可能在正式代码实现后的 Gate 1～4 取得；不能在 Draft 以测试计划当通过证据。
+- **下一 checkpoint**：用户若确认 W22 的交接方案，下一轮按约定先写同一 Plan + Record，再**停止延长抽象选型轮次**，围绕最后 Gate 0 preflight 的可执行输入和具体阻塞/责任 Owner 做收口，检查是否确实能请求用户对整份企划最终批准。若真正的 HEAD/调用链/关键权限尚不充分，维持 Draft、列最小阻塞并留待证据补齐，不能自行标记 Final 或创建开发分支。
+
 ## Final state
 
 Not yet applicable. Discussion in progress.
