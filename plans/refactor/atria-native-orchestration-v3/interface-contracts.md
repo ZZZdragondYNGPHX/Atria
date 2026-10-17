@@ -1458,3 +1458,12 @@ worker继续使用原Native Host、ContextPort、私有ContextRetrievalPort、�
 同一Context对当前及retired派生namespace的索引清单，经原executeNativeEmbedding/queryNativeIndexes在原物理permits下一次读取，原index_list记录实际输入索引数量、请求字节估计并结算可观察CPU/wall；仅在同一次私有recall中保存清单快照。原HTTP单清单格式和允许字段保持，没有新增HTTP bulk字段、第二索引或第二bank。跨节点继续使用原向量cache identity，合法源不变时只补缺失向量；Context/查询仍逐节点重新授权。合成四Agent菱形使用原额度内30个本地工作、4次Model及5次Embedding，不提高原银行额度或增加API测试硬上限。
 
 原fixed evaluator也可执行该静态检索图；有限单Draft→Narrator两臂各5次Provider，加独立pair Judge共11笔原父ledger费用，仍有检索price=null，不能据此晋升。更大的图必须遵守原用户Route及case/原bank余量，不把未执行或预算拒绝的路径核销。准确FS/SQLite验证、断连/unknown事实与源码HEAD归同一Record；本组没有新增真实API，仍非完整后端或P1–P4/最终Gate通过，不交前端/main、不结束分支。
+
+
+### 17.125 原银行的声明式本地作业额度
+
+原computeBudget.localWork.maxJobs与原父子allocation现在接受Owner声明的正安全整数，原数据格式和默认额度保持。原32条独立schema上界移除；运行仍由原Source/Plan/Effect/Scheduler/Context权限和原jobs/items/inputBytes准入共同约束。每项本地工作至少消耗一个item，历史行的物理边界沿用原maxItems的10000，而不是另设32行；各协议/存储对象的独立边界保持。该参数不能单独授权Model/Tool/正文消费，也不是开发API测试额度。
+
+原bind/tighten reducer继续只收紧已有operation，不因后来更大的Route/调用参数提高原余额。超过当前额度的历史、unknown及实际结算继续可读取/保留；收紧后呈overrun而不是删除旧费用。父子reservation沿同一原bank竞争、单次charge和晚到settlement，只有明确可释放的未用部分归还；没有新账本、预算复制或新scope。
+
+FS/SQLite原Session/Project/RP银行各40条本地费用经Source撤回和冷重启保留。有限五Agent RP检索链在预先声明48 jobs及相应Plan步骤后完成37个实际原本地工作、5次合成Model/6次合成Embedding及12个Effect闭包；相同图声明32 jobs时停止并保留原费，不通过重请求重置。准确源码HEAD及所有验证归同一Record。原前端后续须按共享schema适配该字段；本组为后端合同，P1–P4/最终Gate继续，不作前端交接或main/分支结束。

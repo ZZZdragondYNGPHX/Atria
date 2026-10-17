@@ -1339,3 +1339,12 @@
 - 新图完整suite初17PASS/1FAIL（221.27s），SQLite菱形本地合成Model失败；单独复测1PASS/1FAIL（52.84s），未改原产品retry/timeout。临时fetch诊断再1PASS/1FAIL（52.087s），确认为未取消连接的ECONNRESET：两次Model HTTP200后，第三次未到服务器；原bank保留4次已结算检索、2次已结算Model及第三Model unknown。去掉临时诊断，原测试Model服务器显式Connection: close；两个store菱形及新增确定性第三Model断连/费用不重发四参数4PASS/16filterSKIP（97.422s）。原产品重试、超时、fallback策略不变。
 - 最终新完整20/20 PASS（252.701s）；最后原worker图/parent identity/unknown或partial用量精选6PASS/24filterSKIP（42.994s）。18个相关JS原ESLint与最终staged diff check通过。并清理D5/decisions内误复制的API测试旧数值，只引用治理与用户当次实际配置；本次没有daily/RPM硬限额。全部新增Provider为localhost合成，真实API总数12、备用Chat0保持。
 - 后端继续：控制/动态图与其它Source/Actor检索、原bank对更大声明图的资源适配、可信高风险消费者、完整恢复/释放等仍需实现验证。P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。
+
+
+## 2026-10-17 — 第一百二十二组：原银行声明式本地作业额度
+
+- Source `428cce5ef` → `a22a36e12`，本地提交、未推送；接口§17.125。移除共享localWork.maxJobs独立32 schema上界，接受Owner预声明正安全整数；默认、原jobs/items/inputBytes准入、Source/Plan/Effect授权不变。每job至少一item，ledger物理行沿原10000 item边界；收紧低于已费仍保留历史/unknown/overrun，后来较大Route不增原余额，原父子reservation不复制银行。其它协议32边界未改，未提前改前端。
+- 新纯reducer与原reservation两完整suite23/23 PASS（0.549s）；FS/SQLite原Session/Project/RP三域40条费用、Source撤回及冷重启六参数6PASS/13filterSKIP（9.341s）。unknown晚到结算、收紧、父子40+8并发预约及只释放未用额度均沿原bank；合成计数不冒称实际CPU/网络。
+- 新五Agent链首轮2FAIL/2PASS/20filterSKIP（153.846s），原Plan maxSteps50先到限额，未放宽产品准入。fixture预声明相应Plan maxSteps100后4PASS/20filterSKIP（156.571s）：48 jobs额度完成37个实际local jobs、5次合成Model+6次合成Embedding、12个Effect闭包；相同图32 jobs按原额度停止、无Chat且重请求不重置费用。原24项图suite中的旧20项已在前组完整通过，本组仅新增四参数。
+- 最终原银行/reservation/子闭包/指纹八完整suite154/154 PASS（26.667s）；原Legacy/V3实际count/render/localWork两完整suite51/51 PASS（23.969s）。六JS原ESLint及staged diff check通过；拆分正负测试以遵守原lint，未禁用规则。
+- 全部新增Provider为localhost合成，真实API总数12、备用Chat0保持，API无daily/RPM硬上限。继续控制/动态图与其它Source/Actor检索、可信高风险消费者、完整恢复/释放等后端；P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。
