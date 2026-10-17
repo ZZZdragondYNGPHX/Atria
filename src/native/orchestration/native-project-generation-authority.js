@@ -19,6 +19,7 @@ import { assertProjectToolReceipt, readProjectToolDescriptor, projectToolCapabil
 
 const operations = new WeakMap(), starts = new WeakMap(), generations = new WeakMap();
 const toolPermits = new WeakMap();
+const generationPermits = new WeakMap();
 const roundCompletions = new WeakMap();
 const fail = (code = 'native_orchestration_project_producer_denied') => { throw Object.assign(new TypeError(code), { code }); };
 const stopped = task => ['review', 'blocked', 'conflict', 'taken_over', 'completed', 'committing', 'cancelled'].includes(task.status);
@@ -324,10 +325,14 @@ export async function finishNativeProjectGeneration(capture, { port, result, eff
     const root = await port.runs.get(state.handle, runId), model = await port.runs.engine.withTransaction(state.handle,
         async tx => (await readEffect(tx, state.handle, root, effectId)).doc);
     await port.effects.authorizeEffect({ handle: state.handle, root, intent: model, phase: 'consume' });
+    const nativeCompletionPermit = Object.freeze({});
+    generationPermits.set(nativeCompletionPermit, { generation, capture, port, result, resultHash: hash(result), proof, effectId,
+        input: immutable(input), used: false, applied: false });
     generation.finished = true;
     let task;
     try {
-        task = await ProjectAgentService.prototype.finishGeneration.call(state.host.agent, state.handle, state.projectId, state.taskId, input);
+        task = await ProjectAgentService.prototype.finishGeneration.call(state.host.agent, state.handle, state.projectId, state.taskId,
+            { ...input, nativeCompletionPermit });
     } catch (error) {
         if (error.code !== 'storage_commit_unknown') throw error;
         const observed = await ProjectAgentService.prototype.observeComputeSource.call(state.host.agent, state.handle, state.projectId, state.taskId);
@@ -347,6 +352,37 @@ export async function finishNativeProjectGeneration(capture, { port, result, eff
             conversationLength: conversation.length, conversationDigest: hash(conversation), attemptDigest: hash(attempt),
             toolReceiptRefs: generation.toolReceipts.map(receipt => ({ effectId: receipt.effectId, receiptHash: hash(receipt) })) }) });
     return { task, completion };
+}
+
+/** Original Task writer only, before loading its mutable Task/cache. */
+export async function consumeNativeProjectGenerationPermit(permit, expected) {
+    const value = generationPermits.get(permit), state = value?.generation.state;
+    if (!value || value.used || state.host.agent !== expected.agent || state.handle !== expected.handle
+        || state.projectId !== expected.projectId || state.taskId !== expected.taskId || hash(expected.input) !== hash(value.input))
+        fail('native_orchestration_project_round_finish_denied');
+    value.used = true;
+    const proof = await ModelPort.prototype.inspectResultCompletion.call(value.port, state.handle,
+        { result: value.result, runId: value.proof.runId, effectId: value.effectId });
+    if (hash(value.result) !== value.resultHash || hash(proof) !== hash(value.proof)) fail('native_orchestration_project_round_finish_denied');
+    // This includes the real producer, Source, Route and installed Skills.
+    // A rejection happens before the writer has cached an older mutable Task.
+    await readNativeProjectSkillInventory(value.capture, { host: value.port.host, handle: state.handle });
+}
+
+/** No await between this actual Task assertion and the original mutation. */
+export function assertNativeProjectGenerationWrite(permit, { agent, handle, projectId, taskId, task, writerTask, input }) {
+    const value = generationPermits.get(permit), generation = value?.generation, state = generation?.state;
+    if (!value || !value.used || value.applied || state.host.agent !== agent || state.handle !== handle
+        || state.projectId !== projectId || state.taskId !== taskId || hash(input) !== hash(value.input))
+        fail('native_orchestration_project_round_finish_denied');
+    assertFrame(state, { host: state.host, handle });
+    const attempt = task.attempts.find(item => item.attemptId === generation.projectAttemptId);
+    if (agent._tasks.get(ProjectAgentService.prototype._key.call(agent, handle, projectId, taskId)) !== writerTask
+        || task.executionFingerprint !== generation.currentSourceFingerprint || task.baseRevision !== state.preflight.baseRevision
+        || hash(task.conversation) !== generation.conversationDigest || attempt?.status !== 'started'
+        || attempt.kind !== 'generation' || attempt.requestId !== generation.requestId || hash(attempt.calls) !== generation.callsDigest)
+        fail('native_orchestration_source_stale');
+    value.applied = true;
 }
 
 /** Actual finished writer/reader result only; serialized descriptors do not mint this completion. */

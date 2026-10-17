@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { consumeNativeProjectToolPermit, completeNativeProjectToolPermit } from './orchestration/native-project-generation-authority.js';
+import { consumeNativeProjectToolPermit, completeNativeProjectToolPermit,
+    consumeNativeProjectGenerationPermit, assertNativeProjectGenerationWrite } from './orchestration/native-project-generation-authority.js';
 import { projectToolResultPayload } from './orchestration/project-tool-contracts.js';
 import { listAuthoringReferences, readAuthoringReference } from './authoring-reference.js';
 
@@ -403,7 +404,7 @@ export class ProjectAgentService {
         }
     }
 
-    async _operate(handle, projectId, id, operation, { write = true, expectedSequence, expectedReviewHash, effectPolicy } = {}) {
+    async _operate(handle, projectId, id, operation, { write = true, expectedSequence, expectedReviewHash, effectPolicy, beforeLoad } = {}) {
         if (effectPolicy !== undefined && effectPolicy !== 'no-background-model') throw new TypeError('Invalid task effect policy');
         let collectOutcome = false;
         const outcomeHash = task => hashNativeDocument({ status: task.status, validation: task.validation, review: task.review, changeSets: task.changeSets });
@@ -411,6 +412,7 @@ export class ProjectAgentService {
             return await this.withTaskLock(handle, projectId, id, async () => {
                 if (write) assertWritable();
                 await this._studio.getProject(handle, projectId);
+                if (beforeLoad) await beforeLoad();
                 const task = await this._repository.get(handle, projectId, id);
                 if (!task) throw new NotFoundError('native project agent task', { projectId, taskId: id });
                 if (expectedSequence !== undefined && (!Number.isInteger(expectedSequence) || task.sequence !== expectedSequence)) throw new ConflictError('project_agent_sequence_conflict');
@@ -419,13 +421,16 @@ export class ProjectAgentService {
                 this._tasks.set(this._key(handle, projectId, id), task);
                 this._integrities.set(this._key(handle, projectId, id), hashNativeDocument(task));
                 await this._recover(handle, task);
+                if (beforeLoad && this._tasks.get(this._key(handle, projectId, id)) !== task)
+                    throw new ConflictError('native_orchestration_source_stale');
                 if (hashNativeDocument(task) !== this._integrities.get(this._key(handle, projectId, id)) && !isReadOnly()) await this._persist(handle, task);
                 try {
                     const result = await operation(task);
                     if (!isReadOnly() && hashNativeDocument(task) !== this._integrities.get(this._key(handle, projectId, id))) await this._persist(handle, task);
                     return result?.taskId === id ? this._snapshot(task) : result;
                 } catch (error) {
-                    if (!isReadOnly() && !error.atriTaskPersistence && hashNativeDocument(task) !== this._integrities.get(this._key(handle, projectId, id))) await this._persist(handle, task);
+                    if (!isReadOnly() && !error.atriTaskPersistence && (!beforeLoad || this._tasks.get(this._key(handle, projectId, id)) === task)
+                        && hashNativeDocument(task) !== this._integrities.get(this._key(handle, projectId, id))) await this._persist(handle, task);
                     throw error;
                 } finally {
                     collectOutcome = write && before !== outcomeHash(task);
@@ -616,8 +621,9 @@ export class ProjectAgentService {
     }
 
     finishGeneration(handle, projectId, id, input) {
+        fields(input, ['attemptId', 'status', 'conversation', 'nativeCompletionPermit'], 'Generation finish');
+        const { nativeCompletionPermit, ...originalInput } = input;
         return this._operate(handle, projectId, id, task => {
-            fields(input, ['attemptId', 'status', 'conversation'], 'Generation finish');
             if (!['completed', 'failed'].includes(input.status)) throw new TypeError('Invalid generation observation');
             const attempt = task.attempts.find(item => item.attemptId === input.attemptId && item.kind === 'generation');
             if (!attempt || attempt.status === 'interrupted') throw new ConflictError('project_agent_attempt_conflict');
@@ -627,10 +633,13 @@ export class ProjectAgentService {
                 if (attempt.status !== input.status || hashNativeDocument(input.conversation) !== hashNativeDocument(task.conversation)) throw new ConflictError('project_agent_attempt_conflict');
                 return this._snapshot(task);
             }
+            if (nativeCompletionPermit !== undefined) assertNativeProjectGenerationWrite(nativeCompletionPermit,
+                { agent: this, handle, projectId, taskId: id, task: this._snapshot(task), writerTask: task, input: originalInput });
             task.conversation = clone(input.conversation);
             this._finishAttempt(task, attempt, input.status);
             return this._snapshot(task);
-        });
+        }, nativeCompletionPermit === undefined ? {} : { beforeLoad: () => consumeNativeProjectGenerationPermit(nativeCompletionPermit,
+            { agent: this, handle, projectId, taskId: id, input: originalInput }) });
     }
 
     // Internal Generation Host observations. No HTTP endpoint accepts these fields.
