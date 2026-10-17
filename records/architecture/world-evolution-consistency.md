@@ -377,6 +377,25 @@
 - **E0 状态**：E0-01 Subject/Fact 物理合同、E0-02 Native Domain/跨入口事务、E0-03 通用历史有效期、E0-04 动态私人 Perspective、E0-05 Claim-aware Context、E0-06 全生产消费者和旧路径删除、E0-07 Library/Studio/Play、E0-08 长会话/持久化、E0-09 集成分支依赖，**全部仍有未关闭阻塞，整体 PARTIAL/BLOCKED**。本轮仅 GitHub 文件静态阅读、Tree/Code Search 和 docs 写入；没有 Node/CI/真 UI/三端实测。
 - **下一 checkpoint**：用户明确选择 W19-A/B/C 后，先依讨论协议更新同一 Plan 和唯一 Record，再对 E0-01/03 的最小物理 Schema/受控历史查询接口与 E0-06 完整生产调用/删除证据开展最终 Gate 0 交接前审查，评估是否具备整个 Plan 定稿与正式开发分支授权的前置条件。未获用户最终批准前继续 Draft。
 
+
+## Stage 21 — W19-B 确认与 W20 受保护物理契约及 Gate 0 工作包（2026-10-17）
+
+- **用户已选择的方向**：本轮「认同」明确对应上轮推荐的 **W19-B「Session 原生最小 Subject + 来源型 Fact Transition / Revision-Tick 双锚查询 + Gate 0 证据收口」**。W1-B 至 W19-B 属于已获认可的总体架构/收口路线；**W20-B 仅为本轮研究建议，尚未获得用户批准**。整份 ARCH-DWE-01 仍 Draft，不视为正式 Final、具体 Schema/ABI 已冻结或 E0 PASS。
+- **工作域与文档纪律**：沿用 `docs` 这一个 Primary Workspace，同一 Plan Bundle `plans/architecture/world-evolution-consistency/` 与此唯一累计 Record。未创建第二企划/Record/HANDOFF、产品实现分支，不修改 `main`、参考、Orchestration/Prompt/Visual 分支或创作/用户数据。
+- **本阶段代码版本锁定**：GitHub Branch API 当前仍返回 `main=c57fada6edeea255b29d857ba2585c1dbc9c098b`、`refactor/atria-native-orchestration-v3=a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`、`refactor/atria-native-prompt-preset-deepening=760327891149216dffdc1e3fa0c846496007a013`、`feat/native-visual-generation-deepening=ae587be0c64487ba922528bdd0146444bcf5e92e`。源审查仅涵盖锁定版本的定向 GitHub 代码/方法/目录，不是完整本地 checkout 和全调用图，正式集成后需新 HEAD 重审。
+- **本阶段 docs 提交（按顺序）**：
+  - `05e5cb8e8196ed0641b907425521e2391ae9a2fa`：同一 W19 `e0-gate0-physical-contracts.md` §7 确认 W19-B 方向（Session-owned identity、来源 Fact Transition、Revision/GameTick 两锚、开发前/后 Gate 分离）。
+  - `d5467dfcee74b2f1e17d82c4df1afc9c02201b47`：同一 Plan Bundle 新增 W20 `e0-gate0-integration-workpackages.md`，详述受保护 Session 原生物理位置 P1/P2 候选、最小 Subject/Fact/ViewQuery 数据差异、Authority 保护、真实 WP-A～F 消费者、Gate 0 退出和 W20-A/B/C 候选。
+  - `f40dea9557606916f02159f10d9b7d0d3ee26830`：同一 `design.md` §27 记录 W19-B 决议及 W20 候选接口/工程依赖。
+  - `75d3bdec93b62ca95c9438b655bb58cbb543ffde`：同一 `index.md` 更新为 W1–W19 方向已确认、W20 讨论中、Draft/E0 PARTIAL。
+- **新的、需要特别注意的安全事实**：`src/native/session-snapshot.js` 的 `RESERVED_SESSION_NAMESPACES` 显式列举禁止通用 Runtime Patch 的 Session 命名空间；`src/native/session-core.js` 的 `validateRuntimeStateChanges` 会阻止更新它们。`applyRuntimeCommit` 还有特定 `authority-first` 下的 `native_authority_typed_publication_required`，但并不能据此宣称所有游戏模式的 World/新 Subject 子树都天然被保护。**若将 Subject/Fact 加到新 Session namespace，必须同步标为 Reserved/Typed Writer，并纳入 Domain validation/Publish/Save/GC；若放入 `atri_world_state` 根，也必须审查旧 Game reducer 与 Generic StatePatch 的写入权限**，不能把增加新字段当作已解决的世界权限问题。
+- **其它 Native 静态证据**：`_publishLocked` 可以在同一 Revision 出版多个 states/receipts；`save-system.js` 枚举 `revision.stateHeads`、父修订/分支闭包，`state-delta.js` 对 `atri_world_state` 专用 snapshot/delta；`history-authority.js` 只对已声明 History/Lifecycle 的 Domain 保存 Fact key/previous/tick/provenance，通用 Worldless/多 World 不能随意复用成无来源可写 Ledger；`native-history-runtime.js` 没有通用 `asOfGameTick` 查询。仍必须在 exact Revision 下解释游戏时间、来源/纠错和 Audience。
+- **GitHub 搜索定位的部分生产调用方**：`src/endpoints/native-session.js → SessionCore.applyRuntimeCommit`；`experience/logic/runtime.js → world/session.commitEvents → session-runtime.commitStatePatch`；`authority-transaction.js → SessionCore Native Publication`；`frontend/host-services.js → readWorldView/readChronicle`；`context-compiler.js → knowledge-runtime.js`；Play/Frontend/Speech/Visual 仍有 `actorId`。**这是函数名搜索/选择性源码阅读，未涵盖完整动态插件/所有 V3 调用，不能标为 E0-06 PASS 或直接删除具体 Legacy 文件**。
+- **W20 推荐未批准**：**W20-B「受保护 Session-owned Identity + Domain-owned Fact transitions / Two-anchor Query + Consumer Work Packages」**。物理选择 P1（现有 `atri_world_state` 根受保护子树）或 P2（同 SessionRevision 下显式 Reserved Native state namespace）应按合法写者、存档/GC 与最小消费者改造成本决定，不能先建数据库再补安全。Domain Fact Owner 保持原合法业务单源，FactRef/转换只增加确有必要的来源和有效期，不为每句背景文本建 State。
+- **E0 Gate 0 仍 OPEN**：实际最终整合 HEAD/活跃调用方清单、P1/P2 正式选择/Typed 写入验证、World Event 与 Narrator 的跨入口收据协调、动态 Perspective、通用 as-of Query、Knowledge Source Claim/Prompt，以及 Library/Studio/Play/媒体消费者目标 Schema 和 Legacy 清退依据均待核对。现阶段只有文件/设计提案，**没有运行 Node/DB/CI/真实浏览器 UI/Windows/CachyOS/Android Termux**，E0-01～09 继续 PARTIAL / BLOCKED。
+- **开发前后证据边界**：Gate 0 可在最终 HEAD 的 Authority/Consumer/最小合约/写入安全/清退和实测计划有足够可执行依据时退出；未实现的新行为的 Node/Provider Wire/Play/Studio/性能/跨端 PASS 属实施期 Gate 1～4，不应设为目前没有代码就不能开工的前置条件，也不可凭计划称已通过。
+- **下一 checkpoint**：用户若认可 W20-A/B/C，下一轮先更新原 Plan 和唯一 Record，再直接进入**正式工程交接前 E0 收口**：做最终需要决断的 Protected Namespace 与 Fact owner/Query 方案、Caller→Target 工作包/依赖、具体 Gate 0 剩余阻塞及正式企划是否具备定稿授权条件。继续 Draft，不创造产品分支，除非用户另行明确批准整份方案及启动。
+
 ## Final state
 
 Not yet applicable. Discussion in progress.
