@@ -8,19 +8,21 @@ import { readRpOutput } from '../../src/native/orchestration/rp-output-contracts
 import { graphPlannerReceiptId } from '../../src/native/orchestration/graph-planner-completion.js';
 import { controlRecordKey, runGuard } from '../../src/native/orchestration/controller-common.js';
 import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecycle.js';
+import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { ModelPort } from '../../src/native/orchestration/model-port.js';
 
 jest.setTimeout(120000);
 const id = kind => createNativeId('orchestration' + kind);
 const text = body => body.messages.flatMap(message => typeof message.content === 'string' ? [message.content] : message.content.map(part => part.text ?? '')).join('\n');
 
-async function setup(make, { dynamic = false, maxRequests = 5, usage = true } = {}) {
+async function setup(make, { dynamic = false, maxRequests = 5, usage = true, addedLabel = 'Added owned advisory', foreignAdded = false, foreignPlanner = false } = {}) {
     let nodes, source, addition, pinnedRoutes;
     const f = await rpModelFixture(make, { usage, memorySettings: { enabled: true, recallEnabled: true },
         configurePlan: async (plan, env) => {
             const [narrator, output] = plan.definition.nodes;
             const route = { ...env.route, executionPolicy: { ...env.route.executionPolicy,
-                computeBudget: { ...env.route.executionPolicy.computeBudget, maxRequests } } };
+                computeBudget: { ...env.route.executionPolicy.computeBudget, maxRequests,
+                    ...foreignPlanner ? { localWork: { ...env.route.executionPolicy.computeBudget.localWork, maxJobs: 64 } } : {} } } };
             await env.seeded.persistence.saveRuntimeRoute(env.h.handle, route);
             plan.dependencyPins[0].integrity = hash(await env.seeded.persistence.getRuntimeRoute(env.h.handle, route.runtimeRouteId));
             const port = (name, type) => ({ name, type, required: true });
@@ -52,8 +54,11 @@ async function setup(make, { dynamic = false, maxRequests = 5, usage = true } = 
             plan.definition.limits.maxEdges = plan.definition.edges.length + (dynamic ? 2 : 0);
             Object.assign(plan.definition.outputContract, { kind: 'rp_narration', slot: 'assistant', resultPolicy: { outputType: 'text', maxBytes: 65536 } });
             source = await seedControlActorAudiences(plan, env); nodes = { seed, first, other, second, narrator };
+            // Keep the original Actor B Source, changing only its actual role.
+            if (foreignPlanner) { other.kind = 'planner'; other.capabilities.push('graph.patch'); other.outputs[0].type = 'json'; narrator.inputs.find(input => input.name === 'other').type = 'json'; }
             if (dynamic) {
-                const added = { ...structuredClone(seed), nodeId: id('Node'), label: 'Added owned advisory', inputs: [port('control', 'json')] };
+                const added = { ...structuredClone(seed), nodeId: id('Node'), label: addedLabel, inputs: [port('control', 'json')] };
+                if (foreignAdded) { added.dependencyPinIds = structuredClone(other.dependencyPinIds); added.policy = structuredClone(other.policy); }
                 addition = [{ op: 'addNode', node: added }, { op: 'addEdge', edge: edge(first, added, 'control') },
                     { op: 'addEdge', edge: edge(added, narrator, 'added') }]; nodes.added = added;
             }
@@ -113,6 +118,42 @@ describe.each(CONTRACT_HARNESSES)('$name published RP composable model and Plann
             await expect(cold.withTransaction(f.h.handle, tx => readRpOutput(tx, f.h.handle, root))).rejects.toThrow('Invalid Graph Planner completion facts');
             expect(f.requests).toHaveLength(calls);
         } finally { await cold?.close(); await f.cleanup(); }
+    });
+
+    test.each([false, true])('Model-authored private task labels remain scoped while cross-Audience Planner control stays usable, recipientPlanner=%s', async foreignPlanner => {
+        const f = await setup(make, { dynamic: true, addedLabel: 'A PRIVATE RUMOR', foreignPlanner });
+        try {
+            const result = await f.run();
+            expect(result.output.runStatus).toBe('completed'); expect(f.requests).toHaveLength(5);
+            const root = await f.authority.execution.runs.get(f.h.handle, result.runId);
+            expect(root.graph.nodes.find(node => node.nodeId === f.nodes.added.nodeId).label).toBe('A PRIVATE RUMOR');
+            expect((await f.source.core.observe(f.h.handle, f.source.base.session.sessionId)).revision).toEqual(f.source.base.revision);
+            const byNode = new Map(f.requests.map(body => [text(body).match(/"task":\{"nodeId":"([^"]+)"/)?.[1], text(body)]));
+            expect(byNode.get(f.nodes.other.nodeId)).toContain('B PRIVATE RUMOR');
+            expect(byNode.get(f.nodes.other.nodeId)).toContain('graph_planner_control');
+            expect(byNode.get(f.nodes.other.nodeId)).not.toContain('A PRIVATE RUMOR');
+            expect(byNode.get(f.nodes.other.nodeId).includes(f.nodes.added.nodeId)).toBe(foreignPlanner);
+            expect(byNode.get(f.nodes.other.nodeId)).toContain('reference-only');
+            expect(byNode.get(f.nodes.added.nodeId)).toContain('A PRIVATE RUMOR');
+        } finally { await f.cleanup(); }
+    });
+
+    test('a Model-authored dynamic task cannot disclose its creator Source to a different Actor Audience', async () => {
+        const f = await setup(make, { dynamic: true, addedLabel: 'A PRIVATE RUMOR', foreignAdded: true });
+        try {
+            await expect(f.run()).rejects.toMatchObject({ code: 'native_orchestration_planner_patch_rejected' }); expect(f.requests).toHaveLength(2);
+            const root = await f.authority.execution.runs.get(f.h.handle, f.effects[0].runId);
+            expect(root.graphRevision).toBe(0); expect(root.resultRefs).toHaveLength(1); expect(root.outputClaims).toEqual([]);
+            const patches = await f.h.engine.withTransaction(f.h.handle, tx => tx.listResources({ kind: K.orchestrationRecord, handle: f.h.handle, runId: root.runId, recordType: 'patch' }));
+            expect(patches).toHaveLength(1); expect(patches[0].doc.accepted).toBe(false);
+            expect(patches[0].doc.issues).toEqual([{ code: 'native_orchestration_result_consume_denied' }]);
+            expect((await f.source.core.observe(f.h.handle, f.source.base.session.sessionId)).revision).toEqual(f.source.base.revision);
+            const status = await f.control.status(f.h.handle, f.controlId), bank = Object.values(status.operations)[0].compute;
+            expect(bank.limits.maxRequests).toBe(5); expect(bank.attempts).toHaveLength(2);
+            expect(bank.attempts.every(attempt => attempt.status === 'settled' && attempt.usage.totalTokens === 20)).toBe(true);
+            await expect(f.run()).rejects.toThrow(); expect(f.requests).toHaveLength(2);
+            expect(await f.control.status(f.h.handle, f.controlId)).toEqual(status);
+        } finally { await f.cleanup(); }
     });
 
     test('the original four-send bank refuses composition headroom without changing the declared budget or replaying paid work', async () => {

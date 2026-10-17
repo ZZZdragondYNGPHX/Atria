@@ -44,7 +44,7 @@ export async function readSessionReviewCompletion(tx, handle, root, attemptId) {
         || settlement.decisionSeq !== receipt.decisionSeq || settlement.createdAt !== receipt.createdAt || receipt.decisionSeq > root.eventSeq) invalid();
     if (input.kind !== 'native_turn_intent' || input.role !== 'narrator' || input.nodeId !== producer.nodeId || !equal(input.planRef, root.planRef)
         || input.grantDigest !== producer.effectiveGrantDigest || !equal(input.audience, pin?.resourceRef.audience)
-        || !equal(input.acceptedGraphResultRefs, review.evidenceRefs) || !equal(producer.inputRefs, [input, ...review.evidenceRefs])
+        || !equal(input.acceptedGraphResultRefs, review.evidenceRefs) || !equal(producer.inputRefs, [input, ...review.evidenceRefs, ...(input.acceptedControlRefs ?? [])])
         || producer.inputDigest !== hash(producer.inputRefs) || review.targetAttemptIds.length !== 1 || review.evidenceRefs.length !== 1) invalid();
     assertAudienceRunCapture(root, node, plan.dependencyPins, input);
     const target = (await readAttempt(tx, handle, root, review.targetAttemptIds[0])).doc;
@@ -58,7 +58,7 @@ export async function readSessionReviewCompletion(tx, handle, root, attemptId) {
         }
         const next = (await readAttempt(tx, handle, root, review.replacements[0].attemptId)).doc;
         const expected = { ...target.inputRefs[0], reviewFeedbackRef: { reviewReceiptRef: receipt.reviewReceiptRef, reasonCode: parsed.reasonCode } };
-        if (next.nodeId !== target.nodeId || !equal(next.inputRefs, [expected]) || next.inputDigest !== hash(next.inputRefs)
+        if (next.nodeId !== target.nodeId || !equal(next.inputRefs, [expected, ...target.inputRefs.slice(1)]) || next.inputDigest !== hash(next.inputRefs)
             || next.effectiveGrantDigest !== target.effectiveGrantDigest || !equal(next.budgetRef, root.budgetAuthorityRef)) invalid();
     }
     return { receipt, review, producer, model, settlement };

@@ -1,3 +1,6 @@
+import { readSessionDelegationContinuation } from './session-delegation-contracts.js';
+import { readSessionPlannerCompletion } from './session-planner-contracts.js';
+import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readSessionFanoutCompletion } from './session-fanout-contracts.js';
 import { assertAudienceRunCapture } from './audience-source-contracts.js';
 import { assertNativeId } from '../identity.js';
@@ -86,7 +89,7 @@ export async function readSessionNarrationResult(tx, handle, root) {
         { kind: 'effect_receipt', runId: root.runId, effectId: receipt.modelEffectId, receiptId: receipt.modelReceiptRef.receiptId, observedEpoch: receipt.epoch }])) invalid();
     const input = intent.inputRef;
     if (input.kind !== 'native_turn_intent' || input.nodeId !== producer.nodeId || input.role !== 'narrator'
-        || !equal(input.planRef, root.planRef) || !equal(producer.inputRefs, [input, ...(input.acceptedGraphResultRefs ?? [])]) || producer.inputDigest !== hash(producer.inputRefs)
+        || !equal(input.planRef, root.planRef) || !equal(producer.inputRefs, [input, ...(input.acceptedGraphResultRefs ?? []), ...(input.acceptedControlRefs ?? [])]) || producer.inputDigest !== hash(producer.inputRefs)
         || !['sessionId', 'branchId', 'revisionId'].every(field => input.sourceRef[field] === source.sourceRef[field])
         || !equal(input.audience, { kind: 'narrator' }) || input.grantDigest !== producer.effectiveGrantDigest) invalid();
     assertNativeId(input.sourceRef.packageId, 'package'); assertNativeId(input.sourceRef.packageVersionId, 'packageVersion');
@@ -102,6 +105,26 @@ export async function readSessionNarrationResult(tx, handle, root) {
         const reviewed = await readSessionReviewCompletion(tx, handle, root, id);
         if (!reviewed) invalid(); reviewCompletions.push(reviewed);
     }
+    const plannerCompletions = [];
+    for (const id of root.attemptRefs) {
+        const attempt = (await readAttempt(tx, handle, root, id)).doc;
+        if (root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind !== 'planner') continue;
+        const completed = await readSessionPlannerCompletion(tx, handle, root, id);
+        if (!completed) invalid(); plannerCompletions.push(completed);
+    }
+    if (root.graphRevision !== plannerCompletions.length) invalid();
+    for (const fact of [...graphResults, ...reviewCompletions, ...plannerCompletions, { producer, receipt }]) {
+        const effect = (await readEffect(tx, handle, root, fact.receipt.modelEffectId)).doc, modelInput = effect.inputRef;
+        const snapshot = await readTaskGraphRevision(tx, handle, root, fact.producer.graphRevision);
+        const incoming = snapshot.graph.edges.filter(edge => edge.to.nodeId === fact.producer.nodeId
+            && snapshot.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind === 'planner').sort((a, b) => a.edgeId.localeCompare(b.edgeId));
+        const controls = incoming.map(edge => plannerCompletions.find(item => item.producer.nodeId === edge.from.nodeId));
+        const delegated = fact.producer.inputRefs[0]?.kind === 'native_session_delegation';
+        if (delegated) await readSessionDelegationContinuation(tx, handle, root, fact.producer, effect);
+        if (controls.some(item => !item || item.receipt.decisionSeq >= fact.receipt.decisionSeq)
+            || !equal(modelInput.acceptedControlRefs ?? [], controls.map(item => item.controlRef))
+            || !delegated && !equal(fact.producer.inputRefs, [modelInput, ...(modelInput.acceptedGraphResultRefs ?? []), ...controls.map(item => item.controlRef)])) invalid();
+    }
     const fanoutCompletions = [];
     for (const id of root.attemptRefs) {
         const attempt = (await readAttempt(tx, handle, root, id)).doc;
@@ -110,7 +133,7 @@ export async function readSessionNarrationResult(tx, handle, root) {
         if (!completion) invalid(); fanoutCompletions.push(completion);
     }
     if (graphResults.length) {
-        const incoming = root.graph.edges.filter(edge => edge.to.nodeId === producer.nodeId && root.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind !== 'review').sort((a, b) => a.edgeId.localeCompare(b.edgeId));
+        const incoming = root.graph.edges.filter(edge => edge.to.nodeId === producer.nodeId && !['review', 'planner'].includes(root.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind)).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
         const current = [];
         for (const result of graphResults) if (!await readAttemptInvalidation(tx, handle, root, result.producer)) current.push(result);
         if (new Set(current.map(result => result.producer.nodeId)).size !== current.length) invalid();
@@ -133,6 +156,6 @@ export async function readSessionNarrationResult(tx, handle, root) {
                 || !equal(approved.review.evidenceRefs, accepted.map(result => result.receipt.resultRef))
                 || !equal(approved.review.targetAttemptIds, accepted.map(result => result.producer.attemptId))) invalid();
         } else if (Object.hasOwn(input, 'reviewReceiptRef')) invalid();
-    } else if (Object.hasOwn(input, 'acceptedGraphResultRefs')) invalid();
-    return { record, receipt, settlement, producer, retrievalCompletions, graphResults, reviewCompletions, fanoutCompletions, modelIntent: intent };
+    } else if (Object.hasOwn(input, 'acceptedGraphResultRefs') && (!plannerCompletions.length || !equal(input.acceptedGraphResultRefs, []))) invalid();
+    return { record, receipt, settlement, producer, retrievalCompletions, graphResults, reviewCompletions, plannerCompletions, fanoutCompletions, modelIntent: intent };
 }

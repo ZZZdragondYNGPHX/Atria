@@ -2,7 +2,6 @@ import { ConflictError } from '../../storage/errors.js';
 import { fields } from '../../../public/shared/native-values.js';
 import { NativeGenerationHost } from '../adapters/generation-host.js';
 import { NativeNarratorOrchestrationAuthority } from './native-turn-orchestration.js';
-import { inspectNativeRpDelegationIdentity, inspectNativeRpDelegation, inspectNativeRpDelegationOutput } from './native-rp-generation.js';
 import { RunRepository } from './run-repository.js';
 import { SourcePort } from './source-port.js';
 import { BudgetPort } from './budget-port.js';
@@ -15,6 +14,7 @@ import { hashNativeDocument as hash, putImmutable } from '../repositories/common
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { assertTaskLocalClaim, taskLocalOutputKey, taskLocalClaimId, taskLocalConsumer,
     taskLocalReceiptId, childClosureReceiptId, readTaskLocalOutput } from './task-local-output-contracts.js';
+import { assertSessionDelegatedClosure } from './session-delegation-contracts.js';
 
 const fail = code => { throw new ConflictError(code); };
 const equal = (a, b) => hash(a) === hash(b);
@@ -35,8 +35,8 @@ export class TaskLocalOutputController {
     }
 
     async #preflight(handle, tx, capture, publication, phase) {
-        const inspect = phase === 'prepare' ? inspectNativeRpDelegation : inspectNativeRpDelegationOutput;
-        const current = await inspect(capture, { host: this.host, handle, tx });
+        const inspect = NativeNarratorOrchestrationAuthority.prototype[phase === 'prepare' ? 'inspectDelegation' : 'inspectDelegationOutput'];
+        const current = await inspect.call(this.host.turnOrchestration, capture, { host: this.host, handle, tx });
         const identity = { childRunId: current.childRunId, parentRunId: current.parentRunId, parentAttemptId: current.parentAttemptId,
             childEpoch: current.childEpoch, parentEpoch: current.parentEpoch };
         const admission = await NativeNarratorOrchestrationAuthority.prototype.authorizeTaskLocalOutput.call(this.host.turnOrchestration,
@@ -47,7 +47,8 @@ export class TaskLocalOutputController {
         const published = await readResultPublication(tx, handle, root, publication.resultRef.resultId);
         const inputRefs = [publication.resultRef];
         if (!published || !equal(admission, { inputRefs, inputDigest: hash(inputRefs), effectiveGrantDigest: current.grantDigest, budgetRef: root.budgetAuthorityRef })
-            || !equal(root.resultRefs, inputRefs) || published.receipt.epoch !== root.epoch || published.receipt.producerGrantDigest !== current.grantDigest)
+            || root.sourceBinding.sourceAuthority === 'rp_chat' && !equal(root.resultRefs, inputRefs)
+            || published.receipt.epoch !== root.epoch || published.receipt.producerGrantDigest !== current.grantDigest)
             fail('native_orchestration_task_output_denied');
         const fence = await this.execution.runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
         if (fence.hostBootId !== root.hostBootId || fence.generation !== root.hostGeneration) fail('native_orchestration_task_output_stale');
@@ -60,7 +61,7 @@ export class TaskLocalOutputController {
         // A nested ALS transaction would collapse the reservation saga. Refuse
         // before any Graph or bank change, including on FS's shared root scope.
         if (typeof engine.hasActiveTransaction !== 'function' || engine.hasActiveTransaction(handle)) fail('native_orchestration_output_transaction_required');
-        const identity = inspectNativeRpDelegationIdentity(capture, { host: this.host, handle });
+        const identity = NativeNarratorOrchestrationAuthority.prototype.inspectDelegationIdentity.call(this.host.turnOrchestration, capture, { host: this.host, handle });
         const runId = identity.childRunId, withAuthority = SourcePort.prototype.consumptionBoundary.call(sourcePort, handle, identity.sourceBinding, { engine });
         const pending = () => immutable({ status: 'pending_output', outputClaimRef: null, outputReceiptRef: null });
         const transaction = operation => engine.withTransaction(handle, operation);
@@ -74,7 +75,11 @@ export class TaskLocalOutputController {
                 const prepared = await transaction(async tx => {
                     const checked = await preflight(tx, 'prepare');
                     if (checked.denied) return checked;
-                    const { root, admission, published } = checked, edge = root.graph.edges[0];
+                    const { root, admission, published } = checked;
+                    const producer = (await readAttempt(tx, handle, root, published.receipt.producerAttemptId)).doc;
+                    const edges = root.graph.edges.filter(edge => edge.from.nodeId === producer.nodeId && edge.to.nodeId === root.graph.outputContract.ownerNodeId);
+                    if (edges.length !== 1) fail('native_orchestration_task_output_denied');
+                    const edge = edges[0];
                     const traversal = await new TransitionController({ runs, authorizeTransition: async ({ producers, target }) => {
                         if (producers.length !== 1 || producers[0].attempt.attemptId !== published.receipt.producerAttemptId
                             || target.nodeId !== root.graph.outputContract.ownerNodeId) fail('native_orchestration_task_output_denied');
@@ -118,8 +123,12 @@ export class TaskLocalOutputController {
                         if (attempt.status !== 'running' || attempt.epoch !== root.epoch || attempt.effectRefs.length || attempt.resultRefs.length
                             || attempt.nodeId !== root.graph.outputContract.ownerNodeId || !equal(attempt.inputRefs, checked.admission.inputRefs)
                             || attempt.inputDigest !== checked.admission.inputDigest || attempt.effectiveGrantDigest !== checked.admission.effectiveGrantDigest
-                            || !equal(attempt.budgetRef, checked.admission.budgetRef) || root.attemptRefs.length !== 2)
+                            || !equal(attempt.budgetRef, checked.admission.budgetRef)
+                            || root.sourceBinding.sourceAuthority === 'rp_chat' && root.attemptRefs.length !== 2)
                             fail('native_orchestration_task_output_denied');
+                        if (root.sourceBinding.sourceAuthority === 'native_session') {
+                            assertSessionDelegatedClosure(root, checked.published.graphHistory, closure);
+                        }
                         const claimId = taskLocalClaimId(root), claimRef = { runId, claimId };
                         const claim = assertTaskLocalClaim({ schemaVersion: 1, runId, claimId, nodeAttemptId: attempt.attemptId,
                             outputKey: taskLocalOutputKey(root), sourceBindingDigest: root.sourceBinding.bindingDigest,

@@ -10,7 +10,20 @@ import { admitGraphEdges } from './graph-costs.js';
 export const fanoutFrameId = (runId, attemptId) => 'oreceipt_' + hashNativeDocument({ kind: 'fanout_frame', runId, attemptId }).slice(0, 32);
 const membershipId = (runId, frameId, attemptId) => 'oreceipt_' + hashNativeDocument({ kind: 'fanout_membership', runId, frameId, attemptId }).slice(0, 32);
 
-async function readMembership(tx, handle, root, frame, attemptId) {
+/** Pure policy over an already validated Frame/Barrier/Join. Shared scope
+ * stays live whenever any served terminal was selected by the original Join. */
+export function isFanoutBranchExcluded(frame, barrier, join, attempt) {
+    if (!Array.isArray(frame?.branches) || !Array.isArray(barrier?.memberAttemptIds) || !Array.isArray(join?.excluded)) return false;
+    const excluded = new Set(join.excluded.map(item => item.nodeAttemptId));
+    const branches = frame.branches.filter(branch => branch.scopeNodeIds.includes(attempt.nodeId)
+        || branch.entryAttemptId === attempt.attemptId || branch.memberAttemptIds.includes(attempt.attemptId));
+    return branches.length > 0 && branches.every(branch => {
+        const terminals = branch.memberAttemptIds.filter(id => barrier.memberAttemptIds.includes(id));
+        return terminals.length > 0 && terminals.every(id => excluded.has(id));
+    });
+}
+
+export async function readFanoutMembership(tx, handle, root, frame, attemptId) {
     const receiptId = membershipId(root.runId, frame.receiptId, attemptId);
     const record = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId));
     if (!record) return null;
@@ -24,7 +37,7 @@ async function readMembership(tx, handle, root, frame, attemptId) {
 }
 
 async function attachMembership({ tx, handle, root, frame, attempt, now }) {
-    if (await readMembership(tx, handle, root, frame, attempt.attemptId)) return;
+    if (await readFanoutMembership(tx, handle, root, frame, attempt.attemptId)) return;
     const receiptId = membershipId(root.runId, frame.receiptId, attempt.attemptId);
     await putImmutable(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId), { schemaVersion: 1, receiptKind: 'fanout_membership', receiptId,
         runId: root.runId, frameId: frame.receiptId, nodeAttemptId: attempt.attemptId, epoch: frame.epoch, sourceBindingDigest: frame.sourceBindingDigest,
@@ -47,7 +60,7 @@ async function currentFrames(tx, handle, root) {
 export async function inheritFanoutMembership({ tx, handle, root, producers, targets, now }) {
     for (const frame of await currentFrames(tx, handle, root)) {
         let inherited = false;
-        for (const producer of producers) if (await readMembership(tx, handle, root, frame, producer.attemptId)) inherited = true;
+        for (const producer of producers) if (await readFanoutMembership(tx, handle, root, frame, producer.attemptId)) inherited = true;
         if (!inherited) continue;
         const scope = new Set(frame.branches.flatMap(branch => branch.scopeNodeIds));
         for (const target of targets) if (scope.has(target.nodeId)) await attachMembership({ tx, handle, root, frame, attempt: target, now });
@@ -79,11 +92,11 @@ export async function readFanoutFrame(tx, handle, root, fanoutAttemptId) {
 // authorization. These are logical ceilings, never a queue or paid permit.
 export async function assertFanoutAdmission({ tx, handle, root, attempt, reserveSlot = true }) {
     for (const frame of await currentFrames(tx, handle, root)) {
-        if (!(await readMembership(tx, handle, root, frame, attempt.attemptId))) continue;
+        if (!(await readFanoutMembership(tx, handle, root, frame, attempt.attemptId))) continue;
         let active = 0;
         for (const ref of root.attemptRefs) {
             const { doc: member } = await readAttempt(tx, handle, root, ref);
-            if (member.epoch !== frame.epoch || !(await readMembership(tx, handle, root, frame, ref))) continue;
+            if (member.epoch !== frame.epoch || !(await readFanoutMembership(tx, handle, root, frame, ref))) continue;
             if (holdsConcurrencySlot(root, member)) active++;
             if (frame.failurePolicy === 'fail_fast' && SETTLED_ATTEMPT_STATUSES.includes(member.status) && member.status !== 'completed') {
                 await readAttemptSettlement(tx, handle, root, member);

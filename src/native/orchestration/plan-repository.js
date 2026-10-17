@@ -12,6 +12,7 @@ import { assertPlanEvolutionTarget, assertPlanEvolutionMetadata, planBindingIden
 const key = (kind, handle, fields) => ({ kind, handle, ...fields });
 export const planDefinitionHash = (definition, dependencyPins) => hashNativeDocument({ schemaVersion: 1, definition, dependencyPins });
 export const validationDigest = report => hashNativeDocument(Object.fromEntries(Object.entries(report).filter(([field]) => field !== 'checkedAt')));
+const validatedRevisionContents = new WeakMap();
 
 /** Reject corruption before it can become a fresh, apparently valid CAS write. */
 export async function checkedRecord(tx, resourceKey) {
@@ -30,6 +31,18 @@ export async function readPlanRevision(tx, handle, planRef) {
     const record = await checkedRecord(tx, key(K.orchestrationRevision, handle, { planId: planRef.planId, planRevisionId: planRef.planRevisionId }));
     if (!record) throw new NotFoundError('orchestration_plan_revision');
     const doc = record.doc;
+    // Cache only pure validation of identical JSON contents in this Engine
+    // transaction. Every call still reads the original row and verifies its
+    // complete integrity above; owner/ref checks are never cached. Rehashed
+    // edits get a different key and must pass the full original contract.
+    const contentKey = JSON.stringify([handle, planRef.planId, planRef.planRevisionId, record.integrity]);
+    const validated = validatedRevisionContents.get(tx);
+    if (validated?.has(contentKey)) {
+        if (doc.authorRef.handle !== handle) throw new TypeError('PlanRevision author mismatch');
+        if (doc.planId !== planRef.planId || doc.planRevisionId !== planRef.planRevisionId || doc.definitionHash !== planRef.definitionHash)
+            throw new ConflictError('native_orchestration_revision_mismatch');
+        return doc;
+    }
     assertObject(doc, ['schemaVersion', 'planId', 'planRevisionId', 'definition', 'dependencyPins', 'definitionHash', 'authorRef', 'validationDigest', 'publishedAt', ...(Object.hasOwn(doc, 'evolutionSource') ? ['evolutionSource'] : [])], 'PlanRevision');
     assertObject(doc.authorRef, ['handle'], 'authorRef');
     if (doc.authorRef.handle !== handle) throw new TypeError('PlanRevision author mismatch');
@@ -47,6 +60,8 @@ export async function readPlanRevision(tx, handle, planRef) {
             if (resourceRef.scope !== 'library' || hashNativeDocument(assertExactResourceRef(resourceRef)) !== hashNativeDocument(resourceRef)) throw new TypeError('Invalid Plan prompt provenance ref');
     }
     assertPlanDefinition(doc.definition, doc.dependencyPins);
+    if (!validated) validatedRevisionContents.set(tx, new Set([contentKey]));
+    else validated.add(contentKey);
     return doc;
 }
 

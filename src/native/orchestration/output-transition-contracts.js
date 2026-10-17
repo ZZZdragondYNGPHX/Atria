@@ -8,7 +8,7 @@ const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original output graph traversal'); };
 
 /** Shared historical graph facts only; never a producer/recipient grant. */
-export async function assertOutputTransition(tx, handle, root, { published, output, receipt, additionalProducers = [], allowLoopBack = false, producerBindings = null }) {
+export async function assertOutputTransition(tx, handle, root, { published, output, receipt, additionalProducers = [], allowLoopBack = false, producerBindings = null, reservedAttemptId = null }) {
     assertCounter(receipt.decisionSeq, 'publication decisionSeq', 1);
     const sources = [published, ...additionalProducers];
     const requested = producerBindings ?? sources.map(source => ({ producerAttemptId: source.producer.attemptId,
@@ -25,7 +25,8 @@ export async function assertOutputTransition(tx, handle, root, { published, outp
     }).sort((a, b) => a.edge.edgeId.localeCompare(b.edge.edgeId));
     if (new Set(entries.map(item => item.edge.edgeId)).size !== entries.length) invalid();
     const bindings = entries.map(({ transfer }) => ({ edgeId: transfer.edgeId, producerAttemptId: transfer.producerAttemptId }));
-    const identity = hash({ runId: root.runId, bindings, reservedAttemptId: null });
+    if (reservedAttemptId !== null && (reservedAttemptId !== output.attemptId || !output.reservationRef)) invalid();
+    const identity = hash({ runId: root.runId, bindings, reservedAttemptId });
     const traversalId = 'oreceipt_' + identity.slice(0, 32), traversal = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', traversalId)))?.doc;
     const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId: controlCommandId('loop.advance', identity) }))?.doc;
     if (!traversal || !command) invalid();
@@ -33,9 +34,9 @@ export async function assertOutputTransition(tx, handle, root, { published, outp
         'nodeAttemptId', 'inputDigest', 'edgeAdmissionRefs', 'edgeVisits', 'loopIterations', 'decisionSeq', 'createdAt'], 'Output traversal');
     if (command.operation !== 'runs.control.loop.advance' || command.target !== root.runId
         || command.commandId !== controlCommandId('loop.advance', identity) || command.schemaVersion !== 1
-        || command.payloadHash !== hash({ operation: command.operation, body: { runId: root.runId, operation: 'loop.advance', detail: { bindings, reservedAttemptId: null } } })
+        || command.payloadHash !== hash({ operation: command.operation, body: { runId: root.runId, operation: 'loop.advance', detail: { bindings, reservedAttemptId } } })
         || !equal(command.outcome?.traversalReceipt, traversal) || command.outcome.attemptId !== output.attemptId
-        || output.attemptId !== 'oattempt_' + identity.slice(0, 32) || !equal(receipt.traversalReceiptRef, { runId: root.runId, receiptId: traversalId })
+        || output.attemptId !== (reservedAttemptId ?? 'oattempt_' + identity.slice(0, 32)) || !equal(receipt.traversalReceiptRef, { runId: root.runId, receiptId: traversalId })
         || traversal.schemaVersion !== 1 || traversal.receiptId !== traversalId || traversal.receiptKind !== 'graph_transition'
         || traversal.runId !== root.runId || traversal.nodeAttemptId !== output.attemptId || traversal.graphRevision !== output.graphRevision
         || traversal.inputDigest !== output.inputDigest || !equal(traversal.bindings, bindings)
@@ -43,7 +44,10 @@ export async function assertOutputTransition(tx, handle, root, { published, outp
         || traversal.loopIterations > root.progress.loopIterations || traversal.decisionSeq >= receipt.decisionSeq || traversal.epoch !== output.epoch
         || command.outcome.versions?.epoch !== traversal.epoch) invalid();
     const visits = {};
+    let loopIteration = traversal.loopIterations - entries.filter(item => item.edge.loopBack).length;
+    if (loopIteration < 0) invalid();
     for (const { source, edge, transfer, admissionId } of entries) {
+        if (edge.loopBack) loopIteration++;
         const admission = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', admissionId)))?.doc;
         if (!admission) invalid();
         assertObject(admission, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'graphRevision', 'edgeId', 'producerAttemptId',
@@ -52,7 +56,7 @@ export async function assertOutputTransition(tx, handle, root, { published, outp
         if (admission.schemaVersion !== 1 || admission.receiptId !== admissionId || admission.receiptKind !== 'edge_admission'
             || admission.runId !== root.runId || admission.sourceBindingDigest !== root.sourceBinding.bindingDigest || admission.graphRevision !== output.graphRevision
             || Object.entries(transfer).some(([key, value]) => admission[key] !== value) || admission.edgeVisit > edge.maxVisits
-            || admission.edgeVisit > (root.progress.edgeVisitCounts[edge.edgeId] ?? 0) || admission.loopIteration !== traversal.loopIterations
+            || admission.edgeVisit > (root.progress.edgeVisitCounts[edge.edgeId] ?? 0) || admission.loopIteration !== loopIteration
             || admission.epoch !== output.epoch || traversal.decisionSeq <= source.receipt.decisionSeq || admission.decisionSeq !== traversal.decisionSeq
             || admission.createdAt !== traversal.createdAt) invalid();
     }

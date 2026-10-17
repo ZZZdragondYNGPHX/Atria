@@ -2,7 +2,6 @@ import { ConflictError } from '../../storage/errors.js';
 import { fields } from '../../../public/shared/native-values.js';
 import { NativeGenerationHost } from '../adapters/generation-host.js';
 import { NativeNarratorOrchestrationAuthority } from './native-turn-orchestration.js';
-import { inspectNativeRpReturnIdentity, inspectNativeRpReturn } from './native-rp-generation.js';
 import { RunRepository, assertRunTreeConcurrency } from './run-repository.js';
 import { SourcePort } from './source-port.js';
 import { controlCommandId, controlRecordKey, readAttempt, runGuard } from './controller-common.js';
@@ -29,9 +28,9 @@ export class HandoffReturnController {
     }
 
     async #preflight(handle, tx, capture) {
-        const current = await inspectNativeRpReturn(capture, { host: this.host, handle, tx });
+        const current = await NativeNarratorOrchestrationAuthority.prototype.inspectReturn.call(this.host.turnOrchestration, capture, { host: this.host, handle, tx });
         await assertRunTreeConcurrency(tx, handle, current.parent, { additionalSlots: 1 });
-        const decision = await NativeNarratorOrchestrationAuthority.prototype.authorizeRpReturn.call(this.host.turnOrchestration, { handle, tx, capture });
+        const decision = await NativeNarratorOrchestrationAuthority.prototype.authorizeHandoffReturn.call(this.host.turnOrchestration, { handle, tx, capture });
         if (!equal(decision, { allowed: true, parentGrantDigest: current.parentGrantDigest, childGrantDigest: current.childGrantDigest,
             sourceBindingDigest: current.sourceBinding.bindingDigest, parentInputDigest: current.parentInputDigest,
             resultRef: current.resultRef, outputReceiptRef: current.outputReceiptRef, controlToken: current.handoff.controlToken }))
@@ -45,7 +44,7 @@ export class HandoffReturnController {
         fields(request, ['capture'], 'Handoff return');
         const { capture } = request, { runs, sourcePort } = this.execution, engine = runs.engine;
         if (typeof engine.hasActiveTransaction !== 'function' || engine.hasActiveTransaction(handle)) fail('native_orchestration_return_transaction_required');
-        const identity = inspectNativeRpReturnIdentity(capture, { host: this.host, handle });
+        const identity = NativeNarratorOrchestrationAuthority.prototype.inspectReturnIdentity.call(this.host.turnOrchestration, capture, { host: this.host, handle });
         const withAuthority = SourcePort.prototype.consumptionBoundary.call(sourcePort, handle, identity.sourceBinding, { engine });
         let outcome;
         try {

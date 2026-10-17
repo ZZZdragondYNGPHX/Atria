@@ -21,10 +21,18 @@ const operations = new WeakMap(), starts = new WeakMap(), generations = new Weak
 const toolPermits = new WeakMap();
 const generationPermits = new WeakMap();
 const roundCompletions = new WeakMap();
+const fanoutControls = new WeakMap(), fanoutChildren = new WeakMap();
 const fail = (code = 'native_orchestration_project_producer_denied') => { throw Object.assign(new TypeError(code), { code }); };
 const stopped = task => ['review', 'blocked', 'conflict', 'taken_over', 'completed', 'committing', 'cancelled'].includes(task.status);
 
-function assertFrame(state, expected = {}) {
+function frameExpected(state) {
+    const { handle, preflight, startInput } = state;
+    return { owner: handle, anchor: { projectId: preflight.projectId, taskId: preflight.taskId, requestId: startInput.requestId, runtimeRouteId: startInput.runtimeRouteId },
+        kind: 'model_task', executionClass: 'interactive', resources: NativeProjectAgentExecutor.prototype.assertOriginalPreflight.call(state.executor, preflight).resources, key: 'project-agent:' + preflight.taskId,
+        fingerprint: hash(startInput) };
+}
+
+function assertFrame(state, expected = {}, controlPermit = null) {
     const { executor, host, handle, preflight, startInput, boundary } = state;
     if (!(executor instanceof NativeProjectAgentExecutor) || !(executor.host instanceof NativeGenerationHost)
         || !(host instanceof NativeGenerationHost) || Object.getPrototypeOf(host) !== executor.host
@@ -45,17 +53,23 @@ function assertFrame(state, expected = {}) {
         || startInput.maxModelRounds !== preflight.maxModelRounds
         || preflight.projectId !== state.projectId || preflight.taskId !== state.taskId
         || preflight.runtimeRouteId !== startInput.runtimeRouteId || hash(preflight) !== startInput.expectedPreflightFingerprint) fail();
-    const active = NativeTaskScheduler.prototype.assertActiveBoundary.call(executor.scheduler, boundary, {
-        owner: handle, anchor: { projectId: preflight.projectId, taskId: preflight.taskId, requestId: startInput.requestId, runtimeRouteId: startInput.runtimeRouteId },
-        kind: 'model_task', executionClass: 'interactive', resources: [preflight.projectId, preflight.taskId], key: 'project-agent:' + preflight.taskId,
-        fingerprint: hash(startInput),
-    });
+    let active;
+    if (controlPermit) {
+        const control = fanoutControls.get(controlPermit);
+        if (!control?.active || control.generation.state !== state) fail();
+        active = NativeTaskScheduler.prototype.assertFanoutControlBoundary.call(executor.scheduler, boundary, frameExpected(state));
+    } else if (state.fanoutChildPermit) {
+        const child = fanoutChildren.get(state.fanoutChildPermit);
+        if (!child || child.generation.state !== state.fanoutParentState || child.generation.state.boundary !== boundary
+            || !fanoutControls.get(child.controlPermit)?.active) fail();
+        active = NativeTaskScheduler.prototype.assertFanoutChildBoundary.call(executor.scheduler, boundary, frameExpected(state), child.boundary, child.expected);
+    } else active = NativeTaskScheduler.prototype.assertActiveBoundary.call(executor.scheduler, boundary, frameExpected(state));
     if (executor.scheduler.operations.get(active.operationId)?.retry !== false || active.attempt !== 0) fail();
     return active;
 }
 
-async function currentOperation(state, expected) {
-    const active = assertFrame(state, expected);
+async function currentOperation(state, expected, controlPermit = null) {
+    const active = assertFrame(state, expected, controlPermit);
     if (hash(await NativeProjectAgentExecutor.prototype.configuration.call(state.executor, state.handle)) !== state.preflight.configurationFingerprint)
         fail('native_orchestration_source_stale');
     const current = await ProjectAgentService.prototype.observeComputeSource.call(state.host.agent, state.handle, state.projectId, state.taskId);
@@ -63,7 +77,7 @@ async function currentOperation(state, expected) {
         || current.task.baseRevision !== state.preflight.baseRevision || current.project.revision.revision !== state.preflight.baseRevision
         || (state.currentSourceFingerprint !== null && current.task.executionFingerprint !== state.currentSourceFingerprint))
         fail('native_orchestration_source_stale');
-    assertFrame(state, expected);
+    assertFrame(state, expected, controlPermit);
     return { active, ...current };
 }
 
@@ -136,13 +150,21 @@ export async function captureNativeProjectGeneration(capture, { started, round }
 
 /** A read-only model stage of an already active original Task generation.
  * It cannot finish that generation, acquire tools or alter Task state. */
-export async function captureNativeProjectWorker(capture, { requestId, task, outputContract = null, routeRef = null }) {
+export async function captureNativeProjectWorker(capture, { requestId, task, outputContract = null, routeRef = null, fanoutPermit = null, nodeId = null }) {
     const original = generations.get(capture);
     if (!original || original.workerStage || typeof requestId !== 'string' || !requestId.startsWith('project-quality:')) fail();
-    await inspectNativeProjectGeneration(capture, { host: original.state.host, handle: original.state.handle });
+    const child = fanoutPermit ? fanoutChildren.get(fanoutPermit) : null;
+    if (fanoutPermit && (child?.generation !== original || !child.nodeIds.includes(nodeId))) fail();
+    if (child) {
+        const route = await original.state.host.persistence.getRuntimeRoute(original.state.handle, routeRef.runtimeRouteId);
+        const resources = await original.state.host.executionResources(original.state.handle, route);
+        if (resources.some(resource => !child.expected.resources.includes(resource))) fail();
+    }
+    const state = child ? { ...original.state, fanoutChildPermit: fanoutPermit, fanoutParentState: original.state } : original.state;
     const stage = Object.freeze({});
-    generations.set(stage, { ...original, requestId, originalRequestId: original.requestId,
+    generations.set(stage, { ...original, state, requestId, originalRequestId: original.requestId,
         workerStage: immutable({ task, outputContract, ...(routeRef ? { routeRef } : {}) }), toolReceipts: [], toolResults: [] });
+    await inspectNativeProjectGeneration(stage, { host: original.state.host, handle: original.state.handle });
     return stage;
 }
 
@@ -157,7 +179,7 @@ export function inspectNativeProjectGenerationIdentity(capture, expected) {
         sourceRequest: immutable({ domain: 'project', projectId: state.projectId, taskId: state.taskId, revision: state.preflight.baseRevision, executionFingerprint: state.initialSourceFingerprint }),
         operationRequestId: state.startInput.requestId,
         host: state.host, projectAgent: state.host.agent, studio: state.host.studio, handle: state.handle,
-        signal: active.signal, operationId: active.operationId,
+        signal: active.signal, operationId: state.boundary.operationId,
         selection: NativeProjectAgentExecutor.prototype.assertOriginalPreflight.call(state.executor, state.preflight).selection });
 }
 
@@ -170,6 +192,44 @@ export async function inspectNativeProjectGeneration(capture, expected) {
         || hash(attempt.calls) !== generation.callsDigest) fail('native_orchestration_source_stale');
     return Object.freeze({ ...identity, intent: current.task.intent, conversation: immutable(current.task.conversation), toolReceipts: immutable(generation.toolReceipts),
         skillWorkRecords: immutable(generation.state.skillWorkRecords) });
+}
+
+/** Scheduling bridge for pure workers within the existing original Task.
+ * Both witnesses are private; the control witness never permits a Model send. */
+export async function withNativeProjectFanout(capture, workers, options) {
+    const generation = generations.get(capture);
+    if (!generation || generation.workerStage || !Array.isArray(workers) || !workers.length) fail();
+    const { state } = generation, expected = frameExpected(state);
+    await inspectNativeProjectGeneration(capture, { host: state.host, handle: state.handle });
+    const controlPermit = Object.freeze({}), control = { generation, active: true };
+    fanoutControls.set(controlPermit, control);
+    const children = workers.map(worker => {
+        const childExpected = immutable({ ...expected, resources: worker.resources, key: worker.key, fingerprint: worker.fingerprint });
+        return { kind: childExpected.kind, executionClass: childExpected.executionClass, resources: childExpected.resources,
+            key: childExpected.key, fingerprint: childExpected.fingerprint, fresh: async () => { await worker.fresh(controlPermit); return true; }, finalize: value => value,
+            run: async boundary => {
+                NativeTaskScheduler.prototype.assertFanoutChildBoundary.call(state.executor.scheduler, state.boundary, expected, boundary, childExpected);
+                const permit = Object.freeze({}); fanoutChildren.set(permit, { generation, controlPermit, boundary, expected: childExpected, nodeIds: immutable(worker.nodeIds) });
+                try { return await worker.run({ permit, signal: boundary.signal, controlPermit }); } finally { fanoutChildren.delete(permit); }
+            } };
+    });
+    try {
+        const result = await NativeTaskScheduler.prototype.withResourceFanout.call(state.executor.scheduler, state.boundary, expected, children, {
+            ...options, ...(options.until ? { until: args => options.until(args, controlPermit) } : {}),
+            ...(options.onSettled ? { onSettled: (item, group) => options.onSettled(item, group, controlPermit) } : {}) });
+        if (!options.until) { control.active = false; return result; }
+        return { ...result, wait: async () => { try { return await result.wait(); } finally { control.active = false; } } };
+    } catch (error) { control.active = false; throw error; }
+}
+
+/** Current Task/Source verification for passive Fanout/Join control only. */
+export async function inspectNativeProjectFanoutControl(capture, controlPermit, expected) {
+    const generation = generations.get(capture), control = fanoutControls.get(controlPermit);
+    if (!generation || control?.generation !== generation || !control.active || generation.workerStage) fail();
+    const current = await currentOperation(generation.state, expected, controlPermit), attempt = current.task.attempts.find(item => item.attemptId === generation.projectAttemptId);
+    if (current.task.executionFingerprint !== generation.currentSourceFingerprint || hash(current.task.conversation) !== generation.conversationDigest
+        || attempt?.status !== 'started' || attempt.kind !== 'generation' || attempt.requestId !== generation.requestId || hash(attempt.calls) !== generation.callsDigest)
+        fail('native_orchestration_source_stale');
 }
 
 /** Runs the existing Skill service and retains only its real ephemeral results. */

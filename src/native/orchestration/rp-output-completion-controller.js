@@ -36,7 +36,7 @@ export class RpOutputCompletionController {
         const closure = await BudgetPort.prototype.observeEffectClosure.call(budgetPort, handle, {
             authorityRef: root.budgetAuthorityRef, effectIds: [first.modelEffectId, first.outputEffectId, ...narration.plannerCompletions.map(item => item.modelEffectId),
                 ...(narration.fanout?.providerEffects ?? narration.graphResults.map(item => item.receipt.modelEffectId)), ...narration.reviewCompletions.map(item => item.modelEffectId),
-                ...(narration.judgeCompletion ? [narration.judgeCompletion.modelEffectId] : []), ...narration.retrievalCompletions.map(item => item.effectId)] }, { tx });
+                ...(narration.judgeCompletions ?? (narration.judgeCompletion ? [narration.judgeCompletion] : [])).map(item => item.modelEffectId), ...narration.retrievalCompletions.map(item => item.effectId)] }, { tx });
         const current = await authorize();
         if (!equal(current, first) || !equal(root, await runs.get(handle, first.runId))) fail('native_rp_output_stale');
         return { root, authority: current, closure };

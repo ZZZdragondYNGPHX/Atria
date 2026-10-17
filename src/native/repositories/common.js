@@ -1,17 +1,30 @@
 import { createHash } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { serialize as serializeV8 } from 'node:v8';
 
 import { ConflictError } from '../../storage/errors.js';
 import { readWorldState } from '../state-delta.js';
 
-function assertJsonValue(value, field, seen = new Set()) {
+function invalidJson(field, path, reason) {
+    const location = field + path.map(key => typeof key === 'number' ? `[${key}]` : '.' + key).join('');
+    throw new TypeError(`${location} ${reason}`);
+}
+
+function assertJsonValue(value, field, seen = new Set(), path = []) {
     if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
     if (typeof value === 'number' && Number.isFinite(value)) return;
-    if (typeof value !== 'object') throw new TypeError(`${field} must contain JSON values only`);
-    if (seen.has(value)) throw new TypeError(`${field} must not contain cycles`);
+    if (typeof value !== 'object') invalidJson(field, path, 'must contain JSON values only');
+    if (seen.has(value)) invalidJson(field, path, 'must not contain cycles');
     seen.add(value);
     if (Array.isArray(value)) {
-        value.forEach((item, index) => assertJsonValue(item, `${field}[${index}]`, seen));
+        const length = value.length;
+        for (let index = 0; index < length; index++) {
+            if (index in value) {
+                path.push(index);
+                assertJsonValue(value[index], field, seen, path);
+                path.pop();
+            }
+        }
     } else {
         // Jest VM modules and plugin/worker boundaries can hand us ordinary
         // JSON objects from another realm, where direct prototype identity
@@ -19,10 +32,12 @@ function assertJsonValue(value, field, seen = new Set()) {
         // Dates/Maps/Sets/etc. retain distinct tags while cross-realm plain
         // objects (including null-prototype objects) remain [object Object].
         if (Object.prototype.toString.call(value) !== '[object Object]') {
-            throw new TypeError(`${field} must contain plain JSON objects only`);
+            invalidJson(field, path, 'must contain plain JSON objects only');
         }
         for (const [key, item] of Object.entries(value)) {
-            assertJsonValue(item, `${field}.${key}`, seen);
+            path.push(key);
+            assertJsonValue(item, field, seen, path);
+            path.pop();
         }
     }
     seen.delete(value);
@@ -30,11 +45,24 @@ function assertJsonValue(value, field, seen = new Set()) {
 
 function stableJson(value) {
     if (value === null || typeof value !== 'object') return JSON.stringify(value);
-    if (Array.isArray(value)) return '[' + value.map(stableJson).join(',') + ']';
-    return '{' + Object.keys(value)
-        .sort()
-        .map(key => JSON.stringify(key) + ':' + stableJson(value[key]))
-        .join(',') + '}';
+    // Preserve the existing canonical bytes (including sparse array slots),
+    // without allocating a callback and intermediate array at every level.
+    if (Array.isArray(value)) {
+        let text = '[';
+        for (let index = 0; index < value.length; index++) {
+            if (index) text += ',';
+            if (index in value) text += stableJson(value[index]);
+        }
+        return text + ']';
+    }
+    const keys = Object.keys(value).sort();
+    let text = '{';
+    for (let index = 0; index < keys.length; index++) {
+        if (index) text += ',';
+        const key = keys[index];
+        text += JSON.stringify(key) + ':' + stableJson(value[key]);
+    }
+    return text + '}';
 }
 
 export function cloneNativeDocument(value, field = 'Native resource') {
@@ -42,13 +70,43 @@ export function cloneNativeDocument(value, field = 'Native resource') {
     return structuredClone(value);
 }
 
-export function serializeNativeDocument(value) {
+// Pure byte transformation only. Every caller still validates and freshly
+// clones its entire input, then computes the key from those actual bytes.
+// No resource/identity/permission/receipt/bank lookup is cached. Bounded memory
+// avoids retaining an unbounded history of transient documents.
+const canonicalDocuments = new Map();
+let canonicalDocumentBytes = 0;
+const MAX_CANONICAL_DOCUMENTS = 256;
+const MAX_CANONICAL_BYTES = 4 * 1024 * 1024;
+
+function canonicalDocument(value) {
     const cloned = cloneNativeDocument(value);
-    return stableJson(cloned);
+    if (cloned === null || typeof cloned !== 'object') return { text: stableJson(cloned), digest: null };
+    // An exact local binary key preserves sparse slots and all cloned values.
+    // It is never persisted: existing canonical text and SHA256 stay unchanged.
+    const bytes = serializeV8(cloned).toString('base64');
+    const cached = canonicalDocuments.get(bytes);
+    if (cached) return cached;
+    const entry = { text: stableJson(cloned), digest: null };
+    const size = 2 * (bytes.length + entry.text.length);
+    if (size <= MAX_CANONICAL_BYTES) {
+        while (canonicalDocuments.size >= MAX_CANONICAL_DOCUMENTS || canonicalDocumentBytes + size > MAX_CANONICAL_BYTES) {
+            const first = canonicalDocuments.keys().next().value, removed = canonicalDocuments.get(first);
+            canonicalDocumentBytes -= 2 * (first.length + removed.text.length);
+            canonicalDocuments.delete(first);
+        }
+        canonicalDocuments.set(bytes, entry); canonicalDocumentBytes += size;
+    }
+    return entry;
+}
+
+export function serializeNativeDocument(value) {
+    return canonicalDocument(value).text;
 }
 
 export function hashNativeDocument(value) {
-    return createHash('sha256').update(serializeNativeDocument(value)).digest('hex');
+    const entry = canonicalDocument(value);
+    return entry.digest ??= createHash('sha256').update(entry.text).digest('hex');
 }
 
 export function nativeRecord(value, {

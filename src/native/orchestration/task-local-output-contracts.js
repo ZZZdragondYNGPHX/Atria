@@ -6,6 +6,8 @@ import { checkedRecord } from './plan-repository.js';
 import { readResultPublication } from './result-publication-contracts.js';
 import { readAttemptSettlement, attemptReceiptId } from './attempt-settlement.js';
 import { assertBudgetAttemptRef, assertBudgetAuthorityRef } from './budget-port.js';
+import { assertSessionDelegatedClosure } from './session-delegation-contracts.js';
+import { assertOutputTransition } from './output-transition-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid task-local output facts'); };
@@ -95,6 +97,12 @@ export async function readTaskLocalOutput(tx, handle, root) {
         || !equal(output.budgetRef, root.budgetAuthorityRef) || !equal(output.inputRefs, [claim.resultRef]) || output.inputDigest !== hash([claim.resultRef])
         || !equal(output.resultRefs, [claim.resultRef]) || settled.effectReceiptRefs.length || settled.decisionSeq !== receipt.decisionSeq
         || settled.createdAt !== receipt.createdAt || published.receipt.epoch !== receipt.epoch) invalid();
+    if (root.sourceBinding.sourceAuthority === 'native_session') {
+        const producer = (await readAttempt(tx, handle, root, published.receipt.producerAttemptId)).doc;
+        await assertOutputTransition(tx, handle, root, { published: { ...published, producer, settlement: published.attemptReceipt }, output, receipt });
+        assertSessionDelegatedClosure(root, published.graphHistory, closure);
+        return { claim, receipt, closure, publication: published };
+    }
     const traversal = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receipt.traversalReceiptRef.receiptId)))?.doc;
     const producer = (await readAttempt(tx, handle, root, published.receipt.producerAttemptId)).doc;
     const graphEdge = root.graph.edges.find(item => item.from.nodeId === producer.nodeId && item.to.nodeId === output.nodeId);

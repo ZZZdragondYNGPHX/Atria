@@ -108,7 +108,7 @@ export async function readRpOutput(tx, handle, root) {
         || !equal(Object.fromEntries(Object.keys(intent.budgetAttemptRef).map(field => [field, host.budgetObservationRef[field]])), intent.budgetAttemptRef)) invalid();
     const providerIds = [published.receipt.modelEffectId, ...published.plannerCompletions.map(item => item.modelEffectId),
         ...(published.fanout?.providerEffects ?? published.graphResults.map(item => item.receipt.modelEffectId)), ...published.reviewCompletions.map(item => item.modelEffectId),
-        ...(published.judgeCompletion ? [published.judgeCompletion.modelEffectId] : []), ...published.retrievalCompletions.map(item => item.effectId)];
+        ...(published.judgeCompletions ?? (published.judgeCompletion ? [published.judgeCompletion] : [])).map(item => item.modelEffectId), ...published.retrievalCompletions.map(item => item.effectId)];
     if (!equal(closure.effectIds, [...providerIds, intent.effectId].sort()) || !Array.isArray(closure.budgetAttemptRefs)) invalid();
     const ids = new Set();
     for (const ref of closure.budgetAttemptRefs) {

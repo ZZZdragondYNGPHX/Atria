@@ -9,14 +9,14 @@ const port = (name, type, required = true) => ({ name, type, required });
 const edge = (from, to, input) => ({ edgeId: createNativeId('orchestrationEdge'), from: { nodeId: from.nodeId, port: from.outputs[0].name },
     to: { nodeId: to.nodeId, port: input }, condition: 'always', maxVisits: to.kind === 'review' ? to.policy.maxRounds : 1, loopBack: false });
 
-export async function sessionFanoutFixture(make, { groups = 1, review = false, strategy = 'all-success', maxConcurrency = 2, usage = true, maxRequests = null, failurePolicy = 'continue', rejectFirst = false } = {}) {
-    let topology;
+export async function sessionFanoutFixture(make, { groups = 1, review = false, strategy = 'all-success', maxConcurrency = 2, usage = true, maxRequests = null, failurePolicy = 'continue', rejectFirst = false, planner = false, reviewRerunOnce = false, plannerPatch = operations => operations } = {}) {
+    let topology, operations, reviewCalls = 0, draftCalls = 0;
     const f = await modelPortFixture(make, { usage, responseStatus: rejectFirst ? index => index === 1 ? 503 : 200 : null, configurePlan: async args => {
         configureSessionOutput(args);
         const { plan, h, core, base } = args, narrator = plan.definition.nodes[0], output = plan.definition.nodes[1];
         const route = await args.seeded.persistence.getRuntimeRoute(h.handle, plan.dependencyPins[0].resourceRef.runtimeRouteId);
         await args.seeded.persistence.saveRuntimeRoute(h.handle, { ...route, executionPolicy: { ...route.executionPolicy, computeBudget: {
-            ...route.executionPolicy.computeBudget, maxRequests: maxRequests ?? groups * 2 + (review ? 6 : 1),
+            ...route.executionPolicy.computeBudget, maxRequests: maxRequests ?? groups * 2 + (review ? 6 : 1) + (planner ? 2 : 0),
             localWork: { ...route.executionPolicy.computeBudget.localWork, maxJobs: 192, maxItems: 10000 } } } });
         plan.dependencyPins[0].integrity = hash(await args.seeded.persistence.getRuntimeRoute(h.handle, route.runtimeRouteId));
         const audiences = [...base.manifest.actors.map(actor => ({ kind: 'actor', id: actor.actorId })), { kind: 'narrator' }];
@@ -55,11 +55,35 @@ export async function sessionFanoutFixture(make, { groups = 1, review = false, s
             maxNodes: plan.definition.nodes.length, maxEdges: plan.definition.edges.length,
             maxAttempts: plan.definition.nodes.length + (review ? 2 : 0),
             maxEdgeVisits: plan.definition.edges.length + (review ? 2 : 0) });
-        topology = { specs, narrator, target };
+        if (planner) {
+            const plannerModel = { ...args.seeded.model, modelProfileId: createNativeId('modelProfile'), remoteModelId: 'session-planner-distinct-model', limits: { ...args.seeded.model.limits, contextTokens: 65536 } };
+            await args.seeded.persistence.saveModelProfile(h.handle, plannerModel);
+            const originalRoute = await args.seeded.persistence.getRuntimeRoute(h.handle, route.runtimeRouteId);
+            const plannerRoute = { ...originalRoute, runtimeRouteId: createNativeId('runtimeRoute'), modelProfileRef: { scope: 'player', modelProfileId: plannerModel.modelProfileId },
+                executionPolicy: { ...originalRoute.executionPolicy, allowedModelProfileIds: [plannerModel.modelProfileId] } };
+            await args.seeded.persistence.saveRuntimeRoute(h.handle, plannerRoute);
+            plan.dependencyPins.push({ pinId: 'planner.route', port: 'model', resourceRef: { scope: 'player', runtimeRouteId: plannerRoute.runtimeRouteId }, integrity: hash(plannerRoute) });
+            const producer = { ...agent('Game graph Planner before real controls', 2, []), kind: 'planner', outputs: [port('patch', 'json', false)],
+                capabilities: ['generation.send', 'graph.patch'], dependencyPinIds: ['planner.route', 'session.audience.2'],
+                policy: { agentPinId: 'planner.route', audiencePinId: 'session.audience.2' } };
+            for (const spec of specs) { spec.fanout.inputs = [port('control', 'json')]; plan.definition.edges.push(edge(producer, spec.fanout, 'control')); }
+            plan.definition.nodes.unshift(producer); plan.definition.entryNodeIds = [producer.nodeId];
+            plan.definition.capabilityCeiling.push('graph.patch');
+            plan.definition.graphChangePolicy = { allowedOperations: ['addNode', 'addEdge', 'setPendingPriority'], allowedNodeKinds: ['agent'] };
+            const draft = review ? plan.definition.nodes.find(node => node.label === 'Game draft after synthesis') : narrator;
+            draft.inputs.push(port('planned', 'text', false));
+            const added = agent('Game dynamic advisory after accepted GraphPatch', 2, [port('control', 'json')]);
+            operations = plannerPatch([{ op: 'addNode', node: added }, { op: 'addEdge', edge: edge(producer, added, 'control') },
+                { op: 'addEdge', edge: edge(added, draft, 'planned') }, { op: 'setPendingPriority', nodeId: added.nodeId, priority: 7 }]);
+            Object.assign(plan.definition.limits, { maxNodes: plan.definition.nodes.length + 1, maxEdges: plan.definition.edges.length + 2,
+                maxAttempts: plan.definition.limits.maxAttempts + 2, maxEdgeVisits: plan.definition.limits.maxEdgeVisits + specs.length + 2, maxPatches: 2 });
+            topology = { specs, narrator, target, planner: producer, added, operations, plannerModel };
+        } else topology = { specs, narrator, target };
     }, responseBody: async ({ body, index }) => {
-        const input = JSON.stringify(body.input), text = input.includes('Return only the JSON decision approve or rerun')
-            ? JSON.stringify({ decision: 'approve', reasonCode: 'quality_ready' }) : input.includes('Game branch') ? 'GAME_ADVICE_' + index
-                : input.includes('Game synthesis after') ? 'GAME_SYNTHESIS' : input.includes('Game draft after') ? 'GAME_REVIEW_DRAFT' : 'The NPC waits for the player choice.';
+        const input = JSON.stringify(body.input), text = input.includes('Propose structured GraphPatch operations for this declared task') ? JSON.stringify({ operations })
+            : input.includes('Return only the JSON decision approve or rerun')
+                ? JSON.stringify(reviewRerunOnce && reviewCalls++ === 0 ? { decision: 'rerun', reasonCode: 'draft_incomplete' } : { decision: 'approve', reasonCode: 'quality_ready' }) : input.includes('Game branch') ? 'GAME_ADVICE_' + index
+                    : input.includes('Game dynamic advisory after') ? 'GAME_DYNAMIC_ADVICE' : input.includes('Game synthesis after') ? 'GAME_SYNTHESIS' : input.includes('Game draft after') ? 'GAME_REVIEW_DRAFT' + (reviewRerunOnce ? ++draftCalls : '') : 'The NPC waits for the player choice.';
         return { id: 'game-fanout-' + index, status: 'completed', output: [{ id: 'message-' + index, type: 'message', status: 'completed', role: 'assistant',
             content: [{ type: 'output_text', text, annotations: [] }] }], ...(usage ? { usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } } : {}) };
     } });

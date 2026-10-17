@@ -3,7 +3,9 @@ import { PlanRepository, validationDigest } from '../../src/native/orchestration
 import { RunRepository } from '../../src/native/orchestration/run-repository.js';
 import { AttemptController } from '../../src/native/orchestration/attempt-controller.js';
 import { TransitionController } from '../../src/native/orchestration/transition-controller.js';
-import { controlRecordKey, runGuard } from '../../src/native/orchestration/controller-common.js';
+import { controlRecordKey, runGuard, readAttempt } from '../../src/native/orchestration/controller-common.js';
+import { readAttemptSettlement } from '../../src/native/orchestration/attempt-settlement.js';
+import { assertOutputTransition } from '../../src/native/orchestration/output-transition-contracts.js';
 import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecycle.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { hashNativeDocument } from '../../src/native/repositories/common.js';
@@ -13,7 +15,7 @@ import { planFixture, prepareControllerOwnerRoot } from './fixtures.js';
 
 const id = kind => createNativeId('orchestration' + kind);
 const port = (name, required = false) => ({ name, type: 'task.result', required });
-function loopFixture({ multipleInputs = false, edgeLimit = 8, loopLimit = 2, condition = 'always' } = {}) {
+function loopFixture({ multipleInputs = false, edgeLimit = 8, loopLimit = 2, condition = 'always', selfLoopWithInputs = false } = {}) {
     const fixture = planFixture(), output = fixture.definition.nodes[0], a = id('Node'), b = id('Node'), c = id('Node');
     const wait = (nodeId, inputs) => ({ nodeId, kind: 'wait', label: 'Bounded task', inputs, outputs: [port('next')], dependencyPinIds: [], capabilities: [], policy: { timeoutMs: 1000 } });
     const edge = (from, to, input, loopBack = false, when = 'always') => ({ edgeId: id('Edge'), from: { nodeId: from, port: 'next' }, to: { nodeId: to, port: input }, condition: when, maxVisits: edgeLimit, loopBack });
@@ -22,9 +24,15 @@ function loopFixture({ multipleInputs = false, edgeLimit = 8, loopLimit = 2, con
         ...(multipleInputs ? [wait(c, [port('in', true)])] : []), { ...output, inputs: [port('body', true)] }];
     const split = edge(a, c, 'in'), extra = edge(c, b, 'aux');
     fixture.definition.edges = [forward, back, exit, ...(multipleInputs ? [split, extra] : [])];
+    let self;
+    if (selfLoopWithInputs) {
+        fixture.definition.nodes[1].inputs.push(port('feedback'));
+        self = { ...edge(b, b, 'feedback', true), edgeId: 'oedge_' + 'f'.repeat(32) };
+        fixture.definition.edges.push(self);
+    }
     fixture.definition.entryNodeIds = [a];
     Object.assign(fixture.definition.limits, { maxSteps: 100, maxAttempts: 100, maxEdgeVisits: 100, maxLoopIterations: loopLimit });
-    return { fixture, a, b, c, forward, back, exit, split, extra };
+    return { fixture, a, b, c, forward, back, exit, split, extra, self };
 }
 
 test('bounded graph validation requires explicit loop-back coverage and a forward path for every declared return', () => {
@@ -126,6 +134,27 @@ describe.each(CONTRACT_HARNESSES)('$name durable bounded graph transitions', ({ 
         expect(before.progress).toMatchObject({ attempts: 4, loopIterations: 1, edgeVisits: 3 });
         await expect(advance([binding(graph.back, b1)])).rejects.toMatchObject({ code: 'native_orchestration_limit_exhausted' });
         expect(await current()).toEqual(before); expect(new Set(before.attemptRefs).size).toBe(4);
+    });
+
+    test('cold traversal retains required predecessors admitted before the same decision loop increment', async () => {
+        await setup({ multipleInputs: true, selfLoopWithInputs: true }); await complete(initial);
+        const child = (await advance([binding(graph.split, initial)])).outcome.attemptId; await complete(child);
+        const first = (await advance([binding(graph.forward, initial), binding(graph.extra, child)])).outcome.attemptId; await complete(first);
+        const bindings = [binding(graph.forward, initial), binding(graph.extra, child), binding(graph.self, first)];
+        const next = await advance(bindings), targetId = next.outcome.attemptId; await complete(targetId);
+        await h.engine.withTransaction(h.handle, async tx => {
+            const root = await current(), output = (await readAttempt(tx, h.handle, root, targetId)).doc;
+            const receipt = await readAttemptSettlement(tx, h.handle, root, output), sources = [];
+            for (const attemptId of [initial, child, first]) {
+                const producer = (await readAttempt(tx, h.handle, root, attemptId)).doc;
+                const settlement = await readAttemptSettlement(tx, h.handle, root, producer);
+                sources.push({ producer, settlement, receipt: settlement });
+            }
+            await assertOutputTransition(tx, h.handle, root, { published: sources[0], additionalProducers: sources.slice(1), output,
+                receipt: { decisionSeq: receipt.decisionSeq, traversalReceiptRef: { runId, receiptId: next.outcome.traversalReceipt.receiptId } },
+                allowLoopBack: true, producerBindings: bindings });
+            expect(root.progress.loopIterations).toBe(1);
+        });
     });
 
     test('a generic beginAttempt with a new command cannot bypass loop or redo accounting', async () => {

@@ -9,7 +9,7 @@ import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { projectRuntimeRoute } from '../adapters/project-runtime-route.js';
 import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
 import { immutable, checkCancellation, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
-import { inspectNativeProjectGeneration, prepareNativeProjectTaskTool, executeNativeProjectTaskTool,
+import { inspectNativeProjectGeneration, inspectNativeProjectFanoutControl, prepareNativeProjectTaskTool, executeNativeProjectTaskTool,
     finishNativeProjectGeneration, inspectNativeProjectRoundCompletion, confirmNativeProjectRoundSettlement,
     inspectNativeProjectReviewCompletion } from './native-project-generation-authority.js';
 import { ProjectReviewOutputController } from './project-review-output-controller.js';
@@ -51,6 +51,7 @@ export class NativeProjectOrchestrationAuthority {
     #consumers = new WeakMap();
     #operations = new Map();
     #runs = new Map();
+    #stages = new Map();
     #execution;
     #port;
     #releasePort;
@@ -83,7 +84,7 @@ export class NativeProjectOrchestrationAuthority {
         if (routeRef.scope !== 'player') fail('native_orchestration_project_route_mismatch');
         const plan = await this.#authoring().getRevision(handle, binding.planRef), graph = plan.definition;
         let quality = null, controlGraph = null;
-        if (graph.nodes.some(node => node.kind === 'planner')) controlGraph = projectControlGraph(plan);
+        if (graph.nodes.some(node => ['planner', 'fanout', 'join', 'judge'].includes(node.kind))) controlGraph = projectControlGraph(plan);
         else if (graph.nodes.some(node => node.kind === 'review')) {
             try { quality = projectQualityProfile(plan); } catch (error) {
                 if (error.code !== 'native_orchestration_project_quality_plan_unavailable') throw error;
@@ -157,7 +158,7 @@ export class NativeProjectOrchestrationAuthority {
         const resolveControlModel = async control => {
             const controlPin = plan.dependencyPins.find(item => item.pinId === control.policy.agentPinId && control.dependencyPinIds.includes(item.pinId));
             if (controlPin?.port !== 'model' || controlPin.resourceRef.scope !== 'player') fail('native_orchestration_project_route_mismatch');
-            const controlRequirements = [...(['planner', 'review'].includes(control.kind) ? ['generation.structured-output'] : []),
+            const controlRequirements = [...(['planner', 'review', 'judge'].includes(control.kind) ? ['generation.structured-output'] : []),
                 ...(project.source.package.runtime?.modelPrompt?.roles.find(item => item.role === 'role.studio')?.requiredCapabilities ?? [])];
             const failure = await resolveModelFailurePlan({ handle, node: control, dependencyPins: plan.dependencyPins, resolver: this.owner.modelResolver,
                 routeRef: controlPin.resourceRef, role: 'role.studio', requirements: controlRequirements });
@@ -173,7 +174,7 @@ export class NativeProjectOrchestrationAuthority {
             return { pin: controlPin, resolved: primary, failurePlan: { routes: candidates }, configDigest: candidates.length === 1 ? config(primary) : hash(candidates) };
         };
         const controlModelDigests = [];
-        for (const control of controlGraph?.pure ?? []) controlModelDigests.push([control.nodeId, (await resolveControlModel(control)).configDigest]);
+        for (const control of (controlGraph?.pure ?? []).filter(node => node.capabilities.includes('generation.send'))) controlModelDigests.push([control.nodeId, (await resolveControlModel(control)).configDigest]);
         return { binding, plan, node, pin, loop, toolPins, collaboration, quality, controlGraph, resolveControlModel, controlModelDigests, resolved,
             failurePlan: { routes }, configDigest: routes.length === 1 ? config(resolved) : hash(routes) };
     }
@@ -192,6 +193,17 @@ export class NativeProjectOrchestrationAuthority {
             planRef: state.binding.planRef, definitionHash: state.plan.definitionHash });
     }
 
+    async executionResources(selection) {
+        const state = await this.#current(selection), { host, handle } = state.args;
+        const resources = [];
+        for (const pin of state.plan.dependencyPins.filter(pin => pin.port === 'model')) {
+            const route = await host.persistence.getRuntimeRoute(handle, pin.resourceRef.runtimeRouteId);
+            if (!route || hash(route) !== pin.integrity) fail('native_orchestration_project_route_mismatch');
+            resources.push(...await host.executionResources(handle, route));
+        }
+        return [...new Set(resources)].sort();
+    }
+
     async #current(selection) {
         const state = this.#selections.get(selection);
         if (!state) fail('native_orchestration_project_selection_invalid');
@@ -201,8 +213,21 @@ export class NativeProjectOrchestrationAuthority {
         return state;
     }
 
+    #stage(root, { attempt, intent, proposal } = {}) {
+        const matches = [...(this.#stages.get(root.runId) ?? [])].filter(stage =>
+            (attempt || intent) ? stage.attemptId === (attempt?.attemptId ?? intent.nodeAttemptId)
+                : proposal ? equal(stage.decision.inputRef, proposal.inputRef) : false);
+        if (matches.length > 1) fail('native_orchestration_project_grant_denied');
+        return matches[0] ?? this.#runs.get(root.runId);
+    }
+
+    #installStage(runId, stage) {
+        const stages = this.#stages.get(runId) ?? new Set(); this.#stages.set(runId, stages); stages.add(stage);
+        return () => { stages.delete(stage); if (!stages.size) this.#stages.delete(runId); };
+    }
+
     async authorize({ handle, root, attempt, proposal, intent }) {
-        const state = this.#runs.get(root.runId);
+        const state = this.#stage(root, { attempt, proposal, intent });
         if (!state || state.handle !== handle || !equal(root.planRef, state.selected.binding.planRef)
             || root.sourceBinding.bindingDigest !== state.sourceBinding.bindingDigest) fail('native_orchestration_project_grant_denied');
         await this.#current(state.selection);
@@ -224,7 +249,7 @@ export class NativeProjectOrchestrationAuthority {
 
     async verifySend({ handle, root, intent, resolved, snapshot, compiledBinding }) {
         await this.authorize({ handle, root, intent });
-        const state = this.#runs.get(root.runId);
+        const state = this.#stage(root, { intent });
         const candidate = state.selected.failurePlan.routes.find(item => equal(item.routeRef, { scope: 'player', runtimeRouteId: resolved.route.runtimeRouteId }));
         if (!candidate || snapshot.requestId !== state.request.requestId || snapshot.runtimeRouteId !== resolved.route.runtimeRouteId
             || config(resolved) !== candidate.configDigest || !equal(snapshot.promptProgramRef, resolved.route.promptProgramRef)
@@ -237,7 +262,7 @@ export class NativeProjectOrchestrationAuthority {
     }
 
     async verifyObservation(args) {
-        const state = this.#runs.get(args.root.runId);
+        const state = this.#stage(args.root, args);
         if (!state && ['native_project_read', 'native_project_proposal'].includes(args.intent.actionRef.kind))
             return verifyProjectToolReconciliation(this.#execution(), this.projectAgent, args);
         if (!state) fail('native_orchestration_model_completion_proof_required');
@@ -297,21 +322,27 @@ export class NativeProjectOrchestrationAuthority {
         try {
             if (selected.controlGraph) {
                 activeOperation.controlGraph ??= await new ProjectControlGraphWork({ service, state, identity, logicalInputRef, port: this.#port(host),
-                    issueScope: this.#issueScope, install: active => this.#runs.set(root.runId, active), current: async () => {
-                        await this.#current(selection); await inspectNativeProjectGeneration(projectCapture, { host, handle });
+                    issueScope: this.#issueScope, install: active => this.#installStage(root.runId, active), current: async ({ capture = projectCapture, controlPermit = null } = {}) => {
+                        await this.#current(selection);
+                        if (controlPermit) await inspectNativeProjectFanoutControl(projectCapture, controlPermit, { host, handle });
+                        else await inspectNativeProjectGeneration(capture, { host, handle });
                         const active = await service.runs.get(handle, root.runId);
                         if (active.cancelRequested || !['admitted', 'running'].includes(active.status)) fail('native_orchestration_project_control_stale');
                         await service.sourcePort.revalidate(handle, captured.sourceBinding, { root: active });
                     } }).run();
                 state.controlGraph = activeOperation.controlGraph; logicalInputRef.controlGraph = state.controlGraph;
+                logicalInputRef.acceptedGraphResultRefs = state.controlGraph.evidenceRefs;
+                logicalInputRef.acceptedControlRefs = state.controlGraph.controlRefs;
                 grantDigest = hash({ grantDigest, controlGraph: state.controlGraph }); logicalInputRef.grantDigest = grantDigest;
                 decision = { ...decision, inputRef: logicalInputRef, inputHash: hash(logicalInputRef), grantDigest,
                     egressDigest: hash({ sourceBinding: captured.sourceBinding, input: logicalInputRef }) }; state.decision = decision;
             }
             if (selected.quality) {
                 activeOperation.qualityApproval ??= await new ProjectQualityWork({ service, state, identity, logicalInputRef, port: this.#port(host),
-                    issueScope: this.#issueScope, install: active => this.#runs.set(root.runId, active), current: async () => {
-                        await this.#current(selection); await inspectNativeProjectGeneration(projectCapture, { host, handle });
+                    issueScope: this.#issueScope, install: active => this.#installStage(root.runId, active), current: async ({ capture = projectCapture, controlPermit = null } = {}) => {
+                        await this.#current(selection);
+                        if (controlPermit) await inspectNativeProjectFanoutControl(projectCapture, controlPermit, { host, handle });
+                        else await inspectNativeProjectGeneration(capture, { host, handle });
                         const active = await service.runs.get(handle, root.runId);
                         if (active.cancelRequested || !['admitted', 'running'].includes(active.status)) fail('native_orchestration_project_quality_stale');
                         await service.sourcePort.revalidate(handle, captured.sourceBinding, { root: active });
@@ -330,7 +361,7 @@ export class NativeProjectOrchestrationAuthority {
                 const inputRefs = [logicalInputRef, ...qualityRefs];
                 const advanced = await new TransitionController({ runs: service.runs, authorizeTransition: async ({ tx, root: current, target, producers }) => {
                     await this.#current(selection); await inspectNativeProjectGeneration(projectCapture, { host, handle });
-                    const facts = await readProjectControlInputs(tx, handle, current, null, state.controlGraph);
+                    const facts = await readProjectControlInputs(tx, handle, current, null, state.controlGraph, { targetNodeId: target.nodeId });
                     if (target.nodeId !== selected.node.nodeId || producers.length !== state.controlGraph.bindings.length
                         || producers.some(item => !facts.some(fact => fact.producer.attemptId === item.attempt.attemptId))) fail('native_orchestration_project_control_stale');
                     for (const fact of facts.filter(fact => fact.record)) {
@@ -360,16 +391,27 @@ export class NativeProjectOrchestrationAuthority {
                 const edge = previous?.state.selected.node.nodeId === selected.node.nodeId ? selected.loop : selected.incoming;
                 if (!previous?.roundReceiptRef || !edge || edge.from.nodeId !== previous.state.selected.node.nodeId
                     || previous.identity.round + 1 !== identity.round) fail('native_orchestration_project_round_not_ready');
+                const requiredBindings = selected.controlGraph ? state.controlGraph.bindings.filter(binding => {
+                    const incoming = root.graph.edges.find(candidate => candidate.edgeId === binding.edgeId);
+                    return root.graph.nodes.find(node => node.nodeId === selected.node.nodeId).inputs.some(port => port.required && port.name === incoming.to.port);
+                }) : [];
+                const continuationBindings = [...requiredBindings, { edgeId: edge.edgeId, producerAttemptId: previous.state.attemptId }];
                 const traversed = await new TransitionController({ runs: service.runs, authorizeTransition: async ({ tx, root: current, target, producers }) => {
                     await this.#current(selection); await inspectNativeProjectGeneration(projectCapture, { host, handle });
                     await service.sourcePort.revalidate(handle, current.sourceBinding, { tx, root: current });
                     const fact = await readProjectRoundReceipt(tx, handle, current, previous.state.attemptId, { projectAgent: host.agent });
                     if (!fact || !equal(fact.receiptRef, previous.roundReceiptRef) || !fact.receipt.toolReceiptRefs.length
-                        || target.nodeId !== selected.node.nodeId || producers.length !== 1 || producers[0].attempt.attemptId !== previous.state.attemptId)
+                        || target.nodeId !== selected.node.nodeId || producers.length !== continuationBindings.length
+                        || producers.some(item => !continuationBindings.some(binding => binding.edgeId === item.edge.edgeId && binding.producerAttemptId === item.attempt.attemptId)))
                         fail('native_orchestration_project_round_not_ready');
+                    if (requiredBindings.length) {
+                        const facts = await readProjectControlInputs(tx, handle, current, null, state.controlGraph, { targetNodeId: target.nodeId });
+                        if (requiredBindings.some(binding => !facts.some(input => input.producer.attemptId === binding.producerAttemptId)))
+                            fail('native_orchestration_project_control_stale');
+                    }
                     return { inputRefs: [logicalInputRef, fact.receiptRef, ...qualityRefs], inputDigest: hash([logicalInputRef, fact.receiptRef, ...qualityRefs]),
                         effectiveGrantDigest: grantDigest, budgetRef: current.budgetAuthorityRef };
-                } }).advance(handle, { ...runGuard(root), bindings: [{ edgeId: edge.edgeId, producerAttemptId: previous.state.attemptId }], reservedAttemptId: null });
+                } }).advance(handle, { ...runGuard(root), bindings: continuationBindings, reservedAttemptId: null });
                 attemptId = traversed.outcome.attemptId;
             }
             state.attemptId = attemptId;
@@ -408,7 +450,7 @@ export class NativeProjectOrchestrationAuthority {
             return { ...structuredClone(actualRound), roundToken };
         } catch (error) {
             await this.#captureFailure(state, error);
-            this.#runs.delete(root.runId); this.#operations.delete(operationKey); throw error;
+            this.#runs.delete(root.runId); this.#stages.delete(root.runId); this.#operations.delete(operationKey); throw error;
         }
     }
 
@@ -462,7 +504,7 @@ export class NativeProjectOrchestrationAuthority {
         } catch (error) {
             await this.#captureFailure(state, error); throw error;
         } finally {
-            if (!this.#consumers.has(roundToken)) { this.#runs.delete(runId); this.#operations.delete(state.operationKey); this.#releasePort(host); }
+            if (!this.#consumers.has(roundToken)) { this.#runs.delete(runId); this.#stages.delete(runId); this.#operations.delete(state.operationKey); this.#releasePort(host); }
         }
     }
 
@@ -470,7 +512,7 @@ export class NativeProjectOrchestrationAuthority {
         const consumer = this.#consumers.get(roundToken);
         if (!consumer) return;
         if (consumer.state.host !== host || consumer.state.handle !== handle) fail('native_orchestration_project_producer_denied');
-        this.#consumers.delete(roundToken); this.#runs.delete(consumer.runId); this.#releasePort(host);
+        this.#consumers.delete(roundToken); this.#runs.delete(consumer.runId); this.#stages.delete(consumer.runId); this.#releasePort(host);
         this.#operations.delete(consumer.state.operationKey);
     }
 

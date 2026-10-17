@@ -182,9 +182,10 @@ class ControlDenial {
 
 /** Durable Host control metadata. Original domain admission supplies source/budget truth. */
 export class RunRepository {
-    constructor({ engine, authorize, admit, assertWriter, projectAgent = null, now = Date.now }) {
+    constructor({ engine, authorize, admit, assertWriter, projectAgent = null, authorizeChildAttempt = null, now = Date.now }) {
         for (const [name, value] of Object.entries({ authorize, admit, assertWriter, now })) if (typeof value !== 'function') throw new TypeError('RunRepository requires ' + name);
-        Object.assign(this, { engine, authorize, admit, assertWriter, projectAgent, now });
+        if (authorizeChildAttempt !== null && typeof authorizeChildAttempt !== 'function') throw new TypeError('Original child Attempt authority required');
+        Object.assign(this, { engine, authorize, admit, assertWriter, projectAgent, authorizeChildAttempt, now });
     }
 
     async #command(handle, commandId, operation, body, apply, { replayFlag = false, resourceIds = [] } = {}) {
@@ -369,8 +370,18 @@ export class RunRepository {
             this.#guard(root, input, fence);
             await assertChildRunCurrent(tx, handle, root);
             if (root.cancelRequested || !['admitted', 'running'].includes(root.status) || root.nodeControl[input.nodeId]?.disposition !== 'eligible') throw new ConflictError('native_orchestration_attempt_not_admitted');
-            if (root.parentRef && (hashNativeDocument(input.budgetRef) !== hashNativeDocument(root.budgetAuthorityRef)
-                || input.effectiveGrantDigest !== root.parentRef.effectiveGrantDigest || hashNativeDocument(input.inputRefs) !== root.parentRef.inputDigest)) throw new ConflictError('native_orchestration_child_authority_invalid');
+            if (root.parentRef) {
+                if (hashNativeDocument(input.budgetRef) !== hashNativeDocument(root.budgetAuthorityRef)
+                    || input.effectiveGrantDigest !== root.parentRef.effectiveGrantDigest) throw new ConflictError('native_orchestration_child_authority_invalid');
+                if (input.inputDigest !== root.parentRef.inputDigest) {
+                    if (root.sourceBinding.sourceAuthority !== 'native_session' || input.inputRefs[0]?.kind !== 'native_session_delegated_intent'
+                        || typeof this.authorizeChildAttempt !== 'function') throw new ConflictError('native_orchestration_child_authority_invalid');
+                    const decision = await this.authorizeChildAttempt({ handle, tx, root, input });
+                    assertObject(decision, ['allowed', 'inputDigest', 'effectiveGrantDigest', 'sourceBindingDigest'], 'Child Attempt admission');
+                    if (decision.allowed !== true || decision.inputDigest !== input.inputDigest || decision.effectiveGrantDigest !== input.effectiveGrantDigest
+                        || decision.sourceBindingDigest !== root.sourceBinding.bindingDigest) throw new ConflictError('native_orchestration_child_authority_invalid');
+                }
+            }
             if (root.progress.attempts >= root.limits.maxAttempts || timestamp >= root.progress.deadlineAt) throw new ConflictError('native_orchestration_limit_exhausted');
             // Attempt refs preserve every prior identity; retry/redo cannot
             // overwrite receipts, input snapshots or actual spending.

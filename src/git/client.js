@@ -306,25 +306,21 @@ class IsomorphicGitClient {
 
         // statusMatrix is unreliable for change detection (see addAll above) so
         // we go directly to the source of truth — the git object database. Make
-        // a real commit, then compare its tree against HEAD's prior tree. If
-        // they match the index produced no semantic change; roll the branch
-        // pointer back to the previous commit and leave the orphan object for
-        // git gc to reclaim.
+        // a commit object without publishing its ref, then compare its tree
+        // against HEAD's prior tree. A concurrent read must never observe an
+        // empty synchronization commit as a new Source revision.
         const previousHeadOid = await resolveHeadOidOrNull(dir);
         const previousTreeOid = previousHeadOid
             ? (await git.readCommit({ fs, dir, oid: previousHeadOid })).commit.tree
             : null;
 
-        const newOid = await git.commit({ fs, dir, message, author });
+        const newOid = await git.commit({ fs, dir, message, author, noUpdateBranch: true });
         const newCommit = await git.readCommit({ fs, dir, oid: newOid });
         if (!allowEmpty && previousTreeOid !== null && newCommit.commit.tree === previousTreeOid) {
-            const branch = await git.currentBranch({ fs, dir, fullname: true });
-            if (branch && previousHeadOid) {
-                await git.writeRef({ fs, dir, ref: branch, value: previousHeadOid, force: true });
-            }
             return false;
         }
-
+        const branch = await git.currentBranch({ fs, dir, fullname: true });
+        await git.writeRef({ fs, dir, ref: branch ?? 'HEAD', value: newOid, force: true });
         return true;
     }
 

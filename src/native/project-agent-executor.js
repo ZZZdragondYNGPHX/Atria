@@ -148,7 +148,9 @@ export class NativeProjectAgentExecutor {
                 endpoint: value.endpoint, secretRef: value.secretRef ?? null, providerAdapter: value.providerAdapter, transport: value.transport })),
             effects: ['explicit-paid-model-generation', 'native-task-proposals', 'temporary-review-preview'], stop: 'human-review-before-formal-commit',
             ...(selectionDescriptor === null ? {} : { orchestration: selectionDescriptor }) });
-        this.#preflights.set(view, Object.freeze({ selection }));
+        const modelResources = selection === null ? await this.host.executionResources(handle, route)
+            : await this.host.turnOrchestration.projectExecutionResources(selection);
+        this.#preflights.set(view, Object.freeze({ selection, resources: immutable([...new Set([projectId, taskId, ...modelResources])].sort()) }));
         return view;
     }
     async start(handle, projectId, taskId, input) {
@@ -170,7 +172,7 @@ export class NativeProjectAgentExecutor {
         };
         let began = false;
         const operation = this.scheduler.submit({ owner: handle, anchor: { projectId, taskId, requestId: input.requestId, runtimeRouteId: input.runtimeRouteId },
-            kind: 'model_task', executionClass: 'interactive', resources: [projectId, taskId], key: 'project-agent:' + taskId,
+            kind: 'model_task', executionClass: 'interactive', resources: this.assertOriginalPreflight(view).resources, key: 'project-agent:' + taskId,
             fingerprint: hashNativeDocument(input), retry: false,
             fresh: async () => { await check(); return began || hashNativeDocument(await host.agent.observeTask(handle, projectId, taskId)) === view.taskFingerprint; },
             run: async boundary => {

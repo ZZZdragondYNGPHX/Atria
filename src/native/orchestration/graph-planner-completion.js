@@ -1,3 +1,4 @@
+import { assertNativeId } from '../identity.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
@@ -47,9 +48,16 @@ export async function readGraphPlannerCompletion(tx, handle, root, attemptId, { 
         || settlement.reasonCode !== 'graph_planner_patch_accepted' || settlement.decisionSeq !== receipt.decisionSeq || settlement.createdAt !== receipt.createdAt
         || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId, ...retrieval.map(item => item.receiptId)])
         || patch.decisionSeq >= receipt.decisionSeq || receipt.decisionSeq > root.eventSeq) invalid();
-    const input = intent.inputRef, kinds = { project: 'native_project_intent', rp_chat: 'native_rp_intent', native_session: 'native_turn_intent' };
+    const input = intent.inputRef;
+    if (root.sourceBinding.sourceAuthority === 'native_session') {
+        assertObject(input.sourceRef, ['sessionId', 'branchId', 'revisionId', 'packageId', 'packageVersionId'], 'Native Turn source');
+        assertNativeId(input.sourceRef.packageId, 'package'); assertNativeId(input.sourceRef.packageVersionId, 'packageVersion');
+    }
+    const kinds = { project: 'native_project_intent', rp_chat: 'native_rp_intent', native_session: 'native_turn_intent' };
     if (!Object.hasOwn(kinds, root.sourceBinding.sourceAuthority) || input.kind !== kinds[root.sourceBinding.sourceAuthority]
-        || input.nodeId !== producer.nodeId || !equal(input.planRef, root.planRef) || !equal(input.sourceRef, root.sourceBinding.sourceRef)
+        || input.nodeId !== producer.nodeId || !equal(input.planRef, root.planRef) || (root.sourceBinding.sourceAuthority === 'native_session'
+        ? !equal(Object.fromEntries(['sessionId', 'branchId', 'revisionId'].map(field => [field, input.sourceRef?.[field]])), root.sourceBinding.sourceRef)
+        : !equal(input.sourceRef, root.sourceBinding.sourceRef))
         || !equal(producer.inputRefs[0], input) || producer.inputDigest !== hash(producer.inputRefs) || intent.inputHash !== hash(input)
         || intent.epoch !== producer.epoch || intent.graphRevision !== producer.graphRevision || intent.sourceBindingDigest !== root.sourceBinding.bindingDigest
         || (input.acceptedGraphResultRefs ?? []).some(ref => !producer.inputRefs.some(actual => equal(actual, ref)))

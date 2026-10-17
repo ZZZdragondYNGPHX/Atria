@@ -13,7 +13,10 @@ import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readRpFanoutCompletion } from './rp-fanout-contracts.js';
+import { readProjectFanoutCompletion } from './project-fanout-contracts.js';
+import { graphFanoutModelScope, readGraphFanoutInput } from './graph-fanout-completion.js';
 import { audienceContextPin, assertAudienceRunCapture } from './audience-source-contracts.js';
+import { readSessionDelegatedModelInput, readSessionDelegationContinuation } from './session-delegation-contracts.js';
 
 const kinds = ['agent', 'planner', 'judge', 'review'];
 const equal = (a, b) => hash(a) === hash(b);
@@ -23,19 +26,25 @@ export const graphResultPublicationId = (runId, resultId) => 'oreceipt_' + hash(
 export function graphResultContract(root, producer, graphSnapshot = null) {
     const graph = graphSnapshot?.graph ?? root.graph, revision = graphSnapshot?.graphRevision ?? 0;
     const node = graph.nodes.find(item => item.nodeId === producer.nodeId), policy = assertResultPolicy(graph.outputContract);
-    if (!['rp_chat', 'native_session', 'project'].includes(root.sourceBinding.sourceAuthority) || root.parentRef !== null || producer.graphRevision !== revision || revision > root.graphRevision
+    if (!['rp_chat', 'native_session', 'project'].includes(root.sourceBinding.sourceAuthority)
+        || root.parentRef !== null && !(root.sourceBinding.sourceAuthority === 'native_session' && graph.outputContract.kind === 'result' && node?.kind === 'agent')
+        || producer.graphRevision !== revision || revision > root.graphRevision
         || root.sourceBinding.sourceAuthority !== root.sourceBinding.sourceRequest?.domain
         || !graphSnapshot && (root.graphRevision !== 0 || root.graph.graphChangePolicy.allowedOperations.length) || !kinds.includes(node?.kind)
         || node.outputs.length !== 1 || !['text', 'json'].includes(node.outputs[0].type)) invalid();
     const direct = graph.edges.filter(edge => edge.from.nodeId === node.nodeId && !edge.loopBack).map(edge => graph.nodes.find(item => item.nodeId === edge.to.nodeId));
     const recipients = direct.flatMap(item => {
+        if (item?.kind === 'fanout' && root.sourceBinding.sourceAuthority === 'project') {
+            return [item, ...graphFanoutModelScope(graph, item.nodeId).map(id => graph.nodes.find(node => node.nodeId === id))];
+        }
         if (item?.kind !== 'join') return [item];
         const successors = graph.edges.filter(edge => edge.from.nodeId === item.nodeId && !edge.loopBack).map(edge => graph.nodes.find(node => node.nodeId === edge.to.nodeId));
-        if (!successors.length || successors.some(node => node?.kind !== 'agent')
-            || root.sourceBinding.sourceAuthority !== 'native_session' && successors.length !== 1) invalid();
+        if (!successors.length || successors.some(node => !kinds.includes(node?.kind))
+            || root.sourceBinding.sourceAuthority === 'rp_chat' && successors.length !== 1) invalid();
         return [item, ...successors];
     });
-    if (!recipients.length || recipients.some(item => !kinds.includes(item?.kind) && item?.kind !== 'join')) invalid();
+    if (!recipients.length || recipients.some(item => !kinds.includes(item?.kind) && item?.kind !== 'join'
+        && !(item?.kind === 'fanout' && root.sourceBinding.sourceAuthority === 'project'))) invalid();
     return { output: { kind: 'result', ownerNodeId: node.nodeId, slot: 'graph_result', allowPartial: false,
         resultPolicy: { outputType: node.outputs[0].type, maxBytes: policy.maxBytes } },
     audience: { kind: 'graph_nodes', runId: root.runId, nodeIds: [...new Set(recipients.map(item => item.nodeId))].sort(), epoch: producer.epoch,
@@ -45,7 +54,7 @@ export function graphResultContract(root, producer, graphSnapshot = null) {
 
 const audienceSource = (root, producer, pins, snapshot = null) => {
     const node = (snapshot?.graph ?? root.graph).nodes.find(item => item.nodeId === producer.nodeId), pin = audienceContextPin(node, pins);
-    const capture = assertAudienceRunCapture(root, node, pins, producer.inputRefs[0]);
+    const capture = assertAudienceRunCapture(root, node, pins, producer.inputRefs?.[0]);
     return pin ? [{ kind: 'native_information_context', pinId: pin.pinId, sourceRef: capture?.sourceRef ?? pin.resourceRef, integrity: pin.integrity }] : [];
 };
 
@@ -114,13 +123,19 @@ export async function readGraphNodeResult(tx, handle, root, resultId, { recipien
         || intent.epoch !== producer.epoch || intent.graphRevision !== producer.graphRevision || intent.sourceBindingDigest !== root.sourceBinding.bindingDigest
         || !equal(record.envelope.sourceRefs[1], { kind: 'effect_receipt', runId: root.runId, effectId: intent.effectId, receiptId: receipt.modelReceiptRef.receiptId, observedEpoch: producer.epoch })
         || !equal(record.envelope.sourceRefs.slice(2), plan ? audienceSource(root, producer, plan.dependencyPins, snapshot) : [])
-        || producer.inputRefs[0]?.audienceCapture && (!equal(intent.inputRef, producer.inputRefs[0]) || intent.inputHash !== hash(producer.inputRefs[0]))
+        || producer.inputRefs[0]?.audienceCapture && producer.inputRefs[0]?.kind !== 'native_session_delegation'
+            && (!equal(intent.inputRef, producer.inputRefs[0]) || intent.inputHash !== hash(producer.inputRefs[0]))
         || !model || !equal(model.receiptRef, receipt.modelReceiptRef) || receipt.modelPayloadHash !== hash(root.sourceBinding.sourceAuthority === 'project' ? { text, toolCalls: [] } : text)
         || model.observation.dispatchEvidence.reference.resultOutputType !== (root.sourceBinding.sourceAuthority === 'project' ? 'json' : 'text')
         || model.observation.dispatchEvidence.reference.resultPayloadHash !== receipt.modelPayloadHash
         || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId, ...retrievalCompletions.map(item => item.receiptId)]) || settlement.decisionSeq !== receipt.decisionSeq
         || settlement.createdAt !== receipt.createdAt || record.envelope.createdAt !== receipt.createdAt
         || settlement.reasonCode !== 'graph_result_published' || receipt.decisionSeq > root.eventSeq) invalid();
+    if (root.sourceBinding.sourceAuthority === 'native_session' && root.parentRef) {
+        await readSessionDelegatedModelInput(tx, handle, root, producer, intent, receipt.decisionSeq);
+    } else if (producer.inputRefs[0]?.kind === 'native_session_delegation') {
+        await readSessionDelegationContinuation(tx, handle, root, producer, intent);
+    }
     if (recipient) {
         await assertAttemptConsumable(tx, handle, root, producer);
         const actual = (await readAttempt(tx, handle, root, recipient.attemptId)).doc;
@@ -139,6 +154,20 @@ export async function readGraphNodeResult(tx, handle, root, resultId, { recipien
                     if (joined && joined.joinReceipt.outcome === 'completed' && joined.joinReceipt.acceptedResultRefs.some(ref => equal(ref, receipt.resultRef))
                         && input.joinReceiptRefs?.some(ref => equal(ref, { runId: root.runId, joinId: joined.joinReceipt.joinId }))
                         && joined.joinReceipt.acceptedResultRefs.every(ref => input.acceptedGraphResultRefs.some(actual => equal(actual, ref)))) accepted = true;
+                }
+                if (!accepted) invalid();
+            } else if (root.sourceBinding.sourceAuthority === 'project') {
+                let accepted = false;
+                if (input.fanoutAttemptId) {
+                    await readGraphFanoutInput(tx, handle, root, input.fanoutAttemptId, recipient, receipt.resultRef, { producer, settlement, receipt });
+                    accepted = true;
+                }
+                for (const ref of input.acceptedControlRefs ?? []) {
+                    if (ref.kind !== 'graph_join_control' || ref.runId !== root.runId) continue;
+                    const joined = await readProjectFanoutCompletion(tx, handle, root, ref.attemptId, { recipient });
+                    if (joined && equal(joined.controlRef, ref) && ['completed', 'partial'].includes(joined.joinReceipt.outcome)
+                        && joined.joinReceipt.acceptedResultRefs.some(actual => equal(actual, receipt.resultRef))
+                        && joined.joinReceipt.acceptedResultRefs.every(actual => input.acceptedGraphResultRefs?.some(selected => equal(selected, actual)))) accepted = true;
                 }
                 if (!accepted) invalid();
             } else {

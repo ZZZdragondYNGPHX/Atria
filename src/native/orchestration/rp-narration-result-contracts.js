@@ -51,10 +51,10 @@ export async function readRpNarrationResult(tx, handle, root) {
     if (!root.resultRefs.length) return null;
     if (root.parentRef !== null || root.graph.outputContract.kind !== 'rp_narration' || root.sourceBinding.sourceAuthority !== 'rp_chat'
     ) invalid();
-    const candidates = [], graphResults = [];
+    const candidates = [], graphResults = [], graphResultRefs = [];
     for (const ref of root.resultRefs) {
         if (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', rpNarrationPublicationId(ref.resultId)))) candidates.push(ref);
-        else if (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', graphResultPublicationId(root.runId, ref.resultId)))) graphResults.push(await readGraphNodeResult(tx, handle, root, ref.resultId));
+        else if (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', graphResultPublicationId(root.runId, ref.resultId)))) graphResultRefs.push(ref);
         else invalid();
     }
     if (candidates.length !== 1) invalid();
@@ -107,10 +107,14 @@ export async function readRpNarrationResult(tx, handle, root) {
     if (input.controlGraph) {
         if (partial) invalid();
         const history = await readRpControlGraphHistory(tx, handle, root, { record, receipt, settlement, producer });
-        return { record, receipt, settlement, producer, ...history, reviewCompletions: [], judgeCompletion: null, fanout: null,
+        return { record, receipt, settlement, producer, ...history, judgeCompletion: null, fanout: null,
             retrievalCompletions: [...history.graphResults.flatMap(item => item.retrievalCompletions),
-                ...history.plannerCompletions.flatMap(item => item.retrievalCompletions), ...retrievalCompletions] };
+                ...history.plannerCompletions.flatMap(item => item.retrievalCompletions), ...history.reviewCompletions.flatMap(item => item.retrievalCompletions),
+                ...history.judgeCompletions.flatMap(item => item.retrievalCompletions), ...retrievalCompletions] };
     }
+    // The generic history above already verifies every Result and the exact
+    // root.resultRefs list. Legacy consumers perform that full proof here.
+    for (const ref of graphResultRefs) graphResults.push(await readGraphNodeResult(tx, handle, root, ref.resultId));
     if (producer.inputRefs[0]?.kind === 'native_rp_delegation') {
         if (producer.inputRefs.length !== 1 || input.parentInputDigest !== producer.inputDigest || !input.acceptedResultRef || !input.returnReceiptRef) invalid();
         const returned = await readHandoffReturn(tx, handle, root, input.acceptedResultRef.runId);

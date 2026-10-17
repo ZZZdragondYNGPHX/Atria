@@ -26,7 +26,7 @@ describe.each(CONTRACT_HARNESSES)('$name explicit Fanout control frames', ({ mak
     const read = async (type, recordId) => h.engine.withTransaction(h.handle, tx => tx.getResource(controlRecordKey(h.handle, runId, type, recordId)));
     beforeEach(async () => { h = await make(); await prepareControllerOwnerRoot(h.dirs.root); revoked = false; });
     afterEach(async () => { await h?.engine.close(); await h?.cleanup(); });
-    async function setup({ failurePolicy = 'continue', maxEdgeVisits = 30, nested = false, withEffect = false, maxConcurrency = 10 } = {}) {
+    async function setup({ failurePolicy = 'continue', maxEdgeVisits = 30, nested = false, withEffect = false, maxConcurrency = 10, joinStrategy = 'all-success' } = {}) {
         const lifecycle = attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
         const authorize = async () => {}, assertWriter = (handle, tx) => lifecycle.assertWriter(handle, tx);
         const plans = new PlanRepository({ engine: h.engine, authorize, assertWriter, validateDependencies: async () => ({ status: 'valid', issues: [], dependencyDigest: hashNativeDocument([]) }) });
@@ -36,7 +36,7 @@ describe.each(CONTRACT_HARNESSES)('$name explicit Fanout control frames', ({ mak
         fixture.definition.nodes = [
             { nodeId: nodes.fanout, kind: 'fanout', label: 'Fanout', inputs: [], outputs: [port('next')], dependencyPinIds: [], capabilities: [], policy: { maxConcurrency: 1, failurePolicy } },
             ...[nodes.entry, nodes.middle, nodes.final, nodes.other].map(wait),
-            { nodeId: nodes.join, kind: 'join', label: 'Join', inputs: [port('in')], outputs: [port('next')], dependencyPinIds: [], capabilities: [], policy: { strategy: 'all-success', quorum: 1, deadlineMs: 10000 } },
+            { nodeId: nodes.join, kind: 'join', label: 'Join', inputs: [port('in')], outputs: [port('next')], dependencyPinIds: [], capabilities: [], policy: { strategy: joinStrategy, quorum: 1, deadlineMs: 10000 } },
             { ...output, inputs: [port('in')] },
         ];
         if (nested) {
@@ -143,6 +143,26 @@ describe.each(CONTRACT_HARNESSES)('$name explicit Fanout control frames', ({ mak
         await setup({ maxConcurrency: 1 }); expect((await freeze()).outcome.fanoutFrame.maxConcurrency).toBe(1);
         await activate(entries[0]);
         await expect(activate(entries[1])).rejects.toMatchObject({ code: 'native_orchestration_limit_exhausted' });
+    });
+
+    test.each([false, true])('Join exclusion cancels an unsent nonterminal only when every shared scope is excluded=%s', async overlapping => {
+        await setup({ joinStrategy: 'any-success' });
+        if (overlapping) branches[1].scopeNodeIds.push(nodes.entry);
+        await freeze();
+        const frozen = await joins.freeze(h.handle, { ...runGuard(await current()), fanoutAttemptId: fanout, nodeAttemptId: joinAttempt,
+            memberAttemptIds: [final, entries[1]] });
+        await activate(entries[1]); await settle(entries[1]);
+        const decided = await joins.settle(h.handle, { ...runGuard(await current()), joinId: frozen.outcome.joinBarrier.joinId });
+        expect(decided.outcome.joinReceipt.excluded.map(item => item.nodeAttemptId)).toContain(final);
+        attempts.authorizePendingCancellation = async () => {};
+        const cancel = async () => attempts.cancelPending(h.handle, { ...runGuard(await current()),
+            fanoutAttemptId: fanout, failedAttemptId: null, joinId: decided.outcome.joinReceipt.joinId, attemptId: entries[0] });
+        const result = await cancel().then(value => ({ value }), error => ({ error }));
+        expect(result.error?.code ?? null).toBe(overlapping ? 'native_orchestration_fanout_cancellation_denied' : null);
+        expect(result.value?.outcome.attemptReceipt.outcome ?? null).toBe(overlapping ? null : 'cancelled');
+        expect(result.value?.outcome.attemptReceipt.reasonCode ?? null).toBe(overlapping ? null : 'join_member_excluded');
+        expect((await read('attempt', entries[0])).doc.status).toBe(overlapping ? 'pending' : 'cancelled');
+        expect((await read('attempt', entries[0])).doc.effectRefs).toEqual([]);
     });
 
     test('membership follows multi-step dependencies without allocating a second queue or losing its ceiling', async () => {

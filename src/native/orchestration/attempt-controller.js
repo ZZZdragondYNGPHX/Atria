@@ -6,7 +6,7 @@ import { controlCommandId, controlRecordKey, graphReachable, holdsConcurrencySlo
 import { checkedRecord } from './plan-repository.js';
 import { readEffect } from './effect-contracts.js';
 import { assertResultRefs, writeAttemptSettlement, readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
-import { assertFanoutAdmission, readFanoutFrame } from './fanout-controller.js';
+import { assertFanoutAdmission, readFanoutFrame, isFanoutBranchExcluded } from './fanout-controller.js';
 import { assertRunTreeConcurrency } from './run-repository.js';
 
 export class AttemptController {
@@ -48,7 +48,7 @@ export class AttemptController {
                     || join.decisionSeq > root.eventSeq || !['completed', 'partial', 'failed'].includes(join.outcome)
                     || barrier.fanoutAttemptId !== fanoutAttemptId || barrier.sourceBindingDigest !== root.sourceBinding.bindingDigest
                     || hashNativeDocument(barrier.fanoutFrameRef) !== hashNativeDocument({ receiptId: frame.receiptId, integrity: hashNativeDocument(frame) })
-                    || !join.memberAttemptIds.includes(attemptId) || !join.excluded.some(item => item.nodeAttemptId === attemptId))
+                    || !isFanoutBranchExcluded(frame, barrier, join, attempt))
                     throw new ConflictError('native_orchestration_fanout_cancellation_denied');
             }
             const stamp = hashNativeDocument(root), request = { handle, tx, root, frame, failed, failure, join, attempt };

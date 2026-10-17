@@ -108,7 +108,9 @@ function assertSources(refs, envelope) {
     if (refs.length === 3) {
         const context = refs[2];
         assertObject(context, ['kind', 'pinId', 'sourceRef', 'integrity'], 'Result Information source');
-        if (context.kind !== 'native_information_context' || envelope.audienceConstraint?.kind !== 'graph_nodes') fail('Information source requires a graph recipient');
+        if (context.kind !== 'native_information_context' || envelope.audienceConstraint?.kind !== 'graph_nodes'
+            && !(refs[0]?.sourceAuthority === 'native_session' && envelope.audienceConstraint?.kind === 'parent_attempt'
+                && envelope.audienceConstraint.taskPurpose === 'original_native_session_delegation')) fail('Information source requires an original scoped recipient');
         assertToken(context.pinId, 'Information pin'); assertDigest(context.integrity, 'Information integrity');
         const ref = context.sourceRef;
         assertObject(ref, ['kind', 'sessionId', 'branchId', 'revisionId', 'audience'], 'Information source reference');
@@ -124,7 +126,9 @@ function assertSources(refs, envelope) {
         assertObject(source.sourceRef, ['sessionId', 'branchId', 'revisionId'], 'Result Session source');
         for (const [field, kind] of [['sessionId', 'session'], ['branchId', 'branch'], ['revisionId', 'revision']]) assertNativeId(source.sourceRef[field], kind);
         if (!['session_output', 'session_task', 'session_tool'].includes(envelope.audienceConstraint?.kind)
-            && !(envelope.audienceConstraint?.kind === 'graph_nodes' && envelope.audienceConstraint.taskPurpose === 'original_native_graph_result')) fail('Session source recipient');
+            && !(envelope.audienceConstraint?.kind === 'graph_nodes' && envelope.audienceConstraint.taskPurpose === 'original_native_graph_result')
+            && !(envelope.audienceConstraint?.kind === 'parent_attempt' && envelope.audienceConstraint.taskPurpose === 'original_native_session_delegation'
+                && refs.length === 3 && refs[2].sourceRef.audience.kind === 'actor')) fail('Session source recipient');
     } else if (source.sourceAuthority === 'rp_chat') {
         assertObject(source.sourceRef, ['controlId', 'prefixDigest'], 'Result RP source');
         assertNativeId(source.sourceRef.controlId, 'rpControl'); assertDigest(source.sourceRef.prefixDigest, 'prefixDigest');

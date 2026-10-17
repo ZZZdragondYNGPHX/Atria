@@ -27,6 +27,17 @@ const build = f => graphNodeResult({ ...f, now: 100 });
 // Pure data contracts only; a fixture proof is not accepted by ModelPort and
 // these functions do not publish, disclose payloads, send or authorize a recipient.
 describe('same-source RP graph Result data contracts', () => {
+    test('an exact Audience pin cannot label another Audience input as its own provenance', () => {
+        const f = fixture(), audience = { kind: 'actor', id: 'source-actor' };
+        const pin = { pinId: 'actor.context', port: 'context', integrity: hash('original-exact-view'), resourceRef: {
+            kind: 'native_information_context', sessionId: createNativeId('session'), branchId: createNativeId('branch'), revisionId: createNativeId('revision'), audience,
+        } };
+        Object.assign(f.root.graph.nodes[0], { policy: { audiencePinId: pin.pinId }, dependencyPinIds: [pin.pinId] });
+        f.producer.inputRefs = [{ audience }];
+        expect(graphNodeResult({ ...f, dependencyPins: [pin], now: 100 }).envelope.sourceRefs[2].sourceRef.audience).toEqual(audience);
+        f.producer.inputRefs[0].audience = { kind: 'narrator' };
+        expect(() => graphNodeResult({ ...f, dependencyPins: [pin], now: 100 })).toThrow('native_orchestration_context_audience_denied');
+    });
     test.each(['text', 'json'])('%s retains exact original generation and only canonical direct successor identities', outputType => {
         const f = fixture(outputType), result = build(f), contract = graphResultContract(f.root, f.producer);
         expect(result.envelope.audienceConstraint).toMatchObject({ kind: 'graph_nodes', runId: f.root.runId, nodeIds: [f.b, f.c].sort(), epoch: 3,

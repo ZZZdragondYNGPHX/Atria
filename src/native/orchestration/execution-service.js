@@ -26,7 +26,12 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
     const review = getNativeReviewOrigin(engine);
     const runs = new RunRepository({ engine, projectAgent, assertWriter: (handle, tx) => lifecycle.assertWriter(handle, tx),
         authorize: async ({ handle }) => { if (typeof handle !== 'string' || !handle) throw new TypeError('Authenticated owner is required'); },
-        admit: ({ handle, tx, sourceRequest }) => sourcePort.capture(handle, sourceRequest, { tx }) });
+        admit: ({ handle, tx, sourceRequest }) => sourcePort.capture(handle, sourceRequest, { tx }),
+        authorizeChildAttempt: async args => {
+            await sourcePort.revalidate(args.handle, args.root.sourceBinding, { tx: args.tx, root: args.root });
+            if (typeof effectAuthority.authorizeChildAttempt !== 'function') fail('native_orchestration_child_authority_invalid');
+            return effectAuthority.authorizeChildAttempt(args);
+        } });
     let contextRetrieval;
     const effects = new EffectController({ runs,
         authorizeEffect: async args => {

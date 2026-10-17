@@ -8,8 +8,9 @@ import { readModelCompletionReceipt } from './model-port.js';
 import { readProjectToolReceipt, readOriginalProjectTask } from './project-tool-receipts.js';
 import { assertBudgetAuthorityRef, assertBudgetAttemptRef, sendAttemptId } from './budget-port.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
+import { assertOutputTransition } from './output-transition-contracts.js';
 import { assertProjectQualityRound } from './project-quality-contracts.js';
-import { assertProjectControlRound } from './project-control-input-contracts.js';
+import { assertProjectControlRound, readProjectControlInputs } from './project-control-input-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw Object.assign(new TypeError('native_orchestration_project_round_receipt_invalid'), { code: 'native_orchestration_project_round_receipt_invalid' }); };
@@ -79,7 +80,28 @@ export async function readProjectRoundReceipt(tx, handle, root, nodeAttemptId, {
             || prior.receipt.toFingerprint !== receipt.fromFingerprint || previous.status !== 'completed'
             || nodeAttempt.attemptNumber !== nodeRounds.length + 1) invalid();
         const settlement = await readAttemptSettlement(tx, handle, root, previous);
-        const bindings = [{ edgeId: loop.edgeId, producerAttemptId: previous.attemptId }], identity = hash({ runId: root.runId, bindings, reservedAttemptId: null });
+        const target = root.graph.nodes.find(node => node.nodeId === nodeAttempt.nodeId), bundle = model.inputRef.controlGraph;
+        const requiredBindings = bundle ? bundle.bindings.filter(binding => {
+            const incoming = root.graph.edges.find(candidate => candidate.edgeId === binding.edgeId);
+            return incoming?.to.nodeId === target.nodeId && target.inputs.some(port => port.required && port.name === incoming.to.port);
+        }) : [];
+        if (requiredBindings.length && !equal(bundle, previous.inputRefs[0].controlGraph)) invalid();
+        const bindings = [...requiredBindings, { edgeId: loop.edgeId, producerAttemptId: previous.attemptId }].sort((a, b) => a.edgeId.localeCompare(b.edgeId));
+        const identity = hash({ runId: root.runId, bindings, reservedAttemptId: null });
+        const sources = [{ producer: previous, settlement, receipt: { decisionSeq: settlement.decisionSeq } }];
+        if (requiredBindings.length) {
+            const facts = await readProjectControlInputs(tx, handle, root, null, bundle, { targetNodeId: target.nodeId });
+            for (const binding of requiredBindings) {
+                const source = facts.find(fact => fact.producer.attemptId === binding.producerAttemptId);
+                if (!source) invalid();
+                if (!sources.some(fact => fact.producer.attemptId === source.producer.attemptId)) sources.push(source);
+            }
+            await assertOutputTransition(tx, handle, root, { published: sources[0], additionalProducers: sources.slice(1), output: nodeAttempt,
+                producerBindings: bindings, allowLoopBack: true, receipt: { decisionSeq: root.eventSeq + 1,
+                    traversalReceiptRef: { runId: root.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } } });
+        }
+        const producerReceiptRefs = bindings.map(binding => sources.find(source => source.producer.attemptId === binding.producerAttemptId).settlement.receiptId);
+        const edgeAdmissionRefs = bindings.map(binding => 'oreceipt_' + hash({ kind: 'edge_admission', runId: root.runId, ...binding, nodeAttemptId }).slice(0, 32));
         const traversalId = 'oreceipt_' + identity.slice(0, 32), traversal = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', traversalId)))?.doc;
         const transfer = { edgeId: loop.edgeId, producerAttemptId: previous.attemptId, nodeAttemptId },
             edgeReceiptId = 'oreceipt_' + hash({ kind: 'edge_admission', runId: root.runId, ...transfer }).slice(0, 32);
@@ -96,7 +118,7 @@ export async function readProjectRoundReceipt(tx, handle, root, nodeAttemptId, {
         if (nodeAttemptId !== 'oattempt_' + identity.slice(0, 32) || settlement.reasonCode !== 'project_round_ready' || !traversal
             || traversal.receiptKind !== 'graph_transition' || traversal.runId !== root.runId || traversal.nodeAttemptId !== nodeAttemptId
             || traversal.inputDigest !== nodeAttempt.inputDigest || !equal(traversal.bindings, bindings)
-            || !equal(traversal.producerReceiptRefs, [settlement.receiptId]) || !equal(traversal.edgeAdmissionRefs, [edgeReceiptId])
+            || !equal(traversal.producerReceiptRefs, producerReceiptRefs) || !equal(traversal.edgeAdmissionRefs, edgeAdmissionRefs)
             || !edge || edge.receiptKind !== 'edge_admission' || edge.runId !== root.runId || edge.receiptId !== edgeReceiptId
             || Object.entries(transfer).some(([key, value]) => edge[key] !== value) || edge.sourceBindingDigest !== receipt.sourceBindingDigest
             || edge.edgeVisit !== (loop.loopBack ? nodeAttempt.attemptNumber - 1 : 1)

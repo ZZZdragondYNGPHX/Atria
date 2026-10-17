@@ -1,3 +1,4 @@
+import { readSessionDelegationContinuation } from './session-delegation-contracts.js';
 import { assertObject, assertCounter, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertNativeId } from '../identity.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
@@ -142,6 +143,7 @@ export async function readSessionOutput(tx, handle, root) {
         if (attempt.nodeId !== output.nodeId && attempt.nodeId !== published.producer.nodeId) {
             const graphResult = published.graphResults.find(result => result.producer.attemptId === attempt.attemptId);
             const reviewed = published.reviewCompletions.find(result => result.producer.attemptId === attempt.attemptId);
+            const planned = published.plannerCompletions.find(result => result.producer.attemptId === attempt.attemptId);
             const resolverInput = attempt.inputRefs[0];
             const control = published.fanoutCompletions.find(item => [item.producer.attemptId, item.fanout.attemptId].includes(attempt.attemptId));
             if (control) {
@@ -149,14 +151,19 @@ export async function readSessionOutput(tx, handle, root) {
             } else if (fanoutMember && attempt.status !== 'completed') {
                 if (!equal(fanoutMember.attempt, attempt) || (fanoutMember.receipt ? !equal(fanoutMember.receipt, settled)
                     : settled.decisionSeq <= fanoutGroup.joinReceipt.cutoffSeq)) invalid();
+            } else if (planned) {
+                if (settled.reasonCode !== 'graph_planner_patch_accepted') invalid();
             } else if (reviewed) {
                 if (settled.reasonCode !== 'session_graph_review_decided') invalid();
             } else if (graphResult) {
                 const newer = published.graphResults.some(result => result.producer.nodeId === attempt.nodeId && result.producer.attemptNumber > attempt.attemptNumber);
                 if (newer && !await readAttemptInvalidation(tx, handle, root, attempt)) invalid();
-                if (resolverInput.kind !== 'native_turn_intent' || resolverInput.role !== 'narrator' || resolverInput.nodeId !== attempt.nodeId
-                    || !equal(resolverInput.planRef, root.planRef) || resolverInput.invocationId !== expected.invocationId || resolverInput.requestHash !== expected.requestHash
-                    || resolverInput.grantDigest !== attempt.effectiveGrantDigest || settled.reasonCode !== 'graph_result_published') invalid();
+                const modelEffect = (await readEffect(tx, handle, root, graphResult.receipt.modelEffectId)).doc;
+                const modelInput = resolverInput.kind === 'native_session_delegation' ? modelEffect.inputRef : resolverInput;
+                if (resolverInput.kind === 'native_session_delegation') await readSessionDelegationContinuation(tx, handle, root, attempt, modelEffect);
+                if (modelInput.kind !== 'native_turn_intent' || modelInput.role !== 'narrator' || modelInput.nodeId !== attempt.nodeId
+                    || !equal(modelInput.planRef, root.planRef) || modelInput.invocationId !== expected.invocationId || modelInput.requestHash !== expected.requestHash
+                    || modelInput.grantDigest !== attempt.effectiveGrantDigest || settled.reasonCode !== 'graph_result_published') invalid();
             } else {
                 if (root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind !== 'agent' || attempt.inputRefs.length !== 1
                 || attempt.inputDigest !== hash(attempt.inputRefs) || !equal(resolverInput.planRef, root.planRef)) invalid();

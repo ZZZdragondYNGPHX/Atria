@@ -19,6 +19,8 @@ test('original Scheduler yields all capacity to a same-resource child and restor
             expect(scheduler.suspended.size).toBe(1);
             expect(scheduler.project(expected.owner, boundary.operationId).status).toBe('waiting_child');
             expect(() => scheduler.assertActiveBoundary(boundary, expected)).toThrow(/boundary_denied/);
+            expect(scheduler.assertFanoutControlBoundary(boundary, expected).operationId).toBe(boundary.operationId);
+            expect(() => scheduler.assertFanoutControlBoundary(boundary, { ...expected, fingerprint: 'forged' })).toThrow(/boundary_denied/);
             boundary.onChunk({ text: 'No suspended stream' });
             expect(scheduler.project(expected.owner, boundary.operationId).status).toBe('waiting_child');
             expect(childBoundary.signal.aborted).toBe(false);

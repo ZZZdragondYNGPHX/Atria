@@ -51,6 +51,12 @@ export class NativeTaskScheduler {
         return assertOperationFrame(this, boundary, boundaries.get(boundary), expected, ['running', 'streaming']);
     }
 
+    /** Read-only parent control witness while an original Fanout is active.
+     * This method cannot prove a Model send; that needs an actual child. */
+    assertFanoutControlBoundary(boundary, expected) {
+        return assertOperationFrame(this, boundary, boundaries.get(boundary), expected, ['waiting_child', 'running', 'streaming'], true);
+    }
+
     /** Read-only lineage proof for an actually admitted original fanout child.
      * A suspended parent alone cannot authorize a model send. */
     assertFanoutChildBoundary(parentBoundary, parentExpected, childBoundary, childExpected) {

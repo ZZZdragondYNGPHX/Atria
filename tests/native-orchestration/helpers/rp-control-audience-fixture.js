@@ -28,7 +28,7 @@ export async function seedControlActorAudiences(plan, env) {
     await write('beliefs', 'b', { actor: actorB, text: 'B PRIVATE RUMOR', status: 'believed', channel: 'rumor' });
     await write('memories', 'a', { actor: actorA, text: 'NARRATOR ONLY MEMORY' });
     const terminal = plan.definition.edges.find(edge => edge.to.nodeId === plan.definition.outputContract.ownerNodeId).from.nodeId;
-    const nodes = plan.definition.nodes.filter(node => ['agent', 'planner', 'judge'].includes(node.kind)), refs = [];
+    const nodes = plan.definition.nodes.filter(node => ['agent', 'planner', 'judge', 'review'].includes(node.kind)), refs = [];
     let draft = 0;
     for (const [index, node] of nodes.entries()) {
         const audience = node.nodeId === terminal ? { kind: 'narrator' }

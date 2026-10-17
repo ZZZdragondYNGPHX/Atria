@@ -5,7 +5,6 @@ import { NativeNarratorOrchestrationAuthority } from './native-turn-orchestratio
 import { ModelPort } from './model-port.js';
 import { SourcePort } from './source-port.js';
 import { RunRepository, assertChildRunCurrent } from './run-repository.js';
-import { inspectNativeRpDelegationIdentity, inspectNativeRpDelegation } from './native-rp-generation.js';
 import { hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { controlCommandId, controlRecordKey, readAttempt, runGuard } from './controller-common.js';
@@ -18,6 +17,7 @@ import { graphNodeResult, readGraphNodeResult, graphResultPublicationId } from '
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readPlanRevision } from './plan-repository.js';
+import { readSessionDelegatedGraphHistory, sessionDelegationResultSources } from './session-delegation-contracts.js';
 
 const fail = code => { throw new ConflictError(code); };
 const equal = (a, b) => hash(a) === hash(b);
@@ -43,9 +43,10 @@ export class ResultController {
 
     async #preflight(handle, tx, capture, result, effectId) {
         const { runs, sourcePort, delegates } = this.execution;
-        const before = await inspectNativeRpDelegation(capture, { host: this.host, handle, tx });
+        const before = await NativeNarratorOrchestrationAuthority.prototype.inspectDelegation.call(this.host.turnOrchestration, capture, { host: this.host, handle, tx });
         const rootStamp = hash(before.root), parentStamp = hash(before.parentRoot);
-        if (before.root.parentRef?.parentRunId !== before.parentRunId || before.parentRoot.parentRef !== null) fail('native_orchestration_result_publication_stale');
+        if (before.root.parentRef?.parentRunId !== before.parentRunId
+            || before.root.sourceBinding.sourceAuthority === 'rp_chat' && before.parentRoot.parentRef !== null) fail('native_orchestration_result_publication_stale');
         const childPlan = await this.host.turnOrchestration.plans.getRevision(handle, before.childPlanRef);
         const scope = { handle, tx, parent: before.parentRoot, parentAttempt: before.parentAttempt, childPlan,
             inputRefs: before.inputRefs, effectiveGrantDigest: before.grantDigest, budgetCeiling: before.root.parentRef.budgetCeiling, phase: 'confirm_budget' };
@@ -54,7 +55,7 @@ export class ResultController {
         if (proof.runId !== before.childRunId || proof.epoch !== before.childEpoch || proof.outputType !== 'text'
             || !equal(proof.sourceBinding, before.sourceBinding)) fail('native_orchestration_result_publication_stale');
         await SourcePort.prototype.revalidate.call(sourcePort, handle, before.sourceBinding, { tx });
-        const current = await inspectNativeRpDelegation(capture, { host: this.host, handle, tx });
+        const current = await NativeNarratorOrchestrationAuthority.prototype.inspectDelegation.call(this.host.turnOrchestration, capture, { host: this.host, handle, tx });
         const fence = await runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
         await assertChildRunCurrent(tx, handle, current.root);
         const finalRoot = await runs.get(handle, before.childRunId), finalParent = await runs.get(handle, before.parentRunId);
@@ -62,13 +63,17 @@ export class ResultController {
             || fence.hostBootId !== finalRoot.hostBootId || fence.generation !== finalRoot.hostGeneration) fail('native_orchestration_result_publication_stale');
         const payload = result.generated?.response?.text;
         if (typeof payload !== 'string' || hash(payload) !== proof.payloadHash) fail('native_orchestration_model_result_payload_changed');
-        return { identity: current, root: finalRoot, proof, payload };
+        if (finalRoot.sourceBinding.sourceAuthority === 'native_session') {
+            const producer = (await readAttempt(tx, handle, finalRoot, proof.producerAttemptId)).doc;
+            await readSessionDelegatedGraphHistory(tx, handle, finalRoot, { pendingProducer: producer });
+        }
+        return { identity: current, root: finalRoot, proof, payload, childPlan };
     }
 
     async publishModelResult(handle, request) {
         fields(request, ['capture', 'result', 'effectId'], 'Model Result publication');
         const { capture, result, effectId } = request, { runs, sourcePort } = this.execution;
-        const identity = inspectNativeRpDelegationIdentity(capture, { host: this.host, handle });
+        const identity = NativeNarratorOrchestrationAuthority.prototype.inspectDelegationIdentity.call(this.host.turnOrchestration, capture, { host: this.host, handle });
         const runId = identity.childRunId, resultId = modelResultId(runId, effectId);
         const withAuthority = SourcePort.prototype.consumptionBoundary.call(sourcePort, handle, identity.sourceBinding, { engine: runs.engine });
         let envelope;
@@ -83,12 +88,12 @@ export class ResultController {
                     // No catch-and-commit after this boundary. All Result,
                     // settlement, Run, ancestor, event and command writes share
                     // this original Engine transaction and its rollback.
-                    const { root, proof, payload, identity: current } = checked;
+                    const { root, proof, payload, childPlan, identity: current } = checked;
                     const saved = await runs.control(handle, controlCommandId('result.publish', { runId, effectId }), {
                         ...runGuard(root), operation: 'result.publish', detail: { effectId, resultId } }, async ({ tx, root, now }) => {
                         if (hash(root) !== hash(checked.root) || root.cancelRequested || root.status !== 'running') fail('native_orchestration_result_publication_stale');
                         const record = await readAttempt(tx, handle, root, proof.producerAttemptId), intent = (await readEffect(tx, handle, root, effectId)).doc;
-                        if (root.resultRefs.length || root.outputClaims.length || record.doc.status !== 'running' || record.doc.epoch !== root.epoch || !equal(record.doc.effectRefs, [effectId])
+                        if (root.sourceBinding.sourceAuthority === 'rp_chat' && root.resultRefs.length || root.outputClaims.length || record.doc.status !== 'running' || record.doc.epoch !== root.epoch || !equal(record.doc.effectRefs, [effectId])
                             || record.doc.resultRefs.length || intent.status !== 'confirmed' || root.pendingEffectRefs.includes(effectId)
                             || intent.nodeAttemptId !== record.doc.attemptId || intent.grantDigest !== current.grantDigest
                             || root.progress.steps >= root.limits.maxSteps || now >= root.progress.deadlineAt) fail('native_orchestration_result_not_publishable');
@@ -99,8 +104,10 @@ export class ResultController {
                             outputSchemaRef: { kind: 'native_builtin', schema: 'text' },
                             payloadRef: { kind: 'orchestration_result_payload', runId, resultId, integrity: proof.payloadHash },
                             sourceRefs: [{ kind: 'run_source', runId, epoch: root.epoch, sourceBindingDigest: root.sourceBinding.bindingDigest,
-                                sourceAuthority: 'rp_chat', sourceRef: root.sourceBinding.sourceRef },
-                            { kind: 'effect_receipt', runId, effectId, receiptId: proof.receiptRef.receiptId, observedEpoch: root.epoch }],
+                                sourceAuthority: root.sourceBinding.sourceAuthority, sourceRef: root.sourceBinding.sourceRef },
+                            { kind: 'effect_receipt', runId, effectId, receiptId: proof.receiptRef.receiptId, observedEpoch: root.epoch },
+                            ...(root.sourceBinding.sourceAuthority === 'native_session'
+                                ? sessionDelegationResultSources(root, record.doc, childPlan) : [])],
                             dependencyDigest: '', audienceConstraint: audience, disclosureConstraint: { kind: 'same_source_parent_only' },
                             qualityRefs: [], status: 'complete', createdAt: now };
                         resultEnvelope.dependencyDigest = resultDependencyDigest(resultEnvelope);

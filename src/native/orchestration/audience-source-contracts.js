@@ -67,7 +67,7 @@ export async function readAudiencePin(handle, node, pins, core) {
  * snapshot is shared; every Actor still gets its own Information admission.
  * No snapshot or authorization is reused at a later asynchronous boundary. */
 export async function readAudiencePins(handle, nodes, pins, core) {
-    const snapshots = new Map(), selected = [];
+    const snapshots = new Map(), projections = new Map(), selected = [];
     for (const node of nodes) {
         const pin = audienceContextPin(node, pins);
         if (!pin) { if (node.policy.audiencePinId !== undefined) fail(); selected.push(null); continue; }
@@ -76,10 +76,16 @@ export async function readAudiencePins(handle, nodes, pins, core) {
         if (!snapshots.has(pin.resourceRef.sessionId)) {
             snapshots.set(pin.resourceRef.sessionId, await readSnapshot(handle, pin.resourceRef.sessionId, core));
         }
-        const source = projectAudienceSource(pin.resourceRef, snapshots.get(pin.resourceRef.sessionId));
-        if (hash(source.policyDescriptor) !== pin.integrity) fail();
+        const projectionKey = hash(pin.resourceRef);
+        if (!projections.has(projectionKey)) {
+            const source = projectAudienceSource(pin.resourceRef, snapshots.get(pin.resourceRef.sessionId));
+            projections.set(projectionKey, { source, policyIntegrity: hash(source.policyDescriptor),
+                descriptorIntegrity: pin.resourceRef.anchor === 'run_source' ? hash(source.descriptor) : null });
+        }
+        const { source, policyIntegrity, descriptorIntegrity } = projections.get(projectionKey);
+        if (policyIntegrity !== pin.integrity) fail();
         selected.push({ ...source, pin, audience: pin.resourceRef.audience,
-            ...(pin.resourceRef.anchor === 'run_source' ? { capture: audienceRunCapture(pin, source) } : {}) });
+            ...(pin.resourceRef.anchor === 'run_source' ? { capture: captureProvenance(pin, source, descriptorIntegrity) } : {}) });
     }
     return selected;
 }
@@ -95,20 +101,31 @@ export async function audienceResultAccess(handle, producer, recipient, pins, co
     const a = from.actualRef, b = to.actualRef;
     if (a.sessionId !== b.sessionId || a.branchId !== b.branchId || a.revisionId !== b.revisionId) return false;
     const legal = new Set(to.information.projection.items.map(hash));
-    // Knowledge/Memory/Expression have separate source contracts. Until those
-    // proofs are present, an Information subset alone cannot declassify them.
-    if (from.information.knowledge || from.information.memory || from.information.narration?.expression) return false;
+    // Knowledge, Memory, Expression and executable derivations have separate
+    // source contracts. An Information subset alone cannot declassify them.
+    const derivations = from.snapshot.manifest.runtime?.experienceContract?.contextRuntime?.derivations ?? [];
+    if (from.information.knowledge || from.information.memory || from.information.narration?.expression
+        || derivations.some(declaration => declaration.viewId === from.information.projection.viewId)) return false;
     return from.information.projection.items.every(item => legal.has(hash(item)));
 }
 
 /** A durable Run capture is data provenance, never a fresh read grant. */
 export function audienceRunCapture(pin, source) {
+    return captureProvenance(pin, source, hash(source.descriptor));
+}
+
+function captureProvenance(pin, source, integrity) {
     return { pinId: pin.pinId, policyRef: pin.resourceRef, policyIntegrity: pin.integrity,
-        sourceRef: source.actualRef, integrity: hash(source.descriptor) };
+        sourceRef: source.actualRef, integrity };
 }
 
 export function assertAudienceRunCapture(root, node, pins, input) {
     const pin = audienceContextPin(node, pins);
+    if (node?.policy?.audiencePinId !== undefined && !pin) fail();
+    if (pin) {
+        assertAudienceRef(pin.resourceRef);
+        if (!input?.audience || hash(input.audience) !== hash(pin.resourceRef.audience)) fail();
+    }
     if (pin?.resourceRef.anchor !== 'run_source') {
         if (input && Object.hasOwn(input, 'audienceCapture')) fail();
         return null;
