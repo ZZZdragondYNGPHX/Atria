@@ -41,6 +41,16 @@ export function resultDependencyDigest(envelope) {
 }
 
 export function assertResultAudience(value) {
+    if (value?.kind === 'graph_nodes') {
+        assertObject(value, ['kind', 'runId', 'nodeIds', 'epoch', 'sourceBindingDigest', 'grantDigest', 'taskPurpose'], 'Graph Result audience');
+        assertNativeId(value.runId, 'orchestrationRun'); assertCounter(value.epoch, 'recipient epoch');
+        if (!Array.isArray(value.nodeIds) || !value.nodeIds.length || new Set(value.nodeIds).size !== value.nodeIds.length
+            || hash(value.nodeIds) !== hash([...value.nodeIds].sort())) fail('Graph recipients must be unique canonical nodes');
+        for (const id of value.nodeIds) assertNativeId(id, 'orchestrationNode');
+        for (const field of ['sourceBindingDigest', 'grantDigest']) assertDigest(value[field], field);
+        if (value.taskPurpose !== 'original_rp_graph_result') fail('Graph Result purpose');
+        return value;
+    }
     if (value?.kind === 'session_task') {
         assertObject(value, ['kind', 'runId', 'nodeId', 'epoch', 'sessionId', 'branchId', 'revisionId', 'invocationId', 'taskId', 'variantId', 'sourceBindingDigest', 'grantDigest', 'taskPurpose'], 'Task Result audience');
         for (const [field, kind] of [['runId', 'orchestrationRun'], ['nodeId', 'orchestrationNode'], ['sessionId', 'session'], ['branchId', 'branch'], ['revisionId', 'revision']]) assertNativeId(value[field], kind);
@@ -134,6 +144,9 @@ export function assertResultEnvelope(envelope, { policy, expected = {} }) {
     assertObject(envelope.disclosureConstraint, ['kind'], 'Result disclosure');
     if (audience.kind === 'parent_attempt') {
         if (audience.parentRunId === envelope.runId || envelope.disclosureConstraint.kind !== 'same_source_parent_only') fail('parent disclosure scope');
+    } else if (audience.kind === 'graph_nodes') {
+        if (audience.runId !== envelope.runId || audience.epoch !== source.epoch || source.sourceAuthority !== 'rp_chat'
+            || envelope.disclosureConstraint.kind !== 'same_source_graph_successors_only') fail('Graph Result disclosure scope');
     } else if (audience.kind === 'session_task') {
         if (audience.runId !== envelope.runId || audience.epoch !== source.epoch || source.sourceAuthority !== 'native_session'
             || !['sessionId', 'branchId', 'revisionId'].every(field => audience[field] === source.sourceRef[field])
@@ -173,7 +186,7 @@ export function assertResultRecord(record, { outputContract, expected = {} }) {
         ? !['rp_output', 'session_output'].includes(record.envelope.audienceConstraint.kind) || record.envelope.audienceConstraint.nodeId !== outputContract.ownerNodeId
         : outputContract.kind === 'project_review' ? record.envelope.audienceConstraint.kind !== 'project_review'
             || record.envelope.audienceConstraint.nodeId !== outputContract.ownerNodeId
-            : !['parent_attempt', 'session_task'].includes(record.envelope.audienceConstraint.kind)
+            : !['parent_attempt', 'session_task', 'graph_nodes'].includes(record.envelope.audienceConstraint.kind)
                 || record.envelope.audienceConstraint.kind === 'session_task' && (policy.outputType !== 'json'
                     || record.envelope.audienceConstraint.nodeId !== outputContract.ownerNodeId)) fail('audience differs from OutputContract');
     if (record.runId !== record.envelope.runId || record.resultId !== record.envelope.resultId) fail('record identity');
