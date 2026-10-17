@@ -685,12 +685,14 @@ export class ProjectAgentService {
         return this._operate(handle, projectId, id, task => releaseComputeChild(task, reservationId), { effectPolicy: 'no-background-model' });
     }
 
-    observeCompute(handle, projectId, id, attemptId) {
-        return this._observe(handle, projectId, id, task => {
-            const compute = task.compute?.attempts.find(row => row.attemptId === attemptId);
-            if (!compute) throw new ConflictError('native_generation_attempt_conflict');
-            return clone({ compute, limits: task.compute.limits });
-        });
+    // Historical paid-work facts are also read while the original Source
+    // boundary holds the Studio queue. Do not re-enter its writer/cache path.
+    async observeCompute(handle, projectId, id, attemptId) {
+        const stored = await this._repository.get(handle, projectId, id);
+        if (!stored) throw new NotFoundError('native project agent task', { projectId, taskId: id });
+        const task = assertProjectTask(stored), compute = task.compute?.attempts.find(row => row.attemptId === attemptId);
+        if (!compute) throw new ConflictError('native_generation_attempt_conflict');
+        return clone({ compute, limits: task.compute.limits });
     }
 
     chargeLocalWork(handle, projectId, id, revision, limits, attempt, executionFingerprint, options = {}) {

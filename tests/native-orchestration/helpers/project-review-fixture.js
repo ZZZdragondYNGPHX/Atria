@@ -2,10 +2,13 @@ import { projectReadFixture, configureProjectToolPlan } from './project-tool-fix
 import { createNativeId } from '../../../src/native/identity.js';
 
 const plan = { summary: 'Prepare an original Project review', steps: [{ id: 'rename', title: 'Rename Project', impact: 'low' }] };
-export const projectReviewFixture = async (make, { unpinned = false, invalid = false, outputContract = false, configurePlan = async () => {}, responseStatus = 200, responseOffset = 0, missingUsage = false } = {}) => {
+export const projectReviewFixture = async (make, { unpinned = false, invalid = false, outputContract = false, configureSource = async () => {}, proposeSource = null,
+    configurePlan = async () => {}, responseStatus = 200, responseOffset = 0, missingUsage = false } = {}) => {
     let original;
-    return projectReadFixture(make, { maxModelRounds: 3, configurePlan: async args => {
-        original = structuredClone(args.original); original.project.displayName = 'Proposed Native Project name';
+    return projectReadFixture(make, { maxModelRounds: 3, configureSource, configurePlan: async args => {
+        original = structuredClone((await args.host.studio.observeProject(args.h.handle, args.task.projectId)).source);
+        if (proposeSource) await proposeSource(original);
+        else original.project.displayName = 'Proposed Native Project name';
         if (invalid) original.package.entryPoints = [];
         if (outputContract) Object.assign(args.plan.definition.outputContract, { kind: 'project_review', resultPolicy: { outputType: 'json', maxBytes: 16384 } });
         await configureProjectToolPlan(['atri_agent_set_plan', 'atri_agent_project_save', ...unpinned ? [] : ['atri_agent_prepare_review']])(args);

@@ -14,13 +14,44 @@ import { hashNativeDocument as hash } from '../../../src/native/repositories/com
 import { planFixture, prepareControllerOwnerRoot } from '../fixtures.js';
 
 const command = () => createNativeId('orchestrationCommand');
+export async function projectCommitAccount(h) {
+    await storage.init({ dir: path.join(h.dataRoot, 'commit-review-test-accounts') });
+    const salt = getPasswordSalt(), account = { handle: h.handle, enabled: true, admin: false, salt, password: getPasswordHash('project-commit-test-password', salt) };
+    await storage.setItem(toKey(h.handle), account); return account;
+}
+
+export async function publishProjectCommitPlan(h, { agent, studio, task, maxBytes = 16384 }) {
+    const plans = createOrchestrationAuthoringService(h.engine, { projectAgent: agent, studio: studio }).plans;
+    const plan = planFixture(), output = plan.definition.nodes[0], nodeId = createNativeId('orchestrationNode'), pinId = 'project.commit';
+    const ref = { kind: 'native_project_commit', projectId: task.projectId, taskId: task.taskId }, descriptor = await readProjectCommitDescriptor(h.handle, ref, agent);
+    plan.definition.nodes = [{ nodeId, kind: 'effect', label: 'Original user Project Commit', inputs: [], outputs: [{ name: 'result', type: 'json', required: true }],
+        dependencyPinIds: [pinId], capabilities: ['project.commit'], policy: { actionPinId: pinId } }, { ...output, inputs: [{ name: 'result', type: 'json', required: true }] }];
+    plan.definition.edges = [{ edgeId: createNativeId('orchestrationEdge'), from: { nodeId, port: 'result' }, to: { nodeId: output.nodeId, port: 'result' }, condition: 'always', maxVisits: 1, loopBack: false }];
+    plan.definition.entryNodeIds = [nodeId]; plan.definition.capabilityCeiling = ['project.commit']; plan.definition.limits.maxSteps = 100;
+    Object.assign(plan.definition.outputContract, { kind: 'result', resultPolicy: { outputType: 'json', maxBytes } });
+    plan.dependencyPins = [{ pinId, port: 'project', resourceRef: ref, integrity: hash(descriptor) }];
+    const draft = await plans.create(h.handle, command(), plan), expected = { planId: draft.planId, expectedDraftVersion: draft.draftVersion, expectedDefinitionHash: draft.definitionHash };
+    const report = await plans.validate(h.handle, expected);
+    if (report.status !== 'valid') throw new Error('Commit Plan validation failed: ' + JSON.stringify(report.issues));
+    const { planRef } = await plans.publish(h.handle, command(), { ...expected, validationDigest: validationDigest(report) });
+    return { plans, planRef };
+}
+
+export async function approveProjectCommit(h, authority, prepared) {
+    const review = getNativeReviewOrigin(authority.engine), launch = await review.launch(h.handle, { runId: prepared.runId, approvalId: prepared.approvalId }), client = request.agent(review.origin);
+    const bootstrap = await client.get(new URL(launch.url).pathname + new URL(launch.url).search).expect(200);
+    const post = (name, body = {}) => client.post('/review/' + name).set('Origin', review.origin).set('X-Atria-Review-CSRF', bootstrap.body.csrfToken).send(body);
+    await post('reauthenticate', { password: 'project-commit-test-password' }).expect(200);
+    const details = (await post('details').expect(200)).body.outcome;
+    await post('decide', { bindingHash: details.bindingHash, nonce: details.nonce, decision: 'approve' }).expect(200);
+    return details;
+}
+
 export async function projectCommitFixture(make, { maxBytes = 16384, configureSource = () => {}, propose = null, onReviewed = async () => {} } = {}) {
     const h = await make(); let svc, authority, coldEngine;
     try {
         await prepareControllerOwnerRoot(h.dirs.root); attachNativeHostLifecycle(h.engine, { directoriesByHandle: h.directoriesByHandle ?? (() => h.dirs) });
-        await storage.init({ dir: path.join(h.dataRoot, 'commit-review-test-accounts') });
-        const salt = getPasswordSalt(), account = { handle: h.handle, enabled: true, admin: false, salt, password: getPasswordHash('project-commit-test-password', salt) };
-        await storage.setItem(toKey(h.handle), account);
+        const account = await projectCommitAccount(h);
         svc = services(h); const source = projectSource(); await configureSource(source); const projectId = source.project.projectId;
         const created = await svc.studio.createProject(h.handle, source);
         const initial = await svc.agent.createTask(h.handle, projectId, { intent: 'Rename this test Project after trusted approval', baseRevision: created.revision.revision });
@@ -31,19 +62,7 @@ export async function projectCommitFixture(make, { maxBytes = 16384, configureSo
         await svc.agent.executeTool(h.handle, projectId, initial.taskId, { name: 'atri_agent_project_save', args: { source: proposed, stepId: 'rename' } });
         const task = await svc.agent.prepareReview(h.handle, projectId, initial.taskId, {});
         await onReviewed({ h, ...svc, projectId, task });
-        const plans = createOrchestrationAuthoringService(h.engine, { projectAgent: svc.agent, studio: svc.studio }).plans;
-        const plan = planFixture(), output = plan.definition.nodes[0], nodeId = createNativeId('orchestrationNode'), pinId = 'project.commit';
-        const ref = { kind: 'native_project_commit', projectId, taskId: task.taskId }, descriptor = await readProjectCommitDescriptor(h.handle, ref, svc.agent);
-        plan.definition.nodes = [{ nodeId, kind: 'effect', label: 'Original user Project Commit', inputs: [], outputs: [{ name: 'result', type: 'json', required: true }],
-            dependencyPinIds: [pinId], capabilities: ['project.commit'], policy: { actionPinId: pinId } }, { ...output, inputs: [{ name: 'result', type: 'json', required: true }] }];
-        plan.definition.edges = [{ edgeId: createNativeId('orchestrationEdge'), from: { nodeId, port: 'result' }, to: { nodeId: output.nodeId, port: 'result' }, condition: 'always', maxVisits: 1, loopBack: false }];
-        plan.definition.entryNodeIds = [nodeId]; plan.definition.capabilityCeiling = ['project.commit']; plan.definition.limits.maxSteps = 100;
-        Object.assign(plan.definition.outputContract, { kind: 'result', resultPolicy: { outputType: 'json', maxBytes } });
-        plan.dependencyPins = [{ pinId, port: 'project', resourceRef: ref, integrity: hash(descriptor) }];
-        const draft = await plans.create(h.handle, command(), plan), expected = { planId: draft.planId, expectedDraftVersion: draft.draftVersion, expectedDefinitionHash: draft.definitionHash };
-        const report = await plans.validate(h.handle, expected);
-        if (report.status !== 'valid') throw new Error('Commit Plan validation failed: ' + JSON.stringify(report.issues));
-        const { planRef } = await plans.publish(h.handle, command(), { ...expected, validationDigest: validationDigest(report) });
+        const { plans, planRef } = await publishProjectCommitPlan(h, { ...svc, task, maxBytes });
         authority = new NativeProjectCommitAuthority({ engine: h.engine, projectAgent: svc.agent, plans });
         const input = { commandId: command(), planRef, projectId, taskId: task.taskId, expectedSequence: task.sequence,
             expectedReviewHash: projectCommitReviewHash(task), computeBudget: { maxRequests: 1, maxTokens: 1, localWork: { maxJobs: 4, maxItems: 16, maxInputBytes: 16777216 } } };
@@ -51,15 +70,7 @@ export async function projectCommitFixture(make, { maxBytes = 16384, configureSo
             get agent() { return svc.agent; }, get studio() { return svc.studio; }, get authority() { return authority; },
             prepare: () => authority.prepare(h.handle, input), dispatch: prepared => authority.dispatch(h.handle, { runId: prepared.runId, effectId: prepared.effectId }),
             observe: prepared => authority.observe(h.handle, { runId: prepared.runId, effectId: prepared.effectId }),
-            approve: async prepared => {
-                const review = getNativeReviewOrigin(authority.engine), launch = await review.launch(h.handle, { runId: prepared.runId, approvalId: prepared.approvalId }), client = request.agent(review.origin);
-                const bootstrap = await client.get(new URL(launch.url).pathname + new URL(launch.url).search).expect(200);
-                const post = (name, body = {}) => client.post('/review/' + name).set('Origin', review.origin).set('X-Atria-Review-CSRF', bootstrap.body.csrfToken).send(body);
-                await post('reauthenticate', { password: 'project-commit-test-password' }).expect(200);
-                const details = (await post('details').expect(200)).body.outcome;
-                await post('decide', { bindingHash: details.bindingHash, nonce: details.nonce, decision: 'approve' }).expect(200);
-                return details;
-            },
+            approve: prepared => approveProjectCommit(h, authority, prepared),
             cold: async () => {
                 await getNativeReviewOrigin(authority.engine).close(); await authority.engine.close();
                 coldEngine = new h.engine.constructor({ url: h.url, nativeHostTopology: 'direct_single_primary', directoriesByHandle: h.directoriesByHandle ?? (() => h.dirs) });
