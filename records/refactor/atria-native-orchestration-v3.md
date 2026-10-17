@@ -1456,3 +1456,10 @@
 - FS/SQLite八参数初6PASS/2FAIL（24.941s），只有全局external unpinned两例误期外层未翻译错误码；加入实际Context compile内部拒绝码断言并保持外层generation_execution_failed，最终8/8 PASS（23.612s）。parent或parent+child持owned Profiles在原producer shape处前置拒绝，零Root/Effect/HTTP/费用变化。实际child bank不能创建检索scope；传父SourceRef或合法父Memory item给子Context同样拒绝且bank不变。
 - 无外部配置时，真实子wire只有原brief，父wire独立含合法历史/Memory并排除future；两Model各20token、本地费settled、child完整task-local output/return、reservation released，父continuation完成而正式Chat仍依原profile。全局外部Profile无owned pin时，子付费完成并持有原typed output/return，父零Model/Embedding且保留失败context_build费用；原重试不加费。全部数据为临时harness与localhost，两JS原ESLint与staged diff check通过。
 - 无新增真实API，私密总数12、备用Chat0、daily/RPM配置null保持。正式Project Commit的四执行者分工仍在开发，未提交的相应文件不属于本组测试字节；继续完整后端，P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。
+
+
+## 2026-10-17 — 更新后端、前端组装与 P6 的执行分工
+
+- 用户明确确认执行顺序：Codex 完成后端 → Claude Code 完成前端与组装 → 交回 Codex 做 P6 硬切、清退与最终验证。已更新同一 Plan 的实施方案、入口、整合接口、验收矩阵、跨模块决定及前端模块入口；实施方案§2为职责与两次交接的唯一详细来源。
+- 纠正原“Claude 前端/组装后结束分支”表述。首次后端交接须完成后端职责及相关验证；P5、依赖组装的P6和最终整体验证不倒挂为首次后端交接的前置完成项。Claude组装后回交，Codex再做硬切、旧链清退和最终验证；实际后端缺口不交前端补造，最终Gate仍按真实证据核销，不增加独立审查前置流程。
+- 本次只调整docs职责，不改架构/权限、源码或既有测试事实，不执行前端、P6、合main、推送或分支清理。源码已提交HEAD仍为`69875f435`，正在开发的Project Commit工作树修改完整保留、未提交；本次文档调整不把它计作后端已完成。此前Record中的旧分工保留为历史，以当前实施方案为准。

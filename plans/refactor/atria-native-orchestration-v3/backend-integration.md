@@ -48,7 +48,7 @@
 
 本节覆盖下文历史分组中的“尚无 Run API”“Project 单轮”“RP 无产品入口”等旧描述。源码 `08e523b6f` 已合入 `main@c57fada6e`，仍在 `refactor/atria-native-orchestration-v3`，没有反向集成 main。**前端已有可接入的真实接口；完整 P1–P4/最终 Gate 仍 NOT_READY**。未交付后端项仍归后端，不由 Claude Code 用 Browser 逻辑补齐。
 
-用户当前分工：Codex 先完成全部后端；到真实前端阶段才推送并交 Claude Code 实施页面、组装前后端及结束开发分支。当前继续后端，尚未到交接点；接口存在不等于后端已完成。
+当前分工：**Codex 完成后端 → Claude Code 完成前端与组装 → 交回 Codex 做 P6 硬切、清退与最终验证**。首次后端交接与最终验收分开，条件归 [实施分工](implementation-plan.md#2-执行分工与两次交接)。当前仍在后端阶段，接口存在不等于后端已完成。
 
 ### Authoring
 
@@ -105,13 +105,13 @@ Project 继续沿原 Studio Task generation/preflight/start/status/cancel 和原
 
 原 Evolution API 的 catalog/declare/capture/prepare/check/write/rollback/discard 现接有限 `plan-strategy`：target 精确绑定 bindingId/version、PlanRevision、nodeId、`limits.<field>`。只收紧 maxSteps/maxAttempts/maxReplans/maxReviews/maxDelegates/maxHandoffs/maxEdgeVisits/maxLoopIterations/deadlineMs。候选由原 PlanRepository 发布新的不可变修订，保留作者 Draft，最后 CAS 原 Binding；回滚只接受自己的精确绑定/command，不能覆盖用户新选择或复活已消费候选。当前原生 Binding 不回退旧 workspace/Director evaluator 或原旧 target 自动晋升。
 
-**仍未实现**：plan-prompt、其它 strategy 字段/来源、完整原生 Evaluation worker/自动晋升、其余 Actor/Task/Graph producer 组合、公开通用 resume/reconcile/Result read、可信 Review Origin 与再认证、完整 restore/release/GC、P6 清退和产品验收。原生 Plan 评测明确 unavailable，不能借旧报告、假资料、Browser runner 或 approved 布尔值打通。这些不是前端需要代写的后端工作；这些后端工作须由 Codex 完成后才进入前端交接。完整三端/真实外部收费与质量本轮未测。
+**仍未实现**：plan-prompt、其它 strategy 字段/来源、完整原生 Evaluation worker/自动晋升、其余 Actor/Task/Graph producer 组合、公开通用 resume/reconcile/Result read、可信 Review Origin 与再认证、完整 restore/release/GC、P6 清退和产品验收。原生 Plan 评测明确 unavailable，不能借旧报告、假资料、Browser runner 或 approved 布尔值打通。这些不是前端需要代写的后端工作；其中后端实现缺口须由 Codex 完成后才进入前端交接；P6 清退与组装后的最终验证则在 Claude Code 完成前端与组装、回交 Codex 后执行。完整三端/真实外部收费与质量本轮未测。
 
 ## 1. 分支和职责
 
 V3 后端使用 `refactor/atria-native-orchestration-v3`，任务工作区 `tasks/atria-native-orchestration-v3/source`；本 Plan 和 Record 使用长期 `docs` 分支。没有集成 main。提示词预设/前端任务应按自己的 Governance 在可审查的整合分支组合两个后端改动，不覆盖任一任务的未提交内容；P7 未通过不得以“合并两个任务”替代 main 集成门槛。
 
-用户当前安排是：本分支先完成后端，之后提供交接提示词，由 Claude Code 开发前端并组装、结束开发分支。当前实际接口与未交付后端以顶部快照为准。D8 的领域交互由 [graph-editor-experience](graph-editor-experience.md) 持有；通用视觉/Shell/提示词编辑沿 Serene Canvas 与现有组件统合，不另建工作台或主题。
+本分支按 [实施分工](implementation-plan.md#2-执行分工与两次交接) 两次交接：Codex 后端完成后交 Claude Code 做前端与组装，再回交 Codex 做 P6 与最终验证。Claude Code 的组装交付不包含分支收尾。当前实际接口与未交付后端以顶部快照为准。D8 的领域交互由 [graph-editor-experience](graph-editor-experience.md) 持有；通用视觉/Shell/提示词编辑沿 Serene Canvas 与现有组件统合，不另建工作台或主题。
 
 ## 2. 实际已挂载的 HTTP
 
@@ -167,7 +167,7 @@ Effect 的 `authorize/verifySend/verifyObservation/verifyApproval`、Delegate �
 
 同一 Draft/definitionHash 与同一 Host Projection 是数据来源，布局不改变运行语义；移动不能以不能拖拽为由删减语义。Review 必须用独立可信 Origin、原身份再认证和一次精确授权，普通同源按钮、LLM、插件或 SDK 的 approved boolean 都无资格。相关后端尚未挂载的部分应先列真实依赖，不能由前端自行实作编排或审批。
 
-P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Director、旧 preset/setting/runner/Browser checkpoint/UI。没有旧模式兼容、别名、迁移、模板化或双轨发布；不能误删其他 Native 业务仍使用的 Memory/Secret/Message Takeover/Studio 等共享服务。
+P6 由 Codex 在 Claude Code 完成前端与组装并回交、新消费者闭包准备齐备后执行，清退旧 Single/Spec/Loop/Agenda/Director、旧 preset/setting/runner/Browser checkpoint/UI。没有旧模式兼容、别名、迁移、模板化或双轨发布；不能误删其他 Native 业务仍使用的 Memory/Secret/Message Takeover/Studio 等共享服务。
 
 ## 5. 当前尚未交付的后端与证据
 

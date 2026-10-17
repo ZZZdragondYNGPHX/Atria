@@ -9,6 +9,20 @@
 - **前端复用 Serene Canvas**：Timeline 默认/Graph 切换、U2 Graph + Inspector 桌面编辑、移动 Node/Edge List + Sheet 语义等价，沿现有 DOM/ESM/Tokens/Primitives/Patterns。Graph 渲染库经局部 PoC 再决定，不能强制整站 React/新主题迁移。
 - **不承诺原地不停机迁移旧运行**：老 Run/旧模式不兼容，无数据双轨。具体停机、旧持久状态可删除的范围和未结束旧任务如何明确宣告 unsupported/terminated，要在 E0 的数据和副作用审计中明确；不能借“硬切”丢弃仍可能处于 unknown 的外部操作/正式业务收据。
 
+## 2. 执行分工与两次交接
+
+执行顺序：**Codex 完成后端 → Claude Code 完成前端与组装 → 交回 Codex 做 P6 硬切、清退与最终验证**。
+
+| 执行阶段 | 负责人 | 完成范围与交接条件 |
+| --- | --- | --- |
+| 后端实现与首次交接 | Codex | 完成 P1–P4 的后端职责和相关验证，提供准确源码、接口、约束与验证结果，再交 Claude Code；实际后端缺口不能转嫁给前端。 |
+| 前端与组装 | Claude Code | 完成 P5 前端并组装真实前后端接口，交回可运行改动与验证记录；后端权威缺口交 Codex 修复，不在 Browser 补造。此阶段不负责 P6 硬切、旧执行链清退或结束分支。 |
+| 硬切、清退与最终验证 | Codex | Claude Code 完成前端与组装并回交后，执行 P6 原子硬切，清退旧执行链、入口、配置、专用资产及测试，保护仍有业务用途的共享服务、真实数据、未知效果与费用历史；完成组装后整体回归和最终验收核对。 |
+
+后端首次交接与最终产品验收是两个节点：后端职责仍有缺口时不能提前交接；尚未实施的 P5、依赖前端组装的 P6 和最终整体验证，也不倒挂为首次后端交接必须完成的工作。Claude Code 完成组装不等于最终 Gate 通过；最终验证按实际证据核销，不另加独立审查前置流程。
+
+两次交接均沿同一任务分支与同一 Plan/Record，保留本机修改；当前继续后端，不提前前端、P6、合 main 或结束分支。后续 main 集成、推送和分支清理仍按届时用户指令与 Governance 执行。
+
 ## 3. 正式实现工作包（E1 阶段顺序）
 
 | Stage | 主工作包与需复用的权威 | 前置依赖 |
@@ -17,9 +31,9 @@
 | **P2 — Graph & Effect Core** | G2 GraphPatch/Delegate/Handoff/Fanout/Join/Planner/Judge/Review、S2 EffectIntent/Approval/EffectReceipt/unknown/reconcile、D3 重试/循环、Host Scheduler permits | P1 Host identity/ledger |
 | **P3 — Native Ports & Budgets** | D4 唯一 Hybrid/Context/Actor、D5 Model Routing/Compute 原预算/Provider fallback/Reuse、Tool/Skill/MCP/A2A Secret/Egress 权限、原业务 DomainReceipt refs | P1/P2 |
 | **P4 — Product Consumers** | Native Game/Ordinary RP Narrator/Player autonomy、Session World/Command/Timeline、Studio Project Agent Task/Review/Apply、Experience/Evolution targets 与原 M1 Eval | P2/P3 |
-| **P5 — U2 Frontend** | Serene Canvas Agents Plan Library/Graph+Inspector/typed Ports/Draft/Publish，Run Timeline 默认/Graph 切换、Host Projection/Diagnostics/Approval/Source/Cost 与移动端 List/Sheet | P1–P4 新权威 API 与可信 UI contract |
-| **P6 — Atomic Legacy Hard Cut** | 同任务分支一次性切换全部 RP/Native Game/Studio/Agent/Search/Shell/Evolution 的原生入口，删除旧五模式/编排代码/Browser checkpoint/旧 preset UI/旧 mode 事件注入/专用测试 | P1–P5 替代已准备与真实消费者闭包 |
-| **P8 — Integration & Close** | main 集成/推送、同一 Record 和已完成分支清理 | P1–P6 与 Governance |
+| **P5 — U2 Frontend（Claude Code）** | Serene Canvas Agents Plan Library/Graph+Inspector/typed Ports/Draft/Publish，Run Timeline 默认/Graph 切换、Host Projection/Diagnostics/Approval/Source/Cost 与移动端 List/Sheet | P1–P4 新权威 API 与可信 UI contract |
+| **P6 — Atomic Legacy Hard Cut（回交 Codex）** | 同任务分支一次性切换全部 RP/Native Game/Studio/Agent/Search/Shell/Evolution 的原生入口，删除旧五模式/编排代码/Browser checkpoint/旧 preset UI/旧 mode 事件注入/专用测试 | Claude Code 完成 P5 前端与组装并回交；P1–P5 替代已准备与真实消费者闭包 |
+| **P8 — Integration & Close** | Codex 完成整体最终验证后，按届时用户指令执行 main 集成/推送、同一 Record 和已完成分支清理 | P1–P6、最终验证与 Governance |
 
 ## 4. 接口与清退专项工作包映射
 

@@ -1,5 +1,7 @@
 # D8 — U2 Native Graph + Inspector 双向创作与运行体验（已冻结）
 
+实施分工与交接顺序见 [实施方案 §2](implementation-plan.md#2-执行分工与两次交接)：Claude Code 在后端完成后实施本模块前端及组装，再交回 Codex 执行 P6 硬切、清退与最终验证。
+
 > 2026-10-15 第八轮用户选择 **U2**。跨模块冻结摘要见 [decisions.md](decisions.md) D8。此文是 **V3 Authoring / Run UX / Diagnostics / Approval / PC-Mobile 的唯一详细设计入口**，不替代原世界、Studio、模型/预算、Tool/权限或 Serene Canvas 视觉权威。继承 D1–D7、HCM-01–08、T2 Native Host 单一执行者、G2 动态图、C2 Context 隔离、F2 计算、S2 Tool 授权、N2 叙事/Project 质量与 **旧 Single/Spec/Agenda/Loop/Director 模式/代码/旧 UI 零兼容硬切**。本轮仅冻结 docs，不修改 main 或运行产品测试。
 
 ## 1. 现有产品依赖与具体取舍

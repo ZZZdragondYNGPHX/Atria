@@ -4,6 +4,10 @@
 
 > **当前工程状态补记**：D1–D9/HCM不变；E0_DESIGN_READY。2026-10-15用户已另行明确授权正式开发，R08=AUTHORIZED；实现基线main@5eb3bc765，同一任务分支P1 IN_PROGRESS。物理接口归 [interface](interface-contracts.md)，实际提交/验证归同一Record；未取得的产品证据仍NOT_RUN/BLOCKED，最终验收前不集成main。
 
+## 当前实施分工（2026-10-17）
+
+**Codex 完成后端 → Claude Code 完成前端与组装 → 交回 Codex 做 P6 硬切、清退与最终验证**。具体职责、两次交接与后端交接/最终验收分界归 [implementation-plan §2](implementation-plan.md#2-执行分工与两次交接)。此安排替代此前由 Claude Code 组装后结束分支的执行分工，D1–D9 的架构与权限边界保持。
+
 ## D1 — 已冻结：选择方案 B（2026-10-15）
 
 - **目标：Atria Native Orchestration V3**。不是围绕旧 SillyTavern 模式打补丁，也不是直接引入外部 Agent 框架替代主 Runtime。

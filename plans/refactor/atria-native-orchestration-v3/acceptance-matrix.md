@@ -1,5 +1,11 @@
 # D9 E1 — 实施状态
 
+## 当前执行与验收分工（2026-10-17）
+
+按 [实施分工](implementation-plan.md#2-执行分工与两次交接)：**Codex 后端 → Claude Code 前端与组装 → Codex P6 硬切、清退与最终验证**。后端首次交接只核对已分配后端实现及相关验证；P5、依赖组装的 P6 和整体验收在后续阶段取得证据，不要求在首次交接前提前完成。实际后端缺口仍须先修复，Claude 组装完成也不核销 P6 或最终 Gate。
+
+当前仍处于后端开发；本次只更新执行职责，不改变下列历史测试、阶段状态或验收结果，不授权当前合 main 或结束分支。
+
 ## 2026-10-16 第七十一组恢复后端
 
 `81a3a5fba` 补隔离 Review listener 和原账户密码再认证后端，主 origin 只有 launch，隔离页面和实际需要批准的领域动作仍待实施。新 Review/原审批/Run HTTP/Authoring HTTP 62 项通过；Projection 接线后原 RP/Project/Run 精选 12 项通过，分次和初期 fixture 失败见同一 Record。FS/SQLite 与回环 HTTP 不构成真实 Browser 隔离或三端证据，P1–P4/最终 Gate 仍 NOT_READY；Codex 继续后端，不提前交前端。
@@ -12,7 +18,7 @@
 
 源码 `08e523b6f` 已合入 `main@c57fada6e`，未反向集成 main。有限 Project Review Root、Run observation/Timeline/分页/取消、RP reviewed HTTP 与手动 Plan strategy 已实现；实际开放范围见 [backend-integration](backend-integration.md#当前接口快照第六十四至六十八组)。合并后 authoring/Run/RP HTTP/Result/Plan repositories/Plan evolution 七 suites **124 PASS、4 SKIP**（15.471s）；Project terminal 与 Session historical proof 精选 **10 PASS、32 filter SKIP**（115.837s）。分轮证据不可叠成一次全仓通过。
 
-**P1–P4 与最终 Gate 仍 NOT_READY；P5 UI 未实施。Codex 继续完成后端，完成后才交 Claude Code 开发前端并组装、结束分支。** plan-prompt/原生 evaluator/自动晋升、其余 producer/跨域组合、可信审批、完整恢复/释放、P6–P8 和实际三端/外部费用质量仍未完成。有限前端接口交接不核销这些后端工作，不将实现缺口转嫁给前端。
+**P1–P4 与最终 Gate 仍 NOT_READY；P5 UI 未实施。Codex 完成后端后交 Claude Code 做前端与组装，再回交 Codex 做 P6 硬切、清退与最终验证。** plan-prompt/原生 evaluator/自动晋升、其余 producer/跨域组合、可信审批、完整恢复/释放、P6–P8 和实际三端/外部费用质量仍未完成。有限前端接口交接不核销这些后端工作，不将实现缺口转嫁给前端。
 
 ## 8.2 当前状态
 
