@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · Candidate Design & Discussion Agenda
 
-- 状态：**Draft（W1–W12 的 B 顶层方向均已获确认；W13 事务/时态/分支路线、E0 完整审计与最终实施仍未批准）**。旧章节为当时讨论选项，现行选择以本文件最近章节和 index 为准。
-- 当前讨论轮次：W13 — Native 事件发布、事实有效期/历史纠错、Session/Branch/Revision 与有权限的认知投影（见 [event-temporality-branch.md](event-temporality-branch.md)）。
+- 状态：**Draft（W1–W13 的 B 顶层方向均已获确认；W14 世界有效视图与 Context/UI 方案、E0 完整审计及最终实施仍未获批）**。旧章节保留当时提案历史，当前决策以最新章节与 index 为准。
+- 当前讨论轮次：W14 — World/Knowledge Effective View、来源冲突判定、Context Compiler 和 Library/Studio/Play UI（见 [effective-world-view.md](effective-world-view.md)）。
 - 入口：[index.md](index.md)；材料：[research.md](research.md)
 
 ## 1. 问题的正确切分
@@ -685,3 +685,41 @@ W12 本轮继续**仅更新 docs 同一 Plan 和唯一 Record，保持 Draft，�
 - W13-C：另建平行 Event Store/Temporal DB 并异步对齐 Native；会造成双权威和分支/持久化故障窗口，不适合当前 Dev 原生硬切目标。
 
 `SessionRepo.commitSnapshot` 的现有同事务发布和 `world/session.js` `commitEvents` 的 state patch 为**可利用的事实基础**；但所有 Story Turn/NPC 自主演化/Task/World/Timeline/Cognition 端到端是否原子发布、通用有效时间和历史更正能否查询依旧是 E0 阻塞。当前**只修改 docs**，未开展实际代码变更、Node/CI/真机测试。用户若认可 W13 方向，下一轮依讨论协议先更新原 Plan/唯一 Record，再进入 World/Knowledge Effective View、Library/Studio/Play 与真正剩余 E0 Gate 的讨论。
+
+
+---
+
+## 21. S15 · W13-B 已确认与 W14 有效世界/知识及 Context/产品议程（2026-10-17）
+
+### 21.1 W13-B 方向正式确认
+
+用户对上一轮推荐的 **W13-B「Native Revision 一致性提交 + 双时间/分支受控投影」**回复“认同”。据此 W1-B 至 W13-B 为**已获用户认可的总体架构路线**：
+
+- 在已有 Native Session/Branch/Revision/Receipt/CAS 单权威中协调有持续后果的 World Subject/Event/State/关系和必要的 Participant，明确模型提议与真实已提交效果的边界，不引入第二个 EventStore；
+- 客观游戏有效时间与事实记录修订/见闻时间分离，合法历史查询需绑定 Session/Branch/Revision/GameTick/Perspective；新证据揭露、更正错误与真正 Retcon 不得混淆；
+- 存读档后只继承当前分支的合法祖先状态，HCM/Context 保留来源证明并按授权重建衍生索引，不让另一分支延迟任务或泄漏的秘密污染当前线。
+
+该方向不等于已冻结所有 Event/Fact 字段、证明所有 Narrator/World/Task/Cognition 原子性或全面 E0 通过；Plan 仍 Draft，禁止修改 main。
+
+### 21.2 W14：让 World/Knowledge 成为“活世界的有效资料”而非原样静态提示词
+
+当 WorldRevision 固定文本“莱恩是皇帝”，当前 Native 世界却已提交“莱恩死去、米拉继位”时，不应将两份文本不加时态区分地交给 AI。必须同时区别：
+
+1. 作者高约束**世界法则**（不能因最新叙事轻易覆写）；
+2. 初始但可变化的**起点世界事实**；
+3. exact Branch/Revision/GameTick 下**当前有效的原生事实**；
+4. 已终止的**历史事实**；
+5. 有来源但不一定真实的**文献声明/传闻**；
+6. 各 NPC **自己的知识、误信与秘密**，取决于合法 Perspective。
+
+详细代码证据、Effective World View 候选机制、Knowledge Source Claim 冲突解释、Context Compiler 排序与 Scene/Token 预算以及 Library/Studio/Play/Inspector 体验统一在 [effective-world-view.md](effective-world-view.md)；本总设计只记录决策路由，避免重复第二份详细规范。
+
+### 21.3 当前 W14 三选一（均未获用户确认）
+
+- W14-A：保留以激活触发与权威 Rank 为主的静态知识注入，尝试通过当前世界状态在提示词里抵消旧文案；缺乏精确语义失效和历史/受众隔离；
+- **W14-B：Effective World View First + Claim/Source-Aware Context（研究推荐，尚未获批准）**；在现有 Host 中先得到受众安全的当前/历史/法则/Claim 有效投影，再按用途检索 World/Knowledge/HCM；可变声明的真假/有效期不能靠文本排名决定；
+- W14-C：让 LLM 每轮重写新的“最新世界书”作为权威；会篡改作者资料、产生双真相和长会话成本。
+
+当前 `knowledge-runtime.js` 已定义来源权威排序、State Conditions/Exclusive Group 和有限的 memory conflict filtering；`context-compiler.js` 已有 `current_state_event`、`knowledge`、`memory` 等预算 lane，当前部分情况下将完整 `atri_world_state` JSON 和已选知识正文一起纳入 Context。**Rank/priority 并非通用自然语言事实语义验证器**，且 Library/Studio 编辑器仍以 Source/JSON 资源为主。这些静态代码事实为 W14 设计基础，不能冒称当前已有通用、按任意实体时态/角色视角的 Effective World View。
+
+**W14 待用户决定；W15 还需 E0 完整 Source-of-Truth/ABI/Consumer/Deletion/Gate 收口，所有真实客户端与实施仍为阻塞**。仅 docs 同一 Plan Bundle/唯一 Record 被更新，不创建实现分支。
