@@ -15,13 +15,13 @@ export const contextRetrievalCompletionBinding = intent => hash({ runId: intent.
     epoch: intent.epoch, hostBootId: intent.hostBootId, hostGeneration: intent.hostGeneration, sourceBindingDigest: intent.sourceBindingDigest, decision: effectDecision(intent) });
 
 export function contextRetrievalDecision({ sourceBindingDigest, parentGrantDigest, budgetEnvelopeDigest, effectId, modelEffectId, profile, descriptorDigest, corpusDigest, inputFingerprint }) {
-    if (profile.mode !== 'rerank') invalid();
+    if (!['embed', 'rerank'].includes(profile.mode)) invalid();
     const target = retrievalPostTarget(profile);
     for (const value of [sourceBindingDigest, parentGrantDigest, budgetEnvelopeDigest, descriptorDigest, corpusDigest, inputFingerprint]) assertDigest(value, 'Context retrieval digest');
     const inputRef = { kind: 'context_retrieval', retrievalEffectId: effectId, contextForEffectId: modelEffectId,
         memoryDescriptorDigest: descriptorDigest, corpusDigest, providerInputFingerprint: inputFingerprint };
     const targetRef = { nativeRetrievalRef: retrievalRef(profile), profileIntegrity: hash(profile) };
-    return { actionRef: { kind: 'context_retrieval', mode: 'rerank' }, targetRef, inputRef, inputHash: hash(inputRef), capability: 'memory.retrieve',
+    return { actionRef: { kind: 'context_retrieval', mode: profile.mode }, targetRef, inputRef, inputHash: hash(inputRef), capability: 'memory.retrieve',
         endpointBindingDigest: hash(target), grantDigest: hash({ parentGrantDigest, effectId, inputRef, targetRef }), risk: 'R1', requiresApproval: false,
         egressDigest: hash({ sourceBindingDigest, parentGrantDigest, inputRef, targetRef }), budgetEnvelopeDigest,
         dispatchPolicy: { idempotency: 'none', operationKey: null, reconcile: 'manual' } };
@@ -52,7 +52,8 @@ export async function readContextRetrievalCompletions(tx, handle, root, parent, 
         if (!savedProfile) invalid();
         const profile = assertRetrievalProfile(savedProfile.doc);
         const pins = plan.dependencyPins.filter(pin => pin.port === 'context' && node.dependencyPinIds.includes(pin.pinId));
-        if (pins.length !== 1 || !equal(pins[0].resourceRef, retrievalRef(profile)) || pins[0].integrity !== hash(profile) || profile.mode !== 'rerank') invalid();
+        const owned = pins.filter(pin => equal(pin.resourceRef, retrievalRef(profile)));
+        if (owned.length !== 1 || owned[0].integrity !== hash(profile) || !['embed', 'rerank'].includes(profile.mode)) invalid();
         const decision = contextRetrievalDecision({ sourceBindingDigest: parent.sourceBindingDigest, parentGrantDigest: parent.grantDigest,
             budgetEnvelopeDigest: parent.budgetEnvelopeDigest, effectId, modelEffectId: parent.effectId, profile,
             descriptorDigest: input.memoryDescriptorDigest, corpusDigest: input.corpusDigest, inputFingerprint: input.providerInputFingerprint });

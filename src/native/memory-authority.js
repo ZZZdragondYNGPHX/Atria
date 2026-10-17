@@ -66,7 +66,7 @@ export class NativeMemoryAuthority {
         await current();
         const settings = descriptor.settings.value;
         if (!isHybridMemoryEnabled(settings) || settings.recallEnabled === false) return { proof, evidence: [] };
-        if (settings.nativeRetrieval?.embed || settings.rerankEnabled && settings.nativeRetrieval?.rerank && !(retrieval?.port instanceof ContextRetrievalPort))
+        if ((settings.nativeRetrieval?.embed || settings.rerankEnabled && settings.nativeRetrieval?.rerank) && !(retrieval?.port instanceof ContextRetrievalPort))
             throw new ConflictError('native_orchestration_memory_retrieval_scope_unavailable');
         const chat = descriptor.memory.chat;
         if (chat.some(message => !sourceMessageId(message) || message.atri_native?.messageId)
@@ -83,13 +83,13 @@ export class NativeMemoryAuthority {
         try {
             const eligibility = resolveMemoryEligibility(context, { requester: { kind: 'narrator' } }, () => null);
             const legal = eligibleMemorySnapshot(await lifecycle.retrievalSnapshot(context, { readOnly: true }), eligibility);
-            const scoped = settings.rerankEnabled && settings.nativeRetrieval?.rerank ? await ContextRetrievalPort.prototype.openRecall.call(retrieval.port, handle,
+            const scoped = settings.nativeRetrieval?.embed || settings.rerankEnabled && settings.nativeRetrieval?.rerank ? await ContextRetrievalPort.prototype.openRecall.call(retrieval.port, handle,
                 retrieval.scope, { descriptor, legal, query: chat.at(-1).mes, assertCurrent: current }) : null;
             const result = await retrieveMemory(legal, chat.at(-1).mes, { countTokens: memoryTokenCounter({ getTokenCountAsync: countTokens }),
                 budget: Math.min(memoryTokenBudget(settings), tokenBudget.modelContextLimit - tokenBudget.responseReserve),
                 sceneText: legal.chat.filter(message => message.mes).slice(-2).map(message => message.mes).join('\n'),
                 computeContext: { kind: 'rp_chat', controlId: request.controlId },
-                ...(scoped ? { rerankProfile: scoped.rerankProfile } : {}),
+                ...(scoped ? { profile: scoped.profile, rerankProfile: scoped.rerankProfile } : {}),
                 service: scoped?.service ?? { admitCorpus: async () => { await current(); return { admitted: true, metered: false }; } } });
             if (scoped) this.#recalls.get(proof).retrieval = { port: retrieval.port, proof: await scoped.finish() };
             await current(); result.assertCurrent();

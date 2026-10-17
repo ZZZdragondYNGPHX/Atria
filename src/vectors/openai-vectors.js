@@ -74,6 +74,14 @@ const SOURCES = {
 
 export const supportsOpenAIEmbeddingSource = source => Object.hasOwn(SOURCES, source);
 
+export function openAIEmbeddingBody(texts, source, model = '') {
+    const config = SOURCES[source];
+    if (!config) throw new Error('Unknown embedding source');
+    const body = { input: texts, model: model || config.model };
+    config.processBody?.(body);
+    return body;
+}
+
 /**
  * Gets the vector for the given text batch from an OpenAI compatible endpoint.
  * @param {string[]} texts - The array of texts to get the vector for
@@ -126,14 +134,7 @@ export async function getOpenAIBatchVector(texts, source, directories, model = '
         throw new Error(`No API URL configured for source ${source}`);
     }
 
-    const body = {
-        input: texts,
-        model: modelName,
-    };
-
-    if (typeof config.processBody === 'function') {
-        config.processBody(body);
-    }
+    const body = openAIEmbeddingBody(texts, source, modelName);
 
     const embeddingsUrl = `${url}/embeddings`;
     if (request) attachInspectionEndpoint(request, embeddingsUrl, key, body);
@@ -158,7 +159,7 @@ export async function getOpenAIBatchVector(texts, source, directories, model = '
 
         if (!response.ok) {
             const text = await response.text();
-            console.warn('API request failed', response.statusText, text);
+            console.warn('API request failed', response.statusText, request?.nativeRetrieval ? '' : text);
             throw new Error('API request failed');
         }
 

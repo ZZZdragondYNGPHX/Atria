@@ -39,7 +39,7 @@ export function evolutionEvaluatorRevision() {
         '../session-snapshot.js', '../session-maintenance.js', '../task-scheduler.js', '../timeline-index.js', '../state-delta.js', '../repositories/session-repo.js', '../adapters/native-session-context.js',
         '../../../public/shared/native-independent-preparation.js', '../../../public/scripts/native/context-compiler.js', '../../../public/scripts/native/exact-token-count.js',
         '../../../public/scripts/agents/memory/source-lifecycle.js', '../../../public/scripts/agents/memory/eligibility.js', '../../../public/scripts/agents/memory/index-reuse.js',
-        '../../../public/scripts/agents/memory/ranking-index.js', '../../../public/scripts/agents/memory/hybrid-retrieval.js', '../../../public/scripts/agents/memory/packing.js',
+        '../../../public/scripts/agents/memory/query-plan.js', '../../../public/scripts/agents/memory/vector-index-core.js', '../../../public/scripts/agents/memory/ranking-index.js', '../../../public/scripts/agents/memory/hybrid-retrieval.js', '../../../public/scripts/agents/memory/packing.js',
         '../../../public/scripts/message-takeover.js', '../../../public/scripts/native/studio-agent.js', '../../../public/shared/skill-invocation.js']
         .map(name => [name, readFileSync(new URL(name, import.meta.url), 'utf8')]));
 }

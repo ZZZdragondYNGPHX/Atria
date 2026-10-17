@@ -12,7 +12,7 @@ import { embeddingBatches } from '../vectors/embedding-batches.js';
 
 /** Original Native protocol/index execution, shared without an HTTP roundtrip.
  * Callers supply their original compute/source authority; this mints no grant. */
-export async function executeNativeEmbedding({ directories, profile: value, compute, signal, secret = '', request }, operation, input) {
+export async function executeNativeEmbedding({ directories, profile: value, compute, signal, secret = '', request, embedBatch }, operation, input) {
     const profile = assertRetrievalProfile(value);
     if (profile.mode !== 'embed' || !['list', 'insert', 'query', 'delete'].includes(operation)
         || ['insert', 'query'].includes(operation) && !supportsOpenAIEmbeddingSource(profile.source))
@@ -26,7 +26,8 @@ export async function executeNativeEmbedding({ directories, profile: value, comp
     const settings = { reverseProxy: profile.endpoint, proxyPassword: secret };
     const vectors = async texts => {
         const result = [];
-        for (const batch of embeddingBatches(texts)) result.push(...await getOpenAIBatchVector(batch, profile.source, directories, profile.model, settings, carrier));
+        for (const batch of embeddingBatches(texts)) result.push(...await (embedBatch
+            ? embedBatch(batch) : getOpenAIBatchVector(batch, profile.source, directories, profile.model, settings, carrier)));
         return result;
     };
     if (operation === 'list') return queryNativeIndexes({ indexes: [{ collectionId: input.collectionId, indexPath }], mode: 'list', compute, signal });
