@@ -138,6 +138,21 @@
 - **实际验证**：GitHub 提交完成后再 fetch_file(ref=docs) 核验 `index.md`、`design.md`、`npc-autonomy.md`、`npc-social-cognition.md` 与本 Record。未执行 Node 构建/测试、GitHub CI、模拟回合、浏览器 UI、Windows/CachyOS/Termux 真机验收；未修改产品 main、Package、Plugin、reference、Governance。
 - **下一检查点**：用户就 W6-A/B/C 做选择。确认后下一工作轮先更新同一 Plan/Record，再讨论“动态 NPC 的合法 Perspective 身份、知识/秘密传播事件、共同关系的形成条件和 HCM 与 World state 的写入边界”；持续保留 Draft，最终定稿须用户明确确认。
 
+
+## Stage 8 — W6-B 确认与 W7 私人记忆/信息传播设计（2026-10-17）
+
+- **用户确认**：对上一轮明确推荐的 **W6-B「世界关系事实 + 主体认知 + 来源事件」**回复「认同」。本次决策连同 W1-B/W2-B/W3-B/W4-B/W5-B 成为已确认的总体架构方向。已提交的共同关系与事实归单 Native Host/Session 真相，主观态度、信念、目标与猜测归各主体合法认知；信息靠可追溯观察/传播事件联结。**不表示用户选择了 W7-B、冻结了完整方案或授权代码变更**。
+- **Task 与文档边界**：依旧只有 `ARCH-DWE-01` 一个 Primary Workspace `docs`、一份 Plan Bundle 与这一份唯一 Record。W7 新模块位于 `plans/architecture/world-evolution-consistency/npc-memory-information-flow.md`，并非并行新企划；不创建 HANDOFF、产品任务分支。
+- **本轮文档提交**：
+  - `74c0531258eaa4d8d178d2a4463104d8eaef0083`：新增 W7 `npc-memory-information-flow.md` 草案，包含动态 NPC 受众资格、经历/信念/目标/承诺/情绪的区分、秘密与谣言传播、分支隔离、W7-A/B/C 备选与 E0 未决问题。
+  - `eb1c6719a3ad6c47b4cb5ea25b18e59234593d85`：更新原有 W6 `npc-social-cognition.md` 第 10 节，记录 W6-B 为用户确认方向，其余细则 Draft。
+  - `15afa035cf8b31af749bc5d41f47eb2afec1a4e8`：更新同一 `design.md` 第 14 节，记录 W6-B、W7 关键边界与模块路由。
+  - `91c8bd0392433ee8dba671488c3d2623f3ccde44`：更新同一 Plan `index.md`，明确 W1–W6 状态、W7 为当前阶段而非已批准方向。
+- **main 静态代码对照（非运行验证）**：`public/shared/native-information-contract.js` 支持 belief/intentions/relationships 等源语义但 Perspective actor/view 声明式绑定；`public/shared/native-information-runtime.js` 未声明 actor 视为 unavailable，快照与 scope anchor、输出预算已具备；`src/native/cognition-authority.js` 与 `src/native/tom-authority.js` 部分目标身份受 `manifest.actors` 约束；`public/scripts/agents/memory/eligibility.js` 由当前授权视图/来源与 branch 限制可取回记忆；`public/shared/native-memory-contract.js` 已有 identity/commitment/relationship/key_event/detail 记忆类别与时效语义。未证实新生 NPC 能自动取得这些权限，不能靠读取 Narrator 全部资料或修改 Package Manifest 绕过。
+- **W7 研究建议但未获批准**：W7-B「动态受众资格 + 证据驱动信息流」。NPC 获得稳定世界身份≠自动获得独立思考/隐私读取权限；合法 Perspective 的接纳与源可见性须分别处理。发送/送达/获知/相信/更正为不同事件或主体状态，真正世界后果仍由唯一 Native commit 确立。避免每 NPC 独立常驻 Agent。
+- **验证与真实性**：文档写入通过 GitHub contents API，随后按 `docs` 读取/核验 Plan index、design、W6、W7 与 Record。未运行 Node 单测、CI、模拟回合、真实 UI、Windows/CachyOS/Android Termux；未修改 main、Package、Plugin、reference 或 Governance，未执行任何实现。
+- **下一检查点**：用户选择 W7-A/B/C 后，下一轮必须先更新同一 Plan/Record，再深入审查动态 Perspective/Actor 身份映射、受众授权、跨主体信息传播与压缩/纠错、私有记忆与世界提交的事务一致性及分支隔离。E0 全消费者审计与具体实现阶段尚未完成，完整企划继续保持 Draft。
+
 ## Final state
 
 Not yet applicable. Discussion in progress.
