@@ -1463,3 +1463,16 @@
 - 用户明确确认执行顺序：Codex 完成后端 → Claude Code 完成前端与组装 → 交回 Codex 做 P6 硬切、清退与最终验证。已更新同一 Plan 的实施方案、入口、整合接口、验收矩阵、跨模块决定及前端模块入口；实施方案§2为职责与两次交接的唯一详细来源。
 - 纠正原“Claude 前端/组装后结束分支”表述。首次后端交接须完成后端职责及相关验证；P5、依赖组装的P6和最终整体验证不倒挂为首次后端交接的前置完成项。Claude组装后回交，Codex再做硬切、旧链清退和最终验证；实际后端缺口不交前端补造，最终Gate仍按真实证据核销，不增加独立审查前置流程。
 - 本次只调整docs职责，不改架构/权限、源码或既有测试事实，不执行前端、P6、合main、推送或分支清理。源码已提交HEAD仍为`69875f435`，正在开发的Project Commit工作树修改完整保留、未提交；本次文档调整不把它计作后端已完成。此前Record中的旧分工保留为历史，以当前实施方案为准。
+
+
+## 2026-10-17 — 第一百三十五组：原 Project 改名的正式可信 Commit
+
+- Source `69875f435` → `75c6a676c`，本地提交、未推送；接口§17.138。显式原用户命令+新effect→output Run、owned精确Project descriptor pin、review-only formal Source和原Task银行接通真实ReviewOrigin再认证/R2一次批准→原ProjectAgent/Studio Commit→原Git receipt→Effect/settlement/真实Graph/Result/OutputClaim/Root completed。仅metadata rename，原资源未变允许，实际其它变更拒；Model无Commit工具、无新银行或回放权限。只读Git receipt observer不排Studio写队列或恢复Task/cache；完成后释放私有scope，cold只读。
+- 新Source8项及原consumption/Source locks/progress共54/54 PASS（36.632s）；最初6PASS/2fixture错误为误以旧helper导出runs，改用原RunRepository真实无Effect Source Root，不改产品权限。formal原Review/Task/Project/compute字节核对，普通Source/review、旧Root混用及committing/completed新capture均拒。随后原command metadata requestHash由root加入可选64hex校验，最终组合再覆盖。
+- 新发布suite最终22/22 PASS（3.894s），验证精确owned actionPin、错node/pin/Task/ref/hash、Review/人类Source推进及实际资源/Package/附加文件/highImpact拒绝；validate/publish零Commit/Provider/Task fee变化。初18项16PASS/2FAIL（3.484s）错误地把原有未变资源当未分类变更；撤回该判断，改测proposed新增/修改真实generation config，并补原资源未变可发布正例，无产品封禁或虚报漏洞。
+- 新HTTP最终7/7 PASS（4.048s）：原Host缺部署503、封闭body400/no-store、401，以及真正FS/SQLite Origin批准、未批准拒、错Project/Task409不消费批准、第二Owner404、一次Git/Task提交与纯观察重放。初3/3基础通过（1.573s）；完整初5PASS/2FAIL（3.228s）仅单Owner harness未知handle目录导致500，按原Host租约建立真实第二Owner映射后通过，不改产品错误映射。fixture支持可选directoriesByHandle以正确安装原单次lifecycle。
+- 新currentness最终8/8 PASS（5.710s）：批准后的原human Project新rev、Task重评Review、原Run取消均拒旧dispatch并保留human事实/准备费用；Studio beforeCommit中原账户disable真实挡Git写，Task保留原review/interrupted/commit_receipt_missing及持久commitIntent，stage1实际失败费用settled，Effect dispatching无Result/claim，重复观察零新执行。首轮6PASS/2失败仅因测试读公开snapshot中刻意隐藏的commitIntent，改读原Repository事实后通过，无对应产品漏洞。
+- 主消费者初4/4 PASS（3.914s）取得原完整审批/提交/typed输出与cold历史；完善私有scope释放后再4/4（3.913s），action/fee加强后4/4（4.411s）。最终新16/16 PASS（11.368s）：同prepare command含并发重放、异body冲突、cold recovery metadata、已保存Approval ACK、过小Result字节前置拒、Effect receipt saved/missing ACK不重写。之后只补真实fee target篡改断言，目标FS/SQLite2PASS/14skip（3.205s）：descriptorIntegrity或原localWork target重hash均拒，逐项还原后completed合法。初工程失败包括预算观察缺mandatory tx、旧Result audience分派、一次错误import路径0.635s；均在正向证据前修正，真实原Studio已提交时未重写或伪报完成。
+- root最终九suite组合180/180 PASS（27.334s）：新Source8、publication22、currentness8、HTTP7以及原Result/Run HTTP/Approval/Authoring/ReviewOrigin135；产品最终字节冻结，该轮不含主16项，证据分开。此前五原suite135/135（12.678s）；更早Result suite加载因新增模块暴露原reviewReceiptId初始化别名循环失败、同轮Run28通过，改ESM live re-export后恢复，不修改原控制算法。
+- 原相关回归精选28PASS/68skip、五suite，产品ProjectAgent/Studio/Host前后SHA256一致：原ProjectAgent+Studio5PASS/22skip（2.804s）；原FS/SQLite durable recovery9case各一遍+system Git1共19PASS/14skip（6.93s）；V3三轮Model+Review Graph出口4PASS/32skip（50.552s）。准确精选不当全仓或SQL通过。22相关JS新/改文件原ESLint、staged diff check通过；所有Project均临时harness、审批仅loopback，未修改用户Project。
+- 文档分工已先按用户确认提交`c1897410e`，本组后续恢复后端收口；P6/清退/整体最终验证留待Claude前端与组装回交Codex。本组仅有限正式消费者完成，完整后端/通用图与其它领域仍继续，P1–P4/最终Gate NOT_READY；当前不前端、不P6、不合main、不推送或结束分支。无新增真实API，私密总数12、备用Chat0、daily/RPM配置null保持。

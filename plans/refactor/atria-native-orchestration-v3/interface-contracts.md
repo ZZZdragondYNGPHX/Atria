@@ -1581,3 +1581,18 @@ Model实际完成后封存只读检索费用事实、释放发送scope；原Sche
 D4允许由原领域授予明确SourceRef/ResultRef权限；当前真实RP Delegate producer只冻结最后用户brief，未取得子Task的Information/Memory eligibility。父Narrator的检索pins、原Memory或SourceRef均不能代替这项授权。此次不新增Delegate检索能力或改变生产权限。
 
 真实父/子已发布Plan、原Scheduler与银行验证：现有限Delegate shape持额外owned检索pins在派发前拒绝；实际子Model银行亦不能构造检索scope或给Context追加父Memory item/SourceRef。子请求只有brief，父continuation独立消费自己合法Memory，原typed Result/Output/return与费用保持。只开全局外部Profile而缺owned pin时，已付子任务可完成并归还，父Context仍按原scope unavailable拒绝，不偷发检索或恢复发送；准确FS/SQLite证据归同一Record。正式Source授权与通用Delegate检索仍未实现，不能把有限生产者拒绝泛化成整个D4禁止。
+
+
+### 17.138 原 Project 改名的可信批准与正式提交
+
+新增有限的原用户 Project Commit consumer：只接受原Task已passed Review、low impact且单个project.save仅改变Project displayName/updatedAt的Workspace；原有资源不变可用，同时新增/修改资源、package、文件、权限或其它未分类变更拒绝。Model工具清单不含commit；该消费者不续用已completed的Review Root，不提供泛Project写权限。
+
+原Authoring通过effect节点owned project pin读取native_project_commit精确描述符及指纹；固定effect→output/json图只持project.commit。新原用户命令创建独立有界Run，SourceRequest显式formal_commit并绑定原Task fingerprint/base/Review hash，使用同一Task compute银行。普通草稿Source仍拒review，正式Source进入committing/completed后也不重新发权。请求hash只绑定原runs.start耐久command完整语义，不是来源权限。
+
+原NativeStudio Router新增相对路径`/projects/:projectId/agent/tasks/:taskId/commit/prepare`、`/commit/dispatch`、`/commit/observe`，均为POST/no-store。prepare body为`{commandId,planRef,expectedSequence,expectedReviewHash,computeBudget}`，Project/Task取路径；dispatch/observe body仅`{runId,effectId}`，执行前核对路径与受保护Source。Host对应prepareProjectCommit/dispatchProjectCommit/observeProjectCommit，原server按Engine与原Agent保持同一私有审批实例；缺部署拒unavailable。原ReviewOrigin再认证及精确R2一次批准是唯一批准来源，不接受JSON Boolean或复制permit。
+
+批准等待不持运行/Task/Studio锁。原Task银行分别记录准备与实际commit两项localWork，无Provider发送；许可在原Task writer及Studio beforeCommit重验精确Workspace、原账户版本、Host/Run/已消费批准。业务事实只来自原Studio Git ChangeSet和原Task收据；新的无queue只读receipt observer复用原Git解析，不执行Task恢复或发布cache。费用、Effect、producer settlement、真实Transition/Edge与output Attempt、bounded json Result/OutputClaim闭合后才令Root completed。Result只含原变化集/版本引用，不能扩大为Project Review或通用Context grant。
+
+严格完成reader核已发布action pin integrity、原预算hash、两项稳定local ordinal/target/费用、批准、原Studio receipt、Result/publication/graph/output/command完整链；只改哈希不能替代事实。结果字节不足在写入和收费前拒绝。完成后释放私有scope；暖重试及cold非ready dispatch只观察，cold ready/部分prepare只回恢复所需元数据，不恢复writer。相同prepare command重复/并发/已保存ACK沿原command返回原Run/费用/批准；异body冲突。缺失Effect receipt可已有合法domain提交但保持committed_pending_output，不重复writer或伪造claim。
+
+准确FS/SQLite、真实回环隔离审批、原system Git及错误/修复范围归同一Record。该有限消费者不是全部后端完成；按[当前分工](implementation-plan.md#2-执行分工与两次交接)继续后端，P6硬切/清退及整体最终验证在Claude前端组装回交后由Codex执行。
