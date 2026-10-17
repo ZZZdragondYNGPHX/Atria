@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · Candidate Design & Discussion Agenda
 
-- 状态：**Draft（W1–W21 的 B 顶层方向已获用户确认；W22 最终证据收口与可执行 Preflight、正式 API/Schema、Gate 0、开发均未批准）**。历史选项为当轮备选，最新用户确认和当前阶段以 index/本文件最新章节为准。
-- 当前讨论轮次：W22 — P2 原生 Typed Subject/Save/GC、Domain Fact/回执/有效历史、真实 WP-A～F 消费者和最后 Gate 0 交接阻塞（见 [e0-final-implementation-handoff.md](e0-final-implementation-handoff.md)）。
+- 状态：**Draft（W1–W22 的 B 顶层架构与证据门槛收口方法已获用户确认；实际 Gate 0 DESIGN_READY/PASS、精确接口/实现/测试仍未通过或批准）**。既往 A/B/C 比较均属当轮历史，当前确认状态以最新 index/本章为准。
+- 当前收口阶段：**有界 Gate 0 Preflight**；W22-B 已确认，按 [e0-preflight-execution.md](e0-preflight-execution.md) 逐项核查实际 HEAD/Owner/Contracts/Consumer/Deletion 的具名阻塞；不再延展抽象 W23 世界架构，保持 Draft。
 - 入口：[index.md](index.md)；材料：[research.md](research.md)
 
 ## 1. 问题的正确切分
@@ -991,3 +991,33 @@ W19 仍为用户待选方案；本阶段未修改 `main` 或其它代码分支�
 - W22-C：继续无限增加新抽象层但不设置退出点；与 W15–W21 的收口目标相违背。
 
 **W22-B 目前只是建议，不能误记为用户批准**。整份 Plan 仍为 Draft、E0 未 PASS，`main` 及所有开发/参考分支未修改；没有创建实现分支、执行 Node/CI/真实 UI/Windows/CachyOS/Termux。
+
+
+---
+
+## 30. S24 · W22-B 已确认与有界 Gate 0 Preflight 交接清单（2026-10-17）
+
+### 30.1 用户确认边界
+
+用户针对上一轮唯一推荐的 **W22-B「具名阻塞 + 可执行 Preflight + 条件化开发交接」**明确回复「认同」。因此 **W1-B 至 W22-B** 均已得到方向性认可；其中 W22-B 确认的是**停止继续扩张世界架构、把剩余 Gate 0 转为可执行证据检查与正式交接前置条件**，并不意味着 E0 全量已审 PASS、具体 Subject/Fact/Perspective Schema 已被冻结、完整企划批准 Final 或允许创建实现分支。Plan 一直为 **Draft**，没有修改产品代码。
+
+### 30.2 本次有界 Preflight 中已经取得的新增静态证据
+
+基于依然未变化的 SHA `main=c57fada6edeea255b29d857ba2585c1dbc9c098b`、V3 `a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`、Prompt `760327891149216dffdc1e3fa0c846496007a013`、Visual `ae587be0c64487ba922528bdd0146444bcf5e92e`：
+
+- **V3 与 Prompt 真实差异交集**：GitHub Compare 路径交集是 10 个共同修改的生产文件，包括 `src/endpoints/native-generation.js`、`src/native/adapters/generation-host.js`、Agent Intelligence 评价/进化的四个文件及 `src/native/model-prompt-runtime/{compiled-binding,contracts,execution-utils,prompt-candidates}.js`；这是**交集，不是已出现十处 merge conflict**。Visual 分支与 V3/Prompt 的交集受到 GitHub Compare 300 项上限影响，尚未完整列举。
+- **P2 存储/写入真实 Owner**：`SessionCore._create/_publishLocked/applyRuntimeCommit/updateResources`、`session-snapshot.RESERVED_SESSION_NAMESPACES/readSessionSnapshot`、`SessionRepo.commitSnapshot/loadSnapshot/reachabilitySnapshot`、`NativeSaveSystem.portableNamespace` 与 `session-maintenance` GC 已找到真实位置；P2 的新增 Subject业务 Validator、Typed prepare/writer、Root/Scope 更新和导入校验**仍不存在**，不能写为已通过的合同。
+- **原生发行者不是单一 Raw Patch**：World Game reducer 的 `commitEvents → session-runtime.commitStatePatch` 与 `authority-transaction.prepareAuthorityPublications → SessionCore._publishLocked`、V3 的 `sessionCore.finalizeTurn` 确有不同合法业务入口，必须审查何时是**同一次原 Domain Revision**及正式叙事发表边界。
+- **动态认知消费面扩大**：GitHub `projectInformation(` 文件搜索命中 39 个文件（17 个生产文件），包括 Cognition/Expression/Visual/Task/Goal/SharedAuthority 等；是检索命中，**不是**所有生产 Caller 已逐行验证。仅改 `Information Actor` 的 Manifest 限制，不能代表动态 Perspective 全消费者已经接线。
+- **旧 WorldInfo 不能一刀切**：`worldInfoBefore` 在多个真正生产路径中出现（文件级检索命中 13 个生产文件），`nativeKnowledgePromptChannels` 静态索引仅发现定义/测试；均需进一步核对动态插件/引用，当前无任何特定产品文件获充分 `DELETE` 证据。
+- **时态与存档第一段可复用**：`NativeSessionObservation.history` 基于合法 exact Revision Snapshot 的 `queryHistory`；通用 `asOfGameTick` 与 Subject/Fact 有效区间、秘密投影未完成。已有 Save/GC 的依赖可达基础，不代表新 P2 对应业务校验和规模性能已实测。
+
+这些证据及 P0–P7 的实际行动/退出模板、可复制的只读 Preflight 指令均只保存在同一 Bundle 的 [e0-preflight-execution.md](e0-preflight-execution.md)。它不是第二 Plan、不是已获执行许可的产品 HANDOFF。
+
+### 30.3 剩余 Gate 0 阻塞和决策边界
+
+真正阻塞**开发前设计就绪**的是：①确定最终目标集成 HEAD/重叠接口 Owner，②P2 最小身份业务 Schema 与 Reserved/Typed Writer/Save/GC/WorldScope 的完整设计，③跨 Game/Authority/Narrator 的 Domain Effect/Receipt 协调，④动态 NPC Perspective/Context/Prompt 的完整授权 Owner/消费者，⑤原生 Fact/History 的双锚读取与纠错/无时钟策略，⑥WP-A～F 全实际生产 Consumer 及 Legacy/插件 `RETAIN/REPLACE/DELETE/INVESTIGATE` 证据。
+
+不要求本阶段已经通过尚未实现的功能运行测试；Schema/DB/Provider Wire/UI/长会话与 Windows/CachyOS/Termux 三端属于未来实施期 Gate 1～4。**但缺少真正的 Owner/合法写入/最终调用者证据时，仍不得声称 Gate 0 PASS。**
+
+**状态结论**：W1–W22 方向已确认，E0 **PARTIAL / BLOCKED**，有界 Preflight 文件已就绪，但完整目标 API/代码变更尚未通过静态设计证据门槛；不修改 `main`、不开 `feat/*`，直到用户明确批准整份 Plan 的 Final 与实现启动，并且必要 Gate 0 工程责任有实际可执行证据。
