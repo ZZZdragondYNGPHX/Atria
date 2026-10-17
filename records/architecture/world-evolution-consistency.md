@@ -354,6 +354,29 @@
 - **验证方式/限制**：本轮完成 GitHub 定向源码读、固定 SHA 下 Git tree 部分目录枚举、`docs` 多次 Markdown 写入与末次 `fetch_file(ref=docs)` 内容核验。未运行 Node、CI、E2E、浏览器/真 UI、Windows/CachyOS/Android Termux，且部分生产消费者需最终集成 HEAD 后重新审查。**不能将部分静态 E0 判为 PASS**。
 - **下一 checkpoint**：用户决定 W18-A/B/C 后，按协议先在同一 Plan 和 Record 记录本轮选择，再进入固定最新 HEAD 下的 E0-06 完整 old→target/retain/delete 表与 E0-01/03 物理合同/时态查询、真实工程 Gate 0 收口；整体企划继续 Draft，正式启动开发须用户后续明确批准。
 
+
+## Stage 20 — W18-B 确认与 W19 Gate 0 物理主体/事实/时态收口（2026-10-17）
+
+- **用户确认的唯一决定**：本轮「认同」对应上轮唯一推荐 **W18-B「差异最小的 Typed ABI + 实际消费者验收驱动硬切」**。W1-B～W18-B 均已获用户的总体架构方向性确认。**W19-B 是当前研究推荐，用户尚未确认**；具体 ID/Schema/API、完整企划定稿、E0 PASS、产品分支创建或开发仍未获授权。
+- **工作空间与操作范围**：沿用 `ARCH-DWE-01` 唯一 Plan Bundle `plans/architecture/world-evolution-consistency/` 和本唯一 Record，仅 `docs` 分支被写入。未修改 `main` 或任何 Orchestration/Prompt/Visual 进行中分支；未创建新的实现分支、独立 Plan/Record/HANDOFF。
+- **本轮 docs 提交及内容**：
+  - `08b7f76a8afe66435cb804f13e48da0e09e265ce`：W18 原模块 `e0-minimal-contract-cutover.md` §7 正式写入用户选择 W18-B，保留“最小语义类型不是物理 Schema 已冻结”与已有消费者硬切的证据门槛。
+  - `fc162e52d3c6eb24f5fb56a000854b3be5902a87`：同一 Plan Bundle 新增 W19 `e0-gate0-physical-contracts.md`，具体记录现有 Native State/World Event/Receipt/History/Save/StateDelta 的物理事实、Session-owned Subject/Fact Transition 与 Revision/GameTick 两段授权历史查询候选、Gate 0 开发前审计与实施后 Gate 1～4 真实测试的边界、已定位生产链和 W19-A/B/C 候选。
+  - `fc09c34ee4d6232fadc480f256ade9e75ffc7b03`：更新同一总设计 `design.md` §26，确认 W18-B 并路由 W19 原生数据/历史查询议题。
+  - `7723a8e85da57edc1c9e0e4e66c57f12f33d18c6`：更新同一 `index.md`，将 W1～W18 标记为已确认 B，W19 当前待选，Plan 仍 Draft。
+- **实际代码版本锚点**：此阶段通过 GitHub Branch GET 再确认 `main=c57fada6edeea255b29d857ba2585c1dbc9c098b`，V3 `a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`，Prompt `760327891149216dffdc1e3fa0c846496007a013`，Visual `ae587be0c64487ba922528bdd0146444bcf5e92e`。不是未来正式实施的最终 HEAD；仍需合流之后重新锁定。
+- **本轮新的 Native 物理层静态证据**：
+  - `SessionCore.initialWorldState` 将 WorldRevision baseline 放入 Session `atri_world_state.worlds[worldId].{worldRevisionId,state}`，Worldless 用 `initialState`；跨多个 World 的 Subject 身份不能简单等同某一固定 WorldId 或作者 ActorId。
+  - `public/scripts/native/experience/world/session.js` 的 `atri_game_runtime.events` 有 `branchId/seq/type/payload/meta?`，World State 与 Journal 可随同一次 `commitStatePatch` 提交；`SessionCore._publishLocked` 的 Action Receipt 可以记录 `committedRevisionId/branchId/eventRefs`。但现存 Event 的字段并未构成通用有效时间/FactKey、完整来源和 recorded revision 的统一公共查询 API。
+  - **重要信任边界**：`SessionCore.applyRuntimeCommit` 当 `hasAuthorityTransactions` 且尝试带 actionRequest 或直接修改 `atri_world_state/atri_game_runtime` 时，会拒绝 `native_authority_typed_publication_required`。未来不能为了动态世界绕过 Typed Native Authority，直接开放 generic StatePatch 写权。
+  - `src/native/history-authority.js` 对已声明 History 的域有 `facts/heads`、`key/value/tick/eventId/previousId` 和 provenance；`public/shared/native-history-runtime.js.queryHistory` 只接受 `id/kind/facet/value/limit/cursor/memory` 且 cursor 绑定当前 Snapshot Revision，**不是**任意世界对象的 `asOfGameTick + asKnownRevision` 双时间查询。
+  - `src/native/session-snapshot.js` 的 BranchGraph、Revision 祖先与时间线可达性校验，以及 `src/native/state-delta.js` 对 `atri_world_state` 的 snapshot/delta 复用基础已确认；但旧修订的 GC/Pin、因果有效期与主体得知时间不可仅由 State Delta 自然推断。
+  - GitHub 代码搜索找到 `src/endpoints/native-session.js → SessionCore.applyRuntimeCommit`、`experience/logic/runtime.js → world/session.commitEvents → session-runtime.commitStatePatch`、`authority-transaction.js → SessionCore Typed Authority Publication` 等**符号级候选链**；搜索未穷尽所有动态加载/第三方插件和活跃未合入分支调用，因此 **E0-06 仍为 PARTIAL/OPEN**。
+- **W19 研究推荐，用户未选择**：**W19-B「Session 原生最小 Subject + 来源型 Fact Transition / Revision-Tick 双锚查询 + Gate 0 证据收口」**，以现有 Native Session State/Events/Receipts/History 为权威，必要时加最小物理 Subject/Fact Transition；查询先验证请求 Revision 在合法分支祖先可达，再依据已提交、可见来源查 `asOfGameTick` 的事实有效期与用户/角色合法 Perspective。不添加平行 EventStore，也不强制无 Game Clock 的 Worldless RP 伪造时间戳。W19-A 依 LLM 从 Snapshot 猜历史及 W19-C 新建独立双时间数据库仅供比较。
+- **E0 Gate 方法的重要澄清**：**开发前 Gate 0** 要求确切 HEAD、Owner/Consumer/Target/Deletion/Abi 缺口和能够执行的验证计划；**开发后 Gate 1～4** 才能取得新增功能的 Node/CI/数据库/真实 Studio/Play/Windows/CachyOS/Termux 证据。不能要求尚未实现的功能先通过真实 E2E 才允许启动代码开发，也不能把计划存在写成实际测试通过。
+- **E0 状态**：E0-01 Subject/Fact 物理合同、E0-02 Native Domain/跨入口事务、E0-03 通用历史有效期、E0-04 动态私人 Perspective、E0-05 Claim-aware Context、E0-06 全生产消费者和旧路径删除、E0-07 Library/Studio/Play、E0-08 长会话/持久化、E0-09 集成分支依赖，**全部仍有未关闭阻塞，整体 PARTIAL/BLOCKED**。本轮仅 GitHub 文件静态阅读、Tree/Code Search 和 docs 写入；没有 Node/CI/真 UI/三端实测。
+- **下一 checkpoint**：用户明确选择 W19-A/B/C 后，先依讨论协议更新同一 Plan 和唯一 Record，再对 E0-01/03 的最小物理 Schema/受控历史查询接口与 E0-06 完整生产调用/删除证据开展最终 Gate 0 交接前审查，评估是否具备整个 Plan 定稿与正式开发分支授权的前置条件。未获用户最终批准前继续 Draft。
+
 ## Final state
 
 Not yet applicable. Discussion in progress.
