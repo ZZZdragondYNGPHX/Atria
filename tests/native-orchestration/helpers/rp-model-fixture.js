@@ -23,16 +23,19 @@ import { applyFactOperations } from '../../../public/scripts/agents/memory/atomi
 const id = kind => createNativeId('orchestration' + kind);
 export const RP_MODEL_TEXT = 'Synthetic original RP response.';
 
-export async function rpModelFixture(make, { memorySettings = null, seedMemory = false, usage = true, totalTokens = 20, configurePlan = null, responsePayload = null } = {}) {
+export async function rpModelFixture(make, { memorySettings = null, seedMemory = false, usage = true, totalTokens = 20, configurePlan = null, responsePayload = null, responseStatus = () => 200, responseBody = null } = {}) {
     const h = await make(), requests = [], effects = [], pending = [];
     let respond = async () => {};
     const server = http.createServer(async (req, res) => {
         const chunks = []; for await (const chunk of req) chunks.push(chunk);
         const body = JSON.parse(Buffer.concat(chunks)); requests.push(body);
         await respond(body);
-        res.writeHead(200, { 'content-type': 'application/json', connection: 'close' });
-        res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: responsePayload ? await responsePayload(body, requests.length) : RP_MODEL_TEXT }, finish_reason: 'stop' }],
-            ...(usage ? { usage: { total_tokens: totalTokens, prompt_tokens: 12, completion_tokens: totalTokens - 12 } } : {}) }));
+        const status = responseStatus(body, requests.length);
+        if (status === null) { req.socket.destroy(); return; }
+        const reportedUsage = typeof usage === 'function' ? usage(body, requests.length) : usage;
+        res.writeHead(status, { 'content-type': 'application/json', connection: 'close' });
+        res.end(JSON.stringify(responseBody ? await responseBody(body, requests.length) : { choices: [{ message: { role: 'assistant', content: responsePayload ? await responsePayload(body, requests.length) : RP_MODEL_TEXT }, finish_reason: 'stop' }],
+            ...(reportedUsage ? { usage: { total_tokens: totalTokens, prompt_tokens: 12, completion_tokens: totalTokens - 12 } } : {}) }));
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     try {

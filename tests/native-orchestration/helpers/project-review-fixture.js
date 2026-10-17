@@ -2,7 +2,7 @@ import { projectReadFixture, configureProjectToolPlan } from './project-tool-fix
 import { createNativeId } from '../../../src/native/identity.js';
 
 const plan = { summary: 'Prepare an original Project review', steps: [{ id: 'rename', title: 'Rename Project', impact: 'low' }] };
-export const projectReviewFixture = async (make, { unpinned = false, invalid = false, outputContract = false } = {}) => {
+export const projectReviewFixture = async (make, { unpinned = false, invalid = false, outputContract = false, configurePlan = async () => {}, responseStatus = 200, responseOffset = 0, missingUsage = false } = {}) => {
     let original;
     return projectReadFixture(make, { maxModelRounds: 3, configurePlan: async args => {
         original = structuredClone(args.original); original.project.displayName = 'Proposed Native Project name';
@@ -15,9 +15,13 @@ export const projectReviewFixture = async (make, { unpinned = false, invalid = f
         definition.edges.push({ edgeId: createNativeId('orchestrationEdge'), from: { nodeId: node.nodeId, port: 'response' },
             to: { nodeId: node.nodeId, port: 'continuation' }, condition: 'always', maxVisits: 2, loopBack: true });
         definition.limits.maxLoopIterations = 2; definition.limits.maxEdgeVisits = Math.max(definition.limits.maxEdgeVisits, 3);
-    }, responseBody: ({ index }) => ({ id: 'review-response-' + index, status: 'completed', output: [{ id: 'review-item-' + index,
-        type: 'function_call', status: 'completed', call_id: 'review-call-' + index,
-        name: ['atri_agent_set_plan', 'atri_agent_project_save', 'atri_agent_prepare_review'][index],
-        arguments: JSON.stringify(index === 0 ? plan : index === 1 ? { source: original, stepId: 'rename' } : {}) }],
-    usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } }) });
+        await configurePlan(args);
+    }, responseStatus, responseBody: ({ index: requestIndex }) => {
+        const index = Math.max(0, requestIndex - responseOffset);
+        return { id: 'review-response-' + index, status: 'completed', output: [{ id: 'review-item-' + index,
+            type: 'function_call', status: 'completed', call_id: 'review-call-' + index,
+            name: ['atri_agent_set_plan', 'atri_agent_project_save', 'atri_agent_prepare_review'][index],
+            arguments: JSON.stringify(index === 0 ? plan : index === 1 ? { source: original, stepId: 'rename' } : {}) }],
+        ...missingUsage ? {} : { usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } } };
+    } });
 };

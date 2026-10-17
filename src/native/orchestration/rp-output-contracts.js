@@ -8,8 +8,9 @@ import { controlRecordKey, readAttempt } from './controller-common.js';
 import { readRpNarrationResult } from './rp-narration-result-contracts.js';
 import { readEffect } from './effect-contracts.js';
 import { attemptReceiptId, readAttemptSettlement } from './attempt-settlement.js';
-import { assertBudgetAttemptRef, assertBudgetAuthorityRef } from './budget-port.js';
+import { assertBudgetAttemptRef, assertBudgetAuthorityRef, sendAttemptId } from './budget-port.js';
 import { readRpPlannerCompletion } from './rp-planner-contracts.js';
+import { readModelCompletionReceipt } from './model-port.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP output completion facts'); };
@@ -117,7 +118,21 @@ export async function readRpOutput(tx, handle, root) {
     }
     const sends = closure.budgetAttemptRefs.filter(ref => ref.kind !== 'local_work');
     const local = closure.budgetAttemptRefs.filter(ref => ref.kind === 'local_work');
-    if (sends.length !== providerIds.length || providerIds.some(id => !sends.some(ref => ref.effectId === id && ref.providerSendOrdinal === 0))
+    const expectedSends = [];
+    for (const id of providerIds) {
+        const effect = (await readEffect(tx, handle, root, id)).doc;
+        if (effect.capability === 'memory.retrieve') { expectedSends.push(effect.budgetAttemptRef); continue; }
+        const completed = await readModelCompletionReceipt(handle, tx, root, effect);
+        const attempts = completed?.observation.dispatchEvidence.reference.attempts;
+        if (!Array.isArray(attempts) || !attempts.length) invalid();
+        for (const [ordinal, attempt] of attempts.entries()) {
+            const ref = attempt.budgetAttemptRef;
+            assertBudgetAttemptRef(ref);
+            if (ref.effectId !== id || ref.providerSendOrdinal !== ordinal || ref.attemptId !== sendAttemptId(id, ordinal)) invalid();
+            expectedSends.push(ref);
+        }
+    }
+    if (!equal(sends.map(hash).sort(), expectedSends.map(hash).sort())
         || !local.some(ref => ref.effectId === published.receipt.modelEffectId && ref.localWorkOrdinal === 0)
         || local.filter(ref => ref.effectId === intent.effectId).length !== 1 || !local.some(ref => equal(ref, intent.budgetAttemptRef))) invalid();
     const edge = root.graph.edges.find(item => item.from.nodeId === published.producer.nodeId && item.to.nodeId === output.nodeId);

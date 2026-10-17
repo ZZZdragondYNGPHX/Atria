@@ -34,6 +34,7 @@ import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../n
 import { NativeGenerationHost, selectNativeRuntimeRoute } from '../native/adapters/generation-host.js';
 import { NativeNarratorOrchestrationAuthority } from '../native/orchestration/native-turn-orchestration.js';
 import { NativeProjectCommitAuthority } from '../native/orchestration/native-project-commit-authority.js';
+import { NativeToolOrchestrationAuthority } from '../native/orchestration/native-tool-orchestration.js';
 import { createHttpGenerationProvider } from '../native/adapters/http-generation-provider.js';
 import { createResponsesGenerationProvider } from '../native/adapters/responses-generation-provider.js';
 import { createNativeMessagesProvider } from '../native/adapters/native-messages-provider.js';
@@ -65,6 +66,7 @@ import { RpRunControl } from '../native/rp-run-control.js';
 // HTTP compositions create fresh Model Hosts. The pending commit's private
 // request must survive those compositions until the original review/dispatch.
 const projectCommitAuthorities = new WeakMap();
+const toolAuthorities = new WeakMap();
 
 function generationFailure(error, fallback = 'native_generation_failed') {
     const code = error.code === 'native_processing_failed' || ['storage_commit_unknown', 'storage_read_only'].includes(error.code)
@@ -113,6 +115,12 @@ function services() {
         projectCommitAuthorities.set(persistence._engine, commit);
     }
     host.projectCommitAuthority = commit.authority;
+    let tools = toolAuthorities.get(persistence._engine);
+    if (!tools || tools.core !== core || tools.hostBootId !== persistence._engine.nativeHostLifecycle.hostBootId) {
+        tools = { core, hostBootId: persistence._engine.nativeHostLifecycle.hostBootId, authority: new NativeToolOrchestrationAuthority({ host }) };
+        toolAuthorities.set(persistence._engine, tools);
+    }
+    host.toolOrchestration = tools.authority;
     return host;
 }
 

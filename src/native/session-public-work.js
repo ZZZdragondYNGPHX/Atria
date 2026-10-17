@@ -59,8 +59,8 @@ export async function describeSessionProtocols(host, handle, input) {
 // Shared original Session display authority and RunControl work, not a connector ledger.
 export class SessionPublicWork {
     constructor({ host, protocol, permit }) { Object.assign(this, { host, protocol, permit }); }
-    async capture(handle, input) {
-        const base = await this.host.sessionCore.load(handle, input.sessionId);
+    async capture(handle, input, { readOnly = false } = {}) {
+        const base = await this.host.sessionCore[readOnly ? 'observe' : 'load'](handle, input.sessionId);
         if (base.revision.revisionId !== input.revisionId) fail('native_' + this.protocol + '_revision_conflict');
         await this.host.sessionCore.runs.assert(handle, input.sessionId, 'generate', input.revisionId);
         const view = informationDefinition(base)?.views.find(view => view.id === input.viewId);

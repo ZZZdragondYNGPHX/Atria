@@ -102,7 +102,8 @@ describe.each(harnesses)('$name original bound Project model producer', ({ make 
 
     test.each(['messages', 'tools'])('altering the original working round %s cannot change the sealed model request', async field => {
         const f = await fixture(make);
-        f.onRound(({ round }) => { round[field] = field === 'messages' ? [{ role: 'user', content: 'Untrusted replacement input' }] : []; });
+        f.onRound(({ round }) => { round[field] = field === 'messages' ? [{ role: 'user', content: 'Untrusted replacement input' }]
+            : [{ type: 'function', function: { name: 'untrusted_extra_tool', parameters: { type: 'object', properties: {} } } }]; });
         try {
             await expect(f.run()).rejects.toMatchObject({ code: 'native_orchestration_project_request_mismatch' });
             expect(f.requests).toEqual([]); expect(f.effects).toHaveLength(1);
@@ -153,7 +154,7 @@ describe.each(harnesses)('$name original bound Project model producer', ({ make 
     });
 
     test('a failed Provider with unknown spending cannot charge any original local work again under the same request', async () => {
-        const f = await fixture(make, { responseStatus: 503 });
+        const f = await fixture(make, { responseStatus: 503, responseBody: () => ({ error: { message: 'Synthetic unavailable without usage' } }) });
         try {
             await expect(f.run()).rejects.toThrow(); const before = await observedTask(f);
             expect(before.compute.attempts[0].status).toBe('unknown');
@@ -179,7 +180,7 @@ describe.each(harnesses)('$name original bound Project model producer', ({ make 
     });
 
     test('a real Provider failure does not publish an assistant body or silently resend', async () => {
-        const f = await fixture(make, { responseStatus: 503 });
+        const f = await fixture(make, { responseStatus: 503, responseBody: () => ({ error: { message: 'Synthetic unavailable without usage' } }) });
         try {
             await expect(f.run()).rejects.toThrow();
             const task = await observedTask(f); expect(hasAssistant(task)).toBe(false); expect(f.requests).toHaveLength(1);
@@ -194,12 +195,13 @@ describe.each(harnesses)('$name original bound Project model producer', ({ make 
             arguments: JSON.stringify({ summary: 'Must remain a model proposal', steps: [{ id: 'unauthorized', title: 'Must not execute' }] }) }],
         usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } }) });
         try {
-            await expect(f.run()).rejects.toMatchObject({ code: 'native_orchestration_project_tool_scope_unavailable' });
+            await expect(f.run()).rejects.toMatchObject({ code: 'generation_response_invalid' });
             const task = await observedTask(f); expect(task.plan).toBeNull(); expect(task.operations).toEqual([]); expect(task.workspace).toBeNull();
             expect(hasAssistant(task)).toBe(false); expect(f.requests).toHaveLength(1);
             expect(task.compute.attempts).toHaveLength(1); expect(task.compute.attempts[0]).toMatchObject({ status: 'settled', usage: { totalTokens: 20 } });
             const ref = f.effects[0], root = await f.authority.execution.runs.get(f.h.handle, ref.runId);
-            await f.h.engine.withTransaction(f.h.handle, async tx => { expect((await readEffect(tx, f.h.handle, root, ref.effectId)).doc.status).toBe('confirmed'); });
+            await f.h.engine.withTransaction(f.h.handle, async tx => { expect((await readEffect(tx, f.h.handle, root, ref.effectId)).doc.status).toBe('dispatching'); });
+            expect(root.resultRefs).toEqual([]); expect(root.outputClaims).toEqual([]);
         } finally { await f.cleanup(); }
     });
 });

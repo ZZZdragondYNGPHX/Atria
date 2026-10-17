@@ -148,8 +148,17 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
                 throw new ProviderFailure('transport');
             }
             if (!response.ok) {
-                await response.body?.cancel();
-                throw providerHttpFailure(response.status);
+                const failure = providerHttpFailure(response.status);
+                if (failure instanceof ProviderFailure) {
+                    // Retain only directly reported numeric usage. The failed
+                    // response body and provider message never leave this frame.
+                    try {
+                        const raw = await response.json();
+                        const usage = observedGenerationUsage(raw?.usage, { inputTokens: 'prompt_tokens', outputTokens: 'completion_tokens', totalTokens: 'total_tokens' });
+                        if (usage) failure.usage = usage;
+                    } catch { /* An unreadable failure retains unknown spending. */ }
+                } else await response.body?.cancel();
+                throw failure;
             }
             return response;
         },

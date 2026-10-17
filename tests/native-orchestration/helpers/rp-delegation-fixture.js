@@ -42,11 +42,11 @@ export async function rpDelegationFixture(make, options = {}) {
         options.configureChildRoute?.(draftRoute);
         await f.persistence.saveRuntimeRoute(f.h.handle, draftRoute);
         const childRoute = await f.persistence.getRuntimeRoute(f.h.handle, draftRoute.runtimeRouteId);
-        const childPlan = textPlan(childRoute); options.configureChildPlan?.(childPlan);
+        const childPlan = textPlan(childRoute); await options.configureChildPlan?.(childPlan, f);
         const childPlanRef = await publish(f.plans, f.h.handle, childPlan);
         const childRevision = await f.plans.getRevision(f.h.handle, childPlanRef);
         const parentPlan = textPlan(parentRoute, { delegatePin: { planRef: childPlanRef, revision: childRevision } });
-        options.configureParentPlan?.(parentPlan);
+        await options.configureParentPlan?.(parentPlan, f);
         const planRef = await publish(f.plans, f.h.handle, parentPlan);
         const binding = await f.plans.getBinding(f.h.handle, f.sourceSelector);
         await f.plans.saveBinding(f.h.handle, id('Command'), { sourceSelector: f.sourceSelector, planRef, expectedVersion: binding.version });

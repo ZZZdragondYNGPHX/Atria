@@ -13,6 +13,7 @@ import { effectBudgetClosure, localWorkAttemptId } from './budget-port.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { inspectComputeEffectClosure } from '../../../public/shared/native-compute-budget.js';
+import { readReadyEffectResume } from './effect-recovery-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const fail = () => { throw new ConflictError('native_orchestration_project_commit_stale'); };
@@ -71,6 +72,7 @@ export async function readProjectCommitCompletion(tx, handle, root, agent) {
         for (const effectId of producer.effectRefs) {
             const intent = (await readEffect(tx, handle, root, effectId)).doc, input = intent.inputRef;
             if (input.kind !== 'native_project_commit') continue;
+            await readReadyEffectResume(tx, handle, root, intent);
             const source = root.sourceBinding;
             if (root.ownerRef.handle !== handle || root.parentRef !== null || source.sourceAuthority !== 'project'
                 || source.sourceRequest.purpose !== 'formal_commit' || input.projectId !== source.sourceRef.projectId || input.taskId !== source.sourceRef.taskId

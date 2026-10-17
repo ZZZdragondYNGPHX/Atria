@@ -32,7 +32,9 @@ export async function modelPortFixture(make, { usage = true, failure = false, re
         }
         const parts = []; for await (const part of req) parts.push(part);
         const body = JSON.parse(Buffer.concat(parts).toString()); requests.push(body); await afterSend();
-        res.writeHead(responseStatus ? responseStatus(requests.length) : failure ? 503 : 200, { 'content-type': 'application/json' });
+        const status = responseStatus ? responseStatus(requests.length) : failure ? 503 : 200;
+        if (status === null) { req.socket.destroy(); return; }
+        res.writeHead(status, { 'content-type': 'application/json', Connection: 'close' });
         res.end(JSON.stringify(responseBody ? await responseBody({ requests, body, index: requests.length - 1 }) : { id: 'native-response', status: 'completed', output: [{ id: 'native-message', type: 'message', status: 'completed', role: 'assistant',
             content: [{ type: 'output_text', text: 'Synthetic native narrator response.', annotations: [] }] }],
         ...(usage ? { usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } } : {}) }));

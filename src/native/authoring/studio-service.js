@@ -15,6 +15,7 @@ import {
 import { buildProjectPackage, PackageInstaller } from '../package-composition.js';
 import { validateAtriaProjectSource } from '../project-source.js';
 import { StudioPreviewHost } from '../studio-preview.js';
+import { nativeProjectCommitPreviewVersion } from '../orchestration/native-project-commit-authority.js';
 import {
     LibraryAuthoringPlanner,
     STUDIO_RESOURCE_OPERATION_TYPES,
@@ -677,8 +678,11 @@ export class StudioService {
         simulation = true,
         entryPointId = undefined,
         simulationOptions = {},
+        nativeCommitPermit = undefined,
     } = {}) {
         const workspace = assertAuthoringWorkspace(workspaceValue);
+        const previewPackageVersionId = nativeCommitPermit === undefined ? null
+            : nativeProjectCommitPreviewVersion(nativeCommitPermit, { studio: this, handle, workspace });
         if (!workspace.operations.length) {
             throw new TypeError('Authoring workspace must contain at least one operation');
         }
@@ -724,6 +728,7 @@ export class StudioService {
                         worldRepo: this._worlds,
                         knowledgeRepo: this._knowledge,
                         assetStore: this._assets,
+                        ...(previewPackageVersionId ? { idFactory: () => previewPackageVersionId } : {}),
                     });
                     const runtimePreview = this._previewHost.create({
                         projectId: workspace.projectId,

@@ -12,7 +12,7 @@ import { ContextRetrievalPort } from './context-retrieval-port.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 import { controlCommandId, controlRecordKey, runGuard, readAttempt } from './controller-common.js';
 import { TransitionController } from './transition-controller.js';
-import { validateModelCapability } from './model-capability-authority.js';
+import { validateModelCapability, resolveModelFailurePlan } from './model-capability-authority.js';
 import { assertNativeTurnQuota, assertNativeTurnOutputQuota } from './native-turn-quota.js';
 import { inspectNativeAuthorityResolver } from './authority-resolver-context.js';
 import { ModelPort } from './model-port.js';
@@ -252,8 +252,9 @@ export class NativeNarratorOrchestrationAuthority {
             const resolved = await this.modelResolver.resolve({ handle, routeRef: pin.resourceRef, role,
                 ...(role === 'role.intent_resolver' ? { requirements: ['generation.tools'] } : {}) });
             if (!resolved.route.executionPolicy?.computeBudget?.localWork) fail('native_orchestration_context_budget_unavailable');
-            const configDigest = hash({ route: resolved.route, model: resolved.model, connection: resolved.connection, generation: resolved.generation, resources: resolved.resources });
-            profiles[role] = { node, pin, resolved, configDigest };
+            const failurePlan = await resolveModelFailurePlan({ handle, node, dependencyPins: plan.dependencyPins, resolver: this.modelResolver,
+                routeRef: pin.resourceRef, role, ...(role === 'role.intent_resolver' ? { requirements: ['generation.tools'] } : {}) });
+            profiles[role] = { node, pin, resolved, failurePlan, configDigest: failurePlan.configDigest };
         }
         const narrator = profiles['role.narrator'], resolver = profiles['role.intent_resolver'];
         if (!narrator || Boolean(resolver) !== needsResolver || !equal(graph.entryNodeIds, [(resolver ?? narrator).node.nodeId])
@@ -316,9 +317,12 @@ export class NativeNarratorOrchestrationAuthority {
     async #verifySend({ handle, root, intent, resolved, snapshot, compiledBinding }) {
         const state = this.#runs.get(root.runId);
         await this.#authorize({ handle, root, intent });
-        if (snapshot.requestId !== state.request.requestId || snapshot.runtimeRouteId !== state.selectionState.resolved.route.runtimeRouteId
+        const selected = state.selectionState, candidate = selected.failurePlan.routes.find(item => equal(item.routeRef,
+            { scope: 'player', runtimeRouteId: resolved.route.runtimeRouteId }));
+        if (!candidate || snapshot.requestId !== state.request.requestId || snapshot.runtimeRouteId !== resolved.route.runtimeRouteId
             || !equal(snapshot.promptProgramRef, resolved.route.promptProgramRef) || !equal(snapshot.generationProfileRef, resolved.route.generationProfileRef)
-            || hash({ route: resolved.route, model: resolved.model, connection: resolved.connection, generation: resolved.generation, resources: resolved.resources }) !== state.selectionState.configDigest
+            || hash({ route: resolved.route, model: resolved.model, connection: resolved.connection, generation: resolved.generation, resources: resolved.resources }) !== candidate.configDigest
+            || !equal(snapshot.diagnostics.executionPlan.policy, selected.resolved.route.executionPolicy)
             || compiledBinding.fingerprint !== snapshot.diagnostics.compiledBinding.fingerprint) fail('native_orchestration_turn_input_stale');
         const expected = await state.contextPort.provider(handle, { context: state.context }).buildRequestContextPlan(state.request, resolved);
         if (!equal(expected, snapshot.contextPlan)) fail('native_orchestration_turn_context_mismatch');
@@ -376,7 +380,9 @@ export class NativeNarratorOrchestrationAuthority {
         const started = await service.runs.start(handle, controlCommandId('native.turn.start', commandIdentity), { planRef: selected.binding.planRef,
             sourceRequest: sourceOf(base), retentionPolicyRef: { policyId: 'retain_native_turn_until_explicit_release' } });
         const root = await service.runs.get(handle, started.runId);
-        const state = { host, handle, selection, selectionState: selected, sourceBinding: captured.sourceBinding, decision, quotaProof, proofExpected, request: immutable(normalizedRequest) };
+        const fallbackMode = selected.failurePlan.routes.length > 1 ? 'automatic' : 'disabled';
+        const state = { host, handle, selection, selectionState: selected, sourceBinding: captured.sourceBinding, decision, quotaProof, proofExpected,
+            request: immutable({ ...normalizedRequest, ...(fallbackMode === 'automatic' ? { fallbackMode } : {}) }) };
         this.#runs.set(root.runId, state);
         try {
             const admission = { inputRefs: [logicalInputRef], inputDigest: hash([logicalInputRef]), effectiveGrantDigest: grantDigest, budgetRef: root.budgetAuthorityRef };
@@ -417,6 +423,7 @@ export class NativeNarratorOrchestrationAuthority {
             const contextOptions = nativeContextCompilationOptions(state.request, selected.resolved, { ...this.contextOptions, ...nativeOptions });
             state.contextPort = new ContextPort({ sessionCore: this.sessionCore, memoryAuthority: this.memoryAuthority, contextOptions, authorityTurn, resolverCapture,
                 nativeOutputQuota: resolverRole ? null : { proof: quotaProof, expected: proofExpected },
+                sessionModelPolicy: { fallbackMode, routes: selected.failurePlan.routes },
                 compilationInputs: contextPackage ? { manifest: contextPackage.manifest, sourceFiles: [...contextPackage.sourceFiles] } : null,
                 authorizeContext: async ({ request: contextRequest, phase, finalizationPermit, committed = null }) => {
                     await this.#current(selection, committed);

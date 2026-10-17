@@ -112,6 +112,7 @@ export class McpService {
                         evidence: immutable({ protocol: 'mcp', operation: input.toolName ? 'tool' : 'resource', operationId: operation.operationId,
                             inputHash: hash(input), endpointBindingDigest: hash(canonicalCredentialTarget(captured.connection)),
                             sourceFingerprint: captured.fingerprint, method: evidence.method, requestFingerprint: evidence.requestFingerprint,
+                            resultHash: artifact.provenance.outputFingerprint,
                             responseFingerprint: evidence.responseFingerprint, remoteReportedError: artifact.result.isError === true }) });
                     try { await trustedWork.onCompleted(proof); } finally { this.#completionProofs.delete(proof); }
                 }

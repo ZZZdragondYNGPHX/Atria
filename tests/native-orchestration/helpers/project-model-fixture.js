@@ -31,7 +31,7 @@ export async function projectModelFixture(make, { responseBody = null, responseS
         const body = JSON.parse(Buffer.concat(parts).toString()); requests.push(body);
         try {
             await afterSend({ body, index: requests.length - 1 });
-            response.writeHead(responseStatus, { 'content-type': 'application/json' });
+            response.writeHead(typeof responseStatus === 'function' ? responseStatus(requests.length - 1) : responseStatus, { 'content-type': 'application/json' });
             response.end(JSON.stringify(responseBody ? await responseBody({ body, index: requests.length - 1 }) : {
                 id: 'synthetic-project-response', status: 'completed', output: [{ id: 'synthetic-project-message', type: 'message', status: 'completed', role: 'assistant',
                     content: [{ type: 'output_text', text: PROJECT_MODEL_TEXT, annotations: [] }] }], usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 },

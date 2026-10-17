@@ -115,7 +115,17 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch, checkpoin
                 response = await fetchImpl(request.endpoint, { method: 'POST', signal, redirect: 'error',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret}` }, body: request.wire });
             } catch { if (signal.aborted) throw new GenerationError('generation_cancelled'); throw new ProviderFailure('transport'); }
-            if (!response.ok) { await response.body?.cancel(); throw providerHttpFailure(response.status); }
+            if (!response.ok) {
+                const failure = providerHttpFailure(response.status);
+                if (failure instanceof ProviderFailure) {
+                    try {
+                        const raw = await response.json();
+                        const usage = observedGenerationUsage(raw?.usage, { inputTokens: 'input_tokens', outputTokens: 'output_tokens', totalTokens: 'total_tokens' });
+                        if (usage) failure.usage = usage;
+                    } catch { /* A missing or unreadable report keeps spending unknown. */ }
+                } else await response.body?.cancel();
+                throw failure;
+            }
             return { response, binding: request.binding, sequence: request.sequence, continuityDecision: request.continuityDecision };
         },
         async parseStream({ response, binding, sequence, continuityDecision }, { onChunk, onUsage } = {}) {

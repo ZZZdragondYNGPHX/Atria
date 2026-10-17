@@ -134,12 +134,13 @@ export class NativeProjectAgentExecutor {
         const configuration = await this.configuration(handle);
         const route = configuration.routes.find(value => value.runtimeRouteId === input.runtimeRouteId && value.scope === 'player');
         if (!route) throw new ConflictError('native_generation_route_missing');
-        if (route.policy.maxRetries !== 0 || route.policy.maxFallbackAttempts !== 0) throw new ConflictError('native_generation_automatic_resend_denied');
         const budget = assertComputeBudget(route.executionPolicy?.computeBudget);
         // The original Host charges the durable Task bank before each send.
         // A missing budget is never interpreted as unlimited delegation.
         const selection = await this.host.turnOrchestration?.preflightProjectBinding?.({ host: this.host, handle, projectId, taskId,
             routeRef: { scope: 'player', runtimeRouteId: input.runtimeRouteId }, maxModelRounds: input.maxModelRounds }) ?? null;
+        if (selection === null && (route.policy.maxRetries !== 0 || route.policy.maxFallbackAttempts !== 0))
+            throw new ConflictError('native_generation_automatic_resend_denied');
         const selectionDescriptor = selection === null ? null : this.host.turnOrchestration.projectSelectionDescriptor(selection);
         const view = immutable({ projectId, taskId, baseRevision: task.baseRevision, expectedSequence: task.sequence, runtimeRouteId: input.runtimeRouteId,
             maxModelRounds: input.maxModelRounds, taskFingerprint: hashNativeDocument(task), configurationFingerprint: hashNativeDocument(configuration),

@@ -10,7 +10,7 @@ import { assertRunAccess } from '../run-control.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { RunRepository, assertRunRoot, TREE_LOGICAL_COUNTERS } from './run-repository.js';
 import { BudgetPort } from './budget-port.js';
-import { controlRecordKey, readAttempt, readAttemptInvalidation, readGraphReviewReceipt } from './controller-common.js';
+import { controlRecordKey, controlCommandId, readAttempt, readAttemptInvalidation, readGraphReviewReceipt } from './controller-common.js';
 import { readEffect, readApproval } from './effect-contracts.js';
 
 const resync = () => { throw new ConflictError('native_orchestration_projection_resync_required'); };
@@ -64,16 +64,16 @@ const timelineTypes = new Set(['admitted', 'attempt_prepared', 'attempt_identity
     'rp_narration_ready', 'rp_output_completed', 'session_narration_ready', 'session_output_completed', 'project_round_finished',
     'project_review_published', 'project_review_completed', 'project_generation_stopped', 'project_execution_failed', 'background_task_published', 'background_task_completed',
     'project_commit_published', 'project_commit_completed',
-    'cancel_requested', 'host_recovered', 'reconciliation_requested']);
+    'cancel_requested', 'host_recovered', 'effect_resumed', 'reconciliation_requested']);
 
 /** Owner/source metadata projection. No Result bodies, provider inputs, grants or dispatch tokens. */
 export class RunObservationService {
     #cursors = new Map();
     #eventSalt = randomUUID();
 
-    constructor({ engine, sessionCore, projectAgent, studio, rpControl, review = null, reconcileEffect = null, now = Date.now, pollMs = 1000 }) {
+    constructor({ engine, sessionCore, projectAgent, studio, rpControl, review = null, reconcileEffect = null, resumeEffect = null, now = Date.now, pollMs = 1000 }) {
         if (!engine.nativeHostLifecycle) throw new TypeError('Original Host ownership required');
-        this.engine = engine; this.now = now; this.pollMs = pollMs; this.review = review; this.reconcileEffect = reconcileEffect;
+        this.engine = engine; this.now = now; this.pollMs = pollMs; this.review = review; this.reconcileEffect = reconcileEffect; this.resumeEffect = resumeEffect;
         this.hostBootId = engine.nativeHostLifecycle.hostBootId;
         this.authorizeSource = createBindingSourceAuthority({ sessionCore, projectAgent, studio, rpControl });
         this.budget = new BudgetPort({ sessionCore, projectAgent, projectRepository: projectAgent?._repository, rpControl });
@@ -186,7 +186,7 @@ export class RunObservationService {
                 const root = await this.runs.get(handle, runId), revision = await readPlanRevision(tx, handle, root.planRef);
                 const fence = await this.engine.nativeHostLifecycle.assertWriter(handle, tx);
                 const recoveryRequired = root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation;
-                const visibilityDigest = await this.#authorize(handle, tx, root), attempts = [], effects = [], approvals = [], reconcilable = [], providerKinds = new Map();
+                const visibilityDigest = await this.#authorize(handle, tx, root), attempts = [], effects = [], approvals = [], reconcilable = [], resumable = [], providerKinds = new Map();
                 for (const id of root.attemptRefs) {
                     const attempt = (await readAttempt(tx, handle, root, id)).doc;
                     for (const field of ['startedAt', 'endedAt']) if (attempt[field] !== null) assertCounter(attempt[field], field);
@@ -199,6 +199,9 @@ export class RunObservationService {
                         effects.push({ effectId, nodeAttemptId: id, status: effect.status, risk: effect.risk, requiresApproval: effect.requiresApproval });
                         if (root.pendingEffectRefs.includes(effectId) && reconciliationProtocol(root)?.actions.includes(effect.actionRef.kind)
                             && ['dispatching', 'unknown', 'confirmed'].includes(effect.status)) reconcilable.push(effectId);
+                        if (effect.actionRef.kind === 'native_project_commit' && effect.status === 'ready' && effect.dispatchToken === null && effect.budgetAttemptRef
+                            && attempt.status === 'waiting_effect' && attempt.effectRefs.length === 1 && (recoveryRequired || effect.epoch < root.epoch)
+                            && !await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId: controlCommandId('effect.claim', effectId) })) resumable.push(effectId);
                     }
                 }
                 for (const id of root.pendingApprovalRefs) {
@@ -258,7 +261,10 @@ export class RunObservationService {
                     attempts, effects, approvals, events: events.map(({ internalOrder: _order, ...event }) => event), costs, diagnostics,
                     reconciliationRequest: reconciliationRequest ? { commandId: reconciliationRequest.commandId, effectId: reconciliationRequest.effectId } : null,
                     controls: { cancel: !['completed', 'partial', 'failed', 'cancelled', 'stale'].includes(root.status) && !recoveryRequired,
-                        recover: recoveryRequired, resume: false, reconcile: typeof this.reconcileEffect === 'function' && !recoveryRequired
+                        recover: recoveryRequired, resume: typeof this.resumeEffect === 'function' && root.parentRef === null && !root.cancelRequested
+                            && root.sourceBinding.sourceRequest.purpose === 'formal_commit' && root.attemptRefs.length === 1
+                            && root.pendingEffectRefs.length === 1 && resumable.length === 1 && !root.resultRefs.length && !root.outputClaims.length
+                            && ['running', 'waiting_approval', 'blocked', 'reconciling'].includes(root.status), reconcile: typeof this.reconcileEffect === 'function' && !recoveryRequired
                             && Boolean(reconciliationProtocol(root)) && root.parentRef === null && reconciliationProtocol(root).outputKinds.includes(root.graph.outputContract.kind)
                             && !['completed', 'partial', 'failed', 'cancelled', 'stale'].includes(root.status) && reconcilable.length === 1,
                         approve: false }, createdAt: root.createdAt, updatedAt: root.updatedAt };

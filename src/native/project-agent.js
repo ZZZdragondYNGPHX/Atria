@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { consumeNativeProjectToolPermit, completeNativeProjectToolPermit,
     consumeNativeProjectGenerationPermit, assertNativeProjectGenerationWrite } from './orchestration/native-project-generation-authority.js';
-import { consumeNativeProjectCommitPermit, nativeProjectCommitChangeSet, assertNativeProjectCommitWrite, assertNativeProjectCommitWork } from './orchestration/native-project-commit-authority.js';
+import { consumeNativeProjectCommitPermit, nativeProjectCommitChangeSet, nativeProjectCommitPreview, assertNativeProjectCommitWrite, assertNativeProjectCommitWork } from './orchestration/native-project-commit-authority.js';
 import { projectToolResultPayload } from './orchestration/project-tool-contracts.js';
 import { listAuthoringReferences, readAuthoringReference } from './authoring-reference.js';
 
@@ -1340,10 +1340,11 @@ export class ProjectAgentService {
             throw new ConflictError('project_agent_review_required', { taskId: id, status: task.status });
         }
         const assertPreview = () => {
-            if (!task.preview?.previewId) return;
+            const preview = nativeCommitPermit === undefined ? task.preview : nativeProjectCommitPreview(nativeCommitPermit, { agent: this, handle, projectId, taskId: id, task }) ?? task.preview;
+            if (!preview?.previewId) return;
             let current;
-            try { current = this._studio.getPreviewUi(handle, task.preview.previewId); } catch { throw new ConflictError('project_agent_preview_stale'); }
-            if (current.packageVersionId !== task.preview.packageVersionId) throw new ConflictError('project_agent_preview_stale');
+            try { current = this._studio.getPreviewUi(handle, preview.previewId); } catch { throw new ConflictError('project_agent_preview_stale'); }
+            if (current.packageVersionId !== preview.packageVersionId) throw new ConflictError('project_agent_preview_stale');
         };
         assertPreview();
         await this._assertTaskBaseRevision(handle, task);

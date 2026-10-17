@@ -22,8 +22,11 @@ export class ProjectCommitPort {
         let outcome = 'failed';
         try {
             await runs.withSourceControl(handle, state.runId,
-                () => ProjectAgentService.prototype.commit.call(agent, handle, state.input.projectId, state.input.taskId,
-                    { expectedReviewHash: state.input.reviewHash, nativeCommitPermit: permit, effectPolicy: 'no-background-model' }),
+                async () => {
+                    await authority.prepareCommitPreview(state, permit);
+                    return ProjectAgentService.prototype.commit.call(agent, handle, state.input.projectId, state.input.taskId,
+                        { expectedReviewHash: state.input.reviewHash, nativeCommitPermit: permit, effectPolicy: 'no-background-model' });
+                },
                 { withAuthority: operation => withRuntimeWrite(handle, () => ProjectAgentService.prototype.withTaskLock.call(agent, handle, state.input.projectId, state.input.taskId, operation)) });
             outcome = 'completed';
         } finally {

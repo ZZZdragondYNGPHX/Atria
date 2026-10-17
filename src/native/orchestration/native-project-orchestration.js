@@ -3,7 +3,8 @@ import { performance } from 'node:perf_hooks';
 import { hashNativeDocument as hash, cloneNativeDocument, putImmutable } from '../repositories/common.js';
 import { assertObject, assertResultPolicy, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { createOrchestrationAuthoringService } from './authoring-service.js';
-import { validateModelCapability } from './model-capability-authority.js';
+import { validateModelCapability, resolveModelFailurePlan } from './model-capability-authority.js';
+import { prepareExecutionPlan } from '../model-prompt-runtime/execution-evidence.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { projectRuntimeRoute } from '../adapters/project-runtime-route.js';
 import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
@@ -108,10 +109,13 @@ export class NativeProjectOrchestrationAuthority {
         const validation = await validateModelCapability({ handle, definition: graph, dependencyPins: plan.dependencyPins, resolver: this.owner.modelResolver });
         if (validation.issues.length) fail('native_orchestration_model_authority_unavailable');
         const raw = await host.persistence.getRuntimeRoute(handle, routeRef.runtimeRouteId);
-        if (raw?.role !== 'role.studio' || hash(raw) !== pin.integrity || raw.fallbackRouteRefs.length
-            || raw.policy.maxRetries !== 0 || raw.policy.maxFallbackAttempts !== 0
-            || (raw.executionPolicy?.continuity ?? 'none') !== 'none' || (raw.executionPolicy?.reuse ?? 'disabled') !== 'disabled')
+        if (raw?.role !== 'role.studio' || hash(raw) !== pin.integrity)
             fail('native_orchestration_project_route_mismatch');
+        // First prove original owned Route pins. Project prompt composition is
+        // derived below from the same original Studio revision, never by
+        // pretending a composed Route is the author's raw pinned document.
+        const frozenFailure = await resolveModelFailurePlan({ handle, node, dependencyPins: plan.dependencyPins,
+            resolver: this.owner.modelResolver, routeRef, role: 'role.studio', requirements: ['generation.tools'] });
         const project = await StudioService.prototype.observeProject.call(host.studio, handle, projectId);
         const persistence = Object.create(host.persistence);
         persistence.getRuntimeRoute = async (owner, id) => projectRuntimeRoute(await host.persistence.getRuntimeRoute(owner, id), projectId);
@@ -124,10 +128,19 @@ export class NativeProjectOrchestrationAuthority {
                 });
                 return entry && { snapshot: entry.resource, origin: { scope: 'project', projectId } };
             } });
-        const resolved = await resolver.resolve({ handle, routeRef, role: 'role.studio', requirements: ['generation.tools',
-            ...(project.source.package.runtime?.modelPrompt?.roles.find(item => item.role === 'role.studio')?.requiredCapabilities ?? [])] });
+        const requirements = ['generation.tools', ...(project.source.package.runtime?.modelPrompt?.roles.find(item => item.role === 'role.studio')?.requiredCapabilities ?? [])];
+        let resolved;
+        const routes = [];
+        for (const candidate of frozenFailure.routes) {
+            const current = await resolver.resolve({ handle, routeRef: candidate.routeRef, role: 'role.studio', requirements });
+            resolved ??= current;
+            if (!equal(current.route.promptProgramRef, resolved.route.promptProgramRef)) fail('generation_semantic_authority_changed');
+            prepareExecutionPlan(current, resolved.route.executionPolicy, resolver.provider(current.connection.providerAdapter));
+            routes.push({ routeRef: candidate.routeRef, configDigest: config(current) });
+        }
         if (!resolved.route.executionPolicy?.computeBudget?.localWork) fail('native_orchestration_context_budget_unavailable');
-        return { binding, plan, node, pin, loop, toolPins, resolved, configDigest: config(resolved) };
+        return { binding, plan, node, pin, loop, toolPins, resolved,
+            failurePlan: { routes }, configDigest: routes.length === 1 ? config(resolved) : hash(routes) };
     }
 
     async preflight(args) {
@@ -177,8 +190,12 @@ export class NativeProjectOrchestrationAuthority {
     async verifySend({ handle, root, intent, resolved, snapshot, compiledBinding }) {
         await this.authorize({ handle, root, intent });
         const state = this.#runs.get(root.runId);
-        if (snapshot.requestId !== state.request.requestId || snapshot.runtimeRouteId !== state.selected.pin.resourceRef.runtimeRouteId
-            || config(resolved) !== state.selected.configDigest || compiledBinding.fingerprint !== snapshot.diagnostics.compiledBinding.fingerprint)
+        const candidate = state.selected.failurePlan.routes.find(item => equal(item.routeRef, { scope: 'player', runtimeRouteId: resolved.route.runtimeRouteId }));
+        if (!candidate || snapshot.requestId !== state.request.requestId || snapshot.runtimeRouteId !== resolved.route.runtimeRouteId
+            || config(resolved) !== candidate.configDigest || !equal(snapshot.promptProgramRef, resolved.route.promptProgramRef)
+            || !equal(snapshot.generationProfileRef, resolved.route.generationProfileRef)
+            || !equal(snapshot.diagnostics.executionPlan.policy, state.selected.resolved.route.executionPolicy)
+            || compiledBinding.fingerprint !== snapshot.diagnostics.compiledBinding.fingerprint)
             fail('native_orchestration_project_input_stale');
         const expected = await state.contextPort.provider(handle, { context: state.context }).buildRequestContextPlan(state.request, resolved);
         if (!equal(expected, snapshot.contextPlan)) fail('native_orchestration_project_context_mismatch');
@@ -264,12 +281,14 @@ export class NativeProjectOrchestrationAuthority {
             const effectId = 'oeffect_' + hash({ runId: root.runId, attemptId, purpose: taskPurpose }).slice(0, 32); state.effectId = effectId;
             await service.effects.prepare(handle, { ...runGuard(await service.runs.get(handle, root.runId)), effectId, nodeAttemptId: attemptId,
                 proposal: Object.fromEntries(['actionRef', 'targetRef', 'inputRef', 'inputHash'].map(key => [key, decision[key]])) });
-            state.contextPort = new ContextPort({ projectAgent: host.agent, projectCapture, authorizeContext: async ({ request }) => {
-                await this.#current(selection); await inspectNativeProjectGeneration(projectCapture, { host, handle });
-                if (request.taskPurpose !== taskPurpose || !equal(request.audience, audience) || request.grantDigest !== grantDigest
+            state.contextPort = new ContextPort({ projectAgent: host.agent, projectCapture,
+                projectModelPolicy: { fallbackMode: selected.failurePlan.routes.length > 1 ? 'automatic' : 'disabled', routes: selected.failurePlan.routes },
+                authorizeContext: async ({ request }) => {
+                    await this.#current(selection); await inspectNativeProjectGeneration(projectCapture, { host, handle });
+                    if (request.taskPurpose !== taskPurpose || !equal(request.audience, audience) || request.grantDigest !== grantDigest
                     || !equal(request.sourceBinding, captured.sourceBinding) || !equal(request.inputRefs, [logicalInputRef])) fail('native_orchestration_context_denied');
-                return { allowed: true, grantDigest, projectToolPins: selected.toolPins };
-            } });
+                    return { allowed: true, grantDigest, projectToolPins: selected.toolPins };
+                } });
             const request = { ownerRef: { handle }, sourceBinding: captured.sourceBinding, audience, taskPurpose, grantDigest, inputRefs: [logicalInputRef],
                 tokenBudget: { modelContextLimit: selected.resolved.model.limits.contextTokens, responseReserve: effectiveOutputReserve(selected.resolved) } };
             const send = await service.generationSend(handle, { runId: root.runId, effectId, limits: selected.resolved.route.executionPolicy.computeBudget });

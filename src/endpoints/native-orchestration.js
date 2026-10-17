@@ -16,14 +16,15 @@ const services = () => {
     const engine = getStorageEngine(), { core } = getNativeSessionServices(), { studio, agent } = getNativeStudioServices();
     const host = getNativeGenerationHost();
     const modelResolver = new RouteResolver({ persistence: host.persistence, library: host.library, providers: host.providers });
-    const sources = { sessionCore: core, studio, projectAgent: agent, rpControl: new RpRunControl({ engine }), modelResolver };
+    const sources = { sessionCore: core, studio, projectAgent: agent, rpControl: new RpRunControl({ engine }), modelResolver, toolHost: host };
     const review = getNativeReviewOrigin(engine);
     let observations = observationServices.get(engine);
     if (!observations || observations.hostBootId !== engine.nativeHostLifecycle.hostBootId) {
         observations = new RunObservationService({ engine, ...sources, review: review.authority,
+            resumeEffect: (handle, request) => host.resumeProjectCommit(handle, request),
             reconcileEffect: (handle, request) => host.turnOrchestration.reconcileEffect(handle, request) }); observationServices.set(engine, observations);
     }
-    return { ...createOrchestrationAuthoringService(engine, sources), observations, review };
+    return { ...createOrchestrationAuthoringService(engine, sources), observations, review, tools: host.toolOrchestration };
 };
 
 /** Original app auth + CSRF middleware precedes this Native namespace. */
@@ -86,6 +87,16 @@ export function createNativeOrchestrationRouter(getServices = services) {
     router.post('/runs/cancel', route(true, (observations, handle, input) => observations.cancel(handle, input.commandId, input.body), 'observations'));
     router.post('/runs/recover', route(true, (observations, handle, input) => observations.recover(handle, input.commandId, input.body), 'observations'));
     router.post('/runs/reconcile', route(true, (observations, handle, input) => observations.reconcile(handle, input.commandId, input.body), 'observations'));
+    router.post('/tools/prepare', route(true, (tools, handle, input) => {
+        assertObject(input.body, ['planRef'], 'Tool preparation');
+        if (!tools) throw Object.assign(new Error('Tool authority unavailable'), { code: 'native_orchestration_tool_unavailable' });
+        return tools.prepare(handle, { commandId: input.commandId, planRef: input.body.planRef });
+    }, 'tools'));
+    for (const method of ['dispatch', 'observe', 'consume']) router.post('/tools/' + method, route(method === 'dispatch', (tools, handle, input) => {
+        assertObject(input.body, ['runId', 'effectId'], 'Tool request');
+        if (!tools) throw Object.assign(new Error('Tool authority unavailable'), { code: 'native_orchestration_tool_unavailable' });
+        return tools[method](handle, input.body);
+    }, 'tools'));
     router.post('/approvals/launch', (request, response, next) => {
         if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(request.socket.remoteAddress)) return response.sendStatus(503);
         next();

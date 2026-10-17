@@ -86,17 +86,30 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         } finally { await f.cleanup(); }
     });
 
-    test.each(['explicit', 'default'])('%s native route selection must match the Plan pin before Scheduler admission', async selection => {
+    test('explicit native route selection must match the Plan pin before Scheduler admission', async () => {
         const f = await fixture(make);
         try {
             const other = { ...f.route, runtimeRouteId: createNativeId('runtimeRoute'), displayName: 'Another original narrator',
-                fallbackRouteRefs: selection === 'default' ? [{ scope: 'player', runtimeRouteId: f.route.runtimeRouteId }] : [] };
+                fallbackRouteRefs: [] };
             await f.seeded.persistence.saveRuntimeRoute(f.h.handle, other);
-            if (selection === 'explicit') f.input.routeRef = { scope: 'player', runtimeRouteId: other.runtimeRouteId };
-            // The default case makes the pinned route a fallback of the other
-            // route: Native selection has exactly one different root route.
+            f.input.routeRef = { scope: 'player', runtimeRouteId: other.runtimeRouteId };
             await expect(f.start()).rejects.toMatchObject({ code: 'native_orchestration_turn_route_mismatch' });
             expect(f.requests).toHaveLength(0); expect(await roots(f)).toHaveLength(0);
+        } finally { await f.cleanup(); }
+    });
+
+    test('default selection keeps the Plan active pin when another global root lists it as a fallback', async () => {
+        const f = await fixture(make);
+        try {
+            await f.seeded.persistence.saveRuntimeRoute(f.h.handle, { ...f.route, runtimeRouteId: createNativeId('runtimeRoute'),
+                displayName: 'Another original narrator', fallbackRouteRefs: [{ scope: 'player', runtimeRouteId: f.route.runtimeRouteId }] });
+            await f.start(); expect(f.requests).toHaveLength(1);
+            const [{ doc: run }] = await roots(f);
+            const records = await f.h.engine.withTransaction(f.h.handle, tx => tx.listResources({ kind: K.orchestrationRecord, handle: f.h.handle, runId: run.runId }));
+            expect(records.find(row => row.key.recordType === 'effect').doc).toMatchObject({
+                actionRef: { kind: 'native_model_send', runtimeRouteId: f.route.runtimeRouteId },
+                inputRef: { routeRef: { scope: 'player', runtimeRouteId: f.route.runtimeRouteId } },
+            });
         } finally { await f.cleanup(); }
     });
 

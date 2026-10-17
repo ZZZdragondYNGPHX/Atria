@@ -10,7 +10,7 @@ import { readSessionNarrationResult, sessionOutputKey } from './session-narratio
 import { readModelCompletionReceipt } from './model-port.js';
 import { readEffect } from './effect-contracts.js';
 import { attemptReceiptId, readAttemptSettlement } from './attempt-settlement.js';
-import { assertBudgetAttemptRef, assertBudgetAuthorityRef } from './budget-port.js';
+import { assertBudgetAttemptRef, assertBudgetAuthorityRef, sendAttemptId } from './budget-port.js';
 import { readRunControl } from '../run-control.js';
 import { hasRetainedOrchestrationCompute } from '../../../public/shared/native-compute-budget.js';
 
@@ -171,8 +171,20 @@ export async function readSessionOutput(tx, handle, root) {
     }
     const sends = closure.budgetAttemptRefs.filter(ref => ref.kind !== 'local_work');
     const local = closure.budgetAttemptRefs.filter(ref => ref.kind === 'local_work');
-    if (sends.length !== modelIds.length + retrievalIds.size || [...retrievalIds].some(effectId => sends.filter(ref => ref.effectId === effectId && ref.providerSendOrdinal === 0).length !== 1) || modelIds.some(effectId => sends.filter(ref => ref.effectId === effectId && ref.providerSendOrdinal === 0).length !== 1
-        || !local.some(ref => ref.effectId === effectId && ref.localWorkOrdinal === 0))
+    const expectedSends = [...retrievalIds].map(effectId => sends.find(ref => ref.effectId === effectId && ref.providerSendOrdinal === 0));
+    if (expectedSends.some(ref => !ref)) invalid();
+    for (const effectId of modelIds) {
+        const generation = (await readEffect(tx, handle, root, effectId)).doc;
+        const completed = await readModelCompletionReceipt(handle, tx, root, generation);
+        const attempts = completed?.observation.dispatchEvidence.reference.attempts;
+        if (!Array.isArray(attempts) || !attempts.length) invalid();
+        for (const [ordinal, attempt] of attempts.entries()) {
+            const ref = attempt.budgetAttemptRef; assertBudgetAttemptRef(ref);
+            if (ref.effectId !== effectId || ref.providerSendOrdinal !== ordinal || ref.attemptId !== sendAttemptId(effectId, ordinal)) invalid();
+            expectedSends.push(ref);
+        }
+    }
+    if (!equal(sends.map(hash).sort(), expectedSends.map(hash).sort()) || modelIds.some(effectId => !local.some(ref => ref.effectId === effectId && ref.localWorkOrdinal === 0))
         || local.filter(ref => ref.effectId === intent.effectId).length !== 1 || !local.some(ref => equal(ref, intent.budgetAttemptRef))) invalid();
     const edge = root.graph.edges.find(item => item.from.nodeId === published.producer.nodeId && item.to.nodeId === output.nodeId);
     const bindings = edge ? [{ edgeId: edge.edgeId, producerAttemptId: published.producer.attemptId }] : [];

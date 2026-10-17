@@ -16,6 +16,8 @@ import { assertRetrievalRef } from '../../../public/scripts/native/retrieval-con
 import { validateRetrievalCapability } from './retrieval-capability-authority.js';
 import { readProjectCommitDescriptor } from './project-commit-contracts.js';
 import { validateProjectCommitCapability } from './project-commit-capability-authority.js';
+import { readNativeToolDescriptor, validateNativeToolCapability } from './native-tool-contracts.js';
+import { readDelegatedRpSource } from './delegated-source-contracts.js';
 
 /** Authoring uses existing Native resource readers; validation never sends. */
 export function createOrchestrationAuthoringService(engine, sources = {}) {
@@ -27,6 +29,7 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
     const authorizeBinding = createBindingSourceAuthority(sources);
     const readDependency = async ({ handle, tx, port, resourceRef: ref, runtimeRoute }) => {
         if (port === 'plan') return readPlanRevision(tx, handle, ref);
+        if (port === 'context' && ref.kind === 'native_rp_message') return readDelegatedRpSource(handle, ref, sources.rpControl, { tx });
         if (port === 'context' && ref.scope === 'player' && Object.hasOwn(ref, 'retrievalProfileId')) {
             const normalized = assertRetrievalRef(ref);
             try { return await retrieval.getExact(handle, normalized); } catch (error) {
@@ -44,6 +47,7 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
             return runtimeRoute?.runtimeRouteId === ref.runtimeRouteId ? runtimeRoute : runtime.getRuntimeRoute(handle, ref.runtimeRouteId);
         }
         if (port === 'tool' && ref.kind === 'project_agent_tool') return readProjectToolDescriptor(handle, ref, sources.projectAgent);
+        if (port === 'tool' && ref.kind === 'native_session_tool') return readNativeToolDescriptor(handle, ref, sources.toolHost);
         if (port === 'project' && ref.kind === 'native_project_commit') return readProjectCommitDescriptor(handle, ref, sources.projectAgent);
         throw Object.assign(new TypeError('Original dependency authority required'), { code: 'native_orchestration_dependency_authority_unavailable' });
     };
@@ -95,6 +99,11 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
                 evidence.push(...result.evidence); issues.push(...result.issues);
                 continue;
             }
+            if (['mcp.read', 'a2a.read', 'skill.read'].includes(capability)) {
+                const result = validateNativeToolCapability({ definition, dependencyPins, capability, host: sources.toolHost });
+                evidence.push(...result.evidence); issues.push(...result.issues);
+                continue;
+            }
             issues.push({ code: 'native_orchestration_capability_authority_unavailable', severity: 'unknown', fieldPath: 'capabilityCeiling.' + capability });
             evidence.push({ capability, status: 'unknown' });
         }
@@ -114,7 +123,7 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
                 // Malformed/missing references cannot be published. Actual
                 // storage/transport faults must retain their failure status.
                 if (!(error instanceof TypeError) && error.name !== 'NotFoundError'
-                    && !['native_orchestration_revision_mismatch', 'native_orchestration_project_commit_stale'].includes(error.code)) throw error;
+                    && !['native_orchestration_revision_mismatch', 'native_orchestration_project_commit_stale', 'native_orchestration_native_tool_unavailable'].includes(error.code)) throw error;
                 evidence.push({ pinId: pin.pinId, status: 'invalid' });
                 issues.push({ code: 'native_orchestration_dependency_invalid', severity: 'blocking', fieldPath: 'dependencyPins.' + pin.pinId });
             }

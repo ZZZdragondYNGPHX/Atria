@@ -7,6 +7,7 @@ import { controlCommandId, controlRecordKey, readAttempt } from './controller-co
 import { checkedRecord } from './plan-repository.js';
 import { assertEffectDecision, effectDecision, readEffect, readApproval, currentApprovalBinding } from './effect-contracts.js';
 import { assertFanoutAdmission } from './fanout-controller.js';
+import { readReadyEffectRecovery, effectResumeCommandId, effectResumeReceiptId } from './effect-recovery-contracts.js';
 
 const conflict = code => { throw new ConflictError(code); };
 const TERMINAL_EFFECT = new Set(['confirmed', 'failed', 'not_dispatched']);
@@ -139,6 +140,51 @@ export class EffectController {
             if (intent.requiresApproval) root.status = 'waiting_approval';
             return { root, eventType: 'effect_ready', reasonCode: null, outcome: { effectId, status: 'ready' } };
         });
+    }
+
+    async resumeReady(handle, input) {
+        assertObject(input, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'effectId'], 'resumeReadyEffect');
+        const { effectId, ...guard } = input;
+        assertNativeId(effectId, 'orchestrationEffect');
+        return this.runs.control(handle, effectResumeCommandId(input.runId, effectId, input.expectedEpoch),
+            { ...guard, operation: 'run.resume', detail: { effectId } }, async ({ tx, root, now, deny }) => {
+                const { record, attemptRecord } = await readReadyEffectRecovery(tx, handle, root, effectId), intent = record.doc;
+                const attempt = { ...attemptRecord.doc, epoch: root.epoch };
+                const resumed = { ...intent, epoch: root.epoch, hostBootId: root.hostBootId, hostGeneration: root.hostGeneration, approvalRef: null };
+                const stamp = hashNativeDocument(root);
+                try {
+                    for (const phase of ['resume', 'resume_final']) {
+                        const decision = await this.authorizeEffect({ handle, tx, root, intent: resumed, attempt, phase });
+                        assertEffectDecision(decision);
+                        if (hashNativeDocument(decision) !== hashNativeDocument(effectDecision(intent))) conflict('native_orchestration_effect_authority_changed');
+                        await this.verifyBudgetAttempt({ handle, tx, root, intent: resumed, budgetAttemptRef: intent.budgetAttemptRef });
+                        if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) conflict('native_orchestration_effect_stale');
+                    }
+                    // The final bank await may itself commit a legitimate Source
+                    // withdrawal. Reauthorize after it before changing metadata.
+                    const final = await this.authorizeEffect({ handle, tx, root, intent: resumed, attempt, phase: 'resume_final' });
+                    if (hashNativeDocument(final) !== hashNativeDocument(effectDecision(intent))
+                        || hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) conflict('native_orchestration_effect_stale');
+                    const current = await readReadyEffectRecovery(tx, handle, root, effectId);
+                    if (current.record.integrity !== record.integrity || current.attemptRecord.integrity !== attemptRecord.integrity) conflict('native_orchestration_effect_stale');
+                } catch (error) {
+                    if (error instanceof ConflictError || hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(error);
+                    throw error;
+                }
+                this.#step(root, now);
+                const receiptId = effectResumeReceiptId(root.runId, effectId, root.epoch);
+                await putImmutable(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId), {
+                    schemaVersion: 1, receiptKind: 'ready_effect_resumed', receiptId, runId: root.runId, effectId, nodeAttemptId: intent.nodeAttemptId,
+                    previousEpoch: intent.epoch, epoch: root.epoch, previousHostBootId: intent.hostBootId, previousHostGeneration: intent.hostGeneration,
+                    hostBootId: root.hostBootId, hostGeneration: root.hostGeneration, previousIntentIntegrity: record.integrity,
+                    previousAttemptIntegrity: attemptRecord.integrity, sourceBindingDigest: root.sourceBinding.bindingDigest,
+                    decisionDigest: hashNativeDocument(effectDecision(intent)), inputDigest: attempt.inputDigest, budgetAttemptRef: intent.budgetAttemptRef,
+                    decisionSeq: root.eventSeq + 1, createdAt: now });
+                await putMutable(tx, controlRecordKey(handle, root.runId, 'attempt', attempt.attemptId), attempt, { expectedIntegrity: attemptRecord.integrity });
+                await putMutable(tx, controlRecordKey(handle, root.runId, 'effect', effectId), resumed, { expectedIntegrity: record.integrity });
+                root.status = 'running';
+                return { root, eventType: 'effect_resumed', reasonCode: 'fresh_authorization_required', outcome: { effectId, receiptId, status: 'ready' } };
+            });
     }
 
     async claim(handle, input) {

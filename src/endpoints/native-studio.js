@@ -318,6 +318,10 @@ export function createNativeStudioRouter(getServices = services, artifacts = nat
         assertObject(req.body, ['runId', 'effectId'], 'Project commit dispatch');
         res.json(await (await commitHost()).dispatchProjectCommit(handle, req.body, commitTarget(req)));
     }));
+    router.post('/projects/:projectId/agent/tasks/:taskId/commit/resume', route(async (req, res, _, handle) => {
+        assertObject(req.body, ['runId', 'effectId'], 'Project commit resume');
+        res.json(await (await commitHost()).resumeProjectCommit(handle, req.body, commitTarget(req)));
+    }));
     router.post('/projects/:projectId/agent/tasks/:taskId/commit/observe', route(async (req, res, _, handle) => {
         assertObject(req.body, ['runId', 'effectId'], 'Project commit observation');
         res.json(await (await commitHost()).observeProjectCommit(handle, req.body, commitTarget(req)));

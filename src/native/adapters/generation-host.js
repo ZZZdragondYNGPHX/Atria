@@ -179,6 +179,11 @@ export class NativeGenerationHost {
         return this.projectCommitAuthority.dispatch(handle, input, target);
     }
 
+    resumeProjectCommit(handle, input, target) {
+        if (!this.projectCommitAuthority) fail('native_orchestration_project_commit_unavailable');
+        return this.projectCommitAuthority.resume(handle, input, target);
+    }
+
     observeProjectCommit(handle, input, target) {
         if (!this.projectCommitAuthority) fail('native_orchestration_project_commit_unavailable');
         return this.projectCommitAuthority.observe(handle, input, target);
@@ -1456,10 +1461,15 @@ export class NativeGenerationHost {
                             // no send/reset. Preserve an existing valid checkpoint;
                             // retries after any attempted send still discard on failure.
                                 retainOnBudgetRejection = COMPUTE_ADMISSION_CODES.includes(error.code) && !sendAdmitted;
-                                await settleAttempt(null);
+                                await settleAttempt(error instanceof ProviderFailure ? error.usage ?? null : null);
                                 attempt.status = 'failed';
                                 capture?.append({ type: 'request.attempt.failed', eventId: attemptId + '/failed', requestId: input.requestId, attemptId });
                                 if (['native_generation_budget_exhausted', 'native_generation_task_stopped', 'native_generation_revision_conflict'].includes(error.code)) throw new GenerationError(error.code);
+                                // A scoped model may follow its declared policy after an
+                                // explicit provider rejection. A lost transport/timeout
+                                // has no such response: retain that attempt as unknown.
+                                if (sendBank && error instanceof ProviderFailure && ['transport', 'timeout'].includes(error.kind))
+                                    throw new GenerationError('generation_provider_submission_unknown');
                                 if (approvedReview || lanePlan?.controlledTurn || !(error instanceof ProviderFailure) || error.kind === 'application' || retry >= resolved.route.policy.maxRetries || boundary.signal.aborted) throw error;
                             }
                         }

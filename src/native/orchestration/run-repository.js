@@ -3,6 +3,7 @@ import { readSessionOutput } from './session-output-contracts.js';
 import { readProjectReviewOutput } from './project-review-output-contracts.js';
 import { readBackgroundTaskOutput } from './background-task-output-contracts.js';
 import { readProjectCommitOutput } from './project-commit-contracts.js';
+import { readNativeToolOutput } from './native-tool-output-contracts.js';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
@@ -26,6 +27,9 @@ export const initialTreeProgress = (depth, deadlineAt) => ({ ...Object.fromEntri
 const runKey = (handle, runId) => ({ kind: K.orchestrationRun, handle, runId });
 const recordKey = (handle, runId, recordType, recordId) => ({ kind: K.orchestrationRecord, handle, runId, recordType, recordId });
 const readRunOutput = (tx, handle, root, options = {}) => {
+    if (root.sourceBinding.sourceAuthority === 'native_session' && root.graph.nodes.some(node => node.kind === 'effect'
+        && node.capabilities.some(capability => ['mcp.read', 'a2a.read', 'skill.read'].includes(capability))))
+        return readNativeToolOutput(tx, handle, root, options);
     if (root.sourceBinding.sourceAuthority === 'project' && root.sourceBinding.sourceRequest.purpose === 'formal_commit')
         return readProjectCommitOutput(tx, handle, root, options.projectAgent, options);
     if (root.graph.outputContract.kind === 'rp_narration') return root.sourceBinding.sourceAuthority === 'native_session' ? readSessionOutput(tx, handle, root)
