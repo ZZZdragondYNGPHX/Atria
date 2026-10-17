@@ -2,7 +2,7 @@
 
 > **唯一入口**。Task ID：`refactor/atria-native-orchestration-v3`。Primary Workspace：`main`（未来实现）；实现使用同一任务分支 `refactor/atria-native-orchestration-v3`，企划/Record继续在长期 `docs` 工作空间。规则只引用 [Repository Governance](../../../README.md)，不在本 Plan 复制执行规则。
 
-2026-10-17 当前已提交源码 `18baf306f`；P3 端口缺口已实现，真实 Fanout 的同 Root 并发修正与末版验证继续，P4 后端消费者继续。P3 Gate/后端首次交接/最终产品验收均未核销。当前能力与剩余清单只读 [acceptance-matrix](acceptance-matrix.md)，收敛范围和停止条件只读 [实施方案 §6](implementation-plan.md#6-p3-收敛边界与结束条件)，精确提交和分次验证归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。不以累计工作组衡量完成度。
+2026-10-17 当前已提交源码 `83f4d6a03`；P3 核心端口生产链及 all-success 真并发已接并取得分次四Engine证据，明确失败/未消费响应的 Port 事实和其它冻结 Join 策略、同一付费 Project Task 正式提交继续。P3 Gate/后端首次交接/最终产品验收均未核销。当前能力与剩余清单只读 [acceptance-matrix](acceptance-matrix.md)，收敛范围和停止条件只读 [实施方案 §6](implementation-plan.md#6-p3-收敛边界与结束条件)，精确提交和分次验证归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。不以累计工作组衡量完成度。
 
 - 创建/调研日期：2026-10-15。
 - 第一轮状态：**D1 已定案：方案 B（原生 Orchestration V3）**。

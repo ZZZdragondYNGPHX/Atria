@@ -1628,3 +1628,9 @@ D4允许由原领域授予明确SourceRef/ResultRef权限；当前真实RP Deleg
 ### 原 Evolution 自动评测
 
 原 auto job 已把冻结 Native Plan/Project Prompt 配置交回原隔离 evaluator，再消费原资格、质量、价格、发布与回滚 Gate。没有新增 evaluator 服务或独立质量来源 authority。当前固定来源仍为 historical_synthetic/not_established，owner labels 不建立独立来源；缺质量或价格证据时禁止自动 eligible promotion。有限 RP narration/Project Review worker 之外的组合不从此接口推导为支持。准确自动作业、原用户审阅发布与反馈回滚证据归同一 Record。
+
+### 原 Project 叙事数据的正式提交
+
+源码 `2325f2a35` 将 §17.138 的 rename-only 限制扩到同一 Project 已有 Actor profile 的 description/personality/scenario，以及已有 assistant initialTimeline 项的 content；ID、role、timeline 元数据、所有其它 Source 字节须保持。已有资源未变可用；混入权限、systemPrompt、模型、运行代码、文件或其它未分类差异，即使原 Review/Validation passed 也拒绝。没有增加风险服务或凭 highImpact=false 授任意 project.save。
+
+原隔离 Review 显示精确 target/field/before/after 及原 Project/Task/baseRevision/Workspace/Review/ChangeSet 绑定，大小使用原可信 Review 字段限制。描述符 changeKind/changeDigest 和 owned pin 冻结这些原数据。原账户再认证、fresh R2 一次批准、Source/Review/hash、原Task银行两项local费、Studio writer/Git CAS/DomainReceipt、typed Result/OutputClaim与cold只读保持。实际 Package/Session 消费及各Engine证据见同一Record；没有把其它 Project 结构区推导为支持。
