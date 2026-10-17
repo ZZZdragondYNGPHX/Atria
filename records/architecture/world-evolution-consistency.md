@@ -252,6 +252,23 @@
 - **E0/实际验收状态**：本阶段仅部分 `main` 静态代码核对 + GitHub Contents API 文档读写；提交完成后再 `fetch_file(ref="docs")` 核验 `index.md`、`design.md`、W12、W13 与此 Record。**仍缺完整 production consumer census、Orchestration V3 真实执行路径核验、通用历史查询、Library/Studio/Play 实际交互、Node/tests/CI 和 Windows/CachyOS/Android Termux 真机。**
 - **下一检查点**：用户选择 W13-A/B/C 后，下一轮按约定**先更新同一 Plan 与唯一 Record、提交并核验 `docs`**，再深入 World/Knowledge Effective View 与 Context/Library/Studio/Play 的来源选择、时态和可见性/Inspector 交互，以及最终 E0/正式开发前置门槛。保持 Draft，不创建开发分支，除非用户另行明确批准整个企划。
 
+
+## Stage 15 — W13-B 已确认与 W14 Effective World View / 知识创作讨论（2026-10-17）
+
+- **用户已确认**：对上一轮唯一推荐的 **W13-B「Native Revision 一致性提交 + 双时间/分支受控投影」**回复「认同」。W1-B～W13-B 现为已确认的**总体架构路线**；用户没有因此认可 W14-B，尚未批准整个 Plan 定稿、精确 API、实现或 E0 完成声明。
+- **资产边界**：继续 `ARCH-DWE-01` / 唯一 Plan Bundle `plans/architecture/world-evolution-consistency/` / 本唯一 Record。Primary Workspace 为 `docs`。无产品代码修改、无实现分支、无第二 Plan/Record/HANDOFF。
+- **本轮 docs 提交**：
+  - `4534497a66c4c0dcaca81bd160f49261df2cb2e1`：同一 Plan Bundle 创建 `effective-world-view.md` W14 草案：World Law/Initial/Current/Historical/Source Claim/Subjective Belief 分离、按 `Session/Branch/Revision/GameTick/Audience` 生成有效只读视图、Knowledge/Context 来源与时态适用性、Library/Studio/Play/Inspector 和 W14-A/B/C 对照。
+  - `af3e55344202831fec4380e5a73eaefe5b02358a`：W13 原模块 `event-temporality-branch.md` §9 明确记录 W13-B 决策、事务及双时间方向；具体 API、通用查询、所有事务入口仍待 E0。
+  - `f44563e3ffc12b10d12b469b48c4676da0e11f01`：同一 `design.md` §21 写入 W13-B 确认、W14 讨论路由。
+  - `80afb354667d0f1689fbe6b224886bfa4517e516`：同一 `index.md` 调整当前阶段为 W14，W1–W13 方向已选；W14 推荐但未获批。
+- **main 静态审查**：`public/scripts/native/knowledge-runtime.js` 有显式来源 authority ranks（`current_session_state` 800，高于 Package canonical 500）以及有条件 stateClaims、Knowledge `applicability.stateConditions`、`exclusiveGroup`、部分 Memory/State 冲突拒绝；`state-conditions.js` 三态逻辑 fail-closed。**但自然语言原文在没有声明条件/显式冲突关系时，仍可能被 Keyword/Regex 选中，rank 高低不等于语义级当前事实失效。**
+- **Context/作者 UI 静态审查**：`context-compiler.js` 已有 current state/event、Knowledge、Memory、Commitments 和 Token Budget lanes，`currentStateItems` 可按 Revision 纳入 `atri_world_state` 完整 JSON 与最近 World Events，Knowledge Entry 原始正文又可进入 Knowledge lane；`knowledge-selection.js` 基于关键词/Regex/关系激活、预算筛选，不能保证未标注自由文本自动与当前世界状态语义一致；`world-knowledge.js` 的 WorldRevision 主要是 Schema/Baseline/Binding/资产；`world-editor.js` / `studio-worlds-editor.js` / `studio-entrypoints-editor.js` 目前主要编辑这些固定资源与 EntryPoint 引用，尚非完整动态实体 Effective/History Inspector。以上是局部静态证据而非 E0 全部生产消费者核验。
+- **W14 研究推荐，尚未获批**：**W14-B「Effective World View First + Claim/Source-Aware Context」**。在原 Native Host 的只读投影里先确认合法 World Laws、当前/历史事实、有效期及主体权限，再按来源适用性为 Knowledge/HCM/Prompt/Studio/Play 提供不同视图；作者自由文本继续一等支持，重大可变事实须受控关联/失效。不可让低结构化传闻、旧初始状态或任何模糊静态陈述自动重夺当前事实权威，也不能仅用更高 Rank 静默解决真 Native Rule 冲突。W14-A 优先级驱动旧知识注入、W14-C 每轮 LLM 重写世界书仅作比较。
+- **未决/E0 阻塞**：统一 FactKey 与游戏时间/Revision 的真实数据表示、World/Knowledge Source Claim 语义关联及范围、旧静态条目冲突过滤、Context 编译及三端消费者接线、可见身份秘密/认知权限、Worldless/multi-World、Library/Studio/Play 创作/预览/Inspector、身份和缓存 invalidation、最终 old→target ABI/consumer/deletion matrix、CI/真实 Windows/CachyOS/Android Termux 验收。W13-B 的选择**未证明**这些已经实现。
+- **本轮验证范围**：仅在 GitHub 远端静态阅读 `main` 代码与更新 `docs` 文档；最终用 `fetch_file(ref=docs)` 对入口、设计、W13、W14 和此 Record 作可见内容核验。不执行产品测试、CI、真实 UI 或跨平台验收。
+- **下一 checkpoint**：用户明确选择 W14-A/B/C 后，下一轮**先更新同一 Plan 与唯一 Record、提交并核验 docs**，随后进入统一 Source-of-Truth/Contracts/Consumers/Old Deletion/Acceptance Gates 的最后 E0 收口讨论；继续 Draft，不授权开发、不创建实现分支。
+
 ## Final state
 
 Not yet applicable. Discussion in progress.
