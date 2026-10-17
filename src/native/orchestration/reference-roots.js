@@ -7,8 +7,8 @@ import { assertEffectIntent } from './effect-contracts.js';
 /** Retention only: these references never make an uncommitted revision readable.
  * There is no V3 retention-release authority yet, so terminal Runs and historical
  * unknown observations retain their original sources just like active Runs. */
-export async function orchestrationSessionRoots(tx, handle, sessionId) {
-    const roots = new Map(), references = [], revisionIds = new Set(), branchIds = new Set(), records = [];
+async function retentionRecords(tx, handle) {
+    const roots = new Map(), records = [];
     for (const row of await tx.listResources({ kind: K.orchestrationRun, handle })) {
         const checked = await checkedRecord(tx, row.key);
         if (!checked || checked.doc.runId !== row.key.runId) throw new TypeError('Missing or mismatched orchestration retention root');
@@ -21,6 +21,12 @@ export async function orchestrationSessionRoots(tx, handle, sessionId) {
         if (row.key.recordType === 'effect') assertEffectIntent(checked.doc, root, row.key.recordId);
         records.push({ ...checked, key: row.key });
     }
+    return { roots, records };
+}
+
+export async function orchestrationSessionRoots(tx, handle, sessionId) {
+    const { roots, records } = await retentionRecords(tx, handle);
+    const references = [], revisionIds = new Set(), branchIds = new Set();
     for (const row of records) {
         const revisions = new Set(), branches = new Set(); let mentioned = false;
         const visit = value => {
@@ -56,6 +62,18 @@ export async function orchestrationSessionRoots(tx, handle, sessionId) {
     }
     references.sort((left, right) => hashNativeDocument(left).localeCompare(hashNativeDocument(right)));
     return { revisionIds: [...revisionIds].sort(), branchIds: [...branchIds].sort(), references, fingerprint: hashNativeDocument(references) };
+}
+
+/** A Project Task owns the original compute bank. Terminal/unknown history
+ * keeps it live until an original retention-release authority exists. */
+export async function orchestrationProjectReferences(tx, handle, projectId, taskId = null) {
+    const { records } = await retentionRecords(tx, handle);
+    const mentions = value => value && typeof value === 'object'
+        && (value.projectId === projectId && (taskId === null || value.taskId === taskId)
+            || Object.values(value).some(mentions));
+    return records.filter(row => mentions(row.doc)).map(row => ({ kind: row.key.kind, runId: row.key.runId,
+        recordType: row.key.recordType ?? null, recordId: row.key.recordId ?? null, integrity: row.integrity }))
+        .sort((left, right) => hashNativeDocument(left).localeCompare(hashNativeDocument(right)));
 }
 
 /** Derived reference adapter for original Native deletion/GC authorities. */

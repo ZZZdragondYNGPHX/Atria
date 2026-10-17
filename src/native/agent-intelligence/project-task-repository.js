@@ -10,6 +10,7 @@ import { assertProjectAgentConversation } from '../../../public/shared/project-a
 import { assertProjectStrategyVersions } from './project-strategy.js';
 import { assertComputeLedger } from '../../../public/shared/native-compute-budget.js';
 import { assertProjectToolReceipt } from '../orchestration/project-tool-contracts.js';
+import { orchestrationProjectReferences } from '../orchestration/reference-roots.js';
 
 const key = (handle, projectId, taskId) => ({ kind: NATIVE_RESOURCE_KINDS.projectAgentTask, handle, projectId, taskId });
 const STATES = new Set(['planning', 'planned', 'working', 'evaluating', 'repair', 'blocked', 'review', 'committing', 'completed', 'conflict', 'taken_over', 'cancelled']);
@@ -217,8 +218,21 @@ export class ProjectTaskRepository {
                 const current = await this.get(handle, projectId, taskId);
                 if (!current || hashNativeDocument(current) !== expectedIntegrity) throw new ConflictError('project_task_retention_conflict');
             }
+            const assertUnreferenced = async tx => {
+                if ((await orchestrationProjectReferences(tx, handle, projectId, taskId)).length)
+                    throw new ConflictError('project_task_orchestration_referenced');
+            };
+            await this.engine.withTransaction(handle, assertUnreferenced);
             await new AgentExperienceRepository({ engine: this.engine }).purgeSource(handle, 'project_task', taskId, { domain: 'project', projectId });
-            return this.engine.withTransaction(handle, tx => tx.deleteResource(key(handle, projectId, taskId)));
+            return this.engine.withTransaction(handle, async tx => {
+                await assertUnreferenced(tx);
+                if (expectedIntegrity !== undefined) {
+                    const current = await tx.getResource(key(handle, projectId, taskId));
+                    if (!current || hashNativeDocument(this._document(current, projectId, taskId)) !== expectedIntegrity)
+                        throw new ConflictError('project_task_retention_conflict');
+                }
+                return tx.deleteResource(key(handle, projectId, taskId));
+            });
         });
     }
 }
