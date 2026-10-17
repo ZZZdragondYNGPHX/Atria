@@ -56,20 +56,52 @@ describe.each(mechanisms)('%s original %s mechanism validation', (_name, role, m
         expect(sends).toBe(0);
         // No executable endpoint, budget admission, Source or Actor proof is
         // obtained by publishing a reusable Plan mechanism.
-        expect(Object.keys(service)).toEqual(['plans', 'hostBootId']);
+        expect(Object.keys(service)).toEqual(['plans', 'dependencies', 'hostBootId']);
         expect(await h.engine.withTransaction(h.handle, tx => tx.listResources({ kind: 'atri_orchestration_run', handle: h.handle }))).toEqual([]);
     });
-    test.each(['missing-resolver', 'unrecognized-capability', 'tools-ceiling', 'planner', 'unbound-ceiling'])('%s stays unknown and cannot publish', async problem => {
+    test.each(['missing-resolver', 'unrecognized-capability', 'tools-ceiling', 'unbound-ceiling'])('%s stays unknown and cannot publish', async problem => {
         const plan = input(); let plans = service.plans;
         if (problem === 'missing-resolver') plans = createOrchestrationAuthoringService(h.engine).plans;
         if (problem === 'unrecognized-capability') plan.definition.capabilityCeiling.push('tool.unknown');
         if (problem === 'tools-ceiling') plan.definition.capabilityCeiling.push('generation.tools');
-        if (problem === 'planner') plan.definition.nodes[0].kind = 'planner';
         if (problem === 'unbound-ceiling') plan.definition.nodes[0].capabilities = [];
         const { expected, report } = await validate(plan, plans);
         expect(report.status).toBe('unknown');
         await expect(plans.publish(h.handle, id('Command'), { ...expected, validationDigest: validationDigest(report) })).rejects.toThrow();
         expect(sends).toBe(0);
+    });
+    test.each(['planner', 'judge', 'review'])('%s publishes only its JSON mechanism and still requires the original Graph producer', async kind => {
+        const plan = input(), node = plan.definition.nodes[0]; node.kind = kind;
+        if (kind === 'review') node.policy.maxRounds = 2;
+        node.outputs[0].type = 'json'; plan.definition.nodes[1].inputs[0].type = 'json';
+        const { expected, report } = await validate(plan);
+        expect(report.status).toBe('valid');
+        const mechanism = await validateModelCapability({ handle: h.handle, ...plan, resolver: modelResolver });
+        expect(mechanism.evidence[0]).toMatchObject({ nodeKind: kind, controlPrincipal: 'original_native_graph_producer_required' });
+        await expect(service.plans.publish(h.handle, id('Command'), { ...expected, validationDigest: validationDigest(report) })).resolves.toHaveProperty('planRef');
+        expect(sends).toBe(0);
+        expect(await h.engine.withTransaction(h.handle, tx => tx.listResources({ kind: 'atri_orchestration_run', handle: h.handle }))).toEqual([]);
+    });
+    test.each(['planner', 'agent', 'review'])('%s graph.patch mechanism requires an explicit bounded graph policy', async kind => {
+        const plan = input(), node = plan.definition.nodes[0]; node.kind = kind;
+        if (kind === 'review') node.policy.maxRounds = 2;
+        if (kind !== 'agent') { node.outputs[0].type = 'json'; plan.definition.nodes[1].inputs[0].type = 'json'; }
+        node.capabilities.push('graph.patch'); plan.definition.capabilityCeiling.push('graph.patch');
+        const denied = await validate(plan);
+        expect(denied.report.status).toBe('invalid');
+        expect(denied.report.issues).toEqual(expect.arrayContaining([expect.objectContaining({ code: 'native_orchestration_graph_patch_policy_required' })]));
+        await expect(service.plans.publish(h.handle, id('Command'), { ...denied.expected, validationDigest: validationDigest(denied.report) })).rejects.toThrow();
+        plan.definition.graphChangePolicy = { allowedOperations: ['requestFinalize'], allowedNodeKinds: [] };
+        const allowed = await validate(plan);
+        expect(allowed.report.status).toBe('valid');
+        await expect(service.plans.publish(h.handle, id('Command'), { ...allowed.expected, validationDigest: validationDigest(allowed.report) })).resolves.toHaveProperty('planRef');
+        expect(sends).toBe(0);
+    });
+    test('a control model cannot treat ordinary text as a structured Host decision', async () => {
+        const plan = input(); plan.definition.nodes[0].kind = 'planner';
+        const { expected, report } = await validate(plan);
+        expect(report.status).toBe('invalid'); expect(report.issues).toEqual(expect.arrayContaining([expect.objectContaining({ code: 'native_orchestration_control_output_required' })]));
+        await expect(service.plans.publish(h.handle, id('Command'), { ...expected, validationDigest: validationDigest(report) })).rejects.toThrow(); expect(sends).toBe(0);
     });
     test.each(['different-role', 'stale-route', 'fallback', 'unknown-provider', 'missing-resource', 'missing-budget'])('%s cannot invent a supported original role authority', async problem => {
         const plan = input();

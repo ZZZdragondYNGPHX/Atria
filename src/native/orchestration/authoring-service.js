@@ -10,6 +10,7 @@ import { createBindingSourceAuthority } from './binding-source-authority.js';
 import { validateModelCapability } from './model-capability-authority.js';
 import { validateDelegationCapability } from './delegation-capability-authority.js';
 import { readProjectToolDescriptor, projectToolCapability } from './project-tool-contracts.js';
+import { validateGraphPatchCapability } from './graph-controller.js';
 
 /** Authoring uses existing Native resource readers; validation never sends. */
 export function createOrchestrationAuthoringService(engine, sources = {}) {
@@ -48,6 +49,11 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
             }
             if (capability === 'chat.output') {
                 const result = validateOutputCapability({ definition, rpControl: sources.rpControl, sessionCore: sources.sessionCore, engine });
+                evidence.push(...result.evidence); issues.push(...result.issues);
+                continue;
+            }
+            if (capability === 'graph.patch') {
+                const result = validateGraphPatchCapability({ definition });
                 evidence.push(...result.evidence); issues.push(...result.issues);
                 continue;
             }

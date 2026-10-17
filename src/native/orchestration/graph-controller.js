@@ -6,7 +6,17 @@ import { controlCommandId, controlRecordKey, readAttempt } from './controller-co
 import { writeAttemptSettlement } from './attempt-settlement.js';
 
 const issue = (code, detail = {}) => Object.assign(new TypeError(code), { code, ...detail });
+const PATCH_PRODUCER_KINDS = Object.freeze(['planner', 'agent', 'review']);
 export const graphPatchHash = patch => hashNativeDocument(Object.fromEntries(Object.entries(patch).filter(([field]) => field !== 'payloadHash')));
+
+/** Pure built-in mechanism evidence. Source/producer authorization remains live. */
+export function validateGraphPatchCapability({ definition }) {
+    const nodes = definition.nodes.filter(node => node.capabilities.includes('graph.patch'));
+    const valid = nodes.length > 0 && definition.graphChangePolicy.allowedOperations.length > 0 && nodes.every(node => PATCH_PRODUCER_KINDS.includes(node.kind));
+    return { evidence: [{ capability: 'graph.patch', status: valid ? 'available' : 'invalid', authority: 'native_graph_controller',
+        graphPolicyDigest: hashNativeDocument(definition.graphChangePolicy), runtimePrincipal: 'original_native_graph_producer_required' }],
+    issues: valid ? [] : [{ code: 'native_orchestration_graph_patch_policy_required', severity: 'blocking', fieldPath: 'capabilityCeiling.graph.patch' }] };
+}
 
 function assertProposal(patch) {
     assertObject(patch, ['schemaVersion', 'patchId', 'runId', 'producerAttemptId', 'expectedEpoch', 'expectedGraphRevision', 'operations', 'reasonRefs', 'payloadHash'], 'GraphPatch');
@@ -48,7 +58,7 @@ export class GraphController {
             try {
                 const node = root.graph.nodes.find(item => item.nodeId === producer.nodeId);
                 if (root.cancelRequested || root.status !== 'running' || producer.status !== 'running' || producer.epoch !== root.epoch
-                    || producer.sourceBindingDigest !== root.sourceBinding.bindingDigest || !['planner', 'agent', 'review'].includes(node.kind)
+                    || producer.sourceBindingDigest !== root.sourceBinding.bindingDigest || !PATCH_PRODUCER_KINDS.includes(node.kind)
                     || !node.capabilities.includes('graph.patch')) throw issue('native_orchestration_patch_denied');
                 await this.authorizePatch({ handle, tx, root, producer, patch });
                 if (root.progress.patches >= root.limits.maxPatches) throw issue('native_orchestration_limit_exhausted');

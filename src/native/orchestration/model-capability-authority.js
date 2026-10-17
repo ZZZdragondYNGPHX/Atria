@@ -20,12 +20,18 @@ export async function validateModelCapability({ handle, definition, dependencyPi
         // The original pinned route supplies this finite mechanism's role.
         // Publication never supplies the corresponding fixed runtime producer.
         const pin = dependencyPins.find(pin => pin.pinId === node.policy.agentPinId && node.dependencyPinIds.includes(pin.pinId));
-        if (node.kind !== 'agent' || pin?.port !== 'model' || pin.resourceRef.scope !== 'player') { unavailable(); continue; }
+        const control = ['planner', 'judge', 'review'].includes(node.kind);
+        if (!['agent', 'planner', 'judge', 'review'].includes(node.kind) || pin?.port !== 'model' || pin.resourceRef.scope !== 'player') { unavailable(); continue; }
+        if (control && (node.outputs.length !== 1 || node.outputs[0].type !== 'json')) {
+            issues.push({ code: 'native_orchestration_control_output_required', severity: 'blocking', fieldPath: 'definition.nodes.' + node.nodeId + '.outputs' });
+            continue;
+        }
         try {
             const route = await resolver.persistence.getRuntimeRoute(handle, pin.resourceRef.runtimeRouteId);
             if (!Object.hasOwn(RUNTIME_PRINCIPALS, route?.role)) { unavailable(); continue; }
             const resolved = await resolver.resolve({ handle, routeRef: pin.resourceRef, role: route.role,
-                requirements: ['role.intent_resolver', 'role.studio'].includes(route.role) ? ['generation.tools'] : [] });
+                requirements: [...['role.intent_resolver', 'role.studio'].includes(route.role) ? ['generation.tools'] : [],
+                    ...control ? ['generation.structured-output'] : []] });
             if (hashNativeDocument(resolved.route) !== pin.integrity) {
                 issues.push({ code: 'native_orchestration_dependency_stale', severity: 'blocking', fieldPath: 'dependencyPins.' + pin.pinId });
                 continue;
@@ -37,7 +43,7 @@ export async function validateModelCapability({ handle, definition, dependencyPi
             evidence.push({ capability: 'generation.send', nodeId: node.nodeId, pinId: pin.pinId,
                 authority: 'native_route_resolver', routeIntegrity: pin.integrity, pathFingerprint: resolved.pathFingerprint,
                 resourceDigest: hashNativeDocument(resolved.resources), capabilityDigest: hashNativeDocument(resolved.capabilities),
-                runtimePrincipal: RUNTIME_PRINCIPALS[resolved.route.role] });
+                runtimePrincipal: RUNTIME_PRINCIPALS[resolved.route.role], ...(control ? { nodeKind: node.kind, controlPrincipal: 'original_native_graph_producer_required' } : {}) });
         } catch (error) {
             if (!(error instanceof GenerationError) && !(error instanceof TypeError) && error.name !== 'NotFoundError') throw error;
             const unknown = ['generation_provider_unavailable', 'generation_capability_unknown'].includes(error.code);
