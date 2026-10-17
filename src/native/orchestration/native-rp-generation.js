@@ -1468,6 +1468,8 @@ export class NativeRpOrchestrationAuthority {
                 return published;
             }
             if (root.graph.outputContract.kind === 'rp_narration') {
+                await port.inspectResultCompletion(handle, { result, runId: root.runId, effectId });
+                await ContextRetrievalPort.prototype.sealCompilation.call(service.contextRetrieval, handle, { runId: root.runId, modelEffectId: effectId });
                 const outputCapture = Object.freeze({}); state.outputCapture = outputCapture;
                 outputCaptures.set(outputCapture, { state, control: this.owner.rpControl, execution: service, port, result, runId: root.runId,
                     assertCurrent: async () => {

@@ -7,12 +7,13 @@ import { hashNativeDocument as hash, cloneNativeDocument } from '../repositories
 import { ContextPort } from './context-port.js';
 import { assertOriginalSendBank, BudgetPort } from './budget-port.js';
 import { readEffect, effectDecision } from './effect-contracts.js';
+import { readModelCompletionReceipt } from './model-port.js';
 import { runGuard, readAttempt, controlRecordKey } from './controller-common.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { createNativeId } from '../identity.js';
 import { rerank } from '../../vectors/rerank.js';
 import { buildMemoryCorpus, applyMemoryCorpusEligibility, memoryVectorCollectionId, retiredMemoryVectorCollectionIds, RETRIEVAL_DEFAULTS } from '../../../public/scripts/agents/memory/hybrid-retrieval.js';
-import { readContextRetrievalPlan, contextRetrievalDecision, contextRetrievalCompletionBinding as completionBinding, contextRetrievalReceiptId } from './context-retrieval-contracts.js';
+import { readContextRetrievalPlan, readContextRetrievalCompletions, contextRetrievalDecision, contextRetrievalCompletionBinding as completionBinding, contextRetrievalReceiptId } from './context-retrieval-contracts.js';
 import { NativeModelPromptPersistence } from '../model-prompt-runtime/persistence.js';
 import { optionalComputeOptions } from '../../../public/shared/native-compute-budget.js';
 import { getOpenAIBatchVector, openAIEmbeddingBody, supportsOpenAIEmbeddingSource } from '../../vectors/openai-vectors.js';
@@ -185,7 +186,7 @@ export class ContextRetrievalPort {
             await current(); if (invoked && !completed) fail('native_orchestration_context_retrieval_unresolved');
             await this.#assertIndexJobs(scope);
             for (const effectId of scope.effectIds) if (this.#effects.get(effectId)?.observation?.outcome !== 'confirmed') fail('native_orchestration_context_retrieval_unresolved');
-            const proof = Object.freeze({}); this.#proofs.set(proof, { scope, effectIds: [...scope.effectIds] }); return proof;
+            const proof = Object.freeze({}); scope.recallProof = proof; this.#proofs.set(proof, { scope, effectIds: [...scope.effectIds] }); return proof;
         } };
     }
 
@@ -329,8 +330,49 @@ export class ContextRetrievalPort {
         if (!equal(observation.budgetObservationRef, { budgetAttemptRef: state.budgetAttemptRef, status: row.status, usageHash: hash(row.usage) })) fail();
     }
 
+    /** End the live Provider lifetime after the original Model has completed.
+     * The retained opaque proof verifies original fees only. Source, Memory,
+     * recipient and output permission remain the caller's original checks. */
+    async sealCompilation(handle, { runId, modelEffectId }) {
+        const scope = this.#models.get(hash({ handle, runId, modelEffectId }));
+        if (!scope) return;
+        const { root, parent } = await this.#current(scope, { allowSent: true });
+        if (parent.status !== 'confirmed') fail();
+        if (scope.recallProof) await this.assertRecall(handle, scope.recallProof);
+        const sealed = { handle, runId, modelEffectId, attemptId: scope.attemptId, rootBinding: scope.rootBinding,
+            effectIds: [...scope.effectIds], localJobs: cloneNativeDocument(scope.localJobs) };
+        await this.#assertSealed(sealed);
+        await this.#current(scope, { allowSent: true });
+        if (binding(await this.runs.get(handle, runId)) !== binding(root)) fail();
+        if (scope.recallProof) this.#proofs.set(scope.recallProof, { sealed });
+        this.releaseCompilation(handle, { runId, modelEffectId });
+    }
+
+    async #assertSealed(value) {
+        const { handle } = value;
+        await this.runs.engine.withTransaction(handle, async tx => {
+            const root = await this.runs.get(handle, value.runId);
+            if (binding(root) !== value.rootBinding) fail();
+            const parent = (await readEffect(tx, handle, root, value.modelEffectId)).doc;
+            const producer = (await readAttempt(tx, handle, root, value.attemptId)).doc;
+            if (parent.status !== 'confirmed' || parent.nodeAttemptId !== producer.attemptId
+                || !await readModelCompletionReceipt(handle, tx, root, parent)) fail();
+            const completed = await readContextRetrievalCompletions(tx, handle, root, parent, producer);
+            if (!equal(completed.map(item => item.effectId), value.effectIds)) fail();
+            for (const job of value.localJobs) {
+                const row = await this.budgetPort.observeAttempt(handle, job.ref);
+                if (!job.usageHash || row.status !== 'settled' || hash(row.usage) !== job.usageHash) fail();
+            }
+            if (!equal(root, await this.runs.get(handle, value.runId))) fail();
+        });
+    }
+
     async assertRecall(handle, proof) {
         const value = this.#proofs.get(proof);
+        if (value?.sealed) {
+            if (value.sealed.handle !== handle) fail();
+            await this.#assertSealed(value.sealed); return [...value.sealed.effectIds];
+        }
         if (!value || value.scope.handle !== handle) fail();
         const { root } = await this.#current(value.scope, { allowSent: true });
         await this.#assertIndexJobs(value.scope);
