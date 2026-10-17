@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · Candidate Design & Discussion Agenda
 
-- 状态：**Draft（W1–W19 的 B 总体方向已获用户确认；W20 受保护主体存储位置、工作包/接口、E0 Gate 0 与正式实施仍未批准）**。旧候选章节保留历史，现行决议以最新章节/入口为准。
-- 当前讨论轮次：W20 — Session-owned 受保护身份与 Domain-owned Fact transitions、两段合法历史查询、WP-A～F 生产消费者及 Gate 0 退出条件（见 [e0-gate0-integration-workpackages.md](e0-gate0-integration-workpackages.md)）。
+- 状态：**Draft（W1–W20 的 B 顶层方向已获用户确认；W21 P1/P2 物理优选、真实 Gate 0 退出和完整产品实施仍未批准）**。旧候选章节保留历史，现行决议以最新章节/入口为准。
+- 当前讨论轮次：W21 — P1/P2 Protected Native Session 身份位置、领域事实 Owner、Save/GC/合法写入、WP-A～F 和最终 Gate 0 交接前证据（见 [e0-handoff-evidence-review.md](e0-handoff-evidence-review.md)）。
 - 入口：[index.md](index.md)；材料：[research.md](research.md)
 
 ## 1. 问题的正确切分
@@ -923,3 +923,35 @@ W19 仍为用户待选方案；本阶段未修改 `main` 或其它代码分支�
 - W20-C：全世界预先转大型写时 Graph/双时间服务，增加重复写入和来源冲突，不适合已确认的最小架构方向。
 
 **当前 W20-B 仅是建议，不得视为用户决定。** E0-01～09 仍 PARTIAL / BLOCKED；所有 CI/真实 UI/Windows/CachyOS/Android Termux 证据未运行。若确认下一步应直接开展**最后的 Gate 0 执行前置审计/交接清单**，不继续无限拆概念；整个 `ARCH-DWE-01` 仍为 Draft，未授权修改产品代码。
+
+
+---
+
+## 28. S22 · W20-B 确认与 W21 最终 Gate 0 交接前审查（2026-10-17）
+
+### 28.1 用户确认 W20-B：受保护身份 + 领域事实单权威 + 消费者工程包
+
+用户对上一轮明确推荐的 **W20-B「受保护 Session-owned Identity + Domain-owned Fact transitions / Two-anchor Query + Consumer Work Packages」**回复「认同」。因此 W1-B～W20-B 的**总体设计路线**已获明确确认，但整份企划仍 **Draft**、E0-01～09 **PARTIAL / BLOCKED**，不表示具体物理 Schema/ABI 已获批准、Gate 0 完成或开始开发的授权。
+
+这项确认确定：世界 Subject 的原生身份只能通过受保护 Typed Native Domain Session Revision 的合法写入口创建、变更合法可引用的 Origin/Scope；原交易/关系/生命周期/历史等业务 Domain 继续拥有其事实；双时间查询先核对合法 Revision/Branch 再根据声明时钟查询 Fact 有效时间并按合法受众裁剪；WP-A～F 必须跟踪真实生产消费者并做无长期兼容双轨的原生切换。**P1/P2 原生物理布局尚未选择**。
+
+### 28.2 W21 本轮具体证据：P2 是优先候选而非“第二数据库”
+
+已在相同冻结的 `main=c57fada6edeea255b29d857ba2585c1dbc9c098b` 继续核验：
+
+- `SessionCore.validateRuntimeStateChanges` 按 `RESERVED_SESSION_NAMESPACES` 拒绝 Generic Runtime Patch；`applyRuntimeCommit` 的 Authority-first 禁止非 Typed World patch，不能推断 P1 的 World Root 所有游戏模式都已保护新身份子树。
+- `SessionRepo.commitSnapshot` 将各 `SessionRevision.stateHeads` 中的状态资源作为同一 Native Session commit；`readSessionSnapshot` 动态读取所有 State Heads 并检验哈希；`save-system.portableNamespace` 保留非缓存状态并沿 Revision/Branch 闭包构造存档。
+- `SessionRepo.reachabilitySnapshot` 从保留的 Revision 读取 `stateHeads`、标记状态文件及依赖，`session-maintenance.js` 处理 `sessionState` GC；`loadSnapshot` 在请求旧 Revision 时进行可达性验证。因此 P2 可作为**同一 Revision 下受保护的一个原生状态文档**而非并行 World Truth DB。但它必须新增业务合法性 Validator/Typed Writer/初始化和切档 Scope 检查，且通用 State 不享受 `atri_world_state` 独有的 Snapshot/Delta 压缩。
+- `SessionCore.updateResources` 可能替换 WorldSelection 并按匹配的 WorldRevision 保留旧 World slot：P1 位于 World Root 中时尤其需要核对 Subject identity 是否被初始状态重建无声抹除；P2 则需要证明 World Scope 解绑/变更不留下非法关联。
+- `native-information-contract.js` 的 Manifest Actor 声明、Timeline `actorId` 与 Play/Speech/Visual 的 Actor-template 依赖及 V3 ContextPort 的 SourceBinding/Grant 仍是实际消费者边界；不能因为选 P2 就声明动态 Perspective/Timeline 自然支持所有 NPC。
+- `History/Chronicle` 仍无通用 `asKnownRevision/asOfGameTick` 主体查询，可复用部分事实来源/旧 Revision 快照；必须区分世界中何时有效、修订何时得知、角色个人何时听闻。
+
+详细 P1/P2 安全/持久化比较、WP-A～F 真实 Owner/Consumer/验证、Gate 0 遗留阻塞、候选工作包顺序和 W21 选项统一见 [e0-handoff-evidence-review.md](e0-handoff-evidence-review.md)。
+
+### 28.3 W21 候选路线（用户尚未确认）
+
+- W21-A：P1 优先，将 Session Subject 合入 `atri_world_state`，但必须证明所有模式中 World Root 的权限和资源绑定改变不会污染身份；贸然指定有信任边界风险。
+- **W21-B：P2 优先，显式 Reserved/Typed Session Subject、Domain Fact Owner 和基于证据门槛的最终交接（当前研究推荐，尚未获批准）**。在既有 Native Revision 下最小存储身份证据，明确 Validator、Typed Publish、Save/GC、Context/Media/Host ABI 和 WP-A～F、Gate 0 所需的 Head/Callgraph/测试计划；P1 若提供更少修改且同等级全模式保护，可据新证据再考虑。
+- W21-C：不做任何物理选择，把保护、历史和消费者决定全部放到正式编码时处理，容易使核心 WP-A/B 与后续工作包重复改接口。
+
+**W21-B 尚未由用户批准**，P2 的 Namespace 名/SubjectID 前缀、完整 Schema、正式 API 和具体 DELETE 文件清单均未冻结。完整 E0 生产调用图和 V3/Prompt 最终整合版本仍是 Gate 0 待核，真实 CI/端测为实施后验收。当前仍只修改 docs、不创建产品实现分支或称 E0 PASS。
