@@ -61,6 +61,9 @@ export class GraphView {
     render(model) {
         this.#model = model;
         const doc = this.#doc;
+        // Re-rendering replaces nodes; keep keyboard focus on the same item.
+        const focused = this.element.contains(doc.activeElement) ? doc.activeElement.closest?.('[data-node-id], [data-edge-id]') : null;
+        const refocus = focused ? (focused.dataset.nodeId ? '[data-node-id="' + focused.dataset.nodeId + '"]' : '[data-edge-id="' + focused.dataset.edgeId + '"]') : null;
         this.edgeLayer.replaceChildren();
         this.nodeLayer.replaceChildren();
         this.#nodeEls.clear();
@@ -127,6 +130,7 @@ export class GraphView {
             this.#nodeEls.set(node.id, group);
         });
         this.#applyView();
+        if (refocus) this.nodeLayer.parentNode.querySelector(refocus)?.focus({ preventScroll: true });
     }
 
     select(selection, { notify = false, focus = false } = {}) {

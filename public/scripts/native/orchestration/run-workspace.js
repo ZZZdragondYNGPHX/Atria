@@ -376,8 +376,9 @@ export function mountRunDetail({ document: doc, root, client, shell, environment
             item.addEventListener('click', () => { state.view = id; renderSurface(); renderHeader(); });
         }
         const c = snapshot.controls;
-        if (c.cancel) controls.append(withBusy(button(doc, tl('Request cancel…'), cancel, { icon: 'stop' }), 'cancel'));
-        if (c.recover) controls.append(withBusy(button(doc, tl('Recover control on this Host'), recover, { variant: 'primary' }), 'recover'));
+        if (c.cancel && !snapshot.cancelRequested) controls.append(withBusy(button(doc, tl('Request cancel…'), cancel, { icon: 'stop' }), 'cancel'));
+        if (c.recover) controls.append(withBusy(button(doc, tl('Recover control on this Host'), recover, { variant: TERMINAL.has(snapshot.status) ? 'secondary' : 'primary' }), 'recover'));
+        if (c.recover && TERMINAL.has(snapshot.status)) el(doc, 'p', 'atria-orch-toolbar__reason', tl('The Host restarted after this Run settled. Recovering only rebinds its control records; nothing runs again.'), header);
         if (c.reconcile) controls.append(withBusy(button(doc, snapshot.reconciliationRequest ? tl('Check the recorded receipt request') : tl('Check original receipt'), reconcile, { variant: c.recover ? 'secondary' : 'primary' }), 'reconcile'));
         if (c.resume) controls.append(withBusy(button(doc, tl('Resume Project commit…'), resumeCommit), 'resume'));
         const commitSource = snapshot.source.domain === 'project' && snapshot.source.taskId;

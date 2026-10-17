@@ -323,6 +323,7 @@ export function diffDefinitions(before, after) {
         return out;
     };
     const fields = ['entryNodeIds', 'capabilityCeiling', 'graphChangePolicy', 'limits', 'outputContract'].filter(field => !same(before?.definition?.[field], after?.definition?.[field]));
+    if ((before?.viewState?.title ?? '') !== (after?.viewState?.title ?? '') && before && after) fields.push('title');
     return { nodes: compare(before?.definition?.nodes, after?.definition?.nodes), edges: compare(before?.definition?.edges, after?.definition?.edges),
         pins: compare((before?.dependencyPins ?? []).map(pin => ({ ...pin, nodeId: pin.pinId })), (after?.dependencyPins ?? []).map(pin => ({ ...pin, nodeId: pin.pinId }))), fields };
 }

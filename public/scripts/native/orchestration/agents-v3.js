@@ -52,6 +52,10 @@ export function mountAgentsV3({ document: doc, slot, route, shell, navigation, h
             tab.classList.toggle('is-selected', selected);
             tab.setAttribute('aria-current', selected ? 'page' : 'false');
         }
+        // A deep link carries only the child ID; label the section once known.
+        const child = nextRoute.child;
+        if (child && child.label === child.id && (child.id === 'plans' || child.id === 'runs')) navigation.navigateChild({ id: child.id, label: child.id === 'plans' ? 'Plans' : 'Runs', kind: 'workspace' }, { history: 'replace', reason: 'agents-v3-label' });
+        if (child && child.label === child.id && parsed.runId) navigation.navigateChild({ id: child.id, label: fmt('Run ${0}', [shortId(parsed.runId)]), kind: 'detail' }, { history: 'replace', reason: 'agents-v3-label' });
         const key = parsed.section + ':' + (parsed.planId ?? parsed.runId ?? '');
         if (key === currentKey) return;
         current?.dispose?.();

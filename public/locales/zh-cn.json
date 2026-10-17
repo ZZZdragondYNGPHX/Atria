@@ -10638,5 +10638,13 @@
     "Rerank calls": "重排调用",
     "Other provider calls": "其他提供方调用",
     "Invalid retrieval User-Agent": "检索 User-Agent 无效",
-    "Local provider does not use HTTP headers": "本地提供方不使用 HTTP 请求头"
+    "Local provider does not use HTTP headers": "本地提供方不使用 HTTP 请求头",
+    "${0} edges": "${0} 条连线",
+    "${0} nodes": "${0} 个节点",
+    "${0} · ${1} · updated ${2}": "${0} · ${1} · ${2}更新",
+    "1 edge": "1 条连线",
+    "1 node": "1 个节点",
+    "Host draft v${0} has not changed. Your edits are kept; save them again.": "Host 草稿 v${0} 未改变。你的编辑已保留，请再次保存。",
+    "The Host draft is unchanged": "Host 草稿未改变",
+    "The Host restarted after this Run settled. Recovering only rebinds its control records; nothing runs again.": "此 Run 结束后 Host 已重启。恢复只会重新绑定其控制记录，不会再次运行任何内容。"
 }

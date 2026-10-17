@@ -180,8 +180,6 @@
 .atria-orch-row__meta { flex-basis: 100%; color: var(--atri-text-tertiary); font-size: var(--atri-text-caption); }
 .atria-orch-row__tools { display: flex; align-items: center; padding-inline: var(--atri-space-1); }
 .atria-orch-row__tools .atria-button { min-width: 40px; min-height: 40px; }
-.atria-orch-up .atria-icon { transform: rotate(-45deg); }
-.atria-orch-down .atria-icon { transform: rotate(135deg); }
 
 /* ── Problems ── */
 .atria-orch-problems { padding: var(--atri-space-3) var(--atri-space-4); border: 1px solid var(--atri-separator); border-radius: var(--atri-radius-md); }
@@ -298,3 +296,7 @@ body.reduced-motion .atria-orch *, [data-atria-reduced-motion="true"] .atria-orc
 .atria-orch-plan-list:empty { display: none; }
 
 .atria-orch-inspector .atria-orch-facts { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
+/* Grow with content so list rows never shrink under the Problems panel. */
+.atria-orch-editor { flex: 1 0 auto; }
+.atria-orch-editor__surface[data-view="list"] { min-height: auto; }
+.atria-orch-run { flex: 1 0 auto; }

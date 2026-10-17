@@ -72,7 +72,9 @@ export function mountPlanLibrary({ document: doc, root, client, onOpen }) {
         el(doc, 'span', 'atria-orch-plan-row__mark', null, open).append(createAtriaIcon(doc, 'agents', { size: 18 }));
         const text = el(doc, 'span', 'atria-orch-plan-row__text', null, open);
         el(doc, 'strong', 'atria-orch-plan-row__title', planTitle(plan), text);
-        el(doc, 'span', 'atria-orch-plan-row__meta', fmt('${0} nodes · ${1} edges · updated ${2}', [plan.definition.nodes.length, plan.definition.edges.length, formatAtriaRelativeTime(plan.updatedAt)]), text);
+        const nodes = plan.definition.nodes.length === 1 ? tl('1 node') : fmt('${0} nodes', [plan.definition.nodes.length]);
+        const edges = plan.definition.edges.length === 1 ? tl('1 edge') : fmt('${0} edges', [plan.definition.edges.length]);
+        el(doc, 'span', 'atria-orch-plan-row__meta', fmt('${0} · ${1} · updated ${2}', [nodes, edges, formatAtriaRelativeTime(plan.updatedAt)]), text);
         const seals = el(doc, 'span', 'atria-orch-plan-row__seals', null, open);
         seals.append(seal(doc, { label: fmt('Draft v${0}', [plan.draftVersion]), kind: 'draft' }));
         seals.append(plan.currentPlanRevisionId
@@ -281,6 +283,12 @@ export function mountPlanEditor({ document: doc, root, client, shell, planId, en
             onDraftChange('reconciled');
             return;
         }
+        if (latest.draftVersion === state.base.draftVersion && latest.definitionHash === state.base.definitionHash) {
+            // Nothing changed on the Host (for example after a restart): saving again is not an overwrite.
+            state.base = latest; state.conflict = null;
+            return showBanner({ title: tl('The Host draft is unchanged'), message: fmt('Host draft v${0} has not changed. Your edits are kept; save them again.', [latest.draftVersion]), tone: 'info',
+                actions: [{ label: tl('Save draft'), variant: 'primary', onClick: () => save() }] });
+        }
         const summary = fmt('Host draft v${0}. Differences from your draft: ${1} nodes, ${2} edges, ${3} pins, ${4} settings.', [latest.draftVersion,
             diff.nodes.added.length + diff.nodes.removed.length + diff.nodes.changed.length, diff.edges.added.length + diff.edges.removed.length + diff.edges.changed.length,
             diff.pins.added.length + diff.pins.removed.length + diff.pins.changed.length, diff.fields.length]);
@@ -467,14 +475,14 @@ export function mountPlanEditor({ document: doc, root, client, shell, planId, en
 
     function renderSurface() {
         if (!state.draft) return;
-        surface.replaceChildren();
         surface.dataset.view = state.view;
         if (state.view === 'graph') {
-            surface.append(graph.element);
+            // Keep the same graph element attached so keyboard focus survives edits.
+            if (graph.element.parentNode !== surface || surface.childElementCount !== 1) surface.replaceChildren(graph.element);
             graph.render(graphModel());
             graph.select(state.selection.type === 'node' || state.selection.type === 'edge' ? state.selection : null);
             if (!surface.dataset.fitted) { requestAnimationFrame(() => graph.fit()); surface.dataset.fitted = 'true'; }
-        } else surface.append(renderList());
+        } else surface.replaceChildren(renderList());
     }
 
     function renderSurfaceSelection() {
@@ -507,11 +515,10 @@ export function mountPlanEditor({ document: doc, root, client, shell, planId, en
             if (issues.nodes.has(node.nodeId)) marks.append(stateChip(doc, { label: tl('Problems'), tone: 'danger', shape: 'failed' }));
             main.addEventListener('click', () => { selectItem({ type: 'node', id: node.nodeId }); openInspector(); });
             const tools = el(doc, 'span', 'atria-orch-row__tools', null, item);
-            const up = button(doc, tl('Move up'), () => edit(() => state.draft.moveNodeInList(node.nodeId, -1)), { variant: 'plain', icon: 'expand', iconOnly: true });
+            const up = button(doc, tl('Move up'), () => edit(() => state.draft.moveNodeInList(node.nodeId, -1)), { variant: 'plain', icon: 'arrow-up', iconOnly: true });
             up.disabled = index === 0;
-            const down = button(doc, tl('Move down'), () => edit(() => state.draft.moveNodeInList(node.nodeId, 1)), { variant: 'plain', icon: 'expand', iconOnly: true });
+            const down = button(doc, tl('Move down'), () => edit(() => state.draft.moveNodeInList(node.nodeId, 1)), { variant: 'plain', icon: 'arrow-down', iconOnly: true });
             down.disabled = index === definition.nodes.length - 1;
-            up.classList.add('atria-orch-up'); down.classList.add('atria-orch-down');
             tools.append(up, down);
         });
         if (!definition.nodes.length) el(doc, 'p', 'atria-orch-empty-line', tl('No nodes yet. Choose a kind and Add node.'), nodes);
@@ -940,6 +947,9 @@ export function mountPlanEditor({ document: doc, root, client, shell, planId, en
     inspector.addEventListener('keydown', keydown);
     const draftQuery = event => { if (event.detail.root.contains(page) || page.contains(event.detail.root)) event.detail.dirty ||= Boolean(state.draft?.isDirty()); };
     doc.addEventListener('atria-draft-query', draftQuery);
+    // Reload, tab close or leaving the app must not drop unsaved draft edits silently.
+    const beforeUnload = event => { if (state.draft?.isDirty() || state.busy) { event.preventDefault(); event.returnValue = ''; } };
+    doc.defaultView.addEventListener('beforeunload', beforeUnload);
 
     void load();
     return {
@@ -953,6 +963,7 @@ export function mountPlanEditor({ document: doc, root, client, shell, planId, en
             controller.abort();
             graph.dispose();
             doc.removeEventListener('atria-draft-query', draftQuery);
+            doc.defaultView.removeEventListener('beforeunload', beforeUnload);
             page.remove();
             inspector.remove();
         },
