@@ -10,6 +10,7 @@ import { readGraphNodeResult } from './graph-result-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { rpJudgeProfile } from './rp-judge-profile.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
+import { assertAudienceRunCapture } from './audience-source-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP Judge completion facts'); };
@@ -50,6 +51,7 @@ export async function readRpJudgeCompletion(tx, handle, root, attemptId) {
         await assertAttemptCurrent(tx, handle, root, candidate.producer); candidates.push(candidate);
     }
     const input = intent.inputRef;
+    assertAudienceRunCapture(root, root.graph.nodes.find(node => node.nodeId === producer.nodeId), plan.dependencyPins, input);
     if (input.kind !== 'native_rp_intent' || input.nodeId !== producer.nodeId || !equal(input.planRef, root.planRef) || !equal(input.sourceRef, root.sourceBinding.sourceRef)
         || !equal(input.acceptedGraphResultRefs, receipt.candidateRefs) || !equal(producer.inputRefs, [input, ...receipt.candidateRefs])) invalid();
     const bindings = candidates.map((candidate, index) => ({ edgeId: profile.inputs[index].edgeId, producerAttemptId: candidate.producer.attemptId })).sort((a, b) => a.edgeId.localeCompare(b.edgeId));

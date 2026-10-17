@@ -4,7 +4,7 @@ import { CASES, CASE_SET_REVISION, PILOT_CASES, PILOT_CASE_SET_REVISION, PILOT_R
 import { DEVELOPMENT_SOURCES } from '../../src/native/agent-intelligence/evaluation/pilot-sources.js';
 import { EvolutionEvaluator, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { runProject } from '../../src/native/agent-intelligence/evaluation/adapters.js';
-import { runRp } from '../../src/native/agent-intelligence/evaluation/native-adapters.js';
+import { runRp } from './native-rp-adapter.js';
 import { withIsolatedRuntime } from './runner.js';
 import { evolutionFixture, restoreEvolutionFixture } from './evolution-fixture.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
@@ -250,7 +250,10 @@ test.each(PILOT_CASES.filter(c => c.split === 'development' && c.entrance === 'r
     await withIsolatedRuntime(() => runRp(entry, loadFixture(entry, { purpose: 'evaluation' }), capture));
     expect(entry.expectedInvariants.every(name => capture.checks[name] === true)).toBe(true);
     expect(capture.checks.isolation).toBe(true);
-    expect(capture.refs.messageVariants.map(v => v.variantId)).toEqual(['v1', 'v2']);
+    expect(capture.refs.messageVariants).toHaveLength(2);
+    expect(new Set(capture.refs.messageVariants.map(v => v.runId)).size).toBe(2);
+    expect(capture.refs.messageVariants.flatMap(v => v.requestIds)).toEqual(capture.refs.requestIds);
+    expect(capture.nativeEffects.map(effect => effect.action).sort()).toEqual(['native_model_send', 'native_model_send', 'native_rp_output'].sort());
 });
 
 test.each(PILOT_CASES.filter(c => c.split === 'development' && c.entrance === 'project'))('Project evidence window validates the repair and protects the human revision: $sourceId', async entry => {
@@ -309,10 +312,7 @@ test('the original funded worker executes only baseline and returns a non-promot
     let calls = 0;
     const f = await evolutionFixture(makeTempFsEngineHarness, 'rp-skill', { realEvaluator: true, confirmedPrice: null, fetchImpl: async () => {
         calls++;
-        return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ message: { content: '', tool_calls: [
-            { id: 'w', type: 'function', function: { name: 'write_message', arguments: JSON.stringify({ text: 'NPC offers the next choice.', mode: 'replace' }) } },
-            { id: 'f', type: 'function', function: { name: 'finalize', arguments: '{}' } },
-        ] }, finish_reason: 'stop' }], usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } }) };
+        return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ message: { content: 'NPC offers the next choice.' }, finish_reason: 'stop' }], usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } }) };
     } });
     try {
         const doc = await f.repository.get(f.h.handle, f.scope, f.subject);

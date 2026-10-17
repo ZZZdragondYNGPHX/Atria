@@ -9,6 +9,13 @@ const configuration = resolved => hashNativeDocument({ route: resolved.route, mo
 
 /** Resolve the original Runtime's failure graph inside this node's frozen pins. */
 export async function resolveModelFailurePlan({ handle, node, dependencyPins, resolver, routeRef, role, requirements = [] }) {
+    return readModelFailurePlan({ handle, node, dependencyPins, resolver, routeRef, role, requirements });
+}
+
+// A primary resolved immediately before this call belongs to this validation
+// only. Fallbacks still resolve independently, and each later authority check
+// starts with a fresh resolver read.
+async function readModelFailurePlan({ handle, node, dependencyPins, resolver, routeRef, role, requirements = [] }, freshPrimary = null) {
     const pins = dependencyPins.filter(pin => pin.port === 'model' && node.dependencyPinIds.includes(pin.pinId));
     const pending = [routeRef], routes = [], visited = new Set();
     let required = [...requirements];
@@ -19,7 +26,8 @@ export async function resolveModelFailurePlan({ handle, node, dependencyPins, re
         visited.add(key);
         const pin = pins.find(pin => hashNativeDocument(pin.resourceRef) === key);
         if (!pin) throw new GenerationError('generation_fallback_route_unpinned');
-        const resolved = await resolver.resolve({ handle, routeRef: ref, role, requirements: required });
+        const resolved = !routes.length && freshPrimary ? freshPrimary
+            : await resolver.resolve({ handle, routeRef: ref, role, requirements: required });
         required = [...new Set([...required, ...resolved.requirements])];
         if (hashNativeDocument(resolved.route) !== pin.integrity) throw new GenerationError('generation_fallback_route_stale');
         primary ??= resolved;
@@ -32,7 +40,7 @@ export async function resolveModelFailurePlan({ handle, node, dependencyPins, re
         routes.push({ routeRef: ref, configDigest: configuration(resolved) });
         pending.push(...resolved.route.fallbackRouteRefs);
     }
-    return { routes, configDigest: routes.length === 1 ? configuration(primary) : hashNativeDocument(routes) };
+    return { routes, configDigest: routes.length === 1 ? routes[0].configDigest : hashNativeDocument(routes) };
 }
 
 const RUNTIME_PRINCIPALS = Object.freeze({
@@ -61,18 +69,23 @@ export async function validateModelCapability({ handle, definition, dependencyPi
         try {
             const route = await resolver.persistence.getRuntimeRoute(handle, pin.resourceRef.runtimeRouteId);
             if (!Object.hasOwn(RUNTIME_PRINCIPALS, route?.role)) { unavailable(); continue; }
-            const resolved = await resolver.resolve({ handle, routeRef: pin.resourceRef, role: route.role,
-                requirements: [...['role.intent_resolver', 'role.studio'].includes(route.role) ? ['generation.tools'] : [],
-                    ...control ? ['generation.structured-output'] : []] });
+            // The private pure Project stages cannot call the original Task
+            // tools. Only that graph's real tool owner needs their mechanism;
+            // direct Studio execution and Resolver keep their original guard.
+            const pureProject = route.role === 'role.studio' && definition.outputContract.kind === 'project_review'
+                && !node.capabilities.some(capability => ['project.read', 'project.propose'].includes(capability))
+                && !dependencyPins.some(pin => pin.port === 'tool' && node.dependencyPinIds.includes(pin.pinId));
+            const requirements = [...route.role === 'role.intent_resolver' || route.role === 'role.studio' && !pureProject ? ['generation.tools'] : [],
+                ...control ? ['generation.structured-output'] : []];
+            const resolved = await resolver.resolve({ handle, routeRef: pin.resourceRef, role: route.role, requirements });
             if (hashNativeDocument(resolved.route) !== pin.integrity) {
                 issues.push({ code: 'native_orchestration_dependency_stale', severity: 'blocking', fieldPath: 'dependencyPins.' + pin.pinId });
                 continue;
             }
             if (!resolved.route.executionPolicy?.computeBudget) { unavailable(); continue; }
             assertComputeBudget(resolved.route.executionPolicy.computeBudget);
-            const failure = await resolveModelFailurePlan({ handle, node, dependencyPins, resolver, routeRef: pin.resourceRef, role: route.role,
-                requirements: [...['role.intent_resolver', 'role.studio'].includes(route.role) ? ['generation.tools'] : [],
-                    ...control ? ['generation.structured-output'] : []] });
+            const failure = await readModelFailurePlan({ handle, node, dependencyPins, resolver, routeRef: pin.resourceRef, role: route.role,
+                requirements }, resolved);
             // No network, Secret read, render, bank admission or runtime grant.
             evidence.push({ capability: 'generation.send', nodeId: node.nodeId, pinId: pin.pinId,
                 authority: 'native_route_resolver', routeIntegrity: pin.integrity, pathFingerprint: resolved.pathFingerprint,

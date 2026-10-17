@@ -14,6 +14,7 @@ import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { sendAttemptId } from './budget-port.js';
 import { readRunControl } from '../run-control.js';
 import { readModelTerminalFact } from './model-terminal-contracts.js';
+import { rpControlGraph } from './rp-control-graph.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original Context retrieval completion'); };
@@ -37,8 +38,15 @@ export function contextRetrievalDecision({ sourceBindingDigest, parentGrantDiges
 /** Original immutable Plan plus original accepted graph history. This validates
  * metadata only and cannot restore a Context or Model permission. */
 export async function readContextRetrievalPlan(tx, handle, root, parent) {
-    const plan = await readPlanRevision(tx, handle, root.planRef), planner = rpPlannerProfile(plan);
+    const plan = await readPlanRevision(tx, handle, root.planRef);
     if (parent.graphRevision > root.graphRevision) invalid();
+    if (root.sourceBinding.sourceAuthority === 'rp_chat' && rpControlGraph(plan)) {
+        if (root.parentRef !== null || !parent.inputRef.controlGraph) invalid();
+        const snapshot = await readTaskGraphRevision(tx, handle, root, parent.graphRevision), active = { ...plan, definition: snapshot.graph };
+        rpControlGraph(active, { force: true });
+        return active;
+    }
+    const planner = rpPlannerProfile(plan);
     if (root.sourceBinding.sourceAuthority === 'native_session') {
         if (root.parentRef !== null || root.graphRevision !== 0 || parent.graphRevision !== 0 || !equal(plan.definition, root.graph)
             || plan.definition.graphChangePolicy.allowedOperations.length) invalid();

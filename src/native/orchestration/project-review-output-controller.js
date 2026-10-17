@@ -1,6 +1,7 @@
 import { ConflictError } from '../../storage/errors.js';
 import { hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
 import { controlCommandId, controlRecordKey, readAttempt, runGuard } from './controller-common.js';
+import { readGraphNodeResult } from './graph-result-contracts.js';
 import { writeAttemptSettlement, attemptReceiptId } from './attempt-settlement.js';
 import { TransitionController } from './transition-controller.js';
 import { AttemptController } from './attempt-controller.js';
@@ -59,7 +60,8 @@ export class ProjectReviewOutputController {
             runs.control(handle, controlCommandId('project.review.result', runId), {
                 ...runGuard(root), operation: 'result.publish', detail: { roundReceiptId: descriptor.receiptId } },
             async ({ tx, root, now }) => {
-                if (root.resultRefs.length || root.progress.steps >= root.limits.maxSteps || now >= root.progress.deadlineAt) fail();
+                if (root.resultRefs.some(ref => ref.resultId === projectReviewId('result', runId)) || root.progress.steps >= root.limits.maxSteps || now >= root.progress.deadlineAt) fail();
+                for (const ref of root.resultRefs) if (!await readGraphNodeResult(tx, handle, root, ref.resultId)) fail();
                 const producer = (await readAttempt(tx, handle, root, descriptor.nodeAttemptId)).doc;
                 const record = projectReviewResult(root, descriptor, producer, now), resultRef = { runId, resultId: record.resultId };
                 const receipt = { schemaVersion: 1, receiptKind: 'project_review_publication', receiptId: projectReviewId('publication', runId),
@@ -79,7 +81,7 @@ export class ProjectReviewOutputController {
                 const inputRefs = [facts.receipt.resultRef];
                 return { inputRefs, inputDigest: hash(inputRefs), effectiveGrantDigest: facts.receipt.grantDigest, budgetRef: root.budgetAuthorityRef };
             } }).advance(handle, { ...runGuard(root), reservedAttemptId: null, bindings: [{
-                edgeId: root.graph.edges.find(edge => !edge.loopBack).edgeId,
+                edgeId: root.graph.edges.find(edge => !edge.loopBack && edge.to.nodeId === root.graph.outputContract.ownerNodeId).edgeId,
                 producerAttemptId: (await readProjectReviewResult(tx, handle, root)).producer.attemptId,
             }] }), async (tx, current) => {
             const facts = await readProjectReviewResult(tx, handle, current);
@@ -113,7 +115,7 @@ export class ProjectReviewOutputController {
                     sourceBindingDigest: root.sourceBinding.bindingDigest, resultRef: facts.receipt.resultRef,
                     consumerRef: facts.record.envelope.audienceConstraint, operationRef: facts.record.payload,
                     status: 'committed', domainReceiptRef: facts.round.receiptRef };
-                const bindings = [{ edgeId: root.graph.edges.find(edge => !edge.loopBack).edgeId, producerAttemptId: facts.producer.attemptId }];
+                const bindings = [{ edgeId: root.graph.edges.find(edge => !edge.loopBack && edge.to.nodeId === root.graph.outputContract.ownerNodeId).edgeId, producerAttemptId: facts.producer.attemptId }];
                 const receipt = { schemaVersion: 1, receiptKind: 'project_review_output', receiptId: projectReviewId('output', runId),
                     runId, epoch: root.epoch, graphRevision: root.graphRevision, claimRef, claimIntegrity: hash(claim),
                     publicationReceiptRef: ref(facts.receipt.receiptId),

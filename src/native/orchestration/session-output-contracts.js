@@ -5,9 +5,9 @@ import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertSessionTurnOutput, sessionTurnCommitIdentity } from '../session-turn-output.js';
 import { readSessionSnapshot } from '../session-snapshot.js';
 import { checkedRecord } from './plan-repository.js';
-import { controlRecordKey, readAttempt } from './controller-common.js';
+import { controlRecordKey, readAttempt, readAttemptInvalidation } from './controller-common.js';
 import { readSessionNarrationResult, sessionOutputKey } from './session-narration-result-contracts.js';
-import { readModelCompletionReceipt } from './model-port.js';
+import { readModelCompletionReceipt, readModelTerminalFact } from './model-port.js';
 import { readEffect } from './effect-contracts.js';
 import { attemptReceiptId, readAttemptSettlement } from './attempt-settlement.js';
 import { assertBudgetAttemptRef, assertBudgetAuthorityRef, sendAttemptId } from './budget-port.js';
@@ -127,41 +127,65 @@ export async function readSessionOutput(tx, handle, root) {
         || !equal(Object.fromEntries(Object.keys(intent.budgetAttemptRef).map(field => [field, host.budgetObservationRef[field]])), intent.budgetAttemptRef)) invalid();
     const retrieval = published.retrievalCompletions, retrievalIds = new Set(retrieval.map(item => item.effectId));
     const modelIds = [], effectIds = [], nodes = new Set();
-    if (root.attemptRefs.length !== root.graph.nodes.length) invalid();
+    if (root.attemptRefs.length < root.graph.nodes.length) invalid();
     for (const ref of root.attemptRefs) {
         const attempt = (await readAttempt(tx, handle, root, ref)).doc;
-        if (attempt.status !== 'completed' || attempt.epoch !== receipt.epoch || nodes.has(attempt.nodeId)
+        const fanoutGroup = published.fanoutCompletions.find(item => item.allMembers.some(member => member.attempt.attemptId === attempt.attemptId));
+        const fanoutMember = fanoutGroup?.allMembers.find(item => item.attempt.attemptId === attempt.attemptId);
+        if ((attempt.status !== 'completed' && (!fanoutMember || !['failed', 'cancelled'].includes(attempt.status))) || attempt.epoch !== receipt.epoch
             || attempt.sourceBindingDigest !== root.sourceBinding.bindingDigest || !equal(attempt.budgetRef, root.budgetAuthorityRef)) invalid();
+        if (nodes.has(attempt.nodeId) && (attempt.nodeId === output.nodeId || attempt.nodeId === published.producer.nodeId
+            || !published.graphResults.some(result => result.producer.nodeId === attempt.nodeId)
+                && !published.reviewCompletions.some(result => result.producer.nodeId === attempt.nodeId))) invalid();
         nodes.add(attempt.nodeId);
         const settled = await readAttemptSettlement(tx, handle, root, attempt);
         if (attempt.nodeId !== output.nodeId && attempt.nodeId !== published.producer.nodeId) {
+            const graphResult = published.graphResults.find(result => result.producer.attemptId === attempt.attemptId);
+            const reviewed = published.reviewCompletions.find(result => result.producer.attemptId === attempt.attemptId);
             const resolverInput = attempt.inputRefs[0];
-            if (root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind !== 'agent' || attempt.inputRefs.length !== 1
+            const control = published.fanoutCompletions.find(item => [item.producer.attemptId, item.fanout.attemptId].includes(attempt.attemptId));
+            if (control) {
+                if (attempt.effectRefs.length || !['fanout', 'join'].includes(root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind)) invalid();
+            } else if (fanoutMember && attempt.status !== 'completed') {
+                if (!equal(fanoutMember.attempt, attempt) || (fanoutMember.receipt ? !equal(fanoutMember.receipt, settled)
+                    : settled.decisionSeq <= fanoutGroup.joinReceipt.cutoffSeq)) invalid();
+            } else if (reviewed) {
+                if (settled.reasonCode !== 'session_graph_review_decided') invalid();
+            } else if (graphResult) {
+                const newer = published.graphResults.some(result => result.producer.nodeId === attempt.nodeId && result.producer.attemptNumber > attempt.attemptNumber);
+                if (newer && !await readAttemptInvalidation(tx, handle, root, attempt)) invalid();
+                if (resolverInput.kind !== 'native_turn_intent' || resolverInput.role !== 'narrator' || resolverInput.nodeId !== attempt.nodeId
+                    || !equal(resolverInput.planRef, root.planRef) || resolverInput.invocationId !== expected.invocationId || resolverInput.requestHash !== expected.requestHash
+                    || resolverInput.grantDigest !== attempt.effectiveGrantDigest || settled.reasonCode !== 'graph_result_published') invalid();
+            } else {
+                if (root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind !== 'agent' || attempt.inputRefs.length !== 1
                 || attempt.inputDigest !== hash(attempt.inputRefs) || !equal(resolverInput.planRef, root.planRef)) invalid();
-            if (!attempt.effectRefs.length) {
-                const operation = (await readRunControl(tx, handle, expected.sessionId))?.operations[root.budgetAuthorityRef.operationId];
-                if (resolverInput.kind !== 'native_authority_selection_reuse' || settled.reasonCode !== 'original_selection_reused'
+                if (!attempt.effectRefs.length) {
+                    const operation = (await readRunControl(tx, handle, expected.sessionId))?.operations[root.budgetAuthorityRef.operationId];
+                    if (resolverInput.kind !== 'native_authority_selection_reuse' || settled.reasonCode !== 'original_selection_reused'
                     || resolverInput.sourceBindingDigest !== root.sourceBinding.bindingDigest || resolverInput.ownerRef.handle !== handle
                     || resolverInput.nodeId !== attempt.nodeId || settled.effectReceiptRefs.length || attempt.resultRefs.length
                     || resolverInput.operationRef.operationId !== root.budgetAuthorityRef.operationId || !operation
                     || resolverInput.operationRef.fingerprint !== operation.fingerprint || resolverInput.operationRef.selectionDigest !== hash(operation.selection)
                     || resolverInput.operationRef.retainedCompute !== true || !hasRetainedOrchestrationCompute(operation.compute)) invalid();
-            } else if (attempt.effectRefs.length !== 1 || resolverInput.kind !== 'native_turn_intent' || resolverInput.role !== 'intent_resolver'
+                } else if (attempt.effectRefs.length !== 1 || resolverInput.kind !== 'native_turn_intent' || resolverInput.role !== 'intent_resolver'
                 || resolverInput.invocationId !== expected.invocationId || resolverInput.requestHash !== expected.requestHash
                 || resolverInput.grantDigest !== attempt.effectiveGrantDigest) invalid();
+            }
         }
         for (const effectId of attempt.effectRefs) {
             effectIds.push(effectId);
             if (effectId === intent.effectId) continue;
             if (retrievalIds.has(effectId)) { if (attempt.attemptId !== published.producer.attemptId) invalid(); continue; }
             const generation = (await readEffect(tx, handle, root, effectId)).doc;
-            const completion = await readModelCompletionReceipt(handle, tx, root, generation);
+            const completion = await readModelCompletionReceipt(handle, tx, root, generation) ?? await readModelTerminalFact(handle, tx, root, generation);
             if (generation.capability !== 'generation.send' || !completion || generation.nodeAttemptId !== attempt.attemptId
                 || generation.epoch !== receipt.epoch || generation.sourceBindingDigest !== root.sourceBinding.bindingDigest
                 || !equal(settled.effectReceiptRefs, [completion.receiptRef.receiptId, ...(attempt.attemptId === published.producer.attemptId ? retrieval.map(item => item.receiptId) : [])])) invalid();
             modelIds.push(effectId);
         }
     }
+    if (nodes.size !== root.graph.nodes.length) invalid();
     if (!equal(closure.effectIds, effectIds.sort()) || !Array.isArray(closure.budgetAttemptRefs)) invalid();
     const ids = new Set();
     for (const ref of closure.budgetAttemptRefs) {
@@ -175,7 +199,7 @@ export async function readSessionOutput(tx, handle, root) {
     if (expectedSends.some(ref => !ref)) invalid();
     for (const effectId of modelIds) {
         const generation = (await readEffect(tx, handle, root, effectId)).doc;
-        const completed = await readModelCompletionReceipt(handle, tx, root, generation);
+        const completed = await readModelCompletionReceipt(handle, tx, root, generation) ?? await readModelTerminalFact(handle, tx, root, generation);
         const attempts = completed?.observation.dispatchEvidence.reference.attempts;
         if (!Array.isArray(attempts) || !attempts.length) invalid();
         for (const [ordinal, attempt] of attempts.entries()) {

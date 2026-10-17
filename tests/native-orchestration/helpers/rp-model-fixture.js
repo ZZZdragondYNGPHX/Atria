@@ -68,7 +68,7 @@ export async function rpModelFixture(make, { memorySettings = null, seedMemory =
         const host = new NativeGenerationHost({ ...seeded, sessionCore: services(h).core,
             providers: { 'provider.openai-compatible': createHttpGenerationProvider() }, secretPort: { resolveSecret: async () => 'synthetic-secret' } });
         const modelResolver = new RouteResolver({ persistence: host.persistence, library: host.library, providers: host.providers });
-        const { plans } = createOrchestrationAuthoringService(h.engine, { rpControl: control, modelResolver });
+        const { plans } = createOrchestrationAuthoringService(h.engine, { rpControl: control, modelResolver, sessionCore: host.sessionCore });
         const authority = new NativeNarratorOrchestrationAuthority({ engine: h.engine, sessionCore: host.sessionCore, rpControl: control, plans, modelResolver,
             memoryAuthority: memorySettings ? new NativeMemoryAuthority({ core: host.sessionCore, settingsRepo: new SettingsRepo({ engine: h.engine }) }) : null });
         host.turnOrchestration = authority;

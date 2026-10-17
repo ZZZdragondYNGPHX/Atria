@@ -103,7 +103,7 @@ describe.each(CONTRACT_HARNESSES)('$name Graph Result history and recipient cons
         const observationId = 'model.completed:' + intent.effectId, modelReceiptId = 'oreceipt_' + hash({ effectId: intent.effectId, observationId }).slice(0, 32);
         proof.receiptRef.receiptId = modelReceiptId;
         const model = { schemaVersion: 1, runId: root.runId, effectId: intent.effectId, receiptId: modelReceiptId, observationId, observedEpoch: 3, outcome: 'confirmed',
-            reasonCode: 'generation_response_validated', dispatchEvidence: { kind: 'original_port_observation', reference: { protocol: 'generation', resultPayloadHash: hash(f.text),
+            reasonCode: 'generation_response_validated', dispatchEvidence: { kind: 'original_port_observation', reference: { protocol: 'generation', resultOutputType: 'text', resultPayloadHash: hash(f.text),
                 completionBindingDigest: hash({ runId: intent.runId, effectId: intent.effectId, epoch: intent.epoch, hostBootId: intent.hostBootId, hostGeneration: intent.hostGeneration,
                     sourceBindingDigest: intent.sourceBindingDigest, decision: effectDecision(intent) }) } }, observedAt: 90 };
         // Rebuild after assigning the fixture's stable original Model receipt.

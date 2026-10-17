@@ -55,7 +55,7 @@ export async function runProject(entry, fixture, capture, evaluation = null) {
     const seeded = await seedGenerationProfiles({ ...h, roles: ['studio'], endpoint: 'http://fixture.invalid' });
     await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1,
         allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget: { maxRequests: 6, maxTokens: 64000,
-            localWork: { maxJobs: 32, maxItems: 100, maxInputBytes: 16777216 } } } });
+            localWork: { maxJobs: 64, maxItems: 100, maxInputBytes: 16777216 } } } });
     let task; let canaryRoot; let before; let source; let originalRevision; let conflictRevision;
     try {
         source = projectSource(fixture.projectName, evaluation ? entry.fixtureHash : null);

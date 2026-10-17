@@ -111,7 +111,10 @@ export async function runRp(entry, fixture, capture, evaluation) {
         return result;
     };
     try {
-        const result = await bridge.nativeTransport({ trialId: capture.trialId, onRendered: rendered => capture.prompts.push(structuredClone(rendered)), beforeSend }, async () => {
+        const result = await bridge.nativeTransport({ trialId: capture.trialId, onRendered: (rendered, prepared) => {
+            capture.prompts.push(structuredClone(rendered));
+            if (!capture.refs.requestIds.includes(prepared.requestId)) capture.refs.requestIds.push(prepared.requestId);
+        }, beforeSend }, async () => {
             const requestId = 'evaluation:' + hash(capture.trialId);
             if (!variant) return run(requestId);
             const controller = new AbortController(), old = run(requestId + ':old', { signal: controller.signal });
@@ -142,7 +145,7 @@ export async function runRp(entry, fixture, capture, evaluation) {
             capture.observe('stale_completion', { cancelled: stale.cancelled, oldClaims: stale.oldClaims, staleOutput: output.mes.includes('STALE COMPLETION'), assistants: chat.body.length - 2 },
                 { cancelled: true, oldClaims: 0, staleOutput: false, assistants: 1 });
             capture.observe('variant_identity', { runs: new Set(capture.refs.runIds).size, requests: new Set(capture.refs.requestIds).size, different: stale.priorRunId !== root.runId, completed: root.status },
-                { runs: 2, requests: 2, different: true, completed: 'completed' });
+                { runs: 2, requests: frozen.revision.definition.nodes.filter(node => node.capabilities.includes('generation.send')).length + 1, different: true, completed: 'completed' });
             capture.completeness.push('native_cancelled_late_delivery');
         }
         capture.evidence.push({ name: 'native_plan_execution', observed: { planRef: root.planRef, sourceBindingDigest: root.sourceBinding.bindingDigest,

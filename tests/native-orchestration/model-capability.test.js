@@ -63,7 +63,7 @@ describe.each(mechanisms)('%s original %s mechanism validation', (_name, role, m
         route = await seeded.persistence.getRuntimeRoute(h.handle, route.runtimeRouteId);
         const value = input();
         expect((await validateModelCapability({ handle: h.handle, ...value, resolver })).issues).toEqual([]);
-        expect(readers).toHaveLength(6);
+        expect(readers).toHaveLength(3);
         resources.pop();
         expect((await validateModelCapability({ handle: h.handle, ...value, resolver })).issues).toContainEqual(expect.objectContaining({
             code: 'native_orchestration_dependency_invalid', reasonCode: 'generation_resource_origin_mismatch', severity: 'blocking',

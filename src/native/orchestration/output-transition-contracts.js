@@ -8,11 +8,17 @@ const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original output graph traversal'); };
 
 /** Shared historical graph facts only; never a producer/recipient grant. */
-export async function assertOutputTransition(tx, handle, root, { published, output, receipt, additionalProducers = [], allowLoopBack = false }) {
+export async function assertOutputTransition(tx, handle, root, { published, output, receipt, additionalProducers = [], allowLoopBack = false, producerBindings = null }) {
     assertCounter(receipt.decisionSeq, 'publication decisionSeq', 1);
-    const entries = [published, ...additionalProducers].map(source => {
-        const edge = root.graph.edges.find(item => (allowLoopBack || !item.loopBack) && item.from.nodeId === source.producer.nodeId && item.to.nodeId === output.nodeId);
-        if (!edge) invalid();
+    const sources = [published, ...additionalProducers];
+    const requested = producerBindings ?? sources.map(source => ({ producerAttemptId: source.producer.attemptId,
+        edgeId: root.graph.edges.find(item => (allowLoopBack || !item.loopBack) && item.from.nodeId === source.producer.nodeId && item.to.nodeId === output.nodeId)?.edgeId }));
+    if (!Array.isArray(requested) || !requested.length || sources.some(source => !requested.some(binding => binding.producerAttemptId === source.producer.attemptId))) invalid();
+    const entries = requested.map(binding => {
+        const source = sources.find(source => source.producer.attemptId === binding.producerAttemptId);
+        const edge = root.graph.edges.find(item => item.edgeId === binding.edgeId && (allowLoopBack || !item.loopBack)
+            && item.from.nodeId === source?.producer.nodeId && item.to.nodeId === output.nodeId);
+        if (!source || !edge) invalid();
         const transfer = { edgeId: edge.edgeId, producerAttemptId: source.producer.attemptId, nodeAttemptId: output.attemptId };
         const admissionId = 'oreceipt_' + hash({ kind: 'edge_admission', runId: root.runId, ...transfer }).slice(0, 32);
         return { source, edge, transfer, admissionId };

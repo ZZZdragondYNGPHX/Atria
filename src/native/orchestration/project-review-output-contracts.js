@@ -8,6 +8,7 @@ import { controlCommandId, controlRecordKey, readAttempt } from './controller-co
 import { checkedRecord } from './plan-repository.js';
 import { readProjectRoundReceipt } from './project-round-contracts.js';
 import { readOriginalProjectTask } from './project-tool-receipts.js';
+import { readGraphNodeResult } from './graph-result-contracts.js';
 import { readAttemptSettlement, attemptReceiptId } from './attempt-settlement.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 
@@ -63,8 +64,11 @@ export async function readProjectReviewResult(tx, handle, root) {
     const resultId = projectReviewId('result', root.runId), receiptId = projectReviewId('publication', root.runId);
     const saved = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'result', resultId));
     const row = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId));
-    if (!saved && !row && !root.resultRefs.length) return null;
-    if (!saved || !row || !equal(root.resultRefs, [{ runId: root.runId, resultId }])) invalid();
+    for (const ref of root.resultRefs.filter(ref => ref.resultId !== resultId)) {
+        if (ref.runId !== root.runId || !await readGraphNodeResult(tx, handle, root, ref.resultId)) invalid();
+    }
+    if (!saved && !row) { if (root.resultRefs.some(ref => ref.resultId === resultId)) invalid(); return null; }
+    if (!saved || !row || root.resultRefs.filter(ref => equal(ref, { runId: root.runId, resultId })).length !== 1) invalid();
     const receipt = row.doc, record = assertResultRecord(saved.doc, { outputContract: root.graph.outputContract });
     assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'roundReceiptRef', 'resultRef',
         'resultIntegrity', 'grantDigest', 'decisionSeq', 'createdAt'], 'Project Review publication');
@@ -79,7 +83,7 @@ export async function readProjectReviewResult(tx, handle, root) {
         || receipt.receiptKind !== 'project_review_publication' || receipt.receiptId !== receiptId || receipt.runId !== root.runId
         || receipt.epoch !== producer.epoch || receipt.epoch > root.epoch || receipt.decisionSeq > root.eventSeq
         || receipt.decisionSeq <= settlement.decisionSeq || receipt.resultIntegrity !== saved.integrity
-        || receipt.grantDigest !== producer.effectiveGrantDigest || !equal(receipt.resultRef, root.resultRefs[0])
+        || receipt.grantDigest !== producer.effectiveGrantDigest || !equal(receipt.resultRef, { runId: root.runId, resultId })
         || !equal(receipt.roundReceiptRef, round.receiptRef)
         || !equal(record, projectReviewResult({ ...root, epoch: receipt.epoch }, round.receipt, producer, receipt.createdAt))) invalid();
     await assertPublicationCommand(tx, handle, root, 'result', 'result.publish', { roundReceiptId: round.receipt.receiptId },

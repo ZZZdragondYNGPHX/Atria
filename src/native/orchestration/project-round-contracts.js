@@ -8,6 +8,8 @@ import { readModelCompletionReceipt } from './model-port.js';
 import { readProjectToolReceipt, readOriginalProjectTask } from './project-tool-receipts.js';
 import { assertBudgetAuthorityRef, assertBudgetAttemptRef, sendAttemptId } from './budget-port.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
+import { assertProjectQualityRound } from './project-quality-contracts.js';
+import { assertProjectControlRound } from './project-control-input-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw Object.assign(new TypeError('native_orchestration_project_round_receipt_invalid'), { code: 'native_orchestration_project_round_receipt_invalid' }); };
@@ -45,35 +47,60 @@ export async function readProjectRoundReceipt(tx, handle, root, nodeAttemptId, {
     const modelFact = await readModelCompletionReceipt(handle, tx, root, model), evidence = modelFact?.observation.dispatchEvidence.reference;
     if (!modelFact || !equal(modelFact.receiptRef, receipt.modelReceiptRef) || evidence.resultOutputType !== 'json' || evidence.resultPayloadHash !== receipt.modelPayloadHash
         || attempt.observation?.origin !== 'host' || attempt.observation.snapshotHash !== evidence.finalRequestHash || model.nodeAttemptId !== nodeAttemptId
-        || model.inputRef.kind !== 'native_project_intent' || model.inputRef.projectAttemptId !== receipt.projectAttemptId
+        || model.inputRef.kind !== 'native_project_intent' || model.inputRef.nodeId !== nodeAttempt.nodeId || model.inputRef.projectAttemptId !== receipt.projectAttemptId
         || model.inputRef.requestId !== receipt.requestId || model.inputRef.operationId !== receipt.operationId || !equal(model.inputRef.sourceRef, source)
         || receipt.fromFingerprint !== (model.inputRef.currentSourceFingerprint ?? source.executionFingerprint)
         || model.sourceBindingDigest !== receipt.sourceBindingDigest || nodeAttempt.effectiveGrantDigest !== model.grantDigest
-        || nodeAttempt.attemptNumber !== receipt.round + 1 || !nodeAttempt.effectRefs.includes(model.effectId) || command.outcome.versions?.epoch !== model.epoch) invalid();
+        || !nodeAttempt.effectRefs.includes(model.effectId) || command.outcome.versions?.epoch !== model.epoch) invalid();
+    const qualityVerified = await assertProjectQualityRound(tx, handle, root, nodeAttempt, model.inputRef, receipt.round);
+    await assertProjectControlRound(tx, handle, root, nodeAttempt, model.inputRef, receipt.round, { qualityVerified });
+    if (receipt.round === 0 && nodeAttempt.attemptNumber !== 1) invalid();
     if (receipt.round > 0) {
+        // Global operation rounds and per-node attempt numbers differ when
+        // the original Task crosses an authored collaboration edge. Resolve
+        // the exact prior round from its immutable domain completion receipt.
         const candidates = [];
         for (const ref of root.attemptRefs) {
-            const { doc } = await readAttempt(tx, handle, root, ref);
-            if (doc.nodeId === nodeAttempt.nodeId && doc.attemptNumber === receipt.round) candidates.push(doc);
+            if (ref === nodeAttemptId) continue;
+            const row = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', projectRoundReceiptId(root.runId, ref)));
+            if (row?.doc.round === receipt.round - 1) candidates.push((await readAttempt(tx, handle, root, ref)).doc);
         }
         if (candidates.length !== 1) invalid();
         const previous = candidates[0], prior = await readProjectRoundReceipt(tx, handle, root, previous.attemptId, { projectAgent });
-        const loop = root.graph.edges.find(edge => edge.loopBack && edge.from.nodeId === nodeAttempt.nodeId && edge.to.nodeId === nodeAttempt.nodeId);
+        const loop = root.graph.edges.find(edge => edge.from.nodeId === previous.nodeId && edge.to.nodeId === nodeAttempt.nodeId);
+        const nodeRounds = [];
+        for (const ref of root.attemptRefs) {
+            const item = (await readAttempt(tx, handle, root, ref)).doc;
+            if (item.nodeId !== nodeAttempt.nodeId || ref === nodeAttemptId) continue;
+            const fact = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', projectRoundReceiptId(root.runId, ref))))?.doc;
+            if (fact && fact.round < receipt.round) nodeRounds.push(item);
+        }
         if (!prior || !loop || !prior.receipt.toolReceiptRefs.length || prior.receipt.round + 1 !== receipt.round
-            || prior.receipt.toFingerprint !== receipt.fromFingerprint || previous.status !== 'completed') invalid();
+            || prior.receipt.toFingerprint !== receipt.fromFingerprint || previous.status !== 'completed'
+            || nodeAttempt.attemptNumber !== nodeRounds.length + 1) invalid();
         const settlement = await readAttemptSettlement(tx, handle, root, previous);
         const bindings = [{ edgeId: loop.edgeId, producerAttemptId: previous.attemptId }], identity = hash({ runId: root.runId, bindings, reservedAttemptId: null });
         const traversalId = 'oreceipt_' + identity.slice(0, 32), traversal = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', traversalId)))?.doc;
         const transfer = { edgeId: loop.edgeId, producerAttemptId: previous.attemptId, nodeAttemptId },
             edgeReceiptId = 'oreceipt_' + hash({ kind: 'edge_admission', runId: root.runId, ...transfer }).slice(0, 32);
         const edge = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', edgeReceiptId)))?.doc;
+        // Loop progress is global to the authored graph. A Planner loop can
+        // precede the formal Task loop; retain the exact previous admission
+        // baseline rather than equating it with this node's attempt number.
+        const previousAdmissionId = 'oreceipt_' + previous.attemptId.slice('oattempt_'.length);
+        const previousAdmission = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', previousAdmissionId)))?.doc;
+        const previousWasTransitioned = prior.receipt.round > 0 || Boolean(previous.inputRefs[0].controlGraph || previous.inputRefs[0].qualityApproval);
+        if (Boolean(previousAdmission) !== previousWasTransitioned || previousAdmission && (previousAdmission.receiptKind !== 'graph_transition'
+            || previousAdmission.nodeAttemptId !== previous.attemptId || previousAdmission.runId !== root.runId)) invalid();
+        const expectedLoopIterations = (previousAdmission?.loopIterations ?? 0) + Number(loop.loopBack);
         if (nodeAttemptId !== 'oattempt_' + identity.slice(0, 32) || settlement.reasonCode !== 'project_round_ready' || !traversal
             || traversal.receiptKind !== 'graph_transition' || traversal.runId !== root.runId || traversal.nodeAttemptId !== nodeAttemptId
             || traversal.inputDigest !== nodeAttempt.inputDigest || !equal(traversal.bindings, bindings)
             || !equal(traversal.producerReceiptRefs, [settlement.receiptId]) || !equal(traversal.edgeAdmissionRefs, [edgeReceiptId])
             || !edge || edge.receiptKind !== 'edge_admission' || edge.runId !== root.runId || edge.receiptId !== edgeReceiptId
             || Object.entries(transfer).some(([key, value]) => edge[key] !== value) || edge.sourceBindingDigest !== receipt.sourceBindingDigest
-            || edge.edgeVisit !== receipt.round || edge.loopIteration !== receipt.round || edge.epoch !== nodeAttempt.epoch
+            || edge.edgeVisit !== (loop.loopBack ? nodeAttempt.attemptNumber - 1 : 1)
+            || edge.loopIteration !== expectedLoopIterations || traversal.loopIterations !== expectedLoopIterations || edge.epoch !== nodeAttempt.epoch
             || edge.edgeVisit > (root.progress.edgeVisitCounts[loop.edgeId] ?? 0) || edge.loopIteration > root.progress.loopIterations
             || edge.edgeVisit > loop.maxVisits || edge.loopIteration > root.limits.maxLoopIterations) invalid();
         const loopCommandId = controlCommandId('loop.advance', identity), loopCommand = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId: loopCommandId }))?.doc;

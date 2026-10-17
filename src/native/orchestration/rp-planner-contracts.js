@@ -11,6 +11,7 @@ import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { assertRpPlannerExpansionOperations } from './rp-planner-expansion-profile.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
+import { audienceContextPin, assertAudienceRunCapture } from './audience-source-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP Planner completion facts'); };
@@ -30,13 +31,14 @@ export async function readRpPlannerCompletion(tx, handle, root) {
         if (producer.attemptNumber !== index + 1 || producer.graphRevision !== (previous?.patch.newGraphRevision ?? 0)
             || entry.patch.previousGraphRevision !== producer.graphRevision) invalid();
         const input = entry.input;
+        assertAudienceRunCapture(root, node, plan.dependencyPins, input);
         if (profile.expansion) {
             const snapshot = await readTaskGraphRevision(tx, handle, root, producer.graphRevision);
             assertRpPlannerExpansionOperations(snapshot.graph, input.graphTemplates, entry.patch.appliedOperations, plan.dependencyPins);
         }
         if (input.kind !== 'native_rp_intent' || input.nodeId !== node.nodeId || input.role !== 'narrator'
             || !equal(input.planRef, root.planRef) || !equal(input.sourceRef, root.sourceBinding.sourceRef)
-            || !equal(input.audience, { kind: 'narrator' }) || !equal(producer.inputRefs, [input])) invalid();
+            || !equal(input.audience, audienceContextPin(node, plan.dependencyPins)?.resourceRef.audience ?? { kind: 'narrator' }) || !equal(producer.inputRefs, [input])) invalid();
         if (previous) {
             if (!previous.patch.requests.replan || previous.patch.requests.finalize
                 || !equal(input.controlReceiptRef, { runId: root.runId, receiptId: previous.receipt.receiptId })) invalid();

@@ -226,10 +226,14 @@ export class ModelPort {
             const generated = await this.#executeNative.call(this.host, handle, request, signal, undefined, { ...options, orchestrationSend });
             pending.generated = generated;
             this.#responses.set(generated, pending);
-            const current = await this.runs.engine.withTransaction(handle, async tx => {
+            // Keep the original domain lock before the Engine transaction:
+            // observing a Session bank also takes its RunControl lock, while
+            // a sibling may be settling that same bank. This orders paid-fact
+            // observation without treating the lock as a fresh Source grant.
+            const current = await this.runs.withSourceControl(handle, runId, () => this.runs.engine.withTransaction(handle, async tx => {
                 const root = await this.runs.get(handle, runId), intent = (await readEffect(tx, handle, root, effectId)).doc;
                 return { root, observation: await this.#observation({ handle, tx, root, intent, pending }) };
-            });
+            }), { withAuthority });
             pending.observation = current.observation;
             try {
                 await this.runs.withSourceControl(handle, runId, async () => {
@@ -284,10 +288,10 @@ export class ModelPort {
             const facts = NativeGenerationHost.prototype.inspectModelTerminalFacts.call(this.host, error, handle);
             if (facts) {
                 pending.terminalError = error; pending.terminalFacts = facts;
-                const observation = await this.runs.engine.withTransaction(handle, async tx => {
+                const observation = await this.runs.withSourceControl(handle, runId, () => this.runs.engine.withTransaction(handle, async tx => {
                     const root = await this.runs.get(handle, runId), intent = (await readEffect(tx, handle, root, effectId)).doc;
                     return this.#terminalObservation({ handle, tx, root, intent, pending });
-                });
+                }), { withAuthority });
                 pending.observation = observation;
                 try {
                     await this.runs.withSourceControl(handle, runId, async () => this.effects.observe(handle, {

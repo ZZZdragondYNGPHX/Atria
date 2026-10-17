@@ -3,17 +3,43 @@ import { startServer, tearDownServer } from '../_lib/server.js';
 import { awaitMainUI } from '../_lib/page.js';
 import { markOnboarded } from '../_lib/fixtures.js';
 import { planFixture } from '../../native-orchestration/fixtures.js';
+import { makeTempMysqlEngineHarness } from '../../storage/harness/mysql-harness.js';
+import { makeTempPgEngineHarness } from '../../storage/harness/pg-harness.js';
 
 test.use({ actionTimeout: 15000 });
 let server;
-test.beforeAll(async () => {
-    server = await startServer({ batchKey: 'native-orchestration', scenarioId: 'workspace' });
-    markOnboarded({ dataRoot: server.dataRoot });
+let database;
+const storageMode = process.env.ATRIA_E2E_STORAGE_MODE ?? 'fs';
+
+test.beforeAll(async ({ request }) => {
+    if (!['fs', 'mysql', 'postgres'].includes(storageMode)) throw new Error('Unsupported workspace test storage mode');
+    if (storageMode !== 'fs') {
+        const variable = storageMode === 'mysql' ? 'ATRIA_TEST_MYSQL_ROOT_URL' : 'ATRIA_TEST_POSTGRES_URL';
+        if (!process.env[variable]) throw new Error('Workspace SQL test requires an explicit isolated test database URL');
+        database = await (storageMode === 'mysql' ? makeTempMysqlEngineHarness() : makeTempPgEngineHarness());
+    }
+    server = await startServer({ batchKey: 'native-orchestration', scenarioId: 'workspace-' + storageMode,
+        extraConfig: database ? { 'storage.mode': storageMode, [`storage.${storageMode}.url`]: database.url,
+            [`storage.${storageMode}.nativeHostTopology`]: 'direct_single_primary' } : {} });
+    if (storageMode === 'fs') markOnboarded({ dataRoot: server.dataRoot });
+    else {
+        const csrf = await request.get(server.baseURL + '/csrf-token');
+        expect(csrf.ok()).toBe(true);
+        const headers = { 'x-csrf-token': (await csrf.json()).token };
+        const response = await request.post(server.baseURL + '/api/settings/get', { headers, data: {} });
+        expect(response.ok()).toBe(true);
+        const settings = JSON.parse((await response.json()).settings);
+        const saved = await request.post(server.baseURL + '/api/settings/save', { headers, data: { ...settings, firstRun: false } });
+        expect(saved.ok()).toBe(true); expect(await saved.json()).toEqual({ result: 'ok' });
+    }
 });
-test.afterAll(async () => tearDownServer(server));
+
+test.afterAll(async () => {
+    try { await tearDownServer(server); } finally { await database?.cleanup(); }
+});
 
 for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
-    test(`Plans, Runs and Memory on isolated Host at ${viewport.width}px`, async ({ page }, testInfo) => {
+    test(`Plans, Runs and Memory on isolated ${storageMode} Host at ${viewport.width}px`, async ({ page }, testInfo) => {
         await page.setViewportSize(viewport);
         const requests = [];
         page.on('request', request => requests.push(request.url()));
@@ -24,6 +50,12 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
         await page.getByRole('textbox', { name: 'New Plan name' }).fill(`Browser Plan ${viewport.width}`);
         await page.getByRole('button', { name: 'Create draft', exact: true }).click();
         await expect(page.getByRole('button', { name: 'Validate on Host', exact: true })).toBeVisible();
+        await page.getByRole('button', { name: 'List', exact: true }).click();
+        await page.getByRole('list', { name: 'Nodes', exact: true }).getByRole('button', { name: 'Agent Narrator Entry', exact: true }).click();
+        await expect(page.getByRole('combobox', { name: 'Context audience', exact: true })).toHaveValue('');
+        await expect(page.getByText('Attach an exact Information context pin. The Host rechecks its Actor, source version and receiving audience; this selection grants no access.', { exact: true })).toBeVisible();
+        const audienceSheet = page.getByRole('button', { name: 'Close sheet', exact: true }).last();
+        if (await audienceSheet.isVisible()) await audienceSheet.click();
         // Replace the starter's model-dependent graph with a no-provider fixture
         // through the real Host, then exercise editing and publication in the UI.
         const plan = await page.evaluate(async document => {

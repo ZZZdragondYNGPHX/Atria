@@ -1035,7 +1035,7 @@ export class NativeGenerationHost {
             || input.routeRef.scope !== 'player' || typeof input.routeRef.runtimeRouteId !== 'string'
             || Object.keys(input.routeRef).some(key => !['scope', 'runtimeRouteId'].includes(key)))) fail('native_generation_route_ref_invalid');
         const role = 'role.' + input.role;
-        let snapshot; let project; let source; let runtime; let projectTaskEvidence; let projectConversation; let rpMessages;
+        let snapshot; let project; let source; let runtime; let projectTaskEvidence; let projectConversation; let rpMessages; let projectWorker = null;
         if (input.sessionId) {
             snapshot = immutable(illustrationPlan?.snapshot ?? (preflight ? preflightSnapshot : null) ?? lanePlan?.authorityContext?.snapshot
                 ?? (preview ? await this.sessionCore.observe(handle, input.sessionId, { revisionId: input.revisionId })
@@ -1055,7 +1055,10 @@ export class NativeGenerationHost {
                 projectTaskEvidence = { source: 'native.project-task', ref: input.taskId + ':' + context.task.executionFingerprint };
                 projectConversation = context.task.conversation;
                 if (context.task.baseRevision !== input.revision || ['review', 'blocked', 'conflict', 'taken_over', 'completed'].includes(context.task.status)) fail('native_generation_task_stopped');
-                if (!preview && input.projectAttemptId) await this.agent.recordGenerationRequest(handle, input.projectId, input.taskId, input.projectAttemptId, input.requestId);
+                if (scopedContext?.compiled.request.audience.kind === 'project_task') projectWorker = scopedContext.port.inspectProjectWorker(handle, { context: scopedContext.compiled, request: input });
+                if (projectWorker && !context.task.attempts.some(attempt => attempt.attemptId === input.projectAttemptId && attempt.status === 'started'
+                    && attempt.requestId === projectWorker.originalRequestId)) fail('native_generation_task_stopped');
+                if (!preview && input.projectAttemptId && !projectWorker) await this.agent.recordGenerationRequest(handle, input.projectId, input.taskId, input.projectAttemptId, input.requestId);
                 const allowed = new Set(context.tools.map(tool => tool.function.name).concat(['atri_agent_list_skills', 'atri_agent_read_skill', 'atri_agent_skill_files']));
                 if ((input.tools || []).some(tool => !allowed.has(tool.function?.name))) fail('native_generation_tool_denied');
             }
@@ -1558,7 +1561,7 @@ export class NativeGenerationHost {
             outputTokens: result.response.usage?.outputTokens ?? result.response.usage?.completion_tokens,
             totalTokens: result.response.usage?.totalTokens ?? result.response.usage?.total_tokens });
         let projectTaskCapture;
-        if (!preview && input.projectId && input.taskId && input.projectAttemptId) {
+        if (!preview && input.projectId && input.taskId && input.projectAttemptId && !projectWorker) {
             try {
                 await this.agent.recordGenerationObservation(handle, input.projectId, input.taskId, input.projectAttemptId, input.requestId,
                     { snapshot: result.snapshot, attempts, usage: result.response.usage });

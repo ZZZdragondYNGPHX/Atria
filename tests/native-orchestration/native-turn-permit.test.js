@@ -1,5 +1,5 @@
 import { NativeTaskScheduler, nativeTaskScheduler } from '../../src/native/task-scheduler.js';
-import { captureNativeTurnPermit, assertNativeTurnPermit } from '../../src/native/orchestration/native-turn-permit.js';
+import { captureNativeTurnPermit, assertNativeTurnPermit, captureNativeTurnChildPermit, captureNativeTurnFinalizationPermit } from '../../src/native/orchestration/native-turn-permit.js';
 
 const deferred = () => { let resolve; const promise = new Promise(yes => { resolve = yes; }); return { promise, resolve }; };
 const anchor = { sessionId: 'session', branchId: 'branch', revisionId: 'revision' };
@@ -129,4 +129,36 @@ test('original Turn permit fixes Host, selection, invocation, source and exact r
     } finally { await finish(f); }
     expect(f.boundary.signal.aborted).toBe(false);
     expect(() => assertNativeTurnPermit(permit)).toThrow('operation_boundary_denied');
+});
+
+test('only an admitted child of the original suspended Turn can derive its bounded witness, without recursion or output authority', async () => {
+    const f = await held(nativeTaskScheduler), host = { sessionCore: {} }, selection = Object.freeze({});
+    const permit = captureNativeTurnPermit({ host, handle: 'owner', sessionId: 'session', anchor: { branchId: 'branch', revisionId: 'revision' },
+        invocationId: 'invocation', requestHash: expected.fingerprint, selection, boundary: f.boundary, resources: expected.resources });
+    const child = { ...expected, kind: 'model_task', key: 'original-turn-child', fingerprint: 'c'.repeat(64), resources: ['model:model'] };
+    let derived;
+    try {
+        await nativeTaskScheduler.withResourceFanout(f.boundary, expected, [{ kind: child.kind, executionClass: child.executionClass,
+            resources: child.resources, key: child.key, fingerprint: child.fingerprint, fresh: async () => true, finalize: value => value,
+            run: async boundary => {
+                expect(() => assertNativeTurnPermit(permit)).toThrow('operation_boundary_denied');
+                derived = captureNativeTurnChildPermit(permit, boundary, child);
+                expect(assertNativeTurnPermit(derived, { host, selection, requiredResources: ['model:model'] }).signal).toBe(boundary.signal);
+                expect(() => captureNativeTurnChildPermit(derived, boundary, child)).toThrow('native_orchestration_turn_permit_denied');
+                expect(() => captureNativeTurnFinalizationPermit({ permit: derived, finalizationBoundary: {} })).toThrow('native_orchestration_turn_permit_denied');
+                expect(() => captureNativeTurnChildPermit(permit, { ...boundary }, child)).toThrow('operation_boundary_denied');
+                expect(() => captureNativeTurnChildPermit(permit, boundary, { ...child, anchor: { ...anchor, revisionId: 'other' } })).toThrow('operation_boundary_denied');
+                expect(() => assertNativeTurnPermit(derived, { requiredResources: ['session:owner:session'] })).toThrow('native_orchestration_turn_permit_denied');
+                for (const altered of [{ kind: 'model_task' }, { executionClass: 'interactive' }, { approved: true }, { owner: 'other' }])
+                    expect(() => nativeTaskScheduler.assertFanoutChildBoundary(f.boundary, { ...expected, ...altered }, boundary, child)).toThrow('operation_boundary_denied');
+                expect(() => nativeTaskScheduler.assertFanoutChildBoundary(f.boundary, { owner: 'owner' }, boundary, child)).toThrow('operation_boundary_denied');
+                const parent = nativeTaskScheduler.operations.get(f.operation.operationId);
+                nativeTaskScheduler.operations.set(f.operation.operationId, { ...parent });
+                try { expect(() => assertNativeTurnPermit(derived)).toThrow('operation_boundary_denied'); }
+                finally { nativeTaskScheduler.operations.set(f.operation.operationId, parent); }
+                return 'child';
+            } }], { maxConcurrency: 1 });
+        expect(() => assertNativeTurnPermit(derived)).toThrow('operation_boundary_denied');
+        expect(assertNativeTurnPermit(permit).signal).toBe(f.boundary.signal);
+    } finally { await finish(f); }
 });

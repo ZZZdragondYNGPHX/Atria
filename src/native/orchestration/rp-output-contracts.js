@@ -9,7 +9,6 @@ import { readRpNarrationResult } from './rp-narration-result-contracts.js';
 import { readEffect } from './effect-contracts.js';
 import { attemptReceiptId, readAttemptSettlement } from './attempt-settlement.js';
 import { assertBudgetAttemptRef, assertBudgetAuthorityRef, sendAttemptId } from './budget-port.js';
-import { readRpPlannerCompletion } from './rp-planner-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { readModelTerminalFact } from './model-port.js';
 
@@ -107,7 +106,7 @@ export async function readRpOutput(tx, handle, root) {
         || !equal(host.sourceRefs, [root.sourceBinding.sourceRef]) || !equal(host.resultRefs, []) || host.reasonCode !== 'rp_output_committed'
         || host.observedAt > receipt.createdAt || host.budgetObservationRef.status !== 'settled'
         || !equal(Object.fromEntries(Object.keys(intent.budgetAttemptRef).map(field => [field, host.budgetObservationRef[field]])), intent.budgetAttemptRef)) invalid();
-    const planner = await readRpPlannerCompletion(tx, handle, root), providerIds = [published.receipt.modelEffectId, ...(planner?.history.map(item => item.modelEffectId) ?? []),
+    const providerIds = [published.receipt.modelEffectId, ...published.plannerCompletions.map(item => item.modelEffectId),
         ...(published.fanout?.providerEffects ?? published.graphResults.map(item => item.receipt.modelEffectId)), ...published.reviewCompletions.map(item => item.modelEffectId),
         ...(published.judgeCompletion ? [published.judgeCompletion.modelEffectId] : []), ...published.retrievalCompletions.map(item => item.effectId)];
     if (!equal(closure.effectIds, [...providerIds, intent.effectId].sort()) || !Array.isArray(closure.budgetAttemptRefs)) invalid();
@@ -146,7 +145,7 @@ export async function readRpOutput(tx, handle, root) {
     const edgeId = 'oreceipt_' + hash({ kind: 'edge_admission', runId: root.runId, edgeId: edge.edgeId,
         producerAttemptId: published.producer.attemptId, nodeAttemptId: output.attemptId }).slice(0, 32);
     const admission = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', edgeId)))?.doc;
-    const completedLoops = planner ? planner.history.length - 1 : 0;
+    const completedLoops = published.producer.inputRefs[0].controlGraph ? 0 : Math.max(0, published.plannerCompletions.length - 1);
     if (!admission) invalid();
     assertObject(admission, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'graphRevision', 'edgeId', 'producerAttemptId',
         'nodeAttemptId', 'sourceBindingDigest', 'edgeVisit', 'loopIteration', 'decisionSeq', 'createdAt'], 'RP edge admission');

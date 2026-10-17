@@ -56,7 +56,7 @@ export function assertResultAudience(value) {
             || hash(value.nodeIds) !== hash([...value.nodeIds].sort())) fail('Graph recipients must be unique canonical nodes');
         for (const id of value.nodeIds) assertNativeId(id, 'orchestrationNode');
         for (const field of ['sourceBindingDigest', 'grantDigest']) assertDigest(value[field], field);
-        if (value.taskPurpose !== 'original_rp_graph_result') fail('Graph Result purpose');
+        if (!['original_rp_graph_result', 'original_native_graph_result', 'original_native_project_graph_result'].includes(value.taskPurpose)) fail('Graph Result purpose');
         return value;
     }
     if (value?.kind === 'session_task') {
@@ -104,13 +104,27 @@ export function assertResultAudience(value) {
 // This first producer profile has exactly one original RP source and one
 // original model EffectReceipt. The references do not grant domain access.
 function assertSources(refs, envelope) {
-    if (!Array.isArray(refs) || refs.length !== 2) fail('exact source and EffectReceipt references are required');
+    if (!Array.isArray(refs) || ![2, 3].includes(refs.length)) fail('exact source and EffectReceipt references are required');
+    if (refs.length === 3) {
+        const context = refs[2];
+        assertObject(context, ['kind', 'pinId', 'sourceRef', 'integrity'], 'Result Information source');
+        if (context.kind !== 'native_information_context' || envelope.audienceConstraint?.kind !== 'graph_nodes') fail('Information source requires a graph recipient');
+        assertToken(context.pinId, 'Information pin'); assertDigest(context.integrity, 'Information integrity');
+        const ref = context.sourceRef;
+        assertObject(ref, ['kind', 'sessionId', 'branchId', 'revisionId', 'audience'], 'Information source reference');
+        if (ref.kind !== context.kind) fail('Information source kind');
+        for (const [field, kind] of [['sessionId', 'session'], ['branchId', 'branch'], ['revisionId', 'revision']]) assertNativeId(ref[field], kind);
+        assertObject(ref.audience, ['kind', ...(Object.hasOwn(ref.audience, 'id') ? ['id'] : [])], 'Information audience');
+        if (!['actor', 'narrator'].includes(ref.audience.kind) || (ref.audience.kind === 'actor'
+            ? typeof ref.audience.id !== 'string' || !ref.audience.id : ref.audience.id !== undefined)) fail('Information audience');
+    }
     const [source, effect] = refs;
     assertObject(source, ['kind', 'runId', 'epoch', 'sourceBindingDigest', 'sourceAuthority', 'sourceRef'], 'Result source');
     if (source.sourceAuthority === 'native_session') {
         assertObject(source.sourceRef, ['sessionId', 'branchId', 'revisionId'], 'Result Session source');
         for (const [field, kind] of [['sessionId', 'session'], ['branchId', 'branch'], ['revisionId', 'revision']]) assertNativeId(source.sourceRef[field], kind);
-        if (!['session_output', 'session_task', 'session_tool'].includes(envelope.audienceConstraint?.kind)) fail('Session source recipient');
+        if (!['session_output', 'session_task', 'session_tool'].includes(envelope.audienceConstraint?.kind)
+            && !(envelope.audienceConstraint?.kind === 'graph_nodes' && envelope.audienceConstraint.taskPurpose === 'original_native_graph_result')) fail('Session source recipient');
     } else if (source.sourceAuthority === 'rp_chat') {
         assertObject(source.sourceRef, ['controlId', 'prefixDigest'], 'Result RP source');
         assertNativeId(source.sourceRef.controlId, 'rpControl'); assertDigest(source.sourceRef.prefixDigest, 'prefixDigest');
@@ -119,7 +133,8 @@ function assertSources(refs, envelope) {
         assertObject(source.sourceRef, ['projectId', 'taskId', 'revision', 'executionFingerprint'], 'Result Project source');
         assertNativeId(source.sourceRef.projectId, 'project'); assertDigest(source.sourceRef.executionFingerprint, 'Project Source fingerprint');
         if (typeof source.sourceRef.taskId !== 'string' || !source.sourceRef.taskId || typeof source.sourceRef.revision !== 'string' || !source.sourceRef.revision
-            || !['project_review', 'project_commit'].includes(envelope.audienceConstraint?.kind)) fail('Project source recipient');
+            || !['project_review', 'project_commit'].includes(envelope.audienceConstraint?.kind)
+                && !(envelope.audienceConstraint?.kind === 'graph_nodes' && envelope.audienceConstraint.taskPurpose === 'original_native_project_graph_result' && refs.length === 2)) fail('Project source recipient');
     } else fail('producer source authority');
     if (source.kind !== 'run_source' || source.runId !== envelope.runId) fail('producer source identity');
     assertCounter(source.epoch, 'producerEpoch'); assertDigest(source.sourceBindingDigest, 'sourceBindingDigest');
@@ -154,7 +169,8 @@ export function assertResultEnvelope(envelope, { policy, expected = {} }) {
     if (audience.kind === 'parent_attempt') {
         if (audience.parentRunId === envelope.runId || envelope.disclosureConstraint.kind !== 'same_source_parent_only') fail('parent disclosure scope');
     } else if (audience.kind === 'graph_nodes') {
-        if (audience.runId !== envelope.runId || audience.epoch !== source.epoch || source.sourceAuthority !== 'rp_chat'
+        if (audience.runId !== envelope.runId || audience.epoch !== source.epoch
+            || (source.sourceAuthority !== ({ original_rp_graph_result: 'rp_chat', original_native_graph_result: 'native_session', original_native_project_graph_result: 'project' })[audience.taskPurpose])
             || envelope.disclosureConstraint.kind !== 'same_source_graph_successors_only') fail('Graph Result disclosure scope');
     } else if (audience.kind === 'session_tool') {
         if (audience.runId !== envelope.runId || audience.epoch !== source.epoch || source.sourceAuthority !== 'native_session'

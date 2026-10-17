@@ -1,7 +1,7 @@
 import { fields } from '../../../public/shared/native-values.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { hashNativeDocument } from '../repositories/common.js';
-import { assertNativeTurnPermit, assertNativeTurnFinalizationPermit, captureNativeTurnFinalizationPermit } from './native-turn-permit.js';
+import { assertNativeTurnPermit, captureNativeTurnChildPermit, assertNativeTurnFinalizationPermit, captureNativeTurnFinalizationPermit } from './native-turn-permit.js';
 import { inspectNativeBackgroundGenerationIdentity } from './native-background-generation.js';
 
 const proofs = new WeakMap();
@@ -27,6 +27,15 @@ function mintNativeTurnQuota(role, { host, handle, request, snapshot, anchor, in
 
 export function mintNativeNarratorQuota(args) { return mintNativeTurnQuota('narrator', args); }
 export function mintNativeResolverQuota(args) { return mintNativeTurnQuota('intent_resolver', args); }
+
+/** Same original quota metadata and bank; the child gets only a Scheduler witness. */
+export function captureNativeTurnChildQuota(proof, boundary, expected) {
+    const original = proofs.get(proof);
+    if (!original || original.backgroundCapture) denied();
+    const permit = captureNativeTurnChildPermit(original.permit, boundary, expected), capture = Object.freeze({});
+    proofs.set(capture, Object.freeze({ ...original, permit }));
+    return capture;
+}
 
 export function mintNativeBackgroundQuota(capture, expected) {
     const value = inspectNativeBackgroundGenerationIdentity(capture, expected);

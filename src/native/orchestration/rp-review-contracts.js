@@ -1,7 +1,7 @@
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { controlRecordKey, readAttempt, readGraphReviewReceipt } from './controller-common.js';
-import { checkedRecord } from './plan-repository.js';
+import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
@@ -10,6 +10,7 @@ import { readGraphNodeResult } from './graph-result-contracts.js';
 import { RP_REVIEW_REASON_CODES } from './rp-review-profile.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
+import { assertAudienceRunCapture } from './audience-source-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP Review completion facts'); };
@@ -45,6 +46,11 @@ export async function readRpReviewCompletion(tx, handle, root, attemptId) {
     const draft = await readGraphNodeResult(tx, handle, root, review.evidenceRefs[0].resultId);
     if (!draft || draft.producer.attemptId !== review.targetAttemptIds[0] || !draft.record.envelope.audienceConstraint.nodeIds.includes(producer.nodeId)) invalid();
     const input = intent.inputRef;
+    const reviewerNode = root.graph.nodes.find(node => node.nodeId === producer.nodeId);
+    if (reviewerNode.policy?.audiencePinId || Object.hasOwn(input, 'audienceCapture')) {
+        const plan = await readPlanRevision(tx, handle, root.planRef);
+        assertAudienceRunCapture(root, reviewerNode, plan.dependencyPins, input);
+    }
     if (input.kind !== 'native_rp_intent' || input.nodeId !== producer.nodeId || !equal(input.planRef, root.planRef) || !equal(input.sourceRef, root.sourceBinding.sourceRef)
         || !equal(input.acceptedGraphResultRefs, review.evidenceRefs) || !equal(producer.inputRefs, [input, ...review.evidenceRefs])) invalid();
     const edge = root.graph.edges.find(item => item.from.nodeId === draft.producer.nodeId && item.to.nodeId === producer.nodeId);

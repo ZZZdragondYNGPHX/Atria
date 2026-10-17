@@ -45,7 +45,7 @@ export function syntheticReport(job, configs, settings) {
         domain: job.domain, policyFingerprint: job.policyFingerprint, targetPin: job.targetPin, price: job.price, pairs, charges: pairs.flatMap(p => [...p.baseline.charges, ...p.candidate.charges]), createdAt: 1000,
         configurations: { baseline: hash(configs.baseline), candidate: hash(configs.candidate) }, settings: { baseline: hash(settings.baseline), candidate: hash(settings.candidate) } };
 }
-export async function evolutionFixture(make, targetKind = 'project-strategy', { realEvaluator = false, fetchImpl, connectionConfig = testConfig, policyMode = 'auto', confirmedPrice = price, repositoryClass = AgentEvolutionRepository, configureEvaluator = () => {} } = {}) {
+export async function evolutionFixture(make, targetKind = 'project-strategy', { realEvaluator = false, fetchImpl, connectionConfig = testConfig, policyMode = 'auto', confirmedPrice = price, repositoryClass = AgentEvolutionRepository, configureEvaluator = () => {}, nativeRpSteps = 1 } = {}) {
     const h = await make();
     const { studio, agent } = services(h), persistence = new NativeModelPromptPersistence({ engine: h.engine }), library = new VersionedJsonResourceHandler({ engine: h.engine });
     await createLiveBridge({ engine: h.engine, handle: h.handle, config: connectionConfig, secretPort: { resolveSecret: async () => 'not-used' }, fetchImpl: async () => { throw new Error('Unused seed bridge'); } });
@@ -126,7 +126,7 @@ export async function evolutionFixture(make, targetKind = 'project-strategy', { 
         await prepareControllerOwnerRoot(h.dirs.root); attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
         route = await persistence.saveRuntimeRoute(h.handle, { ...route, role: 'role.narrator', executionPolicy: { schemaVersion: 1,
             allowedModelProfileIds: [route.modelProfileRef.modelProfileId], continuity: 'none', reuse: 'disabled',
-            computeBudget: { maxRequests: 4, maxTokens: 100000, localWork: { maxJobs: 32, maxItems: 10000, maxInputBytes: 16777216 } } } });
+            computeBudget: { maxRequests: Math.max(4, nativeRpSteps + 1), maxTokens: 100000, localWork: { maxJobs: Math.max(32, nativeRpSteps * 16 + 8), maxItems: 10000, maxInputBytes: 16777216 } } } });
         route = await persistence.getRuntimeRoute(h.handle, route.runtimeRouteId);
         host.sessionCore = sessionServices(h).core;
         const control = new RpRunControl({ engine: h.engine, chatRepo }), { controlId } = await control.bind(h.handle, { charDir: rpScope.charDir, name: rpScope.name, isGroup: false, groupId: null });
@@ -139,6 +139,15 @@ export async function evolutionFixture(make, targetKind = 'project-strategy', { 
         plan.definition.entryNodeIds = [nodeId]; plan.definition.capabilityCeiling = ['generation.send', 'chat.output'];
         plan.definition.outputContract = { kind: 'rp_narration', ownerNodeId: output.nodeId, slot: 'assistant', allowPartial: false, resultPolicy: { outputType: 'text', maxBytes: 65536 } };
         plan.definition.edges = [{ edgeId: createNativeId('orchestrationEdge'), from: { nodeId, port: 'response' }, to: { nodeId: output.nodeId, port: 'response' }, condition: 'always', maxVisits: 1, loopBack: false }];
+        if (!Number.isSafeInteger(nativeRpSteps) || nativeRpSteps < 1 || nativeRpSteps > 6) throw new Error('Invalid finite Native RP fixture steps');
+        for (let index = 1; index < nativeRpSteps; index++) {
+            const previous = plan.definition.nodes.at(-2), nextId = createNativeId('orchestrationNode');
+            const next = { ...previous, nodeId: nextId, label: 'RP graph step ' + index, inputs: [{ name: 'response', type: 'text', required: true }] };
+            const edge = plan.definition.edges.find(edge => edge.to.nodeId === output.nodeId);
+            edge.to = { nodeId: nextId, port: 'response' };
+            plan.definition.nodes.splice(plan.definition.nodes.length - 1, 0, next);
+            plan.definition.edges.push({ ...edge, edgeId: createNativeId('orchestrationEdge'), from: { nodeId: nextId, port: 'response' }, to: { nodeId: output.nodeId, port: 'response' } });
+        }
         plan.definition.limits.maxSteps = 50;
         plan.dependencyPins = [{ pinId: 'rp.route', port: 'model', resourceRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, integrity: hash(route) }];
         const draft = await plans.create(h.handle, createNativeId('orchestrationCommand'), plan);
@@ -171,8 +180,10 @@ export async function restoreEvolutionFixture(make, directory, result, { fetchIm
         const repository = new repositoryClass({ engine: h.engine }), evaluator = new EvolutionEvaluator({ host, repository });
         const service = new AgentEvolutionService({ host, chatRepo: new ChatRepo({ engine: h.engine }), evaluator, scheduler: new NativeTaskScheduler({ concurrency: 1, retries: 0 }) });
         const { scope, subject } = result.doc, target = baselineOnly ? result.target : result.job.target;
+
         const doc = await repository.get(h.handle, scope, subject);
         if (baselineOnly) {
+            if (scope.domain === 'rp_chat') prepareRestoredNativeRpHost({ h, host });
             if (hash(doc) !== hash(result.doc) || doc.jobs.length || doc.publications.length || hash(target) !== hash(doc.policy?.target)
                 || hash(await service.targets.capture(h.handle, scope, subject, target)) !== doc.policy.targetPin) throw new Error('f2_baseline_restore_changed');
             const route = await host.persistence.getRuntimeRoute(h.handle, target.runtimeRouteId || doc.policy.routeId);
@@ -181,11 +192,13 @@ export async function restoreEvolutionFixture(make, directory, result, { fetchIm
         const publication = doc.publications.find(p => p.jobId === result.job.id && p.candidateId === result.candidate.candidateId);
         const saved = doc.jobs.find(j => j.id === result.job.id)?.candidates.find(c => c.candidateId === result.candidate.candidateId);
         if (evaluationOnly) {
+            if (scope.domain === 'rp_chat') prepareRestoredNativeRpHost({ h, host });
             if (publication || hash(doc) !== hash(result.doc) || !saved || hash(saved) !== hash(result.candidate)
                 || hash(await service.targets.capture(h.handle, scope, subject, target)) !== result.job.targetPin) throw new Error('resume_evaluation_changed');
             const route = await host.persistence.getRuntimeRoute(h.handle, target.runtimeRouteId || result.doc.policy.routeId);
             return { h, host, service, repository, evaluator, scope, subject, target, route };
         }
+        if (scope.domain === 'rp_chat' && requireCurrentPublication && publication?.status === 'published') prepareRestoredNativeRpHost({ h, host });
         if (!publication || !saved || hash(saved.report) !== hash(result.candidate.report)
             || requireCurrentPublication && !await service.targets.publicationCurrent(h.handle, scope, subject, publication)) throw new Error('resume_publication_changed');
         const route = await host.persistence.getRuntimeRoute(h.handle, target.runtimeRouteId || result.doc.policy.routeId);
@@ -202,3 +215,18 @@ export async function labelAll(f, job, candidate) {
     return result;
 }
 export const independentDigest = text => createHash('sha256').update(text).digest('hex');
+
+
+// Reopening a writer is explicit; grading-only restores remain read-only.
+// The original persisted identity is kept, so an active Host correctly rejects
+// a competing restored writer instead of silently minting another authority.
+export function prepareRestoredNativeRpHost(f) {
+    const { h, host } = f;
+    if (!h.engine.nativeHostLifecycle) attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
+    if (host.turnOrchestration) return;
+    host.sessionCore = sessionServices(h).core;
+    const control = new RpRunControl({ engine: h.engine, chatRepo: new ChatRepo({ engine: h.engine }) });
+    const resolver = new RouteResolver({ persistence: host.persistence, library: host.library, providers: host.providers });
+    const { plans } = createOrchestrationAuthoringService(h.engine, { rpControl: control, modelResolver: resolver });
+    host.turnOrchestration = new NativeNarratorOrchestrationAuthority({ engine: h.engine, sessionCore: host.sessionCore, rpControl: control, plans, modelResolver: resolver });
+}

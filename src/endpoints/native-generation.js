@@ -53,7 +53,6 @@ import { AgentGoalService } from '../native/agent-intelligence/goal-service.js';
 import { GoalContinuationService } from '../native/agent-intelligence/goal-continuation.js';
 import { AgentExperienceService } from '../native/agent-intelligence/experience-service.js';
 import { getChatRepo } from '../storage/index.js';
-import { observeEvolutionRp } from '../native/agent-intelligence/evolution-observer.js';
 import { AgentEvolutionService } from '../native/agent-intelligence/evolution-service.js';
 import { CredentialTargetAuthority, createCredentialSecretPort } from '../native/model-prompt-runtime/credential-targets.js';
 import { credentialFetch } from '../native/model-prompt-runtime/credential-fetch.js';
@@ -301,7 +300,6 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             if (result.collection?.status === 'collected') {
                 try { await new AgentEvolutionService({ host, chatRepo: getChats() }).wake(handle, result.collection.scope, result.collection.subject); } catch { result.collection.wake = 'unavailable'; }
             }
-            if (action === 'update') await observeEvolutionRp(host.persistence._engine, handle, req.body.evidenceId);
             return res.json(result);
         } catch (error) {
             res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: 'agent_evidence_' + (error?.status || 'unavailable') });

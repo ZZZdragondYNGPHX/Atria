@@ -1,4 +1,6 @@
 import '../util/browser-context.js';
+import { createNativeId } from '../../src/native/identity.js';
+import { validationDigest } from '../../src/native/orchestration/plan-repository.js';
 import { evolutionFixture, testConfig } from './evolution-fixture.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 import { createLiveBridge } from './live-bridge.js';
@@ -10,10 +12,22 @@ async function fixture(fetchImpl) {
     const f = await evolutionFixture(makeTempFsEngineHarness, 'rp-skill', { realEvaluator: true, confirmedPrice: null, fetchImpl });
     try {
         await createLiveBridge({ engine: f.h.engine, handle: f.h.handle, config: { ...testConfig, maxOutputTokens: 2048 }, secretPort: f.host.secretPort });
-        const route = (await f.host.persistence.listRuntimeRoutes(f.h.handle)).find(route => route.role === 'role.orchestrator' && route.runtimeRouteId !== f.route.runtimeRouteId);
+        const probe = (await f.host.persistence.listRuntimeRoutes(f.h.handle)).find(route => route.role === 'role.orchestrator' && route.runtimeRouteId !== f.route.runtimeRouteId);
+        const route = await f.host.persistence.saveRuntimeRoute(f.h.handle, { ...probe, role: 'role.narrator', executionPolicy: { ...f.route.executionPolicy,
+            allowedModelProfileIds: [probe.modelProfileRef.modelProfileId] } });
+        const original = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
+        const plans = f.host.turnOrchestration.plans, revision = original.nativePlan.revision;
+        const draft = await plans.create(f.h.handle, createNativeId('orchestrationCommand'), { viewState: { positions: {} },
+            definition: revision.definition, dependencyPins: revision.dependencyPins.map(pin => pin.port === 'model' ? { ...pin,
+                resourceRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, integrity: hash(route) } : pin) });
+        const expected = { planId: draft.planId, expectedDraftVersion: draft.draftVersion, expectedDefinitionHash: draft.definitionHash };
+        const validation = await plans.validate(f.h.handle, expected);
+        if (validation.status !== 'valid') throw new Error('Extended source observation Plan invalid');
+        const { planRef } = await plans.publish(f.h.handle, createNativeId('orchestrationCommand'), { ...expected, validationDigest: validationDigest(validation) });
+        const settings = { ...original, runtimeRouteId: route.runtimeRouteId,
+            nativePlan: { ...original.nativePlan, planRef, revision: await plans.getRevision(f.h.handle, planRef) } };
         const config = await f.evaluator.sourceProbeConfiguration(f.h.handle, route.runtimeRouteId);
         const doc = await f.repository.get(f.h.handle, f.scope, f.subject);
-        const settings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
         return { ...f, route, config, settings, job: { id: 'explicit-source-probe', scopeId: doc.scopeId, domain: 'rp', price: null } };
     } catch (error) { await f.h.cleanup(); throw error; }
 }
@@ -26,10 +40,7 @@ test('explicit source observation honors the original 2048 Route ceiling through
     let calls = 0;
     const f = await fixture(async (_endpoint, options) => {
         calls++; expect(JSON.parse(options.body).max_tokens).toBe(2048);
-        return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ message: { content: '', tool_calls: [
-            { id: 'w', type: 'function', function: { name: 'write_message', arguments: JSON.stringify({ text: 'NPC offers the next choice.', mode: 'replace' }) } },
-            { id: 'f', type: 'function', function: { name: 'finalize', arguments: '{}' } },
-        ] }, finish_reason: 'stop' }], usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } }) };
+        return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ message: { content: 'NPC offers the next choice.' }, finish_reason: 'stop' }], usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } }) };
     });
     try {
         await expect(f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId)).rejects.toThrow('supported exact bounded');

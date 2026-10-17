@@ -1,9 +1,10 @@
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
+import { audienceContextPin } from './audience-source-contracts.js';
 
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_rp_agent_graph_unavailable'), { code: 'native_orchestration_rp_agent_graph_unavailable' }); };
 
-/** Static same-audience RP drafting only. Result references carry no domain right. */
+/** Advisory RP DAG; each node independently admits its declared Audience. */
 export function rpAgentGraphProfile(plan) {
     const graph = plan.definition, agents = graph.nodes.filter(node => node.kind === 'agent');
     if (agents.length < 2) return null;
@@ -19,7 +20,7 @@ export function rpAgentGraphProfile(plan) {
             && pin.port === 'context' && pin.resourceRef.scope === 'player' && pin.resourceRef.retrievalProfileId) : [];
         if (node.outputs.length !== 1 || node.outputs[0].type !== 'text'
             || hash([...node.capabilities].sort()) !== hash(['generation.send', ...retrievalPins.length ? ['memory.retrieve'] : []].sort()) || !nodeModelRoutePins(node, plan.dependencyPins).length
-            || node.dependencyPinIds.length !== nodeModelRoutePins(node, plan.dependencyPins).length + retrievalPins.length) fail();
+            || node.dependencyPinIds.length !== nodeModelRoutePins(node, plan.dependencyPins).length + retrievalPins.length + (audienceContextPin(node, plan.dependencyPins) ? 1 : 0)) fail();
         inputs[node.nodeId] = graph.edges.filter(edge => edge.to.nodeId === node.nodeId).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
         if (inputs[node.nodeId].length !== node.inputs.length || new Set(inputs[node.nodeId].map(edge => edge.from.nodeId)).size !== inputs[node.nodeId].length
             || node.inputs.some(port => port.type !== 'text' || !port.required

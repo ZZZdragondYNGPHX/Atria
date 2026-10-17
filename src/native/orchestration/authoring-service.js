@@ -18,6 +18,7 @@ import { readProjectCommitDescriptor } from './project-commit-contracts.js';
 import { validateProjectCommitCapability } from './project-commit-capability-authority.js';
 import { readNativeToolDescriptor, validateNativeToolCapability } from './native-tool-contracts.js';
 import { readDelegatedRpSource } from './delegated-source-contracts.js';
+import { readAudienceSource } from './audience-source-contracts.js';
 
 /** Authoring uses existing Native resource readers; validation never sends. */
 export function createOrchestrationAuthoringService(engine, sources = {}) {
@@ -30,6 +31,7 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
     const readDependency = async ({ handle, tx, port, resourceRef: ref, runtimeRoute }) => {
         if (port === 'plan') return readPlanRevision(tx, handle, ref);
         if (port === 'context' && ref.kind === 'native_rp_message') return readDelegatedRpSource(handle, ref, sources.rpControl, { tx });
+        if (port === 'context' && ref.kind === 'native_information_context') return (await readAudienceSource(handle, ref, sources.sessionCore)).descriptor;
         if (port === 'context' && ref.scope === 'player' && Object.hasOwn(ref, 'retrievalProfileId')) {
             const normalized = assertRetrievalRef(ref);
             try { return await retrieval.getExact(handle, normalized); } catch (error) {

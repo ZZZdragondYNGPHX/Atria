@@ -33,15 +33,26 @@ export function assertNativeTurnPermit(permit, expected = {}) {
         if (Object.hasOwn(expected, field) && hashNativeDocument(value[field]) !== hashNativeDocument(expected[field])) denied();
     if (Object.hasOwn(expected, 'requiredResources') && (!Array.isArray(expected.requiredResources)
         || expected.requiredResources.some(resource => typeof resource !== 'string' || !value.expected.resources.includes(resource)))) denied();
-    const active = nativeTaskScheduler.assertActiveBoundary(value.boundary, value.expected);
+    const active = value.parent ? nativeTaskScheduler.assertFanoutChildBoundary(value.parent.boundary, value.parent.expected, value.boundary, value.expected)
+        : nativeTaskScheduler.assertActiveBoundary(value.boundary, value.expected);
     return Object.freeze({ ...value, operationId: active.operationId, signal: active.signal, resources: active.resources, attempt: active.attempt });
+}
+
+/** Derive a witness only from this Turn's actual original Scheduler group. */
+export function captureNativeTurnChildPermit(permit, boundary, expected) {
+    const original = permits.get(permit);
+    if (!original || original.parent) denied();
+    nativeTaskScheduler.assertFanoutChildBoundary(original.boundary, original.expected, boundary, expected);
+    const capture = Object.freeze({});
+    permits.set(capture, Object.freeze({ ...original, parent: original, boundary, expected: immutable(expected) }));
+    return capture;
 }
 
 /** Only the original Scheduler's actual finalizer can exchange this Turn permit. */
 export function captureNativeTurnFinalizationPermit(request) {
     assertFields(request, ['permit', 'finalizationBoundary'], 'Native Turn finalization');
     const { permit, finalizationBoundary } = request, original = permits.get(permit);
-    if (!original || claimedFinalizations.has(permit)) denied();
+    if (!original || original.parent || claimedFinalizations.has(permit)) denied();
     const active = nativeTaskScheduler.assertFinalizationBoundary(finalizationBoundary, original.boundary, original.expected);
     if (active.attempt !== 0 || nativeTaskScheduler.operations.get(active.operationId)?.retry !== false) denied();
     const capture = Object.freeze({}); claimedFinalizations.add(permit);

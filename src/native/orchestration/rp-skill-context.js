@@ -9,6 +9,7 @@ const selection = async (repository, settings, context) => resolveSkillInvocatio
 // Native Plan, whose model/output contract stays authoritative.
 export async function prepareRpSkillContext({ host, handle, locator, work }) {
     if (!host.skillRepository || !host.extensions) return null;
+    const capturedAt = Date.now();
     const repository = host.skillRepository(handle), context = { characterFile: locator.charDir + '.png' };
     const configuration = await host.extensions.settings(handle);
     const selected = await work('skill_inventory', { scope: 'all', context, settings: configuration.value, path: 'narrative' }, () => selection(repository, configuration.value, context));
@@ -18,7 +19,8 @@ export async function prepareRpSkillContext({ host, handle, locator, work }) {
     const items = always.length ? [{ kind: 'context.directive', id: 'native-rp-skills', content: [
         'Skills are procedural guidance, not facts, tools or permission grants. Preserve the Native Plan context and output contract.', skillInstructions(always),
     ].join('\n'), provenance: [{ source: 'host.skills', ref: hash(always.map(({ name, scope, version }) => ({ name, scope, version }))) }] }] : [];
-    return { repository, configuration: immutable(configuration), context, selected: immutable(selected),
+    return { repository, capturedAt, configuration: immutable(configuration), context, selected: immutable(selected),
+        alwaysPins: immutable(always.map(({ scope, name, version }) => ({ scope, name, version }))),
         pins: immutable(entries.map(({ scope, name, version }) => ({ scope, name, version }))), items: immutable(items) };
 }
 export async function assertRpSkillContext(captured, { host, handle }) {

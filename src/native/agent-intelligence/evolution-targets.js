@@ -321,8 +321,9 @@ export class EvolutionTargets {
                 if (bindings.length !== 1) throw new TypeError('native_orchestration_evaluation_unavailable');
                 const binding = bindings[0], revision = await this.nativePlans().getRevision(handle, binding.planRef);
                 const agents = revision.definition.nodes.filter(node => node.kind === 'agent' && node.capabilities.includes('generation.send'));
-                if (agents.length !== 1) throw new TypeError('native_orchestration_evaluation_unavailable');
-                const pin = revision.dependencyPins.find(pin => pin.pinId === agents[0].policy.agentPinId && pin.resourceRef.scope === 'player');
+                const terminal = agents.filter(node => revision.definition.edges.some(edge => edge.from.nodeId === node.nodeId && edge.to.nodeId === revision.definition.outputContract.ownerNodeId));
+                if (terminal.length !== 1) throw new TypeError('native_orchestration_evaluation_unavailable');
+                const pin = revision.dependencyPins.find(pin => pin.pinId === terminal[0].policy.agentPinId && pin.resourceRef.scope === 'player');
                 if (!pin) throw new TypeError('native_orchestration_evaluation_unavailable');
                 native = { nativePlan: { planRef: binding.planRef, revision, sourceSelector: binding.sourceSelector }, runtimeRouteId: pin.resourceRef.runtimeRouteId };
             }

@@ -134,12 +134,25 @@ export async function captureNativeProjectGeneration(capture, { started, round }
     return projectCapture;
 }
 
+/** A read-only model stage of an already active original Task generation.
+ * It cannot finish that generation, acquire tools or alter Task state. */
+export async function captureNativeProjectWorker(capture, { requestId, task, outputContract = null, routeRef = null }) {
+    const original = generations.get(capture);
+    if (!original || original.workerStage || typeof requestId !== 'string' || !requestId.startsWith('project-quality:')) fail();
+    await inspectNativeProjectGeneration(capture, { host: original.state.host, handle: original.state.handle });
+    const stage = Object.freeze({});
+    generations.set(stage, { ...original, requestId, originalRequestId: original.requestId,
+        workerStage: immutable({ task, outputContract, ...(routeRef ? { routeRef } : {}) }), toolReceipts: [], toolResults: [] });
+    return stage;
+}
+
 export function inspectNativeProjectGenerationIdentity(capture, expected) {
     const generation = generations.get(capture); if (!generation) fail();
     const { state, toolReceipts: _reads, toolResults: _results, finished: _finished, continueAllowed: _continue, ...metadata } = generation, active = assertFrame(state, expected);
     const request = immutable({ projectId: state.projectId, taskId: state.taskId, revision: state.preflight.baseRevision,
         projectAttemptId: generation.projectAttemptId, requestId: generation.requestId, role: 'studio',
-        routeRef: { scope: 'player', runtimeRouteId: state.startInput.runtimeRouteId } });
+        routeRef: generation.workerStage?.routeRef ?? { scope: 'player', runtimeRouteId: state.startInput.runtimeRouteId },
+        ...(generation.workerStage?.outputContract ? { outputContract: generation.workerStage.outputContract } : {}) });
     return Object.freeze({ ...metadata, ...request, request,
         sourceRequest: immutable({ domain: 'project', projectId: state.projectId, taskId: state.taskId, revision: state.preflight.baseRevision, executionFingerprint: state.initialSourceFingerprint }),
         operationRequestId: state.startInput.requestId,
@@ -153,7 +166,7 @@ export async function inspectNativeProjectGeneration(capture, expected) {
     const identity = inspectNativeProjectGenerationIdentity(capture, expected);
     const current = await currentOperation(generation.state, expected), attempt = current.task.attempts.find(item => item.attemptId === generation.projectAttemptId);
     if (current.task.executionFingerprint !== generation.currentSourceFingerprint || hash(current.task.conversation) !== generation.conversationDigest
-        || attempt?.status !== 'started' || attempt.kind !== 'generation' || attempt.requestId !== generation.requestId
+        || attempt?.status !== 'started' || attempt.kind !== 'generation' || attempt.requestId !== (generation.originalRequestId ?? generation.requestId)
         || hash(attempt.calls) !== generation.callsDigest) fail('native_orchestration_source_stale');
     return Object.freeze({ ...identity, intent: current.task.intent, conversation: immutable(current.task.conversation), toolReceipts: immutable(generation.toolReceipts),
         skillWorkRecords: immutable(generation.state.skillWorkRecords) });
@@ -197,7 +210,7 @@ export async function readNativeProjectSkillInventory(capture, expected) {
 
 /** Captures the actual Model wrapper before a subsequent tool Effect changes its producer state. */
 export async function prepareNativeProjectTaskTool(capture, { port, result, modelEffectId, input, toolEffectId }) {
-    const generation = generations.get(capture); if (!generation || !(port instanceof ModelPort)) fail();
+    const generation = generations.get(capture); if (!generation || generation.workerStage || !(port instanceof ModelPort)) fail();
     const { state } = generation, identity = await inspectNativeProjectGeneration(capture, { host: port.host, handle: state.handle });
     const root = await port.runs.get(state.handle, result.receiptRef?.runId);
     const proof = await ModelPort.prototype.inspectResultCompletion.call(port, state.handle, { result, runId: root.runId, effectId: modelEffectId });
@@ -313,7 +326,7 @@ export async function executeNativeProjectTaskTool(permit) {
 /** Calls the original generation writer once with the transcript of actual Model and tool returns. */
 export async function finishNativeProjectGeneration(capture, { port, result, effectId, input }) {
     const generation = generations.get(capture);
-    if (!generation || generation.finished || !(port instanceof ModelPort)) fail('native_orchestration_project_round_finish_denied');
+    if (!generation || generation.workerStage || generation.finished || !(port instanceof ModelPort)) fail('native_orchestration_project_round_finish_denied');
     const { state } = generation, identity = await inspectNativeProjectGeneration(capture, { host: port.host, handle: state.handle });
     const runId = result.receiptRef?.runId;
     const proof = await ModelPort.prototype.inspectResultCompletion.call(port, state.handle, { result, runId, effectId });

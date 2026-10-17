@@ -5,6 +5,7 @@ import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligenc
 import { runRp as consumeNativeRp } from '../../src/native/agent-intelligence/evaluation/native-adapters.js';
 import { RunRepository } from '../../src/native/orchestration/run-repository.js';
 import { hashNativeDocument } from '../../src/native/repositories/common.js';
+import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { BASE_SETTINGS } from './evaluation-settings.js';
 import { hash, canonical } from './cases.js';
 
@@ -28,41 +29,62 @@ export async function runRp(entry, fixture, capture, evaluation = null) {
         Object.assign(plan.definition.outputContract, { kind: 'rp_narration', slot: 'assistant', resultPolicy: { outputType: 'text', maxBytes: 65536 } });
     } });
     let bridge;
+    const dispatched = new Map();
     try {
         const revision = await f.plans.getRevision(f.h.handle, f.planRef);
         const nativePlan = { planRef: f.planRef, revision, sourceSelector: f.sourceSelector };
         const config = await new EvolutionEvaluator({ host: f.host }).configuration(f.h.handle, f.input.routeRef.runtimeRouteId, null, nativePlan);
         bridge = await createFrozenEvaluationBridge(config, async packet => {
-            const requestId = 'native-evaluation:' + capture.trialId + ':' + (capture.prompts.length);
+            const requestId = capture.refs.requestIds.at(-1);
+            if (!requestId) throw new Error('Native evaluation request identity missing');
             evaluation?.beforeSend(requestId);
-            if (!evaluation?.bridge) return { choices: [{ message: { role: 'assistant', content: fixture.reply }, finish_reason: 'stop' }], usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 } };
-            const result = await evaluation.bridge.rp({ requestId, trialId: capture.trialId, fixtureHash: entry.fixtureHash,
+            if (!evaluation?.bridge) { dispatched.set(requestId, packet.rendered); return { choices: [{ message: { role: 'assistant', content: fixture.reply }, finish_reason: 'stop' }], usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 } }; }
+            let result;
+            try { result = await evaluation.bridge.rp({ requestId, trialId: capture.trialId, fixtureHash: entry.fixtureHash,
                 messages: packet.rendered.body.messages, tools: [], signal: undefined });
+            } finally {
+                if (evaluation.bridge.observations().some(item => item.requestId === requestId)) dispatched.set(requestId, packet.rendered);
+            }
             return { choices: [{ message: { role: 'assistant', content: result.response.assistantText }, finish_reason: 'stop' }],
                 ...(result.response.usage ? { usage: { prompt_tokens: result.response.usage.inputTokens, completion_tokens: result.response.usage.outputTokens,
                     total_tokens: result.response.usage.totalTokens } } : {}) };
         }, { nativePlan });
         const adapted = { ...capture, evidence: [], observe: (name, ...args) => { if (name === 'isolation' || entry.expectedInvariants.includes(name)) capture.observe(name, ...args); } };
-        await consumeNativeRp(entry, fixture, adapted, { bridge, settings: { ...settings, nativePlan, runtimeRouteId: config.route.runtimeRouteId } });
-        capture.artifact = { domain: 'rp_chat', output: adapted.artifact.output, status: 'unavailable', sourceHash: hash(fixture),
-            outcomeHash: hash({ mes: adapted.artifact.output, extra: { reasoning: '' }, is_user: false }), requestHashes: capture.prompts.map(hash),
-            targetConsumed: adapted.artifact.targetConsumed && capture.prompts.every(prompt => canonical(prompt).includes(settings.rpPrompt)) };
+        let executionError;
+        try { await consumeNativeRp(entry, fixture, adapted, { bridge, settings: { ...settings, nativePlan, runtimeRouteId: config.route.runtimeRouteId } }); }
+        catch (error) { executionError = error; }
+        // A rejected send still has an accepted Native invocation. Read its
+        // original durable Attempt instead of inventing a variant association.
         const runs = new RunRepository({ engine: bridge.native.store.engine,
             authorize: async ({ handle, operation }) => { if (handle !== bridge.native.store.handle || operation !== 'runs.get') throw new Error('Fixture read ownership mismatch'); },
             admit: async () => { throw new Error('Fixture observer cannot admit'); },
             assertWriter: async () => { throw new Error('Fixture observer cannot write'); } });
-        // Native cancellation stops the old attempt at the send boundary.
-        // Its accepted invocation remains in variant_identity evidence, while
-        // generation metrics count only requests whose provider body was sent.
-        const invoked = [...capture.refs.requestIds];
-        const sent = invoked.slice(-capture.prompts.length);
-        capture.refs.requestIds.splice(0, invoked.length, ...sent);
-        for (const [index, runId] of capture.refs.runIds.entries()) {
-            const root = await runs.get(bridge.native.store.handle, runId), source = root.sourceBinding.sourceRequest.source;
-            capture.artifact.status = root.status;
-            capture.refs.messageVariants.push({ messageId: source.input.messageId, variantId: String(source.input.variantId),
-                runId, requestIds: sent.includes(invoked[index]) ? [invoked[index]] : [] });
+        const owner = bridge.native.store.handle;
+        const observed = await bridge.native.store.engine.withTransaction(owner, async tx => {
+            const roots = await tx.listResources({ kind: K.orchestrationRun, handle: owner });
+            return Promise.all(roots.map(async ({ doc }) => ({ runId: doc.runId,
+                attempts: (await tx.listResources({ kind: K.orchestrationRecord, handle: owner, runId: doc.runId, recordType: 'attempt' })).map(item => item.doc),
+                effects: (await tx.listResources({ kind: K.orchestrationRecord, handle: owner, runId: doc.runId, recordType: 'effect' })).map(item => item.doc) })));
+        });
+        capture.nativeEffects = observed.flatMap(item => item.effects.map(effect => ({ effectId: effect.effectId, runId: effect.runId,
+            action: effect.actionRef.kind, capability: effect.capability, status: effect.status })));
+        capture.refs.effectIds.splice(0, capture.refs.effectIds.length, ...capture.nativeEffects.map(effect => effect.effectId));
+        capture.prompts.splice(0, capture.prompts.length, ...dispatched.values());
+        capture.refs.requestIds.splice(0, capture.refs.requestIds.length, ...dispatched.keys());
+        for (const item of observed) {
+            const root = await runs.get(owner, item.runId), source = root.sourceBinding.sourceRequest.source;
+            if (!capture.refs.runIds.includes(root.runId)) capture.refs.runIds.push(root.runId);
+            const requestIds = [...new Set(item.attempts.flatMap(attempt => attempt.inputRefs.map(ref => ref.requestId)).filter(id => dispatched.has(id)))];
+            capture.refs.messageVariants.push({ messageId: source.input.messageId, variantId: String(source.input.variantId), runId: root.runId, requestIds });
         }
-        capture.finalTextStatus = adapted.artifact.targetConsumed ? 'passed' : 'failed'; capture.reviewStatus = 'not_run';
+        if (adapted.artifact) {
+            const root = await runs.get(owner, capture.refs.runIds.at(-1));
+            capture.artifact = { domain: 'rp_chat', output: adapted.artifact.output, status: root.status, sourceHash: hash(fixture),
+                outcomeHash: hash({ mes: adapted.artifact.output, extra: { reasoning: '' }, is_user: false }), requestHashes: capture.prompts.map(hash),
+                targetConsumed: adapted.artifact.targetConsumed && capture.prompts.every(prompt => canonical(prompt).includes(settings.rpPrompt)) };
+            capture.finalTextStatus = capture.artifact.targetConsumed ? 'passed' : 'failed'; capture.reviewStatus = 'not_run';
+            if (!capture.artifact.targetConsumed && !executionError) executionError = Object.assign(new Error('Native evaluation incomplete'), { code: 'native_orchestration_evaluation_incomplete' });
+        }
+        if (executionError) throw executionError;
     } finally { await bridge?.cleanup(); await f.cleanup(); }
 }

@@ -14,6 +14,8 @@ import { PROVENANCE_NAMESPACE } from '../../public/scripts/agents/memory/source-
 import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecycle.js';
 import { controlRecordKey } from '../../src/native/orchestration/controller-common.js';
 import { createNativeId } from '../../src/native/identity.js';
+import { graphResultPublicationId } from '../../src/native/orchestration/graph-result-contracts.js';
+import { resultDependencyDigest } from '../../src/native/orchestration/result-contracts.js';
 
 const setup = (make, { shape = 'two-entries', maxJobs, ...options } = {}) => contextRetrievalFixture(make, { embedding: true, ...options,
     afterPlan: (plan, args) => configureRetrievalAgentGraph(plan, args, shape, { maxJobs }) });
@@ -85,7 +87,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
             return fetch(...args);
         } });
         try {
-            await expect(f.run({ floor: 2 })).rejects.toThrow('generation_provider_failed');
+            await expect(f.run({ floor: 2 })).rejects.toMatchObject({ code: 'generation_provider_submission_unknown' });
             expect(f.requests).toHaveLength(2); expect(f.calls).toHaveLength(4); expect(dispatches).toBe(3);
             const bank = await compute(f), root = await currentRoot(f);
             expect(bank.attempts).toHaveLength(7); expect(bank.attempts.at(-1).status).toBe('unknown');
@@ -154,7 +156,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         } finally { await f.cleanup(); }
     }, 120000);
 
-    test('cold aggregate history survives Source deletion and rejects a rehashed Draft retrieval parent', async () => {
+    test('cold aggregate history survives Source deletion and rejects rehashed unpinned Audience and Draft retrieval facts', async () => {
         const f = await setup(make); let cold;
         try {
             await f.run({ floor: 2 }); const root = await currentRoot(f);
@@ -163,6 +165,20 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
             cold = new f.h.engine.constructor({ url: f.h.url, nativeHostTopology: 'direct_single_primary', directoriesByHandle: () => f.h.dirs });
             attachNativeHostLifecycle(cold, { directoriesByHandle: () => f.h.dirs });
             expect((await cold.withTransaction(f.h.handle, tx => readRpOutput(tx, f.h.handle, root))).claim).toEqual(output.claim);
+            const resultId = output.published.graphResults[0].record.resultId;
+            await cold.withTransaction(f.h.handle, async tx => {
+                const resultKey = controlRecordKey(f.h.handle, root.runId, 'result', resultId);
+                const receiptKey = controlRecordKey(f.h.handle, root.runId, 'receipt', graphResultPublicationId(root.runId, resultId));
+                const saved = await tx.getResource(resultKey), publication = await tx.getResource(receiptKey), doc = structuredClone(saved.doc);
+                doc.envelope.sourceRefs.push({ kind: 'native_information_context', pinId: 'forged.audience', integrity: hash('forged'),
+                    sourceRef: { kind: 'native_information_context', sessionId: createNativeId('session'), branchId: createNativeId('branch'),
+                        revisionId: createNativeId('revision'), audience: { kind: 'narrator' } } });
+                doc.envelope.dependencyDigest = resultDependencyDigest(doc.envelope);
+                await putMutable(tx, resultKey, doc, { expectedIntegrity: saved.integrity });
+                await putMutable(tx, receiptKey, { ...publication.doc, resultIntegrity: hash(doc) }, { expectedIntegrity: publication.integrity });
+                await expect(readRpOutput(tx, f.h.handle, root)).rejects.toThrow('Invalid Graph Result facts');
+                await tx.putResource(resultKey, saved); await tx.putResource(receiptKey, publication);
+            });
             const child = output.published.graphResults[0].retrievalCompletions[0];
             await cold.withTransaction(f.h.handle, async tx => {
                 const key = controlRecordKey(f.h.handle, root.runId, 'effect', child.effectId), record = await tx.getResource(key), doc = structuredClone(record.doc);

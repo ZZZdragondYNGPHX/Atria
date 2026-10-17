@@ -50,7 +50,7 @@ export async function createFrozenEvaluationBridge(config, send, { nativePlan = 
     const provider = { ...transport,
         renderRequest(input) {
             const rendered = transport.renderRequest(input);
-            prepared = { inputTokens: input.snapshot.diagnostics.inputTokens, outputTokens: input.snapshot.contextPlan.budget.reservedOutputTokens,
+            prepared = { requestId: input.snapshot.requestId, inputTokens: input.snapshot.diagnostics.inputTokens, outputTokens: input.snapshot.contextPlan.budget.reservedOutputTokens,
                 requestHash: hash(rendered), snapshotHash: hash(input.snapshot),
                 ...(nativePlan ? { nativeRouteId: input.resolved.route.runtimeRouteId } : {}) };
             return rendered;
@@ -59,7 +59,7 @@ export async function createFrozenEvaluationBridge(config, send, { nativePlan = 
             if (!active || !prepared || signal.aborted) throw new Error('evaluation_send_unprepared');
             const { onSend, onRendered, beforeSend, ...packet } = active;
             const injected = beforeSend ? await beforeSend({ signal }) : null;
-            if (injected === null) onRendered?.(rendered);
+            if (injected === null) onRendered?.(rendered, prepared);
             const raw = injected ?? await send({ ...packet, ...prepared, rendered }); onSend?.();
             return { headers: { get: () => 'application/json' }, json: async () => raw };
         },

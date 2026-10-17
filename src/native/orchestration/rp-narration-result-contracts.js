@@ -13,6 +13,7 @@ import { readModelCompletionReceipt } from './model-port.js';
 import { readRpPlannerCompletion } from './rp-planner-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { readGraphNodeResult, graphResultPublicationId } from './graph-result-contracts.js';
+import { readRpControlGraphHistory } from './rp-control-input-contracts.js';
 import { readRpReviewCompletion } from './rp-review-contracts.js';
 import { readRpJudgeCompletion } from './rp-judge-contracts.js';
 import { rpAgentGraphProfile, rpAgentGraphOrder } from './rp-agent-graph-profile.js';
@@ -20,6 +21,7 @@ import { rpPlannerProfile } from './rp-planner-profile.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 import { readRpFanoutCompletion } from './rp-fanout-contracts.js';
+import { audienceContextPin, assertAudienceRunCapture } from './audience-source-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP Narrator Result facts'); };
@@ -93,10 +95,22 @@ export async function readRpNarrationResult(tx, handle, root) {
             sourceBindingDigest: source.bindingDigest, sourceAuthority: 'rp_chat', sourceRef: source.sourceRef },
         { kind: 'effect_receipt', runId: root.runId, effectId: receipt.modelEffectId, receiptId: receipt.modelReceiptRef.receiptId, observedEpoch: receipt.epoch }])) invalid();
     const input = intent.inputRef;
+    const narratorNode = root.graph.nodes.find(node => node.nodeId === producer.nodeId);
+    if (narratorNode.policy?.audiencePinId || Object.hasOwn(input, 'audienceCapture')) {
+        const plan = await readPlanRevision(tx, handle, root.planRef);
+        assertAudienceRunCapture(root, narratorNode, plan.dependencyPins, input);
+    }
     let judgeCompletion = null, fanout = null;
     if (input.kind !== 'native_rp_intent' || input.nodeId !== producer.nodeId || input.role !== 'narrator'
         || !equal(input.planRef, root.planRef) || !equal(input.sourceRef, source.sourceRef)
         || !equal(input.audience, { kind: 'narrator' }) || producer.inputDigest !== hash(producer.inputRefs)) invalid();
+    if (input.controlGraph) {
+        if (partial) invalid();
+        const history = await readRpControlGraphHistory(tx, handle, root, { record, receipt, settlement, producer });
+        return { record, receipt, settlement, producer, ...history, reviewCompletions: [], judgeCompletion: null, fanout: null,
+            retrievalCompletions: [...history.graphResults.flatMap(item => item.retrievalCompletions),
+                ...history.plannerCompletions.flatMap(item => item.retrievalCompletions), ...retrievalCompletions] };
+    }
     if (producer.inputRefs[0]?.kind === 'native_rp_delegation') {
         if (producer.inputRefs.length !== 1 || input.parentInputDigest !== producer.inputDigest || !input.acceptedResultRef || !input.returnReceiptRef) invalid();
         const returned = await readHandoffReturn(tx, handle, root, input.acceptedResultRef.runId);
@@ -153,7 +167,8 @@ export async function readRpNarrationResult(tx, handle, root) {
                 const predecessors = direct(source.producer.nodeId), refs = predecessors.map(item => item.receipt.resultRef);
                 if (input.kind !== 'native_rp_intent' || input.role !== 'narrator' || input.nodeId !== source.producer.nodeId
                     || !equal(input.planRef, root.planRef) || !equal(input.sourceRef, root.sourceBinding.sourceRef)
-                    || !equal(input.audience, { kind: 'narrator' }) || (refs.length ? !equal(input.acceptedGraphResultRefs, refs) : Object.hasOwn(input, 'acceptedGraphResultRefs'))
+                    || !equal(input.audience, audienceContextPin(root.graph.nodes.find(node => node.nodeId === source.producer.nodeId), plan.dependencyPins)?.resourceRef.audience ?? { kind: 'narrator' })
+                    || (refs.length ? !equal(input.acceptedGraphResultRefs, refs) : Object.hasOwn(input, 'acceptedGraphResultRefs'))
                     || !equal(source.producer.inputRefs, [input, ...refs])) invalid();
                 if (planner && !equal(input.controlReceiptRef, { runId: root.runId, receiptId: planner.receipt.receiptId })) invalid();
                 if (!predecessors.length) {
@@ -206,5 +221,5 @@ export async function readRpNarrationResult(tx, handle, root) {
         if (!reviewed) invalid(); reviewCompletions.push(reviewed);
     }
     if (reviewCompletions.length && !input.reviewReceiptRef || root.graph.nodes.some(node => node.kind === 'judge') && !judgeCompletion) invalid();
-    return { record, receipt, settlement, producer, graphResults, reviewCompletions, judgeCompletion, fanout, retrievalCompletions: [...graphResults.flatMap(item => item.retrievalCompletions), ...plannerCompletions.flatMap(item => item.retrievalCompletions), ...reviewCompletions.flatMap(item => item.retrievalCompletions), ...(judgeCompletion?.retrievalCompletions ?? []), ...retrievalCompletions] };
+    return { record, receipt, settlement, producer, graphResults, plannerCompletions, reviewCompletions, judgeCompletion, fanout, retrievalCompletions: [...graphResults.flatMap(item => item.retrievalCompletions), ...plannerCompletions.flatMap(item => item.retrievalCompletions), ...reviewCompletions.flatMap(item => item.retrievalCompletions), ...(judgeCompletion?.retrievalCompletions ?? []), ...retrievalCompletions] };
 }

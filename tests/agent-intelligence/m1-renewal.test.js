@@ -3,7 +3,7 @@ import { PILOT_CASES, PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASES, RENEWAL_PILO
     CONTINUATION_PILOT_CASES, CONTINUATION_PILOT_CASE_SET_REVISION,
     selectCases, loadFixture, validateCase, hash, canonical, publicCaseScenario } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { runProject } from '../../src/native/agent-intelligence/evaluation/adapters.js';
-import { runRp } from '../../src/native/agent-intelligence/evaluation/native-adapters.js';
+import { runRp } from './native-rp-adapter.js';
 import { withIsolatedRuntime } from './runner.js';
 import { f3ReportForStorage, readF3StoredReport } from './m1-f3-promotion.js';
 import { promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
@@ -43,7 +43,7 @@ test.each(CONTINUATION_PILOT_CASES.filter(c => c.split === 'development'))('cont
         observe(name, observed, expected) { this.checks[name] = canonical(observed) === canonical(expected); this.evidence.push({ name, observed, expected }); } };
     await withIsolatedRuntime(() => runRp(entry, loadFixture(entry, { purpose: 'evaluation' }), capture));
     expect(capture.checks).toEqual(expect.objectContaining(Object.fromEntries([...entry.expectedInvariants, 'isolation'].map(d => [d, true]))));
-    expect(capture.refs.effectIds).toEqual([]);
+    expect(capture.nativeEffects.map(effect => effect.action).sort()).toEqual(['native_model_send', 'native_model_send', 'native_rp_output'].sort());
 });
 
 test.each([...RENEWAL_PILOT_CASES.filter(c => c.split === 'development'), ...CORRECTED_RENEWAL_PILOT_CASES.filter(c => c.sourceId.endsWith('_contract'))])('renewal native authority fixture: $sourceId', async entry => {
@@ -54,7 +54,8 @@ test.each([...RENEWAL_PILOT_CASES.filter(c => c.split === 'development'), ...COR
     await withIsolatedRuntime(() => entry.entrance === 'rp' ? runRp(entry, fixture, capture) : runProject(entry, fixture, capture,
         { settings: { projectSkill: 'Preserve original authority.', roundLimit: entry.limits.maxRequests }, beforeSend: () => {} }));
     expect(capture.checks).toEqual(expect.objectContaining(Object.fromEntries([...entry.expectedInvariants, 'isolation'].map(d => [d, true]))));
-    expect(capture.refs.effectIds).toEqual([]);
+    expect(capture.refs.effectIds.length).toBe(entry.entrance === 'rp' ? 3 : 0);
+    expect((capture.nativeEffects ?? []).map(effect => effect.action).every(action => ['native_model_send', 'native_rp_output'].includes(action))).toBe(true);
 });
 
 test('baseline reuse binds exact complete native case, configuration and original charge; assessor covers unseen referents', () => {

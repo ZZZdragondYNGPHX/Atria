@@ -12,12 +12,12 @@ const operationGroups = new WeakMap();
 const operationCompletions = new WeakMap();
 const resourceSet = resources => [...new Set(resources)].sort();
 
-function assertOperationFrame(scheduler, boundary, captured, expected, statuses) {
+function assertOperationFrame(scheduler, boundary, captured, expected, statuses, allowSuspended = false) {
     const operation = captured?.operation, fields = ['owner', 'anchor', 'kind', 'executionClass', 'key', 'fingerprint', 'resources'];
     if (!captured || captured.scheduler !== scheduler || !expected || Object.keys(expected).some(key => !fields.includes(key))
         || fields.some(key => !Object.hasOwn(expected, key)) || !Array.isArray(expected.resources)
         || expected.resources.some(value => typeof value !== 'string') || scheduler.operations.get(operation.view.operationId) !== operation
-        || !scheduler.running.has(operation) || !statuses.includes(operation.view.status) || operation.view.attempt !== captured.attempt
+        || !(scheduler.running.has(operation) || allowSuspended && scheduler.suspended.has(operation)) || !statuses.includes(operation.view.status) || operation.view.attempt !== captured.attempt
         || !operation.controller || operation.controller.signal !== boundary.signal || boundary.signal.aborted
         || operation.owner !== expected.owner || operation.view.kind !== expected.kind || operation.view.executionClass !== expected.executionClass
         || operation.key !== expected.key || operation.fingerprint !== expected.fingerprint
@@ -49,6 +49,21 @@ export class NativeTaskScheduler {
     }
     assertActiveBoundary(boundary, expected) {
         return assertOperationFrame(this, boundary, boundaries.get(boundary), expected, ['running', 'streaming']);
+    }
+
+    /** Read-only lineage proof for an actually admitted original fanout child.
+     * A suspended parent alone cannot authorize a model send. */
+    assertFanoutChildBoundary(parentBoundary, parentExpected, childBoundary, childExpected) {
+        const parent = boundaries.get(parentBoundary), child = boundaries.get(childBoundary);
+        const original = assertOperationFrame(this, parentBoundary, parent, parentExpected, ['waiting_child', 'running', 'streaming'], true);
+        const active = this.assertActiveBoundary(childBoundary, childExpected);
+        if (!child || child.scheduler !== this || operationGroups.get(child.operation)?.parent !== parent.operation
+            || !(this.suspended.has(parent.operation) && parent.operation.view.status === 'waiting_child'
+                || this.running.has(parent.operation) && ['running', 'streaming'].includes(parent.operation.view.status))
+            || active.owner !== original.owner || active.executionClass !== original.executionClass
+            || hashNativeDocument(active.anchor) !== hashNativeDocument(original.anchor)
+            || active.resources.some(resource => !original.resources.includes(resource))) throw failure('operation_handoff_denied');
+        return active;
     }
 
     // Read-only navigation metadata, attached only by the actual domain worker
@@ -93,7 +108,7 @@ export class NativeTaskScheduler {
             if ([...this.operations.values()].some(item => item.owner === expected.owner && item.key === child.key)) throw failure('operation_handoff_duplicate');
             keys.add(child.key);
         }
-        const operation = boundaries.get(boundary).operation, group = { maxConcurrency, pauseForDecision: !!until, paused: false }, submitted = [];
+        const operation = boundaries.get(boundary).operation, group = { maxConcurrency, pauseForDecision: !!until, paused: false, parent: operation }, submitted = [];
         const suspend = () => {
             this.suspended.add(operation); this.running.delete(operation);
             if (!boundary.signal.aborted) operation.view.status = 'waiting_child';

@@ -87,7 +87,8 @@ test('saved Project publication resumes on its exact Route with two models and r
         } catch (error) { boundaryFailure = error; throw error; }
     } };
     const host = new NativeGenerationHost({ ...restored.host, providers: { ...restored.host.providers, 'provider.openai-compatible': provider } }), project = await restored.host.studio.getProject(restored.h.handle, restored.subject);
-    const input = { role: 'studio', projectId: restored.subject, revision: project.revision.revision, requestId: 'resumed-project-activation', messages: [{ role: 'user', content: 'Acknowledge readiness' }], tools: [] };
+    const task = await restored.host.agent.createTask(restored.h.handle, restored.subject, { intent: 'Observe resumed exact prompt', baseRevision: project.revision.revision });
+    const input = { role: 'studio', projectId: restored.subject, taskId: task.taskId, revision: project.revision.revision, requestId: 'resumed-project-activation', messages: [{ role: 'user', content: 'Acknowledge readiness' }], tools: [] };
     await expect(host.execute(restored.h.handle, input)).rejects.toMatchObject({ code: 'native_generation_route_ambiguous' }); expect(sends).toBe(0);
     let next;
     try { next = await host.execute(restored.h.handle, { ...input, routeRef: { scope: 'player', runtimeRouteId: restored.route.runtimeRouteId } }); }

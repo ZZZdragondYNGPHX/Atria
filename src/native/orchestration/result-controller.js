@@ -17,6 +17,7 @@ import { assertDelegationDecision } from './delegate-controller.js';
 import { graphNodeResult, readGraphNodeResult, graphResultPublicationId } from './graph-result-contracts.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
+import { readPlanRevision } from './plan-repository.js';
 
 const fail = code => { throw new ConflictError(code); };
 const equal = (a, b) => hash(a) === hash(b);
@@ -175,7 +176,8 @@ export class ResultController {
                 const { root, record, intent, graphSnapshot, retrieval, proof } = checked;
                 return runs.control(handle, controlCommandId('graph.result.publish', { runId, effectId }), { ...runGuard(root), operation: 'result.publish', detail: { effectId, resultId } }, async ({ tx, root: active, now }) => {
                     if (!equal(active, root) || active.progress.steps >= active.limits.maxSteps || now >= active.progress.deadlineAt) fail('native_orchestration_result_publication_stale');
-                    const body = graphNodeResult({ root: active, producer: record.doc, proof, text: result.generated.response.text, now, graphSnapshot });
+                    const plan = await readPlanRevision(tx, handle, active.planRef);
+                    const body = graphNodeResult({ root: active, producer: record.doc, proof, text: result.generated.response.text, now, graphSnapshot, dependencyPins: plan.dependencyPins });
                     const resultRef = { runId, resultId }, receiptId = graphResultPublicationId(runId, resultId);
                     const receipt = { schemaVersion: 1, receiptKind: 'graph_node_result', receiptId, runId, epoch: active.epoch, producerAttemptId: record.doc.attemptId,
                         resultRef, resultIntegrity: hash(body), modelEffectId: effectId, modelReceiptRef: proof.receiptRef, modelPayloadHash: proof.payloadHash,

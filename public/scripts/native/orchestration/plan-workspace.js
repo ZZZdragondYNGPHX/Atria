@@ -672,6 +672,11 @@ export function mountPlanEditor({ document: doc, root, client, shell, planId, en
             const options = pinOptions(['model']).filter(([pinId]) => node.dependencyPinIds.includes(pinId));
             field(doc, tl('Model pin'), select(doc, [['', tl('Not chosen')], ...options], { value: node.policy.agentPinId ?? '', onCommit: value => setPolicy({ agentPinId: value || null }) }),
                 { parent: policy, key: 'node.agentPin', hint: options.length ? tl('An exact Runtime route pinned to this node.') : tl('Attach a model pin to this node under Dependencies first.') });
+            const audiences = state.draft.pins.filter(pin => pin.port === 'context' && pin.resourceRef.kind === 'native_information_context' && node.dependencyPinIds.includes(pin.pinId));
+            field(doc, tl('Context audience'), select(doc, [['', tl('Source default')], ...audiences.map(pin => [pin.pinId,
+                pin.pinId + ' · ' + pin.resourceRef.audience.kind + (pin.resourceRef.audience.id ? ' · ' + pin.resourceRef.audience.id : '')])],
+            { value: node.policy.audiencePinId ?? '', onCommit: value => setPolicy({ audiencePinId: value || null }) }),
+            { parent: policy, key: 'node.audiencePin', hint: tl('Attach an exact Information context pin. The Host rechecks its Actor, source version and receiving audience; this selection grants no access.') });
         }
         if (node.kind === 'review') field(doc, tl('Review rounds'), input(doc, { type: 'number', min: 1, value: node.policy.maxRounds, onCommit: value => setPolicy({ maxRounds: value }) }), { parent: policy, key: 'node.rounds' });
         if (node.kind === 'effect') {

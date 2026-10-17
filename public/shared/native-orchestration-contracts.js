@@ -240,7 +240,16 @@ function assertNodePolicy(node, draft, pins) {
         if (!['agent', 'planner', 'judge', 'review', 'router'].includes(node.kind)) throw new TypeError('Node cannot delegate');
         fields.push('allowedPlanPinIds');
     }
+    if (Object.hasOwn(policy, 'audiencePinId')) {
+        if (!['agent', 'planner', 'judge', 'review'].includes(node.kind)) throw new TypeError('Audience requires a model node');
+        fields.push('audiencePinId');
+    }
     assertObject(policy, fields, 'node.policy');
+    if (fields.includes('audiencePinId')) {
+        assertToken(policy.audiencePinId, 'node.policy.audiencePinId');
+        if (!node.dependencyPinIds.includes(policy.audiencePinId)
+            || pins.find(pin => pin.pinId === policy.audiencePinId)?.port !== 'context') throw new TypeError('Audience requires an exact Context dependency pin');
+    }
     if (fields.includes('allowedPlanPinIds')) {
         const allowed = array(policy.allowedPlanPinIds, 'allowedPlanPinIds'), seen = new Set();
         for (const pinId of allowed) {

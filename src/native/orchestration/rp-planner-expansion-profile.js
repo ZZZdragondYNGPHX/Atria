@@ -1,6 +1,7 @@
 import { createNativeId, assertNativeId } from '../identity.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { rpAgentGraphProfile } from './rp-agent-graph-profile.js';
+import { audienceContextPin } from './audience-source-contracts.js';
 
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_rp_planner_expansion_unavailable'), { code: 'native_orchestration_rp_planner_expansion_unavailable' }); };
 const equal = (a, b) => hash(a) === hash(b);
@@ -11,7 +12,8 @@ function templateAuthority(narrator, dependencyPins) {
     const pins = narrator.capabilities.includes('memory.retrieve') ? dependencyPins.filter(pin => narrator.dependencyPinIds.includes(pin.pinId)
         && pin.port === 'context' && pin.resourceRef.scope === 'player' && pin.resourceRef.retrievalProfileId).map(pin => pin.pinId).sort() : [];
     if (narrator.capabilities.includes('memory.retrieve') && !pins.length) fail();
-    return { dependencyPinIds: [narrator.policy.agentPinId, ...pins], capabilities: ['generation.send', ...pins.length ? ['memory.retrieve'] : []] };
+    const audience = audienceContextPin(narrator, dependencyPins);
+    return { dependencyPinIds: [narrator.policy.agentPinId, ...pins, ...(audience ? [audience.pinId] : [])], capabilities: ['generation.send', ...pins.length ? ['memory.retrieve'] : []] };
 }
 
 /** Same-source advisory additions reuse only the already selected Narrator Model. */
@@ -31,7 +33,8 @@ export function rpPlannerExpansionProfile(plan, { planner, output, loop, allowed
             if (node.inputs.some(port => port !== ports[0] && (port.type !== 'text' || port.required))) fail();
         } else {
             if (node.inputs.length !== 1 || !equal(node.capabilities, authority.capabilities) || node.outputs.length !== 1 || node.outputs[0].type !== 'text'
-                || !equal(node.dependencyPinIds, authority.dependencyPinIds) || node.policy.agentPinId !== narrator.policy.agentPinId) fail();
+                || !equal(node.dependencyPinIds, authority.dependencyPinIds) || node.policy.agentPinId !== narrator.policy.agentPinId
+                || node.policy.audiencePinId !== narrator.policy.audiencePinId) fail();
             const outgoing = graph.edges.filter(edge => edge.from.nodeId === node.nodeId);
             if (outgoing.length !== 1 || outgoing[0].to.nodeId !== narrator.nodeId || outgoing[0].from.port !== node.outputs[0].name
                 || outgoing[0].condition !== 'always' || outgoing[0].loopBack || outgoing[0].maxVisits !== 1
@@ -64,7 +67,8 @@ export function rpPlannerExpansionTemplates(graph, dependencyPins = []) {
 
 function templateData(planner, narrator, slot, nodeId, edgeIds, dependencyPins) {
     const node = { nodeId, kind: 'agent', label: 'Declared advisory draft', inputs: [{ name: 'plan', type: 'json', required: true }],
-        outputs: [{ name: 'response', type: 'text', required: false }], ...templateAuthority(narrator, dependencyPins), policy: { agentPinId: narrator.policy.agentPinId } };
+        outputs: [{ name: 'response', type: 'text', required: false }], ...templateAuthority(narrator, dependencyPins), policy: { agentPinId: narrator.policy.agentPinId,
+            ...(narrator.policy.audiencePinId ? { audiencePinId: narrator.policy.audiencePinId } : {}) } };
     const edge = (id, from, to) => ({ edgeId: id, from, to, condition: 'always', maxVisits: 1, loopBack: false });
     return { node, edges: [edge(edgeIds[0], { nodeId: planner.nodeId, port: planner.outputs[0].name }, { nodeId, port: 'plan' }),
         edge(edgeIds[1], { nodeId, port: 'response' }, { nodeId: narrator.nodeId, port: slot })] };
