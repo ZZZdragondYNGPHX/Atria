@@ -442,6 +442,38 @@
 - **E0 当前状态和现实限制**：`E0-01～09` 仍 PARTIAL / BLOCKED，Gate 0 **没有 PASS**。本轮仅 GitHub 文件读取/代码检索 + docs Contents API 提交与再读验证，不执行 Node 单测、CI、完整本地工作树审查、Provider、真实 UI、Windows/CachyOS/Android Termux 或长期压力测试。新增功能的真实验证只可能在正式代码实现后的 Gate 1～4 取得；不能在 Draft 以测试计划当通过证据。
 - **下一 checkpoint**：用户若确认 W22 的交接方案，下一轮按约定先写同一 Plan + Record，再**停止延长抽象选型轮次**，围绕最后 Gate 0 preflight 的可执行输入和具体阻塞/责任 Owner 做收口，检查是否确实能请求用户对整份企划最终批准。若真正的 HEAD/调用链/关键权限尚不充分，维持 Draft、列最小阻塞并留待证据补齐，不能自行标记 Final 或创建开发分支。
 
+
+## Stage 24 — W22-B 确认与有界 Gate 0 Preflight 执行清单（2026-10-17）
+
+- **用户确认的唯一决策**：对上一轮明确推荐的 **W22-B「具名阻塞 + 可执行 Preflight + 条件化开发交接」**回复「认同」。W1-B～W22-B 均为已确认的**总体方案及收口方法**；用户没有因此批准全案 Final/Approved、E0-01～09 PASS、具体物理 ABI/Schema、创建实现分支或开始修改产品代码。
+- **唯一资产纪律**：任务继续是 `ARCH-DWE-01`；Primary Workspace `docs`，继续同一 Plan Bundle `plans/architecture/world-evolution-consistency/` 和本唯一 Record。没有创建新顶层 Plan/新 Record/HANDOFF，不修改 `main`、V3/Prompt/Visual 分支，不实施代码、CI 或三端测试。
+- **本阶段 GitHub 审计锚点**（Branch GET 重新核实，未变）：
+  - `main=c57fada6edeea255b29d857ba2585c1dbc9c098b`;
+  - `refactor/atria-native-orchestration-v3=a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`;
+  - `refactor/atria-native-prompt-preset-deepening=760327891149216dffdc1e3fa0c846496007a013`;
+  - `feat/native-visual-generation-deepening=ae587be0c64487ba922528bdd0146444bcf5e92e`。
+  这些只代表本轮静态审查，**不是**最终合流实现 SHA，后续实际交接必须重新锁定。
+- **本轮 docs 提交顺序**：
+  - `fa977769385db1c65523db5e1e45aeddcb41956d`：原 W22 `e0-final-implementation-handoff.md` §8 记录用户确认 W22-B，强调“有界 Gate 0 / 条件化交接”与保持 Draft。
+  - `51b0a87b8b25375fb87f8004cbd82324d7df689d`：同一 Plan Bundle 新增 `e0-preflight-execution.md`，将 P0–P7 具名 Preflight、源代码证据、E0 阻塞、Owner/消费者、真正退出材料、实施测试 Gate 与可复制的只读 Codex 审查指令收束为可执行清单，**不作为第二 Plan 或产品开发授权**。
+  - `59d10351188b204ff69dde6eadb33d59ab58c27a`：同一 `design.md` §30 汇总 W22-B 用户确认、实际静态发现、Preflight 门槛及完整 Draft 状态。
+  - `d44770de9f4e5cd57f89f37a331e39aeb3c61860`：更新同一 `index.md` 路由 Preflight，宣布 W1～W22 已确认、Gate 0 尚未完成、不再无限开新抽象架构轮次。
+- **新静态审查事实**：
+  - GitHub Compare 发现 **Orchestration V3 × Prompt Preset 共同修改 10 个生产文件**：`src/endpoints/native-generation.js`、`src/native/adapters/generation-host.js`、Agent Intelligence 的 worker/evaluation/evolution 四个文件、`src/native/model-prompt-runtime/{compiled-binding,contracts,execution-utils,prompt-candidates}.js`。共同修改**不等于十处实际 Git merge conflict**，但这些核心 API Owner 和合流顺序需实审；Visual 与 V3/Prompt 的文件比较有 300 项附近的列表完整性限制。
+  - `SessionCore._create/_publishLocked/applyRuntimeCommit/updateResources`、`session-snapshot.js` `RESERVED_SESSION_NAMESPACES/readSessionSnapshot`、`SessionRepo.commitSnapshot/loadSnapshot/reachabilitySnapshot`、`save-system.portableNamespace`、`session-maintenance` 和 `state-delta` 是 P2 的已核实**代码所有者/接口位置**。这些证明 P2 可作为现有 SessionState 的受保护状态方案，但 Subject Typed Writer、原生业务 Validator、初始化、Import/Restore/WorldSelection Scope 的合法验证还**没有实现**。
+  - 主线 GitHub 代码搜索 `projectInformation(` 命中 39 个文件，其中 17 个生产文件，包括 Cognition/Shared Authority/Expression/Visual/Task/Goal/Context 等；`actorAvailability(` 的生产依赖也存在。数字是**文件级搜索结果**，不是完整生产调用图的已完成项。
+  - 旧 `worldInfoBefore` 符号有 13 个主线生产文件匹配，含 `st-context.js`、`PromptManager.js`、旧 Orchestrator/Capsule；`nativeKnowledgePromptChannels` 仅有定义/测试的静态匹配，仍不能证明插件/动态入口不用，**目前没有充分证据批准删除某个产品文件**。
+  - `SessionRepo.loadSnapshot` / `NativeSessionObservation.history` 提供按已可达 exact Revision 读取既有 History 的入口，但 `native-history-runtime.queryHistory` 没有正式通用 Subject Fact 的 `asOfGameTick`。Game World reducer 和 Authority/Narrator 各自有正式提交入口，未证明在所有游戏模式下统一原子发布或一致叙事发表。
+- **Gate 0 当前具名阻塞**：
+  - P0/E0-09：最终可供编码的**合流 HEAD 和真实活跃生产调用方**未固定/验证，V3/Prompt/Visual 关键接口交集需 Owner 决议。
+  - P1/E0-01：P2 受保护的最小 Subject Schema/Typed Validator/Writer、各模式 Raw Patch 限制、Worldless/多 World/WorldSelection、Save/Restore/GC 的具体实施合同未闭合。
+  - P2/E0-02：原 Native Domain Effect/Receipt 对 Game Reducer、Authority Turn、Narrator 的实际事务/发表/失败恢复合同未闭合。
+  - P3/E0-03：Revision+GameTick 两锚下的 Domain Fact 有效期/纠错/无 Clock/不可达历史的正式 API 未闭合。
+  - P4/E0-04/05：动态 Perspective/Source Grants、V3 ContextPort/ContextCompiler/Prompt 的 Context 与秘密隔离消费者未闭合。
+  - P5/E0-06/07：Host/Frontend/Play/Media/Studio/Legacy 插件实际 ABI 和 `retain/replace/delete/investigate` 的生产调用图未闭合。E0-08 的长会话/存储成本计划已有候选，但真实运行验证只能在后续实施期开展。
+- **可执行而未授权实施的 Preflight**：`e0-preflight-execution.md` 末附一个只读英文 Codex Preflight 指令，要求不建开发分支、不修改产品代码、只更新原 docs Plan 和唯一 Record；对每项 E0 输出固定 SHA、Owner、Caller、Target、Disposition、静态退出证据和 `OPEN/BRANCH_RECHECK/DESIGN_READY/IMPLEMENTATION_GATE` 状态。此处没有将运行验证需求错误设为尚未实现代码的 Gate 0 前置要求。
+- **状态与下一检查点**：W1–W22 的总体设计方向已确认，**Plan 继续 Draft，Gate 0 仍 PARTIAL/BLOCKED**。后续真正应当是按 P0–P7 取得可复核的设计证据并解决具体未决契约，而非继续展开平行的 W23 世界架构选项；只有 Gate 0 设计证据可交接且用户明确批准全案 Final/开始开发，才可创建实现分支。没有做任何 Node/CI/真实 UI/Windows/CachyOS/Android Termux 测试，不能宣称通过。
+
 ## Final state
 
 Not yet applicable. Discussion in progress.
