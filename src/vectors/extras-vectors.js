@@ -1,3 +1,4 @@
+import { nativeRetrievalHeaders } from './source-settings.js';
 import fetch from 'node-fetch';
 import { attachInspectionEndpoint } from '../request-inspector.js';
 
@@ -60,7 +61,7 @@ async function getExtrasVectorImpl(text, apiUrl, apiKey, request = null) {
 
     const response = await fetch(url, {
         method: 'POST',
-        headers: headers,
+        headers: { ...headers, ...nativeRetrievalHeaders(request) },
         body: JSON.stringify(body),  // The backend accepts {string|string[]} for one or multiple text items, respectively.
     });
 

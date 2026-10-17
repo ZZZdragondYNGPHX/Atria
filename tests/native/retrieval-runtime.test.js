@@ -18,6 +18,15 @@ afterEach(async () => { setReadOnly(false); for (const cleanup of cleanups.splic
 function profile(overrides = {}) {
     return { retrievalProfileId: createNativeId('retrievalProfile'), revision: createNativeId('revision'), displayName: 'Retrieval', mode: 'embed', source: 'webllm', model: 'exact-local-model', endpoint: '', options: {}, ...overrides };
 }
+test('owned retrieval User-Agent is canonical, non-credential metadata and cannot replace reserved transport headers', () => {
+    const value = profile({ source: 'openai', endpoint: 'https://example.invalid/v1', secretRef: { secretId: 'exact-secret' }, headers: { 'user-agent': 'Atria-Native-Retrieval/1.0' } });
+    expect(assertRetrievalProfile(value).headers).toEqual({ 'User-Agent': 'Atria-Native-Retrieval/1.0' });
+    for (const headers of [{ Authorization: 'Bearer arbitrary' }, { Host: 'foreign.invalid' }, { 'Content-Type': 'other' }, { Cookie: 'other' },
+        { 'User-Agent': 'valid\r\nAuthorization: other' }, { 'User-Agent': 'A', 'user-agent': 'B' }, { 'User-Agent': 'A'.repeat(513) }]) {
+        expect(() => assertRetrievalProfile({ ...value, headers })).toThrow();
+    }
+    expect(() => assertRetrievalProfile(profile({ headers: { 'User-Agent': 'No local HTTP' } }))).toThrow();
+});
 for (const [mode, providers] of Object.entries(RETRIEVAL_PROVIDERS)) for (const source of providers) {
     test(`Native contract retains ${mode}/${source} with explicit ownership`, () => {
         const local = ['webllm', 'transformers'].includes(source);
@@ -70,7 +79,7 @@ test('real vector IO isolates exact revisions and Native purge from compatibilit
 });
 test('Native boundary rejects configuration injection, wrong task, unknown refs and readonly mutations', async () => {
     const f = await fixture(); const body = { nativeRetrievalRef: retrievalRef(f.value), collectionId: 'memory' };
-    for (const injected of [{ extraBody: { reverse_proxy: 'https://other.invalid' } }, { source: 'openai' }, { model: 'other' }, { proxy_password: 'injected' }, { secret_id: 'other' }, { reverse_proxy: 'https://other.invalid' }]) await f.request.post('/list').send({ ...body, ...injected }).expect(400);
+    for (const injected of [{ extraBody: { reverse_proxy: 'https://other.invalid' } }, { source: 'openai' }, { model: 'other' }, { proxy_password: 'injected' }, { secret_id: 'other' }, { reverse_proxy: 'https://other.invalid' }, { headers: { 'User-Agent': 'Caller override' } }]) await f.request.post('/list').send({ ...body, ...injected }).expect(400);
     await f.request.post('/rerank').send({ nativeRetrievalRef: body.nativeRetrievalRef, query: 'q', documents: [] }).expect(400);
     await f.request.post('/list').send({ ...body, nativeRetrievalRef: { ...body.nativeRetrievalRef, scope: 'library' } }).expect(400);
     setReadOnly(true); const blocked = await f.request.post('/purge').send(body).expect(503); expect(blocked.body.error).toBe('storage_read_only');
@@ -88,12 +97,13 @@ test('Secret resolution never reads or changes an active provider key', async ()
 test('remote embedding and rerank execute Native models, options and exact Secret across protocols', async () => {
     const f = await fixture(); const calls = []; const provider = express(); provider.use(express.json());
     provider.use((req, res) => {
-        calls.push({ path: req.path, body: req.body, authorization: req.headers.authorization, key: req.headers['x-goog-api-key'] });
+        calls.push({ path: req.path, body: req.body, authorization: req.headers.authorization, key: req.headers['x-goog-api-key'], userAgent: req.headers['user-agent'] });
         if (req.path.endsWith('/rerank')) return res.json({ results: [{ index: 0, relevance_score: 0.9 }] });
         if (req.path.includes('batchEmbedContents')) return res.json({ embeddings: [{ values: [1, 0] }] });
         if (req.path.includes('predict')) return res.json({ predictions: [{ embeddings: { values: [1, 0] } }] });
         if (req.path === '/cohere/embed') return res.json({ embeddings: { float: [[1, 0]] } });
         if (req.path === '/api/embed' || req.path === '/nomic') return res.json({ embeddings: [[1, 0]] });
+        if (req.path === '/api/embeddings/compute') return res.json({ embedding: [[1, 0]] });
         return res.json({ data: [{ embedding: [1, 0] }] });
     });
     const server = await new Promise(resolve => { const server = provider.listen(0, '127.0.0.1', () => resolve(server)); });
@@ -102,13 +112,14 @@ test('remote embedding and rerank execute Native models, options and exact Secre
     const manager = new SecretManager(f.dirs);
     manager.writeSecret(SECRET_KEYS.OPENAI, 'wrong-active-key', 'Legacy');
     const secretId = manager.writeSecret(SECRET_KEYS.ATRIA_RUNTIME, 'exact-runtime-key', 'Runtime', { activate: false });
-    for (const source of ['openai', 'cohere', 'jina', 'nomicai', 'ollama', 'palm', 'vertexai', 'koboldcpp']) {
-        const value = profile({ source, endpoint: base + '/' + (source === 'nomicai' ? 'nomic' : source), secretRef: { secretId }, options: source === 'jina' ? { dimensions: 2, lateChunking: true, task: 'retrieval.passage' } : source === 'vertexai' ? { authMode: 'express', projectId: 'test-project', region: 'us-central1' } : {} });
+    for (const source of ['openai', 'cohere', 'jina', 'nomicai', 'ollama', 'palm', 'vertexai', 'koboldcpp', 'llamacpp', 'vllm', 'extras']) {
+        const value = profile({ source, endpoint: base + '/' + (source === 'nomicai' ? 'nomic' : source), secretRef: { secretId }, headers: { 'User-Agent': 'Atria-Exact-Retrieval/' + source }, options: source === 'jina' ? { dimensions: 2, lateChunking: true, task: 'retrieval.passage' } : source === 'vertexai' ? { authMode: 'express', projectId: 'test-project', region: 'us-central1' } : {} });
         await f.store.commit(f.handle, value);
         await f.request.post('/insert').send({ nativeRetrievalRef: retrievalRef(value), collectionId: 'remote', items: [{ hash: 1, text: 'Text', index: 0 }] }).expect(200);
         const wire = calls.at(-1);
         expect(wire.authorization || wire.key).toContain('exact-runtime-key');
-        expect(source === 'koboldcpp' || ['palm', 'vertexai'].includes(source) ? true : wire.body.model === value.model).toBe(true);
+        expect(['koboldcpp', 'palm', 'vertexai', 'llamacpp', 'extras'].includes(source) ? true : wire.body.model === value.model).toBe(true);
+        expect(wire.userAgent).toBe(value.headers['User-Agent']);
     }
     expect(calls.find(call => call.path === '/jina/embeddings').body).toMatchObject({ dimensions: 2, late_chunking: true, task: 'retrieval.passage' });
     expect(calls.find(call => call.path.startsWith('/vertexai/')).path).toContain('/projects/test-project/locations/us-central1/publishers/google/models/');
@@ -119,11 +130,12 @@ test('remote embedding and rerank execute Native models, options and exact Secre
     f.useComputeServices({ core: installed.core, persistence: seeded.persistence });
     const computeContext = { kind: 'session', sessionId: session.session.sessionId, revisionId: session.revision.revisionId };
     for (const source of ['cohere', 'jina', 'custom']) {
-        const value = profile({ mode: 'rerank', source, endpoint: base + '/' + source, secretRef: { secretId } }); await f.store.commit(f.handle, value);
+        const value = profile({ mode: 'rerank', source, endpoint: base + '/' + source, secretRef: { secretId }, headers: { 'User-Agent': 'Atria-Exact-Rerank/' + source } }); await f.store.commit(f.handle, value);
         const result = await f.request.post('/rerank').send({ nativeRetrievalRef: retrievalRef(value), computeContext, query: 'Q', documents: [{ text: 'Doc', index: 0 }], topK: 1 }).expect(200);
         expect(result.body[0]).toMatchObject({ text: 'Doc', relevance_score: 0.9 });
         expect(calls.at(-1).authorization).toBe('Bearer exact-runtime-key');
         expect(calls.at(-1).body.model).toBe(value.model);
+        expect(calls.at(-1).userAgent).toBe(value.headers['User-Agent']);
     }
     const anonymous = profile({ source: 'ollama', endpoint: base }); await f.store.commit(f.handle, anonymous);
     await f.request.post('/insert').send({ nativeRetrievalRef: retrievalRef(anonymous), collectionId: 'anonymous', items: [{ hash: 1, text: 'Text', index: 0 }] }).expect(200);

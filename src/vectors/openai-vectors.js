@@ -1,3 +1,4 @@
+import { nativeRetrievalHeaders } from './source-settings.js';
 import fetch from 'node-fetch';
 import { SECRET_KEYS, readSecret } from '../endpoints/secrets.js';
 import { OPENROUTER_HEADERS } from '../constants.js';
@@ -148,6 +149,7 @@ export async function getOpenAIBatchVector(texts, source, directories, model = '
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${key}`,
                 ...config.headers,
+                ...nativeRetrievalHeaders(request),
             },
             body: JSON.stringify(body),
             ...(request?.nativeRetrieval ? { redirect: 'error', signal: request.nativeRetrieval.signal } : {}),

@@ -29,8 +29,15 @@ export function assertRetrievalRef(value) {
 export function retrievalRef(value) {
     return assertRetrievalRef({ scope: 'player', retrievalProfileId: value.retrievalProfileId, revision: value.revision });
 }
+export function assertRetrievalHeaders(value = {}) {
+    keys(value, Object.keys(value).filter(key => key.toLowerCase() === 'user-agent'));
+    const entries = Object.entries(value);
+    if (entries.length > 1 || entries.some(([, text]) => typeof text !== 'string' || !text.length || text.length > 512 || /[^\x20-\x7e]/u.test(text)))
+        throw new TypeError(formatProductText('Invalid retrieval User-Agent'));
+    return entries.length ? { 'User-Agent': entries[0][1] } : {};
+}
 export function assertRetrievalProfile(value) {
-    keys(value, ['retrievalProfileId', 'revision', 'displayName', 'mode', 'source', 'model', 'endpoint', 'secretRef', 'options']);
+    keys(value, ['retrievalProfileId', 'revision', 'displayName', 'mode', 'source', 'model', 'endpoint', 'secretRef', 'options', 'headers']);
     const ref = retrievalRef(value);
     if (!RETRIEVAL_PROVIDERS[value.mode]?.includes(value.source)) throw new TypeError(formatProductText('Unsupported retrieval provider'));
     const displayName = text(value.displayName, 'Display name', 120);
@@ -48,6 +55,8 @@ export function assertRetrievalProfile(value) {
         if (local.has(value.source)) throw new TypeError(formatProductText('Local provider does not use a Secret'));
     } else if (!local.has(value.source) && !optionalAuth.has(value.source)) throw new TypeError(formatProductText('Select a stored Secret'));
     const options = value.options || {};
+    const headers = assertRetrievalHeaders(value.headers);
+    if (local.has(value.source) && Object.keys(headers).length) throw new TypeError(formatProductText('Local provider does not use HTTP headers'));
     const allowed = value.source === 'jina' && value.mode === 'embed' ? ['dimensions', 'task', 'lateChunking'] : value.source === 'ollama' ? ['keep'] : value.source === 'vertexai' ? ['authMode', 'region', 'projectId'] : [];
     keys(options, allowed);
     for (const key of ['lateChunking', 'keep']) if (options[key] !== undefined && typeof options[key] !== 'boolean') throw new TypeError(formatProductText('${0} must be boolean', [key]));
@@ -55,7 +64,8 @@ export function assertRetrievalProfile(value) {
     if (options.task !== undefined && !['retrieval.query', 'retrieval.passage', 'text-matching', 'classification', 'separation'].includes(options.task)) throw new TypeError(formatProductText('Invalid embedding task'));
     if (options.authMode !== undefined && !['express', 'full', 'proxy'].includes(options.authMode)) throw new TypeError(formatProductText('Invalid Vertex authentication mode'));
     for (const key of ['region', 'projectId']) if (options[key] !== undefined && !/^[a-zA-Z0-9_-]{1,128}$/.test(options[key])) throw new TypeError(formatProductText('Invalid ${0}', [key]));
-    return { retrievalProfileId: ref.retrievalProfileId, revision: ref.revision, displayName, mode: value.mode, source: value.source, model, endpoint, ...(secretRef ? { secretRef } : {}), options: { ...options } };
+    return { retrievalProfileId: ref.retrievalProfileId, revision: ref.revision, displayName, mode: value.mode, source: value.source, model, endpoint, ...(secretRef ? { secretRef } : {}),
+        ...(Object.keys(headers).length ? { headers } : {}), options: { ...options } };
 }
 export function normalizeMemoryRetrieval(value = {}) {
     keys(value, ['embed', 'rerank']);

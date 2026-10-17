@@ -1,3 +1,4 @@
+import { nativeRetrievalHeaders } from './source-settings.js';
 import fetch from 'node-fetch';
 import { SECRET_KEYS, readSecret } from '../endpoints/secrets.js';
 import { attachInspectionEndpoint } from '../request-inspector.js';
@@ -11,7 +12,7 @@ async function sendRerank(url, headers, body, request) {
     try {
         request?.nativeRetrieval?.signal?.throwIfAborted();
         ticket = await compute?.beforeSend(body);
-        const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body),
+        const response = await fetch(url, { method: 'POST', headers: { ...headers, ...nativeRetrievalHeaders(request) }, body: JSON.stringify(body),
             ...(request?.nativeRetrieval ? { redirect: 'error', signal: request.nativeRetrieval.signal } : {}) });
         if (!response.ok) throw new Error(`Rerank provider failed: ${response.status}`);
         const data = await response.json();

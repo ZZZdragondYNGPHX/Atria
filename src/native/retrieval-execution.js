@@ -75,7 +75,7 @@ export function createRetrievalMiddleware(getStore = () => new NativeRetrievalPe
             if (profile.source === 'koboldcpp' && ['/insert', '/query', '/query-multi'].includes(req.path)) {
                 const texts = req.path === '/insert' ? req.body.items?.map(item => item.text) : [req.body.searchText];
                 const url = new URL(profile.endpoint); url.pathname = '/api/extra/embeddings';
-                const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(secret ? { Authorization: `Bearer ${secret}` } : {}) }, body: JSON.stringify({ input: texts }), redirect: 'error', signal: AbortSignal.timeout(120000) });
+                const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(secret ? { Authorization: `Bearer ${secret}` } : {}), ...profile.headers }, body: JSON.stringify({ input: texts }), redirect: 'error', signal: AbortSignal.timeout(120000) });
                 if (!response.ok) throw new Error('Embedding provider failed');
                 const result = await response.json();
                 if (!Array.isArray(result.data) || result.data.length !== texts.length || result.data.some(item => !Array.isArray(item.embedding) || !item.embedding.length || item.embedding.some(n => !Number.isFinite(n)))) throw new Error('Invalid embeddings');
