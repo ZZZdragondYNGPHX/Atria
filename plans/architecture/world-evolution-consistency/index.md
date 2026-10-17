@@ -13,7 +13,7 @@
 本 Plan 是同一主题持续迭代的**唯一入口**。每一轮先更新对应模块和本轮讨论状态、在 `docs` 分支提交并核实，再开展本轮讨论；直到用户明确认可完整方案，才将状态由 Draft 改为 Approved/定稿。不得把助理推荐误写为已获批准的冻结决议，亦不得在讨论阶段直接修改 `main` 产品实现。
 
 - [Research](research.md)：外部资料、机制比较、来源、局限和迁移适用性；讨论中持续补充。
-- [Design](design.md)：历史讨论累计 §8–§24，**§25 记录 W17-B 已确认并路由 W18 最小 ABI/消费者硬切**。历史 A/B/C 比较保留，但最新决定优先。
+- [Design](design.md)：历史累计讨论 §8–§25；**§26 记录已确认 W18-B 并路由 W19 Gate 0 原生物理事实与历史查询审查**；当前状态以后续用户明确选择为准。
 - [Runtime Emergence & Fact Lifecycle](runtime-emergence.md)：**W4 方向已确认，§8 记录 W4-B**。仅当本轮需要核对实体注册/事件基础时阅读。
 - [NPC Autonomy & Scheduling](npc-autonomy.md)：**W5 已确认 B 方向**；§10 明确选型与待收口接口，复核 NPC 调度时按需读取。
 - [NPC Social Cognition](npc-social-cognition.md)：**W6 已确认 B 方向**；§10 记录社会关系真相、私人认知及来源事件边界。仅在当前模块需要这些依赖时读取。
@@ -28,7 +28,8 @@
 - [E0 Final Closure / Evidence Gates](e0-final-closure.md)：**W15-B 已确认收口方法**；§8 记录证据门槛式 E0/可执行交接原则，现有 E0-01～09 仍为 PARTIAL / BLOCKED。
 - [E0 Integration Readiness](e0-integration-readiness.md)：**W16-B 已确认方向**，§9 记录跨分支固定 HEAD/Native Domain、ContextPort、Receipt/Prompt 权威划分和待解决消费者。
 - [E0 Domain → World → Context Contract](e0-domain-world-context-contract.md)：**W17-B 已确认方向**；§8 记录 Domain-first 提交/Authorized Effective World 投影和现有跨接口 E0 缺口。
-- [E0 Minimal Typed ABI & Consumer Cutover](e0-minimal-contract-cutover.md)：**W18 当前阶段模块**。核对原生 ID/Timeline/Information/World/History/Frontend/Speech/Visual 与 V3/Prompt，提出最小 Subject/Participant/Perspective/Fact/EffectiveRead 语义、old→target 消费者表、验收证据及 W18-A/B/C（Draft）。
+- [E0 Minimal Typed ABI & Consumer Cutover](e0-minimal-contract-cutover.md)：**W18-B 已确认方向**；§7 记录最小 Typed ABI 和真实消费者验收驱动原生硬切，具体物理字段/实施仍未批准。
+- [E0 Gate 0 / Physical Subject & Temporal Fact](e0-gate0-physical-contracts.md)：**W19 当前阶段模块**，审计 `atri_world_state` / Game Event/Receipt/History/StateDelta/Save 的真实物理基础，讨论 Session 原生最小 Subject/Fact Transition、`asKnownRevision/asOfGameTick` 与 E0 Gate 0 退出标准及 W19-A/B/C（Draft）。
 - [Record](../../../records/architecture/world-evolution-consistency.md)：按工作轮累积可核验的文档提交、调研结果、未完成内容。
 - 后续需要规模化时再按主题拆模块，本入口仍为唯一导航。
 
@@ -38,7 +39,7 @@
 
 原问题「静态设定和动态演化冲突」仍保留，**但现在必须以原生 World / Knowledge 整体重构为主线**。先明确 World（实体/关系/世界法则/初始基线）与 Knowledge（资料/断言/来源/语境）的真实边界，再设计事实演化、主体认知、有效上下文和 Library/Studio/Play 产品界面。已有 Native SessionCore/State/Event/Simulation/HCM/Context Compiler 是首先审查和复用的权威，不能平行再建一套真相库。
 
-**已确认方向：W1-B 至 W17-B。** 包含原生 World/Knowledge、动态实体/NPC/私人认知、Canonical Subject/Participant/Perspective、Native Session 单领域写权与 Revision/游戏时间、受众安全 Effective World View、Orchestration 执行收据与 Prompt 编译层分离，以及跨分支 E0 证据门槛硬切。**W18 具体 Typed ABI/Schema 与消费者切换仍为候选**，见 [e0-minimal-contract-cutover.md](e0-minimal-contract-cutover.md)。全部 Plan 保持 Draft；E0-01～09 PARTIAL/BLOCKED，无产品实现授权。
+**已确认方向：W1-B 至 W18-B。** Native World/Knowledge、动态 NPC/Subject/Participant/Perspective、来源保真记忆/社会认知、Native Domain Revision/双时间/Branch、受众安全 Effective World View、跨 Orchestration/Prompt 的事实权威边界，以及最小 Typed ABI/消费者验证驱动硬切。**W19 的 Session 原生物理 Subject/Fact、时态查询和 Gate 0 路线尚待选择**，见 [e0-gate0-physical-contracts.md](e0-gate0-physical-contracts.md)。完整 Plan 仍 Draft，E0-01～09 PARTIAL / BLOCKED，未授权开发。
 
 需要回答：创作者的首要对象是若干触发条目，还是可以直接浏览、引用并演化的“世界”；Knowledge 应是同级世界书，还是世界引用的来源与证据？现有 free text 必须继续一等支持；不为未发布旧 ST 数据建立兼容双轨。
 
@@ -79,7 +80,7 @@
 
 ## 5. 状态与下一检查点
 
-- **当前：**S19 已确认用户选择 **W17-B**。W18 [最小 Subject/Participant/Perspective/Fact/EffectiveRead ABI、真实 old→target/retain/delete 消费者](e0-minimal-contract-cutover.md) 待讨论；研究推荐 **W18-B：差异最小 Typed ABI + 消费者验收驱动原生硬切**，**尚未获用户批准**。E0-01～09 持续 PARTIAL / BLOCKED。
-- **已确认设计方向（W1–W17）：** 固定作者定义与 Native Session 世界真实身份分离；原生事实/历史/Branch/Receipt 由唯一 Domain Authority 写入；受众安全 Effective World View、合法 Memory/Knowledge Context 经 V3 ContextPort/Prompt 编译；禁止并行 EventStore 和旧新双写。**未冻结 W18 物理 ID/Schema/API、全量生产 caller/deletion map、E0/CI/三端结果或正式开发计划。**
+- **当前：**S20 已记录用户选择 **W18-B**；进入 W19 [Gate 0、Session 原生 Subject + Fact Transition、Revision/GameTick 双锚与 Consumer/Deletion Map](e0-gate0-physical-contracts.md)。当前研究推荐 **W19-B**，**尚未获用户确认**；E0-01～09 仍 PARTIAL / BLOCKED。
+- **已确认设计方向（W1–W18）：** 唯一 Native Host 权威、固定源与动态 Session 实例分离、正式 Subject 与可选表达/私人 Perspective/已提交参与者类型化分工、受控事实时态与历史分支、有效世界只读视图、基于真实 consumer 的最小合约 hard cutover。**未冻结 W19 物理存储/Query ABI、E0/CI/三端验收或正式实现阶段**。
 - **未授权：**修改 `main`、创建实现分支、给出实施已经通过的结论。
 - **完成标准：**用户在若干轮讨论后明确确认各核心决策及边界，并批准定稿。未经确认，不使用“Final/冻结/全面通过”描述。
