@@ -1386,3 +1386,12 @@ Planner 停止重规划后，Host 由原 TaskGraphRevision/Patch/命令重建实
 原 Authoring 的 context pin 可引用原 player-owned exact Retrieval Profile。inspect 只返回精确 ref/integrity；Validate/Publish 读取原不可变 revision，并验证同节点 generation.send、所拥有的 Profile pin、每 mode 唯一性与既有服务可提供的协议机制。首批 Embedding 仅为已有可计费的 OpenAI-compatible sources；Rerank 复用原三协议。本地 transformers/webllm 等未接该消费机制的 source 保持 unknown。校验不读 Secret、不发送、不收费、不产生 runtime grant；原 Profile 新 revision 不能替换旧 pin。相关 authority 已纳入 evaluator revision。
 
 本组只补实际消费者所需的状态机与原配置机制；V3 Memory 的 scope_unavailable 继续保留。原 Context 私有 Source/Audience、真实检索 consumer/费用闭包与最终 Result/Output reader 尚在同任务接线，不能将 controlled Port 测试称为真实 V3 检索已交付或完整后端通过。
+
+
+### 17.119 原检索实际 POST 目标与冻结请求
+
+原 OpenAI-compatible Embedding 与三种 Rerank 协议在实际 fetch 之前，将真实规范化 URL/POST 交给原 compute.beforeSend；正文先序列化固定，准入与派发使用同一份内容，准入 callback 不能修改随后发送的正文。原 Session/Project 检索银行的 provider attempt 增加 inputFingerprint；有实际 transport 事实时，targetFingerprint 绑定 original exact Profile ref/revision/integrity 与最终 URL/method。元数据不含 Secret 或正文，不另建收费账本。
+
+共用 retrievalSendIdentity 验证已有原协议的目标构造，包括 custom Rerank 预填 /rerank 时不重复追加。不同目标在银行准入与 HTTP 之前拒绝；redirect:error、取消信号与原 reported/unknown usage 结算保持。既有内部无 transport 的 interrupted compute 调用维持原历史目标关联和新输入hash，不能冒称拥有实际 target proof；未来 V3 producer 必须取得真实协议提供的 transport。
+
+native_retrieval_send_target_mismatch 属于原检索 scope refusal，在 Hybrid vector/rerank 中直接传播，不能当作可选 Provider 故障退回 lexical。目标合同源码纳入 evaluator 指纹。此为 V3 附属 Effect 实际端点/输入核对的原协议接线，未解除 Memory scope_unavailable，未增加调用硬上限；完整私有消费者与费用/Result/Output闭包继续实施。

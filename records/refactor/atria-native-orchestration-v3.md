@@ -1275,3 +1275,12 @@
 - 原 Profile pin28项、指纹58项和当时新控制器46项，三完整suite132/132 PASS（8.176s）；控制器后加六项以上述90项末轮为准。原动态图选择/不选择四参数加新控制器46项，两suite50PASS/62filterSKIP（20.973s），其中 Native Turn suite未命中筛选，未把它计通过。
 - 四共享suite精选初56PASS/2FAIL/94filterSKIP（48.26s）：原 Project 未pin Review 工具两参数预期较晚的 tool_scope_unavailable，实际在更早 Model response allowlist 返回 generation_response_invalid。先尝试临时Jest模块替换时遇 VM link错误，0个场景运行；本人临时文件已删除。另建 `4ce9dddda` 干净临时worktree复验原两反例，2/2同样FAIL（20.107s），证实不是本组产品回归。修正测试名称/错误码，保留原三次计费及零Workspace/Review写入断言，2/2 PASS（20.969s）；本人临时worktree已移除。原Session真实Output正向与末预算撤回Memory四参数4PASS/4filterSKIP（23.94s）。
 - 八个JS原ESLint、staged diff检查通过。所有新增验证均合成/原FS与SQLite；真实API总数仍9、备用对话仍0，未增加调用硬上限。此组为实际受信检索消费者的必要前置接线，不代表V3 Context外部调用、完整费用/Result闭包或整个后端完成。继续同一后端任务，不交前端/main、不结束分支。
+
+
+## 2026-10-17 — 第一百一十六组：原检索实际目标与冻结请求
+
+- Source `3a07f2db5` → `d9d89ed33`，本地提交、未推送；接口 §17.119。原 OpenAI-compatible Embedding 与全部三种 Rerank 在 beforeSend 提供真实 URL/POST，原 Session/Project 检索银行绑定 exact Profile 与真实端点/方法、输入hash；正文在准入前序列化固定，回调改写不改变随后发送内容。实际目标不匹配时零准入/HTTP，仍复用原协议、原银行和 unknown 结算，不创建第二检索服务或账本。
+- 实际原协议/Session银行新增 FS/SQLite × Embed/Rerank 的回调改写与异目标八场景8PASS/129filterSKIP（1.997s）；原 runtime 远程协议、合同与 interrupted receipts 精选27PASS/134filterSKIP（3.131s）。新 G05 与 runtime 两完整 suite168PASS/1既有SKIP（35.176s）。直接内部未携 transport 的既有 interrupted compute 调用保持原边界，不被冒称为真实派发目标 proof。
+- target mismatch 纳入原 Native scope error，Hybrid vector/rerank 不吞掉授权拒绝作可选降级；新两反例、原 Hybrid 全suite、原 Profile pin 与 evaluator revision 三完整suite113/113 PASS（5.485s）。指纹现59项，新增目标合同源码变化使旧报告失效。没有新增真实API请求，原私密滚动总数9、备用Chat0保持，没有调用硬上限。
+- 八个改动的源码/小测试原ESLint通过，staged diff check通过；大G05测试文件完整lint报20项既有Jest规则问题。用提交前HEAD的同文件经原ESLint stdin复核，同20项/相同规则在对应旧行逐项重现，本组新增八case没有新增违规；未放宽/禁用规则，也未夹带无关旧case重写。
+- 原 V3 Memory 外部 retrieval scope_unavailable 继续保留，真实私有 consumer、附属 Effect 费用闭包与最终Result/Output reader继续接线。这些必要前置实证不表示完整后端、独立质量/价格或最终Gate通过；Source/docs仍独立分支，不交前端/main、不结束分支。
