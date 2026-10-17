@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · W7 NPC 个人记忆、秘密与信息传播（讨论草案）
 
 - Task ID: `ARCH-DWE-01`; Primary Workspace: `docs`; [Plan 总入口](index.md) · [总体设计](design.md) · [W6 社会认知](npc-social-cognition.md) · [唯一 Record](../../../records/architecture/world-evolution-consistency.md)。
-- Status: **Draft / W7 待讨论，未授权实施**。已确认 W1-B / W2-B / W3-B / W4-B / W5-B / W6-B；此处 W7 选项与具体 API 一律未批准。
+- Status: **Draft / W7-B 已获用户确认，详细 API 与 W8 仍待讨论**。已确认 W1-B / W2-B / W3-B / W4-B / W5-B / W6-B / W7-B；§8 记录当时的选型比较，正式决定见 §10。完整 Plan 未定稿且未授权实施。
 - Current discussion: 在开放式 RP 中，原生新 NPC 和已创作 Actor 应如何拥有持续的个人记忆、秘密、错误情报、有限的信息传播与合法的认知视角，并在游戏时间、存读档和多分支中不泄漏？
 
 ## 1. 目标与非目标
@@ -119,3 +119,17 @@ Committed world event / authored hidden canon / explicit source claim
 **未决接口**：动态 NPC 受众资格/身份 ID 的映射、秘密分级/披露权限、传播延迟与游戏时间、记忆压缩/遗忘的规则、关系与情报联动的最小事件 schema、UI/Inspector 如何展示“NPC 为什么这样认为”。以上待用户决定 W7 大路线以后继续细化。
 
 **Plan 状态**：Draft；只更新 `docs`，不执行产品代码变更、不创建实现分支、不宣称 E0 已通过。
+
+
+## 10. W7-B 用户确认（2026-10-17）
+
+用户对上一轮推荐的 **W7-B「动态受众资格 + 证据驱动信息流」**回复“认同”。纳入已确认的**顶层设计方向**：
+
+- 新出现的 NPC 只有在世界事实身份经 Native 接纳后，且满足角色/作用域/受众权限时，才能获得独立而合法的 Perspective；**存在资格、认知资格、自主推理资格不混为一谈**。
+- 信息以实际感知、交流、投递、获知、采信和更正等有来源的过程流动，不把信息发送、收到和相信等同；既存世界真相仍由单 Native Host/Session 写入。
+- NPC 的个人记忆/私有目标、假设和误信基于获授权证据，可持有错误看法；长期 HCM / Information / Cognition 负责相应认知，而非创建第二真相库。
+- 受众查询受 Session/Branch/Revision/scope/source 约束，不自动授予叙事者全知，也不在原始 Package Manifest 随意添动态 Actor。
+
+**尚未批准**：动态 Perspective 的确切身份映射及签发接口、记忆条目 Schema、通信的结算原子性、端到端调用方接线、权限 UI、具体传播延迟/衰退参数和实施授权。
+
+**W8 下一轮**：同一 Plan 新模块 [npc-memory-continuity.md](npc-memory-continuity.md)，讨论长期记忆、遗忘/模糊与情境回忆、人格成长、承诺保护、HCM 与 Native Cognition/World 的权限及存储边界。W8 各候选尚未确定，企划仍保持 Draft。
