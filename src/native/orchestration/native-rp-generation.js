@@ -12,7 +12,7 @@ import { ChatRepo } from '../../storage/repositories/chat-repo.js';
 import { RpRunControl, rpOperationInput } from '../rp-run-control.js';
 import { NativeGenerationHost } from '../adapters/generation-host.js';
 import { NativeTaskScheduler, nativeTaskScheduler } from '../task-scheduler.js';
-import { hashNativeDocument as hash, cloneNativeDocument, putImmutable } from '../repositories/common.js';
+import { hashNativeDocument as hash, cloneNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
 import { fields } from '../../../public/shared/native-values.js';
 import { assertNativeId } from '../identity.js';
 import { immutable, checkCancellation, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
@@ -339,6 +339,11 @@ export class NativeRpOrchestrationAuthority {
     constructor({ owner, execution, port, issueScope, scheduler = nativeTaskScheduler }) {
         Object.assign(this, { owner, scheduler });
         this.#execution = execution; this.#port = port; this.#issueScope = issueScope;
+    }
+
+    #associateOperation(capture, runId) {
+        const active = captures.get(capture);
+        if (active) NativeTaskScheduler.prototype.associateRun.call(this.scheduler, active.boundary, active.expected, runId);
     }
 
     #plans() {
@@ -851,6 +856,7 @@ export class NativeRpOrchestrationAuthority {
         const started = await service.runs.start(handle, controlCommandId('native.rp.start', commandIdentity), {
             planRef: selected.binding.planRef, sourceRequest: identity.sourceRequest, retentionPolicyRef: { policyId: 'retain_native_rp_until_explicit_release' } });
         let root = await service.runs.get(handle, started.runId);
+        this.#associateOperation(capture, root.runId);
         state.parentRunId = root.runId;
         if (root.status !== 'admitted' || root.attemptRefs.length) fail('native_orchestration_rp_request_replayed');
         state.parentEpoch = root.epoch; this.#runs.set(root.runId, state);
@@ -1134,6 +1140,7 @@ export class NativeRpOrchestrationAuthority {
         const started = await service.runs.start(handle, controlCommandId('native.rp.start', commandIdentity), { planRef: selected.binding.planRef,
             sourceRequest: identity.sourceRequest, retentionPolicyRef: { policyId: 'retain_native_rp_until_explicit_release' } });
         const runId = started.runId; state.graphRunId = runId; this.#runs.set(runId, state);
+        this.#associateOperation(state.capture, runId);
         let root = await service.runs.get(handle, runId);
         if (root.status !== 'admitted' || root.attemptRefs.length) fail('native_orchestration_rp_request_replayed');
         const admittedEpoch = root.epoch, hostBootId = root.hostBootId, hostGeneration = root.hostGeneration;
@@ -1610,6 +1617,47 @@ export class NativeRpOrchestrationAuthority {
         }
     }
 
+    // A prepared Effect with no bank admission/dispatch claim proves that no
+    // Provider send occurred. Preserve metered Context work and never apply
+    // this transition to ready/dispatching/unknown or completed effects.
+    async #finishUnsent(state, runId, error) {
+        if (!state.effectId || error.code !== 'generation_adapter_output_budget') return;
+        const { runs, budgetPort, sourcePort } = this.#execution(), { handle } = state;
+        await runs.withSourceControl(handle, runId, async () => {
+            const observed = await runs.get(handle, runId);
+            if (observed.status !== 'running' || observed.cancelRequested || observed.outputClaims.length) return;
+            await runs.control(handle, controlCommandId('rp.unsent.failure', state.effectId), {
+                ...runGuard(observed), operation: 'graph.execution.fail', detail: { effectId: state.effectId, reasonCode: error.code },
+            }, async ({ tx, root, now }) => {
+                const record = await readEffect(tx, handle, root, state.effectId), intent = record.doc;
+                const attempt = await readAttempt(tx, handle, root, state.attemptId);
+                if (intent.status !== 'prepared' || intent.budgetAttemptRef !== null || intent.nodeAttemptId !== state.attemptId
+                    || !equal(effectDecision(intent), state.decision) || attempt.doc.status !== 'waiting_effect')
+                    return { root, eventType: 'unsent_failure_unresolved', reasonCode: error.code, outcome: { status: root.status } };
+                const effectIds = attempt.doc.effectRefs;
+                const bank = await RpRunControl.prototype.status.call(this.owner.rpControl, handle, root.budgetAuthorityRef.controlId, { tx });
+                const ledger = bank.operations[root.budgetAuthorityRef.operationId]?.compute;
+                const costs = ledger ? await budgetPort.observeEffectClosure(handle, { authorityRef: root.budgetAuthorityRef, effectIds }, { tx })
+                    : { authorityRef: root.budgetAuthorityRef, effectIds, budgetAttemptRefs: [], closed: true, snapshotDigest: hash({ compute: null }) };
+                if (!costs.closed) return { root, eventType: 'unsent_failure_unresolved', reasonCode: error.code, outcome: { status: root.status } };
+                const receiptId = 'oreceipt_' + hash({ kind: 'rp_unsent_failure', runId, effectId: state.effectId }).slice(0, 32);
+                const receipt = { schemaVersion: 1, receiptId, runId, effectId: state.effectId,
+                    observationId: 'model.unsent:' + state.effectId, observedEpoch: intent.epoch, outcome: 'not_dispatched',
+                    dispatchEvidence: { kind: 'proven_not_dispatched', reference: { protocol: 'generation_preparation', costs } },
+                    remoteOperationRef: null, domainReceiptRef: null, budgetObservationRef: null, resultRefs: [],
+                    sourceRefs: [root.sourceBinding.sourceRef], reasonCode: error.code, observedAt: now };
+                await putImmutable(tx, controlRecordKey(handle, runId, 'receipt', receiptId), receipt);
+                await putMutable(tx, controlRecordKey(handle, runId, 'effect', intent.effectId),
+                    { ...intent, status: 'not_dispatched' }, { expectedIntegrity: record.integrity });
+                await writeAttemptSettlement({ tx, handle, root, record: attempt, outcome: 'failed', resultRefs: [],
+                    effectReceiptRefs: [receiptId], reasonCode: error.code, now });
+                root.pendingEffectRefs = root.pendingEffectRefs.filter(id => id !== intent.effectId);
+                if (root.attemptRefs.length === 1 && !root.pendingEffectRefs.length) root.status = 'failed';
+                return { root, eventType: 'rp_model_not_dispatched', reasonCode: error.code, outcome: { status: root.status, receiptRef: { runId, receiptId } } };
+            });
+        }, { withAuthority: sourcePort.consumptionBoundary(handle, state.sourceBinding, { engine: runs.engine }) });
+    }
+
     async #generate(state, { continuation = null, planner = false, graphNode = false, review = false, judge = false, graphRunId = null, preparedAttemptId = null } = {}) {
         if (this.#runs.size >= 64) fail('native_orchestration_model_busy');
         const { host, handle, capture } = state, selected = state.activeSelection ?? state.selected;
@@ -1644,6 +1692,7 @@ export class NativeRpOrchestrationAuthority {
         const started = graphRunId ? { runId: graphRunId } : continuation ? { runId: state.parentRunId } : await service.runs.start(handle, controlCommandId('native.rp.start', commandIdentity), { planRef: selected.binding.planRef,
             sourceRequest: identity.sourceRequest, retentionPolicyRef: { policyId: 'retain_native_rp_until_explicit_release' } });
         const root = await service.runs.get(handle, started.runId);
+        if (!state.fanoutParent) this.#associateOperation(capture, root.runId);
         if (!state.fanoutParent) this.#runs.set(root.runId, state);
         if (planner || graphNode) state.graphRunId = root.runId;
         try {
@@ -1744,6 +1793,9 @@ export class NativeRpOrchestrationAuthority {
                 } finally { outputCaptures.delete(outputCapture); delete state.outputCapture; }
             }
             return { ...result, runId: root.runId, effectId };
+        } catch (error) {
+            await this.#finishUnsent(state, root.runId, error);
+            throw error;
         } finally {
             if (state.effectId) ContextRetrievalPort.prototype.releaseCompilation.call(service.contextRetrieval, handle, { runId: root.runId, modelEffectId: state.effectId });
             if (!continuation && !state.selected.planner && !state.selected.chain) this.#runs.delete(root.runId);

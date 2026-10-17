@@ -5,7 +5,6 @@ export const GAME_RUNTIME_ROLES = Object.freeze([
     'narrator',
     'intent_resolver',
     'event_interpreter',
-    'orchestrator',
     'studio',
 ]);
 
@@ -34,14 +33,6 @@ const DEFAULT_ROLE_CONFIGS = Object.freeze({
         retries: 1,
         reasoningPolicy: 'low_variance',
         requirements: Object.freeze({ tools: false, structuredOutput: true }),
-    }),
-    orchestrator: Object.freeze({
-        primaryProfile: '',
-        fallbackProfiles: Object.freeze([]),
-        timeoutMs: NATIVE_GENERATION_DEFAULTS.timeoutMs,
-        retries: 1,
-        reasoningPolicy: 'planning',
-        requirements: Object.freeze({ tools: true, structuredOutput: false }),
     }),
     studio: Object.freeze({
         primaryProfile: '',

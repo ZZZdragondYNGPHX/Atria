@@ -83,7 +83,8 @@ export async function validateModelCapability({ handle, definition, dependencyPi
             if (!(error instanceof GenerationError) && !(error instanceof TypeError) && error.name !== 'NotFoundError') throw error;
             const unknown = ['generation_provider_unavailable', 'generation_capability_unknown'].includes(error.code);
             issues.push({ code: unknown ? 'native_orchestration_capability_authority_unavailable' : 'native_orchestration_dependency_invalid',
-                severity: unknown ? 'unknown' : 'blocking', fieldPath: 'dependencyPins.' + pin.pinId });
+                severity: unknown ? 'unknown' : 'blocking', fieldPath: 'dependencyPins.' + pin.pinId,
+                ...(error instanceof GenerationError ? { reasonCode: error.code } : {}) });
         }
     }
     return { evidence, issues };

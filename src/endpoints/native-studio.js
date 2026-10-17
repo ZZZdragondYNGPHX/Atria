@@ -1,3 +1,4 @@
+import { projectCommitReviewHash } from '../native/orchestration/project-commit-contracts.js';
 import express from 'express';
 
 import { getUserDirectories } from '../users.js';
@@ -284,7 +285,8 @@ export function createNativeStudioRouter(getServices = services, artifacts = nat
 
     router.get('/projects/:projectId/agent/tasks/:taskId', route(async (req, res, { agent }, handle) => {
         res.set('Cache-Control', 'no-store');
-        res.json(await agent.getTask(handle, req.params.projectId, req.params.taskId));
+        const task = await agent.getTask(handle, req.params.projectId, req.params.taskId);
+        res.json({ ...task, reviewHash: task.review ? projectCommitReviewHash(task) : null });
     }));
 
     router.get('/projects/:projectId/agent/tasks/:taskId/context', route(async (req, res, { agent }, handle) => {

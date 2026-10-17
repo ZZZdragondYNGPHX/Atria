@@ -3,7 +3,7 @@
 让插件**直接产出助理消息正文**而非引导主 LLM 的 API。当插件为某个回合声明接管后，主 LLM 完全不被调用 —— 由插件把正文和 reasoning 写进一个纯 buffer 编辑器句柄，内核负责把结果落进 chat、做持久化、跑正则 / cleanup 后处理、触发生命周期事件，在插件 discard 时回滚。
 
 ::: warning 仅 buffer 内核
-句柄是一个纯文本 / reasoning buffer。它不直接操作 `chat`、不触发 ST 事件、不渲染任何东西 —— 这些都由内核根据句柄的生命周期来驱动。更高层的编辑辅助（增量追加、结构化补丁、流式管道）放在插件层实现。编排器扩展在 `public/scripts/agents/orchestrator/editor-ops.js` 提供了参考实现 —— 按插件需要选择复制、依赖或替换它即可。
+句柄是一个纯文本 / reasoning buffer。它不直接操作 `chat`、不触发 ST 事件、不渲染任何东西 —— 这些都由内核根据句柄的生命周期来驱动。更高层的编辑辅助（增量追加、结构化补丁、流式管道）放在插件层实现。
 :::
 
 ## 钩子事件
@@ -176,15 +176,7 @@ interface MessageEditorHandle {
 
 ## 更高层的编辑模式
 
-内核刻意不提供增量追加、按字符偏移切片、结构化补丁应用或流式管道 —— 这些都是*策略*，不是状态管理。编排器扩展在 `public/scripts/agents/orchestrator/editor-ops.js` 实现了这些能力：
-
-- `appendText(handle, text)` / `appendReasoning(handle, text)` —— 在当前值后面拼接。
-- `insertAt(handle, offset, text)` / `replaceRange(handle, start, end, text)` / `deleteRange(handle, start, end)` —— 按字符偏移切片。
-- `applyPatch(handle, patch | patch[])` —— 应用结构化补丁（种类：`replace_range`、`insert_at`、`delete_range`、`context_replace`）。
-- `patchBySemantic(handle, { find, replaceWith, occurrence? })` —— Git 风格的 context_replace（Aider / Claude Code / Cursor 风格），按字节精确匹配，不做启发式恢复。
-- `pipeFrom(handle, stream, opts?)` —— 把一个 `AsyncIterable<StreamChunk>`（例如从 `generateTaskStream` 返回的）以 `mode: 'append'` 或 `mode: 'replace'` 的方式喂进编辑器。
-
-其他插件可以选择依赖 `orchestrator/editor-ops.js`，也可以自己实现一套 —— 内核不关心。
+插件可以基于缓冲区契约实现编辑辅助。使用 `handle.setText(handle.getText() + chunk)` 追加文本，使用 `handle.setReasoning(handle.getReasoning() + chunk)` 追加推理内容。范围编辑和流式消费由插件实现，并应保持 `continue` 前缀不变量，且只结束句柄一次。
 
 ## 三层暴露
 

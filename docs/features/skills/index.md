@@ -83,7 +83,7 @@ The runtime, at dispatch time, resolves the policy against the physical inventor
 1. **A short catalog is auto-injected into the agent's system prompt** — `<available_skills>` lines naming each visible skill and its description. The agent learns what's available without spending a round on `skill_list`.
 2. **Three function tools — `skill_list`, `skill_read`, `skill_search` — are available to the agent.** They're gated to the visible set; the agent can't reach skills outside its policy. `skill_read` is the typical workhorse — the agent calls it the moment it needs the actual body. It accepts an optional `path` argument too, so a skill that ships sub-files (`references/`, `examples/`, ...) can be read selectively: `skill_read({ name: "my-skill", path: "references/checklist.md" })`. The skill author tells the agent which sub-files are worth pulling and when — see [authoring](/features/skills/authoring#when-to-use-sub-files).
 
-See [Orchestrator integration](/features/skills/orchestrator-integration) for the policy resolution rules in detail.
+See [Orchestrator integration](/features/native-orchestration) for the policy resolution rules in detail.
 
 ## Layered overview
 
@@ -129,7 +129,7 @@ runtime.catalog -> agent.tools
 
 ## Reading vs writing
 
-Agents only ever **read** skills via the three function tools. They can't mutate them. That's deliberate — skills are the user-managed substrate, and only the user (or AI assistants working **on behalf of** the user, like the [iter-studio](/features/orchestrator/iteration-studio) skill tools) can change skill content.
+Agents only ever **read** skills via the three function tools. They can't mutate them. That's deliberate — skills are the user-managed substrate, and only the user (or AI assistants working **on behalf of** the user, like the [iter-studio](/features/native-orchestration) skill tools) can change skill content.
 
 The user-facing write surfaces:
 
@@ -146,12 +146,12 @@ A fresh Atria install populates `data/<user>/skills/global/` with 24 default ski
 - **Main-agent (2)** — `director-turn-workflow-zh`, `director-dispatch-protocol-zh`. Visible only to the main agent.
 - **Per-sub-agent (17)** — one method/contract skill per default sub-agent (e.g. `voice-critic-method-zh`, `event-summary-rules-zh`, `chat-scout-method-zh`).
 
-These ship verbatim from the original director defaults — no rewording, no compression — so the new skill-based director profile produces output at the same intensity as the pre-skill default. See [Director mode → Default skills](/features/orchestrator/director#default-skills) for the breakdown.
+These ship verbatim from the original director defaults — no rewording, no compression — so the new skill-based director profile produces output at the same intensity as the pre-skill default. See [Director mode → Default skills](/features/native-orchestration#default-skills) for the breakdown.
 
 ## Where to go next
 
 - **Want to write your own?** → [Authoring skills](/features/skills/authoring)
 - **Want to install, share, or migrate skills?** → [Skill management](/features/skills/management)
-- **Want to wire a skill into a specific agent?** → [Orchestrator integration](/features/skills/orchestrator-integration)
+- **Want to wire a skill into a specific agent?** → [Orchestrator integration](/features/native-orchestration)
 - **Writing an extension?** → [Skills extension API](/development/extension-api/skills)
-- **Want to see them in action?** → [Director mode](/features/orchestrator/director)
+- **Want to see them in action?** → [Director mode](/features/native-orchestration)

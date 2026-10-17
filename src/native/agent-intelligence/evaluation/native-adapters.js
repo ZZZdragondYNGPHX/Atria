@@ -1,4 +1,6 @@
 import { NativeMemoryAuthority } from '../../memory-authority.js';
+import { ExtensionsStore } from '../../extensions-store.js';
+import { skillEntryKey } from '../../../../public/shared/extension-contract.js';
 import { SettingsRepo } from '../../../storage/repositories/settings-repo.js';
 import { PROVENANCE_NAMESPACE } from '../../../../public/scripts/agents/memory/source-lifecycle.js';
 import { emptyProvenance, captureEpisodes } from '../../../../public/scripts/agents/memory/source-provenance.js';
@@ -31,6 +33,7 @@ import { putImmutable } from '../../repositories/common.js';
 import { nativeTaskScheduler } from '../../task-scheduler.js';
 import { hash, canonical } from './cases.js';
 
+const containsSkill = (value, text) => typeof value === 'string' ? value.includes(JSON.stringify(text)) : value && typeof value === 'object' && Object.values(value).some(item => containsSkill(item, text));
 const unavailable = () => { throw Object.assign(new TypeError('native_orchestration_evaluation_unavailable'), { code: 'native_orchestration_evaluation_unavailable' }); };
 function sessionCore(store) {
     const { engine, dirs } = store;
@@ -61,7 +64,17 @@ export async function runRp(entry, fixture, capture, evaluation) {
             evidence: [{ episodeId: episodeIds[0], excerpt: history.mes }] })), { scopeId: state.scopeId, episodeIds }, [history, player], () => 'eval-memory-' + ++serial, 1000);
         await chats.setState(handle, locator.charDir, locator.name, PROVENANCE_NAMESPACE, written.state);
     }
-    const host = new NativeGenerationHost({ persistence: n.persistence, library: n.library, providers: n.providers, secretPort: n.secretPort, sessionCore: sessionCore(n.store) });
+    const repository = createSkillRepository(n.store.dirs.root), extensions = new ExtensionsStore({ engine });
+    let skillText = null;
+    if (settings.skill) {
+        const scope = { kind: 'character', characterFile: locator.charDir + '.png' };
+        await repository.install({ scope, payload: { files: settings.skill.files.map(file => ({ path: file.path, content: Buffer.from(file.content, 'base64') })) } });
+        const before = await extensions.settings(handle);
+        await extensions.saveSettings(handle, { ...before.value, skills: { [skillEntryKey({ scope, name: settings.skill.name })]: { paths: { narrative: 'always' } } } }, before.revision);
+        skillText = Buffer.from(settings.skill.files.find(file => file.path === 'SKILL.md').content, 'base64').toString('utf8');
+    }
+    const host = new NativeGenerationHost({ persistence: n.persistence, library: n.library, providers: n.providers, secretPort: n.secretPort,
+        sessionCore: sessionCore(n.store), skillRepository: () => repository, extensions });
     const { plans } = createOrchestrationAuthoringService(engine, { rpControl: control, modelResolver: n.resolver });
     await engine.withTransaction(handle, async tx => {
         const ref = frozen.planRef;
@@ -134,7 +147,8 @@ export async function runRp(entry, fixture, capture, evaluation) {
         }
         capture.evidence.push({ name: 'native_plan_execution', observed: { planRef: root.planRef, sourceBindingDigest: root.sourceBinding.bindingDigest,
             epoch: root.epoch, outputClaimRefs: root.outputClaims, effectCount: preparedEffects.length }, expected: { planRef: frozen.planRef } });
-        capture.artifact = { output: output.mes, targetConsumed: hash(root.planRef) === hash(frozen.planRef) && capture.prompts.length > 0 && root.status === 'completed' };
+        capture.artifact = { output: output.mes, targetConsumed: hash(root.planRef) === hash(frozen.planRef) && capture.prompts.length > 0 && root.status === 'completed'
+            && (!skillText || capture.prompts.every(prompt => containsSkill(prompt, skillText))) };
     } finally {
         for (const operation of nativeTaskScheduler.operations.values()) if (operation.owner === handle && operation.view.anchor?.controlId === controlId)
             nativeTaskScheduler.cancel(handle, operation.view.operationId);

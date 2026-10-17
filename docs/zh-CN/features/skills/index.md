@@ -83,7 +83,7 @@ Skill 物理上存放在 `data/<user>/skills/<scope>/`。Atria 有三种作用�
 1. **一份精简目录被自动注入到 agent 的系统提示词**—— `<available_skills>` 块逐行列出每个可见 Skill 的名称和描述。agent 不需要花一轮 `skill_list` 工具调用就知道有什么可用。
 2. **三个函数工具 —— `skill_list`、`skill_read`、`skill_search` —— 提供给 agent**。它们被限制在可见集内；agent 拿不到策略之外的 Skill。`skill_read` 是主力 —— agent 需要正文时就调用它。它还接一个 `path` 参数，所以带子文件（`references/`、`examples/` 等）的 Skill 可以选择性地按路径读：`skill_read({ name: "my-skill", path: "references/checklist.md" })`。skill 作者在 SKILL.md 里写明哪些子文件值得拉、什么时候拉 —— 见 [创作 Skill](/zh-CN/features/skills/authoring#何时使用子文件)。
 
-策略解析的完整规则见 [编排器集成](/zh-CN/features/skills/orchestrator-integration)。
+策略解析的完整规则见 [编排器集成](/zh-CN/features/native-orchestration)。
 
 ## 分层概览
 
@@ -129,7 +129,7 @@ runtime.catalog -> agent.tools
 
 ## 读 vs 写
 
-agent 只能通过三个函数工具**读取**Skill，无法修改。这是有意为之 —— Skill 是用户管理的底层素材，只有用户（或者代表用户工作的 AI 助手，比如 [迭代工作台](/zh-CN/features/orchestrator/iteration-studio) 的 Skill 工具）才能改 Skill 内容。
+agent 只能通过三个函数工具**读取**Skill，无法修改。这是有意为之 —— Skill 是用户管理的底层素材，只有用户（或者代表用户工作的 AI 助手，比如 [迭代工作台](/zh-CN/features/native-orchestration) 的 Skill 工具）才能改 Skill 内容。
 
 面向用户的写入入口：
 
@@ -146,12 +146,12 @@ agent 只能通过三个函数工具**读取**Skill，无法修改。这是有�
 - **主代理类（2 个）**—— `director-turn-workflow-zh`、`director-dispatch-protocol-zh`。仅主代理可见。
 - **每子代理一份（17 个）**—— 每个默认子代理一份方法/契约 Skill（如 `voice-critic-method-zh`、`event-summary-rules-zh`、`chat-scout-method-zh`）。
 
-这些出厂 Skill 从原 director 默认值**逐字搬出** —— 没有改写、没有压缩 —— 所以基于 Skill 的新版 director profile 跟未拆分前同强度。详见 [Director 模式 → 默认 Skill](/zh-CN/features/orchestrator/director#默认 Skill)。
+这些出厂 Skill 从原 director 默认值**逐字搬出** —— 没有改写、没有压缩 —— 所以基于 Skill 的新版 director profile 跟未拆分前同强度。详见 [Director 模式 → 默认 Skill](/zh-CN/features/native-orchestration#默认 Skill)。
 
 ## 下一步去哪
 
 - **想写自己的 Skill？** → [创作 Skill](/zh-CN/features/skills/authoring)
 - **想安装、分享或迁移 Skill？** → [Skill 管理](/zh-CN/features/skills/management)
-- **想把某个 Skill 挂到具体 agent？** → [编排器集成](/zh-CN/features/skills/orchestrator-integration)
+- **想把某个 Skill 挂到具体 agent？** → [编排器集成](/zh-CN/features/native-orchestration)
 - **在写扩展？** → [Skill 扩展 API](/zh-CN/development/extension-api/skills)
-- **想看它实际跑起来？** → [Director 模式](/zh-CN/features/orchestrator/director)
+- **想看它实际跑起来？** → [Director 模式](/zh-CN/features/native-orchestration)

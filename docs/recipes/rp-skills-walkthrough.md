@@ -45,6 +45,6 @@ Full UI walkthrough lives in [skill management](/features/skills/management).
 ## Related
 
 - [Skills overview](/features/skills/) — what a skill is, scopes, how agents read them
-- [Skills in the orchestrator](/features/orchestrator/skills) — making a skill visible to a particular agent
-- [AI Iteration Studio](/features/orchestrator/iteration-studio) — full Studio capabilities
+- [Skills in the orchestrator](/features/native-orchestration) — making a skill visible to a particular agent
+- [AI Iteration Studio](/features/native-orchestration) — full Studio capabilities
 - [Authoring skills](/features/skills/authoring) — SKILL.md format, frontmatter, multi-file

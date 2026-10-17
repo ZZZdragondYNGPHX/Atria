@@ -34,7 +34,7 @@ Atria 内置了多个面向角色扮演场景的专业工具——记忆图、�
 
 在创作 LLM 生成回复之前，自动运行多个 Agent 进行剧情分析和编排。提供三种执行模式：Spec 工作流（预定义阶段和节点）、单 Agent 模式和 Agenda 规划器（动态调度）。编排配置可绑定到角色卡并随角色卡导入导出。
 
-→ [多 Agent 编排详细文档](/zh-CN/features/orchestrator/)
+→ [多 Agent 编排详细文档](/zh-CN/features/native-orchestration)
 
 ### 角色卡编辑助手（CEA）
 

@@ -1,8 +1,7 @@
 /** @jest-environment jsdom */
 import { test, expect, jest, afterEach } from '@jest/globals';
 jest.unstable_mockModule('../../public/scripts/native/generation-compat.js',()=>({ nativePromptUiActive:()=>false }));
-jest.unstable_mockModule('../../public/scripts/agents/orchestrator/i18n.js',()=>({ i18n:s=>s,i18nFormat:(s,...v)=>s.replace(/\$\{(\d+)\}/g,(_,i)=>v[i]) }));
-const { createMemoryWorkspace } = await import('../../public/scripts/agents/orchestrator/workspace/memory/page.js');
+const { createMemoryWorkspace } = await import('../../public/scripts/agents/memory/workspace.js');
 const tick = ()=>new Promise(r=>setTimeout(r,0));
 const ui = { el(tag,text,parent){const n = document.createElement(tag);if(text !== undefined)n.textContent = text;parent?.append(n);return n;},button(parent,text,action){const n = ui.el('button',text,parent);n.addEventListener('click',action);return n;} };
 function setup(service){const host = ui.el('main',undefined,document.body);const context = { getCapabilityApi:()=>({ getWorkspacePorts:()=>service }) };const lifecycle = createMemoryWorkspace({ getContext:()=>context })(host,ui); const click = text=>[...host.querySelectorAll('button')].find(n=>n.textContent === text).click();return { host,lifecycle,click };}

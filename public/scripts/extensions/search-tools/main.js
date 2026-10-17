@@ -23,7 +23,6 @@ import {
     persistFallbackManagedEntries,
     pickLatestValidSnapshot,
 } from './persistence.js';
-import { registerSearchToolsOrchestrationTools } from './orchestrator-tools.js';
 import { nativeSessionRuntime } from '../../native/session-runtime.js';
 import {
     NATIVE_SESSION_LIFECYCLE,
@@ -2842,18 +2841,6 @@ jQuery(() => {
     const context = getContext();
     registerTools(context);
     ensureUi();
-    // search-tools publishes its 2 read tools into the orchestrator's
-    // Layer-2 registry so any of the four orchestration modes can
-    // dispatch them. Deferred to APP_READY because search-tools is
-    // loaded at loading_order 109 — before orchestrator (110) — so the
-    // sync `getCapabilityApi('orchestrator')` lookup inside
-    // `registerSearchToolsOrchestrationTools` would see no API yet if
-    // invoked from this jQuery ready handler. By APP_READY, every
-    // extension's top-level `registerCapabilityApi` has already run.
-    // Silent no-op when orchestrator isn't installed.
-    eventSource.on(event_types.APP_READY, () => {
-        registerSearchToolsOrchestrationTools();
-    });
     void loadSearchToolsChatState(context, { force: true })
         .then(() => syncSharedLorebookForCurrentChat(context))
         .catch((error) => {

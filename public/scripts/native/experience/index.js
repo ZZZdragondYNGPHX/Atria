@@ -18,7 +18,6 @@ import {
     createNarrativeCoordinator,
     createNarrator,
 } from './llm/narrative.js';
-import { createGameOrchestratorBridge } from './llm/orchestrator-bridge.js';
 import { createRuntimeRoleRouter } from './llm/roles.js';
 import { loadGameObservationDefinitions } from './llm/declarative-observations.js';
 import { createGameLlmRuntime } from './llm/runtime.js';
@@ -60,7 +59,6 @@ let currentReplyController = null;
 let currentLlmSession = null;
 let currentTurnController = null;
 let currentNarrator = null;
-let currentOrchestratorBridge = null;
 let currentTurnRecipes = null;
 let currentPackage = Object.freeze({
     status: GAME_PACKAGE_STATUS.NONE,
@@ -99,7 +97,6 @@ function disposeRuntimeSystems() {
     currentLlmSession = null;
     currentTurnController = null;
     currentNarrator = null;
-    currentOrchestratorBridge = null;
     currentTurnRecipes = null;
 }
 
@@ -112,15 +109,10 @@ function createRuntimeSystems(worldSession, options = {}) {
         generateTask: request => executeFirstPartyGeneration(atriaContext, 'narrator', request),
         getRoleConfig: role => readRuntimeRoleConfig(getRuntimeSettingsRoot(), role),
     });
-    const orchestratorBridge = createGameOrchestratorBridge({
-        context: atriaContext,
-        getWorldState: () => worldSession.getState(),
-        getJournal: () => worldSession.getJournal(),
-    });
+
     const narrator = createNarrator({ roleRouter });
     const narrativeCoordinator = createNarrativeCoordinator({
         narrator,
-        orchestratorBridge,
         getWorldState: () => worldSession.getState(),
         getJournal: () => worldSession.getJournal(),
     });
@@ -130,7 +122,6 @@ function createRuntimeSystems(worldSession, options = {}) {
         roleRouter,
         narrativeCoordinator,
         observationProjectors: options.observationProjectors || [],
-        getOrchestrationMode: () => orchestratorBridge.getMode(),
         generateTask: request => executeFirstPartyGeneration(atriaContext, 'narrator', request),
     });
 
@@ -215,7 +206,6 @@ function createRuntimeSystems(worldSession, options = {}) {
     return {
         roleRouter,
         narrator,
-        orchestratorBridge,
         narrativeCoordinator,
         llmSession,
         turnController,
@@ -379,7 +369,6 @@ export async function reloadGamePackage() {
     currentLlmSession = nextRuntimeSystems?.llmSession || null;
     currentTurnController = nextRuntimeSystems?.turnController || null;
     currentNarrator = nextRuntimeSystems?.narrator || null;
-    currentOrchestratorBridge = nextRuntimeSystems?.orchestratorBridge || null;
     currentTurnRecipes = nextRuntimeSystems?.recipes || null;
 
     if (next.status === GAME_PACKAGE_STATUS.READY && next.active) {
@@ -700,25 +689,6 @@ export async function rewriteGameNarrative(attemptId, input = {}) {
     return currentTurnController.rewriteNarrative(attemptId, {
         producer: input.producer,
         rewrite: async (turn) => {
-            const producer = String(turn.narrative?.producer || 'narrator');
-            if (producer === 'director') {
-                if (!currentOrchestratorBridge) {
-                    throw new Error('Director rewrite requires Orchestrator bridge');
-                }
-                const contract = structuredClone(buildNarrativeContract(turn));
-                if (instruction) {
-                    contract.hardConstraints = [
-                        ...(contract.hardConstraints || []),
-                        'Rewrite Narrative instruction: ' + instruction,
-                    ];
-                }
-                const directed = await currentOrchestratorBridge.runDirector(turn, {
-                    contract,
-                    abortSignal: input.abortSignal,
-                });
-                return directed.finalProse;
-            }
-
             const contract = structuredClone(buildNarrativeContract(turn));
             if (instruction) {
                 contract.hardConstraints = [

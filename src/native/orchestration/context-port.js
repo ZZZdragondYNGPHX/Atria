@@ -20,6 +20,7 @@ import { SettingsRepo } from '../../storage/repositories/settings-repo.js';
 import { inspectNativeBackgroundGeneration } from './native-background-generation.js';
 import { PROJECT_TOOL_BATCH_POLICY, projectToolCapability } from './project-tool-contracts.js';
 import { selectNativeTaskContext } from '../adapters/task-context-items.js';
+import { prepareRpSkillContext, assertRpSkillContext } from './rp-skill-context.js';
 import { inspectSessionTurnOutput } from '../session-turn-output.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
@@ -33,6 +34,7 @@ const rpHistoryItems = (messages, provenance) => messages.map((message, index) =
 /** Audience admission around the original compiler; no context/Memory writer. */
 export class ContextPort {
     #contexts = new WeakMap();
+    #rpSkills = new Map();
     #memoryDescriptors = new Map();
     #nativeOutputQuota = null;
     #sessionModelPolicy = null;
@@ -129,6 +131,7 @@ export class ContextPort {
                 || binding.sourceRef.controlId !== rpIdentity.sourceRequest.controlId || binding.sourceRef.prefixDigest !== rpIdentity.context.prefixDigest)
                 fail('native_orchestration_context_source_mismatch');
             const parentResult = this.rpReturnCapture ? await ResultPort.prototype.readForParent.call(this.resultPort, handle, { capture: this.rpReturnCapture }) : null;
+            await assertRpSkillContext(this.#rpSkills.get(hashNativeDocument(request)), { host: rpIdentity.host, handle });
             const graphResults = await Promise.all(this.rpGraphResults.map(resultRef => ResultPort.prototype.readForGraph.call(this.resultPort, handle, { capture: this.rpCapture, resultRef })));
             return { rpIdentity, parentResult, graphResults, authorityDigest: hashNativeDocument({ source: rpIdentity.sourceRequest, context: rpIdentity.context,
                 ...(graphResults.length ? { graphResults } : {}),
@@ -226,6 +229,7 @@ export class ContextPort {
             const memoryDescriptor = this.memoryAuthority ? await NativeMemoryAuthority.prototype.rpContextDescriptor.call(this.memoryAuthority, handle, this.rpControl, rpIdentity.sourceRequest) : null;
             if (memoryDescriptor) this.#memoryDescriptors.set(hashNativeDocument(request), memoryDescriptor);
             return { request, source: rpIdentity.sourceRequest, context: rpIdentity.context, memoryDescriptor,
+                skills: this.#rpSkills.get(hashNativeDocument(request))?.items ?? [],
                 ...(rpIdentity.controlTask ? { controlTask: rpIdentity.controlTask } : {}), ...(parentResult ? { parentResult } : {}), ...(graphResults.length ? { graphResults } : {}) };
         }
         if (projectIdentity) return { request, modelContext: projectAgentPromptInputs(modelContext), skillWorkRecords: projectIdentity.skillWorkRecords };
@@ -246,6 +250,16 @@ export class ContextPort {
             || hashNativeDocument(installed.entryPoint) !== hashNativeDocument(snapshot.manifest.entryPoints.find(item => item.entryPointId === entryPointId)))
             fail('native_orchestration_context_source_stale');
         return installed;
+    }
+
+    async prepareRpSkills(handle, input, work) {
+        const request = this.#request(handle, input);
+        if (!this.rpCapture) return;
+        const { rpIdentity } = await this.#current(handle, request, 'skill_inventory');
+        const current = await this.rpControl.status(handle, rpIdentity.sourceRequest.controlId);
+        const captured = await prepareRpSkillContext({ host: rpIdentity.host, handle, locator: current.locator, work });
+        this.#rpSkills.set(hashNativeDocument(request), captured);
+        await this.#current(handle, request, 'skill_loaded');
     }
 
     async compile(handle, input, retrieval) {
@@ -275,7 +289,7 @@ export class ContextPort {
             const source = { kind: 'rp_chat', controlId: rpIdentity.sourceRequest.controlId };
             const selected = emptyNativeContextPlan(rpIdentity.request, { model: { limits: {
                 contextTokens: request.tokenBudget.modelContextLimit, outputTokens: request.tokenBudget.responseReserve } } }, source);
-            const plan = { ...selected, items: [...rpHistoryItems(rpIdentity.context.messages, { source: 'native.rp-chat', ref: rpIdentity.context.prefixDigest }),
+            const plan = { ...selected, items: [...(this.#rpSkills.get(hashNativeDocument(request))?.items ?? []), ...rpHistoryItems(rpIdentity.context.messages, { source: 'native.rp-chat', ref: rpIdentity.context.prefixDigest }),
                 ...(recall?.evidence ?? []).map(item => ({ kind: 'context.history', id: item.memoryId, content: { role: 'user', content: item.content },
                     provenance: [{ source: 'native.rp-memory', ref: item.memoryId }] })), ...(parentResult ? [parentResult.item] : []), ...graphResults.map(item => item.item),
                 ...(rpIdentity.controlTask ? [{ kind: 'context.input', id: 'native-graph-task', content: JSON.stringify(rpIdentity.controlTask),

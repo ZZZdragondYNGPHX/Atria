@@ -6,7 +6,7 @@ import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/
 import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
 import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligence/evaluation/worker-bridge.js';
-import { runRp } from '../../src/native/agent-intelligence/evaluation/adapters.js';
+import { runRp } from '../../src/native/agent-intelligence/evaluation/native-adapters.js';
 import { comparisonCalibrationReady, gradeF3Report, f3JudgeLabels, pilotDevelopmentReadiness } from './m1-f3.js';
 import { projectActivationMatches } from './m1-resume.js';
 

@@ -28,11 +28,12 @@ consumer's split guard, not a security sandbox for code with filesystem access.
 
 `runner.js` executes all 12 cases exactly once through `adapters.js`:
 
-- RP: `runMainAgentLoop` → current Director Engine / AgentRuntime → injected
-  scripted generation → per-run tools → message takeover / finalization.
-  The captured request includes fixture-visible promise revisions. A private
-  clue is withheld by the fixture; this does not test the production Memory
-  resolver. Aborted v1 generation receives a late response after committed v2.
+- RP: frozen real narrator Plan → existing Native RP Host, original Run/Effect
+  authorities and Chat output claim. Scripted responses include explicitly
+  synthetic usage so the real settlement protocol can finish; these counters
+  remain nonempirical. Visible promise revisions are fixture history, while the
+  private clue is withheld. Cancellation and delayed delivery preserve the same
+  source message variant across distinct Runs; the old Run has zero output claims.
 - Project: `runNativeStudioAgentTask` → existing `executeNativeGeneration` and
   `nativeStudioClient` → isolated fetch bridge → `ProjectAgentService` →
   `StudioService` Workspace / validation / Preview / simulated dry-run / Review.
@@ -424,3 +425,17 @@ ExpressionPlan and reports a blind model observation. S34 runs one development
 pair per domain through the original optimizer and isolated worker. Its report
 does not satisfy the independent production promotion gate, fabricate human
 labels or publish a candidate.
+
+### Native benchmark migration checkpoint
+
+The S01 adapter now uses the production frozen Native RP evaluator, preserving
+its rubric, isolation, output claims and cancelled-late-delivery checks. Its
+source references use actual message/variant/Run identity. The scripted baseline
+now has 22 dispatched generation calls and 24 ordinary Studio tool calls; retired
+Director `write_message`/`finalize` tools no longer contribute. The old cancelled
+RP invocation stops before the provider send and is retained in variant evidence,
+not counted as a dispatched call. Synthetic counters are never paid usage.
+
+S06 comparison/live-bridge/judge fixture migration is unfinished at this checkpoint.
+Historical assertions and failure evidence remain; no empirical or publication
+success is claimed for those suites.

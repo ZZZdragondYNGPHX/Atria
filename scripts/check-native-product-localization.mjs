@@ -67,7 +67,7 @@ export function auditProductSource(source, filename, catalogs = locales) {
                 }
                 if (['button', 'heading', 'field'].includes(name) && filename.endsWith('studio-workspace.js')) index = 1;
                 if (['textInput', 'selectInput'].includes(name) && filename.endsWith('studio-workspace.js')) index = 3;
-                if (filename.includes('/orchestrator/workspace/') && !filename.endsWith('/shell.js') && ['el', 'button'].includes(name)) index = 1;
+                if (filename.endsWith('/agents/memory/workspace.js') && ['el', 'button'].includes(name)) index = 1;
                 if (index !== null) {
                     const explicitKey = name === 'translate' ? literal(node.arguments[1]) || literal(node.arguments[0])
                         : ['fmt', 'formatShellText', 'formatProductText'].includes(name) ? literal(node.arguments[3]) : null;
@@ -124,7 +124,7 @@ function capabilityCatalogs() {
             Property(node) { if (localeIds.includes(literal(node.key))) readObject(node.value, literal(node.key)); },
         };
     } });
-    for (const file of ['agents/orchestrator/i18n.js', 'agents/memory/i18n.js', 'skills/i18n.js', 'extensions/search-tools/main.js']) {
+    for (const file of ['agents/memory/i18n.js', 'skills/i18n.js', 'extensions/search-tools/main.js']) {
         linter.verify(fs.readFileSync(path.join(root, 'public/scripts', file), 'utf8'), { parserOptions: { ecmaVersion: 'latest', sourceType: 'module' }, rules: { 'product-catalog': 'error' } });
     }
     return catalogs;
@@ -158,7 +158,7 @@ export function auditProductLocalization() {
         }
     }
     const catalogs = capabilityCatalogs();
-    for (const directory of ['public/scripts/agents/orchestrator/workspace', 'public/scripts/agents/memory', 'public/scripts/skills', 'public/scripts/extensions/search-tools', 'public/scripts/extensions/regex']) {
+    for (const directory of ['public/scripts/agents/memory', 'public/scripts/skills', 'public/scripts/extensions/search-tools', 'public/scripts/extensions/regex']) {
         for (const filename of sourceFiles(directory)) {
             const source = fs.readFileSync(path.join(root, filename), 'utf8');
             for (const issue of auditProductSource(source, filename, catalogs)) findings.push({ filename, ...issue });

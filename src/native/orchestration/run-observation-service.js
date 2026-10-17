@@ -238,8 +238,11 @@ export class RunObservationService {
                 if (effects.some(effect => ['unknown', 'dispatching'].includes(effect.status))) diagnostics.push({ code: 'native_orchestration_effect_reconcile_required', severity: 'blocking' });
                 if (costs.status === 'pending') diagnostics.push({ code: 'native_orchestration_budget_unsettled', severity: 'blocking' });
                 if (costs.status === 'unavailable') diagnostics.push({ code: 'native_orchestration_budget_unavailable', severity: 'blocking' });
-                if (approvals.length) diagnostics.push({ code: 'native_orchestration_approval_channel_unavailable', severity: 'blocking' });
-                if (recoveryRequired) diagnostics.push({ code: 'native_orchestration_host_recovery_required', severity: 'blocking' });
+                if (approvals.some(item => item.status === 'pending' && item.expiresAt > this.now() && !item.reviewAvailable))
+                    diagnostics.push({ code: 'native_orchestration_approval_channel_unavailable', severity: 'blocking' });
+                if (approvals.some(item => item.status === 'pending' && item.expiresAt > this.now() && item.reviewAvailable))
+                    diagnostics.push({ code: 'native_orchestration_approval_pending', severity: 'info' });
+                if (recoveryRequired && !['completed', 'partial', 'failed', 'cancelled', 'stale'].includes(root.status)) diagnostics.push({ code: 'native_orchestration_host_recovery_required', severity: 'blocking' });
                 if (!['completed', 'partial', 'failed', 'cancelled', 'stale'].includes(root.status)) {
                     if (this.now() >= root.treeProgress.deadlineAt) diagnostics.push({ code: 'native_orchestration_deadline_reached', severity: 'blocking' });
                     for (const [counter, limit] of [['steps', 'maxSteps'], ['attempts', 'maxAttempts']]) {
@@ -261,7 +264,7 @@ export class RunObservationService {
                     attempts, effects, approvals, events: events.map(({ internalOrder: _order, ...event }) => event), costs, diagnostics,
                     reconciliationRequest: reconciliationRequest ? { commandId: reconciliationRequest.commandId, effectId: reconciliationRequest.effectId } : null,
                     controls: { cancel: !['completed', 'partial', 'failed', 'cancelled', 'stale'].includes(root.status) && !recoveryRequired,
-                        recover: recoveryRequired, resume: typeof this.resumeEffect === 'function' && root.parentRef === null && !root.cancelRequested
+                        recover: recoveryRequired && !['completed', 'partial', 'failed', 'cancelled', 'stale'].includes(root.status), resume: typeof this.resumeEffect === 'function' && root.parentRef === null && !root.cancelRequested
                             && root.sourceBinding.sourceRequest.purpose === 'formal_commit' && root.attemptRefs.length === 1
                             && root.pendingEffectRefs.length === 1 && resumable.length === 1 && !root.resultRefs.length && !root.outputClaims.length
                             && ['running', 'waiting_approval', 'blocked', 'reconciling'].includes(root.status), reconcile: typeof this.reconcileEffect === 'function' && !recoveryRequired

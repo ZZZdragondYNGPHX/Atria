@@ -19,7 +19,7 @@ function fields(value, names) {
 export function evaluationRevision() {
     // Pin dirty implementation bytes too; HEAD alone cannot identify a local evaluator.
     return hash(['comparison.js', 'evaluation-settings.js', 'live-bridge.js', 'runner.js', 'adapters.js', 'cases.js', 'report.js', 'budget.js',
-        '../../public/scripts/native/studio-agent.js', '../../public/scripts/agents/orchestrator/director-runtime.js',
+        '../../public/scripts/native/studio-agent.js', '../../src/native/orchestration/native-rp-generation.js',
         '../../src/native/project-agent.js', '../../src/native/authoring/studio-service.js', '../../src/native/task-scheduler.js']
         .map(name => [name, fs.readFileSync(new URL(name, import.meta.url), 'utf8')]));
 }

@@ -5,6 +5,7 @@ import { parseAui } from './aui-parser.js';
 import { parseA2uiComponent } from './a2ui-adapter.js';
 import { frontendTransactions } from './authority.js';
 import { compileFrontend } from './compiler.js';
+import { validateFrontendGraph } from './graph.js';
 import { hash } from './bridge.js';
 import { editJson, editNode, replaceSpan } from './source-edits.js';
 
@@ -85,7 +86,10 @@ export function inspectFrontend({ source, files, ownerId = 'package' }) {
         const compiled = compileFrontend({ source: path, files, mode: owner.mode, experienceContract: source.package.runtime?.experienceContract,
             transactions: () => frontendTransactions(source.package, source.package.entryPoints.find(item => item.entryPointId === ownerId), files) });
         const index = JSON.parse(compiled.files.get(compiled.entry));
-        validateFrontendCapabilities(owner, index, compiled.files, source.package.permissions);
+        const graph = validateFrontendGraph({ entry: compiled.entry, files: compiled.files, mode: owner.mode,
+            experienceContract: source.package.runtime?.experienceContract,
+            transactions: () => frontendTransactions(source.package, source.package.entryPoints.find(item => item.entryPointId === ownerId), files) });
+        validateFrontendCapabilities(owner, graph, compiled.files, source.package.permissions);
         const get = kind => JSON.parse(compiled.files.get(index.resources.find(ref => ref.kind === kind).path));
         if (index.resources.some(ref => ref.kind === 'media')) remoteOrigins = mediaOrigins(get('media'));
         const spans = get('provenance').spans;

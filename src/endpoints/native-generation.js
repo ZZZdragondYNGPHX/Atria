@@ -1,3 +1,4 @@
+import { createHostRouteResolver } from '../native/model-prompt-runtime/prompt-controls.js';
 import multer from 'multer';
 import { createImageRegistry, imageTargetFingerprint } from '../native/image-registry.js';
 import { VisualDirector } from '../native/visual-director.js';
@@ -108,7 +109,7 @@ function services() {
     host.turnOrchestration = new NativeNarratorOrchestrationAuthority({ engine: persistence._engine, sessionCore: core,
         memoryAuthority: new NativeMemoryAuthority({ core, settingsRepo: getSettingsRepo() }),
         projectAgent: agent, projectRepository: agent._repository,
-        modelResolver: new RouteResolver({ persistence: host.persistence, library: host.library, providers: host.providers }) });
+        modelResolver: createHostRouteResolver(host) });
     let commit = projectCommitAuthorities.get(persistence._engine);
     if (!commit || commit.agent !== agent) {
         commit = { agent, authority: new NativeProjectCommitAuthority({ engine: persistence._engine, projectAgent: agent }) };
@@ -385,7 +386,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             res.json({ ...result, automaticPublication: 'suppressed' });
         } catch (error) { res.status(error?.name === 'ConflictError' ? 409 : 400).json({ error: 'agent_evolution_controlled_label_failed' }); }
     });
-    for (const action of ['inspect', 'observe', 'preflight', 'catalog', 'declare', 'budget', 'configure', 'start', 'start-learning', 'mode', 'label', 'publish', 'rollback', 'reconcile', 'export', 'workspace']) router.post('/evolution/' + action, async (req, res) => {
+    for (const action of ['inspect', 'observe', 'preflight', 'catalog', 'declare', 'budget', 'configure', 'start', 'start-learning', 'mode', 'label', 'publish', 'rollback', 'reconcile', 'export']) router.post('/evolution/' + action, async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
@@ -884,7 +885,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         response.set('Cache-Control', 'private, no-store');
         try {
             fields(request.body, ['routeRef', 'role', 'requirements'], 'Route resolution');
-            const host = getHost(), resolver = new RouteResolver({ persistence: host.persistence, library: host.library, providers: host.providers });
+            const host = getHost(), resolver = createHostRouteResolver(host);
             response.json(await resolver.resolve({ handle, ...request.body }));
         } catch (error) { response.status(400).json({ error: /^generation_[a-z_]+$/.test(error.code || '') ? error.code : 'native_route_resolution_failed' }); }
     });

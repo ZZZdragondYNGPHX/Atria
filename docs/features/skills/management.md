@@ -103,7 +103,7 @@ Writes go through the same `.staging/` discipline as install: the new content is
 `SKILL.md` is special — you can edit it but you can't delete it from the editor (it's the required entry point). The skill itself can be deleted from the row action.
 
 ::: tip Don't want to hand-edit?
-The [AI Iteration Studio](/features/orchestrator/iteration-studio#authoring-skills-via-iter-studio) can write and modify skills for you — describe the change in a sentence and the Studio drafts it through the same install path. Useful when you want a new skill or a rewrite of an existing one without typing the Markdown yourself.
+The [AI Iteration Studio](/features/native-orchestration#authoring-skills-via-iter-studio) can write and modify skills for you — describe the change in a sentence and the Studio drafts it through the same install path. Useful when you want a new skill or a rewrite of an existing one without typing the Markdown yourself.
 :::
 
 ## Embed export — into presets and cards
@@ -148,5 +148,5 @@ This soft-fail discipline is deliberate. It means a missing skill never blocks a
 
 - [Skills overview](/features/skills/) — what a skill is, the three scopes
 - [Authoring skills](/features/skills/authoring) — write your own
-- [Orchestrator integration](/features/skills/orchestrator-integration) — wire skills to a profile
+- [Orchestrator integration](/features/native-orchestration) — wire skills to a profile
 - [Skills extension API](/development/extension-api/skills) — programmatic management from extensions

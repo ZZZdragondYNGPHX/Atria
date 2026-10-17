@@ -13,7 +13,6 @@ describe('R5 Runtime Role routing', () => {
             'narrator',
             'intent_resolver',
             'event_interpreter',
-            'orchestrator',
             'studio',
         ]);
 

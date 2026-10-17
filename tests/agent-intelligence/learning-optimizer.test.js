@@ -28,7 +28,7 @@ async function fixture(make, kind = 'project-prompt', options = {}) {
 function rehash(trajectory) { const { integrity: _old, ...content } = trajectory; trajectory.integrity = hash(content); return trajectory; }
 
 describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarness]])('%s learning optimizer', (_name, make) => {
-    test.each(['workspace-prompt', 'project-prompt'])('%s consumes current metadata into original candidates, evaluation and reversible publication', async kind => {
+    test.each(['project-prompt'])('%s consumes current metadata into original candidates, evaluation and reversible publication', async kind => {
         const f = await fixture(make, kind), before = await f.service.targets.capture(f.h.handle, f.scope, f.subject, f.target);
         const started = await f.service.startLearning(f.h.handle, f.input);
         await f.service.wait(f.h.handle, started.jobId);

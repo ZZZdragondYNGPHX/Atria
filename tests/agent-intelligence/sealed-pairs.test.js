@@ -36,7 +36,7 @@ test('sealed sources reject links at the source path and directory aliases', () 
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test.each(['rp', 'project'])('sealed %s observations require all three independent cases and three repetitions', async domain => {
+test.each(['rp', 'project'])('sealed %s observations require independent cases and explicit positive repetitions without promotion eligibility', async domain => {
     const evaluator = new EvolutionEvaluator({ host: {}, repository: {} });
     evaluator._evaluate = jest.fn(async () => ({ origin: 'host_pair_probe' }));
     const selection = { profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related', split: 'promotion', repetitions: 3,
@@ -44,11 +44,12 @@ test.each(['rp', 'project'])('sealed %s observations require all three independe
     const args = ['owner', { domain }, { baseline: {}, candidate: {} }, { baseline: {}, candidate: {} }, new AbortController().signal, async () => {}, async () => {}, async () => {}];
     await expect(evaluator.observePairs(...args, selection)).resolves.toEqual({ origin: 'host_pair_probe' });
     expect(evaluator._evaluate).toHaveBeenCalledWith(...args, selection);
-    for (const change of [{ repetitions: 1 }, { split: 'development' }, { caseIds: [promotion.caseId] }, { mode: 'source_probe' },
+    await expect(evaluator.observePairs(...args, { ...selection, repetitions: 1 })).resolves.toEqual({ origin: 'host_pair_probe' });
+    for (const change of [{ repetitions: 0 }, { repetitions: 1.5 }, { split: 'development' }, { caseIds: [promotion.caseId] }, { mode: 'source_probe' },
         { sealedDirectory: 'relative' }, { profileId: domain === 'rp' ? 'project.m1.related' : 'rp.m1.information' }]) {
         await expect(evaluator.observePairs(...args, { ...selection, ...change })).rejects.toThrow('Invalid sealed pair observation');
     }
     await expect(evaluator.compare(...args, selection)).rejects.toThrow('source_unready');
     expect(promotionDecision({ origin: 'host_pair_probe' }).eligible).toBe(false);
-    expect(evaluator._evaluate).toHaveBeenCalledTimes(1);
+    expect(evaluator._evaluate).toHaveBeenCalledTimes(2);
 });

@@ -29,8 +29,6 @@ const AGENT_SECTION_LABELS = Object.freeze({
     home: 'Agents',
     plans: 'Plans',
     runs: 'Runs',
-    orchestration: 'Orchestration',
-    run: 'Run',
     memory: 'Memory',
     diagnostics: 'Diagnostics',
 });
@@ -38,8 +36,6 @@ const AGENT_SECTION_LABELS = Object.freeze({
 const AGENT_SECTION_DESCRIPTIONS = Object.freeze({
     plans: 'Author agent graphs, validate them on the Host and publish immutable revisions.',
     runs: 'Follow Runs recorded by the Native Host: timeline, graph, fees and approvals.',
-    orchestration: 'Configure orchestration presets, agents and workflows.',
-    run: 'Inspect the current agent run, graph and execution timeline.',
     memory: 'Browse long-term memory, evidence and knowledge maintenance.',
     diagnostics: 'Inspect agent diagnostics, trace evidence and recovery details.',
 });
@@ -55,9 +51,7 @@ function normalizeAgentSection(route) {
     const childId = String(route?.child?.id || '').trim();
     if (!childId) return 'plans';
     if (['plans', 'runs'].includes(childId.split(':')[0])) return childId.split(':')[0];
-    if (childId.split(':')[0] === 'orchestration') return 'orchestration';
     if (childId === 'memory') return 'memory';
-    if (childId === 'run') return 'run';
     if (childId === 'agent-diagnostics') return 'diagnostics';
     return 'home';
 }
@@ -83,7 +77,6 @@ function routeDescriptor(route) {
             key: section === 'home' ? 'agents:home' : 'agents:workspace',
             kind: 'agents',
             section,
-            presetId: childId.startsWith('orchestration:') ? decodeURIComponent(childId.slice(14)) : null,
             title: AGENT_SECTION_LABELS[section] || 'Agents',
         });
     }
@@ -198,24 +191,26 @@ async function mountAgentsWorkspace({ document: documentRef, slot, descriptor, h
         return mountAgentsHub({ document: documentRef, slot, host });
     }
 
-    const panel = await import('../agents/orchestrator/workspace/panel.js');
+    if (descriptor.section === 'diagnostics') return mountDiagnosticsWorkspace({ document: documentRef, slot, isCurrent });
+    const { createMemoryWorkspace } = await import('../agents/memory/workspace.js');
     if (!isCurrent()) return {};
-    const root = panel.openWorkspace(descriptor.section, {
-        container: slot,
-        embedded: true,
-        presetId: descriptor.presetId,
-        onNavigate: section => host.openAgentSection(section),
-    });
-    return {
-        root,
-        dismissTransient: () => panel.dismissWorkspaceTransient(),
-        updateRoute(route) {
-            panel.setWorkspaceSection(normalizeAgentSection(route), { focus: false, presetId: route.child?.id?.startsWith('orchestration:') ? decodeURIComponent(route.child.id.slice(14)) : null });
-        },
-        dispose() {
-            panel.destroyWorkspace();
-        },
+    const root = documentRef.createElement('section'), inspector = documentRef.createElement('aside');
+    root.className = 'atria-memory-workspace'; inspector.className = 'atria-memory-inspector';
+    if (!documentRef.getElementById('atria-memory-css')) {
+        const css = documentRef.createElement('link'); css.id = 'atria-memory-css'; css.rel = 'stylesheet';
+        css.href = '/css/atria-memory.css'; documentRef.head.append(css);
+    }
+    slot.replaceChildren(root, inspector);
+    const el = (tag, text, parent, className = '') => {
+        const node = documentRef.createElement(tag); node.className = className;
+        if (text !== undefined) node.textContent = translateShellText(text);
+        parent?.append(node); return node;
     };
+    const button = (parent, text, action) => { const node = el('button', text, parent); node.type = 'button'; node.addEventListener('click', action); return node; };
+    const memory = createMemoryWorkspace({ getContext: () => globalThis.Atria.getContext() })(root, {
+        el, button, inspector, getView: () => ({ recalls: [], memoryUsers: () => [] }),
+    });
+    return { root, dispose() { if (typeof memory === 'function') memory(); else memory?.dispose?.(); root.remove(); inspector.remove(); } };
 }
 
 async function mountAgentsV3Workspace(args) {
@@ -584,10 +579,6 @@ export function createAtriaWorkspaceHost({
         return navigateToChild('play', { id: 'skills:' + encodeURIComponent(JSON.stringify({ scope, name })), label: 'Extensions', kind: 'workspace' }, { history: 'push', reason: 'workspace-skill' });
     }
 
-    function openOrchestration(presetId, label) {
-        return navigateToChild('agents', { id: 'orchestration:' + encodeURIComponent(presetId), label, kind: 'detail' }, { history: 'push', reason: 'workspace-orchestration-preset' });
-    }
-
     function openPlan(planId, label = '') {
         return navigateToChild('agents', { id: 'plans:' + String(planId || '').trim(), label: label || 'Plan', kind: 'detail' }, { history: 'push', reason: 'workspace-agents-plan' });
     }
@@ -750,7 +741,6 @@ export function createAtriaWorkspaceHost({
         openSession,
         openKnowledgeEntry,
         openSkill,
-        openOrchestration,
         openPlan,
         openLibraryResource,
         openRuntimeSection,
@@ -813,22 +803,6 @@ export function createAtriaWorkspaceHost({
             group: translateShellText('Workspaces'),
             keywords: ['agents', 'runs', 'timeline', 'approval', 'fees'],
             run: () => openAgentSection('runs'),
-        }),
-        shell.registry.register({
-            id: 'workspace.orchestration',
-            title: translateShellText('Open Orchestration Workspace'),
-            description: translateShellText('Configure orchestration presets, agents and workflows.'),
-            group: translateShellText('Workspaces'),
-            keywords: ['agents', 'orchestration', 'presets', 'workflows'],
-            run: () => openAgentSection('orchestration'),
-        }),
-        shell.registry.register({
-            id: 'workspace.agent-run',
-            title: translateShellText('Open Agent Run Workspace'),
-            description: translateShellText('Inspect the current agent run, graph and execution timeline.'),
-            group: translateShellText('Workspaces'),
-            keywords: ['agents', 'run', 'graph', 'timeline'],
-            run: () => openAgentSection('run'),
         }),
         shell.registry.register({
             id: 'workspace.memory',

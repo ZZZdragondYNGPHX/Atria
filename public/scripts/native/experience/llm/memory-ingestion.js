@@ -93,8 +93,8 @@ export function createPostTurnMemoryIngestion(options = {}) {
             }
 
             const producer = String(input.producer || '').trim();
-            if (!['narrator', 'director'].includes(producer)) {
-                throw new Error('Post-turn Memory ingestion producer must be \'narrator\' or \'director\'');
+            if (producer !== 'narrator') {
+                throw new Error('Post-turn Memory ingestion producer must be \'narrator\'');
             }
             const finalProse = String(input.finalProse ?? '').trim();
             if (!finalProse) {

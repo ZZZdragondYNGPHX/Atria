@@ -145,6 +145,6 @@ The trace shows a `validate_output_skeleton` row — the main agent runs the too
 ## Next
 
 - The same loop applies to other card-specific constraints — length targets, OOC conventions, world-specific terminology. Tell the Studio in plain language what "good" looks like, and let it assemble the orchestration for us.
-- For everything the `ctx` object exposes inside a custom tool body (`ctx.chat`, `ctx.characters`, etc.), see [Custom tools](/features/orchestrator/custom-tools).
+- For everything the `ctx` object exposes inside a custom tool body (`ctx.chat`, `ctx.characters`, etc.), see [Custom tools](/features/native-orchestration).
 - To grow a new globally-shared discipline as a skill, see [Shaping RP output with skills](/recipes/rp-skills-walkthrough).
 - If we are unhappy with one of the sub-agents the Studio came up with, the orchestration editor lets us edit it directly. The Studio aims to save time; it is not a required path.

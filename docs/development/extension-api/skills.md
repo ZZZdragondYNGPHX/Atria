@@ -442,5 +442,5 @@ The `ctx.skills` wrapper is intentionally thin — never richer than `getContext
 - [Skills overview](/features/skills/) — what a skill is, three scopes
 - [Authoring skills](/features/skills/authoring) — frontmatter + body conventions
 - [Skill management](/features/skills/management) — UI surface for the same operations
-- [Orchestrator integration](/features/skills/orchestrator-integration) — how the runtime filters by `skills.visible` / `deny`
+- [Orchestrator integration](/features/native-orchestration) — how the runtime filters by `skills.visible` / `deny`
 - [Extension API overview](/development/extension-api/) — other namespaces on `context.*`

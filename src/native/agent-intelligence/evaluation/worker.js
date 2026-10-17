@@ -16,8 +16,7 @@ const skillPort = new Proxy({}, { get(_target, name) {
 const emptyContext = () => ({ constants: { promptRoles: { SYSTEM: 0, USER: 1, ASSISTANT: 2 }, wiPosition: { before: 0, after: 1 } }, skills: skillPort });
 globalThis.Atria = { getContext: emptyContext };
 globalThis.fetch = async () => { throw new Error('evaluation_network_denied'); };
-// Legacy consumers are loaded only for their own historical evaluator. Native
-// Plan trials import only the Native Host adapters below, never Director.
+// All RP trials use the Native Host adapters. Historical protocols are rejected.
 const pending = new Map(); let serial = 0;
 function rpc(payload) {
     const id = ++serial;
@@ -33,8 +32,9 @@ process.on('message', async message => {
     try {
         const native = Boolean(message.settings?.baseline?.nativePlan);
         if (native !== Boolean(message.settings?.candidate?.nativePlan) && message.selection?.mode !== 'source_probe') throw new Error('evaluation_mixed_protocols');
-        if (!native) await import('../../../../public/scripts/agents/orchestrator/skill-resolution.js');
-        const { runRp, runProject } = await import(native ? './native-adapters.js' : './adapters.js');
+        const { runRp } = await import('./native-adapters.js');
+        const { runProject } = await import(native ? './native-adapters.js' : './adapters.js');
+        if (message.domain === 'rp' && !native) throw new Error('evaluation_legacy_protocol_unsupported');
         const { selectCases, loadFixture, publicCaseScenario, hash, canonical } = await import('./cases.js');
         const { createFrozenEvaluationBridge } = await import('./worker-bridge.js');
         const { readSealedSource } = await import('./sealed-sources.js');
@@ -99,7 +99,7 @@ process.on('message', async message => {
 // Parent owns cancellation / finite lifetime; no restart loop or detached work.
 process.on('disconnect', () => process.exit(0));
 if (process.argv.includes('--check')) {
-    await import('./adapters.js');
+    await Promise.all([import('./adapters.js'), import('./native-adapters.js')]);
     console.log('Evaluation consumer modules load');
 }
 const sealedCheck = process.argv.find(arg => arg.startsWith('--check-sealed='));

@@ -25,7 +25,7 @@ const COMMAND_ICON_RULES = Object.freeze([
     [/^navigate\.build$/, 'build'],
     [/^navigate\.agents$/, 'agents'],
     [/^navigate\.runtime$/, 'runtime'],
-    [/^workspace\.(agents|orchestration|agent-run|memory|agent-diagnostics)$/, 'agents'],
+    [/^workspace\.(agents|plans|runs|memory|agent-diagnostics)$/, 'agents'],
     [/^workspace\.build$/, 'build'],
     [/^workspace\.works$/, 'grid'],
     [/^workspace\.(worlds|world-info)$/, 'globe'],

@@ -161,3 +161,19 @@ export async function readNativeOperation(operationId, { headers = defaultHeader
     if (!response.ok) throw new OrchestrationRequestError('native_orchestration_operation_unavailable', { status: response.status });
     return response.json();
 }
+
+/** Prepare only: approval and dispatch remain separate Host operations. */
+export async function prepareProjectCommit(source, body, { fetchImpl = (...args) => fetch(...args), headers = defaultHeaders } = {}) {
+    const path = '/api/native/studio/projects/' + encodeURIComponent(source.projectId) + '/agent/tasks/' + encodeURIComponent(source.taskId) + '/commit/prepare';
+    let response;
+    try {
+        response = await fetchImpl(path, { method: 'POST', credentials: 'same-origin', headers: { ...headers(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    } catch {
+        throw new OrchestrationRequestError('request_outcome_unknown', { commandId: body.commandId, unknownOutcome: true });
+    }
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload) throw new OrchestrationRequestError(payload?.error ?? 'request_outcome_unknown', {
+        status: response.status, commandId: body.commandId, unknownOutcome: !payload || response.status >= 500 || payload.error === 'storage_commit_unknown',
+    });
+    return payload;
+}

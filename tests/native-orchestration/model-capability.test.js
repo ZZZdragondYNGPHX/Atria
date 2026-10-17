@@ -1,3 +1,4 @@
+import { createHostRouteResolver } from '../../src/native/model-prompt-runtime/prompt-controls.js';
 import { createOrchestrationAuthoringService } from '../../src/native/orchestration/authoring-service.js';
 import { validationDigest } from '../../src/native/orchestration/plan-repository.js';
 import { RouteResolver } from '../../src/native/model-prompt-runtime/route-resolver.js';
@@ -44,6 +45,30 @@ describe.each(mechanisms)('%s original %s mechanism validation', (_name, role, m
         const expected = { planId: draft.planId, expectedDraftVersion: draft.draftVersion, expectedDefinitionHash: draft.definitionHash };
         return { expected, report: await plans.validate(h.handle, expected) };
     }
+    test('authoring reads exact package resources through their existing owner and reports the original resolver code', async () => {
+        const packageId = createNativeId('package'), packageVersionId = createNativeId('packageVersion');
+        const origin = { scope: 'package', packageId, packageVersionId };
+        const resourceRef = (resourceType, resourceId) => ({ ...origin, resourceType, resourceId, revision: 'r1' });
+        const prompt = { ...seeded.prompt, stages: [{ stageId: 'stage.main', moduleRefs: [resourceRef('core.prompt-module', seeded.module.promptModuleId)] }] };
+        const resources = [['core.prompt-program', prompt], ['core.prompt-module', seeded.module], ['core.generation-profile', seeded.generation]]
+            .map(([resourceType, resource]) => ({ resourceType, resource, origin }));
+        const readers = [];
+        const resolver = createHostRouteResolver({ ...seeded, providers: Object.fromEntries(modelResolver.providers), packageInstaller: { open: async (owner, pkg, version) => {
+            readers.push([owner, pkg, version]);
+            if (owner !== h.handle || pkg !== packageId || version !== packageVersionId) throw new TypeError('wrong owner');
+            return { manifest: { resources } };
+        } } });
+        route = { ...route, promptProgramRef: resourceRef('core.prompt-program', prompt.promptProgramId), generationProfileRef: resourceRef('core.generation-profile', seeded.generation.generationProfileId) };
+        await seeded.persistence.saveRuntimeRoute(h.handle, route);
+        route = await seeded.persistence.getRuntimeRoute(h.handle, route.runtimeRouteId);
+        const value = input();
+        expect((await validateModelCapability({ handle: h.handle, ...value, resolver })).issues).toEqual([]);
+        expect(readers).toHaveLength(6);
+        resources.pop();
+        expect((await validateModelCapability({ handle: h.handle, ...value, resolver })).issues).toContainEqual(expect.objectContaining({
+            code: 'native_orchestration_dependency_invalid', reasonCode: 'generation_resource_origin_mismatch', severity: 'blocking',
+        }));
+    });
     test('exact original route and resources provide bounded mechanism evidence with no network or runtime grant', async () => {
         const { expected, report } = await validate();
         expect(report).toMatchObject({ status: 'valid', issues: [] });

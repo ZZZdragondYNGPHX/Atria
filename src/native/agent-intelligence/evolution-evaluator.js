@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { isAbsolute } from 'node:path';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
+import { createHostRouteResolver } from '../model-prompt-runtime/prompt-controls.js';
 import { GenerationService } from '../model-prompt-runtime/generation-service.js';
 import { PromptCompiler } from '../model-prompt-runtime/prompt-compiler.js';
 import { observedGenerationUsage } from '../adapters/generation-usage.js';
@@ -24,7 +25,7 @@ export function evolutionEvaluatorRevision() {
         '../orchestration/plan-repository.js', '../orchestration/plan-evolution-contracts.js', '../orchestration/authoring-service.js', '../../../public/shared/native-orchestration-contracts.js',
         '../orchestration/native-rp-generation.js', '../orchestration/native-turn-orchestration.js', '../orchestration/native-project-orchestration.js',
         '../orchestration/native-project-generation-authority.js', '../orchestration/execution-service.js', '../orchestration/run-repository.js',
-        '../orchestration/source-port.js', '../orchestration/context-port.js', '../orchestration/binding-source-authority.js', '../orchestration/model-port.js', '../orchestration/model-terminal-contracts.js',
+        '../orchestration/source-port.js', '../orchestration/context-port.js', '../orchestration/rp-skill-context.js', '../orchestration/binding-source-authority.js', '../orchestration/model-port.js', '../orchestration/model-terminal-contracts.js',
         '../orchestration/model-capability-authority.js', '../orchestration/budget-port.js', '../orchestration/generation-local-work.js',
         '../orchestration/attempt-controller.js', '../orchestration/transition-controller.js', '../orchestration/effect-controller.js', '../orchestration/effect-contracts.js', '../orchestration/retrieval-capability-authority.js', '../orchestration/context-retrieval-port.js', '../orchestration/context-retrieval-contracts.js', '../../storage/native-host-lifecycle.js',
         '../orchestration/controller-common.js', '../orchestration/review-controller.js', '../orchestration/graph-controller.js', '../orchestration/graph-revision-contracts.js', '../orchestration/attempt-settlement.js', '../orchestration/join-controller.js', '../orchestration/fanout-controller.js', '../orchestration/graph-costs.js', '../orchestration/rp-planner-profile.js', '../orchestration/rp-planner-expansion-profile.js', '../orchestration/rp-planner-contracts.js', '../orchestration/rp-review-profile.js', '../orchestration/rp-review-contracts.js', '../orchestration/rp-control-work-contracts.js', '../orchestration/rp-judge-profile.js', '../orchestration/rp-judge-contracts.js',
@@ -34,9 +35,8 @@ export function evolutionEvaluatorRevision() {
         '../orchestration/native-background-generation.js', '../orchestration/background-task-output-controller.js', '../orchestration/background-task-output-contracts.js', '../orchestration/output-transition-contracts.js', '../../../public/shared/native-task-contract.js',
         '../orchestration/project-review-output-controller.js', '../orchestration/project-review-output-contracts.js', '../orchestration/project-tool-contracts.js',
         '../orchestration/project-tool-receipts.js', '../orchestration/project-round-contracts.js', '../project-agent-executor.js', '../rp-run-control.js', '../rp-output-protocol.js',
-        '../model-prompt-runtime/prompt-compiler.js', '../model-prompt-runtime/route-resolver.js', '../model-prompt-runtime/generation-service.js', '../model-prompt-runtime/execution-utils.js',
+        '../model-prompt-runtime/prompt-controls.js', '../model-prompt-runtime/prompt-compiler.js', '../model-prompt-runtime/route-resolver.js', '../model-prompt-runtime/generation-service.js', '../model-prompt-runtime/execution-utils.js',
         '../model-prompt-runtime/contracts.js', '../model-prompt-runtime/resources.js', '../../skills/repository.js', '../../skills/versions.js',
-        '../../../public/scripts/agents/orchestrator/director-runtime.js', '../../../public/scripts/agents/orchestrator/skill-resolution.js',
         '../session-snapshot.js', '../session-maintenance.js', '../task-scheduler.js', '../timeline-index.js', '../state-delta.js', '../repositories/session-repo.js', '../adapters/native-session-context.js',
         '../../../public/shared/native-independent-preparation.js', '../../../public/scripts/native/context-compiler.js', '../../../public/scripts/native/exact-token-count.js',
         '../../../public/scripts/agents/memory/source-lifecycle.js', '../../../public/scripts/agents/memory/eligibility.js', '../../../public/scripts/agents/memory/index-reuse.js',
@@ -156,7 +156,7 @@ export class EvolutionEvaluator {
         const route = projectPromptRef ? { ...original, promptProgramRef: projectPromptRef } : original;
         const persistence = Object.create(this.host.persistence);
         persistence.getRuntimeRoute = async (owner, id) => id === routeId ? route : this.host.persistence.getRuntimeRoute(owner, id);
-        const resolver = new RouteResolver({ persistence, library: this.host.library, providers: this.host.providers });
+        const resolver = createHostRouteResolver({ ...this.host, persistence });
         const resolved = await resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: routeId }, role: route.role, requirements: ['generation.tools'] });
         const output = resolved.generation.output.maxTokens;
         if (resolved.connection.providerAdapter !== 'provider.openai-compatible' || resolved.resources.some(r => r.ref.scope !== 'library')

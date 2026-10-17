@@ -442,5 +442,5 @@ async function init(ctx) {
 - [Skills 概览](/zh-CN/features/skills/) —— 什么是 Skill、三种作用域
 - [创作 Skill](/zh-CN/features/skills/authoring) —— frontmatter + 正文约定
 - [Skill 管理](/zh-CN/features/skills/management) —— 同等操作的 UI 接口
-- [编排器集成](/zh-CN/features/skills/orchestrator-integration) —— 运行时如何按 `skills.visible` / `deny` 过滤
+- [编排器集成](/zh-CN/features/native-orchestration) —— 运行时如何按 `skills.visible` / `deny` 过滤
 - [扩展 API 概览](/zh-CN/development/extension-api/) —— `context.*` 上的其它命名空间

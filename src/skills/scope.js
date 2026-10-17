@@ -14,12 +14,6 @@
 // causing 400s for legitimate user input.
 const UNSAFE_CHARS = /[\x00-\x1f/\\<>:"|?*]/;
 
-// Orchestrator iteration modes. Kept as a set so decodeScopePath can
-// reject unknown modes at the parse boundary; encodeScopePath doesn't
-// re-check because the four modes are the only producers on the write
-// side (endpoints in tasks 2/5-9 validate at the API boundary).
-const ORCH_PRESET_MODES = new Set(['spec', 'agenda', 'loop', 'director']);
-
 function assertSafe(...segments) {
     for (const s of segments) {
         if (!s || typeof s !== 'string') {
@@ -54,9 +48,6 @@ export function encodeScopePath(scope) {
             // the user routes it.
             assertSafe(scope.name);
             return `preset/${scope.name}`;
-        case 'orch-preset':
-            assertSafe(scope.mode, scope.name);
-            return `orch-preset/${scope.mode}/${scope.name}`;
         case 'character':
             assertSafe(scope.characterFile);
             return `character/${scope.characterFile}`;
@@ -83,14 +74,6 @@ export function decodeScopePath(path) {
         case 'preset':
             if (parts.length !== 2) throw new Error('preset scope path: preset/<name>');
             return { kind: 'preset', name: parts[1] };
-        case 'orch-preset': {
-            if (parts.length !== 3) throw new Error('orch-preset scope path: orch-preset/<mode>/<name>');
-            const mode = parts[1];
-            if (!ORCH_PRESET_MODES.has(mode)) {
-                throw new Error(`unknown scope kind: orch-preset (invalid mode: ${mode})`);
-            }
-            return { kind: 'orch-preset', mode, name: parts[2] };
-        }
         case 'character':
             if (parts.length !== 2) throw new Error('character scope path: character/<file>');
             return { kind: 'character', characterFile: parts[1] };
@@ -115,7 +98,6 @@ export function scopeLabel(scope) {
         case 'project': return `project:${scope.projectId}`;
         case 'package': return `package:${scope.packageId}@${scope.packageVersionId}`;
         case 'preset': return `preset:${scope.name}`;
-        case 'orch-preset': return `orch:${scope.mode}/${scope.name}`;
         case 'character': return `character:${scope.characterFile}`;
         default: return 'unknown';
     }

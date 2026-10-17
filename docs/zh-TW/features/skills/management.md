@@ -103,7 +103,7 @@ URL 匯入器有意做窄 —— 它只抓一份 Markdown 檔案。再複雜（�
 `SKILL.md` 是特殊的 —— 你能編輯它但不能從編輯器裡刪它（它是必需入口）。Skill 本身可透過行內動作整體刪除。
 
 ::: tip 不想手動改？
-[AI 迭代工作台](/zh-TW/features/orchestrator/iteration-studio#用工作台編寫-skill) 也能替你寫和修改 Skill —— 用一句話描述變更，工作台透過相同的安裝路徑起草。要新建一個 Skill、或者把已有 Skill 重寫一遍而不想自己敲 Markdown 時很省事。
+[AI 迭代工作台](/zh-TW/features/native-orchestration#用工作台編寫-skill) 也能替你寫和修改 Skill —— 用一句話描述變更，工作台透過相同的安裝路徑起草。要新建一個 Skill、或者把已有 Skill 重寫一遍而不想自己敲 Markdown 時很省事。
 :::
 
 ## 嵌入匯出 —— 到預設和角色卡
@@ -148,5 +148,5 @@ Skill 在跟它所依賴的產物（角色卡、預設）一起分發時最有�
 
 - [Skills 概覽](/zh-TW/features/skills/) —— 什麼是 Skill、三種作用域
 - [創作 Skill](/zh-TW/features/skills/authoring) —— 寫自己的
-- [編排器整合](/zh-TW/features/skills/orchestrator-integration) —— 把 Skill 掛到 profile 上
+- [編排器整合](/zh-TW/features/native-orchestration) —— 把 Skill 掛到 profile 上
 - [Skill 擴充套件 API](/zh-TW/development/extension-api/skills) —— 從擴充套件程式設計式管理

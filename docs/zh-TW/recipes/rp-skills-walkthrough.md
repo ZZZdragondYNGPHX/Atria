@@ -45,6 +45,6 @@ Skills 是給 agent 用的知識包。導演派發某個 sub-agent（`intent_sco
 ## 相關
 
 - [Skills 概覽](/zh-TW/features/skills/) — skill 是什麼、scope 怎麼用、agent 怎麼讀
-- [Skills 整合](/zh-TW/features/orchestrator/skills) — 讓 skill 對某個 agent 可見
-- [AI 迭代工作台](/zh-TW/features/orchestrator/iteration-studio) — 工作台完整能力
+- [Skills 整合](/zh-TW/features/native-orchestration) — 讓 skill 對某個 agent 可見
+- [AI 迭代工作台](/zh-TW/features/native-orchestration) — 工作台完整能力
 - [創作 Skill](/zh-TW/features/skills/authoring) — SKILL.md 格式、frontmatter、多檔案

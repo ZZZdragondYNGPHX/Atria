@@ -2,7 +2,8 @@ import { expect, test } from '@jest/globals';
 import { PILOT_CASES, PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASES, RENEWAL_PILOT_CASE_SET_REVISION, CORRECTED_RENEWAL_PILOT_CASES,
     CONTINUATION_PILOT_CASES, CONTINUATION_PILOT_CASE_SET_REVISION,
     selectCases, loadFixture, validateCase, hash, canonical, publicCaseScenario } from '../../src/native/agent-intelligence/evaluation/cases.js';
-import { runRp, runProject } from '../../src/native/agent-intelligence/evaluation/adapters.js';
+import { runProject } from '../../src/native/agent-intelligence/evaluation/adapters.js';
+import { runRp } from '../../src/native/agent-intelligence/evaluation/native-adapters.js';
 import { withIsolatedRuntime } from './runner.js';
 import { f3ReportForStorage, readF3StoredReport } from './m1-f3-promotion.js';
 import { promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';

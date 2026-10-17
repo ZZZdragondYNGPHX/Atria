@@ -4,12 +4,13 @@
 import { createAtriaStatePanel } from '../../atria-shell/primitives.js';
 import { formatAtriaRelativeTime } from '../../atria-shell/components.js';
 import { formatShellText as fmt, translateShellText as tl } from '../../atria-shell/localization.js';
-import { classifyOrchestrationError, newCommandId, preflightRpRun, readNativeOperation, startRpRun } from './client.js';
+import { classifyOrchestrationError, newCommandId, prepareProjectCommit, preflightRpRun, readNativeOperation, startRpRun } from './client.js';
 import { nodeModelRoutePins } from '../../../shared/native-orchestration-contracts.js';
 import { GraphView, KIND_LABELS } from './graph-view.js';
 import { autoLayout } from './plan-draft.js';
 import { chipFor, describeDiagnostic, describeError, describeState, eventLabel, eventTone, formatDuration, formatTime, formatTokens, idText, seal, shortId, stateChip } from './ledger.js';
 import { banner, button, confirmInline, dismissInline, el } from './dom.js';
+import { nativeStudioClient } from '../studio-client.js';
 import { createSourcePicker, sourceLabel } from './source-picker.js';
 
 const WINDOW = 50;
@@ -82,6 +83,7 @@ export function mountRunList({ document: doc, root, client, onOpenRun, initialSo
     }
     function renderStart(review = null, fingerprint = null, message = '') {
         start.replaceChildren();
+        if (current?.domain === 'project' && current.taskId) return renderProjectStart();
         if (current?.domain !== 'rp_chat' || !locator) return;
         el(doc, 'h3', 'atria-orch-group__title', tl('Start a Run from this chat'), start);
         el(doc, 'p', 'atria-orch-group__hint', tl('Review first: the review reads the chat, the chosen Plan and its route, and sends nothing. Starting sends paid model requests within the reviewed budget.'), start);
@@ -99,6 +101,34 @@ export function mountRunList({ document: doc, root, client, onOpenRun, initialSo
         const row = el(doc, 'div', 'atria-button-row', null, start);
         const go = button(doc, tl('Start paid Run'), () => void begin(review, fingerprint, go), { variant: 'primary' });
         row.append(go, button(doc, tl('Discard review'), () => renderStart()));
+    }
+
+    function renderProjectStart() {
+        const source = { ...current };
+        el(doc, 'h3', 'atria-orch-group__title', tl('Prepare trusted commit'), start);
+        el(doc, 'p', 'atria-orch-group__hint', tl('Reads the current task review and chosen Plan. Preparing reserves local work; writing requires a separate trusted approval and dispatch.'), start);
+        const result = el(doc, 'div', 'atria-orch-status', null, start);
+        let pending = null;
+        const prepare = button(doc, tl('Prepare trusted commit'), async () => {
+            prepare.disabled = true;
+            try {
+                if (!pending) {
+                    const task = await nativeStudioClient.getAgentTask(source.projectId, source.taskId);
+                    if (task.status !== 'review' || !task.reviewHash) throw new Error(tl('The task needs a current review before preparing a commit.'));
+                    const binding = await client.getBinding(source, controller.signal);
+                    if (!binding) throw new Error(tl('Choose a published commit Plan for this task under Plans › Revisions.'));
+                    pending = { commandId: newCommandId(), planRef: binding.planRef, expectedSequence: task.sequence, expectedReviewHash: task.reviewHash,
+                        computeBudget: { maxRequests: 1, maxTokens: 1, localWork: { maxJobs: 4, maxItems: 16, maxInputBytes: 16777216 } } };
+                }
+                const prepared = await prepareProjectCommit(source, pending);
+                if (!controller.signal.aborted) onOpenRun(prepared.runId, source);
+            } catch (error) {
+                result.textContent = error.unknownOutcome ? tl('Outcome unknown. Check again with the same command; do not prepare a new commit.') : error.code ? describeError(error) : error.message;
+                if (!error.unknownOutcome) pending = null;
+                prepare.textContent = error.unknownOutcome ? tl('Check preparation outcome') : tl('Prepare trusted commit');
+            } finally { prepare.disabled = false; }
+        });
+        start.append(prepare);
     }
 
     async function prepare() {
@@ -126,16 +156,12 @@ export function mountRunList({ document: doc, root, client, onOpenRun, initialSo
 
     async function begin(review, fingerprint, node) {
         node.disabled = true; node.setAttribute('aria-busy', 'true');
-        let known;
-        try { known = new Set((await client.listRuns(current, null, 100, controller.signal)).items.map(run => run.runId)); } catch { known = new Set(); }
         try {
             const { operationId } = await startRpRun(client, review, fingerprint);
             renderStart(null, null, tl('The Host accepted the request. Waiting for its Run to appear…'));
             for (let i = 0; i < 40 && !controller.signal.aborted; i++) {
-                const runs = await client.listRuns(current, null, 25, controller.signal).catch(() => null);
-                const fresh = runs?.items.find(run => !known.has(run.runId));
-                if (fresh) return onOpenRun(fresh.runId, current);
                 const operation = await readNativeOperation(operationId).catch(() => null);
+                if (operation?.runId) return onOpenRun(operation.runId, current);
                 if (operation?.status === 'failed' || operation?.status === 'cancelled') {
                     renderStart(null, null, fmt('The Host operation ended as ${0} before a Run was visible (${1}). Nothing more is sent from here.', [operation.status, operation.errorCode ?? tl('no code')]));
                     return void load(current, true);

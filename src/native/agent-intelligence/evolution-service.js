@@ -15,9 +15,8 @@ const terminal = new Set(['failed', 'cancelled', 'invalidated', 'superseded', 'p
 const direction = target => target.kind === 'skill' ? 'skill' : target.kind.endsWith('strategy') ? 'orchestration' : 'prompt';
 const ref = item => ({ id: item.id, revision: item.revision, integrity: hash(item) });
 const candidateEntry = (doc, jobId, candidateId) => doc.jobs.find(j => j.id === jobId)?.candidates.find(c => c.candidateId === candidateId);
-const authorityKey = (scope, t) => hash(t.kind === 'skill' ? ['skill', t.scope, t.name] : t.kind.startsWith('workspace-') ? ['workspace', t.bindingSubject]
-    : ['plan-strategy', 'plan-prompt'].includes(t.kind) ? ['native-plan', t.bindingId]
-        : t.kind === 'project-strategy' ? ['task', scope.projectId, t.taskId] : ['project-prompt', scope.projectId, t.runtimeRouteId]);
+const authorityKey = (scope, t) => hash(t.kind === 'skill' ? ['skill', t.scope, t.name] : ['plan-strategy', 'plan-prompt'].includes(t.kind) ? ['native-plan', t.bindingId]
+    : t.kind === 'project-strategy' ? ['task', scope.projectId, t.taskId] : ['project-prompt', scope.projectId, t.runtimeRouteId]);
 
 export class AgentEvolutionService {
     constructor({ host, chatRepo, scheduler = nativeTaskScheduler, evaluator = null, targets = null, now = Date.now, observationOnly = false }) {
@@ -47,7 +46,7 @@ export class AgentEvolutionService {
         await this.experience.inspect(handle, input);
         const choices = await this.targets.catalog(handle, input.scope, input.subject);
         return { choices, routes: (await this.host.persistence.listRuntimeRoutes(handle))
-            .filter(r => r.role === (input.scope.domain === 'project' ? 'role.studio' : choices.some(choice => ['plan-strategy', 'plan-prompt'].includes(choice.target.kind)) ? 'role.narrator' : 'role.orchestrator')).map(r => ({ routeId: r.runtimeRouteId, role: r.role })) };
+            .filter(r => r.role === (input.scope.domain === 'project' ? 'role.studio' : 'role.narrator')).map(r => ({ routeId: r.runtimeRouteId, role: r.role })) };
     }
     async preflight(handle, input) {
         fields(input, ['scope', 'subject']);
@@ -67,12 +66,7 @@ export class AgentEvolutionService {
         await this.experience.inspect(handle, { scope: input.scope, subject: input.subject });
         return this.targets.declare(handle, input.scope, input.subject, input.target, input.expectedBaseHash);
     }
-    async workspace(handle, input) {
-        fields(input, []);
-        if (!isReadOnly()) for (const doc of await this.repository.list(handle)) if (doc.scope.domain === 'rp_chat') await this.reconcile(handle, { scope: doc.scope, subject: doc.subject });
-        const settings = await this.targets.settings.get(handle);
-        return { library: settings?.atri_capabilities?.orchestrator?.agentWorkspace || null, revision: settings?.atri_capabilities?.orchestrator?.agentWorkspaceRevision || 0 };
-    }
+
     async export(handle, input) {
         fields(input, ['scope', 'subject']);
         return { format: 'atria.agent-evolution', schemaVersion: 1, ...await this.inspect(handle, input) };
@@ -96,15 +90,14 @@ export class AgentEvolutionService {
         const nativeTarget = ['plan-strategy', 'plan-prompt'].includes(input.target.kind);
         const settings = input.mode === 'auto' || nativeTarget ? await this.targets.evaluationSettings(handle, input.scope, input.subject, input.target) : null;
         if (settings) {
-            if (settings.rpProfile && settings.rpProfile.mainAgent.nativeRouteRef?.runtimeRouteId !== input.routeId) conflict('agent_evolution_model_route_mismatch');
-            if (nativeTarget && settings.runtimeRouteId !== input.routeId) conflict('agent_evolution_model_route_mismatch');
+            if (settings.nativePlan && settings.runtimeRouteId !== input.routeId) conflict('agent_evolution_model_route_mismatch');
         }
         // Use the same frozen Native configuration for admission and comparison.
         // A configured automatic policy never grants quality eligibility.
-        const config = await this.evaluator.configuration(handle, input.routeId, input.mode === 'auto' && nativeTarget ? settings?.projectPromptRef ?? null : null,
-            input.mode === 'auto' && nativeTarget ? settings?.nativePlan ?? null : null);
+        const config = await this.evaluator.configuration(handle, input.routeId, input.mode === 'auto' && settings?.nativePlan ? settings?.projectPromptRef ?? null : null,
+            input.mode === 'auto' && settings?.nativePlan ? settings?.nativePlan ?? null : null);
         if (input.mode === 'auto' && input.scope.domain === 'project' && input.target.kind !== 'project-prompt' && config.route.projectPromptBindings?.some(b => b.projectId === input.subject)) conflict('agent_evolution_combined_configuration_requires_review');
-        if (config.route.role !== (input.scope.domain === 'project' ? 'role.studio' : nativeTarget ? 'role.narrator' : 'role.orchestrator')) throw new TypeError('Evaluation Route does not match this entrance');
+        if (config.route.role !== (input.scope.domain === 'project' ? 'role.studio' : 'role.narrator')) throw new TypeError('Evaluation Route does not match this entrance');
         const price = assertEvolutionPrice(input.price);
         if (input.mode === 'auto' && !(await this.repository.owner(handle))?.limits) conflict('agent_evolution_budget_required');
         const old = await this.repository.get(handle, input.scope, input.subject);
@@ -187,7 +180,7 @@ export class AgentEvolutionService {
         if (!(await this.repository.owner(handle))?.limits) conflict('agent_evolution_budget_required');
         const batch = await this._batch(handle, input.scope, input.subject, input.diagnosisId || null);
         const target = old.policy.target, capture = await this.targets.capture(handle, input.scope, input.subject, target), targetPin = hash(capture);
-        if (learning && (old.policy.mode !== 'review' || !['workspace-prompt', 'project-prompt'].includes(target.kind))) conflict('learning_optimizer_review_prompt_required');
+        if (learning && (old.policy.mode !== 'review' || !['plan-prompt', 'project-prompt'].includes(target.kind))) conflict('learning_optimizer_review_prompt_required');
         if (targetPin !== old.policy.targetPin) conflict('agent_evolution_authorized_base_changed');
         if (batch.diagnosis && batch.diagnosis.direction !== direction(target)) conflict('agent_evolution_target_diagnosis_mismatch');
         const learningPin = learning ? await learning() : null;
@@ -226,7 +219,7 @@ export class AgentEvolutionService {
     async _run(handle, scope, subject, id, capture, signal, fresh) {
         let { doc, job } = await fresh();
         await this.repository.mutate(handle, scope, subject, d => { d.jobs.find(j => j.id === id).status = 'running'; });
-        const nativeSettings = doc.policy.mode === 'auto' && ['plan-strategy', 'plan-prompt'].includes(job.target.kind)
+        const nativeSettings = doc.policy.mode === 'auto'
             ? await this.targets.evaluationSettings(handle, scope, subject, job.target) : null;
         const config = await this.evaluator.configuration(handle, doc.policy.routeId, nativeSettings?.projectPromptRef ?? null, nativeSettings?.nativePlan ?? null);
         if (!same(await this.targets.capture(handle, scope, subject, job.target), capture)) conflict('agent_evolution_base_changed');
@@ -260,7 +253,6 @@ export class AgentEvolutionService {
             const settings = { baseline: await this.targets.evaluationSettings(handle, scope, subject, job.target),
                 candidate: await this.targets.evaluationSettings(handle, scope, subject, job.target, candidate.candidateId) };
             if (settings.baseline.nativePlan && settings.baseline.runtimeRouteId !== doc.policy.routeId) conflict('agent_evolution_model_route_mismatch');
-            if (settings.baseline.rpProfile?.mainAgent?.nativeRouteRef?.runtimeRouteId && settings.baseline.rpProfile.mainAgent.nativeRouteRef.runtimeRouteId !== doc.policy.routeId) conflict('agent_evolution_model_route_mismatch');
             const configs = { baseline: await this.evaluator.configuration(handle, doc.policy.routeId, settings.baseline.projectPromptRef || null, settings.baseline.nativePlan ?? null),
                 candidate: await this.evaluator.configuration(handle, job.target.kind === 'plan-strategy' && job.target.fieldPath === 'routeRef' ? settings.candidate.runtimeRouteId : doc.policy.routeId, settings.candidate.projectPromptRef || null, settings.candidate.nativePlan ?? null) };
             if (!same(configs.baseline.model, configs.candidate.model) || !same(configs.baseline.connection, configs.candidate.connection) || !same(configs.baseline.generation, configs.candidate.generation)) conflict('agent_evolution_paired_configuration_mismatch');

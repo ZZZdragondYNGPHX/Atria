@@ -80,5 +80,5 @@ Prompt Manager、補全預設助手 (CPA)，以及任何最終走到「更新預
 ## 相關
 
 - [預設解耦](/zh-TW/improvements/preset-decoupling) — 把 API 憑證擋在角色卡外面的欄位分類器。
-- [編排預設](/zh-TW/features/orchestrator/presets) — 編排 profile 如何按名稱引用預設，以及「儲存到角色卡覆寫」如何內嵌它們。
+- [編排預設](/zh-TW/features/native-orchestration) — 編排 profile 如何按名稱引用預設，以及「儲存到角色卡覆寫」如何內嵌它們。
 - [改進總覽](/zh-TW/improvements/overview) — 完整改進清單。

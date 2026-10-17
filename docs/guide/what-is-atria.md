@@ -34,7 +34,7 @@ A character memory system based on knowledge graph structures. It organizes even
 
 Before the creative LLM generates a response, multiple agents are automatically run for plot analysis and orchestration. Three execution modes are available: Spec Workflow (predefined stages and nodes), Single Agent mode, and Agenda Planner (dynamic scheduling). Orchestration configurations can be bound to character cards and imported/exported along with them.
 
-→ [Orchestrator Documentation](/features/orchestrator/)
+→ [Orchestrator Documentation](/features/native-orchestration)
 
 ### Character Card Editing Assistant (CEA)
 

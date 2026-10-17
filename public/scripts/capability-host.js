@@ -15,7 +15,7 @@ export { getContext, SimpleMutex as ModuleWorkerWrapper };
 export const globalPluginNames = Object.freeze(['regex', 'search-tools']);
 const apis = new Map(), loadStates = new Map();
 export function registerCapabilityApi(name, api) {
-    if (!['orchestrator', 'memory-graph', 'game-runtime'].includes(name)) throw new TypeError('Unknown Atria capability');
+    if (!['memory-graph', 'game-runtime'].includes(name)) throw new TypeError('Unknown Atria capability');
     apis.set(name, api);
 }
 export function getCapabilityApi(name) { return apis.get(name); }
@@ -27,7 +27,7 @@ const defaultCapabilitySettings = () => ({
     note: { default: '', chara: [], wiAddition: [] }, variables: { global: {} }, attachments: [], character_attachments: {}, disabled_attachments: [],
 });
 export const capabilitySettings = defaultCapabilitySettings();
-const retainedKeys = new Set(['disabledPlugins', 'regex', 'regex_presets', 'regex_section_collapsed', 'note', 'variables', 'attachments', 'character_attachments', 'disabled_attachments', 'orchestrator', 'memory_graph', 'game-runtime', 'search_tools', 'atri_task_bindings']);
+const retainedKeys = new Set(['disabledPlugins', 'regex', 'regex_presets', 'regex_section_collapsed', 'note', 'variables', 'attachments', 'character_attachments', 'disabled_attachments', 'memory_graph', 'game-runtime', 'search_tools', 'atri_task_bindings']);
 export function primeCapabilitySettings(settings) {
     // Retain already-authored Atria capabilities once; never hydrate retired extension settings.
     const source = structuredClone(settings.atri_capabilities || {});
@@ -81,7 +81,6 @@ export function bootstrapCapabilities() {
         });
         await load('game-runtime', () => import('./native/experience/index.js'));
         await load('search-tools', () => import('./extensions/search-tools/index.js'));
-        await load('orchestrator', () => import('./agents/orchestrator/index.js'));
         await load('memory-graph', () => import('./agents/memory/index.js'));
         await eventSource.emit(event_types.EXTENSION_SETTINGS_LOADED);
     })();

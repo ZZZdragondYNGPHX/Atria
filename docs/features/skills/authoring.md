@@ -10,7 +10,7 @@ You don't have to type a SKILL.md by hand. Most users start one of two ways:
 
 | Route | Where | Good for |
 |---|---|---|
-| **Have the LLM write it** | [AI Iteration Studio](/features/orchestrator/iteration-studio#authoring-skills-via-iter-studio) | Just tell the Studio what you want in a sentence; it drafts the SKILL.md, installs it, optionally attaches it to an agent. Recommended starting point. |
+| **Have the LLM write it** | [AI Iteration Studio](/features/native-orchestration#authoring-skills-via-iter-studio) | Just tell the Studio what you want in a sentence; it drafts the SKILL.md, installs it, optionally attaches it to an agent. Recommended starting point. |
 | **Write it by hand** | [Skill management panel → Create new](/features/skills/management#tab-1-installed) | You already know exactly which sections you want and want full control over wording. |
 
 ![Inline skill editor with file tree + body pane](/screenshots/skills/rp-demo-8.5-editor-body-pasted.png)
@@ -184,5 +184,5 @@ If validation fails, the install or write rolls back atomically (writes go throu
 
 - [Skills overview](/features/skills/) — what a skill is, the three scopes
 - [Skill management](/features/skills/management) — install, import, export, scope migration
-- [Orchestrator integration](/features/skills/orchestrator-integration) — wire skills to a profile
+- [Orchestrator integration](/features/native-orchestration) — wire skills to a profile
 - [Skills extension API](/development/extension-api/skills) — programmatic `context.skills.*`

@@ -41,7 +41,7 @@ export function createNativeGenerationController({ runtime, host, run = runNativ
                 };
                 adapter = typeof host === 'function' ? host(requestSignal, guard, accepted) : host;
                 const guardedHost = { ...adapter };
-                for (const key of ['started', 'submitUser', 'commitAssistant', 'impersonate', 'gameApi', 'orchestratorApi', 'context', 'onChunk', 'onState']) {
+                for (const key of ['started', 'submitUser', 'commitAssistant', 'impersonate', 'gameApi', 'context', 'onChunk', 'onState']) {
                     if (typeof adapter[key] === 'function') guardedHost[key] = (...args) => { guard({ allowAbort: key === 'onState' }); return adapter[key](...args); };
                 }
                 return await run({ runtime, type, input, signal: requestSignal, quietPrompt, host: guardedHost,

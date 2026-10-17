@@ -55,6 +55,13 @@ export async function compileNativeContextMetered({ handle, port, request, bank,
     await assertCurrent();
     await bank.assertCurrent();
     checkCancellation(signal);
+    const skillCurrent = async () => { await assertCurrent(); await bank.assertCurrent(); };
+    await ContextPort.prototype.prepareRpSkills.call(port, handle, request, (kind, input, operation) => {
+        const attempt = { attemptId: bank.nextLocalWorkAttemptId(), requestId: workDescriptor.requestId, kind, estimatedItems: 1,
+            estimatedInputBytes: Buffer.byteLength(JSON.stringify(input), 'utf8'), targetFingerprint: hash({ path: workDescriptor.pathFingerprint, kind, input }) };
+        return runGenerationLocalWork({ signal, attempt, requireAdmission: true, assertCurrent: skillCurrent,
+            admit: work => bank.chargeLocalWork(limits, work), settle: ({ attempt, usage }) => bank.settleLocalWork(attempt.attemptId, usage) }, operation);
+    });
     const actualInput = await ContextPort.prototype.compilationDescriptor.call(port, handle, request);
     let retrievalScope;
     const node = root.graph.nodes.find(node => node.nodeId === request.inputRefs[0]?.nodeId);

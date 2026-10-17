@@ -5,10 +5,6 @@ import { evolutionFixture, runEvolution, labelAll } from './evolution-fixture.js
 import { selectCases, loadFixture } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { projectFixtureSource } from '../../src/native/agent-intelligence/evaluation/fixture-source.js';
 import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
-import { AgentEvidenceRepository } from '../../src/native/agent-intelligence/evidence-repository.js';
-import { observeEvolutionRp } from '../../src/native/agent-intelligence/evolution-observer.js';
-import { createWorkspaceHostRefresh } from '../../public/scripts/agents/orchestrator/workspace/host-refresh.js';
-import { workspaceHostProfile } from '../../public/scripts/agents/orchestrator/workspace/host-profile.js';
 
 const cleanup = [];
 afterEach(async () => { for (const fn of cleanup.splice(0)) await fn(); });
@@ -20,6 +16,7 @@ function syntheticProvider(kind, sends) {
         const content = body.messages.at(-1)?.content;
         let message;
         if (content?.includes('allowedDeclaration')) message = { content: JSON.stringify({ edits: [{ before: '', after: kind === 'rp-skill' ? '\nCandidate guidance' : '\nCandidate style' }], rationale: 'Synthetic wiring check only' }) };
+        else if (kind === 'rp-skill' && !content?.includes('dimensions')) message = { content: 'The NPC waits for your decision.' };
         else if (!body.tools?.length) {
             const input = JSON.parse(content);
             message = { content: JSON.stringify({ preference: 'tie', deltas: Object.fromEntries(input.dimensions.map(d => [d, 0])), rationale: 'Synthetic tie, no quality claim' }) };
@@ -32,7 +29,7 @@ function syntheticProvider(kind, sends) {
             const source = projectFixtureSource(fixture.projectName, entry.fixtureHash); source.project.displayName = fixture.proposedName; source.project.updatedAt = 20;
             message = { content: '', tool_calls: [wireCall('atri_agent_reset_operations', {}, 1), wireCall('atri_agent_set_plan', { summary: 'Synthetic rename', steps: [{ id: 'metadata', title: 'Rename metadata', impact: 'low' }] }, 2), wireCall('atri_agent_project_save', { source, stepId: 'metadata' }, 3), wireCall('atri_agent_prepare_review', {}, 4)] };
         }
-        if (kind === 'rp-skill' && message.content) message.content = '```json\n' + message.content + '\n```';
+        if (kind === 'rp-skill' && !content?.includes('allowedDeclaration') && !content?.includes('dimensions')) message = { content: 'The NPC waits for your decision.' };
         return json({ choices: [{ message }], usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } });
     };
 }
@@ -57,31 +54,9 @@ test.each(['rp-skill', 'project-prompt'])('production isolated worker uses origi
     expect(untouched.source.project.displayName).toBe(f.source.project.displayName);
 }, 120000);
 
-test('two browser snapshots reject stale local drafts and refresh the next accepted original Workspace profile', async () => {
-    const f = await evolutionFixture(makeTempFsEngineHarness, 'workspace-prompt'); cleanup.push(f.h.cleanup);
-    const old = await f.service.workspace(f.h.handle, {}), first = { agentWorkspace: structuredClone(old.library), agentWorkspaceRevision: old.revision }, second = structuredClone(first);
-    const read = () => f.service.workspace(f.h.handle, {}), refreshFirst = createWorkspaceHostRefresh(first, read), refreshSecond = createWorkspaceHostRefresh(second, read);
-    const oldProfile = workspaceHostProfile(first.agentWorkspace.presets[0]);
-    const { job, candidate } = await runEvolution(f); await labelAll(f, job, candidate);
-    second.agentWorkspace.presets[0].name = 'Unsaved browser change';
-    await expect(refreshSecond()).rejects.toThrow('changed locally'); await refreshFirst();
-    const pin = first.agentWorkspace.bindings.entries[0].promptVersionId;
-    expect(pin).toBe(candidate.candidateId); expect(oldProfile.mainAgent.systemPrompt).not.toBe(candidate.diff.after);
-    const version = first.agentWorkspace.promptVersions.candidates.find(c => c.candidateId === pin);
-    expect(workspaceHostProfile(version.desired, 'character', pin).mainAgent.systemPrompt).toBe(candidate.diff.after);
-});
 
-test('RP activation requires a matching new completed original evidence trace and preserves client provenance', async () => {
-    const f = await evolutionFixture(makeTempFsEngineHarness, 'workspace-prompt'); cleanup.push(f.h.cleanup);
-    const { job, candidate } = await runEvolution(f); await labelAll(f, job, candidate);
-    const evidence = new AgentEvidenceRepository({ engine: f.h.engine });
-    const previous = (await f.service.experience.repository.get(f.h.handle, f.scope, f.subject)).feedback[0].source.id;
-    const source = await evidence.get(f.h.handle, previous), begun = await evidence.begin(f.h.handle, { scope: f.scope, rootRunId: 'actual-next-run', origin: 'client_observation', sources: source.sources });
-    const trace = { schemaVersion: 1, missing: 0, reasons: [], events: [{ type: 'version.consumed', eventId: 'accepted-version', runId: 'actual-next-run', targetKind: 'workspace-prompt', presetId: f.target.presetId, versionId: candidate.candidateId }] };
-    await evidence.update(f.h.handle, begun.evidenceId, { sequence: 1, status: 'completed', trace, outputRef: source.outputRef }, 'client_observation');
-    await observeEvolutionRp(f.h.engine, f.h.handle, begun.evidenceId);
-    expect((await f.repository.get(f.h.handle, f.scope, f.subject)).publications[0].activation).toMatchObject({ origin: 'client_observation', evidenceId: begun.evidenceId, runId: 'actual-next-run' });
-});
+
+
 
 test('the original next Project request consumes its local Prompt pin while another Project keeps the shared Route default', async () => {
     const f = await evolutionFixture(makeTempFsEngineHarness, 'project-prompt'); cleanup.push(f.h.cleanup);

@@ -42,7 +42,6 @@ const ATRIA_PLUGIN_DIRS = new Set([
     'character-editor-assistant',
     'completion-preset-assistant',
     'memory-graph',
-    'orchestrator',
     'search-tools',
 ]);
 

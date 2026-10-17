@@ -70,7 +70,7 @@ export function createSourcePicker(doc, { client, signal, onChange = () => {}, i
         field(doc, tl('Project'), choose, { parent: detail, key: 'source.project' });
         const task = select(doc, [['', tl('Every task in this Project')]], { value: '' });
         field(doc, tl('Task'), task, { parent: detail, key: 'source.task' });
-        choose.addEventListener('change', async () => {
+        const updateProject = async () => {
             task.replaceChildren();
             el(doc, 'option', '', tl('Every task in this Project'), task).value = '';
             if (!choose.value) return emit(null);
@@ -78,8 +78,14 @@ export function createSourcePicker(doc, { client, signal, onChange = () => {}, i
             try {
                 const result = await nativeStudioClient.listAgentTasks(choose.value);
                 for (const item of Array.isArray(result) ? result : result.tasks ?? result.items ?? []) el(doc, 'option', '', fmt('${0} · ${1}', [item.intent || item.title || shortId(item.taskId), item.status ?? '']), task).value = item.taskId;
+                if (initial?.projectId === choose.value && initial.taskId && [...task.options].some(option => option.value === initial.taskId)) {
+                    task.value = initial.taskId;
+                    emit({ domain: 'project', projectId: choose.value, taskId: task.value });
+                }
             } catch (error) { status.textContent = describeError(error); }
-        });
+        };
+        choose.addEventListener('change', updateProject);
+        if (initial?.projectId) void updateProject();
         task.addEventListener('change', () => { if (choose.value) emit({ domain: 'project', projectId: choose.value, taskId: task.value || null }); });
     }
 

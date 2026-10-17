@@ -12,6 +12,7 @@ import { createHttpGenerationProvider } from '../../src/native/adapters/http-gen
 import { createNativeGenerationRouter } from '../../src/endpoints/native-generation.js';
 import { runNativePlayGeneration } from '../../public/scripts/native/play-generation.js';
 import { makeTempFsEngine } from '../storage/harness/fs-harness.js';
+import { projectSource, services as projectServices } from '../agent-intelligence/project-fixture.js';
 import { seedGenerationProfiles } from './helpers/generation-fixture.js';
 import { readPromptControls } from '../../src/native/model-prompt-runtime/prompt-controls.js';
 import { nativeTaskScheduler } from '../../src/native/task-scheduler.js';
@@ -92,13 +93,16 @@ async function fixture({ format = 'openai-compatible', stream = false, handler }
     cleanups.push(() => new Promise(resolve => { server.closeAllConnections(); server.close(resolve); }));
     const h = await makeTempFsEngine(); cleanups.push(h.cleanup);
     const seeded = await seedGenerationProfiles({ ...h, endpoint: `http://127.0.0.1:${server.address().port}/v1/chat/completions`, format, streaming: stream,
-        roles: ['narrator', 'studio', 'memory', 'search', 'orchestrator', 'intent_resolver', 'event_interpreter'] });
-    const projectId = createNativeId('project');
-    const project = { source: { project: { projectId }, package: {}, resources: [] }, revision: { revision: 'r1' } };
+        roles: ['narrator', 'studio', 'memory', 'search', 'intent_resolver', 'event_interpreter'] });
+    const svc = projectServices(h);
+    const project = structuredClone(await svc.studio.createProject(h.handle, projectSource()));
+    const projectId = project.source.project.projectId;
+    project.source.resources = [];
+    const task = await svc.agent.createTask(h.handle, projectId, { intent: 'Exercise Native generation transport', baseRevision: project.revision.revision });
     const secretPort = { resolveSecret: jest.fn(async (_, owner) => { expect(owner.handle).toBe(h.handle); return 'p4-credential'; }) };
-    const host = new NativeGenerationHost({ ...seeded, studio: { getProject: async () => project }, agent: { getContext: async () => ({ task: { status: 'planned', baseRevision: 'r1' }, tools: [] }) },
+    const host = new NativeGenerationHost({ ...seeded, studio: { getProject: async () => project }, agent: svc.agent,
         providers: { ['provider.' + format]: createHttpGenerationProvider({ format }) }, secretPort });
-    const request = { role: 'narrator', projectId, revision: 'r1', requestId: 'req-1', messages: [{ role: 'user', content: 'Selected task' }] };
+    const request = { role: 'narrator', projectId, taskId: task.taskId, revision: project.revision.revision, requestId: 'req-1', messages: [{ role: 'user', content: 'Selected task' }] };
     return { ...seeded, h, host, request, requests, secretPort, project };
 }
 
@@ -177,7 +181,7 @@ describe('P4 authenticated Native generation host and real HTTP transport', () =
         const f = await fixture();
         const results = await Promise.all(f.routes.map(route => f.host.execute(f.h.handle, { ...f.request, role: route.role.slice(5), messages: [{ role: 'user', content: route.role }] })));
         expect(new Set(results.map(result => result.snapshot.promptProgramRef.resourceId)).size).toBe(1);
-        expect(new Set(f.requests.map(item => item.body.messages.find(message => message.role === 'user' && message.content.startsWith('role.')).content)).size).toBe(7);
+        expect(new Set(f.requests.map(item => item.body.messages.find(message => message.role === 'user' && message.content.startsWith('role.')).content)).size).toBe(6);
     });
 
     test('stream chunks are delivered but a credential split across chunks never escapes', async () => {
@@ -217,7 +221,7 @@ describe('P4 authenticated Native generation host and real HTTP transport', () =
         await expect(f.host.execute(f.h.handle, { ...f.request, routeRef: { scope: 'player', runtimeRouteId: createNativeId('runtimeRoute') } })).rejects.toMatchObject({ code: 'native_generation_route_missing' });
         await f.persistence.saveRuntimeRoute(f.h.handle, { ...f.routes[0], runtimeRouteId: createNativeId('runtimeRoute') });
         await expect(f.host.execute(f.h.handle, f.request)).rejects.toMatchObject({ code: 'native_generation_route_ambiguous' });
-        f.host.agent.getContext = async () => ({ task: { status: 'review', baseRevision: 'r1' }, tools: [] });
+        f.host.agent.getContext = async () => ({ task: { status: 'review', baseRevision: f.request.revision }, tools: [] });
         await expect(f.host.execute(f.h.handle, { ...f.request, role: 'studio', taskId: 'task-1' })).rejects.toMatchObject({ code: 'native_generation_task_stopped' });
         expect(f.secretPort.resolveSecret).not.toHaveBeenCalled();
     });
@@ -225,14 +229,14 @@ describe('P4 authenticated Native generation host and real HTTP transport', () =
     test('tool calls and structured output are real protocol fields; tool transcript survives', async () => {
         const f = await fixture({ handler: (_req, res) => {
             res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ choices: [{ message: { content: null, tool_calls: [{ id: 'call-1', type: 'function', function: { name: 'inspect', arguments: '{"id":1}' } }] } }] }));
+            res.end(JSON.stringify({ choices: [{ message: { content: null, tool_calls: [{ id: 'call-1', type: 'function', function: { name: 'atri_agent_read_skill', arguments: '{"id":1}' } }] } }] }));
         } });
-        const tools = [{ type: 'function', function: { name: 'inspect', parameters: { type: 'object' } } }];
+        const tools = [{ type: 'function', function: { name: 'atri_agent_read_skill', parameters: { type: 'object' } } }];
         const outputContract = { name: 'result', schema: { type: 'object', properties: {} }, strict: true };
         const result = await f.host.execute(f.h.handle, { ...f.request, tools, outputContract,
-            messages: [{ role: 'assistant', content: '', tool_calls: [{ id: 'old', type: 'function', function: { name: 'inspect', arguments: '{}' } }] },
+            messages: [{ role: 'assistant', content: '', tool_calls: [{ id: 'old', type: 'function', function: { name: 'atri_agent_read_skill', arguments: '{}' } }] },
                 { role: 'tool', tool_call_id: 'old', content: 'done' }] });
-        expect(result.response.toolCalls[0]).toMatchObject({ name: 'inspect', args: { id: 1 } });
+        expect(result.response.toolCalls[0]).toMatchObject({ name: 'atri_agent_read_skill', args: { id: 1 } });
         expect(f.requests[0].body.tools).toEqual(tools);
         expect(f.requests[0].body.response_format.json_schema).toEqual(outputContract);
         expect(f.requests[0].body.messages.some(item => item.role === 'tool' && item.tool_call_id === 'old')).toBe(true);
@@ -354,16 +358,18 @@ describe('P4 Native Play publication uses the existing lifecycle', () => {
         expect(f.events).toContain('abort'); expect(f.events).not.toContain('assistant:normal');
     });
 
-    test.each(['spec', 'director'])('Native %s orchestration stays on the existing publication boundary', async mode => {
+    test('Native generation executes one narrator request and commits one final body', async () => {
         const f = hostFixture();
-        f.host.orchestratorApi = () => ({ getGameRuntimeMode: () => mode,
-            runGameGuidance: async () => ({ guidance: 'Keep the harbour closed.' }),
-            runGameDirector: async () => ({ status: 'completed', finalProse: 'directed reply' }) });
-        const execute = jest.fn(async request => { expect(request.messages.at(-1).content).toContain('Keep the harbour closed.'); return { assistantText: 'reply' }; });
+        const execute = jest.fn(async request => {
+            expect(request.role).toBe('narrator');
+            expect(request.messages).toEqual([]);
+            return { assistantText: 'reply' };
+        });
         await runNativePlayGeneration({ ...f, type: 'normal', execute });
-        expect(execute).toHaveBeenCalledTimes(mode === 'director' ? 0 : 1);
+        expect(execute).toHaveBeenCalledTimes(1);
         expect(f.events).toEqual(['prepare', 'started', 'assistant:normal', 'persist', 'ended']);
     });
+
 });
 
 describe('P6 scoped catalog and authoring preview', () => {

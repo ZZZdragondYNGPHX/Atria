@@ -735,8 +735,8 @@ describe('A3 Game LLM Runtime vertical slice', () => {
         });
 
         await expect(runtime.finalizeMemory(turn, {
-            producer: 'director',
-            finalProse: 'Final director body.',
+            producer: 'narrator',
+            finalProse: 'Final narrator body.',
         })).rejects.toThrow(/Post-turn Memory ingestion mutated World State/);
     });
 

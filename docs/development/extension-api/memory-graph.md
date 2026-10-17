@@ -1045,6 +1045,6 @@ if (groups.length > 0) {
 
 ## See Also
 
-- Companion: the orchestrator opens a session via `getExtensionApi('memory-graph').openSession(context)` and stashes the resulting session on `__memoryGraphSession` for its `memory_*` loop tools — see [Director runtime](/features/orchestrator/director).
+- Companion: the orchestrator opens a session via `getExtensionApi('memory-graph').openSession(context)` and stashes the resulting session on `__memoryGraphSession` for its `memory_*` loop tools — see [Director runtime](/features/native-orchestration).
 - Related extension API: [Plugin Integration](/development/extension-api/plugin-integration) for the broader extension API registry that publishes `'memory-graph'` alongside other extension entry points.
-- To register custom orchestration tools (memory-graph itself does this for its read and write tools), see [Orchestrator Tools API](./orchestrator-tools.md).
+- To register custom orchestration tools (memory-graph itself does this for its read and write tools), see [Orchestrator Tools API](../../features/native-orchestration.md).

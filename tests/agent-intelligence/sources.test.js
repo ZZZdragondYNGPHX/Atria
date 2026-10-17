@@ -6,7 +6,6 @@ import {
 import { ChatRepo } from '../../src/storage/repositories/chat-repo.js';
 import { hashNativeDocument } from '../../src/native/repositories/common.js';
 import { createGitClient } from '../../src/git/client.js';
-import { createResult } from '../../public/scripts/lib/orchestration-engine/results.js';
 import { makeTempFsEngineHarness, makeTempSqliteEngineHarness } from '../storage/harness/contract-harness.js';
 import { installFixture } from '../native/helpers/session-fixture.js';
 import { artifactFixture } from '../native/helpers/task-artifact-fixture.js';
@@ -65,7 +64,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
             const forged = structuredClone(set); alter(forged.references[0]);
             expect((await evaluate(resign(forged))).status).toBe('incomplete');
         }
-        await expect(evaluate(createResult({ runId: 'run', nodeId: 'node', agentId: 'agent', value: 'success' }))).rejects.toThrow();
+        await expect(evaluate({ schemaVersion: 1, runId: 'run', nodeId: 'node', agentId: 'agent', value: 'success' })).rejects.toThrow();
     });
 
     test('finite source, scan and UTF-8 expansion budgets never truncate success', async () => {
@@ -139,33 +138,35 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
 
 describe('Native Artifact EvidenceSet consumer', () => {
     const selected = f => ({ kind: 'artifact', invocationId: 'npc-1', grant: { taskId: f.task.id, variantId: 'default', usageId: 'summary' } });
-    test.each(['valid', 'branch', 'hash', 'dependency', 'epoch', 'deleted', 'operation-grant'])('%s keeps original task artifact authority', async kind => {
+    async function setup() {
         const f = artifactFixture('reusable');
-        // Isolated authority fixture only; real SessionCore storage is covered above.
-        const core = { load: async () => f.base };
-        const service = new AgentEvidenceService({ sessionCore: core });
+        const service = new AgentEvidenceService({ sessionCore: { load: async () => f.base } });
         const scope = { domain: 'rp_session', sessionId: f.base.session.sessionId };
         const set = await service.capture('owner', scope, [selected(f)], budget);
-        const before = structuredClone(f.base);
+        return { f, service, scope, set };
+    }
+    test('valid evidence keeps original task artifact authority without consumption', async () => {
+        const { f, service, scope, set } = await setup(), before = structuredClone(f.base);
+        const result = await service.evaluate('owner', scope, set, budget, { expand: true });
+        expect(result.content).toEqual([{ quantity: 2 }]);
+        expect(f.base).toEqual(before);
+        expect(f.record).not.toHaveProperty('consumptions');
+    });
+    test('an invented operation grant is incomplete', async () => {
+        const { service, scope, set } = await setup(), forged = structuredClone(set);
+        forged.references[0].selector.grant.usageId = 'trade';
+        expect((await service.evaluate('owner', scope, resign(forged), budget)).status).toBe('incomplete');
+    });
+    test.each(['branch', 'hash', 'dependency', 'epoch', 'deleted'])('%s keeps original task artifact authority', async kind => {
+        const { f, service, scope, set } = await setup();
         if (kind === 'branch') f.base.revision.branchId = createNativeId('branch');
         if (kind === 'hash') f.record.payload.quantity = 3;
         if (kind === 'dependency') f.base.states.atri_lifecycle.domains.public_notes.records[0].value.text = 'Changed';
         if (kind === 'epoch') f.base.states.atri_lifecycle.scopes.session.epoch++;
         if (kind === 'deleted') f.base.states.atri_task_results.records = [];
-        if (kind === 'operation-grant') {
-            const forged = structuredClone(set); forged.references[0].selector.grant.usageId = 'trade';
-            expect((await service.evaluate('owner', scope, resign(forged), budget)).status).toBe('incomplete');
-            return;
-        }
         const result = await service.evaluate('owner', scope, set, budget, { expand: true });
-        if (kind === 'valid') {
-            expect(result.content).toEqual([{ quantity: 2 }]);
-            expect(f.base).toEqual(before);
-            expect(f.record).not.toHaveProperty('consumptions');
-        } else {
-            expect(result.status).toBe('incomplete');
-            expect(result).not.toHaveProperty('content');
-        }
+        expect(result.status).toBe('incomplete');
+        expect(result).not.toHaveProperty('content');
     });
 });
 

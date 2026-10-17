@@ -144,6 +144,6 @@
 ## 接下來
 
 - 這一流程同樣適用於「重輸出長度」「重 OOC 規範」「重世界觀禁詞」一類專屬約束——把「什麼是好」用一句話告訴工作台，由它替我們拼裝編排。
-- 想瞭解每個自訂工具在工具體內能取得的上下文（`ctx.chat`、`ctx.characters` 等），見 [自訂工具](/zh-TW/features/orchestrator/custom-tools)。
+- 想瞭解每個自訂工具在工具體內能取得的上下文（`ctx.chat`、`ctx.characters` 等），見 [自訂工具](/zh-TW/features/native-orchestration)。
 - 想為工作台再裝一條全域通用的 Skill，見 [用 Skills 調教 RP 輸出](/zh-TW/recipes/rp-skills-walkthrough)。
 - 若對工作台改出的某個子代理不滿意，回到編排編輯器手動編輯即可——工作台旨在提效，並非必經之路。

@@ -10,7 +10,7 @@
 
 | 路徑 | 在哪 | 適合 |
 |---|---|---|
-| **讓 LLM 替你寫** | [AI 迭代工作台](/zh-TW/features/orchestrator/iteration-studio#用工作台編寫-skill) | 在工作台裡用一句話告訴它你想要什麼；它起草 SKILL.md、安裝好，順便（如果你交代了）掛到對應位置。推薦先用這條。 |
+| **讓 LLM 替你寫** | [AI 迭代工作台](/zh-TW/features/native-orchestration#用工作台編寫-skill) | 在工作台裡用一句話告訴它你想要什麼；它起草 SKILL.md、安裝好，順便（如果你交代了）掛到對應位置。推薦先用這條。 |
 | **自己手寫** | [Skill 管理面板 → 新建](/zh-TW/features/skills/management#tab-1-installed-已安裝) | 你已經清楚知道想要哪些段落、想自己定措辭、想完全控制文字。 |
 
 ![內嵌 Skill 編輯器 — 檔案樹 + 正文區](/screenshots/skills/rp-demo-8.5-editor-body-pasted.png)
@@ -183,5 +183,5 @@ metadata:
 
 - [Skills 概覽](/zh-TW/features/skills/) —— 什麼是 Skill、三種作用域
 - [Skill 管理](/zh-TW/features/skills/management) —— 安裝、匯入、匯出、遷移作用域
-- [編排器整合](/zh-TW/features/skills/orchestrator-integration) —— 把 Skill 掛到 profile 上
+- [編排器整合](/zh-TW/features/native-orchestration) —— 把 Skill 掛到 profile 上
 - [Skill 擴充套件 API](/zh-TW/development/extension-api/skills) —— 程式設計式 `context.skills.*`

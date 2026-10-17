@@ -7,7 +7,7 @@ import { getNativeSessionServices } from './native-session.js';
 import { getNativeStudioServices } from './native-studio.js';
 import { RpRunControl } from '../native/rp-run-control.js';
 import { getNativeGenerationHost } from './native-generation.js';
-import { RouteResolver } from '../native/model-prompt-runtime/route-resolver.js';
+import { createHostRouteResolver } from '../native/model-prompt-runtime/prompt-controls.js';
 import { RunObservationService } from '../native/orchestration/run-observation-service.js';
 import { getNativeReviewOrigin } from '../native/orchestration/review-origin.js';
 
@@ -15,7 +15,7 @@ const observationServices = new WeakMap();
 const services = () => {
     const engine = getStorageEngine(), { core } = getNativeSessionServices(), { studio, agent } = getNativeStudioServices();
     const host = getNativeGenerationHost();
-    const modelResolver = new RouteResolver({ persistence: host.persistence, library: host.library, providers: host.providers });
+    const modelResolver = createHostRouteResolver(host);
     const sources = { sessionCore: core, studio, projectAgent: agent, rpControl: new RpRunControl({ engine }), modelResolver, toolHost: host };
     const review = getNativeReviewOrigin(engine);
     let observations = observationServices.get(engine);

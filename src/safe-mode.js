@@ -39,7 +39,7 @@ export async function applyPendingSafeMode(dataRoot) {
     let userCount = 0;
     for (const handle of handles) {
         const settings = (await repo.get(handle)) ?? {};
-        const retained = new Set(['disabledPlugins', 'regex', 'regex_presets', 'regex_section_collapsed', 'character_allowed_regex', 'preset_allowed_regex', 'note', 'variables', 'attachments', 'character_attachments', 'disabled_attachments', 'orchestrator', 'memory_graph', 'game-runtime', 'search_tools']);
+        const retained = new Set(['disabledPlugins', 'regex', 'regex_presets', 'regex_section_collapsed', 'character_allowed_regex', 'preset_allowed_regex', 'note', 'variables', 'attachments', 'character_attachments', 'disabled_attachments', 'memory_graph', 'game-runtime', 'search_tools']);
         const capabilities = Object.fromEntries(Object.entries(settings.atri_capabilities || settings.extension_settings || {}).filter(([key]) => retained.has(key)));
         const existing = Array.isArray(capabilities.disabledPlugins) ? capabilities.disabledPlugins : [];
         const merged = globalPlugins;

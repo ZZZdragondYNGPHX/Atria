@@ -73,6 +73,12 @@ describe.each(CONTRACT_HARNESSES)('$name original Project Commit HTTP', ({ make 
         try {
             const host = new NativeGenerationHost({ projectCommitAuthority: f.authority }), app = appFor(host, { services: f, handle: f.h.handle });
             const base = pathFor(f.projectId, f.taskId), body = { ...f.input }; delete body.projectId; delete body.taskId;
+            const taskResponse = await request(app).get(base.replace('/commit', ''));
+            expect(taskResponse.status).toBe(200);
+            expect(taskResponse.body.reviewHash).toBe(body.expectedReviewHash);
+            expect(taskResponse.body.sequence).toBe(body.expectedSequence);
+            body.expectedReviewHash = taskResponse.body.reviewHash;
+
             const response = await request(app).post(base + '/prepare').send(body);
             expect(response.status).toBe(200); expect(response.headers['cache-control']).toBe('no-store');
             expect(response.body.status).toBe('waiting_approval');
@@ -97,6 +103,12 @@ describe.each(CONTRACT_HARNESSES)('$name original Project Commit HTTP', ({ make 
         try {
             const host = new NativeGenerationHost({ projectCommitAuthority: f.authority }), app = appFor(host, { services: f, handle: f.h.handle });
             const base = pathFor(f.projectId, f.taskId), body = { ...f.input }; delete body.projectId; delete body.taskId;
+            const taskResponse = await request(app).get(base.replace('/commit', ''));
+            expect(taskResponse.status).toBe(200);
+            expect(taskResponse.body.reviewHash).toBe(body.expectedReviewHash);
+            expect(taskResponse.body.sequence).toBe(body.expectedSequence);
+            body.expectedReviewHash = taskResponse.body.reviewHash;
+
             const preparedResponse = await request(app).post(base + '/prepare').send(body);
             expect(preparedResponse.status).toBe(200);
             const prepared = preparedResponse.body, effect = { runId: prepared.runId, effectId: prepared.effectId };

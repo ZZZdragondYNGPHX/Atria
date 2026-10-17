@@ -325,7 +325,7 @@ try {
     const { createLiveBridge } = await import('./live-bridge.js');
     const { createFrozenEvaluationBridge } = await import('../../src/native/agent-intelligence/evaluation/worker-bridge.js');
     const { NativeGenerationHost } = await import('../../src/native/adapters/generation-host.js');
-    const { runRp } = await import('../../src/native/agent-intelligence/evaluation/adapters.js');
+    const { runRp } = await import('../../src/native/agent-intelligence/evaluation/native-adapters.js');
     const { selectCases, loadFixture, canonical } = await import('../../src/native/agent-intelligence/evaluation/cases.js');
     for (const kind of pilotScope?.domainOrder || ['rp-skill', 'project-prompt']) {
         if (f3Promotion && kind !== f3Scope.promotionKind) continue;

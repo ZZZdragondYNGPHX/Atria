@@ -133,29 +133,6 @@ describe('R5 post-turn authoritative Memory ingestion', () => {
         expect(openSession).not.toHaveBeenCalled();
     });
 
-    test('Director final prose uses the same single Memory ingestion path', async () => {
-        const applyAuthoritativeFacts = jest.fn(async () => [
-            { id: 'fact:director-event', action: 'create' },
-        ]);
-        const ingestion = createPostTurnMemoryIngestion({
-            context: {},
-            memoryApi: {
-                async openSession() {
-                    return { applyAuthoritativeFacts };
-                },
-            },
-        });
-
-        const result = await ingestion.ingest(turn(), {
-            producer: 'director',
-            finalProse: 'Director-produced final body.',
-        });
-
-        expect(result.turn.narrative.producer).toBe('director');
-        expect(result.update.producer).toBe('director');
-        expect(applyAuthoritativeFacts).toHaveBeenCalledTimes(1);
-    });
-
     test('requires finalized prose and a single recognized narrative producer', async () => {
         const ingestion = createPostTurnMemoryIngestion({
             context: {},
@@ -176,12 +153,12 @@ describe('R5 post-turn authoritative Memory ingestion', () => {
     test('turns without committed Events finalize without fabricating authoritative facts', async () => {
         const emptyTurn = createTurnContext({
             anchor: {
-            sessionId: 'session_test',
-            branchId: 'branch_test',
-            revisionId: 'revision_test',
-            eventSeq: 1,
-            serial: 7,
-        },
+                sessionId: 'session_test',
+                branchId: 'branch_test',
+                revisionId: 'revision_test',
+                eventSeq: 1,
+                serial: 7,
+            },
             userInput: 'Hello',
         });
         const openSession = jest.fn();

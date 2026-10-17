@@ -80,5 +80,5 @@ The card-bound preset feature depends on [Preset Decoupling](/improvements/prese
 ## Related
 
 - [Preset Decoupling](/improvements/preset-decoupling) — the field classifier that keeps API credentials out of cards.
-- [Orchestration Presets](/features/orchestrator/presets) — how orchestrator profiles reference preset names and how Save To Character Override embeds them.
+- [Orchestration Presets](/features/native-orchestration) — how orchestrator profiles reference preset names and how Save To Character Override embeds them.
 - [Improvements Overview](/improvements/overview) — the wider improvement set.

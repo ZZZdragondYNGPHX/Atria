@@ -150,3 +150,20 @@ test('parent cancellation never claims to undo a child already in its original f
     expect(childCommitted).toBe(true); expect(parentCommitted).toBe(false);
     expect(scheduler.project(expected.owner, childId).status).toBe('completed'); expect(scheduler.hasOwnerWork(expected.owner)).toBe(false);
 });
+
+test('Run navigation metadata requires the exact active worker and cannot switch to a different Run', async () => {
+    const scheduler = new NativeTaskScheduler({ timeoutMs: 1000 });
+    const runId = 'orun_' + 'a'.repeat(32);
+    let capture;
+    const operation = submit(scheduler, async boundary => {
+        capture = boundary;
+        expect(() => scheduler.associateRun({}, expected, runId)).toThrow(/boundary_denied/);
+        scheduler.associateRun(boundary, expected, runId);
+        scheduler.associateRun(boundary, expected, runId);
+        expect(() => scheduler.associateRun(boundary, expected, 'orun_' + 'b'.repeat(32))).toThrow('operation_run_conflict');
+        expect(scheduler.project(expected.owner, boundary.operationId).runId).toBe(runId);
+        return 'done';
+    });
+    await operation.result;
+    expect(() => scheduler.associateRun(capture, expected, runId)).toThrow(/boundary_denied/);
+});

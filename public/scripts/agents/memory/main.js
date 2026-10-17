@@ -39,7 +39,6 @@ import './api.js';
 // Layer-2 extension registry so any orchestration mode (loop / spec /
 // agenda / director) can dispatch them. Silent no-op when orchestrator
 // isn't loaded — memory-graph stays independently functional.
-import { registerMemoryGraphOrchestrationTools } from './orchestrator-tools.js';
 import { i18n, i18nFormat, registerLocaleData } from './i18n.js';
 import {
     DEFAULT_PER_TYPE_INSTRUCTIONS,
@@ -14070,11 +14069,6 @@ jQuery(() => {
     saveSettingsDebounced();
     ensureUi();
     void syncPersistentProjectionForCurrentChat();
-    // memory-graph publishes its 15 read/write tools into the
-    // orchestrator's Layer-2 registry so any of the four orchestration
-    // modes can dispatch them. Fire-and-forget — when the orchestrator
-    // extension isn't loaded the call is a silent no-op.
-    void registerMemoryGraphOrchestrationTools();
 
     // Mount only the current Atria FloorState namespace. Old product state
     // is intentionally invisible after the namespace hard cutover.

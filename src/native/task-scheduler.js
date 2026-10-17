@@ -1,3 +1,4 @@
+import { assertNativeId } from './identity.js';
 import { randomUUID } from 'node:crypto';
 import { NATIVE_GENERATION_DEFAULTS } from '../../public/shared/native-generation-defaults.js';
 import { immutable } from './model-prompt-runtime/execution-utils.js';
@@ -48,6 +49,16 @@ export class NativeTaskScheduler {
     }
     assertActiveBoundary(boundary, expected) {
         return assertOperationFrame(this, boundary, boundaries.get(boundary), expected, ['running', 'streaming']);
+    }
+
+    // Read-only navigation metadata, attached only by the actual domain worker
+    // after its durable Root exists; it grants no continuation or output right.
+    associateRun(boundary, expected, runId) {
+        this.assertActiveBoundary(boundary, expected);
+        assertNativeId(runId, 'orchestrationRun');
+        const { operation } = boundaries.get(boundary);
+        if (operation.view.runId && operation.view.runId !== runId) throw failure('operation_run_conflict');
+        operation.view.runId = runId;
     }
 
     /** Output finalization only. It cannot validate a running-generation boundary. */

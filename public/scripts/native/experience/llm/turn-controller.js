@@ -9,7 +9,6 @@ export const TURN_TRANSACTION_PHASES = Object.freeze([
     'resolving',
     'calculating',
     'recalling',
-    'orchestrating',
     'narrating',
     'finalized',
     'aborted',
@@ -20,9 +19,8 @@ const TERMINAL_PHASES = new Set(['finalized', 'aborted', 'failed']);
 const ALLOWED_TRANSITIONS = Object.freeze({
     submitted: new Set(['resolving', 'calculating', 'aborted', 'failed']),
     resolving: new Set(['calculating', 'aborted', 'failed']),
-    calculating: new Set(['recalling', 'orchestrating', 'narrating', 'aborted', 'failed']),
-    recalling: new Set(['orchestrating', 'narrating', 'aborted', 'failed']),
-    orchestrating: new Set(['narrating', 'aborted', 'failed']),
+    calculating: new Set(['recalling', 'narrating', 'aborted', 'failed']),
+    recalling: new Set(['narrating', 'aborted', 'failed']),
     narrating: new Set(['finalized', 'aborted', 'failed']),
     finalized: new Set(),
     aborted: new Set(),
@@ -514,7 +512,6 @@ export function createGameTurnController(options = {}) {
                 committedEvents: [],
                 memories: [],
                 memoryUpdates: [],
-                orchestration: null,
                 narrative: null,
             });
 
