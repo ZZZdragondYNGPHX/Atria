@@ -149,3 +149,6 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 
 
 第一百零一组 bcf5d65e8 接通原RP真实私有 Planner→受限GraphPatch→Narrator→唯一Chat输出及三Effect原费用闭包，见[接口 §17.105](interface-contracts.md#17105-原-rp-planner-的真实受控生产与费用闭包)。仍为显式有限profile，完整Graph/Judge/Review等后端继续，不推送或交前端/main。
+
+
+第一百零二组 ea2359901 补同来源静态Graph直接后继的原Result audience/物理事实合同，见[接口 §17.106](interface-contracts.md#17106-同来源直接后继的-graph-result-合同)。真实Graph Result writer与消费仍在接线，完整后端继续。

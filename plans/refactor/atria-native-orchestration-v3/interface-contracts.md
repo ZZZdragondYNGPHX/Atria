@@ -1267,3 +1267,12 @@ Planner 请求、结构化输出 schema 与控制任务由活 Scheduler callback
 采纳后保存原 Model收据→GraphPatch→Planner收据→settlement→有费用的逻辑边转移，再运行 Narrator。正文仍由原唯一 RP consumer 写入；最终 closure 包含 Planner/Narrator/Output 三项 Effect。历史 reader 逐条核控制收据、原 Model payload hash、parse/adopt银行行及拓扑转移；冷读不产生权限。普通旧二节点/Delegate路径保持。Model completion新增实际 resultOutputType/resultPayloadHash；旧历史无此可选字段保持既有读规则，新 Planner必须有该证据。
 
 非法/不进展/未声明修改、晚到撤权、费用unknown与ACK未知保留真实事实/费用及blocked或reconciling，绝不自动重发。有限Planner链路不是通用Graph/多节点Result分享/Judge/Review runtime；这些及其它完整后端仍继续实施。
+
+
+### 17.106 同来源直接后继的 Graph Result 合同
+
+原 ResultEnvelope/物理 Result record 新增 graph_nodes audience：exact runId、canonical unique nodeIds、epoch、sourceBindingDigest、producer grantDigest 与固定 original_rp_graph_result purpose；disclosure 为 same_source_graph_successors_only。纯 graphNodeResult/历史 readGraphNodeResult 复用原 Result/Model/Attempt/Receipt，不产生 reader、Model、Domain或审批授权。
+
+当前限制为无 graphChangePolicy 操作、graphRevision=0 的静态原 RP Root，生产/接收节点均为 agent/planner/judge/review，接收者只取直接非回环后继，不能是正式Output。跨Session/Project/child或动态修改暂不支持，避免在后续新增边时追溯扩大既有Result audience。节点输出text/json，字节上限继承原 Plan 显式 resultPolicy；JSON保留原generation响应{text,toolCalls:[]}，控制JSON另需实际收费解析，不把Model文字当官方事实。
+
+历史核对精确原 Model payload hash、Effect、producer grant、同一settlement/publication decisionSeq、Result hash/Source/Audience；消费一致性进一步要求真实已存 running recipient、exact input ResultRef、当前epoch，及未被Review失效的producer。原 Source/Audience/Context授权仍须由后续活producer/ResultPort复核。本组只有纯合同与明确受控存储证据，真实生产者/消费者接线继续。

@@ -1147,3 +1147,9 @@
 - 首轮真实fixture2FAIL，发送前 ContextPort 仅识别旧普通RP请求；补私有固定 structured-output request复验。随后 PromptCompiler拒绝 context.input 对象，按原typed input字符串合同修复，临时仅测试诊断已完全撤去。首个FS/SQLite positive2PASS（8.156s）。新负例初有测试调用不存在的 removeBinding 导致服务器挂起，终止该单一测试进程并改用原 saveBinding CAS 撤权；不是产品放宽。完整新suite10PASS/2FAIL（26.012s），两FAIL为错误期望撤权后blocked，实际未确认Model Effect应为reconciling，已修正。
 - 新Planner/原RP producer/原输出完成/evaluator四完整 suites95/95 PASS（83.293s，含新12项与指纹39项）。追加图修改/结算的提交后ACK丢失四参数4PASS（8.325s）：保留原已应用Graph与费用，阻塞后续Nar；新Scheduler operation也被原耐久Run挡住，不重发。新suite共16项分批通过。最后费用payload/拓扑严格reader后的positive2PASS（8.31s）。原ModelPort与selected-node-routes两个完整 suites44/44 PASS（177.833s）。十五文件原ESLint、diff check通过。
 - 都是localhost合成实际调用，无新增真实Provider/独立质量或价格结论。继续真实 Judge/Review、节点Result分享、通用Graph、可信高风险consumer与恢复释放等，不交前端/main。
+
+
+## 2026-10-17 — 第一百零二组：同来源后继 Graph Result 的封闭合同
+
+- Source bcf5d65e8 → ea2359901，本地提交，未推送；接口 §17.106。原 Result record新增 exact graph_nodes audience，复用原 Model/Effect/Attempt/settlement 证据；只限静态原RP同Source直接后继，正式Output、动态图、跨领域和child拒绝。历史读取不授消费权；活recipient必须等于真实running记录并持ResultRef，仍需原Source/grant检查。尚无真实Graph Result writer/消费者，继续接线，不宣称Judge/Review已运行。
+- 首轮新/旧Result contracts74PASS/1FAIL，唯一失败是JSON正确先报output type而测试错期待audience错误文案，改为只断言拒绝。新pure22PASS（1.352s），补FS/SQLite原Model/settlement/receipt物理一致性与外国recipient/诚实重hash反例后26PASS（1.488s）。增加crossRun Model/receipt拒绝后，新旧完整两suite81/81 PASS（2.15s），evaluator完整40/40 PASS（2.62s）。五文件原ESLint及diff check通过。直接存储fixture不冒称真实Model/Source/银行授权；无新增真实Provider调用，后端继续。
