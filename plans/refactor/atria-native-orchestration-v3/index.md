@@ -2,7 +2,7 @@
 
 > **唯一入口**。Task ID：`refactor/atria-native-orchestration-v3`。Primary Workspace：`main`（未来实现）；实现使用同一任务分支 `refactor/atria-native-orchestration-v3`，企划/Record继续在长期 `docs` 工作空间。规则只引用 [Repository Governance](../../../README.md)，不在本 Plan 复制执行规则。
 
-2026-10-18 从 P5 源码 `94d677c6d` 恢复，修复六项组装后端问题并推进 P6。用户要求的独立复核确认：原端口与多个有限 Profile 有真实实现，但角色独立 Audience 的 RP 协作、复杂 Game/Project 的 G2 条件协作仍未完整实现；不能以历史 `READY_FOR_P5` 核销原始 D1–D8 全量完成。**P3/P4 IN_PROGRESS、P6 IN_PROGRESS、最终产品 Gate NOT_READY**。原冻结合同未缩水；当前核销只读 [acceptance-matrix](acceptance-matrix.md)，实现/验证与源码 pin 归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。用户最后要求在安全 checkpoint 停下并提供接手提示词，恢复状态见唯一 HANDOFF 及真实 Git。
+2026-10-18 从 P5 源码 `94d677c6d` 恢复，修复六项组装后端问题并推进 P6；其后从 `b7c12fdc6` 继续并保存 `af2b40cbc` 工程 checkpoint，持续处理历史评测迁移、真实 Native Skill activation、独立角色 Audience 与 Game/Project 条件质量消费者。原端口与有限 Profile 的证据不能核销原始 D1–D8 全量完成。**P3/P4 IN_PROGRESS、P6 IN_PROGRESS、最终产品 Gate NOT_READY**。原冻结合同未缩水；当前核销只读 [acceptance-matrix](acceptance-matrix.md)，实际实现、受限能力、验证与源码 pin 归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。HANDOFF 保留中断快照；当前继续要求及恢复后的实际进度以同一 Record 和真实 Git 为准。
 
 - 创建/调研日期：2026-10-15。
 - 第一轮状态：**D1 已定案：方案 B（原生 Orchestration V3）**。
@@ -78,6 +78,6 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 
 ## E1 当前执行入口
 
-E0_DESIGN=DESIGN_READY；DEVELOPMENT_AUTHORIZATION=AUTHORIZED。源码`01ef2053b`的P1–P4后端范围READY_FOR_P5，P3已核销；P5前端与组装已于`94d677c6d`完成并回交Codex（含待修后端缺陷）；P6–P8未开始，最终产品Gate未通过。后端接口见 [backend-integration](backend-integration.md)，当前Gate与后续项只见 [acceptance-matrix](acceptance-matrix.md)，不在入口累积重复历史状态。
+E0_DESIGN=DESIGN_READY；DEVELOPMENT_AUTHORIZATION=AUTHORIZED。P5 前端与组装已于 `94d677c6d` 回交，六项后端缺陷已修复；P6 清退和原合同消费者补全正在推进。历史 `READY_FOR_P5` 只保留有限交接事实；当前 Gate 与后续项只见 [acceptance-matrix](acceptance-matrix.md)，后端接口见 [backend-integration](backend-integration.md)。
 
-执行顺序：**Codex 完成后端 → Claude Code 完成前端与组装 → Codex 做 P6 硬切、清退与最终验证**，详情只归 [实施分工](implementation-plan.md#2-执行分工与两次交接)。当前不提前前端、P6、合 main 或结束分支。阶段核销不是自动停止点，执行与真实阻塞统一遵循 Repository Governance。
+执行顺序：**Codex 完成后端 → Claude Code 完成前端与组装 → Codex 做 P6 硬切、清退与最终验证**，详情只归 [实施分工](implementation-plan.md#2-执行分工与两次交接)。当前沿同一任务分支继续，不合 main、不删除任务分支；阶段核销不是自动停止点，执行与真实阻塞统一遵循 Repository Governance。

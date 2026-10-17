@@ -9,15 +9,15 @@
 | 原冻结要求 | 真实实现 | 当前结论与剩余项 |
 | --- | --- | --- |
 | D2 唯一 Host、Source、Run/Effect/Receipt | 复用原存储/领域权威、CAS/epoch、银行、unknown 收据；非 Browser writer | 已有实现与必要专项证据，不能推导任意业务图均支持 |
-| D3 Graph/Planner/Judge/Review | GraphPatch/失效/重做核心存在；RP 使用有限且互斥的 Planner、双候选 Judge、固定 Draft/Review 等 Profile | **受限支持**；通用可组合生产图不能核销 PASS |
+| D3 Graph/Planner/Judge/Review | GraphPatch/失效/重做核心存在；RP 已新增非入口/多个 Planner 与 Agent DAG 消费，Project 已新增多 Planner/多目标 Review 组合；其余旧控制分支仍有固定 Profile | **受限支持**；通用可组合生产图不能核销 PASS |
 | D3 Delegate/Join | 原 Scheduler/子预算/Source pins/return、五种 Join/partial/late/fail_fast 已有真实 RP 消费者 | **受限支持**；不自动扩展为 Game/Project/Evolution 同等支持 |
-| D4 / D7 角色独立 Audience 的 RP 协作 | RP capture 仍只允许 narrator；Actor appraisal 为不同的后台消费者 | **原合同真实未完成**，不是前端或纯质量取证问题；不能由 same-audience RP DAG 代替 |
-| D7 条件 Game/Project 协作 | Game 为 Narrator＋可选 Resolver；Project 为单 Agent＋Output＋可选 self-loop | **原合同真实未完成**，不能由 RP 控制节点测试跨领域核销 |
+| D4 / D7 角色独立 Audience 的 RP 协作 | 正在补原 Session Information/Actor 精确 Context pin、独立 capture/编译/原 Hybrid 与逐接收方 Result 传播；不继承 Narrator-wide history/Skill，无传播证明只返回引用 | **进行中，未核销 PASS**；末版角色/并行/撤权及相关回归归同一 Record，不能由后台 appraisal 或 same-audience DAG 代替 |
+| D7 条件 Game/Project 协作 | Game Actor DAG、原 Review 与多组 Fanout/Join 已接原 Session/Model/银行/单 Output；Project 纯 Agent/多 Planner/多目标 Review DAG 和原工具→人工 Review 已有实际消费证据 | **原合同仍未完整实现**；Game Planner/Delegate、Project Fanout/Join/Delegate及跨控制组合仍待补；不能把有限组合或 RP 控制节点测试跨领域核销 |
 | D3/D6 可验证边界恢复 | ready 无 claim Commit 重新准入、cold Result 新授权消费、unknown 查询/reconcile | 有限恢复符合冻结要求；不额外要求所有内存阶段自动恢复 |
 | D7 正式 Project 写入 | V3 有限已分类可信 Commit；原完整 Studio 人工审阅/Commit 领域路径保留 | **受限支持**；不得误删原领域能力或伪称所有 V3 修改类型已支持 |
-| D5/D7 Evolution/Skill | Native Plan 与原 Project 目标、真实 RP scoped Skill Context/预算/漂移拒绝已接 | 原独立质量/价格不足拒晋升；eligible 自动晋升仍 NOT_RUN；新 RP Skill 的 next-run activation observer 接线尚需核对 |
+| D5/D7 Evolution/Skill | Native Plan 与原 Project 目标、真实 RP scoped Skill Context/预算/漂移拒绝及真实 Host 消费→原 Output 成功 activation 观察已接；历史评测已迁真实 Native 请求/Plan/恢复 | 原独立质量/价格不足拒晋升；eligible 自动晋升仍 NOT_RUN；宽矩阵与最终定向证据分账归同一 Record，未称末版完整宽矩阵单轮全绿 |
 
-执行分工保留[实施方案 §2](implementation-plan.md#2-执行分工与两次交接)。用户本轮最后明确要求在安全 checkpoint 停下并提供新对话提示词；恢复先读唯一 HANDOFF、真实 Git 和本表，不把历史停止记录恢复为新限制。未合 main、未结束任务分支。
+执行分工保留[实施方案 §2](implementation-plan.md#2-执行分工与两次交接)。用户已从安全 checkpoint 明确要求继续；唯一 HANDOFF 保留该中断快照，恢复后的进度归同一 Record 与真实 Git，不把历史停止记录恢复为新限制。未合 main、未结束任务分支。
 
 ## P3 — 已验证端口子集（非原始阶段全量完成）
 
