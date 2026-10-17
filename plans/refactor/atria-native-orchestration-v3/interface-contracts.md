@@ -1518,3 +1518,14 @@ Review完成与历史reader核对全部检索子Effect、收据和Attempt settle
 原Memory recall的实例私有opaque proof只保留最小费用身份/摘要，后续读取原受保护历史收据与原银行；不保存新的Provider响应或正文快照，不返回新Model/Provider/Context grant。JSON副本不能恢复proof，原Model或检索Effect不能借封存重新派发。独立Source/Memory/recipient/Output许可仍必须由原消费者检查；费用事实可在Source删除后核对，不等于继续读取或输出正文。
 
 main Model usage未知仍按原政策保留合法领域输出与unknown费用，不伪造完整费用闭包/终结claim；检索Provider或实际index作业未知仍在更早原边界拒后继。封存只改变完成证明生命周期，没有第二费用权威或新恢复入口。准确FS/SQLite与组合验证归同一Record；Session/其它Source的检索与其原quota/领域完成接线继续，不把封存基础当完整Session消费者或后端完成。
+
+
+### 17.131 原 Session Narrator 检索与生成配额分工
+
+原有限 Session Narrator 可声明 owned exact Context 检索 Profile pins 和 memory.retrieve，由真实 Turn producer、原 Information/Memory 合法候选域和同一原 Context compiler 驱动 Embedding/可选 Rerank。Resolver 不得持有该检索能力；其它 Actor、后台 Task、Project 与 Delegate 不因本接口取得检索授权。原私有 scope、Profile/Secret/实际 POST 与冻结请求、原物理索引及本地计量均沿已有 ContextRetrievalPort，不开放新 Browser/通用 Run 执行口。
+
+每个检索发送使用原 Session compute bank，但不重复扣除 Model 的 generation quota。原实际 Narrator send-bank 的实例私有 quota proof 仅证明该检索的真实 producer；检索 admission 在受保护 Root/父 Model/子检索 Effect 上核对同一原 Attempt、Source、Host generation、准确请求与目标/输入指纹，随后调用原 Retrieval consumer 的无 Model quota compute 准入。只允许 prepared Narrator 的 prepared 子检索 ordinal 0；JSON bank/proof、Model effect 代替 child、错 Root/target/input、取消和 Source 推进不能借此发送。实际 Resolver/Narrator 调用仍分别消耗原生成次数，不增加另一个余额或测试 API 总量上限。
+
+Model 完成后封存该次检索费用证明并释放发送 scope；正式 Session finalization 仍重验原 Source/Memory/输出许可。Narrator Result、Attempt settlement、原唯一领域输出与终结 claim 历史纳入全部子检索收据、Provider 与 index 本地费用；合法自己的 Session revision 推进不会恢复 scope 或重发。检索 usage 未知/Memory 撤回在原更早边界拒 Model 或输出，已付费用保留；主 Model usage 未知仍可保留原合法领域输出但无完整 claim，暖重试与冷读不得重发。
+
+原编译输入的 optional metadata/实现 callback 按原 context_build 的 JSON 数据表示比较，合法 Session projected chat 的省略字段亦按同一表示计算 corpus 摘要；原持久资源、Memory descriptor、Settings 与真实授权摘要继续严格校验，不把任意 callback/JSON 声明当权限。准确验证与源码 HEAD 归同一 Record；其它 Source/Actor、通用图、高风险消费者和完整恢复/释放仍继续，P1–P4/最终 Gate 未通过。
