@@ -169,6 +169,22 @@
 - **验证边界**：本轮仅 GitHub 文档提交/读取核验 + `main` 源码静态核对 + 公开原始论文阅读。未运行 Node tests、CI、浏览器、Windows/CachyOS/Termux 真机、UI 或端到端游戏模拟，不能声明这些均已通过。
 - **下一 checkpoint**：请用户选择 W8-A/B/C。之后下一轮仍须**先更新同一 Plan 和唯一 Record、提交/核验 docs，再讨论**：动态 NPC 与 authored Actor、HCM/N-Memory 权威分工，记忆遗忘保护/人格长期可塑性，历史审计、索引压缩和分支重放，最终 E0 消费者审计及开发实施门槛。直到全部核心方案获用户明确确认才定稿。
 
+
+## Stage 10 — W8-B 确认与 W9 跨域身份/权限映射讨论（2026-10-17）
+
+- **明确用户决定**：对上轮唯一推荐 **W8-B「来源保真 + 分层回忆与人格连续性」**回复「认同」。W1-B 至 W8-B 均是当前已确认架构方向；**未授权 W9 选型、具体 ID/Schema、整体定稿或任何代码开发**。
+- **工作空间**：继续 `ARCH-DWE-01` / Primary Workspace `docs`；唯一 Plan Bundle 与唯一 Record。只做文档+研究，未创建 HANDOFF、新 Plan、实现分支、其他长期分支合并或 reference 更新。
+- **本轮 docs 写入（按提交顺序）**：
+  - `09ce982683de3a43c2c6e8e8c536bd50efd16c5c`：在 `npc-memory-continuity.md` §11 记录 W8-B 已选，保留源历史、受众限定记忆与人格演化、不造第二 Memory/World 权威，并明确未定接口。
+  - `e26a985a85f024204254801829cc3dee15273cdc`：在同一 Plan Bundle 新增 W9 `entity-identity-authority.md`，详述 World Subject/Actor/Lifetime/HCM/Perspective/Timeline 跨域 identity 的职责、来源映射、同名歧义、秘密身份、Session/Branch、选项 W9-A/B/C、UI 与 E0 审查。
+  - `4b871d86762929dde9ad34716bd15a3691ec33ef`：更新同一 `design.md` §16，记录 W8-B 并将 W9 候选模块作为唯一详细设计入口。
+  - `0d3501f12b06b28f9d8baee51d11daebe022cf16`：更新同一 `index.md`，明确 W1–W8 已确认、W9 当前讨论与 Draft。
+- **本轮 main 静态核对（非实测）**：`src/native/identity.js` 的正式 Native ID families 已定义 Actor/World/Session/Branch 等，但未发现独立 World Entity family；`public/shared/native-actor-profile.js` 的 Authored Actor 严格来自 manifest/EntryPoint；`src/native/session-core.js` Timeline Actor 校验要求 Package manifest membership；`src/native/lifetime-authority.js` 的 `life.person.*` 是可选领域局部身份；`public/shared/native-cognition-runtime.js` 的 Actor ID regex/受众限制与世界新 NPC 的标识并不自动相容；`public/scripts/agents/memory/temporal-graph.js` 有独立本地图实体/别名/来源支撑的合并/拆分与 ambiguous/pending 身份；`src/native/repositories/session-repo.js`/SavePoint 持有唯一 Session/Branch/Revision 权威。没有全消费者 E0 证据表明它们已共用统一身份，不能写成现有已完成能力。
+- **外部概念对照**：Martin Fowler Identity Map（单一工作单元内保持引用一致，不是全局可写实体表），Microsoft DDD Entities/Aggregates（长期身份与一致性边界），W3C PROV-O（来源、alternate/specialization，不能因关联自动证明同一对象）。仅作方案类比，未引入数据库/框架依赖。
+- **待议 W9 推荐，不是用户决定**：W9-B「Canonical World Subject + 受控跨域映射/投影」。已提交世界成员由 Native Session 持有稳定主体身份，不同领域保留自己的 ID/权限/历史引用，通过明确来源、分支、可见范围关联；HCM 未确认的传闻实体不自动变成客观角色；Authored Actor 是表达资产而非必然一对一的物理世界人物。不要把“一个世界人物”误译为“所有模块使用同一个 ID 字符串/存一份万能对象”。
+- **验证边界**：GitHub docs 文档提交完成后再次 `fetch_file(ref=docs)` 检查 index、design、W8、W9、Record。研究/静态代码阅读均不代表测试；未执行 Node、CI、浏览器 UI、Windows/CachyOS/Android Termux、真实 RP 回合或主仓库 Git 合并。**仅修改 docs**。
+- **下一 checkpoint**：用户选择 W9-A/B/C 后，下一轮依约先更新**同一 Plan/唯一 Record** 再讨论具体 authored↔session 身份实例化、证据图候选匹配与权限、动态角色对话/认知合法入口、存档与分支引用、UI 及最终 E0。完整企划继续 Draft，直到用户明确确认全部核心边界与正式定稿。
+
 ## Final state
 
 Not yet applicable. Discussion in progress.
