@@ -15,7 +15,7 @@ import { controlCommandId, controlRecordKey, runGuard, readAttempt } from './con
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { localWorkAttemptId } from './budget-port.js';
 import { getNativeReviewOrigin } from './review-origin.js';
-import { readProjectCommitDescriptor, projectCommitReviewHash, readProjectCommitDomain, readProjectCommitOutput } from './project-commit-contracts.js';
+import { readProjectCommitDescriptor, readProjectCommitReview, projectCommitNarrativeReviewInput, projectCommitReviewHash, readProjectCommitDomain, readProjectCommitOutput } from './project-commit-contracts.js';
 import { ProjectCommitPort } from './project-commit-port.js';
 import { readReadyEffectResume } from './effect-recovery-contracts.js';
 
@@ -128,6 +128,12 @@ export class NativeProjectCommitAuthority {
     async describeReview({ handle, root, intent }) {
         await this.authorize({ handle, root, intent });
         const state = this.#state(handle, root);
+        if (state.descriptor.changeKind === 'native_narrative_content') {
+            const current = await readProjectCommitReview(handle, state.ref, this.projectAgent);
+            if (!equal(current.descriptor, state.descriptor)) fail();
+            return { title: state.descriptor.title, input: projectCommitNarrativeReviewInput(state.input, current.changes),
+                impact: 'Apply these exact authored Actor texts and existing assistant openings through the original reviewed Project Workspace. This changes the versioned Project Source only.' };
+        }
         return { title: state.descriptor.title, input: JSON.stringify({ projectId: state.input.projectId, taskId: state.input.taskId,
             fromName: state.descriptor.fromName, toName: state.descriptor.toName, baseRevision: state.input.revision,
             workspaceHash: state.input.workspaceHash, reviewHash: state.input.reviewHash, changeSetId: state.input.changeSetId }),

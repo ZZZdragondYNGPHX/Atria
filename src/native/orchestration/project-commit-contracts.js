@@ -21,8 +21,57 @@ export const projectCommitReviewHash = task => hash({ workspace: task.workspace,
 export const projectCommitId = (kind, runId) => (kind === 'result' ? 'oresult_' : kind === 'claim' ? 'oclaim_' : 'oreceipt_')
     + hash({ kind: 'native_project_commit_' + kind, runId }).slice(0, 32);
 
-/** One finite, non-destructive domain action. A descriptor is never a grant. */
-export async function readProjectCommitDescriptor(handle, ref, agent) {
+// These three original Actor fields are the authored (not expression/scopedRaw)
+// data consumed by projectActorDefinition. The other admitted edit is content
+// of an existing assistant opening consumed by SessionCore._newEntry.
+function narrativeSourceChanges(original, proposed) {
+    const restored = structuredClone(proposed), changes = [];
+    const change = (target, field, before, after) => {
+        if (typeof after !== 'string' || before !== undefined && typeof before !== 'string') fail();
+        changes.push({ target, field, before: before ?? null, after });
+    };
+    if (original.project.displayName !== proposed.project.displayName)
+        change({ kind: 'project', projectId: original.project.projectId }, 'displayName', original.project.displayName, proposed.project.displayName);
+    restored.project.displayName = original.project.displayName; restored.project.updatedAt = original.project.updatedAt;
+    if (proposed.package.actors.length !== original.package.actors.length || proposed.package.entryPoints.length !== original.package.entryPoints.length) fail();
+    for (const [index, before] of original.package.actors.entries()) {
+        const after = proposed.package.actors[index], target = restored.package.actors[index];
+        if (after.actorId !== before.actorId) fail();
+        for (const field of ['description', 'personality', 'scenario']) {
+            if (equal(before.profile?.[field] ?? null, after.profile?.[field] ?? null)) continue;
+            change({ kind: 'actor_profile', actorId: before.actorId }, field, before.profile?.[field], after.profile?.[field]);
+            if (Object.hasOwn(before.profile ?? {}, field)) target.profile[field] = before.profile[field];
+            else delete target.profile[field];
+        }
+    }
+    for (const [index, before] of original.package.entryPoints.entries()) {
+        const after = proposed.package.entryPoints[index], target = restored.package.entryPoints[index];
+        if (after.entryPointId !== before.entryPointId) fail();
+        if (equal(before.initialTimeline ?? null, after.initialTimeline ?? null)) continue;
+        if (!Array.isArray(before.initialTimeline) || !Array.isArray(after.initialTimeline) || before.initialTimeline.length !== after.initialTimeline.length) fail();
+        for (const [position, prior] of before.initialTimeline.entries()) {
+            const next = after.initialTimeline[position];
+            if (prior.content === next?.content) continue;
+            if (prior.role !== 'assistant' || next?.role !== 'assistant' || prior.actorId !== next.actorId
+                || prior.actorId !== undefined && !before.actorIds.includes(prior.actorId)) fail();
+            change({ kind: 'initial_narration', entryPointId: before.entryPointId, index: position, actorId: prior.actorId ?? null }, 'content', prior.content, next.content);
+            if (Object.hasOwn(prior, 'content')) target.initialTimeline[position].content = prior.content;
+            else delete target.initialTimeline[position].content;
+        }
+    }
+    // Permissions, runtime, dependencies, assets, resources, files, identities,
+    // timeline metadata/roles and every unclassified field remain exact.
+    if (!changes.length || !equal(restored, original)) fail();
+    return changes;
+}
+
+export function projectCommitNarrativeReviewInput(input, changes) {
+    return JSON.stringify({ projectId: input.projectId, taskId: input.taskId, baseRevision: input.revision,
+        workspaceHash: input.workspaceHash, reviewHash: input.reviewHash, changeSetId: input.changeSetId, changes });
+}
+
+/** One original, reversible Source action. A descriptor is never a grant. */
+async function captureProjectCommitSource(handle, ref, agent) {
     fields(ref, ['kind', 'projectId', 'taskId'], 'Project commit capability');
     if (ref.kind !== 'native_project_commit' || !(agent instanceof ProjectAgentService)
         || !(agent._studio instanceof StudioService) || !(agent._repository instanceof ProjectTaskRepository)
@@ -36,14 +85,26 @@ export async function readProjectCommitDescriptor(handle, ref, agent) {
         || operations?.length !== 1 || operations[0].operationType !== 'project.save') fail();
     const proposed = operations[0].input?.source, original = project.source;
     if (!proposed?.project || proposed.project.projectId !== task.projectId || typeof proposed.project.displayName !== 'string'
-        || !proposed.project.displayName.trim() || proposed.project.displayName === original.project.displayName) fail();
-    const withoutRename = structuredClone(proposed);
-    withoutRename.project.displayName = original.project.displayName;
-    withoutRename.project.updatedAt = original.project.updatedAt;
-    if (!equal(withoutRename, original)) fail();
-    return { schemaVersion: 1, kind: 'native_project_commit', projectId: task.projectId, taskId: task.taskId,
+        || !proposed.project.displayName.trim()) fail();
+    const changes = narrativeSourceChanges(original, proposed), narrative = changes.some(change => change.target.kind !== 'project');
+    const descriptor = { schemaVersion: 1, kind: 'native_project_commit', projectId: task.projectId, taskId: task.taskId,
         revision: task.baseRevision, executionFingerprint: task.executionFingerprint, reviewHash: projectCommitReviewHash(task), workspaceHash: hash(workspace),
-        operation: 'commit', risk: 'R2', requiresApproval: true, title: 'Rename Project', fromName: original.project.displayName, toName: proposed.project.displayName };
+        operation: 'commit', risk: 'R2', requiresApproval: true, ...narrative ? { title: 'Edit Project narrative source',
+            changeKind: 'native_narrative_content', changeDigest: hash(changes) }
+            : { title: 'Rename Project', fromName: original.project.displayName, toName: proposed.project.displayName } };
+    // Use the existing trusted Review field limit, before any Effect or charge.
+    // Fixed-size receipt/ChangeSet identities make this the actual future input.
+    if (narrative && projectCommitNarrativeReviewInput({ ...descriptor, changeSetId: 'changeset_' + '0'.repeat(64) }, changes).length > 32768) fail();
+    return { descriptor, changes };
+}
+
+export async function readProjectCommitDescriptor(handle, ref, agent) {
+    return (await captureProjectCommitSource(handle, ref, agent)).descriptor;
+}
+
+/** Re-read original data solely for the authenticated isolated Review surface. */
+export async function readProjectCommitReview(handle, ref, agent) {
+    return captureProjectCommitSource(handle, ref, agent);
 }
 
 /** The original Studio Git receipt is the business truth, including after ACK loss. */

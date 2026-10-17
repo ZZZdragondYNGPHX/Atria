@@ -14,20 +14,23 @@ import { hashNativeDocument as hash } from '../../../src/native/repositories/com
 import { planFixture, prepareControllerOwnerRoot } from '../fixtures.js';
 
 const command = () => createNativeId('orchestrationCommand');
-export async function projectCommitFixture(make, { maxBytes = 16384 } = {}) {
+export async function projectCommitFixture(make, { maxBytes = 16384, configureSource = () => {}, propose = null, onReviewed = async () => {} } = {}) {
     const h = await make(); let svc, authority, coldEngine;
     try {
         await prepareControllerOwnerRoot(h.dirs.root); attachNativeHostLifecycle(h.engine, { directoriesByHandle: h.directoriesByHandle ?? (() => h.dirs) });
         await storage.init({ dir: path.join(h.dataRoot, 'commit-review-test-accounts') });
         const salt = getPasswordSalt(), account = { handle: h.handle, enabled: true, admin: false, salt, password: getPasswordHash('project-commit-test-password', salt) };
         await storage.setItem(toKey(h.handle), account);
-        svc = services(h); const source = projectSource(), projectId = source.project.projectId;
+        svc = services(h); const source = projectSource(); await configureSource(source); const projectId = source.project.projectId;
         const created = await svc.studio.createProject(h.handle, source);
         const initial = await svc.agent.createTask(h.handle, projectId, { intent: 'Rename this test Project after trusted approval', baseRevision: created.revision.revision });
         await svc.agent.setPlan(h.handle, projectId, initial.taskId, { summary: 'Rename Project metadata', steps: [{ id: 'rename', title: 'Rename Project', impact: 'low' }] });
-        const proposed = structuredClone((await svc.studio.getProject(h.handle, projectId)).source); proposed.project.displayName = 'Approved synthetic Project name'; proposed.project.updatedAt = 20;
+        const proposed = structuredClone((await svc.studio.getProject(h.handle, projectId)).source);
+        if (propose) await propose(proposed);
+        else { proposed.project.displayName = 'Approved synthetic Project name'; proposed.project.updatedAt = 20; }
         await svc.agent.executeTool(h.handle, projectId, initial.taskId, { name: 'atri_agent_project_save', args: { source: proposed, stepId: 'rename' } });
         const task = await svc.agent.prepareReview(h.handle, projectId, initial.taskId, {});
+        await onReviewed({ h, ...svc, projectId, task });
         const plans = createOrchestrationAuthoringService(h.engine, { projectAgent: svc.agent, studio: svc.studio }).plans;
         const plan = planFixture(), output = plan.definition.nodes[0], nodeId = createNativeId('orchestrationNode'), pinId = 'project.commit';
         const ref = { kind: 'native_project_commit', projectId, taskId: task.taskId }, descriptor = await readProjectCommitDescriptor(h.handle, ref, svc.agent);
@@ -55,6 +58,7 @@ export async function projectCommitFixture(make, { maxBytes = 16384 } = {}) {
                 await post('reauthenticate', { password: 'project-commit-test-password' }).expect(200);
                 const details = (await post('details').expect(200)).body.outcome;
                 await post('decide', { bindingHash: details.bindingHash, nonce: details.nonce, decision: 'approve' }).expect(200);
+                return details;
             },
             cold: async () => {
                 await getNativeReviewOrigin(authority.engine).close(); await authority.engine.close();
