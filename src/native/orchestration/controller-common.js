@@ -3,10 +3,59 @@ import { hashNativeDocument } from '../repositories/common.js';
 import { checkedRecord } from './plan-repository.js';
 import { assertObject, assertCounter, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertNativeId } from '../identity.js';
+import { ConflictError } from '../../storage/errors.js';
 
 export const controlCommandId = (operation, identity) => 'ocmd_' + hashNativeDocument({ operation, identity }).slice(0, 32);
 export const runGuard = root => ({ runId: root.runId, expectedEpoch: root.epoch, expectedStateVersion: root.stateVersion, expectedGraphRevision: root.graphRevision });
 export const controlRecordKey = (handle, runId, recordType, recordId) => ({ kind: K.orchestrationRecord, handle, runId, recordType, recordId });
+export const attemptInvalidationId = (runId, attemptId) => 'oreceipt_' + hashNativeDocument({ kind: 'attempt_invalidation', runId, attemptId }).slice(0, 32);
+export const graphReviewReceiptId = (runId, attemptId) => 'oreceipt_' + hashNativeDocument({ kind: 'graph_review', runId, attemptId }).slice(0, 32);
+
+export async function readGraphReviewReceipt(tx, handle, root, attempt) {
+    const id = graphReviewReceiptId(root.runId, attempt.attemptId), record = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', id));
+    if (!record) return null;
+    const review = record.doc;
+    assertObject(review, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'graphRevision', 'reviewAttemptId', 'reviewerNodeId',
+        'producerInputDigest', 'sourceBindingDigest', 'decision', 'targetAttemptIds', 'reasonCode', 'evidenceRefs', 'invalidatedAttemptIds', 'replacements', 'decisionSeq', 'createdAt'], 'Graph Review receipt');
+    if (review.schemaVersion !== 1 || review.receiptKind !== 'graph_review' || review.receiptId !== id || review.runId !== root.runId
+        || review.reviewAttemptId !== attempt.attemptId || review.reviewerNodeId !== attempt.nodeId || review.epoch !== attempt.epoch
+        || review.graphRevision > root.graphRevision || review.producerInputDigest !== attempt.inputDigest || review.sourceBindingDigest !== attempt.sourceBindingDigest
+        || !['approve', 'rerun'].includes(review.decision) || root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind !== 'review'
+        || !Array.isArray(review.targetAttemptIds) || !review.targetAttemptIds.length || !Array.isArray(review.evidenceRefs) || !review.evidenceRefs.length
+        || !Array.isArray(review.invalidatedAttemptIds) || !Array.isArray(review.replacements)
+        || review.decision === 'approve' && (review.invalidatedAttemptIds.length || review.replacements.length)) throw new TypeError('Invalid Graph Review facts');
+    for (const field of ['decisionSeq', 'createdAt', 'graphRevision', 'epoch']) assertCounter(review[field], field);
+    if (review.decisionSeq > root.eventSeq || review.decisionSeq < 1) throw new TypeError('Graph Review is ahead of durable Run');
+    for (const id of [...review.targetAttemptIds, ...review.invalidatedAttemptIds]) if (!root.attemptRefs.includes(id)) throw new TypeError('Graph Review target does not belong to Run');
+    return review;
+}
+
+/** Historical facts remain readable; live consumers must reject superseded work. */
+export async function readAttemptInvalidation(tx, handle, root, attempt) {
+    const stored = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', attemptInvalidationId(root.runId, attempt.attemptId)));
+    if (!stored) return null;
+    const fact = stored.doc;
+    assertObject(fact, ['schemaVersion', 'receiptKind', 'runId', 'attemptId', 'reviewReceiptId', 'reviewIntegrity'], 'Attempt invalidation');
+    const storedReview = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', fact.reviewReceiptId)))?.doc;
+    const reviewer = storedReview ? (await readAttempt(tx, handle, root, storedReview.reviewAttemptId)).doc : null;
+    const review = reviewer ? await readGraphReviewReceipt(tx, handle, root, reviewer) : null;
+    if (fact.schemaVersion !== 1 || fact.receiptKind !== 'attempt_invalidation' || fact.runId !== root.runId || fact.attemptId !== attempt.attemptId
+        || !review || review.receiptKind !== 'graph_review' || review.runId !== root.runId || review.decision !== 'rerun'
+        || hashNativeDocument(review) !== fact.reviewIntegrity || review.decisionSeq > root.eventSeq || !review.invalidatedAttemptIds.includes(attempt.attemptId))
+        throw new TypeError('Invalid Attempt invalidation facts');
+    return fact;
+}
+
+export async function assertAttemptCurrent(tx, handle, root, attempt) {
+    if (await readAttemptInvalidation(tx, handle, root, attempt)) throw new ConflictError('native_orchestration_attempt_superseded');
+}
+
+export async function assertAttemptConsumable(tx, handle, root, attempt) {
+    await assertAttemptCurrent(tx, handle, root, attempt);
+    const review = await readGraphReviewReceipt(tx, handle, root, attempt);
+    if (root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'review' && !review) throw new ConflictError('native_orchestration_review_decision_required');
+    if (review?.decision === 'rerun') throw new ConflictError('native_orchestration_review_rerun_pending');
+}
 
 // Passive fanout/join bookkeeping never holds an execution-resource slot.
 // Their immutable Plan schema forbids effect capabilities.

@@ -11,6 +11,15 @@ const { evolutionEvaluatorRevision, promotionDecision } = await import('../../sr
 const { EVOLUTION_RULE } = await import('../../src/native/agent-intelligence/evolution-repository.js');
 const { CASE_SET_REVISION } = await import('../../src/native/agent-intelligence/evaluation/cases.js');
 
+test.each(['controller-common', 'review-controller', 'graph-controller', 'attempt-settlement', 'join-controller', 'fanout-controller', 'graph-costs'])('evaluator includes durable graph control %s bytes', dependency => {
+    const revision = evolutionEvaluatorRevision();
+    try {
+        changedSource = fileURLToPath(new URL('../../src/native/orchestration/' + dependency + '.js', import.meta.url));
+        expect(evolutionEvaluatorRevision()).not.toBe(revision);
+    } finally { changedSource = null; }
+    expect(evolutionEvaluatorRevision()).toBe(revision);
+});
+
 test.each(['simulation-authority', 'authority-transaction', 'appraisal-authority', 'session-core'])('evaluator includes original %s authority bytes', dependency => {
     const revision = evolutionEvaluatorRevision();
     try {

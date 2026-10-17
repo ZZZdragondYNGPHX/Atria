@@ -3,7 +3,7 @@ import { assertNativeId } from '../identity.js';
 import { assertObject, assertCounter } from '../../../public/shared/native-orchestration-contracts.js';
 import { cloneNativeDocument, hashNativeDocument, putImmutable } from '../repositories/common.js';
 import { checkedRecord } from './plan-repository.js';
-import { controlCommandId, controlRecordKey, graphReachable, readAttempt } from './controller-common.js';
+import { controlCommandId, controlRecordKey, graphReachable, readAttempt, assertAttemptCurrent, assertAttemptConsumable } from './controller-common.js';
 import { readAttemptSettlement, writeAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 import { admitGraphEdges } from './graph-costs.js';
 import { readFanoutFrame } from './fanout-controller.js';
@@ -97,6 +97,7 @@ export class JoinController {
                 if (!frame || frame.receiptId !== barrier.fanoutFrameRef.receiptId || hashNativeDocument(frame) !== barrier.fanoutFrameRef.integrity) throw new TypeError('Join FanoutFrame reference is unavailable');
             }
             const joinRecord = await readAttempt(tx, handle, root, barrier.nodeAttemptId), join = joinRecord.doc;
+            await assertAttemptCurrent(tx, handle, root, join);
             const joinNode = root.graph.nodes.find(node => node.nodeId === join.nodeId);
             if (barrier.schemaVersion !== 1 || barrier.joinId !== joinId || barrier.runId !== root.runId || joinIdForAttempt(join.attemptId) !== joinId
                 || barrier.epoch !== root.epoch || join.epoch !== root.epoch || barrier.sourceBindingDigest !== root.sourceBinding.bindingDigest
@@ -120,6 +121,7 @@ export class JoinController {
             for (const attemptId of barrier.memberAttemptIds) {
                 const { doc: attempt } = await readAttempt(tx, handle, root, attemptId);
                 if (attempt.epoch !== barrier.epoch || attempt.sourceBindingDigest !== barrier.sourceBindingDigest) throw new TypeError('Join member source/epoch mismatch');
+                await assertAttemptConsumable(tx, handle, root, attempt);
                 const receipt = SETTLED_ATTEMPT_STATUSES.includes(attempt.status) ? await readAttemptSettlement(tx, handle, root, attempt) : null;
                 let valid = false;
                 if (receipt && receipt.createdAt <= barrier.deadlineAt && ['completed', 'partial'].includes(receipt.outcome)) {

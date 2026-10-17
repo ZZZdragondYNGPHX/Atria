@@ -10,7 +10,7 @@ import { assertRunAccess } from '../run-control.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { RunRepository, assertRunRoot, TREE_LOGICAL_COUNTERS } from './run-repository.js';
 import { BudgetPort } from './budget-port.js';
-import { controlRecordKey, readAttempt } from './controller-common.js';
+import { controlRecordKey, readAttempt, readAttemptInvalidation, readGraphReviewReceipt } from './controller-common.js';
 import { readEffect, readApproval } from './effect-contracts.js';
 
 const resync = () => { throw new ConflictError('native_orchestration_projection_resync_required'); };
@@ -54,7 +54,7 @@ async function readReconciliationRequest(tx, handle, root, effectId) {
 }
 const timelineTypes = new Set(['admitted', 'attempt_prepared', 'attempt_identity_reserved', 'attempt_activated', 'attempt_settled',
     'effect_prepared', 'effect_ready', 'effect_dispatch_claimed', 'effect_observed', 'approval_requested', 'approval_decided',
-    'graph_transition_admitted', 'graph_patch_accepted', 'graph_patch_rejected', 'fanout_group_frozen', 'join_membership_frozen', 'join_settled',
+    'graph_transition_admitted', 'graph_patch_accepted', 'graph_patch_rejected', 'graph_review_decided', 'fanout_group_frozen', 'join_membership_frozen', 'join_settled',
     'child_delegated', 'child_budget_confirmed', 'control_handed_off', 'handoff_returned', 'result_published', 'task_local_output_committed',
     'rp_narration_ready', 'rp_output_completed', 'session_narration_ready', 'session_output_completed', 'project_round_finished',
     'project_review_published', 'project_review_completed', 'project_generation_stopped', 'project_execution_failed', 'background_task_published', 'background_task_completed',
@@ -178,8 +178,9 @@ export class RunObservationService {
                 for (const id of root.attemptRefs) {
                     const attempt = (await readAttempt(tx, handle, root, id)).doc;
                     for (const field of ['startedAt', 'endedAt']) if (attempt[field] !== null) assertCounter(attempt[field], field);
+                    const invalidation = await readAttemptInvalidation(tx, handle, root, attempt), review = await readGraphReviewReceipt(tx, handle, root, attempt);
                     attempts.push({ attemptId: id, nodeId: attempt.nodeId, attemptNumber: attempt.attemptNumber, status: attempt.status,
-                        startedAt: attempt.startedAt, endedAt: attempt.endedAt });
+                        startedAt: attempt.startedAt, endedAt: attempt.endedAt, superseded: invalidation !== null, reviewDecision: review?.decision ?? null });
                     for (const effectId of attempt.effectRefs) {
                         const effect = (await readEffect(tx, handle, root, effectId)).doc;
                         effects.push({ effectId, nodeAttemptId: id, status: effect.status, risk: effect.risk, requiresApproval: effect.requiresApproval });

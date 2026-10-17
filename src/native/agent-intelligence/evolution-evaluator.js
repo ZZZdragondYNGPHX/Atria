@@ -24,6 +24,7 @@ export function evolutionEvaluatorRevision() {
         '../orchestration/source-port.js', '../orchestration/context-port.js', '../orchestration/binding-source-authority.js', '../orchestration/model-port.js',
         '../orchestration/model-capability-authority.js', '../orchestration/budget-port.js', '../orchestration/generation-local-work.js',
         '../orchestration/attempt-controller.js', '../orchestration/transition-controller.js', '../orchestration/effect-controller.js', '../orchestration/effect-contracts.js',
+        '../orchestration/controller-common.js', '../orchestration/review-controller.js', '../orchestration/graph-controller.js', '../orchestration/attempt-settlement.js', '../orchestration/join-controller.js', '../orchestration/fanout-controller.js', '../orchestration/graph-costs.js',
         '../orchestration/result-controller.js', '../orchestration/result-contracts.js', '../orchestration/rp-output-controller.js', '../orchestration/rp-output-completion-controller.js', '../orchestration/rp-output-reconciliation.js',
         '../orchestration/session-output-reconciliation.js', '../orchestration/session-output-contracts.js',
         '../orchestration/project-tool-reconciliation.js', '../orchestration/effect-reconciliation.js', '../../../public/shared/project-agent-prompt.js',

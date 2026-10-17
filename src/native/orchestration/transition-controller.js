@@ -2,7 +2,7 @@ import { ConflictError } from '../../storage/errors.js';
 import { assertNativeId } from '../identity.js';
 import { assertObject, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
-import { controlCommandId, controlRecordKey, readAttempt } from './controller-common.js';
+import { controlCommandId, controlRecordKey, readAttempt, assertAttemptConsumable } from './controller-common.js';
 import { readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 import { admitGraphEdges } from './graph-costs.js';
 import { inheritFanoutMembership } from './fanout-controller.js';
@@ -40,6 +40,7 @@ export class TransitionController {
             const producers = [];
             for (let index = 0; index < bindings.length; index++) {
                 const edge = edges[index], { doc: attempt } = await readAttempt(tx, handle, root, bindings[index].producerAttemptId);
+                await assertAttemptConsumable(tx, handle, root, attempt);
                 const node = root.graph.nodes.find(node => node.nodeId === attempt.nodeId);
                 if (node.kind === 'output' || attempt.nodeId !== edge.from.nodeId || attempt.epoch !== root.epoch
                     || attempt.sourceBindingDigest !== root.sourceBinding.bindingDigest || !SETTLED_ATTEMPT_STATUSES.includes(attempt.status)) throw new ConflictError('native_orchestration_transition_producer_invalid');

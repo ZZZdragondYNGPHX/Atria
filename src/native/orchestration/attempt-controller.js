@@ -2,7 +2,7 @@ import { ConflictError } from '../../storage/errors.js';
 import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
 import { assertNativeId } from '../identity.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
-import { controlCommandId, controlRecordKey, graphReachable, holdsConcurrencySlot, readAttempt } from './controller-common.js';
+import { controlCommandId, controlRecordKey, graphReachable, holdsConcurrencySlot, readAttempt, assertAttemptCurrent } from './controller-common.js';
 import { checkedRecord } from './plan-repository.js';
 import { readEffect } from './effect-contracts.js';
 import { assertResultRefs, writeAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
@@ -56,6 +56,7 @@ export class AttemptController {
         const observed = await this.runs.get(handle, input.runId);
         return this.runs.control(handle, controlCommandId('attempt.activate', attemptId), { ...guard, operation: 'attempt.activate', detail: { attemptId } }, async ({ tx, root, now }) => {
             const record = await readAttempt(tx, handle, root, attemptId), attempt = record.doc;
+            await assertAttemptCurrent(tx, handle, root, attempt);
             if (root.cancelRequested || !['admitted', 'running'].includes(root.status) || root.nodeControl[attempt.nodeId].disposition !== 'eligible'
                 || attempt.status !== 'pending' || attempt.epoch !== root.epoch || now >= root.progress.deadlineAt) throw new ConflictError('native_orchestration_attempt_not_admitted');
             let activeCount = 0;
@@ -82,6 +83,7 @@ export class AttemptController {
         if (!Array.isArray(effectReceiptRefs) || !SETTLED_ATTEMPT_STATUSES.includes(outcome)) throw new TypeError('Invalid settlement');
         return this.runs.control(handle, controlCommandId('attempt.settle', attemptId), { ...guard, operation: 'attempt.settle', detail: { attemptId, outcome, resultRefs, effectReceiptRefs, reasonCode } }, async ({ tx, root, now }) => {
             const record = await readAttempt(tx, handle, root, attemptId), attempt = record.doc;
+            await assertAttemptCurrent(tx, handle, root, attempt);
             const node = root.graph.nodes.find(item => item.nodeId === attempt.nodeId);
             if (root.cancelRequested || root.status !== 'running' || ['join', 'output'].includes(node.kind) || attempt.epoch !== root.epoch
                 || attempt.sourceBindingDigest !== root.sourceBinding.bindingDigest || attempt.status !== 'running') throw new ConflictError('native_orchestration_attempt_not_settleable');
