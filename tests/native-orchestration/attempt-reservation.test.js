@@ -3,7 +3,8 @@ import { RunRepository } from '../../src/native/orchestration/run-repository.js'
 import { AttemptController } from '../../src/native/orchestration/attempt-controller.js';
 import { TransitionController } from '../../src/native/orchestration/transition-controller.js';
 import { JoinController } from '../../src/native/orchestration/join-controller.js';
-import { GraphController, graphPatchHash } from '../../src/native/orchestration/graph-controller.js';
+import { GraphController } from '../../src/native/orchestration/graph-controller.js';
+import { graphPatchHash } from '../../src/native/orchestration/graph-revision-contracts.js';
 import { controlRecordKey, runGuard } from '../../src/native/orchestration/controller-common.js';
 import { attemptReceiptId } from '../../src/native/orchestration/attempt-settlement.js';
 import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecycle.js';
@@ -156,7 +157,7 @@ describe.each(CONTRACT_HARNESSES)('$name multi-step branch identity reservation'
         expect((await read('attempt', attemptId)).inputState).toBe('reserved');
     });
 
-    (name === 'FsEngine' ? test : test.skip)('FS publish fault cannot separate a reserved identity, Root reference and durable command', async () => {
+    if (name === 'FsEngine') test('FS publish fault cannot separate a reserved identity, Root reference and durable command', async () => {
         const input = await reserveInput(), before = await current(); let fired = false;
         h.engine._durabilityFault = stage => { if (stage === 'publish' && !fired) { fired = true; throw new Error('controlled reservation journal fault'); } };
         await expect(attempts.reserve(h.handle, input)).rejects.toThrow('journal fault');

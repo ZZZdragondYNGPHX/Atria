@@ -2,7 +2,8 @@ import { DelegateController, delegatedRunId } from '../../src/native/orchestrati
 import { RunRepository } from '../../src/native/orchestration/run-repository.js';
 import { PlanRepository, validationDigest, readPlanRevision } from '../../src/native/orchestration/plan-repository.js';
 import { AttemptController } from '../../src/native/orchestration/attempt-controller.js';
-import { GraphController, graphPatchHash } from '../../src/native/orchestration/graph-controller.js';
+import { GraphController } from '../../src/native/orchestration/graph-controller.js';
+import { graphPatchHash } from '../../src/native/orchestration/graph-revision-contracts.js';
 import { admitGraphEdges } from '../../src/native/orchestration/graph-costs.js';
 import { BudgetPort } from '../../src/native/orchestration/budget-port.js';
 import { SourcePort } from '../../src/native/orchestration/source-port.js';

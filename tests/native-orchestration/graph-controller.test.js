@@ -1,10 +1,12 @@
 import { PlanRepository, validationDigest } from '../../src/native/orchestration/plan-repository.js';
 import { RunRepository } from '../../src/native/orchestration/run-repository.js';
 import { AttemptController } from '../../src/native/orchestration/attempt-controller.js';
-import { GraphController, graphPatchHash } from '../../src/native/orchestration/graph-controller.js';
-import { runGuard, controlRecordKey } from '../../src/native/orchestration/controller-common.js';
+import { GraphController } from '../../src/native/orchestration/graph-controller.js';
+import { graphPatchHash, readTaskGraphRevision } from '../../src/native/orchestration/graph-revision-contracts.js';
+import { runGuard, controlRecordKey, controlCommandId } from '../../src/native/orchestration/controller-common.js';
 import { createNativeId } from '../../src/native/identity.js';
-import { hashNativeDocument } from '../../src/native/repositories/common.js';
+import { hashNativeDocument, putMutable } from '../../src/native/repositories/common.js';
+import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecycle.js';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 import { planFixture, prepareControllerOwnerRoot } from './fixtures.js';
@@ -86,6 +88,48 @@ describe.each(CONTRACT_HARNESSES)('$name G2 Host whole-patch control', ({ make }
         expect(after.graph.nodes.some(node => node.nodeId === branch.nodeId)).toBe(false);
         expect(after.nodeControl).not.toHaveProperty(branch.nodeId);
         expect(after.progress.patches).toBe(0);
+    });
+
+    test('original Plan and command-bound accepted Patches reconstruct each frozen revision without later successors or control changes', async () => {
+        const original = await current(), first = addBranch(), second = addBranch();
+        await graph.propose(h.handle, await proposal([{ op: 'markBlocked', nodeId: id('Node') }]));
+        await graph.propose(h.handle, await proposal(first.operations));
+        const middle = await current();
+        await graph.propose(h.handle, await proposal(first.operations)); // rejected duplicate, no revision
+        await graph.propose(h.handle, await proposal([...second.operations, { op: 'setPendingPriority', nodeId: first.nodeId, priority: 7 }]));
+        const root = await current();
+        const snapshots = await h.engine.withTransaction(h.handle, async tx => Promise.all([0, 1, 2].map(revision => readTaskGraphRevision(tx, h.handle, root, revision))));
+        expect(snapshots[0].graph).toEqual(original.graph); expect(snapshots[1].graph).toEqual(middle.graph); expect(snapshots[2].graph).toEqual(root.graph);
+        expect(snapshots[1].nodeControl[first.nodeId].priority).toBe(0); expect(snapshots[2].nodeControl[first.nodeId].priority).toBe(7);
+        expect(snapshots[0].graph.edges.some(edge => edge.to.nodeId === first.nodeId)).toBe(false);
+        expect(snapshots[1].graph.edges.some(edge => edge.to.nodeId === second.nodeId)).toBe(false);
+        const saved = structuredClone(snapshots[1]); snapshots[2].graph.nodes[0].label = 'Caller mutation';
+        expect(snapshots[1]).toEqual(saved);
+        await h.engine.close();
+        const cold = new h.engine.constructor({ url: h.url, nativeHostTopology: 'direct_single_primary', directoriesByHandle: () => h.dirs });
+        attachNativeHostLifecycle(cold, { directoriesByHandle: () => h.dirs });
+        try {
+            expect(await cold.withTransaction(h.handle, tx => readTaskGraphRevision(tx, h.handle, root, 1))).toEqual(saved);
+            await expect(cold.withTransaction(h.handle, tx => readTaskGraphRevision(tx, h.handle, root, 3))).rejects.toMatchObject({ code: 'native_orchestration_graph_history_unavailable' });
+        } finally { await cold.close(); }
+    });
+
+    test.each(['root-topology', 'root-control', 'patch', 'command'])('honestly rehashed %s tampering refuses the next proposal instead of extending a fabricated graph', async target => {
+        const branch = addBranch(), input = await proposal(branch.operations); await graph.propose(h.handle, input);
+        const patchKey = controlRecordKey(h.handle, rootId, 'patch', input.patch.patchId);
+        await h.engine.withTransaction(h.handle, async tx => {
+            const key = target.startsWith('root-') ? { kind: K.orchestrationRun, handle: h.handle, runId: rootId } : target === 'patch' ? patchKey
+                : { kind: K.orchestrationCommand, handle: h.handle, commandId: controlCommandId('graph.patch', input.patch.patchId) };
+            const row = await tx.getResource(key), doc = structuredClone(row.doc);
+            if (target === 'root-topology') doc.graph.nodes[0].label = 'Fabricated topology';
+            else if (target === 'root-control') doc.nodeControl[joinId].priority = 7;
+            else if (target === 'patch') doc.appliedOperations[0].node.label = 'Fabricated patch';
+            else doc.payloadHash = '0'.repeat(64);
+            await putMutable(tx, key, doc, { expectedIntegrity: row.integrity });
+        });
+        const before = await current();
+        await expect(graph.propose(h.handle, await proposal([{ op: 'setPendingPriority', nodeId: joinId, priority: 4 }]))).rejects.toMatchObject({ code: 'native_orchestration_graph_history_unavailable' });
+        expect(await current()).toEqual(before);
     });
 
     test('a rejected unvalidated node payload never enters the durable operation history', async () => {

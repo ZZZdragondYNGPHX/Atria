@@ -4,10 +4,10 @@ import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertObject, assertCounter, assertDigest, assertPlanDefinition } from '../../../public/shared/native-orchestration-contracts.js';
 import { controlCommandId, controlRecordKey, readAttempt } from './controller-common.js';
 import { writeAttemptSettlement } from './attempt-settlement.js';
+import { graphPatchHash, readTaskGraphRevision } from './graph-revision-contracts.js';
 
 const issue = (code, detail = {}) => Object.assign(new TypeError(code), { code, ...detail });
 const PATCH_PRODUCER_KINDS = Object.freeze(['planner', 'agent', 'review']);
-export const graphPatchHash = patch => hashNativeDocument(Object.fromEntries(Object.entries(patch).filter(([field]) => field !== 'payloadHash')));
 
 /** Pure built-in mechanism evidence. Source/producer authorization remains live. */
 export function validateGraphPatchCapability({ definition }) {
@@ -44,23 +44,21 @@ export class GraphController {
         return this.runs.control(handle, controlCommandId('graph.patch', patch.patchId), {
             runId: patch.runId, expectedEpoch: patch.expectedEpoch, expectedStateVersion: input.expectedStateVersion, expectedGraphRevision: patch.expectedGraphRevision,
             operation: 'graph.patch', detail: patch,
-        }, async ({ tx, root, plan, now }) => {
+        }, async ({ tx, root, plan, now, deny }) => {
             const stepCost = patch.operations.length;
             if (root.progress.steps + stepCost > root.limits.maxSteps || now >= root.progress.deadlineAt) throw issue('native_orchestration_limit_exhausted');
-            const candidate = cloneNativeDocument(root), issues = [], updates = new Map(), requests = { finalize: false, replan: false };
+            const candidate = cloneNativeDocument(root), issues = [], updates = new Map(), requests = { finalize: false, replan: false }, stamp = hashNativeDocument(root);
             const producerRecord = await readAttempt(tx, handle, root, patch.producerAttemptId), producer = producerRecord.doc;
+            await readTaskGraphRevision(tx, handle, root);
             const semanticHash = hashNativeDocument({ producerAttemptId: producer.attemptId, inputDigest: producer.inputDigest, sourceBindingDigest: producer.sourceBindingDigest, operations: patch.operations, reasonRefs: patch.reasonRefs });
             const prior = await tx.listResources({ kind: K.orchestrationRecord, handle, runId: root.runId, recordType: 'patch' });
-            for (const record of prior) {
-                if (record.integrity !== hashNativeDocument(record.doc) || record.doc.schemaVersion !== 1 || record.doc.runId !== root.runId
-                    || typeof record.doc.accepted !== 'boolean' || !Array.isArray(record.doc.appliedOperations)) throw Object.assign(new Error('Durable graph history requires integrity review'), { code: 'native_orchestration_graph_history_unavailable' });
-            }
             try {
                 const node = root.graph.nodes.find(item => item.nodeId === producer.nodeId);
                 if (root.cancelRequested || root.status !== 'running' || producer.status !== 'running' || producer.epoch !== root.epoch
                     || producer.sourceBindingDigest !== root.sourceBinding.bindingDigest || !PATCH_PRODUCER_KINDS.includes(node.kind)
                     || !node.capabilities.includes('graph.patch')) throw issue('native_orchestration_patch_denied');
                 await this.authorizePatch({ handle, tx, root, producer, patch });
+                if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(issue('native_orchestration_patch_denied'));
                 if (root.progress.patches >= root.limits.maxPatches) throw issue('native_orchestration_limit_exhausted');
                 if (prior.some(record => record.doc.semanticHash === semanticHash)) throw issue('native_orchestration_patch_no_progress');
                 for (const operation of patch.operations) {
@@ -112,8 +110,11 @@ export class GraphController {
                 }
                 if (!reachable.has(candidate.graph.outputContract.ownerNodeId)) throw issue('native_orchestration_patch_removes_output_path');
                 if (!requests.finalize && !requests.replan && hashNativeDocument({ graph: candidate.graph, control: candidate.nodeControl }) === hashNativeDocument({ graph: root.graph, control: root.nodeControl })) throw issue('native_orchestration_patch_no_progress');
+                await this.authorizePatch({ handle, tx, root, producer, patch });
+                if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(issue('native_orchestration_patch_denied'));
             } catch (error) {
                 if (!(error instanceof TypeError) && error.name !== 'ConflictError') throw error;
+                if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(error);
                 issues.push({ code: error.code ?? 'native_orchestration_graph_invalid', ...(error.nodeId ? { nodeId: error.nodeId } : {}), ...(error.edgeId ? { edgeId: error.edgeId } : {}) });
             }
             const accepted = issues.length === 0;

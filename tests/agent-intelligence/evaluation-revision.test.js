@@ -11,7 +11,7 @@ const { evolutionEvaluatorRevision, promotionDecision } = await import('../../sr
 const { EVOLUTION_RULE } = await import('../../src/native/agent-intelligence/evolution-repository.js');
 const { CASE_SET_REVISION } = await import('../../src/native/agent-intelligence/evaluation/cases.js');
 
-test.each(['controller-common', 'review-controller', 'graph-controller', 'attempt-settlement', 'join-controller', 'fanout-controller', 'graph-costs', 'rp-planner-profile', 'rp-planner-contracts', 'graph-result-contracts', 'result-port', 'rp-result-chain-profile', 'rp-narration-result-contracts', 'rp-output-contracts', 'rp-review-profile', 'rp-review-contracts', 'rp-control-work-contracts', 'rp-judge-profile', 'rp-judge-contracts'])('evaluator includes durable graph control %s bytes', dependency => {
+test.each(['controller-common', 'review-controller', 'graph-controller', 'graph-revision-contracts', 'attempt-settlement', 'join-controller', 'fanout-controller', 'graph-costs', 'rp-planner-profile', 'rp-planner-contracts', 'graph-result-contracts', 'result-port', 'rp-result-chain-profile', 'rp-narration-result-contracts', 'rp-output-contracts', 'rp-review-profile', 'rp-review-contracts', 'rp-control-work-contracts', 'rp-judge-profile', 'rp-judge-contracts'])('evaluator includes durable graph control %s bytes', dependency => {
     const revision = evolutionEvaluatorRevision();
     try {
         changedSource = fileURLToPath(new URL('../../src/native/orchestration/' + dependency + '.js', import.meta.url));

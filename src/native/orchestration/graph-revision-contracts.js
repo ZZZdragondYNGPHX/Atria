@@ -1,0 +1,79 @@
+import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
+import { cloneNativeDocument, hashNativeDocument as hash } from '../repositories/common.js';
+import { assertObject, assertCounter, assertPlanDefinition } from '../../../public/shared/native-orchestration-contracts.js';
+import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { controlCommandId, readAttempt } from './controller-common.js';
+
+export const graphPatchHash = patch => hash(Object.fromEntries(Object.entries(patch).filter(([field]) => field !== 'payloadHash')));
+const invalid = () => { throw Object.assign(new Error('Durable graph history requires integrity review'), { code: 'native_orchestration_graph_history_unavailable' }); };
+const equal = (a, b) => hash(a) === hash(b);
+
+/** Replay original accepted patch facts, never issue a producer or Result grant.
+ * Later edges appear only in their own revision, not an earlier publication. */
+export async function readTaskGraphRevision(tx, handle, root, graphRevision = root.graphRevision) {
+    assertCounter(graphRevision, 'graphRevision');
+    if (graphRevision > root.graphRevision) invalid();
+    const plan = await readPlanRevision(tx, handle, root.planRef), graph = cloneNativeDocument(plan.definition);
+    const nodeControl = Object.fromEntries(graph.nodes.map(node => [node.nodeId, { disposition: 'eligible', priority: 0, reasonCode: null }]));
+    let revision = 0, decisionSeq = 0, selected = graphRevision === 0 ? { graph: cloneNativeDocument(graph), nodeControl: cloneNativeDocument(nodeControl), graphRevision: 0 } : null;
+    const rows = await tx.listResources({ kind: K.orchestrationRecord, handle, runId: root.runId, recordType: 'patch' });
+    rows.sort((a, b) => a.doc.decisionSeq - b.doc.decisionSeq);
+    for (const row of rows) {
+        const receipt = row.doc;
+        if (row.integrity !== hash(receipt) || row.key.recordId !== receipt.patchId) invalid();
+        assertObject(receipt, ['schemaVersion', 'patchId', 'runId', 'payloadHash', 'semanticHash', 'producerAttemptId', 'previousGraphRevision', 'producerInputDigest',
+            'sourceBindingDigest', 'reasonRefs', 'appliedOperations', 'accepted', 'newGraphRevision', 'issues', 'decisionSeq', 'requests'], 'Graph patch receipt');
+        assertCounter(receipt.decisionSeq, 'decisionSeq', 1);
+        const producer = (await readAttempt(tx, handle, root, receipt.producerAttemptId)).doc;
+        const commandId = controlCommandId('graph.patch', receipt.patchId);
+        const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+        if (receipt.schemaVersion !== 1 || receipt.runId !== root.runId || typeof receipt.accepted !== 'boolean'
+            || receipt.decisionSeq <= decisionSeq || receipt.decisionSeq > root.eventSeq || receipt.previousGraphRevision !== revision
+            || receipt.newGraphRevision !== revision + Number(receipt.accepted) || receipt.producerInputDigest !== producer.inputDigest
+            || receipt.sourceBindingDigest !== producer.sourceBindingDigest || receipt.sourceBindingDigest !== root.sourceBinding.bindingDigest
+            || !Array.isArray(receipt.appliedOperations) || !Array.isArray(receipt.reasonRefs) || !Array.isArray(receipt.issues)
+            || !command || command.schemaVersion !== 1 || command.operation !== 'runs.control.graph.patch' || command.commandId !== commandId || command.target !== root.runId
+            || !equal(command.outcome?.patchReceipt, receipt) || command.outcome.runId !== root.runId || command.outcome.versions?.graphRevision !== receipt.newGraphRevision
+            || command.outcome.versions?.epoch !== producer.epoch || producer.epoch > root.epoch) invalid();
+        decisionSeq = receipt.decisionSeq;
+        if (!receipt.accepted) {
+            if (receipt.appliedOperations.length || !receipt.issues.length || !equal(receipt.requests, { finalize: false, replan: false })) invalid();
+            continue;
+        }
+        const patch = { schemaVersion: 1, patchId: receipt.patchId, runId: root.runId, producerAttemptId: producer.attemptId,
+            expectedEpoch: producer.epoch, expectedGraphRevision: revision, operations: receipt.appliedOperations, reasonRefs: receipt.reasonRefs, payloadHash: receipt.payloadHash };
+        if (!patch.operations.length || receipt.issues.length || graphPatchHash(patch) !== receipt.payloadHash
+            || receipt.semanticHash !== hash({ producerAttemptId: producer.attemptId, inputDigest: producer.inputDigest, sourceBindingDigest: producer.sourceBindingDigest,
+                operations: patch.operations, reasonRefs: patch.reasonRefs })
+            || command.payloadHash !== hash({ operation: command.operation, body: { runId: root.runId, operation: 'graph.patch', detail: patch } })) invalid();
+        const requests = { finalize: false, replan: false };
+        for (const operation of patch.operations) {
+            if (!plan.definition.graphChangePolicy.allowedOperations.includes(operation.op)) invalid();
+            if (operation.op === 'addNode') {
+                assertObject(operation, ['op', 'node'], 'addNode');
+                if (graph.nodes.some(node => node.nodeId === operation.node.nodeId) || !graph.graphChangePolicy.allowedNodeKinds.includes(operation.node.kind)) invalid();
+                graph.nodes.push(cloneNativeDocument(operation.node));
+                nodeControl[operation.node.nodeId] = { disposition: 'eligible', priority: 0, reasonCode: null };
+            } else if (operation.op === 'addEdge') {
+                assertObject(operation, ['op', 'edge'], 'addEdge');
+                if (graph.edges.some(edge => edge.edgeId === operation.edge.edgeId)) invalid();
+                graph.edges.push(cloneNativeDocument(operation.edge));
+            } else if (['setPendingPriority', 'cancelPending', 'markBlocked'].includes(operation.op)) {
+                assertObject(operation, operation.op === 'setPendingPriority' ? ['op', 'nodeId', 'priority'] : ['op', 'nodeId'], operation.op);
+                const control = nodeControl[operation.nodeId];
+                if (!control || operation.nodeId === graph.outputContract.ownerNodeId && operation.op !== 'setPendingPriority') invalid();
+                if (operation.op === 'setPendingPriority') { assertCounter(operation.priority, 'priority'); control.priority = operation.priority; } else { control.disposition = operation.op === 'cancelPending' ? 'cancelled' : 'blocked'; control.reasonCode = 'graph_' + operation.op; }
+            } else if (operation.op === 'requestFinalize') {
+                assertObject(operation, ['op'], operation.op); requests.finalize = true;
+            } else if (operation.op === 'requestReplan') {
+                assertObject(operation, ['op'], operation.op); requests.replan = true;
+            } else invalid();
+        }
+        if (!equal(receipt.requests, requests)) invalid();
+        assertPlanDefinition(graph, plan.dependencyPins);
+        revision++;
+        if (revision === graphRevision) selected = { graph: cloneNativeDocument(graph), nodeControl: cloneNativeDocument(nodeControl), graphRevision: revision };
+    }
+    if (revision !== root.graphRevision || root.progress.patches !== revision || !equal(graph, root.graph) || !equal(nodeControl, root.nodeControl) || !selected) invalid();
+    return selected;
+}

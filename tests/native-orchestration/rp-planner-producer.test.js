@@ -7,6 +7,9 @@ import { readRpPlannerCompletion } from '../../src/native/orchestration/rp-plann
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { controlRecordKey } from '../../src/native/orchestration/controller-common.js';
 import { NativeNarratorOrchestrationAuthority } from '../../src/native/orchestration/native-turn-orchestration.js';
+import { ModelPort } from '../../src/native/orchestration/model-port.js';
+import { runGuard } from '../../src/native/orchestration/controller-common.js';
+import { jest } from '@jest/globals';
 
 const harnesses = CONTRACT_HARNESSES.filter(({ name }) => ['FsEngine', 'SqliteEngine'].includes(name));
 const id = kind => createNativeId('orchestration' + kind);
@@ -27,6 +30,30 @@ async function configurePlanner(plan, { h, seeded, route }) {
 }
 
 describe.each(harnesses)('$name real RP Planner producer', ({ make }) => {
+    test.each(['binding', 'cancel'])('same-transaction %s during real Planner adoption preserves withdrawal and refuses a late Patch', async change => {
+        let narrator;
+        const f = await rpModelFixture(make, { configurePlan: async (...args) => { narrator = await configurePlanner(...args); },
+            responsePayload: () => JSON.stringify({ operations: [{ op: 'setPendingPriority', nodeId: narrator.nodeId, priority: 1 }] }) });
+        const inspect = ModelPort.prototype.inspectResultCompletion; let changed = false;
+        const spy = jest.spyOn(ModelPort.prototype, 'inspectResultCompletion').mockImplementation(async function (handle, request) {
+            const proof = await inspect.call(this, handle, request);
+            if (!changed && f.requests.length === 1 && f.h.engine.hasActiveTransaction(handle)) {
+                changed = true;
+                if (change === 'binding') {
+                    const binding = await f.plans.getBinding(handle, f.sourceSelector);
+                    await f.plans.saveBinding(handle, id('Command'), { sourceSelector: f.sourceSelector, planRef: f.planRef, expectedVersion: binding.version });
+                } else await f.authority.execution.runs.cancel(handle, id('Command'), {
+                    ...runGuard(await f.authority.execution.runs.get(handle, request.runId)), reasonCode: 'controlled_user_cancel' });
+            }
+            return proof;
+        });
+        try {
+            await expect(f.run()).rejects.toThrow(); expect(changed).toBe(true); expect(f.requests.length).toBe(1);
+            expect((await f.plans.getBinding(f.h.handle, f.sourceSelector)).version).toBe(change === 'binding' ? 1 : 0);
+            const [row] = await f.h.engine.withTransaction(f.h.handle, tx => tx.listResources({ kind: K.orchestrationRun, handle: f.h.handle }));
+            expect(row.doc.cancelRequested).toBe(change === 'cancel'); expect(row.doc.graphRevision).toBe(0); expect(row.doc.outputClaims).toEqual([]);
+        } finally { spy.mockRestore(); await f.cleanup(); }
+    });
     test('actual Scheduler Model produces one Host patch, then the original Narrator and one Chat output close all costs', async () => {
         let narrator;
         const f = await rpModelFixture(make, { configurePlan: async (...args) => { narrator = await configurePlanner(...args); },
