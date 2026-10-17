@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · Candidate Design & Discussion Agenda
 
-- 状态：**Draft（W1–W20 的 B 顶层方向已获用户确认；W21 P1/P2 物理优选、真实 Gate 0 退出和完整产品实施仍未批准）**。旧候选章节保留历史，现行决议以最新章节/入口为准。
-- 当前讨论轮次：W21 — P1/P2 Protected Native Session 身份位置、领域事实 Owner、Save/GC/合法写入、WP-A～F 和最终 Gate 0 交接前证据（见 [e0-handoff-evidence-review.md](e0-handoff-evidence-review.md)）。
+- 状态：**Draft（W1–W21 的 B 顶层方向已获用户确认；W22 最终证据收口与可执行 Preflight、正式 API/Schema、Gate 0、开发均未批准）**。历史选项为当轮备选，最新用户确认和当前阶段以 index/本文件最新章节为准。
+- 当前讨论轮次：W22 — P2 原生 Typed Subject/Save/GC、Domain Fact/回执/有效历史、真实 WP-A～F 消费者和最后 Gate 0 交接阻塞（见 [e0-final-implementation-handoff.md](e0-final-implementation-handoff.md)）。
 - 入口：[index.md](index.md)；材料：[research.md](research.md)
 
 ## 1. 问题的正确切分
@@ -955,3 +955,39 @@ W19 仍为用户待选方案；本阶段未修改 `main` 或其它代码分支�
 - W21-C：不做任何物理选择，把保护、历史和消费者决定全部放到正式编码时处理，容易使核心 WP-A/B 与后续工作包重复改接口。
 
 **W21-B 尚未由用户批准**，P2 的 Namespace 名/SubjectID 前缀、完整 Schema、正式 API 和具体 DELETE 文件清单均未冻结。完整 E0 生产调用图和 V3/Prompt 最终整合版本仍是 Gate 0 待核，真实 CI/端测为实施后验收。当前仍只修改 docs、不创建产品实现分支或称 E0 PASS。
+
+
+---
+
+## 29. S23 · W21-B 确认与 W22 最终 Gate 0 证据/交接预审（2026-10-17）
+
+### 29.1 W21-B 正式确认
+
+用户对第 21 轮明确推荐的 **W21-B「P2 优先，显式 Reserved/Typed Session Identity + Domain Fact Owner + 证据门槛式交接」**回复“认同”。据此 **W1-B 至 W21-B** 是用户已确认的总体架构路线；但 `ARCH-DWE-01` 整份 Plan 仍 **Draft**，并未批准特定 `subject_*` ID/Namespace/Schema/Native Host ABI、E0-01～09 PASS、产品代码修改或创建临时开发分支。
+
+已确认的约束：**P2 是优先原生物理架构，而非新 DB**。一个 Native SessionRevision 中的受保护 `sessionState` 仅维持 Canonical Subject identity、origin、scope 和合法 admission；交易/社会关系/世界规则/生命周期/历史等已有 Domain 保持其事实 Owner。新的 Typed Subject 只能经既有 Native Host 单权威 prepare/validation/commit 发表，普通 Runtime Patch/插件/LLM 不获得写入权限；`readSessionSnapshot`、Save/Restore、Revision ancestry、GC 和跨 WorldSelection 的作用域有效性必须一同审查，避免保护只覆盖部分游戏模式。
+
+**P1 仅为条件性回退**：Gate 0 若证明它在所有活模式下有同等级完整保护、更少真实消费者改造和更合理存储成本，才能把证据提交到同一 Plan 再确认；本轮不能未经证据直接把 P1/P2 同时作为产品中的双轨写权。
+
+### 29.2 W22 当前的真实接口证据
+
+本轮继续以锁定 `main=c57fada6edeea255b29d857ba2585c1dbc9c098b`、V3/Prompt/Visual 未合入分支 SHA 进行静态审读：
+
+- `SessionRepo.commitSnapshot` 将 `SessionRevision.stateHeads` 对应的不可变状态资源、原 Domain Receipt/Revision/Session Root 统一发表；`readSessionSnapshot` 读取状态并校验哈希；`save-system` 基于 `revision.stateHeads` 的依赖闭包导出，`reachabilitySnapshot` 及 `session-maintenance` GC 以合法修订图标记 `sessionState`。这些是 P2 可复用的**存储基础**，但不会自动提供新增 Subject 的 Typed Schema/初始化/存档导入校验。
+- `SessionCore.validateRuntimeStateChanges` 按 `RESERVED_SESSION_NAMESPACES` 禁止 Generic Patch 修改现有核心 Namespace；P2 若增加正式 Namespace 必须加入该边界、相应 Domain Validator/Writer、WorldSelection 变更规则，而不能以合法的 `stateHeads` 为由接受普通写请求。
+- `SessionCore.updateResources` 可变更 Session 的 WorldSelection，`ProductService.saveResourceSetup` 是真实调用方；P2 Subject 的 `worldScopes` 及历史事实必须有合法解绑/重新绑定行为。
+- `native-history-runtime.queryHistory` 受声明历史和已选 Snapshot 限制，`NativeSessionObservation.history` 经 exact Revision 获取该投影；这只验证“Revision 锚”可复用，尚未支持正式通用 `asOfGameTick` 的 World Subject fact 查询。
+- `native-information-runtime.projectInformation` 在多个已定位生产 Consumer 中使用，动态 NPC Perspective 必须经 Host Source/Grant 重新审查，不能直接放宽静态 Package Actor 限制。
+- `worldInfoBefore` 等旧 ST 相关字段和 Legacy Orchestrator 部分生产引用真实存在；`nativeKnowledgePromptChannels` 的静态索引仅见定义/测试，不能将这两类相反证据概括成“所有旧 WorldInfo 可删”或“必须永远保留双轨”。
+
+这些都是**带冻结 SHA 的定向源码/文件级搜索发现**，不是全部动态插件、未合入分支的最终运行调用图，更不是任何新功能的实测结果。E0-01～09 继续 `PARTIAL / BLOCKED`。
+
+### 29.3 W22 唯一详细子模块与候选方案
+
+详细 Gate 0 可交接/不得交接条件、P2 最小 Schema 的可推导字段和真信任边界、WP-A～F 文件级 Owner/测试/依赖、最终 legacy 分类、用户授权之前需要完成的 preflight，统一由同一 Plan Bundle 的 [e0-final-implementation-handoff.md](e0-final-implementation-handoff.md) 持有，不再重复创建另一份 Plan/Record。
+
+- W22-A：忽略仍未收口的 Gate 0/最终集成 HEAD/生产调用图，直接将整份 Plan 标为 Approved/Final 并开工；当前证据不足。
+- **W22-B：「具名阻塞 + 可执行 preflight + 条件化最终开发交接」（本轮推荐、用户尚未确认）**：不再扩张抽象架构，把所有剩余 E0-01～09 转成可由固定最新集成 HEAD、具体代码调用及责任文件验证/关闭的工作项；只在 Gate 0 有充足责任分配、最小合同/旧路径切线、测试计划且用户明确最终授权后定稿和开始实现。新增功能的 Node/CI/三端 PASS 属实施期 Gate 1～4。
+- W22-C：继续无限增加新抽象层但不设置退出点；与 W15–W21 的收口目标相违背。
+
+**W22-B 目前只是建议，不能误记为用户批准**。整份 Plan 仍为 Draft、E0 未 PASS，`main` 及所有开发/参考分支未修改；没有创建实现分支、执行 Node/CI/真实 UI/Windows/CachyOS/Termux。
