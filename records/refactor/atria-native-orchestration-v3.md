@@ -1476,3 +1476,10 @@
 - root最终九suite组合180/180 PASS（27.334s）：新Source8、publication22、currentness8、HTTP7以及原Result/Run HTTP/Approval/Authoring/ReviewOrigin135；产品最终字节冻结，该轮不含主16项，证据分开。此前五原suite135/135（12.678s）；更早Result suite加载因新增模块暴露原reviewReceiptId初始化别名循环失败、同轮Run28通过，改ESM live re-export后恢复，不修改原控制算法。
 - 原相关回归精选28PASS/68skip、五suite，产品ProjectAgent/Studio/Host前后SHA256一致：原ProjectAgent+Studio5PASS/22skip（2.804s）；原FS/SQLite durable recovery9case各一遍+system Git1共19PASS/14skip（6.93s）；V3三轮Model+Review Graph出口4PASS/32skip（50.552s）。准确精选不当全仓或SQL通过。22相关JS新/改文件原ESLint、staged diff check通过；所有Project均临时harness、审批仅loopback，未修改用户Project。
 - 文档分工已先按用户确认提交`c1897410e`，本组后续恢复后端收口；P6/清退/整体最终验证留待Claude前端与组装回交Codex。本组仅有限正式消费者完成，完整后端/通用图与其它领域仍继续，P1–P4/最终Gate NOT_READY；当前不前端、不P6、不合main、不推送或结束分支。无新增真实API，私密总数12、备用Chat0、daily/RPM配置null保持。
+
+
+## 2026-10-17 — 工程收敛：P3 端口合同与 P4 消费者分账
+
+- 用户先要求只读审计，审计基于源码 `75c6a676c` / docs `94272a03a`，两工作树 clean 并 fetch；未修改产品或运行新测试/API。发现旧 P3 表沿用第5–33组，Record 第44组已明确进入 P4；不得把所有后续组数解释为 P3 工作量。原 Host/Source/银行/Hybrid/正式 writer 权威实际复用，主要债务是具体消费者反向依赖、有限 profile 组合扩张及核销失真，不据此宣称全阶段通过。
+- 用户随后授权沿审计路线持续实现。更新唯一 Gate/实施路线与入口：剩余按数据计算、受限 Tool、有限恢复三个闭环合入既有 W02/W04/W05；保留单 Host/授权/费用/unknown/物理提交安全，完整业务消费者归 P4，前端及组装后硬切/最终验证按已确认分工后续执行。未取消冻结需求，未新增平行架构或独立审查前置。
+- 开始并行实际分工：Tool 生产接线；D5 原模型失败策略；有限恢复；根代理负责显式引用授权、共享接线和证据核销。初始代码仍为上述源码 HEAD，没有将计划改写算作实现/验收通过。产品修改、验证与最终版本继续追加于本节，不按每个小边界再新增工作组。

@@ -2,7 +2,7 @@
 
 > **唯一入口**。Task ID：`refactor/atria-native-orchestration-v3`。Primary Workspace：`main`（未来实现）；实现使用同一任务分支 `refactor/atria-native-orchestration-v3`，企划/Record继续在长期 `docs` 工作空间。规则只引用 [Repository Governance](../../../README.md)，不在本 Plan 复制执行规则。
 
-2026-10-17 已恢复同一任务，源码本地最新 `75c6a676c`（未推送），含真实有限 RP Judge、所选节点多 Route 隔离评测、Review/Attempt 同事务撤销保留修复、原图修订重建、显式静态 Agent DAG 和 Planner 有界重规划回路、发布图修订及 Planner→Agent 图组合及Host限定的动态Draft增补；Context附属检索Effect、原Profile pin、实际POST目标/冻结请求及单Narrator RP的实际Context Rerank及原Embedding执行/物理索引共用、V3单Narrator RP实际Embedding与原索引计量、原隔离worker检索RPC/父Host费用闭包、静态RP Agent DAG逐节点检索与Memory撤回、原银行声明式localWork额度及静态RP Judge检索/判定费用闭包、原Review检索及局部重做费用保留、Planner原修订检索/replan/静态图费用与末授权当前性、Host动态Draft模板owned检索pins及原隔离Planner检索、完成Model后的私有检索事实封存、原Session Narrator检索与Model quota分工及正式输出费用闭包、原Project实际generation writer一次性完成许可与Source当前性、原Project银行在Storage Center和直接Task删除中的历史引用保护、原后台Task/Actor appraisal检索与合法query来源及完整费用闭包；原管理员迁移目的端既有V3历史的快照前保护；原费用Provider分项投影；有限Delegate brief/检索权限隔离实证；原Project metadata改名的可信批准/正式Commit与严格费用输出闭包；§17.108–17.138 与同一 Record 第105–135组记录准确边界和测试。用户提供的测试 API 已在仓库外重建，按主站优先/失败备用，当前无调用硬上限。已消费换机 HANDOFF 删除；后端仍在实施，P1–P4及最终Gate NOT_READY，不进入前端、main 或结束分支。
+2026-10-17 工程收敛基线：源码 `75c6a676c`、docs `94272a03a`；当前为 P3 必需闭环收口与 P4 后端实施，P3 Gate/后端首次交接/最终产品验收均未通过。当前能力与剩余清单只读 [acceptance-matrix](acceptance-matrix.md)，收敛范围和停止条件只读 [实施方案 §6](implementation-plan.md#6-p3-收敛边界与结束条件)，精确提交和分次验证归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。不以累计工作组衡量完成度。
 
 最新后端实证：第九十四组 `1e1281224` 支持同一原 Session 内 Task/variant 专属 Binding 与 Narrator 的独立 Plan，范围见[接口 §17.98](interface-contracts.md#1798-原-session-内的-task-专属-plan-binding)和同一 Record。完整后端继续实施；此项不核销通用 Graph/Simulation/可信高风险消费者、恢复释放与最终 Gate。
 
@@ -87,73 +87,8 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 
 D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代码发现见 [e0-audit.md](e0-audit.md)，Plan/Run/Effect/Receipt/Projection 关键接口方向见 [interface-contracts.md](interface-contracts.md)，E1 实施阶段/前置审核唯一来源见 [implementation-plan.md](implementation-plan.md)，实施状态见见 [acceptance-matrix.md](acceptance-matrix.md)**。其他 HCM、Agent Intelligence、Game Runtime、Serene Canvas、独立 MCP 的权威不复制。D9 设计冻结绝不等于 E0 引用闭包/用户实际开工授权。
 
-## E1 正式开发审查入口（E0设计与授权分开）
+## E1 当前执行入口
 
-当前生效状态：**E0_DESIGN=DESIGN_READY；DEVELOPMENT_AUTHORIZATION=AUTHORIZED；P1/P2/P3/P4=IN_PROGRESS；P5–P8=NOT_STARTED；P3阶段Gate及最终产品验收NOT_READY**。2026-10-16已按用户要求拉取同一远端任务分支，从`6865d0a08`恢复；第二十七组`5df345aee`补原RP管理写围栏（接口§17.37），第二十八组`2cf8c97d4`接原RP prefix Context/受信Model producer与原银行实际计费（接口§17.38）。同一Record保留此前三域原银行、真实GenerationHost稳定发送、Source/Effect/Context/Tool、父子Run、Binding、有限Session/Project producer与本次管理入口的实际子证据。先前暂停换机记录只保留为历史，不是当前停止要求。Hybrid/后台producer/Delegate资源交接及P4正式消费者仍待接；局部通过不等于完整领域授权/可信Review/三端通过。接口/并行前端入口见[backend-integration](backend-integration.md)，Gate见[acceptance §9.1](acceptance-matrix.md#91-p3后端子工作后的gate复核)，真实环境/剩余队列见同一Record最新组。不接真实付费或未授权外部mutation，未集成main。
+E0_DESIGN=DESIGN_READY；DEVELOPMENT_AUTHORIZATION=AUTHORIZED。P1/P2/P3/P4 尚未整体核销，P5–P8 未开始；当前先完成 P3 必需闭环并持续推进 P4 后端。后端接口快照见 [backend-integration](backend-integration.md)，Gate 与真实缺口只见 [acceptance-matrix](acceptance-matrix.md)，不在入口累积重复历史状态。
 
-2026-10-16第二十九组`0414b623e`完成原Session合法候选域/唯一Hybrid/原Context bank组合，见接口§17.39。RP Memory与外部retrieval仍待接；后台/Delegate及P4–P8队列和P3 NOT_READY不变。当前已从HANDOFF恢复持续开发，不更新旧中断快照。
-
-第三十组`58ff31eeb`沿原ChatRepo/Engine状态完成RP Memory prefix候选域/唯一Hybrid/原context_build/send-consume复核，见接口§17.40。缺历史source ID明确原拒绝，无新ID或Session伪装。继续后台scope、Delegate/Handoff与P4–P8；P3仍NOT_READY。
-
-第三十一组`4f96c7637`完成唯一原Scheduler父资源让出/child准入/父permit恢复及取消保护原语，见接口§17.41；仍未接正式Delegate producer/grant/Result，不能核销全P3。
-
-第三十二组`cde07ac66`修复Memory新增consumer在最终bank await同事务合法撤销被回滚的问题，见接口§17.42；原Settings/sidecar事实提交后拒正文，真实费用保留。当前最新实现/验证归同一Record，继续后台scope/原bank producer、Delegate正式授权与P4–P8；P3 IN_PROGRESS / Gate NOT_READY未变。
-
-第三十三组接入原pending outbox有限后台Model/Task Context/原bank与窗口、周期额度，见[接口§17.43](interface-contracts.md#1743-原pending-outbox后台model-producer与窗口周期额度)。原产物adoption与费用保留，不开放通用Graph/Run API或P4 OutputClaim/Result。用户要求本组完成后暂停换设备；最新已测/已推HEAD和下一工作以同一Record及HANDOFF为准，P3 Gate仍NOT_READY，未集成main。
-
-2026-10-16已按当前指令fetch/fast-forward源码与docs并读HANDOFF恢复；历史暂停不再限制执行。第三十四组6bbc4c01f补原DelegateController耐久Handoff起始、单并发父逻辑槽让出和精确祖先收据验证，见[接口§17.44](interface-contracts.md#1744-耐久handoff起始与父逻辑槽让出)。继续有限Plan发布校验、真实领域producer与child Result/Audience/return闭包；没有将调度回调当正式完成。P3 IN_PROGRESS / Gate NOT_READY，未集成main。
-
-第三十五组185cb7799补有限agent.delegate原Plan发布机制及单次闭包memo，见[接口§17.45](interface-contracts.md#1745-有限delegate发布机制与单次依赖闭包)。真实执行仍需原领域capture/grant、child输入编译和Result/Audience/return，不将发布成功当执行授权。继续已授权后端工作，P3 Gate NOT_READY。
-
-第三十六组1afab4875/1543e859c补显式Result字节policy、严格record/envelope与最窄RP→父Attempt范围，见[接口§17.46](interface-contracts.md#1746-有界task-local-result物理合同)。用户启动Docker后本机相关SQL22项取得实际证据；完整矩阵和正式producer/Result写入与消费未通过，继续后端，未合main。
-
-第三十七组补原Model实际wrapper的私有完成证明及原Run→Source元数据控制边界，见[接口§17.47](interface-contracts.md#1747-原model完成事实与同source元数据控制边界)。修复相同command锁逆序和末预算await期间同事务取消的过期证明；完成事实不替代Result/Audience授权。最新源码/实测范围归同一Record，继续实际RP child producer及正式Result/return，P3 Gate仍NOT_READY。
-
-第三十八组2f22e9b63补三域原银行精确child费用闭包只读观察，见[接口§17.48](interface-contracts.md#1748-原银行精确child闭包观察)。原unknown/local/后代/释放ACK/真实overrun保持，兄弟工作不改变该子树摘要；观察不是完成授权。实际RP child/Context并行接线尚待下一组验证提交，P3 Gate仍NOT_READY。
-
-第三十九组664749309接真实RP独立child capture/受限Context/Model/原bank，并修根银行与叶reservation的额度接线，见[接口§17.49](interface-contracts.md#1749-真实rp独立child-model与根银行叶额度边界)。内部明确pending_result无正文，不把物理permit返回当durable return；正式Result/Output/Audience/return继续实施，P3 Gate仍NOT_READY。
-
-第四十组b4c06075a已接真实RP child Result publication，同原CAS写有界正文/发布收据/producer settlement，见[接口§17.50](interface-contracts.md#1750-真实rp-child-result发布与历史事实边界)。返回仅pending_output refs，原bank held、父waiting_child，output/return/正文消费仍IMPLEMENTATION_PENDING。第四十组当时按用户要求暂停，现已恢复；该历史事实及后续实际进度见同一Record；P3 Gate仍NOT_READY，未集成main。
-
-第四十一组从最新远端第四十组b4c06075a恢复，接原Graph task-local output、独立原bank release/closed观察与严格OutputClaim/终结proof，见[接口§17.51](interface-contracts.md#1751-原graph-task-local-output与原银行闭包)。有明确费用闭包的child完成后返回pending_return；父仍waiting_child，durable return/父Result消费与continuation继续待接。当前恢复后持续实施，历史换设备暂停不作为限制；P3 Gate仍NOT_READY，未合main，真实提交与最小验证归同一Record第四十一组。
-
-第四十二组接原Scheduler父permit实际重新取得后的耐久Handoff return（[接口§17.52](interface-contracts.md#1752-原父permit重新准入后的耐久handoff-return)），父原Attempt/input/grant保留，内部返回pending_continuation及returnReceiptRef。尚无父ResultPort/Context/实际Narrator continuation或正式Chat输出，下一步沿同真实parent callback接入，不能从metadata冷恢复scope。P3及最终Gate仍NOT_READY，未合main；实际源码归同一Record第四十二组。
-
-第四十三组接原ResultPort精确父recipient、带来源建议Context与真实父Narrator continuation（接口§17.53）。父原Attempt/input/grant与根银行保留，内部成功返回父Model结果及delegation metadata；正式Chat输出/父Run终结尚待P4。用户明确要求持续至全阶段完成，继续所有已授权实现，不在分组检查点停工；最终Gate尚未通过，不合main。
-
-第四十四组开始P4，接原RPControl输出WAL、单Chat正文+marker、一次性permit/只观察reconcile与原写路径marker保护（接口§17.54）。产品当前只prepare，真实Host Effect/Graph完成接线继续；P4=IN_PROGRESS，P3与最终Gate仍NOT_READY。
-
-第四十五组接正式RP输出的原Host Effect/dispatch token与原bank rp_output计费（接口§17.55）；只有明确派发后才执行原单Chat提交，ACK未知只观察。domain committed与父Run completed继续分离，下一步Graph output owner/claim/严格完成证明；P4 IN_PROGRESS，最终Gate NOT_READY。
-
-第四十六组补正式Narrator Result与原Graph output owner（接口§17.56）：producer完成→ResultRef→真实edge/traversal→output Attempt→正式Chat Effect，chat.output不再由agent持有。父Root仍待严格claim与原bank闭包，继续全部已授权阶段；Gate NOT_READY。
-
-第四十七组完成有限RP正式output claim及父Root终结（接口§17.57），复用原bank精确Effect闭包；未知费用/receipt保持pending_output，历史证明不恢复scope。继续Session/Project/Evolution等完整消费者及P5–P8；P3/P4及最终Gate仍NOT_READY，未合main。
-
-第四十八组为Native Session出口补原Scheduler finalization专用scope及原Turn一次交换（接口§17.58），运行态Model permit仍拒finalizing。只有底层原机制，Session Result/正式Effect/receipt/claim接线继续，P4/最终Gate未通过。
-
-第四十九组补原Narrator输出quota与同原operation finalizer的身份绑定（接口§17.59），实际原银行证明输出凭据不能新发送或加扣计数，已发生费用保留。继续Context输出复读与Session完整出口；Gate未通过。
-
-第五十组补原Native Session Context专用finalization复读（接口§17.60）：同原Narrator quota与实际finalizer绑定，继续拒运行态发送；原Memory/Binding/Source撤销保留合法事实和费用。产品Session完整出口仍待接入。第五十组当时按用户换对话要求暂停，现已恢复并继续既有授权；P1/P2/P3/P4 IN_PROGRESS，P5–P8 NOT_STARTED，最终Gate NOT_READY，未合main。
-
-第五十一组0dcb97267已恢复后接入产品GenerationHost实际finalizer（接口§17.61）：原prepared对象一次私有绑定Narrator完成/Context，同原锁序复验Context/Model/银行后交唯一Session writer。合法末await撤权保留事实/费用；正式Session Result/Effect/DomainReceipt/OutputClaim继续实施。历史第五十组暂停不作为本次停止要求，P3/P4及最终Gate仍NOT_READY，未合main。
-
-第五十二组bf7127f43补原Session Turn稳定commit与精确原领域收据（接口§17.62），原writer ACK未知只观察同操作，合法后续Source推进/冷读不恢复scope。Session正式Result/Graph output Effect/费用闭包/OutputClaim继续实施，P3/P4及最终Gate仍NOT_READY，未合main。
-
-第五十三组f1261290f接显式有限Session正式Result/Graph output owner/原S2 Effect与原bank session_output（接口§17.63）。Result明确native_session来源与session_output audience，RP与Session消费者不混用；OutputClaim/Root终结继续实施。已恢复的HANDOFF暂停快照删除，历史事实保留同一Record，当前按用户要求持续至全阶段完成，不在分组提交后停工。
-
-第五十四组fff849695接有限Session严格OutputClaim/原费用闭包/Root终结与冷读（接口§17.64），包括typed resolver和原selection复用。费用/Host receipt未知不签claim，合法post-commit撤权保留domain输出，原Effect稳定commit pin保护未知窗口。继续Project多轮/Task tools/Review、其余完整消费者及P5–P8；P3/P4及最终Gate仍NOT_READY，未合main。
-
-
-第九十九组 00b893f1a 补控制节点 JSON/structured-output 与 graph.patch 的原 Host 发布机制证据，见[接口 §17.103](interface-contracts.md#17103-控制-model-与-graphpatch-的发布机制证据)。实际通用 Graph runtime 与完整后端仍在实施，发布成功不等于运行授权。
-
-
-第一百组 739374b42 补原 Host Review 判定、局部重做/旧分支失效与元数据投影，见[接口 §17.104](interface-contracts.md#17104-review-耐久判定与局部重做控制)。真实控制 Model runtime 与完整后端继续实施。
-
-
-第一百零一组 bcf5d65e8 接通原RP真实私有 Planner→受限GraphPatch→Narrator→唯一Chat输出及三Effect原费用闭包，见[接口 §17.105](interface-contracts.md#17105-原-rp-planner-的真实受控生产与费用闭包)。仍为显式有限profile，完整Graph/Judge/Review等后端继续，不推送或交前端/main。
-
-
-第一百零二组 ea2359901 补同来源静态Graph直接后继的原Result audience/物理事实合同，见[接口 §17.106](interface-contracts.md#17106-同来源直接后继的-graph-result-合同)。真实Graph Result writer与消费仍在接线，完整后端继续。
-
-
-第一百零三组 50d4061b5 接通原RP静态两Agent的受保护Result生产/消费、原Context与唯一Chat出口，见[接口 §17.107](interface-contracts.md#17107-原-rp-graph-result-的实际生产与消费)。撤权/取消/ACK/unknown与冷读有FS/SQLite实证，实际Review/Judge及完整后端继续。
+执行顺序：**Codex 完成后端 → Claude Code 完成前端与组装 → Codex 做 P6 硬切、清退与最终验证**，详情只归 [实施分工](implementation-plan.md#2-执行分工与两次交接)。当前不提前前端、P6、合 main 或结束分支。阶段核销不是自动停止点，执行与真实阻塞统一遵循 Repository Governance。

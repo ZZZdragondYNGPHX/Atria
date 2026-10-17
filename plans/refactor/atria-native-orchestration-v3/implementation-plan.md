@@ -33,6 +33,7 @@
 | **P4 — Product Consumers** | Native Game/Ordinary RP Narrator/Player autonomy、Session World/Command/Timeline、Studio Project Agent Task/Review/Apply、Experience/Evolution targets 与原 M1 Eval | P2/P3 |
 | **P5 — U2 Frontend（Claude Code）** | Serene Canvas Agents Plan Library/Graph+Inspector/typed Ports/Draft/Publish，Run Timeline 默认/Graph 切换、Host Projection/Diagnostics/Approval/Source/Cost 与移动端 List/Sheet | P1–P4 新权威 API 与可信 UI contract |
 | **P6 — Atomic Legacy Hard Cut（回交 Codex）** | 同任务分支一次性切换全部 RP/Native Game/Studio/Agent/Search/Shell/Evolution 的原生入口，删除旧五模式/编排代码/Browser checkpoint/旧 preset UI/旧 mode 事件注入/专用测试 | Claude Code 完成 P5 前端与组装并回交；P1–P5 替代已准备与真实消费者闭包 |
+| **P7 — Final Verification（回交 Codex）** | 按既有验收取得组装后真实客户端、平台、Engine、必要外部服务/性能/质量证据，核销最终 Gate；不新增独立审查前置流程 | P5 组装及 P6 替代/清退；相应后端证据可提前取得 |
 | **P8 — Integration & Close** | Codex 完成整体最终验证后，按届时用户指令执行 main 集成/推送、同一 Record 和已完成分支清理 | P1–P6、最终验证与 Governance |
 
 ## 4. 接口与清退专项工作包映射
@@ -48,6 +49,22 @@
 | **W07 Studio/Evolution Consumer** | `project-agent-executor.js`、`project-agent.js`、Studio Review/Commit、`evolution-targets.js` 与 Prompt/Strategy Preset target 重构 | P4、P6 |
 | **W08 U2 UI & Shell** | `atria-shell/workspace-host.js`、Shell Search、Graph viewer、旧 Workspace Panel、Serene Canvas/手机输入与审批 | P5 |
 | **W09 Hard Cut & Evidence** | 旧模式/适配/JS/CSS/测试/配置导入一一核对，关键信息迁移仅正式业务权威引用、真实数据不被误删 | P6–P8 |
+
+## 6. P3 收敛边界与结束条件
+
+P3 核销原 Native Ports、授权传播、预算与恢复合同，不以完成所有 P4 业务图/角色/检索组合为前提。当前唯一能力状态表为 [acceptance-matrix](acceptance-matrix.md#p3--native-ports--budgets)，实施版本与验证只归同一 Record；不为每个小边界默认新增独立工作组。
+
+剩余实现按端到端闭环组织，复用 W02/W04/W05：
+
+1. **数据与计算**：显式 Source/Result 接收授权 → 原合法 Context → 原 Model/银行 → 合法 retry/fallback 与能力证明 → typed Result → 接收方重验。默认 brief-only 不扩大父私密权限；Reuse/continuity 由原能力承载，合法 miss/reset/unknown 不要求自建缓存或 KV manager。
+2. **受限工具**：已发布 Plan/owned pin → 可信 producer grant → 原 S2 Effect → 原 Skill/MCP/A2A/Secret/Egress → 原 receipt/unknown。原 adapter 必须挂载生产链；不新增平行 Registry/权限服务，不开放缺原防线的 R3。
+3. **有限恢复**：ready 且无 dispatch claim 经当前 Host 重新审核 Source/预算/新授权可继续同 Effect；dispatching/unknown 只查询/reconcile；已有 Result 经新 recipient 授权消费、不重执行。旧批准、额度、逻辑计数和已发生费用不得重置。
+
+P3 结束须同时满足：单 Host/fence/epoch 权威；每项冻结必需能力的生产接线；独立 audience 与跨引用授权；原银行唯一计费与未知费用保留；上述有限恢复；Secret/Egress/批准及原领域提交边界；对应最终源码版本的必要验证。必需项不得仍为 IMPLEMENTATION_PENDING 或靠安全拒绝伪报支持。
+
+明确停止条件：P3 必需项全部具备生产入口、原权威/银行、receipt/Result、版本化验证且无阻塞缺陷；其余事项有明确既有阶段/领域归属。没有实际消费者的全组合扩展不重开 P3；真实安全、一致性或冻结合同缺陷仍必须修复。完整 RP/World/Project/Evolution 消费者归 W06/W07/P4，原 Memory 算法、Actor cognition、World tick、Studio ChangeSet、Provider/cache 与 Eval 晋升语义留在原系统；不能以减少工作量为由取消冻结能力或保留旧编排兼容链。
+
+必要测试保留 trust boundary、异步撤权、CAS、费用、unknown、恢复及 Engine 差异；共享不变量集中验证，各不同领域边界验证真实消费者。最终一次冻结字节矩阵，后续仅按改动/失败/风险选择复测，不以测试数或任务组数衡量进度。
 
 ## 7. W01–W09 物理交付与依赖清单
 
