@@ -13,7 +13,7 @@
 本 Plan 是同一主题持续迭代的**唯一入口**。每一轮先更新对应模块和本轮讨论状态、在 `docs` 分支提交并核实，再开展本轮讨论；直到用户明确认可完整方案，才将状态由 Draft 改为 Approved/定稿。不得把助理推荐误写为已获批准的冻结决议，亦不得在讨论阶段直接修改 `main` 产品实现。
 
 - [Research](research.md)：外部资料、机制比较、来源、局限和迁移适用性；讨论中持续补充。
-- [Design](design.md)：累计讨论 §8–§27；**§28 记录 W20-B 已确认并路由 W21 最终 Gate 0 交接前审查**。以前的候选选型仅作为历史，当前用户决议优先。
+- [Design](design.md)：累计讨论 §8–§28；**§29 记录 W21-B 已确认并进入 W22 最终 Gate 0 证据/交接审查**。既往候选仅为讨论历史，当前决议以最新用户确认状态为准。
 - [Runtime Emergence & Fact Lifecycle](runtime-emergence.md)：**W4 方向已确认，§8 记录 W4-B**。仅当本轮需要核对实体注册/事件基础时阅读。
 - [NPC Autonomy & Scheduling](npc-autonomy.md)：**W5 已确认 B 方向**；§10 明确选型与待收口接口，复核 NPC 调度时按需读取。
 - [NPC Social Cognition](npc-social-cognition.md)：**W6 已确认 B 方向**；§10 记录社会关系真相、私人认知及来源事件边界。仅在当前模块需要这些依赖时读取。
@@ -31,7 +31,8 @@
 - [E0 Minimal Typed ABI & Consumer Cutover](e0-minimal-contract-cutover.md)：**W18-B 已确认方向**；§7 记录最小 Typed ABI 和真实消费者验收驱动原生硬切，具体物理字段/实施仍未批准。
 - [E0 Gate 0 / Physical Subject & Temporal Fact](e0-gate0-physical-contracts.md)：**W19-B 已确认方向**；§7 记录 Session 原生最小 Subject/Fact、Revision/GameTick 双锚与 Gate 0 审查原则，确切物理合同仍待决定。
 - [E0 Gate 0 Integration Work Packages](e0-gate0-integration-workpackages.md)：**W20-B 已确认方向**；§8 记录受保护 Session-owned Subject、各领域事实所有权、Revision/GameTick 双锚与 WP-A～F 工程包原则。
-- [Final E0 Handoff Readiness](e0-handoff-evidence-review.md)：**W21 当前阶段模块**；对 P1/P2 Guard/SessionState/Save/GC/History 的具体安全与成本、WP-A～F Owner/消费者/测试、Gate 0 阻塞及 W21-A/B/C 候选进行交接前审查（Draft，非 E0 PASS）。
+- [Final E0 Handoff Readiness](e0-handoff-evidence-review.md)：**W21-B 已确认方向**；§8 记录 P2 优先且必须具备原生 Reserved/Typed 写入、Session Revision、Save/Restore/GC 闭包及 WP-A～F 真实消费者证据，P1 仅为有依据的备选。
+- [Final Gate 0 Implementation Handoff](e0-final-implementation-handoff.md)：**W22 当前阶段模块**。P2 SessionState 保护/初始化/存读档/GC、安全事实查询、WP-A～F 工程输入、E0 preflight 阻塞及 W22-A/B/C 候选（Draft、非 E0 PASS）。
 - [Record](../../../records/architecture/world-evolution-consistency.md)：按工作轮累积可核验的文档提交、调研结果、未完成内容。
 - 后续需要规模化时再按主题拆模块，本入口仍为唯一导航。
 
@@ -41,7 +42,7 @@
 
 原问题「静态设定和动态演化冲突」仍保留，**但现在必须以原生 World / Knowledge 整体重构为主线**。先明确 World（实体/关系/世界法则/初始基线）与 Knowledge（资料/断言/来源/语境）的真实边界，再设计事实演化、主体认知、有效上下文和 Library/Studio/Play 产品界面。已有 Native SessionCore/State/Event/Simulation/HCM/Context Compiler 是首先审查和复用的权威，不能平行再建一套真相库。
 
-**已确认方向：W1-B 至 W20-B。** Native World/Knowledge、动态实体与 NPC 个人认知、Canonical Subject/Participant/Perspective、Native Domain Revision/Branch/时态、受众安全 Effective World View、Orchestration/Prompt 权威隔离、最小 Typed ABI、受保护 Session Subject 和 Domain-owned Fact / Gate 0 消费者硬切均已获用户总体方向确认。**W21 物理位置 P1/P2、原生 Typed Writer 细则和正式 Gate 0 交接仍未获批**，详见 [e0-handoff-evidence-review.md](e0-handoff-evidence-review.md)。整份 Plan Draft，E0-01～09 PARTIAL / BLOCKED。
+**已确认方向：W1-B 至 W21-B。** 固定 World/Knowledge、动态 Subject/社交/认知、Native Domain 唯一事实/Receipt/时态、受众安全 Effective World View、真实消费者硬切、最小 Typed ABI、**P2 优先的受保护 Native SessionState Subject identity 与各 Domain 自有事实**均已获方向性确认。**W22 的最终 Gate 0 preflight、确切 Schema/API、完整 E0 和正式开工仍未获批准**，见 [e0-final-implementation-handoff.md](e0-final-implementation-handoff.md)。完整 Plan 仍为 Draft，E0-01～09 PARTIAL / BLOCKED。
 
 需要回答：创作者的首要对象是若干触发条目，还是可以直接浏览、引用并演化的“世界”；Knowledge 应是同级世界书，还是世界引用的来源与证据？现有 free text 必须继续一等支持；不为未发布旧 ST 数据建立兼容双轨。
 
@@ -82,7 +83,7 @@
 
 ## 5. 状态与下一检查点
 
-- **当前：**S22 已记录用户选择 **W20-B**；进入 W21 [P1/P2 物理保护、Native Session/Save/GC、WP-A～F 工程依赖与最终 Gate 0 交接审查](e0-handoff-evidence-review.md)。研究推荐 **W21-B（条件性 P2 优先 + 证据门槛交接）**，**尚未获用户确认**。E0-01～09 仍 PARTIAL / BLOCKED。
-- **已确认设计方向（W1–W20）：** 唯一原生世界权威、固定作者源/动态 Session 分离、正式 Subject 与各领域事实/合法 Perspective、Domain Event/Receipt 及双时间/存档分支、有效世界视图和 Context/Prompt、受保护的最小 Session 身份持久化、真实 WP-A～F 消费者硬切。**未冻结 W21 P1/P2 的具体 Schema/Query ABI、真正完整 E0 Callgraph/DELETE 清单或 CI/三端/开发分支**。
+- **当前：**S23 已记录用户选择 **W21-B**；W22 [P2 Protected SessionState、Native Domain 事实/收据、WP-A～F 真实生产消费者、Gate 0 preflight 与可执行交接](e0-final-implementation-handoff.md) 为当前讨论。研究推荐 **W22-B「具名阻塞 + 可执行 preflight + 条件化开发交接」**，**尚未获用户批准**；E0-01～09 仍 PARTIAL / BLOCKED。
+- **已确认设计方向（W1–W21）：** 唯一 Native Host 写权、作者资产与 Session 实体身份分离、受控 Participant/Perspective/Fact/Revision/Clock/Branch、来源有效 World/Knowledge/Prompt、P2 优先且 Typed Protected Session Subject 最小身份存储、原领域事实与 Save/GC/历史依赖和真实消费者逐域清退。**未批准 W22 最终交接模型、P2 Namespace/ID/Schema、完整生产调用图和 E0/CI/真实三端验证或实现分支。**
 - **未授权：**修改 `main`、创建实现分支、给出实施已经通过的结论。
 - **完成标准：**用户在若干轮讨论后明确确认各核心决策及边界，并批准定稿。未经确认，不使用“Final/冻结/全面通过”描述。
