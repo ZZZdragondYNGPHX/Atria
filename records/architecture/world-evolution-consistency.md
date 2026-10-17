@@ -235,6 +235,23 @@
 - **验证范围**：通过 GitHub 连接读取 `docs`、`main` 若干具体源码，提交后再次 `fetch_file(ref=docs)` 确认 index/design/W11/W12/Record 文档存在且有正确确认状态。没有运行 Node 测试、CI、真实浏览器/前端截图、Windows/CachyOS/Android Termux 真机验证。**产品代码 main 未修改**。
 - **下一检查点**：用户选择 W12 方向后，下一轮依协议先在同一 Plan/Record 更新 W12 决议，随后重点针对事件/参与者/状态的 Native commit boundary、世界事实有效时间、跨分支重放与 Source Projection，以及 Studio/Play Effective World 的消费者和正式 E0 完成标准细化；继续 Draft，不创建实现分支。
 
+
+## Stage 14 — W12-B 已确认与 W13 原生事件/时态/分支讨论（2026-10-17）
+
+- **用户本轮确认**：回复「认同」，明确接受上轮推荐的 **W12-B「E0 证据驱动的原生硬切 + 单权威提交收口」**。W1-B～W12-B 现为已确认的架构及实施方向；**并非** W13-B 已获得批准、全量 E0 已完成、具体 schema/API 已冻结、整体方案定稿或允许改动产品代码。
+- **任务所有权/范围**：沿用唯一 `ARCH-DWE-01` Plan Bundle `plans/architecture/world-evolution-consistency/` 与此唯一 Record；工作区仅 `docs`。本轮只进行 GitHub 上源码静态阅读和文档提交，不创建第二 Plan/Record/HANDOFF/实现分支，不更改 main/Package/Plugin/Skills/reference。
+- **本轮 docs 提交**：
+  - `667ae0eb7412f0fa8313736ad096c032002e581c`：现有 `e0-consumer-cutover.md` 第 9 节写入 W12-B 用户确认和 E0 未验收的阻塞声明。
+  - `a56333f152b91defec755cc376e179da40391d40`：在同一 Plan Bundle 创建 W13 `event-temporality-branch.md`，研究“意图/叙事声明 vs 已提交效果”、Native Commit/Receipt/Revision、世界事实 valid time/记录 revision/角色 observed time、历史纠正/Retcon、存档分支和故障矩阵、W13-A/B/C。
+  - `6c97b64cf54a12a7947bd6a0fddd366d18b780eb`：在同一 `design.md` §20 记录 W12-B、路由 W13，严格区分静态事实与拟议目标。
+  - `1cea3eb6eb1c8cea490a7df60b0b68781eb8e9a1`：在同一 `index.md` 将 W1–W12 标记为已确认、W13 待选，更新路由和 Draft 状态。
+- **静态源证据（2026-10-17 main，无代码测试）**：`src/native/repositories/session-repo.js` 的 `commitSnapshot` 在已有事务中处理 Session/Revision、`expectedRevisionId` CAS 与提交指纹/Receipt；`src/native/session-core.js` 的 `_publishLocked` 可处理候选 States/Timeline、`actionRequest` receipt、Cognition/History 验证并将结果交给 SessionRepo；`public/scripts/native/experience/world/session.js` 的 `commitEvents` 通过 `commitStatePatch` 同步更新 `atri_world_state` 与 `atri_game_runtime` Journal，事件示例使用 branch+sequence 身份。证据只表示可复用机制存在，**没有**完成 Actor/Task/Narrator/World 全入口的原子性证明。
+- **时态与分支证据**：现有 `src/native/history-authority.js`、`public/shared/native-chronicle-host.js` 含特定领域 game tick、事实/来源/历史查询；`src/native/repositories/save-point-repo.js` 的 SavePoint 锚定已提交 Branch/Revision，`src/native/session-snapshot.js` 验证 forkRevision / 祖先及 Timeline 可达性；`src/native/cognition-authority.js` 有分支修订重绑定与来源指纹校验。这些**不能**证明已具通用 World Subject 的双时间 as-of 查询、新动态 Perspective 完全受支持或 HCM 跨所有分支都验收通过。
+- **W13 推荐尚未选定**：W13-B「Native Revision 一致性提交 + 双时间/分支受控投影」。正式 Subject admission/持续性世界效果/事件与参与者在可合法实现的现有 Native publication 边界达成一致；`validAt / recordedRevision / observedAt` 分离，按 Session/Branch/Revision/GameTick/Audience 合法查询；HCM/Context 可恢复派生而非新 World Truth；普通叙事细节不全量入事件表，真正 Retcon 需独立权限与依赖处置。W13-A Snapshot-first 松散摘要及 W13-C 平行 Event Store 为对照。
+- **故障与权限门槛（拟议，未测试）**：同物品双卖的 CAS/前置条件、未知提交结果先查 receipt 后重试、叙事成功/世界事务拒绝时防错误发布、HCM 索引失败时可从原生已提交来源恢复、旧分支异步结果不得穿越、未公开身份与秘密在历史查询不能泄漏。当前只是文档中的未来验收案例，不产生已测试的承诺。
+- **E0/实际验收状态**：本阶段仅部分 `main` 静态代码核对 + GitHub Contents API 文档读写；提交完成后再 `fetch_file(ref="docs")` 核验 `index.md`、`design.md`、W12、W13 与此 Record。**仍缺完整 production consumer census、Orchestration V3 真实执行路径核验、通用历史查询、Library/Studio/Play 实际交互、Node/tests/CI 和 Windows/CachyOS/Android Termux 真机。**
+- **下一检查点**：用户选择 W13-A/B/C 后，下一轮按约定**先更新同一 Plan 与唯一 Record、提交并核验 `docs`**，再深入 World/Knowledge Effective View 与 Context/Library/Studio/Play 的来源选择、时态和可见性/Inspector 交互，以及最终 E0/正式开发前置门槛。保持 Draft，不创建开发分支，除非用户另行明确批准整个企划。
+
 ## Final state
 
 Not yet applicable. Discussion in progress.
