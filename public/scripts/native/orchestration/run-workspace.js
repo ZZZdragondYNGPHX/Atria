@@ -19,6 +19,10 @@ const SOURCE_KEY = 'atria.orchestration.runs.source';
 const DIMENSIONS = { requests: 'Requests', tokens: 'Tokens', jobs: 'Local jobs', items: 'Local items', inputBytes: 'Local input bytes' };
 const WORK_KINDS = { generation: 'Generation calls', embedding: 'Embedding calls', rerank: 'Rerank calls', other: 'Other provider calls' };
 const COUNTERS = { steps: 'Steps', attempts: 'Attempts', patches: 'Graph changes', delegates: 'Delegations' };
+const REVIEW_EFFECTS = { explicit_paid_model_generation: 'Paid model generation', explicit_paid_planner_generation: 'Paid planner generation',
+    bounded_graph_patch_proposal: 'Bounded graph change proposal', explicit_paid_graph_draft_generation: 'Paid draft generation', same_source_result_reference: 'Result reused from the same source',
+    explicit_paid_quality_review_generation: 'Paid quality review', explicit_paid_quality_selection: 'Paid quality selection', explicit_paid_candidate_generation: 'Paid candidate generation',
+    bounded_local_rerun: 'Bounded local rerun', original_rp_assistant_output: 'Writes one assistant message to this chat' };
 const count = value => Number.isSafeInteger(value) ? new Intl.NumberFormat().format(value) : tl('Unknown');
 
 const readRemembered = () => { try { return JSON.parse(globalThis.sessionStorage?.getItem(SOURCE_KEY) ?? 'null'); } catch { return null; } };
@@ -89,7 +93,7 @@ export function mountRunList({ document: doc, root, client, onOpenRun, initialSo
         fact(tl('Chat message'), fmt('Message ${0} (last user message)', [review.input.floor + 1]));
         fact(tl('Request budget'), fmt('${0} requests · ${1} tokens', [review.budget.maxRequests, formatTokens(review.budget.maxTokens)]));
         if (review.childBudget) fact(tl('Child budget'), fmt('${0} requests · ${1} tokens', [review.childBudget.maxRequests, formatTokens(review.childBudget.maxTokens)]));
-        fact(tl('Effects'), review.effects.join(', '));
+        fact(tl('Effects'), review.effects.map(code => REVIEW_EFFECTS[code] ? tl(REVIEW_EFFECTS[code]) : code).join(' · '));
         fact(tl('Output'), review.outputContract?.kind ?? tl('Unknown'));
         fact(tl('Review fingerprint'), idText(doc, fingerprint));
         const row = el(doc, 'div', 'atria-button-row', null, start);

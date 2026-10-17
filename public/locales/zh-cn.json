@@ -10646,5 +10646,15 @@
     "1 node": "1 个节点",
     "Host draft v${0} has not changed. Your edits are kept; save them again.": "Host 草稿 v${0} 未改变。你的编辑已保留，请再次保存。",
     "The Host draft is unchanged": "Host 草稿未改变",
-    "The Host restarted after this Run settled. Recovering only rebinds its control records; nothing runs again.": "此 Run 结束后 Host 已重启。恢复只会重新绑定其控制记录，不会再次运行任何内容。"
+    "The Host restarted after this Run settled. Recovering only rebinds its control records; nothing runs again.": "此 Run 结束后 Host 已重启。恢复只会重新绑定其控制记录，不会再次运行任何内容。",
+    "Paid model generation": "付费模型生成",
+    "Paid planner generation": "付费规划生成",
+    "Bounded graph change proposal": "有上限的图变更提议",
+    "Paid draft generation": "付费草稿生成",
+    "Result reused from the same source": "复用同一来源的结果",
+    "Paid quality review": "付费质量审阅",
+    "Paid quality selection": "付费质量选择",
+    "Paid candidate generation": "付费候选生成",
+    "Bounded local rerun": "有上限的本地重跑",
+    "Writes one assistant message to this chat": "向此对话写入一条助手消息"
 }
