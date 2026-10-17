@@ -778,7 +778,7 @@ export class NativeGenerationHost {
                 const task = snapshot.manifest.runtime.experienceContract.taskRuntime.tasks.find(task => task.id === item.taskId);
                 const variant = task?.variants.find(variant => variant.id === item.variantId);
                 const ordinary = task && variant && ordinaryBackgroundIntent(snapshot, item, task, variant, item.input);
-                if ((!ordinary && variant?.resultBinding?.kind !== 'cognition.appraise') || !['native_generation_budget_exhausted', 'native_generation_background_not_due'].includes(error.code)) throw error;
+                if ((!ordinary && !variant?.resultBinding) || !['native_generation_budget_exhausted', 'native_generation_background_not_due'].includes(error.code)) throw error;
                 return { snapshot, results, pending: { invocationId: item.invocationId, reason: error.code } };
             }
             snapshot = result.snapshot;
@@ -836,6 +836,7 @@ export class NativeGenerationHost {
         const slot = snapshot.manifest.runtime.experienceContract.taskRuntime.slots.find(item => item.id === task.bindingSlotId);
         const taskPlan = { task, variant, slot, payload };
         const appraisal = variant.resultBinding?.kind === 'cognition.appraise';
+        const declared = Boolean(variant.resultBinding);
         const production = captureTaskProduction(snapshot, task, payload);
         const anchor = { sessionId: input.sessionId, branchId: snapshot.revision.branchId, revisionId: input.revisionId };
         if (typeof input.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(input.invocationId)) fail('native_task_invocation_required');
@@ -865,7 +866,7 @@ export class NativeGenerationHost {
             if ((!intent?.simulation && !(appraisal && intent?.appraisalEvent) && !ordinary) || intent.status !== 'pending' || intent.taskId !== task.id || intent.variantId !== variant.id
                 || hashNativeDocument(intent.input) !== hashNativeDocument(payload)) fail('native_generation_budget_lane_denied');
             captured.budgetContext = { snapshot, background: true, anchor: { invocationId: intent.invocationId } };
-            if (ordinary || appraisal && this.turnOrchestration) {
+            if (ordinary || declared && this.turnOrchestration) {
                 const control = await this.sessionCore.runs.status(handle, input.sessionId);
                 const operation = control?.operations[hashNativeDocument({ lane: 'background', anchor: { invocationId: intent.invocationId } })];
                 // Pending outbox alone is not permission to replay a send after
@@ -914,7 +915,7 @@ export class NativeGenerationHost {
         const resources = lanePlan ? [] : await this.executionResources(handle, route, input.sessionId, captured);
         let taskWorker;
         const work = { owner: handle, anchor, kind: ['background', 'maintenance'].includes(task.executionClass) ? 'auxiliary_task' : 'model_task', executionClass: task.executionClass,
-            retry: !(ordinaryLifecycle || appraisal && this.turnOrchestration),
+            retry: !(ordinaryLifecycle || declared && this.turnOrchestration),
             timeoutMs: executionTimeout(captured, captured.budgetContext?.background ? snapshot.manifest.runtime.experienceContract.generationBudget.backgroundAttempts : undefined),
             resources,
             key: input.sessionId + ':' + (task.queuePolicy === 'latest' ? anchor.branchId + ':' + task.id + ':' + variant.id : input.invocationId),
@@ -929,7 +930,13 @@ export class NativeGenerationHost {
             },
             finalize: async (result, deliveryReceipt) => {
                 const parse = () => normalizeTaskGenerationResult(result.response, variant.outputSchema);
-                const payload = appraisal ? await appraisalWork('appraisal_parse', result.response, parse) : parse();
+                const taskWork = async (phase, value, operation) => {
+                    if (appraisal) return appraisalWork('appraisal_' + phase, value, operation);
+                    const scoped = await this.turnOrchestration?.runBackgroundTaskWork?.({ host: this, handle, lanePlan: captured,
+                        kind: 'task_result_' + phase, value, operation });
+                    return scoped?.handled ? scoped.value : operation();
+                };
+                const payload = await taskWork('parse', result.response, parse);
                 const record = { ...(production ? { production } : {}), invocationId: input.invocationId, taskId: task.id, variantId: variant.id, fingerprint, payload,
                     definitionHash: hashNativeDocument(task), contextHash: hashNativeDocument(result.snapshot.contextPlan),
                     requestSnapshotHash: hashNativeDocument(result.snapshot), rawResultHash: hashNativeDocument(result.response),
@@ -940,7 +947,7 @@ export class NativeGenerationHost {
                 if (task.resultPolicy.sink === 'turn' || transient) return { record: immutable(record), knowledgeProof };
                 const adopt = () => this.sessionCore.recordTaskResult(handle, input.sessionId, record, { expectedRevisionId: input.revisionId, knowledgeProof,
                     appraisalProof: appraisal ? prepareAppraisalDelivery(this.sessionCore, handle, snapshot, task, variant, record, result.snapshot) : null });
-                const committed = appraisal ? await appraisalWork('appraisal_adopt', { record, snapshot }, adopt) : await adopt();
+                const committed = await taskWork('adopt', { record, snapshot }, adopt);
                 return immutable({ record: committed.states.atri_task_results.records.at(-1), snapshot: committed });
             } };
         if (scheduled) {
@@ -949,7 +956,7 @@ export class NativeGenerationHost {
             checkCancellation(signal);
             return work.finalize(result, { kind: 'model_delivery', invocationId: input.invocationId, delivered: true });
         }
-        const original = (ordinaryLifecycle || appraisal) && this.turnOrchestration
+        const original = (ordinaryLifecycle || declared) && this.turnOrchestration
             ? await this.turnOrchestration.startBackgroundTask(this, handle, { input, snapshot, taskPlan, captured, work }) : null;
         const operation = original ?? nativeTaskScheduler.submit(work);
         evidenceCapture?.append({ type: 'operation.queued', eventId: operation.operationId + '/queued', effectId: operation.operationId, status: 'queued' });

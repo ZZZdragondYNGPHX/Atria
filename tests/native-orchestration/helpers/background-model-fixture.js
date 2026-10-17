@@ -4,7 +4,8 @@ import { authorityFixture } from '../../native/helpers/authority-fixture.js';
 
 // Reuse the real original Host/Engine/Route/Provider fixture, replacing only its
 // product source/Plan. The HTTP Provider remains a localhost synthetic response.
-export async function backgroundModelFixture(make, { effectiveTurns = 4, recurring = false, usage = true, maxBytes = 65536 } = {}) {
+export async function backgroundModelFixture(make, { effectiveTurns = 4, recurring = false, usage = true, maxBytes = 65536,
+    configureSource = () => {}, prepareReady = async (_fixture, _h, base) => base, responsePayload = { text: 'Original background artifact' } } = {}) {
     const f = await modelPortFixture(make, {
         createSource: async h => {
             const fixture = await installCognitionFixture(h, 'limited', null, ({ contract, fixture }) => {
@@ -28,16 +29,18 @@ export async function backgroundModelFixture(make, { effectiveTurns = 4, recurri
                 const { logic } = authorityFixture();
                 Object.assign(logic.transactions[0], { reads: [], validators: [], effects: [], derivedPublications: [] });
                 logic.derivedPublications = [];
-                fixture.sourceFiles = new Map([['logic.json', Buffer.from(JSON.stringify(logic))]]);
                 contract.generationBudget = { schemaVersion: 1, resolverAttempts: 2, narratorAttempts: 2, turnAttempts: 4,
                     backgroundAttempts: 1, backgroundWindowTurns: 4, backgroundPeriodTurns: 20, backgroundPeriodAttempts: 2,
                     turnCounter: { domainId: 'progress', recordId: 'main', field: 'effectiveTurns' } };
+                configureSource({ contract, fixture, logic });
+                fixture.sourceFiles = new Map([['logic.json', Buffer.from(JSON.stringify(logic))]]);
             });
             let base = fixture.snapshot;
             base = await fixture.core.applyLifecycleCommand(h.handle, base.session.sessionId, { type: 'lifecycle', invocationId: 'progress-init',
                 action: { kind: 'app.command', domainId: 'progress', recordId: 'main', commandId: 'advance', args: { effectiveTurns } } }, { expectedRevisionId: base.revision.revisionId });
             base = await fixture.core.applyLifecycleCommand(h.handle, base.session.sessionId, { type: 'lifecycle', invocationId: 'background-ready',
                 action: { kind: 'experience.ready' } }, { expectedRevisionId: base.revision.revisionId });
+            base = await prepareReady(fixture, h, base);
             return { ...fixture, snapshot: base };
         },
         configurePlan: async ({ plan, route }) => {
@@ -47,7 +50,7 @@ export async function backgroundModelFixture(make, { effectiveTurns = 4, recurri
         },
         changeRoute: route => ({ ...route, policy: { ...route.policy, maxFallbackAttempts: 0 } }),
         responseBody: async () => ({ id: 'native-response', status: 'completed', output: [{ id: 'native-message', type: 'message', status: 'completed', role: 'assistant',
-            content: [{ type: 'output_text', text: JSON.stringify({ text: 'Original background artifact' }), annotations: [] }] }],
+            content: [{ type: 'output_text', text: JSON.stringify(responsePayload), annotations: [] }] }],
         ...(usage ? { usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } } : {}) }),
     });
     const intent = f.base.states.atri_lifecycle.outbox.find(item => item.status === 'pending');

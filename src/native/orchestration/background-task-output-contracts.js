@@ -19,12 +19,15 @@ export const backgroundOutputId = (kind, runId) => (kind === 'result' ? 'oresult
     + hash({ kind: 'native_background_' + kind, runId }).slice(0, 32);
 export const backgroundTaskWorkTarget = (input, kind) => hash({ taskDefinitionHash: input.taskDefinitionHash, variantId: input.variantId,
     sourceBindingDigest: input.sourceBindingDigest, kind });
+export const backgroundTaskWorkKinds = input => !input.taskResultBinding ? [] : input.taskResultBinding.kind === 'cognition.appraise'
+    ? ['appraisal_parse', 'appraisal_adopt'] : ['task_result_parse', 'task_result_adopt'];
 
 /** Exact original immutable revision/Task record; references grant no execution. */
 export async function readBackgroundTaskDelivery(tx, handle, root, effectId, domainRef) {
     assertObject(domainRef, ['kind', 'sessionId', 'revisionId', 'invocationId', 'taskId', 'variantId', 'recordHash'], 'Task delivery reference');
     const source = root.sourceBinding.sourceRef, intent = (await readEffect(tx, handle, root, effectId)).doc;
     const input = intent.inputRef, model = await readModelCompletionReceipt(handle, tx, root, intent);
+    if ((input.taskResultSink === 'app_command') !== Boolean(input.taskResultBinding)) invalid();
     const plan = await readPlanRevision(tx, handle, root.planRef);
     const node = plan.definition.nodes.find(item => item.nodeId === input.nodeId);
     const grantDigest = hash({ principal: 'original_native_pending_outbox', logicalInputRef: input });
@@ -62,9 +65,9 @@ export async function readBackgroundTaskDelivery(tx, handle, root, effectId, dom
         || record.deliveryReceipt?.kind !== 'model_delivery' || record.deliveryReceipt.delivered !== true
         || record.deliveryReceipt.operationId !== input.schedulerOperationId
         || !queued || queued.status !== 'completed' || queued.taskId !== input.taskId || queued.variantId !== input.variantId
-        || queued.simulation && input.taskResultBinding?.kind !== 'cognition.appraise' || Boolean(queued.appraisalEvent) !== (input.taskResultBinding?.kind === 'cognition.appraise')
+        || queued.simulation && !input.taskResultBinding || Boolean(queued.appraisalEvent) !== (input.taskResultBinding?.kind === 'cognition.appraise')
         || hash(queued.input) !== input.inputDigest || hash(record) !== domainRef.recordHash) invalid();
-    if (input.taskResultBinding) {
+    if (input.taskResultBinding?.kind === 'cognition.appraise') {
         const binding = input.taskResultBinding, appraisal = record.appraisalEvidence;
         if (binding.kind !== 'cognition.appraise' || record.authorityReceipt?.decision !== 'cognition.appraise'
             || !appraisal || appraisal.origin !== 'model' || appraisal.invocationId !== input.invocationId || appraisal.taskId !== input.taskId
@@ -73,6 +76,14 @@ export async function readBackgroundTaskDelivery(tx, handle, root, effectId, dom
             || appraisal.promptId !== record.promptProgramRef?.resourceId || appraisal.promptRevision !== record.promptProgramRef?.revision
             || appraisal.generationId !== record.generationProfileRef?.resourceId || appraisal.generationRevision !== record.generationProfileRef?.revision
             || !queued.appraisalEvent.eligible || queued.appraisalEvent.viewId !== binding.viewId || !queued.appraisalEvent.actor) invalid();
+    } else if (input.taskResultBinding) {
+        const binding = input.taskResultBinding, receipt = record.authorityReceipt;
+        if (!['app.command', 'interaction.schedule'].includes(binding.kind) || input.taskResultSink !== 'app_command'
+            || receipt?.kind !== 'authority' || receipt.baseRevisionId !== source.revisionId || receipt.committedRevisionId !== domainRef.revisionId) invalid();
+        if (binding.kind === 'app.command') {
+            if (receipt.decision !== 'app.command' || receipt.domainId !== binding.domainId || receipt.commandId !== binding.commandId
+                || receipt.recordId !== (binding.recordId ?? 'task-' + hash(input.invocationId).slice(0, 48))) invalid();
+        } else if (receipt.decision !== 'schedule' || receipt.interactionId !== binding.interactionId) invalid();
     }
     // The queued intent was frozen before sending; only its terminal status changes.
     if (hash({ ...queued, status: 'pending' }) !== input.intentDigest) invalid();
@@ -86,7 +97,7 @@ export async function readBackgroundTaskDelivery(tx, handle, root, effectId, dom
     const bank = root.budgetAuthorityRef, control = await readRunControl(tx, handle, source.sessionId);
     const compute = control?.operations[bank.operationId]?.compute;
     if (bank.domain !== 'session' || bank.sessionId !== source.sessionId || !compute || !evidence.attempts.length) invalid();
-    if (input.taskResultBinding?.kind === 'cognition.appraise') for (const kind of ['appraisal_parse', 'appraisal_adopt']) {
+    for (const kind of backgroundTaskWorkKinds(input)) {
         const jobs = compute.localWork?.filter(row => row.orchestration?.effectId === effectId && row.kind === kind) ?? [];
         const job = jobs[0];
         if (jobs.length !== 1 || job.requestId !== input.invocationId || job.orchestration.kind !== 'local_work'

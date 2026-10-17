@@ -17,7 +17,7 @@ import { mintNativeBackgroundQuota } from './native-turn-quota.js';
 import { RunControl } from '../run-control.js';
 import { assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { BackgroundTaskOutputController } from './background-task-output-controller.js';
-import { backgroundOutputId, backgroundTaskWorkTarget, readBackgroundTaskDelivery, readBackgroundTaskResult, readBackgroundTaskOutput } from './background-task-output-contracts.js';
+import { backgroundOutputId, backgroundTaskWorkTarget, backgroundTaskWorkKinds, readBackgroundTaskDelivery, readBackgroundTaskResult, readBackgroundTaskOutput } from './background-task-output-contracts.js';
 import { appraisalEventCurrent } from '../appraisal-authority.js';
 import { simulationTaskCurrent } from '../simulation-authority.js';
 import { createAuthorityPublicationBudget } from '../authority-transaction.js';
@@ -34,8 +34,9 @@ async function pendingTask(snapshot, input, host, handle) {
     const variant = task?.variants.find(item => item.id === input.variantId), intent = snapshot.states.atri_lifecycle?.outbox.find(item => item.invocationId === input.invocationId);
     const scope = snapshot.states.atri_lifecycle?.scopes[intent?.scopeId];
     const appraisal = variant?.resultBinding?.kind === 'cognition.appraise';
+    const declared = ['app.command', 'interaction.schedule', 'cognition.appraise'].includes(variant?.resultBinding?.kind);
     if (!task || !variant || !snapshot.states.atri_lifecycle.ready || !intent || intent.status !== 'pending' || intent.kind !== 'task'
-        || intent.simulation && !appraisal || Boolean(intent.appraisalEvent) !== appraisal || task.executionClass !== 'background' || variant.resultBinding && !appraisal
+        || intent.simulation && !declared || Boolean(intent.appraisalEvent) !== appraisal || task.executionClass !== 'background' || variant.resultBinding && !declared
         || intent.taskId !== task.id || intent.variantId !== variant.id || scope?.status !== 'active' || scope.epoch !== intent.scopeEpoch
         || !equal(intent.input, input.input) || snapshot.revision.revisionId !== input.revisionId)
         fail('native_orchestration_background_source_stale');
@@ -46,7 +47,7 @@ async function pendingTask(snapshot, input, host, handle) {
         if (!simulationTaskCurrent(snapshot, intent, budget)) fail('native_orchestration_background_source_stale');
     }
     assertTaskValue(input.input, task.inputSchema);
-    return { task, variant, intent, appraisal, slot: contract.taskRuntime.slots.find(item => item.id === task.bindingSlotId), payload: intent.input };
+    return { task, variant, intent, appraisal, declared, slot: contract.taskRuntime.slots.find(item => item.id === task.bindingSlotId), payload: intent.input };
 }
 
 export function inspectNativeBackgroundGenerationIdentity(capture, { host, handle, sessionCore, finalizationBoundary } = {}) {
@@ -253,7 +254,7 @@ export class NativeBackgroundOrchestrationAuthority {
                     modelContextLimit: selected.resolved.model.limits.contextTokens, responseReserve: effectiveOutputReserve(selected.resolved) } };
             const limits = selected.resolved.route.executionPolicy.computeBudget, send = await service.generationSend(handle, { runId: root.runId, effectId, limits, quotaProof });
             state.bank = send.bank; state.limits = limits;
-            if (selected.taskPlan.appraisal) { state.taskWorkPhase = 0; this.#taskLanes.set(lanePlan, state); }
+            if (selected.taskPlan.declared) { state.taskWorkPhase = 0; this.#taskLanes.set(lanePlan, state); }
             const compiled = await compileNativeContextMetered({ handle, port, request: contextRequest, bank: send.bank, budgetPort: service.budgetPort, root: await service.runs.get(handle, root.runId),
                 effectId, limits, workDescriptor: { requestId: request.requestId, pathFingerprint: selected.resolved.pathFingerprint }, assertCurrent: () => this.#current(state), signal: captures.get(capture).boundary.signal });
             state.contextPort = port; state.context = compiled.compiled;
@@ -269,13 +270,13 @@ export class NativeBackgroundOrchestrationAuthority {
         } catch (error) { this.#runs.delete(root.runId); throw error; }
     }
 
-    /** Original appraisal parse/adoption work in the real Scheduler finalizer.
+    /** Original declared Task parse/adoption work in the real Scheduler finalizer.
      * The lane object is a private identity; JSON cannot register this bridge. */
     async runTaskWork({ host, handle, lanePlan, kind, value, operation }) {
         const state = lanePlan && this.#taskLanes.get(lanePlan);
         if (!state) return { handled: false };
         if (state.host !== host || state.handle !== handle || !state.finalizationBoundary
-            || ['appraisal_parse', 'appraisal_adopt'][state.taskWorkPhase] !== kind || typeof operation !== 'function') fail('native_orchestration_background_producer_denied');
+            || backgroundTaskWorkKinds(state.decision.inputRef)[state.taskWorkPhase] !== kind || typeof operation !== 'function') fail('native_orchestration_background_producer_denied');
         await this.#current(state, state.finalizationBoundary);
         const job = state.taskWorkJobs?.[state.taskWorkPhase++];
         if (!job?.admitted || Buffer.byteLength(JSON.stringify(value)) > job.estimatedInputBytes) fail('native_orchestration_background_producer_denied');
@@ -297,7 +298,7 @@ export class NativeBackgroundOrchestrationAuthority {
         let delivered, error;
         try {
             try {
-                if (state.selected.taskPlan.appraisal) await this.#prepareTaskWork(completion, result, receipt);
+                if (state.selected.taskPlan.declared) await this.#prepareTaskWork(completion, result, receipt);
                 delivered = await this.#deliver(handle, result, receipt, boundary, finalize);
             } catch (cause) { error = cause; }
             for (const job of state.taskWorkJobs ?? []) if (job.admitted) {
@@ -320,7 +321,7 @@ export class NativeBackgroundOrchestrationAuthority {
                 }
             }
             if (error) throw error;
-            if (state.selected.taskPlan.appraisal) await this.#finishTaskMetadata(completion, delivered);
+            if (state.selected.taskPlan.declared) await this.#finishTaskMetadata(completion, delivered);
             return delivered.value;
         } finally { state.finalizationBoundary = null; this.#finalizations.delete(result); }
     }
@@ -330,7 +331,8 @@ export class NativeBackgroundOrchestrationAuthority {
         const parseBytes = Buffer.byteLength(JSON.stringify(result.generated.response));
         const adoptBound = Buffer.byteLength(JSON.stringify({ snapshot, generated: result.generated, receipt })) + assertResultPolicy(root.graph.outputContract).maxBytes;
         state.taskWorkJobs = [];
-        for (const [kind, estimatedInputBytes] of [['appraisal_parse', parseBytes], ['appraisal_adopt', adoptBound]]) {
+        for (const [index, kind] of backgroundTaskWorkKinds(state.decision.inputRef).entries()) {
+            const estimatedInputBytes = index === 0 ? parseBytes : adoptBound;
             await this.#current(state, state.finalizationBoundary);
             const job = { kind, estimatedInputBytes, attemptId: state.bank.nextLocalWorkAttemptId(), admitted: false };
             state.taskWorkJobs.push(job);
