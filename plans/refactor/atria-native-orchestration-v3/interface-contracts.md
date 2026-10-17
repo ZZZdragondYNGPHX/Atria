@@ -1256,3 +1256,14 @@ graph.patch 发布校验复用原 GraphController 的 producer kinds（planner/a
 approve 只记模型评价，不批准任何 Effect。rerun 计算目标及下游已存在尝试的保守影响闭包，活动依赖先拒绝；除明确未派发或已终结 R1 generation.send 外的 Effect 均拒绝局部重算。原 Attempt/Result/收据/银行保持不变；耐久 invalidation 引用使旧工作不能再推动 Transition/Join，目标获得新 pending Attempt、新输入/grant与原预算身份，下游由新的生产者收据重新准入。旧 Result 不得当重做输入。重复因果 target、撤权或重新准入失败整体回滚。
 
 历史 reader 仍可读旧收据；消费检查独立。Review 没有持久判定不能越过控制节点，rerun 判定不能直接推进 Output。Run 元数据 Attempt 投影新增 superseded:boolean 与 reviewDecision:approve|rerun|null，不包含评价正文或证据正文。evaluator 指纹覆盖 Review/common/Graph/settlement/Join/Fanout/edge-cost 实际实现。此组只有原 Host 控制与明确 authority doubles 的存储证明；真实 Planner/Judge/Review Model runtime 仍继续实施，不能据此宣称完整后端完成。
+
+
+### 17.105 原 RP Planner 的真实受控生产与费用闭包
+
+原 startRp/preflightRp 识别显式 Planner(JSON)→Narrator(text)→唯一 rp_narration Output 的三节点图。Planner 具有 generation.send+graph.patch 与已声明 player Model pins，原角色仍为 narrator、同原 RP Source/Audience；没有 Actor/Tool/跨Source授权。只准原策略的 setPendingPriority、markBlocked、requestFinalize、requestReplan，无增节点；replan 请求当前保存后阻塞，尚无实际自动循环。Planner/Narrator 原 Route 无 fallback/retry/continuity/reuse，共用一致原预算；全部所选资源在同一真实 Scheduler operation 内持有，整图受 Plan deadline 限制。
+
+Planner 请求、结构化输出 schema 与控制任务由活 Scheduler callback 私有 capture 铸造，ContextPort 使用原 RP prefix/Memory 与 typed input，绝不接受调用方 JSON scope。ModelPort 经原银行/Effect/发送/消费复验，Host 只解析 operations；原 Source reasonRef、Patch/Attempt/epoch/revision 身份由 Host生成。graph_control_parse/adopt 的实际 CPU/wall 复用同原银行持久准入/结算，不在领域事务里回滚费用；GraphController 仍全批校验，只对真实 Model 完成对象开放。
+
+采纳后保存原 Model收据→GraphPatch→Planner收据→settlement→有费用的逻辑边转移，再运行 Narrator。正文仍由原唯一 RP consumer 写入；最终 closure 包含 Planner/Narrator/Output 三项 Effect。历史 reader 逐条核控制收据、原 Model payload hash、parse/adopt银行行及拓扑转移；冷读不产生权限。普通旧二节点/Delegate路径保持。Model completion新增实际 resultOutputType/resultPayloadHash；旧历史无此可选字段保持既有读规则，新 Planner必须有该证据。
+
+非法/不进展/未声明修改、晚到撤权、费用unknown与ACK未知保留真实事实/费用及blocked或reconciling，绝不自动重发。有限Planner链路不是通用Graph/多节点Result分享/Judge/Review runtime；这些及其它完整后端仍继续实施。

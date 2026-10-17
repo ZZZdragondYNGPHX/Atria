@@ -1139,3 +1139,11 @@
 - Source 00b893f1a → 739374b42，本地提交，未推送；接口 §17.104。复用原 Run/control/tree counters/Attempt/immutable receipts，新增 Review 判定与保守因果 invalidation；原费用和历史不改，只有新尝试可重新准入。原 Source/实际 Model/Result/Audience callback 必须由真实producer提供，尚未接通通用Model runtime；不增加HTTP或审批authority。
 - 新 suite 首轮24FAIL因fixture两个生产者连同一Output端口，被原合法图校验拒绝；修正为不同端口。第二轮21PASS/3FAIL是测试直接 putResource 未按原doc/integrity封装，改原 putMutable 后24/24 PASS（9.358s）。加 rerun 不能直接输出与原 Transition/Join回归，三个完整 suites90/90 PASS（29.102s）。补不可逆/unknown/需审批Effect与跨新Attempt maxRounds八参数8PASS（4.423s）；原费用引用保持，authority doubles 不冒称真实银行/Model证据。
 - 耐久reader、投影与 evaluator七项指纹补全后，Review/Run HTTP/指纹三个完整 suites97/97 PASS（23.613s，Review32项、指纹37项）。最后缺Review判定/approve可通行四参数4PASS/32filterSKIP（2.764s），新suite共36项分批通过。十文件原ESLint通过（曾修fixture条件expect规则），diff check通过。无新增真实Provider调用，后端继续，不交前端/main。
+
+
+## 2026-10-17 — 第一百零一组：真实 RP Planner→原图→原 Narrator/Chat
+
+- Source 739374b42 → bcf5d65e8，本地提交，未推送；接口 §17.105。接通同 Scheduler/Source/银行/Context/ModelPort 的私有 Planner producer，原 GraphController 全批提交，原 Transition 前进；正式正文与三个 Effect 费用闭合仍用原出口。只支持明确三节点RP profile；没有通用Graph、Judge/Review真实runtime或跨Agent Result分享结论。
+- 首轮真实fixture2FAIL，发送前 ContextPort 仅识别旧普通RP请求；补私有固定 structured-output request复验。随后 PromptCompiler拒绝 context.input 对象，按原typed input字符串合同修复，临时仅测试诊断已完全撤去。首个FS/SQLite positive2PASS（8.156s）。新负例初有测试调用不存在的 removeBinding 导致服务器挂起，终止该单一测试进程并改用原 saveBinding CAS 撤权；不是产品放宽。完整新suite10PASS/2FAIL（26.012s），两FAIL为错误期望撤权后blocked，实际未确认Model Effect应为reconciling，已修正。
+- 新Planner/原RP producer/原输出完成/evaluator四完整 suites95/95 PASS（83.293s，含新12项与指纹39项）。追加图修改/结算的提交后ACK丢失四参数4PASS（8.325s）：保留原已应用Graph与费用，阻塞后续Nar；新Scheduler operation也被原耐久Run挡住，不重发。新suite共16项分批通过。最后费用payload/拓扑严格reader后的positive2PASS（8.31s）。原ModelPort与selected-node-routes两个完整 suites44/44 PASS（177.833s）。十五文件原ESLint、diff check通过。
+- 都是localhost合成实际调用，无新增真实Provider/独立质量或价格结论。继续真实 Judge/Review、节点Result分享、通用Graph、可信高风险consumer与恢复释放等，不交前端/main。

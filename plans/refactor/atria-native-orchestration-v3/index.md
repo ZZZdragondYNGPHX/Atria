@@ -146,3 +146,6 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 
 
 第一百组 739374b42 补原 Host Review 判定、局部重做/旧分支失效与元数据投影，见[接口 §17.104](interface-contracts.md#17104-review-耐久判定与局部重做控制)。真实控制 Model runtime 与完整后端继续实施。
+
+
+第一百零一组 bcf5d65e8 接通原RP真实私有 Planner→受限GraphPatch→Narrator→唯一Chat输出及三Effect原费用闭包，见[接口 §17.105](interface-contracts.md#17105-原-rp-planner-的真实受控生产与费用闭包)。仍为显式有限profile，完整Graph/Judge/Review等后端继续，不推送或交前端/main。
