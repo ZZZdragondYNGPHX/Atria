@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · W18 最小 ABI/Schema 与真实消费者硬切收口（讨论草案）
 
 - Task ID：`ARCH-DWE-01`；Primary Workspace：`docs`；[唯一 Plan 入口](index.md) / [累计设计](design.md) / [W17 Domain-first](e0-domain-world-context-contract.md) / [E0 总阻塞](e0-final-closure.md) / [唯一 Record](../../../records/architecture/world-evolution-consistency.md)。
-- **状态：Draft**。用户已确认 **W1-B 至 W17-B** 的顶层设计/收口方向。**W18-A/B/C、物理 ID/字段、精确 JSON/Native Host ABI、消费者改造与实施仍为未获批准的设计候选**。E0-01～09 均未由真实运行证据宣告 PASS；不修改 `main`、不创建实现分支或覆盖作者资源。
+- **状态：Draft**。用户已确认 **W1-B 至 W18-B** 的顶层设计/收口方向；此前 §6 为 W18 方案历史比较，正式选择记录于 §7。**具体物理 ID/字段、Native Host ABI、消费者实施与 E0 验收仍未获批准**；下一轮 W19 的 Gate 0/时态物理表示选择尚待讨论。不修改 `main`、不创建实现分支或覆盖作者资源。
 - **本轮目标**：把“一个世界主体通过哪些原生数据结构和合法权限，成为真正对话参与者与有效世界事实来源”落到可审查的 **old → target → owner → consumer → removal → test** 表；同时明确哪些现有类型不必新建、哪些真正需要最小增补，避免未经审计的全量 Schema 改写。
 - **静态版本依据**：`main=c57fada6edeea255b29d857ba2585c1dbc9c098b`；`refactor/atria-native-orchestration-v3=a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`；`refactor/atria-native-prompt-preset-deepening=760327891149216dffdc1e3fa0c846496007a013`；`feat/native-visual-generation-deepening=ae587be0c64487ba922528bdd0146444bcf5e92e`。这些分支 HEAD 在本轮再次由 GitHub API 核查，审计不是未来整合后的固定基线。
 - **可靠性范围**：本轮只读已有文件及 git tree/已知调用片段；不是全仓库语义 call graph、Node/DB/CI、浏览器或三端真实测试。所有“目标”均非现存 API 声明。
@@ -133,3 +133,17 @@ Actor/Player/Simulation/Orchestration proposes (not authoritative)
 | W18-C · 万能 SubjectAdapter 统一全部读写 | 使用一层运行时 Adapter 把 Actor/Knowledge/HCM/World/Prompt/Visual 的所有 ID/来源自动互转 | 容易造成隐式身份合并、信息泄漏与不明确写入权限、长久兼容屎山 |
 
 **当前仅推荐 W18-B**；用户认可 W17-B 并不等于批准 W18-B，不能标记本节为已选。该轮讨论如选 B，下一轮应真正进入**E0-06 全消费者 cutover 清单 + E0-01/03 最小物理数据表示与 Gate 0 退出门槛**，不继续单纯重复抽象原则；随后检查是否已具备整份计划定稿前的充分证据。全过程保持 Draft，仅改 docs。
+
+
+## 7. W18-B 用户确认（2026-10-17）
+
+用户对上一轮明确推荐的 **W18-B「差异最小的 Typed ABI + 实际消费者验收驱动硬切」**答复「认同」。正式记录为 ARCH-DWE-01 已确认的**总体架构/工程收口路线**，故 W1-B 至 W18-B 的顶层方向均已获得明确认可。
+
+**本次确认实际包含**：
+- **最小差异**：WorldSubject、Participation/ActorProfile、Perspective、DurableFact、EffectiveRead 必须在**语义**上各司其职；物理 ID、字段、Schema 和存储方式须基于最终集成 HEAD 的实际缺口决定。复用 Native Session/Revision/Action Receipt、现有 Game Clock、Source References、Information/HCM/History，不创建第二份可写实体/事实/事件真相表。
+- **消费者驱动**：对 Manifest-only `actorId`、Timeline/Frontend/Play、Cognition/Information、Visual/Speech、Knowledge/Context/V3/Prompt 等真实活跃调用方建立 `old → target → retain/replace/delete/investigate → verification`；禁止仅替换字段名、动态修改固定 Package Manifest 或以万能 `SubjectAdapter` 长期桥接旧新语义。
+- **数据与权限**：Subject 的存在、表达模板、真正参与者和私人认知授权分别确认；Event/Fact 的历史有效时间与记录 Revision 必须可溯源；有效世界视图先基于合法 Host 受众/来源权限构造，再供 Context/Prompt/Library/Studio/Play 读取。
+- **硬切而非伪兼容**：项目仍为 Dev，可以对确定过时的生产入口实现原生 hard cutover；但需先审查现役插件或仍合法的接口，不能只因目录名为 `legacy` 就误删有效业务功能。
+- **不等于实现通过**：`subject_*` ID family、`participantRef` ABI、FactKey/valid interval 的物理持久化、通用 `asOfRevision/asOfGameTick` 查询、动态 Perspective Grant、E0-01～09 完整消费者与三端实测均**没有**因本轮选择而获批或通过。
+
+**下一轮 W19**：推进同一 Plan 的 [e0-gate0-physical-contracts.md](e0-gate0-physical-contracts.md)——用锁定 Git SHA 的实际生产函数、资源所有权及 caller 路径收敛 **E0-06 Gate 0 消费者地图**与 **E0-01/03 的最小物理主体/事实/时态查询机制**，明确可复用与必须新增/删除的合同、验证证据和退出阻塞。W19 候选未获用户选择，完整企划仍 **Draft**，仅修改 `docs`。
