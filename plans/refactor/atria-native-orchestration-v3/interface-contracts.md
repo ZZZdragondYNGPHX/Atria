@@ -1538,3 +1538,12 @@ Model 完成后封存该次检索费用证明并释放发送 scope；正式 Sess
 原Task锁取得后、Studio异步读取结束且mutable Task/cache载入前，消费该permit并重读真实Model完成证明、原生产者Source/Route和实际Skill inventory。原Task载入/恢复之后，实际同步修改对话前再核Task对象、Source executionFingerprint、baseRevision、conversation、原generation attempt/request/calls；原Repository CAS继续保存。恢复/异步间隙中的合法人类Task修改必须保留，旧cache不能在拒绝catch中覆盖新的Task。真实已发生Model费用不退款或重发。
 
 此接口堵住最后Model授权或原writer异步读取期间撤回后先写旧回复的问题，不宣称Task与外部Skill文件系统跨域原子事务。Project原Context仍只消费合法Task/Project/registry/tools和原Skill；没有Session/RP Memory corpus、descriptor或query时不能借其授权接检索。准确FS/SQLite和多轮/Review验证归同一Record；其它消费者/通用图/恢复释放继续，后端与最终Gate仍未完成。
+
+
+### 17.133 原 Project 银行的历史引用保留
+
+原引用适配器可按Project及可选精确Task读取受保护V3 Run/Record引用；终态或已取消Run、unknown费用都不自动解除保留。原Task持有其原compute银行，不能只按Task的review/blocked状态判断可删。引用检查只保护原来源与费用，不恢复Context、正文、Model或Run许可，没有新的清理中心、账本或released状态。
+
+原Storage Center删除Project在预检、旧preparing回收记录恢复的文件移动前，以及实际记录删除前检查这些引用；原Project队列与preparing检查点仍控制物理移动和Source准入。原直接Task删除也在Experience清理前与最终Engine删除事务内检查同Task引用，最后复验原Task CAS，清理await期间新Run或人类编辑不能丢失。另一个未引用的兄弟Task不因共享Project而一并禁止删除。
+
+没有Run引用的Project/Task仍通过原回收站及原ID恢复，完整账户删除沿原engine.deleteUser而非单Task接口。此项修复保留旁路，不声明完整Run历史释放或跨域GC已经实现；准确FS/SQLite、物理队列/检查点与原回收回归归同一Record。后端、完整恢复释放与最终Gate继续，不交前端/main或结束分支。

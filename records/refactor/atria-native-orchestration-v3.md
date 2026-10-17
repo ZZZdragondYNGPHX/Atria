@@ -1411,3 +1411,12 @@
 - 基线Source/config四参数4FAIL（15.55s）：旧assistant先写入后才报过期。较早writer前复验先4PASS（15.535s），增加原Skill设置/installed version后8PASS（28.294s）；但原writer实际Studio await中同Task重入编辑两参数仍2FAIL（10.878s）。因此删除被覆盖的较早检查，改原Task锁内permit与实际同步guard，不把writer前回调当物理CAS。Task load/recovery反例一起覆盖；Task-load初误预计native_write_conflict，实际更早source_stale，修正测试期待，没有放宽保留人类编辑断言。
 - 最终新Source/config/Skill及实际Project读取/Task载入/恢复撤回14/14 PASS（50.246s）；opaque permit两store参数2PASS/14skip（12.805s），新增16项均分别通过。原round-finish完整18/18 PASS（74.855s），原三轮Review输出正向2PASS/12skip（50.957s）；之前较早版本的原round-finish80.68s及Review正向54.644s不冒称最终字节。三个相关JS原ESLint、staged diff check通过。
 - 原Project没有可直接复用的Memory候选域/descriptor/query，本组没有假接Session权限或新增Project检索。Skill/config异步当前性与原Task CAS不等于跨文件系统原子事务。所有新Provider均localhost合成，无新增真实API；私密总数12、备用Chat0、daily/RPM配置null保持。后台Task检索和其余Source/Actor/Delegate、通用图、高风险、完整恢复释放继续；P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。
+
+
+## 2026-10-17 — 第一百三十组：Project 原银行的历史引用保留
+
+- Source `2e86c6f57` → `808dae402`，本地提交、未推送；接口§17.133。原reference-roots复用完整性校验/Run与Record枚举，新增Project及精确Task引用适配器。原Storage Center预检、旧preparing恢复文件移动前和实际记录删除前复验；原Task直接删除在Experience purge前及最终Engine删除事务内复验引用与原CAS。终态、取消及unknown仍保留原Task.compute银行，不伪造release或另设清理中心。
+- 实际三轮Project Review/完成Root基线，原Storage Center仍成功移走Project与银行，1FAIL/3skip（34.676s）；原实际HTTP对应agent.deleteTask也成功删已付Task，1FAIL/5skip（6.529s）。修复后初known/unknown拒删及直接删除/未引用兄弟Task六参数6PASS（96.442s）；新最终八参数8/8 PASS（81.773s），包含unknown取消终态/旧preparing恢复拒绝、无Run原ID回收恢复。恢复正例初两失败仅因测试拿未规范化输入source比较原服务补全resources的source，改核createProject真实返回，产品规范化不改。
+- 新末Experience清理await期间真实原Host完成Model、新Run持Task银行，以及同期间原setPlan修改四参数4/4 PASS（10.432s）；最终删除分别按引用/原CAS拒绝，费用与人类编辑保留。补文件移动前实际Source准入两参数2PASS（2.318s）：原preparing检查点经ProjectStore.assertActive先隐藏Source，完整Host零Run/Effect/HTTP；verify内启动Host先受不可重入Project队列约束，释放后同样拒绝。早期在持队列回调内直接await完整Host造成测试自等待超时，随后误预计底层recycle_bin而非原Domain NotFound亦修正；未据此虚报原guard失效，未加入重复循环检查。
+- 新suite最终14项均分别取得通过证据。原Storage Center recovery完整30/30 PASS（3.973s）、原Session reference roots4/4 PASS（3.42s）、原完整账户admin parity8/8 PASS（2.716s）。四Engine账户整删原deleteUser不调用单Task仓库，无新账户删除围栏。四相关JS原ESLint和staged diff check通过；未真实删除用户数据，所有写删仅临时harness。
+- 正式Run release物理合同尚未定义，历史继续安全保留；此组不把拒删当完整GC/恢复完成。所有Model为localhost合成，无新增真实API；私密总数12、备用Chat0、daily/RPM配置null保持。后台/Actor检索、其余Source/Delegate、通用图、高风险与完整恢复释放继续，P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。
