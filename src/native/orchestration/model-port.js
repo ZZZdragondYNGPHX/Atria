@@ -8,7 +8,7 @@ import { compiledSendIdentity } from '../model-prompt-runtime/compiled-binding.j
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { BudgetPort, sendAttemptId } from './budget-port.js';
 import { EffectController } from './effect-controller.js';
-import { readEffect, effectDecision } from './effect-contracts.js';
+import { readEffect } from './effect-contracts.js';
 import { checkedRecord } from './plan-repository.js';
 import { controlRecordKey, runGuard, readAttempt } from './controller-common.js';
 import { RunRepository, assertChildRunCurrent } from './run-repository.js';
@@ -16,11 +16,10 @@ import { resolveNativeNarratorScope } from './native-turn-orchestration.js';
 import { assertNativeTurnPermit } from './native-turn-permit.js';
 import { SourcePort } from './source-port.js';
 import { inspectNativeProjectGenerationIdentity } from './native-project-generation-authority.js';
+import { modelCompletionBindingDigest as digest, modelTerminalObservationId, readModelTerminalReceipt } from './model-terminal-contracts.js';
+export { readModelTerminalFact, readModelTerminalReceipt, readModelFailureReceipt } from './model-terminal-contracts.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
-const digest = intent => hash({ runId: intent.runId, effectId: intent.effectId, epoch: intent.epoch,
-    hostBootId: intent.hostBootId, hostGeneration: intent.hostGeneration,
-    sourceBindingDigest: intent.sourceBindingDigest, decision: effectDecision(intent) });
 const key = (handle, intent) => hash({ handle, runId: intent.runId, effectId: intent.effectId });
 const resultPayload = (response, outputType) => outputType === 'text' ? response.text : { text: response.text,
     toolCalls: (response.toolCalls ?? []).map(({ id, name, args }) => ({ id, name, args })) };
@@ -66,6 +65,7 @@ export class ModelPort {
     }
 
     async #observation({ handle, tx, root, intent, pending }) {
+        if (pending.terminalError) return this.#terminalObservation({ handle, tx, root, intent, pending });
         const { generated, sends, binding } = pending;
         if (this.#responses.get(generated) !== pending || binding !== digest(intent) || root.ownerRef.handle !== handle
             || intent.capability !== 'generation.send' || intent.risk !== 'R1' || intent.requiresApproval || intent.approvalRef !== null
@@ -102,6 +102,36 @@ export class ModelPort {
                 ...(pending.backgroundSchema ? { taskResultHash } : {}) } }, remoteOperationRef: null, domainReceiptRef: null,
             budgetObservationRef: { authorityRef: root.budgetAuthorityRef, attempts: attempts.map(({ budgetAttemptRef, status, usageHash }) => ({ budgetAttemptRef, status, usageHash })) },
             resultRefs: [], sourceRefs: [root.sourceBinding.sourceRef], reasonCode: 'generation_response_validated' };
+    }
+
+    async #terminalObservation({ handle, tx, root, intent, pending }) {
+        const facts = NativeGenerationHost.prototype.inspectModelTerminalFacts.call(this.host, pending.terminalError, handle);
+        if (!facts || facts !== pending.terminalFacts || pending.binding !== digest(intent) || root.ownerRef.handle !== handle
+            || intent.capability !== 'generation.send' || intent.risk !== 'R1' || intent.requiresApproval || intent.approvalRef !== null
+            || !pending.sends.length || facts.attempts.length !== pending.sends.length
+            || intent.sourceBindingDigest !== root.sourceBinding.bindingDigest) fail('native_orchestration_model_completion_proof_invalid');
+        const attempts = [];
+        for (const [ordinal, send] of pending.sends.entries()) {
+            const fact = facts.attempts[ordinal], ref = send.budgetAttemptRef, expectedSend = compiledSendIdentity(send);
+            if (ref.effectId !== intent.effectId || ref.providerSendOrdinal !== ordinal || ref.attemptId !== sendAttemptId(intent.effectId, ordinal)
+                || hash(ref) !== hash(fact.budgetAttemptRef) || ordinal === 0 && hash(ref) !== hash(intent.budgetAttemptRef)
+                || hash(expectedSend) !== hash(Object.fromEntries(['requestId', 'targetFingerprint', 'inputFingerprint'].map(field => [field, fact[field]])))
+                || fact.requestId !== facts.requestId || fact.requestSnapshotHash !== hash(send.snapshot)
+                || fact.compiledBindingFingerprint !== send.compiledBinding.fingerprint
+                || hash(send.compiledBinding) !== hash(send.snapshot.diagnostics.compiledBinding)) fail('native_orchestration_model_send_invalid');
+            const row = await this.budgetPort.observeAttempt(handle, ref);
+            if (row.status !== fact.status || hash(row.usage) !== fact.usageHash) fail('native_orchestration_model_budget_observation_invalid');
+            await this.budgetPort.verifyBudgetAttempt({ handle, tx, root, intent, budgetAttemptRef: ref, expectedSend });
+            attempts.push(fact);
+        }
+        const rejected = facts.kind === 'rejected';
+        return { observationId: modelTerminalObservationId(intent.effectId, facts.kind), observedEpoch: intent.epoch,
+            outcome: rejected ? 'failed' : 'confirmed', dispatchEvidence: { kind: 'original_port_observation', reference: {
+                protocol: 'generation_terminal', kind: facts.kind, completionBindingDigest: pending.binding,
+                responseHash: facts.responseHash, finalRequestHash: facts.finalRequestHash, attempts } },
+            remoteOperationRef: null, domainReceiptRef: null,
+            budgetObservationRef: { authorityRef: root.budgetAuthorityRef, attempts: attempts.map(({ budgetAttemptRef, status, usageHash }) => ({ budgetAttemptRef, status, usageHash })) },
+            resultRefs: [], sourceRefs: [root.sourceBinding.sourceRef], reasonCode: rejected ? 'generation_provider_rejected' : 'generation_response_not_consumed' };
     }
 
     async #saved(handle, tx, root, intent) {
@@ -250,6 +280,25 @@ export class ModelPort {
             // A callback value rejected by withConsumption never gets branded.
             if (completion) this.#resultCompletions.set(result, completion);
             return result;
+        } catch (error) {
+            const facts = NativeGenerationHost.prototype.inspectModelTerminalFacts.call(this.host, error, handle);
+            if (facts) {
+                pending.terminalError = error; pending.terminalFacts = facts;
+                const observation = await this.runs.engine.withTransaction(handle, async tx => {
+                    const root = await this.runs.get(handle, runId), intent = (await readEffect(tx, handle, root, effectId)).doc;
+                    return this.#terminalObservation({ handle, tx, root, intent, pending });
+                });
+                pending.observation = observation;
+                try {
+                    await this.runs.withSourceControl(handle, runId, async () => this.effects.observe(handle, {
+                        ...runGuard(await this.runs.get(handle, runId)), effectId, observation }), { withAuthority });
+                } catch (writeError) {
+                    if (writeError.code !== 'storage_commit_unknown') throw writeError;
+                    const saved = await this.observe(handle, { runId, effectId });
+                    if (!saved.observation || hash(saved.observation) !== hash(observation)) throw writeError;
+                }
+            }
+            throw error;
         } finally {
             if (pending.generated) this.#responses.delete(pending.generated);
             this.#active.delete(activeKey);
@@ -325,7 +374,7 @@ export class ModelPort {
         fields(request, ['runId', 'effectId'], 'Model Effect reference');
         const saved = await this.runs.engine.withTransaction(handle, async tx => {
             const root = await this.runs.get(handle, request.runId), intent = (await readEffect(tx, handle, root, request.effectId)).doc;
-            return this.#saved(handle, tx, root, intent);
+            return await this.#saved(handle, tx, root, intent) ?? await readModelTerminalReceipt(handle, tx, root, intent, this.budgetPort);
         });
         return saved ? immutable(saved) : { outcome: 'unknown', receiptRef: null, reason: 'native_orchestration_model_completion_unavailable' };
     }

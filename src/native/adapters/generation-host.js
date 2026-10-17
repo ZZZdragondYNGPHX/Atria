@@ -29,7 +29,7 @@ import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { PromptCompiler } from '../model-prompt-runtime/prompt-compiler.js';
 import { createNativeSessionContextAdapter, nativeSessionContextOptions } from './native-session-context.js';
 import { assertInformationActorAvailable, informationDefinition, informationContext, informationSourceMessageIds, memoryEvidenceApplicability } from '../../../public/shared/native-information-runtime.js';
-import { immutable, ProviderFailure, GenerationError, checkCancellation, containsSecret } from '../model-prompt-runtime/execution-utils.js';
+import { immutable, ProviderFailure, GenerationError, checkCancellation, containsSecret, inspectProviderHttpFailure } from '../model-prompt-runtime/execution-utils.js';
 import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
 import { assertTaskValue, normalizeTaskGenerationResult } from '../../../public/shared/native-task-contract.js';
 import { nativeTaskScheduler } from '../task-scheduler.js';
@@ -47,6 +47,7 @@ import { selectNativeTaskContext } from './task-context-items.js';
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const predictionLanes = new WeakSet();
 const turnProducerLanes = new WeakMap();
+const modelTerminalFacts = new WeakMap();
 
 function ordinaryBackgroundIntent(snapshot, intent, task, variant, payload) {
     const lifecycle = snapshot.states.atri_lifecycle;
@@ -149,6 +150,14 @@ function startupTaskVariants(contract) {
 
 // A host composition over existing P1 storage and Native Session/Studio authorities.
 export class NativeGenerationHost {
+    /** Original execution facts only. This never grants response consumption. */
+    inspectModelTerminalFacts(error, handle) {
+        const original = modelTerminalFacts.get(error);
+        return original?.host === this && original.engine === this.persistence._engine
+            && original.hostBootId === this.persistence._engine.nativeHostLifecycle?.hostBootId
+            && original.facts.handle === handle ? original.facts : null;
+    }
+
     constructor({ persistence, library, sessionCore, packageInstaller, studio, agent, providers, secretPort, skillRepository, extensions, turnOrchestration, projectCommitAuthority = null }) {
         Object.assign(this, { persistence, library, sessionCore, packageInstaller, studio, agent, providers, secretPort, skillRepository, extensions, turnOrchestration, projectCommitAuthority });
         if (extensions && persistence?._engine && sessionCore) registerVisualWake(persistence._engine, async (handle, sessionId) => {
@@ -1284,6 +1293,22 @@ export class NativeGenerationHost {
         const compiler = new PromptCompiler({ hostDefinitions: Object.fromEntries(Object.keys(hostView).map(key => [key, { type: 'string', required: true }])) });
         const attempts = [];
         const computeAttempts = [];
+        const modelSendFacts = [];
+        const saveModelTerminalFacts = (error, kind, generated = null) => {
+            if (!sendBank || !modelSendFacts.length || modelSendFacts.length !== attempts.length || computeAttempts.length !== modelSendFacts.length) return;
+            if (kind === 'rejected' && (signal?.aborted || modelSendFacts.some(fact => fact.outcome !== 'http_rejected')
+                || !modelSendFacts.at(-1).errorCodes.includes(error.code))) return;
+            if (kind === 'late_response' && (!generated?.response || typeof generated.response.text !== 'string'
+                || modelSendFacts.at(-1).outcome !== 'response'
+                || modelSendFacts.slice(0, -1).some(fact => fact.outcome !== 'http_rejected'))) return;
+            modelTerminalFacts.set(error, { host: this, engine: this.persistence._engine,
+                hostBootId: this.persistence._engine.nativeHostLifecycle?.hostBootId, facts: immutable({ handle, requestId: input.requestId, kind,
+                    responseHash: generated ? hashNativeDocument(generated.response) : null,
+                    finalRequestHash: modelSendFacts.at(-1).requestSnapshotHash,
+                    attempts: modelSendFacts.map(({ errorCodes: _codes, ...fact }, index) => ({ ...fact,
+                        outcome: kind === 'late_response' && index === modelSendFacts.length - 1 ? 'response_validated' : fact.outcome,
+                        status: computeAttempts[index].status, usageHash: hashNativeDocument(computeAttempts[index].usage) })) }) });
+        };
         let computeLimits = null;
         let readSkill;
         let discardSessionTaskExecution;
@@ -1383,7 +1408,7 @@ export class NativeGenerationHost {
                             // Private native request leases are single-send. A retry lowers
                             // the same frozen snapshot again and rechecks its current envelope.
                             if (retry) rendered = await localWork('generation_render', prepared, () => provider.renderRequest(prepared), undefined, result => provider.discardExecution?.(result));
-                            let actualSnapshot, expectedSend;
+                            let actualSnapshot, expectedSend, modelSendFact;
                             if (sendBank) {
                                 // The first snapshot comes from GenerationService after
                                 // lowering. Retries lower again and bind that exact wire.
@@ -1451,17 +1476,28 @@ export class NativeGenerationHost {
                                     snapshot: actualSnapshot, compiledBinding: actualSnapshot?.diagnostics.compiledBinding, budgetAttemptRef: receipt?.budgetAttemptRef });
                                 if (sendBank) await sendBank.assertCurrent();
                                 if (scopedContext) await scopedContext.port.revalidate(handle, { context: scopedContext.compiled, phase: 'send' });
+                                if (sendBank) {
+                                    modelSendFact = { budgetAttemptRef: receipt.budgetAttemptRef, ...expectedSend,
+                                        compiledBindingFingerprint: actualSnapshot.diagnostics.compiledBinding.fingerprint,
+                                        requestSnapshotHash: hashNativeDocument(actualSnapshot), outcome: 'unknown', httpStatus: null, errorCodes: [] };
+                                    modelSendFacts.push(modelSendFact);
+                                }
                                 const response = await provider.send(rendered, boundary);
+                                if (modelSendFact) modelSendFact.outcome = 'response';
                                 if (sendBank) completedSendSnapshot = actualSnapshot;
                                 attempt.status = 'success';
                                 capture?.append({ type: 'request.attempt.sent', eventId: attemptId + '/sent', requestId: input.requestId, attemptId });
                                 return response;
                             } catch (error) {
-                            // A refused original budget admission has performed
-                            // no send/reset. Preserve an existing valid checkpoint;
-                            // retries after any attempted send still discard on failure.
+                                const http = inspectProviderHttpFailure(error);
+                                if (modelSendFact && http) Object.assign(modelSendFact, { outcome: 'http_rejected', httpStatus: http.status,
+                                    errorCodes: error instanceof GenerationError ? [error.code]
+                                        : error.kind === 'provider' ? ['generation_provider_failed', 'generation_fallback_exhausted'] : ['generation_execution_failed'] });
+                                // A refused original budget admission has performed
+                                // no send/reset. Preserve an existing valid checkpoint;
+                                // retries after any attempted send still discard on failure.
                                 retainOnBudgetRejection = COMPUTE_ADMISSION_CODES.includes(error.code) && !sendAdmitted;
-                                await settleAttempt(error instanceof ProviderFailure ? error.usage ?? null : null);
+                                await settleAttempt(http?.usage ?? null);
                                 attempt.status = 'failed';
                                 capture?.append({ type: 'request.attempt.failed', eventId: attemptId + '/failed', requestId: input.requestId, attemptId });
                                 if (['native_generation_budget_exhausted', 'native_generation_task_stopped', 'native_generation_revision_conflict'].includes(error.code)) throw new GenerationError(error.code);
@@ -1502,11 +1538,16 @@ export class NativeGenerationHost {
             // Errors between model rounds (for example a cancelled Skill read)
             // must await the same private cleanup as provider failures.
             if (!['native_generation_budget_exhausted', 'generation_context_budget_exceeded'].includes(error.code)) await discardSessionTaskExecution?.();
+            saveModelTerminalFacts(error, 'rejected');
             throw error;
         }
         if (sendBank) result = immutable({ ...result, snapshot: completedSendSnapshot });
         if (authorityContext?.mode === 'narrator' && (result.response.toolCalls?.length || result.response.tool_calls?.length)) fail('native_narrator_outcome_denied');
-        if (scopedContext) await scopedContext.port.revalidate(handle, { context: scopedContext.compiled, phase: 'consume' });
+        if (scopedContext) {
+            try { await scopedContext.port.revalidate(handle, { context: scopedContext.compiled, phase: 'consume' }); } catch (error) {
+                saveModelTerminalFacts(error, 'late_response', result); throw error;
+            }
+        }
         if (prediction) {
             await assertPredictionCaptureCurrent(prediction.capture);
             if (result.response?.toolCalls?.length || result.response?.tool_calls?.length) fail('native_prediction_tools_denied');

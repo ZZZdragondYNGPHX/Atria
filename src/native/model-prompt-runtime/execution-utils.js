@@ -70,11 +70,27 @@ export class ProviderFailure extends Error {
 }
 
 // Classify only the HTTP status. Never retain provider response bodies or credentials.
+const httpFailures = new WeakMap();
 export function providerHttpFailure(status) {
-    if (status === 401 || status === 403) return new GenerationError('generation_provider_authentication_failed');
-    if (status === 404) return new GenerationError('generation_provider_endpoint_not_found');
-    if (status === 400 || status === 422) return new GenerationError('generation_provider_request_rejected');
-    return new ProviderFailure(status === 429 || status >= 500 ? 'provider' : 'application');
+    const failure = status === 401 || status === 403 ? new GenerationError('generation_provider_authentication_failed')
+        : status === 404 ? new GenerationError('generation_provider_endpoint_not_found')
+            : status === 400 || status === 422 ? new GenerationError('generation_provider_request_rejected')
+                : new ProviderFailure(status === 429 || status >= 500 ? 'provider' : 'application');
+    if (Number.isInteger(status) && status >= 400 && status <= 599) httpFailures.set(failure, Object.freeze({ status }));
+    return failure;
+}
+/** Numeric original HTTP observation, never inferred from an error code. */
+export function inspectProviderHttpFailure(error) { return httpFailures.get(error) ?? null; }
+/** Called by an original HTTP adapter after numeric usage normalization. */
+export function observeProviderHttpUsage(error, usage) {
+    const event = httpFailures.get(error);
+    if (!event) return;
+    const numeric = Object.fromEntries(['inputTokens', 'outputTokens', 'totalTokens']
+        .filter(field => Number.isSafeInteger(usage?.[field]) && usage[field] >= 0).map(field => [field, usage[field]]));
+    if (!Object.keys(numeric).length) return;
+    const observed = Object.freeze(numeric);
+    httpFailures.set(error, Object.freeze({ status: event.status, usage: observed }));
+    error.usage = observed;
 }
 
 export function checkCancellation(signal) {

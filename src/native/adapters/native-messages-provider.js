@@ -1,4 +1,4 @@
-import { GenerationError, ProviderFailure, providerHttpFailure } from '../model-prompt-runtime/execution-utils.js';
+import { GenerationError, ProviderFailure, providerHttpFailure, observeProviderHttpUsage } from '../model-prompt-runtime/execution-utils.js';
 import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
 import { observedGenerationUsage } from './generation-usage.js';
 import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, discardNativeEnvelopes, assertNativeEnvelopeSafe, leaseNativeRequest, consumeNativeRequest, inspectNativeRequest, nativeExecutionObservation, hydrateNativeEnvelopes, publishNativeEnvelope, discardStoredNativeEnvelopes, isDurableNativeContinuity } from '../model-prompt-runtime/native-execution-envelope.js';
@@ -189,7 +189,16 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkp
                 if (signal?.aborted) throw new GenerationError('generation_cancelled');
                 throw new ProviderFailure('transport');
             }
-            if (!response.ok) { await response.body?.cancel(); throw providerHttpFailure(response.status); }
+            if (!response.ok) {
+                const failure = providerHttpFailure(response.status);
+                try {
+                    const raw = await response.json();
+                    observeProviderHttpUsage(failure, observedGenerationUsage(anthropic ? raw?.usage : raw?.usageMetadata, anthropic
+                        ? { inputTokens: 'input_tokens', outputTokens: 'output_tokens' }
+                        : { inputTokens: 'promptTokenCount', outputTokens: 'candidatesTokenCount', totalTokens: 'totalTokenCount' }));
+                } catch { /* Missing numeric counters remain unknown. */ }
+                throw failure;
+            }
             return { response, binding: request.binding, sequence: request.sequence, continuityDecision: request.continuityDecision };
         },
         async parseStream({ response, binding, sequence, continuityDecision }, { onChunk, onUsage } = {}) {

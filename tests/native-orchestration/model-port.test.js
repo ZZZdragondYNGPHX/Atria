@@ -105,11 +105,11 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_MOD
         const f = await fixture(make, { failure: true, usage: false });
         try {
             await expect(f.start()).rejects.toThrow(); const sendCount = f.requests.length;
-            expect(sendCount).toBeGreaterThan(0); expect((await f.observe()).outcome).toBe('unknown');
+            expect(sendCount).toBeGreaterThan(0); expect(await f.observe()).toMatchObject({ outcome: 'failed', kind: 'rejected', closed: false });
             const root = await f.authority.execution.runs.get(f.h.handle, f.effectRef.runId);
             const intent = await f.h.engine.withTransaction(f.h.handle, async tx => (await readEffect(tx, f.h.handle, root, f.effectRef.effectId)).doc);
             expect((await f.authority.execution.budgetPort.observeAttempt(f.h.handle, intent.budgetAttemptRef)).status).toBe('unknown');
-            await f.cold(); expect((await f.observe()).outcome).toBe('unknown');
+            await f.cold(); expect(await f.observe()).toMatchObject({ outcome: 'failed', kind: 'rejected', closed: false });
             await expect(f.port.generate(f.h.handle, f.scope)).rejects.toThrow(); expect(f.requests).toHaveLength(sendCount);
         } finally { await f.cleanup(); }
     });
