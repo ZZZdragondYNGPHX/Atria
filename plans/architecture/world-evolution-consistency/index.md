@@ -13,7 +13,7 @@
 本 Plan 是同一主题持续迭代的**唯一入口**。每一轮先更新对应模块和本轮讨论状态、在 `docs` 分支提交并核实，再开展本轮讨论；直到用户明确认可完整方案，才将状态由 Draft 改为 Approved/定稿。不得把助理推荐误写为已获批准的冻结决议，亦不得在讨论阶段直接修改 `main` 产品实现。
 
 - [Research](research.md)：外部资料、机制比较、来源、局限和迁移适用性；讨论中持续补充。
-- [Design](design.md)：§8 S2 扩域、§9 W1/W2、§10 W3、§11 W4、§12 W5、§13 W6、§14 W7、§15 W8、§16 W9、§17 W10，**§18 记录已确认 W10-B 并路由 W11**；历史提案内容以后续用户选择为准。
+- [Design](design.md)：§8 S2 扩域、§9 W1/W2、§10 W3、§11 W4、§12 W5、§13 W6、§14 W7、§15 W8、§16 W9、§17 W10、§18 W11，**§19 记录已确认 W11-B 并路由 W12**；早期候选保留作为历史，当前以最新确认状态为准。
 - [Runtime Emergence & Fact Lifecycle](runtime-emergence.md)：**W4 方向已确认，§8 记录 W4-B**。仅当本轮需要核对实体注册/事件基础时阅读。
 - [NPC Autonomy & Scheduling](npc-autonomy.md)：**W5 已确认 B 方向**；§10 明确选型与待收口接口，复核 NPC 调度时按需读取。
 - [NPC Social Cognition](npc-social-cognition.md)：**W6 已确认 B 方向**；§10 记录社会关系真相、私人认知及来源事件边界。仅在当前模块需要这些依赖时读取。
@@ -21,7 +21,8 @@
 - [NPC Memory Continuity](npc-memory-continuity.md)：**W8-B 已确认方向**；§11 记录来源保真与人格连续性、职责划分，按需回查。
 - [World Subject Identity & Authority](entity-identity-authority.md)：**W9-B 方向已确认**；§11 记录 Canonical Subject + 受控映射/投影，按需回查。
 - [Subject Instantiation & Capabilities](subject-instantiation.md)：**W10-B 已确认方向**；§10 记录从固定定义到 Session Subject 实例化与按需能力绑定。
-- [Typed Subject / Capability Contracts & E0](subject-contracts-e0.md)：**W11 当前阶段模块**。Subject、ActorProfile、Perspective、Participant 的逻辑合约、Host 能力解析、源与权限、部分代码审查证据、W11-A/B/C 选择及 E0 全消费者清单（Draft）。
+- [Typed Subject / Capability Contracts & E0](subject-contracts-e0.md)：**W11-B 已确认方向**；§8 记录类型化 Subject/Participant/Perspective 与 Native Host Capability Resolution。
+- [E0 Consumer Map & Native Cutover](e0-consumer-cutover.md)：**W12 当前阶段模块**。实际生产消费者审查起点、事实与时态提交、唯一权威、Library/Studio/Play、跨分支权限、旧路径硬切及 W12-A/B/C 选型（Draft）。
 - [Record](../../../records/architecture/world-evolution-consistency.md)：按工作轮累积可核验的文档提交、调研结果、未完成内容。
 - 后续需要规模化时再按主题拆模块，本入口仍为唯一导航。
 
@@ -31,7 +32,7 @@
 
 原问题「静态设定和动态演化冲突」仍保留，**但现在必须以原生 World / Knowledge 整体重构为主线**。先明确 World（实体/关系/世界法则/初始基线）与 Knowledge（资料/断言/来源/语境）的真实边界，再设计事实演化、主体认知、有效上下文和 Library/Studio/Play 产品界面。已有 Native SessionCore/State/Event/Simulation/HCM/Context Compiler 是首先审查和复用的权威，不能平行再建一套真相库。
 
-本轮对照见 [design.md §8](design.md#8-scope-expansion-s2--从-lorebook-进一步重构原生-world--knowledge2026-10-17候选)，补充文献与代码证据见 [research.md §F](research.md#f-s2-扩域补充研究从-st-lorebook-到-native-world-model2026-10-17)。**已确认：W1-B World Model + Source Library、W2-B 分层混合结构、W3-B 分级约束 + 涌现世界、W4-B 渐进接纳 + 关键交互即时提交、W5-B 分层事件驱动自主性、W6-B 世界关系事实 + 主体认知 + 来源事件、W7-B 动态受众资格 + 证据驱动信息流、W8-B 来源保真 + 分层回忆与人格连续性、W9-B Canonical World Subject + 受控跨域映射/投影、W10-B 固定定义→Session Subject 实例化 + 类型化能力绑定。** 正式世界身份、作者表达、私人认知和故事参与者按来源及授权分开；Native Host 仍为唯一世界提交权威。**W11 精确身份/能力接口及 E0 消费者审查尚待讨论**，见 [subject-contracts-e0.md](subject-contracts-e0.md)。完整 Plan 继续 Draft，未授权开发。
+本轮对照见 [design.md §8](design.md#8-scope-expansion-s2--从-lorebook-进一步重构原生-world--knowledge2026-10-17候选)，补充文献与代码证据见 [research.md §F](research.md#f-s2-扩域补充研究从-st-lorebook-到-native-world-model2026-10-17)。**已确认：W1-B World Model + Source Library、W2-B 分层混合结构、W3-B 分级约束 + 涌现世界、W4-B 渐进接纳 + 关键交互即时提交、W5-B 分层事件驱动自主性、W6-B 世界关系事实 + 主体认知 + 来源事件、W7-B 动态受众资格 + 证据驱动信息流、W8-B 来源保真 + 分层回忆与人格连续性、W9-B Canonical World Subject + 受控跨域映射/投影、W10-B 固定定义→Session Subject 实例化 + 类型化能力绑定、W11-B Typed Subject/Participant/Perspective + Host Capability Resolution。** Native Host 仍是正式世界提交的唯一权威，作者模板和各受众认知不得篡改事实；**W12 的 E0 完整消费者审计、事实事务/时态以及原生 hard cutover 路线尚未获批**，详见 [e0-consumer-cutover.md](e0-consumer-cutover.md)。完整 Plan 继续 Draft，未授权开发。
 
 需要回答：创作者的首要对象是若干触发条目，还是可以直接浏览、引用并演化的“世界”；Knowledge 应是同级世界书，还是世界引用的来源与证据？现有 free text 必须继续一等支持；不为未发布旧 ST 数据建立兼容双轨。
 
@@ -72,7 +73,7 @@
 
 ## 5. 状态与下一检查点
 
-- **当前：**S12 已记录用户选择 **W10-B**；进入 W11 [Subject/ActorProfile/Perspective/Participant 类型化接口、Host Capability Resolution 与 E0 Consumer Map](subject-contracts-e0.md) 讨论。研究推荐 W11-B，**尚未获用户批准**。
-- **已确认设计方向（W1–W10）：** World Model + Source Library、分层混合、分级约束/涌现、动态实体接纳、事件驱动 NPC 自主、世界关系与私人认知分离、动态 Perspective 与证据传播、来源保真记忆/人格、Canonical Subject 映射、固定定义实例化 + 类型化能力绑定。Native Host 仍为唯一权威。**具体身份 ID、接口/ABI、实现与 E0/三端验收均未获批**；W11 与完整消费者审计待议。
+- **当前：**S13 已记录用户选择 **W11-B**；进入 W12 [E0 生产消费者矩阵、Native 事务/事件时态与原生硬切策略](e0-consumer-cutover.md) 讨论。研究推荐 W12-B「E0 证据驱动原生硬切 + 单权威提交收口」，**尚未获用户批准**；当前仅完成部分静态代码探针，不可宣称 E0 已通过。
+- **已确认设计方向（W1–W11）：** World Model + Source Library、分层混合、分级约束/涌现、动态实体接纳、事件驱动 NPC 自主、客观世界与私人认知分离、动态 Perspective/证据传播、来源保真记忆/人格、Canonical Subject 映射、固定定义的 Session 实例化与类型化能力绑定、Subject/Participant/Perspective 的 Host 受控解析。**未冻结具体身份 ID/ABI/API、事务/历史契约、实现或 E0/三端验收**；W12 与完整消费者审计待议。
 - **未授权：**修改 `main`、创建实现分支、给出实施已经通过的结论。
 - **完成标准：**用户在若干轮讨论后明确确认各核心决策及边界，并批准定稿。未经确认，不使用“Final/冻结/全面通过”描述。
