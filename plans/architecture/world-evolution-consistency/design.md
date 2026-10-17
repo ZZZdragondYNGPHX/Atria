@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · Candidate Design & Discussion Agenda
 
-- 状态：**Draft（W1–W8 的 B 方向均已获确认；W9 选型和完整实现契约未批准）**。早期候选章节保留历史，当前决议与模块路由参见最新 index。
-- 当前讨论轮次：W9 — World Entity/Actor/动态 NPC/Lifetime/HCM 统一主体身份与受控映射（见 [entity-identity-authority.md](entity-identity-authority.md)）。
+- 状态：**Draft（W1–W9 的 B 方向已获确认；W10 及精确接口/实施仍未批准）**。历史选型章节保留当时结论，当前批准状态参见最新 index。
+- 当前讨论轮次：W10 — World/Actor 固定定义实例化、运行时 NPC 能力接纳、Timeline/Cognition 接线与分支一致性（见 [subject-instantiation.md](subject-instantiation.md)）。
 - 入口：[index.md](index.md)；材料：[research.md](research.md)
 
 ## 1. 问题的正确切分
@@ -570,3 +570,35 @@ W7 专属模块：[npc-memory-information-flow.md](npc-memory-information-flow.m
 - 保持 W1–W8 确认方向、唯一 Native Host 写入权威与 Draft；未修改 main、未创建实施分支、未运行正式测试。
 
 **W9-B 仅为本轮建议，不因用户选择 W8-B 而自动获批。**
+
+
+---
+
+## 17. S11 · W9-B 已确认与 W10 定义到运行时主体实例化（2026-10-17）
+
+### 17.1 已确认 W9-B
+
+用户对上一轮推荐的 **W9-B「Canonical World Subject + 受控跨域映射与投影」**回复“认同”；现将 W1-B 至 W9-B 都记为用户已确认的**顶层设计方向**：
+
+- 同一个已提交世界主体拥有稳定可追溯的 Canonical Subject；它可与 Authored Actor/World Definition、Lifetime Person、Cognition Perspective、HCM 证据 Entity 和 Timeline participant 存在**受控、具来源、分支/版本限定、可见性受约束的关联**。
+- Authored Profile/World 资源与 Session 主体有不同生命周期，HCM Entity 中的传言/未决人物不得仅因语义匹配而成为真实世界成员；世界主体身份与个人认知/自主行动资格仍须分别验证。
+- 跨域一致不意味着所有领域强行共享一个 ID 字符串/万能对象，更不授权新建 Native SessionCore 之外的可写世界真相数据库；分支祖先已存在的主体按历史继承，分叉后的状态/秘密/映射分别有效。
+- 该决定**不构成**具体 Entity ID family、绑定 Schema、全部消费者适配、跨平台端到端验证或正式开发授权。Plan 仍是 Draft。
+
+### 17.2 W10 研究问题与当前推荐
+
+进入 W10：固定的 WorldEntityDefinition/ActorProfile 如何实例化为 Session Subject；没有预设角色卡的涌现 NPC 如何在持续互动后获得表达、受限 Cognition/HCM 视角和有界 Task/Simulation 能力；这些关系如何在分支、历史与多人秘密身份中保持真实且不越权。
+
+详细候选、源码核对与验收场景仅在同一 Plan 模块 [subject-instantiation.md](subject-instantiation.md) 维护。候选三选一：
+
+- W10-A：运行时将新 NPC 直接追加/改写 Package Actor Manifest；破坏固定创作资产与 Session 隔离。
+- **W10-B：固定定义 → Session 实例化 + 类型化能力绑定（研究推荐，W10 尚未获用户批准）**；Native 只管理正式 Subject/事件，表达模板、个人视角、生命周期记录和 Task 都通过合法绑定/投影引用，保留自由生成 NPC。
+- W10-C：只靠 Narrator/HCM 文本猜测动态 NPC 对话与身份；无法保证一致性和私有来源权限。
+
+### 17.3 现有运行时必须审查的断点
+
+`src/native/session-core.js` 的 Timeline `actorId` 当前只接受确切 Package Manifest Actor；`public/shared/native-actor-profile.js` 只用固定 Actor Definition；`public/shared/native-information-contract.js` 的 Perspective 声明和 `src/native/cognition-authority.js` 等仍有 Actor/权限绑定；`src/native/identity.js` 静态已读 Native ID families 不含 World Subject family。不能把新 NPC 的 `SubjectRef` 直接假冒 `actorId` 或将 Source 的名字自动合并成身份。
+
+需要 E0 审计 Timeline、ActorProfile、Host/Orchestration、Cognition/Information/ToM、HCM、Lifetime、Visual/Speech、Session/Save/Branch 的全部真实调用方，确定最小、没有兼容双轨的受控 cutover。不能因设计确认就说这些功能已经实现。
+
+**状态**：W1–W9 方向已选，W10 只为候选；本轮只有 docs 文档修改，未实施代码、测试/CI 或真实三端 UI。所有接口需后续讨论后才能定稿。
