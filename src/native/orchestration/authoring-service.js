@@ -14,6 +14,8 @@ import { validateGraphPatchCapability } from './graph-controller.js';
 import { NativeRetrievalPersistence } from '../retrieval-persistence.js';
 import { assertRetrievalRef } from '../../../public/scripts/native/retrieval-contracts.js';
 import { validateRetrievalCapability } from './retrieval-capability-authority.js';
+import { readProjectCommitDescriptor } from './project-commit-contracts.js';
+import { validateProjectCommitCapability } from './project-commit-capability-authority.js';
 
 /** Authoring uses existing Native resource readers; validation never sends. */
 export function createOrchestrationAuthoringService(engine, sources = {}) {
@@ -42,6 +44,7 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
             return runtimeRoute?.runtimeRouteId === ref.runtimeRouteId ? runtimeRoute : runtime.getRuntimeRoute(handle, ref.runtimeRouteId);
         }
         if (port === 'tool' && ref.kind === 'project_agent_tool') return readProjectToolDescriptor(handle, ref, sources.projectAgent);
+        if (port === 'project' && ref.kind === 'native_project_commit') return readProjectCommitDescriptor(handle, ref, sources.projectAgent);
         throw Object.assign(new TypeError('Original dependency authority required'), { code: 'native_orchestration_dependency_authority_unavailable' });
     };
     const validateDependencies = async ({ handle, tx, dependencyPins, definition, runtimeRoute }, ancestry = [], completedReports = new Map()) => {
@@ -87,6 +90,11 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
                 if (!valid) issues.push({ code: 'native_orchestration_project_tool_pin_required', severity: 'blocking', fieldPath: 'capabilityCeiling.' + capability });
                 continue;
             }
+            if (capability === 'project.commit') {
+                const result = validateProjectCommitCapability({ definition, dependencyPins, projectAgent: sources.projectAgent });
+                evidence.push(...result.evidence); issues.push(...result.issues);
+                continue;
+            }
             issues.push({ code: 'native_orchestration_capability_authority_unavailable', severity: 'unknown', fieldPath: 'capabilityCeiling.' + capability });
             evidence.push({ capability, status: 'unknown' });
         }
@@ -105,7 +113,8 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
             } catch (error) {
                 // Malformed/missing references cannot be published. Actual
                 // storage/transport faults must retain their failure status.
-                if (!(error instanceof TypeError) && error.name !== 'NotFoundError' && error.code !== 'native_orchestration_revision_mismatch') throw error;
+                if (!(error instanceof TypeError) && error.name !== 'NotFoundError'
+                    && !['native_orchestration_revision_mismatch', 'native_orchestration_project_commit_stale'].includes(error.code)) throw error;
                 evidence.push({ pinId: pin.pinId, status: 'invalid' });
                 issues.push({ code: 'native_orchestration_dependency_invalid', severity: 'blocking', fieldPath: 'dependencyPins.' + pin.pinId });
             }

@@ -2,6 +2,7 @@ import { readRpOutput } from './rp-output-contracts.js';
 import { readSessionOutput } from './session-output-contracts.js';
 import { readProjectReviewOutput } from './project-review-output-contracts.js';
 import { readBackgroundTaskOutput } from './background-task-output-contracts.js';
+import { readProjectCommitOutput } from './project-commit-contracts.js';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
@@ -24,12 +25,15 @@ const limitField = field => 'max' + field[0].toUpperCase() + field.slice(1);
 export const initialTreeProgress = (depth, deadlineAt) => ({ ...Object.fromEntries(TREE_LOGICAL_COUNTERS.map(field => [field, 0])), depth, deadlineAt });
 const runKey = (handle, runId) => ({ kind: K.orchestrationRun, handle, runId });
 const recordKey = (handle, runId, recordType, recordId) => ({ kind: K.orchestrationRecord, handle, runId, recordType, recordId });
-const readRunOutput = (tx, handle, root, options) => root.graph.outputContract.kind === 'rp_narration'
-    ? root.sourceBinding.sourceAuthority === 'native_session' ? readSessionOutput(tx, handle, root)
-        : root.sourceBinding.sourceAuthority === 'rp_chat' ? readRpOutput(tx, handle, root) : null
-    : root.graph.outputContract.kind === 'project_review' ? readProjectReviewOutput(tx, handle, root, options)
-        : root.sourceBinding.sourceAuthority === 'native_session' && root.parentRef === null
-            ? readBackgroundTaskOutput(tx, handle, root, options) : readTaskLocalOutput(tx, handle, root);
+const readRunOutput = (tx, handle, root, options = {}) => {
+    if (root.sourceBinding.sourceAuthority === 'project' && root.sourceBinding.sourceRequest.purpose === 'formal_commit')
+        return readProjectCommitOutput(tx, handle, root, options.projectAgent, options);
+    if (root.graph.outputContract.kind === 'rp_narration') return root.sourceBinding.sourceAuthority === 'native_session' ? readSessionOutput(tx, handle, root)
+        : root.sourceBinding.sourceAuthority === 'rp_chat' ? readRpOutput(tx, handle, root) : null;
+    if (root.graph.outputContract.kind === 'project_review') return readProjectReviewOutput(tx, handle, root, options);
+    return root.sourceBinding.sourceAuthority === 'native_session' && root.parentRef === null
+        ? readBackgroundTaskOutput(tx, handle, root, options) : readTaskLocalOutput(tx, handle, root);
+};
 export const childBudgetReceiptId = runId => 'oreceipt_' + hashNativeDocument({ kind: 'child_budget_ready', runId }).slice(0, 32);
 
 /** Admission bound from original durable Attempts, never a second scheduler. */
@@ -174,9 +178,9 @@ class ControlDenial {
 
 /** Durable Host control metadata. Original domain admission supplies source/budget truth. */
 export class RunRepository {
-    constructor({ engine, authorize, admit, assertWriter, now = Date.now }) {
+    constructor({ engine, authorize, admit, assertWriter, projectAgent = null, now = Date.now }) {
         for (const [name, value] of Object.entries({ authorize, admit, assertWriter, now })) if (typeof value !== 'function') throw new TypeError('RunRepository requires ' + name);
-        Object.assign(this, { engine, authorize, admit, assertWriter, now });
+        Object.assign(this, { engine, authorize, admit, assertWriter, projectAgent, now });
     }
 
     async #command(handle, commandId, operation, body, apply, { replayFlag = false, resourceIds = [] } = {}) {
@@ -452,7 +456,7 @@ export class RunRepository {
                 throw new TypeError('Run immutable graph contract differs from its Plan: ' + field);
         }
         record.planRevision = revision.doc;
-        if (record.doc.outputClaims.length && !await readRunOutput(tx, handle, record.doc)) throw new TypeError('Run output lacks complete facts');
+        if (record.doc.outputClaims.length && !await readRunOutput(tx, handle, record.doc, { projectAgent: this.projectAgent })) throw new TypeError('Run output lacks complete facts');
         return record;
     }
 
@@ -492,7 +496,7 @@ export class RunRepository {
         check(root);
         assertRunRoot(root, handle);
         if ((root.outputClaims.length || ['completed', 'partial'].includes(root.status))
-            && !await readRunOutput(tx, handle, root, { pendingCommand: true })) throw new TypeError('Run completion requires verified output facts');
+            && !await readRunOutput(tx, handle, root, { pendingCommand: true, projectAgent: this.projectAgent })) throw new TypeError('Run completion requires verified output facts');
         const ancestors = [], seen = new Set([root.runId]);
         let parentId = root.parentRef?.parentRunId;
         while (parentId) {

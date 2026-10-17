@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { consumeNativeProjectToolPermit, completeNativeProjectToolPermit,
     consumeNativeProjectGenerationPermit, assertNativeProjectGenerationWrite } from './orchestration/native-project-generation-authority.js';
+import { consumeNativeProjectCommitPermit, nativeProjectCommitChangeSet, assertNativeProjectCommitWrite, assertNativeProjectCommitWork } from './orchestration/native-project-commit-authority.js';
 import { projectToolResultPayload } from './orchestration/project-tool-contracts.js';
 import { listAuthoringReferences, readAuthoringReference } from './authoring-reference.js';
 
@@ -562,7 +563,9 @@ export class ProjectAgentService {
     }
 
     commit(handle, projectId, id, options = {}) {
-        return this._operate(handle, projectId, id, () => this._commit(handle, projectId, id), options);
+        if (options.nativeCommitPermit === undefined) return this._operate(handle, projectId, id, () => this._commit(handle, projectId, id), options);
+        return this._operate(handle, projectId, id, () => this._commit(handle, projectId, id, options.nativeCommitPermit), { ...options,
+            beforeLoad: () => consumeNativeProjectCommitPermit(options.nativeCommitPermit, { agent: this, handle, projectId, taskId: id }) });
     }
 
     takeOver(handle, projectId, id, options = {}) {
@@ -696,6 +699,14 @@ export class ProjectAgentService {
             assertWritable();
             await this._assertComputeSource(handle, projectId, task, revision, executionFingerprint);
             return chargeLocalWork(task, limits, attempt, options);
+        }, { write: false, effectPolicy: 'no-background-model' });
+    }
+    // A reviewed Task's bank is still the original compute ledger. Only the
+    // opaque exact user/Effect permit can admit these two bounded local jobs.
+    chargeNativeCommitWork(handle, projectId, id, permit, limits, attempt) {
+        return this._operate(handle, projectId, id, async task => {
+            await assertNativeProjectCommitWork(permit, { agent: this, handle, projectId, taskId: id, task, attempt });
+            return chargeLocalWork(task, limits, attempt);
         }, { write: false, effectPolicy: 'no-background-model' });
     }
     bindGoal(handle, projectId, id, { goalId, definitionHash, intent, revision, limits }) {
@@ -1321,7 +1332,7 @@ export class ProjectAgentService {
         }
     }
 
-    async _commit(handle, projectId, id) {
+    async _commit(handle, projectId, id, nativeCommitPermit) {
         const task = this._task(handle, projectId, id);
         if (task.status === 'completed') return this._snapshot(task);
         this._ensureMutable(task);
@@ -1337,14 +1348,17 @@ export class ProjectAgentService {
         assertPreview();
         await this._assertTaskBaseRevision(handle, task);
         const attempt = this._startAttempt(task, 'commit');
-        task.commitIntent = { changeSetId: 'changeset_' + String(this._idFactory()).replaceAll('-', '').toLowerCase(), workspaceHash: hashNativeDocument(task.workspace) };
+        task.commitIntent = { changeSetId: nativeCommitPermit === undefined ? 'changeset_' + String(this._idFactory()).replaceAll('-', '').toLowerCase()
+            : nativeProjectCommitChangeSet(nativeCommitPermit, { agent: this, handle, projectId, taskId: id }), workspaceHash: hashNativeDocument(task.workspace) };
         task.status = 'committing';
         task.updatedAt = Date.now();
         await this._persist(handle, task);
         let result;
         try {
             result = await this._studio.executeWorkspace(handle, task.workspace, { changeSetId: task.commitIntent.changeSetId,
-                beforeCommit: receipt => {
+                beforeCommit: async receipt => {
+                    assertPreview();
+                    if (nativeCommitPermit !== undefined) await assertNativeProjectCommitWrite(nativeCommitPermit, { agent: this, handle, projectId, taskId: id, task, receipt });
                     assertPreview();
                     const candidate = clone(task);
                     // Git SHA-1 IDs have the same length; this placeholder is never stored or consumed.

@@ -63,6 +63,7 @@ const timelineTypes = new Set(['admitted', 'attempt_prepared', 'attempt_identity
     'child_delegated', 'child_budget_confirmed', 'control_handed_off', 'handoff_returned', 'result_published', 'task_local_output_committed',
     'rp_narration_ready', 'rp_output_completed', 'session_narration_ready', 'session_output_completed', 'project_round_finished',
     'project_review_published', 'project_review_completed', 'project_generation_stopped', 'project_execution_failed', 'background_task_published', 'background_task_completed',
+    'project_commit_published', 'project_commit_completed',
     'cancel_requested', 'host_recovered', 'reconciliation_requested']);
 
 /** Owner/source metadata projection. No Result bodies, provider inputs, grants or dispatch tokens. */
@@ -76,7 +77,7 @@ export class RunObservationService {
         this.hostBootId = engine.nativeHostLifecycle.hostBootId;
         this.authorizeSource = createBindingSourceAuthority({ sessionCore, projectAgent, studio, rpControl });
         this.budget = new BudgetPort({ sessionCore, projectAgent, projectRepository: projectAgent?._repository, rpControl });
-        this.runs = new RunRepository({ engine, admit: async () => { throw new TypeError('Observation cannot admit Runs'); },
+        this.runs = new RunRepository({ engine, projectAgent, admit: async () => { throw new TypeError('Observation cannot admit Runs'); },
             assertWriter: (handle, tx) => engine.nativeHostLifecycle.assertWriter(handle, tx),
             authorize: async ({ handle, body, tx }) => {
                 const row = await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: body.runId });

@@ -2,13 +2,13 @@ import { ConflictError } from '../../storage/errors.js';
 import { cloneNativeDocument, hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
 import { assertNativeId } from '../identity.js';
 import { assertObject, assertDigest, assertToken } from '../../../public/shared/native-orchestration-contracts.js';
-import { controlCommandId, controlRecordKey, graphReachable, readAttempt, assertAttemptCurrent, readAttemptInvalidation, attemptInvalidationId, graphReviewReceiptId, readReviewAdmission } from './controller-common.js';
+import { controlCommandId, controlRecordKey, graphReachable, readAttempt, assertAttemptCurrent, readAttemptInvalidation, attemptInvalidationId, graphReviewReceiptId as reviewReceiptId, readReviewAdmission } from './controller-common.js';
 import { readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 
 const deny = code => { throw new ConflictError(code); };
-export const reviewReceiptId = graphReviewReceiptId;
+export { reviewReceiptId };
 
 /** Host decisions only. Model review never approves an Effect or writes a domain. */
 export class ReviewController {

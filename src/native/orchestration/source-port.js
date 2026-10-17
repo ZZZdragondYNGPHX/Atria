@@ -94,12 +94,29 @@ export class SourcePort {
             budgetSource = { domain: 'native_session', sessionId: sourceRequest.sessionId };
             sourceRef = { sessionId: sourceRequest.sessionId, branchId: sourceRequest.branchId, revisionId: sourceRequest.revisionId };
         } else if (sourceRequest?.domain === 'project') {
-            fields(sourceRequest, ['domain', 'projectId', 'taskId', 'revision', 'executionFingerprint'], 'Project SourceRequest');
-            const { task, project } = await this.projectAgent[tx ? 'observeComputeSource' : 'observeContext'](handle, sourceRequest.projectId, sourceRequest.taskId);
+            const formalCommit = sourceRequest.purpose === 'formal_commit';
+            fields(sourceRequest, ['domain', 'projectId', 'taskId', 'revision', 'executionFingerprint',
+                ...formalCommit ? ['purpose', 'reviewHash', 'requestHash'] : []], 'Project SourceRequest');
+            if (formalCommit && Object.hasOwn(sourceRequest, 'requestHash')
+                && (typeof sourceRequest.requestHash !== 'string' || !/^[a-f0-9]{64}$/.test(sourceRequest.requestHash)))
+                throw new TypeError('Project commit requestHash must be a SHA-256 digest');
+            if (formalCommit && (!(this.projectAgent instanceof ProjectAgentService)
+                || !(this.projectAgent._repository instanceof ProjectTaskRepository))) conflict();
+            if (formalCommit && !tx) return this.projectAgent._repository.engine.withTransaction(handle,
+                active => this.capture(handle, sourceRequest, { tx: active }));
+            const { task, project } = formalCommit
+                ? await ProjectAgentService.prototype.observeComputeSource.call(this.projectAgent, handle, sourceRequest.projectId, sourceRequest.taskId)
+                : await this.projectAgent[tx ? 'observeComputeSource' : 'observeContext'](handle, sourceRequest.projectId, sourceRequest.taskId);
             if (project.revision.revision !== task.baseRevision || task.baseRevision !== sourceRequest.revision || task.executionFingerprint !== sourceRequest.executionFingerprint) conflict();
-            try { ProjectAgentService.prototype._ensureDraftMutable.call(this.projectAgent, task); } catch (error) {
-                if (error instanceof ConflictError && ['project_agent_task_closed', 'project_agent_repair_limit', 'project_agent_review_locked', ATRIA_PROJECT_CONFLICT_CODE].includes(error.code)) conflict();
-                throw error;
+            if (formalCommit) {
+                if (task.status !== 'review' || task.review?.required !== true || task.validation?.status !== 'passed'
+                    || task.workspace?.projectId !== sourceRequest.projectId || task.workspace.baseRevision !== sourceRequest.revision
+                    || sourceRequest.reviewHash !== hashNativeDocument({ workspace: task.workspace, review: task.review, validation: task.validation })) conflict();
+            } else {
+                try { ProjectAgentService.prototype._ensureDraftMutable.call(this.projectAgent, task); } catch (error) {
+                    if (error instanceof ConflictError && ['project_agent_task_closed', 'project_agent_repair_limit', 'project_agent_review_locked', ATRIA_PROJECT_CONFLICT_CODE].includes(error.code)) conflict();
+                    throw error;
+                }
             }
             budgetSource = { domain: 'project', projectId: sourceRequest.projectId, taskId: sourceRequest.taskId };
             sourceRef = { projectId: sourceRequest.projectId, taskId: sourceRequest.taskId, revision: sourceRequest.revision, executionFingerprint: sourceRequest.executionFingerprint };
@@ -119,6 +136,15 @@ export class SourcePort {
         if (binding.sourceAuthority === 'project' && options?.root) {
             const { root, tx } = options;
             if (root.ownerRef.handle !== handle || hashNativeDocument(root.sourceBinding) !== hashNativeDocument(binding)) conflict();
+            // A formal Commit has its own fresh Root and frozen Review source.
+            // Prior Review/tool lineage is historical evidence, not permission
+            // to continue once the original Task leaves its reviewed state.
+            if (binding.sourceRequest.purpose === 'formal_commit') {
+                if (root.parentRef !== null) conflict();
+                const current = await this.capture(handle, binding.sourceRequest, { tx });
+                if (hashNativeDocument(current.sourceBinding) !== hashNativeDocument(binding)) conflict();
+                return current;
+            }
             const check = async active => {
                 let progress;
                 try { progress = await readProjectOwnedSource(active, handle, root, { projectAgent: this.projectAgent }); } catch (error) {

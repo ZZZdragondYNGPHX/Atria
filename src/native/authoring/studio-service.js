@@ -936,6 +936,15 @@ export class StudioService {
             baseRevision: workspace.baseRevision, operations: workspace.operations, validation: receipt.validation, resultingRevision: commit.fullHash });
     }
 
+    // Historical receipt observation for an enclosing Native read transaction.
+    // Reuses the original immutable Git marker parser without entering the
+    // writer queue or synchronizing a later human edit into a new revision.
+    async observeWorkspaceReceipt(handle, workspaceValue, changeSetId) {
+        const workspace = assertAuthoringWorkspace(workspaceValue);
+        if (typeof changeSetId !== 'string' || !/^changeset_[a-z0-9]+$/.test(changeSetId)) throw new TypeError('Invalid Studio changeset identity');
+        return StudioService.prototype._workspaceReceiptUnlocked.call(this, handle, workspace, changeSetId);
+    }
+
     async inspectWorkspaceReceipt(handle, workspaceValue, changeSetId) {
         const workspace = assertAuthoringWorkspace(workspaceValue);
         if (typeof changeSetId !== 'string' || !/^changeset_[a-z0-9]+$/.test(changeSetId)) throw new TypeError('Invalid Studio changeset identity');

@@ -149,8 +149,8 @@ function startupTaskVariants(contract) {
 
 // A host composition over existing P1 storage and Native Session/Studio authorities.
 export class NativeGenerationHost {
-    constructor({ persistence, library, sessionCore, packageInstaller, studio, agent, providers, secretPort, skillRepository, extensions, turnOrchestration }) {
-        Object.assign(this, { persistence, library, sessionCore, packageInstaller, studio, agent, providers, secretPort, skillRepository, extensions, turnOrchestration });
+    constructor({ persistence, library, sessionCore, packageInstaller, studio, agent, providers, secretPort, skillRepository, extensions, turnOrchestration, projectCommitAuthority = null }) {
+        Object.assign(this, { persistence, library, sessionCore, packageInstaller, studio, agent, providers, secretPort, skillRepository, extensions, turnOrchestration, projectCommitAuthority });
         if (extensions && persistence?._engine && sessionCore) registerVisualWake(persistence._engine, async (handle, sessionId) => {
             const settings = await extensions.illustrationSettings(handle);
             if (settings.value.director?.mode !== 'manual') await new VisualDirector({ host: this }).scan(handle, sessionId);
@@ -167,6 +167,21 @@ export class NativeGenerationHost {
     preflightRp(handle, input) {
         if (!this.turnOrchestration) fail('native_orchestration_rp_authority_unavailable');
         return this.turnOrchestration.preflightRp(this, handle, input);
+    }
+
+    prepareProjectCommit(handle, input) {
+        if (!this.projectCommitAuthority) fail('native_orchestration_project_commit_unavailable');
+        return this.projectCommitAuthority.prepare(handle, input);
+    }
+
+    dispatchProjectCommit(handle, input, target) {
+        if (!this.projectCommitAuthority) fail('native_orchestration_project_commit_unavailable');
+        return this.projectCommitAuthority.dispatch(handle, input, target);
+    }
+
+    observeProjectCommit(handle, input, target) {
+        if (!this.projectCommitAuthority) fail('native_orchestration_project_commit_unavailable');
+        return this.projectCommitAuthority.observe(handle, input, target);
     }
 
     // The capture is minted by the server's prediction authority. Request JSON

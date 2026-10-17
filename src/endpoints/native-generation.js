@@ -33,6 +33,7 @@ import { getNativeStudioServices } from './native-studio.js';
 import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../native/model-prompt-runtime/persistence.js';
 import { NativeGenerationHost, selectNativeRuntimeRoute } from '../native/adapters/generation-host.js';
 import { NativeNarratorOrchestrationAuthority } from '../native/orchestration/native-turn-orchestration.js';
+import { NativeProjectCommitAuthority } from '../native/orchestration/native-project-commit-authority.js';
 import { createHttpGenerationProvider } from '../native/adapters/http-generation-provider.js';
 import { createResponsesGenerationProvider } from '../native/adapters/responses-generation-provider.js';
 import { createNativeMessagesProvider } from '../native/adapters/native-messages-provider.js';
@@ -60,6 +61,10 @@ import { RpEvidenceCaptureService } from '../native/agent-intelligence/rp-captur
 import { recycleNativeResource } from '../storage/center-instance.js';
 import { assertObject } from '../../public/shared/native-orchestration-contracts.js';
 import { RpRunControl } from '../native/rp-run-control.js';
+
+// HTTP compositions create fresh Model Hosts. The pending commit's private
+// request must survive those compositions until the original review/dispatch.
+const projectCommitAuthorities = new WeakMap();
 
 function generationFailure(error, fallback = 'native_generation_failed') {
     const code = error.code === 'native_processing_failed' || ['storage_commit_unknown', 'storage_read_only'].includes(error.code)
@@ -102,6 +107,12 @@ function services() {
         memoryAuthority: new NativeMemoryAuthority({ core, settingsRepo: getSettingsRepo() }),
         projectAgent: agent, projectRepository: agent._repository,
         modelResolver: new RouteResolver({ persistence: host.persistence, library: host.library, providers: host.providers }) });
+    let commit = projectCommitAuthorities.get(persistence._engine);
+    if (!commit || commit.agent !== agent) {
+        commit = { agent, authority: new NativeProjectCommitAuthority({ engine: persistence._engine, projectAgent: agent }) };
+        projectCommitAuthorities.set(persistence._engine, commit);
+    }
+    host.projectCommitAuthority = commit.authority;
     return host;
 }
 

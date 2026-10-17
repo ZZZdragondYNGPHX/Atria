@@ -60,10 +60,11 @@ export function assertResultAudience(value) {
         if (value.taskPurpose !== 'original_native_background_task') fail('Task output purpose');
         return value;
     }
-    if (value?.kind === 'project_review') {
+    if (value?.kind === 'project_review' || value?.kind === 'project_commit') {
         assertObject(value, ['kind', 'runId', 'nodeId', 'epoch', 'projectId', 'taskId', 'sourceBindingDigest', 'grantDigest', 'taskPurpose'], 'Project Result audience');
         for (const [field, kind] of [['runId', 'orchestrationRun'], ['nodeId', 'orchestrationNode'], ['projectId', 'project']]) assertNativeId(value[field], kind);
-        if (typeof value.taskId !== 'string' || !value.taskId || value.taskPurpose !== 'original_native_project_review') fail('Project output task purpose');
+        const purpose = value.kind === 'project_commit' ? 'original_native_project_commit' : 'original_native_project_review';
+        if (typeof value.taskId !== 'string' || !value.taskId || value.taskPurpose !== purpose) fail('Project output task purpose');
         assertCounter(value.epoch, 'recipient epoch');
         for (const field of ['sourceBindingDigest', 'grantDigest']) assertDigest(value[field], field);
         return value;
@@ -110,7 +111,7 @@ function assertSources(refs, envelope) {
         assertObject(source.sourceRef, ['projectId', 'taskId', 'revision', 'executionFingerprint'], 'Result Project source');
         assertNativeId(source.sourceRef.projectId, 'project'); assertDigest(source.sourceRef.executionFingerprint, 'Project Source fingerprint');
         if (typeof source.sourceRef.taskId !== 'string' || !source.sourceRef.taskId || typeof source.sourceRef.revision !== 'string' || !source.sourceRef.revision
-            || envelope.audienceConstraint?.kind !== 'project_review') fail('Project source recipient');
+            || !['project_review', 'project_commit'].includes(envelope.audienceConstraint?.kind)) fail('Project source recipient');
     } else fail('producer source authority');
     if (source.kind !== 'run_source' || source.runId !== envelope.runId) fail('producer source identity');
     assertCounter(source.epoch, 'producerEpoch'); assertDigest(source.sourceBindingDigest, 'sourceBindingDigest');
@@ -156,10 +157,10 @@ export function assertResultEnvelope(envelope, { policy, expected = {} }) {
             || !['sessionId', 'branchId', 'revisionId'].every(field => audience[field] === source.sourceRef[field])
             || audience.outputKey !== hash({ kind: 'native_session_output', ...source.sourceRef, slot: 'assistant' })
             || envelope.disclosureConstraint.kind !== 'same_source_session_output_only') fail('Session output disclosure scope');
-    } else if (audience.kind === 'project_review') {
+    } else if (audience.kind === 'project_review' || audience.kind === 'project_commit') {
         if (audience.runId !== envelope.runId || audience.epoch !== source.epoch || source.sourceAuthority !== 'project'
             || audience.projectId !== source.sourceRef.projectId || audience.taskId !== source.sourceRef.taskId
-            || envelope.disclosureConstraint.kind !== 'same_source_project_review_only') fail('Project output disclosure scope');
+            || envelope.disclosureConstraint.kind !== (audience.kind === 'project_commit' ? 'same_source_project_commit_only' : 'same_source_project_review_only')) fail('Project output disclosure scope');
     } else if (audience.runId !== envelope.runId || audience.epoch !== source.epoch || audience.controlId !== source.sourceRef.controlId
         || envelope.disclosureConstraint.kind !== 'same_source_rp_output_only') fail('RP output disclosure scope');
     if (!Array.isArray(envelope.qualityRefs) || envelope.qualityRefs.length) fail('quality evidence is not supported by this profile');
@@ -186,8 +187,8 @@ export function assertResultRecord(record, { outputContract, expected = {} }) {
         ? !['rp_output', 'session_output'].includes(record.envelope.audienceConstraint.kind) || record.envelope.audienceConstraint.nodeId !== outputContract.ownerNodeId
         : outputContract.kind === 'project_review' ? record.envelope.audienceConstraint.kind !== 'project_review'
             || record.envelope.audienceConstraint.nodeId !== outputContract.ownerNodeId
-            : !['parent_attempt', 'session_task', 'graph_nodes'].includes(record.envelope.audienceConstraint.kind)
-                || record.envelope.audienceConstraint.kind === 'session_task' && (policy.outputType !== 'json'
+            : !['parent_attempt', 'session_task', 'graph_nodes', 'project_commit'].includes(record.envelope.audienceConstraint.kind)
+                || ['session_task', 'project_commit'].includes(record.envelope.audienceConstraint.kind) && (policy.outputType !== 'json'
                     || record.envelope.audienceConstraint.nodeId !== outputContract.ownerNodeId)) fail('audience differs from OutputContract');
     if (record.runId !== record.envelope.runId || record.resultId !== record.envelope.resultId) fail('record identity');
     const hasBody = ['complete', 'partial'].includes(record.envelope.status);

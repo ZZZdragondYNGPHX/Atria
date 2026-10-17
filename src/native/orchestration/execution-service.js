@@ -24,7 +24,7 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
     const budgetPort = new BudgetPort({ sessionCore, projectAgent, projectRepository, rpControl });
     const sourcePort = new SourcePort({ budgetPort, sessionCore, projectAgent, rpControl });
     const review = getNativeReviewOrigin(engine);
-    const runs = new RunRepository({ engine, assertWriter: (handle, tx) => lifecycle.assertWriter(handle, tx),
+    const runs = new RunRepository({ engine, projectAgent, assertWriter: (handle, tx) => lifecycle.assertWriter(handle, tx),
         authorize: async ({ handle }) => { if (typeof handle !== 'string' || !handle) throw new TypeError('Authenticated owner is required'); },
         admit: ({ handle, tx, sourceRequest }) => sourcePort.capture(handle, sourceRequest, { tx }) });
     let contextRetrieval;
