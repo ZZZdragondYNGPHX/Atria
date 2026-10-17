@@ -105,6 +105,23 @@
 - Verification / limitation：通过 GitHub 读取现有 main 和 docs 资料、文档更新提交反馈；随后验证 docs 上 Plan index、design、runtime-emergence 和此 Record 均可读。本轮没有运行产品构建、测试、CI、真实 UI 或 Windows/CachyOS/Termux；**不对实现可靠性宣称验收通过**。只修改 docs，不修改 main / 产品源码，不创建实现分支。
 - Next checkpoint：围绕 **W4-B（研究推荐、尚待用户决定）渐进接纳 + 关键交互即时提交**，具体讨论 NPC 首次出现和首次深度互动何时升级为持久实体、事实与叙述何时一起发表、时间化历史如何保留、回档/分支之后的 UID 与 HCM 如何隔离，以及按需模拟与预算。下轮仍先更新同一 Plan 与唯一 Record 再讨论。只有用户最终明确同意全案才定稿。
 
+
+## Stage 6 — W4-B 确认与 W5 NPC 自主性/离屏演化设计（2026-10-17）
+
+- **用户决定：**对 W4-B「渐进接纳 + 关键交互即时提交」表示“认同”。在此前 W1-B、W2-B、W3-B 的基础上将 W4-B 记为**已经确认的顶层设计方向**，不延伸为对 W5-B 的默认批准。
+- **范围：**仍为 Task ARCH-DWE-01 / Primary Workspace docs。同一 Plan Bundle 新增当前阶段子模块 `plans/architecture/world-evolution-consistency/npc-autonomy.md`，不新建平行 Plan/Record、实现分支或 HANDOFF。
+- **本轮 docs 提交（依次）：**
+  - `122804896457a090eb9c67ee24a6b88da4c2b2e4`：更新 `runtime-emergence.md`，明确 W4-B 已选、具体接口仍待议。
+  - `52111e0d5f86286ecbb330262d2b5994e50eec81`：新增 W5 `npc-autonomy.md`，调查自主行为分层、目标/意图与实际提交、游戏时间离屏追赶、认知隔离和预算，提出 W5-A/B/C 供讨论。
+  - `0f3d42ac5d50f44bafd003b061393450421b31f9`：在同一 `design.md` 加入 §12，记录 W4-B 与 W5 选型路由，纠正历史章节开头的过期“全部方案未确认”状态。
+  - `a2d69e406eb2f75547e8a5a69652aa86b9f43ead`：更新同一 `index.md` 的 W1–W4 状态、W5 当前阶段模块索引。
+- **外部参考：**Generative Agents 2023 论文、Google DeepMind Concordia 及其 Engine 文档、Unreal Mass Gameplay Simulation LOD / StateTree 官方文档。借鉴“记忆/目标/行动结算”和“模拟粒度按重要性调整”，不建议直接引入新框架。
+- **main 静态审查（非实测）：**`src/native/simulation-authority.js` 已有游戏时钟、scope、hot/warm/cold、界限任务；`public/shared/native-simulation-contract.js` 当前静态约束是 jobs≤16、steps≤16、deliberations≤1，并约束同作用域静态读取——动态 NPC 不能机械地各占一个固定 job；`public/shared/native-information-contract.js` 有 desire/intention/belief 等语义；`src/native/lifetime-authority.js` 有人物进出及重要度；`public/shared/native-actor-profile.js` 从 Package/EntryPoint 才投影 authored Actor；`src/native/tom-authority.js` 部分主体校验依赖 manifest actors；`public/scripts/agents/memory/eligibility.js` 有 requester 权限边界。没有证据证明任意生成的 NPC 已自动具备全套角色视图或认知/Orchestrator 调用权限。
+- **W5 推荐但未确认：**W5-B 分层事件驱动自主性：A1 规则/日程、A2 有界反应和效用选择、A3 少数重要 NPC 的有限 LLM 辅助提案，统一由现有 Native Authority 提交；游戏时间推进触发离屏结算，不默认用户离线时继续后台运行。
+- **本轮验证边界：**GitHub docs 文件提交与再读取核验；未运行代码、测试、CI、浏览器、Windows/CachyOS/Termux 真机或 UI，未改变产品行为。没有修改 main、长期分支结构、Governance 或 reference 分支。
+- **下一检查点：**用户选择 W5-A/B/C 后，**下一轮先更新同一 Plan 与 Record**，继续分析运行时 NPC 与 Authored Actor 的身份/权限衔接、私有目标/信念与外部行动的所有权、冷态长跨度模拟与多 NPC 事件冲突、实际 Resource/Schema 和 E0 消费者验证。
+- **Plan 状态：**Draft。即便 W1–W4 已选，尚未完成 E0/具体 API/阶段化验收/跨端证据，用户未授权实施也未批准最终定稿。
+
 ## Final state
 
 Not yet applicable. Discussion in progress.
