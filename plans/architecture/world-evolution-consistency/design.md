@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · Candidate Design & Discussion Agenda
 
-- 状态：**Draft（W1–W15 的 B 顶层方向均已获用户确认；W16 跨分支接口/最终 E0 验收和正式实施仍未批准）**。早期章节保留当时候选状态，以最新明确决定与 index 为准。
-- 当前讨论轮次：W16 — 固定 main/活动分支 HEAD、Native Orchestration V3 / Prompt Preset / World 真实接口和 E0 阻塞（见 [e0-integration-readiness.md](e0-integration-readiness.md)）。
+- 状态：**Draft（W1–W16 的 B 总体方向均获用户认可，W17 Domain-first 具体路线、最终 ABI/E0/开发仍未获批准）**。早期选型章节为当时的候选历史，以最新用户确认状态和 index 为准。
+- 当前讨论轮次：W17 — 原生 Domain Effect/Subject/Participant 发布、Revision-anchored Effective World View、V3 ContextPort 与 Prompt Effective/Wire 的接口和 E0 门槛（见 [e0-domain-world-context-contract.md](e0-domain-world-context-contract.md)）。
 - 入口：[index.md](index.md)；材料：[research.md](research.md)
 
 ## 1. 问题的正确切分
@@ -792,3 +792,34 @@ Prompt Preset 分支的 `prompt-compiler.js` `worldUsePolicy / memoryUsePolicy` 
 特别明确：旧 `worldInfo*`、旧 Orchestrator 代码的源码存在不能证明全部模块正活跃；某些旧 Adapter 仍有生产引用，**需要在固定目标集成 HEAD 下核对合法消费者再决定保留/替换/删除**。本轮没有足够证据把任何产品文件标为立即删除。V3/Prompt 也尚未合入 main，不能伪称当前产品已经具有其新增接口。
 
 **本轮工作边界**：只修改 `docs` 的同一 Plan Bundle 和唯一 Record；不开实现分支、不更新产品代码、不运行 CI/Node/E2E/Windows/CachyOS/Termux。若用户后续批准 W16-B，下一阶段应明确最小 Interface/Native Publication/有效视图接线与 E0-06 的全消费者实际审查完成要求，不机械延长抽象选型轮次。全案仍保持 Draft。
+
+
+---
+
+## 24. S18 · W16-B 确认与 W17 Domain-first 接口收口（2026-10-17）
+
+### 24.1 W16-B 正式确认
+
+用户对上一轮唯一推荐的 **W16-B「跨分支锚定 E0 + 先锁 Host Domain/Context/Receipt 所有权，再冻结最小世界接口」**回复「认同」。W1-B 至 W16-B 均属于**已确认的设计/审查路线**，但整个 ARCH-DWE-01 继续保持 **Draft**；W16-B 不构成 E0-01～09 PASS、精确 Subject/Fact/Temporal/Capability/Context 接口或正式产品实现授权。
+
+W16-B 强调在锁定当前 main、Native Orchestration V3、Prompt Preset、Visual 等真实 HEAD 的前提下，分别确认原 Native Domain 世界状态的写权、V3 Run/Effect/Result 的执行观察权、Host ContextPort 的许可权、Prompt Compiler 的编译/Provider Wire 责任。不采用孤立旧 main 设计所有未来接口，不为两套暂时分支制造永久兼容适配，也不等待所有无关分支完全结束。
+
+### 24.2 W17 原生读写合同：定向静态证据
+
+本轮进一步在明确的 main/V3/Prompt SHA 下读具体函数：
+- `SessionCore.finalizeTurn` 的某些 `authority-first` 路径，在已有 Domain Authority Candidate 上准备并将 State 与 Narrator Timeline entry 一起交由 `_publish`；`_publishLocked` 生成 Revision、Action/Task Receipts 并使用 `SessionRepo.commitSnapshot` 发布。
+- `public/scripts/native/experience/world/session.js` 的 `commitEvents` 会使用 Native `commitStatePatch` 原子提交 **World State + Game Event Journal 的候选 patch**，但它不是“所有 Narrative/World/Task 自动共享一次提交”的证明。
+- V3 `native-turn-orchestration.js` 的 `#commitSessionOutput` 根据 `sessionCore.finalizeTurn` 和原 Domain Receipt 校验正式效果；`effect-controller.js` `prepare/ready/claim/observe` 只是编排流程结果观测。编排 Effect Receipt **≠** World 事实注册。
+- V3 `context-port.js` 持有 SourceBinding/Audience/Grant/Token Budget、Memory 授权和异步完成后再验证，当前还会调用 `compileNativeContextPlan`；Prompt Preset `prompt-compiler.js` 有证据/历史使用 policy 和 semanticBlocks，但这些不是事实或可见性授权接口。
+
+**关键设计缺口**：`World Subject admission + World Fact/Epoch + Participant + Cognition + committed narrative` 的完整开局/涌现 NPC 跨业务路径合约尚未在生产代码中被证明闭合；动态 Perspective 仍有 Manifest Actor 限制；通用世界双时间查询与 Source Claim 适用性未实际验证。上述局部静态读取不能声称 E0 完全通过。
+
+### 24.3 W17 的唯一详细模块、候选选择
+
+W17 详细 Source/Owner/Receipt/Read-Projections/Context Binding/候选 ABI、不变量及 E0-01/02/04/05 的退出条件统一维护在 [e0-domain-world-context-contract.md](e0-domain-world-context-contract.md)，不复制另一份独立 Plan。
+
+- W17-A：以 Orchestration RunLedger/Effect 为事实写入中心，与 W12 单 Native Host Authority 相冲突。
+- **W17-B「Domain-first Commit + Revision-anchored Authorized Effective Projection」（本轮推荐，用户尚未确认）**：让 World Subject/事实通过现有 Native Domain Session/Revision/Receipt 变更；让 Orchestration Run/Effect 消费原领域收据和执行证据；有效世界只读视图按合法 Branch/Revision/GameTick/Audience 向 V3 ContextPort/Context Compiler/Prompt 分层提供事实/历史/认知/Source Claim；最小补充确实缺失的身份、参与者和时态接口。
+- W17-C：从 Prompt/LLM 自由语义判断推断新的 World Fact，违背来源及写入权限。
+
+**W17-B 当前是推荐方案，不是用户已批准决定。** E0-01～09 仍为 PARTIAL / BLOCKED，`main` 及活动分支全部保持原样；本轮只修改 `docs` 同一企划与唯一 Record，不运行 CI/测试/真实 UI/三端验收。
