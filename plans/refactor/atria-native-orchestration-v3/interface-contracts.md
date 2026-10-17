@@ -1355,3 +1355,14 @@ Planner settlement 在最后 Model/Source 授权和 Root stamp 复验后才写�
 原 Planner profile 可在唯一正式 Narrator 前接同一静态 Agent DAG：Planner 的 json 控制端口只接所声明入口 Agent 的 required json 端口，后续 Agent text 结果仍经原 ResultPort 给精确直接后继。Planner 只执行已有控制操作；已有有限 self-loop 可组合，但不据此开放 addNode/addEdge 或其它Source/Actor。所有实际 Model pins/Route/资源在同一原 Scheduler operation 预检与复验，最小请求数包含 Planner 和全部必要 Agent，重规划余量包含整个后继图。每个入口必须有原 Planner settlement→Transition/edge admission，所有后继必须有原 Graph Result→Transition，历史 reader 分别核完整链路。
 
 就绪 Agent 按原 nodeControl pending priority 排序，同优先级保留原图顺序，依赖不能越过；reader 从原 Patch 事实和同一排序规则重建生产顺序。必需 Draft 或 Narrator 已 blocked/cancelled 时不启动已知不能闭合的后继 Model。正式正文仍只经原 Narrator/Chat，费用闭包包含全部 Planner、Draft、Narrator 和唯一 Output Effect。unknown usage 可保留合法输出而无 completed claim；中途撤权/取消和未知 ACK 不回滚费用、不重发。此有限组合、发布修订和冷读不代表通用动态图执行、全控制组合或完整后端通过。
+
+
+### 17.116 原 RP Host 限定的动态图 Draft 增补
+
+原 Planner profile 支持显式 addNode/addEdge、allowedNodeKinds=[agent] 与原 Narrator 已声明的 optional text advisory ports。它是同来源顶层 RP 的有限增补合同：Host 只为尚未接线的声明端口生成唯一 Node/Edge ID 和完整 Draft 模板，受原 maxNodes 与后续实际预算约束。模板只复用当前已选 Narrator 的精确 Model pin/Route，Node 只准 generation.send、原 Planner required json 控制输入和指向原 Narrator 的 text 输出；不能选择其它 Route、能力、Source、Output owner、Actor 或 Tool。未选模板不运行模型，未增补时保留原 Planner→Narrator 路径。
+
+私有 Planner capture 把实际 Host 模板纳入原 Model inputRefs/grant/Context，Model JSON 的 addNode/addEdge 必须与该次模板逐字段一致；缺边、重复ID/端口及无输出路径由原 GraphController 原子批次校验。采纳前原银行同时检查所有已声明/请求的必要 Draft、最终 Narrator及任何下一轮Planner的剩余请求数；不扩大或另设额度。已付出的 Model/parse/adopt 费用保留，失败不回滚或退款。有限回路每轮只为仍空闲端口分配新模板，旧/外来模板不能借metadata继续执行。
+
+Planner 停止重规划后，Host 由原 TaskGraphRevision/Patch/命令重建实际图，在当前同一私有 Scheduler operation 中形成后继描述；原已冻结 Narrator Model配置和资源复用，不建立第二runner/银行。图修订与图hash在后继发送/消费时继续围栏。每个新Draft仍经原 ModelPort/ResultController，唯一 Narrator 同时核原 Planner 控制边和所有直接Graph Result边。原发布修订 audience、source/grant、pending priority、Context与Output/费用闭包保持；新增图metadata自身不授新执行scope。
+
+历史reader核对每轮前的原图、完整Host模板/原 Model input、实际采纳的节点/边、Model/settlement/transition及唯一输出证明；Source删除或冷启动不恢复权限。saved/no_save ACK未知均不派发未确认的Draft或重发Planner，晚到撤权/取消保留原图/费用而拒后继。原隔离 Native evaluator 可执行该有限真实增补并由父Evolution账本唯一发送计费。任意拓扑/控制组合、跨Source/Actor、高风险consumer及完整恢复释放仍按同一任务继续，本项不是完整后端或独立质量/价格通过。

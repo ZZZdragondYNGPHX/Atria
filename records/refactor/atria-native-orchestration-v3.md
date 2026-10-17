@@ -1247,3 +1247,13 @@
 - 混合执行补原pending priority就绪排序，以及任何必需Draft/Narrator已blocked时零后继Model；新优先级/两类阻塞六参数6PASS/12filterSKIP（24.472s）。历史reader使用同一原控制事实派生顺序；新增suite现18项分批通过。全组仍localhost合成，无新增真实API调用，备用站点仍0次。通用动态增节点/边、其它控制组合/Source、可信高风险与完整恢复释放继续，不交前端、main 或结束分支。
 
 - 第112组最终 Source `5b519d923` → `929a3c59a`，本地提交、未推送。最后排序接线后的原静态三图正向、线性两/三Draft、Review rerun、混合图隔离worker与指纹五suite精选64PASS/106filterSKIP（132.324s）。十文件原ESLint及staged diff检查通过。Source/docs继续独立分支，整个后端继续实施，P1–P4/最终Gate仍NOT_READY。
+
+
+## 2026-10-17 — 第一百一十三组：原 Host 限定的动态 Draft 增补
+
+- 在第112组发布修订与混合图基础上，沿同一原 RP Host/GraphController/ModelPort/Result/银行接通 Host 提供的限定动态 Draft 模板：只有已声明的 optional Narrator text slot、当前已选 Narrator Model pin/Route和原generation.send权限；Node/Edge ID由Host分配，未选不发。Template纳入实际Model input/grant/Context，冷read按每轮前的原修订复核，新增角色/Route/Source/Outputowner不从JSON继承。实际最终HEAD与收尾验证记本组末，接口 §17.116。
+- 首批选择/不选择四参数4/4 PASS（16.291s）：原路径2次Model，选择一Draft3次Model；均实际Source/Root/费用/唯一Chat闭合。节点ID、Model pin、graph.patch能力、Output目标、approved额外字段、缺边六类反例与2/3个新增请求容量共16PASS/4filterSKIP（30.319s）；三个Draft超原Run剩余请求时零新增Node/Model，没有引入测试API全局限制。两个原混合/Planner回路suite精选6PASS/38filterSKIP（51.299s）。
+- 二轮重规划选新模板、Source删除冷读/模板作用域诚实rehash、中途Binding/Root撤销、动态Patch saved/no_save ACK 十二参数12PASS/20filterSKIP（38.119s）。新suite32项分批已取得通过证据。新增模块纳入evaluator指纹；同一Host模板DTO生成与验证共用唯一构造函数，冷篡改再重算inner inputHash后，最新正向/冷读六参数、实际隔离worker动态增补两参数与51项指纹组合59PASS/36filterSKIP（48.856s）。worker每arm三次Model加pair Judge，共7次合成调用均由原父ledger收费；不是独立质量/价格资料。
+- 最新一次定向ESLint最初仅planner instruction拼接三行缩进与测试一个unused import失败；按原规则fix并删除unused后十文件lint通过，没有放宽规则或关闭case。最后完整新suite及原RP链路回归运行中，结果未计通过；所有Provider仍localhost合成，真实API总数未增加，备用站点仍0次。完整后端继续，不交前端/main、不推送或结束分支。
+
+- 第113组最终 Source `929a3c59a` → `20fe15afc`，本地提交、未推送。最新完整动态增补suite32/32 PASS（84.56s）；追加费用unknown两参数2PASS/32filterSKIP（10.781s），suite最终34项分批有通过证据。原静态DAG/线性Draft、Review approve/rerun与Judge四suite精选12PASS/126filterSKIP（95.797s）。十文件最新原ESLint与staged diff检查通过。Source/docs独立分支保持，真实API总数仍6、备用0；继续其它后端与P1–P4剩余Gate，不提前前端、main或分支结束。
