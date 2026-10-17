@@ -2,7 +2,7 @@
 
 - Task ID: ARCH-DWE-01
 - Primary Workspace: docs
-- Status: Active · Research/Discussion (not implementation)
+- Status: Paused · Draft / waiting for queued refactors and user-directed Codex takeover
 - Plan: [plans/architecture/world-evolution-consistency/index.md](../../plans/architecture/world-evolution-consistency/index.md)
 - Initiated: 2026-10-17
 
@@ -473,6 +473,21 @@
   - P5/E0-06/07：Host/Frontend/Play/Media/Studio/Legacy 插件实际 ABI 和 `retain/replace/delete/investigate` 的生产调用图未闭合。E0-08 的长会话/存储成本计划已有候选，但真实运行验证只能在后续实施期开展。
 - **可执行而未授权实施的 Preflight**：`e0-preflight-execution.md` 末附一个只读英文 Codex Preflight 指令，要求不建开发分支、不修改产品代码、只更新原 docs Plan 和唯一 Record；对每项 E0 输出固定 SHA、Owner、Caller、Target、Disposition、静态退出证据和 `OPEN/BRANCH_RECHECK/DESIGN_READY/IMPLEMENTATION_GATE` 状态。此处没有将运行验证需求错误设为尚未实现代码的 Gate 0 前置要求。
 - **状态与下一检查点**：W1–W22 的总体设计方向已确认，**Plan 继续 Draft，Gate 0 仍 PARTIAL/BLOCKED**。后续真正应当是按 P0–P7 取得可复核的设计证据并解决具体未决契约，而非继续展开平行的 W23 世界架构选项；只有 Gate 0 设计证据可交接且用户明确批准全案 Final/开始开发，才可创建实现分支。没有做任何 Node/CI/真实 UI/Windows/CachyOS/Android Termux 测试，不能宣称通过。
+
+
+## Stage 25 — 用户明确暂缓，等待编排/提示词/整体前端完成后由 Codex 接手（2026-10-17）
+
+- **用户当前明确指令**：`ARCH-DWE-01` 暂时搁置。用户先完成**排队的 Native Orchestration 重构、Prompt Preset 重构与整体前端重构**；三者完成之后，由用户本人再让 **Codex** 正式介入。停止当前持续 Gate 0 Preflight 及新的世界架构讨论；**不是**批准全案 Final、授权产品实现或创建开发分支。
+- **暂停后的唯一状态**：Plan **Draft / Paused**，W1-B～W22-B 的总体方向及收口原则保持已确认；E0-01～09、Gate 0 **PARTIAL / BLOCKED**，未解决的 P2 Typed Writer/Subject Schema、Domain Receipt/World+Narrator 写入、Fact as-of/历史纠错、动态 Perspective/Context/Prompt 和前端/Legacy 真实消费者完整审查均被保留，不能冒称通过。
+- **冻结的历史审计锚点（未来不能当作实时 HEAD）**：暂停时已验证 `main=c57fada6edeea255b29d857ba2585c1dbc9c098b`；V3 `a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`；Prompt `760327891149216dffdc1e3fa0c846496007a013`；Visual `ae587be0c64487ba922528bdd0146444bcf5e92e`。整体前端的最终分支/HEAD 尚未确定。Codex 恢复时必须以新集成 HEAD 重新调查。
+- **本次用户暂停的 docs 操作**（仅文件/方案，按顺序）：
+  - `bfd061c218d2d38e0fc34740dcbf48d7c6a2eae9`：更新原 Plan 入口 `plans/architecture/world-evolution-consistency/index.md` 为 **Draft / Paused**，把下一检查点改为用户指示 Codex 接手后的 Gate 0；
+  - `270df7399f70741fc65a13069b95cff6e3183c99`：更新同一累计 `design.md` §31，正式记录暂停、等待依赖及严格恢复/开发授权边界；
+  - `606d313ddcc8aeae2cbfb5d6feec744fac71c4e3`：将同一 Plan 的 `e0-preflight-execution.md` 显式标记暂停执行，清单保留但不得自动运行；
+  - `6756e4b308e23af05a6063e71ee8df3d817a2c89`：根据用户此次**明确中断**，在 `docs` 创建唯一任务恢复文件 `handoff/ARCH-DWE-01.md`，记录冻结 HEAD、已确认设计、全部 E0 阻塞、触发条件、Codex 只读 Preflight 和后续授权界限；它不是第二份 Plan/Record。
+  - 此唯一 Record 随后增量记录 Stage 25，仍保留 `## Final state` 之下的 `Not yet applicable`。
+- **完成与未完成**：W1–W22 总体方向已讨论完成，Gate 0 Preflight **仅有限静态代码审查完成**，并非完整调用图或设计退出；Node/CI/Play/Studio/长会话及 Windows/CachyOS/Termux 都没有执行。无产品代码修改，没有新建/合并任何实施分支，没有自动化提醒/后台巡检。
+- **恢复触发**：仅在用户明确表示前述排队重构已完成并要求 Codex 接手时恢复。优先阅读同一 Plan、Preflight、Record 及唯一 `handoff/ARCH-DWE-01.md`，以当前 HEAD 处理具名 E0；只有 Gate 0 设计证据可交接、用户后续明确批准全案 Final/实施时才创建开发分支。否则维持 Draft / Paused。
 
 ## Final state
 
