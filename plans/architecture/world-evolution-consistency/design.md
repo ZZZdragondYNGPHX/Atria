@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · Candidate Design & Discussion Agenda
 
-- 状态：**Draft（W1–W9 的 B 方向已获确认；W10 及精确接口/实施仍未批准）**。历史选型章节保留当时结论，当前批准状态参见最新 index。
-- 当前讨论轮次：W10 — World/Actor 固定定义实例化、运行时 NPC 能力接纳、Timeline/Cognition 接线与分支一致性（见 [subject-instantiation.md](subject-instantiation.md)）。
+- 状态：**Draft（W1–W10 的 B 顶层方向已获确认；W11 的类型化身份与能力接口、E0 及开发均未批准）**。历史候选章节保留当时状态，当前决策参见最新 index。
+- 当前讨论轮次：W11 — Subject / ActorProfile / Perspective / Participant 契约与 E0 消费者核对（见 [subject-contracts-e0.md](subject-contracts-e0.md)）。
 - 入口：[index.md](index.md)；材料：[research.md](research.md)
 
 ## 1. 问题的正确切分
@@ -602,3 +602,30 @@ W7 专属模块：[npc-memory-information-flow.md](npc-memory-information-flow.m
 需要 E0 审计 Timeline、ActorProfile、Host/Orchestration、Cognition/Information/ToM、HCM、Lifetime、Visual/Speech、Session/Save/Branch 的全部真实调用方，确定最小、没有兼容双轨的受控 cutover。不能因设计确认就说这些功能已经实现。
 
 **状态**：W1–W9 方向已选，W10 只为候选；本轮只有 docs 文档修改，未实施代码、测试/CI 或真实三端 UI。所有接口需后续讨论后才能定稿。
+
+
+---
+
+## 18. S12 · W10-B 确认与 W11 类型化身份/能力接口及 E0 准备（2026-10-17）
+
+### 18.1 W10-B 已确认的方向
+
+用户明确认可 **W10-B「固定 World/Actor 定义 → Session Subject 实例化 + 类型化能力绑定」**。W1-B 至 W10-B 已获得用户对各轮总体路线的认可；当前 Plan 仍 **Draft / 讨论中**，不代表任何具体 ABI、ID family、权限签发机制、E0/CI/三端或正式开发任务通过。
+
+W10-B 关键约束：Native Session/Host 独占正式 Subject/世界事实与事件；固定的 World/Package/Actor Profile 不被 Session 回写；动态 NPC 在持续后果产生时按 W4-B 正式接纳，另经有权限的关联获得**表达、合法认知视角、行为/任务**；角色身份与个人记忆/秘密/发言者身份的授权不同，Save/Branch 锚定所有可达映射。详细决定在 [subject-instantiation.md §10](subject-instantiation.md)。
+
+### 18.2 W11 需要进一步取舍
+
+W11 讨论不再单纯描述“应该统一身份”，而是确定哪些接口有意义：`SubjectRef`（唯一可追溯世界成员）、`ActorProfileRef`（作者表达模板）、`Perspective/CapabilityGrant`（按受众受限的证据/记忆/任务视图）、`Participant/SpeakerRef`（确切已提交对话/事件的实际参与者），与 Lifetime / HCM / Visual / Goal 等领域 LocalRef 的来源关联。**这些是逻辑契约草案，不是已存在或已获批准的代码 API。**
+
+详细源码依据、字段草案、E0 Partial Evidence / 未查全调用方与三方案统一保存在同一 Plan 的 [subject-contracts-e0.md](subject-contracts-e0.md)：
+
+- W11-A：让 `actorId` 兼任全部世界主体身份及权限，不推荐（过度集中且与静态 Manifest 冲突）。
+- **W11-B：Typed Subject/Participant/Perspective + Host Capability Resolution（本轮推荐，尚未获用户批准）**；在当前 Native Authority 内对每种能力做明确的有源投影，更新真正依赖 `actorId` 的消费者，不再造平行可写身份服务。
+- W11-C：主要让 Narrator 临时演绎新 NPC，保留静态 `actorId` 语义，不推荐（实际发言/心理/事件仍可能漂移）。
+
+### 18.3 E0 现有证据及阻塞
+
+定向静态核对 `src/native/session-core.js` Timeline `actorId` 属于 `manifest.actors`、`public/shared/native-actor-profile.js` 仅作者定义、`public/shared/native-information-contract.js` assertInformationClosure 需要声明 actor 属于 manifest、`src/native/cognition-authority.js` / `tom-authority.js` 的部分权限及身份校验，以及 `public/shared/native-frontend-host.js` Message schema / `src/native/speech-service.js` / `src/native/visual-continuity.js` 仍涉及 `actorId` 或临时视觉身份；`src/native/agent-intelligence/goal-contracts.js` 的 actor Goal 也使用 Native Actor ID。**这些是部分可核验的路径，不构成全量 E0 或 E0 通过证据。**
+
+下一步要完成完整 caller/callee map、允许 Subject→表达/Perspective/Participant 的最小原生契约、版本和保密约束、上下文编译与回档安全、最终 cutover 阶段/验收规则；必须先由用户在讨论后批准设计定稿才能授权产品代码变更。当前只在 `docs` 修改方案和唯一 Record。
