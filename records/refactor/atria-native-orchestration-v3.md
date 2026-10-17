@@ -1357,3 +1357,12 @@
 - 新Rerank、Judge embedding usage未知、selection settlement ACK saved/no_save与Memory末证明同事务撤回十参数10PASS/2filterSKIP（246.637s），新增suite全部12项均通过。补明确撤回后无Judge判定收据断言再2PASS/10filterSKIP（42.022s）。真实发生费用保持；无判定/后继/重发，独立合法Memory修改保留。全部Provider为localhost合成。
 - 原Judge完整消费者28项及原执行指纹67项两suite95/95 PASS（212.659s）；Context/Graph Result两完整suite42/42 PASS（5.501s）。八JS原ESLint、staged diff check通过。期间查找两个旧不存在路径仅ENOENT，无对应suite执行或通过声称。
 - 无新增真实API，私密总数12、备用Chat0、daily/RPM配置null保持。继续Review局部重做、Planner/动态图及其它Source/Actor检索、可信高风险与完整恢复/释放；P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。
+
+
+## 2026-10-17 — 第一百二十四组：原 RP Review 检索与局部重做费用保留
+
+- Source `75da2b972` → `dadafc7e6`，本地提交、未推送；接口§17.127。原静态Draft/Review/Narrator逐节点owned Context及检索Effect接通；Review reader/Attempt settlement与最终唯一Chat汇总此前Review和失效Draft的全部费用。原Controller仅对有完整原Context/响应/原bank收据的已确认附属检索接redo，memory.retrieve标签本身仍拒绝；未知、审批/实际领域写入的原不可逆围栏保持。异步Review完成后才释放私有scope，同次图原Memory摘要逐后继复验。
+- 抽出原Review Plan fixture与预发布原Route/owned检索pin配置供同类测试共用，未复制另一运行器。新直接批准及局部redo、冷Source删除/重启历史与重hash旧Review子Effect parent拒绝四参数4PASS/6filterSKIP（101.893s）。直接批准3Model+4Embedding（另可选3Rerank），redo5Model+6Embedding、原闭包12Effects；新Draft仅得有界原因反馈，旧正文失效但费用完整保留。
+- 新可选Rerank/unknown/Memory撤回精选初2PASS/4FAIL/4filterSKIP（82.34s）；追加第二Review unknown两参数2FAIL/10filterSKIP（40.293s）。请求/费用及拒后继断言已通过，失败为测试将原Review准入计数误当判定数：原Attempt准入即消耗轮次，失败不归零。按原AttemptController修正预期并直接断言当前Review无决策收据，六参数6PASS/6filterSKIP（72.752s）；新suite全部12项已分别覆盖通过，未改原轮次规则或放宽后继断言。
+- 原Review Controller38项（含新增伪造memory.retrieve标签两store拒绝）与原指纹67项两完整suite105/105 PASS（11.33s）；原Review真实消费者54项完整PASS（204.923s）。共用fixture抽出后的Judge正向及Context/Graph Result三suite43PASS/11filterSKIP（65.472s）。十三JS原ESLint和staged diff check通过。
+- 无新增真实API，私密总数12、备用Chat0、测试daily/RPM配置null保持。继续Planner/受控动态图及其它Source/Actor检索、可信高风险与完整恢复/释放后端；P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。

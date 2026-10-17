@@ -1476,3 +1476,14 @@ FS/SQLite原Session/Project/RP银行各40条本地费用经Source撤回和冷重
 原ContextRetrievalPort继续逐实际Embedding batch/Rerank创建独立原Effect、原bank准入和实际响应证明。Judge完成reader核对其全部检索Effect/原收据与Attempt settlement；最终Narrator及唯一Chat原费用闭包汇总两候选、Judge及Narrator的所有Model/检索费用。旧无检索Judge合同仍适用，无第二银行、索引或执行入口。
 
 真实编译产生的私有Memory descriptor摘要贯穿同次Judge图；scope释放后的候选正文/判定/后继仍检查原Memory当前性。Judge的异步判定与结算结束后才释放私有检索证明。原Source/Memory撤回、取消、usage未知及ACK未知保留事实和费用；不以冷历史或重新请求恢复scope/发送。准确FS/SQLite实测与源码HEAD归同一Record；Review、Planner/动态图、其它Source与完整恢复/释放继续，尚非完整后端或最终Gate通过。
+
+
+### 17.127 原 RP Review 检索与局部重做
+
+原显式Draft→Review→Narrator静态RP图逐Model节点可持有自己的memory.retrieve及owned exact context Profiles，继续使用同Source、原Narrator audience、graphRevision0与原Host Model/Context/Effect/bank。Review的approve/rerun仍是有界质量决策，不是Effect审批、正式事实或新受众许可。原稀疏Rerank、独立检索Effect与实际费用证明保持。
+
+Review完成与历史reader核对全部检索子Effect、收据和Attempt settlement；异步控制采用/结算结束后再释放私有scope。最终Narrator/唯一Chat汇总包括已失效Draft和此前Review的全部Model/检索费用。局部重做只失效旧Result消费，不删除旧费用/收据，也不沿旧scope给新Draft/Review授权；新Context独立重验原Source/Memory及exact pins。
+
+原ReviewController只对有完整原Context检索收据、已确认响应及原bank结算证明的附属检索接通redo检查。单独的memory.retrieve标签、unknown/未核对动作、审批或领域写入不能借此通过原不可逆依赖围栏。原派生索引仍共用，不写Memory/World；Provider调用不能撤销或退款，原费用与历史保留。未知用量、Memory撤回及旧Result失效保持拒后继、不重发；新Draft只收到原固定原因标签与引用，不转发旧正文。
+
+准确FS/SQLite、冷历史/篡改与原消费者验证归同一Record。Planner/受控动态图、其它Source/Actor与完整恢复/释放继续，尚非完整后端或最终Gate通过，不交前端/main或结束分支。
