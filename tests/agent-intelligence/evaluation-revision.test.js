@@ -20,6 +20,15 @@ test.each(['controller-common', 'review-controller', 'graph-controller', 'graph-
     expect(evolutionEvaluatorRevision()).toBe(revision);
 });
 
+test('evaluator includes the exact Retrieval Profile capability authority', () => {
+    const revision = evolutionEvaluatorRevision();
+    try {
+        changedSource = fileURLToPath(new URL('../../src/native/orchestration/retrieval-capability-authority.js', import.meta.url));
+        expect(evolutionEvaluatorRevision()).not.toBe(revision);
+    } finally { changedSource = null; }
+    expect(evolutionEvaluatorRevision()).toBe(revision);
+});
+
 test.each(['simulation-authority', 'authority-transaction', 'appraisal-authority', 'session-core'])('evaluator includes original %s authority bytes', dependency => {
     const revision = evolutionEvaluatorRevision();
     try {

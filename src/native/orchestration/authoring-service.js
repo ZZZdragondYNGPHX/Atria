@@ -11,6 +11,9 @@ import { validateModelCapability } from './model-capability-authority.js';
 import { validateDelegationCapability } from './delegation-capability-authority.js';
 import { readProjectToolDescriptor, projectToolCapability } from './project-tool-contracts.js';
 import { validateGraphPatchCapability } from './graph-controller.js';
+import { NativeRetrievalPersistence } from '../retrieval-persistence.js';
+import { assertRetrievalRef } from '../../../public/scripts/native/retrieval-contracts.js';
+import { validateRetrievalCapability } from './retrieval-capability-authority.js';
 
 /** Authoring uses existing Native resource readers; validation never sends. */
 export function createOrchestrationAuthoringService(engine, sources = {}) {
@@ -18,9 +21,17 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
     if (!lifecycle) throw new TypeError('Orchestration requires original Storage Host ownership');
     const library = new VersionedJsonResourceHandler({ engine });
     const runtime = new NativeModelPromptPersistence({ engine });
+    const retrieval = new NativeRetrievalPersistence({ engine });
     const authorizeBinding = createBindingSourceAuthority(sources);
     const readDependency = async ({ handle, tx, port, resourceRef: ref, runtimeRoute }) => {
         if (port === 'plan') return readPlanRevision(tx, handle, ref);
+        if (port === 'context' && ref.scope === 'player' && Object.hasOwn(ref, 'retrievalProfileId')) {
+            const normalized = assertRetrievalRef(ref);
+            try { return await retrieval.getExact(handle, normalized); } catch (error) {
+                if (error.code === 'native_retrieval_unavailable') throw new NotFoundError('orchestration_dependency');
+                throw error;
+            }
+        }
         if (['context', 'model', 'narrative', 'evaluation'].includes(port) && ref.scope === 'library') {
             const normalized = assertExactResourceRef(ref);
             if (hashNativeDocument(normalized) !== hashNativeDocument(ref)) throw new TypeError('Unexpected fields in original resource reference');
@@ -49,6 +60,11 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
             }
             if (capability === 'chat.output') {
                 const result = validateOutputCapability({ definition, rpControl: sources.rpControl, sessionCore: sources.sessionCore, engine });
+                evidence.push(...result.evidence); issues.push(...result.issues);
+                continue;
+            }
+            if (capability === 'memory.retrieve') {
+                const result = await validateRetrievalCapability({ handle, definition, dependencyPins, retrieval });
                 evidence.push(...result.evidence); issues.push(...result.issues);
                 continue;
             }

@@ -26,10 +26,10 @@ describe.each(harnesses)('$name original Project proposal and Review Effects', (
         } finally { await f.cleanup(); }
     }, 45000);
 
-    test('generation.send and a proposal grant without the exact original Review descriptor cannot evaluate a Workspace', async () => {
+    test('an unpinned Review tool is refused by the original Model response allowlist before Workspace evaluation', async () => {
         const f = await fixture(make, { unpinned: true });
         try {
-            await expect(f.run()).rejects.toThrow('native_orchestration_project_tool_scope_unavailable');
+            await expect(f.run()).rejects.toThrow('generation_response_invalid');
             const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
             expect((await f.repository.get(f.h.handle, f.projectId, f.task.taskId)).proposals).toHaveLength(1);
             expect(task.workspace).toBeNull(); expect(task.review).toBeNull(); expect(task.changeSets).toEqual([]);
