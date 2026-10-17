@@ -2,7 +2,7 @@
 
 - **唯一企划**：[index.md](index.md) · [累计设计](design.md) · [W14 已确认 Effective View](effective-world-view.md) · [W12 消费者审查基础](e0-consumer-cutover.md) · [唯一 Record](../../../records/architecture/world-evolution-consistency.md)
 - Task ID：`ARCH-DWE-01`；Primary Workspace：`docs`。
-- **当前状态**：Draft；用户已明确确认 W1-B～W14-B 的顶层设计路线。**W15/E0 完成结论、精确 Contracts、可实施工程包、测试/三端验收、企划最终定稿、创建实现分支均未批准**。
+- **当前状态**：Draft；**W1-B～W15-B 顶层方向均已获用户确认**，其中 W15-B 确认“证据门槛式 E0 收口 + 可执行交接清单”的**审查方法**，**不是 E0 已完成/Approved**。实际 Contracts、工程实施授权、跨端测试/CI、最终定稿仍待验收；选型历史见 §6，最新用户决议见 §8。
 - **本次实际工作**：基于远端 `main` 当前可读取文件的选择性静态审查与 GitHub 代码搜索构造 E0 Consumer/Authority Map 的初始证据。搜索结果有 `topn` 限制、按文件匹配而非完整调用图；多次读取未固定同一个 main commit SHA，因此只能视为**部分 E0 探针**，不能宣称完整仓库遍历、所有活入口已辨认、运行时实测通过。
 - **W15 核心问题**：怎样将十四轮方向性选型落实成有明确“原代码位置 → 正确权威 → 最小目标契约 → 真实消费者切线 → 清退旧路径 → 通过证据”的收口 Gate，而不让 E0 变成无边界研究或仓促宣布可以开工？
 
@@ -108,3 +108,17 @@ Context/Prompt  Information/HCM  Library/Studio      Play/Media
 - 仍缺：锁定完整 HEAD 下的全量调用图、Native Orchestration V3 实际活跃路径及变化、所有合法动态 Perspective 与 Actor/Talk/media 消费者的最终接口、通用事实/时态与 Source Claim 绑定的可执行合同、E0 功能/性能/安全/三端证据，以及用户对最终企划定稿的明确授权。
 - 若用户确认 W15-B，下一轮应继续先更新同一 Plan + Record，然后按 E0-01～09 优先级逐项完成**正式开发交接前的真实代码审计和最后 API/阶段计划冻结**；若外部代码现状在审查时已经变化，需重新核实，而非机械沿用本轮 main 静态摘录。
 - 整体仍 Draft，未来才能标记 Approved；只修改 `docs`，不修改产品实现。
+
+
+## 8. W15-B 用户确认（2026-10-17）
+
+用户对上一轮明确推荐的 **W15-B「证据门槛式 E0 收口 + 可执行交接清单」**回复“认同”。因此 W15-B 已获用户确认，属于 ARCH-DWE-01 的**收口方法与工作目标**；并未代表 E0-01～09 任何一个阻塞自动通过。
+
+- 完整 E0 将以**固定代码 SHA**下的真实现役生产调用图为依据，逐项明确 `Owner / Producer / Consumer / Source / Target / Replace / Delete / Tests`；对保留兼容或插件接口必须有真实使用证据，不因名称包含 `legacy` 就一概删除。
+- 对旧 Actor/Knowledge/World Info、Native Host Session、Orchestration V3、Prompt Preset、Visual/Speech、HCM/Simulation/Studio/Play 的**活跃分支**必须检查，不能以旧 `main` 的消费图替代未合并分支即将引入的真实接口。
+- 只在**已核实的 Authority**内确定最小 Subject/Fact/Temporal/Capability/Effective View 合同；新合约要符合单 Host/Session 提交、来源/受众控制及无长期双轨的已选设计，不能提前虚构存在接口或证明通过。
+- 审查结果应形成**可执行交接前置清单**，阻塞项标记 `OPEN / NEEDS_HEAD_RECHECK / REQUIRES_RUNTIME_EVIDENCE` 等清楚状态，只有证据符合退出门槛时才允许填写通过。
+- 未授权新建产品实现分支、修改 `main` 或启动开发；继续在 `docs` 同一份方案和唯一 Record 累积 Stage。
+- E0 仍然 **PARTIAL / BLOCKED**，没有任何 CI、真实 UI、Windows/CachyOS/Android Termux 端到端验证被本轮执行。
+
+**下一阶段 W16**：详见同一 Plan 的 [e0-integration-readiness.md](e0-integration-readiness.md)；以已锁定的 `main` 和活动分支 SHA 核实 Orchestration V3/Prompt Preset 与 World/Knowledge 的接口耦合和合并依赖，列缺失的生产消费者、按能力归属的目标契约、删除/保留判据与正式创建开发分支前置门槛。当前 W16 的路线选项尚未获用户批准，完整 Plan 仍 **Draft**。
