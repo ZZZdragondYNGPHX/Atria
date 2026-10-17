@@ -122,6 +122,22 @@
 - **下一检查点：**用户选择 W5-A/B/C 后，**下一轮先更新同一 Plan 与 Record**，继续分析运行时 NPC 与 Authored Actor 的身份/权限衔接、私有目标/信念与外部行动的所有权、冷态长跨度模拟与多 NPC 事件冲突、实际 Resource/Schema 和 E0 消费者验证。
 - **Plan 状态：**Draft。即便 W1–W4 已选，尚未完成 E0/具体 API/阶段化验收/跨端证据，用户未授权实施也未批准最终定稿。
 
+
+## Stage 7 — W5-B 确认与 W6 社会认知/关系权限讨论（2026-10-17）
+
+- **用户决定**：回复「认同」，针对上轮明确推荐的 **W5-B 分层事件驱动自主性**。W1-B、W2-B、W3-B、W4-B、W5-B 现为已确认设计方向；并未确认 W6-B，也未批准全案定稿、产品实现或特定调用方契约。
+- **任务所有权**：`ARCH-DWE-01`，Primary Workspace 仍为 `docs`，沿用同一 Plan Bundle 与唯一 Record。没有创建第二方案、HANDOFF、实现分支。
+- **已完成的文档更新及提交**：
+  - `0782c6072edd111cc12e88907c45e9a0e175bff1`：现有 `npc-autonomy.md` 的 §10 记录 W5-B 已获用户选择，明确预算、身份权限和任务承载未定。
+  - `9ea059d1ab6f5182d88be228d74ecfc253ff460c`：在同一 Plan Bundle 新增 `npc-social-cognition.md` 作为 W6 当前模块，包含主体认知与真实关系分离、知识传播、动态 NPC 权限接入、案例/风险和 W6-A/B/C 三种待议方案。
+  - `a5a17c3b2be58b3d0f796a49d9b21d9d8254a0c4`：更新总设计 `design.md` §13，记录 W5-B 并指向 W6 模块，不复制第二份细节。
+  - `832ac899e1587f6b6bfc5cdfa6057eb1e68b412a`：更新入口 `index.md` 路由与 W1–W5 状态；W6 保持未获批准。
+- **静态代码核对（main，非实测）**：`public/shared/native-information-contract.js` 已支持 truth/belief/desire/intention/emotion/relationship/theory_of_mind 语义与 actor/task/narrator 投影，却对配置 actors/views 做静态引用；`public/shared/native-information-runtime.js` 提供 exact snapshot/anchor、actor availability/分支隔离、可界定的 Source 投影；`src/native/cognition-authority.js` 和 `src/native/tom-authority.js` 的部分 target/perspective 仍显式检查 `manifest.actors`；`public/scripts/agents/memory/eligibility.js` 严格依据 Information 已授权来源/受众/分支限定取回，`src/native/lifetime-authority.js` 的有因果来源的 bond/家庭关系属于特定可选领域。不能把自由涌现 NPC 直接视为获得全部 authored Actor/认知权限。
+- **外部资料对照**：Park et al. (2023) Generative Agents（经历/反思/计划）、Evans & Short (2013/2014) Versu（社会实践为自主角色提供行动机会但不强制执行）、Treanor et al. (2015) Social Play in NPC Dialog（多阶段、可参与的社会互动）。外部机制用于概念比较，未引入依赖或执行对方项目。
+- **W6 研究推荐**：W6-B「世界关系事实 + 主体认知 + 来源事件」。双向成立的客观契约/联盟由 Native 提交；私人态度、目标、误信、情绪与其他角色的推测由已授权 Cognition/HCM 视图表达；通过可追溯通信/观察事件传播，防全知、串档和模型无权替玩家决定行动。**推荐不是用户已批准的冻结决策**。
+- **实际验证**：GitHub 提交完成后再 fetch_file(ref=docs) 核验 `index.md`、`design.md`、`npc-autonomy.md`、`npc-social-cognition.md` 与本 Record。未执行 Node 构建/测试、GitHub CI、模拟回合、浏览器 UI、Windows/CachyOS/Termux 真机验收；未修改产品 main、Package、Plugin、reference、Governance。
+- **下一检查点**：用户就 W6-A/B/C 做选择。确认后下一工作轮先更新同一 Plan/Record，再讨论“动态 NPC 的合法 Perspective 身份、知识/秘密传播事件、共同关系的形成条件和 HCM 与 World state 的写入边界”；持续保留 Draft，最终定稿须用户明确确认。
+
 ## Final state
 
 Not yet applicable. Discussion in progress.
