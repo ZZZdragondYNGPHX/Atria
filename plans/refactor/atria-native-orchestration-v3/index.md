@@ -6,6 +6,8 @@
 
 第九十五组 `56cd1eee0` 接原 World Simulation pending appraisal 与 immutable Source/outbox历史闭包，见[接口 §17.99](interface-contracts.md#1799-原-world-simulation-appraisal-的来源闭包)。原job currentness、Actor采纳、费用未知、防重发/冷读取得有限FS/SQLite实证；其它Simulation profile、通用Graph、恢复/释放及可信高风险consumer继续实施，未宣称完整Gate通过。
 
+第九十六组 `e434b42b2` 接原声明式固定命令/交互排期和精确 input-only Task Context，见[接口 §17.100](interface-contracts.md#17100-原声明式-task-命令交互与最小输入)与同一 Record。原 Simulation 静态命令可用，其原 interaction-job 拒绝保持；真实输入/采纳/费用/ACK闭包已有有限FS/SQLite证据，全部后端仍在继续。
+
 - 创建/调研日期：2026-10-15。
 - 第一轮状态：**D1 已定案：方案 B（原生 Orchestration V3）**。
 - 第二轮状态：**D2 已冻结：T2 Native Host 唯一运行权威、Plan/Run/Effect/Receipt 边界和旧编排零兼容硬切**。

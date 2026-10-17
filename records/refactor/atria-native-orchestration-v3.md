@@ -1104,3 +1104,11 @@
 - Source 1e1281224 → 56cd1eee0，本地提交，未推送；接口 §17.99。复用原 simulationTaskCurrent/Authority budget 与原 Session Task writer，支持原声明 clock.advance 产生的 appraisal，不由读、pump或墙钟发明工作。完整历史 reader新增原不可变 Source revision 的 pending outbox/scope证明；原 Simulation/Authority/Appraisal/SessionCore纳入 evaluator 指纹。其它 Simulation Task/profile仍未开放。
 - 新正向 FS/SQLite 两参数2PASS/12filterSKIP（35.651s），百万tick推进后只发一次模型、采纳两Actor更新、费用/Root闭合；原World/timeline/clock保持，原Source状态被诚实重hash篡改时拒读取，冷重启仍只读原收据。其余零时钟/零deliberations/无job、late clock/disabled、unknown usage共12PASS/2filterSKIP（92.077s）。补直接Task入口绕过lifecycle预检查的 clock/disabled四参数4PASS/14filterSKIP（6.904s），均发送前拒绝、原pending source保持；新suite合计18项分批全通过。
 - 原普通后台冷读/saved-no_save ACK、appraisal正向/取消/领域回滚与 evaluator 指纹三个 suites42PASS/32filterSKIP（127.225s，指纹30项）。六文件原ESLint/最新四参数testlint和staged diff check通过；中间一次lint命令误写 import.metaUrl 解析失败，随后正确命令实际通过，不计失败命令为检查通过。Provider均localhost合成，无新增真实调用/独立质量/价格/自动晋升结论。后端继续，不交前端/main。
+
+## 2026-10-17 — 第九十六组：原声明式命令、排期与 input-only Context
+
+- Source 56cd1eee0 → e434b42b2，本地提交，未推送；接口 §17.100。复用原固定 app.command/interaction.schedule writer、私有 finalizer 与原银行，非 appraisal 的真实解析/采纳费用登记 task_result_parse/adopt；同两阶段 Result/OutputClaim，失败/ACK/未知不重发或退款。完成排期不等于已交付；仍需原时钟后显式 pump。
+- 首轮精选2PASS/2FAIL/12filterSKIP（19.730s），错误测试试图让 interaction 使用 Simulation 主时钟；原合同拒绝。第二轮完整10PASS/6FAIL（104.920s），发现 enabled 必须是原表达式文本、交付需显式pump，且原 Simulation 实际只允许静态 app.command 或 appraisal。没有放宽合同；撤去曾尝试的独立交互时钟测试，改为真实拒绝用例和合法静态 input-only app.command。
+- 修正用例后精选2PASS/4FAIL/10filterSKIP（20.239s），Task 改为 input-only 后必须移除原 projection Task view；再测2PASS/2FAIL/12filterSKIP（7.814s）发现真实 ContextPort 仍强制读取 Information view。补专用空 selection/原 typed input 与同 Source/grant currentness；不会调 Memory/宽历史编译。首个 input-only positive2PASS/14filterSKIP（23.636s）；最终新18/18 PASS（144.606s），包括原Source晚到拒绝、无私域外发、冷读、排期实际pump交付、Domain失败保留解析/采纳费用、saved/no_save ACK及usage unknown。
+- 原 G2 writer/restart/排期/Workflow精选加 evaluator 指纹40PASS/46filterSKIP（5.083s）；原 appraisal/Simulation精选20PASS/22filterSKIP（230.467s，Context最小输入补丁前）。最新 Context授权/撤权与普通后台精选17PASS/16filterSKIP（37.068s，execution-context suite被名称过滤，未声称其执行）。最新 result sink/binding reader检查后，appraisal/input-only正向与指纹三 suites34PASS/38filterSKIP（53.806s，指纹30项）。七文件原ESLint、staged diff check通过。
+- Provider均localhost合成，无新增真实调用、独立质量/价格或自动晋升通过。完整Graph/Planner/Judge/Review、可信高风险consumer及恢复释放等继续实施，后端未完成，不交前端/main。

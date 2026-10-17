@@ -1216,3 +1216,11 @@ native_session SourceSelector 可显式增加 taskRef:{taskId,variantId}，只�
 有限 background JSON 消费者现接受原 Simulation 产生的 cognition.appraise pending Task。原 clock.advance 和作者 simulationRuntime 是唯一排队来源；Host lifecycle预检查、V3选择与每次消费检查均复用 simulationTaskCurrent 和原有界 Authority publication budget，仍核原 job/action/Task/variant/scope/clock/relevance/due/input。直接调用原 Task 执行入口不能跳过该判定。非 appraisal 的 Simulation profile 仍未开放。
 
 采纳沿原 SessionCore.recordTaskResult、原 appraisal authority 和零时间 Simulation reaction，不推进时钟、不新排另一模型任务。费用/两阶段 Result 与 OutputClaim 继续 §17.97。历史 Task reader 同时读取 Root 的原不可变 Source revision，核原 pending outbox 的完整 digest/active scope/epoch，并与已采纳 revision 的 completed intent对齐；不能只拿终态记录自证曾排队。原 Simulation/Authority/Appraisal/SessionCore 源码纳入 evaluator 指纹，旧报告不能借这些权威变更保持可晋升。
+
+## 17.100 原声明式 Task 命令、交互与最小输入
+
+同一有限 background JSON 消费者支持原 declared_app_command 的 app.command 与 interaction.schedule。只有原 pending outbox、不可变 Task/variant resultBinding 和原 SessionCore/prepareDeclaredTaskResult 可以选择固定目标、校验作用域/参数并产生正式 authorityReceipt；模型不能改 domain/command/interaction 或直接写 World。原 Simulation 只允许其合同已支持的静态 app.command 或 appraisal，仍拒绝 interaction job、非 FIFO、非最小输入和非静态目标。
+
+所有声明式结果沿 §17.97 的真正 finalizer 私有身份及两阶段闭包；非 appraisal 的阶段名为 task_result_parse/adopt，注册到原 localWork kind 并使用原稳定 attempt/Effect/target 与实际费用，未新增银行或扩大上限。原 Domain 回滚仍保留真实解析/采纳 CPU；ACK未知只读同事实，不再写命令或发模型。历史 reader 严核 result sink/binding、原 receipt 的决定/目标/Source与 committed revision，以及对应两行原费用。schedule 的 Root 完成只证明原排期已采纳，实际交付仍由原 clock.advance 后的显式 pump 决定，不能当作已交付或用墙钟补交。
+
+精确 context:['input'] 的真实 Task capture 使用空 Context selection 加原 typed Task input；不会读取 Information view、Session history/Knowledge/Memory，也不以缺 view 回落为宽上下文。描述、编译、发送与消费继续核同 Source/Task/variant/input/grant digest、原银行和 Scope；私有 Context 对象/既有 Model request 复验不变。此路径不授 Actor/World 读取权，也不创建通用 Graph runtime。
