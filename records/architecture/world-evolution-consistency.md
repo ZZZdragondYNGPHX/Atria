@@ -305,6 +305,32 @@
 - **验证及真实性**：仅 GitHub branch refs/compare、指定 SHA 下的静态文件审查和 docs Contents API 写入/再读校验。未执行完整 repository call graph、Node、CI、真实 RP/Studio/Play UI、长会话基准、Windows/CachyOS/Android Termux 实测。E0-01～09 尚无全项可标为 PASS；外部开发分支未来可能变动，实施前必须取当前 HEAD 重查。
 - **下一检查点**：用户确认 W16-A/B/C 后，下一轮依约先更新同一 Plan Bundle/本 Record，再优先完成 E0-01/02/04/05 的最小 Owner/接口与 `Domain Effect → Subject/Participant → Host EffectiveWorld → V3 Context → Prompt Effective/Wire` 读写/权限边界，并以完整固定 HEAD 生产调用图和真实分支合入依赖判定 E0-06 的删除/保留清单。全案继续 Draft；不直接创建实现分支或合并产品代码。
 
+
+## Stage 18 — W16-B 确认与 W17 原生 Domain 接口/有效世界投影审查（2026-10-17）
+
+- **本轮用户确定**：对上一轮明确推荐的 **W16-B「跨分支锚定 E0，先锁 Native Domain/Context/Receipt 所有权，再冻结最小世界接口」**答复「认同」。正式登记为 **W16-B 已确认方向**；已确认 W1-B～W16-B。**没有**因此批准 W17-B、全部 E0 PASS、具体 Schema/API、实际产品开发、分支创建、CI 或 UI/Windows/CachyOS/Termux 验收。
+- **范围和工作空间**：继续唯一 `ARCH-DWE-01` Plan Bundle `plans/architecture/world-evolution-consistency/` 和本唯一 Record；只在 `docs` 分支修改 Markdown，静态读取 main/Orchestration/Prompt。未修改产品 `main`、未合并或更新其它分支、未创建实现分支/HANDOFF/另一份正式 Record。
+- **审计版本锚点**（本轮通过 GitHub API 再次核验 main 与相关 branch GET）：
+  - `main=c57fada6edeea255b29d857ba2585c1dbc9c098b`；
+  - `refactor/atria-native-orchestration-v3=a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`；
+  - `refactor/atria-native-prompt-preset-deepening=760327891149216dffdc1e3fa0c846496007a013`；
+  - `feat/native-visual-generation-deepening=ae587be0c64487ba922528bdd0146444bcf5e92e`。
+  These are static review anchors only. Future execution must rebase audit on the actual integrated branch HEAD; code fetching is selective, not complete repository call graph.
+- **本轮 W17 真实函数探针及设计意义**：
+  - `src/native/session-core.js:finalizeTurn`（main）：`authority-first` 用已准备 Native Authority Candidate 与 Story Entry 一次通过 `_publish`，其它 `narrative-outcome`/Task 路径有自己的解释/校验；`_publishLocked` 组织 State、Timeline、Action/Task Receipts、Cognition/History、Revision，交给 `SessionRepo.commitSnapshot`。
+  - `public/scripts/native/experience/world/session.js:commitEvents`（main）：World reducer + `atri_game_runtime` journal 在一次 `commitStatePatch(..., expectedRevisionId/actionRequest)` 内提交；**并未证明**它自动与另一个 Narrator Turn/Effect 共享一个原子 SessionRevision。跨入口的 Word Effect/叙事同步是未解决 E0-02。
+  - `src/native/orchestration/native-turn-orchestration.js`（V3 branch）：`finalizeNarrator`/ `#commitSessionOutput` 使用原 `sessionCore.finalizeTurn`、`readSessionTurnOutput` 和 `storage_commit_unknown` 原 Domain Receipt 查证；`effect-controller.js` `prepare/ready/claim/observe` 的 Effect Receipt 是编排流程证据，不是另一个 World Truth。
+  - `src/native/orchestration/context-port.js`（V3 branch）：`SourceBinding`、`Audience`、`GrantDigest`、token budget 和异步 source/currentness revalidation，实际 `compileNativeContextPlan`、Information/HCM 消费；动态 Subject Perspective 仍需原 Native Host 的授权出口。
+  - `src/native/model-prompt-runtime/prompt-compiler.js`（Prompt branch）：`worldUsePolicy`/ `memoryUsePolicy`/ `semanticBlocks`、Draft Preview/Authored-Effective-Wire 表达来源，但并不生成 World Fact/permission。不能把 Provider Wire 当世界真相。
+- **W17 当前设计建议而非决议**：W17-B「Domain-first Commit + Revision-anchored Authorized Effective Projection」。唯一 Native Domain Session/Revision/Receipt 确立有持续后果的主体/事实/参与者，Orchestration 只提议执行/读取原领域凭据；Host 只读有效世界投影按 Branch/Revision/GameTick/合法 Audience 裁剪后进入 V3 ContextPort/Context Compiler/Prompt。W17-A 把 RunLedger 当 World Truth、W17-C 把 Prompt 文本升格成事实均与已选不变量冲突。**用户尚未确认 W17-B**。
+- **本轮 docs 提交**：
+  - `4ffe476f4b45a9f9672dd67d80db1db1638ef8b1`：W16 `e0-integration-readiness.md` §9 将 W16-B 记为已确认，并引用 W17。
+  - `298010734a439a105fc8f5ee85c96ff50e368146`：在同一 Plan Bundle 新增 W17 `e0-domain-world-context-contract.md`，记录本轮代码证据、五类逻辑契约、World Effect Write Lane 与 Context Read Lane 事务/权限时序、E0-01/02/04/05/06 退出目标和 W17-A/B/C。
+  - `4a07ead23a56ad436337c4accd2044570a6af4e0`：同一总设计 `design.md` §24 记录 W16-B 与 W17 路由。
+  - `09994f6498fb3fd1fa15590a77282f00a1a51082`：同一入口 `index.md` 将 W1–W16 标记已确认、W17 仍为候选，并保持 Draft。
+- **本轮 E0 状态**：`E0-01` WorldSubject/Fact/Participant 合法 Schema、`E0-02` Native 事务及跨入口叙事发表/未知回执恢复、`E0-03` 通用双时间/分支有效查询、`E0-04` 动态 Perspective 与私人 HCM/Context 安全、`E0-05` World Effective 与 Claim-aware Prompt 实际行为、`E0-06` 全生产 caller/旧代码删除、`E0-07` Library/Studio/Play、`E0-08` 长会话/DB/GC、`E0-09` 合并分支依赖，**仍未形成 PASS 证据**。W17 做到的是**具体接口及观察点更清楚**，不是运行测试或提交修改已实现。
+- **下一 checkpoint**：用户若选择 W17-B，先照例把确认写回同一 Plan/Record，然后面向固定**最新整合 HEAD** 核实最小 `Subject/Participant/Perspective/Fact/Effective World` 数据结构、Owner/Producer/Consumer、所有活跃调用路径和 old→target→retain/delete 表；继续 Draft，直至全案被明确批准并允许实现。未运行 Node/CI/浏览器/Windows/CachyOS/Termux 实测。
+
 ## Final state
 
 Not yet applicable. Discussion in progress.
