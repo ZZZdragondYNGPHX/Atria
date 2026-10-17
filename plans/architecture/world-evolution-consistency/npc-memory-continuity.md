@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · W8 长期记忆、遗忘与人格连续性（讨论草案）
 
 - Task ID：`ARCH-DWE-01`；Primary Workspace：`docs`；[唯一 Plan 入口](index.md) / [总体设计](design.md) / [W7 信息流](npc-memory-information-flow.md) / [唯一 Record](../../../records/architecture/world-evolution-consistency.md)。
-- 状态：**Draft；W1-B 至 W7-B 已确认，W8 仍是候选选型，不得提前视作已批**。本文件只讨论逻辑机制、事实所有权、证据和成本；不修改 `main`、不新建实现分支或并行记忆系统。
+- 状态：**Draft；W1-B 至 W8-B 的方向均已获用户确认**，具体接口、HCM/Native 所有权实现、记忆参数与整体定稿均未获授权。本文件原 §7 是 W8 选型比较，正式选择见 §11；不修改 `main`、不新建实现分支或并行记忆系统。
 - 本轮问题：玩家经历几千回合或跳跃数年游戏时间后，新增的 NPC 怎样既保持有依据的人格连续性，又能淡忘琐事、改变态度、重新理解过去，并且绝不“遗忘”掉世界已发生的客观事实？
 
 ## 1. 区分五种常被混称的“记忆”
@@ -122,4 +122,17 @@ Committed Native World Event / Timeline / authorized external source
 - HCM 搜索/压缩、Native Memory/Cognition、World History 三者的确切 owner 和复用路径；不建立重复持久化 authority。
 - 各游戏类型的自然语言自由度、分支、成本预算、隐私与上下文编译缺口；具体实现阶段与跨端验收仍需正式 E0。
 
-**结论状态：** W1–W7 已确认方向，W8 未确认；整体 Plan 仍 Draft。继续逐轮先更新 docs 原 Plan/唯一 Record 后再讨论。
+**本节形成时的结论状态：** W1–W7 已确认，W8 尚待选择；用户随后明确认可 W8-B，当前状态见 §11。整体 Plan 仍 Draft，继续每轮先更新 docs 原 Plan/唯一 Record 后再讨论。
+
+## 11. W8-B 确认（2026-10-17）
+
+用户对上一轮明确推荐的 **W8-B「来源保真 + 分层回忆与人格连续性」**回复「认同」，将其纳入 ARCH-DWE-01 已确认的**总体设计方向**。
+
+- **历史不能被遗忘抹去**：Native World/Session/Event 与客观契约/债务/关系仍由单 Host 权威拥有；NPC 的遗忘、回忆困难或主观误信不重写历史。
+- **记忆来源可追溯**：HCM 的 Episode / facts / entity graph 与 Native Information/Cognition 必须基于授权证据；合法可检索、是否真正相信、是否愿意回忆、是否模糊是不同维度。HCM 不是并行的 World Truth Registry。
+- **记忆允许逐层淡化**：普通细节可随游戏时间和上下文变模糊、难取回；identity/commitment/relationship/key_event 的保护语义与客观合同约束不能因简单压缩损坏。特殊失忆/植入记忆由作品已授权的认知事件解释，不是删改世界历史。
+- **人物连续性有因果**：作者稳定核心与后天人格倾向、临时情绪、信念/计划区分；重要人格变化应能指向源经历、分支和游戏时间，不能模型每轮凭空反转。
+- **复用已有机制**：Native `memoryPolicy / fadeAfter / clarity / use / basis`、Information/Cognition/Host、HCM 有证据的检索/压缩，不创建另一套 Memory DB。 
+- **W8-B 的选择不是实现验收**：不冻结实际角色数据 Schema、动态 Actor/Perspective、HCM 来源映射、记忆预算常量、反思策略、UI 或具体存储切换；继续 Draft。
+
+下一轮 W9 重点转向「**World Entity、Package Actor、运行时 NPC、Lifetime Person、HCM Entity 等不同身份域，如何指向同一真实世界对象并保持清晰的权威边界**」。详见同一 Plan Bundle 的 [entity-identity-authority.md](entity-identity-authority.md)；W9 的选型尚未获得用户批准。
