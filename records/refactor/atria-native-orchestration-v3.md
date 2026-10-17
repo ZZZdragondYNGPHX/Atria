@@ -1573,3 +1573,50 @@
 - P6 需清理（本组未动）：旧 Agents 面板内的 Orchestration/Run 分区与 hub、`workspace.orchestration`/`workspace.agent-run` 命令、Search 的旧 `Orchestration` 预设域与 `openOrchestration`、旧 orchestrator workspace 资产、`observeAtriaDrafts` 中的旧编辑器选择器；`check-native-product-localization` 仍扫描旧 `orchestrator/workspace`。
 - 临时证据：scratch 数据根、模拟 Provider、验证脚本与截图仅在本机临时目录，本节记录后清理，不提交。
 - 状态：P5 前端与组装完成，回交 Codex。缺陷 1–3 需 Codex 修复，修复后前端补“准备可信提交”入口（或在 P6 一并核对）。P6 硬切、旧链清退、三端组装后验证与最终 Gate 仍归 Codex；最终产品 Gate = NOT_READY。未合 main、未推送、未结束分支。
+
+
+## 2026-10-18 — P5 六项后端修复、原合同独立复核与 P6 安全 checkpoint
+
+- Start source `94d677c6d`，docs `237e97cd9`；先 fetch 并在两 clean 工作树 fast-forward 到真实交接版本，未回退实现。全部沿原任务分支；无 main 集成、无分支删除。End/Tested source：`b7c12fdc6`。
+- 用户先授权修复缺陷1–3、执行P6与最终检查；随后明确要求默认授权非破坏性操作、尽可能无冲突并发；又明确授权原始D1–D8/P1–P4的独立严格复核。最后明确要求在适当安全点停下、给包含这些要求的提示词。按最后指令保存此checkpoint与唯一HANDOFF，不把尚未完成工作伪报完成。
+
+### 六项实际修复与原权威
+
+1. RP在有效输出预算检查失败、Effect仍prepared且无原bank admission/dispatch claim时，原SourceControl事务保存`not_dispatched`收据与failed Attempt；无待核效果时Root failed。只对可证明未发送的`generation_adapter_output_budget`处理；ready/dispatching/unknown及已收费事实不能冒充零发送。无新Result/正文，原local work保持。
+2. Authoring与Native入口通过共用`createHostRouteResolver`读取原Package/Project精确资源owner，复用既有Prompt Controls的read-through；不新建资源库或授权。Model capability report保留原GenerationError reasonCode，不输出Secret/provider原文。
+3. 原Studio task读取返回Host计算的`reviewHash`，前端“准备可信提交”使用原sequence/hash与精确Binding，未知结果仅同commandId/body核对；准备、隔离可信审阅、批准、dispatch仍分开。真实Project writer/Review/CAS/原银行不变。
+4. 完成/失败/取消等终态Run在Host代际变化后不再暴露recover控制，也不报阻塞恢复诊断；活Run既有恢复与unknown核对保持。
+5. 审批pending且可信通道可用时返回info待决定；只有仍pending、未过期且通道不可用才报blocking channel_unavailable；已批准不再误报。
+6. 原Scheduler仅让真实active worker将已建立的durable Run关联到同一operation投影，禁止伪造boundary、换Run、foreign读取或终态后重绑；RP执行中即可读取runId。前端删来源列表差集猜测。
+
+### P6 清退与真实补漏
+
+- 旧四根`agents/orchestrator`、`lib/agent-runtime`、`lib/orchestration-engine`、`lib/agent-workspace`及其专属Browser执行器、checkpoint、旧UI/命令/Search、注册桥、旧模式Skill/教程资产清退；新guard按AST检查旧根/import/capability，不用全仓替词。保留同步orchestrator、原原生角色/通用工具/领域writer、真实数据/unknown收据。
+- 仍使用的prepared-message compiler移到独立共用位置；Memory页面回归Memory自身模块，原作用域读取/维护及dispose保护保留。Shell记住Project task后重开Runs的初始化缺口已修复并有真实浏览器reload回归。
+- 原Settings Repo隐藏旧orchestrator subtree、拒绝save/patch重启旧协议；旧磁盘历史不主动物理删除，其他设置原样保留。旧`orch-preset` scope/携带/导入导出/旧profile工具删除；global/project/package/preset/character Skill继续原pin/read/cache/rollback边界。
+- 清退暴露实际Native RP Skill缺口：现在沿原shared Skill resolver/pin/load/Context compiler消费当前always指令，inventory/pin/load在同原bank计费，内容计入编译descriptor，编译/发送/消费复验版本与设置，漂移拒绝消费；未添加额外工具或权限。原Evolution单local always Skill比较安装真实scoped Skill并检查实际prompt消费；修复Native Binding误拒Skill发布/currentness的残留guard，原CAS/rollback保持。Next-run activation observer仍需接当前Native消费证据，不能用旧`version.consumed`trace冒称已交付。
+- 另修原Frontend authoring把raw index传给需要validated graph的capability validator，复用`validateFrontendGraph`与原mode/contract/transactions，无放松验证。Bundled Studio Skill fixture使用真实Task compute/Skill-work后恢复原Review。
+
+### 独立复核结论（用户本轮明确授权）
+
+- 复核对照原D2/Graph control/D4/D5/D6/D7和实际生产选择器，不以收敛后Gate为证明；独立代理只读，执行代理负责修改与必要自查。
+- 原GraphPatch/CAS/整批校验、Review因果失效/安全效果检查、子Run/预算/Source/return、五种Join及unknown保护有真实实现；生产RP的Planner、双候选Judge、固定Review、Delegate、Fanout/Join仍是有限Profile，不能推导任意可组合业务图完成。
+- **原合同真实未完成**：角色独立Audience的RP协作（RP capture仍强制narrator/same-audience）；Game与Project的条件G2协作（生产仍分别为Narrator+可选Resolver、单Agent+Output+可选self-loop）。后台Actor appraisal不是前者的替代；RP控制节点的通过不能跨领域核销。
+- 有限ready无claim Commit恢复、cold Result重新授权、unknown查询符合原可验证边界恢复要求；不新增任意内存点自动恢复要求。V3可信Commit支持有限分类修改，原完整Studio人工Review/Commit领域能力继续保留。
+- 同一Gate已更正为原始P3/P4 IN_PROGRESS、P6 IN_PROGRESS、最终NOT_READY；历史`PASS/READY_FOR_P5`只保留其有限交接证据，原冻结设计没有缩水。没有用标为受限来宣布原始缺口完成。
+
+### 验证与真实失败分账
+
+- 六项缺陷末版专项：7suite196/196 PASS（21.067s）；覆盖FS/SQLite未发送终结、精确Package资源读取/原错误、原HTTP Task reviewHash、真实Project批准/完成后投影、运行中operation→Run和私有Scheduler boundary。当前Settings/Shell/本地化相关11suite109项通过（21.549s）。
+- Game/Native Play/相关角色：46suite452项通过；Skills/Skills UI/原invocation/bundled authoring/frontend authoring：26suite443项通过，后续删除退休profile工具的2suite14项通过。分次、可能重叠，不相加当一次整仓结果。
+- Linux完整scratch Host+Chromium，1440×1000与390×844模拟手机，最终Playwright4/4通过（1.4m）：UI创建/修改/保存/Host验证/发布no-provider Plan、V3导航、Runs Source、Memory页面；真实reviewed Project task通过HTTP/原权威准备可信提交、精确sequence/hash、未执行commit、reload精确来源/真实Run；旧capability不可用、旧模块零请求、生成端点零请求。不是Termux真机或真实Provider/费用证据。两e2e已保留；临时Host/browser/data已清理。
+- Native RP Skill漂移/原银行/partial比较4/4；当前RP Skill发布CAS/rollback及真实隔离比较3/3（含FS/SQLite）；Project策略/封闭来源观察fixture末版20/20；Source43/43。原10个passing suite182项属分次证据；最后7suite宽矩阵为64PASS/6FAIL，6条路径分别由上述focused checks核销，**未记整套末版全绿**。
+- 历史基准已将RP从旧Director移到真实Native consumer/冻结Plan/原输出协议，保留12个trial的44项rubric、玩家/可见记忆/取消迟到/单claim与真实身份；baseline+runner-failure2suite53项通过（31s）。真实dispatch22、Studio tools24取代旧工具回圈计数24/36；无付费调用/经验质量结论。comparison/live-bridge/judge完整迁移仍待续，不以删除有效断言涂绿。
+- 首次宽`agent-intelligence`运行结果42suite：28PASS/14FAIL，623项中496PASS/127FAIL（405.157s）。包含退休协议fixture、运行中版本指纹合法失效及未定位/未迁移路径；部分已focused核销，**不能把127项全称基线问题或全称已修复**。临时日志没有提交Secret/请求响应。原始失败留作接手定位依据。
+- 末版Native宽回归按用户安全停止要求中断：`project-model-producer`、`rp-output-reconciliation`已通过；其余无最终结果，不声称选中矩阵或180个native-orchestration suite已通过。Optional Native-auto长矩阵亦中断，无最终结果。
+- 新改121个JS/MJS/CJS及VitePress配置语法通过；AST硬切guard、本地化guard、diff check通过。修改JS ESLint无新error，e2e有4条style warning；原settings endpoint4条raw-fs规则在未改`94d677c6d`基线逐项复现，未为本任务修改allowlist，关该已知规则后的该文件lint通过。不声称全仓lint全绿。文档站完整build未运行（本地无VitePress依赖）。
+- SQL末版组装、Windows/Termux真机、真实输入法/读屏、规模性能、真实Provider/价格/质量、eligible自动晋升NOT_RUN。当前代码与历史四Engine证据分开，不把FS/SQLite当SQL末版通过。
+
+### 下一步与停止
+
+本轮停在用户要求的checkpoint：提交并推送仅作存储，main与任务分支保留。先恢复真实Git/本Record/HANDOFF，修复宽回归尚存问题与Native Skill activation观察，再按原D4/D7补完整生产消费者；P6完整替代与最终Gate仍未核销。不要恢复旧执行兼容路径、降低原标准或额外发起未授权新审查轮次。

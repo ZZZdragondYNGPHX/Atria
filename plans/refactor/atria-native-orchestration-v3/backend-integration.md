@@ -120,3 +120,10 @@ P5 由 Claude Code 完成 Plan Library、Graph+Inspector、同语义 Node/Edge L
 源码沿同一 `refactor/atria-native-orchestration-v3` 工作树；Plan/Record 在独立 docs 分支。提示词预设等同期任务的既往 merge-tree 结果仅是其当时字节证据，实际组装须按届时 HEAD 和未提交状态重新核对，保护所有本机修改。重点保留原 Prompt 行为/可信 preview、稳定模型与 local 身份、预算 ACK unknown 只观察、Source/Audience 最后复验和安全错误码。
 
 没有旧 Single/Spec/Loop/Agenda/Director 兼容、别名、迁移、模板化或双轨发布；P6 清退等前端组装回交后执行，保护仍有业务用途的 Memory/Secret/Studio 等共享服务、真实数据、未知外部效果与费用历史。后端首次交接和最终产品 Gate 不混同，平台、真实 Browser、独立质量/价格等未取证项继续按原阶段保留 NOT_RUN/BLOCKED。
+
+
+## 2026-10-18 P6 checkpoint 补充
+
+源码 `b7c12fdc6`：Studio `GET /projects/:projectId/agent/tasks/:taskId` 在原Task快照上增加Host计算的`reviewHash`（无review时null），`commit/prepare`仍要求同一当前`expectedSequence/expectedReviewHash`；Browser无hash算法复制。原 `/api/native/generation/operations/:id` 在真实RP worker建立Root后即可返回`runId`，不授予执行权。Run投影区分pending approval与不可用通道，并对终态隐藏recover控制。
+
+原冻结能力核销以 [acceptance-matrix](acceptance-matrix.md) 为准；RP有限Profile不能证明角色独立Audience或Game/Project通用条件协作已完成。旧Browser模式/capability/设置/Skill scope无执行或迁移路径。原领域writer、可信审批、unknown费用和持久收据继续原权威。用户要求的安全checkpoint恢复见唯一HANDOFF；最终产品Gate仍NOT_READY。

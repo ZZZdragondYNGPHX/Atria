@@ -2,7 +2,7 @@
 
 > **唯一入口**。Task ID：`refactor/atria-native-orchestration-v3`。Primary Workspace：`main`（未来实现）；实现使用同一任务分支 `refactor/atria-native-orchestration-v3`，企划/Record继续在长期 `docs` 工作空间。规则只引用 [Repository Governance](../../../README.md)，不在本 Plan 复制执行规则。
 
-2026-10-17 后端源码冻结于 `01ef2053b`；P3 Gate=PASS，P1–P4后端首次交接Gate=READY_FOR_P5。五种Join/partial、Session失败终结与真实SQL检索目录缺口均已完成必要验证；最后SQL Join/Fanout36项与检索正常/失败4项通过。2026-10-18 Claude Code 完成 P5 前端与组装（源码本地 `94d677c6d`，未推送）并回交 Codex；组装中发现的后端缺陷与真实浏览器证据归同一 Record。最终产品Gate仍NOT_READY，下一阶段由Codex执行P6及最终验证。当前能力与剩余项只读 [acceptance-matrix](acceptance-matrix.md)，范围与停止条件只读 [实施方案 §6](implementation-plan.md#6-p3-收敛边界与结束条件)，精确提交、失败与分次证据归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。
+2026-10-18 从 P5 源码 `94d677c6d` 恢复，修复六项组装后端问题并推进 P6。用户要求的独立复核确认：原端口与多个有限 Profile 有真实实现，但角色独立 Audience 的 RP 协作、复杂 Game/Project 的 G2 条件协作仍未完整实现；不能以历史 `READY_FOR_P5` 核销原始 D1–D8 全量完成。**P3/P4 IN_PROGRESS、P6 IN_PROGRESS、最终产品 Gate NOT_READY**。原冻结合同未缩水；当前核销只读 [acceptance-matrix](acceptance-matrix.md)，实现/验证与源码 pin 归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。用户最后要求在安全 checkpoint 停下并提供接手提示词，恢复状态见唯一 HANDOFF 及真实 Git。
 
 - 创建/调研日期：2026-10-15。
 - 第一轮状态：**D1 已定案：方案 B（原生 Orchestration V3）**。

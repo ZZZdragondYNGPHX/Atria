@@ -1,16 +1,27 @@
 # D9 E1 — 当前后端 Gate 与阶段核销
 
-## 当前基线与执行分工
+## 当前核销（2026-10-18 独立复核与 P6 checkpoint）
 
-2026-10-17 工程收敛从源码 `75c6a676c` / docs `94272a03a` 开始；后端源码冻结于 `01ef2053b`。单Host/端口/预算/恢复、正式消费者、五种Join策略、Session失败终结及SQL检索目录缺口均已取得对应版本证据。详细实施、失败与分次验证唯一归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。本表描述当前验收状态，不将历史测试累计为当前版本整套通过。
+本轮从源码 `94d677c6d` 恢复；历史 `01ef2053b` 的 `PASS / READY_FOR_P5` 仅说明当时有限端口/消费者的交接证据，**不能作为原始 D1–D8 / P1–P4 全量完成证明**。本轮依用户明确要求作独立只读复核，原冻结合同未降低或重写。实际修改、失败、分次验证及最终源码 pin 见[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。
 
-执行顺序和两次交接条件只引用[实施分工](implementation-plan.md#2-执行分工与两次交接)：Codex 完成 P1–P4 后端 → Claude Code 完成 P5 前端与组装 → Codex 执行 P6 硬切、清退与最终验证。当前不提前前端、P6、合 main 或结束分支。
+**原始 P3/P4 = IN_PROGRESS；已验证的有限 Profile / Port 不变量保留各自证据；P5 六项后端问题已修复并完成相关回归；P6 = IN_PROGRESS（旧执行链已在工作分支移除，测试/文档/完整替代仍在核对）；最终产品 Gate = NOT_READY。**
 
-**P3 Gate = PASS（`01ef2053b`）；P1–P4 后端首次交接 Gate = READY_FOR_P5；P5 前端与组装 = 完成并回交（`94d677c6d`，含 3 项待 Codex 修复的后端缺陷）；最终产品 Gate = NOT_READY。** `581dc9f44` 的共享Result/Source矩阵通过后，实际SQL检索消费者发现目录接线缺陷，已用原Host生命周期修复并补MySQL/PG正常与失败路径；没有靠夹具伪装属性或后移已声明端口需求。五种Join策略与Session失败终结已按P2/P4完成，不据此宣称任意业务图全组合或最终质量合格。Record第44组已进入P4，后续组数不代表全部属于P3。
+| 原冻结要求 | 真实实现 | 当前结论与剩余项 |
+| --- | --- | --- |
+| D2 唯一 Host、Source、Run/Effect/Receipt | 复用原存储/领域权威、CAS/epoch、银行、unknown 收据；非 Browser writer | 已有实现与必要专项证据，不能推导任意业务图均支持 |
+| D3 Graph/Planner/Judge/Review | GraphPatch/失效/重做核心存在；RP 使用有限且互斥的 Planner、双候选 Judge、固定 Draft/Review 等 Profile | **受限支持**；通用可组合生产图不能核销 PASS |
+| D3 Delegate/Join | 原 Scheduler/子预算/Source pins/return、五种 Join/partial/late/fail_fast 已有真实 RP 消费者 | **受限支持**；不自动扩展为 Game/Project/Evolution 同等支持 |
+| D4 / D7 角色独立 Audience 的 RP 协作 | RP capture 仍只允许 narrator；Actor appraisal 为不同的后台消费者 | **原合同真实未完成**，不是前端或纯质量取证问题；不能由 same-audience RP DAG 代替 |
+| D7 条件 Game/Project 协作 | Game 为 Narrator＋可选 Resolver；Project 为单 Agent＋Output＋可选 self-loop | **原合同真实未完成**，不能由 RP 控制节点测试跨领域核销 |
+| D3/D6 可验证边界恢复 | ready 无 claim Commit 重新准入、cold Result 新授权消费、unknown 查询/reconcile | 有限恢复符合冻结要求；不额外要求所有内存阶段自动恢复 |
+| D7 正式 Project 写入 | V3 有限已分类可信 Commit；原完整 Studio 人工审阅/Commit 领域路径保留 | **受限支持**；不得误删原领域能力或伪称所有 V3 修改类型已支持 |
+| D5/D7 Evolution/Skill | Native Plan 与原 Project 目标、真实 RP scoped Skill Context/预算/漂移拒绝已接 | 原独立质量/价格不足拒晋升；eligible 自动晋升仍 NOT_RUN；新 RP Skill 的 next-run activation observer 接线尚需核对 |
 
-## P3 — Native Ports & Budgets
+执行分工保留[实施方案 §2](implementation-plan.md#2-执行分工与两次交接)。用户本轮最后明确要求在安全 checkpoint 停下并提供新对话提示词；恢复先读唯一 HANDOFF、真实 Git 和本表，不把历史停止记录恢复为新限制。未合 main、未结束任务分支。
 
-依据：D4/C2、D5/F2、D6/S2 及接口合同 §8.2；范围与停止条件归[实施方案 §6](implementation-plan.md#6-p3-收敛边界与结束条件)。每行核销须同时具备生产入口、原权威与银行、真实 receipt/Result 关联、对应源码版本验证；adapter 或注入式测试本身不构成生产支持。
+## P3 — 已验证端口子集（非原始阶段全量完成）
+
+以下保留历史有限闭环证据；原始能力未完成项以上表为准，不能被本表的局部PASS覆盖。依据：D4/C2、D5/F2、D6/S2 及接口合同 §8.2；范围与停止条件归[实施方案 §6](implementation-plan.md#6-p3-收敛边界与结束条件)。每行核销须同时具备生产入口、原权威与银行、真实 receipt/Result 关联、对应源码版本验证；adapter 或注入式测试本身不构成生产支持。
 
 | 闭环 / 原权威 | 当前生产能力与证据入口 | 剩余必需行为 / 当前 Gate |
 | --- | --- | --- |
@@ -27,15 +38,15 @@
 | --- | --- |
 | P1/P2 后端 | Host/Plan/Run/Graph/Effect/审批基础及GraphPatch/Planner/Judge/Review/有界重做、Delegate/Handoff已由真实消费者使用；五种Join与fail_fast同机制接通。末版Join/Fanout SQL36项整轮通过，FS/SQLite36项分次通过；共享控制/输出和原Planner/Judge/Review相邻验证完成。支持范围按原有限profile/owned pins与接口§18，不推导任意嵌套/跨领域图或串行Evolution worker支持Fanout。 |
 | P4 / W06–W07 | RP/Session正式输出、后台Task/Actor appraisal、Project多轮/工具/Review、有限正式Commit、Plan Prompt/原自动evaluation已实现。同一已付费Model Task→Review→fresh批准→Commit→真实Package/Session消费已取得四Engine分次证据，原银行/预算不重置。Join early-close/partial/late全集费用、Session已知失败与unknown的原Attempt/Root终结已完成；零Result/World越权、cold不重发有证据。原Eval质量/价格不足必须拒晋升，不另建质量authority；完整业务语义不能塞回P3内核。 |
-| P5 / W08 | 已完成并回交（`94d677c6d`）：Agents › Plans（Library、Graph/List/Inspector、Validate/Publish/冲突/未知、固定依赖、Binding）与 Agents › Runs（来源 Run 列表、RP 审阅启动、Timeline/Graph、费用/额度/诊断、取消/恢复/核对、Project commit 写入）、隔离 Review 文档与可信批准；真实 Host（模拟 Provider）桌面与模拟手机视口取证见 Record。待 Codex：RP 预发送失败后 Run 不结算、authoring 路由解析缺 package 范围资源、`commit/prepare` 的 reviewHash 无读取接口（另 3 项次要）。真机、Linux/Termux、真实读屏/输入法、真实 Provider 与大图性能 NOT_RUN。 |
-| P6 / W09 | 组装回交后由 Codex 原子硬切并清退旧编排入口/配置/资产/专用测试；不保留兼容路径，不提前删除仍有业务用途的共享服务与未知效果/费用历史。 |
+| P5 / W08 | 已完成并回交（`94d677c6d`）：Agents › Plans（Library、Graph/List/Inspector、Validate/Publish/冲突/未知、固定依赖、Binding）与 Agents › Runs（来源 Run 列表、RP 审阅启动、Timeline/Graph、费用/额度/诊断、取消/恢复/核对、Project commit 写入）、隔离 Review 文档与可信批准；真实 Host（模拟 Provider）桌面与模拟手机视口取证见 Record。本轮六项后端问题均已修复并有相关回归，含原 Task reviewHash 接口与真实准备可信提交 UI。真机、Linux/Termux、真实读屏/输入法、真实 Provider 与大图性能 NOT_RUN。 |
+| P6 / W09 | IN_PROGRESS：旧四根、Browser capability/模式入口、旧设置与 Skill scope、专用资产/教程已清退；共享编译 helper、Memory、原数据/unknown 收据保留。完整替代、历史测试迁移与最终宽矩阵仍未核销。 |
 | 最终验证 / P7 → P8 | installed Host+Browser、Windows/Linux/Termux、声明支持的 Engine、必要外部服务/性能/人工质量按原验收取得证据；不是全部倒挂为 P3 端口 Gate。尚未取得的证据保留 NOT_RUN/BLOCKED，完成整体核对后才处理集成收尾。 |
 
-## 首次后端交接与停止条件
+## 历史交接与当前剩余项
 
-`01ef2053b` 的已冻结后端范围无已知实施阻塞：每项必需端口有生产入口、原权威/银行、可信receipt/Result和必要验证；明确剩余消费者闭环已完成。当前合理停止后端扩展并进入Claude Code P5，不能再因未声明的理论全组合、新微小边界或测试数量重开阶段。组装若发现真实权限、一致性、冻结合同或消费者缺陷，仍由Codex修复。
+`01ef2053b` 的首次后端交接及 `94d677c6d` 的 P5 交接保留为历史事实；先前“明确剩余消费者闭环已完成”的概括已被上表限定，不能据此取消原始 D4/D7 能力。P5 修复不是原始全产品 Gate 通过。
 
-P5前端与组装已完成（证据与待修后端缺陷见Record）；P6原子硬切/旧链清退、Windows/Linux/Termux组装后验证、必要性能/人工质量和最终集成仍未完成。原Evolution独立质量来源/真实价格不足时拒晋升，eligible自动晋升仍NOT_RUN；opaque cache/continuation/价格按原证据unknown/miss/reset。它们不伪记通过，也不由前端补造后端权威。R3无独立原生防线仍按冻结D6默认拒绝。
+本轮组装后 Linux scratch Host+Chromium 与桌面/模拟手机取得相应证据；Windows/Termux 真机、真实输入法/读屏、SQL 末版组装、必要性能/质量等未取证项仍 NOT_RUN。旧协议测试的迁移、宽矩阵失败与中断按 Record 如实记载，不通过删掉有效断言或把失败全归基线来核销。
 
 ## 验证口径
 
