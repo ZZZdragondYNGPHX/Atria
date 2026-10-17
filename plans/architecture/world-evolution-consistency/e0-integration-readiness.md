@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · W16 E0 版本锚定、跨分支真实消费者与实施前置审查（Draft）
 
 - Task ID：`ARCH-DWE-01`；Primary Workspace：`docs`；[唯一 Plan 入口](index.md) · [累计设计](design.md) · [W15 已确认 E0 方法](e0-final-closure.md) · [唯一 Record](../../../records/architecture/world-evolution-consistency.md)。
-- **状态**：Draft。**W1-B～W15-B 已确认**（W15-B 是证据收口方法）；本轮 W16 的分支协同/接口优先级选择尚未获批准。E0-01～09 **PARTIAL / BLOCKED**；没有产品代码修改、临时实现分支、CI/测试或 Windows/CachyOS/Termux 实测。
+- **状态**：Draft。**W1-B～W16-B 已确认**（W15-B/W16-B 分别是 E0 证据收口与跨分支接口归属方法）；W17 的事务/投影最小契约及具体 ABI 仍未获批准。此前 §7 是 W16 原始选型比较，正式用户确认见 §9；E0-01～09 继续 **PARTIAL / BLOCKED**，未授权产品实现。
 - **本轮新增的真实证据**：相较 W15 的未固定 `main` 检索，本轮使用 GitHub `git/ref` 获取精确 HEAD，然后从上述 SHA 读取文件和 `compare_commits` 分支对比。仍为**选择性静态文件审计**，不是将完整仓库拉到本地的全量 call graph 或端到端 E0；期间远端可能变化，正式实施前必须重新锁定新的真实集成 HEAD。
 
 ## 1. 本轮锁定的提交锚点与未合并代码事实（2026-10-17）
@@ -120,3 +120,20 @@ Capture exact main + dependency branches (V3, Prompt, Visual) with SHA
 - **E0-09 Branch/Dependency Integrations**：取得精确分支 SHAs 与差异状态，仍 **BRANCH_RECHECK**；V3 Orchestration 核心大范围未合入，Prompt/Visual 还与 main 分叉，真正整合后需要重新审查。
 
 **下一阶段建议**：若选择 W16-B，下一轮先将用户批准的选型写回本模块/设计/唯一 Record，再针对 E0-01/02/04/05 中最关键的 **Domain Effect ↔ Participant ↔ EffectiveWorld ↔ Orchestration Context ↔ Prompt Effective/Wire** 交界处形成小规模类型与事务顺序决议，并划出 E0-06 真实删除清单的证据退出条件。仍保持 Draft，尚不创建实现分支。
+
+
+## 9. W16-B 用户确认（2026-10-17）
+
+用户对上一轮推荐的 **W16-B「跨分支锚定 E0 + 先锁 Native Domain/Context/Receipt 所有权，再冻结最小世界接口」**回复「认同」。确认为本 Plan 的**架构收口方向**；因此 W1-B 至 W16-B 已获用户方向性确认。该选择不代表 E0-01～09 完成、确切 Schema/API 已冻结或获准修改产品代码。
+
+本轮获得的可核验 HEAD：GitHub Branch GET 复核 `main=c57fada6edeea255b29d857ba2585c1dbc9c098b`、`refactor/atria-native-orchestration-v3=a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`、`refactor/atria-native-prompt-preset-deepening=760327891149216dffdc1e3fa0c846496007a013`、`feat/native-visual-generation-deepening=ae587be0c64487ba922528bdd0146444bcf5e92e`。它们是此轮观察版本；未来合并/实施须重新获取新 HEAD。
+
+确认的原则：
+
+- 在跨分支消费链确认前，不按旧 `main` 冻结全部 World/Actor/Prompt 接口，不为同时兼容两个时点的生产链建立长期多层适配。
+- 原生 Native Session/Domain Authority 独占世界状态、Subject、已发生后果及 Domain Receipt；V3 Orchestration 负责分配、执行、观测、预算和结果收据，但其 `effect confirmed` 不自动等于 World Fact 已提交；Prompt Compiler 的 Authored/Effective/Wire 是编译与传输视图，不成为世界事实权威。
+- V3 `ContextPort` 的 Source Binding、Audience、GrantDigest 与 Context Compiler 接线为关键权限边界：W14 Effective World View 必须作为原生 Host 所授权的只读数据，在选取历史、私有 HCM、知识源和提示词前正确裁剪；不开放 Narrator 视角后再做展示层遮盖。
+- 对 Legacy World Info、旧 Orchestrator、Actor-only 与 Media/Frontend 的每条已存在消费者按固定 HEAD 做生产入口判定，再分类 `retain/replace/delete/investigate`，当前仍无足够证据给出批量删除清单。
+- 分支差异影响真正 API Owner；只把 Orchestration/Prompt 等**接口重叠的活动分支**视为重新审计目标，不要求等待所有无关分支完成。
+
+**W17 下一轮**同一 Plan 内 [e0-domain-world-context-contract.md](e0-domain-world-context-contract.md) 将针对 `Domain Effect → Subject/Participant → Effective World View → V3 ContextPort → Context Compiler → Prompt Effective/Wire`，重点明确提交前提、唯一写入、域内/编排双收据、查询锚点、Source/Perspective 能力边界和不可宣称已实现的缺口。W17 候选路线**尚未获用户选择**；整体 **Draft**、E0 **PARTIAL / BLOCKED**，不修改产品代码。
