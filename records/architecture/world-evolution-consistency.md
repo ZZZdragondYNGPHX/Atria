@@ -331,6 +331,29 @@
 - **本轮 E0 状态**：`E0-01` WorldSubject/Fact/Participant 合法 Schema、`E0-02` Native 事务及跨入口叙事发表/未知回执恢复、`E0-03` 通用双时间/分支有效查询、`E0-04` 动态 Perspective 与私人 HCM/Context 安全、`E0-05` World Effective 与 Claim-aware Prompt 实际行为、`E0-06` 全生产 caller/旧代码删除、`E0-07` Library/Studio/Play、`E0-08` 长会话/DB/GC、`E0-09` 合并分支依赖，**仍未形成 PASS 证据**。W17 做到的是**具体接口及观察点更清楚**，不是运行测试或提交修改已实现。
 - **下一 checkpoint**：用户若选择 W17-B，先照例把确认写回同一 Plan/Record，然后面向固定**最新整合 HEAD** 核实最小 `Subject/Participant/Perspective/Fact/Effective World` 数据结构、Owner/Producer/Consumer、所有活跃调用路径和 old→target→retain/delete 表；继续 Draft，直至全案被明确批准并允许实现。未运行 Node/CI/浏览器/Windows/CachyOS/Termux 实测。
 
+
+## Stage 19 — W17-B 确认与 W18 最小 ABI/真实消费者硬切讨论（2026-10-17）
+
+- **本轮用户正式确认**：上轮明确推荐 **W17-B「Domain-first Commit + Revision-anchored Authorized Effective Projection」**获得「认同」。ARCH-DWE-01 **W1-B～W17-B 均是已确认顶层设计方向**。但 **W18-B 尚未获用户选择**，没有批准任何物理 ID/ABI/Schema、具体生产路径删除、完整企划 Final 或正式代码实施。
+- **唯一工作区/资产**：继续使用 `docs` 上的同一 Plan Bundle `plans/architecture/world-evolution-consistency/` 与本唯一 Record；未修改 `main`、任何未合入开发分支、Package/Skills/Plugin；未新建实现分支/第二 Plan/HANDOFF。
+- **本轮 docs 提交（按时间顺序）**：
+  - `bb9ac4ce24b648e903c5927945f34c00bbfd3bec`：W17 `e0-domain-world-context-contract.md` §8 记录 W17-B 已确认，世界原 Native Domain 写权 / V3 Run 收据 / Source/Perspective/Prompt 只读分工及未定具体接口。
+  - `5e11f7ac4b5010e7bb2dd244a837fc2cddfece6e`：同一 Plan 新增 W18 `e0-minimal-contract-cutover.md`，逐个核对真实 ID/Timeline/Information/World/History/Frontend/Speech/Visual/V3 Context/Prompt 合同，并提出最小类型示意、old→target/retain/delete 消费者矩阵、E0 审计与测试退出证据及 W18-A/B/C 选型。
+  - `4132cfb4e4b66679f7c406595298368736debcdc`：`design.md` §25 记录 W17-B 与 W18 新模块及 E0 保留缺口。
+  - `1ff01f5c8ecf66e2aec3900e78ca1bb56fe445f8`：`index.md` 记为 W1–W17 已确认、W18 当前待选择、整体继续 Draft。
+- **静态版本与审计范围**：按 GitHub Branch GET 核对 `main=c57fada6edeea255b29d857ba2585c1dbc9c098b`、V3 `a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`、Prompt `760327891149216dffdc1e3fa0c846496007a013`、Visual `ae587be0c64487ba922528bdd0146444bcf5e92e`。main Git tree 在特定 SHA 下审查部分目录树：`src/native` 顶层 117 项、`public/scripts/native` 顶层 116 项、`tests/native` 顶层 260 项；这些仅是目录枚举，不等于逐文件调用图阅读或现役生产引用遍历。
+- **更具体且可核验的 main 合同事实**：
+  - `src/native/identity.js` 未列通用 `subject` ID family；`src/native/contracts.js` `assertTimelineEntry` 的可选 `actorId` 校验为 `actor_*`，`src/native/session-core.js` 限制合法 Actor 来自 Manifest。动态 Participant/ActorTemplate 分离仍需实际 cutover。
+  - `public/shared/native-information-contract.js` 的 `assertInformationClosure` 要求 Info Actor 包含于 Package Manifest，Actor View 要关联该声明，`native-information-runtime.js` 对缺失者报告 undeclared；动态 NPC 不能直接合法得到私人 Memory/Perspective。Cognition target 还有 Manifest 关联约束。
+  - `src/native/world-knowledge.js` 的 WorldRevision 主要 `schema/baseline/knowledgeBindingIds`，KnowledgeEntry 主要 `content/discovery/applicability/lifecycle/relations/delivery`，未见通用 FactKey/valid interval。Context 的 rank/静态文本不保证语义有效。
+  - `public/shared/native-chronicle-host.js` `WORLD_QUERY` 仅特定 people/identity/regions/... 类别，不能冒充通用 `asOfRevision/asOfTick/audience` 世界历史接口。`public/shared/native-frontend-host.js`、`public/scripts/native/play-product.js`、`src/native/speech-service.js` 和 `visual-continuity.js` 仍消耗 Actor ID 或 provisional identity。
+  - V3 `src/native/orchestration/context-port.js` 具体接受 `ownerRef/sourceBinding/audience/taskPurpose/grantDigest/inputRefs/tokenBudget`，编译后重验 source/currentness；Prompt 分支 `prompt-compiler.js` 的 worldUsePolicy/semanticBlocks 不签发世界真相。因此本轮推荐让 EffectiveWorldRead **在 Host 合法受众授权之后、检索/Token/Prompt 之前**形成。
+  - `SessionCore.finalizeTurn` 特定 authority-first 路径能 State+Narrator 一起 `_publish`；World Game `commitEvents` 则通过 `commitStatePatch` 更新 World State + Journal；**没有证明这两条不同业务入口的所有场景都在一次事务里**，仍为 E0-02 的关键阻塞。
+- **W18 推荐但未批准**：**W18-B「差异最小的 Typed ABI + 实际消费者验收驱动硬切」**，先冻结 Subject、Participant、Expression、Perspective、Fact、EffectiveRead 的**责任语义**，以既有 Session/Revision/Receipt/Clock/Source 复用为主，只有证明缺口才新增字段/ID 类型；不建立万能 SubjectAdapter、平行 EventStore/TruthDB 或长期旧新双写。W18-A “直接冻结全套新 Schema”与 W18-C “万能适配器”仅作为对比。
+- **E0 阻塞与目标验证**：E0-01～09 仍 **PARTIAL/BLOCKED**；尤其 E0-01 真正 Subject/Fact 物理合同、E0-02跨 World/Narrator 事件事务、E0-03通用双时间查询、E0-04动态 Perspective 许可、E0-05 Claim-aware Prompt、E0-06 真正完整生产 Consumer/Deletion Map、E0-07 Studio/Play/UI、E0-08 长会话持久化、E0-09 分支合入最终代码均无 PASS。仅列出已有可扩展的相关测试路径作为后续验收候选，不代表本阶段执行过测试。
+- **验证方式/限制**：本轮完成 GitHub 定向源码读、固定 SHA 下 Git tree 部分目录枚举、`docs` 多次 Markdown 写入与末次 `fetch_file(ref=docs)` 内容核验。未运行 Node、CI、E2E、浏览器/真 UI、Windows/CachyOS/Android Termux，且部分生产消费者需最终集成 HEAD 后重新审查。**不能将部分静态 E0 判为 PASS**。
+- **下一 checkpoint**：用户决定 W18-A/B/C 后，按协议先在同一 Plan 和 Record 记录本轮选择，再进入固定最新 HEAD 下的 E0-06 完整 old→target/retain/delete 表与 E0-01/03 物理合同/时态查询、真实工程 Gate 0 收口；整体企划继续 Draft，正式启动开发须用户后续明确批准。
+
 ## Final state
 
 Not yet applicable. Discussion in progress.
