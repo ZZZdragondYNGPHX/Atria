@@ -1308,3 +1308,13 @@
 - 新FS/SQLite原HTTP插入→Host读/查询/删除→HTTP确认空索引、原Session共同银行和不匹配carrier零工作两参数2PASS/32filterSKIP（1.887s）。共享检索G05/runtime、Hybrid和指纹四完整suite258PASS/1既有SKIP（40.803s）；再补新batch源码指纹单项1PASS/62filterSKIP（0.442s），指纹现63项。新Host入口无通用grant，不将复用原IO当作V3 Embedding消费者已完成。
 - 七个相关源码/小测试原ESLint通过，staged diff check通过。修改的vectors endpoint完整lint报两条既有raw-fs规则问题；用提交前HEAD的原文件经ESLint stdin复核同两条/相同代码在对应旧行重现，未新增违规、未加allowlist或关闭规则，也未夹带重写无关legacy purge。
 - 全部Provider为localhost合成，无新增真实API调用；私密滚动总数10、备用Chat0、API调用限额null保持。Source/docs独立分支，继续Embedding的V3作用域/实际Effect/费用闭包与其它后端剩余项，P1–P4/最终Gate NOT_READY，不提前前端、main、不结束分支。
+
+
+## 2026-10-17 — 第一百一十九组：V3 RP 实际 Embedding 与原索引计量
+
+- Source `eaf60d374` → `961955076`，本地提交、未推送；接口§17.122。在同一原单Narrator两节点RP Context scope内接Embedding及可选Rerank，逐实际wire batch独立原Effect/银行/POST/input/响应证明，物理索引及cache namespace仍归原executeNativeEmbedding。原时间/atomic-group算法抽为共用；原query scene seed保持。原index本地工作归同Model原bank，原Run/Source locks保护同步派生发布，不在transaction内做Provider I/O。local/Provider准入或结算ACK未知、未完成动作与usage未知继续拒后继；原费保留。其它Source/图/evaluator范围不借此扩权。
+- 重构协议为同一私有Provider动作后，原Rerank精选10PASS/40filterSKIP（17.429s）。新Embedding正向首轮4FAIL/12filterSKIP（15.216s），实际消费者已完成，但测试漏列原route/prompt/count/render/rp_output本地费用；补完整费用断言，原Rerank50加新16项两完整suite66/66 PASS（88.677s）。补ambient Engine事务禁止发送及insert/query末local结算撤权6PASS/16filterSKIP（8.417s）。
+- 共享G05/runtime/指纹三完整suite235PASS/1既有SKIP（41.492s）；同次错误Hybrid路径另报ENOENT失败suite，无源码失败，随后正确Hybrid与指纹两完整suite91/91 PASS（4.82s），原RP Memory suite亦完整PASS（6.169s）。指纹现65项，增加原query-plan/vector-index-core字节。
+- 代词场景追加曾暴露新Scope误用转义换行，与原Memory scene不一致：三suite组合2FAIL/58PASS（41.696s），针对性诊断仍2FAIL（4.199s/4.037s/3.989s），临时spy只定位原query拒绝、未放宽合法输入条件。恢复原scene构造后代词2PASS/22filterSKIP（9.184s），诊断spy移除。再补冷Source删除/重启历史、重hash mode/profile拒绝与原Memory无写入，最新完整Embedding28/28 PASS（51.765s）。
+- 私密原嵌入API实际走V3 Context、原exact Profile/Secret、原物理索引和原bank插入/查询两次，Root/Result/唯一Chat完成，1/1 PASS（10.94s）。原主Model仍localhost合成、原bank共3次Provider尝试和4个Effect闭包，不冒称真实Chat或质量/价格通过。每次派发前写私密滚动admission，两项passed；未捕捉数值HTTP状态，status保留null。私密总数10→12，备用Chat仍0；无API调用硬限额，原产品/fixture预算不是测试总量上限。临时私密probe/fixture已删除，无密钥/正文提交。
+- 十二个相关JS原ESLint通过；staged diff曾发现helper EOF多一空行，已修正后amend本组自身未发布提交，最终diff check通过。私有scope在prepare ACK未知时亦释放内存持有，不改变持久事实。后端未完成，继续通用图/其它Source/Actor、可信高风险、孤立检索评测RPC、完整恢复释放；P1–P4/最终Gate NOT_READY，不交前端/main、不推送、不结束分支。

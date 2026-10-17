@@ -1419,3 +1419,16 @@ native_retrieval_send_target_mismatch 属于原检索 scope refusal，在 Hybrid
 原 atri-retrieval 路径构造与 Hybrid 当前/retired collection identity 抽为共用纯函数，路径、hash算法与原已存在数据保持。原协议每批10条的分批抽为共用函数，每批仍独立原银行准入，后续批次拒绝时旧索引不发布半成品；这不是API总调用上限。原 Request carrier 的Profile/compute/signal/secret必须与实际工作一致，不允许混用其它bank；内部配置不从HTTP body扩权，API返回格式保持。
 
 原HTTP插入后，Host能读取/查询/删除同一精确索引，HTTP再读能见到删除；原Session银行共同记录两次Provider与各本地工作，FS/SQLite有实证。共享索引与分批源码纳入evaluator revision，未因抽取改变旧缓存身份。此组尚未授予V3 Embedding scope，相关Memory拒绝继续保留；完整受信生产者与费用闭包仍在后端同任务实施，不作前端交接或最终Gate通过。
+
+
+### 17.122 原 RP Context 的实际 Embedding 与索引计量
+
+在§17.120的顶层两节点、同来源单 Narrator RP私有作用域内，原Memory可使用显式owned exact context Embedding pin，以及可选独立Rerank pin。合法原Hybrid corpus、时间/atomic-group过滤和原query scene seeds先确定允许输入；这些原算法直接共用，未从模型或Browser接收新的query/profile/collection/endpoint许可。原NativeMemoryAuthority仅为真实ContextRetrievalPort的一次性scope解除相应拒绝，其它Source/Delegate/控制图/evaluator范围保持拒绝。
+
+原executeNativeEmbedding和原物理索引继续执行list/delete/insert/query；仅能操作同次原Hybrid当前及已识别retired派生namespace，不能写原Memory/World。每个实际Embedding wire batch各有独立memory.retrieve Effect、原Profile/Secret、实际POST/input身份、原银行provider ordinal0和实际响应/费用证明；原每批10条保持，不新增API总调用上限。原Model主Effect在检索完成前保持prepared，不借它的Model endpoint/grant向Embedding收费。内部batch闭包不来自JSON/HTTP，不建立第二协议、索引、银行或收费代理。
+
+index_list/index_delete/index_insert/index_query本地工作在同一原Model bank记录稳定local ordinal、items/bytes、实际CPU/wall结果；原context_build仍包住实际Compiler/Hybrid。原物理permit/staging/同步发布与Run ancestry、原RP Source locks组合，发布callback只做受限同步索引替换，不包含Provider I/O。原Engine ambient transaction内禁止建立或发送检索Provider动作。末local费用await后复验原授权；私有recall proof逐项重读原local费用和附属Effect收据。原已知本地索引失败可保留原lexical政策，但准入/结算ACK未知、已准备未完成的Provider动作或usage未知不能转成Model/Chat许可，发生的原费用保留，不重发。
+
+Result/Narrator settlement/唯一Chat费用闭包核对全部Embedding及Rerank子收据；历史reader核对各原pin/profile mode/parent和原银行，冷启动或Source删除只读历史，重hash mode/profile不恢复scope。生产者结束释放私有内存持有，持久费用和unknown事实保留。原Source Memory没有写入副作用。
+
+FS/SQLite合成消费者和实际原嵌入API的插入/查询两次调用已验证到Root completed，Model为localhost合成；准确费用、测试与源码HEAD归同一Record。此项不是完整真实Chat/质量/价格结论；静态/控制/动态图、其它Source/Actor、evaluator检索RPC和完整恢复/释放继续，P1–P4/最终Gate仍NOT_READY。
