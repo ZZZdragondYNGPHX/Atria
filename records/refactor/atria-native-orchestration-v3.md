@@ -1299,3 +1299,12 @@
 - 全部共享/负向测试为localhost合成与FS/SQLite。原Embedding/向量索引、其它Source/Actor、Delegate/控制图与 evaluator 检索RPC、完整恢复/释放等继续；P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。
 
 - 第117组最终 Source `d9d89ed33` → `ed7b2f08d`，本地提交、未推送。新完整50/50 PASS（60.723s）；19个JS原ESLint与staged diff check通过。最终Memory metadata-only复验和私有scope内存释放不增加Provider请求，真实Rerank验证后未为重复证明同一transport再收费；私密真实总数10、备用Chat0保持。原source/docs独立分支继续，下一步接Embedding/原向量索引与其独立效果/费用证明，整个后端未完成。
+
+
+## 2026-10-17 — 第一百一十八组：原 Embedding 执行与物理索引共用
+
+- Source `ed7b2f08d` → `eaf60d374`，本地提交、未推送；接口 §17.121。先复用原 retrieval-execution/原物理 index work，增加内部 executeNativeEmbedding，原HTTP适配器的受支持insert/query、全部Native list/delete与后续Host消费者使用同一入口。原namespace路径、Hybrid当前/retired collection hash共用，Source/原Profile/Secret/compute/signal边界保持，没有第二索引、银行或Browser runner；V3 Embedding scope_unavailable尚未解除。
+- 三完整suite首轮191PASS/3FAIL/1既有SKIP（36.271s）：直接batch调用误将11条一次发送，改变原10+1两次准入，导致第二批额度拒绝旧索引保护反例失败。抽原每批10条为HTTP/Host共用embeddingBatches，不增加总调用上限；三失败反例3PASS/134filterSKIP（2.693s），未放宽原费用或旧索引保护断言。
+- 新FS/SQLite原HTTP插入→Host读/查询/删除→HTTP确认空索引、原Session共同银行和不匹配carrier零工作两参数2PASS/32filterSKIP（1.887s）。共享检索G05/runtime、Hybrid和指纹四完整suite258PASS/1既有SKIP（40.803s）；再补新batch源码指纹单项1PASS/62filterSKIP（0.442s），指纹现63项。新Host入口无通用grant，不将复用原IO当作V3 Embedding消费者已完成。
+- 七个相关源码/小测试原ESLint通过，staged diff check通过。修改的vectors endpoint完整lint报两条既有raw-fs规则问题；用提交前HEAD的原文件经ESLint stdin复核同两条/相同代码在对应旧行重现，未新增违规、未加allowlist或关闭规则，也未夹带重写无关legacy purge。
+- 全部Provider为localhost合成，无新增真实API调用；私密滚动总数10、备用Chat0、API调用限额null保持。Source/docs独立分支，继续Embedding的V3作用域/实际Effect/费用闭包与其它后端剩余项，P1–P4/最终Gate NOT_READY，不提前前端、main、不结束分支。

@@ -1410,3 +1410,12 @@ native_retrieval_send_target_mismatch 属于原检索 scope refusal，在 Hybrid
 本机一次真实 Rerank API 已经该 V3 scope、原银行、Result与唯一 Chat/Root completed 路径验证，Model采用 localhost合成，次数及私密账本归同一Record；不是整条真实 Chat API/质量/价格通过。孤立 evaluator 尚无原检索父Host收费RPC，显式拒绝 memory.retrieve profile，避免把未执行的能力核销为质量证据。新消费者/合同纳入 evaluator revision。
 
 边界仍为顶层单 Narrator RP、rerank-only；Embedding/向量索引、Session/Project/Actor、Delegate/控制图组合及 evaluator 原检索RPC继续同任务实施，相关 scope_unavailable 保持。P1–P4及最终Gate未通过，不作为前端交接或分支结束。
+
+
+### 17.121 原 Native Embedding 执行与物理索引共用
+
+原 retrieval-execution 增加内部 executeNativeEmbedding，HTTP adapter 的受支持 Embedding insert/query 与全部 Native list/delete 复用该入口。实际数据继续由原 insertNativeIndex/queryNativeIndexes、原物理 permit/staging/同步发布、原 Profile/Secret/Compute/取消信号处理；没有第二索引、存储或HTTP roundtrip。这个函数自身不授运行grant，后续V3生产者仍须提供原私有Source/Effect/银行作用域。
+
+原 atri-retrieval 路径构造与 Hybrid 当前/retired collection identity 抽为共用纯函数，路径、hash算法与原已存在数据保持。原协议每批10条的分批抽为共用函数，每批仍独立原银行准入，后续批次拒绝时旧索引不发布半成品；这不是API总调用上限。原 Request carrier 的Profile/compute/signal/secret必须与实际工作一致，不允许混用其它bank；内部配置不从HTTP body扩权，API返回格式保持。
+
+原HTTP插入后，Host能读取/查询/删除同一精确索引，HTTP再读能见到删除；原Session银行共同记录两次Provider与各本地工作，FS/SQLite有实证。共享索引与分批源码纳入evaluator revision，未因抽取改变旧缓存身份。此组尚未授予V3 Embedding scope，相关Memory拒绝继续保留；完整受信生产者与费用闭包仍在后端同任务实施，不作前端交接或最终Gate通过。
