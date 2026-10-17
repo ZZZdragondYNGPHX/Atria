@@ -9,6 +9,8 @@ import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { rpAgentGraphProfile } from './rp-agent-graph-profile.js';
 import { rpJudgeProfile } from './rp-judge-profile.js';
 import { rpReviewProfile } from './rp-review-profile.js';
+import { rpPlannerProfile } from './rp-planner-profile.js';
+import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { sendAttemptId } from './budget-port.js';
 
 const equal = (a, b) => hash(a) === hash(b);
@@ -30,16 +32,30 @@ export function contextRetrievalDecision({ sourceBindingDigest, parentGrantDiges
         dispatchPolicy: { idempotency: 'none', operationKey: null, reconcile: 'manual' } };
 }
 
+/** Original immutable Plan plus original accepted graph history. This validates
+ * metadata only and cannot restore a Context or Model permission. */
+export async function readContextRetrievalPlan(tx, handle, root, parent) {
+    const plan = await readPlanRevision(tx, handle, root.planRef), planner = rpPlannerProfile(plan);
+    if (parent.graphRevision > root.graphRevision) invalid();
+    if (planner) {
+        // Advisory addNode templates still require their own exact owned pins.
+        if (planner.expansion) invalid();
+        const snapshot = await readTaskGraphRevision(tx, handle, root, parent.graphRevision);
+        if (!equal(snapshot.graph, plan.definition)) invalid();
+    } else if (root.graphRevision !== 0 || parent.graphRevision !== 0 || !equal(plan.definition, root.graph)
+        || root.graph.nodes.length !== 2 && !rpJudgeProfile(plan) && !rpReviewProfile(plan) && !rpAgentGraphProfile(plan)) invalid();
+    return plan;
+}
+
 /** Protected historical facts only; never restores a Context, send or body grant. */
 export async function readContextRetrievalCompletions(tx, handle, root, parent, producer) {
     if (producer.effectRefs[0] !== parent.effectId || new Set(producer.effectRefs).size !== producer.effectRefs.length) invalid();
     const refs = producer.effectRefs.slice(1);
     if (!refs.length) return [];
-    if (root.sourceBinding.sourceAuthority !== 'rp_chat' || root.parentRef !== null || root.graphRevision !== 0
-        || parent.nodeAttemptId !== producer.attemptId || parent.capability !== 'generation.send') invalid();
-    const plan = await readPlanRevision(tx, handle, root.planRef), node = plan.definition.nodes.find(node => node.nodeId === producer.nodeId);
-    if (!equal(plan.definition, root.graph) || !node?.capabilities.includes('memory.retrieve')
-        || root.graph.nodes.length !== 2 && !rpJudgeProfile(plan) && !rpReviewProfile(plan) && !rpAgentGraphProfile(plan)) invalid();
+    if (root.sourceBinding.sourceAuthority !== 'rp_chat' || root.parentRef !== null
+        || parent.nodeAttemptId !== producer.attemptId || parent.graphRevision !== producer.graphRevision || parent.capability !== 'generation.send') invalid();
+    const plan = await readContextRetrievalPlan(tx, handle, root, parent), node = plan.definition.nodes.find(node => node.nodeId === producer.nodeId);
+    if (!node?.capabilities.includes('memory.retrieve')) invalid();
     const completed = [];
     const modelReceiptId = 'oreceipt_' + hash({ effectId: parent.effectId, observationId: 'model.completed:' + parent.effectId }).slice(0, 32);
     const modelReceipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', modelReceiptId)))?.doc;

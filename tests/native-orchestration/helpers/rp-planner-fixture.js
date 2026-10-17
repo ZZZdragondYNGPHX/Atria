@@ -47,7 +47,7 @@ export async function configurePlannerGraph(plan, args, { loop = false } = {}) {
     narrator.inputs = drafts.map((_, index) => ({ name: 'draft' + index, type: 'text', required: true }));
     plan.definition.nodes.splice(1, 0, ...drafts);
     if (loop) {
-        for (const pin of plan.dependencyPins) {
+        for (const pin of plan.dependencyPins.filter(pin => pin.port === 'model')) {
             const route = await args.seeded.persistence.getRuntimeRoute(args.h.handle, pin.resourceRef.runtimeRouteId);
             await args.seeded.persistence.saveRuntimeRoute(args.h.handle, { ...route, executionPolicy: { ...route.executionPolicy,
                 computeBudget: { ...route.executionPolicy.computeBudget, maxRequests: 5 } } });

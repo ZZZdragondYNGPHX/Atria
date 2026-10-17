@@ -5,7 +5,7 @@ import { hashNativeDocument as hash } from '../../../src/native/repositories/com
 export async function configureControlRetrieval(plan, args) {
     const pins = plan.dependencyPins.filter(pin => pin.port === 'context').map(pin => pin.pinId);
     for (const node of plan.definition.nodes.filter(node => node.kind !== 'output')) {
-        node.capabilities = ['generation.send', 'memory.retrieve'];
+        node.capabilities = [...new Set([...node.capabilities, 'memory.retrieve'])];
         node.dependencyPinIds = [...new Set([...node.dependencyPinIds, ...pins])];
     }
     plan.definition.capabilityCeiling.push('memory.retrieve');

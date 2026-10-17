@@ -4,9 +4,6 @@ import { executeNativeEmbedding, resolveRetrievalSecret } from '../retrieval-exe
 import { retrievalSendIdentity, retrievalPostTarget } from '../retrieval-send-contracts.js';
 import { retrievalRef } from '../../../public/scripts/native/retrieval-contracts.js';
 import { hashNativeDocument as hash, cloneNativeDocument } from '../repositories/common.js';
-import { rpAgentGraphProfile } from './rp-agent-graph-profile.js';
-import { rpJudgeProfile } from './rp-judge-profile.js';
-import { rpReviewProfile } from './rp-review-profile.js';
 import { ContextPort } from './context-port.js';
 import { assertOriginalSendBank, BudgetPort } from './budget-port.js';
 import { readEffect, effectDecision } from './effect-contracts.js';
@@ -15,7 +12,7 @@ import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { createNativeId } from '../identity.js';
 import { rerank } from '../../vectors/rerank.js';
 import { buildMemoryCorpus, applyMemoryCorpusEligibility, memoryVectorCollectionId, retiredMemoryVectorCollectionIds, RETRIEVAL_DEFAULTS } from '../../../public/scripts/agents/memory/hybrid-retrieval.js';
-import { contextRetrievalDecision, contextRetrievalCompletionBinding as completionBinding, contextRetrievalReceiptId } from './context-retrieval-contracts.js';
+import { readContextRetrievalPlan, contextRetrievalDecision, contextRetrievalCompletionBinding as completionBinding, contextRetrievalReceiptId } from './context-retrieval-contracts.js';
 import { NativeModelPromptPersistence } from '../model-prompt-runtime/persistence.js';
 import { optionalComputeOptions } from '../../../public/shared/native-compute-budget.js';
 import { getOpenAIBatchVector, openAIEmbeddingBody, supportsOpenAIEmbeddingSource } from '../../vectors/openai-vectors.js';
@@ -54,7 +51,7 @@ export class ContextRetrievalPort {
             if (parent.nodeAttemptId !== scope.attemptId || parent.capability !== 'generation.send'
                 || !(allowSent ? ['prepared', 'ready', 'dispatching', 'confirmed'] : ['prepared']).includes(parent.status)
                 || parent.epoch !== root.epoch || parent.grantDigest !== scope.request.grantDigest
-                || !allowSent && (parent.budgetAttemptRef !== null || parent.dispatchToken !== null)) fail();
+                || !allowSent && (parent.graphRevision !== root.graphRevision || parent.budgetAttemptRef !== null || parent.dispatchToken !== null)) fail();
             await this.sourcePort.revalidate(scope.handle, root.sourceBinding, { tx: active, root });
             const decision = await this.authorizeModel({ handle: scope.handle, tx: active, root, intent: parent, phase: 'context_retrieval' });
             if (!equal(decision, effectDecision(parent))) fail();
@@ -75,9 +72,10 @@ export class ContextRetrievalPort {
         if (this.#models.has(key)) fail('native_orchestration_context_retrieval_replayed');
         const scope = { handle, runId: root.runId, rootBinding: binding(root), modelEffectId, request: cloneNativeDocument(request),
             memoryDescriptorDigest: hash(actualInput.memoryDescriptor), limits: cloneNativeDocument(limits), signal, bank, used: false, effectIds: [], localJobs: [], unresolvedLocal: false };
-        const { parent, plan } = await this.runs.engine.withTransaction(handle, async tx => ({ parent: (await readEffect(tx, handle, root, modelEffectId)).doc,
-            plan: await readPlanRevision(tx, handle, root.planRef) }));
-        if (root.graphRevision !== 0 || !equal(plan.definition, root.graph) || root.graph.nodes.length !== 2 && !rpJudgeProfile(plan) && !rpReviewProfile(plan) && !rpAgentGraphProfile(plan)) fail();
+        const parent = await this.runs.engine.withTransaction(handle, async tx => {
+            const parent = (await readEffect(tx, handle, root, modelEffectId)).doc;
+            await readContextRetrievalPlan(tx, handle, root, parent); return parent;
+        });
         scope.attemptId = parent.nodeAttemptId;
         if (parent.budgetEnvelopeDigest !== hash(limits)) fail();
         const route = await this.persistence.getRuntimeRoute(handle, parent.actionRef.runtimeRouteId);

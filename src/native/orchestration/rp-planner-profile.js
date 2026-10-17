@@ -12,21 +12,24 @@ export function rpPlannerProfile(plan) {
     const graph = plan.definition, planner = graph.nodes.find(node => node.kind === 'planner');
     if (!planner) return null;
     const narrator = graph.nodes.find(node => node.kind === 'agent'), output = graph.nodes.find(node => node.kind === 'output');
+    const retrievalPins = planner.capabilities.includes('memory.retrieve') ? plan.dependencyPins.filter(pin => planner.dependencyPinIds.includes(pin.pinId)
+        && pin.port === 'context' && pin.resourceRef.scope === 'player' && pin.resourceRef.retrievalProfileId) : [];
+    const plannerCapabilities = ['generation.send', 'graph.patch', ...retrievalPins.length ? ['memory.retrieve'] : []];
     const loops = graph.edges.filter(edge => edge.loopBack), loop = loops[0];
     if (loops.length > 1 || loop && (loop.from.nodeId !== planner.nodeId || loop.to.nodeId !== planner.nodeId
         || loop.from.port !== planner.outputs[0]?.name || loop.condition !== 'always' || loop.maxVisits > graph.limits.maxLoopIterations
         || planner.inputs.length !== 1 || planner.inputs[0].name !== loop.to.port || planner.inputs[0].type !== 'json' || planner.inputs[0].required)) fail();
     if (graph.graphChangePolicy.allowedOperations.includes('addNode') || graph.graphChangePolicy.allowedOperations.includes('addEdge')) {
         if ((!loop && planner.inputs.length) || planner.outputs.length !== 1 || planner.outputs[0].type !== 'json'
-            || hash([...planner.capabilities].sort()) !== hash(['generation.send', 'graph.patch'].sort())
-            || !nodeModelRoutePins(planner, plan.dependencyPins).length || planner.dependencyPinIds.length !== nodeModelRoutePins(planner, plan.dependencyPins).length
+            || hash([...planner.capabilities].sort()) !== hash(plannerCapabilities.sort())
+            || !nodeModelRoutePins(planner, plan.dependencyPins).length || planner.dependencyPinIds.length !== nodeModelRoutePins(planner, plan.dependencyPins).length + retrievalPins.length
             || hash(graph.entryNodeIds) !== hash([planner.nodeId])) fail();
         return rpPlannerExpansionProfile(plan, { planner, output, loop, allowed });
     }
     if (graph.nodes.filter(node => node.kind === 'agent').length > 1) {
         if ((!loop && planner.inputs.length) || planner.outputs.length !== 1 || planner.outputs[0].type !== 'json'
-            || hash([...planner.capabilities].sort()) !== hash(['generation.send', 'graph.patch'].sort())
-            || !nodeModelRoutePins(planner, plan.dependencyPins).length || planner.dependencyPinIds.length !== nodeModelRoutePins(planner, plan.dependencyPins).length
+            || hash([...planner.capabilities].sort()) !== hash(plannerCapabilities.sort())
+            || !nodeModelRoutePins(planner, plan.dependencyPins).length || planner.dependencyPinIds.length !== nodeModelRoutePins(planner, plan.dependencyPins).length + retrievalPins.length
             || hash(graph.entryNodeIds) !== hash([planner.nodeId]) || graph.graphChangePolicy.allowedNodeKinds.length || !graph.graphChangePolicy.allowedOperations.length
             || graph.graphChangePolicy.allowedOperations.some(op => !allowed.includes(op))) fail();
         const transfers = graph.edges.filter(edge => edge.from.nodeId === planner.nodeId && !edge.loopBack);
@@ -47,9 +50,9 @@ export function rpPlannerProfile(plan) {
     if (graph.nodes.length !== 3 || !narrator || !output || graph.outputContract.kind !== 'rp_narration' || graph.edges.length !== 2 + loops.length || hash(graph.entryNodeIds) !== hash([planner.nodeId])
         || !loop && planner.inputs.length || planner.outputs.length !== 1 || planner.outputs[0].type !== 'json'
         || narrator.inputs.length !== 1 || narrator.inputs[0].type !== 'json' || !narrator.inputs[0].required
-        || hash([...planner.capabilities].sort()) !== hash(['generation.send', 'graph.patch'].sort())
+        || hash([...planner.capabilities].sort()) !== hash(plannerCapabilities.sort())
         || !nodeModelRoutePins(planner, plan.dependencyPins).length
-        || planner.dependencyPinIds.length !== nodeModelRoutePins(planner, plan.dependencyPins).length
+        || planner.dependencyPinIds.length !== nodeModelRoutePins(planner, plan.dependencyPins).length + retrievalPins.length
         || graph.graphChangePolicy.allowedNodeKinds.length || !graph.graphChangePolicy.allowedOperations.length
         || graph.graphChangePolicy.allowedOperations.some(op => !allowed.includes(op))) fail();
     const transfer = graph.edges.find(edge => edge.from.nodeId === planner.nodeId && edge.to.nodeId === narrator.nodeId);

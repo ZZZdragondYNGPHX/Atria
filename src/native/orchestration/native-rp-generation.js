@@ -1002,8 +1002,8 @@ export class NativeRpOrchestrationAuthority {
                     const required = active.graph.nodes.filter(node => node.kind === 'agent').length + requested.operations.filter(operation => operation.op === 'addNode').length
                         + Number(requested.operations.some(operation => operation.op === 'requestReplan'));
                     if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');
-                    await this.#current(state);
                 }
+                await this.#current(state);
             } }).propose(handle, { expectedStateVersion: current.stateVersion, patch }), { withAuthority }));
         const patchReceipt = proposed.outcome.patchReceipt;
         if (!patchReceipt.accepted) fail('native_orchestration_planner_patch_rejected');
@@ -1013,22 +1013,24 @@ export class NativeRpOrchestrationAuthority {
             ...runGuard(current), expectedGraphRevision: patchReceipt.newGraphRevision, expectedStateVersion: proposed.outcome.versions.stateVersion,
             operation: 'attempt.settle', detail: { attemptId: state.attemptId, patchId: patch.patchId } }, async ({ tx, root: active, now, deny }) => {
             const stamp = hash(active);
-            let actual;
+            let actual, record, retrieval;
             try {
                 actual = await port.inspectResultCompletion(handle, { result, runId, effectId: state.effectId });
+                await this.#current(state);
+                record = await readAttempt(tx, handle, active, state.attemptId);
+                retrieval = await readContextRetrievalCompletions(tx, handle, active, (await readEffect(tx, handle, active, state.effectId)).doc, record.doc);
+                if (record.doc.status !== 'running' || actual.payloadHash !== proof.payloadHash || !equal(record.doc.effectRefs, [state.effectId, ...retrieval.map(item => item.effectId)])) fail('native_orchestration_planner_producer_denied');
                 await this.#current(state);
                 if (hash(await service.runs.get(handle, runId)) !== stamp) return deny(new ConflictError('native_orchestration_planner_producer_denied'));
             } catch (error) {
                 if (error instanceof ConflictError || error.code === 'native_rp_source_missing') return deny(error);
                 throw error;
             }
-            const record = await readAttempt(tx, handle, active, state.attemptId);
-            if (record.doc.status !== 'running' || actual.payloadHash !== proof.payloadHash || !equal(record.doc.effectRefs, [state.effectId])) fail('native_orchestration_planner_producer_denied');
             const receipt = { schemaVersion: 1, receiptKind: 'rp_planner', receiptId, runId, epoch: active.epoch, producerAttemptId: state.attemptId,
                 sourceBindingDigest: active.sourceBinding.bindingDigest, modelEffectId: state.effectId, modelReceiptRef: proof.receiptRef,
                 payloadHash: proof.payloadHash, patchId: patch.patchId, patchIntegrity: hash(patchReceipt), localWork: workRows, decisionSeq: active.eventSeq + 1, createdAt: now };
             await putImmutable(tx, controlRecordKey(handle, runId, 'receipt', receiptId), receipt);
-            await writeAttemptSettlement({ tx, handle, root: active, record, outcome: 'completed', resultRefs: [], effectReceiptRefs: [proof.receiptRef.receiptId], reasonCode: 'rp_planner_patch_accepted', now });
+            await writeAttemptSettlement({ tx, handle, root: active, record, outcome: 'completed', resultRefs: [], effectReceiptRefs: [proof.receiptRef.receiptId, ...retrieval.map(item => item.receiptId)], reasonCode: 'rp_planner_patch_accepted', now });
             active.progress.steps++;
             return { root: active, eventType: 'rp_planner_patch_applied', reasonCode: 'rp_planner_patch_accepted', outcome: { receiptRef: { runId, receiptId } } };
         }), { withAuthority });
@@ -1439,7 +1441,7 @@ export class NativeRpOrchestrationAuthority {
                 workDescriptor: { requestId: state.request.requestId, pathFingerprint: selected.resolved.pathFingerprint },
                 assertCurrent: () => this.#current(state), signal: identity.signal });
             state.context = compiled.compiled;
-            if (this.#graphProfile(state) || state.selected.judge || state.selected.review) {
+            if (this.#graphProfile(state) || state.selected.judge || state.selected.review || state.selected.planner) {
                 const digest = await ContextPort.prototype.revalidateRpMemory.call(state.contextPort, handle, { context: state.context });
                 if (state.memoryDescriptorDigest && state.memoryDescriptorDigest !== digest) fail('native_orchestration_memory_source_stale');
                 state.memoryDescriptorDigest = digest;
@@ -1453,9 +1455,9 @@ export class NativeRpOrchestrationAuthority {
                 } });
             checkCancellation(identity.signal);
             const port = this.#port(host), result = await port.generate(handle, scope, { signal: identity.signal });
-            if (planner) return this.#completePlanner(state, { root, port, result, send, limits, signal: identity.signal });
             // Control completion still consumes the private retrieval proofs;
             // keep them alive until adoption/settlement has finished.
+            if (planner) return await this.#completePlanner(state, { root, port, result, send, limits, signal: identity.signal });
             if (review) return await this.#completeReview(state, { root, port, result, send, limits, signal: identity.signal });
             if (judge) return await this.#completeJudge(state, { root, port, result, send, limits, signal: identity.signal });
             if (graphNode) {

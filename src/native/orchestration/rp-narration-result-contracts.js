@@ -169,9 +169,11 @@ export async function readRpNarrationResult(tx, handle, root) {
         await assertOutputTransition(tx, handle, root, { published: draft, additionalProducers, output: producer,
             receipt: { decisionSeq: receipt.decisionSeq, traversalReceiptRef: { runId: root.runId, receiptId: traversalId } } });
     } else if (!equal(producer.inputRefs, [input]) || graphResults.length) invalid();
+    let plannerCompletions = [];
     if (root.graph.nodes.some(node => node.kind === 'planner')) {
         const planner = await readRpPlannerCompletion(tx, handle, root);
         if (!planner || planner.patch.requests.replan || !equal(input.controlReceiptRef, { runId: root.runId, receiptId: planner.receipt.receiptId })) invalid();
+        plannerCompletions = planner.history;
         const edge = root.graph.edges.find(item => item.from.nodeId === planner.producer.nodeId && item.to.nodeId === producer.nodeId);
         if (!graphResults.length) {
             if (!edge) invalid();
@@ -187,5 +189,5 @@ export async function readRpNarrationResult(tx, handle, root) {
         if (!reviewed) invalid(); reviewCompletions.push(reviewed);
     }
     if (reviewCompletions.length && !input.reviewReceiptRef || root.graph.nodes.some(node => node.kind === 'judge') && !judgeCompletion) invalid();
-    return { record, receipt, settlement, producer, graphResults, reviewCompletions, judgeCompletion, retrievalCompletions: [...graphResults.flatMap(item => item.retrievalCompletions), ...reviewCompletions.flatMap(item => item.retrievalCompletions), ...(judgeCompletion?.retrievalCompletions ?? []), ...retrievalCompletions] };
+    return { record, receipt, settlement, producer, graphResults, reviewCompletions, judgeCompletion, retrievalCompletions: [...graphResults.flatMap(item => item.retrievalCompletions), ...plannerCompletions.flatMap(item => item.retrievalCompletions), ...reviewCompletions.flatMap(item => item.retrievalCompletions), ...(judgeCompletion?.retrievalCompletions ?? []), ...retrievalCompletions] };
 }
