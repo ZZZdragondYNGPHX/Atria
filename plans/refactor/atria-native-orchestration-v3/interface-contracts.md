@@ -1560,3 +1560,10 @@ Model实际完成后封存只读检索费用事实、释放发送scope；原Sche
 原自动Native recall query取既有eligibleMemorySnapshot的最后合法chat材料与原Information projection，不直接采用原完整Timeline末条。未获Task/Actor授权的私心或Truth既不进入insert候选，也不得经query/model输入泄漏；规范化前后均须维持该数据面边界。原Source/eligibility、atomic support和正式写入权限不放宽。
 
 检索usage未知/撤回保留已发生费用，拒后继Model或Actor采纳；封存后撤回仍拒采纳，采纳后的合法撤回保留自己的Task记录与费用而拒terminal claim。主Model usage未知可保留合法Task/Actor采纳及bounded Result但不造完整costs/终结claim。暖重试和冷重启按原replay/unknown围栏不重发。可选Rerank仍只在原合法竞争因果候选决策需要时发送，非因果配置不隐式收费。准确FS/SQLite范围归同一Record；通用图、其它Source/Delegate、高风险、完整恢复释放及最终Gate继续，不交前端/main或结束分支。
+
+
+### 17.135 原管理员迁移的目的端历史保护
+
+原MigrationRunner在非dry-run且实际提供目的Engine时，复用assertSnapshotRestoreAllowed检查有效目的handle。目标已经保留V3 Run/Record时，在来源快照和copy/rollback前拒绝，保留原retention错误代码；迁移类别选择不是释放历史或覆盖费用银行的授权。检查失败不创建来源备份，也不进入可能触碰共用用户根的回滚路径。
+
+原管理员Source维护/drain、目的Engine的Owner/HostFence、copy事务和readback验证继续生效。空目标仍可导入原paid Run和Task compute，依原恢复规则保持Task blocked而不重发；目的HostFence不能被来源身份覆盖。本项保护既有历史，不增加恢复执行许可、counter合并或Run release状态。准确FS/SQLite与原迁移回归归同一Record；完整恢复释放、其它消费者和最终Gate继续。

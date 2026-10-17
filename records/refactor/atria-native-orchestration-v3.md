@@ -1432,3 +1432,11 @@
 - Actor最终实证：insert/query/model wire按NFKC均排除另Actor私心、未授Truth及原他人belief；合法本Actor2Embedding+Model1、quota1，index_insert/query与appraisal_parse/adopt全部settled，原两条Actor采纳、World/Timeline不变、完整cold proof相同。Actor availability在HTTP中撤回保留实际7token费用但无Model/采纳；unknown子检索cold后原replay拒绝不重发；用历史Memory sourceItem代替该binding原event citations时原writer两项rejected，无Actor写入且全费闭合。原Appraisal helper仅可选configurePlan/memorySettings，默认正向两参数2PASS/22skip（62.42s）。
 - 原后台/声明式Task/Context/检索Effect四完整suite103/103 PASS（558.657s）。原Appraisal/Simulation/Session检索银行三suite47PASS/1FAIL（915.99s；Appraisal24完整PASS585.68s、银行6PASS99.236s）；唯一Simulation失败为临时Model服务器接收无关本机HTTP流量，不是产品工作。fixture限定实际POST /v1/responses后，原Simulation实际Actor与无任务pump八参数8PASS/10skip（77.084s），不保存无关内容。最终query修复后的Session/Context组合32PASS/1skip（318.749s）。原执行身份/Resolver proof/输出quota三完整suite78/78 PASS（12.878s），在最后仅query来源修复前已完成，准确字节范围分开。相关16个JS原ESLint与staged diff check通过。
 - 所有新增Provider均localhost合成，无新增真实API；私密总数12、备用Chat0、daily/RPM配置null保持。并行管理员migration目的端银行保护另组继续；通用Actor/其它Source/Delegate、控制图组合、高风险、完整恢复释放与质量/价格证据仍继续。P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。
+
+
+## 2026-10-17 — 第一百三十二组：管理员迁移目的端费用历史保留
+
+- Source `5aeed4029` → `cb4d71e58`，本地提交、未推送；接口§17.135。原MigrationRunner在来源snapshot前复用原目的Engine/有效handle恢复围栏。存在V3 Run/Record即按原retention code拒绝，不由categories选择绕过；错误带before snapshot阶段，原code/cause保持。空目的仍正常copy/readback，不合并旧counter、不造release、无新执行权限。
+- 真实旧快照迁回已发生Project Model费用的目的端：known/unknown两个FS基线2FAIL（9.205s），实际清空原compute/attempts/对话；更早单Runner基线1FAIL/5skip（5.717s）返回verified=true并复制16条Native记录。修复后新FS/SQLite六参数6/6 PASS（21.374s）：已付与unknown均拒绝并保留所有Native行、零重发；未产生来源备份。空目标正例导入paid银行与Run、Task原blocked状态及目的HostFence保留。
+- 测试调整为原Source.lifecycle.withMaintenance后，相关五suite首轮36PASS/1FAIL（27.398s，新6PASS21.098s）；唯一原Runner诊断期望snapshot阶段而前置拒绝原unknown handle。补充before snapshot阶段说明、不移动检查到copy回滚catch后，原Runner22+新6最终28/28 PASS（19.793s，新6为18.178s）。同首轮其余auto-rollback2、snapshot GC3、Session restore4已通过，合37项相关验证取得证据。两JS原ESLint及diff check通过。
+- 全部数据为临时harness、Provider为localhost合成；未对用户库执行迁移。无新增真实API，私密总数12、备用Chat0、daily/RPM配置null保持。继续Delegate/控制图组合、可信高风险消费者与完整恢复释放，P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。
