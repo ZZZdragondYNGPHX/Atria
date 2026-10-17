@@ -1375,3 +1375,14 @@ Planner 停止重规划后，Host 由原 TaskGraphRevision/Patch/命令重建实
 原各远程Embedding协议和全部Rerank协议从同一受信Profile读取该标识，provider固定字段、认证及原Compute/Source边界保持。内部只携原compute/signal的既有调用无额外headers，不因此失去原取消/结算语义。Native Retrieval/Memory authority和实际协议源码补入原evaluator revision，旧报告不能复用不同检索行为。没有增加API调用硬上限。
 
 本机实际提供API已通过不可变Profile、原Secret解析、原Session compute与原协议执行取得有限工程证据，精确次数/失败归同一Record。V3 Context的外部Hybrid检索仍须接原Source/Audience/Egress、独立实际Effect与完整费用闭包，现有 scope_unavailable 拒绝未移除；配置/HTTP成功不构成该授权或质量Gate通过。
+
+
+### 17.118 Context 附属检索 Effect 与原 Profile pin
+
+原 EffectController 增加 Host 内部 prepareContextRetrieval，限定同一 Attempt 已 prepared、尚未准入/claim 的 generation.send 为 parent。inputRef.contextForEffectId 固定原 Model Effect；parent 必须同 owner/Run/Attempt、当前 epoch/boot/图修订/Source 和原 Attempt grant。新的 Effect 仍经原 authority，能力必须为 Plan/node 明示的 memory.retrieve、R1/无需审批；普通 prepare 不能借相同字段启用这条路径。每次检索使用不同 Effect identity，前一附属 Effect 未终结或费用观察未闭合时不允许准备下一项。
+
+原 ready/claim 同时复验 parent 与待办附属检索，主 Model 不得越过未决 Context 工作。检索观察完成后，同 Attempt 若还有原 Model pending 则维持 waiting_effect；unknown 保持 reconciling/blocked，不生成主 Model 派发许可。prepare/ready/claim 的最后原授权与 Root stamp 在写入之前再次核对，同事务取消/撤权通过原 ControlDenial 保存；原预算事实、claim ACK未知只观察/不重发、审批与三域银行不另建替代机制。
+
+原 Authoring 的 context pin 可引用原 player-owned exact Retrieval Profile。inspect 只返回精确 ref/integrity；Validate/Publish 读取原不可变 revision，并验证同节点 generation.send、所拥有的 Profile pin、每 mode 唯一性与既有服务可提供的协议机制。首批 Embedding 仅为已有可计费的 OpenAI-compatible sources；Rerank 复用原三协议。本地 transformers/webllm 等未接该消费机制的 source 保持 unknown。校验不读 Secret、不发送、不收费、不产生 runtime grant；原 Profile 新 revision 不能替换旧 pin。相关 authority 已纳入 evaluator revision。
+
+本组只补实际消费者所需的状态机与原配置机制；V3 Memory 的 scope_unavailable 继续保留。原 Context 私有 Source/Audience、真实检索 consumer/费用闭包与最终 Result/Output reader 尚在同任务接线，不能将 controlled Port 测试称为真实 V3 检索已交付或完整后端通过。

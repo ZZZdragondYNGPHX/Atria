@@ -1265,3 +1265,13 @@
 - 原检索runtime/client/browser三完整suite40/40 PASS（2.081s）；含11类远程Embedding与三类Rerank的实际本地协议、原Secret保持/配置注入拒绝，新头字段保留/CRLF/重复/本地禁止反例。补原Memory/检索/协议源码指纹后，原G05预算、runtime和fingerprint三suite213PASS/4FAIL/1既有SKIP（35.626s）：四个直接内部调用只携compute/signal，没有profile，新增helper误读undefined并在原结算前失败。改为无额外profile时使用原默认头，四失败场景4PASS/125filterSKIP（2.262s），未关闭原取消/费用反例。16文件原ESLint及staged diff检查通过。
 - 用户私密API实际验证新增3次HTTP：Embedding两次均200，Rerank一次200/两个有限结果；对话备用站仍0。临时真实探测首轮并发dynamic import导致Jest模块link错误（0次外发）；改顺序载入后，首个Embedding/原index insert HTTP200，但测试错误断言insert API并不返回的insertedCount，非产品失败。随后响应clone的顺序读取阻塞第二个已200的Embedding；只终止本人该测试父/子进程，不再重发Embedding，改只验证尚未执行的Rerank。最后该单项1PASS（2.441s），使用原不可变Profile/Secret/原Session compute，未调用Chat。探测脚本及本人临时private目录已清理；密钥/响应正文未入Git，配置和滚动账本600、目录700。
 - 私密滚动账本真实请求总数由6至9：保留两次Embedding的http_200及Rerank passed事实，不把临时探测失败抹去或少计。当前dailyRequests/requestsPerMinute仍null，不自行恢复旧上限。这是原检索协议和配置工程实证；V3 Context外部检索尚缺受信producer/完整Effect费用接线，独立质量/价格、其它Source及完整恢复/释放继续，后端未完成，不交前端/main、不结束分支。
+
+
+## 2026-10-17 — 第一百一十五组：Context 附属检索 Effect 与原 Profile pin
+
+- Source `4ce9dddda` → `3a07f2db5`，本地提交、未推送；接口 §17.118。先接原 EffectController 的 Host 内部附属路径：只有同一当前 Attempt 的 prepared generation.send，可在原 authority/Plan 明示 memory.retrieve 下准备独立检索 Effect。每项真实工作须各自身份/目标/原预算，未决附属检索阻止主 Model ready/claim；检索完成仍等待原 Model，unknown 维持 reconciling。原 prepare/ready/claim 最后授权、Root stamp/ControlDenial 保留同事务取消与撤权，不增加第二银行或重发许可。
+- Authoring 原 context pin 接 player exact Retrieval Profile；inspect 只投影 ref/integrity，校验原 revision/hash、节点归属、同 mode 唯一性和原协议可用性，零 Secret/网络/收费。原 OpenAI-compatible Embedding 与三种 Rerank 只给机制证据，本地未接 scope 的来源仍 unknown；没有移除原 V3 Memory scope_unavailable。新增 authority 纳入 evaluator 指纹，旧 Profile pin 不因新 revision 改写。
+- 新控制器首轮44/44 FAIL（1.33s）全部在测试图错误地以 agent 替代唯一 Output 时被原 Plan validator 挡住，未进入待测逻辑；修正测试图而不改 validator，44/44 PASS（3.392s）。追加原 claim saved-ACK重放与 Port 取消后抛异常场景，最后新控制器52项、原 Effect/Approval 与 ExecutionService38项，三完整 suite90/90 PASS（19.062s）。原 claim ACK未知仍无第二 token，同事务取消后的异常也不回滚取消。
+- 原 Profile pin28项、指纹58项和当时新控制器46项，三完整suite132/132 PASS（8.176s）；控制器后加六项以上述90项末轮为准。原动态图选择/不选择四参数加新控制器46项，两suite50PASS/62filterSKIP（20.973s），其中 Native Turn suite未命中筛选，未把它计通过。
+- 四共享suite精选初56PASS/2FAIL/94filterSKIP（48.26s）：原 Project 未pin Review 工具两参数预期较晚的 tool_scope_unavailable，实际在更早 Model response allowlist 返回 generation_response_invalid。先尝试临时Jest模块替换时遇 VM link错误，0个场景运行；本人临时文件已删除。另建 `4ce9dddda` 干净临时worktree复验原两反例，2/2同样FAIL（20.107s），证实不是本组产品回归。修正测试名称/错误码，保留原三次计费及零Workspace/Review写入断言，2/2 PASS（20.969s）；本人临时worktree已移除。原Session真实Output正向与末预算撤回Memory四参数4PASS/4filterSKIP（23.94s）。
+- 八个JS原ESLint、staged diff检查通过。所有新增验证均合成/原FS与SQLite；真实API总数仍9、备用对话仍0，未增加调用硬上限。此组为实际受信检索消费者的必要前置接线，不代表V3 Context外部调用、完整费用/Result闭包或整个后端完成。继续同一后端任务，不交前端/main、不结束分支。
