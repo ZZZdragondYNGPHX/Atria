@@ -139,10 +139,11 @@ export async function getOpenAIBatchVector(texts, source, directories, model = '
     if (request) attachInspectionEndpoint(request, embeddingsUrl, key, body);
 
     const compute = request?.nativeRetrieval?.compute;
+    const serializedBody = JSON.stringify(body);
     let usage = null, ticket;
     try {
         request?.nativeRetrieval?.signal?.throwIfAborted();
-        ticket = await compute?.beforeSend(body);
+        ticket = await compute?.beforeSend(JSON.parse(serializedBody), { endpoint: new URL(embeddingsUrl).href, method: 'POST' });
         const response = await fetch(embeddingsUrl, {
             method: 'POST',
             headers: {
@@ -151,7 +152,7 @@ export async function getOpenAIBatchVector(texts, source, directories, model = '
                 ...config.headers,
                 ...nativeRetrievalHeaders(request),
             },
-            body: JSON.stringify(body),
+            body: serializedBody,
             ...(request?.nativeRetrieval ? { redirect: 'error', signal: request.nativeRetrieval.signal } : {}),
         });
 

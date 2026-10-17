@@ -20,10 +20,10 @@ test.each(['controller-common', 'review-controller', 'graph-controller', 'graph-
     expect(evolutionEvaluatorRevision()).toBe(revision);
 });
 
-test('evaluator includes the exact Retrieval Profile capability authority', () => {
+test.each(['../../src/native/orchestration/retrieval-capability-authority.js', '../../src/native/retrieval-send-contracts.js'])('evaluator includes exact Retrieval authority %s', dependency => {
     const revision = evolutionEvaluatorRevision();
     try {
-        changedSource = fileURLToPath(new URL('../../src/native/orchestration/retrieval-capability-authority.js', import.meta.url));
+        changedSource = fileURLToPath(new URL(dependency, import.meta.url));
         expect(evolutionEvaluatorRevision()).not.toBe(revision);
     } finally { changedSource = null; }
     expect(evolutionEvaluatorRevision()).toBe(revision);

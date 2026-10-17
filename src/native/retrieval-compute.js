@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { fields } from '../../public/shared/native-values.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { selectNativeRuntimeRoute } from './adapters/generation-host.js';
+import { retrievalSendIdentity } from './retrieval-send-contracts.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 
@@ -88,10 +89,12 @@ export async function prepareRetrievalCompute({ handle, context, profile, persis
             if (base) await core.runs.settleLocalWork(handle, context.sessionId, job.receipt.operation, job.attemptId, usage);
             else await agent.settleLocalWork(handle, context.projectId, context.taskId, job.attemptId, usage);
         },
-        async beforeSend(body) {
+        async beforeSend(body, transport) {
             const options = computeOptions;
             const attemptId = randomUUID();
             const attempt = { attemptId, requestId: 'retrieval:' + randomUUID(), targetFingerprint: path,
+                inputFingerprint: hashNativeDocument(body),
+                ...(transport === undefined ? {} : retrievalSendIdentity(profile, body, transport)),
                 estimatedTokens: Math.max(1, Buffer.byteLength(JSON.stringify(body), 'utf8')) };
             let receipt;
             if (base) receipt = await core.runs.chargeCompute(handle, base,
