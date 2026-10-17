@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · Candidate Design & Discussion Agenda
 
-- 状态：**Draft（W1–W14 的 B 顶层方向均已获确认；W15 E0 完整消费者/接口收口、实际验收及最终实施均未获批准）**。既往选型段落保留历史，本次确认以最新决策与 index 为准。
-- 当前讨论轮次：W15 — Source-of-Truth/Consumer/Contract/Deletion/Acceptance Gate 证据收口（见 [e0-final-closure.md](e0-final-closure.md)）。
+- 状态：**Draft（W1–W15 的 B 顶层方向均已获用户确认；W16 跨分支接口/最终 E0 验收和正式实施仍未批准）**。早期章节保留当时候选状态，以最新明确决定与 index 为准。
+- 当前讨论轮次：W16 — 固定 main/活动分支 HEAD、Native Orchestration V3 / Prompt Preset / World 真实接口和 E0 阻塞（见 [e0-integration-readiness.md](e0-integration-readiness.md)）。
 - 入口：[index.md](index.md)；材料：[research.md](research.md)
 
 ## 1. 问题的正确切分
@@ -755,3 +755,40 @@ W14-B 的稳定原则：在现有 Native Host 的受众合法只读投影上先�
 - W15-C：仅继续抽象设计而不建立退出 Gate，会扩大范围并让方案长期无法交接，不推荐。
 
 **重要**：此轮只确认 W14-B。W15-B 仍是助手推荐；E0-01～09 和目标 API、业务归属/清退表/验证计划没有被宣布已通过。下轮讨论 W15 后仍需完整 E0/最终交接审计，才能决定正式实现前置条件。当前只修改 `docs`，不修改 `main`。
+
+
+---
+
+## 23. S17 · W15-B 确认与 W16 跨分支集成审查（2026-10-17）
+
+### 23.1 W15-B 已确认：审查方法，而非 E0 PASS
+
+用户对上一轮推荐的 **W15-B「证据门槛式 E0 收口 + 可执行交接清单」**回复「认同」，因此 **W1-B 至 W15-B 都属于已获用户选择的设计/收口方向**。W15-B 确认在开发前按真实 HEAD 和生产 Consumer/Owner/Schema/Deletion 形成明确阻塞及交接表，并针对必要的安全、时态、分支和端上证据设置 Gate；它**没有**授权新实现分支、修改产品代码、批准具体 API/Schema、宣布 E0 完成或整份方案 Final。
+
+E0-01～09 依旧 **PARTIAL / BLOCKED**。W15 的完整方法、E0 问题及验收 Gate 见 [e0-final-closure.md §8](e0-final-closure.md)，当前不新建第二 Plan 或 Record。
+
+### 23.2 W16：精确 HEAD 下的真实新接口
+
+本轮利用 GitHub `git/ref` 和 Commit Compare 取得并锁定静态对照：
+
+- `main` = `c57fada6edeea255b29d857ba2585c1dbc9c098b`；
+- `refactor/atria-native-orchestration-v3` = `a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`，**ahead 97 / behind 0**，新增大批 `src/native/orchestration` Context/Effect/Result/Domain Receipt 层；
+- `refactor/atria-native-prompt-preset-deepening` = `760327891149216dffdc1e3fa0c846496007a013`，相对 main **ahead 1 / behind 10**，新增 Semantic Blocks、Draft Preview 以及证据/叙事使用政策；
+- `feat/native-visual-generation-deepening` = `ae587be0c64487ba922528bdd0146444bcf5e92e`，相对 main **ahead 6 / behind 48**；
+- `feat/agent-intelligence-plan` = `8fb5ad0e14be311558b6011e57b2634e3eed6f2f`，对 main Compare 报无共同祖先，**不能作为 main 生产链直接推断**。
+
+**新的关键接口界线**：V3 的 `effect-controller.js` 为编排 Effect 的 prepare/ready/claim/observe 和证据收据；`native-turn-orchestration.js` 把正式 Native Session 输出交给原 `sessionCore.finalizeTurn` 并从 `readSessionTurnOutput` 回查 Domain Receipt。编排 Result/Effect Receipt **不是** World Subject/Fact 的最终写入权威。V3 的 `context-port.js` 直接承载 Context Compiler + Information Audience/Grant 的 Host 许可，W14 Effective World View 必须通过合法的 Source/Scope 入口接线，不能直接把 Narrator 全视图塞给 NPC。
+
+Prompt Preset 分支的 `prompt-compiler.js` `worldUsePolicy / memoryUsePolicy` 与 `semantic-blocks.js`、`draft-preview.js` 提供 Prompt/Provider 语义和 Authored/Effective/Wire 视图，但**Prompt Effective 不自动等于 Native World Fact Effective**。正确顺序候选为 `Original Native Domain World Fact → Host-owned Effective World View → V3 ContextPort/ContextCompiler → Prompt semantic/Wire`，各阶段不得成为新的 World Truth。
+
+以上是**部分静态文件审查**，不是完整实际调用图；具体文件/映射/Source 和分支差异数据在 [e0-integration-readiness.md](e0-integration-readiness.md) 维护。
+
+### 23.3 W16 待选方案及实际阻塞
+
+- W16-A：仅按当前 main 的旧生成链冻结 World/Prompt ABI，忽略并行 V3/Prompt 分支接口；合流冲突大。
+- **W16-B：跨分支锚定 E0 + 优先锁定 Native Domain/Context/Receipt 所有权，再冻结世界最小接口（本轮推荐，尚未获用户确认）**。依实际接口冲突重验最新集成 HEAD，先完成 World Subject/Fact/Capability 的单权威与编排/Prompt 的消费边界，形成真实入口/调用/清退表，拒绝并行适配真相；不要求等待全部无关分支完成。
+- W16-C：为了同时支持旧 main/新 V3/Prompt 保留长期多层兼容适配，将引入多权威与变更成本。
+
+特别明确：旧 `worldInfo*`、旧 Orchestrator 代码的源码存在不能证明全部模块正活跃；某些旧 Adapter 仍有生产引用，**需要在固定目标集成 HEAD 下核对合法消费者再决定保留/替换/删除**。本轮没有足够证据把任何产品文件标为立即删除。V3/Prompt 也尚未合入 main，不能伪称当前产品已经具有其新增接口。
+
+**本轮工作边界**：只修改 `docs` 的同一 Plan Bundle 和唯一 Record；不开实现分支、不更新产品代码、不运行 CI/Node/E2E/Windows/CachyOS/Termux。若用户后续批准 W16-B，下一阶段应明确最小 Interface/Native Publication/有效视图接线与 E0-06 的全消费者实际审查完成要求，不机械延长抽象选型轮次。全案仍保持 Draft。
