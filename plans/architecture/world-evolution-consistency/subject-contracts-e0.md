@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · W11 Subject / Actor / Perspective / Participant 契约与 E0 审查（讨论稿）
 
 - Task ID: `ARCH-DWE-01`; Primary Workspace: `docs`; [Plan Index](index.md) · [总体设计](design.md) · [W9 主体身份](entity-identity-authority.md) · [W10 实例化与能力绑定](subject-instantiation.md) · [唯一 Record](../../../records/architecture/world-evolution-consistency.md)。
-- 状态：**Draft / W11 选型待议**。用户已选择 W1-B 至 W10-B 的顶层路线；本文件的具体契约、字段、替换策略、审计门槛、W11-A/B/C 均尚未获用户批准。
+- 状态：**Draft / W11-B 顶层路线已获用户确认，W12 候选与精确契约未获批准**。已确认 W1-B 至 W11-B；§6 保留当轮 A/B/C 比较作为历史；正式 W11 决定见 §8。
 - 目的：结束只谈名词的阶段，厘清**真实世界主体身份、作者角色表达、可访问的认知视角、已提交的叙事参与者、业务领域记录**之间如何接线；建立可以检验的 E0 消费者矩阵，仍不运行修改/测试/开发分支。
 
 ## 1. 五种语义各自回答什么问题
@@ -125,3 +125,17 @@ CommittedParticipant = {
 6. **E0 Gate**：列全受影响生产调用方与 tests/文档/Studio/Play 实际界面，不把当前部分静态审查称为 E0 已完成；界定阶段验收条件和 cutover 无兼容双轨路线。
 
 下一轮讨论后可继续扩展 E0 Consumer Map、Source-of-Truth Matrix、Safety/Correctness Gates，但只有用户明确批准方案定稿与开发启动后才执行实现。整个 ARCH-DWE-01 **始终保持 Draft**。
+
+
+## 8. W11-B 方向确认（2026-10-17）
+
+用户对上一轮明确推荐的 **W11-B：Typed Subject / Participant / Perspective + Native Host Capability Resolution** 答复「认同」。将其纳入 ARCH-DWE-01 已确认的**顶层设计方向**（W1-B 至 W11-B）。
+
+确认的具体**设计原则**：
+- 正式存在的 World Subject、作者 Actor/Profile 表达资源、合法的个人 Perspective/Capability、已提交对话/事件的 Participant 是有类型的不同语义，必须通过既有单 Native Session Host 的受控读/写边界关联。
+- 不能让 `actorId` 同时充当所有世界对象、作者资产、玩家权限与私人认知的单一万能身份，不能靠临时 Narrator 代演冒充已提交 NPC 状态。
+- 权限必须绑定当前 Session/Branch/Revision、作用域、来源、主体与受众；表达模板绑定、Person/Lifetime/HCM 证据映射或模拟精度升级均不得自行授权他人秘密、写入世界真相或替玩家行动。
+- 正式实施时需对与 `actorId` 耦合的真实消费者逐一改造与清退；避免在 Dev 项目中长期保留旧/新双写或 Shadow World/Actor Registry，不应因选择 W11-B 就预设需要若干新服务。
+- 准备 E0 的局部代码审查不能视为**完整 E0 已通过**：具体 ID family、ABI 字段、Capability grant 生命周期、Event/Receipt 原子出版、Game-time 时态与 cutover 验收仍未冻结；本轮不修改产品代码。
+
+**下一轮 W12** 转入同一 Plan Bundle 的 [e0-consumer-cutover.md](e0-consumer-cutover.md)：对现有 Actor/World/Knowledge/Simulation/Cognition/HCM/Prompt/Visual/Speech/Save/Branch/Library/Studio/Play 建立 Source-of-Truth/Consumer/Write-path 审计矩阵，讨论如何以 E0 阻塞为入口、最小契约、一条 Native commit 权威和硬切消费者推进，研究推荐 W12-B、**尚未由用户选择**。整份 Plan 保持 Draft。
