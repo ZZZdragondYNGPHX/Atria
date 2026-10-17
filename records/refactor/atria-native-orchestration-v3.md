@@ -1440,3 +1440,11 @@
 - 真实旧快照迁回已发生Project Model费用的目的端：known/unknown两个FS基线2FAIL（9.205s），实际清空原compute/attempts/对话；更早单Runner基线1FAIL/5skip（5.717s）返回verified=true并复制16条Native记录。修复后新FS/SQLite六参数6/6 PASS（21.374s）：已付与unknown均拒绝并保留所有Native行、零重发；未产生来源备份。空目标正例导入paid银行与Run、Task原blocked状态及目的HostFence保留。
 - 测试调整为原Source.lifecycle.withMaintenance后，相关五suite首轮36PASS/1FAIL（27.398s，新6PASS21.098s）；唯一原Runner诊断期望snapshot阶段而前置拒绝原unknown handle。补充before snapshot阶段说明、不移动检查到copy回滚catch后，原Runner22+新6最终28/28 PASS（19.793s，新6为18.178s）。同首轮其余auto-rollback2、snapshot GC3、Session restore4已通过，合37项相关验证取得证据。两JS原ESLint及diff check通过。
 - 全部数据为临时harness、Provider为localhost合成；未对用户库执行迁移。无新增真实API，私密总数12、备用Chat0、daily/RPM配置null保持。继续Delegate/控制图组合、可信高风险消费者与完整恢复释放，P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。
+
+
+## 2026-10-17 — 第一百三十三组：原费用投影分项与 Tool writer 当前性验证
+
+- Source `cb4d71e58` → `2d1b5869a`，本地提交、未推送；接口§17.136。原RunObservationService在既有Provider总计之外按受保护Effect分类generation/embedding/rerank/other，仅投影次数及已知/未知tokens与未知上界。原银行、modelAttempts总计语义、本地费用与closed保持；不暴露请求/Profile/Secret/Memory、不重新定价。
+- 新FS已结算分项基线1FAIL/5skip（7.183s），旧投影确无providerWork。新费用6项与原Run HTTP28项完整34/34 PASS（22.11s，新6为17.548s）。lint首轮发现brace-style及测试条件expect两项，调整纯格式和统一outcome断言；最终新6/6再PASS（17.135s）。实际settled为2Embedding+1Rerank+1Model，总tokens41；检索未知仅1Embedding、0Model；主Model未知保留21已知检索tokens及原unknown估计上界。各项之和等于原汇总，重建observer费用相同、原bank与Provider次数不变，metadata没有Memory正文或Secret。首个写测试命令误在tests工作目录又带tests/前缀，文件未生成、suite 0执行；纠正路径后才取得上述结果。
+- 并行原Project Tool writer检查没有证实新的数据覆盖漏洞：真实atri_agent_set_plan在Studio读取、Task载入、_recover三await期间遭人类setPlan，原fromFingerprint/native_write_conflict/project_agent_sequence_conflict已保持人类plan/fingerprint、对话及20token Model已付费用。新增FS/SQLite六参数最终6/6 PASS（19.719s），Tool无receipt、Effect仍dispatching待原核对、无OutputClaim且仅1Model发送；产品writer未修改。探索首FS读取例通过4.335s，载入/recovery两例7.186s只因错误码预期错误而失败，合法数据断言均已通过，不把诊断差异冒充产品漏洞。三相关JS ESLint及staged diff check通过。
+- 所有Provider为localhost合成，无新增真实API，私密总数12、备用Chat0、daily/RPM配置null保持。继续正式Project Commit可信消费者、Delegate隔离边界、通用图与完整恢复释放；P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。

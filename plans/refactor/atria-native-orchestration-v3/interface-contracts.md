@@ -1567,3 +1567,10 @@ Model实际完成后封存只读检索费用事实、释放发送scope；原Sche
 原MigrationRunner在非dry-run且实际提供目的Engine时，复用assertSnapshotRestoreAllowed检查有效目的handle。目标已经保留V3 Run/Record时，在来源快照和copy/rollback前拒绝，保留原retention错误代码；迁移类别选择不是释放历史或覆盖费用银行的授权。检查失败不创建来源备份，也不进入可能触碰共用用户根的回滚路径。
 
 原管理员Source维护/drain、目的Engine的Owner/HostFence、copy事务和readback验证继续生效。空目标仍可导入原paid Run和Task compute，依原恢复规则保持Task blocked而不重发；目的HostFence不能被来源身份覆盖。本项保护既有历史，不增加恢复执行许可、counter合并或Run release状态。准确FS/SQLite与原迁移回归归同一Record；完整恢复释放、其它消费者和最终Gate继续。
+
+
+### 17.136 原运行费用投影的 Provider 分项
+
+原RunObservationService费用仍只读取原银行与受保护Effect，新增costs.providerWork，固定generation、embedding、rerank、other四项；每项只有attempts、knownTotalTokens、unknownAttempts、reservedUpperTokens。分类取实际Effect capability及context_retrieval mode，不采用请求标签或模型文本。原modelAttempts字段继续保留原银行所有Provider attempts的汇总语义，其余总计/本地费用/closed状态保持，与四项之和相符；没有新账本、价格推算或发送许可。
+
+投影不增加Profile/Secret/输入指纹、召回正文、Result正文或Source grant。新的observer重读相同持久事实得到同费用，不恢复scope、重发或改变费用。FS/SQLite完整Embedding插入/查询、Rerank、Model及unknown边界的实际验证归同一Record；正式Project Commit等后端继续，不作前端交接或最终Gate完成。
