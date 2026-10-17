@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · W6 NPC 认知、社会关系与信息传播（讨论草案）
 
 - Task ID: `ARCH-DWE-01`; Primary Workspace: `docs`; 唯一入口：[index.md](index.md)；前阶段：[W5 NPC 自主性](npc-autonomy.md)；总设计：[design.md](design.md)；永久记录：[Record](../../../records/architecture/world-evolution-consistency.md)。
-- 状态：**Draft / W6 选型待讨论**。已确认 W1-B World Model + Source Library、W2-B 分层混合创作、W3-B 分级约束 + 涌现世界、W4-B 渐进接纳 + 关键交互即时提交、W5-B 分层事件驱动自主性。本文所有 W6 接口与选型均未获批准，不修改产品代码。
+- 状态：**Draft / W6-B 总体方向已获用户确认，W7 待讨论**。已确认 W1-B World Model + Source Library、W2-B 分层混合创作、W3-B 分级约束 + 涌现世界、W4-B 渐进接纳 + 关键交互即时提交、W5-B 分层事件驱动自主性、W6-B 世界关系事实 + 主体认知 + 来源事件。本文原 §7 为当轮候选对照，正式选择见 §10；具体 Schema/权限仍未定稿。
 - 本轮主题：让已持久存在并可自主行动的 NPC 拥有可信、可演化的个人认知与社会联系，同时不能把「角色以为」「角色想要」直接当作世界客观事实。
 
 ## 1. 五类不能混为一谈的信息
@@ -109,3 +109,15 @@ Native Entity identity (born/introduced/committed, exact branch)
 - [Park et al., Generative Agents, UIST 2023](https://doi.org/10.1145/3586183.3606763)：观察、经历、反思与规划可以产生社会互动，但模拟的是受限实验环境，不证明可无限扩到开放世界。
 - [Evans & Short, Versu—A Simulationist Storytelling System](https://ieeexplore.ieee.org/document/6648395/)：社会惯例为角色提供可选择的社交行动机会，并不替角色强制决定；规则辅助与个人自主可并行。
 - [Treanor et al., Social Play in Non-Player Character Dialog (AIIDE 2015)](https://ojs.aaai.org/index.php/AIIDE/article/view/12838)：分阶段可交互的社会实践优于将一次社交交换直接简化成一条固定对话结果。
+
+## 10. W6-B 确认（2026-10-17）
+
+用户对上一轮明确推荐的 **W6-B · 世界关系事实 + 主体认知 + 来源事件** 回复「认同」，因此纳入同一 Plan 的**已确认顶层设计方向**。
+
+- 已成立、具持续效力的共同社会事实（合同、亲属、正式联盟、债务、职务等）由现有 Native Host/Session 的受控效果与事件成为客观状态；不能由其中一方的个人信念/好感直接确立。
+- 主体单方面的信任、敌意、情绪、怀疑、个人目标与他人心智猜测归有来源、有受众授权的 Cognition/HCM 语义；关系方向允许不对称，主观理解允许错误和后续纠正。
+- 信息传播必须由合法感知、通信和可追溯来源驱动，实际发送、送达、获知、相信各不相同；无授权消费者不可通过完整 Narrator 真相间接读到秘密。
+- 动态 NPC 能否取得合法 Perspective/Task/Memory 资格是实现前必须核查的 E0 阻塞，不因“角色获得 World Entity ID”就自动通过；原生 World State/Session 仍是唯一客观真相权威。
+- 选择 W6-B 不意味着用户已确定传播协议、记忆存储结构、证据判定粒度、具体信息权限 API 或实施阶段；整体 Plan 继续 Draft，不修改产品代码。
+
+**W7 下一轮**：参见同一 Plan 的 [npc-memory-information-flow.md](npc-memory-information-flow.md)。重点讨论动态 NPC 受众资格、个人记忆与认知生命周期、秘密/错误情报的传播和长期分支隔离，推荐 W7-B「动态受众资格 + 证据驱动信息流」，但当前**尚未获用户批准**。
