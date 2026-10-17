@@ -13,7 +13,7 @@
 本 Plan 是同一主题持续迭代的**唯一入口**。每一轮先更新对应模块和本轮讨论状态、在 `docs` 分支提交并核实，再开展本轮讨论；直到用户明确认可完整方案，才将状态由 Draft 改为 Approved/定稿。不得把助理推荐误写为已获批准的冻结决议，亦不得在讨论阶段直接修改 `main` 产品实现。
 
 - [Research](research.md)：外部资料、机制比较、来源、局限和迁移适用性；讨论中持续补充。
-- [Design](design.md)：§8 S2 扩域、§9 W1/W2、§10 W3、§11 W4、§12 W5、§13 W6、§14 W7、§15 W8、§16 W9、§17 W10、§18 W11、§19 W12，**§20 记录已确认 W12-B 并路由 W13**；早期候选保留为历史，以最新用户决议为准。
+- [Design](design.md)：历史讨论累计见 §8–§20；**§21 记录 W13-B 已确认，当前路由 W14**。以最新用户决议为准。
 - [Runtime Emergence & Fact Lifecycle](runtime-emergence.md)：**W4 方向已确认，§8 记录 W4-B**。仅当本轮需要核对实体注册/事件基础时阅读。
 - [NPC Autonomy & Scheduling](npc-autonomy.md)：**W5 已确认 B 方向**；§10 明确选型与待收口接口，复核 NPC 调度时按需读取。
 - [NPC Social Cognition](npc-social-cognition.md)：**W6 已确认 B 方向**；§10 记录社会关系真相、私人认知及来源事件边界。仅在当前模块需要这些依赖时读取。
@@ -23,7 +23,8 @@
 - [Subject Instantiation & Capabilities](subject-instantiation.md)：**W10-B 已确认方向**；§10 记录从固定定义到 Session Subject 实例化与按需能力绑定。
 - [Typed Subject / Capability Contracts & E0](subject-contracts-e0.md)：**W11-B 已确认方向**；§8 记录类型化 Subject/Participant/Perspective 与 Native Host Capability Resolution。
 - [E0 Consumer Map & Native Cutover](e0-consumer-cutover.md)：**W12-B 方向已确认**；§9 记录基于真实 E0 消费者审计的 Native 单权威原生硬切，E0 实际完成状态仍阻塞。
-- [Event Temporality & Branch Integrity](event-temporality-branch.md)：**W13 当前阶段模块**。Native Effect/Receipt/Revision 一致性、世界事实有效期/记录版本/主体获知时间、回档分支与历史纠错、W13-A/B/C 候选（Draft）。
+- [Event Temporality & Branch Integrity](event-temporality-branch.md)：**W13-B 已确认方向**；§9 记录 Revision 提交、事实有效期与分支受控投影，精确 API 未冻结。
+- [Effective World View & Knowledge Context](effective-world-view.md)：**W14 当前阶段模块**。静态 World/Knowledge 与当前/历史事实的适用性、受众安全 Context、Library/Studio/Play、Inspector 与 W14-A/B/C（Draft）。
 - [Record](../../../records/architecture/world-evolution-consistency.md)：按工作轮累积可核验的文档提交、调研结果、未完成内容。
 - 后续需要规模化时再按主题拆模块，本入口仍为唯一导航。
 
@@ -33,7 +34,7 @@
 
 原问题「静态设定和动态演化冲突」仍保留，**但现在必须以原生 World / Knowledge 整体重构为主线**。先明确 World（实体/关系/世界法则/初始基线）与 Knowledge（资料/断言/来源/语境）的真实边界，再设计事实演化、主体认知、有效上下文和 Library/Studio/Play 产品界面。已有 Native SessionCore/State/Event/Simulation/HCM/Context Compiler 是首先审查和复用的权威，不能平行再建一套真相库。
 
-本轮对照见 [design.md §8](design.md#8-scope-expansion-s2--从-lorebook-进一步重构原生-world--knowledge2026-10-17候选)，补充文献与代码证据见 [research.md §F](research.md#f-s2-扩域补充研究从-st-lorebook-到-native-world-model2026-10-17)。**已确认方向：W1-B World Model + Source Library、W2-B 分层混合、W3-B 分级约束 + 涌现世界、W4-B 渐进接纳 + 关键交互即时提交、W5-B 分层事件驱动自主性、W6-B 世界关系事实 + 主体认知 + 来源事件、W7-B 动态受众资格 + 证据驱动信息流、W8-B 来源保真 + 分层回忆与人格连续性、W9-B Canonical World Subject + 受控映射、W10-B 固定定义实例化 + 类型化能力绑定、W11-B Subject/Participant/Perspective + Native Host Capability Resolution、W12-B E0 证据驱动原生硬切 + 单权威提交收口。** **W13 原生事务、事实时态与分支历史的具体路线未批准**，见 [event-temporality-branch.md](event-temporality-branch.md)。Native Host 仍是正式事实的唯一提交权威，整体 Plan 保持 Draft；W12-B 不等于 E0 已完成或授权实施。
+**已确认方向：W1-B 至 W13-B。** 包含 World Model + Source Library、分层混合创作、分级约束/涌现、动态 NPC 及私人认知、Canonical Subject/能力映射、E0 后原生硬切、Native Revision 一致性提交与双时间/分支投影。**W14 有效世界视图及 Context/Studio/Play 仍属候选**，详见 [effective-world-view.md](effective-world-view.md)。完整 Plan 继续 Draft，未授权实施，也不能宣称 E0 已通过。
 
 需要回答：创作者的首要对象是若干触发条目，还是可以直接浏览、引用并演化的“世界”；Knowledge 应是同级世界书，还是世界引用的来源与证据？现有 free text 必须继续一等支持；不为未发布旧 ST 数据建立兼容双轨。
 
@@ -74,7 +75,7 @@
 
 ## 5. 状态与下一检查点
 
-- **当前：**S14 已记录用户选择 **W12-B**；进入 W13 [Native 世界事件的原子出版、valid/recorded/observed time、纠错与 Save/Branch 一致性](event-temporality-branch.md) 讨论。当前建议 W13-B「Native Revision 一致性提交 + 双时间/分支受控投影」，**尚未获用户批准**；E0 仍为未完成的全面调用方审计。
-- **已确认设计方向（W1–W12）：** World Model + Source Library；自由文本和结构化混合；分级事实约束与涌现；运行时实体正式接纳；有界 NPC 自主；社会客观事实和主体认知分离；合法 Perspective、证据传播、记忆与人格；Canonical Subject、原生实例化/能力绑定；Typed Subject/Participant/Perspective；在当前 Native Host 上先全面 E0、再最小契约硬切，不留下永久双轨。**仍未冻结具体身份 ID/ABI/API、W13 事务/时态/分支契约、实现、E0 或三端验收**。
+- **当前：**S15 已记录用户选择 **W13-B**；进入 W14 [Effective World View、Knowledge 来源声明、Context Compiler 与 Library/Studio/Play](effective-world-view.md) 讨论。推荐 **W14-B**，**尚未获用户批准**；E0 全量审计未完成。
+- **已确认设计方向（W1–W13）：** 世界/知识分离、分层自由文本与结构化事实、动态实体/认知/历史、Canonical Subject、类型化能力、Native Revision 一致性与双时间/分支受控投影，以及 E0 后原生硬切。**具体 ID/Schema/API、W14 有效视图、完整 E0 和三端验收均未通过/未批准**。
 - **未授权：**修改 `main`、创建实现分支、给出实施已经通过的结论。
 - **完成标准：**用户在若干轮讨论后明确确认各核心决策及边界，并批准定稿。未经确认，不使用“Final/冻结/全面通过”描述。
