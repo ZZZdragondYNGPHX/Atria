@@ -1,7 +1,7 @@
 import { setReadOnly, withReadOnlyBypass } from '../read-only-mode.js';
 import { PRESET_FOLDER_BY_API_ID } from '../repositories/preset-repo.js';
 import { BUCKET_TO_DIR } from '../repositories/named-doc-repo.js';
-import { snapshotUser, restoreFromSnapshot, removeSnapshot } from './backup.js';
+import { snapshotUser, restoreFromSnapshot, removeSnapshot, assertSnapshotRestoreAllowed } from './backup.js';
 import { withChatWrite } from '../repositories/chat-write-boundary.js';
 import { recordsEqual } from './equality.js';
 import { serializeNativeDocument } from '../../native/repositories/common.js';
@@ -197,6 +197,19 @@ export class MigrationRunner {
             errors: [],
             verified: false,
         };
+
+        // The destination may be an older, previously used Engine. Its
+        // existing Run history, banks and immutable pins cannot be replaced
+        // by the source snapshot. Check before snapshot/rollback can touch
+        // the shared user root; category selection is not release authority.
+        if (!this._dryRun && this._dstEngine) {
+            try {
+                await assertSnapshotRestoreAllowed({ engine: this._dstEngine, handle: effectiveDestHandle });
+            } catch (err) {
+                err.message = `migration failed before snapshot for ${srcHandle}: ${err.message}`;
+                throw err;
+            }
+        }
 
         // 1. Snapshot the source state first (skipped on dry-run AND when
         //    skipInternalSnapshot is set — cross-mode-restore passes the
