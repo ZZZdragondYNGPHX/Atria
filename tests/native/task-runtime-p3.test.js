@@ -306,28 +306,38 @@ describe('P3 Model Execution Lane', () => {
             let body;
             server = http.createServer(async (req, res) => {
                 const chunks = []; for await (const chunk of req) chunks.push(chunk); body = JSON.parse(Buffer.concat(chunks));
-                res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ choices: [{ message: { content: '{}' } }] }));
+                res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ choices: [{ message: { content: '{}' } }], usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 } }));
             });
             await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
             const seeded = await seedGenerationProfiles({ ...h, endpoint: `http://127.0.0.1:${server.address().port}/v1/chat/completions` });
             const raw = contract(); const variant = raw.tasks[0].variants[0];
-            const packageId = createNativeId('package'), packageVersionId = createNativeId('packageVersion');
+            const fixture = { ...sessionFixture(), ...services(h) };
+            const { packageId, packageVersionId } = fixture.manifest;
             const origin = { scope: 'package', packageId, packageVersionId };
             const resources = [
                 { resourceType: 'core.prompt-program', origin, resource: { ...seeded.prompt, promptProgramId: variant.prompt.resourceId, stages: [{ stageId: 'stage.main', moduleRefs: [] }] } },
                 { resourceType: 'core.generation-profile', origin, resource: { ...seeded.generation, generationProfileId: variant.generation.resourceId } },
             ];
-            const snapshot = { session: { sessionId: createNativeId('session'), packageId, packageVersionId }, revision: { revisionId: createNativeId('revision'), branchId: createNativeId('branch') },
-                timeline: [], variants: [], states: {}, knowledge: { bindings: [], snapshots: [] }, manifest: { actors: [], runtime: { experienceContract: { taskRuntime: assertTaskRuntime(raw) } } } };
-            const sessionCore = { runs: { assert: async () => null, chargeLocalWork: async () => null, chargeCompute: async () => null }, load: async () => snapshot, recordTaskResult: async (_h, _s, record) => ({ ...snapshot, states: { atri_task_results: { records: [record] } } }) };
-            const host = new NativeGenerationHost({ ...seeded, sessionCore, packageInstaller: { open: async () => ({ manifest: { resources } }) },
+            fixture.manifest.resources = resources;
+            fixture.manifest.runtime = { experienceContract: { schemaVersion: 1, capabilities: [], dataResources: [], taskRuntime: assertTaskRuntime(raw) } };
+            const { archive } = buildAtriaPackageContainer({ manifest: fixture.manifest, sourceFiles: new Map(), assetPayloads: new Map() });
+            await fixture.packageInstaller.install(h.handle, archive);
+            const snapshot = await fixture.core.create(h.handle, { packageId, packageVersionId, entryPointId: fixture.entryPointId });
+            await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1,
+                allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget: { maxRequests: 1, maxTokens: 32000,
+                    localWork: { maxJobs: 5, maxItems: 5, maxInputBytes: 1048576 } } } });
+            const host = new NativeGenerationHost({ ...seeded, sessionCore: fixture.core, packageInstaller: fixture.packageInstaller,
                 providers: { 'provider.openai-compatible': createHttpGenerationProvider() }, secretPort: { resolveSecret: async () => 'synthetic-secret' } });
             const result = await host.executeTask(h.handle, { sessionId: snapshot.session.sessionId, revisionId: snapshot.revision.revisionId,
                 taskId: raw.tasks[0].id, variantId: 'default', invocationId: 'task-one', input: {}, slotBindings: { structured: { scope: 'player', runtimeRouteId: seeded.routes[0].runtimeRouteId } } });
             expect(result.record.promptProgramRef.resourceId).toBe(variant.prompt.resourceId);
             expect(JSON.stringify(body)).not.toContain('Produce a concise response');
+            expect(JSON.stringify(body)).not.toContain('Opening');
+            expect(JSON.stringify(body)).not.toContain('Exact knowledge');
             expect(JSON.stringify(result)).not.toContain('synthetic-secret');
             expect(result.record.deliveryReceipt.kind).toBe('model_delivery');
+            const control = await fixture.core.runs.status(h.handle, snapshot.session.sessionId);
+            expect(control.retiredCompute).toMatchObject({ modelAttempts: 1, knownTotalTokens: 20, localJobs: 5 });
         } finally { if (server) await new Promise(resolve => { server.closeAllConnections(); server.close(resolve); }); await h.cleanup(); }
     });
 });
