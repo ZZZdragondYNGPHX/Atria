@@ -2,7 +2,7 @@
 
 - **所属资产**：同一 Plan Bundle `plans/architecture/world-evolution-consistency/`；[唯一 index](index.md) · [累计 design](design.md) · [W20 已选总体路线](e0-gate0-integration-workpackages.md) · [W19 物理依据](e0-gate0-physical-contracts.md) · [唯一 Record](../../../records/architecture/world-evolution-consistency.md)。
 - Task ID `ARCH-DWE-01`；Primary Workspace `docs`。
-- **状态：Draft；W1-B～W20-B 方向已确认，W21 与完整 Gate 0/Final/开发授权均未确认。** E0-01～09 仍 PARTIAL / BLOCKED。仅讨论、远端静态代码/目录审查、docs 文档提交；无产品代码更改、开发分支、CI、浏览器/真实 UI、Windows/CachyOS/Android Termux 实测。
+- **状态：Draft；W1-B～W21-B 的总体路线已确认，W22 最终 Gate 0 交接选型与精确物理 ABI 尚未确认。** §6 是 W21-A/B/C 的历史方案对比；本轮用户确认见 §8。E0-01～09 仍 PARTIAL / BLOCKED；没有获准产品代码修改、实现分支、CI、真实 UI 或三端实测。
 - **W21 的任务约束**：到此为止不再无限增加“下一层架构”或重复上一轮抽象选项；要依据可引用的真实源码作出**优先物理落点、真实写入安全、原生历史/GC 闭包、WP-A～F 依赖、Gate 0 开工前证据与实际阻塞**的具体建议，供最后定稿审查与未来 Codex 实施交接。不能把推荐写成已批准 Schema 或声称 E0 PASS。
 - **本次固定基线**（2026-10-17 GitHub branch GET 重新确认）：`main=c57fada6edeea255b29d857ba2585c1dbc9c098b`；V3 `refactor/atria-native-orchestration-v3=a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`；Prompt `refactor/atria-native-prompt-preset-deepening=760327891149216dffdc1e3fa0c846496007a013`；Visual `feat/native-visual-generation-deepening=ae587be0c64487ba922528bdd0146444bcf5e92e`。对未合入分支不能宣称当前主线已具相关 API；后续基线变更必须重新审查。
 
@@ -107,3 +107,18 @@ EffectiveWorldQuery {               // read-only and authorization-bound
 - 本轮通过 GitHub Branch API、固定源码文件和选择性调用/依赖阅读核实 P1/P2 的技术差异；没有将仓库完整本地克隆成可执行代码树，也没有真实运行入口、Provider、前端/CI、Windows/CachyOS/Termux 证据。P2 更适合在本轮的**静态判断**，不是性能/正确性实测的胜出方案。
 - 未合入的 Orchestration V3、Prompt Preset 与 Visual 可能改变最终接口/调用方；**不能用本轮锁定的旧 main 永久指定未来文件和 Namespace 修改细节**。
 - 用户此前只授权持续 `docs` Draft 方案讨论。无论 W21 后续选择怎样，**没有用户明确全案 Final/开发启动授权时，不创建 `feat/*`、不修改 `main`**；本轮没有任何产品文件写入或删除。
+
+
+## 8. W21-B 用户确认（2026-10-17）
+
+用户对上一轮明确推荐的 **W21-B「P2 优先、Native Reserved/Typed Session Identity + Domain Fact Owner + 证据门槛式交接」**回复「认同」。记录为 `ARCH-DWE-01` **已确认的总体架构与优先实施路径**；因此 W1-B 至 W21-B 的方向已获确认。**这不代表全案 Approved/Final、P2 的具体 ID/Namespace/Schema 已冻结，或 Gate 0 已通过**。
+
+**选择所明确的边界：**
+- **P2 优先**：一个由现有 Native Session/Revision 管理的**受保护 Native SessionState** 存储最小 Canonical Subject identity/origin/scope/admission。正式身份不依附某一本 WorldRevision/Actor Profile；无需创建额外存储引擎、独立 EventStore 或通用 Entity Truth 数据库。
+- **Typed-only authority**：该状态须由 Native Session/Domain Authority 的专门 Validator/Prepare/Publish 写入，并在所有适用运行模式下拒绝普通 Runtime/插件 Generic State Patch；加入 Reserved Namespaces（若采用独立 Namespace）、Snapshot 验证、Save/Restore/GC/可达性、资源绑定变更和权限/预算审计。不能把新增 JSON 对象误写成天然受原生信任边界保护。
+- **业务事实归属不变**：经济、位置、社会关系、Lifetime、HCM/Cognition 和 Game Clock 各自按合法原 Domain authority 管理；仅为不能无损推导的事实变化补最小 `FactTransition` 的来源/时间/更正引用。不允许 SubjectRegistry 内再复制业务价值，出现双权威。
+- **P1 有条件回退**：P1 `atri_world_state` 受保护子树**不是并行上线的第二选择**。只有在 Gate 0 的具体 HEAD 审查中证明它对**所有游戏模式的完整写入保护、Worldless/multi-World、WorldSelection 切换、Source/Save/GC**都同等安全且实际消费者/性能差异显著更小，才允许将替代依据写回同一 Plan 供最终审查。不能因“已确认 P2 优先”就暗称已永久锁定具体 Schema。
+- **消费者/测试**：WP-A～F 的生产链、正确 Typed Subject/Participant/Perspective/Effective View 接口、V3 Domain Receipt vs Orchestration Effect 收据、Prompt Context 权限及旧 WorldInfo/Plugin 的 `retain/replace/delete/investigate`，均依固定最终集成 HEAD 获得可执行清单。新增 ABI 的 Node/DB/CI/真实 UI/三端验收属于开发后的 Gate 1～4，不在仅讨论的 Gate 0 虚构 PASS。
+- **未批准**：新的 ID family、具体命名空间名、持久字段及权限接口、`asOfRevision/asOfTick` 查询 API、删除产品文件或建立实现分支、所有 E0-01～09 通过、整体企划 Approved/Final。
+
+**下一轮 W22**：同一 Plan 中的 [e0-final-implementation-handoff.md](e0-final-implementation-handoff.md) 汇总 **Gate 0 可交接/不得交接证据、P2 必须改动的确切原生 Owner/Caller、最少物理记录设计与两段历史读链、WP-A～F 具体交接接口和清退审核**，明确短名单阻塞及可核验的最终退出门槛。W22 研究路线仍待用户选择，整个 Plan 保持 **Draft**，不修改产品代码。
