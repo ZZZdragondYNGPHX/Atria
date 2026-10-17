@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · Candidate Design & Discussion Agenda
 
-- 状态：**Draft（W1–W22 的 B 顶层架构与证据门槛收口方法已获用户确认；实际 Gate 0 DESIGN_READY/PASS、精确接口/实现/测试仍未通过或批准）**。既往 A/B/C 比较均属当轮历史，当前确认状态以最新 index/本章为准。
-- 当前收口阶段：**有界 Gate 0 Preflight**；W22-B 已确认，按 [e0-preflight-execution.md](e0-preflight-execution.md) 逐项核查实际 HEAD/Owner/Contracts/Consumer/Deletion 的具名阻塞；不再延展抽象 W23 世界架构，保持 Draft。
+- 状态：**Draft / Paused（用户主动暂缓）**。W1–W22 的 B 总体方向已确认，但 Gate 0 尚未就绪、精确 ABI/Schema/实施尚未批准。待 Native Orchestration、Prompt Preset 与整体前端重构完成并由用户明确要求 Codex 接手后恢复；旧决议按历史保留。
+- 当前工作状态：**暂停 Gate 0 Preflight**；现有 [e0-preflight-execution.md](e0-preflight-execution.md) 和 [唯一暂停交接](../../../handoff/ARCH-DWE-01.md) 仅用于未来 Codex 恢复。等待用户明确指令，不继续审计或新建 W23 机制选题。
 - 入口：[index.md](index.md)；材料：[research.md](research.md)
 
 ## 1. 问题的正确切分
@@ -1021,3 +1021,20 @@ W19 仍为用户待选方案；本阶段未修改 `main` 或其它代码分支�
 不要求本阶段已经通过尚未实现的功能运行测试；Schema/DB/Provider Wire/UI/长会话与 Windows/CachyOS/Termux 三端属于未来实施期 Gate 1～4。**但缺少真正的 Owner/合法写入/最终调用者证据时，仍不得声称 Gate 0 PASS。**
 
 **状态结论**：W1–W22 方向已确认，E0 **PARTIAL / BLOCKED**，有界 Preflight 文件已就绪，但完整目标 API/代码变更尚未通过静态设计证据门槛；不修改 `main`、不开 `feat/*`，直到用户明确批准整份 Plan 的 Final 与实现启动，并且必要 Gate 0 工程责任有实际可执行证据。
+
+
+---
+
+## 31. S25 · 用户要求暂缓，等待并行重构完成（2026-10-17）
+
+用户明确要求**暂时搁置 Atria 世界/知识重构**：先由其推进排队的 **Native Orchestration、Prompt Preset、整体前端**重构；这些重构完成后，由用户主动让 **Codex** 接手本任务并正式开展 Preflight/后续工作。**本次是中断和暂停，不是批准 Plan Final 或授权 Codex 立即开工**。
+
+### 暂停时状态
+
+- 已确认架构方向：W1-B～W22-B，最后决定为“具名阻塞 + 可执行 Gate 0 Preflight + 条件化交接”；P2 受保护 Native Session Subject 为优先选型（具体 ID、Namespace、业务 Validator、有效查询 API 尚未冻结）。
+- 全案 **Draft / Paused**；E0-01～09 **PARTIAL / BLOCKED**；尚未取得全部生产调用图、P2 Typed Publisher/Save/GC、Native World/Narrator 回执协调、动态 Perspective/Host Context、Legacy/插件清退证据。
+- 最新已核验的历史源锚点（**不是今后可直接开发的 HEAD**）：`main=c57fada6edeea255b29d857ba2585c1dbc9c098b`，`refactor/atria-native-orchestration-v3=a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`，`refactor/atria-native-prompt-preset-deepening=760327891149216dffdc1e3fa0c846496007a013`，`feat/native-visual-generation-deepening=ae587be0c64487ba922528bdd0146444bcf5e92e`。整体前端重构未来的实际 HEAD 未在本任务中确定，不得猜测。
+- **后续依赖**：用户明确确认上述工作完成并指示 Codex 接手后，Codex 需重新读取实际 `main`/相关分支 HEAD、真正的现役接口与动态插件消费者，再按 [唯一 Preflight 清单](e0-preflight-execution.md) 执行 P0–P7。不得将旧静态证据误标 E0 PASS。
+- 此轮仅将暂停状态写入 `docs` 的同一 Plan/唯一 Record，并按用户明确中断要求创建唯一可恢复的 `handoff/ARCH-DWE-01.md`，不产生新方案分支、不修改产品代码、不启动 CI/三端验证。
+
+**恢复与授权边界**：重新开始 Preflight ≠ 自动批准 Final/实施分支。正式实施必须以用户当时明确授权、当前仓库治理规则以及 Gate 0 的实际代码证据为依据。暂停期间不自动轮询、不做背景审查、不主动变更其他分支。
