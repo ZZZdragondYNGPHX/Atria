@@ -3,7 +3,7 @@ import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 import { rpModelFixture } from './helpers/rp-model-fixture.js';
 import { configureJudge } from './helpers/rp-judge-fixture.js';
 import { configureAgentGraph } from './helpers/rp-agent-graph-fixture.js';
-import { configurePlannerLoop, configurePlannerGraph } from './helpers/rp-planner-fixture.js';
+import { configurePlannerLoop, configurePlannerGraph, configurePlannerExpansion, plannerTaskFromRequest } from './helpers/rp-planner-fixture.js';
 import { EvolutionTargets } from '../../src/native/agent-intelligence/evolution-targets.js';
 import { EvolutionEvaluator, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { AgentEvolutionRepository } from '../../src/native/agent-intelligence/evolution-repository.js';
@@ -11,12 +11,16 @@ import { AgentEvolutionRepository } from '../../src/native/agent-intelligence/ev
 jest.setTimeout(60_000);
 
 describe.each(CONTRACT_HARNESSES)('$name isolated Native multi-Agent evaluation', ({ make }) => {
-    test.each([['Judge', configureJudge, 4], ['Agent DAG', configureAgentGraph, 4], ['Planner loop', configurePlannerLoop, 3], ['Planner graph', configurePlannerGraph, 4]])('%s baseline/candidate Plans execute in private Native Hosts while only the original parent ledger sends and pays', async (profile, configurePlan, modelCalls) => {
+    test.each([['Judge', configureJudge, 4], ['Agent DAG', configureAgentGraph, 4], ['Planner loop', configurePlannerLoop, 3], ['Planner graph', configurePlannerGraph, 4], ['Planner expansion', configurePlannerExpansion, 3]])('%s baseline/candidate Plans execute in private Native Hosts while only the original parent ledger sends and pays', async (profile, configurePlan, modelCalls) => {
         const f = await rpModelFixture(make, { configurePlan,
-            responsePayload: (_body, ordinal) => ordinal === modelCalls * 2 + 1 ? JSON.stringify({ preference: 'tie', deltas: { player_agency: 0 }, rationale: 'Synthetic fixture only.' })
-                : profile === 'Planner loop' ? [JSON.stringify({ operations: [{ op: 'requestReplan' }] }), JSON.stringify({ operations: [{ op: 'requestFinalize' }] }), 'Final narration.'][(ordinal - 1) % modelCalls]
-                    : profile === 'Planner graph' ? [JSON.stringify({ operations: [{ op: 'requestFinalize' }] }), 'ADVISORY A', 'ADVISORY B', 'Final narration.'][(ordinal - 1) % modelCalls]
-                        : ['ADVISORY A', 'ADVISORY B', JSON.stringify({ selectedCandidate: 1, reasonCode: 'candidate_selected' }), 'Final narration.'][(ordinal - 1) % modelCalls] });
+            responsePayload: (body, ordinal) => ordinal === modelCalls * 2 + 1 ? JSON.stringify({ preference: 'tie', deltas: { player_agency: 0 }, rationale: 'Synthetic fixture only.' })
+                : profile === 'Planner expansion' ? (ordinal - 1) % modelCalls === 0 ? (() => {
+                    const template = plannerTaskFromRequest(body).nodeTemplates[0];
+                    return JSON.stringify({ operations: [{ op: 'addNode', node: template.node }, ...template.edges.map(edge => ({ op: 'addEdge', edge }))] });
+                })() : 'Final advisory narration.'
+                    : profile === 'Planner loop' ? [JSON.stringify({ operations: [{ op: 'requestReplan' }] }), JSON.stringify({ operations: [{ op: 'requestFinalize' }] }), 'Final narration.'][(ordinal - 1) % modelCalls]
+                        : profile === 'Planner graph' ? [JSON.stringify({ operations: [{ op: 'requestFinalize' }] }), 'ADVISORY A', 'ADVISORY B', 'Final narration.'][(ordinal - 1) % modelCalls]
+                            : ['ADVISORY A', 'ADVISORY B', JSON.stringify({ selectedCandidate: 1, reasonCode: 'candidate_selected' }), 'Final narration.'][(ordinal - 1) % modelCalls] });
         try {
             const handle = f.h.handle, targets = new EvolutionTargets({ host: f.host });
             const scope = { domain: 'rp_chat', charDir: 'Actor', name: 'main', isGroup: false, groupId: '' };

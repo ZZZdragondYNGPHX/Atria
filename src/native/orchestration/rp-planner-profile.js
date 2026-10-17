@@ -1,6 +1,7 @@
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { rpAgentGraphProfile } from './rp-agent-graph-profile.js';
+import { rpPlannerExpansionProfile, rpPlannerExpansionTemplates } from './rp-planner-expansion-profile.js';
 
 const allowed = ['setPendingPriority', 'markBlocked', 'requestFinalize', 'requestReplan'];
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_rp_planner_plan_unavailable'), { code: 'native_orchestration_rp_planner_plan_unavailable' }); };
@@ -15,6 +16,13 @@ export function rpPlannerProfile(plan) {
     if (loops.length > 1 || loop && (loop.from.nodeId !== planner.nodeId || loop.to.nodeId !== planner.nodeId
         || loop.from.port !== planner.outputs[0]?.name || loop.condition !== 'always' || loop.maxVisits > graph.limits.maxLoopIterations
         || planner.inputs.length !== 1 || planner.inputs[0].name !== loop.to.port || planner.inputs[0].type !== 'json' || planner.inputs[0].required)) fail();
+    if (graph.graphChangePolicy.allowedOperations.includes('addNode') || graph.graphChangePolicy.allowedOperations.includes('addEdge')) {
+        if ((!loop && planner.inputs.length) || planner.outputs.length !== 1 || planner.outputs[0].type !== 'json'
+            || hash([...planner.capabilities].sort()) !== hash(['generation.send', 'graph.patch'].sort())
+            || !nodeModelRoutePins(planner, plan.dependencyPins).length || planner.dependencyPinIds.length !== nodeModelRoutePins(planner, plan.dependencyPins).length
+            || hash(graph.entryNodeIds) !== hash([planner.nodeId])) fail();
+        return rpPlannerExpansionProfile(plan, { planner, output, loop, allowed });
+    }
     if (graph.nodes.filter(node => node.kind === 'agent').length > 1) {
         if ((!loop && planner.inputs.length) || planner.outputs.length !== 1 || planner.outputs[0].type !== 'json'
             || hash([...planner.capabilities].sort()) !== hash(['generation.send', 'graph.patch'].sort())
@@ -56,9 +64,11 @@ export function rpPlannerProfile(plan) {
 }
 
 export function rpPlannerTask(graph) {
-    return { kind: 'native_rp_graph_planner', instruction: 'Propose one bounded GraphPatch for the current RP task. This is a control proposal, not narration, approval, a tool call or an official fact. Return only the requested JSON. Use only the listed node IDs and allowed operations. Do not invent permissions, budgets or nodes.',
-        nodes: graph.nodes.map(({ nodeId, kind, label }) => ({ nodeId, kind, label })), allowedOperations: graph.graphChangePolicy.allowedOperations,
-        outputOwnerNodeId: graph.outputContract.ownerNodeId };
+    return { kind: 'native_rp_graph_planner', instruction: 'Propose one bounded GraphPatch for the current RP task. This is a control proposal, not narration, approval, a tool call or an official fact. Return only the requested JSON. Use only the listed node IDs and allowed operations. Do not invent permissions, budgets or nodes.'
+        + (graph.graphChangePolicy.allowedOperations.includes('addNode') ? ' Add advisory work only when needed; additions must copy one exact Host nodeTemplate and both of its edges as an atomic batch. Unchosen templates execute no Model.' : ''),
+    nodes: graph.nodes.map(({ nodeId, kind, label }) => ({ nodeId, kind, label })), allowedOperations: graph.graphChangePolicy.allowedOperations,
+    outputOwnerNodeId: graph.outputContract.ownerNodeId,
+    ...(graph.graphChangePolicy.allowedOperations.includes('addNode') ? { nodeTemplates: rpPlannerExpansionTemplates(graph) } : {}) };
 }
 
 export const rpPlannerOutputContract = Object.freeze({ name: 'atria_graph_patch', schema: { type: 'object', properties: {

@@ -56,3 +56,30 @@ export async function configurePlannerGraph(plan, args, { loop = false } = {}) {
     }
     return { planner, narrator, drafts };
 }
+
+export async function configurePlannerExpansion(plan, args, { loop = false, slots = 1 } = {}) {
+    const narrator = loop ? await configurePlannerLoop(plan, args, 1) : await configurePlanner(plan, args);
+    narrator.inputs.push(...Array.from({ length: slots }, (_, index) => ({ name: 'advisory' + index, type: 'text', required: false })));
+    plan.definition.graphChangePolicy.allowedOperations.push('addNode', 'addEdge');
+    plan.definition.graphChangePolicy.allowedNodeKinds = ['agent'];
+    return narrator;
+}
+
+/** Read the template from the actual paid Model request, not a private scope. */
+export function plannerTaskFromRequest(body) {
+    const text = body.messages.flatMap(message => typeof message.content === 'string' ? [message.content] : message.content.map(part => part.text ?? '')).join('\n');
+    const start = text.indexOf('{"kind":"native_rp_graph_planner"');
+    if (start < 0) throw new Error('Original Planner task missing from HTTP');
+    let depth = 0, quoted = false, escaped = false;
+    for (let index = start; index < text.length; index++) {
+        const char = text[index];
+        if (quoted) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === '"') quoted = false;
+        } else if (char === '"') quoted = true;
+        else if (char === '{') depth++;
+        else if (char === '}' && --depth === 0) return JSON.parse(text.slice(start, index + 1));
+    }
+    throw new Error('Original Planner task JSON incomplete');
+}

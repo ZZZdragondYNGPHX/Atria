@@ -34,8 +34,9 @@ import { HandoffReturnController } from './handoff-return-controller.js';
 import { ResultPort } from './result-port.js';
 import { rpPlannerProfile, rpPlannerTask, rpPlannerOutputContract } from './rp-planner-profile.js';
 import { readRpPlannerCompletion } from './rp-planner-contracts.js';
+import { assertRpPlannerExpansionOperations } from './rp-planner-expansion-profile.js';
 import { GraphController } from './graph-controller.js';
-import { graphPatchHash } from './graph-revision-contracts.js';
+import { graphPatchHash, readTaskGraphRevision } from './graph-revision-contracts.js';
 import { rpAgentGraphProfile, rpAgentGraphOrder } from './rp-agent-graph-profile.js';
 import { rpReviewProfile, rpReviewOutputContract, RP_REVIEW_REASON_CODES } from './rp-review-profile.js';
 import { ReviewController, reviewReceiptId } from './review-controller.js';
@@ -381,7 +382,8 @@ export class NativeRpOrchestrationAuthority {
                 || !equal(next.route.executionPolicy.computeBudget, resolved.route.executionPolicy.computeBudget)) fail('native_orchestration_rp_route_mismatch');
             return { binding, plan, node, pin, resolved: next, configDigest: configuration(next), transfer };
         };
-        const planner = plannerProfile ? { ...await prologue(plannerProfile.planner, plannerProfile.transfer, true), loop: plannerProfile.loop, transfers: plannerProfile.transfers } : null;
+        const planner = plannerProfile ? { ...await prologue(plannerProfile.planner, plannerProfile.transfer, true), loop: plannerProfile.loop, transfers: plannerProfile.transfers,
+            expansion: plannerProfile.expansion ?? null } : null;
         if (planner && resolved.route.executionPolicy.computeBudget.maxRequests < 2) fail('native_orchestration_graph_budget_unavailable');
         const candidates = judgeProfile ? await Promise.all(judgeProfile.candidates.map((node, i) => prologue(node, judgeProfile.transfers[i], false))) : [];
         const chainSteps = chainProfile ? await Promise.all((chainProfile.drafts ?? [chainProfile.draft]).map((node, i) => prologue(node, chainProfile.transfers?.[i] ?? chainProfile.transfer, false))) : [];
@@ -411,6 +413,10 @@ export class NativeRpOrchestrationAuthority {
             || selected.judge?.configDigest !== state.selected.judge?.configDigest
             || !equal(selected.judge?.candidates.map(item => item.configDigest) ?? [], state.selected.judge?.candidates.map(item => item.configDigest) ?? []))
             fail('native_orchestration_source_stale');
+        if (state.graphSnapshot) {
+            const root = await this.#execution().runs.get(state.handle, state.graphRunId);
+            if (root.graphRevision !== state.graphSnapshot.graphRevision || hash(root.graph) !== state.graphSnapshot.graphHash) fail('native_orchestration_source_stale');
+        }
         return selected;
     }
 
@@ -648,17 +654,17 @@ export class NativeRpOrchestrationAuthority {
     async authorizeGraphResult({ handle, tx, capture, root, phase, effectId, producer, resultRef }) {
         const state = this.#runs.get(root.runId);
         const identity = inspectNativeRpGenerationIdentity(capture, { host: state?.host, handle, rpControl: this.owner.rpControl });
-        if (!state?.selected.chain || state.capture !== capture || state.handle !== handle || state.graphRunId !== root.runId
+        if (!(state?.selected.chain || state?.graphSteps?.length) || state.capture !== capture || state.handle !== handle || state.graphRunId !== root.runId
             || !equal(root.planRef, state.selected.binding.planRef) || !equal(root.sourceBinding, state.sourceBinding)) fail('native_orchestration_result_consume_denied');
         checkCancellation(identity.signal); await this.#current(state);
         if (phase === 'publish') {
-            if (!(state.selected.judge?.candidates ?? state.selected.chainSteps).includes(state.activeSelection) || producer.attemptId !== state.attemptId || effectId !== state.effectId
+            if (!(state.selected.judge?.candidates ?? state.graphSteps ?? state.selected.chainSteps).includes(state.activeSelection) || producer.attemptId !== state.attemptId || effectId !== state.effectId
                 || producer.nodeId !== state.activeSelection.node.nodeId || producer.effectiveGrantDigest !== state.decision.grantDigest) fail('native_orchestration_result_not_publishable');
             return { allowed: true, grantDigest: state.decision.grantDigest };
         }
-        const accepted = state.selected.agentGraph ? this.#graphInputs(state, state.activeSelection ?? state.selected).map(item => item.resultRef)
+        const accepted = this.#graphProfile(state) ? this.#graphInputs(state, state.activeSelection ?? state.selected).map(item => item.resultRef)
             : state.activeSelection === state.selected.judge ? state.candidateResults?.map(item => item.resultRef) : [state.graphResultRef];
-        if (phase !== 'consume' || state.activeSelection && ![state.selected.review, state.selected.judge, ...state.selected.chainSteps].includes(state.activeSelection)
+        if (phase !== 'consume' || state.activeSelection && ![state.selected.review, state.selected.judge, ...(state.graphSteps ?? state.selected.chainSteps)].includes(state.activeSelection)
             || !accepted?.some(ref => ref && equal(ref, resultRef))) fail('native_orchestration_result_consume_denied');
         const recipient = (await readAttempt(tx, handle, root, state.attemptId)).doc;
         const intent = (await readEffect(tx, handle, root, state.effectId)).doc;
@@ -761,6 +767,7 @@ export class NativeRpOrchestrationAuthority {
                             state.capture = plannerCapture; state.activeSelection = prologue;
                             await this.#generate(state, { planner: !!selected.planner, graphNode: !!selected.chain });
                             if (selected.planner) await this.#runPlannerLoop(state, capture);
+                            if (selected.planner?.expansion) await this.#prepareExpansionGraph(state);
                             await this.#runChain(state, capture);
                             if (selected.review) await this.#runReviews(state, capture);
                             if (selected.judge) await this.#runJudge(state, capture);
@@ -974,11 +981,20 @@ export class NativeRpOrchestrationAuthority {
         patch.payloadHash = graphPatchHash(patch);
         const withAuthority = service.sourcePort.consumptionBoundary(handle, root.sourceBinding, { engine: service.runs.engine });
         const proposed = await work('graph_control_adopt', patch, () => service.runs.withSourceControl(handle, runId, () => new GraphController({ runs: service.runs,
-            authorizePatch: async ({ root: active, producer, patch: requested }) => {
+            authorizePatch: async ({ tx, root: active, producer, patch: requested }) => {
                 await this.#current(state);
                 const actual = await port.inspectResultCompletion(handle, { result, runId, effectId: state.effectId });
                 if (actual.payloadHash !== proof.payloadHash || actual.producerAttemptId !== producer.attemptId || !equal(requested, patch)
                     || !equal(active.sourceBinding, state.sourceBinding)) fail('native_orchestration_planner_producer_denied');
+                if (state.selected.planner.expansion) {
+                    const templates = state.decision.inputRef.graphTemplates;
+                    assertRpPlannerExpansionOperations(active.graph, templates, requested.operations);
+                    const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: null }, { tx });
+                    const required = active.graph.nodes.filter(node => node.kind === 'agent').length + requested.operations.filter(operation => operation.op === 'addNode').length
+                        + Number(requested.operations.some(operation => operation.op === 'requestReplan'));
+                    if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');
+                    await this.#current(state);
+                }
             } }).propose(handle, { expectedStateVersion: current.stateVersion, patch }), { withAuthority }));
         const patchReceipt = proposed.outcome.patchReceipt;
         if (!patchReceipt.accepted) fail('native_orchestration_planner_patch_rejected');
@@ -1017,8 +1033,9 @@ export class NativeRpOrchestrationAuthority {
             const service = this.#execution(), root = await service.runs.get(state.handle, state.graphRunId);
             const capacity = await service.runs.engine.withTransaction(state.handle, tx => service.budgetPort.observeCapacity(state.handle,
                 { authorityRef: root.budgetAuthorityRef, reservationId: null }, { tx }));
-            if (!capacity || capacity.overrun || capacity.remaining.requests < state.selected.chainSteps.length + 2) fail('native_orchestration_planner_replan_budget_unavailable');
-            if (root.progress.attempts + state.selected.chainSteps.length + 3 > root.limits.maxAttempts) fail('native_orchestration_planner_replan_limit_exhausted');
+            const drafts = state.selected.planner.expansion ? root.graph.nodes.filter(node => node.kind === 'agent').length - 1 : state.selected.chainSteps.length;
+            if (!capacity || capacity.overrun || capacity.remaining.requests < drafts + 2) fail('native_orchestration_planner_replan_budget_unavailable');
+            if (root.progress.attempts + drafts + 3 > root.limits.maxAttempts) fail('native_orchestration_planner_replan_limit_exhausted');
             await this.#current(state);
             state.replanRequested = false;
             const previousReceiptRef = { runId: state.graphRunId, receiptId: 'oreceipt_' + hash({ kind: 'rp_planner', runId: state.graphRunId, attemptId: state.plannerAttemptId }).slice(0, 32) };
@@ -1033,14 +1050,31 @@ export class NativeRpOrchestrationAuthority {
         }
     }
 
+    #graphProfile(state) { return state.graphProfile ?? state.selected.agentGraph; }
+
+    async #prepareExpansionGraph(state) {
+        const service = this.#execution(), root = await service.runs.get(state.handle, state.graphRunId);
+        const snapshot = await service.runs.engine.withTransaction(state.handle, tx => readTaskGraphRevision(tx, state.handle, root));
+        const profile = rpPlannerProfile({ ...state.selected.plan, definition: snapshot.graph });
+        if (!profile.expansion || profile.expansion.narratorNodeId !== state.selected.node.nodeId || profile.expansion.pinId !== state.selected.pin.pinId)
+            fail('native_orchestration_planner_template_denied');
+        state.graphProfile = profile.agentGraph; state.plannerTransfers = profile.transfers;
+        state.graphSteps = (profile.agentGraph?.drafts ?? []).map(node => ({ node, binding: state.selected.binding, plan: state.selected.plan,
+            pin: state.selected.pin, resolved: state.selected.resolved, configDigest: state.selected.configDigest }));
+        state.graphSnapshot = { graphRevision: snapshot.graphRevision, graphHash: hash(snapshot.graph) };
+        await this.#current(state);
+    }
+
     async #graphStepTransition(state, root, selected, inputRefs, grantDigest, { review = false, judge = false } = {}) {
         const service = this.#execution(), { handle } = state;
         const primary = review ? state.selected.review : state.selected.planner ?? state.prologueSelection ?? state.selected.chain;
-        const graphInputs = state.selected.agentGraph ? this.#graphInputs(state, selected) : null;
+        const graphInputs = this.#graphProfile(state) ? this.#graphInputs(state, selected) : null;
         const replanning = selected === state.selected.planner;
-        const plannerEntry = !replanning && graphInputs?.length === 0 && !!state.selected.planner;
+        const composed = !replanning && !!state.selected.planner && !!(this.#graphProfile(state) || state.selected.planner.expansion);
+        const control = (state.plannerTransfers ?? state.selected.planner?.transfers ?? []).find(edge => edge.to.nodeId === selected.node.nodeId);
         const bindings = replanning ? [{ edgeId: state.selected.planner.loop.edgeId, producerAttemptId: state.plannerAttemptId }]
-            : plannerEntry ? [{ edgeId: state.selected.planner.transfers.find(edge => edge.to.nodeId === selected.node.nodeId).edgeId, producerAttemptId: state.plannerAttemptId }]
+            : composed ? [...(graphInputs ?? []).map(item => ({ edgeId: item.edge.edgeId, producerAttemptId: item.attemptId })),
+                ...(control ? [{ edgeId: control.edgeId, producerAttemptId: state.plannerAttemptId }] : [])]
                 : graphInputs ? graphInputs.map(item => ({ edgeId: item.edge.edgeId, producerAttemptId: item.attemptId })) : state.selected.judge ? judge
                     ? state.candidateResults.map((item, index) => ({ edgeId: state.selected.judge.inputs[index].edgeId, producerAttemptId: item.attemptId }))
                     : [{ edgeId: state.selected.judge.candidates[state.selectedCandidate].transfer.edgeId, producerAttemptId: state.prologueAttemptId },
@@ -1049,11 +1083,17 @@ export class NativeRpOrchestrationAuthority {
                         ...(!review && state.selected.review ? [{ edgeId: state.selected.review.gate.edgeId, producerAttemptId: state.reviewAttemptId }] : [])];
         const traversed = await new TransitionController({ runs: service.runs, authorizeTransition: async ({ tx, root: active, target, producers }) => {
             await this.#current(state);
-            if (plannerEntry) {
+            if (composed) {
                 const planner = await readRpPlannerCompletion(tx, handle, active);
-                if (!planner || planner.patch.requests.replan || planner.producer.attemptId !== state.plannerAttemptId || producers.length !== 1
-                    || producers[0].attempt.attemptId !== planner.producer.attemptId || target.nodeId !== selected.node.nodeId)
+                if (!planner || planner.patch.requests.replan || planner.producer.attemptId !== state.plannerAttemptId || producers.length !== bindings.length
+                    || target.nodeId !== selected.node.nodeId || !equal(inputRefs[0].controlReceiptRef, { runId: root.runId, receiptId: planner.receipt.receiptId })
+                    || control && !producers.some(item => item.attempt.attemptId === planner.producer.attemptId && item.edge.edgeId === control.edgeId))
                     fail('native_orchestration_graph_transition_denied');
+                for (const source of graphInputs ?? []) {
+                    const producer = producers.find(item => item.attempt.attemptId === source.attemptId && item.edge.edgeId === source.edge.edgeId);
+                    if (!producer || producer.receipt.reasonCode !== 'graph_result_published' || !equal(producer.receipt.resultRefs, [source.resultRef]))
+                        fail('native_orchestration_graph_transition_denied');
+                }
             } else if (graphInputs && !replanning) {
                 if (target.nodeId !== selected.node.nodeId || producers.length !== graphInputs.length) fail('native_orchestration_graph_transition_denied');
                 for (const source of graphInputs) {
@@ -1099,7 +1139,7 @@ export class NativeRpOrchestrationAuthority {
 
     #graphInputs(state, selected) {
         if (selected === state.selected.planner) return [];
-        return state.selected.agentGraph.inputs[selected.node.nodeId].map(edge => {
+        return this.#graphProfile(state).inputs[selected.node.nodeId].map(edge => {
             const producer = state.graphResults?.get(edge.from.nodeId);
             if (!producer) fail('native_orchestration_graph_dependency_unavailable');
             return { ...producer, edge };
@@ -1107,13 +1147,14 @@ export class NativeRpOrchestrationAuthority {
     }
 
     async #runChain(state, originalCapture) {
-        let steps = state.selected.chainSteps.slice(1);
-        if (state.selected.agentGraph) {
+        const declared = state.graphSteps ?? state.selected.chainSteps;
+        let steps = declared.slice(1);
+        if (this.#graphProfile(state)) {
             const root = await this.#execution().runs.get(state.handle, state.graphRunId);
-            const ordered = rpAgentGraphOrder(state.selected.agentGraph, root.nodeControl);
+            const ordered = rpAgentGraphOrder(this.#graphProfile(state), root.nodeControl);
             if (ordered.some(node => root.nodeControl[node.nodeId].disposition !== 'eligible')) fail('native_orchestration_graph_dependency_unavailable');
             steps = ordered.filter(node => node.nodeId !== state.selected.node.nodeId && !state.graphResults?.has(node.nodeId))
-                .map(node => state.selected.chainSteps.find(step => step.node.nodeId === node.nodeId));
+                .map(node => declared.find(step => step.node.nodeId === node.nodeId));
         }
         for (const step of steps) {
             const request = immutable({ requestId: 'rp-graph:' + hash({ runId: state.graphRunId, nodeId: step.node.nodeId }).slice(0, 32),
@@ -1322,10 +1363,11 @@ export class NativeRpOrchestrationAuthority {
         state.sourceBinding = captured.sourceBinding; state.request = identity.request;
         const taskPurpose = planner ? 'original_rp_graph_planner' : graphNode ? 'original_rp_graph_draft' : review ? 'original_rp_graph_review' : judge ? 'original_rp_graph_judge' : 'original_rp_narration';
         const logicalInputRef = rpModelInput(identity.request, captured.sourceBinding, selected);
+        if (planner && state.selected.planner.expansion) logicalInputRef.graphTemplates = identity.controlTask.nodeTemplates;
         if (graphRunId && state.selected.planner) logicalInputRef.controlReceiptRef = { runId: graphRunId,
             receiptId: 'oreceipt_' + hash({ kind: 'rp_planner', runId: graphRunId, attemptId: state.plannerAttemptId }).slice(0, 32) };
         const chainInput = graphNode && state.selected.chainSteps.includes(selected) && selected !== state.selected.chainSteps[0] && !preparedAttemptId;
-        const graphRefs = state.selected.agentGraph ? this.#graphInputs(state, selected).map(item => item.resultRef)
+        const graphRefs = this.#graphProfile(state) ? this.#graphInputs(state, selected).map(item => item.resultRef)
             : graphRunId && state.selected.chain && (!graphNode || chainInput) ? judge ? state.candidateResults.map(item => item.resultRef) : [state.graphResultRef] : [];
         if (graphRefs.length) logicalInputRef.acceptedGraphResultRefs = graphRefs;
         if (graphRunId && state.selected.judge && !graphNode && !judge) logicalInputRef.judgeReceiptRef = state.judgeReceiptRef;
@@ -1349,7 +1391,7 @@ export class NativeRpOrchestrationAuthority {
         try {
             if (!continuation && !graphRunId && (root.status !== 'admitted' || root.attemptRefs.length)) fail('native_orchestration_rp_request_replayed');
             if (!continuation) {
-                const independentEntry = graphNode && (state.selected.judge || !state.selected.planner && state.selected.agentGraph && !state.selected.agentGraph.inputs[selected.node.nodeId].length);
+                const independentEntry = graphNode && (state.selected.judge || !state.selected.planner && this.#graphProfile(state) && !this.#graphProfile(state).inputs[selected.node.nodeId].length);
                 const { attemptId } = preparedAttemptId ? { attemptId: preparedAttemptId } : graphRunId && !independentEntry
                     ? await this.#graphStepTransition(state, root, selected, inputRefs, grantDigest, { review, judge })
                     : await service.runs.beginAttempt(handle, controlCommandId('native.rp.attempt', state.selected.planner || state.selected.chain ? { ...commandIdentity, nodeId: selected.node.nodeId } : commandIdentity), {

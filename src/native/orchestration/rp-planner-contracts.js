@@ -9,6 +9,7 @@ import { assertRpControlWork } from './rp-control-work-contracts.js';
 import { rpPlannerProfile } from './rp-planner-profile.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
+import { assertRpPlannerExpansionOperations } from './rp-planner-expansion-profile.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP Planner completion facts'); };
@@ -28,6 +29,10 @@ export async function readRpPlannerCompletion(tx, handle, root) {
         if (producer.attemptNumber !== index + 1 || producer.graphRevision !== (previous?.patch.newGraphRevision ?? 0)
             || entry.patch.previousGraphRevision !== producer.graphRevision) invalid();
         const input = entry.input;
+        if (profile.expansion) {
+            const snapshot = await readTaskGraphRevision(tx, handle, root, producer.graphRevision);
+            assertRpPlannerExpansionOperations(snapshot.graph, input.graphTemplates, entry.patch.appliedOperations);
+        }
         if (input.kind !== 'native_rp_intent' || input.nodeId !== node.nodeId || input.role !== 'narrator'
             || !equal(input.planRef, root.planRef) || !equal(input.sourceRef, root.sourceBinding.sourceRef)
             || !equal(input.audience, { kind: 'narrator' }) || !equal(producer.inputRefs, [input])) invalid();
