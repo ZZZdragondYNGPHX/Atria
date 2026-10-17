@@ -1574,3 +1574,10 @@ Model实际完成后封存只读检索费用事实、释放发送scope；原Sche
 原RunObservationService费用仍只读取原银行与受保护Effect，新增costs.providerWork，固定generation、embedding、rerank、other四项；每项只有attempts、knownTotalTokens、unknownAttempts、reservedUpperTokens。分类取实际Effect capability及context_retrieval mode，不采用请求标签或模型文本。原modelAttempts字段继续保留原银行所有Provider attempts的汇总语义，其余总计/本地费用/closed状态保持，与四项之和相符；没有新账本、价格推算或发送许可。
 
 投影不增加Profile/Secret/输入指纹、召回正文、Result正文或Source grant。新的observer重读相同持久事实得到同费用，不恢复scope、重发或改变费用。FS/SQLite完整Embedding插入/查询、Rerank、Model及unknown边界的实际验证归同一Record；正式Project Commit等后端继续，不作前端交接或最终Gate完成。
+
+
+### 17.137 当前有限 Delegate 的 brief 与检索边界实证
+
+D4允许由原领域授予明确SourceRef/ResultRef权限；当前真实RP Delegate producer只冻结最后用户brief，未取得子Task的Information/Memory eligibility。父Narrator的检索pins、原Memory或SourceRef均不能代替这项授权。此次不新增Delegate检索能力或改变生产权限。
+
+真实父/子已发布Plan、原Scheduler与银行验证：现有限Delegate shape持额外owned检索pins在派发前拒绝；实际子Model银行亦不能构造检索scope或给Context追加父Memory item/SourceRef。子请求只有brief，父continuation独立消费自己合法Memory，原typed Result/Output/return与费用保持。只开全局外部Profile而缺owned pin时，已付子任务可完成并归还，父Context仍按原scope unavailable拒绝，不偷发检索或恢复发送；准确FS/SQLite证据归同一Record。正式Source授权与通用Delegate检索仍未实现，不能把有限生产者拒绝泛化成整个D4禁止。

@@ -1448,3 +1448,11 @@
 - 新FS已结算分项基线1FAIL/5skip（7.183s），旧投影确无providerWork。新费用6项与原Run HTTP28项完整34/34 PASS（22.11s，新6为17.548s）。lint首轮发现brace-style及测试条件expect两项，调整纯格式和统一outcome断言；最终新6/6再PASS（17.135s）。实际settled为2Embedding+1Rerank+1Model，总tokens41；检索未知仅1Embedding、0Model；主Model未知保留21已知检索tokens及原unknown估计上界。各项之和等于原汇总，重建observer费用相同、原bank与Provider次数不变，metadata没有Memory正文或Secret。首个写测试命令误在tests工作目录又带tests/前缀，文件未生成、suite 0执行；纠正路径后才取得上述结果。
 - 并行原Project Tool writer检查没有证实新的数据覆盖漏洞：真实atri_agent_set_plan在Studio读取、Task载入、_recover三await期间遭人类setPlan，原fromFingerprint/native_write_conflict/project_agent_sequence_conflict已保持人类plan/fingerprint、对话及20token Model已付费用。新增FS/SQLite六参数最终6/6 PASS（19.719s），Tool无receipt、Effect仍dispatching待原核对、无OutputClaim且仅1Model发送；产品writer未修改。探索首FS读取例通过4.335s，载入/recovery两例7.186s只因错误码预期错误而失败，合法数据断言均已通过，不把诊断差异冒充产品漏洞。三相关JS ESLint及staged diff check通过。
 - 所有Provider为localhost合成，无新增真实API，私密总数12、备用Chat0、daily/RPM配置null保持。继续正式Project Commit可信消费者、Delegate隔离边界、通用图与完整恢复释放；P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。
+
+
+## 2026-10-17 — 第一百三十四组：真实 Delegate brief 与检索边界验证
+
+- Source `2d1b5869a` → `69875f435`，本地提交、未推送；接口§17.137。仅新增独立fixture与边界suite，不改产品或原helper。真实父/子不可变Plan发布、opaque子Model bank、原Source/Context及typed Result/return验证当前有限Delegate brief授权；没有伪造子Memory eligibility或放开原shape。
+- FS/SQLite八参数初6PASS/2FAIL（24.941s），只有全局external unpinned两例误期外层未翻译错误码；加入实际Context compile内部拒绝码断言并保持外层generation_execution_failed，最终8/8 PASS（23.612s）。parent或parent+child持owned Profiles在原producer shape处前置拒绝，零Root/Effect/HTTP/费用变化。实际child bank不能创建检索scope；传父SourceRef或合法父Memory item给子Context同样拒绝且bank不变。
+- 无外部配置时，真实子wire只有原brief，父wire独立含合法历史/Memory并排除future；两Model各20token、本地费settled、child完整task-local output/return、reservation released，父continuation完成而正式Chat仍依原profile。全局外部Profile无owned pin时，子付费完成并持有原typed output/return，父零Model/Embedding且保留失败context_build费用；原重试不加费。全部数据为临时harness与localhost，两JS原ESLint与staged diff check通过。
+- 无新增真实API，私密总数12、备用Chat0、daily/RPM配置null保持。正式Project Commit的四执行者分工仍在开发，未提交的相应文件不属于本组测试字节；继续完整后端，P1–P4/最终Gate NOT_READY，不交前端/main、不推送或结束分支。
