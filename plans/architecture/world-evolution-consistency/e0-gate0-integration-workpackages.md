@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · W20 Gate 0 最小原生合同位置、Consumer 工作包与最终交接门槛（讨论稿）
 
 - **任务路由**：`ARCH-DWE-01` / Primary Workspace `docs`；[唯一 Plan 入口](index.md) · [累计设计](design.md) · [W19 已确认 Session/时态方向](e0-gate0-physical-contracts.md) · [W18 消费者矩阵](e0-minimal-contract-cutover.md) · [W15 E0 阻塞](e0-final-closure.md) · [唯一 Record](../../../records/architecture/world-evolution-consistency.md)。
-- **状态：Draft / W20 未确认**。W1-B～W19-B 已获用户方向性确认；W20 候选路线、物理 Namespace、ID 前缀、Fact/Participant/Grant/Host ABI、实际分支合流/工程工作包及产品实现**均未经用户批准**。E0-01～09 当前仍 **PARTIAL / BLOCKED**，不是 “E0 PASS”。
+- **状态：Draft / W20-B 总体方向已获用户确认**。W1-B～W20-B 为已确认的设计/收口路线；§6 保留原本的 W20-A/B/C 比较，正式确认见 §8。**P1/P2 物理位置、精确 ID/Schema、实际调用方与最终工程计划未获批准**。E0-01～09 仍 PARTIAL / BLOCKED，未授权产品实现。
 - **本轮目标**：避免继续只谈抽象概念，具体追问 **在哪个 Session 资源/原生 Authority 下保存身份、怎样让动态 NPC 的名字与事实真正参与提交和历史查询、哪些实际生产消费者需一次性切线、Gate 0 何时有充足证据交给开发**。
 - **版本锚点**：2026-10-17 GitHub Branch GET 再核验：`main=c57fada6edeea255b29d857ba2585c1dbc9c098b`、`refactor/atria-native-orchestration-v3=a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`、`refactor/atria-native-prompt-preset-deepening=760327891149216dffdc1e3fa0c846496007a013`、`feat/native-visual-generation-deepening=ae587be0c64487ba922528bdd0146444bcf5e92e`。这些是本轮定向审计基线，不是未来集成后的固定产品 HEAD；只读源码/目录/搜索结果，未运行任何产品测试。
 
@@ -128,3 +128,19 @@ EffectiveWorldQuery {
 - **E0-07/08**：真实 UI 与长会话/三端执行验证列入 Gate 1～4，不伪称目前已通过。
 
 如果用户确认 W20-B，下一轮应进行**正式交接收口审查**：将 P1/P2 选择所需的准确代码位置、每个 WP 的 Owner、技术前置与 Gate 0 未解决项压成一份具体、可让 Codex 执行的阶段计划，并判断是否达到最终企划定稿申请条件。**此前一切依然 Draft，未经用户明确授权不得创建 feat 分支或修改产品代码。**
+
+
+## 8. W20-B 用户确认（2026-10-17）
+
+用户对上一轮明确推荐的 **W20-B「受保护 Session-owned Identity + Domain-owned Fact transitions / Two-anchor Query + Consumer Work Packages」**回复「认同」，将其记录为 ARCH-DWE-01 已确认的**总体架构/工程收口方向**。因此 W1-B～W20-B 已获用户认可。
+
+本次真正确认的是：
+- **受保护身份**：新涌现 NPC 的正式 Subject 在现有 Native Session/Revision 权威内持久化，具合法来源与固定分支祖先；无论物理选择 P1（受保护 World Root）或 P2（受保护 Session State Namespace），**必须同时保证 Typed Authority Writer / 校验 / 统一发布 / Save/Restore/GC / 限制 Generic Patch**。不能让普通模型、插件或其他 Runtime 因数据放入 Session 就获得世界写权。
+- **领域事实分工**：交易、职位、关系、日程、生命周期等事实继续归实际 Domain Owner；需要长时间保留因果时，只补来源型 Fact Transition、Revision/GameTick 与必要索引。不要在 SubjectStore 再存各域权威真相、建立第二 EventStore 或平行 Temporal DB。
+- **授权查询**：明确 `asKnownRevision → asOfGameTick(若有合法 Clock) → legal Perspective/Source Grants`，不为 Worldless / 纯叙事模式伪造精确游戏时间；来源/身份秘密不能在时间查询或 Inspector 泄露。
+- **执行与清退**：WP-A～F 按 Native Authority / History/Save / Information/HCM / Context/Prompt / Timeline/Media/Play / Library/Studio/Legacy 分工，采取实际 Consumer 证据驱动的原生硬切，不按名字盲目删除 legacy 文件、不给 Dev 项目建立长期数据兼容双写。
+- **Gate 区分**：开发前 Gate 0 需要足以开工的 Owner、接口物理落点、真实主线/相关分支 HEAD、写入保护与 Consumer/Deletion 计划；实施期 Gate 1～4 才取得新增功能的 Node/CI/数据库、Play/Studio、长会话及 Windows/CachyOS/Termux 真实结果。
+
+**未批准、不能冒称已完成**：P1/P2 的实际选型、任何 `subject_*` Native ID family、正式 Typed Subject/Fact/Host ABI/有效时态算法、完整实际调用图和产品文件删除、V3/Prompt/Visual 的最终整合 HEAD、E0-01～09 PASS、整份企划定稿或创建实现分支。
+
+**W21 下一轮**进入同一 Plan Bundle 的 [e0-final-handoff-readiness.md](e0-final-handoff-readiness.md)，对 P1/P2 安全和存储闭包、关键生产链/所有者、WP-A～F 依赖、Gate 0 的明确可交接/不可交接条件开展正式开发交接前的最终收口审查。W21 的路线仍是候选，**尚未获得用户选择**；整个 Plan **Draft**。
