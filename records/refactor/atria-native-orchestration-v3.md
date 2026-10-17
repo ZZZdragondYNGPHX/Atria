@@ -1257,3 +1257,11 @@
 - 最新一次定向ESLint最初仅planner instruction拼接三行缩进与测试一个unused import失败；按原规则fix并删除unused后十文件lint通过，没有放宽规则或关闭case。最后完整新suite及原RP链路回归运行中，结果未计通过；所有Provider仍localhost合成，真实API总数未增加，备用站点仍0次。完整后端继续，不交前端/main、不推送或结束分支。
 
 - 第113组最终 Source `929a3c59a` → `20fe15afc`，本地提交、未推送。最新完整动态增补suite32/32 PASS（84.56s）；追加费用unknown两参数2PASS/32filterSKIP（10.781s），suite最终34项分批有通过证据。原静态DAG/线性Draft、Review approve/rerun与Judge四suite精选12PASS/126filterSKIP（95.797s）。十文件最新原ESLint与staged diff检查通过。Source/docs独立分支保持，真实API总数仍6、备用0；继续其它后端与P1–P4剩余Gate，不提前前端、main或分支结束。
+
+
+## 2026-10-17 — 第一百一十四组：真实检索API所需的受信Profile标识
+
+- Source `20fe15afc` → `4ce9dddda`，本地提交、未推送；接口 §17.117。核对原外部Hybrid拒绝后保留其Source/Effect边界，先补原不可变Retrieval Profile的受限User-Agent配置及所有远程Embedding/Rerank协议实际传递；不允许调用方配置或认证头覆盖。本机API已知需客户端标识，不借可用HTTP解除V3 Context scope拒绝。
+- 原检索runtime/client/browser三完整suite40/40 PASS（2.081s）；含11类远程Embedding与三类Rerank的实际本地协议、原Secret保持/配置注入拒绝，新头字段保留/CRLF/重复/本地禁止反例。补原Memory/检索/协议源码指纹后，原G05预算、runtime和fingerprint三suite213PASS/4FAIL/1既有SKIP（35.626s）：四个直接内部调用只携compute/signal，没有profile，新增helper误读undefined并在原结算前失败。改为无额外profile时使用原默认头，四失败场景4PASS/125filterSKIP（2.262s），未关闭原取消/费用反例。16文件原ESLint及staged diff检查通过。
+- 用户私密API实际验证新增3次HTTP：Embedding两次均200，Rerank一次200/两个有限结果；对话备用站仍0。临时真实探测首轮并发dynamic import导致Jest模块link错误（0次外发）；改顺序载入后，首个Embedding/原index insert HTTP200，但测试错误断言insert API并不返回的insertedCount，非产品失败。随后响应clone的顺序读取阻塞第二个已200的Embedding；只终止本人该测试父/子进程，不再重发Embedding，改只验证尚未执行的Rerank。最后该单项1PASS（2.441s），使用原不可变Profile/Secret/原Session compute，未调用Chat。探测脚本及本人临时private目录已清理；密钥/响应正文未入Git，配置和滚动账本600、目录700。
+- 私密滚动账本真实请求总数由6至9：保留两次Embedding的http_200及Rerank passed事实，不把临时探测失败抹去或少计。当前dailyRequests/requestsPerMinute仍null，不自行恢复旧上限。这是原检索协议和配置工程实证；V3 Context外部检索尚缺受信producer/完整Effect费用接线，独立质量/价格、其它Source及完整恢复/释放继续，后端未完成，不交前端/main、不结束分支。

@@ -1366,3 +1366,12 @@ Planner settlement 在最后 Model/Source 授权和 Root stamp 复验后才写�
 Planner 停止重规划后，Host 由原 TaskGraphRevision/Patch/命令重建实际图，在当前同一私有 Scheduler operation 中形成后继描述；原已冻结 Narrator Model配置和资源复用，不建立第二runner/银行。图修订与图hash在后继发送/消费时继续围栏。每个新Draft仍经原 ModelPort/ResultController，唯一 Narrator 同时核原 Planner 控制边和所有直接Graph Result边。原发布修订 audience、source/grant、pending priority、Context与Output/费用闭包保持；新增图metadata自身不授新执行scope。
 
 历史reader核对每轮前的原图、完整Host模板/原 Model input、实际采纳的节点/边、Model/settlement/transition及唯一输出证明；Source删除或冷启动不恢复权限。saved/no_save ACK未知均不派发未确认的Draft或重发Planner，晚到撤权/取消保留原图/费用而拒后继。原隔离 Native evaluator 可执行该有限真实增补并由父Evolution账本唯一发送计费。任意拓扑/控制组合、跨Source/Actor、高风险consumer及完整恢复释放仍按同一任务继续，本项不是完整后端或独立质量/价格通过。
+
+
+### 17.117 原 Retrieval Profile 的不可变客户端标识
+
+原 player-owned Retrieval Profile 允许可选 headers，仅接受一个大小写规范为 User-Agent 的可打印ASCII值；长度/CRLF/重复字段及Authorization、Host、Cookie、Content-Type等保留字段拒绝。本地transformers/webllm不接受HTTP headers。标识随原 exact retrievalProfileId/revision 持久化和hash，新revision之外不能改写；请求body仍不能传配置或覆盖headers。Secret只按原存储SecretRef解析，当前活跃旧key不被读取或覆盖。
+
+原各远程Embedding协议和全部Rerank协议从同一受信Profile读取该标识，provider固定字段、认证及原Compute/Source边界保持。内部只携原compute/signal的既有调用无额外headers，不因此失去原取消/结算语义。Native Retrieval/Memory authority和实际协议源码补入原evaluator revision，旧报告不能复用不同检索行为。没有增加API调用硬上限。
+
+本机实际提供API已通过不可变Profile、原Secret解析、原Session compute与原协议执行取得有限工程证据，精确次数/失败归同一Record。V3 Context的外部Hybrid检索仍须接原Source/Audience/Egress、独立实际Effect与完整费用闭包，现有 scope_unavailable 拒绝未移除；配置/HTTP成功不构成该授权或质量Gate通过。
