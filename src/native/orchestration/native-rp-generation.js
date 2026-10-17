@@ -20,7 +20,7 @@ import { validateModelCapability } from './model-capability-authority.js';
 import { ContextPort } from './context-port.js';
 import { AttemptController } from './attempt-controller.js';
 import { controlCommandId, runGuard, readAttempt, controlRecordKey } from './controller-common.js';
-import { compileNativeContextMetered } from './generation-local-work.js';
+import { compileNativeContextMetered, runGenerationLocalWork } from './generation-local-work.js';
 import { assertChildRunCurrent, childBudgetReceiptId } from './run-repository.js';
 import { checkedRecord } from './plan-repository.js';
 import { readHandoff } from './handoff-contracts.js';
@@ -32,6 +32,8 @@ import { TaskLocalOutputController } from './task-local-output-controller.js';
 import { readTaskLocalOutput } from './task-local-output-contracts.js';
 import { HandoffReturnController } from './handoff-return-controller.js';
 import { ResultPort } from './result-port.js';
+import { rpPlannerProfile, rpPlannerTask, rpPlannerOutputContract } from './rp-planner-profile.js';
+import { GraphController, graphPatchHash } from './graph-controller.js';
 
 const outputCaptures = new WeakMap();
 const captures = new WeakMap();
@@ -322,7 +324,8 @@ export class NativeRpOrchestrationAuthority {
         if (!binding) fail('native_orchestration_rp_binding_required');
         const plan = await this.#plans().getRevision(handle, binding.planRef), graph = plan.definition;
         const delegated = graph.nodes.some(item => item.capabilities.includes('agent.delegate'));
-        const node = finiteProfile(plan, { delegated });
+        const plannerProfile = rpPlannerProfile(plan);
+        const node = finiteProfile(plannerProfile?.narration ?? plan, { delegated });
         const pin = plan.dependencyPins.find(item => item.pinId === node.policy.agentPinId && node.dependencyPinIds.includes(item.pinId));
         if (pin?.port !== 'model' || !equal(pin.resourceRef, input.routeRef)) fail('native_orchestration_rp_route_mismatch');
         const validation = await validateModelCapability({ handle, definition: graph, dependencyPins: plan.dependencyPins, resolver: this.owner.modelResolver });
@@ -354,7 +357,17 @@ export class NativeRpOrchestrationAuthority {
             child = { plan: childPlan, planRef: childPin.resourceRef, node: childNode, pin: modelPin, resolved: childResolved,
                 configDigest: configuration(childResolved) };
         }
-        return { binding, plan, node, pin, resolved, child, configDigest: configuration(resolved) };
+        let planner = null;
+        if (plannerProfile) {
+            if (delegated) fail('native_orchestration_rp_planner_plan_unavailable');
+            const plannerNode = plannerProfile.planner, plannerPin = plan.dependencyPins.find(item => item.pinId === plannerNode.policy.agentPinId);
+            const plannerResolved = await this.owner.modelResolver.resolve({ handle, routeRef: plannerPin.resourceRef, role: 'role.narrator', requirements: ['generation.structured-output'] });
+            if (hash(plannerResolved.route) !== plannerPin.integrity || plannerResolved.route.fallbackRouteRefs.length || plannerResolved.route.policy.maxRetries !== 0
+                || (plannerResolved.route.executionPolicy?.continuity ?? 'none') !== 'none' || (plannerResolved.route.executionPolicy?.reuse ?? 'disabled') !== 'disabled'
+                || !equal(plannerResolved.route.executionPolicy.computeBudget, resolved.route.executionPolicy.computeBudget)) fail('native_orchestration_rp_route_mismatch');
+            planner = { binding, plan, node: plannerNode, pin: plannerPin, resolved: plannerResolved, configDigest: configuration(plannerResolved), transfer: plannerProfile.transfer };
+        }
+        return { binding, plan, node, pin, resolved, child, planner, configDigest: configuration(resolved) };
     }
 
     async #current(state) {
@@ -368,7 +381,7 @@ export class NativeRpOrchestrationAuthority {
         await inspectNativeRpGeneration(state.capture, { host: state.host, handle: state.handle, rpControl: this.owner.rpControl });
         const selected = await this.#selection(state.host, state.handle, state.input);
         if (!equal(selected.binding, state.selected.binding) || selected.configDigest !== state.selected.configDigest
-            || selected.child?.configDigest !== state.selected.child?.configDigest)
+            || selected.child?.configDigest !== state.selected.child?.configDigest || selected.planner?.configDigest !== state.selected.planner?.configDigest)
             fail('native_orchestration_source_stale');
         return selected;
     }
@@ -392,7 +405,7 @@ export class NativeRpOrchestrationAuthority {
         const decision = (proposal?.actionRef.kind ?? intent?.actionRef.kind) === 'native_rp_output' ? state.outputDecision : state.decision;
         if (!decision) fail();
         const outputAction = decision === state.outputDecision;
-        if (attempt && (attempt.nodeId !== (outputAction ? root.graph.outputContract.ownerNodeId : state.selected.node.nodeId)
+        if (attempt && (attempt.nodeId !== (outputAction ? root.graph.outputContract.ownerNodeId : (state.activeSelection ?? state.selected).node.nodeId)
             || attempt.effectiveGrantDigest !== decision.grantDigest)) fail();
         if (proposal && !equal(proposal, Object.fromEntries(['actionRef', 'targetRef', 'inputRef', 'inputHash'].map(key => [key, decision[key]])))) fail();
         if (intent && (intent.nodeAttemptId !== (outputAction ? state.outputAttemptId : state.attemptId) || intent.inputHash !== decision.inputHash)) fail();
@@ -433,7 +446,7 @@ export class NativeRpOrchestrationAuthority {
             });
             state.outputPublishing = true; state.narrationResultRef = immutable(published.outcome.resultRef);
             state.outputInputRefs = immutable([state.narrationResultRef]);
-            const root = await runs.get(handle, identity.runId), edge = root.graph.edges[0];
+            const root = await runs.get(handle, identity.runId), edge = root.graph.edges.find(item => item.from.nodeId === state.selected.node.nodeId && item.to.nodeId === root.graph.outputContract.ownerNodeId);
             const traversal = await new TransitionController({ runs, authorizeTransition: async ({ tx, root: active, target, producers }) => {
                 await this.#baseCurrent(state);
                 if (target.nodeId !== active.graph.outputContract.ownerNodeId || producers.length !== 1
@@ -512,7 +525,7 @@ export class NativeRpOrchestrationAuthority {
         if (original?.status !== 'committed' || observed.status !== 'committed' || hash(original.domainReceipt) !== hash(observed.receipt)) fail('native_rp_output_stale');
         const selected = await this.#selection(state.host, handle, state.input);
         if (!equal(selected.binding, state.selected.binding) || selected.configDigest !== state.selected.configDigest
-            || selected.child?.configDigest !== state.selected.child?.configDigest) fail('native_orchestration_source_stale');
+            || selected.child?.configDigest !== state.selected.child?.configDigest || selected.planner?.configDigest !== state.selected.planner?.configDigest) fail('native_orchestration_source_stale');
         inspectNativeRpOutputIdentity(capture, { handle, host: state.host, rpControl: this.owner.rpControl });
         return { allowed: true, runId: root.runId, epoch: root.epoch, rootStamp: hash(root), resultRef: state.narrationResultRef,
             grantDigest: state.decision.grantDigest, sourceBindingDigest: root.sourceBinding.bindingDigest, outputAttemptId: state.outputAttemptId,
@@ -541,8 +554,9 @@ export class NativeRpOrchestrationAuthority {
     async verifySend({ handle, root, intent, resolved, snapshot, compiledBinding }) {
         await this.authorize({ handle, root, intent });
         const state = this.#runs.get(root.runId);
-        if (configuration(resolved) !== state.selected.configDigest || snapshot.requestId !== state.request.requestId
-            || snapshot.runtimeRouteId !== state.selected.pin.resourceRef.runtimeRouteId
+        const selected = state.activeSelection ?? state.selected;
+        if (configuration(resolved) !== selected.configDigest || snapshot.requestId !== state.request.requestId
+            || snapshot.runtimeRouteId !== selected.pin.resourceRef.runtimeRouteId
             || compiledBinding.fingerprint !== snapshot.diagnostics.compiledBinding.fingerprint) fail();
         const expected = await state.contextPort.provider(handle, { context: state.context }).buildRequestContextPlan(state.request, resolved);
         if (!equal(expected, snapshot.contextPlan)) fail('native_orchestration_rp_context_mismatch');
@@ -629,10 +643,10 @@ export class NativeRpOrchestrationAuthority {
         const context = await RpRunControl.prototype.context.call(control, handle, input.controlId, sourceRequest.source);
         const review = immutable({ schemaVersion: 1, hostBootId: this.owner.engine.nativeHostLifecycle.hostBootId,
             input, sourceDigest: context.prefixDigest, bindingRef: { bindingId: selected.binding.bindingId, version: selected.binding.version },
-            planRef: selected.binding.planRef, configurationFingerprint: hash({ parent: selected.configDigest, child: selected.child?.configDigest ?? null }),
+            planRef: selected.binding.planRef, configurationFingerprint: hash({ parent: selected.configDigest, child: selected.child?.configDigest ?? null, ...(selected.planner ? { planner: selected.planner.configDigest } : {}) }),
             budget: selected.resolved.route.executionPolicy.computeBudget,
             childBudget: selected.child?.resolved.route.executionPolicy.computeBudget ?? null,
-            effects: ['explicit_paid_model_generation', 'original_rp_assistant_output'], outputContract: selected.plan.definition.outputContract });
+            effects: ['explicit_paid_model_generation', ...(selected.planner ? ['explicit_paid_planner_generation', 'bounded_graph_patch_proposal'] : []), 'original_rp_assistant_output'], outputContract: selected.plan.definition.outputContract });
         return { selected, control, sourceRequest, context, review };
     }
 
@@ -656,12 +670,13 @@ export class NativeRpOrchestrationAuthority {
         if (expectedPreflightFingerprint !== undefined && expectedPreflightFingerprint !== hash(review)) fail('native_orchestration_rp_review_stale');
         const request = immutable({ requestId: input.requestId, role: 'narrator', routeRef: input.routeRef });
         const resources = [...new Set([...await host.executionResources(handle, selected.resolved.route),
+            ...(selected.planner ? await host.executionResources(handle, selected.planner.resolved.route) : []),
             ...(selected.child ? await host.executionResources(handle, selected.child.resolved.route) : []), 'rp:' + handle + ':' + input.controlId])];
         const expected = immutable({ owner: handle, anchor: { controlId: input.controlId, prefixDigest: context.prefixDigest }, kind: 'model_task',
             executionClass: 'interactive', resources, key, fingerprint: hash(input) });
         const submitted = this.scheduler.submit({ ...expected, retry: false, signal, retainResult: false,
             projectResult: result => ({ runId: result.runId, effectId: result.effectId, output: result.output ?? null }),
-            timeoutMs: selected.resolved.route.policy.timeoutMs, fresh: async () => {
+            timeoutMs: selected.planner ? selected.plan.definition.limits.deadlineMs : selected.resolved.route.policy.timeoutMs, fresh: async () => {
                 const now = await RpRunControl.prototype.context.call(control, handle, input.controlId, sourceRequest.source);
                 return now.prefixDigest === context.prefixDigest;
             }, run: async boundary => {
@@ -669,6 +684,18 @@ export class NativeRpOrchestrationAuthority {
                 captures.set(capture, { host, handle, control, owner: this.owner, scheduler: this.scheduler, boundary, expected,
                     identity: immutable({ sourceRequest, prefixDigest: context.prefixDigest, request }) });
                 try {
+                    if (selected.planner) {
+                        const state = { host, handle, input, selected, capture };
+                        const plannerCapture = Object.freeze({}), original = captures.get(capture);
+                        const plannerRequest = immutable({ requestId: 'rp-planner:' + hash(input).slice(0, 32), role: 'narrator', routeRef: selected.planner.pin.resourceRef, outputContract: rpPlannerOutputContract });
+                        captures.set(plannerCapture, { ...original, identity: immutable({ ...original.identity, request: plannerRequest, controlTask: rpPlannerTask(selected.plan.definition) }) });
+                        try {
+                            state.capture = plannerCapture; state.activeSelection = selected.planner;
+                            await this.#generate(state, { planner: true });
+                            state.capture = capture; delete state.activeSelection;
+                            return await this.#generate(state, { graphRunId: state.graphRunId });
+                        } catch (error) { await this.#failGraph(state, error); throw error; } finally { captures.delete(plannerCapture); if (state.graphRunId) this.#runs.delete(state.graphRunId); }
+                    }
                     return selected.child ? await this.#delegate({ host, handle, input, selected, capture, boundary, expected })
                         : await this.#generate({ host, handle, input, selected, capture });
                 } finally { captures.delete(capture); }
@@ -815,16 +842,94 @@ export class NativeRpOrchestrationAuthority {
         } finally { this.#runs.delete(childRunId); delegationCaptures.delete(capture); delete parentState.activeChildCapture; }
     }
 
-    async #generate(state, { continuation = null } = {}) {
+    async #failGraph(state, error) {
+        if (!state.graphRunId) return;
+        const { runs, budgetPort } = this.#execution(), { handle } = state, runId = state.graphRunId;
+        const root = await runs.get(handle, runId);
+        if (root.cancelRequested || !['admitted', 'running', 'waiting_approval'].includes(root.status) || root.outputClaims.length) return;
+        const reasonCode = /^native_[a-z0-9_]+$/.test(error.code ?? '') ? error.code : 'native_orchestration_graph_execution_failed';
+        await runs.control(handle, controlCommandId('graph.execution.fail', runId), { ...runGuard(root), operation: 'graph.execution.fail', detail: { reasonCode } }, async ({ tx, root: active, now }) => {
+            const effectIds = [];
+            for (const id of active.attemptRefs) effectIds.push(...(await readAttempt(tx, handle, active, id)).doc.effectRefs);
+            const costs = effectIds.length ? await budgetPort.observeEffectClosure(handle, { authorityRef: active.budgetAuthorityRef, effectIds }, { tx }) : null;
+            active.status = active.pendingEffectRefs.length || effectIds.length && !costs?.closed ? 'reconciling' : 'blocked';
+            const receiptId = 'oreceipt_' + hash({ kind: 'rp_graph_failure', runId }).slice(0, 32);
+            const receipt = { schemaVersion: 1, receiptKind: 'rp_graph_failure', receiptId, runId, epoch: active.epoch, reasonCode,
+                status: active.status, effectIds, costs, decisionSeq: active.eventSeq + 1, createdAt: now };
+            await putImmutable(tx, controlRecordKey(handle, runId, 'receipt', receiptId), receipt);
+            return { root: active, eventType: 'graph_execution_failed', reasonCode, outcome: { status: active.status, receiptRef: { runId, receiptId } } };
+        });
+    }
+
+    async #completePlanner(state, { root, port, result, send, limits, signal }) {
+        const { handle } = state, service = this.#execution(), runId = root.runId;
+        const proof = await port.inspectResultCompletion(handle, { result, runId, effectId: state.effectId });
+        const workRows = [];
+        const work = async (kind, value, operation) => {
+            const attempt = { attemptId: send.bank.nextLocalWorkAttemptId(), requestId: state.request.requestId, kind, estimatedItems: 1,
+                estimatedInputBytes: Buffer.byteLength(JSON.stringify(value)), targetFingerprint: hash({ runId, effectId: state.effectId, kind, inputHash: hash(value) }) };
+            let row;
+            const output = await runGenerationLocalWork({ signal, attempt, requireAdmission: true, assertCurrent: () => this.#current(state),
+                admit: item => send.bank.chargeLocalWork(limits, item), settle: ({ attempt, usage }) => send.bank.settleLocalWork(attempt.attemptId, usage), onAdmitted: entry => { row = entry; } }, operation);
+            const observed = await service.budgetPort.observeAttempt(handle, { kind: 'local_work', authorityRef: root.budgetAuthorityRef, effectId: state.effectId,
+                localWorkOrdinal: row.orchestration.ordinal, attemptId: row.attemptId, reservationId: null });
+            if (observed.status !== 'settled' || observed.usage?.outcome !== 'completed') fail('native_orchestration_planner_work_unsettled');
+            workRows.push({ kind, attemptId: observed.attemptId, ordinal: observed.orchestration.ordinal, targetFingerprint: attempt.targetFingerprint, rowHash: hash(observed) });
+            return output;
+        };
+        const parsed = await work('graph_control_parse', result.generated.response.text, async () => {
+            const value = JSON.parse(result.generated.response.text); assertObject(value, ['operations'], 'Planner response');
+            if (!Array.isArray(value.operations) || !value.operations.length) fail('native_orchestration_planner_response_invalid');
+            return immutable(value);
+        });
+        const current = await service.runs.get(handle, runId);
+        const patch = { schemaVersion: 1, patchId: 'opatch_' + hash({ runId, attemptId: state.attemptId }).slice(0, 32), runId,
+            producerAttemptId: state.attemptId, expectedEpoch: current.epoch, expectedGraphRevision: current.graphRevision, operations: parsed.operations,
+            reasonRefs: [{ kind: 'source', bindingDigest: current.sourceBinding.bindingDigest }], payloadHash: '' };
+        patch.payloadHash = graphPatchHash(patch);
+        const withAuthority = service.sourcePort.consumptionBoundary(handle, root.sourceBinding, { engine: service.runs.engine });
+        const proposed = await work('graph_control_adopt', patch, () => service.runs.withSourceControl(handle, runId, () => new GraphController({ runs: service.runs,
+            authorizePatch: async ({ root: active, producer, patch: requested }) => {
+                await this.#current(state);
+                const actual = await port.inspectResultCompletion(handle, { result, runId, effectId: state.effectId });
+                if (actual.payloadHash !== proof.payloadHash || actual.producerAttemptId !== producer.attemptId || !equal(requested, patch)
+                    || !equal(active.sourceBinding, state.sourceBinding)) fail('native_orchestration_planner_producer_denied');
+            } }).propose(handle, { expectedStateVersion: current.stateVersion, patch }), { withAuthority }));
+        const patchReceipt = proposed.outcome.patchReceipt;
+        if (!patchReceipt.accepted) fail('native_orchestration_planner_patch_rejected');
+        if (patchReceipt.requests.replan) fail('native_orchestration_planner_replan_pending');
+        const receiptId = 'oreceipt_' + hash({ kind: 'rp_planner', runId, attemptId: state.attemptId }).slice(0, 32);
+        await service.runs.withSourceControl(handle, runId, () => service.runs.control(handle, controlCommandId('rp.planner.settle', state.attemptId), {
+            ...runGuard(current), expectedGraphRevision: patchReceipt.newGraphRevision, expectedStateVersion: proposed.outcome.versions.stateVersion,
+            operation: 'attempt.settle', detail: { attemptId: state.attemptId, patchId: patch.patchId } }, async ({ tx, root: active, now }) => {
+            await this.#current(state);
+            const actual = await port.inspectResultCompletion(handle, { result, runId, effectId: state.effectId });
+            const record = await readAttempt(tx, handle, active, state.attemptId);
+            if (record.doc.status !== 'running' || actual.payloadHash !== proof.payloadHash || !equal(record.doc.effectRefs, [state.effectId])) fail('native_orchestration_planner_producer_denied');
+            const receipt = { schemaVersion: 1, receiptKind: 'rp_planner', receiptId, runId, epoch: active.epoch, producerAttemptId: state.attemptId,
+                sourceBindingDigest: active.sourceBinding.bindingDigest, modelEffectId: state.effectId, modelReceiptRef: proof.receiptRef,
+                payloadHash: proof.payloadHash, patchId: patch.patchId, patchIntegrity: hash(patchReceipt), localWork: workRows, decisionSeq: active.eventSeq + 1, createdAt: now };
+            await putImmutable(tx, controlRecordKey(handle, runId, 'receipt', receiptId), receipt);
+            await writeAttemptSettlement({ tx, handle, root: active, record, outcome: 'completed', resultRefs: [], effectReceiptRefs: [proof.receiptRef.receiptId], reasonCode: 'rp_planner_patch_accepted', now });
+            active.progress.steps++;
+            return { root: active, eventType: 'rp_planner_patch_applied', reasonCode: 'rp_planner_patch_accepted', outcome: { receiptRef: { runId, receiptId } } };
+        }), { withAuthority });
+        state.plannerAttemptId = state.attemptId;
+        return { runId, effectId: state.effectId, patchId: patch.patchId };
+    }
+
+    async #generate(state, { continuation = null, planner = false, graphRunId = null } = {}) {
         if (this.#runs.size >= 64) fail('native_orchestration_model_busy');
-        const { host, handle, selected, capture } = state;
+        const { host, handle, capture } = state, selected = state.activeSelection ?? state.selected;
         const identity = await inspectNativeRpGeneration(capture, { host, handle }), service = this.#execution();
         const captured = await service.sourcePort.capture(handle, identity.sourceRequest), audience = { kind: 'narrator' };
         state.sourceBinding = captured.sourceBinding; state.request = identity.request;
-        const taskPurpose = 'original_rp_narration';
+        const taskPurpose = planner ? 'original_rp_graph_planner' : 'original_rp_narration';
         const logicalInputRef = { kind: 'native_rp_intent', role: 'narrator', requestId: identity.request.requestId,
             sourceRef: captured.sourceBinding.sourceRef, bindingRef: { bindingId: selected.binding.bindingId, version: selected.binding.version },
             planRef: selected.binding.planRef, nodeId: selected.node.nodeId, routeRef: selected.pin.resourceRef, configDigest: selected.configDigest, audience };
+        if (graphRunId) logicalInputRef.controlReceiptRef = { runId: graphRunId,
+            receiptId: 'oreceipt_' + hash({ kind: 'rp_planner', runId: graphRunId, attemptId: state.plannerAttemptId }).slice(0, 32) };
         if (continuation) Object.assign(logicalInputRef, { acceptedResultRef: inspectNativeRpReturnIdentity(state.returnCapture, { host, handle }).resultRef,
             returnReceiptRef: continuation.returnReceiptRef, parentInputDigest: state.parentInputDigest });
         const grantDigest = continuation ? state.parentGrantDigest : hash({ owner: handle, logicalInputRef, sourceBindingDigest: captured.sourceBinding.bindingDigest });
@@ -835,15 +940,23 @@ export class NativeRpOrchestrationAuthority {
             egressDigest: hash({ pathFingerprint: selected.resolved.pathFingerprint, sourceBindingDigest: captured.sourceBinding.bindingDigest, grantDigest, audience }),
             budgetEnvelopeDigest: hash(selected.resolved.route.executionPolicy.computeBudget), dispatchPolicy: { idempotency: 'none', operationKey: null, reconcile: 'manual' } };
         const commandIdentity = { controlId: identity.sourceRequest.controlId, input: identity.sourceRequest.source.input, requestId: state.input.requestId };
-        const started = continuation ? { runId: state.parentRunId } : await service.runs.start(handle, controlCommandId('native.rp.start', commandIdentity), { planRef: selected.binding.planRef,
+        const started = graphRunId ? { runId: graphRunId } : continuation ? { runId: state.parentRunId } : await service.runs.start(handle, controlCommandId('native.rp.start', commandIdentity), { planRef: selected.binding.planRef,
             sourceRequest: identity.sourceRequest, retentionPolicyRef: { policyId: 'retain_native_rp_until_explicit_release' } });
         const root = await service.runs.get(handle, started.runId); this.#runs.set(root.runId, state);
+        if (planner) state.graphRunId = root.runId;
         try {
-            if (!continuation && (root.status !== 'admitted' || root.attemptRefs.length)) fail('native_orchestration_rp_request_replayed');
+            if (!continuation && !graphRunId && (root.status !== 'admitted' || root.attemptRefs.length)) fail('native_orchestration_rp_request_replayed');
             if (!continuation) {
-                const { attemptId } = await service.runs.beginAttempt(handle, controlCommandId('native.rp.attempt', commandIdentity), {
-                    ...runGuard(root), nodeId: selected.node.nodeId, inputRefs: [logicalInputRef], inputDigest: hash([logicalInputRef]),
-                    effectiveGrantDigest: grantDigest, budgetRef: root.budgetAuthorityRef }); state.attemptId = attemptId;
+                const { attemptId } = graphRunId ? (await new TransitionController({ runs: service.runs, authorizeTransition: async ({ tx, root: active, target, producers }) => {
+                    await this.#current(state);
+                    if (target.nodeId !== selected.node.nodeId || producers.length !== 1 || producers[0].attempt.attemptId !== state.plannerAttemptId
+                        || producers[0].receipt.reasonCode !== 'rp_planner_patch_accepted') fail('native_orchestration_planner_transition_denied');
+                    await BudgetPort.prototype.assertCurrent.call(service.budgetPort, handle, active.budgetAuthorityRef, { tx });
+                    return { inputRefs: [logicalInputRef], inputDigest: hash([logicalInputRef]), effectiveGrantDigest: grantDigest, budgetRef: active.budgetAuthorityRef };
+                } }).advance(handle, { ...runGuard(root), bindings: [{ edgeId: state.selected.planner.transfer.edgeId, producerAttemptId: state.plannerAttemptId }], reservedAttemptId: null })).outcome
+                    : await service.runs.beginAttempt(handle, controlCommandId('native.rp.attempt', state.selected.planner ? { ...commandIdentity, nodeId: selected.node.nodeId } : commandIdentity), {
+                        ...runGuard(root), nodeId: selected.node.nodeId, inputRefs: [logicalInputRef], inputDigest: hash([logicalInputRef]),
+                        effectiveGrantDigest: grantDigest, budgetRef: root.budgetAuthorityRef }); state.attemptId = attemptId;
                 await new AttemptController({ runs: service.runs, authorizeAttempt: args => this.authorize(args) })
                     .activate(handle, { ...runGuard(await service.runs.get(handle, root.runId)), attemptId });
             }
@@ -877,6 +990,7 @@ export class NativeRpOrchestrationAuthority {
                 } });
             checkCancellation(identity.signal);
             const port = this.#port(host), result = await port.generate(handle, scope, { signal: identity.signal });
+            if (planner) return this.#completePlanner(state, { root, port, result, send, limits, signal: identity.signal });
             if (root.graph.outputContract.kind === 'rp_narration') {
                 const outputCapture = Object.freeze({}); state.outputCapture = outputCapture;
                 outputCaptures.set(outputCapture, { state, control: this.owner.rpControl, execution: service, port, result, runId: root.runId,
@@ -888,6 +1002,6 @@ export class NativeRpOrchestrationAuthority {
                 } finally { outputCaptures.delete(outputCapture); delete state.outputCapture; }
             }
             return { ...result, runId: root.runId, effectId };
-        } finally { if (!continuation) this.#runs.delete(root.runId); }
+        } finally { if (!continuation && !state.selected.planner) this.#runs.delete(root.runId); }
     }
 }

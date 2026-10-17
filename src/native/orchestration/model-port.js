@@ -97,7 +97,7 @@ export class ModelPort {
         }
         return { observationId: 'model.completed:' + intent.effectId, observedEpoch: intent.epoch, outcome: 'confirmed',
             dispatchEvidence: { kind: 'original_port_observation', reference: { protocol: 'generation', completionBindingDigest: binding,
-                responseHash, finalRequestHash, attempts, ...(pending.project ? { resultOutputType: 'json', resultPayloadHash: hash(resultPayload(generated.response, 'json')) } : {}),
+                responseHash, finalRequestHash, attempts, resultOutputType: pending.project ? 'json' : 'text', resultPayloadHash: hash(resultPayload(generated.response, pending.project ? 'json' : 'text')),
                 ...(pending.backgroundSchema ? { taskResultHash } : {}) } }, remoteOperationRef: null, domainReceiptRef: null,
             budgetObservationRef: { authorityRef: root.budgetAuthorityRef, attempts: attempts.map(({ budgetAttemptRef, status, usageHash }) => ({ budgetAttemptRef, status, usageHash })) },
             resultRefs: [], sourceRefs: [root.sourceBinding.sourceRef], reasonCode: 'generation_response_validated' };

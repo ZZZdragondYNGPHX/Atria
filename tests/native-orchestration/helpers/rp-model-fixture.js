@@ -23,7 +23,7 @@ import { applyFactOperations } from '../../../public/scripts/agents/memory/atomi
 const id = kind => createNativeId('orchestration' + kind);
 export const RP_MODEL_TEXT = 'Synthetic original RP response.';
 
-export async function rpModelFixture(make, { memorySettings = null, seedMemory = false, usage = true, totalTokens = 20, configurePlan = null } = {}) {
+export async function rpModelFixture(make, { memorySettings = null, seedMemory = false, usage = true, totalTokens = 20, configurePlan = null, responsePayload = null } = {}) {
     const h = await make(), requests = [], effects = [], pending = [];
     let respond = async () => {};
     const server = http.createServer(async (req, res) => {
@@ -31,7 +31,7 @@ export async function rpModelFixture(make, { memorySettings = null, seedMemory =
         const body = JSON.parse(Buffer.concat(chunks)); requests.push(body);
         await respond(body);
         res.writeHead(200, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: RP_MODEL_TEXT }, finish_reason: 'stop' }],
+        res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: responsePayload ? await responsePayload(body, requests.length) : RP_MODEL_TEXT }, finish_reason: 'stop' }],
             ...(usage ? { usage: { total_tokens: totalTokens, prompt_tokens: 12, completion_tokens: totalTokens - 12 } } : {}) }));
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));

@@ -11,6 +11,7 @@ import { controlCommandId, controlRecordKey, readAttempt, runGuard } from './con
 import { writeAttemptSettlement, attemptReceiptId } from './attempt-settlement.js';
 import { readRpNarrationResult } from './rp-narration-result-contracts.js';
 import { rpOutputClaimId, rpOutputReceiptId, rpOutputClosureId, rpOutputKey, rpOutputDomainRef, rpOutputConsumer, readRpOutput } from './rp-output-contracts.js';
+import { readRpPlannerCompletion } from './rp-planner-contracts.js';
 
 const fail = code => { throw new ConflictError(code); };
 const equal = (a, b) => hash(a) === hash(b);
@@ -32,8 +33,9 @@ export class RpOutputCompletionController {
         const authorize = () => NativeNarratorOrchestrationAuthority.prototype.authorizeRpOutputCompletion.call(this.host.turnOrchestration, { handle, tx, capture });
         const first = await authorize(), root = await runs.get(handle, first.runId);
         if (first.allowed !== true || first.rootStamp !== hash(root) || first.sourceBindingDigest !== root.sourceBinding.bindingDigest || root.outputClaims.length) fail('native_rp_output_denied');
+        const planner = await readRpPlannerCompletion(tx, handle, root);
         const closure = await BudgetPort.prototype.observeEffectClosure.call(budgetPort, handle, {
-            authorityRef: root.budgetAuthorityRef, effectIds: [first.modelEffectId, first.outputEffectId] }, { tx });
+            authorityRef: root.budgetAuthorityRef, effectIds: [first.modelEffectId, first.outputEffectId, ...(planner ? [planner.modelEffectId] : [])] }, { tx });
         const current = await authorize();
         if (!equal(current, first) || !equal(root, await runs.get(handle, first.runId))) fail('native_rp_output_stale');
         return { root, authority: current, closure };

@@ -10,6 +10,8 @@ import { checkedRecord } from './plan-repository.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
+import { readRpPlannerCompletion } from './rp-planner-contracts.js';
+import { assertOutputTransition } from './output-transition-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP Narrator Result facts'); };
@@ -65,7 +67,9 @@ export async function readRpNarrationResult(tx, handle, root) {
         || receipt.sourceBindingDigest !== source.bindingDigest || !equal(producer.resultRefs, [resultRef]) || !equal(producer.effectRefs, [receipt.modelEffectId])
         || settlement.reasonCode !== 'rp_narration_ready' || settlement.decisionSeq !== receipt.decisionSeq || settlement.createdAt !== receipt.createdAt
         || receipt.decisionSeq > root.eventSeq || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId])
-        || !model || !equal(model.receiptRef, receipt.modelReceiptRef) || intent.nodeAttemptId !== producer.attemptId
+        || !model || !equal(model.receiptRef, receipt.modelReceiptRef)
+        || model.observation.dispatchEvidence.reference.resultPayloadHash !== undefined && model.observation.dispatchEvidence.reference.resultPayloadHash !== hash(record.payload)
+        || intent.nodeAttemptId !== producer.attemptId
         || intent.epoch !== receipt.epoch || intent.grantDigest !== receipt.grantDigest || intent.sourceBindingDigest !== source.bindingDigest
         || !equal(record.envelope.sourceRefs, [{ kind: 'run_source', runId: root.runId, epoch: receipt.epoch,
             sourceBindingDigest: source.bindingDigest, sourceAuthority: 'rp_chat', sourceRef: source.sourceRef },
@@ -82,5 +86,13 @@ export async function readRpNarrationResult(tx, handle, root) {
             || returned.parentAttemptId !== producer.attemptId || returned.parentGrantDigest !== producer.effectiveGrantDigest
             || returned.decisionSeq >= receipt.decisionSeq) invalid();
     } else if (!equal(producer.inputRefs, [input])) invalid();
+    if (root.graph.nodes.some(node => node.kind === 'planner')) {
+        const planner = await readRpPlannerCompletion(tx, handle, root);
+        if (!planner || !equal(input.controlReceiptRef, { runId: root.runId, receiptId: planner.receipt.receiptId })) invalid();
+        const edge = root.graph.edges.find(item => item.from.nodeId === planner.producer.nodeId && item.to.nodeId === producer.nodeId);
+        if (!edge) invalid();
+        const traversalId = 'oreceipt_' + hash({ runId: root.runId, bindings: [{ edgeId: edge.edgeId, producerAttemptId: planner.producer.attemptId }], reservedAttemptId: null }).slice(0, 32);
+        await assertOutputTransition(tx, handle, root, { published: planner, output: producer, receipt: { traversalReceiptRef: { runId: root.runId, receiptId: traversalId } } });
+    }
     return { record, receipt, settlement, producer };
 }
