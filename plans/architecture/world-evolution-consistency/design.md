@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · Candidate Design & Discussion Agenda
 
-- 状态：**Draft（W1–W18 的 B 总体方向已获用户确认；W19 物理 Subject/Fact/双时间与 Gate 0 路线、全量 E0 和开发仍未批准）**。早期选型保留历史，现行决议以后续明确记录与 index 为准。
-- 当前讨论轮次：W19 — Session 原生主体/事实转换的最小物理表示、按 Revision/GameTick 的授权查询和 Gate 0 消费者收口（见 [e0-gate0-physical-contracts.md](e0-gate0-physical-contracts.md)）。
+- 状态：**Draft（W1–W19 的 B 总体方向已获用户确认；W20 受保护主体存储位置、工作包/接口、E0 Gate 0 与正式实施仍未批准）**。旧候选章节保留历史，现行决议以最新章节/入口为准。
+- 当前讨论轮次：W20 — Session-owned 受保护身份与 Domain-owned Fact transitions、两段合法历史查询、WP-A～F 生产消费者及 Gate 0 退出条件（见 [e0-gate0-integration-workpackages.md](e0-gate0-integration-workpackages.md)）。
 - 入口：[index.md](index.md)；材料：[research.md](research.md)
 
 ## 1. 问题的正确切分
@@ -890,3 +890,36 @@ W19 的物理候选、查询算法轮廓、真实调用边界、Gate 0 和实施
 - W19-C：另建完整通用 Bitemporal EventStore，与 Native Session 双写异步协调，不符合单权威/轻量 Dev 原生硬切。
 
 W19 仍为用户待选方案；本阶段未修改 `main` 或其它代码分支，未运行测试/CI/Windows/CachyOS/Android Termux，E0-01～09 仍 PARTIAL / BLOCKED。用户若选择 W19 后，下一轮应评估 Gate 0 是否已具备可执行交接条件，以及最终物理字段/Owner/Consumer 的剩余最小阻塞，不继续平行扩建架构。
+
+
+---
+
+## 27. S21 · W19-B 确认与 W20 受保护物理契约及 Gate 0 工程分包（2026-10-17）
+
+### 27.1 W19-B 正式确认
+
+用户对第十九轮明确推荐的 **W19-B「Session 原生最小 Subject + 来源型 Fact Transition / Revision-Tick 双锚查询 + Gate 0 证据收口」**回复「认同」。现在 W1-B 至 W19-B 均是用户已确认的**架构方向**，并不代表具体物理字段/历史 API、E0 完整验收、Schema/工程实现和全案定稿已批准。
+
+- 已确立持续世界后果的主体身份由现有 Native Session/Domain Authority 拥有；关键事实应有可追溯 Event/Fact transition 与正确的有效时间，已有 Domain State、Native Event/Action Receipt、History/Clock/Revision 应尽可能复用，不建平行可写 EventStore/FactStore。
+- 查询先核对合法 `Session/Branch/asKnownRevision` 和 Snapshot 保留/祖先，再按具体 Domain 声明的 `asOfGameTick`/有效期投影事实，最后按真正的 Perspective/Source Grant 输出；没有 GameClock 的纯叙事不可伪造 Tick。
+- 开发前 Gate 0 应冻结实际调用图/接口 Owner/旧路径切换和测试计划，实施后 Gate 1～4 才实际运行新增功能的 Node/DB/UI/三端/长会话验证，避免“尚未实现先实测”的循环。
+- 物理 Namespace/ID family/查询 Schema 及开发分支**仍未获批准**，整体 Plan 继续 Draft。
+
+### 27.2 W20 新的必要安全发现（main 固定 SHA 静态审查）
+
+本轮仍以 `main=c57fada6edeea255b29d857ba2585c1dbc9c098b` 及 V3/Prompt/Visual 未合入 SHA 对照，额外查看：
+
+- `src/native/session-snapshot.js` 明确枚举 `RESERVED_SESSION_NAMESPACES`，`SessionCore.applyRuntimeCommit` 以 `validateRuntimeStateChanges` 阻止直接覆写这些命名空间。**若新增 Session `atri_world_subjects` 等物理区，必须同时纳入全模式 Reserved/Typed Authority validation 和 Save/Restore/GC/Domain publication 的可信链**，否则建立新 Raw Patch 后门。若在 `atri_world_state` 根加受保护子树，也需要审查现有 Game reducer/普通 State Patch 路径的权限，而不是默认已有 `authority-first` guard 就保护一切模式。
+- `SessionCore._publishLocked` 与 `SessionRepo.commitSnapshot` 把多个 Session State namespace 的 Heads 一起写进单 Revision，提供强一致基础；`save-system.js` 遍历 `revision.stateHeads` 及 Branch/Revision ancestry，`state-delta.js` 只为 World State 提供专用压缩。选择不同物理布局会影响 Save/Restore/GC 和长会话成本。
+- `history-authority.js` `validateHistory` 对声明域、可见性、大小/来源做严格检查，不宜让所有 Worldless/NPC 强行写入 `atri_lifecycle.history`；`native-history-runtime.js.queryHistory` 无通用 `asOfGameTick`，已确认要在 exact Revision 读取后再进行受 Domain 约束的时间投影。
+- GitHub 默认分支搜索定位了 `src/endpoints/native-session.js → SessionCore.applyRuntimeCommit`、`experience/logic/runtime.js → WorldSession.commitEvents → Runtime.commitStatePatch`、`authority-transaction.js` 的 Typed Prepare 与 SessionCore Publish、`frontend/host-services.js → readWorldView/readChronicle`、Play/Context/Knowledge 的真实**符号级**消费者；但未做动态插件/未合并分支完整 AST/运行时审计，E0-06 仍 OPEN。
+
+### 27.3 W20 讨论的具体物理选型与推荐路线
+
+同一 Plan 的 [e0-gate0-integration-workpackages.md](e0-gate0-integration-workpackages.md) 是 W20 **唯一详细模块**：列出 P1（`atri_world_state` 下受保护子树）/P2（单 Session Revision 下独立但原生 Reserved/Typed namespace）的候选与安全/成本差异、最小 `Subject/FactRef/EffectiveWorldQuery` 草案、真实生产入口的 WP-A～F 分包、开发前 Gate 0 与实施期测试区分。
+
+- W20-A：立即新建单独 Namespace 并冻结全领域 Subject/Fact 结构，对 Generic Patch 保护、Source/GC/消费者风险考虑不足。
+- **W20-B「受保护 Session-owned Identity + Domain-owned Fact transitions / Two-anchor Query + Consumer Work Packages」（本轮研究推荐，未获用户确认）**：World Subject 的原生写入与保护同步设计、现有 Domain Fact 仍各有业务 Owner、最小持久转换/Revision+Tick 历史读投影、逐真实生产消费者原生 hard cutover，开发前关闭适当的 Gate 0 设计证据。
+- W20-C：全世界预先转大型写时 Graph/双时间服务，增加重复写入和来源冲突，不适合已确认的最小架构方向。
+
+**当前 W20-B 仅是建议，不得视为用户决定。** E0-01～09 仍 PARTIAL / BLOCKED；所有 CI/真实 UI/Windows/CachyOS/Android Termux 证据未运行。若确认下一步应直接开展**最后的 Gate 0 执行前置审计/交接清单**，不继续无限拆概念；整个 `ARCH-DWE-01` 仍为 Draft，未授权修改产品代码。
