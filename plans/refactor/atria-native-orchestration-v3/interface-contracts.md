@@ -1596,3 +1596,35 @@ D4允许由原领域授予明确SourceRef/ResultRef权限；当前真实RP Deleg
 严格完成reader核已发布action pin integrity、原预算hash、两项稳定local ordinal/target/费用、批准、原Studio receipt、Result/publication/graph/output/command完整链；只改哈希不能替代事实。结果字节不足在写入和收费前拒绝。完成后释放私有scope；暖重试及cold非ready dispatch只观察，cold ready/部分prepare只回恢复所需元数据，不恢复writer。相同prepare command重复/并发/已保存ACK沿原command返回原Run/费用/批准；异body冲突。缺失Effect receipt可已有合法domain提交但保持committed_pending_output，不重复writer或伪造claim。
 
 准确FS/SQLite、真实回环隔离审批、原system Git及错误/修复范围归同一Record。该有限消费者不是全部后端完成；按[当前分工](implementation-plan.md#2-执行分工与两次交接)继续后端，P6硬切/清退及整体最终验证在Claude前端组装回交后由Codex执行。
+
+## 18. 工程收敛后的端口合同
+
+本节集中描述源码 `16ce2d1fe`、`18baf306f` 已提交的生产增补，覆盖 §17 中相应的较早限制；历史验证不改写。当前阶段核销仍只见 [acceptance-matrix](acceptance-matrix.md)，准确测试字节与失败见同一 Record。不以发布成功推导任意图、角色或所有业务组合均可运行。
+
+### 显式引用与数据边界
+
+原 RP Delegate 现可消费父子各自已发布、独立 owned 的同一 `native_rp_message` Context pin：`{kind:'native_rp_message',controlId,messageId,variantId,contentHash}`。双方 pin、原 Chat/RunControl、唯一真实消息、variant/hash、原输入时间界限均须一致；compile、send、接收消费时复验。System 消息、其它 Native 消息、未来消息、单方声明或已编辑/撤回来源不成为授权。它是低信任的用户材料，不是指令、World Truth 或子 Agent 的 Memory grant。默认 brief-only 保留；父 private Context/Memory 不复制。子 typed Result 仍沿原 durable return 和父 recipient 重验消费。
+
+### Model 失败策略与费用
+
+原 RP、Session Narrator/Resolver 和 Project 多轮消费者通过同一原能力 helper 冻结 primary/fallback 候选。每个候选须有对应节点 owned Route pin、原 Prompt/网络政策和能力证据，发送前再核 Source、Route、Secret target、原银行和剩余预算。每次真实发送有稳定 ordinal；新尝试不能抹掉旧失败或 unknown。Project 工具允许集、原 Task 轮次及正式 writer 不因 fallback 改变。
+
+明确的 HTTP Provider 失败可按已声明策略重新准入；Provider 报出有效 numeric usage 时保留原观察，缺失则 unknown。V3 transport/timeout 提交不明不能盲重发。Reuse、continuity 取原 capability/path 证明，未建立的能力保持原拒绝或合法 miss/reset/unknown；不声称价格已知、真实 cache 命中或 continuation 必然保留。整体 RP 调度期限取已声明 Plan deadline，每个 Provider 请求仍取该候选原 Route timeout。
+
+### Tool 的正式生产链
+
+`NativeToolOrchestrationAuthority` 由同 Engine/Host boot 的原 Native Host 持有，不接受客户端提供 grant、dispatcher、Secret 或任意 action JSON。原 Session display/Route 或选中的 versioned Skill 是真实 Source/动作描述符权威；authoring 仅只读核对。固定受限 Plan/owned pin → 私有 producer 授权 → 原 S2 Effect → 原 MCP/Skill/A2A → 原 receipt/银行 → typed advisory Result。MCP 内容绑定原 canonical artifact fingerprint；A2A accepted 只证明已受理，保持 `remoteCompleted:false` 与 unknown，不伪造完成 Result/OutputClaim。
+
+同 namespace `/api/native/orchestration` 下的 POST/no-store：`/tools/prepare` mutation envelope body `{planRef}`；`/tools/dispatch` mutation envelope body `{runId,effectId}`；`/tools/observe`、`/tools/consume` read envelope body `{runId,effectId}`。prepare 的 commandId 来自 envelope；其它字段封闭，原 auth/current boot Gate 保留。observe 不执行。consume 仅消费原已完成结果，重新核当前 owner、Source、Plan/pin、Secret target、原银行和 fence，以新 recipient grant 读取 advisory data；cold 不恢复发送权或重发 Tool/Model。
+
+### 有限恢复与保留
+
+原 Project Commit `ready` 且从未产生 dispatch claim/token、未有 Result 时，当前 Host 可沿原 Source/账户/Review/Task 银行重新准入同 Effect/Attempt。保存可核对的 resume receipt，重绑当前 epoch/fence，旧批准失效，必须经当前隔离 Review Origin 新批准；额度、计数、deadline、已费不重置。原 Studio Preview 如需重建，只能原真实 Source/build/validation 通过，CPU 计入原 Commit local ordinal1，不能伪造原 Review 或新建收费银行。
+
+原 Studio 路由 POST `/projects/:projectId/agent/tasks/:taskId/commit/resume` body 仅 `{runId,effectId}`，path IDs 必须匹配。Run Projection `controls.resume` 只有实际部署该有限回调且当前事实允许时为 true；没有泛用 Run/Effect dispatcher。`dispatching`/unknown 只查询或 reconcile；已有 Result 用新接收权限消费，不能再执行。此项不宣称所有 RP 父流程可在任意中断点自动续跑。
+
+接口 §10 的默认保留继续生效：没有显式可执行收缩 policy 时，terminal/unknown、原银行与领域收据保持引用保护；恢复/迁移不能覆盖仍被引用的费用事实。未新增无消费者的 release 标志，也没有将拒删误称完整 GC。未来显式归档/收缩由原 Storage 领域承担，不能倒挂为无终点的 P3 扩展。
+
+### 原 Evolution 自动评测
+
+原 auto job 已把冻结 Native Plan/Project Prompt 配置交回原隔离 evaluator，再消费原资格、质量、价格、发布与回滚 Gate。没有新增 evaluator 服务或独立质量来源 authority。当前固定来源仍为 historical_synthetic/not_established，owner labels 不建立独立来源；缺质量或价格证据时禁止自动 eligible promotion。有限 RP narration/Project Review worker 之外的组合不从此接口推导为支持。准确自动作业、原用户审阅发布与反馈回滚证据归同一 Record。

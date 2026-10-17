@@ -2,11 +2,23 @@
 
 > 2026-10-16。本文件属于同一 Plan Bundle，用于用户已授权的提示词预设/前端并行任务整合。详细合同仍归 [interface-contracts](interface-contracts.md)，阶段门槛仍归 [acceptance-matrix](acceptance-matrix.md)，精确源码提交/实测与失败只归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。本文不将 P3 子工作冒称完整 V3 后端完成。
 
-## 第104–114组当前续作
+## 当前收敛入口
 
-源码本地 `75c6a676c`（未推送），已恢复同一后端任务；原 RP Review/有界重做与实际 Judge 选择、所选节点多 Route 的隔离评测、同事务取消/撤权保留边界见接口 [§17.108–§17.110](interface-contracts.md#17108-原-rp-model-review-与有界局部重做)。Judge 只在显式五节点静态 Plan 上执行；Narrator 仅展开选中的受权候选，原费用包含两个候选、Judge、Narrator 与唯一 Chat 输出。原图修订重建见 §17.111；显式多个 Draft→唯一 Narrator 的静态链见 §17.112，每步只展开直接前驱的原 Result，全部费用和转移核对闭合。该生产者现统一为静态 Agent DAG（§17.113），支持显式分支、多个独立入口与 distinct-port 多输入后继，仍顺序执行；原 Transition 的同事务撤销边界同步加固。显式 Planner self-loop 已接原有界重规划与全部历史费用闭包（§17.114）；没有回边时不会隐式重复。Planner→Agent DAG（可含有限重规划）、原pending priority就绪排序与发布时Graph Result修订冻结见 §17.115；Host限定的动态Draft模板增节点/边已接原实际执行与费用闭包（§17.116），只限原Source、预声明optional slot及已选Narrator Model；任意拓扑/角色/Source仍继续。原不可变 Retrieval Profile 的受限客户端标识与协议传递已补（§17.117），Context附属检索Effect状态机、exact Profile pin与实际POST目标/冻结请求见§17.118–17.119；原单Narrator RP rerank-only已接实际私有Context、原Effect/银行与Result/Output闭包（§17.120），含一次真实Rerank API工程验证。原Embedding HTTP/Host执行、物理索引identity与原分批已共用（§17.121）；顶层单Narrator RP的Embedding V3 scope/独立Effect及原索引local费用关联已接通（§17.122），实际嵌入API插入/查询两调用验证到原Result/Chat/Root completed，Model为合成。原隔离单Narrator RP检索已接原父Host RPC/协议/费用（§17.123），worker无Secret或直接网络；Model价格不替检索定价，检索cost仍null。静态同来源RP Agent DAG逐节点检索、前驱Result与全部费用闭包亦已接通（§17.124），原Memory撤回跨producer scope释放继续拒绝后继。原银行接受Owner预先声明的本地作业额度并保留原收紧/父子预约语义（§17.125），五Agent检索链在48 jobs内完成37个本地工作；这不增加旧运行余额。静态双候选/Judge/Narrator检索与判定费用已沿原Context/Effect/bank闭包（§17.126），包含原Memory撤回、ACK未知和冷历史验证。原静态Review及局部重做亦接全部检索收据/旧费用闭包（§17.127）；新Context不沿旧scope授权，原轮次准入消耗保留。原Planner/有限replan及后接静态Agent图检索沿原GraphRevision/命令历史核对并汇总全轮次费用（§17.128），末Patch授权/结算继续复验当前性。原Host动态Draft模板也只携带所选Narrator Model pin及其owned context pins（§17.129），按原修订编译与闭合全部费用；不选模板零Draft工作。完成Model后的检索事实可封存为实例私有的费用核对证明并释放发送scope（§17.130），Source/Memory/输出许可仍独立复验。原Session Narrator亦接owned Context Profiles、合法候选检索和全部正式输出费用闭包（§17.131）；检索沿原compute银行但不重复消耗Model generation quota，完成后释放scope，Memory/原输出许可继续复验。原Project generation完成接一次性内部permit，在原Task锁中、mutable Task载入前复验真实Model/Source/配置/Skill，实际修改前同步核对Task指纹及原attempt/transcript（§17.132）；不新增Project Memory候选域。原Project/Task费用银行按V3 Run/Record精确引用受原Storage Center和直接Task删除保护（§17.133），终态/unknown历史在正式release前继续保留，未引用兄弟Task和原ID恢复仍沿原服务。原后台Task及Actor-bound appraisal已沿真实Task Information/合法Memory候选接owned Embedding/可选Rerank和原背景quota（§17.134）；检索费用进入Result/终结claim，自己的采纳推进Source后仍复验Memory，input-only零Memory。自动query也只取权限过滤后的材料，不直接读原Timeline末条。原管理员迁移还在来源快照前拒绝覆盖目的端已有V3运行及费用历史（§17.135），空目标正常迁移及目的HostFence保留。原运行费用投影亦按受保护Effect显示生成/Embedding/Rerank/其它Provider分项，并保持原总计与unknown（§17.136）。当前有限Delegate仍只有授权brief，父Memory/pins不能授子检索，真实费用/continuation/typed return隔离边界已验证（§17.137）。原Project metadata改名另接原用户新Run/owned action pin、真实隔离批准与原Studio正式Commit、原费用/Result/OutputClaim闭包（§17.138），不由Model自动提交其它变更；cold与ACK只观察。其它Source/控制图组合与通用执行仍继续，未覆盖scope仍拒绝。配置与验证事实、准确源码 HEAD 归同一 Record，所有通用图/其余 Source、可信高风险消费者、完整恢复/释放和独立质量/自动晋升仍继续。当前不是前端交接，P1–P4 与最终 Gate 尚未通过。
+当前能力状态、真实缺口和阶段核销只见 [acceptance-matrix](acceptance-matrix.md)，停止条件只见 [实施方案 §6](implementation-plan.md#6-p3-收敛边界与结束条件)，精确源码/失败/分次验证归同一 Record。下文较早快照保留具体协议参考，不再把每组历史追加为当前无限待办；后续实现以当前源码及下表为准。
 
-## 当前后端续作（第七十一至九十三组）
+| 当前后端接口增补 | 合同与限制 |
+| --- | --- |
+| `/api/native/orchestration/tools/prepare` | mutation envelope；body `{planRef}`，commandId来自envelope。只执行已发布owned Tool action pin；零调用预检，禁止raw URL/args/approved/grant。 |
+| `/tools/dispatch`（同namespace） | mutation envelope；body `{runId,effectId}`，当前Host/原grant/Source/银行/S2 claim。MCP/Skill完成依原receipt；A2A accepted不是远端完成。 |
+| `/tools/observe`、`/tools/consume` | read envelope；body `{runId,effectId}`。observe仅事实；consume只读已完成Tool advisory Result，重新核当前owner/Source/Plan/Secret target/原bank并发新recipient grant，cold不重发。 |
+| `/api/native/studio/projects/:projectId/agent/tasks/:taskId/commit/resume` | body `{runId,effectId}`；原path IDs必须匹配。仅未claim ready Effect可经原Source/预算重新准入同Effect，旧批准失效、隔离Origin重新批准；未知效果保持观察。 |
+| Run Projection `controls.resume` | 仅实际部署resume callback的上述有限Project场景显示true，其他场景仍false；不提供泛用`/runs/start`、`/runs/resume`或任意Effect dispatcher。 |
+| Delegate Context pin | 原`native_rp_message`精确message/variant/contentHash；父/子独立owned pin交集，接收方重新授权。默认brief-only，父Memory与private Context不可继承。 |
+| RP / Session / Project Model失败策略 | 仅预声明owned候选、原Route policy与原能力/Source/预算准入。每send稳定ordinal、原银行保留失败/unknown；opaque cache/价格/continuation如实unknown/miss/reset。三域正式消费者已接，精确支持范围见[接口§18](interface-contracts.md#18-工程收敛后的端口合同)，不从发布成功推导任意组合执行支持。 |
+
+以上不是P1–P4后端完成或前端交接声明；完整代码版本和验证以同一Record实际证据为准。
+
+## 历史接口快照（第七十一至九十三组）
 
 `826d2ba43` 已有显式 Host 元数据 recover、存储 generation 投影围栏，以及唯一顶层 RP/有限 Native Session 输出和原 Project 工具的收据核对命令；详细入口和不恢复执行的边界见[接口 §17.83–§17.86](interface-contracts.md#1783-显式-run-host-元数据恢复入口)。Project 工具核对见[接口 §17.87](interface-contracts.md#1787-原-project-工具冷收据核对)；其余核对与受权 resume 继续后端。
 

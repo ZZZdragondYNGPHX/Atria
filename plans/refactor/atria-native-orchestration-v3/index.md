@@ -2,22 +2,12 @@
 
 > **唯一入口**。Task ID：`refactor/atria-native-orchestration-v3`。Primary Workspace：`main`（未来实现）；实现使用同一任务分支 `refactor/atria-native-orchestration-v3`，企划/Record继续在长期 `docs` 工作空间。规则只引用 [Repository Governance](../../../README.md)，不在本 Plan 复制执行规则。
 
-2026-10-17 工程收敛基线：源码 `75c6a676c`、docs `94272a03a`；当前为 P3 必需闭环收口与 P4 后端实施，P3 Gate/后端首次交接/最终产品验收均未通过。当前能力与剩余清单只读 [acceptance-matrix](acceptance-matrix.md)，收敛范围和停止条件只读 [实施方案 §6](implementation-plan.md#6-p3-收敛边界与结束条件)，精确提交和分次验证归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。不以累计工作组衡量完成度。
-
-最新后端实证：第九十四组 `1e1281224` 支持同一原 Session 内 Task/variant 专属 Binding 与 Narrator 的独立 Plan，范围见[接口 §17.98](interface-contracts.md#1798-原-session-内的-task-专属-plan-binding)和同一 Record。完整后端继续实施；此项不核销通用 Graph/Simulation/可信高风险消费者、恢复释放与最终 Gate。
-
-第九十五组 `56cd1eee0` 接原 World Simulation pending appraisal 与 immutable Source/outbox历史闭包，见[接口 §17.99](interface-contracts.md#1799-原-world-simulation-appraisal-的来源闭包)。原job currentness、Actor采纳、费用未知、防重发/冷读取得有限FS/SQLite实证；其它Simulation profile、通用Graph、恢复/释放及可信高风险consumer继续实施，未宣称完整Gate通过。
-
-第九十六组 `e434b42b2` 接原声明式固定命令/交互排期和精确 input-only Task Context，见[接口 §17.100](interface-contracts.md#17100-原声明式-task-命令交互与最小输入)与同一 Record。原 Simulation 静态命令可用，其原 interaction-job 拒绝保持；真实输入/采纳/费用/ACK闭包已有有限FS/SQLite证据，全部后端仍在继续。
-
-第九十七组 `3a2f38361` 补同节点已发布 model pins 内的 routeRef 策略候选、原Project实际消费/Skill预算选择和隔离worker比较，见[接口 §17.101](interface-contracts.md#17101-同节点已声明-route-的原-plan-策略候选)。没有新Route/权限、异Model配置价格或自动晋升结论；RP/Session组合、完整Graph及恢复释放继续实施。
-
-第九十八组 `767db55ac` 补原RP/Session Narrator/Resolver/后台Task的同节点备选Route，以及同一私有Plan selection驱动的Scheduler资源lanes，见[接口 §17.102](interface-contracts.md#17102-有限原消费者的-exact-node-route-选择)。有限消费者与RP worker已取FS/SQLite实证；完整后端仍继续，未推送或合main。
+2026-10-17 当前已提交源码 `18baf306f`；P3 端口缺口已实现，真实 Fanout 的同 Root 并发修正与末版验证继续，P4 后端消费者继续。P3 Gate/后端首次交接/最终产品验收均未核销。当前能力与剩余清单只读 [acceptance-matrix](acceptance-matrix.md)，收敛范围和停止条件只读 [实施方案 §6](implementation-plan.md#6-p3-收敛边界与结束条件)，精确提交和分次验证归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。不以累计工作组衡量完成度。
 
 - 创建/调研日期：2026-10-15。
 - 第一轮状态：**D1 已定案：方案 B（原生 Orchestration V3）**。
 - 第二轮状态：**D2 已冻结：T2 Native Host 唯一运行权威、Plan/Run/Effect/Receipt 边界和旧编排零兼容硬切**。
-- 当前开发基线：`main@695acf3bc`（2026-10-16 fetch核对，Storage Center UI已合入）；任务分支`7ab0abeec`完成此次main→任务同步。之前`main@73557f809`的原quota/recovery/transaction scope已在`0d799fc28`与V3 Owner/unknown语义组合，见[接口§17.8](interface-contracts.md#178-同步storage-center后的原权威组合)及同一Record。本次新增六个前端/浏览器测试文件，无后端合同重叠；UI功能不因合并自动计作V3验收。最初分支基线`5eb3bc765`的Settings/Themes适配仍归P4–P6；E0附件保留准确旧SHA，不冒充最新消费闭包。没有将V3集成回main。
+- 实现沿同一任务分支持续推进，main 同期整合的准确版本、实际消费者和验证字节只归同一 Record；当前不将 V3 集成回 main。E0 附件保留其原准确基线，不冒充当前消费闭包。
 - 第三轮状态：**D3 已冻结：G2 不可变 Plan + Host 受控动态图、Delegate/Handoff、Join、Planner/Judge/Review、局部重做、失败恢复与有界循环**。
 - 第四轮状态：**D4 已冻结：C2 Audience-scoped Context；统一 Hybrid Recall，按 Actor/Source/Time/Branch 授权，跨 Agent 通过有来源 Result 引用分享，Disclosure 与长会话压缩独立校验**。
 - 第五轮状态：**D5 已冻结：F2 Evidence-driven Adaptive Compute；按实际证据与任务质量选择性准入、原 Native Route/Compute 预算和三层缓存/执行复用**。
@@ -26,8 +16,7 @@
 - 第八轮状态：**D8 已冻结：U2 Graph Canvas + Inspector 双向编辑、原生 Plan Draft/Validate/Publish、运行 Timeline 默认/Graph 切换、Host RunProjection/Diagnostics、可信审批及 PC/移动等价编辑能力**。
 - 第九轮状态：**D9=E1，E0_DESIGN_READY。用户已于2026-10-15明确授权正式开发；同一实现分支已从当时最新main建立，P1/P2/P3均有局部实证，完整Gate未通过。P1–P8产品证据逐组取得，未测项仍NOT_RUN/BLOCKED。**
 - 文档性质：冻结设计与实施路由；开发已获授权。实际代码/测试/提交状态只归同一Record；最终验收通过后才集成main。
-- 后端基础与当前分工（分工更新于2026-10-17）：`refactor/atria-native-orchestration-v3@a7cb649d0`（含 `main@c57fada6e`）。第六十九组 `e82fde3a8` 补原生 Plan Prompt 的原存储候选/发布/回滚；第七十组补有限 RP / Project 原生隔离评测与原 Evolution 费用。用户已纠正提前交接：Codex 完成后端 → Claude Code 完成前端与组装 → 交回 Codex 做 P6 硬切、清退与最终验证。两次交接与验收边界见 [实施分工](implementation-plan.md#2-执行分工与两次交接)。当前仍在后端阶段，P1–P4/最终 Gate 仍 NOT_READY；已有接口或局部链路不构成后端完成。实际范围见 [backend-integration](backend-integration.md)，未集成 main。
-- 当前续接状态（2026-10-16）：已 fetch 并安全快进源码 `a7cb649d0`、docs `81650b3b1`，保护本机无关未提交内容后恢复后端；换机 HANDOFF 已消费。第七十一组继续隔离 Review Origin 后端，见 [接口 §17.80](interface-contracts.md#1780-隔离-review-origin-后端与原用户再认证)。没有进入 Claude 前端阶段或集成 main，完整后端与最终 Gate 继续。
+- 当前仍为 Codex 后端阶段；换机 HANDOFF 已消费。执行分工和两次交接只归 [实施方案 §2](implementation-plan.md#2-执行分工与两次交接)，实际接口归 [backend-integration](backend-integration.md)，当前 Gate 只归 [acceptance-matrix](acceptance-matrix.md)。
 - 外部技术参照核对日期：2026-10-15；只对比模式和契约，不宣称框架直接兼容 Atria。
 
 ## 目标与现状
@@ -89,6 +78,6 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 
 ## E1 当前执行入口
 
-E0_DESIGN=DESIGN_READY；DEVELOPMENT_AUTHORIZATION=AUTHORIZED。P1/P2/P3/P4 尚未整体核销，P5–P8 未开始；当前先完成 P3 必需闭环并持续推进 P4 后端。后端接口快照见 [backend-integration](backend-integration.md)，Gate 与真实缺口只见 [acceptance-matrix](acceptance-matrix.md)，不在入口累积重复历史状态。
+E0_DESIGN=DESIGN_READY；DEVELOPMENT_AUTHORIZATION=AUTHORIZED。P1/P2/P3/P4 尚未整体核销，P5–P8 未开始；当前完成共享并发修正与 P3 末版核销，并持续推进已明确的 P4 后端闭环。后端接口快照见 [backend-integration](backend-integration.md)，Gate 与真实缺口只见 [acceptance-matrix](acceptance-matrix.md)，不在入口累积重复历史状态。
 
 执行顺序：**Codex 完成后端 → Claude Code 完成前端与组装 → Codex 做 P6 硬切、清退与最终验证**，详情只归 [实施分工](implementation-plan.md#2-执行分工与两次交接)。当前不提前前端、P6、合 main 或结束分支。阶段核销不是自动停止点，执行与真实阻塞统一遵循 Repository Governance。
