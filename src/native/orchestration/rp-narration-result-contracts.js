@@ -152,7 +152,7 @@ export async function readRpNarrationResult(tx, handle, root) {
     } else if (!equal(producer.inputRefs, [input]) || graphResults.length) invalid();
     if (root.graph.nodes.some(node => node.kind === 'planner')) {
         const planner = await readRpPlannerCompletion(tx, handle, root);
-        if (!planner || !equal(input.controlReceiptRef, { runId: root.runId, receiptId: planner.receipt.receiptId })) invalid();
+        if (!planner || planner.patch.requests.replan || !equal(input.controlReceiptRef, { runId: root.runId, receiptId: planner.receipt.receiptId })) invalid();
         const edge = root.graph.edges.find(item => item.from.nodeId === planner.producer.nodeId && item.to.nodeId === producer.nodeId);
         if (!edge) invalid();
         const traversalId = 'oreceipt_' + hash({ runId: root.runId, bindings: [{ edgeId: edge.edgeId, producerAttemptId: planner.producer.attemptId }], reservedAttemptId: null }).slice(0, 32);

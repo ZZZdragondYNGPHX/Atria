@@ -33,6 +33,7 @@ import { readTaskLocalOutput } from './task-local-output-contracts.js';
 import { HandoffReturnController } from './handoff-return-controller.js';
 import { ResultPort } from './result-port.js';
 import { rpPlannerProfile, rpPlannerTask, rpPlannerOutputContract } from './rp-planner-profile.js';
+import { readRpPlannerCompletion } from './rp-planner-contracts.js';
 import { GraphController } from './graph-controller.js';
 import { graphPatchHash } from './graph-revision-contracts.js';
 import { rpAgentGraphProfile } from './rp-agent-graph-profile.js';
@@ -380,7 +381,8 @@ export class NativeRpOrchestrationAuthority {
                 || !equal(next.route.executionPolicy.computeBudget, resolved.route.executionPolicy.computeBudget)) fail('native_orchestration_rp_route_mismatch');
             return { binding, plan, node, pin, resolved: next, configDigest: configuration(next), transfer };
         };
-        const planner = plannerProfile ? await prologue(plannerProfile.planner, plannerProfile.transfer, true) : null;
+        const planner = plannerProfile ? { ...await prologue(plannerProfile.planner, plannerProfile.transfer, true), loop: plannerProfile.loop } : null;
+        if (planner && resolved.route.executionPolicy.computeBudget.maxRequests < 2) fail('native_orchestration_graph_budget_unavailable');
         const candidates = judgeProfile ? await Promise.all(judgeProfile.candidates.map((node, i) => prologue(node, judgeProfile.transfers[i], false))) : [];
         const chainSteps = chainProfile ? await Promise.all((chainProfile.drafts ?? [chainProfile.draft]).map((node, i) => prologue(node, chainProfile.transfers?.[i] ?? chainProfile.transfer, false))) : [];
         const chain = candidates[0] ?? chainSteps[0] ?? null;
@@ -758,6 +760,7 @@ export class NativeRpOrchestrationAuthority {
                         try {
                             state.capture = plannerCapture; state.activeSelection = prologue;
                             await this.#generate(state, { planner: !!selected.planner, graphNode: !!selected.chain });
+                            if (selected.planner) await this.#runPlannerLoop(state, capture);
                             await this.#runChain(state, capture);
                             if (selected.review) await this.#runReviews(state, capture);
                             if (selected.judge) await this.#runJudge(state, capture);
@@ -962,6 +965,8 @@ export class NativeRpOrchestrationAuthority {
             if (!Array.isArray(value.operations) || !value.operations.length) fail('native_orchestration_planner_response_invalid');
             return immutable(value);
         });
+        const operationsHash = hash(parsed.operations);
+        if (state.lastPlannerOperationsHash === operationsHash) fail('native_orchestration_planner_no_progress');
         const current = await service.runs.get(handle, runId);
         const patch = { schemaVersion: 1, patchId: 'opatch_' + hash({ runId, attemptId: state.attemptId }).slice(0, 32), runId,
             producerAttemptId: state.attemptId, expectedEpoch: current.epoch, expectedGraphRevision: current.graphRevision, operations: parsed.operations,
@@ -977,13 +982,21 @@ export class NativeRpOrchestrationAuthority {
             } }).propose(handle, { expectedStateVersion: current.stateVersion, patch }), { withAuthority }));
         const patchReceipt = proposed.outcome.patchReceipt;
         if (!patchReceipt.accepted) fail('native_orchestration_planner_patch_rejected');
-        if (patchReceipt.requests.replan) fail('native_orchestration_planner_replan_pending');
+        if (patchReceipt.requests.replan && (!state.selected.planner.loop || patchReceipt.requests.finalize)) fail('native_orchestration_planner_replan_pending');
         const receiptId = 'oreceipt_' + hash({ kind: 'rp_planner', runId, attemptId: state.attemptId }).slice(0, 32);
         await service.runs.withSourceControl(handle, runId, () => service.runs.control(handle, controlCommandId('rp.planner.settle', state.attemptId), {
             ...runGuard(current), expectedGraphRevision: patchReceipt.newGraphRevision, expectedStateVersion: proposed.outcome.versions.stateVersion,
-            operation: 'attempt.settle', detail: { attemptId: state.attemptId, patchId: patch.patchId } }, async ({ tx, root: active, now }) => {
-            await this.#current(state);
-            const actual = await port.inspectResultCompletion(handle, { result, runId, effectId: state.effectId });
+            operation: 'attempt.settle', detail: { attemptId: state.attemptId, patchId: patch.patchId } }, async ({ tx, root: active, now, deny }) => {
+            const stamp = hash(active);
+            let actual;
+            try {
+                actual = await port.inspectResultCompletion(handle, { result, runId, effectId: state.effectId });
+                await this.#current(state);
+                if (hash(await service.runs.get(handle, runId)) !== stamp) return deny(new ConflictError('native_orchestration_planner_producer_denied'));
+            } catch (error) {
+                if (error instanceof ConflictError || error.code === 'native_rp_source_missing') return deny(error);
+                throw error;
+            }
             const record = await readAttempt(tx, handle, active, state.attemptId);
             if (record.doc.status !== 'running' || actual.payloadHash !== proof.payloadHash || !equal(record.doc.effectRefs, [state.effectId])) fail('native_orchestration_planner_producer_denied');
             const receipt = { schemaVersion: 1, receiptKind: 'rp_planner', receiptId, runId, epoch: active.epoch, producerAttemptId: state.attemptId,
@@ -995,19 +1008,43 @@ export class NativeRpOrchestrationAuthority {
             return { root: active, eventType: 'rp_planner_patch_applied', reasonCode: 'rp_planner_patch_accepted', outcome: { receiptRef: { runId, receiptId } } };
         }), { withAuthority });
         state.plannerAttemptId = state.attemptId; state.prologueAttemptId = state.attemptId;
+        state.replanRequested = patchReceipt.requests.replan; state.lastPlannerOperationsHash = operationsHash;
         return { runId, effectId: state.effectId, patchId: patch.patchId };
+    }
+
+    async #runPlannerLoop(state, originalCapture) {
+        while (state.replanRequested) {
+            const service = this.#execution(), root = await service.runs.get(state.handle, state.graphRunId);
+            const capacity = await service.runs.engine.withTransaction(state.handle, tx => service.budgetPort.observeCapacity(state.handle,
+                { authorityRef: root.budgetAuthorityRef, reservationId: null }, { tx }));
+            if (!capacity || capacity.overrun || capacity.remaining.requests < 2) fail('native_orchestration_planner_replan_budget_unavailable');
+            if (root.progress.attempts + 3 > root.limits.maxAttempts) fail('native_orchestration_planner_replan_limit_exhausted');
+            await this.#current(state);
+            state.replanRequested = false;
+            const previousReceiptRef = { runId: state.graphRunId, receiptId: 'oreceipt_' + hash({ kind: 'rp_planner', runId: state.graphRunId, attemptId: state.plannerAttemptId }).slice(0, 32) };
+            const request = immutable({ requestId: 'rp-replan:' + hash(previousReceiptRef).slice(0, 32), role: 'narrator',
+                routeRef: state.selected.planner.pin.resourceRef, outputContract: rpPlannerOutputContract });
+            const capture = this.#stageCapture(state, originalCapture, request, { ...rpPlannerTask(root.graph), previousReceiptRef,
+                graphRevision: root.graphRevision, nodeControl: root.nodeControl, reasonCode: 'bounded_replan' });
+            try {
+                state.capture = capture; state.activeSelection = state.selected.planner;
+                await this.#generate(state, { planner: true, graphRunId: state.graphRunId });
+            } finally { captures.delete(capture); state.capture = originalCapture; }
+        }
     }
 
     async #graphStepTransition(state, root, selected, inputRefs, grantDigest, { review = false, judge = false } = {}) {
         const service = this.#execution(), { handle } = state;
         const primary = review ? state.selected.review : state.selected.planner ?? state.prologueSelection ?? state.selected.chain;
         const graphInputs = state.selected.agentGraph ? this.#graphInputs(state, selected) : null;
-        const bindings = graphInputs ? graphInputs.map(item => ({ edgeId: item.edge.edgeId, producerAttemptId: item.attemptId })) : state.selected.judge ? judge
-            ? state.candidateResults.map((item, index) => ({ edgeId: state.selected.judge.inputs[index].edgeId, producerAttemptId: item.attemptId }))
-            : [{ edgeId: state.selected.judge.candidates[state.selectedCandidate].transfer.edgeId, producerAttemptId: state.prologueAttemptId },
-                { edgeId: state.selected.judge.transfer.edgeId, producerAttemptId: state.judgeAttemptId }]
-            : [{ edgeId: primary.transfer.edgeId, producerAttemptId: state.prologueAttemptId },
-                ...(!review && state.selected.review ? [{ edgeId: state.selected.review.gate.edgeId, producerAttemptId: state.reviewAttemptId }] : [])];
+        const replanning = selected === state.selected.planner;
+        const bindings = replanning ? [{ edgeId: state.selected.planner.loop.edgeId, producerAttemptId: state.plannerAttemptId }]
+            : graphInputs ? graphInputs.map(item => ({ edgeId: item.edge.edgeId, producerAttemptId: item.attemptId })) : state.selected.judge ? judge
+                ? state.candidateResults.map((item, index) => ({ edgeId: state.selected.judge.inputs[index].edgeId, producerAttemptId: item.attemptId }))
+                : [{ edgeId: state.selected.judge.candidates[state.selectedCandidate].transfer.edgeId, producerAttemptId: state.prologueAttemptId },
+                    { edgeId: state.selected.judge.transfer.edgeId, producerAttemptId: state.judgeAttemptId }]
+                : [{ edgeId: primary.transfer.edgeId, producerAttemptId: state.prologueAttemptId },
+                    ...(!review && state.selected.review ? [{ edgeId: state.selected.review.gate.edgeId, producerAttemptId: state.reviewAttemptId }] : [])];
         const traversed = await new TransitionController({ runs: service.runs, authorizeTransition: async ({ tx, root: active, target, producers }) => {
             await this.#current(state);
             if (graphInputs) {
@@ -1034,6 +1071,11 @@ export class NativeRpOrchestrationAuthority {
                 if (target.nodeId !== selected.node.nodeId || producers.length !== bindings.length || !draft
                     || draft.receipt.reasonCode !== (state.selected.planner ? 'rp_planner_patch_accepted' : 'graph_result_published')
                     || state.selected.chain && !equal(draft.receipt.resultRefs, [state.graphResultRef])) fail('native_orchestration_graph_transition_denied');
+                if (state.selected.planner) {
+                    const planner = await readRpPlannerCompletion(tx, handle, active);
+                    if (!planner || planner.producer.attemptId !== state.plannerAttemptId || planner.patch.requests.replan !== replanning)
+                        fail('native_orchestration_graph_transition_denied');
+                }
                 if (!review && state.selected.review) {
                     const reviewed = await readRpReviewCompletion(tx, handle, active, state.reviewAttemptId);
                     if (!reviewed || reviewed.review.decision !== 'approve' || !equal(reviewed.review.evidenceRefs, [state.graphResultRef])

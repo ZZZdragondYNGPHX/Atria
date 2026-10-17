@@ -8,10 +8,10 @@ const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original output graph traversal'); };
 
 /** Shared historical graph facts only; never a producer/recipient grant. */
-export async function assertOutputTransition(tx, handle, root, { published, output, receipt, additionalProducers = [] }) {
+export async function assertOutputTransition(tx, handle, root, { published, output, receipt, additionalProducers = [], allowLoopBack = false }) {
     assertCounter(receipt.decisionSeq, 'publication decisionSeq', 1);
     const entries = [published, ...additionalProducers].map(source => {
-        const edge = root.graph.edges.find(item => !item.loopBack && item.from.nodeId === source.producer.nodeId && item.to.nodeId === output.nodeId);
+        const edge = root.graph.edges.find(item => (allowLoopBack || !item.loopBack) && item.from.nodeId === source.producer.nodeId && item.to.nodeId === output.nodeId);
         if (!edge) invalid();
         const transfer = { edgeId: edge.edgeId, producerAttemptId: source.producer.attemptId, nodeAttemptId: output.attemptId };
         const admissionId = 'oreceipt_' + hash({ kind: 'edge_admission', runId: root.runId, ...transfer }).slice(0, 32);

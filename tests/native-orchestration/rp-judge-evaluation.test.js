@@ -3,6 +3,7 @@ import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 import { rpModelFixture } from './helpers/rp-model-fixture.js';
 import { configureJudge } from './helpers/rp-judge-fixture.js';
 import { configureAgentGraph } from './helpers/rp-agent-graph-fixture.js';
+import { configurePlannerLoop } from './helpers/rp-planner-fixture.js';
 import { EvolutionTargets } from '../../src/native/agent-intelligence/evolution-targets.js';
 import { EvolutionEvaluator, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { AgentEvolutionRepository } from '../../src/native/agent-intelligence/evolution-repository.js';
@@ -10,10 +11,11 @@ import { AgentEvolutionRepository } from '../../src/native/agent-intelligence/ev
 jest.setTimeout(60_000);
 
 describe.each(CONTRACT_HARNESSES)('$name isolated Native multi-Agent evaluation', ({ make }) => {
-    test.each([['Judge', configureJudge], ['Agent DAG', configureAgentGraph]])('%s baseline/candidate Plans execute in private Native Hosts while only the original parent ledger sends and pays', async (_profile, configurePlan) => {
+    test.each([['Judge', configureJudge, 4], ['Agent DAG', configureAgentGraph, 4], ['Planner loop', configurePlannerLoop, 3]])('%s baseline/candidate Plans execute in private Native Hosts while only the original parent ledger sends and pays', async (profile, configurePlan, modelCalls) => {
         const f = await rpModelFixture(make, { configurePlan,
-            responsePayload: (_body, ordinal) => ordinal === 9 ? JSON.stringify({ preference: 'tie', deltas: { player_agency: 0 }, rationale: 'Synthetic fixture only.' })
-                : ['ADVISORY A', 'ADVISORY B', JSON.stringify({ selectedCandidate: 1, reasonCode: 'candidate_selected' }), 'Final narration.'][(ordinal - 1) % 4] });
+            responsePayload: (_body, ordinal) => ordinal === modelCalls * 2 + 1 ? JSON.stringify({ preference: 'tie', deltas: { player_agency: 0 }, rationale: 'Synthetic fixture only.' })
+                : profile === 'Planner loop' ? [JSON.stringify({ operations: [{ op: 'requestReplan' }] }), JSON.stringify({ operations: [{ op: 'requestFinalize' }] }), 'Final narration.'][(ordinal - 1) % modelCalls]
+                    : ['ADVISORY A', 'ADVISORY B', JSON.stringify({ selectedCandidate: 1, reasonCode: 'candidate_selected' }), 'Final narration.'][(ordinal - 1) % modelCalls] });
         try {
             const handle = f.h.handle, targets = new EvolutionTargets({ host: f.host });
             const scope = { domain: 'rp_chat', charDir: 'Actor', name: 'main', isGroup: false, groupId: '' };
@@ -32,11 +34,11 @@ describe.each(CONTRACT_HARNESSES)('$name isolated Native multi-Agent evaluation'
             for (const arm of ['baseline', 'candidate']) {
                 const trial = report.pairs[0][arm];
                 expect(trial.error).toBeNull(); expect(trial.checks).toMatchObject({ target_consumed: true, single_completion: true, isolation: true, player_ownership: true });
-                expect(trial.refs.effectIds).toHaveLength(5); expect(trial.charges).toHaveLength(4);
+                expect(trial.refs.effectIds).toHaveLength(modelCalls + 1); expect(trial.charges).toHaveLength(modelCalls);
                 expect(trial.evidence.find(item => item.name === 'native_plan_execution').observed.planRef).toEqual(settings[arm].nativePlan.planRef);
             }
-            expect(f.requests.length).toBe(9); expect(f.effects).toEqual([]);
-            const ledger = await repository.owner(handle); expect(ledger.attempts).toHaveLength(9);
+            expect(f.requests.length).toBe(modelCalls * 2 + 1); expect(f.effects).toEqual([]);
+            const ledger = await repository.owner(handle); expect(ledger.attempts).toHaveLength(modelCalls * 2 + 1);
             expect(ledger.attempts.filter(item => item.kind === 'judge')).toHaveLength(1);
             expect(ledger.attempts.every(item => item.status === 'reported')).toBe(true);
             expect((await f.chats.get(handle, f.locator.charDir, f.locator.name)).body).toHaveLength(2);

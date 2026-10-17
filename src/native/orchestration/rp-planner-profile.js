@@ -10,8 +10,12 @@ export function rpPlannerProfile(plan) {
     const graph = plan.definition, planner = graph.nodes.find(node => node.kind === 'planner');
     if (!planner) return null;
     const narrator = graph.nodes.find(node => node.kind === 'agent'), output = graph.nodes.find(node => node.kind === 'output');
-    if (graph.nodes.length !== 3 || !narrator || !output || graph.outputContract.kind !== 'rp_narration' || graph.edges.length !== 2 || hash(graph.entryNodeIds) !== hash([planner.nodeId])
-        || planner.inputs.length || planner.outputs.length !== 1 || planner.outputs[0].type !== 'json'
+    const loops = graph.edges.filter(edge => edge.loopBack), loop = loops[0];
+    if (loops.length > 1 || loop && (loop.from.nodeId !== planner.nodeId || loop.to.nodeId !== planner.nodeId
+        || loop.from.port !== planner.outputs[0]?.name || loop.condition !== 'always' || loop.maxVisits > graph.limits.maxLoopIterations
+        || planner.inputs.length !== 1 || planner.inputs[0].name !== loop.to.port || planner.inputs[0].type !== 'json' || planner.inputs[0].required)) fail();
+    if (graph.nodes.length !== 3 || !narrator || !output || graph.outputContract.kind !== 'rp_narration' || graph.edges.length !== 2 + loops.length || hash(graph.entryNodeIds) !== hash([planner.nodeId])
+        || !loop && planner.inputs.length || planner.outputs.length !== 1 || planner.outputs[0].type !== 'json'
         || narrator.inputs.length !== 1 || narrator.inputs[0].type !== 'json' || !narrator.inputs[0].required
         || hash([...planner.capabilities].sort()) !== hash(['generation.send', 'graph.patch'].sort())
         || !nodeModelRoutePins(planner, plan.dependencyPins).length
@@ -23,8 +27,8 @@ export function rpPlannerProfile(plan) {
         || transfer.condition !== 'always' || transfer.loopBack || transfer.maxVisits !== 1) fail();
     const used = new Set([...planner.dependencyPinIds, ...narrator.dependencyPinIds]);
     if (plan.dependencyPins.some(pin => !used.has(pin.pinId))) fail();
-    return { planner, transfer, narration: { ...plan, definition: { ...graph, nodes: [{ ...narrator, inputs: [] }, output],
-        entryNodeIds: [narrator.nodeId], edges: graph.edges.filter(edge => edge !== transfer),
+    return { planner, transfer, loop: loop ?? null, narration: { ...plan, definition: { ...graph, nodes: [{ ...narrator, inputs: [] }, output],
+        entryNodeIds: [narrator.nodeId], edges: graph.edges.filter(edge => edge !== transfer && edge !== loop),
         capabilityCeiling: graph.capabilityCeiling.filter(capability => capability !== 'graph.patch'), graphChangePolicy: { allowedOperations: [], allowedNodeKinds: [] } },
     dependencyPins: plan.dependencyPins.filter(pin => narrator.dependencyPinIds.includes(pin.pinId)) } };
 }

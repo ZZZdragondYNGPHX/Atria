@@ -105,7 +105,7 @@ export async function readRpOutput(tx, handle, root) {
         || !equal(host.sourceRefs, [root.sourceBinding.sourceRef]) || !equal(host.resultRefs, []) || host.reasonCode !== 'rp_output_committed'
         || host.observedAt > receipt.createdAt || host.budgetObservationRef.status !== 'settled'
         || !equal(Object.fromEntries(Object.keys(intent.budgetAttemptRef).map(field => [field, host.budgetObservationRef[field]])), intent.budgetAttemptRef)) invalid();
-    const planner = await readRpPlannerCompletion(tx, handle, root), modelIds = [published.receipt.modelEffectId, ...(planner ? [planner.modelEffectId] : []),
+    const planner = await readRpPlannerCompletion(tx, handle, root), modelIds = [published.receipt.modelEffectId, ...(planner?.history.map(item => item.modelEffectId) ?? []),
         ...published.graphResults.map(item => item.receipt.modelEffectId), ...published.reviewCompletions.map(item => item.modelEffectId),
         ...(published.judgeCompletion ? [published.judgeCompletion.modelEffectId] : [])];
     if (!equal(closure.effectIds, [...modelIds, intent.effectId].sort()) || !Array.isArray(closure.budgetAttemptRefs)) invalid();
@@ -130,6 +130,7 @@ export async function readRpOutput(tx, handle, root) {
     const edgeId = 'oreceipt_' + hash({ kind: 'edge_admission', runId: root.runId, edgeId: edge.edgeId,
         producerAttemptId: published.producer.attemptId, nodeAttemptId: output.attemptId }).slice(0, 32);
     const admission = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', edgeId)))?.doc;
+    const completedLoops = planner ? planner.history.length - 1 : 0;
     if (!admission) invalid();
     assertObject(admission, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'graphRevision', 'edgeId', 'producerAttemptId',
         'nodeAttemptId', 'sourceBindingDigest', 'edgeVisit', 'loopIteration', 'decisionSeq', 'createdAt'], 'RP edge admission');
@@ -142,7 +143,8 @@ export async function readRpOutput(tx, handle, root) {
         || admission.runId !== root.runId || admission.epoch !== receipt.epoch || admission.graphRevision !== receipt.graphRevision
         || admission.producerAttemptId !== published.producer.attemptId || admission.nodeAttemptId !== output.attemptId || admission.edgeId !== edge.edgeId
         || admission.sourceBindingDigest !== root.sourceBinding.bindingDigest || admission.decisionSeq !== traversal.decisionSeq
-        || admission.createdAt !== traversal.createdAt || admission.edgeVisit !== 1 || admission.loopIteration !== 0
-        || root.progress.edgeVisitCounts[edge.edgeId] !== 1 || traversal.edgeVisits[edge.edgeId] !== 1 || traversal.loopIterations !== 0) invalid();
+        || admission.createdAt !== traversal.createdAt || admission.edgeVisit !== 1 || admission.loopIteration !== completedLoops
+        || root.progress.edgeVisitCounts[edge.edgeId] !== 1 || traversal.edgeVisits[edge.edgeId] !== 1
+        || traversal.loopIterations !== completedLoops || root.progress.loopIterations !== completedLoops) invalid();
     return { claim, receipt, closure, published, output, domainReceipt: original.domainReceipt };
 }

@@ -36,7 +36,7 @@ export class RpOutputCompletionController {
         const planner = await readRpPlannerCompletion(tx, handle, root);
         const narration = await readRpNarrationResult(tx, handle, root);
         const closure = await BudgetPort.prototype.observeEffectClosure.call(budgetPort, handle, {
-            authorityRef: root.budgetAuthorityRef, effectIds: [first.modelEffectId, first.outputEffectId, ...(planner ? [planner.modelEffectId] : []),
+            authorityRef: root.budgetAuthorityRef, effectIds: [first.modelEffectId, first.outputEffectId, ...(planner?.history.map(item => item.modelEffectId) ?? []),
                 ...narration.graphResults.map(item => item.receipt.modelEffectId), ...narration.reviewCompletions.map(item => item.modelEffectId),
                 ...(narration.judgeCompletion ? [narration.judgeCompletion.modelEffectId] : [])] }, { tx });
         const current = await authorize();
