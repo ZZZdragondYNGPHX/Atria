@@ -16,22 +16,38 @@ export async function createFrozenEvaluationBridge(config, send, { nativePlan = 
     const store = await createEvaluationStore(nativePlan ? { handle: nativePlan.revision.authorRef.handle } : {}), { engine, handle } = store;
     if (nativePlan) attachNativeHostLifecycle(engine, { directoriesByHandle: owner => { if (owner !== handle) throw new Error('evaluation_owner_mismatch'); return store.dirs; } });
     const persistence = new NativeModelPromptPersistence({ engine }), library = new VersionedJsonResourceHandler({ engine });
-    const pending = [...config.resources], committed = new Set();
+    const configurations = [config, ...(nativePlan ? config.nativeRoutes ?? [] : [])];
+    const unique = new Map();
+    for (const candidate of configurations) for (const resource of candidate.resources) {
+        const key = hash(resource.ref);
+        if (unique.has(key) && hash(unique.get(key)) !== hash(resource)) throw new Error('evaluation_resource_closure_conflict');
+        unique.set(key, resource);
+    }
+    const pending = [...unique.values()], committed = new Set();
     while (pending.length) {
         const index = pending.findIndex(({ ref, resource }) => collectVersionedModelPromptResourceRefs(ref.resourceType, resource).every(r => committed.has(hash(r))));
         if (index < 0) throw new Error('evaluation_resource_closure_incomplete');
         const { ref, resource } = pending.splice(index, 1)[0];
         await library.commit(handle, ref.resourceType, resource); committed.add(hash(ref));
     }
-    const connection = { ...config.connection, secretRef: { scope: 'player', secretId: 'evaluation-parent-port' } };
-    await persistence.saveConnectionProfile(handle, connection); await persistence.saveModelProfile(handle, config.model); await persistence.saveRuntimeRoute(handle, config.route);
+    const profiles = new Map();
+    for (const candidate of configurations) {
+        for (const [kind, id, value] of [['connection', candidate.connection.connectionProfileId, candidate.connection], ['model', candidate.model.modelProfileId, candidate.model]]) {
+            const key = kind + ':' + id;
+            if (profiles.has(key) && profiles.get(key) !== hash(value)) throw new Error('evaluation_profile_conflict');
+            profiles.set(key, hash(value));
+        }
+        const connection = { ...candidate.connection, secretRef: { scope: 'player', secretId: 'evaluation-parent-port' } };
+        await persistence.saveConnectionProfile(handle, connection); await persistence.saveModelProfile(handle, candidate.model); await persistence.saveRuntimeRoute(handle, candidate.route);
+    }
     let active = null, prepared = null;
     const transport = createHttpGenerationProvider();
     const provider = { ...transport,
         renderRequest(input) {
             const rendered = transport.renderRequest(input);
             prepared = { inputTokens: input.snapshot.diagnostics.inputTokens, outputTokens: input.snapshot.contextPlan.budget.reservedOutputTokens,
-                requestHash: hash(rendered), snapshotHash: hash(input.snapshot) };
+                requestHash: hash(rendered), snapshotHash: hash(input.snapshot),
+                ...(nativePlan ? { nativeRouteId: input.resolved.route.runtimeRouteId } : {}) };
             return rendered;
         },
         async send(rendered, { signal }) {

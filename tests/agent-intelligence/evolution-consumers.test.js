@@ -1,3 +1,4 @@
+import '../util/browser-context.js';
 import { afterEach, expect, test } from '@jest/globals';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 import { evolutionFixture, runEvolution, labelAll } from './evolution-fixture.js';
@@ -88,12 +89,14 @@ test('the original next Project request consumes its local Prompt pin while anot
     const host = new NativeGenerationHost({ ...f.host, providers: { ...f.host.providers,
         'provider.openai-compatible': { ...f.host.providers['provider.openai-compatible'], send: async () => json({ choices: [{ message: { content: 'Synthetic next request' } }] }) } } });
     const project = await f.host.studio.getProject(f.h.handle, f.subject);
-    const result = await host.execute(f.h.handle, { role: 'studio', projectId: f.subject, revision: project.revision.revision, requestId: 'next-original-project', messages: [{ role: 'user', content: 'Preview this project' }], tools: [] });
+    const task = await f.host.agent.createTask(f.h.handle, f.subject, { intent: 'Preview this project', baseRevision: project.revision.revision });
+    const result = await host.execute(f.h.handle, { role: 'studio', projectId: f.subject, taskId: task.taskId, revision: project.revision.revision, requestId: 'next-original-project', messages: [{ role: 'user', content: 'Preview this project' }], tools: [] });
     expect(result.snapshot.promptProgramRef).not.toEqual(old.promptProgramRef); expect(result.snapshot.promptIr.directives).toContain('Candidate guidance');
     expect((await f.repository.get(f.h.handle, f.scope, f.subject)).publications[0].activation).toMatchObject({ origin: 'host', requestId: 'next-original-project' });
     const otherSource = structuredClone(f.source); otherSource.project.projectId = (await import('../../src/native/identity.js')).createNativeId('project');
     const other = await f.host.studio.createProject(f.h.handle, otherSource);
-    const unchanged = await host.execute(f.h.handle, { role: 'studio', projectId: otherSource.project.projectId, revision: other.revision.revision, requestId: 'other-original-project', messages: [{ role: 'user', content: 'Preview another project' }], tools: [] });
+    const otherTask = await f.host.agent.createTask(f.h.handle, otherSource.project.projectId, { intent: 'Preview another project', baseRevision: other.revision.revision });
+    const unchanged = await host.execute(f.h.handle, { role: 'studio', projectId: otherSource.project.projectId, taskId: otherTask.taskId, revision: other.revision.revision, requestId: 'other-original-project', messages: [{ role: 'user', content: 'Preview another project' }], tools: [] });
     expect(unchanged.snapshot.promptProgramRef).toEqual(old.promptProgramRef);
 });
 

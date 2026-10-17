@@ -106,7 +106,8 @@ export async function readRpOutput(tx, handle, root) {
         || host.observedAt > receipt.createdAt || host.budgetObservationRef.status !== 'settled'
         || !equal(Object.fromEntries(Object.keys(intent.budgetAttemptRef).map(field => [field, host.budgetObservationRef[field]])), intent.budgetAttemptRef)) invalid();
     const planner = await readRpPlannerCompletion(tx, handle, root), modelIds = [published.receipt.modelEffectId, ...(planner ? [planner.modelEffectId] : []),
-        ...published.graphResults.map(item => item.receipt.modelEffectId), ...published.reviewCompletions.map(item => item.modelEffectId)];
+        ...published.graphResults.map(item => item.receipt.modelEffectId), ...published.reviewCompletions.map(item => item.modelEffectId),
+        ...(published.judgeCompletion ? [published.judgeCompletion.modelEffectId] : [])];
     if (!equal(closure.effectIds, [...modelIds, intent.effectId].sort()) || !Array.isArray(closure.budgetAttemptRefs)) invalid();
     const ids = new Set();
     for (const ref of closure.budgetAttemptRefs) {

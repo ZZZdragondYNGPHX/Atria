@@ -38,7 +38,8 @@ export class ContextPort {
 
     constructor({ sessionCore, projectAgent, projectCapture = null, rpControl = null, rpCapture = null, rpReturnCapture = null, rpGraphResults = [], resultPort = null, rpDelegationCapture = null, taskCapture = null, authorizeContext, contextOptions = {}, readMemoryEvidence, memoryAuthority = null, authorityTurn = null, resolverCapture = null, compilationInputs = null, nativeOutputQuota = null } = {}) {
         if (typeof authorizeContext !== 'function') fail('native_orchestration_context_authority_required');
-        if (!Array.isArray(rpGraphResults) || rpGraphResults.length > 1 || rpGraphResults.length && rpReturnCapture) fail('native_orchestration_context_authority_conflict');
+        if (!Array.isArray(rpGraphResults) || rpGraphResults.length > 2 || new Set(rpGraphResults.map(hashNativeDocument)).size !== rpGraphResults.length
+            || rpGraphResults.length && rpReturnCapture) fail('native_orchestration_context_authority_conflict');
         if ((rpReturnCapture || resultPort || rpGraphResults.length) && (!rpCapture || !(rpReturnCapture || rpGraphResults.length) || !(resultPort instanceof ResultPort)
             || resultPort.execution.sourcePort.rpControl !== rpControl)) fail('native_orchestration_context_authority_conflict');
         if ([authorityTurn, resolverCapture, projectCapture, rpCapture, rpDelegationCapture, taskCapture].filter(Boolean).length > 1) fail('native_orchestration_context_authority_conflict');

@@ -258,8 +258,8 @@ export class AgentEvolutionService {
                 candidate: await this.targets.evaluationSettings(handle, scope, subject, job.target, candidate.candidateId) };
             if (settings.baseline.nativePlan && settings.baseline.runtimeRouteId !== doc.policy.routeId) conflict('agent_evolution_model_route_mismatch');
             if (settings.baseline.rpProfile?.mainAgent?.nativeRouteRef?.runtimeRouteId && settings.baseline.rpProfile.mainAgent.nativeRouteRef.runtimeRouteId !== doc.policy.routeId) conflict('agent_evolution_model_route_mismatch');
-            const configs = { baseline: await this.evaluator.configuration(handle, doc.policy.routeId, settings.baseline.projectPromptRef || null),
-                candidate: await this.evaluator.configuration(handle, job.target.kind === 'plan-strategy' && job.target.fieldPath === 'routeRef' ? settings.candidate.runtimeRouteId : doc.policy.routeId, settings.candidate.projectPromptRef || null) };
+            const configs = { baseline: await this.evaluator.configuration(handle, doc.policy.routeId, settings.baseline.projectPromptRef || null, settings.baseline.nativePlan ?? null),
+                candidate: await this.evaluator.configuration(handle, job.target.kind === 'plan-strategy' && job.target.fieldPath === 'routeRef' ? settings.candidate.runtimeRouteId : doc.policy.routeId, settings.candidate.projectPromptRef || null, settings.candidate.nativePlan ?? null) };
             if (!same(configs.baseline.model, configs.candidate.model) || !same(configs.baseline.connection, configs.candidate.connection) || !same(configs.baseline.generation, configs.candidate.generation)) conflict('agent_evolution_paired_configuration_mismatch');
             report = await this.evaluator.compare(handle, { ...job, scopeId: doc.scopeId, domain: scope.domain === 'project' ? 'project' : 'rp', price: doc.policy.price }, configs, settings, signal, fresh);
         } catch (error) {
@@ -378,7 +378,8 @@ export class AgentEvolutionService {
         const settings = { baseline: await this.targets.evaluationSettings(handle, doc.scope, doc.subject, job.target),
             candidate: await this.targets.evaluationSettings(handle, doc.scope, doc.subject, job.target, candidate.candidateId) };
         for (const arm of ['baseline', 'candidate']) {
-            const config = await this.evaluator.configuration(handle, doc.policy.routeId, settings[arm].projectPromptRef || null);
+            const config = await this.evaluator.configuration(handle, settings[arm].nativePlan ? settings[arm].runtimeRouteId : doc.policy.routeId,
+                settings[arm].projectPromptRef || null, settings[arm].nativePlan ?? null);
             if (hash(config) !== candidate.report.configurations[arm] || hash(settings[arm]) !== candidate.report.settings[arm]) conflict('agent_evolution_evaluated_configuration_changed');
         }
     }

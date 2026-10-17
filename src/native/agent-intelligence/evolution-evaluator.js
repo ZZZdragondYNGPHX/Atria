@@ -24,7 +24,7 @@ export function evolutionEvaluatorRevision() {
         '../orchestration/source-port.js', '../orchestration/context-port.js', '../orchestration/binding-source-authority.js', '../orchestration/model-port.js',
         '../orchestration/model-capability-authority.js', '../orchestration/budget-port.js', '../orchestration/generation-local-work.js',
         '../orchestration/attempt-controller.js', '../orchestration/transition-controller.js', '../orchestration/effect-controller.js', '../orchestration/effect-contracts.js',
-        '../orchestration/controller-common.js', '../orchestration/review-controller.js', '../orchestration/graph-controller.js', '../orchestration/attempt-settlement.js', '../orchestration/join-controller.js', '../orchestration/fanout-controller.js', '../orchestration/graph-costs.js', '../orchestration/rp-planner-profile.js', '../orchestration/rp-planner-contracts.js', '../orchestration/rp-review-profile.js', '../orchestration/rp-review-contracts.js', '../orchestration/rp-control-work-contracts.js',
+        '../orchestration/controller-common.js', '../orchestration/review-controller.js', '../orchestration/graph-controller.js', '../orchestration/attempt-settlement.js', '../orchestration/join-controller.js', '../orchestration/fanout-controller.js', '../orchestration/graph-costs.js', '../orchestration/rp-planner-profile.js', '../orchestration/rp-planner-contracts.js', '../orchestration/rp-review-profile.js', '../orchestration/rp-review-contracts.js', '../orchestration/rp-control-work-contracts.js', '../orchestration/rp-judge-profile.js', '../orchestration/rp-judge-contracts.js',
         '../orchestration/result-controller.js', '../orchestration/graph-result-contracts.js', '../orchestration/result-port.js', '../orchestration/rp-result-chain-profile.js', '../orchestration/rp-narration-result-contracts.js', '../orchestration/rp-output-contracts.js', '../orchestration/result-contracts.js', '../orchestration/rp-output-controller.js', '../orchestration/rp-output-completion-controller.js', '../orchestration/rp-output-reconciliation.js',
         '../orchestration/session-output-reconciliation.js', '../orchestration/session-output-contracts.js',
         '../orchestration/project-tool-reconciliation.js', '../orchestration/effect-reconciliation.js', '../../../public/shared/project-agent-prompt.js',
@@ -112,8 +112,25 @@ export class EvolutionEvaluator {
     #sourceProbeConfigurations = new WeakSet();
     #sourceProbeJobs = new WeakMap();
     constructor({ host, repository }) { this.host = host; this.repository = repository; }
-    async configuration(handle, routeId, projectPromptRef = null) {
-        return this.#configuration(handle, routeId, projectPromptRef, false);
+    async configuration(handle, routeId, projectPromptRef = null, nativePlan = null) {
+        const primary = await this.#configuration(handle, routeId, projectPromptRef, false);
+        if (!nativePlan) return primary;
+        const pins = nativePlan.revision.dependencyPins, routes = new Map();
+        for (const node of nativePlan.revision.definition.nodes.filter(node => node.capabilities.includes('generation.send'))) {
+            const pin = pins.find(item => item.pinId === node.policy.agentPinId && node.dependencyPinIds.includes(item.pinId));
+            if (pin?.port !== 'model' || pin.resourceRef.scope !== 'player') throw new TypeError('native_orchestration_evaluation_unavailable');
+            const id = pin.resourceRef.runtimeRouteId, override = nativePlan.routeOverride?.runtimeRouteId === id ? nativePlan.routeOverride : null;
+            const config = id === routeId ? primary : routes.get(id) ?? await this.#configuration(handle, id, override?.promptProgramRef ?? null, false);
+            if (hash(config.route) !== pin.integrity || override && hash(config.route) !== hash(override)) throw new TypeError('native_orchestration_evaluation_unavailable');
+            // The existing confirmed price names one paired configuration.
+            // Distinct model/provider/generation prices need their own evidence.
+            if (!same(config.model, primary.model) || !same(config.connection, primary.connection) || !same(config.generation, primary.generation))
+                throw new TypeError('native_orchestration_evaluation_configuration_mismatch');
+            routes.set(id, config);
+        }
+        if (!routes.has(routeId)) throw new TypeError('native_orchestration_evaluation_unavailable');
+        const nativeRoutes = [...routes].filter(([id]) => id !== routeId).sort(([a], [b]) => a.localeCompare(b)).map(([, config]) => config);
+        return nativeRoutes.length ? { ...primary, nativeRoutes } : primary;
     }
     /** Exact user Route ceiling for engineering observations only. No promotion. */
     async sourceProbeConfiguration(handle, routeId) {
@@ -255,6 +272,15 @@ export class EvolutionEvaluator {
                 if (!plan || plan.sourceSelector.domain !== (job.domain === 'project' ? 'project' : 'rp_chat') || configs[arm].route.role !== (job.domain === 'project' ? 'role.studio' : 'role.narrator')
                     || plan.revision.authorRef.handle !== handle || settings[arm].runtimeRouteId !== configs[arm].route.runtimeRouteId)
                     throw Object.assign(new TypeError('native_orchestration_evaluation_unavailable'), { code: 'native_orchestration_evaluation_unavailable' });
+                const declared = new Map();
+                for (const node of plan.revision.definition.nodes.filter(node => node.capabilities.includes('generation.send'))) {
+                    const pin = plan.revision.dependencyPins.find(pin => pin.pinId === node.policy.agentPinId && node.dependencyPinIds.includes(pin.pinId));
+                    if (pin?.port !== 'model' || pin.resourceRef.scope !== 'player') throw new TypeError('native_orchestration_evaluation_unavailable');
+                    declared.set(pin.resourceRef.runtimeRouteId, pin.integrity);
+                }
+                const actual = [configs[arm], ...(configs[arm].nativeRoutes ?? [])], ids = actual.map(config => config.route.runtimeRouteId);
+                if (ids.length !== declared.size || new Set(ids).size !== ids.length
+                    || actual.some(config => declared.get(config.route.runtimeRouteId) !== hash(config.route))) throw new TypeError('native_orchestration_evaluation_unavailable');
             }
         }
         const sourceProbe = selection.mode === 'source_probe', pairedProbe = selection.mode === 'sealed_pair_probe';
@@ -278,7 +304,9 @@ export class EvolutionEvaluator {
                     try {
                         if (message.type === 'send') {
                             if (sending || settled) throw new Error('evaluation_serial_send_required'); sending = true;
-                            const config = configs[message.payload.arm === 'candidate' ? 'candidate' : 'baseline'];
+                            const primary = configs[message.payload.arm === 'candidate' ? 'candidate' : 'baseline'];
+                            const config = message.payload.nativeRouteId ? [primary, ...(primary.nativeRoutes ?? [])].find(config => config.route.runtimeRouteId === message.payload.nativeRouteId) : primary;
+                            if (!config || message.payload.nativeRouteId && (message.payload.arm === 'judge' || message.payload.arm === 'extraction')) throw new Error('evaluation_route_unavailable');
                             try {
                                 const result = await this.send(handle, job, config, message.payload, signal, fresh); charges.push(result.charge);
                                 if (child.connected) child.send({ type: 'response', id: message.id, raw: result.raw });

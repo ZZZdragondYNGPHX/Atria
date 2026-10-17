@@ -35,6 +35,9 @@ export class M1ApiQuota {
             || snapshot.admissions.some(a => !a.id || !Number.isSafeInteger(a.at) || a.at < 0)
             || new Set(snapshot.admissions.map(a => a.id)).size !== snapshot.admissions.length) throw new Error('invalid_api_quota_checkpoint');
         this.snapshot = structuredClone(snapshot); this.persist = persist; this.now = now;
+        this.limits = snapshot.limits ?? { dailyRequests: null, requestsPerMinute: null };
+        if (!this.limits || Object.keys(this.limits).length !== 2 || !['dailyRequests', 'requestsPerMinute'].every(key =>
+            Object.hasOwn(this.limits, key) && (this.limits[key] === null || Number.isSafeInteger(this.limits[key]) && this.limits[key] > 0))) throw new Error('invalid_api_quota_limits');
         this.wait = wait;
         if (snapshot.carry.at > now() + 60000 || snapshot.admissions.some(a => a.at > now() + 60000)) throw new Error('invalid_api_quota_clock');
         this.compact();
@@ -43,7 +46,7 @@ export class M1ApiQuota {
         const cutoff = this.now() - 86400000;
         const admissions = this.snapshot.admissions.filter(a => a.at > cutoff).map(({ id, at }) => ({ id, at }));
         const carry = this.snapshot.carry.at > cutoff ? this.snapshot.carry : { requests: 0, at: 0 };
-        const next = { schemaVersion: 1, carry, admissions };
+        const next = { schemaVersion: 1, limits: this.limits, carry, admissions };
         if (JSON.stringify(next) !== JSON.stringify(this.snapshot)) {
             this.persist(next);
             this.snapshot = next;
@@ -53,8 +56,8 @@ export class M1ApiQuota {
         this.compact();
         const at = this.now(), recent = this.snapshot.admissions.filter(a => a.at > at - 86400000);
         const carry = this.snapshot.carry.at > at - 86400000 ? this.snapshot.carry.requests : 0;
-        if (recent.length + carry >= 2000) throw new Error('m1_api_daily_limit');
-        if (recent.filter(a => a.at > at - 60000).length >= 20) throw new Error('m1_api_rate_limit');
+        if (this.limits.dailyRequests !== null && recent.length + carry >= this.limits.dailyRequests) throw new Error('m1_api_daily_limit');
+        if (this.limits.requestsPerMinute !== null && recent.filter(a => a.at > at - 60000).length >= this.limits.requestsPerMinute) throw new Error('m1_api_rate_limit');
         return at;
     }
     admit(id) {
@@ -73,9 +76,13 @@ export class M1ApiQuota {
                 if (this.snapshot.carry.at > at - 86400000) times.push({ at: this.snapshot.carry.at, count: this.snapshot.carry.requests });
                 times.sort((a, b) => a.at - b.at);
                 let count = times.reduce((sum, a) => sum + a.count, 0), readyAt = at;
-                for (const row of times) { if (count < 2000) break; count -= row.count; readyAt = Math.max(readyAt, row.at + 86400000); }
+                if (this.limits.dailyRequests !== null) for (const row of times) {
+                    if (count < this.limits.dailyRequests) break;
+                    count -= row.count; readyAt = Math.max(readyAt, row.at + 86400000);
+                }
                 const minute = this.snapshot.admissions.filter(a => a.at > at - 60000).sort((a, b) => a.at - b.at);
-                if (minute.length >= 20) readyAt = Math.max(readyAt, minute[minute.length - 20].at + 60000);
+                if (this.limits.requestsPerMinute !== null && minute.length >= this.limits.requestsPerMinute)
+                    readyAt = Math.max(readyAt, minute[minute.length - this.limits.requestsPerMinute].at + 60000);
                 await this.wait(Math.max(1, Math.min(60000, readyAt - at)), undefined, { signal });
             }
         }

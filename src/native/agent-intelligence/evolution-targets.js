@@ -386,11 +386,12 @@ export class EvolutionTargets {
             const planRef = candidateId ? captured.desired.planRef : captured.base.planRef;
             const revision = await this.nativePlans().getRevision(handle, planRef);
             const agents = revision.definition.nodes.filter(node => node.kind === 'agent' && node.capabilities.includes('generation.send'));
-            const node = agents.find(node => node.nodeId === target.nodeId) ?? (agents.length === 1 ? agents[0] : null);
+            const terminal = agents.filter(node => revision.definition.edges.some(edge => edge.from.nodeId === node.nodeId && edge.to.nodeId === revision.definition.outputContract.ownerNodeId));
+            const node = terminal.length === 1 ? terminal[0] : agents.length === 1 ? agents[0] : null;
             const pin = revision.dependencyPins.find(pin => pin.resourceRef.scope === 'player' && pin.pinId === node?.policy.agentPinId);
             const original = candidateId && target.kind === 'plan-prompt' ? await this.prompts.check(handle, captured.candidate.promptCandidateRef.presetId, captured.candidate.promptCandidateRef.candidateId) : null;
-            return { nativePlan: { planRef, revision, sourceSelector: captured.base.sourceSelector },
-                ...(pin ? { runtimeRouteId: pin.resourceRef.runtimeRouteId } : {}), ...(original ? { projectPromptRef: original.desiredRoute.promptProgramRef } : {}),
+            return { nativePlan: { planRef, revision, sourceSelector: captured.base.sourceSelector, ...(original ? { routeOverride: original.desiredRoute } : {}) },
+                ...(pin ? { runtimeRouteId: pin.resourceRef.runtimeRouteId } : {}), ...(original && original.desiredRoute.runtimeRouteId === pin?.resourceRef.runtimeRouteId ? { projectPromptRef: original.desiredRoute.promptProgramRef } : {}),
                 version: candidateId ?? hash(captured.base) };
         }
         if ((await this.nativeBindings(handle, scope, subject)).length) throw new TypeError('native_orchestration_evaluation_unavailable');

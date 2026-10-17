@@ -54,7 +54,7 @@ export class AttemptController {
         assertObject(input, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'attemptId'], 'activate');
         const { attemptId, ...guard } = input;
         const observed = await this.runs.get(handle, input.runId);
-        return this.runs.control(handle, controlCommandId('attempt.activate', attemptId), { ...guard, operation: 'attempt.activate', detail: { attemptId } }, async ({ tx, root, now }) => {
+        return this.runs.control(handle, controlCommandId('attempt.activate', attemptId), { ...guard, operation: 'attempt.activate', detail: { attemptId } }, async ({ tx, root, now, deny }) => {
             const record = await readAttempt(tx, handle, root, attemptId), attempt = record.doc;
             await assertAttemptCurrent(tx, handle, root, attempt);
             if (root.cancelRequested || !['admitted', 'running'].includes(root.status) || root.nodeControl[attempt.nodeId].disposition !== 'eligible'
@@ -74,7 +74,16 @@ export class AttemptController {
                 || root.progress.steps >= root.limits.maxSteps) throw new ConflictError('native_orchestration_limit_exhausted');
             await assertRunTreeConcurrency(tx, handle, root, { additionalSlots: holdsConcurrencySlot(root, { ...attempt, status: 'running' }) ? 1 : 0 });
             await assertFanoutAdmission({ tx, handle, root, attempt });
-            await this.authorizeAttempt({ handle, tx, root, attempt });
+            const stamp = hashNativeDocument(root);
+            try {
+                await this.authorizeAttempt({ handle, tx, root, attempt });
+                if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(new ConflictError('native_orchestration_attempt_not_admitted'));
+                await this.authorizeAttempt({ handle, tx, root, attempt });
+                if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(new ConflictError('native_orchestration_attempt_not_admitted'));
+            } catch (error) {
+                if (error instanceof ConflictError || error.code === 'native_rp_source_missing') return deny(error);
+                throw error;
+            }
             await putMutable(tx, controlRecordKey(handle, root.runId, 'attempt', attemptId), { ...attempt, status: 'running', startedAt: now }, { expectedIntegrity: record.integrity });
             if (node.kind === 'review') {
                 const receiptId = reviewAdmissionId(root.runId, attemptId);

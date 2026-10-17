@@ -14,6 +14,7 @@ import { readRpPlannerCompletion } from './rp-planner-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { readGraphNodeResult, graphResultPublicationId } from './graph-result-contracts.js';
 import { readRpReviewCompletion } from './rp-review-contracts.js';
+import { readRpJudgeCompletion } from './rp-judge-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP Narrator Result facts'); };
@@ -84,6 +85,7 @@ export async function readRpNarrationResult(tx, handle, root) {
             sourceBindingDigest: source.bindingDigest, sourceAuthority: 'rp_chat', sourceRef: source.sourceRef },
         { kind: 'effect_receipt', runId: root.runId, effectId: receipt.modelEffectId, receiptId: receipt.modelReceiptRef.receiptId, observedEpoch: receipt.epoch }])) invalid();
     const input = intent.inputRef;
+    let judgeCompletion = null;
     if (input.kind !== 'native_rp_intent' || input.nodeId !== producer.nodeId || input.role !== 'narrator'
         || !equal(input.planRef, root.planRef) || !equal(input.sourceRef, source.sourceRef)
         || !equal(input.audience, { kind: 'narrator' }) || producer.inputDigest !== hash(producer.inputRefs)) invalid();
@@ -100,7 +102,15 @@ export async function readRpNarrationResult(tx, handle, root) {
         if (!draft || !draft.record.envelope.audienceConstraint.nodeIds.includes(producer.nodeId)) invalid();
         await assertAttemptCurrent(tx, handle, root, draft.producer);
         const additionalProducers = [];
-        if (input.reviewReceiptRef) {
+        if (input.judgeReceiptRef) {
+            if (input.reviewReceiptRef || input.judgeReceiptRef.runId !== root.runId) invalid();
+            const decision = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', input.judgeReceiptRef.receiptId)))?.doc;
+            judgeCompletion = decision ? await readRpJudgeCompletion(tx, handle, root, decision.producerAttemptId) : null;
+            if (!judgeCompletion || !equal(input.judgeReceiptRef, { runId: root.runId, receiptId: judgeCompletion.receipt.receiptId })
+                || !equal(judgeCompletion.receipt.selectedResultRef, draft.receipt.resultRef)
+                || !equal(graphResults.map(item => item.receipt.resultRef), judgeCompletion.receipt.candidateRefs)) invalid();
+            additionalProducers.push(judgeCompletion);
+        } else if (input.reviewReceiptRef) {
             if (input.reviewReceiptRef.runId !== root.runId) invalid();
             const decision = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', input.reviewReceiptRef.receiptId)))?.doc;
             const reviewed = decision ? await readRpReviewCompletion(tx, handle, root, decision.reviewAttemptId) : null;
@@ -131,6 +141,6 @@ export async function readRpNarrationResult(tx, handle, root) {
         const reviewed = await readRpReviewCompletion(tx, handle, root, id);
         if (!reviewed) invalid(); reviewCompletions.push(reviewed);
     }
-    if (reviewCompletions.length && !input.reviewReceiptRef) invalid();
-    return { record, receipt, settlement, producer, graphResults, reviewCompletions };
+    if (reviewCompletions.length && !input.reviewReceiptRef || root.graph.nodes.some(node => node.kind === 'judge') && !judgeCompletion) invalid();
+    return { record, receipt, settlement, producer, graphResults, reviewCompletions, judgeCompletion };
 }

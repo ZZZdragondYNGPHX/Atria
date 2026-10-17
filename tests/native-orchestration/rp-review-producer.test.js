@@ -9,6 +9,10 @@ import { jest } from '@jest/globals';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecycle.js';
 import { StorageCommitUnknownError } from '../../src/storage/errors.js';
+import { ModelPort } from '../../src/native/orchestration/model-port.js';
+import { reviewReceiptId } from '../../src/native/orchestration/review-controller.js';
+import { BudgetPort } from '../../src/native/orchestration/budget-port.js';
+import { NativeRpOrchestrationAuthority } from '../../src/native/orchestration/native-rp-generation.js';
 
 jest.setTimeout(60_000);
 
@@ -140,6 +144,81 @@ describe.each(CONTRACT_HARNESSES)('$name actual RP Model Review', ({ make }) => 
             expect(result.output.runStatus).toBe('pending_output'); expect(root.outputClaims).toEqual([]); expect(root.status).toBe('running');
             expect(root.progress.reviews).toBe(1); expect(f.requests).toHaveLength(3);
         } finally { await f.cleanup(); }
+    });
+    test.each(['decision', 'settlement'].flatMap(phase => ['binding', 'cancel'].map(change => [phase, change])))('same-transaction %s %s survives rejection of the late Review proof', async (phase, change) => {
+        const f = await rpModelFixture(make, { configurePlan: configureReview, responsePayload: (_body, ordinal) => ordinal === 1 ? 'DRAFT_A' : approve });
+        const inspect = ModelPort.prototype.inspectResultCompletion; let changed = false;
+        const spy = jest.spyOn(ModelPort.prototype, 'inspectResultCompletion').mockImplementation(async function (handle, request) {
+            const proof = await inspect.call(this, handle, request);
+            if (!changed && f.requests.length === 2 && f.h.engine.hasActiveTransaction(handle)) {
+                const decided = await f.h.engine.withTransaction(handle, tx => tx.getResource(controlRecordKey(handle, request.runId, 'receipt', reviewReceiptId(request.runId, proof.producerAttemptId))));
+                if ((phase === 'settlement') === !!decided) {
+                    changed = true;
+                    if (change === 'binding') {
+                        const binding = await f.plans.getBinding(handle, f.sourceSelector);
+                        await f.plans.saveBinding(handle, id('Command'), { sourceSelector: f.sourceSelector, planRef: f.planRef, expectedVersion: binding.version });
+                    } else await f.authority.execution.runs.cancel(handle, id('Command'), {
+                        ...runGuard(await f.authority.execution.runs.get(handle, request.runId)), reasonCode: 'controlled_user_cancel' });
+                }
+            }
+            return proof;
+        });
+        try {
+            await expect(f.run()).rejects.toThrow(); expect(changed).toBe(true); expect(f.requests.length).toBe(2);
+            expect((await f.plans.getBinding(f.h.handle, f.sourceSelector)).version).toBe(change === 'binding' ? 1 : 0);
+            const [row] = await f.h.engine.withTransaction(f.h.handle, tx => tx.listResources({ kind: K.orchestrationRun, handle: f.h.handle }));
+            expect(row.doc.cancelRequested).toBe(change === 'cancel'); expect(row.doc.outputClaims).toEqual([]);
+        } finally { spy.mockRestore(); await f.cleanup(); }
+    });
+    test.each(['binding', 'cancel'])('same-transaction rerun admission %s preserves withdrawal without writing new Attempts', async change => {
+        const f = await rpModelFixture(make, { configurePlan: configureReview, responsePayload: (_body, ordinal) => ordinal === 1 ? 'DRAFT_A' : rerun });
+        const capacity = BudgetPort.prototype.observeCapacity; let changed = false;
+        const spy = jest.spyOn(BudgetPort.prototype, 'observeCapacity').mockImplementation(async function (handle, request, options) {
+            const result = await capacity.call(this, handle, request, options);
+            if (!changed && f.requests.length === 2 && f.h.engine.hasActiveTransaction(handle)) {
+                changed = true;
+                if (change === 'binding') {
+                    const binding = await f.plans.getBinding(handle, f.sourceSelector);
+                    await f.plans.saveBinding(handle, id('Command'), { sourceSelector: f.sourceSelector, planRef: f.planRef, expectedVersion: binding.version });
+                } else {
+                    const [row] = await f.h.engine.withTransaction(handle, tx => tx.listResources({ kind: K.orchestrationRun, handle }));
+                    await f.authority.execution.runs.cancel(handle, id('Command'), { ...runGuard(row.doc), reasonCode: 'controlled_user_cancel' });
+                }
+            }
+            return result;
+        });
+        try {
+            await expect(f.run()).rejects.toThrow(); expect(changed).toBe(true); expect(f.requests.length).toBe(2);
+            const [row] = await f.h.engine.withTransaction(f.h.handle, tx => tx.listResources({ kind: K.orchestrationRun, handle: f.h.handle }));
+            expect(row.doc.attemptRefs).toHaveLength(2); expect(row.doc.cancelRequested).toBe(change === 'cancel');
+            expect((await f.plans.getBinding(f.h.handle, f.sourceSelector)).version).toBe(change === 'binding' ? 1 : 0);
+            const invalidated = await f.h.engine.withTransaction(f.h.handle, async tx => {
+                const draft = (await readAttempt(tx, f.h.handle, row.doc, row.doc.attemptRefs[0])).doc;
+                return readAttemptInvalidation(tx, f.h.handle, row.doc, draft);
+            });
+            expect(invalidated).toBeNull();
+        } finally { spy.mockRestore(); await f.cleanup(); }
+    });
+    test.each(['binding', 'cancel'])('same-transaction Review activation %s preserves withdrawal before admission consumes a round', async change => {
+        const f = await rpModelFixture(make, { configurePlan: configureReview, responsePayload: () => 'DRAFT_A' });
+        const authorize = NativeRpOrchestrationAuthority.prototype.authorize; let changed = false;
+        const spy = jest.spyOn(NativeRpOrchestrationAuthority.prototype, 'authorize').mockImplementation(async function (args) {
+            const result = await authorize.call(this, args);
+            if (!changed && args.attempt?.status === 'pending' && args.root.graph.nodes.find(node => node.nodeId === args.attempt.nodeId)?.kind === 'review') {
+                changed = true;
+                if (change === 'binding') {
+                    const binding = await f.plans.getBinding(args.handle, f.sourceSelector);
+                    await f.plans.saveBinding(args.handle, id('Command'), { sourceSelector: f.sourceSelector, planRef: f.planRef, expectedVersion: binding.version });
+                } else await f.authority.execution.runs.cancel(args.handle, id('Command'), { ...runGuard(args.root), reasonCode: 'controlled_user_cancel' });
+            }
+            return result;
+        });
+        try {
+            await expect(f.run()).rejects.toThrow(); expect(changed).toBe(true); expect(f.requests.length).toBe(1);
+            expect((await f.plans.getBinding(f.h.handle, f.sourceSelector)).version).toBe(change === 'binding' ? 1 : 0);
+            const [row] = await f.h.engine.withTransaction(f.h.handle, tx => tx.listResources({ kind: K.orchestrationRun, handle: f.h.handle }));
+            expect(row.doc.cancelRequested).toBe(change === 'cancel'); expect(row.doc.progress.reviews).toBe(0);
+        } finally { spy.mockRestore(); await f.cleanup(); }
     });
     test.each(['admission', 'decision', 'settlement'].flatMap(phase => ['saved', 'no_save'].map(ack => [phase, ack])))('%s ACK %s retains exact facts and never repeats Review or dispatches Narrator', async (phase, ack) => {
         let reviewNodeId;

@@ -28,7 +28,7 @@ export class ReviewController {
         targetAttemptIds.sort();
         const receiptId = reviewReceiptId(guard.runId, reviewAttemptId);
         return this.runs.control(handle, controlCommandId('review.decide', receiptId), { ...guard, operation: 'review.decide',
-            detail: { reviewAttemptId, decision, targetAttemptIds, reasonCode, evidenceRefs } }, async ({ tx, root, now }) => {
+            detail: { reviewAttemptId, decision, targetAttemptIds, reasonCode, evidenceRefs } }, async ({ tx, root, now, deny: controlDenial }) => {
             const { doc: reviewer } = await readAttempt(tx, handle, root, reviewAttemptId);
             await assertAttemptCurrent(tx, handle, root, reviewer);
             const node = root.graph.nodes.find(item => item.nodeId === reviewer.nodeId);
@@ -52,8 +52,13 @@ export class ReviewController {
             }
             // The original producer verifies the actual JSON Model completion,
             // recipient disclosure and current source, not a caller boolean.
-            await this.authorizeReview({ handle, tx, root, reviewer, targets, decision, reasonCode, evidenceRefs });
-            const invalidated = [], replacements = [];
+            const stamp = hash(root), authorize = () => this.authorizeReview({ handle, tx, root, reviewer, targets, decision, reasonCode, evidenceRefs });
+            try { await authorize(); } catch (error) {
+                if (error instanceof ConflictError || error.code === 'native_rp_source_missing') return controlDenial(error);
+                throw error;
+            }
+            if (hash(await this.runs.get(handle, root.runId)) !== stamp) return controlDenial(new ConflictError('native_orchestration_review_not_admitted'));
+            const invalidated = [], replacements = [], prepared = [];
             if (decision === 'rerun') {
                 if (targets.some(a => targets.some(b => a !== b && graphReachable(root.graph, a.nodeId, b.nodeId)))) deny('native_orchestration_review_redundant_targets');
                 for (const attempt of attempts) {
@@ -75,7 +80,11 @@ export class ReviewController {
                 if (root.progress.attempts + targets.length > root.limits.maxAttempts) deny('native_orchestration_limit_exhausted');
                 for (const target of targets) {
                     const attemptId = 'oattempt_' + hash({ receiptId, targetAttemptId: target.attemptId }).slice(0, 32);
-                    const admission = cloneNativeDocument(await this.admitRerun({ handle, tx, root, reviewer, target, attemptId, invalidatedAttemptIds: invalidated }));
+                    let admission;
+                    try { admission = cloneNativeDocument(await this.admitRerun({ handle, tx, root, reviewer, target, attemptId, invalidatedAttemptIds: invalidated })); } catch (error) {
+                        if (error instanceof ConflictError || error.code === 'native_rp_source_missing') return controlDenial(error);
+                        throw error;
+                    }
                     assertObject(admission, ['inputRefs', 'inputDigest', 'effectiveGrantDigest', 'budgetRef'], 'review rerun admission');
                     assertDigest(admission.inputDigest, 'inputDigest'); assertDigest(admission.effectiveGrantDigest, 'effectiveGrantDigest');
                     const staleResults = new Set(attempts.filter(item => invalidated.includes(item.attemptId)).flatMap(item => item.resultRefs).map(hash));
@@ -85,9 +94,21 @@ export class ReviewController {
                     const next = { ...target, attemptId, attemptNumber: Math.max(...attempts.filter(item => item.nodeId === target.nodeId).map(item => item.attemptNumber)) + 1,
                         epoch: root.epoch, graphRevision: root.graphRevision, inputState: 'prepared', reservationRef: null, ...admission,
                         sourceBindingDigest: root.sourceBinding.bindingDigest, status: 'pending', effectRefs: [], resultRefs: [], startedAt: null, endedAt: null, reasonCode: null };
-                    await putImmutable(tx, controlRecordKey(handle, root.runId, 'attempt', attemptId), next);
-                    root.attemptRefs.push(attemptId); replacements.push({ targetAttemptId: target.attemptId, attemptId });
+                    prepared.push(next); replacements.push({ targetAttemptId: target.attemptId, attemptId });
                 }
+            }
+            // Original authority awaits may lawfully cancel this Root or
+            // withdraw a Source in the same transaction. Deny before writing
+            // any replacement, retaining those independent facts.
+            if (hash(await this.runs.get(handle, root.runId)) !== stamp) return controlDenial(new ConflictError('native_orchestration_review_not_admitted'));
+            try { await authorize(); } catch (error) {
+                if (error instanceof ConflictError || error.code === 'native_rp_source_missing') return controlDenial(error);
+                throw error;
+            }
+            if (hash(await this.runs.get(handle, root.runId)) !== stamp) return controlDenial(new ConflictError('native_orchestration_review_not_admitted'));
+            for (const attempt of prepared) {
+                await putImmutable(tx, controlRecordKey(handle, root.runId, 'attempt', attempt.attemptId), attempt);
+                root.attemptRefs.push(attempt.attemptId);
             }
             invalidated.sort();
             const receipt = { schemaVersion: 1, receiptKind: 'graph_review', receiptId, runId: root.runId, epoch: root.epoch, graphRevision: root.graphRevision,
