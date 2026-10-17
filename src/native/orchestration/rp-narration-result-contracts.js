@@ -19,6 +19,7 @@ import { rpAgentGraphProfile, rpAgentGraphOrder } from './rp-agent-graph-profile
 import { rpPlannerProfile } from './rp-planner-profile.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
+import { readRpFanoutCompletion } from './rp-fanout-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP Narrator Result facts'); };
@@ -108,7 +109,17 @@ export async function readRpNarrationResult(tx, handle, root) {
             || new Set(accepted.map(item => item.record.resultId)).size !== accepted.length) invalid();
         for (const source of accepted) await assertAttemptCurrent(tx, handle, root, source.producer);
         const [draft] = accepted, additionalProducers = [];
-        if (input.judgeReceiptRef) {
+        if (input.joinReceiptRef) {
+            const joined = await readRpFanoutCompletion(tx, handle, root);
+            if (!joined || input.judgeReceiptRef || input.reviewReceiptRef || input.joinReceiptRef.runId !== root.runId
+                || input.joinReceiptRef.joinId !== joined.joinReceipt.joinId || joined.profile.transfer.to.nodeId !== producer.nodeId
+                || !equal(input.acceptedGraphResultRefs, joined.joinReceipt.acceptedResultRefs)
+                || !equal(graphResults.map(item => hash(item.receipt.resultRef)).sort(), joined.joinReceipt.acceptedResultRefs.map(hash).sort())) invalid();
+            const bindings = [{ edgeId: joined.profile.transfer.edgeId, producerAttemptId: joined.producer.attemptId }];
+            const traversalId = 'oreceipt_' + hash({ runId: root.runId, bindings, reservedAttemptId: null }).slice(0, 32);
+            await assertOutputTransition(tx, handle, root, { published: joined, output: producer,
+                receipt: { decisionSeq: receipt.decisionSeq, traversalReceiptRef: { runId: root.runId, receiptId: traversalId } } });
+        } else if (input.judgeReceiptRef) {
             if (accepted.length !== 1 || input.reviewReceiptRef || input.judgeReceiptRef.runId !== root.runId) invalid();
             const decision = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', input.judgeReceiptRef.receiptId)))?.doc;
             judgeCompletion = decision ? await readRpJudgeCompletion(tx, handle, root, decision.producerAttemptId) : null;
@@ -162,12 +173,14 @@ export async function readRpNarrationResult(tx, handle, root) {
             if (planner && prefix.transfers.some(edge => edge.to.nodeId === producer.nodeId)) additionalProducers.push(planner);
         }
         if (!equal(producer.inputRefs, [input, ...input.acceptedGraphResultRefs])) invalid();
-        const edges = [draft, ...additionalProducers].map(source => root.graph.edges.find(item => item.from.nodeId === source.producer.nodeId && item.to.nodeId === producer.nodeId));
-        if (edges.some(edge => !edge)) invalid();
-        const bindings = edges.map((edge, index) => ({ edgeId: edge.edgeId, producerAttemptId: [draft, ...additionalProducers][index].producer.attemptId })).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
-        const traversalId = 'oreceipt_' + hash({ runId: root.runId, bindings, reservedAttemptId: null }).slice(0, 32);
-        await assertOutputTransition(tx, handle, root, { published: draft, additionalProducers, output: producer,
-            receipt: { decisionSeq: receipt.decisionSeq, traversalReceiptRef: { runId: root.runId, receiptId: traversalId } } });
+        if (!input.joinReceiptRef) {
+            const edges = [draft, ...additionalProducers].map(source => root.graph.edges.find(item => item.from.nodeId === source.producer.nodeId && item.to.nodeId === producer.nodeId));
+            if (edges.some(edge => !edge)) invalid();
+            const bindings = edges.map((edge, index) => ({ edgeId: edge.edgeId, producerAttemptId: [draft, ...additionalProducers][index].producer.attemptId })).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
+            const traversalId = 'oreceipt_' + hash({ runId: root.runId, bindings, reservedAttemptId: null }).slice(0, 32);
+            await assertOutputTransition(tx, handle, root, { published: draft, additionalProducers, output: producer,
+                receipt: { decisionSeq: receipt.decisionSeq, traversalReceiptRef: { runId: root.runId, receiptId: traversalId } } });
+        }
     } else if (!equal(producer.inputRefs, [input]) || graphResults.length) invalid();
     let plannerCompletions = [];
     if (root.graph.nodes.some(node => node.kind === 'planner')) {

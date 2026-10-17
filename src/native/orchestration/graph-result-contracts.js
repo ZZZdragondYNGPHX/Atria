@@ -11,6 +11,7 @@ import { assertNativeId } from '../identity.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
+import { readRpFanoutCompletion } from './rp-fanout-contracts.js';
 
 const kinds = ['agent', 'planner', 'judge', 'review'];
 const equal = (a, b) => hash(a) === hash(b);
@@ -23,8 +24,14 @@ export function graphResultContract(root, producer, graphSnapshot = null) {
     if (root.sourceBinding.sourceAuthority !== 'rp_chat' || root.parentRef !== null || producer.graphRevision !== revision || revision > root.graphRevision
         || !graphSnapshot && (root.graphRevision !== 0 || root.graph.graphChangePolicy.allowedOperations.length) || !kinds.includes(node?.kind)
         || node.outputs.length !== 1 || !['text', 'json'].includes(node.outputs[0].type)) invalid();
-    const recipients = graph.edges.filter(edge => edge.from.nodeId === node.nodeId && !edge.loopBack).map(edge => graph.nodes.find(item => item.nodeId === edge.to.nodeId));
-    if (!recipients.length || recipients.some(item => !kinds.includes(item?.kind))) invalid();
+    const direct = graph.edges.filter(edge => edge.from.nodeId === node.nodeId && !edge.loopBack).map(edge => graph.nodes.find(item => item.nodeId === edge.to.nodeId));
+    const recipients = direct.flatMap(item => {
+        if (item?.kind !== 'join') return [item];
+        const successors = graph.edges.filter(edge => edge.from.nodeId === item.nodeId && !edge.loopBack).map(edge => graph.nodes.find(node => node.nodeId === edge.to.nodeId));
+        if (item.policy.strategy !== 'all-success' || successors.length !== 1 || successors[0]?.kind !== 'agent') invalid();
+        return [item, ...successors];
+    });
+    if (!recipients.length || recipients.some(item => !kinds.includes(item?.kind) && item?.kind !== 'join')) invalid();
     return { output: { kind: 'result', ownerNodeId: node.nodeId, slot: 'graph_result', allowPartial: false,
         resultPolicy: { outputType: node.outputs[0].type, maxBytes: policy.maxBytes } },
     audience: { kind: 'graph_nodes', runId: root.runId, nodeIds: [...new Set(recipients.map(item => item.nodeId))].sort(), epoch: producer.epoch,
@@ -98,6 +105,12 @@ export async function readGraphNodeResult(tx, handle, root, resultId, { recipien
         if (!equal(actual, recipient) || root.cancelRequested || root.status !== 'running' || !['running', 'waiting_effect'].includes(recipient.status)) invalid();
         if (recipient.epoch !== root.epoch || producer.epoch !== root.epoch || !contract.audience.nodeIds.includes(recipient.nodeId)
             || recipient.sourceBindingDigest !== root.sourceBinding.bindingDigest || !recipient.inputRefs.some(ref => equal(ref, receipt.resultRef))) invalid();
+        if (!root.graph.edges.some(edge => edge.from.nodeId === producer.nodeId && edge.to.nodeId === recipient.nodeId)) {
+            const joined = await readRpFanoutCompletion(tx, handle, root), input = recipient.inputRefs[0];
+            if (!joined || joined.profile.transfer.to.nodeId !== recipient.nodeId || !joined.joinReceipt.acceptedResultRefs.some(ref => equal(ref, receipt.resultRef))
+                || !equal(input.joinReceiptRef, { runId: root.runId, joinId: joined.joinReceipt.joinId })
+                || !equal(input.acceptedGraphResultRefs, joined.joinReceipt.acceptedResultRefs)) invalid();
+        }
     }
     return { record, receipt, producer, settlement, retrievalCompletions };
 }

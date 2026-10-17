@@ -44,7 +44,7 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_MOD
     });
 
     test('real 503 then 200 retry confirms both original provider rows without settling the unknown first bill', async () => {
-        const f = await fixture(make, { responseStatus: count => count === 1 ? 503 : 200,
+        const f = await fixture(make, { responseStatus: count => count === 1 ? 503 : 200, usage: (_body, count) => count > 1,
             changeRoute: route => ({ ...route, policy: { ...route.policy, maxRetries: 1 } }) });
         try {
             const result = await f.start(); expect(result.timeline.at(-1).content).toBe('Synthetic native narrator response.');
@@ -102,7 +102,7 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_MOD
     });
 
     test('Provider failure cannot mint a response fact or authorize replay after cold reopen', async () => {
-        const f = await fixture(make, { failure: true });
+        const f = await fixture(make, { failure: true, usage: false });
         try {
             await expect(f.start()).rejects.toThrow(); const sendCount = f.requests.length;
             expect(sendCount).toBeGreaterThan(0); expect((await f.observe()).outcome).toBe('unknown');

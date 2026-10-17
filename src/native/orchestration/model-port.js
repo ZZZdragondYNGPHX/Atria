@@ -201,7 +201,11 @@ export class ModelPort {
                 return { root, observation: await this.#observation({ handle, tx, root, intent, pending }) };
             });
             pending.observation = current.observation;
-            try { await this.effects.observe(handle, { ...runGuard(current.root), effectId, observation: current.observation }); } catch (error) {
+            try {
+                await this.runs.withSourceControl(handle, runId, async () => {
+                    await this.effects.observe(handle, { ...runGuard(await this.runs.get(handle, runId)), effectId, observation: current.observation });
+                }, { withAuthority });
+            } catch (error) {
                 if (error.code !== 'storage_commit_unknown') throw error;
                 const saved = await this.observe(handle, { runId, effectId });
                 if (!saved.observation || hash(saved.observation) !== hash(current.observation)) throw error;
