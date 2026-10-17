@@ -185,6 +185,21 @@
 - **验证边界**：GitHub docs 文档提交完成后再次 `fetch_file(ref=docs)` 检查 index、design、W8、W9、Record。研究/静态代码阅读均不代表测试；未执行 Node、CI、浏览器 UI、Windows/CachyOS/Android Termux、真实 RP 回合或主仓库 Git 合并。**仅修改 docs**。
 - **下一 checkpoint**：用户选择 W9-A/B/C 后，下一轮依约先更新**同一 Plan/唯一 Record** 再讨论具体 authored↔session 身份实例化、证据图候选匹配与权限、动态角色对话/认知合法入口、存档与分支引用、UI 及最终 E0。完整企划继续 Draft，直到用户明确确认全部核心边界与正式定稿。
 
+
+## Stage 11 — W9-B 已确认与 W10 实例化/能力绑定讨论（2026-10-17）
+
+- **用户本轮决定**：对 W9-B「Canonical World Subject + 受控跨域映射与投影」回复“认同”。将 W9-B 记为已确认**顶层架构方向**；连同 W1-B～W8-B 的已确认方向纳入 ARCH-DWE-01。**本轮不是 W10-B 选择、不是完整 Plan 定稿或代码实施授权**。
+- **任务和边界**：Primary Workspace 仍为独立的 `docs`；沿用唯一 Plan Bundle `plans/architecture/world-evolution-consistency/` 和此唯一 Record。不创建第二 Plan、HANDOFF、实现分支，不修改 main/其他长期分支、Package 或 Legacy Compatibility。
+- **本轮 docs 变更/提交（按顺序）**：
+  - `68e4f1ce9e87acbc56fe8ab7ed7449d21f71083f`：更新 W9 模块 `entity-identity-authority.md` §11，记录 W9-B 正式选择、稳定 SubjectRef 与有证据/分支权限的跨域映射原则，明确实现细则仍未定。
+  - `0c743a44dca56bd7ecffa320c55e536b924e9df7`：同一 Plan Bundle 新增 W10 当前模块 `subject-instantiation.md`，覆盖 World Definition / Authored Actor → Session Subject 实例化、运行时 NPC 表达/发言/认知/任务能力接纳、同一模板多实例、隐秘身份、HCM 消歧、分支继承、方案 W10-A/B/C。
+  - `bdfa6f5a451ee19a3ec4411aae95c1e7df0f2488`：现有 `design.md` §17 冻结**W9-B 方向本身**并将 W10 候选标为未确认，明确 E0 消费者范围。
+  - `437fda1c611a2a2064b8f9e0a43e9528482d1523`：现有 `index.md` 确认 W1–W9 选型、路由 W10，继续显示 Draft。
+- **代码审查范围与可确定的静态事实**：`src/native/identity.js` 当前列举 actor/world/session/branch 等 ID family，已读列表中未见 World Subject 独立 ID；`public/shared/native-actor-profile.js` 仅读取确切 Package/EntryPoint Authored Actor；`src/native/session-core.js` 的 Timeline `actorId` 当前只接受 `manifest.actors` 成员，Session 初始世界数据有 worldSelection/基线及可选 Worldless 情形；`public/shared/native-information-contract.js` 的 actor/view 声明是有限静态绑定；`public/shared/native-cognition-runtime.js` 的认知 Actor 使用 `actor_*` 身份约束；`src/native/lifetime-authority.js` 具 `life.person.*` 域内对象；HCM `temporal-graph.js` 有来源、歧义待决实体与受证据支持的 merge/split。它们无法仅凭名字自动统一为一个具备所有权限的角色。
+- **W10 推荐，明确尚未获批**：W10-B「固定定义 → Session 主体实例化 + 类型化能力绑定」。Native Session/Host 仍独占正式身份与已发生效果，原有作者资源保持固定；表达 Template、Timeline 参与者、Cognition/HCM Perspective、Lifetime/Task 在证据/权限/时间/分支界限内被合法引用。保留同一 Actor 模板复用不同世界人物的合法情形，秘密真身不自动对玩家或其它 NPC 显示。
+- **E0 阻塞与下一检查点**：Timeline `actorId` / Actor Profile、Context Compiler/Generation Host/Orchestrator、Information/Cognition/ToM/HCM、Lifetimes、Visual/Speech/Persona、SavePoint/Branch 和 Story UI 的真实消费者/权限切换尚未进行全面接口审计。用户确认 W10 候选后，下一轮仍须**先更新此 Plan/Record，提交并验证 docs，再继续讨论精确映射和实现收口**。
+- **验证状态**：GitHub Contents API 已提交上述四次 docs 变更，本 Record 随后提交；读取 docs 五份文件作存在性与内容核验。仅静态源码检查，无 Node 测试、CI、浏览器/UI 或 Windows/CachyOS/Android Termux 真机证据。**未修改产品代码，完整企划仍 Draft**。
+
 ## Final state
 
 Not yet applicable. Discussion in progress.
