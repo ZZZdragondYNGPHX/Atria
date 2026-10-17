@@ -218,6 +218,23 @@
 - **下一 checkpoint**：用户明确选择 W11-A/B/C 后，下一轮依约先更新同一 Plan 和唯一 Record，再讨论 W11 目标接口粒度、静态 Actor → 动态 Subject 的真实 caller cutover、权限边界与正式 E0 清单，以及最后设计定稿前剩余必须确认的实现前置条件。
 - **状态**：完整企划继续 **Draft**，未授权开工。 
 
+
+## Stage 13 — W11-B 确认与 W12 接口级 E0 / 事务与切换讨论（2026-10-17）
+
+- **用户决定**：明确“认同”上一轮推荐的 **W11-B「Typed Subject / Participant / Perspective + Native Host Capability Resolution」**。当前 W1-B～W11-B 均属于用户已确认的**架构方向**。**不能据此声称** W12-B、某个 ABI/ID/权限 API、全量 E0 审计、CI/跨端验收或整体方案定稿已获批准。
+- **工作域**：继续使用 `ARCH-DWE-01`，唯一入口 `plans/architecture/world-evolution-consistency/index.md`，唯一累计 Record 即本文件；`docs` 仍为唯一被修改分支，不创建新 Plan/Record、HANDOFF、实现分支或跨长期分支合并。开发尚未授权。
+- **本轮 docs 提交及内容**：
+  - `475b4541741f065f11cd874fc32053f5944fefd4`：在 W11 `subject-contracts-e0.md` §8 记录 W11-B 为确认方向，明确身份、表达、合法个人视角与正式叙事参与者的类型化边界，不把类型语义自动等同新独立数据库/API。
+  - `b3cfa3bcc7d9ffb36433524dff720f6deb46d34d`：新增**同一 Plan Bundle 的 W12 模块** `e0-consumer-cutover.md`，详细列出 Source-of-Truth/Owner 矩阵、真实生产代码路径的部分审计、World/State/Receipt/Timeline 统一发布边界、valid game-time / committed revision / observed time 区分、存读档/权限、Library/Studio/Play 和 W12-A/B/C 候选。
+  - `2571ffc478d93be122e4a54c2efb9fdf7dbb51a4`：同一 `design.md` §19 记录 W11-B 已确认，W12 仅为候选路线，并注明 E0/全端仍有阻塞。
+  - `14536e43eb2f2c143176099a84c9aa38a41d331d`：更新同一 `index.md` 的 W1–W11 状态、W12 模块路由与 Draft 限制。
+- **已核对 main 的具体静态发现**：`src/native/repositories/session-repo.js` `commitSnapshot` 当前有资源事务、immutable dependencies、`expectedRevisionId` CAS、`commitReceipt` 与 Session Root final marker；`public/scripts/native/experience/world/session.js` `commitEvents` 可将 `atri_world_state` 与 `atri_game_runtime` journal 随 `commitStatePatch` 提交。**不能推断所有** Narrative/Task/Native Orchestration/World Events/Cognition 的跨域效果都天然处于相同原子 publication。
+- **当前静态消费者事实**：`SessionCore._newEntry` Actor ID 限定 Manifest；`assertInformationClosure` 信息受众声明依赖 Manifest；`Native Frontend Host.MESSAGE_SCHEMA`、`session-projection.js` fingerprint、`speech-service.js`/部分 Visual 都消费 Actor ID；`native-chronicle-host.js` 部分 World View 围绕特定 Lifetime 域而非已实现通用实体有效时态查询；`world-editor.js` 当前作者界面主要有 schema/baseline/metadata，后续 World Model UI 不可假设已有；`context-compiler.js` 有 Token lanes、世界/知识/信息来源。已定位路径属于**部分 E0 consumer probe**，尚缺全量生产调用方、Orchestration V3 真实 HEAD、旧分支清退界面和真实运行验证。
+- **W12 研究推荐（用户未确认）**：W12-B「E0 证据驱动的原生硬切 + 单权威提交收口」。先审全量消费者及旧→新实际接口，再最小化在现有 Native Host 做类型化 Subject/Participant/Perspective、事件/权限/时态的可靠提交；随后一次性清退旧假权威/Actor-only 绑定和无用兼容双轨，最后 Studio/Play 与 Windows/CachyOS/Termux 验收。W12-A 跳过 E0 直接大改及 W12-C 并行新旧系统均有显著风险。
+- **真正未解决的 E0/Gate**：完整 consumer map 与原/目标 Schema/删除清单、Session 主体 Identity ID 决议、叙事文本/世界事件/身份/社会关系在单次 Native Revision 的明确提交或协调策略、game valid-time / commitment/knowledge-time/as-of 查询、Save/Branch、来源权限和 HCM 实际读写归属、Orchestration V3 与 Context Compiler、Library/Studio/Play UI、全端性能/安全验证均尚未完成。现阶段文档里的 E0 是调查清单，**不能标为 E0 已完成或测试通过**。
+- **验证范围**：通过 GitHub 连接读取 `docs`、`main` 若干具体源码，提交后再次 `fetch_file(ref=docs)` 确认 index/design/W11/W12/Record 文档存在且有正确确认状态。没有运行 Node 测试、CI、真实浏览器/前端截图、Windows/CachyOS/Android Termux 真机验证。**产品代码 main 未修改**。
+- **下一检查点**：用户选择 W12 方向后，下一轮依协议先在同一 Plan/Record 更新 W12 决议，随后重点针对事件/参与者/状态的 Native commit boundary、世界事实有效时间、跨分支重放与 Source Projection，以及 Studio/Play Effective World 的消费者和正式 E0 完成标准细化；继续 Draft，不创建实现分支。
+
 ## Final state
 
 Not yet applicable. Discussion in progress.
