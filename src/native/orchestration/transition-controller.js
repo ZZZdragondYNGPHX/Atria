@@ -30,7 +30,7 @@ export class TransitionController {
         bindings.sort((a, b) => a.edgeId.localeCompare(b.edgeId));
         const identity = hashNativeDocument({ runId: guard.runId, bindings, reservedAttemptId });
         const attemptId = reservedAttemptId ?? 'oattempt_' + identity.slice(0, 32), receiptId = 'oreceipt_' + identity.slice(0, 32);
-        return this.runs.control(handle, controlCommandId('loop.advance', identity), { ...guard, operation: 'loop.advance', detail: { bindings, reservedAttemptId } }, async ({ tx, root, now }) => {
+        return this.runs.control(handle, controlCommandId('loop.advance', identity), { ...guard, operation: 'loop.advance', detail: { bindings, reservedAttemptId } }, async ({ tx, root, now, deny }) => {
             if (root.cancelRequested || root.status !== 'running') throw new ConflictError('native_orchestration_transition_not_admitted');
             const edges = bindings.map(binding => root.graph.edges.find(edge => edge.edgeId === binding.edgeId));
             const targetId = edges[0]?.to.nodeId, target = root.graph.nodes.find(node => node.nodeId === targetId);
@@ -70,7 +70,18 @@ export class TransitionController {
             if (now >= root.progress.deadlineAt || root.progress.steps >= root.limits.maxSteps || (!reserved && root.progress.attempts >= root.limits.maxAttempts)) throw new ConflictError('native_orchestration_limit_exhausted');
             // Read-only revalidation of typed source/result inputs and the
             // existing original reservation; no original-bank writes in CAS.
-            const admission = cloneNativeDocument(await this.authorizeTransition({ handle, tx, root, target, attemptId, producers, reservedAttempt: reserved?.doc ?? null }));
+            const stamp = hashNativeDocument(root), request = { handle, tx, root, target, attemptId, producers, reservedAttempt: reserved?.doc ?? null };
+            let admission;
+            try {
+                admission = cloneNativeDocument(await this.authorizeTransition(request));
+                if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(new ConflictError('native_orchestration_transition_not_admitted'));
+                const current = await this.authorizeTransition(request);
+                if (hashNativeDocument(current) !== hashNativeDocument(admission)
+                    || hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(new ConflictError('native_orchestration_transition_not_admitted'));
+            } catch (error) {
+                if (error instanceof ConflictError || error.code === 'native_rp_source_missing') return deny(error);
+                throw error;
+            }
             assertObject(admission, ['inputRefs', 'inputDigest', 'effectiveGrantDigest', 'budgetRef'], 'transition admission');
             assertDigest(admission.inputDigest, 'inputDigest'); assertDigest(admission.effectiveGrantDigest, 'effectiveGrantDigest');
             if (!Array.isArray(admission.inputRefs) || hashNativeDocument(admission.inputRefs) !== admission.inputDigest

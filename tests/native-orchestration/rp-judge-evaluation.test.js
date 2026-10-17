@@ -2,15 +2,16 @@ import { jest } from '@jest/globals';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 import { rpModelFixture } from './helpers/rp-model-fixture.js';
 import { configureJudge } from './helpers/rp-judge-fixture.js';
+import { configureAgentGraph } from './helpers/rp-agent-graph-fixture.js';
 import { EvolutionTargets } from '../../src/native/agent-intelligence/evolution-targets.js';
 import { EvolutionEvaluator, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { AgentEvolutionRepository } from '../../src/native/agent-intelligence/evolution-repository.js';
 
 jest.setTimeout(60_000);
 
-describe.each(CONTRACT_HARNESSES)('$name isolated Native Judge evaluation', ({ make }) => {
-    test('exact baseline/candidate Plans execute in private Native Hosts while only the original parent ledger sends and pays', async () => {
-        const f = await rpModelFixture(make, { configurePlan: configureJudge,
+describe.each(CONTRACT_HARNESSES)('$name isolated Native multi-Agent evaluation', ({ make }) => {
+    test.each([['Judge', configureJudge], ['Agent DAG', configureAgentGraph]])('%s baseline/candidate Plans execute in private Native Hosts while only the original parent ledger sends and pays', async (_profile, configurePlan) => {
+        const f = await rpModelFixture(make, { configurePlan,
             responsePayload: (_body, ordinal) => ordinal === 9 ? JSON.stringify({ preference: 'tie', deltas: { player_agency: 0 }, rationale: 'Synthetic fixture only.' })
                 : ['ADVISORY A', 'ADVISORY B', JSON.stringify({ selectedCandidate: 1, reasonCode: 'candidate_selected' }), 'Final narration.'][(ordinal - 1) % 4] });
         try {
