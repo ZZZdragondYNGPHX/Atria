@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · Candidate Design & Discussion Agenda
 
-- 状态：**Draft（W1–W5 的 B 路线已获确认，W6 社会认知候选和具体接口仍未批准）**。早期章节保留当时的提案历史，以较新的章节与 index 已确认状态为准。
-- 当前讨论轮次：W6 — NPC 个人认知、社会关系、信息传播与动态 Perspective（见 [npc-social-cognition.md](npc-social-cognition.md)）。
+- 状态：**Draft（W1–W6 的 B 方向已获确认；W7 的选型与具体契约待批准）**。早期章节保留当时的提案历史，以最新决策章节和 index 的当前状态为准。
+- 当前讨论轮次：W7 — NPC 个人记忆、秘密/谣言、受众资格与证据驱动信息流（见 [npc-memory-information-flow.md](npc-memory-information-flow.md)）。
 - 入口：[index.md](index.md)；材料：[research.md](research.md)
 
 ## 1. 问题的正确切分
@@ -478,3 +478,29 @@ User / NPC / AI proposes action or new detail
 W6 的完整候选 W6-A「数值统一」、**W6-B「客观社会关系 + 主体认知 + 来源事件」（推荐，未选）**、W6-C「LLM/记忆重建」，以及代码证据、角色间传播场景、分支隔离与风险均只在 [npc-social-cognition.md](npc-social-cognition.md) 中维护。此处只负责已确认方向和路由，避免产生重复权威。
 
 **状态：** Plan 仍 Draft，不修改 main，不创建实现分支；用户确认 W6 前不能将其推荐路线视作最终决定。
+
+---
+
+## 14. S8 · W6-B 确认与 W7 个人记忆/信息传播议程（2026-10-17）
+
+### 14.1 已确认 W6-B
+
+用户对上一轮的推荐回复「认同」：**W6-B「世界关系事实 + 主体认知 + 来源事件」**确认为当前顶层设计方向。共同成立的社会事实归 Native World State/Event，NPC 各自的态度、怀疑、秘密、目标和认知分属有来源、受授权的 Cognition/HCM；事件/传播连接两者，不因一人相信就认定世界真相或第三人已经得知。
+
+因此 W1-B 至 W6-B 的方向均已获得用户认可；**整体仍 Draft，不等于 Schema、持久化策略、权限 API、消费者切换或正式开发方案冻结**。
+
+### 14.2 W7 详细模块与待议路线
+
+当前轮次转入「**新 NPC 如何建立合法私人记忆与受众视图；秘密、谣言怎样从一个主体合法传递到另一主体，并与真正的世界事实、分支、时间保持分离**」。
+
+W7 专属模块：[npc-memory-information-flow.md](npc-memory-information-flow.md)。在那里维护当前研究、代码审查、传播与纠错场景、接纳流程、成本/权限风险以及三个候选路线，避免重复详细规范：
+
+- W7-A：固定 Perspective + 主要依靠公共广播，简单但不适合动态 NPC 与秘密；
+- **W7-B：动态受众资格 + 证据驱动信息流（推荐，尚未确认）**；
+- W7-C：所有 NPC 独立 LLM 心智和自由信息流，高成本、高泄漏风险。
+
+重要 E0 边界：`InformationRuntime.actors/views` 部分声明静态化；`actorAvailability` 未声明 actor 不可用，`Cognition` / `TheoryOfMind` 部分目标身份强制匹配 Package manifest；记忆检索遵循来源白名单与 branch/revision anchor。不能通过任意开放 Narrator 全视角，或在 Session 游戏时变更 Package Actor 清单来绕过权限。
+
+### 14.3 本轮授权与状态
+
+只在 `docs` 同一 Plan Bundle / 唯一 Record 中持续讨论。W7 的身份绑定、记忆语义、消息传播事件、保密级别、延迟到达、纠错与分支一致性仍未批准；**不修改 main、不创建实现分支、不声称测试/CI/UI 验收**。用户明确确认全案后才允许标记 Approved/最终定稿。
