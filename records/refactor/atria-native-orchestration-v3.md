@@ -1205,3 +1205,9 @@
 - 第107组最终 Source 与第106组一并本地提交为 `89dc2e6a3`。最新 Review producer54项、原 Review controller、Attempt reservation 三完整 suites107PASS/1既有SKIP（186.330s）；RP/Project/background/Session 输出、Planner/Graph Result chain六suite精选28PASS/98filterSKIP（95.646s），准确范围只覆盖所选正常/撤销/unknown场景。M1 quota7项与实际Review同事务16项的组合23PASS/38filterSKIP（42.851s）。22个提交内JS文件定向ESLint与staged diff检查通过；没有新增SQL/三端或完整质量验收结论。
 - 原Evolution consumers首次可加载后5PASS/1FAIL（65.305s）；失败场景在声明 compute budget 时未创建原 Task，原Host正确拒绝budget lane。补两个Project各自的真实Task后该场景1PASS/5filterSKIP（4.086s），五个已通过且未改场景未重复测试，不冒称最终整suite再跑通过。
 - 本地源码工作区干净、领先远端1提交，未推送；README API策略、接口/Record/index与已消费HANDOFF删除在独立docs保存。继续通用Graph/其它Source、完整恢复释放与可信高风险消费者等剩余后端；P1–P4及最终Gate仍NOT_READY，不进入前端或main。
+
+## 2026-10-17 — 第一百零八组：原图修订重建与 Planner 撤销边界
+
+- Source `89dc2e6a3` → `3082f2ce0`，本地提交，未推送。新增 graph-revision-contracts，直接由原 PlanRevision、按决策顺序的全部 Patch receipt、精确原命令 payload/outcome、原producer/input/source 与累计图修订重建历史Graph及nodeControl，核对当前Root缓存；没有第二图存储/runner。GraphController 在下一提案前使用该原事实重建，拒绝只重算hash的Root/receipt/command篡改。历史revision不会包含后加节点/边/priority；仍不据此放开动态图Result audience或执行授权。
+- 移动 graphPatchHash 到该合同唯一实现并同步实际调用方/指纹。原Graph suite16PASS（1.895s）；新增冻结revision/拒绝Patch间隔/冷Engine读取/metadata诚实重hash四类参数后26PASS（2.352s）。Graph/Delegate/reservation/指纹四完整suite180PASS（25.935s），原真实RP Planner16PASS（24.508s）。定向ESLint暴露原reservation动态选择test/test.skip注册无法识别断言，改为只注册FS专用故障case，保留原测试正文，SQL本来不支持该FS故障机制；没有关闭任何可运行反例。一处ESLint相对路径错误已修正。
+- 新增真实Planner采纳期间同事务Binding/Root撤销四参数初4FAIL（5.673s）：Binding变更仍采纳Patch、Root取消被异常回滚。补原GraphController最后Source/Model复读与Root stamp/ControlDenial；全部拓扑与pending更新仍最后统一写入，费用不重发/退款。最终真实Planner与Graph两个完整suite46PASS（29.580s，含新增四参数）；共享child GraphPatch预算/reserved边变化精选4PASS/100filterSKIP（3.056s）。9文件定向ESLint及staged diff检查通过。本组没有新增真实外部Provider调用；通用动态图/Result动态audience仍未交付。

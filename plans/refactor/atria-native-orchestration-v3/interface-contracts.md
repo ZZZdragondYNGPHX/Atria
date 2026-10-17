@@ -1311,3 +1311,9 @@ Judge 通过原 Route/Context/ModelPort 获取两份受权低信任正文；pars
 原 AttemptController.activate、ReviewController.decide 和原 RP Review settlement 在最后一次原 Source/Model/预算授权后复核 Root stamp；来源授权仍用原 authority 复读。合法同事务 Root cancel/Binding 撤销先经原 RunRepository ControlDenial 保留，再拒绝当前准入/判定/结算；不能让异常回滚撤销自身。未准入的 Review 不消耗轮数；已准入且后来失败的 Review 仍按 §17.104 保留已发生名额和费用。
 
 rerun 在内存准备新 Attempt 与输入/grant，所有目标及下游影响检查、原预算与最后Source/Root复验通过后才写入，避免后续目标撤权时残留孤立 replacement。拒绝不创建新 Effect、Result、invalidation、批准或完成收据，原已发生费用/领域事实保持。这个边界使用原 Native Engine/命令事务，没有建立新的事务、取消或审批 authority。
+
+### 17.111 原 TaskGraphRevision 的历史重建
+
+readTaskGraphRevision 从原不可变 Plan、按 decisionSeq 排列的已保存 Patch 和原 runs.control.graph.patch 命令重建指定图修订。接受记录绑定原 proposal payloadHash、完整命令语义hash、producer/input/source、前后revision和requests；拒绝记录不改变图。当前Root.graph/nodeControl及累计patch数必须与原事实闭合。指定旧revision只返回当时图与nodeControl，后加节点/边或priority不追溯进入旧图。
+
+原 GraphController 在下一次 Propose 前复用此重建校验，旧分散的浅层history检查移除；graphPatchHash归同一合同并同步原调用方。原图提案最后Source/Model授权与Root stamp变化通过同一ControlDenial保留合法撤销再拒绝，不在失效授权下落拓扑。这个历史读取没有Source/Audience/producer/派发权限；Graph Result目前的静态限制仍保持，未来动态publication须明确冻结其原发布修订后才能开放。
