@@ -153,6 +153,22 @@
 - **验证与真实性**：文档写入通过 GitHub contents API，随后按 `docs` 读取/核验 Plan index、design、W6、W7 与 Record。未运行 Node 单测、CI、模拟回合、真实 UI、Windows/CachyOS/Android Termux；未修改 main、Package、Plugin、reference 或 Governance，未执行任何实现。
 - **下一检查点**：用户选择 W7-A/B/C 后，下一轮必须先更新同一 Plan/Record，再深入审查动态 Perspective/Actor 身份映射、受众授权、跨主体信息传播与压缩/纠错、私有记忆与世界提交的事务一致性及分支隔离。E0 全消费者审计与具体实现阶段尚未完成，完整企划继续保持 Draft。
 
+
+## Stage 9 — W7-B 确认与 W8 长期记忆/人格连续性讨论（2026-10-17）
+
+- **用户正式确认**：对上一轮推荐的 **W7-B「动态受众资格 + 证据驱动信息流」**回复“认同”。现有 W1-B 至 W7-B 是已获用户选择的总体设计方向；**不应推断 W8-B 已选择，或整份企划已经定稿/获准实施**。
+- **工作空间与范围**：沿用 `ARCH-DWE-01`，Primary Workspace 仍为 `docs`；只更新既有 Plan Bundle 和唯一 Record。不改变 `main`、产品代码、其他长期分支、Governance 或用户资产，不创建实现分支/第二 Plan/HANDOFF。
+- **本阶段文档提交**：
+  - `bd1c4080e92dd26ecc8ed02ad12fa5645b9d0aa6` — 更新 W7 `npc-memory-information-flow.md`，记录 W7-B 已确认及权限/接口未决。
+  - `ef0f7f20f3102daf6367c69d38809d066d4c133d` — 同一 Plan 增加 W8 `npc-memory-continuity.md`，讨论客观历史与个人回忆/认知分离、源证据、模糊遗忘、受保护承诺、人格成长、长期成本、分支隔离和 W8-A/B/C 比较。
+  - `0d84101b04f70a6c19c87a23450a33361b76c37b` — 总设计 `design.md` §15 记录 W7-B 已确认，路由至 W8。
+  - `a5b34a103d6bebb3ccab1f29cc98a81f9b177f2b` — 更新 Plan `index.md`，注明 W1–W7 已确认，W8 仍为待议模块。
+- **已静态核对的 main 机制**：`public/shared/native-memory-contract.js` 有受保护 `identity/commitment/relationship/key_event`、可淡化的 `detail`、`light/deep`、`fadeAfter`、`clarity/use` 和来源依据；`public/shared/native-cognition-runtime.js` 按合法时间、记忆类别及来源适用性投影模糊/使用意愿；`public/scripts/agents/memory/source-provenance.js`、`temporal-graph.js` 与 `eligibility.js` 提供来源证据、图谱与受众过滤；`public/shared/native-information-runtime.js` 和 `src/native/cognition-authority.js` 已有 branch/revision 及来源校验。不能以本任务名义平行再造“NPC Memory Database”，也不能断言新 NPC 已自动接上这些路径。
+- **外部研究核对**：Park et al. 2023《Generative Agents》强调经验记录/反思/计划，Packer et al. 2023《MemGPT》强调分层记忆与有限上下文；借鉴检索/预算机制，不将实验结论冒充 Atria 跨端可靠性证据或作为引入新框架的理由。
+- **W8 建议，明确未获得用户批准**：W8-B「来源保真 + 分层回忆与人格连续性」。客观历史和持续义务的权威不随个人遗忘消失；HCM 负责合法证据检索/来源链，Native Memory/Cognition 负责在受众资格下解释回忆适用性、主观信念及人格变化；没有足够证据时不得将心理猜测写成事实。
+- **验证边界**：本轮仅 GitHub 文档提交/读取核验 + `main` 源码静态核对 + 公开原始论文阅读。未运行 Node tests、CI、浏览器、Windows/CachyOS/Termux 真机、UI 或端到端游戏模拟，不能声明这些均已通过。
+- **下一 checkpoint**：请用户选择 W8-A/B/C。之后下一轮仍须**先更新同一 Plan 和唯一 Record、提交/核验 docs，再讨论**：动态 NPC 与 authored Actor、HCM/N-Memory 权威分工，记忆遗忘保护/人格长期可塑性，历史审计、索引压缩和分支重放，最终 E0 消费者审计及开发实施门槛。直到全部核心方案获用户明确确认才定稿。
+
 ## Final state
 
 Not yet applicable. Discussion in progress.
