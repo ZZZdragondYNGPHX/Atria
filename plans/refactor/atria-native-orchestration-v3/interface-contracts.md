@@ -1326,3 +1326,12 @@ readTaskGraphRevision 从原不可变 Plan、按 decisionSeq 排列的已保存 
 每个中间 Agent 通过原 Transition/Attempt、Context/ModelPort 与 ResultController 生产自己的原 Result；Context 只展开直接前驱的受权低信任正文，不复制更早节点正文或把 Result 当指令/权限。每步有独立原 Model Effect/费用，最后 Narrator 仍经原 Chat/OutputClaim 唯一出口。历史 reader 从原不可变 Plan 核对完整节点顺序、每步精确 acceptedGraphResultRefs、原 Model input/Source/audience 与每一条原 traversal/edge admission/command，最终 closure 包含所有已发生 Effect。
 
 中途 Source/Binding 撤销或取消停止后续发送，已发生费用和早期 Result 保留；unknown usage 允许合法领域输出但不签 completed claim。冷读不恢复 grant/执行 scope，Source 删除不删除原历史证明。本项没有增加通用 DAG、动态图、其它 Source/Actor 或公开 Result 正文权限，后端其余工作继续。
+
+
+### 17.113 原 RP 静态 Agent 依赖图与转移撤销
+
+第109组线性 profile 直接统一为 rpAgentGraphProfile，旧模块/函数移除，生产者仍为同一原 RP Host；没有添加第二 runner。支持 Plan 明确声明的静态无环 Agent 图、多个独立入口和 distinct required text ports 的多输入后继。唯一直接 Output 前 Agent 为正式 Narrator，所有节点各执行一次；只允许 generation.send/text、always/nonloop/maxVisits=1、原已声明 Model pins、无动态图策略。重复同 producer 对同 recipient 的多条输入、optional input、conditional/loop 或其它节点 kind 当前不属于此生产组合。
+
+Host 依据原图拓扑确定顺序，每个节点只引用和展开直接前驱已保存的原 Result。分支共享不扩大 audience；兄弟节点和祖先正文不隐式复制。多输入不固定为两份，其数量受原已发布节点/端口/边、Plan limits、Result/Audience 与原 Context token budget 约束；每一份仍经活 ResultPort 私有捕获授权。所有节点共用原 Scheduler operation、完整资源与费用闭包，当前不声明并发 fanout/Join barrier。历史 reader 核对完整拓扑顺序、精确每步输入和全部原 Transition/edge admission/command，冷读不给执行权。原隔离 Native evaluator 可执行相同图，全部发送和费用仍归原父 Evolution ledger。
+
+TransitionController 在原授权后及写入前再次核对原 admission 和 Root stamp；合法 Binding 撤销/Root cancel 经原 RunRepository ControlDenial 保留，拒绝当前转移而不残留 successor Attempt/edge receipt。原 RP transition 的预算末 await 后再验私有 Source/配置。没有改变取消、预算或审批 authority，已发生费用不回滚/重发。通用动态图、混合控制节点、其它 Source/Actor 与完整后端继续实施。

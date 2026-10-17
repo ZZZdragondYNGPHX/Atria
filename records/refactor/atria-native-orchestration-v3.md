@@ -1219,3 +1219,11 @@
 - 两/三个 Draft 新正向四参数先4PASS/20filterSKIP（26.711s），精确验证每步请求只包含直接前驱的私有标记，最终唯一 Chat 与所有原付费 Effect 闭合。追加撤权/取消、Source 删除冷读、诚实重hash篡改早期 traversal、unknown usage 八参数，首次输出在上下文切换时丢失未计结果；定向重新执行8PASS/24filterSKIP（30.707s）。
 - 最新 reader 的首节点 refs 缺席校验后，原20项与新正向四项合并24PASS/8filterSKIP（64.167s）；新最少请求数超过原预算两参数2PASS/32filterSKIP（1.388s），零 Model/Effect 准入。最终 suite34项分批取得通过证据，未声称同一完整重跑。共享 runtime 的 Planner 正向、Review approve/rerun 与 Judge 两候选选择三个 suite 精选10PASS/92filterSKIP（71.967s）。四文件原 ESLint 和 staged diff check 通过。一次搜索误引用不存在的旧测试文件返回 exit2，未影响产品/测试，后按实际路径核对。
 - 本组均 localhost 合成调用，没有新增真实外部 API 请求，备用对话站点仍0次；不冒称通用动态图、独立质量/价格、SQL/三端或整个后端通过。继续剩余后端，不交前端、推送、main 集成或结束分支。
+
+
+## 2026-10-17 — 第一百一十组：静态 Agent DAG 与原 Transition 边界
+
+- Source `3293e8e45` → `926fb0352`，本地提交、未推送；接口 §17.113。原线性模块直接改为统一 rp-agent-graph-profile，复用同一 Host/Graph/Result/银行；显式多个入口、分支和 distinct-port 多输入后继按原图拓扑顺序执行。每步只展开精确直接前驱，原 Context 不再仅允许两份 Result，数量仍受原 Plan/端口/费用/token budget 与逐份私有消费授权约束。没有并发 fanout 或确定性 Join barrier 的通过声明。
+- 改动后原线性正向/预算精选8PASS/26filterSKIP（31.235s）。新增菱形、先合后续、三个独立入口六正向 PASS；同时末授权撤销四参数 FAIL（整轮6PASS/4FAIL，69.023s）：Binding 后仍残留 successor Attempt，Root cancel 被回滚。复现后补原 Transition 的两次 readonly admission/Root stamp 与 ControlDenial，以及原RP callback末预算await后Source/配置复验。原 Transition 全suite28项加四反例共32PASS/6filterSKIP（25.179s），不关闭失败反例。
+- 冷 merged 历史、Source 删除、诚实重hash错误 upstream edge、第二分支publication saved/no_save ACK 和三前驱 unknown usage 新八参数8PASS/10filterSKIP（56.666s）。conditional/optional input 两类零Model准入四参数4PASS/18filterSKIP（1.388s）。新增Graph suite最终22项分批取得通过证据。原隔离 Judge 与新Agent DAG baseline/candidate 实际私有Host执行、冻结Route拒绝和指纹两完整suite56/56 PASS（67.517s）；每次比较仍包含原 pair Judge 第9次收费，不以生产图替代独立评测资料。
+- 共享 Transition 的 RP Planner/Review approve与rerun/Judge、Native Session/Project Review/后台Task和父子continuation七suite精选18PASS/162filterSKIP（141.035s）。十个JS原ESLint与staged diff check通过。所有Provider均localhost合成，真实API总数未增加，备用对话站点仍0次。整个后端尚未完成；动态修改执行、完整控制组合、其它Source/Actor、受权恢复释放和可信高风险消费者等继续，不交前端、main 或结束分支。
