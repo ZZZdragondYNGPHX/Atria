@@ -15,8 +15,8 @@ import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecyc
 import { controlRecordKey } from '../../src/native/orchestration/controller-common.js';
 import { createNativeId } from '../../src/native/identity.js';
 
-const setup = (make, { shape = 'two-entries', ...options } = {}) => contextRetrievalFixture(make, { embedding: true, ...options,
-    afterPlan: (plan, args) => configureRetrievalAgentGraph(plan, args, shape) });
+const setup = (make, { shape = 'two-entries', maxJobs, ...options } = {}) => contextRetrievalFixture(make, { embedding: true, ...options,
+    afterPlan: (plan, args) => configureRetrievalAgentGraph(plan, args, shape, { maxJobs }) });
 
 const currentRoot = f => f.h.engine.withTransaction(f.h.handle, async tx => (await tx.listResources({ kind: K.orchestrationRun, handle: f.h.handle }))[0].doc);
 const compute = async f => Object.values((await f.control.status(f.h.handle, f.controlId)).operations)[0]?.compute;
@@ -52,6 +52,29 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
             expect(bank.localWork.filter(row => row.kind === 'index_list').every(row => row.estimatedItems === 3)).toBe(true);
             const output = await f.h.engine.withTransaction(f.h.handle, tx => readRpOutput(tx, f.h.handle, root));
             expect(output.published.retrievalCompletions).toHaveLength(5); expect(output.closure.effectIds).toHaveLength(10);
+        } finally { await f.cleanup(); }
+    }, 180000);
+
+    test('five original Agent Contexts consume 37 original jobs only under the owner-declared 48 allowance', async () => {
+        const f = await setup(make, { shape: 'long-chain', maxJobs: 48 });
+        try {
+            const result = await f.run({ floor: 2 }), bank = await compute(f), root = await currentRoot(f);
+            expect(result.output.runStatus).toBe('completed'); expect(bank.limits.localWork.maxJobs).toBe(48);
+            expect(f.requests).toHaveLength(5); expect(f.calls).toHaveLength(6); expect(bank.localWork).toHaveLength(37);
+            expect(bank.localWork.every(row => row.status === 'settled' && row.usage.outcome === 'completed')).toBe(true);
+            const output = await f.h.engine.withTransaction(f.h.handle, tx => readRpOutput(tx, f.h.handle, root));
+            expect(output.published.graphResults).toHaveLength(4); expect(output.published.retrievalCompletions).toHaveLength(6);
+            expect(output.closure.effectIds).toHaveLength(12);
+        } finally { await f.cleanup(); }
+    }, 180000);
+
+    test('five original Agent Contexts cannot expand the owner-declared 32 jobs or reset earlier fees', async () => {
+        const f = await setup(make, { shape: 'long-chain', maxJobs: 32 });
+        try {
+            await expect(f.run({ floor: 2 })).rejects.toThrow(); const bank = await compute(f), root = await currentRoot(f);
+            expect(bank.limits.localWork.maxJobs).toBe(32); expect(root.outputClaims).toEqual([]); expect(f.requests).toHaveLength(4);
+            expect(bank.localWork).toHaveLength(32);
+            await expect(f.run({ floor: 2 })).rejects.toThrow(); expect(await compute(f)).toEqual(bank);
         } finally { await f.cleanup(); }
     }, 180000);
 

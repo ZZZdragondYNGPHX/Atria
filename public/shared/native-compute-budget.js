@@ -4,6 +4,9 @@ import { contentSha256 } from './content-sha256.js';
 export const COMPUTE_ADMISSION_CODES = Object.freeze(['native_generation_budget_exhausted', 'native_generation_required_budget_reserved', 'native_generation_required_budget_unknown']);
 const integer = value => Number.isSafeInteger(value) && value >= 0;
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
+// Every local job admits at least one item. The original physical item
+// envelope bounds retained rows; jobs is the owner's declared allowance.
+const MAX_LOCAL_WORK_ITEMS = 10000;
 
 // A provenance marker is an immutable original-bank correlation, never a grant
 // or a second ledger. Only the trusted BudgetPort creates these charge inputs.
@@ -38,7 +41,8 @@ export function assertComputeBudget(value) {
 }
 function assertLocalWorkBudget(value) {
     fields(value, ['maxJobs', 'maxItems', 'maxInputBytes'], 'Local work budget');
-    for (const [key, max] of [['maxJobs', 32], ['maxItems', 10000], ['maxInputBytes', 16777216]]) {
+    if (!integer(value.maxJobs) || value.maxJobs < 1) fail('native_generation_budget_invalid');
+    for (const [key, max] of [['maxItems', MAX_LOCAL_WORK_ITEMS], ['maxInputBytes', 16777216]]) {
         if (!integer(value[key]) || value[key] < 1 || value[key] > max) fail('native_generation_budget_invalid');
     }
     return { maxJobs: value.maxJobs, maxItems: value.maxItems, maxInputBytes: value.maxInputBytes };
@@ -70,7 +74,7 @@ export function assertComputeLedger(value) {
         if (entry.status === 'settled' && !integer(entry.usage?.totalTokens)) fail('native_generation_budget_invalid');
     }
     if (value.localWork !== undefined) {
-        if (!value.limits.localWork || !Array.isArray(value.localWork) || value.localWork.length > 32) fail('native_generation_budget_invalid');
+        if (!value.limits.localWork || !Array.isArray(value.localWork) || value.localWork.length > MAX_LOCAL_WORK_ITEMS) fail('native_generation_budget_invalid');
         for (const entry of value.localWork) {
             fields(entry, ['attemptId', 'requestId', 'targetFingerprint', 'kind', 'estimatedItems', 'estimatedInputBytes', 'status', 'usage', 'reservationId', 'orchestration'], 'Local work');
             assertOrchestrationProvenance(entry, 'local_work');

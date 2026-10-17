@@ -7,6 +7,9 @@ import { runFixture } from '../native/helpers/run-fixture.js';
 import { prepareControllerOwnerRoot } from './fixtures.js';
 import { projectSource, services } from '../agent-intelligence/project-fixture.js';
 import { makeTempFsEngineHarness, makeTempSqliteEngineHarness } from '../storage/harness/contract-harness.js';
+import { RunControl } from '../../src/native/run-control.js';
+import { SessionRepo } from '../../src/native/repositories/session-repo.js';
+import { ProjectTaskRepository } from '../../src/native/agent-intelligence/project-task-repository.js';
 
 // Real original Session/Project/RP banks behind the V3 BudgetPort. Usage is
 // synthetic; no Provider endpoint, GenerationHost send or real bill is exercised.
@@ -38,6 +41,36 @@ async function domain(kind, h) {
 }
 
 describe.each([['FsEngine', makeTempFsEngineHarness], ['SqliteEngine', makeTempSqliteEngineHarness]])('%s V3 BudgetPort over original banks', (_name, make) => {
+    test.each(['session', 'project', 'rp_chat'])('%s: a declared 40-job bank retains all original costs after source withdrawal and cold reopen', async kind => {
+        const h = await make(); let cold;
+        try {
+            const { port, source, move } = await domain(kind, h), authorityRef = await port.authorityFor(h.handle, source);
+            const effectId = createNativeId('orchestrationEffect'), declared = { maxRequests: 2, maxTokens: 1000,
+                localWork: { maxJobs: 40, maxItems: 100, maxInputBytes: 10000 } };
+            const bank = port.sendBank(h.handle, { authorityRef, limits: declared, effectId, firstOrdinal: 0 }), refs = [], rows = [];
+            for (let ordinal = 0; ordinal < 40; ordinal++) {
+                const attemptId = bank.nextLocalWorkAttemptId();
+                await bank.chargeLocalWork(declared, { attemptId, requestId: 'original-local-' + ordinal, targetFingerprint: 'c'.repeat(64),
+                    kind: 'context_build', estimatedItems: 1, estimatedInputBytes: 10 });
+                await bank.settleLocalWork(attemptId, ordinal === 39 ? null : { wallMs: 1, cpuUserMicros: 1, cpuSystemMicros: 0, cpuScope: 'process', outcome: 'completed' });
+                const ref = { kind: 'local_work', authorityRef, effectId, localWorkOrdinal: ordinal, attemptId, reservationId: null };
+                refs.push(ref); rows.push(await port.observeAttempt(h.handle, ref));
+            }
+            await expect(bank.chargeLocalWork(declared, { attemptId: bank.nextLocalWorkAttemptId(), requestId: 'over-owner-allowance',
+                targetFingerprint: 'd'.repeat(64), kind: 'context_build', estimatedItems: 1, estimatedInputBytes: 10 }))
+                .rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+            await move();
+            expect(await port.observeAttempt(h.handle, refs[39])).toEqual(rows[39]);
+            const Engine = h.engine.constructor; await h.engine.close();
+            cold = new Engine({ url: h.url, nativeHostTopology: 'direct_single_primary', directoriesByHandle: () => h.dirs });
+            attachNativeHostLifecycle(cold, { directoriesByHandle: () => h.dirs });
+            const observer = new BudgetPort(kind === 'session' ? { sessionCore: { runs: new RunControl(new SessionRepo({ engine: cold })) } }
+                : kind === 'project' ? { projectRepository: new ProjectTaskRepository({ engine: cold }) } : { rpControl: new RpRunControl({ engine: cold }) });
+            for (let ordinal = 0; ordinal < 40; ordinal++) expect(await observer.observeAttempt(h.handle, refs[ordinal])).toEqual(rows[ordinal]);
+            expect(rows[39]).toMatchObject({ status: 'unknown', usage: null });
+        } finally { await cold?.close(); await h.engine.close?.(); await h.cleanup(); }
+    }, 60000);
+
     test.each(['session', 'project', 'rp_chat'])('%s: a leaf Route cannot tighten its parent bank or borrow the parent allowance', async kind => {
         const h = await make();
         try {
