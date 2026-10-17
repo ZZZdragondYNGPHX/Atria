@@ -272,7 +272,7 @@ export class ContextPort {
                 audienceDigest: hashNativeDocument(request.audience), projectionDigest: authorityDigest, authorityDigest };
             const context = immutable({ schemaVersion: 1, contextId: hashNativeDocument({ request, plan, proof }), request, plan,
                 evidenceRefs: (recall?.evidence ?? []).flatMap(item => item.sourceRefs), currentnessProof: proof });
-            this.#contexts.set(context, { handle, request, proof, rp: { request: rpIdentity.request }, memoryProof: recall?.proof });
+            this.#contexts.set(context, { handle, request, proof, rp: { request: rpIdentity.request }, memoryProof: recall?.proof, memoryDescriptorDigest: expectedDescriptor ? hashNativeDocument(expectedDescriptor) : null });
             return context;
         }
         if (projectIdentity) {
@@ -431,6 +431,7 @@ export class ContextPort {
         if (!captured || captured.handle !== handle || !captured.rp) fail('native_orchestration_context_proof_invalid');
         if (captured.memoryProof) await NativeMemoryAuthority.prototype.assertRpContextRecall.call(this.memoryAuthority, handle,
             captured.memoryProof, this.rpControl, captured.request.sourceBinding.sourceRequest);
+        return captured.memoryDescriptorDigest;
     }
 
     /** Same live Project capture only; exact original receipts explain owned Task progress. No Model grant. */

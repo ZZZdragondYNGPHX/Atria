@@ -1,3 +1,4 @@
+import { NativeMemoryAuthority } from '../memory-authority.js';
 import { rpNarrationResult, rpNarrationPublicationId, readRpNarrationResult } from './rp-narration-result-contracts.js';
 import { writeAttemptSettlement, readAttemptSettlement } from './attempt-settlement.js';
 import { TransitionController } from './transition-controller.js';
@@ -409,7 +410,7 @@ export class NativeRpOrchestrationAuthority {
     }
 
     async #baseCurrent(state) {
-        await inspectNativeRpGeneration(state.capture, { host: state.host, handle: state.handle, rpControl: this.owner.rpControl });
+        const identity = await inspectNativeRpGeneration(state.capture, { host: state.host, handle: state.handle, rpControl: this.owner.rpControl });
         const selected = await this.#selection(state.host, state.handle, state.input);
         if (!equal(selected.binding, state.selected.binding) || selected.configDigest !== state.selected.configDigest
             || selected.child?.configDigest !== state.selected.child?.configDigest || selected.planner?.configDigest !== state.selected.planner?.configDigest
@@ -421,6 +422,11 @@ export class NativeRpOrchestrationAuthority {
         if (state.graphSnapshot) {
             const root = await this.#execution().runs.get(state.handle, state.graphRunId);
             if (root.graphRevision !== state.graphSnapshot.graphRevision || hash(root.graph) !== state.graphSnapshot.graphHash) fail('native_orchestration_source_stale');
+        }
+        if (state.memoryDescriptorDigest) {
+            const descriptor = await NativeMemoryAuthority.prototype.rpContextDescriptor.call(this.owner.memoryAuthority, state.handle,
+                this.owner.rpControl, identity.sourceRequest);
+            if (hash(descriptor) !== state.memoryDescriptorDigest) fail('native_orchestration_memory_source_stale');
         }
         return selected;
     }
@@ -1431,6 +1437,11 @@ export class NativeRpOrchestrationAuthority {
                 workDescriptor: { requestId: state.request.requestId, pathFingerprint: selected.resolved.pathFingerprint },
                 assertCurrent: () => this.#current(state), signal: identity.signal });
             state.context = compiled.compiled;
+            if (this.#graphProfile(state)) {
+                const digest = await ContextPort.prototype.revalidateRpMemory.call(state.contextPort, handle, { context: state.context });
+                if (state.memoryDescriptorDigest && state.memoryDescriptorDigest !== digest) fail('native_orchestration_memory_source_stale');
+                state.memoryDescriptorDigest = digest;
+            }
             await send.bindContext({ port: state.contextPort, compiled: state.context, compileProof: compiled.proof });
             const scope = this.#issueScope(host, handle, { runId: root.runId, effectId, request: state.request,
                 logicalInputRef, logicalInputHash: state.decision.inputHash, nativeRpCapture: capture,

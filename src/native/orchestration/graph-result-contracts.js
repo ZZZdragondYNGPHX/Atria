@@ -9,6 +9,7 @@ import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { assertNativeId } from '../identity.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
+import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 
 const kinds = ['agent', 'planner', 'judge', 'review'];
@@ -74,6 +75,7 @@ export async function readGraphNodeResult(tx, handle, root, resultId, { recipien
     const record = assertResultRecord(stored.doc, { outputContract: contract.output, expected: { runId: root.runId, resultId, producerAttemptId: producer.attemptId,
         producerEpoch: producer.epoch, sourceBindingDigest: root.sourceBinding.bindingDigest, sourceRef: root.sourceBinding.sourceRef, audienceConstraint: contract.audience } });
     const intent = (await readEffect(tx, handle, root, receipt.modelEffectId)).doc, model = await readModelCompletionReceipt(handle, tx, root, intent);
+    const retrievalCompletions = await readContextRetrievalCompletions(tx, handle, root, intent, producer);
     const settlement = await readAttemptSettlement(tx, handle, root, producer), text = record.envelope.outputType === 'text' ? record.payload : record.payload.text;
     if (record.envelope.outputType === 'json') { assertObject(record.payload, ['text', 'toolCalls'], 'Graph generation result'); if (!equal(record.payload.toolCalls, [])) invalid(); }
     if (receipt.schemaVersion !== 1 || receipt.receiptKind !== 'graph_node_result' || receipt.receiptId !== graphResultPublicationId(root.runId, resultId)
@@ -82,12 +84,12 @@ export async function readGraphNodeResult(tx, handle, root, resultId, { recipien
         || receipt.resultIntegrity !== stored.integrity || receipt.producerGrantDigest !== producer.effectiveGrantDigest || receipt.sourceBindingDigest !== root.sourceBinding.bindingDigest
         || receipt.audienceDigest !== hash(contract.audience) || !equal(receipt.resultRef, { runId: root.runId, resultId })
         || resultId !== modelResultId(root.runId, receipt.modelEffectId) || !equal(producer.resultRefs, [receipt.resultRef]) || !root.resultRefs.some(ref => equal(ref, receipt.resultRef))
-        || !equal(producer.effectRefs, [receipt.modelEffectId]) || intent.nodeAttemptId !== producer.attemptId || intent.grantDigest !== producer.effectiveGrantDigest
+        || !equal(producer.effectRefs, [receipt.modelEffectId, ...retrievalCompletions.map(item => item.effectId)]) || intent.nodeAttemptId !== producer.attemptId || intent.grantDigest !== producer.effectiveGrantDigest
         || intent.epoch !== producer.epoch || intent.graphRevision !== producer.graphRevision || intent.sourceBindingDigest !== root.sourceBinding.bindingDigest
         || !equal(record.envelope.sourceRefs[1], { kind: 'effect_receipt', runId: root.runId, effectId: intent.effectId, receiptId: receipt.modelReceiptRef.receiptId, observedEpoch: producer.epoch })
         || !model || !equal(model.receiptRef, receipt.modelReceiptRef) || receipt.modelPayloadHash !== hash(text)
         || model.observation.dispatchEvidence.reference.resultPayloadHash !== receipt.modelPayloadHash
-        || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId]) || settlement.decisionSeq !== receipt.decisionSeq
+        || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId, ...retrievalCompletions.map(item => item.receiptId)]) || settlement.decisionSeq !== receipt.decisionSeq
         || settlement.createdAt !== receipt.createdAt || record.envelope.createdAt !== receipt.createdAt
         || settlement.reasonCode !== 'graph_result_published' || receipt.decisionSeq > root.eventSeq) invalid();
     if (recipient) {
@@ -97,5 +99,5 @@ export async function readGraphNodeResult(tx, handle, root, resultId, { recipien
         if (recipient.epoch !== root.epoch || producer.epoch !== root.epoch || !contract.audience.nodeIds.includes(recipient.nodeId)
             || recipient.sourceBindingDigest !== root.sourceBinding.bindingDigest || !recipient.inputRefs.some(ref => equal(ref, receipt.resultRef))) invalid();
     }
-    return { record, receipt, producer, settlement };
+    return { record, receipt, producer, settlement, retrievalCompletions };
 }

@@ -29,7 +29,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
             expect(JSON.stringify(f.calls)).not.toContain('FUTURE FORBIDDEN MEMORY');
             expect(bank.attempts).toHaveLength(reranking ? 4 : 3);
             expect(bank.attempts.every(row => row.status === 'settled')).toBe(true);
-            expect(bank.localWork.map(row => row.kind)).toEqual(['context_build', 'index_list', 'index_list', 'index_list', 'index_insert', 'index_query',
+            expect(bank.localWork.map(row => row.kind)).toEqual(['context_build', 'index_list', 'index_insert', 'index_query',
                 'route_resolve', 'prompt_compile', 'generation_count', 'generation_render', 'rp_output']);
             expect(bank.localWork.every(row => row.status === 'settled' && row.usage.outcome === 'completed')).toBe(true);
             const output = await f.h.engine.withTransaction(f.h.handle, tx => readRpOutput(tx, f.h.handle, root));

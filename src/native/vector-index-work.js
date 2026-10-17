@@ -105,8 +105,8 @@ async function withIndexPermit(indexPath, signal, operation, write) {
 }
 
 export async function queryNativeIndexes({ indexes, query, vector, topK, threshold, includeVectors = false, getVector, compute, signal, mode = 'query' }) {
-    if (!['query', 'list'].includes(mode) || (mode === 'list' && indexes.length !== 1)) throw unavailable();
-    const listing = mode === 'list';
+    if (!['query', 'list', 'list-many'].includes(mode) || (mode === 'list' && indexes.length !== 1)) throw unavailable();
+    const listing = mode !== 'query';
     const supplied = vector !== undefined;
     if (supplied && (!Array.isArray(vector) || !vector.length || vector.length > 65536 || vector.some(n => !Number.isFinite(n)))) throw unavailable();
     // The original caller may wait behind an index writer. Freeze its vector
@@ -143,10 +143,12 @@ export async function queryNativeIndexes({ indexes, query, vector, topK, thresho
             // Existing empty indexes also have no candidates. No provider
             // usage is invented for this deterministic no-send decision.
             if (listing) {
-                result = (stores[0]?.doc.items ?? []).map(item => {
+                const hashes = doc => (doc?.items ?? []).map(item => {
                     if (item.metadata?.hash === null || !Number.isFinite(Number(item.metadata?.hash))) throw unavailable();
                     return Number(item.metadata.hash);
                 });
+                result = mode === 'list-many' ? Object.fromEntries(indexes.map(row => [row.collectionId,
+                    hashes(stores.find(store => store.collectionId === row.collectionId)?.doc)])) : hashes(stores[0]?.doc);
             } else if (!count) result = { groups: {}, single: { hashes: [], metadata: [] } };
             else {
                 if (compute) await compute.publishLocalIndex(() => { signal?.throwIfAborted(); });

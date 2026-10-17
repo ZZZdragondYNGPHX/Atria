@@ -4,6 +4,7 @@ import { executeNativeEmbedding, resolveRetrievalSecret } from '../retrieval-exe
 import { retrievalSendIdentity, retrievalPostTarget } from '../retrieval-send-contracts.js';
 import { retrievalRef } from '../../../public/scripts/native/retrieval-contracts.js';
 import { hashNativeDocument as hash, cloneNativeDocument } from '../repositories/common.js';
+import { rpAgentGraphProfile } from './rp-agent-graph-profile.js';
 import { ContextPort } from './context-port.js';
 import { assertOriginalSendBank, BudgetPort } from './budget-port.js';
 import { readEffect, effectDecision } from './effect-contracts.js';
@@ -64,7 +65,7 @@ export class ContextRetrievalPort {
     async createCompilation(handle, { port, request, bank, root, modelEffectId, limits, actualInput, signal }) {
         if (this.runs.engine.hasActiveTransaction(handle)) fail('native_orchestration_context_retrieval_ambient_transaction');
         if (!(port instanceof ContextPort) || !(this.budgetPort instanceof BudgetPort) || root.ownerRef.handle !== handle
-            || root.sourceBinding.sourceAuthority !== 'rp_chat' || root.parentRef !== null || root.graph.nodes.length !== 2
+            || root.sourceBinding.sourceAuthority !== 'rp_chat' || root.parentRef !== null
             || !equal(root.sourceBinding, request.sourceBinding)) fail();
         assertOriginalSendBank(bank, { budgetPort: this.budgetPort, handle, authorityRef: root.budgetAuthorityRef, effectId: modelEffectId });
         if (!equal(await ContextPort.prototype.compilationDescriptor.call(port, handle, request), actualInput)) fail();
@@ -72,7 +73,9 @@ export class ContextRetrievalPort {
         if (this.#models.has(key)) fail('native_orchestration_context_retrieval_replayed');
         const scope = { handle, runId: root.runId, rootBinding: binding(root), modelEffectId, request: cloneNativeDocument(request),
             memoryDescriptorDigest: hash(actualInput.memoryDescriptor), limits: cloneNativeDocument(limits), signal, bank, used: false, effectIds: [], localJobs: [], unresolvedLocal: false };
-        const { parent } = await this.runs.engine.withTransaction(handle, async tx => ({ parent: (await readEffect(tx, handle, root, modelEffectId)).doc }));
+        const { parent, plan } = await this.runs.engine.withTransaction(handle, async tx => ({ parent: (await readEffect(tx, handle, root, modelEffectId)).doc,
+            plan: await readPlanRevision(tx, handle, root.planRef) }));
+        if (root.graphRevision !== 0 || !equal(plan.definition, root.graph) || root.graph.nodes.length !== 2 && !rpAgentGraphProfile(plan)) fail();
         scope.attemptId = parent.nodeAttemptId;
         if (parent.budgetEnvelopeDigest !== hash(limits)) fail();
         const route = await this.persistence.getRuntimeRoute(handle, parent.actionRef.runtimeRouteId);
@@ -134,7 +137,16 @@ export class ContextRetrievalPort {
                         current, descriptorDigest, corpusDigest }) }, operation, input);
             };
             service.listHashes = async input => {
-                const hashes = await execute('list', input); listed.set(input.collectionId, new Set(hashes)); return hashes;
+                if (!equal(input.profile, profile) || !allowed.has(input.collectionId)) fail();
+                await current();
+                if (!listed.size) {
+                    const collectionIds = [...allowed], indexPath = collectionIds.map(id => nativeRetrievalIndexPath(directories, id,
+                        embed.retrievalProfileId + '_' + embed.revision)).sort();
+                    const hashes = await executeNativeEmbedding({ directories, profile: embed, signal: scope.signal,
+                        compute: this.#indexCompute(scope, { current, indexPath, kind: 'index_list', descriptorDigest }) }, 'list', { collectionIds });
+                    for (const id of collectionIds) listed.set(id, new Set(hashes[id]));
+                }
+                await current(); return [...listed.get(input.collectionId)];
             };
             service.deleteByHashes = input => {
                 if (!Array.isArray(input.hashes) || input.hashes.some(value => !listed.get(input.collectionId)?.has(value))) fail();
@@ -181,7 +193,7 @@ export class ContextRetrievalPort {
         const tickets = new WeakMap();
         return {
             beforeLocalWork: async input => {
-                if (input.kind !== kind || !equal(input.indexPath, ['index_list', 'index_query'].includes(kind) ? [indexPath] : indexPath)) fail();
+                if (input.kind !== kind || !equal(input.indexPath, ['index_list', 'index_query'].includes(kind) ? Array.isArray(indexPath) ? indexPath : [indexPath] : indexPath)) fail();
                 await current();
                 const attemptId = scope.bank.nextLocalWorkAttemptId();
                 try {

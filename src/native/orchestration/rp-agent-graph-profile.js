@@ -15,9 +15,11 @@ export function rpAgentGraphProfile(plan) {
     const narrator = agents.find(node => node.nodeId === terminal[0].from.nodeId);
     if (!narrator) fail();
     for (const node of agents) {
+        const retrievalPins = node.capabilities.includes('memory.retrieve') ? plan.dependencyPins.filter(pin => node.dependencyPinIds.includes(pin.pinId)
+            && pin.port === 'context' && pin.resourceRef.scope === 'player' && pin.resourceRef.retrievalProfileId) : [];
         if (node.outputs.length !== 1 || node.outputs[0].type !== 'text'
-            || hash(node.capabilities) !== hash(['generation.send']) || !nodeModelRoutePins(node, plan.dependencyPins).length
-            || node.dependencyPinIds.length !== nodeModelRoutePins(node, plan.dependencyPins).length) fail();
+            || hash([...node.capabilities].sort()) !== hash(['generation.send', ...retrievalPins.length ? ['memory.retrieve'] : []].sort()) || !nodeModelRoutePins(node, plan.dependencyPins).length
+            || node.dependencyPinIds.length !== nodeModelRoutePins(node, plan.dependencyPins).length + retrievalPins.length) fail();
         inputs[node.nodeId] = graph.edges.filter(edge => edge.to.nodeId === node.nodeId).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
         if (inputs[node.nodeId].length !== node.inputs.length || new Set(inputs[node.nodeId].map(edge => edge.from.nodeId)).size !== inputs[node.nodeId].length
             || node.inputs.some(port => port.type !== 'text' || !port.required
@@ -41,7 +43,7 @@ export function rpAgentGraphProfile(plan) {
     const used = new Set(agents.flatMap(node => node.dependencyPinIds));
     if (plan.dependencyPins.some(pin => !used.has(pin.pinId))) fail();
     return { draft: drafts[0], drafts, inputs, narration: { ...plan, definition: { ...graph,
-        nodes: [{ ...narrator, inputs: [] }, output], entryNodeIds: [narrator.nodeId], edges: terminal },
+        nodes: [{ ...narrator, inputs: [] }, output], capabilityCeiling: [...new Set([...narrator.capabilities, ...output.capabilities])], entryNodeIds: [narrator.nodeId], edges: terminal },
     dependencyPins: plan.dependencyPins.filter(pin => narrator.dependencyPinIds.includes(pin.pinId)) } };
 }
 

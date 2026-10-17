@@ -6,6 +6,7 @@ import { retrievalPostTarget } from '../retrieval-send-contracts.js';
 import { readEffect, effectDecision } from './effect-contracts.js';
 import { controlRecordKey } from './controller-common.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { rpAgentGraphProfile } from './rp-agent-graph-profile.js';
 import { sendAttemptId } from './budget-port.js';
 
 const equal = (a, b) => hash(a) === hash(b);
@@ -32,10 +33,11 @@ export async function readContextRetrievalCompletions(tx, handle, root, parent, 
     if (producer.effectRefs[0] !== parent.effectId || new Set(producer.effectRefs).size !== producer.effectRefs.length) invalid();
     const refs = producer.effectRefs.slice(1);
     if (!refs.length) return [];
-    if (root.sourceBinding.sourceAuthority !== 'rp_chat' || root.parentRef !== null || root.graph.nodes.length !== 2 || root.graphRevision !== 0
+    if (root.sourceBinding.sourceAuthority !== 'rp_chat' || root.parentRef !== null || root.graphRevision !== 0
         || parent.nodeAttemptId !== producer.attemptId || parent.capability !== 'generation.send') invalid();
     const plan = await readPlanRevision(tx, handle, root.planRef), node = plan.definition.nodes.find(node => node.nodeId === producer.nodeId);
-    if (!equal(plan.definition, root.graph) || !node?.capabilities.includes('memory.retrieve')) invalid();
+    if (!equal(plan.definition, root.graph) || !node?.capabilities.includes('memory.retrieve')
+        || root.graph.nodes.length !== 2 && !rpAgentGraphProfile(plan)) invalid();
     const completed = [];
     const modelReceiptId = 'oreceipt_' + hash({ effectId: parent.effectId, observationId: 'model.completed:' + parent.effectId }).slice(0, 32);
     const modelReceipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', modelReceiptId)))?.doc;

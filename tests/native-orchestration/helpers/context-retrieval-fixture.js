@@ -11,7 +11,7 @@ import { PROVENANCE_NAMESPACE } from '../../../public/scripts/agents/memory/sour
 import { emptyProvenance, captureEpisodes } from '../../../public/scripts/agents/memory/source-provenance.js';
 import { applyFactOperations } from '../../../public/scripts/agents/memory/atomic-facts.js';
 
-export async function contextRetrievalFixture(make, { usage = true, singleSource = false, reservePolicy, embedding = false, reranking = !embedding, malformed = false, query = 'Why did Alice leave?', declareRetrieval = true, providerUsage = { total_tokens: 7 } } = {}) {
+export async function contextRetrievalFixture(make, { usage = true, singleSource = false, reservePolicy, embedding = false, reranking = !embedding, malformed = false, query = 'Why did Alice leave?', declareRetrieval = true, providerUsage = { total_tokens: 7 }, afterPlan = null } = {}) {
     const calls = [];
     let onRerank = async () => {};
     const server = createServer(async (req, res) => {
@@ -20,11 +20,11 @@ export async function contextRetrievalFixture(make, { usage = true, singleSource
         await onRerank();
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ...(body.input ? { data: body.input.map((_, index) => ({ index, embedding: malformed ? [] : [1, 0, 0] })) }
-            : { results: body.documents.map((_, index) => ({ index, relevance_score: index })) }), ...(usage ? { usage: providerUsage } : {}) }));
+            : { results: body.documents.map((_, index) => ({ index, relevance_score: index })) }), ...(usage ? { usage: typeof providerUsage === 'function' ? providerUsage(body, calls.length) : providerUsage } : {}) }));
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     try {
-        const f = await rpModelFixture(make, { seedMemory: true, memorySettings: { enabled: true, memoryOsTokenBudget: 2400 }, configurePlan: async (plan, { h, host, route }) => {
+        const f = await rpModelFixture(make, { seedMemory: true, memorySettings: { enabled: true, memoryOsTokenBudget: 2400 }, configurePlan: async (plan, { h, host, route, seeded }) => {
             if (reservePolicy !== undefined) {
                 await host.persistence.saveRuntimeRoute(h.handle, { ...route, executionPolicy: { ...route.executionPolicy,
                     optionalWork: { mode: 'preserve_required', roles: ['rerank'], ...(reservePolicy === null ? {} : { requiredCompute: reservePolicy }) } } });
@@ -59,6 +59,7 @@ export async function contextRetrievalFixture(make, { usage = true, singleSource
             const facts = applyFactOperations(state, ['Alice left because of a storm.', ...singleSource ? [] : ['Alice left because of a promise.']].map((text, index) => ({ action: 'create', type: 'inferred', text,
                 evidence: [{ episodeId: episodeIds[index], excerpt: chat.body[index].mes }] })), { scopeId: state.scopeId, episodeIds }, all, () => 'cause-' + ++serial, 1000);
             await chats.setState(h.handle, 'Actor', 'main', PROVENANCE_NAMESPACE, facts.state);
+            await afterPlan?.(plan, { h, host, route, seeded });
         } });
         return { ...f, calls, onRerank: callback => { onRerank = callback; }, async cleanup() { await f.cleanup(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); } };
     } catch (error) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); throw error; }

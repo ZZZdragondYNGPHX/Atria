@@ -10,7 +10,7 @@ import { immutable, checkCancellation } from '../model-prompt-runtime/execution-
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
 
-const DENIALS = new Set(['native_orchestration_return_stale', 'native_orchestration_source_stale', 'native_orchestration_parent_stale',
+const DENIALS = new Set(['native_orchestration_memory_source_stale', 'native_orchestration_return_stale', 'native_orchestration_source_stale', 'native_orchestration_parent_stale',
     'native_generation_revision_conflict', 'native_rp_source_missing', 'native_rp_control_relocated', 'native_orchestration_result_consume_denied']);
 
 /** Exact original parent recipient only. A saved ResultRef is never a read grant. */

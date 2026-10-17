@@ -30,7 +30,7 @@ export async function rpModelFixture(make, { memorySettings = null, seedMemory =
         const chunks = []; for await (const chunk of req) chunks.push(chunk);
         const body = JSON.parse(Buffer.concat(chunks)); requests.push(body);
         await respond(body);
-        res.writeHead(200, { 'content-type': 'application/json' });
+        res.writeHead(200, { 'content-type': 'application/json', connection: 'close' });
         res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: responsePayload ? await responsePayload(body, requests.length) : RP_MODEL_TEXT }, finish_reason: 'stop' }],
             ...(usage ? { usage: { total_tokens: totalTokens, prompt_tokens: 12, completion_tokens: totalTokens - 12 } } : {}) }));
     });

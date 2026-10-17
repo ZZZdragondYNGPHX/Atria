@@ -10,6 +10,7 @@ import { hashNativeDocument as hash } from '../../src/native/repositories/common
 import { createNativeId } from '../../src/native/identity.js';
 import { StorageCommitUnknownError } from '../../src/storage/errors.js';
 import { retrievalPostTarget } from '../../src/native/retrieval-send-contracts.js';
+import { configureRetrievalAgentGraph } from './helpers/rp-agent-graph-retrieval-fixture.js';
 
 async function setup(make, options = {}) {
     const f = await contextRetrievalFixture(make, { embedding: true, ...options }), handle = f.h.handle;
@@ -65,6 +66,20 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
             expect(await f.plans.getBinding(f.h.handle, f.sourceSelector)).toEqual(binding);
         } finally { await f.cleanup(); }
     }, 60000);
+
+    test('private Agent graph workers close original Draft retrieval/Result fees and reuse each arm own index', async () => {
+        const f = await setup(make, { afterPlan: (plan, args) => configureRetrievalAgentGraph(plan, args, 'one-draft') });
+        try {
+            const original = await f.chats.get(f.h.handle, 'Actor', 'main'), report = await f.compare();
+            expect(f.calls).toHaveLength(6); expect(f.requests).toHaveLength(5); expect(report.charges).toHaveLength(11);
+            for (const arm of ['baseline', 'candidate']) {
+                expect(report.pairs[0][arm].checks.target_consumed).toBe(true);
+                expect(report.pairs[0][arm].charges).toHaveLength(5); expect(report.pairs[0][arm].refs.effectIds).toHaveLength(6);
+            }
+            expect((await f.repository.owner(f.h.handle)).attempts).toHaveLength(11);
+            expect(await f.chats.get(f.h.handle, 'Actor', 'main')).toEqual(original);
+        } finally { await f.cleanup(); }
+    }, 120000);
 
     test.each([['absent', { usage: false }], ['partial', { providerUsage: { prompt_tokens: 7 } }]])('%s embedding usage preserves the parent charge and stops before Model, Judge or second arm', async (_mode, options) => {
         const f = await setup(make, options);

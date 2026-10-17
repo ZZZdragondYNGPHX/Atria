@@ -18,7 +18,6 @@ export async function executeNativeEmbedding({ directories, profile: value, comp
         || ['insert', 'query'].includes(operation) && !supportsOpenAIEmbeddingSource(profile.source))
         throw Object.assign(new TypeError('Native embedding execution unavailable'), { code: 'native_retrieval_compute_unavailable' });
     const indexScope = profile.retrievalProfileId + '_' + profile.revision;
-    const indexPath = nativeRetrievalIndexPath(directories, input.collectionId, indexScope);
     if (request && (!request.nativeRetrieval || hashNativeDocument(request.nativeRetrieval.profile ?? null) !== hashNativeDocument(profile)
         || request.nativeRetrieval.compute !== compute || request.nativeRetrieval.signal !== signal || (request.nativeRetrieval.secret ?? '') !== secret))
         throw Object.assign(new TypeError('Native retrieval carrier mismatch'), { code: 'native_retrieval_send_target_mismatch' });
@@ -30,6 +29,13 @@ export async function executeNativeEmbedding({ directories, profile: value, comp
             ? embedBatch(batch) : getOpenAIBatchVector(batch, profile.source, directories, profile.model, settings, carrier)));
         return result;
     };
+    if (operation === 'list' && input.collectionIds !== undefined) {
+        if (!Array.isArray(input.collectionIds) || !input.collectionIds.length || input.collectionIds.length > 16
+            || input.collectionIds.some(id => typeof id !== 'string' || !id)) throw new TypeError('Invalid Native index listing');
+        return queryNativeIndexes({ indexes: input.collectionIds.map(collectionId => ({ collectionId,
+            indexPath: nativeRetrievalIndexPath(directories, collectionId, indexScope) })), mode: 'list-many', compute, signal });
+    }
+    const indexPath = nativeRetrievalIndexPath(directories, input.collectionId, indexScope);
     if (operation === 'list') return queryNativeIndexes({ indexes: [{ collectionId: input.collectionId, indexPath }], mode: 'list', compute, signal });
     if (operation === 'delete') return insertNativeIndex({ indexPath, deleteHashes: input.hashes, compute, signal });
     if (operation === 'insert') return insertNativeIndex({ indexPath, items: input.items, getVectors: () => vectors(input.items.map(item => item.text)), compute, signal });

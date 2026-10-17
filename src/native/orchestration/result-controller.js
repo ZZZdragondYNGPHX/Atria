@@ -15,13 +15,14 @@ import { assertResultRecord, resultDependencyDigest } from './result-contracts.j
 import { modelResultId, resultPublicationReceiptId, assertResultPublicationReceipt, readResultPublication } from './result-publication-contracts.js';
 import { assertDelegationDecision } from './delegate-controller.js';
 import { graphNodeResult, readGraphNodeResult, graphResultPublicationId } from './graph-result-contracts.js';
+import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 
 const fail = code => { throw new ConflictError(code); };
 const equal = (a, b) => hash(a) === hash(b);
 // Only legitimate authority withdrawal is committed as a denied preflight.
 // Unknown storage, corruption, foreign scopes and TypeErrors retain their errors.
-const DENIALS = new Set(['native_orchestration_source_stale', 'native_orchestration_parent_stale',
+const DENIALS = new Set(['native_orchestration_memory_source_stale', 'native_orchestration_source_stale', 'native_orchestration_parent_stale',
     // This fixed RP producer's original context rejects a changed user anchor.
     'native_generation_revision_conflict', 'native_rp_source_missing', 'native_rp_control_relocated',
     'native_orchestration_model_result_completion_stale', 'native_orchestration_result_publication_stale']);
@@ -161,15 +162,16 @@ export class ResultController {
                     const authorize = () => NativeNarratorOrchestrationAuthority.prototype.authorizeGraphResult.call(this.host.turnOrchestration,
                         { handle, tx, root, capture, phase: 'publish', effectId, producer: record.doc });
                     const permission = await authorize();
+                    const retrieval = await readContextRetrievalCompletions(tx, handle, root, intent, record.doc);
                     if (!equal(permission, { allowed: true, grantDigest: intent.grantDigest }) || record.doc.status !== 'running' || record.doc.resultRefs.length
-                        || !equal(record.doc.effectRefs, [effectId]) || record.doc.effectiveGrantDigest !== intent.grantDigest || root.pendingEffectRefs.includes(effectId)) fail('native_orchestration_result_not_publishable');
+                        || !equal(record.doc.effectRefs, [effectId, ...retrieval.map(item => item.effectId)]) || record.doc.effectiveGrantDigest !== intent.grantDigest || root.pendingEffectRefs.includes(effectId)) fail('native_orchestration_result_not_publishable');
                     const graphSnapshot = await readTaskGraphRevision(tx, handle, root);
                     await sourcePort.revalidate(handle, root.sourceBinding, { tx, root });
                     if (!equal(await authorize(), permission)) return { denied: true };
                     if (!equal(await runs.get(handle, runId), root)) return { denied: true };
-                    checked = { root, record, intent, graphSnapshot };
+                    checked = { root, record, intent, graphSnapshot, retrieval };
                 } catch (error) { if (DENIALS.has(error.code)) return { denied: true }; throw error; }
-                const { root, record, intent, graphSnapshot } = checked;
+                const { root, record, intent, graphSnapshot, retrieval } = checked;
                 return runs.control(handle, controlCommandId('graph.result.publish', { runId, effectId }), { ...runGuard(root), operation: 'result.publish', detail: { effectId, resultId } }, async ({ tx, root: active, now }) => {
                     if (!equal(active, root) || active.progress.steps >= active.limits.maxSteps || now >= active.progress.deadlineAt) fail('native_orchestration_result_publication_stale');
                     const body = graphNodeResult({ root: active, producer: record.doc, proof, text: result.generated.response.text, now, graphSnapshot });
@@ -180,7 +182,7 @@ export class ResultController {
                         audienceDigest: hash(body.envelope.audienceConstraint), graphRevision: active.graphRevision, decisionSeq: active.eventSeq + 1, createdAt: now };
                     await putImmutable(tx, controlRecordKey(handle, runId, 'result', resultId), body);
                     await putImmutable(tx, controlRecordKey(handle, runId, 'receipt', receiptId), receipt);
-                    await writeAttemptSettlement({ tx, handle, root: active, record, outcome: 'completed', resultRefs: [resultRef], effectReceiptRefs: [proof.receiptRef.receiptId], reasonCode: 'graph_result_published', now });
+                    await writeAttemptSettlement({ tx, handle, root: active, record, outcome: 'completed', resultRefs: [resultRef], effectReceiptRefs: [proof.receiptRef.receiptId, ...retrieval.map(item => item.receiptId)], reasonCode: 'graph_result_published', now });
                     active.resultRefs.push(resultRef); active.progress.steps++;
                     return { root: active, eventType: 'result_published', reasonCode: 'graph_result_published', outcome: { status: 'published', resultRef, publicationReceiptRef: { runId, receiptId } } };
                 });

@@ -6,9 +6,9 @@ const id = kind => createNativeId('orchestration' + kind);
 /** All branches execute serially through the original RP Host and bank. */
 export async function configureAgentGraph(plan, { h, seeded, route }, shape = 'diamond') {
     const narrator = plan.definition.nodes[0], output = plan.definition.nodes[1], nodes = [];
-    const connections = shape === 'diamond' ? [[0, 1], [0, 2], [1, 3], [2, 3]]
+    const connections = shape === 'one-draft' ? [[0, 1]] : shape === 'two-entries' ? [[0, 2], [1, 2]] : shape === 'diamond' ? [[0, 1], [0, 2], [1, 3], [2, 3]]
         : shape === 'merge' ? [[0, 2], [1, 2], [2, 3]] : [[0, 3], [1, 3], [2, 3]];
-    for (let index = 0; index < 3; index++) {
+    for (let index = 0; index < (shape === 'one-draft' ? 1 : shape === 'two-entries' ? 2 : 3); index++) {
         const next = { ...route, runtimeRouteId: createNativeId('runtimeRoute'), displayName: 'Graph agent ' + index };
         await seeded.persistence.saveRuntimeRoute(h.handle, next);
         const current = await seeded.persistence.getRuntimeRoute(h.handle, next.runtimeRouteId), pinId = 'graph' + index + '.route';
