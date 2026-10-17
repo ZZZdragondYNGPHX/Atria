@@ -149,15 +149,16 @@ export class ResultController {
     async publishGraphModelResult(handle, request) {
         fields(request, ['capture', 'result', 'runId', 'effectId'], 'Graph Model Result publication');
         const { capture, result, runId, effectId } = request, { runs, sourcePort } = this.execution;
-        const proof = await ModelPort.prototype.inspectResultCompletion.call(this.modelPort, handle, { result, runId, effectId });
-        const withAuthority = sourcePort.consumptionBoundary(handle, proof.sourceBinding, { engine: runs.engine });
+        const initial = await runs.get(handle, runId);
+        const withAuthority = sourcePort.consumptionBoundary(handle, initial.sourceBinding, { engine: runs.engine });
         const resultId = modelResultId(runId, effectId);
         try {
             const published = await runs.withSourceControl(handle, runId, () => runs.engine.withTransaction(handle, async tx => {
                 let checked;
                 try {
-                    const root = await runs.get(handle, runId), current = await ModelPort.prototype.inspectResultCompletion.call(this.modelPort, handle, { result, runId, effectId });
-                    if (!equal(proof, current) || root.cancelRequested || root.status !== 'running') fail('native_orchestration_result_publication_stale');
+                    const root = await runs.get(handle, runId), proof = await ModelPort.prototype.inspectResultCompletion.call(this.modelPort, handle, { result, runId, effectId });
+                    const current = await ModelPort.prototype.inspectResultCompletion.call(this.modelPort, handle, { result, runId, effectId });
+                    if (!equal(proof, current) || !equal(root.sourceBinding, initial.sourceBinding) || root.cancelRequested || root.status !== 'running') fail('native_orchestration_result_publication_stale');
                     const record = await readAttempt(tx, handle, root, proof.producerAttemptId), intent = (await readEffect(tx, handle, root, effectId)).doc;
                     const authorize = () => NativeNarratorOrchestrationAuthority.prototype.authorizeGraphResult.call(this.host.turnOrchestration,
                         { handle, tx, root, capture, phase: 'publish', effectId, producer: record.doc });
@@ -169,9 +170,9 @@ export class ResultController {
                     await sourcePort.revalidate(handle, root.sourceBinding, { tx, root });
                     if (!equal(await authorize(), permission)) return { denied: true };
                     if (!equal(await runs.get(handle, runId), root)) return { denied: true };
-                    checked = { root, record, intent, graphSnapshot, retrieval };
+                    checked = { root, record, intent, graphSnapshot, retrieval, proof };
                 } catch (error) { if (DENIALS.has(error.code)) return { denied: true }; throw error; }
-                const { root, record, intent, graphSnapshot, retrieval } = checked;
+                const { root, record, intent, graphSnapshot, retrieval, proof } = checked;
                 return runs.control(handle, controlCommandId('graph.result.publish', { runId, effectId }), { ...runGuard(root), operation: 'result.publish', detail: { effectId, resultId } }, async ({ tx, root: active, now }) => {
                     if (!equal(active, root) || active.progress.steps >= active.limits.maxSteps || now >= active.progress.deadlineAt) fail('native_orchestration_result_publication_stale');
                     const body = graphNodeResult({ root: active, producer: record.doc, proof, text: result.generated.response.text, now, graphSnapshot });
