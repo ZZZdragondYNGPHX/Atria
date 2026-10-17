@@ -1,7 +1,7 @@
 # ARCH-DWE-01 · W17 原生 Domain 提交、主体参与者、有效世界视图及编排/提示词接口（讨论稿）
 
 - Task ID：`ARCH-DWE-01`；Primary Workspace：`docs`；[唯一 Plan 入口](index.md) · [总设计](design.md) · [W16 跨分支锚定](e0-integration-readiness.md) · [W13 事件时态](event-temporality-branch.md) · [W14 Effective World View](effective-world-view.md) · [唯一 Record](../../../records/architecture/world-evolution-consistency.md)。
-- **当前状态**：Draft。W1-B 至 **W16-B** 为用户已确认的总体架构/收口方向；本轮 **W17-A/B/C 及所有确切 ID/JSON/ABI/代码切线未获用户选择或批准**。E0 依然 PARTIAL / BLOCKED，不修改 `main`、不创建实现分支，不声称 CI、真实 UI 或三端验收通过。
+- **当前状态**：Draft。**W1-B 至 W17-B 总体方向已获用户确认**；本模块 §6 保留 W17 原始选型历史，正式 W17-B 确认见 §8。W18 最小 ABI/Schema/消费者切换方案、所有确切字段、实现与 E0 验收仍未批准；E0 PARTIAL / BLOCKED，不修改 `main`、不开实现分支。
 - **本轮收敛目标**：以固定 SHA 下的真实 Native/Orchestration/Prompt 代码证据给出**最小的读写合同与事务时序**，将“故事里某个此前未定义 NPC 做了重要的事情”一路追溯到原生领域事实、可合法看到的有效世界和模型上下文，避免转向新的并行 EventStore、WorldEntityRegistry 或 Prompt 真相权限层。
 
 ## 1. 锁定版本与已有路径（静态代码证据，不是完整消费者验收）
@@ -139,3 +139,17 @@
 6. 工程 Gate 0 的必要 E0 证据和阶段任务依赖/跨端验收，不将需要将来真实跑的测试写成已通过。
 
 如 Orchestration/Prompt 分支在讨论间合入 `main`，必须以**新 `main` HEAD 重核 ABI 与生产调用**。E0 仍 **PARTIAL / BLOCKED**；完整 Plan **Draft**，本轮不修改产品代码。
+
+
+## 8. W17-B 用户确认（2026-10-17）
+
+用户对上一轮明确推荐的 **W17-B「Domain-first Commit + Revision-anchored Authorized Effective Projection」**回复「认同」，正式作为 ARCH-DWE-01 **已确认的架构方向**写入；因此 W1-B 至 W17-B 均为已确认方向，**不等于**具体 ABI/Schema、端到端域事务或完整 E0 通过。
+
+- **唯一 Domain 写权**：正式的 Subject admission、持续世界事实和关系、Action/Event/Receipt 与合法参与者必须由现有 Native Session/Domain 受控确立；模型文本和 Orchestration Run Effect 只可提议或报告，不得竞争世界真相。
+- **确切出版边界**：在现有 Session Revision/CAS/Receipt 路径内保持可以证明的状态/事件/必要叙事一致性；不擅自推断 World reducer `commitEvents` 与 Narrator `finalizeTurn` 在全部调用中已同事务，跨异步任务须另明确可恢复的合法结果与发表门槛。
+- **受众安全的读取**：Native Host 依据合法 `Session/Branch/Revision/GameTick/World scope/Audience` 构造只读 Effective World View；V3 `ContextPort` 的 SourceBinding/Grant/Currentness 是先于 Memory、Knowledge、Prompt 的权限边界，不得把 Narrator 内部事实当作新 NPC 视角。
+- **来源编译职责**：Knowledge 与 HCM 的 Source Claim/回忆不升级为客观事实；Context Compiler 与 Prompt Preset 的 Authored/Effective/Provider Wire 是对合法来源的编译与呈现，不新增 Truth Writer。
+- **无兼容双写**：切线以最新可核验集成 HEAD 和实际消费者为准，只在已有实现不足时增补最小 Subject/Participant/Fact/Capability/EffectiveView 合约，不为旧/新 Orchestrator 建永久适配。
+- **未冻结事项**：确切 `subject_*` ID 家族、Timeline Participant 字段、Native Action proposal 的物理字段、通用双时间 Fact schema、Source Claim binding、Host view ABI、媒体/前端适配、old→target→delete 完整清单和真实运行测试。
+
+**W18 下一轮**见同一 Plan 的 [e0-minimal-contract-cutover.md](e0-minimal-contract-cutover.md)：基于本轮固定 HEAD 的原生 ID/Timeline/Information/World/Chronicle/Play/Media 合同，提出有类型的最小 ABI 变化和生产消费者切换表，区分已核验约束、建议新增/保留的字段和 E0 实际阻塞。当前研究推荐 **W18-B**，尚未获用户选择。完整 Plan 继续 **Draft**，只更新 `docs`。
