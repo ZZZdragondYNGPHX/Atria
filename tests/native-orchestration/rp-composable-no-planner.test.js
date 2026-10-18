@@ -101,7 +101,7 @@ describe.each(CONTRACT_HARNESSES)('$name RP composable models without a mandator
     test('the declared four-request bank rejects redo headroom while retaining all paid Results and refusing a replay', async () => {
         const f = await fixture(make, { ...profile, rerun: true, maxRequests: 4 });
         try {
-            await expect(f.run()).rejects.toMatchObject({ code: 'generation_execution_failed' }); expect(f.requests).toHaveLength(3);
+            await expect(f.run()).rejects.toMatchObject({ code: 'native_orchestration_review_rerun_budget_unavailable' }); expect(f.requests).toHaveLength(3);
             const root = await f.authority.execution.runs.get(f.h.handle, f.effects[0].runId);
             expect(root.graphRevision).toBe(0); expect(root.resultRefs).toHaveLength(2); expect(root.outputClaims).toEqual([]);
             const status = await f.control.status(f.h.handle, f.controlId), bank = Object.values(status.operations)[0].compute;

@@ -17,7 +17,9 @@ const fixture = (make, shape = 'diamond', options = {}) => rpModelFixture(make, 
 const id = () => createNativeId('orchestrationCommand');
 
 describe.each(CONTRACT_HARNESSES)('$name original RP static Agent graph', ({ make }) => {
-    test.each(['conditional', 'optional-input'])('%s graph does not borrow the static dependency producer and sends no Model', async variation => {
+    // The general RP control graph supports success edges and optional inputs;
+    // predecessor-only exposure is asserted by the marker shapes below.
+    test.each(['conditional', 'optional-input'])('%s graph executes each declared Agent once', async variation => {
         const f = await rpModelFixture(make, { configurePlan: async (...args) => {
             await configureAgentGraph(...args);
             const graph = args[0].definition;
@@ -25,8 +27,8 @@ describe.each(CONTRACT_HARNESSES)('$name original RP static Agent graph', ({ mak
             else graph.nodes[1].inputs[0].required = false;
         } });
         try {
-            await expect(f.run()).rejects.toThrow('native_orchestration_rp_agent_graph_unavailable');
-            expect(f.requests).toEqual([]); expect(f.effects).toEqual([]);
+            const result = await f.run();
+            expect(result.output.runStatus).toBe('completed'); expect(f.requests).toHaveLength(4); expect(f.effects).toHaveLength(5);
         } finally { await f.cleanup(); }
     });
     test.each(['diamond', 'merge', 'three-entries'])('%s executes each declared Agent once and exposes only exact direct predecessor bodies', async shape => {
@@ -45,7 +47,7 @@ describe.each(CONTRACT_HARNESSES)('$name original RP static Agent graph', ({ mak
         } finally { await f.cleanup(); }
     });
 
-    test.each(['binding', 'cancel'])('same-transaction %s after final predecessor authorization preserves withdrawal and writes no successor Attempt', async change => {
+    test.each(['binding', 'cancel'])('same-transaction %s after final predecessor authorization preserves withdrawal and sends no successor', async change => {
         const f = await fixture(make), advance = TransitionController.prototype.advance; let changed = false;
         const spy = jest.spyOn(TransitionController.prototype, 'advance').mockImplementation(function (handle, input) {
             const authorize = this.authorizeTransition;
@@ -66,7 +68,9 @@ describe.each(CONTRACT_HARNESSES)('$name original RP static Agent graph', ({ mak
             await expect(f.run()).rejects.toThrow(); expect(changed).toBe(true); expect(f.requests).toHaveLength(3);
             expect((await f.plans.getBinding(f.h.handle, f.sourceSelector)).version).toBe(change === 'binding' ? 1 : 0);
             const [row] = await f.h.engine.withTransaction(f.h.handle, tx => tx.listResources({ kind: K.orchestrationRun, handle: f.h.handle }));
-            expect(row.doc.cancelRequested).toBe(change === 'cancel'); expect(row.doc.attemptRefs).toHaveLength(3);
+            // Cancel fails the Run CAS before any successor; a Binding change is
+            // caught at the successor's dispatch, which sends nothing.
+            expect(row.doc.cancelRequested).toBe(change === 'cancel'); expect(row.doc.attemptRefs).toHaveLength(change === 'cancel' ? 3 : 4);
             expect(row.doc.resultRefs).toHaveLength(3); expect(row.doc.outputClaims).toEqual([]);
         } finally { spy.mockRestore(); await f.cleanup(); }
     });
