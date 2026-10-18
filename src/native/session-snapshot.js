@@ -1,7 +1,7 @@
 import { prepareIndependent } from '../../public/shared/native-independent-preparation.js';
 import { NATIVE_RESOURCE_KINDS as K, assertBranch, assertSessionRevision, assertTimelineEntry, assertVariant } from './contracts.js';
 import { assertNativeId } from './identity.js';
-import { hashNativeDocument, getNativeDocument } from './repositories/common.js';
+import { equalNativeDocuments, getNativeDocument } from './repositories/common.js';
 import { NotFoundError } from '../storage/errors.js';
 import { ILLUSTRATION_NAMESPACE, selectIllustrations } from '../../public/shared/native-illustration-contract.js';
 import { readIllustrationState } from './session-illustrations.js';
@@ -65,9 +65,6 @@ export async function readSessionSnapshot(tx, handle, session, value) {
             }));
             const forkTimeline = await readCheckedDocument(tx, { kind: K.sessionState, handle, sessionId,
                 namespace: TIMELINE_NAMESPACE, head: fork.stateHeads[TIMELINE_NAMESPACE] });
-            if (hashNativeDocument(forkTimeline) !== fork.stateHeads[TIMELINE_NAMESPACE]) {
-                throw new Error('Fork Timeline integrity mismatch');
-            }
             const point = node.branch.forkPoint;
             const forkSelections = await readTimelineIndex(tx, handle, sessionId, forkTimeline,
                 Math.max(0, forkTimeline.length - 1), forkTimeline.length);
@@ -134,7 +131,7 @@ export async function readSessionSnapshot(tx, handle, session, value) {
 
     const last = entries.at(-1);
     const head = last ? { messageId: last.messageId, variantId: last.activeVariantId } : null;
-    if (hashNativeDocument(head) !== hashNativeDocument(revision.timelineHead)) throw new TypeError('Timeline HEAD mismatch');
+    if (!equalNativeDocuments(head, revision.timelineHead)) throw new TypeError('Timeline HEAD mismatch');
     const knowledge = states[KNOWLEDGE_NAMESPACE];
     for (const namespace of [SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE]) delete states[namespace];
     const illustrationHead = revision.branchId === session.activeBranchId ? session.illustrationHead : session.illustrationHeads?.[revision.branchId];

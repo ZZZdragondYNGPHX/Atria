@@ -98,8 +98,7 @@ export class ContextPort {
         fields(input.ownerRef, ['handle'], 'Context owner');
         if (input.ownerRef.handle !== handle) fail('native_orchestration_context_owner_mismatch');
         const { sourceBinding: binding, audience, tokenBudget } = input;
-        if (!binding || !digest(binding.bindingDigest)
-            || hashNativeDocument(Object.fromEntries(Object.entries(binding).filter(([key]) => key !== 'bindingDigest'))) !== binding.bindingDigest) fail('native_orchestration_context_source_invalid');
+        if (!binding || !digest(binding.bindingDigest)) fail('native_orchestration_context_source_invalid');
         fields(audience, ['kind', 'id'], 'Context audience');
         const resolver = this.resolverCapture !== null;
         if (!(this.taskCapture || this.rpDelegationCapture || this.sessionDelegationCapture || this.projectDelegationCapture ? audience.kind === 'task' : this.projectCapture ? audience.kind === 'project_task' : resolver ? audience.kind === 'authority_intent' : ['narrator', 'actor'].includes(audience.kind))

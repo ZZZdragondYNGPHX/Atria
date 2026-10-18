@@ -2,11 +2,11 @@ import { ConflictError } from '../storage/errors.js';
 import { assertTurnEnvelope } from './contracts.js';
 import { assertNativeId } from './identity.js';
 import { SessionRepo } from './repositories/session-repo.js';
-import { hashNativeDocument as hash } from './repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument as hash } from './repositories/common.js';
 import { fields } from '../../public/shared/native-values.js';
 
 const invalid = () => { throw new ConflictError('native_session_turn_receipt_invalid'); };
-const equal = (a, b) => hash(a) === hash(b);
+const equal = (a, b) => equalNativeDocuments(a, b);
 const observations = new WeakMap();
 const observationHash = fact => hash({ domainReceiptRef: fact.domainReceiptRef, receipt: fact.receipt, record: fact.record, entry: fact.entry, revision: fact.snapshot.revision });
 

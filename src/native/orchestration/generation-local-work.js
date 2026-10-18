@@ -7,7 +7,7 @@ import { ContextRetrievalPort } from './context-retrieval-port.js';
 
 const compilations = new WeakMap();
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
-const rootBinding = root => hash({ runId: root.runId, ownerRef: root.ownerRef, epoch: root.epoch,
+const rootBinding = root => ({ runId: root.runId, ownerRef: root.ownerRef, epoch: root.epoch,
     hostBootId: root.hostBootId, hostGeneration: root.hostGeneration,
     sourceBinding: root.sourceBinding, budgetAuthorityRef: root.budgetAuthorityRef });
 
@@ -82,7 +82,7 @@ export async function compileNativeContextMetered({ handle, port, request, bank,
     const ref = { kind: 'local_work', authorityRef: bank.authorityRef, effectId, localWorkOrdinal: entry.orchestration.ordinal,
         attemptId: entry.attemptId, reservationId: entry.reservationId ?? null };
     const proof = Object.freeze({});
-    compilations.set(proof, { handle, port, compiled, bank, budgetPort, ref, rowHash: hash(entry), rootBinding: rootBinding(root),
+    compilations.set(proof, { handle, port, compiled, bank, budgetPort, ref, row: structuredClone(entry), rootBinding: structuredClone(rootBinding(root)),
         runId: root.runId, effectId, sourceBinding: root.sourceBinding, grantDigest: request.grantDigest });
     try { await assertContextCompilation({ proof, handle, port, compiled, bank, root }); } catch (error) { compilations.delete(proof); throw error; }
     return { compiled, proof };
@@ -94,7 +94,7 @@ export async function assertContextCompilation({ proof, handle, port, compiled, 
     if (!value || value.handle !== handle || value.port !== port || value.compiled !== compiled || value.bank !== bank
         || !equalNativeDocuments(compiled.request.sourceBinding, value.sourceBinding) || compiled.request.grantDigest !== value.grantDigest)
         fail('native_orchestration_context_compile_proof_invalid');
-    if (root && rootBinding(root) !== value.rootBinding) fail('native_orchestration_context_compile_proof_invalid');
+    if (root && !equalNativeDocuments(rootBinding(root), value.rootBinding)) fail('native_orchestration_context_compile_proof_invalid');
     if (intent && (intent.runId !== value.runId || intent.effectId !== value.effectId
         || intent.sourceBindingDigest !== value.sourceBinding.bindingDigest || intent.grantDigest !== value.grantDigest))
         fail('native_orchestration_context_compile_proof_invalid');
@@ -105,7 +105,7 @@ export async function assertContextCompilation({ proof, handle, port, compiled, 
             : source.kind !== 'session' || source.sessionId !== ref.sessionId || source.branchId !== ref.branchId || source.revisionId !== ref.revisionId))
         fail('native_orchestration_context_compile_proof_invalid');
     const row = await value.budgetPort.observeAttempt(handle, value.ref);
-    if (row.status !== 'settled' || row.usage?.outcome !== 'completed' || hash(row) !== value.rowHash)
+    if (row.status !== 'settled' || row.usage?.outcome !== 'completed' || !equalNativeDocuments(row, value.row))
         fail('native_orchestration_context_compile_budget_invalid');
     return { budgetAttemptRef: structuredClone(value.ref), status: row.status, localWork: structuredClone(row) };
 }

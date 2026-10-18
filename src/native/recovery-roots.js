@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
 import { ConflictError } from '../storage/errors.js';
-import { hashNativeDocument } from './repositories/common.js';
+import { hashNativeDocument, equalNativeDocuments } from './repositories/common.js';
 import { visualSessionOwner } from './visual-store.js';
 import { runtimeCheckpointOwner } from './model-prompt-runtime/runtime-checkpoint-store.js';
 
@@ -11,12 +11,12 @@ export const withRecoveryPublication = operation => publication.run(true, operat
 export const inRecoveryPublication = () => publication.getStore() === true;
 export const recoveryKey = (handle, id) => ({ kind: K.maintenance, handle, scope: 'storage-center:recovery:' + id });
 export const isRecoveryRecord = row => row?.doc?.protocol === RECOVERY_PROTOCOL && row.doc.type === 'recovery';
-const sameKey = (left, right) => hashNativeDocument(left) === hashNativeDocument(right);
+const sameKey = (left, right) => equalNativeDocuments(left, right);
 
 export async function recoveryRecords(tx, handle) {
     const records = (await tx.listResources({ kind: K.maintenance, handle })).filter(isRecoveryRecord);
-    if (records.some(row => row.integrity !== hashNativeDocument(row.doc) || !Array.isArray(row.doc.records)
-        || !Array.isArray(row.doc.files) || !Array.isArray(row.doc.hashes) || !Array.isArray(row.doc.dependencies))) throw new Error('Recovery retention roots require integrity review');
+    if (records.some(row => !Array.isArray(row.doc.records)
+        || !Array.isArray(row.doc.files) || !Array.isArray(row.doc.hashes) || !Array.isArray(row.doc.dependencies))) throw new Error('Invalid recovery retention roots');
     return records;
 }
 

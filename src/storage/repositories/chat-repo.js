@@ -1,7 +1,7 @@
 import { preserveNativeOutputMarkers, rejectNativeOutputMarkers } from './native-output-markers.js';
 import { consumeRpNativeOutputPermit, withRpNativeOutputWrite, assertRpOutputReceipts, nativeOutputPayload, RP_OUTPUT_DENIAL_CODES } from '../../native/rp-output-protocol.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../native/contracts.js';
-import { hashNativeDocument as hash } from '../../native/repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument as hash } from '../../native/repositories/common.js';
 import { rpOperationInput } from '../../native/rp-run-control.js';
 import { sourceMessageId, sourceContent } from '../../../public/scripts/agents/memory/source-provenance.js';
 import { fields } from '../../../public/shared/native-values.js';
@@ -44,14 +44,14 @@ export class ChatRepo {
             const anchor = receipt.inputAnchor;
             if (!existing || existing.integrity !== receipt.expectedIntegrity || existing.header?.chat_metadata?.nativeControlId !== controlId
                 || existing.body.length !== anchor.floor + 1 || !existing.body[anchor.floor]?.is_user || existing.body[anchor.floor]?.is_system
-                || hash(rpOperationInput(existing.body[anchor.floor], anchor.floor)) !== hash(anchor)
+                || !equalNativeDocuments(rpOperationInput(existing.body[anchor.floor], anchor.floor), anchor)
                 || hash(existing.body.map(message => ({ messageId: sourceMessageId(message), content: sourceContent(message) }))) !== receipt.sourceDigest)
                 throw new ConflictError('native_rp_output_stale');
             const fence = await this._engine.nativeHostLifecycle.assertWriter(handle, tx);
-            if (hash({ hostBootId: fence.hostBootId, generation: fence.generation }) !== hash(receipt.hostFence)) throw new ConflictError('native_rp_output_stale');
+            if (!equalNativeDocuments({ hostBootId: fence.hostBootId, generation: fence.generation }, receipt.hostFence)) throw new ConflictError('native_rp_output_stale');
             const finalRoot = await state.authorization.execution.runs.get(handle, state.authorization.runId);
             const finalChat = await tx.getResource(key);
-            if (hash(finalRoot) !== state.authorization.rootStamp || finalChat?.integrity !== existing.integrity) return { denied: true };
+            if (finalRoot.stateVersion !== state.authorization.rootStateVersion || finalChat?.integrity !== existing.integrity) return { denied: true };
             const marker = { schemaVersion: 1, operationId: receipt.operationId, outputKey: receipt.outputKey, payloadHash: receipt.payloadHash,
                 sourceDigest: receipt.sourceDigest, controlId };
             const message = { ...payload, extra: { ...(payload.extra ?? {}), gen_id: 'native-output:' + receipt.outputKey, atri_output: marker } };
@@ -68,14 +68,14 @@ export class ChatRepo {
         fields(request, ['controlId', 'operationId', 'outputKey'], 'Native output observation');
         const read = async transaction => {
             const record = await transaction.getResource({ kind: K.rpRunControl, handle, controlId: request.controlId });
-            if (!record || hash(record.doc) !== record.integrity) throw new ConflictError('native_rp_output_integrity');
+            if (!record) throw new ConflictError('native_rp_output_missing');
             assertRpOutputReceipts(record.doc);
             const receipt = record.doc.outputReceipts[request.outputKey];
             if (!receipt || receipt.operationId !== request.operationId) throw new ConflictError('native_rp_output_missing');
             const locator = record.doc.locator, chat = await transaction.getResource(this._key(handle, locator.charDir, locator.name, locator));
             if (!chat || chat.header?.chat_metadata?.nativeControlId !== request.controlId) return { status: 'unknown', receipt: null };
             const prefix = chat.body.slice(0, receipt.inputAnchor.floor + 1);
-            if (!sourceMessageId(prefix[receipt.inputAnchor.floor]) || prefix[receipt.inputAnchor.floor]?.atri_native?.messageId || hash(rpOperationInput(prefix[receipt.inputAnchor.floor], receipt.inputAnchor.floor)) !== hash(receipt.inputAnchor)
+            if (!sourceMessageId(prefix[receipt.inputAnchor.floor]) || prefix[receipt.inputAnchor.floor]?.atri_native?.messageId || !equalNativeDocuments(rpOperationInput(prefix[receipt.inputAnchor.floor], receipt.inputAnchor.floor), receipt.inputAnchor)
                 || hash(prefix.map(message => ({ messageId: sourceMessageId(message), content: sourceContent(message) }))) !== receipt.sourceDigest)
                 return { status: 'unknown', receipt: null };
             const matches = chat.body.filter(message => message?.extra?.atri_output?.outputKey === request.outputKey
@@ -84,7 +84,7 @@ export class ChatRepo {
             const message = matches[0], marker = message?.extra?.atri_output;
             const expectedMarker = { schemaVersion: 1, operationId: request.operationId, outputKey: request.outputKey, payloadHash: receipt.payloadHash,
                 sourceDigest: receipt.sourceDigest, controlId: request.controlId };
-            if (matches.length !== 1 || hash(marker) !== hash(expectedMarker) || hash(nativeOutputPayload(message)) !== receipt.payloadHash
+            if (matches.length !== 1 || !equalNativeDocuments(marker, expectedMarker) || hash(nativeOutputPayload(message)) !== receipt.payloadHash
                 || message.extra.gen_id !== 'native-output:' + request.outputKey || message.is_user || message.is_system
                 || chat.body.indexOf(message) !== receipt.inputAnchor.floor + 1) return { status: 'conflict', receipt: null };
             return { status: 'committed', receipt: nativeChatReceipt(request.controlId, receipt, locator, message, chat.integrity) };

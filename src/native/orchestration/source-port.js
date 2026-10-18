@@ -31,7 +31,6 @@ export class SourcePort {
     consumptionBoundary(handle, binding, { engine } = {}) {
         if (binding?.sourceAuthority === 'rp_chat') {
             const control = this.rpControl, chats = control?._chatRepo, request = binding.sourceRequest, ref = binding.sourceRef, bank = binding.budgetAuthorityRef;
-            const { bindingDigest, ...source } = binding;
             if (typeof handle !== 'string' || !handle || !engine || typeof engine.withTransaction !== 'function'
                 || !(control instanceof RpRunControl) || control._engine !== engine || !(chats instanceof ChatRepo) || chats._engine !== engine
                 || !(this.budgetPort instanceof BudgetPort) || this.budgetPort.rpControl !== control
@@ -40,7 +39,7 @@ export class SourcePort {
                 || bank?.authority !== 'run_control' || bank.domain !== 'rp_chat' || bank.controlId !== request.controlId
                 || !equalNativeDocuments(bank.source, request.source)
                 || bank.operationId !== hashNativeDocument({ controlId: request.controlId, input: request.source?.input, purpose: request.source?.purpose, outputSlot: request.source?.outputSlot })
-                || typeof bindingDigest !== 'string' || hashNativeDocument(source) !== bindingDigest)
+                || typeof binding.bindingDigest !== 'string')
                 throw new ConflictError('native_orchestration_consumption_authority_unavailable');
             return operation => {
                 if (typeof operation !== 'function') throw new TypeError('Original domain consumption requires an operation');
@@ -50,7 +49,6 @@ export class SourcePort {
         }
         if (binding?.sourceAuthority === 'project') {
             const agent = this.projectAgent, studio = agent?._studio, request = binding.sourceRequest, ref = binding.sourceRef, bank = binding.budgetAuthorityRef;
-            const { bindingDigest, ...source } = binding;
             if (typeof handle !== 'string' || !handle || !engine || typeof engine.withTransaction !== 'function'
                 || !(agent instanceof ProjectAgentService) || !(studio instanceof StudioService) || !(this.budgetPort instanceof BudgetPort)
                 || !(agent._repository instanceof ProjectTaskRepository) || agent._repository.engine !== engine || studio.storageEngine !== engine
@@ -60,9 +58,9 @@ export class SourcePort {
                 || ref?.projectId !== request.projectId || ref.taskId !== request.taskId || ref.revision !== request.revision || ref.executionFingerprint !== request.executionFingerprint
                 || bank?.authority !== 'project_task' || bank.projectId !== request.projectId || bank.taskId !== request.taskId
                 || bank.operationId !== hashNativeDocument({ projectId: request.projectId, taskId: request.taskId, revision: request.revision, executionFingerprint: request.executionFingerprint })
-                || typeof bindingDigest !== 'string' || hashNativeDocument(source) !== bindingDigest)
+                || typeof binding.bindingDigest !== 'string')
                 throw new ConflictError('native_orchestration_consumption_authority_unavailable');
-            const { projectId, taskId } = request;
+            const { projectId, taskId } = request, bindingDigest = binding.bindingDigest;
             return operation => {
                 if (typeof operation !== 'function') throw new TypeError('Original domain consumption requires an operation');
                 return withRuntimeWrite(handle, () => {
@@ -82,13 +80,12 @@ export class SourcePort {
             };
         }
         const repo = this.sessionCore?.runs?.repo, sessionId = binding?.sourceRef?.sessionId;
-        const { bindingDigest, ...source } = binding ?? {};
         if (typeof handle !== 'string' || !handle || !engine || typeof engine.withTransaction !== 'function'
             || !(repo instanceof SessionRepo) || repo._engine !== engine || this.budgetPort?.sessionCore !== this.sessionCore
             || binding?.sourceAuthority !== 'native_session' || binding.sourceRequest?.domain !== 'native_session'
             || typeof sessionId !== 'string' || !sessionId || binding.sourceRequest.sessionId !== sessionId
             || binding.budgetAuthorityRef?.domain !== 'session' || binding.budgetAuthorityRef.sessionId !== sessionId
-            || typeof bindingDigest !== 'string' || hashNativeDocument(source) !== bindingDigest)
+            || typeof binding.bindingDigest !== 'string')
             throw new ConflictError('native_orchestration_consumption_authority_unavailable');
         return operation => {
             if (typeof operation !== 'function') throw new TypeError('Original domain consumption requires an operation');

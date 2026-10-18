@@ -414,7 +414,7 @@ export async function inspectNativeRpOutput(capture, expected = {}) {
         const control = await RpRunControl.prototype.status.call(saved.control, expected.handle, identity.controlId, { tx });
         const chat = await tx.getResource({ kind: 'chat', handle: expected.handle, ...control.locator });
         inspectNativeRpOutputIdentity(capture, expected);
-        return { ...identity, proof, effectReceiptRefs, retrievalEffectIds: retrievalCompletions.map(item => item.effectId), outputDispatch, rootStamp: hash(root), payload: immutable(rpNarrationPayload({ controlId: identity.controlId, source: identity.sourceRequest.source, text: result.generated.response.text })),
+        return { ...identity, proof, effectReceiptRefs, retrievalEffectIds: retrievalCompletions.map(item => item.effectId), outputDispatch, rootStateVersion: root.stateVersion, payload: immutable(rpNarrationPayload({ controlId: identity.controlId, source: identity.sourceRequest.source, text: result.generated.response.text })),
             chatIntegrity: chat.integrity, locator: control.locator, prefixDigest: identity.prefixDigest,
             hostFence: { hostBootId: fence.hostBootId, generation: fence.generation } };
     });
@@ -620,7 +620,7 @@ export class NativeRpOrchestrationAuthority {
             fail('native_orchestration_source_stale');
         if (state.graphSnapshot) {
             const root = await this.#execution().runs.get(state.handle, state.graphRunId);
-            if (root.graphRevision !== state.graphSnapshot.graphRevision || hash(root.graph) !== state.graphSnapshot.graphHash) fail('native_orchestration_source_stale');
+            if (root.graphRevision !== state.graphSnapshot.graphRevision) fail('native_orchestration_source_stale');
         }
         if (state.memoryDescriptorDigest) {
             const descriptor = await NativeMemoryAuthority.prototype.rpContextDescriptor.call(this.owner.memoryAuthority, state.handle,
@@ -789,7 +789,7 @@ export class NativeRpOrchestrationAuthority {
             || selected.judge?.configDigest !== state.selected.judge?.configDigest
             || !equal(selected.judge?.candidates.map(item => item.configDigest) ?? [], state.selected.judge?.candidates.map(item => item.configDigest) ?? [])) fail('native_orchestration_source_stale');
         inspectNativeRpOutputIdentity(capture, { handle, host: state.host, rpControl: this.owner.rpControl });
-        return { allowed: true, runId: root.runId, epoch: root.epoch, rootStamp: hash(root), resultRef: state.narrationResultRef,
+        return { allowed: true, runId: root.runId, epoch: root.epoch, rootStateVersion: root.stateVersion, resultRef: state.narrationResultRef,
             grantDigest: state.decision.grantDigest, sourceBindingDigest: root.sourceBinding.bindingDigest, outputAttemptId: state.outputAttemptId,
             modelEffectId: state.effectId, outputEffectId: state.outputEffectId, domainReceipt: original.domainReceipt };
     }
@@ -1726,7 +1726,6 @@ export class NativeRpOrchestrationAuthority {
         await service.runs.withSourceControl(handle, runId, () => service.runs.control(handle, controlCommandId('rp.planner.settle', state.attemptId), {
             ...runGuard(current), expectedGraphRevision: patchReceipt.newGraphRevision, expectedStateVersion: proposed.outcome.versions.stateVersion,
             operation: 'attempt.settle', detail: { attemptId: state.attemptId, patchId: patch.patchId } }, async ({ tx, root: active, now, deny }) => {
-            const stamp = hash(active);
             let actual, record, retrieval;
             try {
                 actual = await port.inspectResultCompletion(handle, { result, runId, effectId: state.effectId });
@@ -1735,7 +1734,6 @@ export class NativeRpOrchestrationAuthority {
                 retrieval = await readContextRetrievalCompletions(tx, handle, active, (await readEffect(tx, handle, active, state.effectId)).doc, record.doc);
                 if (record.doc.status !== 'running' || actual.payloadHash !== proof.payloadHash || !equal(record.doc.effectRefs, [state.effectId, ...retrieval.map(item => item.effectId)])) fail('native_orchestration_planner_producer_denied');
                 await this.#current(state);
-                if (hash(await service.runs.get(handle, runId)) !== stamp) return deny(new ConflictError('native_orchestration_planner_producer_denied'));
             } catch (error) {
                 if (error instanceof ConflictError || error.code === 'native_rp_source_missing') return deny(error);
                 throw error;
@@ -2094,7 +2092,7 @@ export class NativeRpOrchestrationAuthority {
         state.graphSteps = (profile.agentGraph?.drafts ?? []).map(node => ({ node, binding: state.selected.binding, plan: state.selected.plan,
             pin: state.selected.pin, resolved: state.selected.resolved, configDigest: state.selected.configDigest,
             ...(state.selected.audienceCapture ? { audienceCapture: state.selected.audienceCapture } : {}) }));
-        state.graphSnapshot = { graphRevision: snapshot.graphRevision, graphHash: hash(snapshot.graph) };
+        state.graphSnapshot = { graphRevision: snapshot.graphRevision };
         await this.#current(state);
     }
 

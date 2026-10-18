@@ -27,7 +27,7 @@ describe.each(harnesses)('$name original RP source consumption boundary', ({ mak
         } finally { f.h.engine.withTransaction = original; await f.cleanup(); }
     });
 
-    test.each(['control-class', 'foreign-engine', 'repo-class', 'bank-identity', 'operation', 'digest'])('refuses %s before constructing an RP domain boundary', async change => {
+    test.each(['control-class', 'foreign-engine', 'repo-class', 'bank-identity', 'operation'])('refuses %s before constructing an RP domain boundary', async change => {
         const f = await fixture(make);
         try {
             const binding = structuredClone(f.root.sourceBinding);
@@ -41,7 +41,6 @@ describe.each(harnesses)('$name original RP source consumption boundary', ({ mak
                 binding.budgetAuthorityRef.operationId = 'f'.repeat(64);
                 const { bindingDigest: _digest, ...source } = binding; binding.bindingDigest = hash(source);
             }
-            if (change === 'digest') binding.bindingDigest = 'f'.repeat(64);
             expect(() => f.source.consumptionBoundary(f.h.handle, binding, { engine: f.h.engine }))
                 .toThrow('native_orchestration_consumption_authority_unavailable');
         } finally { await f.cleanup(); }

@@ -24,8 +24,8 @@ const retrievalGrants = new WeakMap();
 export function assertOriginalSendBank(bank, { budgetPort, handle, authorityRef, effectId }) {
     const original = sendBanks.get(bank);
     if (!original || original.budgetPort !== budgetPort || original.handle !== handle || original.effectId !== effectId
-        || original.authorityDigest !== hashNativeDocument(authorityRef)
-        || original.authorityDigest !== hashNativeDocument(bank.authorityRef)) fail('native_orchestration_budget_bank_invalid');
+        || !equalNativeDocuments(original.authorityRef, authorityRef)
+        || !equalNativeDocuments(original.authorityRef, bank.authorityRef)) fail('native_orchestration_budget_bank_invalid');
 }
 
 /** Stable provider sub-send identity (§13.2): never random, one per Effect ordinal. */
@@ -405,7 +405,7 @@ export class BudgetPort {
             if (root.budgetAuthorityRef.domain !== 'session' || !original.quotaProof) fail('native_generation_budget_lane_denied');
             retrievalGrant = Object.freeze({});
             retrievalGrants.set(retrievalGrant, { budgetPort: this, handle, runId: root.runId, parentEffectId: original.effectId,
-                effectId, authorityDigest: original.authorityDigest, quotaProof: original.quotaProof, epoch: root.epoch,
+                effectId, authorityRef: original.authorityRef, quotaProof: original.quotaProof, epoch: root.epoch,
                 hostBootId: root.hostBootId, hostGeneration: root.hostGeneration });
         } else if (root.sourceBinding.sourceAuthority !== 'rp_chat' || root.budgetAuthorityRef.domain !== 'rp_chat') fail('native_generation_budget_lane_denied');
         return this.#sendBank(handle, { authorityRef: root.budgetAuthorityRef, limits, effectId, firstOrdinal: 0, assertCurrent, retrievalGrant });
@@ -413,14 +413,14 @@ export class BudgetPort {
 
     async #verifyRetrievalGrant(handle, proof, { authorityRef, snapshot, anchor, policy, attempt }) {
         const value = retrievalGrants.get(proof);
-        if (!value || value.budgetPort !== this || value.handle !== handle || value.authorityDigest !== hashNativeDocument(authorityRef)
+        if (!value || value.budgetPort !== this || value.handle !== handle || !equalNativeDocuments(value.authorityRef, authorityRef)
             || value.effectId !== attempt.orchestration.effectId || attempt.orchestration.ordinal !== 0) fail('native_generation_budget_lane_denied');
         const engine = this.sessionCore.runs.repo._engine;
         await engine.withTransaction(handle, async tx => {
             const root = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: value.runId }))?.doc;
             if (!root || root.cancelRequested || root.status !== 'running' || root.parentRef !== null || root.epoch !== value.epoch
                 || root.hostBootId !== value.hostBootId || root.hostGeneration !== value.hostGeneration
-                || hashNativeDocument(root.budgetAuthorityRef) !== value.authorityDigest || root.sourceBinding.sourceAuthority !== 'native_session'
+                || !equalNativeDocuments(root.budgetAuthorityRef, value.authorityRef) || root.sourceBinding.sourceAuthority !== 'native_session'
                 || root.sourceBinding.sourceRef.sessionId !== snapshot.session.sessionId) fail('native_generation_budget_lane_denied');
             const parent = (await readEffect(tx, handle, root, value.parentEffectId)).doc, child = (await readEffect(tx, handle, root, value.effectId)).doc;
             const input = parent.inputRef, task = root.sourceBinding.sourceRequest.taskRef;
@@ -517,7 +517,7 @@ export class BudgetPort {
             settleLocalWork: (attemptId, usage) => this.settleLocalWork(handle, authorityRef, attemptId, usage),
             nextOrdinal: () => ordinal,
         };
-        sendBanks.set(bank, { budgetPort: this, handle, effectId, authorityDigest: hashNativeDocument(authorityRef), quotaProof });
+        sendBanks.set(bank, { budgetPort: this, handle, effectId, authorityRef: structuredClone(authorityRef), quotaProof });
         return bank;
     }
 }

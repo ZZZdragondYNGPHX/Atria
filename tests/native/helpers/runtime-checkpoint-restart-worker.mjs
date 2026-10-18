@@ -1,3 +1,4 @@
+import '../../util/config.js';
 import { FsEngine } from '../../../src/storage/engines/fs-engine.js';
 import { SqliteEngine } from '../../../src/storage/engines/sqlite-engine.js';
 import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../../../src/native/model-prompt-runtime/persistence.js';

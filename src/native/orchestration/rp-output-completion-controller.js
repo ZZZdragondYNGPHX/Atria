@@ -30,7 +30,7 @@ export class RpOutputCompletionController {
         const { runs, budgetPort } = this.execution;
         const authorize = () => NativeNarratorOrchestrationAuthority.prototype.authorizeRpOutputCompletion.call(this.host.turnOrchestration, { handle, tx, capture });
         const first = await authorize(), root = await runs.get(handle, first.runId);
-        if (first.allowed !== true || first.rootStamp !== hash(root) || first.sourceBindingDigest !== root.sourceBinding.bindingDigest || root.outputClaims.length) fail('native_rp_output_denied');
+        if (first.allowed !== true || first.rootStateVersion !== root.stateVersion || first.sourceBindingDigest !== root.sourceBinding.bindingDigest || root.outputClaims.length) fail('native_rp_output_denied');
         const narration = await readRpNarrationResult(tx, handle, root);
         const closure = await BudgetPort.prototype.observeEffectClosure.call(budgetPort, handle, {
             authorityRef: root.budgetAuthorityRef, effectIds: [...rpNarrationProviderEffectIds(narration), first.outputEffectId] }, { tx, allowUnknownUsage: true });

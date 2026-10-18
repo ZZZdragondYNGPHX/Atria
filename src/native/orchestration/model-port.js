@@ -272,7 +272,7 @@ export class ModelPort {
                     || Array.isArray(generated.response.toolCalls) && (project ? generated.response.toolCalls.length <= 32 : generated.response.toolCalls.length === 0))) {
                     const outputType = project ? 'json' : 'text';
                     completion = immutable({ handle, hostBootId: root.hostBootId, hostGeneration: root.hostGeneration,
-                        binding: pending.binding, observationHash: hash(pending.observation),
+                        binding: pending.binding, observation: pending.observation,
                         responseHash: hash(generated.response), snapshotHash: hash(generated.snapshot),
                         descriptor: { runId, effectId, producerAttemptId: finalIntent.nodeAttemptId, epoch: root.epoch,
                             sourceBinding: root.sourceBinding, receiptRef: finalSaved.receiptRef, payloadHash: hash(resultPayload(generated.response, outputType)), outputType } });
@@ -330,7 +330,7 @@ export class ModelPort {
                 || intent.epoch !== root.epoch || intent.status !== 'confirmed' || completion.binding !== digest(intent))
                 fail('native_orchestration_model_result_completion_stale');
             const saved = await this.#saved(handle, tx, root, intent);
-            if (!saved || !equalNativeDocuments(saved.receiptRef, descriptor.receiptRef) || hash(saved.observation) !== completion.observationHash
+            if (!saved || !equalNativeDocuments(saved.receiptRef, descriptor.receiptRef) || !equalNativeDocuments(saved.observation, completion.observation)
                 || saved.observation.dispatchEvidence.reference.responseHash !== completion.responseHash
                 || saved.observation.dispatchEvidence.reference.finalRequestHash !== completion.snapshotHash)
                 fail('native_orchestration_model_result_receipt_changed');

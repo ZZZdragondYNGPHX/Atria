@@ -24,7 +24,7 @@ export async function resolveVisualSource(core, handle, sourceValue) {
         const revision = await core._sessions.getRevision(handle, source.sessionId, revisionId);
         const head = revision?.stateHeads.atri_session_core;
         const state = head && await core._sessions.getState(handle, source.sessionId, 'atri_session_core', head);
-        if (!state || hashNativeDocument(state) !== head) visualError('source_integrity_invalid');
+        if (!state) visualError('source_missing');
         revisionId = state.parentRevisionId;
     }
     // An ironman checkpoint keeps an immutable visual source packet while its

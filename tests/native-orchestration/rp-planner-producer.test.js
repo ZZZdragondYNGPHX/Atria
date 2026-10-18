@@ -80,7 +80,7 @@ describe.each(harnesses)('$name real RP Planner producer', ({ make }) => {
             await expect(f.run()).rejects.toThrow();
             expect(f.requests).toHaveLength(1);
             const roots = await f.h.engine.withTransaction(f.h.handle, tx => tx.listResources({ kind: K.orchestrationRun, handle: f.h.handle }));
-            expect(roots).toHaveLength(1); expect(roots[0].doc.status).toBe(problem === 'binding-revoked' ? 'reconciling' : 'blocked'); expect(roots[0].doc.outputClaims).toEqual([]);
+            expect(roots).toHaveLength(1); expect(roots[0].doc.status).toBe('blocked'); expect(roots[0].doc.outputClaims).toEqual([]);
             const bank = Object.values((await f.control.status(f.h.handle, f.controlId)).operations)[0].compute;
             expect(bank.attempts).toHaveLength(1); expect(bank.attempts[0].status).toBe('settled');
             expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(2);
