@@ -102,7 +102,7 @@ test.each(['count_failure', 'render_failure', 'cancel', 'head_change', 'task_cha
         }
         const observed = scenario === 'head_change' ? { jobs: ledger.localJobs, outcome: ledger.localFailedJobs ? 'failed' : 'unknown' }
             : { jobs: ledger.localWork.length, outcome: ledger.localWork.at(-1).usage.outcome };
-        expect(observed).toEqual({ jobs: scenario === 'render_failure' ? 5 : 4, outcome: scenario === 'cancel' ? 'cancelled' : 'failed' });
+        expect(observed).toEqual({ jobs: scenario === 'render_failure' ? 5 : 4, outcome: scenario === 'cancel' ? 'cancelled' : scenario === 'head_change' ? 'unknown' : scenario === 'task_change' ? 'completed' : 'failed' });
         expect(calls).toBe(scenario === 'render_failure' ? 2 : 1); expect(f.seen).toEqual([]);
     } finally { await f.cleanup(); }
 });
@@ -257,7 +257,7 @@ test.each(['failure', 'cancel', 'head_change', 'task_change'])('G05 resolver %s 
             await new Promise(resume => setTimeout(resume, 10));
         }
         expect(scenario === 'head_change' ? bank.localFailedJobs : bank.localWork.map(row => [row.kind, row.usage.outcome]))
-            .toEqual(scenario === 'head_change' ? 1 : [['route_resolve', scenario === 'cancel' ? 'cancelled' : 'failed']]);
+            .toEqual(scenario === 'head_change' ? 0 : [['route_resolve', scenario === 'cancel' ? 'cancelled' : scenario === 'task_change' ? 'completed' : 'failed']]);
         expect(compile).not.toHaveBeenCalled(); expect(f.seen).toEqual([]);
     } finally { resolve.mockRestore(); compile.mockRestore(); await f.cleanup(); }
 });

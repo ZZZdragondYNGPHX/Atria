@@ -84,6 +84,11 @@ export async function reviewPersonaBackup({ sourceEngine, sourceHandle, sourceDi
         const target = await targetEngine.withTransaction(targetHandle, tx => tx.getResource({ ...item.key, handle: targetHandle }));
         if (target && target.integrity !== item.hash) conflicts.push(item.key);
     }
+    for (const avatar of actual.avatars) {
+        const target = await targetEngine.withTransaction(targetHandle, tx => tx.getResource({ kind: K.assetRef, handle: targetHandle, assetId: avatar.assetId }));
+        if (target && ['assetId', 'contentHash', 'size', 'mediaType', 'logicalName'].some(field => target.doc[field] !== avatar[field]))
+            conflicts.push({ kind: K.assetRef, assetId: avatar.assetId });
+    }
     const sourceRepo = new PersonaRepo({ engine: sourceEngine, assetStore: new AssetStore({ engine: sourceEngine, directoriesByHandle: () => sourceDirs }) });
     const defaultStatus = actual.defaultSelection ? (await sourceRepo.get(sourceHandle, { ref: actual.defaultSelection })).root.archived ? 'archived' : 'available' : 'none';
     const currentDefault = await targetEngine.withTransaction(targetHandle, tx => tx.getResource({ kind: K.personaDefault, handle: targetHandle }));

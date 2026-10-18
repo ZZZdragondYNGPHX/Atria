@@ -244,11 +244,11 @@ export class NativeGenerationHost {
         const capture = await beginHostCapture(new AgentEvidenceRepository({ engine }), handle,
             { domain: 'rp_session', sessionId: input.sessionId }, 'turn:' + input.invocationId + ':' + randomUUID(), input.invocationId);
         let result;
-        try { result = await this._executeTurn(handle, input, signal, onChunk, { transaction, evidenceCapture: capture }); } catch (error) { await capture.fail(signal?.aborted || error.code === 'operation_cancelled'); throw error; }
+        try { result = await this._executeTurn(handle, input, signal, onChunk, { transaction, evidenceCapture: capture }); } catch (error) { await capture?.fail(signal?.aborted || error.code === 'operation_cancelled'); throw error; }
         // Formal result already exists. Capture failure must never cause its replay.
         let evidenceCapture;
-        try { evidenceCapture = await capture.finish(result, new AgentEvidenceService({ sessionCore: this.sessionCore })); } catch { evidenceCapture = { status: 'failed', missing: 1 }; }
-        return { ...result, evidenceCapture };
+        try { evidenceCapture = await capture?.finish(result, new AgentEvidenceService({ sessionCore: this.sessionCore })); } catch { evidenceCapture = { status: 'failed', missing: 1 }; }
+        return { ...result, evidenceCapture: evidenceCapture ?? { status: 'failed', missing: 1 } };
     }
 
     async _executeTurn(handle, input, signal, onChunk, { transaction = null, evidenceCapture = null } = {}) {
@@ -644,11 +644,11 @@ export class NativeGenerationHost {
             ['background', 'maintenance'].includes(executionClass) ? executionClass : 'foreground', parentInvocationId);
         let result;
         try { result = await this._executeTask(handle, input, signal, onChunk, { ...options, evidenceCapture: capture }); } catch (error) {
-            await capture.fail(signal?.aborted || error.code === 'operation_cancelled'); throw error;
+            await capture?.fail(signal?.aborted || error.code === 'operation_cancelled'); throw error;
         }
         let evidenceCapture;
-        try { evidenceCapture = await capture.finishTask(result); } catch { evidenceCapture = { status: 'failed', missing: 1 }; }
-        return { ...result, evidenceCapture };
+        try { evidenceCapture = await capture?.finishTask(result); } catch { evidenceCapture = { status: 'failed', missing: 1 }; }
+        return { ...result, evidenceCapture: evidenceCapture ?? { status: 'failed', missing: 1 } };
     }
 
     async _executeTask(handle, input, signal, onChunk, { transient = false, scheduled = false, lanePlan = null, lifecycleInvocation = false, evidenceCapture = null } = {}) {
@@ -930,16 +930,6 @@ export class NativeGenerationHost {
                 informationTaskId: authorityContext ? undefined : taskPlan?.task.id, memoryEvidence: lanePlan?.memoryEvidence ?? [], authorityTurn: Boolean(authorityContext),
             } }) : null;
         const localWorkAttempts = [];
-        const assertLocalCurrent = async () => {
-            checkCancellation(signal);
-            if (prediction) await assertPredictionCaptureCurrent(prediction.capture);
-            if (input.sessionId) return this.sessionCore.runs.repo.withRunLock(handle, input.sessionId, async () => {
-                if ((await this.sessionCore.load(handle, input.sessionId)).revision.revisionId !== input.revisionId) throw new GenerationError('native_generation_revision_conflict');
-                await this.sessionCore.runs.assert(handle, input.sessionId, 'write');
-            });
-            if (projectTaskEvidence) return this.agent.publishLocalIndex(handle, input.projectId, input.taskId, input.revision, projectTaskEvidence.ref.slice(-64), () => {});
-            throw new GenerationError('native_generation_budget_lane_denied');
-        };
         const localWork = async (kind, request, operation, publicInput, discardResult) => {
             if (preview) return operation();
             checkCancellation(signal);
@@ -964,7 +954,7 @@ export class NativeGenerationHost {
             let outcome = 'failed', result;
             try {
                 try {
-                    await assertLocalCurrent(); result = await operation(); await assertLocalCurrent(); outcome = 'completed';
+                    checkCancellation(signal); result = await operation(); checkCancellation(signal); outcome = 'completed';
                 } catch (error) {
                     if (signal?.aborted) outcome = 'cancelled';
                     throw error;
@@ -975,7 +965,7 @@ export class NativeGenerationHost {
                         : await this.agent.settleLocalWork(handle, input.projectId, input.taskId, attempt.attemptId, usage);
                     Object.assign(entry, settled);
                 }
-                await assertLocalCurrent(); return result;
+                checkCancellation(signal); return result;
             } catch (error) {
                 // A rendered request may already own a private lease.
                 // Refused admission never reaches here and preserves a

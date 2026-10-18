@@ -2,7 +2,10 @@ import { createEvidenceTrace } from '../../../public/shared/agent-evidence-trace
 import { hashNativeDocument } from '../repositories/common.js';
 
 export async function beginHostCapture(repository, handle, scope, rootRunId, invocationId = rootRunId, lane = 'foreground', parentInvocationId = null) {
-    const marker = await repository.begin(handle, { scope, rootRunId, origin: 'host' });
+    let marker;
+    try { marker = await repository.begin(handle, { scope, rootRunId, origin: 'host' }); } catch {
+        return null;
+    }
     const trace = createEvidenceTrace();
     let sequence = 0;
     const append = event => trace.append({ runId: rootRunId, lane, ...event });
@@ -19,7 +22,7 @@ export async function beginHostCapture(repository, handle, scope, rootRunId, inv
         lane,
         nextAttempt(requestId) { const next = (attempts.get(requestId) || 0) + 1; attempts.set(requestId, next); return next; },
         append(event) { if (!closed) append(event); },
-        async attempt(event) { if (!closed) { append(event); await flush(); } },
+        async attempt(event) { if (!closed) append(event); },
         async finish(snapshot, service) {
             const receipt = snapshot.states.atri_task_results?.records.find(item => item.invocationId === invocationId);
             const messageId = receipt?.authorityReceipt?.messageId;
