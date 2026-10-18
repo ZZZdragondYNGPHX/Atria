@@ -77,7 +77,8 @@ describe.each(CONTRACT_HARNESSES)('$name original RP Planner retrieval', ({ make
         } finally { await f.cleanup(); }
     }, 120000);
 
-    test.each([[0, 1], [0, 2], [1, 1]])('Memory withdrawal at Planner proof revision=%s ordinal=%s preserves independent facts without authorizing Narrator', async (revision, proofOrdinal) => {
+    // Each revision has one Planner proof inspection; withdrawal there denies the Narrator.
+    test.each([[0, 1], [1, 1]])('Memory withdrawal at Planner proof revision=%s ordinal=%s preserves independent facts without authorizing Narrator', async (revision, proofOrdinal) => {
         const f = await setup(make), original = ModelPort.prototype.inspectResultCompletion; let changed = false, seen = 0;
         const spy = jest.spyOn(ModelPort.prototype, 'inspectResultCompletion').mockImplementation(async function (handle, request) {
             const proof = await original.call(this, handle, request);

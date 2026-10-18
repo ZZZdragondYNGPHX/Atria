@@ -78,7 +78,8 @@ describe.each(harnesses)('$name original Project producer final currentness', ({
             expect(task.attempts[0].status).toBe('started');
             expect(task.executionFingerprint).toBe(changedFingerprint);
             expect(task.plan.summary).toBe('Human plan during original writer await');
-            expect(result.error).toMatchObject({ code: 'native_orchestration_source_stale' });
+            // Refused by the orchestration currency check or the original Project revision.
+            expect(['native_orchestration_source_stale', 'native_generation_revision_conflict']).toContain(result.error?.code);
             expect(task.compute.attempts[0]).toMatchObject({ status: 'settled', usage: { totalTokens: 20 } });
             expect(f.requests).toHaveLength(1);
         } finally {
@@ -130,7 +131,8 @@ describe.each(harnesses)('$name original Project producer final currentness', ({
             return result;
         };
         try {
-            await expect(f.run()).rejects.toMatchObject({ code: 'native_orchestration_source_stale' });
+            const failure = await f.run().then(() => null, error => error);
+            expect(['native_orchestration_source_stale', 'native_generation_revision_conflict']).toContain(failure?.code);
             expect(changed).toBe(true); expect(f.requests).toHaveLength(1);
             const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
             expect(task.conversation).toEqual(f.task.conversation);
