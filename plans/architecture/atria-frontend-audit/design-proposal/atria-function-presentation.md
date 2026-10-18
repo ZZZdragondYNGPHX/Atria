@@ -229,6 +229,18 @@ Studio（S04）、Library 修订（K03–K07）、Persona（P02）、Prompt（Q0
 | S14 | Skills declarations：Available、Add、Remove、Fields/Source、Review；接通／保留 | 资源树 › Skills：左边是可用 Skills（全局 + 项目），右边是已声明列表 | 声明不等于已安装或有执行权限；安装管理在 扩展 › Skills | D：两栏；M：已声明列表 +「添加」全屏选择器 | 仅文档 | — |
 | S15 | Plugin resource（动态，只读 inspection）；接通/条件／保留 | 资源树 › Plugins 下的动态节点：只读 JSON 检视，标题处写「插件未提供专用编辑器」 | 不把 JSON 检视画成完整表单 | 两端相同 | 仅文档 | — |
 
+### 3.7 工坊：Source、作品界面、Assets 与交付（S16–S22）
+
+| 功能 ID | 界面与操作 | 实现与结果 | 桌面／手机 |
+| --- | --- | --- | --- |
+| S16 | Source 文件列表、完整原文、Diff、Review、重新读取 | 每文件草稿；原保存接口返回格式问题，晚响应不覆盖新选择 | 文件列表／编辑；手机列表→全屏原文 |
+| S17 | 作品 UI 的组件／文件选择、属性／原文、源问题反馈、Review 与临时预览 | 沿原 Source Graph；结构化／原文同稿，不等于 Prompt Draft Preview | 编辑与预览；手机分段 |
+| S18 | Assets 导入／替换、属性、预览、Used By、删除 | 原项目 ChangeSet；引用先处理，Apply 后正式保存 | 资源列表与详情；手机完整操作 |
+| S19 | EntryPoint 与作品预览、Reload、状态反馈 | 固定 Project revision，用原 Host Bridge；关闭预览不写游戏 | 同一舞台；手机分段切换 |
+| S20 | 场景资料编辑／载入／保存，用户手动 Simulation | 原产品功能，不默认执行；结果不作为文学认证或其它功能开发前置 | 单列表单与结果 |
+| S21 | 构建问题、依赖提示、Build `.atria` 与下载 | 原 Build 服务；构建、导出、Library 安装分开 | 原输出与下载入口，手机同等可用 |
+| S22 | 删除项目的 exact 对象／影响说明、确认、取消 | 原 Project lifecycle；不删独立安装作品／Session/Save，不冒充可 Undo | 独立确认页／手机全屏层 |
+
 ### 3.8 工坊：Project Agent（A01–A04）
 
 | 审计功能 ID | 当前能力／实现状态 | 建议页面／入口／控件 | 状态／权限／恢复 | 桌面／手机 | HTML | 提案 |
@@ -236,7 +248,7 @@ Studio（S04）、Library 修订（K03–K07）、Persona（P02）、Prompt（Q0
 | A01 | Task chooser、Intent、Create Task、New Task；接通／保留 | 工坊 › AI 面板：标题「Project Agent · 可选」，当前任务卡片 +「新任务」；底部是补充要求输入框 |创建失败时保留 intent；Task ≠ 聊天记录| D：右侧面板（和 Inspector 切换）；M：「AI」分段 | 01·工坊；02·C | — |
 | A02 | Prepare only、Continue、计划步骤、会话与执行结果；接通／保留 | 任务卡片：阶段轨（规划、执行、评估、审阅、提交）+ 步骤清单 + 底部「仅准备」「继续」；预算行「4.2k / 20k tokens」 | planning、working、evaluating、repair、review、blocked、conflict、completed 各有不同的状态片；可以取消或接管 | 同 A01 | 01·工坊；02·C | — |
 | A03 | Inspect changes、Review & Commit / High-impact review、Human Takeover；接通／保留 | 任务卡片里的提议块：「提议 1 个 ChangeSet · 2 个操作」+ 影响说明 +「审阅并提交…」「检视变更」「接管」 | AI 不能提交；已提交但刷新失败时不能再提交；高影响变更显示真实风险；权限仍在 Host | D：面板；M：「审阅并提交」打开全屏 Review | 01·工坊；02·C | — |
-| A04 | Task 内 Goals、Experience/Eval/Evolution；部分／保留，受 E0 Gate | 任务卡片的「目标与评估」折叠区：链接到 智能体 › 目标与反馈 的同一条记录 | `source_unready` 显示为阻塞印记；不承诺自动优化通过 | 同 A01 | 01·工坊（「来源未就绪」任务） | — |
+| A04 | Task 内 Goals、Experience/Eval/Evolution；部分／保留；可选评价依原来源 | 任务卡片的「目标与评估」折叠区：链接到 智能体 › 目标与反馈 的同一条记录 | `source_unready` 显示为阻塞印记；不承诺自动优化通过 | 同 A01 | 01·工坊（「来源未就绪」任务） | — |
 
 ### 3.9 书库 / 工坊：Prompt 预设与资源编辑（Q01–Q12）
 
@@ -253,7 +265,7 @@ Studio（S04）、Library 修订（K03–K07）、Persona（P02）、Prompt（Q0
 | Q09 | 通用资源库：filter、origin、New/New revision、Archive/Restore、Delete、Used By、Fork/Derive；接通／重组入口 | 书库 › Prompt 预设 › 资源：共用修订、Used By、来源/自包含依赖、导入身份映射、Fork/Derive 和手动版本比较；官方/共享/私人是来源标记，不建第二资源库 | 导入生成本地独立 IDs，来源声明不能冒充签名认证；包原件只读、有引用不能删| 同 K07 | 仅文档 | P-06 统一资源详情 |
 | Q10 | Studio Prompt Authoring：resource kind、New/Edit、Attach exact、Fork/Derive、Used By；接通／整合 | 工坊 › 资源树 › Prompt 编排：游戏作者可直接选官方 RP/写作/Agent 任务基础模板或已共享的 exact Preset/Program，不必自制；按需 Fork/Derive；有新发行候选时先 Diff/Review，再经 Project ChangeSet/Review 绑定或升级 | 无需从零制作 Prompt；共享修订/离线导出不改变现有游戏绑定；| 同 S09 | 仅文档 | P-06 |
 | Q11 | Runtime Design：role、capabilities、推荐 Prompt/Generation、requirements、Inspect closure；接通／保留 | 工坊 › 资源树 › 运行需求：展示 Narrator/Agent 任务模板的需求、实际 Model/Route/Provider Capability 与适配结果 | 推荐 ≠ 玩家的 Route 或 Secret 配置；构建 closure 和运行时 slot 解析分开 | 两端卡片纵向 | 仅文档 | — |
-| Q12 | D8 全文无损双编辑、Authored/Effective/Wire 三层 Diff、未发布 Prompt Draft Preview；| Library 独立 Prompt 作者与 Studio 项目作者共用 Module/Program 的「编辑 / Authored / Effective / Provider Wire / 对比」，但不重复编译器；按需来源 Trace 解释父/子精确版本、条件、Anchor 纳入/排除、合法来源/位置和 Provider lowering；作者自测与独立受审质量标签必须区分；Diff 先校对 Program/Context/Route/Model/Compiler 身份，Token 计数等级如实标注 | **不能**在 Browser 自行拼 wire 或借 execute 做假预览；无游戏的独立 Host fixture Preview 仍待真正接通；付费试读必须显式 Route/预算/外发许可且不自动 Judge；Host 投影须受众脱敏，区分静态 exact 与本请求动态 Source/Grant 证据，版本/currentness 一致；来源 Contribution 只读不允许拖成指令；未接入时准确标 BLOCKED，不能伪装通用 Pass Trace/Replay 已实现 |M：完整分段与 Unified Diff| 仅文档；旧 HTML 的 BLOCKED 状态是当时快照 | 设计合同，不画成已接通 |
+| Q12 | D8 全文无损双编辑、Authored/Effective/Wire 三层 Diff、未发布 Prompt Draft Preview；| Library 独立 Prompt 作者与 Studio 项目作者共用 Module/Program 的「编辑 / Authored / Effective / Provider Wire / 对比」，但不重复编译器；按需来源 Trace 解释父/子精确版本、条件、Anchor 纳入/排除、合法来源/位置和 Provider lowering；作者手动试读与正式质量标签区分；Diff 分别记录 base/candidate 修订，固定 Context/Route/Model/Compiler 环境，Token 计数等级如实标注 | **不能**在 Browser 自行拼 wire 或借 execute 做假预览；无游戏的独立 Host fixture Preview 仍待真正接通；付费试读必须显式 Route/预算/外发许可且不自动 Judge；Host 投影须受众脱敏，区分静态 exact 与本请求动态 Source/Grant 证据，版本/currentness 一致；来源 Contribution 只读不允许拖成指令；未接入时准确标 BLOCKED，不能伪装通用 Pass Trace/Replay 已实现 |M：完整分段与 Unified Diff| 仅文档；旧 HTML 的 BLOCKED 状态是当时快照 | 设计合同，不画成已接通 |
 
 ### 3.10 运行：连接、模型、Route、检索与诊断（R01–R14）
 

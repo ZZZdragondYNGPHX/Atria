@@ -1,6 +1,6 @@
 # ARCH-DWE-01 · 有效世界、资料适用性与用户操作
 
-[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W14-B：有效视图优先、Claim/Source-aware Context**。本模块保留功能与逻辑合同；旧源码片段仅为背景，具体字段按原实现接线，不新增审查／测试阶段。历轮比较与确认历史见 Record。
+[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W14-B：有效视图优先、Claim/Source-aware Context**。本模块定义功能与逻辑合同，具体字段按原实现接线；旧源码与历轮讨论仅作背景。
 
 ## 1. 必须区分“固定作者资料”中的五种语义
 
@@ -47,7 +47,7 @@ Pinned PackageVersion / WorldRevision(s) / KnowledgeRevision(s)
 **候选查询锚点**（不要求全部存成冗余列）：
 - `sessionId`、`branchId`、`asOfRevisionId`、`gameTick`、`worldScope`；
 - `audience` / `perspective` / `purpose: runtime|display|inspect`，外加真实 Host 可授予的 Source/Scope 许可；
-- 只读投影返回 `current facts`、`historical facts`、`laws`、`unresolved/uncertain`、`sourceRefs`、`source authority/status`、`validity` 与 `effective projection anchor`，必要时另携带冲突/过滤原因。具体字段/ID 待正式 E0 后决定。
+- 只读投影返回 `current facts`、`historical facts`、`laws`、`unresolved/uncertain`、`sourceRefs`、`source authority/status`、`validity` 与 `effective projection anchor`，必要时另携带冲突/过滤原因。具体字段／ID 由对应原服务实现。
 
 **双重视图**：Host 结算用的规则/内部世界状态投影和玩家/NPC 的信息投影必须区别，可共享 Host 事实查询机制，但不能让 `narrator` 全知结果原样作为 NPC/普通玩家可读输出。**asOfGameTick 只是时间过滤，不自带秘密读取授权**。
 
@@ -91,7 +91,7 @@ Pinned PackageVersion / WorldRevision(s) / KnowledgeRevision(s)
 
 - [WorldRevision](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/world-knowledge.js) 主要有 `schema`、`baseline`、`knowledgeBindingIds`、资产引用及版本；`World State` 与 `WorldRevision` 已分离，但这不等于 Studio 已有世界实体/关系/法律的完整可视化作者界面。
 - [World Editor](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/scripts/native/world-editor.js) / [Studio World Editor](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/scripts/native/studio-worlds-editor.js) 当前主要是世界资源/JSON/源编辑；[Studio EntryPoint](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/scripts/native/studio-entrypoints-editor.js) 已可以固定 World IDs、知识 Binding、初始 overlay。
-- [Information Runtime](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-information-runtime.js) 提供 Exact Session/Branch/Revision/Scope 的 actor/task 受众投影和 source reads，但部分 actor 仍依固定 Package 声明；动态 Subject 的真实受众合法入口是 W11/W12 E0 阻塞。
+- [Information Runtime](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-information-runtime.js) 提供 Exact Session/Branch/Revision/Scope 的 actor/task 受众投影和 source reads，但部分 actor 仍依固定 Package 声明；动态 Subject 的合法受众由 WP-C 接入原 Host/Information。
 - [Native Chronicle Host](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-chronicle-host.js) 的已有 World Query 仍偏特定 Lifetime/History 域，不能伪称其已支持通用 `EffectiveWorldView(subject, asOfTick)`。
 - [World Game Session](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/scripts/native/experience/world/session.js) 依托 Native Runtime/World Revision/Reducer 和受控 revision commit，提供状态/事件来源；不能把它直接视为“全域 World Fact graph”已完成。
 

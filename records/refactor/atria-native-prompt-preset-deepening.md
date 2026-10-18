@@ -334,3 +334,12 @@
 - 统一 Claude/E0 更新原 Project Task→同实例Studio消费围栏、Budget tx纯读和真实 committing 领域拒绝；明确是后续生产组合前置，不授Model/Actor grant，不外推跨任意Studio实例或完整V3 Project正文。既有原Project功能和Review/Commit保留，原RP ChatRepo围栏仍未接。
 - Project Executor/计费后Context/active attempt-request-conversation与其余P3/P4后端继续原V3实施；无Run/Projection/Approval API，P3 NOT_READY。原测试最终44、相关58、指定SQL与未跑jointfake SQL、SURVIVED后补强probe等仅归其Record，本次不复跑或借记。
 - 仅更新同一前端交接/E0/唯一Record，不合源码/main、不改前端、不接手未完后端；
+
+## 2026-10-18 — 企划按功能实现重新整理（仅文档）
+
+- 按用户当前要求检查提示词／全产品前端与动态世界两案，不执行验证或测试，也不引入独立审查／子代理。企划改以用户操作、原服务归属、尚缺功能和依赖顺序为主，移除旧 E0/Gate／全量审计／跨端取证作为实施前置的要求。
+- 提示词入口、后端分工、实现依赖、D4/D5/D7/D8 与统一前端交接对齐后续九轮设计；独立 Library 作者、单一显式顺序／Anchor／Contribution、exact 增量继承、样例预览／手动试读、模板、发行／升级、独立视觉任务均列为具体接线工作。旧 V3 第二十四组快照不再限制最新产品范围。
+- 明确可选 Quality/Eval 的来源要求只约束相应自动评价／晋升／认证，普通编辑、保存、导出、分享和生成继续可用；产品内的 Review、预览、Simulation、连接检测与 Build 不等于本轮运行工程测试。
+- 修正两项功能矛盾：base/candidate 可以是不同 Program/Module 修订，Diff 固定的是来源与执行环境；历史口头承诺的不确定性不能消除原领域仍有效的正式债务，NPC 遗忘或 Context 未召回不改世界状态。
+- 补齐前端正文遗漏的 S16–S22：Source、作品 UI 编辑、Assets、作品预览、手动 Simulation、构建下载、项目删除；排除 P-03 旧编排折叠过渡区，保留原生有效功能。三端说明改为具体操作要求，不作为测试矩阵。
+- 本轮仅阅读／编辑文档及读取 Git 状态与历史；未修改产品代码、未合分支，未执行测试、验证／检查脚本、构建、浏览器、模型或 Provider 请求。既有并行文档提交与其它工作空间保持；历史实际结果不回标。

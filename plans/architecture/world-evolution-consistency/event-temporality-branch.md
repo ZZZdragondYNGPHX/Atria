@@ -1,6 +1,6 @@
 # ARCH-DWE-01 · 世界事件、有效时间与分支
 
-[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W13-B：原生 Revision 提交、双时间与分支投影**。本模块保留功能与逻辑合同；旧源码片段仅为背景，具体字段按原实现接线，不新增审查／测试阶段。历轮比较与确认历史见 Record。
+[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W13-B：原生 Revision 提交、双时间与分支投影**。本模块定义功能与逻辑合同，具体字段按原实现接线；旧源码与历轮讨论仅作背景。
 
 ## 1. 五类容易混为一谈的“发生”
 
@@ -62,6 +62,6 @@
 - 当前 SavePoint 锚定已经提交的 `sessionId + branchId + revisionId`；分叉点以前已存在的 Subject 可沿共同祖先继承稳定身份及已合法成立关系。
 - 分叉后，A 支线的借款、死亡、情报、发言事件和认知基于 A 的 revision 演进，不得进入 B 的有效世界视图，尽管同一 Subject 的世界身份来自共同祖先。**身份共享祖先，不意味着状态同步**。
 - 在 A 支线注册之后才出现的阿洛，不会因在 B 出现同名角色而自动成为 B 的已登记实体。Subject ID 的具体分配方式须在保留唯一 Origin/Revision 语义下确定；避免单纯 `branchId + name` 主键的误配。
-- 事件若起源于父分支，读取子分支历史可以通过已确认祖先 Revision 继承，但不应重新“拷贝提交”以导致双重执行；后续事件与本支的 `Branch/Revision` 分离，具体事件 ID/Clock 约束待 E0。
+- 事件若起源于父分支，读取子分支历史可以通过已确认祖先 Revision 继承，但不应重新“拷贝提交”以导致双重执行；后续事件与本支的 `Branch/Revision` 分离，具体事件 ID／Clock 沿原领域实现。
 - 已排队的 Task、LLM 提案、通信、HCM 计算结果必须保留捕获时的 `Session/Branch/Revision/Scope Epoch`。不可让一条旧线的信件/秘密通过派生索引进入新的分支。
 - 可重建投影和 HCM 索引对`branch, revision, audience` 精确分区/失效，不维护独立的 `global latest subject state`。

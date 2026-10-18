@@ -1,6 +1,6 @@
 # ARCH-DWE-01 · 主体实例化与按需能力绑定
 
-[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W10-B：固定定义、Session 实例与按需能力分离**。本模块保留功能与逻辑合同；旧源码片段仅为背景，具体字段按原实现接线，不新增审查／测试阶段。历轮比较与确认历史见 Record。
+[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W10-B：固定定义、Session 实例与按需能力分离**。本模块定义功能与逻辑合同，具体字段按原实现接线；旧源码与历轮讨论仅作背景。
 
 ## 1. 四种“实体出现”事件不可混同
 
@@ -53,7 +53,7 @@ Library / Studio (immutable authored revisions)
 - 一个 `AuthoredActorProfile` 是表达/创作资产，不必与 Subject 一对一。它可以被不同 Session 重用，甚至用于同一世界里的两个双胞胎模板（若作者明确如此配置），而这两个角色仍是两个 Subject。
 - 一名 Subject 可在剧情中改名、伪装、采用不同对外表达或语音形象；这些是经授权的呈现关系/认知可见性变化，不是换一个真实世界身份。角色卡源文不能被玩法反向覆盖。
 - 某个作者已预设的人物即使不参与当前对话/没有独立 Perspective，也可作为已存在的 Subject 被国家统治者、地图、事件或任务引用。
-- 可以使用“无世界书/世界选择”的纯叙事起点与多 World Package；此时哪个作用域拥有 Subject Identity 需结合实际主机的 `worldSelection/initialState` E0 审核，不能擅自禁止这一现有入口或凭空增加跨世界全局实例。
+- 可以使用“无世界书/世界选择”的纯叙事起点与多 World Package；此时 Subject 属 Session，World 关联沿原 `worldSelection/initialState` 接入，不能擅自禁止这一现有入口或凭空增加跨世界全局实例。
 
 ### 3.2 初始化与显式绑定
 
@@ -61,7 +61,7 @@ Library / Studio (immutable authored revisions)
 
 **不要求把每条背景文案的名字都实例化**：一份历史文献里的“民间传闻有个黑骑士”，应先是 Source Claim；一条已确定的历史事实如“老皇帝早已逝世”可保留历史主体引用，但不是必需的活跃 NPC；预设的地理/组织/物品也应遵从各自可追踪用途和成本。
 
-具体生成 UUID、稳定索引、origin binding 的协议待 E0 决定，不预设当前 `entity_*` ID 已存在。
+具体 ID、稳定索引和 origin binding 沿原 Session 实现，不预设当前 `entity_*` ID 已存在。
 
 ## 4. 运行时新 NPC 的能力接纳：严格分离三类动作
 
@@ -71,7 +71,7 @@ Library / Studio (immutable authored revisions)
 2. **Presentation / Participation Binding**：当此 Subject 需要发言/呈现头像/语音时，确定其合法的表达来源。可以选择已创作 Actor 模板、受控制的运行时风格描述或默认呈现规则，**不修改原始 Package Manifest**。说话者应映射到实际 Subject，不因模板 ActorId 相同而串人。
 3. **Perspective / Task Admission**：根据存在事实、角色/作用域权限和证据授予该 Subject 当前合法的 Memory/Cognition/Task 视图与有限行动能力；没有准入就只能按既有公开世界逻辑存在，不能借用 Narrator 全知身份。
 
-[Information Contract](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-information-contract.js) 的 actor/view 定义有静态列表限制。W10 不得宣称动态 NPC 已经能够使用全部这些消费者。最终实施可在消费者审计后考虑**把发言者身份和表达模板引用分开**，但不是先决定具体 `ParticipantRef` Schema。
+[Information Contract](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-information-contract.js) 的 actor/view 定义有静态列表限制。W10 不得宣称动态 NPC 已经能够使用全部这些消费者。实施时在对应消息与展示使用者中**把发言者身份和表达模板引用分开**，但不是先决定具体 `ParticipantRef` Schema。
 
 ### 需要接线的使用者
 

@@ -74,18 +74,8 @@ I2 不意味着数值上“角色 voice priority > World Truth”。表达优先
 - 发布的 Plan 是 static exact pins；运行时 Context/source grant 有自身 currentness。 **发送前**遇 Source/Grant/Branch/WorldTick/currentness 变化，只有原 Host 可以重新选择 Context、重新编译与重新计数或阻断；失败重试须遵守原 V3 Attempt/Receipt 幂等和真实费用语义。
 - G1 的单 Narrator 不得被编译层变成每轮固定 Planner/Judge；失败局部重做使用新 attempt/effect identity，原业务已提交副作用不盲重发。
 
-## 7. D4 接口阻塞矩阵（设计冻结 ≠ 功能完成）
+## 7. 实现接线
 
-| 目标 | 当前证据 | 实施期必须证明 |
-| --- | --- | --- |
-| Node 精确 Program 选择 | 当前 Node policy 只有 `agentPinId`；`dependencyPins` 可承载通用 resourceRef，但尚无受信 Program 消费主链 |不接受 Browser 未审越权覆盖|
-| Node Program 与 Route Program 不同 | 当前 RouteResolver 只读取 `route.promptProgramRef`，execute 无普通受信覆盖 |不借另一套 Model Router|
-| 精确继承/表达 Overlay | `PromptCompiler.flattenPromptProgram` 支持 parent/derive；E2 分层尚是方案 | Program 引用闭包、Module 决定、原文 round trip、Actor Voice/Scene 独立、实际有效来源 |
-| NodeAttempt 快照/恢复 | 原 `compiledRequestBinding` 已有指纹；V3 RunLedger 仍在开发 | Send/Resume/Context currentness、Attempt/Receipt、异步更新、权限撤销、模型 Provider 切换的端到端证据 |
-| 质量与成本 | 原 `plan-prompt` target / Experience/Eval、Context/Budget | 新 Candidate/Plan CAS，不重复 Model 费用与副作用；G1 单模型路径无强制额外调用 |
+原可信 `programSelection` 与 V3 Node/Plan/ModelPort 整合，RouteResolver/Compiler/GenerationService 持有最终语义；前端不传执行覆盖。exact 继承、新顺序与 Overlay 同时更新原 resolver、编辑器、Preview 与冻结闭包。发送前动态 Context 由原 Host 重建或拒绝，实际费用／已提交效果不随重做抹掉。
 
-所有产品代码工作留后续正式 E0/实施。
-
-## 8. 下一阶段
-
-D5 在 [semantic-ir-lowering.md](semantic-ir-lowering.md) 讨论 Provider-neutral IR、各 Adapter lowering、硬/软冲突诊断、稳定/动态缓存、Context 与真实 Provider 计数预算。D5 未作用户决策；后续仍遵循先更新同一 Plan/Record、提交 docs，再讨论 D6。正式重构零 ST/旧 Workspace/API 兼容；V3 T2 唯一 Host 权威不变。
+Provider 与编排细节见 [D5](semantic-ir-lowering.md)，具体工作见[后端分工](backend-implementation.md)。旧源码表是背景，不把旧 Node 字段／Profile 当最新能力上限，也不新增端到端取证或质量测试阶段。

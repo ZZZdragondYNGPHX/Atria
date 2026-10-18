@@ -1,6 +1,6 @@
-# 覆盖、证据方法与未范围
+# 历史盘点附件与适用范围
 
-基线和任务状态见 [index](index.md)。
+当前功能范围见 [index](index.md)。以下方法、数量与附件说明保留原静态盘点背景，不是本次执行结果，也不是待执行的扫描／测试清单。
 
 ## 实际执行的方法
 
@@ -31,8 +31,6 @@
 | [v3-test-catalog.tsv](evidence/v3-test-catalog.tsv) | 15 | 固定最新V3的native-orchestration测试case目录，执行均NOT_RUN；与main的测试目录分开|
 
 source-files 的 `literalReachable` 从 script/shell/experience 根沿可解析 literal 边计算，覆盖根会使它比实际启动路径宽；`false` 不等于 dead code，`true` 不等于当前用户能看到。绝不据此自动删除代码。
-
-main代表性测试与V3 Port hook的静态解释见 。
 
 883 个 JS/MJS 文件 AST parse diagnostics 为 0。
 

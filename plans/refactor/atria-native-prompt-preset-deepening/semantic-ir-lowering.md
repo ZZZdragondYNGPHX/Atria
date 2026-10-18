@@ -1,6 +1,8 @@
 # D5 已冻结：语义 PromptIR、Provider Lowering、冲突诊断、缓存和预算
 
-## 1. 实际代码线索与明确的未完成项（静态）
+## 1. 2026-10-15 的源码背景与设计出发点
+
+下表记录当时的输入形态和问题；后续可信 Program selection、Typed lowering 与 Draft Preview 已有实现，当前接线按[功能依赖](e0-audit.md)推进，不把旧“尚未实现”重新变成开发任务。
 
 | 已有代码/文档 | 目前真实事实 | D5 待解决 |
 | --- | --- | --- |
@@ -29,7 +31,7 @@ S2 的 `SemanticBlock` 只是**设计例子，不是已实现接口**，不允�
 
 **与现有实现的差距**：当前 `public/shared/prompt-module-order.js` 使用 `target → priority(desc) → Module ID`，Stage 内 `moduleRefs` 的数组顺序并非发送顺序。实施时必须将作者顺序与编译规则做成一个权威转换，审查 `parentRef/derive` 后的顺序、原生已发布 exact 引用与行为变化，再在前端呈现同一结果；不能保留优先级与“显式顺序”两套冲突的排序机制，也不能把单纯拖拽 UI 宣称为新语义。**继承方向已定为 exact parent + 显式差异**：替换/禁用/配置沿用原有效位置，新增需明确插入点；父修订升级必须显式选择并复审，绝不 follow latest。**请求级动态装配已定为由原 Host/Context Authority 选择**：作者 Stage/Module 条件仅消费合法类型化值；Host 先筛 Source/Actor/Audience/Grant 再给 Compiler，不能凭作者条件扩大读取范围；静态 Program 不被动态来源反向修改。来源类别与必需性是消费声明，不是授权。Host 对每次请求由既有 ContextPlan 派生 Contribution（包含 SourceRef、Audience、currentness/认识地位等已有证据），经确定性顺序、来源去重及必要性诊断再编译；不新增第二存储、深度权重、Role 继承或外部 Pass 引擎。**具体 Stage/Anchor JSON 字段、同 Anchor 的排序键与去重身份规则、继承合并冲突编码及快照端口仍待物理设计确认**，不在此凭空引入数据库表、`localDepth` 或新的 Pipeline。
 
-对照 [Loom Core 集成说明](https://github.com/The-LoomStudio/LoomStudio/blob/10be7f6e460a19d96fe9a4ca4892234f938b0196/docs/architecture/application/prompt-build/loom-core/studio-integration.md)，LoomStudio 的 Agent PromptBuild 使用 Application DFS 编译，通用 Loom Core Runner 是另一条调用链；Atria 因此不引入第二个 Fragment/Pass Runtime，也不声称移植了 Core 的 Trace/Replay 能力。**独立作者测试的正确边界**是：作者无游戏即可持有和编辑原生 Program/Module/Generation exact revision；一旦要求 Authored→Effective→Wire 或付费试读，仍需同一 Native Host 提供受权的明确测试上下文/fixture、真实 Model/Route/Provider capability 和可审计的预算，不将任意客户端构造的 World/Memory/Session 当受信来源。当前正式 Preview 入口要求 Session/Project，独立无游戏测试是待补的产品能力，不许再建 Preview Compiler。图像编辑使用独立 ImagePromptIR、原视觉 Target/Rendering/Job/Asset 权威，不能将生图 style/negative Prompt 强制转换为文本 Module 来获得试生成资格。
+对照 [Loom Core 集成说明](https://github.com/The-LoomStudio/LoomStudio/blob/10be7f6e460a19d96fe9a4ca4892234f938b0196/docs/architecture/application/prompt-build/loom-core/studio-integration.md)，LoomStudio 的 Agent PromptBuild 使用 Application DFS 编译，通用 Loom Core Runner 是另一条调用链；Atria 因此不引入第二个 Fragment/Pass Runtime，也不声称移植了 Core 的 Trace/Replay 能力。**独立作者预览／试读的正确边界**是：作者无游戏即可持有和编辑原生 Program/Module/Generation exact revision；一旦要求 Authored→Effective→Wire 或付费试读，仍需同一 Native Host 提供受权的明确样例上下文、真实 Model/Route/Provider capability 和可审计的预算，不将任意客户端构造的 World/Memory/Session 当受信来源。当前正式 Preview 入口要求 Session/Project，独立无游戏预览是待补的产品能力，不许再建 Preview Compiler。图像编辑使用独立 ImagePromptIR、原视觉 Target/Rendering/Job/Asset 权威，不能将生图 style/negative Prompt 强制转换为文本 Module 来获得试生成资格。
 
 **官方默认模板的原生编排原则**：新建可选择短小、可编辑且可导出的通用 Program 骨架，承载身份/任务边界、作者叙事意图、获准 Context 与 History 接入位置、最新输入及输出约束；依原生 Stage/Module/受控 Anchor 承载，不复制 LoomStudio 的物理树、Anchor 名字或其固定 system/developer 消息位置。按用途提供 RP/Narrative（单 Narrator 与角色/玩家边界）、Creative Writing（完整作者表达/文体控制）、Agent Task（任务/证据/输出合同）等少量模板，复用基础语义模块与原 Library exact revisions。视觉 Prompt/风格默认资源归原 Image Rendering/Target、ImagePromptIR 与 Visual Job/Asset，不伪装成 `core.prompt-program` 的 Provider Wire。默认工具、额外 Agent、Judge、收费模型试读和私有来源访问均不自动启用；需要时按受权需求配置。模板只初始化作者选择的新资源，官方模板更新不覆盖旧 Program、已发行预设或冻结中的 Session/Plan/Package。具体模板实体、播种/分发和原生 Schema 待实现审计，不将当前空 `stage.main` 说成已具有官方模板。
 
@@ -66,6 +68,8 @@ D2 必须把**不可被文学优先级补救**的硬问题分开：无 Scope/Sou
 
 **现有 fingerprint 是诊断，不是缓存许可**；Stage/Module 更改必须导致有效内容/版本失效。OpenAI/Anthropic/Gemini 对前缀、breakpoints、token 长度、TTL、价格与参数的支持不同；cache-control 不适用时不应伪造收益或为撑足阈值塞重复 Prompt。作用域必须避免多用户/多角色的信息关联与侧信道。
 
+缓存只能利用作者明确编排及合法 Provider lowering 后形成的前缀，不能为命中率偷偷重排 Stage/Module/Anchor 或 Context Contribution。稳定内容前置是作者可选择的编排方式，不是覆盖单一显式顺序的第二排序规则。
+
 ## 6. T：Context 和实际请求的预算闭环
 
 | 候选 | 设计 | 取舍 |
@@ -84,12 +88,8 @@ T2 需分别报告 context candidate/selected/prompt-prefix/tools/output reserve
 - [Gemini Context caching](https://ai.google.dev/gemini-api/docs/caching)：implicit/explicit 模型及 API 差异、usage metadata，不应宣称所有型号都支持相同模式。
 - [OpenAI Reasoning](https://developers.openai.com/api/docs/guides/reasoning)：opaque reasoning continuation 保留协议身份，不等于可任意跨 Actor/Branch 使用的公共上下文。
 
-## 8. 已冻结但未实施的接口缺口
+## 8. 实现落点
 
-- **B2 Host Program 接线**：V3 `agentPinId/dependencyPins` 只是资源 pin；原 `RuntimeRoute.promptProgramRef` 仍决定 Resolver 返回的 Program，未证实 Node 可在正式发送端独立覆盖。任何未来内部扩展必须保留 Host/Source/Role/Program closure 的精确授权，不开放 Browser 任意覆盖。
-- **Fallback**：`GenerationService` 在候选 Route `promptProgramRef` 不同时返回 `generation_semantic_authority_changed`；B2 需真正保持受信 Node Program 与工具/输出合同、逐候选编译和预算。不能通过关闭报错伪称支持多模型。
-- **Provider/Token/Cache**：OpenAI-compatible 的指定 tokenizer 与部分 Adapter 采用的保守 byte upper bound 不等价。实际 role、prefill/tools/schema、final wire 计数、cache TTL/cached tokens/cost 与动态 source 失效全部需要运行证据。
-- G1 单 Narrator 不能无故多一次模型调用。
-- **当前范围**：本轮不批准产品实现分支，不修改 `main`，不保留 ST 旧数据/API/Workspace/mode 兼容。Windows/CachyOS Linux/Termux、Browser、Node、Provider 调用/CI 均未运行，不能标 PASS。
+在原 Program/Stage/Module、ContextPort/Compiler、Provider lowering 和预算服务内完成显式顺序、Anchor、exact derive 与 Contribution；Preview、编辑器、Package freeze 与导入导出同步消费。已有可信 Program selection／Typed lowering 按[功能依赖](e0-audit.md)与 V3 整合，不重建 Compiler 或发送链。
 
-第六轮 [Context/Memory/Cognition](context-memory-consumption.md) 只讨论合法来源的 Prompt 消费和长会话保真，不重建 HCM-01–08、V3 C2 或 Context Compiler。
+独立作者的样例预览与手动试读属于产品操作，沿原 Host 提供；不自动调用模型或把 Provider／缓存／质量矩阵当实施阶段。

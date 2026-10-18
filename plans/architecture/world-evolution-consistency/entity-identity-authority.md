@@ -1,6 +1,6 @@
 # ARCH-DWE-01 · 世界主体身份与领域表示
 
-[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W9-B：Canonical Subject、类型化投影与来源绑定**。本模块保留功能与逻辑合同；旧源码片段仅为背景，具体字段按原实现接线，不新增审查／测试阶段。历轮比较与确认历史见 Record。
+[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W9-B：Canonical Subject、类型化投影与来源绑定**。本模块定义功能与逻辑合同，具体字段按原实现接线；旧源码与历轮讨论仅作背景。
 
 ## 1. 必须先区分“主体身份”与“各域的表示”
 
@@ -22,7 +22,7 @@
 
 - [Native Identity](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/identity.js) 的 `NATIVE_ID_FAMILIES` 有 `actor`、`world`、`session`、`branch`、`revision` 等家族，但读取的清单中**未发现独立的 World Entity ID family**。不能在设计讨论中虚构现成的正式 `entity_*` 契约。
 - [Actor Profile](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-actor-profile.js) 的 `projectActorDefinition` 仅读取 Package/EntryPoint 指定的 `manifest.actors`，明确不以动态 Session 状态为输入。预设的 Actor 是作者资产/角色表现入口，不应由 Play 直接修改 Package Manifest。
-- 这限制运行时新 NPC 直接以同一种 Actor ID 充当 Timeline speaker；未来是否区分 ParticipantRef 与 ActorRef 需端到端 E0。
+- 这限制运行时新 NPC 直接以同一种 Actor ID 充当 Timeline speaker；Participant 与表达模板由 WP-A/E 在原消息与展示链中分开。
 - [Lifetime Authority](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/lifetime-authority.js) 使用 `life.person.*` 等局部身份，含引入、职业、继承、死亡和地域记录。它是可选游戏领域中的正式记录，却未证明这些 ID 已成为所有 World/HCM/Actor 消费者共享的主体 ID。
 - [Native Cognition Contract](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-cognition-runtime.js) 的 `actor`/情感 `target` ID 使用 `actor_[a-f0-9]{32}` 形状，且多个来源以 Package Actor/声明式 Information 约束视角。不能简单将 `life.person.*` 塞入 cognition，亦不能为运行时 NPC 自动开通全局记忆权限。
 - [Information Runtime](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-information-runtime.js) 以 `actors/views` 声明、scope 和 exact Session/Branch/Revision 授权；缺失的 actor 返回 unavailable。
@@ -34,7 +34,7 @@
 
 ## 3. 候选架构：Canonical Subject + Typed Views + Evidence Links
 
-**中心建议（待 W9-B 选择）**：每个在一条 Session 世界里真正存在且需要长期追踪的对象，应有一个**可复用、可审计的 Canonical World Subject 身份**，由现有 Native Host 正式承认；不同领域只是指向它的受控投影或有来源的引用，而不是争相创建各自的“同一个人”的世界真相。
+**已选方向**：每个在一条 Session 世界里真正存在且需要长期追踪的对象，应有一个**可复用、可审计的 Canonical World Subject 身份**，由现有 Native Host 正式承认；不同领域只是指向它的受控投影或有来源的引用，而不是争相创建各自的“同一个人”的世界真相。
 
 ```text
 Library/Studio World Definition + Authored Actor (fixed revisions)

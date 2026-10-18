@@ -1,6 +1,6 @@
 # D8 已冻结：Native Preset Studio/Play 功能交互、Prompt Preview/Diff、跨端等价（视觉未冻结）
 
-> **D8 已冻结 W2 + R2 + P2 + I2 + M2（2026-10-15，仅功能与交互语义）**。D1–D7 继续有效。**本助手不对前端视觉审美作最终决定**；待用户完成讨论后组织 Codex 前端功能审计、外部设计 AI 的引导性 HTML 与两个配套文档，经用户多轮讨论后另行定稿。本模块仍仅为设计，无代码/UI/端侧实测。
+> **D8 已冻结 W2 + R2 + P2 + I2 + M2（仅功能与交互语义）**。本模块定义独立作者及 Library/Studio/Play 的操作；外部设计材料已收到，视觉按用户实际批准范围执行。实现见[后端分工](backend-implementation.md)与[前端交接](../../architecture/atria-frontend-audit/claude-code-frontend-prompt.md)，不重新组织前端审计或多轮设计流程。
 
 ## 1. 真实产品界面基线（静态阅读，不是完整 UI E2E）
 
@@ -25,11 +25,11 @@
 
 W2 特别重要：在 Play 改 `promptParameters` 的 Route override 与在 Library/Studio 发布新的 Prompt Program revision 不同，**Play 选择不直接写 Program、World、PlanRevision 或历史 Run**。若涉及对作品/Agent 共享的受权作者修改，必须走原 Library/Project/Plan 的正常 Review/Publish。作者侧可以借鉴有序资源树，展示 Program → Stage → Module / 受控语义 Anchor 的**单一原生编排大纲**；Stage 按 Program 显式顺序，合法 target 内的 Module 和 Anchor 按作者明确顺序表达。Anchor 在同一 Program/Stage 内具有稳定身份，不作为可单独下载的世界/记忆资源，也不等同于 Provider Role。树中的 Module/Anchor 可在原 Host 授权下编辑；当前请求实际匹配的 Contribution 是只读、带 Source/Activation/未纳入原因的展开结果，不能被拖动成作者指令。该树只投影原生 Draft/Compiler 权威，并非复制 LoomStudio 的资源表或引入新的编辑/排序存储。现有 `priority` 规则不是未来显式顺序已接通的证据。
 
-**双入口、一套资源的创作闭环（已确定方向）**：独立提示词作者从 Library 的 Preset/Program/Module 进入相同专业编辑器，直接管理原生 exact 修订、导入导出、将来的安全测试和发布，不需要建立游戏、虚构一个 Project 或先绑定可运行角色。游戏作者在 Studio 从现有预设库选择并绑定 exact 版本，按需 Fork/Derive 和 Review/Publish；新游戏使用默认/现成预设应是正常路径，不强制创作提示词。相同资源在两个入口深链跳转，但只归原 Library/Project Authority 管理。Play 只做已有受权临时选择/覆盖，不隐式写回共享预设。
+**双入口、一套资源的创作闭环（已确定方向）**：独立提示词作者从 Library 的 Preset/Program/Module 进入相同专业编辑器，直接管理原生 exact 修订、导入导出、将来的受限预览、手动试读和发布，不需要建立游戏、虚构一个 Project 或先绑定可运行角色。游戏作者在 Studio 从现有预设库选择并绑定 exact 版本，按需 Fork/Derive 和 Review/Publish；新游戏使用默认/现成预设应是正常路径，不强制创作提示词。相同资源在两个入口深链跳转，但只归原 Library/Project Authority 管理。Play 只做已有受权临时选择/覆盖，不隐式写回共享预设。
 
 **视觉提示词作者（同等一等，非文本预设子类型）**：在现有 Library/资源入口提供 Image Target、Rendering 风格、正负面词和模板的独立创作入口；可在合法版本与原视觉链中复用到作品、会话和媒体任务。独立图像试生成与 Gallery 必须先由原视觉 Job/Asset/预算/审批权威定义**非 Session 资产与任务归属**，不能借现有 Session Gallery 或文本 Prompt `/execute` 伪装完成。该入口是 UI 工作空间而非新的顶层域、Compiler 或第二份视觉资产库；组件与编辑/版本语义可复用，ImagePromptIR/Provider 适配仍独立。具体菜单标签、工作区造型/导航细节继续作为视觉讨论输入。
 
-**分层预设来源与作者独立性**：在相同原生 Library 资源/编辑器上，基础来源分为官方基础预设、作者可导入分享的预设、私人/项目派生预设；来源标签不产生 Provider、Source、Tool 或版权授权，不另建商店、Preset Store、自动同步或新顶级域。重复导入和升级不得默默覆盖本地已修改的版本。游戏作者可选现成的适用 Program/Generation 后精确绑定，非必须自行撰写；专业作者可无游戏独立写作、导出/分享与测试。官方内容是否包含某模型/场景的受审质量证明须有独立真实证据，不能以“官方”默认认证。图像 Target/Rendering/Style 的复用沿原视觉资源身份，不把 ImagePromptIR 编译混入文本 Compiler。
+**分层预设来源与作者独立性**：在相同原生 Library 资源/编辑器上，基础来源分为官方基础预设、作者可导入分享的预设、私人/项目派生预设；来源标签不产生 Provider、Source、Tool 或版权授权，不另建商店、Preset Store、自动同步或新顶级域。重复导入和升级不得默默覆盖本地已修改的版本。游戏作者可选现成的适用 Program/Generation 后精确绑定，非必须自行撰写；专业作者可无游戏独立写作、导出／分享与试读。官方内容是否包含某模型/场景的受审质量证明须有独立真实证据，不能以“官方”默认认证。图像 Target/Rendering/Style 的复用沿原视觉资源身份，不把 ImagePromptIR 编译混入文本 Compiler。
 
 **开箱即用的原生模板入口**：Library 的新建向导应让独立作者选择“从空白创建”或“基于官方通用骨架/指定任务模板创建”，默认模板按 RP/Narrative、Creative Writing、Agent Task 分用途而非按模型厂商复制。建成的是可修改的原 Native Preset/Program/Module/Generation 资源，显示作者正文、默认/显式参数及确切来源；模板更新不影响旧版本。Game Studio 应以“从已有预设选择并绑定 exact 版本”为普通流程，缺有效 Route/Model/能力时指引配置，**不能把缺少自制 Prompt 当成错误**。本轮不指定首页外观、色彩或新增顶级导航域，也不能把官方模板、质量认证、已生成的实际输出混为一项。视觉作者在独立 Image Rendering/Target、ImagePromptIR 入口选择风格/模板，仍归原视觉系统。
 
@@ -50,13 +50,13 @@ R2 的两个视图**不能各自持久化成为两个 Store**。原生 Host 必�
 | **P1 仅展示 authored Module 原文** | 预设原文和简单参数表，缺有效 Stage/Route 与 Provider 差异 | 成本低，但无法解释模型真正收到什么 |
 | **P3 编辑即持续调用模型试读** | 文本每次修改都触发真实模型 + Judge 的即时重写/比较 | 默认额外请求成本高、存在正在编辑但未正式发布/Source stale 的问题，与 G1 稀疏调用冲突，不推荐 |
 
-以上为 2026-10-15 的静态预览基线；后续后端已有实施增量，实际可用接口以原 Native Host 与同一 Record 的新证据为准。**独立预设编辑目前不等于无 Session/Project 的完整 Preview**；其未来独立测试应使用 Host 定义的有界作者 fixture 与脱敏权限，不借游戏伪造身份；付费试读需单独显式许可、额度与原 Provider/Compute 记录。未发布 Draft 只能在 Host 内使用合法、不可发送的受权编译路径，不能用生产 `/execute` 冒充预览。三层视图应按需解释 Module 纳入/排除的原因、有效位置、来源版本与实际 Provider 降级；需要标记“静态 exact 编排”和“本请求 Source/Branch/Actor/Grant 快照”不同生命周期，并准确显示 source-stale、条件不满足与缺失但非必需来源。Preview 源文/Tool/Memory 与 Provider wire 只显示当前用户可读的脱敏投影，不能泄露 Secret、NPC 私有 Cognition、Provider opaque reasoning。
+以上为 2026-10-15 的静态预览基线；后续后端已有实施增量，实际可用接口以原 Native Host 与同一 Record 的新证据为准。**独立预设编辑目前不等于无 Session/Project 的完整 Preview**；其未来独立预览应使用 Host 定义的有界作者 fixture 与脱敏权限，不借游戏伪造身份；付费试读需单独显式许可、额度与原 Provider/Compute 记录。未发布 Draft 只能在 Host 内使用合法、不可发送的受权编译路径，不能用生产 `/execute` 冒充预览。三层视图应按需解释 Module 纳入/排除的原因、有效位置、来源版本与实际 Provider 降级；需要标记“静态 exact 编排”和“本请求 Source/Branch/Actor/Grant 快照”不同生命周期，并准确显示 source-stale、条件不满足与缺失但非必需来源。Preview 源文/Tool/Memory 与 Provider wire 只显示当前用户可读的脱敏投影，不能泄露 Secret、NPC 私有 Cognition、Provider opaque reasoning。
 
 **三层 Preview/Trace 读法（功能语义已确定，非现成功能声明）**：Authored 以完整作者原文、显式顺序、exact Module/Program/Draft 为权威；Effective 使用同一次 Host 编译中的 Stage/Module/Anchor 决策与已获准的 Context Contribution，展示真实纳入、条件未命中、去重、缺失、当前性及合法目标位置；Provider Wire 来自实际 Adapter 渲染和计数，仅提供本人受权且去 Secret/私有认知的消息结构、Role、Tools、Output Schema、Token 与降级依据。Preview 要明确标注 `sent:false`，不能代替运行成本、最终响应或用户审稿。
 
 **Trace 和 Diff 不建第二真相**：展开原 Host 的编译决策、来源、Anchor 与可披露原因；未知／受限不能泄露私有来源是否存在。按需比较 base/candidate 的 Authored、Effective、Wire，分别标明两侧 Program/Module 修订或 Draft，允许它们不同；固定 Source/Actor/Branch/Grant、Route/Model、Compiler 与 Provider 能力后，才将差异归因于作者修改。环境变化单列，Token 估算不冒充真实费用。
 
-**独立作者测试闭环**：Library 作者不用创建游戏即可编辑及准备有界测试样例；先执行无发送 Preview；用户单独选择 Route、确认 Token/经济预算和可能的跨 Provider 数据发送后才可进行付费试读。模型输出是样例结果，非默认 Quality PASS；有来源的 Quality/Eval 和候选审阅仍归 D7 原系统。视觉作者通过独立 ImagePromptIR/Target/Rendering 的 Preview 与原 Visual Job/Asset 费用批准实现对应闭环，不得伪造一个 Session 来使用现有剧情 Gallery。
+**独立作者预览／试读闭环**：Library 作者不用创建游戏即可编辑及准备有界作者样例；先执行无发送 Preview；用户单独选择 Route、确认 Token/经济预算和可能的跨 Provider 数据发送后才可进行付费试读。模型输出是样例结果，不自动代表质量认证；有来源的 Quality/Eval 和候选审阅仍归 D7 原系统。视觉作者通过独立 ImagePromptIR/Target/Rendering 的 Preview 与原 Visual Job/Asset 费用批准实现对应闭环，不得伪造一个 Session 来使用现有剧情 Gallery。
 
 **模板 Preview 与多模型适配**：作者可查看通用骨架继承后的 Authored/Effective、选定合法 Runtime Route 下的 Provider Wire/Capability 决策，明确缺失的必需 Role、Tool/Schema、Prefill/Cache 等能力与 Token 预算。切换 Provider 只能改变经过证据证明的 Lowering，不得偷换 Program 自由原文、强制选择另一供应商或自动启用需要审批的功能；需要模型定向表达时必须是独立可审查的显式作者版本覆盖。付费试读和正式 Review/Publish 仍由原权限及账本处理。
 
@@ -106,17 +106,6 @@ Library 管精确版本化 Program/Module/Generation Resource、Preset 的独立
 
 Windows/CachyOS Linux 与 Android Termux 浏览器必须完整支持原作者或玩家授权的创建/编辑、Raw/Structured、合法 Preview/Diff、资源/版本导航、诊断/Review/Publish、焦点/键盘/触控/Back/软键盘和长文本操作。桌面分栏、手机 List/Sheet/Tab 只是**功能可达的交互方向**，具体视觉布局、比例与外观不在本轮做设计承诺；移动不能成为只读版。Run/Approval/费用仍由同一个 Native Host 和原业务回执负责。
 
-## 8. 前端审美资料与审批边界
+## 8. 前端实现依赖
 
-以下是用户约定的资料形成路径。相关全前端审计及外部 HTML、功能表现文档、前端指导文档已于 2026-10-16 收到，但尚未成为用户批准的最终视觉设计：
-1. **全面审计真实前端代码**，按 Screen/Route/Surface/Buttons/States/Permissions/Actions/Interaction 提取必需功能、控件、状态与依赖；明确哪些功能一定要保留、哪些旧模式应清退。功能盘点是后来视觉设计 AI 的信息输入，不能用部分示例 HTML 代替完整需求。
-2. 将清单交给用户选择的、真正具有前端审美能力的设计 AI，制作**精致但不要求覆盖全部功能的 HTML 视觉参考页**；其目的只是引导审美，不是可直接替换的产品前端或自动授权的运行代码。
-3. 同时要求该设计 AI 给出**逐功能界面/交互表现说明文档**与**整体前端设计指导文档**，覆盖真实所有 Surface/状态的适配方向，而不是从 HTML 缺失的功能推断它可以删除。
-4. 用户把 HTML 与两份文档交回，继续与 AI 多轮讨论，协调功能闭包、当前设计系统依赖、权限/Source/Provider/V3 单 Host 和真实桌面/移动能力，之后由用户单独批准最终的前端审美/实现企划。
-
-本 Plan 不擅自冻结配色、字体、组件风格、阴影、动画或视觉稿；
-
-## 9. 真实阻塞与 D9/E0 下一步（NOT_RUN）
-
-- **D4** Node Prompt Program 与 Route.promptProgramRef / generation_semantic_authority_changed fallback 的受信连接未完成；**D6** Source/Actor/Branch/Grant 与长会话压缩和失效未实测。
-- D8 的编辑、预览、分享和采用按[功能依赖](e0-audit.md)实施；历史 E0 不增加开工许可或审查阶段。正式硬切零 ST/旧 Workspace/API 兼容；本次文档整理不启动产品改动。
+外部 HTML、全功能表现和整体指导作为视觉参考；189 组旧功能盘点另加已确认新功能。Library/Studio 共用编辑器与资源，Play 只提供作品允许的操作。当前的独立作者上下文、三层预览、发行升级与非 Session 图像任务按[功能依赖](e0-audit.md)接入相应原服务；尚缺某项接口只影响该操作，不以整份 E0 或质量认证阻塞其余界面。

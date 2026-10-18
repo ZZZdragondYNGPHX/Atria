@@ -22,6 +22,20 @@
 | S14 | Skills declarations：Available Skills、Add selected/ID、Remove、Fields/Source、Review | project/global inventory → package.skills；| 声明不等于已安装/有执行权限；管理安装在 Extensions；Review 后 Apply | 接通／保留 | [SOURCE](source-map.md#source) skill-declarations-editor:1–90 |
 | S15 | Plugin resource（动态） | registry descriptor + exact resources 的只读 inspection | 当前不是所有插件都提供专用 editor；不得把 JSON inspection 写成完整表单 | 接通/条件／保留 | studio-workspace:1337–1351 |
 
+## Source、作品界面、Assets 与交付
+
+以下是已有产品操作；本次仅补齐企划说明，不执行其中的检查、Simulation 或 Build。
+
+| ID | 控件／字段 | 操作与数据归属 | 状态与操作结果 | 处置 | 源码 |
+| --- | --- | --- | --- | --- | --- |
+| S16 | Source file chooser、原文、text diff、Review Source Change、Reload file | 原 Source 读取／按文件保留草稿，格式错误由原保存接口反馈，变更形成 source.write | 二进制／不可编辑文件只读；切文件与晚响应不覆盖草稿；显示截断不截断正式内容 | 保留 | [SOURCE](source-map.md#source) source-editor |
+| S17 | 作品 UI 的组件／文件选择、属性／原文、源问题反馈、Review、Preview draft、Reload | 原 Source Graph、staged source operations 与临时作品界面预览 | 结构化／原文同稿，冲突不互相覆盖；只读源禁写；不是 Prompt 编译预览 | 保留 | studio-frontend-editor、studio-preview-ui |
+| S18 | Assets Import/Replace、logical name/path/media type/metadata、Preview、Used By、Remove | 原 Source move/write/delete 与 project.save 同 ChangeSet，预览原 asset | 引用关系先处理；未 Apply 不算项目保存；删除项目资源不删已安装 Work | 保留 | asset-editor |
+| S19 | 作品 Preview：EntryPoint、Reload、反馈及 Host capabilities | 指定 Project revision，由原 presentation compile/mount 与 Host Bridge 呈现 | 准确显示缺能力／编译错误；关闭预览不写正式游戏 | 保留 | studio-workspace、studio-preview-ui |
+| S20 | Simulation 的场景资料编辑、载入／保存及手动运行入口 | 原 scenarios/main.json 与 runSimulation；仅由用户主动操作 | 原场景输入错误可定位，结果不等于 Provider 文学质量；不作为开发其它功能的前置 | 保留原产品操作 | studio-workspace |
+| S21 | Build 的依赖／问题提示、构建 `.atria`、输出与下载 | 原 build service 的资源闭包、manifest、permissions 与 asset 处理 | 构建不等于安装；导出后可到 Library 安装；失败保留原项目与问题 | 保留 | studio-workspace、原 Build service |
+| S22 | Delete Project review、确认永久删除、Cancel、Reload revision | 原 Project lifecycle 按 exact revision 删除项目 source/history | 保留独立 Work/Session/Save/已导出包/独立 Skill；冲突重新显示目标，永久删除不冒充 Undo | 保留 | project-lifecycle |
+
 ## Project Agent
 
 | ID | 控件／操作 | 处理与原权威 | 状态与权限边界 | 状态／处置 | 源码 |
@@ -29,7 +43,7 @@
 | A01 | Task chooser、Intent textarea、Create Task、New Task | Project Task intent/plan/workspace/operations/changeSet；辅助 conversation |创建失败保留 intent；Task 不是随便一段聊天记录| 接通／保留 | [PROJECTAI](source-map.md#projectai) studio-agent:394–519、633 |
 | A02 | Prepare only、Continue、计划步骤、会话/执行结果 | 原 Native task/compute/skill 工具链；运行可 cancel/takeover | planning/planned/working/evaluating/repair/review/blocked/conflict/completed 等来源状态必须区分 | 接通／保留 | studio-agent:210–333、520–591、650–718 |
 | A03 | Inspect changes、Review & Commit／High-impact review、Human Takeover | 显式人类 review → commitAgentTask；takeOverAgentTask 中止当前工作并转人编辑 | AI 不能 commit；已提交但后续刷新失败不可重新 commit；high-impact 显示真实 changeSet 风险；权限仍在 Host | 接通／保留 | studio-agent:593–632 |
-| A04 | Task 内 Goals、Experience/Eval/Evolution | 复用原 scope/source；见 [能力清单](agents-extensions-media-inventory.md) | 当前质量来源 `source_unready` 和旧 Evolution targets 未关闭；不能承诺自动优化通过 | 部分／保留，受 E0 Gate | studio-agent 的 goals/evolution mount；EVOLUTION |
+| A04 | Task 内 Goals、Experience/Eval/Evolution | 复用原 scope/source；见 [能力清单](agents-extensions-media-inventory.md) | 当前质量来源 `source_unready` 和旧 Evolution targets 未关闭；不能承诺自动优化通过 | 部分／保留；评价依原来源 | studio-agent 的 goals/evolution mount；EVOLUTION |
 
 ## Prompt Presets 与资源编辑
 
@@ -46,7 +60,7 @@
 | Q09 | 通用资源库：filter、origin/visibility、New/New revision、Archive/Restore、Delete、Used By、Open preset/Studio、Fork/Derive | Library / Project / installed Work 的 exact resource scope | package 原件只读；被引用资源不能删除；fork/derive closure 顺序保存；| 接通／重组入口 | prompt-authoring:324–422；forkPromptClosure:113–166 |
 | Q10 | Studio Prompt Authoring：resource kind、New/Edit project resource、Attach exact、Fork/Derive、Used By | 与 Q09 同原资源；Project ops 进 Review | 推荐值与正式引用/绑定区别清楚；包原件不写 | 接通／整合 | prompt-authoring:423–539 |
 | Q11 | Runtime Design：role、required capabilities、recommended Prompt/Generation、requirements JSON、Inspect exact closure | 作者声明用途与推荐资源，Review runtime requirements | 不把推荐当玩家 Route/Secret 配置；构建 closure 和运行 slot resolution 分开 | 接通／保留 | prompt-authoring:434–483 |
-| Q12 | D8 全文无损双编辑、Authored/Effective/Wire 三层 Diff、未发布 Prompt Draft Preview | 原 [D8 合同](../../refactor/atria-native-prompt-preset-deepening/preset-studio-experience.md) 的新增功能要求 | 当前可信端口与 Source/Node/Route 绑定 **BLOCKED**；不可 Browser 拼接 wire 或调用 execute 假预览 | 设计／保留；不得画成已接通 | 原 [E0](../../refactor/atria-native-prompt-preset-deepening/e0-audit.md) E0-01/02/04 |
+| Q12 | D8 全文无损双编辑、Authored/Effective/Wire 三层 Diff、未发布 Prompt Draft Preview | 原 [D8 合同](../../refactor/atria-native-prompt-preset-deepening/preset-studio-experience.md) 的新增功能要求 | 已有有限 Draft Preview，独立作者与新编排按原 Host 接线；不可 Browser 拼 wire 或借 execute 假预览 | 设计／保留；不得画成已接通 | 原 [E0](../../refactor/atria-native-prompt-preset-deepening/e0-audit.md) E0-01/02/04 |
 
 ## Runtime：连接、模型、Route、检索与诊断
 
@@ -59,7 +73,7 @@
 | R05 | 图像连接：NovelAI 官方/compatible、capability JSON、official forwarding、gateway options | 按 adapter 显示字段；声明 responseFormat、model/capabilities；Comfy/WebUI 等供 visual target | relay 是否转换协议未知时不能默认官方等价；能力声明不是 probe 实测 | 接通/条件／保留 | runtime-workspace:235–258；shared novelai contract |
 | R06 | Model：Connection、remote ID、Fetch models、发现 selector、Use metadata、context/output limits、tokenizer、capability overrides | list probe 与模型身份/limit provenance 分开；可手输 model ID | 切连接/ID 清旧发现，version 拒绝 late response；unsupported 与 unknown/显式 override 不等同 | 接通／保留 | runtime-workspace:360–439 |
 | R07 | Route：role、Model、Connection、Preset、exact Program/Generation、Manage models/presets | 保存 RuntimeRoute，选 preset 只填 exact refs；原资源未来新版不自动替换 | 主 Route 缺失/歧义须修；当前 UI roles 为明确列表，不能把 roleLabels 的每个 key 都当可选项 | 接通／保留 | runtime-workspace:440–465；roles:25；RouteResolver |
-| R08 | fallback selector、Add/Remove、Move up；timeout/retry/attempt 与 requirements | 同 role 的 fallback refs；role 改动剔除不相容草稿并反馈 | 不同 Program 的实际 fallback 仍可被 `generation_semantic_authority_changed` 拦截；UI 保存不代表 fallback 可用 | 接通/部分／保留，E0-01 BLOCKED | runtime-workspace:466–504；GenerationService:46–49 |
+| R08 | fallback selector、Add/Remove、Move up；timeout/retry/attempt 与 requirements | 同 role 的 fallback refs；role 改动剔除不相容草稿并反馈 | 不同 Program 的实际 fallback 仍可被 `generation_semantic_authority_changed` 拦截；UI 保存不代表 fallback 可用 | 接通/部分／保留；fallback 保持有效 Program 语义 | runtime-workspace:466–504；GenerationService:46–49 |
 | R09 | shared request/token limits、local budget、required work reserve、optional work lanes | assertComputeBudget；原 Host/Run/Task 准入与费用观察 | 预算是产品运行约束，不复制为本任务测试审批；UNKNOWN economics 不显示精确费用；不可 Browser 发放额度 | 接通／保留 | runtime-workspace:505–528；native-compute-budget |
 | R10 | MCP connection/tool/resource/auth；A2A connection/skills/auth | Route executionPolicy，连接与服务授权仍在原端口 | “已配置”不等于允许所有工具；不直接在表单执行外部 mutation | 接通/条件／保留 | runtime-workspace:529–549 |
 | R11 | Retrieval：filter、New/Create revision、embed/rerank、provider/model/endpoint、Secret、browser model picker | NativeRetrievalProfile；按 provider 显示 dimensions/task/late chunking/keep/auth mode/region/project | WebGPU 不可用有替代 provider；Secret 独立保存；声明 revision 不等于索引重建成功；保存失败原稿在 | 接通／保留 | [RETRIEVAL](source-map.md#retrieval) retrieval-workspace:1–166 |
@@ -67,4 +81,4 @@
 | R13 | External services：Public content、Service、Saved remote task、Load/Run/Reconnect/Cancel | live Session/revision → protocols/describe → MCP/A2A start/status；A2A 可 reconnect | 历史只读/stale 拒绝；cancel 是请求，不保证远端副作用撤销；结果要 current artifact | 接通/条件／保留 | protocol-controls:1–79；runtime-workspace Diagnostics mount |
 | R14 | 错误修复跳转、Return to model setup | runtime-client error→workspace-host repair；保留原操作上下文 | 不把权限/凭证故障统一“重试”；不假装刷新等于已提交修复 | 接通／整合 | runtime-client；workspace-host runtimeRepair |
 
-详细物理 Gate 只在 [原 E0 台账](../../refactor/atria-native-prompt-preset-deepening/e0-audit.md) 维护。
+当前新增功能与后端接线见[实现依赖](../../refactor/atria-native-prompt-preset-deepening/e0-audit.md)，旧静态状态不另建 Gate。

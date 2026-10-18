@@ -20,4 +20,4 @@
 
 ## E0 源码范围（未来，未执行）
 
-`src/native/model-prompt-runtime/**`、`src/native/adapters/*generation*`、`public/scripts/native/prompt-*`、`context-compiler.js`、`src/native/agent-intelligence/**`、V3 `src/native/orchestration/**`、ST 注入及真实消费者、Library/Project/Package/Play/Studio、相关 `tests/native/**` 与 `tests/agent-intelligence/**`。需按当时最新 V3 HEAD 跑静态闭包和最小相关实际测试。
+`src/native/model-prompt-runtime/**`、`src/native/adapters/*generation*`、`public/scripts/native/prompt-*`、`context-compiler.js`、`src/native/agent-intelligence/**`、V3 `src/native/orchestration/**`、ST 注入及真实消费者、Library/Project/Package/Play/Studio、相关 `tests/native/**` 与 `tests/agent-intelligence/**`。实现时在相应实际调用方接线；本表仅作旧源码定位，不安排全量扫描或测试任务。

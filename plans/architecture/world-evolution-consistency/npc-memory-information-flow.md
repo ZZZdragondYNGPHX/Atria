@@ -1,6 +1,6 @@
 # ARCH-DWE-01 · NPC 个人记忆、秘密与信息传播
 
-[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W7-B：动态受众资格、来源驱动信息流**。本模块保留功能与逻辑合同；旧源码片段仅为背景，具体字段按原实现接线，不新增审查／测试阶段。历轮比较与确认历史见 Record。
+[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W7-B：动态受众资格、来源驱动信息流**。本模块定义功能与逻辑合同，具体字段按原实现接线；旧源码与历轮讨论仅作背景。
 
 ## 1. 目标与非目标
 
@@ -80,7 +80,7 @@ Committed world event / authored hidden canon / explicit source claim
 - 纠错是新的证据/认知修订：T12 相信“皇帝活着”，T15 因新证据更正；不能回写成 T12 也知道真相。历史必须可回答“当时谁知道什么”。
 - HCM 搜索缓存/派生图可按照许可重建；它不得成为跨分支唯一“最新事实”，也不因摘要丢掉世界正式提交的债务、职位或死亡状态。
 
-## 7. 当前 main 静态证据与 E0 未解决的消费者
+## 7. 原信息与记忆模块的接线位置
 
 - [Information Contract](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-information-contract.js) 的 `sources/views/actors` 是声明式列表，定义 `belief` 的 `actorField/statusField/channelField`，视图 `audience` 支持 actor/task/narrator 等，当前对未声明 Perspective 不会自动开放。
 - [Information Runtime](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-information-runtime.js) 的 `actorAvailability` 对未声明 actor 返回 unavailable；

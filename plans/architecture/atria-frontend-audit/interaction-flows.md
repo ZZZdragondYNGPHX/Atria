@@ -62,7 +62,7 @@ flowchart TD
   K --> I
 ```
 
-无需认证的 adapter 不强制 Secret/credential 授权。Compile preview 使用原 Host exact refs、Context 与 Provider render；不发送生成。不把 preview 失败变成更宽松的 execute，不把旧 source 或 UNKNOWN capabilities 渲染成通过。fallback 另须保持有效 Prompt 语义，当前 E0-01 仍阻塞。对应 R02–R13、Q06/Q07/Q12。
+无需认证的 adapter 不强制 Secret/credential 授权。Compile preview 使用原 Host exact refs、Context 与 Provider render；不发送生成。不把 preview 失败变成更宽松的 execute，不把旧 source 或 UNKNOWN capabilities 渲染成通过。fallback 沿原 Host 保持有效 Program、工具与输出语义。对应 R02–R13、Q06/Q07/Q12。
 
 ### F14–F21 其他完整操作链
 
@@ -114,8 +114,8 @@ flowchart TD
 | Android Back resolver | keyboard → modal/popover → context sheet → command → generation handler → detail → full-game → immersive → workspace-child → Atria history → 当前 legacy fallback | 是 handler 有效时才消费的优先链；不是每次 Back 必定取消生成。未来零兼容须替换并删除 legacy fallback，不删前面原生恢复语义 |
 | APK Back | Web 先报告 consumed，未消费才 WebView history，再退出确认 | Termux 普通 Chrome 没有 Kotlin bridge，靠 Browser/Navigation Authority；不得用 APK 代码冒充 Termux 已测 |
 
-## 5. 未来新链的表现要求（设计合同，未接通）
+## 5. 新功能的操作与接线
 
 - Graph/Inspector 双向编辑；Timeline/Graph 是同一 Host 投影；NodeAttempt、EffectIntent、Approval、Receipt、Result 和 replay/recovery 不共用一个“Run 失败”。各界面按原 V3 合同，不由此文件重定义 payload。
-- **D8**：同一 Draft 的 structured/全文无损编辑、authored/effective/provider wire 三视图、exact Diff/来源 Inspector 和手机等价编辑仍是必须覆盖的功能；未发布 Prompt Preview 必须原 Host 可信无发送端口，当前 BLOCKED。
-- 来源不完整的质量不能显示“已通过”，文学/Agent/误拒维度保留独立适用性。详细 Gate 仍只归原 [E0](../../refactor/atria-native-prompt-preset-deepening/e0-audit.md)。
+- **D8**：同一 Draft 的 structured/全文无损编辑、authored/effective/provider wire 三视图、exact Diff/来源 Inspector 和手机等价编辑仍是必须覆盖的功能；未发布 Prompt Preview 复用原 Host 的有限 Draft 入口，新编排与独立作者上下文按对应接口接入。
+- 来源不完整的质量不能显示“已通过”，文学/Agent/误拒维度保留独立适用性。当前功能依赖见原 [实现说明](../../refactor/atria-native-prompt-preset-deepening/e0-audit.md)。

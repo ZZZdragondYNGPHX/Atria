@@ -431,6 +431,14 @@
 - **完成与未完成**：W1–W22 总体方向已讨论完成，Gate 0 Preflight **仅有限静态代码审查完成**，并非完整调用图或设计退出；Node/CI/Play/Studio/长会话及 Windows/CachyOS/Termux 都没有执行。无产品代码修改，没有新建/合并任何实施分支，没有自动化提醒/后台巡检。
 - **恢复触发**：仅在用户明确表示前述排队重构已完成并要求 Codex 接手时恢复。优先阅读同一 Plan、Preflight、Record 及唯一 `handoff/ARCH-DWE-01.md`，以当前 HEAD 处理具名 E0；只有 Gate 0 设计证据可交接、用户后续明确批准全案 Final/实施时才创建开发分支。否则维持 Draft / Paused。
 
+## Stage 26 — 聚焦功能实现，整理两案衔接（2026-10-18，仅文档）
+
+- 用户要求仔细检查两案并明确不要验证／测试主导企划。本轮只整理文档，世界任务仍为 **Draft / Paused**；未恢复产品开发，未将全案改为 Approved/Final。
+- 入口与旧 E0/Preflight 路径改为功能职责：WP-A 主体／正式效果，WP-B 历史／Save/Branch，WP-C 动态 Perspective／NPC／记忆与行为，WP-D Effective World／Claim-aware Context，WP-E Timeline/Play/媒体，WP-F 世界创作／装配／预览与旧入口替换。具体字段与接线由相应原 owner 落实，不为普通工程选择重开多轮审查。
+- 保留 W1-B～W22-B 的单 Native 权威、P2 优先最小身份、原领域事实、自由文本、按游戏事件／时间的有限自主性、合法个人认知及分支／历史设计。删除重复候选／下一轮要求，旧讨论留作背景；旧 Gate／完整调用图／取证／测试清单不再成为当前实施工作包。
+- 明确提示词／统一前端先完成，不等待本暂停企划；世界恢复后复用原 Context/Information/Compiler 与同一前端组件。正式债务按领域持续，记忆遗忘／检索缺失不使其消失；无 Clock 不伪造 Tick，跨领域不暗定统一时钟。
+- 这次没有产品代码修改、实现分支操作、验证／测试脚本、构建、浏览器、模型／Provider 调用或审查子代理；旧历史运行状态不被本次文档整理改写。未来恢复按当前功能入口与用户实际实施授权，旧暂停快照中的 Preflight 指令不恢复为新工作队列。
+
 ## Final state
 
 Not yet applicable. Discussion in progress.

@@ -1,52 +1,31 @@
-# Atria 全产品前端功能与交互审计 · 研究与外部设计输入
+# Atria 全产品前端：功能清单与实现输入
 
-> **2026-10-16 增量**：外部 [HTML](design-proposal/atria-visual-direction.html)、[全功能界面表现](design-proposal/atria-function-presentation.md)、[前端指导](design-proposal/atria-frontend-guidelines.md) 已提供，189 个审计功能组各映射一次。用户授权正式开始并指定 Claude Code 负责前端。后端真实增量见原 [E0 §8](../../refactor/atria-native-prompt-preset-deepening/e0-audit.md#8-2026-10-16-后端实施增量与真实剩余-gate)，[交接提示词](claude-code-frontend-prompt.md) 是对接输入，不是新的状态或审美权威。
+本目录提供既有功能、操作链、组件归属、跨端要求与外部设计参考。当前要做的功能和后端依赖归[提示词／前端企划](../../refactor/atria-native-prompt-preset-deepening/index.md)，直接实施范围见[统一前端交接](claude-code-frontend-prompt.md)。实际进展归[同一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md)。
 
-> 2026-10-15；**研究资料，不是新的产品合同、最终视觉企划或实施授权**。任务进度仍只记入 [Prompt 深化唯一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md)，E0 仍只归 [原审计台账](../../refactor/atria-native-prompt-preset-deepening/e0-audit.md)。D1–D8 功能语义保持冻结，D9/E0 **NOT_CLOSED**。
+## 范围与读取
 
-本资料面向整个 Atria：玩家安装作品、运行故事与存读档，作者编辑和构建项目，以及 Agents、Memory、World/Knowledge、Prompt、Runtime、扩展、媒体、账户、存储和诊断。它说明当前源码如何连接功能、哪些能力仍须保留、哪些旧入口应清退，以及设计 AI 必须覆盖什么；不规定配色、字体、主题、造型或美术风格。
+覆盖 Library、Play、Studio、Agents/Memory/Goals/Experience/Eval、World/Knowledge、Prompt、Runtime、扩展、媒体／语音、账户、存储、共享会话与诊断。189 个旧功能组是保留清单，另加已确认的独立作者／模板／发行升级和 V3 Plan/Run，不只实现 HTML 画出的部分。
 
-## 基线与证据边界
-
-| 对象 | 本轮固定证据 |
+| 材料 | 实现用途 |
 | --- | --- |
-| 正式产品 `main` | `695acf3bcad1d42e331459189532a76056278bec`，本地干净工作树；包含 Storage Center 合并 |
-| `docs` | 开始 `0a758827eaed96713ab9efed25ef1a0fdf31674c`；过程中已保留并发 `ab5461eb1`、`5e2117393`、`d2a3d21d9`、`d346f895b`、`ca43a0a84` 的文档与其他任务预览更新；最终提交以 Git 历史为准 |
-| 独立 V3 分支 | `31bef95723885c1547a9c3686200cbaf122799a8`；使用该提交的只读 Git archive，避免把另一任务曾在进行 merge 的工作树混入证据；已含 main@735 Storage Center 合并，尚未合入 main@695 的UI增量；另已补审V3显式transition/loop |
-| 前端静态扫描 | 1,065 个文本源码/模板/CSS/Android/Electron 文件，355,257 行；正文整理 189 个业务功能／控件组，另有前后端引用、端点和测试索引，详见 [覆盖说明](coverage-and-evidence.md) |
+| [页面与 Library/Play](surface-inventory.md) | 导航、作品、会话、World/Knowledge、Persona、历史与存档 |
+| [Studio/Prompt/Runtime](authoring-runtime-inventory.md) | 全部项目资源视图、Source/作品界面/Assets/交付、Project Agent、预设与模型配置 |
+| [Agents/扩展/媒体](agents-extensions-media-inventory.md) | 原生 Memory/Goals/反馈、编排替代、Skills/Plugins、图像与语音 |
+| [设置/账户/存储](settings-storage-diagnostics-inventory.md) | 偏好、身份、备份、资源清理、恢复与诊断 |
+| [完整操作链](interaction-flows.md) | 跨页面动作与返回、保存／取消／冲突／未知结果的具体表现 |
+| [组件归属](component-and-architecture-findings.md) | 共用组件与有效能力迁离旧容器 |
+| [跨端操作](cross-platform.md) | 桌面与 Termux 手机完整操作及平台差异 |
+| [统一前端交接](claude-code-frontend-prompt.md) | 当前功能实施与后端接线 |
+| [HTML](design-proposal/atria-visual-direction.html)／[功能表现](design-proposal/atria-function-presentation.md)／[设计指导](design-proposal/atria-frontend-guidelines.md) | 视觉／交互参考；新增提案只按实际批准范围使用 |
+| [源码位置](source-map.md)／[盘点附件](coverage-and-evidence.md) | 需要定位旧实现时查阅，不是待执行的审计／测试队列 |
 
-“源码已接通”仅表示读到了入口、挂载、handler、client/service 的静态链；不等于实际服务、权限、设备或质量通过。自动扫描的语法位置也不等于可见控件数量。未取得证据的地方明确为 **UNKNOWN / BLOCKED / NOT_RUN**，不能从文件存在推导能力完成。
+## 使用旧清单
 
-## 阅读与导出
+清单基于 2026-10-15 的 main `695acf3bc`、V3 `31bef9572` 静态盘点；后续能力按当前原服务实现，不以旧“BLOCKED/未接通”限制新功能，也不把旧“接通”当当前运行结论。不要为了更新清单重跑全仓扫描或测试。
 
-| 材料 | 用途 |
-| --- | --- |
-| [页面树与全局／Library／Play 清单](surface-inventory.md) | 当前导航、作品与会话、World/Knowledge、Persona、历史和存读档 |
-| [Studio／Prompt／Runtime 清单](authoring-runtime-inventory.md) | 创作资源、所有项目视图、AI 审查、模型连接、精确资源和编译预览 |
-| [Agents／Memory／扩展／媒体清单](agents-extensions-media-inventory.md) | 旧编排与有效原生能力分离、Skills/Plugins、视觉生成与语音 |
-| [Settings／账户／存储／诊断清单](settings-storage-diagnostics-inventory.md) | 偏好、认证、备份、资源中心、诊断与公告 |
-| [完整操作链与状态说明](interaction-flows.md) | 跨页面业务依赖、权限、加载/失败/取消/审批/恢复与快捷键 |
-| [组件复用和功能架构问题](component-and-architecture-findings.md) | 有源码依据的重复入口、状态割裂、旧底座清退与保留界线 |
-| [外部设计 AI 委托说明](external-design-ai-brief.md) | 可直接转交的产品语境、三项交付要求及功能映射规则 |
-| [覆盖、方法和未知项](coverage-and-evidence.md) | 审计置信度、动态入口、测试证据边界与导出清单 |
-| [源码索引](source-map.md) / [逐位置证据](evidence/) | 固定提交的源码链接、控件创建点、事件、调用方、导入、端点、CSS、测试 |
+- **保留**保留用户能力与原领域 owner，不要求复制旧布局。
+- **整合／重组**调整入口和组件，保持不同保存／执行语义。
+- **旧／待清退**随原生替代一起移除旧 ST/Workspace/Director 等合同；Memory/Goals/Experience/Visual Director 等有效功能继续实现。
+- **部分／未知**只说明具体依赖缺项；明确缺失操作，其他功能继续完成。
 
-外发时至少一起提供上述 Markdown；`evidence/*.tsv` 可用表格软件打开或按域过滤。它们是研究附件，既不是第二 Record，也不是新的设计或删除权威。
-
-需要表格导出时使用 [function-matrix.tsv](evidence/function-matrix.tsv)：189 个功能组来自四份正文表格，保留原列名和原行内容，是派生导出，修改应回正文，不在导出表另立权威。
-
-## 全文状态和处置词典
-
-| 词 | 含义 |
-| --- | --- |
-| **接通** | 入口与处理链静态可达；|
-| **部分** | 有真实链路，但某个入口、来源、权限、消费者或发布步骤未接齐 |
-| **设计** | 已有正式功能合同，尚无本轮可证明的完整产品链 |
-| **旧／待清退** | 当前仍运行，正式重构确认不保留旧合同；不表示已删除 |
-| **UNKNOWN** | 无充分证据作实现或废弃判断 |
-| **保留** | 必须保留用户能力及原领域权威；不要求复制旧布局 |
-| **整合** | 可合并入口/控件，能力和不同写入语义都保留 |
-| **重组** | 需要重新组织发现路径、上下文或状态；不是删除授权 |
-| **废弃** | 仅限已明确淘汰的 ST／旧 Workspace／Director 等合同、模式和兼容链 |
-
-“状态”与“处置”互相独立：一个当前可用的旧 mode 可以确认废弃；一个尚未实现的 D8 能力仍必须保留在未来完整功能要求中。HTML 未展示、旧控件隐藏、测试文件存在均不能作为删功能或宣称通过的依据。
+产品内的预览、源格式反馈、连接检测、Simulation、Build、Review/发布和可选 Eval 各是原业务操作；保留它们的界面不表示本次运行这些操作，亦不新增工程验证项目。不要因旧段落标题含“测试”而整段删除 Source 编辑、Assets、构建下载等有效功能。
