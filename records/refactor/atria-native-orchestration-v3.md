@@ -1431,3 +1431,36 @@
 
 - 交接 WIP（RP reservation 重计、Project 冷输入/History/预算、Session 分支预算与 Transition 序号）实现完成，运行证据仅如上。受限项不变：scope 内动态拓扑、嵌套 Frame、跨 scope replan、冻结终端替换、已关闭 Join 的 sibling 重用。
 - P3/P4/P6 仍 IN_PROGRESS（P6 余项已清，Browser 未重跑），最终 NOT_READY。未合 main。
+
+## 2026-10-18 — 回归清扫、缺陷修复与 P6 收口（Claude Code，续）
+
+- 起点 Source `420531a4a`，终点 `13a510bf2`（均已推送）；Docs 起点 `a43b72707`。
+- 方法：对 `tests/native-orchestration`（225 suites）与 `tests/native`（258 suites）做两轮全量批量清扫；每个失败与 `f7b929151`（重构前）、`532805fbb`（本轮开工前）及 `main` 快照对比定性：本分支新引入 / 用户精简重构遗留 / 先前已存在 / main 基线。修复只针对实际缺陷；与有意精简（去掉重复哈希、逐读守卫、`*_final` 二次授权）不一致的旧断言按新合同对齐，不恢复已移除的权威。
+
+### 产品缺陷修复
+
+- Project 委派死锁（`8b0332f24`）：`436cd1211` 把 `reserveChild` 放入 `withSourceControl`；Project 消费边界已持 Studio/Task 写队列，`reserveComputeChild` 再入同队列，所有 Project 委派在子 Run 准入后永久挂起（project-delegation 180s 超时的根因）。委派/confirmBudget 仍在 Source 边界内，额度转移在两者之间。
+- Effect 写入的 Root 当前性（`15356372c`）：去掉 final 复核后，银行回调内提交的合法取消仍会让 Effect 进入 ready/dispatching（拒绝仍提交事务），回调失败还会回滚已提交的取消。Run control 提供存储完整性串比较 `unchanged()`，prepare/ready/claim/审批 claim 写前检查，失败时保留已提交变更；不重复授权。Review rerun 同理（`d4a6a09c3`）。
+- RP：委派子 Fanout 不接受 unknown usage 关闭（`57fbf8be9`，否则花掉终端请求后卡在 pending_output）；父 Return 恢复 Source 重读（`1e5011b09`，合法编辑/删除/迁移不再被绕过）；Chat 输出拒绝时保留合法变更而非回滚（`6ce52b837`，SQLite 曾丢失用户编辑）；回边反馈计入 Planner 进展、自回环重复仍停止（`e08e29a09`，live/cold 一致）。
+- Plan pin 仅解析到精确 definitionHash（`881f4c0d3`，字段比较，不重哈希）。
+- Project 执行资源只取节点实际执行的路由（`5da7a32c9`，route_selection 评测预声明的备选 pin 不再误判）。
+- Session：委派在任何预算绑定前被拒时，失败写入不再要求账本存在，父 Run 正确 blocked（`935b1a113`）。
+- P6：退役的 `atri-native-verification` 残留目录导致内置 Skill 导入整体失败，已清除，场景示例保留为测试数据（`80396ca40`）；删除只服务旧 orchestrator 工具的两份 memory spec（`b37972d95`）；05-workspaces e2e 改走 edge dock 与 V3 Agents（`72ff90022`）。
+
+### 测试对齐（非产品变更，均有依据）
+
+- 篡改即读：`runs.get` 不再复证终端事实（`c2451035d`）→ 改由冷读取器（background/session/project commit/project review output）断言；Session 重载保留 Variant 身份比较。
+- 有意移除：逐读 `checkedRecord`/作者校验、序列化逐次 JSON 重验、Plan 读取的存储形状校验、边界的 binding digest 重算、`*_final` 授权阶段。
+- 新合同：缺失/数字 usage（b5a41a0fa 及 Model terminal）、声明式后台 Task 预算拒绝为 pending（`e434b42b2`）、生成层更早拒绝未列出工具、RP 控制图支持条件边/可选输入、退役 orchestrator 设置不再保留。
+- 死锁/环境：观察在 Source 锁内后，测试钩子不能在锁内等待独立写者；派生子进程补 Jest 配置路径（crash/goal/session-task/restart/C4）；Windows 无目录 fsync 的 POSIX 用例仅在 POSIX 声明。
+
+### 实际结果
+
+- 第二轮清扫（修复前半部分后）：`tests/native-orchestration` 全部通过，唯 SQL-only 三套（p3-sql、sql-administration、sql-owner-loss）因无 MySQL/PG 无法运行；`rp-context-retrieval-evaluation` 在并行负载下一次 flaky，单跑两次 32/32。随后各修复均单独复跑通过。
+- `tests/native`：本分支特有失败已全部修复（共 28 suite 中 9 个）；其余与 `main` 快照同样失败，属 main 基线：studio-http、persona-*、frontend-conversation/heavy、history、enterprise/regional/renewal/lifetime-session、studio-native-envelope-g04、provider-discovery、authority-frontend-c3、long-memory-turn-consumer-g06、long-term-storage、session-skill-continuation head_change、agent-settings（main 上整套无法加载）。未扩展到这些 main 产品域。
+- 浏览器：V3 native-orchestration e2e 4/4、05-workspaces 2/2 PASS；04-navigation、07-plugins-settings 在 main 快照同样失败（edge-dock 自动隐藏导航与 Extensions 重设计后未更新），不属本分支。
+- NOT_RUN：MySQL/PostgreSQL 引擎、真实 Provider、Linux/Termux 平台、`tests/agent-intelligence/s34-live.js`（仍引用已退役的 workspace-prompt 目标）、无分支内回环正例端到端用例。
+
+### 状态
+
+- P3/P4 实现与 FS/SQLite 回归收口；P6 旧编排清退完成。最终产品 Gate 仍 **NOT_READY**：缺 SQL 引擎、真实 Provider 与平台证据，且 main 基线失败未在本任务处理。未合 main。
