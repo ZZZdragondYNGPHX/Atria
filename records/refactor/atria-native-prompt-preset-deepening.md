@@ -24,6 +24,10 @@
 - 独立 Library 作者可无游戏编辑；独立 Effective/Wire 测试必须沿原 Host 的有界非特权 fixture，先无发送 Preview；实际模型试读须明确 Route/费用/数据外发许可、保留真实 Token/未知成本，不默认试写/多 Judge/自动优化。视觉侧另走 ImagePromptIR、Target/Rendering、Visual Job/Asset，不复刻文本编译器或 Session Gallery。原 D7 Quality/PromptCandidate 的来源与 Review/Publish 权威不变。
 - 原位更新 D5、D8、前端指导、功能矩阵 Q12/V03、`decisions` 与唯一 `Record`、简化 `index` 路由；不建新方案/第二 Record。只读审查 `main@c57fada6edeea255b29d857ba2585c1dbc9c098b`：正式 `/preview` 要求 Session/Project，`prompt-compiler.js` 已有片段/条件诊断，但不能声称独立 fixture 与完整 Pass Trace 已可用；`docs` 编辑基线为 `669adce8173eee607618bd2ce0d9082dbae27139`。没有修改产品代码，未跑 CI、编译、端到端、真机、付费 Provider 或图像 API；E0/三端验收状态不因此改变。
 
+- 用户确定分层原生预设生态：官方基础、作者共享、私人/项目派生共用原 Library 的 Preset/Program/Module/Generation 精确资源和权限，来源身份不增加 Tool/Role/Grant；普通游戏作者可以选择现成模板，并非必须自行编写提示词。作者可独立保存、导入/导出/分享；保存修订、可移交导出、由对应原 Host/Library/Project/V3 正式发布/绑定、消费者采用/升级必须区分，新 Revision 不影响已钉消费者或正在运行的 Attempt。当前未授权在线市场、自动分发/更新或第二 Store。
+- 质量评价延续 D7：作者样例/Development、独立 Promotion 和来源不充分的 `unknown/source_unready` 必须明确区分；“官方”不自动等于已验证或全模型适用，未经 Promotion 不伪造认证，但普通作者仍可导出分享未受审作品。候选与 V3 `plan-prompt` 仍由原 Candidate/Eval/Review/CAS 管理，缺真实来源不能宣称质量通过。
+- 本次在既有 D7、D8、决策索引、前端指导与 Q01/Q08/Q09/Q10/Q12 功能映射**原位修订**并更新同一 Record，无新 Plan、假市场字段或新功能编号。基线 `docs@81a71c248a8ca726e113640c60b1b1119486bd8a`；仅设计文档，不改 main/产品代码，不运行 Node/CI/Provider/Browser/真实设备。分发格式、版本依赖、升级冲突规则与跨范围可移交闭包留下一轮讨论，不写成已实施。
+
 ## 2026-10-16 — 后端正式开工
 
 用户授权正式开始，确认包含 D2–D8 全部后端，前端实现交 Claude Code。读取实际 Git、同一 Plan/E0/Record 和外部设计三文件；不冻结 §8.4 提案。起点 main=695acf3bc，docs=5101c3b3e，V3=618a04ae1；V3 仍在并发开发，原 Authoring bindings/生产 Model/Context/Source 未接通。既有各工作树 CLAUDE.md 删除、docs 外部设计草稿/截图及 agent-experience-evolution 未跟踪目录保持。当前接口工程决定见同 Bundle backend-implementation；验收仍 NOT_RUN，不把授权写为 E0 PASS。

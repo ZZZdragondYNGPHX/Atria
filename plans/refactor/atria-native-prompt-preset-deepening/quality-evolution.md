@@ -59,6 +59,12 @@ Q2 不表示一次上所有维度、每回合调用 Judge。单场景按审查�
 
 **评测污染防护**：Development 来源可用于根因诊断和候选构造；独立 Promotion 案例及其真实答案不得作为生成新 Prompt、挑选最有利策略或补强作者指令的输入。相似场景/同来源派生组/相同人物改名均不算独立；来源或模型/evaluator/route 版本变化需要重核资格。所有失败、无改进、未知费用、不利 delta 保留。即使候选表现更文学化，源/玩家/Disclosure/Tool 权限一项真实硬失败也不得发布。
 
+**预设生态与既有发布权威**：官方基础预设、作者可分享预设、私人/作品精确派生只表达来源与复用层次，不引入新的 Preset/Module Store 或赋予 Role/Tool/Source/Grant。基础预设应使普通游戏作者可直接选择，模型/Route/Capability 的必要配置仍须满足；作者共享资源须经过原生类型/闭包/来源与导入授权校验，导出文件不应包含 Secret 或受限私有 Context，分享不等于自动生效。私人 Fork/Derive 持有自己的 exact revisions，不影响原作者。
+
+**发布动作四分**：① 保存原 Library/Project 正式修订；② 导出可移交的资源及受允许的依赖说明；③ 在相应 Library/Project/V3 Authority 下经所需 Review/Publish 生成可供消费的明确版本或 Binding；④ 游戏、Route、Agent/Play 根据权限显式选择采用/升级。不得将“导出”宣称为云端市场发布，不把“发布新版本”视为所有消费者自动切换；旧 Run、已钉 Package/Plan/Route/Session 保留其精确身份，更新须按合法主体核对影响、依赖、能力、Diff、CAS/Receipt 与回滚边界。跨客户端在线分发、远程同步与自动更新不是本轮批准的能力。
+
+**质量证据身份**：作者自行试写与 Development 案例只证明适用场景中的观察，不授予 Promotion 资格；独立、来源受审且与候选隔离的评价才可支持相应质量标签，且只对实际受审的模型、Route、Case/版本及维度有效。未取得受审来源时保留 `unknown/source_unready`，不能因“官方预设”或高分数宣传已认证，也不应把未经认证等同于禁止作者导出个人作品。不得为了展示好看分数而自动循环 Judge。
+
 ## 6. 建议评价样本与成本控制（仅示意，全部 NOT_RUN）
 
 | 场景 | 需要真实可验的维度 | 不能声明通过的情况 |
@@ -110,6 +116,7 @@ Authorized Development Feedback/Diagnosis (with Source/provenance)
 - 发布前必须持有已校验的 exact `bindingId/version/planRef/nodeId/moduleRef`，共享 Store CAS、原 Evaluation/Report/Promotion 权威；候选 Module 和 PlanRevision 已经写入但 Binding CAS 失败时必须原 Journal reconcile，不能假称跨存储原子或自动覆盖并发编辑；Rollback 受原 published-current/精确 CAS 限制，不重复已发生的 Effect/费用。
 - 用获准开发样本改进文风，**不能**查看独立 promotion 案例内容/答案后再为其写 Prompt；同源换名字不算独立；Judge 的身份与独立性需要真实校准与 provenance。所有负 delta、unknown、model limits、调用费用和失败证据必须保存可审查记录。
 - G1 保持：正常 RP 单 Narrator 优先，未经明确任务/必要缺口和原 Native Compute 预算不得每回合自动反思、循环 Judge、自动发布或跨 Provider 内容重发。
+- **发布与消费不得混淆**：原 `PromptCandidateStore` 的 Preset/Route 局部候选应用与 V3 `plan-prompt` 的 PlanRevision/PlanBinding CAS 是已有不同领域的受信发布路径；分享一个可移交 Preset 并不自动调用其中任一路径。游戏作者可选择官方/共享基础预设并按需 Fork/Derive，升级到新 exact revision 要先审查有效模块/来源/Provider 能力和影响消费者，成功写入与下一次实际生效按正式回执分别显示。
 
 ## 8. 真实工程阻塞与下一轮入口（NOT_RUN）
 
