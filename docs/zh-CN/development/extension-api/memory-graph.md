@@ -55,7 +55,6 @@ await session.compactNodes({ type: 'event', childIds: [...], summary: '...' });
 - context 无法解析出聊天目标（缺 `chatId`，或缺 `createFloorState` —— 典型情况是测试运行器没有把 SillyTavern context mock 完整）。
 - 从 floor-state 加载运行时 store 失败（罕见；会以 `console.warn` 记录）。
 
-orchestrator 的 `memory_*` loop 工具会把 `null` 会话翻译成 `ToolError(MEMORY_DISABLED)`，以便 agent 改走别的路线。
 
 ### 方法参考
 
@@ -1045,6 +1044,4 @@ if (groups.length > 0) {
 
 ## 参见
 
-- 配套：orchestrator 通过 `getExtensionApi('memory-graph').openSession(context)` 打开一个会话，并把它挂在 `__memoryGraphSession` 上供自身的 `memory_*` loop 工具消费 —— 见 [Director 运行时](/zh-CN/features/native-orchestration)。
 - 相关扩展 API:[插件集成](/zh-CN/development/extension-api/plugin-integration)，介绍了与其他扩展入口一并发布 `'memory-graph'` 的扩展 API 注册表。
-- 要从你的扩展往编排器注册自定义工具（memory-graph 自己就是这样发布它的读 / 写工具的），参见 [编排器工具 API](../../features/native-orchestration.md)。

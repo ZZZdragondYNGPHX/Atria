@@ -3,38 +3,22 @@
 // submit/cancel actions back through a Promise that the caller awaits.
 
 import { render as renderCeaCpa } from './renderers/cea-cpa.js';
-import { render as renderSpec } from './renderers/orchestrator-spec.js';
-import { render as renderAgenda } from './renderers/orchestrator-agenda.js';
-import { render as renderLoop } from './renderers/orchestrator-loop.js';
-import { render as renderDirector } from './renderers/orchestrator-director.js';
 import { createAnnotationEngine } from './annotation-engine.js';
 import { openHostPopup } from './popup-host.js';
 
 const RENDERERS = {
     'cea': renderCeaCpa,
     'cpa': renderCeaCpa,
-    'orch-spec': renderSpec,
-    'orch-agenda': renderAgenda,
-    'orch-loop': renderLoop,
-    'orch-director': renderDirector,
 };
 
 const TITLES = {
     'cea': 'sim.title.cea',
     'cpa': 'sim.title.cpa',
-    'orch-spec': 'sim.title.orch_spec',
-    'orch-agenda': 'sim.title.orch_agenda',
-    'orch-loop': 'sim.title.orch_loop',
-    'orch-director': 'sim.title.orch_director',
 };
 
 const TITLE_FALLBACK = {
     'cea': 'Simulation Review — Character Card',
     'cpa': 'Simulation Review — Preset',
-    'orch-spec': 'Simulation Review — Orchestrator (Spec)',
-    'orch-agenda': 'Simulation Review — Orchestrator (Agenda)',
-    'orch-loop': 'Simulation Review — Orchestrator (Loop)',
-    'orch-director': 'Simulation Review — Orchestrator (Director)',
 };
 
 let isOpen = false;

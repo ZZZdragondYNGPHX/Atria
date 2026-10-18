@@ -4,7 +4,7 @@ APIs for sending LLM requests, registering tools into the global tool registry, 
 
 ## Sending LLM Requests
 
-The recommended API is `context.generateTask` — a one-stop function that handles profile resolution, world-info activation, prompt assembly, dispatch, and response normalization in a single call. Built-in extensions (search-tools, completion-preset-assistant, character-editor-assistant, memory-graph, orchestrator) all route through it. Third-party extensions should use it too instead of stitching together `sendOpenAIRequest` + `buildPresetAwarePromptMessages` + `connectionProfiles.resolve` themselves.
+The recommended API is `context.generateTask` — a one-stop function that handles profile resolution, world-info activation, prompt assembly, dispatch, and response normalization in a single call. Built-in extensions (search-tools, completion-preset-assistant, character-editor-assistant, memory-graph) all route through it. Third-party extensions should use it too instead of stitching together `sendOpenAIRequest` + `buildPresetAwarePromptMessages` + `connectionProfiles.resolve` themselves.
 
 ::: info Why one API
 Manual stitching means every extension reimplements profile resolution, world-info activation, family dispatch (openai vs kobold/novel/textgen), and response parsing. `generateTask` consolidates all of that and returns a normalized result shape regardless of the underlying API family.

@@ -66,7 +66,7 @@ This function does **not** return API endpoint, model, or secret information. To
 
 ### presets.state
 
-Plugin runtime/session data bound to a preset. State sidecars live next to the preset on disk and are NOT exported with the preset itself — they are strictly for plugin-side runtime state (e.g., the orchestrator's per-preset agent override, the preset assistant's last-used template). Do not stuff plugin data into the preset body; use `presets.state.*` instead.
+Plugin runtime/session data bound to a preset. State sidecars live next to the preset on disk and are NOT exported with the preset itself — they are strictly for plugin-side runtime state (e.g., the preset assistant's last-used template). Do not stuff plugin data into the preset body; use `presets.state.*` instead.
 
 All methods accept `options.target` (a `PresetRef`) and `options.collection` for cross-preset reads/writes; both default to the currently selected preset.
 

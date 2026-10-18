@@ -31,14 +31,14 @@ describe('buildSimulationToolResult', () => {
 
     test('cancelled result has no inline tags and empty annotations block', () => {
         const out = buildSimulationToolResult({
-            kind: 'orch-loop',
+            kind: 'cpa',
             cancelled: true,
             error: null,
-            chainSegments: [{ text: '# Loop Simulation\n\nstuff' }],
+            chainSegments: [{ text: '# Preset Simulation\n\nstuff' }],
             annotations: [],
             worldInfoHits: [],
         });
-        expect(out).toContain('<simulation_result kind="orch-loop" ok="false" cancelled="true">');
+        expect(out).toContain('<simulation_result kind="cpa" ok="false" cancelled="true">');
         expect(out).toContain('<status submitted="false"/>');
         expect(out).toContain('<annotations/>');
         expect(out).not.toContain('<<<ANNOTATION');
@@ -59,11 +59,11 @@ describe('buildSimulationToolResult', () => {
 
     test('error result has only error block', () => {
         const out = buildSimulationToolResult({
-            kind: 'orch-agenda',
+            kind: 'cea',
             cancelled: false,
             error: { reason: 'simulation_failed', message: 'Model API 502' },
         });
-        expect(out).toContain('<simulation_result kind="orch-agenda" ok="false">');
+        expect(out).toContain('<simulation_result kind="cea" ok="false">');
         expect(out).toContain('<error reason="simulation_failed">');
         expect(out).toContain('Model API 502');
         expect(out).not.toContain('<simulation_chain>');

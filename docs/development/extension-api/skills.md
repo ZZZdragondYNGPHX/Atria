@@ -2,7 +2,7 @@
 
 `context.skills.*` is the JavaScript surface for installing, reading, editing, and packaging skills. Extensions reach for it through `Atria.getContext()`; CardApps reach for the same shape on their `ctx.skills`.
 
-Skills are the [knowledge packs](/features/skills/) the orchestrator uses; this API is the read/write transport that backs the skill manager subpanel, the inline editor, and the iter-studio's 17 skill tools.
+Skills are the [knowledge packs](/features/skills/) available to authorized consumers; this API is the read/write transport that backs the skill manager subpanel, the inline editor, and the iter-studio's 17 skill tools.
 
 ::: tip Read the user-facing docs first
 For the conceptual model — scopes, visibility policy, embed lifecycle — start at [Skills overview](/features/skills/). This page is the API reference.
@@ -82,7 +82,7 @@ get(name: string, scope?: SkillScope | 'all'): Promise<SkillIndexEntry | null>
 
 Returns `null` if no skill of that name exists in the searched scope.
 
-When `scope` is omitted, returns the first match — useful as a "does this skill exist somewhere" check, but not a substitute for the orchestrator's later-wins resolution. Pass a specific scope when you need a deterministic lookup.
+When `scope` is omitted, returns the first match — useful as a "does this skill exist somewhere" check. Pass a specific scope when you need a deterministic lookup.
 
 ## Reading content
 
@@ -256,7 +256,7 @@ If a same-named skill exists in the target scope:
 delete(scope: SkillScope, name: string): Promise<void>
 ```
 
-Removes the skill directory atomically. Orchestrator profiles that referenced the skill keep their (now-stale) name in `skills.visible` — references soft-fail at dispatch.
+Removes the skill directory atomically. Saved version references are not rewritten; later consumption still requires validation by the original authority.
 
 ### `rename(scope, oldName, newName)`
 
@@ -335,7 +335,7 @@ packForEmbed(opts: {
 
 With `mode: 'auto'`, the packer picks per skill: inline for small text-only skills, archive for larger/binary skills.
 
-The orchestrator's embed export hooks write the payload into `preset.extensions.atria.embedded_skills_source` (presets) or `character.data.extensions.atria.embedded_skills_source` (character cards) at save time.
+The Skill embed export hooks write the payload into `preset.extensions.atria.embedded_skills_source` (presets) or `character.data.extensions.atria.embedded_skills_source` (character cards) at save time.
 
 ### `previewExtractEmbed(opts)`
 
@@ -421,8 +421,7 @@ The CardApp `ctx.skills` surface mirrors `context.skills.*` 1:1 — identical si
 
 ```js
 async function init(ctx) {
-  // List skills visible to anyone (CardApps don't see the orchestrator's
-  // per-agent visibility filtering — they see the raw inventory).
+  // List the Skill inventory exposed through this CardApp API.
   const skills = await ctx.skills.list({ scope: 'all' });
 
   // Read a skill body
@@ -442,5 +441,5 @@ The `ctx.skills` wrapper is intentionally thin — never richer than `getContext
 - [Skills overview](/features/skills/) — what a skill is, three scopes
 - [Authoring skills](/features/skills/authoring) — frontmatter + body conventions
 - [Skill management](/features/skills/management) — UI surface for the same operations
-- [Orchestrator integration](/features/native-orchestration) — how the runtime filters by `skills.visible` / `deny`
+- [Orchestrator integration](/features/native-orchestration) — original Source and version boundaries for native consumption
 - [Extension API overview](/development/extension-api/) — other namespaces on `context.*`

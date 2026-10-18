@@ -66,7 +66,7 @@ presets.resolve(
 
 ### presets.state
 
-綁定到預設的外掛執行時/會話資料。State sidecar 與預設檔案並排存放，**不會隨預設一起匯出**，僅供外掛側執行時使用（例如編排器的「按預設記憶 agent 覆寫」、預設助手的「上次使用的範本」）。不要把外掛資料塞進預設 body，用 `presets.state.*`。
+綁定到預設的外掛執行時/會話資料。State sidecar 與預設檔案並排存放，**不會隨預設一起匯出**，僅供外掛側執行時使用（例如預設助手的「上次使用的範本」）。不要把外掛資料塞進預設 body，用 `presets.state.*`。
 
 所有方法都接受 `options.target`（`PresetRef`）和 `options.collection` 做跨預設讀寫；兩者預設指向當前選中的預設。
 

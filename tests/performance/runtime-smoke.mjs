@@ -316,8 +316,7 @@ try {
         const core = await import('/script.js');
         const { capabilitySettings } = await import('/scripts/capability-host.js');
         const { invalidateRegexExecutionPlans, regex_placement } = await import('/scripts/extensions/regex/engine.js');
-        const { applyProfileWorldInfoFilter } = await import('/scripts/agents/orchestrator/lorebook-filter.js');
-        const { createWorldInfoDispatchAttribution, markWorldInfoDispatch } = await import('/scripts/atri-world-info-provenance.js');
+        const { createWorldInfoDispatchAttribution, markWorldInfoDispatch, filterWorldInfoByProvenance } = await import('/scripts/atri-world-info-provenance.js');
         wi.updateWorldInfoSettings(
             { world_info_budget: 100, world_info_recursive: false },
             ['atri-public-fixture', 'atri-private-fixture', 'atri-unknown-condition-fixture', 'atri-malformed-condition-fixture'],
@@ -342,7 +341,7 @@ try {
         const metadataAfterEvaluation = structuredClone(core.chat_metadata);
         const payload = { ...resolution, worldInfoResolution: resolution };
         const before = [...payload.worldInfoBeforeEntries];
-        applyProfileWorldInfoFilter(payload, { bookPattern: '^atri-private-fixture$' });
+        filterWorldInfoByProvenance(payload, resolution.worldInfoProvenance, book => book === 'atri-private-fixture');
         const firstCommit = await wi.commitWorldInfoEvaluation(resolution);
         const metadataAfterCommit = structuredClone(core.chat_metadata);
         const secondCommit = await wi.commitWorldInfoEvaluation(structuredClone(resolution));

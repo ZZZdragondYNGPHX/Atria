@@ -42,8 +42,8 @@ test('popup tolerates a translate-style i18n function (text first, key second)',
 
 test('popup tolerates a missing translate (fallback-only)', async () => {
     const result = await openSimulationReview({
-        kind: 'orch-loop',
-        payload: { rounds: [], terminationReason: 'max_rounds' },
+        kind: 'cpa',
+        payload: { finalOutput: 'Original preset response', reasoning: 'Original preset reasoning', assembledPrompt: { systemPrompt: 'sys', messages: [] }, worldInfoHits: [] },
         i18n: (_, fb) => fb || '?',
     });
     expect(result.ok).toBe(true);

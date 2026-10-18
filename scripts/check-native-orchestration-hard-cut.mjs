@@ -12,8 +12,9 @@ for (const file of files) {
     if (!/\.(?:m?js|cjs)$/.test(file) || !fs.existsSync(file) || file.startsWith('node_modules/')) continue;
     const source = fs.readFileSync(file, 'utf8'), tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
     const visit = node => {
-        if (ts.isStringLiteral(node) && node.text.startsWith('.')) {
-            const target = path.posix.normalize(path.posix.join(path.posix.dirname(file), node.text));
+        if (ts.isStringLiteral(node) && (node.text.startsWith('.') || node.text.startsWith('/scripts/'))) {
+            const target = node.text.startsWith('/scripts/') ? path.posix.normalize('public' + node.text)
+                : path.posix.normalize(path.posix.join(path.posix.dirname(file), node.text));
             if (retired.some(root => target.startsWith(root))) errors.push(file + ': retired dependency ' + node.text);
         }
         if (!file.startsWith('tests/') && ts.isCallExpression(node) && /getCapabilityApi|registerCapabilityApi/.test(node.expression.getText(tree))

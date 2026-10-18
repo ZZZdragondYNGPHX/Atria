@@ -2,7 +2,7 @@
 
 `context.skills.*` 是用於安裝、讀取、編輯、打包 Skills 的 JavaScript 介面。擴充透過 `Atria.getContext()` 拿到它；CardApp 在自己的 `ctx.skills` 上拿到同樣的形狀。
 
-Skill 是編排器使用的[知識包](/zh-TW/features/skills/)；這套 API 是支撐 Skill 管理子面板、內嵌編輯器、迭代工作台 17 個 Skill 工具的讀寫傳輸層。
+Skill 是供獲授權消費者使用的[知識包](/zh-TW/features/skills/)；這套 API 是支撐 Skill 管理子面板、內嵌編輯器、迭代工作台 17 個 Skill 工具的讀寫傳輸層。
 
 ::: tip 請先讀使用者文件
 關於概念模型 —— 作用域、可見性策略、嵌入生命週期 —— 從 [Skills 概覽](/zh-TW/features/skills/) 開始。本頁是 API 參考。
@@ -82,7 +82,7 @@ get(name: string, scope?: SkillScope | 'all'): Promise<SkillIndexEntry | null>
 
 搜尋範圍內沒有該名字時返回 `null`。
 
-省略 `scope` 時返回首個匹配 —— 適合用作「這個 Skill 某處存在嗎」的檢查，但不能替代編排器的後者優先解析。需要確定性查找時傳入特定 scope。
+省略 `scope` 時返回首個匹配 —— 適合用作「這個 Skill 某處存在嗎」的檢查。需要確定性查找時傳入特定 scope。
 
 ## 讀取內容
 
@@ -256,7 +256,7 @@ install(opts: {
 delete(scope: SkillScope, name: string): Promise<void>
 ```
 
-原子移除 Skill 目錄。參照該 Skill 的編排器 profile 仍保留 `skills.visible` 裡的舊名 —— 派遣時參照軟失敗。
+原子移除 Skill 目錄。刪除不會重寫其他消費者已儲存的版本參照；後續消費仍需按原權威重新驗證。
 
 ### `rename(scope, oldName, newName)`
 
@@ -276,7 +276,7 @@ moveScope(
 ): Promise<void>
 ```
 
-跨作用域原子檔案系統 move。編排器參照（只按名字）依然有效。想要覆蓋目標，先刪目標作用域裡的同名 Skill 再 move 即可。
+跨作用域原子檔案系統 move。已儲存的版本參照不會自動遷移。想要覆蓋目標，先刪目標作用域裡的同名 Skill 再 move 即可。
 
 ### `importBundled()`
 
@@ -335,7 +335,7 @@ packForEmbed(opts: {
 
 `mode: 'auto'` 時打包器按每 Skill 自選：小且純文字的用內聯，更大或二進位的用封存。
 
-編排器的嵌入匯出鉤子會把負載寫入 `preset.extensions.atria.embedded_skills_source`（預設）或 `character.data.extensions.atria.embedded_skills_source`（角色卡），在儲存時持久化。
+Skill 的嵌入匯出鉤子會把負載寫入 `preset.extensions.atria.embedded_skills_source`（預設）或 `character.data.extensions.atria.embedded_skills_source`（角色卡），在儲存時持久化。
 
 ### `previewExtractEmbed(opts)`
 
@@ -421,8 +421,7 @@ CardApp 的 `ctx.skills` 介面與 `context.skills.*` 1:1 鏡像 —— 簽名�
 
 ```js
 async function init(ctx) {
-  // 列出對任何人可見的 Skill（CardApp 不受編排器
-  // per-agent 可見性過濾 —— 它們看到的是原始庫存）。
+  // 列出此 CardApp API 暴露的 Skill 庫存。
   const skills = await ctx.skills.list({ scope: 'all' });
 
   // 讀一個 Skill 的正文
@@ -442,5 +441,5 @@ async function init(ctx) {
 - [Skills 概覽](/zh-TW/features/skills/) —— 什麼是 Skill、三種作用域
 - [創作 Skill](/zh-TW/features/skills/authoring) —— frontmatter + 正文約定
 - [Skill 管理](/zh-TW/features/skills/management) —— 同等操作的 UI 介面
-- [編排器整合](/zh-TW/features/native-orchestration) —— 執行時如何按 `skills.visible` / `deny` 過濾
+- [編排器整合](/zh-TW/features/native-orchestration) —— 原生消費的來源與版本邊界
 - [擴充 API 概覽](/zh-TW/development/extension-api/) —— `context.*` 上的其它命名空間

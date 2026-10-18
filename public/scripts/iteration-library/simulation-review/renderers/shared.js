@@ -1,17 +1,15 @@
-// Tiny DOM helpers shared by all per-mode renderers. Keeps the
-// individual renderers focused on structure and path strings.
+// DOM helpers for the retained CEA/CPA renderer and shared status/Source
+// projections. Labels never grant Source access or execution authority.
 //
 // `opts.collapsedByDefault` (boolean): mark the section as initially
 // folded (CSS hides the body) AND tag it `data-collapsible="true"` so
 // the popup's "Expand all / Collapse all" toggle can find it. Use this
-// for process wrappers (rounds, sub-agent dispatches, tool calls, per-
-// step Outputs, Reasoning) — anything the user can drill into but
+// for process wrappers (assembled prompts and Reasoning) — anything the user can drill into but
 // doesn't need to see at-a-glance.
 // `opts.isFinalOutput` (boolean): tag the section `data-sim-final-
 // output="true"` so popup.js can scroll it into view on open. The
 // final-output section is the one the user opened the popup for —
-// "Final Output" (cea/cpa), "Final Capsule" (spec), "Final Composed
-// Output" (agenda), "Capsule" (loop), "Final Message" (director).
+// "Final Output" in the CEA/CPA preview.
 // Never collapse this one.
 
 export function jsonOrText(v) {
@@ -88,17 +86,15 @@ export const appendShared = {
  * Append a status chip to a tool-call section header. The chip reflects
  * whether the tool actually ran (live read) or was rewritten by the
  * sim-safe quarantine into a noop / validated stub. The classification
- * comes from the `result` envelope set by loop-tools.js's exec
- * dispatch:
+ * is a display projection of the supplied result envelope:
  *   - `result.simulated === true && result.unvalidated === true` →
  *     unvalidated noop fallback (orange). The tool had no simulate()
- *     handler so the orchestrator returned `{ok:true, simulated:true,
- *     unvalidated:true}` without touching state.
+ *     handler; the supplied envelope marks the preview as unvalidated.
  *   - `result.simulated === true` (no `unvalidated`) → validated
  *     simulate path (yellow). The tool's `simulate()` ran args
  *     validation and shape-matched the success envelope.
- *   - otherwise → live read (green). The tool ran end-to-end against
- *     real state.
+ *   - otherwise → the existing live-read display label (green). This
+ *     label is not proof of a domain write or a spending settlement.
  *
  * `sectionEl` is the <section> returned by appendShared.subsection /
  * subsubsection; we attach the chip to the heading inside it so it
@@ -134,9 +130,9 @@ export function appendToolStatusChip(sectionEl, result, i18n) {
  * Unknown sources (e.g. a name that no layer recognizes — the dispatcher
  * would have surfaced `ToolError(NOT_IMPLEMENTED)`) also get no chip.
  *
- *   - 'profile'   → `[profile]` — per-run Layer-3 customTools[] entry
- *   - 'extension' → `[ext]`     — Layer-2 extension-registered tool
- *   - 'st-bridge' → `[ST]`      — Layer-2 ST-bridged tool
+ *   - 'profile'   → `[profile]` — supplied profile source label
+ *   - 'extension' → `[ext]`     — supplied extension source label
+ *   - 'st-bridge' → `[ST]`      — supplied bridge source label
  *   - 'builtin' / undefined → no chip
  *
  * Source labels are technical/developer-facing — three short tags meant
