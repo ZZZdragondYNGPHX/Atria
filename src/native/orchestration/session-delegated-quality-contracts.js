@@ -5,7 +5,7 @@ import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readAttempt, readAttemptInvalidation } from './controller-common.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
-import { readGraphReviewCompletion } from './graph-review-completion.js';
+import { readGraphReviewCompletion, readReviewablePlannerCompletion } from './graph-review-completion.js';
 import { readGraphJudgeCompletion } from './graph-judge-completion.js';
 import { readSessionPlannerCompletion, assertSessionControlWork } from './session-planner-contracts.js';
 import { RP_REVIEW_REASON_CODES } from './rp-review-profile.js';
@@ -63,6 +63,12 @@ export async function readSessionDelegatedReviewCompletion(tx, handle, root, att
         const target = fact.targets.find(item => item.attemptId === replacement.targetAttemptId), next = (await readAttempt(tx, handle, root, replacement.attemptId)).doc;
         const input = { ...target.inputRefs[0], reviewFeedbackRef: { reviewReceiptRef: fact.receipt.reviewReceiptRef, reasonCode: fact.review.reasonCode } };
         if (!equal(next.inputRefs, [input, ...target.inputRefs.slice(1)]) || next.effectiveGrantDigest !== target.effectiveGrantDigest) invalid();
+    }
+    for (const id of fact.review.invalidatedAttemptIds) {
+        const attempt = (await readAttempt(tx, handle, root, id)).doc, node = snapshot.graph.nodes.find(node => node.nodeId === attempt.nodeId);
+        if (['fanout', 'join'].includes(node?.kind) || node?.capabilities.includes('agent.delegate')
+            || (node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
+                && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork: assertSessionControlWork })) invalid();
     }
     return fact;
 }

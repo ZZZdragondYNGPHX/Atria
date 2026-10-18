@@ -9,10 +9,10 @@ import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { rpControlReplanScope } from './rp-control-graph.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
-import { readAttempt, controlRecordKey, readAttemptInvalidation, readGraphReviewReceipt, assertAttemptConsumable, assertAttemptCurrent } from './controller-common.js';
+import { readAttempt, controlCommandId, controlRecordKey, readAttemptInvalidation, readGraphReviewReceipt, assertAttemptConsumable, assertAttemptCurrent } from './controller-common.js';
 import { readGraphNodeResults } from './graph-result-contracts.js';
 import { readGraphPlannerCompletion } from './graph-planner-completion.js';
-import { readGraphReviewCompletion, graphReviewControlRef } from './graph-review-completion.js';
+import { readGraphReviewCompletion, graphReviewControlRef, readReviewablePlannerCompletion } from './graph-review-completion.js';
 import { readGraphJudgeCompletion, graphJudgeControlRef } from './graph-judge-completion.js';
 import { assertRpControlWork } from './rp-control-work-contracts.js';
 import { RP_REVIEW_REASON_CODES } from './rp-review-profile.js';
@@ -131,14 +131,31 @@ async function readInputSources(tx, handle, root, bundle, targetNodeId, { live =
     }
     const ownReview = recipient && root.graph.nodes.find(node => node.nodeId === targetNodeId)?.kind === 'review'
         ? await readGraphReviewReceipt(tx, handle, root, recipient) : null;
+    if (ownReview?.decision === 'rerun' && facts.some(fact => fact.controlRef?.kind === 'graph_planner_control')) {
+        const commandId = controlCommandId('review.decide', ownReview.receiptId);
+        const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+        const detail = { reviewAttemptId: recipient.attemptId, decision: ownReview.decision,
+            targetAttemptIds: [...ownReview.targetAttemptIds].sort(), reasonCode: ownReview.reasonCode, evidenceRefs: ownReview.evidenceRefs };
+        if (!command || command.schemaVersion !== 1 || command.commandId !== commandId || command.target !== root.runId
+            || command.operation !== 'runs.control.review.decide' || !equal(command.outcome?.reviewReceipt, ownReview)
+            || command.payloadHash !== hash({ operation: command.operation, body: { runId: root.runId, operation: 'review.decide', detail } })) invalid();
+    }
     for (const fact of facts) {
         const invalidation = await readAttemptInvalidation(tx, handle, root, fact.producer);
         if (!invalidation) { await assertAttemptConsumable(tx, handle, root, fact.producer); continue; }
-        // Only this still-running Review's decide→settle saga may prove its
-        // own old Result. A later stage, other Review, or old control cannot.
-        if (!fact.record || ownReview?.decision !== 'rerun' || invalidation.reviewReceiptId !== ownReview.receiptId
+        // Only this still-running Review's original decide→settle saga may
+        // prove its own old Result or independently safe pure Planner input.
+        if (ownReview?.decision !== 'rerun' || invalidation.reviewReceiptId !== ownReview.receiptId
             || invalidation.reviewIntegrity !== hash(ownReview) || !ownReview.invalidatedAttemptIds.includes(fact.producer.attemptId)
-            || !equal(ownReview.evidenceRefs, bundle.evidenceRefs) || !ownReview.evidenceRefs.some(ref => equal(ref, fact.receipt.resultRef))) invalid();
+            || !equal(ownReview.evidenceRefs, bundle.evidenceRefs) || fact.receipt.decisionSeq >= ownReview.decisionSeq) invalid();
+        if (fact.record) {
+            if (!ownReview.evidenceRefs.some(ref => equal(ref, fact.receipt.resultRef))) invalid();
+            continue;
+        }
+        const planner = fact.controlRef?.kind === 'graph_planner_control' && bundle.controlRefs.some(ref => equal(ref, fact.controlRef))
+            ? await readReviewablePlannerCompletion(tx, handle, root, fact.producer.attemptId, rpDelegatedPlannerReaderOptions) : null;
+        const { rpDelegatedInput, ...completed } = fact;
+        if (!rpDelegatedInput || !planner || !equal(planner, completed)) invalid();
     }
     return facts;
 }

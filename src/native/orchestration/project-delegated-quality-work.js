@@ -3,9 +3,10 @@ import { hashNativeDocument as hash, putImmutable } from '../repositories/common
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { runGenerationLocalWork } from './generation-local-work.js';
+import { assertProjectControlWork } from './project-quality-contracts.js';
 import { ReviewController, reviewReceiptId } from './review-controller.js';
 import { parseProjectDelegatedReview, projectDelegatedRerunRequirements } from './project-delegated-quality-contracts.js';
-import { graphReviewModelReceiptId, graphReviewControlRef } from './graph-review-completion.js';
+import { graphReviewModelReceiptId, graphReviewControlRef, readReviewablePlannerCompletion } from './graph-review-completion.js';
 import { graphJudgeModelReceiptId, graphJudgeControlRef } from './graph-judge-completion.js';
 import { controlCommandId, controlRecordKey, readAttempt, readReviewAdmission, readAttemptInvalidation, graphReachable, runGuard } from './controller-common.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
@@ -58,8 +59,12 @@ export async function completeProjectDelegatedReview(args) {
         if (decision === 'rerun') for (const id of root.attemptRefs) {
             const attempt = (await readAttempt(tx, handle, root, id)).doc;
             if (attempt.attemptId === reviewer.attemptId || await readAttemptInvalidation(tx, handle, root, attempt)) continue;
-            if (root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'planner'
-                && targets.some(target => graphReachable(root.graph, target.nodeId, attempt.nodeId))) fail('native_orchestration_review_irreversible_dependency');
+            const node = root.graph.nodes.find(node => node.nodeId === attempt.nodeId);
+            if (!targets.some(target => graphReachable(root.graph, target.nodeId, attempt.nodeId))) continue;
+            if (['fanout', 'join'].includes(node?.kind) || node?.capabilities.includes('agent.delegate')
+                || (node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
+                    && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork: assertProjectControlWork }))
+                fail('native_orchestration_review_irreversible_dependency');
         }
     }, admitRerun: async ({ tx, root, reviewer, target, invalidatedAttemptIds }) => {
         await current();

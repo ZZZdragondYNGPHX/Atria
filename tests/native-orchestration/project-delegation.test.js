@@ -10,7 +10,7 @@ import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { validationDigest } from '../../src/native/orchestration/plan-repository.js';
 import { readProjectDelegation, readProjectDelegationContinuation } from '../../src/native/orchestration/project-delegation-contracts.js';
 import { readProjectReviewOutput } from '../../src/native/orchestration/project-review-output-contracts.js';
-import { readAttempt, controlRecordKey, readAttemptInvalidation, assertAttemptConsumable } from '../../src/native/orchestration/controller-common.js';
+import { readAttempt, controlRecordKey, readAttemptInvalidation, assertAttemptConsumable, attemptInvalidationId } from '../../src/native/orchestration/controller-common.js';
 import { resultDependencyDigest } from '../../src/native/orchestration/result-contracts.js';
 import { readTaskLocalOutput, childClosureReceiptId } from '../../src/native/orchestration/task-local-output-contracts.js';
 import { readEffect } from '../../src/native/orchestration/effect-contracts.js';
@@ -26,14 +26,14 @@ const response = (text, index, usage = true) => ({ id: 'project-delegate-' + ind
     type: 'message', status: 'completed', role: 'assistant', content: [{ type: 'output_text', text, annotations: [] }] }],
 ...usage ? { usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } } : {} });
 
-async function fixture(make, { mode = 'handoff', failure = null, dynamic = false, badPlanPin = false, reviewRedo = false, tightBudget = false, childPlanner = false, parentPatch = true, onParent = null, childDynamic = false, badChildPin = false, childLoop = null, childRequests = null, parentLoopIterations = 2, childQuality = null, childMaxRounds = 2, childFanout = false, childFanoutUsageUnknown = false, childFanoutPlanner = false } = {}) {
+async function fixture(make, { mode = 'handoff', failure = null, dynamic = false, badPlanPin = false, reviewRedo = false, tightBudget = false, childPlanner = false, parentPatch = true, onParent = null, childDynamic = false, badChildPin = false, childLoop = null, childRequests = null, parentLoopIterations = 2, childQuality = null, childMaxRounds = 2, childFanout = false, childFanoutUsageUnknown = false, childFanoutPlanner = false, childPlannerReviewRedo = false } = {}) {
     let childFanoutPlannerNode, childFanoutNode, childJoinNode, childBranches, releaseChildBranches, arrivedChildBranches = 0;
     const bothChildBranches = new Promise(resolve => { releaseChildBranches = resolve; });
     let childQualityNode, childDraft, childAlternative, childFinal, childDraftRound = 0, childQualityRound = 0;
     let proposed, delegator, refinement, childPlanRef, operations, childControl, childControlTarget, childAdded, childOperations, childLoopEdge, childPlannerRound = 0, business = 0, reviewRound = 0, parentRound = 0, refinementRound = 0;
     const f = await projectModelFixture(make, { maxModelRounds: 3, responseStatus: index => failure === 'known' && index === 1 ? 400 : 200,
         changeRoute: route => ({ ...route, executionPolicy: { ...route.executionPolicy, computeBudget: { ...route.executionPolicy.computeBudget,
-            maxRequests: childFanoutPlanner ? 9 : reviewRedo ? tightBudget ? 11 : 14 : childDynamic || childLoop === 'self' || childFanout ? 8 : 10, localWork: { ...route.executionPolicy.computeBudget.localWork, maxJobs: 160 } } } }),
+            maxRequests: childPlannerReviewRedo ? 12 : childFanoutPlanner ? 9 : reviewRedo ? tightBudget ? 11 : 14 : childDynamic || childLoop === 'self' || childFanout ? 8 : 10, localWork: { ...route.executionPolicy.computeBudget.localWork, maxJobs: 160 } } } }),
         configurePlan: async args => {
             const { plan, seeded, h, original, route, host } = args;
             proposed = structuredClone(original); proposed.project.displayName = 'Advisory delegated Project proposal';
@@ -43,7 +43,7 @@ async function fixture(make, { mode = 'handoff', failure = null, dynamic = false
                 capabilities: [{ capability: 'generation.tools', state: 'unsupported', provenance: [{ kind: 'adapter-metadata', source: 'Advisory child has no tools' }] }],
                 limits: { ...seeded.model.limits, contextTokens: 65536 } };
             const childRoute = { ...route, runtimeRouteId: createNativeId('runtimeRoute'), modelProfileRef: { scope: 'player', modelProfileId: pure.modelProfileId },
-                executionPolicy: { ...route.executionPolicy, allowedModelProfileIds: [pure.modelProfileId], computeBudget: { maxRequests: childRequests ?? (childFanoutPlanner ? 4 : childFanout ? 3 : childQuality === 'review' ? 5 : childQuality === 'judge' ? 4 : childLoop === 'nonself' ? 5 : childPlanner ? 3 : 2), maxTokens: 20000,
+                executionPolicy: { ...route.executionPolicy, allowedModelProfileIds: [pure.modelProfileId], computeBudget: { maxRequests: childRequests ?? (childPlannerReviewRedo ? 7 : childFanoutPlanner ? 4 : childFanout ? 3 : childQuality === 'review' ? 5 : childQuality === 'judge' ? 4 : childLoop === 'nonself' ? 5 : childPlanner ? 3 : 2), maxTokens: 20000,
                     localWork: { maxJobs: 80, maxItems: 5000, maxInputBytes: 8388608 } } } };
             await seeded.persistence.saveModelProfile(h.handle, pure); await seeded.persistence.saveRuntimeRoute(h.handle, childRoute);
             const child = planFixture(), output = child.definition.nodes[0];
@@ -117,6 +117,23 @@ async function fixture(make, { mode = 'handoff', failure = null, dynamic = false
                     child.definition.edges.push(edge(childAlternative, 'advice', childQualityNode, 'alternative'), edge(childAlternative, 'advice', childFinal, 'alternative'));
                 }
             }
+            if (childPlannerReviewRedo) {
+                childDraft = children[0]; childFinal = children[1];
+                childControl = { ...structuredClone(childDraft), nodeId: createNativeId('orchestrationNode'), kind: 'planner',
+                    label: 'Project child pure causal Planner', inputs: [port('evidence', 'text')], outputs: [port('control', 'json', false)],
+                    capabilities: ['generation.send', 'graph.patch'] };
+                childQualityNode = { ...structuredClone(childDraft), nodeId: createNativeId('orchestrationNode'), kind: 'review',
+                    label: 'Project child Review actual A and Planner', inputs: [port('draft', 'text'), port('control', 'json')], outputs: [port('decision', 'json', false)],
+                    policy: { agentPinId: 'child.model', maxRounds: 2 } };
+                childFinal.inputs = [port('draft', 'text'), port('control', 'json'), port('decision', 'json')];
+                child.definition.nodes = [childDraft, childControl, childQualityNode, childFinal, output]; child.definition.entryNodeIds = [childDraft.nodeId];
+                child.definition.edges = [edge(childDraft, 'advice', childControl, 'evidence'), edge(childDraft, 'advice', childQualityNode, 'draft'),
+                    edge(childControl, 'control', childQualityNode, 'control')].map(item => ({ ...item, maxVisits: 2 })).concat([
+                    edge(childDraft, 'advice', childFinal, 'draft'), edge(childControl, 'control', childFinal, 'control'),
+                    edge(childQualityNode, 'decision', childFinal, 'decision'), edge(childFinal, 'advice', output, 'result')]);
+                child.definition.capabilityCeiling.push('graph.patch');
+                child.definition.graphChangePolicy = { allowedOperations: ['setPendingPriority', 'requestFinalize'], allowedNodeKinds: [] };
+            }
             if (childFanout) {
                 const alternative = { ...structuredClone(children[0]), nodeId: createNativeId('orchestrationNode'), label: 'Original child independent branch B',
                     dependencyPinIds: ['child.branchB'], policy: { agentPinId: 'child.branchB' } };
@@ -159,6 +176,8 @@ async function fixture(make, { mode = 'handoff', failure = null, dynamic = false
             if (childQuality) Object.assign(child.definition.limits, { maxNodes: child.definition.nodes.length, maxEdges: child.definition.edges.length,
                 maxAttempts: childQuality === 'review' ? 6 : 5, maxEdgeVisits: childQuality === 'review' ? 5 : 6,
                 maxReviews: childQuality === 'review' ? childMaxRounds : 0 });
+            if (childPlannerReviewRedo) Object.assign(child.definition.limits, { maxNodes: 5, maxEdges: 7, maxAttempts: 8,
+                maxEdgeVisits: 10, maxReviews: 2, maxPatches: 2, maxReplans: 0, maxLoopIterations: 0 });
             if (childFanout) Object.assign(child.definition.limits, { maxNodes: 6, maxEdges: 6, maxAttempts: 6, maxEdgeVisits: 6, maxConcurrency: 2 });
             if (childFanoutPlanner) Object.assign(child.definition.limits, { maxNodes: 7, maxEdges: 7, maxAttempts: 7, maxEdgeVisits: 7 });
             const plans = host.turnOrchestration.plans, draft = await plans.create(h.handle, createNativeId('orchestrationCommand'), child);
@@ -178,7 +197,7 @@ async function fixture(make, { mode = 'handoff', failure = null, dynamic = false
             graph.edges = [edge(upstream, 'advice', delegator, 'upstream'), edge(delegator, 'advice', worker, 'advice'), edge(worker, 'response', formalOutput, 'response'),
                 { ...edge(worker, 'response', worker, 'continuation'), loopBack: true, maxVisits: 2 }];
             graph.capabilityCeiling.push('agent.delegate');
-            if ((childPlanner || childFanoutPlanner) && parentPatch) {
+            if ((childPlanner || childFanoutPlanner || childPlannerReviewRedo) && parentPatch) {
                 delegator.capabilities.splice(1, 0, 'graph.patch'); graph.capabilityCeiling.push('graph.patch');
                 graph.graphChangePolicy = { allowedOperations: ['setPendingPriority', 'requestFinalize'], allowedNodeKinds: [] };
             }
@@ -230,6 +249,16 @@ async function fixture(make, { mode = 'handoff', failure = null, dynamic = false
                     : childTask.nodeId === childBranches[0].nodeId ? 'CHILD_CONCURRENT_ADVICE_A' : 'CHILD_CONCURRENT_ADVICE_B', index,
                 !(childFanoutUsageUnknown && childTask.nodeId === childBranches[1].nodeId));
             }
+            if (childPlannerReviewRedo && childTask?.nodeId === childDraft.nodeId) return response('PROJECT_CHILD_PLANNER_REDO_A_' + ++childDraftRound, index);
+            if (childPlannerReviewRedo && childTask?.nodeId === childControl.nodeId) return response(JSON.stringify({ operations: ++childPlannerRound === 1
+                ? [{ op: 'setPendingPriority', nodeId: childFinal.nodeId, priority: 7 }] : [{ op: 'requestFinalize' }] }), index);
+            if (childPlannerReviewRedo && childTask?.nodeId === childQualityNode.nodeId) {
+                const target = childTask.reviewTargets.length === 1 ? childTask.reviewTargets[0] : null;
+                if (!target || !JSON.stringify(body).includes('PROJECT_CHILD_PLANNER_REDO_A_' + (childQualityRound + 1))) throw new Error('Missing actual current child A Review target');
+                return response(JSON.stringify({ decision: ++childQualityRound === 1 ? 'rerun' : 'approve',
+                    reasonCode: childQualityRound === 1 ? 'incomplete_proposal' : 'quality_ready', targetAttemptIds: [target.attemptId] }), index);
+            }
+            if (childPlannerReviewRedo && childTask?.nodeId === childFinal.nodeId) return response('PROJECT_CHILD_PLANNER_REDO_TERMINAL', index);
             if (childQuality && childTask?.nodeId === childQualityNode.nodeId) return response(JSON.stringify(childQuality === 'review'
                 ? { decision: ++childQualityRound === 1 ? 'rerun' : 'approve', reasonCode: childQualityRound === 1 ? 'incomplete_proposal' : 'quality_ready',
                     targetAttemptIds: [childTask.reviewTargets[0].attemptId] }
@@ -985,6 +1014,102 @@ test('Project child scope Planner cannot increase the original held three-reques
         expect(() => f.h.engine.nativeHostLifecycle.assertActive()).not.toThrow();
         expect((await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId)).compute).toEqual(task.compute);
         await expect(f.run()).rejects.toThrow(); expect(f.requests).toHaveLength(1);
+        expect((await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId)).compute).toEqual(task.compute);
+    } finally { await f.cleanup(); }
+}, 90000);
+
+
+test('SQLite Project child Review redoes the completed pure Planner causal descendant before TaskLocal and the original three tools and human Review', async () => {
+    const f = await fixture(makeTempSqliteEngineHarness, { childPlannerReviewRedo: true });
+    try {
+        await f.run(); const { parent, child } = await roots(f);
+        expect(f.requests).toHaveLength(12); expect(parent.status).toBe('completed'); expect(child.status).toBe('completed');
+        expect(child.limits.maxSteps).toBe(64); expect(child.graphRevision).toBe(2);
+        expect(child.progress).toMatchObject({ attempts: 8, patches: 2, reviews: 2, replans: 0, loopIterations: 0, edgeVisits: 10 });
+        expect(child.nodeControl[f.childFinal.nodeId].priority).toBe(7);
+        expect(child.outputClaims).toHaveLength(1); expect(parent.outputClaims).toHaveLength(1);
+        expect(child.pendingEffectRefs).toEqual([]); expect(parent.pendingEffectRefs).toEqual([]);
+        const tasks = f.requests.slice(1, 8).map(body => body.input.flatMap(item => { try { return [JSON.parse(item.content)]; } catch { return []; } })
+            .findLast(item => item?.kind === 'native_project_delegated_work'));
+        expect(tasks.map(task => task.nodeId)).toEqual([f.childDraft.nodeId, f.childControl.nodeId, f.childQualityNode.nodeId,
+            f.childDraft.nodeId, f.childControl.nodeId, f.childQualityNode.nodeId, f.childFinal.nodeId]);
+        expect(f.requests.slice(1, 8).every(body => body.model === 'project-delegated-distinct-model' && !body.tools?.length)).toBe(true);
+        expect(JSON.stringify(f.requests[4])).toContain('incomplete_proposal');
+        for (const body of f.requests.slice(5, 8)) {
+            expect(JSON.stringify(body)).toContain('PROJECT_CHILD_PLANNER_REDO_A_2');
+            expect(JSON.stringify(body)).not.toContain('PROJECT_CHILD_PLANNER_REDO_A_1');
+        }
+        expect(JSON.stringify(f.requests[7])).toContain('requestFinalize'); expect(JSON.stringify(f.requests[7])).not.toContain('setPendingPriority');
+        expect(JSON.stringify(f.requests[8])).toContain('PROJECT_CHILD_PLANNER_REDO_TERMINAL');
+        let published, oldPlanner;
+        await f.h.engine.withTransaction(f.h.handle, async tx => {
+            const local = await readTaskLocalOutput(tx, f.h.handle, child), history = local.publication.graphHistory;
+            const planners = history.controls.filter(fact => fact.patch), reviews = history.controls.filter(fact => fact.review);
+            expect(history.settled).toBe(true); expect(history.effects).toHaveLength(7); expect(history.results).toHaveLength(2);
+            expect(planners).toHaveLength(2); expect(reviews.map(fact => fact.review.decision)).toEqual(['rerun', 'approve']);
+            expect(planners.map(fact => fact.producer.attemptNumber)).toEqual([1, 2]); expect(planners.map(fact => fact.producer.graphRevision)).toEqual([0, 1]);
+            expect(planners.map(fact => fact.patch.appliedOperations)).toEqual([[{ op: 'setPendingPriority', nodeId: f.childFinal.nodeId, priority: 7 }], [{ op: 'requestFinalize' }]]);
+            expect(new Set(planners.map(fact => fact.patch.patchId)).size).toBe(2); expect(planners.every(fact => fact.patch.accepted)).toBe(true);
+            const oldA = history.results.find(fact => fact.producer.attemptNumber === 1); oldPlanner = planners[0];
+            expect(reviews[0].review.targetAttemptIds).toEqual([oldA.producer.attemptId]);
+            expect(reviews[0].review.invalidatedAttemptIds).toEqual([oldA.producer.attemptId, oldPlanner.producer.attemptId].sort());
+            expect(await readAttemptInvalidation(tx, f.h.handle, child, oldPlanner.producer)).toMatchObject({ reviewReceiptId: reviews[0].review.receiptId });
+            await expect(assertAttemptConsumable(tx, f.h.handle, child, oldPlanner.producer)).rejects.toThrow();
+            expect(planners[1].producer.inputRefs[0].acceptedGraphResultRefs).toEqual([history.results[1].receipt.resultRef]);
+            published = (await readProjectReviewOutput(tx, f.h.handle, parent)).receipt; expect(published.costs.closed).toBe(true);
+        });
+        const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+        expect(task.status).toBe('review'); expect(task.compute.limits.maxRequests).toBe(12); expect(task.compute.attempts).toHaveLength(12);
+        expect(task.compute.attempts.every(row => row.status === 'settled' && row.usage.totalTokens === 20)).toBe(true);
+        expect(task.compute.attempts.filter(row => row.reservationId === child.runId)).toHaveLength(7);
+        expect(task.compute.attempts.reduce((sum, row) => sum + row.usage.totalTokens, 0)).toBe(240);
+        expect(task.compute.attempts.filter(row => row.orchestration?.effectId === oldPlanner.receipt.modelEffectId))
+            .toEqual([expect.objectContaining({ status: 'settled', reservationId: child.runId, usage: expect.objectContaining({ totalTokens: 20 }) })]);
+        expect(task.compute.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released', limits: expect.objectContaining({ maxRequests: 7 }) })]);
+        expect(task.attempts.flatMap(row => row.calls.map(call => call.name))).toEqual(['atri_agent_set_plan', 'atri_agent_project_save', 'atri_agent_prepare_review']);
+        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source).toEqual(f.original);
+        const compute = structuredClone(task.compute), executor = f.executor, scheduler = f.scheduler;
+        // Actual cold SQLite handle/new Executor, retaining the original live Host owner.
+        f.h.engine.closeHandle(f.h.handle); f.recreateExecutor();
+        expect(() => f.h.engine.nativeHostLifecycle.assertActive()).not.toThrow(); expect(f.executor).not.toBe(executor); expect(f.scheduler).not.toBe(scheduler);
+        expect((await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId)).compute).toEqual(compute);
+        await f.h.engine.withTransaction(f.h.handle, async tx => {
+            const cold = (await tx.getResource({ kind: K.orchestrationRun, handle: f.h.handle, runId: parent.runId })).doc;
+            expect(cold).toEqual(parent); expect((await readProjectReviewOutput(tx, f.h.handle, cold)).receipt).toEqual(published);
+            const key = controlRecordKey(f.h.handle, child.runId, 'receipt', attemptInvalidationId(child.runId, oldPlanner.producer.attemptId));
+            const saved = await tx.getResource(key), changed = { ...saved.doc, reviewIntegrity: '0'.repeat(64) };
+            try {
+                await tx.putResource(key, { ...saved, doc: changed, integrity: hash(changed) });
+                await expect(readProjectReviewOutput(tx, f.h.handle, cold)).rejects.toThrow();
+            } finally { await tx.putResource(key, saved); }
+            expect((await readProjectReviewOutput(tx, f.h.handle, cold)).receipt).toEqual(published);
+        });
+        await f.run().catch(() => undefined); expect(f.requests).toHaveLength(12);
+        expect((await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId)).compute).toEqual(compute);
+    } finally { await f.cleanup(); }
+}, 180000);
+
+test('Project child Review cannot redo its completed pure Planner beyond the original six-request held bank', async () => {
+    const f = await fixture(makeTempSqliteEngineHarness, { childPlannerReviewRedo: true, childRequests: 6 });
+    try {
+        await expect(f.run()).rejects.toThrow(); const { parent, child } = await roots(f);
+        expect(f.requests).toHaveLength(4); expect(child.status).toBe('blocked'); expect(parent.outputClaims).toEqual([]); expect(child.outputClaims).toEqual([]);
+        expect(child.graphRevision).toBe(1); expect(child.progress).toMatchObject({ attempts: 3, patches: 1, reviews: 1, replans: 0, loopIterations: 0 });
+        expect(child.pendingEffectRefs).toEqual([]); expect(parent.pendingEffectRefs).toEqual([]);
+        await f.h.engine.withTransaction(f.h.handle, async tx => {
+            const receipts = await tx.listResources({ kind: K.orchestrationRecord, handle: f.h.handle, runId: child.runId, recordType: 'receipt' });
+            expect(receipts.filter(row => row.doc.receiptKind === 'attempt_invalidation' || row.doc.receiptKind === 'graph_review')).toEqual([]);
+            expect(receipts.filter(row => row.doc.receiptKind === 'native_project_failure').map(row => row.doc.reasonCode)).toEqual(['native_orchestration_review_rerun_budget_unavailable']);
+            expect(await readTaskLocalOutput(tx, f.h.handle, child)).toBeNull(); expect(await readProjectReviewOutput(tx, f.h.handle, parent)).toBeNull();
+        });
+        const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+        expect(task.compute.limits.maxRequests).toBe(12); expect(task.compute.attempts).toHaveLength(4);
+        expect(task.compute.attempts.every(row => row.status === 'settled' && row.usage.totalTokens === 20)).toBe(true);
+        expect(task.compute.attempts.filter(row => row.reservationId === child.runId)).toHaveLength(3);
+        expect(task.compute.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released', limits: expect.objectContaining({ maxRequests: 6 }) })]);
+        expect(task.attempts.flatMap(row => row.calls)).toEqual([]);
+        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source).toEqual(f.original);
+        await f.run().catch(() => undefined); expect(f.requests).toHaveLength(4);
         expect((await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId)).compute).toEqual(task.compute);
     } finally { await f.cleanup(); }
 }, 90000);

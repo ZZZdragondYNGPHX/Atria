@@ -285,7 +285,7 @@ test('a Host-prepared Run opens in Timeline and retains keyboard-accessible Grap
         listener = await new Promise(resolve => { const value = app.listen(0, '127.0.0.1', () => resolve(value)); });
         const origin = `http://127.0.0.1:${listener.address().port}`;
         // Forward to real isolated Native routers, not a fabricated Run projection.
-        const forward = async route => { const response = await route.fetch({ url: origin + new URL(route.request().url()).pathname }); await route.fulfill({ response }); };
+        const forward = async route => { const response = await route.fetch({ url: origin + new URL(route.request().url()).pathname + new URL(route.request().url()).search }); await route.fulfill({ response }); };
         await page.route('**/api/native/orchestration/**', forward);
         await page.route('**/api/native/studio/**', forward);
         await page.setViewportSize({ width: 390, height: 844 });

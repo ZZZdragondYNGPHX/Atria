@@ -163,9 +163,24 @@ async function readReplacements(tx, handle, root, review, evidence, verifyContro
  * pure Model work can be recomputed at the current revision, while the original
  * Patch/Model/bank/sequence proof and all irreversible dependency checks remain. */
 export async function readReviewablePlannerCompletion(tx, handle, root, attemptId, { verifyControlWork }) {
-    if (!['rp_chat', 'native_session', 'project'].includes(root.sourceBinding.sourceAuthority) || root.parentRef !== null) return null;
+    if (!['rp_chat', 'native_session', 'project'].includes(root.sourceBinding.sourceAuthority)) return null;
     const fact = await readGraphPlannerCompletion(tx, handle, root, attemptId, { verifyControlWork });
     if (!fact) return null;
+    if (root.parentRef) {
+        const input = fact.producer.inputRefs[0], ref = root.parentRef, rp = input.kind === 'native_rp_delegated_intent';
+        const evidence = rp ? input.controlGraph?.evidenceRefs : input.acceptedGraphResultRefs;
+        const controls = rp ? input.controlGraph?.controlRefs : input.acceptedControlRefs ?? [];
+        if (!Array.isArray(evidence) || !Array.isArray(controls)
+            || rp && (!Array.isArray(input.controlGraph?.bindings)
+                || Object.hasOwn(input, 'acceptedGraphResultRefs') && !equal(input.acceptedGraphResultRefs, evidence)
+                || Object.hasOwn(input, 'acceptedControlRefs') && !equal(input.acceptedControlRefs, controls))
+            || input.parentRunId !== ref.parentRunId || input.parentAttemptId !== ref.nodeAttemptId || input.childRunId !== root.runId
+            || fact.producer.effectiveGrantDigest !== ref.effectiveGrantDigest || input.fanoutAttemptId
+            || !equal(fact.producer.inputRefs, [input, ...ref.inputRefs, ...evidence, ...controls])
+            || fact.patch.appliedOperations.some(operation => !['setPendingPriority', 'requestFinalize'].includes(operation.op))) return null;
+        if (!rp && (input.parentEpoch !== ref.parentEpoch || input.childEpoch !== fact.producer.epoch
+            || input.delegationInputDigest !== ref.inputDigest)) return null;
+    }
     const revisions = await readTaskGraphRevisions(tx, handle, root, [fact.producer.graphRevision, fact.patch.newGraphRevision]);
     const before = revisions.get(fact.producer.graphRevision).graph, after = revisions.get(fact.patch.newGraphRevision).graph;
     const node = before.nodes.find(node => node.nodeId === fact.producer.nodeId);
