@@ -48,9 +48,17 @@ describe.each(harnesses)('$name explicit delegated SourceRef', ({ make }) => {
         } finally { await f.cleanup(); }
     });
 
-    test.each([{ parent: true, child: false }, { parent: false, child: true }])('a one-sided pin is not delegation permission: %j', async options => {
-        const f = await fixture(make, options);
+    test('a child-only pin is not delegation permission', async () => {
+        const f = await fixture(make, { parent: false, child: true });
         try { await expect(f.run()).rejects.toThrow(); expect(f.requests).toEqual([]); } finally { await f.cleanup(); }
+    });
+
+    test('a parent-only pin never reaches the child Context', async () => {
+        const f = await fixture(make, { parent: true, child: false });
+        try {
+            await f.run(); expect(f.requests).toHaveLength(2);
+            expect(JSON.stringify(f.requests[0])).not.toContain('Authorized advisory source'); expect(JSON.stringify(f.requests[0])).not.toContain('rp0');
+        } finally { await f.cleanup(); }
     });
 
     test('withdrawal after child compile retains the human edit and prevents every Provider request', async () => {

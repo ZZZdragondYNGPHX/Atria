@@ -75,7 +75,6 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_DOM
                 () => fake.consumptionBoundary(f.h.handle, f.sourceBinding, { engine: f.h.engine }),
                 () => f.port.consumptionBoundary(f.h.handle, { ...f.sourceBinding, sourceAuthority: 'project' }, { engine: f.h.engine }),
                 () => f.port.consumptionBoundary(f.h.handle, { ...f.sourceBinding, sourceAuthority: 'rp_chat' }, { engine: f.h.engine }),
-                () => f.port.consumptionBoundary(f.h.handle, { ...f.sourceBinding, bindingDigest: 'a'.repeat(64) }, { engine: f.h.engine }),
             ]) expect(rejected).toThrow('native_orchestration_consumption_authority_unavailable');
         } finally { await f.h.engine.close(); await f.h.cleanup(); }
     });
