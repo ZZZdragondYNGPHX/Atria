@@ -1344,15 +1344,18 @@ export class NativeRpOrchestrationAuthority {
                 taskPurpose: context.taskPurpose, childPlanRef: root.planRef, ...(child.delegatedSources.length ? { delegatedSources: child.delegatedSources } : {}) }) });
         const stage = async (spec, sendModel) => {
             const branch = { ...state, controlOnly: false, controlAdmission: null, fanoutBranches: null, delegationCapture: null,
-                activeSelection: null, attemptId: null, effectId: null, decision: null };
+                fanoutParent: { fanoutAttemptId: spec.fanoutAttemptId }, activeSelection: null, attemptId: null, effectId: null, decision: null };
             state.fanoutBranches.set(spec.node.nodeId, branch);
             const localWork = new RpDelegatedControlWork({ state: branch, service, runId: childRunId, current: () => this.#current(branch) });
+            localWork.records = spec.progress ?? work.records;
             const bundle = { evidenceRefs: [...new Map(spec.bindings.flatMap(item => [item.resultRef, ...item.evidenceRefs ?? []].filter(Boolean)).map(ref => [hash(ref), ref])).values()],
                 controlRefs: [...new Map(spec.bindings.filter(item => item.controlRef).map(item => [hash(item.controlRef), item.controlRef])).values()],
                 bindings: spec.bindings.filter(item => item.edge.to.nodeId === spec.node.nodeId).map(item => ({ edgeId: item.edge.edgeId, producerAttemptId: item.attemptId })).sort((a, b) => a.edgeId.localeCompare(b.edgeId)) };
             const generated = await this.#sendControlledRpChildStage(context, branch, localWork, { ...spec, bundle, sendModel,
                 ...(spec.permit ? { boundary: spec.permit.boundary, childExpected: spec.permit.expected, fanoutParent: { boundary, expected: childExpected } } : {}) });
             if (!sendModel) return generated;
+            if (spec.node.kind === 'planner') return localWork.completePlanner({ root: await service.runs.get(handle, childRunId),
+                port: generated.port, result: generated.result, send: generated.send, limits: generated.limits, signal: spec.signal });
             const published = await new ResultController({ host, modelPort: generated.port }).publishGraphModelResult(handle,
                 { capture: generated.capture, result: generated.result, runId: childRunId, effectId: generated.effectId });
             return { attemptId: generated.attemptId, resultRef: published.resultRef, status: 'completed' };
@@ -2356,7 +2359,11 @@ export class NativeRpOrchestrationAuthority {
                 rpControl: this.owner.rpControl, rpCapture: capture, rpReturnCapture: continuation ? state.returnCapture : null,
                 rpGraphResults: graphRefs,
                 resultPort: continuation || graphRefs.length ? new ResultPort({ host }) : null, authorizeContext: async ({ request }) => {
-                    await this.#current(state);
+                    // Continuation Context immediately reads its parent Result through
+                    // the original ResultPort, including both full Return authorizers.
+                    // Keep this preliminary domain check without repeating that proof.
+                    if (continuation) await this.#baseCurrent(state);
+                    else await this.#current(state);
                     if (request.taskPurpose !== taskPurpose || !equal(request.audience, audience) || request.grantDigest !== grantDigest
                         || !equal(request.sourceBinding, captured.sourceBinding) || !equal(request.inputRefs, inputRefs)) fail('native_orchestration_context_denied');
                     return { allowed: true, grantDigest };

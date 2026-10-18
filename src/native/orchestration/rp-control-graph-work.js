@@ -154,7 +154,7 @@ export class RpControlGraphWork {
                 ...state.controlBundle.evidenceRefs.map(ref => ({ kind: 'result', resultId: ref.resultId }))], payloadHash: '' };
         patch.payloadHash = graphPatchHash(patch);
         const boundary = service.sourcePort.consumptionBoundary(handle, root.sourceBinding, { engine: service.runs.engine });
-        const proposed = await work('graph_control_adopt', patch, () => service.runs.withSourceControl(handle, runId, () => new GraphController({ runs: service.runs,
+        const proposed = await work('graph_control_adopt', patch, () => service.runs.withSourceControl(handle, runId, async () => new GraphController({ runs: service.runs,
             authorizePatch: async ({ tx, root: active, producer, patch: actual }) => {
                 await this.current();
                 if (!equal(proof, await port.inspectResultCompletion(handle, { result, runId, effectId }))
@@ -191,14 +191,14 @@ export class RpControlGraphWork {
                 if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');
                 await this.inputs(tx, active);
                 await this.current();
-            } }).propose(handle, { expectedStateVersion: current.stateVersion, patch }), { withAuthority: boundary }));
+            } }).propose(handle, { expectedStateVersion: state.fanoutParent ? (await service.runs.get(handle, runId)).stateVersion : current.stateVersion, patch }), { withAuthority: boundary }));
         const accepted = proposed.outcome.patchReceipt;
         if (!accepted.accepted) fail('native_orchestration_planner_patch_rejected');
         if (accepted.requests.replan && accepted.requests.finalize) fail('native_orchestration_planner_replan_pending');
         if (accepted.requests.replan) rpControlReplanScope((await service.runs.get(handle, runId)).graph, nodeId);
         const receiptId = graphPlannerReceiptId(runId, attemptId);
-        await service.runs.withSourceControl(handle, runId, () => service.runs.control(handle, controlCommandId('graph.planner.settle', attemptId), {
-            ...runGuard(current), expectedGraphRevision: accepted.newGraphRevision, expectedStateVersion: proposed.outcome.versions.stateVersion,
+        await service.runs.withSourceControl(handle, runId, async () => service.runs.control(handle, controlCommandId('graph.planner.settle', attemptId), {
+            ...runGuard(current), expectedGraphRevision: accepted.newGraphRevision, expectedStateVersion: state.fanoutParent ? (await service.runs.get(handle, runId)).stateVersion : proposed.outcome.versions.stateVersion,
             operation: 'attempt.settle', detail: { attemptId, patchId: patch.patchId } }, async ({ tx, root: active, now, deny }) => {
             const stamp = hash(active);
             try {

@@ -1,3 +1,6 @@
+import { readGraphPlannerCompletion } from './graph-planner-completion.js';
+import { rpDelegatedPlannerReaderOptions } from './rp-delegation-control-contracts.js';
+import { assertRpFanoutPlannerOperations } from './rp-fanout-planner-contracts.js';
 import { assertBudgetAttemptRef, sendAttemptId } from './budget-port.js';
 import { taskLocalReceiptId } from './task-local-output-contracts.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
@@ -58,7 +61,7 @@ export async function readRpDelegatedFanoutInput(tx, handle, root, producer, inp
     const snapshot = await readTaskGraphRevision(tx, handle, root, producer.graphRevision), node = snapshot.graph.nodes.find(node => node.nodeId === producer.nodeId);
     const branch = frame.branches.find(branch => branch.scopeNodeIds.includes(node?.nodeId)), fanout = (await readAttempt(tx, handle, root, frame.fanoutAttemptId)).doc;
     const pin = lineage.plan.dependencyPins.find(pin => pin.pinId === node?.policy.agentPinId);
-    if (!branch || node.kind !== 'agent' || input.kind !== 'native_rp_delegated_intent' || input.role !== 'narrator' || !equal(input.audience, { kind: 'task', id: root.runId })
+    if (!branch || !['agent', 'planner'].includes(node.kind) || input.kind !== 'native_rp_delegated_intent' || input.role !== 'narrator' || !equal(input.audience, { kind: 'task', id: root.runId })
         || input.nodeId !== producer.nodeId || input.parentRunId !== root.parentRef.parentRunId || input.parentAttemptId !== root.parentRef.nodeAttemptId
         || input.childRunId !== root.runId || !equal(input.sourceRef, root.sourceBinding.sourceRef) || !equal(input.planRef, root.planRef)
         || !pin || pin.port !== 'model' || !node.dependencyPinIds.includes(pin.pinId) || !equal(input.routeRef, pin.resourceRef)
@@ -119,14 +122,28 @@ async function controlInput(tx, handle, root, attempt, { settlement, frame }) {
     } else if (facts.length || input.graphBindings.length || input.fanoutAttemptId !== frame.fanoutAttemptId) invalid();
 }
 
-async function memberCost(tx, handle, root, attempt, { settlement, results }) {
+async function memberCost(tx, handle, root, attempt, { frame, settlement, results }) {
     if (!attempt.effectRefs.length) {
         if (attempt.status !== 'cancelled' || settlement.effectReceiptRefs.length || results.length) invalid(); return;
     }
     if (attempt.effectRefs.length !== 1 || root.budgetAuthorityRef.domain !== 'rp_chat') invalid();
-    const effect = (await readEffect(tx, handle, root, attempt.effectRefs[0])).doc;
-    const completed = await readModelCompletionReceipt(handle, tx, root, effect);
+    if (results.length > 1) invalid();
+    // The original shared reader itself just read every Result/Model/input
+    // proof in this invocation. No caller can inject a completion through this
+    // private callback, and the actual bank rows below are still read freshly.
+    const published = results[0] ?? null;
+    const effect = published ? published.modelEffect : (await readEffect(tx, handle, root, attempt.effectRefs[0])).doc;
+    const completed = published ? published.modelCompletion : await readModelCompletionReceipt(handle, tx, root, effect);
+    if (published && (!completed || published.receipt.modelEffectId !== effect.effectId
+        || !equal(published.receipt.modelReceiptRef, completed.receiptRef))) invalid();
     const terminal = completed ? null : await readModelTerminalFact(handle, tx, root, effect), fact = completed ?? terminal;
+    const planner = root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'planner' && attempt.status === 'completed'
+        ? await readGraphPlannerCompletion(tx, handle, root, attempt.attemptId, rpDelegatedPlannerReaderOptions) : null;
+    if (planner) {
+        if (results.length || !equal(planner.producer, attempt) || !equal(planner.settlement, settlement)
+            || !completed || !equal(planner.receipt.modelReceiptRef, completed.receiptRef)) invalid();
+        assertRpFanoutPlannerOperations(frame, attempt, planner.patch.appliedOperations);
+    }
     if (!equal(root.sourceBinding.budgetAuthorityRef, root.budgetAuthorityRef)) invalid();
     const control = (await checkedRecord(tx, { kind: K.rpRunControl, handle, controlId: root.budgetAuthorityRef.controlId }))?.doc;
     const bank = control?.operations[root.budgetAuthorityRef.operationId]?.compute;
@@ -139,7 +156,7 @@ async function memberCost(tx, handle, root, attempt, { settlement, results }) {
         || !equal(effect.inputRef, attempt.inputRefs[0]) || effect.inputHash !== hash(attempt.inputRefs[0])
         || effect.grantDigest !== root.parentRef.effectiveGrantDigest || effect.sourceBindingDigest !== root.sourceBinding.bindingDigest
         || !equal(settlement.effectReceiptRefs, [fact.receiptRef.receiptId])
-        || (results.length ? !completed || settlement.outcome !== 'completed'
+        || (planner ? false : results.length ? !completed || settlement.outcome !== 'completed'
             : terminal?.kind !== (settlement.outcome === 'failed' ? 'rejected' : 'late_response'))) invalid();
     const sends = fact.observation.dispatchEvidence.reference.attempts;
     if (!sends?.length || sends.length !== 1) invalid();

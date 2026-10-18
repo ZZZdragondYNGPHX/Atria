@@ -202,7 +202,8 @@ async function readControlInputFactsFresh(tx, handle, child, producer, intent, p
     const pin = plan.dependencyPins.find(pin => pin.pinId === node?.policy.agentPinId);
     if (pin?.port !== 'model' || !node.dependencyPinIds.includes(pin.pinId) || !equal(input.routeRef, pin.resourceRef)
         || intent.actionRef.kind !== 'native_model_send' || intent.actionRef.runtimeRouteId !== pin.resourceRef.runtimeRouteId) invalid();
-    if (input.fanoutAttemptId) return readRpDelegatedFanoutInput(tx, handle, child, producer, input, publicationSeq);
+    if (input.fanoutAttemptId) return { ...await readRpDelegatedFanoutInput(tx, handle, child, producer, input, publicationSeq),
+        requestedRootDigest: hash(child), producerDigest: hash(producer), effectDigest: hash(intent) };
     const sources = await readInputSources(tx, handle, child, bundle, producer.nodeId, { beforeSeq: publicationSeq }, ownedFacts);
     if (sources.some(fact => fact.receipt.decisionSeq >= publicationSeq)
         || new Set(sources.map(fact => fact.producer.attemptId)).size !== sources.length
@@ -232,7 +233,8 @@ async function readControlInputFactsFresh(tx, handle, child, producer, intent, p
             producerBindings: bindings, allowLoopBack: loops.length > 0,
             receipt: { decisionSeq: publicationSeq, traversalReceiptRef: { runId: child.runId, receiptId } } });
     }
-    return { input, sources, bindings: replacement ? [] : bundle.bindings, loops, replacement };
+    return { input, sources, bindings: replacement ? [] : bundle.bindings, loops, replacement,
+        requestedRootDigest: hash(child), producerDigest: hash(producer), effectDigest: hash(intent) };
 }
 
 const invalidHistory = () => { throw new TypeError('Invalid RP delegated control facts'); };
@@ -246,6 +248,7 @@ export function readRpDelegatedGraphHistory(tx, handle, child, options = {}) {
 async function readGraphHistory(tx, handle, child, { pendingProducer = null, finalPublication = null, closure = null, output = null } = {}) {
     if (!isRpDelegatedControlGraph(child) || Boolean(pendingProducer) === Boolean(finalPublication)) invalidHistory();
     const plan = await readPlanRevision(tx, handle, child.planRef), snapshot = await readTaskGraphRevision(tx, handle, child);
+    const rootDigest = hash(child);
     const initial = rpDelegatedControlProfile(plan), profile = rpDelegatedControlProfile({ ...plan, definition: snapshot.graph });
     if (!initial || profile?.terminalNodeId !== initial.terminalNodeId || !equal(profile.output, initial.output)
         || !equal(snapshot.graph.edges.filter(edge => edge.loopBack), plan.definition.edges.filter(edge => edge.loopBack))) invalidHistory();
@@ -277,19 +280,25 @@ async function readGraphHistory(tx, handle, child, { pendingProducer = null, fin
     const effects = [], budgetAttemptIds = [], planners = [], reviews = [], judges = [], results = [], entries = [], counts = {}, latest = new Map(), previous = new Map(), replaced = new Map(), consumed = new Set(); let settled = true, loopIterations = 0;
     const attempts = [];
     for (const id of child.attemptRefs) attempts.push((await readAttempt(tx, handle, child, id)).doc);
-    // This invocation's real intermediate Agent facts may share only the
-    // original batch reader's private revision snapshots. Every Result,
-    // Model, retrieval, settlement and input proof still runs from storage;
-    // caller-supplied finalPublication/pendingProducer never enter this map.
-    const intermediateRefs = attempts.filter(attempt => attempt.attemptId !== finalProducer.attemptId
-        && child.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'agent' && attempt.resultRefs.length === 1)
-        .map(attempt => attempt.resultRefs[0].resultId);
-    const intermediate = await readGraphNodeResults(tx, handle, child, intermediateRefs);
     const fanouts = [];
     for (const producer of attempts.filter(attempt => child.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'join')) {
         const fact = await readRpDelegatedFanoutCompletion(tx, handle, child, producer.attemptId); if (!fact) invalidHistory(); fanouts.push(fact);
     }
     if (attempts.filter(attempt => child.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'fanout').length !== fanouts.length) invalidHistory();
+    // Only this history's freshly read Fanout facts can provide their complete
+    // original Agent proofs. Caller finalPublication/pendingProducer is excluded.
+    const scopeResults = new Map(fanouts.flatMap(fact => fact.graphResults).map(fact => [fact.receipt.resultRef.resultId, fact]));
+    const intermediateRefs = attempts.filter(attempt => attempt.attemptId !== finalProducer.attemptId
+        && child.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'agent' && attempt.resultRefs.length === 1)
+        .map(attempt => attempt.resultRefs[0].resultId);
+    const missingRefs = intermediateRefs.filter(id => !scopeResults.has(id));
+    const resultFacts = await readGraphNodeResults(tx, handle, child, missingRefs);
+    const intermediate = new Map();
+    for (const id of intermediateRefs) {
+        const fact = scopeResults.get(id) ?? resultFacts.get(id);
+        if (!fact || !equal(fact.receipt.resultRef, { runId: child.runId, resultId: id })) invalidHistory();
+        intermediate.set(id, fact);
+    }
     for (const fact of fanouts) {
         for (const binding of fact.fanout.inputRefs[0].graphBindings) counts[binding.edgeId] = (counts[binding.edgeId] ?? 0) + 1;
         for (const id of [...fact.frame.edgeAdmissionRefs, ...fact.joinReceipt.edgeAdmissionRefs]) {
@@ -308,8 +317,13 @@ async function readGraphHistory(tx, handle, child, { pendingProducer = null, fin
         if (!unsuccessful && (!profile.models.some(item => item.nodeId === node?.nodeId) || producer.effectRefs.length !== 1
             || producer.status !== (producer.attemptId === pendingProducer?.attemptId ? 'running' : 'completed')
             || producer.effectiveGrantDigest !== child.parentRef.effectiveGrantDigest || !equal(producer.budgetRef, child.budgetAuthorityRef))) invalidHistory();
-        const effect = (await readEffect(tx, handle, child, producer.effectRefs[0])).doc;
-        const model = await readModelCompletionReceipt(handle, tx, child, effect);
+        const checked = producer.attemptId !== finalProducer.attemptId && node.kind === 'agent'
+            ? intermediate.get(producer.resultRefs[0]?.resultId) : null;
+        const checkedInput = checked?.rpDelegatedInput;
+        const effect = checked ? checked.modelEffect : (await readEffect(tx, handle, child, producer.effectRefs[0])).doc;
+        if (checked && (!checkedInput || checkedInput.requestedRootDigest !== rootDigest || checkedInput.producerDigest !== hash(producer)
+            || checkedInput.effectDigest !== hash(effect) || effect.effectId !== producer.effectRefs[0] || !checked.modelCompletion)) invalidHistory();
+        const model = checked ? checked.modelCompletion : await readModelCompletionReceipt(handle, tx, child, effect);
         if (!unsuccessful && !model || effect.sourceBindingDigest !== child.sourceBinding.bindingDigest) invalidHistory();
         const fact = node.kind === 'planner' ? await readGraphPlannerCompletion(tx, handle, child, producer.attemptId, rpDelegatedPlannerReaderOptions)
             : node.kind === 'review' ? await readRpDelegatedControl(tx, handle, child, graphReviewControlRef(child.runId, producer.attemptId))
@@ -391,6 +405,7 @@ async function readGraphHistory(tx, handle, child, { pendingProducer = null, fin
     if (output) counts[child.graph.edges.find(edge => edge.to.nodeId === output.nodeId).edgeId] = 1;
     if (child.progress.loopIterations !== loopIterations || child.progress.edgeVisits !== Object.values(counts).reduce((a, b) => a + b, 0)
         || !equal(child.progress.edgeVisitCounts, counts)) invalidHistory();
+    if (hash(child) !== rootDigest) invalidHistory();
     const history = { plan, profile, graph: snapshot.graph, models: profile.models, output: profile.output, terminalNodeId: profile.terminalNodeId,
         lineage: { ...delegated, parent, child }, finalProducer, effects, planners, reviews, judges, fanouts, results, rootDigest: hash(child), budgetAttemptIds, settled, loopIterations };
     if (closure) assertRpDelegatedClosure(child, history, closure);
