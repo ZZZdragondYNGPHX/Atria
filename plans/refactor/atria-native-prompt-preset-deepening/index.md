@@ -2,6 +2,8 @@
 
 > **当前设计状态（2026-10-18）**：D1–D8 原有功能合同和后端实施授权继续有效，E0/三端验收尚未收口。用户已确认在原生 Program/Stage/Module/PromptCompiler/PromptIR 中采用**单一显式顺序、受控 Anchor、请求级 Contribution 与 exact 增量继承**，并确定**双入口、一套资源**：Library 提供无需创建游戏的独立提示词创作；Game Studio 在同一资源权威下精确引用、Fork/Derive；Play 仅按授权选择与覆盖。生图作者可独立创作风格/模板的目标工作流复用原 Native Image Target/Rendering/ImagePromptIR/Job/Asset 权威，**不与文本编译器合并**。编排详见 [D5](semantic-ir-lowering.md)，编辑与作者入口详见 [D8](preset-studio-experience.md)，前端布局仍按[设计建议](../../architecture/atria-frontend-audit/design-proposal/atria-frontend-guidelines.md)继续讨论。现有独立测试与无 Session 的付费试生成尚未证明接通；本轮仅修订设计，不宣称已实施。正式工程状态以 [backend-implementation.md](backend-implementation.md)、[E0](e0-audit.md) 与同一 Record 为准。
 
+> **2026-10-18 企划收口**：LoomStudio 参考与后续九轮原生深化的**产品设计讨论已完成，交付 Codex 的文档入口已就绪（`PLANNING_CLOSED / HANDOFF_READY`）**；不是实现完成或 E0 Gate 通过。当前本助手仅提交 `docs`，用户将在 Codex 中另行开始实际开发/整合。最新跨分支 19 路径重叠、增量物理接口、责任分工、验收与阻塞统一见 [E0 §9](e0-audit.md#9-2026-10-18-企划收口与-codex-交接审查)。已有已授权的 Prompt 后端语义分支继续保留，V3 P3/P4/P6 与最终 Gate 依原 V3 Record/验收矩阵为准，不能借本次设计收尾销账。
+
 > Task ID: `refactor/atria-native-prompt-preset-deepening`。Primary Workspace: `main`；当前产品实现使用同名 `refactor/atria-native-prompt-preset-deepening` 语义分支，文档仍在独立 `docs` 长期分支。仓库治理见 [README](../../../README.md)。全程更新同一个 Plan Bundle 与同一份 [Record](../../../records/refactor/atria-native-prompt-preset-deepening.md)。
 
 - 讨论日期：2026-10-15。
@@ -49,11 +51,11 @@
 | [context-memory-consumption.md](context-memory-consumption.md) | **D6 已冻结**：U2/E2/H2/V2 的受众 Context 投影、认识地位、长会话证据、请求级装配与 Source-aware 失效/复验 | D6 和实施相关接口 |
 | [quality-evolution.md](quality-evolution.md) | **D7 已冻结**：Q2/F2/O2/P2；受审文学/Agent 质量、来源归因、合法误拒、精确候选与受控发布 | D7 / E0 / 质量实施 |
 | [preset-studio-experience.md](preset-studio-experience.md) | **D8 功能与交互已冻结**：W2/R2/P2/I2/M2；原生创作大纲、受信三层预览、来源 Trace/按需 Diff、独立作者受控测试；具体视觉未冻结 | D8 / 前端讨论与实现 |
-| [e0-audit.md](e0-audit.md) | **D9/E0 未收口**：真实消费者静态台账、跨合同缺口、实施依赖与分支前置 Gate | 第九轮/开发交接 |
+| [e0-audit.md](e0-audit.md) | **设计期收口、工程 Gate 未收口**：三分支源码交叉核查、19 个重叠路径、物理接口/消费者阻塞、顺序与实际验收责任（最新见 §9） | 后续 Codex 实施前必读 |
 | [全产品前端研究](../../architecture/atria-frontend-audit/index.md) | **独立研究输入，非最终设计**：页面/组件/交互/跨端/来源与外部设计AI委托；详细状态仍归E0/Record | 外部设计前；后续HTML与双文档覆盖核对 |
 | [同一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md) | 真实文档提交、代码/测试/验证状态与未完成项 | 每轮更新 |
 
-## 后续轮次（D1–D8 功能语义已冻结，D9/E0 未收口）
+## 已确认的设计与工程状态（D1–D8 冻结，E0 待工程核销）
 
 | 轮次 | 核心议题 |
 | --- | --- |
@@ -65,8 +67,8 @@
 | **D6 已冻结** | **U2 + E2 + H2 + V2**：合法受众投影、信息地位、长会话保真与定向失效 |
 | **D7 已冻结** | **Q2 + F2 + O2 + P2**；文学/Agent 评价、真实归因、合法误拒、精确候选/评审发布 |
 | **D8 已冻结（仅功能/交互）** | W2 + R2 + P2 + I2 + M2；最终视觉审美与实际 HTML 参考尚未决定 |
-| **D9/E0 审计中** | 全量消费者闭包、跨合同缺口、实施依赖、开发授权前置 Gate；尚未收口 |
+| **设计期收口 / E0 工程未完** | 九轮增量决策已写回原有 D3/D4/D5/D6/D7/D8；当前 G1/G2 与整合、来源、UI/三端验收仍未核销；Codex 交接见 E0 §9 |
 
 ## 当前事实
 
-D1–D8 功能/交互语义保持，视觉未由本后端任务冻结。用户已授权正式实施；后端 `760327891` 已提交到同名语义分支，未合 main。受信 Host Program/fallback、Typed trust/lowering、无损 literal/表达范围、来源消费前复验、未发布 Draft 三层预览/Diff、浏览器私密诊断边界和质量元数据/协议拒答分类已有针对性本地证据，详见 [E0 §8](e0-audit.md#8-2026-10-16-后端实施增量与真实剩余-gate) 与同一 Record。**整体 E0 仍 NOT_CLOSED**：V3 实际 Node/Plan-prompt/发布组合、旧消费者同切、真实受审独立质量来源、长会话质量与前端/三端仍未完成。外部三文件是实施参考，HTML 漏项不能减少完整功能。
+D1–D8 功能/交互语义保持，视觉未由本后端任务冻结。用户已授权正式实施；后端 `760327891` 已提交到同名语义分支，未合 main。受信 Host Program/fallback、Typed trust/lowering、无损 literal/表达范围、来源消费前复验、未发布 Draft 三层预览/Diff、浏览器私密诊断边界和质量元数据/协议拒答分类已有针对性本地证据，详见 [E0 §8](e0-audit.md#8-2026-10-16-后端实施增量与真实剩余-gate) 与同一 Record。**整体 E0 仍 NOT_CLOSED**：V3 实际 Node/Plan-prompt/发布组合、旧消费者同切、真实受审独立质量来源、长会话质量与前端/三端仍未完成。2026-10-18 已核三分支，Prompt 与 V3 基于共同祖先存在 19 个同时修改路径，不能不做三方合并/回归就宣布可整合。外部三文件是实施参考，HTML 漏项不能减少完整功能。

@@ -1,5 +1,7 @@
 # D9 / E0 审计：真实消费者、跨合同缺口与开发前 Gate
 
+> **当前权威结论（2026-10-18）**：九轮补强及原有 D1–D8 的**产品设计已收口**，本 Plan 可由用户在后续 Codex 正式接手；**E0/G1/G2 的生产接口、完整消费者、跨分支整合、独立受审质量和三端产品验收仍 NOT_CLOSED**。请先读本文件 [§9](#9-2026-10-18-企划收口与-codex-交接审查) 的最新 HEAD/19 个重叠路径、工程顺序和剩余阻塞。§1–§8 的日期/旧 SHA 是保留的审计历史，旧“未授权、尚未创建分支”不覆盖 2026-10-16 后端授权和已存在分支。本次为 docs-only，未运行任何新测试。
+
 > **2026-10-16 开工更新**：G3=AUTHORIZED，用户包含 D2–D8 全后端实施，前端交 Claude Code。C1–C6 工程落点见 [后端实施](backend-implementation.md)。此前只文档/不建分支是前轮限制；当前已授权实施。E0 整体仍 NOT_CLOSED，不把授权冒充生产 Port/质量来源/端侧验收。
 
 > §1–§7 保留原静态审计基线；后续后端变化与当前剩余 Gate 见 §8。例如原 bindings 拒绝是历史事实，V3 `ce4a58de2` 已挂载真实 Binding get/save，但尚未交付完整运行/发布消费者链。
@@ -93,7 +95,7 @@
 
 ## 6. 当前结果与剩余工作
 
-2026-10-15 的 §1–4 静态事实仍绑定其旧固定 SHA；**当前实施增量以 §8 和同一 Record 为准**。E0 整体 NOT_CLOSED；不能继续把已实现的核心 Draft Preview/Typed lowering 全部称为“接口未定”，也不能把原 V3 生产、独立质量来源或旧消费者清退写成已通过。前端交接详见 [Claude Code 提示词](../../architecture/atria-frontend-audit/claude-code-frontend-prompt.md)。
+2026-10-15 的 §1–4 静态事实仍绑定其旧固定 SHA；**2026-10-16 Prompt 独立后端实施以 §8、2026-10-18 交叉核查/企划收尾以 §9、真实工程结果以各任务 Record 为准**。E0 整体 NOT_CLOSED；不能继续把已实现的核心 Draft Preview/Typed lowering 全部称为“接口未定”，也不能把原 V3 生产、独立质量来源或旧消费者清退写成已通过。前端交接详见 [Claude Code 提示词](../../architecture/atria-frontend-audit/claude-code-frontend-prompt.md)。
 
 ## 7. 历史首审与本轮并发变更
 
@@ -140,3 +142,64 @@
 V3 后续中间范围同步已更新并核对 `docs@129990563` / source `e6b4e552f` 的原 [整合入口](../atria-native-orchestration-v3/backend-integration.md)、接口 §17.15–17.26、验收 §9.1 和原 Record 第五至十六组：D8/W08 全范围、委派 exact Plan pin 允许集合、A2A 受理与完成的区别、费用明细与稳定 local identity 已并入统一前端提示词。现有真实 `POST /api/native/orchestration/bindings/get` 与 `/bindings/save`；它们验证原三域来源/owner/关联，保存 exact 已发布 Plan 选择及 CAS，不授予 Actor/模型/Tool 权限、不自动启动 Run，也不证明完整 plan-prompt 发布链已接通。MCP/Skill 已有原真实完成 proof→既有 EffectReceipt 的有限闭包，历史事实不授新权/正文消费；最终 compiled/render/request-bank 绑定与 retry 最后实际 snapshot 已收紧。generation.send publication 仅有 exact player narrator Route、显式原 computeBudget、无 fallback 的有限机制证据；不等于运行 grant，其余能力保留 unknown。Run/Projection/Approval 产品 HTTP 仍未开放。P3 仍 IN_PROGRESS / NOT_READY，P4–P8 未交付。缺失 runtime API/领域消费者是原 V3 后续已授权实施，不当成仅需外部条件的 BLOCKED，也不转移给前端造假端口。此次仍是中间范围同步；最终后端完成 SHA/新接口尚待原任务交付，未合两源码、未运行组合回归、未改 main。
 
 本任务可独立后端接口及相关本地验证交付；**整体 E0 仍 NOT_CLOSED**。保留语义分支而不向 stable main 混入未完成的跨任务组合，也不清理其他活跃分支。具体提交/测试只记同一 Record。前端由用户转交 Claude Code；后续需协调原 V3 接线及真实质量来源，不在浏览器创建假的运行/评测/发布权威。此处停止不表示 D2–D8 的模型质量、完整 V3 或全产品前端已全部完成。
+
+## 9. 2026-10-18 企划收口与 Codex 交接审查
+
+**审查结论：`PLANNING_CLOSED / HANDOFF_READY / E0_NOT_CLOSED`。** 用户已确认九轮增量产品/交互方向，不再逐轮讨论；后续由用户在 Codex 正式开展工程。此结论仅冻结需要保留的业务/安全语义与工作责任，不为尚未决定的 Anchor JSON、ContextPlan 具体排序键、离线 manifest、签名或 UI 风格凭空定物理 Schema，不把方案评审写作功能验收。原 D1–D8、HCM-01–08、V3 单 Host、Project/Session/World/Memory、Provider/Secret/Compute 与原 Visual Authority 均保持原有优先级。
+
+### 9.1 当前固定源码基线与整合事实
+
+| 分支 | 固定 HEAD | 本次只读结论 |
+| --- | --- | --- |
+| `main` | `c57fada6edeea255b29d857ba2585c1dbc9c098b` | 稳定基线；普通 Program 仍新建空 `stage.main`，Module 排序仍由 `target → priority(desc) → Module ID` 决定；九轮显式 Anchor、官方任务模板均未落地 |
+| `refactor/atria-native-prompt-preset-deepening` | `760327891149216dffdc1e3fa0c846496007a013` | 历史独立后端已实现可信 `programSelection`、Typed SemanticBlocks/Provider 降权、部分 Source-currentness 与 `/preview/draft`；原 Record 有**局部**测试证据，不能直接把此 branch 当九轮补强完成 |
+| `refactor/atria-native-orchestration-v3` | `a3aa5264b9e097e6e17751d547adc7be69f68f47` | 原 P6 后端检查点；[V3 当前矩阵](../atria-native-orchestration-v3/acceptance-matrix.md) 仍标原始 P3/P4、P6 `IN_PROGRESS`、最终 `NOT_READY`；已有多域有限消费者证据不能核销所有生产图 |
+| `docs` | `5b3b5ba763677f8496b9388cfcad40f8964ddf6d`（本次编辑前） | 九轮产品决定已归同一 Plan Bundle、全前端功能表现/指导与唯一 Record；最终收口增量在本节，不更动两个实现分支 |
+
+**Git 精确审查方法**：Prompt 与 V3 共同祖先为 `695acf3bcad1d42e331459189532a76056278bec`；以该祖先分别比较两个完整 `git/trees?recursive=1`（`truncated=false`）的路径/Blob SHA，Prompt 改动 43 个文件、V3 改动 1484 个路径，**19 个路径双方均修改**。其中 `main` 相对共同祖先又改动了 `generation-host.js`、模型提示词 README、`information-session-p6.test.js`、`native-provider-matrix.test.js` 四个 Prompt 重叠路径。GitHub compare 对巨大 V3 只返回前 300 项，不得把截断返回误判为零冲突。19 处为**重叠修改风险，不等于已做三方 merge simulation 或确定存在 19 个文本冲突**；本轮未执行 git merge/build/test。
+
+| 合并审查类别 | 共同修改路径 | 必须同时保留的能力 |
+| --- | --- | --- |
+| HTTP/模型发送与 Provider（5） | `src/endpoints/native-generation.js`；`src/native/adapters/generation-host.js`；`src/native/adapters/http-generation-provider.js`；`src/native/adapters/native-messages-provider.js`；`src/native/adapters/responses-generation-provider.js` | Prompt 的受信 Program selection、Source/降权/最后发送证据、只读 Draft Preview/脱敏/拒答分类；V3 的真实 ModelPort、Scope/Quota、银行/稳定请求身份、Context/Result/Receipt 和 unknown 语义 |
+| 原 Prompt 合同、快照与候选（5） | `src/native/model-prompt-runtime/README.md`；`compiled-binding.js`；`contracts.js`；`execution-utils.js`；`prompt-candidates.js`（均在 `src/native/model-prompt-runtime/` 下） | `rp_chat` 来源、Prompt Typed/身份校验、独立 Program/Exact ref、fallback/草稿错误类别、V3 引用根/候选删除保护、CAS 与故障级别；两边新增逻辑做并集审计，不直接整文件选一方 |
+| 原 Experience/Eval/Evolution（4） | `src/native/agent-intelligence/evaluation/worker-bridge.js`、`worker.js`；`src/native/agent-intelligence/evolution-evaluator.js`、`evolution-service.js` | 新文学/Agent/拒答分维度与 `source_unready` 的来源诚实性，V3 的真实 Plan 评价/候选和原 Promotion/Publication 审核与消费证明 |
+| 对应验证（5） | `tests/agent-intelligence/evolution-consumers.test.js`、`live-bridge.js`、`sealed-pairs.test.js`；`tests/native/information-session-p6.test.js`、`native-provider-matrix.test.js` | 不能以删掉某分支测试代表真实消费者已正确清退；调解旧用例与保留的新 Host/Session/Source/Provider 负例 |
+
+另外 `src/native/model-prompt-runtime/route-resolver.js` 为 Prompt 改动而 V3 仍按旧调用合同消费；`prompt-compiler.js`、新 `semantic-blocks.js`、`draft-preview.js`、`preview-disclosure.js` 均需要**功能级 API 合并审计**，不能仅以“不在 19 个共同修改文件中”推导集成安全。具体冲突必须在 Codex 正式工作树上取得新的 HEAD 后用 `git merge-base`、三方 diff、`merge-tree`/受控 worktree 和针对性测试证明。
+
+### 9.2 既有后端成果、缺口与唯一实现责任
+
+| 领域 | 已有依据 | 后续物理决定/工程 Gate 与责任 |
+| --- | --- | --- |
+| 可信 Program、IR、Context | Prompt `760327891` 的受信内部 Program、SemanticBlocks、Source send/retry/Preview 复验与无发送草稿预览有局部测试；V3 已存在有限真实 Host/Graph/银行/角色消费者 | **V3/原 Generation Host 协作**：按实际 Node/Route/Agent/Actor/Branch/Disclosure 将 Prompt selection 和最终 Provider send/Result 回执贯通，守住 C1–C3、Fallback 稳定语义、信息不会因 Anchor 角色提权；旧 V3 端口验收以其唯一矩阵为准 |
+| 显式编排与继承 | `main` 仍 `target→priority→ID`，已有 `parentRef/derive(add/disable/replace/configure)` 和 Package freeze | **PromptCompiler/Authoring**：Stage 顺序不变，合法 target 内 ModuleRef/受控 Anchor 一条作者显式序列；旧 `priority` 不再与新顺序竞争。确定 stable Anchor identity/类型/必需性、原生修订 Schema、exact 父级增量定位及继承冲突/Package 冻结与来源排序/去重。物理字段待从真实代码论证，不能为了支持新布局并存第二顺序或 ST 深度兼容 |
+| 独立 Prompt 作者与可解释调试 | Library 可无游戏创建/导入/导出；已知正式 `/preview` 需 Session/Project，Prompt 支持有限 exact-base 的 `/preview/draft`；Host 内已有编译诊断来源片段 | **Library/Host/D8 前端**：定义有界、独立于 Game/Session 的合法 fixture 与无发送 Preview，再明确手动付费试读；Authored/Effective/Wire 与受权 Trace/Diff 用同 Host 证据，不能伪造未执行 Pass/私密信息、绕开费用授权或 Preview Scope |
+| 官方模板与发行/升级 | 当前新 Program 为空 `stage.main`；已有 `PresetStore` 导入校验/身份重映射，`Package` 可 Build freeze | **Library/Native 版本权威**：少量短小通用骨架 + RP/Creative Writing/Agent Task 模板，默认无需私有 Source/Tool/Judge；作者自包含可编辑发行包与游戏冻结 Package 各司其职。来源/内容 Hash 与真正发布者认证区分；导入重映射、本地 Fork、手动导入候选、三方 Diff/歧义保留、CAS 升级与原消费者 exact pin；无自动市场/订阅 |
+| 原 Quality/Evolution | 已有 Profile/候选仓库与局部后端调试；来源目录仍有 `source_unready`，V3 原计划中立评测已进展但矩阵未全收 | **原 Experience/Eval + V3 Publication**：有真实分离 Development/Promotion 来源、审稿者独立性与覆盖范围才能显示质量认证；`plan-prompt` 的 PlanRevision→Binding CAS/journal/rollback 必须和 Node 真正消费闭环，不能因官方出处或 Judge 样例高分跳过 Gate |
+| 独立 Visual Prompt | 既有 Library Image Target/Rendering、插画全局设置及 ImagePromptIR/Visual Job/Asset/Media Studio；目前主要 Session/Branch 图像任务 | **原视觉 Authority 的后续作用域**：定义不需要假 Game Session 的作者视觉任务、付费批准、Job/Asset/Gallery Owner/SavePoint 与引用清理；默认风格/模板可独立编辑，视觉 Preview/Provider 能力/版权隐私走原机制。它是跨原视觉任务的必要依赖，不得直接把当前已完成视觉 Plan 修改为“本 Prompt 重构已实现”或建第二图像执行器 |
+
+**剩余物理合同清单**：Stage 条目/Anchor 类型与稳定 ID、`derive` 合法插入/替换定位与旧原生资源的 hard cutover、同 Anchor 多贡献选择/排序/去重身份、Source/Actor/Branch/Grant/currentness 快照端口、Provider Role/capability/fallback 语义、作者 fixture 身份与 Preview/付费试读边界、可编辑发行包来源及本地 identity mapping/手动升级冲突、视觉非 Session Job/Asset 所有权、可审评测证据和 V3 `plan-prompt` Publication。**这些是 Codex 在原 Authority 中决定并取证的接口工作项，不因本轮产品设计已收口而假定 Schema 已存在。**
+
+### 9.3 后续 Codex 的依赖驱动实施顺序
+
+1. **重新定基线，保护并发**：先读仓库规则、`docs` 本 Plan/E0/唯一 Record、V3 acceptance/backend-integration/唯一 Record，再查当前 `main`、Prompt、V3 三支 HEAD、工作树/未提交内容、已发布接口与本阶段目标。不得用本记录中的固定 SHA 代替更新后的 Git；不覆盖别人的任务分支、工作树/未跟踪成果。用户将在 Codex 正式启动，本次没有授权现在开始产品改动。
+2. **V3 实际合同优先，安全三方整合**：先按当时 V3 Gate 检查硬切进度和主要消费者，再在**受控开发工作树/已授权任务分支**对 Prompt + V3 做 `merge-base/merge-tree` 预演并解决冲突，保留 §9.1 的 19 路径及非重叠功能调用；不得丢 Prompt 的受信 Program、Draft、Typed 降权，也不得丢 V3 银行、Source/Result/Receipt/Skill/Commit/恢复。先做核心 send/Context/fallback/quality 的相关回归，确认可组合后再进行新增编排语义；不因为 P6 “文件清退”就直接宣布原 P3/P4/Final Gate 已通过。
+3. **在唯一原生 Compiler 内落地新语义**：物理 Program/Stage/Anchor/继承与 Context Contribution 合同及硬切顺序，在原存储/revision/CAS、Host/Provider/Context 内实现；同时更新 Preview/Package freeze/preset import/Evolution 真实消费者，做到 authored→effective→wire 一致，不能先画可拖拽树伪称编排成功。
+4. **补齐独立作者与默认资源链**：复用 Library/Studio/Play，同一编辑器+独立受权 fixture、三层预览/Trace/Diff；少量任务官方模板、模型能力诊断、手动可选试读；共享包自包含导入/导出、本地映射/Fork/Derive/升级 CAS 与 Used By 影响审查。无需创建游戏，Game Studio 应可直接绑定合法现有基础预设。
+5. **按真实领域完成 Quality/Visual/前端接入**：D7 的受审来源/Promotion 与 V3 `plan-prompt` 必须走原 Authority；Visual Prompt 的独立任务资产属于原视觉系统的后续接口与范围核定，不抢改已完成的视觉合同，也不在 Prompt Compiler 里实现图片发送；完整前端继续保留现有 189 项功能/三端等价，视觉美术仍按用户另行批准的材料/设计执行。
+6. **整体验收并按仓库规则收尾**：合成后验证功能、迁移/零旧模式硬切、Root/Ref/Storage/Package/SavePoint、权限、Provider、预算/错误/取消/恢复、独立作者与游戏真实消费、Windows/CachyOS/Termux 所有实际可得环境。完成指定 Gate 后记录真实 HEAD、执行命令/测试结果和未运行项；正常代码任务按用户的 Codex 工作流提交、推送、待可证明集成 main 后清理完成的临时分支，不因非破坏性常规问题反复中断。
+
+### 9.4 最终验收的证据门槛
+
+| Gate | 可核销依据 | 当前状态 |
+| --- | --- | --- |
+| **设计交接** | 九轮已确认合同原位落 D3–D8、原前端材料、同一 Record，关键交叉依赖/未知列明 | **PLANNING_CLOSED / HANDOFF_READY** |
+| **V3 与 Prompt 三方整合** | 当时完整 Git HEAD、19 路径及接口交叉 diff、真实 merge/test，Node→Program→Context→Provider→Result/Receipt 受信闭环 | **NOT_RUN / NOT_READY**（本次仅静态树核对） |
+| **原生显式排序与继承** | Stage/Module/Anchor 的真实编译顺序、条件/来源去重、exact parent/derive/Package freeze/legacy priority 硬切，用正/负例证明 | **DESIGN_ONLY** |
+| **来源安全与多 Provider** | World/Memory/Tool/Actor/Grant/Branch 历史与 live 消费复验，最终发送和 Prompt Preview 同源、Role 不提权；至少适用的真实 Adapter fixture/拒绝负例，L3 真模型另记 | **核心部分已有原分支定向证据；整合全链 NOT_RUN** |
+| **独立与游戏作者体验** | Library 无 Game 创建/测试/Preview/Trace/Diff/保存分享升级；Studio 能选基础预设或派生，Route/Plan exact pin；真实移动端等价 | **Library 编辑已有；独立测试/新增 UI BLOCKED/NOT_RUN** |
+| **视觉作者闭环** | 非 Session 的 ImagePromptIR Preview、经同一预算/Secret/审批的 Job、Asset/Gallery/GC/恢复与合法导出，禁止 Session 冒名 | **单独接口设计/执行未完成** |
+| **质量/发布与恢复** | Development/独立 Promotion 来源及真实 Outcome，Provider 内容拒绝与过度回避分账，Candidate/PlanBinding CAS/Journal/Retry/Rollback/真实费用，旧运行不漂移 | **`source_unready`、完整 V3 Promotion 未核销** |
+| **三端与全产品** | Windows、CachyOS Linux、Android Termux 浏览器的真测试/可复现无障碍/输入/触摸/预算/取消；全域功能与未运行项分别记证据 | **NOT_RUN（本次 docs-only）** |
+
+**收尾判定**：本次结束的是**企划讨论和文档交接**，不是 E0 工程认证、V3 P6/最终核销、UI 美术批准或 Git 分支整合。现存 2026-10-16 Prompt 后端授权、用户未来 Codex 正式执行的决定同时成立；不在本次创建/移动产品分支、不修改源码、不运行真实 Provider/CI/真机，也不新建第二 E0/Record。Codex 未来按此任务路由与真实 Git 独立推进，遇接口难题自行选择符合已冻结合同的实现，只有材料/权限/不可替代的真实外部证据或实质扩范围才交还用户。
