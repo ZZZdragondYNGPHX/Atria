@@ -8,10 +8,10 @@ import { readAttempt, controlCommandId, controlRecordKey, readGraphReviewReceipt
 import { readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
-import { readTaskGraphRevision } from './graph-revision-contracts.js';
+import { readTaskGraphRevision, readTaskGraphRevisions } from './graph-revision-contracts.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 import { readGraphPlannerCompletion } from './graph-planner-completion.js';
-import { readGraphNodeResult } from './graph-result-contracts.js';
+import { readGraphNodeResults } from './graph-result-contracts.js';
 import { audienceContextPin, assertAudienceRunCapture } from './audience-source-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
@@ -89,7 +89,12 @@ export async function readGraphReviewCompletion(tx, handle, root, attemptId, { v
     const evidence = [];
     for (const ref of review.evidenceRefs) {
         if (ref.runId !== root.runId || !producer.inputRefs.some(input => equal(input, ref))) invalid();
-        const fact = await readGraphNodeResult(tx, handle, root, ref.resultId);
+    }
+    // One original batch owns its revision snapshots; each typed Result,
+    // Model, settlement, retrieval and domain input proof is still fresh.
+    const evidenceFacts = await readGraphNodeResults(tx, handle, root, review.evidenceRefs.map(ref => ref.resultId));
+    for (const ref of review.evidenceRefs) {
+        const fact = evidenceFacts.get(ref.resultId);
         if (!fact || !fact.record.envelope.audienceConstraint.nodeIds.includes(producer.nodeId)
             || fact.receipt.decisionSeq >= review.decisionSeq) invalid();
         evidence.push(fact);
@@ -154,22 +159,37 @@ async function readReplacements(tx, handle, root, review, evidence, verifyContro
 }
 
 
-/** Read-only proof for the RP/Session main consumers' pure Planner redo. Accepted
- * old patches remain durable: only non-topological advisory priority/finalize
- * requests are safe here. This neither undoes a patch nor grants another one. */
+/** Accepted advisory topology is not rolled back by Review. Its completed
+ * pure Model work can be recomputed at the current revision, while the original
+ * Patch/Model/bank/sequence proof and all irreversible dependency checks remain. */
 export async function readReviewablePlannerCompletion(tx, handle, root, attemptId, { verifyControlWork }) {
     if (!['rp_chat', 'native_session'].includes(root.sourceBinding.sourceAuthority) || root.parentRef !== null) return null;
     const fact = await readGraphPlannerCompletion(tx, handle, root, attemptId, { verifyControlWork });
     if (!fact) return null;
-    const snapshot = await readTaskGraphRevision(tx, handle, root, fact.producer.graphRevision);
-    const node = snapshot.graph.nodes.find(node => node.nodeId === fact.producer.nodeId);
+    const revisions = await readTaskGraphRevisions(tx, handle, root, [fact.producer.graphRevision, fact.patch.newGraphRevision]);
+    const before = revisions.get(fact.producer.graphRevision).graph, after = revisions.get(fact.patch.newGraphRevision).graph;
+    const node = before.nodes.find(node => node.nodeId === fact.producer.nodeId);
+    const pureModel = item => item && ['agent', 'planner', 'review', 'judge'].includes(item.kind)
+        && item.capabilities.includes('generation.send')
+        && item.capabilities.every(capability => capability === 'generation.send' || capability === 'graph.patch');
     if (node?.kind !== 'planner' || !equal([...node.capabilities].sort(), ['generation.send', 'graph.patch'].sort())
         || fact.patch.requests.replan || !fact.patch.appliedOperations.length
-        || fact.patch.appliedOperations.some(operation => !['setPendingPriority', 'requestFinalize'].includes(operation.op))) return null;
-    for (const operation of fact.patch.appliedOperations.filter(operation => operation.op === 'setPendingPriority')) {
-        const target = snapshot.graph.nodes.find(node => node.nodeId === operation.nodeId);
-        if (!target || !['agent', 'planner', 'review', 'judge'].includes(target.kind)
-            || target.capabilities.some(capability => !['generation.send', 'graph.patch'].includes(capability))) return null;
+        || fact.patch.appliedOperations.some(operation => !['setPendingPriority', 'requestFinalize', 'addNode', 'addEdge'].includes(operation.op))) return null;
+    for (const operation of fact.patch.appliedOperations) {
+        if (operation.op === 'addNode') {
+            if (!pureModel(operation.node) || before.nodes.some(item => item.nodeId === operation.node.nodeId)
+                || !equal(after.nodes.find(item => item.nodeId === operation.node.nodeId), operation.node)) return null;
+        } else if (operation.op === 'addEdge') {
+            const edge = operation.edge;
+            if (edge.loopBack || before.edges.some(item => item.edgeId === edge.edgeId)
+                || !equal(after.edges.find(item => item.edgeId === edge.edgeId), edge)
+                || !pureModel(after.nodes.find(item => item.nodeId === edge.from.nodeId))
+                || !pureModel(after.nodes.find(item => item.nodeId === edge.to.nodeId))) return null;
+        } else if (operation.op === 'setPendingPriority') {
+            const target = after.nodes.find(item => item.nodeId === operation.nodeId);
+            if (!target || !['agent', 'planner', 'review', 'judge'].includes(target.kind)
+                || target.capabilities.some(capability => !['generation.send', 'graph.patch'].includes(capability))) return null;
+        }
     }
     return fact;
 }

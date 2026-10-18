@@ -1,3 +1,4 @@
+import { readSessionDelegatedFanoutCompletion } from './session-delegated-fanout-contracts.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { readGraphFanoutCompletion } from './graph-fanout-completion.js';
@@ -14,8 +15,9 @@ const invalid = () => { throw new TypeError('Invalid original Session Fanout Joi
 
 /** Original Session inputs/costs over the shared immutable Graph history reader.
  * No Source, recipient, Scheduler or bank permission is created here. */
-export async function readSessionFanoutCompletion(tx, handle, root, joinAttemptId) {
+export async function readSessionFanoutCompletion(tx, handle, root, joinAttemptId, options = {}) {
     if (!root.graph.nodes.some(node => node.kind === 'fanout')) return null;
+    if (root.parentRef) return readSessionDelegatedFanoutCompletion(tx, handle, root, joinAttemptId, options);
     if (root.parentRef !== null || root.sourceBinding.sourceAuthority !== 'native_session') invalid();
     return readGraphFanoutCompletion(tx, handle, root, joinAttemptId, {
         verifyMemberInput: async (_tx, _handle, _root, attempt, { frame, branch, results, reservation, settlement, graphSnapshot, plan }) => {

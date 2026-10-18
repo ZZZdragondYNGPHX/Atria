@@ -1,4 +1,5 @@
 import { BudgetPort } from '../../src/native/orchestration/budget-port.js';
+import { inspectComputeReservation } from '../../public/shared/native-compute-budget.js';
 import { makeTempSqliteEngineHarness, CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 import { projectModelFixture } from './helpers/project-model-fixture.js';
 import { configureProjectToolPlan } from './helpers/project-tool-fixture.js';
@@ -25,14 +26,14 @@ const response = (text, index, usage = true) => ({ id: 'project-delegate-' + ind
     type: 'message', status: 'completed', role: 'assistant', content: [{ type: 'output_text', text, annotations: [] }] }],
 ...usage ? { usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } } : {} });
 
-async function fixture(make, { mode = 'handoff', failure = null, dynamic = false, badPlanPin = false, reviewRedo = false, tightBudget = false, childPlanner = false, parentPatch = true, onParent = null, childDynamic = false, badChildPin = false, childLoop = null, childRequests = null, parentLoopIterations = 2, childQuality = null, childMaxRounds = 2, childFanout = false, childFanoutUsageUnknown = false } = {}) {
-    let childFanoutNode, childJoinNode, childBranches, releaseChildBranches, arrivedChildBranches = 0;
+async function fixture(make, { mode = 'handoff', failure = null, dynamic = false, badPlanPin = false, reviewRedo = false, tightBudget = false, childPlanner = false, parentPatch = true, onParent = null, childDynamic = false, badChildPin = false, childLoop = null, childRequests = null, parentLoopIterations = 2, childQuality = null, childMaxRounds = 2, childFanout = false, childFanoutUsageUnknown = false, childFanoutPlanner = false } = {}) {
+    let childFanoutPlannerNode, childFanoutNode, childJoinNode, childBranches, releaseChildBranches, arrivedChildBranches = 0;
     const bothChildBranches = new Promise(resolve => { releaseChildBranches = resolve; });
     let childQualityNode, childDraft, childAlternative, childFinal, childDraftRound = 0, childQualityRound = 0;
     let proposed, delegator, refinement, childPlanRef, operations, childControl, childControlTarget, childAdded, childOperations, childLoopEdge, childPlannerRound = 0, business = 0, reviewRound = 0, parentRound = 0, refinementRound = 0;
     const f = await projectModelFixture(make, { maxModelRounds: 3, responseStatus: index => failure === 'known' && index === 1 ? 400 : 200,
         changeRoute: route => ({ ...route, executionPolicy: { ...route.executionPolicy, computeBudget: { ...route.executionPolicy.computeBudget,
-            maxRequests: reviewRedo ? tightBudget ? 11 : 14 : childDynamic || childLoop === 'self' || childFanout ? 8 : 10, localWork: { ...route.executionPolicy.computeBudget.localWork, maxJobs: 160 } } } }),
+            maxRequests: childFanoutPlanner ? 9 : reviewRedo ? tightBudget ? 11 : 14 : childDynamic || childLoop === 'self' || childFanout ? 8 : 10, localWork: { ...route.executionPolicy.computeBudget.localWork, maxJobs: 160 } } } }),
         configurePlan: async args => {
             const { plan, seeded, h, original, route, host } = args;
             proposed = structuredClone(original); proposed.project.displayName = 'Advisory delegated Project proposal';
@@ -42,7 +43,7 @@ async function fixture(make, { mode = 'handoff', failure = null, dynamic = false
                 capabilities: [{ capability: 'generation.tools', state: 'unsupported', provenance: [{ kind: 'adapter-metadata', source: 'Advisory child has no tools' }] }],
                 limits: { ...seeded.model.limits, contextTokens: 65536 } };
             const childRoute = { ...route, runtimeRouteId: createNativeId('runtimeRoute'), modelProfileRef: { scope: 'player', modelProfileId: pure.modelProfileId },
-                executionPolicy: { ...route.executionPolicy, allowedModelProfileIds: [pure.modelProfileId], computeBudget: { maxRequests: childRequests ?? (childFanout ? 3 : childQuality === 'review' ? 5 : childQuality === 'judge' ? 4 : childLoop === 'nonself' ? 5 : childPlanner ? 3 : 2), maxTokens: 20000,
+                executionPolicy: { ...route.executionPolicy, allowedModelProfileIds: [pure.modelProfileId], computeBudget: { maxRequests: childRequests ?? (childFanoutPlanner ? 4 : childFanout ? 3 : childQuality === 'review' ? 5 : childQuality === 'judge' ? 4 : childLoop === 'nonself' ? 5 : childPlanner ? 3 : 2), maxTokens: 20000,
                     localWork: { maxJobs: 80, maxItems: 5000, maxInputBytes: 8388608 } } } };
             await seeded.persistence.saveModelProfile(h.handle, pure); await seeded.persistence.saveRuntimeRoute(h.handle, childRoute);
             const child = planFixture(), output = child.definition.nodes[0];
@@ -137,6 +138,17 @@ async function fixture(make, { mode = 'handoff', failure = null, dynamic = false
                 child.definition.nodes = [childFanoutNode, ...childBranches, childJoinNode, children[1], output]; child.definition.entryNodeIds = [childFanoutNode.nodeId];
                 child.definition.edges = [edge(childFanoutNode, 'scope', children[0], 'scope'), edge(childFanoutNode, 'scope', alternative, 'scope'),
                     edge(children[0], 'advice', childJoinNode, 'left'), edge(alternative, 'advice', childJoinNode, 'right'), edge(childJoinNode, 'joined', children[1], 'joined'), edge(children[1], 'advice', output, 'result')];
+                if (childFanoutPlanner) {
+                    childFanoutPlannerNode = { ...structuredClone(children[0]), nodeId: createNativeId('orchestrationNode'), kind: 'planner', label: 'Project child original frozen scope Planner',
+                        outputs: [port('control', 'json', false)], capabilities: ['generation.send', 'graph.patch'] };
+                    children[0].inputs = [port('control', 'json')];
+                    child.definition.nodes.splice(1, 0, childFanoutPlannerNode);
+                    child.definition.edges = child.definition.edges.map(item => item.from.nodeId === childFanoutNode.nodeId && item.to.nodeId === children[0].nodeId
+                        ? edge(childFanoutNode, 'scope', childFanoutPlannerNode, 'scope') : item);
+                    child.definition.edges.push(edge(childFanoutPlannerNode, 'control', children[0], 'control'));
+                    child.definition.capabilityCeiling.push('graph.patch');
+                    child.definition.graphChangePolicy = { allowedOperations: ['setPendingPriority', 'requestFinalize'], allowedNodeKinds: [] };
+                }
             }
             Object.assign(plan.definition.limits, { maxNodes: 12, maxEdges: 24, maxSteps: 180, maxAttempts: reviewRedo ? 20 : 16, maxDepth: 2,
                 maxDelegates: 2, maxHandoffs: 2, maxReviews: reviewRedo ? 2 : plan.definition.limits.maxReviews, maxEdgeVisits: 24, maxLoopIterations: parentLoopIterations, maxConcurrency: mode === 'delegate' || childFanout ? 2 : 1, deadlineMs: 180000 });
@@ -148,6 +160,7 @@ async function fixture(make, { mode = 'handoff', failure = null, dynamic = false
                 maxAttempts: childQuality === 'review' ? 6 : 5, maxEdgeVisits: childQuality === 'review' ? 5 : 6,
                 maxReviews: childQuality === 'review' ? childMaxRounds : 0 });
             if (childFanout) Object.assign(child.definition.limits, { maxNodes: 6, maxEdges: 6, maxAttempts: 6, maxEdgeVisits: 6, maxConcurrency: 2 });
+            if (childFanoutPlanner) Object.assign(child.definition.limits, { maxNodes: 7, maxEdges: 7, maxAttempts: 7, maxEdgeVisits: 7 });
             const plans = host.turnOrchestration.plans, draft = await plans.create(h.handle, createNativeId('orchestrationCommand'), child);
             const expected = { planId: draft.planId, expectedDraftVersion: draft.draftVersion, expectedDefinitionHash: draft.definitionHash };
             const report = await plans.validate(h.handle, expected);
@@ -165,7 +178,7 @@ async function fixture(make, { mode = 'handoff', failure = null, dynamic = false
             graph.edges = [edge(upstream, 'advice', delegator, 'upstream'), edge(delegator, 'advice', worker, 'advice'), edge(worker, 'response', formalOutput, 'response'),
                 { ...edge(worker, 'response', worker, 'continuation'), loopBack: true, maxVisits: 2 }];
             graph.capabilityCeiling.push('agent.delegate');
-            if (childPlanner && parentPatch) {
+            if ((childPlanner || childFanoutPlanner) && parentPatch) {
                 delegator.capabilities.splice(1, 0, 'graph.patch'); graph.capabilityCeiling.push('graph.patch');
                 graph.graphChangePolicy = { allowedOperations: ['setPendingPriority', 'requestFinalize'], allowedNodeKinds: [] };
             }
@@ -208,11 +221,14 @@ async function fixture(make, { mode = 'handoff', failure = null, dynamic = false
             const childTask = body.model === 'project-delegated-distinct-model' || childFanout && body.model === 'project-child-fanout-distinct-B'
                 ? (body.input ?? []).flatMap(item => { try { return [JSON.parse(item.content)]; } catch { return []; } })
                     .findLast(item => item?.kind === 'native_project_delegated_work') : null;
-            if (childFanout && childBranches.some(node => node.nodeId === childTask?.nodeId)) {
+            if (childFanoutPlanner && childTask?.nodeId === childBranches[0].nodeId) return response('CHILD_CONCURRENT_ADVICE_A', index);
+            if (childFanout && (childBranches.some(node => node.nodeId === childTask?.nodeId) || childFanoutPlanner && childTask?.nodeId === childFanoutPlannerNode.nodeId)) {
                 if (++arrivedChildBranches === 2) releaseChildBranches();
                 await bothChildBranches; // A serial consumer must hit the original Route deadline.
-                return response(childTask.nodeId === childBranches[0].nodeId ? 'CHILD_CONCURRENT_ADVICE_A' : 'CHILD_CONCURRENT_ADVICE_B', index,
-                    !(childFanoutUsageUnknown && childTask.nodeId === childBranches[1].nodeId));
+                return response(childFanoutPlanner && childTask.nodeId === childFanoutPlannerNode.nodeId
+                    ? JSON.stringify({ operations: [{ op: 'setPendingPriority', nodeId: childBranches[0].nodeId, priority: 7 }] })
+                    : childTask.nodeId === childBranches[0].nodeId ? 'CHILD_CONCURRENT_ADVICE_A' : 'CHILD_CONCURRENT_ADVICE_B', index,
+                !(childFanoutUsageUnknown && childTask.nodeId === childBranches[1].nodeId));
             }
             if (childQuality && childTask?.nodeId === childQualityNode.nodeId) return response(JSON.stringify(childQuality === 'review'
                 ? { decision: ++childQualityRound === 1 ? 'rerun' : 'approve', reasonCode: childQualityRound === 1 ? 'incomplete_proposal' : 'quality_ready',
@@ -249,7 +265,7 @@ async function fixture(make, { mode = 'handoff', failure = null, dynamic = false
         const run = f.authority.runProjectDelegation.bind(f.authority);
         f.authority.runProjectDelegation = args => run({ ...args, mode: 'delegate' });
     }
-    return Object.assign(f, { delegator, refinement, childPlanRef, childControl, childControlTarget, childAdded, childLoopEdge, childDraft, childAlternative, childFinal, childQualityNode, childBranches, childFanoutNode, childJoinNode, get arrivedChildBranches() { return arrivedChildBranches; } });
+    return Object.assign(f, { delegator, refinement, childPlanRef, childControl, childControlTarget, childAdded, childLoopEdge, childDraft, childAlternative, childFinal, childQualityNode, childBranches, childFanoutNode, childJoinNode, childFanoutPlannerNode, get arrivedChildBranches() { return arrivedChildBranches; } });
 }
 
 async function roots(f) {
@@ -836,11 +852,26 @@ async function assertPaidChildFanoutStopped(f, { unknown = false, checkpoint = n
     if (unknown) expect(child.status).toBe('reconciling');
     expect(task.compute.limits.maxRequests).toBe(8); expect(task.compute.attempts).toHaveLength(3); expect(task.compute.attempts[0].status).toBe('settled');
     expect(new Set(task.compute.attempts.map(row => row.attemptId)).size).toBe(3);
-    expect(task.compute.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'held', limits: expect.objectContaining({ maxRequests: 3 }) })]);
+    expect(task.compute.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: unknown ? 'held' : 'released', limits: expect.objectContaining({ maxRequests: 3 }) })]);
     expect(task.attempts.every(row => !row.calls.length)).toBe(true); expect(task.changeSets).toEqual([]);
     if (checkpoint) {
         expect(child.runId).toBe(checkpoint.childRunId); expect(child.sourceBinding).toEqual(checkpoint.sourceBinding);
         expect(task.compute.attempts.filter(row => row.reservationId === child.runId).map(row => row.attemptId).sort()).toEqual(checkpoint.feeIds);
+        expect(parent.pendingEffectRefs).toEqual([]); expect(child.pendingEffectRefs).toEqual([]);
+        expect(task.compute.attempts.every(row => row.status === 'settled')).toBe(true);
+        expect(task.compute.attempts.map(row => row.attemptId).sort()).toEqual(checkpoint.modelAttempts.map(row => row.attemptId).sort());
+        for (const before of checkpoint.modelAttempts) {
+            // The original charge identity survives its legitimate usage/status settlement.
+            const identity = row => Object.fromEntries(Object.entries(row).filter(([key]) => !['status', 'usage'].includes(key)));
+            expect(identity(task.compute.attempts.find(row => row.attemptId === before.attemptId))).toEqual(identity(before));
+        }
+        expect(checkpoint.localWork.length).toBeGreaterThan(0);
+        expect(task.compute.localWork).toEqual(expect.arrayContaining(checkpoint.localWork));
+        expect(task.compute.localWork.every(row => row.status === 'settled')).toBe(true);
+        expect(task.compute.reservations[0]).toEqual({ ...checkpoint.reservation, status: 'released' });
+        const originalBank = inspectComputeReservation({ compute: task.compute }), allocation = inspectComputeReservation({ compute: task.compute }, child.runId);
+        expect(originalBank).toMatchObject({ used: { requests: 3 }, delegated: { requests: 0 }, remaining: { requests: 5 }, overrun: false });
+        expect(allocation).toMatchObject({ used: { requests: 2 }, remaining: { requests: 1 }, overrun: false });
     }
     await f.h.engine.withTransaction(f.h.handle, async tx => {
         const attempts = await Promise.all(child.attemptRefs.map(id => readAttempt(tx, f.h.handle, child, id)));
@@ -851,6 +882,19 @@ async function assertPaidChildFanoutStopped(f, { unknown = false, checkpoint = n
             expect(fees).toHaveLength(1); expect(fees[0].reservationId).toBe(child.runId); expect(fees[0].status).toBe(unknown && index === 1 ? 'unknown' : 'settled');
             expect(effect.sourceBindingDigest).toBe(child.sourceBinding.bindingDigest);
             if (unknown && index === 1) expect(records[0].doc.resultRefs).toEqual([]);
+        }
+        if (checkpoint) {
+            const failures = (await tx.listResources({ kind: K.orchestrationRecord, handle: f.h.handle, runId: child.runId, recordType: 'receipt' }))
+                .map(row => row.doc).filter(row => row.receiptKind === 'native_project_failure');
+            expect(failures).toHaveLength(1); const [failure] = failures;
+            const branchEffectIds = attempts.filter(record => f.childBranches.some(node => node.nodeId === record.doc.nodeId)).flatMap(record => record.doc.effectRefs).sort();
+            expect(failure.effectIds.toSorted()).toEqual(branchEffectIds); expect(branchEffectIds).toHaveLength(2);
+            expect(failure.status).toBe('blocked'); expect(child.status).toBe('blocked'); expect(failure.costs.closed).toBe(true);
+            const costs = await f.authority.execution.budgetPort.observeEffectClosure(f.h.handle,
+                { authorityRef: child.budgetAuthorityRef, effectIds: failure.effectIds }, { tx });
+            expect(failure.costs).toEqual(costs);
+            expect(costs.budgetAttemptRefs.filter(ref => ref.kind !== 'local_work').map(ref => ref.attemptId).sort()).toEqual(checkpoint.feeIds);
+            expect(costs.budgetAttemptRefs.every(ref => ref.reservationId === child.runId)).toBe(true);
         }
         expect(await readTaskLocalOutput(tx, f.h.handle, child)).toBeNull(); expect(await readProjectReviewOutput(tx, f.h.handle, parent)).toBeNull();
     });
@@ -868,7 +912,9 @@ test('SQLite Project child Fanout retains both paid branch fees when the origina
                 try {
                     const { child } = await roots(f), task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
                     checkpoint = { sourceBinding: structuredClone(child.sourceBinding), childRunId: child.runId,
-                        feeIds: task.compute.attempts.filter(row => row.reservationId === child.runId).map(row => row.attemptId).sort() };
+                        feeIds: task.compute.attempts.filter(row => row.reservationId === child.runId).map(row => row.attemptId).sort(),
+                        modelAttempts: structuredClone(task.compute.attempts), localWork: structuredClone(task.compute.localWork ?? []),
+                        reservation: structuredClone(task.compute.reservations.find(row => row.reservationId === child.runId)) };
                     await f.writeProject();
                 } finally { releaseSourceWrite(); }
             }
@@ -887,3 +933,53 @@ test('SQLite Project child Fanout keeps a paid usage_unknown member and its orig
         expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
     } finally { await f.cleanup(); }
 }, 120000);
+
+test('SQLite Project child frozen scope Planner controls its reserved Agent before original Join TaskLocal and formal human Review', async () => {
+    const f = await fixture(makeTempSqliteEngineHarness, { childFanout: true, childFanoutPlanner: true });
+    try {
+        await f.run(); const { parent, child } = await roots(f);
+        expect(f.requests).toHaveLength(9); expect(parent.status).toBe('completed'); expect(child.status).toBe('completed'); expect(child.graphRevision).toBe(1);
+        expect(child.progress).toMatchObject({ attempts: 7, patches: 1, delegates: 0, handoffs: 0, edgeVisits: 7, loopIterations: 0 }); expect(child.outputClaims).toHaveLength(1);
+        expect(f.requests.slice(1, 3).map(body => body.model).sort()).toEqual(['project-delegated-distinct-model', 'project-child-fanout-distinct-B'].sort());
+        expect(f.requests.slice(1, 5).every(body => !body.tools?.length)).toBe(true);
+        expect(JSON.stringify(f.requests[3])).toContain('setPendingPriority'); expect(child.nodeControl[f.childBranches[0].nodeId].priority).toBe(7);
+        expect(JSON.stringify(f.requests[4])).toContain('CHILD_CONCURRENT_ADVICE_A'); expect(JSON.stringify(f.requests[4])).toContain('CHILD_CONCURRENT_ADVICE_B');
+        await f.h.engine.withTransaction(f.h.handle, async tx => {
+            const local = await readTaskLocalOutput(tx, f.h.handle, child), history = local.publication.graphHistory;
+            expect(history.fanouts).toHaveLength(1); const [joined] = history.fanouts;
+            expect(joined.joinReceipt.outcome).toBe('completed'); expect(joined.joinReceipt.acceptedResultRefs).toHaveLength(2); expect(joined.frame.maxConcurrency).toBe(2);
+            expect(joined.frame.branches).toHaveLength(2); expect(joined.scopeAttempts).toHaveLength(3); expect(joined.providerEffects).toHaveLength(3);
+            expect(history.effects).toHaveLength(4); expect(history.settled).toBe(true); expect((await readProjectReviewOutput(tx, f.h.handle, parent)).receipt.costs.closed).toBe(true);
+            expect(joined.frame.graphRevision).toBe(0);
+            const planners = history.controls.filter(fact => fact.controlRef.kind === 'graph_planner_control'); expect(planners).toHaveLength(1);
+            expect(planners[0].patch.appliedOperations).toEqual([{ op: 'setPendingPriority', nodeId: f.childBranches[0].nodeId, priority: 7 }]);
+            const reserved = joined.scopeAttempts.find(item => item.attempt.nodeId === f.childBranches[0].nodeId).attempt;
+            expect(reserved.reservationRef.producerAttemptId).toBe(joined.frame.fanoutAttemptId); expect(reserved.graphRevision).toBe(1);
+            const key = controlRecordKey(f.h.handle, child.runId, 'join', joined.joinReceipt.joinId), saved = await tx.getResource(key), changed = { ...saved.doc, acceptedResultRefs: [] };
+            try { await tx.putResource(key, { ...saved, doc: changed, integrity: hash(changed) }); await expect(readTaskLocalOutput(tx, f.h.handle, child)).rejects.toThrow(); }
+            finally { await tx.putResource(key, saved); }
+            expect((await readTaskLocalOutput(tx, f.h.handle, child)).receipt).toEqual(local.receipt);
+        });
+        const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+        expect(task.status).toBe('review'); expect(task.compute.limits.maxRequests).toBe(9); expect(task.compute.attempts).toHaveLength(9);
+        expect(task.compute.attempts.every(row => row.status === 'settled')).toBe(true); expect(task.compute.attempts.filter(row => row.reservationId === child.runId)).toHaveLength(4);
+        expect(task.compute.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released', limits: expect.objectContaining({ maxRequests: 4 }) })]);
+        expect(task.attempts.flatMap(row => row.calls.map(call => call.name))).toEqual(['atri_agent_set_plan', 'atri_agent_project_save', 'atri_agent_prepare_review']);
+        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
+    } finally { await f.cleanup(); }
+}, 180000);
+
+test('Project child scope Planner cannot increase the original held three-request allocation before any scope send', async () => {
+    const f = await fixture(makeTempSqliteEngineHarness, { childFanout: true, childFanoutPlanner: true, childRequests: 3 });
+    try {
+        await expect(f.run()).rejects.toThrow('native_orchestration_graph_budget_unavailable'); expect(f.requests).toHaveLength(1);
+        const { parent, child } = await roots(f), task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+        expect(parent.outputClaims).toEqual([]); expect(child.outputClaims).toEqual([]);
+        expect(task.compute.limits.maxRequests).toBe(9); expect(task.compute.attempts).toHaveLength(1);
+        expect(task.compute.attempts[0].status).toBe('settled'); expect(task.compute.attempts[0].reservationId ?? null).toBeNull();
+        expect(task.compute.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released', limits: expect.objectContaining({ maxRequests: 3 }) })]);
+        expect(task.attempts.flatMap(row => row.calls)).toEqual([]);
+        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
+        await f.cold(); await expect(f.run()).rejects.toThrow(); expect(f.requests).toHaveLength(1);
+    } finally { await f.cleanup(); }
+}, 90000);

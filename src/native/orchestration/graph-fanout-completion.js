@@ -202,7 +202,7 @@ export async function readGraphFanoutInput(tx, handle, root, fanoutAttemptId, re
         || !graphFanoutModelScope(graph, fanout.nodeId).includes(recipient.nodeId)
         || input?.nodeId !== fanout.nodeId || !same(input.sourceRef, root.sourceBinding.sourceRef) || !same(input.planRef, root.planRef)
         || fanout.inputDigest !== hash(fanout.inputRefs)
-        || fanout.effectiveGrantDigest !== (root.sourceBinding.sourceAuthority === 'project' && root.parentRef && input.kind === 'native_project_delegated_control'
+        || fanout.effectiveGrantDigest !== (root.parentRef && ['project', 'native_session'].includes(root.sourceBinding.sourceAuthority) && input.kind === ({ project: 'native_project_delegated_control', native_session: 'native_session_delegated_control' })[root.sourceBinding.sourceAuthority]
             ? root.parentRef.effectiveGrantDigest : hash({ handle, source: root.sourceBinding, inputRefs: fanout.inputRefs }))
         || !fanout.inputRefs.some(actual => same(actual, ref)) || received?.fanoutAttemptId !== fanoutAttemptId
         || !recipient.inputRefs.some(actual => same(actual, ref))) invalid();

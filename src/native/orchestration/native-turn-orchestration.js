@@ -225,8 +225,7 @@ export class NativeNarratorOrchestrationAuthority {
     inspectParentResult(capture, expected = {}) {
         this.inspectReturnIdentity(capture, expected);
         const authority = this.#captureAuthority(capture, true);
-        if (!authority) fail('native_orchestration_return_denied');
-        return authority.inspectParentResult(capture, expected);
+        return authority ? authority.inspectParentResult(capture, expected) : this.#rpAuthority().inspectParentResult(capture, expected);
     }
     authorizeTaskLocalOutput(args) {
         this.inspectDelegationIdentity(args.capture, { handle: args.handle });

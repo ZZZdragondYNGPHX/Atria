@@ -17,7 +17,7 @@ export const rpChildQualityTask = body => {
 
 /** Owner declarations precede Plan publication. Every child stage has its own
  * Model/Route and both explicitly shared original RP Sources; no Narrator view. */
-export async function rpDelegatedQualityFixture(make, { maxRounds = 2, childRequests = 7, unknownReview = false } = {}) {
+export async function rpDelegatedQualityFixture(make, { maxRounds = 2, childRequests = 7, unknownReview = false, parentMaxSteps = 50, parentMaxEdgeVisits = 10 } = {}) {
     let nodes, sharedPin, a = 0, reviewRound = 0;
     const f = await rpDelegationFixture(make, { configurePlan: async (plan, env) => {
         const route = { ...env.route, executionPolicy: { ...env.route.executionPolicy, computeBudget: { ...env.route.executionPolicy.computeBudget,
@@ -57,6 +57,13 @@ export async function rpDelegatedQualityFixture(make, { maxRounds = 2, childRequ
         plan.dependencyPins.push(sharedPin); for (const node of [first, second, review, judge, terminal]) node.dependencyPinIds.push(sharedPin.pinId);
         nodes = { first, second, review, judge, terminal };
     }, configureParentPlan: plan => {
+        // The parent declares its real Chat output and tree ceiling before
+        // validation/publication. The child remains a task Result at 50 steps.
+        plan.definition.limits.maxSteps = parentMaxSteps;
+        plan.definition.limits.maxEdgeVisits = parentMaxEdgeVisits;
+        plan.definition.nodes.find(node => node.kind === 'output').capabilities = ['chat.output'];
+        plan.definition.capabilityCeiling = [...plan.definition.nodes[0].capabilities, 'chat.output'];
+        Object.assign(plan.definition.outputContract, { kind: 'rp_narration', slot: 'assistant', resultPolicy: { outputType: 'text', maxBytes: 65536 } });
         // No graph.patch or Planner is needed for the original Review/Judge path.
         plan.dependencyPins.push(sharedPin); plan.definition.nodes[0].dependencyPinIds.push(sharedPin.pinId);
     }, responseStatus: body => unknownReview && body.model === 'rp-child-quality-review' ? null : 200,

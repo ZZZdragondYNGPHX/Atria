@@ -3,8 +3,6 @@ import { fields } from '../../../public/shared/native-values.js';
 import { NativeGenerationHost } from '../adapters/generation-host.js';
 import { NativeNarratorOrchestrationAuthority } from './native-turn-orchestration.js';
 import { inspectNativeRpGenerationIdentity } from './native-rp-generation.js';
-import { readHandoffReturn } from './handoff-return-contracts.js';
-import { readResultPublication } from './result-publication-contracts.js';
 import { RunRepository } from './run-repository.js';
 import { SourcePort } from './source-port.js';
 import { immutable, checkCancellation } from '../model-prompt-runtime/execution-utils.js';
@@ -33,20 +31,15 @@ export class ResultPort {
         return RunRepository.prototype.withConsumption.call(runs, handle, identity.parentRunId, async ({ tx, root, deny }) => {
             try {
                 const session = root.sourceBinding.sourceAuthority === 'native_session', project = root.sourceBinding.sourceAuthority === 'project';
-                // These owners can return the complete fresh inspection and its
-                // original authorization in one call. The final authorization
-                // after all awaited reads below still executes independently.
-                const inspected = session || project
-                    ? await NativeNarratorOrchestrationAuthority.prototype.inspectParentResult.call(this.host.turnOrchestration, capture, { host: this.host, handle, tx }) : null;
-                const current = inspected ? inspected.current
-                    : await NativeNarratorOrchestrationAuthority.prototype.inspectReturn.call(this.host.turnOrchestration, capture, { host: this.host, handle, tx });
-                const decision = inspected ? inspected.decision
-                    : await NativeNarratorOrchestrationAuthority.prototype.authorizeParentResult.call(this.host.turnOrchestration, { handle, tx, capture });
+                // The original owned inspection returns exactly the historical
+                // output it just fully read, with its current authorization.
+                // Final authorization below starts a separate fresh boundary.
+                const inspected = await NativeNarratorOrchestrationAuthority.prototype.inspectParentResult.call(this.host.turnOrchestration, capture, { host: this.host, handle, tx });
+                const current = inspected.current, decision = inspected.decision;
                 if (hash(decision) !== hash({ allowed: true, grantDigest: identity.parentGrantDigest, inputDigest: identity.parentInputDigest,
                     resultRef: identity.resultRef, sourceBindingDigest: identity.sourceBinding.bindingDigest })) return deny();
                 let returned, returnReceiptRef;
-                const publication = session || project ? current.output.publication
-                    : await readResultPublication(tx, handle, current.child, identity.resultRef.resultId);
+                const publication = inspected.publication ?? current.output.publication;
                 if ((session || project) && current.mode === 'delegate') {
                     const lineage = session ? current.lineage : await readProjectDelegation(tx, handle, root, identity.childRunId);
                     if (!lineage || lineage.mode !== 'delegate' || !['running', 'waiting_effect'].includes(lineage.parentAttempt.status)
@@ -62,17 +55,15 @@ export class ResultPort {
                         audienceDigest: publication.receipt.audienceDigest };
                     returnReceiptRef = null;
                 } else {
-                    returned = session || project ? current.returnReceipt : await readHandoffReturn(tx, handle, root, identity.childRunId);
+                    returned = current.returnReceipt;
                     returnReceiptRef = returned ? { runId: root.runId, receiptId: returned.receiptId } : null;
                 }
                 if (!returned || !publication || hash(returned.resultRef) !== hash(identity.resultRef) || returned.resultIntegrity !== hash(publication.record)
                     || returned.parentGrantDigest !== identity.parentGrantDigest || returned.parentInputDigest !== identity.parentInputDigest) return deny();
                 await sourcePort.revalidate(handle, identity.sourceBinding, { tx });
                 NativeNarratorOrchestrationAuthority.prototype.inspectReturnIdentity.call(this.host.turnOrchestration, capture, { host: this.host, handle });
-                if (session || project) {
-                    const final = await NativeNarratorOrchestrationAuthority.prototype.authorizeParentResult.call(this.host.turnOrchestration, { handle, tx, capture });
-                    if (hash(final) !== hash(decision)) return deny();
-                }
+                const final = await NativeNarratorOrchestrationAuthority.prototype.authorizeParentResult.call(this.host.turnOrchestration, { handle, tx, capture });
+                if (hash(final) !== hash(decision)) return deny();
                 return immutable({ resultRef: identity.resultRef, returnReceiptRef,
                     ...(session || project ? { publicationReceiptRef: { runId: identity.childRunId, receiptId: publication.receipt.receiptId },
                         outputReceiptRef: identity.outputReceiptRef,

@@ -1,3 +1,4 @@
+import { readRpDelegatedFanoutCompletion } from './rp-delegated-fanout-contracts.js';
 import { readSessionFanoutCompletion } from './session-fanout-contracts.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
@@ -48,7 +49,7 @@ export function graphResultContract(root, producer, graphSnapshot = null) {
         || node.outputs.length !== 1 || !['text', 'json'].includes(node.outputs[0].type)) invalid();
     const direct = graph.edges.filter(edge => edge.from.nodeId === node.nodeId && !edge.loopBack).map(edge => graph.nodes.find(item => item.nodeId === edge.to.nodeId));
     const recipients = direct.flatMap(item => {
-        if (item?.kind === 'fanout' && ['project', 'rp_chat'].includes(root.sourceBinding.sourceAuthority)) {
+        if (item?.kind === 'fanout' && (['project', 'rp_chat'].includes(root.sourceBinding.sourceAuthority) || root.sourceBinding.sourceAuthority === 'native_session' && root.parentRef !== null)) {
             return [item, ...graphFanoutModelScope(graph, item.nodeId).map(id => graph.nodes.find(node => node.nodeId === id))];
         }
         if (item?.kind !== 'join') return [item];
@@ -57,7 +58,7 @@ export function graphResultContract(root, producer, graphSnapshot = null) {
         return [item, ...successors];
     });
     if (!recipients.length || recipients.some(item => !kinds.includes(item?.kind) && item?.kind !== 'join'
-        && !(item?.kind === 'fanout' && ['project', 'rp_chat'].includes(root.sourceBinding.sourceAuthority)))) invalid();
+        && !(item?.kind === 'fanout' && (['project', 'rp_chat'].includes(root.sourceBinding.sourceAuthority) || root.sourceBinding.sourceAuthority === 'native_session' && root.parentRef !== null)))) invalid();
     return { output: { kind: 'result', ownerNodeId: node.nodeId, slot: 'graph_result', allowPartial: false,
         resultPolicy: { outputType: node.outputs[0].type, maxBytes: policy.maxBytes } },
     audience: { kind: 'graph_nodes', runId: root.runId, nodeIds: [...new Set(recipients.map(item => item.nodeId))].sort(), epoch: producer.epoch,
@@ -172,7 +173,7 @@ async function readGraphResultFacts(tx, handle, root, resultId, recipient, snaps
         || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId, ...retrievalCompletions.map(item => item.receiptId)]) || settlement.decisionSeq !== receipt.decisionSeq
         || settlement.createdAt !== receipt.createdAt || record.envelope.createdAt !== receipt.createdAt
         || settlement.reasonCode !== 'graph_result_published' || receipt.decisionSeq > root.eventSeq) invalid();
-    let delegationLineage = null, sessionDelegatedInput = null;
+    let delegationLineage = null, sessionDelegatedInput = null, rpDelegatedInput = null;
     if (root.sourceBinding.sourceAuthority === 'native_session' && root.parentRef) {
         sessionDelegatedInput = await readSessionDelegatedModelInput(tx, handle, root, producer, intent, receipt.decisionSeq);
     } else if (producer.inputRefs[0]?.kind === 'native_session_delegation') {
@@ -180,7 +181,7 @@ async function readGraphResultFacts(tx, handle, root, resultId, recipient, snaps
     } else if (root.sourceBinding.sourceAuthority === 'project' && root.parentRef) {
         delegationLineage = (await readProjectDelegatedModelInput(tx, handle, root, producer, intent, receipt.decisionSeq)).lineage;
     } else if (isRpDelegatedControlGraph(root)) {
-        await readRpDelegatedControlInput(tx, handle, root, producer, intent, receipt.decisionSeq);
+        rpDelegatedInput = await readRpDelegatedControlInput(tx, handle, root, producer, intent, receipt.decisionSeq);
     } else if (producer.inputRefs[0]?.kind === 'native_project_delegation') {
         await readProjectDelegationContinuation(tx, handle, root, producer, intent);
     }
@@ -194,7 +195,18 @@ async function readGraphResultFacts(tx, handle, root, resultId, recipient, snaps
             const input = recipient.inputRefs[0];
             if (root.sourceBinding.sourceAuthority === 'native_session') {
                 let accepted = false;
-                for (const id of root.attemptRefs) {
+                if (root.parentRef && input.fanoutAttemptId) {
+                    await readGraphFanoutInput(tx, handle, root, input.fanoutAttemptId, recipient, receipt.resultRef, { producer, settlement, receipt });
+                    accepted = true;
+                }
+                if (root.parentRef) for (const ref of input.acceptedControlRefs ?? []) {
+                    if (ref.kind !== 'graph_join_control' || ref.runId !== root.runId) continue;
+                    const joined = await readSessionFanoutCompletion(tx, handle, root, ref.attemptId, { recipient });
+                    if (joined && ['completed', 'partial'].includes(joined.joinReceipt.outcome)
+                        && joined.joinReceipt.acceptedResultRefs.some(ref => equal(ref, receipt.resultRef))
+                        && joined.joinReceipt.acceptedResultRefs.every(ref => input.acceptedGraphResultRefs.some(actual => equal(actual, ref)))) accepted = true;
+                }
+                for (const id of root.parentRef ? [] : root.attemptRefs) {
                     const attempt = (await readAttempt(tx, handle, root, id)).doc;
                     if (root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind !== 'join'
                         || !root.graph.edges.some(edge => edge.from.nodeId === attempt.nodeId && edge.to.nodeId === recipient.nodeId)) continue;
@@ -230,7 +242,7 @@ async function readGraphResultFacts(tx, handle, root, resultId, recipient, snaps
                     // the same Join. Its complete original proof is shared
                     // only inside this call, for this exact recipient.
                     if (!joins.has(ref.attemptId)) joins.set(ref.attemptId,
-                        await readRpControlFanoutCompletion(tx, handle, root, ref.attemptId, { recipient }));
+                        await (root.parentRef ? readRpDelegatedFanoutCompletion : readRpControlFanoutCompletion)(tx, handle, root, ref.attemptId, { recipient }));
                     const joined = joins.get(ref.attemptId);
                     if (joined && equal(joined.controlRef, ref) && ['completed', 'partial'].includes(joined.joinReceipt.outcome)
                         && joined.joinReceipt.acceptedResultRefs.some(actual => equal(actual, receipt.resultRef))
@@ -252,5 +264,6 @@ async function readGraphResultFacts(tx, handle, root, resultId, recipient, snaps
     // or bank grants. A containing Join proof can reuse them before checking
     // the actual original bank, without reading the same Model receipt twice.
     return { record, receipt, producer, settlement, retrievalCompletions, modelEffect: intent, modelCompletion: model,
-        ...(delegationLineage ? { delegationLineage } : {}), ...(sessionDelegatedInput ? { sessionDelegatedInput } : {}) };
+        ...(delegationLineage ? { delegationLineage } : {}), ...(sessionDelegatedInput ? { sessionDelegatedInput } : {}),
+        ...(rpDelegatedInput ? { rpDelegatedInput } : {}) };
 }

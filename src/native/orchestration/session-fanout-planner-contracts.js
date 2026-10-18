@@ -35,13 +35,19 @@ export function assertSessionFanoutPlannerOperations(frame, producer, operations
  * same original bank. They never supply a Result or reusable send grant. */
 export async function readSessionFanoutPaidModelNodes(tx, handle, root, fanoutAttemptId) {
     const authority = root.budgetAuthorityRef;
-    if (authority.domain !== 'session' || root.parentRef || root.sourceBinding.sourceAuthority !== 'native_session'
+    if (authority.domain !== 'session' || root.parentRef && (!root.parentRef.budgetCeiling || !root.parentRef.effectiveGrantDigest) || root.sourceBinding.sourceAuthority !== 'native_session'
         || !equal(root.sourceBinding.budgetAuthorityRef, authority)) denied('native_orchestration_budget_unavailable');
     const frame = await readFanoutFrame(tx, handle, root, fanoutAttemptId);
     if (!frame || frame.epoch !== root.epoch || frame.sourceBindingDigest !== root.sourceBinding.bindingDigest
         || !equal(frame.parentBudgetRef, authority)) denied('native_orchestration_fanout_stale');
     const control = await readRunControl(tx, handle, authority.sessionId);
     const bank = assertComputeLedger(control?.operations[authority.operationId]?.compute), paid = new Set();
+    if (root.parentRef) {
+        const allocation = bank.reservations.find(row => row.reservationId === root.runId);
+        if (!allocation || allocation.status !== 'held' || !equal(allocation.limits, root.parentRef.budgetCeiling)
+            || allocation.parentReservationId !== (root.parentRef.depth === 1 ? null : root.parentRef.parentRunId))
+            denied('native_orchestration_budget_unavailable');
+    }
     for (const id of frame.branches.flatMap(branch => branch.memberAttemptIds)) {
         const attempt = (await readAttempt(tx, handle, root, id)).doc;
         if (!await readFanoutMembership(tx, handle, root, frame, id)
@@ -55,7 +61,7 @@ export async function readSessionFanoutPaidModelNodes(tx, handle, root, fanoutAt
                 || effect.grantDigest !== attempt.effectiveGrantDigest || effect.inputHash !== hash(attempt.inputRefs[0]) || !equal(effect.inputRef, attempt.inputRefs[0])
                 || !equal(attempt.budgetRef, authority)) denied('native_orchestration_budget_attempt_invalid');
             for (const [ordinal, row] of rows.entries()) if (row.orchestration.kind !== 'provider_send' || row.orchestration.ordinal !== ordinal
-                || row.attemptId !== sendAttemptId(effectId, ordinal) || row.requestId !== effect.inputRef.invocationId || (row.reservationId ?? null) !== null
+                || row.attemptId !== sendAttemptId(effectId, ordinal) || row.requestId !== effect.inputRef.invocationId || (row.reservationId ?? null) !== (root.parentRef ? root.runId : null)
                 || !['charged', 'unknown', 'settled'].includes(row.status)) denied('native_orchestration_budget_attempt_invalid');
             paid.add(attempt.nodeId);
         }

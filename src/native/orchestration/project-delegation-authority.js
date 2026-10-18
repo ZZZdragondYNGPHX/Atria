@@ -545,13 +545,14 @@ export class ProjectDelegationAuthority {
         return { effectId, result, send, limits };
     }
 
-    async #prepareFanoutAgent(owner, parent, { node, bindings, fanoutAttemptId, permit = owner.childPermit, scopeCapture = null, signal = owner.signal, preparedAttemptId = null, reservedAttemptId = null, send = false }) {
+    async #prepareFanoutAgent(owner, parent, { node, bindings, fanoutAttemptId, permit = owner.childPermit, scopeCapture = null, signal = owner.signal, preparedAttemptId = null, reservedAttemptId = null, send = false, progress = null }) {
         const service = this.execution(), { host, handle, child } = owner, capture = Object.freeze({});
         const root = await service.runs.get(handle, owner.identity.childRunId), model = child.profiles.find(model => equal(model.node, node)) ?? await child.resolveModel(node);
         const state = { ...owner, capture, model, root, childPermit: permit, scopeCapture, signal, controlPermit: null, controlOnly: false, bindings, activeNode: null };
         const requestId = 'project-quality:' + hash({ runId: root.runId, nodeId: node.nodeId, fanoutAttemptId }).slice(0, 32);
         state.projectCapture = await captureNativeProjectDelegatedWorker(scopeCapture ?? parent.projectCapture, permit,
-            { requestId, nodeId: node.nodeId, routeRef: model.pin.resourceRef, task: { kind: 'native_project_delegated_work', nodeId: node.nodeId, authoredTask: node.label } });
+            { requestId, nodeId: node.nodeId, routeRef: model.pin.resourceRef, ...(node.kind === 'planner' ? { outputContract: projectPlannerOutputContract } : {}),
+                task: { kind: 'native_project_delegated_work', nodeId: node.nodeId, authoredTask: node.label } });
         const physical = await inspectNativeProjectGeneration(state.projectCapture, { host, handle }); state.request = physical.request;
         const results = [...new Map(bindings.flatMap(item => [item.resultRef, ...item.evidenceRefs ?? []].filter(Boolean)).map(ref => [hash(ref), ref])).values()];
         const controls = [...new Map(bindings.filter(item => item.controlRef).map(item => [hash(item.controlRef), item.controlRef])).values()];
@@ -579,7 +580,9 @@ export class ProjectDelegationAuthority {
             } else ({ attemptId } = await service.runs.beginAttempt(handle, controlCommandId('project.child.fanout.entry', { runId: root.runId, fanoutAttemptId, nodeId: node.nodeId }),
                 { ...runGuard(root), nodeId: node.nodeId, ...admission }));
             if (!send) return { attemptId, model, inputRefs, projectCapture: state.projectCapture };
-            const { effectId, result } = await this.#sendChildStage(state, parent, { attemptId, model, logical, inputRefs, signal });
+            const { effectId, result, send: completedSend, limits } = await this.#sendChildStage(state, parent, { attemptId, model, logical, inputRefs, signal });
+            if (node.kind === 'planner') return await completeProjectDelegatedPlanner({ state, service, port: this.port(host), result, send: completedSend, limits, progress, engine: this.owner.engine,
+                current: () => this.inspectDelegation(capture, { host, handle }) });
             const graphCapture = Object.freeze({}); this.#graphs.set(graphCapture, state);
             try {
                 const published = await new ResultController({ host, modelPort: this.port(host) }).publishGraphModelResult(handle, { capture: graphCapture, result, runId: root.runId, effectId });

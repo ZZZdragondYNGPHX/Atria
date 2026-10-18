@@ -51,7 +51,8 @@ export async function readProjectDelegatedFanoutInput(tx, handle, root, producer
     const snapshot = await readTaskGraphRevision(tx, handle, root, producer.graphRevision), node = snapshot.graph.nodes.find(node => node.nodeId === producer.nodeId);
     const branch = frame.branches.find(branch => branch.scopeNodeIds.includes(node?.nodeId)), fanout = (await readAttempt(tx, handle, root, frame.fanoutAttemptId)).doc;
     const pin = lineage.plan.dependencyPins.find(pin => pin.pinId === node?.policy.agentPinId);
-    if (!branch || node.kind !== 'agent' || input.kind !== 'native_project_delegated_intent' || input.role !== 'studio' || !equal(input.audience, { kind: 'task', id: root.runId })
+    if (!branch || !['agent', 'planner'].includes(node.kind)
+        || !equal([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []].sort()) || input.kind !== 'native_project_delegated_intent' || input.role !== 'studio' || !equal(input.audience, { kind: 'task', id: root.runId })
         || input.nodeId !== producer.nodeId || input.parentRunId !== root.parentRef.parentRunId || input.parentAttemptId !== root.parentRef.nodeAttemptId
         || input.parentEpoch !== root.parentRef.parentEpoch || input.childRunId !== root.runId || input.childEpoch !== producer.epoch
         || input.delegationInputDigest !== root.parentRef.inputDigest || !equal(input.sourceRef, root.sourceBinding.sourceRef) || !equal(input.planRef, root.planRef)

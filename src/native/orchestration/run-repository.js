@@ -374,9 +374,9 @@ export class RunRepository {
                 if (hashNativeDocument(input.budgetRef) !== hashNativeDocument(root.budgetAuthorityRef)
                     || input.effectiveGrantDigest !== root.parentRef.effectiveGrantDigest) throw new ConflictError('native_orchestration_child_authority_invalid');
                 if (input.inputDigest !== root.parentRef.inputDigest) {
-                    const passiveProject = root.sourceBinding.sourceAuthority === 'project' && input.inputRefs[0]?.kind === 'native_project_delegated_control'
+                    const passiveChild = ['project', 'native_session', 'rp_chat'].includes(root.sourceBinding.sourceAuthority) && input.inputRefs[0]?.kind === ({ project: 'native_project_delegated_control', native_session: 'native_session_delegated_control', rp_chat: 'native_rp_delegated_control' })[root.sourceBinding.sourceAuthority]
                         && ['fanout', 'join'].includes(root.graph.nodes.find(node => node.nodeId === input.nodeId)?.kind);
-                    if (!passiveProject && input.inputRefs[0]?.kind !== ({ native_session: 'native_session_delegated_intent', project: 'native_project_delegated_intent', rp_chat: 'native_rp_delegated_intent' })[root.sourceBinding.sourceAuthority]
+                    if (!passiveChild && input.inputRefs[0]?.kind !== ({ native_session: 'native_session_delegated_intent', project: 'native_project_delegated_intent', rp_chat: 'native_rp_delegated_intent' })[root.sourceBinding.sourceAuthority]
                         || !['native_session', 'project', 'rp_chat'].includes(root.sourceBinding.sourceAuthority)
                         || typeof this.authorizeChildAttempt !== 'function') throw new ConflictError('native_orchestration_child_authority_invalid');
                     const decision = await this.authorizeChildAttempt({ handle, tx, root, input });

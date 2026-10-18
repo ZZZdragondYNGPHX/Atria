@@ -3,6 +3,7 @@ import { rpDelegationFixture } from './helpers/rp-delegation-fixture.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { hashNativeDocument as hash } from '../../src/native/repositories/common.js';
 import { readTaskLocalOutput } from '../../src/native/orchestration/task-local-output-contracts.js';
+import { readRpOutput } from '../../src/native/orchestration/rp-output-contracts.js';
 import { readGraphNodeResult } from '../../src/native/orchestration/graph-result-contracts.js';
 import { readDelegatedRpSource } from '../../src/native/orchestration/delegated-source-contracts.js';
 import { rpOperationInput } from '../../src/native/rp-run-control.js';
@@ -68,6 +69,11 @@ async function setup({ pureAgents = false, nonself = false, childRequests = nons
         if (!pureAgents) {
             plan.definition.nodes[0].capabilities.push('graph.patch'); plan.definition.capabilityCeiling = [...plan.definition.nodes[0].capabilities];
             plan.definition.graphChangePolicy = { allowedOperations: ['requestReplan', 'requestFinalize'], allowedNodeKinds: [] };
+        }
+        if (pureAgents) {
+            plan.definition.nodes.find(node => node.kind === 'output').capabilities = ['chat.output'];
+            plan.definition.capabilityCeiling = [...plan.definition.nodes[0].capabilities, 'chat.output'];
+            Object.assign(plan.definition.outputContract, { kind: 'rp_narration', slot: 'assistant', resultPolicy: { outputType: 'text', maxBytes: 65536 } });
         }
         plan.dependencyPins.push(sharedPin); plan.definition.nodes[0].dependencyPinIds.push(sharedPin.pinId);
     }, responsePayload: body => pureAgents && body.model === plannerModelId ? 'RP_CHILD_FIRST_ADVICE' : body.model === plannerModelId ? JSON.stringify({ operations: dynamic ? nodes.operations : [{ op: nonself && ++plannerRound === 1 ? 'requestReplan' : 'requestFinalize' }] })
@@ -180,7 +186,20 @@ for (const missingFuturePin of [true, false]) test('RP child dynamic Agent ' + (
 test('SQLite RP child three Agent DAG needs no Planner or graph.patch and closes the original dual Source held bank', async () => {
     const f = await setup({ pureAgents: true });
     try {
+        const beforeChat = await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name);
+        expect(beforeChat.body.map(message => message.mes)).toEqual(['Original RP context', 'Original RP input']);
+        expect(f.parentPlan.definition.limits.maxSteps).toBe(50); expect(f.childPlan.definition.limits.maxSteps).toBe(50);
         const result = await f.run(); expect(result.delegation.status).toBe('returned'); expect(f.requests).toHaveLength(4);
+        const parent = await f.authority.execution.runs.get(f.h.handle, result.runId);
+        expect(parent.status).toBe('completed'); expect(parent.outputClaims).toHaveLength(1);
+        expect(result.output.runStatus).toBe('completed'); expect(parent.outputClaims).toEqual([result.output.outputClaimRef]);
+        const parentOutput = await f.h.engine.withTransaction(f.h.handle, tx => readRpOutput(tx, f.h.handle, parent));
+        expect(parentOutput.published.record.payload).toBe('RP_CHILD_TERMINAL_AND_PARENT');
+        expect(parentOutput.domainReceipt.inputAnchor).toEqual(rpOperationInput(beforeChat.body[1], 1));
+        const afterChat = await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name);
+        expect(afterChat.body).toHaveLength(beforeChat.body.length + 1); expect(afterChat.body.slice(0, beforeChat.body.length)).toEqual(beforeChat.body);
+        expect(afterChat.body.at(-1)).toMatchObject({ mes: 'RP_CHILD_TERMINAL_AND_PARENT', is_user: false });
+        expect(afterChat.body.filter(message => message.mes === 'RP_CHILD_TERMINAL_AND_PARENT')).toHaveLength(1);
         expect(f.requests.map(body => body.model)).toEqual([f.plannerModelId, f.draftModelId, f.model.remoteModelId, f.model.remoteModelId]);
         const child = await f.authority.execution.runs.get(f.h.handle, result.delegation.childRunId);
         expect(child.status).toBe('completed'); expect(child.graphRevision).toBe(0); expect(child.outputClaims).toHaveLength(1);
@@ -207,6 +226,7 @@ test('SQLite RP child three Agent DAG needs no Planner or graph.patch and closes
         });
         await f.chats.delete(f.h.handle, f.locator.charDir, f.locator.name);
         expect((await f.h.engine.withTransaction(f.h.handle, tx => readTaskLocalOutput(tx, f.h.handle, child))).publication.graphHistory.settled).toBe(true);
+        expect((await f.h.engine.withTransaction(f.h.handle, tx => readRpOutput(tx, f.h.handle, parent))).receipt).toEqual(parentOutput.receipt);
         expect(f.requests).toHaveLength(4);
     } finally { await f.cleanup(); }
 }, 180000);

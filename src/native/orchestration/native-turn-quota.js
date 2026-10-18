@@ -1,7 +1,7 @@
 import { fields } from '../../../public/shared/native-values.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { hashNativeDocument } from '../repositories/common.js';
-import { assertNativeTurnPermit, captureNativeTurnChildPermit, assertNativeTurnFinalizationPermit, captureNativeTurnFinalizationPermit } from './native-turn-permit.js';
+import { assertNativeTurnPermit, captureNativeTurnChildPermit, assertNativeTurnControlPermit, captureNativeTurnFanoutChildPermit, assertNativeTurnFinalizationPermit, captureNativeTurnFinalizationPermit } from './native-turn-permit.js';
 import { inspectNativeBackgroundGenerationIdentity } from './native-background-generation.js';
 
 const proofs = new WeakMap();
@@ -35,6 +35,19 @@ export function captureNativeTurnChildQuota(proof, boundary, expected) {
     const permit = captureNativeTurnChildPermit(original.permit, boundary, expected), capture = Object.freeze({});
     proofs.set(capture, Object.freeze({ ...original, permit }));
     return capture;
+}
+
+/** Existing original Turn metadata plus the actual nested scope leaf only. */
+export function captureNativeTurnFanoutChildQuota(proof, boundary, expected) {
+    const original = proofs.get(proof); if (!original || original.backgroundCapture) denied();
+    const permit = captureNativeTurnFanoutChildPermit(original.permit, boundary, expected), capture = Object.freeze({});
+    proofs.set(capture, Object.freeze({ ...original, permit })); return capture;
+}
+
+/** Read-only passive ancestry; Model/local admission still uses active quota. */
+export function assertNativeTurnControlQuota(proof, expected) {
+    const value = proofs.get(proof); if (value?.backgroundCapture) denied();
+    assertTurnQuotaMetadata(value, expected); assertNativeTurnControlPermit(value.permit); return value;
 }
 
 export function mintNativeBackgroundQuota(capture, expected) {

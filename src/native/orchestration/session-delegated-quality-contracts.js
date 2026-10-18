@@ -1,3 +1,4 @@
+import { readSessionDelegatedFanoutCompletion } from './session-delegated-fanout-contracts.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
@@ -78,6 +79,7 @@ export async function readSessionDelegatedJudgeCompletion(tx, handle, root, atte
 /** Typed facts only; callers separately check live Source, Actor and currentness. */
 export function readSessionDelegatedControl(tx, handle, root, ref, options = {}) {
     if (ref?.runId !== root.runId) invalid();
+    if (ref.kind === 'graph_join_control') return readSessionDelegatedFanoutCompletion(tx, handle, root, ref.attemptId, options);
     if (ref.kind === 'graph_planner_control') return readSessionPlannerCompletion(tx, handle, root, ref.attemptId, options);
     if (ref.kind === 'graph_review_control') return readSessionDelegatedReviewCompletion(tx, handle, root, ref.attemptId, options);
     if (ref.kind === 'graph_judge_control') return readSessionDelegatedJudgeCompletion(tx, handle, root, ref.attemptId, options);

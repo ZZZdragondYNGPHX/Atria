@@ -33,9 +33,35 @@ export function assertNativeTurnPermit(permit, expected = {}) {
         if (Object.hasOwn(expected, field) && hashNativeDocument(value[field]) !== hashNativeDocument(expected[field])) denied();
     if (Object.hasOwn(expected, 'requiredResources') && (!Array.isArray(expected.requiredResources)
         || expected.requiredResources.some(resource => typeof resource !== 'string' || !value.expected.resources.includes(resource)))) denied();
-    const active = value.parent ? nativeTaskScheduler.assertFanoutChildBoundary(value.parent.boundary, value.parent.expected, value.boundary, value.expected)
-        : nativeTaskScheduler.assertActiveBoundary(value.boundary, value.expected);
+    const active = assertFrame(value, false);
     return Object.freeze({ ...value, operationId: active.operationId, signal: active.signal, resources: active.resources, attempt: active.attempt });
+}
+
+function assertFrame(value, controlOnly) {
+    if (value.parent) {
+        assertFrame(value.parent, true);
+        return nativeTaskScheduler[controlOnly ? 'assertFanoutChildControlBoundary' : 'assertFanoutChildBoundary'](
+            value.parent.boundary, value.parent.expected, value.boundary, value.expected);
+    }
+    return nativeTaskScheduler[controlOnly ? 'assertFanoutControlBoundary' : 'assertActiveBoundary'](value.boundary, value.expected);
+}
+
+/** Passive proof only. It never satisfies assertNativeTurnPermit for a send. */
+export function assertNativeTurnControlPermit(permit) {
+    const value = permits.get(permit); if (!value) denied();
+    const active = assertFrame(value, true);
+    return Object.freeze({ ...value, operationId: active.operationId, signal: active.signal, resources: active.resources, attempt: active.attempt });
+}
+
+/** Same held child, actual nested Scheduler group; no new delegated Run. The
+ * domain owner verifies the frozen Frame and exact target before this mint. */
+export function captureNativeTurnFanoutChildPermit(permit, boundary, expected) {
+    const original = permits.get(permit); if (!original?.parent) denied();
+    assertFrame(original, true);
+    nativeTaskScheduler.assertFanoutChildBoundary(original.boundary, original.expected, boundary, expected);
+    const capture = Object.freeze({});
+    permits.set(capture, Object.freeze({ ...original, parent: original, boundary, expected: immutable(expected) }));
+    return capture;
 }
 
 /** Derive a witness only from this Turn's actual original Scheduler group. */

@@ -1,7 +1,7 @@
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { nodeModelRoutePins, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { delegatedRpSourcePins } from './delegated-source-contracts.js';
-import { rpControlReplanScope } from './rp-control-graph.js';
+import { rpControlReplanScope, rpControlFanoutGroups } from './rp-control-graph.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_rp_child_control_unavailable'), { code: 'native_orchestration_rp_child_control_unavailable' }); };
@@ -13,8 +13,9 @@ export function rpDelegatedControlProfile(plan) {
     if (!graph.nodes.some(node => ['planner', 'review', 'judge'].includes(node.kind))
         && graph.nodes.filter(node => node.kind === 'agent').length < 2) return null;
     const models = graph.nodes.filter(node => ['agent', 'planner', 'review', 'judge'].includes(node.kind)), agents = models.filter(node => node.kind === 'agent');
+    const passive = graph.nodes.filter(node => ['fanout', 'join'].includes(node.kind)), pure = [...models, ...passive];
     const outputs = graph.nodes.filter(node => node.kind === 'output'), output = outputs[0], sources = delegatedRpSourcePins(plan);
-    if (!agents.length || outputs.length !== 1 || graph.nodes.length !== models.length + 1
+    if (!agents.length || outputs.length !== 1 || graph.nodes.length !== pure.length + 1
         || graph.outputContract.kind !== 'result' || graph.outputContract.allowPartial || assertResultPolicy(graph.outputContract).outputType !== 'text'
         || output.nodeId !== graph.outputContract.ownerNodeId || output.capabilities.length || output.dependencyPinIds.length || output.outputs.length
         || output.inputs.length !== 1 || !output.inputs[0].required || output.inputs[0].type !== 'text'
@@ -27,13 +28,21 @@ export function rpDelegatedControlProfile(plan) {
         if (!equal([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []].sort())
             || node.outputs.length !== 1 || node.outputs[0].type !== (node.kind === 'agent' ? 'text' : 'json')
             || !routes.length || sourcePins.length !== sources.length || node.dependencyPinIds.length !== routes.length + sourcePins.length
-            || node.inputs.some(port => !['text', 'json'].includes(port.type))) fail();
+            || node.inputs.some(port => !['text', 'json'].includes(port.type) && !(port.type === 'task.result'
+                && graph.edges.some(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name && passive.some(source => source.kind === 'fanout' && source.nodeId === edge.from.nodeId))))) fail();
+        incoming[node.nodeId] = graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === node.nodeId);
+        if (node.inputs.some(port => graph.edges.filter(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name).length > 1
+            || port.required && !incoming[node.nodeId].some(edge => edge.to.port === port.name))) fail();
+    }
+    for (const node of passive) {
+        if (node.capabilities.length || node.dependencyPinIds.length || node.outputs.length !== 1
+            || node.outputs[0].type !== (node.kind === 'fanout' ? 'task.result' : 'text') || node.inputs.some(port => !['text', 'json'].includes(port.type))) fail();
         incoming[node.nodeId] = graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === node.nodeId);
         if (node.inputs.some(port => graph.edges.filter(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name).length > 1
             || port.required && !incoming[node.nodeId].some(edge => edge.to.port === port.name))) fail();
     }
     for (const edge of graph.edges) {
-        const from = models.find(node => node.nodeId === edge.from.nodeId), to = graph.nodes.find(node => node.nodeId === edge.to.nodeId);
+        const from = pure.find(node => node.nodeId === edge.from.nodeId), to = graph.nodes.find(node => node.nodeId === edge.to.nodeId);
         if (!from || !to || !['always', 'success'].includes(edge.condition)
             || edge.from.port !== from.outputs[0].name || !to.inputs.some(port => port.name === edge.to.port && port.type === from.outputs[0].type)
             || edge.loopBack && (from.kind !== 'planner' || !['agent', 'planner'].includes(to.kind) || edge.condition !== 'always'
@@ -51,11 +60,13 @@ export function rpDelegatedControlProfile(plan) {
             needed.add(edge.from.nodeId); changed = true;
         }
     }
-    if (needed.size !== graph.nodes.length || !equal([...graph.entryNodeIds].sort(), models.filter(node => !incoming[node.nodeId].length).map(node => node.nodeId).sort())) fail();
-    while (ordered.length < models.length) {
-        const next = models.find(node => !ordered.includes(node) && incoming[node.nodeId].every(edge => ordered.some(from => from.nodeId === edge.from.nodeId)));
+    if (needed.size !== graph.nodes.length || !equal([...graph.entryNodeIds].sort(), pure.filter(node => !incoming[node.nodeId].length).map(node => node.nodeId).sort())) fail();
+    while (ordered.length < pure.length) {
+        const next = pure.find(node => !ordered.includes(node) && incoming[node.nodeId].every(edge => ordered.some(from => from.nodeId === edge.from.nodeId)));
         if (!next) fail(); ordered.push(next);
     }
     for (const loop of graph.edges.filter(edge => edge.loopBack)) rpControlReplanScope(graph, loop.from.nodeId);
-    return { models, planners, narrator: terminal, output, terminalNodeId: terminal.nodeId, incoming, ordered, fanouts: [] };
+    const fanouts = rpControlFanoutGroups(graph, terminal.nodeId);
+    if (fanouts.some(group => group.branches.some(branch => branch.scopeNodeIds.some(id => graph.nodes.find(node => node.nodeId === id).kind !== 'agent')))) fail();
+    return { models, planners, narrator: terminal, output, terminalNodeId: terminal.nodeId, incoming, ordered: ordered.filter(node => models.includes(node)), pure, fanouts };
 }

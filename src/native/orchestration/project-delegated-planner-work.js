@@ -14,6 +14,8 @@ import { controlCommandId, controlRecordKey, readAttempt, runGuard } from './con
 import { readEffect } from './effect-contracts.js';
 import { writeAttemptSettlement } from './attempt-settlement.js';
 
+import { assertProjectFanoutPlannerPatch, readProjectFanoutPaidModelNodes } from './project-fanout-planner-contracts.js';
+
 const equal = (a, b) => hash(a) === hash(b);
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 
@@ -56,11 +58,12 @@ export async function completeProjectDelegatedPlanner({ state, service, port, re
         reasonRefs: [{ kind: 'source', bindingDigest: root.sourceBinding.bindingDigest }, ...state.decision.inputRef.acceptedGraphResultRefs.map(ref => ({ kind: 'result', resultId: ref.resultId }))], payloadHash: '' };
     patch.payloadHash = graphPatchHash(patch);
     const withAuthority = service.sourcePort.consumptionBoundary(handle, root.sourceBinding, { engine });
-    const proposed = await work('graph_control_adopt', patch, () => service.runs.withSourceControl(handle, runId, () => new GraphController({ runs: service.runs,
+    const proposed = await work('graph_control_adopt', patch, () => service.runs.withSourceControl(handle, runId, async () => new GraphController({ runs: service.runs,
         authorizePatch: async ({ tx, root: active, producer, patch: actual }) => {
             await current();
             if (producer.attemptId !== attemptId || !equal(actual, patch) || !equal(proof, await port.inspectResultCompletion(handle, { result, runId, effectId })))
                 fail('native_orchestration_planner_producer_denied');
+            if (producer.inputRefs[0].fanoutAttemptId) await assertProjectFanoutPlannerPatch(tx, handle, active, producer, actual);
             const candidate = cloneNativeDocument(active.graph);
             for (const operation of actual.operations) {
                 if (operation.op === 'addNode') candidate.nodes.push(operation.node);
@@ -85,20 +88,22 @@ export async function completeProjectDelegatedPlanner({ state, service, port, re
             const scope = repeating ? projectReplanScope(candidate, producer.nodeId) : null;
             if (repeating && (!progress.has(scope.target.nodeId) && scope.target.nodeId !== producer.nodeId
                 || actual.operations.some(operation => operation.op === 'requestFinalize'))) fail('native_orchestration_planner_replan_pending');
-            const required = profile.models.filter(node => scope?.affectedNodeIds.includes(node.nodeId) || node.nodeId !== producer.nodeId && !progress.has(node.nodeId)).length;
+            const paid = producer.inputRefs[0].fanoutAttemptId ? await readProjectFanoutPaidModelNodes(tx, handle, active) : null;
+            const required = profile.models.filter(node => scope?.affectedNodeIds.includes(node.nodeId)
+                || node.nodeId !== producer.nodeId && !progress.has(node.nodeId) && !paid?.has(node.nodeId)).length;
             const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: runId }, { tx });
             if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');
             if (repeating && active.progress.attempts + required + 1 > active.limits.maxAttempts) fail('native_orchestration_limit_exhausted');
             const effect = (await readEffect(tx, handle, active, effectId)).doc;
             await readProjectDelegatedModelInput(tx, handle, active, producer, effect);
             await current();
-        } }).propose(handle, { expectedStateVersion: root.stateVersion, patch }), { withAuthority }));
+        } }).propose(handle, { expectedStateVersion: state.decision.inputRef.fanoutAttemptId ? (await service.runs.get(handle, runId)).stateVersion : root.stateVersion, patch }), { withAuthority }));
     const accepted = proposed.outcome.patchReceipt;
     if (!accepted.accepted) fail('native_orchestration_planner_patch_rejected');
     if (accepted.requests.replan && accepted.requests.finalize) fail('native_orchestration_planner_replan_pending');
     const receiptId = graphPlannerReceiptId(runId, attemptId);
-    await service.runs.withSourceControl(handle, runId, () => service.runs.control(handle, controlCommandId('graph.planner.settle', attemptId), {
-        ...runGuard(root), expectedGraphRevision: accepted.newGraphRevision, expectedStateVersion: proposed.outcome.versions.stateVersion,
+    await service.runs.withSourceControl(handle, runId, async () => service.runs.control(handle, controlCommandId('graph.planner.settle', attemptId), {
+        ...runGuard(root), expectedGraphRevision: accepted.newGraphRevision, expectedStateVersion: state.decision.inputRef.fanoutAttemptId ? (await service.runs.get(handle, runId)).stateVersion : proposed.outcome.versions.stateVersion,
         operation: 'attempt.settle', detail: { attemptId, patchId: patch.patchId } }, async ({ tx, root: active, now }) => {
         await current();
         const record = await readAttempt(tx, handle, active, attemptId);

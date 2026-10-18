@@ -14,6 +14,19 @@ const invalid = () => { throw new TypeError('Invalid Handoff return facts'); };
 
 /** Historical return evidence, never a resumed parent capability. */
 export async function readHandoffReturn(tx, handle, parent, childRunId) {
+    const facts = await readHandoffReturnFacts(tx, handle, parent, childRunId);
+    if (!facts) return null;
+    return ['native_session', 'project'].includes(parent.sourceBinding.sourceAuthority)
+        ? { ...facts.receipt, output: facts.output, publication: facts.publication, lineage: facts.lineage } : facts.receipt;
+}
+
+/** Fresh inspection of facts this reader itself fully checks. No caller can
+ * inject a prior TaskLocal/publication proof or bypass any original predicate. */
+export function readHandoffReturnInspection(tx, handle, parent, childRunId) {
+    return readHandoffReturnFacts(tx, handle, parent, childRunId);
+}
+
+async function readHandoffReturnFacts(tx, handle, parent, childRunId) {
     assertNativeId(childRunId, 'orchestrationRun');
     const receiptId = handoffReturnReceiptId(childRunId), saved = await checkedRecord(tx, controlRecordKey(handle, parent.runId, 'receipt', receiptId));
     if (!saved) return null;
@@ -68,5 +81,5 @@ export async function readHandoffReturn(tx, handle, parent, childRunId) {
         if (!actual || !lineage || !equal(lineage.parent, actual) || !equal(lineage.child, child)
             || lineage.mode !== 'handoff' || !equal(lineage.handoffReceiptRef, receipt.handoffReceiptRef)) invalid();
     }
-    return ['native_session', 'project'].includes(parent.sourceBinding.sourceAuthority) ? { ...receipt, output, publication: output.publication, lineage } : receipt;
+    return { receipt, output, publication: output.publication ?? null, lineage };
 }

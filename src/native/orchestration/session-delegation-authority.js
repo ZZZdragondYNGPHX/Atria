@@ -1,3 +1,6 @@
+import { runDelegatedFanout } from './delegated-fanout-work.js';
+import { readSessionDelegatedFanoutCompletion } from './session-delegated-fanout-contracts.js';
+import { readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
 import { readSessionDelegatedControl } from './session-delegated-quality-contracts.js';
 import { completeSessionDelegatedReview, completeSessionDelegatedJudge } from './session-delegated-quality-work.js';
 import { sessionGraphReviewOutputContract } from './session-review-contracts.js';
@@ -8,10 +11,10 @@ import { ConflictError } from '../../storage/errors.js';
 import { hashNativeDocument as hash, putImmutable, putMutable } from '../repositories/common.js';
 import { immutable, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
 import { readPlanRevision } from './plan-repository.js';
-import { readAttempt, runGuard, controlCommandId, controlRecordKey } from './controller-common.js';
+import { readAttempt, assertAttemptConsumable, runGuard, controlCommandId, controlRecordKey } from './controller-common.js';
 import { sessionGraphAudience } from './session-agent-graph-profile.js';
 import { audienceRunCapture } from './audience-source-contracts.js';
-import { assertNativeTurnQuota, captureNativeTurnChildQuota } from './native-turn-quota.js';
+import { assertNativeTurnQuota, captureNativeTurnChildQuota, captureNativeTurnFanoutChildQuota, assertNativeTurnControlQuota } from './native-turn-quota.js';
 import { nativeTaskScheduler } from '../task-scheduler.js';
 import { AttemptController } from './attempt-controller.js';
 import { TransitionController } from './transition-controller.js';
@@ -28,7 +31,7 @@ import { readEffect } from './effect-contracts.js';
 import { readTaskLocalOutput } from './task-local-output-contracts.js';
 import { readHandoffReturn } from './handoff-return-contracts.js';
 import { readResultPublication } from './result-publication-contracts.js';
-import { assertNativeTurnPermit } from './native-turn-permit.js';
+import { assertNativeTurnPermit, assertNativeTurnControlPermit } from './native-turn-permit.js';
 import { childBudgetReceiptId, assertChildRunCurrent } from './run-repository.js';
 import { readSessionDelegation, readSessionDelegationContinuation } from './session-delegation-contracts.js';
 import { readSessionDelegationInputs } from './session-delegation-inputs.js';
@@ -134,12 +137,15 @@ export class SessionDelegationAuthority {
             budgetCeilingDigest: hash(budgetCeiling), sourceBindingDigest: parent.sourceBinding.bindingDigest };
     }
 
+    #childStates(runId) { const root = this.#children.get(runId); return root ? [root, ...root.branches] : []; }
+    #childState(runId, predicate) { return this.#childStates(runId).find(predicate); }
+
     inspectDelegationIdentity(capture, { host, handle } = {}) {
         const state = this.#delegations.get(capture);
         if (!state || state.handle !== handle || host !== undefined && state.host !== host || state.host.turnOrchestration !== this.owner
-            || this.#children.get(state.identity.childRunId) !== state) fail();
-        const proof = assertNativeTurnQuota(state.quotaProof, state.parent.proofExpected);
-        return Object.freeze({ ...state.identity, host: state.host, signal: assertNativeTurnPermit(proof.permit).signal,
+            || !this.#childStates(state.identity.childRunId).includes(state)) fail();
+        const proof = (state.controlOnly ? assertNativeTurnControlQuota : assertNativeTurnQuota)(state.quotaProof, state.parent.proofExpected);
+        return Object.freeze({ ...state.identity, host: state.host, signal: (state.controlOnly ? assertNativeTurnControlPermit : assertNativeTurnPermit)(proof.permit).signal,
             request: state.request, contextInputRefs: state.contextInputRefs, activeNode: state.activeNode ? immutable(state.activeNode) : null });
     }
 
@@ -171,13 +177,21 @@ export class SessionDelegationAuthority {
             const upstream = await readSessionDelegationInputs(tx, identity.handle, parentRoot, parentAttempt,
                 { base: state.parent.selectionState.base, node: state.model.node, pins: state.child.plan.dependencyPins });
             const results = [...upstream.results];
-            for (const binding of state.bindings ?? []) {
+            for (const binding of state.controlOnly ? [] : state.bindings ?? []) {
                 if (binding.controlRef) {
                     const saved = await readSessionDelegatedControl(tx, identity.handle, root, binding.controlRef);
                     if (!saved || !equal(saved.controlRef, binding.controlRef) || saved.review?.decision === 'rerun') fail();
+                    for (const ref of binding.evidenceRefs ?? []) {
+                        const active = state.activeNode ? (await readAttempt(tx, identity.handle, root, state.activeNode.nodeAttemptId)).doc : null;
+                        const recipient = !output && active && ['running', 'waiting_effect'].includes(active.status) ? active : null;
+                        const member = await readGraphNodeResult(tx, identity.handle, root, ref.resultId, { recipient });
+                        if (!member || !saved.joinReceipt?.acceptedResultRefs.some(actual => equal(actual, ref))) fail();
+                        await assertAttemptConsumable(tx, identity.handle, root, member.producer);
+                        results.push({ resultRef: ref, sourceRefs: member.record.envelope.sourceRefs, content: member.record.payload });
+                    }
                     results.push({ controlRef: binding.controlRef, sourceRefs: [binding.controlRef], content: 'Advisory graph control only; this never grants Source, tools or official writes: '
                         + JSON.stringify(saved.patch ? saved.patch.appliedOperations : saved.review ? { decision: saved.review.decision, reasonCode: saved.review.reasonCode }
-                            : { selectedResultRef: saved.selectedResultRef }) });
+                            : saved.joinReceipt ? { outcome: saved.joinReceipt.outcome, acceptedResultRefs: saved.joinReceipt.acceptedResultRefs } : { selectedResultRef: saved.selectedResultRef }) });
                     continue;
                 }
                 const saved = await readGraphNodeResult(tx, identity.handle, root, binding.resultRef.resultId);
@@ -192,7 +206,7 @@ export class SessionDelegationAuthority {
                 handoffReceiptRef: lineage.handoff ? { runId: parentRoot.runId, receiptId: lineage.handoff.receiptId } : null,
                 delegationReceiptRef: { runId: parentRoot.runId, receiptId: lineage.delegation.receiptId },
                 budgetReadyReceiptRef: { runId: root.runId, receiptId: childBudgetReceiptId(root.runId) },
-                ...(output ? { closure } : { context: { snapshot: state.parent.selectionState.base, sourceAudience: state.model.audienceSource.audience,
+                ...(output ? { closure } : state.controlOnly ? { context: { snapshot: state.parent.selectionState.base, sourceAudience: state.model.audienceSource.audience, task: { kind: 'native_session_delegated_control' }, results: [] } } : { context: { snapshot: state.parent.selectionState.base, sourceAudience: state.model.audienceSource.audience,
                     task: { nodeId: state.model.node.nodeId, label: state.model.node.label,
                         ...(taskGraph ? { graphView: taskGraph } : {}),
                         ...(state.model.node.kind === 'review' ? { reviewTargets: state.bindings.filter(binding => binding.resultRef)
@@ -210,7 +224,14 @@ export class SessionDelegationAuthority {
     inspectDelegationOutput(capture, expected = {}) { return this.#inspect(capture, expected, true); }
 
     async authorizeChildAttempt({ handle, tx, root, input }) {
-        const state = this.#children.get(root.runId);
+        if (input.inputRefs[0]?.kind === 'native_session_delegated_control') {
+            const owner = this.#children.get(root.runId), node = root.graph.nodes.find(node => node.nodeId === input.nodeId);
+            if (!owner || !['fanout', 'join'].includes(node?.kind) || !equal(owner.controlAdmission, {
+                inputRefs: input.inputRefs, inputDigest: input.inputDigest, effectiveGrantDigest: input.effectiveGrantDigest, budgetRef: input.budgetRef })) fail();
+            await this.inspectDelegation(owner.capture, { host: owner.host, handle, tx });
+            return { allowed: true, inputDigest: input.inputDigest, effectiveGrantDigest: input.effectiveGrantDigest, sourceBindingDigest: root.sourceBinding.bindingDigest };
+        }
+        const state = this.#childState(root.runId, value => value.model?.node.nodeId === input.nodeId && equal(value.contextInputRefs, input.inputRefs));
         if (!state || state.handle !== handle || input.nodeId !== state.model.node.nodeId
             || !equal(input.inputRefs, state.contextInputRefs) || input.inputDigest !== hash(state.contextInputRefs)
             || input.effectiveGrantDigest !== state.identity.grantDigest || !equal(input.budgetRef, root.budgetAuthorityRef)) fail();
@@ -220,7 +241,7 @@ export class SessionDelegationAuthority {
     }
 
     async authorize({ handle, tx, root, attempt, proposal, intent }) {
-        const state = this.#children.get(root.runId);
+        const state = this.#childState(root.runId, value => value.activeNode && (attempt ? value.activeNode.nodeAttemptId === attempt.attemptId : intent ? value.activeNode.nodeAttemptId === intent.nodeAttemptId : proposal && equal(proposal, Object.fromEntries(['actionRef', 'targetRef', 'inputRef', 'inputHash'].map(key => [key, value.decision[key]])))));
         if (!state || state.handle !== handle || !state.activeNode || attempt && attempt.attemptId !== state.activeNode.nodeAttemptId
             || proposal && !equal(proposal, Object.fromEntries(['actionRef', 'targetRef', 'inputRef', 'inputHash'].map(key => [key, state.decision[key]])))
             || intent && (intent.nodeAttemptId !== state.activeNode.nodeAttemptId || intent.inputHash !== state.decision.inputHash)) fail();
@@ -229,13 +250,13 @@ export class SessionDelegationAuthority {
     }
     async verifySend(args) {
         await this.authorize(args);
-        const state = this.#children.get(args.root.runId);
+        const state = this.#childState(args.root.runId, value => value.activeNode?.effectId === args.intent.effectId);
         if (configHash(args.resolved) !== state.model.configDigest || args.snapshot.requestId !== state.request.requestId
             || args.compiledBinding.fingerprint !== args.snapshot.diagnostics.compiledBinding.fingerprint
             || !equal(await state.contextPort.provider(args.handle, { context: state.context }).buildRequestContextPlan(state.request, args.resolved), args.snapshot.contextPlan)) fail();
     }
     async verifyObservation(args) {
-        const state = this.#children.get(args.root.runId);
+        const state = this.#childState(args.root.runId, value => value.activeNode?.effectId === args.intent.effectId);
         if (!state) fail();
         if (args.observation.dispatchEvidence.kind === 'proven_not_dispatched') {
             if (!state.noDispatchObservation || !equal(args.observation, state.noDispatchObservation)
@@ -250,7 +271,7 @@ export class SessionDelegationAuthority {
     }
     async authorizeGraphResult(args) {
         const state = this.#graphs.get(args.capture);
-        if (!state || state !== this.#children.get(args.root.runId) || state.activeNode.nodeAttemptId !== args.producer.attemptId
+        if (!state || !this.#childStates(args.root.runId).includes(state) || state.activeNode.nodeAttemptId !== args.producer.attemptId
             || args.effectId !== state.activeNode.effectId || args.phase !== 'publish' || state.model.node.nodeId === state.child.topology.terminalNodeId) fail();
         await this.inspectDelegation(state.capture, { handle: state.handle, host: state.host, tx: args.tx });
         return { allowed: true, grantDigest: state.decision.grantDigest };
@@ -389,7 +410,9 @@ export class SessionDelegationAuthority {
         const service = this.execution(), { handle } = state, runId = state.identity.childRunId;
         const withAuthority = service.sourcePort.consumptionBoundary(handle, state.identity.sourceBinding, { engine: this.owner.engine });
         await service.runs.withSourceControl(handle, runId, async () => this.owner.engine.withTransaction(handle, async tx => {
-            const root = await service.runs.get(handle, runId), effect = (await readEffect(tx, handle, root, state.activeNode.effectId)).doc;
+            const root = await service.runs.get(handle, runId), attempt = (await readAttempt(tx, handle, root, state.activeNode.nodeAttemptId)).doc;
+            if (!attempt.effectRefs.includes(state.activeNode.effectId)) return;
+            const effect = (await readEffect(tx, handle, root, state.activeNode.effectId)).doc;
             if (effect.status !== 'prepared' || effect.budgetAttemptRef !== null || effect.dispatchToken !== null) return;
             const costs = await service.budgetPort.observeEffectClosure(handle, { authorityRef: root.budgetAuthorityRef, effectIds: [effect.effectId] }, { tx });
             if (!costs.closed || costs.budgetAttemptRefs.some(ref => ref.kind !== 'local_work')) return;
@@ -471,13 +494,129 @@ export class SessionDelegationAuthority {
         }
     }
 
+    async #sendChildStage(state, parent, { attemptId, model, logical, inputRefs }) {
+        const { host, handle, capture, boundary, quotaProof } = state, service = this.execution(), root = await service.runs.get(handle, state.identity.childRunId), port = this.port(host);
+        const audience = model.audienceSource.audience;
+        const effectId = 'oeffect_' + hash({ runId: root.runId, attemptId, taskPurpose: state.identity.taskPurpose }).slice(0, 32);
+        state.activeNode = { nodeId: model.node.nodeId, nodeAttemptId: attemptId, effectId };
+        state.decision = { actionRef: { kind: 'native_model_send', runtimeRouteId: model.resolved.route.runtimeRouteId },
+            targetRef: { connectionProfileId: model.resolved.connection.connectionProfileId, modelProfileId: model.resolved.model.modelProfileId, pathFingerprint: model.resolved.pathFingerprint },
+            inputRef: logical, inputHash: hash(logical), capability: 'generation.send', grantDigest: state.identity.grantDigest,
+            endpointBindingDigest: hash({ pathFingerprint: model.resolved.pathFingerprint, configDigest: model.configDigest }), risk: 'R1', requiresApproval: false,
+            egressDigest: hash({ pathFingerprint: model.resolved.pathFingerprint, sourceBindingDigest: root.sourceBinding.bindingDigest, grantDigest: state.identity.grantDigest, audience }),
+            budgetEnvelopeDigest: hash(model.resolved.route.executionPolicy.computeBudget), dispatchPolicy: { idempotency: 'none', operationKey: null, reconcile: 'manual' } };
+        await service.runs.withSourceControl(handle, root.runId, async () => {
+            await new AttemptController({ runs: service.runs, authorizeAttempt: args => this.authorize(args) }).activate(handle, { ...runGuard(await service.runs.get(handle, root.runId)), attemptId });
+            await service.effects.prepare(handle, { ...runGuard(await service.runs.get(handle, root.runId)), effectId, nodeAttemptId: attemptId,
+                proposal: Object.fromEntries(['actionRef', 'targetRef', 'inputRef', 'inputHash'].map(key => [key, state.decision[key]])) });
+        }, { withAuthority: service.sourcePort.consumptionBoundary(handle, root.sourceBinding, { engine: this.owner.engine }) });
+        state.contextPort = new ContextPort({ sessionCore: this.owner.sessionCore, sessionDelegationCapture: capture, sessionDelegationHost: host,
+            sessionModelPolicy: { fallbackMode: 'disabled', routes: model.failurePlan.routes }, authorizeContext: async ({ request }) => {
+                await this.inspectDelegation(capture, { host, handle });
+                if (!equal(request.inputRefs, inputRefs) || request.taskPurpose !== state.identity.taskPurpose || request.grantDigest !== state.identity.grantDigest
+                    || !equal(request.audience, { kind: 'task', id: root.runId }) || !equal(request.sourceBinding, root.sourceBinding)) fail();
+                return { allowed: true, grantDigest: state.identity.grantDigest };
+            } });
+        const limits = parent.selectionState.resolved.route.executionPolicy.computeBudget;
+        const send = await service.generationSend(handle, { runId: root.runId, effectId, reservationId: root.runId, limits, quotaProof });
+        const compiled = await compileNativeContextMetered({ handle, port: state.contextPort, request: { ownerRef: { handle }, sourceBinding: root.sourceBinding,
+            audience: { kind: 'task', id: root.runId }, taskPurpose: state.identity.taskPurpose, grantDigest: state.identity.grantDigest, inputRefs,
+            tokenBudget: { modelContextLimit: model.resolved.model.limits.contextTokens, responseReserve: effectiveOutputReserve(model.resolved) } },
+        bank: send.bank, budgetPort: service.budgetPort, root: await service.runs.get(handle, root.runId), effectId, limits,
+        workDescriptor: { requestId: state.request.requestId, pathFingerprint: model.resolved.pathFingerprint },
+        assertCurrent: () => this.inspectDelegation(capture, { host, handle }), signal: boundary.signal });
+        state.context = compiled.compiled; await send.bindContext({ port: state.contextPort, compiled: state.context, compileProof: compiled.proof });
+        const permit = assertNativeTurnQuota(quotaProof, parent.proofExpected).permit;
+        const scope = this.issueScope(host, handle, { runId: root.runId, effectId, request: state.request, logicalInputRef: logical, logicalInputHash: hash(logical),
+            nativeTurnPermit: permit, options: { scheduled: true, orchestrationSend: send }, revalidateConsume: async ({ tx } = {}) => {
+                await this.inspectDelegation(capture, { host, handle, ...(tx ? { tx } : {}) });
+                await state.contextPort.revalidate(handle, { context: state.context, phase: 'consume' });
+            } });
+        const result = await port.generate(handle, scope, { signal: boundary.signal });
+        return { effectId, result, send, limits };
+    }
+
+    async #fanoutWorkers(state, { workers, fanoutAttemptId, ...options }) {
+        const { handle } = state, service = this.execution(), quota = assertNativeTurnQuota(state.quotaProof, state.parent.proofExpected);
+        const proof = assertNativeTurnPermit(quota.permit);
+        const root = await service.runs.get(handle, state.identity.childRunId);
+        const frame = await this.owner.engine.withTransaction(handle, tx => readFanoutFrame(tx, handle, root, fanoutAttemptId));
+        if (!frame || !equal(frame.parentBudgetRef, root.budgetAuthorityRef) || frame.sourceBindingDigest !== root.sourceBinding.bindingDigest) fail();
+        return nativeTaskScheduler.withResourceFanout(proof.boundary, proof.expected, workers.map(worker => {
+            const branch = frame.branches.find(branch => branch.entryAttemptId === worker.entryAttemptId);
+            if (!branch || !equal([...worker.nodeIds].sort(), [...branch.scopeNodeIds].sort())) fail();
+            const expected = { owner: handle, anchor: proof.expected.anchor, kind: 'model_task', executionClass: proof.expected.executionClass,
+                resources: worker.resources, key: worker.key, fingerprint: worker.fingerprint };
+            return { ...Object.fromEntries(['kind', 'executionClass', 'resources', 'key', 'fingerprint'].map(key => [key, expected[key]])), fresh: async () => { await worker.fresh(null); return true; }, finalize: value => value, run: async boundary => {
+                const actual = await service.runs.get(handle, root.runId);
+                await this.owner.engine.withTransaction(handle, async tx => {
+                    const saved = await readFanoutFrame(tx, handle, actual, fanoutAttemptId);
+                    if (!equal(saved, frame) || !await readFanoutMembership(tx, handle, actual, saved, branch.entryAttemptId)) fail();
+                });
+                const quotaProof = captureNativeTurnFanoutChildQuota(state.quotaProof, boundary, expected);
+                return worker.run({ permit: { boundary, quotaProof }, controlPermit: null, signal: boundary.signal });
+            } };
+        }), options);
+    }
+
+    async #fanoutAgent(owner, { node, bindings, fanoutAttemptId, permit = null, preparedAttemptId = null, reservedAttemptId = null, send = false, progress = null }) {
+        const { host, handle, child, parent } = owner, service = this.execution(), capture = Object.freeze({});
+        const root = await service.runs.get(handle, owner.identity.childRunId), model = child.profiles.find(model => equal(model.node, node)) ?? await this.#resolveChildModel(parent, node);
+        const state = { ...owner, capture, model, root, bindings, controlOnly: false, activeNode: null,
+            boundary: permit?.boundary ?? owner.boundary, quotaProof: permit?.quotaProof ?? owner.quotaProof };
+        state.request = immutable({ sessionId: parent.proofExpected.sessionId, revisionId: parent.proofExpected.anchor.revisionId,
+            requestId: parent.request.requestId, role: 'narrator', routeRef: model.pin.resourceRef,
+            ...(node.kind === 'planner' ? { outputContract: sessionPlannerOutputContract } : {}) });
+        const results = [...new Map(bindings.flatMap(item => [item.resultRef, ...item.evidenceRefs ?? []].filter(Boolean)).map(ref => [hash(ref), ref])).values()];
+        const controls = [...new Map(bindings.filter(item => item.controlRef).map(item => [hash(item.controlRef), item.controlRef])).values()];
+        const logical = { kind: 'native_session_delegated_intent', role: 'narrator', requestId: state.request.requestId,
+            invocationId: parent.proofExpected.invocationId, requestHash: parent.proofExpected.requestHash, sourceRef: root.sourceBinding.sourceRef,
+            planRef: root.planRef, nodeId: node.nodeId, parentRunId: parent.runId, parentAttemptId: parent.attemptId,
+            parentEpoch: root.parentRef.parentEpoch, childRunId: root.runId, childEpoch: root.epoch, delegationInputDigest: root.parentRef.inputDigest,
+            routeRef: model.pin.resourceRef, configDigest: model.configDigest, audience: model.audienceSource.audience, acceptedGraphResultRefs: results,
+            ...(controls.length ? { acceptedControlRefs: controls } : {}), fanoutAttemptId,
+            graphBindings: bindings.filter(item => item.edge.to.nodeId === node.nodeId).map(item => ({ edgeId: item.edge.edgeId, producerAttemptId: item.attemptId })),
+            delegationScope: { parentPinId: child.parentSource.pin.pinId, childPinId: model.audienceSource.pin.pinId,
+                sourceRef: model.audienceSource.actualRef ?? model.audienceSource.pin.resourceRef, integrity: hash(model.audienceSource.descriptor) },
+            ...(model.audienceSource.pin.resourceRef.anchor === 'run_source' ? { audienceCapture: audienceRunCapture(model.audienceSource.pin, model.audienceSource) } : {}) };
+        const inputRefs = [logical, ...root.parentRef.inputRefs, ...results, ...controls]; state.contextInputRefs = immutable(inputRefs);
+        const admission = { inputRefs, inputDigest: hash(inputRefs), effectiveGrantDigest: root.parentRef.effectiveGrantDigest, budgetRef: root.budgetAuthorityRef };
+        owner.branches.add(state); this.#delegations.set(capture, state);
+        try {
+            let attemptId = preparedAttemptId;
+            if (attemptId) {
+                const actual = (await this.owner.engine.withTransaction(handle, tx => readAttempt(tx, handle, root, attemptId))).doc;
+                if (actual.status !== 'pending' || !equal(actual.inputRefs, inputRefs) || actual.inputDigest !== admission.inputDigest
+                    || actual.effectiveGrantDigest !== admission.effectiveGrantDigest || !equal(actual.budgetRef, admission.budgetRef)) fail();
+            } else if (reservedAttemptId) {
+                const next = await service.runs.withSourceControl(handle, root.runId, async () => new TransitionController({ runs: service.runs, authorizeTransition: async () => {
+                    await this.inspectDelegation(capture, { host, handle }); return admission;
+                } }).advance(handle, { ...runGuard(await service.runs.get(handle, root.runId)), bindings: logical.graphBindings, reservedAttemptId }),
+                { withAuthority: service.sourcePort.consumptionBoundary(handle, root.sourceBinding, { engine: this.owner.engine }) });
+                attemptId = next.outcome.attemptId;
+            } else ({ attemptId } = await service.runs.beginAttempt(handle, controlCommandId('session.child.fanout.entry', { runId: root.runId, fanoutAttemptId, nodeId: node.nodeId }),
+                { ...runGuard(root), nodeId: node.nodeId, ...admission }));
+            if (!send) return { attemptId, model, inputRefs };
+            const { result, effectId, send: completedSend, limits } = await this.#sendChildStage(state, parent, { attemptId, model, logical, inputRefs });
+            if (node.kind === 'planner') return await completeSessionDelegatedPlanner({ state, service, port: this.port(host), result, send: completedSend, limits,
+                current: () => this.inspectDelegation(capture, { host, handle }), progress, engine: this.owner.engine,
+                resolveNode: item => this.#resolveChildModel(parent, item) });
+            const graphCapture = Object.freeze({}); this.#graphs.set(graphCapture, state);
+            try {
+                const saved = await new ResultController({ host, modelPort: this.port(host) }).publishGraphModelResult(handle, { capture: graphCapture, result, runId: root.runId, effectId });
+                return { attemptId, resultRef: saved.resultRef };
+            } finally { this.#graphs.delete(graphCapture); }
+        } catch (error) { await this.#proveNotDispatched(state); throw error; } finally { owner.branches.delete(state); this.#delegations.delete(capture); }
+    }
+
     async #runChild(parent, expected, boundary) {
         const service = this.execution(), { host, handle, child } = parent, root = await service.runs.get(handle, parent.childRunId);
         const capture = Object.freeze({}), quotaProof = captureNativeTurnChildQuota(parent.quotaProof, boundary, expected);
-        const state = { host, handle, parent, child, capture, boundary, quotaProof, bindings: [], plannerOperations: new Map(), root, identity: immutable({ handle,
+        const state = { host, handle, parent, child, capture, boundary, expected, quotaProof, branches: new Set(), bindings: [], plannerOperations: new Map(), root, identity: immutable({ handle,
             parentRunId: parent.runId, parentAttemptId: parent.attemptId, parentEpoch: root.parentRef.parentEpoch, childRunId: root.runId,
             childEpoch: root.epoch, sourceBinding: root.sourceBinding, grantDigest: root.parentRef.effectiveGrantDigest,
             parentGrantDigest: parent.decision.grantDigest, inputRefs: root.parentRef.inputRefs, taskPurpose: 'original_native_session_delegated_analysis', childPlanRef: root.planRef }) };
+        state.model = child.profiles.find(model => model.node.nodeId === child.topology.terminalNodeId);
         this.#delegations.set(capture, state); this.#children.set(root.runId, state);
         const progress = new Map(), replacements = new Map(), payloads = new Map(), port = this.port(host);
         try {
@@ -505,6 +644,15 @@ export class SessionDelegationAuthority {
                     const ready = inspectGraphReadiness(active.graph, active.nodeControl, Object.fromEntries([...progress.keys()].map(id => [id, 'completed'])),
                         { excludeNodeIds: [topology.output.nodeId] }).ready[0];
                     if (!ready) fail('native_orchestration_graph_dependency_unavailable');
+                    if (ready.node.kind === 'fanout') {
+                        const group = topology.fanouts.find(group => group.fanout.nodeId === ready.node.nodeId), inherited = ready.edges.map(edge => ({ edge, ...progress.get(edge.from.nodeId) }));
+                        await runDelegatedFanout({ state, service, group, inherited, progress, engine: this.owner.engine,
+                            current: () => this.inspectDelegation(capture, { host, handle }), resolveNode: node => this.#resolveChildModel(parent, node),
+                            prepare: args => this.#fanoutAgent(state, args), execute: args => this.#fanoutAgent(state, { ...args, send: true }),
+                            runWorkers: (_scope, options) => this.#fanoutWorkers(state, options), readCompletion: readSessionDelegatedFanoutCompletion,
+                            controlKind: 'native_session_delegated_control', reasonPrefix: 'session' });
+                        continue;
+                    }
                     model = child.profiles.find(item => equal(item.node, ready.node)) ?? await this.#resolveChildModel(parent, ready.node);
                 }
                 if (!model) fail('native_orchestration_graph_dependency_unavailable');
@@ -525,7 +673,7 @@ export class SessionDelegationAuthority {
                     if (model.node.inputs.find(port => port.name === binding.edge.to.port).required) fail('native_orchestration_judge_required_input');
                     return false;
                 }); state.bindings = bindings;
-                const results = [...new Map(bindings.filter(item => item.resultRef).map(item => [hash(item.resultRef), item.resultRef])).values()];
+                const results = [...new Map(bindings.flatMap(item => [item.resultRef, ...item.evidenceRefs ?? []].filter(Boolean)).map(ref => [hash(ref), ref])).values()];
                 const controls = [...new Map(bindings.filter(item => item.controlRef).map(item => [hash(item.controlRef), item.controlRef])).values()];
                 const audience = model.audienceSource.audience;
                 const logical = { kind: 'native_session_delegated_intent', role: 'narrator', requestId: state.request.requestId,
@@ -558,40 +706,8 @@ export class SessionDelegationAuthority {
                     } }).advance(handle, { ...runGuard(await service.runs.get(handle, root.runId)), bindings: logical.graphBindings, reservedAttemptId: null });
                     attemptId = transitioned.outcome.attemptId;
                 }
-                const effectId = 'oeffect_' + hash({ runId: root.runId, attemptId, taskPurpose: state.identity.taskPurpose }).slice(0, 32);
-                state.activeNode = { nodeId: model.node.nodeId, nodeAttemptId: attemptId, effectId };
-                state.decision = { actionRef: { kind: 'native_model_send', runtimeRouteId: model.resolved.route.runtimeRouteId },
-                    targetRef: { connectionProfileId: model.resolved.connection.connectionProfileId, modelProfileId: model.resolved.model.modelProfileId, pathFingerprint: model.resolved.pathFingerprint },
-                    inputRef: logical, inputHash: hash(logical), capability: 'generation.send', grantDigest: state.identity.grantDigest,
-                    endpointBindingDigest: hash({ pathFingerprint: model.resolved.pathFingerprint, configDigest: model.configDigest }), risk: 'R1', requiresApproval: false,
-                    egressDigest: hash({ pathFingerprint: model.resolved.pathFingerprint, sourceBindingDigest: root.sourceBinding.bindingDigest, grantDigest: state.identity.grantDigest, audience }),
-                    budgetEnvelopeDigest: hash(model.resolved.route.executionPolicy.computeBudget), dispatchPolicy: { idempotency: 'none', operationKey: null, reconcile: 'manual' } };
-                await new AttemptController({ runs: service.runs, authorizeAttempt: args => this.authorize(args) }).activate(handle, { ...runGuard(await service.runs.get(handle, root.runId)), attemptId });
-                await service.effects.prepare(handle, { ...runGuard(await service.runs.get(handle, root.runId)), effectId, nodeAttemptId: attemptId,
-                    proposal: Object.fromEntries(['actionRef', 'targetRef', 'inputRef', 'inputHash'].map(key => [key, state.decision[key]])) });
-                state.contextPort = new ContextPort({ sessionCore: this.owner.sessionCore, sessionDelegationCapture: capture, sessionDelegationHost: host,
-                    sessionModelPolicy: { fallbackMode: 'disabled', routes: model.failurePlan.routes }, authorizeContext: async ({ request }) => {
-                        await this.inspectDelegation(capture, { host, handle });
-                        if (!equal(request.inputRefs, inputRefs) || request.taskPurpose !== state.identity.taskPurpose || request.grantDigest !== state.identity.grantDigest
-                            || !equal(request.audience, { kind: 'task', id: root.runId }) || !equal(request.sourceBinding, root.sourceBinding)) fail();
-                        return { allowed: true, grantDigest: state.identity.grantDigest };
-                    } });
-                const limits = parent.selectionState.resolved.route.executionPolicy.computeBudget;
-                const send = await service.generationSend(handle, { runId: root.runId, effectId, reservationId: root.runId, limits, quotaProof });
-                const compiled = await compileNativeContextMetered({ handle, port: state.contextPort, request: { ownerRef: { handle }, sourceBinding: root.sourceBinding,
-                    audience: { kind: 'task', id: root.runId }, taskPurpose: state.identity.taskPurpose, grantDigest: state.identity.grantDigest, inputRefs,
-                    tokenBudget: { modelContextLimit: model.resolved.model.limits.contextTokens, responseReserve: effectiveOutputReserve(model.resolved) } },
-                bank: send.bank, budgetPort: service.budgetPort, root: await service.runs.get(handle, root.runId), effectId, limits,
-                workDescriptor: { requestId: state.request.requestId, pathFingerprint: model.resolved.pathFingerprint },
-                assertCurrent: () => this.inspectDelegation(capture, { host, handle }), signal: boundary.signal });
-                state.context = compiled.compiled; await send.bindContext({ port: state.contextPort, compiled: state.context, compileProof: compiled.proof });
-                const permit = assertNativeTurnQuota(quotaProof, parent.proofExpected).permit;
-                const scope = this.issueScope(host, handle, { runId: root.runId, effectId, request: state.request, logicalInputRef: logical, logicalInputHash: hash(logical),
-                    nativeTurnPermit: permit, options: { scheduled: true, orchestrationSend: send }, revalidateConsume: async ({ tx } = {}) => {
-                        await this.inspectDelegation(capture, { host, handle, ...(tx ? { tx } : {}) });
-                        await state.contextPort.revalidate(handle, { context: state.context, phase: 'consume' });
-                    } });
-                const result = await port.generate(handle, scope, { signal: boundary.signal }), controller = new ResultController({ host, modelPort: port });
+                const { effectId, result, send, limits } = await this.#sendChildStage(state, parent, { attemptId, model, logical, inputRefs });
+                const controller = new ResultController({ host, modelPort: port });
                 if (model.node.kind === 'planner') {
                     progress.set(model.node.nodeId, await completeSessionDelegatedPlanner({ state, service, port, result, send, limits,
                         current: () => this.inspectDelegation(capture, { host, handle }), progress, engine: this.owner.engine,

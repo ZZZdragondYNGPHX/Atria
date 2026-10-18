@@ -13,8 +13,8 @@ export const sessionPlannerRedoTask = body => body.input.map(item => { try { ret
 
 /** A real reviewed causal closure includes a completed pure Planner. Its old
  * accepted patch and paid Model remain durable while new Attempts recompute. */
-export async function sessionReviewPlannerRedoFixture(make, { maxRequests = 9 } = {}) {
-    let topology;
+export async function sessionReviewPlannerRedoFixture(make, { maxRequests = 9, structural = false } = {}) {
+    let topology, structuralOperations;
     const visits = new Map();
     const f = await modelPortFixture(make, { configurePlan: async args => {
         configureSessionOutput(args);
@@ -54,12 +54,25 @@ export async function sessionReviewPlannerRedoFixture(make, { maxRequests = 9 } 
         plan.definition.graphChangePolicy = { allowedOperations: ['setPendingPriority', 'requestFinalize'], allowedNodeKinds: [] };
         Object.assign(plan.definition.limits, { maxNodes: 6, maxEdges: 9, maxSteps: 120, maxAttempts: 10, maxReviews: 2, maxEdgeVisits: 14 });
         plan.dependencyPins.push(actor, final); topology = { first, planner, second, review, narrator, output };
+        if (structural) {
+            const oldPin = second.policy.agentPinId;
+            second.dependencyPinIds = second.dependencyPinIds.map(pinId => pinId === oldPin ? planner.policy.agentPinId : pinId);
+            second.policy.agentPinId = planner.policy.agentPinId;
+            plan.dependencyPins = plan.dependencyPins.filter(pin => pin.pinId !== oldPin);
+            const addedEdges = plan.definition.edges.filter(item => item.from.nodeId === second.nodeId || item.to.nodeId === second.nodeId);
+            structuralOperations = [{ op: 'addNode', node: second }, ...addedEdges.map(item => ({ op: 'addEdge', edge: item }))];
+            plan.definition.nodes = plan.definition.nodes.filter(item => item.nodeId !== second.nodeId);
+            plan.definition.edges = plan.definition.edges.filter(item => !addedEdges.includes(item));
+            review.inputs.find(item => item.name === 'b').required = false;
+            narrator.inputs.find(item => item.name === 'b').required = false;
+            plan.definition.graphChangePolicy = { allowedOperations: ['addNode', 'addEdge', 'requestFinalize'], allowedNodeKinds: ['agent'] };
+        }
     }, responseBody: async ({ body, index }) => {
         const task = sessionPlannerRedoTask(body), round = (visits.get(task?.nodeId) ?? 0) + 1; visits.set(task?.nodeId, round);
         let text;
         if (task?.nodeId === topology.first.nodeId) text = 'SESSION_A_' + round;
-        else if (task?.nodeId === topology.planner.nodeId) text = JSON.stringify({ operations: [round === 1
-            ? { op: 'setPendingPriority', nodeId: topology.second.nodeId, priority: 7 } : { op: 'requestFinalize' }] });
+        else if (task?.nodeId === topology.planner.nodeId) text = JSON.stringify({ operations: round === 1
+            ? structural ? structuralOperations : [{ op: 'setPendingPriority', nodeId: topology.second.nodeId, priority: 7 }] : [{ op: 'requestFinalize' }] });
         else if (task?.nodeId === topology.second.nodeId) text = 'SESSION_B_' + round;
         else if (task?.nodeId === topology.review.nodeId) {
             const targetAttemptIds = await f.h.engine.withTransaction(f.h.handle, async tx => {
@@ -77,5 +90,5 @@ export async function sessionReviewPlannerRedoFixture(make, { maxRequests = 9 } 
         return { id: 'session-redo-' + index, status: 'completed', output: [{ id: 'message-' + index, type: 'message', status: 'completed', role: 'assistant',
             content: [{ type: 'output_text', text, annotations: [] }] }], usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } };
     } });
-    return { ...f, get effectRef() { return f.effectRef; }, get authority() { return f.authority; }, get core() { return f.core; }, topology };
+    return { ...f, get effectRef() { return f.effectRef; }, get authority() { return f.authority; }, get core() { return f.core; }, topology, structuralOperations };
 }

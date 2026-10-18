@@ -60,9 +60,8 @@ export function projectDelegatedGraphProfile(plan) {
             || !canAddAgent && !models.some(node => node.dependencyPinIds.includes(pin.pinId)))) fail();
     for (const loop of loops) projectReplanScope(graph, loop.from.nodeId);
     const fanouts = projectFanoutGroups(graph, final.nodeId);
-    // Scope Planner patches need their separate frozen-scope admissibility;
-    // this increment executes published pure Agent scopes only.
-    if (fanouts.some(group => group.branches.some(branch => branch.scopeNodeIds.some(id => graph.nodes.find(node => node.nodeId === id).kind !== 'agent')))) fail();
+    // Frozen scope controls use the original scheduling-only Planner proof.
+    if (fanouts.some(group => group.branches.some(branch => branch.scopeNodeIds.some(id => !['agent', 'planner'].includes(graph.nodes.find(node => node.nodeId === id).kind))))) fail();
     return { ordered: ordered.filter(node => models.includes(node)), pure, models, planners, reviews, judges, fanouts, incoming, output, final, terminalNodeId: final.nodeId };
 }
 

@@ -15,7 +15,7 @@ const edge = (from, to, input) => ({ edgeId: id('Edge'), from: { nodeId: from.no
     to: { nodeId: to.nodeId, port: input }, condition: 'always', maxVisits: 1, loopBack: false });
 
 /** Real original Host/Plan/Source/HTTP/Scheduler/quota and bank, with synthetic model bodies. */
-export async function sessionDelegationFixture(make, { childSteps = 2, foreignActor = false, childRequests = childSteps, maxConcurrency = 1, childFailure = null, childUsage = true, upstreamAudience = null, parentRequests = null, configureChild = async () => {}, configureParent = async () => {}, responsePayload = null, responseStatus = null } = {}) {
+export async function sessionDelegationFixture(make, { childSteps = 2, foreignActor = false, childRequests = childSteps, maxConcurrency = 1, childFailure = null, childUsage = true, upstreamAudience = null, parentRequests = null, configureChild = async () => {}, configureParent = async () => {}, responsePayload = null, responseUsage = null, responseStatus = null } = {}) {
     if (![1, 2].includes(childSteps)) throw new TypeError('This necessary fixture has one/two authored child tasks');
     let topology;
     const f = await modelPortFixture(make, {
@@ -89,11 +89,11 @@ export async function sessionDelegationFixture(make, { childSteps = 2, foreignAc
             topology = { delegator, upstream, narrator, output, child, children, childOutput, childPlanRef, parentSource, childSource, parentRoute, childRoute, actorA, actorB };
             await configureParent(plan, { ...args, plans }, topology);
         },
-        responseBody: ({ body, index }) => ({ id: 'delegate-fixture-' + index, status: 'completed', output: [{ id: 'message-' + index,
+        responseBody: async ({ body, index }) => ({ id: 'delegate-fixture-' + index, status: 'completed', output: [{ id: 'message-' + index,
             type: 'message', status: 'completed', role: 'assistant', content: [{ type: 'output_text',
-                text: responsePayload ? responsePayload(body, index, topology) : body.model === 'session-delegated-distinct-model' ? 'DELEGATED_ADVICE_' + index : JSON.stringify(body.input).includes('Original upstream evidence producer')
+                text: responsePayload ? await responsePayload(body, index, topology) : body.model === 'session-delegated-distinct-model' ? 'DELEGATED_ADVICE_' + index : JSON.stringify(body.input).includes('Original upstream evidence producer')
                     ? 'ORIGINAL_UPSTREAM_EVIDENCE_BODY' : JSON.stringify(body.input).includes('Game source-scoped delegate parent')
-                        ? 'PARENT_ACCEPTED_DELEGATE_ADVICE' : 'The NPC waits for the player choice.', annotations: [] }] }], ...(childUsage ? { usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } } : {}) }),
+                        ? 'PARENT_ACCEPTED_DELEGATE_ADVICE' : 'The NPC waits for the player choice.', annotations: [] }] }], ...((responseUsage ? await responseUsage(body, index, topology) : childUsage) ? { usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } } : {}) }),
     });
     return { ...f, get effectRef() { return f.effectRef; }, get authority() { return f.authority; }, get core() { return f.core; }, topology };
 }
