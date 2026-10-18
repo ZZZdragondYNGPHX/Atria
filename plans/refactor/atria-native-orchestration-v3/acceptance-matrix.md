@@ -10,6 +10,8 @@
 
 当前实现补充（Source **436cd1211**，parent **4f46b4afc**）：三域已接递归已发布 advisory 子方案、整个已完成纯 Fanout/Join 因果 Review 重做、已完成纯咨询委派经新额度/新子 Run 的重做，以及分支内非终端前置工作的局部 Review。冻结分支内的 Agent 也已接原咨询 Delegate/Handoff，父状态按真实 Attempt 隔离，原资源闭包、子预算、Source/Actor、Return 和整树费用保持；预约 ACK 未知及未结清后代保持 reconciling。整组重做只处理仍有效的因果成员，保留分支先前的失效 receipt 和所有旧费用。已启动的终端不允许通过前驱重做间接替换；历史原 Transition 序列证明其派发在 Review 之后。仅必要语法/ESLint 检查；新增消费者 **NOT_RUN**。scope 拓扑、内部回环、嵌套 Frame、冻结终端替换与已关闭 Join 的局部分支重用仍受限，不能据此核销通用 G2 或原阶段；当前继续补原已发布回边的分支内有界回环。
 
+**换设备中断（Source WIP f7b929151）**：分支内已发布有界回环尚在实现，不能按代码已写记完成。Project 冷输入/History 与额度投影未完；Session Patch 额度仍须按 branch 收窄，cold 序号须绑定实际 Transition；RP 新 Attempt 投影可能重计保留的终端 reservation。Shared helper/driver/Transition 接点已写，整体运行 NOT_RUN。具体恢复见唯一 [HANDOFF](../../../HANDOFF.md) 与同一 Record 末节；当前各 Gate 保持不变。
+
 | 原冻结要求 | 真实实现 | 当前结论与剩余项 |
 | --- | --- | --- |
 | D2 唯一 Host、Source、Run/Effect/Receipt | 复用原存储/领域权威、CAS/epoch、银行、unknown 收据；非 Browser writer | 已有实现与必要专项证据，不能推导任意业务图均支持 |

@@ -2205,3 +2205,13 @@
 - 与已接 Review 组合：原整组 helper 接受实际已完成、费用闭合的纯咨询委派；分支先前已失效的历史成员继续绑定原 Review receipt，只将本次仍有效成员纳入新 invalidation，所有旧费用保留。新增终端保护禁止通过前置重做间接重做已派发的冻结终端，冷读绑定其真正晚于 Review 的原 Transition；approve 本身不冒充 rerun。
 - 用户要求的轻量化继续：Session/Project memberCost 直接复用本 call 原 batch 已读完整 Model/continuation，失败/晚到/无 Result 仍沿原读法；整组委派费用判断复用同次一个 fresh 原银行快照。无公共 proof 参数、跨调用缓存或另一权威；没有新增验证队列/hash 矩阵。
 - 直接修改语法/ESLint/diff 检查通过；未运行 Runtime/Browser/benchmark，新能力 **NOT_RUN**。原宽回归与各 FAIL 继续保留原版本，不能称超时已解、浏览器通过或全产品完成。**仍未完成/受限**：scope 内部有界回环、拓扑变化、嵌套 Frame、跨 scope replan、关闭 Join 后局部分支重用及原最终运行核销。继续实际实现分支内已发布回边，不把冻结成员替换当作回环；P3/P4/P6 IN_PROGRESS、最终 NOT_READY，main/分支保留。
+
+
+### 2026-10-18 — 用户换设备中断：分支内有界回环 WIP
+
+- 用户明确要求停止并提供交接提示词。三个执行代理已停止写入，没有新增运行、测试、诊断或独立审查。Source **f7b929151**（parent 436cd1211，24 files，350+/74-）将未完成改动单独保存为 WIP；不是已完成消费者或 PASS。之前 Source436cd1211 与 Docs d1b1edc83 已远端保存，本次同步 WIP 与唯一 HANDOFF，未合 main/删除任务分支。
+- Shared 已写原 Frame/Barrier 的 `readFanoutReplanScope`、branch-only forced target/replan adapter、原 entry 已冻结 task.result 复用与原 loop edge 计数；另外 shared Planner cold 沿真实 patch.previous/new CAS，scope 并发间隔复用原冻结形状证明，不放弃 Source/epoch/bank/Command。原 Advance strict schema不加字段；allowLoopBack只原冷证明。Root 直接相关语法/ESLint通过。
+- **Project WIP 4文件，未完成**：scope forward topology/Planner requestReplan/helper、child callback/main forced target 初版已写；main/child cold memberInput loops与真实请求证明、child History 的 scope decisionSeq/affected/pure replay、主子额度与真实新 Attempt 投影尚未完成。本批Project没有语法/ESLint/Runtime证据，不冒称完成。
+- **Session WIP 8文件，未完成**：scope main/child live/cold/History接点已写并语法/ESLint通过；completeSessionPlanner原Patch预算仍按全局sessionReplanScope.affectedNodeIds，须收窄本branch；cold helper应改绑定已核真实Transition.decisionSeq，现用Model publication/settlement序号；未整体收口，运行NOT_RUN。
+- **RP WIP 8文件，未完成**：scope published loops/requestReplan、main/child adapter、实际loop冷输入/同Frame Transition与History已写；fanoutReplan中attempts+models.length可能重计保留原reservation的未启动终端，尚未修。RP已作ESLint，cold尾部编辑后未最终逐文件语法/diff收口。运行NOT_RUN。
+- 保存时全 tracked diffcheck通过；未执行全WIP语法、Runtime/Browser/benchmark。P3/P4/P6 IN_PROGRESS、最终 NOT_READY；原六项专项不重跑，历史宽组/FAIL继续归原版本。恢复先读真实Git、HANDOFF、此末节与Plan index/acceptance-matrix，接完真实WIP缺口，不重新展开hash矩阵/诊断/审查，不把冻结合同或有限Profile改写成完成。

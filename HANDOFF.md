@@ -1,51 +1,82 @@
-# Atria Native Orchestration V3 — 安全 checkpoint
+# Atria Native Orchestration V3 — 换设备交接
 
-Updated: 2026-10-18。**用户最后明确要求在适当安全点停下并提供新对话提示词**；此前“睡醒希望看到完成”的连续推进要求由这条中断请求更新。停止不是任务已完成，不是新增审批点。
+Updated: 2026-10-18。用户本轮明确要求停止当前工作、提供交接提示词，在另一设备继续。停止不代表任务完成；恢复后继续原任务，不新增许可/审查前置。
 
-## 身份与真实版本
+## 身份与真实 Git
 
-- Task ID：`refactor/atria-native-orchestration-v3`。
-- 产品工作树：`tasks/atria-native-orchestration-v3/source`；同名语义分支 `refactor/atria-native-orchestration-v3`。
-- Source HEAD：`b7c12fdc6`，从P5交接`94d677c6d`恢复后保存的P6 checkpoint；504文件变更，主要是旧专属源码/测试/教程资产清退，不是新增第二套执行器。
-- 文档在长期`docs`工作空间；Plan入口：`plans/refactor/atria-native-orchestration-v3/index.md`；当前Gate：同目录`acceptance-matrix.md`；结果：`records/refactor/atria-native-orchestration-v3.md`末节。
-- 未合main，未删除任务分支。恢复时核真实Git/远端、dirty与活动进程，保护其它工作。不要把历史“停止在P5/不推送”等句子恢复成新限制。
+- Task ID / Source branch：`refactor/atria-native-orchestration-v3`。
+- 本机 Source：`/home/henry/Projects/Atria-worktrees/tasks/atria-native-orchestration-v3/source`。
+- 本机 Docs：`/home/henry/Projects/Atria-worktrees/docs`，分支 `docs`。
+- 最新 Source **f7b929151**（24 files，350+/74-），其父 **436cd1211**。WIP 是未完成的“分支内有界回环”，不是运行已通过的 checkpoint。
+- 上一完整实现保存点 **436cd1211**；此前依次 `4f46b4afc`、`687e9f189`、`991ceef6a`、`7eef4c971`、`db0a432fe`。这些新增消费者均无当前运行验收，勿把“完整实现保存点”当 PASS。
+- Docs 本交接提交的父版本 **d1b1edc83**。交接与同一 Record 一起提交到 `docs`，恢复时以真实 Git 为准。
+- 不要使用会话默认 cwd `/home/henry/Software/deepseek-harness` 作为产品源码。
+- 未合 main、未删除任务分支。换设备从上述远端分支恢复；本机绝对路径不是另一设备必须照搬的布局。
 
-## 用户要求（须保留）
+## 首先读取
 
-1. 从源码`94d677c6d`和Record“2026-10-18 — P5前端与组装”继续，先修缺陷1–3，再P6硬切与最终检查。后续明确要求优先修完P5六项后端问题。
-2. 对P3/P4作独立严格完成度复核，对照**原始D1–D8、P1–P4冻结合同与实际源码**，不能仅改Gate/阶段归属宣布完成；逐项检查Graph/Planner/Judge/Review/Delegate/Join/恢复/正式消费者，区分有限Profile与通用能力。
-3. 真实缺陷直接修复并相关回归；无证据不PASS；不得降低验收、改测试掩盖缺陷或转移职责。不新增假设需求、不无限扩测、不重复造权威，保留安全/授权/预算/CAS/unknown。
-4. 非破坏性操作默认同意，已授权工作不要重复请求确认；尽量按无冲突、实际效率并发子代理。当前已明确授权并完成一轮独立只读复核；不因此自动增加多轮交叉审查。
-5. 原用户全局AGENTS通常禁止主动独立审查；本轮第2项是明确例外。最新指令是安全checkpoint中断并给提示词；恢复后继续实际实现，不默认再做独立审查前置。
+1. 真实 Git status/branch/log；本 HANDOFF。
+2. `records/refactor/atria-native-orchestration-v3.md` **末节**；早先原任务从 `94d677c6d` 与 Record“2026-10-18 — P5前端与组装”恢复的历史仍保留。
+3. `plans/refactor/atria-native-orchestration-v3/index.md`、`acceptance-matrix.md`；涉及控制流读 `graph-control.md`，按需读原 D1–D8 / P1–P4 合同，不能靠改 Gate/阶段归属或删除有效断言完成。
+4. Source/Docs AGENTS 与 Docs README §12.1。普通工程问题不暂停求确认。
 
-## 已完成与验证
+## 用户最新约束
 
-- P5六项问题均有实际修复：未发送RP预算失败的durable not_dispatched/failed闭合；精确Package/Project Route owner解析及原reasonCode；原Task reviewHash读取+真实准备可信提交UI；终态recover隐藏；审批通道诊断修正；执行中operation→durable Run直接关联。末版7suite196/196通过。
-- 旧四根/模式执行器、Browser capability/UI/命令/Search、旧Settings与orch-preset Skill/专属教程资产已清退。旧scope请求拒绝，原历史磁盘文件不物理扫删；unknown收据/领域数据与完整Studio人工Commit保留。共用编译helper与Memory UI已迁出旧目录。
-- Native RP scoped always Skill真实接入原resolver/pin/load/Context与同原bank，字节/版本漂移/计费有证据；修Native Binding误拒Skill发布/CAS/currentness guard。Frontend authoring raw-index→validated-graph缺陷亦已修复。
-- Game/Native Play46suite452项、Skills相关26suite443项和后续2suite14项、Settings/Shell11suite109项分次通过。历史基准迁移到真实Native RP，12trial/44rubric，2suite53项通过；实际22dispatch/24Studio tools，无付费调用。
-- Linux scratch Host+Chromium桌面1440×1000/模拟手机390×844最终4/4浏览器通过：Plan全编辑发布、Runs/Memory、真实Project task准备且无commit、reload精确来源/Run、无旧capability/旧模块请求/模型请求。
-- RP Skill当前发布/rollback/真实隔离比较3/3，漂移/partial4/4，Project/sealed fixture20/20，Source43/43分次通过。宽矩阵不能累加当整套绿。
-- 121个JS/MJS/CJS与VitePress配置语法、AST硬切guard、本地化guard、diff check通过；修改JS无新ESLint error，e2e4条style warning；settings endpoint4条raw-fs rule在未改基线已复现，没有放宽仓库rule。
-- 本轮启动的Host/browser/测试均结束；宽Native矩阵与可选NativeAuto矩阵按用户中断要求停止，未留后台发送。完整临时日志名见Record口径及本地临时目录，不提交Secret/Provider请求响应。
+- **进一步减少验证，轻量甚至不运行验证**：停止 hash 指纹/逐文件摘要矩阵、CPU诊断、宽回归和 Browser 重跑；不重新组织庞大测试队列。只在直接改动确需时做最小语法/静态检查，不把验证当继续实现的前置。
+- hash 已去掉内部每 call 的 JSON 重验、深拷贝、V8编码缓存，内部相等已改直接字段比较；不要重新造缓存/摘要权威。原持久化身份/必要完整性、授权/预算/CAS/unknown/正式 writer 必须保留。
+- 六项后端问题已修复并专项通过，不能无故重跑。无新证据不得 PASS，历史 FAIL 不回标；旧宽组按其实际 Source 版本记录。
+- 不新增独立审查、多轮交叉审查或审查专用子代理。之前独立复核已完成。可并发实际实现、避免共享文件冲突；本设备的三个工作代理已按换设备要求停止，另一设备不依赖它们的内存状态。
+- 持续更新**同一** Record/Gate，区分实现完成、受限、真正未完成和 NOT_RUN；不新增假设需求、不无限扩测、不造第二 Host/权限/预算/领域数据权威。
 
-## 独立复核：真实未完成，不能缩水核销
+## 已保存实现：到 436cd1211
 
-**原始P3/P4 IN_PROGRESS；P6 IN_PROGRESS；最终Gate NOT_READY。** 历史PASS/READY_FOR_P5仅保留有限交接事实。
+- P5 六项修复与旧专项证据保留。角色独立 Audience 的 RP 协作、Game/Project 的 Planner/Review/Judge/DAG/Fanout/Join/委派/有界回路已有大量原真实消费者，不能以旧 Narrator/single-Agent 限制概括当前源码，也不能由有限消费者推导通用 G2 完成。
+- `db0a432fe`、`7eef4c971`、`991ceef6a` 已削减重复 hash/clone/内部等值计算；三域 pending cancel/blocked、scope Judge→Agent、owned Actor child Context、递归已发布 advisory child Plan、整个已完成纯 Fanout/Join 的因果 Review 重做已接。
+- `687e9f189`：三域 main/child 完成的纯咨询委派可经 Review 重新占用原银行额度并建新 child Run；旧 Return、子树与费用保留。Session 修 maxRequests 字段及变量遮蔽；RP 中间 Agent 同时接收原图 Result 与 child Return，预约 ACK unknown 保 reconciling。
+- `4f46b4afc`：三域冻结 branch Review 可重做本 branch 非终端前置工作，后继及原 Join 终端保留 reservation/身份；不相关 sibling 不重跑。A2/R2 原 membership、Transition、反馈、历史与全费用保留；取消按全部实际 Frame 成员，覆盖尚未进入本地 Map 的新 Attempt。
+- `436cd1211`：冻结 branch 内 Agent 可沿原咨询 Delegate/Handoff 发起已发布 child Plan，资源含递归模型闭包、银行包含真实子 allocation；私有父状态按实际 Run+Attempt 隔离。完整 typed Resolver/Return/TaskLocal 与原银行 descendant closure；Session/Project/RP unknown、ACK-loss 不退款/不误记 closed。
+- 同次原 batch Model/continuation facts 私有复用，原银行仍 fresh；没有公开 proof/cache。整组 Review 保留先前 branch Review 已失效成员的旧 receipt 和费用。前置重做不得间接改掉已派发的冻结终端；历史绑定终端真正晚于原 Review 的 Transition。
+- 上述各保存点有直接语法/ESLint/diff 检查，**新增 Runtime/Browser/benchmark NOT_RUN**，不称超时已解决。
 
-- RP capture仍限定narrator/same-audience，角色独立Audience的RP多角色协作尚未完整实现；后台Actor appraisal不能替代。
-- Game生产仍Narrator+可选Resolver，Project生产仍单Agent+Output+可选self-loop，原D7条件G2协作缺口真实存在；RP的Planner/Judge/Review/Join测试不能跨域核销。
-- Graph/Planner/Judge/Review/Delegate/Join核心及具体RP消费者真实，但生产形状有限；不要求没有冻结依据的任意图全组合。
-- 有限ready无claim Commit恢复/cold Result重授权/unknown查询符合冻结要求，不新增任意内存点自动恢复。
-- V3可信Commit有限分类；原完整Studio人工Review/Commit保留，不能误删。
-- RP Skill next-run activation observer仍沿历史version.consumed trace，需要改接当前Native消费证据；不得称已验证activation闭环。
+## 当前 WIP：分支内已发布有界回边，尚未完成
 
-## 下一步（先解决已知事实，再必要取证）
+**这批必须先接完，不能当已完成消费者。** 目标是在 Join 前，原 Planner `requestReplan` 沿同 branch 已发布 loopBack 回到非终端 Agent/Planner；新 Attempt/Effect 与原边访问/循环/轮次/费用继续累计，原冻结终端 reservation/身份保持。不跨 branch、不重开 closed Join、不重放已发/unknown、不改 Host/预算上限。
 
-1. 核真实Git、同一Record最后一节与Gate；确认本checkpoint不回退。无需重做已过六项专项或4个浏览器场景，除非修改影响到它们。
-2. 收口宽回归。首次agent-intelligence42suite为28PASS/14FAIL、496PASS/127FAIL；部分已focused修正，不能说127全是基线或全已解决。历史comparison/live-bridge/judge完整迁移尚待续，保留报告/Source/玩家/unknown费用断言，不为涂绿删有效测试。
-3. Native宽回归中断前project-model-producer、rp-output-reconciliation已通过，余项没有总结果；optional NativeAuto同样无最终结果。按实际变更/风险选择续跑，不自动无限重复整个仓库。不要把分次通过拼成一轮完整绿。
-4. 修Native Skill activation观察，继续原D4/D7真实未完成消费者；保持现有Host/Source/Context/银行/Tool/领域writer，不造第二套架构。按原合同逐项实现/验证并更新同一Record/Gate，不重新定义范围来完成。
-5. P6完整替代/测试迁移及最终验收收口。SQL末版组装、Windows/Termux真机、输入法/读屏、规模性能、真实Provider/价格/质量、eligible晋升目前NOT_RUN；没证据就如实保留。全部目标实际满足后才按届时用户指令和Governance处理main集成/推送/清理。
+### Shared（Root 已写）
 
-恢复后持续推进；普通工程问题不暂停求许可。只有破坏性动作、真实用户专属权限/Secret或超出冻结设计的实质取舍才需明确说明原因。不要把这个交接快照当成新的全量完成证明。
+- `fanout-controller.js`：新增 `readFanoutReplanScope(tx, handle, root, planner, {decisionSeq=root.eventSeq+1,targetNodeId=null})`，返回原 `{frame,branch,barrier,join,fanout,target,loops,affectedNodeIds}`。复用私有局部 scope reader，affected 仅 forward-only 本 branch；live 必须原终端尚未准备/派发，cold 证明原终端实际 Transition 在控制决策之后、Join 后结算。
+- `delegated-fanout-work.js`：可选 `replan: async ({tx,root,completion,progress,branch}) => {target,affectedNodeIds,loopBindings}`。领域回调应核原 Planner receipt、原 pure interval、scope 与额度。loopBindings 是原 loops 与当前 completion；共有 worker 只重排该 branch 因果节点，目标新 Transition，保原终端 reservation 和 inherited refs。
+- `transition-controller.js`：scope 原 entry 再次访问时，允许复用原 Frame 已冻结的必需 task.result 依赖；不重新派发/计入 Fanout transfer。其它必需 port 不豁免。原 `advance` strict schema **无 allowLoopBack 新字段**；它本来通过 bindings/admitGraphEdges 支持回边。`allowLoopBack` 只在原 cold `assertOutputTransition` 使用。
+- `graph-planner-completion.js`：scope 中另一 branch 合法调度 Patch 夹在 Model admission→Planner adoption 之间时，沿 `readGraphFanoutPublicationGraph` 核原冻结形状及所有 revision，再读真正 patch.previous/new +1 与原 Command/CAS；非 scope 原 exact 条件保持。
+- Root 上述文件已分别语法/ESLint 通过；保存时全 tracked diffcheck 通过。不是全 WIP 语法或运行通过。
+
+### RP（8文件 WIP）
+
+- 已写 `native-rp-generation.js`、`rp-control-graph.js`、`rp-fanout-planner-contracts.js`、`rp-control-graph-work.js`、`rp-control-fanout-contracts.js`、`rp-delegated-fanout-contracts.js`、`rp-control-input-contracts.js`、`rp-delegated-quality-contracts.js`。
+- 已接 scope loop 拓扑、Planner requestReplan/helper、main own loop/child adapter、冷输入 loops/原 Transition/同 Frame 与 History；child 共享原 lastOperations，不能因每次建 localWork 重置 no-progress。
+- **明确剩余**：`fanoutReplan()` 的 `root.progress.attempts + models.length` 可能把仍保留原 reservation 的未执行终端重复计入；应按真实新 Attempt 数投影，尚未修。
+- RP 所写文件 ESLint 曾通过，之后 cold 尾部编辑未作完整最终静态/diff 检查。全部运行 NOT_RUN。
+
+### Project（4文件 WIP，缺口较大）
+
+- 已写 `project-control-graph.js`、`project-fanout-planner-contracts.js`、`project-delegated-fanout-work.js`、`project-control-graph-work.js`。
+- 已写 forward scope 拓扑/同 branch 非终端 loop 限制，原 Planner requestReplan/helper/pure interval 检查，`projectFanoutReplan` callback、child wrapper 与 main forced target/loopBindings/retryToken/null-reserved 初版。
+- **未完成**：main/child cold memberInput loops/allowLoopBack/实际 Planner 请求证明；child History 的真实 scope decisionSeq/affected 集合及 pure replay；main/child budget/attempt 投影保留原 reserved 终端。此4文件本批没有语法/ESLint/Runtime 证据。
+- `projectFanoutGroups` 同时被 Session child 使用；后续改动协调共享调用者，不能覆盖 Session 允许的回边形状。
+
+### Session / Game
+
+- 已写 `native-turn-orchestration.js`、`session-delegation-authority.js`、`session-agent-graph-profile.js`、`session-fanout-planner-contracts.js`、`session-fanout-contracts.js`、`session-delegated-fanout-contracts.js`、`session-replan-contracts.js`、`session-delegation-contracts.js`。
+- 已接 scope Patch requestReplan/pure scope/Frame helper，main forced target 与 child callback，entry 回环不重用 running Fanout binding，cold 实际 loop/Transition 与 main/child History 本 branch affected。
+- **未完成**：main/child completeSessionPlanner 的 Patch 预算投影仍用全局 `sessionReplanScope.affectedNodeIds`，须收成同 branch 视图；cold helper 目前用目标 Model publication/settlement 序号，须绑定已核原 Transition.decisionSeq；尚未整体收口。
+- 此8文件语法/ESLint 通过，但运行 NOT_RUN，不得记为消费者完成。
+
+## 后续顺序与当前 Gate
+
+1. 先完成上面 WIP 的 live/cold/History/预算接线，尤其 Project 冷证明和 RP reservation 重计；不要从 scratch 重写原 Host 或重跑六项专项。
+2. 按原冻结合同继续确有缺口的实现；scope 内动态拓扑、嵌套 Frame、跨 scope replan、冻结终端替换/已关闭 Join 的 sibling 重用仍受限。不要发明无依据的控制节点笛卡尔积矩阵，也不能把有限 Profile 当通用完成。
+3. P6 旧四根及后续外围资产/三语教程/原测试迁移已清退并有旧版本必要证据；历史 agent-intelligence 已迁真实 Native，原 `069a4bd32` 的 43 suites/633 PASS、activation 11 PASS（含重叠，不另加633）、FS/SQLite retrieval24 PASS 归原字节。Native Skill 当前 Host→正式 Output activation 已有真实证据；eligible 价格/质量晋升 NOT_RUN。
+4. 原新 child Review 最小正例 timeout、Project 前述 adopt/CAS 历史错误、P6 Browser Settings/旧 hub 两次 FAIL 均保留同一 Record。现导航/hub fixture已迁实际 UI，但用户要求轻量化后未重跑，不能称宽矩阵或 Browser 已全绿。停止的轻量 child 运行无 case 结果，不计产品 PASS/FAIL。
+5. 最终平台、真实 Provider、价格/质量、必要性能/eligible 晋升等无证据保留 NOT_RUN。P3/P4/P6 **IN_PROGRESS**，最终 **NOT_READY**。没有整体验收证据不得擅自改为 PASS/合 main/删分支。
+
+本机 `/tmp/atria-*` 仅原临时日志，通常不会随 Git 换设备；事实已记 Record，不把不存在的本机日志当另一设备已取得的新证据，不提交凭证或 Provider 原文。换设备恢复后继续实际工程，不自动增加审查或验证工作。
