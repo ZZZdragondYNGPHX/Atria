@@ -33,6 +33,8 @@ S2 的 `SemanticBlock` 只是**设计例子，不是已实现接口**，不允�
 
 对照 [Loom Core 集成说明](https://github.com/The-LoomStudio/LoomStudio/blob/10be7f6e460a19d96fe9a4ca4892234f938b0196/docs/architecture/application/prompt-build/loom-core/studio-integration.md)，LoomStudio 的 Agent PromptBuild 使用 Application DFS 编译，通用 Loom Core Runner 是另一条调用链；Atria 因此不引入第二个 Fragment/Pass Runtime，也不声称移植了 Core 的 Trace/Replay 能力。**独立作者测试的正确边界**是：作者无游戏即可持有和编辑原生 Program/Module/Generation exact revision；一旦要求 Authored→Effective→Wire 或付费试读，仍需同一 Native Host 提供受权的明确测试上下文/fixture、真实 Model/Route/Provider capability 和可审计的预算，不将任意客户端构造的 World/Memory/Session 当受信来源。当前正式 Preview 入口要求 Session/Project，独立无游戏测试是待补的产品能力，不许再建 Preview Compiler。图像编辑使用独立 ImagePromptIR、原视觉 Target/Rendering/Job/Asset 权威，不能将生图 style/negative Prompt 强制转换为文本 Module 来获得试生成资格。
 
+**官方默认模板的原生编排原则**：新建可选择短小、可编辑且可导出的通用 Program 骨架，承载身份/任务边界、作者叙事意图、获准 Context 与 History 接入位置、最新输入及输出约束；依原生 Stage/Module/受控 Anchor 承载，不复制 LoomStudio 的物理树、Anchor 名字或其固定 system/developer 消息位置。按用途提供 RP/Narrative（单 Narrator 与角色/玩家边界）、Creative Writing（完整作者表达/文体控制）、Agent Task（任务/证据/输出合同）等少量模板，复用基础语义模块与原 Library exact revisions。视觉 Prompt/风格默认资源归原 Image Rendering/Target、ImagePromptIR 与 Visual Job/Asset，不伪装成 `core.prompt-program` 的 Provider Wire。默认工具、额外 Agent、Judge、收费模型试读和私有来源访问均不自动启用；需要时按受权需求配置。模板只初始化作者选择的新资源，官方模板更新不覆盖旧 Program、已发行预设或冻结中的 Session/Plan/Package。具体模板实体、播种/分发和原生 Schema 待实现审计，不将当前空 `stage.main` 说成已具有官方模板。
+
 ## 3. L：跨 Provider 模型语义 Lowering
 
 | 候选 | 设计 | 取舍 |
@@ -42,6 +44,8 @@ S2 的 `SemanticBlock` 只是**设计例子，不是已实现接口**，不允�
 | **L3 自动 LLM 改写每个 Provider Prompt** | 发送前让另一个模型无监督重写作者规则 | 难复现、费用更高、破坏作者自由文本与 G1 稀疏运行，不建议 |
 
 L2 的降级仅限不改变 Authorial Intent、Agent OutputContract、Context grants、Tool/Model权限和文本核心语义的**显式受支持差异**；Role/system 能力缺失若无法无损表示就按合同 fail-closed，而不是临时改写成“普通用户说系统命令”。Provider 内容拒绝不是传输 fallback，**不得自动切换到另一个供应商规避**；普通网络故障 fallback 仍须守护 D4 已冻结的有效 Program 身份/原 Native send 规则。缓存/Role/JSON schema 适配要比对 final wire，禁止仅用 prompt 字符串作为来源证据。
+
+**跨 Provider 的单一作者语义**：作者在 Program 中表达一次，原 Provider Adapter 依据 Model/Connection/Route 的真实 Capability 生成各自合法 Wire；不维持 OpenAI/Anthropic/Gemini 等“每家一份默认预设”的平行身份、排序与持久版本。Role、工具、JSON OutputContract、prefill、cache 和 token 预算为可检查的适配证据，不能为凑合法格式改写自由正文、把 World/Memory/Tool 数据升为 system/developer、或者无声丢弃必需能力。遇不支持或未知的必需能力须拒绝或明确要求作者选择；仅在不破坏授权/原文意图时才允许有据的可选降级。确有需求的模型定向表达使用显式、受限、精确修订的作者覆盖并显示 Effective/Wire Diff，绝不能由另一个模型在发送前自动重写。测试须分别覆盖真实 Adapter 的正/负例和最终 Wire，而不是仅验证模板文字一致。
 
 ## 4. D：冲突诊断与可解释降级
 

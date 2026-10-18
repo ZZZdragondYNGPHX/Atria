@@ -31,6 +31,8 @@ W2 特别重要：在 Play 改 `promptParameters` 的 Route override 与在 Libr
 
 **分层预设来源与作者独立性**：在相同原生 Library 资源/编辑器上，基础来源分为官方基础预设、作者可导入分享的预设、私人/项目派生预设；来源标签不产生 Provider、Source、Tool 或版权授权，不另建商店、Preset Store、自动同步或新顶级域。发行来源是可溯线索，内容校验不代表发布者身份认证；重复导入和升级不得默默覆盖本地已修改的版本。游戏作者可选现成的适用 Program/Generation 后精确绑定，非必须自行撰写；专业作者可无游戏独立写作、导出/分享与测试。官方内容是否包含某模型/场景的受审质量证明须有独立真实证据，不能以“官方”默认认证。图像 Target/Rendering/Style 的复用沿原视觉资源身份，不把 ImagePromptIR 编译混入文本 Compiler。
 
+**开箱即用的原生模板入口**：Library 的新建向导应让独立作者选择“从空白创建”或“基于官方通用骨架/指定任务模板创建”，默认模板按 RP/Narrative、Creative Writing、Agent Task 分用途而非按模型厂商复制。建成的是可修改的原 Native Preset/Program/Module/Generation 资源，显示作者正文、默认/显式参数及确切来源；模板更新不影响旧版本。Game Studio 应以“从已有预设选择并绑定 exact 版本”为普通流程，缺有效 Route/Model/能力时指引配置，**不能把缺少自制 Prompt 当成错误**。本轮不指定首页外观、色彩或新增顶级导航域，也不能把官方模板、质量认证、已生成的实际输出混为一项。视觉作者在独立 Image Rendering/Target、ImagePromptIR 入口选择风格/模板，仍归原视觉系统。
+
 ## 3. R — 结构化面板与完整自由作者文本如何无损共存？
 
 | 选项 | 交互 | 取舍 |
@@ -56,6 +58,8 @@ R2 的两个视图**不能各自持久化成为两个 Store**。原生 Host 必�
 **Trace 和 Diff 不建第二真相**：可展开真实编译决策、模块来源、Anchor、受权来源和可披露的排除原因；未知/受限不能被渲染成“有某份私密记忆但不可读”。没有真实 Pass/Source 证据时不显示伪 Trace 或回放。按需比较当前与候选 Authored、Effective、Wire；只有 exact Program、Source/Actor/Branch/Grant、Route/Model、Compiler 和 Provider 能力一致时才可将有效差异归因于 Prompt 修改；若环境变更，明确分开列示，不把估计 Token 当精确真实费用。编辑、轻量验证、编译 Preview、真实付费试读与正式 Review/Publish 是不同操作，不能在键入时自动运行。
 
 **独立作者测试闭环**：Library 作者不用创建游戏即可编辑及准备有界测试样例；无 Session/Project 的 Effective/Wire 测试必须由 Native Host 正式提供受权 fixture、来源声明与真实 Route/Provider 适配，样例只是测试数据而非正式 World/Memory/Actor Truth。先执行无发送 Preview；用户单独选择 Route、确认 Token/经济预算和可能的跨 Provider 数据发送后才可进行付费试读。模型输出是样例结果，非默认 Quality PASS；有来源的 Quality/Eval 和候选审阅仍归 D7 原系统。视觉作者通过独立 ImagePromptIR/Target/Rendering 的 Preview 与原 Visual Job/Asset 费用批准实现对应闭环，不得伪造一个 Session 来使用现有剧情 Gallery。
+
+**模板 Preview 与多模型适配**：作者可查看通用骨架继承后的 Authored/Effective、选定合法 Runtime Route 下的 Provider Wire/Capability 决策，明确缺失的必需 Role、Tool/Schema、Prefill/Cache 等能力与 Token 预算。切换 Provider 只能改变经过证据证明的 Lowering，不得偷换 Program 自由原文、强制选择另一供应商或自动启用需要审批的功能；需要模型定向表达时必须是独立可审查的显式作者版本覆盖。初始模板通过无发送 Host Preview 不等于文学质量已达标或独立无 Session 测试已接通；付费试读和正式 Review/Publish 仍由原权限及账本处理。
 
 ## 5. I — 故障、质量、拒答与演化候选的 Inspector
 

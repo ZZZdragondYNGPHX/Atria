@@ -65,6 +65,8 @@ Q2 不表示一次上所有维度、每回合调用 Judge。单场景按审查�
 
 **质量证据身份**：作者自行试写与 Development 案例只证明适用场景中的观察，不授予 Promotion 资格；独立、来源受审且与候选隔离的评价才可支持相应质量标签，且只对实际受审的模型、Route、Case/版本及维度有效。未取得受审来源时保留 `unknown/source_unready`，不能因“官方预设”或高分数宣传已认证，也不应把未经认证等同于禁止作者导出个人作品。不得为了展示好看分数而自动循环 Judge。
 
+**官方预设不是质量证明**：默认通用骨架与 RP/Creative Writing/Agent Task 任务模板先遵守原生 Publisher/Library 的确切版本与 Authorial Freedom，内容应短小、模块化、可编辑，避免每轮默认多模型/Planner/Judge、超长固定 Prompt 与未经授权的 Tools。作为官方推荐，只表示出处和作者意图，并不能声称在所有模型达到较高文学/Agent 质量。只有原 QualityProfile/Eval 具备独立可信案例、适用 Provider/Route/模型、真正费用和拒绝/错误证据时，才对所覆盖维度显示受审结果；资料缺失须明确 `source_unready/unknown`。未来官方模板的验收要区分：一是普通游戏作者不自行编 Prompt 也能合法启动并进行有效生成，二是真实文学/角色/Agent 质量受审；第一项成功不自动证明第二项。模板版本更新不替换用户自己 Fork/Derive 或已钉 Runtime/Package。
+
 ## 6. 建议评价样本与成本控制（仅示意，全部 NOT_RUN）
 
 | 场景 | 需要真实可验的维度 | 不能声明通过的情况 |
