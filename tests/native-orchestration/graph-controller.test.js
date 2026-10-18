@@ -64,6 +64,33 @@ describe.each(CONTRACT_HARNESSES)('$name G2 Host whole-patch control', ({ make }
         return { nodeId, operations: [{ op: 'addNode', node }, { op: 'addEdge', edge: edge(plannerId, 'next', nodeId, 'in') }, { op: 'addEdge', edge: edge(nodeId, 'next', joinId, 'b') }] };
     }
 
+    test('an unchanged graph still proves the original Plan and fresh scheduling state without any patch records', async () => {
+        const root = await current();
+        await h.engine.withTransaction(h.handle, async tx => {
+            const read = supplied => readTaskGraphRevision(tx, h.handle, supplied ?? root);
+            const first = await read();
+            first.graph.nodes[0].label = 'Caller mutation'; first.nodeControl[joinId].priority = 7;
+            expect((await read()).graph).toEqual(root.graph);
+            expect((await read()).nodeControl).toEqual(root.nodeControl);
+            for (const field of ['graph', 'nodeControl', 'progress', 'graphRevision']) {
+                const changed = structuredClone(root);
+                if (field === 'graph') changed.graph.nodes[0].label = 'Fabricated graph';
+                if (field === 'nodeControl') changed.nodeControl[joinId].priority = 7;
+                if (field === 'progress') changed.progress.patches = 1;
+                if (field === 'graphRevision') changed.graphRevision = 1;
+                await expect(read(changed)).rejects.toMatchObject({ code: 'native_orchestration_graph_history_unavailable' });
+            }
+            const planKey = { kind: K.orchestrationRevision, handle: h.handle, planId: root.planRef.planId, planRevisionId: root.planRef.planRevisionId };
+            const saved = await tx.getResource(planKey), doc = structuredClone(saved.doc);
+            doc.definition.nodes[0].label = 'Rehashed Plan mutation';
+            try {
+                await tx.putResource(planKey, { ...saved, doc, integrity: hashNativeDocument(doc) });
+                await expect(read()).rejects.toThrow();
+            } finally { await tx.putResource(planKey, saved); }
+            expect((await read()).graph).toEqual(root.graph);
+        });
+    });
+
     test('accepted whole patch advances graph/counters once; duplicate patch returns its original receipt', async () => {
         const branch = addBranch(), input = await proposal(branch.operations);
         const accepted = await graph.propose(h.handle, input);

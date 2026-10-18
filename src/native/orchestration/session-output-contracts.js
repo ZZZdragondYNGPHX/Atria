@@ -163,6 +163,8 @@ export async function readSessionOutput(tx, handle, root) {
                 if (settled.reasonCode !== 'graph_judge_selected' || resolverInput.invocationId !== expected.invocationId
                     || resolverInput.requestHash !== expected.requestHash || !equal(judged.producer, attempt)) invalid();
             } else if (planned) {
+                const newer = published.plannerCompletions.some(result => result.producer.nodeId === attempt.nodeId && result.producer.attemptNumber > attempt.attemptNumber);
+                if (newer && !published.loopHistory?.replannedAttemptIds.has(attempt.attemptId) && !await readAttemptInvalidation(tx, handle, root, attempt)) invalid();
                 if (settled.reasonCode !== 'graph_planner_patch_accepted') invalid();
             } else if (reviewed) {
                 const newer = published.reviewCompletions.some(result => result.producer.nodeId === attempt.nodeId && result.producer.attemptNumber > attempt.attemptNumber);

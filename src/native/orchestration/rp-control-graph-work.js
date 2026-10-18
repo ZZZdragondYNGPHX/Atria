@@ -11,10 +11,11 @@ import { JoinController, joinIdForAttempt } from './join-controller.js';
 import { readRpControlFanoutCompletion } from './rp-control-fanout-contracts.js';
 import { GraphController } from './graph-controller.js';
 import { graphPatchHash } from './graph-revision-contracts.js';
-import { graphPlannerControlRef, graphPlannerReceiptId, readGraphPlannerCompletion } from './graph-planner-completion.js';
-import { controlCommandId, controlRecordKey, runGuard, readAttempt, graphReachable, readReviewAdmission } from './controller-common.js';
+import { graphPlannerControlRef, graphPlannerReceiptId, readGraphPlannerCompletion, graphPlannerProgressFingerprint } from './graph-planner-completion.js';
+import { controlCommandId, controlRecordKey, runGuard, readAttempt, graphReachable, readReviewAdmission,
+    readGraphReviewReceipt, readAttemptInvalidation, assertAttemptConsumable, assertAttemptCurrent } from './controller-common.js';
 import { ReviewController, reviewReceiptId } from './review-controller.js';
-import { graphReviewModelReceiptId, graphReviewControlRef, readGraphReviewCompletion } from './graph-review-completion.js';
+import { graphReviewModelReceiptId, graphReviewControlRef, readGraphReviewCompletion, readReviewablePlannerCompletion } from './graph-review-completion.js';
 import { RP_REVIEW_REASON_CODES } from './rp-review-profile.js';
 import { graphJudgeModelReceiptId, graphJudgeControlRef, readGraphJudgeCompletion } from './graph-judge-completion.js';
 import { readEffect } from './effect-contracts.js';
@@ -22,6 +23,8 @@ import { readContextRetrievalCompletions } from './context-retrieval-contracts.j
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { writeAttemptSettlement } from './attempt-settlement.js';
 import { ConflictError } from '../../storage/errors.js';
+import { checkedRecord } from './plan-repository.js';
+import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertRpFanoutPlannerPatch, readRpFanoutPaidModelNodes } from './rp-fanout-planner-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
@@ -64,9 +67,44 @@ export class RpControlGraphWork {
         if (!bundle.controlRefs.length) return [];
         if (this.state.fanoutParent) return this.inputs(tx, root);
         const producers = new Set(bundle.controlRefs.map(ref => ref.attemptId));
-        return readRpControlInputs(tx, this.state.handle, root, { evidenceRefs: [], controlRefs: bundle.controlRefs,
-            bindings: bundle.bindings.filter(binding => producers.has(binding.producerAttemptId)) },
-        { targetNodeId: (this.state.activeSelection ?? this.state.selected).node.nodeId, live: true, checkSelections: false, controlsOnly: true, fanoutAttemptId: this.state.fanoutParent?.fanoutAttemptId });
+        const selected = this.state.activeSelection ?? this.state.selected, handle = this.state.handle;
+        const controls = { evidenceRefs: [], controlRefs: bundle.controlRefs,
+            bindings: bundle.bindings.filter(binding => producers.has(binding.producerAttemptId)) };
+        // A Review's own durable rerun decision invalidates its old Planner
+        // input before its Model receipt settles. Re-prove only that saga's
+        // historical input; every other live consumer keeps the original rule.
+        const reviewer = selected.node.kind === 'review' && this.state.attemptId
+            ? (await readAttempt(tx, handle, root, this.state.attemptId)).doc : null;
+        const review = reviewer?.nodeId === selected.node.nodeId && reviewer.status === 'running'
+            ? await readGraphReviewReceipt(tx, handle, root, reviewer) : null;
+        if (review?.decision !== 'rerun') return readRpControlInputs(tx, handle, root, controls,
+            { targetNodeId: selected.node.nodeId, live: true, checkSelections: false, controlsOnly: true });
+        await assertAttemptCurrent(tx, handle, root, reviewer);
+        if (root.status !== 'running' || root.cancelRequested || reviewer.epoch !== root.epoch
+            || reviewer.sourceBindingDigest !== root.sourceBinding.bindingDigest
+            || !equal(reviewer.inputRefs[0]?.controlGraph, bundle) || reviewer.inputDigest !== hash(reviewer.inputRefs)
+            || !equal(review.evidenceRefs, bundle.evidenceRefs)) fail('native_orchestration_review_producer_denied');
+        const commandId = controlCommandId('review.decide', review.receiptId);
+        const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+        const detail = { reviewAttemptId: reviewer.attemptId, decision: review.decision,
+            targetAttemptIds: [...review.targetAttemptIds].sort(), reasonCode: review.reasonCode, evidenceRefs: review.evidenceRefs };
+        if (!command || command.schemaVersion !== 1 || command.commandId !== commandId || command.target !== root.runId
+            || command.operation !== 'runs.control.review.decide' || !equal(command.outcome?.reviewReceipt, review)
+            || command.payloadHash !== hash({ operation: command.operation, body: { runId: root.runId, operation: 'review.decide', detail } }))
+            fail('native_orchestration_review_producer_denied');
+        const facts = await readRpControlInputs(tx, handle, root, controls,
+            { targetNodeId: selected.node.nodeId, checkSelections: false, controlsOnly: true });
+        for (const fact of facts) {
+            const invalidation = await readAttemptInvalidation(tx, handle, root, fact.producer);
+            if (!invalidation) { await assertAttemptConsumable(tx, handle, root, fact.producer); continue; }
+            const planner = fact.controlRef?.kind === 'graph_planner_control'
+                ? await readReviewablePlannerCompletion(tx, handle, root, fact.producer.attemptId, rpPlannerReaderOptions) : null;
+            if (!planner || !equal(planner, fact) || invalidation.reviewReceiptId !== review.receiptId
+                || invalidation.reviewIntegrity !== hash(review) || !review.invalidatedAttemptIds.includes(fact.producer.attemptId)
+                || fact.receipt.decisionSeq >= review.decisionSeq)
+                fail('native_orchestration_review_producer_denied');
+        }
+        return facts;
     }
 
     async describeControls(root, recipient) {
@@ -105,8 +143,11 @@ export class RpControlGraphWork {
             return immutable(value);
         });
         const nodeId = state.activeSelection.node.nodeId;
-        if (this.lastOperations.get(nodeId) === hash(parsed.operations)) fail('native_orchestration_planner_no_progress');
-        const current = await service.runs.get(handle, runId), patch = { schemaVersion: 1,
+        const current = await service.runs.get(handle, runId);
+        const evidence = await service.runs.engine.withTransaction(handle, tx => this.inputs(tx, current));
+        const progressKey = graphPlannerProgressFingerprint(parsed.operations, root.sourceBinding, evidence.filter(fact => fact.record));
+        if (this.lastOperations.get(nodeId)?.has(progressKey)) fail('native_orchestration_planner_no_progress');
+        const patch = { schemaVersion: 1,
             patchId: 'opatch_' + hash({ runId, attemptId }).slice(0, 32), runId, producerAttemptId: attemptId, expectedEpoch: current.epoch,
             expectedGraphRevision: current.graphRevision, operations: parsed.operations,
             reasonRefs: [{ kind: 'source', bindingDigest: current.sourceBinding.bindingDigest },
@@ -183,7 +224,7 @@ export class RpControlGraphWork {
                 throw error;
             }
         }), { withAuthority: boundary });
-        this.lastOperations.set(nodeId, hash(parsed.operations));
+        const keys = this.lastOperations.get(nodeId) ?? new Set(); keys.add(progressKey); this.lastOperations.set(nodeId, keys);
         const fact = await service.runs.engine.withTransaction(handle, async tx => readGraphPlannerCompletion(tx, handle,
             await service.runs.get(handle, runId), attemptId, this.plannerReaderOptions ?? rpPlannerReaderOptions));
         if (!fact) fail('native_orchestration_rp_control_stale');
@@ -212,23 +253,29 @@ export class RpControlGraphWork {
                     || !equal([...parsed.targetAttemptIds].sort(), targets.map(target => target.attemptId).sort())
                     || targets.some(target => !evidence.some(fact => fact.producer.attemptId === target.attemptId)
                         || active.graph.nodes.find(node => node.nodeId === target.nodeId).kind !== 'agent')) fail('native_orchestration_review_producer_denied');
-                if (decision === 'rerun' && [...this.records.entries()].some(([nodeId, fact]) => ['graph_planner_control', 'graph_join_control'].includes(fact.controlRef?.kind)
-                    && targets.some(target => graphReachable(active.graph, target.nodeId, nodeId)))) fail('native_orchestration_review_irreversible_dependency');
+                if (decision === 'rerun') for (const [nodeId, fact] of this.records) {
+                    if (!targets.some(target => graphReachable(active.graph, target.nodeId, nodeId))) continue;
+                    if (fact.controlRef?.kind === 'graph_join_control'
+                        || fact.controlRef?.kind === 'graph_planner_control'
+                            && !await readReviewablePlannerCompletion(tx, handle, active, fact.attemptId, rpPlannerReaderOptions))
+                        fail('native_orchestration_review_irreversible_dependency');
+                }
                 await this.current();
             },
             admitRerun: async ({ tx, root: active, reviewer, target, attemptId: replacementId, invalidatedAttemptIds }) => {
                 await this.current();
-                const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: null }, { tx });
+                const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: this.reservationId ?? null }, { tx });
                 const affected = [...this.records.values()].filter(fact => invalidatedAttemptIds.includes(fact.attemptId)).length;
                 const admission = await readReviewAdmission(tx, handle, active, reviewer);
-                if (!capacity || capacity.overrun || capacity.remaining.requests < affected + 2
+                const requiredRequests = this.reviewRerunRequests ? this.reviewRerunRequests(active, reviewer, invalidatedAttemptIds) : affected + 2;
+                if (!capacity || capacity.overrun || capacity.remaining.requests < requiredRequests
                     || !admission || admission.round >= active.graph.nodes.find(node => node.nodeId === reviewer.nodeId).policy.maxRounds
                     || active.progress.reviews >= active.limits.maxReviews)
                     fail('native_orchestration_review_rerun_budget_unavailable');
                 const bundle = this.bundle(active.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === target.nodeId), active.graph);
                 const feedback = { reviewReceiptRef: { runId, receiptId: reviewReceiptId(runId, reviewer.attemptId) }, reasonCode: parsed.reasonCode };
                 const spec = await this.prepareRerun(active, target, replacementId, bundle, feedback);
-                const inputRefs = [spec.input, ...bundle.evidenceRefs, ...bundle.controlRefs];
+                const inputRefs = spec.inputRefs ?? [spec.input, ...bundle.evidenceRefs, ...bundle.controlRefs];
                 replacements.push({ nodeId: target.nodeId, attemptId: replacementId, bundle, feedback, request: spec.request });
                 await this.current();
                 return { inputRefs, inputDigest: hash(inputRefs), effectiveGrantDigest: spec.grantDigest, budgetRef: active.budgetAuthorityRef };
@@ -578,7 +625,6 @@ export class RpControlGraphWork {
                 handledReplans.add(previous.attemptId);
                 for (const id of scope.affectedNodeIds) {
                     this.records.delete(id);
-                    if (id !== nodeId) this.lastOperations.delete(id);
                 }
             } else next = readiness.ready[0];
             if (!next) fail('native_orchestration_graph_dependency_unavailable');

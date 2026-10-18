@@ -102,7 +102,7 @@ export class ResultController {
                         ...runGuard(root), operation: 'result.publish', detail: { effectId, resultId } }, async ({ tx, root, now }) => {
                         if (hash(root) !== hash(checked.root) || root.cancelRequested || root.status !== 'running') fail('native_orchestration_result_publication_stale');
                         const record = await readAttempt(tx, handle, root, proof.producerAttemptId), intent = (await readEffect(tx, handle, root, effectId)).doc;
-                        if (root.sourceBinding.sourceAuthority === 'rp_chat' && root.resultRefs.length || root.outputClaims.length || record.doc.status !== 'running' || record.doc.epoch !== root.epoch || !equal(record.doc.effectRefs, [effectId])
+                        if (root.sourceBinding.sourceAuthority === 'rp_chat' && root.resultRefs.length && !isRpDelegatedControlGraph(root) || root.outputClaims.length || record.doc.status !== 'running' || record.doc.epoch !== root.epoch || !equal(record.doc.effectRefs, [effectId])
                             || record.doc.resultRefs.length || intent.status !== 'confirmed' || root.pendingEffectRefs.includes(effectId)
                             || intent.nodeAttemptId !== record.doc.attemptId || intent.grantDigest !== current.grantDigest
                             || root.progress.steps >= root.limits.maxSteps || now >= root.progress.deadlineAt) fail('native_orchestration_result_not_publishable');

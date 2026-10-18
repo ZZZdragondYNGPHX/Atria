@@ -125,3 +125,23 @@ test('settlement failure discards the admitted private result and never returns 
         discardResult: async value => { discarded = value; } }, () => { operated++; return result; })).rejects.toMatchObject({ code: 'generation_execution_failed' });
     expect(operated).toBe(1); expect(discarded).toBe(result);
 });
+
+// A controlled original quality denial keeps its protocol reason after paid
+// local-work settlement. An arbitrary code or private error text never does.
+test.each([
+    ['native_orchestration_review_limit_exhausted', 'native_orchestration_review_limit_exhausted'],
+    ['native_orchestration_review_rerun_budget_unavailable', 'native_orchestration_review_rerun_budget_unavailable'],
+    ['native_orchestration_private_secret_denial', 'generation_execution_failed'],
+    ['native_orchestration_attempt_superseded', 'generation_execution_failed'],
+])('metered local work preserves only the controlled quality reason %s', async (code, expected) => {
+    const privateMessage = 'synthetic-secret-from-original-authority';
+    const settlements = []; let operated = 0, rejected;
+    try {
+        await runGenerationLocalWork({ attempt: {}, assertCurrent: async () => {},
+            admit: async () => ({ status: 'charged' }), settle: async ({ usage }) => { settlements.push(usage); return { status: 'settled', usage }; } },
+        () => { operated++; throw Object.assign(new Error(privateMessage), { code, privateValue: privateMessage }); });
+    } catch (error) { rejected = error; }
+    expect(rejected).toMatchObject({ name: 'GenerationError', code: expected, message: expected });
+    expect(operated).toBe(1); expect(settlements).toHaveLength(1); expect(settlements[0].outcome).toBe('failed');
+    expect(JSON.stringify(rejected)).not.toContain(privateMessage); expect(rejected.cause).toBeUndefined();
+});

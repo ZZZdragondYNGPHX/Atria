@@ -22,7 +22,7 @@ const textResponse = (text, index, usage = true) => ({ id: 'control-response-' +
 const edge = (from, fromPort, to, toPort) => ({ edgeId: createNativeId('orchestrationEdge'), from: { nodeId: from.nodeId, port: fromPort },
     to: { nodeId: to.nodeId, port: toPort }, condition: 'always', maxVisits: 1, loopBack: false });
 
-async function fixture(make, { escalation = false, unknown = false, differentRoutes = false, withReview = false, rerun = false, replan = false, multiPort = false, nonself = false, qualityBeforePlanner = false, maxQualityRounds = 2 } = {}) {
+async function fixture(make, { escalation = false, unknown = false, differentRoutes = false, withReview = false, rerun = false, replan = false, multiPort = false, nonself = false, qualityBeforePlanner = false, maxQualityRounds = 2, rerunSecondReview = false } = {}) {
     let operations, proposed, businessRound = 0, reviewRound = 0, plannerRound = 0, added, formalWorker;
     const f = await projectModelFixture(make, { maxModelRounds: 3, changeRoute: route => ({ ...route, executionPolicy: { ...route.executionPolicy,
         computeBudget: { ...route.executionPolicy.computeBudget, maxRequests: 12, localWork: { ...route.executionPolicy.computeBudget.localWork, maxJobs: 128 } } } }),
@@ -92,6 +92,19 @@ async function fixture(make, { escalation = false, unknown = false, differentRou
             graph.graphChangePolicy.allowedOperations.push('requestReplan');
         }
         Object.assign(graph.limits, { maxSteps: 180, deadlineMs: 180000, maxAttempts: 16, maxReviews: 2, maxPatches: 4, maxLoopIterations: replan ? 3 : 2, maxEdgeVisits: 14 });
+        if (rerunSecondReview) {
+            const laterReview = graph.nodes.find(node => node.kind === 'review' && node.label === 'Review both independent advisory tasks');
+            graph.limits.maxReviews = 3; graph.limits.maxEdgeVisits = graph.edges.length + 4;
+            // This round-admission case publishes its two target branches up front.
+            // The separate dynamic tests retain their original GraphPatch assertions.
+            graph.nodes.splice(graph.nodes.indexOf(laterReview), 0, added);
+            planner.inputs = planner.inputs.filter(port => port.name !== 'analysis');
+            graph.edges = graph.edges.filter(item => !(item.from.nodeId === analysis.nodeId && item.to.nodeId === planner.nodeId)
+                && !(item.from.nodeId === planner.nodeId && item.to.nodeId === worker.nodeId));
+            graph.edges.push(edge(planner, 'control', added, 'control'), { ...edge(added, 'analysis', laterReview, 'dynamic'), maxVisits: 2 },
+                edge(added, 'analysis', worker, 'advisory'));
+            operations = [{ op: 'requestFinalize' }];
+        }
         if (multiPort) {
             worker.inputs = [{ name: 'first', type: 'text', required: false }, { name: 'second', type: 'text', required: false }, { name: 'continuation', type: 'json', required: false }];
             graph.nodes = [analysis, worker, output]; graph.entryNodeIds = [analysis.nodeId];
@@ -106,7 +119,7 @@ async function fixture(make, { escalation = false, unknown = false, differentRou
         if (serialized.includes('native_project_graph_review')) {
             const strings = value => typeof value === 'string' ? [value] : value && typeof value === 'object' ? Object.values(value).flatMap(strings) : [];
             const ids = strings(body).flatMap(text => [...text.matchAll(/Graph evidence: .*?"producerAttemptId":"(oattempt_[a-f0-9]+)"/g)].map(match => match[1]));
-            const redo = rerun && reviewRound++ === 0;
+            const redo = rerunSecondReview ? reviewRound++ === 1 : rerun && reviewRound++ === 0;
             return textResponse(JSON.stringify({ decision: redo ? 'rerun' : 'approve', reasonCode: redo ? 'incomplete_proposal' : 'quality_ready', targetAttemptIds: [...new Set(ids)] }), index);
         }
         if (serialized.includes('native_project_graph_planner')) return textResponse(JSON.stringify({ operations: replan && plannerRound++ === 0
@@ -345,3 +358,38 @@ test('SQLite Project original Review round ceiling denies another send after acc
         expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
     } finally { await f.cleanup(); }
 }, 120000);
+
+
+test('SQLite Project later Review uses its own admitted round after an independent earlier Review', async () => {
+    const f = await fixture(makeTempSqliteEngineHarness, { withReview: true, qualityBeforePlanner: true, differentRoutes: true, rerunSecondReview: true });
+    try {
+        await f.run(); const root = await f.authority.execution.runs.get(f.h.handle, f.effects[0].runId);
+        expect(root.status).toBe('completed'); expect(root.graphRevision).toBe(1); expect(root.progress.reviews).toBe(3);
+        expect(f.requests).toHaveLength(12); expect(f.requests.filter(body => JSON.stringify(body).includes('native_project_graph_planner'))).toHaveLength(1);
+        await f.h.engine.withTransaction(f.h.handle, async tx => {
+            const reviews = root.graph.nodes.filter(node => node.kind === 'review');
+            expect(reviews).toHaveLength(2);
+            const attempts = (await Promise.all(root.attemptRefs.map(id => readAttempt(tx, f.h.handle, root, id)))).map(row => row.doc);
+            const facts = [];
+            for (const node of reviews) {
+                const rows = attempts.filter(row => row.nodeId === node.nodeId);
+                for (const row of rows) facts.push(await readGraphReviewCompletion(tx, f.h.handle, root, row.attemptId,
+                    { verifyControlWork: assertProjectControlWork, reasonCodes: PROJECT_QUALITY_REASONS }));
+            }
+            expect(facts.filter(fact => fact.review.decision === 'rerun')).toHaveLength(1);
+            const redo = facts.find(fact => fact.review.decision === 'rerun');
+            expect((await readReviewAdmission(tx, f.h.handle, root, redo.producer)).round).toBe(1);
+            expect(redo.review.replacements).toHaveLength(2);
+            const later = facts.find(fact => fact.producer.nodeId === redo.producer.nodeId && fact !== redo);
+            expect(later.review.decision).toBe('approve'); expect((await readReviewAdmission(tx, f.h.handle, root, later.producer)).round).toBe(2);
+            const earlier = facts.find(fact => fact.producer.nodeId !== redo.producer.nodeId);
+            expect(earlier.review.decision).toBe('approve'); expect(await readAttemptInvalidation(tx, f.h.handle, root, earlier.producer)).toBeNull();
+            expect((await readProjectReviewOutput(tx, f.h.handle, root)).receipt.costs.closed).toBe(true);
+        });
+        const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+        expect(task.status).toBe('review'); expect(task.compute.attempts).toHaveLength(12);
+        expect(task.compute.attempts.every(row => row.status === 'settled')).toBe(true);
+        expect(task.attempts.filter(row => row.kind === 'generation')).toHaveLength(3);
+        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
+    } finally { await f.cleanup(); }
+}, 180000);

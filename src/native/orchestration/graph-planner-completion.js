@@ -92,3 +92,11 @@ export async function readGraphPlannerCompletion(tx, handle, root, attemptId, { 
     }
     return { producer, settlement, receipt, patch, controlRef };
 }
+
+
+/** Semantic progress over this call's already checked advisory Results.
+ * Attempt/Result IDs and response whitespace create no new evidence. */
+export function graphPlannerProgressFingerprint(operations, sourceBinding, evidence) {
+    return hash({ operations, sourceBindingDigest: sourceBinding.bindingDigest,
+        evidence: evidence.map(fact => ({ nodeId: fact.producer.nodeId, payloadHash: hash(fact.record.payload) })) });
+}

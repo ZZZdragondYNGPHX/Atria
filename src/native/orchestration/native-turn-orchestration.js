@@ -4,7 +4,7 @@ import { inspectGraphReadiness } from './graph-work-readiness.js';
 import { GraphController } from './graph-controller.js';
 import { readTaskGraphRevision, graphPatchHash } from './graph-revision-contracts.js';
 import { graphPlannerControlRef, graphPlannerReceiptId } from './graph-planner-completion.js';
-import { readSessionPlannerCompletion, sessionPlannerOutputContract } from './session-planner-contracts.js';
+import { readSessionPlannerCompletion, sessionPlannerOutputContract, sessionPlannerReaderOptions } from './session-planner-contracts.js';
 import { sessionPlannerContextView } from './session-planner-context.js';
 import { readSessionJudgeCompletion, assertSessionJudgeSelections, sessionJudgeOutputContract } from './session-judge-contracts.js';
 import { graphJudgeModelReceiptId } from './graph-judge-completion.js';
@@ -59,7 +59,7 @@ import { ResultController } from './result-controller.js';
 import { ReviewController, reviewReceiptId } from './review-controller.js';
 import { rpReviewOutputContract as sessionReviewOutputContract } from './rp-review-profile.js';
 import { parseSessionReview, parseSessionGraphReview, readSessionReviewCompletion, sessionReviewModelReceiptId, sessionGraphReviewOutputContract, sessionReviewRerunRequirements } from './session-review-contracts.js';
-import { graphReviewModelReceiptId, graphReviewControlRef } from './graph-review-completion.js';
+import { graphReviewModelReceiptId, graphReviewControlRef, readReviewablePlannerCompletion } from './graph-review-completion.js';
 import { sessionReplanScope, sessionReplanRequirements, sessionPlannerProgressFingerprint } from './session-replan-contracts.js';
 import { assertSessionFanoutPlannerPatch, readSessionFanoutPaidModelNodes } from './session-fanout-planner-contracts.js';
 
@@ -1269,8 +1269,11 @@ export class NativeNarratorOrchestrationAuthority {
                     const attempt = (await readAttempt(tx, handle, root, id)).doc;
                     if (attempt.attemptId === reviewer.attemptId || await readAttemptInvalidation(tx, handle, root, attempt)) continue;
                     const node = root.graph.nodes.find(node => node.nodeId === attempt.nodeId);
-                    if ((['planner', 'fanout', 'join'].includes(node?.kind) || node?.capabilities.includes('agent.delegate'))
-                        && targets.some(target => graphReachable(root.graph, target.nodeId, node.nodeId))) fail('native_orchestration_review_irreversible_dependency');
+                    if (!targets.some(target => graphReachable(root.graph, target.nodeId, node.nodeId))) continue;
+                    if (['fanout', 'join'].includes(node?.kind) || node?.capabilities.includes('agent.delegate')
+                        || (node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
+                            && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, sessionPlannerReaderOptions))
+                        fail('native_orchestration_review_irreversible_dependency');
                 }
             },
             admitRerun: async ({ tx, root, reviewer, target, attemptId, invalidatedAttemptIds }) => {

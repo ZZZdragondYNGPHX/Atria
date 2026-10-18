@@ -1,3 +1,7 @@
+import { readSessionDelegatedControl } from './session-delegated-quality-contracts.js';
+import { completeSessionDelegatedReview, completeSessionDelegatedJudge } from './session-delegated-quality-work.js';
+import { sessionGraphReviewOutputContract } from './session-review-contracts.js';
+import { sessionJudgeOutputContract } from './session-judge-contracts.js';
 import { inspectGraphReadiness } from './graph-work-readiness.js';
 import { sessionReplanScope } from './session-replan-contracts.js';
 import { ConflictError } from '../../storage/errors.js';
@@ -22,13 +26,14 @@ import { readModelTerminalReceipt } from './model-port.js';
 import { writeAttemptSettlement } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 import { readTaskLocalOutput } from './task-local-output-contracts.js';
+import { readHandoffReturn } from './handoff-return-contracts.js';
 import { readResultPublication } from './result-publication-contracts.js';
 import { assertNativeTurnPermit } from './native-turn-permit.js';
 import { childBudgetReceiptId, assertChildRunCurrent } from './run-repository.js';
 import { readSessionDelegation, readSessionDelegationContinuation } from './session-delegation-contracts.js';
 import { readSessionDelegationInputs } from './session-delegation-inputs.js';
 import { sessionDelegatedGraphProfile } from './session-delegated-graph-profile.js';
-import { readSessionPlannerCompletion, sessionPlannerOutputContract } from './session-planner-contracts.js';
+import { sessionPlannerOutputContract } from './session-planner-contracts.js';
 import { completeSessionDelegatedPlanner } from './session-delegated-planner-work.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 
@@ -168,9 +173,11 @@ export class SessionDelegationAuthority {
             const results = [...upstream.results];
             for (const binding of state.bindings ?? []) {
                 if (binding.controlRef) {
-                    const saved = await readSessionPlannerCompletion(tx, identity.handle, root, binding.attemptId);
-                    if (!saved || !equal(saved.controlRef, binding.controlRef)) fail();
-                    results.push({ controlRef: binding.controlRef, sourceRefs: [binding.controlRef], content: 'Advisory graph control only; this never grants Source, tools or official writes: ' + JSON.stringify(saved.patch.appliedOperations) });
+                    const saved = await readSessionDelegatedControl(tx, identity.handle, root, binding.controlRef);
+                    if (!saved || !equal(saved.controlRef, binding.controlRef) || saved.review?.decision === 'rerun') fail();
+                    results.push({ controlRef: binding.controlRef, sourceRefs: [binding.controlRef], content: 'Advisory graph control only; this never grants Source, tools or official writes: '
+                        + JSON.stringify(saved.patch ? saved.patch.appliedOperations : saved.review ? { decision: saved.review.decision, reasonCode: saved.review.reasonCode }
+                            : { selectedResultRef: saved.selectedResultRef }) });
                     continue;
                 }
                 const saved = await readGraphNodeResult(tx, identity.handle, root, binding.resultRef.resultId);
@@ -188,8 +195,15 @@ export class SessionDelegationAuthority {
                 ...(output ? { closure } : { context: { snapshot: state.parent.selectionState.base, sourceAudience: state.model.audienceSource.audience,
                     task: { nodeId: state.model.node.nodeId, label: state.model.node.label,
                         ...(taskGraph ? { graphView: taskGraph } : {}),
+                        ...(state.model.node.kind === 'review' ? { reviewTargets: state.bindings.filter(binding => binding.resultRef)
+                            .map(binding => ({ attemptId: binding.attemptId, resultRef: binding.resultRef })) } : {}),
+                        ...(state.model.node.kind === 'judge' ? { candidateRefs: state.contextInputRefs[0].acceptedGraphResultRefs } : {}),
+                        ...(state.feedback ? { feedback: state.feedback } : {}),
                         ...(upstream.controls.length ? { inputs: upstream.controls } : {}),
-                        purpose: state.model.node.kind === 'planner' ? 'Return only structured operations for this published task graph and its original limits. Graph changes never grant Source, tools or official writes.' : 'Provide advisory analysis only. Never write official world facts or speak for the player.' }, results } }) };
+                        purpose: state.model.node.kind === 'planner' ? 'Return only structured operations for this published task graph and its original limits. Graph changes never grant Source, tools or official writes.'
+                            : state.model.node.kind === 'review' ? 'Review supplied typed advisory results. Return only decision approve or rerun, schema reasonCode and exact targetAttemptIds from reviewTargets. Never approve permissions or official Effects.'
+                                : state.model.node.kind === 'judge' ? 'Select exactly one supplied candidateRefs Result reference. Return only selectedResultRef and reasonCode candidate_selected. Never grant Source, permissions or official Effects.'
+                                    : 'Provide advisory analysis only. Never write official world facts or speak for the player.' }, results } }) };
         });
     }
     inspectDelegation(capture, expected = {}) { return this.#inspect(capture, expected, false); }
@@ -266,14 +280,30 @@ export class SessionDelegationAuthority {
             await this.assertSelection(state.selection);
             const parentRoot = await service.runs.get(identity.handle, identity.parentRunId), child = await service.runs.get(identity.handle, identity.childRunId);
             const producer = (await readAttempt(tx, identity.handle, parentRoot, identity.parentAttemptId)).doc;
-            const lineage = await readSessionDelegation(tx, identity.handle, parentRoot, identity.childRunId);
-            if (child.status !== 'completed' || child.cancelRequested || child.epoch !== identity.childEpoch || lineage.mode !== state.mode) fail();
+            if (child.status !== 'completed' || child.cancelRequested || child.epoch !== identity.childEpoch) fail();
             await service.sourcePort.revalidate(identity.handle, parentRoot.sourceBinding, { tx, root: parentRoot });
-            const output = await readTaskLocalOutput(tx, identity.handle, child);
-            if (!output || !equal(output.claim.resultRef, identity.resultRef) || parentRoot.cancelRequested || parentRoot.status !== 'running'
+            let lineage, output, returnReceipt = null;
+            // These original readers already prove the complete TaskLocal
+            // history. Keep their same-call facts instead of immediately
+            // walking that same closed child again in each wrapper below.
+            if (producer.status === 'waiting_effect') {
+                if (producer.effectRefs.length !== 1) fail();
+                const intent = (await readEffect(tx, identity.handle, parentRoot, producer.effectRefs[0])).doc;
+                ({ lineage, output, returnReceipt } = await readSessionDelegationContinuation(tx, identity.handle, parentRoot, producer, intent));
+            } else if (state.mode === 'handoff' && producer.status !== 'waiting_child') {
+                returnReceipt = await readHandoffReturn(tx, identity.handle, parentRoot, identity.childRunId);
+                if (!returnReceipt) fail();
+                ({ lineage, output } = returnReceipt);
+            } else {
+                output = await readTaskLocalOutput(tx, identity.handle, child);
+                lineage = output?.publication?.graphHistory?.lineage;
+            }
+            if (!output || !lineage || !equal(lineage.parent, parentRoot) || !equal(lineage.child, child) || !equal(lineage.parentAttempt, producer) || lineage.mode !== state.mode
+                || !equal(output.claim.resultRef, identity.resultRef) || parentRoot.cancelRequested || parentRoot.status !== 'running'
                 || parentRoot.epoch !== identity.parentEpoch || producer.effectiveGrantDigest !== identity.parentGrantDigest
                 || producer.inputDigest !== identity.parentInputDigest || !equal(producer.inputRefs, identity.parentInputRefs)) fail();
-            return { ...identity, parentRoot, parent: parentRoot, child, parentAttempt: producer, attempt: producer, output, handoff: lineage.handoff, mode: state.mode };
+            return { ...identity, parentRoot, parent: parentRoot, child, parentAttempt: producer, attempt: producer, output, lineage,
+                returnReceipt, handoff: lineage.handoff, mode: state.mode };
         });
     }
     async authorizeHandoffReturn({ capture, handle, tx }) {
@@ -289,11 +319,6 @@ export class SessionDelegationAuthority {
     async inspectParentResult(capture, { handle, tx } = {}) {
         const value = await this.inspectReturn(capture, { handle, tx });
         if (!['running', 'waiting_effect'].includes(value.parentAttempt.status)) fail();
-        if (value.parentAttempt.status === 'waiting_effect') {
-            if (value.parentAttempt.effectRefs.length !== 1) fail();
-            const intent = (await readEffect(tx, handle, value.parentRoot, value.parentAttempt.effectRefs[0])).doc;
-            await readSessionDelegationContinuation(tx, handle, value.parentRoot, value.parentAttempt, intent);
-        }
         return { current: value, decision: { allowed: true, grantDigest: value.parentGrantDigest, inputDigest: value.parentInputDigest,
             sourceBindingDigest: value.sourceBinding.bindingDigest, resultRef: value.resultRef } };
     }
@@ -454,7 +479,7 @@ export class SessionDelegationAuthority {
             childEpoch: root.epoch, sourceBinding: root.sourceBinding, grantDigest: root.parentRef.effectiveGrantDigest,
             parentGrantDigest: parent.decision.grantDigest, inputRefs: root.parentRef.inputRefs, taskPurpose: 'original_native_session_delegated_analysis', childPlanRef: root.planRef }) };
         this.#delegations.set(capture, state); this.#children.set(root.runId, state);
-        const progress = new Map(), port = this.port(host);
+        const progress = new Map(), replacements = new Map(), payloads = new Map(), port = this.port(host);
         try {
             for (;;) {
                 const active = await service.runs.get(handle, root.runId);
@@ -483,16 +508,23 @@ export class SessionDelegationAuthority {
                     model = child.profiles.find(item => equal(item.node, ready.node)) ?? await this.#resolveChildModel(parent, ready.node);
                 }
                 if (!model) fail('native_orchestration_graph_dependency_unavailable');
+                const replacement = replacements.get(model.node.nodeId); state.feedback = replacement?.feedback ?? null;
                 state.model = model; state.request = immutable({ sessionId: parent.proofExpected.sessionId, revisionId: parent.proofExpected.anchor.revisionId,
                     requestId: parent.request.requestId, role: 'narrator', routeRef: model.pin.resourceRef, messages: [],
-                    ...(model.node.kind === 'planner' ? { outputContract: sessionPlannerOutputContract } : {}) });
-                const bindings = [...topology.incoming[model.node.nodeId].flatMap(edge => {
+                    ...(['planner', 'review', 'judge'].includes(model.node.kind) ? { outputContract: { planner: sessionPlannerOutputContract, review: sessionGraphReviewOutputContract, judge: sessionJudgeOutputContract }[model.node.kind] } : {}) });
+                let bindings = [...topology.incoming[model.node.nodeId].flatMap(edge => {
                     const source = progress.get(edge.from.nodeId);
                     if (!source && !model.node.inputs.find(port => port.name === edge.to.port).required) return [];
                     if (!source) fail('native_orchestration_graph_dependency_unavailable');
                     return [{ edge, ...source }];
                 }), ...loopBindings]
-                    .toSorted((a, b) => a.edge.edgeId.localeCompare(b.edge.edgeId)); state.bindings = bindings;
+                    .toSorted((a, b) => a.edge.edgeId.localeCompare(b.edge.edgeId));
+                const judges = bindings.filter(binding => binding.controlRef?.kind === 'graph_judge_control');
+                bindings = bindings.filter(binding => {
+                    if (!binding.resultRef || !judges.some(judge => judge.candidateRefs.some(ref => equal(ref, binding.resultRef)) && !equal(judge.selectedResultRef, binding.resultRef))) return true;
+                    if (model.node.inputs.find(port => port.name === binding.edge.to.port).required) fail('native_orchestration_judge_required_input');
+                    return false;
+                }); state.bindings = bindings;
                 const results = [...new Map(bindings.filter(item => item.resultRef).map(item => [hash(item.resultRef), item.resultRef])).values()];
                 const controls = [...new Map(bindings.filter(item => item.controlRef).map(item => [hash(item.controlRef), item.controlRef])).values()];
                 const audience = model.audienceSource.audience;
@@ -501,6 +533,7 @@ export class SessionDelegationAuthority {
                     planRef: root.planRef, nodeId: model.node.nodeId, parentRunId: parent.runId, parentAttemptId: parent.attemptId,
                     parentEpoch: root.parentRef.parentEpoch, childRunId: root.runId, childEpoch: root.epoch, delegationInputDigest: root.parentRef.inputDigest,
                     routeRef: model.pin.resourceRef, configDigest: model.configDigest, audience, acceptedGraphResultRefs: results,
+                    ...(state.feedback ? { reviewFeedbackRef: state.feedback } : {}),
                     ...(controls.length ? { acceptedControlRefs: controls } : {}),
                     graphBindings: bindings.map(item => ({ edgeId: item.edge.edgeId, producerAttemptId: item.attemptId })),
                     delegationScope: { parentPinId: child.parentSource.pin.pinId, childPinId: model.audienceSource.pin.pinId,
@@ -509,7 +542,14 @@ export class SessionDelegationAuthority {
                 const inputRefs = [logical, ...root.parentRef.inputRefs, ...results, ...controls]; state.contextInputRefs = immutable(inputRefs);
                 const admission = { inputRefs, inputDigest: hash(inputRefs), effectiveGrantDigest: state.identity.grantDigest, budgetRef: root.budgetAuthorityRef };
                 let attemptId;
-                if (!bindings.length) ({ attemptId } = await service.runs.beginAttempt(handle, controlCommandId('native.session.child.attempt', { runId: root.runId, nodeId: model.node.nodeId }),
+                if (replacement) {
+                    const saved = await this.owner.engine.withTransaction(handle, async tx => (await readAttempt(tx, handle,
+                        await service.runs.get(handle, root.runId), replacement.attemptId)).doc);
+                    if (saved.nodeId !== model.node.nodeId || saved.status !== 'pending' || !equal(saved.inputRefs, inputRefs)
+                        || saved.inputDigest !== admission.inputDigest || saved.effectiveGrantDigest !== admission.effectiveGrantDigest
+                        || !equal(saved.budgetRef, admission.budgetRef)) fail('native_orchestration_review_rerun_denied');
+                    attemptId = saved.attemptId;
+                } else if (!bindings.length) ({ attemptId } = await service.runs.beginAttempt(handle, controlCommandId('native.session.child.attempt', { runId: root.runId, nodeId: model.node.nodeId }),
                     { ...runGuard(await service.runs.get(handle, root.runId)), nodeId: model.node.nodeId, ...admission }));
                 else {
                     const transitioned = await new TransitionController({ runs: service.runs, authorizeTransition: async ({ root: active, target, producers }) => {
@@ -558,6 +598,28 @@ export class SessionDelegationAuthority {
                         resolveNode: node => this.#resolveChildModel(parent, node) }));
                     continue;
                 }
+                if (model.node.kind === 'review') {
+                    const decided = await completeSessionDelegatedReview({ state, service, port, result, send, limits,
+                        current: () => this.inspectDelegation(capture, { host, handle }), engine: this.owner.engine });
+                    if (decided.review.decision === 'rerun') {
+                        for (const [id, entry] of progress) if (decided.review.invalidatedAttemptIds.includes(entry.attemptId)) progress.delete(id);
+                        progress.delete(model.node.nodeId);
+                        for (const row of decided.review.replacements) {
+                            const target = await this.owner.engine.withTransaction(handle, async tx => (await readAttempt(tx, handle,
+                                await service.runs.get(handle, root.runId), row.targetAttemptId)).doc);
+                            replacements.set(target.nodeId, { attemptId: row.attemptId, feedback: decided.feedback });
+                        }
+                    } else progress.set(model.node.nodeId, { attemptId, controlRef: decided.controlRef });
+                    continue;
+                }
+                if (model.node.kind === 'judge') {
+                    progress.set(model.node.nodeId, await completeSessionDelegatedJudge({ state, service, port, result, send, limits,
+                        current: () => this.inspectDelegation(capture, { host, handle }), engine: this.owner.engine }));
+                    continue;
+                }
+                const payloadHash = hash(result.generated.response.text);
+                if (replacement && payloads.get(model.node.nodeId) === payloadHash) fail('native_orchestration_review_no_progress');
+                replacements.delete(model.node.nodeId); payloads.set(model.node.nodeId, payloadHash);
                 if (model.node.nodeId === child.topology.terminalNodeId) {
                     const publication = await controller.publishModelResult(handle, { capture, result, effectId });
                     const output = await new TaskLocalOutputController({ host }).complete(handle, { capture, publication });

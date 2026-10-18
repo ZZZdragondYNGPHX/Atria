@@ -95,7 +95,7 @@ export async function readSessionReplanHistory(tx, handle, root, { graphResults,
         }
         entries.push({ fact, input, node, sources, trigger, snapshot });
     }
-    const current = new Map(), previous = new Map(), replaced = new Map(), touched = new Set(), consumed = new Set(), replannedAttemptIds = new Set();
+    const current = new Map(), previous = new Map(), replaced = new Map(), touched = new Set(), consumed = new Set(), replannedAttemptIds = new Set(), reviewInvalidated = new Set();
     for (const { fact, node, sources, trigger, snapshot } of entries.sort((a, b) => a.fact.receipt.decisionSeq - b.fact.receipt.decisionSeq)) {
         const prior = previous.get(node.nodeId);
         if (trigger) {
@@ -120,7 +120,9 @@ export async function readSessionReplanHistory(tx, handle, root, { graphResults,
             const loop = replacement?.attemptId === prior.producer.attemptId && fact.producer.attemptNumber === prior.producer.attemptNumber + 1
                 && (trigger?.producer.attemptId === replacement.trigger.producer.attemptId || sources.some(source => touched.has(source.producer.nodeId)
                     && source.receipt.decisionSeq > replacement.trigger.receipt.decisionSeq));
-            if (node.kind === 'planner' ? !loop : ['agent', 'judge'].includes(node.kind) ? !loop && !invalidation
+            const reviewedPlanner = node.kind === 'planner' && invalidation && reviewInvalidated.has(prior.producer.attemptId)
+                && fact.producer.attemptNumber === prior.producer.attemptNumber + 1;
+            if (node.kind === 'planner' ? !loop && !reviewedPlanner : ['agent', 'judge'].includes(node.kind) ? !loop && !invalidation
                 : node.kind === 'review' && !loop && prior.review.decision !== 'rerun' && !invalidation) invalid();
             replaced.delete(node.nodeId);
         }
@@ -129,7 +131,9 @@ export async function readSessionReplanHistory(tx, handle, root, { graphResults,
             const keys = seenProgress.get(node.nodeId) ?? new Set();
             if (keys.has(key)) invalid(); keys.add(key); seenProgress.set(node.nodeId, keys);
         }
-        if (fact.review?.decision === 'rerun') for (const [id, old] of current) if (fact.review.invalidatedAttemptIds.includes(old.producer.attemptId)) current.delete(id);
+        if (fact.review?.decision === 'rerun') for (const [id, old] of current) if (fact.review.invalidatedAttemptIds.includes(old.producer.attemptId)) {
+            reviewInvalidated.add(old.producer.attemptId); touched.add(id); current.delete(id);
+        }
         previous.set(node.nodeId, fact); current.set(node.nodeId, fact);
     }
     if (replaced.size || consumed.size !== root.progress.replans || root.progress.replans !== plannerCompletions.filter(fact => fact.patch.requests.replan).length

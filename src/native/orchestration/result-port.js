@@ -9,7 +9,6 @@ import { RunRepository } from './run-repository.js';
 import { SourcePort } from './source-port.js';
 import { immutable, checkCancellation } from '../model-prompt-runtime/execution-utils.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
-import { readSessionDelegation, readSessionDelegationContinuation } from './session-delegation-contracts.js';
 import { readProjectDelegation, readProjectDelegationContinuation } from './project-delegation-contracts.js';
 import { readEffect } from './effect-contracts.js';
 
@@ -49,21 +48,21 @@ export class ResultPort {
                 const publication = session || project ? current.output.publication
                     : await readResultPublication(tx, handle, current.child, identity.resultRef.resultId);
                 if ((session || project) && current.mode === 'delegate') {
-                    const lineage = await (session ? readSessionDelegation : readProjectDelegation)(tx, handle, root, identity.childRunId);
+                    const lineage = session ? current.lineage : await readProjectDelegation(tx, handle, root, identity.childRunId);
                     if (!lineage || lineage.mode !== 'delegate' || !['running', 'waiting_effect'].includes(lineage.parentAttempt.status)
                         || current.child.status !== 'completed' || !publication
                         || hash(current.output.claim.resultRef) !== hash(identity.resultRef)) return deny();
-                    if (lineage.parentAttempt.status === 'waiting_effect') {
+                    if (!session && lineage.parentAttempt.status === 'waiting_effect') {
                         if (lineage.parentAttempt.effectRefs.length !== 1) return deny();
                         const effect = (await readEffect(tx, handle, root, lineage.parentAttempt.effectRefs[0])).doc;
-                        await (session ? readSessionDelegationContinuation : readProjectDelegationContinuation)(tx, handle, root, lineage.parentAttempt, effect);
+                        await readProjectDelegationContinuation(tx, handle, root, lineage.parentAttempt, effect);
                     }
                     returned = { resultRef: publication.receipt.resultRef, resultIntegrity: hash(publication.record),
                         parentGrantDigest: lineage.parentAttempt.effectiveGrantDigest, parentInputDigest: lineage.parentAttempt.inputDigest,
                         audienceDigest: publication.receipt.audienceDigest };
                     returnReceiptRef = null;
                 } else {
-                    returned = project ? current.returnReceipt : await readHandoffReturn(tx, handle, root, identity.childRunId);
+                    returned = session || project ? current.returnReceipt : await readHandoffReturn(tx, handle, root, identity.childRunId);
                     returnReceiptRef = returned ? { runId: root.runId, receiptId: returned.receiptId } : null;
                 }
                 if (!returned || !publication || hash(returned.resultRef) !== hash(identity.resultRef) || returned.resultIntegrity !== hash(publication.record)

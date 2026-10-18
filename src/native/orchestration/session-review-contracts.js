@@ -8,7 +8,7 @@ import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { RP_REVIEW_REASON_CODES } from './rp-review-profile.js';
 import { assertNativeId } from '../identity.js';
-import { readGraphReviewCompletion } from './graph-review-completion.js';
+import { readGraphReviewCompletion, readReviewablePlannerCompletion } from './graph-review-completion.js';
 import { assertSessionControlWork, readSessionPlannerCompletion } from './session-planner-contracts.js';
 import { readSessionJudgeCompletion } from './session-judge-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
@@ -133,7 +133,9 @@ export async function readSessionReviewCompletion(tx, handle, root, attemptId, o
     }
     for (const id of fact.review.invalidatedAttemptIds) {
         const attempt = (await readAttempt(tx, handle, root, id)).doc, node = snapshot.graph.nodes.find(node => node.nodeId === attempt.nodeId);
-        if (['planner', 'fanout', 'join'].includes(node?.kind) || node?.capabilities.includes('agent.delegate')) invalid();
+        if (['fanout', 'join'].includes(node?.kind) || node?.capabilities.includes('agent.delegate')
+            || (node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
+                && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork: assertSessionControlWork })) invalid();
     }
     return fact;
 }

@@ -8,8 +8,9 @@ const fail = () => { throw Object.assign(new TypeError('native_orchestration_ses
 /** Original published child Model dependencies. This projection neither grants
  * graph.patch nor changes the original delegated capability intersection. */
 export function sessionDelegatedGraphProfile(plan) {
-    const graph = plan.definition, models = graph.nodes.filter(node => ['agent', 'planner'].includes(node.kind));
+    const graph = plan.definition, models = graph.nodes.filter(node => ['agent', 'planner', 'review', 'judge'].includes(node.kind));
     const planners = models.filter(node => node.kind === 'planner'), outputs = graph.nodes.filter(node => node.kind === 'output');
+    const reviews = models.filter(node => node.kind === 'review'), judges = models.filter(node => node.kind === 'judge');
     const canAddAgent = graph.graphChangePolicy.allowedOperations.includes('addNode') && graph.graphChangePolicy.allowedNodeKinds.includes('agent');
     if (!models.some(node => node.kind === 'agent') || outputs.length !== 1 || graph.nodes.length !== models.length + 1
         || graph.outputContract.kind !== 'result' || graph.outputContract.allowPartial || graph.outputContract.resultPolicy?.outputType !== 'text'
@@ -24,9 +25,9 @@ export function sessionDelegatedGraphProfile(plan) {
         const routes = nodeModelRoutePins(node, plan.dependencyPins);
         if (routes.length !== 1 || node.dependencyPinIds.length !== 2 || !audienceContextPin(node, plan.dependencyPins)
             || !equal(node.capabilities, ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []])
-            || node.outputs.length !== 1 || node.outputs[0].type !== (node.kind === 'planner' ? 'json' : 'text')
-            || node.inputs.some(port => !['text', ...planners.length ? ['json'] : []].includes(port.type)
-                || !port.required && !canAddAgent && !graph.edges.some(edge => edge.loopBack && edge.to.nodeId === node.nodeId && edge.to.port === port.name))) fail();
+            || node.outputs.length !== 1 || node.outputs[0].type !== (['planner', 'review', 'judge'].includes(node.kind) ? 'json' : 'text')
+            || node.inputs.some(port => !['text', ...planners.length || reviews.length || judges.length ? ['json'] : []].includes(port.type)
+                || !port.required && !canAddAgent && !judges.length && !graph.edges.some(edge => edge.loopBack && edge.to.nodeId === node.nodeId && edge.to.port === port.name))) fail();
         incoming[node.nodeId] = graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === node.nodeId).toSorted((a, b) => a.edgeId.localeCompare(b.edgeId));
         if (new Set(incoming[node.nodeId].map(edge => edge.from.nodeId)).size !== incoming[node.nodeId].length
             || node.inputs.some(port => {
@@ -38,7 +39,7 @@ export function sessionDelegatedGraphProfile(plan) {
         const from = models.find(node => node.nodeId === edge.from.nodeId), to = graph.nodes.find(node => node.nodeId === edge.to.nodeId);
         if (!from || !to || !['always', 'success'].includes(edge.condition)
             || edge.loopBack && (from.kind !== 'planner' || !['agent', 'planner'].includes(to.kind) || edge.condition !== 'always' || to.inputs.find(port => port.name === edge.to.port)?.required)
-            || !planners.length && edge.maxVisits !== 1 || edge.from.port !== from.outputs[0].name
+            || !planners.length && !reviews.length && edge.maxVisits !== 1 || edge.from.port !== from.outputs[0].name
             || !to.inputs.some(port => port.name === edge.to.port && port.type === from.outputs[0].type)) fail();
     }
     if (!equal([...graph.entryNodeIds].sort(), models.filter(node => !incoming[node.nodeId].length).map(node => node.nodeId).sort())) fail();
@@ -51,5 +52,5 @@ export function sessionDelegatedGraphProfile(plan) {
         || models.some(node => !graph.edges.some(edge => edge.from.nodeId === node.nodeId))
         || plan.dependencyPins.some(pin => !models.some(node => node.dependencyPinIds.includes(pin.pinId))
             && !(canAddAgent && pin.port === 'model' && pin.resourceRef.scope === 'player' && typeof pin.resourceRef.runtimeRouteId === 'string'))) fail();
-    return { ordered, models, planners, incoming, output, final: ordered.at(-1), terminalNodeId: ordered.at(-1).nodeId };
+    return { ordered, models, planners, reviews, judges, incoming, output, final: ordered.at(-1), terminalNodeId: ordered.at(-1).nodeId };
 }

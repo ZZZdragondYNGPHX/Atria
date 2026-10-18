@@ -18,6 +18,7 @@ import { readProjectFanoutCompletion } from './project-fanout-contracts.js';
 import { graphFanoutModelScope, readGraphFanoutInput, readGraphFanoutPublicationGraph } from './graph-fanout-completion.js';
 import { audienceContextPin, assertAudienceRunCapture } from './audience-source-contracts.js';
 import { readSessionDelegatedModelInput, readSessionDelegationContinuation } from './session-delegation-contracts.js';
+import { isRpDelegatedControlGraph, readRpDelegatedControlInput } from './rp-delegation-control-contracts.js';
 import { readProjectDelegatedModelInput, readProjectDelegationContinuation } from './project-delegation-contracts.js';
 
 const kinds = ['agent', 'planner', 'judge', 'review'];
@@ -40,7 +41,7 @@ export function graphResultContract(root, producer, graphSnapshot = null) {
     const graph = graphSnapshot?.graph ?? root.graph, revision = graphSnapshot?.graphRevision ?? 0;
     const node = graph.nodes.find(item => item.nodeId === producer.nodeId), policy = assertResultPolicy(graph.outputContract);
     if (!['rp_chat', 'native_session', 'project'].includes(root.sourceBinding.sourceAuthority)
-        || root.parentRef !== null && !(['native_session', 'project'].includes(root.sourceBinding.sourceAuthority) && graph.outputContract.kind === 'result' && node?.kind === 'agent')
+        || root.parentRef !== null && !((['native_session', 'project'].includes(root.sourceBinding.sourceAuthority) || isRpDelegatedControlGraph(root)) && graph.outputContract.kind === 'result' && node?.kind === 'agent')
         || producer.graphRevision !== revision || revision > root.graphRevision
         || root.sourceBinding.sourceAuthority !== root.sourceBinding.sourceRequest?.domain
         || !graphSnapshot && (root.graphRevision !== 0 || root.graph.graphChangePolicy.allowedOperations.length) || !kinds.includes(node?.kind)
@@ -171,13 +172,15 @@ async function readGraphResultFacts(tx, handle, root, resultId, recipient, snaps
         || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId, ...retrievalCompletions.map(item => item.receiptId)]) || settlement.decisionSeq !== receipt.decisionSeq
         || settlement.createdAt !== receipt.createdAt || record.envelope.createdAt !== receipt.createdAt
         || settlement.reasonCode !== 'graph_result_published' || receipt.decisionSeq > root.eventSeq) invalid();
-    let delegationLineage = null;
+    let delegationLineage = null, sessionDelegatedInput = null;
     if (root.sourceBinding.sourceAuthority === 'native_session' && root.parentRef) {
-        await readSessionDelegatedModelInput(tx, handle, root, producer, intent, receipt.decisionSeq);
+        sessionDelegatedInput = await readSessionDelegatedModelInput(tx, handle, root, producer, intent, receipt.decisionSeq);
     } else if (producer.inputRefs[0]?.kind === 'native_session_delegation') {
         await readSessionDelegationContinuation(tx, handle, root, producer, intent);
     } else if (root.sourceBinding.sourceAuthority === 'project' && root.parentRef) {
         delegationLineage = (await readProjectDelegatedModelInput(tx, handle, root, producer, intent, receipt.decisionSeq)).lineage;
+    } else if (isRpDelegatedControlGraph(root)) {
+        await readRpDelegatedControlInput(tx, handle, root, producer, intent, receipt.decisionSeq);
     } else if (producer.inputRefs[0]?.kind === 'native_project_delegation') {
         await readProjectDelegationContinuation(tx, handle, root, producer, intent);
     }
@@ -249,5 +252,5 @@ async function readGraphResultFacts(tx, handle, root, resultId, recipient, snaps
     // or bank grants. A containing Join proof can reuse them before checking
     // the actual original bank, without reading the same Model receipt twice.
     return { record, receipt, producer, settlement, retrievalCompletions, modelEffect: intent, modelCompletion: model,
-        ...(delegationLineage ? { delegationLineage } : {}) };
+        ...(delegationLineage ? { delegationLineage } : {}), ...(sessionDelegatedInput ? { sessionDelegatedInput } : {}) };
 }

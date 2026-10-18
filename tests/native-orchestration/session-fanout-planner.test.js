@@ -1,4 +1,5 @@
 import { expect, test } from '@jest/globals';
+import { createNativeId } from '../../src/native/identity.js';
 import { sessionFanoutPlannerFixture, sessionScopeTask } from './helpers/session-fanout-planner-fixture.js';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 import { readSessionOutput } from '../../src/native/orchestration/session-output-contracts.js';
@@ -74,8 +75,10 @@ test.each(CONTRACT_HARNESSES)('$name Game frozen scope Planner schedules reserve
                 text: siblingResult.record.payload, now: receipt.createdAt };
             expect(graphNodeResult(args)).toEqual(siblingResult.record);
             expect(() => graphNodeResult({ ...args, graphSnapshot: structuredClone(graphSnapshot) })).toThrow('Invalid Graph Result facts');
-            graphSnapshot.graph.nodes.push({ ...graphSnapshot.graph.nodes.find(node => node.nodeId === sibling.nodeId), nodeId: 'caller_added_recipient' });
-            graphSnapshot.graph.edges.push({ from: { nodeId: sibling.nodeId }, to: { nodeId: 'caller_added_recipient' } });
+            const addedNodeId = createNativeId('orchestrationNode');
+            graphSnapshot.graph.nodes.push({ ...graphSnapshot.graph.nodes.find(node => node.nodeId === sibling.nodeId), nodeId: addedNodeId });
+            graphSnapshot.graph.edges.push({ edgeId: createNativeId('orchestrationEdge'),
+                from: { nodeId: sibling.nodeId, port: sibling.outputs[0].name }, to: { nodeId: addedNodeId, port: 'caller_input' }, condition: 'always', maxVisits: 1, loopBack: false });
             expect(() => graphNodeResult(args)).toThrow('Invalid Graph Result facts');
         });
         const bank = (await f.core.runs.status(f.h.handle, f.base.session.sessionId)).operations[root.budgetAuthorityRef.operationId].compute;

@@ -1,3 +1,6 @@
+import { readSessionDelegatedControl, readSessionDelegatedReviewCompletion, readSessionDelegatedJudgeCompletion, readSessionDelegatedReviewReplacement } from './session-delegated-quality-contracts.js';
+import { readAttemptInvalidation } from './controller-common.js';
+import { assertSessionJudgeSelections } from './session-judge-contracts.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
@@ -118,11 +121,15 @@ export async function readSessionDelegatedModelInput(tx, handle, child, producer
         if (!fact || ref.runId !== child.runId || !equal(ref, fact.receipt.resultRef)) invalid(); sources.push(fact);
     }
     for (const ref of controls) {
-        const fact = await readSessionPlannerCompletion(tx, handle, child, ref.attemptId);
-        if (!fact || ref.runId !== child.runId || !equal(ref, fact.controlRef)) invalid(); sources.push(fact);
+        const fact = await readSessionDelegatedControl(tx, handle, child, ref);
+        if (!fact || ref.runId !== child.runId || !equal(ref, fact.controlRef) || fact.review?.decision === 'rerun') invalid(); sources.push(fact);
     }
     if (sources.some(fact => fact.receipt.decisionSeq >= publicationSeq)) invalid();
-    const incoming = snapshot.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === producer.nodeId);
+    const judges = sources.filter(fact => fact.selectedResultRef);
+    assertSessionJudgeSelections(child, node, input.acceptedGraphResultRefs, judges);
+    const incoming = snapshot.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === producer.nodeId).filter(edge =>
+        !judges.some(judge => judge.candidates.some(candidate => candidate.producer.nodeId === edge.from.nodeId
+            && !equal(candidate.receipt.resultRef, judge.selectedResultRef))));
     const loops = input.graphBindings.filter(binding => snapshot.graph.edges.find(edge => edge.edgeId === binding.edgeId)?.loopBack);
     for (const binding of loops) {
         const edge = snapshot.graph.edges.find(edge => edge.edgeId === binding.edgeId), source = sources.find(fact => fact.producer.attemptId === binding.producerAttemptId);
@@ -138,21 +145,24 @@ export async function readSessionDelegatedModelInput(tx, handle, child, producer
     const bindings = edges.map((edge, index) => ({ edgeId: edge.edgeId, producerAttemptId: ordered[index].producer.attemptId }));
     if (!equal(input.acceptedGraphResultRefs, refs) || !equal(controls, controlRefs) || !equal(input.graphBindings, bindings)
         || !equal(producer.inputRefs, [input, ...child.parentRef.inputRefs, ...refs, ...controls]) || producer.inputDigest !== hash(producer.inputRefs)) invalid();
-    if (!edges.length) {
+    let replacement = null;
+    if (input.reviewFeedbackRef) replacement = await readSessionDelegatedReviewReplacement(tx, handle, child, producer, input);
+    else if (!edges.length) {
         if (!snapshot.graph.entryNodeIds.includes(producer.nodeId)) invalid();
     } else {
         const identity = hash({ runId: child.runId, bindings, reservedAttemptId: null }), direct = [...new Map(ordered.map(fact => [fact.producer.attemptId, fact])).values()];
         await assertOutputTransition(tx, handle, child, { published: direct[0], additionalProducers: direct.slice(1), output: producer,
             receipt: { decisionSeq: publicationSeq, traversalReceiptRef: { runId: child.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } }, producerBindings: bindings, allowLoopBack: !!loops.length });
     }
-    return { lineage, input, sourceRefs, sources: ordered, bindings, loops };
+    return { lineage, input, sourceRefs, sources: ordered, bindings, loops, replacement,
+        requestedRootDigest: hash(child), producerDigest: hash(producer), effectDigest: hash(intent) };
 }
 
 /** Validate all actual tasks and their original Transition and bank facts.
  * pendingProducer is used only before the final Model Result is published;
  * the ModelPort must already have proved its exact physical completion. */
 export async function readSessionDelegatedGraphHistory(tx, handle, child, { finalPublication = null, pendingProducer = null, closure = null, output = null } = {}) {
-    const shape = await readSessionDelegatedPlan(tx, handle, child), { graph, models, plan } = shape;
+    const shape = await readSessionDelegatedPlan(tx, handle, child), { graph, models, plan } = shape, rootDigest = hash(child);
     if (Boolean(finalPublication) === Boolean(pendingProducer)) invalid();
     const finalProducer = pendingProducer ?? finalPublication.producer ?? (await readAttempt(tx, handle, child, finalPublication.receipt.producerAttemptId)).doc;
     if (finalProducer.nodeId !== shape.terminalNodeId) invalid();
@@ -166,6 +176,10 @@ export async function readSessionDelegatedGraphHistory(tx, handle, child, { fina
         const fact = await readGraphNodeResult(tx, handle, child, ref.resultId);
         if (!fact) invalid(); results.push(fact);
     }
+    // Only facts just read above may provide their original complete input and
+    // Model proof. A caller's finalPublication/pendingProducer never enters this
+    // same-call map and cannot supply or replace a proof through this API.
+    const checkedResults = new Map(results.map(fact => [fact.producer.attemptId, fact]));
     const facts = [...results, ...(finalPublication ? [{ ...finalPublication, producer: finalProducer,
         settlement: finalPublication.attemptReceipt }] : [])];
     const attempts = [];
@@ -179,26 +193,31 @@ export async function readSessionDelegatedGraphHistory(tx, handle, child, { fina
     const control = await readRunControl(tx, handle, child.budgetAuthorityRef.sessionId);
     const bank = control?.operations[child.budgetAuthorityRef.operationId]?.compute;
     if (!bank) invalid();
-    const effects = [], expectedRefs = [], usedEdges = new Map(), planners = [], entries = [];
+    const effects = [], expectedRefs = [], usedEdges = new Map(), planners = [], reviews = [], judges = [], entries = [];
     let settled = true, loopIterations = 0;
     for (const producer of modelAttempts) {
         const node = graph.nodes.find(node => node.nodeId === producer.nodeId);
         const fact = node.kind === 'planner' ? await readSessionPlannerCompletion(tx, handle, child, producer.attemptId)
-            : facts.find(fact => fact.producer.attemptId === producer.attemptId);
+            : node.kind === 'review' ? await readSessionDelegatedReviewCompletion(tx, handle, child, producer.attemptId)
+                : node.kind === 'judge' ? await readSessionDelegatedJudgeCompletion(tx, handle, child, producer.attemptId) : facts.find(fact => fact.producer.attemptId === producer.attemptId);
         if (!fact && producer.attemptId !== pendingProducer?.attemptId || producer.effectRefs.length !== 1
             || producer.status !== (producer.attemptId === pendingProducer?.attemptId ? 'running' : 'completed')
             || producer.graphRevision > child.graphRevision || producer.epoch > child.epoch || producer.sourceBindingDigest !== child.sourceBinding.bindingDigest
             || producer.effectiveGrantDigest !== child.parentRef.effectiveGrantDigest || !equal(producer.budgetRef, child.budgetAuthorityRef)) invalid();
-        const effect = (await readEffect(tx, handle, child, producer.effectRefs[0])).doc;
+        const checked = checkedResults.get(producer.attemptId), checkedInput = checked?.sessionDelegatedInput;
+        const effect = checked ? checked.modelEffect : (await readEffect(tx, handle, child, producer.effectRefs[0])).doc;
         const sourceRefs = sessionDelegationResultSources(child, producer, plan);
         if (fact?.record && !equal(fact.record.envelope.sourceRefs.slice(2), sourceRefs)) invalid();
-        if (!await readModelCompletionReceipt(handle, tx, child, effect)) invalid();
-        const proof = await readSessionDelegatedModelInput(tx, handle, child, producer, effect, fact?.receipt.decisionSeq ?? child.eventSeq + 1);
-        for (const binding of proof.bindings) {
+        if (checked && (!checkedInput || checkedInput.requestedRootDigest !== rootDigest || checkedInput.producerDigest !== hash(producer)
+            || checkedInput.effectDigest !== hash(effect) || effect.effectId !== producer.effectRefs[0] || !checked.modelCompletion)) invalid();
+        if (!checked && !await readModelCompletionReceipt(handle, tx, child, effect)) invalid();
+        const proof = checkedInput ?? await readSessionDelegatedModelInput(tx, handle, child, producer, effect, fact?.receipt.decisionSeq ?? child.eventSeq + 1);
+        for (const binding of proof.replacement ? [] : proof.bindings) {
             usedEdges.set(binding.edgeId, (usedEdges.get(binding.edgeId) ?? 0) + 1);
             if (graph.edges.find(edge => edge.edgeId === binding.edgeId).loopBack) loopIterations++;
         }
         entries.push({ producer, fact, proof }); if (node.kind === 'planner') planners.push(fact);
+        if (node.kind === 'review') reviews.push(fact); if (node.kind === 'judge') judges.push(fact);
         const rows = bank.attempts.filter(row => row.orchestration?.effectId === effect.effectId);
         const local = (bank.localWork ?? []).filter(row => row.orchestration?.effectId === effect.effectId);
         if (rows.length !== 1 || rows[0].reservationId !== child.runId || rows[0].orchestration.kind !== 'provider_send'
@@ -228,19 +247,24 @@ export async function readSessionDelegatedGraphHistory(tx, handle, child, { fina
         const prior = previous.get(producer.nodeId);
         if (prior) {
             const replacement = replaced.get(producer.nodeId);
-            if (replacement?.attemptId !== prior.producer.attemptId || producer.attemptNumber !== prior.producer.attemptNumber + 1
-                || !(trigger?.producer.attemptId === replacement.trigger.producer.attemptId
-                    || proof.sources.some(source => source.receipt.decisionSeq > replacement.trigger.receipt.decisionSeq))) invalid();
+            const loop = replacement?.attemptId === prior.producer.attemptId
+                && (trigger?.producer.attemptId === replacement.trigger.producer.attemptId
+                    || proof.sources.some(source => source.receipt.decisionSeq > replacement.trigger.receipt.decisionSeq));
+            const invalidation = await readAttemptInvalidation(tx, handle, child, prior.producer);
+            const quality = proof.replacement?.target.attemptId === prior.producer.attemptId || invalidation
+                || prior.fact?.review?.decision === 'rerun' && graph.nodes.find(node => node.nodeId === producer.nodeId)?.kind === 'review';
+            if (producer.attemptNumber !== prior.producer.attemptNumber + 1 || !loop && !quality) invalid();
             replaced.delete(producer.nodeId);
         }
         if (fact?.patch) {
             const key = sessionPlannerProgressFingerprint(fact.patch.appliedOperations, child.sourceBinding, proof.sources.filter(source => source.record));
             const prior = keys.get(producer.nodeId) ?? new Set(); if (prior.has(key)) invalid(); prior.add(key); keys.set(producer.nodeId, prior);
         }
+        if (fact?.review?.decision === 'rerun') for (const [id, item] of latest) if (fact.review.invalidatedAttemptIds.includes(item.producer.attemptId)) latest.delete(id);
         latest.set(producer.nodeId, { producer, fact }); previous.set(producer.nodeId, { producer, fact });
     }
     if (replaced.size) invalid();
-    if (planners.length !== child.graphRevision || child.progress.replans !== planners.filter(fact => fact.patch.requests.replan).length
+    if (reviews.length !== child.progress.reviews || planners.length !== child.graphRevision || child.progress.replans !== planners.filter(fact => fact.patch.requests.replan).length
         || consumed.size !== child.progress.replans || [...latest.values()].some(item => item.fact?.patch?.requests.replan)) invalid();
     if (new Set(effects.map(effect => effect.effectId)).size !== effects.length
         || bank.attempts.some(row => row.reservationId === child.runId && !expectedRefs.includes(row.attemptId))
@@ -251,8 +275,8 @@ export async function readSessionDelegatedGraphHistory(tx, handle, child, { fina
     }
     const expectedVisits = Object.fromEntries(usedEdges);
     if (child.progress.loopIterations !== loopIterations || child.progress.edgeVisits !== [...usedEdges.values()].reduce((sum, count) => sum + count, 0) || !equal(child.progress.edgeVisitCounts, expectedVisits)) invalid();
-    const history = { ...shape, lineage, results, finalProducer, effects, rootDigest: hash(child),
-        budgetAttemptIds: expectedRefs, settled, planners, loopIterations };
+    const history = { ...shape, lineage, results, finalProducer, effects, rootDigest,
+        budgetAttemptIds: expectedRefs, settled, planners, reviews, judges, loopIterations };
     if (closure) assertSessionDelegatedClosure(child, history, closure);
     return history;
 }

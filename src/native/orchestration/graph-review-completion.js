@@ -10,6 +10,7 @@ import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
+import { readGraphPlannerCompletion } from './graph-planner-completion.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { audienceContextPin, assertAudienceRunCapture } from './audience-source-contracts.js';
 
@@ -56,14 +57,16 @@ export async function readGraphReviewCompletion(tx, handle, root, attemptId, { v
         || model.observation.dispatchEvidence.reference.resultPayloadHash !== receipt.modelPayloadHash
         || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId, ...retrieval.map(item => item.receiptId)]) || settlement.reasonCode !== 'graph_review_decided'
         || settlement.decisionSeq !== receipt.decisionSeq || settlement.createdAt !== receipt.createdAt || receipt.decisionSeq > root.eventSeq) invalid();
-    const input = intent.inputRef;
+    const input = intent.inputRef, delegatedProject = root.sourceBinding.sourceAuthority === 'project' && root.parentRef !== null, delegatedSession = root.sourceBinding.sourceAuthority === 'native_session' && root.parentRef !== null;
     if (root.sourceBinding.sourceAuthority === 'native_session') {
-        assertObject(input.sourceRef, ['sessionId', 'branchId', 'revisionId', 'packageId', 'packageVersionId'], 'Session Review Source');
-        assertNativeId(input.sourceRef.packageId, 'package'); assertNativeId(input.sourceRef.packageVersionId, 'packageVersion');
+        assertObject(input.sourceRef, delegatedSession ? ['sessionId', 'branchId', 'revisionId']
+            : ['sessionId', 'branchId', 'revisionId', 'packageId', 'packageVersionId'], 'Session Review Source');
+        if (!delegatedSession) { assertNativeId(input.sourceRef.packageId, 'package'); assertNativeId(input.sourceRef.packageVersionId, 'packageVersion'); }
     }
     const sourceRef = root.sourceBinding.sourceAuthority === 'native_session'
         ? Object.fromEntries(['sessionId', 'branchId', 'revisionId'].map(field => [field, input.sourceRef[field]])) : input.sourceRef;
-    const kinds = { project: 'native_project_intent', rp_chat: 'native_rp_intent', native_session: 'native_turn_intent' };
+    const delegatedRp = root.sourceBinding.sourceAuthority === 'rp_chat' && root.parentRef !== null;
+    const kinds = { project: delegatedProject ? 'native_project_delegated_intent' : 'native_project_intent', rp_chat: delegatedRp ? 'native_rp_delegated_intent' : 'native_rp_intent', native_session: delegatedSession ? 'native_session_delegated_intent' : 'native_turn_intent' };
     if (!Object.hasOwn(kinds, root.sourceBinding.sourceAuthority) || input.kind !== kinds[root.sourceBinding.sourceAuthority]
         || input.nodeId !== producer.nodeId || !equal(input.planRef, root.planRef)
         || input.role !== (project ? 'studio' : 'narrator')
@@ -71,11 +74,18 @@ export async function readGraphReviewCompletion(tx, handle, root, attemptId, { v
         || !equal(producer.inputRefs[0], input) || producer.inputDigest !== hash(producer.inputRefs)
         || new Set(review.evidenceRefs.map(hash)).size !== review.evidenceRefs.length
         || new Set(review.targetAttemptIds).size !== review.targetAttemptIds.length) invalid();
+    if (delegatedRp && (input.parentRunId !== root.parentRef.parentRunId || input.parentAttemptId !== root.parentRef.nodeAttemptId
+        || input.childRunId !== root.runId || producer.effectiveGrantDigest !== root.parentRef.effectiveGrantDigest
+        || !equal(input.audience, { kind: 'task', id: root.runId }))) invalid();
+    if ((delegatedSession || delegatedProject) && (input.parentRunId !== root.parentRef.parentRunId || input.parentAttemptId !== root.parentRef.nodeAttemptId
+        || input.parentEpoch !== root.parentRef.parentEpoch || input.childRunId !== root.runId || input.childEpoch !== producer.epoch
+        || input.delegationInputDigest !== root.parentRef.inputDigest || producer.effectiveGrantDigest !== root.parentRef.effectiveGrantDigest)) invalid();
     if (node.policy?.audiencePinId || Object.hasOwn(input, 'audienceCapture')) {
         const plan = await readPlanRevision(tx, handle, root.planRef);
         assertAudienceRunCapture(root, node, plan.dependencyPins, input);
         if (!equal(input.audience, audienceContextPin(node, plan.dependencyPins)?.resourceRef.audience ?? { kind: 'narrator' })) invalid();
-    } else if (!equal(input.audience, project ? { kind: 'project_task', id: root.sourceBinding.sourceRef.taskId } : { kind: 'narrator' })) invalid();
+    } else if (!equal(input.audience, (delegatedProject || delegatedRp) ? { kind: 'task', id: root.runId }
+        : project ? { kind: 'project_task', id: root.sourceBinding.sourceRef.taskId } : { kind: 'narrator' })) invalid();
     const evidence = [];
     for (const ref of review.evidenceRefs) {
         if (ref.runId !== root.runId || !producer.inputRefs.some(input => equal(input, ref))) invalid();
@@ -93,7 +103,7 @@ export async function readGraphReviewCompletion(tx, handle, root, attemptId, { v
     if (!command || command.schemaVersion !== 1 || command.commandId !== commandId || command.operation !== 'runs.control.review.decide' || command.target !== root.runId
         || command.payloadHash !== hash({ operation: command.operation, body: { runId: root.runId, operation: 'review.decide', detail } })
         || !equal(command.outcome?.reviewReceipt, review)) invalid();
-    if (review.decision === 'rerun') await readReplacements(tx, handle, root, review, targetEvidence);
+    if (review.decision === 'rerun') await readReplacements(tx, handle, root, review, targetEvidence, verifyControlWork);
     await verifyControlWork(tx, handle, root, receipt.modelEffectId, receipt.localWork);
     const controlRef = graphReviewControlRef(root.runId, attemptId);
     if (recipient) {
@@ -107,7 +117,7 @@ export async function readGraphReviewCompletion(tx, handle, root, attemptId, { v
     return { producer, settlement, receipt, review, evidence, targets: targetEvidence.map(fact => fact.producer), controlRef, retrievalCompletions: retrieval };
 }
 
-async function readReplacements(tx, handle, root, review, evidence) {
+async function readReplacements(tx, handle, root, review, evidence, verifyControlWork) {
     const snapshot = await readTaskGraphRevision(tx, handle, root, review.graphRevision);
     if (review.replacements.length !== review.targetAttemptIds.length || new Set(review.invalidatedAttemptIds).size !== review.invalidatedAttemptIds.length
         || new Set(review.replacements.map(item => item.targetAttemptId)).size !== review.replacements.length
@@ -118,9 +128,10 @@ async function readReplacements(tx, handle, root, review, evidence) {
         const node = snapshot.graph.nodes.find(node => node.nodeId === attempt.nodeId);
         const invalidation = await readAttemptInvalidation(tx, handle, root, attempt);
         if (id === review.reviewAttemptId || !SETTLED_ATTEMPT_STATUSES.includes(attempt.status)
-            || node?.kind === 'planner' || node?.capabilities.includes('graph.patch')
             || !invalidation || invalidation.reviewReceiptId !== review.receiptId
             || !evidence.some(fact => graphReachable(snapshot.graph, fact.producer.nodeId, attempt.nodeId))) invalid();
+        if ((node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
+            && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork })) invalid();
         for (const ref of attempt.resultRefs) staleRefs.add(hash(ref));
         const effects = [];
         for (const id of attempt.effectRefs) effects.push((await readEffect(tx, handle, root, id)).doc);
@@ -140,4 +151,25 @@ async function readReplacements(tx, handle, root, review, evidence) {
             || next.sourceBindingDigest !== root.sourceBinding.bindingDigest || !equal(next.budgetRef, root.budgetAuthorityRef)
             || next.inputDigest !== hash(next.inputRefs) || [...next.inputRefs, ...(next.inputRefs[0]?.acceptedGraphResultRefs ?? [])].some(ref => staleRefs.has(hash(ref)))) invalid();
     }
+}
+
+
+/** Read-only proof for the RP/Session main consumers' pure Planner redo. Accepted
+ * old patches remain durable: only non-topological advisory priority/finalize
+ * requests are safe here. This neither undoes a patch nor grants another one. */
+export async function readReviewablePlannerCompletion(tx, handle, root, attemptId, { verifyControlWork }) {
+    if (!['rp_chat', 'native_session'].includes(root.sourceBinding.sourceAuthority) || root.parentRef !== null) return null;
+    const fact = await readGraphPlannerCompletion(tx, handle, root, attemptId, { verifyControlWork });
+    if (!fact) return null;
+    const snapshot = await readTaskGraphRevision(tx, handle, root, fact.producer.graphRevision);
+    const node = snapshot.graph.nodes.find(node => node.nodeId === fact.producer.nodeId);
+    if (node?.kind !== 'planner' || !equal([...node.capabilities].sort(), ['generation.send', 'graph.patch'].sort())
+        || fact.patch.requests.replan || !fact.patch.appliedOperations.length
+        || fact.patch.appliedOperations.some(operation => !['setPendingPriority', 'requestFinalize'].includes(operation.op))) return null;
+    for (const operation of fact.patch.appliedOperations.filter(operation => operation.op === 'setPendingPriority')) {
+        const target = snapshot.graph.nodes.find(node => node.nodeId === operation.nodeId);
+        if (!target || !['agent', 'planner', 'review', 'judge'].includes(target.kind)
+            || target.capabilities.some(capability => !['generation.send', 'graph.patch'].includes(capability))) return null;
+    }
+    return fact;
 }

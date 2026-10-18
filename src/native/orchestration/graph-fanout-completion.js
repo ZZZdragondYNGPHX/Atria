@@ -202,7 +202,8 @@ export async function readGraphFanoutInput(tx, handle, root, fanoutAttemptId, re
         || !graphFanoutModelScope(graph, fanout.nodeId).includes(recipient.nodeId)
         || input?.nodeId !== fanout.nodeId || !same(input.sourceRef, root.sourceBinding.sourceRef) || !same(input.planRef, root.planRef)
         || fanout.inputDigest !== hash(fanout.inputRefs)
-        || fanout.effectiveGrantDigest !== hash({ handle, source: root.sourceBinding, inputRefs: fanout.inputRefs })
+        || fanout.effectiveGrantDigest !== (root.sourceBinding.sourceAuthority === 'project' && root.parentRef && input.kind === 'native_project_delegated_control'
+            ? root.parentRef.effectiveGrantDigest : hash({ handle, source: root.sourceBinding, inputRefs: fanout.inputRefs }))
         || !fanout.inputRefs.some(actual => same(actual, ref)) || received?.fanoutAttemptId !== fanoutAttemptId
         || !recipient.inputRefs.some(actual => same(actual, ref))) invalid();
     const rows = (await tx.listResources({ kind: K.orchestrationRecord, handle, runId: root.runId, recordType: 'receipt' }))

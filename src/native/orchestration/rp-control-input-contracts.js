@@ -4,7 +4,7 @@ import { readRpControlFanoutCompletion } from './rp-control-fanout-contracts.js'
 import { readGraphFanoutInput } from './graph-fanout-completion.js';
 import { readFanoutFrame } from './fanout-controller.js';
 import { readGraphNodeResult, readGraphNodeResults } from './graph-result-contracts.js';
-import { readGraphPlannerCompletion } from './graph-planner-completion.js';
+import { readGraphPlannerCompletion, graphPlannerProgressFingerprint } from './graph-planner-completion.js';
 import { readGraphReviewCompletion } from './graph-review-completion.js';
 import { RP_REVIEW_REASON_CODES } from './rp-review-profile.js';
 import { readGraphJudgeCompletion } from './graph-judge-completion.js';
@@ -151,10 +151,10 @@ async function assertControlInputFacts(tx, handle, root, fact, plan, ownedFacts)
 }
 
 /** Reconstruct original model iterations from exact Transition/Model receipts.
- * Loops create fresh work; this never invents a Review invalidation or erases
+ * Loops or actual Review invalidation create fresh work; this never invents one or erases
  * an accepted GraphPatch, old Result, original charge or bank reservation. */
-async function assertRpLoopHistory(tx, handle, root, entries, narrator, fanouts) {
-    const previous = new Map(), current = new Map(), replacements = new Map(), touched = new Set(), consumed = new Set();
+async function assertRpIterationHistory(tx, handle, root, entries, narrator, fanouts) {
+    const previous = new Map(), current = new Map(), replacements = new Map(), touched = new Set(), consumed = new Set(), progressKeys = new Map();
     for (const entry of [...entries].sort((a, b) => a.fact.receipt.decisionSeq - b.fact.receipt.decisionSeq)) {
         const { fact, node, inputProof } = entry, prior = previous.get(node.nodeId);
         if (inputProof.replanFrom) {
@@ -186,12 +186,24 @@ async function assertRpLoopHistory(tx, handle, root, entries, narrator, fanouts)
                 && (inputProof.replanFrom === replacement.trigger.producer.attemptId
                     || inputProof.sources.some(source => touched.has(source.producer.nodeId)
                         && source.receipt.decisionSeq > replacement.trigger.receipt.decisionSeq));
-            if (node.kind === 'planner' ? !loop : ['agent', 'judge'].includes(node.kind) ? !loop && !invalidation
-                : node.kind === 'review' && !loop && prior.review.decision !== 'rerun' && !invalidation) invalid();
+            // The original Review invalidates settled causal work. Direct
+            // targets are pre-created; descendants still need fresh current
+            // typed predecessors and their actual original Transitions.
+            const review = invalidation && [...previous.values()].find(fact => fact.review?.receiptId === invalidation.reviewReceiptId);
+            const directReplacement = review?.review.replacements.some(item => item.targetAttemptId === prior.producer.attemptId && item.attemptId === fact.producer.attemptId);
+            const redo = review && review.review.decision === 'rerun' && review.review.invalidatedAttemptIds.includes(prior.producer.attemptId)
+                && fact.producer.attemptNumber === prior.producer.attemptNumber + 1 && fact.receipt.decisionSeq > review.receipt.decisionSeq
+                && (directReplacement || inputProof.sources.some(source => source.receipt.decisionSeq > review.receipt.decisionSeq));
+            if (node.kind === 'planner' ? !loop && !redo : ['agent', 'judge'].includes(node.kind) ? !loop && !redo
+                : node.kind === 'review' && !loop && prior.review.decision !== 'rerun' && !redo) invalid();
             replacements.delete(node.nodeId);
         } else if (inputProof.replanFrom) invalid();
         if (fact.review?.decision === 'rerun') for (const [id, old] of current)
-            if (fact.review.invalidatedAttemptIds.includes(old.producer.attemptId)) current.delete(id);
+            if (fact.review.invalidatedAttemptIds.includes(old.producer.attemptId)) { touched.add(id); current.delete(id); }
+        if (fact.patch) {
+            const key = graphPlannerProgressFingerprint(fact.patch.appliedOperations, root.sourceBinding, inputProof.sources.filter(source => source.record));
+            const keys = progressKeys.get(node.nodeId) ?? new Set(); if (keys.has(key)) invalid(); keys.add(key); progressKeys.set(node.nodeId, keys);
+        }
         previous.set(node.nodeId, fact); current.set(node.nodeId, fact);
     }
     for (const source of narrator.sources) if (touched.has(source.producer.nodeId)
@@ -240,11 +252,11 @@ export async function readRpControlGraphHistory(tx, handle, root, narrator) {
         const previous = seen.get(node.nodeId);
         const invalidation = previous ? await readAttemptInvalidation(tx, handle, root, previous.producer) : null;
         const inputProof = await assertControlInputFacts(tx, handle, root, fact, plan, ownedFacts);
-        if (!hasLoops && node.kind === 'planner' && inputProof.replanFrom !== (previous?.producer.attemptId ?? null)) invalid();
+        if (!hasLoops && node.kind === 'planner' && inputProof.replanFrom !== (invalidation ? null : previous?.producer.attemptId ?? null)) invalid();
         if (!hasLoops && previous && (['agent', 'judge'].includes(node.kind) && !invalidation
             || node.kind === 'review' && previous.review.decision !== 'rerun' && !invalidation)) invalid();
         seen.set(node.nodeId, fact);
-        if (hasLoops) entries.push({ fact, node, inputProof });
+        entries.push({ fact, node, inputProof });
         for (const binding of inputProof.input.controlGraph.bindings) if (root.graph.edges.find(edge => edge.edgeId === binding.edgeId)?.loopBack)
             loopCounts.set(binding.edgeId, (loopCounts.get(binding.edgeId) ?? 0) + 1);
         if (node.kind !== 'agent') {
@@ -255,7 +267,7 @@ export async function readRpControlGraphHistory(tx, handle, root, narrator) {
         } else graphResults.push(fact);
     }
     const narratorProof = await assertControlInputFacts(tx, handle, root, narrator, plan, ownedFacts);
-    if (hasLoops) await assertRpLoopHistory(tx, handle, root, entries, narratorProof, fanoutCompletions);
+    await assertRpIterationHistory(tx, handle, root, entries, narratorProof, fanoutCompletions);
     // Review creates all replacement attempts before scheduling them. Their
     // creation order is not their Result publication order. Each receipt's
     // sequence is already bound to its original attempt settlement above.

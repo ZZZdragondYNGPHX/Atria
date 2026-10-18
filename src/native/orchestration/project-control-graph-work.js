@@ -1,3 +1,4 @@
+import { readReviewAdmission } from './controller-common.js';
 import { cloneNativeDocument, hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
 import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
@@ -476,7 +477,11 @@ export class ProjectControlGraphWork {
             const affected = [...this.records.entries()].filter(([, fact]) => invalidatedAttemptIds.includes(fact.attemptId));
             const requests = affected.reduce((count, [nodeId]) => count + 1
                 + (this.state.selected.resolveDelegation(root.graph.nodes.find(node => node.nodeId === nodeId))?.ceiling.maxRequests ?? 0), 2);
-            if (!capacity || capacity.overrun || capacity.remaining.requests < requests || root.progress.reviews >= root.graph.nodes.find(node => node.nodeId === reviewer.nodeId).policy.maxRounds)
+            const admission = await readReviewAdmission(tx, handle, root, reviewer);
+            const reviews = 1 + affected.filter(([nodeId]) => root.graph.nodes.find(node => node.nodeId === nodeId).kind === 'review').length;
+            if (!capacity || capacity.overrun || capacity.remaining.requests < requests || !admission
+                || admission.round >= root.graph.nodes.find(node => node.nodeId === reviewer.nodeId).policy.maxRounds
+                || root.progress.reviews + reviews > root.limits.maxReviews)
                 fail('native_orchestration_project_quality_rerun_limit');
             const node = root.graph.nodes.find(node => node.nodeId === target.nodeId), dependencies = this.#bundle(root.graph.edges.filter(edge => edge.to.nodeId === node.nodeId && !edge.loopBack), root.graph);
             const feedback = { reviewReceiptRef: { runId, receiptId: reviewReceiptId(runId, reviewer.attemptId) }, reasonCode: parsed.reasonCode };

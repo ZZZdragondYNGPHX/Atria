@@ -49,7 +49,7 @@ export class TaskLocalOutputController {
         const published = await readResultPublication(tx, handle, root, publication.resultRef.resultId);
         const inputRefs = [publication.resultRef];
         if (!published || !equal(admission, { inputRefs, inputDigest: hash(inputRefs), effectiveGrantDigest: current.grantDigest, budgetRef: root.budgetAuthorityRef })
-            || root.sourceBinding.sourceAuthority === 'rp_chat' && !equal(root.resultRefs, inputRefs)
+            || root.sourceBinding.sourceAuthority === 'rp_chat' && !isRpDelegatedControlGraph(root) && !equal(root.resultRefs, inputRefs)
             || published.receipt.epoch !== root.epoch || published.receipt.producerGrantDigest !== current.grantDigest)
             fail('native_orchestration_task_output_denied');
         const fence = await this.execution.runs.engine.nativeHostLifecycle.assertWriter(handle, tx);

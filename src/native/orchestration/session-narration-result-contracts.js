@@ -170,7 +170,8 @@ export async function readSessionNarrationResult(tx, handle, root) {
                 producerBindings: bindings, receipt: { decisionSeq: fact.receipt.decisionSeq, traversalReceiptRef: { runId: root.runId, receiptId: traversalId } } });
         }
     }
-    const loopHistory = root.graph.edges.some(edge => edge.loopBack) ? await readSessionReplanHistory(tx, handle, root,
+    const reviewedPlanner = plannerCompletions.some(planner => reviewCompletions.some(review => review.review.invalidatedAttemptIds.includes(planner.producer.attemptId)));
+    const loopHistory = root.graph.edges.some(edge => edge.loopBack) || reviewedPlanner ? await readSessionReplanHistory(tx, handle, root,
         { graphResults, plannerCompletions, reviewCompletions, judgeCompletions, fanoutCompletions, narrator: { producer, receipt, settlement } }) : null;
     if (graphResults.length) {
         const incoming = root.graph.edges.filter(edge => edge.to.nodeId === producer.nodeId && !['review', 'planner', 'judge'].includes(root.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind)).sort((a, b) => a.edgeId.localeCompare(b.edgeId));

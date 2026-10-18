@@ -55,10 +55,15 @@ export async function readGraphJudgeCompletion(tx, handle, root, attemptId, { ve
         || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId, ...retrieval.map(item => item.receiptId)])
         || settlement.reasonCode !== 'graph_judge_selected' || settlement.decisionSeq !== receipt.decisionSeq
         || settlement.createdAt !== receipt.createdAt || receipt.decisionSeq > root.eventSeq) invalid();
-    const input = intent.inputRef, kinds = { project: 'native_project_intent', rp_chat: 'native_rp_intent', native_session: 'native_turn_intent' };
+    const delegatedProject = root.sourceBinding.sourceAuthority === 'project' && root.parentRef !== null;
+    const delegatedSession = root.sourceBinding.sourceAuthority === 'native_session' && root.parentRef !== null;
+    const delegatedRp = root.sourceBinding.sourceAuthority === 'rp_chat' && root.parentRef !== null;
+    const input = intent.inputRef, kinds = { project: delegatedProject ? 'native_project_delegated_intent' : 'native_project_intent', rp_chat: delegatedRp ? 'native_rp_delegated_intent' : 'native_rp_intent',
+        native_session: delegatedSession ? 'native_session_delegated_intent' : 'native_turn_intent' };
     if (root.sourceBinding.sourceAuthority === 'native_session') {
-        assertObject(input.sourceRef, ['sessionId', 'branchId', 'revisionId', 'packageId', 'packageVersionId'], 'Session Judge Source');
-        assertNativeId(input.sourceRef.packageId, 'package'); assertNativeId(input.sourceRef.packageVersionId, 'packageVersion');
+        assertObject(input.sourceRef, delegatedSession ? ['sessionId', 'branchId', 'revisionId']
+            : ['sessionId', 'branchId', 'revisionId', 'packageId', 'packageVersionId'], 'Session Judge Source');
+        if (!delegatedSession) { assertNativeId(input.sourceRef.packageId, 'package'); assertNativeId(input.sourceRef.packageVersionId, 'packageVersion'); }
     }
     const sourceRef = root.sourceBinding.sourceAuthority === 'native_session'
         ? Object.fromEntries(['sessionId', 'branchId', 'revisionId'].map(field => [field, input.sourceRef[field]])) : input.sourceRef;
@@ -67,6 +72,12 @@ export async function readGraphJudgeCompletion(tx, handle, root, attemptId, { ve
         || !equal(sourceRef, root.sourceBinding.sourceRef) || !equal(input.acceptedGraphResultRefs, receipt.candidateRefs)
         || !equal(input, producer.inputRefs[0]) || producer.inputDigest !== hash(producer.inputRefs) || intent.inputHash !== hash(input)
         || receipt.candidateRefs.some(ref => !producer.inputRefs.some(actual => equal(actual, ref)))) invalid();
+    if (delegatedRp && (input.parentRunId !== root.parentRef.parentRunId || input.parentAttemptId !== root.parentRef.nodeAttemptId
+        || input.childRunId !== root.runId || producer.effectiveGrantDigest !== root.parentRef.effectiveGrantDigest
+        || !equal(input.audience, { kind: 'task', id: root.runId }))) invalid();
+    if ((delegatedSession || delegatedProject) && (input.parentRunId !== root.parentRef.parentRunId || input.parentAttemptId !== root.parentRef.nodeAttemptId
+        || input.parentEpoch !== root.parentRef.parentEpoch || input.childRunId !== root.runId || input.childEpoch !== producer.epoch
+        || input.delegationInputDigest !== root.parentRef.inputDigest || producer.effectiveGrantDigest !== root.parentRef.effectiveGrantDigest)) invalid();
     if (node.policy?.audiencePinId || Object.hasOwn(input, 'audienceCapture')) {
         const plan = await readPlanRevision(tx, handle, root.planRef);
         assertAudienceRunCapture(root, node, plan.dependencyPins, input);
@@ -84,7 +95,7 @@ export async function readGraphJudgeCompletion(tx, handle, root, attemptId, { ve
     }
     // Domain controls retain their original typed readers and bank verifier;
     // all sources still need the exact original admitted Transition.
-    const allBindings = [...(input.controlGraph?.bindings ?? bindings)].sort((a, b) => a.edgeId.localeCompare(b.edgeId));
+    const allBindings = [...(input.controlGraph?.bindings ?? (delegatedSession || delegatedProject ? input.graphBindings : bindings))].sort((a, b) => a.edgeId.localeCompare(b.edgeId));
     if (bindings.some(binding => !allBindings.some(actual => equal(actual, binding)))) invalid();
     const sources = [...candidates];
     if (allBindings.length !== bindings.length) {

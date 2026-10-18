@@ -1,3 +1,4 @@
+import { readProjectDelegatedFanoutCompletion } from './project-delegated-fanout-contracts.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { readGraphFanoutCompletion } from './graph-fanout-completion.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
@@ -89,7 +90,7 @@ async function controlInput(tx, handle, root, attempt, { settlement, frame }) {
 
 /** Same original Task bank, including settled rejected or late paid sends.
  * No usage is invented and unselected work is never omitted from the facts. */
-async function memberCost(tx, handle, root, attempt, { settlement, results, frame }) {
+export async function assertProjectFanoutMemberCost(tx, handle, root, attempt, { settlement, results, frame }) {
     const task = await readOriginalProjectTask(tx, handle, root.sourceBinding.sourceRef), bank = root.budgetAuthorityRef;
     if (!task || bank.authority !== 'project_task' || bank.projectId !== task.projectId || bank.taskId !== task.taskId
         || bank.operationId !== hash({ projectId: task.projectId, taskId: task.taskId, revision: root.sourceBinding.sourceRef.revision,
@@ -120,13 +121,14 @@ async function memberCost(tx, handle, root, attempt, { settlement, results, fram
         const ref = assertBudgetAttemptRef(send.budgetAttemptRef), row = task.compute?.attempts.find(row => row.attemptId === ref.attemptId);
         if (!row || ref.kind !== undefined || !same(ref.authorityRef, bank) || ref.effectId !== effect.effectId || ref.providerSendOrdinal !== ordinal
             || ref.attemptId !== sendAttemptId(effect.effectId, ordinal) || !same(row.orchestration, { kind: 'provider_send', effectId: effect.effectId, ordinal })
-            || (row.reservationId ?? null) !== ref.reservationId || row.requestId !== send.requestId || row.targetFingerprint !== send.targetFingerprint
+            || (row.reservationId ?? null) !== ref.reservationId || root.parentRef && ref.reservationId !== root.runId || row.requestId !== send.requestId || row.targetFingerprint !== send.targetFingerprint
             || row.inputFingerprint !== send.inputFingerprint || !['charged', 'unknown', 'settled'].includes(row.status)
             || send.status === 'settled' && (row.status !== 'settled' || hash(row.usage) !== send.usageHash)) invalid();
     }
 }
 
 export function readProjectFanoutCompletion(tx, handle, root, joinAttemptId, { recipient = null } = {}) {
+    if (root.parentRef) return readProjectDelegatedFanoutCompletion(tx, handle, root, joinAttemptId, { recipient });
     return readGraphFanoutCompletion(tx, handle, root, joinAttemptId,
-        { verifyMemberInput: memberInput, verifyControlInput: controlInput, verifyMemberCost: memberCost, recipient });
+        { verifyMemberInput: memberInput, verifyControlInput: controlInput, verifyMemberCost: assertProjectFanoutMemberCost, recipient });
 }

@@ -25,11 +25,14 @@ const response = (text, index, usage = true) => ({ id: 'project-delegate-' + ind
     type: 'message', status: 'completed', role: 'assistant', content: [{ type: 'output_text', text, annotations: [] }] }],
 ...usage ? { usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } } : {} });
 
-async function fixture(make, { mode = 'handoff', failure = null, dynamic = false, badPlanPin = false, reviewRedo = false, tightBudget = false, childPlanner = false, parentPatch = true, onParent = null, childDynamic = false, badChildPin = false } = {}) {
-    let proposed, delegator, refinement, childPlanRef, operations, childControl, childControlTarget, childAdded, childOperations, business = 0, reviewRound = 0, parentRound = 0, refinementRound = 0;
+async function fixture(make, { mode = 'handoff', failure = null, dynamic = false, badPlanPin = false, reviewRedo = false, tightBudget = false, childPlanner = false, parentPatch = true, onParent = null, childDynamic = false, badChildPin = false, childLoop = null, childRequests = null, parentLoopIterations = 2, childQuality = null, childMaxRounds = 2, childFanout = false, childFanoutUsageUnknown = false } = {}) {
+    let childFanoutNode, childJoinNode, childBranches, releaseChildBranches, arrivedChildBranches = 0;
+    const bothChildBranches = new Promise(resolve => { releaseChildBranches = resolve; });
+    let childQualityNode, childDraft, childAlternative, childFinal, childDraftRound = 0, childQualityRound = 0;
+    let proposed, delegator, refinement, childPlanRef, operations, childControl, childControlTarget, childAdded, childOperations, childLoopEdge, childPlannerRound = 0, business = 0, reviewRound = 0, parentRound = 0, refinementRound = 0;
     const f = await projectModelFixture(make, { maxModelRounds: 3, responseStatus: index => failure === 'known' && index === 1 ? 400 : 200,
         changeRoute: route => ({ ...route, executionPolicy: { ...route.executionPolicy, computeBudget: { ...route.executionPolicy.computeBudget,
-            maxRequests: reviewRedo ? tightBudget ? 11 : 14 : childDynamic ? 8 : 10, localWork: { ...route.executionPolicy.computeBudget.localWork, maxJobs: 160 } } } }),
+            maxRequests: reviewRedo ? tightBudget ? 11 : 14 : childDynamic || childLoop === 'self' || childFanout ? 8 : 10, localWork: { ...route.executionPolicy.computeBudget.localWork, maxJobs: 160 } } } }),
         configurePlan: async args => {
             const { plan, seeded, h, original, route, host } = args;
             proposed = structuredClone(original); proposed.project.displayName = 'Advisory delegated Project proposal';
@@ -39,7 +42,7 @@ async function fixture(make, { mode = 'handoff', failure = null, dynamic = false
                 capabilities: [{ capability: 'generation.tools', state: 'unsupported', provenance: [{ kind: 'adapter-metadata', source: 'Advisory child has no tools' }] }],
                 limits: { ...seeded.model.limits, contextTokens: 65536 } };
             const childRoute = { ...route, runtimeRouteId: createNativeId('runtimeRoute'), modelProfileRef: { scope: 'player', modelProfileId: pure.modelProfileId },
-                executionPolicy: { ...route.executionPolicy, allowedModelProfileIds: [pure.modelProfileId], computeBudget: { maxRequests: childPlanner ? 3 : 2, maxTokens: 20000,
+                executionPolicy: { ...route.executionPolicy, allowedModelProfileIds: [pure.modelProfileId], computeBudget: { maxRequests: childRequests ?? (childFanout ? 3 : childQuality === 'review' ? 5 : childQuality === 'judge' ? 4 : childLoop === 'nonself' ? 5 : childPlanner ? 3 : 2), maxTokens: 20000,
                     localWork: { maxJobs: 80, maxItems: 5000, maxInputBytes: 8388608 } } } };
             await seeded.persistence.saveModelProfile(h.handle, pure); await seeded.persistence.saveRuntimeRoute(h.handle, childRoute);
             const child = planFixture(), output = child.definition.nodes[0];
@@ -79,10 +82,72 @@ async function fixture(make, { mode = 'handoff', failure = null, dynamic = false
                 childOperations = [{ op: 'addNode', node: childAdded }, { op: 'addEdge', edge: edge(childControl, 'control', childAdded, 'control') },
                     { op: 'addEdge', edge: edge(childAdded, 'advice', terminal, 'dynamic') }];
             }
+            if (childLoop) {
+                child.definition.graphChangePolicy = { allowedOperations: ['requestReplan', 'requestFinalize'], allowedNodeKinds: [] };
+                const terminal = children[1], target = childLoop === 'self' ? childControl : children[0];
+                target.inputs.push(port('return', 'json', false));
+                childLoopEdge = { ...edge(childControl, 'control', target, 'return'), loopBack: true };
+                if (childLoop === 'self') {
+                    terminal.inputs = [port('control', 'json')];
+                    child.definition.nodes = [childControl, terminal, output]; child.definition.entryNodeIds = [childControl.nodeId];
+                    child.definition.edges = [edge(childControl, 'control', terminal, 'control'), edge(terminal, 'advice', output, 'result'), childLoopEdge];
+                } else {
+                    // The published nonself return selects the earlier pure
+                    // Agent. requestReplan itself acquires no target field.
+                    children[0].inputs = [port('return', 'json', false)]; childControl.inputs = [port('evidence', 'text')]; terminal.inputs = [port('control', 'json')];
+                    child.definition.nodes = [children[0], childControl, terminal, output]; child.definition.entryNodeIds = [children[0].nodeId];
+                    child.definition.edges = [{ ...edge(children[0], 'advice', childControl, 'evidence'), maxVisits: 2 },
+                        edge(childControl, 'control', terminal, 'control'), edge(terminal, 'advice', output, 'result'), childLoopEdge];
+                }
+            }
+            if (childQuality) {
+                childDraft = children[0]; childFinal = children[1];
+                childQualityNode = { ...structuredClone(childDraft), nodeId: createNativeId('orchestrationNode'), kind: childQuality,
+                    label: 'Project child actual typed ' + childQuality, inputs: [port('draft', 'text')], outputs: [port('decision', 'json', false)],
+                    policy: { agentPinId: 'child.model', ...childQuality === 'review' ? { maxRounds: childMaxRounds } : {} } };
+                childFinal.inputs = [port('draft', 'text', childQuality !== 'judge'), port('decision', 'json')];
+                child.definition.nodes = [childDraft, childQualityNode, childFinal, output];
+                child.definition.edges = [{ ...edge(childDraft, 'advice', childQualityNode, 'draft'), maxVisits: childQuality === 'review' ? childMaxRounds : 1 },
+                    edge(childDraft, 'advice', childFinal, 'draft'), edge(childQualityNode, 'decision', childFinal, 'decision'), edge(childFinal, 'advice', output, 'result')];
+                if (childQuality === 'judge') {
+                    childAlternative = { ...structuredClone(childDraft), nodeId: createNativeId('orchestrationNode'), label: 'Project child second typed candidate' };
+                    childQualityNode.inputs.push(port('alternative', 'text')); childFinal.inputs.push(port('alternative', 'text', false));
+                    child.definition.nodes.splice(1, 0, childAlternative); child.definition.entryNodeIds.push(childAlternative.nodeId);
+                    child.definition.edges.push(edge(childAlternative, 'advice', childQualityNode, 'alternative'), edge(childAlternative, 'advice', childFinal, 'alternative'));
+                }
+            }
+            if (childFanout) {
+                const alternative = { ...structuredClone(children[0]), nodeId: createNativeId('orchestrationNode'), label: 'Original child independent branch B',
+                    dependencyPinIds: ['child.branchB'], policy: { agentPinId: 'child.branchB' } };
+                children[0].label = 'Original child independent branch A';
+                childBranches = [children[0], alternative];
+                const branchConnection = { ...seeded.connection, connectionProfileId: createNativeId('connectionProfile') };
+                const branchModel = { ...pure, modelProfileId: createNativeId('modelProfile'), remoteModelId: 'project-child-fanout-distinct-B',
+                    connectionProfileRef: { scope: 'player', connectionProfileId: branchConnection.connectionProfileId } };
+                const branchRoute = { ...childRoute, runtimeRouteId: createNativeId('runtimeRoute'), modelProfileRef: { scope: 'player', modelProfileId: branchModel.modelProfileId },
+                    connectionProfileRef: branchModel.connectionProfileRef, executionPolicy: { ...childRoute.executionPolicy, allowedModelProfileIds: [branchModel.modelProfileId] } };
+                await seeded.persistence.saveConnectionProfile(h.handle, branchConnection); await seeded.persistence.saveModelProfile(h.handle, branchModel); await seeded.persistence.saveRuntimeRoute(h.handle, branchRoute);
+                child.dependencyPins.push({ pinId: 'child.branchB', port: 'model', resourceRef: { scope: 'player', runtimeRouteId: branchRoute.runtimeRouteId }, integrity: hash(branchRoute) });
+                childFanoutNode = { nodeId: createNativeId('orchestrationNode'), kind: 'fanout', label: 'Freeze actual child advisory branches', inputs: [],
+                    outputs: [port('scope', 'task.result', false)], dependencyPinIds: [], capabilities: [], policy: { maxConcurrency: 2, failurePolicy: 'continue' } };
+                for (const node of childBranches) node.inputs = [port('scope', 'task.result')];
+                childJoinNode = { nodeId: createNativeId('orchestrationNode'), kind: 'join', label: 'Join child actual typed receipts', inputs: [port('left', 'text'), port('right', 'text')],
+                    outputs: [port('joined', 'text', false)], dependencyPinIds: [], capabilities: [], policy: { strategy: 'all-success', quorum: 2, deadlineMs: 120000 } };
+                children[1].inputs = [port('joined', 'text')];
+                child.definition.nodes = [childFanoutNode, ...childBranches, childJoinNode, children[1], output]; child.definition.entryNodeIds = [childFanoutNode.nodeId];
+                child.definition.edges = [edge(childFanoutNode, 'scope', children[0], 'scope'), edge(childFanoutNode, 'scope', alternative, 'scope'),
+                    edge(children[0], 'advice', childJoinNode, 'left'), edge(alternative, 'advice', childJoinNode, 'right'), edge(childJoinNode, 'joined', children[1], 'joined'), edge(children[1], 'advice', output, 'result')];
+            }
             Object.assign(plan.definition.limits, { maxNodes: 12, maxEdges: 24, maxSteps: 180, maxAttempts: reviewRedo ? 20 : 16, maxDepth: 2,
-                maxDelegates: 2, maxHandoffs: 2, maxReviews: reviewRedo ? 2 : plan.definition.limits.maxReviews, maxEdgeVisits: 24, maxLoopIterations: 2, maxConcurrency: mode === 'delegate' ? 2 : 1, deadlineMs: 180000 });
+                maxDelegates: 2, maxHandoffs: 2, maxReviews: reviewRedo ? 2 : plan.definition.limits.maxReviews, maxEdgeVisits: 24, maxLoopIterations: parentLoopIterations, maxConcurrency: mode === 'delegate' || childFanout ? 2 : 1, deadlineMs: 180000 });
             child.definition.limits = { ...plan.definition.limits, maxNodes: childPlanner ? 4 : 3, maxEdges: childDynamic ? 4 : childPlanner ? 3 : 2, maxSteps: 64, maxAttempts: childPlanner ? 4 : 3, maxDepth: 1,
                 maxDelegates: 0, maxHandoffs: 0, maxEdgeVisits: childDynamic ? 4 : childPlanner ? 3 : 2, maxLoopIterations: 0 };
+            if (childLoop) Object.assign(child.definition.limits, { maxNodes: childLoop === 'self' ? 3 : 4, maxEdges: childLoop === 'self' ? 3 : 4,
+                maxAttempts: childLoop === 'self' ? 4 : 6, maxEdgeVisits: childLoop === 'self' ? 3 : 5, maxLoopIterations: 1, maxReplans: 1 });
+            if (childQuality) Object.assign(child.definition.limits, { maxNodes: child.definition.nodes.length, maxEdges: child.definition.edges.length,
+                maxAttempts: childQuality === 'review' ? 6 : 5, maxEdgeVisits: childQuality === 'review' ? 5 : 6,
+                maxReviews: childQuality === 'review' ? childMaxRounds : 0 });
+            if (childFanout) Object.assign(child.definition.limits, { maxNodes: 6, maxEdges: 6, maxAttempts: 6, maxEdgeVisits: 6, maxConcurrency: 2 });
             const plans = host.turnOrchestration.plans, draft = await plans.create(h.handle, createNativeId('orchestrationCommand'), child);
             const expected = { planId: draft.planId, expectedDraftVersion: draft.draftVersion, expectedDefinitionHash: draft.definitionHash };
             const report = await plans.validate(h.handle, expected);
@@ -139,10 +204,28 @@ async function fixture(make, { mode = 'handoff', failure = null, dynamic = false
                     { op: 'addEdge', edge: edge(delegator, 'advice', worker, 'advice') }];
             }
             if (onParent) await onParent(args);
-        }, responseBody: ({ body, index }) => {
+        }, responseBody: async ({ body, index }) => {
+            const childTask = body.model === 'project-delegated-distinct-model' || childFanout && body.model === 'project-child-fanout-distinct-B'
+                ? (body.input ?? []).flatMap(item => { try { return [JSON.parse(item.content)]; } catch { return []; } })
+                    .findLast(item => item?.kind === 'native_project_delegated_work') : null;
+            if (childFanout && childBranches.some(node => node.nodeId === childTask?.nodeId)) {
+                if (++arrivedChildBranches === 2) releaseChildBranches();
+                await bothChildBranches; // A serial consumer must hit the original Route deadline.
+                return response(childTask.nodeId === childBranches[0].nodeId ? 'CHILD_CONCURRENT_ADVICE_A' : 'CHILD_CONCURRENT_ADVICE_B', index,
+                    !(childFanoutUsageUnknown && childTask.nodeId === childBranches[1].nodeId));
+            }
+            if (childQuality && childTask?.nodeId === childQualityNode.nodeId) return response(JSON.stringify(childQuality === 'review'
+                ? { decision: ++childQualityRound === 1 ? 'rerun' : 'approve', reasonCode: childQualityRound === 1 ? 'incomplete_proposal' : 'quality_ready',
+                    targetAttemptIds: [childTask.reviewTargets[0].attemptId] }
+                : { selectedResultRef: childTask.candidateRefs[0], reasonCode: 'candidate_selected' }), index);
+            if (childQuality && childTask?.nodeId === childDraft.nodeId) return response('PROJECT_CHILD_QUALITY_DRAFT_' + ++childDraftRound, index);
+            if (childQuality && childAlternative && childTask?.nodeId === childAlternative.nodeId) return response('PROJECT_CHILD_OTHER_CANDIDATE', index);
+            if (childQuality && childTask?.nodeId === childFinal.nodeId) return response('PROJECT_CHILD_REVIEWED_TERMINAL', index);
+            if (childLoop && body.model === 'project-delegated-distinct-model' && childTask?.authoredTask === 'Project child declared Planner')
+                return response(JSON.stringify({ operations: [{ op: childPlannerRound++ === 0 ? 'requestReplan' : 'requestFinalize' }] }), index);
             if (body.model === 'project-delegated-distinct-model' && failure === 'tools') return { id: 'forbidden-child-tool', status: 'completed', output: [{ id: 'forbidden-call', type: 'function_call', status: 'completed', call_id: 'forbidden-child-call', name: 'atri_agent_project_save', arguments: JSON.stringify({ source: proposed }) }], usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } };
             if (body.model === 'project-child-dynamic-owned-model') return response('DYNAMIC_CHILD_FROM_EXACT_OWNED_PIN', index);
-            if (body.model === 'project-delegated-distinct-model' && childPlanner && index === 1) return response(JSON.stringify({ operations: childDynamic ? childOperations : [{ op: 'setPendingPriority', nodeId: childControlTarget, priority: 7 }, { op: 'requestFinalize' }] }), index);
+            if (body.model === 'project-delegated-distinct-model' && childPlanner && !childLoop && index === 1) return response(JSON.stringify({ operations: childDynamic ? childOperations : [{ op: 'setPendingPriority', nodeId: childControlTarget, priority: 7 }, { op: 'requestFinalize' }] }), index);
             if (body.model === 'project-delegated-distinct-model') return response('ACTUAL_PROJECT_CHILD_ADVICE_' + index, index, failure !== 'usage_unknown');
             const authored = (body.input ?? []).flatMap(item => { try { return [JSON.parse(item.content)]; } catch { return []; } })
                 .findLast(item => item?.kind?.startsWith('native_project_graph'));
@@ -166,7 +249,7 @@ async function fixture(make, { mode = 'handoff', failure = null, dynamic = false
         const run = f.authority.runProjectDelegation.bind(f.authority);
         f.authority.runProjectDelegation = args => run({ ...args, mode: 'delegate' });
     }
-    return Object.assign(f, { delegator, refinement, childPlanRef, childControl, childControlTarget, childAdded });
+    return Object.assign(f, { delegator, refinement, childPlanRef, childControl, childControlTarget, childAdded, childLoopEdge, childDraft, childAlternative, childFinal, childQualityNode, childBranches, childFanoutNode, childJoinNode, get arrivedChildBranches() { return arrivedChildBranches; } });
 }
 
 async function roots(f) {
@@ -539,3 +622,268 @@ test('Project child Planner cannot add an Agent with an undeclared model depende
         expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
     } finally { await f.cleanup(); }
 }, 90000);
+
+
+for (const childLoop of ['self', 'nonself']) test('SQLite Project child published Planner ' + childLoop + ' return keeps its old paid history and original Task Review', async () => {
+    const f = await fixture(makeTempSqliteEngineHarness, { childPlanner: true, childLoop, parentLoopIterations: 3 });
+    const expectedChild = childLoop === 'self' ? 3 : 5, expectedTotal = expectedChild + 5;
+    try {
+        await f.run(); const { parent, child } = await roots(f);
+        expect(parent.status).toBe('completed'); expect(child.status).toBe('completed'); expect(child.graphRevision).toBe(2);
+        expect(parent.limits.maxLoopIterations).toBe(3); expect(parent.progress.loopIterations).toBe(2); expect(parent.treeProgress.loopIterations).toBe(3);
+        expect(child.progress).toMatchObject({ attempts: expectedChild + 1, patches: 2, replans: 1, loopIterations: 1, delegates: 0, handoffs: 0 });
+        expect(child.progress.edgeVisitCounts[f.childLoopEdge.edgeId]).toBe(1); expect(child.outputClaims).toHaveLength(1); expect(parent.outputClaims).toHaveLength(1);
+        expect(f.requests).toHaveLength(expectedTotal); expect(f.requests.slice(1, expectedChild + 1).every(body => body.model === 'project-delegated-distinct-model' && !body.tools?.length)).toBe(true);
+        const plannerIndices = childLoop === 'self' ? [1, 2] : [2, 4], terminalIndex = expectedChild;
+        expect(JSON.stringify(f.requests[plannerIndices[0]])).toContain(f.childLoopEdge.edgeId);
+        expect(JSON.stringify(f.requests[plannerIndices[1]])).toContain(childLoop === 'self' ? 'requestReplan' : 'ACTUAL_PROJECT_CHILD_ADVICE_3');
+        expect(JSON.stringify(f.requests[plannerIndices[1]])).not.toContain('ACTUAL_PROJECT_CHILD_ADVICE_1');
+        expect(JSON.stringify(f.requests[terminalIndex])).toContain('requestFinalize'); expect(JSON.stringify(f.requests[terminalIndex])).not.toContain('requestReplan');
+        expect(JSON.stringify(f.requests[expectedChild + 1])).toContain('ACTUAL_PROJECT_CHILD_ADVICE_' + terminalIndex);
+        await f.h.engine.withTransaction(f.h.handle, async tx => {
+            const local = await readTaskLocalOutput(tx, f.h.handle, child), history = local.publication.graphHistory;
+            expect(history.controls).toHaveLength(2); expect(history.controls.map(fact => fact.producer.attemptNumber)).toEqual([1, 2]);
+            expect(history.effects).toHaveLength(expectedChild); expect(history.loopIterations).toBe(1); expect(history.settled).toBe(true);
+            expect(history.controls.map(fact => fact.patch.requests)).toEqual([{ finalize: false, replan: true }, { finalize: true, replan: false }]);
+            expect((await readProjectReviewOutput(tx, f.h.handle, parent)).receipt.costs.closed).toBe(true);
+            const second = childLoop === 'self' ? history.controls[1].producer : history.results.find(fact => fact.producer.nodeId === f.childLoopEdge.to.nodeId && fact.producer.attemptNumber === 2).producer;
+            const loopBinding = second.inputRefs[0].graphBindings.find(binding => binding.edgeId === f.childLoopEdge.edgeId);
+            const admissionId = 'oreceipt_' + hash({ kind: 'edge_admission', runId: child.runId, edgeId: loopBinding.edgeId,
+                producerAttemptId: loopBinding.producerAttemptId, nodeAttemptId: second.attemptId }).slice(0, 32);
+            const key = controlRecordKey(f.h.handle, child.runId, 'receipt', admissionId), stored = await tx.getResource(key), doc = { ...stored.doc, edgeVisit: 0 };
+            try { await tx.putResource(key, { ...stored, doc, integrity: hash(doc) }); await expect(readTaskLocalOutput(tx, f.h.handle, child)).rejects.toThrow(); }
+            finally { await tx.putResource(key, stored); }
+            expect((await readTaskLocalOutput(tx, f.h.handle, child)).publication.graphHistory.settled).toBe(true);
+        });
+        const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+        expect(task.status).toBe('review'); expect(task.compute.limits.maxRequests).toBe(expectedTotal); expect(task.compute.attempts).toHaveLength(expectedTotal);
+        expect(task.compute.attempts.every(row => row.status === 'settled')).toBe(true); expect(task.compute.attempts.filter(row => row.reservationId === child.runId)).toHaveLength(expectedChild);
+        expect(task.compute.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released', limits: expect.objectContaining({ maxRequests: expectedChild }) })]);
+        expect(task.attempts.flatMap(row => row.calls.map(call => call.name))).toEqual(['atri_agent_set_plan', 'atri_agent_project_save', 'atri_agent_prepare_review']);
+        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
+    } finally { await f.cleanup(); }
+}, 180000);
+
+test('Project child published Planner return cannot reset its held allocation to fund another paid round', async () => {
+    const f = await fixture(makeTempSqliteEngineHarness, { childPlanner: true, childLoop: 'self', childRequests: 2 });
+    try {
+        await expect(f.run()).rejects.toThrow(); const { parent, child } = await roots(f);
+        expect(f.requests).toHaveLength(2); expect(child.status).toBe('blocked'); expect(parent.status).toBe('blocked'); expect(child.graphRevision).toBe(0);
+        expect(child.progress.replans).toBe(0); expect(child.progress.loopIterations).toBe(0); expect(child.resultRefs).toEqual([]); expect(child.outputClaims).toEqual([]); expect(parent.outputClaims).toEqual([]);
+        const patches = await f.h.engine.withTransaction(f.h.handle, tx => tx.listResources({ kind: K.orchestrationRecord, handle: f.h.handle, runId: child.runId, recordType: 'patch' }));
+        expect(patches.map(row => row.doc)).toEqual([expect.objectContaining({ accepted: false, appliedOperations: [], issues: [{ code: 'native_orchestration_graph_budget_unavailable' }] })]);
+        const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+        expect(task.compute.attempts).toHaveLength(2); expect(task.compute.attempts.every(row => row.status === 'settled')).toBe(true); expect(task.attempts.every(row => !row.calls.length)).toBe(true);
+        expect(task.compute.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released', limits: expect.objectContaining({ maxRequests: 2 }) })]);
+        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
+    } finally { await f.cleanup(); }
+}, 90000);
+
+
+test('Project child return retains the original aggregate two-loop ceiling before the final formal send', async () => {
+    const f = await fixture(makeTempSqliteEngineHarness, { childPlanner: true, childLoop: 'self', parentLoopIterations: 2 });
+    try {
+        await expect(f.run()).rejects.toMatchObject({ code: 'native_orchestration_tree_limit_exhausted' });
+        const { parent, child } = await roots(f);
+        expect(f.requests).toHaveLength(7); expect(parent.status).toBe('blocked'); expect(parent.outputClaims).toEqual([]); expect(parent.pendingEffectRefs).toEqual([]);
+        expect(parent.limits.maxLoopIterations).toBe(2); expect(parent.progress.loopIterations).toBe(1); expect(parent.treeProgress.loopIterations).toBe(2);
+        expect(child.status).toBe('completed'); expect(child.progress.loopIterations).toBe(1); expect(child.outputClaims).toHaveLength(1);
+        const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+        expect(task.status).toBe('working'); expect(task.compute.limits.maxRequests).toBe(8); expect(task.compute.attempts).toHaveLength(7);
+        expect(task.compute.attempts.every(row => row.status === 'settled')).toBe(true);
+        expect(task.compute.attempts.filter(row => row.reservationId === child.runId)).toHaveLength(3);
+        expect(task.compute.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released', limits: expect.objectContaining({ maxRequests: 3 }) })]);
+        expect(task.attempts.flatMap(row => row.calls.map(call => call.name))).toEqual(['atri_agent_set_plan', 'atri_agent_project_save']);
+        await f.h.engine.withTransaction(f.h.handle, async tx => {
+            expect((await readTaskLocalOutput(tx, f.h.handle, child)).publication.graphHistory.settled).toBe(true);
+            expect(await readProjectReviewOutput(tx, f.h.handle, parent)).toBeNull();
+        });
+        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
+        expect(f.requests).toHaveLength(7);
+    } finally { await f.cleanup(); }
+}, 180000);
+
+
+test('SQLite Project child pure Review redoes the actual typed target and closes all old fees before the original three tools and human Review', async () => {
+    const f = await fixture(makeTempSqliteEngineHarness, { childQuality: 'review' });
+    try {
+        await f.run(); const { parent, child } = await roots(f);
+        expect(f.requests).toHaveLength(10); expect(parent.status).toBe('completed'); expect(child.status).toBe('completed'); expect(child.graphRevision).toBe(0);
+        expect(child.progress).toMatchObject({ attempts: 6, reviews: 2, loopIterations: 0, edgeVisits: 5 }); expect(child.outputClaims).toHaveLength(1);
+        expect(JSON.stringify(f.requests[2])).toContain('reviewTargets'); expect(JSON.stringify(f.requests[3])).toContain('incomplete_proposal');
+        expect(JSON.stringify(f.requests[4])).toContain('PROJECT_CHILD_QUALITY_DRAFT_2'); expect(JSON.stringify(f.requests[4])).not.toContain('PROJECT_CHILD_QUALITY_DRAFT_1');
+        expect(JSON.stringify(f.requests[5])).toContain('PROJECT_CHILD_QUALITY_DRAFT_2'); expect(JSON.stringify(f.requests[5])).not.toContain('PROJECT_CHILD_QUALITY_DRAFT_1');
+        expect(f.requests.slice(1, 6).every(body => body.model === 'project-delegated-distinct-model' && !body.tools?.length)).toBe(true);
+        await f.h.engine.withTransaction(f.h.handle, async tx => {
+            const local = await readTaskLocalOutput(tx, f.h.handle, child), history = local.publication.graphHistory;
+            const reviews = history.controls.filter(fact => fact.review); expect(reviews.map(fact => fact.review.decision)).toEqual(['rerun', 'approve']);
+            expect(reviews).toHaveLength(2); expect(history.effects).toHaveLength(5); expect(history.results).toHaveLength(2); expect(history.settled).toBe(true);
+            const [old, current] = history.results; expect(old.producer.nodeId).toBe(f.childDraft.nodeId); expect(current.producer.nodeId).toBe(f.childDraft.nodeId);
+            expect(current.producer.attemptNumber).toBe(old.producer.attemptNumber + 1); expect(reviews[0].review.targetAttemptIds).toEqual([old.producer.attemptId]);
+            expect(reviews[0].review.replacements).toEqual([{ targetAttemptId: old.producer.attemptId, attemptId: current.producer.attemptId }]);
+            expect(await readAttemptInvalidation(tx, f.h.handle, child, old.producer)).toMatchObject({ reviewReceiptId: reviews[0].review.receiptId });
+            await expect(assertAttemptConsumable(tx, f.h.handle, child, old.producer)).rejects.toThrow();
+            expect((await readProjectReviewOutput(tx, f.h.handle, parent)).receipt.costs.closed).toBe(true);
+            const key = controlRecordKey(f.h.handle, child.runId, 'attempt', current.producer.attemptId), saved = await tx.getResource(key), changed = structuredClone(saved.doc);
+            delete changed.inputRefs[0].reviewFeedbackRef; changed.inputDigest = hash(changed.inputRefs);
+            try { await tx.putResource(key, { ...saved, doc: changed, integrity: hash(changed) }); await expect(readTaskLocalOutput(tx, f.h.handle, child)).rejects.toThrow(); }
+            finally { await tx.putResource(key, saved); }
+            expect((await readTaskLocalOutput(tx, f.h.handle, child)).receipt).toEqual(local.receipt);
+        });
+        const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+        expect(task.status).toBe('review'); expect(task.compute.limits.maxRequests).toBe(10); expect(task.compute.attempts).toHaveLength(10);
+        expect(task.compute.attempts.every(row => row.status === 'settled')).toBe(true); expect(task.compute.attempts.filter(row => row.reservationId === child.runId)).toHaveLength(5);
+        expect(task.compute.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released', limits: expect.objectContaining({ maxRequests: 5 }) })]);
+        expect(task.attempts.flatMap(row => row.calls.map(call => call.name))).toEqual(['atri_agent_set_plan', 'atri_agent_project_save', 'atri_agent_prepare_review']);
+        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
+    } finally { await f.cleanup(); }
+}, 180000);
+
+for (const limit of ['round', 'bank']) test('Project child Review cannot redo beyond its original ' + limit + ' bound or erase the paid draft', async () => {
+    const f = await fixture(makeTempSqliteEngineHarness, { childQuality: 'review', childMaxRounds: limit === 'round' ? 1 : 2, childRequests: limit === 'bank' ? 4 : 5 });
+    try {
+        await expect(f.run()).rejects.toThrow(); const { parent, child } = await roots(f);
+        expect(f.requests).toHaveLength(3); expect(child.graphRevision).toBe(0); expect(child.resultRefs).toHaveLength(1); expect(child.outputClaims).toEqual([]); expect(parent.outputClaims).toEqual([]);
+        expect(child.progress.reviews).toBe(1); expect(child.status).toBe('blocked');
+        await f.h.engine.withTransaction(f.h.handle, async tx => {
+            const rows = await tx.listResources({ kind: K.orchestrationRecord, handle: f.h.handle, runId: child.runId, recordType: 'attempt' });
+            expect(rows.map(row => row.doc).filter(attempt => attempt.nodeId === f.childDraft.nodeId)).toHaveLength(1);
+            expect(await readAttemptInvalidation(tx, f.h.handle, child, rows.find(row => row.doc.nodeId === f.childDraft.nodeId).doc)).toBeNull();
+            const receipts = await tx.listResources({ kind: K.orchestrationRecord, handle: f.h.handle, runId: child.runId, recordType: 'receipt' });
+            expect(receipts.filter(row => row.doc.receiptKind === 'native_project_failure').map(row => row.doc.reasonCode)).toEqual([limit === 'round'
+                ? 'native_orchestration_review_limit_exhausted' : 'native_orchestration_review_rerun_budget_unavailable']);
+        });
+        const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId); expect(task.compute.attempts).toHaveLength(3);
+        expect(task.compute.attempts.every(row => row.status === 'settled')).toBe(true); expect(task.attempts.every(row => !row.calls.length)).toBe(true);
+        expect(task.compute.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released', limits: expect.objectContaining({ maxRequests: limit === 'bank' ? 4 : 5 }) })]);
+        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
+    } finally { await f.cleanup(); }
+}, 90000);
+
+test('SQLite Project child Judge passes only its explicit typed selected candidate to the fixed terminal and original human Review', async () => {
+    const f = await fixture(makeTempSqliteEngineHarness, { childQuality: 'judge' });
+    try {
+        await f.run(); const { parent, child } = await roots(f); expect(f.requests).toHaveLength(9); expect(child.status).toBe('completed');
+        expect(JSON.stringify(f.requests[3])).toContain('candidateRefs'); expect(JSON.stringify(f.requests[4])).toContain('selectedResultRef');
+        await f.h.engine.withTransaction(f.h.handle, async tx => {
+            const history = (await readTaskLocalOutput(tx, f.h.handle, child)).publication.graphHistory;
+            const [judge] = history.controls; expect(judge.candidates).toHaveLength(2); expect(judge.selectedResultRef).toEqual(judge.candidates[0].receipt.resultRef);
+            const selected = judge.candidates.find(fact => hash(fact.receipt.resultRef) === hash(judge.selectedResultRef));
+            const excluded = judge.candidates.find(fact => fact !== selected);
+            expect(JSON.stringify(f.requests[4])).toContain(selected.record.payload); expect(JSON.stringify(f.requests[4])).not.toContain(excluded.record.payload);
+            expect(history.effects).toHaveLength(4); expect(history.settled).toBe(true); expect((await readProjectReviewOutput(tx, f.h.handle, parent)).receipt.costs.closed).toBe(true);
+        });
+        const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId); expect(task.status).toBe('review'); expect(task.compute.attempts).toHaveLength(9);
+        expect(task.compute.attempts.every(row => row.status === 'settled')).toBe(true); expect(task.compute.attempts.filter(row => row.reservationId === child.runId)).toHaveLength(4);
+        expect(task.compute.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released', limits: expect.objectContaining({ maxRequests: 4 }) })]);
+        expect(task.attempts.flatMap(row => row.calls.map(call => call.name))).toEqual(['atri_agent_set_plan', 'atri_agent_project_save', 'atri_agent_prepare_review']);
+    } finally { await f.cleanup(); }
+}, 180000);
+
+
+test('SQLite Project child Fanout runs two independently owned Models concurrently and joins their original receipts before TaskLocal and formal human Review', async () => {
+    const f = await fixture(makeTempSqliteEngineHarness, { childFanout: true });
+    try {
+        await f.run(); const { parent, child } = await roots(f);
+        expect(f.requests).toHaveLength(8); expect(parent.status).toBe('completed'); expect(child.status).toBe('completed'); expect(child.graphRevision).toBe(0);
+        expect(child.progress).toMatchObject({ attempts: 6, delegates: 0, handoffs: 0, edgeVisits: 6, loopIterations: 0 }); expect(child.outputClaims).toHaveLength(1);
+        expect(f.requests.slice(1, 3).map(body => body.model).sort()).toEqual(['project-delegated-distinct-model', 'project-child-fanout-distinct-B'].sort());
+        expect(f.requests.slice(1, 4).every(body => !body.tools?.length)).toBe(true);
+        expect(JSON.stringify(f.requests[3])).toContain('CHILD_CONCURRENT_ADVICE_A'); expect(JSON.stringify(f.requests[3])).toContain('CHILD_CONCURRENT_ADVICE_B');
+        await f.h.engine.withTransaction(f.h.handle, async tx => {
+            const local = await readTaskLocalOutput(tx, f.h.handle, child), history = local.publication.graphHistory;
+            expect(history.fanouts).toHaveLength(1); const [joined] = history.fanouts;
+            expect(joined.joinReceipt.outcome).toBe('completed'); expect(joined.joinReceipt.acceptedResultRefs).toHaveLength(2); expect(joined.frame.maxConcurrency).toBe(2);
+            expect(joined.frame.branches).toHaveLength(2); expect(joined.scopeAttempts).toHaveLength(2); expect(joined.providerEffects).toHaveLength(2);
+            expect(history.effects).toHaveLength(3); expect(history.settled).toBe(true); expect((await readProjectReviewOutput(tx, f.h.handle, parent)).receipt.costs.closed).toBe(true);
+            const key = controlRecordKey(f.h.handle, child.runId, 'join', joined.joinReceipt.joinId), saved = await tx.getResource(key), changed = { ...saved.doc, acceptedResultRefs: [] };
+            try { await tx.putResource(key, { ...saved, doc: changed, integrity: hash(changed) }); await expect(readTaskLocalOutput(tx, f.h.handle, child)).rejects.toThrow(); }
+            finally { await tx.putResource(key, saved); }
+            expect((await readTaskLocalOutput(tx, f.h.handle, child)).receipt).toEqual(local.receipt);
+        });
+        const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+        expect(task.status).toBe('review'); expect(task.compute.limits.maxRequests).toBe(8); expect(task.compute.attempts).toHaveLength(8);
+        expect(task.compute.attempts.every(row => row.status === 'settled')).toBe(true); expect(task.compute.attempts.filter(row => row.reservationId === child.runId)).toHaveLength(3);
+        expect(task.compute.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released', limits: expect.objectContaining({ maxRequests: 3 }) })]);
+        expect(task.attempts.flatMap(row => row.calls.map(call => call.name))).toEqual(['atri_agent_set_plan', 'atri_agent_project_save', 'atri_agent_prepare_review']);
+        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
+    } finally { await f.cleanup(); }
+}, 180000);
+
+test('Project child Fanout cannot split a replacement bank or send its members when the original held allocation cannot fund the terminal', async () => {
+    const f = await fixture(makeTempSqliteEngineHarness, { childFanout: true, childRequests: 2 });
+    try {
+        await expect(f.run()).rejects.toThrow(); const { parent, child } = await roots(f);
+        expect(f.requests).toHaveLength(1); expect(child.status).toBe('blocked'); expect(child.resultRefs).toEqual([]); expect(child.outputClaims).toEqual([]); expect(parent.outputClaims).toEqual([]);
+        await f.h.engine.withTransaction(f.h.handle, async tx => {
+            const rows = await tx.listResources({ kind: K.orchestrationRecord, handle: f.h.handle, runId: child.runId, recordType: 'receipt' });
+            expect(rows.some(row => row.doc.receiptKind === 'fanout_frame')).toBe(false);
+            expect(rows.filter(row => row.doc.receiptKind === 'native_project_failure').map(row => row.doc.reasonCode)).toEqual(['native_orchestration_graph_budget_unavailable']);
+        });
+        const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+        expect(task.compute.attempts).toHaveLength(1); expect(task.compute.attempts[0].status).toBe('settled'); expect(task.attempts.every(row => !row.calls.length)).toBe(true);
+        expect(task.compute.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released', limits: expect.objectContaining({ maxRequests: 2 }) })]);
+        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
+    } finally { await f.cleanup(); }
+}, 90000);
+
+// Actual paid nested-capture boundaries; no new Source, bank or retry fixture.
+async function assertPaidChildFanoutStopped(f, { unknown = false, checkpoint = null } = {}) {
+    const { parent, child } = await roots(f), task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+    expect(f.requests).toHaveLength(3); expect(f.requests.slice(1).map(body => body.model).sort())
+        .toEqual(['project-delegated-distinct-model', 'project-child-fanout-distinct-B'].sort());
+    expect(parent.status).not.toBe('completed'); expect(child.status).not.toBe('completed'); expect(parent.outputClaims).toEqual([]); expect(child.outputClaims).toEqual([]);
+    if (unknown) expect(child.status).toBe('reconciling');
+    expect(task.compute.limits.maxRequests).toBe(8); expect(task.compute.attempts).toHaveLength(3); expect(task.compute.attempts[0].status).toBe('settled');
+    expect(new Set(task.compute.attempts.map(row => row.attemptId)).size).toBe(3);
+    expect(task.compute.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'held', limits: expect.objectContaining({ maxRequests: 3 }) })]);
+    expect(task.attempts.every(row => !row.calls.length)).toBe(true); expect(task.changeSets).toEqual([]);
+    if (checkpoint) {
+        expect(child.runId).toBe(checkpoint.childRunId); expect(child.sourceBinding).toEqual(checkpoint.sourceBinding);
+        expect(task.compute.attempts.filter(row => row.reservationId === child.runId).map(row => row.attemptId).sort()).toEqual(checkpoint.feeIds);
+    }
+    await f.h.engine.withTransaction(f.h.handle, async tx => {
+        const attempts = await Promise.all(child.attemptRefs.map(id => readAttempt(tx, f.h.handle, child, id)));
+        for (const [index, node] of f.childBranches.entries()) {
+            const records = attempts.filter(record => record.doc.nodeId === node.nodeId); expect(records).toHaveLength(1); expect(records[0].doc.effectRefs).toHaveLength(1);
+            const effect = (await readEffect(tx, f.h.handle, child, records[0].doc.effectRefs[0])).doc;
+            const fees = task.compute.attempts.filter(row => row.orchestration?.effectId === effect.effectId);
+            expect(fees).toHaveLength(1); expect(fees[0].reservationId).toBe(child.runId); expect(fees[0].status).toBe(unknown && index === 1 ? 'unknown' : 'settled');
+            expect(effect.sourceBindingDigest).toBe(child.sourceBinding.bindingDigest);
+            if (unknown && index === 1) expect(records[0].doc.resultRefs).toEqual([]);
+        }
+        expect(await readTaskLocalOutput(tx, f.h.handle, child)).toBeNull(); expect(await readProjectReviewOutput(tx, f.h.handle, parent)).toBeNull();
+    });
+    expect(f.requests).toHaveLength(3); return { parent, child, task };
+}
+
+test('SQLite Project child Fanout retains both paid branch fees when the original human Project Source is replaced before either response', async () => {
+    const f = await fixture(makeTempSqliteEngineHarness, { childFanout: true });
+    let releaseSourceWrite; const sourceWritten = new Promise(resolve => { releaseSourceWrite = resolve; });
+    let sent = 0, checkpoint = null;
+    try {
+        f.onResponse(async ({ body }) => {
+            if (!['project-delegated-distinct-model', 'project-child-fanout-distinct-B'].includes(body.model)) return;
+            if (++sent === 2) {
+                try {
+                    const { child } = await roots(f), task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+                    checkpoint = { sourceBinding: structuredClone(child.sourceBinding), childRunId: child.runId,
+                        feeIds: task.compute.attempts.filter(row => row.reservationId === child.runId).map(row => row.attemptId).sort() };
+                    await f.writeProject();
+                } finally { releaseSourceWrite(); }
+            }
+            await sourceWritten;
+        });
+        await expect(f.run()).rejects.toThrow(); expect(sent).toBe(2); expect(checkpoint).toBeTruthy(); expect(checkpoint.feeIds).toHaveLength(2);
+        const { child } = await assertPaidChildFanoutStopped(f, { checkpoint }), project = await f.studio.observeProject(f.h.handle, f.projectId);
+        expect(project.source.project.displayName).toBe('Independent original Project edit'); expect(project.revision.revision).not.toBe(child.sourceBinding.sourceRef.revision);
+    } finally { releaseSourceWrite(); await f.cleanup(); }
+}, 120000);
+
+test('SQLite Project child Fanout keeps a paid usage_unknown member and its original held bank without TaskLocal, formal tools or replay', async () => {
+    const f = await fixture(makeTempSqliteEngineHarness, { childFanout: true, childFanoutUsageUnknown: true });
+    try {
+        await expect(f.run()).rejects.toThrow(); await assertPaidChildFanoutStopped(f, { unknown: true });
+        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
+    } finally { await f.cleanup(); }
+}, 120000);

@@ -27,6 +27,14 @@ export async function readTaskGraphRevisions(tx, handle, root, graphRevisions) {
     }
     const plan = await readPlanRevision(tx, handle, root.planRef);
     const rows = await tx.listResources({ kind: K.orchestrationRecord, handle, runId: root.runId, recordType: 'patch' });
+    // With no original patch records there is nothing to replay or memoize.
+    // Still prove the entire current graph and its initial scheduling state
+    // against the freshly read Plan before returning independent snapshots.
+    if (!rows.length) {
+        const nodeControl = Object.fromEntries(plan.definition.nodes.map(node => [node.nodeId, { disposition: 'eligible', priority: 0, reasonCode: null }]));
+        if (root.graphRevision !== 0 || root.progress.patches !== 0 || !equal(plan.definition, root.graph) || !equal(nodeControl, root.nodeControl)) invalid();
+        return requested.has(0) ? new Map([[0, { graph: cloneNativeDocument(plan.definition), nodeControl, graphRevision: 0 }]]) : new Map();
+    }
     rows.sort((a, b) => a.doc.decisionSeq - b.doc.decisionSeq);
     const facts = [];
     for (const row of rows) {

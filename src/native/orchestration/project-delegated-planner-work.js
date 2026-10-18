@@ -7,6 +7,7 @@ import { graphPatchHash } from './graph-revision-contracts.js';
 import { graphPlannerReceiptId, readGraphPlannerCompletion } from './graph-planner-completion.js';
 import { assertProjectControlWork } from './project-quality-contracts.js';
 import { projectDelegatedGraphProfile } from './project-delegated-graph-profile.js';
+import { projectReplanScope, projectPlannerProgressFingerprint } from './project-replan-contracts.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { readProjectDelegatedModelInput } from './project-delegation-contracts.js';
 import { controlCommandId, controlRecordKey, readAttempt, runGuard } from './controller-common.js';
@@ -41,7 +42,15 @@ export async function completeProjectDelegatedPlanner({ state, service, port, re
         if (!Array.isArray(value.operations) || !value.operations.length) fail('native_orchestration_planner_response_invalid');
         return immutable(value);
     });
-    if (parsed.operations.some(operation => !['setPendingPriority', 'requestFinalize', 'addNode', 'addEdge'].includes(operation.op))) fail('native_orchestration_planner_patch_rejected');
+    if (parsed.operations.some(operation => !['setPendingPriority', 'requestFinalize', 'requestReplan', 'addNode', 'addEdge'].includes(operation.op))) fail('native_orchestration_planner_patch_rejected');
+    const evidence = await engine.withTransaction(handle, async tx => {
+        const root = await service.runs.get(handle, runId), facts = [];
+        for (const ref of state.decision.inputRef.acceptedGraphResultRefs) facts.push(await readGraphNodeResult(tx, handle, root, ref.resultId));
+        if (facts.some(fact => !fact)) fail('native_orchestration_graph_result_required');
+        return facts;
+    });
+    const progressKey = projectPlannerProgressFingerprint(parsed.operations, state.root.sourceBinding, evidence);
+    if (state.plannerOperations.get(state.model.node.nodeId)?.has(progressKey)) fail('native_orchestration_planner_no_progress');
     const root = await service.runs.get(handle, runId), patch = { schemaVersion: 1, patchId: 'opatch_' + hash({ runId, attemptId }).slice(0, 32), runId,
         producerAttemptId: attemptId, expectedEpoch: root.epoch, expectedGraphRevision: root.graphRevision, operations: parsed.operations,
         reasonRefs: [{ kind: 'source', bindingDigest: root.sourceBinding.bindingDigest }, ...state.decision.inputRef.acceptedGraphResultRefs.map(ref => ({ kind: 'result', resultId: ref.resultId }))], payloadHash: '' };
@@ -55,7 +64,10 @@ export async function completeProjectDelegatedPlanner({ state, service, port, re
             const candidate = cloneNativeDocument(active.graph);
             for (const operation of actual.operations) {
                 if (operation.op === 'addNode') candidate.nodes.push(operation.node);
-                if (operation.op === 'addEdge') candidate.edges.push(operation.edge);
+                if (operation.op === 'addEdge') {
+                    if (operation.edge.loopBack) fail('native_orchestration_planner_patch_rejected');
+                    candidate.edges.push(operation.edge);
+                }
             }
             const profile = projectDelegatedGraphProfile({ ...state.child.plan, definition: candidate });
             if (profile.terminalNodeId !== state.child.topology.terminalNodeId || !equal(profile.output, state.child.topology.output))
@@ -69,9 +81,14 @@ export async function completeProjectDelegatedPlanner({ state, service, port, re
                         fail('native_orchestration_result_audience_denied');
                 }
             }
-            const required = profile.models.filter(node => node.nodeId !== producer.nodeId && !progress.has(node.nodeId)).length;
+            const repeating = actual.operations.some(operation => operation.op === 'requestReplan');
+            const scope = repeating ? projectReplanScope(candidate, producer.nodeId) : null;
+            if (repeating && (!progress.has(scope.target.nodeId) && scope.target.nodeId !== producer.nodeId
+                || actual.operations.some(operation => operation.op === 'requestFinalize'))) fail('native_orchestration_planner_replan_pending');
+            const required = profile.models.filter(node => scope?.affectedNodeIds.includes(node.nodeId) || node.nodeId !== producer.nodeId && !progress.has(node.nodeId)).length;
             const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: runId }, { tx });
             if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');
+            if (repeating && active.progress.attempts + required + 1 > active.limits.maxAttempts) fail('native_orchestration_limit_exhausted');
             const effect = (await readEffect(tx, handle, active, effectId)).doc;
             await readProjectDelegatedModelInput(tx, handle, active, producer, effect);
             await current();
@@ -100,5 +117,6 @@ export async function completeProjectDelegatedPlanner({ state, service, port, re
     }), { withAuthority });
     const saved = await engine.withTransaction(handle, async tx => readGraphPlannerCompletion(tx, handle, await service.runs.get(handle, runId), attemptId, { verifyControlWork: assertProjectControlWork }));
     if (!saved) fail('native_orchestration_planner_producer_denied');
+    const priorKeys = state.plannerOperations.get(state.model.node.nodeId) ?? new Set(); priorKeys.add(progressKey); state.plannerOperations.set(state.model.node.nodeId, priorKeys);
     return { attemptId, controlRef: saved.controlRef, requests: saved.patch.requests };
 }

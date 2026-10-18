@@ -1,7 +1,9 @@
 import { RpControlGraphWork } from './rp-control-graph-work.js';
 import { rpDelegatedControlProfile } from './rp-delegated-control-profile.js';
 import { rpDelegatedPlannerReaderOptions } from './rp-delegation-control-contracts.js';
-import { readGraphPlannerCompletion } from './graph-planner-completion.js';
+import { readGraphNodeResult } from './graph-result-contracts.js';
+import { readAttempt, assertAttemptConsumable } from './controller-common.js';
+import { readRpDelegatedInputSources } from './rp-delegated-quality-contracts.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { runGenerationLocalWork } from './generation-local-work.js';
 
@@ -15,8 +17,24 @@ export class RpDelegatedControlWork extends RpControlGraphWork {
         super(args);
         this.reservationId = this.runId;
         this.plannerReaderOptions = rpDelegatedPlannerReaderOptions;
-        this.admitGraph = graph => rpDelegatedControlProfile({ ...this.state.selected.plan, definition: graph });
+        this.admitGraph = graph => {
+            const plan = this.state.selected.plan, initial = rpDelegatedControlProfile(plan), profile = rpDelegatedControlProfile({ ...plan, definition: graph });
+            if (!profile || profile.terminalNodeId !== initial.terminalNodeId || !equal(profile.output, initial.output)
+                || !equal(graph.edges.filter(edge => edge.loopBack), plan.definition.edges.filter(edge => edge.loopBack))) fail();
+            return profile;
+        };
         this.canReadControl = async () => true; // All child stages share the exact same Task audience.
+        this.reviewRerunRequests = (root, reviewer, invalidatedIds) => rpDelegatedControlProfile({ ...this.state.selected.plan, definition: root.graph }).models
+            .filter(node => node.nodeId === reviewer.nodeId || !this.records.has(node.nodeId)
+                || invalidatedIds.includes(this.records.get(node.nodeId).attemptId)).length;
+        this.revalidateResult = async (tx, root, recipient, ref) => {
+            const fact = await readGraphNodeResult(tx, this.state.handle, root, ref.resultId);
+            if (!fact || !equal(fact.receipt.resultRef, ref) || !fact.record.envelope.audienceConstraint.nodeIds.includes(recipient.nodeId)
+                || !recipient.inputRefs.some(input => equal(input, ref))) fail();
+            await assertAttemptConsumable(tx, this.state.handle, root, fact.producer);
+            await this.current();
+        };
+
         this.controlWork = ({ root, send, limits, signal }, rows) => async (kind, value, operation) => {
             const effectId = this.state.effectId;
             const attempt = { attemptId: send.bank.nextLocalWorkAttemptId(), requestId: this.state.request.requestId, kind, estimatedItems: 1,
@@ -34,17 +52,9 @@ export class RpDelegatedControlWork extends RpControlGraphWork {
     }
 
     async inputs(tx, root) {
-        const bundle = this.state.controlBundle, facts = [];
-        if (bundle.evidenceRefs.length) fail();
-        for (const ref of bundle.controlRefs) {
-            const fact = await readGraphPlannerCompletion(tx, this.state.handle, root, ref.attemptId, rpDelegatedPlannerReaderOptions);
-            if (!fact || !equal(fact.controlRef, ref)) fail(); facts.push(fact);
-        }
-        if (facts.some(fact => !bundle.bindings.some(binding => binding.producerAttemptId === fact.producer.attemptId))
-            || bundle.bindings.some(binding => !root.graph.edges.some(edge => edge.edgeId === binding.edgeId
-                && edge.to.nodeId === this.state.activeSelection.node.nodeId
-                && facts.some(fact => fact.producer.attemptId === binding.producerAttemptId && fact.producer.nodeId === edge.from.nodeId)))) fail();
-        return facts;
+        const recipient = this.state.attemptId ? (await readAttempt(tx, this.state.handle, root, this.state.attemptId)).doc : null;
+        return readRpDelegatedInputSources(tx, this.state.handle, root, this.state.controlBundle, this.state.activeSelection.node.nodeId,
+            { live: true, recipient: recipient && ['running', 'waiting_effect'].includes(recipient.status) ? recipient : null });
     }
 
     async currentInputs(tx, root) { return this.inputs(tx, root); }

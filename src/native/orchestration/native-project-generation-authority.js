@@ -10,6 +10,7 @@ import { executeProjectSkillWork } from '../skill-invocation.js';
 import { prepareRetrievalCompute } from '../retrieval-compute.js';
 import { pinSkillEntries, loadAlwaysSkills, boundSkillFile } from '../../../public/shared/skill-invocation.js';
 import { ModelPort } from './model-port.js';
+import { readFanoutFrame } from './fanout-controller.js';
 import { readEffect } from './effect-contracts.js';
 import { readAttempt } from './controller-common.js';
 import { checkedRecord } from './plan-repository.js';
@@ -39,6 +40,13 @@ function frameExpected(state) {
         fingerprint: hash(startInput) };
 }
 
+function schedulerFrame(state) {
+    if (!state.fanoutChildPermit) return { boundary: state.boundary, expected: frameExpected(state) };
+    const child = fanoutChildren.get(state.fanoutChildPermit);
+    if (!child || child.generation.state !== state.fanoutParentState || !fanoutControls.get(child.controlPermit)?.active) fail();
+    return { boundary: child.boundary, expected: child.expected };
+}
+
 function assertFrame(state, expected = {}, controlPermit = null) {
     const { executor, host, handle, preflight, startInput, boundary } = state;
     if (!(executor instanceof NativeProjectAgentExecutor) || !(executor.host instanceof NativeGenerationHost)
@@ -61,16 +69,19 @@ function assertFrame(state, expected = {}, controlPermit = null) {
         || preflight.projectId !== state.projectId || preflight.taskId !== state.taskId
         || preflight.runtimeRouteId !== startInput.runtimeRouteId || hash(preflight) !== startInput.expectedPreflightFingerprint) fail();
     let active;
-    if (controlPermit) {
-        const control = fanoutControls.get(controlPermit);
-        if (!control?.active || control.generation.state !== state) fail();
-        active = NativeTaskScheduler.prototype.assertFanoutControlBoundary.call(executor.scheduler, boundary, frameExpected(state));
-    } else if (state.fanoutChildPermit) {
+    if (controlPermit && (!fanoutControls.get(controlPermit)?.active || fanoutControls.get(controlPermit).generation.state !== state)) fail();
+    if (state.fanoutChildPermit) {
         const child = fanoutChildren.get(state.fanoutChildPermit);
-        if (!child || child.generation.state !== state.fanoutParentState || child.generation.state.boundary !== boundary
+        if (!child || child.generation.state !== state.fanoutParentState || state.fanoutParentState.boundary !== boundary
             || !fanoutControls.get(child.controlPermit)?.active) fail();
-        active = NativeTaskScheduler.prototype.assertFanoutChildBoundary.call(executor.scheduler, boundary, frameExpected(state), child.boundary, child.expected);
-    } else active = NativeTaskScheduler.prototype.assertActiveBoundary.call(executor.scheduler, boundary, frameExpected(state));
+        // Validate every original ancestor's suspended control witness; the
+        // final leaf still requires the original active send boundary.
+        assertFrame(state.fanoutParentState, expected, child.controlPermit);
+        const parent = schedulerFrame(state.fanoutParentState);
+        active = NativeTaskScheduler.prototype[controlPermit ? 'assertFanoutChildControlBoundary' : 'assertFanoutChildBoundary']
+            .call(executor.scheduler, parent.boundary, parent.expected, child.boundary, child.expected);
+    } else active = NativeTaskScheduler.prototype[controlPermit ? 'assertFanoutControlBoundary' : 'assertActiveBoundary']
+        .call(executor.scheduler, boundary, frameExpected(state));
     if (executor.scheduler.operations.get(active.operationId)?.retry !== false || active.attempt !== 0) fail();
     return active;
 }
@@ -180,7 +191,10 @@ export async function captureNativeProjectWorker(capture, { requestId, task, out
  * can bind that child to the already allocated private Scheduler scope. */
 async function readDelegatedBoundary(capture, { candidateChild = null, candidateParentAttempt = null, bound = null, permit = null }) {
     const original = generations.get(capture);
-    if (!original?.workerStage || original.state.fanoutChildPermit) fail();
+    if (!original?.workerStage) fail();
+    const outer = original.state.fanoutChildPermit ? fanoutChildren.get(original.state.fanoutChildPermit) : null;
+    if (original.state.fanoutChildPermit && (!outer?.delegation || !bound || hash(bound) !== hash(outer.delegation) || candidateChild || candidateParentAttempt || permit)) fail();
+    const lineageOwner = outer?.generation ?? original;
     const { host, handle } = original.state, engine = host.persistence._engine;
     const scope = permit ? fanoutChildren.get(permit) : null;
     if (permit && scope?.generation !== original) fail();
@@ -198,7 +212,7 @@ async function readDelegatedBoundary(capture, { candidateChild = null, candidate
             || parent.status !== 'running' || parent.cancelRequested || child.cancelRequested || !['admitted', 'running'].includes(child.status)
             || child.parentRef.parentEpoch !== parent.epoch || lineage.parentAttempt.epoch !== parent.epoch
             || lineage.parentAttempt.status !== (lineage.mode === 'handoff' ? 'waiting_child' : 'running')
-            || lineage.parentInput.requestId !== original.requestId || lineage.parentInput.role !== 'studio'
+            || lineage.parentInput.requestId !== lineageOwner.requestId || lineage.parentInput.role !== 'studio'
             || source.projectId !== original.state.projectId || source.taskId !== original.state.taskId || source.revision !== original.state.preflight.baseRevision
             || source.executionFingerprint !== original.state.initialSourceFingerprint
             || generation?.kind !== 'generation' || generation.status !== 'started'
@@ -208,7 +222,7 @@ async function readDelegatedBoundary(capture, { candidateChild = null, candidate
         await BudgetPort.prototype.verifyReservation.call(host.turnOrchestration.execution.budgetPort, { handle, tx, root: child, parent });
         const binding = immutable({ childRunId: child.runId, parentRunId: parent.runId, parentAttemptId: lineage.parentAttempt.attemptId,
             childEpoch: child.epoch, parentEpoch: parent.epoch, planRef: child.planRef,
-            sourceBindingDigest: child.sourceBinding.bindingDigest, requestId: original.requestId, projectAttemptId: original.projectAttemptId });
+            sourceBindingDigest: child.sourceBinding.bindingDigest, requestId: lineageOwner.requestId, projectAttemptId: original.projectAttemptId });
         if (bound && hash(bound) !== hash(binding)) fail();
         return { lineage, binding };
     });
@@ -217,7 +231,7 @@ async function readDelegatedBoundary(capture, { candidateChild = null, candidate
 /** Original Task child boundary only. A JSON child id cannot mint this worker. */
 export async function captureNativeProjectDelegatedWorker(capture, permit, { requestId, task, outputContract = null, routeRef, nodeId }) {
     const original = generations.get(capture), child = fanoutChildren.get(permit);
-    if (!original?.workerStage || original.state.fanoutChildPermit || child?.generation !== original
+    if (!original?.workerStage || child?.generation !== original
         || typeof requestId !== 'string' || !requestId.startsWith('project-quality:')) fail();
     if (!child.nodeIds.includes(nodeId)) {
         if (!child.delegation) fail();
@@ -238,12 +252,19 @@ export async function captureNativeProjectDelegatedWorker(capture, permit, { req
 }
 
 /** Independent proof of the active original child Scheduler allocation. */
-export function inspectNativeProjectDelegatedBoundary(capture, permit, expected) {
+export function inspectNativeProjectDelegatedBoundary(capture, permit, expected, controlPermit = null) {
     const generation = generations.get(capture), child = fanoutChildren.get(permit);
     if (!generation?.workerStage || child?.generation !== generation || !fanoutControls.get(child.controlPermit)?.active
         || expected.handle !== generation.state.handle || expected.host !== generation.state.host) fail();
-    return NativeTaskScheduler.prototype.assertFanoutChildBoundary.call(generation.state.executor.scheduler, generation.state.boundary,
-        frameExpected(generation.state), child.boundary, child.expected);
+    if (controlPermit) {
+        const control = fanoutControls.get(controlPermit);
+        if (!control?.active || control.generation.state.fanoutChildPermit !== permit) fail();
+        return assertFrame(control.generation.state, expected, controlPermit);
+    }
+    assertFrame(generation.state, expected, child.controlPermit);
+    const parent = schedulerFrame(generation.state);
+    return NativeTaskScheduler.prototype.assertFanoutChildBoundary.call(generation.state.executor.scheduler, parent.boundary,
+        parent.expected, child.boundary, child.expected);
 }
 
 export function inspectNativeProjectGenerationIdentity(capture, expected) {
@@ -287,13 +308,42 @@ export async function withNativeProjectDelegation(capture, worker) {
     return (await withProjectChildren(capture, [worker], { maxConcurrency: 1 }, true))[0];
 }
 
-async function withProjectChildren(capture, workers, options, delegatedMode) {
+/** Only an actual bound child capture and its Controller-frozen Frame may
+ * split this already held Scheduler allocation. No nested child Run is made. */
+export async function withNativeProjectDelegatedFanout(capture, { fanoutAttemptId, workers, ...options }) {
+    return withProjectChildren(capture, workers, options, true, fanoutAttemptId);
+}
+
+async function withProjectChildren(capture, workers, options, delegatedMode, fanoutAttemptId = null) {
     const generation = generations.get(capture);
-    if (!generation || Boolean(generation.workerStage) !== delegatedMode || generation.state.fanoutChildPermit || !Array.isArray(workers) || !workers.length) fail();
-    const { state } = generation, expected = frameExpected(state);
+    if (!generation || Boolean(generation.workerStage) !== delegatedMode || generation.state.fanoutChildPermit && !fanoutAttemptId || !Array.isArray(workers) || !workers.length) fail();
+    const { state } = generation, parentScope = schedulerFrame(state), expected = parentScope.expected;
     await inspectNativeProjectGeneration(capture, { host: state.host, handle: state.handle });
     const delegated = new Map();
-    if (delegatedMode) for (const worker of workers) {
+    if (fanoutAttemptId) {
+        const outer = fanoutChildren.get(state.fanoutChildPermit);
+        if (!outer?.delegation) fail();
+        const { lineage } = await readDelegatedBoundary(capture, { bound: outer.delegation });
+        await state.host.persistence._engine.withTransaction(state.handle, async tx => {
+            const frame = await readFanoutFrame(tx, state.handle, lineage.child, fanoutAttemptId);
+            if (!frame || frame.epoch !== lineage.child.epoch || frame.sourceBindingDigest !== lineage.child.sourceBinding.bindingDigest
+                || workers.length !== frame.branches.length) fail();
+            for (const worker of workers) {
+                const branch = frame.branches.find(branch => branch.entryAttemptId === worker.entryAttemptId);
+                if (!branch || hash([...worker.nodeIds].sort()) !== hash([...branch.scopeNodeIds].sort())) fail();
+                const resources = [];
+                for (const id of branch.scopeNodeIds) {
+                    const node = lineage.graph.nodes.find(node => node.nodeId === id), pin = node && nodeModelRoutePins(node, lineage.plan.dependencyPins)[0];
+                    if (node?.kind !== 'agent' || !pin) fail();
+                    const route = await state.host.persistence.getRuntimeRoute(state.handle, pin.resourceRef.runtimeRouteId);
+                    if (hash(route) !== pin.integrity) fail();
+                    resources.push(...await state.host.executionResources(state.handle, route));
+                }
+                if (hash([...new Set(resources)].sort()) !== hash([...new Set(worker.resources)].sort())) fail();
+            }
+        });
+    }
+    if (delegatedMode && !fanoutAttemptId) for (const worker of workers) {
         if (worker.delegatedChild === undefined && worker.delegatedParentAttempt === undefined) continue;
         const { lineage, binding } = await readDelegatedBoundary(capture, { candidateChild: worker.delegatedChild, candidateParentAttempt: worker.delegatedParentAttempt });
         const ids = lineage.plan.definition.nodes.filter(node => node.capabilities.includes('generation.send')).map(node => node.nodeId).sort();
@@ -315,13 +365,13 @@ async function withProjectChildren(capture, workers, options, delegatedMode) {
         return { kind: childExpected.kind, executionClass: childExpected.executionClass, resources: childExpected.resources,
             key: childExpected.key, fingerprint: childExpected.fingerprint, fresh: async () => { await worker.fresh(controlPermit); return true; }, finalize: value => value,
             run: async boundary => {
-                NativeTaskScheduler.prototype.assertFanoutChildBoundary.call(state.executor.scheduler, state.boundary, expected, boundary, childExpected);
+                NativeTaskScheduler.prototype.assertFanoutChildBoundary.call(state.executor.scheduler, parentScope.boundary, expected, boundary, childExpected);
                 const permit = Object.freeze({}); fanoutChildren.set(permit, { generation, controlPermit, boundary, expected: childExpected, nodeIds: immutable(worker.nodeIds), delegation: delegated.get(worker) ?? null });
                 try { return await worker.run({ permit, signal: boundary.signal, controlPermit }); } finally { fanoutChildren.delete(permit); }
             } };
     });
     try {
-        const result = await NativeTaskScheduler.prototype.withResourceFanout.call(state.executor.scheduler, state.boundary, expected, children, {
+        const result = await NativeTaskScheduler.prototype.withResourceFanout.call(state.executor.scheduler, parentScope.boundary, expected, children, {
             ...options, ...(options.until ? { until: args => options.until(args, controlPermit) } : {}),
             ...(options.onSettled ? { onSettled: (item, group) => options.onSettled(item, group, controlPermit) } : {}) });
         if (!options.until) { control.active = false; return result; }

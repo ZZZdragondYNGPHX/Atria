@@ -60,9 +60,18 @@ export class NativeTaskScheduler {
     /** Read-only lineage proof for an actually admitted original fanout child.
      * A suspended parent alone cannot authorize a model send. */
     assertFanoutChildBoundary(parentBoundary, parentExpected, childBoundary, childExpected) {
+        return this.#assertFanoutChildFrame(parentBoundary, parentExpected, childBoundary, childExpected, false);
+    }
+
+    /** Passive child control only; this witness cannot authorize Model work. */
+    assertFanoutChildControlBoundary(parentBoundary, parentExpected, childBoundary, childExpected) {
+        return this.#assertFanoutChildFrame(parentBoundary, parentExpected, childBoundary, childExpected, true);
+    }
+
+    #assertFanoutChildFrame(parentBoundary, parentExpected, childBoundary, childExpected, controlOnly) {
         const parent = boundaries.get(parentBoundary), child = boundaries.get(childBoundary);
         const original = assertOperationFrame(this, parentBoundary, parent, parentExpected, ['waiting_child', 'running', 'streaming'], true);
-        const active = this.assertActiveBoundary(childBoundary, childExpected);
+        const active = controlOnly ? this.assertFanoutControlBoundary(childBoundary, childExpected) : this.assertActiveBoundary(childBoundary, childExpected);
         if (!child || child.scheduler !== this || operationGroups.get(child.operation)?.parent !== parent.operation
             || !(this.suspended.has(parent.operation) && parent.operation.view.status === 'waiting_child'
                 || this.running.has(parent.operation) && ['running', 'streaming'].includes(parent.operation.view.status))
