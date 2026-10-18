@@ -2195,3 +2195,13 @@
 - 新成员经原 inheritFanoutMembership 创建；冷读绑定原 decisionSeq、输入、替代 receipt、membership 与原银行，历史 Join 只允许结算发生在原 Review 决策之后，绝不重开已关闭 Join。取消/fail_fast/提前关闭按 Frame 全部实际 membership 扫描，覆盖刚产生、尚未进入本地进度 Map 的 A2/R2；只取消原 pending/reserved、未启动、零 Effect/Result 的工作，已发与 unknown 保持。完整费用统计仍包括所有旧失效成员，未以最新 Map 丢弃原账。
 - 执行代理仅对直接改动做语法/ESLint/diff 检查，均通过；没有新增测试、独立审查、运行探针或 hash 矩阵。新增行为 **NOT_RUN**，原 timeout/CAS/Browser FAIL 与旧069宽组各归原版本，不回标或跨版本拼绿。
 - **已完成实现**：上述递归、整组重做、咨询委派重做、分支内非终端重做及取消接线。**仍受限/未完成**：scope 内部委派、拓扑/回环、冻结终端替换、已关闭 Join 的局部分支 sibling 重用与跨 scope replan；当前继续补 scope 纯咨询委派，不把进行中的代码写成完成。**NOT_RUN**：当前新增消费者与最终运行、平台/真实 Provider/质量价格/eligible 晋升。P3/P4/P6 仍 IN_PROGRESS、最终 NOT_READY，未合 main/删除分支；不因用户减少验证而伪造 PASS。
+
+
+### 2026-10-18 — 冻结分支内咨询委派
+
+- Source **436cd1211**（parent 4f46b4afc，33 files，629+/193-）已保存：三域 main/child 冻结分支中的 Agent 可沿原纯咨询 Delegate/Handoff 执行已发布子 Plan，并继续原 Model。父委派 transient 状态按实际 Run+Attempt 隔离，不再由兄弟分支争用单一 Run 槽；RP 原私有 capture 按实际父 Attempt 找到各 branch。没有新执行器、mode、权限或银行。
+- 分支资源包括原已解析递归 child Plan 模型全集；冻结前原请求容量同时计入真实 child allocation，实际预约仍由原银行最终准入。共有 child driver 只接领域既有资源/请求数/费用闭包回调。Project 在原私有 generation 捕获中核真实 Frame 成员/节点/原子 Plan 许可，长 child body 不持有父 SourceControl 锁；Source/epoch/CAS/正式 writer 继续原边界。
+- typed member input 与 Model continuation 沿原 Resolver/Return/TaskLocal proof；费用闭合从原实际子 Run 银行整树观察，精确比对原 TaskLocal reservation/fee refs，没有读取不存在的 closure.closed 字段。scope 自身 held 不冒充 closed，后代未知/未释放或 reservation ACK-loss 保持 reconciling，不因本层 fees closed 误记 blocked 或退费。Session 同步修原失败持久化的后代状态判断。
+- 与已接 Review 组合：原整组 helper 接受实际已完成、费用闭合的纯咨询委派；分支先前已失效的历史成员继续绑定原 Review receipt，只将本次仍有效成员纳入新 invalidation，所有旧费用保留。新增终端保护禁止通过前置重做间接重做已派发的冻结终端，冷读绑定其真正晚于 Review 的原 Transition；approve 本身不冒充 rerun。
+- 用户要求的轻量化继续：Session/Project memberCost 直接复用本 call 原 batch 已读完整 Model/continuation，失败/晚到/无 Result 仍沿原读法；整组委派费用判断复用同次一个 fresh 原银行快照。无公共 proof 参数、跨调用缓存或另一权威；没有新增验证队列/hash 矩阵。
+- 直接修改语法/ESLint/diff 检查通过；未运行 Runtime/Browser/benchmark，新能力 **NOT_RUN**。原宽回归与各 FAIL 继续保留原版本，不能称超时已解、浏览器通过或全产品完成。**仍未完成/受限**：scope 内部有界回环、拓扑变化、嵌套 Frame、跨 scope replan、关闭 Join 后局部分支重用及原最终运行核销。继续实际实现分支内已发布回边，不把冻结成员替换当作回环；P3/P4/P6 IN_PROGRESS、最终 NOT_READY，main/分支保留。
