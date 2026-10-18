@@ -2185,3 +2185,13 @@
 - 进一步去掉 **206处**直接双重 hash 相等比较（共享151、领域55），用已有直接字段比较，持久化摘要/身份与 CAS 格式不变。putImmutable 复用首次 nativeRecord，不再对同一已准入文档再克隆和计算摘要。无新缓存、弱摘要或权威。
 - 执行者只作直接相关语法/ESLint/diff 检查，机械替换遗留 unused imports 已修；未调整检查规则。额外裸模块加载因未初始化应用 config path 退出1，未启动 Host/Provider，不当运行 PASS 或产品失败；按用户减负要求未再引入环境/运行验证。
 - 当前新增行为 **运行 NOT_RUN**，没有新 Runtime/Browser/benchmark 证据，不宣称超时已解、宽组绿或全产品完成；旧069宽组与旧 FAIL 继续归各原字节。明确保留限制：scope 内部 Delegate/Review redo/回环/拓扑变化、局部分支重做/完成 sibling 重用、跨已完成委派重做与跨 scope replan 尚未开放。角色与条件 G2 的有限消费者不等于通用完成，原 P3/P4/P6 IN_PROGRESS、最终 NOT_READY；平台/真实 Provider/价格质量/eligible 晋升仍 NOT_RUN。继续实际工程，不靠改 Gate 或阶段核销。
+
+
+### 2026-10-18 — 咨询委派重做与分支内局部 Review
+
+- Source **687e9f189**（parent 991ceef6a，21 files，267+/101-）已保存并推送：三域 main/child 已完成的纯咨询委派可沿原 Review 重做，重新占用原银行额度并创建新子 Run；旧子树/Return/费用保留。共享 reader 先读原实际 delegation resolver、typed continuation/TaskLocal 与原整树费用 closure，不把 Agent 声明 graph.patch 当作已执行 Planner；同 call 仅复用刚读的完整事实，无公共 proof 或缓存。
+- 同批修 Session 请求额度字段 maxRequests 及局部 invalidated 变量遮蔽；RP 中间 Agent 同时接收原前驱 Result 与原 child Return，仍各走原 Context/ResultPort 新授权。RP child 预约 ACK-loss 且已存在实际子 Run 时保持 reconciling，不能当作未占款阻塞或退款。三语产品说明同步支持边界。仅语法/ESLint/diff 检查，无 Runtime/Browser。
+- Source **4f46b4afc**（parent 687e9f189，33 files，684+/304-）已提交：三域 main/child 冻结分支的 Review 可重做同分支非终端前置工作。原 frozen Frame/Barrier 和终端身份保持；尚未启动的后继及 Join 不失效，A1/R1 的原费用保留，A2 使用原 Review 准备输入/反馈，R2 按真实新 Transition 执行，原不相关 sibling 不重跑。Planner 仅原 scheduling-only scope 动作；不借此开放内部拓扑/replan。
+- 新成员经原 inheritFanoutMembership 创建；冷读绑定原 decisionSeq、输入、替代 receipt、membership 与原银行，历史 Join 只允许结算发生在原 Review 决策之后，绝不重开已关闭 Join。取消/fail_fast/提前关闭按 Frame 全部实际 membership 扫描，覆盖刚产生、尚未进入本地进度 Map 的 A2/R2；只取消原 pending/reserved、未启动、零 Effect/Result 的工作，已发与 unknown 保持。完整费用统计仍包括所有旧失效成员，未以最新 Map 丢弃原账。
+- 执行代理仅对直接改动做语法/ESLint/diff 检查，均通过；没有新增测试、独立审查、运行探针或 hash 矩阵。新增行为 **NOT_RUN**，原 timeout/CAS/Browser FAIL 与旧069宽组各归原版本，不回标或跨版本拼绿。
+- **已完成实现**：上述递归、整组重做、咨询委派重做、分支内非终端重做及取消接线。**仍受限/未完成**：scope 内部委派、拓扑/回环、冻结终端替换、已关闭 Join 的局部分支 sibling 重用与跨 scope replan；当前继续补 scope 纯咨询委派，不把进行中的代码写成完成。**NOT_RUN**：当前新增消费者与最终运行、平台/真实 Provider/质量价格/eligible 晋升。P3/P4/P6 仍 IN_PROGRESS、最终 NOT_READY，未合 main/删除分支；不因用户减少验证而伪造 PASS。
