@@ -39,7 +39,7 @@
 | P1/P2 后端 | Host/Plan/Run/Graph/Effect/审批基础及GraphPatch/Planner/Judge/Review/有界重做、Delegate/Handoff已由真实消费者使用；五种Join与fail_fast同机制接通。末版Join/Fanout SQL36项整轮通过，FS/SQLite36项分次通过；共享控制/输出和原Planner/Judge/Review相邻验证完成。支持范围按原有限profile/owned pins与接口§18，不推导任意嵌套/跨领域图或串行Evolution worker支持Fanout。 |
 | P4 / W06–W07 | RP/Session正式输出、后台Task/Actor appraisal、Project多轮/工具/Review、有限正式Commit、Plan Prompt/原自动evaluation已实现。同一已付费Model Task→Review→fresh批准→Commit→真实Package/Session消费已取得四Engine分次证据，原银行/预算不重置。Join early-close/partial/late全集费用、Session已知失败与unknown的原Attempt/Root终结已完成；零Result/World越权、cold不重发有证据。原Eval质量/价格不足必须拒晋升，不另建质量authority；完整业务语义不能塞回P3内核。 |
 | P5 / W08 | 已完成并回交（`94d677c6d`）：Agents › Plans（Library、Graph/List/Inspector、Validate/Publish/冲突/未知、固定依赖、Binding）与 Agents › Runs（来源 Run 列表、RP 审阅启动、Timeline/Graph、费用/额度/诊断、取消/恢复/核对、Project commit 写入）、隔离 Review 文档与可信批准；真实 Host（模拟 Provider）桌面与模拟手机视口取证见 Record。本轮六项后端问题均已修复并有相关回归，含原 Task reviewHash 接口与真实准备可信提交 UI。真机、Linux/Termux、真实读屏/输入法、真实 Provider 与大图性能 NOT_RUN。 |
-| P6 / W09 | IN_PROGRESS：旧四执行根、Browser capability/主要模式入口、旧设置与 orch-preset scope已清退；共享编译helper、Memory、原数据/unknown收据保留。原manifest逐路径仍发现simulation review四旧renderer及两Director旧命令Skill残留，正在精确清退，不能由AST零旧根核销完整资产/测试清退。完整替代与最终宽矩阵未核销。 |
+| P6 / W09 | IN_PROGRESS：旧四执行根、Browser capability/主要模式入口、旧设置与 orch-preset scope已清退；共享编译helper、Memory、原数据/unknown收据保留。原manifest逐路径发现的四旧renderer/两Director旧命令Skill、专属旧tests/CSS及三语教程残留已精确应用清退，三份有效UI脚本已迁Native入口；原151路径0present、增强相对/绝对引用guard PASS。共享资产/领域断言保留。必要原7suite53项已PASS2.698s（同当前228指纹）；原两E2E13case与smoke仍NOT_RUN，P6完整运行核销与最终宽矩阵未完成。 |
 | 最终验证 / P7 → P8 | installed Host+Browser、Windows/Linux/Termux、声明支持的 Engine、必要外部服务/性能/人工质量按原验收取得证据；不是全部倒挂为 P3 端口 Gate。尚未取得的证据保留 NOT_RUN/BLOCKED，完成整体核对后才处理集成收尾。 |
 
 ## 历史交接与当前剩余项
