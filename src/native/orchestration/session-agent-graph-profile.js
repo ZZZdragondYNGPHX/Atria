@@ -71,7 +71,7 @@ export function sessionAgentGraphProfile(plan) {
         if (incoming[fanout.nodeId].some(edge => !models.some(node => node.nodeId === edge.from.nodeId && ['agent', 'planner', 'review', 'judge'].includes(node.kind))) || !['continue', 'fail_fast'].includes(fanout.policy.failurePolicy)) fail();
         const transfers = graph.edges.filter(edge => edge.from.nodeId === fanout.nodeId);
         const branches = transfers.map(edge => models.find(node => node.nodeId === edge.to.nodeId));
-        if (!branches.length || branches.some(node => !node || !['agent', 'planner', 'judge'].includes(node.kind) || node === narrator || node.policy.allowedPlanPinIds?.length || usedBranches.has(node.nodeId)
+        if (!branches.length || branches.some(node => !node || !['agent', 'planner', 'review', 'judge'].includes(node.kind) || node === narrator || node.policy.allowedPlanPinIds?.length || usedBranches.has(node.nodeId)
             || node.inputs.length !== 1 || node.inputs[0].type !== 'task.result' || incoming[node.nodeId].length !== 1)) fail();
         const branchScopes = branches.map(entry => {
             const scope = new Set(), joins = new Set(), pending = [entry.nodeId];
@@ -79,7 +79,7 @@ export function sessionAgentGraphProfile(plan) {
                 const id = pending.pop();
                 if (scope.has(id)) continue;
                 const node = models.find(node => node.nodeId === id);
-                if (!node || !['agent', 'planner', 'judge'].includes(node.kind) || node === narrator || node.policy.allowedPlanPinIds?.length || usedBranches.has(id)) fail();
+                if (!node || !['agent', 'planner', 'review', 'judge'].includes(node.kind) || node === narrator || node.policy.allowedPlanPinIds?.length || usedBranches.has(id)) fail();
                 scope.add(id);
                 for (const edge of graph.edges.filter(edge => edge.from.nodeId === id)) {
                     if (edge.loopBack) fail();
@@ -109,7 +109,7 @@ export function sessionAgentGraphProfile(plan) {
     for (const review of reviews) {
         const edges = incoming[review.nodeId], evidence = edges.filter(edge => models.find(node => node.nodeId === edge.from.nodeId)?.kind === 'agent');
         if (!evidence.length || edges.some(edge => !['agent', 'planner', 'review', 'judge'].includes(models.find(node => node.nodeId === edge.from.nodeId)?.kind))) fail();
-        if (legacyReview) {
+        if (legacyReview && !usedBranches.has(review.nodeId)) {
             const draft = evidence.length === 1 ? models.find(node => node.nodeId === evidence[0].from.nodeId) : null;
             if (!draft || usedBranches.has(draft.nodeId)
                 || !incoming[narrator.nodeId].some(edge => edge.from.nodeId === draft.nodeId)

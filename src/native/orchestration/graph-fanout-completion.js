@@ -125,10 +125,13 @@ export async function readGraphFanoutPublicationGraph(tx, handle, root, producer
         || frame.sourceBindingDigest !== root.sourceBinding.bindingDigest || producer.sourceBindingDigest !== frame.sourceBindingDigest
         || !same(frame.parentBudgetRef, root.budgetAuthorityRef) || !same(producer.budgetRef, frame.parentBudgetRef)
         || frame.decisionSeq >= publicationSeq || publicationSeq > root.eventSeq + 1
-        || !frame.branches.some(branch => branch.memberAttemptIds.includes(producer.attemptId) && branch.scopeNodeIds.includes(producer.nodeId))) invalid();
+        || !frame.branches.some(branch => branch.scopeNodeIds.includes(producer.nodeId))) invalid();
     const membership = await readFanoutMembership(tx, handle, root, frame, producer.attemptId);
     const fanout = (await readAttempt(tx, handle, root, fanoutAttemptId)).doc;
-    if (!membership || membership.decisionSeq !== frame.decisionSeq || membership.createdAt !== frame.createdAt || fanout.epoch !== frame.epoch
+    const originalMember = frame.branches.some(branch => branch.memberAttemptIds.includes(producer.attemptId));
+    if (!membership || membership.decisionSeq < frame.decisionSeq || membership.decisionSeq >= publicationSeq || fanout.epoch !== frame.epoch
+        || (originalMember ? membership.decisionSeq !== frame.decisionSeq || membership.createdAt !== frame.createdAt
+            : membership.decisionSeq === frame.decisionSeq || membership.createdAt < frame.createdAt)
         || fanout.sourceBindingDigest !== frame.sourceBindingDigest || !same(fanout.budgetRef, frame.parentBudgetRef)) invalid();
     const revisions = Array.from({ length: publicationRevision - frame.graphRevision + 1 }, (_, index) => frame.graphRevision + index);
     const snapshots = await readTaskGraphRevisions(tx, handle, root, revisions), frozen = snapshots.get(frame.graphRevision);

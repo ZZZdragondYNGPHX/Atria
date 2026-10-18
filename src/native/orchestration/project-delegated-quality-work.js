@@ -12,6 +12,8 @@ import { controlCommandId, controlRecordKey, readAttempt, readReviewAdmission, r
 import { readProjectDelegatedFanoutCompletion } from './project-delegated-fanout-contracts.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { writeAttemptSettlement } from './attempt-settlement.js';
+import { readFanoutReviewScope } from './fanout-controller.js';
+import { readProjectFanoutPaidModelNodes } from './project-fanout-planner-contracts.js';
 
 const fail = code => { throw new ConflictError(code); };
 
@@ -56,11 +58,16 @@ export async function completeProjectDelegatedReview(args) {
         }
         if (targets.some(target => !evidence.some(fact => fact.producer.attemptId === target.attemptId)
             || root.graph.nodes.find(node => node.nodeId === target.nodeId)?.kind !== 'agent')) fail('native_orchestration_review_target_invalid');
+        const scope = decision === 'rerun' && state.decision.inputRef.fanoutAttemptId
+            ? await readFanoutReviewScope(tx, handle, root, reviewer, targets) : null;
+        if (decision === 'rerun' && state.decision.inputRef.fanoutAttemptId && !scope) fail('native_orchestration_review_irreversible_dependency');
         if (decision === 'rerun') for (const id of root.attemptRefs) {
             const attempt = (await readAttempt(tx, handle, root, id)).doc;
             if (attempt.attemptId === reviewer.attemptId || await readAttemptInvalidation(tx, handle, root, attempt)) continue;
             const node = root.graph.nodes.find(node => node.nodeId === attempt.nodeId);
             if (!targets.some(target => graphReachable(root.graph, target.nodeId, attempt.nodeId))) continue;
+            if (scope && ['pending', 'reserved'].includes(attempt.status) && attempt.startedAt === null
+                && !attempt.effectRefs.length && !attempt.resultRefs.length) continue;
             if (node?.kind === 'join' && !await readReviewableFanoutCompletion(tx, handle, root, attempt.attemptId,
                 { targets, readCompletion: readProjectDelegatedFanoutCompletion })) fail('native_orchestration_review_irreversible_dependency');
             if (node?.kind === 'fanout') {
@@ -81,16 +88,21 @@ export async function completeProjectDelegatedReview(args) {
                     || !equal(child.parentRef.budgetCeiling, selected.ceiling)) fail('native_orchestration_review_irreversible_dependency');
             } else if ((node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
                     && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId,
-                        { verifyControlWork: assertProjectControlWork, reviewTargets: targets, readFanoutCompletion: readProjectDelegatedFanoutCompletion }))
+                        { verifyControlWork: assertProjectControlWork, reviewTargets: targets, readFanoutCompletion: readProjectDelegatedFanoutCompletion, reviewer }))
                 fail('native_orchestration_review_irreversible_dependency');
         }
     }, admitRerun: async ({ tx, root, reviewer, target, invalidatedAttemptIds }) => {
         await current();
         const required = await projectDelegatedRerunRequirements(tx, handle, root, reviewer, invalidatedAttemptIds);
-        const requests = required.requests + required.modelNodeIds.reduce((count, id) => count
+        const paid = state.decision.inputRef.fanoutAttemptId ? await readProjectFanoutPaidModelNodes(tx, handle, root) : new Set();
+        const invalidatedNodes = new Set();
+        for (const id of invalidatedAttemptIds) invalidatedNodes.add((await readAttempt(tx, handle, root, id)).doc.nodeId);
+        const modelNodeIds = required.modelNodeIds.filter(id => !paid.has(id) || invalidatedNodes.has(id) || id === reviewer.nodeId);
+        const requests = modelNodeIds.length + modelNodeIds.reduce((count, id) => count
             + (state.child.resolveDelegation(root.graph.nodes.find(node => node.nodeId === id))?.ceiling.maxRequests ?? 0), 0);
         const admission = await readReviewAdmission(tx, handle, root, reviewer), node = root.graph.nodes.find(node => node.nodeId === reviewer.nodeId);
-        if (!admission || admission.round >= node.policy.maxRounds || root.progress.reviews + required.reviews > root.limits.maxReviews
+        const reviews = modelNodeIds.filter(id => root.graph.nodes.find(node => node.nodeId === id).kind === 'review').length;
+        if (!admission || admission.round >= node.policy.maxRounds || root.progress.reviews + reviews > root.limits.maxReviews
             || root.progress.attempts + required.attempts > root.limits.maxAttempts) fail('native_orchestration_review_limit_exhausted');
         const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: root.budgetAuthorityRef, reservationId: runId }, { tx });
         if (!capacity || capacity.overrun || capacity.remaining.requests < requests) fail('native_orchestration_review_rerun_budget_unavailable');

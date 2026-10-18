@@ -6,7 +6,7 @@ import { controlCommandId, controlRecordKey, graphReachable, holdsConcurrencySlo
 import { checkedRecord } from './plan-repository.js';
 import { readEffect } from './effect-contracts.js';
 import { assertResultRefs, writeAttemptSettlement, readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
-import { assertFanoutAdmission, readFanoutFrame, isFanoutBranchExcluded } from './fanout-controller.js';
+import { assertFanoutAdmission, readFanoutFrame, readFanoutMembership, isFanoutBranchExcluded } from './fanout-controller.js';
 import { assertRunTreeConcurrency } from './run-repository.js';
 
 export class AttemptController {
@@ -30,14 +30,18 @@ export class AttemptController {
             const frame = await readFanoutFrame(tx, handle, root, fanoutAttemptId), record = await readAttempt(tx, handle, root, attemptId);
             const failed = failedAttemptId === null ? null : (await readAttempt(tx, handle, root, failedAttemptId)).doc, attempt = record.doc;
             const members = frame?.branches.flatMap(branch => [branch.entryAttemptId, ...branch.memberAttemptIds]) ?? [];
+            const member = members.includes(attemptId) || frame && frame.branches.some(branch => branch.scopeNodeIds.includes(attempt.nodeId))
+                && await readFanoutMembership(tx, handle, root, frame, attemptId);
             if (!frame || frame.epoch !== root.epoch || frame.sourceBindingDigest !== root.sourceBinding.bindingDigest
-                || root.cancelRequested || root.status !== 'running' || !members.includes(attemptId) || attemptId === failedAttemptId
+                || root.cancelRequested || root.status !== 'running' || !member || attemptId === failedAttemptId
                 || !['pending', 'reserved'].includes(attempt.status) || attempt.startedAt !== null || attempt.effectRefs.length || attempt.resultRefs.length
                 || attempt.epoch !== root.epoch || attempt.sourceBindingDigest !== root.sourceBinding.bindingDigest
                 || root.progress.steps >= root.limits.maxSteps) throw new ConflictError('native_orchestration_fanout_cancellation_denied');
             let failure = null, join = null;
             if (failed) {
-                if (frame.failurePolicy !== 'fail_fast' || !members.includes(failedAttemptId) || failed.status !== 'failed' || failed.epoch !== root.epoch
+                const failedMember = members.includes(failedAttemptId) || frame.branches.some(branch => branch.scopeNodeIds.includes(failed.nodeId))
+                    && await readFanoutMembership(tx, handle, root, frame, failedAttemptId);
+                if (frame.failurePolicy !== 'fail_fast' || !failedMember || failed.status !== 'failed' || failed.epoch !== root.epoch
                     || failed.sourceBindingDigest !== root.sourceBinding.bindingDigest) throw new ConflictError('native_orchestration_fanout_cancellation_denied');
                 failure = await readAttemptSettlement(tx, handle, root, failed);
                 if (failure.outcome !== 'failed' || failure.decisionSeq <= frame.decisionSeq) throw new ConflictError('native_orchestration_fanout_cancellation_denied');

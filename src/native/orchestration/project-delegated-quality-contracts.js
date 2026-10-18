@@ -1,4 +1,4 @@
-import { readProjectDelegatedFanoutCompletion } from './project-delegated-fanout-contracts.js';
+import { readProjectDelegatedFanoutCompletion, readProjectDelegatedFanoutInput } from './project-delegated-fanout-contracts.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { checkedRecord } from './plan-repository.js';
@@ -52,15 +52,18 @@ export async function readProjectDelegatedReviewCompletion(tx, handle, root, att
     const input = await inputIdentity(tx, handle, root, fact.producer), snapshot = await readTaskGraphRevision(tx, handle, root, fact.producer.graphRevision);
     const controls = await controlInputs(tx, handle, root, fact.producer, input), sources = [...fact.evidence, ...controls];
     const bindings = input.graphBindings;
-    if (!Array.isArray(bindings) || !bindings.length || new Set(bindings.map(item => item.edgeId)).size !== bindings.length
+    if (!Array.isArray(bindings) || !input.fanoutAttemptId && !bindings.length || new Set(bindings.map(item => item.edgeId)).size !== bindings.length
         || fact.targets.some(target => snapshot.graph.nodes.find(node => node.nodeId === target.nodeId)?.kind !== 'agent')
         || bindings.some(binding => !sources.some(source => source.producer.attemptId === binding.producerAttemptId
             && snapshot.graph.edges.some(edge => !edge.loopBack && edge.edgeId === binding.edgeId
                 && edge.from.nodeId === source.producer.nodeId && edge.to.nodeId === fact.producer.nodeId)))) invalid();
-    const identity = hash({ runId: root.runId, bindings, reservedAttemptId: null });
-    await assertOutputTransition(tx, handle, root, { published: sources[0], additionalProducers: sources.slice(1), output: fact.producer,
-        producerBindings: bindings, receipt: { decisionSeq: fact.receipt.decisionSeq,
-            traversalReceiptRef: { runId: root.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } } });
+    if (input.fanoutAttemptId) await readProjectDelegatedFanoutInput(tx, handle, root, fact.producer, input, fact.receipt.decisionSeq);
+    else {
+        const identity = hash({ runId: root.runId, bindings, reservedAttemptId: null });
+        await assertOutputTransition(tx, handle, root, { published: sources[0], additionalProducers: sources.slice(1), output: fact.producer,
+            producerBindings: bindings, receipt: { decisionSeq: fact.receipt.decisionSeq,
+                traversalReceiptRef: { runId: root.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } } });
+    }
     if (fact.review.decision === 'rerun') for (const replacement of fact.review.replacements) {
         const target = fact.targets.find(item => item.attemptId === replacement.targetAttemptId), next = (await readAttempt(tx, handle, root, replacement.attemptId)).doc;
         const input = { ...target.inputRefs[0], reviewFeedbackRef: { reviewReceiptRef: fact.receipt.reviewReceiptRef, reasonCode: fact.review.reasonCode } };

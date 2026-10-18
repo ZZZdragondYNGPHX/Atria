@@ -6,6 +6,7 @@ import { controlCommandId, controlRecordKey, graphReachable, readAttempt, assert
 import { readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
+import { readFanoutReviewScope, inheritFanoutMembership, assertFanoutAdmission } from './fanout-controller.js';
 
 const deny = code => { throw new ConflictError(code); };
 export { reviewReceiptId };
@@ -51,6 +52,10 @@ export class ReviewController {
                 await assertAttemptCurrent(tx, handle, root, target);
                 await readAttemptSettlement(tx, handle, root, target); targets.push(target);
             }
+            const scope = reviewer.inputRefs?.[0]?.fanoutAttemptId
+                ? await readFanoutReviewScope(tx, handle, root, reviewer, targets) : null;
+            if (reviewer.inputRefs?.[0]?.fanoutAttemptId && !scope) deny('native_orchestration_review_target_invalid');
+            if (scope) await assertFanoutAdmission({ tx, handle, root, attempt: reviewer, reserveSlot: false });
             // The original producer verifies the actual JSON Model completion,
             // recipient disclosure and current source, not a caller boolean.
             const stamp = hash(root), authorize = () => this.authorizeReview({ handle, tx, root, reviewer, targets, decision, reasonCode, evidenceRefs });
@@ -65,9 +70,13 @@ export class ReviewController {
                 for (const attempt of attempts) {
                     if (attempt.attemptId === reviewAttemptId || !targets.some(target => graphReachable(root.graph, target.nodeId, attempt.nodeId))) continue;
                     if (await readAttemptInvalidation(tx, handle, root, attempt)) continue;
+                    if (scope && ['pending', 'reserved'].includes(attempt.status) && attempt.startedAt === null
+                        && !attempt.effectRefs.length && !attempt.resultRefs.length
+                        && (attempt.attemptId === scope.join.attemptId || scope.branch.scopeNodeIds.includes(attempt.nodeId))) continue;
                     // Old settled history remains immutable. Active work needs
                     // its own cancellation/reconciliation before local redo.
                     if (!SETTLED_ATTEMPT_STATUSES.includes(attempt.status)) deny('native_orchestration_review_active_dependency');
+                    if (scope && !scope.branch.scopeNodeIds.includes(attempt.nodeId)) deny('native_orchestration_review_irreversible_dependency');
                     await assertAttemptCurrent(tx, handle, root, attempt);
                     await readAttemptSettlement(tx, handle, root, attempt);
                     const effects = [];
@@ -123,6 +132,7 @@ export class ReviewController {
                 await putImmutable(tx, controlRecordKey(handle, root.runId, 'attempt', attempt.attemptId), attempt);
                 root.attemptRefs.push(attempt.attemptId);
             }
+            if (scope && prepared.length) await inheritFanoutMembership({ tx, handle, root, producers: targets, targets: prepared, now });
             invalidated.sort();
             const receipt = { schemaVersion: 1, receiptKind: 'graph_review', receiptId, runId: root.runId, epoch: root.epoch, graphRevision: root.graphRevision,
                 reviewAttemptId, reviewerNodeId: node.nodeId, producerInputDigest: reviewer.inputDigest, sourceBindingDigest: root.sourceBinding.bindingDigest,

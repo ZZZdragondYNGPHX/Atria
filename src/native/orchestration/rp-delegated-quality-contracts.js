@@ -180,7 +180,8 @@ async function readInputSources(tx, handle, root, bundle, targetNodeId, { live =
         } else {
             const planner = fact.controlRef?.kind === 'graph_planner_control'
                 ? await readReviewablePlannerCompletion(tx, handle, root, fact.producer.attemptId, { ...rpDelegatedPlannerReaderOptions,
-                    reviewTargets: targets, readFanoutCompletion: readRpDelegatedFanoutCompletion }) : null;
+                    reviewTargets: targets, readFanoutCompletion: readRpDelegatedFanoutCompletion, reviewer: recipient,
+                    reviewDecisionSeq: ownReview.decisionSeq }) : null;
             const { rpDelegatedInput, ...completed } = fact;
             if (!rpDelegatedInput || !planner || !equal(planner, completed)) invalid();
         }

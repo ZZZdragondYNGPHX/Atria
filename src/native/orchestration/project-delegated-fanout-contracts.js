@@ -7,7 +7,7 @@ import { readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readProjectDelegation } from './project-delegation-contracts.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
-import { readProjectDelegatedControl, assertProjectDelegatedJudgeSelections } from './project-delegated-quality-contracts.js';
+import { readProjectDelegatedControl, readProjectDelegatedReviewReplacement, assertProjectDelegatedJudgeSelections } from './project-delegated-quality-contracts.js';
 import { readGraphFanoutCompletion, readGraphFanoutInput } from './graph-fanout-completion.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { assertProjectFanoutMemberCost } from './project-fanout-contracts.js';
@@ -50,7 +50,7 @@ export async function readProjectDelegatedFanoutInput(tx, handle, root, producer
     const snapshot = await readTaskGraphRevision(tx, handle, root, producer.graphRevision), node = snapshot.graph.nodes.find(node => node.nodeId === producer.nodeId);
     const branch = frame.branches.find(branch => branch.scopeNodeIds.includes(node?.nodeId)), fanout = (await readAttempt(tx, handle, root, frame.fanoutAttemptId)).doc;
     const pin = lineage.plan.dependencyPins.find(pin => pin.pinId === node?.policy.agentPinId);
-    if (!branch || !['agent', 'planner', 'judge'].includes(node.kind)
+    if (!branch || !['agent', 'planner', 'review', 'judge'].includes(node.kind)
         || !equal([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []].sort()) || input.kind !== 'native_project_delegated_intent' || input.role !== 'studio' || !equal(input.audience, { kind: 'task', id: root.runId })
         || input.nodeId !== producer.nodeId || input.parentRunId !== root.parentRef.parentRunId || input.parentAttemptId !== root.parentRef.nodeAttemptId
         || input.parentEpoch !== root.parentRef.parentEpoch || input.childRunId !== root.runId || input.childEpoch !== producer.epoch
@@ -67,21 +67,25 @@ export async function readProjectDelegatedFanoutInput(tx, handle, root, producer
     const judges = facts.filter(fact => fact.selectedResultRef);
     assertProjectDelegatedJudgeSelections({ ...root, graph: snapshot.graph }, node, input.acceptedGraphResultRefs, judges);
     const direct = facts.filter(fact => !inherited.includes(fact)), bindings = input.graphBindings;
-    if (producer.attemptId === branch.entryAttemptId) {
+    const replacement = input.reviewFeedbackRef ? await readProjectDelegatedReviewReplacement(tx, handle, root, producer, input) : null;
+    if (replacement) {
+        if (replacement.target.inputRefs[0].fanoutAttemptId !== frame.fanoutAttemptId) invalid();
+    } else if (producer.attemptId === branch.entryAttemptId) {
         if (bindings.length || direct.length) invalid();
     } else {
         const incoming = snapshot.graph.edges.filter(edge => edge.to.nodeId === node.nodeId && branch.scopeNodeIds.includes(edge.from.nodeId))
             .filter(edge => !judges.some(judge => judge.candidates.some(candidate => candidate.producer.nodeId === edge.from.nodeId
                 && !equal(candidate.receipt.resultRef, judge.selectedResultRef))));
-        if (!producer.reservationRef || bindings.length !== incoming.length || direct.some(fact => !branch.scopeNodeIds.includes(fact.producer.nodeId))
+        if (bindings.length !== incoming.length || direct.some(fact => !branch.scopeNodeIds.includes(fact.producer.nodeId))
             || bindings.some(binding => !incoming.some(edge => edge.edgeId === binding.edgeId
                 && direct.some(fact => fact.producer.attemptId === binding.producerAttemptId && fact.producer.nodeId === edge.from.nodeId)))) invalid();
-        const identity = hash({ runId: root.runId, bindings, reservedAttemptId: producer.attemptId });
+        const reservedAttemptId = producer.reservationRef ? producer.attemptId : null;
+        const identity = hash({ runId: root.runId, bindings, reservedAttemptId });
         await assertOutputTransition(tx, handle, root, { published: direct[0], additionalProducers: direct.slice(1), output: producer,
-            producerBindings: bindings, reservedAttemptId: producer.attemptId, receipt: { decisionSeq: publicationSeq,
+            producerBindings: bindings, reservedAttemptId, receipt: { decisionSeq: publicationSeq,
                 traversalReceiptRef: { runId: root.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } } });
     }
-    return { lineage, input, sources: facts, bindings, loops: [], replacement: null };
+    return { lineage, input, sources: facts, bindings, loops: [], replacement };
 }
 
 async function memberInput(tx, handle, root, attempt, { frame, branch, reservation, settlement }) {

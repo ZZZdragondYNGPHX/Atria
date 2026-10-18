@@ -86,8 +86,8 @@ export function rpDelegatedControlProfile(plan) {
         if (!next) fail(); ordered.push(next);
     }
     for (const loop of graph.edges.filter(edge => edge.loopBack)) rpControlReplanScope(graph, loop.from.nodeId);
-    const fanouts = rpControlFanoutGroups(graph, terminal.nodeId, ['agent', 'planner', 'judge']);
-    if (fanouts.some(group => group.branches.some(branch => branch.scopeNodeIds.some(id => !['agent', 'planner', 'judge'].includes(graph.nodes.find(node => node.nodeId === id).kind)
+    const fanouts = rpControlFanoutGroups(graph, terminal.nodeId, ['agent', 'planner', 'review', 'judge']);
+    if (fanouts.some(group => group.branches.some(branch => branch.scopeNodeIds.some(id => !['agent', 'planner', 'review', 'judge'].includes(graph.nodes.find(node => node.nodeId === id).kind)
         || graph.nodes.find(node => node.nodeId === id).capabilities.includes('agent.delegate'))))) fail();
     return { models, planners, narrator: terminal, output, terminalNodeId: terminal.nodeId, incoming, ordered: ordered.filter(node => models.includes(node)), pure, fanouts };
 }

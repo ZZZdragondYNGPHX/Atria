@@ -18,6 +18,7 @@ import { readRunControl } from '../run-control.js';
 import { readOriginalProjectTask } from './project-tool-receipts.js';
 import { assertBudgetAuthorityRef, effectBudgetClosure } from './budget-port.js';
 import { inspectComputeEffectClosure, inspectComputeChildClosure } from '../../../public/shared/native-compute-budget.js';
+import { readFanoutReviewScope, readFanoutMembership } from './fanout-controller.js';
 
 const invalid = () => { throw new TypeError('Invalid Graph Review completion facts'); };
 export const graphReviewModelReceiptId = (runId, attemptId) => 'oreceipt_' + hash({ kind: 'graph_review_model', runId, attemptId }).slice(0, 32);
@@ -129,6 +130,10 @@ export async function readGraphReviewCompletion(tx, handle, root, attemptId, { v
 
 async function readReplacements(tx, handle, root, review, evidence, verifyControlWork, readFanoutCompletion) {
     const snapshot = await readTaskGraphRevision(tx, handle, root, review.graphRevision);
+    const reviewer = (await readAttempt(tx, handle, root, review.reviewAttemptId)).doc;
+    const scope = reviewer.inputRefs?.[0]?.fanoutAttemptId ? await readFanoutReviewScope(tx, handle, root, reviewer,
+        evidence.map(fact => fact.producer), { decisionSeq: review.decisionSeq }) : null;
+    if (reviewer.inputRefs?.[0]?.fanoutAttemptId && !scope) invalid();
     if (review.replacements.length !== review.targetAttemptIds.length || new Set(review.invalidatedAttemptIds).size !== review.invalidatedAttemptIds.length
         || new Set(review.replacements.map(item => item.targetAttemptId)).size !== review.replacements.length
         || !review.targetAttemptIds.every(id => review.invalidatedAttemptIds.includes(id))) invalid();
@@ -139,6 +144,8 @@ async function readReplacements(tx, handle, root, review, evidence, verifyContro
         const invalidation = await readAttemptInvalidation(tx, handle, root, attempt);
         if (id === review.reviewAttemptId || !SETTLED_ATTEMPT_STATUSES.includes(attempt.status)
             || !invalidation || invalidation.reviewReceiptId !== review.receiptId
+            || (await readAttemptSettlement(tx, handle, root, attempt)).decisionSeq >= review.decisionSeq
+            || scope && !scope.branch.scopeNodeIds.includes(attempt.nodeId)
             || !evidence.some(fact => graphReachable(snapshot.graph, fact.producer.nodeId, attempt.nodeId))) invalid();
         if (attempt.inputRefs?.[0]?.kind === ({ native_session: 'native_session_delegation', project: 'native_project_delegation', rp_chat: 'native_rp_delegation' })[root.sourceBinding.sourceAuthority]) {
             const target = evidence.find(fact => fact.producer.attemptId === id);
@@ -148,7 +155,7 @@ async function readReplacements(tx, handle, root, review, evidence, verifyContro
             delegations.push(fact);
         } else if ((node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
             && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork, readFanoutCompletion,
-                reviewTargets: evidence.map(fact => fact.producer) })) invalid();
+                reviewTargets: evidence.map(fact => fact.producer), reviewer, reviewDecisionSeq: review.decisionSeq })) invalid();
         if (node?.kind === 'join') {
             const group = await readReviewableFanoutCompletion(tx, handle, root, attempt.attemptId,
                 { targets: evidence.map(fact => fact.producer), readCompletion: readFanoutCompletion });
@@ -176,6 +183,10 @@ async function readReplacements(tx, handle, root, review, evidence, verifyContro
             || next.nodeId !== target.nodeId || next.attemptNumber <= target.attemptNumber || next.epoch !== review.epoch || next.graphRevision !== review.graphRevision
             || next.sourceBindingDigest !== root.sourceBinding.bindingDigest || !equal(next.budgetRef, root.budgetAuthorityRef)
             || next.inputDigest !== hash(next.inputRefs) || [...next.inputRefs, ...(next.inputRefs[0]?.acceptedGraphResultRefs ?? [])].some(ref => staleRefs.has(hash(ref)))) invalid();
+        if (scope) {
+            const membership = await readFanoutMembership(tx, handle, root, scope.frame, next.attemptId);
+            if (!membership || membership.decisionSeq !== review.decisionSeq || membership.createdAt !== review.createdAt) invalid();
+        }
     }
     return { fanouts, delegations };
 }
@@ -184,7 +195,8 @@ async function readReplacements(tx, handle, root, review, evidence, verifyContro
 /** Accepted advisory topology is not rolled back by Review. Its completed
  * pure Model work can be recomputed at the current revision, while the original
  * Patch/Model/bank/sequence proof and all irreversible dependency checks remain. */
-export async function readReviewablePlannerCompletion(tx, handle, root, attemptId, { verifyControlWork, readFanoutCompletion = null, reviewTargets = null }) {
+export async function readReviewablePlannerCompletion(tx, handle, root, attemptId, { verifyControlWork, readFanoutCompletion = null,
+    reviewTargets = null, reviewer = null, reviewDecisionSeq = root.eventSeq + 1 }) {
     if (!['rp_chat', 'native_session', 'project'].includes(root.sourceBinding.sourceAuthority)) return null;
     const fact = await readGraphPlannerCompletion(tx, handle, root, attemptId, { verifyControlWork });
     if (!fact) return null;
@@ -203,10 +215,16 @@ export async function readReviewablePlannerCompletion(tx, handle, root, attemptI
             || input.delegationInputDigest !== ref.inputDigest)) return null;
     }
     const fanoutAttemptId = fact.producer.inputRefs[0]?.fanoutAttemptId;
+    let reviewingScope = null;
     if (fanoutAttemptId) {
-        if (typeof readFanoutCompletion !== 'function' || !reviewTargets?.length) return null;
-        let contained = false;
+        if (!reviewTargets?.length) return null;
+        reviewingScope = reviewer ? await readFanoutReviewScope(tx, handle, root, reviewer, reviewTargets, { decisionSeq: reviewDecisionSeq }) : null;
+        let contained = !!(reviewingScope?.frame.fanoutAttemptId === fanoutAttemptId
+            && reviewingScope.branch.scopeNodeIds.includes(fact.producer.nodeId)
+            && await readFanoutMembership(tx, handle, root, reviewingScope.frame, attemptId));
+        if (!contained && typeof readFanoutCompletion !== 'function') return null;
         for (const id of root.attemptRefs) {
+            if (contained) break;
             const attempt = (await readAttempt(tx, handle, root, id)).doc;
             if (root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind !== 'join' || attempt.status !== 'completed') continue;
             const barrier = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', 'barrier:' + joinIdForAttempt(id))))?.doc;
@@ -224,6 +242,7 @@ export async function readReviewablePlannerCompletion(tx, handle, root, attemptI
         && item.capabilities.every(capability => capability === 'generation.send' || capability === 'graph.patch');
     if (node?.kind !== 'planner' || !equal([...node.capabilities].sort(), ['generation.send', 'graph.patch'].sort())
         || fact.patch.requests.replan || !fact.patch.appliedOperations.length
+        || reviewingScope && fact.patch.appliedOperations.some(operation => !['setPendingPriority', 'requestFinalize'].includes(operation.op))
         || fact.patch.appliedOperations.some(operation => !['setPendingPriority', 'requestFinalize', 'addNode', 'addEdge'].includes(operation.op))) return null;
     for (const operation of fact.patch.appliedOperations) {
         if (operation.op === 'addNode') {

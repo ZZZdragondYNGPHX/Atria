@@ -2,7 +2,7 @@ import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../re
 import { controlCommandId, readAttempt, runGuard } from './controller-common.js';
 import { AttemptController } from './attempt-controller.js';
 import { TransitionController } from './transition-controller.js';
-import { FanoutController, readFanoutFrame } from './fanout-controller.js';
+import { FanoutController, readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
 import { JoinController, joinIdForAttempt } from './join-controller.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { readModelTerminalFact } from './model-port.js';
@@ -15,6 +15,7 @@ const fail = code => { throw Object.assign(new TypeError(code), { code }); };
  * original captured child stage and its one already held Task-bank allocation. */
 export async function runDelegatedFanout({ state, service, group, inherited, progress, engine, current, prepare, execute, runWorkers, readCompletion, resolveNode, controlKind, reasonPrefix }) {
     const { handle, host } = state, runId = state.identity.childRunId, { runs, budgetPort } = service;
+    inherited = [...inherited].sort((a, b) => a.edge.edgeId.localeCompare(b.edge.edgeId));
     const fresh = async () => { await current(); return runs.get(handle, runId); };
     const withAuthority = service.sourcePort.consumptionBoundary(handle, state.identity.sourceBinding, { engine });
     const control = async (node, bindings, fanoutAttemptId = null) => {
@@ -79,7 +80,7 @@ export async function runDelegatedFanout({ state, service, group, inherited, pro
             key: reasonPrefix + '-child-fanout:' + runId + ':' + item.entry.attemptId, fingerprint: hash({ runId, fanoutAttemptId, attempts: [...item.attempts] }),
             fresh: async permit => { state.controlPermit = permit; await fresh(); },
             run: async ({ permit, signal, controlPermit }) => {
-                state.controlPermit = controlPermit; const pending = new Set(item.branch.scopeNodeIds);
+                state.controlPermit = controlPermit; const pending = new Set(item.branch.scopeNodeIds), replacements = new Map(), retries = new Map();
                 while (pending.size) {
                     signal.throwIfAborted(); const active = await fresh();
                     const ready = pending.has(item.branch.entry.nodeId) ? { node: item.branch.entry, edges: [] } : inspectGraphReadiness(active.graph, active.nodeControl,
@@ -87,11 +88,45 @@ export async function runDelegatedFanout({ state, service, group, inherited, pro
                     if (!ready) fail('native_orchestration_graph_dependency_unavailable');
                     const bindings = [...ready.edges.map(edge => ({ edge, ...progress.get(edge.from.nodeId) })), ...inherited].sort((a, b) => a.edge.edgeId.localeCompare(b.edge.edgeId));
                     try {
+                        const replacement = replacements.get(ready.node.nodeId);
+                        const prior = await engine.withTransaction(handle, tx => readAttempt(tx, handle, active,
+                            replacement?.attemptId ?? item.attempts.get(ready.node.nodeId)));
+                        const originalEntry = prior.doc.attemptId === item.entry.attemptId && prior.doc.status === 'pending';
+                        if (replacement) item.attempts.set(ready.node.nodeId, replacement.attemptId);
                         const fact = await execute({ node: ready.node, bindings, fanoutAttemptId, permit, scopeCapture, signal, progress,
-                            ...(ready.node.nodeId === item.branch.entry.nodeId ? { preparedAttemptId: item.entry.attemptId } : { reservedAttemptId: item.attempts.get(ready.node.nodeId) }) });
+                            feedback: replacement?.feedback ?? null, rerun: replacement ?? null, retryToken: retries.get(ready.node.nodeId) ?? null,
+                            preparedAttemptId: replacement?.attemptId ?? (originalEntry ? item.entry.attemptId : null),
+                            reservedAttemptId: !replacement && prior.doc.status === 'reserved' ? prior.doc.attemptId : null });
+                        item.attempts.set(ready.node.nodeId, fact.attemptId); replacements.delete(ready.node.nodeId);
                         progress.set(ready.node.nodeId, fact); pending.delete(ready.node.nodeId);
+                        if (fact.review?.decision === 'rerun') {
+                            const actual = await fresh();
+                            await engine.withTransaction(handle, async tx => {
+                                for (const id of fact.review.invalidatedAttemptIds) {
+                                    const attempt = (await readAttempt(tx, handle, actual, id)).doc;
+                                    if (!item.branch.scopeNodeIds.includes(attempt.nodeId)) fail('native_orchestration_review_irreversible_dependency');
+                                    progress.delete(attempt.nodeId); pending.add(attempt.nodeId); retries.set(attempt.nodeId, fact.attemptId);
+                                }
+                                for (const row of fact.review.replacements) {
+                                    const attempt = (await readAttempt(tx, handle, actual, row.attemptId)).doc;
+                                    const detail = fact.replacements?.find(spec => spec.attemptId === row.attemptId);
+                                    replacements.set(attempt.nodeId, { ...detail, attemptId: row.attemptId,
+                                        feedback: attempt.inputRefs[0].reviewFeedbackRef });
+                                }
+                            });
+                            progress.delete(ready.node.nodeId); pending.add(ready.node.nodeId); retries.set(ready.node.nodeId, fact.attemptId);
+                        }
                     } catch (error) {
-                        const actual = await fresh(), record = await engine.withTransaction(handle, tx => readAttempt(tx, handle, actual, item.attempts.get(ready.node.nodeId)));
+                        const actual = await fresh(), record = await engine.withTransaction(handle, async tx => {
+                            for (const id of [...actual.attemptRefs].reverse()) {
+                                const record = await readAttempt(tx, handle, actual, id);
+                                if (record.doc.nodeId === ready.node.nodeId && await readFanoutMembership(tx, handle, actual,
+                                    await readFanoutFrame(tx, handle, actual, fanoutAttemptId), id)) {
+                                    item.attempts.set(ready.node.nodeId, id); return record;
+                                }
+                            }
+                            fail('native_orchestration_' + reasonPrefix + '_control_stale');
+                        });
                         if (record.doc.effectRefs.length === 1) {
                             const terminal = await engine.withTransaction(handle, async tx => readModelTerminalFact(handle, tx, actual, (await readEffect(tx, handle, actual, record.doc.effectRefs[0])).doc));
                             if (terminal?.kind === 'rejected') await runs.withSourceControl(handle, runId, async () => new AttemptController({ runs, authorizeAttempt: async () => {}, verifySettlement: async ({ tx, root, attempt, resultRefs, receipts }) => {
@@ -107,10 +142,17 @@ export async function runDelegatedFanout({ state, service, group, inherited, pro
                 }
             },
         })));
+        const frameAttempts = root => engine.withTransaction(handle, async tx => {
+            const frame = await readFanoutFrame(tx, handle, root, fanoutAttemptId), attempts = [];
+            for (const id of root.attemptRefs) if (await readFanoutMembership(tx, handle, root, frame, id))
+                attempts.push((await readAttempt(tx, handle, root, id)).doc);
+            return attempts;
+        });
         let decided;
         const cancelPending = async (attemptId, failedAttemptId, joinId) => runs.withSourceControl(handle, runId, async () => new AttemptController({ runs,
-            authorizeAttempt: async () => {}, authorizePendingCancellation: async ({ frame, attempt }) => {
-                await fresh(); if (frame.fanoutAttemptId !== fanoutAttemptId || !declared.some(item => [...item.attempts.values()].includes(attempt.attemptId))) fail('native_orchestration_' + reasonPrefix + '_control_stale');
+            authorizeAttempt: async () => {}, authorizePendingCancellation: async ({ tx, root, frame, attempt }) => {
+                await fresh(); if (frame.fanoutAttemptId !== fanoutAttemptId || !declared.some(item => item.branch.scopeNodeIds.includes(attempt.nodeId))
+                    || !await readFanoutMembership(tx, handle, root, frame, attempt.attemptId)) fail('native_orchestration_' + reasonPrefix + '_control_stale');
             } }).cancelPending(handle, { ...runGuard(await fresh()), fanoutAttemptId, failedAttemptId, joinId, attemptId }), { withAuthority });
         const work = await runWorkers(scopeCapture, { fanoutAttemptId, workers, maxConcurrency: Math.min(group.fanout.policy.maxConcurrency, root.limits.maxConcurrency),
             timeoutMs: Math.max(1, root.progress.deadlineAt - Date.now()), deadlineAt: frozen.outcome.joinBarrier.deadlineAt,
@@ -119,24 +161,26 @@ export async function runDelegatedFanout({ state, service, group, inherited, pro
                 try { decided = await runs.withSourceControl(handle, runId, async () => joins.settle(handle, { ...runGuard(await fresh()), joinId: joinIdForAttempt(joinAttemptId) }), { withAuthority }); return true; } catch (error) { if (error.code === 'native_orchestration_join_not_ready') return false; throw error; }
             }, onSettled: async (item, _observed, permit) => {
                 state.controlPermit = permit; if (item.status !== 'rejected') return;
-                const root = await fresh(), attempts = await engine.withTransaction(handle, tx => Promise.all([...declared[item.index].attempts.values()].map(id => readAttempt(tx, handle, root, id))));
-                if (attempts.every(row => row.doc.status === 'cancelled')) return;
-                const failed = attempts.find(row => row.doc.status === 'failed'); if (!failed) throw item.reason;
-                if (group.fanout.policy.failurePolicy === 'fail_fast') for (const branch of declared) for (const id of branch.attempts.values()) {
-                    const attempt = await engine.withTransaction(handle, tx => readAttempt(tx, handle, root, id));
-                    if (['pending', 'reserved'].includes(attempt.doc.status)) await cancelPending(id, failed.doc.attemptId, null);
-                }
+                const root = await fresh(), all = await frameAttempts(root), attempts = all.filter(attempt => declared[item.index].branch.scopeNodeIds.includes(attempt.nodeId));
+                if (attempts.every(attempt => attempt.status === 'cancelled')) return;
+                const failed = attempts.find(attempt => attempt.status === 'failed'); if (!failed) throw item.reason;
+                if (group.fanout.policy.failurePolicy === 'fail_fast') for (const attempt of all)
+                    if (['pending', 'reserved'].includes(attempt.status)) await cancelPending(attempt.attemptId, failed.attemptId, null);
             } });
-        for (const index of work.cancelPending()) for (const id of declared[index].attempts.values()) {
-            const attempt = await engine.withTransaction(handle, async tx => readAttempt(tx, handle, await runs.get(handle, runId), id));
-            if (['pending', 'reserved'].includes(attempt.doc.status)) await cancelPending(id, null, decided.outcome.joinReceipt.joinId);
-        }
+        for (const index of work.cancelPending()) for (const attempt of await frameAttempts(await fresh()))
+            if (declared[index].branch.scopeNodeIds.includes(attempt.nodeId) && ['pending', 'reserved'].includes(attempt.status))
+                await cancelPending(attempt.attemptId, null, decided.outcome.joinReceipt.joinId);
         await work.wait(); state.controlPermit = null;
         const final = await fresh(), effectIds = [];
         await engine.withTransaction(handle, async tx => {
             for (const item of declared) for (const [nodeId, id] of item.attempts) {
-                const actual = (await readAttempt(tx, handle, final, id)).doc; effectIds.push(...actual.effectRefs);
+                const actual = (await readAttempt(tx, handle, final, id)).doc;
                 if (['failed', 'cancelled'].includes(actual.status)) progress.set(nodeId, { attemptId: id, status: actual.status });
+            }
+            const frame = await readFanoutFrame(tx, handle, final, fanoutAttemptId);
+            for (const id of final.attemptRefs) {
+                const actual = (await readAttempt(tx, handle, final, id)).doc;
+                if (await readFanoutMembership(tx, handle, final, frame, id)) effectIds.push(...actual.effectRefs);
             }
         });
         const costs = effectIds.length ? await engine.withTransaction(handle, tx => budgetPort.observeEffectClosure(handle, { authorityRef: final.budgetAuthorityRef, effectIds }, { tx })) : { closed: true };

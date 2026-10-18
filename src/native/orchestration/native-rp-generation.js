@@ -1346,11 +1346,11 @@ export class NativeRpOrchestrationAuthority {
     }
 
     async #sendControlledRpChildStage(context, state, work, { node, bundle, rerun = null, fanoutAttemptId = null,
-        preparedAttemptId = null, reservedAttemptId = null, sendModel = true, boundary = context.boundary, childExpected = context.childExpected, fanoutParent = null }) {
+        preparedAttemptId = null, reservedAttemptId = null, retryToken = null, sendModel = true, boundary = context.boundary, childExpected = context.childExpected, fanoutParent = null }) {
         const { parentState, childRunId, identity, parentRunId, child, selected, taskPurpose, audience, capturesToDelete } = context;
         const { host, handle } = parentState, service = this.#execution(), root = await service.runs.get(handle, childRunId);
         const model = await selected.resolveGraphModel(node), capture = Object.freeze({}); capturesToDelete.push(capture);
-        const request = rerun?.request ?? immutable({ requestId: 'rp-child:' + hash({ parentRunId, childRunId, ...(fanoutAttemptId ? { nodeId: node.nodeId, fanoutAttemptId } : { ordinal: root.attemptRefs.length }) }), role: 'narrator', routeRef: model.pin.resourceRef,
+        const request = rerun?.request ?? immutable({ requestId: 'rp-child:' + hash({ parentRunId, childRunId, ...(fanoutAttemptId ? { nodeId: node.nodeId, fanoutAttemptId, ...(retryToken ? { retryToken } : {}) } : { ordinal: root.attemptRefs.length }) }), role: 'narrator', routeRef: model.pin.resourceRef,
             ...(node.kind === 'planner' ? { outputContract: rpPlannerOutputContract }
                 : node.kind === 'review' ? { outputContract: rpControlReviewOutputContract }
                     : node.kind === 'judge' ? { outputContract: rpControlJudgeOutputContract } : {}) });
@@ -1476,6 +1476,7 @@ export class NativeRpOrchestrationAuthority {
             state.fanoutBranches.set(spec.node.nodeId, branch);
             const localWork = new RpDelegatedControlWork({ state: branch, service, runId: childRunId, current: () => this.#current(branch) });
             localWork.records = spec.progress ?? work.records;
+            localWork.prepareRerun = work.prepareRerun;
             const judges = spec.bindings.filter(binding => binding.controlRef?.kind === 'graph_judge_control');
             const bindings = spec.bindings.filter(binding => {
                 if (binding.edge.to.nodeId !== spec.node.nodeId || !binding.resultRef
@@ -1489,7 +1490,7 @@ export class NativeRpOrchestrationAuthority {
             const generated = await this.#sendControlledRpChildStage(context, branch, localWork, { ...spec, bundle, sendModel,
                 ...(spec.permit ? { boundary: spec.permit.boundary, childExpected: spec.permit.expected, fanoutParent: { boundary, expected: childExpected } } : {}) });
             if (!sendModel) return generated;
-            if (['planner', 'judge'].includes(spec.node.kind)) return localWork[spec.node.kind === 'planner' ? 'completePlanner' : 'completeJudge']({ root: await service.runs.get(handle, childRunId),
+            if (['planner', 'review', 'judge'].includes(spec.node.kind)) return localWork[spec.node.kind === 'planner' ? 'completePlanner' : spec.node.kind === 'review' ? 'completeReview' : 'completeJudge']({ root: await service.runs.get(handle, childRunId),
                 port: generated.port, result: generated.result, send: generated.send, limits: generated.limits, signal: spec.signal });
             const published = await new ResultController({ host, modelPort: generated.port }).publishGraphModelResult(handle,
                 { capture: generated.capture, result: generated.result, runId: childRunId, effectId: generated.effectId });
@@ -1791,10 +1792,11 @@ export class NativeRpOrchestrationAuthority {
                     await this.#current(state);
                 }, { withAuthority: service.sourcePort.consumptionBoundary(handle, root.sourceBinding, { engine: service.runs.engine }) });
             },
-            prepareBranch: (node, root, bundle, fanoutAttemptId) => {
+            prepareBranch: (node, root, bundle, fanoutAttemptId, retryToken = null) => {
                 return selected.resolveGraphModel(node).then(stage => {
-                    const request = immutable({ requestId: 'rp-control-branch:' + hash({ runId: root.runId, fanoutAttemptId, nodeId: node.nodeId }).slice(0, 32), role: 'narrator', routeRef: stage.pin.resourceRef,
-                        ...(node.kind === 'planner' ? { outputContract: rpPlannerOutputContract } : {}) });
+                    const request = immutable({ requestId: 'rp-control-branch:' + hash({ runId: root.runId, fanoutAttemptId, nodeId: node.nodeId, ...(retryToken ? { retryToken } : {}) }).slice(0, 32), role: 'narrator', routeRef: stage.pin.resourceRef,
+                        ...(node.kind === 'planner' ? { outputContract: rpPlannerOutputContract }
+                            : node.kind === 'review' ? { outputContract: rpControlReviewOutputContract } : {}) });
                     const input = { ...rpModelInput(request, root.sourceBinding, stage), acceptedGraphResultRefs: bundle.evidenceRefs, controlGraph: bundle, fanoutAttemptId };
                     return { stage, request, input, grantDigest: rpModelGrant(handle, root.sourceBinding, input) };
                 });
@@ -1814,7 +1816,8 @@ export class NativeRpOrchestrationAuthority {
             prepareRerun: async (root, target, attemptId, bundle, feedback) => {
                 const stage = await selected.resolveGraphModel(root.graph.nodes.find(node => node.nodeId === target.nodeId));
                 const request = immutable({ requestId: 'rp-control-redo:' + hash({ runId: root.runId, attemptId }).slice(0, 32), role: 'narrator', routeRef: stage.pin.resourceRef });
-                const input = { ...rpModelInput(request, root.sourceBinding, stage), ...(stage.child ? { kind: 'native_rp_delegation', childPlanRef: stage.child.planRef } : {}),
+                const input = { ...(target.inputRefs[0]?.fanoutAttemptId ? target.inputRefs[0] : rpModelInput(request, root.sourceBinding, stage)), requestId: request.requestId,
+                    ...(stage.child ? { kind: 'native_rp_delegation', childPlanRef: stage.child.planRef } : {}),
                     acceptedGraphResultRefs: bundle.evidenceRefs, controlGraph: bundle, reviewFeedbackRef: feedback };
                 return { input, grantDigest: rpModelGrant(handle, root.sourceBinding, input), request };
             },
@@ -1856,7 +1859,7 @@ export class NativeRpOrchestrationAuthority {
                 fresh: async () => { await this.#currentRpControlFanout(state); return true; }, finalize: value => value,
                 run: async boundary => {
                     NativeTaskScheduler.prototype.assertFanoutChildBoundary.call(this.scheduler, original.boundary, original.expected, boundary, expected);
-                    const scopePlanner = worker.models.some(model => model.node.kind === 'planner');
+                    const scopeControl = worker.models.some(model => ['planner', 'review'].includes(model.node.kind));
                     const childCapture = Object.freeze({}), branch = { ...state, capture: childCapture, fanoutBranches: null, fanoutParent: { fanoutAttemptId: worker.fanoutAttemptId },
                         activeSelection: null, controlBundle: null, controlFeedback: null, controlRequest: null, attemptId: null, effectId: null, decision: null };
                     captures.set(childCapture, { ...original, boundary, expected });
@@ -1866,19 +1869,23 @@ export class NativeRpOrchestrationAuthority {
                     // each original receipt and recipient Source afresh before
                     // projecting any Model-authored graph metadata.
                     branch.controlWork.plannerHistory = [...state.controlWork.plannerHistory];
+                    branch.controlWork.records = state.controlWork.records;
                     try {
                         return await worker.run({ signal: boundary.signal, generate: async (spec, bundle, args) => {
-                            branch.activeSelection = spec.stage; branch.controlBundle = bundle; branch.controlRequest = spec.request;
-                            const planner = spec.stage.node.kind === 'planner';
-                            const root = scopePlanner ? await this.#execution().runs.get(handle, state.graphRunId) : null;
+                            branch.activeSelection = spec.stage; branch.controlBundle = bundle; branch.controlRequest = spec.request; branch.controlFeedback = spec.feedback;
+                            const planner = spec.stage.node.kind === 'planner', review = spec.stage.node.kind === 'review';
+                            const root = scopeControl ? await this.#execution().runs.get(handle, state.graphRunId) : null;
                             const task = planner
                                 ? await branch.controlWork.plannerTask(root, spec.stage.node)
-                                : { kind: 'native_rp_graph_draft', instruction: 'Perform this declared advisory branch task using only authorized inputs. Frozen sibling Results are unavailable until Join.' };
-                            if (scopePlanner) task.controls = await branch.controlWork.describeControls(root, spec.stage.node);
+                                : review ? { kind: 'native_rp_graph_review', instruction: 'Review only these typed same-branch Results. Return decision, reasonCode and exact targetAttemptIds; a frozen Join terminal cannot be redone.',
+                                    evidence: (await this.#execution().runs.engine.withTransaction(handle, tx => branch.controlWork.inputs(tx, root))).filter(fact => fact.record)
+                                        .map(fact => ({ attemptId: fact.producer.attemptId, resultRef: fact.receipt.resultRef })) }
+                                    : { kind: 'native_rp_graph_draft', instruction: 'Perform this declared advisory branch task using only authorized inputs. Frozen sibling Results are unavailable until Join.' };
+                            if (scopeControl) task.controls = await branch.controlWork.describeControls(root, spec.stage.node);
                             const result = await branch.controlWork.withCapture(spec.stage, task,
-                                () => this.#generate(branch, { planner, graphNode: !planner, graphRunId: state.graphRunId, ...args }));
+                                () => this.#generate(branch, { planner, review, graphNode: !planner && !review, graphRunId: state.graphRunId, ...args }));
                             if (planner) branch.controlWork.plannerHistory.push(result);
-                            return result;
+                            return { ...result, attemptId: branch.attemptId };
                         }, settleFailure: () => this.#settleFanoutFailure(branch) });
                     } finally { captures.delete(childCapture); }
                 } };

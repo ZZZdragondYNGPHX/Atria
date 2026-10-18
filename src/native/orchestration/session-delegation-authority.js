@@ -573,7 +573,7 @@ export class SessionDelegationAuthority {
         }), options);
     }
 
-    async #fanoutAgent(owner, { node, bindings, fanoutAttemptId, permit = null, preparedAttemptId = null, reservedAttemptId = null, send = false, progress = null }) {
+    async #fanoutAgent(owner, { node, bindings, fanoutAttemptId, permit = null, preparedAttemptId = null, reservedAttemptId = null, send = false, progress = null, feedback = null }) {
         const { host, handle, child, parent } = owner, service = this.execution(), capture = Object.freeze({});
         const root = await service.runs.get(handle, owner.identity.childRunId), model = child.profiles.find(model => equal(model.node, node)) ?? await this.#resolveChildModel(parent, node);
         const judges = bindings.filter(binding => binding.controlRef?.kind === 'graph_judge_control');
@@ -583,11 +583,11 @@ export class SessionDelegationAuthority {
             if (node.inputs.find(port => port.name === binding.edge.to.port)?.required) fail('native_orchestration_judge_required_input');
             return false;
         });
-        const state = { ...owner, capture, model, root, bindings, controlOnly: false, activeNode: null,
+        const state = { ...owner, capture, model, root, bindings, feedback, controlOnly: false, activeNode: null,
             boundary: permit?.boundary ?? owner.boundary, quotaProof: permit?.quotaProof ?? owner.quotaProof };
         state.request = immutable({ sessionId: parent.proofExpected.sessionId, revisionId: parent.proofExpected.anchor.revisionId,
             requestId: parent.request.requestId, role: 'narrator', routeRef: model.pin.resourceRef,
-            ...(['planner', 'judge'].includes(node.kind) ? { outputContract: { planner: sessionPlannerOutputContract, judge: sessionJudgeOutputContract }[node.kind] } : {}) });
+            ...(['planner', 'review', 'judge'].includes(node.kind) ? { outputContract: { planner: sessionPlannerOutputContract, review: sessionGraphReviewOutputContract, judge: sessionJudgeOutputContract }[node.kind] } : {}) });
         const results = [...new Map(bindings.flatMap(item => [item.resultRef, ...item.evidenceRefs ?? []].filter(Boolean)).map(ref => [hash(ref), ref])).values()];
         const controls = [...new Map(bindings.filter(item => item.controlRef).map(item => [hash(item.controlRef), item.controlRef])).values()];
         const logical = { kind: 'native_session_delegated_intent', role: 'narrator', requestId: state.request.requestId,
@@ -595,7 +595,7 @@ export class SessionDelegationAuthority {
             planRef: root.planRef, nodeId: node.nodeId, parentRunId: parent.runId, parentAttemptId: parent.attemptId,
             parentEpoch: root.parentRef.parentEpoch, childRunId: root.runId, childEpoch: root.epoch, delegationInputDigest: root.parentRef.inputDigest,
             routeRef: model.pin.resourceRef, configDigest: model.configDigest, audience: model.audienceSource.audience, acceptedGraphResultRefs: results,
-            ...(controls.length ? { acceptedControlRefs: controls } : {}), fanoutAttemptId,
+            ...(controls.length ? { acceptedControlRefs: controls } : {}), ...(feedback ? { reviewFeedbackRef: feedback } : {}), fanoutAttemptId,
             graphBindings: bindings.filter(item => item.edge.to.nodeId === node.nodeId).map(item => ({ edgeId: item.edge.edgeId, producerAttemptId: item.attemptId })),
             delegationScope: { parentPinId: child.parentSource.pin.pinId, childPinId: model.audienceSource.pin.pinId,
                 sourceRef: model.audienceSource.actualRef ?? model.audienceSource.pin.resourceRef, integrity: hash(model.audienceSource.descriptor) },
@@ -609,10 +609,10 @@ export class SessionDelegationAuthority {
                 const actual = (await this.owner.engine.withTransaction(handle, tx => readAttempt(tx, handle, root, attemptId))).doc;
                 if (actual.status !== 'pending' || !equal(actual.inputRefs, inputRefs) || actual.inputDigest !== admission.inputDigest
                     || actual.effectiveGrantDigest !== admission.effectiveGrantDigest || !equal(actual.budgetRef, admission.budgetRef)) fail();
-            } else if (reservedAttemptId) {
+            } else if (reservedAttemptId || logical.graphBindings.length) {
                 const next = await service.runs.withSourceControl(handle, root.runId, async () => new TransitionController({ runs: service.runs, authorizeTransition: async () => {
                     await this.inspectDelegation(capture, { host, handle }); return admission;
-                } }).advance(handle, { ...runGuard(await service.runs.get(handle, root.runId)), bindings: logical.graphBindings, reservedAttemptId }),
+                } }).advance(handle, { ...runGuard(await service.runs.get(handle, root.runId)), bindings: logical.graphBindings, reservedAttemptId: reservedAttemptId ?? null }),
                 { withAuthority: service.sourcePort.consumptionBoundary(handle, root.sourceBinding, { engine: this.owner.engine }) });
                 attemptId = next.outcome.attemptId;
             } else ({ attemptId } = await service.runs.beginAttempt(handle, controlCommandId('session.child.fanout.entry', { runId: root.runId, fanoutAttemptId, nodeId: node.nodeId }),
@@ -622,6 +622,8 @@ export class SessionDelegationAuthority {
             if (node.kind === 'planner') return await completeSessionDelegatedPlanner({ state, service, port: this.port(host), result, send: completedSend, limits,
                 current: () => this.inspectDelegation(capture, { host, handle }), progress, engine: this.owner.engine,
                 resolveNode: item => this.#resolveChildModel(parent, item) });
+            if (node.kind === 'review') return await completeSessionDelegatedReview({ state, service, port: this.port(host), result, send: completedSend, limits,
+                current: () => this.inspectDelegation(capture, { host, handle }), engine: this.owner.engine });
             if (node.kind === 'judge') return await completeSessionDelegatedJudge({ state, service, port: this.port(host), result, send: completedSend, limits,
                 current: () => this.inspectDelegation(capture, { host, handle }), engine: this.owner.engine });
             const graphCapture = Object.freeze({}); this.#graphs.set(graphCapture, state);

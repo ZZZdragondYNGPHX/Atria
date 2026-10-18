@@ -1,11 +1,12 @@
 import { ConflictError } from '../../storage/errors.js';
 import { assertNativeId } from '../identity.js';
 import { assertObject, assertCounter } from '../../../public/shared/native-orchestration-contracts.js';
-import { cloneNativeDocument, hashNativeDocument, putImmutable } from '../repositories/common.js';
+import { cloneNativeDocument, hashNativeDocument, putImmutable, equalNativeDocuments } from '../repositories/common.js';
 import { checkedRecord } from './plan-repository.js';
 import { controlCommandId, controlRecordKey, graphReachable, holdsConcurrencySlot, readAttempt } from './controller-common.js';
 import { readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 import { admitGraphEdges } from './graph-costs.js';
+import { joinIdForAttempt } from './join-controller.js';
 
 export const fanoutFrameId = (runId, attemptId) => 'oreceipt_' + hashNativeDocument({ kind: 'fanout_frame', runId, attemptId }).slice(0, 32);
 const membershipId = (runId, frameId, attemptId) => 'oreceipt_' + hashNativeDocument({ kind: 'fanout_membership', runId, frameId, attemptId }).slice(0, 32);
@@ -34,6 +35,47 @@ export async function readFanoutMembership(tx, handle, root, frame, attemptId) {
     assertCounter(row.decisionSeq, 'decisionSeq', 1); assertCounter(row.createdAt, 'createdAt');
     if (row.decisionSeq > root.eventSeq + 1) throw new TypeError('FanoutMembership is ahead of Root');
     return row;
+}
+
+/** A branch may redo work before its frozen terminal is dispatched. This
+ * proves only original Frame/Barrier membership; domain and bank admission
+ * remain with Review's original producer. Historical readers supply the
+ * original Review decision sequence, never reopen an already closed Join. */
+export async function readFanoutReviewScope(tx, handle, root, reviewer, targets, { decisionSeq = root.eventSeq + 1 } = {}) {
+    const fanoutAttemptId = reviewer.inputRefs?.[0]?.fanoutAttemptId;
+    if (!fanoutAttemptId || !targets?.length) return null;
+    assertCounter(decisionSeq, 'Review scope sequence', 1);
+    const actual = (await readAttempt(tx, handle, root, reviewer.attemptId)).doc;
+    const frame = await readFanoutFrame(tx, handle, root, fanoutAttemptId);
+    if (!equalNativeDocuments(actual, reviewer) || !frame || frame.epoch !== reviewer.epoch || decisionSeq > root.eventSeq + 1
+        || frame.decisionSeq >= decisionSeq || frame.sourceBindingDigest !== root.sourceBinding.bindingDigest
+        || !equalNativeDocuments(frame.parentBudgetRef, root.budgetAuthorityRef)
+        || root.graph.nodes.find(node => node.nodeId === reviewer.nodeId)?.kind !== 'review') return null;
+    const membership = await readFanoutMembership(tx, handle, root, frame, reviewer.attemptId);
+    const branch = frame.branches.find(branch => branch.scopeNodeIds.includes(reviewer.nodeId));
+    if (!membership || membership.decisionSeq >= decisionSeq || !branch) return null;
+    for (const target of targets) {
+        if (!branch.scopeNodeIds.includes(target.nodeId) || target.attemptId === reviewer.attemptId
+            || !graphReachable(root.graph, target.nodeId, reviewer.nodeId)
+            || !(await readFanoutMembership(tx, handle, root, frame, target.attemptId))) return null;
+    }
+    for (const id of root.attemptRefs) {
+        const join = (await readAttempt(tx, handle, root, id)).doc;
+        if (root.graph.nodes.find(node => node.nodeId === join.nodeId)?.kind !== 'join' || join.inputRefs?.[0]?.fanoutAttemptId !== fanoutAttemptId) continue;
+        const barrier = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', 'barrier:' + joinIdForAttempt(id))))?.doc;
+        if (!barrier || barrier.frozenSeq >= decisionSeq || barrier.epoch !== frame.epoch
+            || barrier.fanoutFrameRef?.receiptId !== frame.receiptId || barrier.fanoutFrameRef.integrity !== hashNativeDocument(frame)
+            || targets.some(target => barrier.memberAttemptIds.includes(target.attemptId))) return null;
+        for (const id of barrier.memberAttemptIds) {
+            const terminal = (await readAttempt(tx, handle, root, id)).doc;
+            if (targets.some(target => target.nodeId === terminal.nodeId)) return null;
+        }
+        if (SETTLED_ATTEMPT_STATUSES.includes(join.status)) {
+            if ((await readAttemptSettlement(tx, handle, root, join)).decisionSeq <= decisionSeq) return null;
+        } else if (join.status !== 'pending' || join.effectRefs.length || join.resultRefs.length || join.startedAt !== null) return null;
+        return { frame, branch, barrier, join, fanout: (await readAttempt(tx, handle, root, fanoutAttemptId)).doc };
+    }
+    return null;
 }
 
 async function attachMembership({ tx, handle, root, frame, attempt, now }) {

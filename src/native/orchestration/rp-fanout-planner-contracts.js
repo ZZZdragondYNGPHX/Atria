@@ -56,12 +56,17 @@ export async function readRpFanoutPaidModelNodes(tx, handle, root) {
             if (effect.capability !== 'generation.send') continue;
             const rows = bank.attempts.filter(row => row.orchestration?.effectId === effectId);
             if (!rows.length) continue;
+            const input = attempt.inputRefs[0], delegated = input?.kind === 'native_rp_delegation';
+            const expectedInput = delegated ? { ...input, kind: root.parentRef ? 'native_rp_delegated_intent' : 'native_rp_intent',
+                acceptedResultRef: effect.inputRef.acceptedResultRef, returnReceiptRef: effect.inputRef.returnReceiptRef,
+                parentInputDigest: attempt.inputDigest } : input;
+            if (delegated && (!effect.inputRef.acceptedResultRef || !effect.inputRef.returnReceiptRef)) denied('native_orchestration_budget_attempt_invalid');
             if (effect.nodeAttemptId !== attempt.attemptId || effect.epoch !== attempt.epoch
                 || effect.sourceBindingDigest !== root.sourceBinding.bindingDigest || effect.grantDigest !== attempt.effectiveGrantDigest
-                || effect.inputHash !== hash(attempt.inputRefs[0]) || !equal(effect.inputRef, attempt.inputRefs[0])
+                || effect.inputHash !== hash(effect.inputRef) || !equal(effect.inputRef, expectedInput)
                 || !equal(attempt.budgetRef, authority)
                 || root.parentRef && (attempt.effectiveGrantDigest !== root.parentRef.effectiveGrantDigest
-                    || attempt.inputRefs[0]?.kind !== 'native_rp_delegated_intent')) denied('native_orchestration_budget_attempt_invalid');
+                    || !['native_rp_delegated_intent', 'native_rp_delegation'].includes(attempt.inputRefs[0]?.kind))) denied('native_orchestration_budget_attempt_invalid');
             for (const [ordinal, row] of rows.entries()) if (row.orchestration.kind !== 'provider_send' || row.orchestration.ordinal !== ordinal
                 || row.attemptId !== sendAttemptId(effectId, ordinal) || row.requestId !== effect.inputRef.requestId || (row.reservationId ?? null) !== (root.parentRef ? root.runId : null)
                 || !['charged', 'unknown', 'settled'].includes(row.status)) denied('native_orchestration_budget_attempt_invalid');

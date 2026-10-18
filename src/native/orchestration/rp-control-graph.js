@@ -142,7 +142,7 @@ export const rpControlJudgeOutputContract = Object.freeze({ name: 'atria_graph_j
     reasonCode: { type: 'string', enum: ['candidate_selected'] } }, required: ['selectedResultRef', 'reasonCode'], additionalProperties: false } });
 
 /** Read-only published branch topology. All admission stays in original controllers. */
-export function rpControlFanoutGroups(graph, finalWorkerId, modelKinds = ['agent', 'planner']) {
+export function rpControlFanoutGroups(graph, finalWorkerId, modelKinds = ['agent', 'planner', 'review']) {
     const groups = [], used = new Set(), joins = new Set();
     for (const fanout of graph.nodes.filter(node => node.kind === 'fanout')) {
         const transfers = graph.edges.filter(edge => edge.from.nodeId === fanout.nodeId && !edge.loopBack);

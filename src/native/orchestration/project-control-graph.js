@@ -56,7 +56,7 @@ export function projectFanoutGroups(graph, finalWorkerId) {
                 const id = pending.pop(), node = graph.nodes.find(node => node.nodeId === id);
                 if (scope.has(id)) continue;
                 if (node?.kind === 'join') { ends.add(id); continue; }
-                if (!['agent', 'planner', 'judge'].includes(node?.kind) || id === finalWorkerId || used.has(id)
+                if (!['agent', 'planner', 'review', 'judge'].includes(node?.kind) || id === finalWorkerId || used.has(id)
                     || !equal(node.capabilities, ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []])) fail();
                 scope.add(id);
                 const outgoing = graph.edges.filter(edge => edge.from.nodeId === id);

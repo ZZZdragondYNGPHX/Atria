@@ -11,7 +11,7 @@ import { TransitionController } from './transition-controller.js';
 import { projectReviewCosts } from './project-review-output-contracts.js';
 import { GraphController } from './graph-controller.js';
 import { graphPatchHash } from './graph-revision-contracts.js';
-import { FanoutController, readFanoutFrame } from './fanout-controller.js';
+import { FanoutController, readFanoutFrame, readFanoutMembership, readFanoutReviewScope } from './fanout-controller.js';
 import { JoinController, joinIdForAttempt } from './join-controller.js';
 import { withNativeProjectFanout } from './native-project-generation-authority.js';
 import { readProjectFanoutCompletion } from './project-fanout-contracts.js';
@@ -322,20 +322,33 @@ export class ProjectControlGraphWork {
                 fresh: async permit => { controlPermit = permit; await current(); },
                 run: async ({ permit, signal, controlPermit: activeControl }) => {
                     controlPermit = activeControl;
-                    const pending = new Set(item.branch.scopeNodeIds);
+                    const pending = new Set(item.branch.scopeNodeIds), prepared = new Map(), retryTokens = new Map();
                     while (pending.size) {
                         signal.throwIfAborted(); const active = await current();
                         const completion = Object.fromEntries([...this.records].map(([id, fact]) => [id, fact.status ?? 'completed']));
                         const ready = pending.has(item.branch.entry.nodeId) ? { node: item.branch.entry, edges: [] }
                             : inspectGraphReadiness(active.graph, active.nodeControl, completion, { excludeNodeIds: active.graph.nodes.filter(node => !pending.has(node.nodeId)).map(node => node.nodeId) }).ready[0];
                         if (!ready) fail('native_orchestration_project_graph_blocked');
-                        const node = ready.node, entry = node.nodeId === item.branch.entry.nodeId, bundle = this.#mergeBundle(entry ? { evidenceRefs: [], controlRefs: [], bindings: [] } : this.#bundle(ready.edges, active.graph), inherited);
+                        const node = ready.node, entry = node.nodeId === item.branch.entry.nodeId, replacement = prepared.get(node.nodeId);
+                        const bundle = replacement?.bundle ?? this.#mergeBundle(entry ? { evidenceRefs: [], controlRefs: [], bindings: [] } : this.#bundle(ready.edges, active.graph), inherited);
                         try {
-                            const fact = await this.models.generateStage(node, item.token, { ...bundle, controlTask: entry ? item.task : this.#task(node, active),
-                                fanoutAttemptId, fanoutPermit: permit, signal,
-                                ...(node.kind === 'planner' ? { outputContract: projectPlannerOutputContract, complete: (stage, args) => this.#planner(stage, args) }
-                                    : node.kind === 'judge' ? { outputContract: projectGraphJudgeOutputContract, complete: (stage, args) => this.#judge(stage, args, bundle) } : {}), ...(entry ? { preparedAttemptId: item.attempts.get(node.nodeId) }
-                                    : { reservedAttemptId: item.attempts.get(node.nodeId) }), authorizeInputs: args => this.#authorizeInputs(bundle, args) });
+                            const fact = await this.models.generateStage(node, replacement?.attemptId ?? retryTokens.get(node.nodeId) ?? item.token,
+                                { ...bundle, feedback: replacement?.feedback ?? null, controlTask: replacement?.controlTask ?? (entry ? item.task : this.#task(node, active)),
+                                    fanoutAttemptId, fanoutPermit: permit, signal,
+                                    ...(node.kind === 'planner' ? { outputContract: projectPlannerOutputContract, complete: (stage, args) => this.#planner(stage, args) }
+                                        : node.kind === 'review' ? { outputContract: projectGraphReviewOutputContract, complete: (stage, args) => this.#review(stage, args, bundle) }
+                                            : node.kind === 'judge' ? { outputContract: projectGraphJudgeOutputContract, complete: (stage, args) => this.#judge(stage, args, bundle) } : {}), ...(replacement ? { preparedAttemptId: replacement.attemptId }
+                                        : entry ? { preparedAttemptId: item.attempts.get(node.nodeId) }
+                                            : { reservedAttemptId: retryTokens.has(node.nodeId) ? null : item.attempts.get(node.nodeId) }), authorizeInputs: args => this.#authorizeInputs(bundle, args) });
+                            item.attempts.set(node.nodeId, fact.attemptId); prepared.delete(node.nodeId); retryTokens.delete(node.nodeId);
+                            if (fact.review?.decision === 'rerun') {
+                                for (const id of item.branch.scopeNodeIds) if (fact.review.invalidatedAttemptIds.includes(this.records.get(id)?.attemptId)) {
+                                    this.records.delete(id); pending.add(id); retryTokens.set(id, fact.review.receiptId);
+                                }
+                                this.records.delete(node.nodeId); pending.add(node.nodeId); retryTokens.set(node.nodeId, fact.review.receiptId);
+                                for (const next of fact.reruns) { prepared.set(next.nodeId, next); item.attempts.set(next.nodeId, next.attemptId); }
+                                continue;
+                            }
                             this.records.set(node.nodeId, fact); pending.delete(node.nodeId);
                         } catch (error) {
                             await this.#fanoutFailure(item.attempts.get(node.nodeId), current, withAuthority);
@@ -345,11 +358,30 @@ export class ProjectControlGraphWork {
                 } });
         }
         let decided;
-        const cancelPending = async (attemptId, failedAttemptId, joinId) => runs.withSourceControl(handle, runId, async () =>
-            new AttemptController({ runs, authorizeAttempt: async () => {}, authorizePendingCancellation: async ({ frame, attempt }) => {
+        const members = async branch => {
+            const active = await current();
+            return runs.engine.withTransaction(handle, async tx => {
+                const frame = await readFanoutFrame(tx, handle, active, fanoutAttemptId), records = [];
+                if (!frame) fail('native_orchestration_project_control_stale');
+                for (const id of active.attemptRefs) {
+                    const record = await readAttempt(tx, handle, active, id);
+                    if ((!branch || branch.scopeNodeIds.includes(record.doc.nodeId))
+                        && await readFanoutMembership(tx, handle, active, frame, id)) records.push(record);
+                }
+                return records;
+            });
+        };
+        const unstarted = attempt => ['pending', 'reserved'].includes(attempt.status) && attempt.startedAt === null
+            && !attempt.effectRefs.length && !attempt.resultRefs.length;
+        const cancelPending = async (attemptId, failedAttemptId, joinId) => runs.withSourceControl(handle, runId, async () => {
+            const active = await current(), actual = await runs.engine.withTransaction(handle, tx => readAttempt(tx, handle, active, attemptId));
+            if (!unstarted(actual.doc)) return;
+            return new AttemptController({ runs, authorizeAttempt: async () => {}, authorizePendingCancellation: async ({ tx, root, frame, attempt }) => {
                 await current();
-                if (frame.fanoutAttemptId !== fanoutAttemptId || !declared.some(item => [...item.attempts.values()].includes(attempt.attemptId))) fail('native_orchestration_project_control_stale');
-            } }).cancelPending(handle, { ...runGuard(await current()), fanoutAttemptId, failedAttemptId, joinId, attemptId }), { withAuthority });
+                if (frame.fanoutAttemptId !== fanoutAttemptId || !await readFanoutMembership(tx, handle, root, frame, attempt.attemptId))
+                    fail('native_orchestration_project_control_stale');
+            } }).cancelPending(handle, { ...runGuard(await current()), fanoutAttemptId, failedAttemptId, joinId, attemptId });
+        }, { withAuthority });
         const group = await withNativeProjectFanout(this.state.projectCapture, workers, { maxConcurrency: Math.min(profile.fanout.policy.maxConcurrency, root.limits.maxConcurrency),
             timeoutMs: Math.max(1, root.progress.deadlineAt - Date.now()), deadlineAt: frozen.outcome.joinBarrier.deadlineAt,
             until: async (_observed, permit) => {
@@ -361,23 +393,17 @@ export class ProjectControlGraphWork {
             }, onSettled: async (item, _group, permit) => {
                 controlPermit = permit;
                 if (item.status !== 'rejected') return;
-                const active = await current(), attempts = await runs.engine.withTransaction(handle, async tx => Promise.all([...declared[item.index].attempts.values()].map(id => readAttempt(tx, handle, active, id))));
+                const attempts = await members(declared[item.index].branch);
                 if (attempts.every(record => record.doc.status === 'cancelled')) return;
                 const failed = attempts.find(record => record.doc.status === 'failed');
                 if (!failed) throw item.reason;
                 if (profile.fanout.policy.failurePolicy === 'fail_fast') {
-                    for (const branch of declared) for (const attemptId of branch.attempts.values()) {
-                        const actual = await runs.engine.withTransaction(handle, tx => readAttempt(tx, handle, active, attemptId));
-                        if (['pending', 'reserved'].includes(actual.doc.status)) await cancelPending(attemptId, failed.doc.attemptId, null);
-                    }
+                    for (const actual of await members()) if (unstarted(actual.doc)) await cancelPending(actual.doc.attemptId, failed.doc.attemptId, null);
                 }
             } });
         const cancelled = group.cancelPending();
-        for (const index of cancelled) for (const attemptId of declared[index].attempts.values()) {
-            const actual = await runs.engine.withTransaction(handle, async tx => readAttempt(tx, handle, await runs.get(handle, runId), attemptId));
-            if (['pending', 'reserved'].includes(actual.doc.status)) await cancelPending(attemptId, null, decided.outcome.joinReceipt.joinId);
-            else if (actual.doc.status !== 'cancelled') fail('native_orchestration_project_control_stale');
-        }
+        for (const index of cancelled) for (const actual of await members(declared[index].branch))
+            if (unstarted(actual.doc)) await cancelPending(actual.doc.attemptId, null, decided.outcome.joinReceipt.joinId);
         await group.wait(); controlPermit = null;
         const drained = await current();
         await runs.engine.withTransaction(handle, async tx => {
@@ -452,6 +478,9 @@ export class ProjectControlGraphWork {
             // Original accepted Patch receipts stay authoritative and are never
             // rolled back or replayed; only the new Model Attempt may propose.
             if (decision === 'rerun') {
+                const scope = stage.decision.inputRef.fanoutAttemptId
+                    ? await readFanoutReviewScope(tx, handle, root, reviewer, targets) : null;
+                if (stage.decision.inputRef.fanoutAttemptId && !scope) fail('native_orchestration_review_irreversible_dependency');
                 const affected = [...this.records.entries()].filter(([nodeId, fact]) => fact.attemptId !== reviewer.attemptId
                     && targets.some(target => graphReachable(root.graph, target.nodeId, nodeId)));
                 const completeGroups = new Set();
@@ -464,7 +493,7 @@ export class ProjectControlGraphWork {
                 for (const [nodeId, fact] of affected) {
                     if (['fanout', 'join'].includes(root.graph.nodes.find(node => node.nodeId === nodeId)?.kind) && !completeGroups.has(fact.attemptId)
                         || fact.controlRef?.kind === 'graph_planner_control'
-                            && !await readReviewablePlannerCompletion(tx, handle, root, fact.attemptId, { ...readerOptions, reviewTargets: targets }))
+                            && !await readReviewablePlannerCompletion(tx, handle, root, fact.attemptId, { ...readerOptions, reviewTargets: targets, reviewer }))
                         fail('native_orchestration_review_irreversible_dependency');
                 }
                 for (const [nodeId, recorded] of affected) {
@@ -494,9 +523,11 @@ export class ProjectControlGraphWork {
                 || admission.round >= root.graph.nodes.find(node => node.nodeId === reviewer.nodeId).policy.maxRounds
                 || root.progress.reviews + reviews > root.limits.maxReviews)
                 fail('native_orchestration_project_quality_rerun_limit');
-            const node = root.graph.nodes.find(node => node.nodeId === target.nodeId), dependencies = this.#bundle(root.graph.edges.filter(edge => edge.to.nodeId === node.nodeId && !edge.loopBack), root.graph);
+            const node = root.graph.nodes.find(node => node.nodeId === target.nodeId), fanoutAttemptId = stage.decision.inputRef.fanoutAttemptId;
+            const dependencies = fanoutAttemptId ? target.inputRefs[0].controlGraph
+                : this.#bundle(root.graph.edges.filter(edge => edge.to.nodeId === node.nodeId && !edge.loopBack), root.graph);
             const feedback = { reviewReceiptRef: { runId, receiptId: reviewReceiptId(runId, reviewer.attemptId) }, reasonCode: parsed.reasonCode };
-            const controlTask = this.#task(node, root), spec = await this.models.prepareStageInput(node, attemptId, { ...dependencies, feedback, controlTask });
+            const controlTask = this.#task(node, root), spec = await this.models.prepareStageInput(node, attemptId, { ...dependencies, feedback, controlTask, fanoutAttemptId });
             const inputRefs = [spec.input, ...dependencies.evidenceRefs, ...dependencies.controlRefs];
             reruns.push({ nodeId: node.nodeId, attemptId, bundle: dependencies, feedback, controlTask });
             return { inputRefs, inputDigest: hash(inputRefs), effectiveGrantDigest: spec.grantDigest, budgetRef: root.budgetAuthorityRef };

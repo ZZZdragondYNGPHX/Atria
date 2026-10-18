@@ -11,7 +11,7 @@ import { readSessionJudgeCompletion, assertSessionJudgeSelections, sessionJudgeO
 import { graphJudgeModelReceiptId } from './graph-judge-completion.js';
 import { nativeTaskScheduler } from '../task-scheduler.js';
 import { assertNativeTurnPermit } from './native-turn-permit.js';
-import { FanoutController, readFanoutFrame } from './fanout-controller.js';
+import { FanoutController, readFanoutFrame, readFanoutReviewScope, readFanoutMembership } from './fanout-controller.js';
 import { JoinController, joinIdForAttempt } from './join-controller.js';
 import { readSessionFanoutCompletion } from './session-fanout-contracts.js';
 import { audienceRunCapture } from './audience-source-contracts.js';
@@ -665,7 +665,7 @@ export class NativeNarratorOrchestrationAuthority {
                     if (prepared.status !== 'pending' || prepared.nodeId !== selected.node.nodeId || !equal(prepared.inputRefs, inputRefs)
                     || prepared.effectiveGrantDigest !== grantDigest || !equal(prepared.budgetRef, root.budgetAuthorityRef)) fail('native_orchestration_graph_rerun_denied');
                     attemptId = preparedGraphAttemptId;
-                } else if (selected.collaboration && graphBindings.length && !logicalInputRef.fanoutAttemptId) {
+                } else if (selected.collaboration && graphBindings.length && (!logicalInputRef.fanoutAttemptId || graphFanoutAttemptId)) {
                     const traversal = await new TransitionController({ runs: service.runs, authorizeTransition: async ({ handle: owner, root: active, target, producers }) => {
                         if (owner !== handle || active.runId !== root.runId || target.nodeId !== selected.node.nodeId
                         || !equal(producers.map(item => item.attempt.attemptId).sort(), graphBindings.map(item => item.attemptId).sort())) fail('native_orchestration_turn_grant_denied');
@@ -1277,15 +1277,19 @@ export class NativeNarratorOrchestrationAuthority {
                     || root.graph.nodes.find(node => node.nodeId === target.nodeId)?.kind !== 'agent')) fail('native_orchestration_review_producer_denied');
                 for (const target of targets) if (target.inputRefs[0]?.kind === 'native_session_delegation'
                     && !await readReviewableDelegationCompletion(tx, handle, root, target.attemptId)) fail('native_orchestration_review_irreversible_dependency');
+                const scope = reviewer.inputRefs[0]?.fanoutAttemptId ? await readFanoutReviewScope(tx, handle, root, reviewer, targets) : null;
+                if (reviewer.inputRefs[0]?.fanoutAttemptId && !scope) fail('native_orchestration_review_irreversible_dependency');
                 if (decision === 'rerun') for (const id of root.attemptRefs) {
                     const attempt = (await readAttempt(tx, handle, root, id)).doc;
                     if (attempt.attemptId === reviewer.attemptId || await readAttemptInvalidation(tx, handle, root, attempt)) continue;
+                    if (scope && (!scope.branch.scopeNodeIds.includes(attempt.nodeId)
+                        || ['pending', 'reserved'].includes(attempt.status) && attempt.startedAt === null && !attempt.effectRefs.length && !attempt.resultRefs.length)) continue;
                     const node = root.graph.nodes.find(node => node.nodeId === attempt.nodeId);
                     if (!targets.some(target => graphReachable(root.graph, target.nodeId, node.nodeId))) continue;
                     if (['fanout', 'join'].includes(node?.kind) ? !await readSessionReviewableFanout(tx, handle, root, attempt, targets)
                         : attempt.inputRefs[0]?.kind === 'native_session_delegation' ? !await readReviewableDelegationCompletion(tx, handle, root, attempt.attemptId)
                             : (node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
-                            && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { ...sessionPlannerReaderOptions, reviewTargets: targets, readFanoutCompletion: readSessionFanoutCompletion }))
+                            && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { ...sessionPlannerReaderOptions, reviewTargets: targets, readFanoutCompletion: readSessionFanoutCompletion, reviewer }))
                         fail('native_orchestration_review_irreversible_dependency');
                 }
             },
@@ -1340,7 +1344,8 @@ export class NativeNarratorOrchestrationAuthority {
         }
         const port = this.#port(args.host), scope = await this.#prepareRole({ ...args, graphProfile: profile, graphProgress: progress, ...extra, delegationContinuation: continuation }, 'narrator');
         const { runId, effectId } = modelScopes.get(scope).principal;
-        const state = this.#sessionModelState({ runId }, { intent: { nodeAttemptId: extra.preparedGraphAttemptId ?? extra.reservedGraphAttemptId } }) ?? this.#runs.get(runId);
+        const state = this.#sessionModelState({ runId }, { intent: { nodeAttemptId: extra.preparedGraphAttemptId ?? extra.reservedGraphAttemptId },
+            proposal: { inputRef: { nodeId: profile.node.nodeId } } });
         try {
             const result = await port.generate(args.handle, scope, { signal: args.signal });
             if (profile.node.kind === 'planner') {
@@ -1496,6 +1501,23 @@ export class NativeNarratorOrchestrationAuthority {
         const root = await current(), maximum = Math.min(profile.fanout.policy.maxConcurrency, root.limits.maxConcurrency);
         let decided;
         const withAuthority = service.sourcePort.consumptionBoundary(handle, source.sourceBinding, { engine: this.engine });
+        const frameMembers = async () => this.engine.withTransaction(handle, async tx => {
+            const active = await current(tx), frame = await readFanoutFrame(tx, handle, active, fanoutAttemptId), members = [];
+            if (!frame || frame.sourceBindingDigest !== active.sourceBinding.bindingDigest
+                || !equal(frame.parentBudgetRef, active.budgetAuthorityRef)) fail('native_orchestration_fanout_cancellation_denied');
+            for (const id of active.attemptRefs) {
+                const attempt = (await readAttempt(tx, handle, active, id)).doc;
+                if (frame.branches.some(branch => branch.scopeNodeIds.includes(attempt.nodeId))
+                    && await readFanoutMembership(tx, handle, active, frame, id)) members.push(attempt);
+            }
+            return members;
+        });
+        const authorizeMemberCancellation = async input => {
+            await authorize(input);
+            if (input.frame.fanoutAttemptId !== fanoutAttemptId
+                || !input.frame.branches.some(branch => branch.scopeNodeIds.includes(input.attempt.nodeId))
+                || !await readFanoutMembership(input.tx, handle, input.root, input.frame, input.attempt.attemptId)) fail('native_orchestration_fanout_cancellation_denied');
+        };
         const group = await nativeTaskScheduler.withResourceFanout(originalPermit.boundary, originalPermit.expected,
             await Promise.all(declared.map(async item => {
                 const resources = [...new Set((await Promise.all([...item.models.values()].map(model => args.host.executionResources(handle, model.resolved.route)))).flat())].sort(), expected = immutable({ owner: handle,
@@ -1506,7 +1528,7 @@ export class NativeNarratorOrchestrationAuthority {
                     fresh: async () => { await current(); return true; }, finalize: value => value,
                     run: async boundary => {
                         const quotaProof = captureNativeTurnChildQuota(args.quotaProof, boundary, expected);
-                        const pending = new Set(item.scope.scopeNodeIds);
+                        const pending = new Set(item.scope.scopeNodeIds), replacements = new Map();
                         let completed;
                         while (pending.size) {
                             checkCancellation(boundary.signal);
@@ -1517,10 +1539,31 @@ export class NativeNarratorOrchestrationAuthority {
                                 || item.scope.ordered.findIndex(node => node.nodeId === a.node.nodeId) - item.scope.ordered.findIndex(node => node.nodeId === b.node.nodeId))[0];
                             if (!ready) fail('native_orchestration_graph_dependency_unavailable');
                             const model = item.models.get(ready.node.nodeId);
+                            const replacement = replacements.get(model.node.nodeId), originalAttemptId = item.attempts.get(model.node.nodeId);
+                            const original = await this.engine.withTransaction(handle, async tx => (await readAttempt(tx, handle, active, originalAttemptId)).doc);
                             completed = await this.#runSessionModelWorker({ ...args, signal: boundary.signal, quotaProof }, selected, model, progress,
-                                { ...(entry ? { preparedGraphAttemptId: item.attemptId } : { reservedGraphAttemptId: item.attempts.get(model.node.nodeId) }),
-                                    graphFanoutAttemptId: fanoutAttemptId, graphInheritedBindings: inherited, fanoutMember: true, plannerProgress });
+                                { ...(replacement ?? (entry ? { preparedGraphAttemptId: item.attemptId }
+                                    : original.status === 'reserved' ? { reservedGraphAttemptId: originalAttemptId } : {})),
+                                graphFanoutAttemptId: fanoutAttemptId, graphInheritedBindings: inherited, fanoutMember: true, plannerProgress });
+                            item.attempts.set(model.node.nodeId, completed.state.attemptId);
                             if (completed.error) return completed;
+                            replacements.delete(model.node.nodeId);
+                            if (model.node.kind === 'review') {
+                                const { decided } = completed;
+                                if (decided.review.decision === 'rerun') {
+                                    for (const [id, prior] of progress) if (decided.review.invalidatedAttemptIds.includes(prior.attemptId)) {
+                                        if (!item.scope.scopeNodeIds.includes(id)) fail('native_orchestration_review_rerun_denied');
+                                        progress.delete(id); pending.add(id);
+                                    }
+                                    progress.delete(model.node.nodeId); pending.add(model.node.nodeId);
+                                    for (const next of decided.reruns) {
+                                        if (!item.scope.scopeNodeIds.includes(next.nodeId)) fail('native_orchestration_review_rerun_denied');
+                                        replacements.set(next.nodeId, next); item.attempts.set(next.nodeId, next.preparedGraphAttemptId); pending.add(next.nodeId);
+                                    }
+                                    continue;
+                                }
+                                progress.set(model.node.nodeId, { attemptId: completed.state.attemptId, controlRef: decided.controlRef });
+                            }
                             pending.delete(model.node.nodeId);
                         }
                         return completed;
@@ -1535,35 +1578,29 @@ export class NativeNarratorOrchestrationAuthority {
                     } catch (error) { if (error.code === 'native_orchestration_join_not_ready') return false; throw error; }
                 }, onSettled: async ({ index }, { cancelRemaining }) => {
                     if (profile.fanout.policy.failurePolicy !== 'fail_fast') return;
-                    const active = await current(), scopeAttempts = await this.engine.withTransaction(handle, async tx =>
-                        Promise.all([...declared[index].attempts.values()].map(id => readAttempt(tx, handle, active, id))));
-                    const failed = scopeAttempts.map(row => row.doc).find(attempt => attempt.status === 'failed');
+                    const scopeAttempts = (await frameMembers()).filter(attempt => declared[index].scope.scopeNodeIds.includes(attempt.nodeId));
+                    const failed = scopeAttempts.find(attempt => attempt.status === 'failed');
                     if (!failed) return;
                     const failedAttemptId = failed.attemptId;
                     cancelRemaining();
                     await service.runs.withSourceControl(handle, runId, async () => {
-                        for (const item of declared) for (const attemptId of item.attempts.values()) {
-                            const root = await current(), target = await this.engine.withTransaction(handle, async tx => (await readAttempt(tx, handle, root, attemptId)).doc);
-                            if (!['pending', 'reserved'].includes(target.status) || target.startedAt !== null || target.effectRefs.length) continue;
-                            await new AttemptController({ runs: service.runs, authorizeAttempt: authorize, authorizePendingCancellation: async input => {
-                                await authorize(input);
-                                if (input.frame.fanoutAttemptId !== fanoutAttemptId || !declared.some(member => [...member.attempts.values()].includes(input.attempt.attemptId))) fail('native_orchestration_fanout_cancellation_denied');
-                            } }).cancelPending(handle, { ...runGuard(root), fanoutAttemptId, failedAttemptId, joinId: null, attemptId });
+                        for (const target of await frameMembers()) {
+                            if (!['pending', 'reserved'].includes(target.status) || target.startedAt !== null || target.effectRefs.length || target.resultRefs.length) continue;
+                            await new AttemptController({ runs: service.runs, authorizeAttempt: authorize, authorizePendingCancellation: authorizeMemberCancellation })
+                                .cancelPending(handle, { ...runGuard(await current()), fanoutAttemptId, failedAttemptId, joinId: null, attemptId: target.attemptId });
                         }
                     }, { withAuthority });
                 } });
         group.cancelPending();
         const workers = await group.wait();
         await service.runs.withSourceControl(handle, runId, async () => {
-            for (const item of declared) for (const attemptId of item.attempts.values()) {
-                const target = await this.engine.withTransaction(handle, async tx => (await readAttempt(tx, handle, await current(tx), attemptId)).doc);
-                if (!['pending', 'reserved'].includes(target.status)) continue;
+            for (const target of await frameMembers()) {
+                if (!['pending', 'reserved'].includes(target.status) || target.startedAt !== null || target.effectRefs.length || target.resultRefs.length) continue;
                 await new AttemptController({ runs: service.runs, authorizeAttempt: authorize, authorizePendingCancellation: async input => {
-                    await authorize(input);
-                    if (input.frame.fanoutAttemptId !== fanoutAttemptId || input.join?.joinId !== decided.outcome.joinReceipt.joinId
-                        || !declared.some(member => [...member.attempts.values()].includes(input.attempt.attemptId))) fail('native_orchestration_fanout_cancellation_denied');
+                    await authorizeMemberCancellation(input);
+                    if (input.join?.joinId !== decided.outcome.joinReceipt.joinId) fail('native_orchestration_fanout_cancellation_denied');
                 } }).cancelPending(handle, { ...runGuard(await current()), fanoutAttemptId, failedAttemptId: null,
-                    joinId: decided.outcome.joinReceipt.joinId, attemptId });
+                    joinId: decided.outcome.joinReceipt.joinId, attemptId: target.attemptId });
             }
         }, { withAuthority });
         const outcome = decided.outcome.joinReceipt.outcome;

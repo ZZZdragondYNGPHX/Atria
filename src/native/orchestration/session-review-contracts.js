@@ -1,6 +1,7 @@
 import { assertComputeAllocation } from '../../../public/shared/native-compute-budget.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
-import { readSessionFanoutCompletion } from './session-fanout-contracts.js';
+import { readSessionFanoutCompletion, readSessionFanoutReviewInput } from './session-fanout-contracts.js';
+import { readFanoutReviewScope } from './fanout-controller.js';
 import { joinIdForAttempt } from './join-controller.js';
 import { assertAudienceRunCapture } from './audience-source-contracts.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
@@ -112,38 +113,43 @@ export async function readSessionReviewCompletion(tx, handle, root, attemptId, o
             : await readReviewableDelegationCompletion(tx, handle, root, target.attemptId);
         if (!delegated) invalid();
     }
-    assertObject(input.controlGraph, ['bindings'], 'Session Review control graph');
-    const bindings = input.controlGraph.bindings;
-    if (!Array.isArray(bindings) || !bindings.length || new Set(bindings.map(item => item.edgeId)).size !== bindings.length) invalid();
-    const controls = [];
-    for (const ref of input.acceptedControlRefs ?? []) {
-        const control = ref.kind === 'graph_review_control' ? await readSessionReviewCompletion(tx, handle, root, ref.attemptId)
-            : ref.kind === 'graph_planner_control' ? await readSessionPlannerCompletion(tx, handle, root, ref.attemptId)
-                : ref.kind === 'graph_judge_control' ? await readSessionJudgeCompletion(tx, handle, root, ref.attemptId) : null;
-        if (!control || !equal(control.controlRef, ref) || control.receipt.decisionSeq >= fact.receipt.decisionSeq) invalid();
-        controls.push(control);
+    if (input.fanoutAttemptId) {
+        if (!await readFanoutReviewScope(tx, handle, root, fact.producer, fact.targets, { decisionSeq: fact.review.decisionSeq })) invalid();
+        await readSessionFanoutReviewInput(tx, handle, root, fact.producer);
+    } else {
+        assertObject(input.controlGraph, ['bindings'], 'Session Review control graph');
+        const bindings = input.controlGraph.bindings;
+        if (!Array.isArray(bindings) || !bindings.length || new Set(bindings.map(item => item.edgeId)).size !== bindings.length) invalid();
+        const controls = [];
+        for (const ref of input.acceptedControlRefs ?? []) {
+            const control = ref.kind === 'graph_review_control' ? await readSessionReviewCompletion(tx, handle, root, ref.attemptId)
+                : ref.kind === 'graph_planner_control' ? await readSessionPlannerCompletion(tx, handle, root, ref.attemptId)
+                    : ref.kind === 'graph_judge_control' ? await readSessionJudgeCompletion(tx, handle, root, ref.attemptId) : null;
+            if (!control || !equal(control.controlRef, ref) || control.receipt.decisionSeq >= fact.receipt.decisionSeq) invalid();
+            controls.push(control);
+        }
+        const joins = [];
+        for (const ref of input.joinReceiptRefs ?? []) {
+            const barrier = ref.runId === root.runId ? (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', 'barrier:' + ref.joinId)))?.doc : null;
+            const joined = barrier ? await readSessionFanoutCompletion(tx, handle, root, barrier.nodeAttemptId) : null;
+            if (!joined || joined.joinReceipt.joinId !== ref.joinId || joined.joinReceipt.outcome !== 'completed'
+                || joins.some(actual => actual.producer.attemptId === joined.producer.attemptId)
+                || !joined.joinReceipt.acceptedResultRefs.every(actual => fact.evidence.some(item => equal(item.receipt.resultRef, actual)))) invalid();
+            joins.push(joined);
+        }
+        const joinedRefs = joins.flatMap(joined => joined.joinReceipt.acceptedResultRefs);
+        const sources = [...fact.evidence.filter(item => !joinedRefs.some(ref => equal(ref, item.receipt.resultRef))), ...controls, ...joins];
+        const incoming = snapshot.graph.edges.filter(edge => edge.to.nodeId === fact.producer.nodeId && !edge.loopBack);
+        if (sources.some(source => !bindings.some(binding => binding.producerAttemptId === source.producer.attemptId))
+            || bindings.some(binding => !sources.some(source => source.producer.attemptId === binding.producerAttemptId
+                && incoming.some(edge => edge.edgeId === binding.edgeId && edge.from.nodeId === source.producer.nodeId)))
+            || incoming.some(edge => snapshot.graph.nodes.find(node => node.nodeId === fact.producer.nodeId).inputs.find(port => port.name === edge.to.port)?.required
+                && !bindings.some(binding => binding.edgeId === edge.edgeId))) invalid();
+        const ordered = [...bindings].sort((a, b) => a.edgeId.localeCompare(b.edgeId));
+        const traversalId = 'oreceipt_' + hash({ runId: root.runId, bindings: ordered, reservedAttemptId: null }).slice(0, 32);
+        await assertOutputTransition(tx, handle, root, { published: sources[0], additionalProducers: sources.slice(1), output: fact.producer,
+            producerBindings: ordered, receipt: { decisionSeq: fact.receipt.decisionSeq, traversalReceiptRef: { runId: root.runId, receiptId: traversalId } } });
     }
-    const joins = [];
-    for (const ref of input.joinReceiptRefs ?? []) {
-        const barrier = ref.runId === root.runId ? (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', 'barrier:' + ref.joinId)))?.doc : null;
-        const joined = barrier ? await readSessionFanoutCompletion(tx, handle, root, barrier.nodeAttemptId) : null;
-        if (!joined || joined.joinReceipt.joinId !== ref.joinId || joined.joinReceipt.outcome !== 'completed'
-            || joins.some(actual => actual.producer.attemptId === joined.producer.attemptId)
-            || !joined.joinReceipt.acceptedResultRefs.every(actual => fact.evidence.some(item => equal(item.receipt.resultRef, actual)))) invalid();
-        joins.push(joined);
-    }
-    const joinedRefs = joins.flatMap(joined => joined.joinReceipt.acceptedResultRefs);
-    const sources = [...fact.evidence.filter(item => !joinedRefs.some(ref => equal(ref, item.receipt.resultRef))), ...controls, ...joins];
-    const incoming = snapshot.graph.edges.filter(edge => edge.to.nodeId === fact.producer.nodeId && !edge.loopBack);
-    if (sources.some(source => !bindings.some(binding => binding.producerAttemptId === source.producer.attemptId))
-        || bindings.some(binding => !sources.some(source => source.producer.attemptId === binding.producerAttemptId
-            && incoming.some(edge => edge.edgeId === binding.edgeId && edge.from.nodeId === source.producer.nodeId)))
-        || incoming.some(edge => snapshot.graph.nodes.find(node => node.nodeId === fact.producer.nodeId).inputs.find(port => port.name === edge.to.port)?.required
-            && !bindings.some(binding => binding.edgeId === edge.edgeId))) invalid();
-    const ordered = [...bindings].sort((a, b) => a.edgeId.localeCompare(b.edgeId));
-    const traversalId = 'oreceipt_' + hash({ runId: root.runId, bindings: ordered, reservedAttemptId: null }).slice(0, 32);
-    await assertOutputTransition(tx, handle, root, { published: sources[0], additionalProducers: sources.slice(1), output: fact.producer,
-        producerBindings: ordered, receipt: { decisionSeq: fact.receipt.decisionSeq, traversalReceiptRef: { runId: root.runId, receiptId: traversalId } } });
     if (fact.review.decision === 'rerun') for (const item of fact.review.replacements) {
         const target = fact.targets.find(target => target.attemptId === item.targetAttemptId), next = (await readAttempt(tx, handle, root, item.attemptId)).doc;
         const expected = { ...target.inputRefs[0], reviewFeedbackRef: { reviewReceiptRef: fact.receipt.reviewReceiptRef, reasonCode: fact.review.reasonCode } };
@@ -154,7 +160,7 @@ export async function readSessionReviewCompletion(tx, handle, root, attemptId, o
         if (['fanout', 'join'].includes(node?.kind) ? !fact.rerunFanouts.some(group => group.fanout.attemptId === attempt.attemptId || group.producer.attemptId === attempt.attemptId)
             : attempt.inputRefs[0]?.kind === 'native_session_delegation' ? !fact.rerunDelegations.some(item => item.producer.attemptId === attempt.attemptId)
                 : (node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
-                && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork: assertSessionControlWork, reviewTargets: fact.targets, readFanoutCompletion: readSessionFanoutCompletion })) invalid();
+                && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork: assertSessionControlWork, reviewTargets: fact.targets, readFanoutCompletion: readSessionFanoutCompletion, reviewer: fact.producer, reviewDecisionSeq: fact.review.decisionSeq })) invalid();
     }
     return fact;
 }
@@ -209,4 +215,21 @@ export async function readSessionReviewableFanout(tx, handle, root, attempt, tar
         return readReviewableFanoutCompletion(tx, handle, root, id, { targets, readCompletion: readSessionFanoutCompletion });
     }
     return null;
+}
+
+/** Exact original Review replacement; it consumes no new incoming edge. */
+export async function readSessionReviewReplacement(tx, handle, root, producer, input) {
+    const ref = input.reviewFeedbackRef?.reviewReceiptRef;
+    const stored = ref?.runId === root.runId ? await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', ref.receiptId)) : null;
+    if (!stored || stored.doc.receiptKind !== 'graph_review') invalid();
+    const fact = await readSessionReviewCompletion(tx, handle, root, stored.doc.reviewAttemptId);
+    const replacement = fact?.review.replacements.find(item => item.attemptId === producer.attemptId);
+    const target = fact?.targets.find(item => item.attemptId === replacement?.targetAttemptId);
+    if (!target || fact.review.decision !== 'rerun' || !equal(ref, fact.receipt.reviewReceiptRef)
+        || input.reviewFeedbackRef.reasonCode !== fact.review.reasonCode || producer.nodeId !== target.nodeId
+        || producer.effectiveGrantDigest !== target.effectiveGrantDigest || producer.graphRevision !== fact.review.graphRevision
+        || !equal(producer.inputRefs, [{ ...target.inputRefs[0], reviewFeedbackRef: input.reviewFeedbackRef }, ...target.inputRefs.slice(1)])) invalid();
+    const invalidation = await readAttemptInvalidation(tx, handle, root, target);
+    if (!invalidation || invalidation.reviewReceiptId !== fact.review.receiptId) invalid();
+    return { fact, target };
 }

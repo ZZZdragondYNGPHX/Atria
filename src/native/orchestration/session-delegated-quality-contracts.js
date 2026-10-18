@@ -1,4 +1,5 @@
-import { readSessionDelegatedFanoutCompletion } from './session-delegated-fanout-contracts.js';
+import { readFanoutReviewScope } from './fanout-controller.js';
+import { readSessionDelegatedFanoutCompletion, readSessionDelegatedFanoutInput } from './session-delegated-fanout-contracts.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
@@ -52,18 +53,24 @@ export async function readSessionDelegatedReviewCompletion(tx, handle, root, att
             : await readReviewableDelegationCompletion(tx, handle, root, target.attemptId);
         if (!delegated) invalid();
     }
-    const controls = await controlInputs(tx, handle, root, fact.producer, input), joinedRefs = controls.flatMap(item => item.joinReceipt?.acceptedResultRefs ?? []);
-    const sources = [...fact.evidence.filter(item => !joinedRefs.some(ref => equal(ref, item.receipt.resultRef))), ...controls];
-    const bindings = input.graphBindings;
-    if (!Array.isArray(bindings) || !bindings.length || new Set(bindings.map(item => item.edgeId)).size !== bindings.length
-        || fact.targets.some(target => snapshot.graph.nodes.find(node => node.nodeId === target.nodeId)?.kind !== 'agent')
-        || bindings.some(binding => !sources.some(source => source.producer.attemptId === binding.producerAttemptId
-            && snapshot.graph.edges.some(edge => !edge.loopBack && edge.edgeId === binding.edgeId
-                && edge.from.nodeId === source.producer.nodeId && edge.to.nodeId === fact.producer.nodeId)))) invalid();
-    const identity = hash({ runId: root.runId, bindings, reservedAttemptId: null });
-    await assertOutputTransition(tx, handle, root, { published: sources[0], additionalProducers: sources.slice(1), output: fact.producer,
-        producerBindings: bindings, receipt: { decisionSeq: fact.receipt.decisionSeq,
-            traversalReceiptRef: { runId: root.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } } });
+    if (fact.targets.some(target => snapshot.graph.nodes.find(node => node.nodeId === target.nodeId)?.kind !== 'agent')) invalid();
+    if (input.fanoutAttemptId) {
+        if (!await readFanoutReviewScope(tx, handle, root, fact.producer, fact.targets, { decisionSeq: fact.review.decisionSeq })) invalid();
+        await readSessionDelegatedFanoutInput(tx, handle, root, fact.producer, input, fact.receipt.decisionSeq);
+    } else {
+        const controls = await controlInputs(tx, handle, root, fact.producer, input), joinedRefs = controls.flatMap(item => item.joinReceipt?.acceptedResultRefs ?? []);
+        const sources = [...fact.evidence.filter(item => !joinedRefs.some(ref => equal(ref, item.receipt.resultRef))), ...controls];
+        const bindings = input.graphBindings;
+        if (!Array.isArray(bindings) || !bindings.length || new Set(bindings.map(item => item.edgeId)).size !== bindings.length
+            || fact.targets.some(target => snapshot.graph.nodes.find(node => node.nodeId === target.nodeId)?.kind !== 'agent')
+            || bindings.some(binding => !sources.some(source => source.producer.attemptId === binding.producerAttemptId
+                && snapshot.graph.edges.some(edge => !edge.loopBack && edge.edgeId === binding.edgeId
+                    && edge.from.nodeId === source.producer.nodeId && edge.to.nodeId === fact.producer.nodeId)))) invalid();
+        const identity = hash({ runId: root.runId, bindings, reservedAttemptId: null });
+        await assertOutputTransition(tx, handle, root, { published: sources[0], additionalProducers: sources.slice(1), output: fact.producer,
+            producerBindings: bindings, receipt: { decisionSeq: fact.receipt.decisionSeq,
+                traversalReceiptRef: { runId: root.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } } });
+    }
     if (fact.review.decision === 'rerun') for (const replacement of fact.review.replacements) {
         const target = fact.targets.find(item => item.attemptId === replacement.targetAttemptId), next = (await readAttempt(tx, handle, root, replacement.attemptId)).doc;
         const input = { ...target.inputRefs[0], reviewFeedbackRef: { reviewReceiptRef: fact.receipt.reviewReceiptRef, reasonCode: fact.review.reasonCode } };
@@ -74,7 +81,7 @@ export async function readSessionDelegatedReviewCompletion(tx, handle, root, att
         if (['fanout', 'join'].includes(node?.kind) ? !fact.rerunFanouts.some(group => group.fanout.attemptId === attempt.attemptId || group.producer.attemptId === attempt.attemptId)
             : attempt.inputRefs[0]?.kind === 'native_session_delegation' ? !fact.rerunDelegations.some(item => item.producer.attemptId === attempt.attemptId)
                 : (node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
-                && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork: assertSessionControlWork, reviewTargets: fact.targets, readFanoutCompletion: readSessionDelegatedFanoutCompletion })) invalid();
+                && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork: assertSessionControlWork, reviewTargets: fact.targets, readFanoutCompletion: readSessionDelegatedFanoutCompletion, reviewer: fact.producer, reviewDecisionSeq: fact.review.decisionSeq })) invalid();
     }
     return fact;
 }
