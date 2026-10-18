@@ -1,5 +1,5 @@
 import { assertOutputTransition } from './output-transition-contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject, assertCounter, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { inspectComputeEffectClosure } from '../../../public/shared/native-compute-budget.js';
 import { assertResultRecord, resultDependencyDigest } from './result-contracts.js';
@@ -13,7 +13,6 @@ import { readAttemptSettlement, attemptReceiptId } from './attempt-settlement.js
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readProjectReplanHistory } from './project-replan-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original Project Review output facts'); };
 export const projectReviewId = (kind, runId) => (kind === 'result' ? 'oresult_' : kind === 'claim' ? 'oclaim_' : 'oreceipt_')
     + hash({ kind: 'project_review_' + kind, runId }).slice(0, 32);

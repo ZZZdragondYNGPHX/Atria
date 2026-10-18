@@ -1,10 +1,9 @@
 import { projectFanoutGroups } from './project-control-graph.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments as equal } from '../repositories/common.js';
 import { sessionReplanScope } from './session-replan-contracts.js';
 import { audienceContextPin } from './audience-source-contracts.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_session_child_graph_unavailable'), { code: 'native_orchestration_session_child_graph_unavailable' }); };
 
 /** Published shape only. Delegation still requires the original parent Node

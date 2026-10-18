@@ -1,12 +1,11 @@
 import { ConflictError } from '../../storage/errors.js';
-import { hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
+import { hashNativeDocument as hash, putImmutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { controlCommandId, controlRecordKey, readAttempt, runGuard } from './controller-common.js';
 import { writeAttemptSettlement } from './attempt-settlement.js';
 import { TransitionController } from './transition-controller.js';
 import { AttemptController } from './attempt-controller.js';
 import { backgroundOutputId, backgroundTaskResult, readBackgroundTaskDelivery, readBackgroundTaskResult } from './background-task-output-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const fail = () => { throw new ConflictError('native_orchestration_background_completion_stale'); };
 
 /** Metadata consumer of the original Task adoption. Never sends or adopts a Task. */

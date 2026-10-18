@@ -1,5 +1,5 @@
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject, assertCounter, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { controlCommandId, controlRecordKey, readAttempt } from './controller-common.js';
 import { checkedRecord } from './plan-repository.js';
@@ -12,7 +12,6 @@ import { assertOutputTransition } from './output-transition-contracts.js';
 import { assertProjectQualityRound } from './project-quality-contracts.js';
 import { assertProjectControlRound, readProjectControlInputs } from './project-control-input-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw Object.assign(new TypeError('native_orchestration_project_round_receipt_invalid'), { code: 'native_orchestration_project_round_receipt_invalid' }); };
 export const projectRoundReceiptId = (runId, nodeAttemptId) => 'oreceipt_' + hash({ kind: 'project_round', runId, nodeAttemptId }).slice(0, 32);
 export const projectRoundCommandId = (runId, nodeAttemptId) => controlCommandId('project.round.finish', { runId, nodeAttemptId });

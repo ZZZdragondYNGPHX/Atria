@@ -1,7 +1,7 @@
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { ProjectAgentService } from '../project-agent.js';
 import { ProjectTaskRepository, assertProjectTask } from '../agent-intelligence/project-task-repository.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertProjectToolReceipt, projectToolCapability, projectToolAction, projectToolReason, projectReviewSource } from './project-tool-contracts.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
@@ -10,7 +10,6 @@ import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { assertBudgetAttemptRef, localWorkAttemptId, sendAttemptId } from './budget-port.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw Object.assign(new TypeError('native_orchestration_project_tool_receipt_invalid'), { code: 'native_orchestration_project_tool_receipt_invalid' }); };
 
 /** Original domain document, read in the caller's transaction; no recovery or write. */

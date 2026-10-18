@@ -1,5 +1,5 @@
 import { assertObject, assertCounter, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertNativeId } from '../identity.js';
 import { checkedRecord } from './plan-repository.js';
@@ -9,7 +9,6 @@ import { readTaskLocalOutput } from './task-local-output-contracts.js';
 import { assertRunRoot } from './run-repository.js';
 
 export const handoffReturnReceiptId = childRunId => 'oreceipt_' + hash({ kind: 'handoff_return', childRunId }).slice(0, 32);
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid Handoff return facts'); };
 
 /** Historical return evidence, never a resumed parent capability. */

@@ -7,7 +7,7 @@ import { readSessionFanoutCompletion } from './session-fanout-contracts.js';
 import { assertAudienceRunCapture } from './audience-source-contracts.js';
 import { assertNativeId } from '../identity.js';
 import { assertObject, assertCounter, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertResultRecord, resultDependencyDigest } from './result-contracts.js';
 import { modelResultId } from './result-publication-contracts.js';
 import { controlRecordKey, readAttempt, readAttemptInvalidation } from './controller-common.js';
@@ -20,7 +20,6 @@ import { readGraphNodeResult } from './graph-result-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { readSessionReviewCompletion } from './session-review-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid Session Narrator Result facts'); };
 export const sessionNarrationPublicationId = resultId => 'oreceipt_' + hash({ kind: 'session_narration_result', resultId }).slice(0, 32);
 export const sessionOutputKey = root => hash({ kind: 'native_session_output', ...root.sourceBinding.sourceRef, slot: 'assistant' });

@@ -1,6 +1,6 @@
 import { readProjectDelegatedFanoutCompletion } from './project-delegated-fanout-contracts.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { checkedRecord } from './plan-repository.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readAttempt, readAttemptInvalidation } from './controller-common.js';
@@ -15,7 +15,6 @@ import { readProjectDelegation } from './project-delegation-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original Project child quality facts'); };
 
 async function inputIdentity(tx, handle, root, producer) {

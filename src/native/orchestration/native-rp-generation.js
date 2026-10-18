@@ -14,7 +14,7 @@ import { ChatRepo } from '../../storage/repositories/chat-repo.js';
 import { RpRunControl, rpOperationInput } from '../rp-run-control.js';
 import { NativeGenerationHost } from '../adapters/generation-host.js';
 import { NativeTaskScheduler, nativeTaskScheduler } from '../task-scheduler.js';
-import { hashNativeDocument as hash, cloneNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
+import { hashNativeDocument as hash, cloneNativeDocument, putImmutable, putMutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { fields } from '../../../public/shared/native-values.js';
 import { assertNativeId } from '../identity.js';
 import { immutable, checkCancellation, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
@@ -72,7 +72,6 @@ const returnCaptures = new WeakMap();
 export const ownsNativeRpDelegationCapture = capture => delegationCaptures.has(capture);
 export const ownsNativeRpReturnCapture = capture => returnCaptures.has(capture);
 const fail = (code = 'native_orchestration_rp_producer_denied') => { throw new ConflictError(code); };
-const equal = (left, right) => hash(left) === hash(right);
 const configuration = resolved => hash({ route: resolved.route, model: resolved.model, connection: resolved.connection,
     generation: resolved.generation, resources: resolved.resources });
 const sameSet = (left, right) => left.length === right.length && left.every(value => right.includes(value));

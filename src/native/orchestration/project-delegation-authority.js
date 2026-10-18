@@ -2,7 +2,7 @@ import { runProjectDelegatedFanout } from './project-delegated-fanout-work.js';
 import { completeProjectDelegatedReview, completeProjectDelegatedJudge } from './project-delegated-quality-work.js';
 import { readProjectDelegatedControl } from './project-delegated-quality-contracts.js';
 import { ConflictError } from '../../storage/errors.js';
-import { hashNativeDocument as hash, putImmutable, putMutable } from '../repositories/common.js';
+import { hashNativeDocument as hash, putImmutable, putMutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { immutable, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
@@ -34,7 +34,6 @@ import { readProjectDelegation, readProjectDelegationContinuation, readProjectDe
 import { withNativeProjectDelegation, captureNativeProjectDelegatedWorker, inspectNativeProjectDelegatedBoundary, inspectNativeProjectGeneration, inspectNativeProjectGenerationIdentity } from './native-project-generation-authority.js';
 
 const fail = (code = 'native_orchestration_delegation_denied') => { throw new ConflictError(code); };
-const equal = (a, b) => hash(a) === hash(b);
 const configHash = resolved => hash({ route: resolved.route, model: resolved.model, connection: resolved.connection, generation: resolved.generation, resources: resolved.resources });
 
 /** Only the owned running Review's decide→settle stage may re-read a pure

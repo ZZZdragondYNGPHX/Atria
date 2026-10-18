@@ -8,7 +8,7 @@ import { sessionJudgeOutputContract } from './session-judge-contracts.js';
 import { inspectGraphReadiness } from './graph-work-readiness.js';
 import { sessionReplanScope } from './session-replan-contracts.js';
 import { ConflictError } from '../../storage/errors.js';
-import { hashNativeDocument as hash, putImmutable, putMutable } from '../repositories/common.js';
+import { hashNativeDocument as hash, putImmutable, putMutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { immutable, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
 import { readPlanRevision } from './plan-repository.js';
 import { readAttempt, assertAttemptConsumable, runGuard, controlCommandId, controlRecordKey } from './controller-common.js';
@@ -41,7 +41,6 @@ import { completeSessionDelegatedPlanner } from './session-delegated-planner-wor
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 
 const fail = (code = 'native_orchestration_delegation_denied') => { throw new ConflictError(code); };
-const equal = (a, b) => hash(a) === hash(b);
 const configHash = resolved => hash({ route: resolved.route, model: resolved.model, connection: resolved.connection, generation: resolved.generation, resources: resolved.resources });
 
 /** No new ledger, Scheduler or bank: captures bind original child callbacks to

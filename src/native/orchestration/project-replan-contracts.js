@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { readAttempt, readAttemptInvalidation, controlRecordKey } from './controller-common.js';
 import { checkedRecord } from './plan-repository.js';
 import { readEffect } from './effect-contracts.js';
@@ -13,7 +13,6 @@ import { PROJECT_QUALITY_REASONS } from './project-quality-profile.js';
 import { projectJudgeReaderOptions } from './project-control-input-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid Project replan facts'); };
 const pending = () => { throw Object.assign(new TypeError('native_orchestration_project_replan_unavailable'), { code: 'native_orchestration_project_replan_unavailable' }); };
 

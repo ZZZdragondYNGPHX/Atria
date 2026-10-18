@@ -1,6 +1,6 @@
 import { readRpDelegatedFanoutInput, readRpDelegatedFanoutCompletion } from './rp-delegated-fanout-contracts.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
@@ -22,7 +22,6 @@ import { readModelCompletionReceipt } from './model-port.js';
 import { readDelegationCompletion } from './delegation-completion-contracts.js';
 import { rpDelegatedControlProfile } from './rp-delegated-control-profile.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP delegated quality facts'); };
 
 // Only completed historical input proofs live in this private read boundary.

@@ -1,6 +1,6 @@
 import { ConflictError } from '../../storage/errors.js';
 import { fields } from '../../../public/shared/native-values.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { RpRunControl } from '../rp-run-control.js';
 import { ChatRepo } from '../../storage/repositories/chat-repo.js';
 import { rpNarrationPayload } from '../rp-output-protocol.js';
@@ -11,7 +11,6 @@ import { readAttempt } from './controller-common.js';
 import { observeReconciledEffect } from './effect-reconciliation.js';
 
 const fail = () => { throw new ConflictError('native_rp_output_reconciliation_unavailable'); };
-const equal = (left, right) => hash(left) === hash(right);
 
 /** Durable original facts only. This never recreates an output capture or permit. */
 async function facts({ runs, budgetPort, rpControl }, handle, tx, root, intent) {

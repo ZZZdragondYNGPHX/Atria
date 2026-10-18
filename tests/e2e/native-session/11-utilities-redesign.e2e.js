@@ -126,8 +126,10 @@ for (const width of [1440, 900, 320]) test(`Utilities and Agents at ${width}px`,
         await shot(utility);
     }
     await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openAgents('home'));
-    await expect(page.locator('[data-atria-agents-hub]')).toBeVisible();
-    await expect(page.locator('[data-atria-agents-hub] [data-atria-agent-section]')).toHaveCount(4);
+    const home = page.locator('[data-atria-domain-workspace=agents]');
+    await expect(home).toBeVisible();
+    await expect(home.getByRole('navigation', { name: 'Agents sections', exact: true }).getByRole('button'))
+        .toHaveText(['Plans', 'Runs', 'Memory', 'Diagnostics']);
     await page.screenshot({ path: info.outputPath(`agents-${width}.png`), fullPage: true, animations: 'disabled' });
     for (const section of ['plans', 'runs', 'memory', 'diagnostics']) {
         await page.evaluate(section => window.Atria.shell.getWorkspaceHost().openAgentSection(section), section);

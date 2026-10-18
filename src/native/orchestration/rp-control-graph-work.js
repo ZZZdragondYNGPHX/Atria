@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash, cloneNativeDocument, putImmutable } from '../repositories/common.js';
+import { hashNativeDocument as hash, cloneNativeDocument, putImmutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { inspectGraphReadiness } from './graph-work-readiness.js';
@@ -27,7 +27,6 @@ import { checkedRecord } from './plan-repository.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertRpFanoutPlannerPatch, readRpFanoutPaidModelNodes } from './rp-fanout-planner-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 
 /** RP consumer of the original Scheduler/Graph/Transition/Model/Output ports.

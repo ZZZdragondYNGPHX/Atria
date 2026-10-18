@@ -1,5 +1,5 @@
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject, assertCounter } from '../../../public/shared/native-orchestration-contracts.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { controlCommandId, controlRecordKey, readAttempt } from './controller-common.js';
@@ -9,7 +9,6 @@ import { handoffReceiptId, readHandoff } from './handoff-contracts.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 
-const equal = (left, right) => hash(left) === hash(right);
 const invalid = () => { throw new TypeError('Invalid delegation completion facts'); };
 const runKey = (handle, runId) => ({ kind: K.orchestrationRun, handle, runId });
 const receiptRef = (runId, receipt) => ({ runId, receiptId: receipt.receiptId });

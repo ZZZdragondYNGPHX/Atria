@@ -1,6 +1,6 @@
 import { assertObject, assertCounter, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertNativeId } from '../identity.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { rpNativeOutputKey, rpNativeOutputOperationId, assertRpOutputReceipts, rpNarrationPayload } from '../rp-output-protocol.js';
 import { checkedRecord } from './plan-repository.js';
@@ -12,7 +12,6 @@ import { assertBudgetAttemptRef, assertBudgetAuthorityRef, sendAttemptId } from 
 import { readModelCompletionReceipt } from './model-port.js';
 import { readModelTerminalFact } from './model-port.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP output completion facts'); };
 export const rpOutputKey = root => rpNativeOutputKey(root.sourceBinding.sourceRequest.controlId, root.sourceBinding.sourceRequest.source);
 export const rpOutputClaimId = root => 'oclaim_' + hash({ kind: 'rp_output_claim', runId: root.runId, outputKey: rpOutputKey(root) }).slice(0, 32);

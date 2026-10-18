@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertRetrievalProfile, retrievalRef } from '../../../public/scripts/native/retrieval-contracts.js';
 import { assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
@@ -16,7 +16,6 @@ import { readRunControl } from '../run-control.js';
 import { readModelTerminalFact } from './model-terminal-contracts.js';
 import { rpControlGraph } from './rp-control-graph.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original Context retrieval completion'); };
 export const contextRetrievalReceiptId = effectId => 'oreceipt_' + hash({ effectId, observationId: 'retrieval.completed:' + effectId }).slice(0, 32);
 export const contextRetrievalCompletionBinding = intent => hash({ runId: intent.runId, effectId: intent.effectId, nodeAttemptId: intent.nodeAttemptId,

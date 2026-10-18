@@ -1,6 +1,6 @@
 import { readProjectDelegatedFanoutInput, readProjectDelegatedFanoutCompletion } from './project-delegated-fanout-contracts.js';
 import { readProjectDelegatedControl, readProjectDelegatedReviewReplacement, assertProjectDelegatedJudgeSelections } from './project-delegated-quality-contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertObject, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
@@ -19,7 +19,6 @@ import { graphReviewControlRef } from './graph-review-completion.js';
 import { projectReplanScope, projectPlannerProgressFingerprint } from './project-replan-contracts.js';
 import { projectDelegatedGraphProfile } from './project-delegated-graph-profile.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid Project delegation facts'); };
 
 async function durableParent(tx, handle, supplied) {

@@ -7,7 +7,7 @@ import { NativeNarratorOrchestrationAuthority } from './native-turn-orchestratio
 import { RpRunControl } from '../rp-run-control.js';
 import { ChatRepo } from '../../storage/repositories/chat-repo.js';
 import { inspectNativeRpOutputIdentity } from './native-rp-generation.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { localWorkAttemptId, BudgetPort } from './budget-port.js';
 import { controlRecordKey, runGuard } from './controller-common.js';
@@ -15,7 +15,6 @@ import { checkedRecord } from './plan-repository.js';
 import { SourcePort } from './source-port.js';
 
 const fail = code => { throw new ConflictError(code); };
-const equal = (a, b) => hash(a) === hash(b);
 
 /** One original RP assistant append, under its original Host Effect and bank. */
 export class RpOutputController {

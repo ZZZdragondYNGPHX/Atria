@@ -1,5 +1,5 @@
 import { taskLocalReceiptId } from './task-local-output-contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { checkedRecord } from './plan-repository.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readAttempt, controlRecordKey } from './controller-common.js';
@@ -12,7 +12,6 @@ import { readGraphFanoutCompletion, readGraphFanoutInput } from './graph-fanout-
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { assertProjectFanoutMemberCost } from './project-fanout-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original Project child Fanout facts'); };
 
 async function childIdentity(tx, handle, root) {

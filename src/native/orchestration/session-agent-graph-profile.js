@@ -1,9 +1,8 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { audienceContextPin, projectAudienceSource } from './audience-source-contracts.js';
 
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_turn_plan_unavailable'), { code: 'native_orchestration_turn_plan_unavailable' }); };
-const equal = (a, b) => hash(a) === hash(b);
 
 /** Original published Nodes/Edges drive forward Session dependencies and explicit bounded return edges. Control
  * nodes carry receipts, model nodes carry advisory Results; only the terminal

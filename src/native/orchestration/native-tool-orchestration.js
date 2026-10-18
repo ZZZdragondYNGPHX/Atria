@@ -6,7 +6,7 @@ import { NativeGenerationHost } from '../adapters/generation-host.js';
 import { McpService } from '../mcp-service.js';
 import { A2aService } from '../a2a-service.js';
 import { CredentialTargetAuthority } from '../model-prompt-runtime/credential-targets.js';
-import { hashNativeDocument as hash, putImmutable, withNativeResourceWrite } from '../repositories/common.js';
+import { hashNativeDocument as hash, putImmutable, withNativeResourceWrite, equalNativeDocuments as equal } from '../repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { createOrchestrationExecutionService } from './execution-service.js';
 import { createOrchestrationAuthoringService } from './authoring-service.js';
@@ -23,7 +23,6 @@ import { writeAttemptSettlement, attemptReceiptId } from './attempt-settlement.j
 import { SourcePort } from './source-port.js';
 
 const fail = (code = 'native_orchestration_native_tool_stale') => { throw new ConflictError(code); };
-const equal = (a, b) => hash(a) === hash(b);
 
 /** A finite original Session consumer, not a caller-supplied Tool gateway. */
 export class NativeToolOrchestrationAuthority {

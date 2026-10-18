@@ -1,10 +1,9 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments as equal } from '../repositories/common.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { audienceContextPin } from './audience-source-contracts.js';
 import { RP_REVIEW_REASON_CODES } from './rp-review-profile.js';
 
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_rp_control_graph_unavailable'), { code: 'native_orchestration_rp_control_graph_unavailable' }); };
-const equal = (a, b) => hash(a) === hash(b);
 
 /** Keep the existing response grammars where the published graph actually
  * declares those original relationships. This only selects a codec; its old

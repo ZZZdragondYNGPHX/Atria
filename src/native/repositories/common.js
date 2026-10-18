@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { serialize as serializeV8 } from 'node:v8';
 
 import { ConflictError } from '../../storage/errors.js';
 import { readWorldState } from '../state-delta.js';
@@ -78,43 +77,32 @@ export function cloneNativeDocument(value, field = 'Native resource') {
     return structuredClone(value);
 }
 
-// Pure byte transformation only. Every caller still validates and freshly
-// clones its entire input, then computes the key from those actual bytes.
-// No resource/identity/permission/receipt/bank lookup is cached. Bounded memory
-// avoids retaining an unbounded history of transient documents.
-const canonicalDocuments = new Map();
-let canonicalDocumentBytes = 0;
-const MAX_CANONICAL_DOCUMENTS = 256;
-const MAX_CANONICAL_BYTES = 4 * 1024 * 1024;
-
-function canonicalDocument(value) {
-    const cloned = cloneNativeDocument(value);
-    if (cloned === null || typeof cloned !== 'object') return { text: stableJson(cloned), digest: null };
-    // An exact local binary key preserves sparse slots and all cloned values.
-    // It is never persisted: existing canonical text and SHA256 stay unchanged.
-    const bytes = serializeV8(cloned).toString('base64');
-    const cached = canonicalDocuments.get(bytes);
-    if (cached) return cached;
-    const entry = { text: stableJson(cloned), digest: null };
-    const size = 2 * (bytes.length + entry.text.length);
-    if (size <= MAX_CANONICAL_BYTES) {
-        while (canonicalDocuments.size >= MAX_CANONICAL_DOCUMENTS || canonicalDocumentBytes + size > MAX_CANONICAL_BYTES) {
-            const first = canonicalDocuments.keys().next().value, removed = canonicalDocuments.get(first);
-            canonicalDocumentBytes -= 2 * (first.length + removed.text.length);
-            canonicalDocuments.delete(first);
-        }
-        canonicalDocuments.set(bytes, entry); canonicalDocumentBytes += size;
-    }
-    return entry;
-}
-
 export function serializeNativeDocument(value) {
-    return canonicalDocument(value).text;
+    return stableJson(cloneNativeDocument(value));
 }
 
+/** Digest admitted JSON bytes; validation belongs at the input/write boundary. */
 export function hashNativeDocument(value) {
-    const entry = canonicalDocument(value);
-    return entry.digest ??= createHash('sha256').update(entry.text).digest('hex');
+    return createHash('sha256').update(stableJson(value)).digest('hex');
+}
+
+/** Compare already admitted JSON data directly, without serializing or hashing.
+ * Object key order and signed zero have the same meaning as canonical JSON. */
+export function equalNativeDocuments(left, right) {
+    if (left === right) return true;
+    if (left === null || right === null || typeof left !== 'object' || typeof right !== 'object') return false;
+    if (Array.isArray(left)) {
+        if (!Array.isArray(right) || left.length !== right.length) return false;
+        for (let index = 0; index < left.length; index++) {
+            if ((index in left) !== (index in right) || index in left && !equalNativeDocuments(left[index], right[index])) return false;
+        }
+        return true;
+    }
+    if (Array.isArray(right)) return false;
+    const keys = Object.keys(left);
+    if (keys.length !== Object.keys(right).length) return false;
+    for (const key of keys) if (!Object.hasOwn(right, key) || !equalNativeDocuments(left[key], right[key])) return false;
+    return true;
 }
 
 export function nativeRecord(value, {

@@ -10,7 +10,7 @@ import { AttemptController } from './attempt-controller.js';
 import { readResultPublication } from './result-publication-contracts.js';
 import { controlCommandId, controlRecordKey, readAttempt, runGuard } from './controller-common.js';
 import { attemptReceiptId, writeAttemptSettlement } from './attempt-settlement.js';
-import { hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
+import { hashNativeDocument as hash, putImmutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { assertTaskLocalClaim, taskLocalOutputKey, taskLocalClaimId, taskLocalConsumer,
     taskLocalReceiptId, childClosureReceiptId, readTaskLocalOutput } from './task-local-output-contracts.js';
@@ -19,7 +19,6 @@ import { assertProjectDelegatedClosure } from './project-delegation-contracts.js
 import { isRpDelegatedControlGraph, assertRpDelegatedClosure } from './rp-delegation-control-contracts.js';
 
 const fail = code => { throw new ConflictError(code); };
-const equal = (a, b) => hash(a) === hash(b);
 const DENIALS = new Set(['native_orchestration_source_stale', 'native_orchestration_parent_stale',
     'native_generation_revision_conflict', 'native_rp_source_missing', 'native_rp_control_relocated',
     'native_orchestration_task_output_stale', 'native_orchestration_child_budget_unclosed']);

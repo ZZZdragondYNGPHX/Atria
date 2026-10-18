@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { controlRecordKey, readAttempt } from './controller-common.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
@@ -13,7 +13,6 @@ import { assertRpPlannerExpansionOperations } from './rp-planner-expansion-profi
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 import { audienceContextPin, assertAudienceRunCapture } from './audience-source-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP Planner completion facts'); };
 
 /** Complete immutable control facts, never another Model or Source grant. */

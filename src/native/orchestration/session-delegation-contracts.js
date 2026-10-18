@@ -2,7 +2,7 @@ import { readSessionDelegatedFanoutInput, readSessionDelegatedFanoutCompletion }
 import { readSessionDelegatedControl, readSessionDelegatedReviewCompletion, readSessionDelegatedJudgeCompletion, readSessionDelegatedReviewReplacement } from './session-delegated-quality-contracts.js';
 import { readAttemptInvalidation } from './controller-common.js';
 import { assertSessionJudgeSelections } from './session-judge-contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
@@ -24,7 +24,6 @@ import { readSessionPlannerCompletion } from './session-planner-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { sessionPlannerProgressFingerprint, sessionReplanScope } from './session-replan-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid Session delegation facts'); };
 
 async function durableParent(tx, handle, supplied) {

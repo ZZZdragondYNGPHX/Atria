@@ -16,7 +16,7 @@ import { readSessionFanoutCompletion } from './session-fanout-contracts.js';
 import { audienceRunCapture } from './audience-source-contracts.js';
 import { ConflictError } from '../../storage/errors.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
-import { hashNativeDocument as hash, cloneNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
+import { hashNativeDocument as hash, cloneNativeDocument, putImmutable, putMutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject, assertCounter, assertPlanRef, assertSourceSelector, assertResultPolicy, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { hasRetainedOrchestrationCompute } from '../../../public/shared/native-compute-budget.js';
 import { createOrchestrationAuthoringService } from './authoring-service.js';
@@ -66,7 +66,6 @@ import { assertSessionFanoutPlannerPatch, readSessionFanoutPaidModelNodes } from
 const selections = new WeakMap();
 const modelScopes = new WeakMap();
 const fail = code => { throw new ConflictError(code); };
-const equal = (a, b) => hash(a) === hash(b);
 const sourceOf = base => ({ domain: 'native_session', sessionId: base.session.sessionId, branchId: base.revision.branchId, revisionId: base.revision.revisionId });
 const anchorOf = base => ({ branchId: base.revision.branchId, revisionId: base.revision.revisionId });
 

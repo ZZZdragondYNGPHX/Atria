@@ -1,5 +1,5 @@
 import { readReviewAdmission } from './controller-common.js';
-import { cloneNativeDocument, hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
+import { cloneNativeDocument, hashNativeDocument as hash, putImmutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { ProjectQualityWork } from './project-quality-work.js';
@@ -34,7 +34,6 @@ import { writeAttemptSettlement } from './attempt-settlement.js';
 import { controlCommandId, controlRecordKey, readAttempt, runGuard, graphReachable } from './controller-common.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
-const equal = (a, b) => hash(a) === hash(b);
 const readerOptions = { verifyControlWork: assertProjectControlWork };
 
 /** One domain consumer of original Graph/Transition/Model controllers. Ready

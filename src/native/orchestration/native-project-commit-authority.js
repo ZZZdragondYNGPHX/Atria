@@ -5,7 +5,7 @@ import { assertComputeBudget } from '../../../public/shared/native-compute-budge
 import { assertNativeId, createNativeId } from '../identity.js';
 import { ProjectAgentService } from '../project-agent.js';
 import { StudioService } from '../authoring/studio-service.js';
-import { hashNativeDocument as hash, serializeNativeDocument, withNativeResourceWrite } from '../repositories/common.js';
+import { hashNativeDocument as hash, serializeNativeDocument, withNativeResourceWrite, equalNativeDocuments as equal } from '../repositories/common.js';
 import { createOrchestrationExecutionService } from './execution-service.js';
 import { createOrchestrationAuthoringService } from './authoring-service.js';
 import { checkedRecord } from './plan-repository.js';
@@ -21,7 +21,6 @@ import { readReadyEffectResume } from './effect-recovery-contracts.js';
 
 const commitPermits = new WeakMap(), workPermits = new WeakMap(), observations = new WeakMap();
 const fail = () => { throw new ConflictError('native_orchestration_project_commit_stale'); };
-const equal = (a, b) => hash(a) === hash(b);
 const commitDecision = (ref, logical, limits) => ({
     actionRef: { kind: 'native_project_commit', operation: 'commit' }, targetRef: ref, inputRef: logical, inputHash: hash(logical),
     capability: 'project.commit', risk: 'R2', requiresApproval: true, grantDigest: hash({ principal: 'original_user_project_commit', logical }),

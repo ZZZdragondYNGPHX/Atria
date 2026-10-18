@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { readPlanRevision } from './plan-repository.js';
 import { readAttempt, assertAttemptConsumable } from './controller-common.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
@@ -10,7 +10,6 @@ import { readSessionFanoutCompletion } from './session-fanout-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { sessionGraphResultReadable } from './session-agent-graph-profile.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original Session delegated inputs'); };
 
 /** Re-read the original parent's frozen incoming graph. Historical linkage

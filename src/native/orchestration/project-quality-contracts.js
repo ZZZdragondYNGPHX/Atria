@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { controlRecordKey, readAttempt, readGraphReviewReceipt } from './controller-common.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
@@ -11,7 +11,6 @@ import { assertOutputTransition } from './output-transition-contracts.js';
 import { readOriginalProjectTask } from './project-tool-receipts.js';
 import { localWorkAttemptId } from './budget-port.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original Project quality facts'); };
 export const projectQualityReceiptId = (runId, attemptId) => 'oreceipt_' + hash({ kind: 'project_graph_review_model', runId, attemptId }).slice(0, 32);
 

@@ -1,8 +1,7 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments as equal } from '../repositories/common.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_project_quality_plan_unavailable'), { code: 'native_orchestration_project_quality_plan_unavailable' }); };
-const equal = (a, b) => hash(a) === hash(b);
 const one = (ports, type) => ports.length === 1 && ports[0].type === type;
 
 /** Author-explicit conditional quality work. Pure recommendations and their

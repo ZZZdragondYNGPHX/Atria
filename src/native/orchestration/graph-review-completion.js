@@ -1,5 +1,5 @@
 import { assertNativeId } from '../identity.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
@@ -14,7 +14,6 @@ import { readGraphPlannerCompletion } from './graph-planner-completion.js';
 import { readGraphNodeResults } from './graph-result-contracts.js';
 import { audienceContextPin, assertAudienceRunCapture } from './audience-source-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid Graph Review completion facts'); };
 export const graphReviewModelReceiptId = (runId, attemptId) => 'oreceipt_' + hash({ kind: 'graph_review_model', runId, attemptId }).slice(0, 32);
 export const graphReviewControlRef = (runId, attemptId) => ({ kind: 'graph_review_control', runId, attemptId,

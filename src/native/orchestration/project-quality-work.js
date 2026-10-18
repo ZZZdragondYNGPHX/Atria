@@ -1,5 +1,5 @@
 import { ResultPort } from './result-port.js';
-import { hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
+import { hashNativeDocument as hash, putImmutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { immutable, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
 import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { captureNativeProjectWorker, inspectNativeProjectGeneration } from './native-project-generation-authority.js';
@@ -18,7 +18,6 @@ import { PROJECT_QUALITY_REASONS, projectQualityOutputContract } from './project
 import { projectQualityReceiptId, readProjectQualityReview } from './project-quality-contracts.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
-const equal = (a, b) => hash(a) === hash(b);
 
 /** Private work inside the original Project operation and Task capture.
  * No Task generation is finished and no tool or domain writer runs here. */

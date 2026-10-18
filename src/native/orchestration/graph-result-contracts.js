@@ -1,6 +1,6 @@
 import { readRpDelegatedFanoutCompletion } from './rp-delegated-fanout-contracts.js';
 import { readSessionFanoutCompletion } from './session-fanout-contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertResultRecord, resultDependencyDigest } from './result-contracts.js';
 import { modelResultId } from './result-publication-contracts.js';
@@ -23,7 +23,6 @@ import { isRpDelegatedControlGraph, readRpDelegatedControlInput } from './rp-del
 import { readProjectDelegatedModelInput, readProjectDelegationContinuation } from './project-delegation-contracts.js';
 
 const kinds = ['agent', 'planner', 'judge', 'review'];
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid Graph Result facts'); };
 const publicationGraphs = new WeakMap();
 export const graphResultPublicationId = (runId, resultId) => 'oreceipt_' + hash({ kind: 'graph_node_result', runId, resultId }).slice(0, 32);

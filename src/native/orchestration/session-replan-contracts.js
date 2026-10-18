@@ -1,11 +1,10 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { readAttemptInvalidation } from './controller-common.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readEffect } from './effect-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original Session replan facts'); };
 const pending = () => { throw Object.assign(new TypeError('native_orchestration_planner_replan_pending'), { code: 'native_orchestration_planner_replan_pending' }); };
 

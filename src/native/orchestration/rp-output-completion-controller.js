@@ -3,7 +3,7 @@ import { fields } from '../../../public/shared/native-values.js';
 import { NativeGenerationHost } from '../adapters/generation-host.js';
 import { NativeNarratorOrchestrationAuthority } from './native-turn-orchestration.js';
 import { inspectNativeRpOutputIdentity } from './native-rp-generation.js';
-import { hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
+import { hashNativeDocument as hash, putImmutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { BudgetPort } from './budget-port.js';
 import { SourcePort } from './source-port.js';
@@ -13,7 +13,6 @@ import { readRpNarrationResult } from './rp-narration-result-contracts.js';
 import { rpOutputClaimId, rpOutputReceiptId, rpOutputClosureId, rpOutputKey, rpOutputDomainRef, rpOutputConsumer, readRpOutput, rpNarrationProviderEffectIds } from './rp-output-contracts.js';
 
 const fail = code => { throw new ConflictError(code); };
-const equal = (a, b) => hash(a) === hash(b);
 const DENIALS = new Set(['native_rp_output_stale', 'native_orchestration_source_stale', 'native_generation_revision_conflict',
     'native_rp_source_missing', 'native_rp_control_relocated']);
 const pending = () => immutable({ runStatus: 'pending_output', outputClaimRef: null, outputReceiptRef: null });

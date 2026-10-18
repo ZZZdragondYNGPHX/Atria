@@ -1,5 +1,5 @@
 import { assertAudienceRunCapture } from './audience-source-contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { controlRecordKey, readAttempt, readGraphReviewReceipt, readAttemptInvalidation } from './controller-common.js';
@@ -14,7 +14,6 @@ import { readSessionJudgeCompletion } from './session-judge-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid Session Review completion facts'); };
 export const sessionReviewModelReceiptId = (runId, attemptId) => 'oreceipt_' + hash({ kind: 'session_graph_review_model', runId, attemptId }).slice(0, 32);
 export function parseSessionReview(text) {

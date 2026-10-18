@@ -3,7 +3,7 @@ import { rpDelegatedPlannerReaderOptions } from './rp-delegation-control-contrac
 import { assertRpFanoutPlannerOperations } from './rp-fanout-planner-contracts.js';
 import { assertBudgetAttemptRef, sendAttemptId } from './budget-port.js';
 import { taskLocalReceiptId } from './task-local-output-contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { checkedRecord } from './plan-repository.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readAttempt, controlRecordKey } from './controller-common.js';
@@ -19,7 +19,6 @@ import { readRpDelegatedControl } from './rp-delegated-quality-contracts.js';
 import { readGraphFanoutCompletion, readGraphFanoutInput } from './graph-fanout-completion.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original RP child Fanout facts'); };
 
 async function childIdentity(tx, handle, root) {

@@ -1,7 +1,7 @@
 import { readHandoffReturn } from './handoff-return-contracts.js';
 import { assertNativeId } from '../identity.js';
 import { assertObject, assertCounter, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { rpNativeOutputKey } from '../rp-output-protocol.js';
 import { assertResultRecord, resultDependencyDigest } from './result-contracts.js';
 import { modelResultId } from './result-publication-contracts.js';
@@ -23,7 +23,6 @@ import { readContextRetrievalCompletions } from './context-retrieval-contracts.j
 import { readRpFanoutCompletion } from './rp-fanout-contracts.js';
 import { audienceContextPin, assertAudienceRunCapture } from './audience-source-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP Narrator Result facts'); };
 export const rpNarrationPublicationId = resultId => 'oreceipt_' + hash({ kind: 'rp_narration_result', resultId }).slice(0, 32);
 export const rpNarrationAudience = (root, grantDigest) => ({ kind: 'rp_output', runId: root.runId, nodeId: root.graph.outputContract.ownerNodeId,

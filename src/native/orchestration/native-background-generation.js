@@ -1,7 +1,7 @@
 import { ConflictError } from '../../storage/errors.js';
 import { NativeGenerationHost } from '../adapters/generation-host.js';
 import { nativeTaskScheduler } from '../task-scheduler.js';
-import { hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
+import { hashNativeDocument as hash, putImmutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { immutable, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
 import { createOrchestrationAuthoringService } from './authoring-service.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
@@ -26,7 +26,6 @@ import { performance } from 'node:perf_hooks';
 
 const captures = new WeakMap();
 const fail = code => { throw new ConflictError(code); };
-const equal = (a, b) => hash(a) === hash(b);
 const configuration = resolved => hash({ route: resolved.route, model: resolved.model, connection: resolved.connection,
     generation: resolved.generation, resources: resolved.resources });
 

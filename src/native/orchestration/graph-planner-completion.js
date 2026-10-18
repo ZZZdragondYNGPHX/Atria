@@ -1,5 +1,5 @@
 import { assertNativeId } from '../identity.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
@@ -11,7 +11,6 @@ import { readTaskGraphRevisions, graphPatchHash } from './graph-revision-contrac
 import { assertAudienceRunCapture } from './audience-source-contracts.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid Graph Planner completion facts'); };
 export const graphPlannerReceiptId = (runId, attemptId) => 'oreceipt_' + hash({ kind: 'graph_planner_model', runId, attemptId }).slice(0, 32);
 export const graphPlannerControlRef = (runId, attemptId) => ({ kind: 'graph_planner_control', runId, attemptId, receiptId: graphPlannerReceiptId(runId, attemptId) });

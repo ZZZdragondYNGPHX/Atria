@@ -1,12 +1,11 @@
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
-import { cloneNativeDocument, hashNativeDocument as hash } from '../repositories/common.js';
+import { cloneNativeDocument, hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject, assertCounter, assertPlanDefinition } from '../../../public/shared/native-orchestration-contracts.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { controlCommandId, readAttempt } from './controller-common.js';
 
 export const graphPatchHash = patch => hash(Object.fromEntries(Object.entries(patch).filter(([field]) => field !== 'payloadHash')));
 const invalid = () => { throw Object.assign(new Error('Durable graph history requires integrity review'), { code: 'native_orchestration_graph_history_unavailable' }); };
-const equal = (a, b) => hash(a) === hash(b);
 const replayContents = new WeakMap();
 const replayCopies = snapshots => new Map([...snapshots].map(([revision, snapshot]) => [revision, cloneNativeDocument(snapshot)]));
 

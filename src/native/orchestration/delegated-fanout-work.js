@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { controlCommandId, readAttempt, runGuard } from './controller-common.js';
 import { AttemptController } from './attempt-controller.js';
 import { TransitionController } from './transition-controller.js';
@@ -9,7 +9,6 @@ import { readModelTerminalFact } from './model-port.js';
 import { readEffect } from './effect-contracts.js';
 import { inspectGraphReadiness } from './graph-work-readiness.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 
 /** Controller/Scheduler orchestration only. All Model work still uses the

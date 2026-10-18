@@ -1,4 +1,4 @@
-import { cloneNativeDocument, hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
+import { cloneNativeDocument, hashNativeDocument as hash, putImmutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { runGenerationLocalWork } from './generation-local-work.js';
@@ -16,7 +16,6 @@ import { writeAttemptSettlement } from './attempt-settlement.js';
 
 import { assertProjectFanoutPlannerPatch, readProjectFanoutPaidModelNodes } from './project-fanout-planner-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 
 /** Domain callback for the original GraphController; all work is charged to

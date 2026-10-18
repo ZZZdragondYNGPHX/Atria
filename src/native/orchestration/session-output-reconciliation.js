@@ -1,6 +1,6 @@
 import { ConflictError } from '../../storage/errors.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { readSessionTurnOutput } from '../session-turn-output.js';
 import { SessionRepo } from '../repositories/session-repo.js';
 import { readSessionOutputDescriptor, sessionOutputKey } from './session-output-contracts.js';
@@ -9,7 +9,6 @@ import { readAttempt } from './controller-common.js';
 import { observeReconciledEffect } from './effect-reconciliation.js';
 
 const fail = () => { throw new ConflictError('native_orchestration_session_reconciliation_unavailable'); };
-const equal = (left, right) => hash(left) === hash(right);
 
 async function observationFor(execution, sessionCore, handle, tx, root, intent) {
     const { runs, budgetPort } = execution, fence = await runs.engine.nativeHostLifecycle.assertWriter(handle, tx);

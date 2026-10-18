@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertObject, assertCounter, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertResultRecord, resultDependencyDigest } from './result-contracts.js';
@@ -14,7 +14,6 @@ import { readAttemptSettlement } from './attempt-settlement.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original background Task output facts'); };
 export const backgroundOutputId = (kind, runId) => (kind === 'result' ? 'oresult_' : kind === 'claim' ? 'oclaim_' : 'oreceipt_')
     + hash({ kind: 'native_background_' + kind, runId }).slice(0, 32);

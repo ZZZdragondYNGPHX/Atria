@@ -1,10 +1,9 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertRpControlWork } from './rp-control-work-contracts.js';
 import { readRpDelegatedInputFacts } from './rp-delegated-quality-contracts.js';
 
 export { readRpDelegatedGraphHistory } from './rp-delegated-quality-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP delegated control facts'); };
 export const isRpDelegatedControlGraph = root => root.sourceBinding.sourceAuthority === 'rp_chat' && !!root.parentRef
     && (root.graph.nodes.some(node => ['planner', 'review', 'judge'].includes(node.kind))

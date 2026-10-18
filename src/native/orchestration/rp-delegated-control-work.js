@@ -4,10 +4,9 @@ import { rpDelegatedPlannerReaderOptions } from './rp-delegation-control-contrac
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { readAttempt, assertAttemptConsumable } from './controller-common.js';
 import { readRpDelegatedInputSources } from './rp-delegated-quality-contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { runGenerationLocalWork } from './generation-local-work.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const fail = () => { throw new TypeError('Invalid RP delegated control inputs'); };
 
 /** Reuses the original GraphController Planner writer. Only references and

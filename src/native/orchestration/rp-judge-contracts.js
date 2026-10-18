@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { controlRecordKey, readAttempt, assertAttemptCurrent } from './controller-common.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
@@ -12,7 +12,6 @@ import { rpJudgeProfile } from './rp-judge-profile.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 import { assertAudienceRunCapture } from './audience-source-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP Judge completion facts'); };
 export const rpJudgeReceiptId = (runId, attemptId) => 'oreceipt_' + hash({ kind: 'rp_graph_judge_model', runId, attemptId }).slice(0, 32);
 

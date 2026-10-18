@@ -1,6 +1,6 @@
 import { assertObject, assertCounter, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertNativeId } from '../identity.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { controlRecordKey, readAttempt } from './controller-common.js';
 import { checkedRecord } from './plan-repository.js';
 import { readResultPublication } from './result-publication-contracts.js';
@@ -11,7 +11,6 @@ import { assertProjectDelegatedClosure } from './project-delegation-contracts.js
 import { isRpDelegatedControlGraph, assertRpDelegatedClosure } from './rp-delegation-control-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid task-local output facts'); };
 export const taskLocalOutputKey = root => hash({ kind: 'task_local_output', runId: root.runId,
     sourceBindingDigest: root.sourceBinding.bindingDigest, nodeId: root.graph.outputContract.ownerNodeId,

@@ -1,7 +1,7 @@
 import { readSessionDelegationContinuation } from './session-delegation-contracts.js';
 import { assertObject, assertCounter, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertNativeId } from '../identity.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertSessionTurnOutput, sessionTurnCommitIdentity } from '../session-turn-output.js';
 import { readSessionSnapshot } from '../session-snapshot.js';
@@ -15,7 +15,6 @@ import { assertBudgetAttemptRef, assertBudgetAuthorityRef, sendAttemptId } from 
 import { readRunControl } from '../run-control.js';
 import { hasRetainedOrchestrationCompute } from '../../../public/shared/native-compute-budget.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid Session output completion facts'); };
 export { sessionOutputKey };
 export const sessionOutputClaimId = root => 'oclaim_' + hash({ kind: 'session_output_claim', runId: root.runId, outputKey: sessionOutputKey(root) }).slice(0, 32);

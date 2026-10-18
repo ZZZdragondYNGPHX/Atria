@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertComputeLedger } from '../../../public/shared/native-compute-budget.js';
 import { readRunControl } from '../run-control.js';
 import { readAttempt } from './controller-common.js';
@@ -6,7 +6,6 @@ import { readEffect } from './effect-contracts.js';
 import { readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
 import { sendAttemptId } from './budget-port.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const denied = code => { throw Object.assign(new TypeError(code), { code }); };
 
 /** Original frozen membership bounds scheduling advice. This does not grant

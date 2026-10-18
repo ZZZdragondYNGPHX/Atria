@@ -1,5 +1,5 @@
 import { taskLocalReceiptId } from './task-local-output-contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { checkedRecord } from './plan-repository.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readAttempt, controlRecordKey } from './controller-common.js';
@@ -17,7 +17,6 @@ import { readSessionPlannerCompletion } from './session-planner-contracts.js';
 import { assertSessionFanoutPlannerOperations } from './session-fanout-planner-contracts.js';
 import { sessionDelegationResultSources } from './session-delegation-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original Session child Fanout facts'); };
 
 async function childIdentity(tx, handle, root) {

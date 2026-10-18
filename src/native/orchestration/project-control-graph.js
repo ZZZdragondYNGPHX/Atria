@@ -1,8 +1,7 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments as equal } from '../repositories/common.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_project_control_graph_unavailable'), { code: 'native_orchestration_project_control_graph_unavailable' }); };
-const equal = (a, b) => hash(a) === hash(b);
 
 /** Domain admission only: arbitrary declared pure Agent/Planner dependencies
  * feed the original tool-bearing Task owner. No graph ordering lives here. */

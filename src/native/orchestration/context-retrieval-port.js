@@ -3,7 +3,7 @@ import { NativeRetrievalPersistence } from '../retrieval-persistence.js';
 import { executeNativeEmbedding, resolveRetrievalSecret } from '../retrieval-execution.js';
 import { retrievalSendIdentity, retrievalPostTarget } from '../retrieval-send-contracts.js';
 import { retrievalRef } from '../../../public/scripts/native/retrieval-contracts.js';
-import { hashNativeDocument as hash, cloneNativeDocument } from '../repositories/common.js';
+import { hashNativeDocument as hash, cloneNativeDocument, equalNativeDocuments as equal } from '../repositories/common.js';
 import { ContextPort } from './context-port.js';
 import { assertOriginalSendBank, BudgetPort } from './budget-port.js';
 import { readEffect, effectDecision } from './effect-contracts.js';
@@ -22,7 +22,6 @@ import { memoryQuerySeeds } from '../../../public/scripts/agents/memory/query-pl
 import { nativeRetrievalIndexPath } from '../vector-index-work.js';
 
 const fail = (code = 'native_orchestration_context_retrieval_denied') => { throw new ConflictError(code); };
-const equal = (a, b) => hash(a) === hash(b);
 const jsonData = value => JSON.parse(JSON.stringify(value));
 const binding = root => hash({ runId: root.runId, ownerRef: root.ownerRef, epoch: root.epoch, hostBootId: root.hostBootId,
     hostGeneration: root.hostGeneration, planRef: root.planRef, sourceBinding: root.sourceBinding, budgetAuthorityRef: root.budgetAuthorityRef });

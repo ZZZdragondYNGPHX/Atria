@@ -5,12 +5,11 @@ import { NativeNarratorOrchestrationAuthority } from './native-turn-orchestratio
 import { RunRepository, assertRunTreeConcurrency } from './run-repository.js';
 import { SourcePort } from './source-port.js';
 import { controlCommandId, controlRecordKey, readAttempt, runGuard } from './controller-common.js';
-import { hashNativeDocument as hash, putImmutable, putMutable } from '../repositories/common.js';
+import { hashNativeDocument as hash, putImmutable, putMutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { handoffReturnReceiptId, readHandoffReturn } from './handoff-return-contracts.js';
 import { checkedRecord } from './plan-repository.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const fail = code => { throw new ConflictError(code); };
 const DENIALS = new Set(['native_orchestration_source_stale', 'native_orchestration_parent_stale', 'native_orchestration_return_stale',
     'native_generation_revision_conflict', 'native_rp_source_missing', 'native_rp_control_relocated']);

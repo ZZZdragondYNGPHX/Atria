@@ -1,9 +1,8 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments as equal } from '../repositories/common.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { projectToolCapability } from './project-tool-contracts.js';
 
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_project_plan_unavailable'), { code: 'native_orchestration_project_plan_unavailable' }); };
-const equal = (a, b) => hash(a) === hash(b);
 
 /** Authored serial collaboration over one original Project Task. Continuing
  * tool rounds cross actual task nodes; no second Task, writer or paid bank.

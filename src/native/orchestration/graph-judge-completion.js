@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertNativeId } from '../identity.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
@@ -13,7 +13,6 @@ import { readGraphNodeResults } from './graph-result-contracts.js';
 import { assertAudienceRunCapture } from './audience-source-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid Graph Judge completion facts'); };
 export const graphJudgeModelReceiptId = (runId, attemptId) => 'oreceipt_' + hash({ kind: 'graph_judge_model', runId, attemptId }).slice(0, 32);
 export const graphJudgeControlRef = (runId, attemptId) => ({ kind: 'graph_judge_control', runId, attemptId,

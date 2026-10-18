@@ -1,9 +1,8 @@
 import { projectFanoutGroups } from './project-control-graph.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments as equal } from '../repositories/common.js';
 import { projectReplanScope } from './project-replan-contracts.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const fail = () => { throw new TypeError('Invalid Project delegated graph'); };
 
 /** Published shape only. Delegation still requires the original parent Node

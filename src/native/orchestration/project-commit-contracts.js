@@ -3,7 +3,7 @@ import { fields } from '../../../public/shared/native-values.js';
 import { ProjectAgentService } from '../project-agent.js';
 import { StudioService } from '../authoring/studio-service.js';
 import { ProjectTaskRepository, assertProjectTask } from '../agent-intelligence/project-task-repository.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { readEffect, readApproval, currentApprovalBinding } from './effect-contracts.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { controlRecordKey, readAttempt, controlCommandId } from './controller-common.js';
@@ -15,7 +15,6 @@ import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { inspectComputeEffectClosure } from '../../../public/shared/native-compute-budget.js';
 import { readReadyEffectResume } from './effect-recovery-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const fail = () => { throw new ConflictError('native_orchestration_project_commit_stale'); };
 export const projectCommitReviewHash = task => hash({ workspace: task.workspace, review: task.review, validation: task.validation });
 export const projectCommitId = (kind, runId) => (kind === 'result' ? 'oresult_' : kind === 'claim' ? 'oclaim_' : 'oreceipt_')

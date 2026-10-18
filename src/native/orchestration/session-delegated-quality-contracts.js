@@ -1,6 +1,6 @@
 import { readSessionDelegatedFanoutCompletion } from './session-delegated-fanout-contracts.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readAttempt, readAttemptInvalidation } from './controller-common.js';
@@ -13,7 +13,6 @@ import { readSessionDelegation, sessionDelegationResultSources } from './session
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original Session child quality facts'); };
 
 async function inputIdentity(tx, handle, root, producer) {

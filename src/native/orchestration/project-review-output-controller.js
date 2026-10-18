@@ -1,5 +1,5 @@
 import { ConflictError } from '../../storage/errors.js';
-import { hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
+import { hashNativeDocument as hash, putImmutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { controlCommandId, controlRecordKey, readAttempt, runGuard } from './controller-common.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { writeAttemptSettlement, attemptReceiptId } from './attempt-settlement.js';
@@ -7,7 +7,6 @@ import { TransitionController } from './transition-controller.js';
 import { AttemptController } from './attempt-controller.js';
 import { projectReviewId, projectReviewResult, projectReviewCosts, readProjectReviewResult, readProjectReviewOutput } from './project-review-output-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const fail = () => { throw new ConflictError('native_orchestration_project_review_stale'); };
 const denials = new Set(['native_orchestration_project_review_stale', 'native_orchestration_project_selection_stale',
     'native_orchestration_source_stale', 'native_orchestration_project_producer_denied']);

@@ -1,5 +1,5 @@
 import { assertNativeId } from '../identity.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject, assertCounter, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { checkedRecord } from './plan-repository.js';
 import { controlRecordKey, readAttempt } from './controller-common.js';
@@ -16,7 +16,6 @@ import { isRpDelegatedControlGraph, readRpDelegatedGraphHistory } from './rp-del
 
 export const modelResultId = (runId, effectId) => 'oresult_' + hash({ runId, effectId }).slice(0, 32);
 export const resultPublicationReceiptId = (runId, resultId) => 'oreceipt_' + hash({ kind: 'result_publication', runId, resultId }).slice(0, 32);
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid Result publication facts'); };
 const ref = value => {
     assertObject(value, ['runId', 'receiptId'], 'Result publication receipt reference');

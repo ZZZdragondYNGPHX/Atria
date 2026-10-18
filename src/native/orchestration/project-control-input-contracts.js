@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { readGraphReviewCompletion } from './graph-review-completion.js';
 import { PROJECT_QUALITY_REASONS } from './project-quality-profile.js';
@@ -12,7 +12,6 @@ import { assertOutputTransition } from './output-transition-contracts.js';
 import { readProjectReplanHistory } from './project-replan-contracts.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
-const equal = (a, b) => hash(a) === hash(b);
 const readerOptions = { verifyControlWork: assertProjectControlWork };
 export const projectJudgeReaderOptions = { verifyControlWork: assertProjectControlWork,
     readControlInputs: (tx, handle, root, _producer, input) => readProjectControlInputs(tx, handle, root, null,

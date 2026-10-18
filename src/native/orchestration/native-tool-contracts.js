@@ -5,14 +5,13 @@ import { NativeGenerationHost, selectNativeRuntimeRoute } from '../adapters/gene
 import { McpService } from '../mcp-service.js';
 import { A2aService } from '../a2a-service.js';
 import { canonicalCredentialTarget } from '../model-prompt-runtime/credential-targets.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { BudgetPort } from './budget-port.js';
 import { SourcePort } from './source-port.js';
 
 export const nativeToolFailure = () => { throw new ConflictError('native_orchestration_native_tool_unavailable'); };
 export const nativeToolCapability = protocol => ({ mcp: 'mcp.read', a2a: 'a2a.read', skill: 'skill.read' })[protocol];
 const operations = { mcp: ['tool', 'resource'], a2a: ['send'], skill: ['read', 'files'] };
-const equal = (a, b) => hash(a) === hash(b);
 
 /** Original Session display/Route or installed Skill authority; no discovery,
  * Secret resolution, pin write, Effect, grant or remote request occurs here. */

@@ -1,7 +1,7 @@
 import { ProjectDelegationAuthority } from './project-delegation-authority.js';
 import { ConflictError } from '../../storage/errors.js';
 import { performance } from 'node:perf_hooks';
-import { hashNativeDocument as hash, cloneNativeDocument, putImmutable } from '../repositories/common.js';
+import { hashNativeDocument as hash, cloneNativeDocument, putImmutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject, assertResultPolicy, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { createOrchestrationAuthoringService } from './authoring-service.js';
 import { inspectModelCapabilities, resolveModelFailurePlan } from './model-capability-authority.js';
@@ -41,7 +41,6 @@ import { readGraphNodeResult } from './graph-result-contracts.js';
 import { readProjectQualityApproval } from './project-quality-contracts.js';
 
 const fail = code => { throw new ConflictError(code); };
-const equal = (left, right) => hash(left) === hash(right);
 const config = resolved => hash({ route: resolved.route, model: resolved.model, connection: resolved.connection,
     generation: resolved.generation, resources: resolved.resources });
 

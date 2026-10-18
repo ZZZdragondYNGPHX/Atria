@@ -1,5 +1,5 @@
 import { ConflictError } from '../../storage/errors.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readRunControl } from '../run-control.js';
 import { inspectComputeEffectClosure } from '../../../public/shared/native-compute-budget.js';
@@ -12,7 +12,6 @@ import { assertOutputTransition } from './output-transition-contracts.js';
 import { assertResultRecord, resultDependencyDigest } from './result-contracts.js';
 import { nativeToolDecision } from './native-tool-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const fail = () => { throw new ConflictError('native_orchestration_native_tool_output_invalid'); };
 export const nativeToolId = (kind, runId) => (kind === 'result' ? 'oresult_' : kind === 'claim' ? 'oclaim_' : 'oreceipt_')
     + hash({ kind: 'native_session_tool_' + kind, runId }).slice(0, 32);

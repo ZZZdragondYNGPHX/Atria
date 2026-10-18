@@ -1,5 +1,5 @@
 import { ConflictError } from '../../storage/errors.js';
-import { hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
+import { hashNativeDocument as hash, putImmutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { runGenerationLocalWork } from './generation-local-work.js';
@@ -12,7 +12,6 @@ import { controlCommandId, controlRecordKey, readAttempt, readReviewAdmission, r
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { writeAttemptSettlement } from './attempt-settlement.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const fail = code => { throw new ConflictError(code); };
 
 /** Metered original work in this already held Project child reservation. */

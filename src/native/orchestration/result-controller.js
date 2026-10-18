@@ -5,7 +5,7 @@ import { NativeNarratorOrchestrationAuthority } from './native-turn-orchestratio
 import { ModelPort } from './model-port.js';
 import { SourcePort } from './source-port.js';
 import { RunRepository, assertChildRunCurrent } from './run-repository.js';
-import { hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
+import { hashNativeDocument as hash, putImmutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { controlCommandId, controlRecordKey, readAttempt, runGuard } from './controller-common.js';
 import { writeAttemptSettlement } from './attempt-settlement.js';
@@ -21,7 +21,6 @@ import { readProjectDelegatedGraphHistory } from './project-delegation-contracts
 import { isRpDelegatedControlGraph, readRpDelegatedGraphHistory } from './rp-delegation-control-contracts.js';
 
 const fail = code => { throw new ConflictError(code); };
-const equal = (a, b) => hash(a) === hash(b);
 // Only legitimate authority withdrawal is committed as a denied preflight.
 // Unknown storage, corruption, foreign scopes and TypeErrors retain their errors.
 const DENIALS = new Set(['native_orchestration_memory_source_stale', 'native_orchestration_source_stale', 'native_orchestration_parent_stale',

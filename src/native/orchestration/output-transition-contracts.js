@@ -1,10 +1,9 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject, assertCounter } from '../../../public/shared/native-orchestration-contracts.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { controlCommandId, controlRecordKey } from './controller-common.js';
 import { checkedRecord } from './plan-repository.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original output graph traversal'); };
 
 /** Shared historical graph facts only; never a producer/recipient grant. */

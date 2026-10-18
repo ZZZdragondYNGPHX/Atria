@@ -1,9 +1,8 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments as equal } from '../repositories/common.js';
 import { nodeModelRoutePins, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { delegatedRpSourcePins } from './delegated-source-contracts.js';
 import { rpControlReplanScope, rpControlFanoutGroups } from './rp-control-graph.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_rp_child_control_unavailable'), { code: 'native_orchestration_rp_child_control_unavailable' }); };
 
 /** Published task-local pure Model DAG. Source, Route, Scheduler and held child

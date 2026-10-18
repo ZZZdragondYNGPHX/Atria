@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments as equal } from '../repositories/common.js';
 import { readAttempt } from './controller-common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
@@ -6,7 +6,6 @@ import { readGraphJudgeCompletion } from './graph-judge-completion.js';
 import { readSessionPlannerCompletion, assertSessionControlWork } from './session-planner-contracts.js';
 import { readSessionReviewCompletion } from './session-review-contracts.js';
 
-const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original Session Judge inputs'); };
 
 async function readControls(tx, handle, root, producer, input) {

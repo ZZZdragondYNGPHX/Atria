@@ -1,10 +1,9 @@
 import { createNativeId, assertNativeId } from '../identity.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments as equal } from '../repositories/common.js';
 import { rpAgentGraphProfile } from './rp-agent-graph-profile.js';
 import { audienceContextPin } from './audience-source-contracts.js';
 
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_rp_planner_expansion_unavailable'), { code: 'native_orchestration_rp_planner_expansion_unavailable' }); };
-const equal = (a, b) => hash(a) === hash(b);
 
 // Only the selected Narrator Model pin and its explicitly owned retrieval
 // pins can appear in a Host template. This data grants no runtime scope.
