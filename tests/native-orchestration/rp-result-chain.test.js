@@ -178,8 +178,10 @@ describe.each(CONTRACT_HARNESSES)('$name real RP graph Result chain', ({ make })
     });
     test.each(['publish', 'consume'])('a legitimate same-transaction Binding withdrawal during %s survives denial and prevents Narrator send', async phase => {
         const f = await rpModelFixture(make, { configurePlan: configureChain });
-        const original = NativeNarratorOrchestrationAuthority.prototype.authorizeGraphResult; let changed = false;
-        const spy = jest.spyOn(NativeNarratorOrchestrationAuthority.prototype, 'authorizeGraphResult').mockImplementation(async function (args) {
+        // Consume authorizes its explicit Result set through the batch method.
+        const method = phase === 'consume' ? 'authorizeGraphResults' : 'authorizeGraphResult';
+        const original = NativeNarratorOrchestrationAuthority.prototype[method]; let changed = false;
+        const spy = jest.spyOn(NativeNarratorOrchestrationAuthority.prototype, method).mockImplementation(async function (args) {
             const result = await original.call(this, args);
             if (args.phase === phase && !changed) {
                 changed = true;
@@ -221,8 +223,9 @@ describe.each(CONTRACT_HARNESSES)('$name real RP graph Result chain', ({ make })
     });
     test.each(['publish', 'consume'])('same-transaction Root cancellation during %s remains durable and rejects late Result advancement', async phase => {
         const f = await rpModelFixture(make, { configurePlan: configureChain });
-        const original = NativeNarratorOrchestrationAuthority.prototype.authorizeGraphResult; let cancelled = false;
-        const spy = jest.spyOn(NativeNarratorOrchestrationAuthority.prototype, 'authorizeGraphResult').mockImplementation(async function (args) {
+        const method = phase === 'consume' ? 'authorizeGraphResults' : 'authorizeGraphResult';
+        const original = NativeNarratorOrchestrationAuthority.prototype[method]; let cancelled = false;
+        const spy = jest.spyOn(NativeNarratorOrchestrationAuthority.prototype, method).mockImplementation(async function (args) {
             const result = await original.call(this, args);
             if (args.phase === phase && !cancelled) {
                 cancelled = true;

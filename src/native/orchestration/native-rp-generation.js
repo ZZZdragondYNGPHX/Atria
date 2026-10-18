@@ -1458,7 +1458,12 @@ export class NativeRpOrchestrationAuthority {
     async #rpFanoutClosure(handle, { tx, root, attempts, effectIds }) {
         const service = this.#execution();
         if (root.pendingEffectRefs.some(id => effectIds.includes(id))) return { closed: false };
-        const own = effectIds.length ? await service.budgetPort.observeEffectClosure(handle, { authorityRef: root.budgetAuthorityRef, effectIds }, { tx, allowUnknownUsage: true }) : { closed: true };
+        // Root RP output completes with retained unknown usage. A delegated
+        // child must release its held allocation before TaskLocal, which the
+        // original bank allows only once every send is settled; joining here
+        // would spend its terminal and then stall without a Return.
+        const own = effectIds.length ? await service.budgetPort.observeEffectClosure(handle, { authorityRef: root.budgetAuthorityRef, effectIds },
+            { tx, allowUnknownUsage: !root.parentRef }) : { closed: true };
         if (!own.closed) return own;
         for (const attempt of attempts) if (attempt.inputRefs?.[0]?.kind === 'native_rp_delegation') {
             if (attempt.status === 'cancelled' && attempt.startedAt === null && !attempt.effectRefs.length && !attempt.resultRefs.length) continue;
