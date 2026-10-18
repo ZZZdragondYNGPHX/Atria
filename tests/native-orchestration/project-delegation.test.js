@@ -1022,6 +1022,7 @@ test('Project child scope Planner cannot increase the original held three-reques
 test('SQLite Project child Review redoes the completed pure Planner causal descendant before TaskLocal and the original three tools and human Review', async () => {
     const f = await fixture(makeTempSqliteEngineHarness, { childPlannerReviewRedo: true });
     try {
+        const before = (await f.studio.observeProject(f.h.handle, f.projectId)).source;
         await f.run(); const { parent, child } = await roots(f);
         expect(f.requests).toHaveLength(12); expect(parent.status).toBe('completed'); expect(child.status).toBe('completed');
         expect(child.limits.maxSteps).toBe(64); expect(child.graphRevision).toBe(2);
@@ -1067,7 +1068,7 @@ test('SQLite Project child Review redoes the completed pure Planner causal desce
             .toEqual([expect.objectContaining({ status: 'settled', reservationId: child.runId, usage: expect.objectContaining({ totalTokens: 20 }) })]);
         expect(task.compute.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released', limits: expect.objectContaining({ maxRequests: 7 }) })]);
         expect(task.attempts.flatMap(row => row.calls.map(call => call.name))).toEqual(['atri_agent_set_plan', 'atri_agent_project_save', 'atri_agent_prepare_review']);
-        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source).toEqual(f.original);
+        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source).toEqual(before);
         const compute = structuredClone(task.compute), executor = f.executor, scheduler = f.scheduler;
         // Actual cold SQLite handle/new Executor, retaining the original live Host owner.
         f.h.engine.closeHandle(f.h.handle); f.recreateExecutor();
@@ -1092,6 +1093,7 @@ test('SQLite Project child Review redoes the completed pure Planner causal desce
 test('Project child Review cannot redo its completed pure Planner beyond the original six-request held bank', async () => {
     const f = await fixture(makeTempSqliteEngineHarness, { childPlannerReviewRedo: true, childRequests: 6 });
     try {
+        const before = (await f.studio.observeProject(f.h.handle, f.projectId)).source;
         await expect(f.run()).rejects.toThrow(); const { parent, child } = await roots(f);
         expect(f.requests).toHaveLength(4); expect(child.status).toBe('blocked'); expect(parent.outputClaims).toEqual([]); expect(child.outputClaims).toEqual([]);
         expect(child.graphRevision).toBe(1); expect(child.progress).toMatchObject({ attempts: 3, patches: 1, reviews: 1, replans: 0, loopIterations: 0 });
@@ -1108,7 +1110,7 @@ test('Project child Review cannot redo its completed pure Planner beyond the ori
         expect(task.compute.attempts.filter(row => row.reservationId === child.runId)).toHaveLength(3);
         expect(task.compute.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released', limits: expect.objectContaining({ maxRequests: 6 }) })]);
         expect(task.attempts.flatMap(row => row.calls)).toEqual([]);
-        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source).toEqual(f.original);
+        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source).toEqual(before);
         await f.run().catch(() => undefined); expect(f.requests).toHaveLength(4);
         expect((await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId)).compute).toEqual(task.compute);
     } finally { await f.cleanup(); }

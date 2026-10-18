@@ -442,14 +442,19 @@ export class ProjectDelegationAuthority {
             inputRefs: state.childInputRefs, sourceBindingDigest: state.sourceBinding.bindingDigest });
         this.#parents.set(state.runId + ':' + state.attemptId, state);
         try {
+            // Run controls are ordered under the original Source boundary. The
+            // Task-bank transfer takes that same Task writer queue itself, so it
+            // runs between them; failure leaves the admitted child blocked.
+            const boundary = service.sourcePort.consumptionBoundary(handle, state.sourceBinding, { engine: this.owner.engine });
             await service.runs.withSourceControl(handle, state.runId, async () => {
                 const delegated = await service.delegates[mode](handle, { ...runGuard(await service.runs.get(handle, state.runId)), parentAttemptId: state.attemptId,
                     delegationId: 'original_native_project_analysis', childPlanRef: child.planRef, inputRefs: state.childInputRefs,
                     inputDigest: hash(state.childInputRefs), effectiveGrantDigest: state.childGrantDigest, returnContract: child.plan.definition.outputContract, budgetCeiling: child.ceiling });
                 state.childRunId = delegated.outcome.childRunId;
-                await service.reserveChild(handle, { parentRunId: state.runId, childRunId: state.childRunId, ceiling: child.ceiling, limits: state.ownerLimits });
-                await service.delegates.confirmBudget(handle, runGuard(await service.runs.get(handle, state.childRunId)));
-            }, { withAuthority: service.sourcePort.consumptionBoundary(handle, state.sourceBinding, { engine: this.owner.engine }) });
+            }, { withAuthority: boundary });
+            await service.reserveChild(handle, { parentRunId: state.runId, childRunId: state.childRunId, ceiling: child.ceiling, limits: state.ownerLimits });
+            await service.runs.withSourceControl(handle, state.runId, async () =>
+                service.delegates.confirmBudget(handle, runGuard(await service.runs.get(handle, state.childRunId))), { withAuthority: boundary });
             const resources = [...new Set((await Promise.all((child.resourceProfiles ?? child.poolProfiles).map(model => host.executionResources(handle, model.resolved.route)))).flat())];
             const output = await withNativeProjectDelegation(state.projectCapture, {
                 resources, nodeIds: child.topology.ordered.map(node => node.nodeId),
