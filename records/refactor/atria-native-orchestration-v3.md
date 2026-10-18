@@ -2175,3 +2175,13 @@
 - 同批补RP child明确owned Actor Context pin交集、原Information编译、原Run capture/typed第三Source、逐接收方内容或reference-only传播和父返回readable；Task请求身份独立，角色不继承Narrator history/Memory/Skill，Planner/Review/Judge不可读候选仍拒绝。复用原Source/Context/Result/银行/Host，未造另一权限或执行器。Context另26处、ResultPort6处及6个Fanout内部比较改直接字段，不再为相等比较重复算hash。
 - P6清退无人调用的旧Director mock约300行、旧orchestrator测试fixture槽与失效ready断言（保有效capabilities/plugin/Settings断言），并迁移30份三语公开产品教学，保Skill格式/原Memory/角色卡preset/用户历史与通用写作资产；新版Native教学明确实际支持与限制。47个修改JS语法通过，ESLint首有1个机械替换多余hash import，删除后该文件通过；其余唯一warning为未修改07:12原spacing，不改规则。diff0，无新测试/审查/诊断矩阵。
 - 一次尝试仅原三个已知FAIL正例仍被完整cold读取拖住，按用户轻量化要求中止，未取得case结果；`/tmp/atria-v3-lightweight-child-close.log`保中止事实，不能记产品FAIL或PASS、不能推HTTP/费用阶段。未继续Runtime/Browser/benchmark，当前新增行为均 **NOT_RUN**，旧069宽绿与历史FAIL不回标。本批不宣称超时解决或原G2通用完成；嵌套领域委派、跨已完成Fanout/Join重做及scope拓扑等仍受限，继续实际实现，原P3/P4/P6 IN_PROGRESS/最终NOT_READY保持。
+
+
+### 2026-10-18 — 递归委派、整组因果重做与进一步减负
+
+- 源码已保存并推送 **991ceef6a**（parent 7eef4c971，84 files，1310+/702-）；原任务分支保留，未合 main、未删分支。没有新增独立审查、诊断/指纹矩阵或 Runtime 队列。
+- 三域已发布 advisory 子 Plan 中的 Agent 可沿原 Host 再委派：预先解析原递归资源闭包、保独立 Model pool/ceiling，以原 Scheduler 叶子许可、Delegate/Handoff、子预算、Source/Actor pin 及原 ResultPort 返回继续同 Agent Model。逐层 TaskLocal/cold continuation、原父子 tuple/Return、后代 reservation/费用树均接通；后代未知费用使父层 reconciling，不能释放或伪造已知闭合。自动路径保原 Handoff；未新增作者 mode 字段或冒称自动 true Delegate。
+- 主图及 child 已接“目标位于整个纯 Fanout/Join 组上游”的因果 Review 重做：原完整 Frame/Join/成员 typed proof 与银行 closure 必须实际 completed/closed，所有组成员同属该 Review 的因果 invalidation。新控制命令绑定真实输入，创建新 Attempt/Frame/Join，旧成员和费用不复用为新屏障；scope Planner 仅在同原整组证明内准入。三域历史按具体 Frame/Join/Attempt 消歧、保每轮因果；Session 主图补 pre-Agent Result 经原 Transition/Frame 继承，末输出按精确 Join receipt 读取；自己 Review decide→settle 的旧控制只在同原 command/receipt/invalidation 身份内读取。
+- 进一步去掉 **206处**直接双重 hash 相等比较（共享151、领域55），用已有直接字段比较，持久化摘要/身份与 CAS 格式不变。putImmutable 复用首次 nativeRecord，不再对同一已准入文档再克隆和计算摘要。无新缓存、弱摘要或权威。
+- 执行者只作直接相关语法/ESLint/diff 检查，机械替换遗留 unused imports 已修；未调整检查规则。额外裸模块加载因未初始化应用 config path 退出1，未启动 Host/Provider，不当运行 PASS 或产品失败；按用户减负要求未再引入环境/运行验证。
+- 当前新增行为 **运行 NOT_RUN**，没有新 Runtime/Browser/benchmark 证据，不宣称超时已解、宽组绿或全产品完成；旧069宽组与旧 FAIL 继续归各原字节。明确保留限制：scope 内部 Delegate/Review redo/回环/拓扑变化、局部分支重做/完成 sibling 重用、跨已完成委派重做与跨 scope replan 尚未开放。角色与条件 G2 的有限消费者不等于通用完成，原 P3/P4/P6 IN_PROGRESS、最终 NOT_READY；平台/真实 Provider/价格质量/eligible 晋升仍 NOT_RUN。继续实际工程，不靠改 Gate 或阶段核销。
