@@ -95,6 +95,7 @@ test('unknown Provider outcomes cannot resend even when the original Route allow
     await expect(restarted.executeControlledTurn(f.handle, f.envelope(review, committed))).rejects.toThrow('native_turn_attempt_already_claimed');
     const moduleUrl = path => new URL(path, import.meta.url).href;
     const script = `
+        import ${JSON.stringify(moduleUrl('../util/config.js'))};
         import { FsEngine } from ${JSON.stringify(moduleUrl('../../src/storage/engines/fs-engine.js'))};
         import { services } from ${JSON.stringify(moduleUrl('./helpers/session-fixture.js'))};
         import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from ${JSON.stringify(moduleUrl('../../src/native/model-prompt-runtime/persistence.js'))};
