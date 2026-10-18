@@ -1100,8 +1100,9 @@ export class NativeNarratorOrchestrationAuthority {
         if (!accepted.accepted) fail('native_orchestration_planner_patch_rejected');
         const receiptId = graphPlannerReceiptId(runId, state.attemptId);
         try {
-            await service.runs.withSourceControl(handle, runId, () => service.runs.control(handle, controlCommandId('graph.planner.settle', state.attemptId), {
-                ...runGuard(current), expectedGraphRevision: accepted.newGraphRevision, expectedStateVersion: proposed.outcome.versions.stateVersion,
+            await service.runs.withSourceControl(handle, runId, async () => service.runs.control(handle, controlCommandId('graph.planner.settle', state.attemptId), {
+                ...runGuard(current), expectedGraphRevision: accepted.newGraphRevision,
+                expectedStateVersion: state.decision.inputRef.fanoutAttemptId ? (await service.runs.get(handle, runId)).stateVersion : proposed.outcome.versions.stateVersion,
                 operation: 'attempt.settle', detail: { attemptId: state.attemptId, patchId: patch.patchId } }, async ({ tx, root, now }) => {
                 await this.#authorize({ handle, root });
                 if (!equal(proof, await port.inspectResultCompletion(handle, { result, runId, effectId: state.effectId }))) fail('native_orchestration_planner_producer_denied');

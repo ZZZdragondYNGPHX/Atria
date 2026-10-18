@@ -1,5 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { createNativeId } from '../../src/native/identity.js';
+import { GraphController } from '../../src/native/orchestration/graph-controller.js';
 import { sessionFanoutPlannerFixture, sessionScopeTask } from './helpers/session-fanout-planner-fixture.js';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 import { readSessionOutput } from '../../src/native/orchestration/session-output-contracts.js';
@@ -14,11 +15,18 @@ test.each(CONTRACT_HARNESSES)('$name Game frozen scope Planner schedules reserve
     const f = await sessionFanoutPlannerFixture(make);
     let releaseSiblingStart, releaseSibling, reserved, hydrated, bankAtPatch;
     const siblingStarted = new Promise(resolve => { releaseSiblingStart = resolve; });
-    const preferredStarted = new Promise(resolve => { releaseSibling = resolve; });
+    const patchApplied = new Promise(resolve => { releaseSibling = resolve; });
     const { planner, first, preferred, merge, sibling } = f.topology;
+    const originalPropose = GraphController.prototype.propose;
+    GraphController.prototype.propose = async function (handle, input) {
+        const result = await originalPropose.call(this, handle, input);
+        if (this.runs === f.authority.execution.runs && handle === f.h.handle && input.patch.runId === f.effectRef.runId
+            && result.outcome.patchReceipt.accepted && result.outcome.patchReceipt.newGraphRevision === 1) releaseSibling();
+        return result;
+    };
     f.onResponse(async () => {
         const nodeId = sessionScopeTask(f.requests.at(-1))?.nodeId;
-        if (nodeId === sibling.nodeId) { releaseSiblingStart(); await preferredStarted; }
+        if (nodeId === sibling.nodeId) { releaseSiblingStart(); await patchApplied; }
         if (nodeId === planner.nodeId) {
             await siblingStarted;
             const root = await f.authority.execution.runs.get(f.h.handle, f.effectRef.runId);
@@ -106,7 +114,7 @@ test.each(CONTRACT_HARNESSES)('$name Game frozen scope Planner schedules reserve
             expect((await readSessionOutput(tx, f.h.handle, cold)).receipt).toEqual(proof.receipt);
         });
         expect(f.requests).toHaveLength(6);
-    } finally { releaseSiblingStart(); releaseSibling(); await f.cleanup(); }
+    } finally { GraphController.prototype.propose = originalPropose; releaseSiblingStart(); releaseSibling(); await f.cleanup(); }
 }, 180000);
 
 test.each(CONTRACT_HARNESSES)('$name Game paid scope Planner cannot reprioritize a queued member of another frozen branch', async ({ make }) => {
