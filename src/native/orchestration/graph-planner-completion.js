@@ -99,9 +99,12 @@ export async function readGraphPlannerCompletion(tx, handle, root, attemptId, { 
 }
 
 
-/** Semantic progress over this call's already checked advisory Results.
- * Attempt/Result IDs and response whitespace create no new evidence. */
+/** Semantic progress over this call's already checked advisory inputs.
+ * Result IDs and response whitespace create no new evidence; a newly consumed
+ * control from another node (such as a published return's feedback) does.
+ * Callers exclude the Planner's own earlier controls. */
 export function graphPlannerProgressFingerprint(operations, sourceBinding, evidence) {
     return hash({ operations, sourceBindingDigest: sourceBinding.bindingDigest,
-        evidence: evidence.map(fact => ({ nodeId: fact.producer.nodeId, payloadHash: hash(fact.record.payload) })) });
+        evidence: evidence.map(fact => fact.record ? { nodeId: fact.producer.nodeId, payloadHash: hash(fact.record.payload) }
+            : { nodeId: fact.producer.nodeId, controlRef: fact.controlRef }) });
 }

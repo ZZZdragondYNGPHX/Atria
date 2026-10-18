@@ -150,7 +150,7 @@ export class RpControlGraphWork {
         const nodeId = state.activeSelection.node.nodeId;
         const current = await service.runs.get(handle, runId);
         const evidence = await service.runs.engine.withTransaction(handle, tx => this.inputs(tx, current));
-        const progressKey = graphPlannerProgressFingerprint(parsed.operations, root.sourceBinding, evidence.filter(fact => fact.record));
+        const progressKey = graphPlannerProgressFingerprint(parsed.operations, root.sourceBinding, evidence.filter(fact => fact.record || fact.controlRef && fact.producer.nodeId !== nodeId));
         if (this.lastOperations.get(nodeId)?.has(progressKey)) fail('native_orchestration_planner_no_progress');
         const patch = { schemaVersion: 1,
             patchId: 'opatch_' + hash({ runId, attemptId }).slice(0, 32), runId, producerAttemptId: attemptId, expectedEpoch: current.epoch,

@@ -211,7 +211,7 @@ async function assertRpIterationHistory(tx, handle, root, entries, narrator, fan
         if (fact.review?.decision === 'rerun') for (const [id, old] of current)
             if (fact.review.invalidatedAttemptIds.includes(old.producer.attemptId)) { touched.add(id); current.delete(id); }
         if (fact.patch) {
-            const key = graphPlannerProgressFingerprint(fact.patch.appliedOperations, root.sourceBinding, inputProof.sources.filter(source => source.record));
+            const key = graphPlannerProgressFingerprint(fact.patch.appliedOperations, root.sourceBinding, inputProof.sources.filter(source => source.record || source.controlRef && source.producer.nodeId !== node.nodeId));
             const keys = progressKeys.get(node.nodeId) ?? new Set(); if (keys.has(key)) invalid(); keys.add(key); progressKeys.set(node.nodeId, keys);
         }
         previous.set(node.nodeId, fact); current.set(node.nodeId, fact);
