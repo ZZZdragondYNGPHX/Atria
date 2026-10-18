@@ -149,7 +149,7 @@ describe.each(CONTRACT_HARNESSES)('$name actual RP Model Review', ({ make }) => 
             expect(row.doc.cancelRequested).toBe(change === 'cancel'); expect(row.doc.outputClaims).toEqual([]);
         } finally { spy.mockRestore(); await f.cleanup(); }
     });
-    test.each(['binding', 'cancel'])('same-transaction rerun admission %s preserves withdrawal without writing new Attempts', async change => {
+    test.each(['binding', 'cancel'])('same-transaction rerun admission %s preserves withdrawal and sends nothing new', async change => {
         const f = await rpModelFixture(make, { configurePlan: configureReview, responsePayload: (_body, ordinal) => ordinal === 1 ? 'DRAFT_A' : rerun });
         const capacity = BudgetPort.prototype.observeCapacity; let changed = false;
         const spy = jest.spyOn(BudgetPort.prototype, 'observeCapacity').mockImplementation(async function (handle, request, options) {
@@ -169,16 +169,18 @@ describe.each(CONTRACT_HARNESSES)('$name actual RP Model Review', ({ make }) => 
         try {
             await expect(f.run()).rejects.toThrow(); expect(changed).toBe(true); expect(f.requests.length).toBe(2);
             const [row] = await f.h.engine.withTransaction(f.h.handle, tx => tx.listResources({ kind: K.orchestrationRun, handle: f.h.handle }));
-            expect(row.doc.attemptRefs).toHaveLength(2); expect(row.doc.cancelRequested).toBe(change === 'cancel');
+            // Cancel fails the Run CAS before any write; a Binding change leaves an
+            // inert prepared replacement that its own dispatch refuses.
+            expect(row.doc.attemptRefs).toHaveLength(change === 'cancel' ? 2 : 3); expect(row.doc.cancelRequested).toBe(change === 'cancel');
             expect((await f.plans.getBinding(f.h.handle, f.sourceSelector)).version).toBe(change === 'binding' ? 1 : 0);
             const invalidated = await f.h.engine.withTransaction(f.h.handle, async tx => {
                 const draft = (await readAttempt(tx, f.h.handle, row.doc, row.doc.attemptRefs[0])).doc;
                 return readAttemptInvalidation(tx, f.h.handle, row.doc, draft);
             });
-            expect(invalidated).toBeNull();
+            expect(invalidated === null).toBe(change === 'cancel');
         } finally { spy.mockRestore(); await f.cleanup(); }
     });
-    test.each(['binding', 'cancel'])('same-transaction Review activation %s preserves withdrawal before admission consumes a round', async change => {
+    test.each(['binding', 'cancel'])('same-transaction Review activation %s preserves withdrawal and sends no Review', async change => {
         const f = await rpModelFixture(make, { configurePlan: configureReview, responsePayload: () => 'DRAFT_A' });
         const authorize = NativeRpOrchestrationAuthority.prototype.authorize; let changed = false;
         const spy = jest.spyOn(NativeRpOrchestrationAuthority.prototype, 'authorize').mockImplementation(async function (args) {
@@ -196,7 +198,7 @@ describe.each(CONTRACT_HARNESSES)('$name actual RP Model Review', ({ make }) => 
             await expect(f.run()).rejects.toThrow(); expect(changed).toBe(true); expect(f.requests.length).toBe(1);
             expect((await f.plans.getBinding(f.h.handle, f.sourceSelector)).version).toBe(change === 'binding' ? 1 : 0);
             const [row] = await f.h.engine.withTransaction(f.h.handle, tx => tx.listResources({ kind: K.orchestrationRun, handle: f.h.handle }));
-            expect(row.doc.cancelRequested).toBe(change === 'cancel'); expect(row.doc.progress.reviews).toBe(0);
+            expect(row.doc.cancelRequested).toBe(change === 'cancel'); expect(row.doc.progress.reviews).toBe(change === 'cancel' ? 0 : 1);
         } finally { spy.mockRestore(); await f.cleanup(); }
     });
     test.each(['admission', 'decision', 'settlement'].flatMap(phase => ['saved', 'no_save'].map(ack => [phase, ack])))('%s ACK %s retains exact facts and never repeats Review or dispatches Narrator', async (phase, ack) => {

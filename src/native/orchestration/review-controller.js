@@ -30,7 +30,7 @@ export class ReviewController {
         targetAttemptIds.sort();
         const receiptId = reviewReceiptId(guard.runId, reviewAttemptId);
         return this.runs.control(handle, controlCommandId('review.decide', receiptId), { ...guard, operation: 'review.decide',
-            detail: { reviewAttemptId, decision, targetAttemptIds, reasonCode, evidenceRefs } }, async ({ tx, root, now, deny: controlDenial }) => {
+            detail: { reviewAttemptId, decision, targetAttemptIds, reasonCode, evidenceRefs } }, async ({ tx, root, now, deny: controlDenial, unchanged }) => {
             const { doc: reviewer } = await readAttempt(tx, handle, root, reviewAttemptId);
             await assertAttemptCurrent(tx, handle, root, reviewer);
             const node = root.graph.nodes.find(item => item.nodeId === reviewer.nodeId);
@@ -118,6 +118,8 @@ export class ReviewController {
                     prepared.push(next); replacements.push({ targetAttemptId: target.attemptId, attemptId });
                 }
             }
+            // An admission callback may commit a lawful Root change; refuse before writing.
+            if (!await unchanged()) return controlDenial(new ConflictError('native_orchestration_review_stale'));
             for (const attempt of prepared) {
                 await putImmutable(tx, controlRecordKey(handle, root.runId, 'attempt', attempt.attemptId), attempt);
                 root.attemptRefs.push(attempt.attemptId);
