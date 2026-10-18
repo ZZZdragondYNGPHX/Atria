@@ -6,7 +6,7 @@ import { readAttempt, controlRecordKey } from './controller-common.js';
 import { readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readSessionDelegation } from './session-delegation-contracts.js';
-import { readGraphNodeResult } from './graph-result-contracts.js';
+import { readGraphNodeResults } from './graph-result-contracts.js';
 import { readSessionDelegatedControl } from './session-delegated-quality-contracts.js';
 import { readGraphFanoutCompletion, readGraphFanoutInput } from './graph-fanout-completion.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
@@ -37,9 +37,9 @@ async function childIdentity(tx, handle, root) {
 }
 
 async function refs(tx, handle, root, input) {
-    const facts = [];
+    const facts = [], results = await readGraphNodeResults(tx, handle, root, input.acceptedGraphResultRefs.map(ref => ref.resultId));
     for (const ref of input.acceptedGraphResultRefs) {
-        const fact = await readGraphNodeResult(tx, handle, root, ref.resultId);
+        const fact = results.get(ref.resultId);
         if (!fact || !equal(ref, fact.receipt.resultRef)) invalid(); facts.push(fact);
     }
     for (const ref of input.acceptedControlRefs ?? []) {
@@ -90,10 +90,20 @@ export async function readSessionDelegatedFanoutInput(tx, handle, root, producer
     return { lineage, input, sources: facts, bindings, loops: [], replacement: null };
 }
 
-async function memberInput(tx, handle, root, attempt, { frame, branch, reservation, settlement }) {
+async function memberInput(tx, handle, root, attempt, { frame, branch, reservation, settlement, results }) {
     if (attempt.inputState === 'reserved') {
         if (!reservation || attempt.status !== 'cancelled' || attempt.inputRefs !== null || attempt.effectiveGrantDigest !== null || attempt.budgetRef !== null
             || attempt.reservationRef.producerAttemptId !== frame.fanoutAttemptId || !branch.scopeNodeIds.includes(attempt.nodeId)) invalid();
+        return;
+    }
+    if (results.length) {
+        // The shared reader just read this original Result with its complete
+        // delegated input proof. Accept no external proof or other Root's facts.
+        const [fact] = results, proof = fact.sessionDelegatedInput;
+        if (results.length !== 1 || !proof || !equal(fact.producer, attempt) || !equal(fact.settlement, settlement)
+            || proof.requestedRootDigest !== hash(root) || proof.producerDigest !== hash(attempt)
+            || !fact.modelEffect || proof.effectDigest !== hash(fact.modelEffect) || !fact.modelCompletion
+            || !equal(attempt.effectRefs, [fact.modelEffect.effectId]) || !equal(proof.input, attempt.inputRefs[0])) invalid();
         return;
     }
     await readSessionDelegatedFanoutInput(tx, handle, root, attempt, attempt.inputRefs[0], settlement.decisionSeq);

@@ -334,7 +334,8 @@ async function withProjectChildren(capture, workers, options, delegatedMode, fan
                 const resources = [];
                 for (const id of branch.scopeNodeIds) {
                     const node = lineage.graph.nodes.find(node => node.nodeId === id), pin = node && nodeModelRoutePins(node, lineage.plan.dependencyPins)[0];
-                    if (node?.kind !== 'agent' || !pin) fail();
+                    if (!['agent', 'planner'].includes(node?.kind) || !pin
+                        || hash([...node.capabilities].sort()) !== hash(['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []].sort())) fail();
                     const route = await state.host.persistence.getRuntimeRoute(state.handle, pin.resourceRef.runtimeRouteId);
                     if (hash(route) !== pin.integrity) fail();
                     resources.push(...await state.host.executionResources(state.handle, route));

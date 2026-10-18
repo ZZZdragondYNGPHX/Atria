@@ -972,7 +972,8 @@ test('SQLite Project child frozen scope Planner controls its reserved Agent befo
 test('Project child scope Planner cannot increase the original held three-request allocation before any scope send', async () => {
     const f = await fixture(makeTempSqliteEngineHarness, { childFanout: true, childFanoutPlanner: true, childRequests: 3 });
     try {
-        await expect(f.run()).rejects.toThrow('native_orchestration_graph_budget_unavailable'); expect(f.requests).toHaveLength(1);
+        await expect(f.run()).rejects.toMatchObject({ code: 'operation_child_failed',
+            cause: { code: 'native_orchestration_graph_budget_unavailable' } }); expect(f.requests).toHaveLength(1);
         const { parent, child } = await roots(f), task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
         expect(parent.outputClaims).toEqual([]); expect(child.outputClaims).toEqual([]);
         expect(task.compute.limits.maxRequests).toBe(9); expect(task.compute.attempts).toHaveLength(1);
@@ -980,6 +981,10 @@ test('Project child scope Planner cannot increase the original held three-reques
         expect(task.compute.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released', limits: expect.objectContaining({ maxRequests: 3 }) })]);
         expect(task.attempts.flatMap(row => row.calls)).toEqual([]);
         expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
-        await f.cold(); await expect(f.run()).rejects.toThrow(); expect(f.requests).toHaveLength(1);
+        f.h.engine.closeHandle(f.h.handle); f.recreateExecutor();
+        expect(() => f.h.engine.nativeHostLifecycle.assertActive()).not.toThrow();
+        expect((await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId)).compute).toEqual(task.compute);
+        await expect(f.run()).rejects.toThrow(); expect(f.requests).toHaveLength(1);
+        expect((await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId)).compute).toEqual(task.compute);
     } finally { await f.cleanup(); }
 }, 90000);

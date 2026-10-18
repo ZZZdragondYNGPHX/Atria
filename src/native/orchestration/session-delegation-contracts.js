@@ -10,7 +10,7 @@ import { controlRecordKey, readAttempt } from './controller-common.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { audienceContextPin, assertAudienceRunCapture } from './audience-source-contracts.js';
 import { readDelegationCompletion } from './delegation-completion-contracts.js';
-import { readGraphNodeResult } from './graph-result-contracts.js';
+import { readGraphNodeResults } from './graph-result-contracts.js';
 import { readTaskLocalOutput } from './task-local-output-contracts.js';
 import { readHandoffReturn, handoffReturnReceiptId } from './handoff-return-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
@@ -122,15 +122,22 @@ export async function readSessionDelegatedModelInput(tx, handle, child, producer
         || intent.actionRef.runtimeRouteId !== modelPin.resourceRef.runtimeRouteId) invalid();
     if (input.fanoutAttemptId) return { ...await readSessionDelegatedFanoutInput(tx, handle, child, producer, input, publicationSeq), sourceRefs,
         requestedRootDigest: hash(child), producerDigest: hash(producer), effectDigest: hash(intent) };
-    const controls = input.acceptedControlRefs ?? [], sources = [];
-    for (const ref of input.acceptedGraphResultRefs) {
-        const fact = await readGraphNodeResult(tx, handle, child, ref.resultId);
-        if (!fact || ref.runId !== child.runId || !equal(ref, fact.receipt.resultRef)) invalid(); sources.push(fact);
-    }
+    const controls = input.acceptedControlRefs ?? [], sources = [], completedControls = [];
     for (const ref of controls) {
         const fact = await readSessionDelegatedControl(tx, handle, child, ref);
-        if (!fact || ref.runId !== child.runId || !equal(ref, fact.controlRef) || fact.review?.decision === 'rerun') invalid(); sources.push(fact);
+        if (!fact || ref.runId !== child.runId || !equal(ref, fact.controlRef) || fact.review?.decision === 'rerun') invalid(); completedControls.push(fact);
     }
+    // This invocation just proved every original member of its explicit Join.
+    // Reuse those typed facts only for these exact input refs, then batch any
+    // remaining Results through the original full reader. No grant is saved.
+    const joinedResults = new Map(completedControls.flatMap(fact => fact.graphResults ?? []).map(fact => [hash(fact.receipt.resultRef), fact]));
+    const missingRefs = input.acceptedGraphResultRefs.filter(ref => !joinedResults.has(hash(ref)));
+    const resultFacts = await readGraphNodeResults(tx, handle, child, missingRefs.map(ref => ref.resultId));
+    for (const ref of input.acceptedGraphResultRefs) {
+        const fact = joinedResults.get(hash(ref)) ?? resultFacts.get(ref.resultId);
+        if (!fact || ref.runId !== child.runId || !equal(ref, fact.receipt.resultRef)) invalid(); sources.push(fact);
+    }
+    sources.push(...completedControls);
     if (sources.some(fact => fact.receipt.decisionSeq >= publicationSeq)) invalid();
     const judges = sources.filter(fact => fact.selectedResultRef);
     assertSessionJudgeSelections(child, node, input.acceptedGraphResultRefs, judges);
@@ -180,11 +187,23 @@ export async function readSessionDelegatedGraphHistory(tx, handle, child, { fina
     if (!parent) invalid();
     const lineage = await readSessionDelegation(tx, handle, parent, child.runId);
     if (!lineage) invalid();
+    const attempts = [];
+    for (const id of child.attemptRefs) attempts.push((await readAttempt(tx, handle, child, id)).doc);
+    const fanouts = [];
+    for (const producer of attempts.filter(attempt => graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'join')) {
+        const fact = await readSessionDelegatedFanoutCompletion(tx, handle, child, producer.attemptId); if (!fact) invalid(); fanouts.push(fact);
+    }
+    if (attempts.filter(attempt => graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'fanout').length !== fanouts.length) invalid();
+    // Only original scope facts fully read by this history can supply its
+    // intermediate proofs. Caller finalPublication/pendingProducer is excluded.
+    const scopeResults = new Map(fanouts.flatMap(fact => fact.graphResults).map(fact => [hash(fact.receipt.resultRef), fact]));
+    const intermediateRefs = child.resultRefs.filter(ref => !finalPublication || !equal(ref, finalPublication.receipt.resultRef));
+    const missingRefs = intermediateRefs.filter(ref => !scopeResults.has(hash(ref)));
+    const resultFacts = await readGraphNodeResults(tx, handle, child, missingRefs.map(ref => ref.resultId));
     const results = [];
-    for (const ref of child.resultRefs) {
-        if (finalPublication && equal(ref, finalPublication.receipt.resultRef)) continue;
-        const fact = await readGraphNodeResult(tx, handle, child, ref.resultId);
-        if (!fact) invalid(); results.push(fact);
+    for (const ref of intermediateRefs) {
+        const fact = scopeResults.get(hash(ref)) ?? resultFacts.get(ref.resultId);
+        if (!fact || !equal(ref, fact.receipt.resultRef)) invalid(); results.push(fact);
     }
     // Only facts just read above may provide their original complete input and
     // Model proof. A caller's finalPublication/pendingProducer never enters this
@@ -192,8 +211,6 @@ export async function readSessionDelegatedGraphHistory(tx, handle, child, { fina
     const checkedResults = new Map(results.map(fact => [fact.producer.attemptId, fact]));
     const facts = [...results, ...(finalPublication ? [{ ...finalPublication, producer: finalProducer,
         settlement: finalPublication.attemptReceipt }] : [])];
-    const attempts = [];
-    for (const id of child.attemptRefs) attempts.push((await readAttempt(tx, handle, child, id)).doc);
     const modelAttempts = attempts.filter(attempt => models.some(node => node.nodeId === attempt.nodeId));
     if (modelAttempts.length < models.length || new Set(modelAttempts.map(attempt => attempt.nodeId)).size !== models.length
         || modelAttempts.some(attempt => !models.some(node => node.nodeId === attempt.nodeId))
@@ -204,11 +221,6 @@ export async function readSessionDelegatedGraphHistory(tx, handle, child, { fina
     const bank = control?.operations[child.budgetAuthorityRef.operationId]?.compute;
     if (!bank) invalid();
     const effects = [], expectedRefs = [], usedEdges = new Map(), planners = [], reviews = [], judges = [], entries = [];
-    const fanouts = [];
-    for (const producer of attempts.filter(attempt => graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'join')) {
-        const fact = await readSessionDelegatedFanoutCompletion(tx, handle, child, producer.attemptId); if (!fact) invalid(); fanouts.push(fact);
-    }
-    if (attempts.filter(attempt => graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'fanout').length !== fanouts.length) invalid();
     for (const fact of fanouts) {
         for (const binding of fact.fanout.inputRefs[0].graphBindings) usedEdges.set(binding.edgeId, (usedEdges.get(binding.edgeId) ?? 0) + 1);
         for (const id of [...fact.frame.edgeAdmissionRefs, ...fact.joinReceipt.edgeAdmissionRefs]) {
