@@ -10,7 +10,7 @@ import { executeProjectSkillWork } from '../skill-invocation.js';
 import { prepareRetrievalCompute } from '../retrieval-compute.js';
 import { pinSkillEntries, loadAlwaysSkills, boundSkillFile } from '../../../public/shared/skill-invocation.js';
 import { ModelPort } from './model-port.js';
-import { readFanoutFrame } from './fanout-controller.js';
+import { readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
 import { readEffect } from './effect-contracts.js';
 import { readAttempt } from './controller-common.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
@@ -181,7 +181,7 @@ export async function captureNativeProjectWorker(capture, { requestId, task, out
     const state = child ? { ...original.state, fanoutChildPermit: fanoutPermit, fanoutParentState: original.state } : original.state;
     const stage = Object.freeze({});
     generations.set(stage, { ...original, state, requestId, originalRequestId: original.requestId,
-        workerStage: immutable({ task, outputContract, ...(routeRef ? { routeRef } : {}) }), toolReceipts: [], toolResults: [] });
+        workerStage: immutable({ task, outputContract, ...(nodeId ? { nodeId } : {}), ...(routeRef ? { routeRef } : {}) }), toolReceipts: [], toolResults: [] });
     await inspectNativeProjectGeneration(stage, { host: original.state.host, handle: original.state.handle });
     return stage;
 }
@@ -196,12 +196,12 @@ async function readDelegatedBoundary(capture, { candidateChild = null, candidate
 async function readDelegatedGenerationBoundary(original, { candidateChild = null, candidateParentAttempt = null, bound = null, permit = null, controlPermit = null }) {
     if (!original?.workerStage) fail();
     const outer = original.state.fanoutChildPermit ? fanoutChildren.get(original.state.fanoutChildPermit) : null;
-    if (original.state.fanoutChildPermit && !outer?.delegation) fail();
-    const inherited = outer && bound && equalNativeDocuments(bound, outer.delegation);
+    if (original.state.fanoutChildPermit && !outer) fail();
+    const inherited = outer?.delegation && bound && equalNativeDocuments(bound, outer.delegation);
     if (inherited && (candidateChild || candidateParentAttempt || permit)) fail();
     // A deeper boundary must come from this actual captured child Node. The
     // parent allocation is re-read recursively; a supplied Run id cannot bind it.
-    const parentLineage = outer && !inherited ? await readDelegatedGenerationBoundary(outer.generation,
+    const parentLineage = outer?.delegation && !inherited ? await readDelegatedGenerationBoundary(outer.generation,
         { bound: outer.delegation, controlPermit: outer.controlPermit }) : null;
     const lineageOwner = inherited ? outer.generation : original;
     const { host, handle } = original.state, engine = host.persistence._engine;
@@ -217,6 +217,15 @@ async function readDelegatedGenerationBoundary(original, { candidateChild = null
         if (!parent) fail();
         const lineage = await readProjectDelegation(tx, handle, parent, child.runId), source = child.sourceBinding.sourceRef;
         const task = await readOriginalProjectTask(tx, handle, source), generation = task?.attempts.find(attempt => attempt.attemptId === original.projectAttemptId);
+        if (outer && !outer.delegation) {
+            const frameId = lineage?.parentInput.fanoutAttemptId;
+            const frame = frameId && await readFanoutFrame(tx, handle, parent, frameId);
+            const branch = frame?.branches.find(branch => branch.scopeNodeIds.includes(lineage?.parentAttempt.nodeId));
+            if (!lineage || !frame || !branch || lineage.parentAttempt.nodeId !== (original.workerStage.nodeId ?? original.workerStage.task.nodeId)
+                || !lineage.parentNode.capabilities.includes('agent.delegate')
+                || !equalNativeDocuments([...outer.nodeIds].sort(), [...branch.scopeNodeIds].sort())
+                || !await readFanoutMembership(tx, handle, parent, frame, lineage.parentAttempt.attemptId)) fail();
+        }
         if (parentLineage && (parent.runId !== parentLineage.lineage.child.runId
             || lineage?.parentAttempt.nodeId !== original.workerStage.task.nodeId
             || !parentLineage.lineage.graph.nodes.some(node => node.nodeId === original.workerStage.task.nodeId && node.capabilities.includes('agent.delegate')))) fail();
@@ -333,6 +342,24 @@ async function withProjectChildren(capture, workers, options, delegatedMode, fan
     const { state } = generation, parentScope = schedulerFrame(state), expected = parentScope.expected;
     await inspectNativeProjectGeneration(capture, { host: state.host, handle: state.handle });
     const delegated = new Map();
+    const readResources = async (plan, resources, path = new Set()) => {
+        const identity = hash(plan);
+        if (path.has(identity)) fail();
+        const next = new Set(path); next.add(identity);
+        for (const pin of plan.dependencyPins) {
+            if (pin.port === 'plan') {
+                const child = await state.host.persistence._engine.withTransaction(state.handle, tx => readPlanRevision(tx, state.handle, pin.resourceRef));
+                if (hash(child) !== pin.integrity || !plan.definition.nodes.some(node => node.capabilities.includes('agent.delegate')
+                    && node.policy.allowedPlanPinIds?.includes(pin.pinId) && node.dependencyPinIds.includes(pin.pinId))) fail();
+                await readResources(child, resources, next);
+            } else {
+                if (pin.port !== 'model' || pin.resourceRef.scope !== 'player') fail();
+                const route = await state.host.persistence.getRuntimeRoute(state.handle, pin.resourceRef.runtimeRouteId);
+                if (hash(route) !== pin.integrity) fail();
+                resources.push(...await state.host.executionResources(state.handle, route));
+            }
+        }
+    };
     if (fanoutAttemptId) {
         const outer = fanoutChildren.get(state.fanoutChildPermit);
         if (!outer?.delegation) fail();
@@ -348,10 +375,17 @@ async function withProjectChildren(capture, workers, options, delegatedMode, fan
                 for (const id of branch.scopeNodeIds) {
                     const node = lineage.graph.nodes.find(node => node.nodeId === id), pin = node && nodeModelRoutePins(node, lineage.plan.dependencyPins)[0];
                     if (!['agent', 'planner', 'review', 'judge'].includes(node?.kind) || !pin
-                        || !equalNativeDocuments([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []].sort())) fail();
+                        || !equalNativeDocuments([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' || node.kind === 'agent' && node.capabilities.includes('agent.delegate') && node.capabilities.includes('graph.patch') ? ['graph.patch'] : [], ...node.kind === 'agent' && node.capabilities.includes('agent.delegate') ? ['agent.delegate'] : []].sort())) fail();
                     const route = await state.host.persistence.getRuntimeRoute(state.handle, pin.resourceRef.runtimeRouteId);
                     if (hash(route) !== pin.integrity) fail();
                     resources.push(...await state.host.executionResources(state.handle, route));
+                    if (node.capabilities.includes('agent.delegate')) for (const id of node.policy.allowedPlanPinIds ?? []) {
+                        const childPin = lineage.plan.dependencyPins.find(pin => pin.pinId === id && pin.port === 'plan' && node.dependencyPinIds.includes(id));
+                        if (!childPin) fail();
+                        const childPlan = await readPlanRevision(tx, state.handle, childPin.resourceRef);
+                        if (hash(childPlan) !== childPin.integrity) fail();
+                        await readResources(childPlan, resources);
+                    }
                 }
                 if (!equalNativeDocuments([...new Set(resources)].sort(), [...new Set(worker.resources)].sort())) fail();
             }
@@ -363,25 +397,7 @@ async function withProjectChildren(capture, workers, options, delegatedMode, fan
         const ids = lineage.plan.definition.nodes.filter(node => node.capabilities.includes('generation.send')).map(node => node.nodeId).sort();
         if (!equalNativeDocuments([...worker.nodeIds].sort(), ids) || lineage.child.graphRevision !== 0) fail();
         const resources = [];
-        const readResources = async (plan, path = new Set()) => {
-            const identity = hash(plan);
-            if (path.has(identity)) fail();
-            const next = new Set(path); next.add(identity);
-            for (const pin of plan.dependencyPins) {
-                if (pin.port === 'plan') {
-                    const child = await state.host.persistence._engine.withTransaction(state.handle, tx => readPlanRevision(tx, state.handle, pin.resourceRef));
-                    if (hash(child) !== pin.integrity || !plan.definition.nodes.some(node => node.capabilities.includes('agent.delegate')
-                        && node.policy.allowedPlanPinIds?.includes(pin.pinId) && node.dependencyPinIds.includes(pin.pinId))) fail();
-                    await readResources(child, next);
-                } else {
-                    if (pin.port !== 'model' || pin.resourceRef.scope !== 'player') fail();
-                    const route = await state.host.persistence.getRuntimeRoute(state.handle, pin.resourceRef.runtimeRouteId);
-                    if (hash(route) !== pin.integrity) fail();
-                    resources.push(...await state.host.executionResources(state.handle, route));
-                }
-            }
-        };
-        await readResources(lineage.plan);
+        await readResources(lineage.plan, resources);
         if (!equalNativeDocuments([...new Set(resources)].sort(), [...new Set(worker.resources)].sort())) fail();
         delegated.set(worker, binding);
     }

@@ -57,7 +57,9 @@ export function projectFanoutGroups(graph, finalWorkerId) {
                 if (scope.has(id)) continue;
                 if (node?.kind === 'join') { ends.add(id); continue; }
                 if (!['agent', 'planner', 'review', 'judge'].includes(node?.kind) || id === finalWorkerId || used.has(id)
-                    || !equal(node.capabilities, ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []])) fail();
+                    || !equal(node.capabilities, ['generation.send', ...node.kind === 'planner' || node.kind === 'agent' && node.capabilities.includes('agent.delegate') && node.capabilities.includes('graph.patch') ? ['graph.patch'] : [], ...node.kind === 'agent' && node.capabilities.includes('agent.delegate') ? ['agent.delegate'] : []])
+                    || node.capabilities.includes('agent.delegate') && (node.kind !== 'agent' || node.policy.allowedPlanPinIds?.length !== 1
+                        || !node.dependencyPinIds.includes(node.policy.allowedPlanPinIds[0]))) fail();
                 scope.add(id);
                 const outgoing = graph.edges.filter(edge => edge.from.nodeId === id);
                 if (!outgoing.length || outgoing.some(edge => edge.loopBack)) fail();

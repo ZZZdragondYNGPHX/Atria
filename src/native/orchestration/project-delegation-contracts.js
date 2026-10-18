@@ -18,6 +18,8 @@ import { projectReviewId } from './project-review-output-contracts.js';
 import { graphReviewControlRef } from './graph-review-completion.js';
 import { projectReplanScope, projectPlannerProgressFingerprint } from './project-replan-contracts.js';
 import { projectDelegatedGraphProfile } from './project-delegated-graph-profile.js';
+import { readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
+import { readGraphFanoutInput } from './graph-fanout-completion.js';
 
 const invalid = () => { throw new TypeError('Invalid Project delegation facts'); };
 
@@ -410,6 +412,32 @@ export async function readProjectDelegationInputs(tx, handle, root, parent, { li
         if (fact.record && !fact.record.envelope.audienceConstraint.nodeIds.includes(parent.nodeId)) invalid();
         if (live) await assertAttemptConsumable(tx, handle, root, fact.producer);
     }
+    if (input.fanoutAttemptId) {
+        if (root.parentRef) await readProjectDelegatedFanoutInput(tx, handle, root, parent, input, root.eventSeq + 1);
+        else {
+            const frame = await readFanoutFrame(tx, handle, root, input.fanoutAttemptId);
+            const branch = frame?.branches.find(branch => branch.scopeNodeIds.includes(parent.nodeId));
+            if (!frame || !branch || !await readFanoutMembership(tx, handle, root, frame, parent.attemptId)) invalid();
+            const fanout = (await readAttempt(tx, handle, root, frame.fanoutAttemptId)).doc;
+            if ([...fanout.inputRefs[0].acceptedGraphResultRefs, ...fanout.inputRefs[0].acceptedControlRefs]
+                .some(ref => !parent.inputRefs.some(actual => equal(actual, ref)))) invalid();
+            const inherited = facts.filter(fact => fanout.inputRefs.some(ref => equal(ref, fact.controlRef ?? fact.receipt.resultRef)));
+            for (const fact of inherited) await readGraphFanoutInput(tx, handle, root, frame.fanoutAttemptId, parent,
+                fact.controlRef ?? fact.receipt.resultRef, fact, { historical: true });
+            const direct = facts.filter(fact => !inherited.includes(fact));
+            if (input.reviewFeedbackRef) await assertDelegationReviewReplacement(tx, handle, root, parent, snapshot, facts, { live });
+            else if (parent.attemptId === branch.entryAttemptId) {
+                if (bindings.length || direct.length) invalid();
+            } else {
+                if (!bindings.length || direct.some(fact => !branch.scopeNodeIds.includes(fact.producer.nodeId))) invalid();
+                const reservedAttemptId = parent.reservationRef ? parent.attemptId : null;
+                const traversal = 'oreceipt_' + hash({ runId: root.runId, bindings, reservedAttemptId }).slice(0, 32);
+                await assertOutputTransition(tx, handle, { ...root, graph: snapshot.graph }, { published: direct[0], additionalProducers: direct.slice(1), output: parent,
+                    producerBindings: bindings, reservedAttemptId, receipt: { decisionSeq: root.eventSeq + 1, traversalReceiptRef: { runId: root.runId, receiptId: traversal } } });
+            }
+        }
+        return facts;
+    }
     if (input.reviewFeedbackRef) {
         if (root.parentRef) {
             // The original child Review copies the resolver's complete input
@@ -473,7 +501,7 @@ async function assertDelegationReviewReplacement(tx, handle, root, parent, snaps
         if (!fact || !edge || edge.from.nodeId !== fact.producer.nodeId || edge.to.nodeId !== parent.nodeId
             || !['always', 'success'].includes(edge.condition) || edge.condition === 'success' && fact.producer.status !== 'completed') invalid();
     }
-    for (const port of node.inputs.filter(port => port.required)) {
+    for (const port of node.inputs.filter(port => port.required && !input.fanoutAttemptId)) {
         if (!bindings.some(binding => snapshot.graph.edges.some(edge => edge.edgeId === binding.edgeId && edge.to.port === port.name))) invalid();
     }
     const direct = facts.filter(fact => bindings.some(binding => binding.producerAttemptId === fact.producer.attemptId)), joined = direct.filter(fact => fact.joinReceipt);

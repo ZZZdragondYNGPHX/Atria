@@ -159,7 +159,7 @@ async function readReplacements(tx, handle, root, review, evidence, verifyContro
         if (node?.kind === 'join') {
             const group = await readReviewableFanoutCompletion(tx, handle, root, attempt.attemptId,
                 { targets: evidence.map(fact => fact.producer), readCompletion: readFanoutCompletion });
-            if (!group || [group.fanout, group.producer, ...group.scopeAttempts.map(item => item.attempt)]
+            if (!group || group.reviewAttempts
                 .some(member => !review.invalidatedAttemptIds.includes(member.attemptId))) invalid();
             fanouts.push(group);
         }
@@ -275,15 +275,31 @@ export async function readReviewableFanoutCompletion(tx, handle, root, joinAttem
     if (targets.some(target => group.some(attempt => attempt.nodeId === target.nodeId))
         || !targets.some(target => graphReachable(root.graph, target.nodeId, fact.fanout.nodeId))
         || group.some(attempt => !targets.some(target => graphReachable(root.graph, target.nodeId, attempt.nodeId)))) return null;
-    for (const { attempt } of fact.scopeAttempts) {
+    const authority = assertBudgetAuthorityRef(root.budgetAuthorityRef), compute = await originalCompute(tx, handle, authority);
+    if (!compute) return null;
+    const reviewAttempts = [fact.fanout, fact.producer];
+    for (const { attempt, results } of fact.scopeAttempts) {
         const node = root.graph.nodes.find(node => node.nodeId === attempt.nodeId);
         if (!node || !['agent', 'planner', 'review', 'judge'].includes(node.kind)
-            || node.capabilities.some(capability => !['generation.send', 'graph.patch', 'memory.retrieve'].includes(capability))) return null;
+            || node.capabilities.some(capability => !['generation.send', 'graph.patch', 'memory.retrieve', 'agent.delegate'].includes(capability))) return null;
+        if (attempt.inputRefs[0]?.kind === ({ native_session: 'native_session_delegation', project: 'native_project_delegation', rp_chat: 'native_rp_delegation' })[root.sourceBinding.sourceAuthority]
+            && (results.length !== 1 || !reviewableDelegationWithBank(root, results[0], compute))) return null;
+        const invalidation = await readAttemptInvalidation(tx, handle, root, attempt);
+        if (invalidation) {
+            const review = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', invalidation.reviewReceiptId))).doc;
+            const reviewer = (await readAttempt(tx, handle, root, review.reviewAttemptId)).doc;
+            // A prior branch-local redo already retired this historical member.
+            // Keep its original invalidation and fees rather than overwriting
+            // it with the later whole-group Review's receipt.
+            if (reviewer.inputRefs[0]?.fanoutAttemptId === fact.fanout.attemptId
+                && review.decisionSeq < fact.joinReceipt.decisionSeq
+                && await readFanoutMembership(tx, handle, root, fact.frame, reviewer.attemptId)) continue;
+        }
+        reviewAttempts.push(attempt);
     }
-    const authority = assertBudgetAuthorityRef(root.budgetAuthorityRef), compute = await originalCompute(tx, handle, authority);
     const effectIds = [...new Set(fact.scopeAttempts.flatMap(item => item.attempt.effectRefs))];
-    if (!compute || !effectIds.length || !effectBudgetClosure(authority, inspectComputeEffectClosure({ compute }, effectIds)).closed) return null;
-    return fact;
+    if (!effectIds.length || !effectBudgetClosure(authority, inspectComputeEffectClosure({ compute }, effectIds)).closed) return null;
+    return { ...fact, reviewAttempts };
 }
 
 async function originalCompute(tx, handle, authority) {
@@ -305,6 +321,11 @@ export async function readReviewableDelegationCompletion(tx, handle, root, attem
 // Only our own fresh typed Result reads enter here. Reuse the current Review's
 // already-read target evidence, keeping the final original-bank read fresh.
 async function reviewableDelegationResult(tx, handle, root, fact) {
+    const authority = assertBudgetAuthorityRef(root.budgetAuthorityRef), compute = await originalCompute(tx, handle, authority);
+    return compute ? reviewableDelegationWithBank(root, fact, compute) : null;
+}
+
+function reviewableDelegationWithBank(root, fact, compute) {
     const producer = fact.producer, attemptId = producer.attemptId, node = root.graph.nodes.find(node => node.nodeId === producer.nodeId);
     if (producer.status !== 'completed' || node?.kind !== 'agent' || !node.capabilities.includes('agent.delegate') || producer.resultRefs.length !== 1) return null;
     const continuation = fact?.delegationContinuation, child = continuation?.lineage.child, output = continuation?.output;
@@ -312,8 +333,6 @@ async function reviewableDelegationResult(tx, handle, root, fact) {
         || child.parentRef?.nodeAttemptId !== attemptId || child.parentRef.parentRunId !== root.runId
         || child.graph.outputContract.kind !== 'result' || !output?.closure
         || child.graph.capabilityCeiling.some(capability => !['generation.send', 'graph.patch', 'agent.delegate', 'memory.retrieve'].includes(capability))) return null;
-    const authority = assertBudgetAuthorityRef(root.budgetAuthorityRef), compute = await originalCompute(tx, handle, authority);
-    if (!compute) return null;
     const tree = inspectComputeChildClosure({ compute }, child.runId), reservations = [tree.reservation, ...tree.descendantReservations];
     const rows = [...tree.modelAttempts, ...tree.localWork];
     if (tree.overrun || reservations.some(row => row.status !== 'released') || rows.some(row => row.status !== 'settled')

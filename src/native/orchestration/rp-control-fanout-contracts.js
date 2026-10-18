@@ -1,3 +1,4 @@
+import { assertRpDelegationFanoutClosure, readRpDelegationContinuation } from './rp-delegated-quality-contracts.js';
 import { readGraphReviewCompletion } from './graph-review-completion.js';
 import { hashNativeDocument as hash, equalNativeDocuments as same } from '../repositories/common.js';
 import { readGraphFanoutCompletion } from './graph-fanout-completion.js';
@@ -25,7 +26,7 @@ async function memberInput(tx, handle, root, attempt, { frame, branch, reservati
     const input = attempt.inputRefs[0], node = graphSnapshot.graph.nodes.find(node => node.nodeId === attempt.nodeId);
     const pin = plan.dependencyPins.find(pin => pin.pinId === node?.policy.agentPinId && node.dependencyPinIds.includes(pin.pinId));
     if (root.sourceBinding.sourceAuthority !== 'rp_chat' || root.parentRef || !['agent', 'planner', 'review'].includes(node?.kind)
-        || !node.capabilities.includes('generation.send') || input.kind !== 'native_rp_intent' || input.nodeId !== attempt.nodeId || input.role !== 'narrator'
+        || !node.capabilities.includes('generation.send') || !['native_rp_intent', 'native_rp_delegation'].includes(input.kind) || input.nodeId !== attempt.nodeId || input.role !== 'narrator'
         || !same(input.planRef, root.planRef) || !same(input.sourceRef, root.sourceBinding.sourceRef)
         || !same(input.audience, audienceContextPin(node, plan.dependencyPins)?.resourceRef.audience ?? { kind: 'narrator' })
         || input.fanoutAttemptId !== frame.fanoutAttemptId || !branch.scopeNodeIds.includes(node.nodeId)
@@ -97,13 +98,18 @@ async function memberCost(tx, handle, root, attempt, { settlement, results, fram
         await assertRpControlInput(tx, handle, root, review);
     }
     if (published && attempt.inputRefs[0]?.reviewFeedbackRef) await assertRpControlInput(tx, handle, root, published);
+    const delegation = attempt.inputRefs[0]?.kind === 'native_rp_delegation'
+        ? published?.delegationContinuation ?? await readRpDelegationContinuation(tx, handle, root, attempt, effect) : null;
     const terminal = completed ? null : await readModelTerminalFact(handle, tx, root, effect);
     const fact = completed ?? terminal;
     if (!fact || effect.nodeAttemptId !== attempt.attemptId || effect.capability !== 'generation.send' || effect.risk !== 'R1' || effect.requiresApproval
         || effect.sourceBindingDigest !== root.sourceBinding.bindingDigest || effect.epoch !== attempt.epoch || effect.grantDigest !== attempt.effectiveGrantDigest
-        || !same(effect.inputRef, attempt.inputRefs[0]) || effect.inputHash !== hash(attempt.inputRefs[0])
+        || !same(effect.inputRef, delegation ? { ...attempt.inputRefs[0], kind: 'native_rp_intent',
+            acceptedResultRef: delegation.output.claim.resultRef, returnReceiptRef: { runId: root.runId, receiptId: delegation.returnReceipt.receiptId },
+            parentInputDigest: attempt.inputDigest } : attempt.inputRefs[0]) || effect.inputHash !== hash(effect.inputRef)
         || !same(settlement.effectReceiptRefs, [fact.receiptRef.receiptId, ...retrieval.map(item => item.receiptId)])
         || (planner || review ? false : results.length ? !completed || settlement.outcome !== 'completed' : terminal?.kind !== (settlement.outcome === 'failed' ? 'rejected' : 'late_response'))) invalid();
+    if (delegation) assertRpDelegationFanoutClosure(root, delegation, compute);
     const sends = fact.observation.dispatchEvidence.reference.attempts;
     if (!sends?.length) invalid();
     for (const [ordinal, send] of sends.entries()) {

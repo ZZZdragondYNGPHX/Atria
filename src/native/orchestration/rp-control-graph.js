@@ -98,7 +98,6 @@ export function rpControlGraph(plan, { force = false } = {}) {
     const used = new Set(models.flatMap(node => node.dependencyPinIds));
     if (plan.dependencyPins.some(pin => !used.has(pin.pinId)) || planners.length && !graph.graphChangePolicy.allowedOperations.length) fail();
     const fanouts = rpControlFanoutGroups(graph, narrator.nodeId);
-    if (fanouts.some(group => group.branches.some(branch => branch.scopeNodeIds.some(id => graph.nodes.find(node => node.nodeId === id).capabilities.includes('agent.delegate'))))) fail();
     return { models, narrator, output, fanouts };
 }
 

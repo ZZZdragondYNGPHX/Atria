@@ -5,7 +5,7 @@ import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readAttempt, controlRecordKey } from './controller-common.js';
 import { readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
-import { readSessionDelegation } from './session-delegation-contracts.js';
+import { readSessionDelegation, readSessionDelegationContinuation, assertSessionDelegationBudgetClosure } from './session-delegation-contracts.js';
 import { readGraphNodeResults } from './graph-result-contracts.js';
 import { readSessionDelegatedControl, readSessionDelegatedJudgeCompletion, readSessionDelegatedReviewCompletion, readSessionDelegatedReviewReplacement } from './session-delegated-quality-contracts.js';
 import { readGraphFanoutCompletion, readGraphFanoutInput } from './graph-fanout-completion.js';
@@ -51,19 +51,25 @@ async function refs(tx, handle, root, input) {
 
 /** Typed stage inputs only; no new Source, capability or reservation is issued. */
 export async function readSessionDelegatedFanoutInput(tx, handle, root, producer, input, publicationSeq) {
+    const resolver = producer.inputRefs[0];
+    const nested = resolver.kind === 'native_session_delegation' ? await readSessionDelegationContinuation(tx, handle, root, producer,
+        { inputRef: input, nodeAttemptId: producer.attemptId, sourceBindingDigest: root.sourceBinding.bindingDigest }) : null;
+    const original = nested ? { ...input, kind: resolver.kind, childPlanRef: resolver.childPlanRef, delegationScope: resolver.delegationScope } : input;
+    if (nested) for (const field of ['acceptedResultRef', 'returnReceiptRef', 'parentInputDigest']) delete original[field];
+    if (!equal(original, resolver)) invalid();
     const lineage = await childIdentity(tx, handle, root), frame = await readFanoutFrame(tx, handle, root, input.fanoutAttemptId);
     if (!frame || !await readFanoutMembership(tx, handle, root, frame, producer.attemptId)) invalid();
     const snapshot = await readTaskGraphRevision(tx, handle, root, producer.graphRevision), node = snapshot.graph.nodes.find(node => node.nodeId === producer.nodeId);
     const branch = frame.branches.find(branch => branch.scopeNodeIds.includes(node?.nodeId)), fanout = (await readAttempt(tx, handle, root, frame.fanoutAttemptId)).doc;
     const pin = lineage.plan.dependencyPins.find(pin => pin.pinId === node?.policy.agentPinId);
     if (!branch || !['agent', 'planner', 'review', 'judge'].includes(node.kind)
-        || !equal([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []].sort()) || input.kind !== 'native_session_delegated_intent' || input.role !== 'narrator' || !equal(input.audience, lineage.parentInput.audience)
+        || !equal([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : [], ...node.policy.allowedPlanPinIds?.length ? ['agent.delegate', ...node.capabilities.includes('graph.patch') ? ['graph.patch'] : []] : []].sort()) || input.kind !== 'native_session_delegated_intent' || input.role !== 'narrator' || !equal(input.audience, lineage.parentInput.audience)
         || input.nodeId !== producer.nodeId || input.parentRunId !== root.parentRef.parentRunId || input.parentAttemptId !== root.parentRef.nodeAttemptId
         || input.parentEpoch !== root.parentRef.parentEpoch || input.childRunId !== root.runId || input.childEpoch !== producer.epoch
         || input.delegationInputDigest !== root.parentRef.inputDigest || !equal(input.sourceRef, root.sourceBinding.sourceRef) || !equal(input.planRef, root.planRef)
         || !pin || pin.port !== 'model' || !node.dependencyPinIds.includes(pin.pinId) || !equal(input.routeRef, pin.resourceRef)
         || producer.effectiveGrantDigest !== root.parentRef.effectiveGrantDigest || !equal(producer.budgetRef, root.budgetAuthorityRef)
-        || !equal(producer.inputRefs, [input, ...root.parentRef.inputRefs, ...input.acceptedGraphResultRefs, ...input.acceptedControlRefs ?? []])
+        || !equal(producer.inputRefs, [resolver, ...root.parentRef.inputRefs, ...input.acceptedGraphResultRefs, ...input.acceptedControlRefs ?? []])
         || producer.inputDigest !== hash(producer.inputRefs)) invalid();
     const actor = sessionDelegationResultSources(root, producer, lineage.plan)[0], scope = input.delegationScope;
     if (!scope || scope.parentPinId !== lineage.parentPin.pinId || scope.childPinId !== actor.pinId
@@ -76,7 +82,7 @@ export async function readSessionDelegatedFanoutInput(tx, handle, root, producer
     if (facts.some(fact => fact.receipt.decisionSeq >= publicationSeq || fact.record && !fact.record.envelope.audienceConstraint.nodeIds.includes(node.nodeId))) invalid();
     if (input.reviewFeedbackRef) {
         const replacement = await readSessionDelegatedReviewReplacement(tx, handle, root, producer, input);
-        return { lineage, input, sources: facts, bindings: input.graphBindings, loops: [], replacement };
+        return { lineage, input, nested, sources: facts, bindings: input.graphBindings, loops: [], replacement };
     }
     const judges = facts.filter(fact => fact.selectedResultRef);
     assertSessionJudgeSelections({ ...root, graph: snapshot.graph }, node, input.acceptedGraphResultRefs, judges);
@@ -96,7 +102,7 @@ export async function readSessionDelegatedFanoutInput(tx, handle, root, producer
             producerBindings: bindings, reservedAttemptId, receipt: { decisionSeq: publicationSeq,
                 traversalReceiptRef: { runId: root.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } } });
     }
-    return { lineage, input, sources: facts, bindings, loops: [], replacement: null };
+    return { lineage, input, nested, sources: facts, bindings, loops: [], replacement: null };
 }
 
 async function memberInput(tx, handle, root, attempt, { frame, branch, reservation, settlement, results }) {
@@ -112,7 +118,9 @@ async function memberInput(tx, handle, root, attempt, { frame, branch, reservati
         if (results.length !== 1 || !proof || !equal(fact.producer, attempt) || !equal(fact.settlement, settlement)
             || proof.requestedRootDigest !== hash(root) || proof.producerDigest !== hash(attempt)
             || !fact.modelEffect || proof.effectDigest !== hash(fact.modelEffect) || !fact.modelCompletion
-            || !equal(attempt.effectRefs, [fact.modelEffect.effectId]) || !equal(proof.input, attempt.inputRefs[0])) invalid();
+            || !equal(attempt.effectRefs, [fact.modelEffect.effectId]) || !(proof.nested
+            ? equal(proof.nested.lineage.parentAttempt, attempt) && equal(proof.input, fact.modelEffect.inputRef)
+            : equal(proof.input, attempt.inputRefs[0]))) invalid();
         return;
     }
     await readSessionDelegatedFanoutInput(tx, handle, root, attempt, attempt.inputRefs[0], settlement.decisionSeq);
@@ -145,8 +153,10 @@ async function memberCost(tx, handle, root, attempt, { frame, settlement, result
         if (attempt.status !== 'cancelled' || settlement.effectReceiptRefs.length || results.length) invalid(); return;
     }
     if (attempt.effectRefs.length !== 1) invalid();
-    const effect = (await readEffect(tx, handle, root, attempt.effectRefs[0])).doc;
-    const fact = await readModelCompletionReceipt(handle, tx, root, effect) ?? await readModelTerminalFact(handle, tx, root, effect);
+    const saved = results[0], effect = saved?.modelEffect ?? (await readEffect(tx, handle, root, attempt.effectRefs[0])).doc;
+    const fact = saved?.modelCompletion ?? await readModelCompletionReceipt(handle, tx, root, effect) ?? await readModelTerminalFact(handle, tx, root, effect);
+    if (saved && (!equal(saved.producer, attempt) || !equal(saved.settlement, settlement) || !equal(attempt.effectRefs, [effect.effectId])
+        || !fact || !equal(saved.receipt.modelReceiptRef, fact.receiptRef))) invalid();
     const planner = root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'planner' && attempt.status === 'completed'
         ? await readSessionPlannerCompletion(tx, handle, root, attempt.attemptId) : null;
     if (planner) {
@@ -162,6 +172,10 @@ async function memberCost(tx, handle, root, attempt, { frame, settlement, result
         ? await readSessionDelegatedReviewCompletion(tx, handle, root, attempt.attemptId) : null;
     if (review && (results.length || !equal(review.producer, attempt) || !equal(review.settlement, settlement)
         || !fact || !equal(review.receipt.modelReceiptRef, fact.receiptRef))) invalid();
+    if (attempt.inputRefs[0]?.kind === 'native_session_delegation') {
+        const nested = results[0]?.delegationContinuation ?? await readSessionDelegationContinuation(tx, handle, root, attempt, effect);
+        await assertSessionDelegationBudgetClosure(tx, handle, root, nested);
+    }
     const bank = (await readRunControl(tx, handle, root.budgetAuthorityRef.sessionId))?.operations[root.budgetAuthorityRef.operationId]?.compute;
     const fees = bank?.attempts.filter(row => row.orchestration?.effectId === effect.effectId), local = bank?.localWork?.filter(row => row.orchestration?.effectId === effect.effectId) ?? [];
     if (!fact || !fees || fees.length !== 1 || [...fees, ...local].some(row => row.reservationId !== root.runId || row.status !== 'settled')

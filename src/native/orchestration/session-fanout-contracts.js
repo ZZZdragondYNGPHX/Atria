@@ -1,3 +1,4 @@
+import { readSessionDelegationContinuation, assertSessionDelegationBudgetClosure } from './session-delegation-contracts.js';
 import { readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readPlanRevision } from './plan-repository.js';
@@ -32,8 +33,10 @@ export async function readSessionFanoutCompletion(tx, handle, root, joinAttemptI
                 if (attempt.status !== 'cancelled' || settlement.effectReceiptRefs.length || results.length) invalid();
                 return;
             }
-            const intent = (await readEffect(tx, handle, root, attempt.effectRefs[0])).doc;
-            const fact = await readModelCompletionReceipt(handle, tx, root, intent) ?? await readModelTerminalFact(handle, tx, root, intent);
+            const saved = results[0], intent = saved?.modelEffect ?? (await readEffect(tx, handle, root, attempt.effectRefs[0])).doc;
+            const fact = saved?.modelCompletion ?? await readModelCompletionReceipt(handle, tx, root, intent) ?? await readModelTerminalFact(handle, tx, root, intent);
+            if (saved && (!same(saved.producer, attempt) || !same(saved.settlement, settlement) || !same(attempt.effectRefs, [intent.effectId])
+                || !fact || !same(saved.receipt.modelReceiptRef, fact.receiptRef))) invalid();
             const planner = root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'planner' && attempt.status === 'completed'
                 ? await readSessionPlannerCompletion(tx, handle, root, attempt.attemptId) : null;
             if (planner) {
@@ -49,6 +52,10 @@ export async function readSessionFanoutCompletion(tx, handle, root, joinAttemptI
                 ? await readSessionReviewCompletion(tx, handle, root, attempt.attemptId) : null;
             if (review && (results.length || !same(review.producer, attempt) || !same(review.settlement, settlement)
                 || !fact || !same(review.receipt.modelReceiptRef, fact.receiptRef))) invalid();
+            if (attempt.inputRefs[0]?.kind === 'native_session_delegation') {
+                const nested = results[0]?.delegationContinuation ?? await readSessionDelegationContinuation(tx, handle, root, attempt, intent);
+                await assertSessionDelegationBudgetClosure(tx, handle, root, nested);
+            }
             if (!fact || intent.capability !== 'generation.send' || intent.nodeAttemptId !== attempt.attemptId || intent.epoch !== attempt.epoch
                 || !same(settlement.effectReceiptRefs, [fact.receiptRef.receiptId])
                 || (attempt.status === 'completed' ? planner || judge || review ? false : !results.length || settlement.reasonCode !== 'graph_result_published'
@@ -96,13 +103,20 @@ async function verifySessionFanoutInput(tx, handle, root, attempt, { frame, bran
             || !branch.scopeNodeIds.includes(attempt.nodeId)) invalid();
         return;
     }
-    const graph = graphSnapshot.graph, node = graph.nodes.find(node => node.nodeId === attempt.nodeId), input = attempt.inputRefs[0];
+    const graph = graphSnapshot.graph, node = graph.nodes.find(node => node.nodeId === attempt.nodeId), resolver = attempt.inputRefs[0];
+    const delegation = resolver.kind === 'native_session_delegation';
+    const intent = delegation ? results[0]?.modelEffect ?? (await readEffect(tx, handle, root, attempt.effectRefs[0])).doc : null;
+    const input = delegation ? intent.inputRef : resolver;
+    if (delegation) {
+        const nested = results[0]?.delegationContinuation ?? await readSessionDelegationContinuation(tx, handle, root, attempt, intent);
+        await assertSessionDelegationBudgetClosure(tx, handle, root, nested);
+    }
     const pin = plan.dependencyPins.find(pin => pin.pinId === node.policy.agentPinId);
-    if (!['agent', 'planner', 'review', 'judge'].includes(node.kind) || !branch.scopeNodeIds.includes(node.nodeId) || !same([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []].sort())
+    if (!['agent', 'planner', 'review', 'judge'].includes(node.kind) || !branch.scopeNodeIds.includes(node.nodeId) || !same([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : [], ...node.policy.allowedPlanPinIds?.length ? ['agent.delegate', ...node.capabilities.includes('graph.patch') ? ['graph.patch'] : []] : []].sort())
         || input.kind !== 'native_turn_intent' || input.nodeId !== node.nodeId || input.role !== 'narrator'
         || !same(input.planRef, root.planRef) || !['sessionId', 'branchId', 'revisionId'].every(field => input.sourceRef[field] === root.sourceBinding.sourceRef[field])
         || !same(input.routeRef, pin.resourceRef) || input.routeIntegrity !== pin.integrity || input.fanoutAttemptId !== frame.fanoutAttemptId
-        || !same(attempt.inputRefs, [input, ...input.acceptedGraphResultRefs, ...(input.acceptedControlRefs ?? [])])
+        || !same(attempt.inputRefs, [resolver, ...input.acceptedGraphResultRefs, ...(input.acceptedControlRefs ?? [])])
         || attempt.inputDigest !== hash(attempt.inputRefs) || attempt.effectiveGrantDigest !== input.grantDigest || attempt.effectRefs.length > 1
         || (attempt.status === 'completed' ? results.length !== (['planner', 'review', 'judge'].includes(node.kind) ? 0 : 1) : results.length !== 0)) invalid();
     if (node.kind === 'review') {

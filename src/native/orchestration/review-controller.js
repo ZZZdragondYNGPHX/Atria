@@ -53,7 +53,7 @@ export class ReviewController {
                 await readAttemptSettlement(tx, handle, root, target); targets.push(target);
             }
             const scope = reviewer.inputRefs?.[0]?.fanoutAttemptId
-                ? await readFanoutReviewScope(tx, handle, root, reviewer, targets) : null;
+                ? await readFanoutReviewScope(tx, handle, root, reviewer, targets, { rerun: decision === 'rerun' }) : null;
             if (reviewer.inputRefs?.[0]?.fanoutAttemptId && !scope) deny('native_orchestration_review_target_invalid');
             if (scope) await assertFanoutAdmission({ tx, handle, root, attempt: reviewer, reserveSlot: false });
             // The original producer verifies the actual JSON Model completion,

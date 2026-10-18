@@ -5,12 +5,13 @@ import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readAttempt, controlRecordKey } from './controller-common.js';
 import { readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
-import { readProjectDelegation } from './project-delegation-contracts.js';
+import { readProjectDelegation, readProjectDelegationInputs, readProjectDelegatedModelInput } from './project-delegation-contracts.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { readProjectDelegatedControl, readProjectDelegatedReviewReplacement, assertProjectDelegatedJudgeSelections } from './project-delegated-quality-contracts.js';
 import { readGraphFanoutCompletion, readGraphFanoutInput } from './graph-fanout-completion.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { assertProjectFanoutMemberCost } from './project-fanout-contracts.js';
+import { readEffect } from './effect-contracts.js';
 
 const invalid = () => { throw new TypeError('Invalid original Project child Fanout facts'); };
 
@@ -50,14 +51,17 @@ export async function readProjectDelegatedFanoutInput(tx, handle, root, producer
     const snapshot = await readTaskGraphRevision(tx, handle, root, producer.graphRevision), node = snapshot.graph.nodes.find(node => node.nodeId === producer.nodeId);
     const branch = frame.branches.find(branch => branch.scopeNodeIds.includes(node?.nodeId)), fanout = (await readAttempt(tx, handle, root, frame.fanoutAttemptId)).doc;
     const pin = lineage.plan.dependencyPins.find(pin => pin.pinId === node?.policy.agentPinId);
+    const stored = producer.inputRefs[0], delegating = stored.kind === 'native_project_delegation';
     if (!branch || !['agent', 'planner', 'review', 'judge'].includes(node.kind)
-        || !equal([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []].sort()) || input.kind !== 'native_project_delegated_intent' || input.role !== 'studio' || !equal(input.audience, { kind: 'task', id: root.runId })
+        || !equal([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' || delegating && node.capabilities.includes('graph.patch') ? ['graph.patch'] : [], ...delegating ? ['agent.delegate'] : []].sort())
+        || delegating && node.kind !== 'agent' || !['native_project_delegated_intent', 'native_project_delegation'].includes(input.kind)
+        || input.kind === 'native_project_delegation' && !equal(input, stored) || input.role !== 'studio' || !equal(input.audience, { kind: 'task', id: root.runId })
         || input.nodeId !== producer.nodeId || input.parentRunId !== root.parentRef.parentRunId || input.parentAttemptId !== root.parentRef.nodeAttemptId
         || input.parentEpoch !== root.parentRef.parentEpoch || input.childRunId !== root.runId || input.childEpoch !== producer.epoch
         || input.delegationInputDigest !== root.parentRef.inputDigest || !equal(input.sourceRef, root.sourceBinding.sourceRef) || !equal(input.planRef, root.planRef)
         || !pin || pin.port !== 'model' || !node.dependencyPinIds.includes(pin.pinId) || !equal(input.routeRef, pin.resourceRef)
         || producer.effectiveGrantDigest !== root.parentRef.effectiveGrantDigest || !equal(producer.budgetRef, root.budgetAuthorityRef)
-        || !equal(producer.inputRefs, [input, ...root.parentRef.inputRefs, ...input.acceptedGraphResultRefs, ...input.acceptedControlRefs ?? []])
+        || !equal(producer.inputRefs, [stored, ...root.parentRef.inputRefs, ...input.acceptedGraphResultRefs, ...input.acceptedControlRefs ?? []])
         || producer.inputDigest !== hash(producer.inputRefs)) invalid();
     const facts = await refs(tx, handle, root, input), inherited = facts.filter(fact => fanout.inputRefs.some(ref => equal(ref, fact.controlRef ?? fact.receipt.resultRef)));
     if ([...fanout.inputRefs[0].acceptedGraphResultRefs, ...fanout.inputRefs[0].acceptedControlRefs].some(ref => !producer.inputRefs.some(actual => equal(actual, ref)))) invalid();
@@ -94,7 +98,15 @@ async function memberInput(tx, handle, root, attempt, { frame, branch, reservati
             || attempt.reservationRef.producerAttemptId !== frame.fanoutAttemptId || !branch.scopeNodeIds.includes(attempt.nodeId)) invalid();
         return;
     }
-    await readProjectDelegatedFanoutInput(tx, handle, root, attempt, attempt.inputRefs[0], settlement.decisionSeq);
+    if (attempt.inputRefs[0].kind === 'native_project_delegation') {
+        if (!attempt.effectRefs.length && attempt.status === 'cancelled' && attempt.startedAt === null) {
+            await readProjectDelegationInputs(tx, handle, root, attempt);
+            return;
+        }
+        if (attempt.effectRefs.length !== 1) invalid();
+        const effect = (await readEffect(tx, handle, root, attempt.effectRefs[0])).doc;
+        await readProjectDelegatedModelInput(tx, handle, root, attempt, effect, settlement.decisionSeq);
+    } else await readProjectDelegatedFanoutInput(tx, handle, root, attempt, attempt.inputRefs[0], settlement.decisionSeq);
 }
 
 async function controlInput(tx, handle, root, attempt, { settlement, frame }) {

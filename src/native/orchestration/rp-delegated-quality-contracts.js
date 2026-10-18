@@ -1,3 +1,4 @@
+import { inspectComputeChildClosure } from '../../../public/shared/native-compute-budget.js';
 import { rpOutputReceiptId } from './rp-output-contracts.js';
 import { readRpDelegatedFanoutInput, readRpDelegatedFanoutCompletion } from './rp-delegated-fanout-contracts.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -255,6 +256,19 @@ async function durableRpChild(tx, handle, child) {
     return durable;
 }
 
+/** The caller supplies its own fresh original RP bank, never a read grant. */
+export function assertRpDelegationFanoutClosure(root, continuation, compute) {
+    const { child } = continuation.lineage, { closure } = continuation.output;
+    if (!compute || !equal(closure.authorityRef, root.budgetAuthorityRef)) invalid();
+    const tree = inspectComputeChildClosure({ compute }, child.runId), reservations = [tree.reservation, ...tree.descendantReservations];
+    const rows = [...tree.modelAttempts, ...tree.localWork];
+    if (tree.overrun || reservations.some(row => row.status !== 'released') || rows.some(row => row.status !== 'settled')
+        || reservations.length !== closure.reservationRefs.length || rows.length !== closure.budgetAttemptRefs.length
+        || reservations.some(row => !closure.reservationRefs.some(ref => ref.reservationId === row.reservationId
+            && ref.parentReservationId === row.parentReservationId && ref.status === row.status))
+        || rows.some(row => !closure.budgetAttemptRefs.some(ref => ref.attemptId === row.attemptId && ref.reservationId === row.reservationId))) invalid();
+}
+
 /** The resumed Model keeps its original resolver Attempt and consumes only
  * the actual returned descendant. This is historical proof, not a read grant. */
 export async function readRpDelegationContinuation(tx, handle, parent, producer, intent) {
@@ -307,7 +321,7 @@ async function readControlInputFactsFresh(tx, handle, child, producer, intent, p
     }
     if (pin?.port !== 'model' || !node.dependencyPinIds.includes(pin.pinId) || !equal(input.routeRef, pin.resourceRef)
         || intent.actionRef.kind !== 'native_model_send' || intent.actionRef.runtimeRouteId !== pin.resourceRef.runtimeRouteId) invalid();
-    if (input.fanoutAttemptId) return { ...await readRpDelegatedFanoutInput(tx, handle, child, producer, input, publicationSeq),
+    if (input.fanoutAttemptId) return { ...await readRpDelegatedFanoutInput(tx, handle, child, producer, input, publicationSeq), nested,
         requestedRootDigest: hash(child), producerDigest: hash(producer), effectDigest: hash(intent) };
     const sources = await readInputSources(tx, handle, child, bundle, producer.nodeId, { beforeSeq: publicationSeq }, ownedFacts);
     if (sources.some(fact => fact.receipt.decisionSeq >= publicationSeq)

@@ -69,7 +69,7 @@ export async function readProjectDelegatedReviewCompletion(tx, handle, root, att
         const input = { ...target.inputRefs[0], reviewFeedbackRef: { reviewReceiptRef: fact.receipt.reviewReceiptRef, reasonCode: fact.review.reasonCode } };
         if (!equal(next.inputRefs, [input, ...target.inputRefs.slice(1)]) || next.effectiveGrantDigest !== target.effectiveGrantDigest) invalid();
     }
-    const groupAttempts = new Set(fact.rerunFanouts.flatMap(joined => [joined.fanout, joined.producer, ...joined.scopeAttempts.map(item => item.attempt)]).map(attempt => attempt.attemptId));
+    const groupAttempts = new Set(fact.rerunFanouts.flatMap(joined => joined.reviewAttempts).map(attempt => attempt.attemptId));
     for (const id of fact.review.invalidatedAttemptIds) {
         const attempt = (await readAttempt(tx, handle, root, id)).doc, node = snapshot.graph.nodes.find(node => node.nodeId === attempt.nodeId);
         // The original generic readReplacements above already proved each

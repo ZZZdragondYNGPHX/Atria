@@ -705,8 +705,8 @@ export class NativeNarratorOrchestrationAuthority {
             if (logicalInputRef.fanoutAttemptId && !graphPrepareOnly) await service.runs.withSourceControl(handle, root.runId, prepare,
                 { withAuthority: service.sourcePort.consumptionBoundary(handle, captured.sourceBinding, { engine: this.engine }) });
             else await prepare();
+            if (graphPrepareOnly) { this.#sessionGraphCaptures.delete(state.graphCapture); this.#releaseSessionState(state); return { attemptId: state.attemptId, runId: root.runId }; }
             if (delegationPrepareOnly) return state;
-            if (graphPrepareOnly) { this.#releaseSessionState(state); return { attemptId: state.attemptId, runId: root.runId }; }
             const contextSnapshot = graphWorker ? base : originalAuthority?.prepared.candidate ?? base;
             const contextPackage = !resolverRole && (contextSnapshot.manifest.runtime.experienceContract.contextRuntime || contextSnapshot.manifest.runtime.experienceContract.processingRuntime)
                 ? await host.packageInstaller.open(handle, base.session.packageId, base.session.packageVersionId) : null;
@@ -1460,7 +1460,7 @@ export class NativeNarratorOrchestrationAuthority {
         const declared = [], plannerProgress = new Map();
         for (const node of profile.branches) {
             const model = selected.collaboration.profiles.find(item => item.node.nodeId === node.nodeId);
-            const prepared = await this.#prepareRole({ ...args, graphProfile: model, graphProgress: progress, graphInheritedBindings: inherited, graphPrepareOnly: true }, 'narrator');
+            const prepared = await this.#prepareRole({ ...args, graphProfile: model, graphProgress: progress, graphInheritedBindings: inherited, graphPrepareOnly: true, delegationPrepareOnly: !!model.delegation }, 'narrator');
             const scope = profile.branchScopes.find(scope => scope.entry.nodeId === node.nodeId), attempts = new Map([[node.nodeId, prepared.attemptId]]);
             const models = new Map([[node.nodeId, model]]);
             for (const member of scope.ordered.filter(member => member.nodeId !== node.nodeId)) {
@@ -1520,7 +1520,7 @@ export class NativeNarratorOrchestrationAuthority {
         };
         const group = await nativeTaskScheduler.withResourceFanout(originalPermit.boundary, originalPermit.expected,
             await Promise.all(declared.map(async item => {
-                const resources = [...new Set((await Promise.all([...item.models.values()].map(model => args.host.executionResources(handle, model.resolved.route)))).flat())].sort(), expected = immutable({ owner: handle,
+                const resources = [...new Set((await Promise.all([...item.models.values()].flatMap(model => [model, ...model.delegation?.resourceProfiles ?? []]).map(model => args.host.executionResources(handle, model.resolved.route)))).flat())].sort(), expected = immutable({ owner: handle,
                     anchor: originalPermit.expected.anchor, kind: 'model_task', executionClass: originalPermit.expected.executionClass, resources,
                     key: 'session-fanout:' + runId + ':' + item.attemptId,
                     fingerprint: hash({ runId, attemptId: item.attemptId, models: [...item.models].map(([nodeId, model]) => [nodeId, model.configDigest]) }) });

@@ -18,6 +18,8 @@ import { readAttempt, controlRecordKey } from './controller-common.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { readGraphReviewCompletion } from './graph-review-completion.js';
 import { PROJECT_QUALITY_REASONS } from './project-quality-profile.js';
+import { readProjectDelegationInputs, readProjectDelegationContinuation } from './project-delegation-contracts.js';
+import { inspectComputeChildClosure } from '../../../public/shared/native-compute-budget.js';
 
 const invalid = () => { throw new TypeError('Invalid original Project Fanout Join facts'); };
 
@@ -25,6 +27,15 @@ async function memberInput(tx, handle, root, attempt, { frame, branch, reservati
     if (attempt.inputState === 'reserved') {
         if (!reservation || attempt.status !== 'cancelled' || attempt.inputRefs !== null || attempt.effectiveGrantDigest !== null
             || attempt.budgetRef !== null || attempt.reservationRef.producerAttemptId !== frame.fanoutAttemptId || !branch.scopeNodeIds.includes(attempt.nodeId)) invalid();
+        return;
+    }
+    if (attempt.inputRefs[0].kind === 'native_project_delegation') {
+        if (attempt.inputRefs[0].fanoutAttemptId !== frame.fanoutAttemptId) invalid();
+        await readProjectDelegationInputs(tx, handle, root, attempt);
+        if (attempt.effectRefs.length) {
+            if (attempt.effectRefs.length !== 1) invalid();
+            await readProjectDelegationContinuation(tx, handle, root, attempt, (await readEffect(tx, handle, root, attempt.effectRefs[0])).doc);
+        }
         return;
     }
     const input = attempt.inputRefs[0], snapshot = await readTaskGraphRevision(tx, handle, root, attempt.graphRevision);
@@ -117,11 +128,22 @@ export async function assertProjectFanoutMemberCost(tx, handle, root, attempt, {
             executionFingerprint: root.sourceBinding.sourceRef.executionFingerprint }) || !same(root.sourceBinding.budgetAuthorityRef, bank)
         || attempt.effectRefs.length > 1) invalid();
     if (!attempt.effectRefs.length) {
-        if (settlement.outcome !== 'cancelled' || settlement.effectReceiptRefs.length || results.length) invalid();
+        if (settlement.outcome !== 'cancelled' || settlement.effectReceiptRefs.length || results.length
+            || attempt.inputRefs?.[0]?.kind === 'native_project_delegation' && attempt.startedAt !== null) invalid();
         return;
     }
-    const effect = (await readEffect(tx, handle, root, attempt.effectRefs[0])).doc;
-    const completed = await readModelCompletionReceipt(handle, tx, root, effect), terminal = completed ? null : await readModelTerminalFact(handle, tx, root, effect);
+    const result = results.length === 1 && same(results[0].producer, attempt) ? results[0] : null;
+    const effect = result?.modelEffect ?? (await readEffect(tx, handle, root, attempt.effectRefs[0])).doc;
+    if (effect.effectId !== attempt.effectRefs[0]) invalid();
+    const continuation = attempt.inputRefs[0].kind === 'native_project_delegation'
+        ? result?.delegationContinuation ?? await readProjectDelegationContinuation(tx, handle, root, attempt, effect) : null;
+    if (continuation) {
+        const child = continuation.lineage.child, closure = inspectComputeChildClosure({ compute: task.compute }, child.runId);
+        if (closure.overrun || [closure.reservation, ...closure.descendantReservations].some(row => row.status !== 'released')
+            || [...closure.modelAttempts, ...closure.localWork].some(row => row.status !== 'settled')) invalid();
+    }
+    const completed = result?.modelCompletion ?? await readModelCompletionReceipt(handle, tx, root, effect), terminal = completed ? null : await readModelTerminalFact(handle, tx, root, effect);
+    if (result && (!completed || !same(completed.receiptRef, result.receipt.modelReceiptRef))) invalid();
     const planner = root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'planner' && settlement.outcome === 'completed'
         ? await readGraphPlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork: assertProjectControlWork }) : null;
     if (planner) {
@@ -143,7 +165,7 @@ export async function assertProjectFanoutMemberCost(tx, handle, root, attempt, {
     const fact = completed ?? terminal;
     if (!fact || effect.nodeAttemptId !== attempt.attemptId || effect.capability !== 'generation.send' || effect.risk !== 'R1' || effect.requiresApproval
         || effect.sourceBindingDigest !== root.sourceBinding.bindingDigest || effect.epoch !== attempt.epoch || effect.grantDigest !== attempt.effectiveGrantDigest
-        || !same(effect.inputRef, attempt.inputRefs[0]) || effect.inputHash !== hash(attempt.inputRefs[0])
+        || !continuation && !same(effect.inputRef, attempt.inputRefs[0]) || effect.inputHash !== hash(effect.inputRef)
         || !same(settlement.effectReceiptRefs, [fact.receiptRef.receiptId])
         || (planner || judge || review ? false : results.length ? !completed || settlement.outcome !== 'completed' : terminal?.kind !== (settlement.outcome === 'failed' ? 'rejected' : 'late_response'))) invalid();
     const sends = fact.observation.dispatchEvidence.reference.attempts;
@@ -156,6 +178,24 @@ export async function assertProjectFanoutMemberCost(tx, handle, root, attempt, {
             || row.inputFingerprint !== send.inputFingerprint || !['charged', 'unknown', 'settled'].includes(row.status)
             || send.status === 'settled' && (row.status !== 'settled' || hash(row.usage) !== send.usageHash)) invalid();
     }
+}
+
+/** Fresh original bank closure for this Frame and each actual advisory child.
+ * The containing child allocation stays held until its sole TaskLocalOutput. */
+export async function inspectProjectFanoutCostClosure({ tx, root, attempts, effectIds, service, handle }) {
+    const own = effectIds.length ? await service.budgetPort.observeEffectClosure(handle, { authorityRef: root.budgetAuthorityRef, effectIds }, { tx }) : { closed: true };
+    if (!own.closed) return own;
+    for (const attempt of attempts.filter(attempt => attempt.inputRefs?.[0]?.kind === 'native_project_delegation')) {
+        if (!attempt.effectRefs.length && attempt.status === 'cancelled' && attempt.startedAt === null) continue;
+        if (attempt.effectRefs.length !== 1) return { ...own, closed: false };
+        const effect = (await readEffect(tx, handle, root, attempt.effectRefs[0])).doc;
+        const completed = await readProjectDelegationContinuation(tx, handle, root, attempt, effect), child = completed.lineage.child;
+        const closure = await service.budgetPort.observeChildClosure(handle, { authorityRef: root.budgetAuthorityRef, reservationId: child.runId,
+            expectedParentReservationId: child.parentRef.depth === 1 ? null : child.parentRef.parentRunId, expectedCeiling: child.parentRef.budgetCeiling }, { tx });
+        if (!closure.closed || !same(closure.reservationRefs, completed.output.closure.reservationRefs)
+            || !same(closure.budgetAttemptRefs, completed.output.closure.budgetAttemptRefs)) return { ...own, closed: false };
+    }
+    return own;
 }
 
 export function readProjectFanoutCompletion(tx, handle, root, joinAttemptId, { recipient = null } = {}) {

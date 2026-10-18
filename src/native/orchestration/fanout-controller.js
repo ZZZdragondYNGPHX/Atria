@@ -41,7 +41,7 @@ export async function readFanoutMembership(tx, handle, root, frame, attemptId) {
  * proves only original Frame/Barrier membership; domain and bank admission
  * remain with Review's original producer. Historical readers supply the
  * original Review decision sequence, never reopen an already closed Join. */
-export async function readFanoutReviewScope(tx, handle, root, reviewer, targets, { decisionSeq = root.eventSeq + 1 } = {}) {
+export async function readFanoutReviewScope(tx, handle, root, reviewer, targets, { decisionSeq = root.eventSeq + 1, rerun = true } = {}) {
     const fanoutAttemptId = reviewer.inputRefs?.[0]?.fanoutAttemptId;
     if (!fanoutAttemptId || !targets?.length) return null;
     assertCounter(decisionSeq, 'Review scope sequence', 1);
@@ -65,10 +65,12 @@ export async function readFanoutReviewScope(tx, handle, root, reviewer, targets,
         const barrier = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', 'barrier:' + joinIdForAttempt(id))))?.doc;
         if (!barrier || barrier.frozenSeq >= decisionSeq || barrier.epoch !== frame.epoch
             || barrier.fanoutFrameRef?.receiptId !== frame.receiptId || barrier.fanoutFrameRef.integrity !== hashNativeDocument(frame)
-            || targets.some(target => barrier.memberAttemptIds.includes(target.attemptId))) return null;
+            || rerun && targets.some(target => barrier.memberAttemptIds.includes(target.attemptId))) return null;
         for (const id of barrier.memberAttemptIds) {
             const terminal = (await readAttempt(tx, handle, root, id)).doc;
-            if (targets.some(target => target.nodeId === terminal.nodeId)) return null;
+            if (rerun && targets.some(target => target.nodeId === terminal.nodeId)) return null;
+            if (rerun && branch.scopeNodeIds.includes(terminal.nodeId) && targets.some(target => graphReachable(root.graph, target.nodeId, terminal.nodeId))
+                && !await terminalPreparedAfter(tx, handle, root, terminal, decisionSeq)) return null;
         }
         if (SETTLED_ATTEMPT_STATUSES.includes(join.status)) {
             if ((await readAttemptSettlement(tx, handle, root, join)).decisionSeq <= decisionSeq) return null;
@@ -76,6 +78,20 @@ export async function readFanoutReviewScope(tx, handle, root, reviewer, targets,
         return { frame, branch, barrier, join, fanout: (await readAttempt(tx, handle, root, fanoutAttemptId)).doc };
     }
     return null;
+}
+
+async function terminalPreparedAfter(tx, handle, root, terminal, decisionSeq) {
+    if (terminal.status === 'reserved' && terminal.inputState === 'reserved' && terminal.startedAt === null
+        && !terminal.effectRefs.length && !terminal.resultRefs.length) return true;
+    if (decisionSeq > root.eventSeq || !terminal.reservationRef) return false;
+    const input = terminal.inputRefs?.[0], bindings = input?.graphBindings ?? input?.fanoutGraphBindings ?? input?.controlGraph?.bindings;
+    if (!Array.isArray(bindings) || !bindings.length) return false;
+    const ordered = [...bindings].sort((a, b) => a.edgeId.localeCompare(b.edgeId));
+    const receiptId = 'oreceipt_' + hashNativeDocument({ runId: root.runId, bindings: ordered, reservedAttemptId: terminal.attemptId }).slice(0, 32);
+    const receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
+    return !!receipt && receipt.receiptKind === 'graph_transition' && receipt.nodeAttemptId === terminal.attemptId
+        && receipt.runId === root.runId && receipt.epoch === terminal.epoch && receipt.inputDigest === terminal.inputDigest
+        && receipt.decisionSeq > decisionSeq && receipt.decisionSeq <= root.eventSeq && equalNativeDocuments(receipt.bindings, ordered);
 }
 
 async function attachMembership({ tx, handle, root, frame, attempt, now }) {

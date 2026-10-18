@@ -1,3 +1,4 @@
+import { inspectComputeChildClosure } from '../../../public/shared/native-compute-budget.js';
 import { readSessionDelegatedFanoutInput, readSessionDelegatedFanoutCompletion } from './session-delegated-fanout-contracts.js';
 import { readSessionDelegatedControl, readSessionDelegatedReviewCompletion, readSessionDelegatedJudgeCompletion, readSessionDelegatedReviewReplacement } from './session-delegated-quality-contracts.js';
 import { readAttemptInvalidation } from './controller-common.js';
@@ -129,7 +130,7 @@ async function readModelInput(tx, handle, child, producer, intent, publicationSe
     const node = snapshot.graph.nodes.find(node => node.nodeId === producer.nodeId), modelPin = nodeModelRoutePins(node, lineage.plan.dependencyPins)[0];
     if (!modelPin || !equal(input.routeRef, modelPin.resourceRef) || intent.actionRef.kind !== 'native_model_send'
         || intent.actionRef.runtimeRouteId !== modelPin.resourceRef.runtimeRouteId) invalid();
-    if (input.fanoutAttemptId) return { ...await readSessionDelegatedFanoutInput(tx, handle, child, producer, input, publicationSeq), sourceRefs,
+    if (input.fanoutAttemptId) return { ...await readSessionDelegatedFanoutInput(tx, handle, child, producer, input, publicationSeq), sourceRefs, nested,
         requestedRootDigest: hash(child), producerDigest: hash(producer), effectDigest: hash(intent) };
     const controls = input.acceptedControlRefs ?? [], sources = [], completedControls = [];
     for (const ref of controls) {
@@ -427,4 +428,24 @@ export async function readSessionDelegationContinuation(tx, handle, parent, prod
     const publication = output?.publication;
     if (!publication || !output || !equal(output.claim.resultRef, ref)) invalid();
     return { lineage, publication, output, returnReceipt };
+}
+
+/** Fresh original Session bank observation of the exact typed returned child.
+ * This validates accounting only and grants no Source, send or reservation. */
+export async function assertSessionDelegationBudgetClosure(tx, handle, root, continuation) {
+    const child = continuation?.lineage.child, receipt = continuation?.output.closure;
+    const compute = (await readRunControl(tx, handle, root.budgetAuthorityRef.sessionId))?.operations[root.budgetAuthorityRef.operationId]?.compute;
+    if (!child || !receipt || !compute || child.parentRef.parentRunId !== root.runId
+        || !equal(receipt.authorityRef, root.budgetAuthorityRef)) invalid();
+    const facts = inspectComputeChildClosure({ compute }, child.runId), reservations = [facts.reservation, ...facts.descendantReservations];
+    const rows = [...facts.modelAttempts, ...facts.localWork];
+    if (facts.overrun || reservations.some(row => row.status !== 'released') || rows.some(row => row.status !== 'settled')
+        || facts.reservation.parentReservationId !== (root.parentRef ? root.runId : null)
+        || !equal(facts.reservation.limits, child.parentRef.budgetCeiling)
+        || reservations.length !== receipt.reservationRefs.length || rows.length !== receipt.budgetAttemptRefs.length
+        || reservations.some(row => !receipt.reservationRefs.some(ref => ref.reservationId === row.reservationId
+            && ref.parentReservationId === row.parentReservationId && ref.status === row.status))
+        || rows.some(row => !receipt.budgetAttemptRefs.some(ref => ref.attemptId === row.attemptId && ref.reservationId === row.reservationId
+            && ref.effectId === row.orchestration?.effectId))) invalid();
+    return receipt;
 }

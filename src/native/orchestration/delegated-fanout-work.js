@@ -13,7 +13,7 @@ const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 
 /** Controller/Scheduler orchestration only. All Model work still uses the
  * original captured child stage and its one already held Task-bank allocation. */
-export async function runDelegatedFanout({ state, service, group, inherited, progress, engine, current, prepare, execute, runWorkers, readCompletion, resolveNode, controlKind, reasonPrefix }) {
+export async function runDelegatedFanout({ state, service, group, inherited, progress, engine, current, prepare, execute, runWorkers, readCompletion, resolveNode, resolveResources, requestsForNode, inspectClosure, controlKind, reasonPrefix }) {
     const { handle, host } = state, runId = state.identity.childRunId, { runs, budgetPort } = service;
     inherited = [...inherited].sort((a, b) => a.edge.edgeId.localeCompare(b.edge.edgeId));
     const fresh = async () => { await current(); return runs.get(handle, runId); };
@@ -62,7 +62,8 @@ export async function runDelegatedFanout({ state, service, group, inherited, pro
             if (producer.attemptId !== fanoutAttemptId || !equal(actual.map(item => ({ entryAttemptId: item.entry.attemptId, memberAttemptIds: item.members.map(member => member.attemptId).sort(),
                 scopeNodeIds: item.scopeNodeIds })).sort((a, b) => a.entryAttemptId.localeCompare(b.entryAttemptId)), [...branches].sort((a, b) => a.entryAttemptId.localeCompare(b.entryAttemptId)))) fail('native_orchestration_' + reasonPrefix + '_control_stale');
             const capacity = await budgetPort.observeCapacity(handle, { authorityRef: root.budgetAuthorityRef, reservationId: runId }, { tx });
-            if (!capacity || capacity.overrun || capacity.remaining.requests < declared.reduce((sum, item) => sum + item.attempts.size, 0) + 1) fail('native_orchestration_graph_budget_unavailable');
+            const requests = declared.reduce((sum, item) => sum + [...item.models.values()].reduce((count, model) => count + (requestsForNode ? requestsForNode(model) : 1), 0), 0) + 1;
+            if (!capacity || capacity.overrun || capacity.remaining.requests < requests) fail('native_orchestration_graph_budget_unavailable');
         } }).freeze(handle, { ...runGuard(await fresh()), fanoutAttemptId, branches });
         const terminals = [...new Set(group.members.map(edge => declared.find(item => item.attempts.has(edge.from.nodeId)).attempts.get(edge.from.nodeId)))];
         const joins = new JoinController({ runs, authorizeMembership: async ({ tx, root, fanout, join, members }) => {
@@ -76,7 +77,8 @@ export async function runDelegatedFanout({ state, service, group, inherited, pro
         const frozen = await joins.freeze(handle, { ...runGuard(await fresh()), fanoutAttemptId, nodeAttemptId: joinAttemptId, memberAttemptIds: terminals });
         const scopeCapture = declared[0].entry.projectCapture, root = await fresh();
         const workers = await Promise.all(declared.map(async item => ({ entryAttemptId: item.entry.attemptId, nodeIds: item.branch.scopeNodeIds,
-            resources: [...new Set((await Promise.all([...item.models.values()].map(model => host.executionResources(handle, model.resolved.route)))).flat())],
+            resources: [...new Set((await Promise.all([...item.models.values()].map(model => resolveResources
+                ? resolveResources(model) : host.executionResources(handle, model.resolved.route)))).flat())],
             key: reasonPrefix + '-child-fanout:' + runId + ':' + item.entry.attemptId, fingerprint: hash({ runId, fanoutAttemptId, attempts: [...item.attempts] }),
             fresh: async permit => { state.controlPermit = permit; await fresh(); },
             run: async ({ permit, signal, controlPermit }) => {
@@ -171,7 +173,7 @@ export async function runDelegatedFanout({ state, service, group, inherited, pro
             if (declared[index].branch.scopeNodeIds.includes(attempt.nodeId) && ['pending', 'reserved'].includes(attempt.status))
                 await cancelPending(attempt.attemptId, null, decided.outcome.joinReceipt.joinId);
         await work.wait(); state.controlPermit = null;
-        const final = await fresh(), effectIds = [];
+        const final = await fresh(), effectIds = [], attempts = [];
         await engine.withTransaction(handle, async tx => {
             for (const item of declared) for (const [nodeId, id] of item.attempts) {
                 const actual = (await readAttempt(tx, handle, final, id)).doc;
@@ -180,10 +182,12 @@ export async function runDelegatedFanout({ state, service, group, inherited, pro
             const frame = await readFanoutFrame(tx, handle, final, fanoutAttemptId);
             for (const id of final.attemptRefs) {
                 const actual = (await readAttempt(tx, handle, final, id)).doc;
-                if (await readFanoutMembership(tx, handle, final, frame, id)) effectIds.push(...actual.effectRefs);
+                if (await readFanoutMembership(tx, handle, final, frame, id)) { attempts.push(actual); effectIds.push(...actual.effectRefs); }
             }
         });
-        const costs = effectIds.length ? await engine.withTransaction(handle, tx => budgetPort.observeEffectClosure(handle, { authorityRef: final.budgetAuthorityRef, effectIds }, { tx })) : { closed: true };
+        const costs = await engine.withTransaction(handle, async tx => inspectClosure
+            ? inspectClosure({ tx, root: final, frame: await readFanoutFrame(tx, handle, final, fanoutAttemptId), attempts, effectIds })
+            : effectIds.length ? budgetPort.observeEffectClosure(handle, { authorityRef: final.budgetAuthorityRef, effectIds }, { tx }) : { closed: true });
         if (!costs.closed) fail('native_orchestration_' + reasonPrefix + '_quality_unsettled');
         const outcome = decided.outcome.joinReceipt.outcome;
         await runs.withSourceControl(handle, runId, async () => new AttemptController({ runs, authorizeAttempt: async () => {}, verifySettlement: async ({ attempt, resultRefs, receipts }) => {

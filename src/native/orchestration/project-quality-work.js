@@ -80,7 +80,6 @@ export class ProjectQualityWork {
         }
         const child = this.state.selected.resolveDelegation?.(node) ?? null;
         if (child) {
-            if (fanoutAttemptId) fail('native_orchestration_project_delegation_scope_invalid');
             spec.continuationInput = spec.input;
             spec.input = this.delegation.parentInput(this.state, node, child, spec.input, bindings);
             spec.grantDigest = hash({ handle: this.state.handle, input: spec.input });
@@ -133,16 +132,7 @@ export class ProjectQualityWork {
                     if (args.attempt.attemptId !== attemptId || args.attempt.nodeId !== node.nodeId || !equal(args.attempt.inputRefs, inputRefs)
                         || args.attempt.effectiveGrantDigest !== spec.grantDigest) fail('native_orchestration_project_quality_stale');
                 } }).activate(handle, { ...runGuard(await service.runs.get(handle, runId)), attemptId });
-                if (spec.child) {
-                    const continuation = await host.turnOrchestration.runProjectDelegation({ parentState: stage, childPlanPinId: spec.child.pin.pinId, mode: 'handoff' });
-                    stage.delegationContinuation = continuation;
-                    const logical = { ...spec.continuationInput, acceptedResultRef: continuation.acceptedResultRef,
-                        returnReceiptRef: continuation.returnReceiptRef, parentInputDigest: continuation.parentInputDigest };
-                    decision = immutable({ ...decision, inputRef: logical, inputHash: hash(logical),
-                        egressDigest: hash({ sourceBinding: base.sourceBinding, input: logical }) });
-                    stage.decision = decision;
-                    await this.delegation.continuation(continuation.capture, stage);
-                }
+                if (spec.child) return;
                 const effectId = 'oeffect_' + hash({ runId, attemptId, purpose: 'project_quality' }).slice(0, 32); stage.effectId = effectId;
                 await service.effects.prepare(handle, { ...runGuard(await service.runs.get(handle, runId)), effectId, nodeAttemptId: attemptId,
                     proposal: Object.fromEntries(['actionRef', 'targetRef', 'inputRef', 'inputHash'].map(key => [key, decision[key]])) });
@@ -150,6 +140,28 @@ export class ProjectQualityWork {
             if (fanoutPermit) await service.runs.withSourceControl(handle, runId, prepare,
                 { withAuthority: service.sourcePort.consumptionBoundary(handle, base.sourceBinding, { engine: service.runs.engine }) });
             else await prepare();
+            if (spec.child) {
+                // Original delegation admission and return remain controlled,
+                // but a child Model cannot hold its parent's Source write lock
+                // while independent frozen siblings are doing their work.
+                const continuation = await host.turnOrchestration.runProjectDelegation({ parentState: stage, childPlanPinId: spec.child.pin.pinId, mode: 'handoff' });
+                stage.delegationContinuation = continuation;
+                const logical = { ...spec.continuationInput, acceptedResultRef: continuation.acceptedResultRef,
+                    returnReceiptRef: continuation.returnReceiptRef, parentInputDigest: continuation.parentInputDigest };
+                decision = immutable({ ...decision, inputRef: logical, inputHash: hash(logical),
+                    egressDigest: hash({ sourceBinding: base.sourceBinding, input: logical }) });
+                stage.decision = decision;
+                await this.delegation.continuation(continuation.capture, stage);
+                const prepareEffect = async () => {
+                    await this.current({ capture });
+                    stage.effectId = 'oeffect_' + hash({ runId, attemptId: stage.attemptId, purpose: 'project_quality' }).slice(0, 32);
+                    await service.effects.prepare(handle, { ...runGuard(await service.runs.get(handle, runId)), effectId: stage.effectId, nodeAttemptId: stage.attemptId,
+                        proposal: Object.fromEntries(['actionRef', 'targetRef', 'inputRef', 'inputHash'].map(key => [key, decision[key]])) });
+                };
+                if (fanoutPermit) await service.runs.withSourceControl(handle, runId, prepareEffect,
+                    { withAuthority: service.sourcePort.consumptionBoundary(handle, base.sourceBinding, { engine: service.runs.engine }) });
+                else await prepareEffect();
+            }
             const { effectId } = stage;
             const audience = { kind: 'project_task', id: this.identity.taskId }, taskPurpose = 'original_native_project_quality';
             stage.contextPort = new ContextPort({ projectAgent: host.agent, projectCapture: capture,

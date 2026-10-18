@@ -14,7 +14,7 @@ import { graphPatchHash } from './graph-revision-contracts.js';
 import { FanoutController, readFanoutFrame, readFanoutMembership, readFanoutReviewScope } from './fanout-controller.js';
 import { JoinController, joinIdForAttempt } from './join-controller.js';
 import { withNativeProjectFanout } from './native-project-generation-authority.js';
-import { readProjectFanoutCompletion } from './project-fanout-contracts.js';
+import { readProjectFanoutCompletion, inspectProjectFanoutCostClosure } from './project-fanout-contracts.js';
 import { assertProjectFanoutPlannerPatch, readProjectFanoutPaidModelNodes } from './project-fanout-planner-contracts.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelFailureReceipt } from './model-port.js';
@@ -298,7 +298,9 @@ export class ProjectControlGraphWork {
                 memberAttemptIds: branch.members.map(member => member.attemptId).sort(), scopeNodeIds: branch.scopeNodeIds })).sort((a, b) => a.entryAttemptId.localeCompare(b.entryAttemptId)),
             [...branches].sort((a, b) => a.entryAttemptId.localeCompare(b.entryAttemptId)))) fail('native_orchestration_project_control_stale');
             const capacity = await budgetPort.observeCapacity(handle, { authorityRef: root.budgetAuthorityRef, reservationId: null }, { tx });
-            if (!capacity || capacity.overrun || capacity.remaining.requests < declared.reduce((count, item) => count + item.attempts.size, 0) + 1)
+            const requests = declared.reduce((count, item) => count + item.branch.scopeNodeIds.reduce((total, id) => total + 1
+                + (this.state.selected.resolveDelegation(root.graph.nodes.find(node => node.nodeId === id))?.ceiling.maxRequests ?? 0), 0), 1);
+            if (!capacity || capacity.overrun || capacity.remaining.requests < requests)
                 fail('native_orchestration_project_graph_budget_unavailable');
         } }).freeze(handle, { ...runGuard(await current()), fanoutAttemptId, branches });
         const terminalIds = profile.members.map(edge => declared.find(item => item.attempts.has(edge.from.nodeId)).attempts.get(edge.from.nodeId));
@@ -315,8 +317,10 @@ export class ProjectControlGraphWork {
         const frozen = await joins.freeze(handle, { ...runGuard(await current()), fanoutAttemptId, nodeAttemptId: joinAttemptId, memberAttemptIds: [...new Set(terminalIds)] });
         const root = await current(), workers = [];
         for (const item of declared) {
+            const models = [...item.models.values(), ...item.branch.scopeNodeIds.flatMap(id =>
+                this.state.selected.resolveDelegation(root.graph.nodes.find(node => node.nodeId === id))?.resourceProfiles ?? [])];
             const resources = [...new Set([this.identity.projectId, this.identity.taskId,
-                ...(await Promise.all([...item.models.values()].map(model => host.executionResources(handle, model.resolved.route)))).flat()])].sort();
+                ...(await Promise.all(models.map(model => host.executionResources(handle, model.resolved.route)))).flat()])].sort();
             workers.push({ key: 'project-fanout:' + runId + ':' + item.attempts.get(item.branch.entry.nodeId), resources, nodeIds: item.branch.scopeNodeIds,
                 fingerprint: hash({ runId, fanoutAttemptId, attempts: [...item.attempts], models: [...item.models].map(([id, model]) => [id, model.configDigest]) }),
                 fresh: async permit => { controlPermit = permit; await current(); },
@@ -412,7 +416,16 @@ export class ProjectControlGraphWork {
                 if (['cancelled', 'failed'].includes(actual.status)) this.records.set(nodeId, { attemptId, status: actual.status });
             }
         });
-        const final = await current(), costs = await runs.engine.withTransaction(handle, tx => projectReviewCosts(tx, handle, final));
+        const final = await current(), costs = await runs.engine.withTransaction(handle, async tx => {
+            const own = await projectReviewCosts(tx, handle, final);
+            if (!own.closed) return own;
+            const frame = await readFanoutFrame(tx, handle, final, fanoutAttemptId), attempts = [];
+            for (const id of final.attemptRefs) if (await readFanoutMembership(tx, handle, final, frame, id))
+                attempts.push((await readAttempt(tx, handle, final, id)).doc);
+            const scoped = await inspectProjectFanoutCostClosure({ tx, root: final, frame, attempts,
+                effectIds: attempts.flatMap(attempt => attempt.effectRefs), service: this.service, handle });
+            return { ...own, closed: scoped.closed };
+        });
         if (!costs.closed) fail('native_orchestration_project_quality_unsettled');
         const outcome = decided.outcome.joinReceipt.outcome;
         await runs.withSourceControl(handle, runId, () => new AttemptController({ runs, authorizeAttempt: async () => {}, verifySettlement: async ({ attempt, resultRefs, receipts }) => {
@@ -488,7 +501,7 @@ export class ProjectControlGraphWork {
                     const joined = await readReviewableFanoutCompletion(tx, handle, root, fact.attemptId,
                         { targets, readCompletion: readProjectFanoutCompletion });
                     if (!joined) fail('native_orchestration_review_irreversible_dependency');
-                    for (const attempt of [joined.fanout, joined.producer, ...joined.scopeAttempts.map(item => item.attempt)]) completeGroups.add(attempt.attemptId);
+                    for (const attempt of joined.reviewAttempts) completeGroups.add(attempt.attemptId);
                 }
                 for (const [nodeId, fact] of affected) {
                     if (['fanout', 'join'].includes(root.graph.nodes.find(node => node.nodeId === nodeId)?.kind) && !completeGroups.has(fact.attemptId)
@@ -524,7 +537,8 @@ export class ProjectControlGraphWork {
                 || root.progress.reviews + reviews > root.limits.maxReviews)
                 fail('native_orchestration_project_quality_rerun_limit');
             const node = root.graph.nodes.find(node => node.nodeId === target.nodeId), fanoutAttemptId = stage.decision.inputRef.fanoutAttemptId;
-            const dependencies = fanoutAttemptId ? target.inputRefs[0].controlGraph
+            const dependencies = fanoutAttemptId ? target.inputRefs[0].controlGraph ?? { evidenceRefs: target.inputRefs[0].acceptedGraphResultRefs,
+                controlRefs: target.inputRefs[0].acceptedControlRefs ?? [], bindings: target.inputRefs[0].graphBindings }
                 : this.#bundle(root.graph.edges.filter(edge => edge.to.nodeId === node.nodeId && !edge.loopBack), root.graph);
             const feedback = { reviewReceiptRef: { runId, receiptId: reviewReceiptId(runId, reviewer.attemptId) }, reasonCode: parsed.reasonCode };
             const controlTask = this.#task(node, root), spec = await this.models.prepareStageInput(node, attemptId, { ...dependencies, feedback, controlTask, fanoutAttemptId });

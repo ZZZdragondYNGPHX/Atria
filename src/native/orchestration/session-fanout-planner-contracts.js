@@ -56,8 +56,15 @@ export async function readSessionFanoutPaidModelNodes(tx, handle, root, fanoutAt
             if (effect.capability !== 'generation.send') continue;
             const rows = bank.attempts.filter(row => row.orchestration?.effectId === effectId);
             if (!rows.length) continue;
+            const resolver = attempt.inputRefs[0], input = effect.inputRef;
+            const continuation = resolver.kind === 'native_session_delegation';
+            const original = continuation ? { ...input, kind: resolver.kind, requestId: input.requestId ?? input.invocationId,
+                sourceRef: root.sourceBinding.sourceRef, childPlanRef: resolver.childPlanRef, delegationScope: resolver.delegationScope,
+                graphBindings: input.fanoutGraphBindings ?? input.graphBindings ?? [] } : input;
+            if (continuation) for (const field of ['acceptedResultRef', 'returnReceiptRef', 'parentInputDigest']) delete original[field];
             if (effect.nodeAttemptId !== attempt.attemptId || effect.epoch !== attempt.epoch || effect.sourceBindingDigest !== root.sourceBinding.bindingDigest
-                || effect.grantDigest !== attempt.effectiveGrantDigest || effect.inputHash !== hash(attempt.inputRefs[0]) || !equal(effect.inputRef, attempt.inputRefs[0])
+                || effect.grantDigest !== attempt.effectiveGrantDigest || effect.inputHash !== hash(input) || !equal(original, resolver)
+                || continuation && (input.kind !== (root.parentRef ? 'native_session_delegated_intent' : 'native_turn_intent') || input.parentInputDigest !== attempt.inputDigest)
                 || !equal(attempt.budgetRef, authority)) denied('native_orchestration_budget_attempt_invalid');
             for (const [ordinal, row] of rows.entries()) if (row.orchestration.kind !== 'provider_send' || row.orchestration.ordinal !== ordinal
                 || row.attemptId !== sendAttemptId(effectId, ordinal) || row.requestId !== effect.inputRef.invocationId || (row.reservationId ?? null) !== (root.parentRef ? root.runId : null)

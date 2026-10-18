@@ -57,9 +57,32 @@ export async function readProjectFanoutPaidModelNodes(tx, handle, root) {
             if (effect.capability !== 'generation.send') continue;
             const rows = bank.attempts.filter(row => row.orchestration?.effectId === effectId);
             if (!rows.length) continue;
+            const input = attempt.inputRefs[0], delegated = input.kind === 'native_project_delegation';
+            let expectedInput = input;
+            if (delegated) {
+                if (!effect.inputRef.acceptedResultRef || !Object.hasOwn(effect.inputRef, 'returnReceiptRef')
+                    || effect.inputRef.parentInputDigest !== attempt.inputDigest) denied('native_orchestration_budget_attempt_invalid');
+                if (root.parentRef) {
+                    expectedInput = { ...input, kind: 'native_project_delegated_intent', acceptedResultRef: effect.inputRef.acceptedResultRef,
+                        returnReceiptRef: effect.inputRef.returnReceiptRef, parentInputDigest: attempt.inputDigest };
+                    delete expectedInput.childPlanRef;
+                } else {
+                    const logical = effect.inputRef;
+                    const resolver = { kind: 'native_project_delegation', role: logical.role, requestId: logical.requestId,
+                        sourceRef: logical.sourceRef, planRef: logical.planRef, nodeId: logical.nodeId, childPlanRef: input.childPlanRef,
+                        ...(logical.fanoutAttemptId ? { fanoutAttemptId: logical.fanoutAttemptId } : {}),
+                        acceptedGraphResultRefs: logical.acceptedGraphResultRefs ?? [],
+                        ...(logical.acceptedControlRefs ? { acceptedControlRefs: logical.acceptedControlRefs } : {}),
+                        ...(logical.projectQualityTask?.feedback ? { reviewFeedbackRef: logical.projectQualityTask.feedback } : {}),
+                        graphBindings: logical.controlGraph?.bindings?.toSorted((a, b) => a.edgeId.localeCompare(b.edgeId)) };
+                    if (logical.kind !== 'native_project_intent' || logical.grantDigest !== attempt.effectiveGrantDigest || !equal(resolver, input))
+                        denied('native_orchestration_budget_attempt_invalid');
+                    expectedInput = logical;
+                }
+            }
             if (effect.nodeAttemptId !== attempt.attemptId || effect.epoch !== attempt.epoch
                 || effect.sourceBindingDigest !== root.sourceBinding.bindingDigest || effect.grantDigest !== attempt.effectiveGrantDigest
-                || effect.inputHash !== hash(attempt.inputRefs[0]) || !equal(effect.inputRef, attempt.inputRefs[0])
+                || effect.inputHash !== hash(effect.inputRef) || !equal(effect.inputRef, expectedInput)
                 || !equal(attempt.budgetRef, authority)) denied('native_orchestration_budget_attempt_invalid');
             for (const [ordinal, row] of rows.entries()) if (row.orchestration.kind !== 'provider_send' || row.orchestration.ordinal !== ordinal
                 || row.attemptId !== sendAttemptId(effectId, ordinal) || (row.reservationId ?? null) !== (root.parentRef ? root.runId : null)

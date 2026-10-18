@@ -1,3 +1,4 @@
+import { readRunControl } from '../run-control.js';
 import { runDelegatedFanout } from './delegated-fanout-work.js';
 import { readSessionDelegatedFanoutCompletion } from './session-delegated-fanout-contracts.js';
 import { readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
@@ -34,7 +35,7 @@ import { readHandoffReturn } from './handoff-return-contracts.js';
 import { readResultPublication } from './result-publication-contracts.js';
 import { assertNativeTurnPermit, assertNativeTurnControlPermit } from './native-turn-permit.js';
 import { childBudgetReceiptId, assertChildRunCurrent } from './run-repository.js';
-import { readSessionDelegation, readSessionDelegationContinuation } from './session-delegation-contracts.js';
+import { readSessionDelegation, readSessionDelegationContinuation, assertSessionDelegationBudgetClosure } from './session-delegation-contracts.js';
 import { readSessionDelegationInputs } from './session-delegation-inputs.js';
 import { sessionDelegatedGraphProfile } from './session-delegated-graph-profile.js';
 import { sessionPlannerOutputContract } from './session-planner-contracts.js';
@@ -122,13 +123,14 @@ export class SessionDelegationAuthority {
                 sourceRef: source.actualRef ?? source.pin.resourceRef, integrity: hash(source.descriptor) },
             acceptedGraphResultRefs: ref.acceptedGraphResultRefs ?? [],
             ...(ref.acceptedControlRefs ? { acceptedControlRefs: ref.acceptedControlRefs } : {}),
-            graphBindings: state.graphBindings.map(item => ({ edgeId: item.edge.edgeId, producerAttemptId: item.attemptId })).toSorted((a, b) => a.edgeId.localeCompare(b.edgeId)),
+            graphBindings: ref.fanoutAttemptId ? ref.fanoutGraphBindings ?? ref.graphBindings ?? []
+                : state.graphBindings.map(item => ({ edgeId: item.edge.edgeId, producerAttemptId: item.attemptId })).toSorted((a, b) => a.edgeId.localeCompare(b.edgeId)),
             ...(ref.audienceCapture ? { audienceCapture: ref.audienceCapture } : {}) };
         return input;
     }
 
     async authorizeDelegation({ handle, tx, parent, parentAttempt, childPlan, inputRefs, effectiveGrantDigest, budgetCeiling, phase }) {
-        const state = this.#parents.get(parent.runId);
+        const state = this.#parents.get(parent.runId + ':' + parentAttempt.attemptId);
         if (!state || state.handle !== handle || ![state.mode, 'confirm_budget'].includes(phase)
             || parentAttempt.attemptId !== state.attemptId || parentAttempt.effectiveGrantDigest !== state.decision.grantDigest
             || parentAttempt.status !== (phase === 'confirm_budget' && state.mode === 'handoff' ? 'waiting_child' : 'running')
@@ -297,7 +299,7 @@ export class SessionDelegationAuthority {
 
     inspectReturnIdentity(capture, { handle, host } = {}) {
         const state = this.#returns.get(capture);
-        if (!state || state.handle !== handle || host !== undefined && state.host !== host || this.#parents.get(state.runId) !== state
+        if (!state || state.handle !== handle || host !== undefined && state.host !== host || this.#parents.get(state.runId + ':' + state.attemptId) !== state
             || state.returnCapture !== capture || state.host.turnOrchestration !== this.owner) fail('native_orchestration_return_denied');
         const quota = assertNativeTurnQuota(state.quotaProof, state.proofExpected);
         return Object.freeze({ ...state.returnIdentity, host: state.host, signal: assertNativeTurnPermit(quota.permit).signal });
@@ -361,14 +363,14 @@ export class SessionDelegationAuthority {
 
     async run({ parentState, childPlanPinId, mode }) {
         const state = parentState, { host, handle } = state, service = this.execution(), child = state.selectionState.delegation;
-        if (!child || child.pin.pinId !== childPlanPinId || !['delegate', 'handoff'].includes(mode) || this.#parents.has(state.runId)) fail();
+        if (!child || child.pin.pinId !== childPlanPinId || !['delegate', 'handoff'].includes(mode) || this.#parents.has(state.runId + ':' + state.attemptId)) fail();
         state.child = child; state.mode = mode;
         state.parentInputRefs = immutable((await this.owner.engine.withTransaction(handle, async tx => readAttempt(tx, handle,
             await service.runs.get(handle, state.runId), state.attemptId))).doc.inputRefs);
         state.childInputRefs = state.parentInputRefs;
         state.childGrantDigest = hash({ parentGrantDigest: state.decision.grantDigest, childPlanRef: child.planRef,
             inputRefs: state.childInputRefs, sourceBindingDigest: state.sourceBinding.bindingDigest });
-        this.#parents.set(state.runId, state);
+        this.#parents.set(state.runId + ':' + state.attemptId, state);
         const original = assertNativeTurnQuota(state.quotaProof, state.proofExpected), permit = original.permit;
         const schedulerProof = assertNativeTurnPermit(permit);
         try {
@@ -411,7 +413,7 @@ export class SessionDelegationAuthority {
             throw error;
         }
     }
-    release(state) { if (state.returnCapture) this.#returns.delete(state.returnCapture); this.#parents.delete(state.runId); }
+    release(state) { if (state.returnCapture) this.#returns.delete(state.returnCapture); this.#parents.delete(state.runId + ':' + state.attemptId); }
 
     async #proveNotDispatched(state) {
         if (!state.activeNode) return;
@@ -479,17 +481,41 @@ export class SessionDelegationAuthority {
                         { ...record.doc, status: 'blocked', reasonCode }, { expectedIntegrity: record.integrity });
                 }
                 const child = runId === state.runId && state.childRunId ? await service.runs.get(handle, state.childRunId) : null;
+                let descendantPending = false;
+                const reservedTrees = [];
+                if (root.parentRef) reservedTrees.push(root);
+                else {
+                    const compute = (await readRunControl(tx, handle, root.budgetAuthorityRef.sessionId))?.operations[root.budgetAuthorityRef.operationId]?.compute;
+                    if (!compute) fail('native_orchestration_budget_unavailable');
+                    for (const reservation of compute.reservations ?? []) if (reservation.parentReservationId === null) {
+                        const candidate = await service.runs.get(handle, reservation.reservationId);
+                        if (candidate.parentRef?.parentRunId === root.runId) reservedTrees.push(candidate);
+                    }
+                }
+                for (const branch of reservedTrees) {
+                    const tree = await service.budgetPort.observeChildClosure(handle, { authorityRef: root.budgetAuthorityRef, reservationId: branch.runId,
+                        expectedParentReservationId: branch.parentRef.depth === 1 ? null : branch.parentRef.parentRunId,
+                        expectedCeiling: branch.parentRef.budgetCeiling }, { tx });
+                    if (tree.overrun || tree.reservationRefs.some(ref => ref.reservationId !== root.runId && ref.status !== 'released')) descendantPending = true;
+                    for (const ref of tree.budgetAttemptRefs)
+                        if ((await service.budgetPort.observeAttempt(handle, ref, { tx })).status !== 'settled') descendantPending = true;
+                }
                 root.pendingEffectRefs = [...new Set([...root.pendingEffectRefs, ...unresolved])];
-                root.status = root.pendingEffectRefs.length || costs && !costs.closed || child?.status === 'reconciling' ? 'reconciling'
+                root.status = root.pendingEffectRefs.length || costs && !costs.closed || descendantPending || child?.status === 'reconciling' ? 'reconciling'
                     : terminal?.kind === 'rejected' ? 'failed' : 'blocked';
                 const receiptId = 'oreceipt_' + hash({ kind: 'native_session_failure', runId, attemptId }).slice(0, 32);
                 await putImmutable(tx, controlRecordKey(handle, runId, 'receipt', receiptId), { schemaVersion: 1,
                     receiptKind: 'native_session_failure', receiptId, runId, epoch: root.epoch, nodeAttemptId: attemptId,
                     reasonCode, status: root.status, effectIds, costs, modelReceiptRef: terminal?.receiptRef ?? null,
                     decisionSeq: root.eventSeq + 1, createdAt: now });
-                return { root, eventType: 'session_model_failed', reasonCode, outcome: { status: root.status, costsClosed: costs === null || costs.closed } };
+                return { root, eventType: 'session_model_failed', reasonCode, outcome: { status: root.status, costsClosed: (costs === null || costs.closed) && !descendantPending } };
             }), { withAuthority });
         if (current.parentRef && failure.outcome.costsClosed && failure.outcome.status !== 'reconciling') {
+            const before = await this.owner.engine.withTransaction(handle, tx => service.budgetPort.observeChildClosure(handle, {
+                authorityRef: current.budgetAuthorityRef, reservationId: runId,
+                expectedParentReservationId: current.parentRef.depth === 1 ? null : current.parentRef.parentRunId,
+                expectedCeiling: current.parentRef.budgetCeiling }, { tx }));
+            if (before.closed) return;
             // Only the original bank can release unused allocation. An unknown
             // response or pending charge never reaches this release boundary.
             try { await service.budgetPort.releaseUnused(handle, { authorityRef: current.budgetAuthorityRef, reservationId: runId }); } catch (error) {
@@ -600,7 +626,12 @@ export class SessionDelegationAuthority {
             delegationScope: { parentPinId: child.parentSource.pin.pinId, childPinId: model.audienceSource.pin.pinId,
                 sourceRef: model.audienceSource.actualRef ?? model.audienceSource.pin.resourceRef, integrity: hash(model.audienceSource.descriptor) },
             ...(model.audienceSource.pin.resourceRef.anchor === 'run_source' ? { audienceCapture: audienceRunCapture(model.audienceSource.pin, model.audienceSource) } : {}) };
-        const inputRefs = [logical, ...root.parentRef.inputRefs, ...results, ...controls]; state.contextInputRefs = immutable(inputRefs);
+        const nestedParent = model.delegation ? { host, handle, runId: root.runId, selection: parent.selection,
+            selectionState: { ...model, base: parent.selectionState.base, input: parent.selectionState.input, binding: { planRef: root.planRef } },
+            sourceBinding: root.sourceBinding, quotaProof: state.quotaProof, proofExpected: parent.proofExpected,
+            request: state.request, graphBindings: bindings, decision: { inputRef: logical, inputHash: hash(logical), grantDigest: state.identity.grantDigest } } : null;
+        const resolver = nestedParent ? this.parentInput(nestedParent, model.delegation, 'handoff') : logical;
+        const inputRefs = [resolver, ...root.parentRef.inputRefs, ...results, ...controls]; state.contextInputRefs = immutable(inputRefs);
         const admission = { inputRefs, inputDigest: hash(inputRefs), effectiveGrantDigest: root.parentRef.effectiveGrantDigest, budgetRef: root.budgetAuthorityRef };
         owner.branches.add(state); this.#delegations.set(capture, state);
         try {
@@ -618,7 +649,19 @@ export class SessionDelegationAuthority {
             } else ({ attemptId } = await service.runs.beginAttempt(handle, controlCommandId('session.child.fanout.entry', { runId: root.runId, fanoutAttemptId, nodeId: node.nodeId }),
                 { ...runGuard(root), nodeId: node.nodeId, ...admission }));
             if (!send) return { attemptId, model, inputRefs };
-            const { result, effectId, send: completedSend, limits } = await this.#sendChildStage(state, parent, { attemptId, model, logical, inputRefs });
+            if (nestedParent) {
+                nestedParent.attemptId = attemptId; nestedParent.decision = { ...nestedParent.decision, inputRef: resolver, inputHash: hash(resolver) };
+                state.activeNestedParent = nestedParent;
+                state.activeNode = { nodeId: node.nodeId, nodeAttemptId: attemptId,
+                    effectId: 'oeffect_' + hash({ runId: root.runId, attemptId, taskPurpose: state.identity.taskPurpose }).slice(0, 32) };
+                state.decision = nestedParent.decision;
+                await new AttemptController({ runs: service.runs, authorizeAttempt: args => this.authorize(args) }).activate(handle,
+                    { ...runGuard(await service.runs.get(handle, root.runId)), attemptId });
+                state.nestedReturn = await this.run({ parentState: nestedParent, childPlanPinId: model.delegation.pin.pinId, mode: 'handoff' });
+            }
+            const continuation = state.nestedReturn ? { ...logical, acceptedResultRef: state.nestedReturn.acceptedResultRef,
+                returnReceiptRef: state.nestedReturn.returnReceiptRef, parentInputDigest: state.nestedReturn.parentInputDigest } : logical;
+            const { result, effectId, send: completedSend, limits } = await this.#sendChildStage(state, parent, { attemptId, model, logical: continuation, inputRefs });
             if (node.kind === 'planner') return await completeSessionDelegatedPlanner({ state, service, port: this.port(host), result, send: completedSend, limits,
                 current: () => this.inspectDelegation(capture, { host, handle }), progress, engine: this.owner.engine,
                 resolveNode: item => this.#resolveChildModel(parent, item) });
@@ -631,13 +674,20 @@ export class SessionDelegationAuthority {
                 const saved = await new ResultController({ host, modelPort: this.port(host) }).publishGraphModelResult(handle, { capture: graphCapture, result, runId: root.runId, effectId });
                 return { attemptId, resultRef: saved.resultRef };
             } finally { this.#graphs.delete(graphCapture); }
-        } catch (error) { await this.#proveNotDispatched(state); throw error; } finally { owner.branches.delete(state); this.#delegations.delete(capture); }
+        } catch (error) {
+            await this.#proveNotDispatched(state);
+            if (nestedParent) {
+                owner.failedNestedParents.add(nestedParent);
+                await this.#failRun(nestedParent, root.runId, state.activeNode?.nodeAttemptId ?? null, error);
+            }
+            throw error;
+        } finally { if (nestedParent) this.release(nestedParent); state.nestedReturn = null; owner.branches.delete(state); this.#delegations.delete(capture); }
     }
 
     async #runChild(parent, expected, boundary) {
         const service = this.execution(), { host, handle, child } = parent, root = await service.runs.get(handle, parent.childRunId);
         const capture = Object.freeze({}), quotaProof = captureNativeTurnChildQuota(parent.quotaProof, boundary, expected);
-        const state = { host, handle, parent, child, capture, boundary, expected, quotaProof, branches: new Set(), bindings: [], plannerOperations: new Map(), root, identity: immutable({ handle,
+        const state = { host, handle, parent, child, capture, boundary, expected, quotaProof, branches: new Set(), failedNestedParents: new Set(), bindings: [], plannerOperations: new Map(), root, identity: immutable({ handle,
             parentRunId: parent.runId, parentAttemptId: parent.attemptId, parentEpoch: root.parentRef.parentEpoch, childRunId: root.runId,
             childEpoch: root.epoch, sourceBinding: root.sourceBinding, grantDigest: root.parentRef.effectiveGrantDigest,
             parentGrantDigest: parent.decision.grantDigest, inputRefs: root.parentRef.inputRefs, taskPurpose: 'original_native_session_delegated_analysis', childPlanRef: root.planRef }) };
@@ -675,6 +725,21 @@ export class SessionDelegationAuthority {
                             current: () => this.inspectDelegation(capture, { host, handle }), resolveNode: node => this.#resolveChildModel(parent, node),
                             prepare: args => this.#fanoutAgent(state, args), execute: args => this.#fanoutAgent(state, { ...args, send: true }),
                             runWorkers: (_scope, options) => this.#fanoutWorkers(state, options), readCompletion: readSessionDelegatedFanoutCompletion,
+                            resolveResources: async model => [...new Set((await Promise.all([model, ...model.delegation?.resourceProfiles ?? []]
+                                .map(item => host.executionResources(handle, item.resolved.route)))).flat())],
+                            requestsForNode: model => 1 + (model.delegation?.ceiling.maxRequests ?? 0),
+                            inspectClosure: async ({ tx, root, attempts, effectIds }) => {
+                                const effects = effectIds.length ? await service.budgetPort.observeEffectClosure(handle,
+                                    { authorityRef: root.budgetAuthorityRef, effectIds }, { tx }) : { closed: true };
+                                if (!effects.closed) return effects;
+                                for (const attempt of attempts) if (attempt.inputRefs?.[0]?.kind === 'native_session_delegation') {
+                                    if (attempt.effectRefs.length !== 1) return { closed: false };
+                                    const effect = (await readEffect(tx, handle, root, attempt.effectRefs[0])).doc;
+                                    const nested = await readSessionDelegationContinuation(tx, handle, root, attempt, effect);
+                                    await assertSessionDelegationBudgetClosure(tx, handle, root, nested);
+                                }
+                                return { closed: true };
+                            },
                             controlKind: 'native_session_delegated_control', reasonPrefix: 'session' });
                         continue;
                     }
@@ -795,7 +860,10 @@ export class SessionDelegationAuthority {
             }
         } catch (error) {
             await this.#proveNotDispatched(state);
-            await this.#failRun(state.activeNestedParent ?? parent, root.runId, state.activeNode?.nodeAttemptId ?? null, error);
+            let failureParent = state.activeNestedParent ?? parent;
+            for (const candidate of state.failedNestedParents) if (candidate.childRunId
+                && (await service.runs.get(handle, candidate.childRunId)).status === 'reconciling') { failureParent = candidate; break; }
+            await this.#failRun(failureParent, root.runId, state.activeNode?.nodeAttemptId ?? null, error);
             throw error;
         } finally { this.#delegations.delete(capture); this.#children.delete(root.runId); }
     }

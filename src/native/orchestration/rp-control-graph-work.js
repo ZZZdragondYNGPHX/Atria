@@ -527,7 +527,10 @@ export class RpControlGraphWork {
                 memberAttemptIds: branch.members.map(member => member.attemptId).sort(), scopeNodeIds: branch.scopeNodeIds })).sort((a, b) => a.entryAttemptId.localeCompare(b.entryAttemptId)),
             [...branches].sort((a, b) => a.entryAttemptId.localeCompare(b.entryAttemptId)))) fail('native_orchestration_rp_control_stale');
             const capacity = await budgetPort.observeCapacity(handle, { authorityRef: root.budgetAuthorityRef, reservationId: null }, { tx });
-            if (!capacity || capacity.overrun || capacity.remaining.requests < rpControlGraph({ ...this.state.selected.plan, definition: root.graph }, { force: true }).models.filter(node => !this.records.has(node.nodeId)).length)
+            const remainingModels = await Promise.all(rpControlGraph({ ...this.state.selected.plan, definition: root.graph }, { force: true }).models
+                .filter(node => !this.records.has(node.nodeId)).map(node => this.state.selected.resolveGraphModel(node)));
+            const requiredRequests = remainingModels.reduce((sum, model) => sum + 1 + (model.child?.resolved.route.executionPolicy.computeBudget.maxRequests ?? 0), 0);
+            if (!capacity || capacity.overrun || capacity.remaining.requests < requiredRequests)
                 fail('native_orchestration_rp_graph_budget_unavailable');
         } }).freeze(handle, { ...runGuard(await current()), fanoutAttemptId, branches });
         const terminalIds = profile.members.map(edge => declared.find(item => item.attempts.has(edge.from.nodeId)).attempts.get(edge.from.nodeId));
@@ -634,7 +637,14 @@ export class RpControlGraphWork {
                 if (['cancelled', 'failed'].includes(actual.status)) this.records.set(nodeId, { attemptId, status: actual.status });
             }
         });
-        const final = await current(), costs = await runs.engine.withTransaction(handle, tx => budgetPort.observeCapacity(handle, { authorityRef: final.budgetAuthorityRef, reservationId: null }, { tx }));
+        const final = await current(), costs = await runs.engine.withTransaction(handle, async tx => {
+            const capacity = await budgetPort.observeCapacity(handle, { authorityRef: final.budgetAuthorityRef, reservationId: null }, { tx });
+            const frame = await readFanoutFrame(tx, handle, final, fanoutAttemptId), attempts = [];
+            for (const id of final.attemptRefs) if (await readFanoutMembership(tx, handle, final, frame, id)) attempts.push((await readAttempt(tx, handle, final, id)).doc);
+            const closure = await this.inspectFanoutClosure({ tx, root: final, frame, attempts, effectIds: attempts.flatMap(attempt => attempt.effectRefs) });
+            if (!closure.closed) fail('native_orchestration_rp_quality_unsettled');
+            return capacity;
+        });
         if (!costs || costs.overrun) fail('native_orchestration_graph_budget_unavailable');
         const outcome = decided.outcome.joinReceipt.outcome;
         await runs.withSourceControl(handle, runId, () => new AttemptController({ runs, authorizeAttempt: async () => {}, verifySettlement: async ({ attempt, resultRefs, receipts }) => {
