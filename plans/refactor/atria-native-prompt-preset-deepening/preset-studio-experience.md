@@ -49,6 +49,12 @@ R2 的两个视图**不能各自持久化成为两个 Store**。原生 Host 必�
 
 以上为 2026-10-15 的静态预览基线；后续后端已有实施增量，实际可用接口以原 Native Host 与同一 Record 的新证据为准。**独立预设编辑目前不等于无 Session/Project 的完整 Preview**；其未来独立测试应使用 Host 定义的有界作者 fixture 与脱敏权限，不借游戏伪造身份；付费试读需单独显式许可、额度与原 Provider/Compute 记录。未发布 Draft 只能在 Host 内使用合法、不可发送的受权编译路径，不能用生产 `/execute` 冒充预览。三层视图应按需解释 Module 纳入/排除的原因、有效位置、来源版本与实际 Provider 降级；需要标记“静态 exact 编排”和“本请求 Source/Branch/Actor/Grant 快照”不同生命周期，并准确显示 source-stale、条件不满足与缺失但非必需来源。Preview 源文/Tool/Memory 与 Provider wire 只显示当前用户可读的脱敏投影，不能泄露 Secret、NPC 私有 Cognition、Provider opaque reasoning。
 
+**三层 Preview/Trace 读法（功能语义已确定，非现成功能声明）**：Authored 以完整作者原文、显式顺序、exact Module/Program/Draft 为权威；Effective 使用同一次 Host 编译中的 Stage/Module/Anchor 决策与已获准的 Context Contribution，展示真实纳入、条件未命中、去重、缺失、当前性及合法目标位置；Provider Wire 来自实际 Adapter 渲染和计数，仅提供本人受权且去 Secret/私有认知的消息结构、Role、Tools、Output Schema、Token 与降级依据。Preview 要明确标注 `sent:false`，不能代替运行成本、最终响应或用户审稿。
+
+**Trace 和 Diff 不建第二真相**：可展开真实编译决策、模块来源、Anchor、受权来源和可披露的排除原因；未知/受限不能被渲染成“有某份私密记忆但不可读”。没有真实 Pass/Source 证据时不显示伪 Trace 或回放。按需比较当前与候选 Authored、Effective、Wire；只有 exact Program、Source/Actor/Branch/Grant、Route/Model、Compiler 和 Provider 能力一致时才可将有效差异归因于 Prompt 修改；若环境变更，明确分开列示，不把估计 Token 当精确真实费用。编辑、轻量验证、编译 Preview、真实付费试读与正式 Review/Publish 是不同操作，不能在键入时自动运行。
+
+**独立作者测试闭环**：Library 作者不用创建游戏即可编辑及准备有界测试样例；无 Session/Project 的 Effective/Wire 测试必须由 Native Host 正式提供受权 fixture、来源声明与真实 Route/Provider 适配，样例只是测试数据而非正式 World/Memory/Actor Truth。先执行无发送 Preview；用户单独选择 Route、确认 Token/经济预算和可能的跨 Provider 数据发送后才可进行付费试读。模型输出是样例结果，非默认 Quality PASS；有来源的 Quality/Eval 和候选审阅仍归 D7 原系统。视觉作者通过独立 ImagePromptIR/Target/Rendering 的 Preview 与原 Visual Job/Asset 费用批准实现对应闭环，不得伪造一个 Session 来使用现有剧情 Gallery。
+
 ## 5. I — 故障、质量、拒答与演化候选的 Inspector
 
 | 选项 | 解释方式 | 取舍 |
@@ -57,7 +63,7 @@ R2 的两个视图**不能各自持久化成为两个 Store**。原生 Host 必�
 | **I2 有来源可跳转的分级质量/故障 Inspector（已选）** | 单一侧栏/Sheet 根据用户权限分组展示 Compiler hard errors/需要选择/style warnings、实际 Provider 失败/拒答、Source/Role/Grant、QualityProfile 的多维度与 applicable/unknown、显式用户反馈与 Judge 假设、真实 Model/Token/Cache/费用、候选 diff/Review/PlanBinding CAS 状态。按 NodeAttempt/SourceRef 精确跳转；默认只展示关键问题，专家可展开脱敏轨迹 | 与 D5 D2、D7 Q2/F2/O2/P2 和 V3 Inspector/RunProjection 融合；不能通过 Inspector 存取第二套真相 |
 | **I3 所有原始 Context/Trace 永久显示** | 永久展开模型上下文、所有角色 Memory 和整个私密日志，供高级用户调试 | 与 U2/Source/DisplayGrant、Secret、审稿模型 opaque state 矛盾，不可作为生产默认 |
 
-I2 特别应清晰区分 **Provider 明确 Block**、**合法文学模型疑似回避**、**未按作者风格生成**、**真正 World/玩家权限错误**与**尚未知**；不能用“破限失败”作为所有问题的统一错误码。质量多个维度不得用一条泛化的“安全合规总分”抵消文学自由，硬权限错误也不能被文笔高分冲销。**渐进式解释**：普通创作默认聚焦正文、资源状态和必要提醒；来源/激活/Token/Trace/精确 Diff 由用户主动展开或在真实错误时引导，不常驻完整调试台，也不能以示例数据假装 Trace 已实现。
+I2 特别应清晰区分 **Provider 明确 Block**、**合法文学模型疑似回避**、**未按作者风格生成**、**真正 World/玩家权限错误**与**尚未知**；不能用“破限失败”作为所有问题的统一错误码。质量多个维度不得用一条泛化的“安全合规总分”抵消文学自由，硬权限错误也不能被文笔高分冲销。**渐进式解释**：普通创作默认聚焦正文、资源状态和必要提醒；来源/激活/Token/Trace/精确 Diff 由用户主动展开或在真实错误时引导，不常驻完整调试台，也不能以示例数据假装 Trace 已实现。默认只有原文、当前有效状态和必要提醒；作者主动选择查看来源/差异或实际 hard error/needs-author-choice 才展开对应 Inspector。敏感和不确定结果显示受限/未知而非空内容或推测，手机通过 Tab/Sheet 可完成相同操作。
 
 ## 6. M — Windows/CachyOS Linux / Android Termux 移动体验
 
@@ -83,11 +89,11 @@ Library 管精确版本化 Program/Module/Generation Resource、Preset 的独立
 
 ### P2：Authored / Effective / Provider Wire 与精确 Diff
 
-展示作者原稿、Host 可信 Compiler 选择的 effective PromptIR/来源/Node/Route/Context，以及实际 Provider Adapter 可支持的脱敏 Role/Tools/Schema/Token/Wire。必须比较 exact revision、已授权 source、grant/branch/actor/route/model/Compiler 和条件决策；只读静态预览不是生产发送/正式 Plan 发布。现有 /preview 只支持已提交且受信 exact refs；未发布 Draft Preview 的无发送 Host 内部编译接口仍然未实现，不允许 Client 任意覆盖 /execute。
+展示作者原稿、Host 可信 Compiler 选择的 effective PromptIR/来源/Node/Route/Context，以及实际 Provider Adapter 可支持的脱敏 Role/Tools/Schema/Token/Wire。必须比较 exact revision、已授权 source、grant/branch/actor/route/model/Compiler 和条件决策；只读静态预览不是生产发送/正式 Plan 发布。现有 /preview 只支持已提交且受信 exact refs；此前未发布 Draft Preview 的无发送 Host 内部编译接口尚属基线缺口，最新可用状态必须检查实际 Host/分支；不允许 Client 任意覆盖 `/execute`。新增来源 Trace 与精确 Diff 必须由真实 Host 证据提供，并把独立作者 fixture 预览、按需付费试读、正式发布明确区分。
 
 ### I2：来源级故障和质量 Inspector
 
-复用原 Compiler、Context/Provider、V3 RunProjection、Experience/Eval/Evolution 的确切证据。分别显示 hard-invalid、needs-author-choice、soft-style-warning、Provider 明确 Block、疑似过度拒答、文学/Agent 多维质量、实际 Token/Cost、Candidate Review/CAS 状态和 unknown；严格受众脱敏，不能泄露私有 Cognition、Secret、Opaque Reasoning 或把 Judge 推断当作 Host Fact。
+复用原 Compiler、Context/Provider、V3 RunProjection、Experience/Eval/Evolution 的确切证据。分别显示 hard-invalid、needs-author-choice、soft-style-warning、Provider 明确 Block、疑似过度拒答、文学/Agent 多维质量、实际 Token/Cost、Candidate Review/CAS 状态和 unknown；严格受众脱敏，不能泄露私有 Cognition、Secret、Opaque Reasoning 或把 Judge 推断当作 Host Fact。无来源/未查询项不可宣称必然存在；Trace、质量推测与确定性编译证据分开展示。
 
 ### M2：三端功能等价与交互可达性
 

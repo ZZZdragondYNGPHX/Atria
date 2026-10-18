@@ -13,7 +13,7 @@
 - **D5 已冻结（2026-10-15）**：**S2 Typed SemanticBlocks + L2 Capability-aware Provider Lowering + D2 分级可解释诊断 + K2 Stable/Dynamic Scoped Cache + T2 Context/Provider 双阶段 Token/Compute 预算**；详见 [semantic-ir-lowering.md](semantic-ir-lowering.md)。设计冻结不表示物理接口或质量已验收。
 - **D6 已冻结（2026-10-15）**：**U2 每消费者 Source-bound Context + E2 类型化认识地位 + H2 来源完整的长会话分层 + V2 Source-aware 定向失效及消费前复验**；仅消费现有 V3 C2 / HCM-01–08，不重建 Memory/Context/Actor/World 权威。详见 [context-memory-consumption.md](context-memory-consumption.md)。
 - **D7 已冻结（2026-10-15）**：**Q2 文学/角色/Agent 多维 QualityProfile 与不可抵消硬约束 + F2 原 Experience 来源/根因归属 + O2 合法成熟虚构 RP 过度拒答正反控制 + P2 条件反思候选/独立评价/Review/PlanRevision/PlanBinding CAS 发布**。这是设计取舍，实际来源及 V3 `plan-prompt` 闭环待实施；见 [quality-evolution.md](quality-evolution.md)。
-- **D8 已冻结（2026-10-15）**：W2 原生 Library/Studio/Play 三域协作 + R2 单 Draft 结构化/完整原文无损双编辑 + P2 Authored/Effective/Provider Wire 真实预览与精确 Diff + I2 来源驱动质量/故障 Inspector + M2 Windows/CachyOS Linux/Android Termux 全功能交互等价；详见 [preset-studio-experience.md](preset-studio-experience.md)。**仅冻结功能/交互语义；视觉审美完全留待用户后续外部设计参考与多轮讨论，不由本助手决定。** **后续确认的入口细化**：独立预设作者无需建游戏，Game Studio 以引用/派生消费同一资源，视觉作者独立创作入口复用原视觉资源与 Job 权威，均不是新增顶层域或第二存储。
+- **D8 已冻结（2026-10-15）**：W2 原生 Library/Studio/Play 三域协作 + R2 单 Draft 结构化/完整原文无损双编辑 + P2 Authored/Effective/Provider Wire 真实预览与精确 Diff + I2 来源驱动质量/故障 Inspector + M2 Windows/CachyOS Linux/Android Termux 全功能交互等价；详见 [preset-studio-experience.md](preset-studio-experience.md)。**仅冻结功能/交互语义；视觉审美完全留待用户后续外部设计参考与多轮讨论，不由本助手决定。** **后续确认的入口细化**：独立预设作者无需建游戏，Game Studio 以引用/派生消费同一资源，视觉作者独立创作入口复用原视觉资源与 Job 权威，均不是新增顶层域或第二存储。 **已确认专业调试方向**：Authored/Effective/Provider Wire 同源观察、来源级 Trace、按需精确 Diff、Host 受权独立测试；付费试读须另外确认，不实时自动试写，实际实现需对照当前 Host 证明。
 - **D9/E0 本地续审（NOT_CLOSED）**：已从远端有界首审推进为本地全产品静态索引与核心消费者追踪；物理接口、动态来源消费者和开发前 Gate 仍见唯一 [e0-audit.md](e0-audit.md)，未写为全量通过。
 - 前轮前端静态盘点基线：main@695acf3bcad1d42e331459189532a76056278bec、V3@31bef95723885c1547a9c3686200cbaf122799a8；保留其固定索引证据。2026-10-16 后端从同一 main 建语义分支，V3 已并发推进到4e0ce4bad；当前实现与增量只见 E0 §8 / 同一 Record，不把旧静态索引或另一任务工作树混入本任务提交。
 - **全产品前端研究已整理**：[Atria 前端功能与交互审计](../../architecture/atria-frontend-audit/index.md) 独立提供页面/控件/状态、端到端操作、组件问题、三端矩阵与处置。外部 [三份设计输入](../../architecture/atria-frontend-audit/design-proposal/atria-function-presentation.md) 已收到，189 个功能组映射无缺漏/重复；它们仍不是第二个功能权威。后端接口见 [实施落点](backend-implementation.md)，交 Claude Code 的实施提示词见 [前端交接](../../architecture/atria-frontend-audit/claude-code-frontend-prompt.md)。
@@ -48,7 +48,7 @@
 | [semantic-ir-lowering.md](semantic-ir-lowering.md) | **D5 已冻结**：S2/L2/D2/K2/T2、Role/Context 信任边界、Fallback、缓存与预算；原生语义位置、来源贡献与正文宏的职责边界 | D5 / E0 / 提示词编排讨论 |
 | [context-memory-consumption.md](context-memory-consumption.md) | **D6 已冻结**：U2/E2/H2/V2 的受众 Context 投影、认识地位、长会话证据、请求级装配与 Source-aware 失效/复验 | D6 和实施相关接口 |
 | [quality-evolution.md](quality-evolution.md) | **D7 已冻结**：Q2/F2/O2/P2；受审文学/Agent 质量、来源归因、合法误拒、精确候选与受控发布 | D7 / E0 / 质量实施 |
-| [preset-studio-experience.md](preset-studio-experience.md) | **D8 功能与交互已冻结**：W2/R2/P2/I2/M2；原生创作大纲、渐进式 Inspector 的呈现原则；具体视觉未冻结 | D8 / 前端讨论与实现 |
+| [preset-studio-experience.md](preset-studio-experience.md) | **D8 功能与交互已冻结**：W2/R2/P2/I2/M2；原生创作大纲、受信三层预览、来源 Trace/按需 Diff、独立作者受控测试；具体视觉未冻结 | D8 / 前端讨论与实现 |
 | [e0-audit.md](e0-audit.md) | **D9/E0 未收口**：真实消费者静态台账、跨合同缺口、实施依赖与分支前置 Gate | 第九轮/开发交接 |
 | [全产品前端研究](../../architecture/atria-frontend-audit/index.md) | **独立研究输入，非最终设计**：页面/组件/交互/跨端/来源与外部设计AI委托；详细状态仍归E0/Record | 外部设计前；后续HTML与双文档覆盖核对 |
 | [同一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md) | 真实文档提交、代码/测试/验证状态与未完成项 | 每轮更新 |

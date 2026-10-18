@@ -53,6 +53,10 @@ L2 的降级仅限不改变 Authorial Intent、Agent OutputContract、Context gr
 
 D2 必须把**不可被文学优先级补救**的硬问题分开：无 Scope/Source/Display grant、Tool/Output contract 权限不足、Program exact ref 不匹配、变量类型错误、Provider 必需 capability 不支持、final wire 超上下文、Node/Route program 语义漂移。风格层如“冷峻叙述 vs 温柔旁白”可以按显式 E2 叠加先后作决策并展示 diff；未有源的自由文本冲突只提示“可能冲突”，不把字符串比较宣称成文学逻辑证明。面向作者的激活/未纳入原因、最终语义位置和差异必须来自 Host 的有效编译证据；默认不执行模型试读或常驻重计算。编译诊断须区分作者条件不成立、Host 未授权的来源、Anchor 匹配/排序/去重结果、必要上下文缺失与版本/currentness 已过期；可选来源缺失应明示本次未纳入，必要来源缺失必须走原本确定的拒绝或作者处理路径，不能自动让模型编造。对于顺序冲突，至少区分跨 target 的非法移动、同 target 的合法显式排序、未解析 Anchor/Source 和继承后精确引用漂移；诊断不得把尚未实行的新排序表现为当前 Compiler 的真实执行结果。
 
+**可解释编译证据（与 D8 P2/I2 同一合同）**：Authored/Effective/Provider Wire 都来自相同 Host 原生 Compiler/Context/Provider 接口或其受权脱敏投影，不在 Browser 重编 Prompt。有效 Trace 应指出确实参与计算的 Stage/Module/Anchor、条件成立与否、纳入的 Contribution 来源、最终目标位置、实际 Provider lowering 和未纳入/失效的可披露原因；来源未查询、权限未授予或证据不存在时必须是 restricted/unknown，不能泄漏私有来源是否存在。`compilation.segments`、module diagnostics、compiled binding 是可利用的证据线索，不代表 Loom Core 式通用 Pass Trace、回放引擎或完整执行证明已经实现。
+
+**精确对比与独立测试**：只读编译预览不发送模型、不计作付费试读或质量验收；比较 authored/effective/wire 时先固定双方的 exact Program/Module、Context Source/Actor/Branch/Grant、Route/Model/Provider/Compiler 身份，环境差异和作者差异分别报告，不对不同条件结果伪造“纯 Prompt Diff”。Token 使用对应 Provider 的真实计数能力/可信保守上界并如实标记计数等级。无游戏作者使用由 Host 定义、受限且可识别为测试资料的 fixture/Context，不能把自填 World/Memory 升格为真实 Host 事实；需要真正生成时由现有 Compute/Provider 路径显式请求、审批预算并保存真实用量/未知，不默认每次编辑重编译、自动试写或强制 Judge。图像侧独立遵守 ImagePromptIR、Target/Rendering、Visual Job/Asset/费用权威，不和文本 Wire 混为一套。
+
 ## 5. K：缓存布局与真实利用
 
 | 候选 | 设计 | 取舍 |

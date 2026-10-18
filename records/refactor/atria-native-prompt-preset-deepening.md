@@ -20,6 +20,10 @@
 - 只读证据：`main@c57fada6edeea255b29d857ba2585c1dbc9c098b` 的 `library-runtime-workspaces.js`、`prompt-presets.js` 已有 Library 独立新建/导入/导出；`native-generation` 正式 Preview 仍需 Session 或 Project，不能因此声称独立无游戏测试闭环完成。视觉 Target/Rendering 为 Library 版本资源，官方插画 global/work settings 已存在，但 prompt 生成与 Gallery/Media Studio 主要沿 Session/Branch，非 Session 付费试图及资产归属仍缺真实产品合同。原已完成视觉 Plan 只读参考，不改其历史。
 - 本轮设计原位修订现有 Prompt Plan index / D8 decisions / D8 Studio 体验 / D5 语义边界、前端指导以及功能矩阵 Q01/Q02/Q10/Q12、V05/V06/V09，保持 189 个功能编号和唯一 Record。没有改产品代码、视觉终审、已冻结权限/Source、Provider 或费用权威；无测试、构建、CI、真机或付费 API 验证。本轮基线 `docs@5c5ce1c688b6bb4ee070f16e8ad588d2f7c8d98b`；其余 E0、V3 与视觉独立项目真实验收状态未重跑。
 
+- 用户确认证据驱动 Prompt 工作台：Authored/Effective/Provider Wire 三层来自同一原生 Host；Trace 解释确实执行的 Stage/Module/Anchor/Contribution 纳入、排除、来源、条件、Provider lowering 与证据等级，未授权或未查询的私密信息不得推断存在；按需精确 Diff 先校验 Program/Source/Actor/Branch/Grant/Route/Model/Compiler 一致性，不一致分列环境变化。日常默认轻量，专业诊断按需展开，手机等价；没有通用 Pass Trace/Replay 证据不可造假。
+- 独立 Library 作者可无游戏编辑；独立 Effective/Wire 测试必须沿原 Host 的有界非特权 fixture，先无发送 Preview；实际模型试读须明确 Route/费用/数据外发许可、保留真实 Token/未知成本，不默认试写/多 Judge/自动优化。视觉侧另走 ImagePromptIR、Target/Rendering、Visual Job/Asset，不复刻文本编译器或 Session Gallery。原 D7 Quality/PromptCandidate 的来源与 Review/Publish 权威不变。
+- 原位更新 D5、D8、前端指导、功能矩阵 Q12/V03、`decisions` 与唯一 `Record`、简化 `index` 路由；不建新方案/第二 Record。只读审查 `main@c57fada6edeea255b29d857ba2585c1dbc9c098b`：正式 `/preview` 要求 Session/Project，`prompt-compiler.js` 已有片段/条件诊断，但不能声称独立 fixture 与完整 Pass Trace 已可用；`docs` 编辑基线为 `669adce8173eee607618bd2ce0d9082dbae27139`。没有修改产品代码，未跑 CI、编译、端到端、真机、付费 Provider 或图像 API；E0/三端验收状态不因此改变。
+
 ## 2026-10-16 — 后端正式开工
 
 用户授权正式开始，确认包含 D2–D8 全部后端，前端实现交 Claude Code。读取实际 Git、同一 Plan/E0/Record 和外部设计三文件；不冻结 §8.4 提案。起点 main=695acf3bc，docs=5101c3b3e，V3=618a04ae1；V3 仍在并发开发，原 Authoring bindings/生产 Model/Context/Source 未接通。既有各工作树 CLAUDE.md 删除、docs 外部设计草稿/截图及 agent-experience-evolution 未跟踪目录保持。当前接口工程决定见同 Bundle backend-implementation；验收仍 NOT_RUN，不把授权写为 E0 PASS。
