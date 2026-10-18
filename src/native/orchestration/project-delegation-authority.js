@@ -70,9 +70,26 @@ export class ProjectDelegationAuthority {
                 || model.resolved.route.executionPolicy.continuity !== 'none' || model.resolved.route.executionPolicy.reuse !== 'disabled') fail();
             profiles.push({ ...model, node });
         }
+        // Future Nodes can use only already published owned model pins. These
+        // probes resolve Route resources/requirements; they create no Attempt,
+        // capture, Model permission or executable synthetic Node.
+        const poolProfiles = [];
+        for (const modelPin of childPlan.dependencyPins) {
+            const initial = profiles.find(model => model.node.kind === 'agent' && model.pin.pinId === modelPin.pinId);
+            const probe = { ...topology.final, dependencyPinIds: [modelPin.pinId], policy: { agentPinId: modelPin.pinId } };
+            const model = initial ?? { ...await resolveModel(probe, childPlan), node: probe };
+            if (model.failurePlan.routes.length !== 1 || model.resolved.route.policy.maxRetries !== 0
+                || model.resolved.route.executionPolicy.continuity !== 'none' || model.resolved.route.executionPolicy.reuse !== 'disabled') fail();
+            poolProfiles.push(model);
+        }
         const ceiling = profiles[0].resolved.route.executionPolicy.computeBudget;
-        if (profiles.some(model => !equal(model.resolved.route.executionPolicy.computeBudget, ceiling))) fail();
-        return { pin, plan: childPlan, planRef: pin.resourceRef, topology, profiles, ceiling };
+        if ([...profiles, ...poolProfiles].some(model => !equal(model.resolved.route.executionPolicy.computeBudget, ceiling))) fail();
+        return { pin, plan: childPlan, planRef: pin.resourceRef, topology, profiles, poolProfiles, ceiling,
+            resolveModel: async node => {
+                const model = await resolveModel(node, childPlan), initial = poolProfiles.find(candidate => candidate.pin.pinId === model.pin.pinId);
+                if (!initial || model.configDigest !== initial.configDigest || !equal(model.resolved.route.executionPolicy.computeBudget, ceiling)) fail();
+                return { ...model, node };
+            } };
     }
 
     parentInput(state, node, child, input, bindings) {
@@ -157,7 +174,7 @@ export class ProjectDelegationAuthority {
                 handoffReceiptRef: lineage.handoff ? { runId: parentRoot.runId, receiptId: lineage.handoff.receiptId } : null,
                 delegationReceiptRef: { runId: parentRoot.runId, receiptId: lineage.delegation.receiptId },
                 budgetReadyReceiptRef: { runId: root.runId, receiptId: childBudgetReceiptId(root.runId) },
-                ...(output ? { closure } : { context: { task: { kind: 'native_project_delegated_work', authoredTask: state.model.node.label, ...(state.model.node.kind === 'planner' ? { graph: snapshot.graph, nodeControl: root.nodeControl, graphRevision: root.graphRevision } : {}), instruction: state.model.node.kind === 'planner' ? 'Propose only declared bounded graph operations as {operations:[...]}. No tools, new Nodes or official Project writes.' : 'Perform this declared advisory task only. No tools, official Project edits or Commit permission.' }, results } }) };
+                ...(output ? { closure } : { context: { task: { kind: 'native_project_delegated_work', authoredTask: state.model.node.label, ...(state.model.node.kind === 'planner' ? { graph: snapshot.graph, nodeControl: root.nodeControl, graphRevision: root.graphRevision, dependencyPins: state.child.plan.dependencyPins } : {}), instruction: state.model.node.kind === 'planner' ? 'Propose only published bounded graph operations as {operations:[...]}, using the original declared model pins. No tools or official Project writes.' : 'Perform this declared advisory task only. No tools, official Project edits or Commit permission.' }, results } }) };
         });
     }
     inspectDelegation(capture, expected = {}) { return this.#inspect(capture, expected, false); }
@@ -308,9 +325,12 @@ export class ProjectDelegationAuthority {
             await service.reserveChild(handle, { parentRunId: state.runId, childRunId: state.childRunId, ceiling: child.ceiling,
                 limits: state.ownerLimits });
             await service.delegates.confirmBudget(handle, runGuard(await service.runs.get(handle, state.childRunId)));
-            const resources = [...new Set((await Promise.all(child.profiles.map(model => host.executionResources(handle, model.resolved.route)))).flat())];
+            const resources = [...new Set((await Promise.all(child.poolProfiles.map(model => host.executionResources(handle, model.resolved.route)))).flat())];
             const output = await withNativeProjectDelegation(state.projectCapture, {
                 resources, nodeIds: child.topology.ordered.map(node => node.nodeId),
+                ...(child.plan.definition.graphChangePolicy.allowedOperations.includes('addNode') ? {
+                    delegatedChild: await service.runs.get(handle, state.childRunId), delegatedParentAttempt: (await this.owner.engine.withTransaction(handle, async tx => readAttempt(tx, handle,
+                        await service.runs.get(handle, state.runId), state.attemptId))).doc } : {}),
                 key: 'project-child:' + state.childRunId, fingerprint: hash({ childRunId: state.childRunId, childPlanRef: child.planRef }),
                 fresh: async () => { await this.assertSelection(state.selection); return true; },
                 run: ({ permit, signal }) => this.#runChild(state, permit, signal) });
@@ -446,12 +466,11 @@ export class ProjectDelegationAuthority {
         this.#delegations.set(capture, state); this.#children.set(root.runId, state);
         const progress = new Map(), port = this.port(host);
         try {
-            while (progress.size < child.profiles.length) {
+            while (true) {
                 const currentRoot = await service.runs.get(handle, root.runId);
                 const ready = inspectGraphReadiness(currentRoot.graph, currentRoot.nodeControl, Object.fromEntries([...progress.keys()].map(id => [id, 'completed'])), { excludeNodeIds: [child.topology.output.nodeId] }).ready[0];
                 if (!ready) fail();
-                const model = child.profiles.find(model => model.node.nodeId === ready.node.nodeId);
-                if (!model) fail();
+                const model = child.profiles.find(model => equal(model.node, ready.node)) ?? await child.resolveModel(ready.node);
                 state.model = model; state.root = currentRoot;
                 const requestId = 'project-quality:' + hash({ runId: root.runId, nodeId: model.node.nodeId }).slice(0, 32);
                 state.projectCapture = await captureNativeProjectDelegatedWorker(parent.projectCapture, childPermit, { requestId, nodeId: model.node.nodeId,
@@ -538,7 +557,6 @@ export class ProjectDelegationAuthority {
                     progress.set(model.node.nodeId, { attemptId, resultRef: published.resultRef });
                 } finally { this.#graphs.delete(graphCapture); }
             }
-            fail();
         } catch (error) {
             await this.#proveNotDispatched(state);
             const active = await service.runs.get(handle, root.runId);

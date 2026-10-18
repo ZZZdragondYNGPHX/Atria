@@ -6,11 +6,18 @@ import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt, readModelTerminalFact } from './model-port.js';
 import { readOriginalProjectTask } from './project-tool-receipts.js';
 import { assertBudgetAttemptRef, sendAttemptId } from './budget-port.js';
+import { readGraphPlannerCompletion } from './graph-planner-completion.js';
+import { assertProjectControlWork } from './project-quality-contracts.js';
+import { assertProjectFanoutPlannerOperations } from './project-fanout-planner-contracts.js';
+import { readProjectControlInputs } from './project-control-input-contracts.js';
+import { readGraphFanoutInput } from './graph-fanout-completion.js';
+import { readAttempt } from './controller-common.js';
+import { assertOutputTransition } from './output-transition-contracts.js';
 
 const same = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original Project Fanout Join facts'); };
 
-async function memberInput(tx, handle, root, attempt, { frame, branch, reservation }) {
+async function memberInput(tx, handle, root, attempt, { frame, branch, reservation, settlement }) {
     if (attempt.inputState === 'reserved') {
         if (!reservation || attempt.status !== 'cancelled' || attempt.inputRefs !== null || attempt.effectiveGrantDigest !== null
             || attempt.budgetRef !== null || attempt.reservationRef.producerAttemptId !== frame.fanoutAttemptId || !branch.scopeNodeIds.includes(attempt.nodeId)) invalid();
@@ -21,7 +28,7 @@ async function memberInput(tx, handle, root, attempt, { frame, branch, reservati
     const pin = plan.dependencyPins.find(pin => pin.pinId === node?.policy.agentPinId && node.dependencyPinIds.includes(pin.pinId));
     const task = await readOriginalProjectTask(tx, handle, root.sourceBinding.sourceRef);
     const original = task?.attempts.find(item => item.attemptId === input.projectAttemptId);
-    if (root.sourceBinding.sourceAuthority !== 'project' || root.parentRef || node?.kind !== 'agent' || !same(node.capabilities, ['generation.send'])
+    if (root.sourceBinding.sourceAuthority !== 'project' || root.parentRef || !['agent', 'planner'].includes(node?.kind) || !same(node.capabilities, ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []])
         || input.kind !== 'native_project_intent' || input.nodeId !== attempt.nodeId || input.role !== 'studio'
         || !same(input.planRef, root.planRef) || !same(input.sourceRef, root.sourceBinding.sourceRef)
         || input.fanoutAttemptId !== frame.fanoutAttemptId || !branch.scopeNodeIds.includes(node.nodeId)
@@ -32,20 +39,57 @@ async function memberInput(tx, handle, root, attempt, { frame, branch, reservati
         || !same(attempt.budgetRef, root.budgetAuthorityRef)
         || (input.acceptedGraphResultRefs ?? []).some(ref => !attempt.inputRefs.some(actual => same(ref, actual)))
         || (input.acceptedControlRefs ?? []).some(ref => !attempt.inputRefs.some(actual => same(ref, actual)))) invalid();
+    const bundle = input.controlGraph;
+    if (!bundle || !same(input.acceptedGraphResultRefs, bundle.evidenceRefs) || !same(input.acceptedControlRefs ?? [], bundle.controlRefs)
+        || !same(attempt.inputRefs, [input, ...bundle.evidenceRefs, ...bundle.controlRefs])) invalid();
+    const facts = await readProjectControlInputs(tx, handle, root, null, bundle, { targetNodeId: node.nodeId });
+    const fanout = (await readAttempt(tx, handle, root, frame.fanoutAttemptId)).doc;
+    const inherited = facts.filter(fact => fanout.inputRefs.some(ref => same(ref, fact.controlRef ?? fact.receipt.resultRef)));
+    for (const fact of inherited) await readGraphFanoutInput(tx, handle, root, frame.fanoutAttemptId, attempt,
+        fact.controlRef ?? fact.receipt.resultRef, fact, { historical: true });
+    for (const fact of facts.filter(fact => fact.record)) if (!fact.record.envelope.audienceConstraint.nodeIds.includes(node.nodeId)) invalid();
+    const direct = facts.filter(fact => !inherited.includes(fact)), bindings = [...bundle.bindings].sort((a, b) => a.edgeId.localeCompare(b.edgeId));
+    if (attempt.attemptId === branch.entryAttemptId) {
+        if (bindings.length || direct.length) invalid();
+    } else {
+        if (!reservation || !bindings.length || direct.some(fact => !branch.scopeNodeIds.includes(fact.producer.nodeId)
+            || !bindings.some(binding => binding.producerAttemptId === fact.producer.attemptId))
+            || bindings.some(binding => !direct.some(fact => fact.producer.attemptId === binding.producerAttemptId
+                && snapshot.graph.edges.some(edge => edge.edgeId === binding.edgeId && edge.from.nodeId === fact.producer.nodeId && edge.to.nodeId === node.nodeId)))) invalid();
+        const identity = hash({ runId: root.runId, bindings, reservedAttemptId: attempt.attemptId });
+        await assertOutputTransition(tx, handle, { ...root, graph: snapshot.graph }, { published: direct[0], additionalProducers: direct.slice(1), output: attempt,
+            producerBindings: bindings, reservedAttemptId: attempt.attemptId, receipt: { decisionSeq: settlement.decisionSeq,
+                traversalReceiptRef: { runId: root.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } } });
+    }
 }
 
-async function controlInput(_tx, _handle, root, attempt, { settlement }) {
+async function controlInput(tx, handle, root, attempt, { settlement, frame }) {
     const input = attempt.inputRefs[0], node = root.graph.nodes.find(node => node.nodeId === attempt.nodeId);
     if (input.kind !== 'native_project_graph_control' || input.nodeId !== attempt.nodeId || !same(input.planRef, root.planRef)
         || !same(input.sourceRef, root.sourceBinding.sourceRef) || !same(attempt.budgetRef, root.budgetAuthorityRef)
         || attempt.effectiveGrantDigest !== hash({ handle: root.ownerRef.handle, source: root.sourceBinding, inputRefs: attempt.inputRefs })
         || node?.kind === 'fanout' && settlement.reasonCode !== 'project_fanout_join_' + settlement.outcome
         || node?.kind === 'join' && settlement.reasonCode !== null && !['join_deadline', 'join_member_unsuccessful', 'join_quorum_unreachable'].includes(settlement.reasonCode)) invalid();
+    const bundle = input.controlGraph;
+    if (!bundle || !same(input.acceptedGraphResultRefs, bundle.evidenceRefs) || !same(input.acceptedControlRefs, bundle.controlRefs)
+        || !same(attempt.inputRefs, [input, ...bundle.evidenceRefs, ...bundle.controlRefs])) invalid();
+    if (node.kind === 'fanout') {
+        const facts = await readProjectControlInputs(tx, handle, root, null, bundle, { targetNodeId: node.nodeId });
+        if (!bundle.bindings.length) {
+            if (!root.graph.entryNodeIds.includes(node.nodeId) || facts.length) invalid();
+        } else {
+            const direct = facts.filter(fact => bundle.bindings.some(binding => binding.producerAttemptId === fact.producer.attemptId));
+            const bindings = [...bundle.bindings].sort((a, b) => a.edgeId.localeCompare(b.edgeId));
+            const receiptId = 'oreceipt_' + hash({ runId: root.runId, bindings, reservedAttemptId: null }).slice(0, 32);
+            await assertOutputTransition(tx, handle, root, { published: direct[0], additionalProducers: direct.slice(1), output: attempt, producerBindings: bindings,
+                receipt: { decisionSeq: settlement.decisionSeq, traversalReceiptRef: { runId: root.runId, receiptId } } });
+        }
+    } else if (bundle.bindings.length || bundle.evidenceRefs.length || bundle.controlRefs.length || input.fanoutAttemptId !== frame.fanoutAttemptId) invalid();
 }
 
 /** Same original Task bank, including settled rejected or late paid sends.
  * No usage is invented and unselected work is never omitted from the facts. */
-async function memberCost(tx, handle, root, attempt, { settlement, results }) {
+async function memberCost(tx, handle, root, attempt, { settlement, results, frame }) {
     const task = await readOriginalProjectTask(tx, handle, root.sourceBinding.sourceRef), bank = root.budgetAuthorityRef;
     if (!task || bank.authority !== 'project_task' || bank.projectId !== task.projectId || bank.taskId !== task.taskId
         || bank.operationId !== hash({ projectId: task.projectId, taskId: task.taskId, revision: root.sourceBinding.sourceRef.revision,
@@ -57,12 +101,19 @@ async function memberCost(tx, handle, root, attempt, { settlement, results }) {
     }
     const effect = (await readEffect(tx, handle, root, attempt.effectRefs[0])).doc;
     const completed = await readModelCompletionReceipt(handle, tx, root, effect), terminal = completed ? null : await readModelTerminalFact(handle, tx, root, effect);
+    const planner = root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'planner' && settlement.outcome === 'completed'
+        ? await readGraphPlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork: assertProjectControlWork }) : null;
+    if (planner) {
+        if (results.length || !same(planner.producer, attempt) || !same(planner.settlement, settlement)
+            || !completed || !same(planner.receipt.modelReceiptRef, completed.receiptRef)) invalid();
+        assertProjectFanoutPlannerOperations(frame, attempt, planner.patch.appliedOperations);
+    }
     const fact = completed ?? terminal;
     if (!fact || effect.nodeAttemptId !== attempt.attemptId || effect.capability !== 'generation.send' || effect.risk !== 'R1' || effect.requiresApproval
         || effect.sourceBindingDigest !== root.sourceBinding.bindingDigest || effect.epoch !== attempt.epoch || effect.grantDigest !== attempt.effectiveGrantDigest
         || !same(effect.inputRef, attempt.inputRefs[0]) || effect.inputHash !== hash(attempt.inputRefs[0])
         || !same(settlement.effectReceiptRefs, [fact.receiptRef.receiptId])
-        || (results.length ? !completed || settlement.outcome !== 'completed' : terminal?.kind !== (settlement.outcome === 'failed' ? 'rejected' : 'late_response'))) invalid();
+        || (planner ? false : results.length ? !completed || settlement.outcome !== 'completed' : terminal?.kind !== (settlement.outcome === 'failed' ? 'rejected' : 'late_response'))) invalid();
     const sends = fact.observation.dispatchEvidence.reference.attempts;
     if (!sends?.length) invalid();
     for (const [ordinal, send] of sends.entries()) {

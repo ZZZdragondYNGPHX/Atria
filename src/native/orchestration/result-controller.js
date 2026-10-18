@@ -13,9 +13,8 @@ import { readEffect } from './effect-contracts.js';
 import { assertResultRecord, resultDependencyDigest } from './result-contracts.js';
 import { modelResultId, resultPublicationReceiptId, assertResultPublicationReceipt, readResultPublication } from './result-publication-contracts.js';
 import { assertDelegationDecision } from './delegate-controller.js';
-import { graphNodeResult, readGraphNodeResult, graphResultPublicationId } from './graph-result-contracts.js';
+import { graphNodeResult, readGraphNodeResult, graphResultPublicationId, readGraphResultPublicationSnapshot } from './graph-result-contracts.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
-import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readPlanRevision } from './plan-repository.js';
 import { readSessionDelegatedGraphHistory, sessionDelegationResultSources } from './session-delegation-contracts.js';
 import { readProjectDelegatedGraphHistory } from './project-delegation-contracts.js';
@@ -185,7 +184,7 @@ export class ResultController {
                     const retrieval = await readContextRetrievalCompletions(tx, handle, root, intent, record.doc);
                     if (!equal(permission, { allowed: true, grantDigest: intent.grantDigest }) || record.doc.status !== 'running' || record.doc.resultRefs.length
                         || !equal(record.doc.effectRefs, [effectId, ...retrieval.map(item => item.effectId)]) || record.doc.effectiveGrantDigest !== intent.grantDigest || root.pendingEffectRefs.includes(effectId)) fail('native_orchestration_result_not_publishable');
-                    const graphSnapshot = await readTaskGraphRevision(tx, handle, root);
+                    const graphSnapshot = await readGraphResultPublicationSnapshot(tx, handle, root, record.doc);
                     await sourcePort.revalidate(handle, root.sourceBinding, { tx, root });
                     if (!equal(await authorize(), permission)) return { denied: true };
                     if (!equal(await runs.get(handle, runId), root)) return { denied: true };

@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
+import { cloneNativeDocument, hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { runGenerationLocalWork } from './generation-local-work.js';
@@ -7,6 +7,7 @@ import { graphPatchHash } from './graph-revision-contracts.js';
 import { graphPlannerReceiptId, readGraphPlannerCompletion } from './graph-planner-completion.js';
 import { assertProjectControlWork } from './project-quality-contracts.js';
 import { projectDelegatedGraphProfile } from './project-delegated-graph-profile.js';
+import { readGraphNodeResult } from './graph-result-contracts.js';
 import { readProjectDelegatedModelInput } from './project-delegation-contracts.js';
 import { controlCommandId, controlRecordKey, readAttempt, runGuard } from './controller-common.js';
 import { readEffect } from './effect-contracts.js';
@@ -40,7 +41,7 @@ export async function completeProjectDelegatedPlanner({ state, service, port, re
         if (!Array.isArray(value.operations) || !value.operations.length) fail('native_orchestration_planner_response_invalid');
         return immutable(value);
     });
-    if (parsed.operations.some(operation => !['setPendingPriority', 'requestFinalize'].includes(operation.op))) fail('native_orchestration_planner_patch_rejected');
+    if (parsed.operations.some(operation => !['setPendingPriority', 'requestFinalize', 'addNode', 'addEdge'].includes(operation.op))) fail('native_orchestration_planner_patch_rejected');
     const root = await service.runs.get(handle, runId), patch = { schemaVersion: 1, patchId: 'opatch_' + hash({ runId, attemptId }).slice(0, 32), runId,
         producerAttemptId: attemptId, expectedEpoch: root.epoch, expectedGraphRevision: root.graphRevision, operations: parsed.operations,
         reasonRefs: [{ kind: 'source', bindingDigest: root.sourceBinding.bindingDigest }, ...state.decision.inputRef.acceptedGraphResultRefs.map(ref => ({ kind: 'result', resultId: ref.resultId }))], payloadHash: '' };
@@ -51,7 +52,23 @@ export async function completeProjectDelegatedPlanner({ state, service, port, re
             await current();
             if (producer.attemptId !== attemptId || !equal(actual, patch) || !equal(proof, await port.inspectResultCompletion(handle, { result, runId, effectId })))
                 fail('native_orchestration_planner_producer_denied');
-            const profile = projectDelegatedGraphProfile({ ...state.child.plan, definition: active.graph });
+            const candidate = cloneNativeDocument(active.graph);
+            for (const operation of actual.operations) {
+                if (operation.op === 'addNode') candidate.nodes.push(operation.node);
+                if (operation.op === 'addEdge') candidate.edges.push(operation.edge);
+            }
+            const profile = projectDelegatedGraphProfile({ ...state.child.plan, definition: candidate });
+            if (profile.terminalNodeId !== state.child.topology.terminalNodeId || !equal(profile.output, state.child.topology.output))
+                fail('native_orchestration_planner_producer_denied');
+            for (const node of profile.models) await state.child.resolveModel(node);
+            for (const operation of actual.operations.filter(operation => operation.op === 'addEdge')) {
+                const source = progress.get(operation.edge.from.nodeId);
+                if (source?.resultRef) {
+                    const fact = await readGraphNodeResult(tx, handle, active, source.resultRef.resultId);
+                    if (!fact || !fact.record.envelope.audienceConstraint.nodeIds.includes(operation.edge.to.nodeId))
+                        fail('native_orchestration_result_audience_denied');
+                }
+            }
             const required = profile.models.filter(node => node.nodeId !== producer.nodeId && !progress.has(node.nodeId)).length;
             const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: runId }, { tx });
             if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');

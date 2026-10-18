@@ -1,3 +1,5 @@
+import { inspectGraphReadiness } from './graph-work-readiness.js';
+import { sessionReplanScope } from './session-replan-contracts.js';
 import { ConflictError } from '../../storage/errors.js';
 import { hashNativeDocument as hash, putImmutable, putMutable } from '../repositories/common.js';
 import { immutable, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
@@ -67,11 +69,35 @@ export class SessionDelegationAuthority {
                 || model.resolved.route.executionPolicy.continuity !== 'none' || model.resolved.route.executionPolicy.reuse !== 'disabled') fail();
             profiles.push(model);
         }
-        // Each actual node's route is frozen; all sends use the held original
-        // child allocation. The first original route defines that allocation.
+        // Resolve published owned pins before the original Scheduler operation.
+        // A probe only describes resources; it creates no Node, Attempt or grant.
+        const poolProfiles = [];
+        for (const modelPin of childPlan.dependencyPins.filter(pin => pin.port === 'model')) {
+            const initial = profiles.find(model => model.node.kind === 'agent' && model.pin.pinId === modelPin.pinId);
+            const probe = { ...topology.final, dependencyPinIds: [modelPin.pinId, topology.final.policy.audiencePinId],
+                policy: { agentPinId: modelPin.pinId, audiencePinId: topology.final.policy.audiencePinId } };
+            const model = initial ?? await this.resolveModel(host, handle, base, input, childPlan, probe, null);
+            if (!equal(model.audienceSource.audience, parentSource.audience) || !equal(model.audienceSource.descriptor, parentSource.descriptor)
+                || model.failurePlan.routes.length !== 1 || model.resolved.route.policy.maxRetries !== 0
+                || model.resolved.route.executionPolicy.continuity !== 'none' || model.resolved.route.executionPolicy.reuse !== 'disabled') fail();
+            poolProfiles.push(model);
+        }
+        // Every actual and future pinned route uses this same held allocation.
         const ceiling = profiles[0].resolved.route.executionPolicy.computeBudget;
-        if (profiles.some(model => !equal(model.resolved.route.executionPolicy.computeBudget, ceiling))) fail();
-        return { pin, plan: childPlan, planRef: pin.resourceRef, topology, profiles, ceiling, parentSource };
+        if ([...profiles, ...poolProfiles].some(model => !equal(model.resolved.route.executionPolicy.computeBudget, ceiling))) fail();
+        return { pin, plan: childPlan, planRef: pin.resourceRef, topology, profiles, poolProfiles, ceiling, parentSource };
+    }
+
+    async #resolveChildModel(parent, node) {
+        const { child, host, handle } = parent, selected = parent.selectionState;
+        const model = await this.resolveModel(host, handle, selected.base, selected.input, child.plan, node, null);
+        const original = child.poolProfiles.find(item => item.pin.pinId === model.pin.pinId);
+        if (!original || model.configDigest !== original.configDigest || !equal(model.audienceSource.descriptor, child.parentSource.descriptor)
+            || !equal(model.audienceSource.audience, child.parentSource.audience)
+            || !equal(model.resolved.route.executionPolicy.computeBudget, child.ceiling)
+            || model.failurePlan.routes.length !== 1 || model.resolved.route.policy.maxRetries !== 0
+            || model.resolved.route.executionPolicy.continuity !== 'none' || model.resolved.route.executionPolicy.reuse !== 'disabled') fail();
+        return model;
     }
 
     parentInput(state, child, mode) {
@@ -127,7 +153,7 @@ export class SessionDelegationAuthority {
                 || root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation
                 || parentAttempt.status !== (state.parent.mode === 'handoff' ? 'waiting_child' : 'running')) fail();
             if (!equal(root.sourceBinding, identity.sourceBinding) || root.epoch !== identity.childEpoch || root.cancelRequested
-                || !['admitted', 'running'].includes(root.status) || !equal(root.graph, state.child.plan.definition)
+                || !['admitted', 'running'].includes(root.status) || !equal(lineage.graph.nodes.find(node => node.nodeId === state.model.node.nodeId), state.model.node)
                 || !equal(root.parentRef.inputRefs, identity.inputRefs) || root.parentRef.effectiveGrantDigest !== identity.grantDigest
                 || parentAttempt.effectiveGrantDigest !== identity.parentGrantDigest || lineage.mode !== state.parent.mode) fail();
             await service.sourcePort.revalidate(identity.handle, root.sourceBinding, { tx, root });
@@ -211,7 +237,7 @@ export class SessionDelegationAuthority {
     async authorizeGraphResult(args) {
         const state = this.#graphs.get(args.capture);
         if (!state || state !== this.#children.get(args.root.runId) || state.activeNode.nodeAttemptId !== args.producer.attemptId
-            || args.effectId !== state.activeNode.effectId || args.phase !== 'publish' || state.model.node === state.child.topology.final) fail();
+            || args.effectId !== state.activeNode.effectId || args.phase !== 'publish' || state.model.node.nodeId === state.child.topology.terminalNodeId) fail();
         await this.inspectDelegation(state.capture, { handle: state.handle, host: state.host, tx: args.tx });
         return { allowed: true, grantDigest: state.decision.grantDigest };
     }
@@ -299,7 +325,7 @@ export class SessionDelegationAuthority {
             await service.reserveChild(handle, { parentRunId: state.runId, childRunId: state.childRunId, ceiling: child.ceiling,
                 limits: state.selectionState.resolved.route.executionPolicy.computeBudget });
             await service.delegates.confirmBudget(handle, runGuard(await service.runs.get(handle, state.childRunId)));
-            const resources = [...new Set((await Promise.all(child.profiles.map(model => host.executionResources(handle, model.resolved.route)))).flat())];
+            const resources = [...new Set((await Promise.all(child.poolProfiles.map(model => host.executionResources(handle, model.resolved.route)))).flat())];
             const expected = { owner: handle, anchor: schedulerProof.expected.anchor, kind: 'model_task', executionClass: 'turn_blocking', resources,
                 key: 'session-child:' + state.childRunId, fingerprint: hash({ childRunId: state.childRunId, childPlanRef: child.planRef }) };
             const output = await nativeTaskScheduler.withResourceHandoff(schedulerProof.boundary, schedulerProof.expected, {
@@ -432,28 +458,40 @@ export class SessionDelegationAuthority {
         try {
             for (;;) {
                 const active = await service.runs.get(handle, root.runId);
-                await this.owner.engine.withTransaction(handle, tx => readTaskGraphRevision(tx, handle, active));
+                const snapshot = await this.owner.engine.withTransaction(handle, tx => readTaskGraphRevision(tx, handle, active));
+                const topology = sessionDelegatedGraphProfile({ ...child.plan, definition: snapshot.graph });
+                if (topology.terminalNodeId !== child.topology.terminalNodeId || !equal(topology.output, child.topology.output)) fail();
                 state.root = active;
                 let loopBindings = [], model;
                 const replan = [...progress].find(([, entry]) => entry.requests?.replan);
                 if (replan) {
                     const [nodeId, previous] = replan;
-                    const loops = active.graph.edges.filter(edge => edge.loopBack && edge.from.nodeId === nodeId);
-                    if (previous.requests.finalize || !loops.length || loops.some(edge => edge.to.nodeId !== nodeId)) fail('native_orchestration_planner_replan_pending');
+                    const scope = sessionReplanScope(active.graph, nodeId), { loops, target } = scope;
+                    if (previous.requests.finalize || !progress.has(target.nodeId)) fail('native_orchestration_planner_replan_pending');
                     const capacity = await this.owner.engine.withTransaction(handle, tx => service.budgetPort.observeCapacity(handle,
                         { authorityRef: active.budgetAuthorityRef, reservationId: root.runId }, { tx }));
-                    const required = child.topology.ordered.filter(node => node.nodeId === nodeId || !progress.has(node.nodeId)).length;
+                    const required = topology.ordered.filter(node => scope.affectedNodeIds.includes(node.nodeId) || !progress.has(node.nodeId)).length;
                     if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');
                     if (active.progress.attempts + required + 1 > active.limits.maxAttempts) fail('native_orchestration_limit_exhausted');
-                    loopBindings = loops.map(edge => ({ edge, ...previous })); progress.delete(nodeId);
-                    model = child.profiles.find(item => item.node.nodeId === nodeId);
-                } else model = child.profiles.find(item => !progress.has(item.node.nodeId)
-                    && child.topology.incoming[item.node.nodeId].every(edge => progress.has(edge.from.nodeId)));
+                    loopBindings = loops.map(edge => ({ edge, ...previous }));
+                    for (const id of scope.affectedNodeIds) progress.delete(id);
+                    model = child.profiles.find(item => equal(item.node, target)) ?? await this.#resolveChildModel(parent, target);
+                } else {
+                    const ready = inspectGraphReadiness(active.graph, active.nodeControl, Object.fromEntries([...progress.keys()].map(id => [id, 'completed'])),
+                        { excludeNodeIds: [topology.output.nodeId] }).ready[0];
+                    if (!ready) fail('native_orchestration_graph_dependency_unavailable');
+                    model = child.profiles.find(item => equal(item.node, ready.node)) ?? await this.#resolveChildModel(parent, ready.node);
+                }
                 if (!model) fail('native_orchestration_graph_dependency_unavailable');
                 state.model = model; state.request = immutable({ sessionId: parent.proofExpected.sessionId, revisionId: parent.proofExpected.anchor.revisionId,
                     requestId: parent.request.requestId, role: 'narrator', routeRef: model.pin.resourceRef, messages: [],
                     ...(model.node.kind === 'planner' ? { outputContract: sessionPlannerOutputContract } : {}) });
-                const bindings = [...child.topology.incoming[model.node.nodeId].map(edge => ({ edge, ...progress.get(edge.from.nodeId) })), ...loopBindings]
+                const bindings = [...topology.incoming[model.node.nodeId].flatMap(edge => {
+                    const source = progress.get(edge.from.nodeId);
+                    if (!source && !model.node.inputs.find(port => port.name === edge.to.port).required) return [];
+                    if (!source) fail('native_orchestration_graph_dependency_unavailable');
+                    return [{ edge, ...source }];
+                }), ...loopBindings]
                     .toSorted((a, b) => a.edge.edgeId.localeCompare(b.edge.edgeId)); state.bindings = bindings;
                 const results = [...new Map(bindings.filter(item => item.resultRef).map(item => [hash(item.resultRef), item.resultRef])).values()];
                 const controls = [...new Map(bindings.filter(item => item.controlRef).map(item => [hash(item.controlRef), item.controlRef])).values()];
@@ -516,10 +554,11 @@ export class SessionDelegationAuthority {
                 const result = await port.generate(handle, scope, { signal: boundary.signal }), controller = new ResultController({ host, modelPort: port });
                 if (model.node.kind === 'planner') {
                     progress.set(model.node.nodeId, await completeSessionDelegatedPlanner({ state, service, port, result, send, limits,
-                        current: () => this.inspectDelegation(capture, { host, handle }), progress, engine: this.owner.engine }));
+                        current: () => this.inspectDelegation(capture, { host, handle }), progress, engine: this.owner.engine,
+                        resolveNode: node => this.#resolveChildModel(parent, node) }));
                     continue;
                 }
-                if (model.node === child.topology.final) {
+                if (model.node.nodeId === child.topology.terminalNodeId) {
                     const publication = await controller.publishModelResult(handle, { capture, result, effectId });
                     const output = await new TaskLocalOutputController({ host }).complete(handle, { capture, publication });
                     return { ...output, resultRef: publication.resultRef, publicationReceiptRef: publication.publicationReceiptRef };

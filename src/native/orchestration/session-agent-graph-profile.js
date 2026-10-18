@@ -71,7 +71,7 @@ export function sessionAgentGraphProfile(plan) {
         if (incoming[fanout.nodeId].some(edge => !planners.some(node => node.nodeId === edge.from.nodeId)) || !['continue', 'fail_fast'].includes(fanout.policy.failurePolicy)) fail();
         const transfers = graph.edges.filter(edge => edge.from.nodeId === fanout.nodeId);
         const branches = transfers.map(edge => models.find(node => node.nodeId === edge.to.nodeId));
-        if (!branches.length || branches.some(node => !node || node.kind !== 'agent' || node === narrator || node.policy.allowedPlanPinIds?.length || usedBranches.has(node.nodeId)
+        if (!branches.length || branches.some(node => !node || !['agent', 'planner'].includes(node.kind) || node === narrator || node.policy.allowedPlanPinIds?.length || usedBranches.has(node.nodeId)
             || node.inputs.length !== 1 || node.inputs[0].type !== 'task.result' || incoming[node.nodeId].length !== 1)) fail();
         const branchScopes = branches.map(entry => {
             const scope = new Set(), joins = new Set(), pending = [entry.nodeId];
@@ -79,9 +79,10 @@ export function sessionAgentGraphProfile(plan) {
                 const id = pending.pop();
                 if (scope.has(id)) continue;
                 const node = models.find(node => node.nodeId === id);
-                if (!node || node.kind !== 'agent' || node === narrator || node.policy.allowedPlanPinIds?.length || usedBranches.has(id)) fail();
+                if (!node || !['agent', 'planner'].includes(node.kind) || node === narrator || node.policy.allowedPlanPinIds?.length || usedBranches.has(id)) fail();
                 scope.add(id);
                 for (const edge of graph.edges.filter(edge => edge.from.nodeId === id)) {
+                    if (edge.loopBack) fail();
                     const target = graph.nodes.find(node => node.nodeId === edge.to.nodeId);
                     if (target?.kind === 'join') joins.add(target.nodeId);
                     else pending.push(edge.to.nodeId);
@@ -97,7 +98,7 @@ export function sessionAgentGraphProfile(plan) {
         });
         const members = branchScopes.flatMap(scope => scope.members), join = controls.find(node => node.kind === 'join' && node.nodeId === branchScopes[0].joinId);
         if (!join || usedJoins.has(join.nodeId) || branchScopes.some(scope => scope.joinId !== join.nodeId)
-            || members.some(edge => edge.condition !== 'always') || incoming[join.nodeId].length !== members.length || join.policy.quorum > members.length
+            || members.some(edge => edge.condition !== 'always' || models.find(node => node.nodeId === edge.from.nodeId)?.kind !== 'agent') || incoming[join.nodeId].length !== members.length || join.policy.quorum > members.length
             || join.inputs.some(port => port.type !== 'text') || graph.edges.filter(edge => edge.from.nodeId === join.nodeId)
             .some(edge => !models.some(node => node.kind === 'agent' && node.nodeId === edge.to.nodeId))) fail();
         usedJoins.add(join.nodeId);

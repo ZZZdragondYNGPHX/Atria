@@ -9,11 +9,12 @@ const fail = () => { throw new TypeError('Invalid Project delegated graph'); };
 export function projectDelegatedGraphProfile(plan) {
     const graph = plan.definition, models = graph.nodes.filter(node => ['agent', 'planner'].includes(node.kind));
     const planners = models.filter(node => node.kind === 'planner'), outputs = graph.nodes.filter(node => node.kind === 'output');
+    const canAddAgent = graph.graphChangePolicy.allowedOperations.includes('addNode') && graph.graphChangePolicy.allowedNodeKinds.includes('agent');
     if (!models.some(node => node.kind === 'agent') || outputs.length !== 1 || graph.nodes.length !== models.length + 1
         || graph.outputContract.kind !== 'result' || graph.outputContract.allowPartial || graph.outputContract.resultPolicy?.outputType !== 'text'
         || !equal([...graph.capabilityCeiling].sort(), ['generation.send', ...planners.length ? ['graph.patch'] : []].sort())
-        || graph.graphChangePolicy.allowedNodeKinds.length || (!planners.length ? graph.graphChangePolicy.allowedOperations.length
-        : !graph.graphChangePolicy.allowedOperations.length || graph.graphChangePolicy.allowedOperations.some(op => !['setPendingPriority', 'requestFinalize'].includes(op)))
+        || graph.graphChangePolicy.allowedNodeKinds.some(kind => kind !== 'agent') || (!planners.length ? graph.graphChangePolicy.allowedOperations.length
+        : !graph.graphChangePolicy.allowedOperations.length || graph.graphChangePolicy.allowedOperations.some(op => !['setPendingPriority', 'requestFinalize', 'addNode', 'addEdge'].includes(op)))
         || graph.nodes.some(node => node.policy.allowedPlanPinIds?.length)) fail();
     const output = outputs[0], incoming = {}, ordered = [];
     if (output.nodeId !== graph.outputContract.ownerNodeId || output.capabilities.length || output.dependencyPinIds.length
@@ -22,10 +23,11 @@ export function projectDelegatedGraphProfile(plan) {
         if (nodeModelRoutePins(node, plan.dependencyPins).length !== 1 || node.dependencyPinIds.length !== 1
             || !equal(node.capabilities, ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []])
             || node.outputs.length !== 1 || node.outputs[0].type !== (node.kind === 'planner' ? 'json' : 'text')
-            || node.inputs.some(port => !['text', 'json'].includes(port.type) || !port.required)) fail();
+            || node.inputs.some(port => !['text', 'json'].includes(port.type))) fail();
         incoming[node.nodeId] = graph.edges.filter(edge => edge.to.nodeId === node.nodeId).toSorted((a, b) => a.edgeId.localeCompare(b.edgeId));
-        if (incoming[node.nodeId].length !== node.inputs.length || new Set(incoming[node.nodeId].map(edge => edge.from.nodeId)).size !== incoming[node.nodeId].length
-            || node.inputs.some(port => incoming[node.nodeId].filter(edge => edge.to.port === port.name).length !== 1)) fail();
+        if (incoming[node.nodeId].length > node.inputs.length || new Set(incoming[node.nodeId].map(edge => edge.from.nodeId)).size !== incoming[node.nodeId].length
+            || node.inputs.some(port => incoming[node.nodeId].filter(edge => edge.to.port === port.name).length > 1
+                || port.required && !incoming[node.nodeId].some(edge => edge.to.port === port.name))) fail();
     }
     for (const edge of graph.edges) {
         const from = models.find(node => node.nodeId === edge.from.nodeId), to = graph.nodes.find(node => node.nodeId === edge.to.nodeId);
@@ -44,7 +46,8 @@ export function projectDelegatedGraphProfile(plan) {
     }
     const final = models.find(node => node.nodeId === terminal[0]?.from.nodeId);
     if (terminal.length !== 1 || final?.kind !== 'agent' || needed.size !== graph.nodes.length
-        || plan.dependencyPins.some(pin => !models.some(node => node.dependencyPinIds.includes(pin.pinId)))) fail();
+        || plan.dependencyPins.some(pin => pin.port !== 'model' || pin.resourceRef.scope !== 'player' || typeof pin.resourceRef.runtimeRouteId !== 'string'
+            || !canAddAgent && !models.some(node => node.dependencyPinIds.includes(pin.pinId)))) fail();
     return { ordered, models, planners, incoming, output, final, terminalNodeId: final.nodeId };
 }
 

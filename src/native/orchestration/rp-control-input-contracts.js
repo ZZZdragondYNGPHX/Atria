@@ -168,7 +168,7 @@ async function assertRpLoopHistory(tx, handle, root, entries, narrator, fanouts)
             for (const id of scope.affectedNodeIds) {
                 const old = current.get(id);
                 if (old) {
-                    if (!['agent', 'planner'].includes(snapshot.graph.nodes.find(node => node.nodeId === id)?.kind)) invalid();
+                    if (!['agent', 'planner', 'review', 'judge'].includes(snapshot.graph.nodes.find(node => node.nodeId === id)?.kind)) invalid();
                     replacements.set(id, { attemptId: old.producer.attemptId, trigger });
                 }
                 touched.add(id); current.delete(id);
@@ -187,7 +187,7 @@ async function assertRpLoopHistory(tx, handle, root, entries, narrator, fanouts)
                     || inputProof.sources.some(source => touched.has(source.producer.nodeId)
                         && source.receipt.decisionSeq > replacement.trigger.receipt.decisionSeq));
             if (node.kind === 'planner' ? !loop : ['agent', 'judge'].includes(node.kind) ? !loop && !invalidation
-                : node.kind === 'review' && prior.review.decision !== 'rerun' && !invalidation) invalid();
+                : node.kind === 'review' && !loop && prior.review.decision !== 'rerun' && !invalidation) invalid();
             replacements.delete(node.nodeId);
         } else if (inputProof.replanFrom) invalid();
         if (fact.review?.decision === 'rerun') for (const [id, old] of current)

@@ -4,9 +4,9 @@ import { hashNativeDocument as hash } from '../../../src/native/repositories/com
 
 const id = kind => createNativeId('orchestration' + kind);
 
-export async function sessionDelegatedPlannerFixture(make, { childRequests = 3, parentGrant = true, unknown = false, onParent = () => {} } = {}) {
-    let planner, loop, plannerModelId, round = 0;
-    const f = await sessionDelegationFixture(make, { childSteps: 1, childRequests, parentRequests: 5,
+export async function sessionDelegatedPlannerFixture(make, { childRequests = 3, parentGrant = true, unknown = false, nonself = false, onParent = () => {} } = {}) {
+    let planner, loop, earlier, plannerModelId, round = 0;
+    const f = await sessionDelegationFixture(make, { childSteps: 1, childRequests, parentRequests: nonself ? childRequests + 2 : 5,
         responseStatus: count => unknown && count === 3 ? null : 200,
         configureChild: async (child, { seeded, h }) => {
             const terminal = child.definition.nodes[0], output = child.definition.nodes[1], actorPinId = terminal.policy.audiencePinId;
@@ -29,6 +29,16 @@ export async function sessionDelegatedPlannerFixture(make, { childRequests = 3, 
             child.definition.capabilityCeiling = ['generation.send', 'graph.patch'];
             child.definition.graphChangePolicy = { allowedOperations: ['requestReplan', 'requestFinalize'], allowedNodeKinds: [] };
             Object.assign(child.definition.limits, { maxAttempts: 4, maxNodes: 3, maxEdges: 3, maxEdgeVisits: 3, maxPatches: 2, maxReplans: 1, maxLoopIterations: 1 });
+            if (nonself) {
+                earlier = { ...structuredClone(terminal), nodeId: id('Node'), label: 'Original earlier Actor child evidence',
+                    inputs: [{ name: 'feedback', type: 'json', required: false }] };
+                planner.inputs = [{ name: 'evidence', type: 'text', required: true }];
+                loop.to.nodeId = earlier.nodeId;
+                child.definition.nodes.unshift(earlier); child.definition.entryNodeIds = [earlier.nodeId];
+                child.definition.edges.push({ edgeId: id('Edge'), from: { nodeId: earlier.nodeId, port: earlier.outputs[0].name },
+                    to: { nodeId: planner.nodeId, port: 'evidence' }, condition: 'always', maxVisits: 2, loopBack: false });
+                Object.assign(child.definition.limits, { maxAttempts: 6, maxNodes: 4, maxEdges: 4, maxEdgeVisits: 5 });
+            }
         },
         configureParent: async (plan, args, topology) => {
             await onParent(plan, args, topology);
@@ -36,9 +46,9 @@ export async function sessionDelegatedPlannerFixture(make, { childRequests = 3, 
             topology.delegator.capabilities.push('graph.patch'); plan.definition.capabilityCeiling.push('graph.patch');
             plan.definition.graphChangePolicy = { allowedOperations: ['requestReplan', 'requestFinalize'], allowedNodeKinds: [] };
         },
-        responsePayload: (body, _index, topology) => body.model === plannerModelId ? JSON.stringify({ operations: [{ op: ++round === 1 ? 'requestReplan' : 'requestFinalize' }] })
-            : body.model === 'session-delegated-distinct-model' ? 'CHILD_CONTROL_TERMINAL_ADVICE'
+        responsePayload: (body, index, topology) => body.model === plannerModelId ? JSON.stringify({ operations: [{ op: ++round === 1 ? 'requestReplan' : 'requestFinalize' }] })
+            : body.model === 'session-delegated-distinct-model' ? nonself ? 'CHILD_CONTROL_TERMINAL_ADVICE iteration ' + index : 'CHILD_CONTROL_TERMINAL_ADVICE'
                 : JSON.stringify(body.input).includes(topology.delegator.label) ? 'PARENT_ACCEPTED_CHILD_CONTROL' : 'The NPC waits for the player choice.',
     });
-    return { ...f, get authority() { return f.authority; }, get core() { return f.core; }, get effectRef() { return f.effectRef; }, planner, plannerModelId, loop };
+    return { ...f, get authority() { return f.authority; }, get core() { return f.core; }, get effectRef() { return f.effectRef; }, planner, plannerModelId, loop, earlier };
 }

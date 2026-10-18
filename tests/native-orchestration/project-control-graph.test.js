@@ -1,8 +1,13 @@
-import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
+import { SqliteEngine } from '../../src/storage/engines/sqlite-engine.js';
+import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
+import { makeTempSqliteEngineHarness, CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 import { projectModelFixture } from './helpers/project-model-fixture.js';
 import { configureProjectToolPlan } from './helpers/project-tool-fixture.js';
 import { hashNativeDocument as hash } from '../../src/native/repositories/common.js';
 import { createNativeId } from '../../src/native/identity.js';
+import { controlRecordKey } from '../../src/native/orchestration/controller-common.js';
+import { projectReplanScope, readProjectReplanHistory } from '../../src/native/orchestration/project-replan-contracts.js';
+import { readReviewAdmission, readAttemptInvalidation } from '../../src/native/orchestration/controller-common.js';
 import { readAttempt } from '../../src/native/orchestration/controller-common.js';
 import { readGraphPlannerCompletion } from '../../src/native/orchestration/graph-planner-completion.js';
 import { readGraphReviewCompletion } from '../../src/native/orchestration/graph-review-completion.js';
@@ -17,7 +22,7 @@ const textResponse = (text, index, usage = true) => ({ id: 'control-response-' +
 const edge = (from, fromPort, to, toPort) => ({ edgeId: createNativeId('orchestrationEdge'), from: { nodeId: from.nodeId, port: fromPort },
     to: { nodeId: to.nodeId, port: toPort }, condition: 'always', maxVisits: 1, loopBack: false });
 
-async function fixture(make, { escalation = false, unknown = false, differentRoutes = false, withReview = false, rerun = false, replan = false, multiPort = false } = {}) {
+async function fixture(make, { escalation = false, unknown = false, differentRoutes = false, withReview = false, rerun = false, replan = false, multiPort = false, nonself = false, qualityBeforePlanner = false, maxQualityRounds = 2 } = {}) {
     let operations, proposed, businessRound = 0, reviewRound = 0, plannerRound = 0, added, formalWorker;
     const f = await projectModelFixture(make, { maxModelRounds: 3, changeRoute: route => ({ ...route, executionPolicy: { ...route.executionPolicy,
         computeBudget: { ...route.executionPolicy.computeBudget, maxRequests: 12, localWork: { ...route.executionPolicy.computeBudget.localWork, maxJobs: 128 } } } }),
@@ -71,10 +76,19 @@ async function fixture(make, { escalation = false, unknown = false, differentRou
             graph.edges.find(item => item.from.nodeId === planner.nodeId && item.to.nodeId === draft.nodeId).maxVisits = 2;
             operations.push({ op: 'addEdge', edge: { ...edge(added, 'analysis', review, 'dynamic'), maxVisits: 2 } });
         }
+        if (qualityBeforePlanner) {
+            const quality = { ...structuredClone(planner), nodeId: createNativeId('orchestrationNode'), kind: 'review', label: 'Review current source evidence before bounded return',
+                inputs: [{ name: 'draft', type: 'text', required: true }], capabilities: ['generation.send'],
+                policy: { agentPinId: planner.policy.agentPinId, maxRounds: maxQualityRounds } };
+            planner.inputs.push({ name: 'quality', type: 'json', required: true });
+            graph.nodes.splice(1, 0, quality);
+            graph.edges.push({ ...edge(analysis, 'analysis', quality, 'draft'), maxVisits: 2 }, { ...edge(quality, 'control', planner, 'quality'), maxVisits: 2 });
+        }
         if (replan) {
-            planner.inputs.push({ name: 'previous', type: 'json', required: false });
+            const target = nonself ? analysis : planner;
+            target.inputs.push({ name: 'previous', type: 'json', required: false });
             graph.edges.find(item => item.to.nodeId === planner.nodeId).maxVisits = 2;
-            graph.edges.push({ ...edge(planner, 'control', planner, 'previous'), maxVisits: 1, loopBack: true });
+            graph.edges.push({ ...edge(planner, 'control', target, 'previous'), maxVisits: 1, loopBack: true });
             graph.graphChangePolicy.allowedOperations.push('requestReplan');
         }
         Object.assign(graph.limits, { maxSteps: 180, deadlineMs: 180000, maxAttempts: 16, maxReviews: 2, maxPatches: 4, maxLoopIterations: replan ? 3 : 2, maxEdgeVisits: 14 });
@@ -97,7 +111,7 @@ async function fixture(make, { escalation = false, unknown = false, differentRou
         }
         if (serialized.includes('native_project_graph_planner')) return textResponse(JSON.stringify({ operations: replan && plannerRound++ === 0
             ? [{ op: 'setPendingPriority', nodeId: formalWorker.nodeId, priority: 1 }, { op: 'requestReplan' }] : operations }), index);
-        if (serialized.includes('native_project_graph_work')) return textResponse('Source-bound evidence from ' + (index ? 'dynamic worker' : 'analysis'), index, !unknown);
+        if (serialized.includes('native_project_graph_work')) return textResponse('Source-bound evidence from ' + (index ? 'dynamic worker' : 'analysis') + (nonself ? ' iteration ' + index : ''), index, !unknown);
         const round = businessRound++;
         return { id: 'business-response-' + index, status: 'completed', output: [{ id: 'business-item-' + index, type: 'function_call', status: 'completed', call_id: 'business-call-' + index,
             name: ['atri_agent_set_plan', 'atri_agent_project_save', 'atri_agent_prepare_review'][round], arguments: JSON.stringify(round === 0
@@ -233,3 +247,101 @@ describe.each(harnesses)('$name original Project general graph consumer', ({ mak
         } finally { await f.cleanup(); }
     }, 60000);
 });
+
+
+test('SQLite Project Planner returns along a published nonself edge to recompute earlier pure Model evidence', async () => {
+    const f = await fixture(makeTempSqliteEngineHarness, { replan: true, nonself: true, differentRoutes: true });
+    try {
+        await f.run(); const root = await f.authority.execution.runs.get(f.h.handle, f.effects[0].runId);
+        expect(root.status).toBe('completed'); expect(root.graphRevision).toBe(2); expect(root.progress.replans).toBe(1);
+        expect(root.progress.loopIterations).toBe(3); expect(f.requests).toHaveLength(8);
+        expect(f.requests.slice(0, 5).map(request => request.model)).toEqual(['project-analysis-fixture', 'project-planner-fixture', 'project-analysis-fixture', 'project-planner-fixture', 'project-analysis-fixture']);
+        expect(JSON.stringify(f.requests[3])).toContain('iteration 2'); expect(JSON.stringify(f.requests[3])).not.toContain('iteration 0');
+        await f.h.engine.withTransaction(f.h.handle, async tx => {
+            const history = await readProjectReplanHistory(tx, f.h.handle, root);
+            expect(history.consumed.size).toBe(1);
+            const planner = root.graph.nodes.find(node => node.kind === 'planner'), target = root.graph.nodes.find(node => node.nodeId === root.graph.entryNodeIds[0]);
+            const attempts = await Promise.all(root.attemptRefs.map(id => readAttempt(tx, f.h.handle, root, id)));
+            expect(attempts.filter(row => row.doc.nodeId === target.nodeId).map(row => row.doc.attemptNumber)).toEqual([1, 2]);
+            expect(attempts.filter(row => row.doc.nodeId === planner.nodeId).map(row => row.doc.attemptNumber)).toEqual([1, 2]);
+            const latest = history.current.get(target.nodeId), old = history.facts.find(fact => fact.producer.nodeId === target.nodeId && fact !== latest);
+            expect(latest.record.payload).toContain('iteration 2'); expect(old.record.payload).toContain('iteration 0');
+            const key = controlRecordKey(f.h.handle, root.runId, 'attempt', latest.producer.attemptId), saved = await tx.getResource(key);
+            const inputRefs = [latest.producer.inputRefs[0]], doc = { ...saved.doc, inputRefs, inputDigest: hash(inputRefs) };
+            try { await tx.putResource(key, { ...saved, doc, integrity: hash(doc) }); await expect(readProjectReplanHistory(tx, f.h.handle, root)).rejects.toThrow(); }
+            finally { await tx.putResource(key, saved); }
+            expect((await readProjectReviewOutput(tx, f.h.handle, root)).receipt.costs.closed).toBe(true);
+        });
+        const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+        expect(task.status).toBe('review'); expect(task.compute.attempts).toHaveLength(8); expect(task.compute.attempts.every(row => row.status === 'settled')).toBe(true);
+        expect(task.attempts.filter(row => row.kind === 'generation')).toHaveLength(3);
+        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
+    } finally { await f.cleanup(); }
+}, 180000);
+
+
+test('Project pure replan topology rejects a return interval containing formal Task capability', () => {
+    const target = { nodeId: createNativeId('orchestrationNode'), kind: 'agent', capabilities: ['generation.send'] };
+    const formal = { nodeId: createNativeId('orchestrationNode'), kind: 'agent', capabilities: ['generation.send', 'project.propose'] };
+    const planner = { nodeId: createNativeId('orchestrationNode'), kind: 'planner', capabilities: ['generation.send', 'graph.patch'] };
+    const graph = { nodes: [target, formal, planner], edges: [edge(target, 'text', formal, 'advice'), edge(formal, 'json', planner, 'evidence'),
+        { ...edge(planner, 'json', target, 'feedback'), loopBack: true }] };
+    expect(() => projectReplanScope(graph, planner.nodeId)).toThrow('native_orchestration_project_replan_unavailable');
+});
+
+
+test('SQLite Project bounded return repeats completed Model Review with current evidence before original formal tools', async () => {
+    const f = await fixture(makeTempSqliteEngineHarness, { replan: true, nonself: true, differentRoutes: true, qualityBeforePlanner: true });
+    try {
+        await f.run(); const root = await f.authority.execution.runs.get(f.h.handle, f.effects[0].runId);
+        expect(root.status).toBe('completed'); expect(root.graphRevision).toBe(2); expect(root.progress.replans).toBe(1);
+        expect(root.progress.reviews).toBe(2); expect(root.progress.loopIterations).toBe(3); expect(f.requests).toHaveLength(10);
+        const bodies = f.requests.filter(body => JSON.stringify(body).includes('native_project_graph_review'));
+        expect(bodies).toHaveLength(2); expect(JSON.stringify(bodies[0])).toContain('iteration 0');
+        expect(JSON.stringify(bodies[1])).toContain('iteration 3'); expect(JSON.stringify(bodies[1])).not.toContain('iteration 0');
+        await f.h.engine.withTransaction(f.h.handle, async tx => {
+            const history = await readProjectReplanHistory(tx, f.h.handle, root), reviews = history.facts.filter(fact => fact.review);
+            expect(history.consumed.size).toBe(1); expect(reviews).toHaveLength(2);
+            expect(reviews.map(fact => fact.producer.attemptNumber)).toEqual([1, 2]);
+            expect(history.current.get(reviews[0].producer.nodeId).producer.attemptId).toBe(reviews[1].producer.attemptId);
+            for (const fact of reviews) {
+                expect(fact.review.decision).toBe('approve'); expect(fact.review.invalidatedAttemptIds).toEqual([]); expect(fact.review.replacements).toEqual([]);
+                expect(await readAttemptInvalidation(tx, f.h.handle, root, fact.producer)).toBeNull();
+            }
+            expect((await Promise.all(reviews.map(fact => readReviewAdmission(tx, f.h.handle, root, fact.producer)))).map(fact => fact.round)).toEqual([1, 2]);
+            expect((await readProjectReviewOutput(tx, f.h.handle, root)).receipt.costs.closed).toBe(true);
+        });
+        const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+        expect(task.status).toBe('review'); expect(task.attempts.filter(row => row.kind === 'generation')).toHaveLength(3);
+        expect(task.compute.attempts).toHaveLength(10); expect(task.compute.attempts.every(row => row.status === 'settled')).toBe(true);
+        expect(task.compute.localWork.every(row => row.status === 'settled')).toBe(true);
+        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
+        await f.h.engine.close();
+        const fresh = new SqliteEngine({ directoriesByHandle: () => f.h.dirs });
+        try { await fresh.withTransaction(f.h.handle, async tx => {
+            const cold = (await tx.getResource({ kind: K.orchestrationRun, handle: f.h.handle, runId: root.runId })).doc;
+            expect((await readProjectReviewOutput(tx, f.h.handle, cold)).receipt.costs.closed).toBe(true);
+        }); } finally { await fresh.close(); }
+        expect(f.requests).toHaveLength(10);
+    } finally { await f.cleanup(); }
+}, 180000);
+
+test('SQLite Project original Review round ceiling denies another send after accepted bounded return', async () => {
+    const f = await fixture(makeTempSqliteEngineHarness, { replan: true, nonself: true, differentRoutes: true, qualityBeforePlanner: true, maxQualityRounds: 1 });
+    try {
+        await expect(f.run()).rejects.toThrow('native_orchestration_review_limit_exhausted'); expect(f.requests).toHaveLength(4);
+        const root = await f.authority.execution.runs.get(f.h.handle, f.effects[0].runId);
+        expect(root.status).toBe('blocked'); expect(root.outputClaims).toEqual([]); expect(root.pendingEffectRefs).toEqual([]);
+        expect(root.progress).toMatchObject({ replans: 1, reviews: 1 });
+        const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+        expect(task.compute.attempts).toHaveLength(4); expect(task.compute.attempts.every(row => row.status === 'settled')).toBe(true);
+        expect(task.attempts.flatMap(row => row.calls)).toEqual([]);
+        await f.h.engine.withTransaction(f.h.handle, async tx => {
+            const attempts = (await Promise.all(root.attemptRefs.map(id => readAttempt(tx, f.h.handle, root, id)))).map(row => row.doc);
+            const review = root.graph.nodes.find(node => node.kind === 'review'), rounds = attempts.filter(row => row.nodeId === review.nodeId);
+            expect(rounds).toHaveLength(2); expect((await readReviewAdmission(tx, f.h.handle, root, rounds[0])).round).toBe(1);
+            expect(rounds[1]).toMatchObject({ startedAt: null, effectRefs: [] }); expect(await readReviewAdmission(tx, f.h.handle, root, rounds[1])).toBeNull();
+        });
+        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
+    } finally { await f.cleanup(); }
+}, 120000);

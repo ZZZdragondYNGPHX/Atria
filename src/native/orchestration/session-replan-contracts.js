@@ -28,7 +28,7 @@ export function sessionReplanScope(graph, plannerNodeId) {
     };
     const affected = reach(target.nodeId), ancestors = reach(plannerNodeId, true);
     if (!affected.has(plannerNodeId) || graph.nodes.some(node => affected.has(node.nodeId) && ancestors.has(node.nodeId)
-        && (!['agent', 'planner'].includes(node.kind) || node.capabilities.includes('agent.delegate')))) pending();
+        && (!['agent', 'planner', 'review', 'judge'].includes(node.kind) || node.capabilities.includes('agent.delegate')))) pending();
     return { target, loops, affectedNodeIds: [...affected] };
 }
 
@@ -106,7 +106,7 @@ export async function readSessionReplanHistory(tx, handle, root, { graphResults,
             for (const id of scope.affectedNodeIds) {
                 const old = current.get(id), kind = snapshot.graph.nodes.find(node => node.nodeId === id)?.kind;
                 if (old) {
-                    if (!['agent', 'planner'].includes(kind) || snapshot.graph.nodes.find(node => node.nodeId === id).capabilities.includes('agent.delegate')) invalid();
+                    if (!['agent', 'planner', 'review', 'judge'].includes(kind) || snapshot.graph.nodes.find(node => node.nodeId === id).capabilities.includes('agent.delegate')) invalid();
                     replaced.set(id, { attemptId: old.producer.attemptId, trigger }); replannedAttemptIds.add(old.producer.attemptId);
                 }
                 touched.add(id); current.delete(id);
@@ -121,7 +121,7 @@ export async function readSessionReplanHistory(tx, handle, root, { graphResults,
                 && (trigger?.producer.attemptId === replacement.trigger.producer.attemptId || sources.some(source => touched.has(source.producer.nodeId)
                     && source.receipt.decisionSeq > replacement.trigger.receipt.decisionSeq));
             if (node.kind === 'planner' ? !loop : ['agent', 'judge'].includes(node.kind) ? !loop && !invalidation
-                : node.kind === 'review' && prior.review.decision !== 'rerun' && !invalidation) invalid();
+                : node.kind === 'review' && !loop && prior.review.decision !== 'rerun' && !invalidation) invalid();
             replaced.delete(node.nodeId);
         }
         if (fact.patch) {

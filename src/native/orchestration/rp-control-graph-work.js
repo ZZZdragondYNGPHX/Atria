@@ -561,8 +561,9 @@ export class RpControlGraphWork {
             if (replan) {
                 const [nodeId, previous] = replan, scope = rpControlReplanScope(root.graph, nodeId), { target: node, loops } = scope;
                 if (previous.requests.finalize || !this.records.has(node.nodeId)) fail('native_orchestration_planner_replan_pending');
+                if (scope.affectedNodeIds.some(id => this.reruns.has(id))) fail('native_orchestration_planner_replan_pending');
                 if (scope.affectedNodeIds.some(id => this.records.has(id)
-                    && !['agent', 'planner'].includes(root.graph.nodes.find(node => node.nodeId === id).kind)))
+                    && !['agent', 'planner', 'review', 'judge'].includes(root.graph.nodes.find(node => node.nodeId === id).kind)))
                     fail('native_orchestration_review_irreversible_dependency');
                 const capacity = await service.runs.engine.withTransaction(handle, tx => service.budgetPort.observeCapacity(handle,
                     { authorityRef: root.budgetAuthorityRef, reservationId: null }, { tx }));

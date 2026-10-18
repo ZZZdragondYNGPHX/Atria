@@ -225,7 +225,8 @@ export class ContextPort {
             });
             const modelContext = { ...original, tools, ...(permission.projectGraphTask ? { graphTask: immutable(permission.projectGraphTask) } : {}),
                     ...(permission.projectGraphItems?.length ? { graphItems: immutable(permission.projectGraphItems) } : {}),
-                    ...(projectIdentity.workerStage ? { workerStage: projectIdentity.workerStage } : {}),
+                    ...(projectIdentity.workerStage ? { workerStage: { ...projectIdentity.workerStage,
+                        ...(projectDelegation ? { task: projectDelegation.context.task } : {}) } } : {}),
                     ...(projectDelegation ? { graphItems: projectDelegation.context.results.map(item => ({ kind: 'context.history',
                         content: { role: 'user', content: item.content }, provenance: [{ source: 'native.project-child', ref: hashNativeDocument(item.resultRef ?? item.controlRef) }] })) } : {}) }, { task, project, registry } = modelContext;
             const attempt = task.attempts.find(item => item.attemptId === projectIdentity.projectAttemptId && item.kind === 'generation');

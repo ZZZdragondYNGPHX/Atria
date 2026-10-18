@@ -166,7 +166,8 @@ export async function readSessionOutput(tx, handle, root) {
                 if (settled.reasonCode !== 'graph_planner_patch_accepted') invalid();
             } else if (reviewed) {
                 const newer = published.reviewCompletions.some(result => result.producer.nodeId === attempt.nodeId && result.producer.attemptNumber > attempt.attemptNumber);
-                if (newer && reviewed.review.decision !== 'rerun' && !await readAttemptInvalidation(tx, handle, root, attempt)) invalid();
+                if (newer && reviewed.review.decision !== 'rerun' && !published.loopHistory?.replannedAttemptIds.has(attempt.attemptId)
+                    && !await readAttemptInvalidation(tx, handle, root, attempt)) invalid();
                 if (settled.reasonCode !== (reviewed.controlRef ? 'graph_review_decided' : 'session_graph_review_decided')) invalid();
             } else if (graphResult) {
                 const newer = published.graphResults.some(result => result.producer.nodeId === attempt.nodeId && result.producer.attemptNumber > attempt.attemptNumber);

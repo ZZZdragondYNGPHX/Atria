@@ -9,6 +9,7 @@ import { readGraphPlannerCompletion } from './graph-planner-completion.js';
 import { assertProjectControlWork } from './project-quality-contracts.js';
 import { readAttempt } from './controller-common.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
+import { readProjectReplanHistory } from './project-replan-contracts.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 const equal = (a, b) => hash(a) === hash(b);
@@ -45,6 +46,8 @@ export async function readProjectControlInputs(tx, handle, root, recipient, { ev
                 fail('native_orchestration_project_judge_selection_stale');
         }
     }
+    if (recipient && root.graph.edges.some(edge => edge.loopBack && edge.from.nodeId !== edge.to.nodeId))
+        await readProjectReplanHistory(tx, handle, root, { recipient });
     return facts;
 }
 
@@ -79,6 +82,7 @@ export async function assertProjectControlRound(tx, handle, root, attempt, input
         if (!fact.record.envelope.audienceConstraint.nodeIds.includes(attempt.nodeId)) fail('native_orchestration_project_control_audience_denied');
     }
     if (round === 0) {
+        if (root.graph.edges.some(edge => edge.loopBack && edge.from.nodeId !== edge.to.nodeId)) await readProjectReplanHistory(tx, handle, root, { recipient: attempt });
         const bindings = [...bundle.bindings].sort((a, b) => a.edgeId.localeCompare(b.edgeId));
         const direct = facts.filter(fact => bindings.some(binding => binding.producerAttemptId === fact.producer.attemptId));
         const joined = direct.filter(fact => fact.joinReceipt);

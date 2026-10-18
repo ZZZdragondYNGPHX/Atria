@@ -15,7 +15,7 @@ import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readRpFanoutCompletion } from './rp-fanout-contracts.js';
 import { readRpControlFanoutCompletion } from './rp-control-fanout-contracts.js';
 import { readProjectFanoutCompletion } from './project-fanout-contracts.js';
-import { graphFanoutModelScope, readGraphFanoutInput } from './graph-fanout-completion.js';
+import { graphFanoutModelScope, readGraphFanoutInput, readGraphFanoutPublicationGraph } from './graph-fanout-completion.js';
 import { audienceContextPin, assertAudienceRunCapture } from './audience-source-contracts.js';
 import { readSessionDelegatedModelInput, readSessionDelegationContinuation } from './session-delegation-contracts.js';
 import { readProjectDelegatedModelInput, readProjectDelegationContinuation } from './project-delegation-contracts.js';
@@ -23,7 +23,18 @@ import { readProjectDelegatedModelInput, readProjectDelegationContinuation } fro
 const kinds = ['agent', 'planner', 'judge', 'review'];
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid Graph Result facts'); };
+const publicationGraphs = new WeakMap();
 export const graphResultPublicationId = (runId, resultId) => 'oreceipt_' + hash({ kind: 'graph_node_result', runId, resultId }).slice(0, 32);
+
+/** Original graph facts only. A private same-call binding distinguishes the
+ * freshly proved frozen scope from a caller-supplied historical snapshot.
+ * Live Source, Model, bank and capture authorization remain independent. */
+export async function readGraphResultPublicationSnapshot(tx, handle, root, producer, publicationRevision = root.graphRevision, publicationSeq = root.eventSeq + 1) {
+    if (producer.graphRevision === publicationRevision) return readTaskGraphRevision(tx, handle, root, publicationRevision);
+    const { graphSnapshot } = await readGraphFanoutPublicationGraph(tx, handle, root, producer, publicationRevision, publicationSeq);
+    publicationGraphs.set(graphSnapshot, { rootDigest: hash(root), producerDigest: hash(producer), snapshotDigest: hash(graphSnapshot), publicationRevision });
+    return graphSnapshot;
+}
 
 export function graphResultContract(root, producer, graphSnapshot = null) {
     const graph = graphSnapshot?.graph ?? root.graph, revision = graphSnapshot?.graphRevision ?? 0;
@@ -62,7 +73,12 @@ const audienceSource = (root, producer, pins, snapshot = null) => {
 /** The JSON representation preserves the original generation response, just
  * as the existing Project Result does; control parsing remains separately metered. */
 export function graphNodeResult({ root, producer, proof, text, now, graphSnapshot = null, dependencyPins = [] }) {
-    if (graphSnapshot && graphSnapshot.graphRevision !== root.graphRevision) invalid();
+    if (graphSnapshot && graphSnapshot.graphRevision !== root.graphRevision) {
+        const publication = publicationGraphs.get(graphSnapshot);
+        if (!publication || publication.publicationRevision !== root.graphRevision
+            || publication.rootDigest !== hash(root) || publication.producerDigest !== hash(producer)
+            || publication.snapshotDigest !== hash(graphSnapshot)) invalid();
+    }
     const contract = graphResultContract(root, producer, graphSnapshot), outputType = contract.output.resultPolicy.outputType;
     if (proof.runId !== root.runId || proof.receiptRef.runId !== root.runId || proof.producerAttemptId !== producer.attemptId || proof.epoch !== producer.epoch || proof.outputType !== (root.sourceBinding.sourceAuthority === 'project' ? 'json' : 'text')
         || hash(root.sourceBinding.sourceAuthority === 'project' ? { text, toolCalls: [] } : text) !== proof.payloadHash
@@ -121,7 +137,10 @@ async function readGraphResultFacts(tx, handle, root, resultId, recipient, snaps
             || command.outcome.versions.epoch !== receipt.epoch || !equal(command.outcome.resultRef, receipt.resultRef)
             || !equal(command.outcome.publicationReceiptRef, { runId: root.runId, receiptId: receipt.receiptId })) invalid();
     }
-    const { doc: producer } = await readAttempt(tx, handle, root, receipt.producerAttemptId), contract = graphResultContract(root, producer, snapshot);
+    const { doc: producer } = await readAttempt(tx, handle, root, receipt.producerAttemptId);
+    if (snapshot && snapshot.graphRevision !== producer.graphRevision)
+        snapshot = await readGraphResultPublicationSnapshot(tx, handle, root, producer, receipt.graphRevision, receipt.decisionSeq);
+    const contract = graphResultContract(root, producer, snapshot);
     const record = assertResultRecord(stored.doc, { outputContract: contract.output, expected: { runId: root.runId, resultId, producerAttemptId: producer.attemptId,
         producerEpoch: producer.epoch, sourceBindingDigest: root.sourceBinding.bindingDigest, sourceRef: root.sourceBinding.sourceRef, audienceConstraint: contract.audience } });
     const producerNode = (snapshot?.graph ?? root.graph).nodes.find(item => item.nodeId === producer.nodeId);

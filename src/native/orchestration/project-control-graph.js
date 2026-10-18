@@ -29,8 +29,10 @@ export function projectControlGraph(plan) {
     }
     for (const edge of graph.edges) {
         if (!['always', 'success'].includes(edge.condition)) fail();
-        if (edge.loopBack && (edge.from.nodeId !== edge.to.nodeId || ![worker, ...pure.filter(node => node.kind === 'planner')].some(node => node.nodeId === edge.from.nodeId)
-            || edge.condition !== 'always' || edge.maxVisits > graph.limits.maxLoopIterations)) fail();
+        if (edge.loopBack && (edge.condition !== 'always' || edge.maxVisits > graph.limits.maxLoopIterations
+            || !(edge.from.nodeId === worker.nodeId && edge.to.nodeId === worker.nodeId
+                || pure.some(node => node.kind === 'planner' && node.nodeId === edge.from.nodeId)
+                    && pure.some(node => ['agent', 'planner'].includes(node.kind) && node.nodeId === edge.to.nodeId)))) fail();
         if (!edge.loopBack && edge.from.nodeId === worker.nodeId && edge.to.nodeId !== output.nodeId) fail();
     }
     const loop = graph.edges.find(edge => edge.loopBack && edge.to.nodeId === worker.nodeId);
@@ -55,7 +57,8 @@ export function projectFanoutGroups(graph, finalWorkerId) {
                 const id = pending.pop(), node = graph.nodes.find(node => node.nodeId === id);
                 if (scope.has(id)) continue;
                 if (node?.kind === 'join') { ends.add(id); continue; }
-                if (node?.kind !== 'agent' || id === finalWorkerId || used.has(id) || !equal(node.capabilities, ['generation.send'])) fail();
+                if (!['agent', 'planner'].includes(node?.kind) || id === finalWorkerId || used.has(id)
+                    || !equal(node.capabilities, ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []])) fail();
                 scope.add(id);
                 const outgoing = graph.edges.filter(edge => edge.from.nodeId === id);
                 if (!outgoing.length || outgoing.some(edge => edge.loopBack)) fail();
@@ -72,7 +75,8 @@ export function projectFanoutGroups(graph, finalWorkerId) {
             count + graph.edges.filter(edge => branch.scopeNodeIds.includes(edge.from.nodeId) && edge.to.nodeId === joinId).length, 0)) fail();
         for (const branch of branches) for (const id of branch.scopeNodeIds) { if (used.has(id)) fail(); used.add(id); }
         const members = graph.edges.filter(edge => edge.to.nodeId === joinId);
-        if (!members.length || members.some(edge => !branches.some(branch => branch.scopeNodeIds.includes(edge.from.nodeId)) || edge.condition !== 'always')) fail();
+        if (!members.length || members.some(edge => !branches.some(branch => branch.scopeNodeIds.includes(edge.from.nodeId)) || edge.condition !== 'always'
+            || graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind !== 'agent')) fail();
         joins.add(joinId); groups.push({ fanout, join, branches, members });
     }
     if (graph.nodes.some(node => node.kind === 'join' && !joins.has(node.nodeId))) fail();

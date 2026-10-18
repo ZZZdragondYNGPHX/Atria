@@ -43,9 +43,10 @@ async function durableParent(tx, handle, supplied) {
 export async function readProjectDelegatedPlan(tx, handle, child) {
     const plan = await readPlanRevision(tx, handle, child.planRef);
     if (child.sourceBinding.sourceAuthority !== 'project' || !child.parentRef) invalid();
-    projectDelegatedGraphProfile(plan);
+    const initial = projectDelegatedGraphProfile(plan);
     const snapshot = await readTaskGraphRevision(tx, handle, child, child.graphRevision);
     const shape = projectDelegatedGraphProfile({ ...plan, definition: snapshot.graph });
+    if (shape.terminalNodeId !== initial.terminalNodeId || !equal(shape.output, initial.output)) invalid();
     return { ...shape, plan, graph: snapshot.graph };
 }
 
@@ -92,6 +93,9 @@ async function readProjectDelegatedModelInputFacts(tx, handle, child, producer, 
     const snapshot = producer.graphRevision === child.graphRevision ? { graph: lineage.graph }
         : await readTaskGraphRevision(tx, handle, child, producer.graphRevision);
     if (producer.graphRevision !== child.graphRevision) projectDelegatedGraphProfile({ ...lineage.plan, definition: snapshot.graph });
+    const node = snapshot.graph.nodes.find(node => node.nodeId === producer.nodeId), pin = nodeModelRoutePins(node, lineage.plan.dependencyPins)[0];
+    if (!pin || !equal(input.routeRef, pin.resourceRef) || intent.actionRef.kind !== 'native_model_send'
+        || intent.actionRef.runtimeRouteId !== pin.resourceRef.runtimeRouteId) invalid();
     const incoming = snapshot.graph.edges.filter(edge => edge.to.nodeId === producer.nodeId).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
     const sources = [];
     for (const ref of input.acceptedGraphResultRefs) {

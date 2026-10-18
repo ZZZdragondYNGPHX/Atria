@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
+import { hashNativeDocument as hash, putImmutable, cloneNativeDocument } from '../repositories/common.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { runGenerationLocalWork } from './generation-local-work.js';
@@ -7,7 +7,7 @@ import { graphPatchHash } from './graph-revision-contracts.js';
 import { graphPlannerReceiptId } from './graph-planner-completion.js';
 import { readSessionPlannerCompletion } from './session-planner-contracts.js';
 import { sessionDelegatedGraphProfile } from './session-delegated-graph-profile.js';
-import { sessionPlannerProgressFingerprint } from './session-replan-contracts.js';
+import { sessionPlannerProgressFingerprint, sessionReplanScope } from './session-replan-contracts.js';
 import { readSessionDelegatedModelInput } from './session-delegation-contracts.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { controlCommandId, controlRecordKey, readAttempt, runGuard } from './controller-common.js';
@@ -19,7 +19,7 @@ const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 
 /** Domain callback for the original GraphController; all work is charged to
  * the already held child reservation in the original Session operation bank. */
-export async function completeSessionDelegatedPlanner({ state, service, port, result, send, limits, current, progress, engine }) {
+export async function completeSessionDelegatedPlanner({ state, service, port, result, send, limits, current, progress, engine, resolveNode }) {
     const { handle } = state, runId = state.identity.childRunId, { nodeAttemptId: attemptId, effectId } = state.activeNode;
     const proof = await port.inspectResultCompletion(handle, { result, runId, effectId }), rows = [];
     const work = async (kind, input, operation) => {
@@ -60,11 +60,26 @@ export async function completeSessionDelegatedPlanner({ state, service, port, re
             await current();
             if (producer.attemptId !== attemptId || !equal(actual, patch) || !equal(proof, await port.inspectResultCompletion(handle, { result, runId, effectId })))
                 fail('native_orchestration_planner_producer_denied');
-            const profile = sessionDelegatedGraphProfile({ ...state.child.plan, definition: active.graph });
+            const candidate = cloneNativeDocument(active.graph);
+            for (const operation of actual.operations) {
+                if (operation.op === 'addNode') candidate.nodes.push(operation.node);
+                if (operation.op === 'addEdge') candidate.edges.push(operation.edge);
+            }
+            const profile = sessionDelegatedGraphProfile({ ...state.child.plan, definition: candidate });
+            if (profile.terminalNodeId !== state.child.topology.terminalNodeId || !equal(profile.output, state.child.topology.output))
+                fail('native_orchestration_planner_producer_denied');
+            for (const node of profile.models) await resolveNode(node);
+            for (const operation of actual.operations.filter(operation => operation.op === 'addEdge')) {
+                const source = progress.get(operation.edge.from.nodeId);
+                if (source?.resultRef) {
+                    const fact = await readGraphNodeResult(tx, handle, active, source.resultRef.resultId);
+                    if (!fact || !fact.record.envelope.audienceConstraint.nodeIds.includes(operation.edge.to.nodeId))
+                        fail('native_orchestration_result_audience_denied');
+                }
+            }
             const repeating = actual.operations.some(operation => operation.op === 'requestReplan');
-            const loops = active.graph.edges.filter(edge => edge.loopBack && edge.from.nodeId === producer.nodeId);
-            if (repeating && (!loops.length || loops.some(edge => edge.to.nodeId !== producer.nodeId))) fail('native_orchestration_planner_replan_pending');
-            const required = profile.models.filter(node => repeating && node.nodeId === producer.nodeId || node.nodeId !== producer.nodeId && !progress.has(node.nodeId)).length;
+            const affected = repeating ? sessionReplanScope(candidate, producer.nodeId).affectedNodeIds : [];
+            const required = profile.models.filter(node => affected.includes(node.nodeId) || node.nodeId !== producer.nodeId && !progress.has(node.nodeId)).length;
             const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: runId }, { tx });
             if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');
             const effect = (await readEffect(tx, handle, active, effectId)).doc;

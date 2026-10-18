@@ -5,7 +5,7 @@ import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { controlCommandId, controlRecordKey, readAttempt, graphReachable, assertAttemptConsumable } from './controller-common.js';
 import { readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 import { readFanoutFrame, readFanoutMembership, isFanoutBranchExcluded } from './fanout-controller.js';
-import { readTaskGraphRevision } from './graph-revision-contracts.js';
+import { readTaskGraphRevision, readTaskGraphRevisions } from './graph-revision-contracts.js';
 import { joinIdForAttempt, decideJoinOutcome } from './join-controller.js';
 import { readGraphNodeResults } from './graph-result-contracts.js';
 import { readEffect } from './effect-contracts.js';
@@ -111,7 +111,47 @@ function assertFrozenScopeGraph(frame, frozen, actual) {
     const ids = new Set(frame.branches.flatMap(branch => branch.scopeNodeIds));
     const shape = graph => ({ nodes: graph.nodes.filter(node => ids.has(node.nodeId)),
         edges: graph.edges.filter(edge => ids.has(edge.from.nodeId) || ids.has(edge.to.nodeId)) });
-    if (!same(shape(frozen), shape(actual))) invalid();
+    if (!same(shape(frozen), shape(actual)) || !same(frozen.outputContract, actual.outputContract)) invalid();
+}
+
+/** A Model already admitted by a frozen Frame can finish after an unrelated
+ * scheduling revision. Reprove its original membership and every intervening
+ * scope shape; this supplies no Source, bank or publication permission. */
+export async function readGraphFanoutPublicationGraph(tx, handle, root, producer, publicationRevision, publicationSeq) {
+    const actual = (await readAttempt(tx, handle, root, producer.attemptId)).doc;
+    const fanoutAttemptId = producer.inputRefs?.[0]?.fanoutAttemptId;
+    const frame = fanoutAttemptId ? await readFanoutFrame(tx, handle, root, fanoutAttemptId) : null;
+    if (!same(actual, producer) || !frame || producer.graphRevision >= publicationRevision || publicationRevision > root.graphRevision
+        || frame.graphRevision > producer.graphRevision || frame.epoch !== producer.epoch || frame.epoch > root.epoch
+        || frame.sourceBindingDigest !== root.sourceBinding.bindingDigest || producer.sourceBindingDigest !== frame.sourceBindingDigest
+        || !same(frame.parentBudgetRef, root.budgetAuthorityRef) || !same(producer.budgetRef, frame.parentBudgetRef)
+        || frame.decisionSeq >= publicationSeq || publicationSeq > root.eventSeq + 1
+        || !frame.branches.some(branch => branch.memberAttemptIds.includes(producer.attemptId) && branch.scopeNodeIds.includes(producer.nodeId))) invalid();
+    const membership = await readFanoutMembership(tx, handle, root, frame, producer.attemptId);
+    const fanout = (await readAttempt(tx, handle, root, fanoutAttemptId)).doc;
+    if (!membership || membership.decisionSeq !== frame.decisionSeq || membership.createdAt !== frame.createdAt || fanout.epoch !== frame.epoch
+        || fanout.sourceBindingDigest !== frame.sourceBindingDigest || !same(fanout.budgetRef, frame.parentBudgetRef)) invalid();
+    const revisions = Array.from({ length: publicationRevision - frame.graphRevision + 1 }, (_, index) => frame.graphRevision + index);
+    const snapshots = await readTaskGraphRevisions(tx, handle, root, revisions), frozen = snapshots.get(frame.graphRevision);
+    const node = frozen.graph.nodes.find(node => node.nodeId === fanout.nodeId);
+    if (node?.kind !== 'fanout' || frame.maxConcurrency !== Math.min(node.policy.maxConcurrency, root.limits.maxConcurrency)
+        || frame.failurePolicy !== node.policy.failurePolicy || !graphFanoutModelScope(frozen.graph, fanout.nodeId).includes(producer.nodeId)) invalid();
+    for (const snapshot of snapshots.values()) assertFrozenScopeGraph(frame, frozen.graph, snapshot.graph);
+    const command = await commandFact(tx, handle, root, 'fanout.freeze', frame.receiptId,
+        { fanoutAttemptId, branches: frame.branches }, 'fanoutFrame', frame);
+    if (command.outcome.versions.graphRevision !== frame.graphRevision) invalid();
+    const transfers = [];
+    for (const branch of frame.branches) {
+        const entry = (await readAttempt(tx, handle, root, branch.entryAttemptId)).doc;
+        const edges = frozen.graph.edges.filter(edge => edge.from.nodeId === fanout.nodeId && edge.to.nodeId === entry.nodeId && !edge.loopBack);
+        if (edges.length !== 1 || entry.epoch !== frame.epoch || !branch.scopeNodeIds.includes(entry.nodeId)) invalid();
+        transfers.push({ edgeId: edges[0].edgeId, producerAttemptId: fanoutAttemptId, nodeAttemptId: entry.attemptId });
+    }
+    await edgeFacts(tx, handle, root, frozen.graph, transfers, frame.edgeAdmissionRefs, frame.decisionSeq, frame.graphRevision);
+    const patches = await tx.listResources({ kind: K.orchestrationRecord, handle, runId: root.runId, recordType: 'patch' });
+    if (patches.some(row => row.doc.accepted && row.doc.newGraphRevision <= publicationRevision
+        && row.doc.newGraphRevision > producer.graphRevision && row.doc.decisionSeq >= publicationSeq)) invalid();
+    return { frame, membership, graphSnapshot: snapshots.get(producer.graphRevision) };
 }
 
 async function reservationFact(tx, handle, root, frame, attempt, snapshot) {

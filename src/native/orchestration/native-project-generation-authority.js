@@ -12,6 +12,13 @@ import { pinSkillEntries, loadAlwaysSkills, boundSkillFile } from '../../../publ
 import { ModelPort } from './model-port.js';
 import { readEffect } from './effect-contracts.js';
 import { readAttempt } from './controller-common.js';
+import { checkedRecord } from './plan-repository.js';
+import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
+import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
+import { readProjectDelegation, readProjectDelegationInputs } from './project-delegation-contracts.js';
+import { readOriginalProjectTask } from './project-tool-receipts.js';
+import { assertChildRunCurrent } from './run-repository.js';
+import { BudgetPort } from './budget-port.js';
 import { projectAgentRoundConversation } from '../../../public/shared/project-agent-conversation.js';
 import { readProjectRoundReceipt } from './project-round-contracts.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
@@ -168,11 +175,58 @@ export async function captureNativeProjectWorker(capture, { requestId, task, out
     return stage;
 }
 
+/** A candidate child id is a locator, never permission. Only this module's
+ * actual opaque parent capture and fresh original delegation/Task/bank facts
+ * can bind that child to the already allocated private Scheduler scope. */
+async function readDelegatedBoundary(capture, { candidateChild = null, candidateParentAttempt = null, bound = null, permit = null }) {
+    const original = generations.get(capture);
+    if (!original?.workerStage || original.state.fanoutChildPermit) fail();
+    const { host, handle } = original.state, engine = host.persistence._engine;
+    const scope = permit ? fanoutChildren.get(permit) : null;
+    if (permit && scope?.generation !== original) fail();
+    const scopeState = scope ? { ...original.state, fanoutChildPermit: permit, fanoutParentState: original.state } : original.state;
+    await currentGeneration(original, { host, handle }, scopeState);
+    return engine.withTransaction(handle, async tx => {
+        const runId = bound?.childRunId ?? candidateChild?.runId;
+        const child = runId && (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId }))?.doc;
+        if (!child?.parentRef || candidateChild && hash(candidateChild) !== hash(child)) fail();
+        const parent = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: child.parentRef.parentRunId }))?.doc;
+        if (!parent) fail();
+        const lineage = await readProjectDelegation(tx, handle, parent, child.runId), source = child.sourceBinding.sourceRef;
+        const task = await readOriginalProjectTask(tx, handle, source), generation = task?.attempts.find(attempt => attempt.attemptId === original.projectAttemptId);
+        if (!lineage || candidateParentAttempt && hash(candidateParentAttempt) !== hash(lineage.parentAttempt)
+            || parent.status !== 'running' || parent.cancelRequested || child.cancelRequested || !['admitted', 'running'].includes(child.status)
+            || child.parentRef.parentEpoch !== parent.epoch || lineage.parentAttempt.epoch !== parent.epoch
+            || lineage.parentAttempt.status !== (lineage.mode === 'handoff' ? 'waiting_child' : 'running')
+            || lineage.parentInput.requestId !== original.requestId || lineage.parentInput.role !== 'studio'
+            || source.projectId !== original.state.projectId || source.taskId !== original.state.taskId || source.revision !== original.state.preflight.baseRevision
+            || source.executionFingerprint !== original.state.initialSourceFingerprint
+            || generation?.kind !== 'generation' || generation.status !== 'started'
+            || generation.requestId !== (original.originalRequestId ?? original.requestId)) fail();
+        await assertChildRunCurrent(tx, handle, child);
+        await readProjectDelegationInputs(tx, handle, parent, lineage.parentAttempt, { live: true });
+        await BudgetPort.prototype.verifyReservation.call(host.turnOrchestration.execution.budgetPort, { handle, tx, root: child, parent });
+        const binding = immutable({ childRunId: child.runId, parentRunId: parent.runId, parentAttemptId: lineage.parentAttempt.attemptId,
+            childEpoch: child.epoch, parentEpoch: parent.epoch, planRef: child.planRef,
+            sourceBindingDigest: child.sourceBinding.bindingDigest, requestId: original.requestId, projectAttemptId: original.projectAttemptId });
+        if (bound && hash(bound) !== hash(binding)) fail();
+        return { lineage, binding };
+    });
+}
+
 /** Original Task child boundary only. A JSON child id cannot mint this worker. */
 export async function captureNativeProjectDelegatedWorker(capture, permit, { requestId, task, outputContract = null, routeRef, nodeId }) {
     const original = generations.get(capture), child = fanoutChildren.get(permit);
-    if (!original?.workerStage || original.state.fanoutChildPermit || child?.generation !== original || !child.nodeIds.includes(nodeId)
+    if (!original?.workerStage || original.state.fanoutChildPermit || child?.generation !== original
         || typeof requestId !== 'string' || !requestId.startsWith('project-quality:')) fail();
+    if (!child.nodeIds.includes(nodeId)) {
+        if (!child.delegation) fail();
+        const { lineage } = await readDelegatedBoundary(capture, { bound: child.delegation, permit });
+        const node = lineage.graph.nodes.find(node => node.nodeId === nodeId), pin = node && nodeModelRoutePins(node, lineage.plan.dependencyPins)[0];
+        if (!node || node.kind !== 'agent' || hash(node.capabilities) !== hash(['generation.send']) || node.dependencyPinIds.length !== 1
+            || !pin || pin.port !== 'model' || hash(routeRef) !== hash(pin.resourceRef)
+            || lineage.plan.definition.nodes.some(initial => initial.nodeId === nodeId)) fail();
+    }
     const route = await original.state.host.persistence.getRuntimeRoute(original.state.handle, routeRef.runtimeRouteId);
     if ((await original.state.host.executionResources(original.state.handle, route)).some(resource => !child.expected.resources.includes(resource))) fail();
     const state = { ...original.state, fanoutChildPermit: permit, fanoutParentState: original.state };
@@ -207,13 +261,18 @@ export function inspectNativeProjectGenerationIdentity(capture, expected) {
         selection: NativeProjectAgentExecutor.prototype.assertOriginalPreflight.call(state.executor, state.preflight).selection });
 }
 
-export async function inspectNativeProjectGeneration(capture, expected) {
-    const generation = generations.get(capture); if (!generation) fail();
-    const identity = inspectNativeProjectGenerationIdentity(capture, expected);
-    const current = await currentOperation(generation.state, expected), attempt = current.task.attempts.find(item => item.attemptId === generation.projectAttemptId);
+async function currentGeneration(generation, expected, scopeState = generation.state) {
+    const current = await currentOperation(scopeState, expected), attempt = current.task.attempts.find(item => item.attemptId === generation.projectAttemptId);
     if (current.task.executionFingerprint !== generation.currentSourceFingerprint || hash(current.task.conversation) !== generation.conversationDigest
         || attempt?.status !== 'started' || attempt.kind !== 'generation' || attempt.requestId !== (generation.originalRequestId ?? generation.requestId)
         || hash(attempt.calls) !== generation.callsDigest) fail('native_orchestration_source_stale');
+    return current;
+}
+
+export async function inspectNativeProjectGeneration(capture, expected) {
+    const generation = generations.get(capture); if (!generation) fail();
+    const identity = inspectNativeProjectGenerationIdentity(capture, expected);
+    const current = await currentGeneration(generation, expected);
     return Object.freeze({ ...identity, intent: current.task.intent, conversation: immutable(current.task.conversation), toolReceipts: immutable(generation.toolReceipts),
         skillWorkRecords: immutable(generation.state.skillWorkRecords) });
 }
@@ -228,11 +287,27 @@ export async function withNativeProjectDelegation(capture, worker) {
     return (await withProjectChildren(capture, [worker], { maxConcurrency: 1 }, true))[0];
 }
 
-async function withProjectChildren(capture, workers, options, delegated) {
+async function withProjectChildren(capture, workers, options, delegatedMode) {
     const generation = generations.get(capture);
-    if (!generation || Boolean(generation.workerStage) !== delegated || generation.state.fanoutChildPermit || !Array.isArray(workers) || !workers.length) fail();
+    if (!generation || Boolean(generation.workerStage) !== delegatedMode || generation.state.fanoutChildPermit || !Array.isArray(workers) || !workers.length) fail();
     const { state } = generation, expected = frameExpected(state);
     await inspectNativeProjectGeneration(capture, { host: state.host, handle: state.handle });
+    const delegated = new Map();
+    if (delegatedMode) for (const worker of workers) {
+        if (worker.delegatedChild === undefined && worker.delegatedParentAttempt === undefined) continue;
+        const { lineage, binding } = await readDelegatedBoundary(capture, { candidateChild: worker.delegatedChild, candidateParentAttempt: worker.delegatedParentAttempt });
+        const ids = lineage.plan.definition.nodes.filter(node => node.capabilities.includes('generation.send')).map(node => node.nodeId).sort();
+        if (hash([...worker.nodeIds].sort()) !== hash(ids) || lineage.child.graphRevision !== 0) fail();
+        const resources = [];
+        for (const pin of lineage.plan.dependencyPins) {
+            if (pin.port !== 'model' || pin.resourceRef.scope !== 'player') fail();
+            const route = await state.host.persistence.getRuntimeRoute(state.handle, pin.resourceRef.runtimeRouteId);
+            if (hash(route) !== pin.integrity) fail();
+            resources.push(...await state.host.executionResources(state.handle, route));
+        }
+        if (hash([...new Set(resources)].sort()) !== hash([...new Set(worker.resources)].sort())) fail();
+        delegated.set(worker, binding);
+    }
     const controlPermit = Object.freeze({}), control = { generation, active: true };
     fanoutControls.set(controlPermit, control);
     const children = workers.map(worker => {
@@ -241,7 +316,7 @@ async function withProjectChildren(capture, workers, options, delegated) {
             key: childExpected.key, fingerprint: childExpected.fingerprint, fresh: async () => { await worker.fresh(controlPermit); return true; }, finalize: value => value,
             run: async boundary => {
                 NativeTaskScheduler.prototype.assertFanoutChildBoundary.call(state.executor.scheduler, state.boundary, expected, boundary, childExpected);
-                const permit = Object.freeze({}); fanoutChildren.set(permit, { generation, controlPermit, boundary, expected: childExpected, nodeIds: immutable(worker.nodeIds) });
+                const permit = Object.freeze({}); fanoutChildren.set(permit, { generation, controlPermit, boundary, expected: childExpected, nodeIds: immutable(worker.nodeIds), delegation: delegated.get(worker) ?? null });
                 try { return await worker.run({ permit, signal: boundary.signal, controlPermit }); } finally { fanoutChildren.delete(permit); }
             } };
     });

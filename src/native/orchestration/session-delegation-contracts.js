@@ -18,7 +18,7 @@ import { readSessionDelegationInputs } from './session-delegation-inputs.js';
 import { sessionDelegatedGraphProfile } from './session-delegated-graph-profile.js';
 import { readSessionPlannerCompletion } from './session-planner-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
-import { sessionPlannerProgressFingerprint } from './session-replan-contracts.js';
+import { sessionPlannerProgressFingerprint, sessionReplanScope } from './session-replan-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid Session delegation facts'); };
@@ -46,7 +46,8 @@ async function durableParent(tx, handle, supplied) {
 export async function readSessionDelegatedPlan(tx, handle, child) {
     const plan = await readPlanRevision(tx, handle, child.planRef), snapshot = await readTaskGraphRevision(tx, handle, child);
     if (child.sourceBinding.sourceAuthority !== 'native_session' || !child.parentRef) invalid();
-    const profile = sessionDelegatedGraphProfile({ ...plan, definition: snapshot.graph });
+    const initial = sessionDelegatedGraphProfile(plan), profile = sessionDelegatedGraphProfile({ ...plan, definition: snapshot.graph });
+    if (profile.terminalNodeId !== initial.terminalNodeId || !equal(profile.output, initial.output)) invalid();
     return { plan, profile, graph: snapshot.graph, models: profile.models, output: profile.output, terminalNodeId: profile.terminalNodeId };
 }
 
@@ -108,6 +109,9 @@ export async function readSessionDelegatedModelInput(tx, handle, child, producer
         || intent.epoch !== producer.epoch || intent.graphRevision !== producer.graphRevision || intent.grantDigest !== producer.effectiveGrantDigest
         || producer.effectiveGrantDigest !== child.parentRef.effectiveGrantDigest) invalid();
     const snapshot = await readTaskGraphRevision(tx, handle, child, producer.graphRevision);
+    const node = snapshot.graph.nodes.find(node => node.nodeId === producer.nodeId), modelPin = nodeModelRoutePins(node, lineage.plan.dependencyPins)[0];
+    if (!modelPin || !equal(input.routeRef, modelPin.resourceRef) || intent.actionRef.kind !== 'native_model_send'
+        || intent.actionRef.runtimeRouteId !== modelPin.resourceRef.runtimeRouteId) invalid();
     const controls = input.acceptedControlRefs ?? [], sources = [];
     for (const ref of input.acceptedGraphResultRefs) {
         const fact = await readGraphNodeResult(tx, handle, child, ref.resultId);
@@ -123,7 +127,8 @@ export async function readSessionDelegatedModelInput(tx, handle, child, producer
     for (const binding of loops) {
         const edge = snapshot.graph.edges.find(edge => edge.edgeId === binding.edgeId), source = sources.find(fact => fact.producer.attemptId === binding.producerAttemptId);
         if (!source?.patch?.requests.replan || source.patch.requests.finalize || source.patch.newGraphRevision !== producer.graphRevision
-            || edge.from.nodeId !== producer.nodeId || edge.to.nodeId !== producer.nodeId) invalid();
+            || edge.from.nodeId !== source.producer.nodeId || edge.to.nodeId !== producer.nodeId
+            || sessionReplanScope(snapshot.graph, source.producer.nodeId).target.nodeId !== producer.nodeId) invalid();
     }
     const edges = [...incoming, ...loops.map(binding => snapshot.graph.edges.find(edge => edge.edgeId === binding.edgeId))].sort((a, b) => a.edgeId.localeCompare(b.edgeId));
     const ordered = edges.map(edge => sources.find(fact => fact.producer.nodeId === edge.from.nodeId));
@@ -202,21 +207,39 @@ export async function readSessionDelegatedGraphHistory(tx, handle, child, { fina
         if (rows.some(row => row.status !== 'settled')) settled = false;
         effects.push(effect); expectedRefs.push(...rows.map(row => row.attemptId), ...local.map(row => row.attemptId));
     }
-    const latest = new Map(), consumed = new Set(), keys = new Map();
+    const latest = new Map(), previous = new Map(), replaced = new Map(), consumed = new Set(), keys = new Map();
     for (const { producer, fact, proof } of entries) {
-        for (const source of proof.sources) if (latest.get(source.producer.nodeId)?.producer.attemptId !== source.producer.attemptId) invalid();
-        if (latest.has(producer.nodeId) && !proof.loops.length) invalid();
+        let trigger = null;
         if (proof.loops.length) {
-            const trigger = proof.sources.find(source => source.producer.attemptId === proof.loops[0].producerAttemptId);
-            if (!trigger || consumed.has(trigger.producer.attemptId) || proof.loops.some(binding => binding.producerAttemptId !== trigger.producer.attemptId)) invalid();
+            trigger = proof.sources.find(source => source.producer.attemptId === proof.loops[0].producerAttemptId);
+            if (!trigger || consumed.has(trigger.producer.attemptId) || proof.loops.some(binding => binding.producerAttemptId !== trigger.producer.attemptId)
+                || latest.get(trigger.producer.nodeId)?.producer.attemptId !== trigger.producer.attemptId) invalid();
+            const scope = sessionReplanScope(graph, trigger.producer.nodeId);
+            if (scope.target.nodeId !== producer.nodeId || !previous.has(producer.nodeId) || proof.loops.length !== scope.loops.length
+                || proof.loops.some(binding => !scope.loops.some(edge => edge.edgeId === binding.edgeId))) invalid();
+            for (const id of scope.affectedNodeIds) {
+                const old = latest.get(id);
+                if (old) replaced.set(id, { attemptId: old.producer.attemptId, trigger });
+                latest.delete(id);
+            }
             consumed.add(trigger.producer.attemptId);
+        }
+        for (const source of proof.sources) if (source !== trigger && latest.get(source.producer.nodeId)?.producer.attemptId !== source.producer.attemptId) invalid();
+        const prior = previous.get(producer.nodeId);
+        if (prior) {
+            const replacement = replaced.get(producer.nodeId);
+            if (replacement?.attemptId !== prior.producer.attemptId || producer.attemptNumber !== prior.producer.attemptNumber + 1
+                || !(trigger?.producer.attemptId === replacement.trigger.producer.attemptId
+                    || proof.sources.some(source => source.receipt.decisionSeq > replacement.trigger.receipt.decisionSeq))) invalid();
+            replaced.delete(producer.nodeId);
         }
         if (fact?.patch) {
             const key = sessionPlannerProgressFingerprint(fact.patch.appliedOperations, child.sourceBinding, proof.sources.filter(source => source.record));
             const prior = keys.get(producer.nodeId) ?? new Set(); if (prior.has(key)) invalid(); prior.add(key); keys.set(producer.nodeId, prior);
         }
-        latest.set(producer.nodeId, { producer, fact });
+        latest.set(producer.nodeId, { producer, fact }); previous.set(producer.nodeId, { producer, fact });
     }
+    if (replaced.size) invalid();
     if (planners.length !== child.graphRevision || child.progress.replans !== planners.filter(fact => fact.patch.requests.replan).length
         || consumed.size !== child.progress.replans || [...latest.values()].some(item => item.fact?.patch?.requests.replan)) invalid();
     if (new Set(effects.map(effect => effect.effectId)).size !== effects.length

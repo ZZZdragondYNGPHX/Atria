@@ -215,7 +215,8 @@ export class NativeProjectOrchestrationAuthority {
                 if (!delegationPlans.has(pinId)) {
                     const child = await this.#delegate().planSelection(handle, plan, pinId, resolveControlModel);
                     delegationPlans.set(pinId, child);
-                    delegationDigests.push([pinId, { pin: child.pin, models: child.profiles.map(model => ({ nodeId: model.node.nodeId, configDigest: model.configDigest })) }]);
+                    delegationDigests.push([pinId, { pin: child.pin, models: child.profiles.map(model => ({ nodeId: model.node.nodeId, configDigest: model.configDigest })),
+                        pool: child.poolProfiles.map(model => ({ pinId: model.pin.pinId, configDigest: model.configDigest })) }]);
                 }
             }
             if (control.kind === 'agent') delegations.set(control.nodeId, delegationPlans.get(control.policy.allowedPlanPinIds[0]));
@@ -255,7 +256,7 @@ export class NativeProjectOrchestrationAuthority {
             if (!route || hash(route) !== pin.integrity) fail('native_orchestration_project_route_mismatch');
             resources.push(...await host.executionResources(handle, route));
         }
-        for (const child of state.delegationPlans.values()) for (const model of child.profiles) resources.push(...await host.executionResources(handle, model.resolved.route));
+        for (const child of state.delegationPlans.values()) for (const model of child.poolProfiles) resources.push(...await host.executionResources(handle, model.resolved.route));
         return [...new Set(resources)].sort();
     }
 

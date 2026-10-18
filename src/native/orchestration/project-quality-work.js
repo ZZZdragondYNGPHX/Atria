@@ -74,7 +74,7 @@ export class ProjectQualityWork {
         const model = controlTask ? await this.state.selected.resolveControlModel(node) : this.state.selected;
         const spec = this.#input(node, token, evidenceRefs, feedback, controlRefs, controlTask);
         if (fanoutAttemptId) spec.input.fanoutAttemptId = fanoutAttemptId;
-        if (controlTask && node.kind === 'judge') spec.input.controlGraph = { evidenceRefs, controlRefs, bindings };
+        if (controlTask) spec.input.controlGraph = { evidenceRefs, controlRefs, bindings };
         if (controlTask) {
             Object.assign(spec.input, { routeRef: model.pin.resourceRef, routeIntegrity: model.pin.integrity, configDigest: model.configDigest });
             spec.grantDigest = hash({ handle: this.state.handle, input: { ...spec.input, grantDigest: null } }); spec.input.grantDigest = spec.grantDigest;

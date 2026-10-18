@@ -85,3 +85,55 @@ test.each(['source', 'unknown'])('Game child Planner %s preserves real paid fact
         await expect(f.start()).rejects.toThrow(); expect(f.requests).toHaveLength(kind === 'unknown' ? 3 : 2);
     } finally { await f.cleanup(); }
 }, 120000);
+
+
+test('SQLite Game child Planner nonself return recomputes earlier Actor evidence through original child reservation', async () => {
+    const f = await sessionDelegatedPlannerFixture(makeTempSqliteEngineHarness, { nonself: true, childRequests: 5 });
+    try {
+        const result = await f.start(), roots = await rootsOf(f), child = roots.find(root => root.parentRef), parent = roots.find(root => !root.parentRef);
+        expect(parent.status).toBe('completed'); expect(child.status).toBe('completed'); expect(f.requests).toHaveLength(7);
+        expect(f.requests.slice(0, 5).map(body => body.model)).toEqual(['session-delegated-distinct-model', f.plannerModelId,
+            'session-delegated-distinct-model', f.plannerModelId, 'session-delegated-distinct-model']);
+        expect(JSON.stringify(f.requests[3].input)).toContain('iteration 2'); expect(JSON.stringify(f.requests[3].input)).not.toContain('iteration 0');
+        expect(child.graphRevision).toBe(2); expect(child.progress).toMatchObject({ attempts: 6, patches: 2, replans: 1, loopIterations: 1, edgeVisits: 5 });
+        expect(child.progress.edgeVisitCounts[f.loop.edgeId]).toBe(1); expect(child.resultRefs).toHaveLength(3); expect(child.outputClaims).toHaveLength(1);
+        const local = await f.h.engine.withTransaction(f.h.handle, tx => readTaskLocalOutput(tx, f.h.handle, child));
+        expect(local.publication.graphHistory.planners).toHaveLength(2); expect(local.publication.graphHistory.effects).toHaveLength(5);
+        expect(local.publication.graphHistory.results.map(fact => fact.record.payload)).toEqual([
+            'CHILD_CONTROL_TERMINAL_ADVICE iteration 0', 'CHILD_CONTROL_TERMINAL_ADVICE iteration 2']);
+        const bank = await bankOf(f, parent); expect(bank.attempts).toHaveLength(7); expect(bank.attempts.every(row => row.status === 'settled')).toBe(true);
+        expect(bank.attempts.filter(row => row.reservationId === child.runId)).toHaveLength(5); expect(bank.localWork.every(row => row.status === 'settled')).toBe(true);
+        expect(bank.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released' })]);
+        expect(result.states.atri_world_state).toEqual(f.base.states.atri_world_state); expect(result.states.atri_lifecycle.domains).toEqual(f.base.states.atri_lifecycle.domains);
+        const original = await f.h.engine.withTransaction(f.h.handle, tx => readSessionOutput(tx, f.h.handle, parent));
+        await f.cold(); const cold = await f.authority.execution.runs.get(f.h.handle, parent.runId);
+        await f.authority.engine.withTransaction(f.h.handle, async tx => {
+            expect((await readSessionOutput(tx, f.h.handle, cold)).receipt).toEqual(original.receipt);
+            const second = local.publication.graphHistory.planners[1].producer, key = controlRecordKey(f.h.handle, child.runId, 'attempt', second.attemptId), stored = await tx.getResource(key);
+            const old = local.publication.graphHistory.results[0].receipt.resultRef, fresh = second.inputRefs[0].acceptedGraphResultRefs[0];
+            expect(hash(old)).not.toBe(hash(fresh));
+            const input = { ...second.inputRefs[0], acceptedGraphResultRefs: [old] };
+            const inputRefs = [input, ...child.parentRef.inputRefs, old], changed = { ...stored.doc, inputRefs, inputDigest: hash(inputRefs) };
+            try { await tx.putResource(key, { ...stored, doc: changed, integrity: hash(changed) }); await expect(readSessionOutput(tx, f.h.handle, cold)).rejects.toThrow(); }
+            finally { await tx.putResource(key, stored); }
+            expect((await readSessionOutput(tx, f.h.handle, cold)).receipt).toEqual(original.receipt);
+        });
+        expect(f.requests).toHaveLength(7);
+    } finally { await f.cleanup(); }
+}, 180000);
+
+
+test('Game child nonself return reserves every repeated pure Model without resetting its spent allocation', async () => {
+    const f = await sessionDelegatedPlannerFixture(makeTempSqliteEngineHarness, { nonself: true, childRequests: 4 });
+    try {
+        await expect(f.start()).rejects.toThrow(); expect(f.requests).toHaveLength(2);
+        const roots = await rootsOf(f), child = roots.find(root => root.parentRef), parent = roots.find(root => !root.parentRef);
+        expect(child.status).toBe('blocked'); expect(parent.status).toBe('blocked'); expect(child.graphRevision).toBe(0);
+        expect(child.progress.loopIterations).toBe(0); expect(child.resultRefs).toHaveLength(1); expect(child.outputClaims).toEqual([]); expect(parent.outputClaims).toEqual([]);
+        const patches = await f.h.engine.withTransaction(f.h.handle, tx => tx.listResources({ kind: K.orchestrationRecord, handle: f.h.handle, runId: child.runId, recordType: 'patch' }));
+        expect(patches.map(row => row.doc)).toEqual([expect.objectContaining({ accepted: false, issues: [{ code: 'native_orchestration_graph_budget_unavailable' }], appliedOperations: [] })]);
+        const bank = await bankOf(f, parent); expect(bank.attempts).toHaveLength(2); expect(bank.attempts.every(row => row.status === 'settled')).toBe(true);
+        expect(bank.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released' })]);
+        const before = f.requests.length; await expect(f.start()).rejects.toThrow(); expect(f.requests).toHaveLength(before);
+    } finally { await f.cleanup(); }
+}, 120000);

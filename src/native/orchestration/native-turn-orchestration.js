@@ -61,6 +61,7 @@ import { rpReviewOutputContract as sessionReviewOutputContract } from './rp-revi
 import { parseSessionReview, parseSessionGraphReview, readSessionReviewCompletion, sessionReviewModelReceiptId, sessionGraphReviewOutputContract, sessionReviewRerunRequirements } from './session-review-contracts.js';
 import { graphReviewModelReceiptId, graphReviewControlRef } from './graph-review-completion.js';
 import { sessionReplanScope, sessionReplanRequirements, sessionPlannerProgressFingerprint } from './session-replan-contracts.js';
+import { assertSessionFanoutPlannerPatch, readSessionFanoutPaidModelNodes } from './session-fanout-planner-contracts.js';
 
 const selections = new WeakMap();
 const modelScopes = new WeakMap();
@@ -409,7 +410,8 @@ export class NativeNarratorOrchestrationAuthority {
         for (const node of profile.ordered) profiles.push(await this.#resolveSessionGraphModel(host, handle, base, input, plan, node, profile.narrator.nodeId));
         return { binding, plan, ...profiles.at(-1), resolver: null, collaboration: { profile, profiles },
             topologyDigest: hash(profiles.map(item => ({ nodeId: item.node.nodeId, configDigest: item.configDigest, audience: item.audienceSource.pin,
-                delegation: item.delegation ? { pin: item.delegation.pin, models: item.delegation.profiles.map(child => ({ configDigest: child.configDigest, source: child.audienceSource.descriptor })) } : null }))) };
+                delegation: item.delegation ? { pin: item.delegation.pin, models: item.delegation.profiles.map(child => ({ configDigest: child.configDigest, source: child.audienceSource.descriptor })),
+                    pool: item.delegation.poolProfiles.map(child => ({ pin: child.pin, configDigest: child.configDigest, source: child.audienceSource.descriptor })) } : null }))) };
     }
 
     async #resolveSessionGraphModel(host, handle, base, input, plan, node, narratorNodeId) {
@@ -442,7 +444,7 @@ export class NativeNarratorOrchestrationAuthority {
         if (!state || state.authority !== this || state.host !== host || state.handle !== handle || !equal(state.base, base)
             || !equal(state.input, input) || !equal(state.transaction, transaction)) fail('native_orchestration_turn_selection_invalid');
         await this.#current(selection);
-        return immutable(state.collaboration ? state.collaboration.profiles.flatMap(item => [item.resolved.route, ...(item.delegation?.profiles.map(child => child.resolved.route) ?? [])])
+        return immutable(state.collaboration ? state.collaboration.profiles.flatMap(item => [item.resolved.route, ...(item.delegation?.poolProfiles.map(child => child.resolved.route) ?? [])])
             : [state.resolved.route, ...state.resolver ? [state.resolver.resolved.route] : []]);
     }
 
@@ -1059,6 +1061,7 @@ export class NativeNarratorOrchestrationAuthority {
                 await this.#authorize({ handle, root, attempt: producer });
                 if (producer.attemptId !== state.attemptId || !equal(actual, patch)
                     || !equal(proof, await port.inspectResultCompletion(handle, { result, runId, effectId: state.effectId }))) fail('native_orchestration_planner_producer_denied');
+                if (state.decision.inputRef.fanoutAttemptId) await assertSessionFanoutPlannerPatch(tx, handle, root, producer, actual);
                 const candidate = cloneNativeDocument(root.graph);
                 for (const operation of actual.operations) {
                     if (operation.op === 'addNode') candidate.nodes.push(operation.node);
@@ -1090,7 +1093,8 @@ export class NativeNarratorOrchestrationAuthority {
                 const repeats = actual.operations.some(operation => operation.op === 'requestReplan')
                     && candidate.edges.some(edge => edge.loopBack && edge.from.nodeId === producer.nodeId)
                     ? sessionReplanScope(candidate, producer.nodeId).affectedNodeIds : [];
-                const required = admission.ordered.filter(node => repeats.includes(node.nodeId) || node.nodeId !== producer.nodeId && !progress.has(node.nodeId)).length;
+                const paid = state.decision.inputRef.fanoutAttemptId ? await readSessionFanoutPaidModelNodes(tx, handle, root, state.decision.inputRef.fanoutAttemptId) : null;
+                const required = admission.ordered.filter(node => repeats.includes(node.nodeId) || node.nodeId !== producer.nodeId && !progress.has(node.nodeId) && !paid?.has(node.nodeId)).length;
                 if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');
             } }).propose(handle, { expectedStateVersion: current.stateVersion, patch }), { withAuthority }), rows);
         const accepted = proposed.outcome.patchReceipt;
@@ -1425,7 +1429,7 @@ export class NativeNarratorOrchestrationAuthority {
             if (attempt.attemptId !== fanoutAttemptId) fail('native_orchestration_fanout_denied');
         } }).activate(handle, { ...runGuard(await current()), attemptId: fanoutAttemptId });
         progress.set(profile.fanout.nodeId, { fanoutAttemptId, attemptId: fanoutAttemptId });
-        const declared = [];
+        const declared = [], plannerProgress = new Map();
         for (const node of profile.branches) {
             const model = selected.collaboration.profiles.find(item => item.node.nodeId === node.nodeId);
             const prepared = await this.#prepareRole({ ...args, graphProfile: model, graphProgress: progress, graphPrepareOnly: true }, 'narrator');
@@ -1485,12 +1489,14 @@ export class NativeNarratorOrchestrationAuthority {
                             checkCancellation(boundary.signal);
                             const active = await current(), entry = pending.has(item.model.node.nodeId);
                             const ready = entry ? { node: item.model.node } : inspectGraphReadiness(active.graph, active.nodeControl,
-                                Object.fromEntries([...progress].map(([id]) => [id, 'completed'])), { excludeNodeIds: active.graph.nodes.filter(node => !pending.has(node.nodeId)).map(node => node.nodeId) }).ready[0];
+                                Object.fromEntries([...progress].map(([id]) => [id, 'completed'])), { excludeNodeIds: active.graph.nodes.filter(node => !pending.has(node.nodeId)).map(node => node.nodeId) }).ready.toSorted((a, b) =>
+                                (active.nodeControl[b.node.nodeId].priority ?? 0) - (active.nodeControl[a.node.nodeId].priority ?? 0)
+                                || item.scope.ordered.findIndex(node => node.nodeId === a.node.nodeId) - item.scope.ordered.findIndex(node => node.nodeId === b.node.nodeId))[0];
                             if (!ready) fail('native_orchestration_graph_dependency_unavailable');
                             const model = item.models.get(ready.node.nodeId);
                             completed = await this.#runSessionModelWorker({ ...args, signal: boundary.signal, quotaProof }, selected, model, progress,
                                 { ...(entry ? { preparedGraphAttemptId: item.attemptId } : { reservedGraphAttemptId: item.attempts.get(model.node.nodeId) }),
-                                    graphFanoutAttemptId: fanoutAttemptId, fanoutMember: true });
+                                    graphFanoutAttemptId: fanoutAttemptId, fanoutMember: true, plannerProgress });
                             if (completed.error) return completed;
                             pending.delete(model.node.nodeId);
                         }
@@ -1577,9 +1583,10 @@ export class NativeNarratorOrchestrationAuthority {
                 try {
                     const scope = sessionReplanScope(root.graph, nodeId), { target, loops } = scope;
                     if (previous.requests.finalize || !progress.has(target.nodeId)) fail('native_orchestration_planner_replan_pending');
+                    if (scope.affectedNodeIds.some(id => replacements.has(id))) fail('native_orchestration_planner_replan_pending');
                     for (const id of scope.affectedNodeIds) if (progress.has(id)) {
                         const node = root.graph.nodes.find(node => node.nodeId === id);
-                        if (!['agent', 'planner'].includes(node.kind) || node.capabilities.includes('agent.delegate')) fail('native_orchestration_review_irreversible_dependency');
+                        if (!['agent', 'planner', 'review', 'judge'].includes(node.kind) || node.capabilities.includes('agent.delegate')) fail('native_orchestration_review_irreversible_dependency');
                     }
                     const required = sessionReplanRequirements(root, topology, progress, scope);
                     const capacity = await this.engine.withTransaction(args.handle, tx => service.budgetPort.observeCapacity(args.handle,

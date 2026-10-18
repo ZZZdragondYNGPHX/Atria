@@ -3,6 +3,7 @@ import { assertObject, assertResultPolicy } from '../../../public/shared/native-
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { ProjectQualityWork } from './project-quality-work.js';
 import { inspectGraphReadiness } from './graph-work-readiness.js';
+import { projectReplanScope, projectPlannerProgressFingerprint } from './project-replan-contracts.js';
 import { projectControlGraph, projectPlannerOutputContract, projectGraphReviewOutputContract, projectGraphJudgeOutputContract } from './project-control-graph.js';
 import { AttemptController } from './attempt-controller.js';
 import { TransitionController } from './transition-controller.js';
@@ -13,6 +14,7 @@ import { FanoutController, readFanoutFrame } from './fanout-controller.js';
 import { JoinController, joinIdForAttempt } from './join-controller.js';
 import { withNativeProjectFanout } from './native-project-generation-authority.js';
 import { readProjectFanoutCompletion } from './project-fanout-contracts.js';
+import { assertProjectFanoutPlannerPatch, readProjectFanoutPaidModelNodes } from './project-fanout-planner-contracts.js';
 import { readProjectDelegationContinuation } from './project-delegation-contracts.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelFailureReceipt } from './model-port.js';
@@ -149,7 +151,14 @@ export class ProjectControlGraphWork {
             if (!Array.isArray(value.operations) || !value.operations.length) fail('native_orchestration_project_planner_response_invalid');
             return immutable(value);
         });
-        if (this.lastOperations.get(stage.selected.node.nodeId) === hash(parsed.operations)) fail('native_orchestration_project_planner_no_progress');
+        const evidence = await runs.engine.withTransaction(handle, async tx => {
+            const active = await runs.get(handle, runId), facts = [];
+            for (const ref of stage.decision.inputRef.acceptedGraphResultRefs) facts.push(await readGraphNodeResult(tx, handle, active, ref.resultId));
+            if (facts.some(fact => !fact)) fail('native_orchestration_project_control_stale');
+            return facts;
+        });
+        const progressKey = projectPlannerProgressFingerprint(parsed.operations, stage.sourceBinding, evidence);
+        if (this.lastOperations.get(stage.selected.node.nodeId)?.has(progressKey)) fail('native_orchestration_project_planner_no_progress');
         const root = await runs.get(handle, runId), patch = { schemaVersion: 1, patchId: 'opatch_' + hash({ runId, attemptId: stage.attemptId }).slice(0, 32),
             runId, producerAttemptId: stage.attemptId, expectedEpoch: root.epoch, expectedGraphRevision: root.graphRevision,
             operations: parsed.operations, reasonRefs: [{ kind: 'source', bindingDigest: root.sourceBinding.bindingDigest },
@@ -159,9 +168,10 @@ export class ProjectControlGraphWork {
         const proposed = await work('graph_control_adopt', patch, () => runs.withSourceControl(handle, runId, async () => {
             try {
                 return await new GraphController({ runs, authorizePatch: async ({ tx, root: active, producer, patch: actual }) => {
-                    await this.current();
+                    await this.current({ capture: stage.projectCapture });
                     const completion = await this.port.inspectResultCompletion(handle, { result, runId, effectId: stage.effectId });
                     if (!equal(completion, proof) || producer.attemptId !== stage.attemptId || !equal(actual, patch)) fail('native_orchestration_project_planner_denied');
+                    if (stage.decision.inputRef.fanoutAttemptId) await assertProjectFanoutPlannerPatch(tx, handle, active, producer, actual);
                     const candidate = cloneNativeDocument(active.graph);
                     for (const operation of actual.operations) {
                         if (operation.op === 'addNode') candidate.nodes.push(operation.node);
@@ -182,7 +192,10 @@ export class ProjectControlGraphWork {
                         }
                     }
                     const capacity = await budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: null }, { tx });
-                    const remaining = admission.pure.filter(node => node.capabilities.includes('generation.send') && !this.records.has(node.nodeId) && node.nodeId !== producer.nodeId);
+                    const repeating = actual.operations.some(operation => operation.op === 'requestReplan') ? projectReplanScope(candidate, producer.nodeId).affectedNodeIds : [];
+                    const paid = stage.decision.inputRef.fanoutAttemptId ? await readProjectFanoutPaidModelNodes(tx, handle, active) : null;
+                    const remaining = admission.pure.filter(node => node.capabilities.includes('generation.send')
+                        && (repeating.includes(node.nodeId) || (paid ? !paid.has(node.nodeId) : !this.records.has(node.nodeId)) && node.nodeId !== producer.nodeId));
                     const required = remaining.reduce((requests, node) => requests + 1 + (this.state.selected.resolveDelegation(node)?.ceiling.maxRequests ?? 0), 1);
                     if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_project_graph_budget_unavailable');
                     await sourcePort.revalidate(handle, active.sourceBinding, { tx, root: active });
@@ -196,11 +209,12 @@ export class ProjectControlGraphWork {
         }, { withAuthority: boundary }));
         const accepted = proposed.outcome.patchReceipt;
         if (!accepted.accepted) fail('native_orchestration_project_graph_patch_rejected');
+        if (accepted.requests.replan && accepted.requests.finalize) fail('native_orchestration_project_replan_unavailable');
         const receiptId = graphPlannerReceiptId(runId, stage.attemptId);
         try {
             await runs.withSourceControl(handle, runId, async () => runs.control(handle, controlCommandId('graph.planner.settle', stage.attemptId), {
                 ...runGuard(await runs.get(handle, runId)), operation: 'attempt.settle', detail: { attemptId: stage.attemptId, patchId: patch.patchId } }, async ({ tx, root: active, now }) => {
-                await this.current();
+                await this.current({ capture: stage.projectCapture });
                 if (!equal(proof, await this.port.inspectResultCompletion(handle, { result, runId, effectId: stage.effectId }))) fail('native_orchestration_project_planner_denied');
                 const record = await readAttempt(tx, handle, active, stage.attemptId);
                 if (record.doc.status !== 'running' || !equal(record.doc.effectRefs, [stage.effectId]) || !equal(active, await runs.get(handle, runId))) fail('native_orchestration_project_planner_denied');
@@ -219,7 +233,7 @@ export class ProjectControlGraphWork {
             const saved = await runs.engine.withTransaction(handle, async tx => readGraphPlannerCompletion(tx, handle, await runs.get(handle, runId), stage.attemptId, readerOptions));
             if (!saved || !equal(saved.patch, accepted)) throw error;
         }
-        this.lastOperations.set(stage.selected.node.nodeId, hash(parsed.operations));
+        const keys = this.lastOperations.get(stage.selected.node.nodeId) ?? new Set(); keys.add(progressKey); this.lastOperations.set(stage.selected.node.nodeId, keys);
         return { attemptId: stage.attemptId, controlRef: graphPlannerControlRef(runId, stage.attemptId), requests: accepted.requests };
     }
 
@@ -227,7 +241,7 @@ export class ProjectControlGraphWork {
         const { handle, operation: { runId } } = this.state, { runs } = this.service;
         const root = await runs.get(handle, runId), input = { kind: 'native_project_graph_control', nodeId: node.nodeId,
             planRef: root.planRef, sourceRef: root.sourceBinding.sourceRef, acceptedGraphResultRefs: bundle.evidenceRefs,
-            acceptedControlRefs: bundle.controlRefs, ...(fanoutAttemptId ? { fanoutAttemptId } : {}) };
+            acceptedControlRefs: bundle.controlRefs, controlGraph: bundle, ...(fanoutAttemptId ? { fanoutAttemptId } : {}) };
         const inputRefs = [input, ...bundle.evidenceRefs, ...bundle.controlRefs], grantDigest = hash({ handle, source: root.sourceBinding, inputRefs });
         const admission = { inputRefs, inputDigest: hash(inputRefs), effectiveGrantDigest: grantDigest, budgetRef: root.budgetAuthorityRef };
         if (bundle.bindings.length) {
@@ -258,7 +272,7 @@ export class ProjectControlGraphWork {
         const declared = [];
         for (const branch of profile.branches) {
             const root = await current(), token = 'fanout:' + fanoutAttemptId, task = this.#task(branch.entry, root);
-            const spec = await this.models.prepareStageInput(branch.entry, token, { ...inherited, controlTask: task, fanoutAttemptId });
+            const spec = await this.models.prepareStageInput(branch.entry, token, { ...inherited, bindings: [], controlTask: task, fanoutAttemptId });
             const inputRefs = [spec.input, ...inherited.evidenceRefs, ...inherited.controlRefs];
             const begun = await runs.beginAttempt(handle, controlCommandId('project.fanout.entry', { runId, fanoutAttemptId, nodeId: branch.entry.nodeId }), {
                 ...runGuard(await current()), nodeId: branch.entry.nodeId, inputRefs, inputDigest: hash(inputRefs),
@@ -317,7 +331,8 @@ export class ProjectControlGraphWork {
                         const node = ready.node, entry = node.nodeId === item.branch.entry.nodeId, bundle = this.#mergeBundle(entry ? { evidenceRefs: [], controlRefs: [], bindings: [] } : this.#bundle(ready.edges, active.graph), inherited);
                         try {
                             const fact = await this.models.generateStage(node, item.token, { ...bundle, controlTask: entry ? item.task : this.#task(node, active),
-                                fanoutAttemptId, fanoutPermit: permit, signal, ...(entry ? { preparedAttemptId: item.attempts.get(node.nodeId) }
+                                fanoutAttemptId, fanoutPermit: permit, signal,
+                                ...(node.kind === 'planner' ? { outputContract: projectPlannerOutputContract, complete: (stage, args) => this.#planner(stage, args) } : {}), ...(entry ? { preparedAttemptId: item.attempts.get(node.nodeId) }
                                     : { reservedAttemptId: item.attempts.get(node.nodeId) }), authorizeInputs: args => this.#authorizeInputs(bundle, args) });
                             this.records.set(node.nodeId, fact); pending.delete(node.nodeId);
                         } catch (error) {
@@ -509,13 +524,29 @@ export class ProjectControlGraphWork {
             const replan = [...this.records.entries()].find(([, fact]) => fact.requests?.replan && !handledReplans.has(fact.attemptId));
             let selected, bundle, token;
             if (replan) {
-                const [nodeId, previous] = replan, node = root.graph.nodes.find(node => node.nodeId === nodeId);
-                const loop = root.graph.edges.find(edge => edge.loopBack && edge.from.nodeId === nodeId && edge.to.nodeId === nodeId);
-                if (!loop || previous.requests.finalize) fail('native_orchestration_project_replan_unavailable');
-                bundle = this.#bundle(root.graph.edges.filter(edge => edge.to.nodeId === nodeId && !edge.loopBack), root.graph);
-                bundle.bindings.push({ edgeId: loop.edgeId, producerAttemptId: previous.attemptId });
-                if (!bundle.controlRefs.some(ref => equal(ref, previous.controlRef))) bundle.controlRefs.push(previous.controlRef);
+                const [nodeId, previous] = replan, scope = projectReplanScope(root.graph, nodeId), node = scope.target;
+                if (previous.requests.finalize || !this.records.has(node.nodeId)) fail('native_orchestration_project_replan_unavailable');
+                if (scope.affectedNodeIds.some(id => this.prepared?.has(id))) fail('native_orchestration_project_replan_unavailable');
+                for (const id of scope.affectedNodeIds) if (this.records.has(id)) {
+                    const old = root.graph.nodes.find(item => item.nodeId === id);
+                    if (!['agent', 'planner', 'review', 'judge'].includes(old.kind) || old.capabilities.some(capability => !['generation.send', 'graph.patch'].includes(capability)))
+                        fail('native_orchestration_review_irreversible_dependency');
+                }
+                const remaining = profile.pure.filter(item => item.capabilities.includes('generation.send')
+                    && (!this.records.has(item.nodeId) || scope.affectedNodeIds.includes(item.nodeId)));
+                const requests = remaining.reduce((total, item) => total + 1 + (this.state.selected.resolveDelegation(item)?.ceiling.maxRequests ?? 0), 1);
+                const capacity = await this.service.runs.engine.withTransaction(handle, tx => this.service.budgetPort.observeCapacity(handle,
+                    { authorityRef: root.budgetAuthorityRef, reservationId: null }, { tx }));
+                if (!capacity || capacity.overrun || capacity.remaining.requests < requests) fail('native_orchestration_project_graph_budget_unavailable');
+                if (root.progress.attempts + remaining.length + 2 > root.limits.maxAttempts) fail('native_orchestration_limit_exhausted');
+                const ready = inspectGraphReadiness(root.graph, root.nodeControl, Object.fromEntries([...this.records].filter(([id]) => id !== node.nodeId)
+                    .map(([id, fact]) => [id, fact.status ?? 'completed']))).ready.find(item => item.node.nodeId === node.nodeId);
+                if (!ready) fail('native_orchestration_project_control_dependency_missing');
+                bundle = this.#bundle([...ready.edges, ...scope.loops], root.graph);
                 selected = node; token = previous.attemptId; handledReplans.add(previous.attemptId);
+                for (const id of scope.affectedNodeIds) {
+                    this.records.delete(id); this.#retryTokens.set(id, previous.attemptId);
+                }
             } else {
                 const observed = inspectGraphReadiness(root.graph, root.nodeControl, completion, { excludeNodeIds: [profile.worker.nodeId, profile.output.nodeId] });
                 if (!observed.ready.length) {

@@ -11,6 +11,7 @@ import { readOriginalProjectTask } from './project-tool-receipts.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { readAttemptSettlement, attemptReceiptId } from './attempt-settlement.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
+import { readProjectReplanHistory } from './project-replan-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original Project Review output facts'); };
@@ -88,6 +89,7 @@ export async function readProjectReviewResult(tx, handle, root) {
         || !equal(record, projectReviewResult({ ...root, epoch: receipt.epoch }, round.receipt, producer, receipt.createdAt))) invalid();
     await assertPublicationCommand(tx, handle, root, 'result', 'result.publish', { roundReceiptId: round.receipt.receiptId },
         { resultRef: receipt.resultRef }, receipt.epoch);
+    if (root.graph.edges.some(edge => edge.loopBack && edge.from.nodeId !== edge.to.nodeId)) await readProjectReplanHistory(tx, handle, root);
     return { record, receipt, producer, round, settlement };
 }
 

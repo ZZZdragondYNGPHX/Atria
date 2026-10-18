@@ -119,7 +119,7 @@ export function rpControlReplanScope(graph, plannerNodeId) {
     };
     const affected = reach(target.nodeId), ancestors = reach(plannerNodeId, true);
     if (!affected.has(plannerNodeId) || graph.nodes.some(node => affected.has(node.nodeId) && ancestors.has(node.nodeId)
-        && !['agent', 'planner'].includes(node.kind))) pending();
+        && !['agent', 'planner', 'review', 'judge'].includes(node.kind))) pending();
     return { loops, target, affectedNodeIds: [...affected] };
 }
 
