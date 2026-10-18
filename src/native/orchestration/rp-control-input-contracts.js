@@ -1,3 +1,4 @@
+import { readRpDelegationContinuation } from './rp-delegated-quality-contracts.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { readRpControlFanoutCompletion } from './rp-control-fanout-contracts.js';
@@ -103,9 +104,12 @@ export async function assertRpControlInput(tx, handle, root, fact, plan = null) 
 
 async function assertControlInputFacts(tx, handle, root, fact, plan, ownedFacts) {
     plan ??= await readPlanRevision(tx, handle, root.planRef);
-    const producer = fact.producer, intent = (await readEffect(tx, handle, root, fact.receipt.modelEffectId)).doc, input = intent.inputRef;
+    const producer = fact.producer, intent = (await readEffect(tx, handle, root, fact.receipt.modelEffectId)).doc;
+    const delegation = producer.inputRefs[0]?.kind === 'native_rp_delegation'
+        ? fact.delegationContinuation ?? await readRpDelegationContinuation(tx, handle, root, producer, intent) : null;
+    const input = delegation ? producer.inputRefs[0] : intent.inputRef;
     const node = root.graph.nodes.find(node => node.nodeId === producer.nodeId), bundle = input.controlGraph;
-    if (!bundle || input.kind !== 'native_rp_intent' || input.role !== 'narrator' || input.nodeId !== producer.nodeId
+    if (!bundle || input.kind !== (delegation ? 'native_rp_delegation' : 'native_rp_intent') || input.role !== 'narrator' || input.nodeId !== producer.nodeId
         || !equal(input.planRef, root.planRef) || !equal(input.sourceRef, root.sourceBinding.sourceRef)
         || !equal(input.audience, audienceContextPin(node, plan.dependencyPins)?.resourceRef.audience ?? { kind: 'narrator' })
         || !equal(input.acceptedGraphResultRefs, bundle.evidenceRefs)
@@ -146,7 +150,7 @@ async function assertControlInputFacts(tx, handle, root, fact, plan, ownedFacts)
             producerBindings: bindings, allowLoopBack: loops.length > 0, reservedAttemptId: producer.reservationRef ? producer.attemptId : null,
             receipt: { decisionSeq: fact.receipt.decisionSeq, traversalReceiptRef: { runId: root.runId, receiptId: traversalId } } });
     }
-    return { input, sources, replanFrom };
+    return { input, sources, replanFrom, delegation };
 }
 
 /** Reconstruct original model iterations from exact Transition/Model receipts.

@@ -21,6 +21,7 @@ import { audienceContextPin, assertAudienceRunCapture } from './audience-source-
 import { readSessionDelegatedModelInput, readSessionDelegationContinuation } from './session-delegation-contracts.js';
 import { isRpDelegatedControlGraph, readRpDelegatedControlInput } from './rp-delegation-control-contracts.js';
 import { readProjectDelegatedModelInput, readProjectDelegationContinuation } from './project-delegation-contracts.js';
+import { readRpDelegationContinuation } from './rp-delegated-quality-contracts.js';
 
 const kinds = ['agent', 'planner', 'judge', 'review'];
 const invalid = () => { throw new TypeError('Invalid Graph Result facts'); };
@@ -171,17 +172,23 @@ async function readGraphResultFacts(tx, handle, root, resultId, recipient, snaps
         || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId, ...retrievalCompletions.map(item => item.receiptId)]) || settlement.decisionSeq !== receipt.decisionSeq
         || settlement.createdAt !== receipt.createdAt || record.envelope.createdAt !== receipt.createdAt
         || settlement.reasonCode !== 'graph_result_published' || receipt.decisionSeq > root.eventSeq) invalid();
-    let delegationLineage = null, sessionDelegatedInput = null, rpDelegatedInput = null;
+    let delegationLineage = null, delegationContinuation = null, sessionDelegatedInput = null, rpDelegatedInput = null;
     if (root.sourceBinding.sourceAuthority === 'native_session' && root.parentRef) {
         sessionDelegatedInput = await readSessionDelegatedModelInput(tx, handle, root, producer, intent, receipt.decisionSeq);
+        delegationContinuation = sessionDelegatedInput.nested;
     } else if (producer.inputRefs[0]?.kind === 'native_session_delegation') {
-        await readSessionDelegationContinuation(tx, handle, root, producer, intent);
+        delegationContinuation = await readSessionDelegationContinuation(tx, handle, root, producer, intent);
     } else if (root.sourceBinding.sourceAuthority === 'project' && root.parentRef) {
-        delegationLineage = (await readProjectDelegatedModelInput(tx, handle, root, producer, intent, receipt.decisionSeq)).lineage;
+        const delegatedInput = await readProjectDelegatedModelInput(tx, handle, root, producer, intent, receipt.decisionSeq);
+        delegationLineage = delegatedInput.lineage;
+        delegationContinuation = delegatedInput.nested;
     } else if (isRpDelegatedControlGraph(root)) {
         rpDelegatedInput = await readRpDelegatedControlInput(tx, handle, root, producer, intent, receipt.decisionSeq);
+        delegationContinuation = rpDelegatedInput.nested;
     } else if (producer.inputRefs[0]?.kind === 'native_project_delegation') {
-        await readProjectDelegationContinuation(tx, handle, root, producer, intent);
+        delegationContinuation = await readProjectDelegationContinuation(tx, handle, root, producer, intent);
+    } else if (producer.inputRefs[0]?.kind === 'native_rp_delegation') {
+        delegationContinuation = await readRpDelegationContinuation(tx, handle, root, producer, intent);
     }
     if (recipient) {
         await assertAttemptConsumable(tx, handle, root, producer);
@@ -263,5 +270,5 @@ async function readGraphResultFacts(tx, handle, root, resultId, recipient, snaps
     // the actual original bank, without reading the same Model receipt twice.
     return { record, receipt, producer, settlement, retrievalCompletions, modelEffect: intent, modelCompletion: model,
         ...(delegationLineage ? { delegationLineage } : {}), ...(sessionDelegatedInput ? { sessionDelegatedInput } : {}),
-        ...(rpDelegatedInput ? { rpDelegatedInput } : {}) };
+        ...(rpDelegatedInput ? { rpDelegatedInput } : {}), ...(delegationContinuation ? { delegationContinuation } : {}) };
 }

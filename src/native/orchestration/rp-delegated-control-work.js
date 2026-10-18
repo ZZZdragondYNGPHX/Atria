@@ -31,9 +31,6 @@ export class RpDelegatedControlWork extends RpControlGraphWork {
         };
         this.canReadControl = (producer, recipient) => audienceResultAccess(this.state.handle, producer, recipient,
             this.state.selected.plan.dependencyPins, this.state.host.sessionCore);
-        this.reviewRerunRequests = (root, reviewer, invalidatedIds) => rpDelegatedControlProfile({ ...this.state.selected.plan, definition: root.graph }).models
-            .filter(node => node.nodeId === reviewer.nodeId || !this.records.has(node.nodeId)
-                || invalidatedIds.includes(this.records.get(node.nodeId).attemptId)).length;
         this.revalidateResult = async (tx, root, recipient, ref) => {
             const fact = await readGraphNodeResult(tx, this.state.handle, root, ref.resultId);
             if (!fact || !equal(fact.receipt.resultRef, ref) || !fact.record.envelope.audienceConstraint.nodeIds.includes(recipient.nodeId)

@@ -244,7 +244,9 @@ export async function readProjectDelegatedGraphHistory(tx, handle, child, { fina
             || producer.effectiveGrantDigest !== child.parentRef.effectiveGrantDigest || !equal(producer.budgetRef, authority))) invalid();
         const effect = (await readEffect(tx, handle, child, producer.effectRefs[0])).doc;
         if (producer.inputRefs[0]?.kind === 'native_project_delegation') {
-            const nested = await readProjectDelegationContinuation(tx, handle, child, producer, effect), closure = nested.output.closure;
+            const nested = fact?.delegationContinuation
+                ?? controls.flatMap(control => control.rerunDelegations ?? []).find(completed => equal(completed.producer, producer))?.continuation
+                ?? await readProjectDelegationContinuation(tx, handle, child, producer, effect), closure = nested.output.closure;
             if (!closure || !nested.publication.graphHistory.settled) invalid();
             for (const ref of closure.reservationRefs) {
                 if (reservations.has(ref.reservationId) || ref.status !== 'released') invalid();
@@ -409,7 +411,19 @@ export async function readProjectDelegationInputs(tx, handle, root, parent, { li
         if (live) await assertAttemptConsumable(tx, handle, root, fact.producer);
     }
     if (input.reviewFeedbackRef) {
-        await assertDelegationReviewReplacement(tx, handle, root, parent, snapshot, facts, { live });
+        if (root.parentRef) {
+            // The original child Review copies the resolver's complete input
+            // and inherited grant. It does not mint a main Task worker grant
+            // or fabricate another traversal of the old incoming edges.
+            const { fact, target } = await readProjectDelegatedReviewReplacement(tx, handle, root, parent, input);
+            if (target.inputRefs[0]?.kind !== 'native_project_delegation' || target.attemptNumber >= parent.attemptNumber
+                || !equal(target.inputRefs[0].childPlanRef, input.childPlanRef)) invalid();
+            await readProjectDelegationInputs(tx, handle, root, target);
+            if (live) {
+                await assertAttemptCurrent(tx, handle, root, fact.producer);
+                if (root.status !== 'running' || root.cancelRequested || fact.producer.epoch !== root.epoch || parent.epoch !== root.epoch) invalid();
+            }
+        } else await assertDelegationReviewReplacement(tx, handle, root, parent, snapshot, facts, { live });
         return facts;
     }
     if (bindings.length) {
@@ -484,7 +498,8 @@ export async function readProjectDelegationContinuation(tx, handle, parent, prod
         || !equal(input.sourceRef, parentInput.sourceRef) || !equal(input.sourceRef, parent.sourceBinding.sourceRef)
         || !equal(input.acceptedGraphResultRefs ?? [], parentInput.acceptedGraphResultRefs)
         || !equal(input.acceptedControlRefs ?? [], parentInput.acceptedControlRefs ?? [])
-        || parentInput.reviewFeedbackRef && !equal(input.projectQualityTask?.feedback, parentInput.reviewFeedbackRef)) invalid();
+        || parentInput.reviewFeedbackRef && !equal(parent.parentRef ? input.reviewFeedbackRef : input.projectQualityTask?.feedback,
+            parentInput.reviewFeedbackRef)) invalid();
     if (parent.sourceBinding.sourceAuthority !== 'project') invalid();
     if (parent.parentRef) {
         const expected = { ...parentInput, kind: 'native_project_delegated_intent', acceptedResultRef: input.acceptedResultRef,

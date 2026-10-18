@@ -70,8 +70,10 @@ export async function readProjectDelegatedReviewCompletion(tx, handle, root, att
     for (const id of fact.review.invalidatedAttemptIds) {
         const attempt = (await readAttempt(tx, handle, root, id)).doc, node = snapshot.graph.nodes.find(node => node.nodeId === attempt.nodeId);
         // The original generic readReplacements above already proved each
-        // Planner and whole group once in this invocation.
-        if (['fanout', 'join'].includes(node?.kind) && !groupAttempts.has(id) || node?.capabilities.includes('agent.delegate')) invalid();
+        // Planner, delegation and whole group once in this invocation.
+        if (['fanout', 'join'].includes(node?.kind) && !groupAttempts.has(id)
+            || attempt.inputRefs[0]?.kind === 'native_project_delegation'
+                && !fact.rerunDelegations.some(completed => equal(completed.producer, attempt))) invalid();
     }
     return fact;
 }
@@ -134,7 +136,8 @@ export async function projectDelegatedRerunRequirements(tx, handle, root, review
         else if (['pending', 'reserved', 'running', 'waiting_effect', 'waiting_child'].includes(attempt.status)) admitted.add(attempt.nodeId);
     }
     const remaining = root.graph.nodes.filter(node => !completed.has(node.nodeId) && root.nodeControl[node.nodeId].disposition !== 'cancelled');
-    return { requests: remaining.filter(node => ['agent', 'review', 'planner', 'judge'].includes(node.kind)).length,
+    const modelNodeIds = remaining.filter(node => ['agent', 'review', 'planner', 'judge'].includes(node.kind)).map(node => node.nodeId);
+    return { requests: modelNodeIds.length, modelNodeIds,
         attempts: remaining.filter(node => !admitted.has(node.nodeId)).length, reviews: remaining.filter(node => node.kind === 'review').length };
 }
 

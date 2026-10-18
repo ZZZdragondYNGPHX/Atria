@@ -6,7 +6,7 @@ import { runGenerationLocalWork } from './generation-local-work.js';
 import { assertProjectControlWork } from './project-quality-contracts.js';
 import { ReviewController, reviewReceiptId } from './review-controller.js';
 import { parseProjectDelegatedReview, projectDelegatedRerunRequirements } from './project-delegated-quality-contracts.js';
-import { graphReviewModelReceiptId, graphReviewControlRef, readReviewablePlannerCompletion, readReviewableFanoutCompletion } from './graph-review-completion.js';
+import { graphReviewModelReceiptId, graphReviewControlRef, readReviewablePlannerCompletion, readReviewableFanoutCompletion, readReviewableDelegationCompletion } from './graph-review-completion.js';
 import { graphJudgeModelReceiptId, graphJudgeControlRef } from './graph-judge-completion.js';
 import { controlCommandId, controlRecordKey, readAttempt, readReviewAdmission, readAttemptInvalidation, graphReachable, runGuard } from './controller-common.js';
 import { readProjectDelegatedFanoutCompletion } from './project-delegated-fanout-contracts.js';
@@ -74,8 +74,12 @@ export async function completeProjectDelegatedReview(args) {
                 }
                 if (!complete) fail('native_orchestration_review_irreversible_dependency');
             }
-            if (node?.capabilities.includes('agent.delegate')
-                || (node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
+            if (attempt.inputRefs[0]?.kind === 'native_project_delegation') {
+                const completed = await readReviewableDelegationCompletion(tx, handle, root, attempt.attemptId);
+                const selected = state.child.resolveDelegation(node), child = completed?.lineage.child;
+                if (!completed || !selected || !equal(child.planRef, selected.planRef)
+                    || !equal(child.parentRef.budgetCeiling, selected.ceiling)) fail('native_orchestration_review_irreversible_dependency');
+            } else if ((node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
                     && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId,
                         { verifyControlWork: assertProjectControlWork, reviewTargets: targets, readFanoutCompletion: readProjectDelegatedFanoutCompletion }))
                 fail('native_orchestration_review_irreversible_dependency');
@@ -83,11 +87,13 @@ export async function completeProjectDelegatedReview(args) {
     }, admitRerun: async ({ tx, root, reviewer, target, invalidatedAttemptIds }) => {
         await current();
         const required = await projectDelegatedRerunRequirements(tx, handle, root, reviewer, invalidatedAttemptIds);
+        const requests = required.requests + required.modelNodeIds.reduce((count, id) => count
+            + (state.child.resolveDelegation(root.graph.nodes.find(node => node.nodeId === id))?.ceiling.maxRequests ?? 0), 0);
         const admission = await readReviewAdmission(tx, handle, root, reviewer), node = root.graph.nodes.find(node => node.nodeId === reviewer.nodeId);
         if (!admission || admission.round >= node.policy.maxRounds || root.progress.reviews + required.reviews > root.limits.maxReviews
             || root.progress.attempts + required.attempts > root.limits.maxAttempts) fail('native_orchestration_review_limit_exhausted');
         const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: root.budgetAuthorityRef, reservationId: runId }, { tx });
-        if (!capacity || capacity.overrun || capacity.remaining.requests < required.requests) fail('native_orchestration_review_rerun_budget_unavailable');
+        if (!capacity || capacity.overrun || capacity.remaining.requests < requests) fail('native_orchestration_review_rerun_budget_unavailable');
         const logical = { ...target.inputRefs[0], reviewFeedbackRef: feedback }, inputRefs = [logical, ...target.inputRefs.slice(1)];
         return { inputRefs, inputDigest: hash(inputRefs), effectiveGrantDigest: target.effectiveGrantDigest, budgetRef: root.budgetAuthorityRef };
     } });

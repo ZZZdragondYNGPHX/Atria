@@ -15,7 +15,7 @@ import { graphPlannerControlRef, graphPlannerReceiptId, readGraphPlannerCompleti
 import { controlCommandId, controlRecordKey, runGuard, readAttempt, graphReachable, readReviewAdmission,
     readGraphReviewReceipt, readAttemptInvalidation, assertAttemptConsumable, assertAttemptCurrent } from './controller-common.js';
 import { ReviewController, reviewReceiptId } from './review-controller.js';
-import { graphReviewModelReceiptId, graphReviewControlRef, readGraphReviewCompletion, readReviewablePlannerCompletion, readReviewableFanoutCompletion } from './graph-review-completion.js';
+import { graphReviewModelReceiptId, graphReviewControlRef, readGraphReviewCompletion, readReviewablePlannerCompletion, readReviewableFanoutCompletion, readReviewableDelegationCompletion } from './graph-review-completion.js';
 import { RP_REVIEW_REASON_CODES } from './rp-review-profile.js';
 import { graphJudgeModelReceiptId, graphJudgeControlRef, readGraphJudgeCompletion } from './graph-judge-completion.js';
 import { readEffect } from './effect-contracts.js';
@@ -236,6 +236,19 @@ export class RpControlGraphWork {
         return { attemptId, controlRef: fact.controlRef, requests: fact.patch.requests, status: 'completed' };
     }
 
+    async reviewRerunRequests(root, reviewer, invalidatedIds) {
+        const nodes = root.graph.nodes.filter(node => ['agent', 'planner', 'review', 'judge'].includes(node.kind)
+            && root.nodeControl[node.nodeId]?.disposition !== 'cancelled'
+            && (node.nodeId === reviewer.nodeId || !this.records.has(node.nodeId)
+                || invalidatedIds.includes(this.records.get(node.nodeId).attemptId)));
+        let requests = 0;
+        for (const node of nodes) {
+            const selected = await this.state.selected.resolveGraphModel(node);
+            requests += 1 + (selected.child?.resolved.route.executionPolicy.computeBudget.maxRequests ?? 0);
+        }
+        return requests;
+    }
+
     async completeReview({ root, port, result, send, limits, signal }) {
         const { state, service } = this, { handle, attemptId, effectId } = state, runId = root.runId;
         const proof = await port.inspectResultCompletion(handle, { result, runId, effectId }), rows = [];
@@ -261,6 +274,11 @@ export class RpControlGraphWork {
                 if (decision === 'rerun') for (const [nodeId, fact] of this.records) {
                     if (!targets.some(target => graphReachable(active.graph, target.nodeId, nodeId))) continue;
                     const readCompletion = this.readFanoutCompletion ?? readRpControlFanoutCompletion;
+                    if ((await readAttempt(tx, handle, active, fact.attemptId)).doc.inputRefs[0]?.kind === 'native_rp_delegation') {
+                        if (!await readReviewableDelegationCompletion(tx, handle, active, fact.attemptId))
+                            fail('native_orchestration_review_irreversible_dependency');
+                        continue;
+                    }
                     if (fact.controlRef?.kind === 'graph_join_control'
                         && !await readReviewableFanoutCompletion(tx, handle, active, fact.attemptId, { targets, readCompletion })
                         || fact.controlRef?.kind === 'graph_planner_control'
@@ -274,7 +292,7 @@ export class RpControlGraphWork {
                 await this.current();
                 const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: this.reservationId ?? null }, { tx });
                 const admission = await readReviewAdmission(tx, handle, active, reviewer);
-                const requiredRequests = this.reviewRerunRequests ? this.reviewRerunRequests(active, reviewer, invalidatedAttemptIds)
+                const requiredRequests = this.reviewRerunRequests ? await this.reviewRerunRequests(active, reviewer, invalidatedAttemptIds)
                     : active.graph.nodes.filter(node => ['agent', 'planner', 'review', 'judge'].includes(node.kind)
                         && active.nodeControl[node.nodeId]?.disposition !== 'cancelled'
                         && (node.nodeId === reviewer.nodeId || !this.records.has(node.nodeId)

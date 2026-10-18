@@ -17,7 +17,7 @@ import { joinIdForAttempt } from './join-controller.js';
 import { readRunControl } from '../run-control.js';
 import { readOriginalProjectTask } from './project-tool-receipts.js';
 import { assertBudgetAuthorityRef, effectBudgetClosure } from './budget-port.js';
-import { inspectComputeEffectClosure } from '../../../public/shared/native-compute-budget.js';
+import { inspectComputeEffectClosure, inspectComputeChildClosure } from '../../../public/shared/native-compute-budget.js';
 
 const invalid = () => { throw new TypeError('Invalid Graph Review completion facts'); };
 export const graphReviewModelReceiptId = (runId, attemptId) => 'oreceipt_' + hash({ kind: 'graph_review_model', runId, attemptId }).slice(0, 32);
@@ -112,8 +112,8 @@ export async function readGraphReviewCompletion(tx, handle, root, attemptId, { v
     if (!command || command.schemaVersion !== 1 || command.commandId !== commandId || command.operation !== 'runs.control.review.decide' || command.target !== root.runId
         || command.payloadHash !== hash({ operation: command.operation, body: { runId: root.runId, operation: 'review.decide', detail } })
         || !equal(command.outcome?.reviewReceipt, review)) invalid();
-    const rerunFanouts = review.decision === 'rerun'
-        ? await readReplacements(tx, handle, root, review, targetEvidence, verifyControlWork, readFanoutCompletion) : [];
+    const { fanouts: rerunFanouts, delegations: rerunDelegations } = review.decision === 'rerun'
+        ? await readReplacements(tx, handle, root, review, targetEvidence, verifyControlWork, readFanoutCompletion) : { fanouts: [], delegations: [] };
     await verifyControlWork(tx, handle, root, receipt.modelEffectId, receipt.localWork);
     const controlRef = graphReviewControlRef(root.runId, attemptId);
     if (recipient) {
@@ -124,7 +124,7 @@ export async function readGraphReviewCompletion(tx, handle, root, attemptId, { v
             || !recipient.inputRefs.some(ref => equal(ref, controlRef))
             || !root.graph.edges.some(edge => edge.from.nodeId === producer.nodeId && edge.to.nodeId === recipient.nodeId)) invalid();
     }
-    return { producer, settlement, receipt, review, evidence, targets: targetEvidence.map(fact => fact.producer), controlRef, retrievalCompletions: retrieval, rerunFanouts };
+    return { producer, settlement, receipt, review, evidence, targets: targetEvidence.map(fact => fact.producer), controlRef, retrievalCompletions: retrieval, rerunFanouts, rerunDelegations };
 }
 
 async function readReplacements(tx, handle, root, review, evidence, verifyControlWork, readFanoutCompletion) {
@@ -132,7 +132,7 @@ async function readReplacements(tx, handle, root, review, evidence, verifyContro
     if (review.replacements.length !== review.targetAttemptIds.length || new Set(review.invalidatedAttemptIds).size !== review.invalidatedAttemptIds.length
         || new Set(review.replacements.map(item => item.targetAttemptId)).size !== review.replacements.length
         || !review.targetAttemptIds.every(id => review.invalidatedAttemptIds.includes(id))) invalid();
-    const staleRefs = new Set(), fanouts = [], invalidatedFanouts = [];
+    const staleRefs = new Set(), fanouts = [], delegations = [], invalidatedFanouts = [];
     for (const id of review.invalidatedAttemptIds) {
         const attempt = (await readAttempt(tx, handle, root, id)).doc;
         const node = snapshot.graph.nodes.find(node => node.nodeId === attempt.nodeId);
@@ -140,7 +140,13 @@ async function readReplacements(tx, handle, root, review, evidence, verifyContro
         if (id === review.reviewAttemptId || !SETTLED_ATTEMPT_STATUSES.includes(attempt.status)
             || !invalidation || invalidation.reviewReceiptId !== review.receiptId
             || !evidence.some(fact => graphReachable(snapshot.graph, fact.producer.nodeId, attempt.nodeId))) invalid();
-        if ((node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
+        if (attempt.inputRefs?.[0]?.kind === ({ native_session: 'native_session_delegation', project: 'native_project_delegation', rp_chat: 'native_rp_delegation' })[root.sourceBinding.sourceAuthority]) {
+            const target = evidence.find(fact => fact.producer.attemptId === id);
+            const fact = target ? await reviewableDelegationResult(tx, handle, root, target)
+                : await readReviewableDelegationCompletion(tx, handle, root, id);
+            if (!fact) invalid();
+            delegations.push(fact);
+        } else if ((node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
             && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork, readFanoutCompletion,
                 reviewTargets: evidence.map(fact => fact.producer) })) invalid();
         if (node?.kind === 'join') {
@@ -171,7 +177,7 @@ async function readReplacements(tx, handle, root, review, evidence, verifyContro
             || next.sourceBindingDigest !== root.sourceBinding.bindingDigest || !equal(next.budgetRef, root.budgetAuthorityRef)
             || next.inputDigest !== hash(next.inputRefs) || [...next.inputRefs, ...(next.inputRefs[0]?.acceptedGraphResultRefs ?? [])].some(ref => staleRefs.has(hash(ref)))) invalid();
     }
-    return fanouts;
+    return { fanouts, delegations };
 }
 
 
@@ -255,11 +261,47 @@ export async function readReviewableFanoutCompletion(tx, handle, root, joinAttem
         if (!node || !['agent', 'planner', 'review', 'judge'].includes(node.kind)
             || node.capabilities.some(capability => !['generation.send', 'graph.patch', 'memory.retrieve'].includes(capability))) return null;
     }
-    const authority = assertBudgetAuthorityRef(root.budgetAuthorityRef);
-    const compute = authority.domain === 'session' ? (await readRunControl(tx, handle, authority.sessionId))?.operations[authority.operationId]?.compute
-        : authority.authority === 'project_task' ? (await readOriginalProjectTask(tx, handle, authority))?.compute
-            : (await checkedRecord(tx, { kind: K.rpRunControl, handle, controlId: authority.controlId }))?.doc.operations[authority.operationId]?.compute;
+    const authority = assertBudgetAuthorityRef(root.budgetAuthorityRef), compute = await originalCompute(tx, handle, authority);
     const effectIds = [...new Set(fact.scopeAttempts.flatMap(item => item.attempt.effectRefs))];
     if (!compute || !effectIds.length || !effectBudgetClosure(authority, inspectComputeEffectClosure({ compute }, effectIds)).closed) return null;
     return fact;
+}
+
+async function originalCompute(tx, handle, authority) {
+    return authority.domain === 'session' ? (await readRunControl(tx, handle, authority.sessionId))?.operations[authority.operationId]?.compute
+        : authority.authority === 'project_task' ? (await readOriginalProjectTask(tx, handle, authority))?.compute
+            : (await checkedRecord(tx, { kind: K.rpRunControl, handle, controlId: authority.controlId }))?.doc.operations[authority.operationId]?.compute;
+}
+
+/** Only a completed advisory child can be redone. Its Result still belongs to
+ * the old parent Attempt; a replacement must obtain its own child and Return. */
+export async function readReviewableDelegationCompletion(tx, handle, root, attemptId) {
+    const producer = (await readAttempt(tx, handle, root, attemptId)).doc;
+    if (producer.resultRefs.length !== 1) return null;
+    const fact = (await readGraphNodeResults(tx, handle, root, [producer.resultRefs[0].resultId])).get(producer.resultRefs[0].resultId);
+    if (!fact || !equal(fact.producer, producer)) return null;
+    return reviewableDelegationResult(tx, handle, root, fact);
+}
+
+// Only our own fresh typed Result reads enter here. Reuse the current Review's
+// already-read target evidence, keeping the final original-bank read fresh.
+async function reviewableDelegationResult(tx, handle, root, fact) {
+    const producer = fact.producer, attemptId = producer.attemptId, node = root.graph.nodes.find(node => node.nodeId === producer.nodeId);
+    if (producer.status !== 'completed' || node?.kind !== 'agent' || !node.capabilities.includes('agent.delegate') || producer.resultRefs.length !== 1) return null;
+    const continuation = fact?.delegationContinuation, child = continuation?.lineage.child, output = continuation?.output;
+    if (!child || child.status !== 'completed' || child.pendingEffectRefs.length
+        || child.parentRef?.nodeAttemptId !== attemptId || child.parentRef.parentRunId !== root.runId
+        || child.graph.outputContract.kind !== 'result' || !output?.closure
+        || child.graph.capabilityCeiling.some(capability => !['generation.send', 'graph.patch', 'agent.delegate', 'memory.retrieve'].includes(capability))) return null;
+    const authority = assertBudgetAuthorityRef(root.budgetAuthorityRef), compute = await originalCompute(tx, handle, authority);
+    if (!compute) return null;
+    const tree = inspectComputeChildClosure({ compute }, child.runId), reservations = [tree.reservation, ...tree.descendantReservations];
+    const rows = [...tree.modelAttempts, ...tree.localWork];
+    if (tree.overrun || reservations.some(row => row.status !== 'released') || rows.some(row => row.status !== 'settled')
+        || reservations.length !== output.closure.reservationRefs.length || rows.length !== output.closure.budgetAttemptRefs.length
+        || reservations.some(row => !output.closure.reservationRefs.some(ref => ref.reservationId === row.reservationId
+            && ref.parentReservationId === row.parentReservationId && ref.status === row.status))
+        || rows.some(row => !output.closure.budgetAttemptRefs.some(ref => ref.attemptId === row.attemptId
+            && ref.reservationId === row.reservationId))) return null;
+    return { ...fact, continuation, lineage: continuation.lineage, output };
 }

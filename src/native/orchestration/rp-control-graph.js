@@ -1,3 +1,4 @@
+import { delegatedRpSourcePins } from './delegated-source-contracts.js';
 import { equalNativeDocuments as equal } from '../repositories/common.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { audienceContextPin } from './audience-source-contracts.js';
@@ -60,7 +61,7 @@ function existingResponseProtocol(graph) {
 
 export function rpControlGraph(plan, { force = false } = {}) {
     const graph = plan.definition, planners = graph.nodes.filter(node => node.kind === 'planner');
-    if (!force && (!planners.length ? existingResponseProtocol(graph)
+    if (!force && (graph.nodes.length === 2 || !graph.nodes.some(node => node.capabilities.includes('agent.delegate'))) && (!planners.length ? existingResponseProtocol(graph)
         : !graph.nodes.some(node => ['review', 'judge', 'fanout', 'join'].includes(node.kind)) && planners.length === 1 && graph.entryNodeIds.length === 1
             && graph.entryNodeIds[0] === planners[0].nodeId && !graph.edges.some(edge => !edge.loopBack && edge.to.nodeId === planners[0].nodeId))) return null;
     const output = graph.nodes.find(node => node.nodeId === graph.outputContract.ownerNodeId);
@@ -80,15 +81,25 @@ export function rpControlGraph(plan, { force = false } = {}) {
     const models = graph.nodes.filter(node => node !== output && !controls.includes(node));
     for (const node of models) {
         const routes = nodeModelRoutePins(node, plan.dependencyPins), audience = audienceContextPin(node, plan.dependencyPins);
+        const delegated = node.kind === 'agent' && node.capabilities.includes('agent.delegate');
+        const plans = plan.dependencyPins.filter(pin => pin.port === 'plan' && node.dependencyPinIds.includes(pin.pinId));
+        const sourcePins = delegatedRpSourcePins(plan).filter(pin => node.dependencyPinIds.includes(pin.pinId));
+        const audiencePins = plan.dependencyPins.filter(pin => pin.port === 'context' && pin.resourceRef.kind === 'native_information_context'
+            && node.dependencyPinIds.includes(pin.pinId));
         const retrieval = plan.dependencyPins.filter(pin => node.dependencyPinIds.includes(pin.pinId) && pin.port === 'context'
             && pin.resourceRef.scope === 'player' && pin.resourceRef.retrievalProfileId);
         if (!['agent', 'planner', 'review', 'judge'].includes(node.kind) || node.outputs.length !== 1 || node.outputs[0].type !== (node.kind === 'agent' ? 'text' : 'json')
-            || !equal([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : [], ...retrieval.length ? ['memory.retrieve'] : []].sort())
-            || !routes.length || node.dependencyPinIds.length !== routes.length + retrieval.length + Number(!!audience)) fail();
+            || !equal([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' || delegated && node.capabilities.includes('graph.patch') ? ['graph.patch'] : [],
+                ...delegated ? ['agent.delegate'] : [], ...retrieval.length ? ['memory.retrieve'] : []].sort())
+            || !routes.length || plans.length !== Number(delegated) || delegated && !equal(node.policy.allowedPlanPinIds, [plans[0]?.pinId])
+            || !delegated && (sourcePins.length || audiencePins.length !== Number(!!audience))
+            || node.dependencyPinIds.length !== routes.length + retrieval.length + audiencePins.length + sourcePins.length + plans.length) fail();
     }
     const used = new Set(models.flatMap(node => node.dependencyPinIds));
     if (plan.dependencyPins.some(pin => !used.has(pin.pinId)) || planners.length && !graph.graphChangePolicy.allowedOperations.length) fail();
-    return { models, narrator, output, fanouts: rpControlFanoutGroups(graph, narrator.nodeId) };
+    const fanouts = rpControlFanoutGroups(graph, narrator.nodeId);
+    if (fanouts.some(group => group.branches.some(branch => branch.scopeNodeIds.some(id => graph.nodes.find(node => node.nodeId === id).capabilities.includes('agent.delegate'))))) fail();
+    return { models, narrator, output, fanouts };
 }
 
 export function rpControlPlannerTask(graph, dependencyPins) {

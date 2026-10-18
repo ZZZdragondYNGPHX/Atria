@@ -5,7 +5,7 @@ import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readAttempt, readAttemptInvalidation } from './controller-common.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
-import { readGraphReviewCompletion, readReviewablePlannerCompletion } from './graph-review-completion.js';
+import { readGraphReviewCompletion, readReviewablePlannerCompletion, readReviewableDelegationCompletion } from './graph-review-completion.js';
 import { readGraphJudgeCompletion } from './graph-judge-completion.js';
 import { readSessionPlannerCompletion, assertSessionControlWork } from './session-planner-contracts.js';
 import { RP_REVIEW_REASON_CODES } from './rp-review-profile.js';
@@ -47,6 +47,11 @@ export async function readSessionDelegatedReviewCompletion(tx, handle, root, att
         { verifyControlWork: assertSessionControlWork, reasonCodes: RP_REVIEW_REASON_CODES, readFanoutCompletion: readSessionDelegatedFanoutCompletion, ...options });
     if (!fact) return null;
     const input = await inputIdentity(tx, handle, root, fact.producer), snapshot = await readTaskGraphRevision(tx, handle, root, fact.producer.graphRevision);
+    for (const target of fact.targets) if (target.inputRefs[0]?.kind === 'native_session_delegation') {
+        const delegated = fact.review.decision === 'rerun' ? fact.rerunDelegations.find(item => item.producer.attemptId === target.attemptId)
+            : await readReviewableDelegationCompletion(tx, handle, root, target.attemptId);
+        if (!delegated) invalid();
+    }
     const controls = await controlInputs(tx, handle, root, fact.producer, input), joinedRefs = controls.flatMap(item => item.joinReceipt?.acceptedResultRefs ?? []);
     const sources = [...fact.evidence.filter(item => !joinedRefs.some(ref => equal(ref, item.receipt.resultRef))), ...controls];
     const bindings = input.graphBindings;
@@ -67,8 +72,8 @@ export async function readSessionDelegatedReviewCompletion(tx, handle, root, att
     for (const id of fact.review.invalidatedAttemptIds) {
         const attempt = (await readAttempt(tx, handle, root, id)).doc, node = snapshot.graph.nodes.find(node => node.nodeId === attempt.nodeId);
         if (['fanout', 'join'].includes(node?.kind) ? !fact.rerunFanouts.some(group => group.fanout.attemptId === attempt.attemptId || group.producer.attemptId === attempt.attemptId)
-            : node?.capabilities.includes('agent.delegate')
-            || (node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
+            : attempt.inputRefs[0]?.kind === 'native_session_delegation' ? !fact.rerunDelegations.some(item => item.producer.attemptId === attempt.attemptId)
+                : (node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
                 && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork: assertSessionControlWork, reviewTargets: fact.targets, readFanoutCompletion: readSessionDelegatedFanoutCompletion })) invalid();
     }
     return fact;

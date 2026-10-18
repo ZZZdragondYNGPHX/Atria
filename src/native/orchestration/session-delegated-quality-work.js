@@ -7,7 +7,7 @@ import { runGenerationLocalWork } from './generation-local-work.js';
 import { ReviewController, reviewReceiptId } from './review-controller.js';
 import { parseSessionGraphReview, sessionReviewRerunRequirements, readSessionReviewableFanout } from './session-review-contracts.js';
 import { sessionPlannerReaderOptions } from './session-planner-contracts.js';
-import { graphReviewModelReceiptId, graphReviewControlRef, readReviewablePlannerCompletion } from './graph-review-completion.js';
+import { graphReviewModelReceiptId, graphReviewControlRef, readReviewablePlannerCompletion, readReviewableDelegationCompletion } from './graph-review-completion.js';
 import { graphJudgeModelReceiptId, graphJudgeControlRef } from './graph-judge-completion.js';
 import { controlCommandId, controlRecordKey, readAttempt, readReviewAdmission, readAttemptInvalidation, graphReachable, runGuard } from './controller-common.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
@@ -56,14 +56,16 @@ export async function completeSessionDelegatedReview(args) {
         }
         if (targets.some(target => !evidence.some(fact => fact.producer.attemptId === target.attemptId)
             || root.graph.nodes.find(node => node.nodeId === target.nodeId)?.kind !== 'agent')) fail('native_orchestration_review_target_invalid');
+        for (const target of targets) if (target.inputRefs[0]?.kind === 'native_session_delegation'
+            && !await readReviewableDelegationCompletion(tx, handle, root, target.attemptId)) fail('native_orchestration_review_irreversible_dependency');
         if (decision === 'rerun') for (const id of root.attemptRefs) {
             const attempt = (await readAttempt(tx, handle, root, id)).doc;
             if (attempt.attemptId === reviewer.attemptId || await readAttemptInvalidation(tx, handle, root, attempt)) continue;
             const node = root.graph.nodes.find(node => node.nodeId === attempt.nodeId);
             if (!targets.some(target => graphReachable(root.graph, target.nodeId, attempt.nodeId))) continue;
             if (['fanout', 'join'].includes(node?.kind) ? !await readSessionReviewableFanout(tx, handle, root, attempt, targets)
-                : node?.capabilities.includes('agent.delegate')
-                || (node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
+                : attempt.inputRefs[0]?.kind === 'native_session_delegation' ? !await readReviewableDelegationCompletion(tx, handle, root, attempt.attemptId)
+                    : (node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
                     && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { ...sessionPlannerReaderOptions, reviewTargets: targets, readFanoutCompletion: readSessionDelegatedFanoutCompletion }))
                 fail('native_orchestration_review_irreversible_dependency');
         }

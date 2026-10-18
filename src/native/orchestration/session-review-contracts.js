@@ -1,3 +1,5 @@
+import { assertComputeAllocation } from '../../../public/shared/native-compute-budget.js';
+import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readSessionFanoutCompletion } from './session-fanout-contracts.js';
 import { joinIdForAttempt } from './join-controller.js';
 import { assertAudienceRunCapture } from './audience-source-contracts.js';
@@ -10,7 +12,7 @@ import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { RP_REVIEW_REASON_CODES } from './rp-review-profile.js';
 import { assertNativeId } from '../identity.js';
-import { readGraphReviewCompletion, readReviewablePlannerCompletion, readReviewableFanoutCompletion } from './graph-review-completion.js';
+import { readGraphReviewCompletion, readReviewablePlannerCompletion, readReviewableFanoutCompletion, readReviewableDelegationCompletion } from './graph-review-completion.js';
 import { assertSessionControlWork, readSessionPlannerCompletion } from './session-planner-contracts.js';
 import { readSessionJudgeCompletion } from './session-judge-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
@@ -103,9 +105,13 @@ export async function readSessionReviewCompletion(tx, handle, root, attemptId, o
     const input = fact.producer.inputRefs[0];
     if (root.sourceBinding.sourceAuthority !== 'native_session'
         || !equal(fact.producer.inputRefs, [input, ...input.acceptedGraphResultRefs, ...(input.acceptedControlRefs ?? [])])
-        || fact.targets.some(target => root.graph.nodes.find(node => node.nodeId === target.nodeId)?.kind !== 'agent'
-            || root.graph.nodes.find(node => node.nodeId === target.nodeId)?.capabilities.includes('agent.delegate'))) invalid();
+        || fact.targets.some(target => root.graph.nodes.find(node => node.nodeId === target.nodeId)?.kind !== 'agent')) invalid();
     const snapshot = await readTaskGraphRevision(tx, handle, root, fact.producer.graphRevision);
+    for (const target of fact.targets) if (target.inputRefs[0]?.kind === 'native_session_delegation') {
+        const delegated = fact.review.decision === 'rerun' ? fact.rerunDelegations.find(item => item.producer.attemptId === target.attemptId)
+            : await readReviewableDelegationCompletion(tx, handle, root, target.attemptId);
+        if (!delegated) invalid();
+    }
     assertObject(input.controlGraph, ['bindings'], 'Session Review control graph');
     const bindings = input.controlGraph.bindings;
     if (!Array.isArray(bindings) || !bindings.length || new Set(bindings.map(item => item.edgeId)).size !== bindings.length) invalid();
@@ -146,8 +152,8 @@ export async function readSessionReviewCompletion(tx, handle, root, attemptId, o
     for (const id of fact.review.invalidatedAttemptIds) {
         const attempt = (await readAttempt(tx, handle, root, id)).doc, node = snapshot.graph.nodes.find(node => node.nodeId === attempt.nodeId);
         if (['fanout', 'join'].includes(node?.kind) ? !fact.rerunFanouts.some(group => group.fanout.attemptId === attempt.attemptId || group.producer.attemptId === attempt.attemptId)
-            : node?.capabilities.includes('agent.delegate')
-            || (node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
+            : attempt.inputRefs[0]?.kind === 'native_session_delegation' ? !fact.rerunDelegations.some(item => item.producer.attemptId === attempt.attemptId)
+                : (node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
                 && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork: assertSessionControlWork, reviewTargets: fact.targets, readFanoutCompletion: readSessionFanoutCompletion })) invalid();
     }
     return fact;
@@ -157,15 +163,35 @@ export async function readSessionReviewCompletion(tx, handle, root, attemptId, o
  * Original request, Turn and Attempt authorities still admit each actual unit.
  * This projection neither reserves work nor grants any additional capacity. */
 export async function sessionReviewRerunRequirements(tx, handle, root, reviewer, invalidatedAttemptIds) {
-    const invalid = new Set(invalidatedAttemptIds), completed = new Set(), admitted = new Set();
+    const invalidated = new Set(invalidatedAttemptIds), completed = new Set(), admitted = new Set();
     for (const id of root.attemptRefs) {
         const attempt = (await readAttempt(tx, handle, root, id)).doc;
-        if (invalid.has(id) || id === reviewer.attemptId || await readAttemptInvalidation(tx, handle, root, attempt)) continue;
+        if (invalidated.has(id) || id === reviewer.attemptId || await readAttemptInvalidation(tx, handle, root, attempt)) continue;
         if (['completed', 'failed', 'cancelled'].includes(attempt.status)) completed.add(attempt.nodeId);
         else if (['pending', 'reserved', 'running', 'waiting_effect', 'waiting_child'].includes(attempt.status)) admitted.add(attempt.nodeId);
     }
     const remaining = root.graph.nodes.filter(node => !completed.has(node.nodeId) && root.nodeControl[node.nodeId].disposition !== 'cancelled');
-    return { requests: remaining.filter(node => ['agent', 'review', 'planner', 'judge'].includes(node.kind)).length,
+    let childRequests = 0;
+    if (remaining.some(node => node.policy.allowedPlanPinIds?.length)) {
+        const plan = await readPlanRevision(tx, handle, root.planRef);
+        for (const node of remaining.filter(node => node.policy.allowedPlanPinIds?.length)) {
+            if (node.kind !== 'agent' || node.policy.allowedPlanPinIds.length !== 1 || !node.capabilities.includes('agent.delegate')) invalid();
+            const pin = plan.dependencyPins.find(pin => pin.port === 'plan' && pin.pinId === node.policy.allowedPlanPinIds[0] && node.dependencyPinIds.includes(pin.pinId));
+            if (!pin) invalid();
+            const child = await readPlanRevision(tx, handle, pin.resourceRef);
+            if (hash(child) !== pin.integrity) invalid();
+            let ceiling = null;
+            for (const model of child.dependencyPins.filter(pin => pin.port === 'model')) {
+                const route = model.resourceRef.scope === 'player' ? (await checkedRecord(tx,
+                    { kind: K.runtimeRoute, handle, runtimeRouteId: model.resourceRef.runtimeRouteId }))?.doc : null;
+                if (!route || hash(route) !== model.integrity) invalid();
+                const budget = assertComputeAllocation(route.executionPolicy.computeBudget);
+                if (ceiling && !equal(ceiling, budget)) invalid(); ceiling = budget;
+            }
+            if (!ceiling) invalid(); childRequests += ceiling.maxRequests;
+        }
+    }
+    return { requests: remaining.filter(node => ['agent', 'review', 'planner', 'judge'].includes(node.kind)).length + childRequests,
         attempts: remaining.filter(node => !admitted.has(node.nodeId)).length,
         reviews: remaining.filter(node => node.kind === 'review').length };
 }

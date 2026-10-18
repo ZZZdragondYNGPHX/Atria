@@ -14,7 +14,7 @@ export function sessionAgentGraphProfile(plan) {
     const legacyDraft = reviewEdges.length === 1 ? models.find(node => node.kind === 'agent' && node.nodeId === reviewEdges[0].from.nodeId) : null;
     const finalNodeId = graph.edges.find(edge => edge.to.nodeId === graph.outputContract.ownerNodeId)?.from.nodeId;
     const legacyInputs = graph.edges.filter(edge => edge.to.nodeId === finalNodeId && ['agent', 'review'].includes(models.find(node => node.nodeId === edge.from.nodeId)?.kind));
-    const legacyReview = !!legacyDraft && legacyInputs.length === 2
+    const legacyReview = !!legacyDraft && !legacyDraft.policy.allowedPlanPinIds?.length && legacyInputs.length === 2
         && legacyInputs.some(edge => edge.from.nodeId === legacyDraft.nodeId) && legacyInputs.some(edge => edge.from.nodeId === reviews[0].nodeId);
     const delegates = models.filter(node => node.policy.allowedPlanPinIds?.length), patchDelegates = delegates.filter(node => node.capabilities.includes('graph.patch'));
     const patchAuthority = planners.length || patchDelegates.length;

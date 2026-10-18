@@ -1,3 +1,4 @@
+import { rpOutputReceiptId } from './rp-output-contracts.js';
 import { readRpDelegatedFanoutInput, readRpDelegatedFanoutCompletion } from './rp-delegated-fanout-contracts.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
@@ -239,8 +240,9 @@ async function durableRpChild(tx, handle, child) {
     if (!equal(durable, child)) {
         // The original RunRepository proves the exact prospective TaskLocal
         // output before saving its Root. All lineage still uses the real row.
-        const receipt = (await checkedRecord(tx, controlRecordKey(handle, child.runId, 'receipt', taskLocalReceiptId(child.runId))))?.doc;
-        if (!receipt || receipt.receiptKind !== 'task_local_output' || durable.status !== 'running' || durable.outputClaims.length
+        const receiptId = child.parentRef ? taskLocalReceiptId(child.runId) : rpOutputReceiptId(child.runId);
+        const receipt = (await checkedRecord(tx, controlRecordKey(handle, child.runId, 'receipt', receiptId)))?.doc;
+        if (!receipt || receipt.receiptKind !== (child.parentRef ? 'task_local_output' : 'rp_output') || durable.status !== 'running' || durable.outputClaims.length
             || durable.cancelRequested || receipt.runId !== durable.runId || receipt.epoch !== durable.epoch
             || receipt.graphRevision !== durable.graphRevision || receipt.decisionSeq !== durable.eventSeq + 1) invalidHistory();
         const pending = { ...durable, status: 'completed', outputClaims: [receipt.claimRef],
@@ -256,11 +258,13 @@ async function durableRpChild(tx, handle, child) {
  * the actual returned descendant. This is historical proof, not a read grant. */
 export async function readRpDelegationContinuation(tx, handle, parent, producer, intent) {
     const resolver = producer.inputRefs[0], input = intent.inputRef, ref = input?.acceptedResultRef;
-    if (!parent.parentRef || resolver?.kind !== 'native_rp_delegation' || input?.kind !== 'native_rp_delegated_intent'
+    const nested = !!parent.parentRef;
+    if (resolver?.kind !== 'native_rp_delegation' || input?.kind !== (nested ? 'native_rp_delegated_intent' : 'native_rp_intent')
         || !ref || input.parentInputDigest !== producer.inputDigest || producer.inputDigest !== hash(producer.inputRefs)
         || intent.nodeAttemptId !== producer.attemptId || intent.sourceBindingDigest !== parent.sourceBinding.bindingDigest
-        || producer.effectiveGrantDigest !== parent.parentRef.effectiveGrantDigest
-        || !equal(input, { ...resolver, kind: 'native_rp_delegated_intent', acceptedResultRef: ref,
+        || producer.effectiveGrantDigest !== (nested ? parent.parentRef.effectiveGrantDigest
+            : hash({ owner: handle, logicalInputRef: resolver, sourceBindingDigest: parent.sourceBinding.bindingDigest }))
+        || !equal(input, { ...resolver, kind: nested ? 'native_rp_delegated_intent' : 'native_rp_intent', acceptedResultRef: ref,
             returnReceiptRef: input.returnReceiptRef, parentInputDigest: producer.inputDigest })) invalid();
     const child = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: ref.runId }))?.doc;
     if (!child || child.status !== 'completed' || !equal(child.planRef, resolver.childPlanRef)

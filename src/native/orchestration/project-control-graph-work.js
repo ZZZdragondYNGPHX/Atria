@@ -16,7 +16,6 @@ import { JoinController, joinIdForAttempt } from './join-controller.js';
 import { withNativeProjectFanout } from './native-project-generation-authority.js';
 import { readProjectFanoutCompletion } from './project-fanout-contracts.js';
 import { assertProjectFanoutPlannerPatch, readProjectFanoutPaidModelNodes } from './project-fanout-planner-contracts.js';
-import { readProjectDelegationContinuation } from './project-delegation-contracts.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelFailureReceipt } from './model-port.js';
 import { graphPlannerControlRef, graphPlannerReceiptId, readGraphPlannerCompletion } from './graph-planner-completion.js';
@@ -25,7 +24,7 @@ import { readProjectControlInputs, projectControlItems, projectJudgeReaderOption
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { checkedRecord } from './plan-repository.js';
 import { ReviewController, reviewReceiptId } from './review-controller.js';
-import { graphReviewModelReceiptId, graphReviewControlRef, readGraphReviewCompletion, readReviewablePlannerCompletion, readReviewableFanoutCompletion } from './graph-review-completion.js';
+import { graphReviewModelReceiptId, graphReviewControlRef, readGraphReviewCompletion, readReviewablePlannerCompletion, readReviewableFanoutCompletion, readReviewableDelegationCompletion } from './graph-review-completion.js';
 import { graphJudgeModelReceiptId, graphJudgeControlRef, readGraphJudgeCompletion } from './graph-judge-completion.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 import { ConflictError } from '../../storage/errors.js';
@@ -470,17 +469,14 @@ export class ProjectControlGraphWork {
                 }
                 for (const [nodeId, recorded] of affected) {
                     const node = root.graph.nodes.find(node => node.nodeId === nodeId);
-                    if (!node.capabilities.includes('agent.delegate')) continue;
-                    const fact = evidence.find(fact => fact.producer.attemptId === recorded.attemptId)
-                        ?? (recorded.resultRef && await readGraphNodeResult(tx, handle, root, recorded.resultRef.resultId));
-                    if (!fact || fact.producer.attemptId !== recorded.attemptId || !equal(fact.receipt.resultRef, recorded.resultRef)
-                        || fact.producer.inputRefs[0]?.kind !== 'native_project_delegation') fail('native_orchestration_review_irreversible_dependency');
+                    const attempt = (await readAttempt(tx, handle, root, recorded.attemptId)).doc;
+                    if (attempt.inputRefs[0]?.kind !== 'native_project_delegation') continue;
                     // Recompute only an actual closed, pure advisory child. The
                     // original typed continuation proves its complete DAG,
                     // return/claim and bank; a capability label is insufficient.
-                    const completed = await readProjectDelegationContinuation(tx, handle, root, fact.producer, fact.modelEffect);
-                    const selected = this.state.selected.resolveDelegation(node), child = completed.lineage.child;
-                    if (!selected || child.status !== 'completed' || child.cancelRequested
+                    const completed = await readReviewableDelegationCompletion(tx, handle, root, recorded.attemptId);
+                    const selected = this.state.selected.resolveDelegation(node), child = completed?.lineage.child;
+                    if (!completed || !equal(completed.receipt.resultRef, recorded.resultRef) || !selected || child.status !== 'completed' || child.cancelRequested
                         || child.epoch !== completed.output.receipt.epoch || !equal(child.planRef, selected.planRef)
                         || !equal(child.parentRef.budgetCeiling, selected.ceiling)
                         || completed.output.publication.graphHistory.settled !== true) fail('native_orchestration_review_irreversible_dependency');
