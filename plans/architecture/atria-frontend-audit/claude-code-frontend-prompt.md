@@ -1,72 +1,76 @@
-# 全产品前端实施交接
+# 全产品前端实施输入
 
-范围来自[提示词／前端企划](../../refactor/atria-native-prompt-preset-deepening/index.md)、本目录四份功能清单与正式领域合同。本文件说明要实现的界面与接线，不新增审查、验证或测试任务。本次只修订交接文档，不启动产品实施。
+功能范围归[提示词／前端方案](../../refactor/atria-native-prompt-preset-deepening/index.md)，最新源码关系见[源码剖析](../../refactor/atria-native-prompt-preset-deepening/baseline.md)。本文件定义页面与接线工作，产品实现留在原任务源码分支。
 
-## 工作目标
+## 产品范围
 
-完成同一 Atria 产品的全前端：Library、Play、Studio 全 20 资源视图与 Project Agent、Agents/Memory/Goals/Experience/Eval、World/Knowledge、Prompt、Runtime/Model/Connection、Settings/Account、Skills/Plugins/Search/Regex、Visual Director/Media/Speech、共享会话、存读档／备份同步、Storage 与 Diagnostics。
+覆盖 Library、Play、Studio 全 20 视图与 Project Agent、Agents/Memory/Goals/Experience/Eval、World/Knowledge、Prompt、Runtime/Model/Connection、Settings/Account、Skills/Plugins/Search/Regex、Visual Director/Media/Speech、共享会话、存读档、备份／同步、Storage 与 Diagnostics。
 
-189 个功能组是既有功能盘点，不能只做 Prompt 页，也不是新功能数量上限。已确认的新作者流程与 V3 Plan/Run 一并实现。旧 SHA、第二十四组的有限 Profile 和演示 HTML 都不能限定最新实现范围；接具体页面时使用原后端当前实际接口，不为本任务另组织全仓预审。
+189 组旧盘点提供功能定位，新增作者流程和 V3 Plan/Run 一并实现。旧文件的未接通结论按当前源码更新；原有 Source、Assets、作品界面、Simulation、Preview、Build 和下载继续保留。
 
-## 设计输入与页面组织
+## 底座与视觉输入
 
-先读 [index](index.md)，按当前页面读四份分域清单、[操作链](interaction-flows.md)、[组件归属](component-and-architecture-findings.md)与[跨端要求](cross-platform.md)。外部参考是：
+沿现有 native ES modules/DOM/CSS、Shell、NavigationAuthority 与领域客户端实施；复用已有组件、`--atri-*` tokens、图标和本地化。
 
-- [HTML](design-proposal/atria-visual-direction.html)：代表性视觉／交互。
-- [全功能表现](design-proposal/atria-function-presentation.md)：功能位置与操作方式。
-- [设计指导](design-proposal/atria-frontend-guidelines.md)：整体外观与组件参考。
+当前源码已采用 Serene Canvas，现有已确认稿继续提供对应页面与 Dock 的依据。[外部 HTML](design-proposal/atria-visual-direction.html)、[功能表现](design-proposal/atria-function-presentation.md)与[设计指导](design-proposal/atria-frontend-guidelines.md)作为参考，先将适用部分映射到已有组件。外部稿中的夜色默认、`--surface-*` token 名和固定栏宽不自动成为第二套全局主题；P-01～P-11 中新增产品能力仍按实际确认范围使用。
 
-这些是参考；功能遗漏以正式合同补齐，未批准的新增能力不混入实现。P-03 中“旧编排折叠过渡区”不采用。沿现有 native ES modules/DOM/CSS 与 Shell 实现，Library/Studio/Play/Agents/Runtime 共用导航、搜索、深链、返回与组件，不另建 V3 Shell。视觉只使用用户实际批准的部分。
+日常页面围绕阅读、资源和编辑内容；完整来源、Wire、费用明细与日志由用户展开。一次实际动作给出对应结果，不把每页做成流程状态控制台。
+
+## 按领域接线
+
+| 页面 | 实现内容 | 既有落点 |
+| --- | --- | --- |
+| Shell | 五域、搜索、深链、返回、Dock/Sheet、工具页 | `atria-shell/app-shell.js`、`navigation-authority.js`、`workspace-host.js` |
+| Library | Work 安装／启动、Session、World/Knowledge、Persona、预设与专业资源 | `library-workspaces.js`、`prompt-presets.js`、`prompt-authoring.js` 与原资源服务 |
+| Play | 长文、输入、生成／停止、历史／存档、参数、作品 UI 与媒体 | `play-product.js`、`play-generation.js`、SessionRuntime/ConversationWindow |
+| Studio | 20 个视图、人工编辑、Project Agent、Changes/Apply、Source、Assets、预览、Simulation、Build | `studio-workspace.js` 与各原编辑器／客户端 |
+| Agents | 原 Plan Library、Graph/List/Inspector、Binding、Run Timeline/Graph、Memory、Goals/反馈 | `orchestration/agents-v3.js`、PlanDraft、Plan/Run workspace 与原业务组件 |
+| Runtime | Route、Model、Connection、Generation、Retrieval、请求预览与实际用量 | `runtime-workspace.js`、`runtime-client.js`、原 Generation 服务 |
+| 其他领域 | 设置、账户、扩展、搜索／Regex、语音、媒体、共享、备份与存储 | 原 workspace/client/service；共用导航和表现组件 |
+
+已有客户端各自服务对应领域；组件复用不要求把保存操作合为一个通用 dispatcher。
 
 ## 提示词作者的完整流程
 
-| 功能面 | 用户操作 | 后端接线与结果 |
-| --- | --- | --- |
-| Library 独立作者 | 不建游戏即可创建、编辑、导入导出 Program/Module/Generation；选择空白、通用骨架或任务模板 | 原资源／修订服务；模板生成可编辑资源，更新模板不覆盖旧版本 |
-| Studio 采用 | 从预设库直接选择 exact 版本，按需 Fork/Derive，处理差异后发布 | 原 Project/Package/Route/Plan 绑定；不强迫游戏作者自行写 Prompt |
-| 同一草稿双编辑 | 结构化面板、完整原文、大纲与继承来源；Undo/Redo、dirty/leave | 共用同一 Draft；literal/template 明确切换，不静默改写原文或丢未知字段 |
-| 编排 | Stage 排序，同 target 的 Module/Anchor 上下移动／拖拽，新增／禁用／替换／配置差异 | 只编辑原 Program 序列；Host 返回 Effective 顺序。Contribution 只读，不能拖成作者指令或改变权限 |
-| Preview／Diff | 按需看 Authored/Effective/Provider Wire、来源、条件、Token 和差异 | 原 Host 编译／脱敏投影，明确未发送；base/candidate 可为不同修订，环境变化单列 |
-| 无游戏预览／试读 | 编辑样例上下文，先无发送预览；用户另选 Route、预算和外发内容后手动试读 | 原 Host 的独立作者上下文与 Compute/Provider；未接通时只限制该操作，不创建假 Session，不自动发送或 Judge |
-| 分享／升级 | 导出可编辑依赖包、导入本地映射、查看受影响消费者、处理私人修改三方差异 | 保存、导出、发布、采用分别反馈；新版本不自动改变已钉引用 |
-| 质量／候选 | 用户主动查看反馈、发起原服务支持的评价或选择候选、Review/采用 | 原 Experience/Eval/Publication；未评价不禁普通编辑／分享／生成，来源缺失只影响相应评价／晋升 |
-| 独立视觉作者 | 编辑 Image Target/Rendering/风格模板，手动试生成、管理对应图片 | 原 ImagePromptIR/Visual Job/Asset 的非 Session 所有权；不调用文本 Compiler，不借剧情 Gallery 冒充完成 |
-
-Library 和 Studio 共用这些资源组件。Play 仅提供作品允许的选择／覆盖与可展示信息，不隐式改写共享原件。
-
-## V3 的同一产品界面
-
-| 页面 | 要实现的操作 | 原服务职责 |
-| --- | --- | --- |
-| Plan Library | 创建／编辑 Draft、资源引用、版本／发布、Fork/Derive、归档与删除 | 原 Plan Authoring/Repository |
-| Plan 选择 | Session、Project/Task、RP 的已发布 exact Plan 选择、冲突处理 | 原 Binding get/save 与 version CAS；保存选择不自动启动 Run或授予权限 |
-| Graph/List/Inspector | Node/Edge/Ports、Agent/Route/Source/Output/预算／委派 policy；Problems、同 Draft Undo/Redo | 原 Plan schema 与 Draft；几何位置不改变执行顺序，不直接改活动图 |
-| Run Timeline/Graph | 同 selection 查看 Attempt、GraphPatch、Join、Effect、Result、费用、取消与部分完成 | 原 Host 投影与真实 Run 控制；不用 Browser 拼持久运行 |
-| Review/Recovery | 精确动作与 Diff、外发对象、费用及后果、取消、回执和后续状态 | 原可信审批／恢复服务；通用 Effect 决定走独立可信 Review Origin，主 app 只显示待办／launch ref |
-| 业务连接 | Project Review/Commit、Play 正文、Runtime 修复与原页面返回 | 只用当前原生消费者；关闭页面不代表取消 Host，未知结果先读取原操作 |
-
-原后端尚缺的具体路由／操作在该功能上说明，并继续实现不依赖它的部分。不要沿用旧文档的“只有两节点 Narrator”“Project/RP 全部 unavailable”判断最新代码；也不能根据方法名自创 HTTP 路径或 Browser dispatcher。Node 的 `allowedPlanPinIds:[]` 表示禁止委派，选项限本 Node 合法 plan pins，不能把缺字段当 allow-any。
-
-## 对接已有 Prompt 后端
-
-实际字段以源码 `src/native/model-prompt-runtime/README.md` 为准。已有接口可直接复用：
-
-| 接口／数据 | 实现方式 |
+| 操作 | 实现结果 |
 | --- | --- |
-| `POST /api/native/generation/preview/draft` | `{request,drafts:[{ref,expectedFingerprint,resource}],baselineDrafts?:[]}`；沿原 exact base 与 fingerprint；当前有限基础资源支持不等于新身份／独立作者上下文已接通 |
-| 三层 Diff | 展示 base/candidate 原版本与 source/route/compiler 身份；unpublished、`sent:false`，迟到回包不覆盖新草稿 |
-| 受限诊断 | `native_generation_preview_disclosure_denied` 说明当前不可展示完整上下文；execute/result 的 restricted 投影与正常生成结果分别显示，不将诊断受限报成生成失败 |
-| `GET /api/native/generation/quality-profiles` | 使用原 dimensions/readiness；未知质量显示未评价，不能用假分数填充 |
-| `generation_provider_content_blocked` | 表示实际 Provider 协议拒绝及已有用量；自然语言回避不能冒充协议状态，不自动跨供应商重发 |
-| 可信 Program 选择 | 来自原 Node/Plan/Host；Browser 不提交 programSelection、伪 Grant 或 Draft authority |
+| 独立创建 | Library 从空白／模板创建 Program、Module、Generation，不建游戏 |
+| 直接采用 | Studio 选择现成预设 exact 版本，按需 Fork/Derive |
+| 编辑 | 共用 Draft 的字段、完整 JSON、Module 正文；Undo/Redo、错误定位、长文本与缓冲保留 |
+| 编排 | Stage 与同 target 条目顺序；Module/Anchor 移动、继承与差异；使用 Host 的有效位置 |
+| 三层预览 | Authored/Effective/Wire 与跨修订 Diff，实际来源与 Token 方法按需展开 |
+| 样例试读 | 原 Host 新作者样例 Context；先预览，用户点击后才走 Compute/Provider 付费请求 |
+| 分享升级 | 可编辑 exact 闭包、多修订映射、私人派生三方差异、手动选择消费者采用 |
+| 可选反馈 | 原 Profile/Experience/Candidate 结果与局部建议；缺项仅影响对应操作 |
+| 独立视觉 | 原 ImagePromptIR/Target/Rendering 与非 Session Job/Asset，独立图片管理 |
 
-## 保留业务与交互
+详细编辑、预览与发行语义只归[D8](../../refactor/atria-native-prompt-preset-deepening/preset-studio-experience.md)，顺序与 Context 装配归[D5](../../refactor/atria-native-prompt-preset-deepening/semantic-ir-lowering.md)。
 
-- 原生硬切零 ST/旧 Workspace/Director/Loop/Agenda 兼容；有效 Memory/Goals/Experience/Eval/Skills/Visual Director 等迁到原生入口，不能整树误删。新替代未接的能力继续作为实际实现项，不能用旧 sender 充数。
-- Source/Actor/Secret、预算／用量、业务写入、Review/Commit/CAS 归原服务；前端编辑草稿、发原命令、显示真实结果。未知费用不显示零，取消不声称撤销已经提交的效果。
-- Work text/component/hybrid/full 与 Exit/Stop/Save/Persona/Diagnostics/Reload 恢复通道保留。凭证、媒体授权与 V3 Effect 审批分别使用原合同，不能合成万能批准。
-- 加载／空／失败／冲突／只读状态在相应页面准确显示；保存已成功但刷新失败时只重读，保留作者稿和原选择。
-- Windows、CachyOS、Android Termux 都能完成创建、编辑、预览、Diff、Review/发布；手机为 List/Tab/Sheet，Graph 有表单／列表替代。IME 不误发，Stop 在软键盘上方可达，Back/Escape 一次处理一层并归还焦点。
-- 保留长文本选区、滚动位置、键盘／读屏与 reduced-motion。列表沿现有分页／窗口机制，不为假设场景新建缓存或摘要权威。
+## V3 页面接续
 
-按功能持续实现并更新原任务 Record；交付说明实际完成和具体未接部分。无需为本提示词另建测试矩阵、独立审查、全平台取证或质量认证工程。
+现有 V3 已有 Plan/Run 页面和 `/api/native/orchestration` namespace：
+
+| 现有接口组 | 继续使用的能力 |
+| --- | --- |
+| `/plans/list`、`get`、`revisions`、`revision`、`validate`、`create`、`save`、`publish` | 列表、Draft、修订与发布 |
+| `/dependencies/inspect` | 原资源引用与当前内容身份 |
+| `/bindings/get`、`save` | Session、Project/Task、RP 选择已发布 Plan |
+| `/runs/list`、`observe`、`details`、`diagnostics`、`cancel`、`recover`、`reconcile` | Host 运行投影和控制 |
+| `/tools/prepare`、`dispatch`、`observe`、`consume`；`/approvals/launch` | 原工具操作、结果与相应人工决定入口 |
+
+上表为已挂载的 POST 路径，payload 沿现有 `orchestration/client.js`，不是所有 Source/Plan 组合均可执行的声明。Plan Fork/Derive、归档、删除没有现成路由，作为缺项补原 Plan 服务。Node 独立 Program 按[D4](../../refactor/atria-native-prompt-preset-deepening/agent-behavior-binding.md)接通，不能只加表单。
+
+## Prompt API 接续
+
+- 现有 `POST /api/native/generation/preview/draft` 输入为 `{request,drafts:[{ref,expectedFingerprint,resource}],baselineDrafts?:[]}`；仅是现有 exact-base 资源覆盖。两侧不同根修订、新资源、样例 source 按原流程扩展。
+- Preview 展示 `sent:false` 与三层结果；切换草稿后的旧回包不覆盖新稿。独立作者试读沿原 Host/Compute/Provider 返回真实用量。
+- `GET /api/native/generation/quality-profiles` 返回实际维度与可用项；没有报告显示未评价。
+- 新顺序与条目身份一起更新原保存、导出、Fork、Package freeze 和候选应用；前端大纲和 Host 结果一致。
+
+## 共用交互
+
+加载、空、失败、保存中、成功与冲突在原位置呈现；错误定位到对应对象或字段。保存成功而刷新失败时保留保存结果，只重新读取；切页保留编辑内容和返回位置。
+
+桌面分栏、手机 List/Detail/Tab/Sheet 承载同一功能。图与拖拽有表单／上下移动替代；IME 不误发，软键盘上方可访问输入和 Stop，Back/Escape 每次处理一层并返回焦点。长文选区、滚动锚点、键盘与 reduced-motion 继续使用原组件机制。
+
+旧 ST/Workspace/Director/Loop/Agenda 随原生替代清退。Memory、Goals、Experience、Skills、Visual Director 等有效业务迁到原生入口。按页面和直接依赖推进，实际完成结果记[原 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md)。

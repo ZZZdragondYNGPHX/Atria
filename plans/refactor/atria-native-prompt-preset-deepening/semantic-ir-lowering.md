@@ -1,95 +1,48 @@
-# D5 已冻结：语义 PromptIR、Provider Lowering、冲突诊断、缓存和预算
+# D5：显式编排、Context 装配与 Provider 请求
 
-## 1. 2026-10-15 的源码背景与设计出发点
+S2 + L2 + D2 + K2 + T2 沿原 PromptCompiler、SemanticBlocks、ContextPlan 与 Adapter 实现。
 
-下表记录当时的输入形态和问题；后续可信 Program selection、Typed lowering 与 Draft Preview 已有实现，当前接线按[功能依赖](e0-audit.md)推进，不把旧“尚未实现”重新变成开发任务。
+## 单一顺序
 
-| 已有代码/文档 | 目前真实事实 | D5 待解决 |
-| --- | --- | --- |
-| `src/native/model-prompt-runtime/prompt-compiler.js`、`contracts.js` | PromptIR v1 由 `directives/contextSlots/history/input/responseDirectives/tools/outputContract/prefill` 组成；编译模块 decisions/provenance 有记录，Program supports parentRef/derive | IR 主要是已分位置的字符串，尚没有完备 source trust/agency/role 意图的强类型语义块；不能把 D5 的新字段描述成已存在 |
-| `src/native/model-prompt-runtime/prompt-renderers.js` | `contextSlots` 被渲染为 `role:'system'`；非尾部系统块会使部分 Anthropic/Gemini fixture 明确拒绝 | 需要做受信/不可信 data 来源提升审计及不同 Provider 的 role/ordering lowering，**不是已证实漏洞或授权可用的 role 越权** |
-| `generation-service.js` | 每次 Route 都解析/重新构造 ContextPlan + PromptIR、调用对应 Provider `countTokens`、再 `renderRequest`；有 output reserve、capability requirement 和 fallback 稳定性保护 | B2 Node Program/Route 身份与 fallback 守恒仍待接线；计数/发送同一 wire 的一致性与 Source currentness 需实测 |
-| `compiled-binding.js`、`execution-evidence.js` | 已有 source/resource/generation/tools/history/prefix/rendered fingerprints，源码明确这些**不是 Grant，也不能证明 Provider cache hit** | 只能作为可重现诊断键、失效证据的候选，真实缓存需 Provider usage/TTL/capability 支持 |
-| `http-generation-provider.js` | OpenAI-compatible provider 配置 token encoding，按已渲染 wire 计数并加消息 overhead；||
-| `responses-generation-provider.js`、`native-messages-provider.js` | OpenAI Responses/Anthropic/Gemini 有各自 wire；部分 Token 预检使用 utf8 bytes+margin 的保守上界；缓存控制与 continuation 也不同 ||
-| `public/scripts/native/context-compiler.js` | 原 Context lanes/minima/caps/safetyMargin 与 Token 选择 | D5 不建另一个 Context selector；整合 Context 预留与最终 Provider wire 计数 |
-| V3 `Node/ModelPort` | 当前 Node 的 Program 独立选择仍为 D4 的**实际接口 gap** | D5 只能规定下游 IR/Lowering 合同，不能以 D5 实现宣称 D4 已跑通 |
+- Program 的 Stage 数组决定展开顺序；同一 Stage、同一 target 内 ModuleRef 与 Anchor 共用有序条目。
+- 移除 `priority`、`expressionRank` 与 Module ID 的隐式重排。`expression.layer` 保留为表达对象信息。
+- 不同 target 继续具有 foundation、history 前后、input 前后、post-history、prefill 等位置含义。Stage 顺序是展开顺序，不承诺某个晚 Stage 的 foundation 会出现在前 Stage 的 history 之后。
+- 同 target 内容按 Stage 展开顺序及条目顺序汇入该位置；跨 target 调整是修改条目 target，应明确显示新位置。最终消息位置由同一 SemanticBlocks 投影和 Adapter 产生。
+- 原 `responseDirective`、固定 Host 说明、Persona 与自动 Context 也进入同一有效顺序说明，不能在作者大纲外再次偷偷追加重复正文。
 
-## 2. S：原生 PromptIR 的语义结构
+Module/Anchor 的顺序、继承身份和 exact refs 一起保存在原 Program schema。编辑器、Compiler、预览、分享与 Package freeze 读取相同定义。
 
-| 候选 | 设计 | 取舍 |
-| --- | --- | --- |
-| **S1 现有字符串 IR 加少量元数据** | 维持 `directives/contextSlots` 的位置与角色，添加来源 labels | 成本低，但仍容易把低信任来源混为 system 语义 |
-| **S2 现有 Compiler 内部扩展 Typed Semantic Blocks（已选）** |真实字段到 D5 后 E0 冻结| 更利于精确继承、E2 文学控制、K2 反全知、D4 Node Program 与来源诊断；不建立另一套外部持久化 IR/Compiler |
-| **S3 独立 Behavior DSL/IR 引擎** | 在现有 IR 上新增完整元语言和运行时 | 双语义真相、执行绕路、维护和权限负担大，不建议 |
+## Anchor 与 Contribution
 
-S2 的 `SemanticBlock` 只是**设计例子，不是已实现接口**，不允许自己申报 Host/World Authority。相同作者文本按 exact revision 版本化；World/Memory/Tool/检索等只能作为低信任证据，经原 C2 先行授权和 K2 Display gate 才可使用。合法作者指令不需要伪造 Provider system 身份才能具有产品内的创作权威。
+Anchor 是 Program/Stage 内的 Context 接入位置，声明接收类别与必需性；沿既有 Context lanes 和 Persona consumer 使用。样例模板给出少量常用位置，不增加独立 Anchor 资源。
 
-语义编排借鉴 [LoomStudio PromptBuild](https://github.com/The-LoomStudio/LoomStudio/blob/10be7f6e460a19d96fe9a4ca4892234f938b0196/docs/architecture/application/prompt-build/README.md) 的**有序树、Anchor/Slot、独立来源 Contribution 与正文宏分工**，而不是复制它的物理结构。Atria 原生 Program/Stage/Module 与 Compiler 保留唯一顺序和有效内容决定权：需要独立来源、Activation、排序或受众边界的内容可被解释为带 SourceRef 的编译期贡献；只需正文内替换的变量仍归现有 Module 文本/模板处理，不获得新的独立授权节点。
+Context 已选择的条目派生请求级 Contribution，保留原 item/source refs、修订、片段、用途、认识状态及已有顺序。编译中：
 
-**已选单一显式编排方向**：Program 自身有序 Stage 是阶段先后依据；**同一合法 target 内**，原生 Module 引用与受控 Anchor 共享作者定义的有效顺序；Anchor 是接收获准来源的编排位置，不是单独的 World/Memory/权限数据或可自由下沉的 system 角色。Context Contribution 由原 Host/Context Authority 针对当前请求选择，携带来源和受众证据，按合法位置投影；不是持久的第二套事实库或擅自追加的模块文本。宏仍只展开宿主正文，不参与独立排序。
+1. 按显式消费声明匹配 Anchor；沿 Context 原有选择顺序装配，不增加另一套权重。
+2. 同来源、片段、版本、用途在同一消费位置重复出现时只纳入一次；相同正文但不同来源仍保留区别。需要在两处有意复用时由消费声明表达。
+3. 一个条目由 Anchor 消费后不再走旧自动追加路径；History、Input、Persona 同理。未显式定制的常规接入使用模板中可见的位置。
+4. 可选材料未选中时显示未纳入原因；缺少必需材料时指出具体 Anchor 和来源，由作者修改消费声明或 Context 配置。
 
-**与现有实现的差距**：当前 `public/shared/prompt-module-order.js` 使用 `target → priority(desc) → Module ID`，Stage 内 `moduleRefs` 的数组顺序并非发送顺序。实施时必须将作者顺序与编译规则做成一个权威转换，审查 `parentRef/derive` 后的顺序、原生已发布 exact 引用与行为变化，再在前端呈现同一结果；不能保留优先级与“显式顺序”两套冲突的排序机制，也不能把单纯拖拽 UI 宣称为新语义。**继承方向已定为 exact parent + 显式差异**：替换/禁用/配置沿用原有效位置，新增需明确插入点；父修订升级必须显式选择并复审，绝不 follow latest。**请求级动态装配已定为由原 Host/Context Authority 选择**：作者 Stage/Module 条件仅消费合法类型化值；Host 先筛 Source/Actor/Audience/Grant 再给 Compiler，不能凭作者条件扩大读取范围；静态 Program 不被动态来源反向修改。来源类别与必需性是消费声明，不是授权。Host 对每次请求由既有 ContextPlan 派生 Contribution（包含 SourceRef、Audience、currentness/认识地位等已有证据），经确定性顺序、来源去重及必要性诊断再编译；不新增第二存储、深度权重、Role 继承或外部 Pass 引擎。**具体 Stage/Anchor JSON 字段、同 Anchor 的排序键与去重身份规则、继承合并冲突编码及快照端口仍待物理设计确认**，不在此凭空引入数据库表、`localDepth` 或新的 Pipeline。
+变量插值继续处理正文内替换，动态 Contribution 不反写静态 Program。继承与位置操作详见[D4](agent-behavior-binding.md)。
 
-对照 [Loom Core 集成说明](https://github.com/The-LoomStudio/LoomStudio/blob/10be7f6e460a19d96fe9a4ca4892234f938b0196/docs/architecture/application/prompt-build/loom-core/studio-integration.md)，LoomStudio 的 Agent PromptBuild 使用 Application DFS 编译，通用 Loom Core Runner 是另一条调用链；Atria 因此不引入第二个 Fragment/Pass Runtime，也不声称移植了 Core 的 Trace/Replay 能力。**独立作者预览／试读的正确边界**是：作者无游戏即可持有和编辑原生 Program/Module/Generation exact revision；一旦要求 Authored→Effective→Wire 或付费试读，仍需同一 Native Host 提供受权的明确样例上下文、真实 Model/Route/Provider capability 和可审计的预算，不将任意客户端构造的 World/Memory/Session 当受信来源。当前正式 Preview 入口要求 Session/Project，独立无游戏预览是待补的产品能力，不许再建 Preview Compiler。图像编辑使用独立 ImagePromptIR、原视觉 Target/Rendering/Job/Asset 权威，不能将生图 style/negative Prompt 强制转换为文本 Module 来获得试生成资格。
+## SemanticBlocks 与 Provider
 
-**官方默认模板的原生编排原则**：新建可选择短小、可编辑且可导出的通用 Program 骨架，承载身份/任务边界、作者叙事意图、获准 Context 与 History 接入位置、最新输入及输出约束；依原生 Stage/Module/受控 Anchor 承载，不复制 LoomStudio 的物理树、Anchor 名字或其固定 system/developer 消息位置。按用途提供 RP/Narrative（单 Narrator 与角色/玩家边界）、Creative Writing（完整作者表达/文体控制）、Agent Task（任务/证据/输出合同）等少量模板，复用基础语义模块与原 Library exact revisions。视觉 Prompt/风格默认资源归原 Image Rendering/Target、ImagePromptIR 与 Visual Job/Asset，不伪装成 `core.prompt-program` 的 Provider Wire。默认工具、额外 Agent、Judge、收费模型试读和私有来源访问均不自动启用；需要时按受权需求配置。模板只初始化作者选择的新资源，官方模板更新不覆盖旧 Program、已发行预设或冻结中的 Session/Plan/Package。具体模板实体、播种/分发和原生 Schema 待实现审计，不将当前空 `stage.main` 说成已具有官方模板。
+Prompt 分支已有 `semantic-blocks.js`，区分作者指令、Host 说明、材料、对话、工具结果、输入和 prefill。继续在原模块扩展，移除“尚无 Typed IR”的旧判断。
 
-## 3. L：跨 Provider 模型语义 Lowering
+所有 Adapter 使用同一有效语义投影。保留已有 target 的含义；Provider 不支持某种中间指令、prefill 或输出格式时，显示具体不支持项，由作者选择配置。模板优先采用现有 Adapter 能表达的结构；不靠另调模型改稿或自动挪动内容来填平差异。
 
-| 候选 | 设计 | 取舍 |
-| --- | --- | --- |
-| **L1 强行统一消息列表** | 所有 Provider 都直接使用同一组 system/user/assistant message | 简单但与 Anthropic/Gemini/Responses role 和中间 system 条件冲突 |
-| **L3 自动 LLM 改写每个 Provider Prompt** | 发送前让另一个模型无监督重写作者规则 | 难复现、费用更高、破坏作者自由文本与 G1 稀疏运行，不建议 |
+现有 IR 的多数组与 `semanticBlocks` 是派生关系。编排改造需明确唯一构造入口，避免一份正文分别维护两套顺序。render、Token 计数与实际发送消费同一次 lowering 结果。
 
-L2 的降级仅限不改变 Authorial Intent、Agent OutputContract、Context grants、Tool/Model权限和文本核心语义的**显式受支持差异**；Provider 内容拒绝不是传输 fallback，**不得自动切换到另一个供应商规避**；普通网络故障 fallback 仍须守护 D4 已冻结的有效 Program 身份/原 Native send 规则。缓存/Role/JSON schema 适配要比对 final wire，禁止仅用 prompt 字符串作为来源证据。
+## 编译解释与版本差异
 
-**跨 Provider 的单一作者语义**：作者在 Program 中表达一次，原 Provider Adapter 依据 Model/Connection/Route 的真实 Capability 生成各自合法 Wire；不维持 OpenAI/Anthropic/Gemini 等“每家一份默认预设”的平行身份、排序与持久版本。遇不支持或未知的必需能力须拒绝或明确要求作者选择；仅在不破坏授权/原文意图时才允许有据的可选降级。确有需求的模型定向表达使用显式、受限、精确修订的作者覆盖并显示 Effective/Wire Diff，绝不能由另一个模型在发送前自动重写。
+按需展开 Stage/Module/Anchor 的位置、条件结果、Contribution 来源、未纳入原因及 Adapter 结果。普通编辑保持正文和少量状态，完整 Wire 与来源列表由用户打开。
 
-## 4. D：冲突诊断与可解释降级
+base/candidate 各有自己的 exact refs 或 Draft；它们可以不同。共享同一次捕获的样例／Context、Route、模型配置与编译器环境，分别编译一次。环境变化单列，避免混入作者正文差异；不通过第三次完整基线编译或对整条链反复比较哈希来实现 Diff。
 
-| 候选 | 设计 | 取舍 |
-| --- | --- | --- |
-| **D3 每次编译强制模型裁判** | 编译调用 LLM 评估语义矛盾并重写 | G1 被打破、成本高、可能把成人向文学表达意外归为违规或保守化 |
+现有 `previewPromptDraft()` 把 Program ref 放进相等身份，且只接一份 request，需扩展为两侧选择加共享环境；不能仅移除比较便把两个时点的 Context 当成相同。
 
-D2 必须把**不可被文学优先级补救**的硬问题分开：无 Scope/Source/Display grant、Tool/Output contract 权限不足、Program exact ref 不匹配、变量类型错误、Provider 必需 capability 不支持、final wire 超上下文、Node/Route program 语义漂移。风格层如“冷峻叙述 vs 温柔旁白”可以按显式 E2 叠加先后作决策并展示 diff；未有源的自由文本冲突只提示“可能冲突”，不把字符串比较宣称成文学逻辑证明。面向作者的激活/未纳入原因、最终语义位置和差异必须来自 Host 的有效编译证据；默认不执行模型试读或常驻重计算。编译诊断须区分作者条件不成立、Host 未授权的来源、Anchor 匹配/排序/去重结果、必要上下文缺失与版本/currentness 已过期；可选来源缺失应明示本次未纳入，必要来源缺失必须走原本确定的拒绝或作者处理路径，不能自动让模型编造。对于顺序冲突，至少区分跨 target 的非法移动、同 target 的合法显式排序、未解析 Anchor/Source 和继承后精确引用漂移；诊断不得把尚未实行的新排序表现为当前 Compiler 的真实执行结果。
+## Token 与缓存
 
-**可解释编译证据（与 D8 P2/I2 同一合同）**：Authored/Effective/Provider Wire 都来自相同 Host 原生 Compiler/Context/Provider 接口或其受权脱敏投影，不在 Browser 重编 Prompt。有效 Trace 应指出确实参与计算的 Stage/Module/Anchor、条件成立与否、纳入的 Contribution 来源、最终目标位置、实际 Provider lowering 和未纳入/失效的可披露原因；来源未查询、权限未授予或证据不存在时必须是 restricted/unknown，不能泄漏私有来源是否存在。`compilation.segments`、module diagnostics、compiled binding 是可利用的证据线索，不代表 Loom Core 式通用 Pass Trace、回放引擎或完整执行证明已经实现。
+原 Context lanes 选择材料，Adapter 按最终请求计数，并保留输出预留；显示计数方法与实际 usage。独立试读继续用原 Compute 记录费用。
 
-比较 authored/effective/wire 时分别记录 base/candidate 的 exact Program/Module 或 Draft 身份；两侧可以采用不同修订，这正是要比较的修改。将 Context Source/Actor/Branch/Grant、Route/Model/Provider/Compiler 等环境固定后，才把有效差异归因于作者修改；环境也变化时单列，不要求候选 Program 与基线引用相同。Token 标明计数方法。无游戏作者使用原 Host 限定的样例上下文，不把自填内容升级为真实世界事实；付费试读由用户主动调用原 Compute/Provider，编辑／预览不自动发送或强制 Judge。图像侧沿原 ImagePromptIR/Visual Job/Asset。
-
-## 5. K：缓存布局与真实利用
-
-| 候选 | 设计 | 取舍 |
-| --- | --- | --- |
-| **K1 现有纯 Prefix 指纹** || 成本低；不保证达到 Provider 真正可缓存前缀 |
-| **K2 版本/信任域分区的 Stable→Dynamic 布局（已选）** | 作者/Program exact refs、稳定 Tool/Output schema 和固定指令尽量前置；Source/Actor/Scene/Branch/Turn/context 请求动态部分后置；重用需 Owner/Audience/Route/Model/Capability/TTL/grant/Source validity 真实匹配；用 Provider 实际 usage 测命中率与写入成本 | 与长会话性能、隐私隔离、Provider 能力差异一致；可能需对当前 Render 的中间 system 和 Prompt ordering 做受信调整 |
-| **K3 跨 Actor/角色/模型语义相似直接重用** | 不论受众只要文本相近就认为可用 | 会串 NPC 私密 Context、错误复用不同来源/模型；不建议 |
-
-**现有 fingerprint 是诊断，不是缓存许可**；Stage/Module 更改必须导致有效内容/版本失效。OpenAI/Anthropic/Gemini 对前缀、breakpoints、token 长度、TTL、价格与参数的支持不同；cache-control 不适用时不应伪造收益或为撑足阈值塞重复 Prompt。作用域必须避免多用户/多角色的信息关联与侧信道。
-
-缓存只能利用作者明确编排及合法 Provider lowering 后形成的前缀，不能为命中率偷偷重排 Stage/Module/Anchor 或 Context Contribution。稳定内容前置是作者可选择的编排方式，不是覆盖单一显式顺序的第二排序规则。
-
-## 6. T：Context 和实际请求的预算闭环
-
-| 候选 | 设计 | 取舍 |
-| --- | --- | --- |
-| **T1 只统计 Prompt 文本长度** | 近似 token 估算，不计 Tool、History/结构化输出、reasoning/output reserve | 易实现但对 Provider/长 RP 不可靠 |
-| **T2 原 Context 预分配 + 每候选 Provider wire 再计数（已选）** | 先由原 Context Compiler/RunControl 分配合法 evidence/minima/caps/safety margin，然后经真实 ProviderPort 的 `countTokens` 对 final wire（含工具/JSON schema/前缀/输出预留）核算；另记录缓存真实 usage，不把 cache hit 预估当准入余额| 复用现有两条路径并补足 D4 binding/currentness/evidence 一致性，绝不新建预算账本 |
-| **T3 预测模型弹性超配 token** | 先猜平均缓存命中/压缩效果再允许超出 Provider context ||
-
-T2 需分别报告 context candidate/selected/prompt-prefix/tools/output reserve/provider final input/actual usage；Token 估算是**计数方法的证据等级**，不是“精确”保证。对 Anthropic/Gemini 等采用 byte upper bound 的现行 adapter，应如实说明是保守上界，允许按真实 Provider 可用 token-counter 升级；不能把本地 `cl100k_base` 强用于所有模型。Model 容量之外还有 V3 父子 Run 费用与调用次数，按原 Native Compute/TaskScheduler admission，不因缓存预测或文学质量调优透支账本。
-
-## 7. 第五轮组合与来源
-
-来源仅供 D5 架构取舍，**不是 Atria 当前实测证明**：
-- [OpenAI Prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching)：前缀/breakpoint 与 Provider 上报使用量；
-- [Anthropic Prompt caching & tools](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-use-with-prompt-caching)：tools→system→messages 的缓存层级、工具变化导致的前缀失效。
-- [Gemini Context caching](https://ai.google.dev/gemini-api/docs/caching)：implicit/explicit 模型及 API 差异、usage metadata，不应宣称所有型号都支持相同模式。
-- [OpenAI Reasoning](https://developers.openai.com/api/docs/guides/reasoning)：opaque reasoning continuation 保留协议身份，不等于可任意跨 Actor/Branch 使用的公共上下文。
-
-## 8. 实现落点
-
-在原 Program/Stage/Module、ContextPort/Compiler、Provider lowering 和预算服务内完成显式顺序、Anchor、exact derive 与 Contribution；Preview、编辑器、Package freeze 与导入导出同步消费。已有可信 Program selection／Typed lowering 按[功能依赖](e0-audit.md)与 V3 整合，不重建 Compiler 或发送链。
-
-独立作者的样例预览与手动试读属于产品操作，沿原 Host 提供；不自动调用模型或把 Provider／缓存／质量矩阵当实施阶段。
+缓存仅使用作者编排和合法 Adapter 结果自然形成的前缀；不为缓存重排条目、不增加第二缓存服务。支持的 cache 参数沿原 Generation/Connection 呈现，实际命中读取 Provider usage。

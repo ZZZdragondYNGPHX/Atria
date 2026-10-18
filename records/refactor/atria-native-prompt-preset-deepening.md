@@ -343,3 +343,14 @@
 - 修正两项功能矛盾：base/candidate 可以是不同 Program/Module 修订，Diff 固定的是来源与执行环境；历史口头承诺的不确定性不能消除原领域仍有效的正式债务，NPC 遗忘或 Context 未召回不改世界状态。
 - 补齐前端正文遗漏的 S16–S22：Source、作品 UI 编辑、Assets、作品预览、手动 Simulation、构建下载、项目删除；排除 P-03 旧编排折叠过渡区，保留原生有效功能。三端说明改为具体操作要求，不作为测试矩阵。
 - 本轮仅阅读／编辑文档及读取 Git 状态与历史；未修改产品代码、未合分支，未执行测试、验证／检查脚本、构建、浏览器、模型或 Provider 请求。既有并行文档提交与其它工作空间保持；历史实际结果不回标。
+
+## 2026-10-18 — 从当前代码检查并精简前端／提示词方案
+
+- 用户要求在 Claude 完成原生编排收尾期间，先全面分析相关代码，再判断前端／提示词方案并直接剔除强调安全边界、测试、审计和防御性扩张的内容。本次只改方案和本 Record，没有修改产品工作树或向其他聊天发消息。
+- 本地读取 main `6b6ddde4d`、Prompt `760327891`、V3 `532805fbb`。V3 工作树含并行未提交修改，只读对照，未将其视为已提交交付。
+- 代码分析覆盖 Shell/Navigation/Workspace、Library/Preset/PromptEditor、Studio 各视图与 Source/Frontend、Play 生成、Runtime 客户端、Program schema/flatten/Compiler/SemanticBlocks、Context、Provider、Draft Preview、Preset 导入/Fork/Package freeze、V3 PlanDraft/Inspector/ModelPort/各域准备及候选关联。范围是相关入口与关键实现、直接调用点，不声称整个仓库逐行读完。
+- `baseline.md` 改为当前源码剖析，记录 18 项 Before/After：expressionRank 与 UI 排序差异、Stage 展开和 target 投影、derive 的条目定位、Anchor/schema 缺口、Context 重复消费、已有 Typed IR、跨修订 Diff、三次编译、新资源 overlay、无游戏 source、schema 与原文、编辑历史、多修订分享、freeze/Fork 联动、Plan 生命周期、已挂载 V3、视觉输入与固定提示词累加。
+- 主方案及 D2–D8、后端分工、依赖和研究背景精简为功能与接线，移除重复安全论述、历史 Gate/E0 队列及独立验证工程；保留作者原文、角色差异、玩家操作、exact 资源、三层预览、模板、发行、可选反馈、图像作者与全产品范围。
+- 前端实施输入、入口、组件和操作链更新到已有 V3 Plan/Run/Binding 页面与 API。旧四份 189 组盘点降为功能定位资料，不沿用旧状态及执行性要求。外部 HTML 原件保留，未替用户改变审美选择。
+- 对两个已提交分支执行 `git merge-tree --write-tree --name-only --no-messages`，得到 9 个内容冲突：6 个产品／实现文档路径和 3 个已有用例路径。没有合并分支或改工作树；未提交的 Claude 工作不在计算内。后续以其最终源码组合 `orchestrationSend` 和 `programSelection`。
+- 本轮没有运行产品测试、构建、浏览器、模型或 Provider 请求。20 份变更 Markdown 的相对文件链接均存在，git diff --check 通过；当前提示词方案正文与五份前端实施文档的安全／审计／测试／防御／Gate／验证关键词查询无命中。旧盘点和历史 Record 保留其事实，不作为新实施任务。

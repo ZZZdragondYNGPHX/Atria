@@ -1,59 +1,41 @@
-# Atria 提示词／行为深化与全产品前端重构（唯一入口）
+# Atria 提示词／行为深化与全产品前端重构
 
-Task ID：`refactor/atria-native-prompt-preset-deepening`。产品设计已收口，功能尚未全部实现；产品源码在同名任务分支，文档在独立 `docs` 工作空间。实际进展记入[同一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md)。本次仅整理企划，不启动产品开发。
+Task ID：`refactor/atria-native-prompt-preset-deepening`。本方案定义后续实现；实际结果归[同一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md)。
 
-## 要交付的用户能力
+## 要交付的能力
 
-| 用户 | 操作与结果 | 实现归属 |
-| --- | --- | --- |
-| 独立提示词作者 | 无需建游戏，在 Library 新建／编辑 Program、Module、Generation；可从空白或官方任务模板开始 | 原 Library 资源与修订服务 |
-| 专业作者 | 结构化与完整原文编辑同一草稿；编排 Stage、Module、Anchor；查看继承与差异，保存原文和自定义内容 | 原 Authoring Draft、Program/Module、PromptCompiler |
-| 游戏作者 | Studio 选择现成预设并钉定版本，按需 Fork／Derive；无需自行写一套 Prompt | 原 Project/Package、Route 与资源引用 |
-| 调整预设的作者 | 按需看 Authored／Effective／Provider Wire、来源和 Diff；可手动选择模型与预算试读 | 原 Host、Context、Compiler、Provider、Compute |
-| 分享资源的作者 | 导出可编辑依赖包，导入时映射本地身份；手动处理升级与私人修改冲突 | 原 Preset/Library import/export、Revision/CAS |
-| 视觉作者 | 独立编辑 Image Target、Rendering、风格／模板，并由原视觉系统持有试生成任务与图片 | 原 ImagePromptIR、Visual Job/Asset；独立于文本 Compiler |
-| 玩家 | 使用作品允许的预设选择与覆盖，保留角色声音、剧情连续性、玩家自主权及合法成熟虚构表达 | 原 Play、Session、Information/Memory、Generation |
-| 全产品用户 | Library、Play、Studio、Agents、Runtime 与设置／媒体／存储等完整能力采用统一前端，桌面和手机均可操作 | 原 Shell 与各领域服务 |
-
-## 实现主线
-
-1. **整合已有后端**：保留 Prompt 的可信 Program selection、Typed SemanticBlocks、Draft Preview，以及 V3 的真实角色、Source、费用、Result、Receipt 与业务提交。处理实际共改接口，不按旧快照重写已完成能力。
-2. **实现单一编排语义**：Stage 的显式顺序；同一合法 target 内 ModuleRef/Anchor 一份顺序；exact 父修订加显式差异；替换／禁用保留原位置，新增指定插入点。同步 Compiler、编辑器、Preview、Package freeze 和导入导出，不保留 `priority` 与新序列竞争。
-3. **接通独立作者**：Library/Studio 共用编辑器；提供无需 Session 的受限样例上下文、无发送预览、按需付费试读和少量可编辑模板。
-4. **实现发行与采用**：分享包的可编辑依赖、本地身份映射、Fork/Derive、三方升级差异及 exact 消费者更新。保存、导出、发布、采用是不同动作。
-5. **完成全产品前端**：沿[统一前端交接](../../architecture/atria-frontend-audit/claude-code-frontend-prompt.md)接入现有功能与新增作者流程；189 组是旧功能盘点，不是新增功能上限。旧编排入口随原生替代接通一起清退。
-6. **接入可选质量与视觉功能**：Quality/Evolution 按原服务提供反馈、候选、Review/发布；非 Session 图像任务由原视觉领域接入。各依赖只影响相应操作，不让质量认证材料拖住编辑、保存、分享和普通生成。
-
-具体接口落点见[后端实施](backend-implementation.md)，尚需接线的功能见[实现依赖](e0-audit.md)。各步骤按实际依赖推进，可独立实现的页面和功能继续做。
-
-## 已确认的设计边界
-
-- **D1/D2**：深化原 Native Prompt/Behavior/Expression；完整作者指令与结构化控制并存，尊重合法成年虚构创作。Provider 明确限制与文学偏好分开，内容拒绝不静默跨供应商重发。
-- **D3**：表达与身份／认知分开；默认严格保留玩家自主权，有限叙述委托须来自原授权。普通 RP 单 Narrator 优先，精修与 Judge 是按需能力。
-- **D4**：V3 Node 精确绑定 Program/Route；Host 构造可信选择，fallback 保持有效 Program、工具与输出语义。
-- **D5**：Typed SemanticBlocks、合法 Provider lowering、显式顺序、受控 Anchor、请求级 Contribution、exact 增量继承、原 Context/Provider 双阶段预算。
-- **D6**：先按 Source/Actor/Audience/Branch/Revision 授权，再选择上下文；当前事实、历史、角色信念、传闻与假设分别表达。长会话保留必要因果、承诺和角色声线。
-- **D7**：原 Quality/Evolution 提供可选多维反馈与受控候选发布；质量未知不冒充认证，认证不是普通创作入口的前置条件。
-- **D8**：Library/Studio/Play 共用资源、同一草稿双编辑、三层预览与 Diff、按需 Inspector、Windows/CachyOS/Android Termux 功能等价。视觉外观按用户提供的设计材料及其实际批准范围执行。
-- **单一权威、原生硬切**：不重建 World/Memory/Context/Secret/预算／Run 服务；不迁移 ST、旧 Workspace/Director/Loop/Agenda，不做双轨或旧 sender 回退。保留其中有效的 Memory、Goals、Experience、Visual Director 等能力。
-
-## 两案衔接
-
-动态世界重构提供正式事实、有效时间、Subject/Perspective 和受众视图；本案负责消费这些数据并编译 Prompt。当前提示词和全产品前端继续实现，不等待尚在暂停的世界企划。后续世界模块接入原 Context/Information 和相同前端组件，不再建立第二编译器或另起一套 Shell。
-
-## 按功能阅读
-
-| 模块 | 内容 |
+| 使用者 | 操作与结果 |
 | --- | --- |
-| [decisions.md](decisions.md) | 跨模块已确认选择 |
-| [creative-injection.md](creative-injection.md)／[narrative-behavior.md](narrative-behavior.md) | 作者控制、文学表达、角色行为与玩家自主权 |
-| [agent-behavior-binding.md](agent-behavior-binding.md) | Node/Program/Route 与 exact 继承 |
-| [semantic-ir-lowering.md](semantic-ir-lowering.md) | 编排、Contribution、Typed IR、Provider 与预算 |
-| [context-memory-consumption.md](context-memory-consumption.md) | 受众、认识状态、长会话 |
-| [preset-studio-experience.md](preset-studio-experience.md) | 独立作者与 Library/Studio/Play 操作 |
-| [quality-evolution.md](quality-evolution.md) | 产品内可选 Quality/Evolution 功能 |
-| [backend-implementation.md](backend-implementation.md)／[e0-audit.md](e0-audit.md) | 实现归属与功能依赖 |
-| [前端资料](../../architecture/atria-frontend-audit/index.md) | 现有功能、操作链、跨端要求、外部参考 |
-| [baseline.md](baseline.md)／[research.md](research.md) | 需要追溯时读取的旧源码与研究背景 |
+| 独立作者 | 在 Library 从空白或模板创建 Program、Module、Generation；编辑、样例预览、手动试读与分享，无需建游戏 |
+| 专业作者 | 同一草稿的字段、完整 JSON 与 Module 原文编辑；Stage/Module/Anchor 编排、exact 继承、三层预览和版本差异 |
+| 游戏作者 | Studio 直接采用现成预设，选择固定修订，按需 Fork/Derive、升级和处理私人修改 |
+| 玩家 | 在作品提供的选项中调整预设和表达；保留角色差异、剧情连续性与玩家自主权 |
+| 视觉作者 | 编辑 Image Target/Rendering/风格模板，经原视觉服务试生成并管理图片 |
+| 全产品用户 | Library、Play、Studio、Agents、Runtime、设置、媒体与存储采用同一前端体系，手机具备完整操作 |
 
-企划的工作项以功能和接线为单位。历史 E0/Gate、固定 SHA、测试数量和审计记录不构成新的实施前置；不安排独立审查、测试矩阵或验证项目。产品内的预览、连接检测、付费试读、Quality/Eval 是用户可选功能，不因此自动运行工程测试或模型任务。
+## 实现路线
+
+1. **接续已有实现**：以完成收尾后的 V3 为集成底座，合入 Prompt 分支已有的 Program selection、SemanticBlocks 与 Draft Preview；V3 的原 ModelPort、费用与业务结果链继续使用。具体代码现状见[源码剖析](baseline.md)。
+2. **打通编排语义**：Stage 数组决定展开顺序；同 target 的 Module/Anchor 使用一份显式序列。同步继承、Compiler、编辑器、预览、导入导出与 Package freeze；移除 `priority`、expression layer、ID 对作者顺序的隐式重排。
+3. **完成作者工作流**：共用编辑器、默认模板、无游戏样例上下文、无发送预览、手动试读、跨修订 Diff。日常编辑优先呈现正文，来源与 Wire 按需展开。
+4. **完成分享与采用**：分享包保留可编辑依赖；完整 exact ref 映射本地身份；处理私人派生与上游升级差异，分别反馈保存、导出和采用结果。
+5. **完成全产品前端**：沿[前端实施输入](../../architecture/atria-frontend-audit/claude-code-frontend-prompt.md)改造既有 Shell 与领域页面；复用 V3 已有 Graph/List/Inspector、Run Timeline 和客户端。189 组旧盘点用于查漏，新增作者功能另行补齐。
+6. **接入可选功能**：Quality/Evolution 和非 Session 图像任务各接原服务；普通编辑、分享和生成独立可用。
+
+## 设计决定
+
+| 模块 | 决定与阅读内容 |
+| --- | --- |
+| [decisions.md](decisions.md) | D1–D8 与跨模块选择索引 |
+| [creative-injection.md](creative-injection.md) | 完整作者表达、模板、Provider 响应 |
+| [narrative-behavior.md](narrative-behavior.md) | Narrator、角色声音、玩家叙述与稀疏调用 |
+| [agent-behavior-binding.md](agent-behavior-binding.md) | V3 Node 独立 Program/Route 与 exact 继承 |
+| [semantic-ir-lowering.md](semantic-ir-lowering.md) | 显式顺序、Anchor/Contribution、Provider 与 Token |
+| [context-memory-consumption.md](context-memory-consumption.md) | 角色视角、历史／当前事实、长会话 |
+| [preset-studio-experience.md](preset-studio-experience.md) | Library/Studio/Play、共用草稿、预览和发行 |
+| [quality-evolution.md](quality-evolution.md) | 可选反馈、局部候选与采用 |
+| [backend-implementation.md](backend-implementation.md)／[实现依赖](e0-audit.md) | 工作分工、现有接口与尚缺操作 |
+| [源码剖析](baseline.md)／[背景资料](research.md) | 当前调用链、具体差距与参考线索 |
+| [前端入口](../../architecture/atria-frontend-audit/index.md) | 页面能力、操作链、组件与视觉输入 |
+
+沿现有 native ES modules/DOM/CSS、Library/Project 修订、Context、Provider、Compute 与视觉服务实现。旧 ST/Workspace/Director/Loop/Agenda 随原生替代清退；Memory、Goals、Experience、Skills 和 Visual Director 等有效功能继续保留。动态世界方案保持原状态，后续通过原 Context/Information 提供数据。
