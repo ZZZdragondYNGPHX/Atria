@@ -1,5 +1,5 @@
 import { readProjectDelegatedFanoutCompletion } from './project-delegated-fanout-contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as same } from '../repositories/common.js';
 import { readGraphFanoutCompletion } from './graph-fanout-completion.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readPlanRevision } from './plan-repository.js';
@@ -7,15 +7,16 @@ import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt, readModelTerminalFact } from './model-port.js';
 import { readOriginalProjectTask } from './project-tool-receipts.js';
 import { assertBudgetAttemptRef, sendAttemptId } from './budget-port.js';
+import { readGraphJudgeCompletion } from './graph-judge-completion.js';
+import { readProjectDelegatedJudgeCompletion } from './project-delegated-quality-contracts.js';
 import { readGraphPlannerCompletion } from './graph-planner-completion.js';
 import { assertProjectControlWork } from './project-quality-contracts.js';
 import { assertProjectFanoutPlannerOperations } from './project-fanout-planner-contracts.js';
-import { readProjectControlInputs } from './project-control-input-contracts.js';
+import { readProjectControlInputs, projectJudgeReaderOptions } from './project-control-input-contracts.js';
 import { readGraphFanoutInput } from './graph-fanout-completion.js';
 import { readAttempt } from './controller-common.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 
-const same = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original Project Fanout Join facts'); };
 
 async function memberInput(tx, handle, root, attempt, { frame, branch, reservation, settlement }) {
@@ -29,7 +30,7 @@ async function memberInput(tx, handle, root, attempt, { frame, branch, reservati
     const pin = plan.dependencyPins.find(pin => pin.pinId === node?.policy.agentPinId && node.dependencyPinIds.includes(pin.pinId));
     const task = await readOriginalProjectTask(tx, handle, root.sourceBinding.sourceRef);
     const original = task?.attempts.find(item => item.attemptId === input.projectAttemptId);
-    if (root.sourceBinding.sourceAuthority !== 'project' || root.parentRef || !['agent', 'planner'].includes(node?.kind) || !same(node.capabilities, ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []])
+    if (root.sourceBinding.sourceAuthority !== 'project' || root.parentRef || !['agent', 'planner', 'judge'].includes(node?.kind) || !same(node.capabilities, ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []])
         || input.kind !== 'native_project_intent' || input.nodeId !== attempt.nodeId || input.role !== 'studio'
         || !same(input.planRef, root.planRef) || !same(input.sourceRef, root.sourceBinding.sourceRef)
         || input.fanoutAttemptId !== frame.fanoutAttemptId || !branch.scopeNodeIds.includes(node.nodeId)
@@ -109,12 +110,17 @@ export async function assertProjectFanoutMemberCost(tx, handle, root, attempt, {
             || !completed || !same(planner.receipt.modelReceiptRef, completed.receiptRef)) invalid();
         assertProjectFanoutPlannerOperations(frame, attempt, planner.patch.appliedOperations);
     }
+    const judge = root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'judge' && settlement.outcome === 'completed'
+        ? await (root.parentRef ? readProjectDelegatedJudgeCompletion(tx, handle, root, attempt.attemptId)
+            : readGraphJudgeCompletion(tx, handle, root, attempt.attemptId, projectJudgeReaderOptions)) : null;
+    if (judge && (results.length || !same(judge.producer, attempt) || !same(judge.settlement, settlement)
+        || !completed || !same(judge.receipt.modelReceiptRef, completed.receiptRef))) invalid();
     const fact = completed ?? terminal;
     if (!fact || effect.nodeAttemptId !== attempt.attemptId || effect.capability !== 'generation.send' || effect.risk !== 'R1' || effect.requiresApproval
         || effect.sourceBindingDigest !== root.sourceBinding.bindingDigest || effect.epoch !== attempt.epoch || effect.grantDigest !== attempt.effectiveGrantDigest
         || !same(effect.inputRef, attempt.inputRefs[0]) || effect.inputHash !== hash(attempt.inputRefs[0])
         || !same(settlement.effectReceiptRefs, [fact.receiptRef.receiptId])
-        || (planner ? false : results.length ? !completed || settlement.outcome !== 'completed' : terminal?.kind !== (settlement.outcome === 'failed' ? 'rejected' : 'late_response'))) invalid();
+        || (planner || judge ? false : results.length ? !completed || settlement.outcome !== 'completed' : terminal?.kind !== (settlement.outcome === 'failed' ? 'rejected' : 'late_response'))) invalid();
     const sends = fact.observation.dispatchEvidence.reference.attempts;
     if (!sends?.length) invalid();
     for (const [ordinal, send] of sends.entries()) {

@@ -42,7 +42,8 @@ export function sessionReplanRequirements(root, profile, completion, scope) {
     const closed = new Set(completion.keys());
     for (const group of profile.fanouts) if (closed.has(group.join.nodeId) && !scope.affectedNodeIds.includes(group.join.nodeId))
         for (const branch of group.branchScopes) for (const id of branch.scopeNodeIds) closed.add(id);
-    const remaining = profile.steps.filter(node => !closed.has(node.nodeId) || scope.affectedNodeIds.includes(node.nodeId));
+    const remaining = profile.steps.filter(node => root.nodeControl[node.nodeId]?.disposition !== 'cancelled'
+        && (!closed.has(node.nodeId) || scope.affectedNodeIds.includes(node.nodeId)));
     return { requests: remaining.filter(node => ['agent', 'planner', 'review', 'judge'].includes(node.kind)).length,
         attempts: remaining.length + 1 };
 }
@@ -90,7 +91,11 @@ export async function readSessionReplanHistory(tx, handle, root, { graphResults,
                 await assertOutputTransition(tx, handle, root, { published: direct[0], additionalProducers: direct.slice(1), output: fact.producer,
                     producerBindings: ordered, allowLoopBack: !!loops.length,
                     receipt: { decisionSeq: fact.receipt.decisionSeq, traversalReceiptRef: { runId: root.runId, receiptId: traversalId } } });
-            } else if (!snapshot.graph.entryNodeIds.includes(node.nodeId)) invalid();
+            } else if (!snapshot.graph.entryNodeIds.includes(node.nodeId)) {
+                const incoming = snapshot.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === node.nodeId);
+                if (!incoming.length || incoming.some(edge => node.inputs.find(port => port.name === edge.to.port)?.required
+                    || snapshot.nodeControl[edge.from.nodeId]?.disposition !== 'cancelled')) invalid();
+            }
         }
         entries.push({ fact, input, node, sources, trigger, snapshot });
     }

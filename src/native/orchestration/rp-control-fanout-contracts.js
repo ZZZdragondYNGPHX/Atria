@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as same } from '../repositories/common.js';
 import { readGraphFanoutCompletion } from './graph-fanout-completion.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt, readModelTerminalFact } from './model-port.js';
@@ -12,7 +12,6 @@ import { assertBudgetAttemptRef, sendAttemptId } from './budget-port.js';
 import { readGraphPlannerCompletion } from './graph-planner-completion.js';
 import { assertRpFanoutPlannerOperations } from './rp-fanout-planner-contracts.js';
 
-const same = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original RP control Fanout Join facts'); };
 
 async function memberInput(tx, handle, root, attempt, { frame, branch, reservation, graphSnapshot, plan }) {

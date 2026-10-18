@@ -2,15 +2,28 @@ import { equalNativeDocuments as equal } from '../repositories/common.js';
 import { nodeModelRoutePins, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { delegatedRpSourcePins } from './delegated-source-contracts.js';
 import { rpControlReplanScope, rpControlFanoutGroups } from './rp-control-graph.js';
+import { audienceContextPin } from './audience-source-contracts.js';
 
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_rp_child_control_unavailable'), { code: 'native_orchestration_rp_child_control_unavailable' }); };
+
+/** A published Actor source is delegable only when this exact parent Node
+ * explicitly owns the same original pin. It is never a Narrator-wide grant. */
+export function assertRpDelegatedAudiencePin(parentNode, parentPins, node, childPins) {
+    const pin = audienceContextPin(node, childPins);
+    if (!pin) { if (node.policy.audiencePinId !== undefined) fail(); return null; }
+    if (pin.resourceRef.kind !== 'native_information_context' || pin.resourceRef.audience.kind !== 'actor'
+        || !parentPins.some(parent => parent.port === 'context' && parentNode.dependencyPinIds.includes(parent.pinId)
+            && parent.integrity === pin.integrity && equal(parent.resourceRef, pin.resourceRef))) fail();
+    return pin;
+}
 
 /** Published task-local pure Model DAG. Source, Route, Scheduler and held child
  * bank admission stay in the original captured delegation, not this shape. */
 export function rpDelegatedControlProfile(plan) {
     const graph = plan.definition, planners = graph.nodes.filter(node => node.kind === 'planner');
     if (!graph.nodes.some(node => ['planner', 'review', 'judge'].includes(node.kind))
-        && graph.nodes.filter(node => node.kind === 'agent').length < 2) return null;
+        && graph.nodes.filter(node => node.kind === 'agent').length < 2
+        && !graph.nodes.some(node => audienceContextPin(node, plan.dependencyPins))) return null;
     const models = graph.nodes.filter(node => ['agent', 'planner', 'review', 'judge'].includes(node.kind)), agents = models.filter(node => node.kind === 'agent');
     const passive = graph.nodes.filter(node => ['fanout', 'join'].includes(node.kind)), pure = [...models, ...passive];
     const outputs = graph.nodes.filter(node => node.kind === 'output'), output = outputs[0], sources = delegatedRpSourcePins(plan);
@@ -20,13 +33,17 @@ export function rpDelegatedControlProfile(plan) {
         || output.inputs.length !== 1 || !output.inputs[0].required || output.inputs[0].type !== 'text'
         || !equal([...graph.capabilityCeiling].sort(), ['generation.send', ...planners.length ? ['graph.patch'] : []].sort())
         || planners.length && !graph.graphChangePolicy.allowedOperations.length || graph.graphChangePolicy.allowedNodeKinds.some(kind => kind !== 'agent')
-        || graph.graphChangePolicy.allowedOperations.some(op => !['addNode', 'addEdge', 'setPendingPriority', 'markBlocked', 'requestReplan', 'requestFinalize'].includes(op))) fail();
+        || graph.graphChangePolicy.allowedOperations.some(op => !['addNode', 'addEdge', 'setPendingPriority', 'cancelPending', 'markBlocked', 'requestReplan', 'requestFinalize'].includes(op))) fail();
     const incoming = {}, ordered = [];
     for (const node of models) {
-        const routes = nodeModelRoutePins(node, plan.dependencyPins), sourcePins = sources.filter(pin => node.dependencyPinIds.includes(pin.pinId));
+        const routes = nodeModelRoutePins(node, plan.dependencyPins), sourcePins = sources.filter(pin => node.dependencyPinIds.includes(pin.pinId)),
+            audience = audienceContextPin(node, plan.dependencyPins);
         if (!equal([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []].sort())
             || node.outputs.length !== 1 || node.outputs[0].type !== (node.kind === 'agent' ? 'text' : 'json')
-            || !routes.length || sourcePins.length !== sources.length || node.dependencyPinIds.length !== routes.length + sourcePins.length
+            || !routes.length || sourcePins.length !== (audience ? 0 : sources.length)
+            || audience && (audience.resourceRef.kind !== 'native_information_context' || audience.resourceRef.audience.kind !== 'actor')
+            || node.policy.audiencePinId !== undefined && !audience
+            || node.dependencyPinIds.length !== routes.length + sourcePins.length + Number(!!audience)
             || node.inputs.some(port => !['text', 'json'].includes(port.type) && !(port.type === 'task.result'
                 && graph.edges.some(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name && passive.some(source => source.kind === 'fanout' && source.nodeId === edge.from.nodeId))))) fail();
         incoming[node.nodeId] = graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === node.nodeId);
@@ -65,7 +82,7 @@ export function rpDelegatedControlProfile(plan) {
         if (!next) fail(); ordered.push(next);
     }
     for (const loop of graph.edges.filter(edge => edge.loopBack)) rpControlReplanScope(graph, loop.from.nodeId);
-    const fanouts = rpControlFanoutGroups(graph, terminal.nodeId);
-    if (fanouts.some(group => group.branches.some(branch => branch.scopeNodeIds.some(id => !['agent', 'planner'].includes(graph.nodes.find(node => node.nodeId === id).kind))))) fail();
+    const fanouts = rpControlFanoutGroups(graph, terminal.nodeId, ['agent', 'planner', 'judge']);
+    if (fanouts.some(group => group.branches.some(branch => branch.scopeNodeIds.some(id => !['agent', 'planner', 'judge'].includes(graph.nodes.find(node => node.nodeId === id).kind))))) fail();
     return { models, planners, narrator: terminal, output, terminalNodeId: terminal.nodeId, incoming, ordered: ordered.filter(node => models.includes(node)), pure, fanouts };
 }

@@ -1,9 +1,9 @@
 # Skill 管理
 
-編排器面板的**管理 Skills**按鈕打開一個子面板，裡頭可以安裝、編輯、遷移、刪除 Skill。本頁逐一過一遍每個入口。
+在 **Extensions → Skills** 安裝、編輯、移動和刪除 Skill。
 
 ::: tip 在哪裡找
-打開擴充套件抽屜 → **多智慧體編排** 節 → 點面板底部附近的**管理 Skills**。子面板以彈窗形式覆蓋在編排器設定之上。
+在 **Extensions → Skills** 安裝、編輯、移動和刪除 Skill。
 :::
 
 ## 子面板概覽
@@ -11,7 +11,7 @@
 Skill 管理頂部有三個 tab：
 
 - **已安裝** —— 你 `data/<user>/skills/<scope>/` 下有什麼。按作用域過濾（全域 / 預設 / 角色卡）或選**全部**。
-- **瀏覽出廠** —— `default/skills/global/` 自帶的 24 個 Skill，每行顯示你本地副本是匹配、有差異，還是沒裝。
+- **瀏覽出廠** —— `default/skills/global/` 自帶的 Skill，每行顯示你本地副本是匹配、有差異，還是沒裝。
 - **匯入** —— 從檔案、URL，或角色卡 / 預設裡抽出 Skill 的入口。
 
 ![Skill 管理子面板，已安裝 tab](/screenshots/skills/manager-installed-tab.png)
@@ -22,9 +22,8 @@ Skill 管理頂部有三個 tab：
 
 - `name` —— Skill frontmatter 裡的 `name`。點擊打開內嵌編輯器。
 - `description` —— frontmatter 裡的一行摘要。
-- `scope` —— 作用域 chip（`global` / `preset/<api>/<name>` / `character/<file>`）。
+- `scope` —— 作用域 chip（`global` / `project/<id>` / `package/<id>/<version>` / `preset/<name>` / `character/<file>`）。
 - `size` —— 檔案數 + 總位元組數。
-- **被參照** —— 當前編排器 profile 中可見清單參照了該 Skill 的 agent 數量 chip。
 
 行內動作（右側）：
 
@@ -32,9 +31,9 @@ Skill 管理頂部有三個 tab：
 |---|---|
 | **檢視** | `SKILL.md` 的唯讀 Markdown 渲染。 |
 | **編輯** | 打開內嵌編輯器（見下文 [內嵌編輯器](#內嵌編輯器)）。 |
-| **遷移到……** | 原子級跨作用域 move。參照（僅按名字）依然有效。 |
-| **改名** | 在當前作用域內原子改名。目錄與 frontmatter `name` 同步更新。指向舊名的參照變灰（見 [失效參照](#失效參照)）。 |
-| **刪除** | 刪除 Skill 目錄。參照繼續變灰，而不是阻斷派遣。 |
+| **遷移到……** | 原子級跨作用域 move。移動後重新核對選擇和精確 pin。 |
+| **改名** | 在當前作用域內原子改名。目錄與 frontmatter `name` 同步更新。更新仍使用舊名稱的消費者。 |
+| **刪除** | 刪除 Skill 目錄；重用前核對消費者和 pin。 |
 
 ### 批次選擇
 
@@ -52,7 +51,7 @@ Skill 管理頂部有三個 tab：
 
 ![瀏覽出廠，混合狀態](/screenshots/skills/manager-bundled-tab.png)
 
-tab 頂部的**全量匯入出廠**按鈕，是對每個「未安裝」或「有差異」行點**安裝**的便捷等價 —— 它會用出廠版本**覆蓋**全部 24 個出廠 Skill。
+tab 頂部的**全量匯入出廠**按鈕，是對每個「未安裝」或「有差異」行點**安裝**的便捷等價 —— 它會用出廠版本**覆蓋**所選內建 Skill。
 
 ::: warning 覆蓋是破壞性的
 全量匯入出廠不會合併 —— 它直接覆蓋。如果你本地改過 `event-summary-rules-zh`，匯入出廠版本會沖掉你的修改。按鈕標籤會在點擊前明確告訴你即將覆蓋多少個同名 Skill。
@@ -86,7 +85,7 @@ URL 匯入器有意做窄 —— 它只抓一份 Markdown 檔案。再複雜（�
 
 對話框逐項列出每個嵌入的 Skill 及其衝突狀態。對每個衝突，你可選**跳過**（保留本地版本）或**替換**（用嵌入裡的版本）。內容相同的項（`相同`）會靜默不操作；新條目（`新`）直接安裝。
 
-抽取後角色卡 / 預設磁碟檔案裡的嵌入負載被移除 —— Skill 現在住在 `skills/character/<file>/` 或 `skills/preset/<api>/<preset>/` 裡。這樣避免「過期嵌入」陷阱：內聯負載與已落地的檔案版本不一致。
+抽取後角色卡 / 預設磁碟檔案裡的嵌入負載被移除 —— Skill 現在住在 `skills/character/<file>/` 或 `skills/preset/<preset>/` 裡。這樣避免「過期嵌入」陷阱：內聯負載與已落地的檔案版本不一致。
 
 ## 內嵌編輯器
 
@@ -102,16 +101,11 @@ URL 匯入器有意做窄 —— 它只抓一份 Markdown 檔案。再複雜（�
 
 `SKILL.md` 是特殊的 —— 你能編輯它但不能從編輯器裡刪它（它是必需入口）。Skill 本身可透過行內動作整體刪除。
 
-::: tip 不想手動改？
-[AI 迭代工作台](/zh-TW/features/native-orchestration#用工作台編寫-skill) 也能替你寫和修改 Skill —— 用一句話描述變更，工作台透過相同的安裝路徑起草。要新建一個 Skill、或者把已有 Skill 重寫一遍而不想自己敲 Markdown 時很省事。
-:::
-
 ## 嵌入匯出 —— 到預設和角色卡
 
 Skill 在跟它所依賴的產物（角色卡、預設）一起分發時最有用。某張角色卡需要某條口吻規則，某個預設是為特定子代理調出來的 —— 兩者都能把 Skill 內聯打包。
 
 ### 打包進預設
-
 
 
 打包器把這些 Skill 寫進預設的 `extensions.atria.embedded_skills_source` 欄位。下一次儲存預設時，嵌入隨 JSON 一起被持久化。其他 Atria 使用者匯入這份預設時會看到上文描述的嵌入抽取對話框。
@@ -128,7 +122,7 @@ Skill 在跟它所依賴的產物（角色卡、預設）一起分發時最有�
 
 透過行內動作**遷移到……**，你隨時可以把 Skill 從 `global` → `preset` → `character`（或反向）挪。遷移是一次原子檔案系統重新命名 —— 沒有拷貝，沒有中間狀態。
 
-這為什麼安全：編排器 profile 只按**名字**參照 Skill，永遠不帶作用域前綴。名為 `voice-rules` 的 Skill 不管當前在哪個作用域，都按後者優先（character > preset > global）解析。遷移不破壞任何參照；它只改變 Skill 何時可見。
+作用域決定目前消費者選中哪些內容。移動可能改變優先級或使目前上下文無法使用它；移動後應核對選擇並更新精確 pin。
 
 典型遷移：
 
@@ -138,15 +132,11 @@ Skill 在跟它所依賴的產物（角色卡、預設）一起分發時最有�
 
 ## 失效參照
 
-當你改名或刪除某個被編排器 profile 參照的 Skill，profile 的 `skills.visible` 清單仍然保留舊名。執行時找不到它，於是 agent 靜默看不到（沒有錯誤、沒有阻斷派遣）。
-
-在編排器設定編輯器裡，失效參照變灰，並帶 tooltip **「該 Skill 未安裝」**。兩次點擊就能修：要麼在 profile 裡改名，要麼重新加上這個 Skill。
-
-這種「軟失敗」紀律是有意的。它意味著：缺失的 Skill 永遠不會阻斷 agent 派遣；增加 / 刪除 Skill 不需要同步編輯 profile。
+移動、改名或刪除 Skill 後，應核對呼叫設定及宣告它的消費者。原生消費者使用精確版本 pin；變更或缺失的 pin 必須先處理再重用。舊 profile 可見清單及靜默派遣行為已不適用。
 
 ## 相關
 
-- [Skills 概覽](/zh-TW/features/skills/) —— 什麼是 Skill、三種作用域
+- [Skills 概覽](/zh-TW/features/skills/) —— 什麼是 Skill、支援的作用域
 - [創作 Skill](/zh-TW/features/skills/authoring) —— 寫自己的
-- [編排器整合](/zh-TW/features/native-orchestration) —— 把 Skill 掛到 profile 上
+- [編排器整合](/zh-TW/features/native-orchestration) —— 目前原生執行邊界
 - [Skill 擴充套件 API](/zh-TW/development/extension-api/skills) —— 從擴充套件程式設計式管理

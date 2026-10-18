@@ -86,11 +86,9 @@ This solves a common pain point: card creators no longer need to ask users to ma
 
 See [Preset System](/basics/presets) and [Card-Bound Presets and Personas](/improvements/card-bound-presets) for details.
 
-### Orchestration Config
+### Native Plans
 
-Character cards can carry dedicated multi-agent orchestration configurations. The orchestrator runs multiple AI agents for plot analysis and planning before each response generation, producing orchestration guidance that's injected into the creative AI's context.
-
-Card creators can design custom orchestration workflows for specific characters and export them along with the character card. Users can use these orchestration configs immediately after importing the card.
+Importing a character card does not create an executable orchestration configuration. Use [Agents → Plans](/features/native-orchestration) to validate and publish a Plan with explicit resource pins and a current Binding. Historical card metadata is preserved without executing the retired protocol.
 
 ### Memory Graph Schema Override
 

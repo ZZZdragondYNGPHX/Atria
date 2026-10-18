@@ -15,11 +15,12 @@ export function sessionDelegatedGraphProfile(plan) {
     const planners = models.filter(node => node.kind === 'planner'), outputs = graph.nodes.filter(node => node.kind === 'output');
     const loops = graph.edges.filter(edge => edge.loopBack), canReplan = graph.graphChangePolicy.allowedOperations.includes('requestReplan');
     const canAddAgent = graph.graphChangePolicy.allowedOperations.includes('addNode') && graph.graphChangePolicy.allowedNodeKinds.includes('agent');
+    const canCancel = graph.graphChangePolicy.allowedOperations.includes('cancelPending');
     if (!models.some(node => node.kind === 'agent') || outputs.length !== 1 || graph.nodes.length !== pure.length + 1
         || graph.outputContract.kind !== 'result' || graph.outputContract.allowPartial || graph.outputContract.resultPolicy?.outputType !== 'text'
         || !equal([...graph.capabilityCeiling].sort(), ['generation.send', ...planners.length ? ['graph.patch'] : []].sort())
         || graph.graphChangePolicy.allowedNodeKinds.some(kind => kind !== 'agent') || (!planners.length ? graph.graphChangePolicy.allowedOperations.length
-        : !graph.graphChangePolicy.allowedOperations.length || graph.graphChangePolicy.allowedOperations.some(op => !['setPendingPriority', 'requestFinalize', 'requestReplan', 'addNode', 'addEdge'].includes(op)))
+        : !graph.graphChangePolicy.allowedOperations.length || graph.graphChangePolicy.allowedOperations.some(op => !['setPendingPriority', 'cancelPending', 'markBlocked', 'requestFinalize', 'requestReplan', 'addNode', 'addEdge'].includes(op)))
         || loops.length && !canReplan
         || graph.nodes.some(node => node.policy.allowedPlanPinIds?.length)) fail();
     const output = outputs[0], incoming = {}, ordered = [];
@@ -30,7 +31,7 @@ export function sessionDelegatedGraphProfile(plan) {
             || !equal(node.capabilities, ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []])
             || node.outputs.length !== 1 || node.outputs[0].type !== (['planner', 'review', 'judge'].includes(node.kind) ? 'json' : 'text')
             || node.inputs.some(port => !['text', 'json'].includes(port.type) && !(port.type === 'task.result' && graph.edges.some(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name && graph.nodes.find(source => source.nodeId === edge.from.nodeId)?.kind === 'fanout'))
-                || !port.required && !canAddAgent && !judges.length && !graph.edges.some(edge => edge.loopBack && edge.to.nodeId === node.nodeId && edge.to.port === port.name)))) fail();
+                || !port.required && !canAddAgent && !canCancel && !judges.length && !graph.edges.some(edge => edge.loopBack && edge.to.nodeId === node.nodeId && edge.to.port === port.name)))) fail();
         if (passive.includes(node) && (node.capabilities.length || node.dependencyPinIds.length
             || node.outputs.length !== 1 || !(node.kind === 'fanout' ? node.outputs[0].type === 'task.result' : ['text', 'json'].includes(node.outputs[0].type)) || node.inputs.some(port => !['text', 'json'].includes(port.type) && !(port.type === 'task.result' && graph.edges.some(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name && graph.nodes.find(source => source.nodeId === edge.from.nodeId)?.kind === 'fanout'))))) fail();
         incoming[node.nodeId] = graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === node.nodeId).toSorted((a, b) => a.edgeId.localeCompare(b.edgeId));
@@ -61,7 +62,5 @@ export function sessionDelegatedGraphProfile(plan) {
             && !(canAddAgent && pin.port === 'model' && pin.resourceRef.scope === 'player' && typeof pin.resourceRef.runtimeRouteId === 'string'))) fail();
     for (const loop of loops) sessionReplanScope(graph, loop.from.nodeId);
     const fanouts = projectFanoutGroups(graph, final.nodeId);
-    // Frozen scope controls use the original scheduling-only Planner proof.
-    if (fanouts.some(group => group.branches.some(branch => branch.scopeNodeIds.some(id => !['agent', 'planner'].includes(graph.nodes.find(node => node.nodeId === id).kind))))) fail();
     return { ordered: ordered.filter(node => models.includes(node)), pure, models, planners, reviews, judges, fanouts, incoming, output, final, terminalNodeId: final.nodeId };
 }

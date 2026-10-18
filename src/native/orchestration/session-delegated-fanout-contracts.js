@@ -7,12 +7,13 @@ import { readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readSessionDelegation } from './session-delegation-contracts.js';
 import { readGraphNodeResults } from './graph-result-contracts.js';
-import { readSessionDelegatedControl } from './session-delegated-quality-contracts.js';
+import { readSessionDelegatedControl, readSessionDelegatedJudgeCompletion } from './session-delegated-quality-contracts.js';
 import { readGraphFanoutCompletion, readGraphFanoutInput } from './graph-fanout-completion.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt, readModelTerminalFact } from './model-port.js';
 import { readRunControl } from '../run-control.js';
+import { assertSessionJudgeSelections } from './session-judge-contracts.js';
 import { readSessionPlannerCompletion } from './session-planner-contracts.js';
 import { assertSessionFanoutPlannerOperations } from './session-fanout-planner-contracts.js';
 import { sessionDelegationResultSources } from './session-delegation-contracts.js';
@@ -55,7 +56,7 @@ export async function readSessionDelegatedFanoutInput(tx, handle, root, producer
     const snapshot = await readTaskGraphRevision(tx, handle, root, producer.graphRevision), node = snapshot.graph.nodes.find(node => node.nodeId === producer.nodeId);
     const branch = frame.branches.find(branch => branch.scopeNodeIds.includes(node?.nodeId)), fanout = (await readAttempt(tx, handle, root, frame.fanoutAttemptId)).doc;
     const pin = lineage.plan.dependencyPins.find(pin => pin.pinId === node?.policy.agentPinId);
-    if (!branch || !['agent', 'planner'].includes(node.kind)
+    if (!branch || !['agent', 'planner', 'judge'].includes(node.kind)
         || !equal([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []].sort()) || input.kind !== 'native_session_delegated_intent' || input.role !== 'narrator' || !equal(input.audience, lineage.parentInput.audience)
         || input.nodeId !== producer.nodeId || input.parentRunId !== root.parentRef.parentRunId || input.parentAttemptId !== root.parentRef.nodeAttemptId
         || input.parentEpoch !== root.parentRef.parentEpoch || input.childRunId !== root.runId || input.childEpoch !== producer.epoch
@@ -73,11 +74,15 @@ export async function readSessionDelegatedFanoutInput(tx, handle, root, producer
     for (const fact of inherited) await readGraphFanoutInput(tx, handle, root, frame.fanoutAttemptId, producer,
         fact.controlRef ?? fact.receipt.resultRef, fact, { historical: true });
     if (facts.some(fact => fact.receipt.decisionSeq >= publicationSeq || fact.record && !fact.record.envelope.audienceConstraint.nodeIds.includes(node.nodeId))) invalid();
+    const judges = facts.filter(fact => fact.selectedResultRef);
+    assertSessionJudgeSelections({ ...root, graph: snapshot.graph }, node, input.acceptedGraphResultRefs, judges);
     const direct = facts.filter(fact => !inherited.includes(fact)), bindings = input.graphBindings;
     if (producer.attemptId === branch.entryAttemptId) {
         if (bindings.length || direct.length) invalid();
     } else {
-        const incoming = snapshot.graph.edges.filter(edge => edge.to.nodeId === node.nodeId && branch.scopeNodeIds.includes(edge.from.nodeId));
+        const incoming = snapshot.graph.edges.filter(edge => edge.to.nodeId === node.nodeId && branch.scopeNodeIds.includes(edge.from.nodeId))
+            .filter(edge => !judges.some(judge => judge.candidates.some(candidate => candidate.producer.nodeId === edge.from.nodeId
+                && !equal(candidate.receipt.resultRef, judge.selectedResultRef))));
         if (!producer.reservationRef || bindings.length !== incoming.length || direct.some(fact => !branch.scopeNodeIds.includes(fact.producer.nodeId))
             || bindings.some(binding => !incoming.some(edge => edge.edgeId === binding.edgeId
                 && direct.some(fact => fact.producer.attemptId === binding.producerAttemptId && fact.producer.nodeId === edge.from.nodeId)))) invalid();
@@ -144,12 +149,16 @@ async function memberCost(tx, handle, root, attempt, { frame, settlement, result
             || !fact || !equal(planner.receipt.modelReceiptRef, fact.receiptRef)) invalid();
         assertSessionFanoutPlannerOperations(frame, attempt, planner.patch.appliedOperations);
     }
+    const judge = root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'judge' && attempt.status === 'completed'
+        ? await readSessionDelegatedJudgeCompletion(tx, handle, root, attempt.attemptId) : null;
+    if (judge && (results.length || !equal(judge.producer, attempt) || !equal(judge.settlement, settlement)
+        || !fact || !equal(judge.receipt.modelReceiptRef, fact.receiptRef))) invalid();
     const bank = (await readRunControl(tx, handle, root.budgetAuthorityRef.sessionId))?.operations[root.budgetAuthorityRef.operationId]?.compute;
     const fees = bank?.attempts.filter(row => row.orchestration?.effectId === effect.effectId), local = bank?.localWork?.filter(row => row.orchestration?.effectId === effect.effectId) ?? [];
     if (!fact || !fees || fees.length !== 1 || [...fees, ...local].some(row => row.reservationId !== root.runId || row.status !== 'settled')
         || effect.capability !== 'generation.send' || effect.nodeAttemptId !== attempt.attemptId || effect.epoch !== attempt.epoch
         || !equal(settlement.effectReceiptRefs, [fact.receiptRef.receiptId])
-        || (attempt.status === 'completed' ? planner ? false : !results.length || settlement.reasonCode !== 'graph_result_published'
+        || (attempt.status === 'completed' ? planner || judge ? false : !results.length || settlement.reasonCode !== 'graph_result_published'
             : attempt.status === 'failed' ? fact.kind !== 'rejected' || fact.outcome !== 'failed' : fact.kind !== 'late_response')) invalid();
 }
 

@@ -13,7 +13,7 @@ import { readEffect } from './effect-contracts.js';
 import { assertResultRecord, resultDependencyDigest } from './result-contracts.js';
 import { modelResultId, resultPublicationReceiptId, assertResultPublicationReceipt, readResultPublication } from './result-publication-contracts.js';
 import { assertDelegationDecision } from './delegate-controller.js';
-import { graphNodeResult, readGraphNodeResult, graphResultPublicationId, readGraphResultPublicationSnapshot } from './graph-result-contracts.js';
+import { graphNodeResult, readGraphNodeResult, graphResultPublicationId, readGraphResultPublicationSnapshot, graphResultAudienceSources } from './graph-result-contracts.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 import { readPlanRevision } from './plan-repository.js';
 import { readSessionDelegatedGraphHistory, sessionDelegationResultSources } from './session-delegation-contracts.js';
@@ -116,7 +116,8 @@ export class ResultController {
                                 sourceAuthority: root.sourceBinding.sourceAuthority, sourceRef: root.sourceBinding.sourceRef },
                             { kind: 'effect_receipt', runId, effectId, receiptId: proof.receiptRef.receiptId, observedEpoch: root.epoch },
                             ...(root.sourceBinding.sourceAuthority === 'native_session'
-                                ? sessionDelegationResultSources(root, record.doc, childPlan) : [])],
+                                ? sessionDelegationResultSources(root, record.doc, childPlan)
+                                : root.sourceBinding.sourceAuthority === 'rp_chat' ? graphResultAudienceSources(root, record.doc, childPlan.dependencyPins) : [])],
                             dependencyDigest: '', audienceConstraint: audience, disclosureConstraint: { kind: 'same_source_parent_only' },
                             qualityRefs: [], status: 'complete', createdAt: now };
                         resultEnvelope.dependencyDigest = resultDependencyDigest(resultEnvelope);

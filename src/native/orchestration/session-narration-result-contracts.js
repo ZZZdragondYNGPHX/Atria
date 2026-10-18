@@ -104,6 +104,7 @@ export async function readSessionNarrationResult(tx, handle, root) {
     for (const id of root.attemptRefs) {
         const attempt = (await readAttempt(tx, handle, root, id)).doc;
         if (root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind !== 'review') continue;
+        if (root.nodeControl[attempt.nodeId]?.disposition === 'cancelled' && !attempt.effectRefs.length) continue;
         const reviewed = await readSessionReviewCompletion(tx, handle, root, id);
         if (!reviewed) invalid(); reviewCompletions.push(reviewed);
     }
@@ -111,6 +112,7 @@ export async function readSessionNarrationResult(tx, handle, root) {
     for (const id of root.attemptRefs) {
         const attempt = (await readAttempt(tx, handle, root, id)).doc;
         if (root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind !== 'planner') continue;
+        if (root.nodeControl[attempt.nodeId]?.disposition === 'cancelled' && !attempt.effectRefs.length) continue;
         const completed = await readSessionPlannerCompletion(tx, handle, root, id);
         if (!completed) invalid(); plannerCompletions.push(completed);
     }
@@ -118,6 +120,7 @@ export async function readSessionNarrationResult(tx, handle, root) {
     for (const id of root.attemptRefs) {
         const attempt = (await readAttempt(tx, handle, root, id)).doc;
         if (root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind !== 'judge') continue;
+        if (root.nodeControl[attempt.nodeId]?.disposition === 'cancelled' && !attempt.effectRefs.length) continue;
         const completed = await readSessionJudgeCompletion(tx, handle, root, id);
         if (!completed) invalid(); judgeCompletions.push(completed);
     }
@@ -173,7 +176,8 @@ export async function readSessionNarrationResult(tx, handle, root) {
     const loopHistory = root.graph.edges.some(edge => edge.loopBack) || reviewedPlanner ? await readSessionReplanHistory(tx, handle, root,
         { graphResults, plannerCompletions, reviewCompletions, judgeCompletions, fanoutCompletions, narrator: { producer, receipt, settlement } }) : null;
     if (graphResults.length) {
-        const incoming = root.graph.edges.filter(edge => edge.to.nodeId === producer.nodeId && !['review', 'planner', 'judge'].includes(root.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind)).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
+        const incoming = root.graph.edges.filter(edge => edge.to.nodeId === producer.nodeId && !['review', 'planner', 'judge'].includes(root.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind)
+            && (root.nodeControl[edge.from.nodeId]?.disposition !== 'cancelled' || narratorNode.inputs.find(port => port.name === edge.to.port)?.required)).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
         const current = [];
         for (const result of graphResults) if (loopHistory ? loopHistory.current.get(result.producer.nodeId)?.producer.attemptId === result.producer.attemptId
             : !await readAttemptInvalidation(tx, handle, root, result.producer)) current.push(result);

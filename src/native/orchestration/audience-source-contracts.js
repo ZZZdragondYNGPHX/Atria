@@ -93,8 +93,9 @@ export async function readAudiencePins(handle, nodes, pins, core) {
 /** Sharing is separate from graph eligibility. Every source projection must
  * be readable by the recipient, including field values and epistemic labels.
  * Missing proof yields a reference-only result, never an inferred disclosure. */
-export async function audienceResultAccess(handle, producer, recipient, pins, core) {
-    const [from, to] = await readAudiencePins(handle, [producer, recipient], pins, core);
+export async function audienceResultAccess(handle, producer, recipient, pins, core, recipientPins = pins) {
+    const [from, to] = recipientPins === pins ? await readAudiencePins(handle, [producer, recipient], pins, core)
+        : [await readAudiencePin(handle, producer, pins, core), await readAudiencePin(handle, recipient, recipientPins, core)];
     if (!from) return !to; // ordinary RP history is not an Actor grant
     if (!to || hash(from.actualRef) === hash(to.actualRef)) return !!to;
     if (from.audience.kind === 'narrator' && to.audience.kind === 'actor') return false; // the RP prefix is separately narrator-scoped

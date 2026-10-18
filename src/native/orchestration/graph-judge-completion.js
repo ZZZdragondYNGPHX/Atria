@@ -12,6 +12,7 @@ import { readContextRetrievalCompletions } from './context-retrieval-contracts.j
 import { readGraphNodeResults } from './graph-result-contracts.js';
 import { assertAudienceRunCapture } from './audience-source-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
+import { readGraphFanoutInput } from './graph-fanout-completion.js';
 
 const invalid = () => { throw new TypeError('Invalid Graph Judge completion facts'); };
 export const graphJudgeModelReceiptId = (runId, attemptId) => 'oreceipt_' + hash({ kind: 'graph_judge_model', runId, attemptId }).slice(0, 32);
@@ -73,7 +74,7 @@ export async function readGraphJudgeCompletion(tx, handle, root, attemptId, { ve
         || receipt.candidateRefs.some(ref => !producer.inputRefs.some(actual => equal(actual, ref)))) invalid();
     if (delegatedRp && (input.parentRunId !== root.parentRef.parentRunId || input.parentAttemptId !== root.parentRef.nodeAttemptId
         || input.childRunId !== root.runId || producer.effectiveGrantDigest !== root.parentRef.effectiveGrantDigest
-        || !equal(input.audience, { kind: 'task', id: root.runId }))) invalid();
+        || !node.policy?.audiencePinId && !equal(input.audience, { kind: 'task', id: root.runId }))) invalid();
     if ((delegatedSession || delegatedProject) && (input.parentRunId !== root.parentRef.parentRunId || input.parentAttemptId !== root.parentRef.nodeAttemptId
         || input.parentEpoch !== root.parentRef.parentEpoch || input.childRunId !== root.runId || input.childEpoch !== producer.epoch
         || input.delegationInputDigest !== root.parentRef.inputDigest || producer.effectiveGrantDigest !== root.parentRef.effectiveGrantDigest)) invalid();
@@ -81,14 +82,18 @@ export async function readGraphJudgeCompletion(tx, handle, root, attemptId, { ve
         const plan = await readPlanRevision(tx, handle, root.planRef);
         assertAudienceRunCapture(root, node, plan.dependencyPins, input);
     }
-    const candidates = [], bindings = [];
+    const candidates = [], bindings = []; let inheritedFrame = null;
     const candidateFacts = await readGraphNodeResults(tx, handle, root, receipt.candidateRefs.map(ref => ref.resultId));
     for (const ref of receipt.candidateRefs) {
         if (ref.runId !== root.runId) invalid();
         const fact = candidateFacts.get(ref.resultId);
         const edges = snapshot.graph.edges.filter(edge => edge.from.nodeId === fact?.producer.nodeId && edge.to.nodeId === producer.nodeId && !edge.loopBack);
         if (!fact || !equal(fact.receipt.resultRef, ref) || !fact.record.envelope.audienceConstraint.nodeIds.includes(producer.nodeId)
-            || !edges.length || fact.receipt.decisionSeq >= receipt.decisionSeq) invalid();
+            || fact.receipt.decisionSeq >= receipt.decisionSeq) invalid();
+        if (!edges.length) {
+            if (!input.fanoutAttemptId) invalid();
+            inheritedFrame = (await readGraphFanoutInput(tx, handle, root, input.fanoutAttemptId, producer, ref, fact, { historical: true })).frame;
+        }
         bindings.push(...edges.map(edge => ({ edgeId: edge.edgeId, producerAttemptId: fact.producer.attemptId })));
         candidates.push(fact);
     }
@@ -105,9 +110,11 @@ export async function readGraphJudgeCompletion(tx, handle, root, attemptId, { ve
     }
     const reservedAttemptId = producer.reservationRef ? producer.attemptId : null;
     const traversalId = 'oreceipt_' + hash({ runId: root.runId, bindings: allBindings, reservedAttemptId }).slice(0, 32);
-    await assertOutputTransition(tx, handle, root, { published: sources[0], additionalProducers: sources.slice(1), output: producer,
+    const directSources = sources.filter(fact => allBindings.some(binding => binding.producerAttemptId === fact.producer.attemptId));
+    if (allBindings.length) await assertOutputTransition(tx, handle, root, { published: directSources[0], additionalProducers: directSources.slice(1), output: producer,
         receipt: { decisionSeq: receipt.decisionSeq, traversalReceiptRef: { runId: root.runId, receiptId: traversalId } },
         producerBindings: allBindings, reservedAttemptId });
+    else if (!inheritedFrame?.branches.some(branch => branch.entryAttemptId === producer.attemptId)) invalid();
     const commandId = controlCommandId('graph.judge.settle', attemptId), command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
     if (!command || command.schemaVersion !== 1 || command.commandId !== commandId || command.operation !== 'runs.control.attempt.settle' || command.target !== root.runId
         || command.payloadHash !== hash({ operation: command.operation, body: { runId: root.runId, operation: 'attempt.settle',

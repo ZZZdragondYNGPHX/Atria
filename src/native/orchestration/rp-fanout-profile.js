@@ -1,9 +1,8 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments as same } from '../repositories/common.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { audienceContextPin } from './audience-source-contracts.js';
 
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_rp_fanout_unavailable'), { code: 'native_orchestration_rp_fanout_unavailable' }); };
-const same = (a, b) => hash(a) === hash(b);
 
 /** One explicit same-Source advisory group using the original Join policies.
  * Other graph shapes do not acquire an implicit RP consumer. */

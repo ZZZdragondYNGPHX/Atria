@@ -127,9 +127,14 @@ export async function readSessionOutput(tx, handle, root) {
         || !equal(Object.fromEntries(Object.keys(intent.budgetAttemptRef).map(field => [field, host.budgetObservationRef[field]])), intent.budgetAttemptRef)) invalid();
     const retrieval = published.retrievalCompletions, retrievalIds = new Set(retrieval.map(item => item.effectId));
     const modelIds = [], effectIds = [], nodes = new Set();
-    if (root.attemptRefs.length < root.graph.nodes.length) invalid();
+    const cancelled = new Set(root.graph.nodes.filter(node => root.nodeControl[node.nodeId]?.disposition === 'cancelled').map(node => node.nodeId));
+    if (root.attemptRefs.length < root.graph.nodes.length - cancelled.size) invalid();
     for (const ref of root.attemptRefs) {
         const attempt = (await readAttempt(tx, handle, root, ref)).doc;
+        if (cancelled.has(attempt.nodeId) && !attempt.effectRefs.length && !attempt.resultRefs.length && attempt.startedAt === null) {
+            if (attempt.status !== 'cancelled' || attempt.endedAt === null || attempt.sourceBindingDigest !== root.sourceBinding.bindingDigest) invalid();
+            nodes.add(attempt.nodeId); continue;
+        }
         const fanoutGroup = published.fanoutCompletions.find(item => item.scopeAttempts.some(member => member.attempt.attemptId === attempt.attemptId));
         const scopeMember = fanoutGroup?.scopeAttempts.find(item => item.attempt.attemptId === attempt.attemptId);
         const fanoutMember = fanoutGroup?.allMembers.find(item => item.attempt.attemptId === attempt.attemptId)
@@ -207,7 +212,7 @@ export async function readSessionOutput(tx, handle, root) {
             modelIds.push(effectId);
         }
     }
-    if (nodes.size !== root.graph.nodes.length) invalid();
+    if (root.graph.nodes.some(node => !nodes.has(node.nodeId) && !cancelled.has(node.nodeId))) invalid();
     if (!equal(closure.effectIds, effectIds.sort()) || !Array.isArray(closure.budgetAttemptRefs)) invalid();
     const ids = new Set();
     for (const ref of closure.budgetAttemptRefs) {

@@ -87,6 +87,9 @@ export async function readSessionDelegationInputs(tx, handle, root, parent, cont
         await assertOutputTransition(tx, handle, { ...root, graph: snapshot.graph }, { published: sources[0], additionalProducers: sources.slice(1), output: parent,
             producerBindings: input.graphBindings, receipt: { decisionSeq: root.eventSeq + 1,
                 traversalReceiptRef: { runId: root.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } } });
-    } else if (incoming.length || !snapshot.graph.entryNodeIds.includes(parent.nodeId)) invalid();
+    } else if (!snapshot.graph.entryNodeIds.includes(parent.nodeId)) {
+        if (!incoming.length || incoming.some(edge => node.inputs.find(port => port.name === edge.to.port)?.required
+            || snapshot.nodeControl[edge.from.nodeId]?.disposition !== 'cancelled')) invalid();
+    }
     return { results, controls };
 }

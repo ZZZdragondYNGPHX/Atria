@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as same } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
@@ -11,7 +11,6 @@ import { readEffect } from './effect-contracts.js';
 import { readModelTerminalFact } from './model-port.js';
 import { rpFanoutProfile } from './rp-fanout-profile.js';
 
-const same = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original RP Fanout Join facts'); };
 
 async function control(tx, handle, root, kind, identity, detail, field, value) {

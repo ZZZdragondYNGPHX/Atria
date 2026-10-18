@@ -1,17 +1,17 @@
 # Skill management
 
-The orchestrator panel's **Manage skills** button opens a subpanel where you install, edit, move, and remove skills. This page walks through each surface.
+Open **Extensions → Skills** to install, edit, move and remove Skills.
 
 ::: tip Where to find it
-Open the Extensions drawer → **Multi-Agent Orchestration** section → click **Manage skills** near the bottom of the panel. The subpanel opens in a popup over the orchestrator config.
+Open **Extensions → Skills** to install, edit, move and remove Skills.
 :::
 
 ## Subpanel overview
 
 The skill manager has three tabs along the top:
 
-- **Installed** — what you have under `data/<user>/skills/<scope>/`. Filter by scope (Global / Preset / Character) or show **All**.
-- **Browse bundled** — the 24 skills shipped under `default/skills/global/`, with each row showing whether your local copy matches, differs, or is missing.
+- **Installed** — what you have under `data/<user>/skills/<scope>/`. Filter by scope (Global / Project / Package / Preset / Character) or show **All**.
+- **Browse bundled** — the Skills shipped under `default/skills/global/`, with each row showing whether your local copy matches, differs, or is missing.
 - **Import** — entry points for installing from a file, from a URL, or by extracting from a character card / preset.
 
 ![Skill manager subpanel, Installed tab](/screenshots/skills/manager-installed-tab.png)
@@ -22,9 +22,8 @@ Each row shows:
 
 - `name` — the skill's frontmatter `name`. Click to open the inline editor.
 - `description` — one-line summary from the frontmatter.
-- `scope` — chip (`global` / `preset/<api>/<name>` / `character/<file>`).
+- `scope` — chip (`global` / `project/<id>` / `package/<id>/<version>` / `preset/<name>` / `character/<file>`).
 - `size` — file count + total bytes.
-- **Used by** — chip count of agents in the active orchestrator profile that reference this skill in their visible list.
 
 Row actions (right side):
 
@@ -32,9 +31,9 @@ Row actions (right side):
 |---|---|
 | **View** | Read-only Markdown render of `SKILL.md`. |
 | **Edit** | Opens the inline editor (see [Inline editor](#inline-editor) below). |
-| **Move to…** | Atomic move to another scope. References (which use name only) stay valid. |
-| **Rename** | Atomic rename within the current scope. The directory and frontmatter `name` update together. References that pointed at the old name turn grey (see [Stale references](#stale-references)). |
-| **Delete** | Removes the skill directory. References continue to grey out instead of breaking dispatch. |
+| **Move to…** | Atomic move to another scope. Recheck the selection and exact pins after moving. |
+| **Rename** | Atomic rename within the current scope. The directory and frontmatter `name` update together; update consumers that still use the old name. |
+| **Delete** | Removes the Skill directory. Check consumers and pins before reuse. |
 
 ### Bulk select
 
@@ -52,7 +51,7 @@ The bundled tab compares your local copy of each shipped skill against what ship
 
 ![Browse bundled, mixed states](/screenshots/skills/manager-bundled-tab.png)
 
-The **Import all bundled** button at the top of the tab is the convenience equivalent of clicking **Install** on every "not installed" or "differs" row — it **overwrites** all 24 bundled skills with the shipped versions.
+The **Import all bundled** button at the top of the tab is the convenience equivalent of clicking **Install** on every "not installed" or "differs" row — it **overwrites** the bundled Skills with the shipped versions.
 
 ::: warning Overwrite is destructive
 Import all bundled doesn't merge — it overwrites. If you've edited `event-summary-rules-zh` locally, importing the bundled version replaces your edits. The button label spells out how many same-named skills will be overwritten before you click.
@@ -86,7 +85,7 @@ When you import a character card (PNG) or preset (JSON) that has an `embedded_sk
 
 The dialog lists every embedded skill with its conflict state. For each conflict, you choose **Skip** (keep your local version) or **Replace** (use the bundled version from the embed). Same-content (`same`) entries are silently no-op. New entries (`new`) install directly.
 
-The embed payload is removed from the character card / preset on disk after extraction — the skills now live in `skills/character/<file>/` or `skills/preset/<api>/<preset>/`. This avoids a "stale embed" trap where the inline payload diverges from the materialized files.
+The embed payload is removed from the character card / preset on disk after extraction — the skills now live in `skills/character/<file>/` or `skills/preset/<preset>/`. This avoids a "stale embed" trap where the inline payload diverges from the materialized files.
 
 ## Inline editor
 
@@ -102,16 +101,11 @@ Writes go through the same `.staging/` discipline as install: the new content is
 
 `SKILL.md` is special — you can edit it but you can't delete it from the editor (it's the required entry point). The skill itself can be deleted from the row action.
 
-::: tip Don't want to hand-edit?
-The [AI Iteration Studio](/features/native-orchestration#authoring-skills-via-iter-studio) can write and modify skills for you — describe the change in a sentence and the Studio drafts it through the same install path. Useful when you want a new skill or a rewrite of an existing one without typing the Markdown yourself.
-:::
-
 ## Embed export — into presets and cards
 
 Skills are most useful when they ship with the artifact that depends on them. A character card that needs a specific voice rule, a preset tuned for a particular sub-agent — both can carry the skills inline.
 
 ### Packing into a preset
-
 
 
 The packer writes the skills into the preset's `extensions.atria.embedded_skills_source` field. On the next preset save the embed rides with the JSON. Other Atria users who import that preset see the embed extraction dialog described above.
@@ -128,7 +122,7 @@ Small text-only skills use `inline-files-v1` format (Markdown content embedded d
 
 You can move a skill from `global` → `preset` → `character` (or back) at any time via the **Move to…** row action. The migration is an atomic filesystem rename — no copy, no temp state.
 
-Why this is safe: orchestrator profiles reference skills by **name only**, never by scope. A skill named `voice-rules` resolves through later-wins precedence (character > preset > global) regardless of which scope it currently sits in. Moving the skill doesn't break any reference; it only changes when the skill is visible.
+Scope determines which content the current consumer selects. Moving a Skill can change precedence or make it unavailable in that context; check selection and refresh exact pins after a move.
 
 Typical migrations:
 
@@ -138,15 +132,11 @@ Typical migrations:
 
 ## Stale references
 
-When you rename or delete a skill that an orchestrator profile references, the profile's `skills.visible` list keeps the old name. The runtime can't find it, so the agent quietly doesn't see it (no error, no blocked dispatch).
-
-In the orchestrator config editor, stale references are greyed out and tooltipped **"skill not installed."** Two clicks fix it — either rename in the profile, or re-add the skill.
-
-This soft-fail discipline is deliberate. It means a missing skill never blocks an agent dispatch, and adding/removing skills doesn't require simultaneous profile edits.
+After moving, renaming or deleting a Skill, check its invocation settings and any consumers that declared it. Native consumers pin exact versions; a changed or missing pin must be resolved before reuse. The retired profile visible-list and silent-dispatch behavior do not apply.
 
 ## Related
 
-- [Skills overview](/features/skills/) — what a skill is, the three scopes
+- [Skills overview](/features/skills/) — what a skill is, available scopes
 - [Authoring skills](/features/skills/authoring) — write your own
-- [Orchestrator integration](/features/native-orchestration) — wire skills to a profile
+- [Orchestrator integration](/features/native-orchestration) — current Native execution boundaries
 - [Skills extension API](/development/extension-api/skills) — programmatic management from extensions

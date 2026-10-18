@@ -131,7 +131,7 @@ export const rpControlJudgeOutputContract = Object.freeze({ name: 'atria_graph_j
     reasonCode: { type: 'string', enum: ['candidate_selected'] } }, required: ['selectedResultRef', 'reasonCode'], additionalProperties: false } });
 
 /** Read-only published branch topology. All admission stays in original controllers. */
-export function rpControlFanoutGroups(graph, finalWorkerId) {
+export function rpControlFanoutGroups(graph, finalWorkerId, modelKinds = ['agent', 'planner']) {
     const groups = [], used = new Set(), joins = new Set();
     for (const fanout of graph.nodes.filter(node => node.kind === 'fanout')) {
         const transfers = graph.edges.filter(edge => edge.from.nodeId === fanout.nodeId && !edge.loopBack);
@@ -142,7 +142,7 @@ export function rpControlFanoutGroups(graph, finalWorkerId) {
                 const id = pending.pop(), node = graph.nodes.find(node => node.nodeId === id);
                 if (scope.has(id)) continue;
                 if (node?.kind === 'join') { ends.add(id); continue; }
-                if (!['agent', 'planner'].includes(node?.kind) || id === finalWorkerId || used.has(id)) fail();
+                if (!modelKinds.includes(node?.kind) || id === finalWorkerId || used.has(id)) fail();
                 scope.add(id);
                 const outgoing = graph.edges.filter(edge => edge.from.nodeId === id);
                 if (!outgoing.length || outgoing.some(edge => edge.loopBack)) fail();

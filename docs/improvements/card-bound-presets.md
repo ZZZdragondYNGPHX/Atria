@@ -50,15 +50,9 @@ If you want an edit to become a standalone local preset instead, use **Save pres
 Prompt Manager, the Chat Completion Preset Assistant (CPA), and any AI iteration flow that lands on `Update current preset` all route through the same dispatch. Iterating a card-bound preset writes back to the card slot without a separate "commit to card" step.
 :::
 
-## Orchestrator agent presets read from the card first
+## Native execution
 
-Multi-agent orchestrator profiles reference the chat completion preset each agent runs on **by name**. When a character with a card-bound set is loaded, agent name resolution walks card slots first, then local presets, then falls back to the global default. This means an orchestrator profile exported with a card ships end-to-end runnable: the recipient does not need to import a matching preset separately.
-
-**Save To Character Override** in the orchestrator drawer inspects the referenced preset names before persisting. If any agent references a preset that is not yet on the card, Atria prompts:
-
-- **Embed all** — write each referenced preset's local body into the card so the orchestrator profile stays self-contained after export.
-- **Save names only** — persist the orchestrator profile but leave the presets un-embedded. Recipients without matching local presets will fall back to the runtime default.
-- **Cancel** — abort the save entirely.
+Native Agent Plans use exact Host-validated resource pins. Card-bound presets remain chat artifacts; importing a card does not publish or bind a Native Plan, grant capabilities, or start work. Historical orchestration overrides carried in card metadata remain inert. See [Native Plans and Runs](/features/native-orchestration).
 
 ## Character cards carrying default personas
 
@@ -71,7 +65,7 @@ Bound personas travel with the card on export, and recipients see the same recom
 
 ## Import and export round-trip
 
-Bound presets, default personas, and orchestrator overrides are all part of the character card data. Standard character export (PNG or JSON) carries them along; standard import restores them. There is no separate file to distribute alongside the card.
+Bound presets and default personas are all part of the character card data. Standard character export (PNG or JSON) carries them along; standard import restores them. There is no separate file to distribute alongside the card.
 
 ## Dependencies
 
@@ -80,5 +74,5 @@ The card-bound preset feature depends on [Preset Decoupling](/improvements/prese
 ## Related
 
 - [Preset Decoupling](/improvements/preset-decoupling) — the field classifier that keeps API credentials out of cards.
-- [Orchestration Presets](/features/native-orchestration) — how orchestrator profiles reference preset names and how Save To Character Override embeds them.
+- [Native Plans and Runs](/features/native-orchestration)
 - [Improvements Overview](/improvements/overview) — the wider improvement set.

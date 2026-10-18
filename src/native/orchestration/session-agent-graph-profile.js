@@ -19,13 +19,14 @@ export function sessionAgentGraphProfile(plan) {
     const delegates = models.filter(node => node.policy.allowedPlanPinIds?.length), patchDelegates = delegates.filter(node => node.capabilities.includes('graph.patch'));
     const patchAuthority = planners.length || patchDelegates.length;
     const controls = graph.nodes.filter(node => ['fanout', 'join'].includes(node.kind)), outputs = graph.nodes.filter(node => node.kind === 'output');
+    const canCancel = graph.graphChangePolicy.allowedOperations.includes('cancelPending');
     if (models.length < 2 && !controls.length) return null;
     const [output] = outputs, incoming = {}, steps = [];
     if (outputs.length !== 1 || graph.nodes.length !== models.length + controls.length + 1
         || graph.outputContract.kind !== 'rp_narration' || graph.outputContract.allowPartial
         || (!patchAuthority && (graph.graphChangePolicy.allowedOperations.length || graph.graphChangePolicy.allowedNodeKinds.length))
         || patchAuthority && (!graph.graphChangePolicy.allowedOperations.length
-            || graph.graphChangePolicy.allowedOperations.some(op => !['addNode', 'addEdge', 'setPendingPriority', 'requestFinalize', 'requestReplan'].includes(op))
+            || graph.graphChangePolicy.allowedOperations.some(op => !['addNode', 'addEdge', 'setPendingPriority', 'cancelPending', 'markBlocked', 'requestFinalize', 'requestReplan'].includes(op))
             || graph.graphChangePolicy.allowedNodeKinds.some(kind => !['agent', 'planner', 'review', 'judge', 'fanout', 'join'].includes(kind)))
         || output.inputs.length !== 1 || output.inputs[0].type !== 'text' || !output.inputs[0].required || output.outputs.length
         || output.dependencyPinIds.length || !equal(output.capabilities, ['chat.output'])
@@ -37,7 +38,7 @@ export function sessionAgentGraphProfile(plan) {
     for (const node of work) {
         incoming[node.nodeId] = graph.edges.filter(edge => edge.to.nodeId === node.nodeId && !edge.loopBack).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
         if (incoming[node.nodeId].length > node.inputs.length || new Set(incoming[node.nodeId].map(edge => edge.from.nodeId)).size !== incoming[node.nodeId].length
-            || node.inputs.some(port => !['text', 'json', 'task.result'].includes(port.type) || !planners.length && !judges.length && !port.required
+            || node.inputs.some(port => !['text', 'json', 'task.result'].includes(port.type) || !planners.length && !judges.length && !canCancel && !port.required
                 || graph.edges.filter(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name).length !== (port.required ? 1 : graph.edges.some(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name) ? 1 : 0))) fail();
         if (models.includes(node)) {
             const pins = nodeModelRoutePins(node, plan.dependencyPins), audience = audienceContextPin(node, plan.dependencyPins);
@@ -70,7 +71,7 @@ export function sessionAgentGraphProfile(plan) {
         if (incoming[fanout.nodeId].some(edge => !planners.some(node => node.nodeId === edge.from.nodeId)) || !['continue', 'fail_fast'].includes(fanout.policy.failurePolicy)) fail();
         const transfers = graph.edges.filter(edge => edge.from.nodeId === fanout.nodeId);
         const branches = transfers.map(edge => models.find(node => node.nodeId === edge.to.nodeId));
-        if (!branches.length || branches.some(node => !node || !['agent', 'planner'].includes(node.kind) || node === narrator || node.policy.allowedPlanPinIds?.length || usedBranches.has(node.nodeId)
+        if (!branches.length || branches.some(node => !node || !['agent', 'planner', 'judge'].includes(node.kind) || node === narrator || node.policy.allowedPlanPinIds?.length || usedBranches.has(node.nodeId)
             || node.inputs.length !== 1 || node.inputs[0].type !== 'task.result' || incoming[node.nodeId].length !== 1)) fail();
         const branchScopes = branches.map(entry => {
             const scope = new Set(), joins = new Set(), pending = [entry.nodeId];
@@ -78,7 +79,7 @@ export function sessionAgentGraphProfile(plan) {
                 const id = pending.pop();
                 if (scope.has(id)) continue;
                 const node = models.find(node => node.nodeId === id);
-                if (!node || !['agent', 'planner'].includes(node.kind) || node === narrator || node.policy.allowedPlanPinIds?.length || usedBranches.has(id)) fail();
+                if (!node || !['agent', 'planner', 'judge'].includes(node.kind) || node === narrator || node.policy.allowedPlanPinIds?.length || usedBranches.has(id)) fail();
                 scope.add(id);
                 for (const edge of graph.edges.filter(edge => edge.from.nodeId === id)) {
                     if (edge.loopBack) fail();

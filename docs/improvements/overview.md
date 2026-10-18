@@ -13,7 +13,7 @@ Atria's improvements over SillyTavern are not simply feature additions, but a sy
 | Feature | [Card-Bound Presets & Personas](/improvements/card-bound-presets) | Character Cards can carry recommended presets and default personas |
 | Feature | [Request Inspector](/improvements/request-inspector) | Tracks the complete lifecycle and token usage of generation requests |
 | Feature | [Preset World Info](/improvements/preset-world-info) | Automatically activates corresponding World Info when switching presets |
-| Feature | [Skills](/features/skills/) | Anthropic-compatible local knowledge packs the orchestrator agents read on demand |
+| Feature | [Skills](/features/skills/) | Anthropic-compatible local knowledge packs for context-appropriate procedural guidance |
 | Infrastructure | [Unified Generation Layer](/improvements/generation-layer) | Unified wrapping and token metering for multi-backend generation requests |
 | Infrastructure | [Performance Optimization](/improvements/performance) | Parallel loading, lazy loading, deferred initialization, and other startup/runtime optimizations |
 | Infrastructure | [WebSocket Proxy](/improvements/ws-proxy) | Persistent WS tunnel transmission with heartbeat keep-alive and stream offset recovery |
@@ -82,9 +82,7 @@ When debugging AI conversations, users often need to know "what exactly was sent
 
 ### Skills
 
-Multi-agent orchestrator profiles tend to grow long system prompts — every reusable writing rule, every critic method, every workflow contract used to sit inline inside `systemPrompt`, often duplicated across several sub-agents. Atria introduces **skills**: Anthropic-compatible local knowledge packs (`SKILL.md` + frontmatter + optional sub-files) the agents read on demand. Skills are addressed by name (no scope prefix in references), live under three scopes (`global` / `preset` / `character`), and resolve with later-wins precedence at dispatch time.
-
-The orchestrator's default director profile ships with 24 bundled skills covering the shared writing rules, the main-agent workflow, and one method skill per sub-agent. The same format is portable both ways with Anthropic's Claude Code — skills round-trip without conversion. Skills can ride with character cards (PNG metadata) or presets (embedded payload), so distributing a card distributes the writing rules that make it work. The skill manager subpanel handles install, edit, scope migration, and embed export; the iter-studio AI can extract reusable rules from long `systemPrompt` text into skills via dedicated tools. See [Skills overview](/features/skills/) for the conceptual model and [Authoring skills](/features/skills/authoring) for the format.
+Skills keep reusable writing and method guidance in `SKILL.md` files with optional supporting files. Manage installed content through **Extensions → Skills**. Global, Project, Package, preset and character contexts select the appropriate content; the current consumer determines invocation and exact version pins. Skills do not grant tools or Source permissions. Original character-card and preset embedding remain available. See [Skills](/features/skills/) and [Authoring skills](/features/skills/authoring).
 
 ## Infrastructure
 

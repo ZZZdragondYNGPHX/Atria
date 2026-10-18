@@ -6,6 +6,7 @@ import { readAttempt, assertAttemptConsumable } from './controller-common.js';
 import { readRpDelegatedInputSources } from './rp-delegated-quality-contracts.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { runGenerationLocalWork } from './generation-local-work.js';
+import { audienceResultAccess } from './audience-source-contracts.js';
 
 const fail = () => { throw new TypeError('Invalid RP delegated control inputs'); };
 
@@ -22,7 +23,8 @@ export class RpDelegatedControlWork extends RpControlGraphWork {
                 || !equal(graph.edges.filter(edge => edge.loopBack), plan.definition.edges.filter(edge => edge.loopBack))) fail();
             return profile;
         };
-        this.canReadControl = async () => true; // All child stages share the exact same Task audience.
+        this.canReadControl = (producer, recipient) => audienceResultAccess(this.state.handle, producer, recipient,
+            this.state.selected.plan.dependencyPins, this.state.host.sessionCore);
         this.reviewRerunRequests = (root, reviewer, invalidatedIds) => rpDelegatedControlProfile({ ...this.state.selected.plan, definition: root.graph }).models
             .filter(node => node.nodeId === reviewer.nodeId || !this.records.has(node.nodeId)
                 || invalidatedIds.includes(this.records.get(node.nodeId).attemptId)).length;
@@ -52,8 +54,24 @@ export class RpDelegatedControlWork extends RpControlGraphWork {
 
     async inputs(tx, root) {
         const recipient = this.state.attemptId ? (await readAttempt(tx, this.state.handle, root, this.state.attemptId)).doc : null;
-        return readRpDelegatedInputSources(tx, this.state.handle, root, this.state.controlBundle, this.state.activeSelection.node.nodeId,
-            { live: true, recipient: recipient && ['running', 'waiting_effect'].includes(recipient.status) ? recipient : null });
+        const node = this.state.activeSelection.node;
+        const facts = await readRpDelegatedInputSources(tx, this.state.handle, root, this.state.controlBundle, node.nodeId,
+            { live: true, recipient: recipient && ['running', 'waiting_effect'].includes(recipient.status) ? recipient : null, fanoutAttemptId: this.state.fanoutParent?.fanoutAttemptId ?? null });
+        if (['planner', 'review', 'judge'].includes(node.kind)) for (const fact of facts) {
+            if (!await this.canReadControl(root.graph.nodes.find(item => item.nodeId === fact.producer.nodeId), node)) fail();
+        }
+        return facts;
+    }
+
+    async plannerTask(root, recipient) {
+        const task = await super.plannerTask(root, recipient), unreadable = new Set();
+        for (const node of root.graph.nodes.filter(node => ['agent', 'planner', 'review', 'judge'].includes(node.kind))) {
+            if (!await this.canReadControl(node, recipient)) unreadable.add(node.nodeId);
+        }
+        return { ...task, nodes: task.nodes.map(node => unreadable.has(node.nodeId)
+            ? { nodeId: node.nodeId, kind: node.kind, disclosure: 'reference-only' } : node),
+        edges: task.edges.map(edge => unreadable.has(edge.from.nodeId) || unreadable.has(edge.to.nodeId)
+            ? { edgeId: edge.edgeId, from: { nodeId: edge.from.nodeId }, to: { nodeId: edge.to.nodeId }, disclosure: 'reference-only' } : edge) };
     }
 
     async currentInputs(tx, root) { return this.inputs(tx, root); }

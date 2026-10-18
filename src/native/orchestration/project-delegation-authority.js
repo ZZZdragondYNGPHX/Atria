@@ -591,10 +591,17 @@ export class ProjectDelegationAuthority {
     async #prepareFanoutAgent(owner, parent, { node, bindings, fanoutAttemptId, permit = owner.childPermit, scopeCapture = null, signal = owner.signal, preparedAttemptId = null, reservedAttemptId = null, send = false, progress = null }) {
         const service = this.execution(), { host, handle, child } = owner, capture = Object.freeze({});
         const root = await service.runs.get(handle, owner.identity.childRunId), model = child.profiles.find(model => equal(model.node, node)) ?? await child.resolveModel(node);
+        const judges = bindings.filter(binding => binding.controlRef?.kind === 'graph_judge_control');
+        bindings = bindings.filter(binding => {
+            if (binding.edge.to.nodeId !== node.nodeId || !binding.resultRef
+                || !judges.some(judge => judge.candidateRefs.some(ref => equal(ref, binding.resultRef)) && !equal(judge.selectedResultRef, binding.resultRef))) return true;
+            if (node.inputs.find(port => port.name === binding.edge.to.port)?.required) fail('native_orchestration_judge_required_input');
+            return false;
+        });
         const state = { ...owner, capture, model, root, childPermit: permit, scopeCapture, signal, controlPermit: null, controlOnly: false, bindings, activeNode: null };
         const requestId = 'project-quality:' + hash({ runId: root.runId, nodeId: node.nodeId, fanoutAttemptId }).slice(0, 32);
         state.projectCapture = await captureNativeProjectDelegatedWorker(scopeCapture ?? parent.projectCapture, permit,
-            { requestId, nodeId: node.nodeId, routeRef: model.pin.resourceRef, ...(node.kind === 'planner' ? { outputContract: projectPlannerOutputContract } : {}),
+            { requestId, nodeId: node.nodeId, routeRef: model.pin.resourceRef, ...(['planner', 'judge'].includes(node.kind) ? { outputContract: { planner: projectPlannerOutputContract, judge: projectGraphJudgeOutputContract }[node.kind] } : {}),
                 task: { kind: 'native_project_delegated_work', nodeId: node.nodeId, authoredTask: node.label } });
         const physical = await inspectNativeProjectGeneration(state.projectCapture, { host, handle }); state.request = physical.request;
         const results = [...new Map(bindings.flatMap(item => [item.resultRef, ...item.evidenceRefs ?? []].filter(Boolean)).map(ref => [hash(ref), ref])).values()];
@@ -626,6 +633,8 @@ export class ProjectDelegationAuthority {
             const { effectId, result, send: completedSend, limits } = await this.#sendChildStage(state, parent, { attemptId, model, logical, inputRefs, signal });
             if (node.kind === 'planner') return await completeProjectDelegatedPlanner({ state, service, port: this.port(host), result, send: completedSend, limits, progress, engine: this.owner.engine,
                 current: () => this.inspectDelegation(capture, { host, handle }) });
+            if (node.kind === 'judge') return await completeProjectDelegatedJudge({ state, service, port: this.port(host), result, send: completedSend, limits, engine: this.owner.engine,
+                current: () => this.inspectDelegation(capture, { host, handle }) });
             const graphCapture = Object.freeze({}); this.#graphs.set(graphCapture, state);
             try {
                 const published = await new ResultController({ host, modelPort: this.port(host) }).publishGraphModelResult(handle, { capture: graphCapture, result, runId: root.runId, effectId });
@@ -655,7 +664,8 @@ export class ProjectDelegationAuthority {
                     const [nodeId, previous] = replan, scope = projectReplanScope(currentRoot.graph, nodeId);
                     if (previous.requests.finalize || !progress.has(scope.target.nodeId)) fail('native_orchestration_planner_replan_pending');
                     const profile = projectDelegatedGraphProfile({ ...child.plan, definition: currentRoot.graph });
-                    const required = profile.models.filter(node => scope.affectedNodeIds.includes(node.nodeId) || !progress.has(node.nodeId)).length;
+                    const required = profile.models.filter(node => currentRoot.nodeControl[node.nodeId].disposition !== 'cancelled'
+                        && (scope.affectedNodeIds.includes(node.nodeId) || !progress.has(node.nodeId))).length;
                     const capacity = await this.owner.engine.withTransaction(handle, tx => service.budgetPort.observeCapacity(handle,
                         { authorityRef: currentRoot.budgetAuthorityRef, reservationId: root.runId }, { tx }));
                     if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');

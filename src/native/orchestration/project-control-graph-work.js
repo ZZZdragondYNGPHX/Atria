@@ -194,7 +194,9 @@ export class ProjectControlGraphWork {
                     const capacity = await budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: null }, { tx });
                     const repeating = actual.operations.some(operation => operation.op === 'requestReplan') ? projectReplanScope(candidate, producer.nodeId).affectedNodeIds : [];
                     const paid = stage.decision.inputRef.fanoutAttemptId ? await readProjectFanoutPaidModelNodes(tx, handle, active) : null;
-                    const remaining = admission.pure.filter(node => node.capabilities.includes('generation.send')
+                    const cancelled = new Set(candidate.nodes.filter(node => active.nodeControl[node.nodeId]?.disposition === 'cancelled').map(node => node.nodeId));
+                    for (const operation of actual.operations) if (operation.op === 'cancelPending') cancelled.add(operation.nodeId);
+                    const remaining = admission.pure.filter(node => node.capabilities.includes('generation.send') && !cancelled.has(node.nodeId)
                         && (repeating.includes(node.nodeId) || (paid ? !paid.has(node.nodeId) : !this.records.has(node.nodeId)) && node.nodeId !== producer.nodeId));
                     const required = remaining.reduce((requests, node) => requests + 1 + (this.state.selected.resolveDelegation(node)?.ceiling.maxRequests ?? 0), 1);
                     if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_project_graph_budget_unavailable');
@@ -332,7 +334,8 @@ export class ProjectControlGraphWork {
                         try {
                             const fact = await this.models.generateStage(node, item.token, { ...bundle, controlTask: entry ? item.task : this.#task(node, active),
                                 fanoutAttemptId, fanoutPermit: permit, signal,
-                                ...(node.kind === 'planner' ? { outputContract: projectPlannerOutputContract, complete: (stage, args) => this.#planner(stage, args) } : {}), ...(entry ? { preparedAttemptId: item.attempts.get(node.nodeId) }
+                                ...(node.kind === 'planner' ? { outputContract: projectPlannerOutputContract, complete: (stage, args) => this.#planner(stage, args) }
+                                    : node.kind === 'judge' ? { outputContract: projectGraphJudgeOutputContract, complete: (stage, args) => this.#judge(stage, args, bundle) } : {}), ...(entry ? { preparedAttemptId: item.attempts.get(node.nodeId) }
                                     : { reservedAttemptId: item.attempts.get(node.nodeId) }), authorizeInputs: args => this.#authorizeInputs(bundle, args) });
                             this.records.set(node.nodeId, fact); pending.delete(node.nodeId);
                         } catch (error) {
@@ -541,7 +544,7 @@ export class ProjectControlGraphWork {
                     if (!['agent', 'planner', 'review', 'judge'].includes(old.kind) || old.capabilities.some(capability => !['generation.send', 'graph.patch'].includes(capability)))
                         fail('native_orchestration_review_irreversible_dependency');
                 }
-                const remaining = profile.pure.filter(item => item.capabilities.includes('generation.send')
+                const remaining = profile.pure.filter(item => item.capabilities.includes('generation.send') && root.nodeControl[item.nodeId].disposition !== 'cancelled'
                     && (!this.records.has(item.nodeId) || scope.affectedNodeIds.includes(item.nodeId)));
                 const requests = remaining.reduce((total, item) => total + 1 + (this.state.selected.resolveDelegation(item)?.ceiling.maxRequests ?? 0), 1);
                 const capacity = await this.service.runs.engine.withTransaction(handle, tx => this.service.budgetPort.observeCapacity(handle,

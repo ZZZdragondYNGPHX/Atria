@@ -91,7 +91,7 @@ async function readProjectDelegatedModelInputFacts(tx, handle, child, producer, 
         || intent.nodeAttemptId !== producer.attemptId || intent.epoch !== producer.epoch || intent.graphRevision !== producer.graphRevision
         || intent.inputHash !== hash(input) || intent.sourceBindingDigest !== child.sourceBinding.bindingDigest
         || intent.grantDigest !== producer.effectiveGrantDigest || producer.effectiveGrantDigest !== child.parentRef.effectiveGrantDigest) invalid();
-    const snapshot = producer.graphRevision === child.graphRevision ? { graph: lineage.graph }
+    const snapshot = producer.graphRevision === child.graphRevision ? { graph: lineage.graph, nodeControl: child.nodeControl }
         : await readTaskGraphRevision(tx, handle, child, producer.graphRevision);
     if (producer.graphRevision !== child.graphRevision) projectDelegatedGraphProfile({ ...lineage.plan, definition: snapshot.graph });
     const node = snapshot.graph.nodes.find(node => node.nodeId === producer.nodeId), pin = nodeModelRoutePins(node, lineage.plan.dependencyPins)[0];
@@ -111,7 +111,9 @@ async function readProjectDelegatedModelInputFacts(tx, handle, child, producer, 
     }
     const judges = controls.filter(fact => fact.selectedResultRef);
     assertProjectDelegatedJudgeSelections(child, node, input.acceptedGraphResultRefs, judges);
-    const incoming = snapshot.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === producer.nodeId).filter(edge =>
+    const rawIncoming = snapshot.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === producer.nodeId);
+    const incoming = rawIncoming.filter(edge => snapshot.nodeControl[edge.from.nodeId]?.disposition !== 'cancelled'
+        || node.inputs.find(port => port.name === edge.to.port).required).filter(edge =>
         !judges.some(judge => judge.candidates.some(candidate => candidate.producer.nodeId === edge.from.nodeId
             && !equal(candidate.receipt.resultRef, judge.selectedResultRef))));
     const loops = input.graphBindings.filter(binding => snapshot.graph.edges.find(edge => edge.edgeId === binding.edgeId)?.loopBack);
@@ -132,7 +134,11 @@ async function readProjectDelegatedModelInputFacts(tx, handle, child, producer, 
     let replacement = null;
     if (input.reviewFeedbackRef) replacement = await readProjectDelegatedReviewReplacement(tx, handle, child, producer, input);
     else if (!edges.length) {
-        if (!lineage.graph.entryNodeIds.includes(producer.nodeId)) invalid();
+        // Only the original accepted patch at this producer's revision can
+        // justify absent optional predecessors; a missing Result cannot.
+        const cancelledInputs = rawIncoming.length && rawIncoming.every(edge => !node.inputs.find(port => port.name === edge.to.port).required
+            && snapshot.nodeControl[edge.from.nodeId]?.disposition === 'cancelled');
+        if (!snapshot.graph.entryNodeIds.includes(producer.nodeId) && !cancelledInputs) invalid();
     } else {
         const identity = hash({ runId: child.runId, bindings, reservedAttemptId: null });
         await assertOutputTransition(tx, handle, { ...child, graph: snapshot.graph }, { published: ordered[0], additionalProducers: ordered.slice(1), output: producer,
@@ -173,7 +179,11 @@ export async function readProjectDelegatedGraphHistory(tx, handle, child, { fina
     const attempts = [];
     for (const id of child.attemptRefs) attempts.push((await readAttempt(tx, handle, child, id)).doc);
     const modelAttempts = attempts.filter(attempt => models.some(node => node.nodeId === attempt.nodeId));
-    if (modelAttempts.length < models.length || new Set(modelAttempts.map(attempt => attempt.nodeId)).size !== models.length
+    // The verified graph revision proves cancelPending for nodes never
+    // admitted. Existing Attempts remain in every history and cost check.
+    const requiredModels = models.filter(node => child.nodeControl[node.nodeId].disposition !== 'cancelled'
+        || modelAttempts.some(attempt => attempt.nodeId === node.nodeId));
+    if (requiredModels.some(node => !modelAttempts.some(attempt => attempt.nodeId === node.nodeId))
         || modelAttempts.some(attempt => !models.some(node => node.nodeId === attempt.nodeId))
         || attempts.some(attempt => !models.some(node => node.nodeId === attempt.nodeId) && !['fanout', 'join', 'output'].includes(graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind))
         || attempts.some(attempt => attempt.nodeId === shape.output.nodeId && (!output || attempt.attemptId !== output.attemptId))

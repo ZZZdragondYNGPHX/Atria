@@ -65,7 +65,7 @@ export function graphResultContract(root, producer, graphSnapshot = null) {
         taskPurpose: root.sourceBinding.sourceAuthority === 'rp_chat' ? 'original_rp_graph_result' : root.sourceBinding.sourceAuthority === 'project' ? 'original_native_project_graph_result' : 'original_native_graph_result' } };
 }
 
-const audienceSource = (root, producer, pins, snapshot = null) => {
+export const graphResultAudienceSources = (root, producer, pins, snapshot = null) => {
     const node = (snapshot?.graph ?? root.graph).nodes.find(item => item.nodeId === producer.nodeId), pin = audienceContextPin(node, pins);
     const capture = assertAudienceRunCapture(root, node, pins, producer.inputRefs?.[0]);
     return pin ? [{ kind: 'native_information_context', pinId: pin.pinId, sourceRef: capture?.sourceRef ?? pin.resourceRef, integrity: pin.integrity }] : [];
@@ -90,7 +90,7 @@ export function graphNodeResult({ root, producer, proof, text, now, graphSnapsho
         sourceRefs: [{ kind: 'run_source', runId: root.runId, epoch: producer.epoch, sourceBindingDigest: root.sourceBinding.bindingDigest,
             sourceAuthority: root.sourceBinding.sourceAuthority, sourceRef: root.sourceBinding.sourceRef },
         { kind: 'effect_receipt', runId: root.runId, effectId: proof.effectId, receiptId: proof.receiptRef.receiptId, observedEpoch: producer.epoch },
-        ...audienceSource(root, producer, dependencyPins, graphSnapshot)],
+        ...graphResultAudienceSources(root, producer, dependencyPins, graphSnapshot)],
         dependencyDigest: '', audienceConstraint: contract.audience, disclosureConstraint: { kind: 'same_source_graph_successors_only' }, qualityRefs: [], status: 'complete', createdAt: now };
     envelope.dependencyDigest = resultDependencyDigest(envelope);
     return assertResultRecord({ schemaVersion: 1, runId: root.runId, resultId, envelope, payload }, { outputContract: contract.output });
@@ -163,7 +163,7 @@ async function readGraphResultFacts(tx, handle, root, resultId, recipient, snaps
         || !equal(producer.effectRefs, [receipt.modelEffectId, ...retrievalCompletions.map(item => item.effectId)]) || intent.nodeAttemptId !== producer.attemptId || intent.grantDigest !== producer.effectiveGrantDigest
         || intent.epoch !== producer.epoch || intent.graphRevision !== producer.graphRevision || intent.sourceBindingDigest !== root.sourceBinding.bindingDigest
         || !equal(record.envelope.sourceRefs[1], { kind: 'effect_receipt', runId: root.runId, effectId: intent.effectId, receiptId: receipt.modelReceiptRef.receiptId, observedEpoch: producer.epoch })
-        || !equal(record.envelope.sourceRefs.slice(2), plan ? audienceSource(root, producer, plan.dependencyPins, snapshot) : [])
+        || !equal(record.envelope.sourceRefs.slice(2), plan ? graphResultAudienceSources(root, producer, plan.dependencyPins, snapshot) : [])
         || producer.inputRefs[0]?.audienceCapture && producer.inputRefs[0]?.kind !== 'native_session_delegation'
             && (!equal(intent.inputRef, producer.inputRefs[0]) || intent.inputHash !== hash(producer.inputRefs[0]))
         || !model || !equal(model.receiptRef, receipt.modelReceiptRef) || receipt.modelPayloadHash !== hash(root.sourceBinding.sourceAuthority === 'project' ? { text, toolCalls: [] } : text)

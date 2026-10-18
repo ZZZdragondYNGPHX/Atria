@@ -1092,7 +1092,9 @@ export class NativeNarratorOrchestrationAuthority {
                     && candidate.edges.some(edge => edge.loopBack && edge.from.nodeId === producer.nodeId)
                     ? sessionReplanScope(candidate, producer.nodeId).affectedNodeIds : [];
                 const paid = state.decision.inputRef.fanoutAttemptId ? await readSessionFanoutPaidModelNodes(tx, handle, root, state.decision.inputRef.fanoutAttemptId) : null;
-                const required = admission.ordered.filter(node => repeats.includes(node.nodeId) || node.nodeId !== producer.nodeId && !progress.has(node.nodeId) && !paid?.has(node.nodeId)).length;
+                const cancelled = new Set(actual.operations.filter(operation => operation.op === 'cancelPending').map(operation => operation.nodeId));
+                const required = admission.ordered.filter(node => !cancelled.has(node.nodeId) && root.nodeControl[node.nodeId]?.disposition !== 'cancelled'
+                    && (repeats.includes(node.nodeId) || node.nodeId !== producer.nodeId && !progress.has(node.nodeId) && !paid?.has(node.nodeId))).length;
                 if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');
             } }).propose(handle, { expectedStateVersion: current.stateVersion, patch }), { withAuthority }), rows);
         const accepted = proposed.outcome.patchReceipt;
@@ -1618,7 +1620,8 @@ export class NativeNarratorOrchestrationAuthority {
             if (!next) fail('native_orchestration_graph_dependency_unavailable');
             const node = next.node;
             if (node.nodeId === topology.narrator.nodeId) {
-                if (topology.steps.some(item => item !== topology.narrator && !excluded.includes(item.nodeId) && !progress.has(item.nodeId))) fail('native_orchestration_graph_dependency_unavailable');
+                if (topology.steps.some(item => item !== topology.narrator && root.nodeControl[item.nodeId]?.disposition !== 'cancelled'
+                    && !excluded.includes(item.nodeId) && !progress.has(item.nodeId))) fail('native_orchestration_graph_dependency_unavailable');
                 return progress;
             }
             if (node.kind === 'fanout') {

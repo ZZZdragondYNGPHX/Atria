@@ -8,6 +8,10 @@
 
 桌面使用画布与 Inspector；手机提供语义等价的节点/连线列表和 Sheet。Memory 保留独立的作用域读取与维护页面。外部工具不能通过 Browser capability registry 注册执行权威。
 
-各原领域消费者检查自己支持的图形。RP 已实现有限 Agent、Planner、Judge、Review、Delegate 与 Fanout/Join Profile；Game、Project 的生产图形更受限。创作通过不代表任意消费者都能执行；不支持的 Profile 在发送前拒绝。角色独立 Audience 的 RP 协作、通用条件 Game/Project 协作尚未完整交付，不能由 RP Profile 测试推导为完成。
+RP、Game 和 Project 的主图及委派子图已实现已发布 Agent、Planner、Review、Judge 任务的组合：DAG 依赖、有界回边、动态增加 owned Agent，以及对纯模型 Planner 工作的安全局部 Review 重做。各领域消费者仍检查实际图、资源 pin 与权限。保存或发布图本身不证明任意组合都能执行。
+
+RP 主图的独立 Actor 协作已有 FS、SQLite 和 SQL 执行证据。委派子任务现已接入 owned Actor pin、获准 Information 与逐接收方 Result 可见性；这部分新接线目前只有静态证据，尚未运行。冻结 Fanout scope 内 Judge 接后继 Agent 的工作也在整合：Game、Project 已接线，RP 尚在实施。不能把这些新增接线记作运行 PASS。
+
+唯一 Narrator 输出边界，以及 Project 正式工具和人工 Review 要求仍然保留。跨已完成 Fanout/Join 的 Review 重做、scope 拓扑变更及嵌套委派仍受限。三域对尚未执行任务的取消和显式 blocked 结果仍在补齐。原预算与已知／未知费用账仍是权威，不据此宣称任意图支持或产品完整验收通过。
 
 旧 Browser 执行模式、预设设置和 checkpoint 协议已退出，无兼容执行或迁移路径。当前协议外的历史文件保持不可执行；原领域数据、收据和未知费用保留。

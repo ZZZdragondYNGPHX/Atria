@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as same } from '../repositories/common.js';
 import { assertObject, assertCounter } from '../../../public/shared/native-orchestration-contracts.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
@@ -10,7 +10,6 @@ import { joinIdForAttempt, decideJoinOutcome } from './join-controller.js';
 import { readGraphNodeResults } from './graph-result-contracts.js';
 import { readEffect } from './effect-contracts.js';
 
-const same = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid Graph Fanout Join completion facts'); };
 export const graphJoinControlRef = (runId, attemptId, receiptId) => ({ kind: 'graph_join_control', runId, attemptId, receiptId });
 

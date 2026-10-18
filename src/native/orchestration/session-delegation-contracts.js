@@ -157,7 +157,9 @@ async function readModelInput(tx, handle, child, producer, intent, publicationSe
     if (sources.some(fact => fact.receipt.decisionSeq >= publicationSeq)) invalid();
     const judges = sources.filter(fact => fact.selectedResultRef);
     assertSessionJudgeSelections(child, node, input.acceptedGraphResultRefs, judges);
-    const incoming = snapshot.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === producer.nodeId).filter(edge =>
+    const originalIncoming = snapshot.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === producer.nodeId);
+    const incoming = originalIncoming.filter(edge => snapshot.nodeControl[edge.from.nodeId]?.disposition !== 'cancelled'
+        || node.inputs.find(port => port.name === edge.to.port).required).filter(edge =>
         !judges.some(judge => judge.candidates.some(candidate => candidate.producer.nodeId === edge.from.nodeId
             && !equal(candidate.receipt.resultRef, judge.selectedResultRef))));
     const loops = input.graphBindings.filter(binding => snapshot.graph.edges.find(edge => edge.edgeId === binding.edgeId)?.loopBack);
@@ -181,7 +183,9 @@ async function readModelInput(tx, handle, child, producer, intent, publicationSe
     let replacement = null;
     if (input.reviewFeedbackRef) replacement = await readSessionDelegatedReviewReplacement(tx, handle, child, producer, input);
     else if (!edges.length) {
-        if (!snapshot.graph.entryNodeIds.includes(producer.nodeId)) invalid();
+        const cancelledInputs = originalIncoming.length && originalIncoming.every(edge => !node.inputs.find(port => port.name === edge.to.port).required
+            && snapshot.nodeControl[edge.from.nodeId]?.disposition === 'cancelled');
+        if (!snapshot.graph.entryNodeIds.includes(producer.nodeId) && !cancelledInputs) invalid();
     } else {
         const identity = hash({ runId: child.runId, bindings, reservedAttemptId: null }), direct = [...new Map(ordered.map(fact => [fact.producer.attemptId, fact])).values()];
         await assertOutputTransition(tx, handle, child, { published: direct[0], additionalProducers: direct.slice(1), output: producer,
@@ -228,8 +232,17 @@ export async function readSessionDelegatedGraphHistory(tx, handle, child, { fina
     const ownedFacts = { rootDigest, results: new Map(results.map(fact => [fact.receipt.resultRef.resultId, fact])), controls: new Map() };
     const facts = [...results, ...(finalPublication ? [{ ...finalPublication, producer: finalProducer,
         settlement: finalPublication.attemptReceipt }] : [])];
-    const modelAttempts = attempts.filter(attempt => models.some(node => node.nodeId === attempt.nodeId));
-    if (modelAttempts.length < models.length || new Set(modelAttempts.map(attempt => attempt.nodeId)).size !== models.length
+    // Replay above already proved each cancellation against the original Patch.
+    // Keep unused identities as audit data; they have no Model or fee to settle.
+    const cancelled = new Set(models.filter(node => child.nodeControl[node.nodeId]?.disposition === 'cancelled').map(node => node.nodeId));
+    for (const attempt of attempts.filter(attempt => cancelled.has(attempt.nodeId))) {
+        if (attempt.status !== 'cancelled' || attempt.startedAt !== null || attempt.endedAt === null
+            || !['prepared', 'reserved'].includes(attempt.inputState) || attempt.effectRefs.length || attempt.resultRefs.length
+            || attempt.sourceBindingDigest !== child.sourceBinding.bindingDigest || !equal(attempt.budgetRef, child.budgetAuthorityRef)) invalid();
+    }
+    const modelAttempts = attempts.filter(attempt => models.some(node => node.nodeId === attempt.nodeId) && !cancelled.has(attempt.nodeId));
+    const requiredModels = models.filter(node => !cancelled.has(node.nodeId));
+    if (modelAttempts.length < requiredModels.length || new Set(modelAttempts.map(attempt => attempt.nodeId)).size !== requiredModels.length
         || modelAttempts.some(attempt => !models.some(node => node.nodeId === attempt.nodeId))
         || attempts.some(attempt => attempt.nodeId === shape.output.nodeId && (!output || attempt.attemptId !== output.attemptId))
         || attempts.filter(attempt => attempt.nodeId === shape.output.nodeId).length !== (output ? 1 : 0)

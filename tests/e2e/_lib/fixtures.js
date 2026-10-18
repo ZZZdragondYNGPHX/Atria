@@ -110,11 +110,11 @@ export function bootstrapCustomBackend({ dataRoot, handle = 'default-user', base
     s.oai_settings.openai_model = model;
     s.oai_settings.stream_openai = true;
     // Wipe legacy fields the dev's settings.json may have left behind that
-    // would otherwise reroute orchestrator/CPA/MG/CEA LLM calls via a real
+    // would otherwise reroute CPA/MG/CEA LLM calls via a real
     // provider URL. The mirrored values live under capabilitySettings
     // (snake_case) — the SPA reads from there at load.
     const ext = (s.capabilitySettings = s.capabilitySettings || {});
-    for (const slot of ['orchestrator', 'completion_preset_assistant', 'memory_graph', 'character_editor_assistant']) {
+    for (const slot of ['completion_preset_assistant', 'memory_graph', 'character_editor_assistant']) {
         const m = (ext[slot] = ext[slot] || {});
         for (const key of [
             'llmNodeApiPresetName', 'llmNodePresetName',

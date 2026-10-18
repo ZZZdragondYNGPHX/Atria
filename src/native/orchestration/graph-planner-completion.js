@@ -58,7 +58,7 @@ export async function readGraphPlannerCompletion(tx, handle, root, attemptId, { 
     const delegatedRp = root.sourceBinding.sourceAuthority === 'rp_chat' && root.parentRef !== null;
     const delegatedProject = root.sourceBinding.sourceAuthority === 'project' && root.parentRef !== null;
     if (delegatedSession) assertObject(input.sourceRef, ['sessionId', 'branchId', 'revisionId'], 'Delegated Native Turn source');
-    if (delegatedRp && (input.role !== 'narrator' || !equal(input.audience, { kind: 'task', id: root.runId }))) invalid();
+    if (delegatedRp && (input.role !== 'narrator' || !node.policy?.audiencePinId && !equal(input.audience, { kind: 'task', id: root.runId }))) invalid();
     if (!Object.hasOwn(kinds, root.sourceBinding.sourceAuthority) || input.kind !== (delegatedRp ? 'native_rp_delegated_intent' : delegatedSession ? 'native_session_delegated_intent'
         : delegatedProject ? 'native_project_delegated_intent' : kinds[root.sourceBinding.sourceAuthority])
         || input.nodeId !== producer.nodeId || !equal(input.planRef, root.planRef) || (root.sourceBinding.sourceAuthority === 'native_session'

@@ -1,5 +1,5 @@
 import { readSessionDelegatedFanoutCompletion } from './session-delegated-fanout-contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as same } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { readGraphFanoutCompletion } from './graph-fanout-completion.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
@@ -7,10 +7,10 @@ import { assertOutputTransition } from './output-transition-contracts.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt, readModelTerminalFact } from './model-port.js';
 import { assertAudienceRunCapture } from './audience-source-contracts.js';
+import { readSessionJudgeCompletion, assertSessionJudgeSelections } from './session-judge-contracts.js';
 import { readSessionPlannerCompletion } from './session-planner-contracts.js';
 import { assertSessionFanoutPlannerOperations } from './session-fanout-planner-contracts.js';
 
-const same = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original Session Fanout Join facts'); };
 
 /** Original Session inputs/costs over the shared immutable Graph history reader.
@@ -29,13 +29,13 @@ export async function readSessionFanoutCompletion(tx, handle, root, joinAttemptI
             }
             const graph = graphSnapshot.graph, node = graph.nodes.find(node => node.nodeId === attempt.nodeId), input = attempt.inputRefs[0];
             const pin = plan.dependencyPins.find(pin => pin.pinId === node.policy.agentPinId);
-            if (!['agent', 'planner'].includes(node.kind) || !branch.scopeNodeIds.includes(node.nodeId) || !same(node.capabilities, ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []])
+            if (!['agent', 'planner', 'judge'].includes(node.kind) || !branch.scopeNodeIds.includes(node.nodeId) || !same(node.capabilities, ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []])
                 || input.kind !== 'native_turn_intent' || input.nodeId !== node.nodeId || input.role !== 'narrator'
                 || !same(input.planRef, root.planRef) || !['sessionId', 'branchId', 'revisionId'].every(field => input.sourceRef[field] === root.sourceBinding.sourceRef[field])
                 || !same(input.routeRef, pin.resourceRef) || input.routeIntegrity !== pin.integrity || input.fanoutAttemptId !== frame.fanoutAttemptId
                 || !same(attempt.inputRefs, [input, ...input.acceptedGraphResultRefs, ...(input.acceptedControlRefs ?? [])])
                 || attempt.inputDigest !== hash(attempt.inputRefs) || attempt.effectiveGrantDigest !== input.grantDigest || attempt.effectRefs.length > 1
-                || (attempt.status === 'completed' ? results.length !== (node.kind === 'planner' ? 0 : 1) : results.length !== 0)) invalid();
+                || (attempt.status === 'completed' ? results.length !== (['planner', 'judge'].includes(node.kind) ? 0 : 1) : results.length !== 0)) invalid();
             assertAudienceRunCapture(root, node, plan.dependencyPins, input);
             if (attempt.attemptId === branch.entryAttemptId) {
                 if (!same(input.acceptedGraphResultRefs, []) || (input.acceptedControlRefs ?? []).length || Object.hasOwn(input, 'fanoutGraphBindings') || attempt.inputRefs.length !== 1) invalid();
@@ -49,11 +49,13 @@ export async function readSessionFanoutCompletion(tx, handle, root, joinAttemptI
                 sources.push(saved);
             }
             for (const ref of input.acceptedControlRefs ?? []) {
-                const saved = await readSessionPlannerCompletion(tx, handle, root, ref.attemptId);
+                const saved = ref.kind === 'graph_judge_control' ? await readSessionJudgeCompletion(tx, handle, root, ref.attemptId)
+                    : await readSessionPlannerCompletion(tx, handle, root, ref.attemptId);
                 if (!saved || !same(ref, saved.controlRef) || !branch.scopeNodeIds.includes(saved.producer.nodeId)
                     || saved.receipt.decisionSeq >= settlement.decisionSeq) invalid();
                 sources.push(saved);
             }
+            assertSessionJudgeSelections({ ...root, graph }, node, input.acceptedGraphResultRefs, sources.filter(source => source.selectedResultRef));
             const incoming = graph.edges.filter(edge => edge.to.nodeId === node.nodeId).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
             const bindings = incoming.flatMap(edge => {
                 const source = sources.find(source => source.producer.nodeId === edge.from.nodeId);
@@ -85,9 +87,13 @@ export async function readSessionFanoutCompletion(tx, handle, root, joinAttemptI
                     || !fact || !same(planner.receipt.modelReceiptRef, fact.receiptRef)) invalid();
                 assertSessionFanoutPlannerOperations(frame, attempt, planner.patch.appliedOperations);
             }
+            const judge = root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'judge' && attempt.status === 'completed'
+                ? await readSessionJudgeCompletion(tx, handle, root, attempt.attemptId) : null;
+            if (judge && (results.length || !same(judge.producer, attempt) || !same(judge.settlement, settlement)
+                || !fact || !same(judge.receipt.modelReceiptRef, fact.receiptRef))) invalid();
             if (!fact || intent.capability !== 'generation.send' || intent.nodeAttemptId !== attempt.attemptId || intent.epoch !== attempt.epoch
                 || !same(settlement.effectReceiptRefs, [fact.receiptRef.receiptId])
-                || (attempt.status === 'completed' ? planner ? false : !results.length || settlement.reasonCode !== 'graph_result_published'
+                || (attempt.status === 'completed' ? planner || judge ? false : !results.length || settlement.reasonCode !== 'graph_result_published'
                     : attempt.status === 'failed' ? fact.kind !== 'rejected' || fact.outcome !== 'failed' : fact.kind !== 'late_response')) invalid();
         },
         verifyControlInput: async (_tx, _handle, _root, attempt, { frame, settlement }) => {

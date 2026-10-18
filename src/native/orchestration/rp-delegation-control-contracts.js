@@ -7,7 +7,8 @@ export { readRpDelegatedGraphHistory } from './rp-delegated-quality-contracts.js
 const invalid = () => { throw new TypeError('Invalid RP delegated control facts'); };
 export const isRpDelegatedControlGraph = root => root.sourceBinding.sourceAuthority === 'rp_chat' && !!root.parentRef
     && (root.graph.nodes.some(node => ['planner', 'review', 'judge'].includes(node.kind))
-        || root.graph.nodes.filter(node => node.kind === 'agent').length >= 2);
+        || root.graph.nodes.filter(node => node.kind === 'agent').length >= 2
+        || root.graph.nodes.some(node => node.policy?.audiencePinId !== undefined));
 export const rpDelegatedPlannerReaderOptions = { verifyControlWork: assertRpControlWork };
 
 /** Public reads always start a new full fact boundary. No caller can supply

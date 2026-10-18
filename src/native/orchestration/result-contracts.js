@@ -101,16 +101,17 @@ export function assertResultAudience(value) {
     return value;
 }
 
-// This first producer profile has exactly one original RP source and one
-// original model EffectReceipt. The references do not grant domain access.
+// The original domain and Model receipts may carry an explicitly pinned
+// Information source. References alone never grant recipient access.
 function assertSources(refs, envelope) {
     if (!Array.isArray(refs) || ![2, 3].includes(refs.length)) fail('exact source and EffectReceipt references are required');
     if (refs.length === 3) {
         const context = refs[2];
         assertObject(context, ['kind', 'pinId', 'sourceRef', 'integrity'], 'Result Information source');
         if (context.kind !== 'native_information_context' || envelope.audienceConstraint?.kind !== 'graph_nodes'
-            && !(refs[0]?.sourceAuthority === 'native_session' && envelope.audienceConstraint?.kind === 'parent_attempt'
-                && envelope.audienceConstraint.taskPurpose === 'original_native_session_delegation')) fail('Information source requires an original scoped recipient');
+            && !(envelope.audienceConstraint?.kind === 'parent_attempt'
+                && (refs[0]?.sourceAuthority === 'native_session' && envelope.audienceConstraint.taskPurpose === 'original_native_session_delegation'
+                    || refs[0]?.sourceAuthority === 'rp_chat' && envelope.audienceConstraint.taskPurpose === 'original_rp_delegation'))) fail('Information source requires an original scoped recipient');
         assertToken(context.pinId, 'Information pin'); assertDigest(context.integrity, 'Information integrity');
         const ref = context.sourceRef;
         assertObject(ref, ['kind', 'sessionId', 'branchId', 'revisionId', 'audience'], 'Information source reference');

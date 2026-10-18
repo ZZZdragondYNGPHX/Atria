@@ -86,11 +86,9 @@ Atria 在标准 V2 格式的基础上，为角色卡增加了几项实用的扩�
 
 详见 [预设系统](/zh-CN/basics/presets) 和 [角色卡绑定预设与人设](/zh-CN/improvements/card-bound-presets)。
 
-### 编排配置
+### 原生 Plan
 
-角色卡可以携带专属的多 Agent 编排配置。编排会在每次生成回复前运行多个 AI Agent 进行剧情分析和规划，产出一份编排指导注入到创作 AI 的上下文中。
-
-角色卡作者可以为特定角色设计定制的编排流程，并随角色卡一起导出分享。用户导入角色卡后即可直接使用这些编排配置。
+导入角色卡不会创建可执行的编排配置。通过 [Agents → Plans](/zh-CN/features/native-orchestration) 验证并发布带显式资源 pin 和当前 Binding 的 Plan。历史角色卡元数据保留，但不执行已退役协议。
 
 ### 记忆图 Schema 覆盖
 

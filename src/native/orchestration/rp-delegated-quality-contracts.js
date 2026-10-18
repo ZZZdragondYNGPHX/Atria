@@ -6,6 +6,7 @@ import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
+import { readGraphFanoutInput, graphFanoutModelScope } from './graph-fanout-completion.js';
 import { rpControlReplanScope } from './rp-control-graph.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
@@ -20,7 +21,8 @@ import { isRpDelegatedControlGraph, rpDelegatedPlannerReaderOptions, assertRpDel
 import { taskLocalReceiptId } from './task-local-output-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { readDelegationCompletion } from './delegation-completion-contracts.js';
-import { rpDelegatedControlProfile } from './rp-delegated-control-profile.js';
+import { rpDelegatedControlProfile, assertRpDelegatedAudiencePin } from './rp-delegated-control-profile.js';
+import { audienceContextPin, assertAudienceRunCapture } from './audience-source-contracts.js';
 
 const invalid = () => { throw new TypeError('Invalid RP delegated quality facts'); };
 
@@ -84,7 +86,7 @@ export function readRpDelegatedInputSources(tx, handle, root, bundle, targetNode
     return inspectInputs(tx, handle, root, () => readInputSources(tx, handle, root, bundle, targetNodeId, options, null));
 }
 
-async function readInputSources(tx, handle, root, bundle, targetNodeId, { live = false, recipient = null, beforeSeq = null } = {}, ownedFacts) {
+async function readInputSources(tx, handle, root, bundle, targetNodeId, { live = false, recipient = null, beforeSeq = null, fanoutAttemptId = recipient?.inputRefs[0]?.fanoutAttemptId ?? null } = {}, ownedFacts) {
     assertObject(bundle, ['evidenceRefs', 'controlRefs', 'bindings'], 'RP child graph inputs');
     if (![bundle.evidenceRefs, bundle.controlRefs, bundle.bindings].every(Array.isArray)
         || new Set(bundle.evidenceRefs.map(hash)).size !== bundle.evidenceRefs.length
@@ -111,10 +113,22 @@ async function readInputSources(tx, handle, root, bundle, targetNodeId, { live =
         const fact = completed ?? await readRpDelegatedControl(tx, handle, root, ref);
         if (!equal(fact.controlRef, ref)) invalid(); facts.push(fact);
     }
+    let inherited = [];
+    if (fanoutAttemptId) {
+        const fanout = (await readAttempt(tx, handle, root, fanoutAttemptId)).doc;
+        if (root.graph.nodes.find(node => node.nodeId === fanout.nodeId)?.kind !== 'fanout'
+            || fanout.sourceBindingDigest !== root.sourceBinding.bindingDigest || !equal(fanout.budgetRef, root.budgetAuthorityRef)
+            || !graphFanoutModelScope(root.graph, fanout.nodeId).includes(targetNodeId)) invalid();
+        inherited = facts.filter(fact => fanout.inputRefs.some(ref => equal(ref, fact.controlRef ?? fact.receipt.resultRef)));
+        // Preparation is data-only; a running Model must prove its actual
+        // frozen membership before any inherited source is compiled/consumed.
+        if (recipient) for (const fact of inherited) await readGraphFanoutInput(tx, handle, root, fanoutAttemptId, recipient,
+            fact.controlRef ?? fact.receipt.resultRef, fact, { historical: !live });
+    }
     const bound = fact => bundle.bindings.some(binding => binding.producerAttemptId === fact.producer.attemptId);
     const selectedByJoin = fact => fact.record && facts.some(join => join.joinReceipt && bound(join)
         && join.joinReceipt.acceptedResultRefs.some(ref => equal(ref, fact.receipt.resultRef)));
-    if (facts.some(fact => !bound(fact) && !selectedByJoin(fact))
+    if (facts.some(fact => !bound(fact) && !selectedByJoin(fact) && !inherited.includes(fact))
         || bundle.bindings.some(binding => !root.graph.edges.some(edge => edge.edgeId === binding.edgeId && edge.to.nodeId === targetNodeId
             && facts.some(fact => fact.producer.attemptId === binding.producerAttemptId && fact.producer.nodeId === edge.from.nodeId)))) invalid();
     for (const judge of facts.filter(fact => fact.controlRef?.kind === 'graph_judge_control')) for (const candidate of judge.candidates) {
@@ -126,7 +140,10 @@ async function readInputSources(tx, handle, root, bundle, targetNodeId, { live =
         const actual = (await readAttempt(tx, handle, root, recipient.attemptId)).doc;
         if (!equal(actual, recipient) || recipient.nodeId !== targetNodeId || recipient.epoch !== root.epoch || root.status !== 'running' || root.cancelRequested
             || !['running', 'waiting_effect'].includes(recipient.status) || !equal(recipient.inputRefs[0]?.controlGraph, bundle)
-            || recipient.sourceBindingDigest !== root.sourceBinding.bindingDigest || !equal(recipient.inputRefs[0]?.audience, { kind: 'task', id: root.runId })) invalid();
+            || recipient.sourceBindingDigest !== root.sourceBinding.bindingDigest) invalid();
+        const plan = await readPlanRevision(tx, handle, root.planRef), node = root.graph.nodes.find(node => node.nodeId === recipient.nodeId);
+        assertAudienceRunCapture(root, node, plan.dependencyPins, recipient.inputRefs[0]);
+        if (!equal(recipient.inputRefs[0]?.audience, audienceContextPin(node, plan.dependencyPins)?.resourceRef.audience ?? { kind: 'task', id: root.runId })) invalid();
         await assertAttemptCurrent(tx, handle, root, recipient);
     }
     const ownReview = recipient && root.graph.nodes.find(node => node.nodeId === targetNodeId)?.kind === 'review'
@@ -210,7 +227,7 @@ async function readControlInputFactsFresh(tx, handle, child, producer, intent, p
     if (!isRpDelegatedControlGraph(child) || input.kind !== 'native_rp_delegated_intent' || input.role !== 'narrator'
         || input.nodeId !== producer.nodeId || input.parentRunId !== child.parentRef.parentRunId || input.childRunId !== child.runId
         || input.parentAttemptId !== child.parentRef.nodeAttemptId || !equal(input.planRef, child.planRef)
-        || !equal(input.sourceRef, child.sourceBinding.sourceRef) || !equal(input.audience, { kind: 'task', id: child.runId })
+        || !equal(input.sourceRef, child.sourceBinding.sourceRef)
         || producer.effectiveGrantDigest !== child.parentRef.effectiveGrantDigest || intent.grantDigest !== producer.effectiveGrantDigest
         || intent.nodeAttemptId !== producer.attemptId || intent.graphRevision !== producer.graphRevision || intent.epoch !== producer.epoch
         || !bundle || !Array.isArray(bundle.evidenceRefs) || !equal(input.acceptedGraphResultRefs ?? [], bundle.evidenceRefs) || !Array.isArray(bundle.controlRefs) || !Array.isArray(bundle.bindings)
@@ -219,6 +236,15 @@ async function readControlInputFactsFresh(tx, handle, child, producer, intent, p
     const snapshot = await readTaskGraphRevision(tx, handle, child, producer.graphRevision);
     const plan = await readPlanRevision(tx, handle, child.planRef), node = snapshot.graph.nodes.find(node => node.nodeId === producer.nodeId);
     const pin = plan.dependencyPins.find(pin => pin.pinId === node?.policy.agentPinId);
+    assertAudienceRunCapture(child, node, plan.dependencyPins, input);
+    if (!equal(input.audience, audienceContextPin(node, plan.dependencyPins)?.resourceRef.audience ?? { kind: 'task', id: child.runId })) invalid();
+    if (audienceContextPin(node, plan.dependencyPins)) {
+        const parent = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: child.parentRef.parentRunId }))?.doc;
+        if (!parent) invalid();
+        const parentAttempt = (await readAttempt(tx, handle, parent, child.parentRef.nodeAttemptId)).doc;
+        const parentPlan = await readPlanRevision(tx, handle, parent.planRef), parentNode = parent.graph.nodes.find(item => item.nodeId === parentAttempt.nodeId);
+        assertRpDelegatedAudiencePin(parentNode, parentPlan.dependencyPins, node, plan.dependencyPins);
+    }
     if (pin?.port !== 'model' || !node.dependencyPinIds.includes(pin.pinId) || !equal(input.routeRef, pin.resourceRef)
         || intent.actionRef.kind !== 'native_model_send' || intent.actionRef.runtimeRouteId !== pin.resourceRef.runtimeRouteId) invalid();
     if (input.fanoutAttemptId) return { ...await readRpDelegatedFanoutInput(tx, handle, child, producer, input, publicationSeq),
@@ -227,7 +253,9 @@ async function readControlInputFactsFresh(tx, handle, child, producer, intent, p
     if (sources.some(fact => fact.receipt.decisionSeq >= publicationSeq)
         || new Set(sources.map(fact => fact.producer.attemptId)).size !== sources.length
         || new Set(bundle.bindings.map(binding => binding.edgeId)).size !== bundle.bindings.length) invalid();
-    const incoming = snapshot.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === producer.nodeId);
+    const rawIncoming = snapshot.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === producer.nodeId);
+    const incoming = rawIncoming.filter(edge => snapshot.nodeControl[edge.from.nodeId]?.disposition !== 'cancelled'
+        || node.inputs.find(port => port.name === edge.to.port).required);
     const loops = bundle.bindings.filter(binding => snapshot.graph.edges.find(edge => edge.edgeId === binding.edgeId)?.loopBack);
     if (incoming.some(edge => node.inputs.find(port => port.name === edge.to.port).required && !bundle.bindings.some(binding => binding.edgeId === edge.edgeId))
         || bundle.bindings.some(binding => !snapshot.graph.edges.some(edge => edge.edgeId === binding.edgeId && edge.to.nodeId === producer.nodeId
@@ -243,7 +271,12 @@ async function readControlInputFactsFresh(tx, handle, child, producer, intent, p
     let replacement = null;
     if (input.reviewFeedbackRef) replacement = await readReviewReplacement(tx, handle, child, producer, input, ownedFacts);
     else if (!bundle.bindings.length) {
-        if (!snapshot.graph.entryNodeIds.includes(producer.nodeId) || sources.length) invalid();
+        // An original accepted cancelPending patch may remove every optional
+        // predecessor before this node is admitted. Its verified revision,
+        // not a missing Result or a model claim, proves the empty input.
+        const cancelledInputs = rawIncoming.length && rawIncoming.every(edge => !node.inputs.find(port => port.name === edge.to.port).required
+            && snapshot.nodeControl[edge.from.nodeId]?.disposition === 'cancelled');
+        if ((!snapshot.graph.entryNodeIds.includes(producer.nodeId) && !cancelledInputs) || sources.length) invalid();
     } else {
         const bindings = bundle.bindings.toSorted((a, b) => a.edgeId.localeCompare(b.edgeId));
         const receiptId = 'oreceipt_' + hash({ runId: child.runId, bindings, reservedAttemptId: null }).slice(0, 32);
@@ -333,6 +366,15 @@ async function readGraphHistory(tx, handle, child, { pendingProducer = null, fin
     }
     for (const producer of attempts.filter(attempt => profile.models.some(node => node.nodeId === attempt.nodeId))) {
         const node = child.graph.nodes.find(node => node.nodeId === producer.nodeId);
+        if (child.nodeControl[node.nodeId]?.disposition === 'cancelled') {
+            // Graph replay above proves the original accepted cancellation.
+            // A pending identity can remain for audit, never a paid Model or
+            // a fabricated settlement. Active/unknown Effects cannot vanish.
+            if (producer.status !== 'cancelled' || producer.inputState !== 'prepared' || producer.startedAt !== null || producer.endedAt === null
+                || producer.effectRefs.length || producer.resultRefs.length || producer.sourceBindingDigest !== child.sourceBinding.bindingDigest
+                || producer.effectiveGrantDigest !== child.parentRef.effectiveGrantDigest || !equal(producer.budgetRef, child.budgetAuthorityRef)) invalidHistory();
+            continue;
+        }
         const scoped = fanouts.flatMap(fact => fact.scopeAttempts).find(item => item.attempt.attemptId === producer.attemptId);
         const unsuccessful = scoped && ['failed', 'cancelled'].includes(producer.status);
         if (unsuccessful && !equal(scoped.attempt, producer)) invalidHistory();
@@ -427,7 +469,7 @@ async function readGraphHistory(tx, handle, child, { pendingProducer = null, fin
     const orderedRefs = [...results, ...finalPublication ? [finalPublication] : []].sort((a, b) => a.receipt.decisionSeq - b.receipt.decisionSeq).map(fact => fact.receipt.resultRef);
     if (!equal(child.resultRefs, orderedRefs) || replaced.size || consumed.size !== child.progress.replans
         || [...latest.values()].some(item => item.fact?.patch?.requests.replan)) invalidHistory();
-    if (profile.models.some(node => !latest.has(node.nodeId)
+    if (profile.models.some(node => !latest.has(node.nodeId) && child.nodeControl[node.nodeId]?.disposition !== 'cancelled'
         && !fanouts.some(fact => fact.scopeAttempts.some(item => item.attempt.nodeId === node.nodeId && ['failed', 'cancelled'].includes(item.attempt.status)))) || effects.length !== new Set(effects.map(effect => effect.effectId)).size
         || reviews.length !== child.progress.reviews || planners.length !== child.graphRevision || child.progress.replans !== planners.filter(fact => fact.patch.requests.replan).length
         || bank.attempts.some(row => row.reservationId === child.runId && !budgetAttemptIds.includes(row.attemptId))

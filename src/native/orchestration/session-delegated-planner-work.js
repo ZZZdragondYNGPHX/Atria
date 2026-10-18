@@ -83,8 +83,9 @@ export async function completeSessionDelegatedPlanner({ state, service, port, re
             const affected = repeating ? sessionReplanScope(candidate, producer.nodeId).affectedNodeIds : [];
             const paid = producer.inputRefs[0].fanoutAttemptId
                 ? await readSessionFanoutPaidModelNodes(tx, handle, active, producer.inputRefs[0].fanoutAttemptId) : null;
-            const required = profile.models.filter(node => affected.includes(node.nodeId)
-                || node.nodeId !== producer.nodeId && !progress.has(node.nodeId) && !paid?.has(node.nodeId)).length;
+            const cancelled = new Set(actual.operations.filter(operation => operation.op === 'cancelPending').map(operation => operation.nodeId));
+            const required = profile.models.filter(node => !cancelled.has(node.nodeId) && active.nodeControl[node.nodeId]?.disposition !== 'cancelled'
+                && (affected.includes(node.nodeId) || node.nodeId !== producer.nodeId && !progress.has(node.nodeId) && !paid?.has(node.nodeId))).length;
             const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: runId }, { tx });
             if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');
             const effect = (await readEffect(tx, handle, active, effectId)).doc;

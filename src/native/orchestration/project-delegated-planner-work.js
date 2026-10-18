@@ -43,7 +43,7 @@ export async function completeProjectDelegatedPlanner({ state, service, port, re
         if (!Array.isArray(value.operations) || !value.operations.length) fail('native_orchestration_planner_response_invalid');
         return immutable(value);
     });
-    if (parsed.operations.some(operation => !['setPendingPriority', 'requestFinalize', 'requestReplan', 'addNode', 'addEdge'].includes(operation.op))) fail('native_orchestration_planner_patch_rejected');
+    if (parsed.operations.some(operation => !['setPendingPriority', 'cancelPending', 'markBlocked', 'requestFinalize', 'requestReplan', 'addNode', 'addEdge'].includes(operation.op))) fail('native_orchestration_planner_patch_rejected');
     const evidence = await engine.withTransaction(handle, async tx => {
         const root = await service.runs.get(handle, runId), facts = [];
         for (const ref of state.decision.inputRef.acceptedGraphResultRefs) facts.push(await readGraphNodeResult(tx, handle, root, ref.resultId));
@@ -88,8 +88,10 @@ export async function completeProjectDelegatedPlanner({ state, service, port, re
             if (repeating && (!progress.has(scope.target.nodeId) && scope.target.nodeId !== producer.nodeId
                 || actual.operations.some(operation => operation.op === 'requestFinalize'))) fail('native_orchestration_planner_replan_pending');
             const paid = producer.inputRefs[0].fanoutAttemptId ? await readProjectFanoutPaidModelNodes(tx, handle, active) : null;
-            const required = profile.models.filter(node => scope?.affectedNodeIds.includes(node.nodeId)
-                || node.nodeId !== producer.nodeId && !progress.has(node.nodeId) && !paid?.has(node.nodeId)).length;
+            const cancelled = new Set(candidate.nodes.filter(node => active.nodeControl[node.nodeId]?.disposition === 'cancelled').map(node => node.nodeId));
+            for (const operation of actual.operations) if (operation.op === 'cancelPending') cancelled.add(operation.nodeId);
+            const required = profile.models.filter(node => !cancelled.has(node.nodeId) && (scope?.affectedNodeIds.includes(node.nodeId)
+                || node.nodeId !== producer.nodeId && !progress.has(node.nodeId) && !paid?.has(node.nodeId))).length;
             const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: runId }, { tx });
             if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');
             if (repeating && active.progress.attempts + required + 1 > active.limits.maxAttempts) fail('native_orchestration_limit_exhausted');

@@ -561,11 +561,18 @@ export class SessionDelegationAuthority {
     async #fanoutAgent(owner, { node, bindings, fanoutAttemptId, permit = null, preparedAttemptId = null, reservedAttemptId = null, send = false, progress = null }) {
         const { host, handle, child, parent } = owner, service = this.execution(), capture = Object.freeze({});
         const root = await service.runs.get(handle, owner.identity.childRunId), model = child.profiles.find(model => equal(model.node, node)) ?? await this.#resolveChildModel(parent, node);
+        const judges = bindings.filter(binding => binding.controlRef?.kind === 'graph_judge_control');
+        bindings = bindings.filter(binding => {
+            if (binding.edge.to.nodeId !== node.nodeId || !binding.resultRef
+                || !judges.some(judge => judge.candidateRefs.some(ref => equal(ref, binding.resultRef)) && !equal(judge.selectedResultRef, binding.resultRef))) return true;
+            if (node.inputs.find(port => port.name === binding.edge.to.port)?.required) fail('native_orchestration_judge_required_input');
+            return false;
+        });
         const state = { ...owner, capture, model, root, bindings, controlOnly: false, activeNode: null,
             boundary: permit?.boundary ?? owner.boundary, quotaProof: permit?.quotaProof ?? owner.quotaProof };
         state.request = immutable({ sessionId: parent.proofExpected.sessionId, revisionId: parent.proofExpected.anchor.revisionId,
             requestId: parent.request.requestId, role: 'narrator', routeRef: model.pin.resourceRef,
-            ...(node.kind === 'planner' ? { outputContract: sessionPlannerOutputContract } : {}) });
+            ...(['planner', 'judge'].includes(node.kind) ? { outputContract: { planner: sessionPlannerOutputContract, judge: sessionJudgeOutputContract }[node.kind] } : {}) });
         const results = [...new Map(bindings.flatMap(item => [item.resultRef, ...item.evidenceRefs ?? []].filter(Boolean)).map(ref => [hash(ref), ref])).values()];
         const controls = [...new Map(bindings.filter(item => item.controlRef).map(item => [hash(item.controlRef), item.controlRef])).values()];
         const logical = { kind: 'native_session_delegated_intent', role: 'narrator', requestId: state.request.requestId,
@@ -600,6 +607,8 @@ export class SessionDelegationAuthority {
             if (node.kind === 'planner') return await completeSessionDelegatedPlanner({ state, service, port: this.port(host), result, send: completedSend, limits,
                 current: () => this.inspectDelegation(capture, { host, handle }), progress, engine: this.owner.engine,
                 resolveNode: item => this.#resolveChildModel(parent, item) });
+            if (node.kind === 'judge') return await completeSessionDelegatedJudge({ state, service, port: this.port(host), result, send: completedSend, limits,
+                current: () => this.inspectDelegation(capture, { host, handle }), engine: this.owner.engine });
             const graphCapture = Object.freeze({}); this.#graphs.set(graphCapture, state);
             try {
                 const saved = await new ResultController({ host, modelPort: this.port(host) }).publishGraphModelResult(handle, { capture: graphCapture, result, runId: root.runId, effectId });

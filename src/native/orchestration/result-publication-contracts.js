@@ -13,6 +13,7 @@ import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readSessionDelegation, sessionDelegationResultSources, readSessionDelegatedGraphHistory } from './session-delegation-contracts.js';
 import { readProjectDelegatedGraphHistory } from './project-delegation-contracts.js';
 import { isRpDelegatedControlGraph, readRpDelegatedGraphHistory } from './rp-delegation-control-contracts.js';
+import { graphResultAudienceSources } from './graph-result-contracts.js';
 
 export const modelResultId = (runId, effectId) => 'oresult_' + hash({ runId, effectId }).slice(0, 32);
 export const resultPublicationReceiptId = (runId, resultId) => 'oreceipt_' + hash({ kind: 'result_publication', runId, resultId }).slice(0, 32);
@@ -153,6 +154,7 @@ export async function readResultPublication(tx, handle, root, resultId) {
         if (outputs.length > 1) invalid();
         const graphHistory = await readRpDelegatedGraphHistory(tx, handle, root,
             { finalPublication: { ...published, producer: attempt }, output: outputs[0] ?? null });
+        if (!equal(envelope.sourceRefs.slice(2), graphResultAudienceSources(root, attempt, graphHistory.plan.dependencyPins))) invalid();
         return { ...published, producer: attempt, graphHistory };
     }
     return published;

@@ -81,8 +81,13 @@ export async function readProjectReplanHistory(tx, handle, root, { recipient = n
             if (admission.receiptKind !== 'graph_transition' || admission.nodeAttemptId !== actual.attemptId
                 || admission.runId !== root.runId || admission.inputDigest !== actual.inputDigest) invalid();
             cutoff = admission.decisionSeq;
-        } else if (actual.attemptNumber !== 1 || !root.graph.entryNodeIds.includes(actual.nodeId)
-            || root.graph.edges.some(edge => !edge.loopBack && edge.to.nodeId === actual.nodeId)) invalid();
+        } else {
+            const snapshot = await readTaskGraphRevision(tx, handle, root, actual.graphRevision), node = snapshot.graph.nodes.find(node => node.nodeId === actual.nodeId);
+            const incoming = snapshot.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === actual.nodeId);
+            const cancelledInputs = incoming.length && incoming.every(edge => !node.inputs.find(port => port.name === edge.to.port).required
+                && snapshot.nodeControl[edge.from.nodeId]?.disposition === 'cancelled');
+            if (actual.attemptNumber !== 1 || !(snapshot.graph.entryNodeIds.includes(actual.nodeId) && !incoming.length || cancelledInputs)) invalid();
+        }
         formalRecipient = root.graph.nodes.find(node => node.nodeId === actual.nodeId)?.outputs[0]?.type === 'json'
             && root.graph.nodes.find(node => node.nodeId === actual.nodeId)?.kind === 'agent';
         if (!formalRecipient) events.push({ fact: null, producer: actual, seq: cutoff });
@@ -153,7 +158,13 @@ export async function readProjectReplanHistory(tx, handle, root, { recipient = n
             await assertOutputTransition(tx, handle, { ...root, graph: snapshot.graph }, { published: direct[0], additionalProducers: direct.slice(1),
                 output: producer, producerBindings: bindings, allowLoopBack: !!loops.length,
                 receipt: { decisionSeq: fact?.receipt.decisionSeq ?? root.eventSeq + 1, traversalReceiptRef: { runId: root.runId, receiptId: traversal } } });
-        } else if (!bindings.length && !snapshot.graph.entryNodeIds.includes(node.nodeId) && !reviewedReplacement) invalid();
+        } else if (!bindings.length && !snapshot.graph.entryNodeIds.includes(node.nodeId) && !reviewedReplacement) {
+            // A cancelled optional predecessor has no Result or traversal.
+            // Its accepted original revision, never a missing ref, proves why.
+            const incoming = snapshot.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === node.nodeId);
+            if (sources.length || !incoming.length || incoming.some(edge => node.inputs.find(port => port.name === edge.to.port).required
+                || snapshot.nodeControl[edge.from.nodeId]?.disposition !== 'cancelled')) invalid();
+        }
         const prior = previous.get(node.nodeId);
         if (prior) {
             const replacement = replaced.get(node.nodeId), invalidation = await readAttemptInvalidation(tx, handle, root, prior.producer);

@@ -185,8 +185,9 @@ export class RpControlGraphWork {
                     ? candidate.edges.some(edge => edge.loopBack && edge.from.nodeId === nodeId)
                         ? rpControlReplanScope(candidate, nodeId).affectedNodeIds : [nodeId] : [];
                 const paid = state.fanoutParent ? await readRpFanoutPaidModelNodes(tx, handle, active) : null;
-                const required = admission.models.filter(node => repeats.includes(node.nodeId)
-                    || (paid ? !paid.has(node.nodeId) : !this.records.has(node.nodeId)) && node.nodeId !== nodeId).length;
+                const cancelled = new Set(actual.operations.filter(operation => operation.op === 'cancelPending').map(operation => operation.nodeId));
+                const required = admission.models.filter(node => !cancelled.has(node.nodeId) && active.nodeControl[node.nodeId]?.disposition !== 'cancelled'
+                    && (repeats.includes(node.nodeId) || (paid ? !paid.has(node.nodeId) : !this.records.has(node.nodeId)) && node.nodeId !== nodeId)).length;
                 if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');
                 await this.inputs(tx, active);
                 await this.current();

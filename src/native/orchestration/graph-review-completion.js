@@ -75,7 +75,7 @@ export async function readGraphReviewCompletion(tx, handle, root, attemptId, { v
         || new Set(review.targetAttemptIds).size !== review.targetAttemptIds.length) invalid();
     if (delegatedRp && (input.parentRunId !== root.parentRef.parentRunId || input.parentAttemptId !== root.parentRef.nodeAttemptId
         || input.childRunId !== root.runId || producer.effectiveGrantDigest !== root.parentRef.effectiveGrantDigest
-        || !equal(input.audience, { kind: 'task', id: root.runId }))) invalid();
+        || !node.policy?.audiencePinId && !equal(input.audience, { kind: 'task', id: root.runId }))) invalid();
     if ((delegatedSession || delegatedProject) && (input.parentRunId !== root.parentRef.parentRunId || input.parentAttemptId !== root.parentRef.nodeAttemptId
         || input.parentEpoch !== root.parentRef.parentEpoch || input.childRunId !== root.runId || input.childEpoch !== producer.epoch
         || input.delegationInputDigest !== root.parentRef.inputDigest || producer.effectiveGrantDigest !== root.parentRef.effectiveGrantDigest)) invalid();
@@ -175,8 +175,7 @@ export async function readReviewablePlannerCompletion(tx, handle, root, attemptI
                 || Object.hasOwn(input, 'acceptedControlRefs') && !equal(input.acceptedControlRefs, controls))
             || input.parentRunId !== ref.parentRunId || input.parentAttemptId !== ref.nodeAttemptId || input.childRunId !== root.runId
             || fact.producer.effectiveGrantDigest !== ref.effectiveGrantDigest || input.fanoutAttemptId
-            || !equal(fact.producer.inputRefs, [input, ...ref.inputRefs, ...evidence, ...controls])
-            || fact.patch.appliedOperations.some(operation => !['setPendingPriority', 'requestFinalize'].includes(operation.op))) return null;
+            || !equal(fact.producer.inputRefs, [input, ...ref.inputRefs, ...evidence, ...controls])) return null;
         if (!rp && (input.parentEpoch !== ref.parentEpoch || input.childEpoch !== fact.producer.epoch
             || input.delegationInputDigest !== ref.inputDigest)) return null;
     }

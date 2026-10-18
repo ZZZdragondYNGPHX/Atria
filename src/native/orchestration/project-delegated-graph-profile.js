@@ -18,7 +18,7 @@ export function projectDelegatedGraphProfile(plan) {
         || graph.outputContract.kind !== 'result' || graph.outputContract.allowPartial || graph.outputContract.resultPolicy?.outputType !== 'text'
         || !equal([...graph.capabilityCeiling].sort(), ['generation.send', ...planners.length ? ['graph.patch'] : []].sort())
         || graph.graphChangePolicy.allowedNodeKinds.some(kind => kind !== 'agent') || (!planners.length ? graph.graphChangePolicy.allowedOperations.length
-        : !graph.graphChangePolicy.allowedOperations.length || graph.graphChangePolicy.allowedOperations.some(op => !['setPendingPriority', 'requestFinalize', 'requestReplan', 'addNode', 'addEdge'].includes(op)))
+        : !graph.graphChangePolicy.allowedOperations.length || graph.graphChangePolicy.allowedOperations.some(op => !['setPendingPriority', 'cancelPending', 'markBlocked', 'requestFinalize', 'requestReplan', 'addNode', 'addEdge'].includes(op)))
         || loops.length && !canReplan
         || graph.nodes.some(node => node.policy.allowedPlanPinIds?.length)) fail();
     const output = outputs[0], incoming = {}, ordered = [];
@@ -59,8 +59,6 @@ export function projectDelegatedGraphProfile(plan) {
             || !canAddAgent && !models.some(node => node.dependencyPinIds.includes(pin.pinId)))) fail();
     for (const loop of loops) projectReplanScope(graph, loop.from.nodeId);
     const fanouts = projectFanoutGroups(graph, final.nodeId);
-    // Frozen scope controls use the original scheduling-only Planner proof.
-    if (fanouts.some(group => group.branches.some(branch => branch.scopeNodeIds.some(id => !['agent', 'planner'].includes(graph.nodes.find(node => node.nodeId === id).kind))))) fail();
     return { ordered: ordered.filter(node => models.includes(node)), pure, models, planners, reviews, judges, fanouts, incoming, output, final, terminalNodeId: final.nodeId };
 }
 
