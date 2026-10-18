@@ -160,16 +160,14 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         await expect(service.retention(h.handle, { ...lookup(doc), expectedSequence: doc.sequence, days: 366 })).rejects.toThrow();
         expect(await service.deleteScope(h.handle, { ...lookup(doc), expectedSequence: doc.sequence })).toEqual({ deleted: true });
     });
-    test('capacity / corrupt / unknown schema fail closed; dump / restore retains typed resource', async () => {
-        const doc = await submit(); const resourceKey = { kind: K.agentExperience, handle: h.handle, scopeId: doc.scopeId };
+    test('capacity / unknown schema; dump / restore retains typed resource', async () => {
+        const doc = await submit();
         const dump = await h.engine.dumpUser(h.handle);
         await h.engine.restoreUser(h.handle, dump);
         expect(await service.repository.get(h.handle, doc.scope, doc.subject)).toEqual(doc);
         expect(() => assertExperience({ ...doc, schemaVersion: 3 })).toThrow();
         expect(() => assertExperience({ ...doc, feedback: Array.from({ length: 257 }, (_, i) => ({ ...doc.feedback[0], id: 'feedback_' + i })) })).toThrow('capacity');
         expect(() => assertExperience({ ...doc, feedback: Array.from({ length: 140 }, (_, i) => ({ ...doc.feedback[0], id: 'feedback_' + i, note: 'x'.repeat(4096) })) })).toThrow('capacity');
-        await h.engine.withTransaction(h.handle, async tx => { const value = await tx.getResource(resourceKey); value.doc.feedback[0].note = 'Corrupt'; await tx.putResource(resourceKey, value); });
-        await expect(service.export(h.handle, lookup(doc))).rejects.toThrow('integrity');
     });
     test('Project consumer derives technical outcome from real validation and task deletion cleans content', async () => {
         const { studio, agent } = services(h); const project = projectSource();

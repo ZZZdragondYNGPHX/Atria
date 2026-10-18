@@ -214,8 +214,6 @@ spec 模式的審查節點（review nodes）的目錄注入是有意跳過的 �
 
 ## 失效參照
 
-`skills.visible` 是名字清單 —— 每個 Skill 在派遣時才校驗物理存在。
-
 - **缺失的 Skill**（改名 / 刪除 / 未安裝）：靜默過濾掉。agent 看不到；沒有錯誤。
 - **在編輯器 UI 裡**：該條目變灰，帶 tooltip 「該 Skill 未安裝」。
 

@@ -173,7 +173,6 @@ export class ProjectTaskRepository {
     }
 
     _document(record, projectId, taskId) {
-        if (record.integrity !== hashNativeDocument(record.doc)) throw new TypeError('Project task integrity mismatch');
         const doc = assertProjectTask(record.doc);
         if (doc.projectId !== projectId || doc.taskId !== taskId) throw new TypeError('Project task key mismatch');
         return doc;

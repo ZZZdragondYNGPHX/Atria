@@ -114,39 +114,6 @@ The kernel does NOT time-trigger an abort. When the user clicks stop, the abort 
 
 ## The editor handle
 
-```ts
-interface CreateOpts {
-    generationType: 'normal' | 'regenerate' | 'swipe' | 'continue';
-    originalText?: string;            // default '' — used for discard rollback and continue prefix check
-    originalReasoning?: string;       // default ''
-    abortSignal?: AbortSignal;        // pass the dispatch event's signal
-    flushIntervalMs?: number;         // default 33 — onUpdate throttle window
-    owner?: string;                   // default 'unknown' — diagnostic identifier
-}
-
-interface MessageEditorHandle {
-    getText(): string;
-    getReasoning(): string;
-
-    setText(text: string): void;
-    setReasoning(text: string): void;
-
-    commit(): Promise<void>;
-    abort(): Promise<void>;
-    discard(): Promise<void>;
-    readonly complete: Promise<{
-        status: 'committed' | 'aborted' | 'discarded';
-        finalText: string;
-        finalReasoning: string;
-    }>;
-
-    readonly abortSignal: AbortSignal;
-
-    // Kernel-facing — plugins normally don't need this.
-    setOnUpdate(fn: ((text: string, reasoning: string) => void) | null): void;
-}
-```
-
 | Operation | Behavior |
 |-----------|----------|
 | `setText(text)` | Replaces the text buffer. Schedules a coalesced flush (default 33 ms) that calls the kernel's onUpdate callback for live redraw. Throws `invalid_argument` if `text` is not a string, `editor_committed` / `editor_aborted` / `editor_discarded` after the terminal state, or `invalid_op_for_continue` when `generationType === 'continue'` and the new text would discard the original prefix. |

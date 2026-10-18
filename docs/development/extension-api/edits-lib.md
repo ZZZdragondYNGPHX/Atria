@@ -21,8 +21,7 @@ share one merge engine and one resolution UX.
   Built-in ops: `set`, `unset`, `str_replace`, `str_insert`, `str_delete`,
   `list_insert`, `list_remove`, `list_move`.
 - **Apply** — `applyEdits(edits, live)` returns `{ newLive, clean,
-  conflicts, alreadyDone }`. The engine drift-checks every edit against
-  current live before mutating.
+  conflicts, alreadyDone }`.
 - **Inverse** — `inverseEdit(edit)` returns the edit that undoes it.
   Suitable for rollback.
 - **Custom op** — `registerOp(name, handler)` lets plugins define
@@ -140,8 +139,6 @@ anchor (survives reorderings as long as the value is still unique).
 ```js
 { op: 'list_remove', path, index, expected_value? }
 ```
-Splice out element at `index`. `expected_value` guards against external
-shifts.
 
 #### `list_move`
 ```js

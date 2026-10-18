@@ -25,11 +25,9 @@ Atria 新增了統一生成層端點（`/api/backends/atria-generation`），作
 - **Kobold** / **TabbyAPI**
 - 其他 Chat Completion 相容後端
 
-前端透過統一生成層發起生成請求，由該端點負責路由到正確的上游服務，而非前端直接呼叫各個後端的獨立端點。各個後端的獨立端點（`chat-completions.js`、`kobold.js` 等）仍然存在並獨立整合了請求檢查器，但統一生成層提供了更完整的處理管線。
+前端透過統一生成層發起生成請求，由該端點負責路由到正確的上游服務，而非前端直接呼叫各個後端的獨立端點。
 
 ### 共享 Token 計量
-
-統一生成層在生成請求的前後自動呼叫[請求檢查器](/zh-TW/improvements/request-inspector)：
 
 1. 串流傳輸完成後呼叫 `completeInspectionFromStream` 從串流事件中記錄 Token 用量
 2. 生成失敗時呼叫 `failInspection` 記錄錯誤資訊
@@ -54,40 +52,10 @@ Atria 新增了統一生成層端點（`/api/backends/atria-generation`），作
 
 ## 架構關係
 
-```d2
-direction: down
-
-FE: "前端發起 AI 生成請求"
-EP: "各後端端點檔案\nchat-completions.js / kobold.js / ..." {
-  shape: diamond
-}
-UL: "統一生成層\n/api/backends/atria-generation" {
-  style.fill: "#e1f5ff"
-}
-INSP: "請求檢查器\nToken 計量" {
-  style.fill: "#fff3e0"
-}
-SSE: "SSE 串流解析\n統一串流處理"
-ERR: "錯誤規範化"
-UPSTREAM: "上游 AI 服務\nOpenAI / Anthropic / Google / Kobold ..."
-
-FE -> EP
-EP -> INSP: "startInspection"
-EP -> UL
-UL -> SSE
-UL -> INSP
-UL -> ERR
-UL -> UPSTREAM
-UPSTREAM -> SSE: "串流回應" {style.stroke-dash: 3}
-SSE -> INSP: "completeInspectionFromStream"
-ERR -> INSP: "failInspection"
-```
-
 > [!NOTE]
 > 統一生成層是一個內部模組，對前端透明。使用者無需關心它的存在，只需享受它帶來的一致體驗。
 
 ## 與其他模組的關係
 
-- **[請求檢查器](/zh-TW/improvements/request-inspector)** — 統一生成層是請求檢查器的主要呼叫方
 - **[認證與配額](/zh-TW/improvements/auth-and-quota)** — 儲存配額中介軟體在統一生成層之前執行，攔截超額請求
 - **`chats.js`** — 生成完成後觸發 `acknowledge-generation` 流程，將生成結果與聊天記錄關聯

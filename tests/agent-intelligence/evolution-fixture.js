@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import { AgentEvolutionService } from '../../src/native/agent-intelligence/evolution-service.js';
 import { AgentEvolutionRepository, EVOLUTION_RULE, evolutionHash as hash } from '../../src/native/agent-intelligence/evolution-repository.js';
-import { EvolutionEvaluator, evolutionEvaluatorRevision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
+import { EvolutionEvaluator, EVOLUTION_EVALUATOR_VERSION } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { CASE_SET_REVISION, selectCases, publicCaseScenario } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { PromptPresetStore } from '../../src/native/model-prompt-runtime/presets.js';
 import { createNativeId } from '../../src/native/identity.js';
@@ -38,7 +38,7 @@ export function syntheticReport(job, configs, settings) {
         const pair = { case: entry, scenario: publicCaseScenario(entry), repetition, baseline: trial('baseline'), candidate: trial('candidate'), judge: { preference: 'candidate', deltas, rationale: 'Synthetic test observation' }, human: null };
         return { ...pair, pairHash: hash(pair) };
     }));
-    return { schemaVersion: 1, origin: 'host_evaluator', evaluatorRevision: evolutionEvaluatorRevision(), caseSetRevision: CASE_SET_REVISION, rule: EVOLUTION_RULE,
+    return { schemaVersion: 1, origin: 'host_evaluator', evaluatorRevision: EVOLUTION_EVALUATOR_VERSION, caseSetRevision: CASE_SET_REVISION, rule: EVOLUTION_RULE,
         domain: job.domain, policyFingerprint: job.policyFingerprint, targetPin: job.targetPin, price: job.price, pairs, charges: pairs.flatMap(p => [...p.baseline.charges, ...p.candidate.charges]), createdAt: 1000,
         configurations: { baseline: hash(configs.baseline), candidate: hash(configs.candidate) }, settings: { baseline: hash(settings.baseline), candidate: hash(settings.candidate) } };
 }

@@ -202,7 +202,6 @@ try {
 | `unsupported_api` | The resolved request API isn't supported by the runtime. |
 | `stream_unavailable` | The resolved request API does not support streaming through `generateTaskStream` (kobold / koboldhorde / novel / textgenerationwebui). |
 | `tool_call_parse` | Model returned a tool call whose `arguments` failed `JSON.parse`. |
-| `json_schema_violation` | `jsonSchema` mode failed validation. |
 | `no_response` | Sender returned no usable content. |
 | `unknown` | Catch-all for unclassified failures. |
 
@@ -445,8 +444,6 @@ Utility methods:
 |--------|------------|
 | `context.registerFunctionTool(tool)` | Register a tool to the global registry |
 | `context.unregisterFunctionTool(name)` | Remove a tool from the global registry |
-| `context.isToolCallingSupported()` | Check if the current API/model supports tool calling |
-| `context.canPerformToolCalls(type)` | Check if tool calls can be performed for a given request type |
 
 ::: warning Global vs Per-Request Tools
 `registerFunctionTool` adds tools to the **global registry** — they are available in the main chat for the model to call. The `tools` parameter in `generateTask` provides tools for **that specific request only** and does not affect the global registry.

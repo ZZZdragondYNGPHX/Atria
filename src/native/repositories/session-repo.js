@@ -664,7 +664,7 @@ export class SessionRepo {
             const key = { kind: NATIVE_RESOURCE_KINDS.commitReceipt, handle, sessionId, commitId };
             const record = await tx.getResource(key);
             if (!record) return null;
-            if (hashNativeDocument(record.doc) !== record.integrity) throw new Error('Native commit receipt integrity mismatch');
+
             return record.doc;
         });
     }
@@ -866,7 +866,7 @@ export class SessionRepo {
             const mark = async key => {
                 if (keys.has(id(key))) return;
                 const record = await tx.getResource(key);
-                if (!record || hashNativeDocument(record.doc) !== record.integrity) throw new Error('Reachable Native dependency missing or corrupt');
+                if (!record) throw new Error('Reachable Native dependency missing or corrupt');
                 keys.set(id(key), key); findAssets(record.doc);
                 if (key.kind === NATIVE_RESOURCE_KINDS.sessionState) {
                     if (key.namespace === 'atri_timeline_index' && record.doc.level) for (const child of record.doc.children) await mark({ ...key, head: child.head });

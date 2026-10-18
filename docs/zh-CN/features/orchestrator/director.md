@@ -157,7 +157,7 @@ loop.finalize -> out
    - **消息产出工具** —— `write_message(text, mode?)` 写正文（`mode='replace'` 覆写、`mode='append'` 追加）;`apply_message_patches(patches)` 做定点的 context-replace 补丁；`get_draft()` 回读当前草稿；`draft_search({ pattern, flags? })` 对当前草稿做正则扫描，返回 grep `-n` 风格的命中行（`lineno: line`）——做术语 / 用词的系统化排查时比眼看 `get_draft` 输出更可靠，所有子代理（特别是各类 critic）都可调用；`finalize()` 提交并收尾。
    - **[自定义工具](./custom-tools.md)** —— 其他 Atria 扩展注册的工具、从 SillyTavern function tool 桥接进来的工具、本编排里手写的工具。子代理看到的是同一组自定义工具面（在子代理粒度有覆写时按覆写过滤）。
 
-3. **子代理是「一次性顾问」**：派遣时拿到当前聊天快照 + 主代理写的任务简报 + 自己的系统提示词 + 启用的循环工具，外加 `get_draft()` 与 `draft_search()` 用于检查主代理目前写到哪里。子代理彼此看不到对方的存在，看不到主代理的推理，**不能再向下派遣**，也**不能提交收尾**——它们只产出文本，主代理决定怎么用。直接改草稿的工具（`write_message` / `apply_message_patches`）由 `tools.message.<verb>` 开关控制，主代理和子代理走同一套开关：默认 profile 里主代理有显式覆写把两个开关打开、子代理继承 profile 默认（两个都关）。想让某个子代理跟主代理并排动稿，去它的 Tools 覆写面板勾上 **message** 那一组（多数情况下不需要——绝大多数子代理更适合作为纯顾问）；想剥夺主代理写正文的权限、让它做纯编排（正文由子代理产出），去主代理 Tools 覆写面板把 **message** 组里的两个勾都取消掉。
+3. 子代理彼此看不到对方的存在，看不到主代理的推理，**不能再向下派遣**，也**不能提交收尾**——它们只产出文本，主代理决定怎么用。直接改草稿的工具（`write_message` / `apply_message_patches`）由 `tools.message.<verb>` 开关控制，主代理和子代理走同一套开关：默认 profile 里主代理有显式覆写把两个开关打开、子代理继承 profile 默认（两个都关）。想让某个子代理跟主代理并排动稿，去它的 Tools 覆写面板勾上 **message** 那一组（多数情况下不需要——绝大多数子代理更适合作为纯顾问）；想剥夺主代理写正文的权限、让它做纯编排（正文由子代理产出），去主代理 Tools 覆写面板把 **message** 组里的两个勾都取消掉。
 
 4. **默认 profile 自带 12 个为 RP 优化过的子代理**:
 
@@ -173,7 +173,7 @@ loop.finalize -> out
    | `plot_brainstormer` | 中段头脑风暴 —— 每个角度产出一份结构草图。可按不同角度并行派多份拿到真正不同的选项。 | 角度 A「正面冲突」 / 角度 B「沉默本身成为节拍」 / 角度 C「她借转向洛阳话题躲避」。 |
    | `voice_critic` | 起草后评审 —— 人性 & 口吻。揪出「数据人」式描写（冷观察动词 / 数据词汇 / 汇报式对白等动情时刻应该烫的地方却写得冷）和冷设定误读（冷设定角色被写成真的冷，而不是「冷皮包热瓤」）。口吻语域错配是次要维度。 | 「草稿里林晚『以临床抽离的姿态观察对象的微表情漂移』—— 这是传感器笔法，不是活人笔法。换成她真的有的某个感觉，即使表面仍然克制。」 |
    | `continuity_critic` | 起草后评审 —— 仅查硬冲突。默认信任 draft；只有当聊天 / 记忆 / 世界书明确说过相反事实时才 flag。例外：角色认知边界违规（角色知道了没人告诉过他的事）永远要 flag。 | 「草稿里林晚认出对方挂坠上的家纹，但聊天里这个挂坠对她而言只被描述成『一枚银盘』。认知边界：她没被告知这是家纹，更没被告知是谁的。」 |
-   | `memory_curator` | 后置 mutation sub-agent，更新记忆图，把本轮中会延续过场景的事实写下来。多轮 observe-act 流程：查 schema，创建前用 `memory_find_by_name` 查重已有实体，用 `memory_node_edit` 打补丁字段，用 `memory_link_upsert` / `memory_link_delete` 管理关系边，Phase B 检查 `memory_compaction_candidates` 并调 `memory_compact_nodes` 把事件层级压缩。**event 节点每次 dispatch 必出一个**（时间线连续性）;character_sheet / location_state 默认 SKIP，只在变化通过 24 小时持续性测试时才写。 | 「创建 `evt_42`（Day 5 立誓节点）。编辑 `n_eileen` 加 `goal: '还债'`。新增 `n_eileen → debt_owed_to → n_protag` 边。把 `evt_18,19,20` 压缩成 `rollup_l1_06`。」 |
+   | `memory_curator` | 后置 mutation sub-agent，更新记忆图，把本轮中会延续过场景的事实写下来。| 「创建 `evt_42`（Day 5 立誓节点）。编辑 `n_eileen` 加 `goal: '还债'`。新增 `n_eileen → debt_owed_to → n_protag` 边。把 `evt_18,19,20` 压缩成 `rollup_l1_06`。」 |
    | `notes_curator` | 起草后清理 —— 本回合 notes 子系统**唯一**的写入点。关闭草稿中已兑现的笔记；只有在草稿确实埋下了真正的剧情承诺时才开新条。**默认动作：什么也不做**。污染笔记比少关一条更糟。 | 「关闭 `o_a3f2`——本稿外祖母见面已发生。不新增；brainstormer 提到未来去洛阳的伏笔，但本稿没真正埋下，不开。」 |
 
    默认主代理系统提示词与这 12 个 id **强耦合**，按 id 指名调度，并为每个写好了 task brief 的样式。改子代理时，主代理提示词也要同步改。
@@ -288,4 +288,3 @@ Director 跟其他模式一样支持 **导出 profile** / **导入 profile** 按
 
 本模式的配置可以保存为命名预设，并在编辑面板中切换。完整工作流见
 [编排预设](./presets.md)。
-

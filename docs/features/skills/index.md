@@ -26,22 +26,6 @@ director-anti-cliche-zh/
 
 `SKILL.md` is the only required file. It carries Anthropic-standard YAML frontmatter:
 
-```markdown
----
-name: director-anti-cliche-zh
-description: Anti-cliché patterns for narrative writing.
-license: MIT
-metadata:
-  author: Atria Team
-  version: 1.0.0
-  tags: [writing-rules, zh, director]
----
-
-# director-anti-cliche-zh
-
-This skill documents the cliché patterns the director profile actively guards against...
-```
-
 - `name` and `description` are required.
 - `license` and `metadata.*` are optional and follow the Anthropic standard. Atria does not introduce private namespaces.
 - The body is the contract — when an agent reads this skill, the body is what they consume. Write it directively; put your "when to use," "how to use," and "tools you should prefer" guidance into the body.

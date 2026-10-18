@@ -35,8 +35,7 @@ fields identify their `KnowledgeEntry.applicability` path before revision writes
 
 ## Delivery and target selectors
 
-`delivery.position` is exactly `before` (default) or `after`. Unknown values and
-legacy aliases fail validation rather than falling back to before.
+`delivery.position` is exactly `before` (default) or `after`.
 
 `KnowledgeBinding.target` and `KnowledgeEntry.delivery.target` share one selector:
 a kind string (`narrator`, `actor`, `agent`, `user`), an object `{ kind, id? }`, or a
@@ -48,7 +47,6 @@ kind/id contract. Binding and entry selectors must both match.
 
 The current Studio Knowledge editor uses these same enums for existing fields.
 Source edits receive field-path errors before Review and retain their drafts.
-Server-side revision validation remains authoritative for every caller.
 
 ## Discovery fields
 
@@ -66,8 +64,7 @@ Library revisions and Studio project-owned Knowledge use the same semantic edito
 Create, order and delete entries within a detached draft. Entry IDs remain stable
 through reorder; required/related entries are selected by their displayed title.
 Deleting a referenced entry is blocked until the author explicitly removes its
-references. Review validates the whole revision and recomputes its ordered entry
-identity list. Library creates a new immutable revision; Studio continues through
+references. Library creates a new immutable revision; Studio continues through
 ChangeSet Review/Apply. Exact entry/revision IDs remain in Details. Advanced Source
 supports opaque metadata and preserves unedited content rather than a second store.
 
@@ -75,17 +72,14 @@ The editor covers content/title, discovery, typed scalar state predicates and
 all/any/direct activation, lifecycle, relations and delivery. Probability is a
 finite percentage from 0–100. Sticky/cooldown/delay are non-negative integer turn
 counts; object-shaped placeholders are rejected. Missing lifecycle values retain
-existing defaults. Regex discovery accepts a JavaScript pattern or `/pattern/flags`
-with `i`, `m`, `s`, `u`; malformed expressions and stateful flags fail validation.
+existing defaults.
 The temporary delivery adapter preserves these expressions as regexes, never
 silently demotes an authored pattern to a keyword.
 
 ### Library Binding management
 
 Knowledge detail exposes a Binding manager with explicit exact revision selection,
-augment/override mode, target rules, visibility, priority and enabled state. Library
-Binding roots remain mutable under their existing authority; updates and deletion
-require a captured integrity token. Source kind is Library here: project, packaged
+augment/override mode, target rules, visibility, priority and enabled state. Source kind is Library here: project, packaged
 and session-owned bindings remain with their respective owners.
 
 World attachment/detachment publishes a new immutable WorldRevision using the
@@ -103,8 +97,7 @@ exact revision deletion against binding creation.
 Library and Studio share a World composition editor for nested baseline/schema
 fields, Knowledge bindings and assets. Dependency choices come from the existing
 Library catalog or the Project's declared resources, never a name-to-latest
-resolver. Binding choices expose the pinned KnowledgeRevision; Library assets
-expose their exact content hash. Project-owned assets retain source-file ownership.
+resolver. Binding choices expose the pinned KnowledgeRevision; Project-owned assets retain source-file ownership.
 Missing references remain visible and must be explicitly removed or resolved.
 Review includes dependency names and exact references. Library publishes a new
 immutable WorldRevision; project-owned Worlds continue through ChangeSet Review
@@ -135,8 +128,7 @@ to their installed work. Local project references select the corresponding edito
 Studio Library Attach/Fork/Update now prepares operations and enters the same
 ChangeSet Review/Apply path as other human edits. Detach removes only the explicit
 project dependency, also via Review/Apply. EntryPoint/World consumers block illegal
-detach and link to their owning editor. World/Knowledge deletion first presents
-reverse-reference blockers; repository checks remain authoritative at write time.
+detach and link to their owning editor.
 
 ### Promoting session Knowledge
 
@@ -146,9 +138,7 @@ first resolves the destination, offers naming for a new base (or displays the
 existing base name), previews whether the Library head changes, and asks for an
 explicit confirmation. The source Session binding remains session-owned.
 
-Promotion checks a captured Library head, compares entry content as well as revision
-metadata when exact identity already exists, and accepts a stable target Binding ID
-for retry. New Knowledge roots and revisions publish through the existing repository
+ New Knowledge roots and revisions publish through the existing repository
 transaction. Repeating an already-completed request reuses its Library Binding.
 
 ## Native selection and prompt delivery
@@ -161,9 +151,7 @@ required dependency bundles are atomic and may use compact content to fit the Na
 Knowledge lane budget. Exact fits are accepted. ContextPlan-selected identities and
 caps remain authoritative; legacy World Info settings cannot alter Native selection.
 
-Evaluation is detached. `commitKnowledge()` verifies Session/Branch/Revision and
-runtime-state identity, then stages `atri_knowledge_runtime` with the active generation
-Draft (or uses an ordinary Native state revision outside a Draft). Stop discards the
+ Stop discards the
 staged state. Sticky, subsequent cooldown and initial delay use Native Timeline
 length, with independent target-specific buckets and exact entry identities. Restore
 and Branch history therefore restore lifecycle state without legacy chat metadata.

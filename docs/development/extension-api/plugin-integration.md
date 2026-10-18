@@ -49,18 +49,6 @@ The handle returned by `registerManagedRegexProvider` provides `upsertScript`, `
 
 The search plugin exposes its API through the `Atria.searchTools` global object so other plugins can leverage search capabilities:
 
-```js
-// Check whether the search plugin is available
-if (globalThis?.Atria?.searchTools) {
-  // Get the list of available search tool names
-  const toolNames = Atria.searchTools.toolNames;
-  // Get tool definitions (for function calling)
-  const toolDefs = Atria.searchTools.getToolDefs();
-  // Check whether a tool name belongs to search tools
-  const isSearchTool = Atria.searchTools.isToolName('web_search');
-}
-```
-
 `Atria.searchTools` exposes tool definition metadata; actual search execution happens via the internal tool-calling loop. See [Search Tools](/features/search-tools) for details.
 
 ## Inter-Extension Communication
@@ -338,7 +326,7 @@ For token-counting tasks (budgeting, context-window calculations).
 getTokenCountAsync(text: string, padding?: number): Promise<number>
 ```
 
-Returns the token count of `text` using the active tokenizer. Cached by `${tokenizerType}-${hash}${modelHash}+${padding}`. Returns `0` for empty input.
+Returns the token count of `text` using the active tokenizer. Returns `0` for empty input.
 
 ### getTextTokens
 
@@ -430,14 +418,6 @@ context.getFileText(file: File): Promise<string>
 
 Reads a `File` (from a `<input type="file">` change event) as text. Rejects on read error.
 
-### getStringHash
-
-```ts
-context.getStringHash(str: string, seed?: number): number
-```
-
-Stable 32-bit FNV-like hash. Useful for cache keys, debounce-by-content identifiers, and "did this change since last time" checks. Not cryptographic.
-
 ### createThumbnail
 
 ```ts
@@ -452,7 +432,7 @@ Decodes a data URL into an image and returns a downsized version as a new data U
 context.isValidUrl(value: string): boolean
 ```
 
-Returns `true` iff `value` parses as a URL via `new URL()`. Used for input validation before issuing fetches.
+Returns `true` iff `value` parses as a URL via `new URL()`.
 
 ### performFuzzySearch
 
@@ -500,7 +480,7 @@ const md = new ctx.lib.showdown.Converter().makeHtml(text);
 
 ## Secrets
 
-For plugins that need to check or list connection-secret state (API keys, credentials). Read-only via the context surface — actual key values live behind the secrets backend.
+ Read-only via the context surface — actual key values live behind the secrets backend.
 
 ### context.secrets.KEYS
 

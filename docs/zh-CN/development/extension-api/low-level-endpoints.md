@@ -66,13 +66,6 @@
 
 对象 patch（`meta/patch`、`state/patch`、`settings/patch`、`worldinfo/patch`）也使用相同的 RFC 6902 格式。
 
-## Patch 冲突与完整性语义
-
-- 服务端会验证 patch 操作的路径是否存在
-- `replace` 操作要求目标路径已存在
-- `add` 操作会创建不存在的路径
-- 冲突时返回错误，客户端应重试或回退到全量保存
-
 ## Chat-Completions 请求体
 
 ```json

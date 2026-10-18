@@ -1,5 +1,4 @@
 import { fork } from 'node:child_process';
-import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { isAbsolute } from 'node:path';
@@ -13,20 +12,8 @@ import { EVOLUTION_RULE, evolutionFields as fields, evolutionHash as hash, evolu
 import { createNativeId } from '../identity.js';
 import { qualityEnvelope, validateQualityReport, qualityProfile, requirePilotSources } from './evaluation/quality.js';
 
-export function evolutionEvaluatorRevision() {
-    return hash(['evolution-evaluator.js', 'evaluation/worker.js', 'evaluation/sealed-sources.js', 'evaluation/json.js', 'evaluation/worker-bridge.js', 'evaluation/adapters.js', 'evaluation/cases.js', 'evaluation/store.js',
-        'evaluation/libraries.js', 'evaluation/loader.js', 'evaluation/quality.js', 'evaluation/pilot-sources.js', 'evaluation/pilot-renewal-sources.js', 'evaluation/pilot-renewal-correction-sources.js', 'evaluation/pilot-continuation-sources.js', 'experience-repository.js', 'experience-service.js', 'evolution-service.js', 'evolution-targets.js', 'evolution-repository.js',
-        '../adapters/generation-host.js', '../adapters/http-generation-provider.js', '../project-agent.js', '../skill-invocation.js', '../retrieval-compute.js', '../run-control.js', '../../../public/shared/native-compute-budget.js',
-        '../model-prompt-runtime/prompt-compiler.js', '../model-prompt-runtime/route-resolver.js', '../model-prompt-runtime/generation-service.js', '../model-prompt-runtime/execution-utils.js',
-        '../model-prompt-runtime/contracts.js', '../model-prompt-runtime/resources.js', '../../skills/repository.js', '../../skills/versions.js',
-        '../../../public/scripts/agents/orchestrator/director-runtime.js', '../../../public/scripts/agents/orchestrator/skill-resolution.js',
-        '../session-snapshot.js', '../session-maintenance.js', '../task-scheduler.js', '../timeline-index.js', '../state-delta.js', '../repositories/session-repo.js', '../adapters/native-session-context.js',
-        '../../../public/shared/native-independent-preparation.js', '../../../public/scripts/native/context-compiler.js', '../../../public/scripts/native/exact-token-count.js',
-        '../../../public/scripts/agents/memory/source-lifecycle.js', '../../../public/scripts/agents/memory/eligibility.js', '../../../public/scripts/agents/memory/index-reuse.js',
-        '../../../public/scripts/agents/memory/ranking-index.js', '../../../public/scripts/agents/memory/hybrid-retrieval.js', '../../../public/scripts/agents/memory/packing.js',
-        '../../../public/scripts/message-takeover.js', '../../../public/scripts/native/studio-agent.js', '../../../public/shared/skill-invocation.js']
-        .map(name => [name, readFileSync(new URL(name, import.meta.url), 'utf8')]));
-}
+export const EVOLUTION_EVALUATOR_VERSION = 1;
+
 export function assertEvolutionPrice(value) {
     if (value === null) return null;
     fields(value, ['source', 'currency', 'inputPerMillion', 'outputPerMillion', 'confirmedAt']);
@@ -40,7 +27,7 @@ function usageCost(usage, price) {
 }
 export function promotionDecision(report, { policyFingerprint, targetPin, budgetBreached = false, ledger = null, jobId = null } = {}) {
     const reasons = [];
-    if (!report || report.origin !== 'host_evaluator' || ![1, 2].includes(report.schemaVersion) || report.evaluatorRevision !== evolutionEvaluatorRevision()
+    if (!report || report.origin !== 'host_evaluator' || ![1, 2].includes(report.schemaVersion) || report.evaluatorRevision !== EVOLUTION_EVALUATOR_VERSION
         || report.caseSetRevision !== CASE_SET_REVISION || !same(report.rule, EVOLUTION_RULE) || report.policyFingerprint !== policyFingerprint
         || report.targetPin !== targetPin) return { eligible: false, reasons: ['evaluation_identity_missing_or_changed'] };
     const entries = selectCases({ purpose: 'evaluation', split: 'promotion' }).filter(c => c.entrance === report.domain);
@@ -211,7 +198,7 @@ export class EvolutionEvaluator {
             : selection.repetitions !== (selection.split === 'promotion' ? 3 : 1))) throw new TypeError('Invalid finite evaluation selection');
         if (selection.caseIds && (selection.split !== 'development' || !Array.isArray(selection.caseIds) || !selection.caseIds.length
             || new Set(selection.caseIds).size !== selection.caseIds.length || selection.caseIds.some(id => !selectCases({ purpose: 'evaluation', split: 'development', profileId: selection.profileId, caseSetRevision: selection.caseSetRevision }).some(c => c.caseId === id && c.entrance === job.domain)))) throw new TypeError('Invalid development case selection');
-        const charges = [], evaluatorRevision = evolutionEvaluatorRevision();
+        const charges = [], evaluatorRevision = EVOLUTION_EVALUATOR_VERSION;
         const child = fork(fileURLToPath(new URL('./evaluation/worker.js', import.meta.url)), [], {
             execArgv: ['--experimental-loader', new URL('./evaluation/loader.js', import.meta.url).href], env: { PATH: process.env.PATH || '', NODE_ENV: 'production' }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'], serialization: 'advanced',
         });

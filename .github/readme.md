@@ -62,7 +62,6 @@ Or get in touch with the developers directly:
 
 1. Send pull requests. Learn how to contribute: [CONTRIBUTING.md](../CONTRIBUTING.md)
 2. Send feature suggestions and issue reports using the provided templates.
-3. Read this entire readme file and check the documentation website first, to avoid sending duplicate issues.
 
 ## Screenshots
 

@@ -7,7 +7,7 @@
 > - Lower-level: `getMemoryGraphReadApi(store, context)` from `public/scripts/agents/memory/read-api.js` (read factory)
 > - Lower-level: `getMemoryGraphWriteApi(store, context, options?)` from `public/scripts/agents/memory/write-api.js` (write factory; `options.onCommit` flushes mutations to floor-state)
 
-Use `openSession(context).recallMemory(query, options)` for narrative recall. It checks the original Information requester and source domain before all lanes and returns complete evidence groups, missing-group diagnostics and an `assertCurrent` consumer guard. `requester` supports narrator/actor/task; task requests also need `informationTaskId`; `at` is an explicit source time. Graph inspection APIs below do not grant permission to reuse their output as narrative evidence.
+Use `openSession(context).recallMemory(query, options)` for narrative recall. Graph inspection APIs below do not grant permission to reuse their output as narrative evidence.
 
 ## Session API (recommended entry)
 
@@ -81,9 +81,6 @@ All 16 methods on the returned session object:
 | `applyExtractionBatch(input)` | `{ applied, rejected }` | One-shot multi-op batch |
 
 For full signatures of each method, see the **Read API** and **Write API** sections below — `openSession` delegates to those internally.
-
-### Lower-level access
-
 
 ## Per-character override accessors
 
@@ -196,9 +193,7 @@ mg.offStoreCommit(callback);
 
 Listener errors are caught and logged; one bad subscriber cannot block the others.
 
-
 ## Overview
-
 
 `getMemoryGraphReadApi(store, context)` exposes the same data, topology, and recall primitives as a frozen, caller-safe API surface. The intended consumer is an agent-style plugin that wants to run its graph inspection — for example the orchestrator's `memory_scout` sub-agent — with whatever model / preset its operator prefers, against the exact graph inspection projection.
 
@@ -831,13 +826,7 @@ unsubscribe();
 
 ## Hybrid narrative recall
 
-Use `openSession(context).recallMemory(query, options)` for narrative recall. It checks the original Information requester and source domain before all lanes and returns complete evidence groups, missing-group diagnostics and an `assertCurrent` consumer guard. `requester` supports narrator/actor/task; task requests also need `informationTaskId`; `at` is an explicit source time. Graph inspection APIs below do not grant permission to reuse their output as narrative evidence.
-
-```js
-const session = await getExtensionApi("memory-graph")?.openSession?.(Atria.getContext());
-const result = await session?.recallMemory(query, { requester: { kind: "narrator" } });
-result?.assertCurrent(); // revalidate immediately before consumption
-```
+Use `openSession(context).recallMemory(query, options)` for narrative recall. Graph inspection APIs below do not grant permission to reuse their output as narrative evidence.
 
 ## Write API
 
@@ -897,7 +886,6 @@ console.log(applied.length, 'applied;', rejected.length, 'rejected');
 
 - Throws synchronously when `type` is missing.
 - Returns the new node's `id`. When `ref` is supplied, the same `ref` is echoed back so the caller can refer to it in a follow-up `upsertLinks` call within a batch.
-- Throws `{ code: 'OP_FAILED', rejected }` when the underlying batch rejects the op (for example a schema validation failure).
 
 **When to use:** a one-shot node creation. For create-plus-link in the same logical action, prefer `applyExtractionBatch` so the link resolution and rollback boundary apply to the whole intent.
 
@@ -921,7 +909,7 @@ const { id } = await writeApi.createNode({
 - `setFields` patches columns; `clearFields` resets the listed columns; passing `title` updates the node title.
 - `ok: true` when the node was found and the patch was applied; `ok: false` when the node was missing, archived, or otherwise skipped (silent skip — no throw).
 
-**When to use:** mutating an existing node in place. Always check `ok` to confirm the patch landed.
+**When to use:** mutating an existing node in place.
 
 **Minimal example:**
 

@@ -2,7 +2,6 @@
 
 Repository: `ZZZdragondYNGPHX/Atria`
 
-1. Verify current `main` and read `main:AGENTS.md`.
 2. If resuming an existing task, read `docs:HANDOFF.md` and its named Plan/Record. For a new ordinary feature, load only directly relevant context.
 3. Create a fresh `feat/<short-name>` branch from current `main`.
 4. Inspect the owning architecture, state/service/API/UI/persistence paths and relevant tests before coding.

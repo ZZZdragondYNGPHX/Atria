@@ -40,8 +40,7 @@ restore/branch activation, refresh, config changes, edit, disable and deletion
 dispose old instances. A same-context `SESSION_LOADED` caused by a typed
 operation is not a context switch.
 
-`sdk.signal` aborts at disposal. After an await, check it before using anything
-outside the SDK. Calls through an obsolete SDK fail. Late activation's returned
+`sdk.signal` aborts at disposal. Calls through an obsolete SDK fail. Late activation's returned
 cleanup runs immediately; its SDK-owned resources have already been removed.
 Known cleanup promises finish before the next activation of the same ID.
 Uncooperative user code can still hang or use browser globals: this is trusted
@@ -78,8 +77,7 @@ those contracts or grants server permissions.
 
 Relative `import './helper.js'` and `new URL('../data.json', import.meta.url)`
 stay in the revision-bound installed-file directory. `sdk.assetUrl('style.css')`
-addresses the extension root. The API verifies enabled state and revision on
-every delivered file. Existing module evaluation is cached by the browser;
+addresses the extension root. Existing module evaluation is cached by the browser;
 activation repeats for each Host instance.
 
 Current import limits: 128 files, 4 MiB combined, 12 directory levels, strict
@@ -133,8 +131,6 @@ Global library changes do not replace saved card prompts or character snapshots.
 
 For custom Native Frontend Packages, bind committed conversation rows through
 `each="bridge.messages.data"` (or a typed recent-message collection), retain the
-row's `item.messageId`, and use `bind:prose="item.content"`. The Host verifies
-that identity and canonical content before registering a selection surface and
-rendering illustrations. Provisional generation text and arbitrary text-only
+row's `item.messageId`, and use `bind:prose="item.content"`. Provisional generation text and arbitrary text-only
 bindings are not illustration surfaces. There is no arbitrary Package DOM
 mutation or requirement for the Package to import plugin code.

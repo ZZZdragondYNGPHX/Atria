@@ -9,7 +9,7 @@ import { fetch as httpFetch, Agent } from 'undici';
 import { setConfigFilePath } from '../../src/util.js';
 import { EvaluationBudget } from './budget.js';
 import { evolutionHash as hash } from '../../src/native/agent-intelligence/evolution-repository.js';
-import { evolutionEvaluatorRevision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
+import { EVOLUTION_EVALUATOR_VERSION } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { parseBlindGrade, automatedAcceptance, developmentReadiness } from './m1-acceptance.js';
 import { M1RetryPolicy, M1PendingSends } from './m1-retry.js';
 import { M1ApiQuota, M1AdvisoryRepository } from './m1-quota.js';
@@ -152,7 +152,7 @@ try {
     const testedHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
     const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-f2.js', 'm1-f3.js', 'm1-f3-promotion.js', 'm1-acceptance.js', 'm1-retry.js', 'm1-quota.js', 'm1-response.js', 'm1-resume.js', 'm1-secrets.js', 'm1-transport-key.js', 'm1-grader.js', 'm1-private-access.js', 'evolution-fixture.js', 'live-bridge.js'];
     execFileSync('git', ['diff', '--quiet', 'HEAD', '--', ...sourceFiles.map(f => 'tests/agent-intelligence/' + f)], { cwd: repo });
-    const summary = { schemaVersion: 1, origin: 'm1_local_automated_acceptance', testedHead, evaluatorRevision: evolutionEvaluatorRevision(),
+    const summary = { schemaVersion: 1, origin: 'm1_local_automated_acceptance', testedHead, evaluatorRevision: EVOLUTION_EVALUATOR_VERSION,
         runnerRevision: hash(sourceFiles.map(f => [f, fs.readFileSync(new URL(f, import.meta.url), 'utf8')])),
         policy: 'm1-advisory-tokens-2026-10-08', apiHardLimits: { rollingDayRequests: 2000, requestsPerMinute: 20 }, tokensAdvisory: true, historicalRecords: 'unavailable', historicalCarry: snapshot.historicalCarry,
         initialAccounting: { requests: snapshot.requests, tokens: snapshot.tokens }, limits, entries: [], humanPreference: 'not_observed', productionPromotion: 'original_gate_unchanged', temporarySecondary };
@@ -305,7 +305,7 @@ try {
         const prior = path.join(reportRoot, name), jobFile = path.join(prior, 'rp-skill-job.json');
         if (!fs.existsSync(jobFile)) continue;
         const source = JSON.parse(fs.readFileSync(path.join(prior, 'summary.json'), 'utf8'));
-        if (source.evaluatorRevision !== evolutionEvaluatorRevision()) continue;
+        if (source.evaluatorRevision !== EVOLUTION_EVALUATOR_VERSION) continue;
         const original = JSON.parse(fs.readFileSync(jobFile, 'utf8'));
         if (!original.candidate?.diff?.after) continue;
         for (const responseFile of fs.readdirSync(prior).filter(n => n.startsWith('rp-skill-response-'))) {

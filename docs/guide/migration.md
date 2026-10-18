@@ -75,7 +75,6 @@ Atria is fully compatible with SillyTavern's data formats. The following data ty
 
 During operation, Atria generates some additional **state files** in the data directory to store data for Atria-exclusive features:
 
-- `.atria-state.<chat_id>.json` — Chat state files storing integrity checksums for incremental sync, etc.
 - Character card state files — Storing card-bound presets, Memory Graph data, editing assistant sessions, etc.
 - Preset state files — Storing preset-associated world info and other extension state
 
@@ -83,7 +82,7 @@ These files **do not affect SillyTavern's original data**. If you need to migrat
 
 ## Notes
 
-1. **Node.js Version**: Atria requires Node.js >= 20. Verify your Node.js version before migrating.
+1. **Node.js Version**: Atria requires Node.js >= 20.
 
 2. **Third-Party Extensions**: SillyTavern's third-party extensions work normally in Atria. Atria uses the same extension loading mechanism, with extensions located in `public/scripts/extensions/third-party/`.
 

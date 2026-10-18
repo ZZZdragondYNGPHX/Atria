@@ -27,28 +27,7 @@ import { registerOrchestrationTool } from
     '/scripts/agents/orchestrator/register-custom-tool.js';
 ```
 
-Always guard against the orchestrator being absent so your extension remains useful standalone.
-
 ## registerOrchestrationTool(spec)
-
-```ts
-{
-  name: string,            // /^[a-zA-Z][a-zA-Z0-9_]{0,63}$/. Must not collide
-                           // with a builtin tool or another extension's tool.
-  description: string,     // For the LLM, not the user.
-  parameters: object,      // OpenAI-style JSON Schema.
-  exec: async (args, ctx) => any,
-  mode: 'read' | 'write',  // Required. write tools are quarantined during
-                           // simulation review.
-  simulate?: async (args, ctx) => any,  // Optional. Called instead of exec
-                                        // during simulation review for write
-                                        // tools. Without it, write tools
-                                        // return the placeholder result
-                                        // { ok: true, simulated: true,
-                                        //   unvalidated: true }.
-  displayName?: string,
-}
-```
 
 `exec` is called with the LLM's parsed arguments and the orchestration ctx. The return value becomes the tool result the LLM sees. Throw to surface a tool error.
 
@@ -146,8 +125,6 @@ The orchestrator's iter-studio popup uses a set of skill-management tools (inven
 | `runSkillIterStudioTool(call, mutationCtx)` | `async ({name, args}, {getWorkingProfile}) => result` | Dispatcher for one skill tool call. Pure inventory / authoring / migration handlers ignore `mutationCtx`; policy-binding handlers (`skill_bind_to_agent` / `skill_unbind_from_agent` / `skill_set_mode_defaults` / `skill_replace_in_systemprompt`) require `getWorkingProfile()` to return a mutable orchestrator working profile. |
 
 The CPA iteration studio consumes this surface to splice the profile-independent skill tools into its preset iter-studio (see `completion-preset-assistant/cpa-iteration/tools.js`). Sibling popups that don't have an orchestrator working profile pass `{ getWorkingProfile: () => null }` and only expose the profile-independent handlers.
-
-
 
 The memory-graph extension ships its read and write tools through this API. The pattern is:
 

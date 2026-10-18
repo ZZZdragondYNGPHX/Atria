@@ -79,7 +79,6 @@ docs(extension-api): add examples for registerExtensionApi
 
 ## Local Development Workflow
 
-1. Check Git status, protect unrelated work and create/use the appropriate task branch.
 2. Implement the change.
 3. Commit locally and write/update the task Record in the independent `docs` branch.
 4. Integrate completed product work into local `main`.

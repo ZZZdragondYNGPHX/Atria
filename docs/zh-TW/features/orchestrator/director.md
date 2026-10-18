@@ -173,7 +173,7 @@ loop.finalize -> out
    | `plot_brainstormer` | 中段頭腦風暴 —— 每個角度產出一份結構草圖。可按不同角度平行派多份拿到真正不同的選項。 | 角度 A「正面衝突」 / 角度 B「沉默本身成為節拍」 / 角度 C「她藉轉向洛陽話題躲避」。 |
    | `voice_critic` | 起草後評審 —— 人性 & 口吻。揪出「資料人」式描寫（冷觀察動詞 / 資料詞彙 / 彙報式對白等動情時刻應該燙的地方卻寫得冷）和冷設定誤讀（冷設定角色被寫成真的冷，而不是「冷皮包熱瓤」）。口吻語域錯配是次要維度。 | 「草稿裡林晚『以臨床抽離的姿態觀察對象的微表情漂移』—— 這是傳感器筆法，不是活人筆法。換成她真的有的某個感覺，即使表面仍然剋制。」 |
    | `continuity_critic` | 起草後評審 —— 僅查硬衝突。預設信任 draft；只有當聊天 / 記憶 / 世界書明確說過相反事實時才 flag。例外：角色認知邊界違規（角色知道了沒人告訴過他的事）永遠要 flag。 | 「草稿裡林晚認出對方掛墜上的家紋，但聊天裡這個掛墜對她而言只被描述成『一枚銀盤』。認知邊界：她沒被告知這是家紋，更沒被告知是誰的。」 |
-   | `memory_curator` | 後置 mutation sub-agent，更新記憶圖，把本輪中會延續過場景的事實寫下來。多輪 observe-act 流程：查 schema，建立前用 `memory_find_by_name` 查重已有實體，用 `memory_node_edit` 打補丁欄位，用 `memory_link_upsert` / `memory_link_delete` 管理關係邊，Phase B 檢查 `memory_compaction_candidates` 並呼叫 `memory_compact_nodes` 把事件層級壓縮。**event 節點每次 dispatch 必出一個**（時間線連續性）;character_sheet / location_state 預設 SKIP，只在變化通過 24 小時持續性測試時才寫。 | 「建立 `evt_42`（Day 5 立誓節點）。編輯 `n_eileen` 加 `goal: '還債'`。新增 `n_eileen → debt_owed_to → n_protag` 邊。把 `evt_18,19,20` 壓縮成 `rollup_l1_06`。」 |
+   | `memory_curator` | 後置 mutation sub-agent，更新記憶圖，把本輪中會延續過場景的事實寫下來。| 「建立 `evt_42`（Day 5 立誓節點）。編輯 `n_eileen` 加 `goal: '還債'`。新增 `n_eileen → debt_owed_to → n_protag` 邊。把 `evt_18,19,20` 壓縮成 `rollup_l1_06`。」 |
    | `notes_curator` | 起草後清理 —— 本回合 notes 子系統**唯一**的寫入點。關閉草稿中已兌現的便箋；只有在草稿確實埋下了真正的劇情承諾時才開新條。**預設動作：什麼也不做**。污染便箋比少關一條更糟。 | 「關閉 `o_a3f2`——本稿外祖母見面已發生。不新增；brainstormer 提到未來去洛陽的伏筆，但本稿沒真正埋下，不開。」 |
 
    預設主代理系統提示詞與這 12 個 id **強耦合**，按 id 指名排程，併為每個寫好了 task brief 的樣式。改子代理時，主代理提示詞也要同步改。
@@ -288,4 +288,3 @@ Director 跟其他模式一樣支援 **匯出 profile** / **匯入 profile** 按
 
 本模式的設定可以儲存為命名預設，並在編輯面板中切換。完整工作流程請見
 [編排預設](./presets.md)。
-

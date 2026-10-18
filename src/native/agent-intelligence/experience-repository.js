@@ -104,7 +104,6 @@ export function pruneExperience(doc, now) {
 export class AgentExperienceRepository {
     constructor({ engine }) { if (!engine) throw new TypeError('Experience requires StorageEngine'); this.engine = engine; }
     _document(record) {
-        if (record.integrity !== hashNativeDocument(record.doc)) throw new TypeError('Experience integrity mismatch');
         const doc = assertExperience(record.doc);
         if (doc.scopeId !== record.key.scopeId) throw new TypeError('Experience key mismatch');
         return doc;

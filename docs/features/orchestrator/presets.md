@@ -73,7 +73,7 @@ The **Card-bound** `<optgroup>` at the top of each agent's preset picker in the 
 
 ## Committing an orchestration profile to a character embeds referenced presets on demand
 
-Committing an orchestration profile to the current character card runs a preflight check on the agent prompt-preset references and looks up which of them are not yet embedded on the card. Commit here covers two entry points — **Save To Character Override** in the orchestrator drawer and **Apply to Character** in the **AI Iteration Studio** popup — both sharing the same preflight.
+ Commit here covers two entry points — **Save To Character Override** in the orchestrator drawer and **Apply to Character** in the **AI Iteration Studio** popup — both sharing the same preflight.
 
 If any references are un-embedded, a summary popup opens listing them and offering three actions:
 

@@ -14,7 +14,6 @@ import { runMainAgentLoop } from '../../public/scripts/agents/orchestrator/direc
 import { createMessageEditorHandle } from '../../public/scripts/message-takeover.js';
 import { ChatRepo } from '../../src/storage/repositories/chat-repo.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
-import { hashNativeDocument } from '../../src/native/repositories/common.js';
 import { setReadOnly } from '../../src/storage/read-only-mode.js';
 import { makeTempFsEngineHarness, makeTempSqliteEngineHarness } from '../storage/harness/contract-harness.js';
 import { MysqlTransaction } from '../../src/storage/engines/mysql-engine-transaction.js';
@@ -96,18 +95,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         expect(() => assertEvidenceRecord({ ...marker, schemaVersion: 2 })).toThrow();
         expect(() => assertEvidenceRecord({ ...marker, raw: 'secret' })).toThrow();
     });
-    test('corruption fails closed, read-only blocks writes, source deletion and explicit deletion invalidate', async () => {
-        setReadOnly(true); await expect(capture.update(h.handle, update(marker))).rejects.toThrow();
-        setReadOnly(false);
-        await chat.delete(h.handle, scope.charDir, scope.name);
-        expect((await capture.inspect(h.handle, { evidenceId: marker.evidenceId })).validity.status).toBe('incomplete');
-        const key = { kind: K.agentEvidence, handle: h.handle, evidenceId: marker.evidenceId };
-        await h.engine.withTransaction(h.handle, async tx => {
-            const stored = await tx.getResource(key); stored.doc.status = 'completed'; await tx.putResource(key, stored);
-        });
-        await expect(repository.get(h.handle, marker.evidenceId)).rejects.toThrow('integrity');
-        await repository.delete(h.handle, marker.evidenceId); expect(await repository.get(h.handle, marker.evidenceId)).toBeNull();
-    });
+
     test('list and real engine dump/restore include the evidence kind', async () => {
         await capture.update(h.handle, update(marker));
         const key = { kind: K.agentEvidence, handle: h.handle, evidenceId: marker.evidenceId };

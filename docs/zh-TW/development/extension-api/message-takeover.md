@@ -113,39 +113,6 @@ type DispatchEventData = {
 
 ## 編輯器控制代碼
 
-```ts
-interface CreateOpts {
-    generationType: 'normal' | 'regenerate' | 'swipe' | 'continue';
-    originalText?: string;            // 預設 '' —— 用於 discard 回滾與 continue 前綴校驗
-    originalReasoning?: string;       // 預設 ''
-    abortSignal?: AbortSignal;        // 傳入 dispatch 事件的訊號
-    flushIntervalMs?: number;         // 預設 33 —— onUpdate 節流視窗
-    owner?: string;                   // 預設 'unknown' —— 診斷用識別字
-}
-
-interface MessageEditorHandle {
-    getText(): string;
-    getReasoning(): string;
-
-    setText(text: string): void;
-    setReasoning(text: string): void;
-
-    commit(): Promise<void>;
-    abort(): Promise<void>;
-    discard(): Promise<void>;
-    readonly complete: Promise<{
-        status: 'committed' | 'aborted' | 'discarded';
-        finalText: string;
-        finalReasoning: string;
-    }>;
-
-    readonly abortSignal: AbortSignal;
-
-    // 面向核心 —— 外掛通常不需要用到。
-    setOnUpdate(fn: ((text: string, reasoning: string) => void) | null): void;
-}
-```
-
 | 操作 | 行為 |
 |------|------|
 | `setText(text)` | 整體替換文字緩衝。排入一次合併刷新（預設 33ms），呼叫核心的 onUpdate 回呼做即時重繪。`text` 不是字串時拋 `invalid_argument`；到達終態後改寫拋 `editor_committed` / `editor_aborted` / `editor_discarded`;`generationType === 'continue'` 時若新文字不保留原前綴，拋 `invalid_op_for_continue`。 |
@@ -159,7 +126,7 @@ interface MessageEditorHandle {
 
 ### `continue` 前綴不變量
 
-當 `opts.generationType === 'continue'` 時，如果傳給 `setText(newText)` 的 `newText` 不以 `opts.originalText` 開頭，會拋 `invalid_op_for_continue`。這個檢查用來攔截最常見的坑 —— 外掛不小心把使用者希望繼續的前綴整段抹掉。做 `continue` 的外掛必須在前綴之上累積。
+當 `opts.generationType === 'continue'` 時，如果傳給 `setText(newText)` 的 `newText` 不以 `opts.originalText` 開頭，會拋 `invalid_op_for_continue`。做 `continue` 的外掛必須在前綴之上累積。
 
 ### 錯誤碼
 

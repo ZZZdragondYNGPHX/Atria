@@ -7,14 +7,14 @@ jest.unstable_mockModule('../../src/native/agent-intelligence/evaluation/cases.j
     selectCases: options => originalCases.selectCases(options).map(c => options.split === 'promotion' ? { ...c, inputHash: originalCases.hash(input) } : c) }));
 const { pilotPromotionAcceptance } = await import('./m1-f3-promotion.js');
 const { f3GradeMessages } = await import('./m1-f3.js');
-const { evolutionEvaluatorRevision, promotionDecision } = await import('../../src/native/agent-intelligence/evolution-evaluator.js');
+const { EVOLUTION_EVALUATOR_VERSION, promotionDecision } = await import('../../src/native/agent-intelligence/evolution-evaluator.js');
 const { qualityEnvelope } = await import('../../src/native/agent-intelligence/evaluation/quality.js');
 const { selectCases, hash, PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION, CONTINUATION_PILOT_CASE_SET_REVISION } = await import('../../src/native/agent-intelligence/evaluation/cases.js');
 
 function fixture(domain = 'rp', caseSetRevision = PILOT_CASE_SET_REVISION) {
     const cases = selectCases({ purpose: 'evaluation', split: 'promotion', profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related', caseSetRevision });
     const owner = { attempts: [] }, independent = [];
-    const report = { origin: 'm1_f3_promotion', domain, evaluatorRevision: evolutionEvaluatorRevision(), caseSetRevision,
+    const report = { origin: 'm1_f3_promotion', domain, evaluatorRevision: EVOLUTION_EVALUATOR_VERSION, caseSetRevision,
         quality: qualityEnvelope(domain, cases, 'promotion'), configurations: { baseline: 'base', candidate: 'candidate' },
         settings: { baseline: 'base-settings', candidate: 'candidate-settings' }, comparisonCalibration: [], pairs: [], charges: [] };
     const receipt = (id, trialId, kind, jobId) => {

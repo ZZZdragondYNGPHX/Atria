@@ -3,30 +3,6 @@ import { createHash } from 'node:crypto';
 import { ConflictError } from '../../storage/errors.js';
 import { readWorldState } from '../state-delta.js';
 
-function assertJsonValue(value, field, seen = new Set()) {
-    if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
-    if (typeof value === 'number' && Number.isFinite(value)) return;
-    if (typeof value !== 'object') throw new TypeError(`${field} must contain JSON values only`);
-    if (seen.has(value)) throw new TypeError(`${field} must not contain cycles`);
-    seen.add(value);
-    if (Array.isArray(value)) {
-        value.forEach((item, index) => assertJsonValue(item, `${field}[${index}]`, seen));
-    } else {
-        // Jest VM modules and plugin/worker boundaries can hand us ordinary
-        // JSON objects from another realm, where direct prototype identity
-        // differs from this realm's Object.prototype. Brand-check instead:
-        // Dates/Maps/Sets/etc. retain distinct tags while cross-realm plain
-        // objects (including null-prototype objects) remain [object Object].
-        if (Object.prototype.toString.call(value) !== '[object Object]') {
-            throw new TypeError(`${field} must contain plain JSON objects only`);
-        }
-        for (const [key, item] of Object.entries(value)) {
-            assertJsonValue(item, `${field}.${key}`, seen);
-        }
-    }
-    seen.delete(value);
-}
-
 function stableJson(value) {
     if (value === null || typeof value !== 'object') return JSON.stringify(value);
     if (Array.isArray(value)) return '[' + value.map(stableJson).join(',') + ']';
@@ -36,18 +12,16 @@ function stableJson(value) {
         .join(',') + '}';
 }
 
-export function cloneNativeDocument(value, field = 'Native resource') {
-    assertJsonValue(value, field);
+export function cloneNativeDocument(value) {
     return structuredClone(value);
 }
 
 export function serializeNativeDocument(value) {
-    const cloned = cloneNativeDocument(value);
-    return stableJson(cloned);
+    return stableJson(value);
 }
 
 export function hashNativeDocument(value) {
-    return createHash('sha256').update(serializeNativeDocument(value)).digest('hex');
+    return createHash('sha256').update(stableJson(value)).digest('hex');
 }
 
 export function nativeRecord(value, {
@@ -66,14 +40,13 @@ export function nativeRecord(value, {
 }
 
 export async function putImmutable(tx, key, value) {
-    const doc = cloneNativeDocument(value);
-    const integrity = hashNativeDocument(doc);
+    const record = nativeRecord(value);
+    const { doc, integrity } = record;
     const existing = await tx.getResource(key);
     if (existing) {
         if (existing.integrity === integrity) return existing.doc;
         throw new ConflictError('native_immutable_conflict', { key });
     }
-    const record = nativeRecord(doc);
     const result = await tx.putResourceIfMatch(key, null, record);
     if (result.updated) return doc;
     const raced = await tx.getResource(key);

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import { hash, canonical, selectCases, loadFixture, CASE_SET_REVISION, PILOT_CASE_SET_REVISION, isPilotCaseSetRevision } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
-import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
+import { EVOLUTION_EVALUATOR_VERSION, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
 import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligence/evaluation/worker-bridge.js';
 import { runRp } from '../../src/native/agent-intelligence/evaluation/adapters.js';
@@ -20,7 +20,7 @@ export function pilotPromotionAcceptance(report, independent, owner, jobId) {
     const required = selectCases({ purpose: 'evaluation', split: 'promotion', profileId, caseSetRevision: report.caseSetRevision });
     const repetitions = report.promotionRepetitions ?? 3;
     if (!Number.isSafeInteger(repetitions) || repetitions < 1) reasons.push('independent_cases_incomplete');
-    if (report.origin !== 'm1_f3_promotion' || report.evaluatorRevision !== evolutionEvaluatorRevision()
+    if (report.origin !== 'm1_f3_promotion' || report.evaluatorRevision !== EVOLUTION_EVALUATOR_VERSION
         || !isPilotCaseSetRevision(report.caseSetRevision) || !equal(report.quality, qualityEnvelope(report.domain, required, 'promotion'))
         || !comparisonCalibrationReady(report, owner)) reasons.push('promotion_identity_or_calibration_changed');
     if (report.pairs.length !== required.length * repetitions || required.some(c => {
@@ -224,7 +224,7 @@ export async function continueF3Promotion({ f, kind, result, source, scope, entr
     const candidate = result.candidate, report = readF3StoredReport(candidate.report);
     const doc = await f.repository.get(f.h.handle, f.scope, f.subject);
     if (hash(doc) !== hash(result.doc) || report.judgeMode !== 'primary_only' || scope.judgeMode !== 'primary_only'
-        || report.evaluatorRevision !== evolutionEvaluatorRevision() || hash(candidate.diff.after) !== scope.frozenCandidateHash
+        || report.evaluatorRevision !== EVOLUTION_EVALUATOR_VERSION || hash(candidate.diff.after) !== scope.frozenCandidateHash
         || hash(await f.service.targets.capture(f.h.handle, f.scope, f.subject, f.target)) !== result.job.targetPin) throw new Error('f3_frozen_continuation_changed');
     const checked = await f.service.targets.check(f.h.handle, f.scope, f.subject, f.target, candidate.candidateId);
     if (!equal(checked.base, candidate.base) || !equal(checked.desired, candidate.desired)) throw new Error('f3_frozen_continuation_changed');

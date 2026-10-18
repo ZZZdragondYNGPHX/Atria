@@ -19,8 +19,6 @@ With the experimental engine **off**, macros still resolve but the following fal
 | Stable substitution order across passes | ✓ |
 | Plain <span v-pre>`{{user}}`</span>, <span v-pre>`{{setvar::name::value}}`</span>, <span v-pre>`{{time}}`</span>, … | works either way |
 
-If a feature on this page seems not to work, check this setting first.
-
 ## Syntax
 
 A macro looks like <span v-pre>`{{name}}`</span>, <span v-pre>`{{name::arg}}`</span>, or <span v-pre>`{{name::arg1::arg2}}`</span>. Macro names are **case-insensitive** — <span v-pre>`{{user}}`</span>, <span v-pre>`{{User}}`</span>, and <span v-pre>`{{USER}}`</span> all resolve to the same macro. Whitespace between the braces and the name is allowed: <span v-pre>`{{ user }}`</span> works the same as <span v-pre>`{{user}}`</span>.
@@ -398,7 +396,7 @@ See the [Variables](#variables) section above for the full list.
 |---|---|
 | <span v-pre>`{{roll::1d20}}`</span> | Dice roll using droll syntax (`1d6`, `3d6+4`, …). A plain integer `N` is treated as `1dN`. Re-rolls on every render. |
 | <span v-pre>`{{random::red::green::blue}}`</span> | Random element. Re-rolls on every render. |
-| <span v-pre>`{{pick::red::green::blue}}`</span> | Random element, **stable** per chat + macro position. Seed = chat hash + content hash + position + reroll seed. Reset with `/reroll-pick`. |
+| <span v-pre>`{{pick::red::green::blue}}`</span> | Random element, **stable** per chat + macro position. Reset with `/reroll-pick`.|
 
 ### Environment & API
 

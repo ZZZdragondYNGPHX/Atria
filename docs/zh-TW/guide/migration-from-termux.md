@@ -155,10 +155,6 @@ cp -r ~/SillyTavern/public/scripts/extensions/third-party \
 Atria APK 自己在 `atria-data/` 下維護一個 `_runtime-persist/` 目錄，存放執行時持久化產物。**不要覆蓋也不要刪除它**，從原版 SillyTavern 也不會帶來這個目錄。
 :::
 
-### 5. 重啟 Atria，驗證資料
-
-重新打開 Atria APK。等待載入完成後角色卡列表、聊天紀錄、世界書、預設、API 連線都應自動還原。
-
 ### 檔案管理員無法存取 Android/data？
 
 Android 11 及以上版本對 `Android/data/` 目錄加了存取限制，不同手機廠商的處理方式不同：
@@ -197,11 +193,11 @@ Android 11 及以上版本對 `Android/data/` 目錄加了存取限制，不同�
 
 **「還原備份」報錯說封存檔不匹配選定的還原類別**
 
-ZIP 內部完全找不到 `characters/`、`chats/`、`worlds/` 這類子目錄。檢查一下打 ZIP 時的工作目錄——`zip -r ... default-user` 是正確的；從 `~/SillyTavern` 直接 `zip -r ... data` 也行；但從 `~/` 直接 `zip -r ... SillyTavern` 把外面的原始碼全包進去就會失敗。
+ZIP 內部完全找不到 `characters/`、`chats/`、`worlds/` 這類子目錄。從 `~/SillyTavern` 直接 `zip -r ... data` 也行；但從 `~/` 直接 `zip -r ... SillyTavern` 把外面的原始碼全包進去就會失敗。
 
 **重啟 Atria 後角色卡列表是空的（手動複製流程）**
 
-檢查複製層級：`atria-data/` 下應直接出現 `default-user/`（或其他使用者名稱目錄），而不是嵌套的 `atria-data/data/default-user/`。如果出現了重複的 `data/` 一層，把裡面的內容上移一級。
+如果出現了重複的 `data/` 一層，把裡面的內容上移一級。
 
 **Atria 啟動後白屏 / 報錯（手動複製流程）**
 

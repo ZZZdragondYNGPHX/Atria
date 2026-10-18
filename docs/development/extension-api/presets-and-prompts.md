@@ -115,7 +115,7 @@ presets.state.update(
 >
 ```
 
-**Recommended read-modify-write approach.** The `updater` function receives the current state (`{}` when none exists) and returns the new state. The system computes the minimal incremental patch under the hood, so only the changed slice crosses the wire. Returning `null` / `undefined` is treated as "no change" and resolves with `{ok: true, updated: false}`. 409 conflicts (concurrent edit) are retried automatically; the retry budget is controlled by `options.maxRetries` (default 1). On failure returns `{ok: false, reason, hint}` — see [Error reasons](#error-reasons-1) below. This function never throws; exceptions inside the reducer are caught and surfaced as `reason: 'VALIDATION_ARGS'`.
+**Recommended read-modify-write approach.** The `updater` function receives the current state (`{}` when none exists) and returns the new state. The system computes the minimal incremental patch under the hood, so only the changed slice crosses the wire. Returning `null` / `undefined` is treated as "no change" and resolves with `{ok: true, updated: false}`. 409 conflicts (concurrent edit) are retried automatically; the retry budget is controlled by `options.maxRetries` (default 1). On failure returns `{ok: false, reason, hint}` — see [Error reasons](#error-reasons-1) below.
 
 ```js
 await context.presets.state.update('my-plugin', (current = {}) => ({
@@ -178,9 +178,6 @@ Preset state read/write methods (`get`, `getBatch`, `update`, `patch`, `delete`,
 
 | Reason | When it fires | Suggested handling |
 |---|---|---|
-| `VALIDATION_ARGS` | Bad arguments (empty namespace, non-function updater, non-array operations, reducer threw) | Fix caller — this is a programmer bug |
-| `VALIDATION_TARGET` | No active preset (apiId/name resolution failed) | Skip the write, retry once a preset is selected |
-| `VALIDATION_COMMIT` | floor-state only (not applicable to preset state) | — |
 | `INSTANCE_DESTROYED` | floor-state only (not applicable to preset state) | — |
 | `CONFLICT` | HTTP 409 even after retry | Re-read current state and try again |
 | `HTTP_ERROR` | Other non-2xx response | Inspect `hint` for the status code, user-visible toast acceptable |

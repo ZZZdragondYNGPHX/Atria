@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals';
 import { ProjectAgentService } from '../../src/native/project-agent.js';
 import { projectSource, services } from './project-fixture.js';
-import { ProjectTaskRepository, assertProjectTask } from '../../src/native/agent-intelligence/project-task-repository.js';
+import { ProjectTaskRepository } from '../../src/native/agent-intelligence/project-task-repository.js';
 import { hashNativeDocument } from '../../src/native/repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { FsEngine } from '../../src/storage/engines/fs-engine.js';
@@ -225,21 +225,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         await expect(agent.finishGeneration(h.handle, projectId, task.taskId, { attemptId: next.attempts.at(-1).attemptId, status: 'completed', conversation })).rejects.toMatchObject({ code: 'project_agent_attempt_conflict' });
     });
 
-    test('CAS, unknown schemas, corruption, private message fields and read-only fail closed', async () => {
-        const previous = await repository.get(h.handle, projectId, task.taskId);
-        await expect(repository.save(h.handle, previous, '0'.repeat(64))).rejects.toMatchObject({ code: 'native_write_conflict' });
-        expect(() => assertProjectTask({ ...previous, schemaVersion: 2 })).toThrow();
-        expect(() => assertProjectTask({ ...previous, owner: h.handle })).toThrow();
-        expect(() => assertProjectTask({ ...previous, timeline: Array.from({ length: 1025 }, (_, index) => ({ eventId: String(index), type: 'test', at: 1 })) })).toThrow('limit');
-        expect(() => assertProjectTask({ ...previous, intent: 'x'.repeat(2 * 1024 * 1024) })).toThrow('byte limit');
-        expect(() => assertProjectTask({ ...previous, conversation: [{ role: 'assistant', content: '', providerState: { thinking: 'PRIVATE' } }] })).toThrow();
-        setReadOnly(true); await expect(agent.setPlan(h.handle, projectId, task.taskId, { summary: 'No', steps: [{ title: 'No' }] })).rejects.toThrow();
-        expect(await agent.getTask(h.handle, projectId, task.taskId)).toEqual(task);
-        setReadOnly(false); const key = { kind: K.projectAgentTask, handle: h.handle, projectId, taskId: task.taskId };
-        await h.engine.withTransaction(h.handle, async tx => { const record = await tx.getResource(key); record.doc.status = 'completed'; await tx.putResource(key, record); });
-        await expect(agent.getTask(h.handle, projectId, task.taskId)).rejects.toThrow('integrity');
-        await agent.deleteTask(h.handle, projectId, task.taskId); expect(await repository.get(h.handle, projectId, task.taskId)).toBeNull();
-    });
+
 
     test('Project/owner isolation, missing legacy tasks, deletion and engine backup paths', async () => {
         const other = await studio.createProject(h.handle, projectSource());

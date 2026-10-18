@@ -2,7 +2,7 @@
 
 Have you ever had the AI just... not get it? You set up a careful scene — a tense standoff, a delicate political negotiation, a slow-burn romance — and the reply skips past your last beat, forgets a rule you established two scenes ago, breaks character to summarize, or rushes to a resolution you didn't want. This isn't because the model is dumb. It's because the model can only think about one thing at a time, and you've asked it to do too many in one shot: stay in character, recall context, respect world rules, plan a next beat, *and* write good prose.
 
-The Orchestrator solves this by sending in a small team before the main reply. One agent extracts the important state from your recent chat. Another checks what world rules apply right now. A third drafts a plan for what this turn should accomplish. A fourth reviews their work. A final agent packages everything the team came up with into a single short briefing. By the time the main model writes its reply, it has been handed that briefing (and only that briefing), so it can spend its budget on the prose, not on bookkeeping.
+The Orchestrator solves this by sending in a small team before the main reply. One agent extracts the important state from your recent chat. A third drafts a plan for what this turn should accomplish. A fourth reviews their work. A final agent packages everything the team came up with into a single short briefing. By the time the main model writes its reply, it has been handed that briefing (and only that briefing), so it can spend its budget on the prose, not on bookkeeping.
 
 **The orchestrator ships with a working default Spec workflow — you don't have to design anything. Toggle it on and it just runs.** When you want a different shape later, every execution mode has its own dedicated editor.
 
@@ -197,7 +197,6 @@ Payload:
 | `chatKey` | string | Current chat key |
 | `at` | string | ISO timestamp |
 | `anchorPlayableFloor` | number | Bound user turn floor (0 if unavailable) |
-| `anchorHash` | string | Anchor hash for validation |
 | `capsuleText` | string | Final injected guidance text |
 | `stageOutputs` | array | Compact stage outputs (`completed` / `reused`) |
 | `reviewRerunCount` | number | Review rerun count |

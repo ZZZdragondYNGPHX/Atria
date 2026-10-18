@@ -81,7 +81,7 @@ type DispatchEventData = {
 
 ## 三种终态
 
-句柄会进入三种终态之一，每种触发不同的内核清理 pipeline。选对终态很关键 —— 内核对每种终态跑的下游工作不同，选错了（比如用户点停止时调 `commit()`）会和下一回合产生 race condition。
+句柄会进入三种终态之一，每种触发不同的内核清理 pipeline。
 
 | 方法 | 插件什么时候调 | 内核响应 | `outcome.status` |
 |------|---------------|-----------|------------------|
@@ -113,39 +113,6 @@ type DispatchEventData = {
 
 ## 编辑器句柄
 
-```ts
-interface CreateOpts {
-    generationType: 'normal' | 'regenerate' | 'swipe' | 'continue';
-    originalText?: string;            // 默认 '' —— 用于 discard 回滚和 continue 前缀校验
-    originalReasoning?: string;       // 默认 ''
-    abortSignal?: AbortSignal;        // 传 dispatch 事件的信号
-    flushIntervalMs?: number;         // 默认 33 —— onUpdate 限频窗口
-    owner?: string;                   // 默认 'unknown' —— 诊断用标识
-}
-
-interface MessageEditorHandle {
-    getText(): string;
-    getReasoning(): string;
-
-    setText(text: string): void;
-    setReasoning(text: string): void;
-
-    commit(): Promise<void>;
-    abort(): Promise<void>;
-    discard(): Promise<void>;
-    readonly complete: Promise<{
-        status: 'committed' | 'aborted' | 'discarded';
-        finalText: string;
-        finalReasoning: string;
-    }>;
-
-    readonly abortSignal: AbortSignal;
-
-    // 面向内核 —— 插件通常不需要用到这个。
-    setOnUpdate(fn: ((text: string, reasoning: string) => void) | null): void;
-}
-```
-
 | 操作 | 行为 |
 |------|------|
 | `setText(text)` | 整体替换文本 buffer。排队一次合并刷新（默认 33ms），调用内核的 onUpdate 回调做实时重绘。`text` 不是字符串抛 `invalid_argument`；到达终态后改写抛 `editor_committed` / `editor_aborted` / `editor_discarded`;`generationType === 'continue'` 时若新文本不保留原前缀，抛 `invalid_op_for_continue`。 |
@@ -159,7 +126,7 @@ interface MessageEditorHandle {
 
 ### `continue` 前缀不变量
 
-当 `opts.generationType === 'continue'` 时，如果传给 `setText(newText)` 的 `newText` 不以 `opts.originalText` 开头，会抛 `invalid_op_for_continue`。这个检查用来拦截最常见的坑 —— 插件不小心把用户希望继续的前缀整段抹掉。做 `continue` 的插件必须在前缀之上累积。
+当 `opts.generationType === 'continue'` 时，如果传给 `setText(newText)` 的 `newText` 不以 `opts.originalText` 开头，会抛 `invalid_op_for_continue`。做 `continue` 的插件必须在前缀之上累积。
 
 ### 错误码
 

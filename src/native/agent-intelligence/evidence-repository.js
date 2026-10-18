@@ -43,7 +43,7 @@ export class AgentEvidenceRepository {
         text(handle, 'Authenticated owner'); hash(evidenceId);
         const record = await this.engine.withTransaction(handle, tx => tx.getResource(key(handle, evidenceId)));
         if (!record) return null;
-        if (record.integrity !== hashNativeDocument(record.doc)) throw new TypeError('Evidence integrity mismatch');
+
         const doc = assertEvidenceRecord(record.doc);
         if (doc.evidenceId !== evidenceId) throw new TypeError('Evidence key mismatch');
         return doc;

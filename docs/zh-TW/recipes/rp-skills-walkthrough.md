@@ -36,7 +36,7 @@ Skills 是給 agent 用的知識包。導演派發某個 sub-agent（`intent_sco
 
 ![內嵌 Skill 編輯器 — 檔案樹 + 正文區](/screenshots/skills/rp-demo-8.5-editor-body-pasted.png)
 
-把模板正文換成你想要的。要找格式參考，隨便開啟一條自帶 skill 看就行——它們用雙語段落、`✗` / `✓` 例子對照，結尾用一個 Self-check 段。儲存之後回到導演編輯器，把新 skill 加進它的 Skill 列表。
+把模板正文換成你想要的。儲存之後回到導演編輯器，把新 skill 加進它的 Skill 列表。
 
 詳見 [Skill 管理](/zh-TW/features/skills/management)。
 

@@ -11,10 +11,6 @@ import { nativeRecord, hashNativeDocument, putImmutable, withNativeResourceWrite
 import { assertPersonaContent, assertPersonaRef, capturePersona, personaFailure, personaFields, personaHash, personaDocumentReferences, EMPTY_PERSONA_FINGERPRINT, PERSONA_NAMESPACE, PERSONA_MEDIA_TYPES } from '../persona-contract.js';
 
 const key = (kind, handle, extra = {}) => ({ kind, handle, ...extra });
-const checked = record => {
-    if (record && hashNativeDocument(record.doc) !== record.integrity) throw personaFailure('native_persona_conflict');
-    return record;
-};
 // One account resource lock precedes Session publication locks. FS has no rollback.
 export class PersonaRepo {
     constructor({ engine, assetStore, handles = async handle => [handle] }) {
@@ -32,7 +28,7 @@ export class PersonaRepo {
         return enter(0);
     }
     async _record(handle, kind, extra = {}) {
-        return this.engine.withTransaction(handle, async tx => checked(await tx.getResource(key(kind, handle, extra))));
+        return this.engine.withTransaction(handle, tx => tx.getResource(key(kind, handle, extra)));
     }
     async get(handle, input) {
         personaFields(input, ['personaId', 'ref']);
@@ -57,7 +53,6 @@ export class PersonaRepo {
         const roots = await this.engine.withTransaction(handle, tx => tx.listResources({ kind: K.persona, handle }));
         const items = [];
         for (const record of roots) {
-            checked(record);
             if (!includeArchived && record.doc.archived) continue;
             const item = await this.get(handle, { personaId: record.key.personaId });
             if (item.revision.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())) items.push(item);
@@ -69,11 +64,11 @@ export class PersonaRepo {
     async revisions(handle, input) {
         personaFields(input, ['personaId']);
         const current = await this.get(handle, input);
-        return this.engine.withTransaction(handle, async tx => (await tx.listResources({ kind: K.personaRevision, handle, personaId: input.personaId })).filter(record => current.root.publishedRevisionIds.includes(record.key.revisionId)).map(record => checked(record).doc));
+        return this.engine.withTransaction(handle, async tx => (await tx.listResources({ kind: K.personaRevision, handle, personaId: input.personaId })).filter(record => current.root.publishedRevisionIds.includes(record.key.revisionId)).map(record => record.doc));
     }
     async _cas(tx, k, doc, expectedFingerprint) {
         personaHash(expectedFingerprint);
-        const existing = checked(await tx.getResource(k));
+        const existing = await tx.getResource(k);
         if ((existing?.integrity ?? EMPTY_PERSONA_FINGERPRINT) !== expectedFingerprint) throw personaFailure('native_persona_conflict');
         const record = nativeRecord(doc, { existing });
         const result = await tx.putResourceIfMatch(k, existing?.integrity ?? null, record);

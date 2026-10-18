@@ -66,13 +66,6 @@
 
 物件 patch（`meta/patch`、`state/patch`、`settings/patch`、`worldinfo/patch`）也使用相同的 RFC 6902 格式。
 
-## Patch 衝突與完整性語義
-
-- 伺服端會驗證 patch 操作的路徑是否存在
-- `replace` 操作要求目標路徑已存在
-- `add` 操作會建立不存在的路徑
-- 衝突時回傳錯誤，用戶端應重試或回退到全量儲存
-
 ## Chat-Completions 請求體
 
 ```json

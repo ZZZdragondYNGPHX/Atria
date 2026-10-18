@@ -18,7 +18,7 @@
 - **模式**
   - **讀（無副作用）** —— 模擬評審期總是真實執行。
   - **寫（修改狀態）** —— 模擬評審期會跳過，除非你提供了模擬本體。
-- **參數（OpenAI JSON Schema）** —— LLM 傳入參數的 JSON Schema 描述。儲存時會按 JSON 解析驗證。
+- **參數（OpenAI JSON Schema）** —— LLM 傳入參數的 JSON Schema 描述。
 - **函式本體** —— 非同步 JavaScript，兩個參數：
   - `args` —— LLM 傳過來已解析的參數。
   - `ctx` —— SillyTavern `getContext()` 那個物件，外加編排執行時掛的幾個欄位。完整欄位列表見下面 [ctx 上有什麼](#ctx-上有什麼)。
@@ -45,7 +45,6 @@
 - `ctx.__atriaRun` —— 本次 run 的執行時狀態。子欄位：
     - `ctx.__atriaRun.activatedEntryKeys` 是一個 `Set`，鍵的形式是 `${world}.${uid}`，標記本輪已經被注入主上下文的 World Info 條目（你的工具若要再呈現 lorebook 內容可據此去重）。
     - `ctx.__atriaRun.wiFinalizedPayload` 是**可變引用**，指向 `script.js` 即將拼成 `<world_info>` 通道字串的那一份 `wiFinalizedPayload`。**在你的工具呼叫執行期間** push 到 `wiFinalizedPayload.worldInfoBeforeEntries` / `.worldInfoAfterEntries` / `.worldInfoDepth[i].entries` 裡的內容，會被當作本輪 `<world_info>` 通道的一部分一同送進主模型，跟自然啟用的條目完全沒法區分。繞過世界書 token 預算，也不會觸發遞迴 key 掃描。Loop / Spec / Agenda 可用（它們都在 `GENERATION_WORLD_INFO_FINALIZED` 同一幀內跑）；**Director 下為 undefined**（主代理跑的時候 WI 已經焊死在 prompt 裡）。Layer-1 的 `lorebook_force_activate` builtin 是這個機制的官方包裝——優先用它，不要自己手寫 push。
-    - `ctx.__atriaRun.abortSignal` 是本次 run 的協作式取消訊號——長耗時工具裡要定期檢查 `.aborted`。
 - `ctx.__floorStateForNotes` —— `note_open` / `note_close` 工具底層用的 floor-state 實例。想跟便箋系統協作的工具可以讀它。
 - `ctx.__customToolRegistry` —— 你的工具被編譯進的那個 per-run Layer-3 註冊表。大多數工具用不到，留給少數進階情境（例如反向列舉本編排裡的其他手寫工具）。
 - `ctx.__memoryGraphSession` —— 由第一次 `memory_*` 工具呼叫 lazy 開啟；本輪跑過至少一次 memory 工具之後才會出現。
@@ -53,23 +52,6 @@
 欄位命名衝突：SillyTavern 占頂層名字空間；編排執行時只掛 `__` 前綴的欄位，所以兩邊互不踩。
 
 最小例子：
-
-```js
-// 讀目前角色名
-return { char: ctx.characters[ctx.characterId]?.name };
-
-// 呼叫另一個擴充功能的 API
-const mg = ctx.getExtensionApi('memory-graph');
-const session = await mg.openSession(ctx);
-
-// 發出事件,別處可以訂閱
-ctx.eventSource.emit('my_tool_fired', { args });
-
-// 協作式取消:檢查本 run 的 abort signal
-if (ctx.__atriaRun?.abortSignal?.aborted) {
-    throw new Error('aborted');
-}
-```
 
 ### 安全提示
 
@@ -85,11 +67,11 @@ if (ctx.__atriaRun?.abortSignal?.aborted) {
 
 ## 模擬評審
 
-自訂工具會進入 [AI 迭代工作台](./iteration-studio.md) 用來在不寫真實狀態的前提下、把工作流跑在你目前聊天上的那條模擬管線。讀工具總是真實派發到你的程式碼。寫工具如果你寫了模擬本體就走模擬本體；否則回傳標準佔位 `{ ok: true, simulated: true, unvalidated: true }`，trace 裡會標成「未驗證」。
+自訂工具會進入 [AI 迭代工作台](./iteration-studio.md) 用來在不寫真實狀態的前提下、把工作流跑在你目前聊天上的那條模擬管線。讀工具總是真實派發到你的程式碼。寫工具如果你寫了模擬本體就走模擬本體；
 
 ## 迭代工作台
 
-AI 迭代工作台直接在工作 profile 上讀寫自訂工具的 Layer-3 定義。它有完整的讀 / 寫 / 檢查表面，外加沙箱 dry-run 和發現工具，這樣它能在請你確認前先用真實的 `ctx` 把程式碼校驗過。
+AI 迭代工作台直接在工作 profile 上讀寫自訂工具的 Layer-3 定義。
 
 讀工具（結果直接回傳，無需審閱）：
 
@@ -101,8 +83,8 @@ AI 迭代工作台直接在工作 profile 上讀寫自訂工具的 Layer-3 定�
 
 寫工具（在迭代工作台的 ProposalBus 上掛一張待審 card；你不點同意就什麼都不會落到 profile）：
 
-- `atri_orch_set_custom_tool` —— 新建或整體覆蓋一條工具。掛卡前函式本體會做一次編譯校驗；語法錯的話立刻被拒絕、不掛卡。
-- `atri_orch_patch_custom_tool_body` —— 對現有函式本體做 find/replace 局部補丁（預設要求 `oldString` 命中唯一一處；`replaceAll: true` 才允許多處替換）。補丁後的函式本體也會被再次編譯校驗。微調時優先用它，可避免重新提交大段函式本體。
+- `atri_orch_set_custom_tool` —— 新建或整體覆蓋一條工具。語法錯的話立刻被拒絕、不掛卡。
+- `atri_orch_patch_custom_tool_body` —— 對現有函式本體做 find/replace 局部補丁（預設要求 `oldString` 命中唯一一處；`replaceAll: true` 才允許多處替換）。微調時優先用它，可避免重新提交大段函式本體。
 - `atri_orch_patch_custom_tool_schema` —— 只替換參數 JSON-Schema，函式本體保持不變。
 - `atri_orch_remove_custom_tool` —— 按名稱刪除一條工具。審閱 card 會把即將被刪的函式本體顯示出來，方便你確認。
 

@@ -39,8 +39,6 @@ Configuration: Configure the GitHub OAuth App credentials in the frontend admin 
 
 ### Discord OAuth Login
 
-Atria also supports Discord OAuth login, with more fine-grained access control — it can verify whether a user is a member of a specified Discord server and whether they have specific roles.
-
 ```json
 {
   "oauth": {

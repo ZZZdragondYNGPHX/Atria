@@ -168,18 +168,6 @@ When you create a new skill, you pick a scope. Heuristics:
 
 You can change scope later — the skill manager subpanel has a **Move to…** action that does an atomic move. References in orchestrator profiles (which use **name only**, no scope prefix) stay stable across the move.
 
-## Validation and safety
-
-The server validates a skill at install / write time:
-
-- Frontmatter must parse as YAML.
-- `name` must match the directory name.
-- File paths inside the skill must not escape the skill directory (no `..`, no absolute paths).
-- Size limits (above) are enforced fail-fast.
-- `scripts/` is parsed but never executed — present for forward-compat. The UI shows a risk badge when a skill ships scripts.
-
-If validation fails, the install or write rolls back atomically (writes go through a `.staging/` directory and only commit after validation passes).
-
 ## Related
 
 - [Skills overview](/features/skills/) — what a skill is, the three scopes

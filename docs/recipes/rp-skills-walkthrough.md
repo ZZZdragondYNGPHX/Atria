@@ -36,7 +36,7 @@ In the orchestrator panel click **Manage skills…**, then **Create new**. Fill 
 
 ![Inline skill editor — file tree + body pane](/screenshots/skills/rp-demo-8.5-editor-body-pasted.png)
 
-Replace the template body with what you want. For shape, open any bundled skill as a reference — they use bilingual sections, `✗` / `✓` example contrasts, and a Self-check block at the end. Save, then go back to the director editor and add the new skill to its visible list.
+Replace the template body with what you want. Save, then go back to the director editor and add the new skill to its visible list.
 
 Full UI walkthrough lives in [skill management](/features/skills/management).
 

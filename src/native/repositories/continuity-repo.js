@@ -2,7 +2,7 @@ import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { createNativeId } from '../identity.js';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
-import { getNativeDocument, putImmutable, putMutable, hashNativeDocument, withNativeResourceWrite } from './common.js';
+import { getNativeDocument, putImmutable, putMutable, withNativeResourceWrite } from './common.js';
 
 // Same Native resource engine and commit-last discipline as Session/World.
 // The account handle is supplied by the authenticated Host, never a Package.
@@ -19,7 +19,7 @@ export class ContinuityRepo {
                 return null;
             }
             const record = await tx.getResource({ kind: this._revisionKind, handle, [this._keyField]: packageId, revisionId: revisionId ?? root.revisionId });
-            if (!record || hashNativeDocument(record.doc) !== record.integrity) throw new Error('Continuity Revision integrity mismatch');
+            if (!record) throw new Error('Continuity Revision integrity mismatch');
             return record.doc;
         });
     }

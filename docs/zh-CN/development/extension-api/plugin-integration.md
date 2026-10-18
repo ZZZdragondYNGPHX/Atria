@@ -32,18 +32,6 @@ handle.unregister();
 
 搜索插件通过 `Atria.searchTools` 全局对象暴露 API，供其他插件调用搜索能力：
 
-```js
-// 检查搜索插件是否可用
-if (globalThis?.Atria?.searchTools) {
-  // 获取可用的搜索工具名称列表
-  const toolNames = Atria.searchTools.toolNames;
-  // 获取工具定义（用于函数调用）
-  const toolDefs = Atria.searchTools.getToolDefs();
-  // 检查某个工具名是否属于搜索工具
-  const isSearchTool = Atria.searchTools.isToolName('web_search');
-}
-```
-
 `Atria.searchTools` 暴露的是工具定义元数据，实际的搜索执行通过内部的工具调用循环完成。详见[搜索插件](/zh-CN/features/search-tools)。
 
 ## 扩展间通信
@@ -321,7 +309,7 @@ registerDataBankScraper(scraper: {
 getTokenCountAsync(text: string, padding?: number): Promise<number>
 ```
 
-使用当前活动 tokenizer 返回 `text` 的 token 数。按 `${tokenizerType}-${hash}${modelHash}+${padding}` 缓存。空输入返回 `0`。
+使用当前活动 tokenizer 返回 `text` 的 token 数。空输入返回 `0`。
 
 ### getTextTokens
 
@@ -413,14 +401,6 @@ context.getFileText(file: File): Promise<string>
 
 把 `<input type="file">` change 事件里的 `File` 当文本读出。读取失败时拒绝。
 
-### getStringHash
-
-```ts
-context.getStringHash(str: string, seed?: number): number
-```
-
-稳定的 32 位 FNV 风格哈希。适合做缓存 key、按内容 debounce 的标识、「上次以来变没变」之类的判断。**不是**加密哈希。
-
 ### createThumbnail
 
 ```ts
@@ -435,7 +415,7 @@ context.createThumbnail(dataUrl: string, maxWidth?: number, maxHeight?: number, 
 context.isValidUrl(value: string): boolean
 ```
 
-`value` 能被 `new URL()` 解析时返回 `true`。发起 fetch 前做输入校验用。
+`value` 能被 `new URL()` 解析时返回 `true`。
 
 ### performFuzzySearch
 
@@ -483,7 +463,7 @@ const md = new ctx.lib.showdown.Converter().makeHtml(text);
 
 ## 密钥（Secrets）
 
-供插件检查或列举连接密钥槽（API key、凭据等）的状态。context 表面只读——具体的 key 值留在 secrets 后端。
+context 表面只读——具体的 key 值留在 secrets 后端。
 
 ### context.secrets.KEYS
 

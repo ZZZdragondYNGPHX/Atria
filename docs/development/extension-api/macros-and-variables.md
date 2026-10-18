@@ -25,7 +25,7 @@ macros.register(name: string, options: {
 }): MacroDefinition | null
 ```
 
-Registers a macro. Returns the registered definition, or `null` if validation failed.
+Registers a macro.
 
 | Option | Description |
 |------|------|
@@ -113,7 +113,6 @@ A non-exhaustive list of macros registered by core. See the source under `public
 | <span v-pre>`{{roll::XdY}}`</span> / <span v-pre>`{{random::a,b,c}}`</span> / <span v-pre>`{{pick::a,b,c}}`</span> | Randomness |
 | <span v-pre>`{{//comment}}`</span> | Comment (ignored output) |
 | <span v-pre>`{{outlet::name}}`</span> | Custom WI outlet content |
-| <span v-pre>`{{isMobile}}`</span> / <span v-pre>`{{hasExtension::name}}`</span> | Environment checks |
 | <span v-pre>`{{lastGenerationType}}`</span> / <span v-pre>`{{systemPrompt}}`</span> | Pipeline state |
 
 ### MacrosParser (deprecated)
@@ -191,7 +190,6 @@ context.variables.local.pop(name: string): string | undefined
 | `add` | If both are numeric, performs numeric addition. If existing is a JSON array, pushes. Otherwise concatenates as strings |
 | `inc` / `dec` | Shortcuts for `add(name, ±1)` |
 | `del` | Removes the variable. Returns `''` |
-| `has` | Boolean existence check |
 | `push` | Pushes `value` onto the JSON array at `name`. Auto-creates `[]` when missing. The macro form is <span v-pre>`{{pushvar::name::value}}`</span> |
 | `pop` | Pops the last element from the JSON array at `name`. No-op when empty or missing. The macro form is <span v-pre>`{{popvar::name}}`</span> |
 
@@ -209,28 +207,6 @@ context.variables.global.get / set / add / inc / dec / del / has
 ```
 
 Same surface as local. Persisted across chats.
-
-### Usage Example
-
-```js
-const ctx = Atria.getContext();
-
-// Read a local var with default
-const turns = Number(ctx.variables.local.get('turns_taken')) || 0;
-
-// Increment
-ctx.variables.local.inc('turns_taken');
-
-// Check + initialize a global config var
-if (!ctx.variables.global.has('api_endpoint')) {
-    ctx.variables.global.set('api_endpoint', 'https://api.example.com');
-}
-const endpoint = ctx.variables.global.get('api_endpoint');
-
-// Indexed write into a JSON list stored in a local var
-ctx.variables.local.set('inventory', 'sword', { index: 0, as: 'string' });
-ctx.variables.local.set('inventory', 'shield', { index: 1, as: 'string' });
-```
 
 ### Local vs Global
 

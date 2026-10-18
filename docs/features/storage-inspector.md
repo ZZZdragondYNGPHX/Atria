@@ -25,7 +25,7 @@ Text-like resources can expose:
 - delete;
 - recovery.
 
-JSON is parsed before save. JSONL is validated line by line. Editable content has a size limit, is written through a temporary file, validated again, and then atomically renamed into place.
+JSON is parsed before save.
 
 Every generic server-side edit or delete creates a recovery point before the mutation. Recent storage recovery points can be listed and restored from the same Storage Management surface.
 
@@ -131,7 +131,7 @@ The unified manager follows a capability model similar to:
 
 The shared UI shows only actions supported by the resource/provider.
 
-Server mutations are guarded by path whitelisting and user-root containment checks. The manager is not a general arbitrary filesystem browser.
+ The manager is not a general arbitrary filesystem browser.
 
 ## FAQ
 

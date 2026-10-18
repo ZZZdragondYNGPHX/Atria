@@ -4,27 +4,15 @@ Test-only, synthetic cases and report v1. Nothing is registered in production;
 there is no migration or improvement publication. Run serially in an isolated
 Node/Jest process with the repository's existing locked dependencies.
 
-```sh
-node tests/agent-intelligence/baseline.mjs --output /tmp/s01-report.json --measurements /tmp/s01-measurements.json
-node tests/agent-intelligence/baseline.mjs --validate /tmp/s01-report.json --measurements /tmp/s01-measurements.json
-node tests/agent-intelligence/baseline.mjs --mode model --output /tmp/s01-pilot-state.json
-node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-intelligence
-```
-
 Output targets must be new files; the command refuses to overwrite existing
 files. Generated reports stay outside Git. Serialization/collection failures
-are errors or failed/incomplete trials, never silent drops. The consumer checks
-schema, fixed case revisions, references, variant partitions, configuration,
-evidence comparisons, counters and aggregates. It checks evidence consistency;
-it does not authenticate independently supplied reports.
+are errors or failed/incomplete trials, never silent drops.
 
 ## Cases and consumers
 
-`cases.js` exports six development and six promotion cases, with separate
-synthetic inputs and fixed fixture/rubric/environment hashes. Revision changes
+ Revision changes
 require an explicit case-set change. `selectCases` and `loadFixture` require a
-purpose and split; extraction rejects promotion fixtures. This is the shared
-consumer's split guard, not a security sandbox for code with filesystem access.
+purpose and split; extraction rejects promotion fixtures.
 
 `runner.js` executes all 12 cases exactly once through `adapters.js`:
 
@@ -33,19 +21,12 @@ consumer's split guard, not a security sandbox for code with filesystem access.
   The captured request includes fixture-visible promise revisions. A private
   clue is withheld by the fixture; this does not test the production Memory
   resolver. Aborted v1 generation receives a late response after committed v2.
-- Project: `runNativeStudioAgentTask` → existing `executeNativeGeneration` and
-  `nativeStudioClient` → isolated fetch bridge → `ProjectAgentService` →
-  `StudioService` Workspace / validation / Preview / simulated dry-run / Review.
-  The bridge routes actual tool calls to real services and denies unrecognized
+- The bridge routes actual tool calls to real services and denies unrecognized
   requests (including model Commit). An explicit fixture reviewer commits after
-  Review. Conflict retains the human revision. Repair d1 blocks after two actual
-  validation failures; p1 fixes the proposal and reaches Review after one.
+  Review. Conflict retains the human revision.
 
-Every Project uses `makeTempFsEngine`, with a neighboring unrelated synthetic
-Project hashed before/after. Services receive only fixture directories; no
-production owner/project is loaded. Foreign task ownership is checked. Cleanup
-verifies the runner-owned root and marker. RP hashes the player message before/
-after and uses distinct run/request/variant anchors. Globals and presentation
+ Services receive only fixture directories; no
+production owner/project is loaded. Globals and presentation
 runtime evidence are restored. S01 itself made no persistence claim; its Project
 adapter now consumes the S04 async durable task and idempotent receipt APIs while
 retaining the same cases and observed model/tool counts. The existing util API
@@ -55,8 +36,7 @@ config. No user config or Secret discovery is performed by the runner.
 
 ## Evidence and gaps
 
-Deterministic checks, final-text availability, Review, authority, execution and
-behavior grading are separate. Scripted replies are not behavioral gold answers.
+ Scripted replies are not behavioral gold answers.
 All behavior dimensions are `not_run`; no model judge or human preference is
 invented. Scripted generation/tool counts are observed at the injected transport/
 actual tool boundary. No provider is contacted. Provider usage, economics,
@@ -65,7 +45,7 @@ reported as zero tokens or exact configuration. `knownTokens` sums only known
 records; `totalTokensStatus=unavailable` prevents treating that subtotal as a
 complete cost. Scripted results always have `empiricalReady=false`.
 
-The optional sidecar has its own strict schema v1 and report hash. Its call graph
+ Its call graph
 contains observed request order (`callIndex`), entrance and foreground execution.
 Target, upstream, actual root/child/attempt identity, TTFT, token subdivisions and
 price remain listed as missing. A call index is not a provider retry identity.
@@ -77,9 +57,7 @@ or an ordinary-RP one-call SLO.
 ## Model pilot and budget
 
 The model command retains all six development pilot slots (RP agency and Project
-authoring, three trials each). Without finite config it records `budget_blocked`.
-`--pilot <file>` validates finite `maxRequests` (≤36, or ≤42 with `modelJudge=true`)
-and `maxTotalTokens`; limits alone record `configured_generation_bridge_unavailable`.
+authoring, three trials each).
 The original baseline CLI remains a readiness consumer without a supplied bridge.
 The explicit S06 live CLI below uses the original Native resolver/compiler/provider
 and Studio Generation Host; it never silently substitutes scripted trials.
@@ -115,12 +93,10 @@ const evaluation = await service.evaluate(authenticatedHandle, scope, set, budge
 ```
 
 The handle and expected scope come from the consuming Host boundary, independently
-of the submitted EvidenceSet. Sets contain only exact references and hashes;
-caller JSON cannot assert trusted/current status or supply an authoritative body.
+of the submitted EvidenceSet.
 Evaluation v1 reports source validity, with per-reference missing/stale/denied/
 unavailable/budget_blocked states. Expanded content is returned only when every
-source passes a coherent scope read and final recheck. This result is a reading
-observation; future use revalidates it. It is not a behavior grade or promotion.
+source passes a coherent scope read and final recheck. It is not a behavior grade or promotion.
 
 `maxBytes` counts UTF-8 JSON bytes prepared for expansion, including prepared
 content later withheld on failure. `maxScanMessages` counts the message batches
@@ -128,8 +104,6 @@ read for lookup and recheck. Neither budget claims to limit the original authori
 full storage IO, provider tokens, or Task Artifact's separate dependency scanner.
 S02 adds no automatic runtime subscriber, persistent evidence resource, HTTP/UI
 surface or migration. Durable RP capture and Project recovery remain S03/S04.
-
-Run the minimal source/authority checks locally:
 
 ```sh
 node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-intelligence/sources.test.js tests/native/task-artifact-consumption.test.js tests/native/project-agent.test.js
@@ -141,16 +115,13 @@ authority fixture. It performs no network/model calls or production-user reads.
 
 ## S03 durable RP capture
 
-`atri_agent_evidence` is an additive Native storage resource keyed by authenticated
-handle and a SHA-256 scope/run identity. It uses the existing FS/SQL resource
+ It uses the existing FS/SQL resource
 handlers, CAS, backup and migration paths. An unfinished `capturing` marker is
 incomplete after restart; it never resumes a model call or authority effect.
 
 The RP observer records a bounded metadata prefix (512 events / 256 KiB), with
 explicit missing markers. Prompt, tool arguments/results, reasoning payloads and
-credentials are excluded. Browser records are `client_observation`. Director
-output binding waits for the original generation save, then the server re-reads
-its exact message/variant/content hash. Capsule-only runs and unsaved/cancelled
+credentials are excluded. Browser records are `client_observation`. Capsule-only runs and unsaved/cancelled
 outputs remain incomplete when no output binding exists. Missing legacy message
 IDs or transport failures are exposed through `getCurrentRun().evidenceCapture`.
 
@@ -173,8 +144,6 @@ const result = await repository.inspect(authenticatedHandle, evidenceId, service
 // result.captureStatus and result.validity are separate from model quality.
 ```
 
-Minimal local capture checks (FS/SQLite; excludes unavailable external DB suites):
-
 ```sh
 node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-intelligence/capture.test.js tests/native/task-runtime-p3.test.js --testNamePattern='^(?!.*(?:MysqlEngine|PgEngine)).*$'
 ```
@@ -187,26 +156,16 @@ S03 does not persist opaque continuation state or claim empirical model benefits
 `ProjectAgentService` uses `ProjectTaskRepository` on the existing StorageEngine
 and `atri_project_agent_task` keyed by authenticated handle / projectId / taskId.
 Its public APIs are async, including task reads, plan updates and takeover.
-The persisted task keeps exact proposals / Workspace, validation / Review,
-bounded attempts / timeline, complete public conversation rounds and commit
-intent. Limits are 2 MiB JSON, 128 attempts / messages and 1024 timeline events;
-invalid versions, integrity/CAS conflicts or overflow fail explicitly.
-Before the formal Git write, the task checks capacity for the complete receipt
-and its recovery events; overflow restores the dry-run source and keeps Review.
 
-Studio's formal Git commit carries the exact Workspace hash, base and validation
-receipt. Task storage failure or response loss after that commit reconciles the
+ Task storage failure or response loss after that commit reconciles the
 same receipt; repeated Commit returns it without applying operations again.
-Recovery reads at most 200 history entries. Missing receipt with unchanged base
-returns to Review; changed base or unverifiable receipt becomes conflict.
+Recovery reads at most 200 history entries.
 No recovery automatically sends a model request, rebases or commits. Historical
 Preview handles are observations, not reopened Preview sessions.
 
 The browser restores its conversation from the task API. Provider-private state
 is excluded from persistence; resumed model context uses public tool observations
 and current task authority. The live loop preserves its existing provider state.
-Generation Host binds new-client attempt IDs to actual requests, visible sends,
-snapshot hashes and directly reported usage; missing counters remain null.
 Legacy requests lack this binding, and observation-save failure returns separate
 failed capture metadata without repeating the generation. Neither conversation
 nor model text grants a formal-write permission.
@@ -222,7 +181,6 @@ failures, and uses synthetic provider responses with the actual Host. External
 MySQL/PostgreSQL coverage is a generic kind/key contract only. The Chromium smoke
 uses an isolated SQLite/Git/HTTP fixture and the real panel for reload, restored
 Review/conversation, commit-save failure recovery, completed and conflict states.
-It makes zero model requests; it is not a full application/device check.
 
 The new kind is additive, without DDL or legacy-task backfill. Task and Project
 HTTP deletion clean up through the existing resource API; missing Projects cannot
@@ -232,22 +190,12 @@ feedback and lesson cascades remain S05.
 ## S05 feedback and diagnosis lifecycle
 
 `AgentExperienceService` is the authenticated, shared RP / Project consumer at
-`POST /api/native/generation/experience/<action>`. Start with `target` and
-`{kind: 'evidence'|'project_task', id, scope}`; it returns the Host-derived
-exact target hash and subject without expanding content. `inspect` accepts
-`{scope, subject}`. `submit` accepts `{target, feedback, expectedSequence}`;
-use null for a new scope and the returned ledger sequence for subsequent writes.
-The feedback shape is `{kind, signal, dimension, note}`. Explicit correction /
-prefer / avoid is separate from observation regenerate / edit / abandon /
-accept / review_reject (empty note). `outcome` accepts only target and sequence;
-the Host derives validation / committed / failure / unknown from the source.
+`POST /api/native/generation/experience/<action>`.
+The feedback shape is `{kind, signal, dimension, note}`.
 
-`reflection` returns an event or aggregate batch, exact feedback refs and hash,
-with zero model calls. `diagnose` requires that batch hash, scope / subject,
-expectedSequence, public rationale, conditions, counterexamples and direction.
 The diagnosis is a user hypothesis. Weak observations alone can only yield an
 undetermined direction; repeated observations of one source cannot fabricate
-an aggregate. Exact sources are revalidated before every consumption.
+an aggregate.
 
 `correct`, `withdraw`, and `delete` take scope / subject / feedback id and
 expectedSequence (correct also takes new explicit feedback). Correction and
@@ -274,10 +222,7 @@ node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config test
 
 The feedback suite uses real temporary FS / SQLite, physical reopen, dump /
 restore and a generic FS → SQLite → FS resource roundtrip. RP / Project HTTP
-requests use the real consumer and isolated sources; Native actor / branch
-checks use a synthetic snapshot port, while existing source / recovery suites
-retain their original real authority fixtures. MySQL / PostgreSQL assertions
-cover generic kind / key registration only. No UI, external database, model,
+requests use the real consumer and isolated sources; No UI, external database, model,
 build, device, or remote CI result is claimed.
 
 ## S06 paired comparison (legacy fixture consumer)
@@ -287,19 +232,11 @@ The comparison consumer accepts exactly one synthetic evaluator target:
 Prompt and Skill content reaches the existing Director / Studio request builders;
 round limits reach the original loops. These are fixture settings, not published
 versions or installed production bindings. Each arm gets a fresh chat / Project /
-Workspace / task. The separate Native Session export/import check proves exact
-save-copy isolation; RP generation currently runs the original Director with a
+Workspace / task. RP generation currently runs the original Director with a
 synthetic task context, not a production Session generation replay.
 
-```sh
-node tests/agent-intelligence/comparison.mjs --candidate /tmp/candidate.json --split development --repetitions 1 --output /tmp/comparison.json
-node tests/agent-intelligence/comparison.mjs --validate /tmp/comparison.json
-```
-
 The old `live.mjs` consumer and cumulative evaluation budgets are historical
-fixtures, not current API-test instructions. For current model runs use the
-disposable consumers below and `private-test-run.js`; test limits and temporary
-material retention belong only to `docs:README.md` §13.1.
+fixtures, not current API-test instructions.
 
 `blindPair` produces an evaluator-only pair for explicit human observations.
 `recordJudgment` binds votes to both artifacts and envelopes; disagreement requires
@@ -312,29 +249,21 @@ judge is a model observation; human preference and judge disagreement remain
 unobserved until separately reviewed. It cannot authorize publication or fill the
 original S01 ungraded behavior slots. Quality / cost promotion thresholds and
 equivalent body / cognition / critic ablations are not yet implemented. Director scripted graph observation is available; unsupported
-ablations stay unavailable. Comparison reports remain `empiricalReady=false` and
-`publicationStatus=ineligible`, including when deterministic checks pass.
-
-Minimal local verification:
+ablations stay unavailable.
 
 ```sh
 node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-intelligence/comparison.test.js tests/agent-intelligence/baseline.test.js tests/agent-intelligence/live-bridge.test.js tests/agent-intelligence/runner-failure.test.js tests/agent-intelligence/judge.test.js
 ```
 
-S07 uses the original Skill repository for immutable full-file versions under
-`skills/.history`, accepted by complete `installedHash`. RP Agent, Native narrative
+ RP Agent, Native narrative
 and Studio preparation carry the exact version through always instructions,
 on-demand reads, file listings and search. Accepted RP workers share versions in
 one run; a new preparation sees current files. Missing or corrupt history fails
 closed. Deletion revokes pins; name rename starts a new declared identity.
 
-The scoped Skill API adds `POST /:scope/:name/pin` (`expectedHash`),
-`GET /:scope/:name/history`, `POST /:scope/:name/candidates`
-(`baseVersion`, `content`), `GET /:scope/:name/candidates/:candidateId` and explicit
-`POST /:scope/:name/candidates/:candidateId/apply` (`expectedBaseVersion`). The
+ The
 original `file`, `files` and `search` GETs accept `version`; management reads may
-omit it. Candidates preserve the entire frontmatter and supporting files, and
-apply checks the complete base version. This manual edit authority does not grant
+omit it. This manual edit authority does not grant
 Evaluation eligibility or automatic promotion. Original Package content remains
 read-only; internal first installation is preserved.
 
@@ -343,12 +272,6 @@ Snapshot history is bounded to 64 versions / 64 MiB raw file bytes per Skill and
 readable in read-only mode; new snapshots and all mutations require writable
 storage. Serialization supports one Host writer per user root. Multiple Hosts or
 out-of-band editors do not share the queue; content identity does not detect ABA.
-
-S07 targeted verification:
-
-```sh
-node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/skills/versions.test.js tests/skills/run-pins.test.js
-```
 
 The S06 Project evaluator fixture now installs its instructions through the real
 Skill repository and reads the same pinned version through its restricted bridge.
@@ -360,9 +283,7 @@ new model requests and does not change their ineligible promotion state.
 `POST /experience/export-learning` uses the authenticated Generation router and
 accepts `{scope, subject, expectedSequence, purpose: "offline-analysis"}`. It
 returns `atria-learning-trajectory` v1 metadata, without conversation text,
-feedback notes, private reasoning or credentials. A current export is required:
-source changes, withdrawals, deletion, expiry and concurrent edits invalidate
-the old sequence. Downloaded copies cannot be revoked by the application.
+feedback notes, private reasoning or credentials. Downloaded copies cannot be revoked by the application.
 
 Analyze downloaded files without starting Atria:
 
@@ -370,19 +291,13 @@ Analyze downloaded files without starting Atria:
 node scripts/analyze-learning.js -- export.json another-export.json
 ```
 
-The CLI accepts 1–32 local files of at most 256 KiB each. It checks schema and
-integrity, reports missing coverage and derived labels, and keeps a whole source
-family in one deterministic split. Integrity is not source authentication; this
-split is not evidence of independent acceptance and does not authorize training
-or publication.
+The CLI accepts 1–32 local files of at most 256 KiB each.
 
 `POST /evolution/start-learning` separately requires `purpose:
 "prompt-optimization"`, backend `native-prompt-optimizer-v1`, the trajectory,
 scope, subject and the current Evolution `expectedSequence`. The server compares
 the complete metadata against current owner-authorized Experience. Only existing
 `review` policies for `workspace-prompt` and `project-prompt` are supported.
-The original optimizer reads the original sources, then creates and evaluates a
-candidate using the existing budget, source invalidation and publication rules.
 Downloaded JSON cannot introduce prompt bodies, labels, owners or new authority.
 An ordinary completed job is never retroactively marked as a learning job.
 Existing inspect, label, publish and rollback endpoints retain their meanings.

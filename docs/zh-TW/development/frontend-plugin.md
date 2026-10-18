@@ -190,7 +190,7 @@ Atria 的事件監聽器按以下優先順序**串行**執行（每個監聽器�
 | `CHAT_CHANGED` | 聊天切換完成 | `(chatId)` |
 | `CHAT_CREATED` | 新聊天建立 | `(chatId)` |
 | `GROUP_CHAT_CREATED` | 群組聊天建立 | `(chatId)` |
-| `CHAT_BRANCH_CREATED` | 聊天分支或檢查點建立 | `(payload)` — 見下文 |
+| `CHAT_BRANCH_CREATED` || `(payload)` — 見下文 |
 
 ### 訊息事件
 
@@ -256,51 +256,9 @@ Atria 的事件監聽器按以下優先順序**串行**執行（每個監聽器�
 )
 ```
 
-#### CHAT_BRANCH_CREATED 的 payload
-
-```ts
-{
-  mesId: number,                  // 分支/檢查點訊息索引
-  branchName: string,             // 新分支或檢查點聊天 ID / 檔名
-  assistantMessageCount: number,  // 分支中包含的助手訊息數
-  sourceTarget: {
-    is_group: boolean,
-    id?: string,
-    avatar_url?: string,
-    file_name?: string,
-  },
-  targetTarget: {
-    is_group: boolean,
-    id?: string,
-    avatar_url?: string,
-    file_name?: string,
-  },
-}
-```
-
-`CHAT_BRANCH_CREATED` 在新分支或檢查點聊天檔案儲存後、UI 切換到新聊天之前觸發。如果你的外掛儲存了聊天綁定的狀態資料，應在此事件中將狀態複製或截斷到新的分支或檢查點。
-
 ### 生成鉤子事件
 
 生成鉤子是外掛介入 AI 生成流程的關鍵機制。它們按以下順序觸發：
-
-```
-GENERATION_STARTED
-  ↓
-GENERATION_CONTEXT_READY        ← 可調整 coreChat 和 maxContext
-  ↓
-GENERATION_BEFORE_WORLD_INFO_SCAN  ← 可影響世界書掃描
-  ↓
-GENERATION_AFTER_WORLD_INFO_SCAN   ← 世界書掃描完成
-  ↓
-GENERATION_WORLD_INFO_FINALIZED    ← 世界書最終確定
-  ↓
-GENERATION_BEFORE_API_REQUEST      ← 最終請求檢查
-  ↓
-（API 請求傳送）
-  ↓
-GENERATION_ENDED / GENERATION_STOPPED
-```
 
 #### 鉤子選擇指南
 
@@ -309,7 +267,7 @@ GENERATION_ENDED / GENERATION_STOPPED
 | `GENERATION_CONTEXT_READY` | 裁剪/替換 `coreChat`，調整上下文限制 | 依賴世界書輸出的邏輯 |
 | `GENERATION_BEFORE_WORLD_INFO_SCAN` | 影響世界書掃描的臨時修改 | 最終請求體編輯 |
 | `GENERATION_WORLD_INFO_FINALIZED` | 讀取最終世界書結果、深度注入 | 重建掃描前的聊天切片假設 |
-| `GENERATION_BEFORE_API_REQUEST` | 最終請求檢查、工具注入、Provider 特定附加 | 需要影響世界書啟動的修改 |
+| `GENERATION_BEFORE_API_REQUEST` || 需要影響世界書啟動的修改 |
 
 #### GENERATION_CONTEXT_READY payload
 
@@ -393,22 +351,6 @@ context.eventSource.on(context.eventTypes.CHAT_BRANCH_CREATED, async (payload) =
 
 外掛的設定面板透過 HTML 片段注入到擴充功能設定區域。使用 `inline-drawer` 類別實現可折疊的設定面板：
 
-```js
-jQuery(async () => {
-  const settingsHtml = await $.get(`${extensionFolderPath}/settings.html`);
-  $('#extensions_settings').append(settingsHtml);
-
-  // 綁定設定控制項事件
-  $('#my_plugin_enabled').on('change', function () {
-    extension_settings[EXTENSION_NAME].enabled = $(this).prop('checked');
-    saveSettingsDebounced();
-  });
-
-  // 初始化控制項狀態
-  $('#my_plugin_enabled').prop('checked', extension_settings[EXTENSION_NAME].enabled);
-});
-```
-
 ### 彈窗對話框
 
 Atria 提供了 `callGenericPopup` 等彈窗 API，用於顯示自訂對話框：
@@ -466,7 +408,6 @@ if (myPluginApi) {
 
 ### 瀏覽器開發者工具
 
-- 在瀏覽器主控台中使用 `Atria.getContext()` 直接檢查上下文物件
 - 使用 `context.eventSource.getListenersMeta(eventName)` 查看某個事件的所有監聽器資訊
 - 外掛身分在排序/除錯中透過擴充功能路徑推斷，包括第三方擴充功能（`third-party/<name>`）
 
@@ -478,11 +419,9 @@ Atria 內建了前端日誌管理器，會攔截 `console` 輸出和 `fetch` 請
 
 | 問題 | 排查方向 |
 |------|----------|
-| 外掛未載入 | 檢查 `manifest.json` 格式是否正確，`js` 路徑是否存在 |
 | 設定未儲存 | 確認呼叫了 `saveSettingsDebounced()` |
 | 事件未觸發 | 使用 `getListenersMeta()` 確認監聽器已註冊 |
 | 樣式衝突 | 使用帶外掛前綴的 CSS 類別名稱 |
-| 狀態遺失 | 確認使用了正確的命名空間，檢查聊天狀態是否寫入成功 |
 
 ### 熱重載
 

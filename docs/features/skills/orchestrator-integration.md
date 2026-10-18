@@ -214,8 +214,6 @@ For spec mode's review nodes, the catalog injection is deliberately skipped — 
 
 ## Stale references
 
-`skills.visible` is a list of names — physical existence of each skill is checked at dispatch.
-
 - **Missing skill** (renamed / deleted / not installed): silently filtered out. The agent doesn't see it; no error.
 - **In the editor UI**: the entry is greyed out with a tooltip "skill not installed."
 
@@ -238,12 +236,6 @@ In the orchestrator panel, each agent's settings card shows a **Skills** row:
 The mode-level **Skills** row at the top of the panel works the same way. Editing it updates `mode.skills`; editing an agent's row updates that agent's override.
 
 For AI-driven editing, the [iter-studio](/features/orchestrator/iteration-studio) ships skill-binding tools (`skill_bind_to_agent`, `skill_unbind_from_agent`, `skill_set_mode_defaults`) — describe what you want in natural language and the AI patches the policy via tool calls.
-
-## Mode-switch invalidation
-
-When you switch the orchestrator from one mode to another (e.g. director → loop), the runtime invalidates its cached resolution. The next dispatch under the new mode rebuilds the catalog from the new mode's policy. The UI also re-renders the **Skills** rows from the new mode's profile, so editing always reflects the active mode.
-
-This means a `director.mainAgent.skills` block doesn't follow you when you switch to loop mode. Each mode has its own policy. Many users keep similar shapes across modes (same shared skills, same per-agent specifics) but the editing is per-mode.
 
 ## Related
 

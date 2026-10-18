@@ -188,7 +188,7 @@ The shell shows the dropdown in the toolbar, calls `loadReference(id)` when the 
 
 ## Custom ops
 
-The shell calls `adapter.registerCustomOps?.(registry)` once per `openIterationStudio()` invocation. The `registry` is a facade that wraps the edits-lib engine's `registerOp` with a `getRegisteredOp` guard, so re-opening the popup never re-registers (or fails on duplicate). Adapters that introduce schema-specific ops register them here.
+The shell calls `adapter.registerCustomOps?.(registry)` once per `openIterationStudio()` invocation. Adapters that introduce schema-specific ops register them here.
 
 Example — CEA's lorebook-entry custom ops:
 

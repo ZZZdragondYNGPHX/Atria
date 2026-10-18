@@ -284,7 +284,7 @@ id: 'my plugin'     // 包含空格
 
 ### 路徑穿越防護
 
-Atria 的外掛載入器會偵測路徑穿越攻擊，防止外掛透過 `../../` 等方式逃逸 `plugins/` 目錄。但外掛自身的路由處理器中如果接受使用者輸入作為檔案路徑，仍需自行做路徑校驗：
+Atria 的外掛載入器會偵測路徑穿越攻擊，防止外掛透過 `../../` 等方式逃逸 `plugins/` 目錄。
 
 ```js
 import path from 'path';
@@ -387,7 +387,7 @@ res.status(500).json({ error: '描述錯誤原因的簡短文字' });
 
 ### Git 自動更新
 
-如果外掛是從 Git 儲存庫克隆的，Atria 在啟動時會自動檢查更新。載入器使用 `simple-git`（如未安裝則回退到 `isomorphic-git`）執行 `git pull`，拉取最新的程式碼。
+載入器使用 `simple-git`（如未安裝則回退到 `isomorphic-git`）執行 `git pull`，拉取最新的程式碼。
 
 要啟用自動更新，確保外掛目錄是一個 Git 儲存庫，且 `config.yaml` 中 `enableServerPlugins` 為 `true`。
 
@@ -405,8 +405,6 @@ npm install
 ## 實戰範例
 
 ### Hello World
-
-一個最小的後端外掛，提供一個健康檢查端點：
 
 ```
 plugins/hello-world/

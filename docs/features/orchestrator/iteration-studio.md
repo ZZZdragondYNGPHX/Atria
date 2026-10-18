@@ -56,7 +56,7 @@ When the AI says it has nothing more to suggest, click **Apply to Global** (use 
 ## A typical iteration (Spec example)
 
 > **Round 1.** You: *"Don't break the fourth wall."*
-> AI: "Adding a Constraint Agent to Stage 2 with anti-meta checks; enabling Anti-Data Guard." Diff: 1 new node, 1 setting flipped. You approve.
+> You approve.
 >
 > **Round 2.** You: *"Make it read the lorebook so it knows the world rules."*
 > AI: "Added a `lorebook_reader` node to Stage 1 so the Constraint Agent can see the active world rules." Diff: 1 new node. Approve.
@@ -82,7 +82,7 @@ Every step is visible, interruptible, and reversible — that's the point. You'r
 
 Don't want to hand-write the system prompt? Open the Studio in Loop mode and describe the agent's behaviour in plain language:
 
-> I want this agent to read the last 5 floors first, then look up relevant lorebook entries, then check the memory graph for conflicts, then write the capsule. Don't have it take notes.
+> Don't have it take notes.
 
 The Studio's AI reads your current profile and patches it via tool calls. The Studio auto-continues whenever the AI emits any tool call this round and stops the moment the AI responds with plain text and no tool calls — so iteration just keeps going as long as the AI keeps making changes.
 
@@ -90,7 +90,7 @@ The Studio's AI reads your current profile and patches it via tool calls. The St
 
 When you open the Studio scoped to a character card, the AI also reconciles the orchestration you're building against the card's bound lorebooks. Format-related lorebook entries fall into two camps that need different handling:
 
-- **Process coercion** — entries that pin *how the model thinks during the run* (mandatory thinking templates, every-round CoT prefixes, "always check X before answering", "follow steps 1-N in order before responding"). These poison the agent loop in an orchestration: they fire every tool-call round, force narrative-shaped text where the agent needs to plan and call tools, and starve the planning channel. The Studio strips the format and harvests the underlying intent — the topics, angles, persona habits, scene anchors the author cared about — rewriting it as worldbuilding / persona / scene-anchor content the agent reads as narrative input, not as another rule.
+- These poison the agent loop in an orchestration: they fire every tool-call round, force narrative-shaped text where the agent needs to plan and call tools, and starve the planning channel. The Studio strips the format and harvests the underlying intent — the topics, angles, persona habits, scene anchors the author cared about — rewriting it as worldbuilding / persona / scene-anchor content the agent reads as narrative input, not as another rule.
 - **Final-output shape** — entries that describe *what the final committed reply looks like* ("all output must be markdown", "wrap the response in a tag", "end with a closing summary block", "speak in poetry"). These are legitimate stylistic preferences and the Studio keeps them. It only rewrites them so the finalize semantics are explicit, so intermediate orchestration nodes (planner, tool-callers, reviewers) stay free to use whatever form they need on the way to the final commit.
 
 The Studio prefers surgical clause-level rewrites that preserve the rest of an entry; whole-entry disabling happens only when the entry is pure format coercion with no salvageable content. Nothing is ever deleted.

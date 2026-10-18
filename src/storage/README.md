@@ -5,7 +5,7 @@ Repository methods are the only API that endpoints should use to read or write s
 ## Layers
 
 - **`engines/`** — how data is read and written. Four engines ship: `FsEngine` (one file per resource under `<dataRoot>/<handle>/`), `SqliteEngine` (per-user `atria-storage.sqlite`, WAL, FK on, real transactions), `MysqlEngine` and `PgEngine` (shared-DB backends keyed by `handle` column). All are swappable behind the same Engine / Transaction interface. The active engine is picked at boot from `storage.mode` in `config.yaml` (`fs` default; `sqlite` / `mysql` / `postgres` opt-in).
-- **`repositories/`** — what a chat / preset / lorebook *is*. Owns integrity (OCC), gen_id dedup, JSON-Patch idempotency, and any other "what does this resource mean" logic.
+- **`repositories/`** — what a chat / preset / lorebook *is*.
 - **`errors.js`** — typed errors that endpoints translate into HTTP status codes:
   - `ConflictError` → 409
   - `NotFoundError` → 404
@@ -14,22 +14,6 @@ Repository methods are the only API that endpoints should use to read or write s
 - **`index.js`** — bootstrap (`initStorage`) and accessors (`getChatRepo`, `getSettingsRepo`, `getPresetRepo`, `getWorldInfoRepo`, `getNamedDocRepo`, `getGroupRepo`, `getStatsRepo`, `getStorageEngine`).
 
 ## Usage from an endpoint
-
-```js
-import { getChatRepo } from '../storage/index.js';
-import { ConflictError, NotFoundError } from '../storage/errors.js';
-
-router.post('/something', async function (req, res) {
-    try {
-        const result = await getChatRepo().save(handle, charDir, name, header, body, integrity);
-        res.send(result);
-    } catch (e) {
-        if (e instanceof ConflictError) return res.status(409).send({ error: e.code });
-        if (e instanceof NotFoundError) return res.sendStatus(404);
-        throw e;
-    }
-});
-```
 
 `handle` comes from `request.user.profile.handle`. The Engine resolves it to a per-user directory at request time, so the Repo never sees paths.
 
@@ -77,11 +61,7 @@ router.post('/something', async function (req, res) {
 
 | Method | Purpose | Throws |
 |---|---|---|
-| `get(handle, charDir, name)` | Read full chat (header + body + integrity). Returns null if missing. | — |
-| `save(handle, charDir, name, header, body, expectedIntegrity)` | Full write. OCC via `expectedIntegrity` (null = unconditional). Rotates integrity, returns new value. | `ConflictError` if integrity mismatch; `NotFoundError` if integrity was supplied but the chat is missing |
-| `append(handle, charDir, name, newMessages, expectedIntegrity)` | Append messages, dedup by `extra.gen_id`. | `NotFoundError` if chat missing; `ConflictError` on integrity mismatch |
-| `patchMessages(handle, charDir, name, ops, expectedIntegrity, options)` | Native whole-message `test/replace/remove`. FS uses suffix journal + in-place suffix rewrite; SQL engines use their JSON operators. Unsupported shapes return `{status:'unsupported'}` before mutation so endpoints can fall back safely. | `NotFoundError`, `ConflictError`; patch validation/test errors match the full fallback contract |
-| `patch(handle, charDir, name, ops, expectedIntegrity)` | RFC 6902 JSON Patch over `{header, body}`. Rewrites `add /body/<idx>` as `test` when target equals value (idempotent retries). | `NotFoundError`, `ConflictError`, `PatchTestFailedError`, `PatchMissingParentError`, `UnsupportedPatchOpError` |
+| `get(handle, charDir, name)` | Returns null if missing.| — |
 | `delete(handle, charDir, name)` | Delete chat and cascade all `chat_state` sidecars. No-op on missing. | — |
 | `rename(handle, charDir, oldName, newName)` | Move chat + all sidecars to new name. Refuses if target exists. | `NotFoundError`, `ConflictError('rename_target_exists')` |
 | `listRecent(handle, { limit })` | Sparse list of chats for a handle, newest first. Header/body are undefined; call `get` for full content. | — |
@@ -106,7 +86,6 @@ router.post('/something', async function (req, res) {
 - Chat: `<chats>/<charDir>/<name>.jsonl`
 - Group chat: `<groupChats>/<groupId|name>.jsonl`
 - Sidecar (chats + presets): `<dir>/<base>.atria-state.<namespace>.json` — uses the `SIDECAR_INFIX = '.atria-state.'` constant from `engines/sidecar-naming.js`; matches the existing Atria convention so vanilla SillyTavern and rsync / Syncthing setups stay compatible
-- Integrity slug: stored in `chat_metadata.integrity` of the first JSONL line; rotated by every write through ChatRepo
 - Native FS whole-message patch: `test/replace/remove` keeps the canonical JSONL as the source of truth and rewrites only the suffix beginning at the earliest changed message. A transient sibling `<chat>.jsonl.atria-patch-journal` contains the original header + affected suffix while the in-place write is pending. The journal is fsynced before target mutation, marked committed only after the JSONL is fsynced, and removed immediately on success.
 - Crash recovery: pending patch journals are rolled back on the first FS storage access for that user after process start; committed-but-not-yet-deleted journals are cleaned without rollback. Temporary journal-build files are safe to discard because the target is not touched until the durable journal rename completes.
 - Portability boundary: patch journals and their temp files are machine-local transaction artifacts, not user content. LAN Sync excludes them in both snapshot and reconcile directions and never deletes an in-flight local journal as a remote-tree deletion.
@@ -116,19 +95,7 @@ router.post('/something', async function (req, res) {
 ## What FS mode does NOT provide
 
 - **Cross-resource transactions.** `withTransaction(fn)` on FsEngine runs `fn` sequentially; if a write inside the closure throws after earlier writes succeeded, the earlier writes are NOT rolled back. SqliteEngine provides true transactions.
-- **Concurrent-write linearization.** Chats use the integrity slug (409 → client retries), not cross-process file locks. Other resources have no OCC at all — concurrent writers to the same file race. FS whole-message patch uses a transient adjacent Atria recovery journal, not a persistent journal directory or alternate primary chat format; multi-process writers still require external coordination.
-
-## Testing
-
-- Unit tests live under `tests/storage/`. Run with:
-  ```bash
-  node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json storage/
-  ```
-  (or `npm run test:unit --prefix tests` for the full suite.)
-- Tests use a real `makeTempFsEngine()` harness from `tests/storage/harness/fs-harness.js` — no mocks. Each test creates a fresh tmp dir and cleans up after itself.
-- `describe.each(CONTRACT_HARNESSES)` (from `tests/storage/harness/contract-harness.js`) runs each Repo's `.contract.js` suite against `FsEngine` and `SqliteEngine` from the same source file. Adding a test inside a `.contract.js` file automatically covers both engines.
-- `tests/storage/round-trip.test.js` proves cross-engine data preservation: write a doc via engine A, read it back, write that snapshot via engine B, read it back, assert deep equality (modulo engine-internal metadata like `integrity` / `updatedAt`). Covers Chat / Settings / Preset / WorldInfo / Group / Stats in both directions (FS ↔ SQLite). `NamedDocRepo` is skipped from round-trip because it has no `get` method.
-- Endpoint migrations are covered by the existing endpoint-level integration suites (chats / settings / floor-state / memory-graph).
+- Other resources have no OCC at all — concurrent writers to the same file race. FS whole-message patch uses a transient adjacent Atria recovery journal, not a persistent journal directory or alternate primary chat format; multi-process writers still require external coordination.
 
 ## Selecting an engine
 
@@ -164,14 +131,13 @@ storage:
 
 One table per resource kind (`chats`, `chat_states`, `settings`, `presets`, `preset_states`, `worlds`, `named_docs`, `groups`, `stats`). Each row carries a `doc TEXT` column holding the JSON payload — that is the source of truth, and the Repo API reads / writes that field whole. Lookups by name are indexed but never authoritative.
 
-`chats` has a `STORED GENERATED COLUMN` (`integrity`) extracted from the doc's `chat_metadata.integrity` so OCC checks can run inside SQL without parsing JSON in JavaScript. This requires SQLite ≥ 3.31. better-sqlite3's bundled SQLite is well past that, so the requirement only bites if you point better-sqlite3 at a system SQLite via custom build.
+ This requires SQLite ≥ 3.31. better-sqlite3's bundled SQLite is well past that, so the requirement only bites if you point better-sqlite3 at a system SQLite via custom build.
 
 ## What's the same across engines
 
 - The Repo API (every `getXxxRepo()` accessor returns the same Repo class regardless of engine).
 - Engine observable contract: each Repo method's pre/post conditions match across engines, enforced by the parameterized contract tests under `tests/storage/repositories/*.contract.js`.
 - Typed errors (`ConflictError`, `NotFoundError`, `PatchTestFailedError`, …) are thrown identically.
-- OCC: chat saves still rotate `integrity` and reject on mismatch.
 - Sidecar semantics: chats / presets still expose `getState`, `setState`, `deleteState`, `getStateBatch`, etc. with the same return shapes.
 
 ## What's intentionally different across engines
@@ -200,7 +166,7 @@ Operators can copy a populated install between any pair of engines either from t
 
 ### Read-only mode
 
-Module: `src/storage/read-only-mode.js`. Process-global flag that every Repo write checks before mutating state.
+Module: `src/storage/read-only-mode.js`.
 
 | Function | Purpose |
 |---|---|
@@ -217,9 +183,9 @@ All seven Repos participate: every write method (`save`, `patch`, `delete`, `ren
 
 | File | Exports |
 |---|---|
-| `runner.js` | `MigrationRunner` — per-user async runner. Takes pre-built source and destination Repo sets and walks each user through three steps: snapshot, copy, verify. |
+| `runner.js` | `MigrationRunner` — per-user async runner.|
 | `backup.js` | `snapshotUser({ handle, userRoot, backupRoot })` — recursive directory copy. Backups are timestamped (`<iso8601>-<handle>/`) and never auto-deleted. |
-| `equality.js` | `stripChatEngineMeta(record)`, `recordsEqual(kind, a, b)`. Shared between the round-trip tests and the runner's verification step. Strips both the top-level `integrity` field and the embedded `header.chat_metadata.integrity` for chat records — a load-bearing detail surfaced by the round-trip suite. |
+| `equality.js` | `stripChatEngineMeta(record)`, `recordsEqual(kind, a, b)`.|
 
 The runner writes to the destination through `withReadOnlyBypass` so the source remains frozen end-to-end.
 
@@ -273,7 +239,7 @@ Reads `./config.yaml` from the CWD (so the script assumes you ran it from the re
 - Shows current mode, the read-only flag, and the last-migration timestamp returned by `/api/users/storage/status`.
 - Radio set covers all four engines (Filesystem / SQLite / MySQL / PostgreSQL). Selecting MySQL or PostgreSQL reveals an inline credential panel (URL + pool size). Leaving the URL blank falls back to `storage.mysql.url` / `storage.postgres.url` already set in `config.yaml`.
 - Migration button is disabled for the radio matching the current mode (no self-migration). Live status and the per-user result map render into a `<pre>` block.
-- After a successful migration the new `storage.mode` (plus any URL / poolSize the operator typed in) is written back to `config.yaml` via the comment-preserving `yaml.parseDocument` API. The same safety gate that `/config/save` uses (`validateConfigSafety`) runs first; if it refuses, the migration response carries `configPersisted: false` and the operator edits the file by hand.
+- After a successful migration the new `storage.mode` (plus any URL / poolSize the operator typed in) is written back to `config.yaml` via the comment-preserving `yaml.parseDocument` API.
 - i18n: zh-cn + zh-tw + English (source).
 
 ### Backup convention
@@ -285,7 +251,7 @@ Reads `./config.yaml` from the CWD (so the script assumes you ran it from the re
 ### Migration semantics
 
 - **Timestamps reset on migration.** FS uses `mtimeMs`; SQLite stores `Date.now()` at save. The destination's `updatedAt` will reflect "when migrated", not "when originally saved". `/api/chats/recent` ordering is scrambled until users save chats again.
-- **Chat integrity slug rotates per engine.** The runner's verification strips integrity (both top-level and embedded in the header) before equality check. End users will see new integrity values after migration; OCC retries on the next save are normal.
+- OCC retries on the next save are normal.
 - **`chat_size` in `/api/groups/all` is approximate in SQLite mode.** FS uses `fs.statSync().size`; SQLite uses `length(doc)` of the JSON string. Numbers differ; both are "rough size indicators" for the UI.
 - **Preset state sidecars stay permissive on both engines** (no FK on `preset_states`). Migrating an orphan preset state (parent preset deleted but state file remained) copies as-is.
 
@@ -349,8 +315,7 @@ In db modes (sqlite / mysql / postgres), the resources below live in the engine.
 A backup ZIP in db mode includes `_engine_dump.bin` + `_engine_meta.json` for the engine rows, plus the on-disk files above. A restore in matching engine kind round-trips both halves. Cross-engine restore must go through `scripts/storage-migrate.js` first to convert.
 # Native durable commit contract
 
-Native FS writes use an isolated staged transaction and a checksummed redo
-journal. The prepared journal is synced before an atomic rename publishes it;
+ The prepared journal is synced before an atomic rename publishes it;
 recovery installs the entire committed journal before admitting a reader. Native
 files and directory entries cross synchronous durability barriers before ACK.
 Legacy non-Native FS resources retain their existing semantics. FS requires a
@@ -376,10 +341,7 @@ is a hard cut; old flat envelopes are not read or migrated. The redo journal
 continues to publish and recover the complete dependency set before readers
 enter. File and directory barriers use asynchronous filesystem operations.
 
-Session and Blob cleanup share the existing NativeTaskScheduler. Mark reads are
-speculative; root/save generation is checked again inside the publication and
-sweep transaction. `atri_maintenance` stores restartable scan/quarantine/sweep
-cursors outside game state. `gcRevisions` uses this same protocol. Retained
+Session and Blob cleanup share the existing NativeTaskScheduler. Retained
 Revision IDs protect their dependency closure; export/read and Blob publication
 leases delay reclamation. Only unreachable objects enter quarantine (initial
 candidate grace: 60 seconds). Foreground activity pauses at safe batch boundaries.

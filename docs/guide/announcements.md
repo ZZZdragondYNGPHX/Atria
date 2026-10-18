@@ -53,7 +53,7 @@ Pick the level honestly. Most operational notices are `Info` or `Warning`; reser
 
 The welcome screen carries an **Announcements** button in the shortcuts row (next to Docs / GitHub / Discord / Temporary Chat). It shows a red badge with the unread count (`9+` past nine). Clicking it opens the inbox, which lists every active announcement (newest first). Clicking a row expands the Markdown body inline and marks the announcement as read.
 
-The button only appears on the welcome screen, not inside an open chat. To check the inbox, return to the welcome screen by closing the current chat (the X above the chat).
+The button only appears on the welcome screen, not inside an open chat.
 
 ### Critical Modal at Login
 
@@ -78,6 +78,5 @@ If an account never opens the inbox and never logs in while an `Info` announceme
 
 ## Field Limits
 
-- Title: 1–200 characters (whitespace trimmed before validation).
 - Body: 1–10 000 characters (whitespace trimmed; Markdown source counts toward the limit).
 - Title and body are stored as a single language — the receiving UI does not translate announcement content. UI chrome (button labels, modal headers) does follow each account's chosen interface language.

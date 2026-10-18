@@ -31,23 +31,6 @@ import { registerOrchestrationTool } from
 
 ## registerOrchestrationTool(spec)
 
-```ts
-{
-  name: string,            // /^[a-zA-Z][a-zA-Z0-9_]{0,63}$/。不能跟内置工具
-                           // 或别的扩展工具重名。
-  description: string,     // 写给 LLM 看的，不是给用户。
-  parameters: object,      // OpenAI 风格的 JSON Schema。
-  exec: async (args, ctx) => any,
-  mode: 'read' | 'write',  // 必填。写工具在模拟评审期会被隔离。
-  simulate?: async (args, ctx) => any,  // 可选。写工具进入模拟评审时，
-                                        // 改调用它而不是 exec。不提供时，
-                                        // 写工具返回占位
-                                        // { ok: true, simulated: true,
-                                        //   unvalidated: true }。
-  displayName?: string,
-}
-```
-
 `exec` 被调用时拿到 LLM 解析后的参数和编排 ctx。返回值就是 LLM 看到的工具结果。`throw` 把错误抛回给 agent。
 
 ### ctx 参数

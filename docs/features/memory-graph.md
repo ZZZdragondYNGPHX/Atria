@@ -16,8 +16,6 @@ After each AI reply, Memory Graph examines what was said and extracts anything w
 
 **Built-in extraction** — When the **Auto extraction** toggle in the Memory panel is on, Memory Graph runs its own LLM call after each AI reply to fill the schema's structured fields. This is the default and works without any other plugin.
 
-**Orchestrator-driven extraction** — When the orchestrator plugin is installed and director mode is active with the default profile, the main agent dispatches a `memory_curator` sub-agent after drafting each reply. `memory_curator` runs a multi-round observe-act loop, using the memory graph's read tools to verify before writing. This tends to give higher quality on stable-fact types because the agent can check whether a character already exists before creating a duplicate.
-
 Both channels can be enabled at the same time; they don't coordinate, so that trades extra LLM cost for resilience. Most users pick one.
 
 To use orchestrator-driven extraction exclusively:
@@ -48,9 +46,9 @@ You can throttle extraction with the **Extraction Interval** setting — for exa
 
 ### Smart recall
 
-Hybrid Memory is the only recall path. It resolves the current requester, Information exposure, Branch, active Variant and time before constructing any lexical, graph or optional vector candidates. Missing sources or grants fail closed; optional retrieval failures keep the legal lexical/graph path.
+Hybrid Memory is the only recall path. It resolves the current requester, Information exposure, Branch, active Variant and time before constructing any lexical, graph or optional vector candidates.
 
-Chinese references, verified aliases and source-backed commitments supply bounded query seeds. Coverage packing preserves complete source groups and competing assertions within the Context budget. Retrieval does not establish World truth, Actor recollection or promise completion, and ordinary turns add no fixed recall LLM call.
+ Retrieval does not establish World truth, Actor recollection or promise completion, and ordinary turns add no fixed recall LLM call.
 
 Enable **Memory** and **Recall** to consume permitted history. **Source writes** independently opts into source-backed extraction; switching it off preserves readable history. Configure optional exact Embedding and rerank revisions in **Runtime → Retrieval**, then **Memory → Maintenance**. Old LLM/RAG mode, recall presets and query rewrite controls have been removed.
 
@@ -217,7 +215,7 @@ Recall injection has its own placement settings:
 
 ### Result reuse
 
-Swipes and regeneration revalidate the current source, variant and Information domain. HM1 performs bounded retrieval again; it does not reuse generated prose or promise candidate caching.
+ HM1 performs bounded retrieval again; it does not reuse generated prose or promise candidate caching.
 
 ## Configuration Reference
 
@@ -263,7 +261,6 @@ Swipes and regeneration revalidate the current source, variant and Information d
 
 1. Resolve the original source and Information authority before candidate/index IO.
 2. Build deterministic legal query seeds, lexical ranking and bounded typed graph lanes; add vector ranking only when configured. Fuse lanes by RRF. Optional rerank failure stays inside Hybrid.
-3. Pack complete evidence groups with typed historical/assertion hints, independent competing sources and explicit missing-group diagnostics. Revalidate at asynchronous return and Context consumption; budget rejection does not truncate a source chain.
 
 This HM1 path does not enable PPR, LLM query rewrite, candidate caching, delta indexing, cognition or forgetting writers.
 

@@ -40,12 +40,9 @@ Atria 內建了多個面向角色扮演場景的專業工具——記憶圖、�
 
 面向 SillyTavern 相容角色卡和世界書的 AI 輔助編輯工具，提供自然語言修改、diff 審批和迭代歷史。Native 遊戲 / 專案製作已統一遷移到 Build → Atria Studio。
 
-
-
 ### Native Build / Atria Studio / Project Agent
 
-Build 是 Atria 的正式製作入口。Atria Studio 提供專案資源樹、結構化編輯、UI Builder、Source、Preview、Simulation、Build、Problems、Changes 和 Git History；Project Agent 透過同一 Authoring Operation / Workspace / ChangeSet 邊界進行規劃、驗證、預覽與人工 Review。
-
+Build 是 Atria 的正式製作入口。Atria Studio 提供專案資源樹、結構化編輯、UI Builder、Source、Preview、Simulation、Build、Problems、Changes 和 Git History；
 
 ### 搜尋外掛（Search Tools）
 
@@ -75,10 +72,6 @@ SillyTavern 中 API 預設和聊天補全預設是連動切換的。Atria 將兩
 ### 角色卡綁定預設與人設
 
 角色卡可以綁定專屬的聊天補全預設和使用者人設（Persona）。綁定的預設和人設獨立於全域列表，不會污染使用者的全域設定，關閉角色卡聊天後自動消失，並可隨角色卡匯入匯出。角色卡開發者不必再要求使用者手動匯入專屬預設。
-
-### 請求檢查器（Request Inspector）
-
-每位使用者的生成請求診斷工具，可追蹤所有後端（包括圖像生成和向量嵌入 / 重排呼叫）的請求詳情，方便除錯和排查問題。
 
 ### 認證與配額
 

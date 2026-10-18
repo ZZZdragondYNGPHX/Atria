@@ -61,8 +61,6 @@ LK: "Atria: decoupled" {
 }
 ```
 
-This classification is the foundation of preset decoupling — all logic involving preset loading checks the field type to decide whether to apply it.
-
 ## Auto-Skipping Connection Fields When Switching Presets
 
 When users switch presets, the loading logic iterates through each field in the preset and automatically skips all connection fields. This ensures that switching presets only changes generation parameters without touching the current API connection configuration.

@@ -4,7 +4,6 @@ Atria development is performed locally. The remote stores committed source, asse
 
 Read the current workspace `AGENTS.md`; complete governance is available with `git show docs:README.md`. The product development guide is [docs/development/contributing.md](docs/development/contributing.md).
 
-1. Check local Git status and protect unrelated changes.
 2. Use a semantic task branch for product changes; preserve independent workspace ownership.
 3. Inspect the affected architecture, implement the change.
 4. Commit locally and write the task Record in `docs:records/**`.

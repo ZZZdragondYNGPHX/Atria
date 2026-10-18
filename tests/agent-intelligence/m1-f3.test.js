@@ -2,7 +2,7 @@ import '../util/browser-context.js';
 import { expect, test } from '@jest/globals';
 import { selectCases, publicCaseScenario, hash, PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
-import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
+import { EVOLUTION_EVALUATOR_VERSION, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { validateF3Baseline, validateF3Calibration, pilotDevelopmentReadiness, f3GradeMessages, f3SharedEvidence, prepareF3Investigation,
     f3CalibrationMessages, validF3Control, f3ExtractionInput, reusableF3Calibration, gradeF3Report, f3JudgeLabels,
     parseF3Grade, f3DevelopmentFeedback, f3ComparisonControls, validateF3DevelopmentResume, publicSourceReviewReasons, preserveIncompletePublicReviews, preserveIncompleteF3Grades } from './m1-f3.js';
@@ -23,7 +23,7 @@ function example(domain = 'rp', caseSetRevision = PILOT_CASE_SET_REVISION) {
         status: 'reported', tokens: 100, usage: { totalTokens: 100 }, cost: null });
     const baseline = { origin: 'host_source_probe', domain, caseSetRevision, evaluatorRevision: 'historical-revision',
         configurations: { baseline: hash(config) }, settings: { baseline: hash(settings) }, charges: [], pairs: [] };
-    const report = { schemaVersion: 2, origin: 'm1_f3_development', domain, evaluatorRevision: evolutionEvaluatorRevision(),
+    const report = { schemaVersion: 2, origin: 'm1_f3_development', domain, evaluatorRevision: EVOLUTION_EVALUATOR_VERSION,
         caseSetRevision, quality: qualityEnvelope(domain, cases, 'development'),
         configurations: { baseline: hash(config), candidate: hash(candidateConfig) }, settings: { baseline: hash(settings), candidate: hash(candidateSettings) }, charges: [], pairs: [] };
     for (const [i, entry] of cases.entries()) {

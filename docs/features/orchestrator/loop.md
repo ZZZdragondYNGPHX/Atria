@@ -81,8 +81,6 @@ Pick **Single-agent loop (loop)** from the execution mode dropdown in the extens
 
 ## Editor
 
-Click **Open Orchestration Editor** to open a two-column workspace — the left column holds the agent's preset routing, system prompt and two budget guards; the right column groups tool toggles by namespace.
-
 ![Loop editor](/images/orchestrator-loop/orch-loop-editor.png)
 
 Key fields:
@@ -109,9 +107,9 @@ Tools follow the OpenAI function-calling protocol; results come back as `role: t
 | `memory_list_candidates(seq_window?, types?, exclude_recent_messages?)` | Enumerate the visible memory-graph candidate pool — the same pool the memory-graph's own recall LLM sees. Returns `{ candidates: [{ id, type, level, title, seqTo, semanticDepth }] }` in recency-first order. **First step of a recall pipeline.** | `memory_list_candidates({ types: ['event'] })` returns the recent event nodes the recall LLM would consider. |
 | `memory_keyword_search(query, types?, k?)` | Token-intersection search across node title + projected fields. Always available; returns `{ results: [{ id, type, title, seqTo, score, scoreMode: 'keyword' }] }` sorted by score desc. Use when looking up by keyword or short phrase. | `memory_keyword_search({ query: 'family secret', k: 8 })` |
 | `memory_vector_search(query, types?, k?)` | Semantic similarity search via the configured embedding profile. Throws `NO_EMBEDDING_PROFILE` when no profile is configured (no silent fallback); fall back to `memory_keyword_search` if needed. | `memory_vector_search({ query: 'the moment she chose forgiveness', k: 5 })` |
-| `memory_find_by_name(query, types?)` | Substring match on title + primary-key columns (typically including aliases). Returns `{ matches: [...] }`. Use BEFORE creating a character or location to verify the entity doesn't already exist — cheaper and more reliable than search for name dedup. | `memory_find_by_name({ query: 'Eileen', types: ['character_sheet'] })` |
+| `memory_find_by_name(query, types?)` | Substring match on title + primary-key columns (typically including aliases). Returns `{ matches: [...] }`.| `memory_find_by_name({ query: 'Eileen', types: ['character_sheet'] })` |
 | `memory_compaction_candidates(type, depth?)` | Read-only query of which node groups are currently eligible for hierarchical compaction. Returns `{ groups: [{ depth, childIds, fanIn }] }`. Pair with `memory_compact_nodes`. Returns empty groups for types with `compression.mode === 'none'`. | `memory_compaction_candidates({ type: 'event' })` |
-| `memory_node_create({ type, title, fields, links?, ref? })` | Create a new semantic node. Use sparingly — call `memory_find_by_name` first to verify there is no existing entity. Returns `{ ok, id }`. | `memory_node_create({ type: 'character_sheet', title: 'Marcus', fields: { traits: 'warrior, terse' } })` |
+| `memory_node_create({ type, title, fields, links?, ref? })` | Create a new semantic node. Returns `{ ok, id }`.| `memory_node_create({ type: 'character_sheet', title: 'Marcus', fields: { traits: 'warrior, terse' } })` |
 | `memory_node_edit({ node_id, set_fields?, clear_fields?, title? })` | Patch fields on an existing node. `fields` keys must be in the type's `tableColumns` schema (query `memory_schema` to confirm). Returns `{ ok }`. | `memory_node_edit({ node_id: 'n_eileen', set_fields: { goal: 'reach the summit' } })` |
 | `memory_node_delete({ node_id })` | Delete a node by id. Only when the node is clearly stale / duplicate / wrong. Returns `{ ok }`. | `memory_node_delete({ node_id: 'n_stale_dup' })` |
 | `memory_link_upsert({ source_node_id\|source_ref, links })` | Add relation edges between nodes. Canonical relation vocabulary required. Composite states allowed (multiple relations between the same pair). Returns `{ ok, applied }`. | `memory_link_upsert({ source_node_id: 'n_eileen', links: [{ target_node_id: 'n_protag', relation: 'partner_of' }] })` |
@@ -204,13 +202,12 @@ A: First confirm the memory-graph extension is enabled and the chat has memory n
 A: Those entries are already injected into the main model via the worldInfo path, so returning them inside the loop just wastes tokens. **Use `lorebook_get` if you need an already-activated entry verbatim** — for example, to quote terminology consistently.
 
 **Q: How do I stop a loop mid-run?**
-A: Click the toolbar's stop button (same as for spec / agenda). The loop runtime checks the abort signal at the top of every round and stops immediately; the trace records `cancelled` and no half-baked capsule is injected.
+A: Click the toolbar's stop button (same as for spec / agenda).
 
 **Q: Are notes shared across chats?**
 A: No — notes live in the current chat's persistent state. Floor-state's settle mechanism handles branching automatically.
 
-**Q: My loop got cut off after three rounds without tool calls — what now?**
-A: Check whether the system prompt gives the agent a clear "output shape". Most of the time the agent is "thinking" but not sure when to call `finalize`; adding "as soon as you have enough information to write the capsule, call `finalize` immediately" usually fixes it.
+ Most of the time the agent is "thinking" but not sure when to call `finalize`; adding "as soon as you have enough information to write the capsule, call `finalize` immediately" usually fixes it.
 
 **Q: I enabled `search_search` but the agent gets `SEARCH_UNAVAILABLE` — why?**
 A: The web tools forward to the [Search Tools](/features/search-tools) plugin, which isn't loaded. Install / enable the search-tools extension and configure a provider (DuckDuckGo / SearXNG / Brave), then retry.
@@ -223,8 +220,7 @@ Loop mode differs structurally from spec / agenda:
 - **Token usage.** Loop is **not necessarily cheaper.** Tool-call results accumulate in the same messages array; by round six or seven the context has grown noticeably. Spec mode breaks the stream between stages, so each stage's prompt stays short.
 - **Failure rate.** Loop is the new mode and is likely less stable than the mature spec path; the agent will occasionally wander. Start with short tasks (`max_rounds=5`) and grow from there.
 
-::: info Pending real-world validation
-Concrete latency deltas, capsule-quality preferences, and total-token usage across different characters / models still need real LLM-call comparison; the relative expectations above are not yet backed by large-scale numbers. Feedback after a few days of loop-mode usage is welcome.
+ Feedback after a few days of loop-mode usage is welcome.
 :::
 
 ## Related

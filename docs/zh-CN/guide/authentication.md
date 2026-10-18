@@ -77,13 +77,12 @@ enableDiscreetLogin: true
 通过自助注册创建的新账户：
 
 - 默认为非管理员角色
-- 创建后立即可用（无需邮箱验证或审核流程）
 - 继承管理面板中设定的默认存储配额
 
 只有在启用该功能后，登录页面才会出现「没有账户？创建一个」入口；功能关闭时，直接调用注册接口同样会被拒绝。
 
 ::: warning
-自助注册适用于可信网络或邀请制部署。若 Atria 暴露在公网，建议改用 OAuth 或由管理员手动创建账户，以便核验新用户身份。
+自助注册适用于可信网络或邀请制部署。
 :::
 
 ## GitHub OAuth 登录
@@ -97,8 +96,6 @@ Atria 支持通过 GitHub 账号登录。用户点击登录后会被重定向到
 通过 OAuth 创建的账户没有本地密码，密码登录通道对这类账户是关闭的——它们始终通过提供方登录。如果用户（或管理员通过修改密码流程）之后设置了本地密码，两种凭据均可使用：密码登录会被接受，OAuth 登录也继续有效。
 
 ## Discord OAuth 登录
-
-Atria 同样支持 Discord OAuth 登录，并提供更细粒度的访问控制——可以校验用户是否为指定 Discord 服务器的成员，以及是否拥有特定身份组（Role）。
 
 同样在管理面板中配置 Discord OAuth 凭据（`clientId`、`clientSecret`），并可设置 `allowedGuildIds` 和 `requiredRoleIds` 来限制访问权限。回调地址为 `https://your-domain/api/users/oauth/callback/discord`。
 

@@ -1,7 +1,6 @@
 # Native Model / Prompt / Runtime — integrated contract (P8)
 
-This is the current API/composition reference. Phase-by-phase implementation and
-validation history lives on `docs:planning/atria-model-prompt-settings/`. The
+This is the current API/composition reference. The
 first-party product uses this pipeline now; it is not a future P2/P3 proposal.
 
 ## Authority and composition
@@ -41,13 +40,11 @@ the owner is `request.user.profile.handle`, never a submitted `handle`.
 | Method / path | Contract |
 | --- | --- |
 | GET `/configuration` | Player `connections`, `models`, `routes`, current Generation `profiles`, and Library resource revision summaries. |
-| PUT `/configuration/connections` | Save validated player Connection; exact Secret ID, never its value. |
 | PUT `/configuration/models` | Save Model with stable Connection ref. |
-| PUT `/configuration/routes` | Save player Route with exact Prompt/Generation refs and bounded, same-role, acyclic fallback graph. Library closure validated before save; Project/Package owner checked in context at preview/execute. |
+| PUT `/configuration/routes` | Save player Route with exact Prompt/Generation refs and bounded, same-role, acyclic fallback graph.|
 | PUT `/configuration/profiles` | Commit immutable Library Generation revision; existing routes stay pinned. |
 | GET `/resources` | Read-through exact Library revisions, current Project source resources, installed Package contents. |
 | POST `/resources` | `{ resourceType, resource }` commits a Library Prompt/Generation revision via P1; no Package/Project mutation. |
-| POST `/preview` | Compile/render/budget validation only; no Secret resolve, send, or persistence. |
 | POST `/execute` | Execute exact request; JSON response or SSE with `Accept: text/event-stream`. |
 
 Preview/execute request fields:
@@ -63,12 +60,9 @@ Preview/execute request fields:
   require explicit configuration; no implicit legacy/global route is chosen.
 - `messages`, `tools`, `outputContract`: supplemental task/tool dialogue and output
   authority. Native selected facts/history remain owned by the context adapter.
-- `prompt`: typed `parameters`, request `locals`, checked `artifacts`, `stageIds`.
-  Caller-supplied `prompt.host` is rejected.
+- Caller-supplied `prompt.host` is rejected.
   Effective parameters use authored defaults, then the resolved player's Runtime
-  Route `promptParameters`, then explicit request parameters. Every fallback uses
-  its own route choices and exact Program definitions; unknown names, wrong types
-  and values outside declared choices fail closed before send.
+  Route `promptParameters`, then explicit request parameters.
 - `fallbackMode`: `disabled` (default), `automatic`, or `confirm`.
   `unknownCapabilityOverrides` permit explicit unknown evidence only, not unsupported.
 - `/preview` only: `previewRefs.promptProgramRef` / `generationProfileRef`.
@@ -94,7 +88,6 @@ Prompt Modules target semantic positions (foundation/character/world/style/respo
 agent task/evidence/constraints, before/after history/input, response prefill/post
 history). Programs order stages and exact module refs. Stage order is canonical;
 within a stage target, priority and stable module ID provide deterministic ordering.
-Conditions are finite validated data, never executable JavaScript/ST macros.
 
 ### Player Prompt controls (NPC-001)
 
@@ -115,9 +108,7 @@ does not silently discard stale overrides; the UI diagnoses them and compilation
 rejects them until corrected or reset. Request-owned overrides remain supported.
 
 Authenticated GET/PUT `/prompt-controls/:runtimeRouteId` read exact inherited
-definitions through existing Library/Project/Package readers. PUT accepts
-`{ expected: <loaded route>, parameters: <partial overrides> }`, validates values,
-and performs a serialized compare-and-update of only the existing mutable route.
+definitions through existing Library/Project/Package readers.
 Concurrent edits require reopening controls; no extra persistence authority or
 Prompt revision is created. The general route configuration API remains unchanged.
 
@@ -138,12 +129,9 @@ Host-owned read-only string fields: `host.role`, `sourceKind`, `sessionId`,
 Task dialogue is supplemental; a tool-result round does not append an empty user
 message or duplicate the current input after the transcript.
 
-Derive supports add/disable/replace/configure over exact ancestors. Cycles, duplicate
-module identities, inconsistent stages, conflicting definitions and invalid typed
-configuration fail closed. Exclusive targets and response directives are validated.
+Derive supports add/disable/replace/configure over exact ancestors.
 
-Budget validation counts the final rendered request, including tools/output
-contracts, using the Model tokenizer. Input + reserved output must fit the Model
+ Input + reserved output must fit the Model
 context limit. The same context/compiler/provider counting runs on preview and on
 every fallback route. Unsupported tokenizers or controls fail, not silently degrade.
 
@@ -158,8 +146,7 @@ adds no credential importer/provisioner or external provider account setup.
 Implemented controls: sampling temperature/topP, output maxTokens, stop sequences,
 streaming enabled, toolChoice value. OpenAI-compatible additionally carries tools
 and JSON-schema output. Raw text rejects tools/structured output. Tokenizers are
-`cl100k_base` / `o200k_base`. Reasoning/cache/provider extensions, custom network
-options, unsupported hints/message formats and other provider families fail closed.
+`cl100k_base` / `o200k_base`.
 Anthropic/Gemini protocol render fixtures are not production transports.
 
 Capability decisions retain supported/unsupported/unknown plus provenance. Explicit
@@ -185,9 +172,7 @@ and inherited requirements must survive fallback unchanged. Confirm mode reports
 Package build resolves the exact resource closure through existing Library/Project
 services and projects it to Package ownership. Derived Programs flatten/freeze
 into standalone stages and typed configured module defaults. Logical IDs preserve
-ordering/replacement aliases. Ordinary Program refs stay exact. Build-time
-structural freezing may defer required bindings in ancestor templates; runtime
-compilation always validates selected bindings. Offline installed Packages never
+ordering/replacement aliases. Ordinary Program refs stay exact. Offline installed Packages never
 consult Library current revisions. Package/Project/Library Used By is owner-scoped
 and derived read-only from canonical authorities.
 
@@ -221,70 +206,26 @@ stored. Exact Prompt references remain exact, while rules follow their owning
 preset's current metadata. Deleting a preset clears ownership and Regex, archives
 its roots, and retains immutable Prompt definitions for pinned consumers.
 
-Game rules live in Package `processors.regex`. Editing publishes a new immutable
-archive under the package write lock and expected-version guard. Existing related
+Game rules live in Package `processors.regex`. Existing related
 Sessions capture explicit edits in revisioned `atri_game_regex` state; effective
 `manifest.processors.regex` projects that snapshot. Historical Session revisions
 stay exact; portable saves carry effective rules, and package exports carry rules
 in the actual archive. Normal package upgrades do not silently upgrade Sessions.
-Package deletion retains the existing guard against live Session references.
 
 Rule IDs are local to their owner. Execution diagnostics and editor selection
 include scope/owner identity. Duplicate IDs inside one imported owner are rejected;
 standalone rule imports mint fresh IDs, while repeated preset imports mint new
 preset resource identities. Missing IDs in earlier Native Packages receive stable
 local IDs. No Character/Card storage, legacy Prompt Manager or DOM provider is
-restored. The complete design and verification record is maintained on `docs` in
-`feat/native-regex-scopes.md`.
+restored.
 
-## Validation / maintenance
-
-Run the relevant local tests under `tests/native/` for contracts, HTTP boundaries,
-resource persistence, exact revision reads, permissions and generation failures.
-`tests/e2e/native-session/` exercises the current product through its Native UI.
-The old phase-numbered source-string guards have been retired. GitHub Actions
-are disabled; verification is local and scoped to the changed behavior.
-Historical completed evidence and exclusions remain on the docs branch.
-
-OpenAI-compatible Connection `options.toolSchemaMode` defaults to `json-schema`.
-An explicitly selected `string-enums` mode supports gateways whose tool schema
-parser rejects boolean/numeric enums: only the wire tool schema moves these enum
-constraints to descriptions. PromptIR, snapshots and canonical action validation
-keep the original schema; invalid arguments still fail before authority commits.
-Strict tools reject this mode. Native Gemini uses `parametersJsonSchema` and does
-not use this compatibility option.
-
-OpenAI-compatible connections also support explicit `responseMode: stream` and
-`minimumOutputTokens`. The latter raises the wire completion limit above an
-authored Generation Profile when selected by the player, but never above the
-reserved Model output budget. This helps gateways that count thinking against a
-small completion limit. Both controls appear in the request snapshot's effective
-connection and rendered preview. Existing profiles keep their authored controls
-unless these options are selected; Package assets and saved Sessions are unchanged.
-
-New Runtime models reserve 200,000 input and 20,000 output tokens (220,000 total).
-New Generation Profiles use 20,000 output tokens and streaming; new OpenAI-compatible
-connections request streaming and a 20,000-token minimum. New route and role
-timeouts are ten minutes per request. Host operation deadlines accommodate the
-captured route deadlines and bounded Turn request budget, rather than truncating
-a multi-request Turn at an unrelated fixed two-minute limit.
-
-Provider HTTP 404, 400/422 and 401/403 now produce endpoint, request and authentication
-error codes respectively. They do not trigger fallback or expose response bodies.
-A route timeout, including response consumption, is `generation_provider_timeout`; transient
-429/5xx keep existing bounded provider retry/fallback behavior.
 # S08 Prompt candidates
 
 `PromptCandidateStore({ engine })` reuses the Library immutable revisions and the
-Preset root. Its authenticated endpoints are
-`POST /api/native/generation/presets/:id/prompt-candidates/{inspect,declare,prepare,check,apply}`.
+Preset root.
 Use the existing `/presets/:id` export to obtain the exact module refs and current
 revision. `declare` accepts `{ expectedRevision, moduleRefs }`; an empty list
-revokes pending candidates. Only explicitly selected active module bodies can
-change. `prepare` accepts `{ runtimeRouteId, expectedRouteFingerprint, moduleRef,
-body }`; the fingerprint is `hashNativeDocument` of the complete original Route.
-It returns immutable `changedRefs`, a candidate ID and the full body diff without
-changing any effective binding. `check` and explicit `apply` take `{ candidateId }`.
+revokes pending candidates.
 Apply switches only that Route's exact Program ref, retains its exact Generation
 ref and rejects any Preset/declaration/Route drift. Repeating the same complete
 desired binding returns `alreadyApplied`. Missing revisions fail without a
@@ -304,9 +245,7 @@ The orchestrator API exposes `inspectPromptVersions()`,
 ```
 
 The complete normalized `expectedPreset` and current `expectedBindings` are
-available in the existing Workspace settings. Candidates retain exact base and
-desired definitions under SHA-256 content identities; validation reconstructs the allowed
-single Agent `instructions` change and compares complete snapshots. The selected
+available in the existing Workspace settings. The selected
 profile/Plan carries `promptVersionId`; the next preparation reads that exact
 definition. An existing run keeps its cloned profile. An ordinary `setPresetBinding`
 clears the pin. Factory definitions and global/default evolution are rejected.
@@ -315,13 +254,10 @@ support boundary; they do not provide a cross-tab/server publication transaction
 
 Native candidates: at most 16 per Preset, metadata ≤2 MiB. Workspace candidates:
 at most 16 per owner library, complete definitions/metadata ≤2 MiB. Each changed
-body is ≤64 KiB; Workspace candidate instructions must be nonempty. Read-only
-Native check/inspect are supported, writes return 503. Preset edit/deletion or
+body is ≤64 KiB; Workspace candidate instructions must be nonempty. Preset edit/deletion or
 declaration changes block pending activation; existing exact definitions follow
 their original history/backup lifecycle. Automatic jobs, promotion and rollback
 remain S10 work.
-
-Small local checks (no external model):
 
 ```sh
 node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/native/prompt-candidates.test.js tests/agent-runtime/workspace-prompt-versions.test.js
@@ -344,12 +280,11 @@ integer fields on user copies: `budgets.maxSteps` for Loop/Director (1–64),
 { type: 'rollback', candidateId }
 ```
 
-One candidate changes one field. Its SHA-256 identity binds complete base/desired
-definitions, the declaration, diff and original binding table. The scoped binding
+One candidate changes one field. The scoped binding
 selects `strategyVersionId`; the next original compiler/profile/Plan consumes the
 exact definition. Current runs keep their accepted clone. Prompt and strategy pins
 cannot be combined without a new evaluation; prepare requires an unpinned local
-binding. All other fields, capabilities, output contracts and guards remain fixed.
+binding.
 Rollback compares the complete desired/base bindings and the unchanged Preset;
 it remains available after declaration revocation, but rejects later user edits.
 Preset deletion clears metadata/pins; ordinary binding selection clears either pin.
@@ -360,32 +295,18 @@ Project uses the original durable Task parameter `maxRepairRounds`, within the
 current server cap. `POST /api/native/studio/projects/:projectId/agent/tasks/:taskId/strategy-candidates`
 accepts these actions:
 
-```js
-{ type: 'inspect' }
-{ type: 'declare', expectedSequence, allowedFields: ['maxRepairRounds'] }
-{ type: 'prepare', expectedSequence, field: 'maxRepairRounds', value: 1 }
-{ type: 'check', candidateId }
-{ type: 'apply', candidateId }
-{ type: 'rollback', candidateId }
-```
-
 Use the current Task sequence returned by the original Task API. A Task must still
-be planning, with no plan, generation attempt, proposal or Workspace. Complete task
-base (excluding only repository sequence and candidate metadata), Project revision,
-server cap and selected identity are checked. Candidate/active value commit in the
-same original Task document with integrity CAS. Old Tasks without metadata remain
+be planning, with no plan, generation attempt, proposal or Workspace. Old Tasks without metadata remain
 valid. At most 16 candidates / 1 MiB strategy metadata, within the original 2 MiB
 Task limit. Context policy and Task snapshot expose `strategyVersionId` after apply;
 the original server repair policy consumes `maxRepairRounds`. Once execution starts,
 apply/rollback is refused. Other Tasks retain their own creation parameters; there
 is no Project-wide default or automatic inheritance. An empty declaration revokes
 pending apply; pristine-task rollback still restores the frozen base. Task deletion
-and StorageEngine user backup/restore include the metadata. Read-only inspect/check
-are available; writes return 503. No candidate tools are exposed to the Agent model.
+and StorageEngine user backup/restore include the metadata. No candidate tools are exposed to the Agent model.
 
 Manual apply does not confer evaluation eligibility. S10 still owns feedback/policy
 dependencies, shared budgets, Review, automatic promotion and runtime monitoring.
-These targeted checks use provider stubs and local storage, without model requests:
 
 ```sh
 node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-runtime/workspace-strategy-versions.test.js tests/agent-intelligence/project-strategy.test.js

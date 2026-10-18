@@ -4,6 +4,6 @@ Follow the current workspace `AGENTS.md`. Complete repository governance is `doc
 
 Develop, commit, integrate and clean up locally. The remote stores committed results; GitHub Actions are disabled, and CI or a pull request is not a routine prerequisite.
 
-For resumed work, verify actual local Git state, then read `docs:HANDOFF.md`, its named Plan entrypoint/current modules and Record. Protect unrelated changes and continue authorized stages under Governance §8.
+ Protect unrelated changes and continue authorized stages under Governance §8.
 
 Read or update `reference/<project>` only with the corresponding explicit user authorization. Keep Atria product code and the independent `docs`, `package`, `plugin` and Skill workspaces separate.

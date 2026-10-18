@@ -23,77 +23,9 @@ Each stage has one of two execution modes:
 - **Serial** — nodes run one after another within the stage.
 - **Parallel** — nodes run concurrently with `Promise.all`.
 
-Each node is either a **worker** (does work) or a **review** node (validates the previous stage's outputs).
-
 ## Default orchestration flow
 
-Spec is a fixed pipeline. The default ships with five stages and seven workers — `distiller` reads the scene, then `lorebook_reader` + `anti_data_guard` lock in constraints in parallel, then `planner` + `recall_relevance` plan the next beat in parallel, then `critic` reviews (and can send the previous stage back for another pass), and finally `synthesizer` writes the capsule.
-
-```d2
-direction: right
-
-start: "A new turn arrives" {
-  shape: oval
-  style.fill: "#e8f5e9"
-}
-
-s1: "Stage 1 · distill (serial)" {
-  style.fill: "#e1f5ff"
-  distiller: "distiller\nread the scene\nstate this turn" {
-    style.fill: "#fffde7"
-  }
-}
-
-s2: "Stage 2 · grounding (parallel)" {
-  style.fill: "#e1f5ff"
-  lorebook_reader: "lorebook_reader\npull active\nlorebook constraints" {
-    style.fill: "#fffde7"
-  }
-  anti_data_guard: "anti_data_guard\nblock report /\nobservation-style prose" {
-    style.fill: "#fffde7"
-  }
-}
-
-s3: "Stage 3 · reason (parallel)" {
-  style.fill: "#e1f5ff"
-  planner: "planner\nplan the next beat" {
-    style.fill: "#fffde7"
-  }
-  recall_relevance: "recall_relevance\nsurface relevant\nmemory cues" {
-    style.fill: "#fffde7"
-  }
-}
-
-s4: "Stage 4 · review (serial)" {
-  style.fill: "#e1f5ff"
-  critic: "critic\naudit the\nprevious stage" {
-    shape: diamond
-    style.fill: "#fff3e0"
-  }
-}
-
-s5: "Stage 5 · finalize (serial)" {
-  style.fill: "#e1f5ff"
-  synthesizer: "synthesizer\nwrite the guidance\ncapsule" {
-    style.fill: "#c8e6c9"
-  }
-}
-
-out: "Capsule injected\ninto the next reply" {
-  shape: oval
-  style.fill: "#f3e5f5"
-}
-
-start -> s1
-s1 -> s2
-s2 -> s3
-s3 -> s4
-s4 -> s5: "approve"
-s4 -> s3: "rerun with feedback" {
-  style.stroke-dash: 3
-}
-s5 -> out
-```
+Spec is a fixed pipeline.
 
 The default agents at a glance:
 
@@ -101,7 +33,6 @@ The default agents at a glance:
 |---|---|---|
 | `distiller` | Compact, evidence-grounded scene-state snapshot (user intent, active tensions, likely direction); everything downstream reads it. | Returns "Lin Wan asked about Luoyang for the first time since msg 12; she's deciding whether to trust the user with her family story". |
 | `lorebook_reader` | Extracts the hard constraints from active lorebook entries that must affect *this* turn (style bans, narration boundaries, role / taboo rules, continuity anchors), phrased as actionable writing directives. | Returns "Luoyan-MainCity is besieged this season — Lin Wan can't have left it casually; narration must not break the siege tension". |
-| `anti_data_guard` | Blocks report / observation / metric / weather-broadcast prose; flags violations as BLOCKERs with concrete rewrite directives. | Catches "Lin Wan's anxiety: 7/10" — BLOCKER. Rewrite directive: "show it in clenched fingers, not a number". |
 | `planner` | Proposes the next-step progression beats with clear causality, preserving character independence and world autonomy; doesn't bend the world around the user. | Beats: "Lin Wan deflects → user presses → she lets one detail slip → main reply ends on that detail". |
 | `recall_relevance` | Picks which recalled memory cues should actually influence this turn, ordered by immediate relevance; never invents unseen facts. | "msg-18 grandmother memory: HIGH relevance; msg-3 weather note: skip". |
 | `critic` *(review node)* | Audits the previous worker stage against the full review checklist (continuity, OOC, lorebook compliance, anti-data, world autonomy, …) and either **approves** or **requests rerun** of specific upstream workers. Never rewrites — only judges. | "Approve grounding; reject reason — `planner` had Lin Wan leaving besieged Luoyan, contradicts lorebook. Rerun `planner`: she stays in the city." |
@@ -129,8 +60,6 @@ User prompt templates support these placeholders:
 
 ### Review nodes
 
-A review node checks the previous worker stage's outputs and uses two dedicated tool calls:
-
 | Tool | Purpose |
 |---|---|
 | `atri_orch_review_approve` | The work is good; advance to the next stage. |
@@ -149,7 +78,6 @@ Constraints:
 | I want… | Do this |
 |---|---|
 | AI to plan its scene before writing | In the [AI Iteration Studio](/features/orchestrator/iteration-studio), ask for "two stages — first plans the next beat, then writes the prose" |
-| AI to stop breaking character | Enable Anti-Data Guard; in the [AI Iteration Studio](/features/orchestrator/iteration-studio), ask for "a Constraint Agent that hard-blocks meta-commentary" |
 | Same workflow across all cards | Apply at global scope (don't bind to a card) |
 | Different workflows per card | Open the Studio with the target card selected, then **Apply to Character Card** |
 | Cheaper / faster | See [overview → Step 2](/features/orchestrator/#step-2); or switch to [Single Agent mode](/features/orchestrator/single) (one node, one call) |
@@ -177,7 +105,6 @@ Use **Export** at the top of the panel to download the run as JSON (handy for bu
 |---|---|
 | Node Iteration Max Rounds | Iteration cap for a single node |
 | Review Rerun Max Rounds | 0 disables review-driven reruns |
-| Anti-Data Guard | A built-in node in the default Spec workflow that blocks data-fication / report-style prose (terms like 观察 / 分析 / 评估 / 监测 / observation / analyze / metric / probability that turn RP into stat blocks). Hard-coded ~18-term lexicon. Remove the node from your workflow if you don't want it. |
 | Node API Preset | Per-node override; empty = global |
 | Node Chat Completion Preset | Per-node override; empty = global |
 

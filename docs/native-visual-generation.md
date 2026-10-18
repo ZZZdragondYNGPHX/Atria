@@ -7,10 +7,7 @@ Secrets, AssetStore and SavePoint remain their existing authorities.
 
 `public/shared/native-visual-contract.js` defines bounded JSON SourceRef,
 ImagePromptIR, target capability evidence, constraint negotiation and immutable
-compilation evidence. Raw input is preserved. SHA-256 uses canonical sorted-key
-JSON, matching Native document hashing. Credentials never enter these records.
-Source anchors use UTF-16 offsets, immutable message/variant/revision identities,
-the full content hash, and exact selected text. Source resolution also proves
+compilation evidence. Raw input is preserved. Credentials never enter these records. Source resolution also proves
 committed ancestor reachability on the requested branch.
 
 Image Target and Rendering are versioned Native resources (`core.image-target`
@@ -22,8 +19,7 @@ task, annotation, work, global in that order, independently for target/rendering
 The Native generation control plane owns preview, authorized submission, durable
 job status/cancel, budgets, director and media operations. Native session
 illustration commands own annotation drafts and display selection. All requests
-use authenticated owner context and existing CSRF middleware. Writes use expected
-head/hash; preview never resolves a Secret or sends a paid request. Asset bytes
+use authenticated owner context and existing CSRF middleware. Asset bytes
 use bounded authenticated upload/read endpoints, never unbounded JSON.
 
 Errors distinguish invalid schema/source, conflict, capability unknown or
@@ -31,8 +27,6 @@ unsupported, expired evidence, unauthorized external transfer/payment, budget
 exceeded and uncertain submission. Unknown remote submission is held for
 reconciliation; cancellation does not promise refunds. Provider L1/L2 evidence
 does not establish L3 availability.
-
-Provider protocol sources (checked 2026-10-14):
 
 - [NovelAI public OpenAPI](https://image.novelai.net/docs/doc.json),
   [V5 models](https://docs.novelai.net/en/image/models/) and
@@ -57,8 +51,7 @@ cannot bypass either reserved namespace. No schema-1 migration channel exists.
 Mask drafts use original top-left pixel coordinates, gray8 `0=preserve,255=edit`,
 compressed base/recent checkpoints and at most 100 commands. Saves use CAS; idle
 synchronization is 2 seconds, periodic synchronization 10 seconds. Undo/redo remain
-local and persisted; compaction retains the latest 50 commands. Frozen MaskArtifact
-bytes/hash/base geometry are independent of further draft edits. A conflict keeps
+local and persisted; compaction retains the latest 50 commands. A conflict keeps
 local edits and offers an explicit fork. Canonical masks are translated per Adapter.
 
 Gallery defaults to current branch, 12 thumbnails per page. Full image/evidence
@@ -69,12 +62,7 @@ quarantines unreachable temporary refs for at least 7 days (soft-deleted refs 30
 then rescans Native roots under the asset lock before removing refs. Shared blobs
 retain the existing lease-aware GC contract.
 
-Formal SavePoint and ordinary exports retain editable parents, evidence, masks,
-reference inputs/bindings and hashes. Import checks DAG, base dimensions, mask byte
-length and attachment closure. Ironman exports remain head-only for narrative:
-immutable visual SourceRef is preserved through a checked presentation anchor alias
-and frozen public visual packets; the alias never permits a missing historical World
-read. No compact/display-only export is offered as a full editable SavePoint.
+ No compact/display-only export is offered as a full editable SavePoint.
 
 Provider mask guidance does not promise untouched pixels. The explicit “preserve
 outside mask” option stores the provider result and a separate composite derivative;
@@ -91,8 +79,7 @@ supports semantic Img2Img/reference editing; Canonical Mask inpaint, strict Mask
 upscale are unsupported. No hidden semantic substitution for a required Mask.
 
 WebUI/Forge discover sd-models, samplers, upscalers, scripts and OpenAPI before
-compilation. LoRA aliases and ControlNet model/module catalogs are checked if the
-actual extension exists. Optional Basic auth is a stored `username:password` Secret.
+compilation. Optional Basic auth is a stored `username:password` Secret.
 Checkpoint overrides restore afterward; global interrupt is never called. The
 adapter cannot promise model family compatibility or output quality from catalog
 presence; L3 remains separate. Native raw prompt remains unchanged in IR; explicitly
@@ -108,10 +95,8 @@ and known RunningHub image hosts. Remote cancel confirmation never claims a refu
 Native media preview bounds total input bytes to 24 MiB (Gemini 14 MiB to leave
 base64/JSON room under its request limit), independently of descriptor and output
 limits. Single result only; return-count mismatch is rejected. Adapter registration
-requires describe/compile/generate and unique explicit names. Third-party protocols
-must supply those ports and Source/Capability/Job/Asset validation remains shared.
+requires describe/compile/generate and unique explicit names.
 
-Official protocol sources checked 2026-10-14 (read-only; no L3):
 - https://ai.google.dev/gemini-api/docs/generate-content/image-generation
 - https://github.com/AUTOMATIC1111/stable-diffusion-webui/blob/master/modules/api/models.py
 - https://github.com/Mikubill/sd-webui-controlnet/wiki/API

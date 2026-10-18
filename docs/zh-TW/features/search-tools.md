@@ -104,8 +104,6 @@ AGENT: "預請求 Agent 模式" {
 
 ## 全域 API
 
-
-
 ### 屬性
 
 | 屬性 | 類型 | 說明 |
@@ -122,25 +120,6 @@ AGENT: "預請求 Agent 模式" {
 | `search(args)` | `Promise` | 直接執行搜尋，回傳搜尋結果 |
 | `visit(args)` | `Promise` | 直接存取指定網頁，回傳頁面內容 |
 | `getSettings()` | `Object` | 回傳當前搜尋外掛的設定快照 |
-
-### 使用範例
-
-```javascript
-const api = Atria.searchTools;
-if (api) {
-  // 檢查是否為搜尋工具
-  api.isToolName('atri_web_search'); // true
-
-  // 取得工具定義
-  const defs = api.getToolDefs();
-
-  // 直接呼叫搜尋
-  const results = await api.search({ query: '...', maxResults: 5 });
-
-  // 存取網頁
-  const page = await api.visit({ url: 'https://...', maxChars: 10000 });
-}
-```
 
 ## 結果複用
 

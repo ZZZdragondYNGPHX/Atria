@@ -79,14 +79,13 @@ docs(extension-api): add examples for registerExtensionApi
 
 ## 本機開發流程
 
-1. 檢查 Git 狀態，保護無關修改，建立或沿用對應任務分支。
 2. 實作變更。
 3. 本機提交，在獨立 `docs` 分支寫入或更新同一 Record。
 4. 完成的產品任務在本機合併 `main`。
 5. 推送已提交結果作為儲存，清理已完成的本機及遠端任務分支。
 6. 多階段任務更新同一 Record，按 Governance §8 繼續；僅在使用者要求中斷時寫 HANDOFF。
 
-明確需要審閱時可使用 PR；PR 與已停用的遠端 CI 不作為預設合併門檻。
+明確需要審閱時可使用 PR；
 
 ## 程式碼風格
 

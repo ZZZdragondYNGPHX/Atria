@@ -66,13 +66,6 @@ Message patches use the RFC 6902 JSON Patch format:
 
 Object patches (`meta/patch`, `state/patch`, `settings/patch`, `worldinfo/patch`) also use the same RFC 6902 format.
 
-## Patch Conflicts and Integrity Semantics
-
-- The server validates whether the path in a patch operation exists
-- `replace` operations require the target path to already exist
-- `add` operations create paths that do not exist
-- On conflict, an error is returned; the client should retry or fall back to a full save
-
 ## Chat-Completions Request Body
 
 ```json

@@ -1,7 +1,7 @@
 // Delegated private engineering investigation. Never registered in production.
 import { randomUUID } from 'node:crypto';
 import { hash, canonical, selectCases, publicCaseScenario, PILOT_CASE_SET_REVISION, isPilotCaseSetRevision } from '../../src/native/agent-intelligence/evaluation/cases.js';
-import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
+import { EVOLUTION_EVALUATOR_VERSION, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
 import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligence/evaluation/worker-bridge.js';
 import { parseBlindGrade } from './m1-acceptance.js';
@@ -88,7 +88,7 @@ export function pilotDevelopmentReadiness(report, independent, owner, jobId, bas
     const reasons = [], required = selectCases({ purpose: 'evaluation', split: 'development', profileId: profileFor(report.domain), caseSetRevision: report.caseSetRevision });
     const secondaryRequired = f3JudgeLabels(report.judgeMode).length === 2;
     let wins = 0;
-    if (report.origin !== 'm1_f3_development' || report.evaluatorRevision !== evolutionEvaluatorRevision()
+    if (report.origin !== 'm1_f3_development' || report.evaluatorRevision !== EVOLUTION_EVALUATOR_VERSION
         || !isPilotCaseSetRevision(report.caseSetRevision) || report.caseSetRevision !== baseline.caseSetRevision || report.baselineReuse.reportHash !== hash(baseline)
         || report.configurations.baseline !== baseline.configurations.baseline || report.settings.baseline !== baseline.settings.baseline
         || !equal(report.quality, qualityEnvelope(report.domain, required, 'development'))) reasons.push('evaluation_identity_changed');
@@ -601,7 +601,7 @@ export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, sco
             trial => store(kind + '-f3-trial-' + trial.caseId + '.json', trial),
             { profileId, split: 'development', repetitions: 1, mode: 'source_probe', caseSetRevision: scope.pilotCaseSetRevision });
     } finally { f.evaluator.send = send; }
-    const report = { schemaVersion: 2, origin: 'm1_f3_development', evaluatorRevision: evolutionEvaluatorRevision(), caseSetRevision: probe.caseSetRevision,
+    const report = { schemaVersion: 2, origin: 'm1_f3_development', evaluatorRevision: EVOLUTION_EVALUATOR_VERSION, caseSetRevision: probe.caseSetRevision,
         domain, judgeMode: entry.judgeMode, quality: probe.quality, policyFingerprint: job.policyFingerprint, targetPin: job.targetPin, price: null,
         configurations: { baseline: hash(primaryConfig), candidate: hash(config) }, settings: { baseline: hash(baselineSettings), candidate: hash(settings) },
         gradeProtocolHash: hash(F3_GRADE_INSTRUCTION), comparisonCalibration: entry.comparisonCalibration,

@@ -77,7 +77,6 @@ The login page can optionally show a "Create account" form so visitors can regis
 New accounts created via self-registration:
 
 - Default to non-admin role
-- Are enabled immediately (no email verification or approval step)
 - Inherit the default storage quota set in the same admin panel
 
 The login page exposes a "Don't have an account? Create one" link only when this is enabled. Direct POSTs to the registration endpoint are also rejected while disabled.
@@ -97,8 +96,6 @@ You'll need to create an OAuth App on GitHub first, setting the callback URL to 
 Accounts created through OAuth have no local password, and the password login path is closed for them — they always sign in through their provider. If a user (or an admin via the change-password flow) later sets a local password, both credentials work: password login is accepted and OAuth login keeps functioning.
 
 ## Discord OAuth Login
-
-Atria also supports Discord OAuth login with finer-grained access control — it can verify whether a user is a member of a specific Discord server and whether they hold specific roles.
 
 Discord OAuth credentials (`clientId`, `clientSecret`) are also configured in the Admin Panel. You can set `allowedGuildIds` and `requiredRoleIds` to restrict access. The callback URL is `https://your-domain/api/users/oauth/callback/discord`.
 

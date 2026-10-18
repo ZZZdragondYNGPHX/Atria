@@ -32,18 +32,6 @@ handle.unregister();
 
 搜尋外掛透過 `Atria.searchTools` 全域物件暴露 API，供其他外掛呼叫搜尋能力：
 
-```js
-// 檢查搜尋外掛是否可用
-if (globalThis?.Atria?.searchTools) {
-  // 取得可用的搜尋工具名稱列表
-  const toolNames = Atria.searchTools.toolNames;
-  // 取得工具定義（用於函數呼叫）
-  const toolDefs = Atria.searchTools.getToolDefs();
-  // 檢查某個工具名是否屬於搜尋工具
-  const isSearchTool = Atria.searchTools.isToolName('web_search');
-}
-```
-
 `Atria.searchTools` 暴露的是工具定義中繼資料，實際的搜尋執行透過內部的工具呼叫迴圈完成。詳見[搜尋外掛](/zh-TW/features/search-tools)。
 
 ## 擴充功能間通訊
@@ -321,7 +309,7 @@ registerDataBankScraper(scraper: {
 getTokenCountAsync(text: string, padding?: number): Promise<number>
 ```
 
-使用當前活躍 tokenizer 回傳 `text` 的 token 數。以 `${tokenizerType}-${hash}${modelHash}+${padding}` 為鍵快取。空輸入回傳 `0`。
+使用當前活躍 tokenizer 回傳 `text` 的 token 數。空輸入回傳 `0`。
 
 ### getTextTokens
 
@@ -413,14 +401,6 @@ context.getFileText(file: File): Promise<string>
 
 把 `<input type="file">` change 事件裡的 `File` 當文字讀出。讀取失敗時拒絕。
 
-### getStringHash
-
-```ts
-context.getStringHash(str: string, seed?: number): number
-```
-
-穩定的 32 位元 FNV 風格雜湊。適合做快取 key、按內容防抖的識別、「上次以來變沒變」之類的判斷。**不是**加密雜湊。
-
 ### createThumbnail
 
 ```ts
@@ -435,7 +415,7 @@ context.createThumbnail(dataUrl: string, maxWidth?: number, maxHeight?: number, 
 context.isValidUrl(value: string): boolean
 ```
 
-`value` 能被 `new URL()` 解析時回傳 `true`。發起 fetch 前做輸入校驗用。
+`value` 能被 `new URL()` 解析時回傳 `true`。
 
 ### performFuzzySearch
 
@@ -483,7 +463,7 @@ const md = new ctx.lib.showdown.Converter().makeHtml(text);
 
 ## 密鑰（Secrets）
 
-供外掛檢查或列舉連線密鑰槽（API key、憑證等）的狀態。context 表面唯讀——實際的 key 值留在 secrets 後端。
+context 表面唯讀——實際的 key 值留在 secrets 後端。
 
 ### context.secrets.KEYS
 

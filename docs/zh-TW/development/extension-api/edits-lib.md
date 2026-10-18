@@ -20,8 +20,7 @@
   內建 op：`set`、`unset`、`str_replace`、`str_insert`、`str_delete`、
   `list_insert`、`list_remove`、`list_move`。
 - **Apply** —— `applyEdits(edits, live)` 回傳 `{ newLive, clean,
-  conflicts, alreadyDone }`。引擎在改動之前，會針對目前 live 對每一條
-  編輯做漂移檢查。
+  conflicts, alreadyDone }`。
 - **Inverse** —— `inverseEdit(edit)` 回傳能夠撤銷該編輯的反向編輯，
   適合用於回滾。
 - **自訂 op** —— `registerOp(name, handler)` 允許擴充定義領域特定的

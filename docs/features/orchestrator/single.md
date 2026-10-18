@@ -6,7 +6,7 @@ Use **New quick guidance workflow** for a new one-node Spec preset. New template
 
 To preserve an existing setup, select Single and choose **Copy to a fixed workflow**. Review the prompts, choose a name and destination, and optionally enable the copy after saving. The action always creates a separate entry, even if the name already exists. Legacy prompts and the previous preset are retained. Switching modes alone does not synchronize Single and Spec prompts.
 
-Copies preserve inherited tools and model routing; new templates disable exploration. Injection settings remain shared. Preset-scoped Skills are resolved under the new preset name, so check any name-specific bindings.
+Copies preserve inherited tools and model routing; new templates disable exploration. Injection settings remain shared.
 
 The four main modes are Research (Loop), Fixed workflow (Spec), Dynamic delegation (Agenda) and Direct writing (Director). The first three produce guidance for the reply model; Director edits and commits the reply itself. Tools are shared capabilities: Spec workers and Agenda agents can use them too. One node does not guarantee one network request.
 

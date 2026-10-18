@@ -35,11 +35,6 @@ Beyond keyword matching, each entry has several activation control options:
 
 ## Scan Depth
 
-Scan Depth determines how many recent chat messages the World Info engine checks for keyword matches.
-
-- Scan depth of 2: Only checks the 2 most recent messages for keywords
-- Scan depth of 10: Checks the 10 most recent messages
-
 A larger scan depth captures more keywords from the context but also activates more entries and consumes more tokens. You'll need to find the right balance for your use case.
 
 ::: tip
@@ -58,32 +53,11 @@ Entries set to Constant are **always** injected into the AI's context, regardles
 
 ### Probability Activation
 
-You can set an activation probability (0–100%) for an entry. Even if a keyword matches, the entry will only activate if the probability check passes. This can be used to simulate random events or uncertain information.
+You can set an activation probability (0–100%) for an entry. This can be used to simulate random events or uncertain information.
 
 ### Recursive Scanning
 
 When an entry is activated, its content is also included in the keyword scan range. This means if Entry A's content contains Entry B's keywords, Entry B will also be activated. This chain activation can build complex knowledge association networks.
-
-```d2
-direction: right
-
-MSG: "Recent message:\n\"I'm going to the Elven Forest to find Aestralar\""
-EA: "Entry A: Elven Forest\nKeywords: elf / forest" {
-  style.fill: "#e1f5ff"
-}
-EB: "Entry B: Aestralar\nKeywords: Aestralar" {
-  style.fill: "#fff3e0"
-}
-EC: "Entry C: Ancient Pact\nKeywords: pact" {
-  style.fill: "#fff3e0"
-}
-EA_BODY: "A's content mentions\n\"Aestralar guards the ancient pact\""
-
-MSG -> EA: "matches keyword 'elf'"
-EA -> EA_BODY
-EA_BODY -> EB: "recursive scan hits 'Aestralar'"
-EA_BODY -> EC: "recursive scan hits 'pact'"
-```
 
 ## World Info Binding
 

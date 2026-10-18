@@ -20,8 +20,7 @@
   内置 op：`set`、`unset`、`str_replace`、`str_insert`、`str_delete`、
   `list_insert`、`list_remove`、`list_move`。
 - **Apply** —— `applyEdits(edits, live)` 返回 `{ newLive, clean,
-  conflicts, alreadyDone }`。引擎在改动之前，会针对当前 live 对每条
-  编辑做漂移检查。
+  conflicts, alreadyDone }`。
 - **Inverse** —— `inverseEdit(edit)` 返回能够撤销该编辑的反向编辑，
   适合用于回退。
 - **自定义 op** —— `registerOp(name, handler)` 允许插件定义领域特定的

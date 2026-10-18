@@ -16,4 +16,4 @@ metadata:
 - 多人/共享世界：catalog `shared`，按需结合 `lifecycle` 和 `information`；只有授权的固定 seat、scope、projection 和 Host 提交。
 - 在修改前读 [边界与回归矩阵](references/boundaries.md)，把本次跨越的权威、授权和 Saga 阶段写入提案。只调用当前实际暴露的 typed API。
 
-通过 Studio Review 交付声明和测试。拒绝以 raw state patch、任意 ledger rewrite、私有 DOM 复用或新的分布式 lobby 代替未实现的能力。
+拒绝以 raw state patch、任意 ledger rewrite、私有 DOM 复用或新的分布式 lobby 代替未实现的能力。
