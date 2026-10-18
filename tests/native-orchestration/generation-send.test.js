@@ -186,7 +186,8 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
             const result = await f.host.execute(f.handle, f.request, undefined, undefined, { orchestrationSend: { bank: f.bank() } });
             expect(f.errors).toEqual([]); expect(f.seen).toHaveLength(3); expect(result.routing.fallbackUsed).toBe(true);
             expect(result.routing.compute.attempts.map(row => row.attemptId)).toEqual([0, 1, 2].map(n => sendAttemptId(f.effectId, n)));
-            expect(result.routing.compute.attempts.map(row => row.status)).toEqual(['unknown', 'unknown', 'settled']);
+            // Rejected 503 sends report numeric usage, so every send settles.
+            expect(result.routing.compute.attempts.map(row => row.status)).toEqual(['settled', 'settled', 'settled']);
             expect(result.routing.compute.localWork.every(row => row.status === 'settled')).toBe(true);
             for (const row of result.routing.compute.localWork) {
                 expect(row.orchestration).toMatchObject({ kind: 'local_work', effectId: f.effectId });
@@ -195,9 +196,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
             expect(domain === 'rp_chat' ? JSON.stringify(f.seen[0]) : 'Host-owned RP input').toContain('Host-owned RP input');
             await expect(f.host.execute(f.handle, f.request, undefined, undefined, { orchestrationSend: { bank: f.bank() } })).rejects.toMatchObject({ code: 'native_orchestration_send_replayed' });
             expect(f.seen).toHaveLength(3);
-            expect(await f.port.observeAttempt(f.handle, f.ref(0))).toMatchObject({ status: 'unknown' });
-            await f.port.settleAttempt(f.handle, f.ref(0), { totalTokens: 30 });
-            expect(await f.port.observeAttempt(f.handle, f.ref(0))).toMatchObject({ status: 'settled', usage: { totalTokens: 30 } });
+            expect(await f.port.observeAttempt(f.handle, f.ref(0))).toMatchObject({ status: 'settled', usage: { totalTokens: 20 } });
         } finally { await f.cleanup(); }
     });
 

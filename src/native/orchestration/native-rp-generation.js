@@ -1209,7 +1209,8 @@ export class NativeRpOrchestrationAuthority {
             const child = await service.runs.get(handle, childRunId), returnCapture = Object.freeze({});
             state.returnCapture = returnCapture;
             returnCaptures.set(returnCapture, { owner: this.owner, host, handle, control: this.owner.rpControl, service, parentState: state,
-                assertCurrent: () => this.#baseCurrent(state), identity: immutable({ sourceRequest: identity.sourceRequest,
+                // The return consumes child output into the parent: re-read the Source.
+                assertCurrent: () => this.#baseCurrent(state, null, { configuration: true }), identity: immutable({ sourceRequest: identity.sourceRequest,
                     prefixDigest: identity.prefixDigest, sourceBinding, parentRunId: root.runId, parentAttemptId: attemptId,
                     parentPlanRef: selected.binding.planRef, childPlanRef: selected.child.planRef,
                     parentEpoch: state.parentEpoch, childRunId, childEpoch: child.epoch, parentGrantDigest: state.parentGrantDigest,

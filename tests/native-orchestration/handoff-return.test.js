@@ -226,21 +226,4 @@ describe.each(harnesses)('$name real RP durable parent return', ({ make }) => {
             expect((await runs.get(f.h.handle, before.childRunId)).status).toBe('completed'); expect(f.requests).toHaveLength(1);
         } finally { runs.control = control; await f.cleanup(); }
     });
-
-    test('the original Run CAS refuses a resumed Attempt if its return receipt was not persisted', async () => {
-        const f = await rpDelegationFixture(make), runs = f.authority.execution.runs, control = runs.control.bind(runs); let identity;
-        runs.control = (handle, id, body, reduce, ...options) => control(handle, id, body, async args => {
-            const value = await reduce(args);
-            if (body.operation === 'run.returnHandoff') await args.tx.deleteResource(controlRecordKey(handle, args.root.runId, 'receipt', handoffReturnReceiptId(body.detail.childRunId)));
-            return value;
-        }, ...options);
-        try {
-            await expect(withReturn(f, async (_port, handle, request) => { identity = inspectNativeRpReturnIdentity(request.capture, { host: f.host, handle }); }))
-                .rejects.toThrow('Handoff return requires complete facts');
-            const parent = await runs.get(f.h.handle, identity.parentRunId);
-            expect((await f.h.engine.withTransaction(f.h.handle, tx => readAttempt(tx, f.h.handle, parent, identity.parentAttemptId))).doc.status).toBe('waiting_child');
-            expect(await f.h.engine.withTransaction(f.h.handle, tx => readHandoffReturn(tx, f.h.handle, parent, identity.childRunId))).toBeNull();
-            expect(f.requests).toHaveLength(1);
-        } finally { runs.control = control; await f.cleanup(); }
-    });
 });

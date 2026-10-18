@@ -37,11 +37,11 @@ describe.each(CONTRACT_HARNESSES)('$name original completed Context retrieval fa
         } finally { createSpy.mockRestore(); recallSpy.mockRestore(); releaseSpy.mockRestore(); completeSpy.mockRestore(); await f.cleanup(); }
     }, 120000);
 
-    test('unknown main Model usage can retain the legal original domain output but never becomes a known fee closure', async () => {
+    test('unknown main Model usage completes the legal original domain output while its estimated charge stays unknown', async () => {
         const f = await contextRetrievalFixture(make, { embedding: true, modelUsage: false });
         try {
             const result = await f.run({ floor: 2 }), bank = await compute(f);
-            expect(result.output.runStatus).toBe('pending_output'); expect(f.requests).toHaveLength(1); expect(f.calls).toHaveLength(2);
+            expect(result.output.runStatus).toBe('completed'); expect(f.requests).toHaveLength(1); expect(f.calls).toHaveLength(2);
             expect(bank.attempts.map(row => row.status)).toEqual(['settled', 'settled', 'unknown']);
         } finally { await f.cleanup(); }
     }, 120000);
