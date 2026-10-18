@@ -29,7 +29,7 @@ W2 特别重要：在 Play 改 `promptParameters` 的 Route override 与在 Libr
 
 **视觉提示词作者（同等一等，非文本预设子类型）**：在现有 Library/资源入口提供 Image Target、Rendering 风格、正负面词和模板的独立创作入口；可在合法版本与原视觉链中复用到作品、会话和媒体任务。独立图像试生成与 Gallery 必须先由原视觉 Job/Asset/预算/审批权威定义**非 Session 资产与任务归属**，不能借现有 Session Gallery 或文本 Prompt `/execute` 伪装完成。该入口是 UI 工作空间而非新的顶层域、Compiler 或第二份视觉资产库；组件与编辑/版本语义可复用，ImagePromptIR/Provider 适配仍独立。具体菜单标签、工作区造型/导航细节继续作为视觉讨论输入。
 
-**分层预设来源与作者独立性**：在相同原生 Library 资源/编辑器上，基础来源分为官方基础预设、作者可导入分享的预设、私人/项目派生预设；来源标签不产生 Provider、Source、Tool 或版权授权，不另建商店、Preset Store、自动同步或新顶级域。游戏作者可选现成的适用 Program/Generation 后精确绑定，非必须自行撰写；专业作者可无游戏独立写作、导出/分享与测试。官方内容是否包含某模型/场景的受审质量证明须有独立真实证据，不能以“官方”默认认证。图像 Target/Rendering/Style 的复用沿原视觉资源身份，不把 ImagePromptIR 编译混入文本 Compiler。
+**分层预设来源与作者独立性**：在相同原生 Library 资源/编辑器上，基础来源分为官方基础预设、作者可导入分享的预设、私人/项目派生预设；来源标签不产生 Provider、Source、Tool 或版权授权，不另建商店、Preset Store、自动同步或新顶级域。发行来源是可溯线索，内容校验不代表发布者身份认证；重复导入和升级不得默默覆盖本地已修改的版本。游戏作者可选现成的适用 Program/Generation 后精确绑定，非必须自行撰写；专业作者可无游戏独立写作、导出/分享与测试。官方内容是否包含某模型/场景的受审质量证明须有独立真实证据，不能以“官方”默认认证。图像 Target/Rendering/Style 的复用沿原视觉资源身份，不把 ImagePromptIR 编译混入文本 Compiler。
 
 ## 3. R — 结构化面板与完整自由作者文本如何无损共存？
 
@@ -85,7 +85,7 @@ D8 冻结 **W2 + R2 + P2 + I2 + M2** 的 Native 信息架构、受信交互和�
 
 Library 管精确版本化 Program/Module/Generation Resource、Preset 的独立创建/导入导出和引用；提示词作者无需游戏即可开始。官方基础、共享作者、私人/游戏派生是来源/应用分组而不是额外的权限系统，默认预设可供直接选择但仍须合法 Route/Model 能力与消费者绑定。Studio/Build/V3 Authoring 管作品、Agent、Preview、Review/Publish，可直接消费现有 Preset/Program exact 引用、Fork/Derive 而不强迫游戏作者自行编写；Play 管受权玩家的 RuntimeRoute Prompt choices、当前有效创作控制与脱敏 Inspector。视觉创作可经独立 Library 工作空间复用原 Image Target/Rendering/Visual Job，并在作品上下文下引用或覆盖；目标不等于独立无 Session 试生成已实现。不能重建第二 Preset/Run Store、Browser Writer 或旧 ST 注入/Workspace 兼容界面。
 
-**独立操作与采用状态**：保存当前版本、导出共享、经原 Library/Project 评审发布、由 Game/Route/Agent/Play 显式采用或升级，必须呈现不同的动作名称、结果和准确影响范围。已发布/共享新版本不自动替换其他用户或游戏的 exact 引用，升级先看差异、依赖/能力及冲突，再按其合法 CAS/Review/Publish 路径生效；可以保留原资源并选择 Fork/Derive。导入方需看到来源、权限与依赖状态；未经受审的质量标记 unknown/unverified，而非阻止作者分享或冒充质量认证。移动端可完整完成相同操作。
+**独立操作与采用状态**：保存当前版本、导出共享、经原 Library/Project 评审发布、由 Game/Route/Agent/Play 显式采用或升级，必须呈现不同的动作名称、结果和准确影响范围。**作者发行包**应包含可编辑的 Program/Module/Generation/Regex、精确依赖与合法来源线索；**游戏 Package** 使用原 Build 的可运行冻结闭包，两者在 UI 中用途分明。导入先核对自包含依赖、能力/权限声明与是否携带敏感内容，再由原 Library 保存新本地身份映射，不按重名覆盖已有预设，也不能把发布者文字声明展示为已验证身份。新发行版本只用于按需 Diff 与手动升级：列出 exact base/candidate、来源映射是否可靠、对原有私人 Fork/Derive 的冲突、影响的 Route/Plan/Package/Session 与 Provider 要求。来源/映射歧义先保留两份资源并要求人工选择，已钉消费者不会被静默升级；通过对应 CAS/Review/Publish 后，以真实 Receipt 说明保存与开始生效的区别。图像风格资源只移交合法 Rendering/Target/模板与声明，不包含 Secret/私有参考图/用户 Job，仍由原视觉权威执行。未经受审的质量标记 unknown/unverified，不妨碍合法作者分享。移动端可完整完成相同操作。
 
 ### R2：同一正式 Draft 的结构化与自由文本无损编辑
 

@@ -59,9 +59,9 @@ Q2 不表示一次上所有维度、每回合调用 Judge。单场景按审查�
 
 **评测污染防护**：Development 来源可用于根因诊断和候选构造；独立 Promotion 案例及其真实答案不得作为生成新 Prompt、挑选最有利策略或补强作者指令的输入。相似场景/同来源派生组/相同人物改名均不算独立；来源或模型/evaluator/route 版本变化需要重核资格。所有失败、无改进、未知费用、不利 delta 保留。即使候选表现更文学化，源/玩家/Disclosure/Tool 权限一项真实硬失败也不得发布。
 
-**预设生态与既有发布权威**：官方基础预设、作者可分享预设、私人/作品精确派生只表达来源与复用层次，不引入新的 Preset/Module Store 或赋予 Role/Tool/Source/Grant。基础预设应使普通游戏作者可直接选择，模型/Route/Capability 的必要配置仍须满足；作者共享资源须经过原生类型/闭包/来源与导入授权校验，导出文件不应包含 Secret 或受限私有 Context，分享不等于自动生效。私人 Fork/Derive 持有自己的 exact revisions，不影响原作者。
+**预设生态与既有发布权威**：官方基础预设、作者可分享预设、私人/作品精确派生只表达来源与复用层次，不引入新的 Preset/Module Store 或赋予 Role/Tool/Source/Grant。基础预设应使普通游戏作者可直接选择，模型/Route/Capability 的必要配置仍须满足。**作者可编辑发行包**保持原生 Program、Module、Generation、Regex、继承与分类的完整可校验依赖闭包及非特权来源/版本描述，禁止打包 Secret、私有 Context/Memory、外部付费授权或不获准的图片资产；需要自包含而非依赖导入者另有同名资源。“完整闭包”必须经原 Native 校验而不是仅检查文件扩展名。**游戏 `.atria` Package** 继续按已有 Build 冻结受权的 effective Prompt 和可运行依赖；发行包不等于可执行游戏快照，不能把 Package 展平结果充当作者继承树。视觉 Rendering/Target/模板的共享只复用视觉资源与能力合同，不混入文本预设或会话 ImageJob。私人 Fork/Derive 持有自己的 exact revisions，不影响原作者。
 
-**发布动作四分**：① 保存原 Library/Project 正式修订；② 导出可移交的资源及受允许的依赖说明；③ 在相应 Library/Project/V3 Authority 下经所需 Review/Publish 生成可供消费的明确版本或 Binding；④ 游戏、Route、Agent/Play 根据权限显式选择采用/升级。不得将“导出”宣称为云端市场发布，不把“发布新版本”视为所有消费者自动切换；旧 Run、已钉 Package/Plan/Route/Session 保留其精确身份，更新须按合法主体核对影响、依赖、能力、Diff、CAS/Receipt 与回滚边界。跨客户端在线分发、远程同步与自动更新不是本轮批准的能力。
+**发布动作四分**：① 保存原 Library/Project 正式修订；② 导出可移交的资源及受允许的依赖说明；③ 在相应 Library/Project/V3 Authority 下经所需 Review/Publish 生成可供消费的明确版本或 Binding；④ 游戏、Route、Agent/Play 根据权限显式选择采用/升级。**跨用户离线导入**须验证原生类型、资源身份和完整依赖，生成导入者所有的本地资源 identity/exact revision 映射并保留可展示的原始版本线索；不允许靠名称覆盖原有 Library 对象，也不从 manifest 的来源声明提升授权。内容哈希或自述作者仅能支持一致性与归因线索，不能证明发布者身份；签名、密钥信任与精确 manifest Schema 尚未冻结。**手动升级**可以由用户再次导入新版发行包开始，但必须确认可信的本地映射/来源关联并显示 baseline/candidate 的 exact 差异、本地派生冲突、依赖/能力变化及影响消费者；映射有歧义或冲突时保留并列版本并要求人工选择，不做 latest 自动追随、猜测三方合并或静默替换。不得将“导出”宣称为云端市场发布，不把“发布新版本”视为所有消费者自动切换；旧 Run、已钉 Package/Plan/Route/Session 保留其精确身份，采用变更须沿原 Authority 完成 CAS/Receipt 与回滚。跨客户端在线分发、远程同步与自动更新不是本轮批准的能力。
 
 **质量证据身份**：作者自行试写与 Development 案例只证明适用场景中的观察，不授予 Promotion 资格；独立、来源受审且与候选隔离的评价才可支持相应质量标签，且只对实际受审的模型、Route、Case/版本及维度有效。未取得受审来源时保留 `unknown/source_unready`，不能因“官方预设”或高分数宣传已认证，也不应把未经认证等同于禁止作者导出个人作品。不得为了展示好看分数而自动循环 Judge。
 
@@ -116,7 +116,7 @@ Authorized Development Feedback/Diagnosis (with Source/provenance)
 - 发布前必须持有已校验的 exact `bindingId/version/planRef/nodeId/moduleRef`，共享 Store CAS、原 Evaluation/Report/Promotion 权威；候选 Module 和 PlanRevision 已经写入但 Binding CAS 失败时必须原 Journal reconcile，不能假称跨存储原子或自动覆盖并发编辑；Rollback 受原 published-current/精确 CAS 限制，不重复已发生的 Effect/费用。
 - 用获准开发样本改进文风，**不能**查看独立 promotion 案例内容/答案后再为其写 Prompt；同源换名字不算独立；Judge 的身份与独立性需要真实校准与 provenance。所有负 delta、unknown、model limits、调用费用和失败证据必须保存可审查记录。
 - G1 保持：正常 RP 单 Narrator 优先，未经明确任务/必要缺口和原 Native Compute 预算不得每回合自动反思、循环 Judge、自动发布或跨 Provider 内容重发。
-- **发布与消费不得混淆**：原 `PromptCandidateStore` 的 Preset/Route 局部候选应用与 V3 `plan-prompt` 的 PlanRevision/PlanBinding CAS 是已有不同领域的受信发布路径；分享一个可移交 Preset 并不自动调用其中任一路径。游戏作者可选择官方/共享基础预设并按需 Fork/Derive，升级到新 exact revision 要先审查有效模块/来源/Provider 能力和影响消费者，成功写入与下一次实际生效按正式回执分别显示。
+- **发布与消费不得混淆**：原 `PromptCandidateStore` 的 Preset/Route 局部候选应用与 V3 `plan-prompt` 的 PlanRevision/PlanBinding CAS 是已有不同领域的受信发布路径；分享一个可移交 Preset 并不自动调用其中任一路径。游戏作者可选择官方/共享基础预设并按需 Fork/Derive，升级到新 exact revision 要先审查有效模块/来源/Provider 能力和影响消费者，成功写入与下一次实际生效按正式回执分别显示。当前原 `PromptPresetStore` 会在导入时生成本地身份，并非已实现有发布者身份认证、自动版本匹配或智能升级；这些设计只能沿原 Native Revision/Resource 机制补齐。
 
 ## 8. 真实工程阻塞与下一轮入口（NOT_RUN）
 

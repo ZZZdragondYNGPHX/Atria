@@ -28,6 +28,10 @@
 - 质量评价延续 D7：作者样例/Development、独立 Promotion 和来源不充分的 `unknown/source_unready` 必须明确区分；“官方”不自动等于已验证或全模型适用，未经 Promotion 不伪造认证，但普通作者仍可导出分享未受审作品。候选与 V3 `plan-prompt` 仍由原 Candidate/Eval/Review/CAS 管理，缺真实来源不能宣称质量通过。
 - 本次在既有 D7、D8、决策索引、前端指导与 Q01/Q08/Q09/Q10/Q12 功能映射**原位修订**并更新同一 Record，无新 Plan、假市场字段或新功能编号。基线 `docs@81a71c248a8ca726e113640c60b1b1119486bd8a`；仅设计文档，不改 main/产品代码，不运行 Node/CI/Provider/Browser/真实设备。分发格式、版本依赖、升级冲突规则与跨范围可移交闭包留下一轮讨论，不写成已实施。
 
+- 用户确认**可验证离线发行包 + 手动升级**：作者共享包保留可编辑原生 Program/Module/Generation/Regex、精确自包含依赖与来源/版本线索；游戏 `.atria` Package 保留独立的 Build 时冻结可运行结构，不将二者合并为万能格式。导入由现有 Native PresetStore 语义校验依赖并重新映射本地资源身份，不按名称覆写；内容 Hash/自述来源可供一致性审查，但不能冒充密码学作者认证。自动检测/订阅更新、在线市场与签名体系本轮未授权，也未冻结 JSON manifest/签名/映射 Schema。
+- 作者手动重新导入新发行包后，只创建可比较候选；通过确切来源/本地映射、父/子 exact 版本、依赖/能力/权限、私有修改冲突和消费者影响清单审查，歧义就保留并列资源，不默默合并或按 latest 升级。游戏/Route/Plan/Package/Session 原冻结引用继续有效，显式采用由既有 Review/CAS/Receipt 判定。Visual Target/Rendering/模板共享沿原视觉资源/Asset 权威，不携带 Secret、私密参考图或历史付费任务。
+- 按现有职责**原位修订** D7 `quality-evolution`、D8 `preset-studio-experience`、`decisions` 的 D7/D8、前端指南及 Q01/Q08/Q09/Q10/V06 功能映射，`index` 只更新必要的已选方向与文档路由，同一 Record 累积决策。仅 docs 分支文档提交；源码、运行时测试、CI、Provider、Windows/CachyOS Linux/Android Termux 均未执行。此轮起点 `docs@4fdf5742cbb7f57bef4301f77b83fe407c63b8fa`；当前 `main@c57fada6edeea255b29d857ba2585c1dbc9c098b` 的 `presets.js` 导入会重建本地 IDs、`package-freeze.js` 冻结有效结构，不能推定已实现来源认证、增量升级或前端新工作流。
+
 ## 2026-10-16 — 后端正式开工
 
 用户授权正式开始，确认包含 D2–D8 全部后端，前端实现交 Claude Code。读取实际 Git、同一 Plan/E0/Record 和外部设计三文件；不冻结 §8.4 提案。起点 main=695acf3bc，docs=5101c3b3e，V3=618a04ae1；V3 仍在并发开发，原 Authoring bindings/生产 Model/Context/Source 未接通。既有各工作树 CLAUDE.md 删除、docs 外部设计草稿/截图及 agent-experience-evolution 未跟踪目录保持。当前接口工程决定见同 Bundle backend-implementation；验收仍 NOT_RUN，不把授权写为 E0 PASS。
