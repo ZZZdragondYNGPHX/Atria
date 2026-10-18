@@ -191,9 +191,9 @@ describe.each(harnesses)('$name original RP native output protocol', ({ make }) 
 
 });
 
-describe.each(harnesses.filter(({ name }) => name === 'FsEngine'))('$name output file durability', ({ make }) => {
-    // Windows has no directory fsync barrier (durable-file.js), so nothing can fail there.
-    (process.platform === 'win32' ? test.skip : test)('a directory durability failure after rename leaves one complete marker for observation, never an automatic replay', async () => {
+// Windows has no directory fsync barrier (durable-file.js), so nothing can fail there.
+describe.each(harnesses.filter(({ name }) => name === 'FsEngine' && process.platform !== 'win32'))('$name output file durability', ({ make }) => {
+    test('a directory durability failure after rename leaves one complete marker for observation, never an automatic replay', async () => {
         const f = await rpModelFixture(make, { configurePlan }), prepare = RpOutputController.prototype.prepare, sync = fs.fsyncSync;
         let armed = false, injected = false, receipt;
         fs.fsyncSync = fd => {
