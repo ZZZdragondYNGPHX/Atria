@@ -112,11 +112,11 @@ describe.each(CONTRACT_HARNESSES)('$name real RP graph Result chain', ({ make })
             expect(f.requests.length).toBe(3);
         } finally { await cold?.close(); await f.cleanup(); }
     });
-    test('unknown usage across the chain keeps the legal Chat output while all paid Models remain unclosed', async () => {
+    test('unknown usage across the chain keeps the legal Chat output while provider usage remains unknown', async () => {
         const f = await rpModelFixture(make, { configurePlan: (...args) => configureLongChain(...args, 2), usage: false });
         try {
             const result = await f.run(), root = await f.authority.execution.runs.get(f.h.handle, result.runId);
-            expect(result.output.runStatus).toBe('pending_output'); expect(root.outputClaims).toEqual([]); expect(f.requests.length).toBe(3);
+            expect(result.output.runStatus).toBe('completed'); expect(root.outputClaims).toEqual([result.output.outputClaimRef]); expect(f.requests.length).toBe(3);
             expect(root.resultRefs).toHaveLength(3); expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(3);
         } finally { await f.cleanup(); }
     });
@@ -237,12 +237,12 @@ describe.each(CONTRACT_HARNESSES)('$name real RP graph Result chain', ({ make })
             expect(roots[0].doc.resultRefs).toHaveLength(phase === 'publish' ? 0 : 1);
         } finally { spy.mockRestore(); await f.cleanup(); }
     });
-    test('unknown Model usage retains both actual Results and the committed domain output without a completed claim', async () => {
+    test('unknown Model usage retains both actual Results and the committed domain output with a completed output and estimated charges', async () => {
         const f = await rpModelFixture(make, { configurePlan: configureChain, usage: false });
         try {
             const result = await f.run(), root = await f.authority.execution.runs.get(f.h.handle, result.runId);
-            expect(result.output.runStatus).toBe('pending_output'); expect(root.resultRefs).toHaveLength(2); expect(root.outputClaims).toEqual([]);
-            expect(root.status).toBe('running'); expect(f.requests).toHaveLength(2);
+            expect(result.output.runStatus).toBe('completed'); expect(root.resultRefs).toHaveLength(2); expect(root.outputClaims).toEqual([result.output.outputClaimRef]);
+            expect(root.status).toBe('completed'); expect(f.requests).toHaveLength(2);
             const bank = Object.values((await f.control.status(f.h.handle, f.controlId)).operations)[0].compute;
             expect(bank.attempts.map(row => row.status)).toEqual(['unknown', 'unknown']);
         } finally { await f.cleanup(); }

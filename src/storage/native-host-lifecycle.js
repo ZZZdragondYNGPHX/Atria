@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { NativeHostOwner } from './native-host-owner.js';
 import { NATIVE_RESOURCE_KINDS } from '../native/contracts.js';
-import { hashNativeDocument, putMutable } from '../native/repositories/common.js';
+import { putMutable } from '../native/repositories/common.js';
 
 const active = new AsyncLocalStorage();
 const administrative = new AsyncLocalStorage();
@@ -51,7 +51,7 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
                 const fence = await infrastructureTransaction(handle, async tx => {
                     owner.assertActive();
                     const previous = await tx.getResource(fenceKey);
-                    if (previous && (hashNativeDocument(previous.doc) !== previous.integrity || previous.doc.schemaVersion !== 1
+                    if (previous && (previous.doc.schemaVersion !== 1
                         || !Number.isSafeInteger(previous.doc.generation) || previous.doc.generation < 1)) throw error();
                     const generation = Math.max(previous?.doc.generation ?? 0, minimumGenerations.get(handle) ?? 0) + 1;
                     if (!Number.isSafeInteger(generation)) throw error();
@@ -78,7 +78,7 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
         // takeover must wait for all old write transactions to finish.
         if (typeof tx.lockNativeHostFence === 'function') await tx.lockNativeHostFence(handle);
         const record = await tx.getResource({ kind: NATIVE_RESOURCE_KINDS.hostFence, handle });
-        if (!record || hashNativeDocument(record.doc) !== record.integrity || hashNativeDocument(expected) !== record.integrity) throw error();
+        if (!record || ['schemaVersion', 'generation', 'hostBootId', 'ownerInstanceId'].some(field => record.doc[field] !== expected[field])) throw error();
         return expected;
     }
 

@@ -157,7 +157,7 @@ describe.each(CONTRACT_HARNESSES)('$name original RP controlled graph additions'
             expect(row.doc.graph.nodes).toHaveLength(ack === 'saved' ? 4 : 3); expect(row.doc.outputClaims).toEqual([]);
         } finally { f.h.engine.withTransaction = transaction; await f.cleanup(); }
     });
-    test('unknown usage retains the actual added graph and legal Chat output without a completed claim', async () => {
+    test('unknown usage retains the actual added graph and legal Chat output with a completed output and estimated charges', async () => {
         const f = await rpModelFixture(make, { configurePlan: configurePlannerExpansion, usage: false, responsePayload: (body, ordinal) => {
             if (ordinal !== 1) return 'Advisory ' + ordinal;
             const template = plannerTaskFromRequest(body).nodeTemplates[0];
@@ -165,7 +165,7 @@ describe.each(CONTRACT_HARNESSES)('$name original RP controlled graph additions'
         } });
         try {
             const result = await f.run(), root = await f.authority.execution.runs.get(f.h.handle, result.runId);
-            expect(result.output.runStatus).toBe('pending_output'); expect(root.outputClaims).toEqual([]); expect(root.graph.nodes).toHaveLength(4);
+            expect(result.output.runStatus).toBe('completed'); expect(root.outputClaims).toEqual([result.output.outputClaimRef]); expect(root.graph.nodes).toHaveLength(4);
             expect(root.resultRefs).toHaveLength(2); expect(f.requests).toHaveLength(3);
             expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(3);
         } finally { await f.cleanup(); }

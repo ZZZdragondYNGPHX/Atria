@@ -116,11 +116,11 @@ describe.each(CONTRACT_HARNESSES)('$name actual RP Model Review', ({ make }) => 
             expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(2);
         } finally { await f.cleanup(); }
     });
-    test('unknown actual Model usage preserves legal quality/domain facts but cannot claim completed output', async () => {
+    test('unknown actual Model usage preserves legal quality/domain facts but completes delivered output with estimated charges', async () => {
         const f = await rpModelFixture(make, { configurePlan: configureReview, usage: false, responsePayload: (_body, ordinal) => ['DRAFT_A', approve, 'Final narration.'][ordinal - 1] });
         try {
             const result = await f.run(), root = await f.authority.execution.runs.get(f.h.handle, result.runId);
-            expect(result.output.runStatus).toBe('pending_output'); expect(root.outputClaims).toEqual([]); expect(root.status).toBe('running');
+            expect(result.output.runStatus).toBe('completed'); expect(root.outputClaims).toEqual([result.output.outputClaimRef]); expect(root.status).toBe('completed');
             expect(root.progress.reviews).toBe(1); expect(f.requests).toHaveLength(3);
         } finally { await f.cleanup(); }
     });

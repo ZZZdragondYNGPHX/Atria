@@ -107,11 +107,11 @@ describe.each(CONTRACT_HARNESSES)('$name RP composable Fanout Join', ({ make }) 
         } finally { await f.cleanup(); }
     });
 
-    test('one original Scheduler slot retains unknown branch cost through the same Join and quality chain without a completed claim or resend', async () => {
+    test('one original Scheduler slot retains unknown branch cost through the same Join and quality chain with a completed output and retained estimated charges', async () => {
         const f = await fixture(make, { maxConcurrency: 1, usage: body => body.model !== 'fanout-branch-b' });
         try {
             const result = await f.run(), root = await rootOf(f);
-            expect(result.output.runStatus).toBe('pending_output'); expect(f.requests).toHaveLength(8); expect(root.outputClaims).toEqual([]);
+            expect(result.output.runStatus).toBe('completed'); expect(f.requests).toHaveLength(8); expect(root.outputClaims).toEqual([result.output.outputClaimRef]);
             expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(3);
             const bank = await bankOf(f); expect(bank.attempts).toHaveLength(8);
             expect(bank.attempts.filter(row => row.status === 'unknown')).toHaveLength(1);

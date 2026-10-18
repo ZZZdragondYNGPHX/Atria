@@ -33,7 +33,7 @@ export class RpOutputCompletionController {
         if (first.allowed !== true || first.rootStamp !== hash(root) || first.sourceBindingDigest !== root.sourceBinding.bindingDigest || root.outputClaims.length) fail('native_rp_output_denied');
         const narration = await readRpNarrationResult(tx, handle, root);
         const closure = await BudgetPort.prototype.observeEffectClosure.call(budgetPort, handle, {
-            authorityRef: root.budgetAuthorityRef, effectIds: [...rpNarrationProviderEffectIds(narration), first.outputEffectId] }, { tx });
+            authorityRef: root.budgetAuthorityRef, effectIds: [...rpNarrationProviderEffectIds(narration), first.outputEffectId] }, { tx, allowUnknownUsage: true });
         const current = await authorize();
         if (!equal(current, first) || !equal(root, await runs.get(handle, first.runId))) fail('native_rp_output_stale');
         return { root, authority: current, closure };
@@ -51,7 +51,7 @@ export class RpOutputCompletionController {
             result = await runs.withSourceControl(handle, identity.runId, () => runs.engine.withTransaction(handle, async tx => {
                 let checked;
                 try { checked = await this.#preflight(handle, tx, capture); } catch (error) { if (DENIALS.has(error.code)) return { denied: true }; throw error; }
-                if (!checked.closure.closed) return { denied: false, ...pending() };
+                if (!checked.closure.closed || checked.root.pendingEffectRefs.length || checked.root.pendingApprovalRefs.length) return { denied: false, ...pending() };
                 const { root: original, authority, closure } = checked;
                 const saved = await runs.control(handle, controlCommandId('rp.output.complete', { runId: original.runId, outputKey: rpOutputKey(original) }), {
                     ...runGuard(original), operation: 'output.publish', detail: { outputKey: rpOutputKey(original) } }, async ({ tx, root, now }) => {

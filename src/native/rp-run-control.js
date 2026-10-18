@@ -1,13 +1,13 @@
-import { assertRpOutputReceipts, prepareRpNativeOutput, beginRpNativeOutput, reconcileRpNativeOutput } from './rp-output-protocol.js';
+import { prepareRpNativeOutput, beginRpNativeOutput, reconcileRpNativeOutput } from './rp-output-protocol.js';
 import { randomUUID } from 'node:crypto';
 import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
 import { createNativeId, assertNativeId } from './identity.js';
-import { hashNativeDocument, putMutable, withNativeResourceWrite } from './repositories/common.js';
+import { hashNativeDocument, putMutable, equalNativeDocuments, withNativeResourceWrite } from './repositories/common.js';
 import { ConflictError } from '../storage/errors.js';
 import { assertWritable } from '../storage/read-only-mode.js';
 import { withChatWrite } from '../storage/repositories/chat-write-boundary.js';
 import { ChatRepo } from '../storage/repositories/chat-repo.js';
-import { bindComputeBudget as bindOriginalComputeBudget, admitComputeAttempt, assertComputeLedger, assertRetiredCompute, chargeLocalWork, hasOpenComputeReservations, hasRetainedOrchestrationCompute, releaseComputeChild, reserveComputeChild,
+import { bindComputeBudget as bindOriginalComputeBudget, admitComputeAttempt, chargeLocalWork, hasOpenComputeReservations, hasRetainedOrchestrationCompute, releaseComputeChild, reserveComputeChild,
     retireComputeLedger, settleComputeAttempt, settleLocalWork } from '../../public/shared/native-compute-budget.js';
 import { fields } from '../../public/shared/native-values.js';
 import { sourceContent, sourceMessageId } from '../../public/scripts/agents/memory/source-provenance.js';
@@ -34,24 +34,13 @@ export function assertRpLocator(value) {
     return value;
 }
 
-const sameLocator = (a, b) => hashNativeDocument(a) === hashNativeDocument(b);
+const sameLocator = (a, b) => equalNativeDocuments(a, b);
 const headerControlId = record => record?.header?.chat_metadata?.nativeControlId ?? null;
 
-function assertControl(record, handle, controlId) {
+function readControl(record, controlId) {
     const doc = record?.doc;
     if (!doc) return null;
     if ((doc.schemaVersion !== 1) || (doc.controlId !== controlId)) fail('native_rp_control_integrity');
-    assertRpLocator(doc.locator);
-    if (!['ready', 'review_required'].includes(doc.restoreState) || !Number.isSafeInteger(doc.sequence) || !Number.isSafeInteger(doc.generation)) fail('native_rp_control_integrity');
-    if (doc.retiredCompute !== undefined) assertRetiredCompute(doc.retiredCompute);
-    if (!doc.operations || Array.isArray(doc.operations) || Object.keys(doc.operations).length > MAX_OPERATIONS) fail('native_rp_control_integrity');
-    for (const [id, op] of Object.entries(doc.operations)) {
-        if (!/^[a-f0-9]{64}$/.test(id)) fail('native_rp_control_integrity');
-        fields(op, ['anchor', 'compute'], 'RP operation');
-        fields(op.anchor, ['messageId', 'floor', 'variantId', 'contentHash', 'purpose', 'outputSlot'], 'RP operation anchor');
-        if (op.compute !== undefined) assertComputeLedger(op.compute);
-    }
-    assertRpOutputReceipts(doc);
     return doc;
 }
 
@@ -91,7 +80,7 @@ export class RpRunControl {
             const named = headerControlId(chat);
             if (named) {
                 assertNativeId(named, 'rpControl');
-                const record = await tx.getResource(controlKey(handle, named)), control = assertControl(record, handle, named);
+                const record = await tx.getResource(controlKey(handle, named)), control = readControl(record, named);
                 if (!control) fail('native_rp_control_unregistered');
                 if (!sameLocator(control.locator, locator)) {
                     const previous = await tx.getResource(chatKey(handle, control.locator));
@@ -104,7 +93,7 @@ export class RpRunControl {
             }
             // A control written before a crash that preceded the header publication.
             for (const record of await tx.listResources({ kind: K.rpRunControl, handle })) {
-                const control = assertControl(record, handle, record.key.controlId);
+                const control = readControl(record, record.key.controlId);
                 if (sameLocator(control.locator, locator) && !Object.keys(control.operations).length) {
                     await this._publishHeader(tx, handle, locator, chat, control.controlId);
                     return { controlId: control.controlId, restoreState: control.restoreState };
@@ -125,7 +114,7 @@ export class RpRunControl {
             if (!chat) fail('native_rp_source_missing');
             const named = headerControlId(chat);
             if (!named) fail('native_rp_control_unbound');
-            const record = await tx.getResource(controlKey(handle, named)), control = assertControl(record, handle, named);
+            const record = await tx.getResource(controlKey(handle, named)), control = readControl(record, named);
             if (control && (sameLocator(control.locator, locator) || headerControlId(await tx.getResource(chatKey(handle, control.locator))) !== named)) fail('native_rp_control_not_duplicate');
             const controlId = createNativeId('rpControl');
             await putMutable(tx, controlKey(handle, controlId), newControl(controlId, locator), { expectedIntegrity: null });
@@ -143,7 +132,7 @@ export class RpRunControl {
 
     async status(handle, controlId, { tx } = {}) {
         assertNativeId(controlId, 'rpControl');
-        const read = async transaction => structuredClone(assertControl(await transaction.getResource(controlKey(handle, controlId)), handle, controlId));
+        const read = async transaction => structuredClone(readControl(await transaction.getResource(controlKey(handle, controlId)), controlId));
         return tx ? read(tx) : this._engine.withTransaction(handle, read);
     }
 
@@ -183,14 +172,14 @@ export class RpRunControl {
         fields(source, ['input', 'purpose', 'outputSlot'], 'RP compute source');
         fields(source.input, ['messageId', 'floor', 'variantId', 'contentHash'], 'RP operation input');
         for (const value of [source.purpose, source.outputSlot]) if (typeof value !== 'string' || !/^[a-z][a-z0-9_.-]{0,63}$/.test(value)) throw new TypeError('Invalid RP operation purpose');
-        const record = await tx.getResource(controlKey(handle, controlId)), control = assertControl(record, handle, controlId);
+        const record = await tx.getResource(controlKey(handle, controlId)), control = readControl(record, controlId);
         if (!control) fail('native_orchestration_budget_unavailable');
         if (control.restoreState !== 'ready') fail('native_rp_control_review_required');
         const chat = await tx.getResource(chatKey(handle, control.locator));
         if (!chat) fail('native_rp_source_missing');
         if (headerControlId(chat) !== controlId) fail('native_rp_control_relocated');
         const message = Array.isArray(chat.body) ? chat.body[source.input.floor] : null;
-        if (!message || hashNativeDocument(rpOperationInput(message, source.input.floor)) !== hashNativeDocument(source.input)) throw new ConflictError('native_generation_revision_conflict');
+        if (!message || !equalNativeDocuments(rpOperationInput(message, source.input.floor), source.input)) throw new ConflictError('native_generation_revision_conflict');
         const operationId = hashNativeDocument({ controlId, input: source.input, purpose: source.purpose, outputSlot: source.outputSlot });
         return { record, control, operationId };
     }
@@ -228,7 +217,7 @@ export class RpRunControl {
     async _settle(handle, controlId, operationId, mutate) {
         assertNativeId(controlId, 'rpControl'); assertWritable();
         return this._locked(handle, 'control:' + controlId, () => this._engine.withTransaction(handle, async tx => {
-            const record = await tx.getResource(controlKey(handle, controlId)), control = assertControl(record, handle, controlId);
+            const record = await tx.getResource(controlKey(handle, controlId)), control = readControl(record, controlId);
             const op = control?.operations[operationId];
             if (!op) fail('native_generation_attempt_conflict');
             const result = mutate(op);
@@ -272,7 +261,7 @@ export class RpRunControl {
     async observeCompute(handle, controlId, operation, attemptId, { tx } = {}) {
         assertNativeId(controlId, 'rpControl');
         const read = async transaction => {
-            const control = assertControl(await transaction.getResource(controlKey(handle, controlId)), handle, controlId);
+            const control = readControl(await transaction.getResource(controlKey(handle, controlId)), controlId);
             const ledger = control?.operations[operation]?.compute, compute = ledger?.attempts.find(row => row.attemptId === attemptId);
             if (!compute) fail('native_generation_attempt_conflict');
             return structuredClone({ operation, compute, limits: ledger.limits });

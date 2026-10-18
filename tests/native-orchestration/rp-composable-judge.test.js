@@ -98,11 +98,11 @@ describe.each(CONTRACT_HARNESSES)('$name RP composable typed Judge', ({ make }) 
         } finally { await f.cleanup(); }
     });
 
-    test('unknown fees preserve all composed control facts and legal Chat output without completion, refund or resend', async () => {
+    test('unknown fees preserve all composed control facts and legal Chat output with completion and retained estimated charges', async () => {
         const f = await fixture(make, { withReview: true, usage: false });
         try {
             const result = await f.run(), root = await f.authority.execution.runs.get(f.h.handle, result.runId);
-            expect(result.output.runStatus).toBe('pending_output'); expect(f.requests).toHaveLength(6); expect(root.resultRefs).toHaveLength(3); expect(root.outputClaims).toEqual([]);
+            expect(result.output.runStatus).toBe('completed'); expect(f.requests).toHaveLength(6); expect(root.resultRefs).toHaveLength(3); expect(root.outputClaims).toEqual([result.output.outputClaimRef]);
             expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(3);
             const control = await f.control.status(f.h.handle, f.controlId), bank = Object.values(control.operations)[0].compute;
             expect(bank.attempts).toHaveLength(6); expect(bank.attempts.every(attempt => attempt.status === 'unknown')).toBe(true);

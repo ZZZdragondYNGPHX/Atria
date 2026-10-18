@@ -106,15 +106,15 @@ describe.each(CONTRACT_HARNESSES)('$name real RP failure policy', ({ make }) => 
         } finally { await f.cleanup(); }
     }, 60000);
 
-    test('an explicit HTTP failure with unknown spending may use remaining budget but cannot erase its cost or claim terminal output', async () => {
+    test('an explicit HTTP failure with unknown spending may use remaining budget while retaining its estimated cost', async () => {
         const f = await rpModelFixture(make, { configurePlan: configureFailure(), usage: (_body, index) => index !== 1, responseStatus: (_body, index) => index === 1 ? 500 : 200 });
         try {
             const result = await f.run(), bank = await bankOf(f);
             expect(f.requests).toHaveLength(2); expect(result.generated.routing.fallbackUsed).toBe(true);
             expect(bank.attempts).toHaveLength(2); expect(bank.attempts.map(row => row.status)).toEqual(['unknown', 'settled']);
             expect(bank.attempts[1].usage.totalTokens).toBe(20);
-            expect(result.output.runStatus).toBe('pending_output'); expect(result.output.outputClaimRef).toBeNull();
-            expect((await f.authority.execution.runs.get(f.h.handle, result.runId)).status).toBe('running');
+            expect(result.output.runStatus).toBe('completed'); expect(result.output.outputClaimRef).not.toBeNull();
+            expect((await f.authority.execution.runs.get(f.h.handle, result.runId)).status).toBe('completed');
         } finally { await f.cleanup(); }
     }, 60000);
 

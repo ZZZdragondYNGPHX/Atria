@@ -15,7 +15,7 @@ const rootBinding = root => hash({ runId: root.runId, ownerRef: root.ownerRef, e
 // and all persistent writes remain callbacks to the existing original banks.
 export async function runGenerationLocalWork({ signal, attempt, admit, settle, assertCurrent, onAdmitted, discardResult, requireAdmission = false }, operation) {
     checkCancellation(signal);
-    await assertCurrent();
+    await assertCurrent?.();
     checkCancellation(signal);
     let receipt;
     try { receipt = await admit(attempt); } catch (error) { throw new GenerationError(error.code ?? 'generation_execution_failed'); }
@@ -29,13 +29,13 @@ export async function runGenerationLocalWork({ signal, attempt, admit, settle, a
     let outcome = 'failed', result;
     try {
         try {
-            await assertCurrent(); result = await operation(); await assertCurrent(); outcome = 'completed';
+            checkCancellation(signal); result = await operation(); checkCancellation(signal); outcome = 'completed';
         } catch (error) { if (signal?.aborted) outcome = 'cancelled'; throw error; } finally {
             const used = process.cpuUsage(cpu);
             const usage = { wallMs: performance.now() - started, cpuUserMicros: used.user, cpuSystemMicros: used.system, cpuScope: 'process', outcome };
             Object.assign(entry, await settle({ receipt, attempt, usage }));
         }
-        await assertCurrent(); return result;
+        checkCancellation(signal); return result;
     } catch (error) {
         if (result && discardResult) await discardResult(result);
         throw new GenerationError(error.code ?? 'generation_execution_failed');
@@ -52,14 +52,10 @@ export async function compileNativeContextMetered({ handle, port, request, bank,
         fail('native_orchestration_context_compile_invalid');
     assertOriginalSendBank(bank, { budgetPort, handle, authorityRef: root.budgetAuthorityRef, effectId });
     checkCancellation(signal);
-    await assertCurrent();
-    await bank.assertCurrent();
-    checkCancellation(signal);
-    const skillCurrent = async () => { await assertCurrent(); await bank.assertCurrent(); };
     await ContextPort.prototype.prepareRpSkills.call(port, handle, request, (kind, input, operation) => {
         const attempt = { attemptId: bank.nextLocalWorkAttemptId(), requestId: workDescriptor.requestId, kind, estimatedItems: 1,
             estimatedInputBytes: Buffer.byteLength(JSON.stringify(input), 'utf8'), targetFingerprint: hash({ path: workDescriptor.pathFingerprint, kind, input }) };
-        return runGenerationLocalWork({ signal, attempt, requireAdmission: true, assertCurrent: skillCurrent,
+        return runGenerationLocalWork({ signal, attempt, requireAdmission: true, assertCurrent,
             admit: work => bank.chargeLocalWork(limits, work), settle: ({ attempt, usage }) => bank.settleLocalWork(attempt.attemptId, usage) }, operation);
     });
     const actualInput = await ContextPort.prototype.compilationDescriptor.call(port, handle, request);
@@ -74,9 +70,8 @@ export async function compileNativeContextMetered({ handle, port, request, bank,
     const attempt = { attemptId: bank.nextLocalWorkAttemptId(), requestId: workDescriptor.requestId, kind: 'context_build', estimatedItems: 1,
         estimatedInputBytes: Buffer.byteLength(JSON.stringify({ requestId: workDescriptor.requestId, pathFingerprint: workDescriptor.pathFingerprint, input: actualInput }), 'utf8'),
         targetFingerprint: hash({ path: workDescriptor.pathFingerprint, kind: 'context_build' }) };
-    const compileCurrent = async () => { await assertCurrent(); await bank.assertCurrent(); };
     let entry;
-    const compiled = await runGenerationLocalWork({ signal, attempt, requireAdmission: true, assertCurrent: compileCurrent,
+    const compiled = await runGenerationLocalWork({ signal, attempt, requireAdmission: true, assertCurrent,
         admit: work => bank.chargeLocalWork(limits, work),
         settle: ({ attempt, usage }) => bank.settleLocalWork(attempt.attemptId, usage),
         onAdmitted: row => { entry = row; } }, () => ContextPort.prototype.compile.call(port, handle, request,

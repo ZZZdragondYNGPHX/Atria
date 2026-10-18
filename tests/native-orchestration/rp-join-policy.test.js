@@ -133,8 +133,8 @@ describe.each(CONTRACT_HARNESSES)('$name original RP Join policies', ({ make }) 
             expect(joined.allMembers.filter(item => item.terminal?.kind === 'rejected')).toHaveLength(1);
             const published = await f.h.engine.withTransaction(f.h.handle, tx => readRpNarrationResult(tx, f.h.handle, root));
             expect(published.record.envelope.status).toBe('partial'); expect(published.producer.status).toBe('partial');
-            expect(result.output.runStatus).toBe(reported ? 'partial' : 'pending_output');
-            expect(root.outputClaims).toHaveLength(reported ? 1 : 0);
+            expect(result.output.runStatus).toBe('partial');
+            expect(root.outputClaims).toHaveLength(1);
             const bank = await bankOf(f); expect(bank.attempts).toHaveLength(3); expect(f.requests).toHaveLength(3);
             expect(bank.attempts.filter(row => row.status === 'unknown')).toHaveLength(reported ? 0 : 1);
             const output = reported ? await f.h.engine.withTransaction(f.h.handle, tx => readRpOutput(tx, f.h.handle, root)) : null;

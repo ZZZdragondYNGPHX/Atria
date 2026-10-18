@@ -86,13 +86,13 @@ describe.each(harnesses)('$name real RP Planner producer', ({ make }) => {
             expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(2);
         } finally { await f.cleanup(); }
     });
-    test('missing reported usage cannot become a completed Graph or authorize another output claim', async () => {
+    test('missing reported usage completes the delivered RP while retaining estimated charges', async () => {
         let narrator;
         const f = await rpModelFixture(make, { usage: false, configurePlan: async (...args) => { narrator = await configurePlanner(...args); },
             responsePayload: (_body, ordinal) => ordinal === 1 ? JSON.stringify({ operations: [{ op: 'setPendingPriority', nodeId: narrator.nodeId, priority: 2 }] }) : RP_MODEL_TEXT });
         try {
             const result = await f.run(), root = await f.authority.execution.runs.get(f.h.handle, result.runId);
-            expect(result.output.runStatus).toBe('pending_output'); expect(root.outputClaims).toEqual([]); expect(root.status).toBe('running');
+            expect(result.output.runStatus).toBe('completed'); expect(root.outputClaims).toEqual([result.output.outputClaimRef]); expect(root.status).toBe('completed');
             expect(f.requests).toHaveLength(2);
         } finally { await f.cleanup(); }
     });

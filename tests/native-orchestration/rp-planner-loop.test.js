@@ -127,12 +127,12 @@ describe.each(CONTRACT_HARNESSES)('$name original RP bounded Planner replan', ({
         } finally { f.h.engine.withTransaction = transaction; await f.cleanup(); }
     });
 
-    test('unknown usage keeps all loop/domain facts without a completed output claim', async () => {
+    test('unknown usage keeps all loop/domain facts with a completed output and estimated charges', async () => {
         const f = await rpModelFixture(make, { configurePlan: configurePlannerLoop, usage: false,
             responsePayload: (_body, ordinal) => ordinal <= 2 ? JSON.stringify({ operations: [{ op: ordinal === 1 ? 'requestReplan' : 'requestFinalize' }] }) : 'Final narration.' });
         try {
             const result = await f.run(), root = await f.authority.execution.runs.get(f.h.handle, result.runId);
-            expect(result.output.runStatus).toBe('pending_output'); expect(root.outputClaims).toEqual([]); expect(root.progress.loopIterations).toBe(1);
+            expect(result.output.runStatus).toBe('completed'); expect(root.outputClaims).toEqual([result.output.outputClaimRef]); expect(root.progress.loopIterations).toBe(1);
             expect(f.requests).toHaveLength(3); expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(3);
         } finally { await f.cleanup(); }
     });

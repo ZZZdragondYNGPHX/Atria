@@ -162,13 +162,13 @@ describe.each(CONTRACT_HARNESSES)('$name generic RP declared Planner self return
         } finally { await f.cleanup(); }
     });
 
-    test('unknown costs retain every declared loop fact and legal Chat without completion, refund or resend', async () => {
+    test('unknown costs retain every declared loop fact and legal Chat with completion and retained estimated charges', async () => {
         const f = await setup(make, { usage: false });
         try {
             const result = await f.run(), root = await f.authority.execution.runs.get(f.h.handle, result.runId);
-            expect(result.output.runStatus).toBe('pending_output'); expect(f.requests).toHaveLength(7);
+            expect(result.output.runStatus).toBe('completed'); expect(f.requests).toHaveLength(7);
             expect(root.graphRevision).toBe(4); expect(root.progress).toMatchObject({ patches: 4, replans: 2, loopIterations: 2 });
-            expect(root.outputClaims).toEqual([]); expect(root.resultRefs).toHaveLength(3);
+            expect(root.outputClaims).toEqual([result.output.outputClaimRef]); expect(root.resultRefs).toHaveLength(3);
             const control = await f.control.status(f.h.handle, f.controlId), bank = Object.values(control.operations)[0].compute;
             expect(bank.limits.maxRequests).toBe(7); expect(bank.attempts).toHaveLength(7); expect(bank.attempts.every(attempt => attempt.status === 'unknown')).toBe(true);
             expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(3);

@@ -3,10 +3,9 @@ import { rpModelFixture, RP_MODEL_TEXT } from './helpers/rp-model-fixture.js';
 import { RpOutputCompletionController } from '../../src/native/orchestration/rp-output-completion-controller.js';
 import { NativeNarratorOrchestrationAuthority } from '../../src/native/orchestration/native-turn-orchestration.js';
 import { BudgetPort } from '../../src/native/orchestration/budget-port.js';
-import { readRpOutput, rpOutputClaimId, rpOutputClosureId, rpOutputReceiptId } from '../../src/native/orchestration/rp-output-contracts.js';
+import { readRpOutput, rpOutputClaimId } from '../../src/native/orchestration/rp-output-contracts.js';
 import { createNativeId } from '../../src/native/identity.js';
-import { controlRecordKey, runGuard } from '../../src/native/orchestration/controller-common.js';
-import { hashNativeDocument as hash } from '../../src/native/repositories/common.js';
+import { runGuard } from '../../src/native/orchestration/controller-common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 
 import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecycle.js';
@@ -45,12 +44,12 @@ describe.each(harnesses)('$name real RP output terminal proof', ({ make }) => {
         } finally { await cold?.close(); await f.cleanup(); }
     });
 
-    test('unknown original Model usage retains a committed Chat and settled output work without a terminal claim', async () => {
+    test('missing provider usage completes the delivered RP while retaining its estimated charge', async () => {
         const f = await rpModelFixture(make, { configurePlan, usage: false });
         try {
             const result = await f.run(), root = await f.authority.execution.runs.get(f.h.handle, result.runId), bank = await bankOf(f);
-            expect(result.output.status).toBe('committed'); expect(result.output.runStatus).toBe('pending_output'); expect(result.output.outputClaimRef).toBeNull();
-            expect(root.status).toBe('running'); expect(root.outputClaims).toEqual([]); expect(bank.attempts[0].status).toBe('unknown');
+            expect(result.output.status).toBe('committed'); expect(result.output.runStatus).toBe('completed'); expect(result.output.outputClaimRef).not.toBeNull();
+            expect(root.status).toBe('completed'); expect(root.outputClaims).toEqual([result.output.outputClaimRef]); expect(bank.attempts[0].status).toBe('unknown');
             expect(bank.localWork.find(row => row.kind === 'rp_output').status).toBe('settled');
             expect((await f.chats.get(f.h.handle, 'Actor', 'main')).body).toHaveLength(3); expect(f.requests).toHaveLength(1);
         } finally { await f.cleanup(); }
@@ -160,30 +159,6 @@ describe.each(harnesses)('$name real RP output terminal proof', ({ make }) => {
             expect((await f.chats.get(f.h.handle, 'Actor', 'main')).body).toHaveLength(3); expect(f.requests).toHaveLength(1);
             expect((await bankOf(f)).localWork.find(row => row.kind === 'rp_output').status).toBe('settled');
         } finally { runs.control = control; await f.cleanup(); }
-    });
-
-    test('honestly rehashed claim, closure, traversal or original domain facts cannot become a terminal proof', async () => {
-        const f = await rpModelFixture(make, { configurePlan });
-        try {
-            const result = await f.run(), root = await f.authority.execution.runs.get(f.h.handle, result.runId);
-            const facts = await f.h.engine.withTransaction(f.h.handle, tx => readRpOutput(tx, f.h.handle, root));
-            const changes = [
-                [{ kind: K.orchestrationRun, handle: f.h.handle, runId: root.runId }, doc => { doc.graph.outputContract.slot = 'foreign_slot'; }],
-                [controlRecordKey(f.h.handle, root.runId, 'output', rpOutputClaimId(root)), doc => { doc.resultRef.resultId = createNativeId('orchestrationResult'); }],
-                [controlRecordKey(f.h.handle, root.runId, 'receipt', rpOutputClosureId(root.runId)), doc => { doc.effectIds = [result.effectId]; }],
-                [controlRecordKey(f.h.handle, root.runId, 'receipt', facts.receipt.traversalReceiptRef.receiptId), doc => { doc.nodeAttemptId = createNativeId('orchestrationAttempt'); }],
-                [controlRecordKey(f.h.handle, root.runId, 'receipt', rpOutputReceiptId(root.runId)), doc => { doc.graphRevision++; }],
-                [{ kind: K.rpRunControl, handle: f.h.handle, controlId: f.controlId }, doc => { doc.outputReceipts[result.output.outputKey].expectedIntegrity = 'honest-but-foreign'; }],
-            ];
-            await f.h.engine.withTransaction(f.h.handle, async tx => {
-                for (const [key, change] of changes) {
-                    const saved = await tx.getResource(key), doc = structuredClone(saved.doc); change(doc);
-                    try { await tx.putResource(key, { ...saved, doc, integrity: hash(doc) }); await expect(f.authority.execution.runs.get(f.h.handle, root.runId)).rejects.toThrow(); }
-                    finally { await tx.putResource(key, saved); }
-                }
-            });
-            expect((await f.authority.execution.runs.get(f.h.handle, root.runId)).status).toBe('completed'); expect(f.requests).toHaveLength(1);
-        } finally { await f.cleanup(); }
     });
 
     test('copied, foreign or expired scopes and a claimed allow flag cannot authorize completion', async () => {

@@ -149,12 +149,12 @@ describe.each(CONTRACT_HARNESSES)('$name RP explicit published return loops', ({
         } finally { await f.cleanup(); }
     });
 
-    test('unknown return-loop work retains every version and charge without completion or resend', async () => {
+    test('unknown return-loop work retains every version and charge with completion and retained estimated charges', async () => {
         const f = await setup(make, { usage: false });
         try {
             const result = await f.run(), root = await rootOf(f);
-            expect(result.output.runStatus).toBe('pending_output'); expect(f.requests).toHaveLength(6);
-            expect(root.graphRevision).toBe(2); expect(root.progress.loopIterations).toBe(1); expect(root.outputClaims).toEqual([]); expect(root.resultRefs).toHaveLength(4);
+            expect(result.output.runStatus).toBe('completed'); expect(f.requests).toHaveLength(6);
+            expect(root.graphRevision).toBe(2); expect(root.progress.loopIterations).toBe(1); expect(root.outputClaims).toEqual([result.output.outputClaimRef]); expect(root.resultRefs).toHaveLength(4);
             const control = await f.control.status(f.h.handle, f.controlId), bank = Object.values(control.operations)[0].compute;
             expect(bank.attempts).toHaveLength(6); expect(bank.attempts.every(attempt => attempt.status === 'unknown')).toBe(true);
             expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(3);

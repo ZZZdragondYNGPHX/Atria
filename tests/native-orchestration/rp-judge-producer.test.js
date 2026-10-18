@@ -115,11 +115,11 @@ describe.each(CONTRACT_HARNESSES)('$name actual RP Model Judge', ({ make }) => {
             expect(row.doc.cancelRequested).toBe(change === 'cancel'); expect(row.doc.outputClaims).toEqual([]);
         } finally { spy.mockRestore(); await f.cleanup(); }
     });
-    test('unknown Model usage preserves legal output and all costs without a completed claim', async () => {
+    test('unknown Model usage preserves legal output and all costs with a completed output and estimated charges', async () => {
         const f = await rpModelFixture(make, { configurePlan: configureJudge, responsePayload: response(1), usage: false });
         try {
             const result = await f.run(), root = await f.authority.execution.runs.get(f.h.handle, result.runId);
-            expect(result.output.runStatus).toBe('pending_output'); expect(root.outputClaims).toEqual([]); expect(f.requests).toHaveLength(4);
+            expect(result.output.runStatus).toBe('completed'); expect(root.outputClaims).toEqual([result.output.outputClaimRef]); expect(f.requests).toHaveLength(4);
             const selected = await f.h.engine.withTransaction(f.h.handle, tx => readRpJudgeCompletion(tx, f.h.handle, root, root.attemptRefs[2]));
             expect(hash(selected.receipt.selectedResultRef)).toBe(hash(root.resultRefs[1]));
         } finally { await f.cleanup(); }

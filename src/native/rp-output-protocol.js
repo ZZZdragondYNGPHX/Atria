@@ -1,7 +1,7 @@
 import { ConflictError } from '../storage/errors.js';
 import { assertWritable } from '../storage/read-only-mode.js';
 import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
-import { hashNativeDocument as hash, putMutable } from './repositories/common.js';
+import { hashNativeDocument as hash, putMutable, equalNativeDocuments as equal } from './repositories/common.js';
 import { assertCounter, assertDigest } from '../../public/shared/native-orchestration-contracts.js';
 import { fields } from '../../public/shared/native-values.js';
 import { inspectNativeRpOutputIdentity, inspectNativeRpOutput } from './orchestration/native-rp-generation.js';
@@ -10,7 +10,6 @@ import { immutable } from './model-prompt-runtime/execution-utils.js';
 const permits = new WeakMap();
 const fail = code => { throw new ConflictError(code); };
 const key = (handle, controlId) => ({ kind: K.rpRunControl, handle, controlId });
-const equal = (a, b) => hash(a) === hash(b);
 export const RP_OUTPUT_DENIAL_CODES = Object.freeze(['native_rp_output_stale', 'native_orchestration_source_stale', 'native_orchestration_return_stale', 'native_generation_revision_conflict',
     'native_rp_source_missing', 'native_rp_control_relocated', 'native_orchestration_model_result_completion_stale',
     'native_orchestration_memory_source_stale', 'native_orchestration_context_retrieval_denied', 'native_orchestration_context_retrieval_unresolved']);

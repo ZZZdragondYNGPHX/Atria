@@ -85,12 +85,12 @@ describe.each(CONTRACT_HARNESSES)('$name RP composable models without a mandator
         } finally { await f.cleanup(); }
     });
 
-    test('unknown fees retain every approved quality fact and legal Chat without completion, refund or resend', async () => {
+    test('unknown fees retain every approved quality fact and legal Chat with completion and retained estimated charges', async () => {
         const f = await fixture(make, { ...profile, usage: false });
         try {
             const result = await f.run(), root = await f.authority.execution.runs.get(f.h.handle, result.runId);
-            expect(result.output.runStatus).toBe('pending_output'); expect(f.requests).toHaveLength(5);
-            expect(root.graphRevision).toBe(0); expect(root.resultRefs).toHaveLength(3); expect(root.outputClaims).toEqual([]);
+            expect(result.output.runStatus).toBe('completed'); expect(f.requests).toHaveLength(5);
+            expect(root.graphRevision).toBe(0); expect(root.resultRefs).toHaveLength(3); expect(root.outputClaims).toEqual([result.output.outputClaimRef]);
             expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(3);
             const status = await f.control.status(f.h.handle, f.controlId), bank = Object.values(status.operations)[0].compute;
             expect(bank.attempts).toHaveLength(5); expect(bank.attempts.every(row => row.status === 'unknown')).toBe(true);

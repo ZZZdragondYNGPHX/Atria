@@ -349,6 +349,8 @@ export class RunRepository {
             const result = await reduce({ tx, root: cloneNativeDocument(root), plan: record.planRevision, fence, now: timestamp,
                 deny: error => new ControlDenial(error) });
             if (result instanceof ControlDenial) return result;
+            const current = await tx.getResource(runKey(handle, root.runId));
+            if (current?.integrity !== record.integrity) return new ControlDenial(new ConflictError('native_orchestration_run_conflict'));
             const next = result.root;
             const updated = await this.#commit(tx, handle, record, next, result.eventType, result.reasonCode, timestamp);
             return { runId: root.runId, ...cloneNativeDocument(result.outcome), versions: { epoch: updated.epoch, stateVersion: updated.stateVersion, graphRevision: updated.graphRevision } };

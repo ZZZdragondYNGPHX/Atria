@@ -290,7 +290,7 @@ export class BudgetPort {
     }
 
     /** Exact root Effect costs; unrelated Runs do not become this Run's receipts. */
-    async observeEffectClosure(handle, input, { tx } = {}) {
+    async observeEffectClosure(handle, input, { tx, allowUnknownUsage = false } = {}) {
         fields(input, ['authorityRef', 'effectIds'], 'Effect budget closure');
         const { authorityRef, effectIds } = input;
         assertBudgetAuthorityRef(authorityRef);
@@ -303,7 +303,7 @@ export class BudgetPort {
             const ledger = await this.#ledger(handle, tx, authorityRef);
             if (!ledger) fail('native_orchestration_budget_unavailable');
             const facts = inspectComputeEffectClosure({ compute: ledger }, effectIds);
-            return effectBudgetClosure(authorityRef, facts);
+            return effectBudgetClosure(authorityRef, facts, { allowUnknownUsage });
         });
     }
 
@@ -523,7 +523,7 @@ export class BudgetPort {
 }
 
 /** The same original-bank snapshot is used by live observation and cold readers. */
-export function effectBudgetClosure(authorityRef, facts) {
+export function effectBudgetClosure(authorityRef, facts, { allowUnknownUsage = false } = {}) {
     const rows = [...facts.modelAttempts, ...facts.localWork].toSorted((a, b) => a.attemptId.localeCompare(b.attemptId));
     const budgetAttemptRefs = rows.map(row => {
         const marker = row.orchestration;
@@ -532,7 +532,7 @@ export function effectBudgetClosure(authorityRef, facts) {
             authorityRef: structuredClone(authorityRef), effectId: marker.effectId, attemptId: row.attemptId, reservationId: row.reservationId ?? null });
     });
     return { authorityRef: structuredClone(authorityRef), effectIds: facts.effectIds, budgetAttemptRefs,
-        closed: !facts.overrun && facts.effectIds.every(id => rows.some(row => row.orchestration.effectId === id)) && rows.every(row => row.status === 'settled'),
+        closed: !facts.overrun && facts.effectIds.every(id => rows.some(row => row.orchestration.effectId === id)) && rows.every(row => row.status === 'settled' || allowUnknownUsage && row.orchestration.kind === 'provider_send' && row.status === 'unknown'),
         snapshotDigest: hashNativeDocument({ authorityRef, effectIds: facts.effectIds,
             modelAttempts: facts.modelAttempts.toSorted((a, b) => a.attemptId.localeCompare(b.attemptId)),
             localWork: facts.localWork.toSorted((a, b) => a.attemptId.localeCompare(b.attemptId)), overrun: facts.overrun }) };

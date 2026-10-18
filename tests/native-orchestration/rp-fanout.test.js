@@ -74,12 +74,12 @@ describe.each(CONTRACT_HARNESSES)('$name original RP explicit Fanout Join', ({ m
         } finally { await f.cleanup(); }
     }, 60000);
 
-    test('unknown real branch usage is retained across the Join and prevents a completed cost claim without repeating either branch', async () => {
+    test('unknown real branch usage is retained across the Join and allows completed RP without repeating either branch', async () => {
         let unknown;
         const f = await rpFanoutFixture(make, { usage: body => { unknown ??= body; return body !== unknown; } });
         try {
             const result = await f.run(), root = await rootOf(f);
-            expect(result.output.runStatus).toBe('pending_output'); expect(root.outputClaims).toEqual([]); expect(f.requests).toHaveLength(3);
+            expect(result.output.runStatus).toBe('completed'); expect(root.outputClaims).toEqual([result.output.outputClaimRef]); expect(f.requests).toHaveLength(3);
             const joined = await f.h.engine.withTransaction(f.h.handle, tx => readRpFanoutCompletion(tx, f.h.handle, root));
             expect(joined.joinReceipt.outcome).toBe('completed');
             const bank = await bankOf(f); expect(bank.attempts).toHaveLength(3);

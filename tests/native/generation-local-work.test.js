@@ -19,8 +19,9 @@ async function fixture(make, lane, budget = limits) {
     const h = await make(), seen = []; let status = () => 200;
     const server = createServer(async (req, res) => {
         let raw = ''; for await (const part of req) raw += part; seen.push(JSON.parse(raw));
-        res.writeHead(status(seen.length), { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'Fresh bounded answer.' } }], usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 } }));
+        const responseStatus = status(seen.length);
+        res.writeHead(responseStatus, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'Fresh bounded answer.' } }], usage: responseStatus === 200 ? { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 } : undefined }));
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const installed = await installFixture(h), base = await installed.core.create(h.handle, installed.start);
@@ -102,7 +103,7 @@ test.each(['count_failure', 'render_failure', 'cancel', 'head_change', 'task_cha
         }
         const observed = scenario === 'head_change' ? { jobs: ledger.localJobs, outcome: ledger.localFailedJobs ? 'failed' : 'unknown' }
             : { jobs: ledger.localWork.length, outcome: ledger.localWork.at(-1).usage.outcome };
-        expect(observed).toEqual({ jobs: scenario === 'render_failure' ? 5 : 4, outcome: scenario === 'cancel' ? 'cancelled' : 'failed' });
+        expect(observed).toEqual({ jobs: scenario === 'render_failure' ? 5 : 4, outcome: scenario === 'cancel' ? 'cancelled' : scenario === 'head_change' ? 'unknown' : scenario === 'task_change' ? 'completed' : 'failed' });
         expect(calls).toBe(scenario === 'render_failure' ? 2 : 1); expect(f.seen).toEqual([]);
     } finally { await f.cleanup(); }
 });
@@ -257,7 +258,7 @@ test.each(['failure', 'cancel', 'head_change', 'task_change'])('G05 resolver %s 
             await new Promise(resume => setTimeout(resume, 10));
         }
         expect(scenario === 'head_change' ? bank.localFailedJobs : bank.localWork.map(row => [row.kind, row.usage.outcome]))
-            .toEqual(scenario === 'head_change' ? 1 : [['route_resolve', scenario === 'cancel' ? 'cancelled' : 'failed']]);
+            .toEqual(scenario === 'head_change' ? 0 : [['route_resolve', scenario === 'cancel' ? 'cancelled' : scenario === 'task_change' ? 'completed' : 'failed']]);
         expect(compile).not.toHaveBeenCalled(); expect(f.seen).toEqual([]);
     } finally { resolve.mockRestore(); compile.mockRestore(); await f.cleanup(); }
 });

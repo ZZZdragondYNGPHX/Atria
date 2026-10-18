@@ -1,8 +1,8 @@
+import { equalNativeDocuments } from './repositories/common.js';
 import { assertNativeId } from './identity.js';
 import { randomUUID } from 'node:crypto';
 import { NATIVE_GENERATION_DEFAULTS } from '../../public/shared/native-generation-defaults.js';
 import { immutable } from './model-prompt-runtime/execution-utils.js';
-import { hashNativeDocument } from './repositories/common.js';
 
 const terminal = new Set(['completed', 'failed', 'cancelled', 'stale']);
 const failure = code => Object.assign(new Error(code), { code });
@@ -21,8 +21,8 @@ function assertOperationFrame(scheduler, boundary, captured, expected, statuses,
         || !operation.controller || operation.controller.signal !== boundary.signal || boundary.signal.aborted
         || operation.owner !== expected.owner || operation.view.kind !== expected.kind || operation.view.executionClass !== expected.executionClass
         || operation.key !== expected.key || operation.fingerprint !== expected.fingerprint
-        || hashNativeDocument(operation.view.anchor) !== hashNativeDocument(expected.anchor)
-        || hashNativeDocument(resourceSet(operation.resources)) !== hashNativeDocument(resourceSet(expected.resources))) throw failure('operation_boundary_denied');
+        || !equalNativeDocuments(operation.view.anchor, expected.anchor)
+        || !equalNativeDocuments(resourceSet(operation.resources), resourceSet(expected.resources))) throw failure('operation_boundary_denied');
     return Object.freeze({ ...immutable({ operationId: operation.view.operationId, owner: operation.owner,
         anchor: operation.view.anchor, kind: operation.view.kind, executionClass: operation.view.executionClass,
         key: operation.key, fingerprint: operation.fingerprint, resources: resourceSet(operation.resources), attempt: captured.attempt }), signal: boundary.signal });
@@ -76,7 +76,7 @@ export class NativeTaskScheduler {
             || !(this.suspended.has(parent.operation) && parent.operation.view.status === 'waiting_child'
                 || this.running.has(parent.operation) && ['running', 'streaming'].includes(parent.operation.view.status))
             || active.owner !== original.owner || active.executionClass !== original.executionClass
-            || hashNativeDocument(active.anchor) !== hashNativeDocument(original.anchor)
+            || !equalNativeDocuments(active.anchor, original.anchor)
             || active.resources.some(resource => !original.resources.includes(resource))) throw failure('operation_handoff_denied');
         return active;
     }

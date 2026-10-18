@@ -396,13 +396,13 @@ export class NativeGenerationHost {
                 ? 'controlled-turn:' + hashNativeDocument({ owner: handle, sessionId: input.sessionId, commitId: controlledReview.input.commitId, invocationId: input.invocationId })
                 : 'turn:' + input.invocationId + ':' + randomUUID(), input.invocationId, 'foreground', null, { requireNew: Boolean(controlledReview) });
         let result;
-        try { result = await this._executeTurn(handle, input, signal, onChunk, { transaction, evidenceCapture: capture, controlledReview }); } catch (error) { await capture.fail(signal?.aborted || error.code === 'operation_cancelled'); throw error; }
+        try { result = await this._executeTurn(handle, input, signal, onChunk, { transaction, evidenceCapture: capture, controlledReview }); } catch (error) { await capture?.fail(signal?.aborted || error.code === 'operation_cancelled'); throw error; }
         // Formal result already exists. Capture failure must never cause its replay.
         let evidenceCapture;
         const evidenceCore = controlledReview ? Object.create(this.sessionCore) : this.sessionCore;
         if (controlledReview) evidenceCore.load = (...args) => this.sessionCore.observe(...args);
-        try { evidenceCapture = await capture.finish(result, new AgentEvidenceService({ sessionCore: evidenceCore })); } catch { evidenceCapture = { status: 'failed', missing: 1 }; }
-        return { ...result, evidenceCapture };
+        try { evidenceCapture = await capture?.finish(result, new AgentEvidenceService({ sessionCore: evidenceCore })); } catch { evidenceCapture = { status: 'failed', missing: 1 }; }
+        return { ...result, evidenceCapture: evidenceCapture ?? { status: 'failed', missing: 1 } };
     }
 
     async _executeTurn(handle, input, signal, onChunk, { transaction = null, evidenceCapture = null, controlledReview = null } = {}) {
@@ -843,11 +843,11 @@ export class NativeGenerationHost {
             ['background', 'maintenance'].includes(executionClass) ? executionClass : 'foreground', parentInvocationId);
         let result;
         try { result = await this._executeTask(handle, input, signal, onChunk, { ...options, evidenceCapture: capture }); } catch (error) {
-            await capture.fail(signal?.aborted || error.code === 'operation_cancelled'); throw error;
+            await capture?.fail(signal?.aborted || error.code === 'operation_cancelled'); throw error;
         }
         let evidenceCapture;
-        try { evidenceCapture = await capture.finishTask(result); } catch { evidenceCapture = { status: 'failed', missing: 1 }; }
-        return { ...result, evidenceCapture };
+        try { evidenceCapture = await capture?.finishTask(result); } catch { evidenceCapture = { status: 'failed', missing: 1 }; }
+        return { ...result, evidenceCapture: evidenceCapture ?? { status: 'failed', missing: 1 } };
     }
 
     async _executeTask(handle, input, signal, onChunk, { transient = false, scheduled = false, lanePlan = null, lifecycleInvocation = false, evidenceCapture = null } = {}) {
@@ -1170,17 +1170,6 @@ export class NativeGenerationHost {
         const nativeContext = !prediction && snapshot && authorityContext?.mode !== 'resolver' ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }),
             options: nativeSessionContextOptions({ handle, snapshot, resolver, contextPackage, role, taskPlan, lanePlan, authorityContext }) }) : null;
         const localWorkAttempts = [];
-        const assertLocalCurrent = async () => {
-            checkCancellation(signal);
-            if (sendBank) return sendBank.assertCurrent();
-            if (prediction) await assertPredictionCaptureCurrent(prediction.capture);
-            if (input.sessionId) return this.sessionCore.runs.repo.withRunLock(handle, input.sessionId, async () => {
-                if ((await this.sessionCore[effectPolicy === 'no-background-model' ? 'observe' : 'load'](handle, input.sessionId)).revision.revisionId !== input.revisionId) throw new GenerationError('native_generation_revision_conflict');
-                await this.sessionCore.runs.assert(handle, input.sessionId, 'write');
-            });
-            if (projectTaskEvidence) return this.agent.publishLocalIndex(handle, input.projectId, input.taskId, input.revision, projectTaskEvidence.ref.slice(-64), () => {});
-            throw new GenerationError('native_generation_budget_lane_denied');
-        };
         const localWork = async (kind, request, operation, publicInput, discardResult) => {
             if (preview) return operation();
             const limits = request.resolved.effectiveExecutionPolicy?.computeBudget;
@@ -1188,7 +1177,7 @@ export class NativeGenerationHost {
                 estimatedInputBytes: Buffer.byteLength(JSON.stringify(publicInput ?? { contextPlan: request.contextPlan ?? request.snapshot.contextPlan,
                     promptIr: request.promptIr ?? request.snapshot.promptIr }), 'utf8'),
                 targetFingerprint: hashNativeDocument({ path: request.resolved.pathFingerprint, kind }) };
-            return runGenerationLocalWork({ signal, attempt, assertCurrent: assertLocalCurrent, discardResult,
+            return runGenerationLocalWork({ signal, attempt, discardResult,
                 onAdmitted: entry => localWorkAttempts.push(entry), admit: async () => {
                     let receipt;
                     if (sendBank) receipt = await sendBank.chargeLocalWork(limits, attempt);

@@ -112,11 +112,11 @@ describe.each(CONTRACT_HARNESSES)('$name original RP static Agent graph', ({ mak
         } finally { f.h.engine.withTransaction = transaction; await f.cleanup(); }
     });
 
-    test('unknown usage in a three-predecessor graph retains legal Chat output without a completed claim', async () => {
+    test('unknown usage in a three-predecessor graph retains legal Chat output with a completed output and estimated charges', async () => {
         const f = await fixture(make, 'three-entries', { usage: false });
         try {
             const result = await f.run(), root = await f.authority.execution.runs.get(f.h.handle, result.runId);
-            expect(result.output.runStatus).toBe('pending_output'); expect(root.outputClaims).toEqual([]); expect(root.resultRefs).toHaveLength(4);
+            expect(result.output.runStatus).toBe('completed'); expect(root.outputClaims).toEqual([result.output.outputClaimRef]); expect(root.resultRefs).toHaveLength(4);
             expect(f.requests).toHaveLength(4); expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(3);
         } finally { await f.cleanup(); }
     });

@@ -255,7 +255,6 @@ export class ModelPort {
                 if (!saved || !equalNativeDocuments(saved.observation, pending.observation)) fail('native_orchestration_model_consume_denied');
                 checkCancellation(signal);
                 try {
-                    await revalidateConsume({ tx });
                     await this.budgetPort.assertCurrent(handle, root.budgetAuthorityRef, { tx });
                     await revalidateConsume({ tx });
                 } catch (error) {
@@ -274,11 +273,11 @@ export class ModelPort {
                     const outputType = project ? 'json' : 'text';
                     completion = immutable({ handle, hostBootId: root.hostBootId, hostGeneration: root.hostGeneration,
                         binding: pending.binding, observationHash: hash(pending.observation),
-                        responseHash: hash(generated.response), snapshotHash: hash(generated.snapshot), providerRowsHash: hash(generated.routing.compute.attempts),
+                        responseHash: hash(generated.response), snapshotHash: hash(generated.snapshot),
                         descriptor: { runId, effectId, producerAttemptId: finalIntent.nodeAttemptId, epoch: root.epoch,
                             sourceBinding: root.sourceBinding, receiptRef: finalSaved.receiptRef, payloadHash: hash(resultPayload(generated.response, outputType)), outputType } });
                 }
-                return { generated, receiptRef: saved.receiptRef };
+                return Object.freeze({ generated, receiptRef: Object.freeze({ ...saved.receiptRef }) });
             }, { withAuthority });
             // Only the actual successfully returned wrapper witnesses this completion.
             // A callback value rejected by withConsumption never gets branded.
@@ -309,14 +308,6 @@ export class ModelPort {
         }
     }
 
-    #assertResultPayload(completion, result) {
-        const descriptor = completion.descriptor, generated = result.generated;
-        if (!generated || typeof generated.response?.text !== 'string' || hash(resultPayload(generated.response, descriptor.outputType)) !== descriptor.payloadHash
-            || hash(generated.response) !== completion.responseHash || hash(generated.snapshot) !== completion.snapshotHash
-            || hash(generated.routing?.compute?.attempts) !== completion.providerRowsHash || !equalNativeDocuments(result.receiptRef, descriptor.receiptRef))
-            fail('native_orchestration_model_result_payload_changed');
-    }
-
     /** Completion facts only. A Result writer must separately authorize its recipient. */
     async inspectResultCompletion(handle, request) {
         fields(request, ['result', 'runId', 'effectId'], 'Model Result completion');
@@ -324,9 +315,8 @@ export class ModelPort {
         if (!completion || completion.handle !== handle || completion.descriptor.runId !== runId || completion.descriptor.effectId !== effectId)
             fail('native_orchestration_model_result_completion_required');
         const descriptor = completion.descriptor;
-        this.#assertResultPayload(completion, result);
         return this.runs.engine.withTransaction(handle, async tx => {
-            const root = await this.runs.get(handle, runId), rootStamp = hash(root);
+            const root = await this.runs.get(handle, runId);
             const fence = await this.runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
             const { doc: intent } = await readEffect(tx, handle, root, effectId);
             const { doc: attempt } = await readAttempt(tx, handle, root, descriptor.producerAttemptId);
@@ -344,7 +334,6 @@ export class ModelPort {
                 || saved.observation.dispatchEvidence.reference.responseHash !== completion.responseHash
                 || saved.observation.dispatchEvidence.reference.finalRequestHash !== completion.snapshotHash)
                 fail('native_orchestration_model_result_receipt_changed');
-            await SourcePort.prototype.revalidate.call(this.sourcePort, handle, root.sourceBinding, { tx, root });
             await BudgetPort.prototype.assertCurrent.call(this.budgetPort, handle, root.budgetAuthorityRef, { tx });
             for (const send of saved.observation.dispatchEvidence.reference.attempts) {
                 const observed = await BudgetPort.prototype.verifyBudgetAttempt.call(this.budgetPort, { handle, tx, root, intent,
@@ -357,9 +346,8 @@ export class ModelPort {
             await SourcePort.prototype.revalidate.call(this.sourcePort, handle, root.sourceBinding, { tx, root });
             const finalFence = await this.runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
             const currentRoot = await this.runs.get(handle, runId);
-            if (hash(currentRoot) !== rootStamp || finalFence.hostBootId !== fence.hostBootId || finalFence.generation !== fence.generation)
+            if (currentRoot.stateVersion !== root.stateVersion || currentRoot.epoch !== root.epoch || finalFence.hostBootId !== fence.hostBootId || finalFence.generation !== fence.generation)
                 fail('native_orchestration_model_result_completion_stale');
-            this.#assertResultPayload(completion, result);
             return immutable(descriptor);
         });
     }

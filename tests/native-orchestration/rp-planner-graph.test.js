@@ -77,12 +77,12 @@ describe.each(CONTRACT_HARNESSES)('$name original RP Planner and Agent graph', (
         } finally { await f.cleanup(); }
     });
 
-    test('unknown usage preserves planned graph Results and the legal Chat output without a completed claim', async () => {
+    test('unknown usage preserves planned graph Results and the legal Chat output with a completed output and estimated charges', async () => {
         const f = await rpModelFixture(make, { configurePlan: configurePlannerGraph, usage: false,
             responsePayload: (_body, ordinal) => ordinal === 1 ? JSON.stringify({ operations: [{ op: 'requestFinalize' }] }) : 'Advisory ' + ordinal });
         try {
             const result = await f.run(), root = await f.authority.execution.runs.get(f.h.handle, result.runId);
-            expect(result.output.runStatus).toBe('pending_output'); expect(root.outputClaims).toEqual([]); expect(root.resultRefs).toHaveLength(3);
+            expect(result.output.runStatus).toBe('completed'); expect(root.outputClaims).toEqual([result.output.outputClaimRef]); expect(root.resultRefs).toHaveLength(3);
             expect(f.requests).toHaveLength(4); expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(3);
         } finally { await f.cleanup(); }
     });

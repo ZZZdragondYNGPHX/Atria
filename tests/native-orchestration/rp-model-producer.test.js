@@ -42,6 +42,18 @@ describe.each([['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineH
         } finally { await f.cleanup(); }
     });
 
+    test('a model configuration edit during the provider request is checked when the reply arrives', async () => {
+        const f = await rpModelFixture(make);
+        f.onResponse(async () => {
+            const profile = await f.host.persistence.getModelProfile(f.h.handle, f.model.modelProfileId);
+            await f.host.persistence.saveModelProfile(f.h.handle, { ...profile, remoteModelId: 'changed-during-generation' });
+        });
+        try {
+            await expect(f.run()).rejects.toThrow(); expect(f.requests).toHaveLength(1);
+            expect((await f.chats.get(f.h.handle, 'Actor', 'main')).body).toHaveLength(2);
+        } finally { await f.cleanup(); }
+    });
+
     test.each(['edit', 'new_input'])('source %s during actual provider work refuses the body without refunding usage', async change => {
         const f = await rpModelFixture(make);
         f.onResponse(async () => {

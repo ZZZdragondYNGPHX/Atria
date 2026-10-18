@@ -12,6 +12,8 @@ import { makeEndpointHarness } from '../storage/harness/endpoint-harness.js';
 import { PersonaRepo } from '../../src/native/repositories/persona-repo.js';
 import { AssetStore } from '../../src/native/repositories/asset-store.js';
 import { EMPTY_PERSONA_FINGERPRINT as empty } from '../../src/native/persona-contract.js';
+import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
+import { nativeRecord } from '../../src/native/repositories/common.js';
 const selection = Object.fromEntries(Object.keys(USER_BACKUP_SELECTION_DEFAULTS).map(key => [key, key === 'native']));
 async function harness(mode) {
     const h = await makeEndpointHarness({ mode, mount(app, { dirs }) {
@@ -72,6 +74,23 @@ describe.each([['fs', 'sqlite'], ['sqlite', 'fs']])('Persona account backup %s â
         const conflict = await probe(h, zip); expect(conflict.body.compatible).toBe(false); expect(conflict.body.personaReview.conflicts.length).toBeGreaterThan(0);
         expect((await restore(h, zip)).status).toBeGreaterThanOrEqual(400);
         expect((await t.get(h.handle, { ref: revised.ref })).revision.name).toBe('Diverged');
+    });
+    test('an imported avatar ID cannot overwrite a different existing avatar descriptor', async () => {
+        h = await harness(source); const r = repo(h);
+        const png = PNG.sync.write(new PNG({ width: 1, height: 1 }));
+        const avatar = await r.avatar(h.handle, { mediaType: 'image/png', bytes: png.toString('base64') });
+        await r.create(h.handle, { content: content('Imported persona', avatar), expectedFingerprint: empty });
+        const zip = await archive(h);
+        await h.cleanup(); h = await harness(target);
+        const local = { ...avatar, logicalName: 'Existing local avatar' };
+        const key = { kind: K.assetRef, handle: h.handle, assetId: avatar.assetId };
+        await getStorageEngine().withTransaction(h.handle, tx => tx.putResource(key, nativeRecord(local)));
+        const review = await probe(h, zip);
+        expect(review.body.compatible).toBe(false);
+        expect(review.body.personaReview.conflicts).toContainEqual({ kind: K.assetRef, assetId: avatar.assetId });
+        expect((await restore(h, zip)).status).toBeGreaterThanOrEqual(400);
+        const retained = await getStorageEngine().withTransaction(h.handle, tx => tx.getResource(key));
+        expect(retained.doc).toEqual(local);
     });
     test('missing manifest/avatar or altered index fails before live publication', async () => {
         h = await harness(source); const r = repo(h);

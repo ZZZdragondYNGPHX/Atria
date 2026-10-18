@@ -170,12 +170,12 @@ describe.each(CONTRACT_HARNESSES)('$name published RP composable model and Plann
         } finally { await f.cleanup(); }
     });
 
-    test('unknown usage keeps every composed Result and paid attempt without a completed claim, refund or resend', async () => {
+    test('unknown usage keeps every composed Result and paid attempt with a completed output and retained estimated charges', async () => {
         const f = await setup(make, { usage: false });
         try {
             const result = await f.run(), root = await f.authority.execution.runs.get(f.h.handle, result.runId);
-            expect(result.output.runStatus).toBe('pending_output'); expect(f.requests).toHaveLength(5);
-            expect(root.graphRevision).toBe(2); expect(root.resultRefs).toHaveLength(3); expect(root.outputClaims).toEqual([]);
+            expect(result.output.runStatus).toBe('completed'); expect(f.requests).toHaveLength(5);
+            expect(root.graphRevision).toBe(2); expect(root.resultRefs).toHaveLength(3); expect(root.outputClaims).toEqual([result.output.outputClaimRef]);
             const control = await f.control.status(f.h.handle, f.controlId), bank = Object.values(control.operations)[0].compute;
             expect(bank.attempts).toHaveLength(5); expect(bank.attempts.every(attempt => attempt.status === 'unknown')).toBe(true);
             expect((await f.chats.get(f.h.handle, f.locator.charDir, f.locator.name)).body).toHaveLength(3);

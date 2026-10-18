@@ -85,7 +85,7 @@ describe.each(harnesses)('$name RP frozen Fanout Planner scope', ({ make }) => {
         const f = await setup(make, { usage: body => body.model !== 'fanout-branch-a' });
         try {
             const result = await f.run(), root = await rootOf(f), group = await joinOf(f, root);
-            expect(result.output.runStatus).toBe('pending_output'); expect(f.requests).toHaveLength(5); expect(root.outputClaims).toEqual([]);
+            expect(result.output.runStatus).toBe('completed'); expect(f.requests).toHaveLength(5); expect(root.outputClaims).toEqual([result.output.outputClaimRef]);
             expect(group.joinReceipt.outcome).toBe('completed'); expect(group.providerEffects).toHaveLength(3);
             const bank = await bankOf(f); expect(bank.attempts).toHaveLength(5);
             expect(bank.attempts.filter(row => row.status === 'unknown')).toHaveLength(1); expect(bank.attempts.filter(row => row.status === 'settled')).toHaveLength(4);

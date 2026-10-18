@@ -365,10 +365,8 @@ export async function inspectNativeRpOutput(capture, expected = {}) {
         if (state.phase !== 'resumed' || !state.returnCapture || state.outputPublishing) await saved.assertCurrent();
         if (!saved.proof) {
             saved.proof = await ModelPort.prototype.inspectResultCompletion.call(port, expected.handle, { result, runId: saved.runId, effectId: state.effectId });
-            saved.resultHash = hash(result);
         }
         const proof = saved.proof;
-        if (hash(result) !== saved.resultHash) fail('native_rp_output_payload_changed');
         const root = await execution.runs.get(expected.handle, saved.runId), policy = assertResultPolicy(root.graph.outputContract);
         if (root.graph.outputContract.kind !== 'rp_narration' || root.graph.outputContract.slot !== 'assistant'
             || proof.outputType !== 'text' || proof.producerAttemptId !== state.attemptId || proof.epoch !== root.epoch
@@ -597,16 +595,19 @@ export class NativeRpOrchestrationAuthority {
             ...(audienceCaptureFor(node) ? { audienceCapture: audienceCaptureFor(node) } : {}) };
     }
 
-    async #current(state) {
-        if (state.outputPublishing) return this.#baseCurrent(state);
+    async #current(state, { configuration = false } = {}) {
+        if (state.outputPublishing) return this.#baseCurrent(state, null, { configuration });
         if (state.delegationCapture) return inspectNativeRpDelegation(state.delegationCapture, { host: state.host, handle: state.handle });
         if (state.phase === 'resumed' && state.returnCapture) return inspectNativeRpReturn(state.returnCapture, { host: state.host, handle: state.handle });
-        return this.#baseCurrent(state);
+        return this.#baseCurrent(state, null, { configuration });
     }
 
-    async #baseCurrent(state, originalIdentity = null) {
-        const identity = originalIdentity ?? await inspectNativeRpGeneration(state.capture, { host: state.host, handle: state.handle, rpControl: this.owner.rpControl });
-        const selected = await this.#selection(state.host, state.handle, state.input);
+    async #baseCurrent(state, originalIdentity = null, { configuration = false } = {}) {
+        const expected = { host: state.host, handle: state.handle, rpControl: this.owner.rpControl };
+        const identity = originalIdentity ?? (configuration ? await inspectNativeRpGeneration(state.capture, expected) : inspectNativeRpGenerationIdentity(state.capture, expected));
+        const binding = await this.#plans().getBinding(state.handle, { domain: 'rp_chat', controlId: state.input.controlId });
+        if (!equal(binding, state.selected.binding)) fail('native_orchestration_source_stale');
+        const selected = configuration ? await this.#selection(state.host, state.handle, state.input) : state.selected;
         if (!equal(selected.binding, state.selected.binding) || selected.configDigest !== state.selected.configDigest
             || !equal(selected.audienceSources, state.selected.audienceSources)
             || selected.child?.configDigest !== state.selected.child?.configDigest || selected.planner?.configDigest !== state.selected.planner?.configDigest
@@ -639,11 +640,11 @@ export class NativeRpOrchestrationAuthority {
             : attemptId ? branch.attemptId === attemptId : effectId && branch.effectId === effectId) ?? state;
     }
 
-    async authorize({ handle, root, attempt, proposal, intent }) {
+    async authorize({ handle, root, attempt, proposal, intent, phase }) {
         const state = this.#runState(root.runId, { attemptId: attempt?.attemptId ?? intent?.nodeAttemptId });
         if (!state || state.handle !== handle || !equal(root.planRef, state.selected.binding.planRef)
             || root.sourceBinding.bindingDigest !== state.sourceBinding.bindingDigest) fail();
-        await this.#current(state);
+        await this.#current(state, { configuration: phase === 'dispatch' });
         if (state.outputPublishing && attempt?.attemptId === state.outputAttemptId && !proposal && !intent) {
             if (attempt.nodeId !== root.graph.outputContract.ownerNodeId || !equal(attempt.inputRefs, state.outputInputRefs)
                 || attempt.inputDigest !== hash(state.outputInputRefs) || attempt.effectiveGrantDigest !== state.decision.grantDigest
@@ -750,8 +751,7 @@ export class NativeRpOrchestrationAuthority {
     async authorizeRpOutputCompletion({ handle, tx, capture }) {
         const identity = inspectNativeRpOutputIdentity(capture, { handle, rpControl: this.owner.rpControl }), saved = outputCaptures.get(capture);
         const { state, execution } = saved;
-        if (this.#runs.get(identity.runId) !== state || !state.outputPublishing || !state.outputAttemptId || !state.outputEffectId
-            || hash(saved.result) !== saved.resultHash) fail('native_rp_output_denied');
+        if (this.#runs.get(identity.runId) !== state || !state.outputPublishing || !state.outputAttemptId || !state.outputEffectId) fail('native_rp_output_denied');
         const root = await execution.runs.get(handle, identity.runId), fence = await execution.runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
         const selectedIds = new Set(state.joinCompletion?.members.map(item => item.producer.attemptId) ?? []);
         const excludedEffects = state.joinCompletion?.allMembers.filter(item => !selectedIds.has(item.attempt.attemptId)).flatMap(item => item.attempt.effectRefs) ?? [];
@@ -1457,7 +1457,8 @@ export class NativeRpOrchestrationAuthority {
 
     async #rpFanoutClosure(handle, { tx, root, attempts, effectIds }) {
         const service = this.#execution();
-        const own = effectIds.length ? await service.budgetPort.observeEffectClosure(handle, { authorityRef: root.budgetAuthorityRef, effectIds }, { tx }) : { closed: true };
+        if (root.pendingEffectRefs.some(id => effectIds.includes(id))) return { closed: false };
+        const own = effectIds.length ? await service.budgetPort.observeEffectClosure(handle, { authorityRef: root.budgetAuthorityRef, effectIds }, { tx, allowUnknownUsage: true }) : { closed: true };
         if (!own.closed) return own;
         for (const attempt of attempts) if (attempt.inputRefs?.[0]?.kind === 'native_rp_delegation') {
             if (attempt.status === 'cancelled' && attempt.startedAt === null && !attempt.effectRefs.length && !attempt.resultRefs.length) continue;
@@ -2577,7 +2578,7 @@ export class NativeRpOrchestrationAuthority {
             const scope = this.#issueScope(host, handle, { runId: root.runId, effectId, request: state.request,
                 logicalInputRef, logicalInputHash: state.decision.inputHash, nativeRpCapture: capture,
                 options: { scheduled: true, orchestrationSend: send }, revalidateConsume: async ({ tx } = {}) => {
-                    await this.#current(state); await service.sourcePort.revalidate(handle, state.sourceBinding, tx ? { tx } : undefined);
+                    await this.#current(state, { configuration: true }); await service.sourcePort.revalidate(handle, state.sourceBinding, tx ? { tx } : undefined);
                     await state.contextPort.revalidate(handle, { context: state.context, phase: 'consume' });
                 } });
             checkCancellation(identity.signal);

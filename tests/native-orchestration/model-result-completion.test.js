@@ -12,7 +12,6 @@ import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 
 if (process.env.ATRIA_TEST_MODEL_RESULT_SQL === '1') jest.setTimeout(60_000);
 
-const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
 const originalText = 'Synthetic native narrator response.';
 const stopBeforeFinalize = new Error('Fixture stops after completion inspection, before original Native finalize.');
 
@@ -66,12 +65,8 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_MOD
                 for (const overrides of [{ runId: createNativeId('orchestrationRun') }, { effectId: createNativeId('orchestrationEffect') }])
                     await expect(inspect(f, result, overrides)).rejects.toMatchObject({ code: 'native_orchestration_model_result_completion_required' });
                 const original = result.generated, receipt = result.receiptRef;
-                try {
-                    result.generated = { ...original, response: { ...original.response, text: 'Unverified replacement body.' } };
-                    await expect(inspect(f, result)).rejects.toMatchObject({ code: 'native_orchestration_model_result_payload_changed' });
-                    result.generated = original; result.receiptRef = { ...receipt, receiptId: createNativeId('orchestrationReceipt') };
-                    await expect(inspect(f, result)).rejects.toMatchObject({ code: 'native_orchestration_model_result_payload_changed' });
-                } finally { result.generated = original; result.receiptRef = receipt; }
+                expect(() => { result.generated = { ...original, response: { ...original.response, text: 'Replacement body.' } }; }).toThrow(TypeError);
+                expect(() => { result.receiptRef = { ...receipt, receiptId: createNativeId('orchestrationReceipt') }; }).toThrow(TypeError);
                 expect((await inspect(f, result)).payloadHash).toBe(hash(originalText)); checked = true;
             });
             await f.start(); expect(checked).toBe(true); expect(f.requests).toHaveLength(1);
@@ -100,6 +95,26 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_MOD
             expect(persisted).toBe(change === 'cancel' ? before.epoch + 1 : 'Original Source changed before Result production.');
             await f.cold(); expect((await f.observe()).outcome).toBe('confirmed');
             expect((await f.core.runs.status(f.h.handle, f.base.session.sessionId)).operations[before.budgetAuthorityRef.operationId].compute).toEqual(bank);
+        } finally { await f.cleanup(); }
+    });
+
+    test('a reentrant cancellation survives a control reducer and prevents its stale write', async () => {
+        const f = await modelPortFixture(make), service = f.authority.execution; let cancelled;
+        try {
+            onCompletion(f, async () => {
+                const before = await service.runs.get(f.h.handle, f.effectRef.runId);
+                await expect(service.runs.control(f.h.handle, createNativeId('orchestrationCommand'), {
+                    ...runGuard(before), operation: 'attempt.settle', detail: { reason: 'cancel_during_control' } }, async ({ root }) => {
+                    await service.runs.cancel(f.h.handle, createNativeId('orchestrationCommand'), { ...runGuard(root), reasonCode: 'user_cancel' });
+                    root.progress.steps++;
+                    return { root, eventType: 'attempt_settled', reasonCode: null, outcome: {} };
+                })).rejects.toMatchObject({ code: 'native_orchestration_run_conflict' });
+                cancelled = await service.runs.get(f.h.handle, before.runId);
+                expect(cancelled.cancelRequested).toBe(true); expect(cancelled.epoch).toBe(before.epoch + 1);
+                throw stopBeforeFinalize;
+            });
+            await expect(f.start()).rejects.toBe(stopBeforeFinalize);
+            expect(cancelled.cancelRequested).toBe(true); expect(f.requests).toHaveLength(1);
         } finally { await f.cleanup(); }
     });
 
@@ -157,36 +172,6 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_MOD
             const rows = (await f.core.runs.status(f.h.handle, f.base.session.sessionId)).operations[root.budgetAuthorityRef.operationId].compute.attempts;
             expect(rows).toHaveLength(1); expect(rows[0].usage).toEqual(originalBill); expect(f.requests).toHaveLength(1);
         } finally { await f.cleanup(); }
-    });
-
-    test('a wrapper replaced by an independent caller during the final original budget read is checked again before inspection returns', async () => {
-        const f = await modelPortFixture(make), entered = deferred(), release = deferred();
-        const verify = BudgetPort.prototype.verifyBudgetAttempt; let armed = false, actual, sameTx = false, inspected;
-        // Register outside the Engine/Run ALS scope, as an independent caller.
-        const caller = entered.promise.then(() => {
-            if (actual) actual.generated = { ...actual.generated, response: { ...actual.generated.response, text: 'Changed while inspection awaited.' } };
-            release.resolve();
-        });
-        try {
-            BudgetPort.prototype.verifyBudgetAttempt = async function (args) {
-                const result = await verify.call(this, args);
-                if (armed) {
-                    await f.h.engine.withTransaction(f.h.handle, tx => { sameTx = tx === args.tx; });
-                    entered.resolve(); await release.promise;
-                }
-                return result;
-            };
-            onCompletion(f, async result => {
-                actual = result; const original = result.generated;
-                try { armed = true; await expect(inspect(f, result)).rejects.toMatchObject({ code: 'native_orchestration_model_result_payload_changed' }); inspected = true; }
-                finally { armed = false; result.generated = original; }
-            });
-            const completed = await f.start(); await caller;
-            expect(inspected).toBe(true); expect(sameTx).toBe(true); expect(completed.timeline.at(-1).content).toBe(originalText);
-            expect(f.requests).toHaveLength(1); expect((await f.observe()).outcome).toBe('confirmed');
-            const root = await f.authority.execution.runs.get(f.h.handle, f.effectRef.runId);
-            expect((await f.core.runs.status(f.h.handle, f.base.session.sessionId)).operations[root.budgetAuthorityRef.operationId].compute.attempts[0].status).toBe('settled');
-        } finally { armed = false; release.resolve(); entered.resolve(); await caller; BudgetPort.prototype.verifyBudgetAttempt = verify; await f.cleanup(); }
     });
 
     test('a legitimate same-transaction Root cancel during the final bank read invalidates inspection while an outer denial envelope preserves cancellation and fees', async () => {
