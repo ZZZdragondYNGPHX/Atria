@@ -250,7 +250,10 @@ export class NativeProjectOrchestrationAuthority {
     async executionResources(selection) {
         const state = await this.#current(selection), { host, handle } = state.args;
         const resources = [];
-        for (const pin of state.plan.dependencyPins.filter(pin => pin.port === 'model')) {
+        // Only routes a node executes are resources; a Plan may predeclare
+        // alternative route pins (such as an Evolution route_selection) unused here.
+        const executed = new Set(state.plan.definition.nodes.map(node => node.policy?.agentPinId).filter(Boolean));
+        for (const pin of state.plan.dependencyPins.filter(pin => pin.port === 'model' && executed.has(pin.pinId))) {
             const route = await host.persistence.getRuntimeRoute(handle, pin.resourceRef.runtimeRouteId);
             if (!route || hash(route) !== pin.integrity) fail('native_orchestration_project_route_mismatch');
             resources.push(...await host.executionResources(handle, route));
