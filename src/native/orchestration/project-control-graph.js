@@ -61,13 +61,13 @@ export function projectFanoutGroups(graph, finalWorkerId) {
                     || node.capabilities.includes('agent.delegate') && (node.kind !== 'agent' || node.policy.allowedPlanPinIds?.length !== 1
                         || !node.dependencyPinIds.includes(node.policy.allowedPlanPinIds[0]))) fail();
                 scope.add(id);
-                const outgoing = graph.edges.filter(edge => edge.from.nodeId === id);
-                if (!outgoing.length || outgoing.some(edge => edge.loopBack)) fail();
+                const outgoing = graph.edges.filter(edge => edge.from.nodeId === id && !edge.loopBack);
+                if (!outgoing.length) fail();
                 pending.push(...outgoing.map(edge => edge.to.nodeId));
             }
-            if (ends.size !== 1 || !entry || graph.edges.some(edge => edge.to.nodeId === entry.nodeId && edge.edgeId !== transfer.edgeId)) fail();
+            if (ends.size !== 1 || !entry || graph.edges.some(edge => !edge.loopBack && edge.to.nodeId === entry.nodeId && edge.edgeId !== transfer.edgeId)) fail();
             for (const id of scope) {
-                if (id !== entry.nodeId && graph.edges.some(edge => edge.to.nodeId === id && !scope.has(edge.from.nodeId))) fail();
+                if (id !== entry.nodeId && graph.edges.some(edge => !edge.loopBack && edge.to.nodeId === id && !scope.has(edge.from.nodeId))) fail();
             }
             return { entry, scopeNodeIds: [...scope].sort(), joinId: [...ends][0], transfer };
         });
@@ -78,6 +78,13 @@ export function projectFanoutGroups(graph, finalWorkerId) {
         const members = graph.edges.filter(edge => edge.to.nodeId === joinId);
         if (!members.length || members.some(edge => !branches.some(branch => branch.scopeNodeIds.includes(edge.from.nodeId)) || edge.condition !== 'always'
             || graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind !== 'agent')) fail();
+        for (const branch of branches) for (const loop of graph.edges.filter(edge => edge.loopBack
+            && (branch.scopeNodeIds.includes(edge.from.nodeId) || branch.scopeNodeIds.includes(edge.to.nodeId)))) {
+            if (!branch.scopeNodeIds.includes(loop.from.nodeId) || !branch.scopeNodeIds.includes(loop.to.nodeId)
+                || graph.nodes.find(node => node.nodeId === loop.from.nodeId)?.kind !== 'planner'
+                || !['agent', 'planner'].includes(graph.nodes.find(node => node.nodeId === loop.to.nodeId)?.kind)
+                || members.some(edge => edge.from.nodeId === loop.to.nodeId) || loop.condition !== 'always') fail();
+        }
         joins.add(joinId); groups.push({ fanout, join, branches, members });
     }
     if (graph.nodes.some(node => node.kind === 'join' && !joins.has(node.nodeId))) fail();

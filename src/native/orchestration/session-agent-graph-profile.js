@@ -82,7 +82,7 @@ export function sessionAgentGraphProfile(plan) {
                 if (!node || !['agent', 'planner', 'review', 'judge'].includes(node.kind) || node === narrator || usedBranches.has(id)) fail();
                 scope.add(id);
                 for (const edge of graph.edges.filter(edge => edge.from.nodeId === id)) {
-                    if (edge.loopBack) fail();
+                    if (edge.loopBack) continue;
                     const target = graph.nodes.find(node => node.nodeId === edge.to.nodeId);
                     if (target?.kind === 'join') joins.add(target.nodeId);
                     else pending.push(edge.to.nodeId);

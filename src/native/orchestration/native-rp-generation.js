@@ -1494,7 +1494,7 @@ export class NativeRpOrchestrationAuthority {
             state.fanoutBranches.set(spec.node.nodeId, branch);
             const localWork = new RpDelegatedControlWork({ state: branch, service, runId: childRunId, current: () => this.#current(branch) });
             localWork.records = spec.progress ?? work.records;
-            localWork.prepareRerun = work.prepareRerun;
+            localWork.prepareRerun = work.prepareRerun; localWork.lastOperations = work.lastOperations;
             const judges = spec.bindings.filter(binding => binding.controlRef?.kind === 'graph_judge_control');
             const bindings = spec.bindings.filter(binding => {
                 if (binding.edge.to.nodeId !== spec.node.nodeId || !binding.resultRef
@@ -1520,6 +1520,7 @@ export class NativeRpOrchestrationAuthority {
             resolveResources: model => this.#rpFanoutResources(host, handle, model, identity.sourceRequest.controlId),
             inspectClosure: facts => this.#rpFanoutClosure(handle, facts),
             requestsForNode: model => 1 + (model.child?.resolved.route.executionPolicy.computeBudget.maxRequests ?? 0),
+            replan: args => work.fanoutReplan(args),
             runWorkers: async (_scope, { workers, fanoutAttemptId, ...options }) => {
                 const root = await service.runs.get(handle, childRunId), frame = await this.owner.engine.withTransaction(handle, tx => readFanoutFrame(tx, handle, root, fanoutAttemptId));
                 if (!frame || !equal(frame.parentBudgetRef, root.budgetAuthorityRef) || frame.sourceBindingDigest !== root.sourceBinding.bindingDigest) fail();

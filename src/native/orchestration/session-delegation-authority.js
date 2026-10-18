@@ -1,3 +1,4 @@
+import { readSessionFanoutReplanScope } from './session-fanout-planner-contracts.js';
 import { readRunControl } from '../run-control.js';
 import { runDelegatedFanout } from './delegated-fanout-work.js';
 import { readSessionDelegatedFanoutCompletion } from './session-delegated-fanout-contracts.js';
@@ -38,7 +39,7 @@ import { childBudgetReceiptId, assertChildRunCurrent } from './run-repository.js
 import { readSessionDelegation, readSessionDelegationContinuation, assertSessionDelegationBudgetClosure } from './session-delegation-contracts.js';
 import { readSessionDelegationInputs } from './session-delegation-inputs.js';
 import { sessionDelegatedGraphProfile } from './session-delegated-graph-profile.js';
-import { sessionPlannerOutputContract } from './session-planner-contracts.js';
+import { sessionPlannerOutputContract, readSessionPlannerCompletion } from './session-planner-contracts.js';
 import { completeSessionDelegatedPlanner } from './session-delegated-planner-work.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 
@@ -728,6 +729,27 @@ export class SessionDelegationAuthority {
                             resolveResources: async model => [...new Set((await Promise.all([model, ...model.delegation?.resourceProfiles ?? []]
                                 .map(item => host.executionResources(handle, item.resolved.route)))).flat())],
                             requestsForNode: model => 1 + (model.delegation?.ceiling.maxRequests ?? 0),
+                            replan: async ({ tx, root: active, completion, progress, branch }) => {
+                                const planner = await readSessionPlannerCompletion(tx, handle, active, completion.attemptId);
+                                const scope = planner && planner.patch.requests.replan && !planner.patch.requests.finalize
+                                    ? await readSessionFanoutReplanScope(tx, handle, active, planner.producer) : null;
+                                if (!scope || !equal([...scope.branch.scopeNodeIds].sort(), [...branch.scopeNodeIds].sort())
+                                    || !progress.has(scope.target.nodeId)) fail('native_orchestration_planner_replan_pending');
+                                const effectIds = [];
+                                for (const id of scope.affectedNodeIds) if (progress.has(id)) {
+                                    const attempt = (await readAttempt(tx, handle, active, progress.get(id).attemptId)).doc;
+                                    if (attempt.status !== 'completed' || active.graph.nodes.find(node => node.nodeId === id).capabilities.includes('agent.delegate')) fail('native_orchestration_review_irreversible_dependency');
+                                    effectIds.push(...attempt.effectRefs);
+                                }
+                                const costs = await service.budgetPort.observeEffectClosure(handle, { authorityRef: active.budgetAuthorityRef, effectIds }, { tx });
+                                const remaining = active.graph.nodes.filter(node => branch.scopeNodeIds.includes(node.nodeId) && active.nodeControl[node.nodeId]?.disposition !== 'cancelled'
+                                    && (scope.affectedNodeIds.includes(node.nodeId) || !progress.has(node.nodeId)));
+                                const required = remaining.reduce((sum, node) => sum + 1 + (child.profiles.find(model => model.node.nodeId === node.nodeId)?.delegation?.ceiling.maxRequests ?? 0), 0);
+                                const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: active.runId }, { tx });
+                                if (!costs.closed || !capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');
+                                if (active.progress.attempts + remaining.filter(node => progress.has(node.nodeId)).length > active.limits.maxAttempts) fail('native_orchestration_limit_exhausted');
+                                return { target: scope.target, affectedNodeIds: scope.affectedNodeIds, loopBindings: scope.loops.map(edge => ({ edge, ...completion })) };
+                            },
                             inspectClosure: async ({ tx, root, attempts, effectIds }) => {
                                 const effects = effectIds.length ? await service.budgetPort.observeEffectClosure(handle,
                                     { authorityRef: root.budgetAuthorityRef, effectIds }, { tx }) : { closed: true };

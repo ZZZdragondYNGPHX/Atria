@@ -1,4 +1,5 @@
 import { assertRpDelegationFanoutClosure, readRpDelegationContinuation } from './rp-delegated-quality-contracts.js';
+import { readFanoutReplanScope } from './fanout-controller.js';
 import { readGraphReviewCompletion } from './graph-review-completion.js';
 import { hashNativeDocument as hash, equalNativeDocuments as same } from '../repositories/common.js';
 import { readGraphFanoutCompletion } from './graph-fanout-completion.js';
@@ -88,6 +89,8 @@ async function memberCost(tx, handle, root, attempt, { settlement, results, fram
         if (results.length || !same(planner.producer, attempt) || !same(planner.settlement, settlement)
             || !completed || !same(planner.receipt.modelReceiptRef, completed.receiptRef)) invalid();
         assertRpFanoutPlannerOperations(frame, attempt, planner.patch.appliedOperations);
+        if (planner.patch.requests.replan && !await readFanoutReplanScope(tx, handle, root, attempt,
+            { decisionSeq: planner.patch.decisionSeq })) invalid();
         await assertRpControlInput(tx, handle, root, planner);
     }
     const review = root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'review' && settlement.outcome === 'completed'

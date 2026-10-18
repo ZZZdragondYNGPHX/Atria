@@ -1,3 +1,4 @@
+import { readSessionFanoutReplanScope } from './session-fanout-planner-contracts.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { readAttemptInvalidation } from './controller-common.js';
@@ -104,7 +105,10 @@ export async function readSessionReplanHistory(tx, handle, root, { graphResults,
         const prior = previous.get(node.nodeId);
         if (trigger) {
             if (!prior || current.get(trigger.producer.nodeId)?.producer.attemptId !== trigger.producer.attemptId || consumed.has(trigger.producer.attemptId)) invalid();
-            const scope = sessionReplanScope(snapshot.graph, trigger.producer.nodeId);
+            const scope = trigger.producer.inputRefs[0]?.fanoutAttemptId
+                ? await readSessionFanoutReplanScope(tx, handle, root, trigger.producer, { decisionSeq: fact.receipt.decisionSeq, targetNodeId: node.nodeId })
+                : sessionReplanScope(snapshot.graph, trigger.producer.nodeId);
+            if (!scope) invalid();
             if (fanoutCompletions.some(group => group.frame.decisionSeq < trigger.receipt.decisionSeq
                 && [group.fanout.nodeId, group.producer.nodeId].some(id => scope.affectedNodeIds.includes(id)))) invalid();
             for (const id of scope.affectedNodeIds) {

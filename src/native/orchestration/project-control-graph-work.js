@@ -15,7 +15,7 @@ import { FanoutController, readFanoutFrame, readFanoutMembership, readFanoutRevi
 import { JoinController, joinIdForAttempt } from './join-controller.js';
 import { withNativeProjectFanout } from './native-project-generation-authority.js';
 import { readProjectFanoutCompletion, inspectProjectFanoutCostClosure } from './project-fanout-contracts.js';
-import { assertProjectFanoutPlannerPatch, readProjectFanoutPaidModelNodes } from './project-fanout-planner-contracts.js';
+import { assertProjectFanoutPlannerPatch, readProjectFanoutPaidModelNodes, projectFanoutReplan } from './project-fanout-planner-contracts.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelFailureReceipt } from './model-port.js';
 import { graphPlannerControlRef, graphPlannerReceiptId, readGraphPlannerCompletion } from './graph-planner-completion.js';
@@ -327,14 +327,22 @@ export class ProjectControlGraphWork {
                 run: async ({ permit, signal, controlPermit: activeControl }) => {
                     controlPermit = activeControl;
                     const pending = new Set(item.branch.scopeNodeIds), prepared = new Map(), retryTokens = new Map();
+                    let forced = null;
                     while (pending.size) {
                         signal.throwIfAborted(); const active = await current();
                         const completion = Object.fromEntries([...this.records].map(([id, fact]) => [id, fact.status ?? 'completed']));
-                        const ready = pending.has(item.branch.entry.nodeId) ? { node: item.branch.entry, edges: [] }
-                            : inspectGraphReadiness(active.graph, active.nodeControl, completion, { excludeNodeIds: active.graph.nodes.filter(node => !pending.has(node.nodeId)).map(node => node.nodeId) }).ready[0];
+                        const ready = forced ?? (pending.has(item.branch.entry.nodeId) ? { node: item.branch.entry, edges: [] }
+                            : inspectGraphReadiness(active.graph, active.nodeControl, completion, { excludeNodeIds: active.graph.nodes.filter(node => !pending.has(node.nodeId)).map(node => node.nodeId) }).ready[0]);
+                        forced = null;
                         if (!ready) fail('native_orchestration_project_graph_blocked');
                         const node = ready.node, entry = node.nodeId === item.branch.entry.nodeId, replacement = prepared.get(node.nodeId);
-                        const bundle = replacement?.bundle ?? this.#mergeBundle(entry ? { evidenceRefs: [], controlRefs: [], bindings: [] } : this.#bundle(ready.edges, active.graph), inherited);
+                        let bundle = replacement?.bundle ?? this.#mergeBundle(entry ? { evidenceRefs: [], controlRefs: [], bindings: [] } : this.#bundle(ready.edges, active.graph), inherited);
+                        if (ready.loopBindings?.length) {
+                            const controls = ready.loopBindings.map(item => item.controlRef);
+                            bundle = { ...bundle, controlRefs: [...new Map([...bundle.controlRefs, ...controls].map(ref => [hash(ref), ref])).values()],
+                                bindings: [...bundle.bindings, ...ready.loopBindings.map(item => ({ edgeId: item.edge.edgeId, producerAttemptId: item.attemptId }))]
+                                    .sort((a, b) => a.edgeId.localeCompare(b.edgeId)) };
+                        }
                         try {
                             const fact = await this.models.generateStage(node, replacement?.attemptId ?? retryTokens.get(node.nodeId) ?? item.token,
                                 { ...bundle, feedback: replacement?.feedback ?? null, controlTask: replacement?.controlTask ?? (entry ? item.task : this.#task(node, active)),
@@ -342,7 +350,7 @@ export class ProjectControlGraphWork {
                                     ...(node.kind === 'planner' ? { outputContract: projectPlannerOutputContract, complete: (stage, args) => this.#planner(stage, args) }
                                         : node.kind === 'review' ? { outputContract: projectGraphReviewOutputContract, complete: (stage, args) => this.#review(stage, args, bundle) }
                                             : node.kind === 'judge' ? { outputContract: projectGraphJudgeOutputContract, complete: (stage, args) => this.#judge(stage, args, bundle) } : {}), ...(replacement ? { preparedAttemptId: replacement.attemptId }
-                                        : entry ? { preparedAttemptId: item.attempts.get(node.nodeId) }
+                                        : entry && !retryTokens.has(node.nodeId) ? { preparedAttemptId: item.attempts.get(node.nodeId) }
                                             : { reservedAttemptId: retryTokens.has(node.nodeId) ? null : item.attempts.get(node.nodeId) }), authorizeInputs: args => this.#authorizeInputs(bundle, args) });
                             item.attempts.set(node.nodeId, fact.attemptId); prepared.delete(node.nodeId); retryTokens.delete(node.nodeId);
                             if (fact.review?.decision === 'rerun') {
@@ -354,6 +362,15 @@ export class ProjectControlGraphWork {
                                 continue;
                             }
                             this.records.set(node.nodeId, fact); pending.delete(node.nodeId);
+                            if (fact.requests?.replan) {
+                                const latest = await current(), next = await runs.engine.withTransaction(handle, tx => projectFanoutReplan({ tx, root: latest,
+                                    completion: fact, progress: this.records, branch: item.branch, service: this.service, handle }));
+                                if (next.affectedNodeIds.some(id => prepared.has(id))) fail('native_orchestration_project_replan_unavailable');
+                                for (const id of next.affectedNodeIds) { this.records.delete(id); pending.add(id); retryTokens.set(id, fact.attemptId); }
+                                forced = { node: latest.graph.nodes.find(node => node.nodeId === next.target.nodeId),
+                                    edges: latest.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === next.target.nodeId && edge.from.nodeId !== profile.fanout.nodeId),
+                                    loopBindings: next.loopBindings };
+                            }
                         } catch (error) {
                             await this.#fanoutFailure(item.attempts.get(node.nodeId), current, withAuthority);
                             throw error;

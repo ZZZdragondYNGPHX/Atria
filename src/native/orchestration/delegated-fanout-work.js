@@ -13,7 +13,7 @@ const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 
 /** Controller/Scheduler orchestration only. All Model work still uses the
  * original captured child stage and its one already held Task-bank allocation. */
-export async function runDelegatedFanout({ state, service, group, inherited, progress, engine, current, prepare, execute, runWorkers, readCompletion, resolveNode, resolveResources, requestsForNode, inspectClosure, controlKind, reasonPrefix }) {
+export async function runDelegatedFanout({ state, service, group, inherited, progress, engine, current, prepare, execute, runWorkers, readCompletion, resolveNode, resolveResources, requestsForNode, inspectClosure, replan, controlKind, reasonPrefix }) {
     const { handle, host } = state, runId = state.identity.childRunId, { runs, budgetPort } = service;
     inherited = [...inherited].sort((a, b) => a.edge.edgeId.localeCompare(b.edge.edgeId));
     const fresh = async () => { await current(); return runs.get(handle, runId); };
@@ -83,12 +83,14 @@ export async function runDelegatedFanout({ state, service, group, inherited, pro
             fresh: async permit => { state.controlPermit = permit; await fresh(); },
             run: async ({ permit, signal, controlPermit }) => {
                 state.controlPermit = controlPermit; const pending = new Set(item.branch.scopeNodeIds), replacements = new Map(), retries = new Map();
+                let forced = null;
                 while (pending.size) {
                     signal.throwIfAborted(); const active = await fresh();
-                    const ready = pending.has(item.branch.entry.nodeId) ? { node: item.branch.entry, edges: [] } : inspectGraphReadiness(active.graph, active.nodeControl,
-                        Object.fromEntries([...progress].map(([id, fact]) => [id, fact.status ?? 'completed'])), { excludeNodeIds: active.graph.nodes.filter(node => !pending.has(node.nodeId)).map(node => node.nodeId) }).ready[0];
+                    const ready = forced ?? (pending.has(item.branch.entry.nodeId) ? { node: item.branch.entry, edges: [] } : inspectGraphReadiness(active.graph, active.nodeControl,
+                        Object.fromEntries([...progress].map(([id, fact]) => [id, fact.status ?? 'completed'])), { excludeNodeIds: active.graph.nodes.filter(node => !pending.has(node.nodeId)).map(node => node.nodeId) }).ready[0]);
                     if (!ready) fail('native_orchestration_graph_dependency_unavailable');
-                    const bindings = [...ready.edges.map(edge => ({ edge, ...progress.get(edge.from.nodeId) })), ...inherited].sort((a, b) => a.edge.edgeId.localeCompare(b.edge.edgeId));
+                    forced = null;
+                    const bindings = [...ready.edges.map(edge => ({ edge, ...progress.get(edge.from.nodeId) })), ...ready.loopBindings ?? [], ...inherited].sort((a, b) => a.edge.edgeId.localeCompare(b.edge.edgeId));
                     try {
                         const replacement = replacements.get(ready.node.nodeId);
                         const prior = await engine.withTransaction(handle, tx => readAttempt(tx, handle, active,
@@ -101,6 +103,18 @@ export async function runDelegatedFanout({ state, service, group, inherited, pro
                             reservedAttemptId: !replacement && prior.doc.status === 'reserved' ? prior.doc.attemptId : null });
                         item.attempts.set(ready.node.nodeId, fact.attemptId); replacements.delete(ready.node.nodeId);
                         progress.set(ready.node.nodeId, fact); pending.delete(ready.node.nodeId);
+                        if (fact.requests?.replan) {
+                            if (!replan || fact.requests.finalize) fail('native_orchestration_planner_replan_pending');
+                            const latest = await fresh();
+                            const next = await engine.withTransaction(handle, tx => replan({ tx, root: latest, completion: fact, progress, branch: item.branch }));
+                            if (!next || !item.branch.scopeNodeIds.includes(next.target.nodeId)
+                                || next.affectedNodeIds.some(id => !item.branch.scopeNodeIds.includes(id) || replacements.has(id)))
+                                fail('native_orchestration_planner_replan_pending');
+                            for (const id of next.affectedNodeIds) { progress.delete(id); pending.add(id); retries.set(id, fact.attemptId); }
+                            forced = { node: latest.graph.nodes.find(node => node.nodeId === next.target.nodeId),
+                                edges: latest.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === next.target.nodeId
+                                    && edge.from.nodeId !== group.fanout.nodeId), loopBindings: next.loopBindings };
+                        }
                         if (fact.review?.decision === 'rerun') {
                             const actual = await fresh();
                             await engine.withTransaction(handle, async tx => {

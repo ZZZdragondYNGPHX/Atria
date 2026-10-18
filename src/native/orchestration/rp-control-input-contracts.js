@@ -3,7 +3,7 @@ import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../re
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { readRpControlFanoutCompletion } from './rp-control-fanout-contracts.js';
 import { readGraphFanoutInput } from './graph-fanout-completion.js';
-import { readFanoutFrame } from './fanout-controller.js';
+import { readFanoutFrame, readFanoutReplanScope } from './fanout-controller.js';
 import { readGraphNodeResult, readGraphNodeResults } from './graph-result-contracts.js';
 import { readGraphPlannerCompletion, graphPlannerProgressFingerprint } from './graph-planner-completion.js';
 import { readGraphReviewCompletion } from './graph-review-completion.js';
@@ -122,7 +122,11 @@ async function assertControlInputFacts(tx, handle, root, fact, plan, ownedFacts)
         const previous = sources.find(source => source.producer.attemptId === loops[0].producerAttemptId);
         if (!previous?.patch?.requests.replan || previous.patch.requests.finalize) invalid();
         const declared = rpControlReplanScope(root.graph, previous.producer.nodeId);
-        if (declared.target.nodeId !== node.nodeId || previous.patch.newGraphRevision !== producer.graphRevision || loops.length !== declared.loops.length
+        const scoped = input.fanoutAttemptId ? await readFanoutReplanScope(tx, handle, root, previous.producer,
+            { decisionSeq: previous.patch.decisionSeq, targetNodeId: node.nodeId }) : null;
+        if (input.fanoutAttemptId && (!scoped || scoped.frame.fanoutAttemptId !== input.fanoutAttemptId)
+            || declared.target.nodeId !== node.nodeId || (scoped ? previous.patch.newGraphRevision > producer.graphRevision : previous.patch.newGraphRevision !== producer.graphRevision)
+            || loops.length !== declared.loops.length
             || loops.some(binding => binding.producerAttemptId !== previous.producer.attemptId || !declared.loops.some(edge => edge.edgeId === binding.edgeId))) invalid();
         replanFrom = previous.producer.attemptId;
     }
@@ -165,8 +169,11 @@ async function assertRpIterationHistory(tx, handle, root, entries, narrator, fan
             if (!trigger || current.get(trigger.producer.nodeId)?.producer.attemptId !== trigger.producer.attemptId
                 || consumed.has(trigger.producer.attemptId) || !prior) invalid();
             const snapshot = await readTaskGraphRevision(tx, handle, root, fact.producer.graphRevision);
-            const scope = rpControlReplanScope(snapshot.graph, trigger.producer.nodeId);
-            if (scope.target.nodeId !== node.nodeId || fanouts.some(group => group.frame.decisionSeq < trigger.receipt.decisionSeq
+            const scope = trigger.producer.inputRefs[0]?.fanoutAttemptId
+                ? await readFanoutReplanScope(tx, handle, root, trigger.producer,
+                    { decisionSeq: trigger.patch.decisionSeq, targetNodeId: node.nodeId })
+                : rpControlReplanScope(snapshot.graph, trigger.producer.nodeId);
+            if (!scope || scope.target.nodeId !== node.nodeId || fanouts.some(group => group.frame.decisionSeq < trigger.receipt.decisionSeq
                 && [group.fanout.nodeId, group.producer.nodeId].some(id => scope.affectedNodeIds.includes(id)))) invalid();
             for (const id of scope.affectedNodeIds) {
                 const old = current.get(id);

@@ -1,3 +1,4 @@
+import { readSessionFanoutReplanScope } from './session-fanout-planner-contracts.js';
 import { inspectComputeChildClosure } from '../../../public/shared/native-compute-budget.js';
 import { readSessionDelegatedFanoutInput, readSessionDelegatedFanoutCompletion } from './session-delegated-fanout-contracts.js';
 import { readSessionDelegatedControl, readSessionDelegatedReviewCompletion, readSessionDelegatedJudgeCompletion, readSessionDelegatedReviewReplacement } from './session-delegated-quality-contracts.js';
@@ -317,8 +318,10 @@ export async function readSessionDelegatedGraphHistory(tx, handle, child, { fina
             trigger = proof.sources.find(source => source.producer.attemptId === proof.loops[0].producerAttemptId);
             if (!trigger || consumed.has(trigger.producer.attemptId) || proof.loops.some(binding => binding.producerAttemptId !== trigger.producer.attemptId)
                 || latest.get(trigger.producer.nodeId)?.producer.attemptId !== trigger.producer.attemptId) invalid();
-            const scope = sessionReplanScope(graph, trigger.producer.nodeId);
-            if (scope.target.nodeId !== producer.nodeId || !previous.has(producer.nodeId) || proof.loops.length !== scope.loops.length
+            const scope = trigger.producer.inputRefs[0]?.fanoutAttemptId
+                ? await readSessionFanoutReplanScope(tx, handle, child, trigger.producer, { decisionSeq: fact?.receipt.decisionSeq ?? child.eventSeq + 1, targetNodeId: producer.nodeId })
+                : sessionReplanScope(graph, trigger.producer.nodeId);
+            if (!scope || scope.target.nodeId !== producer.nodeId || !previous.has(producer.nodeId) || proof.loops.length !== scope.loops.length
                 || proof.loops.some(binding => !scope.loops.some(edge => edge.edgeId === binding.edgeId))) invalid();
             for (const id of scope.affectedNodeIds) {
                 const old = latest.get(id);

@@ -42,6 +42,25 @@ export async function readFanoutMembership(tx, handle, root, frame, attemptId) {
  * remain with Review's original producer. Historical readers supply the
  * original Review decision sequence, never reopen an already closed Join. */
 export async function readFanoutReviewScope(tx, handle, root, reviewer, targets, { decisionSeq = root.eventSeq + 1, rerun = true } = {}) {
+    return readFanoutLocalScope(tx, handle, root, reviewer, targets, { decisionSeq, rerun, kind: 'review' });
+}
+
+/** Published return edges select the target; this read grants neither a loop
+ * visit nor a Model send. The original domain proves the paid Planner request. */
+export async function readFanoutReplanScope(tx, handle, root, planner, { decisionSeq = root.eventSeq + 1, targetNodeId = null } = {}) {
+    const loops = root.graph.edges.filter(edge => edge.loopBack && edge.from.nodeId === planner.nodeId);
+    if (!loops.length || new Set(loops.map(edge => edge.to.nodeId)).size !== 1
+        || targetNodeId !== null && loops[0].to.nodeId !== targetNodeId) return null;
+    const target = root.graph.nodes.find(node => node.nodeId === loops[0].to.nodeId);
+    if (!target || !['agent', 'planner'].includes(target.kind)) return null;
+    const scope = await readFanoutLocalScope(tx, handle, root, planner, [target], { decisionSeq, rerun: true, kind: 'planner' });
+    if (!scope || !loops.every(edge => scope.branch.scopeNodeIds.includes(edge.to.nodeId))) return null;
+    const forward = { ...root.graph, edges: root.graph.edges.filter(edge => !edge.loopBack) };
+    return { ...scope, target, loops,
+        affectedNodeIds: scope.branch.scopeNodeIds.filter(id => graphReachable(forward, target.nodeId, id)) };
+}
+
+async function readFanoutLocalScope(tx, handle, root, reviewer, targets, { decisionSeq, rerun, kind }) {
     const fanoutAttemptId = reviewer.inputRefs?.[0]?.fanoutAttemptId;
     if (!fanoutAttemptId || !targets?.length) return null;
     assertCounter(decisionSeq, 'Review scope sequence', 1);
@@ -50,14 +69,15 @@ export async function readFanoutReviewScope(tx, handle, root, reviewer, targets,
     if (!equalNativeDocuments(actual, reviewer) || !frame || frame.epoch !== reviewer.epoch || decisionSeq > root.eventSeq + 1
         || frame.decisionSeq >= decisionSeq || frame.sourceBindingDigest !== root.sourceBinding.bindingDigest
         || !equalNativeDocuments(frame.parentBudgetRef, root.budgetAuthorityRef)
-        || root.graph.nodes.find(node => node.nodeId === reviewer.nodeId)?.kind !== 'review') return null;
+        || root.graph.nodes.find(node => node.nodeId === reviewer.nodeId)?.kind !== kind) return null;
     const membership = await readFanoutMembership(tx, handle, root, frame, reviewer.attemptId);
     const branch = frame.branches.find(branch => branch.scopeNodeIds.includes(reviewer.nodeId));
+    const causalGraph = kind === 'planner' ? { ...root.graph, edges: root.graph.edges.filter(edge => !edge.loopBack) } : root.graph;
     if (!membership || membership.decisionSeq >= decisionSeq || !branch) return null;
     for (const target of targets) {
-        if (!branch.scopeNodeIds.includes(target.nodeId) || target.attemptId === reviewer.attemptId
-            || !graphReachable(root.graph, target.nodeId, reviewer.nodeId)
-            || !(await readFanoutMembership(tx, handle, root, frame, target.attemptId))) return null;
+        if (!branch.scopeNodeIds.includes(target.nodeId) || kind === 'review' && target.attemptId === reviewer.attemptId
+            || !graphReachable(causalGraph, target.nodeId, reviewer.nodeId)
+            || target.attemptId && !(await readFanoutMembership(tx, handle, root, frame, target.attemptId))) return null;
     }
     for (const id of root.attemptRefs) {
         const join = (await readAttempt(tx, handle, root, id)).doc;
@@ -69,7 +89,7 @@ export async function readFanoutReviewScope(tx, handle, root, reviewer, targets,
         for (const id of barrier.memberAttemptIds) {
             const terminal = (await readAttempt(tx, handle, root, id)).doc;
             if (rerun && targets.some(target => target.nodeId === terminal.nodeId)) return null;
-            if (rerun && branch.scopeNodeIds.includes(terminal.nodeId) && targets.some(target => graphReachable(root.graph, target.nodeId, terminal.nodeId))
+            if (rerun && branch.scopeNodeIds.includes(terminal.nodeId) && targets.some(target => graphReachable(causalGraph, target.nodeId, terminal.nodeId))
                 && !await terminalPreparedAfter(tx, handle, root, terminal, decisionSeq)) return null;
         }
         if (SETTLED_ATTEMPT_STATUSES.includes(join.status)) {

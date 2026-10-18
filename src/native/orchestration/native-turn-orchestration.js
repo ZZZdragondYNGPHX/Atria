@@ -62,7 +62,7 @@ import { rpReviewOutputContract as sessionReviewOutputContract } from './rp-revi
 import { parseSessionReview, parseSessionGraphReview, readSessionReviewCompletion, sessionReviewModelReceiptId, sessionGraphReviewOutputContract, sessionReviewRerunRequirements, readSessionReviewableFanout } from './session-review-contracts.js';
 import { graphReviewModelReceiptId, graphReviewControlRef, readReviewablePlannerCompletion, readReviewableDelegationCompletion } from './graph-review-completion.js';
 import { sessionReplanScope, sessionReplanRequirements, sessionPlannerProgressFingerprint } from './session-replan-contracts.js';
-import { assertSessionFanoutPlannerPatch, readSessionFanoutPaidModelNodes } from './session-fanout-planner-contracts.js';
+import { assertSessionFanoutPlannerPatch, readSessionFanoutPaidModelNodes, readSessionFanoutReplanScope } from './session-fanout-planner-contracts.js';
 
 const selections = new WeakMap();
 const modelScopes = new WeakMap();
@@ -579,6 +579,7 @@ export class NativeNarratorOrchestrationAuthority {
             if (!result) fail('native_orchestration_graph_result_required');
             return { edge, ...result };
         }).filter(Boolean) : [];
+        if (graphFanoutAttemptId && graphLoopBindings.length) graphBindings = graphBindings.filter(binding => binding.fanoutAttemptId !== graphFanoutAttemptId);
         graphBindings = [...graphBindings, ...graphLoopBindings].sort((a, b) => a.edge.edgeId.localeCompare(b.edge.edgeId));
         const judges = graphBindings.filter(item => item.controlRef?.kind === 'graph_judge_control');
         graphBindings = graphBindings.filter(item => {
@@ -1529,25 +1530,52 @@ export class NativeNarratorOrchestrationAuthority {
                     run: async boundary => {
                         const quotaProof = captureNativeTurnChildQuota(args.quotaProof, boundary, expected);
                         const pending = new Set(item.scope.scopeNodeIds), replacements = new Map();
-                        let completed;
+                        let completed, forced = null;
                         while (pending.size) {
                             checkCancellation(boundary.signal);
                             const active = await current(), entry = pending.has(item.model.node.nodeId);
-                            const ready = entry ? { node: item.model.node } : inspectGraphReadiness(active.graph, active.nodeControl,
+                            const ready = forced ?? (entry ? { node: item.model.node } : inspectGraphReadiness(active.graph, active.nodeControl,
                                 Object.fromEntries([...progress].map(([id]) => [id, 'completed'])), { excludeNodeIds: active.graph.nodes.filter(node => !pending.has(node.nodeId)).map(node => node.nodeId) }).ready.toSorted((a, b) =>
                                 (active.nodeControl[b.node.nodeId].priority ?? 0) - (active.nodeControl[a.node.nodeId].priority ?? 0)
-                                || item.scope.ordered.findIndex(node => node.nodeId === a.node.nodeId) - item.scope.ordered.findIndex(node => node.nodeId === b.node.nodeId))[0];
+                                || item.scope.ordered.findIndex(node => node.nodeId === a.node.nodeId) - item.scope.ordered.findIndex(node => node.nodeId === b.node.nodeId))[0]);
+                            forced = null;
                             if (!ready) fail('native_orchestration_graph_dependency_unavailable');
                             const model = item.models.get(ready.node.nodeId);
                             const replacement = replacements.get(model.node.nodeId), originalAttemptId = item.attempts.get(model.node.nodeId);
                             const original = await this.engine.withTransaction(handle, async tx => (await readAttempt(tx, handle, active, originalAttemptId)).doc);
                             completed = await this.#runSessionModelWorker({ ...args, signal: boundary.signal, quotaProof }, selected, model, progress,
-                                { ...(replacement ?? (entry ? { preparedGraphAttemptId: item.attemptId }
+                                { ...(replacement ?? (entry && original.status === 'pending' ? { preparedGraphAttemptId: item.attemptId }
                                     : original.status === 'reserved' ? { reservedGraphAttemptId: originalAttemptId } : {})),
-                                graphFanoutAttemptId: fanoutAttemptId, graphInheritedBindings: inherited, fanoutMember: true, plannerProgress });
+                                graphFanoutAttemptId: fanoutAttemptId, graphInheritedBindings: inherited, graphLoopBindings: ready.loopBindings ?? [], fanoutMember: true, plannerProgress });
                             item.attempts.set(model.node.nodeId, completed.state.attemptId);
                             if (completed.error) return completed;
                             replacements.delete(model.node.nodeId);
+                            if (completed.entry?.requests?.replan) {
+                                const active = await current(), next = await this.engine.withTransaction(handle, async tx => {
+                                    const planner = await readSessionPlannerCompletion(tx, handle, active, completed.entry.attemptId);
+                                    const scope = planner && !planner.patch.requests.finalize
+                                        ? await readSessionFanoutReplanScope(tx, handle, active, planner.producer) : null;
+                                    if (!scope || scope.branch.entryAttemptId !== item.attemptId || !progress.has(scope.target.nodeId)
+                                        || scope.affectedNodeIds.some(id => replacements.has(id))) fail('native_orchestration_planner_replan_pending');
+                                    const affectedEffects = [];
+                                    for (const id of scope.affectedNodeIds) if (progress.has(id)) {
+                                        const attempt = (await readAttempt(tx, handle, active, progress.get(id).attemptId)).doc;
+                                        if (attempt.status !== 'completed' || active.graph.nodes.find(node => node.nodeId === id).capabilities.includes('agent.delegate')) fail('native_orchestration_review_irreversible_dependency');
+                                        affectedEffects.push(...attempt.effectRefs);
+                                    }
+                                    const costs = await service.budgetPort.observeEffectClosure(handle, { authorityRef: active.budgetAuthorityRef, effectIds: affectedEffects }, { tx });
+                                    const required = item.scope.ordered.filter(node => active.nodeControl[node.nodeId]?.disposition !== 'cancelled'
+                                        && (scope.affectedNodeIds.includes(node.nodeId) || pending.has(node.nodeId)));
+                                    const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: null }, { tx });
+                                    const requests = required.reduce((sum, node) => sum + 1 + (item.models.get(node.nodeId).delegation?.ceiling.maxRequests ?? 0), 0);
+                                    if (!costs.closed || !capacity || capacity.overrun || capacity.remaining.requests < requests) fail('native_orchestration_planner_replan_budget_unavailable');
+                                    if (active.progress.attempts + required.filter(node => progress.has(node.nodeId)).length > active.limits.maxAttempts) fail('native_orchestration_limit_exhausted');
+                                    return scope;
+                                });
+                                for (const id of next.affectedNodeIds) { progress.delete(id); pending.add(id); }
+                                forced = { node: next.target, loopBindings: next.loops.map(edge => ({ edge, ...completed.entry })) };
+                                continue;
+                            }
                             if (model.node.kind === 'review') {
                                 const { decided } = completed;
                                 if (decided.review.decision === 'rerun') {

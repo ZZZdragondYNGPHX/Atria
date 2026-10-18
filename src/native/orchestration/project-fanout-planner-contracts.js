@@ -3,8 +3,11 @@ import { assertComputeLedger } from '../../../public/shared/native-compute-budge
 import { readOriginalProjectTask } from './project-tool-receipts.js';
 import { readAttempt } from './controller-common.js';
 import { readEffect } from './effect-contracts.js';
-import { readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
+import { readFanoutFrame, readFanoutMembership, readFanoutReplanScope } from './fanout-controller.js';
 import { sendAttemptId } from './budget-port.js';
+import { projectReplanScope } from './project-replan-contracts.js';
+import { readGraphPlannerCompletion } from './graph-planner-completion.js';
+import { assertProjectControlWork } from './project-quality-contracts.js';
 
 const denied = code => { throw Object.assign(new TypeError(code), { code }); };
 
@@ -20,6 +23,10 @@ export async function assertProjectFanoutPlannerPatch(tx, handle, root, producer
         || frame.sourceBindingDigest !== root.sourceBinding.bindingDigest || !equal(frame.parentBudgetRef, root.budgetAuthorityRef)
         || !await readFanoutMembership(tx, handle, root, frame, producer.attemptId)) denied('native_orchestration_fanout_stale');
     assertProjectFanoutPlannerOperations(frame, producer, patch.operations);
+    if (patch.operations.some(operation => operation.op === 'requestReplan')) {
+        const scoped = await readFanoutReplanScope(tx, handle, root, producer), pure = projectReplanScope(root.graph, producer.nodeId);
+        if (!scoped || scoped.target.nodeId !== pure.target.nodeId) denied('native_orchestration_project_replan_unavailable');
+    }
 }
 
 /** Also used by the cold reader after the original Frame/Model proof. */
@@ -27,9 +34,29 @@ export function assertProjectFanoutPlannerOperations(frame, producer, operations
     const branch = frame.branches.find(branch => branch.scopeNodeIds.includes(producer.nodeId));
     if (!branch || producer.inputRefs[0]?.fanoutAttemptId !== frame.fanoutAttemptId) denied('native_orchestration_fanout_stale');
     for (const operation of operations) {
-        if (!['requestFinalize', 'setPendingPriority'].includes(operation.op)) denied('native_orchestration_fanout_planner_control_pending');
+        if (!['requestFinalize', 'requestReplan', 'setPendingPriority'].includes(operation.op)) denied('native_orchestration_fanout_planner_control_pending');
         if (operation.op === 'setPendingPriority' && !branch.scopeNodeIds.includes(operation.nodeId)) denied('native_orchestration_patch_denied');
     }
+}
+
+/** Original paid Planner completion selects only its published local return. */
+export async function projectFanoutReplan({ tx, root, completion, progress, branch, service, handle }) {
+    const fact = await readGraphPlannerCompletion(tx, handle, root, completion.attemptId, { verifyControlWork: assertProjectControlWork });
+    if (!fact || !fact.patch.requests.replan || fact.patch.requests.finalize || !equal(fact.controlRef, completion.controlRef))
+        denied('native_orchestration_project_replan_unavailable');
+    const scope = await readFanoutReplanScope(tx, handle, root, fact.producer), pure = projectReplanScope(root.graph, fact.producer.nodeId);
+    if (!scope || scope.target.nodeId !== pure.target.nodeId || !progress.has(scope.target.nodeId)
+        || !equal(scope.branch.scopeNodeIds, branch.scopeNodeIds)) denied('native_orchestration_project_replan_unavailable');
+    const repeated = scope.affectedNodeIds.filter(id => progress.has(id));
+    for (const id of repeated) {
+        const node = root.graph.nodes.find(node => node.nodeId === id);
+        if (!['agent', 'planner', 'review', 'judge'].includes(node.kind) || node.capabilities.some(capability => !['generation.send', 'graph.patch'].includes(capability)))
+            denied('native_orchestration_review_irreversible_dependency');
+    }
+    const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: root.budgetAuthorityRef, reservationId: root.parentRef ? root.runId : null }, { tx });
+    if (!capacity || capacity.overrun || capacity.remaining.requests < repeated.length
+        || root.progress.attempts + repeated.length > root.limits.maxAttempts) denied('native_orchestration_project_graph_budget_unavailable');
+    return { ...scope, loopBindings: scope.loops.map(edge => ({ edge, ...completion })) };
 }
 
 /** Accounting only: already admitted sends occupy this same original bank,

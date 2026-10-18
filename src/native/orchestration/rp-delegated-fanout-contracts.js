@@ -9,7 +9,7 @@ import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../re
 import { checkedRecord } from './plan-repository.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readAttempt, controlRecordKey } from './controller-common.js';
-import { readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
+import { readFanoutFrame, readFanoutMembership, readFanoutReplanScope } from './fanout-controller.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readDelegationCompletion } from './delegation-completion-contracts.js';
 import { readPlanRevision } from './plan-repository.js';
@@ -89,6 +89,16 @@ export async function readRpDelegatedFanoutInput(tx, handle, root, producer, inp
             && input.acceptedGraphResultRefs.some(ref => equal(ref, candidate.receipt.resultRef)) !== equal(candidate.receipt.resultRef, judge.selectedResultRef)) invalid();
     }
     const direct = facts.filter(fact => !inherited.includes(fact)), bindings = input.controlGraph.bindings;
+    const loops = bindings.filter(binding => snapshot.graph.edges.find(edge => edge.edgeId === binding.edgeId)?.loopBack);
+    if (loops.length) {
+        const planner = direct.find(fact => fact.producer.attemptId === loops[0].producerAttemptId);
+        const scope = planner?.patch.requests.replan && !planner.patch.requests.finalize
+            ? await readFanoutReplanScope(tx, handle, root, planner.producer,
+                { decisionSeq: planner.patch.decisionSeq, targetNodeId: producer.nodeId }) : null;
+        if (!scope || scope.frame.receiptId !== frame.receiptId || planner.patch.newGraphRevision > producer.graphRevision
+            || loops.length !== scope.loops.length || loops.some(binding => binding.producerAttemptId !== planner.producer.attemptId
+                || !scope.loops.some(edge => edge.edgeId === binding.edgeId))) invalid();
+    }
     const replacement = input.reviewFeedbackRef ? await readRpDelegatedReviewReplacement(tx, handle, root, producer, input) : null;
     if (replacement) {
         if (replacement.target.inputRefs[0]?.fanoutAttemptId !== frame.fanoutAttemptId
@@ -96,7 +106,8 @@ export async function readRpDelegatedFanoutInput(tx, handle, root, producer, inp
     } else if (producer.attemptId === branch.entryAttemptId) {
         if (bindings.length || direct.length) invalid();
     } else {
-        const incoming = snapshot.graph.edges.filter(edge => edge.to.nodeId === node.nodeId && branch.scopeNodeIds.includes(edge.from.nodeId))
+        const incoming = snapshot.graph.edges.filter(edge => edge.to.nodeId === node.nodeId && branch.scopeNodeIds.includes(edge.from.nodeId)
+            && (!edge.loopBack || loops.some(binding => binding.edgeId === edge.edgeId)))
             .filter(edge => !judges.some(judge => judge.candidates.some(candidate => candidate.producer.nodeId === edge.from.nodeId
                 && !equal(candidate.receipt.resultRef, judge.selectedResultRef))));
         if (bindings.length !== incoming.length || direct.some(fact => !branch.scopeNodeIds.includes(fact.producer.nodeId))
@@ -105,10 +116,10 @@ export async function readRpDelegatedFanoutInput(tx, handle, root, producer, inp
         const reservedAttemptId = producer.reservationRef ? producer.attemptId : null;
         const identity = hash({ runId: root.runId, bindings, reservedAttemptId });
         await assertOutputTransition(tx, handle, root, { published: direct[0], additionalProducers: direct.slice(1), output: producer,
-            producerBindings: bindings, reservedAttemptId, receipt: { decisionSeq: publicationSeq,
+            producerBindings: bindings, reservedAttemptId, allowLoopBack: loops.length > 0, receipt: { decisionSeq: publicationSeq,
                 traversalReceiptRef: { runId: root.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } } });
     }
-    return { lineage, input, sources: facts, bindings: replacement ? [] : bindings, loops: [], replacement };
+    return { lineage, input, sources: facts, bindings: replacement ? [] : bindings, loops: replacement ? [] : loops, replacement };
 }
 
 async function memberInput(tx, handle, root, attempt, { frame, branch, reservation, settlement }) {
@@ -165,6 +176,8 @@ async function memberCost(tx, handle, root, attempt, { frame, settlement, result
         if (results.length || !equal(planner.producer, attempt) || !equal(planner.settlement, settlement)
             || !completed || !equal(planner.receipt.modelReceiptRef, completed.receiptRef)) invalid();
         assertRpFanoutPlannerOperations(frame, attempt, planner.patch.appliedOperations);
+        if (planner.patch.requests.replan && !await readFanoutReplanScope(tx, handle, root, attempt,
+            { decisionSeq: planner.patch.decisionSeq })) invalid();
     }
     const review = root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'review' && attempt.status === 'completed'
         ? await readRpDelegatedControl(tx, handle, root, graphReviewControlRef(root.runId, attempt.attemptId)) : null;

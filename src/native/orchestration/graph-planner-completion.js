@@ -10,6 +10,7 @@ import { readModelCompletionReceipt } from './model-port.js';
 import { readTaskGraphRevisions, graphPatchHash } from './graph-revision-contracts.js';
 import { assertAudienceRunCapture } from './audience-source-contracts.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
+import { readGraphFanoutPublicationGraph } from './graph-fanout-completion.js';
 
 const invalid = () => { throw new TypeError('Invalid Graph Planner completion facts'); };
 export const graphPlannerReceiptId = (runId, attemptId) => 'oreceipt_' + hash({ kind: 'graph_planner_model', runId, attemptId }).slice(0, 32);
@@ -24,11 +25,12 @@ export async function readGraphPlannerCompletion(tx, handle, root, attemptId, { 
     if (!receipt) return null;
     assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'producerAttemptId', 'sourceBindingDigest', 'grantDigest',
         'modelEffectId', 'modelReceiptRef', 'modelPayloadHash', 'responseText', 'patchId', 'patchIntegrity', 'localWork', 'decisionSeq', 'createdAt'], 'Graph Planner receipt');
-    const revisions = await readTaskGraphRevisions(tx, handle, root, [producer.graphRevision, producer.graphRevision + 1]);
+    const patch = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'patch', receipt.patchId)))?.doc;
+    if (!patch?.accepted) invalid();
+    const revisions = await readTaskGraphRevisions(tx, handle, root, [producer.graphRevision, patch.previousGraphRevision, patch.newGraphRevision]);
     const before = revisions.get(producer.graphRevision), node = before.graph.nodes.find(node => node.nodeId === producer.nodeId);
     const intent = (await readEffect(tx, handle, root, receipt.modelEffectId)).doc, model = await readModelCompletionReceipt(handle, tx, root, intent);
     const retrieval = await readContextRetrievalCompletions(tx, handle, root, intent, producer), settlement = await readAttemptSettlement(tx, handle, root, producer);
-    const patch = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'patch', receipt.patchId)))?.doc;
     let response;
     try { response = JSON.parse(receipt.responseText); } catch { invalid(); }
     assertObject(response, ['operations'], 'Planner response');
@@ -43,12 +45,16 @@ export async function readGraphPlannerCompletion(tx, handle, root, attemptId, { 
         || model.observation.dispatchEvidence.reference.resultPayloadHash !== receipt.modelPayloadHash
         || model.observation.dispatchEvidence.reference.resultOutputType !== (root.sourceBinding.sourceAuthority === 'project' ? 'json' : 'text')
         || !patch?.accepted || hash(patch) !== receipt.patchIntegrity || patch.producerAttemptId !== producer.attemptId || patch.producerInputDigest !== producer.inputDigest
-        || patch.previousGraphRevision !== producer.graphRevision || patch.newGraphRevision !== producer.graphRevision + 1 || patch.newGraphRevision > root.graphRevision
+        || patch.previousGraphRevision < producer.graphRevision || patch.newGraphRevision !== patch.previousGraphRevision + 1 || patch.newGraphRevision > root.graphRevision
         || patch.sourceBindingDigest !== root.sourceBinding.bindingDigest || !equal(response.operations, patch.appliedOperations)
         || settlement.reasonCode !== 'graph_planner_patch_accepted' || settlement.decisionSeq !== receipt.decisionSeq || settlement.createdAt !== receipt.createdAt
         || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId, ...retrieval.map(item => item.receiptId)])
         || patch.decisionSeq >= receipt.decisionSeq || receipt.decisionSeq > root.eventSeq) invalid();
     const input = intent.inputRef;
+    if (patch.previousGraphRevision !== producer.graphRevision) {
+        if (!input.fanoutAttemptId) invalid();
+        await readGraphFanoutPublicationGraph(tx, handle, root, producer, patch.previousGraphRevision, patch.decisionSeq);
+    }
     const delegatedSession = root.sourceBinding.sourceAuthority === 'native_session' && root.parentRef !== null;
     if (root.sourceBinding.sourceAuthority === 'native_session' && !delegatedSession) {
         assertObject(input.sourceRef, ['sessionId', 'branchId', 'revisionId', 'packageId', 'packageVersionId'], 'Native Turn source');
@@ -73,7 +79,7 @@ export async function readGraphPlannerCompletion(tx, handle, root, attemptId, { 
         assertAudienceRunCapture(root, node, plan.dependencyPins, input);
     }
     const proposal = { schemaVersion: 1, patchId: patch.patchId, runId: root.runId, producerAttemptId: producer.attemptId, expectedEpoch: producer.epoch,
-        expectedGraphRevision: producer.graphRevision, operations: patch.appliedOperations, reasonRefs: patch.reasonRefs, payloadHash: patch.payloadHash };
+        expectedGraphRevision: patch.previousGraphRevision, operations: patch.appliedOperations, reasonRefs: patch.reasonRefs, payloadHash: patch.payloadHash };
     if (graphPatchHash(proposal) !== patch.payloadHash) invalid();
     const commandId = controlCommandId('graph.patch', patch.patchId), command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
     if (!command || command.operation !== 'runs.control.graph.patch' || command.target !== root.runId

@@ -2,6 +2,7 @@ import { withNativeProjectDelegatedFanout } from './native-project-generation-au
 import { readProjectDelegatedFanoutCompletion } from './project-delegated-fanout-contracts.js';
 import { runDelegatedFanout } from './delegated-fanout-work.js';
 import { inspectProjectFanoutCostClosure } from './project-fanout-contracts.js';
+import { projectFanoutReplan } from './project-fanout-planner-contracts.js';
 
 /** Original Project capture and typed proof; Controller orchestration is shared. */
 export function runProjectDelegatedFanout(args) {
@@ -12,5 +13,6 @@ export function runProjectDelegatedFanout(args) {
             .map(profile => args.state.host.executionResources(args.state.handle, profile.resolved.route)))).flat())],
         requestsForNode: model => 1 + (delegation(model)?.ceiling.maxRequests ?? 0),
         inspectClosure: input => inspectProjectFanoutCostClosure({ ...input, service: args.service, handle: args.state.handle }),
+        replan: input => projectFanoutReplan({ ...input, service: args.service, handle: args.state.handle }),
         controlKind: 'native_project_delegated_control', reasonPrefix: 'project' });
 }

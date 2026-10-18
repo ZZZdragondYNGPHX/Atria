@@ -16,7 +16,7 @@ import { readModelCompletionReceipt, readModelTerminalFact } from './model-port.
 import { assertAudienceRunCapture } from './audience-source-contracts.js';
 import { readSessionJudgeCompletion, assertSessionJudgeSelections } from './session-judge-contracts.js';
 import { readSessionPlannerCompletion } from './session-planner-contracts.js';
-import { assertSessionFanoutPlannerOperations } from './session-fanout-planner-contracts.js';
+import { assertSessionFanoutPlannerOperations, readSessionFanoutReplanScope } from './session-fanout-planner-contracts.js';
 
 const invalid = () => { throw new TypeError('Invalid original Session Fanout Join facts'); };
 
@@ -155,7 +155,19 @@ async function verifySessionFanoutInput(tx, handle, root, attempt, { frame, bran
         return;
     }
     assertSessionJudgeSelections({ ...root, graph }, node, input.acceptedGraphResultRefs, sources.filter(source => source.selectedResultRef));
-    const incoming = graph.edges.filter(edge => edge.to.nodeId === node.nodeId).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
+    const loops = (input.fanoutGraphBindings ?? []).filter(binding => graph.edges.find(edge => edge.edgeId === binding.edgeId)?.loopBack);
+    if (loops.length) {
+        const trigger = sources.find(source => source.producer.attemptId === loops[0].producerAttemptId);
+        const scope = trigger?.patch?.requests.replan && !trigger.patch.requests.finalize && trigger.patch.newGraphRevision === attempt.graphRevision
+            ? await readSessionFanoutReplanScope(tx, handle, root, trigger.producer, { decisionSeq: settlement.decisionSeq, targetNodeId: node.nodeId }) : null;
+        if (!scope || !same(loops.map(binding => binding.edgeId).sort(), scope.loops.map(edge => edge.edgeId).sort())
+            || loops.some(binding => binding.producerAttemptId !== trigger.producer.attemptId)) invalid();
+    }
+    const entryNodeId = loops.length ? (await readAttempt(tx, handle, root, branch.entryAttemptId)).doc.nodeId : null;
+    const incoming = graph.edges.filter(edge => edge.to.nodeId === node.nodeId
+        && (!edge.loopBack || loops.some(binding => binding.edgeId === edge.edgeId))
+        && !(loops.length && node.nodeId === entryNodeId && graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind === 'fanout'))
+        .sort((a, b) => a.edgeId.localeCompare(b.edgeId));
     const bindings = incoming.flatMap(edge => {
         const source = sources.find(source => source.producer.nodeId === edge.from.nodeId);
         if (!source && !node.inputs.find(port => port.name === edge.to.port)?.required) return [];
@@ -163,14 +175,14 @@ async function verifySessionFanoutInput(tx, handle, root, attempt, { frame, bran
         return [{ edgeId: edge.edgeId, producerAttemptId: source.producer.attemptId }];
     });
     const ordered = bindings.map(binding => sources.find(source => source.producer.attemptId === binding.producerAttemptId));
-    if (!sources.length || !same(input.fanoutGraphBindings, bindings) || sources.length !== bindings.length
+    if (!sources.length || !same(input.fanoutGraphBindings, bindings) || sources.length !== new Set(bindings.map(binding => binding.producerAttemptId)).size
         || !same(input.acceptedGraphResultRefs, [...inheritedRefs, ...ordered.filter(source => source.record).map(source => source.receipt.resultRef)])
-        || !same(input.acceptedControlRefs ?? [], [...inheritedControls, ...ordered.filter(source => source.controlRef).map(source => source.controlRef)])
+        || !same(input.acceptedControlRefs ?? [], [...inheritedControls, ...[...new Map(ordered.filter(source => source.controlRef).map(source => [hash(source.controlRef), source.controlRef])).values()]])
         || attempt.reservationRef && attempt.reservationRef.producerAttemptId !== frame.fanoutAttemptId) invalid();
     const reservedAttemptId = attempt.reservationRef ? attempt.attemptId : null;
     const identity = hash({ runId: root.runId, bindings, reservedAttemptId });
     await assertOutputTransition(tx, handle, { ...root, graph }, { published: sources[0], additionalProducers: sources.slice(1), output: attempt,
-        producerBindings: bindings, reservedAttemptId, receipt: { decisionSeq: settlement.decisionSeq,
+        producerBindings: bindings, reservedAttemptId, allowLoopBack: !!loops.length, receipt: { decisionSeq: settlement.decisionSeq,
             traversalReceiptRef: { runId: root.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } } });
 }
 

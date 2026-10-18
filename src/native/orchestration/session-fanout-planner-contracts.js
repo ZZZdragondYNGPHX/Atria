@@ -1,9 +1,10 @@
+import { sessionReplanScope } from './session-replan-contracts.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertComputeLedger } from '../../../public/shared/native-compute-budget.js';
 import { readRunControl } from '../run-control.js';
 import { readAttempt } from './controller-common.js';
 import { readEffect } from './effect-contracts.js';
-import { readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
+import { readFanoutFrame, readFanoutMembership, readFanoutReplanScope } from './fanout-controller.js';
 import { sendAttemptId } from './budget-port.js';
 
 const denied = code => { throw Object.assign(new TypeError(code), { code }); };
@@ -18,6 +19,8 @@ export async function assertSessionFanoutPlannerPatch(tx, handle, root, producer
         || !equal(frame.parentBudgetRef, root.budgetAuthorityRef) || !await readFanoutMembership(tx, handle, root, frame, producer.attemptId))
         denied('native_orchestration_fanout_stale');
     assertSessionFanoutPlannerOperations(frame, producer, patch.operations);
+    if (patch.operations.some(operation => operation.op === 'requestReplan')
+        && !await readSessionFanoutReplanScope(tx, handle, root, producer)) denied('native_orchestration_planner_replan_pending');
 }
 
 /** Historical control bounds after the original Frame/Model proof. */
@@ -25,7 +28,7 @@ export function assertSessionFanoutPlannerOperations(frame, producer, operations
     const branch = frame.branches.find(branch => branch.scopeNodeIds.includes(producer.nodeId));
     if (!branch || producer.inputRefs[0]?.fanoutAttemptId !== frame.fanoutAttemptId) denied('native_orchestration_fanout_stale');
     for (const operation of operations) {
-        if (!['requestFinalize', 'setPendingPriority'].includes(operation.op)) denied('native_orchestration_fanout_planner_control_pending');
+        if (!['requestFinalize', 'setPendingPriority', 'requestReplan'].includes(operation.op)) denied('native_orchestration_fanout_planner_control_pending');
         if (operation.op === 'setPendingPriority' && !branch.scopeNodeIds.includes(operation.nodeId)) denied('native_orchestration_patch_denied');
     }
 }
@@ -73,4 +76,12 @@ export async function readSessionFanoutPaidModelNodes(tx, handle, root, fanoutAt
         }
     }
     return paid;
+}
+
+/** The domain's existing pure Model interval, bounded by the original Frame. */
+export async function readSessionFanoutReplanScope(tx, handle, root, planner, options = {}) {
+    const pure = sessionReplanScope(root.graph, planner.nodeId);
+    const scope = await readFanoutReplanScope(tx, handle, root, planner, { ...options, targetNodeId: pure.target.nodeId });
+    if (!scope || !equal(scope.loops.map(edge => edge.edgeId).sort(), pure.loops.map(edge => edge.edgeId).sort())) return null;
+    return { ...scope, affectedNodeIds: pure.affectedNodeIds.filter(id => scope.branch.scopeNodeIds.includes(id)) };
 }

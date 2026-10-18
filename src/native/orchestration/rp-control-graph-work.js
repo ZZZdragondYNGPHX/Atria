@@ -6,7 +6,7 @@ import { rpControlGraph, rpControlPlannerTask, rpControlReplanScope } from './rp
 import { readRpControlInputs, rpPlannerReaderOptions, rpReviewReaderOptions, rpJudgeReaderOptions } from './rp-control-input-contracts.js';
 import { AttemptController } from './attempt-controller.js';
 import { TransitionController } from './transition-controller.js';
-import { FanoutController, readFanoutFrame, readFanoutMembership, readFanoutReviewScope } from './fanout-controller.js';
+import { FanoutController, readFanoutFrame, readFanoutMembership, readFanoutReviewScope, readFanoutReplanScope } from './fanout-controller.js';
 import { JoinController, joinIdForAttempt } from './join-controller.js';
 import { readRpControlFanoutCompletion } from './rp-control-fanout-contracts.js';
 import { GraphController } from './graph-controller.js';
@@ -164,7 +164,7 @@ export class RpControlGraphWork {
                 await this.current();
                 if (!equal(proof, await port.inspectResultCompletion(handle, { result, runId, effectId }))
                     || producer.attemptId !== attemptId || !equal(actual, patch)) fail('native_orchestration_planner_producer_denied');
-                if (state.fanoutParent) await assertRpFanoutPlannerPatch(tx, handle, active, producer, actual);
+                const scopedReplan = state.fanoutParent ? await assertRpFanoutPlannerPatch(tx, handle, active, producer, actual) : null;
                 const candidate = cloneNativeDocument(active.graph);
                 for (const operation of actual.operations) {
                     if (operation.op === 'addNode') candidate.nodes.push(operation.node);
@@ -188,12 +188,14 @@ export class RpControlGraphWork {
                 }
                 const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: this.reservationId ?? null }, { tx });
                 const repeats = actual.operations.some(operation => operation.op === 'requestReplan')
-                    ? candidate.edges.some(edge => edge.loopBack && edge.from.nodeId === nodeId)
-                        ? rpControlReplanScope(candidate, nodeId).affectedNodeIds : [nodeId] : [];
+                    ? scopedReplan?.affectedNodeIds ?? (candidate.edges.some(edge => edge.loopBack && edge.from.nodeId === nodeId)
+                        ? rpControlReplanScope(candidate, nodeId).affectedNodeIds : [nodeId]) : [];
                 const paid = state.fanoutParent ? await readRpFanoutPaidModelNodes(tx, handle, active) : null;
                 const cancelled = new Set(actual.operations.filter(operation => operation.op === 'cancelPending').map(operation => operation.nodeId));
-                const required = admission.models.filter(node => !cancelled.has(node.nodeId) && active.nodeControl[node.nodeId]?.disposition !== 'cancelled'
-                    && (repeats.includes(node.nodeId) || (paid ? !paid.has(node.nodeId) : !this.records.has(node.nodeId)) && node.nodeId !== nodeId)).length;
+                const requiredModels = await Promise.all(admission.models.filter(node => !cancelled.has(node.nodeId) && active.nodeControl[node.nodeId]?.disposition !== 'cancelled'
+                    && (repeats.includes(node.nodeId) || (paid ? !paid.has(node.nodeId) : !this.records.has(node.nodeId)) && node.nodeId !== nodeId))
+                    .map(node => state.selected.resolveGraphModel(node)));
+                const required = requiredModels.reduce((sum, model) => sum + 1 + (model.child?.resolved.route.executionPolicy.computeBudget.maxRequests ?? 0), 0);
                 if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');
                 await this.inputs(tx, active);
                 await this.current();
@@ -235,6 +237,33 @@ export class RpControlGraphWork {
             await service.runs.get(handle, runId), attemptId, this.plannerReaderOptions ?? rpPlannerReaderOptions));
         if (!fact) fail('native_orchestration_rp_control_stale');
         return { attemptId, controlRef: fact.controlRef, requests: fact.patch.requests, status: 'completed' };
+    }
+
+    async fanoutReplan({ tx, root, completion, progress, branch }) {
+        const handle = this.state.handle;
+        const fact = await readGraphPlannerCompletion(tx, handle, root, completion.attemptId, this.plannerReaderOptions ?? rpPlannerReaderOptions);
+        const scope = fact && await readFanoutReplanScope(tx, handle, root, fact.producer);
+        const original = fact && rpControlReplanScope(root.graph, fact.producer.nodeId);
+        if (!fact || !fact.patch.requests.replan || fact.patch.requests.finalize || !equal(fact.controlRef, completion.controlRef)
+            || !scope || !equal(scope.branch.scopeNodeIds, branch.scopeNodeIds) || original.target.nodeId !== scope.target.nodeId
+            || !equal(original.loops, scope.loops)) fail('native_orchestration_planner_replan_pending');
+        const effects = [];
+        for (const id of scope.affectedNodeIds) {
+            const prior = progress.get(id);
+            if (!prior) continue;
+            const attempt = (await readAttempt(tx, handle, root, prior.attemptId)).doc;
+            if (attempt.status !== 'completed') fail('native_orchestration_planner_replan_pending');
+            effects.push(...attempt.effectRefs);
+        }
+        const costs = effects.length ? await this.service.budgetPort.observeEffectClosure(handle,
+            { authorityRef: root.budgetAuthorityRef, effectIds: effects }, { tx }) : null;
+        const capacity = await this.service.budgetPort.observeCapacity(handle,
+            { authorityRef: root.budgetAuthorityRef, reservationId: this.reservationId ?? null }, { tx });
+        const models = await Promise.all(scope.affectedNodeIds.map(id => this.state.selected.resolveGraphModel(root.graph.nodes.find(node => node.nodeId === id))));
+        const requests = models.reduce((sum, model) => sum + 1 + (model.child?.resolved.route.executionPolicy.computeBudget.maxRequests ?? 0), 0);
+        if (!costs?.closed || !capacity || capacity.overrun || capacity.remaining.requests < requests) fail('native_orchestration_graph_budget_unavailable');
+        if (root.progress.attempts + models.length > root.limits.maxAttempts) fail('native_orchestration_limit_exhausted');
+        return { target: scope.target, affectedNodeIds: scope.affectedNodeIds, loopBindings: scope.loops.map(edge => ({ edge, ...completion })) };
     }
 
     async reviewRerunRequests(root, reviewer, invalidatedIds, { tx } = {}) {
@@ -551,14 +580,21 @@ export class RpControlGraphWork {
                 fingerprint: hash({ runId, fanoutAttemptId, attempts: [...item.attempts], models: [...item.models].map(([id, model]) => [id, model.configDigest]) }),
                 run: async ({ signal, generate, settleFailure }) => {
                     const pending = new Set(item.branch.scopeNodeIds), executed = new Set(), reruns = new Map(), retryTokens = new Map();
+                    let forced = null;
                     while (pending.size) {
                         signal.throwIfAborted(); const active = await current();
                         const completion = Object.fromEntries([...this.records].map(([id, fact]) => [id, fact.status ?? 'completed']));
-                        const ready = pending.has(item.branch.entry.nodeId) ? { node: item.branch.entry, edges: [] }
-                            : inspectGraphReadiness(active.graph, active.nodeControl, completion, { excludeNodeIds: active.graph.nodes.filter(node => !pending.has(node.nodeId)).map(node => node.nodeId) }).ready[0];
+                        const ready = forced ?? (pending.has(item.branch.entry.nodeId) ? { node: item.branch.entry, edges: [] }
+                            : inspectGraphReadiness(active.graph, active.nodeControl, completion, { excludeNodeIds: active.graph.nodes.filter(node => !pending.has(node.nodeId)).map(node => node.nodeId) }).ready[0]);
+                        forced = null;
                         if (!ready) fail('native_orchestration_rp_graph_blocked');
                         const node = ready.node, entry = node.nodeId === item.branch.entry.nodeId, rerun = reruns.get(node.nodeId);
-                        const bundle = rerun?.bundle ?? this.mergeBundle(entry ? { evidenceRefs: [], controlRefs: [], bindings: [] } : this.bundle(ready.edges, active.graph), inherited);
+                        const bundle = rerun?.bundle ?? this.mergeBundle(entry && !ready.loopBindings ? { evidenceRefs: [], controlRefs: [], bindings: [] } : this.bundle(ready.edges, active.graph), inherited);
+                        for (const binding of ready.loopBindings ?? []) {
+                            bundle.bindings.push({ edgeId: binding.edge.edgeId, producerAttemptId: binding.attemptId });
+                            if (!bundle.controlRefs.some(ref => equal(ref, binding.controlRef))) bundle.controlRefs.push(binding.controlRef);
+                        }
+                        bundle.bindings.sort((a, b) => a.edgeId.localeCompare(b.edgeId));
                         const spec = entry && !rerun && !executed.has(node.nodeId) ? item.entry : await this.prepareBranch(node, active, bundle, fanoutAttemptId, retryTokens.get(node.nodeId));
                         if (rerun) { spec.request = rerun.request; spec.feedback = rerun.feedback; }
                         try {
@@ -569,7 +605,6 @@ export class RpControlGraphWork {
                             const fact = ['planner', 'review'].includes(node.kind) ? result
                                 : { attemptId: result.attemptId, resultRef: result.resultRef, status: 'completed' };
                             if (node.kind === 'planner') {
-                                if (result.requests?.replan) fail('native_orchestration_fanout_planner_control_pending');
                                 this.plannerHistory.push(result);
                             }
                             if (fact.review?.decision === 'rerun') {
@@ -580,6 +615,13 @@ export class RpControlGraphWork {
                                 for (const replacement of fact.replacements) { reruns.set(replacement.nodeId, replacement); pending.add(replacement.nodeId); }
                                 retryTokens.set(node.nodeId, fact.review.receiptId); pending.add(node.nodeId);
                             } else { this.records.set(node.nodeId, fact); pending.delete(node.nodeId); }
+                            if (fact.requests?.replan) {
+                                const latest = await current();
+                                const next = await runs.engine.withTransaction(handle, tx => this.fanoutReplan({ tx, root: latest, completion: fact, progress: this.records, branch: item.branch }));
+                                for (const id of next.affectedNodeIds) { this.records.delete(id); pending.add(id); retryTokens.set(id, fact.attemptId); }
+                                forced = { node: next.target, edges: latest.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === next.target.nodeId
+                                    && edge.from.nodeId !== profile.fanout.nodeId), loopBindings: next.loopBindings };
+                            }
                         } catch (error) {
                             await settleFailure();
                             throw error;

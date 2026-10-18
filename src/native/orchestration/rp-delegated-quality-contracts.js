@@ -1,3 +1,4 @@
+import { readFanoutReplanScope } from './fanout-controller.js';
 import { inspectComputeChildClosure } from '../../../public/shared/native-compute-budget.js';
 import { rpOutputReceiptId } from './rp-output-contracts.js';
 import { readRpDelegatedFanoutInput, readRpDelegatedFanoutCompletion } from './rp-delegated-fanout-contracts.js';
@@ -502,8 +503,11 @@ async function readGraphHistory(tx, handle, child, { pendingProducer = null, fin
         if (proof.loops.length) {
             trigger = proof.sources.find(source => source.producer.attemptId === proof.loops[0].producerAttemptId);
             if (!trigger || consumed.has(trigger.producer.attemptId) || latest.get(trigger.producer.nodeId)?.producer.attemptId !== trigger.producer.attemptId) invalidHistory();
-            const scope = rpControlReplanScope(child.graph, trigger.producer.nodeId);
-            if (scope.target.nodeId !== producer.nodeId || !previous.has(producer.nodeId) || proof.loops.length !== scope.loops.length
+            const scope = trigger.producer.inputRefs[0]?.fanoutAttemptId
+                ? await readFanoutReplanScope(tx, handle, child, trigger.producer,
+                    { decisionSeq: trigger.patch.decisionSeq, targetNodeId: producer.nodeId })
+                : rpControlReplanScope(child.graph, trigger.producer.nodeId);
+            if (!scope || scope.target.nodeId !== producer.nodeId || !previous.has(producer.nodeId) || proof.loops.length !== scope.loops.length
                 || proof.loops.some(binding => binding.producerAttemptId !== trigger.producer.attemptId || !scope.loops.some(edge => edge.edgeId === binding.edgeId))) invalidHistory();
             for (const id of scope.affectedNodeIds) {
                 const old = latest.get(id); if (old) replaced.set(id, { attemptId: old.producer.attemptId, trigger });

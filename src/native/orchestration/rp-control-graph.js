@@ -154,11 +154,11 @@ export function rpControlFanoutGroups(graph, finalWorkerId, modelKinds = ['agent
                 if (node?.kind === 'join') { ends.add(id); continue; }
                 if (!modelKinds.includes(node?.kind) || id === finalWorkerId || used.has(id)) fail();
                 scope.add(id);
-                const outgoing = graph.edges.filter(edge => edge.from.nodeId === id);
-                if (!outgoing.length || outgoing.some(edge => edge.loopBack)) fail();
+                const outgoing = graph.edges.filter(edge => edge.from.nodeId === id && !edge.loopBack);
+                if (!outgoing.length) fail();
                 pending.push(...outgoing.map(edge => edge.to.nodeId));
             }
-            if (ends.size !== 1 || !entry || graph.edges.some(edge => edge.to.nodeId === entry.nodeId && edge.edgeId !== transfer.edgeId)) fail();
+            if (ends.size !== 1 || !entry || graph.edges.some(edge => !edge.loopBack && edge.to.nodeId === entry.nodeId && edge.edgeId !== transfer.edgeId)) fail();
             for (const id of scope) {
                 if (id !== entry.nodeId && graph.edges.some(edge => edge.to.nodeId === id && !scope.has(edge.from.nodeId))) fail();
             }
@@ -171,6 +171,13 @@ export function rpControlFanoutGroups(graph, finalWorkerId, modelKinds = ['agent
         const members = graph.edges.filter(edge => edge.to.nodeId === joinId);
         if (!members.length || members.some(edge => !branches.some(branch => branch.scopeNodeIds.includes(edge.from.nodeId))
             || graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind !== 'agent' || edge.condition !== 'always')) fail();
+        for (const edge of graph.edges.filter(edge => edge.loopBack && branches.some(branch => branch.scopeNodeIds.includes(edge.from.nodeId) || branch.scopeNodeIds.includes(edge.to.nodeId)))) {
+            const branch = branches.find(branch => branch.scopeNodeIds.includes(edge.from.nodeId));
+            if (!branch || !branch.scopeNodeIds.includes(edge.to.nodeId) || members.some(member => member.from.nodeId === edge.to.nodeId)
+                || graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind !== 'planner'
+                || !['agent', 'planner'].includes(graph.nodes.find(node => node.nodeId === edge.to.nodeId)?.kind)) fail();
+            rpControlReplanScope(graph, edge.from.nodeId);
+        }
         joins.add(joinId); groups.push({ fanout, join, branches, members });
     }
     if (graph.nodes.some(node => node.kind === 'join' && !joins.has(node.nodeId))) fail();

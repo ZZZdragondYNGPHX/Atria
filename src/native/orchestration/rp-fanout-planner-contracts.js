@@ -4,7 +4,7 @@ import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { checkedRecord } from './plan-repository.js';
 import { readAttempt } from './controller-common.js';
 import { readEffect } from './effect-contracts.js';
-import { readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
+import { readFanoutFrame, readFanoutMembership, readFanoutReplanScope } from './fanout-controller.js';
 import { sendAttemptId } from './budget-port.js';
 
 const denied = code => { throw Object.assign(new TypeError(code), { code }); };
@@ -21,6 +21,10 @@ export async function assertRpFanoutPlannerPatch(tx, handle, root, producer, pat
         || frame.sourceBindingDigest !== root.sourceBinding.bindingDigest || !equal(frame.parentBudgetRef, root.budgetAuthorityRef)
         || !await readFanoutMembership(tx, handle, root, frame, producer.attemptId)) denied('native_orchestration_fanout_stale');
     assertRpFanoutPlannerOperations(frame, producer, patch.operations);
+    const replan = patch.operations.some(operation => operation.op === 'requestReplan')
+        ? await readFanoutReplanScope(tx, handle, root, producer) : null;
+    if (patch.operations.some(operation => operation.op === 'requestReplan') && !replan) denied('native_orchestration_planner_replan_pending');
+    return replan;
 }
 
 /** Also used by the cold reader after the original Frame/Model proof. */
@@ -28,7 +32,7 @@ export function assertRpFanoutPlannerOperations(frame, producer, operations) {
     const branch = frame.branches.find(branch => branch.scopeNodeIds.includes(producer.nodeId));
     if (!branch || producer.inputRefs[0]?.fanoutAttemptId !== frame.fanoutAttemptId) denied('native_orchestration_fanout_stale');
     for (const operation of operations) {
-        if (!['requestFinalize', 'setPendingPriority'].includes(operation.op)) denied('native_orchestration_fanout_planner_control_pending');
+        if (!['requestFinalize', 'requestReplan', 'setPendingPriority'].includes(operation.op)) denied('native_orchestration_fanout_planner_control_pending');
         if (operation.op === 'setPendingPriority' && !branch.scopeNodeIds.includes(operation.nodeId)) denied('native_orchestration_patch_denied');
     }
 }

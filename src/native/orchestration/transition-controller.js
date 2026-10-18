@@ -5,7 +5,7 @@ import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument, putImmut
 import { controlCommandId, controlRecordKey, readAttempt, assertAttemptConsumable } from './controller-common.js';
 import { readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 import { admitGraphEdges } from './graph-costs.js';
-import { inheritFanoutMembership } from './fanout-controller.js';
+import { inheritFanoutMembership, readFanoutReplanScope } from './fanout-controller.js';
 
 /** Deterministic dependency/loop admission; original Ports supply references,
  * grant and an already-admitted budget identity. This never reserves or sends. */
@@ -36,7 +36,20 @@ export class TransitionController {
             const targetId = edges[0]?.to.nodeId, target = root.graph.nodes.find(node => node.nodeId === targetId);
             if (!target || edges.some(edge => !edge || edge.to.nodeId !== targetId) || target.kind === 'join'
                 || root.nodeControl[targetId].disposition !== 'eligible') throw new ConflictError('native_orchestration_transition_target_invalid');
-            if (target.inputs.some(port => port.required && !edges.some(edge => edge.to.port === port.name))) throw new ConflictError('native_orchestration_transition_inputs_incomplete');
+            const missing = target.inputs.filter(port => port.required && !edges.some(edge => edge.to.port === port.name));
+            if (missing.length) {
+                const loop = edges.findIndex(edge => edge.loopBack);
+                const planner = loop < 0 ? null : (await readAttempt(tx, handle, root, bindings[loop].producerAttemptId)).doc;
+                const scope = planner && await readFanoutReplanScope(tx, handle, root, planner, { targetNodeId: targetId });
+                const entry = scope && (await readAttempt(tx, handle, root, scope.branch.entryAttemptId)).doc;
+                // A branch entry's original frozen transfer is still its task
+                // input. A local return visits only the authored loop edges;
+                // it does not dispatch or charge that Fanout transfer again.
+                if (!scope || entry.nodeId !== targetId || missing.some(port => port.type !== 'task.result'
+                    || !root.graph.edges.some(edge => !edge.loopBack && edge.from.nodeId === scope.fanout.nodeId
+                        && edge.to.nodeId === targetId && edge.to.port === port.name)))
+                    throw new ConflictError('native_orchestration_transition_inputs_incomplete');
+            }
             const producers = [];
             for (let index = 0; index < bindings.length; index++) {
                 const edge = edges[index], { doc: attempt } = await readAttempt(tx, handle, root, bindings[index].producerAttemptId);
