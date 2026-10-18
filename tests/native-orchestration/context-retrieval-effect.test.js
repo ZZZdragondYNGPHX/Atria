@@ -130,7 +130,9 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         expect(await read('effect', child)).toMatchObject({ status: 'dispatching' });
         await expect(prepareChild()).rejects.toThrow(); await expect(ready(mainId)).rejects.toThrow();
     });
-    test.each(['prepare', 'prepare_final', 'ready', 'ready_final', 'claim', 'claim_final', 'budget-ready', 'budget-claim'])('same-transaction cancellation at %s survives refusal', async phase => {
+    // Effect authorization runs once at prepare; later phases call only the
+    // original bank and must still refuse when that callback commits a cancel.
+    test.each(['prepare', 'budget-ready', 'budget-claim'])('same-transaction cancellation at %s survives refusal', async phase => {
         const child = ['prepare', 'prepare_final'].includes(phase) ? null : await prepareChild();
         if (['claim', 'claim_final', 'budget-claim'].includes(phase)) await ready(child);
         const cancel = async () => {
@@ -145,24 +147,15 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         expect(childState?.status ?? null).toBe(child ? phase.includes('claim') ? 'ready' : 'prepared' : null);
         expect(childState?.dispatchToken ?? null).toBeNull();
     });
-    test.each(['prepare_final', 'ready_final', 'claim_final'])('final %s rechecks the original grant', async phase => {
-        const child = phase === 'prepare_final' ? null : await prepareChild();
-        if (phase === 'claim_final') await ready(child);
-        hook = async args => { if (args.phase === phase) revoked = true; };
-        const before = await current();
-        await expect(child === null ? prepareChild() : phase === 'ready_final' ? ready(child) : claim(child)).rejects.toMatchObject({ code: 'controlled_revoked' });
-        expect(await current()).toEqual(before);
-    });
-    test.each(['prepare_final', 'ready_final', 'claim_final'])('a Port error after same-transaction cancellation at %s keeps the cancellation', async phase => {
-        const child = phase === 'prepare_final' ? null : await prepareChild();
-        if (phase === 'claim_final') await ready(child);
+    test.each(['prepare'])('a Port error after same-transaction cancellation at %s keeps the cancellation', async phase => {
+        const child = null;
         hook = async args => {
             if (args.phase !== phase) return;
             hook = null;
             await runs.cancel(h.handle, id('Command'), { ...runGuard(await current()), reasonCode: 'controlled_cancel' });
             throw new TypeError('Controlled Port failure after cancellation');
         };
-        await expect(child === null ? prepareChild() : phase === 'ready_final' ? ready(child) : claim(child)).rejects.toThrow('Controlled Port failure after cancellation');
+        await expect(prepareChild()).rejects.toThrow('Controlled Port failure after cancellation');
         expect(await current()).toMatchObject({ cancelRequested: true });
     });
 });

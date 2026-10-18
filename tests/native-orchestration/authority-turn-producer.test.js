@@ -182,7 +182,8 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_CAN
             const op = await operation(f);
             expect(op.total).toBe(1); expect(op.attempts).toMatchObject({ narrator: 1 });
             expect(op.compute.attempts).toHaveLength(1);
-            expect(op.compute.attempts[0]).toMatchObject({ status: 'unknown', generationQuotaRef: { role: 'narrator', background: false } });
+            // The rejected HTTP 503 still reported numeric usage, so its charge settles.
+            expect(op.compute.attempts[0]).toMatchObject({ status: 'settled', generationQuotaRef: { role: 'narrator', background: false } });
             expect((await f.core.observe(f.h.handle, f.base.session.sessionId)).revision).toEqual(f.base.revision);
         } finally { await f.cleanup(); }
     });

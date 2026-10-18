@@ -69,13 +69,19 @@ export class EffectController {
         assertNativeId(effectId, 'orchestrationEffect'); assertNativeId(nodeAttemptId, 'orchestrationAttempt');
         assertObject(proposal, ['actionRef', 'targetRef', 'inputRef', 'inputHash'], 'EffectProposal'); assertDigest(proposal.inputHash, 'inputHash');
         const detail = { effectId, nodeAttemptId, proposal, ...(contextRetrieval ? { contextForEffectId: proposal.inputRef.contextForEffectId } : {}) };
-        return this.runs.control(handle, controlCommandId('effect.prepare', effectId), { ...guard, operation: 'effect.prepare', detail }, async ({ tx, root, now, deny }) => {
+        return this.runs.control(handle, controlCommandId('effect.prepare', effectId), { ...guard, operation: 'effect.prepare', detail }, async ({ tx, root, now, deny, unchanged }) => {
             const attemptRecord = await readAttempt(tx, handle, root, nodeAttemptId), attempt = attemptRecord.doc;
             if (root.cancelRequested || !['running', 'waiting_approval'].includes(root.status) || attempt.status !== (contextRetrieval ? 'waiting_effect' : 'running') || attempt.epoch !== root.epoch
                 || attempt.sourceBindingDigest !== root.sourceBinding.bindingDigest) conflict('native_orchestration_effect_not_admitted');
             if (contextRetrieval) await this.#contextParent(handle, tx, root, attempt, { effectId, ...proposal });
             await assertFanoutAdmission({ tx, handle, root, attempt, reserveSlot: false });
-            const decision = await this.authorizeEffect({ handle, tx, root, attempt, proposal, phase: 'prepare' });
+            let decision;
+            try { decision = await this.authorizeEffect({ handle, tx, root, attempt, proposal, phase: 'prepare' }); } catch (error) {
+                // Keep a lawful Root change the callback committed before failing.
+                if (!await unchanged()) return deny(error);
+                throw error;
+            }
+            if (!await unchanged()) return deny(new ConflictError('native_orchestration_effect_stale'));
             const node = root.graph.nodes.find(node => node.nodeId === attempt.nodeId);
             if (!node.capabilities.includes(decision.capability) || !root.graph.capabilityCeiling.includes(decision.capability)) conflict('native_orchestration_effect_capability_denied');
             if (contextRetrieval ? decision.capability !== 'memory.retrieve' || decision.risk !== 'R1' || decision.requiresApproval
@@ -95,7 +101,7 @@ export class EffectController {
         assertObject(input, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'effectId', 'budgetAttemptRef'], 'readyEffect');
         const { effectId, budgetAttemptRef, ...guard } = input;
         if (!budgetAttemptRef || Object.prototype.toString.call(budgetAttemptRef) !== '[object Object]') throw new TypeError('Original budget attempt reference is required');
-        return this.runs.control(handle, controlCommandId('effect.ready', effectId), { ...guard, operation: 'effect.ready', detail: { effectId, budgetAttemptRef } }, async ({ tx, root, now, deny }) => {
+        return this.runs.control(handle, controlCommandId('effect.ready', effectId), { ...guard, operation: 'effect.ready', detail: { effectId, budgetAttemptRef } }, async ({ tx, root, now, deny, unchanged }) => {
             const record = await readEffect(tx, handle, root, effectId), intent = record.doc;
             this.#current(root, intent);
             if (intent.status !== 'prepared') conflict('native_orchestration_effect_not_prepared');
@@ -103,9 +109,10 @@ export class EffectController {
                 await this.#contextReady(handle, tx, root, intent);
                 await this.verifyBudgetAttempt({ handle, tx, root, intent, budgetAttemptRef });
             } catch (error) {
-                if (error instanceof ConflictError) return deny(error);
+                if (error instanceof ConflictError || !await unchanged()) return deny(error);
                 throw error;
             }
+            if (!await unchanged()) return deny(new ConflictError('native_orchestration_effect_stale'));
             this.#step(root, now);
             await putMutable(tx, controlRecordKey(handle, root.runId, 'effect', effectId), { ...intent, budgetAttemptRef, status: 'ready' }, { expectedIntegrity: record.integrity });
             if (intent.requiresApproval) root.status = 'waiting_approval';
@@ -148,7 +155,7 @@ export class EffectController {
     async claim(handle, input) {
         assertObject(input, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'effectId'], 'claimEffect');
         const { effectId, ...guard } = input, dispatchToken = randomUUID();
-        const ack = await this.runs.control(handle, controlCommandId('effect.claim', effectId), { ...guard, operation: 'effect.claim', detail: { effectId } }, async ({ tx, root, now, deny }) => {
+        const ack = await this.runs.control(handle, controlCommandId('effect.claim', effectId), { ...guard, operation: 'effect.claim', detail: { effectId } }, async ({ tx, root, now, deny, unchanged }) => {
             const record = await readEffect(tx, handle, root, effectId), intent = record.doc;
             this.#current(root, intent);
             if (intent.status !== 'ready' || !intent.budgetAttemptRef) conflict('native_orchestration_effect_not_ready');
@@ -158,9 +165,10 @@ export class EffectController {
                 await assertFanoutAdmission({ tx, handle, root, attempt, reserveSlot: false });
                 await this.verifyBudgetAttempt({ handle, tx, root, intent, budgetAttemptRef: intent.budgetAttemptRef });
             } catch (error) {
-                if (error instanceof ConflictError) return deny(error);
+                if (error instanceof ConflictError || !await unchanged()) return deny(error);
                 throw error;
             }
+            if (!await unchanged()) return deny(new ConflictError('native_orchestration_effect_stale'));
             if (intent.requiresApproval) {
                 if (!intent.approvalRef) conflict('native_orchestration_approval_required');
                 const approvalRecord = await readApproval(tx, handle, root, intent.approvalRef), approval = approvalRecord.doc;
@@ -172,9 +180,10 @@ export class EffectController {
                     await this.verifyApproval({ handle, tx, root, intent, approval, decision: decision.doc });
                 } catch (error) {
                     if (error instanceof ConflictError || error.code === 'native_orchestration_review_unavailable'
-                    ) return deny(error);
+                        || !await unchanged()) return deny(error);
                     throw error;
                 }
+                if (!await unchanged()) return deny(new ConflictError('native_orchestration_effect_stale'));
                 await putMutable(tx, controlRecordKey(handle, root.runId, 'approval', approval.approvalId), { ...approval, status: 'consumed' }, { expectedIntegrity: approvalRecord.integrity });
                 root.pendingApprovalRefs = root.pendingApprovalRefs.filter(id => id !== approval.approvalId);
             }

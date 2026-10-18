@@ -346,8 +346,11 @@ export class RunRepository {
             const record = await this.#root(tx, handle, input.runId), root = record.doc;
             this.#guard(root, input, fence);
             if (root.parentRef && input.operation !== 'effect.observe') await assertChildRunCurrent(tx, handle, root, { requireBudget: input.operation !== 'run.childBudget' });
+            // A domain callback inside reduce may itself commit a lawful Root
+            // change. A denial still commits, so reducers check before writing.
+            const unchanged = async () => (await tx.getResource(runKey(handle, root.runId)))?.integrity === record.integrity;
             const result = await reduce({ tx, root: cloneNativeDocument(root), plan: record.planRevision, fence, now: timestamp,
-                deny: error => new ControlDenial(error) });
+                deny: error => new ControlDenial(error), unchanged });
             if (result instanceof ControlDenial) return result;
             const current = await tx.getResource(runKey(handle, root.runId));
             if (current?.integrity !== record.integrity) return new ControlDenial(new ConflictError('native_orchestration_run_conflict'));
