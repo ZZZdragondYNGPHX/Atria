@@ -85,7 +85,8 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
             await h.agent.queueGoalWake(h.handle, h.goal.scope.projectId, h.task.taskId, h.goal.goalId, 'interrupted-event');
             await h.agent.claimGoalWake(h.handle, h.goal.scope.projectId, h.task.taskId, h.goal.goalId, 'interrupted-event', 'old-operation');
             const original = await h.agent.getTask(h.handle, h.goal.scope.projectId, h.task.taskId);
-            const child = `import { FsEngine } from './src/storage/engines/fs-engine.js';
+            const child = `import './tests/util/config.js';
+                import { FsEngine } from './src/storage/engines/fs-engine.js';
                 import { SqliteEngine } from './src/storage/engines/sqlite-engine.js';
                 import { services } from './tests/agent-intelligence/project-fixture.js';
                 import { GoalContinuationService } from './src/native/agent-intelligence/goal-continuation.js';
