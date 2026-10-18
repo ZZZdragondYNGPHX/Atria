@@ -139,7 +139,7 @@ describe.each(harnesses)('$name original Project Review output', ({ make }) => {
                     changes.push([{ kind: K.orchestrationCommand, handle: f.h.handle, commandId: command.doc.commandId }, doc => { doc.outcome.claimRef.claimId = 'oclaim_' + hash('foreign').slice(0, 32); }]);
                 for (const [key, mutate] of changes) {
                     const saved = await tx.getResource(key), doc = structuredClone(saved.doc); mutate(doc);
-                    try { await tx.putResource(key, { ...saved, doc, integrity: hash(doc) }); await expect(runs.get(f.h.handle, root.runId)).rejects.toThrow(); }
+                    try { await tx.putResource(key, { ...saved, doc, integrity: hash(doc) }); await expect(readProjectReviewOutput(tx, f.h.handle, root)).rejects.toThrow(); }
                     finally { await tx.putResource(key, saved); }
                 }
             });
