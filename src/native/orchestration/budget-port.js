@@ -91,6 +91,12 @@ export class BudgetPort {
         return RpRunControl.prototype.context.call(this.rpControl, handle, controlId, source, tx ? { tx } : undefined);
     }
 
+    #rpSource(handle, controlId, source, tx) {
+        if (!(this.rpControl instanceof RpRunControl)) fail('native_orchestration_budget_unavailable');
+        const read = transaction => RpRunControl.prototype._source.call(this.rpControl, transaction, handle, controlId, source);
+        return tx ? read(tx) : this.rpControl._engine.withTransaction(handle, read);
+    }
+
     /** Admission-time authority for one source operation. A source without an original bank is refused. */
     async authorityFor(handle, source, { tx } = {}) {
         if (source?.domain === 'native_session') {
@@ -110,7 +116,7 @@ export class BudgetPort {
             fields(source, ['domain', 'controlId', 'source'], 'RP budget source');
             const ref = { authority: 'run_control', domain: 'rp_chat', controlId: source.controlId, source: structuredClone(source.source),
                 operationId: hashNativeDocument({ controlId: source.controlId, input: source.source.input, purpose: source.source.purpose, outputSlot: source.source.outputSlot }) };
-            await this.#rpContext(handle, source.controlId, source.source, tx);
+            await this.#rpSource(handle, source.controlId, source.source, tx);
             return assertBudgetAuthorityRef(ref);
         }
         fail('native_orchestration_budget_unavailable');
@@ -259,7 +265,7 @@ export class BudgetPort {
         assertBudgetAuthorityRef(authorityRef);
         if (authorityRef.domain === 'session') await this.#session(handle, authorityRef);
         else if (authorityRef.authority === 'project_task') await this.#project(handle, authorityRef, { tx });
-        else await this.#rpContext(handle, authorityRef.controlId, authorityRef.source, tx);
+        else await this.#rpSource(handle, authorityRef.controlId, authorityRef.source, tx);
     }
 
     async #ledger(handle, tx, authority) {
@@ -458,12 +464,11 @@ export class BudgetPort {
         const bank = {
             authorityRef,
             assertCurrent: async () => {
-                await this.assertCurrent(handle, authorityRef);
                 if (authorityRef.domain === 'rp_chat') {
                     const context = await this.#rpContext(handle, authorityRef.controlId, authorityRef.source);
                     if (rpPrefixDigest !== null && rpPrefixDigest !== context.prefixDigest) throw new ConflictError('native_generation_revision_conflict');
                     rpPrefixDigest = context.prefixDigest;
-                }
+                } else await this.assertCurrent(handle, authorityRef);
                 await assertCurrent?.();
             },
             rpContext: () => {

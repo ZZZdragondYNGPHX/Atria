@@ -140,8 +140,7 @@ export class RpRunControl {
     async context(handle, controlId, source, { tx } = {}) {
         assertNativeId(controlId, 'rpControl');
         const read = async transaction => {
-            const { control } = await this._source(transaction, handle, controlId, source);
-            const chat = await transaction.getResource(chatKey(handle, control.locator));
+            const { chat } = await this._source(transaction, handle, controlId, source);
             const prefix = chat.body.slice(0, source.input.floor + 1);
             assertRpPrefix(prefix);
             return { prefixDigest: hashNativeDocument(prefix.map(message => ({ messageId: sourceMessageId(message), content: sourceContent(message) }))),
@@ -156,8 +155,8 @@ export class RpRunControl {
     async memoryContext(handle, controlId, source, { tx } = {}) {
         assertNativeId(controlId, 'rpControl');
         const read = async transaction => {
-            const { control } = await this._source(transaction, handle, controlId, source);
-            const chat = await transaction.getResource(chatKey(handle, control.locator)), { charDir, name, isGroup, groupId } = control.locator;
+            const { control, chat } = await this._source(transaction, handle, controlId, source);
+            const { charDir, name, isGroup, groupId } = control.locator;
             assertRpPrefix(chat.body.slice(0, source.input.floor + 1));
             const states = await ChatRepo.prototype.getStateBatch.call(this._chatRepo, handle, charDir, name,
                 [PROVENANCE_NAMESPACE, memoryNamespaces.STATE_NAMESPACE, memoryNamespaces.META_NAMESPACE], { isGroup, groupId, tx: transaction });
@@ -181,7 +180,7 @@ export class RpRunControl {
         const message = Array.isArray(chat.body) ? chat.body[source.input.floor] : null;
         if (!message || !equalNativeDocuments(rpOperationInput(message, source.input.floor), source.input)) throw new ConflictError('native_generation_revision_conflict');
         const operationId = hashNativeDocument({ controlId, input: source.input, purpose: source.purpose, outputSlot: source.outputSlot });
-        return { record, control, operationId };
+        return { record, control, operationId, chat };
     }
 
     _operation(control, operationId, source) {

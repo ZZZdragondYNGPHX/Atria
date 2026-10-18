@@ -608,7 +608,7 @@ export class NativeRpOrchestrationAuthority {
         const binding = await this.#plans().getBinding(state.handle, { domain: 'rp_chat', controlId: state.input.controlId });
         if (!equal(binding, state.selected.binding)) fail('native_orchestration_source_stale');
         const selected = configuration ? await this.#selection(state.host, state.handle, state.input) : state.selected;
-        if (!equal(selected.binding, state.selected.binding) || selected.configDigest !== state.selected.configDigest
+        if (configuration && (!equal(selected.binding, state.selected.binding) || selected.configDigest !== state.selected.configDigest
             || !equal(selected.audienceSources, state.selected.audienceSources)
             || selected.child?.configDigest !== state.selected.child?.configDigest || selected.planner?.configDigest !== state.selected.planner?.configDigest
             || selected.chain?.configDigest !== state.selected.chain?.configDigest || selected.review?.configDigest !== state.selected.review?.configDigest
@@ -616,7 +616,7 @@ export class NativeRpOrchestrationAuthority {
             || !equal(selected.graphSelections.map(item => [item.configDigest, item.child?.configDigest ?? null]),
                 state.selected.graphSelections.map(item => [item.configDigest, item.child?.configDigest ?? null]))
             || selected.judge?.configDigest !== state.selected.judge?.configDigest
-            || !equal(selected.judge?.candidates.map(item => item.configDigest) ?? [], state.selected.judge?.candidates.map(item => item.configDigest) ?? []))
+            || !equal(selected.judge?.candidates.map(item => item.configDigest) ?? [], state.selected.judge?.candidates.map(item => item.configDigest) ?? [])))
             fail('native_orchestration_source_stale');
         if (state.graphSnapshot) {
             const root = await this.#execution().runs.get(state.handle, state.graphRunId);
