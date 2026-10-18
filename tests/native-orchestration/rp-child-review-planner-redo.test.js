@@ -20,8 +20,8 @@ test('SQLite RP child Review redoes a completed pure Planner causal descendant b
         expect(child.status).toBe('completed'); expect(parent.status).toBe('completed'); expect(child.outputClaims).toHaveLength(1); expect(parent.outputClaims).toHaveLength(1);
         expect(child.limits.maxSteps).toBe(50); expect(f.childPlan.definition.limits.maxSteps).toBe(50);
         expect(child.limits.maxEdgeVisits).toBe(10); expect(f.childPlan.definition.limits.maxEdgeVisits).toBe(10);
-        expect(parent.limits.maxSteps).toBe(59); expect(parent.limits.maxEdgeVisits).toBe(11);
-        expect(child.progress.steps).toBe(46); expect(parent.progress.steps).toBe(13); expect(parent.treeProgress.steps).toBe(59);
+        expect(parent.limits.maxSteps).toBe(60); expect(parent.limits.maxEdgeVisits).toBe(11);
+        expect(child.progress.steps).toBe(47); expect(parent.progress.steps).toBe(13); expect(parent.treeProgress.steps).toBe(60);
         expect(child.progress.edgeVisits).toBe(10); expect(parent.progress.edgeVisits).toBe(1); expect(parent.treeProgress.edgeVisits).toBe(11);
         expect(child.graphRevision).toBe(2); expect(child.progress).toMatchObject({ attempts: 8, reviews: 2, patches: 2, replans: 0, loopIterations: 0 });
         expect(child.nodeControl[f.nodes.terminal.nodeId].priority).toBe(7); expect(child.pendingEffectRefs).toEqual([]); expect(parent.pendingEffectRefs).toEqual([]);

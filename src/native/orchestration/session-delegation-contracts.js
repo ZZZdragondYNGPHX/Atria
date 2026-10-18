@@ -99,7 +99,13 @@ export function sessionDelegationResultSources(child, producer, plan) {
 }
 
 /** One causal child step, also usable while later child nodes do not exist. */
-export async function readSessionDelegatedModelInput(tx, handle, child, producer, intent, publicationSeq = child.eventSeq + 1) {
+export function readSessionDelegatedModelInput(tx, handle, child, producer, intent, publicationSeq = child.eventSeq + 1) {
+    return readModelInput(tx, handle, child, producer, intent, publicationSeq, null);
+}
+
+/** Only this module's current History call can supply its own fully read
+ * facts. Public input reads always enter without reusable facts. */
+async function readModelInput(tx, handle, child, producer, intent, publicationSeq, ownedFacts) {
     const parent = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: child.parentRef?.parentRunId }))?.doc;
     if (!parent) invalid();
     const lineage = await readSessionDelegation(tx, handle, parent, child.runId);
@@ -124,13 +130,24 @@ export async function readSessionDelegatedModelInput(tx, handle, child, producer
         requestedRootDigest: hash(child), producerDigest: hash(producer), effectDigest: hash(intent) };
     const controls = input.acceptedControlRefs ?? [], sources = [], completedControls = [];
     for (const ref of controls) {
-        const fact = await readSessionDelegatedControl(tx, handle, child, ref);
+        const fact = ownedFacts?.controls.get(hash(ref)) ?? await readSessionDelegatedControl(tx, handle, child, ref);
         if (!fact || ref.runId !== child.runId || !equal(ref, fact.controlRef) || fact.review?.decision === 'rerun') invalid(); completedControls.push(fact);
     }
     // This invocation just proved every original member of its explicit Join.
     // Reuse those typed facts only for these exact input refs, then batch any
     // remaining Results through the original full reader. No grant is saved.
     const joinedResults = new Map(completedControls.flatMap(fact => fact.graphResults ?? []).map(fact => [hash(fact.receipt.resultRef), fact]));
+    // A fact enters this private map only through this History call's own
+    // complete Graph Result reader. Caller final/pending facts never enter it.
+    for (const ref of input.acceptedGraphResultRefs) {
+        const checked = ownedFacts?.results.get(ref.resultId);
+        if (!checked || joinedResults.has(hash(ref))) continue;
+        const proof = checked.sessionDelegatedInput;
+        if (!proof || proof.requestedRootDigest !== ownedFacts.rootDigest || proof.producerDigest !== hash(checked.producer)
+            || proof.effectDigest !== hash(checked.modelEffect) || !checked.modelCompletion
+            || checked.modelEffect.effectId !== checked.producer.effectRefs[0] || !equal(ref, checked.receipt.resultRef)) invalid();
+        joinedResults.set(hash(ref), checked);
+    }
     const missingRefs = input.acceptedGraphResultRefs.filter(ref => !joinedResults.has(hash(ref)));
     const resultFacts = await readGraphNodeResults(tx, handle, child, missingRefs.map(ref => ref.resultId));
     for (const ref of input.acceptedGraphResultRefs) {
@@ -172,7 +189,7 @@ export async function readSessionDelegatedModelInput(tx, handle, child, producer
             receipt: { decisionSeq: publicationSeq, traversalReceiptRef: { runId: child.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } }, producerBindings: bindings, allowLoopBack: !!loops.length });
     }
     return { lineage, input, sourceRefs, sources, bindings, loops, replacement,
-        requestedRootDigest: hash(child), producerDigest: hash(producer), effectDigest: hash(intent) };
+        requestedRootDigest: ownedFacts?.rootDigest ?? hash(child), producerDigest: hash(producer), effectDigest: hash(intent) };
 }
 
 /** Validate all actual tasks and their original Transition and bank facts.
@@ -209,6 +226,7 @@ export async function readSessionDelegatedGraphHistory(tx, handle, child, { fina
     // Model proof. A caller's finalPublication/pendingProducer never enters this
     // same-call map and cannot supply or replace a proof through this API.
     const checkedResults = new Map(results.map(fact => [fact.producer.attemptId, fact]));
+    const ownedFacts = { rootDigest, results: new Map(results.map(fact => [fact.receipt.resultRef.resultId, fact])), controls: new Map() };
     const facts = [...results, ...(finalPublication ? [{ ...finalPublication, producer: finalProducer,
         settlement: finalPublication.attemptReceipt }] : [])];
     const modelAttempts = attempts.filter(attempt => models.some(node => node.nodeId === attempt.nodeId));
@@ -250,8 +268,15 @@ export async function readSessionDelegatedGraphHistory(tx, handle, child, { fina
         if (fact?.record && !equal(fact.record.envelope.sourceRefs.slice(2), sourceRefs)) invalid();
         if (checked && (!checkedInput || checkedInput.requestedRootDigest !== rootDigest || checkedInput.producerDigest !== hash(producer)
             || checkedInput.effectDigest !== hash(effect) || effect.effectId !== producer.effectRefs[0] || !checked.modelCompletion)) invalid();
-        if (!unsuccessful && !checked && !await readModelCompletionReceipt(handle, tx, child, effect)) invalid();
-        const proof = checkedInput ?? await readSessionDelegatedModelInput(tx, handle, child, producer, effect, fact?.receipt.decisionSeq ?? child.eventSeq + 1);
+        // These control facts came from the original typed reader immediately
+        // above, including its full Model/settlement/bank proof. Re-read only a
+        // producer for which this call has no own completed proof.
+        const checkedControl = ['planner', 'review', 'judge'].includes(node.kind) ? fact : null;
+        if (checkedControl && (!equal(checkedControl.producer, producer) || checkedControl.receipt.modelEffectId !== effect.effectId
+            || effect.nodeAttemptId !== producer.attemptId || effect.epoch !== producer.epoch
+            || effect.sourceBindingDigest !== child.sourceBinding.bindingDigest || effect.grantDigest !== producer.effectiveGrantDigest)) invalid();
+        if (!unsuccessful && !checked && !checkedControl && !await readModelCompletionReceipt(handle, tx, child, effect)) invalid();
+        const proof = checkedInput ?? await readModelInput(tx, handle, child, producer, effect, fact?.receipt.decisionSeq ?? child.eventSeq + 1, ownedFacts);
         for (const binding of unsuccessful || proof.replacement ? [] : proof.bindings) {
             usedEdges.set(binding.edgeId, (usedEdges.get(binding.edgeId) ?? 0) + 1);
             if (graph.edges.find(edge => edge.edgeId === binding.edgeId).loopBack) loopIterations++;
@@ -265,6 +290,7 @@ export async function readSessionDelegatedGraphHistory(tx, handle, child, { fina
             || local.some(row => row.reservationId !== child.runId || row.status !== 'settled')) invalid();
         if (rows.some(row => row.status !== 'settled')) settled = false;
         effects.push(effect); expectedRefs.push(...rows.map(row => row.attemptId), ...local.map(row => row.attemptId));
+        if (checkedControl) ownedFacts.controls.set(hash(checkedControl.controlRef), checkedControl);
     }
     const latest = new Map(), previous = new Map(), replaced = new Map(), consumed = new Set(), keys = new Map();
     for (const { producer, fact, proof } of entries.toSorted((a, b) => (a.fact?.receipt.decisionSeq ?? child.eventSeq + 1) - (b.fact?.receipt.decisionSeq ?? child.eventSeq + 1))) {

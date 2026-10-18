@@ -45,17 +45,27 @@ for (const width of [1440, 900, 320]) test(`Utilities and Agents at ${width}px`,
         await expect(page.locator(utility === 'diagnostics' ? '.atriaLogsWorkspace' : `[data-atria-utility-workspace="${utility === 'plugins' ? 'extensions' : utility}"]`)).toBeVisible();
         if (utility === 'settings') {
             const settings = page.locator('[data-atria-utility-workspace=settings]');
+            const openCategory = async name => {
+                const back = settings.getByRole('button', { name: 'Back to settings', exact: true });
+                if (await back.isVisible()) await back.click();
+                await settings.getByRole('navigation', { name: 'Settings categories', exact: true })
+                    .getByRole('button', { name, exact: true }).click();
+            };
+            await openCategory('Accessibility & performance');
             const reduced = settings.getByRole('switch', { name: 'Reduce motion', exact: true });
             const original = await reduced.isChecked();
             await reduced.setChecked(!original);
             await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openUtility('plugins'));
             await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openUtility('settings'));
+            await openCategory('Accessibility & performance');
             await expect(reduced).toBeChecked({ checked: !original });
             await reduced.setChecked(original);
             await settings.evaluate(node => { node.scrollTop = 0; });
-            await expect(settings.getByRole('slider', { name: 'Reading size', exact: true })).toBeVisible();
-            await settings.getByText('Theme compatibility', { exact: true }).click();
-            await expect(settings.locator('#themes')).toBeVisible();
+            await openCategory('Reading & input');
+            await expect(settings.getByRole('slider', { name: 'Interface size', exact: true })).toBeVisible();
+            await openCategory('Appearance & themes');
+            await settings.getByText('Original files and upgrade data', { exact: true }).click();
+            await expect(settings.getByRole('combobox', { name: 'Original theme file', exact: true })).toBeVisible();
         }
         if (utility === 'plugins') {
             const plugins = page.locator('[data-atria-utility-workspace=extensions]');

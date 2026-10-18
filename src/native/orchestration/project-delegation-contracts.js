@@ -7,7 +7,7 @@ import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { controlRecordKey, readAttempt, assertAttemptConsumable, assertAttemptCurrent, readAttemptInvalidation } from './controller-common.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readDelegationCompletion } from './delegation-completion-contracts.js';
-import { readGraphNodeResult } from './graph-result-contracts.js';
+import { readGraphNodeResult, readGraphNodeResults } from './graph-result-contracts.js';
 import { readTaskLocalOutput } from './task-local-output-contracts.js';
 import { readHandoffReturn, handoffReturnReceiptId } from './handoff-return-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
@@ -80,9 +80,9 @@ export async function readProjectDelegatedModelInput(tx, handle, child, producer
     return readProjectDelegatedModelInputFacts(tx, handle, child, producer, intent, publicationSeq, lineage);
 }
 
-// Only this module can provide facts obtained by its own original Result
-// reads. The public entry above always starts from fresh durable delegation.
-async function readProjectDelegatedModelInputFacts(tx, handle, child, producer, intent, publicationSeq, lineage, knownSources = []) {
+// Only this module can provide facts obtained by its own complete typed
+// Result/control reads. The public entry above always starts from fresh durable delegation.
+async function readProjectDelegatedModelInputFacts(tx, handle, child, producer, intent, publicationSeq, lineage, ownedInputs = null) {
     const parent = lineage?.parent, input = intent.inputRef;
     if (!lineage || input?.kind !== 'native_project_delegated_intent' || !equal(input, producer.inputRefs[0])
         || input.parentRunId !== parent.runId || input.parentAttemptId !== lineage.parentAttempt.attemptId
@@ -101,13 +101,12 @@ async function readProjectDelegatedModelInputFacts(tx, handle, child, producer, 
     if (input.fanoutAttemptId) return readProjectDelegatedFanoutInput(tx, handle, child, producer, input, publicationSeq);
     const sources = [];
     for (const ref of input.acceptedGraphResultRefs) {
-        const fact = knownSources.find(fact => equal(fact.receipt.resultRef, ref))
-            ?? await readGraphNodeResult(tx, handle, child, ref.resultId);
-        if (!fact || ref.runId !== child.runId || fact.receipt.decisionSeq >= publicationSeq) invalid(); sources.push(fact);
+        const fact = ownedInputs?.results.get(hash(ref)) ?? await readGraphNodeResult(tx, handle, child, ref.resultId);
+        if (!fact || !equal(fact.receipt.resultRef, ref) || ref.runId !== child.runId || fact.receipt.decisionSeq >= publicationSeq) invalid(); sources.push(fact);
     }
     const controls = [];
     for (const ref of input.acceptedControlRefs ?? []) {
-        const fact = await readProjectDelegatedControl(tx, handle, child, ref);
+        const fact = ownedInputs?.controls.get(hash(ref)) ?? await readProjectDelegatedControl(tx, handle, child, ref);
         if (!fact || !equal(fact.controlRef, ref) || fact.review?.decision === 'rerun' || fact.receipt.decisionSeq >= publicationSeq) invalid();
         controls.push(fact);
     }
@@ -150,12 +149,13 @@ export async function readProjectDelegatedGraphHistory(tx, handle, child, { fina
     const finalProducer = pendingProducer ?? finalPublication.producer ?? (await readAttempt(tx, handle, child, finalPublication.receipt.producerAttemptId)).doc;
     if (finalProducer.nodeId !== shape.terminalNodeId) invalid();
     let lineage = null;
-    const results = [];
-    for (const ref of child.resultRefs) {
-        if (finalPublication && equal(ref, finalPublication.receipt.resultRef)) continue;
-        const fact = await readGraphNodeResult(tx, handle, child, ref.resultId);
-        if (!fact) invalid(); results.push(fact);
-    }
+    const intermediateRefs = child.resultRefs.filter(ref => !finalPublication || !equal(ref, finalPublication.receipt.resultRef));
+    const readResults = await readGraphNodeResults(tx, handle, child, intermediateRefs.map(ref => ref.resultId));
+    const results = intermediateRefs.map(ref => {
+        const fact = readResults.get(ref.resultId);
+        if (!fact || !equal(fact.receipt.resultRef, ref)) invalid();
+        return fact;
+    });
     // An intermediate Result has just proved its actual child Model input and
     // complete parent delegation. Reuse that lineage only after rereading the
     // exact original parent and child in this same history invocation.
@@ -202,6 +202,11 @@ export async function readProjectDelegatedGraphHistory(tx, handle, child, { fina
     const patches = controls.filter(fact => fact.patch);
     if (patches.length !== child.graphRevision || new Set(patches.map(fact => fact.producer.graphRevision)).size !== patches.length
         || controls.filter(fact => fact.review).length !== child.progress.reviews) invalid();
+    // Only this invocation's own complete typed reads enter these private maps.
+    // The public entry stays fresh. Caller finalPublication/pendingProducer is
+    // excluded; exact durable parent/child lineage was independently read above.
+    const ownedInputs = lineage ? { results: new Map(results.map(fact => [hash(fact.receipt.resultRef), fact])),
+        controls: new Map(controls.map(fact => [hash(fact.controlRef), fact])) } : null;
     const effects = [], expectedRefs = [], usedEdges = new Map(), entries = [];
     for (const joined of fanouts) for (const binding of joined.fanout.inputRefs[0].graphBindings) usedEdges.set(binding.edgeId, (usedEdges.get(binding.edgeId) ?? 0) + 1);
     for (const joined of fanouts) for (const id of [...joined.frame.edgeAdmissionRefs, ...joined.joinReceipt.edgeAdmissionRefs]) {
@@ -224,13 +229,16 @@ export async function readProjectDelegatedGraphHistory(tx, handle, child, { fina
             || producer.effectiveGrantDigest !== child.parentRef.effectiveGrantDigest || !equal(producer.budgetRef, authority))) invalid();
         const effect = (await readEffect(tx, handle, child, producer.effectRefs[0])).doc;
         if (fact?.record && fact.record.envelope.sourceRefs.length !== 2) invalid();
-        if (controls.includes(fact)) await readProjectDelegatedModelInput(tx, handle, child, producer, effect, fact.receipt.decisionSeq);
+        if (controls.includes(fact)) {
+            if (lineage) await readProjectDelegatedModelInputFacts(tx, handle, child, producer, effect, fact.receipt.decisionSeq, lineage, ownedInputs);
+            else await readProjectDelegatedModelInput(tx, handle, child, producer, effect, fact.receipt.decisionSeq);
+        }
         if (producer.attemptId === finalProducer.attemptId) {
             // The original terminal Model input read also proves this exact
             // parent/child delegation. Reuse its lineage in this history call
             // rather than proving the same full parent chain a second time.
             lineage = (lineage
-                ? await readProjectDelegatedModelInputFacts(tx, handle, child, producer, effect, fact?.receipt.decisionSeq ?? child.eventSeq + 1, lineage, results)
+                ? await readProjectDelegatedModelInputFacts(tx, handle, child, producer, effect, fact?.receipt.decisionSeq ?? child.eventSeq + 1, lineage, ownedInputs)
                 : await readProjectDelegatedModelInput(tx, handle, child, producer, effect, fact?.receipt.decisionSeq ?? child.eventSeq + 1)).lineage;
         }
         // Model inputs of every typed fact above already have their original

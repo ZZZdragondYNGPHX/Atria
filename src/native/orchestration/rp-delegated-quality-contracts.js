@@ -42,7 +42,7 @@ export function readRpDelegatedControl(tx, handle, root, ref) {
     return inspectInputs(tx, handle, root, () => readControl(tx, handle, root, ref));
 }
 
-async function readControl(tx, handle, root, ref) {
+async function readControl(tx, handle, root, ref, historyFacts = null) {
     if (root.sourceBinding.sourceAuthority !== 'rp_chat' || !root.parentRef || ref?.runId !== root.runId) invalid();
     if (ref.kind === 'graph_join_control') {
         const fact = await readRpDelegatedFanoutCompletion(tx, handle, root, ref.attemptId);
@@ -60,7 +60,7 @@ async function readControl(tx, handle, root, ref) {
                 const previous = (await readAttempt(_tx, _handle, _root, control.attemptId)).doc;
                 const current = await readAttemptSettlement(_tx, _handle, _root, _producer);
                 if ((await readAttemptSettlement(_tx, _handle, _root, previous)).decisionSeq >= current.decisionSeq) invalid();
-                const checked = await readRpDelegatedControl(_tx, _handle, _root, control);
+                const checked = historyFacts?.controls.get(hash(control)) ?? await readRpDelegatedControl(_tx, _handle, _root, control);
                 controls.push(checked); completedControls.push(checked);
             }
             return controls;
@@ -72,8 +72,9 @@ async function readControl(tx, handle, root, ref) {
     // shared completion reader, including their Model/settlement/bank proof.
     // Reuse them only for this control's domain input verification. The maps
     // are private, never returned, and every public read starts from storage.
-    const ownedFacts = { results: new Map((fact.evidence ?? fact.candidates ?? []).map(source => [hash(source.receipt.resultRef), source])),
-        controls: new Map(completedControls.map(source => [hash(source.controlRef), source])) };
+    const ownedFacts = { results: new Map([...historyFacts?.results ?? [],
+        ...(fact.evidence ?? fact.candidates ?? []).map(source => [hash(source.receipt.resultRef), source])]),
+    controls: new Map([...historyFacts?.controls ?? [], ...completedControls.map(source => [hash(source.controlRef), source])]) };
     const rpDelegatedInput = await readControlInputFacts(tx, handle, root, fact.producer, intent, fact.receipt.decisionSeq, ownedFacts);
     return { ...fact, rpDelegatedInput };
 }
@@ -166,13 +167,15 @@ export function readRpDelegatedReviewReplacement(tx, handle, root, producer, inp
     return inspectInputs(tx, handle, root, () => readReviewReplacement(tx, handle, root, producer, input));
 }
 
-async function readReviewReplacement(tx, handle, root, producer, input) {
+async function readReviewReplacement(tx, handle, root, producer, input, ownedFacts = null) {
     const ref = input.reviewFeedbackRef?.reviewReceiptRef;
     const stored = ref?.runId === root.runId ? await checkedRecord(tx, { kind: K.orchestrationRecord, handle, runId: root.runId,
         recordType: 'receipt', recordId: ref.receiptId }) : null;
     if (!stored || stored.doc.receiptKind !== 'graph_review') invalid();
     const modelRef = graphReviewControlRef(root.runId, stored.doc.reviewAttemptId);
-    const fact = await readRpDelegatedControl(tx, handle, root, modelRef), replacement = fact.review.replacements.find(item => item.attemptId === producer.attemptId);
+    const fact = ownedFacts?.controls.get(hash(modelRef)) ?? await readRpDelegatedControl(tx, handle, root, modelRef);
+    if (!equal(fact.controlRef, modelRef)) invalid();
+    const replacement = fact.review.replacements.find(item => item.attemptId === producer.attemptId);
     const target = fact.targets.find(item => item.attemptId === replacement?.targetAttemptId);
     if (fact.review.decision !== 'rerun' || !target || !equal(ref, fact.receipt.reviewReceiptRef)
         || input.reviewFeedbackRef.reasonCode !== fact.review.reasonCode || producer.nodeId !== target.nodeId
@@ -239,7 +242,7 @@ async function readControlInputFactsFresh(tx, handle, child, producer, intent, p
             || rpControlReplanScope(snapshot.graph, source.producer.nodeId).target.nodeId !== producer.nodeId) invalid();
     }
     let replacement = null;
-    if (input.reviewFeedbackRef) replacement = await readRpDelegatedReviewReplacement(tx, handle, child, producer, input);
+    if (input.reviewFeedbackRef) replacement = await readReviewReplacement(tx, handle, child, producer, input, ownedFacts);
     else if (!bundle.bindings.length) {
         if (!snapshot.graph.entryNodeIds.includes(producer.nodeId) || sources.length) invalid();
     } else {
@@ -316,6 +319,10 @@ async function readGraphHistory(tx, handle, child, { pendingProducer = null, fin
         if (!fact || !equal(fact.receipt.resultRef, { runId: child.runId, resultId: id })) invalidHistory();
         intermediate.set(id, fact);
     }
+    // Only this invocation's complete original Result batch/Fanout facts may
+    // enter the private map. Caller final/pending facts are never admitted.
+    const ownedFacts = { results: new Map([...intermediate.values()].map(fact => [hash(fact.receipt.resultRef), fact])), controls: new Map() };
+    for (const fact of fanouts) ownedFacts.controls.set(hash(fact.controlRef), fact);
     for (const fact of fanouts) {
         for (const binding of fact.fanout.inputRefs[0].graphBindings) counts[binding.edgeId] = (counts[binding.edgeId] ?? 0) + 1;
         for (const id of [...fact.frame.edgeAdmissionRefs, ...fact.joinReceipt.edgeAdmissionRefs]) {
@@ -340,14 +347,20 @@ async function readGraphHistory(tx, handle, child, { pendingProducer = null, fin
         const effect = checked ? checked.modelEffect : (await readEffect(tx, handle, child, producer.effectRefs[0])).doc;
         if (checked && (!checkedInput || checkedInput.requestedRootDigest !== rootDigest || checkedInput.producerDigest !== hash(producer)
             || checkedInput.effectDigest !== hash(effect) || effect.effectId !== producer.effectRefs[0] || !checked.modelCompletion)) invalidHistory();
-        const model = checked ? checked.modelCompletion : await readModelCompletionReceipt(handle, tx, child, effect);
-        if (!unsuccessful && !model || effect.sourceBindingDigest !== child.sourceBinding.bindingDigest) invalidHistory();
         const fact = node.kind === 'planner' ? await readGraphPlannerCompletion(tx, handle, child, producer.attemptId, rpDelegatedPlannerReaderOptions)
-            : node.kind === 'review' ? await readRpDelegatedControl(tx, handle, child, graphReviewControlRef(child.runId, producer.attemptId))
-                : node.kind === 'judge' ? await readRpDelegatedControl(tx, handle, child, graphJudgeControlRef(child.runId, producer.attemptId))
+            : node.kind === 'review' ? await readControl(tx, handle, child, graphReviewControlRef(child.runId, producer.attemptId), ownedFacts)
+                : node.kind === 'judge' ? await readControl(tx, handle, child, graphJudgeControlRef(child.runId, producer.attemptId), ownedFacts)
                     : producer.attemptId === finalProducer.attemptId ? finalPublication ? { ...finalPublication, producer, settlement: finalPublication.attemptReceipt } : null
                         : producer.resultRefs.length === 1 ? intermediate.get(producer.resultRefs[0].resultId) : null;
         if (!unsuccessful && (node.kind !== 'agent' && !fact || node.kind === 'agent' && producer.attemptId !== finalProducer.attemptId && !fact)) invalidHistory();
+        // The original typed control reader just proved this complete Model,
+        // Effect, settlement and bank. Do not read the same Model again here.
+        const checkedControl = ['planner', 'review', 'judge'].includes(node.kind) ? fact : null;
+        if (checkedControl && (!equal(checkedControl.producer, producer) || checkedControl.receipt.modelEffectId !== effect.effectId
+            || effect.nodeAttemptId !== producer.attemptId || effect.epoch !== producer.epoch
+            || effect.grantDigest !== producer.effectiveGrantDigest)) invalidHistory();
+        if ((!unsuccessful && !checked && !checkedControl && !await readModelCompletionReceipt(handle, tx, child, effect))
+            || effect.sourceBindingDigest !== child.sourceBinding.bindingDigest) invalidHistory();
         if (node.kind === 'agent' && fact && producer.attemptId !== finalProducer.attemptId) results.push(fact);
         // Only the nonfinal fact this history itself just read can supply its
         // complete input proof. The caller's final publication (and a pending
@@ -355,8 +368,8 @@ async function readGraphHistory(tx, handle, child, { pendingProducer = null, fin
         const proof = producer.attemptId !== finalProducer.attemptId && fact?.rpDelegatedInput
             ? fact.rpDelegatedInput
             : producer.attemptId === finalProducer.attemptId
-                ? await readControlInputFactsFresh(tx, handle, child, producer, effect, fact?.receipt.decisionSeq ?? child.eventSeq + 1, null)
-                : await readControlInputFacts(tx, handle, child, producer, effect, fact?.receipt.decisionSeq ?? child.eventSeq + 1, null);
+                ? await readControlInputFactsFresh(tx, handle, child, producer, effect, fact?.receipt.decisionSeq ?? child.eventSeq + 1, ownedFacts)
+                : await readControlInputFacts(tx, handle, child, producer, effect, fact?.receipt.decisionSeq ?? child.eventSeq + 1, ownedFacts);
         if (!unsuccessful) entries.push({ producer, fact, proof });
         for (const binding of unsuccessful ? [] : proof.bindings) {
             counts[binding.edgeId] = (counts[binding.edgeId] ?? 0) + 1;
@@ -372,6 +385,9 @@ async function readGraphHistory(tx, handle, child, { pendingProducer = null, fin
             || local.some(row => row.reservationId !== child.runId || row.status !== 'settled')) invalidHistory();
         if (rows[0].status !== 'settled') settled = false;
         effects.push(effect); budgetAttemptIds.push(...rows.map(row => row.attemptId), ...local.map(row => row.attemptId));
+        // A control becomes reusable only after its full domain input,
+        // Transition and the original fresh ledger rows above are checked.
+        if (checkedControl) ownedFacts.controls.set(hash(checkedControl.controlRef), checkedControl);
     }
     for (const { producer, fact, proof } of entries.sort((a, b) => (a.fact?.receipt.decisionSeq ?? child.eventSeq + 1) - (b.fact?.receipt.decisionSeq ?? child.eventSeq + 1))) {
         let trigger = null;

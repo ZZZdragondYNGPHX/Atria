@@ -11,7 +11,7 @@ const edge = (from, to, input, maxVisits = 1) => ({ edgeId: id('Edge'), from: { 
     to: { nodeId: to.nodeId, port: input }, condition: 'always', maxVisits, loopBack: false });
 
 /** Original RP Task dual Sources, child held bank, Controller/Model/Chat writers.
- * Seven child Models require independent owner59/11; child50/10 stay original. */
+ * Seven child Models require independent owner60/11; child50/10 stay original. */
 export async function rpChildReviewPlannerRedoFixture(make, { childRequests = 7 } = {}) {
     let nodes, sharedPin;
     const visits = new Map();
@@ -59,9 +59,9 @@ export async function rpChildReviewPlannerRedoFixture(make, { childRequests = 7 
         plan.definition.nodes.find(node => node.kind === 'output').capabilities = ['chat.output'];
         plan.definition.capabilityCeiling = [...plan.definition.nodes[0].capabilities, 'chat.output'];
         plan.definition.graphChangePolicy = { allowedOperations: ['setPendingPriority', 'requestFinalize'], allowedNodeKinds: [] };
-        // New graph, explicitly published total: child46 + parent13 =59 steps;
+        // New graph, explicitly published total: child47 + parent13 =60 steps;
         // child10 + parent1 =11 visits. No existing owner50 plan is changed.
-        plan.definition.limits.maxSteps = 59; plan.definition.limits.maxEdgeVisits = 11;
+        plan.definition.limits.maxSteps = 60; plan.definition.limits.maxEdgeVisits = 11;
         Object.assign(plan.definition.outputContract, { kind: 'rp_narration', slot: 'assistant', resultPolicy: { outputType: 'text', maxBytes: 65536 } });
         plan.dependencyPins.push(sharedPin); plan.definition.nodes[0].dependencyPinIds.push(sharedPin.pinId);
     }, responsePayload: body => {
