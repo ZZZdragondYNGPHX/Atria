@@ -8,6 +8,8 @@
 
 用户最新要求进一步削减验证、甚至无需验证：Source db0a432fe已删除hash内深拷贝/JSON重验/V8编码缓存，并以直接字段比较替代81个内部hash-equal，停止扩展诊断和回归矩阵；仅语法/静态检查通过，未运行新消费者。此执行方式不回标原失败，也不把未取得的消费者结果记为PASS。
 
+当前实现补充（Source **7eef4c971**）：三域已接未执行任务取消/blocked、冻结Fanout scope Judge→Agent、child纯结构Planner安全Review后继及RP子委派owned Actor Context/逐接收方reference-only返回。P6旧mock/测试入口和30份三语教学已清退或迁移。仅静态检查，新增消费者 **NOT_RUN**，未把旧timeout清零；原核心/领域限制与阶段Gate保持，领域嵌套委派仍在实现。
+
 | 原冻结要求 | 真实实现 | 当前结论与剩余项 |
 | --- | --- | --- |
 | D2 唯一 Host、Source、Run/Effect/Receipt | 复用原存储/领域权威、CAS/epoch、银行、unknown 收据；非 Browser writer | 已有实现与必要专项证据，不能推导任意业务图均支持 |
