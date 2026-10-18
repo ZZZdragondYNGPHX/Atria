@@ -190,7 +190,7 @@ Atria 的事件监听器按以下优先级顺序**串行**执行（每个监听�
 | `CHAT_CHANGED` | 聊天切换完成 | `(chatId)` |
 | `CHAT_CREATED` | 新聊天创建 | `(chatId)` |
 | `GROUP_CHAT_CREATED` | 群组聊天创建 | `(chatId)` |
-| `CHAT_BRANCH_CREATED` | 聊天分支或检查点创建 | `(payload)` — 见下文 |
+| `CHAT_BRANCH_CREATED` || `(payload)` — 见下文 |
 
 ### 消息事件
 
@@ -250,51 +250,9 @@ Atria 的事件监听器按以下优先级顺序**串行**执行（每个监听�
 })
 ```
 
-#### CHAT_BRANCH_CREATED 的 payload
-
-```ts
-{
-  mesId: number,                  // 分支/检查点消息索引
-  branchName: string,             // 新分支或检查点聊天 ID / 文件名
-  assistantMessageCount: number,  // 分支中包含的助手消息数
-  sourceTarget: {
-    is_group: boolean,
-    id?: string,
-    avatar_url?: string,
-    file_name?: string,
-  },
-  targetTarget: {
-    is_group: boolean,
-    id?: string,
-    avatar_url?: string,
-    file_name?: string,
-  },
-}
-```
-
-`CHAT_BRANCH_CREATED` 在新分支或检查点聊天文件保存后、UI 切换到新聊天之前触发。如果你的插件存储了聊天绑定的状态数据，应在此事件中将状态复制或截断到新的分支或检查点。
-
 ### 生成钩子事件
 
 生成钩子是插件介入 AI 生成流程的关键机制。它们按以下顺序触发：
-
-```
-GENERATION_STARTED
-  ↓
-GENERATION_CONTEXT_READY        ← 可调整 coreChat 和 maxContext
-  ↓
-GENERATION_BEFORE_WORLD_INFO_SCAN  ← 可影响世界书扫描
-  ↓
-GENERATION_AFTER_WORLD_INFO_SCAN   ← 世界书扫描完成
-  ↓
-GENERATION_WORLD_INFO_FINALIZED    ← 世界书最终确定
-  ↓
-GENERATION_BEFORE_API_REQUEST      ← 最终请求检查
-  ↓
-（API 请求发送）
-  ↓
-GENERATION_ENDED / GENERATION_STOPPED
-```
 
 #### 钩子选择指南
 
@@ -303,7 +261,7 @@ GENERATION_ENDED / GENERATION_STOPPED
 | `GENERATION_CONTEXT_READY` | 裁剪/替换 `coreChat`，调整上下文限制 | 依赖世界书输出的逻辑 |
 | `GENERATION_BEFORE_WORLD_INFO_SCAN` | 影响世界书扫描的临时修改 | 最终请求体编辑 |
 | `GENERATION_WORLD_INFO_FINALIZED` | 读取最终世界书结果、深度注入 | 重建扫描前的聊天切片假设 |
-| `GENERATION_BEFORE_API_REQUEST` | 最终请求检查、工具注入、Provider 特定附加 | 需要影响世界书激活的修改 |
+| `GENERATION_BEFORE_API_REQUEST` || 需要影响世界书激活的修改 |
 
 #### GENERATION_CONTEXT_READY payload
 
@@ -387,22 +345,6 @@ context.eventSource.on(context.eventTypes.CHAT_BRANCH_CREATED, async (payload) =
 
 插件的设置面板通过 HTML 片段注入到扩展设置区域。使用 `inline-drawer` 类实现可折叠的设置面板：
 
-```js
-jQuery(async () => {
-  const settingsHtml = await $.get(`${extensionFolderPath}/settings.html`);
-  $('#extensions_settings').append(settingsHtml);
-
-  // 绑定设置控件事件
-  $('#my_plugin_enabled').on('change', function () {
-    extension_settings[EXTENSION_NAME].enabled = $(this).prop('checked');
-    saveSettingsDebounced();
-  });
-
-  // 初始化控件状态
-  $('#my_plugin_enabled').prop('checked', extension_settings[EXTENSION_NAME].enabled);
-});
-```
-
 ### 弹窗对话框
 
 Atria 提供了 `callGenericPopup` 等弹窗 API，用于显示自定义对话框：
@@ -460,7 +402,6 @@ if (myPluginApi) {
 
 ### 浏览器开发者工具
 
-- 在浏览器控制台中使用 `Atria.getContext()` 直接检查上下文对象
 - 使用 `context.eventSource.getListenersMeta(eventName)` 查看某个事件的所有监听器信息
 - 插件身份在排序/调试中通过扩展路径推断，包括第三方扩展（`third-party/<name>`）
 
@@ -472,11 +413,9 @@ Atria 内置了前端日志管理器，会拦截 `console` 输出和 `fetch` 请
 
 | 问题 | 排查方向 |
 |------|----------|
-| 插件未加载 | 检查 `manifest.json` 格式是否正确，`js` 路径是否存在 |
 | 设置未保存 | 确认调用了 `saveSettingsDebounced()` |
 | 事件未触发 | 使用 `getListenersMeta()` 确认监听器已注册 |
 | 样式冲突 | 使用带插件前缀的 CSS 类名 |
-| 状态丢失 | 确认使用了正确的命名空间，检查聊天状态是否写入成功 |
 
 ### 热重载
 

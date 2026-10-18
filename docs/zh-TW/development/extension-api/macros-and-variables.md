@@ -25,7 +25,7 @@ macros.register(name: string, options: {
 }): MacroDefinition | null
 ```
 
-註冊一個巨集。回傳已註冊的定義；驗證失敗時回傳 `null`。
+註冊一個巨集。回傳已註冊的定義；
 
 | 選項 | 說明 |
 |------|------|
@@ -113,7 +113,6 @@ const def = ctx.macros.registry.getMacro('greet');
 | <span v-pre>`{{roll::XdY}}`</span> / <span v-pre>`{{random::a,b,c}}`</span> / <span v-pre>`{{pick::a,b,c}}`</span> | 隨機 |
 | <span v-pre>`{{//comment}}`</span> | 註解（輸出忽略） |
 | <span v-pre>`{{outlet::name}}`</span> | 自訂 WI outlet 內容 |
-| <span v-pre>`{{isMobile}}`</span> / <span v-pre>`{{hasExtension::name}}`</span> | 環境檢查 |
 | <span v-pre>`{{lastGenerationType}}`</span> / <span v-pre>`{{systemPrompt}}`</span> | 流水線狀態 |
 
 ### MacrosParser（已棄用）
@@ -191,7 +190,6 @@ context.variables.local.pop(name: string): string | undefined
 | `add` | 兩者都是數字時做數字加法。已有值是 JSON 陣列時 push。否則作為字串串接 |
 | `inc` / `dec` | `add(name, ±1)` 的捷徑 |
 | `del` | 移除變數。回傳 `''` |
-| `has` | 布林存在性檢查 |
 | `push` | 把 `value` 推入 `name` 處的 JSON 陣列。缺失時自動建為 `[]`。對應巨集形式 <span v-pre>`{{pushvar::name::value}}`</span> |
 | `pop` | 從 `name` 處的 JSON 陣列彈出最後一個元素。空或缺失時為無操作。對應巨集形式 <span v-pre>`{{popvar::name}}`</span> |
 
@@ -209,28 +207,6 @@ context.variables.global.get / set / add / inc / dec / del / has
 ```
 
 與本地變數有相同的介面。跨聊天持久化。
-
-### 使用範例
-
-```js
-const ctx = Atria.getContext();
-
-// 帶預設值讀取本地變數
-const turns = Number(ctx.variables.local.get('turns_taken')) || 0;
-
-// 自增
-ctx.variables.local.inc('turns_taken');
-
-// 檢查 + 初始化全域設定變數
-if (!ctx.variables.global.has('api_endpoint')) {
-    ctx.variables.global.set('api_endpoint', 'https://api.example.com');
-}
-const endpoint = ctx.variables.global.get('api_endpoint');
-
-// 對儲存於本地變數中的 JSON 列表做索引寫入
-ctx.variables.local.set('inventory', 'sword', { index: 0, as: 'string' });
-ctx.variables.local.set('inventory', 'shield', { index: 1, as: 'string' });
-```
 
 ### 本地 vs 全域
 

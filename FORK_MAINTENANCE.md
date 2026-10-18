@@ -17,7 +17,6 @@ Atria is maintained as a SillyTavern-based modified product. The stable product 
 
 ## Normal development flow
 
-1. Verify current `main` and read the active workspace `AGENTS.md`.
 2. Read the relevant Plan/Record as needed; use `docs:HANDOFF.md` only when resuming a user-requested interruption.
 3. Create/use the appropriate short-lived semantic branch.
 4. Implement the isolated task.

@@ -168,19 +168,6 @@ securityOverride: false
 
 ## 备份与存储
 
-```yaml
-backups:
-  common:
-    numberOfBackups: 50
-  chat:
-    enabled: true
-    checkIntegrity: true
-    maxTotalBackups: -1
-    throttleInterval: 10000
-  allowFullDataBackup: true
-```
-
-- `checkIntegrity`：启用聊天文件完整性校验，防止并发写入冲突
 - `throttleInterval`：备份节流间隔（毫秒），避免频繁备份
 - `maxTotalBackups`：聊天备份最大数量，`-1` 表示不限制
 

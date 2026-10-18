@@ -86,17 +86,11 @@ Atria 提供了**连接管理器**（Connection Manager）来管理多个 API �
 
 **不缓存最近几轮**默认为 **2** 个完整回合，当前输入也始终不缓存。如果正则或扩展会随深度变化改写较早的消息，请调大此值。边界从最终发出的消息中选取，因此连续的 user 消息算作一个回合，工具结果不算新的 user 回合。消息文本、角色、总结位置、工具调用和多媒体内容均保持不变。
 
-Gemini 对普通消息内容只使用最后一个显式缓存标记。因此 Atria 将一个标记固定在相同的历史位置，而不是每轮都向后推进，并在每次复用前检查前缀。五分钟后，或者编辑、swipe、总结替换、上下文裁剪、系统提示或工具定义改变了该前缀时，会选取新的边界。新消息在下次刷新前始终位于固定前缀之外。调大不缓存尾部设置也会在下次请求时生效。
+Gemini 对普通消息内容只使用最后一个显式缓存标记。五分钟后，或者编辑、swipe、总结替换、上下文裁剪、系统提示或工具定义改变了该前缀时，会选取新的边界。新消息在下次刷新前始终位于固定前缀之外。调大不缓存尾部设置也会在下次请求时生效。
 
 已有的**缓存 system prompt**开关适用于历史不足的短请求。历史缓存启用时，Atria 只放置一个历史标记，不再添加与之竞争的系统标记。其他扩展提供的显式标记会被保留并优先生效。
 
 这些设置随连接配置保存，也可以用 `/gemini-enable-history-cache` 和 `/gemini-cache-keep-recent-turns` 读取或修改。不经过 UI 的后端调用可以在 `config.yaml` 中使用 `gemini.enableHistoryCache` 和 `gemini.cacheKeepRecentTurns`。
-
-### 检查效果
-
-在请求检查器中查看最终发出的请求：被选中的历史消息的最后一个文本块应包含 `cache_control: { "type": "ephemeral" }`。服务器日志会报告本地边界计划的状态：`created`、`reused`、`refreshed`、`no-history` 或 `external-breakpoint`。**边界被复用并不代表提供商缓存命中。** 请跨多个回合检查 OpenRouter 返回的 `usage.prompt_tokens_details.cached_tokens`、缓存写入次数和总费用。
-
-OpenRouter 文档说明 Gemini 显式缓存有五分钟的生命周期，且缓存写入和存储都会计费。缓存前缀较大时，如果频繁重建或只用一次，费用可能反而更高。长时间停顿、上游路由、最小缓存长度和服务器重启都会降低复用率。Atria 只在内存中保存有界的、按用户/凭据/会话隔离的哈希和位置，不保存提供商缓存对象；它无法保证命中，也无法控制上游缓存的生命周期。参见 [OpenRouter 的 Gemini 缓存文档](https://openrouter.ai/docs/guides/best-practices/prompt-caching#google-gemini)。
 
 ## 代理设置
 
@@ -133,10 +127,6 @@ Atria 的连接管理器提供了斜杠命令，方便高级用户快速操作�
 | `/profile-list` | 列出所有连接配置 |
 | `/profile-create <名称>` | 用当前设置创建新配置 |
 | `/profile-update` | 更新当前选中的配置 |
-
-## 请求检查器
-
-Atria 内置了请求检查器（Request Inspector），可以查看每次生成请求的详细信息，包括发送给 API 的完整请求内容和返回的响应。这在调试连接问题或优化提示词时非常有用。
 
 ## 下一步
 

@@ -56,7 +56,6 @@ list(opts?: {
 | `description` | `string` | Frontmatter `description`. |
 | `license` | `string \| null` | Frontmatter `license` if present. |
 | `metadata` | `object` | Free-form Anthropic-standard metadata. |
-| `installedHash` | `string` | sha256 of the full file tree. Stable across read; changes on every write. |
 | `fileCount` | `number` | Total files in the skill directory. |
 | `totalBytes` | `number` | Sum of file sizes. |
 | `hasScripts` | `boolean` | True if the skill ships a `scripts/` directory. |
@@ -82,7 +81,7 @@ get(name: string, scope?: SkillScope | 'all'): Promise<SkillIndexEntry | null>
 
 Returns `null` if no skill of that name exists in the searched scope.
 
-When `scope` is omitted, returns the first match — useful as a "does this skill exist somewhere" check, but not a substitute for the orchestrator's later-wins resolution. Pass a specific scope when you need a deterministic lookup.
+ Pass a specific scope when you need a deterministic lookup.
 
 ## Reading content
 
@@ -153,43 +152,15 @@ Search is case-insensitive substring (not regex). Binary files are skipped.
 
 ## Writing content
 
-All writes go through a `.staging/` directory on disk and atomic-commit only on full validation. Failed writes leave the original untouched.
+ Failed writes leave the original untouched.
 
 ### `writeFile(opts)`
 
 Replace an entire file.
 
-```ts
-writeFile(opts: {
-  scope: SkillScope,
-  name: string,
-  path: string,
-  content: string,
-  expectedSha256?: string,  // optimistic concurrency
-}): Promise<{ sha256: string }>
-```
-
-If `expectedSha256` is supplied and doesn't match the current file's hash, the write fails with a `409` conflict — useful for editor-style concurrent-edit detection.
-
-The returned `sha256` is the new file's content hash.
-
 ### `editFile(opts)`
 
 In-place string replacement. Cheaper than `writeFile` when you only want to change one section.
-
-```ts
-editFile(opts: {
-  scope: SkillScope,
-  name: string,
-  path: string,
-  oldString: string,
-  newString: string,
-  replaceAll?: boolean,  // default false
-}): Promise<{
-  sha256: string,
-  changesApplied: number,
-}>
-```
 
 - `oldString` must appear in the file (or the call throws). With `replaceAll: false`, `oldString` must appear **exactly once**.
 - `oldString` must be non-empty (the server rejects empty `oldString` to prevent ambiguous matches).
@@ -227,27 +198,8 @@ install(opts: {
 
 `SkillInstallPayload` is one of:
 
-```ts
-// Inline files (preferred for text-only skills, ≤ 10 files, ≤ 64 KB each)
-{
-  bundleFormat: 'inline-files-v1',
-  name: string,
-  files: Array<{ path: string, encoding: 'utf8' | 'base64', content: string }>
-}
-
-// Base64-encoded zip (any size up to per-skill limit)
-{
-  bundleFormat: 'archive-base64-v1',
-  name: string,
-  fileName: string,
-  contentBase64: string,
-  sha256: string,
-}
-```
-
 If a same-named skill exists in the target scope:
 
-- Same content (hash matches) → silently no-op.
 - Different content → throws unless `conflictStrategy: 'replace'`. Use `'skip'` to no-op on conflict.
 
 ### `delete(scope, name)`
@@ -296,17 +248,7 @@ This is `git reset --hard` for skills — it overwrites every same-named global 
 
 ### `listBundledManifest()`
 
-List the bundled skills shipped under `default/skills/global/`, each with the install hash they'd produce on import. Used by the **Browse bundled** tab to compare against local installations without re-running install.
-
-```ts
-listBundledManifest(): Promise<Array<{
-  name: string,
-  installedHash: string,
-  fileCount: number,
-  totalBytes: number,
-  description: string,
-}>>
-```
+ Used by the **Browse bundled** tab to compare against local installations without re-running install.
 
 ## Transport
 

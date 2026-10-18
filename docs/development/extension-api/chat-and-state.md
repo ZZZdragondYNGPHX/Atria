@@ -289,7 +289,7 @@ updateChatState(
 >
 ```
 
-**Recommended read-modify-write approach.** The `updater` function receives the current state and returns the new state. The system automatically handles concurrency conflicts (one retry on `CONFLICT` by default). On success returns `{ok: true, state, updated}` where `updated` is `false` if the reducer returned `null`/`undefined` or produced no diff. On failure returns `{ok: false, reason, hint}` — see [Error reasons](#error-reasons) below. This function never throws; exceptions inside the reducer are caught and surfaced as `reason: 'VALIDATION_ARGS'`.
+**Recommended read-modify-write approach.** The `updater` function receives the current state and returns the new state. The system automatically handles concurrency conflicts (one retry on `CONFLICT` by default). On success returns `{ok: true, state, updated}` where `updated` is `false` if the reducer returned `null`/`undefined` or produced no diff. On failure returns `{ok: false, reason, hint}` — see [Error reasons](#error-reasons) below.
 
 ```js
 await context.updateChatState('my-plugin', (current = {}) => ({
@@ -324,9 +324,6 @@ Every write returns `{ok: false, reason, hint}` on failure. The `reason` field i
 
 | Reason | When it fires | Suggested handling |
 |---|---|---|
-| `VALIDATION_ARGS` | Bad arguments (empty namespace, non-function updater, reducer threw) | Fix caller — this is a programmer bug |
-| `VALIDATION_TARGET` | No active chat | Skip the write silently, retry once the user opens one |
-| `VALIDATION_COMMIT` | floor-state only: override violates monotonicity, malformed commit, floor out of range | Caller's `floor` argument is wrong, recompute and re-issue |
 | `INSTANCE_DESTROYED` | floor-state instance was destroyed | Reload the chat or rebuild the instance |
 | `CONFLICT` | HTTP 409 even after retry | Re-read current state and try again |
 | `HTTP_ERROR` | Other non-2xx response | Inspect `hint` for the status code, user-visible toast acceptable |
@@ -337,27 +334,6 @@ Every write returns `{ok: false, reason, hint}` on failure. The `reason` field i
 The `hint` field is English, no longer than 120 characters, and contains actionable diagnostic info. It is not localized — surface a localized message to users by switching on `reason`, not by translating `hint`.
 
 Example:
-
-```js
-const result = await context.updateChatState('my-ext', (cur) => ({ ...cur, x: 1 }));
-if (!result.ok) {
-    switch (result.reason) {
-        case 'CONFLICT':
-            toastr.warning(t('Save conflicted with another writer, please retry.'));
-            break;
-        case 'HTTP_ERROR':
-        case 'TRANSPORT_ERROR':
-            toastr.error(t('Server unreachable, changes not saved.'));
-            break;
-        case 'VALIDATION_TARGET':
-            // No active chat; silently skip.
-            break;
-        default:
-            console.warn('[my-ext] save failed:', result.reason, result.hint);
-    }
-    return;
-}
-```
 
 ## Floor State
 
@@ -419,32 +395,14 @@ await fs.destroy({ purge: true });
 Reducers must return a plain object. Returning an array, primitive, `null`, or `undefined` is treated as "no change" and the call resolves with `{ok: true, updated: false}` (no write).
 :::
 
-::: warning Behavior change (2026-06-28)
-Exceptions thrown from inside the `fs.update` reducer are caught and surfaced as `{ok: false, reason: 'VALIDATION_ARGS', hint: 'reducer threw: ...'}` instead of bubbling out. Plugin code that depended on the throw must switch to inspecting `result.ok` + `result.hint`.
+ Plugin code that depended on the throw must switch to inspecting `result.ok` + `result.hint`.
 :::
 
 ### Replacing the entire log (import / rebuild)
 
 `update` and `patch` are append-only — every call adds one commit on top of the existing history. When you need to install a fresh history wholesale (import a backup, rebuild from chat, reset to a known baseline), use `reset(commits)`:
 
-```js
-// Atomically replace the log with this exact set of commits.
-const result = await fs.reset([
-    { floor: 0, swipeId: 0, patches: [{ op: 'add', path: '/intro', value: '...' }] },
-    { floor: 3, swipeId: 0, patches: [{ op: 'add', path: '/scene', value: '...' }] },
-]);
-if (!result.ok) {
-    // result.reason is one of VALIDATION_ARGS / VALIDATION_COMMIT / LOG_WRITE_FAILED / ...
-    // Validation failed (malformed commit, floor out of chat range) or the
-    // underlying write was rejected. The log is left in its prior state.
-    console.warn('[my-plugin] reset rejected:', result.reason, result.hint);
-}
-
-// Empty list clears the log entirely.
-await fs.reset([]);
-```
-
-Every commit is validated against the same structural checks `patch` uses (positive integer `floor` and `swipeId`, non-empty `patches` array), plus a chat-range check on `floor` (must be `< chat.length`). The whole batch is rejected if any commit fails — the log never lands in a partly-valid state. There is no separate data namespace to keep in sync; the next `get()` re-replays the new log and the in-memory cache is invalidated for you.
+ The whole batch is rejected if any commit fails — the log never lands in a partly-valid state.
 
 ### Attaching state to a non-tail floor
 
@@ -460,8 +418,6 @@ await fs.update(
 // floor + swipeId pinned (e.g. backfilling state on a specific swipe)
 await fs.update((current) => nextState, { floor: targetFloor, swipeId: 0 });
 ```
-
-When `options` is omitted the chat tail is used. `floor` must be a valid index into the current `chat` (`0 <= floor < chat.length`); out-of-range, negative, non-integer, or negative `swipeId` overrides are rejected and the call returns `{ok: false, reason: 'VALIDATION_COMMIT', hint}`, so misuse fails fast instead of silently mis-attributing the commit.
 
 ::: tip
 The override only changes what label this commit carries in the log — `MESSAGE_DELETED` still truncates by floor and `MESSAGE_SWIPE_DELETED` still renumbers by (floor, swipeId). Replay order is the log's insertion order; specifying a smaller `floor` does not "jump the queue" during replay.
@@ -502,7 +458,7 @@ The four structural transitions are settled by core synchronously before the mat
 - `createFloorState({ namespace })` — async factory; returns a frozen instance.
 - `instance.update(reducer, options?): Promise<{ok: true, updated: boolean} | {ok: false, reason, hint}>` — read-modify-write; reducer receives the current state and returns the next, the diff is computed and committed for you. Optional `options = { floor, swipeId? }` pins the commit to an explicit floor instead of the chat tail. **This is the recommended write API.**
 - `instance.patch(operations, options?): Promise<{ok: true, updated: boolean} | {ok: false, reason, hint}>` — advanced: append a commit whose patches you already computed yourself. Operations must be an incremental RFC 6902 diff (`buildObjectPatchOperationsAsync(prev, next)` against `await instance.get()`); not for snapshot-style overwrites. Same `options` shape as `update`.
-- `instance.reset(commits): Promise<{ok: true} | {ok: false, reason, hint}>` — atomically replace the log with a fresh commit list. Use for import / rebuild / reset workflows. Every commit is validated; the whole batch is rejected if any commit is malformed or its `floor` is out of chat range.
+- `instance.reset(commits): Promise<{ok: true} | {ok: false, reason, hint}>` — atomically replace the log with a fresh commit list. Use for import / rebuild / reset workflows.
 - `instance.get(): Promise<{ok: true, state} | {ok: false, state: null, reason, hint}>` — read the current materialized state. Derived on demand by replaying the log against the current swipe map; never reads a separate data namespace.
 - `instance.ready(): Promise<void>` — resolves when no in-flight write is pending.
 - `instance.destroy(options?): Promise<{ok: true} | {ok: false, reason, hint}>` — detach the instance from the registry. Pass `{ purge: true }` to additionally delete this namespace's state from disk (use for permanent reset / wipe workflows). When called without `purge`, the synchronous detach still returns an envelope for consistency.
@@ -513,9 +469,6 @@ Every write returns `{ok: false, reason, hint}` on failure. The `reason` field i
 
 | Reason | When it fires | Suggested handling |
 |---|---|---|
-| `VALIDATION_ARGS` | Bad arguments (empty namespace, non-function updater, reducer threw) | Fix caller — this is a programmer bug |
-| `VALIDATION_TARGET` | No active chat | Skip the write silently, retry once the user opens one |
-| `VALIDATION_COMMIT` | floor-state only: override violates monotonicity, malformed commit, floor out of range | Caller's `floor` argument is wrong, recompute and re-issue |
 | `INSTANCE_DESTROYED` | floor-state instance was destroyed | Reload the chat or rebuild the instance |
 | `CONFLICT` | HTTP 409 even after retry | Re-read current state and try again |
 | `HTTP_ERROR` | Other non-2xx response | Inspect `hint` for the status code, user-visible toast acceptable |
@@ -638,7 +591,7 @@ updateCharacterState(
 >
 ```
 
-**Recommended read-modify-write approach.** The `updater` function receives the current state (`{}` when none exists) and returns the new state. The system computes the minimal incremental patch under the hood, so only the changed slice crosses the wire. Returning `null` / `undefined` is treated as "no change". 409 conflicts (concurrent edit) are retried automatically; the retry budget is controlled by `options.maxRetries` (default 1). This function never throws; reducer exceptions are caught and surfaced as `reason: 'VALIDATION_ARGS'`.
+**Recommended read-modify-write approach.** The `updater` function receives the current state (`{}` when none exists) and returns the new state. The system computes the minimal incremental patch under the hood, so only the changed slice crosses the wire. Returning `null` / `undefined` is treated as "no change". 409 conflicts (concurrent edit) are retried automatically; the retry budget is controlled by `options.maxRetries` (default 1).
 
 ```js
 await context.updateCharacterState(character.avatar, 'my-plugin', (current = {}) => ({
@@ -672,9 +625,6 @@ Every write returns `{ok: false, reason, hint}` on failure. The `reason` field i
 
 | Reason | When it fires | Suggested handling |
 |---|---|---|
-| `VALIDATION_ARGS` | Bad arguments (empty avatar / namespace, non-function updater, reducer threw) | Fix caller — this is a programmer bug |
-| `VALIDATION_TARGET` | No active chat (chat-state only; character-state writes do not require an active chat) | Skip the write silently, retry once the user opens one |
-| `VALIDATION_COMMIT` | floor-state only: override violates monotonicity, malformed commit, floor out of range | Caller's `floor` argument is wrong, recompute and re-issue |
 | `INSTANCE_DESTROYED` | floor-state instance was destroyed | Reload the chat or rebuild the instance |
 | `CONFLICT` | HTTP 409 even after retry | Re-read current state and try again |
 | `HTTP_ERROR` | Other non-2xx response | Inspect `hint` for the status code, user-visible toast acceptable |
@@ -685,28 +635,6 @@ Every write returns `{ok: false, reason, hint}` on failure. The `reason` field i
 The `hint` field is English, no longer than 120 characters, and contains actionable diagnostic info. It is not localized — surface a localized message to users by switching on `reason`, not by translating `hint`.
 
 Example:
-
-```js
-const result = await context.updateCharacterState(character.avatar, 'my-ext', (cur) => ({ ...cur, x: 1 }));
-if (!result.ok) {
-    switch (result.reason) {
-        case 'CONFLICT':
-            toastr.warning(t('Save conflicted with another writer, please retry.'));
-            break;
-        case 'HTTP_ERROR':
-        case 'TRANSPORT_ERROR':
-            toastr.error(t('Server unreachable, changes not saved.'));
-            break;
-        case 'VALIDATION_ARGS':
-            // Programmer bug — empty avatar/namespace or reducer threw.
-            console.error('[my-ext] bad arguments:', result.hint);
-            break;
-        default:
-            console.warn('[my-ext] save failed:', result.reason, result.hint);
-    }
-    return;
-}
-```
 
 ### Character State vs Chat State
 

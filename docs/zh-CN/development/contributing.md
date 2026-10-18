@@ -79,14 +79,13 @@ docs(extension-api): add examples for registerExtensionApi
 
 ## 本地开发流程
 
-1. 检查 Git 状态，保护无关修改，建立或沿用对应任务分支。
 2. 实现改动。
 3. 本地提交，在独立 `docs` 分支写入或更新同一 Record。
 4. 完成的产品任务在本地合并 `main`。
 5. 推送已提交结果用于存储，清理已完成的本地及远端任务分支。
 6. 多阶段任务更新同一 Record，按 Governance §8 继续；仅在用户要求中断时写 HANDOFF。
 
-明确需要审阅时可使用 PR；PR 和已停用的远端 CI 不作为默认合并门槛。
+明确需要审阅时可使用 PR；
 
 ## 代码风格
 

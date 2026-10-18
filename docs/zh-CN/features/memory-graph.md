@@ -50,7 +50,7 @@ LLM 的上下文窗口是有限的。聊到几百轮以后，早期的重要信�
 
 Hybrid Memory 是唯一召回路径。先由原 source/Information authority 固定请求者、可见来源、Branch、当前 Variant 和时点，再构造词项、图或可选向量候选。缺少来源或授权时拒绝；可选检索失败时保留合法 lexical/graph 路径。
 
-中文指代、已验证别名和有来源的承诺提供有界查询种子；覆盖 packing 在 Context 预算内保留完整来源组及独立冲突来源。检索不证明世界真相、角色当前记得或承诺已履行，普通回合不固定增加召回 LLM 调用。
+覆盖 packing 在 Context 预算内保留完整来源组及独立冲突来源。检索不证明世界真相、角色当前记得或承诺已履行，普通回合不固定增加召回 LLM 调用。
 
 打开 **Memory** 与 **Recall** 读取获准历史；**Source writes** 独立许可有来源的提取，关闭写入仍可读取历史。可选 Embedding/rerank 在 **Runtime → Retrieval** 建立精确 revision，再于 **Memory → Maintenance** 选择。旧 LLM/RAG 模式、召回预设和查询改写控件已删除。
 
@@ -217,7 +217,7 @@ JSON 导入导出。
 
 ### 结果复用
 
-Swipe 与重生成重新核对当前来源、变体及 Information 域。HM1 再做有界检索，不复用生成正文，也不承诺候选缓存。
+HM1 再做有界检索，不复用生成正文，也不承诺候选缓存。
 
 ## 配置参考
 
@@ -261,15 +261,13 @@ Swipe 与重生成重新核对当前来源、变体及 Information 域。HM1 再
 
 ### Hybrid retrieval pipeline
 
-1. 在候选和索引 IO 前核对原 source/Information authority。
 2. 确定性合法种子、词项与有界 typed graph 形成基础 lanes，配置有效才加向量，以 RRF 融合；rerank 故障只在 Hybrid 内降级。
-3. 以完整来源组 packing 保留历史/断言提示、独立冲突来源与缺失组诊断；异步返回和 Context 消费复验，预算不足不截断来源链。
 
 HM1 不启用 PPR、LLM query rewrite、候选缓存、delta indexing、认知或遗忘 writer。
 
 ### 向量索引
 
-Hybrid 仅索引当前获准来源域，按 requester、anchor、时点及精确 Embedding revision 隔离；核对完整指纹并重建派生数据，保留原始来源。
+Hybrid 仅索引当前获准来源域，按 requester、anchor、时点及精确 Embedding revision 隔离；
 
 如需手动控制，记忆图设置面板提供**重算向量索引**按钮。点击后弹出对话框，提供两种模式：**增量补全**仅对向量缺失或失效（如节点编辑后）的节点重新生成 embedding；**全部重算**清空集合并对所有可索引节点重新生成 embedding（更换嵌入模型或档案后用此项）。如果嵌入配置已变更，增量补全会自动升级为全部重算，因为旧向量与新空间不兼容。失败的节点记录到控制台，不阻断整体流程。
 

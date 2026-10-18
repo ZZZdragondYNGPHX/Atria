@@ -8,7 +8,7 @@ Atria's improvements over SillyTavern are not simply feature additions, but a sy
 | --- | --- | --- |
 | Architecture | [Preset Decoupling](/improvements/preset-decoupling) | Separates connection parameters and presets into independent entities |
 | Architecture | [Incremental Sync](/improvements/incremental-sync) | Incremental patch-based data transmission, replacing full overwrites |
-| Architecture | [Backend Real-Time Storage](/improvements/backend-storage) | Real-time data persistence with integrity checks to prevent concurrent conflicts |
+| Architecture | [Backend Real-Time Storage](/improvements/backend-storage) ||
 | Feature | [Function Call Runtime](/improvements/function-call-runtime) | Unified function calling support in both native and plain-text modes |
 | Feature | [Card-Bound Presets & Personas](/improvements/card-bound-presets) | Character Cards can carry recommended presets and default personas |
 | Feature | [Request Inspector](/improvements/request-inspector) | Tracks the complete lifecycle and token usage of generation requests |
@@ -42,7 +42,7 @@ Atria introduces three incremental endpoints:
 - **`patch`**: Patches specific lines by message index, updating only changed messages
 - **`patch-metadata`**: Uses deep merge to update chat metadata instead of replacing it
 
-After each write, the backend computes an integrity hash and returns it to the frontend; subsequent requests carry this value for verification, returning 409 Conflict on mismatch, fundamentally preventing concurrent write conflicts. Settings data also supports incremental patch saving with conflict detection and serialized writes. See [Incremental Sync](/improvements/incremental-sync) for details.
+ Settings data also supports incremental patch saving with conflict detection and serialized writes. See [Incremental Sync](/improvements/incremental-sync) for details.
 
 ### Backend Real-Time Storage
 
@@ -99,7 +99,6 @@ This module provides a unified processing pipeline for all AI backends, ensuring
 Atria adds OAuth login support (GitHub, Discord) and storage quota management:
 
 - **OAuth login**: Configured through the frontend admin panel (stored in the `oauth` section of `admin-settings.json`), supporting authorization code exchange for access tokens, automatic creation or association of local user accounts
-- **Storage quota**: Administrators can set storage space quota limits for different users, with the system automatically checking quotas before requests
 - **Logging system**: See [Logging System](/features/logging) for details
 
 This enables Atria to run safely in multi-user shared deployment scenarios. See [Auth & Quota](/improvements/auth-and-quota) for details.

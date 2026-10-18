@@ -19,8 +19,6 @@
 | 多遍展開時的穩定替換順序（從左到右、內層先於外層） | ✓ |
 | 一般 <code v-pre>{{user}}</code>、<code v-pre>{{setvar::name::value}}</code>、<code v-pre>{{time}}</code>…… | 兩種都能用 |
 
-本頁裡某個特性看起來不生效，先檢查這個開關。
-
 ## 語法
 
 巨集的形態是 <code v-pre>{{name}}</code>、<code v-pre>{{name::arg}}</code>，或 <code v-pre>{{name::arg1::arg2}}</code>。巨集名**大小寫不敏感**——<code v-pre>{{user}}</code>、<code v-pre>{{User}}</code>、<code v-pre>{{USER}}</code> 解析到同一個巨集。花括號和巨集名之間允許空白：<code v-pre>{{ user }}</code> 等價於 <code v-pre>{{user}}</code>。
@@ -398,7 +396,7 @@ Atria 用**逐樓層變數提取**解決這個問題。一條訊息（AI 回覆�
 |---|---|
 | <code v-pre>{{roll::1d20}}</code> | 用 droll 語法擲骰（`1d6`、`3d6+4`……）。只有數字 `N` 時等價 `1dN`。每次繪製都重擲。 |
 | <code v-pre>{{random::red::green::blue}}</code> | 隨機一項。每次繪製都重擲。 |
-| <code v-pre>{{pick::red::green::blue}}</code> | 隨機一項，但**對同一 chat 同一位置穩定**。Seed = chat hash + content hash + 位置 + reroll seed。用 `/reroll-pick` 重置。 |
+| <code v-pre>{{pick::red::green::blue}}</code> | 隨機一項，但**對同一 chat 同一位置穩定**。用 `/reroll-pick` 重置。|
 
 ### 環境與 API
 

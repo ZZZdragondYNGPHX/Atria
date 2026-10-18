@@ -204,13 +204,10 @@ A：先确认记忆图扩展是否启用、当前 chat 是否真的有记忆节�
 A：那些条目已经通过 worldInfo 主流程注入了主模型上下文，loop agent 再把它们返回到自己的循环里只是浪费 token。**用 `lorebook_get` 才能精确引用已激活条目原文**，比如保持术语一致。
 
 **Q:loop 跑到一半我想停下来怎么办？**
-A：点工具栏的 stop 按钮（与 spec / agenda 一致）。loop runtime 在每轮顶部检查 abort signal，立即中止；trace 写 `cancelled`，不会注入半成品 capsule。
+A：点工具栏的 stop 按钮（与 spec / agenda 一致）。trace 写 `cancelled`，不会注入半成品 capsule。
 
 **Q：笔记是否跨 chat 共享？**
 A：不会——笔记保存在当前 chat 的持久化状态里。floor-state 的 settle 机制会自动处理分支和删除。
-
-**Q：连续 3 轮不调工具被打断了怎么办？**
-A：检查 system prompt 是否给了 agent 明确的「产出格式」。多数情况是 agent 在「思考」但不知道何时该 finalize；在 prompt 里加一条「当你掌握的信息足以写出 capsule 时，立即调用 finalize」通常能解决。
 
 **Q：勾选了 `search_search`，Agent 却收到 `SEARCH_UNAVAILABLE`?**
 A：web 工具是把请求转发给 [Search Tools](/zh-CN/features/search-tools) 插件的，而该插件未加载。装好并启用 search-tools 扩展、配好 provider（DuckDuckGo / SearXNG / Brave）后重试即可。
@@ -223,8 +220,7 @@ Loop 模式与 spec / agenda 在性能上有结构性差异：
 - **token 用量**:loop **不一定省**。工具调用结果累加在同一个 messages 数组里，到第六、七轮时上下文已经显著膨胀；spec 模式 stage 间断流，每个 stage 的 prompt 较短。
 - **失败率**:loop 是新模式，可能比成熟的 spec 不稳定，agent 偶尔会跑岔。建议从短任务（`max_rounds=5`）开始试。
 
-::: info 待手测验证
-具体延迟差距、capsule 主观质量、token 总用量在不同 character / 不同模型下的实际表现，需要真实 LLM 调用做对比测试，目前文档里的相对预期还没有大规模量化数据。欢迎在用过几天 loop 模式之后反馈你的感受。
+欢迎在用过几天 loop 模式之后反馈你的感受。
 :::
 
 ## 相关页面

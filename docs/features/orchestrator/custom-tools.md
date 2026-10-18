@@ -18,7 +18,7 @@ Custom tools let you give orchestrator agents new capabilities — beyond the bu
 - **Mode**
   - **read** — no side effects. Always runs during simulation review.
   - **write** — mutates state. Skipped during simulation review unless you provide a simulate body.
-- **Parameters (OpenAI JSON Schema)** — the JSON Schema for the arguments the LLM passes in. Validated as JSON on Save.
+- **Parameters (OpenAI JSON Schema)** — the JSON Schema for the arguments the LLM passes in.
 - **Function body** — async JavaScript. Two parameters are available:
   - `args` — the parsed arguments the LLM sent.
   - `ctx` — the same object SillyTavern hands to extensions (`getContext()` style), augmented with orchestration-specific fields. See [What's on `ctx`](#whats-on-ctx) below for the full surface.
@@ -45,7 +45,6 @@ Mounted by the orchestrator runtime (only inside an orchestration call):
 - `ctx.__atriaRun` — per-run state. Subfields:
     - `ctx.__atriaRun.activatedEntryKeys` is a `Set` of `${world}.${uid}` keys for World Info entries already injected this turn (so your tool can dedup if it surfaces lorebook content).
     - `ctx.__atriaRun.wiFinalizedPayload` is a **mutable reference** to the in-flight `wiFinalizedPayload` object that `script.js` is about to join into the main model's `<world_info>` channel. Push into `wiFinalizedPayload.worldInfoBeforeEntries` / `.worldInfoAfterEntries` / `.worldInfoDepth[i].entries` *during your tool call* and your content lands in the channel for THIS turn, indistinguishable from a naturally-activated entry. Bypasses the WI token budget and does not trigger recursive key scanning. Available in loop / spec / agenda (which run inside the `GENERATION_WORLD_INFO_FINALIZED` frame); **undefined in director** (its main agent runs in the takeover handler, which fires after WI is baked into the prompt). The Layer-1 `lorebook_force_activate` builtin is the supported wrapper around this — prefer it over hand-rolling the push.
-    - `ctx.__atriaRun.abortSignal` is the run's cooperative cancellation signal — check `.aborted` periodically in long tools.
 - `ctx.__floorStateForNotes` — the floor-state instance the `note_open` / `note_close` tools use. Read it if your tool wants to coexist with the notes system.
 - `ctx.__customToolRegistry` — the per-run Layer-3 registry your own tool was compiled into. Most tools never need this; it's exposed for advanced cases (e.g. introspecting other handwritten tools).
 - `ctx.__memoryGraphSession` — opened lazily by the first `memory_*` tool call. Available after at least one memory call this run.
@@ -53,23 +52,6 @@ Mounted by the orchestrator runtime (only inside an orchestration call):
 Field name conflicts: SillyTavern owns the top-level names; orchestration adds only `__`-prefixed fields, so the namespaces don't collide.
 
 Minimal patterns:
-
-```js
-// Read the current character name
-return { char: ctx.characters[ctx.characterId]?.name };
-
-// Call another extension's API
-const mg = ctx.getExtensionApi('memory-graph');
-const session = await mg.openSession(ctx);
-
-// Emit an event other code can subscribe to
-ctx.eventSource.emit('my_tool_fired', { args });
-
-// Cooperative cancellation: check the run's abort signal
-if (ctx.__atriaRun?.abortSignal?.aborted) {
-    throw new Error('aborted');
-}
-```
 
 ### Safety
 
@@ -85,11 +67,11 @@ Sub-agent tool overrides (in spec nodes / agenda agents / director sub-agents) w
 
 ## Simulation review
 
-Custom tools participate in the simulation pipeline that the [AI Iteration Studio](./iteration-studio.md) uses to test workflows against your real chat without writing anything back. Read tools always dispatch to your real code. Write tools dispatch to the simulate body when you provided one; otherwise they return the standard placeholder `{ ok: true, simulated: true, unvalidated: true }` and the trace marks them as unvalidated.
+Custom tools participate in the simulation pipeline that the [AI Iteration Studio](./iteration-studio.md) uses to test workflows against your real chat without writing anything back. Read tools always dispatch to your real code.
 
 ## Iteration Studio
 
-The AI iterator authors and maintains Layer-3 custom tools directly on the working profile. It has the full read / write / inspect surface plus a sandbox dry-run + discovery tools so it can validate code against the live `ctx` before asking you to approve it.
+The AI iterator authors and maintains Layer-3 custom tools directly on the working profile.
 
 Read tools (results returned immediately, no review):
 
@@ -101,8 +83,8 @@ Read tools (results returned immediately, no review):
 
 Write tools (stage a proposal on the iter-studio's ProposalBus; nothing reaches the profile until you approve the card):
 
-- `atri_orch_set_custom_tool` — create or fully overwrite one entry. Body is compile-validated before staging; a syntax error rejects the call immediately with no proposal.
-- `atri_orch_patch_custom_tool_body` — find/replace patch on an existing body (default unique-or-fail; `replaceAll: true` opts into multi-match). Patched body is re-validated for syntax. Avoids re-sending long bodies on small tweaks.
+- `atri_orch_set_custom_tool` — create or fully overwrite one entry.
+- `atri_orch_patch_custom_tool_body` — find/replace patch on an existing body (default unique-or-fail; `replaceAll: true` opts into multi-match). Avoids re-sending long bodies on small tweaks.
 - `atri_orch_patch_custom_tool_schema` — replace only the parameters JSON-Schema. Body unchanged.
 - `atri_orch_remove_custom_tool` — delete one entry by name. The card shows the body that will be deleted so you can confirm.
 

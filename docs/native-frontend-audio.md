@@ -14,4 +14,4 @@ The host permits at most six ambient voices during transitions and two effects. 
 
 Playback refusal and missing/undecodable assets return explicit presentation status. Essential story information must remain readable with sound disabled. Exact image load failures likewise preserve surrounding text and controls instead of retaining a stale picture from another location.
 
-Computation effects can explicitly copy already validated JSON with `{ "computed": "field.path" }`. The selected type must exactly match its destination schema. This does not allow formulas to copy whole private records, and receipt projections retain their existing disclosure boundary.
+ The selected type must exactly match its destination schema. This does not allow formulas to copy whole private records, and receipt projections retain their existing disclosure boundary.

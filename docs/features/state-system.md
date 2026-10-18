@@ -53,34 +53,6 @@ The state system follows these principles:
 | Chat State | Per-namespace files next to chat files (`<chat>.atria-state.<namespace>.json`) | Created on first namespace write; renamed/deleted with the chat |
 | Preset State | Per-namespace files next to preset files (`<preset>.atria-state.<namespace>.json`) | Created on first namespace write; renamed/deleted with the preset |
 
-```d2
-direction: right
-
-CHAR: "Character directory" {
-  CHAR_MAIN: "Seraphina.png\nCharacter card main file" {
-    style.fill: "#e1f5ff"
-  }
-  CHAR_S1: "Seraphina.state.memory_graph.json\nMemory graph state"
-  CHAR_S2: "Seraphina.state.cardapp_studio.json\nStudio sessions"
-}
-
-CHAT: "Chat directory" {
-  CHAT_MAIN: "Seraphina-2026.jsonl\nChat main file" {
-    style.fill: "#e1f5ff"
-  }
-  CHAT_S1: "Seraphina-2026.atria-state.chat_sync.json\nintegrity / updated_at"
-  CHAT_S2: "Seraphina-2026.atria-state.atri_orchestrator__schema.json\nOrchestrator state"
-  CHAT_S3: "Seraphina-2026.atria-state.memory_graph__meta.json\nMemory graph metadata"
-}
-
-PRESET: "Preset directory" {
-  P_MAIN: "for_my_athena.json\nPreset main file" {
-    style.fill: "#e1f5ff"
-  }
-  P_S1: "for_my_athena.atria-state.preset_assistant.json\nPreset assistant sessions"
-}
-```
-
 All state data is persisted to disk and will not be lost due to server restarts. State file cleanup is automatic — when the associated character, chat, or preset is deleted, the corresponding state file is automatically cleaned up.
 
 ## Use Cases

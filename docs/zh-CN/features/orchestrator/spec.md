@@ -27,73 +27,7 @@ Spec 是编排器的默认模式，也是其他模式的"基准"。它把工作�
 
 ## 默认编排流程
 
-Spec 是一条固定流水线。默认 profile 自带 5 个 stage、7 个 worker —— `distiller` 读懂场景，接着 `lorebook_reader` + `anti_data_guard` 并行锁定硬约束，然后 `planner` + `recall_relevance` 并行规划下一拍，`critic` 评审（并可把上一阶段打回重做），最后 `synthesizer` 落笔写 capsule。
-
-```d2
-direction: right
-
-start: "新一回合开始" {
-  shape: oval
-  style.fill: "#e8f5e9"
-}
-
-s1: "Stage 1 · distill(serial)" {
-  style.fill: "#e1f5ff"
-  distiller: "distiller\n读懂本回合\n场景状态" {
-    style.fill: "#fffde7"
-  }
-}
-
-s2: "Stage 2 · grounding(parallel)" {
-  style.fill: "#e1f5ff"
-  lorebook_reader: "lorebook_reader\n锁定当前世界书\n硬约束" {
-    style.fill: "#fffde7"
-  }
-  anti_data_guard: "anti_data_guard\n拦截播报体 /\n观察体文笔" {
-    style.fill: "#fffde7"
-  }
-}
-
-s3: "Stage 3 · reason(parallel)" {
-  style.fill: "#e1f5ff"
-  planner: "planner\n规划下一拍" {
-    style.fill: "#fffde7"
-  }
-  recall_relevance: "recall_relevance\n召回相关\n记忆线索" {
-    style.fill: "#fffde7"
-  }
-}
-
-s4: "Stage 4 · review(serial)" {
-  style.fill: "#e1f5ff"
-  critic: "critic\n审查\n上一阶段" {
-    shape: diamond
-    style.fill: "#fff3e0"
-  }
-}
-
-s5: "Stage 5 · finalize(serial)" {
-  style.fill: "#e1f5ff"
-  synthesizer: "synthesizer\n落笔写编排\n指引 capsule" {
-    style.fill: "#c8e6c9"
-  }
-}
-
-out: "capsule 注入\n下一句主回复" {
-  shape: oval
-  style.fill: "#f3e5f5"
-}
-
-start -> s1
-s1 -> s2
-s2 -> s3
-s3 -> s4
-s4 -> s5: "通过"
-s4 -> s3: "打回重跑(带反馈)" {
-  style.stroke-dash: 3
-}
-s5 -> out
-```
+Spec 是一条固定流水线。
 
 默认 agent 在编排里各自负责什么：
 
@@ -101,7 +35,6 @@ s5 -> out
 |---|---|---|
 | `distiller` | 紧凑、有据可查的场景状态快照（用户意图、当前张力、可能的走向）；下游所有 worker 都读它。 | 返回「林晚自第 12 楼以来第一次问起洛阳；她在判断要不要把家族故事讲给你听」。 |
 | `lorebook_reader` | 从激活的世界书里挑出**这一回合**必须遵守的硬约束（文风禁令、叙事边界、角色 / 禁忌规则、连续性锚点），写成可执行的写作指令。 | 返回「世界书：洛阳本季被围，林晚不可能轻松离开；不得打破围城紧张感」。 |
-| `anti_data_guard` | 拦截播报体、观察体、指标体、天气预报体的扁平叙述；违规一律标 BLOCKER 并给出具体改写指令。 | 抓到「林晚焦虑值：7/10」—— BLOCKER，改写指令：「把焦虑写进攥紧的指节里，不要给数字」。 |
 | `planner` | 提下一拍进程，讲清因果，保留角色独立性与世界自洽，不默认让世界围着用户转。 | 节拍：「林晚躲闪 → 用户追问 → 她漏出一个细节 → 主回复就停在那个细节」。 |
 | `recall_relevance` | 在已召回的记忆线索里挑出本回合真正该用的那些，按即时相关性排序；不无中生有。 | 「第 18 楼外祖母线索：高相关；第 3 楼天气记录：跳过」。 |
 | `critic`（review 节点） | 按一整套审查口径（连续性、OOC、世界书合规、anti-data、世界自洽 ……）审上一个 worker stage，**通过**或**点名上游某个 worker 重跑**。只下判定，不下笔改写。 | 「grounding 通过；reason 退回 —— `planner` 让林晚走出被围的洛阳，与世界书冲突。重跑 `planner`：她还在城里。」 |
@@ -129,8 +62,6 @@ s5 -> out
 
 ### 审查节点
 
-审查节点检查上一个工作阶段的输出，通过两个专用工具调用与运行时交互：
-
 | 工具 | 作用 |
 |---|---|
 | `atri_orch_review_approve` | 工作合格，推进到下一阶段 |
@@ -149,7 +80,6 @@ s5 -> out
 | 我想要 | 这样做 |
 |---|---|
 | AI 回复前先想清楚情节再写 | [AI 迭代工作台](/zh-CN/features/orchestrator/iteration-studio)描述里加「分两阶段：先规划下一步，再写文」 |
-| AI 不要轻易出戏 | 启用 Anti-Data Guard;[AI 迭代工作台](/zh-CN/features/orchestrator/iteration-studio)描述里要求「加一个硬挡 meta 评论的 Constraint Agent」 |
 | 同一个工作流跨卡通用 | 应用到全局，不要绑卡 |
 | 不同卡用不同工作流 | 在角色卡选中状态打开工作台，**应用到角色卡** |
 | 太慢 / 太贵 | 见[概览 → Step 2](/zh-CN/features/orchestrator/#step-2)；或切到 [单 Agent 模式](/zh-CN/features/orchestrator/single) 只跑一个节点 |
@@ -177,7 +107,6 @@ s5 -> out
 |---|---|
 | 节点迭代最大轮数 | 单节点的迭代上限 |
 | 审查重跑最大轮数 | 0 禁用审查驱动的重跑 |
-| Anti-Data Guard | 默认 Spec 工作流里的一个内置节点，屏蔽数据化 / 报告腔的散文（诸如 观察 / 分析 / 评估 / 监测 / observation / analyze / metric / probability 这种把 RP 写成观察日志或参数表的词）。硬编码约 18 个词的词典。不想要的话直接把这个节点从工作流里删掉。 |
 | 节点 API 预设 | 节点级覆写；留空 = 全局 |
 | 节点 Chat Completion 预设 | 节点级覆写；留空 = 全局 |
 

@@ -115,7 +115,7 @@ presets.state.update(
 >
 ```
 
-**推薦的讀—改—寫介面。** `updater` 取得目前狀態（不存在時為 `{}`），回傳下一份狀態。系統底層自動計算最小增量 patch，只有變化的那部分上網。回傳 `null` / `undefined` 視為「無變更」，結果為 `{ok: true, updated: false}`。409 衝突（並行改動）會自動重試；重試預算由 `options.maxRetries` 控制（預設 1）。失敗時回傳 `{ok: false, reason, hint}` —— 見下方[錯誤原因](#錯誤原因)。該函式永不拋出；reducer 內部拋出的例外會被捕獲並以 `reason: 'VALIDATION_ARGS'` 形式回報。
+**推薦的讀—改—寫介面。** `updater` 取得目前狀態（不存在時為 `{}`），回傳下一份狀態。系統底層自動計算最小增量 patch，只有變化的那部分上網。回傳 `null` / `undefined` 視為「無變更」，結果為 `{ok: true, updated: false}`。409 衝突（並行改動）會自動重試；重試預算由 `options.maxRetries` 控制（預設 1）。失敗時回傳 `{ok: false, reason, hint}` —— 見下方[錯誤原因](#錯誤原因)。該函式永不拋出；
 
 ```js
 await context.presets.state.update('my-plugin', (current = {}) => ({
@@ -178,12 +178,9 @@ presets.state.deleteAll(target?: PresetRef | string | null): Promise<
 
 | Reason | 觸發時機 | 建議處理 |
 |---|---|---|
-| `VALIDATION_ARGS` | 參數錯誤（命名空間為空、updater 非函式、operations 非陣列、reducer 拋錯） | 修正呼叫端 —— 這是程式碼 bug |
-| `VALIDATION_TARGET` | 無作用預設（apiId/name 解析失敗） | 跳過寫入，等使用者選定預設後再試 |
-| `VALIDATION_COMMIT` | 僅樓層狀態（不適用於預設狀態） | —— |
 | `INSTANCE_DESTROYED` | 僅樓層狀態（不適用於預設狀態） | —— |
 | `CONFLICT` | 重試後仍是 HTTP 409 | 重新讀取當前狀態後再試 |
-| `HTTP_ERROR` | 其他非 2xx 回應 | 檢查 `hint` 中的狀態碼，可向使用者彈 toast |
+| `HTTP_ERROR` | 其他非 2xx 回應 ||
 | `TRANSPORT_ERROR` | fetch 拋錯（網路、CORS、abort） | 重試或向使用者顯示網路錯誤 |
 | `REPLAY_BROKEN` | 僅樓層狀態（不適用於預設狀態） | —— |
 | `LOG_WRITE_FAILED` | 僅樓層狀態（不適用於預設狀態） | —— |

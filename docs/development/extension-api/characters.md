@@ -276,7 +276,7 @@ importTags(
 ): Promise<boolean>
 ```
 
-Imports the character's declared tags (`character.tags[]`) into the master tag list and assigns them. Caps imports at 50 tags per character to guard against troll cards. Returns `true` when at least one tag was actually added.
+Imports the character's declared tags (`character.tags[]`) into the master tag list and assigns them. Returns `true` when at least one tag was actually added.
 
 ## Import / Export
 

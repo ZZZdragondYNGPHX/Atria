@@ -16,7 +16,3 @@
 ## Shared 视角
 
 principal 由认证来源确定，不相信请求正文里的自称身份。变更席位/权限必须按现有 ACL epoch 处理。投影只给授权字段；Private Play conversation/composer 不可搬到远端共享视图。连接与 refresh/presence 是显式行为，不宣称公共发现、分布式共识或 lobby 已实现。
-
-## 测试取舍
-
-为本次修改加入最小 recorded Scenario：权限拒绝、重复输入、过期 revision、部分 transfer 重启、publication 后 cancel 拒绝、恢复 Session 后外部账本不倒退。fixture principal 仅用于本地隔离测试，不能被当作生产认证。复杂声明先读完整 catalog 校验器再写，不复制与本作品无关的大段运行时模板。

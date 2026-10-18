@@ -104,8 +104,6 @@ Search result entries can be set to `constant` (always active) or activated thro
 
 ## Global API
 
-
-
 ### Properties
 
 | Property | Type | Description |
@@ -122,25 +120,6 @@ Search result entries can be set to `constant` (always active) or activated thro
 | `search(args)` | `Promise` | Directly executes a search and returns results |
 | `visit(args)` | `Promise` | Directly visits a specified web page and returns page content |
 | `getSettings()` | `Object` | Returns a snapshot of current search plugin settings |
-
-### Usage Example
-
-```javascript
-const api = Atria.searchTools;
-if (api) {
-  // Check if it's a search tool
-  api.isToolName('atri_web_search'); // true
-
-  // Get tool definitions
-  const defs = api.getToolDefs();
-
-  // Directly call search
-  const results = await api.search({ query: '...', maxResults: 5 });
-
-  // Visit a web page
-  const page = await api.visit({ url: 'https://...', maxChars: 10000 });
-}
-```
 
 ## Result Reuse
 
@@ -159,7 +138,6 @@ When results are reused, the UI displays a `(reused)` marker, indicating that ca
 The search plugin monitors message deletion and editing events, automatically maintaining internal state consistency:
 
 - **Message deletion** — Updates search state based on the range of deleted messages, ensuring no references to search results from deleted messages
-- **Message editing** — Updates search state based on the edited message position, potentially invalidating cached search results
 
 ## Configuration Reference
 

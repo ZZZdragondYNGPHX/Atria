@@ -7,7 +7,7 @@
 > - 底层：`getMemoryGraphReadApi(store, context)`，来自 `public/scripts/agents/memory/read-api.js`（读工厂）
 > - 底层：`getMemoryGraphWriteApi(store, context, options?)`，来自 `public/scripts/agents/memory/write-api.js`（写工厂；`options.onCommit` 把变更刷到 floor-state）
 
-叙事召回使用 `openSession(context).recallMemory(query, options)`。它先核对原 Information requester/来源域，返回完整证据组、缺失组诊断与 `assertCurrent` 消费 guard。`requester` 支持 narrator/actor/task，task 还需 `informationTaskId`；`at` 指定来源时点。下方 graph inspection API 不授权将检查输出自动用作叙事证据。
+叙事召回使用 `openSession(context).recallMemory(query, options)`。`requester` 支持 narrator/actor/task，task 还需 `informationTaskId`；`at` 指定来源时点。
 
 ## 会话 API（推荐入口）
 
@@ -63,7 +63,7 @@ orchestrator 的 `memory_*` loop 工具会把 `null` 会话翻译成 `ToolError(
 
 | 方法 | 返回 | 备注 |
 | --- | --- | --- |
-| `listVisibleCandidates(opts)` | `NodeView[]` | 图检查器 看到的候选池 |
+| `listVisibleCandidates(opts)` | `NodeView[]` ||
 | `getEdgeSummary(id, opts)` | `EdgeSummaryView` | 度数 + 关系 + 邻居采样 |
 | `getNodeBrief(id, opts)` | `NodeBriefView \| null` | 含字段与边的完整 brief |
 | `expandFromSeeds(ids, opts)` | `NodeView[]` | 对一组种子做 BFS 展开 |
@@ -81,9 +81,6 @@ orchestrator 的 `memory_*` loop 工具会把 `null` 会话翻译成 `ToolError(
 | `applyExtractionBatch(input)` | `{ applied, rejected }` | 一次性多 op 批处理 |
 
 各方法的完整签名见下文 **Read API** 与 **Write API** 段落 —— `openSession` 内部就是委托给那些工厂的。
-
-### 底层访问
-
 
 ## 角色级 override 访问器
 
@@ -143,7 +140,7 @@ const projection = await mg.getLastRecallProjection(ctx);
 | `findEventBySeq(ctx, seq)` | `Promise<NodeView \| null>` | 找到 `floorRange` 覆盖 `seq` 的非归档 `event` 节点；多个范围在 `seq` 上重叠时，取 `seqTo` 最大者。 |
 | `findEventBundleBySeq(ctx, seq)` | `Promise<{ event: NodeView, location: NodeView \| null, characters: NodeView[] } \| null>` | 与 `findEventBySeq` 同一次查找，并把通过 `occurred_at` 关联的 `location_state` 与通过 `involved_in` 关联的 `character_sheet` 一起取回。 |
 | `getAssistantSeqForMessageIndex(ctx, messageIndex)` | `number \| null` | 把聊天消息索引翻译为"到 `messageIndex` 为止可抽取 assistant 消息的 1-based 计数"；`messageIndex` 之前没有可抽取的 assistant 消息时返回 `null`。 |
-| `getCurrentInjection(ctx)` | `InjectionState \| null` | 当前主流注入状态的防御性拷贝；见 [InjectionState](#injectionstate)。 |
+| `getCurrentInjection(ctx)` | `InjectionState \| null` |见 [InjectionState](#injectionstate)。|
 | `getLastRecallProjection(ctx)` | `Promise<LastRecallProjection \| null>` | 上一轮召回实际注入的 `corePacket` + `focusPacket` 文本的冻结快照；见 [LastRecallProjection](#lastrecallprojection)。 |
 
 每次查询都会针对活动 store 打开一个短生命周期的 read-api 工厂。一次性发起多次查询的调用方应改走 `openSession()` —— 一个工厂可以服务所有读取。
@@ -162,7 +159,7 @@ if (projection) {
 }
 ```
 
-runtime store 无法加载或该聊天从未跑过召回时返回 `null`。返回对象为冻结的防御性拷贝；`blocks` 的两个字段始终为字符串（packet 为空时也是空串，不会是 `undefined`）。
+runtime store 无法加载或该聊天从未跑过召回时返回 `null`。`blocks` 的两个字段始终为字符串（packet 为空时也是空串，不会是 `undefined`）。
 
 ## 变更订阅
 
@@ -196,11 +193,9 @@ mg.offStoreCommit(callback);
 
 监听器抛错会被捕获并日志化；一个坏订阅者无法阻塞其他订阅者。
 
-
 ## 概览
 
-
-`getMemoryGraphReadApi(store, context)` 提供原有图数据与拓扑检查的深冻结视图，供插件调试或图分析使用。检查输出不具有 Information 叙事授权；实际生成消费使用 `openSession(context).recallMemory` 的获准证据。
+实际生成消费使用 `openSession(context).recallMemory` 的获准证据。
 
 `getMemoryGraphWriteApi(store, context)` 是与之配套的变更面：一个 extractor 风格的 agent（或者在两轮对话之间编辑图的 curator agent）通过它写入，而不是去碰 store 内部。Write API 详见下文 [Write API](#write-api)。
 
@@ -297,7 +292,7 @@ interface EdgeSummaryView {
 }
 ```
 
-图检查器 每行候选看到的紧凑边视图。按 `(relation, direction)` 配对聚合计数；`sample_neighbors` 是去重后的邻居节点的有限采样（默认 8 个），每项带 `to_seq`，调用方据此按时间近度排序。字段名用 snake_case 以匹配原生 LLM prompt 区块。
+按 `(relation, direction)` 配对聚合计数；`sample_neighbors` 是去重后的邻居节点的有限采样（默认 8 个），每项带 `to_seq`，调用方据此按时间近度排序。字段名用 snake_case 以匹配原生 LLM prompt 区块。
 
 ### InjectionState
 
@@ -309,7 +304,7 @@ interface InjectionState {
 }
 ```
 
-注入侧的观察面。`alwaysInjectIds` 是被节点类型 `alwaysInject` 标志固定下来的节点。`recallSelectedIds` 是图检查器 为上一轮选中的节点。`visibleIds` 是图检查器 看到的候选池 —— *在召回流水线至少跑过一次之前为空*。
+注入侧的观察面。`alwaysInjectIds` 是被节点类型 `alwaysInject` 标志固定下来的节点。
 
 ### LastRecallProjection
 
@@ -373,7 +368,7 @@ interface NodeBriefView {
 }
 ```
 
-图检查器 每行候选看到的单节点"brief"。等价于 `formatNodeBrief` 的输出，加上路由器在序列化前补的几个召回侧字段（`exposure`、`edgeSummary`、`alwaysInject`）。插件复刻原生召回输入时，就是把它当作 `candidateRows` 块的最小单元来组装。
+等价于 `formatNodeBrief` 的输出，加上路由器在序列化前补的几个召回侧字段（`exposure`、`edgeSummary`、`alwaysInject`）。插件复刻原生召回输入时，就是把它当作 `candidateRows` 块的最小单元来组装。
 
 ## Layer A： 数据访问
 
@@ -387,7 +382,7 @@ interface NodeBriefView {
 - 按 `compareNodesByTimeline` 排序（seqTo 升序，id 平手）—— 用于离线分析的稳定时间线顺序。这与 `listVisibleCandidates` **不同**，后者按 `compareNodesByRecency` 排序（seqTo 降序、depth 降序、id 字典序）。
 - 返回冻结的 `NodeView` 对象的冻结数组。数组本身、每个视图、每个 `fields` record、每个 `childrenIds` 数组都是冻结的。
 
-**何时使用：** 对整个 store 做离线扫描 —— 调试、一次性统计、穷举遍历。复刻召回的热路径调用方应改用 `listVisibleCandidates`，它的顺序跟图检查器 输入对齐，且已经应用了召回侧过滤。
+**何时使用：** 对整个 store 做离线扫描 —— 调试、一次性统计、穷举遍历。
 
 **最小示例：**
 
@@ -425,7 +420,7 @@ if (node) console.log(node.type, node.title);
 - `excludeInternal: true` 剥除层级 bookkeeping 边 `contains` 和 `semantic_contains` —— 只想要语义关系时有用。
 - 返回的边没有 weight 字段。要拿到带权重的投影边，用 `projectEdges`。
 
-**何时使用：** 离线边检查、构建自定义拓扑索引，或者给非召回类的分析器供数据。要构造 LLM 召回输入，优先用 `projectEdges` 或 `getEdgeSummary`。
+要构造 LLM 召回输入，优先用 `projectEdges` 或 `getEdgeSummary`。
 
 **最小示例：**
 
@@ -442,7 +437,6 @@ console.log(mentions.length, 'semantic mention edges');
 
 - 返回角色卡生效后的 schema（即 `getEffectiveNodeTypeSchema(context, settings)`）。角色卡 override（若有）已经应用。
 - 每个 `SchemaSpecView` 都是冻结的，内部数组（`tableColumns`、`requiredColumns`、`primaryKeyColumns`）也都是冻结的。
-- 这是图检查器 输入中 `schema_overview` 区块的源数据。
 
 **何时使用：** 构造 `schema_overview` prompt 区块时，或基于 schema 派生信息（哪些列是主键、哪些是必填等）做反射时。
 
@@ -470,7 +464,7 @@ for (const spec of schema.types) {
 - 归档邻居总是被过滤。
 - 按 `(neighborId, edgeType, direction)` 去重。
 
-**何时使用：** 给自定义 LLM prompt 区块构造一个围绕焦点节点的邻居环。用 `projectTo: 'visible'` 与图检查器 看到的视图对齐。
+**何时使用：** 给自定义 LLM prompt 区块构造一个围绕焦点节点的邻居环。
 
 **最小示例：**
 
@@ -558,8 +552,6 @@ const rollup = api.getNearestVisibleAncestor('event_99', { visibleNodeIds: visib
 - 返回带 `weight` 的冻结 `EdgeView` 对象。
 - 实现直接 re-export 内部的 `buildProjectedEdges` —— 没有偏移风险。
 
-**何时使用：** 给图检查器（或自定义 LLM）构造一份尊重可见候选池的图快照。和 `listVisibleCandidates` 配对就能拿到图检查器 看到的 （节点， 边） 对。
-
 **最小示例：**
 
 ```js
@@ -581,7 +573,6 @@ console.log(projected.length, 'projected semantic edges');
 
 - `excludeRecentMessages` 与原生 `isNodeInRecentExcludeWindow` 语义一致：过滤掉最近 N 条用户消息窗口内的节点。默认 0。
 - `seqWindow` 与 `types` 在原生候选构造**之后**生效，用来收窄结果池。
-- **按 `compareNodesByRecency` 排序**（seqTo 降序 → semanticDepth 降序 → id 字典序）—— 这是图检查器 看到的顺序，与 `listNodes` **不同**。
 
 **何时使用：** 任何自定义召回插件的热路径入口。配合 `getNodeBrief` 按 id 调用来组装 `candidateRows` 区块。
 
@@ -604,7 +595,7 @@ console.log(candidates.length, 'visible candidates');
 - 节点不存在或已归档时返回 `null`。
 - 每次调用都重新计算，因此角色卡 override 立即生效。
 
-**何时使用：** 决定自定义 prompt 中要渲染节点字段 payload 的哪一部分。镜像图检查投影的门控。
+**何时使用：** 决定自定义 prompt 中要渲染节点字段 payload 的哪一部分。
 
 **最小示例：**
 
@@ -623,7 +614,6 @@ if (exposure === 'high_only') {
 
 - 直接包装内部的 `buildEdgeSummary` —— 行为没有偏移。
 - 默认 `visibleNodeIds` 取当前 injection-state 的 `visibleIds`。**在召回流水线至少跑过一次之前为空。** 需要保证覆盖时显式传一个集合进来。
-- 默认 `limit: 8`，与图检查投影一致。
 - 总是返回冻结的 `EdgeSummaryView`；缺失 / 未知节点返回零度数 summary，绝不返回 `null`。
 
 **何时使用：** 给自定义候选行附上紧凑的边视图，或者在不付出完整拓扑遍历代价的前提下查看节点邻域。
@@ -641,7 +631,6 @@ console.log(summary.degree, summary.sample_neighbors.length);
 
 **契约：**
 
-- 等价于图检查器 `candidateRows` 区块中的一行：`formatNodeBrief` 投影，加上召回侧的几个字段（`exposure`、`edgeSummary`、`alwaysInject`）。
 - 节点不存在或已归档时返回 `null`。
 - 默认 `includeEdgeSummary: true`，默认 `edgeSummaryLimit: 8`。
 - 默认 `visibleNodeIds` 取当前 injection-state 的 `visibleIds`。需要确定性投影时显式传集合。
@@ -666,7 +655,6 @@ console.log(brief.summary, brief.exposure, brief.alwaysInject);
 
 **契约：**
 
-- 包装内部的 `expandRouteCandidates` —— 图检查器 决定继续深挖某个 seed 时触发的 BFS drill 扩张。
 - 默认 `hops: 1`、`includeChildren: true`、`projectTo: 'visible'`，**`excludeInternal: false`**（与原生 `expandRouteCandidates` 对齐，在 drill 中 `contains` / `semantic_contains` 也会参与）。
 - `projectTo: 'visible'` 时，drill 在当前 `visibleIds` 池内扩张（seed 自身永远准入）。
 - `projectTo: 'raw'` 时，drill 跨整个 store 扩张。
@@ -831,13 +819,7 @@ unsubscribe();
 
 ## Hybrid narrative recall
 
-叙事召回使用 `openSession(context).recallMemory(query, options)`。它先核对原 Information requester/来源域，返回完整证据组、缺失组诊断与 `assertCurrent` 消费 guard。`requester` 支持 narrator/actor/task，task 还需 `informationTaskId`；`at` 指定来源时点。下方 graph inspection API 不授权将检查输出自动用作叙事证据。
-
-```js
-const session = await getExtensionApi("memory-graph")?.openSession?.(Atria.getContext());
-const result = await session?.recallMemory(query, { requester: { kind: "narrator" } });
-result?.assertCurrent(); // revalidate immediately before consumption
-```
+叙事召回使用 `openSession(context).recallMemory(query, options)`。`requester` 支持 narrator/actor/task，task 还需 `informationTaskId`；`at` 指定来源时点。
 
 ## Write API
 
@@ -897,7 +879,6 @@ console.log(applied.length, 'applied;', rejected.length, 'rejected');
 
 - `type` 缺失时同步抛错。
 - 返回新节点的 `id`。若提供了 `ref`，会把同一个 `ref` 一并回传，以便调用方在同批次后续的 `upsertLinks` 中引用。
-- 底层批次拒绝该 op（例如 schema 校验失败）时抛 `{ code: 'OP_FAILED', rejected }`。
 
 **何时使用：** 一次性的单节点创建。如果同一个逻辑动作里要 create-plus-link，优先用 `applyExtractionBatch`，这样 link 解析和回滚边界对整个意图都生效。
 
@@ -921,7 +902,7 @@ const { id } = await writeApi.createNode({
 - `setFields` patch 列；`clearFields` 重置列出的列；传 `title` 会更新节点标题。
 - 节点被找到且 patch 已应用时 `ok: true`；节点缺失、已归档或被跳过时 `ok: false`（静默跳过，不抛错）。
 
-**何时使用：** 原地变更已有节点。始终检查 `ok` 以确认 patch 落地。
+**何时使用：** 原地变更已有节点。
 
 **最小示例：**
 

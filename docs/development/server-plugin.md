@@ -286,7 +286,7 @@ For this reason, **only install plugins you trust**.
 
 ### Path Traversal Protection
 
-Atria's plugin loader detects path traversal attempts and prevents plugins from escaping the `plugins/` directory via `../../`. However, if a plugin's route handlers accept user input as a file path, the plugin must still validate the path itself:
+Atria's plugin loader detects path traversal attempts and prevents plugins from escaping the `plugins/` directory via `../../`.
 
 ```js
 import path from 'path';
@@ -389,7 +389,7 @@ Drop the plugin file (or directory) into the `plugins/` folder, then restart Atr
 
 ### Git Auto-Update
 
-If a plugin was cloned from a Git repo, Atria checks for updates on startup. The loader uses `simple-git` (falling back to `isomorphic-git` if unavailable) to run `git pull` and fetch the latest code.
+ The loader uses `simple-git` (falling back to `isomorphic-git` if unavailable) to run `git pull` and fetch the latest code.
 
 To enable auto-update, make sure the plugin directory is a Git repository and `enableServerPlugins` is `true` in `config.yaml`.
 
@@ -407,8 +407,6 @@ A plugin can also reference packages from Atria's root `node_modules` without re
 ## Worked Examples
 
 ### Hello World
-
-A minimal server plugin with a single health-check endpoint:
 
 ```
 plugins/hello-world/

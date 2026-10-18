@@ -8,10 +8,10 @@ Atria 對 SillyTavern 的改進不是簡單的功能堆疊，而是從資料傳�
 | --- | --- | --- |
 | 架構 | [預設解耦](/zh-TW/improvements/preset-decoupling) | 將連線參數與預設分離為獨立實體 |
 | 架構 | [增量同步](/zh-TW/improvements/incremental-sync) | 基於增量 patch 的資料傳輸，替代全量覆蓋 |
-| 架構 | [後端即時儲存](/zh-TW/improvements/backend-storage) | 資料變更即時持久化，完整性校驗防止並行衝突 |
+| 架構 | [後端即時儲存](/zh-TW/improvements/backend-storage) ||
 | 功能 | [函數呼叫執行時](/zh-TW/improvements/function-call-runtime) | 原生與純文字兩種模式的統一函數呼叫支援 |
 | 功能 | [角色卡綁定預設與人設](/zh-TW/improvements/card-bound-presets) | 角色卡可攜帶推薦預設和預設人設 |
-| 功能 | [請求檢查器](/zh-TW/improvements/request-inspector) | 追蹤生成請求的完整生命週期與 Token 用量 |
+| 功能 || 追蹤生成請求的完整生命週期與 Token 用量 |
 | 功能 | [預設關聯世界書](/zh-TW/improvements/preset-world-info) | 切換預設時自動啟用對應的世界書 |
 | 功能 | [Skills](/zh-TW/features/skills/) | 相容 Anthropic 的本地知識包，編排器 agent 按需讀取 |
 | 基礎設施 | [統一生成層](/zh-TW/improvements/generation-layer) | 多後端生成請求統一封裝與 Token 計量 |
@@ -42,7 +42,7 @@ Atria 新增了三個增量端點：
 - **`patch`**：按訊息索引修補指定行，只更新變更的訊息
 - **`patch-metadata`**：使用深度合併更新聊天中繼資料，而非替換
 
-每次寫入後，後端計算檔案的 integrity hash 並回傳給前端；後續請求攜帶該值進行校驗，不匹配時回傳 409 Conflict，從根本上防止並行寫入衝突。設定資料同樣支援增量 patch 儲存，帶衝突偵測和序列化寫入。詳見 [增量同步](/zh-TW/improvements/incremental-sync)。
+設定資料同樣支援增量 patch 儲存，帶衝突偵測和序列化寫入。詳見 [增量同步](/zh-TW/improvements/incremental-sync)。
 
 ### 後端即時儲存
 
@@ -76,10 +76,6 @@ Atria 內建了統一的函數呼叫（Function Calling）執行時，支援兩�
 
 聊天人設鎖定（Chat Persona Lock）功能則將使用者人設與特定聊天綁定，切換聊天時自動恢復對應的角色設定。這些功能建立在預設解耦的基礎之上——正因為預設是獨立實體，才能被角色卡引用和分發。詳見 [角色卡綁定預設與人設](/zh-TW/improvements/card-bound-presets)。
 
-### 請求檢查器
-
-除錯 AI 對話時，使用者經常需要知道「到底發了什麼給 API」。Atria 的請求檢查器追蹤每個 AI 生成請求從發起到完成的完整生命週期，記錄 prompt token、completion token 和總用量。它支援串流回應的 Token 統計（從 SSE 事件中提取 usage 資訊），也涵蓋圖像生成、向量嵌入和重排請求的追蹤。請求檢查器追蹤的 Token 用量是獨立的統計功能，與儲存配額管理是兩個獨立的系統。詳見 [請求檢查器](/zh-TW/improvements/request-inspector)。
-
 ### Skill
 
 多 agent 編排器 profile 的系統提示詞往往越來越長 —— 每條可重用的寫作規則、每份評審方法、每份工作流契約，過去都內聯在 `systemPrompt` 欄位裡，經常在多個子代理裡重複拷貝。Atria 引入了 **Skill（skills）**：相容 Anthropic 的本地知識包（`SKILL.md` + frontmatter + 可選子檔案），agent 按需讀取。Skill 按名字尋址（參照裡不帶作用域前綴），住在三種作用域下（`global` / `preset` / `character`），派遣時按後者優先解析。
@@ -92,14 +88,13 @@ Atria 內建了統一的函數呼叫（Function Calling）執行時，支援兩�
 
 SillyTavern 中，不同 AI 後端（OpenAI、Anthropic、Google、Kobold 等）的生成請求走各自獨立的程式碼路徑，導致功能支援不一致。Atria 新增了統一生成層，將多後端的生成請求統一封裝，共享 Token 計量、串流處理和錯誤處理邏輯。
 
-該模組為所有 AI 後端提供統一的處理管線，確保無論使用哪種 AI 服務，使用者都能獲得一致的功能體驗（如請求檢查、Token 統計、生成確認等）。詳見 [統一生成層](/zh-TW/improvements/generation-layer)。
+詳見 [統一生成層](/zh-TW/improvements/generation-layer)。
 
 ### 認證與配額
 
 Atria 增加了 OAuth 登入支援（GitHub、Discord）和儲存配額管理：
 
 - **OAuth 登入**：透過前端管理員面板配置（儲存在 `admin-settings.json` 的 `oauth` 配置段中），支援授權碼換取 access token、自動建立或關聯本地使用者帳戶
-- **儲存配額**：管理員可為不同使用者設定儲存空間配額上限，系統在請求前自動檢查額度
 - **日誌系統**：詳見 [日誌系統](/zh-TW/features/logging)
 
 這使得 Atria 能夠在多人共享部署的場景下安全運行。詳見 [認證與配額](/zh-TW/improvements/auth-and-quota)。

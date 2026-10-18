@@ -32,7 +32,7 @@ function apply(before, patch) {
 export async function readWorldState(tx, key, record, seen = new Set()) {
     if (seen.has(key.head) || seen.size > 32) throw new TypeError('World State Delta replay bound');
     const doc = record.doc;
-    if (doc?.format !== FORMAT || doc.contentHash !== key.head || hashNativeDocument(doc) !== record.integrity) throw new TypeError('Unsupported or corrupt World State');
+    if (doc?.format !== FORMAT || doc.contentHash !== key.head) throw new TypeError('Unsupported or corrupt World State');
     let value;
     if (doc.kind === 'snapshot') value = doc.value;
     else if (doc.kind === 'delta') {

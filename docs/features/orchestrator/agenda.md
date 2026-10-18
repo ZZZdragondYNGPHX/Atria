@@ -12,10 +12,6 @@ When to reach for Agenda over Spec:
 Spec wins on predictability, prompt-cache friendliness, and debug ergonomics. The fixed DAG is enough for the vast majority of RP scenarios; Agenda is for cases that genuinely need dynamic dispatch.
 :::
 
-::: warning 99% of the time, don't hand-edit
-Before you hand-write a Planner prompt, check the [AI Iteration Studio](/features/orchestrator/iteration-studio) — describe what you want in one sentence, the AI returns a Planner + agent pool proposal, you approve change-by-change.
-:::
-
 ## Agenda editor
 
 Switch to Agenda mode, then click **Open Orchestration Editor** in the orchestrator panel.
@@ -40,7 +36,7 @@ Each Agenda Agent is similar to a Spec Node: own System Prompt, User Prompt Temp
 
 ### Three runtime bounds
 
-Agenda is dynamic dispatch, so runaway is easy. Three guards:
+Agenda is dynamic dispatch, so runaway is easy.
 
 - **Planner Max Rounds** — how many scheduling rounds the Planner gets
 - **Max Concurrent Agents** — concurrency cap on parallel agent runs (passed to `Promise.all`)

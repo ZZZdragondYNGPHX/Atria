@@ -1,6 +1,6 @@
 # Atria 产品源码
 
-完整治理见 `docs:README.md`，企划与结果归 `docs:plans/**` / `records/**`；恢复状态按真实 Git 核对。
+完整治理见 `docs:README.md`，企划与结果归 `docs:plans/**` / `records/**`；
 
 - 使用当前任务的语义分支；保护无关未提交内容。
 - 复用现有服务、状态与持久层；实现精简与兼容边界统一见 `docs:README.md` §12.1；产品名称为 Atria。

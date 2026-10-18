@@ -4,7 +4,6 @@ This walkthrough is organized around three actions:
 
 1. **Generate a dedicated multi-agent orchestration for one character card in a single sentence.** No prompt engineering, no manual sub-agent plumbing — the AI Iteration Studio does the work for us.
 2. **Run a simulation, annotate the LLM clichés in the output, and let the Studio improve the orchestration prompts and Skills accordingly.** The targets here are the patterns Chinese-RP readers call **八股** ("eight-leg essay" — formulaic boilerplate). The most common family is **numeral + classifier counting**: narration that lapses into a stage-direction tally.
-3. **Have the Studio write a custom tool for this card** that verifies whether the card's required output format is fully present.
 
 The example uses a community card with strict output-format requirements and a busy variable system. The card itself does not matter — the method applies to any **card that has format constraints or a domain-specific setting** the global default does not cover.
 
@@ -102,43 +101,6 @@ When the new review popup opens, the previously annotated cliché phrases should
 ![Improved simulation](/screenshots/recipes-card-customization/09-sim-after.png)
 
 Comparing the two runs side-by-side, the difference is plain — the baseline's repeated "flash → count-occurrences" cadence ("one beat, two beats, a pause, then three more", "flashed three times", "flashed five times in a row") is largely gone from the improved run. In the improved final-message, total classifier-counting hits (一下 / 一节 / 一刻 / 一档 / 几下 etc.) drop to 5, and none of them sit on a rhythm beat — they fall on descriptive uses like "half a degree" or "one tube" instead. If anything still remains, repeat the "annotate — simulate" loop. Two or three rounds is normally enough.
-
----
-
-## Let the Studio write a custom verification tool
-
-This card has a hard rule: every reply must end with an `<overall>` summary block and an `<UpdateVariable>` block. When the main agent gets carried away with the prose, those trailing tags are easy to drop — and then the card's state machinery does not pick up the turn's update, distorting the next round's context.
-
-For requirements like this, we do not need to write any code ourselves or hand-edit the main agent's prompt — **we describe what we want in plain natural language**:
-
-> This card has a format requirement: every reply must end with an `<overall>` tag and an `<UpdateVariable>` tag — please don't let it miss them.
-
-![Describing the format requirement to the Studio](/screenshots/recipes-card-customization/11-tool-prompt.png)
-
-The Studio decides how to fulfill the requirement on its own. This is a format check that code can verify exactly (literal string match), which makes it a fit for a **custom tool**. The party that needs to be checked, and reminded to amend, is the main agent that writes the reply, so the tool belongs to the main agent and must be invoked at its finalization step. Based on that read, the Studio produces a coherent change set:
-
-1. **Inspects the runtime ctx surface** with `atri_ctx_describe` (and reads the relevant docs via `atri_docs_read`) so it knows the exact shape of the data the tool will touch — no guessing.
-2. **Drafts the tool body and dry-runs it** with `atri_orch_dry_run_custom_tool` against sample args so any runtime exception surfaces before you are asked to approve anything.
-3. **Authors the validated tool** via `atri_orch_set_custom_tool`. The tool is `read` mode (no side effects), and its body is a small piece of JavaScript that reads the in-flight draft snapshot and scans the trailing tags. The mode-appropriate enable flag is flipped on automatically, so the main agent sees the tool on the next turn.
-4. **Patches the main agent's system prompt** via `atri_orch_patch_director_main_agent_system_prompt` (or the loop / agenda equivalent) to add a rule: the final step before producing the reply must call this tool, and if any tag is reported missing, amend in place before finalizing.
-
-Decisions the user would otherwise have to spell out — which mechanism best fits, who should call it, what else needs to be updated in sync — the Studio makes on its own from a natural-language request. We do not have to phrase the ask in technical terms.
-
-Each edit still goes through a review card on the ProposalBus — green for additions, red for removals. **Because a custom tool runs JavaScript in your browser, the proposal card carries a safety banner** — expand "View body" to inspect the tool code, confirm that it is a read-only scan with no side effects, then approve. Reject any card whose body you can't read.
-
-![New tool's code review + security confirmation](/screenshots/recipes-card-customization/12-tool-review.png)
-
-After applying, scroll to the main agent's **Custom tools** panel — the new tool is there, with its checkbox ticked by default.
-
-![Tool now installed](/screenshots/recipes-card-customization/13-tool-installed.png)
-
-We run one more simulation to confirm that the main agent actually calls it as instructed:
-
-> One more simulation to verify.
-
-![Simulation trace showing validate_output_skeleton being invoked](/screenshots/recipes-card-customization/14-tool-invoked.png)
-
-The trace shows a `validate_output_skeleton` row — the main agent runs the tool right after writing to the draft tail, receives the verdict, and decides whether it needs to patch in any missing tag.
 
 ---
 

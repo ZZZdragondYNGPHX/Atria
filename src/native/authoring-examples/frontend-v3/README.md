@@ -5,8 +5,7 @@ Each `.aui` file contains one `<template>`, optional JSON `<contract>` and optio
 component-scoped `<style>`. Every element has a stable `node-id`.
 
 Build and Studio Preview use the same compiler. Play and Preview use the same
-renderer and consume compiled artifacts only. A View root is loaded when mounted;
-component/style/asset bytes are hash-checked and cached within the Experience.
+renderer and consume compiled artifacts only.
 
 ## Presentation contract
 
@@ -53,10 +52,6 @@ component/style/asset bytes are hash-checked and cached within the Experience.
   on:changed="receive">…</component>` uses props down/events up.
   Named supplied children use `slot="name"`; outlets use
   `<slot node-id="outlet" slot-name="name" />`.
-- `bind:text/value/checked/disabled/hidden/class/title/aria-label` take a typed
-  scope path. Value/checked on form controls are writable local models.
-  `if="ui.visible"` controls visibility. `form.dirty`, `form.touched`,
-  `form.errors` and `form.busy` are read-only local projections.
 - Interactions support `set`, `toggle`, `emit`, `focus`, `view.push`,
   `view.replace`, `view.back`, `overlay.open`, `overlay.close`. Targets are
   declared state paths, emits, NodeRefs or View IDs. No arbitrary evaluation.
@@ -75,8 +70,7 @@ component/style/asset bytes are hash-checked and cached within the Experience.
   media/container queries, pseudo-elements, animation/transforms and filters.
 - CSS resources use `url(resource:assetId)`; fonts use `@font-face` with exact
   WOFF2/WOFF/TTF/OTF assets. Families are rewritten into Experience-scoped Host
-  FontFace registrations. Imports, external URLs, local-font probes, executable
-  and unresolved resource functions fail closed.
+  FontFace registrations.
 - `env` exposes frame/viewport dimensions, orientation, mobile/desktop, pointer,
   hover, dark, forced-colors and reduced-motion projections. Numeric values and
   safe-area insets are also projected as `--atria-*` CSS variables.
@@ -97,9 +91,7 @@ state, routing, overlays, NodeRefs, responsive modes and virtualization.
 
 The Source Index's `bridge` field names a JSON file with `version: 1` and a
 `bindings` array. Build pins the typed target contract/schema digests, safe input
-mapping, source adapter, requirements and receipt/idempotency policies. Installed
-validation recomputes these from the actual Experience contract; neither Play nor
-Preview accepts caller-supplied target selectors or descriptors.
+mapping, source adapter, requirements and receipt/idempotency policies.
 
 Bindings have `id`, `kind`, `target`, `inputSchema` and `outputSchema`:
 
@@ -124,17 +116,14 @@ Bindings have `id`, `kind`, `target`, `inputSchema` and `outputSchema`:
   variant's typed `outputSchema`; input is the Task schema or a safe mapped schema.
   Host-owned saved Task slot bindings select the execution route. The existing
   Generation Host/Task scheduler owns providers, secrets, retries, cancellation,
-  backpressure and authority finalization. Tasks requiring Lifecycle intent still
-  require it; a frontend binding never bypasses that target's own checks.
+  backpressure and authority finalization.
 
-Every schema is closed/bounded under the existing data-schema validator. In
+ In
 particular, strings require `maxLength`, arrays require `maxItems`.
 
 ### Safe input mapping and declarative calls
 
 Input mapping defaults to `"identity"` and requires the same target input schema.
-An object mapping may construct target arguments from public input paths and
-schema-checked constants only:
 
 ```json
 {
@@ -185,8 +174,7 @@ All transport responses use `version: 1`, `ok`, `bindingId`, `epoch`, `revision`
 `schemaDigest`, `status`, `data`, `cursor`, `operationId`, `error`. Errors expose a
 stable `bridge_*` code and retryability, never raw Host/provider exceptions.
 Operation status is queued/running/progress/completed/failed/cancelled; provisional
-provider content is not treated as committed data. Only a validated completed
-Task payload enters `data`.
+provider content is not treated as committed data.
 
 Each write requires a revision and an idempotency key. Keys are scoped to the
 Experience Epoch and binding; reusing a key with different input/method/revision
@@ -195,8 +183,7 @@ Host receipts remain the durable authority; the Bridge only caches transient
 receipts and never retries/rebases an authority write automatically.
 
 Collection cursors are opaque Host tokens bound to binding, query, revision,
-ordering and Epoch. Changed queries/revisions, forged cursors, undeclared bindings
-and wrong Component scopes fail closed. Read subscriptions and operation status
+ordering and Epoch. Read subscriptions and operation status
 use bounded polling of the formal Host projection; no new event/authority store.
 
 Epoch is independent of local route navigation. Branch publication, restore
@@ -212,23 +199,6 @@ never storage objects, browser globals or Host services.
 Transient limits: 128 open Experiences per service, 30-minute token lifetime,
 256 write receipt keys, 512 cursor tokens and 64 operations per Experience;
 64 read subscriptions/operation observers per Component. Exhaustion fails closed.
-A process restart invalidates transient tokens instead of trying to migrate them.
-
-### Play, Preview and validation fixtures
-
-Play opens the owner-checked installed graph over `/api/native/session/frontend/`.
-Studio Preview supplies immutable owner-checked read projections through the same
-compiled client/schema/query layer. Preview Application collections begin empty;
-Package Data reads use exact Preview assets. Preview writes return
-`bridge_preview_readonly`—there is no simulated authority or legacy fallback.
-
-`tests/native/helpers/frontend-bridge-fixture.js`, the two `frontend-bridge*`
-unit suites and `tests/frontend/native-frontend-bridge.smoke.mjs` demonstrate typed
-inputs, snapshot subscriptions, pagination, scope/revision/epoch errors, real
-SessionCore Action publication, Operation lifecycle, recovery and Preview parity.
-
-The following section adds Phase 4 Conversation/Session/Prose. Phase 5 below adds Media, Localization/IME and Boundaries. Script VM, Canvas
-and Studio visual editing remain later phases.
 
 ## Phase 4 — Conversation, Session and Safe Prose
 
@@ -248,11 +218,7 @@ No target name is interpreted as an arbitrary service method or database query.
 `messages`, `branches`, `alternatives`, `blocks` and `saves` require a Collection
 binding. Use `sequence` for message order, `branchId` for branches, `messageId`
 for alternatives, `id` for blocks, and `saveId` for saves. Collections retain the
-existing page/query budgets and opaque cursors. Cursor identity includes the
-source projection as well as revision/query/Epoch, so a SavePoint list change
-also invalidates its old cursors. `inspect` takes an exact `revisionId` and reads
-committed historical messages without activating that revision. `status` reports
-Session/branch/revision/tail IDs, never an authority snapshot.
+existing page/query budgets and opaque cursors.
 
 Example Package-owned conversation (inside a declared Component):
 
@@ -280,7 +246,7 @@ entrypoint/SessionCore/Task scheduler; cancellation uses the existing stop path.
 Provider settings, credentials, raw Task streams and authority snapshots are not
 exposed. Generation finalization publishes messages through the committed read.
 
-All Actions use the Bridge revision guard and scoped idempotency receipts. Local
+ Local
 Composer/Generation/Session handlers additionally require the installed server
 scope's authorization and the active runtime's exact revision. `retry` forks the
 current assistant tail back to the coherent post-user boundary; `regenerate`
@@ -295,8 +261,7 @@ confirmation and restart handler. It never silently resets the Session.
 ### Safe Prose and Message Blocks
 
 `bind:prose` owns its element's children; do not combine it with `bind:text` or
-static children. The shared parser derives an inert AST from canonical text,
-with exact source ranges and deterministic mapping validation. Baseline syntax:
+static children. Baseline syntax:
 paragraphs/blank line breaks, `*emphasis*`, `**strong**`, headings, quotes,
 ordered/unordered lists, inline/fenced code, `==semantic marks==`, safe links.
 There is no HTML parser or raw AST/DOM injection. HTML-looking input is literal
@@ -307,13 +272,10 @@ bounded inline nesting. Exceeding them fails closed; canonical text is not edite
 Message Blocks remain independent immutable `MessageProjection.flow` entries.
 Declare a `blocks` collection target with `blockType`, and an output schema equal
 to `fixedHostTarget(target, dataSchema).outputSchema`. Its closed `dataSchema`
-is pinned by the compiled graph and rechecked by SessionCore at commit/load.
-Unknown types and extra data fields fail closed. Rows expose `id`, `messageId`,
+is pinned by the compiled graph and rechecked by SessionCore at commit/load. Rows expose `id`, `messageId`,
 `sequence` (flow position), `type`, `version`, and typed `data`. Package Components
 can receive that data as declared props or use it in keyed declarative lists.
-No block data is interpreted as Prose, markup, expressions or a command. Any
-interactive block action still requires a separately declared typed Bridge target
-and its normal revision guard. Managed Play uses inert semantic block cards;
+No block data is interpreted as Prose, markup, expressions or a command. Managed Play uses inert semantic block cards;
 Package Components own custom card presentation. The executable fixture is
 `tests/native/helpers/frontend-conversation-fixture.js`.
 
@@ -327,8 +289,7 @@ projections return `bridge_projection_unavailable`, not a simulated Session.
 ## Phase 5 — Media, localization, input and boundaries
 
 Source Index `media` and `localization` fields name JSON resources relative to the
-index, like `bridge`. The compiler emits exact, hash-checked catalogs and advisory
-`diagnostics` resources; install repeats semantic validation. Remote bytes are
+index, like `bridge`. Remote bytes are
 never fetched by build or included in `.atria`.
 
 ### Media and External Access Permission
@@ -350,8 +311,7 @@ A Package with a catalog must declare both `remote-media@1` in Experience featur
 and `remote-media` in Package permissions. A required catalog requires both
 corresponding declarations to be required. Optional remote media starts denied;
 the independent Host panel lists all origins, explains IP/image-selection/timing
-exposure, and offers enable/disable. Required catalog consent is checked before
-activation. Consent is per Experience and is never controlled by Package state.
+exposure, and offers enable/disable. Consent is per Experience and is never controlled by Package state.
 Installation consent alone does not silently enable network requests.
 
 `<img node-id="hero" media="portrait.hero" alt="Hero" />` resolves a fixed catalog
@@ -363,9 +323,7 @@ there is no Package autoplay, raw playback API or remote audio/video capability.
 Playback pauses on visibility loss and resources are released on disposal.
 
 Remote sources require canonical HTTPS without credentials/fragments. PNG, JPEG,
-WebP, GIF and AVIF are supported. Each entry has at most four candidates and a
-mandatory exact image fallback; optional `integrity` is a lowercase SHA-256 hex
-hash. Direct browser CORS requests omit credentials/referrer, reject redirects,
+WebP, GIF and AVIF are supported. Direct browser CORS requests omit credentials/referrer, reject redirects,
 and use `cache: no-store`. Origins must support CORS; no server-side raw proxy or
 ambient network API is introduced. Host fetch injection is a trusted integration
 seam, never Package code. A browser decode failure also uses the exact fallback.
@@ -373,9 +331,7 @@ The native image loading hint remains advisory; remote resolution is bounded.
 
 The resolver keeps at most 64 remote entries (2 MiB each), eight in-flight loads
 and a 15-second deadline per candidate. It shares pending/session-cache loads,
-evicts released entries, and revokes `cache:"none"` entries on release. Denied,
-offline, MIME/integrity/size failure and budget exhaustion return safe reason codes
-with fallback. Disabled/disposed/recovered Experiences abort requests and revoke
+evicts released entries, and revokes `cache:"none"` entries on release. Disabled/disposed/recovered Experiences abort requests and revoke
 remote object URLs. Exact media retains the existing 2 MiB/resource and 32 MiB
 graph budgets. Large catalogs can have 10000 identities within the graph budget.
 
@@ -412,8 +368,7 @@ messages use the default catalog, then their visible key with a diagnostic.
 
 `locale.set` takes a locale in its `value`; `announce` takes bounded text. Host
 integration also exposes `setLocale`/`announce`, and scoped fixed targets
-`host.presentation.locale`, `setLocale`, `announce`. These retain the existing
-Bridge scope/schema/revision/idempotency checks. Preview authorizes these pure
+`host.presentation.locale`, `setLocale`, `announce`. Preview authorizes these pure
 presentation targets, without authorizing Session writes. Locale updates `lang`,
 `dir` and environment in place, retaining DOM, local state, Composer and Session
 Authority. It does not change model generation language or Experience Epoch.
@@ -435,9 +390,7 @@ physical keyboard sensor. Host content provides bottom scroll padding and reveal
 the focused control when occlusion increases. Packages can use the same variables
 for their own fixed composers. Listeners/observers are disposed with the View.
 
-Compiler diagnostics address names/labels, alt text, heading/landmark, role review,
-keyboard access, hidden focus, focus styling and reduced-motion fallback.
-`runtime.getDiagnostics()` adds rendered touch-target checks. Exact diagnostics
+ Exact diagnostics
 are available to Studio Preview and existing Experience Health; they are advisory
 and do not alter authority. The Host-owned local live region serves `announce`.
 Existing Overlay FocusScope continues initial focus, trap, restore, inert and
@@ -466,9 +419,7 @@ revisions are local cancellation tokens and never substitute for Authority Epoch
 
 Executable coverage: `frontend-platform.test.js`,
 `helpers/frontend-platform-fixture.js`, and
-`tests/frontend/native-frontend-platform.smoke.mjs`. The browser harness generates
-a tiny WebM locally, validates real media decode, and uses deterministic remote
-responses plus synthetic composition/viewport events. It does not claim a real
+`tests/frontend/native-frontend-platform.smoke.mjs`. It does not claim a real
 IME, physical soft keyboard, provider or external image-server E2E.
 
 ## Phase 6 — Script Sandbox and Canvas
@@ -496,10 +447,7 @@ static import links, source digests and per-module source maps. The formal Build
 transpiles TypeScript to strict ES2020 JS and links package-local, explicit `.js`
 or `.ts` static imports. Vendored pure JS algorithms work without npm at runtime.
 Source imports are relative to their importing file; cycles, remote/bare/Node
-imports, dynamic import, runtime require, eval and dynamic Function are rejected.
-This is transpilation/compatibility validation, not a full TS type-checking IDE.
-Installation revalidates module syntax and static closure; hashes alone do not
-make script artifacts executable. Preview uses exactly these compiled artifacts.
+imports, dynamic import, runtime require, eval and dynamic Function are rejected. Preview uses exactly these compiled artifacts.
 
 Export a default object with optional `init(ctx, event)`, `event(ctx, event)` and
 `update(ctx, event)` handlers. `init` runs once per VM, `update` on changed props.
@@ -507,8 +455,7 @@ Declared NodeRefs receive bounded click/pointer/key/input/change events with
 `event.node` and `event.type`; composing input/key events are withheld. Events
 contain no DOM objects. Nested `ctx.props`, `ctx.state`, `ctx.env` and events are
 readonly copies. Each call/async continuation gets current Host presentation
-state. Write component fields with `ctx.set('component.count', value)`; schema
-validation and reconciliation use the existing state authority. Use declared
+state. Use declared
 `ctx.emit(name, value)` for parent interactions.
 
 ```js
@@ -534,9 +481,7 @@ export default {
 
 Controller ABI:
 
-- `ctx.bridge.snapshot/page/invoke/start/operation/cancel` have the same arguments,
-  Receipts, revision/idempotency guards and Operation Lifecycle as the existing
-  typed Bridge scope. Only the Component's compiled `uses` are callable. Fixed
+- Only the Component's compiled `uses` are callable. Fixed
   Host services use these same declared bindings. Business rejection is a Receipt.
 - `await ctx.node(id, 'measure')` returns bounded local geometry. Pointer capture
   and release use `'capturePointer'/'releasePointer'` and an owned pointer ID.
@@ -605,9 +550,7 @@ deletion and larger structural changes through the existing Authoring lifecycle.
 
 The editor offers two complementary paths:
 
-- Native source drafts retain their file and newline format while switching graph
-  entries. **Check source** compiles drafts without changing ProjectStore or its
-  revision. Diagnostics navigate to the original source, including JS/TS module
+- Diagnostics navigate to the original source, including JS/TS module
   errors, CSS, accessibility and localization advice. **Preview draft** uses the
   existing transactional Workspace evaluation, formal Build Compiler and production
   Renderer. It does not create a Play Session or enable authority writes.
@@ -626,103 +569,18 @@ drafts must be reviewed or reloaded before a separate structured proposal.
 
 The Project Agent exposes `atri_agent_frontend_graph` and
 `atri_agent_frontend_patch`. Both use the existing Task/Plan/Workspace/Review
-boundary. An example patch input (with the actual hash returned by discovery):
-
-```json
-{
-  "ownerId": "package",
-  "kind": "node",
-  "componentId": "Main",
-  "id": "greeting",
-  "field": "text",
-  "value": "Welcome",
-  "contentHash": "<SHA-256 from Source Graph>"
-}
-```
+boundary.
 
 `frontend.patch` targets the Workspace `core.project`. Kinds are `component`,
 `node`, `view`, `binding`, `style`, `state`, `interaction`, and `message` (the last
 also requires `locale`). `componentId` disambiguates Node/state/interaction/scoped
 style IDs. Null Node attribute values remove the attribute through the API.
-Each proposal pins its source hash and the existing project base revision. Multiple
-patches to one file in a Workspace use the same baseline hash and apply in order.
-Unknown/ambiguous IDs, stale hashes, identity rewrites and derived IR targets fail.
 The Agent cannot commit; it stops at the existing human Review gate.
 
 Feature support/reason codes, required flags, permission declarations and remote
 origins are visible. A declaration is not permission consent; Preview retains the
-existing Host permission/fallback policy. The same feature/permission closure
-validator is used before Build and during package validation. No second renderer,
+existing Host permission/fallback policy. No second renderer,
 Session authority, raw DB access, durable KV or automatic Operation replay exists.
 
-Validation is on demand rather than keystroke-triggered. Structured changes and
-raw drafts are compiled before Review; final application validates again and rolls
-back failures. General graph-level errors may point to a source file/block rather
+ General graph-level errors may point to a source file/block rather
 than one token. Accessibility diagnostics are advisory, not certification.
-
-## Phase 8 — Integrated district acceptance
-
-`tests/native/helpers/frontend-heavy-fixture.js` composes six Views in one
-native@3 Package: Story, Phone (SMS/Social/Mail), Church stores, Schedule, People
-and a Canvas relationship map. Domain records are seeded and changed through
-typed SessionCore Application commands. People uses opaque eight-row pages over
-25 residents; the QuickJS Controller reads the same scoped People collection.
-Remote portraits use a declared origin and exact fallback, never bundled remote
-image bytes. Package-owned CSS, Components, local routing and shared Draft state
-require no v2 style or semantic adaptation.
-
-The shared acceptance harness builds a real Project, installs the archive and
-serves hash-checked installed Runtime resources. Preview is compared against that
-same graph. AI summary retains real `NativeGenerationHost.executeTask`, scheduler,
-typed result validation and SessionCore finalization; only model execution is a
-deterministic test double. A fail-on-send provider guard asserts `providerCalls=0`.
-This is not evidence of external-provider execution.
-
-- `tests/native/frontend-heavy.test.js`: Component/Hybrid/Full Build/Preview/
-  install/feature preflight, scoped writes, revision and cursor guards, Managed/
-  Headless projection equality, Task completion, SavePoint restore and revocation.
-- `tests/frontend/native-frontend-heavy.smoke.mjs`: real Edge desktop (1440px)
-  and touch-emulated mobile (390px), business panels, safe Prose, provisional
-  narration separation, AI summary, pagination, remote denied/offline/fallback,
-  local section retry, Canvas/Worker restart, Draft retention and presentation
-  recovery without write replay. Full uses the existing Host recovery controls.
-
-Run the Jest suite from `tests` with `npm run test:unit:serial --
---runTestsByPath native/frontend-heavy.test.js`. From the repository root, run
-`node tests/frontend/native-frontend-heavy.smoke.mjs` with frontend bundles built.
-`ATRIA_BROWSER_CHANNEL` can select another installed Chromium channel. Browser
-evidence is ignored under `.git/frontend-v3-heavy-evidence`.
-
-Composition events and keyboard viewport in this harness are synthetic. Physical
-IME, real soft keyboard, Android/Termux and external media/provider acceptance
-need separate device/service evidence. These fixtures are Core tests, not a
-release or upgrade of any asset in the independent `package` workspace.
-
-## Phase 9 — Hard Cut / final regression
-
-Non-Text Native Experiences accept only `native@3`. The v1/v2 compiler, renderer,
-component/selectors/surface manifest fields, version selector, Studio migration
-and old Preview/Message template execution have been removed. Old documents fail
-closed; no migration or compatibility renderer is shipped. Reusable bounded data
-validators now live in `public/shared/native-values.js` and `native-data-schema.js`.
-Message Blocks are checked against the pinned v3 Bridge block schema at commit
-and reload. Text resource delivery permits only its declared game resources.
-
-The old pinned-UI Opening interpreter and its generic durable setup values are
-also removed. Author wizard presentation in Source state/forms and submit facts
-through declared typed Application/Workflow commands; do not store UI drafts as
-Session authority. Existing Lifecycle intent/outbox, revision checks and receipts
-are unchanged. Host SceneCue playback retains its closed media/caption/speech
-adapter, exact assets, scope checks and cleanup; it is not a Package UI compiler.
-
-Shared participation uses the existing authenticated Host turn controls and
-scoped projection display. It does not execute Package UI with the owner's
-Session Bridge or borrow local Play DOM. The frozen v3 Bridge has no Shared
-participant target: no new capability or parallel authority is implied by this
-cleanup. Shared/Realm/Continuity business services and Atria runtime plugins and
-Skills remain product assets. The bundled UI authoring Skill now uses v3 Source.
-
-`tests/native/frontend-hard-cut.test.js` rejects legacy and mismatched runtime
-identities. Frontend v3 behavior is covered by the related `tests/native/frontend-*`
-tests and Native Session E2E. Run the relevant local regressions for the change;
-there is no active PR workflow or phase guard command.

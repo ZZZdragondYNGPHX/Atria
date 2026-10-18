@@ -56,7 +56,6 @@ list(opts?: {
 | `description` | `string` | frontmatter 的 `description`。 |
 | `license` | `string \| null` | frontmatter 的 `license`（若有）。 |
 | `metadata` | `object` | Anthropic 標準的自由格式 metadata。 |
-| `installedHash` | `string` | 完整檔案樹的 sha256。讀期間穩定；每次寫入都會變。 |
 | `fileCount` | `number` | Skill 目錄裡的檔案總數。 |
 | `totalBytes` | `number` | 檔案大小總和。 |
 | `hasScripts` | `boolean` | Skill 攜帶 `scripts/` 目錄時為 true。 |
@@ -82,7 +81,7 @@ get(name: string, scope?: SkillScope | 'all'): Promise<SkillIndexEntry | null>
 
 搜尋範圍內沒有該名字時返回 `null`。
 
-省略 `scope` 時返回首個匹配 —— 適合用作「這個 Skill 某處存在嗎」的檢查，但不能替代編排器的後者優先解析。需要確定性查找時傳入特定 scope。
+需要確定性查找時傳入特定 scope。
 
 ## 讀取內容
 
@@ -153,43 +152,15 @@ search(opts: {
 
 ## 寫入內容
 
-所有寫入走磁碟上的 `.staging/` 目錄，全部校驗通過後原子提交。失敗的寫入對原檔案零影響。
+失敗的寫入對原檔案零影響。
 
 ### `writeFile(opts)`
 
 替換整個檔案。
 
-```ts
-writeFile(opts: {
-  scope: SkillScope,
-  name: string,
-  path: string,
-  content: string,
-  expectedSha256?: string,  // 樂觀並發控制
-}): Promise<{ sha256: string }>
-```
-
-如果傳了 `expectedSha256` 且與當前檔案雜湊不匹配，寫入以 `409` 衝突失敗 —— 適合編輯器式的並發編輯偵測。
-
-返回的 `sha256` 是新檔案的內容雜湊。
-
 ### `editFile(opts)`
 
 原地字串替換。只想改一處時比 `writeFile` 便宜。
-
-```ts
-editFile(opts: {
-  scope: SkillScope,
-  name: string,
-  path: string,
-  oldString: string,
-  newString: string,
-  replaceAll?: boolean,  // 預設 false
-}): Promise<{
-  sha256: string,
-  changesApplied: number,
-}>
-```
 
 - `oldString` 必須出現在檔案裡（否則拋錯）。`replaceAll: false` 時 `oldString` 必須**恰好出現一次**。
 - `oldString` 不能為空（伺服器拒絕空 `oldString` 以避免歧義匹配）。
@@ -227,27 +198,8 @@ install(opts: {
 
 `SkillInstallPayload` 為以下兩種之一：
 
-```ts
-// 內聯檔案（推薦給純文字 Skill，≤ 10 檔案，每個 ≤ 64 KB）
-{
-  bundleFormat: 'inline-files-v1',
-  name: string,
-  files: Array<{ path: string, encoding: 'utf8' | 'base64', content: string }>
-}
-
-// base64 編碼的 zip（最大可達單 Skill 上限）
-{
-  bundleFormat: 'archive-base64-v1',
-  name: string,
-  fileName: string,
-  contentBase64: string,
-  sha256: string,
-}
-```
-
 目標作用域存在同名 Skill 時：
 
-- 內容相同（雜湊匹配）→ 靜默 no-op。
 - 內容不同 → 拋錯，除非 `conflictStrategy: 'replace'`。`'skip'` 在衝突時 no-op。
 
 ### `delete(scope, name)`
@@ -296,17 +248,7 @@ importBundled(): Promise<{
 
 ### `listBundledManifest()`
 
-列出 `default/skills/global/` 下出廠的 Skill，每個都附帶匯入後會生成的 install 雜湊。**瀏覽出廠** tab 用這個來跟本地安裝對比，無需重跑 install。
-
-```ts
-listBundledManifest(): Promise<Array<{
-  name: string,
-  installedHash: string,
-  fileCount: number,
-  totalBytes: number,
-  description: string,
-}>>
-```
+**瀏覽出廠** tab 用這個來跟本地安裝對比，無需重跑 install。
 
 ## 傳輸
 

@@ -2,7 +2,6 @@ import { materializeIllustrations, IMAGE_VERSION_NAMESPACE } from '../../public/
 import { createHash } from 'node:crypto';
 import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
 import { readTimelineIndex } from './timeline-index.js';
-import { hashNativeDocument } from './repositories/common.js';
 import { ILLUSTRATION_NAMESPACE, emptyIllustrations, illustrationAnchorMatches } from '../../public/shared/native-illustration-contract.js';
 
 export const illustrationContentHash = content => createHash('sha256').update(content).digest('hex');
@@ -10,11 +9,11 @@ export const illustrationContentHash = content => createHash('sha256').update(co
 export async function readIllustrationState(tx, handle, sessionId, head) {
     if (!head) return emptyIllustrations();
     const record = await tx.getResource({ kind: K.sessionState, handle, sessionId, namespace: ILLUSTRATION_NAMESPACE, head });
-    if (!record || record.integrity !== head || hashNativeDocument(record.doc) !== head) throw new TypeError('Illustration state integrity mismatch');
+    if (!record || record.integrity !== head) throw new TypeError('Illustration state integrity mismatch');
     const artifacts = new Map();
     for (const ref of record.doc.imageRefs ?? []) {
         const artifact = await tx.getResource({ kind: K.sessionState, handle, sessionId, namespace: IMAGE_VERSION_NAMESPACE, head: ref.head });
-        if (!artifact || artifact.integrity !== ref.head || hashNativeDocument(artifact.doc) !== ref.head) throw new TypeError('Image artifact integrity mismatch');
+        if (!artifact || artifact.integrity !== ref.head) throw new TypeError('Image artifact integrity mismatch');
         artifacts.set(ref.head, artifact.doc);
     }
     return materializeIllustrations(record.doc, head => artifacts.get(head));

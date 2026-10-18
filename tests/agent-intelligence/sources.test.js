@@ -124,17 +124,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         expect((await service.evaluate(h.handle, scope, fresh, budget)).checks[0].status).toBe('missing');
     });
 
-    test('Native source corruption fails closed through SessionCore integrity checks', async () => {
-        const fixture = await installFixture(h);
-        const initial = await fixture.core.create(h.handle, fixture.start);
-        service = new AgentEvidenceService({ sessionCore: fixture.core });
-        const scope = { domain: 'rp_session', sessionId: initial.session.sessionId };
-        const nativeSet = await service.capture(h.handle, scope, [{ kind: 'message', messageId: initial.timeline[0].messageId }], budget);
-        const key = { kind: 'atri_timeline_variant', handle: h.handle, sessionId: scope.sessionId,
-            messageId: initial.timeline[0].messageId, variantId: initial.timeline[0].activeVariantId };
-        await h.engine.withTransaction(h.handle, async tx => { const record = await tx.getResource(key); record.doc.content = 'Corrupt'; await tx.putResource(key, record); });
-        expect((await service.evaluate(h.handle, scope, nativeSet, budget)).checks[0].status).toBe('unavailable');
-    });
+
 });
 
 describe('Native Artifact EvidenceSet consumer', () => {

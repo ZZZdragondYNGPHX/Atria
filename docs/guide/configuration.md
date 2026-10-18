@@ -150,7 +150,7 @@ Whitelist mode is enabled by default, allowing only local access. To allow LAN a
 If you set `whitelistMode: false`, Atria requires another protection layer. Otherwise it will detect an insecure setup at startup and terminate the process (in Docker, this manifests as the container restarting in a loop). To expose the server safely, do at least one of the following:
 
 - Enable `basicAuthMode` and configure `basicAuthUser` — see [Authentication](/guide/authentication)
-- Enable multi-user mode (`enableUserAccounts: true`) **and** set a password for every admin user via `node recover.js default-user <password>` — see [Authentication › Password Reset](/guide/authentication#password-reset). Both are required: enabling accounts alone still fails the check while admin users have no password, and setting a password alone still fails while accounts are disabled.
+- Enable multi-user mode (`enableUserAccounts: true`) **and** set a password for every admin user via `node recover.js default-user <password>` — see [Authentication › Password Reset](/guide/authentication#password-reset).
 - Set `securityOverride: true` (debugging only — **never** use this on a public network)
 :::
 
@@ -168,19 +168,6 @@ securityOverride: false
 
 ## Backup and Storage
 
-```yaml
-backups:
-  common:
-    numberOfBackups: 50
-  chat:
-    enabled: true
-    checkIntegrity: true
-    maxTotalBackups: -1
-    throttleInterval: 10000
-  allowFullDataBackup: true
-```
-
-- `checkIntegrity`: Enables chat file integrity checks to prevent concurrent write conflicts
 - `throttleInterval`: Backup throttle interval in milliseconds to avoid excessive backups
 - `maxTotalBackups`: Maximum number of chat backups; `-1` means unlimited
 

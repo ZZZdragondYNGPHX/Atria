@@ -25,7 +25,7 @@ macros.register(name: string, options: {
 }): MacroDefinition | null
 ```
 
-注册宏。返回注册成功的定义；校验失败则返回 `null`。
+注册宏。返回注册成功的定义；
 
 | 选项 | 说明 |
 |------|------|
@@ -113,7 +113,6 @@ const def = ctx.macros.registry.getMacro('greet');
 | <span v-pre>`{{roll::XdY}}`</span> / <span v-pre>`{{random::a,b,c}}`</span> / <span v-pre>`{{pick::a,b,c}}`</span> | 随机 |
 | <span v-pre>`{{//comment}}`</span> | 注释（输出忽略） |
 | <span v-pre>`{{outlet::name}}`</span> | 自定义 WI outlet 内容 |
-| <span v-pre>`{{isMobile}}`</span> / <span v-pre>`{{hasExtension::name}}`</span> | 环境检查 |
 | <span v-pre>`{{lastGenerationType}}`</span> / <span v-pre>`{{systemPrompt}}`</span> | 流水线状态 |
 
 ### MacrosParser（已弃用）
@@ -191,7 +190,6 @@ context.variables.local.pop(name: string): string | undefined
 | `add` | 两者都是数字时执行加法。已有值是 JSON 数组时 push。否则按字符串拼接 |
 | `inc` / `dec` | `add(name, ±1)` 的快捷方式 |
 | `del` | 删除变量。返回 `''` |
-| `has` | 布尔型存在性检查 |
 | `push` | 把 `value` 推入 `name` 处的 JSON 数组。缺失时自动建为 `[]`。对应宏形式 <span v-pre>`{{pushvar::name::value}}`</span> |
 | `pop` | 从 `name` 处的 JSON 数组弹出最后一个元素。空或缺失时为无操作。对应宏形式 <span v-pre>`{{popvar::name}}`</span> |
 
@@ -209,28 +207,6 @@ context.variables.global.get / set / add / inc / dec / del / has
 ```
 
 接口与本地相同。跨聊天持久化。
-
-### 使用示例
-
-```js
-const ctx = Atria.getContext();
-
-// 读本地变量并给默认值
-const turns = Number(ctx.variables.local.get('turns_taken')) || 0;
-
-// 自增
-ctx.variables.local.inc('turns_taken');
-
-// 检查并初始化全局配置变量
-if (!ctx.variables.global.has('api_endpoint')) {
-    ctx.variables.global.set('api_endpoint', 'https://api.example.com');
-}
-const endpoint = ctx.variables.global.get('api_endpoint');
-
-// 索引写入：往本地变量里的 JSON 列表的某个位置写
-ctx.variables.local.set('inventory', 'sword', { index: 0, as: 'string' });
-ctx.variables.local.set('inventory', 'shield', { index: 1, as: 'string' });
-```
 
 ### 本地 vs 全局
 
