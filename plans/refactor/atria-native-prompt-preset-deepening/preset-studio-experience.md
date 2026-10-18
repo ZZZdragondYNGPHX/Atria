@@ -22,7 +22,7 @@
 | **W2 现有 Library / Studio / Play 三域原位协作（已选）** | Library 管 Prompt/Module/Program exact revisions、归属和版本；Studio/Build/Agent Graph 配 Program/Expression/Quality/Eval、Draft/Review/Publish；Play 仅修改获准的 Route-owned Runtime Choices/临时受权创作控制并可看有效值。相同资源可深链往返，所有权与修改范围清晰 | 最贴合原 Shell 和现有 Library/Build/Play/V3 UI，不新建顶级 Runtime/Prompt Authority；必须做好精准来源/覆盖和跨端路由 |
 | **W3 所有功能都放入 V3 Graph Canvas** | 文笔、Prompt 源文和质量报告通过 Node Inspector 管理 | 专家可能喜欢，但普通纯文字 RP 玩家不应被迫学习图，违背 Narrative Card 一等体验 |
 
-W2 特别重要：在 Play 改 `promptParameters` 的 Route override 与在 Library/Studio 发布新的 Prompt Program revision 不同，**Play 选择不直接写 Program、World、PlanRevision 或历史 Run**。若涉及对作品/Agent 共享的受权作者修改，必须走原 Library/Project/Plan 的正常 Review/Publish。作者侧可以借鉴有序资源树，展示 Program → Stage → Module 的**单一原生顺序与引用大纲**；该树只投影原生权威，并非复制 LoomStudio 的资源表或引入新的编辑/排序存储。
+W2 特别重要：在 Play 改 `promptParameters` 的 Route override 与在 Library/Studio 发布新的 Prompt Program revision 不同，**Play 选择不直接写 Program、World、PlanRevision 或历史 Run**。若涉及对作品/Agent 共享的受权作者修改，必须走原 Library/Project/Plan 的正常 Review/Publish。作者侧可以借鉴有序资源树，展示 Program → Stage → Module / 受控语义 Anchor 的**单一原生编排大纲**；Stage 按 Program 显式顺序，合法 target 内的 Module 和 Anchor 按作者明确顺序表达。该树只投影原生 Draft/Compiler 权威，并非复制 LoomStudio 的资源表或引入新的编辑/排序存储。跨 target 移动需要有依据的受信校验，不能让 UI 拖动直接改变 Role/Source 权限；现有 `priority` 规则不是未来显式顺序已接通的证据。
 
 ## 3. R — 结构化面板与完整自由作者文本如何无损共存？
 
@@ -32,7 +32,7 @@ W2 特别重要：在 Play 改 `promptParameters` 的 Route override 与在 Libr
 | **R2 同一原生 Draft 的双视图 + 原文无损优先（已选）** | 基础版使用写作意图、Narrator、Character、Scene、Agent Behavior 的可选面板；专家有完整自由作者指令/样例编辑。桌面可并排，手机为清晰 Tab/Sheet；两者均映射同一 immutable Native Resource 草稿与 exact Rev，显示 typed 字段与 raw 未能结构化部分的 ownership/override/冲突 Diff；不支持无损 round-trip 时保留原文并阻止静默重写 | 符合 D2 F2/J2 与 E2，不重复管理 Prompt 真相；实现需要保证 raw 保全、冲突检测与 Undo/Redo |
 | **R3 原文为主、结构化帮助器仅建议** | 主要操作完整 Prompt 模块文本，表单只生成可选择插入的片段，不可暗中覆盖用户原文 | 最大化高级自由，但新手理解入口较弱；仍须保留 F2 的结构化编辑能力 |
 
-R2 的两个视图**不能各自持久化成为两个 Store**。原生 Host 必须明确 author-origin/ModuleRef/override 的最终版本：不能把文学描写强度的选项误认为 Provider 可关闭的限制，也不能把作者自由文本下的“system/role/权限”当真实 Host grant。Module/Program 和 Node 绑定改变时要重新校验 Scene/Actor/Agent 的合法继承。独立来源贡献与宿主正文内联变量在交互中应有不同标识：前者可查看来源/启停/有效位置，后者仍在原 Module 文本中编辑；二者不因 UI 分组而变成两份底层资源。
+R2 的两个视图**不能各自持久化成为两个 Store**。原生 Host 必须明确 author-origin/ModuleRef/override 的最终版本：不能把文学描写强度的选项误认为 Provider 可关闭的限制，也不能把作者自由文本下的“system/role/权限”当真实 Host grant。Module/Program 和 Node 绑定改变时要重新校验 Scene/Actor/Agent 的合法继承。独立来源贡献与宿主正文内联变量在交互中应有不同标识：前者可查看来源/启停/有效位置，后者仍在原 Module 文本中编辑；二者不因 UI 分组而变成两份底层资源。移动、上移/下移和键盘操作均应产生同一 Authoring Draft 变更，预览必须由 Host 返回实际有效顺序；继承冲突和动态 Contribution 的精细 UI 等待后续合同。
 
 ## 4. P — 有效 Prompt Preview、Source 解剖与候选 Diff
 

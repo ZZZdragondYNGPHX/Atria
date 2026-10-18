@@ -138,7 +138,7 @@ Atria 要同时做三件差别很大的事：舒适的长篇阅读、精密的�
 | --- | --- | --- |
 | **舞台** | 故事会话 | 全宽舞台 + 浮动 Composer + 右侧 Inspector；舞台顶部可以有作品的 HUD |
 | **书架 / 列表-详情** | 书库、Persona、Prompt 预设、运行的各子页、扩展 | 工具栏 + 列表或网格 + 右侧详情抽屉（M 上变成全屏页） |
-| **编辑器-Inspector** | 工坊、World/Knowledge、Prompt 编排与 Media Studio | 左侧原生资源/Stage/Module 大纲 + 中央完整正文或结构化编辑 + 右侧按需 Inspector/AI + 底部 Activity；大纲只展示已有权威引用，不另建排序表 |
+| **编辑器-Inspector** | 工坊、World/Knowledge、Prompt 编排与 Media Studio | 左侧原生资源/Stage/Module 大纲 + 中央完整正文或结构化编辑 + 右侧按需 Inspector/AI + 底部 Activity；大纲只展示唯一原生编排及其真实有效顺序，不另建排序表；语义 Anchor 只在后端合同接通后作为同 target 内受控位置出现 |
 | **图-Inspector** | Memory、V3 编排 | 图 + 列表（分段切换）+ 右 Inspector；图永远有列表等价视图 |
 | **全页 utility** | 设置、账户与备份、存储中心、诊断 | 左侧分区 + 主区；没有 Inspector |
 
@@ -192,7 +192,7 @@ Token（色、字、距、圆角、阴影、动效、层级）
 
 - 一列为主；expanded 下相关的短字段可以两列。
 - 标签在上；说明在下（`text-3`）；错误在下（朱色 + 图标 + 原因）。
-- 「字段 / Source」分段编辑**同一份草稿**；结构化编辑不能静默改写作者的原文。Prompt 的 Stage/Module 有序大纲、正文内联变量和独立来源贡献须清楚区别：大纲是原 Program 的可视投影，独立贡献可解释来源/纳入原因，变量仍属于宿主正文；不推定已实现新 Anchor/Contribution Schema。
+- 「字段 / Source」分段编辑**同一份草稿**；结构化编辑不能静默改写作者的原文。Prompt 的 Stage/Module 有序大纲、正文内联变量和独立来源贡献须清楚区别：大纲是原 Program 的可视投影，独立贡献可解释来源/纳入原因，变量仍属于宿主正文；同 target 顺序调整必须走同一 Draft/Host 校验，提供拖拽和键盘/上移下移等价操作；跨 target 不可因拖动改变可信 Role/Grant，不推定已实现新 Anchor/Contribution Schema。
 - **作者自由文本**（角色描述、Prompt 正文、World 描述）：全宽、可增高、原文保留、不自动格式化；字数提示是建议值，不截断。
 - 默认值和显式值分开标示（Q06 那种「默认 / 显式」标记）。
 - 提交顺序遵守功能文档 §2.3：编辑 → 审查 → 提交 → 回执 → 刷新 → 冲突。

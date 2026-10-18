@@ -7,6 +7,9 @@
 - 外部只读基线：`The-LoomStudio/LoomStudio@10be7f6e460a19d96fe9a4ca4892234f938b0196`；实际 Agent PromptBuild 采用 Application DFS，通用 Core Runner 是另一条链；Diff Mode 仍有 Planned/Blocked 设计内容，不能把外部提案声称为已实施。
 - 未决保留到下一轮讨论：Stage/Module 的具体作者排序与继承、Anchor 的声明/位置规则、Contribution 身份/生成/激活/失效与版本生命周期、宏消费与有效 Preview 的边界。**仅文档方案，不改产品代码，不执行 Browser、Node、CI、Provider 或三端验收**。本次提交所基于的远端 `docs@46734304f926648b0391bf432228b9dc1d8f1b09`，实际提交以 Git 历史为准；原 E0 Gate 和并发 V3 状态未重新验证。
 
+- 用户确认单一显式有序编排：Program 的 Stage 为阶段顺序；Stage 内遵守可信 target 边界，同 target 的 Module 和受控 Anchor 共享作者指定的显式顺序，Context Contribution 为原 Host 针对当前请求选择的受权来源投影，而非新存储/权限/编译引擎。对应设计原位纳入 D5 语义模块、D8 创作工作台、D5/D8 decisions、前端指导与 Q05 功能条目，`index` 更新状态摘要；不另立 Plan/Record/专项章节。
+- 核对当前 `main:public/shared/prompt-module-order.js` 的现状仍是 `target → priority(desc) → Module ID`，**选定设计尚未实现**；后续需讨论 parentRef/derive 继承的有效顺序、Anchor 声明与同 Anchor 多贡献排序、条件激活、请求快照和消费前失效/重编译。保持既有 E0 未收口与真实 Source/Role/Grant/Provider 权限边界。此轮只读源码并提交 docs 文档，没有运行测试、UI、真机、Provider 或改产品代码。
+
 ## 2026-10-16 — 后端正式开工
 
 用户授权正式开始，确认包含 D2–D8 全部后端，前端实现交 Claude Code。读取实际 Git、同一 Plan/E0/Record 和外部设计三文件；不冻结 §8.4 提案。起点 main=695acf3bc，docs=5101c3b3e，V3=618a04ae1；V3 仍在并发开发，原 Authoring bindings/生产 Model/Context/Source 未接通。既有各工作树 CLAUDE.md 删除、docs 外部设计草稿/截图及 agent-experience-evolution 未跟踪目录保持。当前接口工程决定见同 Bundle backend-implementation；验收仍 NOT_RUN，不把授权写为 E0 PASS。
