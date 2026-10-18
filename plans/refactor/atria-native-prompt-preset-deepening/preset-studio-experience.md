@@ -7,10 +7,11 @@
 | 当前入口 | 已有能力（`main@5eb3bc765...`） | 本轮可深化，不能凭草案宣称现有 |
 | --- | --- | --- |
 | `public/scripts/native/prompt-authoring.js` | 可编辑 `core.prompt-program/module/generation-profile`、模块 target/stages、条件/参数/derive；Library 创建 exact revisions，Project 变更经 ChangeSet/Review/Apply；Project/Package 资源权限区分 | 将 D2 F2、D3 E2 表达分层、D4 B2 Program Node binding、D5 trust/Provider diagnostics 显示为可理解的正式授权操作；新 UI 尚未存在 |
-| `public/scripts/native/prompt-presets.js` | Native Preset 类别/资源管理、保存版本、预设导入导出、Library 资源引用 | 保留单一原生资源版本；不能再做 ST 风格 depth/order/attach 的兼容界面或第二文件模型 |
+| `public/scripts/native/prompt-presets.js` | Library 已有无需创建游戏的 Native Preset 新建、分类/资源编辑、版本保存和导入导出 | 这是独立编辑入口，**不是**无 Session/Project 的完整 Preview/模型试读已具备；不创建第二 Preset/Program Store 或 ST 注入兼容界面 |
 | `src/native/model-prompt-runtime/README.md` | Play Prompt Choices/Runtime Diagnostics 的 Route-owned typed 参数覆盖；原 `POST /preview` 只对已受信 exact refs 做纯编译/渲染/预算验证；`/execute` 拒绝未经授权的预览覆盖 | **不能**把未保存 Draft 的任意 Browser JSON 当成 Host 可执行的正式 Program；Preview 与真实 Node Program/Route 执行的等价性仍需未来 E0 |
 | V3 [D8 Graph / Inspector 设计](../atria-native-orchestration-v3/graph-editor-experience.md) | 已冻结 Desktop Palette/Canvas/Inspector、移动 List+Sheet 全功能替代、Run Timeline 默认/Graph 切换、脱敏 HostProjection 与严格审批/收据语义 | 本 Plan 只加 Prompt/创作/评价相关视图，不新增另一个 Graph Editor、独立 Timeline 或顶层 Shell |
 | D7 [Quality/Evolution](quality-evolution.md) | 原 QualityProfile / Experience / Evolution 的来源身份与审查/发布流程已定案 | 仅显示受权限保护的证据、成本和候选差异，不建 Browser Judge/Promotion writer |
+| `core.image-target` / `core.image-rendering`、`illustration-settings-ui.js`、原视觉服务 | 原视觉资源在 Native Library 中版本化；全局和按作品的风格/模板配置可编辑，剧情生成 Prompt、Gallery 与 Media Studio 主要依赖 Session/Branch | 目标增加无游戏的视觉提示词创作/受控试生成/独立资产管理时必须复用 [原生视觉 Plan](../../feat/native-visual-generation-deepening/index.md) 与 ImagePromptIR/Job/Asset 权威，不能宣称当前已完整接通或强行走文本 PromptCompiler |
 
 **五条界面硬约束**：1）D2 F2 结构化 + 完整自由文本并存；2）D4 Node exact Program/Route 与 V3 Plan/Run 真实 Host Authority；3）D5/D6 SemanticIR/Context/Source/Role/Token/Cache/权限解释不能伪造；4）D7 审阅/发布与费用归原服务；5）正式重构零 ST/旧 Workspace 接口/数据兼容，禁止双读双写或隐藏兼容控件。
 
@@ -23,6 +24,10 @@
 | **W3 所有功能都放入 V3 Graph Canvas** | 文笔、Prompt 源文和质量报告通过 Node Inspector 管理 | 专家可能喜欢，但普通纯文字 RP 玩家不应被迫学习图，违背 Narrative Card 一等体验 |
 
 W2 特别重要：在 Play 改 `promptParameters` 的 Route override 与在 Library/Studio 发布新的 Prompt Program revision 不同，**Play 选择不直接写 Program、World、PlanRevision 或历史 Run**。若涉及对作品/Agent 共享的受权作者修改，必须走原 Library/Project/Plan 的正常 Review/Publish。作者侧可以借鉴有序资源树，展示 Program → Stage → Module / 受控语义 Anchor 的**单一原生编排大纲**；Stage 按 Program 显式顺序，合法 target 内的 Module 和 Anchor 按作者明确顺序表达。Anchor 在同一 Program/Stage 内具有稳定身份，不作为可单独下载的世界/记忆资源，也不等同于 Provider Role。树中的 Module/Anchor 可在原 Host 授权下编辑；当前请求实际匹配的 Contribution 是只读、带 Source/Activation/未纳入原因的展开结果，不能被拖动成作者指令。该树只投影原生 Draft/Compiler 权威，并非复制 LoomStudio 的资源表或引入新的编辑/排序存储。跨 target 移动需要有依据的受信校验，不能让 UI 拖动直接改变 Role/Source 权限；现有 `priority` 规则不是未来显式顺序已接通的证据。
+
+**双入口、一套资源的创作闭环（已确定方向）**：独立提示词作者从 Library 的 Preset/Program/Module 进入相同专业编辑器，直接管理原生 exact 修订、导入导出、将来的安全测试和发布，不需要建立游戏、虚构一个 Project 或先绑定可运行角色。游戏作者在 Studio 从现有预设库选择并绑定 exact 版本，按需 Fork/Derive 和 Review/Publish；新游戏使用默认/现成预设应是正常路径，不强制创作提示词。相同资源在两个入口深链跳转，但只归原 Library/Project Authority 管理。Play 只做已有受权临时选择/覆盖，不隐式写回共享预设。
+
+**视觉提示词作者（同等一等，非文本预设子类型）**：在现有 Library/资源入口提供 Image Target、Rendering 风格、正负面词和模板的独立创作入口；可在合法版本与原视觉链中复用到作品、会话和媒体任务。独立图像试生成与 Gallery 必须先由原视觉 Job/Asset/预算/审批权威定义**非 Session 资产与任务归属**，不能借现有 Session Gallery 或文本 Prompt `/execute` 伪装完成。该入口是 UI 工作空间而非新的顶层域、Compiler 或第二份视觉资产库；组件与编辑/版本语义可复用，ImagePromptIR/Provider 适配仍独立。具体菜单标签、工作区造型/导航细节继续作为视觉讨论输入。
 
 ## 3. R — 结构化面板与完整自由作者文本如何无损共存？
 
@@ -42,7 +47,7 @@ R2 的两个视图**不能各自持久化成为两个 Store**。原生 Host 必�
 | **P2 Authored → Effective SemanticIR → Provider Wire 的三视图与可验证 Diff（已选）** | 用户可切换自己的 Raw Authorial Text、选定 Plan/Node/Program/Route/Context 的有效编译块与 provenance、合法渲染后的具体 Provider role/wire 摘要；对比当前/候选的 exact Module/Program/Plan/Route refs、token、警告/硬错、缓存稳定性与 Source/权限摘要。纯静态编译预览不发送模型，真正付费生成必须独立显式授权/预算。 | 可解释 D4/D5/D7 的关键区别；需要真实 Host-only、已验证 Source/Model/Context 的预览端口且严格脱敏，不能拿 Browser 文本当最终 wire |
 | **P3 编辑即持续调用模型试读** | 文本每次修改都触发真实模型 + Judge 的即时重写/比较 | 默认额外请求成本高、存在正在编辑但未正式发布/Source stale 的问题，与 G1 稀疏调用冲突，不推荐 |
 
-以上为 2026-10-15 的静态预览基线；后续后端已有实施增量，实际可用接口以原 Native Host 与同一 Record 的新证据为准。未发布 Draft 只能在 Host 内使用合法、不可发送的受权编译路径，不能用生产 `/execute` 冒充预览。三层视图应按需解释 Module 纳入/排除的原因、有效位置、来源版本与实际 Provider 降级；需要标记“静态 exact 编排”和“本请求 Source/Branch/Actor/Grant 快照”不同生命周期，并准确显示 source-stale、条件不满足与缺失但非必需来源。Preview 源文/Tool/Memory 与 Provider wire 只显示当前用户可读的脱敏投影，不能泄露 Secret、NPC 私有 Cognition、Provider opaque reasoning。
+以上为 2026-10-15 的静态预览基线；后续后端已有实施增量，实际可用接口以原 Native Host 与同一 Record 的新证据为准。**独立预设编辑目前不等于无 Session/Project 的完整 Preview**；其未来独立测试应使用 Host 定义的有界作者 fixture 与脱敏权限，不借游戏伪造身份；付费试读需单独显式许可、额度与原 Provider/Compute 记录。未发布 Draft 只能在 Host 内使用合法、不可发送的受权编译路径，不能用生产 `/execute` 冒充预览。三层视图应按需解释 Module 纳入/排除的原因、有效位置、来源版本与实际 Provider 降级；需要标记“静态 exact 编排”和“本请求 Source/Branch/Actor/Grant 快照”不同生命周期，并准确显示 source-stale、条件不满足与缺失但非必需来源。Preview 源文/Tool/Memory 与 Provider wire 只显示当前用户可读的脱敏投影，不能泄露 Secret、NPC 私有 Cognition、Provider opaque reasoning。
 
 ## 5. I — 故障、质量、拒答与演化候选的 Inspector
 
@@ -70,7 +75,7 @@ D8 冻结 **W2 + R2 + P2 + I2 + M2** 的 Native 信息架构、受信交互和�
 
 ### W2：三域原生资源、交互与权限归属
 
-Library 管精确版本化 Program/Module/Generation Resource 和引用；Studio/Build/V3 Authoring 管作品、Agent、Preview、Review/Publish；Play 管受权玩家的 RuntimeRoute Prompt choices、当前有效创作控制与脱敏 Inspector。不能重建第二 Preset/Run Store、Browser Writer 或旧 ST 注入/Workspace 兼容界面。
+Library 管精确版本化 Program/Module/Generation Resource、Preset 的独立创建/导入导出和引用；提示词作者无需游戏即可开始。Studio/Build/V3 Authoring 管作品、Agent、Preview、Review/Publish，可直接消费现有 Preset/Program exact 引用、Fork/Derive 而不强迫游戏作者自行编写；Play 管受权玩家的 RuntimeRoute Prompt choices、当前有效创作控制与脱敏 Inspector。视觉创作可经独立 Library 工作空间复用原 Image Target/Rendering/Visual Job，并在作品上下文下引用或覆盖；目标不等于独立无 Session 试生成已实现。不能重建第二 Preset/Run Store、Browser Writer 或旧 ST 注入/Workspace 兼容界面。
 
 ### R2：同一正式 Draft 的结构化与自由文本无损编辑
 

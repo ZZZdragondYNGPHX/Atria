@@ -16,6 +16,10 @@
 - 用户确认原生有序 Anchor 方案：Program/Stage 以稳定身份管理合法 target 内的 ModuleRef/Anchor 单一显式顺序；Anchor 不作为独立 Prompt/World/Memory 资源，不承载新的 Role/Grant，只声明位置、可接收的来源类别和必需性。Host/Context Authority 按请求提供带真实 Source/Audience/currentness 的暂态 Contribution，确定性排序、去重并解释排除或缺失；前端 Module/Anchor 可按权限编辑，Contribution 仅只读展示，避免第二编排/数据权威。
 - 第四轮已确认方向原位纳入 D4 继承、D5 语义 IR、D6 Context 消费、D8 Studio/Play、前端设计指导与 Q05/Q12，同一 Record 继续累计。未冻结物理 JSON/字段、同 Anchor 多来源的具体排序/去重算法、跨 Provider 适配接口或 Trace 实现；不得据此宣称已上线。本次为 docs-only，未改 main/产品代码，未执行测试、CI 或三端 UI/Provider 验收；提交前 docs 基线以本轮实际 HEAD 为准。
 
+- 用户确定**双入口、一套资源**：Library 的文本 Preset/Program/Module/Generation 继续为无需创建游戏的独立作者入口；Game Studio 通过原生 exact 引用、必要时 Fork/Derive 与 Review/Publish 复用资源，游戏作者不必从零写提示词。视觉作者的目标是沿原生 `core.image-target`/`core.image-rendering`/全局 style/template、ImagePromptIR 与已有 Job/Asset 权威获得不依附游戏的专业创作/受权试生成/媒体归属，不把文本 PromptCompiler 复用为图像执行器，也不另设顶级 Shell 域或第二存储。
+- 只读证据：`main@c57fada6edeea255b29d857ba2585c1dbc9c098b` 的 `library-runtime-workspaces.js`、`prompt-presets.js` 已有 Library 独立新建/导入/导出；`native-generation` 正式 Preview 仍需 Session 或 Project，不能因此声称独立无游戏测试闭环完成。视觉 Target/Rendering 为 Library 版本资源，官方插画 global/work settings 已存在，但 prompt 生成与 Gallery/Media Studio 主要沿 Session/Branch，非 Session 付费试图及资产归属仍缺真实产品合同。原已完成视觉 Plan 只读参考，不改其历史。
+- 本轮设计原位修订现有 Prompt Plan index / D8 decisions / D8 Studio 体验 / D5 语义边界、前端指导以及功能矩阵 Q01/Q02/Q10/Q12、V05/V06/V09，保持 189 个功能编号和唯一 Record。没有改产品代码、视觉终审、已冻结权限/Source、Provider 或费用权威；无测试、构建、CI、真机或付费 API 验证。本轮基线 `docs@5c5ce1c688b6bb4ee070f16e8ad588d2f7c8d98b`；其余 E0、V3 与视觉独立项目真实验收状态未重跑。
+
 ## 2026-10-16 — 后端正式开工
 
 用户授权正式开始，确认包含 D2–D8 全部后端，前端实现交 Claude Code。读取实际 Git、同一 Plan/E0/Record 和外部设计三文件；不冻结 §8.4 提案。起点 main=695acf3bc，docs=5101c3b3e，V3=618a04ae1；V3 仍在并发开发，原 Authoring bindings/生产 Model/Context/Source 未接通。既有各工作树 CLAUDE.md 删除、docs 外部设计草稿/截图及 agent-experience-evolution 未跟踪目录保持。当前接口工程决定见同 Bundle backend-implementation；验收仍 NOT_RUN，不把授权写为 E0 PASS。
