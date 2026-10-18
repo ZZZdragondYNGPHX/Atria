@@ -138,7 +138,7 @@ Atria 要同时做三件差别很大的事：舒适的长篇阅读、精密的�
 | --- | --- | --- |
 | **舞台** | 故事会话 | 全宽舞台 + 浮动 Composer + 右侧 Inspector；舞台顶部可以有作品的 HUD |
 | **书架 / 列表-详情** | 书库、Persona、Prompt 预设、运行的各子页、扩展 | 工具栏 + 列表或网格 + 右侧详情抽屉（M 上变成全屏页） |
-| **编辑器-Inspector** | 工坊、World/Knowledge、Prompt 编排与 Media Studio | 左侧原生资源/Stage/Module 大纲 + 中央完整正文或结构化编辑 + 右侧按需 Inspector/AI + 底部 Activity；大纲只展示唯一原生编排与实际有效顺序，不另建排序表；继承的 exact 父版本、子级替换/禁用/配置/新增需可辨识，升级父版本与插入冲突要进入明确 Diff/Review；语义 Anchor 只在后端合同接通后作为同 target 内受控位置出现 |
+| **编辑器-Inspector** | 工坊、World/Knowledge、Prompt 编排与 Media Studio | 左侧原生资源/Stage/Module 大纲 + 中央完整正文或结构化编辑 + 右侧按需 Inspector/AI + 底部 Activity；大纲只展示唯一原生编排与实际有效顺序，不另建排序表；继承的 exact 父版本、子级替换/禁用/配置/新增需可辨识，升级父版本与插入冲突要进入明确 Diff/Review；语义 Anchor 作为已选的 Program/Stage 内受控有序条目，在后端合同接通后才出现；当前来源 Contribution 只能在有 Host 脱敏投影时作为只读展开节点，不能伪造已实现 |
 | **图-Inspector** | Memory、V3 编排 | 图 + 列表（分段切换）+ 右 Inspector；图永远有列表等价视图 |
 | **全页 utility** | 设置、账户与备份、存储中心、诊断 | 左侧分区 + 主区；没有 Inspector |
 
@@ -192,7 +192,7 @@ Token（色、字、距、圆角、阴影、动效、层级）
 
 - 一列为主；expanded 下相关的短字段可以两列。
 - 标签在上；说明在下（`text-3`）；错误在下（朱色 + 图标 + 原因）。
-- 「字段 / Source」分段编辑**同一份草稿**；结构化编辑不能静默改写作者的原文。Prompt 的 Stage/Module 有序大纲、正文内联变量和独立来源贡献须清楚区别：大纲是原 Program 的可视投影，独立贡献可解释来源/纳入原因，变量仍属于宿主正文；同 target 顺序调整必须走同一 Draft/Host 校验，提供拖拽和键盘/上移下移等价操作；跨 target 不可因拖动改变可信 Role/Grant，不推定已实现新 Anchor/Contribution Schema；父级未钉版本与插入点缺失不得隐式追加或自动采用最新，需保留草稿并给出处理入口；Stage/Module 条件与来源授权是两套语义，不允许由 UI 条件编辑器创造新 Source/Grant。
+- 「字段 / Source」分段编辑**同一份草稿**；结构化编辑不能静默改写作者的原文。Prompt 的 Stage/Module 有序大纲、正文内联变量和独立来源贡献须清楚区别：大纲是原 Program 的可视投影，独立贡献可解释来源/纳入原因，变量仍属于宿主正文；同 target 顺序调整必须走同一 Draft/Host 校验，提供拖拽和键盘/上移下移等价操作；跨 target 不可因拖动改变可信 Role/Grant，不推定已实现新 Anchor/Contribution Schema；父级未钉版本与插入点缺失不得隐式追加或自动采用最新，需保留草稿并给出处理入口；Stage/Module 条件与来源授权是两套语义，不允许由 UI 条件编辑器创造新 Source/Grant；Anchor 的来源类别/必要性声明不能变更 Provider Role，重复/未纳入原因和顺序只读原 Host 证据。
 - **作者自由文本**（角色描述、Prompt 正文、World 描述）：全宽、可增高、原文保留、不自动格式化；字数提示是建议值，不截断。
 - 默认值和显式值分开标示（Q06 那种「默认 / 显式」标记）。
 - 提交顺序遵守功能文档 §2.3：编辑 → 审查 → 提交 → 回执 → 刷新 → 冲突。

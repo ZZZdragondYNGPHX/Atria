@@ -85,7 +85,7 @@ I2 不意味着数值上“角色 voice priority > World Truth”。表达优先
 
 ### 6.2 I2 — 继承仅在 Prompt/Expression 层发生
 
-- 使用原 `parentRef` + `derive(add/disable/replace/configure)` 的 exact 继承，保持原父 Program/Module 的可追溯身份与作者明示差异。**替换、禁用、配置修改保留被操作条目的原有有效位置；新增须显式指定合法 Stage/target 内插入位置**，不得缺位时静默追加末尾。父级新 revision 不改变已钉版本，升级要先有意选择、校验依赖/冲突、对比有效序列并按原 Review/Publish 提交。原数据中 `derive` 操作尚没有完整位置语义，本条是目标合同，不把现有 `priority`/ID 排序写成已改造；位置字段、继承插入与合并冲突如何落地留后续设计。
+- 使用原 `parentRef` + `derive(add/disable/replace/configure)` 的 exact 继承，保持原父 Program/Module 的可追溯身份与作者明示差异。**替换、禁用、配置修改保留被操作条目的原有有效位置；新增须显式指定合法 Stage/target 内插入位置**，不得缺位时静默追加末尾。父级新 revision 不改变已钉版本，升级要先有意选择、校验依赖/冲突、对比有效序列并按原 Review/Publish 提交。原数据中 `derive` 操作尚没有完整位置语义，本条是目标合同，不把现有 `priority`/ID 排序写成已改造；位置字段、继承插入与合并冲突如何落地留后续设计。 Anchor 若作为 Stage 有序条目参与继承，须保留同一父级位置与稳定身份，新增/修改走子级显式差异与 exact 发布；不把 Anchor 当作独立版本化资源或供客户端任意挂载 Context 的后门。具体继承字段和冲突编码仍需在物理 Schema 阶段确定。
 - E2 的作者默认 → Scene/Genre Overlay → Narrator/Character/Agent 不是新增 World 或 Persona 存储权威，而是编译前/中的**语义组合**。角色台词不能因作品整体文风变化而被自动同质化；文学表达优先级不能覆盖 Actor Cognition、World Truth、玩家自主权或受限 Disclosure。
 - F2 的结构面板与完全自由作者原文须准确回到同一 versioned resource，已发布 revision 与运行时冻结的 Program 均不能被 UI 草稿或异步候选悄悄覆盖。
 - 作者 Stage/Module 条件只对 Host/Compiler 已合法提供的类型化输入进行确定性求值；条件不承担 Source/Actor/World 检索或 Grant 发放。条件不成立时保留原编排条目的版本身份并在有效编译中说明排除原因，不把禁用/未激活误写成永久删除。

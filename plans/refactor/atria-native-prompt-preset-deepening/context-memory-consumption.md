@@ -67,7 +67,7 @@ H2 不另建 Summary/Memory 权威：`narrative_spine` 和压缩产物仍是带�
 
 ### U2：依受众隔离的 Prompt 消费，而非受众隔离的新存储
 
-- Host 根据真实 Owner、SourceBinding、Actor/Audience、purpose、Branch/Revision/WorldTick、有效 Grant，向原 ContextPort 请求每个 NodeAttempt 的合法 ContextPlan。Narrator、NPC 分析者、Judge、Tool 可以共享**获准的 SourceRef/ResultRef**，接收方在读取和披露前独立校验。 每个请求的 Context Contribution 只是从已选合法证据产生的有来源编译投影，不作为持久模块或世界/记忆副本；作者的语义 Anchor 表达消费需求，不能授权新的读取范围。
+- Host 根据真实 Owner、SourceBinding、Actor/Audience、purpose、Branch/Revision/WorldTick、有效 Grant，向原 ContextPort 请求每个 NodeAttempt 的合法 ContextPlan。Narrator、NPC 分析者、Judge、Tool 可以共享**获准的 SourceRef/ResultRef**，接收方在读取和披露前独立校验。 每个请求的 Context Contribution 只是从已选合法证据产生的有来源编译投影，不作为持久模块或世界/记忆副本；作者的语义 Anchor 表达消费需求，不能授权新的读取范围。 Anchor 的声明仅指定合法消费位置、可接受类别与是否必需；Context Authority 仍先鉴别来源/受众/权限。对同 Anchor 多条已获准 Contribution，Host/Compiler 必须有稳定可重现的顺序、重复来源判别及选择/拒绝理由，不得由 Prompt 文本或 Browser 自封排序优先级。
 - HCM-02 的 B Narrator/NPC 分离默认保持；作品 A 严格限知/C 自定义必须经过原 author/source authority，不能由一句 Agent Prompt“我现在是 Narrator”扩大权限。Narrator **可以读**、NPC **实际知道**、玩家 **可被展示**不是同一回事。
 - 普通 G1 路径不默认创建每位角色的独立 Model Actor；一次合规 Narrator Context 编译足够时不得强制多次收费请求。
 

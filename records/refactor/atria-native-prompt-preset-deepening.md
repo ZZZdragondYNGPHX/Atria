@@ -13,6 +13,9 @@
 - 用户确认精确增量继承与请求级动态装配：原生 `parentRef` 指向 exact revision，子级 `derive` 只作显式 add/disable/replace/configure；替换/禁用/配置维持有效位置，新增必须指定合法插入点，父级升级须明确选择并 Review/Diff，冲突不得静默追加或 follow latest。作者条件依原 Compiler 的获准类型化值求解，受众/Source/Grant 由原 Host/Context Authority 先行选取，Context Contribution 不另持久化、不反写 Prompt/World/Memory。
 - 生命周期确认：新请求受权选择动态证据；发送前 Source/Grant/Branch 变化由原 Host 复验并重选/重编译/预算核对或阻断；已接受且发送的 Attempt 不回写历史，消费/披露/Effect 由原 V3 围栏裁决。设计原位更新 `decisions`、D4 `agent-behavior-binding`、D5 `semantic-ir-lowering`、D6 `context-memory-consumption`、D8 `preset-studio-experience`、全前端指导与 Q05/Q12；`index` 仅调整状态/路由。物理 Anchor/Contribution Schema、动态多来源排序、继承冲突表示仍待后续讨论，不能宣称已实现或三端验收通过。本轮仅写 `docs`，无产品代码变更、测试、构建、CI 或真机验证；本轮修订基线为 `docs@23f2287274a84f9190bfd92dda95a44076c6199f`。
 
+- 用户确认原生有序 Anchor 方案：Program/Stage 以稳定身份管理合法 target 内的 ModuleRef/Anchor 单一显式顺序；Anchor 不作为独立 Prompt/World/Memory 资源，不承载新的 Role/Grant，只声明位置、可接收的来源类别和必需性。Host/Context Authority 按请求提供带真实 Source/Audience/currentness 的暂态 Contribution，确定性排序、去重并解释排除或缺失；前端 Module/Anchor 可按权限编辑，Contribution 仅只读展示，避免第二编排/数据权威。
+- 第四轮已确认方向原位纳入 D4 继承、D5 语义 IR、D6 Context 消费、D8 Studio/Play、前端设计指导与 Q05/Q12，同一 Record 继续累计。未冻结物理 JSON/字段、同 Anchor 多来源的具体排序/去重算法、跨 Provider 适配接口或 Trace 实现；不得据此宣称已上线。本次为 docs-only，未改 main/产品代码，未执行测试、CI 或三端 UI/Provider 验收；提交前 docs 基线以本轮实际 HEAD 为准。
+
 ## 2026-10-16 — 后端正式开工
 
 用户授权正式开始，确认包含 D2–D8 全部后端，前端实现交 Claude Code。读取实际 Git、同一 Plan/E0/Record 和外部设计三文件；不冻结 §8.4 提案。起点 main=695acf3bc，docs=5101c3b3e，V3=618a04ae1；V3 仍在并发开发，原 Authoring bindings/生产 Model/Context/Source 未接通。既有各工作树 CLAUDE.md 删除、docs 外部设计草稿/截图及 agent-experience-evolution 未跟踪目录保持。当前接口工程决定见同 Bundle backend-implementation；验收仍 NOT_RUN，不把授权写为 E0 PASS。
