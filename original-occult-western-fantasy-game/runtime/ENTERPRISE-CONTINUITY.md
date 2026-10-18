@@ -1,8 +1,7 @@
 # Progression, Wealth and Delegated Institutions — Phase 5
 
 Status: implemented Phase 5 candidate, not the final Long-Lived World release.
-Development version: 2.0.0-phase5. Exact verified commits/CI belong to the same
-Package Record and live HANDOFF on docs.
+Development version: 2.0.0-phase5.
 
 ## Ownership and entry points
 
@@ -13,9 +12,7 @@ History and SaveSystem. No alternate scheduler, RNG service or persistence exist
 
 The opening.wait lifetime input supports progress.learn and identity.change plus
 four grouped commands: career.change, asset.change, organization.change and
-delegate.change. Their verb selects the concrete action. Typed callers can use
-enterpriseCommand from public/shared/native-enterprise-contract.js; this builds
-validated input only. Grouping and balanced declaration formulas retain the existing
+delegate.change. Their verb selects the concrete action. Grouping and balanced declaration formulas retain the existing
 24-command and expression-depth limits. Nested prohibited flags use typed scalar
 formula leaves, not an object-valued formula shortcut.
 
@@ -38,8 +35,7 @@ public identity. Replacement has a 40-unit registration cost; forged continuity
 adds traceable liabilities and exposure. The old identity and family/court link
 history remain. Licenses suspend, active delegations escalate and titles/banking
 become inaccessible rather than silently following a new name. Bank and title
-regularization each cost 20 and increase exposure. The older Package continuity
-record is a synchronized projection, checked after Ready, not another authority.
+regularization each cost 20 and increase exposure.
 
 ## Property, money and provenance
 
@@ -109,22 +105,3 @@ budgets. Exceeding any budget rejects atomically; no fact is dropped and no glob
 limit is raised. This finite stage does not prove unlimited enterprise-history
 growth. Portable exports use the existing history.compact; explicit old SavePoints
 and checkpoint/Retry dependency boundaries remain protected.
-
-## Verification
-
-Run node tools/package.mjs validate --enterprise-only --core <compatible-core>.
-The focused candidate spans 50 years with 20 years/four routine delegated reviews,
-eight real alternating Fs/SQLite Save/Restore transitions, identity/title repair,
-organizational resistance, inheritance/reconstruction and retained marked evidence.
-Compaction does not count as a meaningful turn. This is NOT Gate A, B or C and does
-not rerun or replace the prior 5k/50-year renewable-content candidate.
-
-Native tests also cover seed matrices, split intervals and JSON normalization,
-concealed failure/audit, succession, actual venue closure, budget rejection,
-pre-Ready identity validation and old SavePoints/checkpoint/Retry across storage
-adapters. Only the exact executed checks and CI results in the Record are evidence.
-
-No multi-region, Era/macro, final UI, v1 save migration or final 2.0.0 artifact is
-included. releases/1.0.0.atria remains unchanged.
-
-Phase 6 adds regional macro conditions and remote-agent constraints without replacing these ownership/permission rules; see REGIONAL-HISTORY.md.

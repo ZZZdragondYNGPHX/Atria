@@ -50,7 +50,7 @@ of a meaningful authoritative turn. Existing opening receipts can include refuse
 attempts. Native revision ancestry still owns rollback/branch order; raw Host
 clock commands advance the clock without inventing a player transaction.
 
-Bounds are safe-integer integrity bounds, not campaign end dates. Overflow,
+ Overflow,
 negative and fractional advances fail during preparation and publish no state.
 
 ## Interval resolver skeleton
@@ -109,7 +109,7 @@ These primitives are not a Canonical Fact Ledger or artifact registry.
 
 opening.wait accepts optional stances, a complete closed object with six domains:
 career, family, occult, social, wealth, investigation. Values are declared enums
-in tools/long-horizon-compile.mjs. Partial/unknown policies fail validation.
+in tools/long-horizon-compile.mjs.
 
 - Omission preserves the current policy.
 - minutes: 0 with stances changes policy without changing time.
@@ -131,28 +131,3 @@ Example Authority input (not a separate script/runtime):
   }
 }
 ~~~
-
-## Save and verification boundary
-
-The new domains live in the existing atri_lifecycle namespace, so Native snapshot
-export/import includes time, identity, provenance and stance state atomically.
-Tests import actual save containers into fresh FsEngine and SqliteEngine stores,
-compare all authoritative state namespaces and timelines, then advance again.
-They also verify failure atomicity, stable namespace/actor IDs and Gregorian
-ordinary/leap/century rollover. The retained opening and Eastbank fixtures exercise
-real Native transactions, existing safe Graphs, Retry Reply and SaveSystem.
-
-Phase 2 adds Hot/Warm/Cold/Archive, a Canonical Fact Ledger, artifacts/hooks,
-subjective memory, Chronicle backend and portable checkpoints. See HISTORY-MEMORY.md
-for ownership, exact contracts and the important archive/Retry boundary.
-
-Phase 3 adds human/family/office lifecycle; see HUMAN-LIFETIMES.md.
-Phase 4 renewable generation has passed its first full 5k-turn/50-year candidate; see RENEWABLE-CONTENT.md.
-Phase 5 enterprise and Phase 6 regional/macro/Era systems extend that foundation
-under the contracts linked below. Final Chronicle UI remains Phase 7. The Phase 1
-date test jumping centuries is **not** Gate A/B/C or a century-world simulation.
-Use the dedicated Phase 2 check for history-only development/retrieval evidence.
-
-Phase 5 progression/property/delegation extensions are specified in ENTERPRISE-CONTINUITY.md. Its Native Core prerequisite supersedes the historical minimums above.
-
-Phase 6 regional/macro/Era additions are specified in REGIONAL-HISTORY.md. Final UI remains Phase 7.

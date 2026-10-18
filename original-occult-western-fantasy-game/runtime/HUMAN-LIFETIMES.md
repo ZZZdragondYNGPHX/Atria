@@ -42,7 +42,7 @@ Authoritative schemas: Core public/shared/native-lifetime-contract.js.
 - longevity.bind / offer;
 - protagonist.die.
 
-Relationships require adult eligibility and explicit consent. Multiple pairwise bonds allow nonexclusive structures without a universal household ban. Visible overlapping marriage can produce opening-society exposure; full jurisdiction/Era variation is deferred. Ordinary childcare is abstracted. Fixed 280-day gestation is an authored abstraction, not a medical/fertility model. Relevant children mature and can become parents. Adoption is explicit, chronology-checked and may be secret. Player control never transfers to an heir.
+Relationships require adult eligibility and explicit consent. Multiple pairwise bonds allow nonexclusive structures without a universal household ban. Visible overlapping marriage can produce opening-society exposure; full jurisdiction/Era variation is deferred. Ordinary childcare is abstracted. Fixed 280-day gestation is an authored abstraction, not a medical/fertility model. Relevant children mature and can become parents. Player control never transfers to an heir.
 
 Legacies retain owner, beneficiary and causal source. Artifact legacies require actual custody and transfer it with durable provenance. Favors, grudges, secrets, obligations, institutional ties and explicit supernatural liabilities can carry forward. Unavailable heirs/assets leave disputes, not invented transfers. Full estate/property/business law remains Phase 5.
 
@@ -59,8 +59,6 @@ Family records can create documentary-exposure facts on slow 30-year boundaries,
 ## Query and evidence
 
 lifetimeView(snapshot, actorId) provides a bounded read-only age/status projection. Existing Chronicle APIs retrieve person/family/institution facts. The old scalar UI deliberately omits a broken structured editor; final family/Chronicle UI remains Phase 7.
-
-    node tools/package.mjs validate --lifetime-only --core <compatible Core>
 
 This executes real Native transitions over 90 years: two descendant generations, adoption, widowhood/re-partnering, leadership succession, causal intake, promotion, disappearance/return, inheritance and protagonist reconstruction. Nine SaveSystem containers import into fresh alternating Fs/SQLite stores around risky boundaries and continue play. Core also tests three seeds, JSON normalization, event budgets, invalid chronology and checkpoint/Retry.
 

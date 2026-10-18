@@ -2,8 +2,7 @@
 
 ## Long-lived-world Phase 7 implementation
 
-Phase 7 extends the verified opening register using frontend-design,
-ui-ux-pro-max and emil-design-eng. The marine/paper palette, system fonts,
+ The marine/paper palette, system fonts,
 normal scrolling and existing controls remain. The original P8 sections below
 are opening-era design history; the long-lived-world Plan owns current scope.
 
@@ -31,8 +30,7 @@ Results echo the applied selector. No write is retried by this read recovery.
 
 Forms are generated from actual closed schemas, including nested policy fields.
 A page exposes at most seven fields, keeps all draft pages and requires review
-on the last page. Navigation, field changes and revision/epoch changes invalidate
-review. Selection and interval presets do not write. Zero minutes commits all
+on the last page. Selection and interval presets do not write. Zero minutes commits all
 six stances without advancing time. Long-time confirmation opts into Native
 attention boundaries: known births, office succession/retirement, death,
 reconstruction and journey arrival; routine reviews remain grouped. Requested
@@ -56,7 +54,7 @@ Actual runtime/browser evidence, budgets and limitations are recorded in
 `runtime/FRONTEND.md` and the sole long-lived-world Record.
 
 ## P8-A: reviewed direction
-The interface is a civil verifier's working register, not a quest dashboard or an occult power menu. The memorable device is a double-file spine: a marine cover and offset paper index, recalling incompatible but authenticated records. Keep the reading surface quiet; no glow, fake parchment, invented seals, progress scores or decorative charts.
+ The memorable device is a double-file spine: a marine cover and offset paper index, recalling incompatible but authenticated records. Keep the reading surface quiet; no glow, fake parchment, invented seals, progress scores or decorative charts.
 
 Palette: cover #173F49, paper #F7FAF8, ground #DFE8E4, ink #243D43, brass #735826, caution #853F45. Muted text #52666A; testimony #64445D. Color always accompanies a written semantic label.
 
@@ -69,10 +67,10 @@ Desktop: cover/navigation at left; one large folio; reading and action panes spl
           | Case network + Hearing    | independent arrangements
           | Identity / Seed / Claim  | Prices and commitments
 
-Review: rejected the first generic blue/orange Minimalism dashboard suggestion and the narrowed search's Hero/Testimonials marketing result from ui-ux-pro-max. Neither was a verified fit; neither is persisted as authority. The register direction is original to this Package. Accessible contrast, 44px targets, safe areas and progressive disclosure are fallback UX constraints, not database-verified visual recommendations.
+Review: rejected the first generic blue/orange Minimalism dashboard suggestion and the narrowed search's Hero/Testimonials marketing result from ui-ux-pro-max. The register direction is original to this Package.
 
 ## P8-B: implementation contract
-Use the Native v3 AUI renderer, bounded presentation controller, existing Composer Host services, typed transaction bindings and advisory Model Tasks. Existing safe projection domains back the Information Views/Graphs and are the only game read bindings. There is no arbitrary resource/authority access, new projection, transaction, gameplay, RNG or eligibility evaluator. Presentation filters only hide unacquired/empty rows; Native authority always validates actions.
+Use the Native v3 AUI renderer, bounded presentation controller, existing Composer Host services, typed transaction bindings and advisory Model Tasks. Existing safe projection domains back the Information Views/Graphs and are the only game read bindings. There is no arbitrary resource/authority access, new projection, transaction, gameplay, RNG or eligibility evaluator. Presentation filters only hide unacquired/empty rows;
 
 Four sections: Field notes (central conversation and six-step creation); Evidence (distinct evidence/testimony/finding/hypothesis, provenance and selected graph relations); Cases (known mandates, dispositions, patterns and six independent Hearing terms); Identity (background, Seed versus formal Claim, Anchor, Prices, time and institutional duties). A contextual method selector exposes the full approved action surface without requiring hidden text syntax. Public catalog vocabulary is bounded and is never presented as owned Claims or discovered evidence.
 

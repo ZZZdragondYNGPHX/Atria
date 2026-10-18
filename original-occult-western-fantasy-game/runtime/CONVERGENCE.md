@@ -60,27 +60,14 @@ Compensation/recognition/audit duties and source exposure are explicit current s
 
 ## Professional Patterns and Anomaly coverage
 
-Ten reviewed Pattern families exist: the retained Occupancy, Burial Recognition and Industrial Injury families plus Identity Verification, Insurance Coverage Dispute, Missing Person Continuity, Kinship Record Conflict, Broken Custody Chain, Document Surface Continuity and Office/Private Name.
-
 The retained six P6 slots remain. P7 supplies two additional independent slots that may each instantiate any reviewed family; an occupied slot cannot be overwritten or borrow another slot's evidence. The stages are consented opening, claimant request, independent response, qualified remedy/review/withdrawal, and bounded certificate/service fulfilment. The immutable family identifies the exact required role semantics in its reviewed Case Kit. No invented compensation payment or unlimited instances are claimed.
 
 The eight authored Anomaly families are covered by these Patterns and Signature contexts: Identity, Boundary, Residual Echo, Broken Bond, Memory, Institutional Identity, Possibility and Form. They remain causal substrate rules rather than cosmetic monsters; no past rewriting, unrelated-person coercion, complete event replay or unlimited reconstruction is granted.
 
 ## Catalog scope and Prices
 
-All16 Starter Seeds and32 Established Archetypes have a bounded convergence.claim route. The two P5 opening Seeds keep their existing path. Catalog input IDs, rule, condition and primitive are validated together against reviewed definitions, with acquired source prerequisites; clients cannot supply a new rule. This canonical rule/condition vocabulary is deliberately exposed as public mechanical API information (as P5 exposes its Seed bounds), not as acquired historical Evidence or an eligibility grant. Raw private Data access, institution secrets and Eastbank Canon remain closed. Established archetypes require prior Investiture. Form work specifically requires the independent conservation Pattern response, not any generic professional reply.
+All16 Starter Seeds and32 Established Archetypes have a bounded convergence.claim route. The two P5 opening Seeds keep their existing path. This canonical rule/condition vocabulary is deliberately exposed as public mechanical API information (as P5 exposes its Seed bounds), not as acquired historical Evidence or an eligibility grant. Raw private Data access, institution secrets and Eastbank Canon remain closed. Established archetypes require prior Investiture. Form work specifically requires the independent conservation Pattern response, not any generic professional reply.
 
 Consultation is a supervised, consenting carrier exercise matching the reviewed condition, not acquisition of unseen historical facts. The one additional live catalog slot is intentionally bounded. It does not grant arbitrary-target effects or every possible Anchor/tradition variant. First P7 Investiture updates progression and clears Unsettled consistently; releasing an active Claim does not undo the historical Investiture.
 
 Investiture creates a formal institution record and an enforceable Price. Civic work requires reporting; Church work requires maintained witnessed custody. Maintenance consumes time and is required before invocation. Invocation renews the Price and preserves the corresponding narrow designation, attribution, carrier, boundary, relation, extant form, real residue recognition or supported alternatives. It cannot decide a hidden true Name, restore destroyed matter, compel another mind or modify settled events. These flags concern the inspected supervised support, not all similar objects across the city. Source-qualified catalog development, not free-form Claim engineering, is this v1 surface.
-
-## Verification interfaces and limits
-
-- Default combined: node tools/package.mjs validate --core <main-checkout>
-- Fixture: node tools/package.mjs validate --fixture --core <main-checkout>
-- Focused P7: add --convergence-only; add --convergence-state for Native preparation only.
-- Build/preview retain the normal Package tool paths. Build outputs are ignored verification artifacts, not releases.
-
-Tests cover actual Native preparation, qualified dispositions, alternative cross-source routes, all six dimensions, bounded Fortune, catalog identity/Price, retained regressions, local HTTP typed/free-text failure/retry and real manual save export/import with next-day continuation. Only results actually completed on the final state are reported in the Record.
-
-Process-local selection pinning, same-anchor RNG, committed replay and actual save containers are separate. There is no old-version save migration, cross-process uncommitted journal, hosted-model, device, visual/UI or OS-crash guarantee. P8/P9 are not implemented here.

@@ -22,7 +22,6 @@ The Playtest is a deterministic, non-provider manual review of the authored Nati
 - the compact Phone unread Preview fixture;
 - the four production recorded/mock Scenarios;
 - Experience Health output;
-- Studio validation / preflight / Preview / Build;
 - Project Agent `prepare_review` and explicit Review gate;
 - manual Phase 5 → Phase 6 diff inspection.
 
@@ -84,11 +83,9 @@ The `branch-restore` Scenario manually reviewed and automatically executed the f
 3. advance the existing Game Clock and settle World facts;
 4. commit one Branch A canonical Timeline Turn;
 5. restore the checkpoint;
-6. verify World settlement, Clock, Schedule, Project, SMS, Social, Mail, Event and Timeline all return to the checkpoint state;
 7. create Branch B Schedule/SMS/Event state;
 8. advance only Branch B time;
 9. commit a new Branch B canonical Timeline Turn;
-10. verify no Branch A communication/project/event/timeline ghost survives.
 
 This demonstrates the Package relies on Native revision/save restoration rather than per-app repair logic.
 
@@ -106,10 +103,8 @@ This demonstrates the Package relies on Native revision/save restoration rather 
 
 **PASS**
 
-- Project validation passes.
 - Studio preflight passes.
 - Native Preview is non-persistent.
-- `prepare_review` performs validation, Preview and `branch-restore` simulation.
 - Review gate is explicit and required.
 - The reviewed test proposal is source-only and has no Runtime Authority effect.
 - Explicit Commit succeeds.
@@ -124,7 +119,6 @@ Compared with Phase 5 final Package HEAD `b09addf9a4c6eadc47b748a53433475242bbc2
 - Package Project version metadata;
 - Package Scenarios;
 - Package Preview fixture;
-- Package validators;
 - the dedicated Package targeted workflow.
 
 No Atria Core source file is changed. No new platform gap is introduced.
@@ -133,7 +127,6 @@ No Atria Core source file is changed. No new platform gap is introduced.
 
 Final run `36395818903`:
 
-- Phase 1–6 validators: PASS;
 - four core Scenarios: PASS;
 - Experience Health: PASS;
 - Preview coverage: PASS;

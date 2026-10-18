@@ -15,8 +15,7 @@ Local history IDs are monotonically allocated within the immutable Native
 session/world namespace. Retry restores the selected branch's prior history;
 IDs from another world/branch must not be treated as globally interchangeable.
 Canonical fact provenance retains the Native session, branch, sequence and exact
-source domain/record/path. Chronology and current domain state remain the source
-of truth; the ledger is checked against them at complete transaction/load boundaries.
+source domain/record/path.
 
 ## Retention
 
@@ -82,12 +81,9 @@ accumulated on disk.
 Artifacts are first-class records: photograph, letter, contract, will, newspaper,
 case file, diary, property record, ritual record, heirloom or recording. Creation
 records protagonist authorship, content, the original historical source, optional
-copy parent and a chronology-stamped origin. A document's assertions do not become
-external World Truth. Copies require a surviving, available parent. Supported
+copy parent and a chronology-stamped origin. Copies require a surviving, available parent. Supported
 status transitions include held, archived, damaged, lost, rediscovered (held) and
 destroyed; destruction is terminal. Every transition has an immutable event anchor.
-Phase 3 adds authority-validated legacy custody transfers and provenance; full
-ownership law and authenticity disputes remain later work.
 
 Historical Hooks require an available public historical source. They begin dormant
 and may activate, expire, be disproven or resolve; terminal states cannot silently
@@ -165,30 +161,3 @@ are excluded even by direct ID. The default view is a recent slice, not a raw du
 Narrator Information context receives at most eight recent public history items.
 Selective deeper retrieval is an explicit backend query; no broad archive is
 injected into every prompt. Actor/private perspectives are not automatically widened.
-
-## Instrumentation and validation scope
-
-historyMetrics reports meaningful turns, tier counts, durable count, history/raw
-bytes, active-state bytes, timeline retention, projection bytes, compaction count
-and replay-fence count. Authority work separately reports history source count,
-source record scans and logical history bytes. History source scans are capped at
-4,096 and source declarations at 64. Regular Authority budgets are unchanged.
-
-Host Lifecycle changes also synchronize the ledger but are not counted as player
-turns. A meaningful player turn requires an actual declared world-domain/clock change or an
-artifact/hook/memory mutation. A transaction sequence increment, impossible wait,
-compaction operation or prose message alone is not counted. The development gate
-uses 1,000 committed positive time advances that change the Native clock, rent and
-retained obligations across more than 10 years; it is not a sequence-padding test.
-
-Run tools/package.mjs validate --history-only --core <compatible Core checkout>.
-It exercises Native publication, repeated real Fs/SQLite SaveSystem imports,
-private-source refusal, exact recent retry, early artifacts/hooks, marked memory,
-century-distance retrieval and checkpoint growth. Core fixtures add a three-seed
-history matrix and cross-adapter checkpoint/Retry tests. See the permanent Record
-for actual results, tested commits, CI and precise limitations.
-
-Phase 2 does not claim full Gate A lifecycle/renewable-content coverage, Gate B/C,
-or the final Century Retrieval Test. No NPC/family aging, generational change,
-renewable matters, businesses, delegation, multi-region or Era/macro systems and
-no final Chronicle UI are implemented here.

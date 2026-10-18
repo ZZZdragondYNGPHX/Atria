@@ -4,7 +4,7 @@
 > 分支：`package/native-heavy-frontend-reference`  
 > 基线：`main@35bc587bb78fd6a7c0fc4fc418d99c7315f5af8b`  
 > 资产目录：`packages/native-heavy-frontend-reference/`  
-> 当前阶段：Phase 6 — Branch / Regression / Build 已完成并验证；Implementation Baseline v1.0 的 v1 实现闭环已完成，停止在 Package 发布 / 后续新阶段之前。
+> Implementation Baseline v1.0 的 v1 实现闭环已完成，停止在 Package 发布 / 后续新阶段之前。
 
 ## 1. 项目目标
 
@@ -18,7 +18,6 @@
 - Component / Hybrid / Full 只决定布局所有权，不决定功能等级；
 - World、Session App、UI、Player Preference、Task、Knowledge、Memory、Timeline、Lifecycle 等拥有明确边界；
 - 重度前端不依赖任意 HTML/JS 注入、Regex HTML 或裸状态 patch；
-- 作者可以使用 Atria Studio / Project Agent / Authoring Skills 完成设计、审阅、验证、构建与安装；
 - 保存、恢复、分支、重试和模型失败不会因为前端自建事实源而破坏状态一致性。
 
 ## 2. 第一基准样本
@@ -40,9 +39,9 @@
 - 长期信息与记忆；
 - 前端与模型、状态之间的协议。
 
-不复制或重建样本中不适合作为本参考资产内容的部分。参考资产会使用独立、可公开审计的示例世界观和占位内容来验证相同的软件能力。
+不复制或重建样本中不适合作为本参考资产内容的部分。
 
-样本的远端前端源码当前未取得，因此不假设其内部 DOM/CSS/JS 细节；若后续获得可验证源码，再单独补充 UI 能力审计。
+样本的远端前端源码当前未取得，因此不假设其内部 DOM/CSS/JS 细节；
 
 ## 3. 当前 Atria 能力基线
 
@@ -170,7 +169,6 @@ Package 声明需要什么能力、Task、资产、状态和 View；Model Route�
 9. **纯 Native 文本演出 / Dialogue / Scene Presentation — 已冻结**
 10. **SMS / Social / Mail 等二级应用 — 已冻结**
 11. **存档、分支、恢复与长期游玩 — 已冻结**
-12. **Studio Authoring / Scenario / Health 验证策略 — 已冻结**
 13. **最终能力矩阵与是否存在真实平台缺口 — 已冻结**
 
 顺序可根据讨论结果调整。
@@ -263,7 +261,7 @@ Event 内部使用更通用的 **Beat**：
 
 具体 Task / Variant 边界在 Round 3 冻结。长期记忆、剧情摘要与压缩不再由本 Package 自建 Curator Task，统一交给 Atria 现有 Memory 体系。
 
-Planner 只生产 proposal；真正的合法性检查、状态提交和调度由 Native Authority / Lifecycle 完成。
+Planner 只生产 proposal；
 
 ### 8.7 Lifecycle 是真正的导演
 
@@ -298,7 +296,6 @@ Timeline 只承载玩家真正经历的主叙事。
 
 - UI-only → Local UI；
 - 确定性游戏操作 → typed Command → Authority；
-- Event 推进 → Event Instance → Task / Turn → validated outcome → Authority + Timeline / Projection；
 - 生命周期推进 → Workflow / Clock → Task / App Command。
 
 不允许 UI、模型返回值或展示层绕过 typed Authority 写入。
@@ -417,8 +414,6 @@ Session Application 保存当前运行中的业务对象，按 typed Domain 拆�
 
 典型链路：
 
-`UI Action → typed Command → Session App / World → deterministic validation / settlement`
-
 只有重要经营节点达到剧情价值时，才进入：
 
 `经营条件成立 → Event Proposal → Event Instance → Narrator → 主剧情`
@@ -474,8 +469,6 @@ Event 可拥有不同数量 Beat，不硬编码 5–6 Shot。
 ### 9.10 Schedule
 
 日程属于 Session Application。
-
-Planner 可以产生 Schedule Proposal，但在写入前必须经过 deterministic validation，例如：
 
 - 人物是否可用；
 - 区域是否解锁；
@@ -587,8 +580,6 @@ Narrator 可以根据当前任务使用不同语义 Variant，例如：
 
 自由剧情 Turn 冻结采用：
 
-`Player Input → Narrator → Narrative → Semantic Interpreter → declared outcome proposal → typed Command / Reducer validation → Authority commit`
-
 原因：
 
 - 优先保留自由剧情与角色临场反应；
@@ -600,8 +591,6 @@ Semantic Interpreter 绝不能把正文转换成任意 JSON Patch，只能提出
 ### 10.4 确定性操作走 Authority-first / direct Command
 
 确定性 UI 与经营操作不经过 Narrator，例如：
-
-`UI → typed Command → validation → World / Session App commit`
 
 适用于：
 
@@ -680,10 +669,6 @@ Planner 是内容 brainstormer，不是 Game Director。
 - 某个 Event 值得发生；
 - 某个既有 hook 应推进。
 
-Runtime 必须再根据 World、Schedule、Event cooldown、人物可用性、教会等级、地区状态和近期剧情进行确定性检查。
-
-只有通过验证的 Proposal 才能写入 Schedule / Event Queue / Session App。
-
 Planner 不直接写 World，不直接控制 Timeline。
 
 ### 10.8 Planner 低频调用
@@ -715,8 +700,6 @@ Social Task 统一承载不同通信形式。
 - 必要的 Memory / relevant context。
 
 不默认读取整个主 Timeline。
-
-生成结果先作为 Message Proposal，经 schema validation 和 typed append 后进入 Session Application，不能由模型直接写通信数据库。
 
 ### 10.10 World Task
 
@@ -826,7 +809,6 @@ Round 4 已获得用户认可，以下作为时间与日程运行基线。
 每天只执行一次：
 
 - 初始化当天业务；
-- 检查跨日 Schedule / due interaction；
 - 启动需要的 Morning Report / Planner 等辅助任务；
 - 准备当天经营与通信状态。
 
@@ -894,7 +876,6 @@ Morning / Night 只影响：
 
 4. **玩家明确时间指令**
    - 例如“等三小时”“明早再见”；
-   - 解析为受控 time skip / clock advance，并执行冲突检查。
 
 ### 11.5 AI 判断时间语义，Runtime 决定精确数字
 
@@ -926,8 +907,6 @@ Schedule 至少需要表达三类语义：
 具体字段名与 schema 在实现阶段以当前 Atria Lifecycle / Session App contract 为准，不提前发明平台字段。
 
 ### 11.8 Clock advance 必须处理跨越的 due items
-
-当时间从 A 跳到 B 时，Runtime 必须检查区间内到期的 Schedule / Interaction，不能简单把时钟改到 B 后吞掉中间事务。
 
 到期项根据自身策略可以：
 
@@ -994,8 +973,6 @@ AI 不直接控制 wall clock，也不自行 sleep / timer。
 - 等到下一 Schedule；
 - 休息到晚上；
 - 休息到明早。
-
-Skip 前必须检查：
 
 - 当前 Event 是否允许；
 - 区间内 hard Schedule；
@@ -1376,7 +1353,6 @@ Narrator、Planner、Social、World 不使用“一个巨大 Prompt + mode”结
 
 - authority discipline；
 - package tone；
-- common character integrity。
 
 但不同职责保持独立主 Program。
 
@@ -1991,8 +1967,6 @@ Presentation parser 失败时必须安全降级为普通 prose。
 - scene directives；
 - presentation AST。
 
-避免额外 schema、token、validation 与模型注意力成本。
-
 如未来加入立绘后确实需要精确 Actor mapping，再单独扩展 Presentation metadata。
 
 ### 16.6 Scene Header 来自 Authority Projection
@@ -2445,7 +2419,6 @@ Project 与 milestone 使用稳定业务身份。
 主 `narrative-outcome` Turn 的最终 Publish 必须把：
 
 - committed Narrative；
-- validated semantic outcomes；
 - Event advance；
 - World / Session changes；
 
@@ -2456,8 +2429,6 @@ Project 与 milestone 使用稳定业务身份。
 ### 18.15 Streaming / 中间模型步骤不是 Authority
 
 Streaming draft、Narrator 中间结果、Interpreter 中间结果都不是游戏事实。
-
-只有完整 Turn Envelope 通过验证并 commit 后：
 
 - Timeline；
 - World；
@@ -2526,290 +2497,6 @@ Package 不复制：
 - Save Manager。
 
 Hybrid Experience 直接复用 Host 提供的 Session / Branch UX。
-
-## 19. Round 12 — Studio Authoring / Scenario / Health 验证策略冻结方案
-
-Round 12 已获得用户认可，以下作为 v1 Authoring / Verification 基线。
-
-### 19.1 正式资产源必须是 Atria Studio Project Source
-
-本资产正式源使用 `atria-project-source`。
-
-Repo 中的资产源码必须能够进入：
-
-`Project Source → Studio → Validate → Preview → Scenario → Review → Build → .atria`
-
-不以“只手工生成最终 .atria 包”作为制作方式。
-
-### 19.2 Repo 目录结构
-
-资产根目录：
-
-`packages/native-heavy-frontend-reference/`
-
-计划采用：
-
-- `PLAN.md` — 正式企划；
-- `project/` — Studio Project Source；
-- `scenarios/` — recorded Scenario；
-- `fixtures/` — Scenario / Preview 的确定性开发 fixture。
-
-具体文件数量与子路径在实现时遵循当前 Studio / compiler contract，不提前发明不存在的 include / import 机制。
-
-### 19.3 Project Source 是资源关系真相
-
-`atria.project.json` 与其正式 Project Source 结构负责：
-
-- package；
-- actors；
-- entryPoints；
-- worlds；
-- knowledge；
-- knowledgeBindings；
-- model/prompt resources；
-- dependencies；
-- source files。
-
-不再建立另一套需要手工同步的 custom manifest / prompt index / state manifest。
-
-### 19.4 v1 不建立媒体 Asset Source
-
-v1 `assetFiles` 保持为空。
-
-不为未来立绘提前创建：
-
-- portrait manifest；
-- CG manifest；
-- audio manifest；
-- background map；
-- 空 Asset Pack。
-
-未来真正加入立绘时，再按当时 Atria Asset / Presentation contract 扩展。
-
-### 19.5 从第一版开始经过 Studio
-
-第一版实现从一开始就要求：
-
-- Validate；
-- Preview；
-- Scenario；
-- Review；
-- Build；
-
-能够工作。
-
-本 Reference Package 同时用于证明 Atria 作者平台可以制作重型 Native 作品，而不是只证明 Runtime 可以手写运行。
-
-### 19.6 Project Agent 可以参与作者流程，但不是运行依赖
-
-实现阶段可以真实使用 Project Agent：
-
-- API catalog；
-- Authoring reference；
-- Plan；
-- proposal；
-- Preview；
-- Scenario；
-- prepare review。
-
-但最终 Package 运行不依赖 Agent 在线，也不把 Agent 状态写进作品 Runtime。
-
-### 19.7 验证分三级
-
-#### Level A — 局部编辑验证
-
-每次修改只验证受影响资源 / contract。
-
-例如：
-
-- Knowledge 修改 → Knowledge / binding / reference validation；
-- Prompt 修改 → Prompt resource / Task binding；
-- Church UI 修改 → UI compiler +相关 Preview；
-- Lifecycle 修改 → 对应 Lifecycle Scenario。
-
-不因文案或局部资源修改默认运行完整 Package regression。
-
-#### Level B — 功能垂直 Scenario
-
-只有修改真正运行链路时运行对应 Scenario。
-
-#### Level C — 里程碑 Regression
-
-阶段完成、准备 Build / Release 时再运行全部核心 Scenario、Health、Preflight。
-
-### 19.8 v1 四个核心 Scenario
-
-第一版只维护四条高价值纵向 Scenario：
-
-1. **story-turn**
-   - Player Turn；
-   - recorded Narrator；
-   - narrative-outcome；
-   - Authority commit；
-   - Timeline；
-   - Event / World outcome；
-   - 原子提交。
-
-2. **church-day-cycle**
-   - Day Open；
-   - Assignment；
-   - background operation / Project；
-   - Clock；
-   - Day Settlement；
-   - World；
-   - settlement 幂等。
-
-3. **communication**
-   - 玩家 SMS；
-   - Social recorded Task；
-   - semantic delay；
-   - scheduled interaction；
-   - Clock delivery；
-   - Thread；
-   - 不进入主 Timeline；
-   - 不重复投递。
-
-4. **branch-restore**
-   - checkpoint；
-   - Authority changes；
-   - Communication；
-   - Event；
-   - restore / alternate path；
-   - Church / Phone / Schedule / Lifecycle / Timeline 一致恢复。
-
-### 19.9 Scenario 不调用真实模型
-
-Studio Scenario 使用 recorded / mock Task result。
-
-验证目标是：
-
-- Runtime；
-- schema；
-- state transition；
-- idempotency；
-- Branch；
-- Lifecycle。
-
-不验证第三方模型当天是否会稳定返回某种文案。
-
-核心 Scenario 的真实 provider call 必须为 0。
-
-### 19.10 Prompt / Narrative 质量使用人工 Playtest
-
-自动 Scenario 不承担：
-
-- 文笔评分；
-- 人设自然度；
-- 剧情趣味；
-- 长线情感一致性；
-- Context 是否“读起来够好”。
-
-这些通过真实 Playtest 评估。
-
-自动验证只检查可客观断言的结构与 Authority 行为。
-
-### 19.11 改哪里验证哪里
-
-Package-only 修改不默认运行与该资产无关的：
-
-- 数据库全套测试；
-- 全仓 E2E；
-- 无关平台模块；
-- 其他 Product regression。
-
-只有里程碑才执行本 Package 的完整 regression。
-
-### 19.12 平台缺口必须单独升级为 Atria Core 任务
-
-若 Package 实现暴露真实平台缺口：
-
-1. 在 Package 企划 / gap 记录中描述可复现需求；
-2. 不在 `package/*` 分支偷偷修改 Atria Core；
-3. 单独创建合适的 `feat/*` 或 `fix/*`；
-4. 修复、验证并合入 `main`；
-5. Package 分支再同步新基线继续资产实现。
-
-资产研发与平台研发保持清晰边界。
-
-### 19.13 Preview 与 Scenario 职责分离
-
-**Preview** 验证：
-
-- Story-first UI；
-- Church；
-- Schedule；
-- Phone；
-- People；
-- Scene Presentation；
-- desktop / compact presentation。
-
-**Scenario** 验证：
-
-- Runtime state；
-- Lifecycle；
-- Task result handling；
-- idempotency；
-- Branch / restore；
-- Authority consistency。
-
-不拿 Scenario 测 CSS，也不拿 Preview 推测 settlement correctness。
-
-### 19.14 Preview 使用有内容的 fixture state
-
-实现阶段准备少量高价值 Preview fixture，例如：
-
-- story-active-event；
-- church-busy-day；
-- phone-unread；
-- schedule-full-day；
-- compact-story。
-
-避免所有 Preview 都停在空白 Day 1。
-
-这些只是 Authoring fixture，不成为正式 Session save。
-
-### 19.15 Experience Health 只诊断，不猜测修复 Authority
-
-Health 可以检查：
-
-- exact Package version；
-- required binding；
-- Lifecycle readiness；
-- pending / stale Task；
-- retention；
-- schema / authority validity；
-- dependency availability。
-
-禁止通过：
-
-- Projection；
-- UI snapshot；
-- AI 猜测；
-
-反向覆盖 World / Session Authority。
-
-### 19.16 Package-specific 风险清单
-
-本资产预期重点检查：
-
-- active Event refs；
-- participant refs；
-- Church level / Facility / Project refs；
-- Schedule Actor / clock refs；
-- Communication participant / Opportunity refs；
-- scheduled interaction orphan；
-- active project / event scope；
-- retention。
-
-优先使用现有 Project validation / Scenario / Health contract 覆盖；不因为“未来也许需要”提前扩平台。
-
-### 19.17 Build 前完整闭环
-
-正式 Build / Release 前：
-
-`Targeted edits → targeted validation → Preview / affected Scenario → milestone regression → prepare_review → human review → commit → build`
-
-Project Agent 只能准备 Review，不替代最终人工 Review / Commit gate。
 
 ## 20. Round 13 — 最终 Capability Matrix / 平台缺口审计冻结方案
 
@@ -2909,14 +2596,11 @@ v1 默认不要求：
 
 本 Package 需要：
 
-`Narrator → Interpreter → declared semantic outcome → typed World Command and/or typed App Command → validation → one atomic Session Revision`
-
 必须继续满足：
 
 - 模型不能输出任意 state patch；
 - 模型不能自由选择任意 Command；
 - semantic mapping 必须预声明且受 schema 约束；
-- World / App Command 都必须通过现有 typed validation；
 - 任一 outcome 失败时 provisional Narrative 不得 commit；
 - `expectedRevisionId` / invocation / receipt / retry 语义保持一致；
 - 现有只修改 World 的 narrative-outcome 行为保持兼容。
@@ -2928,8 +2612,6 @@ v1 默认不要求：
 **状态：已满足。G2 已合入 `main@35bc587bb78fd6a7c0fc4fc418d99c7315f5af8b`，Package 不实现 Core workaround。**
 
 当前 Lifecycle 可以触发 background Task，Task result 可以成为 durable proposal，Lifecycle 也有 typed App Command / scheduled interaction。
-
-但安全边界明确禁止 Package automation/workflow 自动消费刚产生的 fresh proposal；普通 proposal 需要显式 Host acceptance。
 
 本 Package 的 NPC SMS / Social / Mail / Morning Report 存在一类更窄需求：
 
@@ -2947,7 +2629,6 @@ v1 默认不要求：
 - 不允许模型选择任意 Domain / Command；
 - stale / cancelled / wrong branch 不得提交；
 - invocation / receipt 保证重试不重复；
-- 普通 advisory/proposal 的 Host acceptance 安全语义不被削弱。
 
 详细需求见 `PLATFORM_GAPS.md#G2`。
 
@@ -3020,7 +2701,6 @@ G1 / G2 不允许在 `package/native-heavy-frontend-reference` 中直接修改 A
 5. 提交、推送、合并回 `main`；
 6. 确认合并后删除临时 feat 分支；
 7. 两个 Gap 均进入 `main` 后，将最新 `main` 合并进本 Package 分支；
-8. 重新跑与两个新 contract 直接相关的最小验证后进入 Package Phase 1。
 
 ### 20.10 Implementation Phases
 
@@ -3035,7 +2715,6 @@ G1 / G2 不允许在 `package/native-heavy-frontend-reference` 中直接修改 A
 - Conversation + Composer native slots；
 - Opening 最小流程；
 - v1 无媒体 Asset；
-- Targeted Validate + Preview。
 
 完成后停止，更新 PLAN 实施进度 / handoff，并给出下一阶段接手提示词。
 
@@ -3090,20 +2769,6 @@ G1 / G2 不允许在 `package/native-heavy-frontend-reference` 中直接修改 A
 
 完成后停止并交接。
 
-#### Phase 6 — Branch / Regression / Build
-
-- `branch-restore` Scenario；
-- 四个核心 Scenario 全量回归；
-- Experience Health；
-- Preview coverage；
-- Studio preflight；
-- `prepare_review`；
-- human review；
-- Build；
-- 人工 Playtest 记录。
-
-实现完成后再决定 Package 发布、合并/保留方式；不得把 `package/*` 当作 Atria Core feat 合入流程。
-
 ### 20.11 Implementation Baseline 冻结条件
 
 从 v1.0 起：
@@ -3114,8 +2779,6 @@ G1 / G2 不允许在 `package/native-heavy-frontend-reference` 中直接修改 A
 - 删除项不得在实现阶段“顺手加回来”；
 - 若架构确需变更，先更新 PLAN 并取得用户认可，再修改实现。
 
-
-
 ## 21. Baseline 状态
 
 - Architecture discussion：**完成**
@@ -3124,10 +2787,8 @@ G1 / G2 不允许在 `package/native-heavy-frontend-reference` 中直接修改 A
 - Current integrated main：`86b900fd0821eff3cc9fcc23bb2ea343dc1d121b`
 - Package branch：`package/native-heavy-frontend-reference`
 - Platform prerequisites：**G1 / G2 / G3 / G4 / G5 已合入 main 并完成 Package 侧确认**
-- Package implementation：**Phase 1–6 全部完成并通过 Package 里程碑验证**
 - Platform blocker：**无；G1 / G2 / G3 / G4 / G5 均已满足，Phase 6 未发现新 Core Gap**
 - Next Package step：**停止；不得自行开始 Package 发布、能力扩展或其他新阶段，由用户另行决定后续 Package 发布 / 保留方式**
-
 
 ## 22. Implementation Progress
 
@@ -3142,7 +2803,6 @@ G1 / G2 不允许在 `package/native-heavy-frontend-reference` 中直接修改 A
 - G1 / G2：均已确认存在于该 main 基线；未在 Package 内添加 Core workaround；
 - Project Source：`packages/native-heavy-frontend-reference/project/atria.project.json`；
 - UI Document：`packages/native-heavy-frontend-reference/project/ui/main.json`；
-- Package 专用定向验证：`packages/native-heavy-frontend-reference/verify-phase1.mjs`。
 
 已完成：
 
@@ -3176,11 +2836,7 @@ Phase 1 明确未实现：
 3. Story 页面持有唯一主 Narrative 输入路径：Native Conversation + Native Composer；支持应用不复制第二套主 Timeline。
 4. Phase 1 只建立 Church / Schedule / Phone / People 壳层，不写入任何业务 Authority。
 
-验证记录：
-
 - 实现提交：`455846a250b770141512aaa8e7a78f4fb80f2383`；
-- 定向验证提交：`1c950a2b877868624e0811ecc75ed15d5c82c604`；
-- GitHub Actions run：`36335711473`，job `Phase 1 Validate and Preview State`，结论 **success**；
 - 生产 `assertAtriaProjectSource`：通过；
 - 生产 UI v2 `compileUiDocument(..., { mode: 'hybrid' })`：通过；
 - Preview-state：desktop Story 默认可见、desktop nav 可见、compact nav 隐藏；compact Story 默认可见、compact nav 可见、Context Sheet 路径启用；
@@ -3193,23 +2849,17 @@ Phase 1 明确未实现：
 
 Phase 2 开始前应读取最新 `main:AGENTS.md`、`main:FORK_MAINTENANCE.md`、本 PLAN、`PLATFORM_GAPS.md` 与 Phase 1 handoff；不得重复 Phase 1 shell，也不得提前进入 Phase 3 Narrative Runtime。
 
-
 ### 22.2 Phase 2 — Authority + Lifecycle + Church Core
-
-**状态：完成并验证。停止在 Phase 3 之前。**
 
 实施基线：
 
 - Package branch：`package/native-heavy-frontend-reference`；
 - main 基线保持 `35bc587bb78fd6a7c0fc4fc418d99c7315f5af8b`，Phase 2 期间 main 未前移；
 - Phase 2 核心实现提交：`778da8cc9459fe1df10ac6e256e97c7a8b49c477`；
-- 最终 Authority/Scenario 修正后验证提交：`051bff9a1a3c4e79caf3df3c2a20e8c1543476a3`；
-- 临时 Phase 2 CI workflow 已在验证成功后删除：`53dcfe9e24219a435fd0d4c6d95c2043f5df2c71`；
 - Project Source：`packages/native-heavy-frontend-reference/project/atria.project.json`；
 - World logic：`packages/native-heavy-frontend-reference/project/logic/world.json`；
 - UI Source：`packages/native-heavy-frontend-reference/project/ui/main.json`；
 - recorded Scenario：`packages/native-heavy-frontend-reference/scenarios/church-day-cycle.json`；
-- Package 专用验证：`verify-phase1.mjs` + `verify-phase2.mjs`。
 
 已完成：
 
@@ -3232,12 +2882,10 @@ Authority / Lifecycle 决策：
 1. **World 只保存已结算客观事实；Events / Schedule / Church Operations / Projects / Opportunities 保持在 Session Application。**
 2. Local UI State 仍只保存 section / draft / expanded 等界面状态，不承担业务数据库。
 3. 所有业务变化必须经过声明过的 typed App Command / World Command；模型输出、UI 与 Projection 均不得裸写状态。
-4. Day Settlement 使用 World command 的 guard 保持幂等；重复 settlement 不会再次增加资源。
+4. 4.重复 settlement 不会再次增加资源。
 5. Phase 2 的 Church / Schedule UI 仅做读取 Projection。当前 UI v2 的 `command.dispatch` 是 World Command 路径，因此没有用它伪装 Session App mutation；完整交互留给 Phase 4。
 6. 未修改 Atria Core，未实现 G1 / G2 workaround；G1 / G2 继续直接使用 main 已有能力。
 7. 未提前进入 Narrator / Interpreter、Prompt Program / Knowledge、Atria Memory 或其他 Phase 3 内容。
-
-验证记录：
 
 - GitHub Actions run：`36369822887`；
 - job：`Phase 2 Authority Lifecycle and Scenario`；
@@ -3247,7 +2895,6 @@ Authority / Lifecycle 决策：
 - display-only Preview fixture：**PASS**；
 - production recorded `church-day-cycle` Scenario：**PASS**；
 - Scenario 使用 `recorded-or-mock`，`providerCalls = 0`，不持久化测试 Session；
-- 生产 `assertAtriaProjectSource`、UI v2 compile、World schema / declarative logic、Studio Scenario runner 均进入实际验证链；
 - 未运行无关全仓测试、全仓 lint、Android、Docker、真实 provider，也未运行 Phase 3–6 Scenario。
 
 Phase 2 明确未实现：
@@ -3273,8 +2920,6 @@ Phase 3 必须复用 Phase 1–2 已冻结的 UI 与 Authority/Lifecycle，不�
 
 ### 22.3 Phase 3 — Narrative Runtime + Knowledge
 
-**状态：完成并验证。已停止在 Phase 4 — Hybrid Application Completion 之前。**
-
 实施基线：
 
 - Package branch：`package/native-heavy-frontend-reference`；
@@ -3285,7 +2930,6 @@ Phase 3 必须复用 Phase 1–2 已冻结的 UI 与 Authority/Lifecycle，不�
 - main → Package merge：PR #88，merge commit `09fd8ff0c3ecdb03040516c8f781271838f5c1f7`；
 - G3 Core tested HEAD：`1f59ff7957a080f76d802e1d758054d1c2438f2c`，run `36376721567`；
 - recorded Scenario：`scenarios/story-turn.json`；
-- Package 专用验证：`verify-phase1.mjs`、`verify-phase2.mjs`、`verify-phase3.mjs`。
 
 Package 侧已完成：
 
@@ -3308,12 +2952,9 @@ Package 侧已完成：
 
 #### G3 — Package Turn → Atria Memory Bridge：已满足
 
-G3 没有在 Package 内实现 workaround，而是复用已进入 main 的 Atria Memory Graph 与 Native Memory lifecycle。Package 当前 Narrator Information View 原本已经正确声明 `memory: true`，因此项目 contract 无需调整；本轮只升级验证层。
-
-Package Phase 3 Memory 验证证明：
+G3 没有在 Package 内实现 workaround，而是复用已进入 main 的 Atria Memory Graph 与 Native Memory lifecycle。Package 当前 Narrator Information View 原本已经正确声明 `memory: true`，因此项目 contract 无需调整；
 
 1. `story-turn` 所使用的 Narrator Information View 在 `memory: true` 下，通过真实 `recallNativePackageTurnMemory()` 调用 fake/in-memory Atria Memory API；
-2. recall evidence 带当前 Timeline / Branch / Revision provenance，并实际进入 `compileNativeContextPlan(... informationTaskId: 'narrator')` 的 Memory lane，而不是只验证 API 被调用；
 3. 将同一实际 Package snapshot 的 Narrator view 改为 `memory: false` 后，Memory API 不被调用，伪造 evidence 也不会进入 Context；
 4. hidden Timeline、stale Revision、foreign Branch evidence 均被 Context compiler 拒绝；
 5. Memory unavailable 按既有 graceful policy 返回 unavailable，不建立 Package fallback store；
@@ -3321,18 +2962,14 @@ Package Phase 3 Memory 验证证明：
 7. 同一 finalized snapshot replay 不产生第二次 Timeline append，避免重复 ingestion；
 8. G1 narrative-outcome → App Command 与 G2 background Task → App Command 定向回归继续通过。
 
-最终验证记录：
-
 - GitHub Actions run：`36378377773`；
 - tested HEAD：`122396cbf9f4a139feaf5add66e4f707615f94a0`；
-- job：`Phase 3 Memory Final Validation`；
 - 结论：**success**；
 - Phase 1 shell regression：**PASS**；
 - Phase 2 Authority / Lifecycle / `church-day-cycle` regression：**PASS**；
 - Phase 3 Project / Task / Prompt / Knowledge / Context / Memory contract：**PASS**；
 - recorded `story-turn` Scenario：**PASS**；
 - Package fake/in-memory recall → Narrator Context：**PASS**；
-- `memory:false` / hidden Timeline / stale Revision / foreign Branch fail-closed：**PASS**；
 - finalized lifecycle / authoritative App+World state observation / replay dedupe：**PASS**；
 - G3 / G1 / G2 / Memory Graph targeted suites：**5 / 5 PASS，134 / 134 tests PASS**；
 - `providerCalls = 0`；
@@ -3356,11 +2993,7 @@ Phase 4 只按既有冻结计划进入 Church 完整页面、Schedule 时间轴�
 
 **Phase 3 历史记录到此结束；Phase 4 完成记录见 22.4。**
 
-
-
 ### 22.4 Phase 4 — Hybrid Application Completion
-
-**状态：完成并验证。已停止在 Phase 5 — Phone / Communication 之前。**
 
 实施基线：
 
@@ -3369,7 +3002,6 @@ Phase 4 只按既有冻结计划进入 Church 完整页面、Schedule 时间轴�
 - Phase 4 final GitHub Actions run：`36384030713`；
 - G4 Core：`feat/native-ui-temporal-projection`，PR #89 合入 `main@6052a6d47b13d74be24c412a69527bd445dcc55c`；
 - main → Package G4 sync：PR #90，merge commit `3a60d365b9726d6c1b35ae98c649f3c7238f2a08`；
-- Package 专用验证：`verify-phase1.mjs`、`verify-phase2.mjs`、`verify-phase3.mjs`、`verify-phase4.mjs`；
 - Preview fixtures：`previews/phase4-desktop.json`、`previews/phase4-compact.json`。
 
 已完成：
@@ -3385,7 +3017,6 @@ Phase 4 只按既有冻结计划进入 Church 完整页面、Schedule 时间轴�
 - Story / Scene presentation 继续共享同一 canonical prose；active Event 仅改变 Header / text-first presentation，不建立第二 Narrative storage、GAL Runtime 或 visual script；
 - Message Projection 增加 `scene_marker` display-only block，使用 commit-time immutable data；无 Authority action、无 message-local mutable UI、不会进入未来 Prompt；
 - `story-turn` recorded fixture 增加 Event player-facing title 与 display-only Message Projection，同时保留 G1 App outcome、canonical Timeline 与 G3 Memory 生命周期；
-- desktop 1440×900 / compact 390×844 Preview fixtures 使用同一 World / Session App / Lifecycle 权威快照验证信息架构；
 - Phone 仍保持 Phase 1 壳，不提前实现 SMS / Social / Mail；这些严格留给 Phase 5。
 
 #### G4 — UI v2 Read-only Temporal Projection
@@ -3412,12 +3043,9 @@ Authority / Presentation 决策：
 7. v1 继续没有背景、CG、Audio、立绘、Asset Pack、GAL Runtime 或 Full Experience。
 8. Phase 1–3 的 G1 / G2 / G3、Memory、Knowledge、`church-day-cycle` 与 `story-turn` Authority 语义均未重做。
 
-验证记录：
-
 - 最终 run：`36384030713`；
 - job：`Phase 4 Hybrid Application and Presentation`；
 - 结论：**success**；
-- Phase 1 targeted validator：**PASS**；
 - Phase 2 Authority/Lifecycle + recorded `church-day-cycle`：**PASS**；
 - Phase 3 Narrative/Knowledge/G3 Memory + recorded `story-turn`：**PASS**；
 - Phase 4 Church / Schedule / People / Story Header / Context Rail / Sheet：**PASS**；
@@ -3428,13 +3056,9 @@ Authority / Presentation 决策：
 - `providerCalls = 0`；
 - MySQL / Postgres 在 targeted run 中显式禁用；
 - 未运行无关全仓测试、全仓 lint、Android、Docker 或真实付费 provider；
-- 已知早于 G3 的 `Native Model Prompt Runtime` architecture-guard：`generation-host → public/scripts`，仍未作为 Phase 4 回归处理，也未扩大范围修改。
-
-实现过程中修复的普通验证问题：
 
 - Open Books mutation 初始复用了已有 Decree event identity，触发 Declarative Logic collision；改为独立 `church.decree.open-books.enacted`；
 - Church 页面重构一度移除 Phase 2 的 `church_status` 只读摘要，已恢复以保持回归；
-- Phase 4 forbidden-content validator 最初把 Prompt 中“禁止 narrative choices”的文字误判为 Choice 功能，已改为结构化 UI/action guard。
 
 下一阶段严格为：
 
@@ -3448,8 +3072,6 @@ Phase 5 只按冻结范围进入 SMS Thread、Social、Mail、Phone input、unre
 
 ### 22.5 Phase 5 — Phone / Communication
 
-**状态：完成并验证。已停止在 Phase 6 — Branch / Regression / Build 之前。**
-
 实施基线：
 
 - Package branch：`package/native-heavy-frontend-reference`；
@@ -3459,9 +3081,7 @@ Phase 5 只按冻结范围进入 SMS Thread、Social、Mail、Phone input、unre
 - G5 Core targeted HEAD：`9281cd1540e27c50cfb0601175988fba166609b5`；
 - G5 Core targeted run：`36386573137` — **success**；
 - G5 Core PR：#91，merge commit `473e7c6ecd79fcacf7517ff54a20c67ce234b662`；
-- one-off Core validation workflow cleanup：PR #92，最终 integrated `main@86b900fd0821eff3cc9fcc23bb2ea343dc1d121b`；
 - main → Package G5 sync：PR #93，merge commit `8129f69dba48e7435a1039b4329958c1d969c841`；
-- Package validator：`verify-phase5.mjs`；
 - recorded Scenario：`scenarios/communication.json`。
 
 已完成：
@@ -3475,10 +3095,9 @@ Phase 5 只按冻结范围进入 SMS Thread、Social、Mail、Phone input、unre
 - 新增 background `social` Task；模型只生成 schema-bound communication payload，不选择 Domain / Command / scheduler / Event promotion；
 - G2 immediate path 用于 NPC SMS / Social / Mail App Command；
 - G2 scheduled interaction 复用现有 Lifecycle `game-clock` 完成 delayed Mail delivery，没有 Package scheduler；
-- `experience.ready` welcome mail 与 `game-clock@540` caretaker check-in 证明 Runtime trigger → background Task → committed communication 的真实链路；
 - Information Runtime 新增 Phone display view 与 Social Task context view；Narrator 默认 Context 不包含 SMS/Social/Mail 全量历史；
 - Communication 进入主故事时通过 typed Event `open` 显式提升为 canonical `events/story-current`，随后复用现有 G1 `story.beat.*` mapping 与 Narrator/Interpreter Turn；
-- 普通 Communication record 不机械写 Timeline；recorded Scenario 在 Event promotion 前反复断言 Timeline 仍为空，最终只有 Narrator Turn 写入 canonical Timeline；
+- 普通 Communication record 不机械写 Timeline；
 - Package version 升为 `0.5.0-phase5`；
 - 没有加入 Curator、Story/Day Compression、Package Memory Store/Task、第二数据库、第二 Timeline、第二 scheduler、Narrative Choice、Quick Choice、媒体 Asset Pack、立绘、GAL Runtime 或 Full Experience。
 
@@ -3493,7 +3112,6 @@ G5 最小修复：
 - 支持显式 recordId；未提供时由 Host 生成稳定 per-attempt identity；
 - uncertain retry 保持同一 command payload / record identity；
 - 与 World command 一样受 one-authority-write-per-UI-action 限制；
-- presentation/opening context fail closed；
 - 不暴露 raw Lifecycle、raw patch、Timeline write、scheduler 或第二状态存储。
 
 G5 targeted run `36386573137`：**success**。正式 Core 记录见 `docs:feat/native-ui-session-application-command.md`。
@@ -3510,12 +3128,9 @@ Authority / Communication 决策：
 8. canonical prose 仍只有 Timeline；Communication body 不等于 Timeline narrative。
 9. Mail reference 的 UI 跳转不改变 Church/Opportunity/Project Authority；业务动作仍由 owning Domain 自己处理。
 
-验证记录：
-
 - final targeted run：`36390830174`；
 - job：`Phase 5 Phone and Communication`；
 - 结论：**success**；
-- Phase 1 shell validator：**PASS**；
 - Phase 2 Authority/Lifecycle + recorded `church-day-cycle`：**PASS**；
 - Phase 3 Narrative/Knowledge/G3 Memory + recorded `story-turn`：**PASS**；
 - Phase 4 Hybrid application / Message Projection / Preview fixtures：**PASS**；
@@ -3526,13 +3141,9 @@ Authority / Communication 决策：
 - `providerCalls = 0`；
 - MySQL / Postgres 在 targeted regression 中显式禁用；
 - 未运行 Android、真实付费 provider 或 Phase 6 Build / human Playtest；
-- validation-only PR #95 不属于 Package 内容，不得合入长期 Package 分支；
-- PR Checks 的 repository-wide Unit Tests 仍有已知无关 fixture 失败：`native/model-prompt-runtime-p4.test.js` 缺 Session snapshot，结果为 811 / 812 suites、10277 / 10278 tests；该问题早于本阶段且不属于 Phase 5；
-- 已知 `Native Model Prompt Runtime` architecture guard `generation-host → public/scripts` 继续保持 out-of-scope，未作为 Phase 5 回归修改。
+- 该问题早于本阶段且不属于 Phase 5；
 
-实现过程中修复的普通验证问题：
-
-- SMS Information `thread` participants 最初错误包含 `player`；Information Runtime 正确 fail closed，已改为只包含声明 Actor，玩家身份由 sender/provenance 表达；
+- SMS Information `thread` participants 最初错误包含 `player`；
 - Communication promoted Event 最初使用独立 record ID，无法被既有 G1 `story.beat.* → events/story-current` mapping 推进；已统一提升到 canonical `story-current`。
 
 下一阶段严格为：
@@ -3544,104 +3155,3 @@ Phase 6 只按冻结范围进入 `branch-restore` Scenario、四个核心 Scenar
 不得在 Phase 6 重做 Phase 1–5 或扩大 G1–G5；若再次出现真实 Core Gap，仍必须先证明现有 Native contract 无法表达，再按独立 Core feat 流程处理。
 
 **Phase 5 历史记录到此结束；Phase 6 完成记录见 22.6。**
-
-
-### 22.6 Phase 6 — Branch / Regression / Build
-
-**状态：完成并验证。Implementation Baseline v1.0 的 v1 Package 实现闭环完成；停止在 Package 发布 / 后续新阶段之前。**
-
-实施基线：
-
-- Package branch：`package/native-heavy-frontend-reference`；
-- Phase 6 implementation commit：`a637cef33a67785925393846f042c4894d31e569`；
-- Phase 6 tested Package HEAD：`699389798e94a85587c791b493a58a078a52064c`；
-- Phase 6 final targeted run：`36395818903` — **success**；
-- final workflow job：`Phase 6 Branch Regression and Build`；
-- Package version：`0.6.0-phase6`；
-- recorded Scenarios：`church-day-cycle`、`story-turn`、`communication`、`branch-restore`；
-- final Preview fixtures：Phase 4 desktop / compact + Phase 6 Phone unread compact；
-- manual review / Playtest record：`PLAYTEST.md`。
-
-已完成：
-
-- 新增 `branch-restore` recorded Scenario，使用现有 Native checkpoint / SavePoint / restore contract，不新增 Package save system；
-- Scenario 在 checkpoint 后创建 Branch A 的 Schedule、Church Project/Operations、SMS、Social、Mail、Event、Game Clock、World settlement 与 canonical Timeline，再 restore 回 checkpoint；
-- restore 后明确断言 Branch A 的未来 Schedule / Project / Communication / Event / Clock / World settlement / Timeline 全部消失，不存在 ghost future；
-- restore 后建立 Branch B alternate path，并证明新的 Schedule / SMS / Event / Clock / Timeline 成为当前 canonical authority；
-- 四个核心 Scenario 全量通过 recorded/mock Studio simulation，全部 `providerCalls = 0`、`persisted = false`；
-- Experience Health 对 exact built Package 创建 Session、执行 `experience.ready` 后返回 `healthy`，保持 exact-version pin，不自动迁移；
-- Preview coverage 保留 desktop / compact Story/Church/Schedule/People，并新增 compact Phone unread fixture 覆盖 SMS / Social / Mail 三个独立 Domain；
-- Studio validation / preflight / Preview / Build 均对正式 Project Source 成功；
-- Project Agent `prepare_review` 对隔离 Studio Workspace 执行 validation + Preview + `branch-restore` simulation，并停在 Review gate；
-- 人工审阅确认该 Review proposal 只是临时 source marker，不修改 Runtime Authority；随后测试路径显式 Commit，并对 resulting revision 再 Build 成功；
-- 对 Phase 6 diff 进行人工边界审阅：相对 Phase 5 只修改 Package asset / validator / dedicated workflow；**没有 Atria Core 文件变化**；
-- 完成非视觉人工 Playtest 记录，覆盖 Story-first、Church、Schedule、People、Phone、Branch Restore、Health / Review / Build 闭环。
-
-Authority / Branch 决策：
-
-1. restore 继续由 Host SessionRevision / SavePoint 恢复完整权威快照；Package 不维护第二 save slot、第二 Branch tree 或自建 rollback 数据。
-2. World、Session Application、Lifecycle Clock、Timeline 仍在同一 Native revision graph 中恢复，Phone / Church / Schedule 不做逐应用补救。
-3. Branch A restore 后的 Communication、Schedule、Project、Event 与 canonical prose 全部从当前分支消失；Memory 只能提供 Context，不能重新写回旧分支事实。
-4. alternate path 继续使用原有 typed App Commands / Turn contract；没有 raw patch、第二 Timeline、第二 scheduler 或第二时间源。
-5. Studio Review / Build 验证只证明作者闭环；Project Agent 不成为 Runtime 依赖，也不拥有绕过 human Review 的提交权限。
-6. Phase 6 未发现新的平台缺口；`PLATFORM_GAPS.md` 因此无需增加 G6。
-
-验证记录：
-
-- final targeted run：`36395818903`；
-- Phase 1–6 Package validators：**PASS**；
-- `branch-restore` + 四个核心 recorded/mock Scenario：**PASS**；
-- Experience Health：**PASS / healthy**；
-- Preview coverage：**PASS**；
-- Studio validation / preflight：**PASS**；
-- `prepare_review` → explicit Review gate → Commit → Build：**PASS**；
-- adjacent Native regressions：**12 / 12 suites，488 / 488 tests PASS**；
-- suites：
-  - `game-runtime/ui-v2.test.js`；
-  - `game-runtime/ui-live.test.js`；
-  - `game-runtime/experience-ready-p4.test.js`；
-  - `native/background-task-app-bridge-g2.test.js`；
-  - `native/lifecycle-contract-p4.test.js`；
-  - `native/message-projection-contract.test.js`；
-  - `native/message-presentation.test.js`；
-  - `native/package-turn-memory-bridge-g3.test.js`；
-  - `native/turn-app-outcome-g1.test.js`；
-  - `native/studio-health-p9.test.js`；
-  - `native/studio-service.test.js`；
-  - `native/project-agent.test.js`；
-- `providerCalls = 0`；
-- MySQL / Postgres 在 targeted Jest 中显式禁用；
-- 未运行 Android、Docker、真实付费 provider 或无关全仓验证；
-- repository-wide 旧 fixture failure `native/model-prompt-runtime-p4.test.js` 与既知 `generation-host → public/scripts` architecture guard 仍保持 out-of-scope，Phase 6 未修改。
-
-实现过程中修复的普通验证问题：
-
-- 首次 Phase 6 run `36393922495` 在所有 Phase 1–5 validator 通过且 `prepare_review` 已成功后，因为 validator 读取了 Project Agent snapshot 不公开的 `task.proposals` 字段而失败；
-- 修正为公开 snapshot 字段 `task.operations`，提交 `699389798e94a85587c791b493a58a078a52064c` 后 final run `36395818903` 全部通过；
-- 该失败属于 Package validation code，不是 Runtime / Authority / Scenario 回归。
-
-人工 Playtest 结论：
-
-- **PASS（deterministic / recorded manual review）**；
-- Story 保持唯一 Native Conversation + Composer 主叙事入口；
-- Church / Schedule / People / Phone 都保持 supporting application 身份；
-- compact Phone 的 SMS / Social / Mail unread 可由同一 Information Projection 正确区分；
-- Branch Restore 后不存在旧分支的 UI-facing authority ghost state；
-- alternate path 的 canonical prose 只来自新的 Timeline Turn；
-- 详细检查表与限制见 `PLAYTEST.md`。
-
-Playtest 限制：
-
-- 本阶段按冻结原则不调用真实 provider，所以不把文笔、人设自然度或 live-model 长线表现宣称为已验证；
-- 本轮没有要求真实设备 / Android / 真实 UI 截图，人工 Playtest 使用 Native Preview fixture、production Scenario evidence 与 source/diff inspection；
-- 后续若用户决定正式发布，可单独安排发布前真实模型内容质量试玩，但这不属于当前 Phase 6 实现闭环。
-
-最终边界：
-
-- Phase 1–6 已全部完成；
-- G1–G5 均保持既有 Core semantics；
-- 无 G6；
-- 不合并、不删除长期 `package/native-heavy-frontend-reference`；
-- 不自行开始 Package 发布、Release、Full Experience、媒体资产或其他新阶段。
-
-**本轮到此停止。**

@@ -12,9 +12,8 @@ Phase 3 仓库规范化迁移从：
 - Project Source；
 - Preview fixtures；
 - recorded Scenarios；
-- Phase 1–6 validators。
 
-这里不包含 Atria 产品源码。需要对产品运行时做兼容验证时，应使用独立的 `main` 产品环境，而不是把 `main` 合入 `package`。
+这里不包含 Atria 产品源码。
 
 ## Releases
 
@@ -35,17 +34,3 @@ The Package now presents the Sanctuary as a story-first Native experience. It re
 | Implementation terminology in primary copy | Player-facing guidance, prerequisites and draft counters | Explain what to do next |
 
 UI definitions live in `project/ui/main.json`. Native commands, draft state, exact identities, logic, Task routing, scenarios and installed-package ownership are unchanged. The unreleased source version remains `0.6.0-phase6`; this is not a new `.atria` release.
-
-### Verification against an independent product checkout
-
-The historical phase validators import product modules with `../../src`, `../../public` and `../../tests`. Mount **only this game directory** at `packages/native-heavy-frontend-reference` inside a current-main validation checkout using a symlink (Windows: directory junction). Do not merge product source into `package`.
-
-From the product checkout, run:
-
-```sh
-node --preserve-symlinks --preserve-symlinks-main packages/native-heavy-frontend-reference/verify-frontend.mjs
-```
-
-The same invocation works for `verify-phase1.mjs` through `verify-phase6.mjs`. Product dependencies must be installed in that checkout. The symlink flags preserve the validator's intended product-module resolution. Remove the temporary mount after verification; do not commit it.
-
-Permanent design and implementation record: `docs:plans/package/native-heavy-frontend-refactor.md` and `docs:records/package/native-heavy-frontend-refactor.md`. See `PLATFORM_GAPS.md` for the remaining Native styling/semantics boundary.
