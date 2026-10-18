@@ -1,6 +1,6 @@
 import { assertKnowledgeBinding, assertPackagedKnowledgeSnapshot } from './world-knowledge.js';
 import { validateRequiredEntryGraph, NativeDependencyError } from './dependency-closure.js';
-import { hashNativeDocument } from './repositories/common.js';
+import { equalNativeDocuments } from './repositories/common.js';
 
 const sourceKey = source => `${source.kind}:${source.knowledgeBaseId}@${source.knowledgeRevisionId}`;
 const snapshotKey = snapshot => `${snapshot.knowledgeBase.knowledgeBaseId}@${snapshot.revision.knowledgeRevisionId}`;
@@ -65,7 +65,7 @@ export function validateKnowledgeBindingSet(value, manifest, entryPoint) {
     if (selected !== undefined && (!Array.isArray(selected) || new Set(selected).size !== selected.length || selected.some(id => !manifest.knowledgeBindings.some(binding => binding.knowledgeBindingId === id)))) throw new TypeError('Invalid Package binding selection');
     const required = selected === undefined ? packageSessionBindings(manifest, entryPoint) : manifest.knowledgeBindings.filter(binding => selected.includes(binding.knowledgeBindingId));
     const actualPackage = bindings.filter(binding => binding.source.kind === 'package');
-    if (hashNativeDocument(required) !== hashNativeDocument(actualPackage)) {
+    if (!equalNativeDocuments(required, actualPackage)) {
         throw new TypeError('Session must preserve exact Package Knowledge bindings');
     }
     for (const binding of bindings) {

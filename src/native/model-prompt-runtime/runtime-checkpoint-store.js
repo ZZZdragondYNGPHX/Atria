@@ -1,5 +1,5 @@
 import { NATIVE_RESOURCE_KINDS } from '../contracts.js';
-import { hashNativeDocument, nativeRecord } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument, nativeRecord } from '../repositories/common.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
 import { withRuntimeWrite } from './persistence.js';
 import { GenerationError, immutable } from './execution-utils.js';
@@ -7,9 +7,9 @@ import { projectAgentResumeMessages } from '../../../public/shared/project-agent
 
 export const runtimeCheckpointLimits = Object.freeze({ count: 128, totalBytes: 16 * 1024 * 1024, entryBytes: 2 * 1024 * 1024, ttlMs: 600000 });
 const unavailable = () => { throw new GenerationError('generation_continuation_unavailable'); };
-const sameScope = (a, b) => hashNativeDocument(a.executionScope) === hashNativeDocument(b.executionScope);
+const sameScope = (a, b) => equalNativeDocuments(a.executionScope, b.executionScope);
 const authentic = (doc, state) => state?.schemaVersion === 1 && state.bindingFingerprint === doc.bindingFingerprint
-    && state.text === doc.text && hashNativeDocument(state.calls) === hashNativeDocument(doc.calls);
+    && state.text === doc.text && equalNativeDocuments(state.calls, doc.calls);
 
 // Private Runtime storage. Only the server adapter obtains this port; no domain
 // resource, public endpoint or caller JSON can supply its engine/owner binding.
@@ -54,14 +54,11 @@ export class RuntimeCheckpointStore {
             const doc = record?.doc;
             return doc?.schemaVersion === 2 && /^[a-f0-9]{64}$/.test(doc.checkpointId)
                 && doc.binding?.ownerFingerprint === this.ownerFingerprint
-                && doc.bindingFingerprint === hashNativeDocument(doc.binding)
-                && record.integrity === hashNativeDocument(doc)
                 && Number.isSafeInteger(doc.createdAt) && Number.isSafeInteger(doc.expiresAt)
                 && doc.createdAt <= this.now() && doc.expiresAt > this.now()
                 && doc.expiresAt - doc.createdAt === runtimeCheckpointLimits.ttlMs
                 && Array.isArray(doc.sequence) && Array.isArray(doc.calls) && typeof doc.text === 'string'
-                && Buffer.byteLength(JSON.stringify(doc)) <= runtimeCheckpointLimits.entryBytes
-                && typeof doc.contentWire === 'string' && Array.isArray(JSON.parse(doc.contentWire));
+                && typeof doc.contentWire === 'string';
         } catch { return false; }
     }
     async save(state, entry) {
@@ -72,13 +69,11 @@ export class RuntimeCheckpointStore {
         const { content, ...metadata } = entry;
         const doc = immutable({ ...metadata, contentWire: JSON.stringify(content), schemaVersion: 2, checkpointId: state.checkpointId,
             createdAt, expiresAt: createdAt + runtimeCheckpointLimits.ttlMs });
-        const record = nativeRecord(doc, { createdAt });
-        if (!this.valid(record) || !authentic(doc, state)) unavailable();
+        if (!authentic(doc, state) || Buffer.byteLength(JSON.stringify(doc)) > runtimeCheckpointLimits.entryBytes) unavailable();
         return this._operate(async tx => {
             const authority = await this.authority(tx, entry.binding);
             if (this.authorityFingerprint !== undefined && this.authorityFingerprint !== authority) unavailable();
             const stored = nativeRecord({ ...doc, authorityFingerprint: authority }, { createdAt });
-            if (!this.valid(stored)) unavailable();
             const rows = await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.runtimeCheckpoint, handle: this.handle });
             const live = [];
             for (const row of rows) {
@@ -107,15 +102,19 @@ export class RuntimeCheckpointStore {
             if (!authentic(doc, state)) return; // Forged handles never evict authentic state.
             const authority = await this.authority(tx, binding);
             const match = doc.authorityFingerprint === authority && (this.authorityFingerprint === undefined || this.authorityFingerprint === authority)
-                && doc.bindingFingerprint === hashNativeDocument(binding) && sequence[index]?.content === doc.text
-                && hashNativeDocument(sequence[index]?.tool_calls || []) === hashNativeDocument(doc.calls)
-                && hashNativeDocument(sequence.slice(0, index).map(({ providerState: _state, ...message }) => message)) === hashNativeDocument(doc.sequence);
-            if (match) accepted = doc;
-            else if (sameScope(binding, doc.binding)) await tx.deleteResource(key);
+                && equalNativeDocuments(doc.binding, binding) && sequence[index]?.content === doc.text
+                && equalNativeDocuments(sequence[index]?.tool_calls || [], doc.calls)
+                && equalNativeDocuments(sequence.slice(0, index).map(({ providerState: _state, ...message }) => message), doc.sequence);
+            if (match) {
+                let content;
+                try { content = JSON.parse(doc.contentWire); } catch { await tx.deleteResource(key); return; }
+                if (!Array.isArray(content)) { await tx.deleteResource(key); return; }
+                accepted = { doc, content };
+            } else if (sameScope(binding, doc.binding)) await tx.deleteResource(key);
         });
         if (!accepted) unavailable();
-        const { contentWire, ...entry } = accepted;
-        return immutable({ ...entry, content: JSON.parse(contentWire) });
+        const { contentWire: _contentWire, ...entry } = accepted.doc;
+        return immutable({ ...entry, content: accepted.content });
     }
     async restore(binding, sequence) {
         if (binding.ownerFingerprint !== this.ownerFingerprint) unavailable();
@@ -145,11 +144,11 @@ export class RuntimeCheckpointStore {
                     loss: 'opaque_not_restored' } });
                 return decide(sequence, 'start', 'declared_session_task');
             }
-            if (hashNativeDocument(publicSequence.slice(-sessionHistory.length)) !== hashNativeDocument(sessionHistory)) unavailable();
+            if (!equalNativeDocuments(publicSequence.slice(-sessionHistory.length), sessionHistory)) unavailable();
         }
-        const matches = this.publicConversation && hashNativeDocument(publicSequence) === hashNativeDocument(this.publicConversation);
+        const matches = this.publicConversation && equalNativeDocuments(publicSequence, this.publicConversation);
         if (!sessionHistory && !matches) {
-            if (adaptive && this.publicConversation && hashNativeDocument(publicSequence) === hashNativeDocument(projectAgentResumeMessages(this.publicConversation))) {
+            if (adaptive && this.publicConversation && equalNativeDocuments(publicSequence, projectAgentResumeMessages(this.publicConversation))) {
                 return decide(sequence, 'reset', 'public_observation_projection');
             }
             if (hasHistory || adaptive) unavailable();
@@ -162,11 +161,11 @@ export class RuntimeCheckpointStore {
                 if (!this.valid(row)) continue;
                 const doc = row.doc;
                 if (!sameScope(binding, doc.binding)) continue;
-                if (doc.bindingFingerprint !== hashNativeDocument(binding) || doc.authorityFingerprint !== await this.authority(tx, binding)) continue;
+                if (!equalNativeDocuments(doc.binding, binding) || doc.authorityFingerprint !== await this.authority(tx, binding)) continue;
                 const index = doc.sequence.length; const message = restored[index];
                 if (message?.role !== 'assistant' || message.content !== doc.text
-                    || hashNativeDocument(message.tool_calls || []) !== hashNativeDocument(doc.calls)
-                    || hashNativeDocument(sequence.slice(0, index).map(({ providerState: _state, ...item }) => item)) !== hashNativeDocument(doc.sequence)) continue;
+                    || !equalNativeDocuments(message.tool_calls || [], doc.calls)
+                    || !equalNativeDocuments(sequence.slice(0, index).map(({ providerState: _state, ...item }) => item), doc.sequence)) continue;
                 if (message.providerState) { ambiguous = true; continue; }
                 restored[index] = { ...message, providerState: { schemaVersion: 1, checkpointId: doc.checkpointId,
                     bindingFingerprint: doc.bindingFingerprint, text: doc.text, calls: doc.calls } };
@@ -199,7 +198,7 @@ export class RuntimeCheckpointStore {
                 const removed = [];
                 for (const row of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.runtimeCheckpoint, handle: this.handle })) {
                     if (row.doc?.binding && sameScope(binding, row.doc.binding)) {
-                        if (!this.valid(row) || row.doc.bindingFingerprint !== hashNativeDocument(binding)
+                        if (!this.valid(row) || !equalNativeDocuments(row.doc.binding, binding)
                             || row.doc.authorityFingerprint !== authority) unavailable();
                         removed.push(row);
                     }

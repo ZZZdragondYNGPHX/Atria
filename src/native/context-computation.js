@@ -2,7 +2,7 @@ import { projectInformation } from '../../public/shared/native-information-runti
 import { assertTaskValue } from '../../public/shared/native-task-contract.js';
 import { runPackageComputation } from './package-computation.js';
 import { decideTaskArtifactReuse } from './task-artifact-authority.js';
-import { hashNativeDocument } from './repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument } from './repositories/common.js';
 
 const outputSchema = { type: 'object', additionalProperties: false, properties: {
     text: { type: 'string', maxLength: 32768 }, compact: { type: 'string', maxLength: 32768 },
@@ -14,8 +14,8 @@ const outputSchema = { type: 'object', additionalProperties: false, properties: 
 export function createPackageContextDerivation(snapshot, installed) {
     return async declaration => {
         const fixed = snapshot.manifest.runtime.experienceContract.contextRuntime.derivations.find(item => item.id === declaration.id);
-        if (!fixed || hashNativeDocument(fixed) !== hashNativeDocument(declaration)
-            || hashNativeDocument(installed.manifest.runtime?.experienceContract?.contextRuntime) !== hashNativeDocument(snapshot.manifest.runtime.experienceContract.contextRuntime)
+        if (!fixed || !equalNativeDocuments(fixed, declaration)
+            || !equalNativeDocuments(installed.manifest.runtime?.experienceContract?.contextRuntime, snapshot.manifest.runtime.experienceContract.contextRuntime)
             || installed.manifest.packageVersionId !== snapshot.session.packageVersionId
             || installed.manifest.packageId !== snapshot.session.packageId) throw new TypeError('Context Package pin mismatch');
         const artifacts = {}, sources = [];

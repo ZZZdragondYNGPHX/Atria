@@ -3,14 +3,14 @@ import { enterpriseSources } from './enterprise-authority.js';
 import { renewalSources } from './renewal-authority.js';
 import { lifetimeSources } from '../../public/shared/native-lifetime-runtime.js';
 import { createHash } from 'node:crypto';
-import { hashNativeDocument } from './repositories/common.js';
+import { equalNativeDocuments } from './repositories/common.js';
 import { historyPolicy, HISTORY_OPERATIONS, ARTIFACT_KINDS } from '../../public/shared/native-history-contract.js';
 import { initialHistory, historyIndex } from '../../public/shared/native-history-runtime.js';
 import { assertTaskValue } from '../../public/shared/native-task-contract.js';
 import { protectedTaskResult, taskResultTombstone } from './lifecycle-authority.js';
 
 const copy = v => structuredClone(v);
-const same = (a, b) => a === undefined || b === undefined ? a === b : hashNativeDocument(a) === hashNativeDocument(b);
+const same = (a, b) => a === undefined || b === undefined ? a === b : equalNativeDocuments(a, b);
 const record = (snapshot, domain, id = 'main') => snapshot.states.atri_lifecycle.domains[domain]?.records.find(r => r.id === id)?.value;
 const sourceValue = (snapshot, source) => Object.hasOwn(source, 'value') ? source.value : source.path.reduce((v, k) => v?.[k], record(snapshot, source.domainId, source.recordId));
 export const historySources = snapshot => [...(historyPolicy(snapshot)?.sources ?? []), ...lifetimeSources(snapshot), ...renewalSources(snapshot), ...enterpriseSources(snapshot), ...regionalSources(snapshot)];

@@ -812,7 +812,6 @@ export class SessionRepo {
             const coreHead = revision.stateHeads?.[SESSION_CORE_NAMESPACE];
             if (!coreHead) continue; // N1 low-level storage fixtures have no N3 snapshot.
             const core = await readCheckedDocument(tx, this._stateKey(handle, sessionId, SESSION_CORE_NAMESPACE, coreHead));
-            if (hashNativeDocument(core) !== coreHead) throw new Error('Session Core head integrity mismatch');
             if (core.parentRevisionId) pending.push(core.parentRevisionId);
             for (const node of core.branches) {
                 pending.push(node.headRevisionId);

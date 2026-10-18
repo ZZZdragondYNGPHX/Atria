@@ -24,6 +24,25 @@ export function hashNativeDocument(value) {
     return createHash('sha256').update(stableJson(value)).digest('hex');
 }
 
+/** Compare already admitted JSON data directly, without serializing or hashing.
+ * Object key order and signed zero have the same meaning as canonical JSON. */
+export function equalNativeDocuments(left, right) {
+    if (left === right) return true;
+    if (left === null || right === null || typeof left !== 'object' || typeof right !== 'object') return false;
+    if (Array.isArray(left)) {
+        if (!Array.isArray(right) || left.length !== right.length) return false;
+        for (let index = 0; index < left.length; index++) {
+            if ((index in left) !== (index in right) || index in left && !equalNativeDocuments(left[index], right[index])) return false;
+        }
+        return true;
+    }
+    if (Array.isArray(right)) return false;
+    const keys = Object.keys(left);
+    if (keys.length !== Object.keys(right).length) return false;
+    for (const key of keys) if (!Object.hasOwn(right, key) || !equalNativeDocuments(left[key], right[key])) return false;
+    return true;
+}
+
 export function nativeRecord(value, {
     existing = null,
     createdAt = undefined,

@@ -1,10 +1,10 @@
-import { hashNativeDocument, putImmutable } from './repositories/common.js';
+import { equalNativeDocuments, putImmutable } from './repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
 
 const FORMAT = 'atria-world-state-v2';
 const object = value => value !== null && !Array.isArray(value) && typeof value === 'object';
 function difference(before, after, path = [], result = []) {
-    if (hashNativeDocument(before) === hashNativeDocument(after)) return result;
+    if (equalNativeDocuments(before, after)) return result;
     if (!object(before) || !object(after)) result.push({ op: 'replace', path, value: after });
     else {
         for (const field of Object.keys(before)) if (!Object.hasOwn(after, field)) result.push({ op: 'remove', path: [...path, field] });
@@ -40,11 +40,10 @@ export async function readWorldState(tx, key, record, seen = new Set()) {
         if (!base || doc.depth !== base.doc.depth + 1) throw new TypeError('Missing World State Delta dependency');
         value = apply(await readWorldState(tx, baseKey, base, new Set(seen).add(key.head)), doc.patch);
     } else throw new TypeError('Invalid World State encoding');
-    if (hashNativeDocument(value) !== key.head) throw new Error('World State replay integrity mismatch');
     return value;
 }
 export async function putWorldState(tx, key, value, previousHead = null) {
-    if (key.kind !== K.sessionState || key.namespace !== 'atri_world_state' || hashNativeDocument(value) !== key.head) throw new TypeError('Invalid World State identity');
+    if (key.kind !== K.sessionState || key.namespace !== 'atri_world_state') throw new TypeError('Invalid World State identity');
     const existing = await tx.getResource(key);
     if (existing) { await readWorldState(tx, key, existing); return; }
     const fullBytes = Buffer.byteLength(JSON.stringify(value));

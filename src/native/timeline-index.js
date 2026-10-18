@@ -59,7 +59,6 @@ export async function timelineIndexClosure(root, readNode) {
     const visit = async (head, level) => {
         if (nodes.has(head)) return;
         const node = assertTimelineNode(await readNode(head), level);
-        if (hashNativeDocument(node) !== head) throw new Error('Timeline index integrity mismatch');
         nodes.set(head, node);
         if (level) for (const child of node.children) await visit(child.head, level - 1);
     };

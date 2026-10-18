@@ -24,7 +24,7 @@ import {
 } from './contracts.js';
 import { createNativeId, assertNativeId } from './identity.js';
 import { resolveSessionKnowledge, validateKnowledgeBindingSet, packageKnowledgeManifest } from './session-knowledge.js';
-import { cloneNativeDocument, hashNativeDocument } from './repositories/common.js';
+import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument } from './repositories/common.js';
 import {
     SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE, RESERVED_SESSION_NAMESPACES,
 } from './session-snapshot.js';
@@ -54,7 +54,7 @@ function normalizeMessageDraft(draft, allowOutcomes = false) {
         if (Object.hasOwn(draft, 'content') && draft.content !== envelope.narrative) throw new TypeError('Conflicting draft content and envelope narrative');
         if (Object.hasOwn(draft, 'projection')) {
             const supplied = assertMessageProjection(rawProjection, envelope.narrative);
-            if (!envelope.projection || hashNativeDocument(supplied) !== hashNativeDocument(envelope.projection)) {
+            if (!envelope.projection || !equalNativeDocuments(supplied, envelope.projection)) {
                 throw new TypeError('Conflicting draft projection and envelope projection');
             }
         }
@@ -211,7 +211,7 @@ export class SessionCore {
         if (snapshot.states.atri_game_regex) base.manifest = { ...base.manifest, processors: { ...base.manifest.processors, regex: normalizeNativeRegexScripts(snapshot.states.atri_game_regex.regexScripts) } };
         if (!options.revisionId && !options.skipPackageEdits) {
             const regexEdit = await this._packages.currentRegexEdit?.(handle, session.packageId, session.packageVersionId);
-            if (regexEdit && hashNativeDocument(regexEdit) !== hashNativeDocument(snapshot.states.atri_game_regex || null)) {
+            if (regexEdit && !equalNativeDocuments(regexEdit, snapshot.states.atri_game_regex || null)) {
                 const states = { ...base.states, atri_game_regex: regexEdit };
                 const manifest = { ...base.manifest, processors: { ...base.manifest.processors, regex: normalizeNativeRegexScripts(regexEdit.regexScripts) } };
                 try { await this._publish(handle, { ...base, manifest }, { states }); } catch (error) {
@@ -441,9 +441,9 @@ export class SessionCore {
         if (realmDefinition(base)) states = reconcileRealm(base, states,
             await this._sessions.realm.load(handle, base.session.packageId), { publication: true, pendingIntentId: pendingRealmIntentId });
         if (hasAuthorityTransactions(base) && !authorityPrepared && base.revision && states !== base.states
-            && (hashNativeDocument(states.atri_lifecycle?.domains ?? null) !== hashNativeDocument(base.states.atri_lifecycle?.domains ?? null)
-                || hashNativeDocument(states.atri_lifecycle?.clocks ?? null) !== hashNativeDocument(base.states.atri_lifecycle?.clocks ?? null)
-                || hashNativeDocument(states.atri_world_state ?? null) !== hashNativeDocument(base.states.atri_world_state ?? null))) {
+            && (!equalNativeDocuments(states.atri_lifecycle?.domains ?? null, base.states.atri_lifecycle?.domains ?? null)
+                || !equalNativeDocuments(states.atri_lifecycle?.clocks ?? null, base.states.atri_lifecycle?.clocks ?? null)
+                || !equalNativeDocuments(states.atri_world_state ?? null, base.states.atri_world_state ?? null))) {
             const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
             states = (await prepareAuthorityPublications({ ...base, states }, installed, authorityBudget)).candidate.states;
             if (base.states.atri_lifecycle?.ready && states.atri_lifecycle?.ready && states.atri_lifecycle.history) {
@@ -633,7 +633,7 @@ export class SessionCore {
         let prepared;
         const authorityBudget = hasAuthorityTransactions(base) ? await createAuthorityPublicationBudget(base, installed) : null;
         try { prepared = await prepareLifecycle(base, installed, command.action, authorityBudget); } catch (error) { throw new TypeError(error.message); }
-        if (hashNativeDocument(prepared.states) === hashNativeDocument(base.states)) return base;
+        if (equalNativeDocuments(prepared.states, base.states)) return base;
         const timeline = [...base.timeline]; const entries = []; const variants = [];
         for (const draft of prepared.drafts) { const created = this._newEntry(base, draft, timeline.length); timeline.push(created.entry); entries.push(created.entry); variants.push(created.variant); }
         return this._publish(handle, base, { states: prepared.states, timeline, entries, variants, authorityBudget, taskResolution: prepared.taskResolution, lifecycleReceipt: { invocationId: command.invocationId,
@@ -746,7 +746,7 @@ export class SessionCore {
             appraisalEvidence: consumeAppraisalDelivery(appraisalProof, this, handle, base, task, variant, deliveredRecord) };
         if (task.resultPolicy.uses?.length && (!record.production
             || record.definitionHash !== hashNativeDocument(task) || record.normalizedResultHash !== hashNativeDocument(payload)
-            || hashNativeDocument(record.production) !== hashNativeDocument(captureTaskProduction(base, task, assertTaskValue(record.production.input, task.inputSchema)))
+            || !equalNativeDocuments(record.production, captureTaskProduction(base, task, assertTaskValue(record.production.input, task.inputSchema)))
             || record.promptProgramRef?.resourceId !== variant.prompt.resourceId || record.promptProgramRef?.revision !== variant.prompt.revision
             || record.generationProfileRef?.resourceId !== variant.generation.resourceId || record.generationProfileRef?.revision !== variant.generation.revision
             || record.deliveryReceipt?.kind !== 'model_delivery')) throw new TypeError('Task production provenance required');
@@ -784,7 +784,7 @@ export class SessionCore {
         const record = records.find(item => item.invocationId === invocationId && item.kind === 'task');
         if (!record) throw new TypeError('Unknown proposal');
         if (record.status === 'applied' && decision === 'apply') {
-            if (payload !== undefined && hashNativeDocument(payload) !== hashNativeDocument(record.payload)) throw new TypeError('Applied Proposal payload conflict');
+            if (payload !== undefined && !equalNativeDocuments(payload, record.payload)) throw new TypeError('Applied Proposal payload conflict');
             if (![base.revision.revisionId, record.authorityReceipt?.baseRevisionId].includes(expectedRevisionId)) throw new ConflictError('native_session_head_conflict', { sessionId });
             return base;
         }
@@ -803,7 +803,7 @@ export class SessionCore {
         }
         const states = { ...base.states, ...patch, [TASK_STATE_NAMESPACE]: { schemaVersion: 1, records: records.map(item => item !== record ? item : {
             ...record, payload: nextPayload,
-            ...(hashNativeDocument(nextPayload) !== hashNativeDocument(record.payload) ? { derivedResult: { sourceHash: record.normalizedResultHash ?? hashNativeDocument(record.payload), resultHash: hashNativeDocument(nextPayload) } } : {}), status: decision === 'apply' ? 'applied' : 'rejected',
+            ...(!equalNativeDocuments(nextPayload, record.payload) ? { derivedResult: { sourceHash: record.normalizedResultHash ?? hashNativeDocument(record.payload), resultHash: hashNativeDocument(nextPayload) } } : {}), status: decision === 'apply' ? 'applied' : 'rejected',
             authorityReceipt: decision === 'apply' ? { kind: 'authority', baseRevisionId: expectedRevisionId } : null,
         }) } };
         return this._publish(handle, base, { states, taskResolution: decision === 'apply' ? invocationId : null });
@@ -848,7 +848,7 @@ export class SessionCore {
         for (const namespace of deletes) delete states[namespace];
 
         const changedState = Object.keys(values).some(namespace =>
-            hashNativeDocument(base.states[namespace] ?? null) !== hashNativeDocument(values[namespace]))
+            !equalNativeDocuments(base.states[namespace] ?? null, values[namespace]))
             || deletes.some(namespace => Object.prototype.hasOwnProperty.call(base.states, namespace));
         if (timelineChanges.entries.length === 0 && !changedState && !request) return base;
 

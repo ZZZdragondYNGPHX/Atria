@@ -1,10 +1,10 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { hashNativeDocument } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument } from '../repositories/common.js';
 import { immutable, GenerationError } from './execution-utils.js';
 
 // Current execution only. Opaque native state is never a Prompt/Task/Memory
 // resource and cannot be published by caller JSON. Task retention additionally
-// revalidates the private StorageEngine record on every lowering/send.
+// reloads the current private continuation when lowering a request.
 const checkpoints = new Map();
 const leases = new Map();
 const wireHash = wire => createHash('sha256').update(wire).digest('hex');
@@ -61,22 +61,22 @@ export function readNativeEnvelope(state, binding, sequence, index) {
     prune();
     const entry = checkpoints.get(state?.checkpointId);
     const authenticReference = entry && state.schemaVersion === 1 && state.bindingFingerprint === entry.bindingFingerprint
-        && state.text === entry.text && hashNativeDocument(state.calls) === hashNativeDocument(entry.calls);
-    if (!authenticReference || entry.bindingFingerprint !== hashNativeDocument(binding)
-        || sequence[index].content !== entry.text || hashNativeDocument(sequence[index].tool_calls || []) !== hashNativeDocument(entry.calls)
-        || hashNativeDocument(visibleMessages(sequence.slice(0, index))) !== hashNativeDocument(entry.sequence)) {
+        && state.text === entry.text && equalNativeDocuments(state.calls, entry.calls);
+    if (!authenticReference || !equalNativeDocuments(entry.binding, binding)
+        || sequence[index].content !== entry.text || !equalNativeDocuments(sequence[index].tool_calls || [], entry.calls)
+        || !equalNativeDocuments(visibleMessages(sequence.slice(0, index)), entry.sequence)) {
         // An observed invalidation is terminal in this owner's execution scope.
         // A forged reference or another owner/task cannot evict a live handle.
         const sameOwner = binding.ownerFingerprint && binding.ownerFingerprint === entry?.binding.ownerFingerprint;
         if (authenticReference && (sameOwner || binding.pathFingerprint === entry.binding.pathFingerprint)
-            && hashNativeDocument(binding.executionScope) === hashNativeDocument(entry.binding.executionScope)) checkpoints.delete(state.checkpointId);
+            && equalNativeDocuments(binding.executionScope, entry.binding.executionScope)) checkpoints.delete(state.checkpointId);
         denied();
     }
     return entry.content;
 }
 export function discardNativeEnvelopes(binding) {
     for (const [id, entry] of checkpoints) if (entry.binding.pathFingerprint === binding.pathFingerprint
-        && hashNativeDocument(entry.binding.executionScope) === hashNativeDocument(binding.executionScope)) checkpoints.delete(id);
+        && equalNativeDocuments(entry.binding.executionScope, binding.executionScope)) checkpoints.delete(id);
 }
 export async function hydrateNativeEnvelopes({ binding, sequence, store }) {
     if (!isDurableNativeContinuity(binding)) return;

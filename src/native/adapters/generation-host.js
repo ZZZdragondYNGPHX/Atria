@@ -27,7 +27,7 @@ import { immutable, ProviderFailure, GenerationError, checkCancellation } from '
 import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
 import { assertTaskValue } from '../../../public/shared/native-task-contract.js';
 import { nativeTaskScheduler } from '../task-scheduler.js';
-import { hashNativeDocument } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument } from '../repositories/common.js';
 import { assertTurnEnvelope } from '../../../public/shared/native-message-contract.js';
 import { AgentEvidenceRepository } from '../agent-intelligence/evidence-repository.js';
 import { AgentEvidenceService } from '../agent-intelligence/evidence-service.js';
@@ -44,7 +44,7 @@ function ordinaryBackgroundIntent(snapshot, intent, task, variant, payload) {
         && task.executionClass === 'background' && intent.kind === 'task' && intent.status === 'pending'
         && intent.taskId === task.id && intent.variantId === variant.id
         && lifecycle.scopes[intent.scopeId]?.status === 'active' && lifecycle.scopes[intent.scopeId].epoch === intent.scopeEpoch
-        && hashNativeDocument(intent.input) === hashNativeDocument(payload));
+        && equalNativeDocuments(intent.input, payload));
 }
 
 function executionTimeout(capture, requestLimit) {
@@ -685,7 +685,7 @@ export class NativeGenerationHost {
             const intent = lifecycle?.outbox.find(item => item.invocationId === input.invocationId);
             if (!lifecycle?.ready || !intent || intent.status !== 'pending' || intent.taskId !== task.id || intent.variantId !== variant.id
                 || lifecycle.scopes[intent.scopeId]?.status !== 'active' || lifecycle.scopes[intent.scopeId].epoch !== intent.scopeEpoch
-                || hashNativeDocument(intent.input) !== hashNativeDocument(payload)) fail('native_task_lifecycle_intent_required');
+                || !equalNativeDocuments(intent.input, payload)) fail('native_task_lifecycle_intent_required');
         }
         const captured = lanePlan ?? {};
         let ordinaryLifecycle = false;
@@ -695,7 +695,7 @@ export class NativeGenerationHost {
             const ordinary = ordinaryBackgroundIntent(snapshot, intent, task, variant, payload);
             ordinaryLifecycle = ordinary;
             if ((!intent?.simulation && !(appraisal && intent?.appraisalEvent) && !ordinary) || intent.status !== 'pending' || intent.taskId !== task.id || intent.variantId !== variant.id
-                || hashNativeDocument(intent.input) !== hashNativeDocument(payload)) fail('native_generation_budget_lane_denied');
+                || !equalNativeDocuments(intent.input, payload)) fail('native_generation_budget_lane_denied');
             captured.budgetContext = { snapshot, background: true, anchor: { invocationId: intent.invocationId } };
             if (ordinary) {
                 const control = await this.sessionCore.runs.status(handle, input.sessionId);
