@@ -1,6 +1,6 @@
 # Atria Native Prompt Preset Deepening — 唯一 Record
 
-## 2026-10-18 — LoomStudio 提示词设计参考并入既有企划（docs-only）
+## 2026-10-18 — Prompt/Frontend 方案细化（docs-only）
 
 - 用户确定**原生语义融合**方案：只吸收有序创作结构、语义位置、带源贡献/正文宏分工、编译可解释性与渐进式作者工作台；保留 Atria 唯一 Native Program/Module/PromptCompiler/PromptIR、Host、Context、Provider、CAS/Review/Publish，不复制 Loom Core、树形存储或第二排序/权限权威。
 - **原位修订**本任务既有 Plan 的 `index.md`、`decisions.md`（D5/D8）、`semantic-ir-lowering.md`（§2/§4）、`preset-studio-experience.md`（W/R/P/I/资料状态），以及现有全前端提案的 `atria-frontend-guidelines.md`（页面原型/表单/密度/预览）和 `atria-function-presentation.md`（Q04/Q05/Q12）。没有增加独立“参考融合”章节、单独 Plan、第二 Record、额外功能编号或新的视觉冻结。
@@ -9,6 +9,9 @@
 
 - 用户确认单一显式有序编排：Program 的 Stage 为阶段顺序；Stage 内遵守可信 target 边界，同 target 的 Module 和受控 Anchor 共享作者指定的显式顺序，Context Contribution 为原 Host 针对当前请求选择的受权来源投影，而非新存储/权限/编译引擎。对应设计原位纳入 D5 语义模块、D8 创作工作台、D5/D8 decisions、前端指导与 Q05 功能条目，`index` 更新状态摘要；不另立 Plan/Record/专项章节。
 - 核对当前 `main:public/shared/prompt-module-order.js` 的现状仍是 `target → priority(desc) → Module ID`，**选定设计尚未实现**；后续需讨论 parentRef/derive 继承的有效顺序、Anchor 声明与同 Anchor 多贡献排序、条件激活、请求快照和消费前失效/重编译。保持既有 E0 未收口与真实 Source/Role/Grant/Provider 权限边界。此轮只读源码并提交 docs 文档，没有运行测试、UI、真机、Provider 或改产品代码。
+
+- 用户确认精确增量继承与请求级动态装配：原生 `parentRef` 指向 exact revision，子级 `derive` 只作显式 add/disable/replace/configure；替换/禁用/配置维持有效位置，新增必须指定合法插入点，父级升级须明确选择并 Review/Diff，冲突不得静默追加或 follow latest。作者条件依原 Compiler 的获准类型化值求解，受众/Source/Grant 由原 Host/Context Authority 先行选取，Context Contribution 不另持久化、不反写 Prompt/World/Memory。
+- 生命周期确认：新请求受权选择动态证据；发送前 Source/Grant/Branch 变化由原 Host 复验并重选/重编译/预算核对或阻断；已接受且发送的 Attempt 不回写历史，消费/披露/Effect 由原 V3 围栏裁决。设计原位更新 `decisions`、D4 `agent-behavior-binding`、D5 `semantic-ir-lowering`、D6 `context-memory-consumption`、D8 `preset-studio-experience`、全前端指导与 Q05/Q12；`index` 仅调整状态/路由。物理 Anchor/Contribution Schema、动态多来源排序、继承冲突表示仍待后续讨论，不能宣称已实现或三端验收通过。本轮仅写 `docs`，无产品代码变更、测试、构建、CI 或真机验证；本轮修订基线为 `docs@23f2287274a84f9190bfd92dda95a44076c6199f`。
 
 ## 2026-10-16 — 后端正式开工
 

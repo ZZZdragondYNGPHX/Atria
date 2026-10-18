@@ -32,7 +32,7 @@ W2 特别重要：在 Play 改 `promptParameters` 的 Route override 与在 Libr
 | **R2 同一原生 Draft 的双视图 + 原文无损优先（已选）** | 基础版使用写作意图、Narrator、Character、Scene、Agent Behavior 的可选面板；专家有完整自由作者指令/样例编辑。桌面可并排，手机为清晰 Tab/Sheet；两者均映射同一 immutable Native Resource 草稿与 exact Rev，显示 typed 字段与 raw 未能结构化部分的 ownership/override/冲突 Diff；不支持无损 round-trip 时保留原文并阻止静默重写 | 符合 D2 F2/J2 与 E2，不重复管理 Prompt 真相；实现需要保证 raw 保全、冲突检测与 Undo/Redo |
 | **R3 原文为主、结构化帮助器仅建议** | 主要操作完整 Prompt 模块文本，表单只生成可选择插入的片段，不可暗中覆盖用户原文 | 最大化高级自由，但新手理解入口较弱；仍须保留 F2 的结构化编辑能力 |
 
-R2 的两个视图**不能各自持久化成为两个 Store**。原生 Host 必须明确 author-origin/ModuleRef/override 的最终版本：不能把文学描写强度的选项误认为 Provider 可关闭的限制，也不能把作者自由文本下的“system/role/权限”当真实 Host grant。Module/Program 和 Node 绑定改变时要重新校验 Scene/Actor/Agent 的合法继承。独立来源贡献与宿主正文内联变量在交互中应有不同标识：前者可查看来源/启停/有效位置，后者仍在原 Module 文本中编辑；二者不因 UI 分组而变成两份底层资源。移动、上移/下移和键盘操作均应产生同一 Authoring Draft 变更，预览必须由 Host 返回实际有效顺序；继承冲突和动态 Contribution 的精细 UI 等待后续合同。
+R2 的两个视图**不能各自持久化成为两个 Store**。原生 Host 必须明确 author-origin/ModuleRef/override 的最终版本：不能把文学描写强度的选项误认为 Provider 可关闭的限制，也不能把作者自由文本下的“system/role/权限”当真实 Host grant。Module/Program 和 Node 绑定改变时要重新校验 Scene/Actor/Agent 的合法继承。独立来源贡献与宿主正文内联变量在交互中应有不同标识：前者可查看来源/启停/有效位置，后者仍在原 Module 文本中编辑；二者不因 UI 分组而变成两份底层资源。移动、上移/下移和键盘操作均应产生同一 Authoring Draft 变更，预览必须由 Host 返回实际有效顺序；继承树显示父级 exact revision 与子级差异：继承、替换、禁用、配置修改及新增标记必须可区分；在同 target 指定位置新增，插入点缺失/父级变化时保留草稿并要求显式处理，不静默移动至尾部或自动追随最新父版。动态 Contribution 的受权选择、版本快照仍以 Host 返回的受限证据为准，细粒度 UI/物理 Schema 留后续合同。
 
 ## 4. P — 有效 Prompt Preview、Source 解剖与候选 Diff
 
@@ -42,7 +42,7 @@ R2 的两个视图**不能各自持久化成为两个 Store**。原生 Host 必�
 | **P2 Authored → Effective SemanticIR → Provider Wire 的三视图与可验证 Diff（已选）** | 用户可切换自己的 Raw Authorial Text、选定 Plan/Node/Program/Route/Context 的有效编译块与 provenance、合法渲染后的具体 Provider role/wire 摘要；对比当前/候选的 exact Module/Program/Plan/Route refs、token、警告/硬错、缓存稳定性与 Source/权限摘要。纯静态编译预览不发送模型，真正付费生成必须独立显式授权/预算。 | 可解释 D4/D5/D7 的关键区别；需要真实 Host-only、已验证 Source/Model/Context 的预览端口且严格脱敏，不能拿 Browser 文本当最终 wire |
 | **P3 编辑即持续调用模型试读** | 文本每次修改都触发真实模型 + Judge 的即时重写/比较 | 默认额外请求成本高、存在正在编辑但未正式发布/Source stale 的问题，与 G1 稀疏调用冲突，不推荐 |
 
-以上为 2026-10-15 的静态预览基线；后续后端已有实施增量，实际可用接口以原 Native Host 与同一 Record 的新证据为准。未发布 Draft 只能在 Host 内使用合法、不可发送的受权编译路径，不能用生产 `/execute` 冒充预览。三层视图应按需解释 Module 纳入/排除的原因、有效位置、来源版本与实际 Provider 降级；Preview 源文/Tool/Memory 与 Provider wire 只显示当前用户可读的脱敏投影，不能泄露 Secret、NPC 私有 Cognition、Provider opaque reasoning。
+以上为 2026-10-15 的静态预览基线；后续后端已有实施增量，实际可用接口以原 Native Host 与同一 Record 的新证据为准。未发布 Draft 只能在 Host 内使用合法、不可发送的受权编译路径，不能用生产 `/execute` 冒充预览。三层视图应按需解释 Module 纳入/排除的原因、有效位置、来源版本与实际 Provider 降级；需要标记“静态 exact 编排”和“本请求 Source/Branch/Actor/Grant 快照”不同生命周期，并准确显示 source-stale、条件不满足与缺失但非必需来源。Preview 源文/Tool/Memory 与 Provider wire 只显示当前用户可读的脱敏投影，不能泄露 Secret、NPC 私有 Cognition、Provider opaque reasoning。
 
 ## 5. I — 故障、质量、拒答与演化候选的 Inspector
 

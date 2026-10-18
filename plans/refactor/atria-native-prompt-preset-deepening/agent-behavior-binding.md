@@ -85,15 +85,16 @@ I2 不意味着数值上“角色 voice priority > World Truth”。表达优先
 
 ### 6.2 I2 — 继承仅在 Prompt/Expression 层发生
 
-- 使用原 `parentRef` 和 `derive(add/disable/replace/configure)`，以 exact immutable refs、typed parameters、稳定顺序与 stage conditions 产生有效 Program；限定继承作用域、重复/循环/冲突与来源证据，不能出现无来源 latest 模块。
+- 使用原 `parentRef` + `derive(add/disable/replace/configure)` 的 exact 继承，保持原父 Program/Module 的可追溯身份与作者明示差异。**替换、禁用、配置修改保留被操作条目的原有有效位置；新增须显式指定合法 Stage/target 内插入位置**，不得缺位时静默追加末尾。父级新 revision 不改变已钉版本，升级要先有意选择、校验依赖/冲突、对比有效序列并按原 Review/Publish 提交。原数据中 `derive` 操作尚没有完整位置语义，本条是目标合同，不把现有 `priority`/ID 排序写成已改造；位置字段、继承插入与合并冲突如何落地留后续设计。
 - E2 的作者默认 → Scene/Genre Overlay → Narrator/Character/Agent 不是新增 World 或 Persona 存储权威，而是编译前/中的**语义组合**。角色台词不能因作品整体文风变化而被自动同质化；文学表达优先级不能覆盖 Actor Cognition、World Truth、玩家自主权或受限 Disclosure。
 - F2 的结构面板与完全自由作者原文须准确回到同一 versioned resource，已发布 revision 与运行时冻结的 Program 均不能被 UI 草稿或异步候选悄悄覆盖。
+- 作者 Stage/Module 条件只对 Host/Compiler 已合法提供的类型化输入进行确定性求值；条件不承担 Source/Actor/World 检索或 Grant 发放。条件不成立时保留原编排条目的版本身份并在有效编译中说明排除原因，不把禁用/未激活误写成永久删除。
 
 ### 6.3 C2 — Host NodeAttempt 的确定性准备与恢复证据
 
 - Native Host 先确认 authenticated owner/PlanRevision/NodeAttempt、source/branch/epoch、Audience/Grant、Role/Route/Model、Program/Module closure、Tools/OutputContract 与原 Run/Compute 额度，才调用原 ContextPort、RouteResolver、PromptCompiler、GenerationService。
-- 每次实际请求冻结可信的有效 Program/Route/Model 与 Compiler version、PromptIR/Context dependency/参数决策和 provider rendered fingerprint；RunLedger 保留必要受限 refs/哈希/收据关系，不存 Secret、Agent 内隐推理或原隐私 Cognition 全文。指纹是诊断身份，**不是权限 grant 或 Provider cache hit**。
-- 发布的 Plan 是 static exact pins；运行时 Context/source grant 有自身 currentness。并发编辑不改变既有 NodeAttempt，Context/Branch/Grant 若在发送前或复用时失效，则走原 Domain Port 重验/blocked，不能凭旧 Snapshot 继续发。
+- 每次实际请求冻结可信的有效 Program/Route/Model 与 Compiler version、PromptIR/Context dependency/参数决策和 provider rendered fingerprint；RunLedger 保留必要受限 refs/哈希/收据关系，不存 Secret、Agent 内隐推理或原隐私 Cognition 全文。指纹是诊断身份，**不是权限 grant 或 Provider cache hit**。 冻结的静态 Program/Plan 与每请求选取的动态 Context 是两种生命周期：后者不是新版本化 Prompt/World 资产，不把请求级 Contribution 反写 Program。
+- 发布的 Plan 是 static exact pins；运行时 Context/source grant 有自身 currentness。并发编辑不改变既有 NodeAttempt，Context/Branch/Grant 若在发送前或复用时失效，则走原 Domain Port 重验/blocked，不能凭旧 Snapshot 继续发。 **发送前**遇 Source/Grant/Branch/WorldTick/currentness 变化，只有原 Host 可以重新选择 Context、重新编译与重新计数或阻断；**发送后**无法撤回模型已收到的上下文，也不得替换已接受 Attempt 的证据/Transcript，输出在 Result/Join/Display/Effect 消费点复验，不合法即阻止继续消费或提交。失败重试须遵守原 V3 Attempt/Receipt 幂等和真实费用语义。
 - G1 的单 Narrator 不得被编译层变成每轮固定 Planner/Judge；失败局部重做使用新 attempt/effect identity，原业务已提交副作用不盲重发。
 - 原 V3 §11 `plan-prompt` Evolution target 不被替换：用户授权候选 → 原 PromptCandidateStore 新 exact Module → 新 PlanRevision → PlanBinding CAS，Source/Route/Grant 更改需要重验，不更新活动 Run。
 

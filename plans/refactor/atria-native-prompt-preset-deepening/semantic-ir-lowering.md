@@ -29,7 +29,7 @@ S2 的 `SemanticBlock` 只是**设计例子，不是已实现接口**，不允�
 
 **已选单一显式编排方向**：Program 自身有序 Stage 是阶段先后依据；每个 Stage 仍受 Native Compiler 的语义 target、角色/来源信任边界约束，不允许作者自由跨区拖拽获得更高指令权。**同一合法 target 内**，原生 Module 引用与受控 Anchor 共享作者定义的有效顺序；Anchor 是接收获准来源的编排位置，不是单独的 World/Memory/权限数据或可自由下沉的 system 角色。Context Contribution 由原 Host/Context Authority 针对当前请求选择，携带来源和受众证据，按合法位置投影；不是持久的第二套事实库或擅自追加的模块文本。宏仍只展开宿主正文，不参与独立排序。
 
-**与现有实现的差距**：当前 `public/shared/prompt-module-order.js` 使用 `target → priority(desc) → Module ID`，Stage 内 `moduleRefs` 的数组顺序并非发送顺序。实施时必须将作者顺序与编译规则做成一个权威转换，审查 `parentRef/derive` 后的顺序、原生已发布 exact 引用与行为变化，再在前端呈现同一结果；不能保留优先级与“显式顺序”两套冲突的排序机制，也不能把单纯拖拽 UI 宣称为新语义。**Anchor/Contribution 的物理字段、目标命名、同一 Anchor 内动态贡献顺序、继承/冲突处理、Activation、版本快照与失效时机尚未确定**，不在此凭空引入数据库表、`localDepth` 或新的 Pipeline。
+**与现有实现的差距**：当前 `public/shared/prompt-module-order.js` 使用 `target → priority(desc) → Module ID`，Stage 内 `moduleRefs` 的数组顺序并非发送顺序。实施时必须将作者顺序与编译规则做成一个权威转换，审查 `parentRef/derive` 后的顺序、原生已发布 exact 引用与行为变化，再在前端呈现同一结果；不能保留优先级与“显式顺序”两套冲突的排序机制，也不能把单纯拖拽 UI 宣称为新语义。**继承方向已定为 exact parent + 显式差异**：替换/禁用/配置沿用原有效位置，新增需明确插入点；父修订升级必须显式选择并复审，绝不 follow latest。**请求级动态装配已定为由原 Host/Context Authority 选择**：作者 Stage/Module 条件仅消费合法类型化值；Host 先筛 Source/Actor/Audience/Grant 再给 Compiler，不能凭作者条件扩大读取范围；静态 Program 不被动态来源反向修改。发送前 Source/Branch/Grant 失效须合法重选、重编译/预算复验或阻断，已接受 Attempt 的身份/输入与回执不随世界变化漂移；输出消费前仍由 V3 复验。**Anchor/Contribution 物理字段、同一 Anchor 内排序、继承合并冲突编码及具体快照端口仍待下一轮论证**，不在此凭空引入数据库表、`localDepth` 或新的 Pipeline。
 
 对照 [Loom Core 集成说明](https://github.com/The-LoomStudio/LoomStudio/blob/10be7f6e460a19d96fe9a4ca4892234f938b0196/docs/architecture/application/prompt-build/loom-core/studio-integration.md)，LoomStudio 的 Agent PromptBuild 使用 Application DFS 编译，通用 Loom Core Runner 是另一条调用链；Atria 因此不引入第二个 Fragment/Pass Runtime，也不声称移植了 Core 的 Trace/Replay 能力。
 
@@ -51,7 +51,7 @@ L2 的降级仅限不改变 Authorial Intent、Agent OutputContract、Context gr
 | **D2 分级 deterministic checks + 可解释文学警告（已选）** | 区分 hard-invalid、needs-author-choice、soft-style-warning；给出来源、精确 ref/阶段/角色和可采取动作；模型主观文风分歧进入有条件的 Experience/Eval，不强制自动改写 | 延伸已有 Compiler diagnostics，不建重复 Judge |
 | **D3 每次编译强制模型裁判** | 编译调用 LLM 评估语义矛盾并重写 | G1 被打破、成本高、可能把成人向文学表达意外归为违规或保守化 |
 
-D2 必须把**不可被文学优先级补救**的硬问题分开：无 Scope/Source/Display grant、Tool/Output contract 权限不足、Program exact ref 不匹配、变量类型错误、Provider 必需 capability 不支持、final wire 超上下文、Node/Route program 语义漂移。风格层如“冷峻叙述 vs 温柔旁白”可以按显式 E2 叠加先后作决策并展示 diff；未有源的自由文本冲突只提示“可能冲突”，不把字符串比较宣称成文学逻辑证明。面向作者的激活/未纳入原因、最终语义位置和差异必须来自 Host 的有效编译证据；默认不执行模型试读或常驻重计算。对于顺序冲突，至少区分跨 target 的非法移动、同 target 的合法显式排序、未解析 Anchor/Source 和继承后精确引用漂移；诊断不得把尚未实行的新排序表现为当前 Compiler 的真实执行结果。
+D2 必须把**不可被文学优先级补救**的硬问题分开：无 Scope/Source/Display grant、Tool/Output contract 权限不足、Program exact ref 不匹配、变量类型错误、Provider 必需 capability 不支持、final wire 超上下文、Node/Route program 语义漂移。风格层如“冷峻叙述 vs 温柔旁白”可以按显式 E2 叠加先后作决策并展示 diff；未有源的自由文本冲突只提示“可能冲突”，不把字符串比较宣称成文学逻辑证明。面向作者的激活/未纳入原因、最终语义位置和差异必须来自 Host 的有效编译证据；默认不执行模型试读或常驻重计算。编译诊断须区分作者条件不成立、Host 未授权的来源、必要上下文缺失与版本/currentness 已过期；可选来源缺失应明示本次未纳入，必要来源缺失必须走原本确定的拒绝或作者处理路径，不能自动让模型编造。对于顺序冲突，至少区分跨 target 的非法移动、同 target 的合法显式排序、未解析 Anchor/Source 和继承后精确引用漂移；诊断不得把尚未实行的新排序表现为当前 Compiler 的真实执行结果。
 
 ## 5. K：缓存布局与真实利用
 

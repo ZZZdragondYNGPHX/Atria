@@ -67,7 +67,7 @@ H2 不另建 Summary/Memory 权威：`narrative_spine` 和压缩产物仍是带�
 
 ### U2：依受众隔离的 Prompt 消费，而非受众隔离的新存储
 
-- Host 根据真实 Owner、SourceBinding、Actor/Audience、purpose、Branch/Revision/WorldTick、有效 Grant，向原 ContextPort 请求每个 NodeAttempt 的合法 ContextPlan。Narrator、NPC 分析者、Judge、Tool 可以共享**获准的 SourceRef/ResultRef**，接收方在读取和披露前独立校验。
+- Host 根据真实 Owner、SourceBinding、Actor/Audience、purpose、Branch/Revision/WorldTick、有效 Grant，向原 ContextPort 请求每个 NodeAttempt 的合法 ContextPlan。Narrator、NPC 分析者、Judge、Tool 可以共享**获准的 SourceRef/ResultRef**，接收方在读取和披露前独立校验。 每个请求的 Context Contribution 只是从已选合法证据产生的有来源编译投影，不作为持久模块或世界/记忆副本；作者的语义 Anchor 表达消费需求，不能授权新的读取范围。
 - HCM-02 的 B Narrator/NPC 分离默认保持；作品 A 严格限知/C 自定义必须经过原 author/source authority，不能由一句 Agent Prompt“我现在是 Narrator”扩大权限。Narrator **可以读**、NPC **实际知道**、玩家 **可被展示**不是同一回事。
 - 普通 G1 路径不默认创建每位角色的独立 Model Actor；一次合规 Narrator Context 编译足够时不得强制多次收费请求。
 
@@ -85,8 +85,8 @@ H2 不另建 Summary/Memory 权威：`narrative_spine` 和压缩产物仍是带�
 
 ### V2：失效与消费前重验，绝不让缓存代替权限
 
-- Source/Variant/Branch/Revision/WorldTick/ActorExposure/DisplayGrant/ScopeEpoch/Route/Program 的变化，由原 Source/ExecutionReuse 依赖关系定位失效的 Summary/Memory Candidate/ContextPlan/ResultRef/cache/Provider continuation。证明完整可增量失效，缺证明保守 miss、recompile 或 blocked，不用相同 hash/TTL 证明授权。
-- 在候选域构造**之前**审查 source/actor；在 Context/Prompt 编译与发送**之前**检查 currentness；在 Join/Handoff/Result/Display **消费之前**重新授权接收者。Source revoke/fork/save/restore 后，不能沿旧 Provider state 或旧分支摘要偷偷继承受限信息。
+- Source/Variant/Branch/Revision/WorldTick/ActorExposure/DisplayGrant/ScopeEpoch/Route/Program 的变化，由原 Source/ExecutionReuse 依赖关系定位失效的 Summary/Memory Candidate/ContextPlan/ResultRef/cache/Provider continuation。证明完整可增量失效，缺证明保守 miss、recompile 或 blocked，不用相同 hash/TTL 证明授权。 原 Host 在新请求重用、发送前或外部结果消费前按有效 Source/Grant/Branch/时间证明决定失效；未发送的过期装配可重新选择与编译或阻断，**已接受并发送的 Attempt 保留不可篡改证据**，不能事后将新 World 状态逆向替换已发送文字。
+- 在候选域构造**之前**审查 source/actor；在 Context/Prompt 编译与发送**之前**检查 currentness；在 Join/Handoff/Result/Display **消费之前**重新授权接收者。Source revoke/fork/save/restore 后，不能沿旧 Provider state 或旧分支摘要偷偷继承受限信息。 若 Send 后发生权限撤销或来源变化，原消费围栏裁决结果是否可披露/接受/提交正式副作用；不能伪称 Provider 端已撤回、模型请求未发生或费用自动退还。既有 Resume/Checkpoint 按原 Receipt/Source currentness 恢复，不另设“实时提示词同步”后台服务。
 - D5 K2 继续管理稳定前缀/Provider 真实缓存命中；V2 只管理 Context 与证据消费的失效。Provider opaque reasoning handle 不能被当成第二 Memory，也不得跨受众与版本共享。
 
 ## 8. 实施与验收阻塞（D6 冻结 ≠ 已交付）
