@@ -1,6 +1,6 @@
 # Atria Native Prompt Preset / Behavior 深化企划（唯一入口）
 
-> **2026-10-16 当前更新**：用户已授权正式开始，明确包含 D2–D8 全后端实施，前端交给 Claude Code。[backend-implementation.md](backend-implementation.md) 确定工程接口和职责。下文尚未授权描述是前轮事实；当前授权以本条为准。E0 实施验收尚未通过；视觉与外部文档 §8.4 未定提案不因后端开工自动冻结。
+> **当前设计状态（2026-10-18）**：D1–D8 的功能合同及既有正式后端实施授权不变，前端仍由 Claude Code 负责；E0 与三端验收不得推定通过。用户进一步确定**原生语义融合**方向：借鉴 LoomStudio 的有序创作结构、来源贡献、语义定位及可解释编译，整合到 Atria 现有 Program/Module/Stage/PromptCompiler/PromptIR 与 Library/Studio/Play，而不是另造编排内核。原 [D5 语义编译](semantic-ir-lowering.md) 和 [D8 工作台体验](preset-studio-experience.md) 承载具体边界，外部 [前端设计指导](../../architecture/atria-frontend-audit/design-proposal/atria-frontend-guidelines.md) 保持视觉建议性质。**Anchor、Contribution 的物理结构、细粒度排序和生命周期尚待讨论，不得当作已冻结接口或已实施功能**。此前“尚未授权”文字仅是历史记录，后端授权和事实依 [backend-implementation.md](backend-implementation.md) 与同一 Record。
 
 > Task ID: `refactor/atria-native-prompt-preset-deepening`。Primary Workspace: `main`；当前产品实现使用同名 `refactor/atria-native-prompt-preset-deepening` 语义分支，文档仍在独立 `docs` 长期分支。仓库治理见 [README](../../../README.md)。全程更新同一个 Plan Bundle 与同一份 [Record](../../../records/refactor/atria-native-prompt-preset-deepening.md)。
 
@@ -45,10 +45,10 @@
 | [creative-injection.md](creative-injection.md) | **D2 唯一冻结模块**：J2/F2/R3、正式作者指令、成年人虚构 RP、Provider/拒答边界与验收 | D2 及后续相关实现 |
 | [narrative-behavior.md](narrative-behavior.md) | **D3 已冻结**：E2/A2/K2/G1，Narrator/Character/Agent、反全知、玩家自主权与按需质量回路 | D3 及后续表达与质量实现 |
 | [agent-behavior-binding.md](agent-behavior-binding.md) | **D4 已冻结**：B2/I2/C2 Node Exact Program/Route、原生继承及受信 Host 编译；明确接口缺口 | D4 / D5 / 最终 E0 |
-| [semantic-ir-lowering.md](semantic-ir-lowering.md) | **D5 已冻结**：S2/L2/D2/K2/T2、Role/Context 信任边界、Fallback、缓存与预算 | D5 / E0 |
+| [semantic-ir-lowering.md](semantic-ir-lowering.md) | **D5 已冻结**：S2/L2/D2/K2/T2、Role/Context 信任边界、Fallback、缓存与预算；原生语义位置、来源贡献与正文宏的职责边界 | D5 / E0 / 提示词编排讨论 |
 | [context-memory-consumption.md](context-memory-consumption.md) | **D6 已冻结**：U2/E2/H2/V2 的受众 Context 投影、认识地位、长会话证据与 Source-aware 失效 | D6 和实施相关接口 |
 | [quality-evolution.md](quality-evolution.md) | **D7 已冻结**：Q2/F2/O2/P2；受审文学/Agent 质量、来源归因、合法误拒、精确候选与受控发布 | D7 / E0 / 质量实施 |
-| [preset-studio-experience.md](preset-studio-experience.md) | **D8 功能与交互已冻结**：W2/R2/P2/I2/M2；审美未定，等待用户提供外部设计参考 | 第八轮/未来实现 |
+| [preset-studio-experience.md](preset-studio-experience.md) | **D8 功能与交互已冻结**：W2/R2/P2/I2/M2；原生创作大纲、渐进式 Inspector 的呈现原则；具体视觉未冻结 | D8 / 前端讨论与实现 |
 | [e0-audit.md](e0-audit.md) | **D9/E0 未收口**：真实消费者静态台账、跨合同缺口、实施依赖与分支前置 Gate | 第九轮/开发交接 |
 | [全产品前端研究](../../architecture/atria-frontend-audit/index.md) | **独立研究输入，非最终设计**：页面/组件/交互/跨端/来源与外部设计AI委托；详细状态仍归E0/Record | 外部设计前；后续HTML与双文档覆盖核对 |
 | [同一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md) | 真实文档提交、代码/测试/验证状态与未完成项 | 每轮更新 |

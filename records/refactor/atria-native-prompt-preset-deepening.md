@@ -1,5 +1,12 @@
 # Atria Native Prompt Preset Deepening — 唯一 Record
 
+## 2026-10-18 — LoomStudio 提示词设计参考并入既有企划（docs-only）
+
+- 用户确定**原生语义融合**方案：只吸收有序创作结构、语义位置、带源贡献/正文宏分工、编译可解释性与渐进式作者工作台；保留 Atria 唯一 Native Program/Module/PromptCompiler/PromptIR、Host、Context、Provider、CAS/Review/Publish，不复制 Loom Core、树形存储或第二排序/权限权威。
+- **原位修订**本任务既有 Plan 的 `index.md`、`decisions.md`（D5/D8）、`semantic-ir-lowering.md`（§2/§4）、`preset-studio-experience.md`（W/R/P/I/资料状态），以及现有全前端提案的 `atria-frontend-guidelines.md`（页面原型/表单/密度/预览）和 `atria-function-presentation.md`（Q04/Q05/Q12）。没有增加独立“参考融合”章节、单独 Plan、第二 Record、额外功能编号或新的视觉冻结。
+- 外部只读基线：`The-LoomStudio/LoomStudio@10be7f6e460a19d96fe9a4ca4892234f938b0196`；实际 Agent PromptBuild 采用 Application DFS，通用 Core Runner 是另一条链；Diff Mode 仍有 Planned/Blocked 设计内容，不能把外部提案声称为已实施。
+- 未决保留到下一轮讨论：Stage/Module 的具体作者排序与继承、Anchor 的声明/位置规则、Contribution 身份/生成/激活/失效与版本生命周期、宏消费与有效 Preview 的边界。**仅文档方案，不改产品代码，不执行 Browser、Node、CI、Provider 或三端验收**。本次开始时远端 `docs@63bfa6a4fe56cbde99eb54cd4f842f47a33a975d`，实际提交以 Git 历史为准；原 E0 Gate 和并发 V3 状态未重新验证。
+
 ## 2026-10-16 — 后端正式开工
 
 用户授权正式开始，确认包含 D2–D8 全部后端，前端实现交 Claude Code。读取实际 Git、同一 Plan/E0/Record 和外部设计三文件；不冻结 §8.4 提案。起点 main=695acf3bc，docs=5101c3b3e，V3=618a04ae1；V3 仍在并发开发，原 Authoring bindings/生产 Model/Context/Source 未接通。既有各工作树 CLAUDE.md 删除、docs 外部设计草稿/截图及 agent-experience-evolution 未跟踪目录保持。当前接口工程决定见同 Bundle backend-implementation；验收仍 NOT_RUN，不把授权写为 E0 PASS。

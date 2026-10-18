@@ -22,7 +22,7 @@
 | **W2 现有 Library / Studio / Play 三域原位协作（已选）** | Library 管 Prompt/Module/Program exact revisions、归属和版本；Studio/Build/Agent Graph 配 Program/Expression/Quality/Eval、Draft/Review/Publish；Play 仅修改获准的 Route-owned Runtime Choices/临时受权创作控制并可看有效值。相同资源可深链往返，所有权与修改范围清晰 | 最贴合原 Shell 和现有 Library/Build/Play/V3 UI，不新建顶级 Runtime/Prompt Authority；必须做好精准来源/覆盖和跨端路由 |
 | **W3 所有功能都放入 V3 Graph Canvas** | 文笔、Prompt 源文和质量报告通过 Node Inspector 管理 | 专家可能喜欢，但普通纯文字 RP 玩家不应被迫学习图，违背 Narrative Card 一等体验 |
 
-W2 特别重要：在 Play 改 `promptParameters` 的 Route override 与在 Library/Studio 发布新的 Prompt Program revision 不同，**Play 选择不直接写 Program、World、PlanRevision 或历史 Run**。若涉及对作品/Agent 共享的受权作者修改，必须走原 Library/Project/Plan 的正常 Review/Publish。
+W2 特别重要：在 Play 改 `promptParameters` 的 Route override 与在 Library/Studio 发布新的 Prompt Program revision 不同，**Play 选择不直接写 Program、World、PlanRevision 或历史 Run**。若涉及对作品/Agent 共享的受权作者修改，必须走原 Library/Project/Plan 的正常 Review/Publish。作者侧可以借鉴有序资源树，展示 Program → Stage → Module 的**单一原生顺序与引用大纲**；该树只投影原生权威，并非复制 LoomStudio 的资源表或引入新的编辑/排序存储。
 
 ## 3. R — 结构化面板与完整自由作者文本如何无损共存？
 
@@ -32,7 +32,7 @@ W2 特别重要：在 Play 改 `promptParameters` 的 Route override 与在 Libr
 | **R2 同一原生 Draft 的双视图 + 原文无损优先（已选）** | 基础版使用写作意图、Narrator、Character、Scene、Agent Behavior 的可选面板；专家有完整自由作者指令/样例编辑。桌面可并排，手机为清晰 Tab/Sheet；两者均映射同一 immutable Native Resource 草稿与 exact Rev，显示 typed 字段与 raw 未能结构化部分的 ownership/override/冲突 Diff；不支持无损 round-trip 时保留原文并阻止静默重写 | 符合 D2 F2/J2 与 E2，不重复管理 Prompt 真相；实现需要保证 raw 保全、冲突检测与 Undo/Redo |
 | **R3 原文为主、结构化帮助器仅建议** | 主要操作完整 Prompt 模块文本，表单只生成可选择插入的片段，不可暗中覆盖用户原文 | 最大化高级自由，但新手理解入口较弱；仍须保留 F2 的结构化编辑能力 |
 
-R2 的两个视图**不能各自持久化成为两个 Store**。原生 Host 必须明确 author-origin/ModuleRef/override 的最终版本：不能把文学描写强度的选项误认为 Provider 可关闭的限制，也不能把作者自由文本下的“system/role/权限”当真实 Host grant。Module/Program 和 Node 绑定改变时要重新校验 Scene/Actor/Agent 的合法继承。
+R2 的两个视图**不能各自持久化成为两个 Store**。原生 Host 必须明确 author-origin/ModuleRef/override 的最终版本：不能把文学描写强度的选项误认为 Provider 可关闭的限制，也不能把作者自由文本下的“system/role/权限”当真实 Host grant。Module/Program 和 Node 绑定改变时要重新校验 Scene/Actor/Agent 的合法继承。独立来源贡献与宿主正文内联变量在交互中应有不同标识：前者可查看来源/启停/有效位置，后者仍在原 Module 文本中编辑；二者不因 UI 分组而变成两份底层资源。
 
 ## 4. P — 有效 Prompt Preview、Source 解剖与候选 Diff
 
@@ -42,7 +42,7 @@ R2 的两个视图**不能各自持久化成为两个 Store**。原生 Host 必�
 | **P2 Authored → Effective SemanticIR → Provider Wire 的三视图与可验证 Diff（已选）** | 用户可切换自己的 Raw Authorial Text、选定 Plan/Node/Program/Route/Context 的有效编译块与 provenance、合法渲染后的具体 Provider role/wire 摘要；对比当前/候选的 exact Module/Program/Plan/Route refs、token、警告/硬错、缓存稳定性与 Source/权限摘要。纯静态编译预览不发送模型，真正付费生成必须独立显式授权/预算。 | 可解释 D4/D5/D7 的关键区别；需要真实 Host-only、已验证 Source/Model/Context 的预览端口且严格脱敏，不能拿 Browser 文本当最终 wire |
 | **P3 编辑即持续调用模型试读** | 文本每次修改都触发真实模型 + Judge 的即时重写/比较 | 默认额外请求成本高、存在正在编辑但未正式发布/Source stale 的问题，与 G1 稀疏调用冲突，不推荐 |
 
-当前原生 `POST /preview` 接受的是**已受权且 exact 的 committed refs**，不提供 Browser 任意未保存 Draft 的正式执行权。若希望预览未发布草稿，应另在**原 Native Host 内**通过合法 Draft/Plan validation 与临时、不可发送的隔离编译上下文来实现；其物理 API 与合法来源闭包还需 E0 设计，**不能悄悄用生产 `/execute`**。Preview 源文/Tool/Memory 与 Provider wire 只显示当前用户可读的脱敏投影，不能泄露 Secret、NPC 私有 Cognition、Provider opaque reasoning。
+以上为 2026-10-15 的静态预览基线；后续后端已有实施增量，实际可用接口以原 Native Host 与同一 Record 的新证据为准。未发布 Draft 只能在 Host 内使用合法、不可发送的受权编译路径，不能用生产 `/execute` 冒充预览。三层视图应按需解释 Module 纳入/排除的原因、有效位置、来源版本与实际 Provider 降级；Preview 源文/Tool/Memory 与 Provider wire 只显示当前用户可读的脱敏投影，不能泄露 Secret、NPC 私有 Cognition、Provider opaque reasoning。
 
 ## 5. I — 故障、质量、拒答与演化候选的 Inspector
 
@@ -52,7 +52,7 @@ R2 的两个视图**不能各自持久化成为两个 Store**。原生 Host 必�
 | **I2 有来源可跳转的分级质量/故障 Inspector（已选）** | 单一侧栏/Sheet 根据用户权限分组展示 Compiler hard errors/需要选择/style warnings、实际 Provider 失败/拒答、Source/Role/Grant、QualityProfile 的多维度与 applicable/unknown、显式用户反馈与 Judge 假设、真实 Model/Token/Cache/费用、候选 diff/Review/PlanBinding CAS 状态。按 NodeAttempt/SourceRef 精确跳转；默认只展示关键问题，专家可展开脱敏轨迹 | 与 D5 D2、D7 Q2/F2/O2/P2 和 V3 Inspector/RunProjection 融合；不能通过 Inspector 存取第二套真相 |
 | **I3 所有原始 Context/Trace 永久显示** | 永久展开模型上下文、所有角色 Memory 和整个私密日志，供高级用户调试 | 与 U2/Source/DisplayGrant、Secret、审稿模型 opaque state 矛盾，不可作为生产默认 |
 
-I2 特别应清晰区分 **Provider 明确 Block**、**合法文学模型疑似回避**、**未按作者风格生成**、**真正 World/玩家权限错误**与**尚未知**；不能用“破限失败”作为所有问题的统一错误码。质量多个维度不得用一条泛化的“安全合规总分”抵消文学自由，硬权限错误也不能被文笔高分冲销。
+I2 特别应清晰区分 **Provider 明确 Block**、**合法文学模型疑似回避**、**未按作者风格生成**、**真正 World/玩家权限错误**与**尚未知**；不能用“破限失败”作为所有问题的统一错误码。质量多个维度不得用一条泛化的“安全合规总分”抵消文学自由，硬权限错误也不能被文笔高分冲销。**渐进式解释**：普通创作默认聚焦正文、资源状态和必要提醒；来源/激活/Token/Trace/精确 Diff 由用户主动展开或在真实错误时引导，不常驻完整调试台，也不能以示例数据假装 Trace 已实现。
 
 ## 6. M — Windows/CachyOS Linux / Android Termux 移动体验
 
@@ -88,15 +88,15 @@ Library 管精确版本化 Program/Module/Generation Resource 和引用；Studio
 
 Windows/CachyOS Linux 与 Android Termux 浏览器必须完整支持原作者或玩家授权的创建/编辑、Raw/Structured、合法 Preview/Diff、资源/版本导航、诊断/Review/Publish、焦点/键盘/触控/Back/软键盘和长文本操作。桌面分栏、手机 List/Sheet/Tab 只是**功能可达的交互方向**，具体视觉布局、比例与外观不在本轮做设计承诺；移动不能成为只读版。Run/Approval/费用仍由同一个 Native Host 和原业务回执负责。
 
-## 8. 后续用户指定的前端审美资料流程（FUTURE / NOT_PRODUCED）
+## 8. 前端审美资料与审批边界
 
-用户计划完成当前讨论后自行指示 Codex：
+以下是用户约定的资料形成路径。相关全前端审计及外部 HTML、功能表现文档、前端指导文档已于 2026-10-16 收到，但尚未成为用户批准的最终视觉设计：
 1. **全面审计真实前端代码**，按 Screen/Route/Surface/Buttons/States/Permissions/Actions/Interaction 提取必需功能、控件、状态与依赖；明确哪些功能一定要保留、哪些旧模式应清退。功能盘点是后来视觉设计 AI 的信息输入，不能用部分示例 HTML 代替完整需求。
 2. 将清单交给用户选择的、真正具有前端审美能力的设计 AI，制作**精致但不要求覆盖全部功能的 HTML 视觉参考页**；其目的只是引导审美，不是可直接替换的产品前端或自动授权的运行代码。
 3. 同时要求该设计 AI 给出**逐功能界面/交互表现说明文档**与**整体前端设计指导文档**，覆盖真实所有 Surface/状态的适配方向，而不是从 HTML 缺失的功能推断它可以删除。
 4. 用户把 HTML 与两份文档交回，继续与 AI 多轮讨论，协调功能闭包、当前设计系统依赖、权限/Source/Provider/V3 单 Host 和真实桌面/移动能力，之后由用户单独批准最终的前端审美/实现企划。
 
-此流程**尚未执行**；本任务不会擅自指定配色、字体、组件风格、阴影、动画或“最佳视觉稿”，也不会替用户提前生成 HTML。UI 的无障碍、功能和安全合同仍需保留，外部审美参考不得赋予新的执行权限或删除真实功能。
+上述材料是设计输入，**尚未完成最终审美批准或产品/端侧验收**。本 Plan 不擅自冻结配色、字体、组件风格、阴影、动画或视觉稿；UI 的无障碍、功能和安全合同仍须保留，外部审美参考不得赋予新的执行权限或删除真实功能。
 
 ## 9. 真实阻塞与 D9/E0 下一步（NOT_RUN）
 

@@ -25,6 +25,10 @@
 
 S2 的 `SemanticBlock` 只是**设计例子，不是已实现接口**，不允许自己申报 Host/World Authority。相同作者文本按 exact revision 版本化；World/Memory/Tool/检索等只能作为低信任证据，经原 C2 先行授权和 K2 Display gate 才可使用。合法作者指令不需要伪造 Provider system 身份才能具有产品内的创作权威。
 
+语义编排借鉴 [LoomStudio PromptBuild](https://github.com/The-LoomStudio/LoomStudio/blob/10be7f6e460a19d96fe9a4ca4892234f938b0196/docs/architecture/application/prompt-build/README.md) 的**有序树、Anchor/Slot、独立来源 Contribution 与正文宏分工**，而不是复制它的物理结构。Atria 原生 Program/Stage/Module 与 Compiler 保留唯一顺序和有效内容决定权：需要独立来源、Activation、排序或受众边界的内容可被解释为带 SourceRef 的编译期贡献；只需正文内替换的变量仍归现有 Module 文本/模板处理，不获得新的独立授权节点。Anchor 暂为候选语义定位，不在本轮定义名称表、数据库实体、`localDepth` 或两套排序算法；Context Contribution 的生产、快照、失效和持久化也留待后续论证。
+
+对照 [Loom Core 集成说明](https://github.com/The-LoomStudio/LoomStudio/blob/10be7f6e460a19d96fe9a4ca4892234f938b0196/docs/architecture/application/prompt-build/loom-core/studio-integration.md)，LoomStudio 的 Agent PromptBuild 使用 Application DFS 编译，通用 Loom Core Runner 是另一条调用链；Atria 因此不引入第二个 Fragment/Pass Runtime，也不声称移植了 Core 的 Trace/Replay 能力。
+
 ## 3. L：跨 Provider 模型语义 Lowering
 
 | 候选 | 设计 | 取舍 |
@@ -43,7 +47,7 @@ L2 的降级仅限不改变 Authorial Intent、Agent OutputContract、Context gr
 | **D2 分级 deterministic checks + 可解释文学警告（已选）** | 区分 hard-invalid、needs-author-choice、soft-style-warning；给出来源、精确 ref/阶段/角色和可采取动作；模型主观文风分歧进入有条件的 Experience/Eval，不强制自动改写 | 延伸已有 Compiler diagnostics，不建重复 Judge |
 | **D3 每次编译强制模型裁判** | 编译调用 LLM 评估语义矛盾并重写 | G1 被打破、成本高、可能把成人向文学表达意外归为违规或保守化 |
 
-D2 必须把**不可被文学优先级补救**的硬问题分开：无 Scope/Source/Display grant、Tool/Output contract 权限不足、Program exact ref 不匹配、变量类型错误、Provider 必需 capability 不支持、final wire 超上下文、Node/Route program 语义漂移。风格层如“冷峻叙述 vs 温柔旁白”可以按显式 E2 叠加先后作决策并展示 diff；未有源的自由文本冲突只提示“可能冲突”，不把字符串比较宣称成文学逻辑证明。
+D2 必须把**不可被文学优先级补救**的硬问题分开：无 Scope/Source/Display grant、Tool/Output contract 权限不足、Program exact ref 不匹配、变量类型错误、Provider 必需 capability 不支持、final wire 超上下文、Node/Route program 语义漂移。风格层如“冷峻叙述 vs 温柔旁白”可以按显式 E2 叠加先后作决策并展示 diff；未有源的自由文本冲突只提示“可能冲突”，不把字符串比较宣称成文学逻辑证明。面向作者的激活/未纳入原因、最终语义位置和差异必须来自 Host 的有效编译证据；默认不执行模型试读或常驻重计算。
 
 ## 5. K：缓存布局与真实利用
 

@@ -257,15 +257,15 @@ Studio（S04）、Library 修订（K03–K07）、Persona（P02）、Prompt（Q0
 | Q01 | Preset 列表：New、Import、Open、Export、Delete；接通／保留原生 | 书库 › Prompt 预设：列表 + 工具栏 | 导入 JSON 校验；删除前确认，保留 pinned 历史；不提供 ST preset 兼容 | D：列表 + 详情；M：列表 → 详情 | 仅文档（书库标签存在） | — |
 | Q02 | Preset detail：Program/Modules/Generation/Regex、Back、菜单；接通／整合 | 预设详情页的四个标签，同一个 preset 身份 | 多个入口不等于多个存储；dirty 时取消返回仍保留编辑 | D：标签页；M：分段 + 内部 Back | 仅文档 | — |
 | Q03 | Module category：创建、改名、parent、移动、过滤、删除、影响确认；接通／保留 | Modules 标签：左边是分类树，右边是模块列表；删除时显示受影响对象 | 不能形成循环 parent；不静默改其它 Program；冲突时重载 | D：两栏；M：分类过滤器 + 列表 | 仅文档 | — |
-| Q04 | Module：name、exact、target、stages、body、priority、条件/参数/provenance；接通／保留并按 D8 深化 | 模块编辑器：分段「简单 / 高级」，同一个草稿；正文是原文保留的长文本框 | 现在只是字段 / JSON 双模式，**不等于 D8 无损双视图已实现**；任意 target 不授予权限 | D：表单 + 正文并排；M：分段 | 仅文档 | — |
-| Q05 | Program：stages、Module picker、Add/Remove、Move up、Response Directive、继承/条件/参数；接通／保留 | Program 标签：每个 stage 一张卡片，卡片里是有序的模块引用（exact 印记）和上移按钮 | 顺序有语义；重复、缺失、循环、条件冲突由 validation 报告；切换高级模式失败时保留草稿 | D：stage 卡片纵向；M：同，上移下移用按钮而不是拖拽 | 仅文档 | — |
+| Q04 | Module：name、exact、target、stages、body、priority、条件/参数/provenance；接通／保留并按 D8 深化 | 模块编辑器：同一草稿的结构化 / 完整原文两种编辑方式；清晰区分正文内联变量与可独立编排的来源贡献，完整保留原作者正文 | 当前字段 / JSON 模式**不等于** D8 无损双视图已实现；任何 target/宏/外部来源均不赋予新 Role/Grant | D：表单 + 原文；M：分段编辑 | 仅文档 | — |
+| Q05 | Program：stages、Module picker、Add/Remove、Move up、Response Directive、继承/条件/参数；接通／保留 | Program 标签：按原 Stage/Module 顺序显示可搜索、可折叠的作者大纲与精确引用；选中条目在中区编辑，Inspector 解释来源/当前作用 | 顺序以**原生 Program/Compiler** 为权威；排序动作经正常校验与版本保存，不另存 Loom 式文件树、深度权重或浏览器顺序；细粒度语义 Anchor 仍待讨论 | D：结构树 + 编辑 + 按需 Inspector；M：列表 → 编辑 / 上移下移 | 仅文档 | — |
 | Q06 | Generation：tokens、temperature、topP、streaming、stop、tool choice/name；接通／保留 | Generation 标签：每个字段旁有「默认 / 显式」标记 | 区分缺省和显式；数值和 schema 先校验；adapter 不支持的组合在预览时拒绝；选 named tool 才显示 name 字段 | 两端单列表单 | 03·05（stop JSON 示例） | — |
 | Q07 | thinking mode/effort/level/budget；cache key/retention/mode/ttl；接通／保留 | Generation 标签的「Provider 专属」折叠区，带说明 | 不宣称所有模型都支持或都命中缓存；不泄露真实 reasoning；unsupported 要明写 | 同 Q06 | 仅文档 | — |
 | Q08 | Save revision、Review/save、Simple/Advanced、错误；接通／保留 | 详情底部主按钮：书库里叫「保存修订」，工坊里叫「加入 ChangeSet」 | pending 防重入；失败保留字段；保存成功 ≠ Route 已改用它（回执上写明） | 两端相同 | 仅文档 | — |
 | Q09 | 通用资源库：filter、origin、New/New revision、Archive/Restore、Delete、Used By、Fork/Derive；接通／重组入口 | 书库 › Prompt 预设 › 资源：用统一的资源详情组件（与 World/Knowledge 共用的修订、Used By、Fork 区块） | 包原件只读；有引用的不能删；fork/derive 的闭包按顺序保存；失败后核对已有的部分结果 | 同 K07 | 仅文档 | P-06 统一资源详情 |
 | Q10 | Studio Prompt Authoring：resource kind、New/Edit、Attach exact、Fork/Derive、Used By；接通／整合 | 工坊 › 资源树 › Prompt 编排：同一组件，保存范围是 Project ChangeSet | 推荐值和正式引用分开标示；包原件不写 | 同 S09 | 仅文档 | P-06 |
 | Q11 | Runtime Design：role、capabilities、推荐 Prompt/Generation、requirements、Inspect closure；接通／保留 | 工坊 › 资源树 › 运行需求：每个任务角色一张卡片，写所需能力和推荐资源 | 推荐 ≠ 玩家的 Route 或 Secret 配置；构建 closure 和运行时 slot 解析分开 | 两端卡片纵向 | 仅文档 | — |
-| Q12 | D8 全文无损双编辑、Authored/Effective/Wire 三层 Diff、未发布 Prompt Draft Preview；**设计／BLOCKED** | 将来的位置：模块和 Program 编辑器的第三个分段「三层视图」。现在在该位置放一个阻塞印记和一句说明：「可信预览端口未接通」 | **不能**用 Browser 拼 wire，也不能借 execute 做假预览；手机要有等价的全文、结构、Diff | D：三栏 Diff；M：分段（目标） | 仅文档；HTML 02·C 和 04 写明 BLOCKED | 设计合同，不画成已接通 |
+| Q12 | D8 全文无损双编辑、Authored/Effective/Wire 三层 Diff、未发布 Prompt Draft Preview；原审计时为**设计／BLOCKED**，后续实现状态需按 Host/Record 复核 | Module/Program 的「编辑 / 有效预览 / 对比」按需进入；分开展示来源、激活/排除原因、有效位置和各版本的差异，精确 Token 只在有真实计数依据时显示 | **不能**在 Browser 自行拼 wire 或借 execute 做假预览；Host 投影须受众脱敏、版本一致；未接入时准确标 BLOCKED，不能伪装已实现 Trace/Replay | D：按需双栏/分层检查；M：完整分段与 Unified Diff | 仅文档；旧 HTML 的 BLOCKED 状态是当时快照 | 设计合同，不画成已接通 |
 
 ### 3.10 运行：连接、模型、Route、检索与诊断（R01–R14）
 
