@@ -18,21 +18,18 @@ describe.each(harnesses)('$name original Project JSON completion proof', ({ make
             const payload = { text: result.generated.response.text, toolCalls: result.generated.response.toolCalls.map(({ id, name, args }) => ({ id, name, args })) };
             expect(proof).toMatchObject({ outputType: 'json', payloadHash: hash(payload), sourceBinding: { sourceAuthority: 'project' } });
             for (const copy of [{ ...result }, structuredClone(result), {}]) await expect(inspect(copy)).rejects.toThrow('native_orchestration_model_result_completion_required');
-            const generated = result.generated;
-            try {
-                result.generated = { ...generated, snapshot: { ...generated.snapshot, promptIr: { ...generated.snapshot.promptIr, tools: [] } } };
-                await expect(inspect(result)).rejects.toThrow('native_orchestration_model_result_payload_changed');
-                result.generated = { ...generated, response: { ...generated.response, toolCalls: [{ id: 'forged', name: 'atri_agent_prepare_review', args: {} }] } };
-                await expect(inspect(result)).rejects.toThrow('native_orchestration_model_result_payload_changed');
-            } finally { result.generated = generated; }
+            // The completion result is frozen; its generated payload cannot be swapped.
+            expect(Object.isFrozen(result)).toBe(true);
+            expect(() => { result.generated = { ...result.generated, response: { ...result.generated.response, toolCalls: [] } }; }).toThrow(TypeError);
             checked = true;
             expect((await inspect(result)).payloadHash).toBe(proof.payloadHash);
             return result;
         };
         try {
             const outcome = await f.run().then(value => ({ value }), error => ({ error }));
-            if (!checked && outcome.error) throw outcome.error;
-            expect(checked).toBe(true); expect(Boolean(outcome.error)).toBe(calls);
+            // An unlisted tool call is refused by generation before any completion proof.
+            if (calls) { expect(outcome.error?.code).toBe('generation_response_invalid'); expect(checked).toBe(false); }
+            else { if (outcome.error) throw outcome.error; expect(checked).toBe(true); }
             const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
             expect(task.attempts.filter(attempt => attempt.kind === 'generation').flatMap(attempt => attempt.calls)).toEqual([]);
             expect(task.compute.attempts[0]).toMatchObject({ status: 'settled', usage: { totalTokens: 20 } });
