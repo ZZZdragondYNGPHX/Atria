@@ -1,3 +1,4 @@
+import { readFanoutBranchNodeIds } from './fanout-controller.js';
 import { cloneNativeDocument, hashNativeDocument as hash, putImmutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
@@ -84,7 +85,8 @@ export async function completeProjectDelegatedPlanner({ state, service, port, re
                 }
             }
             const repeating = actual.operations.some(operation => operation.op === 'requestReplan');
-            const scope = repeating ? projectReplanScope(candidate, producer.nodeId) : null;
+            const pure = repeating ? projectReplanScope(candidate, producer.nodeId) : null;
+            const scope = pure && { ...pure, affectedNodeIds: await readFanoutBranchNodeIds(tx, handle, active, producer, pure.affectedNodeIds) };
             if (repeating && (!progress.has(scope.target.nodeId) && scope.target.nodeId !== producer.nodeId
                 || actual.operations.some(operation => operation.op === 'requestFinalize'))) fail('native_orchestration_planner_replan_pending');
             const paid = producer.inputRefs[0].fanoutAttemptId ? await readProjectFanoutPaidModelNodes(tx, handle, active) : null;
@@ -95,7 +97,9 @@ export async function completeProjectDelegatedPlanner({ state, service, port, re
             const required = remaining.reduce((count, node) => count + 1 + (state.child.resolveDelegation(node)?.ceiling.maxRequests ?? 0), 0);
             const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: runId }, { tx });
             if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');
-            if (repeating && active.progress.attempts + remaining.length + 1 > active.limits.maxAttempts) fail('native_orchestration_limit_exhausted');
+            // Frozen Fanout members already hold reserved identities; only executed ones repeat.
+            const opened = paid ? remaining.filter(node => progress.has(node.nodeId) || node.nodeId === producer.nodeId).length : remaining.length + 1;
+            if (repeating && active.progress.attempts + opened > active.limits.maxAttempts) fail('native_orchestration_limit_exhausted');
             const effect = (await readEffect(tx, handle, active, effectId)).doc;
             await readProjectDelegatedModelInput(tx, handle, active, producer, effect);
             await current();

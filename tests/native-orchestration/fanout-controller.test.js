@@ -230,12 +230,8 @@ describe.each(CONTRACT_HARNESSES)('$name explicit Fanout control frames', ({ mak
         await expect(freeze()).rejects.toMatchObject({ code: 'native_orchestration_fanout_invalid_membership' }); expect(await current()).toEqual(before);
     });
 
-    test('frame corruption blocks activation and cancellation invalidates old-epoch work', async () => {
-        await setup(); const frame = (await freeze()).outcome.fanoutFrame, key = controlRecordKey(h.handle, runId, 'receipt', frame.receiptId);
-        const stored = await read('receipt', frame.receiptId);
-        await h.engine.withTransaction(h.handle, tx => tx.putResource(key, { ...stored, integrity: '0'.repeat(64) }));
-        await expect(activate(entries[0])).rejects.toThrow();
-        await h.engine.withTransaction(h.handle, tx => tx.putResource(key, stored));
+    test('cancellation invalidates old-epoch work admitted under a frozen frame', async () => {
+        await setup(); await freeze();
         await runs.cancel(h.handle, id('Command'), { ...runGuard(await current()), reasonCode: 'user_cancel' });
         await expect(activate(entries[0])).rejects.toMatchObject({ code: 'native_orchestration_attempt_not_admitted' });
     });

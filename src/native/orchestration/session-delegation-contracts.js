@@ -319,7 +319,7 @@ export async function readSessionDelegatedGraphHistory(tx, handle, child, { fina
             if (!trigger || consumed.has(trigger.producer.attemptId) || proof.loops.some(binding => binding.producerAttemptId !== trigger.producer.attemptId)
                 || latest.get(trigger.producer.nodeId)?.producer.attemptId !== trigger.producer.attemptId) invalid();
             const scope = trigger.producer.inputRefs[0]?.fanoutAttemptId
-                ? await readSessionFanoutReplanScope(tx, handle, child, trigger.producer, { decisionSeq: fact?.receipt.decisionSeq ?? child.eventSeq + 1, targetNodeId: producer.nodeId })
+                ? await readSessionFanoutReplanScope(tx, handle, child, trigger.producer, { decisionSeq: trigger.patch.decisionSeq, targetNodeId: producer.nodeId })
                 : sessionReplanScope(graph, trigger.producer.nodeId);
             if (!scope || scope.target.nodeId !== producer.nodeId || !previous.has(producer.nodeId) || proof.loops.length !== scope.loops.length
                 || proof.loops.some(binding => !scope.loops.some(edge => edge.edgeId === binding.edgeId))) invalid();

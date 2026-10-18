@@ -2,7 +2,7 @@ import { sessionReplanScope } from './session-replan-contracts.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertComputeLedger } from '../../../public/shared/native-compute-budget.js';
 import { readRunControl } from '../run-control.js';
-import { readAttempt } from './controller-common.js';
+import { readAttempt, controlRecordKey } from './controller-common.js';
 import { readEffect } from './effect-contracts.js';
 import { readFanoutFrame, readFanoutMembership, readFanoutReplanScope } from './fanout-controller.js';
 import { sendAttemptId } from './budget-port.js';
@@ -84,4 +84,17 @@ export async function readSessionFanoutReplanScope(tx, handle, root, planner, op
     const scope = await readFanoutReplanScope(tx, handle, root, planner, { ...options, targetNodeId: pure.target.nodeId });
     if (!scope || !equal(scope.loops.map(edge => edge.edgeId).sort(), pure.loops.map(edge => edge.edgeId).sort())) return null;
     return { ...scope, affectedNodeIds: pure.affectedNodeIds.filter(id => scope.branch.scopeNodeIds.includes(id)) };
+}
+
+/** Cold proof for a branch-local return: the original paid Planner request,
+ * bound at the verified Transition that actually visited the published edge. */
+export async function assertSessionFanoutLoopInput(tx, handle, root, { trigger, loops, output, identity, frame }) {
+    const traversal = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', 'oreceipt_' + identity.slice(0, 32))))?.doc;
+    const scope = trigger?.patch?.requests.replan && !trigger.patch.requests.finalize && trigger.patch.newGraphRevision <= output.graphRevision
+        && traversal?.nodeAttemptId === output.attemptId
+        ? await readSessionFanoutReplanScope(tx, handle, root, trigger.producer, { decisionSeq: traversal.decisionSeq, targetNodeId: output.nodeId }) : null;
+    if (!scope || scope.frame.receiptId !== frame.receiptId
+        || !equal(loops.map(binding => binding.edgeId).sort(), scope.loops.map(edge => edge.edgeId).sort())
+        || loops.some(binding => binding.producerAttemptId !== trigger.producer.attemptId)) denied('native_orchestration_planner_replan_pending');
+    return scope;
 }

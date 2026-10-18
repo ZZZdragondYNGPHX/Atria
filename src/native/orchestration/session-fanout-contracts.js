@@ -16,7 +16,7 @@ import { readModelCompletionReceipt, readModelTerminalFact } from './model-port.
 import { assertAudienceRunCapture } from './audience-source-contracts.js';
 import { readSessionJudgeCompletion, assertSessionJudgeSelections } from './session-judge-contracts.js';
 import { readSessionPlannerCompletion } from './session-planner-contracts.js';
-import { assertSessionFanoutPlannerOperations, readSessionFanoutReplanScope } from './session-fanout-planner-contracts.js';
+import { assertSessionFanoutPlannerOperations, assertSessionFanoutLoopInput } from './session-fanout-planner-contracts.js';
 
 const invalid = () => { throw new TypeError('Invalid original Session Fanout Join facts'); };
 
@@ -156,13 +156,6 @@ async function verifySessionFanoutInput(tx, handle, root, attempt, { frame, bran
     }
     assertSessionJudgeSelections({ ...root, graph }, node, input.acceptedGraphResultRefs, sources.filter(source => source.selectedResultRef));
     const loops = (input.fanoutGraphBindings ?? []).filter(binding => graph.edges.find(edge => edge.edgeId === binding.edgeId)?.loopBack);
-    if (loops.length) {
-        const trigger = sources.find(source => source.producer.attemptId === loops[0].producerAttemptId);
-        const scope = trigger?.patch?.requests.replan && !trigger.patch.requests.finalize && trigger.patch.newGraphRevision === attempt.graphRevision
-            ? await readSessionFanoutReplanScope(tx, handle, root, trigger.producer, { decisionSeq: settlement.decisionSeq, targetNodeId: node.nodeId }) : null;
-        if (!scope || !same(loops.map(binding => binding.edgeId).sort(), scope.loops.map(edge => edge.edgeId).sort())
-            || loops.some(binding => binding.producerAttemptId !== trigger.producer.attemptId)) invalid();
-    }
     const entryNodeId = loops.length ? (await readAttempt(tx, handle, root, branch.entryAttemptId)).doc.nodeId : null;
     const incoming = graph.edges.filter(edge => edge.to.nodeId === node.nodeId
         && (!edge.loopBack || loops.some(binding => binding.edgeId === edge.edgeId))
@@ -184,6 +177,8 @@ async function verifySessionFanoutInput(tx, handle, root, attempt, { frame, bran
     await assertOutputTransition(tx, handle, { ...root, graph }, { published: sources[0], additionalProducers: sources.slice(1), output: attempt,
         producerBindings: bindings, reservedAttemptId, allowLoopBack: !!loops.length, receipt: { decisionSeq: settlement.decisionSeq,
             traversalReceiptRef: { runId: root.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } } });
+    if (loops.length) await assertSessionFanoutLoopInput(tx, handle, root, { output: attempt, loops, identity, frame,
+        trigger: sources.find(source => source.producer.attemptId === loops[0].producerAttemptId) });
 }
 
 export async function readSessionFanoutReviewInput(tx, handle, root, producer) {

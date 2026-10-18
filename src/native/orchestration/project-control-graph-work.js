@@ -11,7 +11,7 @@ import { TransitionController } from './transition-controller.js';
 import { projectReviewCosts } from './project-review-output-contracts.js';
 import { GraphController } from './graph-controller.js';
 import { graphPatchHash } from './graph-revision-contracts.js';
-import { FanoutController, readFanoutFrame, readFanoutMembership, readFanoutReviewScope } from './fanout-controller.js';
+import { FanoutController, readFanoutFrame, readFanoutMembership, readFanoutReviewScope, readFanoutBranchNodeIds } from './fanout-controller.js';
 import { JoinController, joinIdForAttempt } from './join-controller.js';
 import { withNativeProjectFanout } from './native-project-generation-authority.js';
 import { readProjectFanoutCompletion, inspectProjectFanoutCostClosure } from './project-fanout-contracts.js';
@@ -191,7 +191,8 @@ export class ProjectControlGraphWork {
                         }
                     }
                     const capacity = await budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: null }, { tx });
-                    const repeating = actual.operations.some(operation => operation.op === 'requestReplan') ? projectReplanScope(candidate, producer.nodeId).affectedNodeIds : [];
+                    const repeating = actual.operations.some(operation => operation.op === 'requestReplan')
+                        ? await readFanoutBranchNodeIds(tx, handle, active, producer, projectReplanScope(candidate, producer.nodeId).affectedNodeIds) : [];
                     const paid = stage.decision.inputRef.fanoutAttemptId ? await readProjectFanoutPaidModelNodes(tx, handle, active) : null;
                     const cancelled = new Set(candidate.nodes.filter(node => active.nodeControl[node.nodeId]?.disposition === 'cancelled').map(node => node.nodeId));
                     for (const operation of actual.operations) if (operation.op === 'cancelPending') cancelled.add(operation.nodeId);
@@ -200,7 +201,8 @@ export class ProjectControlGraphWork {
                     const required = remaining.reduce((requests, node) => requests + 1 + (this.state.selected.resolveDelegation(node)?.ceiling.maxRequests ?? 0), 1);
                     if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_project_graph_budget_unavailable');
                     await sourcePort.revalidate(handle, active.sourceBinding, { tx, root: active });
-                } }).propose(handle, { expectedStateVersion: root.stateVersion, patch });
+                } }).propose(handle, { expectedStateVersion: stage.decision.inputRef.fanoutAttemptId
+                    ? (await runs.get(handle, runId)).stateVersion : root.stateVersion, patch });
             } catch (error) {
                 if (error.code !== 'storage_commit_unknown') throw error;
                 const saved = await runs.engine.withTransaction(handle, tx => tx.getResource(controlRecordKey(handle, runId, 'patch', patch.patchId)));
@@ -364,9 +366,11 @@ export class ProjectControlGraphWork {
                             this.records.set(node.nodeId, fact); pending.delete(node.nodeId);
                             if (fact.requests?.replan) {
                                 const latest = await current(), next = await runs.engine.withTransaction(handle, tx => projectFanoutReplan({ tx, root: latest,
-                                    completion: fact, progress: this.records, branch: item.branch, service: this.service, handle }));
+                                    completion: fact, progress: this.records, branch: item.branch, service: this.service, handle,
+                                    requestsForNode: node => 1 + (this.state.selected.resolveDelegation(node)?.ceiling.maxRequests ?? 0) }));
                                 if (next.affectedNodeIds.some(id => prepared.has(id))) fail('native_orchestration_project_replan_unavailable');
-                                for (const id of next.affectedNodeIds) { this.records.delete(id); pending.add(id); retryTokens.set(id, fact.attemptId); }
+                                // Unexecuted members keep their frozen reserved identity.
+                                for (const id of next.affectedNodeIds) if (this.records.has(id)) { this.records.delete(id); pending.add(id); retryTokens.set(id, fact.attemptId); }
                                 forced = { node: latest.graph.nodes.find(node => node.nodeId === next.target.nodeId),
                                     edges: latest.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === next.target.nodeId && edge.from.nodeId !== profile.fanout.nodeId),
                                     loopBindings: next.loopBindings };

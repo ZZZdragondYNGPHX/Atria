@@ -3,7 +3,8 @@ import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../re
 
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readAttempt, controlRecordKey } from './controller-common.js';
-import { readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
+import { readFanoutFrame, readFanoutMembership, readFanoutReplanScope } from './fanout-controller.js';
+import { projectReplanScope } from './project-replan-contracts.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readProjectDelegation, readProjectDelegationInputs, readProjectDelegatedModelInput } from './project-delegation-contracts.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
@@ -71,13 +72,15 @@ export async function readProjectDelegatedFanoutInput(tx, handle, root, producer
     const judges = facts.filter(fact => fact.selectedResultRef);
     assertProjectDelegatedJudgeSelections({ ...root, graph: snapshot.graph }, node, input.acceptedGraphResultRefs, judges);
     const direct = facts.filter(fact => !inherited.includes(fact)), bindings = input.graphBindings;
+    const loops = bindings.filter(binding => snapshot.graph.edges.find(edge => edge.edgeId === binding.edgeId)?.loopBack);
     const replacement = input.reviewFeedbackRef ? await readProjectDelegatedReviewReplacement(tx, handle, root, producer, input) : null;
     if (replacement) {
-        if (replacement.target.inputRefs[0].fanoutAttemptId !== frame.fanoutAttemptId) invalid();
+        if (replacement.target.inputRefs[0].fanoutAttemptId !== frame.fanoutAttemptId || loops.length) invalid();
     } else if (producer.attemptId === branch.entryAttemptId) {
         if (bindings.length || direct.length) invalid();
     } else {
-        const incoming = snapshot.graph.edges.filter(edge => edge.to.nodeId === node.nodeId && branch.scopeNodeIds.includes(edge.from.nodeId))
+        const incoming = snapshot.graph.edges.filter(edge => edge.to.nodeId === node.nodeId && branch.scopeNodeIds.includes(edge.from.nodeId)
+            && (!edge.loopBack || loops.some(binding => binding.edgeId === edge.edgeId)))
             .filter(edge => !judges.some(judge => judge.candidates.some(candidate => candidate.producer.nodeId === edge.from.nodeId
                 && !equal(candidate.receipt.resultRef, judge.selectedResultRef))));
         if (bindings.length !== incoming.length || direct.some(fact => !branch.scopeNodeIds.includes(fact.producer.nodeId))
@@ -86,10 +89,20 @@ export async function readProjectDelegatedFanoutInput(tx, handle, root, producer
         const reservedAttemptId = producer.reservationRef ? producer.attemptId : null;
         const identity = hash({ runId: root.runId, bindings, reservedAttemptId });
         await assertOutputTransition(tx, handle, root, { published: direct[0], additionalProducers: direct.slice(1), output: producer,
-            producerBindings: bindings, reservedAttemptId, receipt: { decisionSeq: publicationSeq,
+            producerBindings: bindings, reservedAttemptId, allowLoopBack: loops.length > 0, receipt: { decisionSeq: publicationSeq,
                 traversalReceiptRef: { runId: root.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } } });
+        if (loops.length) {
+            // Bound to the verified Transition that visited the published return.
+            const planner = direct.find(fact => fact.producer.attemptId === loops[0].producerAttemptId);
+            const traversal = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', 'oreceipt_' + identity.slice(0, 32))))?.doc;
+            const scope = planner?.patch?.requests.replan && !planner.patch.requests.finalize && traversal
+                ? await readFanoutReplanScope(tx, handle, root, planner.producer, { decisionSeq: traversal.decisionSeq, targetNodeId: node.nodeId }) : null;
+            if (!scope || scope.frame.receiptId !== frame.receiptId || projectReplanScope(root.graph, planner.producer.nodeId).target.nodeId !== node.nodeId
+                || planner.patch.newGraphRevision > producer.graphRevision || loops.length !== scope.loops.length
+                || loops.some(binding => binding.producerAttemptId !== planner.producer.attemptId || !scope.loops.some(edge => edge.edgeId === binding.edgeId))) invalid();
+        }
     }
-    return { lineage, input, sources: facts, bindings, loops: [], replacement };
+    return { lineage, input, sources: facts, bindings, loops: replacement ? [] : loops, replacement };
 }
 
 async function memberInput(tx, handle, root, attempt, { frame, branch, reservation, settlement }) {

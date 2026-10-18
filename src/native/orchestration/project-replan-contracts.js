@@ -12,6 +12,7 @@ import { assertProjectControlWork } from './project-quality-contracts.js';
 import { PROJECT_QUALITY_REASONS } from './project-quality-profile.js';
 import { projectJudgeReaderOptions } from './project-control-input-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
+import { readFanoutReplanScope } from './fanout-controller.js';
 
 const invalid = () => { throw new TypeError('Invalid Project replan facts'); };
 const pending = () => { throw Object.assign(new TypeError('native_orchestration_project_replan_unavailable'), { code: 'native_orchestration_project_replan_unavailable' }); };
@@ -118,10 +119,15 @@ export async function readProjectReplanHistory(tx, handle, root, { recipient = n
         let trigger = null;
         if (loops.length) {
             trigger = sources.find(source => source.producer.attemptId === loops[0].producerAttemptId);
-            if (!trigger?.patch?.requests.replan || trigger.patch.requests.finalize || trigger.patch.newGraphRevision !== producer.graphRevision
+            // A branch-local return repeats only its own branch; other
+            // branches may publish scheduling patches in between.
+            const local = !!trigger?.producer.inputRefs[0]?.fanoutAttemptId;
+            if (!trigger?.patch?.requests.replan || trigger.patch.requests.finalize
+                || (local ? !scoped || trigger.patch.newGraphRevision > producer.graphRevision : trigger.patch.newGraphRevision !== producer.graphRevision)
                 || current.get(trigger.producer.nodeId)?.producer.attemptId !== trigger.producer.attemptId || consumed.has(trigger.producer.attemptId)) invalid();
-            const scope = projectReplanScope(snapshot.graph, trigger.producer.nodeId);
-            if (scope.target.nodeId !== node.nodeId || !previous.has(node.nodeId) || loops.length !== scope.loops.length
+            const scope = local ? await readFanoutReplanScope(tx, handle, root, trigger.producer,
+                { decisionSeq: trigger.patch.decisionSeq, targetNodeId: node.nodeId }) : projectReplanScope(snapshot.graph, trigger.producer.nodeId);
+            if (!scope || scope.target.nodeId !== node.nodeId || !previous.has(node.nodeId) || loops.length !== scope.loops.length
                 || loops.some(binding => binding.producerAttemptId !== trigger.producer.attemptId || !scope.loops.some(edge => edge.edgeId === binding.edgeId))) invalid();
             for (const id of scope.affectedNodeIds) {
                 const old = current.get(id), original = snapshot.graph.nodes.find(item => item.nodeId === id);

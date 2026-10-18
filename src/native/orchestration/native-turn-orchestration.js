@@ -11,7 +11,7 @@ import { readSessionJudgeCompletion, assertSessionJudgeSelections, sessionJudgeO
 import { graphJudgeModelReceiptId } from './graph-judge-completion.js';
 import { nativeTaskScheduler } from '../task-scheduler.js';
 import { assertNativeTurnPermit } from './native-turn-permit.js';
-import { FanoutController, readFanoutFrame, readFanoutReviewScope, readFanoutMembership } from './fanout-controller.js';
+import { FanoutController, readFanoutFrame, readFanoutReviewScope, readFanoutMembership, readFanoutBranchNodeIds } from './fanout-controller.js';
 import { JoinController, joinIdForAttempt } from './join-controller.js';
 import { readSessionFanoutCompletion } from './session-fanout-contracts.js';
 import { audienceRunCapture } from './audience-source-contracts.js';
@@ -1101,7 +1101,7 @@ export class NativeNarratorOrchestrationAuthority {
                 const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: root.budgetAuthorityRef, reservationId: null }, { tx });
                 const repeats = actual.operations.some(operation => operation.op === 'requestReplan')
                     && candidate.edges.some(edge => edge.loopBack && edge.from.nodeId === producer.nodeId)
-                    ? sessionReplanScope(candidate, producer.nodeId).affectedNodeIds : [];
+                    ? await readFanoutBranchNodeIds(tx, handle, root, producer, sessionReplanScope(candidate, producer.nodeId).affectedNodeIds) : [];
                 const paid = state.decision.inputRef.fanoutAttemptId ? await readSessionFanoutPaidModelNodes(tx, handle, root, state.decision.inputRef.fanoutAttemptId) : null;
                 const cancelled = new Set(actual.operations.filter(operation => operation.op === 'cancelPending').map(operation => operation.nodeId));
                 const required = admission.ordered.filter(node => !cancelled.has(node.nodeId) && root.nodeControl[node.nodeId]?.disposition !== 'cancelled'

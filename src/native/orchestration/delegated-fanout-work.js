@@ -110,7 +110,8 @@ export async function runDelegatedFanout({ state, service, group, inherited, pro
                             if (!next || !item.branch.scopeNodeIds.includes(next.target.nodeId)
                                 || next.affectedNodeIds.some(id => !item.branch.scopeNodeIds.includes(id) || replacements.has(id)))
                                 fail('native_orchestration_planner_replan_pending');
-                            for (const id of next.affectedNodeIds) { progress.delete(id); pending.add(id); retries.set(id, fact.attemptId); }
+                            // Unexecuted members keep their frozen reserved identity.
+                            for (const id of next.affectedNodeIds) if (progress.has(id)) { progress.delete(id); pending.add(id); retries.set(id, fact.attemptId); }
                             forced = { node: latest.graph.nodes.find(node => node.nodeId === next.target.nodeId),
                                 edges: latest.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === next.target.nodeId
                                     && edge.from.nodeId !== group.fanout.nodeId), loopBindings: next.loopBindings };

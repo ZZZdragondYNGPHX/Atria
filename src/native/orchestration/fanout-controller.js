@@ -60,6 +60,16 @@ export async function readFanoutReplanScope(tx, handle, root, planner, { decisio
         affectedNodeIds: scope.branch.scopeNodeIds.filter(id => graphReachable(forward, target.nodeId, id)) };
 }
 
+/** Projection only: restricts a domain replan interval to the producer's own
+ * frozen branch. Callers have already admitted the branch-local request. */
+export async function readFanoutBranchNodeIds(tx, handle, root, producer, nodeIds) {
+    const fanoutAttemptId = producer.inputRefs?.[0]?.fanoutAttemptId;
+    if (!fanoutAttemptId) return nodeIds;
+    const branch = (await readFanoutFrame(tx, handle, root, fanoutAttemptId))?.branches.find(branch => branch.scopeNodeIds.includes(producer.nodeId));
+    if (!branch) throw new ConflictError('native_orchestration_fanout_stale');
+    return nodeIds.filter(id => branch.scopeNodeIds.includes(id));
+}
+
 async function readFanoutLocalScope(tx, handle, root, reviewer, targets, { decisionSeq, rerun, kind }) {
     const fanoutAttemptId = reviewer.inputRefs?.[0]?.fanoutAttemptId;
     if (!fanoutAttemptId || !targets?.length) return null;

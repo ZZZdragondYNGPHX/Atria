@@ -13,6 +13,7 @@ export function runProjectDelegatedFanout(args) {
             .map(profile => args.state.host.executionResources(args.state.handle, profile.resolved.route)))).flat())],
         requestsForNode: model => 1 + (delegation(model)?.ceiling.maxRequests ?? 0),
         inspectClosure: input => inspectProjectFanoutCostClosure({ ...input, service: args.service, handle: args.state.handle }),
-        replan: input => projectFanoutReplan({ ...input, service: args.service, handle: args.state.handle }),
+        replan: input => projectFanoutReplan({ ...input, service: args.service, handle: args.state.handle,
+            requestsForNode: node => 1 + (args.state.child.resolveDelegation(node)?.ceiling.maxRequests ?? 0) }),
         controlKind: 'native_project_delegated_control', reasonPrefix: 'project' });
 }

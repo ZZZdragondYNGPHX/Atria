@@ -12,6 +12,8 @@ import { readProjectDelegatedJudgeCompletion, readProjectDelegatedReviewCompleti
 import { readGraphPlannerCompletion } from './graph-planner-completion.js';
 import { assertProjectControlWork } from './project-quality-contracts.js';
 import { assertProjectFanoutPlannerOperations } from './project-fanout-planner-contracts.js';
+import { readFanoutReplanScope } from './fanout-controller.js';
+import { projectReplanScope } from './project-replan-contracts.js';
 import { readProjectControlInputs, projectJudgeReaderOptions } from './project-control-input-contracts.js';
 import { readGraphFanoutInput } from './graph-fanout-completion.js';
 import { readAttempt, controlRecordKey } from './controller-common.js';
@@ -89,10 +91,25 @@ async function memberInput(tx, handle, root, attempt, { frame, branch, reservati
                 && snapshot.graph.edges.some(edge => edge.edgeId === binding.edgeId && edge.from.nodeId === fact.producer.nodeId && edge.to.nodeId === node.nodeId)))) invalid();
         const reservedAttemptId = attempt.reservationRef ? attempt.attemptId : null;
         const identity = hash({ runId: root.runId, bindings, reservedAttemptId });
+        const loops = bindings.filter(binding => snapshot.graph.edges.find(edge => edge.edgeId === binding.edgeId)?.loopBack);
         await assertOutputTransition(tx, handle, { ...root, graph: snapshot.graph }, { published: direct[0], additionalProducers: direct.slice(1), output: attempt,
-            producerBindings: bindings, reservedAttemptId, receipt: { decisionSeq: settlement.decisionSeq,
+            producerBindings: bindings, reservedAttemptId, allowLoopBack: loops.length > 0, receipt: { decisionSeq: settlement.decisionSeq,
                 traversalReceiptRef: { runId: root.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } } });
+        if (loops.length) await assertProjectFanoutLoopInput(tx, handle, root, attempt, { frame, direct, loops, identity });
     }
+}
+
+/** A local return is admitted only by the original paid Planner's replan
+ * request, bound at the verified Transition that actually visited the edge. */
+async function assertProjectFanoutLoopInput(tx, handle, root, attempt, { frame, direct, loops, identity }) {
+    const planner = direct.find(fact => fact.producer.attemptId === loops[0].producerAttemptId);
+    const traversal = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', 'oreceipt_' + identity.slice(0, 32))))?.doc;
+    const scope = planner?.patch?.requests.replan && !planner.patch.requests.finalize && traversal
+        ? await readFanoutReplanScope(tx, handle, root, planner.producer, { decisionSeq: traversal.decisionSeq, targetNodeId: attempt.nodeId }) : null;
+    const pure = scope && projectReplanScope(root.graph, planner.producer.nodeId);
+    if (!scope || scope.frame.receiptId !== frame.receiptId || pure.target.nodeId !== attempt.nodeId
+        || planner.patch.newGraphRevision > attempt.graphRevision || loops.length !== scope.loops.length
+        || loops.some(binding => binding.producerAttemptId !== planner.producer.attemptId || !scope.loops.some(edge => edge.edgeId === binding.edgeId))) invalid();
 }
 
 async function controlInput(tx, handle, root, attempt, { settlement, frame }) {
@@ -150,6 +167,8 @@ export async function assertProjectFanoutMemberCost(tx, handle, root, attempt, {
         if (results.length || !same(planner.producer, attempt) || !same(planner.settlement, settlement)
             || !completed || !same(planner.receipt.modelReceiptRef, completed.receiptRef)) invalid();
         assertProjectFanoutPlannerOperations(frame, attempt, planner.patch.appliedOperations);
+        if (planner.patch.requests.replan && !await readFanoutReplanScope(tx, handle, root, attempt,
+            { decisionSeq: planner.patch.decisionSeq })) invalid();
     }
     const judge = root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'judge' && settlement.outcome === 'completed'
         ? await (root.parentRef ? readProjectDelegatedJudgeCompletion(tx, handle, root, attempt.attemptId)

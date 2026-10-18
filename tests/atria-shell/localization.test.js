@@ -40,7 +40,6 @@ describe('Atria Shell localization', () => {
             'atria.shell.runtime.activeProfile',
             'atria.shell.agents.hub.title',
             'atria.shell.agents.hub.description',
-            'atria.shell.command.openOrchestration',
             'atria.shell.command.openAgentRun',
             'atria.shell.command.openAgentDiagnostics',
             'atria.shell.command.search',

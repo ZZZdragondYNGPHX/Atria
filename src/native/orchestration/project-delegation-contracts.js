@@ -18,7 +18,7 @@ import { projectReviewId } from './project-review-output-contracts.js';
 import { graphReviewControlRef } from './graph-review-completion.js';
 import { projectReplanScope, projectPlannerProgressFingerprint } from './project-replan-contracts.js';
 import { projectDelegatedGraphProfile } from './project-delegated-graph-profile.js';
-import { readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
+import { readFanoutFrame, readFanoutMembership, readFanoutReplanScope } from './fanout-controller.js';
 import { readGraphFanoutInput } from './graph-fanout-completion.js';
 
 const invalid = () => { throw new TypeError('Invalid Project delegation facts'); };
@@ -324,10 +324,15 @@ async function assertDelegatedRounds(tx, handle, child, entries, controls) {
         let trigger = null;
         if (loops.length) {
             trigger = sources.find(source => source.producer.attemptId === loops[0].producerAttemptId);
-            if (!trigger?.patch.requests.replan || trigger.patch.requests.finalize || trigger.patch.newGraphRevision !== producer.graphRevision
+            // A branch-local return repeats only its own branch; other
+            // branches may publish scheduling patches in between.
+            const scoped = !!trigger?.producer.inputRefs[0]?.fanoutAttemptId;
+            if (!trigger?.patch.requests.replan || trigger.patch.requests.finalize
+                || (scoped ? trigger.patch.newGraphRevision > producer.graphRevision : trigger.patch.newGraphRevision !== producer.graphRevision)
                 || consumed.has(trigger.producer.attemptId) || latest.get(trigger.producer.nodeId)?.producer.attemptId !== trigger.producer.attemptId) invalid();
-            const scope = projectReplanScope(child.graph, trigger.producer.nodeId);
-            if (scope.target.nodeId !== producer.nodeId || !previous.has(producer.nodeId) || loops.length !== scope.loops.length
+            const scope = scoped ? await readFanoutReplanScope(tx, handle, child, trigger.producer,
+                { decisionSeq: trigger.patch.decisionSeq, targetNodeId: producer.nodeId }) : projectReplanScope(child.graph, trigger.producer.nodeId);
+            if (!scope || scope.target.nodeId !== producer.nodeId || !previous.has(producer.nodeId) || loops.length !== scope.loops.length
                 || loops.some(binding => binding.producerAttemptId !== trigger.producer.attemptId || !scope.loops.some(edge => edge.edgeId === binding.edgeId))) invalid();
             for (const id of scope.affectedNodeIds) {
                 const old = latest.get(id);

@@ -15,7 +15,7 @@ import { readModelCompletionReceipt, readModelTerminalFact } from './model-port.
 import { readRunControl } from '../run-control.js';
 import { assertSessionJudgeSelections } from './session-judge-contracts.js';
 import { readSessionPlannerCompletion } from './session-planner-contracts.js';
-import { assertSessionFanoutPlannerOperations, readSessionFanoutReplanScope } from './session-fanout-planner-contracts.js';
+import { assertSessionFanoutPlannerOperations, assertSessionFanoutLoopInput } from './session-fanout-planner-contracts.js';
 import { sessionDelegationResultSources } from './session-delegation-contracts.js';
 
 const invalid = () => { throw new TypeError('Invalid original Session child Fanout facts'); };
@@ -88,13 +88,6 @@ export async function readSessionDelegatedFanoutInput(tx, handle, root, producer
     assertSessionJudgeSelections({ ...root, graph: snapshot.graph }, node, input.acceptedGraphResultRefs, judges);
     const direct = facts.filter(fact => !inherited.includes(fact)), bindings = input.graphBindings;
     const loops = bindings.filter(binding => snapshot.graph.edges.find(edge => edge.edgeId === binding.edgeId)?.loopBack);
-    if (loops.length) {
-        const trigger = direct.find(fact => fact.producer.attemptId === loops[0].producerAttemptId);
-        const scope = trigger?.patch?.requests.replan && !trigger.patch.requests.finalize && trigger.patch.newGraphRevision === producer.graphRevision
-            ? await readSessionFanoutReplanScope(tx, handle, root, trigger.producer, { decisionSeq: publicationSeq, targetNodeId: node.nodeId }) : null;
-        if (!scope || !equal(loops.map(binding => binding.edgeId).sort(), scope.loops.map(edge => edge.edgeId).sort())
-            || loops.some(binding => binding.producerAttemptId !== trigger.producer.attemptId)) invalid();
-    }
     if (producer.attemptId === branch.entryAttemptId) {
         if (bindings.length || direct.length) invalid();
     } else {
@@ -110,6 +103,8 @@ export async function readSessionDelegatedFanoutInput(tx, handle, root, producer
         await assertOutputTransition(tx, handle, root, { published: direct[0], additionalProducers: direct.slice(1), output: producer,
             producerBindings: bindings, reservedAttemptId, allowLoopBack: !!loops.length, receipt: { decisionSeq: publicationSeq,
                 traversalReceiptRef: { runId: root.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } } });
+        if (loops.length) await assertSessionFanoutLoopInput(tx, handle, root, { output: producer, loops, identity, frame,
+            trigger: direct.find(fact => fact.producer.attemptId === loops[0].producerAttemptId) });
     }
     return { lineage, input, nested, sources: facts, bindings, loops, replacement: null };
 }

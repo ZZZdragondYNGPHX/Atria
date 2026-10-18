@@ -40,7 +40,7 @@ export function assertProjectFanoutPlannerOperations(frame, producer, operations
 }
 
 /** Original paid Planner completion selects only its published local return. */
-export async function projectFanoutReplan({ tx, root, completion, progress, branch, service, handle }) {
+export async function projectFanoutReplan({ tx, root, completion, progress, branch, service, handle, requestsForNode = () => 1 }) {
     const fact = await readGraphPlannerCompletion(tx, handle, root, completion.attemptId, { verifyControlWork: assertProjectControlWork });
     if (!fact || !fact.patch.requests.replan || fact.patch.requests.finalize || !equal(fact.controlRef, completion.controlRef))
         denied('native_orchestration_project_replan_unavailable');
@@ -53,8 +53,11 @@ export async function projectFanoutReplan({ tx, root, completion, progress, bran
         if (!['agent', 'planner', 'review', 'judge'].includes(node.kind) || node.capabilities.some(capability => !['generation.send', 'graph.patch'].includes(capability)))
             denied('native_orchestration_review_irreversible_dependency');
     }
+    // Every affected member still sends from this bank; only repeated members
+    // open a new Attempt, unexecuted ones keep their frozen reservation.
+    const requests = scope.affectedNodeIds.reduce((sum, id) => sum + requestsForNode(root.graph.nodes.find(node => node.nodeId === id)), 0);
     const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: root.budgetAuthorityRef, reservationId: root.parentRef ? root.runId : null }, { tx });
-    if (!capacity || capacity.overrun || capacity.remaining.requests < repeated.length
+    if (!capacity || capacity.overrun || capacity.remaining.requests < requests
         || root.progress.attempts + repeated.length > root.limits.maxAttempts) denied('native_orchestration_project_graph_budget_unavailable');
     return { ...scope, loopBindings: scope.loops.map(edge => ({ edge, ...completion })) };
 }

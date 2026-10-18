@@ -74,7 +74,8 @@ export async function readSessionReplanHistory(tx, handle, root, { graphResults,
         let trigger = null;
         if (loops.length) {
             trigger = sources.find(source => source.producer.attemptId === loops[0].producerAttemptId);
-            if (!trigger?.patch?.requests.replan || trigger.patch.requests.finalize || trigger.patch.newGraphRevision !== fact.producer.graphRevision) invalid();
+            if (!trigger?.patch?.requests.replan || trigger.patch.requests.finalize || (trigger.producer.inputRefs[0]?.fanoutAttemptId ? trigger.patch.newGraphRevision > fact.producer.graphRevision
+                : trigger.patch.newGraphRevision !== fact.producer.graphRevision)) invalid();
             const scope = sessionReplanScope(snapshot.graph, trigger.producer.nodeId);
             if (scope.target.nodeId !== node.nodeId || loops.length !== scope.loops.length
                 || loops.some(binding => binding.producerAttemptId !== trigger.producer.attemptId || !scope.loops.some(edge => edge.edgeId === binding.edgeId))) invalid();
@@ -106,7 +107,7 @@ export async function readSessionReplanHistory(tx, handle, root, { graphResults,
         if (trigger) {
             if (!prior || current.get(trigger.producer.nodeId)?.producer.attemptId !== trigger.producer.attemptId || consumed.has(trigger.producer.attemptId)) invalid();
             const scope = trigger.producer.inputRefs[0]?.fanoutAttemptId
-                ? await readSessionFanoutReplanScope(tx, handle, root, trigger.producer, { decisionSeq: fact.receipt.decisionSeq, targetNodeId: node.nodeId })
+                ? await readSessionFanoutReplanScope(tx, handle, root, trigger.producer, { decisionSeq: trigger.patch.decisionSeq, targetNodeId: node.nodeId })
                 : sessionReplanScope(snapshot.graph, trigger.producer.nodeId);
             if (!scope) invalid();
             if (fanoutCompletions.some(group => group.frame.decisionSeq < trigger.receipt.decisionSeq

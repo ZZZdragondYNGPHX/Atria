@@ -1,3 +1,4 @@
+import { readFanoutBranchNodeIds } from './fanout-controller.js';
 import { hashNativeDocument as hash, putImmutable, cloneNativeDocument, equalNativeDocuments as equal } from '../repositories/common.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
@@ -80,7 +81,7 @@ export async function completeSessionDelegatedPlanner({ state, service, port, re
                 }
             }
             const repeating = actual.operations.some(operation => operation.op === 'requestReplan');
-            const affected = repeating ? sessionReplanScope(candidate, producer.nodeId).affectedNodeIds : [];
+            const affected = repeating ? await readFanoutBranchNodeIds(tx, handle, active, producer, sessionReplanScope(candidate, producer.nodeId).affectedNodeIds) : [];
             const paid = producer.inputRefs[0].fanoutAttemptId
                 ? await readSessionFanoutPaidModelNodes(tx, handle, active, producer.inputRefs[0].fanoutAttemptId) : null;
             const cancelled = new Set(actual.operations.filter(operation => operation.op === 'cancelPending').map(operation => operation.nodeId));

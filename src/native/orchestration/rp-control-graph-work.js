@@ -247,13 +247,16 @@ export class RpControlGraphWork {
         if (!fact || !fact.patch.requests.replan || fact.patch.requests.finalize || !equal(fact.controlRef, completion.controlRef)
             || !scope || !equal(scope.branch.scopeNodeIds, branch.scopeNodeIds) || original.target.nodeId !== scope.target.nodeId
             || !equal(original.loops, scope.loops)) fail('native_orchestration_planner_replan_pending');
+        // Unexecuted members keep their frozen reserved identity, already
+        // counted in progress.attempts; only executed members open a new Attempt.
         const effects = [];
+        let repeated = 0;
         for (const id of scope.affectedNodeIds) {
             const prior = progress.get(id);
             if (!prior) continue;
             const attempt = (await readAttempt(tx, handle, root, prior.attemptId)).doc;
             if (attempt.status !== 'completed') fail('native_orchestration_planner_replan_pending');
-            effects.push(...attempt.effectRefs);
+            effects.push(...attempt.effectRefs); repeated++;
         }
         const costs = effects.length ? await this.service.budgetPort.observeEffectClosure(handle,
             { authorityRef: root.budgetAuthorityRef, effectIds: effects }, { tx }) : null;
@@ -262,7 +265,7 @@ export class RpControlGraphWork {
         const models = await Promise.all(scope.affectedNodeIds.map(id => this.state.selected.resolveGraphModel(root.graph.nodes.find(node => node.nodeId === id))));
         const requests = models.reduce((sum, model) => sum + 1 + (model.child?.resolved.route.executionPolicy.computeBudget.maxRequests ?? 0), 0);
         if (!costs?.closed || !capacity || capacity.overrun || capacity.remaining.requests < requests) fail('native_orchestration_graph_budget_unavailable');
-        if (root.progress.attempts + models.length > root.limits.maxAttempts) fail('native_orchestration_limit_exhausted');
+        if (root.progress.attempts + repeated > root.limits.maxAttempts) fail('native_orchestration_limit_exhausted');
         return { target: scope.target, affectedNodeIds: scope.affectedNodeIds, loopBindings: scope.loops.map(edge => ({ edge, ...completion })) };
     }
 
@@ -618,7 +621,8 @@ export class RpControlGraphWork {
                             if (fact.requests?.replan) {
                                 const latest = await current();
                                 const next = await runs.engine.withTransaction(handle, tx => this.fanoutReplan({ tx, root: latest, completion: fact, progress: this.records, branch: item.branch }));
-                                for (const id of next.affectedNodeIds) { this.records.delete(id); pending.add(id); retryTokens.set(id, fact.attemptId); }
+                                // Unexecuted members keep their frozen reserved identity.
+                                for (const id of next.affectedNodeIds) if (this.records.has(id)) { this.records.delete(id); pending.add(id); retryTokens.set(id, fact.attemptId); }
                                 forced = { node: next.target, edges: latest.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === next.target.nodeId
                                     && edge.from.nodeId !== profile.fanout.nodeId), loopBindings: next.loopBindings };
                             }
