@@ -4,13 +4,16 @@ import { readProjectDelegatedControl } from './project-delegated-quality-contrac
 import { ConflictError } from '../../storage/errors.js';
 import { hashNativeDocument as hash, putImmutable, putMutable } from '../repositories/common.js';
 import { immutable, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
-import { readPlanRevision } from './plan-repository.js';
+import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
+import { readReviewablePlannerCompletion } from './graph-review-completion.js';
+import { assertProjectControlWork } from './project-quality-contracts.js';
 import { projectDelegatedGraphProfile } from './project-delegated-graph-profile.js';
 import { projectReplanScope } from './project-replan-contracts.js';
 import { inspectGraphReadiness } from './graph-work-readiness.js';
 import { completeProjectDelegatedPlanner } from './project-delegated-planner-work.js';
 import { projectPlannerOutputContract, projectGraphReviewOutputContract, projectGraphJudgeOutputContract } from './project-control-graph.js';
-import { readAttempt, readGraphReviewReceipt, readAttemptInvalidation, assertAttemptConsumable, runGuard, controlCommandId, controlRecordKey } from './controller-common.js';
+import { readAttempt, readGraphReviewReceipt, readAttemptInvalidation, assertAttemptCurrent, assertAttemptConsumable, runGuard, controlCommandId, controlRecordKey } from './controller-common.js';
 import { AttemptController } from './attempt-controller.js';
 import { TransitionController } from './transition-controller.js';
 import { ContextPort } from './context-port.js';
@@ -33,6 +36,46 @@ import { withNativeProjectDelegation, captureNativeProjectDelegatedWorker, inspe
 const fail = (code = 'native_orchestration_delegation_denied') => { throw new ConflictError(code); };
 const equal = (a, b) => hash(a) === hash(b);
 const configHash = resolved => hash({ route: resolved.route, model: resolved.model, connection: resolved.connection, generation: resolved.generation, resources: resolved.resources });
+
+/** Only the owned running Review's decide→settle stage may re-read a pure
+ * Planner that its own original decision just invalidated. No later consumer
+ * gets currentness or authority from these historical facts. */
+async function ownsReviewInvalidatedPlanner(tx, handle, root, state, binding, saved) {
+    if (saved.controlRef.kind !== 'graph_planner_control' || state.model.node.kind !== 'review' || !state.activeNode) return false;
+    const invalidation = await readAttemptInvalidation(tx, handle, root, saved.producer);
+    if (!invalidation) return false;
+    const reviewer = (await readAttempt(tx, handle, root, state.activeNode.nodeAttemptId)).doc, input = reviewer.inputRefs[0], ref = root.parentRef;
+    if (reviewer.status !== 'running' || reviewer.nodeId !== state.model.node.nodeId || reviewer.epoch !== root.epoch
+        || reviewer.graphRevision !== root.graphRevision || reviewer.sourceBindingDigest !== root.sourceBinding.bindingDigest
+        || reviewer.effectiveGrantDigest !== ref.effectiveGrantDigest || !equal(reviewer.effectRefs, [state.activeNode.effectId])
+        || !equal(reviewer.inputRefs, state.contextInputRefs) || reviewer.inputDigest !== hash(reviewer.inputRefs)
+        || !equal(input, state.decision.inputRef) || input.kind !== 'native_project_delegated_intent' || input.role !== 'studio'
+        || !equal(input.audience, { kind: 'task', id: root.runId }) || input.nodeId !== reviewer.nodeId
+        || input.parentRunId !== ref.parentRunId || input.parentAttemptId !== ref.nodeAttemptId || input.parentEpoch !== ref.parentEpoch
+        || input.childRunId !== root.runId || input.childEpoch !== reviewer.epoch || input.delegationInputDigest !== ref.inputDigest
+        || !equal(input.sourceRef, root.sourceBinding.sourceRef) || !equal(input.planRef, root.planRef)
+        || !Array.isArray(input.acceptedGraphResultRefs) || !Array.isArray(input.acceptedControlRefs)
+        || !input.acceptedControlRefs.some(actual => equal(actual, binding.controlRef))
+        || !equal(reviewer.inputRefs, [input, ...ref.inputRefs, ...input.acceptedGraphResultRefs, ...input.acceptedControlRefs])) return false;
+    await assertAttemptCurrent(tx, handle, root, reviewer);
+    const review = await readGraphReviewReceipt(tx, handle, root, reviewer);
+    if (!review || review.decision !== 'rerun' || review.epoch !== root.epoch || review.graphRevision !== root.graphRevision
+        || review.reviewAttemptId !== reviewer.attemptId || review.reviewerNodeId !== reviewer.nodeId
+        || invalidation.reviewReceiptId !== review.receiptId || invalidation.reviewIntegrity !== hash(review)
+        || !review.invalidatedAttemptIds.includes(saved.producer.attemptId) || binding.attemptId !== saved.producer.attemptId
+        || !equal(review.evidenceRefs, input.acceptedGraphResultRefs) || review.decisionSeq <= saved.receipt.decisionSeq
+        || review.decisionSeq > root.eventSeq) return false;
+    const commandId = controlCommandId('review.decide', review.receiptId);
+    const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+    const detail = { reviewAttemptId: reviewer.attemptId, decision: review.decision, targetAttemptIds: [...review.targetAttemptIds],
+        reasonCode: review.reasonCode, evidenceRefs: review.evidenceRefs };
+    if (!command || command.schemaVersion !== 1 || command.commandId !== commandId || command.operation !== 'runs.control.review.decide'
+        || command.target !== root.runId || command.payloadHash !== hash({ operation: command.operation,
+        body: { runId: root.runId, operation: 'review.decide', detail } }) || !equal(command.outcome?.reviewReceipt, review)) return false;
+    const planner = await readReviewablePlannerCompletion(tx, handle, root, saved.producer.attemptId, { verifyControlWork: assertProjectControlWork });
+    return !!planner && equal(planner.controlRef, binding.controlRef) && equal(planner.producer, saved.producer)
+        && equal(planner.receipt, saved.receipt) && equal(planner.patch, saved.patch);
+}
 
 /** No new ledger, Scheduler or bank: captures bind original child callbacks to
  * the original Run/Plan/Source and Controller facts. */
@@ -167,7 +210,8 @@ export class ProjectDelegationAuthority {
                 if (binding.controlRef) {
                     const saved = await readProjectDelegatedControl(tx, identity.handle, root, binding.controlRef);
                     if (!saved || !equal(saved.controlRef, binding.controlRef) || saved.review?.decision === 'rerun') fail();
-                    await assertAttemptConsumable(tx, identity.handle, root, saved.producer);
+                    if (!await ownsReviewInvalidatedPlanner(tx, identity.handle, root, state, binding, saved))
+                        await assertAttemptConsumable(tx, identity.handle, root, saved.producer);
                     for (const ref of binding.evidenceRefs ?? []) {
                         const member = await readGraphNodeResult(tx, identity.handle, root, ref.resultId);
                         if (!member || !equal(member.receipt.resultRef, ref) || !saved.joinReceipt?.acceptedResultRefs.some(actual => equal(actual, ref))
