@@ -1,3 +1,4 @@
+import { readSessionReplanHistory } from './session-replan-contracts.js';
 import { readSessionDelegationContinuation } from './session-delegation-contracts.js';
 import { readSessionPlannerCompletion } from './session-planner-contracts.js';
 import { readSessionJudgeCompletion, assertSessionJudgeSelections } from './session-judge-contracts.js';
@@ -16,6 +17,7 @@ import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
+import { assertOutputTransition } from './output-transition-contracts.js';
 import { readSessionReviewCompletion } from './session-review-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
@@ -121,19 +123,6 @@ export async function readSessionNarrationResult(tx, handle, root) {
         if (!completed) invalid(); judgeCompletions.push(completed);
     }
     if (root.graphRevision !== plannerCompletions.length) invalid();
-    for (const fact of [...graphResults, ...reviewCompletions, ...plannerCompletions, ...judgeCompletions, { producer, receipt }]) {
-        const effect = (await readEffect(tx, handle, root, fact.receipt.modelEffectId)).doc, modelInput = effect.inputRef;
-        const snapshot = await readTaskGraphRevision(tx, handle, root, fact.producer.graphRevision);
-        const incoming = snapshot.graph.edges.filter(edge => edge.to.nodeId === fact.producer.nodeId
-            && ['planner', 'judge'].includes(snapshot.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind)).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
-        const controls = incoming.map(edge => [...plannerCompletions, ...judgeCompletions].find(item => item.producer.nodeId === edge.from.nodeId));
-        assertSessionJudgeSelections(root, snapshot.graph.nodes.find(node => node.nodeId === fact.producer.nodeId), modelInput.acceptedGraphResultRefs ?? [], controls.filter(item => item?.candidates));
-        const delegated = fact.producer.inputRefs[0]?.kind === 'native_session_delegation';
-        if (delegated) await readSessionDelegationContinuation(tx, handle, root, fact.producer, effect);
-        if (controls.some(item => !item || item.receipt.decisionSeq >= fact.receipt.decisionSeq)
-            || !equal(modelInput.acceptedControlRefs ?? [], controls.map(item => item.controlRef))
-            || !delegated && !equal(fact.producer.inputRefs, [modelInput, ...(modelInput.acceptedGraphResultRefs ?? []), ...controls.map(item => item.controlRef)])) invalid();
-    }
     const fanoutCompletions = [];
     for (const id of root.attemptRefs) {
         const attempt = (await readAttempt(tx, handle, root, id)).doc;
@@ -141,10 +130,53 @@ export async function readSessionNarrationResult(tx, handle, root) {
         const completion = await readSessionFanoutCompletion(tx, handle, root, id);
         if (!completion) invalid(); fanoutCompletions.push(completion);
     }
+    for (const fact of [...graphResults, ...reviewCompletions, ...plannerCompletions, ...judgeCompletions, { producer, receipt }]) {
+        const effect = (await readEffect(tx, handle, root, fact.receipt.modelEffectId)).doc, modelInput = effect.inputRef;
+        const snapshot = await readTaskGraphRevision(tx, handle, root, fact.producer.graphRevision);
+        const incoming = snapshot.graph.edges.filter(edge => edge.to.nodeId === fact.producer.nodeId
+            && ['planner', 'judge', 'review'].includes(snapshot.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind)).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
+        const available = [...plannerCompletions, ...judgeCompletions, ...reviewCompletions.filter(item => item.controlRef)];
+        const controls = incoming.flatMap(edge => {
+            const actual = available.filter(item => item.producer.nodeId === edge.from.nodeId
+                && (modelInput.acceptedControlRefs ?? []).some(ref => equal(ref, item.controlRef)));
+            if (actual.length > 1) invalid();
+            if (!actual.length && snapshot.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind === 'review'
+                && reviewCompletions.some(item => !item.controlRef && item.producer.nodeId === edge.from.nodeId)) return [];
+            if (!actual.length && !snapshot.graph.nodes.find(node => node.nodeId === fact.producer.nodeId).inputs.find(port => port.name === edge.to.port)?.required) return [];
+            return actual.length ? actual : [null];
+        });
+        assertSessionJudgeSelections(root, snapshot.graph.nodes.find(node => node.nodeId === fact.producer.nodeId), modelInput.acceptedGraphResultRefs ?? [], controls.filter(item => item?.candidates));
+        const delegated = fact.producer.inputRefs[0]?.kind === 'native_session_delegation';
+        if (delegated) await readSessionDelegationContinuation(tx, handle, root, fact.producer, effect);
+        if (controls.some(item => !item || item.receipt.decisionSeq >= fact.receipt.decisionSeq)
+            || !equal(modelInput.acceptedControlRefs ?? [], controls.map(item => item.controlRef))
+            || !delegated && !equal(fact.producer.inputRefs, [modelInput, ...(modelInput.acceptedGraphResultRefs ?? []), ...controls.map(item => item.controlRef)])) invalid();
+        if (!delegated && !modelInput.fanoutAttemptId && !modelInput.reviewFeedbackRef && fact.receipt.receiptKind !== 'graph_review_model'
+            && controls.some(item => item.controlRef.kind === 'graph_review_control')) {
+            const evidence = (modelInput.acceptedGraphResultRefs ?? []).map(ref => graphResults.find(item => equal(item.receipt.resultRef, ref)));
+            if (evidence.some(item => !item)) invalid();
+            const edges = snapshot.graph.edges.filter(edge => edge.to.nodeId === fact.producer.nodeId && !edge.loopBack).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
+            const sources = [], bindings = [];
+            for (const edge of edges) {
+                const candidates = [...evidence, ...controls, ...fanoutCompletions.filter(item => modelInput.joinReceiptRefs?.some(ref => equal(ref,
+                    { runId: root.runId, joinId: item.joinReceipt.joinId })))].filter(item => item.producer.nodeId === edge.from.nodeId);
+                if (candidates.length > 1 || !candidates.length && snapshot.graph.nodes.find(node => node.nodeId === fact.producer.nodeId).inputs.find(port => port.name === edge.to.port)?.required) invalid();
+                if (!candidates.length) continue;
+                if (!sources.includes(candidates[0])) sources.push(candidates[0]);
+                bindings.push({ edgeId: edge.edgeId, producerAttemptId: candidates[0].producer.attemptId });
+            }
+            const traversalId = 'oreceipt_' + hash({ runId: root.runId, bindings, reservedAttemptId: null }).slice(0, 32);
+            await assertOutputTransition(tx, handle, root, { published: sources[0], additionalProducers: sources.slice(1), output: fact.producer,
+                producerBindings: bindings, receipt: { decisionSeq: fact.receipt.decisionSeq, traversalReceiptRef: { runId: root.runId, receiptId: traversalId } } });
+        }
+    }
+    const loopHistory = root.graph.edges.some(edge => edge.loopBack) ? await readSessionReplanHistory(tx, handle, root,
+        { graphResults, plannerCompletions, reviewCompletions, judgeCompletions, fanoutCompletions, narrator: { producer, receipt, settlement } }) : null;
     if (graphResults.length) {
         const incoming = root.graph.edges.filter(edge => edge.to.nodeId === producer.nodeId && !['review', 'planner', 'judge'].includes(root.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind)).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
         const current = [];
-        for (const result of graphResults) if (!await readAttemptInvalidation(tx, handle, root, result.producer)) current.push(result);
+        for (const result of graphResults) if (loopHistory ? loopHistory.current.get(result.producer.nodeId)?.producer.attemptId === result.producer.attemptId
+            : !await readAttemptInvalidation(tx, handle, root, result.producer)) current.push(result);
         if (new Set(current.map(result => result.producer.nodeId)).size !== current.length) invalid();
         const accepted = incoming.flatMap(edge => {
             if (root.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind !== 'join') {
@@ -168,12 +200,13 @@ export async function readSessionNarrationResult(tx, handle, root) {
         if (expectedJoins.length ? !equal(input.joinReceiptRefs, expectedJoins) : Object.hasOwn(input, 'joinReceiptRefs')) invalid();
         if (accepted.some(result => !result) || !equal(input.acceptedGraphResultRefs, accepted.map(result => result.receipt.resultRef))
             || accepted.some(result => !result.record.envelope.audienceConstraint.nodeIds.includes(producer.nodeId))) invalid();
-        if (reviewCompletions.length) {
-            const approved = reviewCompletions.at(-1);
+        const legacyReviews = reviewCompletions.filter(item => !item.controlRef);
+        if (legacyReviews.length) {
+            const approved = legacyReviews.at(-1);
             if (approved.review.decision !== 'approve' || !equal(input.reviewReceiptRef, approved.receipt.reviewReceiptRef)
                 || !equal(approved.review.evidenceRefs, accepted.map(result => result.receipt.resultRef))
                 || !equal(approved.review.targetAttemptIds, accepted.map(result => result.producer.attemptId))) invalid();
         } else if (Object.hasOwn(input, 'reviewReceiptRef')) invalid();
     } else if (Object.hasOwn(input, 'acceptedGraphResultRefs') && (!plannerCompletions.length || !equal(input.acceptedGraphResultRefs, []))) invalid();
-    return { record, receipt, settlement, producer, retrievalCompletions, graphResults, reviewCompletions, plannerCompletions, judgeCompletions, fanoutCompletions, modelIntent: intent };
+    return { record, receipt, settlement, producer, retrievalCompletions, graphResults, reviewCompletions, plannerCompletions, judgeCompletions, fanoutCompletions, loopHistory, modelIntent: intent };
 }

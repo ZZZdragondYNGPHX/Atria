@@ -63,6 +63,7 @@ export async function assertProjectControlWork(tx, handle, root, effectId, jobs)
     for (const [index, job] of jobs.entries()) {
         const row = task?.compute?.localWork.find(item => item.attemptId === job.attemptId);
         if (job.kind !== ['graph_control_parse', 'graph_control_adopt'][index] || !row || hash(row) !== job.rowHash || row.kind !== job.kind
+            || (row.reservationId ?? null) !== (root.parentRef ? root.runId : null)
             || row.targetFingerprint !== job.targetFingerprint || row.attemptId !== localWorkAttemptId(effectId, job.ordinal)
             || !equal(row.orchestration, { kind: 'local_work', effectId: effectId, ordinal: job.ordinal }) || row.status !== 'settled' || row.usage?.outcome !== 'completed') invalid();
     }

@@ -13,6 +13,7 @@ import { FanoutController, readFanoutFrame } from './fanout-controller.js';
 import { JoinController, joinIdForAttempt } from './join-controller.js';
 import { withNativeProjectFanout } from './native-project-generation-authority.js';
 import { readProjectFanoutCompletion } from './project-fanout-contracts.js';
+import { readProjectDelegationContinuation } from './project-delegation-contracts.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelFailureReceipt } from './model-port.js';
 import { graphPlannerControlRef, graphPlannerReceiptId, readGraphPlannerCompletion } from './graph-planner-completion.js';
@@ -36,11 +37,13 @@ const readerOptions = { verifyControlWork: assertProjectControlWork };
 /** One domain consumer of original Graph/Transition/Model controllers. Ready
  * ordering is shared and read-only; this class owns no durable execution state. */
 export class ProjectControlGraphWork {
+    #retryTokens = new Map();
+
     constructor(args) {
         Object.assign(this, args); this.records = new Map(); this.lastOperations = new Map();
         this.models = new ProjectQualityWork({ ...args, readControls: (tx, root, recipient, controlRefs) =>
             projectControlItems(tx, this.state.handle, root, recipient, { controlRefs,
-                evidenceRefs: recipient.inputRefs[0].acceptedGraphResultRefs ?? [] }, { controlsOnly: true }) });
+                evidenceRefs: recipient.inputRefs[0].acceptedGraphResultRefs ?? [] }, { graphEvidence: true }) });
     }
 
     #bundle(edges, graph) {
@@ -430,13 +433,35 @@ export class ProjectControlGraphWork {
             }
             // Graph control decisions cannot be repeated as local Model redo.
             // Keep every already-published GraphPatch receipt authoritative.
-            if (decision === 'rerun' && [...this.records.entries()].some(([nodeId, fact]) => (['graph_planner_control', 'graph_join_control'].includes(fact.controlRef?.kind)
-                || root.graph.nodes.find(node => node.nodeId === nodeId).capabilities.includes('agent.delegate')) && fact.attemptId !== reviewer.attemptId
-                && targets.some(target => graphReachable(root.graph, target.nodeId, nodeId)))) fail('native_orchestration_review_irreversible_dependency');
+            if (decision === 'rerun') {
+                const affected = [...this.records.entries()].filter(([nodeId, fact]) => fact.attemptId !== reviewer.attemptId
+                    && targets.some(target => graphReachable(root.graph, target.nodeId, nodeId)));
+                if (affected.some(([, fact]) => ['graph_planner_control', 'graph_join_control'].includes(fact.controlRef?.kind)))
+                    fail('native_orchestration_review_irreversible_dependency');
+                for (const [nodeId, recorded] of affected) {
+                    const node = root.graph.nodes.find(node => node.nodeId === nodeId);
+                    if (!node.capabilities.includes('agent.delegate')) continue;
+                    const fact = evidence.find(fact => fact.producer.attemptId === recorded.attemptId)
+                        ?? (recorded.resultRef && await readGraphNodeResult(tx, handle, root, recorded.resultRef.resultId));
+                    if (!fact || fact.producer.attemptId !== recorded.attemptId || !equal(fact.receipt.resultRef, recorded.resultRef)
+                        || fact.producer.inputRefs[0]?.kind !== 'native_project_delegation') fail('native_orchestration_review_irreversible_dependency');
+                    // Recompute only an actual closed, pure advisory child. The
+                    // original typed continuation proves its complete DAG,
+                    // return/claim and bank; a capability label is insufficient.
+                    const completed = await readProjectDelegationContinuation(tx, handle, root, fact.producer, fact.modelEffect);
+                    const selected = this.state.selected.resolveDelegation(node), child = completed.lineage.child;
+                    if (!selected || child.status !== 'completed' || child.cancelRequested
+                        || child.epoch !== completed.output.receipt.epoch || !equal(child.planRef, selected.planRef)
+                        || !equal(child.parentRef.budgetCeiling, selected.ceiling)
+                        || completed.output.publication.graphHistory.settled !== true) fail('native_orchestration_review_irreversible_dependency');
+                }
+            }
         }, admitRerun: async ({ tx, root, reviewer, target, attemptId, invalidatedAttemptIds }) => {
             const capacity = await budgetPort.observeCapacity(handle, { authorityRef: root.budgetAuthorityRef, reservationId: null }, { tx });
-            const affected = [...this.records.values()].filter(fact => invalidatedAttemptIds.includes(fact.attemptId)).length;
-            if (!capacity || capacity.overrun || capacity.remaining.requests < affected + 2 || root.progress.reviews >= root.graph.nodes.find(node => node.nodeId === reviewer.nodeId).policy.maxRounds)
+            const affected = [...this.records.entries()].filter(([, fact]) => invalidatedAttemptIds.includes(fact.attemptId));
+            const requests = affected.reduce((count, [nodeId]) => count + 1
+                + (this.state.selected.resolveDelegation(root.graph.nodes.find(node => node.nodeId === nodeId))?.ceiling.maxRequests ?? 0), 2);
+            if (!capacity || capacity.overrun || capacity.remaining.requests < requests || root.progress.reviews >= root.graph.nodes.find(node => node.nodeId === reviewer.nodeId).policy.maxRounds)
                 fail('native_orchestration_project_quality_rerun_limit');
             const node = root.graph.nodes.find(node => node.nodeId === target.nodeId), dependencies = this.#bundle(root.graph.edges.filter(edge => edge.to.nodeId === node.nodeId && !edge.loopBack), root.graph);
             const feedback = { reviewReceiptRef: { runId, receiptId: reviewReceiptId(runId, reviewer.attemptId) }, reasonCode: parsed.reasonCode };
@@ -500,7 +525,7 @@ export class ProjectControlGraphWork {
                     if (!final) fail('native_orchestration_project_graph_blocked');
                     return this.#bundle(final.edges, root.graph);
                 }
-                selected = observed.ready[0].node; bundle = this.#bundle(observed.ready[0].edges, root.graph); token = 'initial';
+                selected = observed.ready[0].node; bundle = this.#bundle(observed.ready[0].edges, root.graph); token = this.#retryTokens.get(selected.nodeId) ?? 'initial';
             }
             if (selected.kind === 'fanout') {
                 await this.#fanout(profile.fanouts.find(group => group.fanout.nodeId === selected.nodeId), bundle); continue;
@@ -511,9 +536,15 @@ export class ProjectControlGraphWork {
                 ...(prepared ? { preparedAttemptId: prepared.attemptId, feedback: prepared.feedback } : {}),
                 authorizeInputs: args => this.#authorizeInputs(bundle, args), outputContract: planner ? projectPlannerOutputContract : review ? projectGraphReviewOutputContract : judge ? projectGraphJudgeOutputContract : null,
                 ...(planner ? { complete: (stage, args) => this.#planner(stage, args) } : review ? { complete: (stage, args) => this.#review(stage, args, bundle) } : judge ? { complete: (stage, args) => this.#judge(stage, args, bundle) } : {}) });
-            this.prepared?.delete(selected.nodeId);
+            this.prepared?.delete(selected.nodeId); this.#retryTokens.delete(selected.nodeId);
             if (result.review?.decision === 'rerun') {
-                for (const [nodeId, fact] of this.records) if (result.review.invalidatedAttemptIds.includes(fact.attemptId)) this.records.delete(nodeId);
+                // Targets keep the Controller's exact prepared replacement ID.
+                // Other causal descendants re-enter the original admission with
+                // this actual Review receipt as a fresh command/request token.
+                for (const [nodeId, fact] of this.records) if (result.review.invalidatedAttemptIds.includes(fact.attemptId)) {
+                    this.records.delete(nodeId); this.#retryTokens.set(nodeId, result.review.receiptId);
+                }
+                this.#retryTokens.set(selected.nodeId, result.review.receiptId);
                 this.records.delete(selected.nodeId); this.prepared ??= new Map();
                 for (const item of result.reruns) this.prepared.set(item.nodeId, item);
                 continue;

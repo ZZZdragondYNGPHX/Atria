@@ -1,0 +1,100 @@
+import { hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
+import { immutable } from '../model-prompt-runtime/execution-utils.js';
+import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
+import { runGenerationLocalWork } from './generation-local-work.js';
+import { GraphController } from './graph-controller.js';
+import { graphPatchHash } from './graph-revision-contracts.js';
+import { graphPlannerReceiptId } from './graph-planner-completion.js';
+import { readSessionPlannerCompletion } from './session-planner-contracts.js';
+import { sessionDelegatedGraphProfile } from './session-delegated-graph-profile.js';
+import { sessionPlannerProgressFingerprint } from './session-replan-contracts.js';
+import { readSessionDelegatedModelInput } from './session-delegation-contracts.js';
+import { readGraphNodeResult } from './graph-result-contracts.js';
+import { controlCommandId, controlRecordKey, readAttempt, runGuard } from './controller-common.js';
+import { readEffect } from './effect-contracts.js';
+import { writeAttemptSettlement } from './attempt-settlement.js';
+
+const equal = (a, b) => hash(a) === hash(b);
+const fail = code => { throw Object.assign(new TypeError(code), { code }); };
+
+/** Domain callback for the original GraphController; all work is charged to
+ * the already held child reservation in the original Session operation bank. */
+export async function completeSessionDelegatedPlanner({ state, service, port, result, send, limits, current, progress, engine }) {
+    const { handle } = state, runId = state.identity.childRunId, { nodeAttemptId: attemptId, effectId } = state.activeNode;
+    const proof = await port.inspectResultCompletion(handle, { result, runId, effectId }), rows = [];
+    const work = async (kind, input, operation) => {
+        const attempt = { attemptId: send.bank.nextLocalWorkAttemptId(), requestId: state.request.requestId, kind, estimatedItems: 1,
+            estimatedInputBytes: Buffer.byteLength(JSON.stringify(input)), targetFingerprint: hash({ runId, effectId, kind, inputHash: hash(input) }) };
+        let admitted;
+        const value = await runGenerationLocalWork({ signal: state.boundary.signal, attempt, requireAdmission: true, assertCurrent: current,
+            admit: item => send.bank.chargeLocalWork(limits, item), settle: ({ attempt, usage }) => send.bank.settleLocalWork(attempt.attemptId, usage),
+            onAdmitted: row => { admitted = row; } }, operation);
+        const observed = await service.budgetPort.observeAttempt(handle, { kind: 'local_work', authorityRef: state.root.budgetAuthorityRef,
+            effectId, localWorkOrdinal: admitted.orchestration.ordinal, attemptId: admitted.attemptId, reservationId: runId });
+        if (observed.status !== 'settled' || observed.usage?.outcome !== 'completed') fail('native_orchestration_control_work_unsettled');
+        rows.push({ kind, attemptId: observed.attemptId, ordinal: observed.orchestration.ordinal, targetFingerprint: observed.targetFingerprint, rowHash: hash(observed) });
+        return value;
+    };
+    const responseText = result.generated.response.text;
+    const parsed = await work('graph_control_parse', responseText, async () => {
+        if (Buffer.byteLength(responseText) > assertResultPolicy(state.root.graph.outputContract).maxBytes) fail('native_orchestration_planner_response_invalid');
+        const value = JSON.parse(responseText); assertObject(value, ['operations'], 'Session child Planner response');
+        if (!Array.isArray(value.operations) || !value.operations.length) fail('native_orchestration_planner_response_invalid');
+        return immutable(value);
+    });
+    const evidence = await engine.withTransaction(handle, async tx => {
+        const root = await service.runs.get(handle, runId), facts = [];
+        for (const ref of state.decision.inputRef.acceptedGraphResultRefs) facts.push(await readGraphNodeResult(tx, handle, root, ref.resultId));
+        if (facts.some(fact => !fact)) fail('native_orchestration_graph_result_required');
+        return facts;
+    });
+    const key = sessionPlannerProgressFingerprint(parsed.operations, state.root.sourceBinding, evidence);
+    if (state.plannerOperations.get(state.model.node.nodeId)?.has(key)) fail('native_orchestration_planner_no_progress');
+    const root = await service.runs.get(handle, runId), patch = { schemaVersion: 1, patchId: 'opatch_' + hash({ runId, attemptId }).slice(0, 32), runId,
+        producerAttemptId: attemptId, expectedEpoch: root.epoch, expectedGraphRevision: root.graphRevision, operations: parsed.operations,
+        reasonRefs: [{ kind: 'source', bindingDigest: root.sourceBinding.bindingDigest }, ...state.decision.inputRef.acceptedGraphResultRefs.map(ref => ({ kind: 'result', resultId: ref.resultId }))], payloadHash: '' };
+    patch.payloadHash = graphPatchHash(patch);
+    const withAuthority = service.sourcePort.consumptionBoundary(handle, root.sourceBinding, { engine });
+    const proposed = await work('graph_control_adopt', patch, () => service.runs.withSourceControl(handle, runId, () => new GraphController({ runs: service.runs,
+        authorizePatch: async ({ tx, root: active, producer, patch: actual }) => {
+            await current();
+            if (producer.attemptId !== attemptId || !equal(actual, patch) || !equal(proof, await port.inspectResultCompletion(handle, { result, runId, effectId })))
+                fail('native_orchestration_planner_producer_denied');
+            const profile = sessionDelegatedGraphProfile({ ...state.child.plan, definition: active.graph });
+            const repeating = actual.operations.some(operation => operation.op === 'requestReplan');
+            const loops = active.graph.edges.filter(edge => edge.loopBack && edge.from.nodeId === producer.nodeId);
+            if (repeating && (!loops.length || loops.some(edge => edge.to.nodeId !== producer.nodeId))) fail('native_orchestration_planner_replan_pending');
+            const required = profile.models.filter(node => repeating && node.nodeId === producer.nodeId || node.nodeId !== producer.nodeId && !progress.has(node.nodeId)).length;
+            const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: runId }, { tx });
+            if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');
+            const effect = (await readEffect(tx, handle, active, effectId)).doc;
+            await readSessionDelegatedModelInput(tx, handle, active, producer, effect);
+            await current();
+        } }).propose(handle, { expectedStateVersion: root.stateVersion, patch }), { withAuthority }));
+    const accepted = proposed.outcome.patchReceipt;
+    if (!accepted.accepted) fail('native_orchestration_planner_patch_rejected');
+    if (accepted.requests.replan && accepted.requests.finalize) fail('native_orchestration_planner_replan_pending');
+    const receiptId = graphPlannerReceiptId(runId, attemptId);
+    await service.runs.withSourceControl(handle, runId, () => service.runs.control(handle, controlCommandId('graph.planner.settle', attemptId), {
+        ...runGuard(root), expectedGraphRevision: accepted.newGraphRevision, expectedStateVersion: proposed.outcome.versions.stateVersion,
+        operation: 'attempt.settle', detail: { attemptId, patchId: patch.patchId } }, async ({ tx, root: active, now }) => {
+        await current();
+        const record = await readAttempt(tx, handle, active, attemptId);
+        if (record.doc.status !== 'running' || !equal(record.doc.effectRefs, [effectId]) || !equal(proof, await port.inspectResultCompletion(handle, { result, runId, effectId })))
+            fail('native_orchestration_planner_producer_denied');
+        await readSessionDelegatedModelInput(tx, handle, active, record.doc, (await readEffect(tx, handle, active, effectId)).doc);
+        const receipt = { schemaVersion: 1, receiptKind: 'graph_planner_model', receiptId, runId, epoch: active.epoch, producerAttemptId: attemptId,
+            sourceBindingDigest: active.sourceBinding.bindingDigest, grantDigest: state.identity.grantDigest, modelEffectId: effectId,
+            modelReceiptRef: proof.receiptRef, modelPayloadHash: proof.payloadHash, responseText, patchId: patch.patchId,
+            patchIntegrity: hash(accepted), localWork: rows, decisionSeq: active.eventSeq + 1, createdAt: now };
+        await putImmutable(tx, controlRecordKey(handle, runId, 'receipt', receiptId), receipt);
+        await writeAttemptSettlement({ tx, handle, root: active, record, outcome: 'completed', resultRefs: [], effectReceiptRefs: [proof.receiptRef.receiptId],
+            reasonCode: 'graph_planner_patch_accepted', now });
+        active.progress.steps++;
+        return { root: active, eventType: 'graph_planner_completed', reasonCode: 'graph_planner_patch_accepted', outcome: {} };
+    }), { withAuthority });
+    const saved = await engine.withTransaction(handle, async tx => readSessionPlannerCompletion(tx, handle, await service.runs.get(handle, runId), attemptId));
+    if (!saved) fail('native_orchestration_planner_producer_denied');
+    const keys = state.plannerOperations.get(state.model.node.nodeId) ?? new Set(); keys.add(key); state.plannerOperations.set(state.model.node.nodeId, keys);
+    return { attemptId, controlRef: saved.controlRef, requests: saved.patch.requests };
+}

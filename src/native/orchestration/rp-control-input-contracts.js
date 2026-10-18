@@ -14,8 +14,9 @@ import { readEffect } from './effect-contracts.js';
 import { readPlanRevision } from './plan-repository.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { assertAudienceRunCapture, audienceContextPin } from './audience-source-contracts.js';
-import { rpControlGraph } from './rp-control-graph.js';
+import { rpControlGraph, rpControlReplanScope } from './rp-control-graph.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
+import { readTaskGraphRevision } from './graph-revision-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid RP control graph facts'); };
@@ -30,7 +31,11 @@ export const rpJudgeReaderOptions = { verifyControlWork: assertRpControlWork,
             bindings: bundle.bindings.filter(binding => ids.has(binding.producerAttemptId)) }, { targetNodeId: producer.nodeId, checkSelections: false, controlsOnly: true });
     } };
 
-export async function readRpControlInputs(tx, handle, root, bundle, { targetNodeId = null, live = false, checkSelections = true, recipient = null, controlsOnly = false, fanoutAttemptId = recipient?.inputRefs?.[0]?.fanoutAttemptId ?? null } = {}) {
+export async function readRpControlInputs(tx, handle, root, bundle, options = {}) {
+    return readControlInputFacts(tx, handle, root, bundle, options, null);
+}
+
+async function readControlInputFacts(tx, handle, root, bundle, { targetNodeId = null, live = false, checkSelections = true, recipient = null, controlsOnly = false, fanoutAttemptId = recipient?.inputRefs?.[0]?.fanoutAttemptId ?? null } = {}, ownedFacts) {
     assertObject(bundle, ['evidenceRefs', 'controlRefs', 'bindings'], 'RP graph inputs');
     if (!Array.isArray(bundle.evidenceRefs) || !Array.isArray(bundle.controlRefs) || !Array.isArray(bundle.bindings)
         || new Set(bundle.evidenceRefs.map(hash)).size !== bundle.evidenceRefs.length
@@ -39,7 +44,7 @@ export async function readRpControlInputs(tx, handle, root, bundle, { targetNode
     if (controlsOnly && bundle.evidenceRefs.length) invalid();
     const facts = [], controls = [];
     for (const ref of bundle.controlRefs) {
-        const fact = ref.kind === 'graph_join_control' ? await readRpControlFanoutCompletion(tx, handle, root, ref.attemptId)
+        const fact = ownedFacts ? ownedFacts.controls.get(hash(ref)) : ref.kind === 'graph_join_control' ? await readRpControlFanoutCompletion(tx, handle, root, ref.attemptId)
             : ref.kind === 'graph_review_control'
                 ? await readGraphReviewCompletion(tx, handle, root, ref.attemptId, rpReviewReaderOptions)
                 : ref.kind === 'graph_judge_control' ? await readGraphJudgeCompletion(tx, handle, root, ref.attemptId, rpJudgeReaderOptions)
@@ -51,7 +56,8 @@ export async function readRpControlInputs(tx, handle, root, bundle, { targetNode
     // for the explicit bundle, retaining its exact order and all live recipient
     // and Source checks below. No fact or grant survives this call.
     const joinedResults = new Map(controls.flatMap(control => (control.graphResults ?? []).map(fact => [fact.record.resultId, fact])));
-    const otherResults = await readGraphNodeResults(tx, handle, root, bundle.evidenceRefs.filter(ref => !joinedResults.has(ref.resultId)).map(ref => ref.resultId));
+    const otherResults = ownedFacts ? ownedFacts.results
+        : await readGraphNodeResults(tx, handle, root, bundle.evidenceRefs.filter(ref => !joinedResults.has(ref.resultId)).map(ref => ref.resultId));
     for (const ref of bundle.evidenceRefs) {
         const fact = joinedResults.get(ref.resultId) ?? otherResults.get(ref.resultId);
         if (!fact || !equal(fact.receipt.resultRef, ref)) invalid(); facts.push(fact);
@@ -93,6 +99,10 @@ export async function readRpControlInputs(tx, handle, root, bundle, { targetNode
 /** Original persisted dependencies and transitions. Historical reads remain
  * available after Source deletion; they never restore a runtime read grant. */
 export async function assertRpControlInput(tx, handle, root, fact, plan = null) {
+    return assertControlInputFacts(tx, handle, root, fact, plan, null);
+}
+
+async function assertControlInputFacts(tx, handle, root, fact, plan, ownedFacts) {
     plan ??= await readPlanRevision(tx, handle, root.planRef);
     const producer = fact.producer, intent = (await readEffect(tx, handle, root, fact.receipt.modelEffectId)).doc, input = intent.inputRef;
     const node = root.graph.nodes.find(node => node.nodeId === producer.nodeId), bundle = input.controlGraph;
@@ -102,16 +112,15 @@ export async function assertRpControlInput(tx, handle, root, fact, plan = null) 
         || !equal(input.acceptedGraphResultRefs, bundle.evidenceRefs)
         || !equal(producer.inputRefs, [input, ...bundle.evidenceRefs, ...bundle.controlRefs]) || producer.inputDigest !== hash(producer.inputRefs)) invalid();
     assertAudienceRunCapture(root, node, plan.dependencyPins, input);
-    const sources = await readRpControlInputs(tx, handle, root, bundle, { targetNodeId: node.nodeId, recipient: producer });
+    const sources = await readControlInputFacts(tx, handle, root, bundle, { targetNodeId: node.nodeId, recipient: producer }, ownedFacts);
     const loops = bundle.bindings.filter(binding => root.graph.edges.find(edge => edge.edgeId === binding.edgeId)?.loopBack);
     let replanFrom = null;
     if (loops.length) {
-        const declared = root.graph.edges.filter(edge => edge.loopBack && edge.from.nodeId === node.nodeId && edge.to.nodeId === node.nodeId);
         const previous = sources.find(source => source.producer.attemptId === loops[0].producerAttemptId);
-        if (node.kind !== 'planner' || !previous?.patch?.requests.replan || previous.patch.requests.finalize
-            || previous.producer.nodeId !== node.nodeId || previous.producer.attemptNumber + 1 !== producer.attemptNumber
-            || previous.patch.newGraphRevision !== producer.graphRevision || loops.length !== declared.length
-            || loops.some(binding => binding.producerAttemptId !== previous.producer.attemptId || !declared.some(edge => edge.edgeId === binding.edgeId))) invalid();
+        if (!previous?.patch?.requests.replan || previous.patch.requests.finalize) invalid();
+        const declared = rpControlReplanScope(root.graph, previous.producer.nodeId);
+        if (declared.target.nodeId !== node.nodeId || previous.patch.newGraphRevision !== producer.graphRevision || loops.length !== declared.loops.length
+            || loops.some(binding => binding.producerAttemptId !== previous.producer.attemptId || !declared.loops.some(edge => edge.edgeId === binding.edgeId))) invalid();
         replanFrom = previous.producer.attemptId;
     }
     if (input.reviewFeedbackRef) {
@@ -119,7 +128,7 @@ export async function assertRpControlInput(tx, handle, root, fact, plan = null) 
         for (const id of root.attemptRefs) {
             const attempt = (await readAttempt(tx, handle, root, id)).doc;
             if (root.graph.nodes.find(node => node.nodeId === attempt.nodeId).kind !== 'review') continue;
-            const review = await readGraphReviewCompletion(tx, handle, root, id, rpReviewReaderOptions);
+            const review = ownedFacts ? ownedFacts.attempts.get(id) : await readGraphReviewCompletion(tx, handle, root, id, rpReviewReaderOptions);
             if (review && equal(input.reviewFeedbackRef, { reviewReceiptRef: review.receipt.reviewReceiptRef, reasonCode: review.review.reasonCode })
                 && review.review.decision === 'rerun' && review.review.replacements.some(item => item.attemptId === producer.attemptId)) admission = review;
         }
@@ -141,15 +150,69 @@ export async function assertRpControlInput(tx, handle, root, fact, plan = null) 
     return { input, sources, replanFrom };
 }
 
+/** Reconstruct original model iterations from exact Transition/Model receipts.
+ * Loops create fresh work; this never invents a Review invalidation or erases
+ * an accepted GraphPatch, old Result, original charge or bank reservation. */
+async function assertRpLoopHistory(tx, handle, root, entries, narrator, fanouts) {
+    const previous = new Map(), current = new Map(), replacements = new Map(), touched = new Set(), consumed = new Set();
+    for (const entry of [...entries].sort((a, b) => a.fact.receipt.decisionSeq - b.fact.receipt.decisionSeq)) {
+        const { fact, node, inputProof } = entry, prior = previous.get(node.nodeId);
+        if (inputProof.replanFrom) {
+            const trigger = inputProof.sources.find(source => source.producer.attemptId === inputProof.replanFrom);
+            if (!trigger || current.get(trigger.producer.nodeId)?.producer.attemptId !== trigger.producer.attemptId
+                || consumed.has(trigger.producer.attemptId) || !prior) invalid();
+            const snapshot = await readTaskGraphRevision(tx, handle, root, fact.producer.graphRevision);
+            const scope = rpControlReplanScope(snapshot.graph, trigger.producer.nodeId);
+            if (scope.target.nodeId !== node.nodeId || fanouts.some(group => group.frame.decisionSeq < trigger.receipt.decisionSeq
+                && [group.fanout.nodeId, group.producer.nodeId].some(id => scope.affectedNodeIds.includes(id)))) invalid();
+            for (const id of scope.affectedNodeIds) {
+                const old = current.get(id);
+                if (old) {
+                    if (!['agent', 'planner'].includes(snapshot.graph.nodes.find(node => node.nodeId === id)?.kind)) invalid();
+                    replacements.set(id, { attemptId: old.producer.attemptId, trigger });
+                }
+                touched.add(id); current.delete(id);
+            }
+            consumed.add(trigger.producer.attemptId);
+        }
+        for (const source of inputProof.sources) if (touched.has(source.producer.nodeId)
+            && ['agent', 'planner', 'review', 'judge'].includes(root.graph.nodes.find(node => node.nodeId === source.producer.nodeId)?.kind)
+            && source.producer.attemptId !== inputProof.replanFrom
+            && current.get(source.producer.nodeId)?.producer.attemptId !== source.producer.attemptId) invalid();
+        if (prior) {
+            const invalidation = await readAttemptInvalidation(tx, handle, root, prior.producer), replacement = replacements.get(node.nodeId);
+            const loop = replacement?.attemptId === prior.producer.attemptId
+                && fact.producer.attemptNumber === prior.producer.attemptNumber + 1
+                && (inputProof.replanFrom === replacement.trigger.producer.attemptId
+                    || inputProof.sources.some(source => touched.has(source.producer.nodeId)
+                        && source.receipt.decisionSeq > replacement.trigger.receipt.decisionSeq));
+            if (node.kind === 'planner' ? !loop : ['agent', 'judge'].includes(node.kind) ? !loop && !invalidation
+                : node.kind === 'review' && prior.review.decision !== 'rerun' && !invalidation) invalid();
+            replacements.delete(node.nodeId);
+        } else if (inputProof.replanFrom) invalid();
+        if (fact.review?.decision === 'rerun') for (const [id, old] of current)
+            if (fact.review.invalidatedAttemptIds.includes(old.producer.attemptId)) current.delete(id);
+        previous.set(node.nodeId, fact); current.set(node.nodeId, fact);
+    }
+    for (const source of narrator.sources) if (touched.has(source.producer.nodeId)
+        && ['agent', 'planner', 'review', 'judge'].includes(root.graph.nodes.find(node => node.nodeId === source.producer.nodeId)?.kind)
+        && current.get(source.producer.nodeId)?.producer.attemptId !== source.producer.attemptId) invalid();
+    if (replacements.size || consumed.size !== root.progress.replans) invalid();
+}
+
 export async function readRpControlGraphHistory(tx, handle, root, narrator) {
     const plan = await readPlanRevision(tx, handle, root.planRef), admission = rpControlGraph({ ...plan, definition: root.graph }, { force: true });
     if (narrator.producer.nodeId !== admission.narrator.nodeId) invalid();
-    const graphResults = [], plannerCompletions = [], reviewCompletions = [], judgeCompletions = [], fanoutCompletions = [], seen = new Map(), loopCounts = new Map();
+    const graphResults = [], plannerCompletions = [], reviewCompletions = [], judgeCompletions = [], fanoutCompletions = [], seen = new Map(), loopCounts = new Map(), entries = [];
+    const ownedFacts = { results: new Map(), controls: new Map(), attempts: new Map() }, models = [];
+    const hasLoops = root.graph.edges.some(edge => edge.loopBack);
     if (root.graph.nodes.some(node => node.kind === 'join')) for (const id of root.attemptRefs) {
         const attempt = (await readAttempt(tx, handle, root, id)).doc;
         if (root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind !== 'join') continue;
         const fact = await readRpControlFanoutCompletion(tx, handle, root, id);
         if (!fact) invalid(); fanoutCompletions.push(fact);
+        ownedFacts.controls.set(hash(fact.controlRef), fact);
+        for (const result of fact.graphResults) ownedFacts.results.set(result.record.resultId, result);
     }
     for (const id of root.attemptRefs) {
         const producer = (await readAttempt(tx, handle, root, id)).doc;
@@ -161,15 +224,27 @@ export async function readRpControlGraphHistory(tx, handle, root, narrator) {
             ? await readGraphPlannerCompletion(tx, handle, root, id, rpPlannerReaderOptions)
             : node.kind === 'review' ? await readGraphReviewCompletion(tx, handle, root, id, rpReviewReaderOptions)
                 : node.kind === 'judge' ? await readGraphJudgeCompletion(tx, handle, root, id, rpJudgeReaderOptions)
-                    : await readGraphNodeResult(tx, handle, root, producer.resultRefs[0]?.resultId);
-        if (!fact) invalid();
+                    : ownedFacts.results.get(producer.resultRefs[0]?.resultId)
+                        ?? await readGraphNodeResult(tx, handle, root, producer.resultRefs[0]?.resultId);
+        if (!fact || !equal(fact.producer, producer)) invalid();
+        models.push({ producer, node, fact }); ownedFacts.attempts.set(producer.attemptId, fact);
+        if (fact.controlRef) ownedFacts.controls.set(hash(fact.controlRef), fact);
+        else ownedFacts.results.set(fact.record.resultId, fact);
+    }
+    // All facts here were read completely above, through their original typed
+    // readers, in this single invocation. Reuse them for dependency/Transition
+    // checks instead of replaying the same Model/Join histories per consumer.
+    // The public readers never accept this map, and the next live Source/bank
+    // boundary starts a completely new historical read.
+    for (const { producer, node, fact } of models) {
         const previous = seen.get(node.nodeId);
         const invalidation = previous ? await readAttemptInvalidation(tx, handle, root, previous.producer) : null;
-        const inputProof = await assertRpControlInput(tx, handle, root, fact, plan);
-        if (node.kind === 'planner' && inputProof.replanFrom !== (previous?.producer.attemptId ?? null)) invalid();
-        if (previous && (['agent', 'judge'].includes(node.kind) && !invalidation
+        const inputProof = await assertControlInputFacts(tx, handle, root, fact, plan, ownedFacts);
+        if (!hasLoops && node.kind === 'planner' && inputProof.replanFrom !== (previous?.producer.attemptId ?? null)) invalid();
+        if (!hasLoops && previous && (['agent', 'judge'].includes(node.kind) && !invalidation
             || node.kind === 'review' && previous.review.decision !== 'rerun' && !invalidation)) invalid();
         seen.set(node.nodeId, fact);
+        if (hasLoops) entries.push({ fact, node, inputProof });
         for (const binding of inputProof.input.controlGraph.bindings) if (root.graph.edges.find(edge => edge.edgeId === binding.edgeId)?.loopBack)
             loopCounts.set(binding.edgeId, (loopCounts.get(binding.edgeId) ?? 0) + 1);
         if (node.kind !== 'agent') {
@@ -179,7 +254,8 @@ export async function readRpControlGraphHistory(tx, handle, root, narrator) {
                 .push({ ...fact, modelEffectId: fact.receipt.modelEffectId, retrievalCompletions });
         } else graphResults.push(fact);
     }
-    await assertRpControlInput(tx, handle, root, narrator, plan);
+    const narratorProof = await assertControlInputFacts(tx, handle, root, narrator, plan, ownedFacts);
+    if (hasLoops) await assertRpLoopHistory(tx, handle, root, entries, narratorProof, fanoutCompletions);
     // Review creates all replacement attempts before scheduling them. Their
     // creation order is not their Result publication order. Each receipt's
     // sequence is already bound to its original attempt settlement above.

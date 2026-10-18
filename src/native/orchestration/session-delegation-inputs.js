@@ -68,7 +68,10 @@ export async function readSessionDelegationInputs(tx, handle, root, parent, cont
         } else if (producer.kind === 'review') {
             fact = await readSessionReviewCompletion(tx, handle, root, attempt.attemptId);
             if (!fact || fact.review.decision !== 'approve') invalid();
-            controls.push({ reviewReceiptRef: fact.receipt.reviewReceiptRef, sourceRefs: [{ kind: 'graph_review', ...fact.receipt.reviewReceiptRef }],
+            if (fact.controlRef) controlRefs.push(fact.controlRef);
+            const reference = fact.controlRef ? { controlRef: fact.controlRef, sourceRefs: [fact.controlRef] }
+                : { reviewReceiptRef: fact.receipt.reviewReceiptRef, sourceRefs: [{ kind: 'graph_review', ...fact.receipt.reviewReceiptRef }] };
+            controls.push({ ...reference,
                 content: readable(producer) ? 'Quality advice only; this does not approve permissions or official effects: ' + JSON.stringify({ decision: fact.review.decision, reasonCode: fact.review.reasonCode })
                     : 'Quality advice is reference-only for this Actor. Do not infer its hidden contents.' });
         } else {

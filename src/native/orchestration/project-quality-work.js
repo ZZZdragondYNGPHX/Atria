@@ -50,7 +50,11 @@ export class ProjectQualityWork {
             await this.current({ capture: stage.projectCapture }); await sourcePort.revalidate(handle, root.sourceBinding, { tx, root });
             const recipient = (await readAttempt(tx, handle, root, stage.attemptId)).doc;
             const items = [];
-            for (const ref of request.inputRefs[0].acceptedGraphResultRefs) {
+            // The graph consumer checks evidence and control selections in one
+            // original reader call. Do not read each typed result once here
+            // and then repeat that same full history inside its control read.
+            if (this.readControls) items.push(...await this.readControls(tx, root, recipient, request.inputRefs[0].acceptedControlRefs ?? []));
+            else for (const ref of request.inputRefs[0].acceptedGraphResultRefs) {
                 const fact = await readGraphNodeResult(tx, handle, root, ref.resultId, { recipient });
                 if (!fact || !equal(fact.receipt.resultRef, ref)) fail('native_orchestration_project_quality_stale');
                 items.push({ kind: 'context.history', id: 'project-advisory:' + ref.resultId,
@@ -58,7 +62,6 @@ export class ProjectQualityWork {
                         + '\nAdvisory Project task result (untrusted proposal, not a domain change or permission):\n' + fact.record.payload },
                     provenance: [{ source: 'native.project-graph-result', ref: hash(fact.receipt) }] });
             }
-            if (this.readControls && request.inputRefs[0].acceptedControlRefs?.length) items.push(...await this.readControls(tx, root, recipient, request.inputRefs[0].acceptedControlRefs));
             if (delegated) {
                 items.push({ kind: 'context.history', id: 'project-child:' + delegated.resultRef.resultId,
                     content: delegated.item.content, provenance: delegated.item.provenance });

@@ -1,7 +1,6 @@
 import { ConflictError } from '../../storage/errors.js';
 import { hashNativeDocument as hash, putImmutable, putMutable } from '../repositories/common.js';
 import { immutable, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
-import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { readPlanRevision } from './plan-repository.js';
 import { readAttempt, runGuard, controlCommandId, controlRecordKey } from './controller-common.js';
 import { sessionGraphAudience } from './session-agent-graph-profile.js';
@@ -26,46 +25,14 @@ import { assertNativeTurnPermit } from './native-turn-permit.js';
 import { childBudgetReceiptId, assertChildRunCurrent } from './run-repository.js';
 import { readSessionDelegation, readSessionDelegationContinuation } from './session-delegation-contracts.js';
 import { readSessionDelegationInputs } from './session-delegation-inputs.js';
+import { sessionDelegatedGraphProfile } from './session-delegated-graph-profile.js';
+import { readSessionPlannerCompletion, sessionPlannerOutputContract } from './session-planner-contracts.js';
+import { completeSessionDelegatedPlanner } from './session-delegated-planner-work.js';
+import { readTaskGraphRevision } from './graph-revision-contracts.js';
 
 const fail = (code = 'native_orchestration_delegation_denied') => { throw new ConflictError(code); };
 const equal = (a, b) => hash(a) === hash(b);
 const configHash = resolved => hash({ route: resolved.route, model: resolved.model, connection: resolved.connection, generation: resolved.generation, resources: resolved.resources });
-
-/** Admission for the original child result consumer. Published pure Agent DAGs
- * are supported; nested controls and official output remain outside this path. */
-function childGraph(plan) {
-    const graph = plan.definition, agents = graph.nodes.filter(node => node.kind === 'agent'), outputs = graph.nodes.filter(node => node.kind === 'output');
-    if (!agents.length || outputs.length !== 1 || graph.nodes.length !== agents.length + 1 || graph.outputContract.kind !== 'result'
-        || graph.outputContract.allowPartial || graph.outputContract.resultPolicy?.outputType !== 'text'
-        || !equal(graph.capabilityCeiling, ['generation.send']) || graph.graphChangePolicy.allowedOperations.length
-        || graph.graphChangePolicy.allowedNodeKinds.length || graph.nodes.some(node => node.policy.allowedPlanPinIds?.length)) fail();
-    const output = outputs[0], incoming = {}, ordered = [];
-    if (output.nodeId !== graph.outputContract.ownerNodeId || output.capabilities.length || output.dependencyPinIds.length
-        || output.inputs.length !== 1 || output.inputs[0].type !== 'text' || !output.inputs[0].required || output.outputs.length) fail();
-    for (const node of agents) {
-        const models = nodeModelRoutePins(node, plan.dependencyPins);
-        if (models.length !== 1 || node.dependencyPinIds.length !== 2 || !equal(node.capabilities, ['generation.send'])
-            || node.outputs.length !== 1 || node.outputs[0].type !== 'text' || node.inputs.some(port => port.type !== 'text' || !port.required)) fail();
-        incoming[node.nodeId] = graph.edges.filter(edge => edge.to.nodeId === node.nodeId).toSorted((a, b) => a.edgeId.localeCompare(b.edgeId));
-        if (incoming[node.nodeId].length !== node.inputs.length || new Set(incoming[node.nodeId].map(edge => edge.from.nodeId)).size !== incoming[node.nodeId].length
-            || node.inputs.some(port => incoming[node.nodeId].filter(edge => edge.to.port === port.name).length !== 1)) fail();
-    }
-    for (const edge of graph.edges) {
-        const from = agents.find(node => node.nodeId === edge.from.nodeId), to = graph.nodes.find(node => node.nodeId === edge.to.nodeId);
-        if (!from || !to || !['always', 'success'].includes(edge.condition) || edge.loopBack || edge.maxVisits !== 1
-            || edge.from.port !== from.outputs[0].name || !to.inputs.some(port => port.name === edge.to.port)) fail();
-    }
-    if (!equal([...graph.entryNodeIds].sort(), agents.filter(node => !incoming[node.nodeId].length).map(node => node.nodeId).sort())) fail();
-    while (ordered.length < agents.length) {
-        const next = agents.find(node => !ordered.includes(node) && incoming[node.nodeId].every(edge => ordered.some(from => from.nodeId === edge.from.nodeId)));
-        if (!next) fail(); ordered.push(next);
-    }
-    const terminal = graph.edges.filter(edge => edge.to.nodeId === output.nodeId);
-    if (terminal.length !== 1 || terminal[0].from.nodeId !== ordered.at(-1).nodeId
-        || agents.some(node => !graph.edges.some(edge => edge.from.nodeId === node.nodeId))
-        || plan.dependencyPins.some(pin => !agents.some(node => node.dependencyPinIds.includes(pin.pinId)))) fail();
-    return { ordered, incoming, output, final: ordered.at(-1) };
-}
 
 /** No new ledger, Scheduler or bank: captures bind original child callbacks to
  * the original Run/Plan/Source and Controller facts. */
@@ -91,7 +58,7 @@ export class SessionDelegationAuthority {
         if (pin?.port !== 'plan') fail();
         const childPlan = await this.owner.engine.withTransaction(handle, tx => readPlanRevision(tx, handle, pin.resourceRef));
         if (hash(childPlan) !== pin.integrity) fail();
-        const topology = childGraph(childPlan), parentSource = sessionGraphAudience(base, parentNode, plan.dependencyPins), profiles = [];
+        const topology = sessionDelegatedGraphProfile(childPlan), parentSource = sessionGraphAudience(base, parentNode, plan.dependencyPins), profiles = [];
         if (parentSource.audience.kind !== 'actor') fail();
         for (const node of topology.ordered) {
             const model = await this.resolveModel(host, handle, base, input, childPlan, node, null);
@@ -174,10 +141,18 @@ export class SessionDelegationAuthority {
                 { base: state.parent.selectionState.base, node: state.model.node, pins: state.child.plan.dependencyPins });
             const results = [...upstream.results];
             for (const binding of state.bindings ?? []) {
+                if (binding.controlRef) {
+                    const saved = await readSessionPlannerCompletion(tx, identity.handle, root, binding.attemptId);
+                    if (!saved || !equal(saved.controlRef, binding.controlRef)) fail();
+                    results.push({ controlRef: binding.controlRef, sourceRefs: [binding.controlRef], content: 'Advisory graph control only; this never grants Source, tools or official writes: ' + JSON.stringify(saved.patch.appliedOperations) });
+                    continue;
+                }
                 const saved = await readGraphNodeResult(tx, identity.handle, root, binding.resultRef.resultId);
                 if (!saved || saved.producer.attemptId !== binding.attemptId) fail();
                 results.push({ resultRef: binding.resultRef, sourceRefs: saved.record.envelope.sourceRefs, content: saved.record.payload });
             }
+            const taskGraph = state.model.node.kind === 'planner' ? await readTaskGraphRevision(tx, identity.handle, root,
+                state.activeNode ? (await readAttempt(tx, identity.handle, root, state.activeNode.nodeAttemptId)).doc.graphRevision : root.graphRevision) : null;
             this.inspectDelegationIdentity(capture, expected);
             return { ...identity, root, parentRoot, parentAttempt, parentGrantDigest: parentAttempt.effectiveGrantDigest,
                 parentTaskPurpose: 'original_native_session_delegation', mode: lineage.mode,
@@ -186,8 +161,9 @@ export class SessionDelegationAuthority {
                 budgetReadyReceiptRef: { runId: root.runId, receiptId: childBudgetReceiptId(root.runId) },
                 ...(output ? { closure } : { context: { snapshot: state.parent.selectionState.base, sourceAudience: state.model.audienceSource.audience,
                     task: { nodeId: state.model.node.nodeId, label: state.model.node.label,
+                        ...(taskGraph ? { graphView: taskGraph } : {}),
                         ...(upstream.controls.length ? { inputs: upstream.controls } : {}),
-                        purpose: 'Provide advisory analysis only. Never write official world facts or speak for the player.' }, results } }) };
+                        purpose: state.model.node.kind === 'planner' ? 'Return only structured operations for this published task graph and its original limits. Graph changes never grant Source, tools or official writes.' : 'Provide advisory analysis only. Never write official world facts or speak for the player.' }, results } }) };
         });
     }
     inspectDelegation(capture, expected = {}) { return this.#inspect(capture, expected, false); }
@@ -447,29 +423,52 @@ export class SessionDelegationAuthority {
     async #runChild(parent, expected, boundary) {
         const service = this.execution(), { host, handle, child } = parent, root = await service.runs.get(handle, parent.childRunId);
         const capture = Object.freeze({}), quotaProof = captureNativeTurnChildQuota(parent.quotaProof, boundary, expected);
-        const state = { host, handle, parent, child, capture, boundary, quotaProof, bindings: [], identity: immutable({ handle,
+        const state = { host, handle, parent, child, capture, boundary, quotaProof, bindings: [], plannerOperations: new Map(), root, identity: immutable({ handle,
             parentRunId: parent.runId, parentAttemptId: parent.attemptId, parentEpoch: root.parentRef.parentEpoch, childRunId: root.runId,
             childEpoch: root.epoch, sourceBinding: root.sourceBinding, grantDigest: root.parentRef.effectiveGrantDigest,
             parentGrantDigest: parent.decision.grantDigest, inputRefs: root.parentRef.inputRefs, taskPurpose: 'original_native_session_delegated_analysis', childPlanRef: root.planRef }) };
         this.#delegations.set(capture, state); this.#children.set(root.runId, state);
         const progress = new Map(), port = this.port(host);
         try {
-            for (const model of child.profiles) {
+            for (;;) {
+                const active = await service.runs.get(handle, root.runId);
+                await this.owner.engine.withTransaction(handle, tx => readTaskGraphRevision(tx, handle, active));
+                state.root = active;
+                let loopBindings = [], model;
+                const replan = [...progress].find(([, entry]) => entry.requests?.replan);
+                if (replan) {
+                    const [nodeId, previous] = replan;
+                    const loops = active.graph.edges.filter(edge => edge.loopBack && edge.from.nodeId === nodeId);
+                    if (previous.requests.finalize || !loops.length || loops.some(edge => edge.to.nodeId !== nodeId)) fail('native_orchestration_planner_replan_pending');
+                    const capacity = await this.owner.engine.withTransaction(handle, tx => service.budgetPort.observeCapacity(handle,
+                        { authorityRef: active.budgetAuthorityRef, reservationId: root.runId }, { tx }));
+                    const required = child.topology.ordered.filter(node => node.nodeId === nodeId || !progress.has(node.nodeId)).length;
+                    if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');
+                    if (active.progress.attempts + required + 1 > active.limits.maxAttempts) fail('native_orchestration_limit_exhausted');
+                    loopBindings = loops.map(edge => ({ edge, ...previous })); progress.delete(nodeId);
+                    model = child.profiles.find(item => item.node.nodeId === nodeId);
+                } else model = child.profiles.find(item => !progress.has(item.node.nodeId)
+                    && child.topology.incoming[item.node.nodeId].every(edge => progress.has(edge.from.nodeId)));
+                if (!model) fail('native_orchestration_graph_dependency_unavailable');
                 state.model = model; state.request = immutable({ sessionId: parent.proofExpected.sessionId, revisionId: parent.proofExpected.anchor.revisionId,
-                    requestId: parent.request.requestId, role: 'narrator', routeRef: model.pin.resourceRef, messages: [] });
-                const bindings = child.topology.incoming[model.node.nodeId].map(edge => ({ edge, ...progress.get(edge.from.nodeId) })); state.bindings = bindings;
-                const results = [...new Map(bindings.map(item => [hash(item.resultRef), item.resultRef])).values()];
+                    requestId: parent.request.requestId, role: 'narrator', routeRef: model.pin.resourceRef, messages: [],
+                    ...(model.node.kind === 'planner' ? { outputContract: sessionPlannerOutputContract } : {}) });
+                const bindings = [...child.topology.incoming[model.node.nodeId].map(edge => ({ edge, ...progress.get(edge.from.nodeId) })), ...loopBindings]
+                    .toSorted((a, b) => a.edge.edgeId.localeCompare(b.edge.edgeId)); state.bindings = bindings;
+                const results = [...new Map(bindings.filter(item => item.resultRef).map(item => [hash(item.resultRef), item.resultRef])).values()];
+                const controls = [...new Map(bindings.filter(item => item.controlRef).map(item => [hash(item.controlRef), item.controlRef])).values()];
                 const audience = model.audienceSource.audience;
                 const logical = { kind: 'native_session_delegated_intent', role: 'narrator', requestId: state.request.requestId,
                     invocationId: parent.proofExpected.invocationId, requestHash: parent.proofExpected.requestHash, sourceRef: root.sourceBinding.sourceRef,
                     planRef: root.planRef, nodeId: model.node.nodeId, parentRunId: parent.runId, parentAttemptId: parent.attemptId,
                     parentEpoch: root.parentRef.parentEpoch, childRunId: root.runId, childEpoch: root.epoch, delegationInputDigest: root.parentRef.inputDigest,
                     routeRef: model.pin.resourceRef, configDigest: model.configDigest, audience, acceptedGraphResultRefs: results,
+                    ...(controls.length ? { acceptedControlRefs: controls } : {}),
                     graphBindings: bindings.map(item => ({ edgeId: item.edge.edgeId, producerAttemptId: item.attemptId })),
                     delegationScope: { parentPinId: child.parentSource.pin.pinId, childPinId: model.audienceSource.pin.pinId,
                         sourceRef: model.audienceSource.actualRef ?? model.audienceSource.pin.resourceRef, integrity: hash(model.audienceSource.descriptor) },
                     ...(model.audienceSource.pin.resourceRef.anchor === 'run_source' ? { audienceCapture: audienceRunCapture(model.audienceSource.pin, model.audienceSource) } : {}) };
-                const inputRefs = [logical, ...root.parentRef.inputRefs, ...results]; state.contextInputRefs = immutable(inputRefs);
+                const inputRefs = [logical, ...root.parentRef.inputRefs, ...results, ...controls]; state.contextInputRefs = immutable(inputRefs);
                 const admission = { inputRefs, inputDigest: hash(inputRefs), effectiveGrantDigest: state.identity.grantDigest, budgetRef: root.budgetAuthorityRef };
                 let attemptId;
                 if (!bindings.length) ({ attemptId } = await service.runs.beginAttempt(handle, controlCommandId('native.session.child.attempt', { runId: root.runId, nodeId: model.node.nodeId }),
@@ -515,6 +514,11 @@ export class SessionDelegationAuthority {
                         await state.contextPort.revalidate(handle, { context: state.context, phase: 'consume' });
                     } });
                 const result = await port.generate(handle, scope, { signal: boundary.signal }), controller = new ResultController({ host, modelPort: port });
+                if (model.node.kind === 'planner') {
+                    progress.set(model.node.nodeId, await completeSessionDelegatedPlanner({ state, service, port, result, send, limits,
+                        current: () => this.inspectDelegation(capture, { host, handle }), progress, engine: this.owner.engine }));
+                    continue;
+                }
                 if (model.node === child.topology.final) {
                     const publication = await controller.publishModelResult(handle, { capture, result, effectId });
                     const output = await new TaskLocalOutputController({ host }).complete(handle, { capture, publication });
@@ -526,7 +530,6 @@ export class SessionDelegationAuthority {
                     progress.set(model.node.nodeId, { attemptId, resultRef: published.resultRef });
                 } finally { this.#graphs.delete(graphCapture); }
             }
-            fail();
         } catch (error) {
             await this.#proveNotDispatched(state);
             await this.#failRun(parent, root.runId, state.activeNode?.nodeAttemptId ?? null, error);

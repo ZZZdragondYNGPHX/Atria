@@ -82,22 +82,22 @@ export function graphNodeResult({ root, producer, proof, text, now, graphSnapsho
 /** Historical read; the live recipient separately checks Source/grant/epoch and
  * invalidation. A durable Result or its audience list never grants a new read. */
 export async function readGraphNodeResult(tx, handle, root, resultId, { recipient = null } = {}) {
-    return readGraphResultFacts(tx, handle, root, resultId, recipient, new Map());
+    return readGraphResultFacts(tx, handle, root, resultId, recipient, new Map(), new Map());
 }
 
 /** One historical batch may replay each graph revision once. The private map
  * contains only graphs read here from the original Plan and patch receipts;
  * callers cannot supply a graph or retain a reader across boundaries. Every
  * Result, Model, retrieval and settlement fact is still read and checked. */
-export async function readGraphNodeResults(tx, handle, root, resultIds) {
-    const snapshots = new Map(), results = new Map();
+export async function readGraphNodeResults(tx, handle, root, resultIds, { recipient = null } = {}) {
+    const snapshots = new Map(), results = new Map(), joins = new Map();
     for (const id of resultIds) {
-        if (!results.has(id)) results.set(id, await readGraphResultFacts(tx, handle, root, id, null, snapshots));
+        if (!results.has(id)) results.set(id, await readGraphResultFacts(tx, handle, root, id, recipient, snapshots, joins));
     }
     return results;
 }
 
-async function readGraphResultFacts(tx, handle, root, resultId, recipient, snapshots) {
+async function readGraphResultFacts(tx, handle, root, resultId, recipient, snapshots, joins) {
     assertNativeId(resultId, 'orchestrationResult');
     const stored = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'result', resultId));
     const publication = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', graphResultPublicationId(root.runId, resultId)));
@@ -152,12 +152,13 @@ async function readGraphResultFacts(tx, handle, root, resultId, recipient, snaps
         || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId, ...retrievalCompletions.map(item => item.receiptId)]) || settlement.decisionSeq !== receipt.decisionSeq
         || settlement.createdAt !== receipt.createdAt || record.envelope.createdAt !== receipt.createdAt
         || settlement.reasonCode !== 'graph_result_published' || receipt.decisionSeq > root.eventSeq) invalid();
+    let delegationLineage = null;
     if (root.sourceBinding.sourceAuthority === 'native_session' && root.parentRef) {
         await readSessionDelegatedModelInput(tx, handle, root, producer, intent, receipt.decisionSeq);
     } else if (producer.inputRefs[0]?.kind === 'native_session_delegation') {
         await readSessionDelegationContinuation(tx, handle, root, producer, intent);
     } else if (root.sourceBinding.sourceAuthority === 'project' && root.parentRef) {
-        await readProjectDelegatedModelInput(tx, handle, root, producer, intent, receipt.decisionSeq);
+        delegationLineage = (await readProjectDelegatedModelInput(tx, handle, root, producer, intent, receipt.decisionSeq)).lineage;
     } else if (producer.inputRefs[0]?.kind === 'native_project_delegation') {
         await readProjectDelegationContinuation(tx, handle, root, producer, intent);
     }
@@ -203,7 +204,12 @@ async function readGraphResultFacts(tx, handle, root, resultId, recipient, snaps
                 }
                 for (const ref of input.acceptedControlRefs ?? input.controlGraph?.controlRefs ?? []) {
                     if (ref.kind !== 'graph_join_control' || ref.runId !== root.runId) continue;
-                    const joined = await readRpControlFanoutCompletion(tx, handle, root, ref.attemptId, { recipient });
+                    // One explicit Result set can contain several members of
+                    // the same Join. Its complete original proof is shared
+                    // only inside this call, for this exact recipient.
+                    if (!joins.has(ref.attemptId)) joins.set(ref.attemptId,
+                        await readRpControlFanoutCompletion(tx, handle, root, ref.attemptId, { recipient }));
+                    const joined = joins.get(ref.attemptId);
                     if (joined && equal(joined.controlRef, ref) && ['completed', 'partial'].includes(joined.joinReceipt.outcome)
                         && joined.joinReceipt.acceptedResultRefs.some(actual => equal(actual, receipt.resultRef))
                         && joined.joinReceipt.acceptedResultRefs.every(actual => input.acceptedGraphResultRefs?.some(selected => equal(selected, actual)))) accepted = true;
@@ -223,5 +229,6 @@ async function readGraphResultFacts(tx, handle, root, resultId, recipient, snaps
     // These are this call's fully checked historical facts, not send, Source
     // or bank grants. A containing Join proof can reuse them before checking
     // the actual original bank, without reading the same Model receipt twice.
-    return { record, receipt, producer, settlement, retrievalCompletions, modelEffect: intent, modelCompletion: model };
+    return { record, receipt, producer, settlement, retrievalCompletions, modelEffect: intent, modelCompletion: model,
+        ...(delegationLineage ? { delegationLineage } : {}) };
 }

@@ -5,10 +5,12 @@ import { readModelCompletionReceipt, readModelTerminalFact } from './model-port.
 import { checkedRecord } from './plan-repository.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertAudienceRunCapture, audienceContextPin } from './audience-source-contracts.js';
-import { readRpControlInputs } from './rp-control-input-contracts.js';
+import { readRpControlInputs, assertRpControlInput, rpPlannerReaderOptions } from './rp-control-input-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 import { assertBudgetAttemptRef, sendAttemptId } from './budget-port.js';
+import { readGraphPlannerCompletion } from './graph-planner-completion.js';
+import { assertRpFanoutPlannerOperations } from './rp-fanout-planner-contracts.js';
 
 const same = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original RP control Fanout Join facts'); };
@@ -22,7 +24,7 @@ async function memberInput(tx, handle, root, attempt, { frame, branch, reservati
     if (graphSnapshot?.graphRevision !== attempt.graphRevision || !plan) invalid();
     const input = attempt.inputRefs[0], node = graphSnapshot.graph.nodes.find(node => node.nodeId === attempt.nodeId);
     const pin = plan.dependencyPins.find(pin => pin.pinId === node?.policy.agentPinId && node.dependencyPinIds.includes(pin.pinId));
-    if (root.sourceBinding.sourceAuthority !== 'rp_chat' || root.parentRef || node?.kind !== 'agent'
+    if (root.sourceBinding.sourceAuthority !== 'rp_chat' || root.parentRef || !['agent', 'planner'].includes(node?.kind)
         || !node.capabilities.includes('generation.send') || input.kind !== 'native_rp_intent' || input.nodeId !== attempt.nodeId || input.role !== 'narrator'
         || !same(input.planRef, root.planRef) || !same(input.sourceRef, root.sourceBinding.sourceRef)
         || !same(input.audience, audienceContextPin(node, plan.dependencyPins)?.resourceRef.audience ?? { kind: 'narrator' })
@@ -63,7 +65,7 @@ async function controlInput(tx, handle, root, attempt, { settlement }) {
 
 /** Same original RP bank, including settled rejected or late paid sends.
  * No usage is invented and unselected work is never omitted from the facts. */
-async function memberCost(tx, handle, root, attempt, { settlement, results }) {
+async function memberCost(tx, handle, root, attempt, { settlement, results, frame }) {
     const bank = root.budgetAuthorityRef;
     const control = (await checkedRecord(tx, { kind: K.rpRunControl, handle, controlId: bank.controlId }))?.doc;
     const compute = control?.operations[bank.operationId]?.compute;
@@ -79,13 +81,21 @@ async function memberCost(tx, handle, root, attempt, { settlement, results }) {
     if (!effect || !Array.isArray(retrieval) || !same(attempt.effectRefs, [effect.effectId, ...retrieval.map(item => item.effectId)])) invalid();
     const completed = published ? published.modelCompletion : await readModelCompletionReceipt(handle, tx, root, effect);
     if (published && (!completed || published.receipt.modelEffectId !== effect.effectId || !same(published.receipt.modelReceiptRef, completed.receiptRef))) invalid();
+    const planner = root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'planner' && settlement.outcome === 'completed'
+        ? await readGraphPlannerCompletion(tx, handle, root, attempt.attemptId, rpPlannerReaderOptions) : null;
+    if (planner) {
+        if (results.length || !same(planner.producer, attempt) || !same(planner.settlement, settlement)
+            || !completed || !same(planner.receipt.modelReceiptRef, completed.receiptRef)) invalid();
+        assertRpFanoutPlannerOperations(frame, attempt, planner.patch.appliedOperations);
+        await assertRpControlInput(tx, handle, root, planner);
+    }
     const terminal = completed ? null : await readModelTerminalFact(handle, tx, root, effect);
     const fact = completed ?? terminal;
     if (!fact || effect.nodeAttemptId !== attempt.attemptId || effect.capability !== 'generation.send' || effect.risk !== 'R1' || effect.requiresApproval
         || effect.sourceBindingDigest !== root.sourceBinding.bindingDigest || effect.epoch !== attempt.epoch || effect.grantDigest !== attempt.effectiveGrantDigest
         || !same(effect.inputRef, attempt.inputRefs[0]) || effect.inputHash !== hash(attempt.inputRefs[0])
         || !same(settlement.effectReceiptRefs, [fact.receiptRef.receiptId, ...retrieval.map(item => item.receiptId)])
-        || (results.length ? !completed || settlement.outcome !== 'completed' : terminal?.kind !== (settlement.outcome === 'failed' ? 'rejected' : 'late_response'))) invalid();
+        || (planner ? false : results.length ? !completed || settlement.outcome !== 'completed' : terminal?.kind !== (settlement.outcome === 'failed' ? 'rejected' : 'late_response'))) invalid();
     const sends = fact.observation.dispatchEvidence.reference.attempts;
     if (!sends?.length) invalid();
     for (const [ordinal, send] of sends.entries()) {

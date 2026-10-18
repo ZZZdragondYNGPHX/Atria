@@ -120,6 +120,45 @@ describe.each(CONTRACT_HARNESSES)('$name G2 Host whole-patch control', ({ make }
         } finally { await cold.close(); }
     });
 
+    test('repeated replay reads fresh facts in the same transaction and isolates returned snapshots', async () => {
+        const branch = addBranch(), input = await proposal(branch.operations);
+        await graph.propose(h.handle, input);
+        const root = await current();
+        await h.engine.withTransaction(h.handle, async tx => {
+            const read = supplied => readTaskGraphRevisions(tx, h.handle, supplied ?? root, [0, 1]);
+            const first = await read();
+            first.get(1).graph.nodes[0].label = 'Caller mutation';
+            expect((await read()).get(1).graph).toEqual(root.graph);
+            for (const field of ['graph', 'nodeControl', 'progress']) {
+                const changed = structuredClone(root);
+                if (field === 'graph') changed.graph.nodes[0].label = 'Fabricated topology';
+                if (field === 'nodeControl') changed.nodeControl[joinId].priority = 7;
+                if (field === 'progress') changed.progress.patches++;
+                await expect(read(changed)).rejects.toMatchObject({ code: 'native_orchestration_graph_history_unavailable' });
+            }
+            const patchKey = controlRecordKey(h.handle, rootId, 'patch', input.patch.patchId);
+            const commandKey = { kind: K.orchestrationCommand, handle: h.handle, commandId: controlCommandId('graph.patch', input.patch.patchId) };
+            const producerKey = controlRecordKey(h.handle, rootId, 'attempt', producerId);
+            for (const [key, raw, mutate] of [
+                [patchKey, true, doc => { doc.appliedOperations[0].node.label = 'Raw corruption'; }],
+                [patchKey, false, doc => { doc.appliedOperations[0].node.label = 'Rehashed patch'; }],
+                [commandKey, false, doc => { doc.payloadHash = '0'.repeat(64); }],
+                [producerKey, false, doc => { doc.inputDigest = '0'.repeat(64); }],
+            ]) {
+                const saved = await tx.getResource(key), doc = structuredClone(saved.doc); mutate(doc);
+                await tx.putResource(key, { ...saved, doc, integrity: raw ? saved.integrity : hashNativeDocument(doc) });
+                await expect(read()).rejects.toThrow();
+                await tx.putResource(key, saved);
+                expect((await read()).get(1).graph).toEqual(root.graph);
+            }
+            const saved = await tx.getResource(commandKey);
+            await tx.deleteResource(commandKey);
+            await expect(read()).rejects.toMatchObject({ code: 'native_orchestration_graph_history_unavailable' });
+            await tx.putResource(commandKey, saved);
+            expect((await read()).get(1).graph).toEqual(root.graph);
+        });
+    });
+
     test.each(['root-topology', 'root-control', 'patch', 'command'])('honestly rehashed %s tampering refuses the next proposal instead of extending a fabricated graph', async target => {
         const branch = addBranch(), input = await proposal(branch.operations); await graph.propose(h.handle, input);
         const patchKey = controlRecordKey(h.handle, rootId, 'patch', input.patch.patchId);

@@ -140,7 +140,9 @@ export async function readSessionOutput(tx, handle, root) {
             || !equal(attempt.budgetRef, root.budgetAuthorityRef) && !(fanoutMember && attempt.inputState === 'reserved' && attempt.budgetRef === null)) invalid();
         if (nodes.has(attempt.nodeId) && (attempt.nodeId === output.nodeId || attempt.nodeId === published.producer.nodeId
             || !published.graphResults.some(result => result.producer.nodeId === attempt.nodeId)
-                && !published.reviewCompletions.some(result => result.producer.nodeId === attempt.nodeId))) invalid();
+                && !published.reviewCompletions.some(result => result.producer.nodeId === attempt.nodeId)
+                && !published.judgeCompletions.some(result => result.producer.nodeId === attempt.nodeId)
+                && !(published.loopHistory && published.plannerCompletions.some(result => result.producer.nodeId === attempt.nodeId)))) invalid();
         nodes.add(attempt.nodeId);
         const settled = await readAttemptSettlement(tx, handle, root, attempt);
         if (attempt.nodeId !== output.nodeId && attempt.nodeId !== published.producer.nodeId) {
@@ -156,15 +158,19 @@ export async function readSessionOutput(tx, handle, root) {
                 if (!equal(fanoutMember.attempt, attempt) || (fanoutMember.receipt ? !equal(fanoutMember.receipt, settled)
                     : settled.decisionSeq <= fanoutGroup.joinReceipt.cutoffSeq)) invalid();
             } else if (judged) {
+                const newer = published.judgeCompletions.some(result => result.producer.nodeId === attempt.nodeId && result.producer.attemptNumber > attempt.attemptNumber);
+                if (newer && !published.loopHistory?.replannedAttemptIds.has(attempt.attemptId) && !await readAttemptInvalidation(tx, handle, root, attempt)) invalid();
                 if (settled.reasonCode !== 'graph_judge_selected' || resolverInput.invocationId !== expected.invocationId
                     || resolverInput.requestHash !== expected.requestHash || !equal(judged.producer, attempt)) invalid();
             } else if (planned) {
                 if (settled.reasonCode !== 'graph_planner_patch_accepted') invalid();
             } else if (reviewed) {
-                if (settled.reasonCode !== 'session_graph_review_decided') invalid();
+                const newer = published.reviewCompletions.some(result => result.producer.nodeId === attempt.nodeId && result.producer.attemptNumber > attempt.attemptNumber);
+                if (newer && reviewed.review.decision !== 'rerun' && !await readAttemptInvalidation(tx, handle, root, attempt)) invalid();
+                if (settled.reasonCode !== (reviewed.controlRef ? 'graph_review_decided' : 'session_graph_review_decided')) invalid();
             } else if (graphResult) {
                 const newer = published.graphResults.some(result => result.producer.nodeId === attempt.nodeId && result.producer.attemptNumber > attempt.attemptNumber);
-                if (newer && !await readAttemptInvalidation(tx, handle, root, attempt)) invalid();
+                if (newer && !published.loopHistory?.replannedAttemptIds.has(attempt.attemptId) && !await readAttemptInvalidation(tx, handle, root, attempt)) invalid();
                 const modelEffect = (await readEffect(tx, handle, root, graphResult.receipt.modelEffectId)).doc;
                 const modelInput = resolverInput.kind === 'native_session_delegation' ? modelEffect.inputRef : resolverInput;
                 if (resolverInput.kind === 'native_session_delegation') await readSessionDelegationContinuation(tx, handle, root, attempt, modelEffect);
@@ -246,7 +252,7 @@ export async function readSessionOutput(tx, handle, root) {
         || admission.runId !== root.runId || admission.epoch !== receipt.epoch || admission.graphRevision !== receipt.graphRevision
         || admission.producerAttemptId !== published.producer.attemptId || admission.nodeAttemptId !== output.attemptId || admission.edgeId !== edge.edgeId
         || admission.sourceBindingDigest !== root.sourceBinding.bindingDigest || admission.decisionSeq !== traversal.decisionSeq
-        || admission.createdAt !== traversal.createdAt || admission.edgeVisit !== 1 || admission.loopIteration !== 0
-        || root.progress.edgeVisitCounts[edge.edgeId] !== 1 || traversal.edgeVisits[edge.edgeId] !== 1 || traversal.loopIterations !== 0) invalid();
+        || admission.createdAt !== traversal.createdAt || admission.edgeVisit !== 1 || admission.loopIteration !== root.progress.loopIterations
+        || root.progress.edgeVisitCounts[edge.edgeId] !== 1 || traversal.edgeVisits[edge.edgeId] !== 1 || traversal.loopIterations !== root.progress.loopIterations) invalid();
     return { claim, receipt, closure, published, output, domainReceipt: original.receipt };
 }

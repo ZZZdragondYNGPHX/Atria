@@ -105,7 +105,16 @@ async function cancelFact(tx, handle, root, frame, joinId, item, failedAttemptId
         && same(command.outcome?.attemptReceipt, item.completed);
 }
 
-async function reservationFact(tx, handle, root, frame, attempt) {
+/** Scope identities/topology remain the original freeze, even when an
+ * admitted Planner changes scheduling attributes at a later graph revision. */
+function assertFrozenScopeGraph(frame, frozen, actual) {
+    const ids = new Set(frame.branches.flatMap(branch => branch.scopeNodeIds));
+    const shape = graph => ({ nodes: graph.nodes.filter(node => ids.has(node.nodeId)),
+        edges: graph.edges.filter(edge => ids.has(edge.from.nodeId) || ids.has(edge.to.nodeId)) });
+    if (!same(shape(frozen), shape(actual))) invalid();
+}
+
+async function reservationFact(tx, handle, root, frame, attempt, snapshot) {
     if (!attempt.reservationRef) return null;
     if (attempt.reservationRef.producerAttemptId !== frame.fanoutAttemptId) invalid();
     const detail = { producerAttemptId: frame.fanoutAttemptId, nodeId: attempt.nodeId };
@@ -118,7 +127,9 @@ async function reservationFact(tx, handle, root, frame, attempt) {
     if (receipt.schemaVersion !== 1 || receipt.receiptKind !== 'attempt_reservation' || receipt.receiptId !== receiptId
         || receipt.nodeAttemptId !== attempt.attemptId || attempt.attemptId !== 'oattempt_' + identity.slice(0, 32)
         || receipt.runId !== root.runId || receipt.producerAttemptId !== frame.fanoutAttemptId || receipt.epoch !== frame.epoch
-        || receipt.graphRevision !== attempt.graphRevision || receipt.decisionSeq >= frame.decisionSeq || receipt.createdAt > frame.createdAt) invalid();
+        || receipt.graphRevision !== frame.graphRevision || receipt.graphRevision > attempt.graphRevision
+        || attempt.inputState === 'reserved' && receipt.graphRevision !== attempt.graphRevision
+        || snapshot.graphRevision !== attempt.graphRevision || receipt.decisionSeq >= frame.decisionSeq || receipt.createdAt > frame.createdAt) invalid();
     const command = await commandFact(tx, handle, root, 'attempt.reserve', identity, detail, 'reservationReceipt', receipt);
     if (command.outcome.versions.graphRevision !== receipt.graphRevision) invalid();
     return receipt;
@@ -275,13 +286,15 @@ export async function readGraphFanoutCompletion(tx, handle, root, joinAttemptId,
         for (const id of branch.memberAttemptIds) {
             const member = await attemptAt(id);
             if (terminalIds.includes(id) || !branch.scopeNodeIds.includes(member.nodeId) || !graphReachable(scope, entry.nodeId, member.nodeId)
-                || member.graphRevision !== barrier.graphRevision || member.epoch !== frame.epoch) invalid();
+                || member.graphRevision < frame.graphRevision || member.graphRevision > root.graphRevision || member.epoch !== frame.epoch) invalid();
             if (joinedGraph.graph.edges.some(edge => edge.from.nodeId === member.nodeId && edge.to.nodeId === join.nodeId)) terminalIds.push(id);
         }
         for (const attempt of branchAttempts.get(branch)) {
             const completed = SETTLED_ATTEMPT_STATUSES.includes(attempt.status) ? await readAttemptSettlement(tx, handle, root, attempt) : null;
             if (!completed || completed.decisionSeq <= frame.decisionSeq) invalid();
-            const reservation = await reservationFact(tx, handle, root, frame, attempt);
+            const graphSnapshot = await snapshotAt(attempt.graphRevision);
+            if (graphSnapshot.graphRevision !== frame.graphRevision) assertFrozenScopeGraph(frame, frozen.graph, graphSnapshot.graph);
+            const reservation = await reservationFact(tx, handle, root, frame, attempt, graphSnapshot);
             if (attempt.sourceBindingDigest !== root.sourceBinding.bindingDigest
                 || (attempt.inputState === 'reserved' ? !reservation || attempt.status !== 'cancelled' || attempt.budgetRef !== null
                     || attempt.effectRefs.length || attempt.resultRefs.length || attempt.startedAt !== null || completed.effectReceiptRefs.length
@@ -293,7 +306,7 @@ export async function readGraphFanoutCompletion(tx, handle, root, joinAttemptId,
                 results.push(fact); graphResults.push(fact);
             }
             await verifyMemberInput(tx, handle, root, attempt, { frame, barrier, branch, settlement: completed, results, reservation,
-                graphSnapshot: await snapshotAt(attempt.graphRevision), plan });
+                graphSnapshot, plan });
             await verifyMemberCost(tx, handle, root, attempt, { frame, barrier, branch, settlement: completed, results, reservation });
             for (const effectId of attempt.effectRefs) {
                 const effect = (await readEffect(tx, handle, root, effectId)).doc;

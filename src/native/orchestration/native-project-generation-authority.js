@@ -169,7 +169,7 @@ export async function captureNativeProjectWorker(capture, { requestId, task, out
 }
 
 /** Original Task child boundary only. A JSON child id cannot mint this worker. */
-export async function captureNativeProjectDelegatedWorker(capture, permit, { requestId, task, routeRef, nodeId }) {
+export async function captureNativeProjectDelegatedWorker(capture, permit, { requestId, task, outputContract = null, routeRef, nodeId }) {
     const original = generations.get(capture), child = fanoutChildren.get(permit);
     if (!original?.workerStage || original.state.fanoutChildPermit || child?.generation !== original || !child.nodeIds.includes(nodeId)
         || typeof requestId !== 'string' || !requestId.startsWith('project-quality:')) fail();
@@ -178,7 +178,7 @@ export async function captureNativeProjectDelegatedWorker(capture, permit, { req
     const state = { ...original.state, fanoutChildPermit: permit, fanoutParentState: original.state };
     const stage = Object.freeze({});
     generations.set(stage, { ...original, state, requestId, originalRequestId: original.originalRequestId ?? original.requestId,
-        workerStage: immutable({ task, routeRef }), toolReceipts: [], toolResults: [] });
+        workerStage: immutable({ task, outputContract, routeRef }), toolReceipts: [], toolResults: [] });
     await inspectNativeProjectGeneration(stage, { host: state.host, handle: state.handle });
     return stage;
 }

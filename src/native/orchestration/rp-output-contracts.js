@@ -23,6 +23,16 @@ export const rpOutputDomainRef = root => ({ domain: 'rp_chat', controlId: root.s
 export const rpOutputConsumer = root => ({ kind: 'rp_chat', controlId: root.sourceBinding.sourceRequest.controlId,
     nodeId: root.graph.outputContract.ownerNodeId, slot: 'assistant' });
 
+// One physical Effect may be a typed control and an actual Fanout member.
+// Keep both historical facts, but close each original bank Effect once.
+export const rpNarrationProviderEffectIds = published => [...new Set([
+    published.receipt.modelEffectId, ...published.plannerCompletions.map(item => item.modelEffectId),
+    ...(published.fanout?.providerEffects ?? published.graphResults.map(item => item.receipt.modelEffectId)),
+    ...published.reviewCompletions.map(item => item.modelEffectId),
+    ...(published.judgeCompletions ?? (published.judgeCompletion ? [published.judgeCompletion] : [])).map(item => item.modelEffectId),
+    ...published.retrievalCompletions.map(item => item.effectId),
+])];
+
 /** Historical consistency only; it issues no current body or execution capability. */
 export async function readRpOutput(tx, handle, root) {
     if (root.graph.outputContract.kind !== 'rp_narration' || root.sourceBinding.sourceAuthority !== 'rp_chat' || root.parentRef !== null) return null;
@@ -106,9 +116,7 @@ export async function readRpOutput(tx, handle, root) {
         || !equal(host.sourceRefs, [root.sourceBinding.sourceRef]) || !equal(host.resultRefs, []) || host.reasonCode !== 'rp_output_committed'
         || host.observedAt > receipt.createdAt || host.budgetObservationRef.status !== 'settled'
         || !equal(Object.fromEntries(Object.keys(intent.budgetAttemptRef).map(field => [field, host.budgetObservationRef[field]])), intent.budgetAttemptRef)) invalid();
-    const providerIds = [published.receipt.modelEffectId, ...published.plannerCompletions.map(item => item.modelEffectId),
-        ...(published.fanout?.providerEffects ?? published.graphResults.map(item => item.receipt.modelEffectId)), ...published.reviewCompletions.map(item => item.modelEffectId),
-        ...(published.judgeCompletions ?? (published.judgeCompletion ? [published.judgeCompletion] : [])).map(item => item.modelEffectId), ...published.retrievalCompletions.map(item => item.effectId)];
+    const providerIds = rpNarrationProviderEffectIds(published);
     if (!equal(closure.effectIds, [...providerIds, intent.effectId].sort()) || !Array.isArray(closure.budgetAttemptRefs)) invalid();
     const ids = new Set();
     for (const ref of closure.budgetAttemptRefs) {

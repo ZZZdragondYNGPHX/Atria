@@ -145,12 +145,12 @@ describe.each(CONTRACT_HARNESSES)('$name real RP graph Result chain', ({ make })
     });
     test('plain/JSON capture and a foreign ResultRef cannot disclose the draft or cause another send', async () => {
         const f = await rpModelFixture(make, { configurePlan: configureChain });
-        const original = ResultPort.prototype.readForGraph; let checked = false; const denials = [];
-        const spy = jest.spyOn(ResultPort.prototype, 'readForGraph').mockImplementation(async function (handle, request) {
+        const original = ResultPort.prototype.readForGraphResults; let checked = false; const denials = [];
+        const spy = jest.spyOn(ResultPort.prototype, 'readForGraphResults').mockImplementation(async function (handle, request) {
             if (!checked) {
                 checked = true;
                 for (const forged of [{ ...request, capture: {} }, { ...request, capture: JSON.parse(JSON.stringify(request.capture)) },
-                    { ...request, resultRef: { ...request.resultRef, resultId: id('Result') } }]) {
+                    { ...request, resultRefs: [{ ...request.resultRefs[0], resultId: id('Result') }] }]) {
                     denials.push(await original.call(this, handle, forged).then(() => 'accepted', error => error.code));
                 }
             }

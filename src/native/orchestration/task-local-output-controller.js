@@ -16,6 +16,7 @@ import { assertTaskLocalClaim, taskLocalOutputKey, taskLocalClaimId, taskLocalCo
     taskLocalReceiptId, childClosureReceiptId, readTaskLocalOutput } from './task-local-output-contracts.js';
 import { assertSessionDelegatedClosure } from './session-delegation-contracts.js';
 import { assertProjectDelegatedClosure } from './project-delegation-contracts.js';
+import { isRpDelegatedControlGraph, assertRpDelegatedClosure } from './rp-delegation-control-contracts.js';
 
 const fail = code => { throw new ConflictError(code); };
 const equal = (a, b) => hash(a) === hash(b);
@@ -131,12 +132,14 @@ export class TaskLocalOutputController {
                             || attempt.nodeId !== root.graph.outputContract.ownerNodeId || !equal(attempt.inputRefs, checked.admission.inputRefs)
                             || attempt.inputDigest !== checked.admission.inputDigest || attempt.effectiveGrantDigest !== checked.admission.effectiveGrantDigest
                             || !equal(attempt.budgetRef, checked.admission.budgetRef)
-                            || root.sourceBinding.sourceAuthority === 'rp_chat' && root.attemptRefs.length !== 2)
+                            || root.sourceBinding.sourceAuthority === 'rp_chat' && !isRpDelegatedControlGraph(root) && root.attemptRefs.length !== 2)
                             fail('native_orchestration_task_output_denied');
                         if (root.sourceBinding.sourceAuthority === 'native_session') {
                             assertSessionDelegatedClosure(root, checked.published.graphHistory, closure);
                         } else if (root.sourceBinding.sourceAuthority === 'project') {
                             assertProjectDelegatedClosure(root, checked.published.graphHistory, closure);
+                        } else if (isRpDelegatedControlGraph(root)) {
+                            assertRpDelegatedClosure(root, checked.published.graphHistory, closure);
                         }
                         const claimId = taskLocalClaimId(root), claimRef = { runId, claimId };
                         const claim = assertTaskLocalClaim({ schemaVersion: 1, runId, claimId, nodeAttemptId: attempt.attemptId,

@@ -4,7 +4,7 @@ import { performance } from 'node:perf_hooks';
 import { hashNativeDocument as hash, cloneNativeDocument, putImmutable } from '../repositories/common.js';
 import { assertObject, assertResultPolicy, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { createOrchestrationAuthoringService } from './authoring-service.js';
-import { validateModelCapability, resolveModelFailurePlan } from './model-capability-authority.js';
+import { inspectModelCapabilities, resolveModelFailurePlan } from './model-capability-authority.js';
 import { prepareExecutionPlan } from '../model-prompt-runtime/execution-evidence.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { projectRuntimeRoute } from '../adapters/project-runtime-route.js';
@@ -147,16 +147,23 @@ export class NativeProjectOrchestrationAuthority {
                 fail('native_orchestration_project_tool_pin_stale');
             names.add(tool.resourceRef.name);
         }
-        const validation = await validateModelCapability({ handle, definition: graph, dependencyPins: plan.dependencyPins, resolver: this.owner.modelResolver });
+        const validation = await inspectModelCapabilities({ handle, definition: graph, dependencyPins: plan.dependencyPins, resolver: this.owner.modelResolver });
         if (validation.issues.length) fail('native_orchestration_model_authority_unavailable');
+        let currentModels = validation.models;
+        const inspectedModel = (target, required) => {
+            const inspected = currentModels?.get(target.nodeId);
+            return inspected && equal(inspected.node, target) && inspected.resolved.route.role === 'role.studio'
+                && required.every(capability => inspected.resolved.requirements.includes(capability)) ? inspected : null;
+        };
         const raw = await host.persistence.getRuntimeRoute(handle, routeRef.runtimeRouteId);
         if (raw?.role !== 'role.studio' || hash(raw) !== pin.integrity)
             fail('native_orchestration_project_route_mismatch');
         // First prove original owned Route pins. Project prompt composition is
         // derived below from the same original Studio revision, never by
         // pretending a composed Route is the author's raw pinned document.
-        const frozenFailure = await resolveModelFailurePlan({ handle, node, dependencyPins: plan.dependencyPins,
-            resolver: this.owner.modelResolver, routeRef, role: 'role.studio', requirements: ['generation.tools'] });
+        const frozenFailure = inspectedModel(node, ['generation.tools'])?.failurePlan
+            ?? await resolveModelFailurePlan({ handle, node, dependencyPins: plan.dependencyPins,
+                resolver: this.owner.modelResolver, routeRef, role: 'role.studio', requirements: ['generation.tools'] });
         const project = await StudioService.prototype.observeProject.call(host.studio, handle, projectId);
         const persistence = Object.create(host.persistence);
         persistence.getRuntimeRoute = async (owner, id) => projectRuntimeRoute(await host.persistence.getRuntimeRoute(owner, id), projectId);
@@ -185,7 +192,8 @@ export class NativeProjectOrchestrationAuthority {
             if (controlPin?.port !== 'model' || controlPin.resourceRef.scope !== 'player') fail('native_orchestration_project_route_mismatch');
             const controlRequirements = [...(['planner', 'review', 'judge'].includes(control.kind) ? ['generation.structured-output'] : []),
                 ...(project.source.package.runtime?.modelPrompt?.roles.find(item => item.role === 'role.studio')?.requiredCapabilities ?? [])];
-            const failure = await resolveModelFailurePlan({ handle, node: control, dependencyPins: controlPlan.dependencyPins, resolver: this.owner.modelResolver,
+            const inspected = controlPlan === plan ? inspectedModel(control, controlRequirements) : null;
+            const failure = inspected?.failurePlan ?? await resolveModelFailurePlan({ handle, node: control, dependencyPins: controlPlan.dependencyPins, resolver: this.owner.modelResolver,
                 routeRef: controlPin.resourceRef, role: 'role.studio', requirements: controlRequirements });
             let primary; const candidates = [];
             for (const candidate of failure.routes) {
@@ -218,6 +226,9 @@ export class NativeProjectOrchestrationAuthority {
             if (control.kind !== 'agent' || !child || !control.dependencyPinIds.includes(child.pin.pinId)) fail('native_orchestration_delegation_denied');
             return child;
         };
+        // Later stages call the returned resolver again. They must obtain
+        // fresh owned routes instead of retaining this invocation's facts.
+        currentModels = null;
         return { binding, plan, node, pin, loop, toolPins, collaboration, quality, controlGraph, resolveControlModel, resolveDelegation, controlModelDigests, delegations, delegationPlans, delegationDigests, resolved,
             failurePlan: { routes }, configDigest: routes.length === 1 ? config(resolved) : hash(routes) };
     }

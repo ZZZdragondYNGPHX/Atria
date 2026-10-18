@@ -72,8 +72,8 @@ export function rpControlGraph(plan, { force = false } = {}) {
         || !equal(output.capabilities, ['chat.output']) || output.dependencyPinIds.length || output.outputs.length
         || narrator.outputs.length !== 1 || narrator.outputs[0].type !== 'text'
         || audienceContextPin(narrator, plan.dependencyPins)?.resourceRef.audience.kind === 'actor'
-        || graph.edges.some(edge => edge.loopBack && (edge.from.nodeId !== edge.to.nodeId
-            || !planners.some(node => node.nodeId === edge.from.nodeId)) || !['always', 'success'].includes(edge.condition)
+        || graph.edges.some(edge => edge.loopBack && (!planners.some(node => node.nodeId === edge.from.nodeId)
+            || !graph.nodes.some(node => node.nodeId === edge.to.nodeId && ['agent', 'planner'].includes(node.kind))) || !['always', 'success'].includes(edge.condition)
             || edge.from.nodeId === output.nodeId || edge.from.nodeId === narrator.nodeId && edge.to.nodeId !== output.nodeId)) fail();
     const controls = graph.nodes.filter(node => ['fanout', 'join'].includes(node.kind));
     for (const node of controls) if (node.capabilities.length || node.dependencyPinIds.length || node.outputs.length !== 1
@@ -98,6 +98,31 @@ export function rpControlPlannerTask(graph, dependencyPins) {
         allowedNodeKinds: graph.graphChangePolicy.allowedNodeKinds, dependencyPins };
 }
 
+/** A requestReplan names no target. The published return edges must identify
+ * one destination; every declared port to that destination is bound together.
+ * This derives work from immutable topology, without invalidating any receipt
+ * or creating a second scheduling, Source or spending authority. */
+export function rpControlReplanScope(graph, plannerNodeId) {
+    const pending = () => { throw Object.assign(new TypeError('native_orchestration_planner_replan_pending'), { code: 'native_orchestration_planner_replan_pending' }); };
+    const loops = graph.edges.filter(edge => edge.loopBack && edge.from.nodeId === plannerNodeId);
+    if (!loops.length || new Set(loops.map(edge => edge.to.nodeId)).size !== 1) pending();
+    const target = graph.nodes.find(node => node.nodeId === loops[0].to.nodeId);
+    if (!target || !['agent', 'planner'].includes(target.kind)) pending();
+    const reach = (start, reverse = false) => {
+        const seen = new Set(), work = [start];
+        while (work.length) {
+            const id = work.pop(); if (seen.has(id)) continue; seen.add(id);
+            work.push(...graph.edges.filter(edge => !edge.loopBack && edge[reverse ? 'to' : 'from'].nodeId === id)
+                .map(edge => edge[reverse ? 'from' : 'to'].nodeId));
+        }
+        return seen;
+    };
+    const affected = reach(target.nodeId), ancestors = reach(plannerNodeId, true);
+    if (!affected.has(plannerNodeId) || graph.nodes.some(node => affected.has(node.nodeId) && ancestors.has(node.nodeId)
+        && !['agent', 'planner'].includes(node.kind))) pending();
+    return { loops, target, affectedNodeIds: [...affected] };
+}
+
 export const rpControlReviewOutputContract = Object.freeze({ name: 'atria_graph_review', schema: { type: 'object', properties: {
     decision: { type: 'string', enum: ['approve', 'rerun'] }, reasonCode: { type: 'string', enum: RP_REVIEW_REASON_CODES },
     targetAttemptIds: { type: 'array', minItems: 1, items: { type: 'string' } } }, required: ['decision', 'reasonCode', 'targetAttemptIds'], additionalProperties: false } });
@@ -118,7 +143,7 @@ export function rpControlFanoutGroups(graph, finalWorkerId) {
                 const id = pending.pop(), node = graph.nodes.find(node => node.nodeId === id);
                 if (scope.has(id)) continue;
                 if (node?.kind === 'join') { ends.add(id); continue; }
-                if (node?.kind !== 'agent' || id === finalWorkerId || used.has(id)) fail();
+                if (!['agent', 'planner'].includes(node?.kind) || id === finalWorkerId || used.has(id)) fail();
                 scope.add(id);
                 const outgoing = graph.edges.filter(edge => edge.from.nodeId === id);
                 if (!outgoing.length || outgoing.some(edge => edge.loopBack)) fail();
@@ -135,7 +160,8 @@ export function rpControlFanoutGroups(graph, finalWorkerId) {
             count + graph.edges.filter(edge => branch.scopeNodeIds.includes(edge.from.nodeId) && edge.to.nodeId === joinId).length, 0)) fail();
         for (const branch of branches) for (const id of branch.scopeNodeIds) { if (used.has(id)) fail(); used.add(id); }
         const members = graph.edges.filter(edge => edge.to.nodeId === joinId);
-        if (!members.length || members.some(edge => !branches.some(branch => branch.scopeNodeIds.includes(edge.from.nodeId)) || edge.condition !== 'always')) fail();
+        if (!members.length || members.some(edge => !branches.some(branch => branch.scopeNodeIds.includes(edge.from.nodeId))
+            || graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind !== 'agent' || edge.condition !== 'always')) fail();
         joins.add(joinId); groups.push({ fanout, join, branches, members });
     }
     if (graph.nodes.some(node => node.kind === 'join' && !joins.has(node.nodeId))) fail();

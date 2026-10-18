@@ -19,6 +19,7 @@ import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readPlanRevision } from './plan-repository.js';
 import { readSessionDelegatedGraphHistory, sessionDelegationResultSources } from './session-delegation-contracts.js';
 import { readProjectDelegatedGraphHistory } from './project-delegation-contracts.js';
+import { isRpDelegatedControlGraph, readRpDelegatedGraphHistory } from './rp-delegation-control-contracts.js';
 
 const fail = code => { throw new ConflictError(code); };
 const equal = (a, b) => hash(a) === hash(b);
@@ -72,6 +73,9 @@ export class ResultController {
         } else if (project) {
             const producer = (await readAttempt(tx, handle, finalRoot, proof.producerAttemptId)).doc;
             await readProjectDelegatedGraphHistory(tx, handle, finalRoot, { pendingProducer: producer });
+        } else if (isRpDelegatedControlGraph(finalRoot)) {
+            const producer = (await readAttempt(tx, handle, finalRoot, proof.producerAttemptId)).doc;
+            await readRpDelegatedGraphHistory(tx, handle, finalRoot, { pendingProducer: producer });
         }
         return { identity: current, root: finalRoot, proof, payload, childPlan };
     }

@@ -7,8 +7,6 @@ import { controlRecordKey, readAttempt } from './controller-common.js';
 import { handoffReceiptId } from './handoff-contracts.js';
 import { readTaskLocalOutput } from './task-local-output-contracts.js';
 import { assertRunRoot } from './run-repository.js';
-import { readSessionDelegation } from './session-delegation-contracts.js';
-import { readProjectDelegation } from './project-delegation-contracts.js';
 
 export const handoffReturnReceiptId = childRunId => 'oreceipt_' + hash({ kind: 'handoff_return', childRunId }).slice(0, 32);
 const equal = (a, b) => hash(a) === hash(b);
@@ -57,12 +55,18 @@ export async function readHandoffReturn(tx, handle, parent, childRunId) {
         || !equal(result.doc.envelope.audienceConstraint, { kind: 'parent_attempt', parentRunId: parent.runId, parentAttemptId: attempt.attemptId,
             parentEpoch: receipt.epoch, sourceBindingDigest: receipt.sourceBindingDigest, grantDigest: receipt.parentGrantDigest,
             taskPurpose: ({ native_session: 'original_native_session_delegation', project: 'original_native_project_delegation', rp_chat: 'original_rp_delegation' })[parent.sourceBinding.sourceAuthority] })) invalid();
+    let lineage = null;
     if (['native_session', 'project'].includes(parent.sourceBinding.sourceAuthority)) {
         // The parent supplied by the return writer may have its staged next
         // event sequence. Lineage is checked against the actual original row.
         const actual = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: parent.runId }))?.doc;
-        const lineage = actual && await (parent.sourceBinding.sourceAuthority === 'native_session' ? readSessionDelegation : readProjectDelegation)(tx, handle, actual, childRunId);
-        if (!lineage || lineage.mode !== 'handoff' || !equal(lineage.handoffReceiptRef, receipt.handoffReceiptRef)) invalid();
+        // The complete TaskLocalOutput read above has just proved the original
+        // delegation, including its parent inputs and every child Model/bank
+        // fact. Reuse only that invocation's historical lineage; the fresh
+        // original parent and exact child must still match after those awaits.
+        lineage = output.publication?.graphHistory?.lineage;
+        if (!actual || !lineage || !equal(lineage.parent, actual) || !equal(lineage.child, child)
+            || lineage.mode !== 'handoff' || !equal(lineage.handoffReceiptRef, receipt.handoffReceiptRef)) invalid();
     }
-    return ['native_session', 'project'].includes(parent.sourceBinding.sourceAuthority) ? { ...receipt, output, publication: output.publication } : receipt;
+    return ['native_session', 'project'].includes(parent.sourceBinding.sourceAuthority) ? { ...receipt, output, publication: output.publication, lineage } : receipt;
 }

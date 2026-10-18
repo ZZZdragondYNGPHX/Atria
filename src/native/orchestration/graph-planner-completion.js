@@ -50,12 +50,18 @@ export async function readGraphPlannerCompletion(tx, handle, root, attemptId, { 
         || !equal(settlement.effectReceiptRefs, [receipt.modelReceiptRef.receiptId, ...retrieval.map(item => item.receiptId)])
         || patch.decisionSeq >= receipt.decisionSeq || receipt.decisionSeq > root.eventSeq) invalid();
     const input = intent.inputRef;
-    if (root.sourceBinding.sourceAuthority === 'native_session') {
+    const delegatedSession = root.sourceBinding.sourceAuthority === 'native_session' && root.parentRef !== null;
+    if (root.sourceBinding.sourceAuthority === 'native_session' && !delegatedSession) {
         assertObject(input.sourceRef, ['sessionId', 'branchId', 'revisionId', 'packageId', 'packageVersionId'], 'Native Turn source');
         assertNativeId(input.sourceRef.packageId, 'package'); assertNativeId(input.sourceRef.packageVersionId, 'packageVersion');
     }
     const kinds = { project: 'native_project_intent', rp_chat: 'native_rp_intent', native_session: 'native_turn_intent' };
-    if (!Object.hasOwn(kinds, root.sourceBinding.sourceAuthority) || input.kind !== kinds[root.sourceBinding.sourceAuthority]
+    const delegatedRp = root.sourceBinding.sourceAuthority === 'rp_chat' && root.parentRef !== null;
+    const delegatedProject = root.sourceBinding.sourceAuthority === 'project' && root.parentRef !== null;
+    if (delegatedSession) assertObject(input.sourceRef, ['sessionId', 'branchId', 'revisionId'], 'Delegated Native Turn source');
+    if (delegatedRp && (input.role !== 'narrator' || !equal(input.audience, { kind: 'task', id: root.runId }))) invalid();
+    if (!Object.hasOwn(kinds, root.sourceBinding.sourceAuthority) || input.kind !== (delegatedRp ? 'native_rp_delegated_intent' : delegatedSession ? 'native_session_delegated_intent'
+        : delegatedProject ? 'native_project_delegated_intent' : kinds[root.sourceBinding.sourceAuthority])
         || input.nodeId !== producer.nodeId || !equal(input.planRef, root.planRef) || (root.sourceBinding.sourceAuthority === 'native_session'
         ? !equal(Object.fromEntries(['sessionId', 'branchId', 'revisionId'].map(field => [field, input.sourceRef?.[field]])), root.sourceBinding.sourceRef)
         : !equal(input.sourceRef, root.sourceBinding.sourceRef))

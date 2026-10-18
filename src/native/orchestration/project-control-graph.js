@@ -21,7 +21,7 @@ export function projectControlGraph(plan) {
             continue;
         }
         if (!['agent', 'planner', 'review', 'judge'].includes(node.kind) || node.outputs.length !== 1 || node.outputs[0].type !== (node.kind === 'agent' ? 'text' : 'json')
-            || !equal(node.capabilities, ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : [], ...node.capabilities.includes('agent.delegate') ? ['agent.delegate'] : []])
+            || !equal(node.capabilities, ['generation.send', ...node.kind === 'planner' || node.kind === 'agent' && node.capabilities.includes('agent.delegate') && node.capabilities.includes('graph.patch') ? ['graph.patch'] : [], ...node.capabilities.includes('agent.delegate') ? ['agent.delegate'] : []])
             || !nodeModelRoutePins(node, plan.dependencyPins).length || node.dependencyPinIds.length !== nodeModelRoutePins(node, plan.dependencyPins).length + (node.policy.allowedPlanPinIds?.length ?? 0)) fail();
         if (node.capabilities.includes('agent.delegate') && (!['agent', 'planner'].includes(node.kind)
             || !node.policy.allowedPlanPinIds?.length || node.kind === 'agent' && node.policy.allowedPlanPinIds.length !== 1)) fail();

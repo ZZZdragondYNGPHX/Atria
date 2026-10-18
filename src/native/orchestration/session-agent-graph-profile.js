@@ -5,40 +5,47 @@ import { audienceContextPin, projectAudienceSource } from './audience-source-con
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_turn_plan_unavailable'), { code: 'native_orchestration_turn_plan_unavailable' }); };
 const equal = (a, b) => hash(a) === hash(b);
 
-/** Original published Nodes/Edges drive this acyclic Session consumer. Control
+/** Original published Nodes/Edges drive forward Session dependencies and explicit bounded return edges. Control
  * nodes carry receipts, model nodes carry advisory Results; only the terminal
  * Narrator can reach the original Session writer. */
 export function sessionAgentGraphProfile(plan) {
-    const graph = plan.definition, models = graph.nodes.filter(node => ['agent', 'review', 'planner', 'judge'].includes(node.kind));
-    const planners = models.filter(node => node.kind === 'planner'), judges = models.filter(node => node.kind === 'judge');
-    const delegates = models.filter(node => node.policy.allowedPlanPinIds?.length);
+    const graph = plan.definition, loops = graph.edges.filter(edge => edge.loopBack), models = graph.nodes.filter(node => ['agent', 'review', 'planner', 'judge'].includes(node.kind));
+    const planners = models.filter(node => node.kind === 'planner'), judges = models.filter(node => node.kind === 'judge'), reviews = models.filter(node => node.kind === 'review');
+    const reviewEdges = reviews.length === 1 ? graph.edges.filter(edge => edge.to.nodeId === reviews[0].nodeId) : [];
+    const legacyDraft = reviewEdges.length === 1 ? models.find(node => node.kind === 'agent' && node.nodeId === reviewEdges[0].from.nodeId) : null;
+    const finalNodeId = graph.edges.find(edge => edge.to.nodeId === graph.outputContract.ownerNodeId)?.from.nodeId;
+    const legacyInputs = graph.edges.filter(edge => edge.to.nodeId === finalNodeId && ['agent', 'review'].includes(models.find(node => node.nodeId === edge.from.nodeId)?.kind));
+    const legacyReview = !!legacyDraft && legacyInputs.length === 2
+        && legacyInputs.some(edge => edge.from.nodeId === legacyDraft.nodeId) && legacyInputs.some(edge => edge.from.nodeId === reviews[0].nodeId);
+    const delegates = models.filter(node => node.policy.allowedPlanPinIds?.length), patchDelegates = delegates.filter(node => node.capabilities.includes('graph.patch'));
+    const patchAuthority = planners.length || patchDelegates.length;
     const controls = graph.nodes.filter(node => ['fanout', 'join'].includes(node.kind)), outputs = graph.nodes.filter(node => node.kind === 'output');
     if (models.length < 2 && !controls.length) return null;
     const [output] = outputs, incoming = {}, steps = [];
     if (outputs.length !== 1 || graph.nodes.length !== models.length + controls.length + 1
         || graph.outputContract.kind !== 'rp_narration' || graph.outputContract.allowPartial
-        || (!planners.length && (graph.graphChangePolicy.allowedOperations.length || graph.graphChangePolicy.allowedNodeKinds.length))
-        || planners.length && (!graph.graphChangePolicy.allowedOperations.length
-            || graph.graphChangePolicy.allowedOperations.some(op => !['addNode', 'addEdge', 'setPendingPriority', 'requestFinalize'].includes(op))
+        || (!patchAuthority && (graph.graphChangePolicy.allowedOperations.length || graph.graphChangePolicy.allowedNodeKinds.length))
+        || patchAuthority && (!graph.graphChangePolicy.allowedOperations.length
+            || graph.graphChangePolicy.allowedOperations.some(op => !['addNode', 'addEdge', 'setPendingPriority', 'requestFinalize', 'requestReplan'].includes(op))
             || graph.graphChangePolicy.allowedNodeKinds.some(kind => !['agent', 'planner', 'review', 'judge', 'fanout', 'join'].includes(kind)))
         || output.inputs.length !== 1 || output.inputs[0].type !== 'text' || !output.inputs[0].required || output.outputs.length
         || output.dependencyPinIds.length || !equal(output.capabilities, ['chat.output'])
-        || !equal([...graph.capabilityCeiling].sort(), ['chat.output', 'generation.send', ...planners.length ? ['graph.patch'] : [], ...delegates.length ? ['agent.delegate'] : []].sort())) fail();
+        || !equal([...graph.capabilityCeiling].sort(), ['chat.output', 'generation.send', ...patchAuthority ? ['graph.patch'] : [], ...delegates.length ? ['agent.delegate'] : []].sort())) fail();
     const terminal = graph.edges.filter(edge => edge.to.nodeId === output.nodeId);
     const narrator = terminal.length === 1 ? models.find(node => node.nodeId === terminal[0].from.nodeId) : null;
     if (!narrator || narrator.kind !== 'agent' || graph.edges.some(edge => edge.from.nodeId === output.nodeId)) fail();
     const work = [...models, ...controls];
     for (const node of work) {
-        incoming[node.nodeId] = graph.edges.filter(edge => edge.to.nodeId === node.nodeId).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
+        incoming[node.nodeId] = graph.edges.filter(edge => edge.to.nodeId === node.nodeId && !edge.loopBack).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
         if (incoming[node.nodeId].length > node.inputs.length || new Set(incoming[node.nodeId].map(edge => edge.from.nodeId)).size !== incoming[node.nodeId].length
             || node.inputs.some(port => !['text', 'json', 'task.result'].includes(port.type) || !planners.length && !judges.length && !port.required
-                || incoming[node.nodeId].filter(edge => edge.to.port === port.name).length !== (port.required ? 1 : incoming[node.nodeId].some(edge => edge.to.port === port.name) ? 1 : 0))) fail();
+                || graph.edges.filter(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name).length !== (port.required ? 1 : graph.edges.some(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name) ? 1 : 0))) fail();
         if (models.includes(node)) {
             const pins = nodeModelRoutePins(node, plan.dependencyPins), audience = audienceContextPin(node, plan.dependencyPins);
             const children = node.policy.allowedPlanPinIds ?? [];
             if (children.length > 1 || children.length && (node.kind !== 'agent' || node === narrator
                 || children.some(id => !node.dependencyPinIds.includes(id) || !plan.dependencyPins.some(pin => pin.pinId === id && pin.port === 'plan')))) fail();
-            if (!pins.length || !audience || node.dependencyPinIds.length !== pins.length + 1 + children.length || !equal(node.capabilities, ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : [], ...children.length ? ['agent.delegate'] : []])
+            if (!pins.length || !audience || node.dependencyPinIds.length !== pins.length + 1 + children.length || !equal([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' || patchDelegates.includes(node) ? ['graph.patch'] : [], ...children.length ? ['agent.delegate'] : []].sort())
                 || node.outputs.length !== 1 || node.outputs[0].type !== (['review', 'planner', 'judge'].includes(node.kind) ? 'json' : 'text')) fail();
         } else if (node.capabilities.length || node.dependencyPinIds.length || node.outputs.length !== 1
             || node.outputs[0].type !== (node.kind === 'fanout' ? 'task.result' : 'text')) fail();
@@ -46,8 +53,10 @@ export function sessionAgentGraphProfile(plan) {
         if (!outgoing.length || node === narrator && outgoing.length !== 1) fail();
         for (const edge of outgoing) {
             const target = graph.nodes.find(next => next.nodeId === edge.to.nodeId);
-            if (!['always', 'success'].includes(edge.condition) || edge.loopBack
-                || edge.maxVisits !== (target?.kind === 'review' ? target.policy.maxRounds : 1)
+            if (!['always', 'success'].includes(edge.condition)
+                || edge.loopBack && (node.kind !== 'planner' || !['agent', 'planner'].includes(target?.kind) || target === narrator
+                    || edge.condition !== 'always' || target.inputs.find(port => port.name === edge.to.port)?.required)
+                || !loops.length && (legacyReview || !reviews.length) && edge.maxVisits !== (target?.kind === 'review' ? target.policy.maxRounds : 1)
                 || edge.from.port !== node.outputs[0].name || !target?.inputs.some(port => port.name === edge.to.port && port.type === node.outputs[0].type && (port.required || planners.length || judges.length))) fail();
         }
     }
@@ -95,22 +104,24 @@ export function sessionAgentGraphProfile(plan) {
         fanouts.push({ fanout, join, branches, branchScopes, transfers, members });
     }
     if (controls.filter(node => node.kind === 'join').some(node => !usedJoins.has(node.nodeId))) fail();
-    const reviews = models.filter(node => node.kind === 'review');
-    if (reviews.length > 1) fail();
     let qualityReview = null;
-    if (reviews.length) {
-        const review = reviews[0], edges = incoming[review.nodeId], draft = edges.length === 1 ? models.find(node => node.nodeId === edges[0].from.nodeId) : null;
-        if (!draft || draft.kind !== 'agent' || usedBranches.has(draft.nodeId) || incoming[narrator.nodeId].filter(edge => ['agent', 'review'].includes(models.find(node => node.nodeId === edge.from.nodeId)?.kind)).length !== 2
-            || !incoming[narrator.nodeId].some(edge => edge.from.nodeId === draft.nodeId)
-            || !incoming[narrator.nodeId].some(edge => edge.from.nodeId === review.nodeId)) fail();
-        qualityReview = { draft, review };
+    for (const review of reviews) {
+        const edges = incoming[review.nodeId], evidence = edges.filter(edge => models.find(node => node.nodeId === edge.from.nodeId)?.kind === 'agent');
+        if (!evidence.length || edges.some(edge => !['agent', 'planner', 'review', 'judge'].includes(models.find(node => node.nodeId === edge.from.nodeId)?.kind))) fail();
+        if (legacyReview) {
+            const draft = evidence.length === 1 ? models.find(node => node.nodeId === evidence[0].from.nodeId) : null;
+            if (!draft || usedBranches.has(draft.nodeId)
+                || !incoming[narrator.nodeId].some(edge => edge.from.nodeId === draft.nodeId)
+                || !incoming[narrator.nodeId].some(edge => edge.from.nodeId === review.nodeId)) fail();
+            qualityReview = { draft, review };
+        }
     }
     for (const judge of judges) {
         const candidates = incoming[judge.nodeId].filter(edge => graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind === 'agent');
         if (!candidates.length || incoming[judge.nodeId].some(edge => !['agent', 'planner', 'judge', 'review'].includes(graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind))) fail();
     }
     const ordered = steps.filter(node => models.includes(node));
-    return { ordered, steps, workers: ordered.slice(0, -1), narrator, incoming, output, qualityReview, fanouts, planners, judges };
+    return { ordered, steps, workers: ordered.slice(0, -1), narrator, incoming, output, qualityReview, reviews, fanouts, planners, judges, loops };
 }
 
 /** This is a projection of the immutable original Session snapshot, including

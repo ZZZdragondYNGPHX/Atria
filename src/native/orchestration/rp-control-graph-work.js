@@ -2,7 +2,7 @@ import { hashNativeDocument as hash, cloneNativeDocument, putImmutable } from '.
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { inspectGraphReadiness } from './graph-work-readiness.js';
-import { rpControlGraph, rpControlPlannerTask } from './rp-control-graph.js';
+import { rpControlGraph, rpControlPlannerTask, rpControlReplanScope } from './rp-control-graph.js';
 import { readRpControlInputs, rpPlannerReaderOptions, rpReviewReaderOptions, rpJudgeReaderOptions } from './rp-control-input-contracts.js';
 import { AttemptController } from './attempt-controller.js';
 import { TransitionController } from './transition-controller.js';
@@ -22,6 +22,7 @@ import { readContextRetrievalCompletions } from './context-retrieval-contracts.j
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { writeAttemptSettlement } from './attempt-settlement.js';
 import { ConflictError } from '../../storage/errors.js';
+import { assertRpFanoutPlannerPatch, readRpFanoutPaidModelNodes } from './rp-fanout-planner-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
@@ -68,6 +69,21 @@ export class RpControlGraphWork {
         { targetNodeId: (this.state.activeSelection ?? this.state.selected).node.nodeId, live: true, checkSelections: false, controlsOnly: true, fanoutAttemptId: this.state.fanoutParent?.fanoutAttemptId });
     }
 
+    async describeControls(root, recipient) {
+        const facts = await this.service.runs.engine.withTransaction(this.state.handle, tx => this.inputs(tx, root));
+        const controls = [];
+        for (const fact of facts.filter(fact => fact.controlRef)) {
+            const readable = !fact.patch || await this.canReadControl(root.graph.nodes.find(node => node.nodeId === fact.producer.nodeId), recipient);
+            controls.push({ controlRef: fact.controlRef,
+                ...(fact.patch ? readable ? { operations: fact.patch.appliedOperations }
+                    : { disclosure: 'reference-only', operationKinds: fact.patch.appliedOperations.map(operation => operation.op) }
+                    : fact.review ? { decision: fact.review.decision, reasonCode: fact.review.reasonCode, targetAttemptIds: fact.review.targetAttemptIds }
+                        : fact.joinReceipt ? { joinId: fact.joinReceipt.joinId, outcome: fact.joinReceipt.outcome, acceptedResultRefs: fact.joinReceipt.acceptedResultRefs }
+                            : { selectedResultRef: fact.selectedResultRef, reasonCode: 'candidate_selected' }) });
+        }
+        return controls;
+    }
+
     async authorizeTransition({ tx, root, target, producers }, inputRefs, grantDigest) {
         await this.current();
         const facts = await this.inputs(tx, root);
@@ -102,12 +118,13 @@ export class RpControlGraphWork {
                 await this.current();
                 if (!equal(proof, await port.inspectResultCompletion(handle, { result, runId, effectId }))
                     || producer.attemptId !== attemptId || !equal(actual, patch)) fail('native_orchestration_planner_producer_denied');
+                if (state.fanoutParent) await assertRpFanoutPlannerPatch(tx, handle, active, producer, actual);
                 const candidate = cloneNativeDocument(active.graph);
                 for (const operation of actual.operations) {
                     if (operation.op === 'addNode') candidate.nodes.push(operation.node);
                     if (operation.op === 'addEdge') candidate.edges.push(operation.edge);
                 }
-                const admission = rpControlGraph({ ...state.selected.plan, definition: candidate }, { force: true });
+                const admission = this.admitGraph ? this.admitGraph(candidate) : rpControlGraph({ ...state.selected.plan, definition: candidate }, { force: true });
                 for (const node of admission.models) await state.selected.resolveGraphModel(node);
                 // A GraphPatch is control, not a disclosure grant. A model's
                 // free task text can only become a task in a readable scope.
@@ -123,18 +140,21 @@ export class RpControlGraphWork {
                         if (!fact.record.envelope.audienceConstraint.nodeIds.includes(operation.edge.to.nodeId)) fail('native_orchestration_result_consume_denied');
                     }
                 }
-                const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: null }, { tx });
-                const required = admission.models.filter(node => !this.records.has(node.nodeId) && node.nodeId !== nodeId).length
-                    + Number(actual.operations.some(operation => operation.op === 'requestReplan'));
+                const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: this.reservationId ?? null }, { tx });
+                const repeats = actual.operations.some(operation => operation.op === 'requestReplan')
+                    ? candidate.edges.some(edge => edge.loopBack && edge.from.nodeId === nodeId)
+                        ? rpControlReplanScope(candidate, nodeId).affectedNodeIds : [nodeId] : [];
+                const paid = state.fanoutParent ? await readRpFanoutPaidModelNodes(tx, handle, active) : null;
+                const required = admission.models.filter(node => repeats.includes(node.nodeId)
+                    || (paid ? !paid.has(node.nodeId) : !this.records.has(node.nodeId)) && node.nodeId !== nodeId).length;
                 if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');
                 await this.inputs(tx, active);
                 await this.current();
             } }).propose(handle, { expectedStateVersion: current.stateVersion, patch }), { withAuthority: boundary }));
         const accepted = proposed.outcome.patchReceipt;
         if (!accepted.accepted) fail('native_orchestration_planner_patch_rejected');
-        if (accepted.requests.replan && (accepted.requests.finalize
-            || !root.graph.edges.some(edge => edge.loopBack && edge.from.nodeId === nodeId && edge.to.nodeId === nodeId)))
-            fail('native_orchestration_planner_replan_pending');
+        if (accepted.requests.replan && accepted.requests.finalize) fail('native_orchestration_planner_replan_pending');
+        if (accepted.requests.replan) rpControlReplanScope((await service.runs.get(handle, runId)).graph, nodeId);
         const receiptId = graphPlannerReceiptId(runId, attemptId);
         await service.runs.withSourceControl(handle, runId, () => service.runs.control(handle, controlCommandId('graph.planner.settle', attemptId), {
             ...runGuard(current), expectedGraphRevision: accepted.newGraphRevision, expectedStateVersion: proposed.outcome.versions.stateVersion,
@@ -165,7 +185,7 @@ export class RpControlGraphWork {
         }), { withAuthority: boundary });
         this.lastOperations.set(nodeId, hash(parsed.operations));
         const fact = await service.runs.engine.withTransaction(handle, async tx => readGraphPlannerCompletion(tx, handle,
-            await service.runs.get(handle, runId), attemptId, rpPlannerReaderOptions));
+            await service.runs.get(handle, runId), attemptId, this.plannerReaderOptions ?? rpPlannerReaderOptions));
         if (!fact) fail('native_orchestration_rp_control_stale');
         return { attemptId, controlRef: fact.controlRef, requests: fact.patch.requests, status: 'completed' };
     }
@@ -454,7 +474,12 @@ export class RpControlGraphWork {
                         const spec = entry ? item.entry : await this.prepareBranch(node, active, bundle, fanoutAttemptId);
                         try {
                             const result = await generate(spec, bundle, entry ? { preparedAttemptId: item.attempts.get(node.nodeId) } : { reservedAttemptId: item.attempts.get(node.nodeId) });
-                            const fact = { attemptId: item.attempts.get(node.nodeId), resultRef: result.resultRef, status: 'completed' };
+                            const fact = node.kind === 'planner' ? result
+                                : { attemptId: item.attempts.get(node.nodeId), resultRef: result.resultRef, status: 'completed' };
+                            if (node.kind === 'planner') {
+                                if (result.requests?.replan) fail('native_orchestration_fanout_planner_control_pending');
+                                this.plannerHistory.push(result);
+                            }
                             this.records.set(node.nodeId, fact); pending.delete(node.nodeId);
                         } catch (error) {
                             await settleFailure();
@@ -534,20 +559,26 @@ export class RpControlGraphWork {
             const replan = [...this.records.entries()].find(([, fact]) => fact.requests?.replan && !handledReplans.has(fact.attemptId));
             let next, replanBundle;
             if (replan) {
-                const [nodeId, previous] = replan, node = root.graph.nodes.find(node => node.nodeId === nodeId);
-                const loops = root.graph.edges.filter(edge => edge.loopBack && edge.from.nodeId === nodeId && edge.to.nodeId === nodeId);
-                if (!loops.length || previous.requests.finalize) fail('native_orchestration_planner_replan_pending');
+                const [nodeId, previous] = replan, scope = rpControlReplanScope(root.graph, nodeId), { target: node, loops } = scope;
+                if (previous.requests.finalize || !this.records.has(node.nodeId)) fail('native_orchestration_planner_replan_pending');
+                if (scope.affectedNodeIds.some(id => this.records.has(id)
+                    && !['agent', 'planner'].includes(root.graph.nodes.find(node => node.nodeId === id).kind)))
+                    fail('native_orchestration_review_irreversible_dependency');
                 const capacity = await service.runs.engine.withTransaction(handle, tx => service.budgetPort.observeCapacity(handle,
                     { authorityRef: root.budgetAuthorityRef, reservationId: null }, { tx }));
-                const remaining = admission.models.filter(model => !this.records.has(model.nodeId)).length + 1;
+                const remaining = admission.models.filter(model => !this.records.has(model.nodeId) || scope.affectedNodeIds.includes(model.nodeId)).length;
                 if (!capacity || capacity.overrun || capacity.remaining.requests < remaining) fail('native_orchestration_planner_replan_budget_unavailable');
                 if (root.progress.attempts + remaining + 1 > root.limits.maxAttempts) fail('native_orchestration_planner_replan_limit_exhausted');
                 next = inspectGraphReadiness(root.graph, root.nodeControl,
-                    Object.fromEntries([...this.records].filter(([id]) => id !== nodeId).map(([id, fact]) => [id, fact.status])))
+                    Object.fromEntries([...this.records].filter(([id]) => id !== node.nodeId).map(([id, fact]) => [id, fact.status])))
                     .ready.find(item => item.node.nodeId === node.nodeId);
                 if (!next) fail('native_orchestration_graph_dependency_unavailable');
                 replanBundle = this.bundle([...next.edges, ...loops], root.graph);
                 handledReplans.add(previous.attemptId);
+                for (const id of scope.affectedNodeIds) {
+                    this.records.delete(id);
+                    if (id !== nodeId) this.lastOperations.delete(id);
+                }
             } else next = readiness.ready[0];
             if (!next) fail('native_orchestration_graph_dependency_unavailable');
             if (next.node.kind === 'fanout') {

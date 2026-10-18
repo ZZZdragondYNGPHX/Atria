@@ -11,7 +11,8 @@ import { childBudgetReceiptId, assertRunRoot } from './run-repository.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readSessionDelegation, sessionDelegationResultSources, readSessionDelegatedGraphHistory } from './session-delegation-contracts.js';
-import { readProjectDelegation, readProjectDelegatedGraphHistory } from './project-delegation-contracts.js';
+import { readProjectDelegatedGraphHistory } from './project-delegation-contracts.js';
+import { isRpDelegatedControlGraph, readRpDelegatedGraphHistory } from './rp-delegation-control-contracts.js';
 
 export const modelResultId = (runId, effectId) => 'oresult_' + hash({ runId, effectId }).slice(0, 32);
 export const resultPublicationReceiptId = (runId, resultId) => 'oreceipt_' + hash({ kind: 'result_publication', runId, resultId }).slice(0, 32);
@@ -77,7 +78,19 @@ export async function readResultPublication(tx, handle, root, resultId) {
         const session = root.sourceBinding.sourceAuthority === 'native_session';
         const parent = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: parentRunId }))?.doc;
         if (!parent) invalid();
-        const lineage = await (session ? readSessionDelegation : readProjectDelegation)(tx, handle, parent, root.runId);
+        let lineage = session ? await readSessionDelegation(tx, handle, parent, root.runId) : null;
+        const publication = { record: result.doc, receipt, attemptReceipt: settlement, producer: attempt };
+        const outputAttempts = [];
+        for (const id of root.attemptRefs) {
+            const actual = (await readAttempt(tx, handle, root, id)).doc;
+            if (actual.nodeId === (session ? lineage.output.nodeId : root.graph.outputContract.ownerNodeId)) outputAttempts.push(actual);
+        }
+        if (outputAttempts.length > 1) invalid();
+        const graphHistory = await (session ? readSessionDelegatedGraphHistory : readProjectDelegatedGraphHistory)(tx, handle, root, { finalPublication: publication, output: outputAttempts[0] ?? null });
+        // Project history has just proved the complete original delegation
+        // through its actual Model inputs. Keep that invocation's lineage;
+        // each subsequent publication read independently proves it again.
+        lineage ??= graphHistory.lineage;
         if (!lineage || attempt.nodeId !== lineage.terminalNodeId || receipt.producerGrantDigest !== root.parentRef.effectiveGrantDigest
             || envelope.audienceConstraint.grantDigest !== lineage.parentAttempt.effectiveGrantDigest
             || !equal(receipt.handoffReceiptRef, lineage.handoffReceiptRef)
@@ -87,14 +100,6 @@ export async function readResultPublication(tx, handle, root, resultId) {
             || !equal(envelope.sourceRefs.slice(2), session ? sessionDelegationResultSources(root, attempt, lineage.plan) : [])
             || !session && (completion.observation.dispatchEvidence.reference.resultOutputType !== 'json'
                 || completion.observation.dispatchEvidence.reference.resultPayloadHash !== hash({ text: result.doc.payload, toolCalls: [] }))) invalid();
-        const publication = { record: result.doc, receipt, attemptReceipt: settlement, producer: attempt };
-        const outputAttempts = [];
-        for (const id of root.attemptRefs) {
-            const actual = (await readAttempt(tx, handle, root, id)).doc;
-            if (actual.nodeId === lineage.output.nodeId) outputAttempts.push(actual);
-        }
-        if (outputAttempts.length > 1) invalid();
-        const graphHistory = await (session ? readSessionDelegatedGraphHistory : readProjectDelegatedGraphHistory)(tx, handle, root, { finalPublication: publication, output: outputAttempts[0] ?? null });
         return { ...publication, graphHistory };
     }
     if (!equal(receipt.handoffReceiptRef, { runId: parentRunId, receiptId: handoffReceiptId(root.runId) })
@@ -139,5 +144,17 @@ export async function readResultPublication(tx, handle, root, resultId) {
         || ready.decisionSeq > receipt.decisionSeq
         || ready.reservationId !== root.runId || ready.sourceBindingDigest !== receipt.sourceBindingDigest
         || ready.budgetCeilingDigest !== hash(root.parentRef.budgetCeiling) || !equal(ready.authorityRef, root.budgetAuthorityRef)) invalid();
-    return { record: result.doc, receipt, attemptReceipt: settlement };
+    const published = { record: result.doc, receipt, attemptReceipt: settlement };
+    if (isRpDelegatedControlGraph(root)) {
+        const outputs = [];
+        for (const id of root.attemptRefs) {
+            const candidate = (await readAttempt(tx, handle, root, id)).doc;
+            if (candidate.nodeId === root.graph.outputContract.ownerNodeId) outputs.push(candidate);
+        }
+        if (outputs.length > 1) invalid();
+        const graphHistory = await readRpDelegatedGraphHistory(tx, handle, root,
+            { finalPublication: { ...published, producer: attempt }, output: outputs[0] ?? null });
+        return { ...published, producer: attempt, graphHistory };
+    }
+    return published;
 }

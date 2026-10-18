@@ -7,6 +7,8 @@ import { controlCommandId, readAttempt } from './controller-common.js';
 export const graphPatchHash = patch => hash(Object.fromEntries(Object.entries(patch).filter(([field]) => field !== 'payloadHash')));
 const invalid = () => { throw Object.assign(new Error('Durable graph history requires integrity review'), { code: 'native_orchestration_graph_history_unavailable' }); };
 const equal = (a, b) => hash(a) === hash(b);
+const replayContents = new WeakMap();
+const replayCopies = snapshots => new Map([...snapshots].map(([revision, snapshot]) => [revision, cloneNativeDocument(snapshot)]));
 
 /** Replay original accepted patch facts, never issue a producer or Result grant.
  * Later edges appear only in their own revision, not an earlier publication. */
@@ -23,22 +25,35 @@ export async function readTaskGraphRevisions(tx, handle, root, graphRevisions) {
         assertCounter(revision, 'graphRevision');
         if (revision > root.graphRevision) invalid();
     }
-    const plan = await readPlanRevision(tx, handle, root.planRef), graph = cloneNativeDocument(plan.definition);
+    const plan = await readPlanRevision(tx, handle, root.planRef);
+    const rows = await tx.listResources({ kind: K.orchestrationRecord, handle, runId: root.runId, recordType: 'patch' });
+    rows.sort((a, b) => a.doc.decisionSeq - b.doc.decisionSeq);
+    const facts = [];
+    for (const row of rows) {
+        const receipt = row.doc;
+        if (row.integrity !== hash(receipt) || row.key.recordId !== receipt.patchId) invalid();
+        const producer = (await readAttempt(tx, handle, root, receipt.producerAttemptId)).doc;
+        const commandId = controlCommandId('graph.patch', receipt.patchId);
+        const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+        facts.push({ receipt, producer, command, commandId });
+    }
+    // Only identical pure replay/schema work is reused in this transaction.
+    // Every invocation still reads and checks the original Plan, all patch
+    // envelopes, producers and commands above. Rehashed edits or any Root
+    // change require the entire original replay again; no permission is saved.
+    const contentKey = hash({ handle, root: hash(root), plan: hash(plan), revisions: [...requested].sort((a, b) => a - b),
+        facts: facts.map(({ receipt, producer, command }) => [hash(receipt), hash(producer), command ? hash(command) : null]) });
+    const memo = replayContents.get(tx);
+    if (memo?.entries.has(contentKey)) return replayCopies(memo.entries.get(contentKey).snapshots);
+    const graph = cloneNativeDocument(plan.definition);
     const nodeControl = Object.fromEntries(graph.nodes.map(node => [node.nodeId, { disposition: 'eligible', priority: 0, reasonCode: null }]));
     let revision = 0, decisionSeq = 0;
     const selected = new Map();
     if (requested.has(0)) selected.set(0, { graph: cloneNativeDocument(graph), nodeControl: cloneNativeDocument(nodeControl), graphRevision: 0 });
-    const rows = await tx.listResources({ kind: K.orchestrationRecord, handle, runId: root.runId, recordType: 'patch' });
-    rows.sort((a, b) => a.doc.decisionSeq - b.doc.decisionSeq);
-    for (const row of rows) {
-        const receipt = row.doc;
-        if (row.integrity !== hash(receipt) || row.key.recordId !== receipt.patchId) invalid();
+    for (const { receipt, producer, command, commandId } of facts) {
         assertObject(receipt, ['schemaVersion', 'patchId', 'runId', 'payloadHash', 'semanticHash', 'producerAttemptId', 'previousGraphRevision', 'producerInputDigest',
             'sourceBindingDigest', 'reasonRefs', 'appliedOperations', 'accepted', 'newGraphRevision', 'issues', 'decisionSeq', 'requests'], 'Graph patch receipt');
         assertCounter(receipt.decisionSeq, 'decisionSeq', 1);
-        const producer = (await readAttempt(tx, handle, root, receipt.producerAttemptId)).doc;
-        const commandId = controlCommandId('graph.patch', receipt.patchId);
-        const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
         if (receipt.schemaVersion !== 1 || receipt.runId !== root.runId || typeof receipt.accepted !== 'boolean'
             || receipt.decisionSeq <= decisionSeq || receipt.decisionSeq > root.eventSeq || receipt.previousGraphRevision !== revision
             || receipt.newGraphRevision !== revision + Number(receipt.accepted) || receipt.producerInputDigest !== producer.inputDigest
@@ -87,5 +102,16 @@ export async function readTaskGraphRevisions(tx, handle, root, graphRevisions) {
         if (requested.has(revision)) selected.set(revision, { graph: cloneNativeDocument(graph), nodeControl: cloneNativeDocument(nodeControl), graphRevision: revision });
     }
     if (revision !== root.graphRevision || root.progress.patches !== revision || !equal(graph, root.graph) || !equal(nodeControl, root.nodeControl) || selected.size !== requested.size) invalid();
+    const bytes = Buffer.byteLength(JSON.stringify([...selected]));
+    if (bytes <= 4 * 1024 * 1024) {
+        const current = memo ?? { entries: new Map(), bytes: 0 };
+        while (current.entries.size && (current.entries.size >= 4 || current.bytes + bytes > 4 * 1024 * 1024)) {
+            const oldest = current.entries.keys().next().value;
+            current.bytes -= current.entries.get(oldest).bytes; current.entries.delete(oldest);
+        }
+        current.entries.set(contentKey, { snapshots: selected, bytes }); current.bytes += bytes;
+        replayContents.set(tx, current);
+        return replayCopies(selected);
+    }
     return selected;
 }

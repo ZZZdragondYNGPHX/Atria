@@ -138,7 +138,7 @@ describe.each(CONTRACT_HARNESSES)('$name Graph Result history and recipient cons
             });
             root.eventSeq = 6;
             const read = options => h.engine.withTransaction(h.handle, tx => readGraphNodeResult(tx, h.handle, root, result.resultId, options));
-            const readBatch = () => h.engine.withTransaction(h.handle, tx => readGraphNodeResults(tx, h.handle, root, [result.resultId, result.resultId]));
+            const readBatch = options => h.engine.withTransaction(h.handle, tx => readGraphNodeResults(tx, h.handle, root, [result.resultId, result.resultId], options));
             expect((await read()).record).toEqual(storedResult);
             const batch = await readBatch();
             expect(batch.size).toBe(1);
@@ -146,7 +146,9 @@ describe.each(CONTRACT_HARNESSES)('$name Graph Result history and recipient cons
             batch.get(result.resultId).record.payload = 'caller mutation';
             expect((await readBatch()).get(result.resultId).record).toEqual(storedResult);
             expect((await read({ recipient })).record).toEqual(storedResult);
+            expect((await readBatch({ recipient })).get(result.resultId).record).toEqual(storedResult);
             await expect(read({ recipient: { ...recipient, nodeId: f.c } })).rejects.toThrow('Invalid Graph Result facts');
+            await expect(readBatch({ recipient: { ...recipient, nodeId: f.c } })).rejects.toThrow('Invalid Graph Result facts');
             const keys = {
                 producer: controlRecordKey(h.handle, root.runId, 'attempt', attempt.attemptId),
                 settlement: controlRecordKey(h.handle, root.runId, 'receipt', attemptReceiptId(root.runId, attempt.attemptId)),

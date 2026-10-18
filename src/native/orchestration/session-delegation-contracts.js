@@ -15,6 +15,10 @@ import { readRunControl } from '../run-control.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { sessionOutputReceiptId } from './session-output-contracts.js';
 import { readSessionDelegationInputs } from './session-delegation-inputs.js';
+import { sessionDelegatedGraphProfile } from './session-delegated-graph-profile.js';
+import { readSessionPlannerCompletion } from './session-planner-contracts.js';
+import { readModelCompletionReceipt } from './model-port.js';
+import { sessionPlannerProgressFingerprint } from './session-replan-contracts.js';
 
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid Session delegation facts'); };
@@ -38,32 +42,12 @@ async function durableParent(tx, handle, supplied) {
     return actual;
 }
 
-/** Original published pure child DAG, not an alternative execution profile. */
+/** Original published Model dependencies and their accepted Graph revisions. */
 export async function readSessionDelegatedPlan(tx, handle, child) {
-    const plan = await readPlanRevision(tx, handle, child.planRef), graph = plan.definition;
-    if (child.sourceBinding.sourceAuthority !== 'native_session' || !child.parentRef || child.graphRevision !== 0
-        || !equal(child.graph, graph) || graph.outputContract.kind !== 'result' || graph.outputContract.allowPartial
-        || graph.outputContract.resultPolicy.outputType !== 'text' || graph.graphChangePolicy.allowedOperations.length
-        || graph.edges.some(edge => edge.loopBack || !['always', 'success'].includes(edge.condition))
-        || graph.nodes.some(node => node.kind !== 'agent' && node.kind !== 'output')
-        || graph.nodes.filter(node => node.kind === 'output').length !== 1) invalid();
-    const output = graph.nodes.find(node => node.nodeId === graph.outputContract.ownerNodeId);
-    const models = graph.nodes.filter(node => node.kind === 'agent');
-    if (output?.kind !== 'output' || !models.length || output.capabilities.length || output.outputs.length
-        || models.some(node => !node.capabilities.includes('generation.send') || node.capabilities.some(capability => capability !== 'generation.send')
-            || node.outputs.length !== 1 || node.outputs[0].type !== 'text' || node.policy.audiencePinId === undefined)) invalid();
-    const terminalEdges = graph.edges.filter(edge => edge.to.nodeId === output.nodeId);
-    if (terminalEdges.length !== 1 || !models.some(node => node.nodeId === terminalEdges[0].from.nodeId)) invalid();
-    // Every published child task must participate in the returned result.
-    const needed = new Set([output.nodeId]);
-    for (let changed = true; changed;) {
-        changed = false;
-        for (const edge of graph.edges) if (needed.has(edge.to.nodeId) && !needed.has(edge.from.nodeId)) {
-            needed.add(edge.from.nodeId); changed = true;
-        }
-    }
-    if (needed.size !== graph.nodes.length) invalid();
-    return { plan, graph, models, output, terminalNodeId: terminalEdges[0].from.nodeId };
+    const plan = await readPlanRevision(tx, handle, child.planRef), snapshot = await readTaskGraphRevision(tx, handle, child);
+    if (child.sourceBinding.sourceAuthority !== 'native_session' || !child.parentRef) invalid();
+    const profile = sessionDelegatedGraphProfile({ ...plan, definition: snapshot.graph });
+    return { plan, profile, graph: snapshot.graph, models: profile.models, output: profile.output, terminalNodeId: profile.terminalNodeId };
 }
 
 /** Historical linkage only. Live callers separately prove Source and permits. */
@@ -123,26 +107,40 @@ export async function readSessionDelegatedModelInput(tx, handle, child, producer
         || !equal(input.sourceRef, child.sourceBinding.sourceRef) || intent.nodeAttemptId !== producer.attemptId
         || intent.epoch !== producer.epoch || intent.graphRevision !== producer.graphRevision || intent.grantDigest !== producer.effectiveGrantDigest
         || producer.effectiveGrantDigest !== child.parentRef.effectiveGrantDigest) invalid();
-    const incoming = lineage.graph.edges.filter(edge => edge.to.nodeId === producer.nodeId).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
-    const sources = [];
+    const snapshot = await readTaskGraphRevision(tx, handle, child, producer.graphRevision);
+    const controls = input.acceptedControlRefs ?? [], sources = [];
     for (const ref of input.acceptedGraphResultRefs) {
         const fact = await readGraphNodeResult(tx, handle, child, ref.resultId);
-        if (!fact || ref.runId !== child.runId) invalid(); sources.push(fact);
+        if (!fact || ref.runId !== child.runId || !equal(ref, fact.receipt.resultRef)) invalid(); sources.push(fact);
     }
-    const ordered = incoming.map(edge => sources.find(fact => fact.producer.nodeId === edge.from.nodeId));
-    if (ordered.some(fact => !fact)) invalid();
-    const refs = [...new Map(ordered.map(fact => [hash(fact.receipt.resultRef), fact.receipt.resultRef])).values()];
-    const bindings = incoming.map((edge, index) => ({ edgeId: edge.edgeId, producerAttemptId: ordered[index].producer.attemptId }));
-    if (!equal(input.acceptedGraphResultRefs, refs) || !equal(input.graphBindings, bindings)
-        || !equal(producer.inputRefs, [input, ...child.parentRef.inputRefs, ...refs]) || producer.inputDigest !== hash(producer.inputRefs)) invalid();
-    if (!incoming.length) {
-        if (!lineage.graph.entryNodeIds.includes(producer.nodeId)) invalid();
+    for (const ref of controls) {
+        const fact = await readSessionPlannerCompletion(tx, handle, child, ref.attemptId);
+        if (!fact || ref.runId !== child.runId || !equal(ref, fact.controlRef)) invalid(); sources.push(fact);
+    }
+    if (sources.some(fact => fact.receipt.decisionSeq >= publicationSeq)) invalid();
+    const incoming = snapshot.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === producer.nodeId);
+    const loops = input.graphBindings.filter(binding => snapshot.graph.edges.find(edge => edge.edgeId === binding.edgeId)?.loopBack);
+    for (const binding of loops) {
+        const edge = snapshot.graph.edges.find(edge => edge.edgeId === binding.edgeId), source = sources.find(fact => fact.producer.attemptId === binding.producerAttemptId);
+        if (!source?.patch?.requests.replan || source.patch.requests.finalize || source.patch.newGraphRevision !== producer.graphRevision
+            || edge.from.nodeId !== producer.nodeId || edge.to.nodeId !== producer.nodeId) invalid();
+    }
+    const edges = [...incoming, ...loops.map(binding => snapshot.graph.edges.find(edge => edge.edgeId === binding.edgeId))].sort((a, b) => a.edgeId.localeCompare(b.edgeId));
+    const ordered = edges.map(edge => sources.find(fact => fact.producer.nodeId === edge.from.nodeId));
+    if (ordered.some(fact => !fact) || new Set(sources.map(fact => fact.producer.attemptId)).size !== sources.length) invalid();
+    const refs = [...new Map(ordered.filter(fact => fact.record).map(fact => [hash(fact.receipt.resultRef), fact.receipt.resultRef])).values()];
+    const controlRefs = [...new Map(ordered.filter(fact => fact.controlRef).map(fact => [hash(fact.controlRef), fact.controlRef])).values()];
+    const bindings = edges.map((edge, index) => ({ edgeId: edge.edgeId, producerAttemptId: ordered[index].producer.attemptId }));
+    if (!equal(input.acceptedGraphResultRefs, refs) || !equal(controls, controlRefs) || !equal(input.graphBindings, bindings)
+        || !equal(producer.inputRefs, [input, ...child.parentRef.inputRefs, ...refs, ...controls]) || producer.inputDigest !== hash(producer.inputRefs)) invalid();
+    if (!edges.length) {
+        if (!snapshot.graph.entryNodeIds.includes(producer.nodeId)) invalid();
     } else {
-        const identity = hash({ runId: child.runId, bindings, reservedAttemptId: null });
-        await assertOutputTransition(tx, handle, child, { published: ordered[0], additionalProducers: ordered.slice(1), output: producer,
-            receipt: { decisionSeq: publicationSeq, traversalReceiptRef: { runId: child.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } }, producerBindings: bindings });
+        const identity = hash({ runId: child.runId, bindings, reservedAttemptId: null }), direct = [...new Map(ordered.map(fact => [fact.producer.attemptId, fact])).values()];
+        await assertOutputTransition(tx, handle, child, { published: direct[0], additionalProducers: direct.slice(1), output: producer,
+            receipt: { decisionSeq: publicationSeq, traversalReceiptRef: { runId: child.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } }, producerBindings: bindings, allowLoopBack: !!loops.length });
     }
-    return { lineage, input, sourceRefs, sources: ordered, bindings };
+    return { lineage, input, sourceRefs, sources: ordered, bindings, loops };
 }
 
 /** Validate all actual tasks and their original Transition and bank facts.
@@ -168,29 +166,34 @@ export async function readSessionDelegatedGraphHistory(tx, handle, child, { fina
     const attempts = [];
     for (const id of child.attemptRefs) attempts.push((await readAttempt(tx, handle, child, id)).doc);
     const modelAttempts = attempts.filter(attempt => attempt.nodeId !== shape.output.nodeId);
-    if (modelAttempts.length !== models.length || new Set(modelAttempts.map(attempt => attempt.nodeId)).size !== models.length
+    if (modelAttempts.length < models.length || new Set(modelAttempts.map(attempt => attempt.nodeId)).size !== models.length
         || modelAttempts.some(attempt => !models.some(node => node.nodeId === attempt.nodeId))
         || attempts.some(attempt => attempt.nodeId === shape.output.nodeId && (!output || attempt.attemptId !== output.attemptId))
         || attempts.filter(attempt => attempt.nodeId === shape.output.nodeId).length !== (output ? 1 : 0)
-        || facts.length !== models.length - (pendingProducer ? 1 : 0)) invalid();
+        || facts.length !== modelAttempts.filter(attempt => graph.nodes.find(node => node.nodeId === attempt.nodeId).kind === 'agent').length - (pendingProducer ? 1 : 0)) invalid();
     const control = await readRunControl(tx, handle, child.budgetAuthorityRef.sessionId);
     const bank = control?.operations[child.budgetAuthorityRef.operationId]?.compute;
     if (!bank) invalid();
-    const effects = [], expectedRefs = [], usedEdges = new Map();
-    let settled = true;
+    const effects = [], expectedRefs = [], usedEdges = new Map(), planners = [], entries = [];
+    let settled = true, loopIterations = 0;
     for (const producer of modelAttempts) {
-        const fact = facts.find(fact => fact.producer.attemptId === producer.attemptId);
+        const node = graph.nodes.find(node => node.nodeId === producer.nodeId);
+        const fact = node.kind === 'planner' ? await readSessionPlannerCompletion(tx, handle, child, producer.attemptId)
+            : facts.find(fact => fact.producer.attemptId === producer.attemptId);
         if (!fact && producer.attemptId !== pendingProducer?.attemptId || producer.effectRefs.length !== 1
             || producer.status !== (producer.attemptId === pendingProducer?.attemptId ? 'running' : 'completed')
-            || producer.graphRevision !== 0 || producer.epoch > child.epoch || producer.sourceBindingDigest !== child.sourceBinding.bindingDigest
+            || producer.graphRevision > child.graphRevision || producer.epoch > child.epoch || producer.sourceBindingDigest !== child.sourceBinding.bindingDigest
             || producer.effectiveGrantDigest !== child.parentRef.effectiveGrantDigest || !equal(producer.budgetRef, child.budgetAuthorityRef)) invalid();
         const effect = (await readEffect(tx, handle, child, producer.effectRefs[0])).doc;
         const sourceRefs = sessionDelegationResultSources(child, producer, plan);
-        if (fact && !equal(fact.record.envelope.sourceRefs.slice(2), sourceRefs)) invalid();
-        if (producer.attemptId === finalProducer.attemptId) {
-            await readSessionDelegatedModelInput(tx, handle, child, producer, effect, fact?.receipt.decisionSeq ?? child.eventSeq + 1);
+        if (fact?.record && !equal(fact.record.envelope.sourceRefs.slice(2), sourceRefs)) invalid();
+        if (!await readModelCompletionReceipt(handle, tx, child, effect)) invalid();
+        const proof = await readSessionDelegatedModelInput(tx, handle, child, producer, effect, fact?.receipt.decisionSeq ?? child.eventSeq + 1);
+        for (const binding of proof.bindings) {
+            usedEdges.set(binding.edgeId, (usedEdges.get(binding.edgeId) ?? 0) + 1);
+            if (graph.edges.find(edge => edge.edgeId === binding.edgeId).loopBack) loopIterations++;
         }
-        for (const edge of graph.edges.filter(edge => edge.to.nodeId === producer.nodeId)) usedEdges.set(edge.edgeId, 1);
+        entries.push({ producer, fact, proof }); if (node.kind === 'planner') planners.push(fact);
         const rows = bank.attempts.filter(row => row.orchestration?.effectId === effect.effectId);
         const local = (bank.localWork ?? []).filter(row => row.orchestration?.effectId === effect.effectId);
         if (rows.length !== 1 || rows[0].reservationId !== child.runId || rows[0].orchestration.kind !== 'provider_send'
@@ -199,6 +202,23 @@ export async function readSessionDelegatedGraphHistory(tx, handle, child, { fina
         if (rows.some(row => row.status !== 'settled')) settled = false;
         effects.push(effect); expectedRefs.push(...rows.map(row => row.attemptId), ...local.map(row => row.attemptId));
     }
+    const latest = new Map(), consumed = new Set(), keys = new Map();
+    for (const { producer, fact, proof } of entries) {
+        for (const source of proof.sources) if (latest.get(source.producer.nodeId)?.producer.attemptId !== source.producer.attemptId) invalid();
+        if (latest.has(producer.nodeId) && !proof.loops.length) invalid();
+        if (proof.loops.length) {
+            const trigger = proof.sources.find(source => source.producer.attemptId === proof.loops[0].producerAttemptId);
+            if (!trigger || consumed.has(trigger.producer.attemptId) || proof.loops.some(binding => binding.producerAttemptId !== trigger.producer.attemptId)) invalid();
+            consumed.add(trigger.producer.attemptId);
+        }
+        if (fact?.patch) {
+            const key = sessionPlannerProgressFingerprint(fact.patch.appliedOperations, child.sourceBinding, proof.sources.filter(source => source.record));
+            const prior = keys.get(producer.nodeId) ?? new Set(); if (prior.has(key)) invalid(); prior.add(key); keys.set(producer.nodeId, prior);
+        }
+        latest.set(producer.nodeId, { producer, fact });
+    }
+    if (planners.length !== child.graphRevision || child.progress.replans !== planners.filter(fact => fact.patch.requests.replan).length
+        || consumed.size !== child.progress.replans || [...latest.values()].some(item => item.fact?.patch?.requests.replan)) invalid();
     if (new Set(effects.map(effect => effect.effectId)).size !== effects.length
         || bank.attempts.some(row => row.reservationId === child.runId && !expectedRefs.includes(row.attemptId))
         || (bank.localWork ?? []).some(row => row.reservationId === child.runId && !expectedRefs.includes(row.attemptId))) invalid();
@@ -207,9 +227,9 @@ export async function readSessionDelegatedGraphHistory(tx, handle, child, { fina
         usedEdges.set(edge.edgeId, 1);
     }
     const expectedVisits = Object.fromEntries(usedEdges);
-    if (child.progress.loopIterations !== 0 || child.progress.edgeVisits !== usedEdges.size || !equal(child.progress.edgeVisitCounts, expectedVisits)) invalid();
+    if (child.progress.loopIterations !== loopIterations || child.progress.edgeVisits !== [...usedEdges.values()].reduce((sum, count) => sum + count, 0) || !equal(child.progress.edgeVisitCounts, expectedVisits)) invalid();
     const history = { ...shape, lineage, results, finalProducer, effects, rootDigest: hash(child),
-        budgetAttemptIds: expectedRefs, settled };
+        budgetAttemptIds: expectedRefs, settled, planners, loopIterations };
     if (closure) assertSessionDelegatedClosure(child, history, closure);
     return history;
 }

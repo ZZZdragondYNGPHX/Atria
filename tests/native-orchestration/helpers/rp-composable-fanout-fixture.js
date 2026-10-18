@@ -6,7 +6,7 @@ import { hashNativeDocument as hash } from '../../../src/native/repositories/com
 const id = kind => createNativeId('orchestration' + kind);
 export const bodyText = body => body.messages.flatMap(message => typeof message.content === 'string' ? [message.content] : message.content.map(part => part.text ?? '')).join('\n');
 
-export async function rpComposableFanoutFixture(make, { usage = true, maxRequests = null, maxConcurrency = 2, judge = true, withPlanner = true, quality = true } = {}) {
+export async function rpComposableFanoutFixture(make, { usage = true, maxRequests = null, maxConcurrency = 2, judge = true, withPlanner = true, quality = true, scopePlanner = false, joinStrategy = 'all-success', scopeResponse = null } = {}) {
     let nodes, source;
     const f = await rpModelFixture(make, { usage, configurePlan: async (plan, env) => {
         const [narrator, output] = plan.definition.nodes;
@@ -33,8 +33,8 @@ export async function rpComposableFanoutFixture(make, { usage = true, maxRequest
                 policy: { agentPinId: pinId, ...kind === 'review' ? { maxRounds: 2 } : {} } };
         };
         const planner = withPlanner ? await node('planner', 'planner', []) : null;
-        const a = await node('agent', 'branch-a', [port('task', 'task.result')]);
-        const a2 = await node('agent', 'branch-a-next', [port('previous', 'text')]);
+        const a = await node(scopePlanner ? 'planner' : 'agent', 'branch-a', [port('task', 'task.result')]);
+        const a2 = await node('agent', 'branch-a-next', [port('previous', scopePlanner ? 'json' : 'text')]);
         const b = await node('agent', 'branch-b', [port('task', 'task.result')]);
         const after = await node('agent', 'after-join', [port('joined', 'text')]);
         const review = quality ? await node('review', 'review', [port('draft', 'text')]) : null;
@@ -42,7 +42,7 @@ export async function rpComposableFanoutFixture(make, { usage = true, maxRequest
         const fanout = { nodeId: id('Node'), kind: 'fanout', label: 'Frozen work', inputs: withPlanner ? [port('control', 'json')] : [], outputs: [port('response', 'task.result')],
             dependencyPinIds: [], capabilities: [], policy: { maxConcurrency, failurePolicy: 'continue' } };
         const join = { nodeId: id('Node'), kind: 'join', label: 'Deterministic barrier', inputs: [port('a', 'text'), port('b', 'text')], outputs: [port('response', 'text')],
-            dependencyPinIds: [], capabilities: [], policy: { strategy: 'all-success', quorum: 2, deadlineMs: 60000 } };
+            dependencyPinIds: [], capabilities: [], policy: { strategy: joinStrategy, quorum: 2, deadlineMs: 60000 } };
         narrator.inputs = [port('draft', 'text'), ...review ? [port('quality', 'json')] : [], ...chooser ? [port('choice', 'json')] : []]; output.capabilities = ['chat.output'];
         const edge = (from, to, input, condition = 'success') => ({ edgeId: id('Edge'), from: { nodeId: from.nodeId, port: 'response' },
             to: { nodeId: to.nodeId, port: input }, condition, maxVisits: 1, loopBack: false });
@@ -51,8 +51,8 @@ export async function rpComposableFanoutFixture(make, { usage = true, maxRequest
             edge(fanout, a, 'task'), edge(fanout, b, 'task'), edge(a, a2, 'previous'), edge(a2, join, 'a', 'always'), edge(b, join, 'b', 'always'),
             edge(join, after, 'joined'), edge(after, narrator, 'draft'), ...review ? [edge(after, review, 'draft'), edge(review, narrator, 'quality')] : [],
             ...chooser ? [edge(after, chooser, 'draft'), edge(review, chooser, 'quality'), edge(chooser, narrator, 'choice')] : [], ...plan.definition.edges];
-        plan.definition.capabilityCeiling = ['generation.send', ...planner ? ['graph.patch'] : [], 'chat.output'];
-        plan.definition.graphChangePolicy = { allowedOperations: planner ? ['requestFinalize'] : [], allowedNodeKinds: [] };
+        plan.definition.capabilityCeiling = ['generation.send', ...planner || scopePlanner ? ['graph.patch'] : [], 'chat.output'];
+        plan.definition.graphChangePolicy = { allowedOperations: scopePlanner ? ['requestFinalize', 'setPendingPriority'] : planner ? ['requestFinalize'] : [], allowedNodeKinds: [] };
         Object.assign(plan.definition.limits, { maxSteps: 100, maxAttempts: plan.definition.nodes.length, maxConcurrency, maxNodes: plan.definition.nodes.length,
             maxEdges: plan.definition.edges.length, maxEdgeVisits: plan.definition.edges.length });
         Object.assign(plan.definition.outputContract, { kind: 'rp_narration', slot: 'assistant', resultPolicy: { outputType: 'text', maxBytes: 65536 } });
@@ -67,6 +67,8 @@ export async function rpComposableFanoutFixture(make, { usage = true, maxRequest
     }, responsePayload: body => {
         const content = bodyText(body), nodeId = content.match(/"task":\{"nodeId":"([^"]+)"/)?.[1];
         if (nodeId === nodes.planner?.nodeId) return JSON.stringify({ operations: [{ op: 'requestFinalize' }] });
+        if (scopePlanner && nodeId === nodes.a.nodeId) return JSON.stringify({ operations: scopeResponse ? scopeResponse(nodes)
+            : [{ op: 'setPendingPriority', nodeId: nodes.a2.nodeId, priority: 2 }, { op: 'requestFinalize' }] });
         for (const name of ['a', 'a2', 'b', 'after']) if (nodeId === nodes[name].nodeId) return 'ADVISORY_' + name.toUpperCase();
         if (nodeId === nodes.review?.nodeId) return JSON.stringify({ decision: 'approve', reasonCode: 'quality_ready',
             targetAttemptIds: JSON.parse(content.match(/"evidence":(\[[^\]]+\])/)?.[1] ?? '[]').map(item => item.attemptId) });

@@ -122,9 +122,9 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
     }, 120000);
 
     test('last Result bank await preserves same-transaction Memory withdrawal and returns no predecessor body', async () => {
-        const f = await setup(make), read = ResultPort.prototype.readForGraph, budget = BudgetPort.prototype.assertCurrent;
+        const f = await setup(make), read = ResultPort.prototype.readForGraphResults, budget = BudgetPort.prototype.assertCurrent;
         let inRead = false, changed = false, delivered = false;
-        const readSpy = jest.spyOn(ResultPort.prototype, 'readForGraph').mockImplementation(async function (...args) {
+        const readSpy = jest.spyOn(ResultPort.prototype, 'readForGraphResults').mockImplementation(async function (...args) {
             inRead = true;
             try { const result = await read.apply(this, args); delivered = true; return result; } finally { inRead = false; }
         });

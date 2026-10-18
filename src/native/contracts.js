@@ -1146,9 +1146,16 @@ function assertResourceKeyField(value, type, field) {
     return assertNativeId(value, type, field);
 }
 
+// Only the validator's own frozen, primitive-valued keys can reuse this pure
+// check. Caller objects (including frozen objects and proxies) remain fresh.
+const validatedNativeResourceKeys = new WeakSet();
+const nativeResourceKeyFields = new Map(Object.entries(RESOURCE_KEY_SPECS)
+    .map(([kind, spec]) => [kind, Object.freeze(spec.map(([field]) => field))]));
+
 export function assertNativeResourceKey(key) {
+    if (validatedNativeResourceKeys.has(key)) return key;
     plain(key, 'Native resource key');
-    const spec = RESOURCE_KEY_SPECS[key.kind];
+    const validatedKind = key.kind, spec = RESOURCE_KEY_SPECS[validatedKind];
     if (!spec) throw new TypeError(`Unsupported Native resource kind '${String(key.kind)}'`);
     const allowed = new Set(['kind', ...spec.map(([field]) => field)]);
     for (const field of Object.keys(key)) {
@@ -1156,11 +1163,13 @@ export function assertNativeResourceKey(key) {
     }
     const result = { kind: key.kind };
     for (const [field, type] of spec) result[field] = assertResourceKeyField(key[field], type, key.kind + '.' + field);
-    return Object.freeze(result);
+    Object.freeze(result);
+    if (typeof validatedKind === 'string' && result.kind === validatedKind) validatedNativeResourceKeys.add(result);
+    return result;
 }
 
 export function getNativeResourceKeyFields(kind) {
     const spec = RESOURCE_KEY_SPECS[kind];
     if (!spec) throw new TypeError(`Unsupported Native resource kind '${String(kind)}'`);
-    return Object.freeze(spec.map(([field]) => field));
+    return typeof kind === 'string' ? nativeResourceKeyFields.get(kind) : Object.freeze(spec.map(([field]) => field));
 }

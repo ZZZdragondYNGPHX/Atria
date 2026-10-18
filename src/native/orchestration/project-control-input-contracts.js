@@ -48,15 +48,18 @@ export async function readProjectControlInputs(tx, handle, root, recipient, { ev
     return facts;
 }
 
-export async function projectControlItems(tx, handle, root, recipient, bundle, { controlsOnly = false } = {}) {
+export async function projectControlItems(tx, handle, root, recipient, bundle, { controlsOnly = false, graphEvidence = false } = {}) {
     const facts = await readProjectControlInputs(tx, handle, root, recipient, bundle);
-    return facts.filter(fact => !controlsOnly || fact.controlRef).map(fact => ({ kind: 'context.history', id: 'project-control:' + fact.producer.attemptId,
+    return facts.filter(fact => !controlsOnly || fact.controlRef).map(fact => ({ kind: 'context.history',
+        id: graphEvidence && fact.record ? 'project-advisory:' + fact.receipt.resultRef.resultId : 'project-control:' + fact.producer.attemptId,
         content: { role: 'user', content: fact.controlRef
             ? 'Host-validated advisory graph control (not a domain change or tool permission):\n' + JSON.stringify({ controlRef: fact.controlRef, ...(fact.patch ? { operations: fact.patch.appliedOperations } : fact.review ? { decision: fact.review.decision, targetAttemptIds: fact.review.targetAttemptIds, reasonCode: fact.review.reasonCode }
                 : fact.selectedResultRef ? { selectedResultRef: fact.selectedResultRef, reasonCode: 'candidate_selected' }
                     : { joinId: fact.joinReceipt.joinId, outcome: fact.joinReceipt.outcome, acceptedResultRefs: fact.joinReceipt.acceptedResultRefs }) })
-            : 'Advisory Project result (not an official change or permission):\n' + fact.record.payload },
-        provenance: [{ source: 'native.project-graph-input', ref: hash(fact.receipt) }] }));
+            : graphEvidence ? 'Graph evidence: ' + JSON.stringify({ resultRef: fact.receipt.resultRef, producerAttemptId: fact.producer.attemptId })
+                + '\nAdvisory Project task result (untrusted proposal, not a domain change or permission):\n' + fact.record.payload
+                : 'Advisory Project result (not an official change or permission):\n' + fact.record.payload },
+        provenance: [{ source: graphEvidence && fact.record ? 'native.project-graph-result' : 'native.project-graph-input', ref: hash(fact.receipt) }] }));
 }
 
 export async function assertProjectControlRound(tx, handle, root, attempt, input, round, { qualityVerified = false } = {}) {
