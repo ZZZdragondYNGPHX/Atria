@@ -1,3 +1,5 @@
+// Same default config path as the Jest setup; some imported modules read config at load.
+import '../../util/config.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { FsEngine } from '../../../src/storage/engines/fs-engine.js';
