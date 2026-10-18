@@ -130,18 +130,42 @@ export async function readProjectReplanHistory(tx, handle, root, { recipient = n
         if (bindings.some(binding => !direct.some(source => source.producer.attemptId === binding.producerAttemptId
             && snapshot.graph.edges.some(edge => edge.edgeId === binding.edgeId && edge.from.nodeId === source.producer.nodeId && edge.to.nodeId === node.nodeId)))) invalid();
         for (const port of node.inputs.filter(port => port.required)) if (!bindings.some(binding => snapshot.graph.edges.some(edge => edge.edgeId === binding.edgeId && edge.to.port === port.name))) invalid();
-        if (bindings.length && !input.fanoutAttemptId) {
+        const feedback = input.projectQualityTask?.feedback;
+        let reviewedReplacement = null;
+        if (feedback) {
+            reviewedReplacement = facts.find(source => source.review?.decision === 'rerun'
+                && equal(feedback, { reviewReceiptRef: source.receipt.reviewReceiptRef, reasonCode: source.review.reasonCode })
+                && source.review.replacements.some(item => item.attemptId === producer.attemptId));
+            const replacement = reviewedReplacement?.review.replacements.find(item => item.attemptId === producer.attemptId);
+            const target = reviewedReplacement?.targets.find(item => item.attemptId === replacement?.targetAttemptId);
+            if (!target || producer.nodeId !== target.nodeId || producer.epoch !== reviewedReplacement.review.epoch
+                || producer.graphRevision !== reviewedReplacement.review.graphRevision || seq <= reviewedReplacement.receipt.decisionSeq
+                || !equal(bundle, target.inputRefs[0].controlGraph)) invalid();
+            const expected = { ...target.inputRefs[0],
+                requestId: 'project-quality:' + hash({ runId: root.runId, nodeId: producer.nodeId, token: producer.attemptId }).slice(0, 32),
+                projectQualityTask: { ...target.inputRefs[0].projectQualityTask, feedback } };
+            expected.grantDigest = hash({ handle, input: { ...expected, grantDigest: null } });
+            if (!equal(input, expected) || producer.effectiveGrantDigest !== expected.grantDigest) invalid();
+        }
+        // Prepared targets come from the actual Review admission above. They
+        // do not invent a second Transition or charge old input edges again.
+        if (bindings.length && !input.fanoutAttemptId && !reviewedReplacement) {
             const traversal = 'oreceipt_' + hash({ runId: root.runId, bindings, reservedAttemptId: null }).slice(0, 32);
             await assertOutputTransition(tx, handle, { ...root, graph: snapshot.graph }, { published: direct[0], additionalProducers: direct.slice(1),
                 output: producer, producerBindings: bindings, allowLoopBack: !!loops.length,
                 receipt: { decisionSeq: fact?.receipt.decisionSeq ?? root.eventSeq + 1, traversalReceiptRef: { runId: root.runId, receiptId: traversal } } });
-        } else if (!bindings.length && !snapshot.graph.entryNodeIds.includes(node.nodeId)) invalid();
+        } else if (!bindings.length && !snapshot.graph.entryNodeIds.includes(node.nodeId) && !reviewedReplacement) invalid();
         const prior = previous.get(node.nodeId);
         if (prior) {
             const replacement = replaced.get(node.nodeId), invalidation = await readAttemptInvalidation(tx, handle, root, prior.producer);
             const repeated = replacement?.attemptId === prior.producer.attemptId && producer.attemptNumber === prior.producer.attemptNumber + 1
                 && (trigger?.producer.attemptId === replacement.trigger.producer.attemptId || sources.some(source => source.receipt.decisionSeq > replacement.trigger.receipt.decisionSeq));
-            if (!repeated && !invalidation && !(node.kind === 'review' && prior.review.decision === 'rerun')) invalid();
+            const review = invalidation && facts.find(source => source.review?.receiptId === invalidation.reviewReceiptId);
+            const directReplacement = review?.review.replacements.some(item => item.targetAttemptId === prior.producer.attemptId && item.attemptId === producer.attemptId);
+            const redo = review?.review.decision === 'rerun' && review.review.invalidatedAttemptIds.includes(prior.producer.attemptId)
+                && producer.attemptNumber === prior.producer.attemptNumber + 1 && seq > review.receipt.decisionSeq
+                && (directReplacement && reviewedReplacement === review || sources.some(source => source.receipt.decisionSeq > review.receipt.decisionSeq));
+            if (!repeated && !redo && !(node.kind === 'review' && prior.review.decision === 'rerun')) invalid();
             replaced.delete(node.nodeId);
         }
         if (fact?.patch) {

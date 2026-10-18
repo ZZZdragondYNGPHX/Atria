@@ -22,10 +22,10 @@ const textResponse = (text, index, usage = true) => ({ id: 'control-response-' +
 const edge = (from, fromPort, to, toPort) => ({ edgeId: createNativeId('orchestrationEdge'), from: { nodeId: from.nodeId, port: fromPort },
     to: { nodeId: to.nodeId, port: toPort }, condition: 'always', maxVisits: 1, loopBack: false });
 
-async function fixture(make, { escalation = false, unknown = false, differentRoutes = false, withReview = false, rerun = false, replan = false, multiPort = false, nonself = false, qualityBeforePlanner = false, maxQualityRounds = 2, rerunSecondReview = false } = {}) {
-    let operations, proposed, businessRound = 0, reviewRound = 0, plannerRound = 0, added, formalWorker;
+async function fixture(make, { escalation = false, unknown = false, differentRoutes = false, withReview = false, rerun = false, replan = false, multiPort = false, nonself = false, qualityBeforePlanner = false, maxQualityRounds = 2, rerunSecondReview = false, reviewPlannerRedo = false } = {}) {
+    let operations, proposed, businessRound = 0, reviewRound = 0, plannerRound = 0, added, formalWorker, redoTopology, pureRound = 0;
     const f = await projectModelFixture(make, { maxModelRounds: 3, changeRoute: route => ({ ...route, executionPolicy: { ...route.executionPolicy,
-        computeBudget: { ...route.executionPolicy.computeBudget, maxRequests: 12, localWork: { ...route.executionPolicy.computeBudget.localWork, maxJobs: 128 } } } }),
+        computeBudget: { ...route.executionPolicy.computeBudget, maxRequests: reviewPlannerRedo ? 11 : 12, localWork: { ...route.executionPolicy.computeBudget.localWork, maxJobs: 128 } } } }),
     configurePlan: async args => {
         const { plan, seeded, h, original, route } = args;
         proposed = structuredClone(original); proposed.project.displayName = 'Dynamically planned change';
@@ -113,25 +113,48 @@ async function fixture(make, { escalation = false, unknown = false, differentRou
             graph.capabilityCeiling = graph.capabilityCeiling.filter(capability => capability !== 'graph.patch');
             graph.graphChangePolicy = { allowedOperations: [], allowedNodeKinds: [] };
         }
+        if (reviewPlannerRedo) {
+            const review = { ...structuredClone(planner), nodeId: createNativeId('orchestrationNode'), kind: 'review', label: 'Review causal work including original Planner',
+                inputs: [{ name: 'source', type: 'text', required: true }, { name: 'draft', type: 'text', required: true }],
+                capabilities: ['generation.send'], policy: { agentPinId: planner.policy.agentPinId, maxRounds: 2 } };
+            worker.inputs = [{ name: 'advisory', type: 'text', required: false }, { name: 'review', type: 'json', required: true },
+                { name: 'continuation', type: 'json', required: false }];
+            graph.nodes = [analysis, planner, added, review, worker, output]; graph.entryNodeIds = [analysis.nodeId];
+            const twice = item => ({ ...item, maxVisits: 2 });
+            graph.edges = [twice(edge(analysis, 'analysis', planner, 'analysis')), twice(edge(planner, 'control', added, 'control')),
+                twice(edge(analysis, 'analysis', review, 'source')), twice(edge(added, 'analysis', review, 'draft')),
+                edge(added, 'analysis', worker, 'advisory'), { ...edge(review, 'control', worker, 'review'), maxVisits: 3 }, edge(worker, 'response', output, 'response'),
+                { ...edge(worker, 'response', worker, 'continuation'), loopBack: true, maxVisits: 2 }];
+            // Both proposals are the same lawful scheduling operation. Only
+            // genuinely new advisory payloads constitute Planner progress.
+            operations = [{ op: 'requestFinalize' }];
+            graph.graphChangePolicy = { allowedOperations: ['requestFinalize'], allowedNodeKinds: [] };
+            Object.assign(graph.limits, { maxSteps: 180, deadlineMs: 180000, maxAttempts: 12, maxReviews: 2, maxPatches: 2, maxLoopIterations: 2, maxEdgeVisits: 15 });
+            redoTopology = { analysis, planner, draft: added, review, worker };
+        }
         Object.assign(graph.outputContract, { kind: 'project_review', resultPolicy: { outputType: 'json', maxBytes: 16384 } });
     }, responseBody: ({ body, index }) => {
         const serialized = JSON.stringify(body);
         if (serialized.includes('native_project_graph_review')) {
             const strings = value => typeof value === 'string' ? [value] : value && typeof value === 'object' ? Object.values(value).flatMap(strings) : [];
             const ids = strings(body).flatMap(text => [...text.matchAll(/Graph evidence: .*?"producerAttemptId":"(oattempt_[a-f0-9]+)"/g)].map(match => match[1]));
-            const redo = rerunSecondReview ? reviewRound++ === 1 : rerun && reviewRound++ === 0;
-            return textResponse(JSON.stringify({ decision: redo ? 'rerun' : 'approve', reasonCode: redo ? 'incomplete_proposal' : 'quality_ready', targetAttemptIds: [...new Set(ids)] }), index);
+            const redo = reviewPlannerRedo ? reviewRound++ === 0 : rerunSecondReview ? reviewRound++ === 1 : rerun && reviewRound++ === 0;
+            const targets = reviewPlannerRedo ? strings(body).flatMap(text => [...text.matchAll(/Graph evidence: ([^\n]+)\n[^\n]*\nPROJECT_PLANNER_REDO_PURE_(1|3)(?=\n|$)/g)]
+                .filter(match => match[2] === (redo ? '1' : '3')).map(match => JSON.parse(match[1]).producerAttemptId)) : [...new Set(ids)];
+            if (reviewPlannerRedo && (targets.length !== 1 || !targets.every(id => ids.includes(id)))) throw new Error('Missing original Project typed Review target');
+            return textResponse(JSON.stringify({ decision: redo ? 'rerun' : 'approve', reasonCode: redo ? 'incomplete_proposal' : 'quality_ready', targetAttemptIds: targets }), index);
         }
         if (serialized.includes('native_project_graph_planner')) return textResponse(JSON.stringify({ operations: replan && plannerRound++ === 0
             ? [{ op: 'setPendingPriority', nodeId: formalWorker.nodeId, priority: 1 }, { op: 'requestReplan' }] : operations }), index);
-        if (serialized.includes('native_project_graph_work')) return textResponse('Source-bound evidence from ' + (index ? 'dynamic worker' : 'analysis') + (nonself ? ' iteration ' + index : ''), index, !unknown);
+        if (serialized.includes('native_project_graph_work')) return textResponse(reviewPlannerRedo ? 'PROJECT_PLANNER_REDO_PURE_' + ++pureRound
+            : 'Source-bound evidence from ' + (index ? 'dynamic worker' : 'analysis') + (nonself ? ' iteration ' + index : ''), index, !unknown);
         const round = businessRound++;
         return { id: 'business-response-' + index, status: 'completed', output: [{ id: 'business-item-' + index, type: 'function_call', status: 'completed', call_id: 'business-call-' + index,
             name: ['atri_agent_set_plan', 'atri_agent_project_save', 'atri_agent_prepare_review'][round], arguments: JSON.stringify(round === 0
                 ? { summary: 'Use actual graph evidence', steps: [{ id: 'rename', title: 'Rename Project' }] } : round === 1 ? { source: proposed, stepId: 'rename' } : {}) }],
         usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } };
     } });
-    return Object.assign(f, { added });
+    return Object.assign(f, { added, redoTopology });
 }
 
 describe.each(harnesses)('$name original Project general graph consumer', ({ make }) => {
@@ -391,5 +414,73 @@ test('SQLite Project later Review uses its own admitted round after an independe
         expect(task.compute.attempts.every(row => row.status === 'settled')).toBe(true);
         expect(task.attempts.filter(row => row.kind === 'generation')).toHaveLength(3);
         expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
+    } finally { await f.cleanup(); }
+}, 180000);
+
+
+test('SQLite Project Review recomputes its pure Planner causal descendants while retaining both original accepted patches and all paid work', async () => {
+    const f = await fixture(makeTempSqliteEngineHarness, { reviewPlannerRedo: true, differentRoutes: true });
+    let publishedReceipt, reviewReceiptId, invalidatedPlannerId;
+    try {
+        await f.run(); const root = await f.authority.execution.runs.get(f.h.handle, f.effects[0].runId);
+        expect(root.status).toBe('completed'); expect(root.graphRevision).toBe(2); expect(f.requests).toHaveLength(11);
+        expect(root.progress).toMatchObject({ attempts: 12, reviews: 2, patches: 2, replans: 0, edgeVisits: 15, loopIterations: 2 });
+        expect(root.graph.graphChangePolicy).toEqual({ allowedOperations: ['requestFinalize'], allowedNodeKinds: [] });
+        expect(root.nodeControl[f.added.nodeId].priority).toBe(0); expect(root.outputClaims).toHaveLength(1);
+        await f.h.engine.withTransaction(f.h.handle, async tx => {
+            const history = await readProjectReplanHistory(tx, f.h.handle, root);
+            const planners = history.facts.filter(fact => fact.patch), reviews = history.facts.filter(fact => fact.review);
+            expect(planners).toHaveLength(2); expect(reviews.map(fact => fact.review.decision)).toEqual(['rerun', 'approve']);
+            expect(planners.map(fact => fact.patch.appliedOperations)).toEqual([
+                [{ op: 'requestFinalize' }], [{ op: 'requestFinalize' }],
+            ]);
+            expect(planners.map(fact => fact.patch.newGraphRevision)).toEqual([1, 2]);
+            expect(new Set(planners.map(fact => fact.patch.patchId)).size).toBe(2);
+            const first = reviews[0], second = reviews[1], oldPlanner = planners[0].producer, newPlanner = planners[1].producer;
+            const oldA = history.facts.find(fact => fact.record?.payload === 'PROJECT_PLANNER_REDO_PURE_1');
+            const newA = history.facts.find(fact => fact.record?.payload === 'PROJECT_PLANNER_REDO_PURE_3');
+            const oldB = history.facts.find(fact => fact.record?.payload === 'PROJECT_PLANNER_REDO_PURE_2');
+            const newB = history.facts.find(fact => fact.record?.payload === 'PROJECT_PLANNER_REDO_PURE_4');
+            expect(first.review.invalidatedAttemptIds.toSorted()).toEqual([oldA.producer.attemptId, oldPlanner.attemptId, oldB.producer.attemptId].toSorted());
+            expect(first.review.replacements).toEqual([{ targetAttemptId: oldA.producer.attemptId, attemptId: newA.producer.attemptId }]);
+            for (const producer of [oldA.producer, oldPlanner, oldB.producer]) expect((await readAttemptInvalidation(tx, f.h.handle, root, producer)).reviewReceiptId).toBe(first.review.receiptId);
+            expect(newPlanner.attemptId).not.toBe(oldPlanner.attemptId); expect(newPlanner.effectRefs[0]).not.toBe(oldPlanner.effectRefs[0]);
+            expect(newPlanner.inputRefs[0].acceptedGraphResultRefs).toEqual([newA.receipt.resultRef]);
+            expect(newB.producer.inputRefs[0].acceptedControlRefs).toEqual([planners[1].controlRef]);
+            expect(second.review.evidenceRefs).toEqual(expect.arrayContaining([newA.receipt.resultRef, newB.receipt.resultRef]));
+            expect(history.current.get(f.redoTopology.planner.nodeId).producer.attemptId).toBe(newPlanner.attemptId);
+            const publication = await readProjectReviewOutput(tx, f.h.handle, root);
+            expect(publication.receipt.costs.closed).toBe(true); publishedReceipt = publication.receipt;
+            const old = await readGraphPlannerCompletion(tx, f.h.handle, root, oldPlanner.attemptId, { verifyControlWork: assertProjectControlWork });
+            expect(old.patch).toEqual(planners[0].patch);
+            reviewReceiptId = first.review.receiptId; invalidatedPlannerId = oldPlanner.attemptId;
+        });
+        const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+        expect(task.status).toBe('review'); expect(task.compute.limits.maxRequests).toBe(11);
+        expect(task.compute.attempts).toHaveLength(11); expect(task.compute.attempts.every(row => row.status === 'settled')).toBe(true);
+        expect(task.attempts.filter(row => row.kind === 'generation')).toHaveLength(3);
+        expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
+        const snapshot = structuredClone(task.compute), scheduler = f.scheduler, executor = f.executor;
+        // Close the actual SQLite handle connection while retaining the valid
+        // original Host owner. A new Scheduler/Executor reads the durable Task.
+        f.h.engine.closeHandle(f.h.handle); f.recreateExecutor();
+        expect(() => f.h.engine.nativeHostLifecycle.assertActive()).not.toThrow();
+        expect(f.scheduler).not.toBe(scheduler); expect(f.executor).not.toBe(executor);
+        const reopenedTask = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+        expect(reopenedTask.status).toBe('review'); expect(reopenedTask.compute).toEqual(snapshot);
+        await f.h.engine.withTransaction(f.h.handle, async tx => {
+            const cold = (await tx.getResource({ kind: K.orchestrationRun, handle: f.h.handle, runId: root.runId })).doc;
+            expect(cold).toEqual(root);
+            expect((await readProjectReviewOutput(tx, f.h.handle, cold)).receipt).toEqual(publishedReceipt);
+            const key = controlRecordKey(f.h.handle, cold.runId, 'receipt', reviewReceiptId), saved = await tx.getResource(key);
+            const changed = { ...saved.doc, invalidatedAttemptIds: saved.doc.invalidatedAttemptIds.filter(id => id !== invalidatedPlannerId) };
+            try {
+                await tx.putResource(key, { ...saved, doc: changed, integrity: hash(changed) });
+                await expect(readProjectReviewOutput(tx, f.h.handle, cold)).rejects.toThrow();
+            } finally { await tx.putResource(key, saved); }
+            expect((await readProjectReviewOutput(tx, f.h.handle, cold)).receipt).toEqual(publishedReceipt);
+        });
+        await f.run().catch(() => undefined); expect(f.requests).toHaveLength(11);
+        expect((await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId)).compute).toEqual(snapshot);
     } finally { await f.cleanup(); }
 }, 180000);

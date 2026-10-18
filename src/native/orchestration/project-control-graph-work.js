@@ -25,7 +25,7 @@ import { readProjectControlInputs, projectControlItems, projectJudgeReaderOption
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { checkedRecord } from './plan-repository.js';
 import { ReviewController, reviewReceiptId } from './review-controller.js';
-import { graphReviewModelReceiptId, graphReviewControlRef, readGraphReviewCompletion } from './graph-review-completion.js';
+import { graphReviewModelReceiptId, graphReviewControlRef, readGraphReviewCompletion, readReviewablePlannerCompletion } from './graph-review-completion.js';
 import { graphJudgeModelReceiptId, graphJudgeControlRef, readGraphJudgeCompletion } from './graph-judge-completion.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 import { ConflictError } from '../../storage/errors.js';
@@ -447,13 +447,18 @@ export class ProjectControlGraphWork {
             for (const fact of evidence) {
                 if (!fact.record.envelope.audienceConstraint.nodeIds.includes(reviewer.nodeId)) fail('native_orchestration_project_control_audience_denied');
             }
-            // Graph control decisions cannot be repeated as local Model redo.
-            // Keep every already-published GraphPatch receipt authoritative.
+            // Pure Planner work may be recomputed after its inputs change.
+            // Original accepted Patch receipts stay authoritative and are never
+            // rolled back or replayed; only the new Model Attempt may propose.
             if (decision === 'rerun') {
                 const affected = [...this.records.entries()].filter(([nodeId, fact]) => fact.attemptId !== reviewer.attemptId
                     && targets.some(target => graphReachable(root.graph, target.nodeId, nodeId)));
-                if (affected.some(([, fact]) => ['graph_planner_control', 'graph_join_control'].includes(fact.controlRef?.kind)))
-                    fail('native_orchestration_review_irreversible_dependency');
+                for (const [, fact] of affected) {
+                    if (fact.controlRef?.kind === 'graph_join_control'
+                        || fact.controlRef?.kind === 'graph_planner_control'
+                            && !await readReviewablePlannerCompletion(tx, handle, root, fact.attemptId, readerOptions))
+                        fail('native_orchestration_review_irreversible_dependency');
+                }
                 for (const [nodeId, recorded] of affected) {
                     const node = root.graph.nodes.find(node => node.nodeId === nodeId);
                     if (!node.capabilities.includes('agent.delegate')) continue;

@@ -4,7 +4,7 @@ import { assertObject, assertCounter, assertDigest } from '../../../public/share
 import { inspectComputeEffectClosure } from '../../../public/shared/native-compute-budget.js';
 import { assertResultRecord, resultDependencyDigest } from './result-contracts.js';
 import { effectBudgetClosure } from './budget-port.js';
-import { controlCommandId, controlRecordKey, readAttempt } from './controller-common.js';
+import { controlCommandId, controlRecordKey, readAttempt, readAttemptInvalidation } from './controller-common.js';
 import { checkedRecord } from './plan-repository.js';
 import { readProjectRoundReceipt } from './project-round-contracts.js';
 import { readOriginalProjectTask } from './project-tool-receipts.js';
@@ -89,7 +89,16 @@ export async function readProjectReviewResult(tx, handle, root) {
         || !equal(record, projectReviewResult({ ...root, epoch: receipt.epoch }, round.receipt, producer, receipt.createdAt))) invalid();
     await assertPublicationCommand(tx, handle, root, 'result', 'result.publish', { roundReceiptId: round.receipt.receiptId },
         { resultRef: receipt.resultRef }, receipt.epoch);
-    if (root.graph.edges.some(edge => edge.loopBack && edge.from.nodeId !== edge.to.nodeId)) await readProjectReplanHistory(tx, handle, root);
+    let replay = root.graph.edges.some(edge => edge.loopBack && edge.from.nodeId !== edge.to.nodeId);
+    // A completed Review can safely replace pure Planner work at a later graph
+    // revision. Reconstruct that actual invalidation history before accepting
+    // the formal output; ordinary graphs need no additional history walk.
+    if (!replay && root.progress.reviews) for (const id of root.attemptRefs) {
+        const attempt = (await readAttempt(tx, handle, root, id)).doc;
+        if (root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'planner'
+            && await readAttemptInvalidation(tx, handle, root, attempt)) { replay = true; break; }
+    }
+    if (replay) await readProjectReplanHistory(tx, handle, root);
     return { record, receipt, producer, round, settlement };
 }
 

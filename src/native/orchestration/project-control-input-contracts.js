@@ -7,7 +7,7 @@ import { readProjectFanoutCompletion } from './project-fanout-contracts.js';
 import { readGraphJudgeCompletion } from './graph-judge-completion.js';
 import { readGraphPlannerCompletion } from './graph-planner-completion.js';
 import { assertProjectControlWork } from './project-quality-contracts.js';
-import { readAttempt } from './controller-common.js';
+import { readAttempt, assertAttemptConsumable } from './controller-common.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { readProjectReplanHistory } from './project-replan-contracts.js';
 
@@ -75,6 +75,9 @@ export async function assertProjectControlRound(tx, handle, root, attempt, input
         || (input.acceptedGraphResultRefs !== undefined || input.acceptedControlRefs !== undefined)
             && (!equal(input.acceptedGraphResultRefs, bundle.evidenceRefs) || !equal(input.acceptedControlRefs, bundle.controlRefs))) fail('native_orchestration_project_control_stale');
     const facts = await readProjectControlInputs(tx, handle, root, null, bundle, { targetNodeId: attempt.nodeId });
+    // Formal Task rounds can only consume current advisory predecessors. Old
+    // invalidated Results and Planner receipts remain readable as history.
+    for (const fact of facts) await assertAttemptConsumable(tx, handle, root, fact.producer);
     for (const ref of [...bundle.evidenceRefs, ...bundle.controlRefs]) {
         if (!attempt.inputRefs.some(item => equal(item, ref))) fail('native_orchestration_project_control_stale');
     }

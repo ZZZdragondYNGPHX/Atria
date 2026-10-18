@@ -163,7 +163,7 @@ async function readReplacements(tx, handle, root, review, evidence, verifyContro
  * pure Model work can be recomputed at the current revision, while the original
  * Patch/Model/bank/sequence proof and all irreversible dependency checks remain. */
 export async function readReviewablePlannerCompletion(tx, handle, root, attemptId, { verifyControlWork }) {
-    if (!['rp_chat', 'native_session'].includes(root.sourceBinding.sourceAuthority) || root.parentRef !== null) return null;
+    if (!['rp_chat', 'native_session', 'project'].includes(root.sourceBinding.sourceAuthority) || root.parentRef !== null) return null;
     const fact = await readGraphPlannerCompletion(tx, handle, root, attemptId, { verifyControlWork });
     if (!fact) return null;
     const revisions = await readTaskGraphRevisions(tx, handle, root, [fact.producer.graphRevision, fact.patch.newGraphRevision]);
