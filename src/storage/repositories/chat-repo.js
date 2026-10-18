@@ -46,7 +46,9 @@ export class ChatRepo {
                 || existing.body.length !== anchor.floor + 1 || !existing.body[anchor.floor]?.is_user || existing.body[anchor.floor]?.is_system
                 || !equalNativeDocuments(rpOperationInput(existing.body[anchor.floor], anchor.floor), anchor)
                 || hash(existing.body.map(message => ({ messageId: sourceMessageId(message), content: sourceContent(message) }))) !== receipt.sourceDigest)
-                throw new ConflictError('native_rp_output_stale');
+                // A lawful edit, deletion or relocation may have committed in this
+                // transaction; deny (commit it) rather than roll it back.
+                return { denied: true };
             const fence = await this._engine.nativeHostLifecycle.assertWriter(handle, tx);
             if (!equalNativeDocuments({ hostBootId: fence.hostBootId, generation: fence.generation }, receipt.hostFence)) throw new ConflictError('native_rp_output_stale');
             const finalRoot = await state.authorization.execution.runs.get(handle, state.authorization.runId);
