@@ -35,10 +35,6 @@ const setGlobalWorldInfoSelection = __ctx.worldInfoEntry.setGlobalSelection;
 const world_info_position = __ctx.constants.wiPosition;
 // Register the Layer-1 session API at module load.
 import './api.js';
-// Publishes memory-graph's read + write tools into the orchestrator's
-// Layer-2 extension registry so any orchestration mode (loop / spec /
-// agenda / director) can dispatch them. Silent no-op when orchestrator
-// isn't loaded — memory-graph stays independently functional.
 import { i18n, i18nFormat, registerLocaleData } from './i18n.js';
 import {
     DEFAULT_PER_TYPE_INSTRUCTIONS,

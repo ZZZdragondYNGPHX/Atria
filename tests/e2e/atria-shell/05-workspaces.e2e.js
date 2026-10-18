@@ -31,36 +31,40 @@ async function ensureShellMounted(page) {
     return root;
 }
 
+// Navigation starts hidden behind the edge dock; reveal it before using it.
+async function revealNavigation(page) {
+    if (await page.locator('.atria-edge-dock').getAttribute('data-state') === 'visible') return;
+    await page.locator('.atria-edge-dock-reveal').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.atria-edge-dock')).toHaveAttribute('data-state', 'visible');
+}
+
+async function navigate(page, root, selector) {
+    await revealNavigation(page);
+    await root.locator(selector).click();
+}
+
 test.describe('R7E First-class Workspaces', () => {
     test('Expanded routes Agents, Native Build, Worlds and Diagnostics through WorkspaceHost', async ({ page }) => {
         await page.setViewportSize({ width: 1440, height: 900 });
         await awaitMainUI(page, server.baseURL);
         const root = await ensureShellMounted(page);
 
-        await root.locator('[data-atria-primitive="NavigationRail"] [data-atria-domain="agents"]').click();
-        const agentsHub = root.locator('[data-atria-agents-hub="true"]');
-        await expect(agentsHub).toBeVisible();
-        await agentsHub.locator('[data-atria-agent-section="orchestration"]').click();
-        const agents = root.locator('#agent-memory-workspace[data-atria-workspace-embedded="true"]');
+        // Agents opens the V3 Plans workspace; Memory is a sibling section.
+        await navigate(page, root, '[data-atria-primitive="NavigationRail"] [data-atria-domain="agents"]');
+        const agents = root.locator('[data-atria-domain-workspace="agents"]');
         await expect(agents).toBeVisible();
-        await expect(root.locator('#atria-workspace > #agent-memory-workspace')).toHaveCount(1);
-
-        await page.evaluate(() => {
-            window.__r7eAgentsRoot = document.getElementById('agent-memory-workspace');
-        });
-        await agents.locator('.atria-workspace-nav [data-section="memory"]').click();
         await expect(page).toHaveURL(/atriaRoute=agents/);
+        await agents.locator('[data-atria-domain-section="memory"]').click();
         await expect(page).toHaveURL(/atriaChild=memory/);
-        expect(await page.evaluate(() => (
-            window.__r7eAgentsRoot === document.getElementById('agent-memory-workspace')
-        ))).toBe(true);
+        await expect(root.locator('.atria-memory-workspace')).toHaveCount(1);
 
         await page.goBack();
         await expect(page).toHaveURL(/atriaRoute=agents/);
         await expect(page).not.toHaveURL(/atriaChild=memory/);
         await expect(agents).toBeVisible();
 
-        await root.locator('[data-atria-primitive="NavigationRail"] [data-atria-domain="build"]').click();
+        await navigate(page, root, '[data-atria-primitive="NavigationRail"] [data-atria-domain="build"]');
         await expect(root.locator('[data-atria-build-projects]')).toBeVisible();
         await expect(root.locator('#card-app-studio-workspace')).toHaveCount(0);
         await page.evaluate(() => document.getElementById('WIDrawerIcon')?.click());
@@ -68,7 +72,8 @@ test.describe('R7E First-class Workspaces', () => {
         await expect(worldInfo).toBeVisible();
         await expect(page).toHaveURL(/atriaRoute=library/);
         await expect(page).toHaveURL(/atriaChild=worlds/);
-        await root.locator('[data-atria-utility="diagnostics"]').click();
+        await navigate(page, root, '.atria-toolbar__menu');
+        await root.locator('[data-atria-utility-shortcut="diagnostics"]').click();
         const diagnostics = root.locator('.atriaLogsWorkspace[data-atria-workspace-embedded="true"]');
         await diagnostics.waitFor({ state: 'visible', timeout: 10_000 });
         await expect(page).toHaveURL(/atriaChild=utility.diagnostics/);
@@ -77,7 +82,7 @@ test.describe('R7E First-class Workspaces', () => {
         await expect(worldInfo).toBeVisible();
         await expect(page).toHaveURL(/atriaChild=worlds/);
 
-        await root.locator('[data-atria-primitive="NavigationRail"] [data-atria-domain="play"]').click();
+        await navigate(page, root, '[data-atria-primitive="NavigationRail"] [data-atria-domain="play"]');
         await expect(root.locator('[data-atria-native-play-landing]')).toBeVisible();
         expect(await page.evaluate(() => ({
             chat: document.querySelectorAll('#chat').length,
@@ -103,11 +108,8 @@ test.describe('R7E First-class Workspaces', () => {
         await awaitMainUI(page, server.baseURL);
         const root = await ensureShellMounted(page);
 
-        await root.locator('[data-atria-primitive="NavigationRail"] [data-atria-domain="agents"]').click();
-        const agentsHub = root.locator('[data-atria-agents-hub="true"]');
-        await expect(agentsHub).toBeVisible();
-        await agentsHub.locator('[data-atria-agent-section="orchestration"]').click();
-        const agents = root.locator('#agent-memory-workspace[data-atria-workspace-embedded="true"]');
+        await navigate(page, root, '[data-atria-primitive="NavigationRail"] [data-atria-domain="agents"]');
+        const agents = root.locator('[data-atria-domain-workspace="agents"]');
         await expect(agents).toBeVisible();
         await expect(root).toHaveAttribute('data-atria-viewport', 'medium');
 
@@ -125,7 +127,7 @@ test.describe('R7E First-class Workspaces', () => {
         await expect(root.locator('[data-atria-primitive="BottomNavigation"]')).toBeVisible();
         await expect(root.locator('#atria-context-sheet')).toBeVisible();
         await expect(contextNode).toBeVisible();
-        await expect(agents.locator('.atria-workspace-nav')).toBeVisible();
+        await expect(agents.locator('[data-atria-domain-section="memory"]')).toBeVisible();
 
         // Context Sheet is a real R7D transient layer and must intercept the
         // Workspace below it. Close it before interacting with the focused
@@ -134,10 +136,10 @@ test.describe('R7E First-class Workspaces', () => {
         await page.keyboard.press('Escape');
         await expect(root.locator('#atria-context-sheet')).toBeHidden();
 
-        await agents.locator('.atria-workspace-nav [data-section="memory"]').click();
+        await agents.locator('[data-atria-domain-section="memory"]').click();
         await expect(page).toHaveURL(/atriaChild=memory/);
         expect(await page.evaluate(() => ({
-            agents: document.querySelectorAll('#agent-memory-workspace').length,
+            agents: document.querySelectorAll('.atria-memory-workspace').length,
             chat: document.querySelectorAll('#chat').length,
             sendForm: document.querySelectorAll('#send_form').length,
             textarea: document.querySelectorAll('#send_textarea').length,

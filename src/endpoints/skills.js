@@ -231,9 +231,8 @@ export function createSkillsRouter({ getRepository, getMemoryIndex }) {
             if (scope.kind === 'global') {
                 return res.status(400).json({ error: 'cannot rename global scope' });
             }
-            // Round-trip through encode+decode to reject unknown kinds /
-            // invalid orch-preset modes at the endpoint boundary before
-            // touching the repository.
+            // Round-trip through encode+decode to reject unknown scope kinds
+            // at the endpoint boundary before touching the repository.
             parseScope(encodeScopePath(scope));
             const repo = getRepository(req);
             await repo.renameScope(scope, newName);
