@@ -2,7 +2,7 @@
 
 > **唯一入口**。Task ID：`refactor/atria-native-orchestration-v3`。Primary Workspace：`main`（未来实现）；实现使用同一任务分支 `refactor/atria-native-orchestration-v3`，企划/Record继续在长期 `docs` 工作空间。规则只引用 [Repository Governance](../../../README.md)，不在本 Plan 复制执行规则。
 
-2026-10-18 从 P5 源码 `94d677c6d` 恢复，修复六项组装后端问题并推进 P6；其后从 `b7c12fdc6` 继续，先后保存 `af2b40cbc`、`443e057c5`、`8e7d9d0be`、`51df89a72`、`a3aa5264b` 工程 checkpoint，持续处理历史评测迁移、真实 Native Skill activation、独立角色 Audience 与 Game/Project 条件质量消费者。原端口与有限 Profile 的证据不能核销原始 D1–D8 全量完成。**P3/P4 IN_PROGRESS、P6 IN_PROGRESS、最终产品 Gate NOT_READY**。原冻结合同未缩水；当前核销只读 [acceptance-matrix](acceptance-matrix.md)，实际实现、受限能力、验证与源码 pin 归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。HANDOFF 保留中断快照；当前继续要求及恢复后的实际进度以同一 Record 和真实 Git 为准。
+2026-10-18 从 P5 源码 `94d677c6d` 恢复，修复六项组装后端问题并推进 P6；其后从 `b7c12fdc6` 继续，先后保存 `af2b40cbc`、`443e057c5`、`8e7d9d0be`、`51df89a72`、`a3aa5264b`、`81fb78f5c` 工程 checkpoint，持续处理历史评测迁移、真实 Native Skill activation、独立角色 Audience 与 Game/Project 条件质量消费者。原端口与有限 Profile 的证据不能核销原始 D1–D8 全量完成。**P3/P4 IN_PROGRESS、P6 IN_PROGRESS、最终产品 Gate NOT_READY**。原冻结合同未缩水；当前核销只读 [acceptance-matrix](acceptance-matrix.md)，实际实现、受限能力、验证与源码 pin 归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。HANDOFF 保留中断快照；当前继续要求及恢复后的实际进度以同一 Record 和真实 Git 为准。
 
 - 创建/调研日期：2026-10-15。
 - 第一轮状态：**D1 已定案：方案 B（原生 Orchestration V3）**。
