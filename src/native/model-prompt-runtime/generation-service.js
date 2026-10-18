@@ -1,5 +1,5 @@
 import { COMPUTE_ADMISSION_CODES } from '../../../public/shared/native-compute-budget.js';
-import { assertEffectiveRequestSnapshot, assertPromptIR, assertRequestContextPlan } from './contracts.js';
+import { assertPromptIR, assertRequestContextPlan } from './contracts.js';
 import { assertContextProviderPort, assertRouteResolverPort, assertSecretPort } from './ports.js';
 import { cancellable, checkCancellation, containsSecret as valueContainsSecret, GenerationError, immutable, ProviderFailure } from './execution-utils.js';
 import { prepareExecutionPlan, assertExecutionEvidenceCurrent, continuityRequirements } from './execution-evidence.js';
@@ -65,8 +65,8 @@ export class GenerationService {
                 if (contextPlan.requestId !== request.requestId || promptIr.requestId !== request.requestId) {
                     throw new GenerationError('generation_request_identity_mismatch');
                 }
-                const authority = JSON.stringify({ tools: promptIr.tools, outputContract: promptIr.outputContract });
-                if (outputAuthority !== undefined && authority !== outputAuthority) {
+                const authority = { tools: promptIr.tools, outputContract: promptIr.outputContract };
+                if (outputAuthority !== undefined && !equalNativeDocuments(authority, outputAuthority)) {
                     throw new GenerationError('generation_output_authority_changed');
                 }
                 outputAuthority = authority;
@@ -85,7 +85,7 @@ export class GenerationService {
                     || tokens + contextPlan.budget.reservedOutputTokens > resolved.model.limits.contextTokens) {
                     throw new GenerationError('generation_context_budget_exceeded');
                 }
-                const preparedSnapshot = immutable(assertEffectiveRequestSnapshot({
+                const preparedSnapshot = Object.freeze({
                     schemaVersion: 1, requestId: request.requestId,
                     runtimeRouteId: resolved.route.runtimeRouteId,
                     modelProfileId: resolved.model.modelProfileId,
@@ -93,7 +93,7 @@ export class GenerationService {
                     generationProfileRef: resolved.route.generationProfileRef,
                     promptProgramRef: resolved.route.promptProgramRef,
                     capabilities: resolved.capabilities, contextPlan, promptIr,
-                    createdAt: this.now(), diagnostics: {
+                    createdAt: this.now(), diagnostics: immutable({
                         inputTokens: tokens,
                         executionPlan,
                         failurePlan: { mode, remainingFallbackAttempts: remaining,
@@ -115,19 +115,19 @@ export class GenerationService {
                             generation: resolved.generation,
                             resources: resolved.resources,
                         },
-                    },
-                }));
+                    }),
+                });
                 const rendered = immutable(await cancellable(() => provider.renderRequest({ resolved, snapshot: preparedSnapshot }), signal));
-                const snapshot = immutable(assertEffectiveRequestSnapshot({ ...preparedSnapshot, diagnostics: {
+                const snapshot = Object.freeze({ ...preparedSnapshot, diagnostics: Object.freeze({
                     ...preparedSnapshot.diagnostics,
                     ...(rendered.continuityDecision ? { continuity: rendered.continuityDecision } : {}),
                     compiledBinding: compiledRequestBinding({ resolved, contextPlan, promptIr, rendered }),
-                } }));
-                if (preview) return immutable({ snapshot, rendered, preview: true });
+                }) });
+                if (preview) return Object.freeze({ snapshot, rendered, preview: true });
                 try {
                     assertExecutionEvidenceCurrent(resolved, this.now(), executionPlan.policy);
                     const response = await this._send({ provider, resolved, rendered, snapshot, signal, handle, onChunk });
-                    return immutable({ snapshot, response });
+                    return Object.freeze({ snapshot, response: immutable(response) });
                 } catch (error) {
                     // Also covers failure before _send enters its usage/fetch
                     // finally (e.g. Secret or path evidence expiring).
@@ -165,6 +165,7 @@ export class GenerationService {
         checkCancellation(signal);
         if (typeof secret !== 'string' || !secret) throw new GenerationError('generation_secret_unavailable');
         const containsSecret = value => valueContainsSecret(value, secret);
+        const secretOverlap = Math.max(secret.length, JSON.stringify(secret).length - 2) - 1;
         if (containsSecret(snapshot) || containsSecret(rendered)) throw new GenerationError('generation_config_contains_secret');
         assertExecutionEvidenceCurrent(resolved, this.now(), snapshot.diagnostics.executionPlan.policy);
         const controller = new AbortController();
@@ -199,9 +200,10 @@ export class GenerationService {
                     signal: controller.signal,
                     onUsage: usage => { observedUsage = usage; },
                     onChunk: onChunk && (chunk => {
-                        if (containsSecret(chunk)) throw new GenerationError('generation_response_contains_secret');
                         checkCancellation(controller.signal);
                         if (typeof chunk.text !== 'string' || !chunk.text.startsWith(streamed)) throw new GenerationError('generation_response_invalid');
+                        const added = chunk.text.slice(Math.max(0, streamed.length - secretOverlap));
+                        if (containsSecret(added)) throw new GenerationError('generation_response_contains_secret');
                         streamed = chunk.text;
                         // Withhold any suffix that could become a credential in a later chunk.
                         let held = 0;
