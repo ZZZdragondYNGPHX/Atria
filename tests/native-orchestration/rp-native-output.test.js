@@ -192,7 +192,8 @@ describe.each(harnesses)('$name original RP native output protocol', ({ make }) 
 });
 
 // Windows has no directory fsync barrier (durable-file.js), so nothing can fail there.
-describe.each(harnesses.filter(({ name }) => name === 'FsEngine' && process.platform !== 'win32'))('$name output file durability', ({ make }) => {
+const durability = harnesses.filter(({ name }) => name === 'FsEngine' && process.platform !== 'win32');
+if (durability.length) describe.each(durability)('$name output file durability', ({ make }) => {
     test('a directory durability failure after rename leaves one complete marker for observation, never an automatic replay', async () => {
         const f = await rpModelFixture(make, { configurePlan }), prepare = RpOutputController.prototype.prepare, sync = fs.fsyncSync;
         let armed = false, injected = false, receipt;
