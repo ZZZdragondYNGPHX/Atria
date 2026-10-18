@@ -1404,3 +1404,30 @@
 - 以上均不记为通过。
 - P6 需清理（本组未动）：旧 Agents 面板内的 Orchestration/Run 分区与 hub、`workspace.orchestration`/`workspace.agent-run` 命令、Search 的旧 `Orchestration` 预设域与 `openOrchestration`、旧 orchestrator workspace 资产、`observeAtriaDrafts` 中的旧编辑器选择器；
 - 状态：P5 前端与组装完成，回交 Codex。最终产品 Gate = NOT_READY。未合 main、未推送、未结束分支。
+
+## 2026-10-18 — 分支内有界回环收口与 P6 余项（Claude Code）
+
+- 起点：Source 远端 `532805fbb`（含交接后 `c2451035d`…`532805fbb` 四个精简提交，其父 WIP `f7b929151`），Docs `be1803b90`。本机原 V3 工作树已不存在，按远端分支重建；无本地未推送提交被丢弃。
+- 结束：Source `420531a4a`（已推送）。
+
+### 实现
+
+- RP：`fanoutReplan()` 的 Attempt 上限只计入已执行成员；未执行成员沿原冻结 reserved 身份，不重复计数。三域 live 回环（RP main、Project main、共享 delegated worker）只对已执行成员重置进度/重试令牌，未执行成员继续以原 reservedAttemptId 推进（Project main 原先会对其新建 Attempt，与未结算的原预约冲突）。
+- Project：main/child 冷 memberInput 的回边绑定按原付费 Planner 的 replan 请求证明，`readFanoutReplanScope` 绑定已核原 Transition 的 decisionSeq，并核 Frame、published loops 与 revision；child 计数 incoming 时排除未使用的回边。Planner memberCost 补 replan scope 证明。main/child History 对分支内 Planner 使用分支 scope，允许其他分支调度 Patch 插入的 revision。`projectFanoutReplan` 请求额度覆盖全部受影响成员（含委派 ceiling），Attempt 只计重复成员。
+- Session：main/child Planner Patch 时的 replan 投影收为 producer 所在分支（新增共享投影 helper `readFanoutBranchNodeIds`，同用于 Project main/child）；冷 loop 证明（main/child）改绑已核 Transition.decisionSeq，并允许兄弟分支 Patch 的 revision；History 改以原控制决定 `trigger.patch.decisionSeq` 读取分支 scope。
+- 既有缺陷：Project Fanout Planner adoption 用进入 SourceControl 前读取的 stateVersion，兄弟分支写入后在 SQLite 上 `native_orchestration_run_conflict`（即交接中保留的 Project adopt/CAS 历史错误）。改为 Fanout 内按 RP/Session 同样方式在 SourceControl 内读当前 stateVersion；graph revision CAS 不变。
+- P6：旧编排 hub/命令的三条死本地化键（`atria.shell.agents.orchestration`、`atria.shell.agents.hub.orchestration`、`atria.shell.command.openOrchestration`）及测试必需项移除；其余 P5 列出的 P6 项此前已由 `b7c12fdc6`/`069a4bd32` 清退。P5 交 Codex 的后端缺陷已在交接前修复，本组不重复。
+- 测试对齐：`c2451035d` 有意去掉 FanoutFrame 每次读取的记录完整性校验，旧 Fanout 帧篡改断言随之移除，保留取消使旧 epoch 工作失效的断言。未恢复任何摘要权威。
+
+### 实际结果
+
+- 全部改动文件 ESLint、`node --check`、`git diff --check` 通过。
+- 首轮因 `npm ci --ignore-scripts` 缺 better-sqlite3 原生绑定，SQLite 用例大量失败，属环境问题，不计产品结果；补装预编译绑定后重跑。
+- 末版前同轮：transition-controller、rp-fanout-planner、session-fanout-planner 全 PASS；fanout-controller 帧篡改用例、project-control-fanout SQLite Planner 用例 FAIL，二者在未改动的 `532805fbb` 快照上同样失败（基线复现）。修复后：fanout-controller 全 PASS（11.9s），project-control-fanout 全 PASS（484.5s），atria-shell localization 4/4 PASS。
+- project-delegation：FsEngine「Planner publishes and consumes a dynamically added Delegate…」180s 超时，`532805fbb` 基线同样超时，为既有 FAIL，未诊断；该 suite 其余用例本轮 NOT_RUN（整 suite 超出 10 分钟前台上限）。
+- 无分支内回环正例端到端测试；分支内 replan 的 live/cold 新路径运行 NOT_RUN。MySQL/PG 未运行。
+
+### 状态
+
+- 交接 WIP（RP reservation 重计、Project 冷输入/History/预算、Session 分支预算与 Transition 序号）实现完成，运行证据仅如上。受限项不变：scope 内动态拓扑、嵌套 Frame、跨 scope replan、冻结终端替换、已关闭 Join 的 sibling 重用。
+- P3/P4/P6 仍 IN_PROGRESS（P6 余项已清，Browser 未重跑），最终 NOT_READY。未合 main。
