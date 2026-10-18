@@ -16,7 +16,7 @@ import { createGitClient } from '../../src/git/client.js';
 import { AssetStore, KnowledgeRepo, ProjectAgentService, ProjectStore, StudioPreviewHost, StudioService, WorldRepo } from '../../src/native/index.js';
 import { makeTempFsEngine } from '../storage/harness/fs-harness.js';
 
-const names = ['atri-native-work-authoring', 'atri-native-ui-authoring', 'atri-native-runtime-authoring', 'atri-native-world-authoring', 'atri-native-verification'];
+const names = ['atri-native-work-authoring', 'atri-native-ui-authoring', 'atri-native-runtime-authoring', 'atri-native-world-authoring'];
 const defaultRoot = fileURLToPath(new URL('../../default', import.meta.url));
 const scope = { kind: 'global' };
 let h, repository;
@@ -58,7 +58,8 @@ test('mocked Studio model reads references, proposes compiler-valid v3 and reach
     const source = await example(names[0], 'project.json');
     const ui = (await readAuthoringReference({ id: 'example-frontend-v3' })).content;
     const aui = (await readAuthoringReference({ id: 'example-aui-v3' })).content;
-    const scenario = await example(names[4], 'scenario.json');
+    // The bundled verification Skill was retired; its no-model scenario stays as test data.
+    const scenario = JSON.parse(await readFile(fileURLToPath(new URL('./fixtures/authoring-scenario.json', import.meta.url)), 'utf8'));
     expect(compileFrontend({ source: 'frontend.json', files: new Map([['frontend.json', Buffer.from(ui)], ['Main.aui', Buffer.from(aui)]]), mode: 'component' }).entry).toContain('index.json');
     const projectStore = new ProjectStore({ directoriesByHandle: () => h.dirs });
     const studio = new StudioService({ projectStore, worldRepo: new WorldRepo({ engine: h.engine }), knowledgeRepo: new KnowledgeRepo({ engine: h.engine }),
