@@ -7,8 +7,6 @@ Refactor the traditional SillyTavern World Info drawer presentation into a respo
 - Baseline: `main@21f11b93f0e165485488236b74072a12c7df0c4e`
 - Task branch: `refactor/world-info-workspace-ui`
 - PR: #23
-- Final validated implementation head: `40be055246e4b423658f0952421a58bdcbea1891`
-- Documentation-only task head after validation: `d9d2c4f12b3745ae396f7d34fb00180727b5faad`
 - Squash merge / resulting `main`: `5645020e68c95d37c1ee44a375b22328173948b8`
 - Final task tree is identical to the merged `main` tree.
 
@@ -46,7 +44,7 @@ The default Entries experience is now:
 - a high-density left-side entry list;
 - one full entry Inspector on the right.
 
-The list uses bounded virtual rendering rather than materializing one complete editor per entry. A synthetic 1000-entry browser smoke verifies that the default Workspace does not inflate into hundreds of full `.world_entry` editors.
+The list uses bounded virtual rendering rather than materializing one complete editor per entry.
 
 Quick filters are:
 
@@ -99,8 +97,6 @@ The Workspace adds a searchable relationship picker that displays human-friendly
 
 A deterministic authoring diagnostics module powers the Issues filter.
 
-Initial checks cover:
-
 - empty Content;
 - normal keyword-driven entry without Primary Keywords;
 - invalid same-book relationship target;
@@ -113,16 +109,6 @@ Initial checks cover:
 Cross-book references are not falsely reported unresolved when the referenced book is not loaded.
 
 Diagnostics never mutate user data.
-
-### Test Activation
-
-Test Activation is an Inspector action backed by the existing World Info dry-run / trace path.
-
-The implementation filters the dry-run to the selected entry and surfaces existing trace detail such as keyword source, secondary-key matching, inclusion group, probability and budget where the runtime already provides it.
-
-No second activation evaluator was added.
-
-Activation Trace remains a deeper contextual action.
 
 ### Bulk editing
 
@@ -183,41 +169,6 @@ The World Info engine was not broadly split or rewritten.
 - No MVU / LoreState ownership change.
 - Existing stable DOM/business-function contracts such as `#WIDrawerIcon`, `#world_editor_select`, save/patch paths and pagination remain available through wrappers/adapters where required.
 - Android JVM/APK and Docker builds were intentionally not run because they remain opt-in and this task changes browser JavaScript/CSS/tests only.
-
-## Validation
-
-Final validated implementation head: `40be055246e4b423658f0952421a58bdcbea1891`.
-
-The documentation-only task head `d9d2c4f12b3745ae396f7d34fb00180727b5faad` was subsequently revalidated before merge.
-
-### Atria PR Checks #535
-
-Passed:
-
-- ESLint
-- frontend libraries build
-- complete Node unit suite
-- Atria Migration Guard
-
-### Worldbook Performance Foundation #220
-
-Passed:
-
-- focused World Info / performance regression suites
-- synthetic performance baseline
-- real-host Chromium runtime smoke
-- World Info browser acceptance specs #25 through #34
-- desktop Workspace geometry/navigation
-- mobile drill-down and close behavior
-- Compact / Standard / Full / Custom modes
-- contextual bulk behavior
-- Issues filter
-- relationship picker persistence
-- Test Activation
-- Continuous Cards
-- 1000-entry bounded-DOM Workspace smoke
-
-During validation, test adaptations were made where the new approved information architecture intentionally changes visibility or navigation, including Global Rules recursion controls, collapsed State-driven sections, virtualized entry rows, and explicit Continuous Cards compatibility mode.
 
 ## Known boundary
 

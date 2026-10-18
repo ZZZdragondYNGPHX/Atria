@@ -38,16 +38,6 @@ Changes:
 
 This preserves loading-order semantics while allowing fetch / parse work for the large deferred Atria extension graphs to overlap earlier extension groups.
 
-## Validation
-
-PR #69 Atria PR Checks #675:
-
-- Unit Tests: passed
-- Lint: passed
-- Atria Migration Guard: passed
-
-No Android APK/JVM or Docker build was run; those remain opt-in for this browser/Node startup optimization.
-
 ## Next measurement
 
 Collect a fresh complete startup log from `main@9e96c82d01e6291ee469b2834061fd6778a5d235`.

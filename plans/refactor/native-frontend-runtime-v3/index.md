@@ -2,7 +2,6 @@
 
 - Task ID: `refactor/native-frontend-runtime-v3`
 - Primary Workspace: `main`
-- Status: Complete — Phases 1–9 integrated and verified; see `records/refactor/native-frontend-runtime-v3.md`.
 - Final integrated main recorded by the Record: `c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`.
 
 ## Goal
@@ -38,7 +37,6 @@ Give Native Packages near-complete presentation/interaction freedom while Host-o
 | Phase 5 — Media / Localization / Input / Accessibility / Boundaries | `index.md`, `services-media.md`, `sandbox-environment.md`, `implementation.md` |
 | Phase 6 — Script Sandbox / Canvas | `index.md`, `sandbox-environment.md`, `implementation.md` |
 | Phase 7 — Studio / AI Authoring | `index.md`, `architecture.md`, `implementation.md` |
-| Phase 8 — Integration / Heavy Frontend Acceptance | `index.md`, `implementation.md`, plus only the domain modules exercised by the failing/inspected acceptance case |
 | Phase 9 — Legacy Removal / Regression / Finalize | `index.md`, `implementation.md`, plus only the domain modules touched by final regression fixes |
 
 This task is complete. Future work should load only the relevant frozen module plus the permanent Record when historical implementation evidence matters.

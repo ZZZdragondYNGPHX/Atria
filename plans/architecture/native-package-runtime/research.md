@@ -1,6 +1,6 @@
 # 定向研究与能力基线
 
-本模块拥有研究证据和基线判断。实施前仅核对当前阶段涉及的入口及调用关系；不重新全面扫描 Atria、全部 docs / Plans / Records / Skills、reference 或提交历史。
+本模块拥有研究证据和基线判断。不重新全面扫描 Atria、全部 docs / Plans / Records / Skills、reference 或提交历史。
 
 ## 基线与证据边界
 
@@ -10,7 +10,7 @@
 | Tavern Helper / N0VI028/JS-Slash-Runner | `87ca341a2a2279f4c18cd1918c5ae9dbd1dac492` |
 | Prompt Template / zonde306/ST-Prompt-Template | `d6f520d149aba146305b0b781ddd691d449c28d2` |
 
-结论来自官方功能与源码入口、必要调用链。未使用采用率或用户频率统计，不将每项功能表述为所有用户必需。Atria 集成判断属于静态追踪；本轮没有执行产品测试、构建或运行时复现。
+结论来自官方功能与源码入口、必要调用链。未使用采用率或用户频率统计，不将每项功能表述为所有用户必需。Atria 集成判断属于静态追踪；
 
 ## Tavern Helper 体现的需求
 
@@ -44,12 +44,12 @@
 
 | 能力 | 判断 | 当前依据与后续讨论方向 |
 | --- | --- | --- |
-| 正式 Session、State、Revision 和历史提交 | ① | 已有状态 Authority、版本锚点、分支、恢复和冲突检查；保留并复用。[SessionCore](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/src/native/session-core.js) |
-| World Command 与 Authority Transaction | ① | 已有 Command 前置检查、固定规则、私有候选快照，以及声明读范围、Effect、随机性、预算和安全 Receipt 的 Authority Transaction；由 SessionCore 发布。本轮应研究怎样扩展现有事务契约。[Authority Transaction](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/src/native/authority-transaction.js) [声明编译](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/public/scripts/native/experience/logic/transactions.js) |
+| 正式 Session、State、Revision 和历史提交 | ① |保留并复用。[SessionCore](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/src/native/session-core.js)|
+| World Command 与 Authority Transaction | ① |由 SessionCore 发布。本轮应研究怎样扩展现有事务契约。[Authority Transaction](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/src/native/authority-transaction.js) [声明编译](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/public/scripts/native/experience/logic/transactions.js)|
 | Prompt Program、Module、PromptIR 和 Generation 请求身份 | ① | 已有固定资源引用、条件、作用域、阶段与有效快照，Generation 有预算、预览、取消和重试。[Prompt Runtime](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/src/native/model-prompt-runtime/README.md) |
 | UI Controller 受限脚本与 Bridge | ① | 已有 QuickJS、预算、只读输入、声明式 Bridge、撤销和异步清理；这是可复用的安全执行基础。[Script VM](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/public/scripts/native/frontend/script-vm.js) [Bridge](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/src/native/frontend/bridge.js) |
 | 面向 Package 的领域计算脚本 | ③ | 当前 Package Game Logic 加载仍要求声明式 JSON；通用受限业务脚本尚未接入。该缺口有现有 Command 和 Authority 基础。[Package Logic 入口](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/public/scripts/native/experience/logic/package.js) |
-| 多生命周期 State 与领域视图 | ② | 已有领域记录、Scope、保留策略、Continuity、按受众与用途选择的 Information View，以及部分派生摘要的来源有效性检查；作者的统一声明、脚本读取和各消费链路的整合仍需扩展。[Lifecycle Contract](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/public/shared/native-lifecycle-contract.js) [Information Runtime](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/public/shared/native-information-runtime.js) [Continuity Contract](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/public/shared/native-continuity-contract.js) |
+| 多生命周期 State 与领域视图 | ② |作者的统一声明、脚本读取和各消费链路的整合仍需扩展。[Lifecycle Contract](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/public/shared/native-lifecycle-contract.js) [Information Runtime](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/public/shared/native-information-runtime.js) [Continuity Contract](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/public/shared/native-continuity-contract.js)|
 | 动态 Prompt 与阶段产物计算 | ② | 已有有限条件和插值，以及阶段产物输入；作者可编程派生和计算链需要继续讨论。[Prompt Compiler](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/src/native/model-prompt-runtime/prompt-compiler.js) |
 | Knowledge 查询、发现和激活 | ② | 已有条件、对象、依赖、关键词、递归、预算和生命周期状态。静态追踪显示原生服务端 Context 主链使用候选资格筛选，完整发现与生命周期选择仍从共享 World Info 路径调用，主链整合尚不完整。[Knowledge Selection](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/public/scripts/native/knowledge-selection.js) [Context Compiler](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/public/scripts/native/context-compiler.js) |
 | 辅助生成、结构化结果和 Tool | ①与② | 任务身份、队列、结果 Schema、sink 和 Capability 已有；Package Script 如何声明与组合这些能力仍需扩展。[Task Contract](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/public/shared/native-task-contract.js) [Task Scheduler](https://github.com/ZZZdragondYNGPHX/Atria/blob/4ac8affbf01bfb5fb576834bb7eedbeefd03c007/src/native/task-scheduler.js) |
@@ -61,10 +61,10 @@
 ## 关键静态发现
 
 - 通用受限 Package 业务脚本尚未接入，但 Command、固定规则、私有候选、事务预算和最终提交已有基础。应扩展现有 Authority，避免建立平行状态提交系统。
-- Prompt 编译器已有作用域、有限条件、插值及阶段产物声明/消费检查；它接收已准备的产物，不等同于已经提供通用作者计算链。
+- 它接收已准备的产物，不等同于已经提供通用作者计算链。
 - Knowledge 独立选择器已有发现、生命周期、递归依赖、先渲染再计数和候选持久状态。原生 Context 主链目前从资格计划读取静态条目内容；完整选择与内容派生需要整合。
 - Task 生产身份、结果类别、sink、队列与有效性已有；当前 proposal 应用仍要求保存 Revision 与应用锚点相等，更细的获准跨版本消费需要扩展。
-- Information View 已按受众和用途投影；部分派生摘要已有来源指纹有效性检查，不能另建无依据的事实缓存。
+- Information View 已按受众和用途投影；
 - Regex 有独立文本处理责任与诊断；MessageProjection 有正文一致性和受限 JSON。不能假定旧 Regex 已覆盖所有原生服务端生成和 Native UI 路径。
 
 ## 原生代码入口
@@ -73,7 +73,7 @@
 
 | 领域 | 首要入口 |
 | --- | --- |
-| Authority / State | `src/native/session-core.js`；`src/native/authority-transaction.js`；`src/native/task-authority.js`；`public/scripts/native/experience/logic/package.js`、`transactions.js`、`runtime.js`、`validators.js`、`reducers.js`；`public/scripts/native/experience/world/session.js` |
+| Authority / State | `src/native/session-core.js`；`src/native/authority-transaction.js`；`src/native/task-authority.js`；`public/scripts/native/experience/world/session.js`|
 | 信息视图与连续性 | `public/shared/native-information-contract.js`、`native-information-runtime.js`、`native-lifecycle-contract.js`、`native-continuity-contract.js` |
 | Script / Bridge | `public/scripts/native/frontend/script-vm.js`、`script.js`、`script-worker.js`；`public/shared/native-frontend-script.js`；`src/native/frontend/bridge.js` |
 | Prompt / Generation | `src/native/model-prompt-runtime/README.md`、`prompt-compiler.js`、`prompt-values.js`、`generation-service.js`；`src/native/adapters/generation-host.js` |

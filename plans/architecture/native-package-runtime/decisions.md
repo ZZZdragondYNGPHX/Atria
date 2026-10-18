@@ -18,11 +18,7 @@ EJS、全局函数库、iframe 脚本、window API、特殊文本指令与 decor
 
 Experience Script、UI、AI 和自动化通过获准 Command / Intent 表达操作语义与参数，不能提交任意 StatePatch 作为正式写授权。
 
-固定规则执行形成候选结果，领域和平台检查通过后由 Authority 提交，产生正式 Revision 与处理 Receipt。平台检查覆盖执行前、执行中和提交前。
-
 ## D04 — 固定资源与双重版本依据
-
-规则与检查代码必须来自当前运行绑定的固定 Package 版本及其正式资源闭包。调用者不能临时提供 validator、替换规则或用自备校验结果证明自身合法。
 
 Package 规则版本和 State Revision 分别标识规则依据与状态依据；资源引用和操作输入需要保持真实身份。
 
@@ -34,7 +30,7 @@ Prompt、Knowledge 内容派生、输出处理及 UI Controller 的可编程能�
 
 ## D06 — 声明式契约与复杂算法
 
-Atria 必须理解并强制 Command、输入 Schema、Capability、规则绑定、Precondition、Invariant 和 Effect 边界。契约声明检查点、范围和正式依赖，复杂算法及谓词允许由受控 Package Logic 实现。
+Atria 必须理解并强制 Command、输入 Schema、Capability、规则绑定、Precondition、Invariant 和 Effect 边界。
 
 不要求所有游戏规则转写为 JSON DSL。脚本可以使用私有数据和局部可变工作模型，正式候选与提交仍由平台控制。
 
@@ -64,7 +60,7 @@ Task 产物保留真实生产身份、输入、资源和状态依据。Package �
 
 ## D11 — Processing 与消息
 
-Processing 按阶段和用途执行有界转换，可以产生候选文本、结构化数据或操作建议。正式消息与领域状态分别由对应 Authority 校验并采用。
+Processing 按阶段和用途执行有界转换，可以产生候选文本、结构化数据或操作建议。
 
 正式消息版本是历史来源。模型上下文与 UI 呈现从获准来源派生，不因派生自动回写其他表示。沿用 MessageProjection 的正文一致性与无执行权限数据边界。
 
@@ -74,10 +70,10 @@ Processing 按阶段和用途执行有界转换，可以产生候选文本、结
 
 Lifecycle 承载 Package 的受控运行编排；Atria 负责触发、调度、恢复和正式提交关系。事务内规则仍由 Authority 执行，事件驱动编排提出后续工作。
 
-Studio / Runtime Diagnostics 是正式能力，应帮助作者定义、验证并理解原生执行，沿用实际资源、授权、快照和提交证据。具体事件与追踪格式尚未冻结。
+具体事件与追踪格式尚未冻结。
 
 ## D13 — 工作方式
 
-用户只把控能力范围、职责边界和关键取舍。Agent 自行推导技术契约、事件、字段、Schema、API、执行适配和验证，不逐项要求用户确认。
+用户只把控能力范围、职责边界和关键取舍。
 
 S0 轮次只发布正式企划与换设备交接，没有编写产品实现或创建开发分支。CP1–CP3 的历史交付组映射见 index；当前执行规则由 Governance 管理。

@@ -25,14 +25,6 @@ Authoring 支持 modern JS/TypeScript。
 
 Build：
 
-```text
-JS/TS
-→ transpile/bundle/link
-→ compatibility validation
-→ compiled sandbox modules
-→ exact module graph/hash
-```
-
 Runtime 不执行 TS/source/npm build。
 
 允许 package-local static import与 vendored pure JS dependency。
@@ -194,7 +186,6 @@ Boundary可声明：
 - Controller init/invocation；
 - Collection Read；
 - required Media；
-- local render/validation failure。
 
 正常业务 rejection仍是 Bridge Receipt，不自动进入 Error Boundary。
 
@@ -278,7 +269,6 @@ Core v3 只有同时满足以下条件才算完成：
 13. optional Script Sandbox、Canvas Command Buffer、Frame Scheduler成立；
 14. Studio/Preview/AI authoring基于 Source→Compiler→Runtime链路；
 15. 原有 Native UI v1/v2 正式执行路径删除；
-16. Heavy Frontend representative acceptance、mobile/desktop regression、build/install、Health/Studio tests通过。
 
 ---
 

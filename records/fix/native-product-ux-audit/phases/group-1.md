@@ -12,7 +12,6 @@ Commit: `426017c8e`.
 Registered Native resources, Studio projects and asset blob directories centrally.
 ProjectStore, AssetStore and FS resource reads/writes consume the shared contract.
 Existing physical paths remain unchanged. The FS harness uses the real registry.
-Focused validation: four suites / 13 tests; changed-file ESLint and diff check.
 
 ### NUX-002
 
@@ -21,13 +20,8 @@ source projects and Native asset/package blobs. Secrets remain a separate choice
 SQL downloadable dumps now filter selected tables; recovery snapshots remain full.
 Assets-only backup/restore excludes and preserves the Native blob subtree.
 
-MigrationRunner copies all registered Native kinds through the existing engine
-transaction contract, retaining exact IDs, documents, integrity and timestamps.
 Restore staging rebinds only the user storage key for FS and SQLite sources.
-Native restores validate required blob hashes and lengths before replacing data.
-Overwrite rejects archives without a declared Native closure. Recovery checks
-engine compatibility before deleting anything and closes SQLite handles before
-replacing files on Windows.
+Overwrite rejects archives without a declared Native closure.
 
 Backup uses the existing migration lock and read-only gate while archiving.
 Migration write bypass is async-local, preventing unrelated concurrent requests
@@ -46,14 +40,9 @@ Group regression executed:
 - One real Edge browser scenario passed at 320px: utilities error/recovery,
   Native backup selection, keyboard toggle, recommended selection and overflow.
   Inspected its backup screenshot. Existing visual language retained.
-- Changed-file ESLint and `git diff --check` passed. The CLI file's single engine
-  injection line was syntax checked; its pre-existing unrelated lint errors were
-  not rewritten.
 
 Limits: local MySQL/Postgres test ports 53306/55432 are unavailable. Their live
-integration is not claimed. No Docker/Android build or physical-device validation.
-Playwright bundled Chromium installation stalled during extraction; browser
-validation used installed Edge through an untracked local test configuration.
+integration is not claimed.
 Pre-existing workspace rule edits and old test artifacts remain excluded.
 
 Next: Group 2, NUX-003, following the active backlog order.

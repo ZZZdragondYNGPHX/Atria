@@ -17,7 +17,7 @@
 - **Decision**：选择 **方案 A**，采用 Post-Commit Visual Director。只有剧情正文已经成功提交、能确认 `sessionId / branchId / revisionId` 及来源文本/Variant 的正式快照之后，才允许 Director 分析该剧情、发布正式的视觉候选意图，并按手动、半自动、全自动模式的后续规则执行。
 - **执行时序**：**提交剧情 → 冻结来源身份/可见上下文 → Visual Director 决定画面候选 → 用户选择或自动授权（具体策略待定）→ 提交实际图片 Provider 请求 → 图片/版本绑定原始分支**。手动选段亦只能基于已经提交的正式剧情，不能把尚在流式展示的临时正文作为已确认的图片来源。
 - **禁止当前实现**：剧情流式生成过程中，不启动基于该未提交正文的 Visual Director 预判，也不对其调用实际图像 Provider；失败、中断、撤销或未提交的文本不能触发正式 VisualIntent。取消或切换当前会话后，已提交并已授权的任务按其固定历史分支处理，不能悄悄改绑当前 HEAD。
-- **Future extension only**：后续可以单独讨论 B（流式轻量预判，提交后再严格复核），但本轮没有批准其实现、费用支出、持久化或上线；不得把“接口预留”解释成先实现 speculative 任务。C（未提交即调用真实生图 Provider）不纳入当前设计。
+- 不得把“接口预留”解释成先实现 speculative 任务。C（未提交即调用真实生图 Provider）不纳入当前设计。
 - **Reason**：防止流式正文反转、梦境揭示、取消/切换分支造成的错配与无效费用；优先维护 Native Revision、SavePoint 和图片资产的一致性。
 - **Affected modules**：`architecture.md`、未来 Director/Intent、Context、Job/Cost、UI、Save/Restore 流程。
 - **Scope limit**：本轮**只**冻结视觉决策的时序与可信来源；导演触发频率、场景数量、LLM 执行配置、自动扣费许可、预算审批与 UI 默认值仍待后续决定。
@@ -28,7 +28,7 @@
 - **Image Prompt IR**：表达来源 Revision、视觉场景、角色身份、动作、构图、画风、参考素材和约束等独立于 Provider 的概念；保留人工直接编写 Raw Prompt 的操作方式，不允许规划 LLM 静默覆盖用户输入。精确字段、序列化结构、不同画作种类范围仍待专门设计。
 - **Adapter boundary**：Provider/Workflow 专有能力、参数、协议、进度/取消、远端任务标识及结果解析由后端 Adapter 管理；既有 `role.illustration_prompt` 文本模型路线与实际图像 Provider 配置是不同职责。
 - **Capability Negotiation**：以实际“连接 + 模型版本或工作流”为判定单位，区分已支持、不支持、未知。必需特性不被静默丢弃；执行前显式拒绝或按后续经过批准的降级策略处理。
-- **Image Evidence**：每一生成版本保持非秘密的冻结 IR/编译结果指纹、Provider 模型/工作流身份、有效能力/实际参数与来源分支快照，保留历史可追溯性与 AssetStore、SavePoint/分支安全。不能继续在通用图片校验层硬调用 NovelAI 专用渲染器。
+- **Image Evidence**：每一生成版本保持非秘密的冻结 IR/编译结果指纹、Provider 模型/工作流身份、有效能力/实际参数与来源分支快照，保留历史可追溯性与 AssetStore、SavePoint/分支安全。
 - **Reason**：可实现 NovelAI/ComfyUI/SD/云图像 API 的真实能力差异，同时避免角色/世界视觉连续性重复实现、图片历史锁死于某家 Provider。
 - **Affected modules**：[provider-protocol.md](provider-protocol.md)（本决定的详细分层约束）；未来 image compiler、provider registry、capability manifest、image-job、asset/evidence、设置 UI。
 - **Scope limit**：架构分层与能力/历史不变量已冻结；Provider 范围、顺序与三层配置遵循 D-004。精确 IR/API 字段、默认模型、自动调用许可、图生图/Vibe/视频等细化范围仍待议。
@@ -36,12 +36,11 @@
 ## D-004（2026-10-14，Round 4）— 多后端分期完整覆盖与三层配置
 
 - **Decision**：用户选择 **方案 B：跨家族分阶段完整覆盖**。逐家族实现同一 Image Prompt IR / Capability Negotiation / ImageJob / AssetStore 体系。
-- **P0（首批）**：NovelAI 官方及明确协议兼容接口（V3、V4、V4.5、V5；V5 需要独立能力与协议校验）；ComfyUI 自部署 Workflow API；OpenAI 官方 Images API。
+- **P0（首批）**：NovelAI 官方及明确协议兼容接口（V3、V4、V4.5、V5；ComfyUI 自部署 Workflow API；OpenAI 官方 Images API。
 - **P1（后续纳入本企划范围）**：Gemini 原生图像生成（含当时可用 Nano Banana 类模型）、SD WebUI / A1111 / Forge 兼容 API、RunningHub Workflow API。
-- **P2（可扩展机制，不承诺任意通用兼容）**：后续经过明确协议验证的其他图片 Provider，可复用 Adapter 注册体系增量加入。
 - **三层配置**：`Image Connection`（服务连接、Endpoint、Secret）；`Image Target Profile`（具体模型/版本或 Workflow、Provider-native 参数与实际能力清单）；`Image Rendering Profile`（画风/风格约束与默认 Target 策略）。一条 Connection 可关联多个模型/Workflow Target，渲染语义不能与 Provider-native 参数混为一层。
 - **配置覆盖顺序**：**单次任务 > 单标注 > 作品 > 全局默认**，缺省逐级继承；用户可显式按作品、标注或任务选目标。提示词 LLM Runtime Route 与图片 Connection/Target 分离。
-- **执行边界**：工作流按节点类型校验映射，不能在 JSON 中任意字符串替换；真实请求固定 Target/Connection/参数指纹与非秘密证据。未经后续批准不得静默丢弃必要能力，亦不得因为失败就自动切换收费 Provider。默认模型/预算/fallback 策略未在本轮批准。
+- 真实请求固定 Target/Connection/参数指纹与非秘密证据。未经后续批准不得静默丢弃必要能力，亦不得因为失败就自动切换收费 Provider。默认模型/预算/fallback 策略未在本轮批准。
 - **Reason**：同时覆盖角色插画、工作流本地部署与云端自然语言生图，又不把所有后端强行归一成同一套 steps/sampler 或同一张账号设置表。P0/P1 是交付先后而非永久排除 P1。
 - **Affected modules**：[provider-protocol.md](provider-protocol.md) §5；未来 Provider Registry、Target/Rendering 配置与 UI、资产/请求证据和任务调度。
 - **Scope limit**：本轮冻结的是 **后端家族、开发优先级与三层配置及覆盖关系**，不等于已完成任何接入，也**不等于**获准一次性实现所有 Provider 特有的图生图/参考图/Vibe/视频/控制插件；这些需后续逐项定案。
@@ -55,16 +54,16 @@
 - **时点与分支隔离**：视觉请求必须固定源 `sessionId/branchId/revisionId`（必要时含具体 Variant/选文）；同一角色跨分支可受控复用基础身份/用户批准的标准参考，但**不得复用不匹配的动态服装、伤势、场景事实或直接将另一分支图片当当前事实**。
 - **视觉事实边界**：生成的图像或参考图内的偶然元素（凭空出现的戒指、旧衣服或伤势）不自动写回 Actor/World/Memory/正式叙事。若需要更新世界状态，必须走 Atria 原有权威写入途径。
 - **可见性与防剧透**：从正式信息中可读取，不意味着允许画进玩家可见图像。Visual Director/IR 编译须遵守源 Revision 的 Information Runtime / disclosure 规则，避免用 NPC 私密认知、未公开事件、另一分支未来状态泄露信息；不能把整个世界目录作为无约束视觉上下文。
-- **参考条件一致性**：身份参考可以辅助保脸，不能因为参考图旧服装或旧伤痕而覆盖目标时点的事实；各 Provider 只能在其经能力验证的支持边界内编译，必要约束无法满足时不能静默丢弃。
+- **参考条件一致性**：身份参考可以辅助保脸，不能因为参考图旧服装或旧伤痕而覆盖目标时点的事实；
 - **Reason**：保证长期 RP 的人物身份持续、剧情中的外观变化正确，以及 SavePoint/Branch/玩家显示权限的一致性；不让视觉子系统形成“第二剧情内核”。
 - **Affected modules**：[visual-continuity.md](visual-continuity.md)（本轮详细权威）；`architecture.md`、`provider-protocol.md`，以及未来角色/世界信息投影、IR、参考图资产、Renderer 和保存/恢复模块。
 - **Scope limit**：本轮冻结的是**三层分工、身份与时点来源、分支/隐私与事实边界**；视觉状态如何自动抽取与更新、固定/动态状态冲突时的精确优先级、参考图/Vibe 的强度和自动选择算法、具体 Provider 功能与费用策略**均留到第六轮及以后**，不能把候选规则当成已批准实现。
 
 ## D-006（2026-10-14，Round 6）— 证据驱动的混合视觉更新与参考选择
 
-- **Decision**：用户选择 **方案 C：证据驱动的混合更新与冲突仲裁**。从已提交的源 `sessionId/branchId/revisionId` 提取正式 World/Actor/Lifecycle 状态、授权事件和对应已提交叙事证据；未结构化的换装、伤痕、场景变化允许 LLM 生成可溯源的**派生视觉候选**，并以证据校验驱动视觉投影，**不得自动写回 World/Memory/Narrative**。
+- **Decision**：用户选择 **方案 C：证据驱动的混合更新与冲突仲裁**。从已提交的源 `sessionId/branchId/revisionId` 提取正式 World/Actor/Lifecycle 状态、授权事件和对应已提交叙事证据；
 - **更新规则**：明确、证据充分且无冲突的候选可以自动应用于**派生的 Visual State**；不确定或关键冲突进入待审查/禁止自动发布。未提到不代表清空原状态；持续特征到有可信的新变更为止，表情/动作等片段性特征不跨场景滥用。同一 Revision 内不同选文的发生顺序需要区别，不能让结尾外观覆盖开头。
-- **冲突仲裁**：先验证已提交来源/角色身份/分支与时点/玩家披露权/素材权限/Provider 必需能力这些硬门禁，再对正式状态、同一时点明确描写与玩家/作者固定外观做证据化解析。正式状态与叙事互相矛盾须检查时序、必要时走原有状态更新流程或交给用户审查；不能让 LLM 擅自裁定，也不能把渲染偏好或错误图片转为世界事实。
+- 不能让 LLM 擅自裁定，也不能把渲染偏好或错误图片转为世界事实。
 - **参考图选择**：先按身份、分支/时间、作品、权限、状态相符性、资产有效性过滤；再按 **角色身份、服装、环境、画风/Vibe、构图** 等分离用途进行可靠来源/时点/用户偏好/图像质量排序；最后在具体 Image Target 上做 Capability Negotiation。批准的通用标准身份图可受控复用；非匹配分支的动态剧情图默认不作为当前视觉事实。
 - **退化与审计**：不可静默放弃必要参考或隐式换收费 Provider；能力组合冲突需要明确反馈。每项实际参考的用途与来源和有效配置纳入非秘密请求证据、AssetStore 版本引用与存档保护。
 - **Reason**：在具备结构化世界状态的游戏与自由 RP 自然语言叙事之间兼顾连续性，避免视觉状态漂移、同一 Revision 内时序串错、分支污染与参考图携带旧衣物等偶然特征。
@@ -75,11 +74,11 @@
 
 - **Decision**：用户选择**方案 C：分级事件驱动 + 场景价值筛选 + 可靠作业**，不是按固定聊天楼层机械生图，也不是无条件每次 Commit 调一次完整 Director LLM。仅在**正式剧情 Commit** 后，对通过 D-005/D-006 可见性、角色/时点与分支硬门禁的候选进行低成本场景/视觉变化检测；必要时再由独立 Director LLM 深入评分和选镜头。
 - **自动选图与跳过**：以有视觉表现力的场景变化、关键人物出场、重要行为或转折、视觉状态变化等形成候选，综合剧情重要性、画面完整度、独特性、与既有画面的重复度和连续性判断价值；允许跳过不值得绘制或与已有图重复的内容。**场景可横跨多回合、一回合可有多场景**；不能把一楼一图或最新的 World State 误作所有选段的状态。
-- **三种模式共用底层**：手动指定的有效来源可绕过自动价值筛选，但仍经过安全/能力/授权/费用检查；半自动展示可审阅候选；全自动只对已配置并获得产品层授权、符合实际 Provider 能力与预算的候选发送请求。生成不得阻塞正式剧情提交，未提交正文不得触发（继续遵守 D-001/D-002）。
+- 半自动展示可审阅候选；全自动只对已配置并获得产品层授权、符合实际 Provider 能力与预算的候选发送请求。生成不得阻塞正式剧情提交，未提交正文不得触发（继续遵守 D-001/D-002）。
 - **预算隔离**：维护**Director/提示词 LLM 的调用、Token、超时与费用预算**和**图片 Provider 的请求、图像数量、并发、估算费用/额度预算**两个独立账目，拒绝“判断不生图也必须付高额 LLM 费用”的无条件策略。付费云 Provider、可能收费的参考图/工作流步骤与本地 GPU 占用分别按可观测能力核算。**正式产品预算独立于 Governance §13.1 的开发测试 API 限额**。
 - **授权与跨 Provider 安全**：手动、半自动和全自动各自遵守明确可撤回的用户模式/预算政策；无授权不得产生不可预期的付费请求；不能因为某张图失败就静默切换另一收费服务。预估费用与上游实际计费不等价，应明确标记未知金额或未取得回执。
 - **持久 ImageJob / 防重复**：以冻结的场景/源 Revision、实际 Target、请求快照与明确的生成意图维持持久作业身份和状态，不只依赖内存 `NativeTaskScheduler`。去重正常重放，区分用户明确发起的“再生成新版本”。进程重启应重新认领符合授权的未提交任务；已到达远端的任务优先按远端 Task ID / 幂等键对账并恢复结果，避免重复计费。
-- **不确定态与持久发布**：请求可能已送达但没有可靠的远端 ID/幂等查询时，标记**提交不确定**并停止盲目自动重发；失败重试必须按 Provider 能力、预算和已知请求状态执行。远端取消确认与本地取消分离，不声称必然退款。ImageVersion/AssetStore 发布应幂等且与原 Branch 关联，不因切换 HEAD 或重复回调覆盖已选图片；SavePoint/引用 GC 保持既有安全边界。
+- **不确定态与持久发布**：请求可能已送达但没有可靠的远端 ID/幂等查询时，标记**提交不确定**并停止盲目自动重发；失败重试必须按 Provider 能力、预算和已知请求状态执行。远端取消确认与本地取消分离，不声称必然退款。ImageVersion/AssetStore 发布应幂等且与原 Branch 关联，不因切换 HEAD 或重复回调覆盖已选图片；
 - **Reason**：使长会话中的重要场面获得适量插画，减轻无价值的 LLM/生图消费，并避免关闭客户端、服务崩溃、分支切换或网络不确定性造成重复扣费和数据错归。
 - **Affected modules**：[visual-director.md](visual-director.md) 为具体流程/待议算法权威；[architecture.md](architecture.md) 为导演与叙事边界；Provider 能力/费用/响应证据与存档见 [provider-protocol.md](provider-protocol.md)、[visual-continuity.md](visual-continuity.md)。
 - **Scope limit**：本决策仅冻结分级调度、预算隔离、持久作业等原则；**第八轮 D-008 随后冻结了场景/镜头、评分、可调默认额度和作业恢复的具体策略**。精确 API/数据库 Schema、Provider 费用协议及编辑功能矩阵另议。
@@ -90,9 +89,9 @@
 - **Scene/Shot**：Scene 由正式剧情中连续时间/空间/人物/事件语义划分，可跨多个提交；一个提交可出现多个 Scene，Scene 可含多个 Shot。Shot 精确绑定当时的 Branch/Revision/消息 Variant 与正文范围，历史图不随新 Commit 或场景重分割改写。回忆、梦境、幻想、时空跳跃与倒叙具有独立叙事 frame；不可把当前或另一分支状态回填过去。共享祖先只复用来源身份和授权均完全匹配的历史。
 - **镜头价值**：先执行 D-005/D-006 的时点、身份、权限、素材和必需 Provider 能力硬门禁；再以 `30% 剧情重要性 + 25% 画面明确性 + 20% 新颖性 + 15% 连续性 + 10% 覆盖缺口` 为可配置的初始评分权重，减去 0～30 的视觉重复惩罚；默认 `>=75` 为优先候选、`55～74` 为中等候选、`<55` 自动跳过。自适应可在 ±10 分的初始软阈值范围根据覆盖度/重复度/密度调节，不得越过硬门禁、强制凑图或扩大预算。保留评分与选镜头原因；手动生成可绕过软分但不绕过安全/费用硬约束。
 - **自动节奏**：全自动**默认关闭**，开启前需明确选择有效 Image Target 并授权适用额度；启用后默认“平衡”密度（高价值 Scene 通常优选 1 张）。节制模式约每 2～3 个有价值 Scene 选择 1 张，沉浸模式允许重要 Scene 多个不同 Shot。普通 Scene 自动软上限 1 张；存在独立高价值 Shot 且分数 >=90 时可考虑第二张。软冷却可因关键场景打破，**硬预算永不突破**。
-- **可调初始硬额度**：用户启用自动模式后的产品起点：自动图片请求最大 **2 张/滚动 60 分钟、8 张/滚动 24 小时**，同一 Image Provider 自动生成并发默认 **1**，一次自动作业请求 **1 张**。Planner/Prompt LLM 共享单独预算：**8 次/滚动 60 分钟、24 次/滚动 24 小时、30,000 输入+输出 Tokens/滚动 24 小时**。这些都是用户可修改的产品默认设置，不是强行限制 Codex 测试、全项目任务进度或手动编辑数量的人工审批门槛。
+- **可调初始硬额度**：用户启用自动模式后的产品起点：自动图片请求最大 **2 张/滚动 60 分钟、8 张/滚动 24 小时**，同一 Image Provider 自动生成并发默认 **1**，一次自动作业请求 **1 张**。Planner/Prompt LLM 共享单独预算：**8 次/滚动 60 分钟、24 次/滚动 24 小时、30,000 输入+输出 Tokens/滚动 24 小时**。
 - **付费与授权**：未明确批准正数的云端自动消费金额上限前，**自动付费预算为 0（禁止云端自动发送）**；用户启用自动模式不等于授权无上限扣费，缺可靠费用上界也不得静默自动付费。Cloud、参考图附加计费与本地 GPU 资源按可观测能力区分；预估费用不代表第三方实收账单。手动/半自动和自动的节奏/配额独立，但用户明确的全局付费上限覆盖所有模式。费用预留与作业入账须持久 CAS/事务保护，未知已提交状态保守占用预算。产品预算与仓库 Governance 开发测试 API 限额完全分离。
-- **作业恢复**：区分可复用自动 `VisualIntent`、冻结请求的逻辑 `ImageJob` 和独立 `Attempt`；手动显式再生成有新的 Intent/版本，不被错误去重。持久化先于 Provider 外发；Worker 使用原子 claim、租约与 fencing epoch（建议初始心跳 15s、租约 60s，按实现可调整）保护并发/重启。状态按未提交、已有远端 Task ID 可对账、结果字节已到待发布、提交不确定、已发布分流；提交不确定且无远端幂等/查询证明时**自动停止重发**。AssetStore 与 ImageVersion 发布采用内容哈希、幂等 CAS 与 orphan 补偿清理，保留 SavePoint/分支/参考引用，不能把本地 cancel 当成远端退款或宣称不受 Provider 支持的 Exactly Once。
+- **作业恢复**：区分可复用自动 `VisualIntent`、冻结请求的逻辑 `ImageJob` 和独立 `Attempt`；手动显式再生成有新的 Intent/版本，不被错误去重。持久化先于 Provider 外发；Worker 使用原子 claim、租约与 fencing epoch（建议初始心跳 15s、租约 60s，按实现可调整）保护并发/重启。状态按未提交、已有远端 Task ID 可对账、结果字节已到待发布、提交不确定、已发布分流；提交不确定且无远端幂等/查询证明时**自动停止重发**。
 - **Reason**：使长期 RP 的镜头数量随场景价值变化但保持透明、可控费用与硬可靠性，避免固定楼层触发、多图重复收费、读档串图、崩溃后重复提交。
 - **Affected modules**：[visual-director.md](visual-director.md) §7、[architecture.md](architecture.md)；未来 Scene/Shot Resolver、Director/Score、Budget/Job Ledger、Provider Reconciler、Session/AssetStore。
 - **Scope limit**：以上已冻结**算法框架与可调初始默认**，并非锁定永恒权重或真机/Provider 实测结论。精确数据库/IR/API Schema、Provider 特定计费与远端取消/幂等协商、运行后的评分校准及媒体编辑细节**未由 D-008 批准**；媒体编辑架构范围随后由 D-009 另行冻结。
@@ -107,77 +106,48 @@
 - **可靠性/预算**：用户明确执行的编辑走 D-008 的持久 ImageJob/Attempt/远端对账/幂等发布，单次再生成生成新的明确意图；打开画廊或编辑器不触发隐藏收费请求。手动编辑可绕过自动选图节奏，但仍须满足模型能力、授权、全局付费额度和隐私/时点硬门禁；不允许静默更换付费 Provider。
 - **Reason**：避免多轮 RP 中分支图片被覆盖、复杂局部编辑丢失原图/Mask、历史版本无法追溯、图片参考和存档资产被误清理；使不同图像后端共用正规衍生资产图谱和 UI 而非复制逻辑。
 - **Affected modules**：[media-editing-gallery.md](media-editing-gallery.md) §4 为详细权威；[provider-protocol.md](provider-protocol.md) 为后端能力约束；[visual-director.md](visual-director.md) 为作业/预算；[visual-continuity.md](visual-continuity.md) 为角色/参考图权限。
-- **Scope limit**：第九轮冻结完整编辑操作类别及 Media Studio/DAG/Gallery 的架构方向；**第十轮 D-010 随后冻结了 Mask 工作台、跨 Provider 编辑、版本选择、引用安全 GC、SavePoint 闭包与参考图晋升的架构原则**。具体 Mask 字节/坐标/草稿协议、UI/Provider 矩阵、GC 宽限期/导入验收仍需第十一轮确定。高级视频剪辑、成熟 DCC 图层系统、未经授权的第三方素材及所有高级模型特性不因此自动纳入。
+- **Scope limit**：第九轮冻结完整编辑操作类别及 Media Studio/DAG/Gallery 的架构方向；**第十轮 D-010 随后冻结了 Mask 工作台、跨 Provider 编辑、版本选择、引用安全 GC、SavePoint 闭包与参考图晋升的架构原则**。高级视频剪辑、成熟 DCC 图层系统、未经授权的第三方素材及所有高级模型特性不因此自动纳入。
 
 ## D-010（2026-10-14，Round 10）— 能力感知的可逆编辑工作台与引用安全生命周期
 
 - **Decision**：用户选择 **方案 C：能力感知的可逆 Native Media Studio**。在 D-009 分层 Core/Editing Workflow/Gallery 和不可变图片 DAG 基础上，冻结**独立 Canonical Mask 草稿、跨 Provider 的明确编辑与付费许可、预览后版本选择、不同删除语义、引用可达的资产回收、SavePoint 媒体闭包与显式参考晋升**等架构原则。详细权威为 [media-editing-gallery.md](media-editing-gallery.md) §6。
-- **Mask 编辑**：画布采用与 Provider 无关的原图几何/规范化 Mask 编辑草稿，支持可逆操作、预览与跨 PC/触屏的一致坐标语义。用户提交生成时将**源图片身份/内容哈希、提交 Mask 的不可变版本、编辑指令与参数**冻结；未提交草稿和已经发出的 Job 隔离。具体灰度/Alpha/原点/缩放/Mask 坐标序列化、自动保存频率与具体工具集留给第十一轮。
-- **跨 Provider 编辑**：允许从某一 Provider 生成的图片，经用户明确选择另一已支持的 Image Target 执行 Img2Img/Inpaint/Upscale 等生成新衍生；Provider Adapter 负责 Mask 格式/反相/resize/crop/输入格式、节点与 API 转换，事前验证此模型/Workflow 的真实能力。必需能力缺失时**停止并说明**，不得静默将局部编辑改成文生图、丢源图/Mask 或擅自换付费后端。
-- **版本与显示**：新编辑结果首先作为**独立的不可变版本**进入 DAG；默认预览/历史待用户选择，而不是迟到 Job 抢占当前版本。用户选择展示版本应绑定正确 Session/Branch/Annotation/Scene，独立 CAS 管理；明确允许的“完成后自动使用”必须检查用户期间未另行修改选中版本。任意合法历史版本可以再次作为编辑源，不重写旧版本或剧情。
+- **Mask 编辑**：画布采用与 Provider 无关的原图几何/规范化 Mask 编辑草稿，支持可逆操作、预览与跨 PC/触屏的一致坐标语义。未提交草稿和已经发出的 Job 隔离。具体灰度/Alpha/原点/缩放/Mask 坐标序列化、自动保存频率与具体工具集留给第十一轮。
+- **跨 Provider 编辑**：允许从某一 Provider 生成的图片，经用户明确选择另一已支持的 Image Target 执行 Img2Img/Inpaint/Upscale 等生成新衍生；必需能力缺失时**停止并说明**，不得静默将局部编辑改成文生图、丢源图/Mask 或擅自换付费后端。
+- **版本与显示**：新编辑结果首先作为**独立的不可变版本**进入 DAG；默认预览/历史待用户选择，而不是迟到 Job 抢占当前版本。用户选择展示版本应绑定正确 Session/Branch/Annotation/Scene，独立 CAS 管理；任意合法历史版本可以再次作为编辑源，不重写旧版本或剧情。
 - **删除/GC**：`hide`、`remove_from_collection`、`soft_delete` 与最终 `physical_gc` 是不同操作，隐藏/取消展示不等于直接删除 Blob。GC 只能在对 Source Branch/Session/Revision、SavePoint、Media DAG 父子图/Mask、Reference 库、持久 Job/等待恢复任务及其他合法资源进行**完整可达性审计**后安全回收，不能为响应一个删除按钮自动连带破坏可达依赖。具体宽限期、算法及异常回滚留待第十一轮。
-- **SavePoint 与导入**：存档应能明确区分**展示级**和**完整可编辑级**的媒体依赖承诺；可编辑级闭包应包含合法引用的父图、Mask、编辑血缘/参数与参考资源。恢复历史 SavePoint 必须保留当时的 Branch/Revision、展示选择和资产归属，不引用当前新分支状态。关键素材缺失、未经许可或校验失败应显式报错，不默默冒充无损导入。
-- **显式晋升参考资产**：图片仅在用户/作者明确批准用途（角色身份/服装/场景/画风等）及可用作用域（Session/作品/合法共享）后，才成为持续 Reference；检查来源、披露和跨分支权限，不能让剧情截图的旧衣物/伤口或未来秘密自动升级为标准视觉真相。撤销晋升只解除所授范围绑定，仍受其它资产引用保护。
+- **SavePoint 与导入**：存档应能明确区分**展示级**和**完整可编辑级**的媒体依赖承诺；可编辑级闭包应包含合法引用的父图、Mask、编辑血缘/参数与参考资源。恢复历史 SavePoint 必须保留当时的 Branch/Revision、展示选择和资产归属，不引用当前新分支状态。
+- **显式晋升参考资产**：图片仅在用户/作者明确批准用途（角色身份/服装/场景/画风等）及可用作用域（Session/作品/合法共享）后，才成为持续 Reference；撤销晋升只解除所授范围绑定，仍受其它资产引用保护。
 - **预算、可追溯与产品安全**：打开编辑器、预览 Mask、浏览 Gallery 不引发潜在收费的请求。显式执行需 D-008 的持久 Job/Attempt/非秘密 Evidence/费用额度、D-005/D-006 的身份/时点/显示权限，并不能修改 Narrative/World/Memory。图片编辑可能改变 Mask 外像素，禁止声称任意模型天然无损；可选本地原像素合成必须另外记载其来源/潜在接缝风险。
 - **Reason**：保证跨模型的编辑体验、长会话无损历史、用户选中版本的稳定性以及存档/参考库/父图依赖不被误删；避免 UI 或云接口差异侵入 Native 历史权威。
 - **Affected modules**：[media-editing-gallery.md](media-editing-gallery.md) §6（D-010 专项详细权威）、[provider-protocol.md](provider-protocol.md)（适配/Capability Negotiation）、[visual-director.md](visual-director.md)（Job/预算）、[visual-continuity.md](visual-continuity.md)（身份/权限/引用）。
-- **Scope limit**：**第十轮冻结架构与安全原则，而非具体数字/协议的实现签收。** 未冻结第十一轮 Mask 精确坐标/草稿持久化格式、编辑能力矩阵、Gallery 控件与默认查询、物理 GC 时机、存档包格式/ID 迁移和导入验收；这些方案待第十一轮审议。现有 `main` 代码未因文档提交而自动具备这些功能。
-
-## D-011（2026-10-14，Round 11）— Canonical Mask、混合草稿检查点、能力声明与安全媒体闭包
-
-- **Decision**：用户选择第十一轮**方案 C：混合检查点 + 不可变 Mask + 安全媒体闭包**。在 D-009/D-010 的可逆 Media Studio 上，冻结中立 Mask 规范、草稿恢复、Provider 编辑能力清单、Gallery 默认 UI、引用安全 GC、正式 SavePoint/导入验收原则；详见 [media-precision.md](media-precision.md)（唯一技术细节权威）。
-- **Mask 坐标和像素**：源图先归一化解码方向，以**左上原图像素空间**为坐标权威；Canonical Mask 为**8-bit 单通道灰度：0=保留、255=希望修改、中间值=羽化权重**，与 source ImageVersion/Base SHA、宽高与 Mask SHA 强绑定。屏幕 CSS/缩放坐标仅视图变换，Adapter 根据真实模型的 Alpha/极性/Mask 约定进行有证据的转换。Outpaint 必须显式标记新画布几何，不能悄悄改变原图尺寸。
-- **可恢复草稿**：使用有界编辑命令与压缩 Raster Checkpoint 结合；默认约**2 秒空闲自动保存、每 50 条命令生成 Checkpoint**（均为可调产品初始值，连续编辑也要有有界保护）。草稿带源图/Branch/owner、版本 CAS/哈希；多端过时写入不得覆盖另一端，冲突可分叉。生成前固定不可变 MaskAsset，之后修改草稿不会影响已提交的 MediaOperation/Job。
-- **能力声明规范**：按**连接 + 模型版本或 Workflow/节点指纹 + 服务版本**声明每项 text-to-image、img2img、inpaint/outpaint/upscale、参考图/Vibe、LoRA、ControlNet 等 supported/unsupported/unknown，含来源/TTL/输入输出/MIME/数量/尺寸/Mask 转换、组合约束、进度/异步取消及费用可见度。unknown 或不支持的**必需能力或能力组合**不能自动执行/付费试探；实际 Provider 支持情况留给第十二轮逐项核验，不能仅凭厂商名称推断。
-- **Gallery 默认**：只展示当前作品/Session/Branch 且获允许的图片，按 Scene/Shot 顺序分页、按需缩略图；高级面板展开 DAG、Mask、Provider/Job/引用。生成/编辑的异步结果**默认入历史，不自动抢占当前展示**；明确的完成即使用必须通过 Branch/Annotation/原选择 CAS。隐藏、从集合移除、软删和物理 GC 是不同操作，危险删除须展示依赖和授权。
-- **引用安全 GC**：两阶段 Mark-and-Sweep，从所有历史 Session/Branch/SavePoint、DAG/Mask/Reference、草稿、可恢复/状态不确定 Job、导入导出租约及其它合法 Native 资产 Root 扫描；首次隔离标记、宽限到期后二次在锁/CAS 下核对，只有仍不可达才能删除。**初始默认**软删历史版本**30 天**、未正式引用的失败临时文件至少**7 天**，可按产品配置调整；宽限结束也不能删仍被引用的资产。
-- **SavePoint 与导入验收**：正式 Atria SavePoint 默认是**完整可编辑媒体闭包**，包括有效原图/父子 DAG、Mask、编辑证据和合法参考资产；另允许明确标注限制的**展示级紧凑导出**。沿用/按需升级 .atriasave 的完整性、路径/容量/哈希保护；导入先预检媒体/DAG 无环/Mask 坐标与依赖/权限/ID 映射，后 staged atomic/CAS publish 或可补偿回滚。严禁缺父图却声称编辑级成功、跨分支串图、误携 Secret 或导入自动付费。至少覆盖 FS/SQLite、完整与展示级来回导入、GC 并发、SavePoint、无效引用/恶意输入、晚到 Job CAS、PC 与移动端编辑验证（模拟事件不冒充真机）。
-- **Reason**：防止跨设备编辑草稿丢失、Mask 极性反转、跨 Provider 失真、历史图/Mask 被 GC 误删，以及读档后图片虽能显示却失去可编辑来源。
-- **Affected modules**：[media-precision.md](media-precision.md) D-011；[media-editing-gallery.md](media-editing-gallery.md) D-009/D-010；[provider-protocol.md](provider-protocol.md) 的编辑能力声明与执行证据。
-- **Scope limit**：此轮冻结中立协议与默认值/验收责任，**并未**批准 P0/P1 各具体模型/Workflow 的功能事实、Vibe/LoRA/ControlNet 的可组合性、任何隐式降级/跨收费 Provider fallback，或声称真实后端已经通过执行测试；这些在 Round 12 决定。
-
-## D-012（2026-10-14，Round 12）— 各 Provider 编辑/参考矩阵、分级约束与 L1/L2/L3 验收
-
-- **Decision**：用户选择 **方案 C：分级约束协商（Required/Preferred/Optional） + 明确授权的降级 + 三级执行验收（L1/L2/L3）**。建立**两层矩阵**：官方文档与协议家族的研究事实、绑定实际 Connection + Model/Workflow + 版本/扩展的 Effective Target Capability。文档显示某厂商拥有 Inpaint/Reference/LoRA 等工具，不等于某个已配置的 Atria Target 自动 verified supported。
-- **Provider 与功能范围矩阵**：按照 D-004 的 **P0 NovelAI V3/V4/V4.5/V5、ComfyUI、OpenAI Images** 与 **P1 Gemini Native Image、SD WebUI/A1111/Forge、RunningHub** 各自维护 Img2Img、Inpaint/Outpaint、Upscale、多图、Identity/Outfit/Style/Vibe、LoRA、ControlNet/Structure 等操作的**逐模型/工作流三态能力清单、组合限制、文档/fixture/live 证据与费用**。在没有实际验证的 Target 上保留 `unknown`，不冒充真实服务已通过测试。详细家族研究矩阵及来源见 [provider-editing-matrix.md](provider-editing-matrix.md) §1。
-- **已知差异必须被具体表达**：NovelAI Precise Reference 官方限 V4.5 且不能与 Vibe 同用，Vibe/Precise 有附加费用；ComfyUI 的参考、LoRA、ControlNet/Mask 能力依赖工作流、已安装节点和模型；OpenAI Images 的多图/透明 Mask 编辑与对像素保真的硬保证不是一回事；Gemini 的自然语言语义编辑不能在无确切接口时冒充 Canonical 精准 Mask；SD WebUI/Forge 的 LoRA/ControlNet 依赖实际运行版本和扩展；RunningHub 的编辑/结构控制由具体 Workflow 和远端 Task 能力决定。这些是**研究与协商约束**，不是对全部型号宣布 supported。
-- **必需/偏好/可选三个约束层级**：`required`（正式 Actor/Branch/Revision/玩家显示权限/素材合法授权、用户坚持的 Source/精确 Mask/角色参考、全局成本硬上限等）**绝不静默降级**；目标 unsupported/unknown 则 fail closed，可让用户明确修改任务或换到已验证的目标后产生新授权/意图。`preferred` 仅在用户已审阅并明确允许**具体范围、替代方式、费用上限**时允许降级；`optional` 可按本任务授权策略省略，但应审计记录实际省略原因。不能以文字化替换精确 Mask、悄悄抛弃身份图、无许可跨 Provider 收费或把图片错误反写 World Truth。
-- **分级协商时序与证据**：来源/身份/时点/分支/披露/版权硬门禁 → ImagePromptIR/实际参考图用途 → Target 单项及**组合能力**和 Mask/Workflow 校验 → 展示原要求/最终可实现要求/费用与画面风险 → 用户已有明确授权/此刻审批 → D-008 持久预算 CAS 与 ImageJob 发送。非秘密快照必须保存 `original/effective/omitted` 约束、目标能力/配置指纹、版本、Mask/引用转换、用户授权与实际请求指纹；上述是逻辑槽位，具体数据库与 API 字段留待 Round 13。
-- **三级验收**：**L1** 模型/工作流声明、请求/Mask/图片格式编译与非法参数静态协议检查；**L2** 分 Provider Fixture/Mock 的执行、Job 取消/恢复/预算/权限/DAG/SavePoint/GC 验证；**L3** 在用户明确授权、提供真实端点/秘钥与可接受费用后，针对**确切型号与工作流**验证实际生成/编辑结果、远端状态、成本和可用性。**L1/L2 不能冒充 L3**；没有真实凭据/余额/环境时 L3 明记 `not_run`，不能伪造通过，也不能未经授权发起消费性探测。P0 的真实/Mock 验证不能替代 P1 的逐家族测试。
-- **交付原则**：该实施阶段的每项 Adapter/已批准操作必须提供可自动执行的 L1/L2 证据并报告覆盖；L3 按实际用户授权与端点能力执行或如实标记不可执行/未测试。持久 Job/AssetStore 的真实成本、崩溃/不确定提交与取消不得违反 D-008；用户不能被迫为了进行普通代码开发而先提供付费 Secret。
-- **Reason**：让 P0/P1 多家族支持覆盖真实功能而不伪装为同质图片接口，保障角色/Mask 与 SavePoint 的一致性、费用可控性和真实验收可信度。
-- **Affected modules**：[provider-editing-matrix.md](provider-editing-matrix.md) 为 D-012 的详细权威；[provider-protocol.md](provider-protocol.md) 为 Adapter/Target 声明、[media-precision.md](media-precision.md) 为 Canonical Mask 和媒体验收、[visual-continuity.md](visual-continuity.md) 为不可降级视觉/叙事权威。
-- **Scope limit**：本轮冻结**能力矩阵的判定粒度与已知文档差异、分级降级/预算边界、L1/L2/L3 验收责任**。没有批准精确 ImagePromptIR/Capability/Media/Job 的持久 Schema、HTTP 端点、设置/跨平台 UI 布局、任何尚未经验证模型的实际支持状态，也没有宣称任何 Live 付费测试通过。**第十三轮再讨论 API/Schema、UI 与开发/验收收口**。
 
 ## D-013（2026-10-14，Round 13）— 强契约 Native 图像内核、三层/三端 UI 与七阶段交付
 
 - **Decision**：用户选择 **方案 C：Core-first 强契约 + 端到端 P0 垂直切片 + 分阶段完整交付**。围绕 Native Session/Revision/Branch/SavePoint、Runtime Connections/Secrets、ImagePromptIR/Adapter/Capability、Durable ImageJob/Budget、AssetStore/Media DAG 统一图片服务与数据权威，**开发期采用明确的 Schema hard cutover**，不为尚未发布的旧 NovelAI 绘图管线维持平行长期兼容通道。单张图仍有正式 SourceRef/权限/版本归属，不创建第二个剧情事实数据库。
-- **资源与 API 职责方向**：按（1）叙事来源/Scene/Shot/VisualIntent 与 VisualState/Reference；（2）Image Connection/Target/Rendering/Capability/IR/审批；（3）持久 Job/Attempt/Budget/远端回执；（4）不可变 ImageArtifact/MediaOperation/Mask/Draft 与展示选择/SavePoint/GC 划分**统一逻辑实体**。Native API 逻辑域是 Configuration/Capabilities、Director、Generate/Job/Budget、Media Studio/Gallery/Reference、Save/GC；复用 Native Runtime/Session/AssetStore 权威与 Secret，前端不得绕过服务端权限/费用/CAS/哈希检查。**只冻结领域身份与读写边界，不在此批准精确字段/数据库表/URL/SDK 函数名**；详细方案见 [native-contracts-ui-delivery.md](native-contracts-ui-delivery.md) §2–§3。
+- **资源与 API 职责方向**：按（1）叙事来源/Scene/Shot/VisualIntent 与 VisualState/Reference；（2）Image Connection/Target/Rendering/Capability/IR/审批；（3）持久 Job/Attempt/Budget/远端回执；（4）不可变 ImageArtifact/MediaOperation/Mask/Draft 与展示选择/SavePoint/GC 划分**统一逻辑实体**。Native API 逻辑域是 Configuration/Capabilities、Director、Generate/Job/Budget、Media Studio/Gallery/Reference、Save/GC；**只冻结领域身份与读写边界，不在此批准精确字段/数据库表/URL/SDK 函数名**；详细方案见 [native-contracts-ui-delivery.md](native-contracts-ui-delivery.md) §2–§3。
 - **不可变与可变隔离**：已发布图片、编辑血缘、提交 Mask/PromptIR 的实际请求证据、SourceRef 与 Job 的冻结输入不可变；作品配置、运行参数版本、未提交草稿、选中 ImageVersion 以各自作用域 CAS 更新。Gallery/SceneCoverage/缩略图是可重建投影，不能成为权限或剧情事实权威。历史 SavePoint/Branch 与 AssetStore/Reference/Job 依赖仍服从 D-005～D-011。
 - **三层设置/UI**：共享 **Image Connection（端点/Secret/网络）→ Image Target Profile（模型版本或 Workflow/节点绑定/真实能力/专有参数）→ Image Rendering Profile（画风/质量/默认目标）**；覆盖仍为单次任务 > 单标注 > 作品 > 全局默认，来源可解释；提示词/Director LLM Route 与 Image Target 分离。设置采用**普通视觉生成/角色参考/预算与任务视图 + 高级 Provider/Workflow/能力/降级设置**，Raw Prompt、三种操作模式与预算/费用的 Estimated/Actual/Unknown 表示保留；自动初始关闭，云自动支付无授权不得执行。
-- **三端**：以**同一响应式 Native Web UI**支持 **Windows、CachyOS KDE、Android Termux 中运行服务并由手机浏览器访问**；PC 键鼠、手机触控/双指缩放 Mask、窄屏 Gallery/懒 DAG、权限/端点可达性、后台任务及资源路径需在各端设计/验证。**不为本 Plan 另建原生 Android APK 或独立服务器发行路线**；手机浏览器模拟验证不得冒充真机。
-- **正式阶段安排：S0～S6 共 7 大阶段、25 子阶段（3+4+3+4+4+3+4）**。S0 契约与 hard cutover（3）；S1 Job/Budget/Media/Save 中立内核（4）；S2 **P0 NovelAI→ComfyUI→OpenAI Images**，其中 NovelAI 先完成一条 Source→IR→Job→AssetStore→ImageVersion→展示的**垂直薄切片**（3）；S3 Actor/VisualState/Reference/Director/模式（4）；S4 Mask/Img2Img/Inpaint/Upscale/Media Studio/Gallery/GC（4）；S5 **P1 Gemini→SD WebUI/Forge→RunningHub**、P2 扩展机制（3）；S6 **Windows/CachyOS/Termux 与性能/存档/安全最终验收**（4）。详细子阶段与依赖见 [native-contracts-ui-delivery.md](native-contracts-ui-delivery.md) §5。**P1 是完整交付范围**，不因阶段靠后永久推迟；视频/DCC 等未被其他冻结决策批准的功能不自动纳入。
-- **验收与交接原则**：每阶段做最小相关自动验证并按 Governance 更新**同一份**正式 Record/HEAD/CI/缺口，继续推进已授权实施不因阶段人为暂停；P0/P1 各 Provider/操作都有 L1 静态协议和 L2 Fixture/执行证据，L3 针对用户明确授权的真实 Target 和实际可用账号/费用/设备执行。**L1/L2≠L3**；缺凭据/真实 Workflow 时 L3 写 `not_run` 并区分实现状态与 Live 验收状态。跨端 Windows/CachyOS/Termux 的自动化/实机/不可得证据分别列明，不伪造手机真机通过。Source/费用、分支、DAG/SavePoint/GC/重启恢复等既有硬约束为阶段回归必查。
+- **三端**：以**同一响应式 Native Web UI**支持 **Windows、CachyOS KDE、Android Termux 中运行服务并由手机浏览器访问**；**不为本 Plan 另建原生 Android APK 或独立服务器发行路线**；
+- **正式阶段安排：S0～S6 共 7 大阶段、25 子阶段（3+4+3+4+4+3+4）**。S0 契约与 hard cutover（3）；S1 Job/Budget/Media/Save 中立内核（4）；S2 **P0 NovelAI→ComfyUI→OpenAI Images**，其中 NovelAI 先完成一条 Source→IR→Job→AssetStore→ImageVersion→展示的**垂直薄切片**（3）；S3 Actor/VisualState/Reference/Director/模式（4）；S4 Mask/Img2Img/Inpaint/Upscale/Media Studio/Gallery/GC（4）；S5 **P1 Gemini→SD WebUI/Forge→RunningHub**、P2 扩展机制（3）；详细子阶段与依赖见 [native-contracts-ui-delivery.md](native-contracts-ui-delivery.md) §5。**P1 是完整交付范围**，不因阶段靠后永久推迟；视频/DCC 等未被其他冻结决策批准的功能不自动纳入。
+- P0/P1 各 Provider/操作都有 L1 静态协议和 L2 Fixture/执行证据，L3 针对用户明确授权的真实 Target 和实际可用账号/费用/设备执行。**L1/L2≠L3**；跨端 Windows/CachyOS/Termux 的自动化/实机/不可得证据分别列明，不伪造手机真机通过。Source/费用、分支、DAG/SavePoint/GC/重启恢复等既有硬约束为阶段回归必查。
 - **Reason**：避免一次性全系统重写后才碰到真实 Provider、FS/SQLite 或平台故障，也避免在旧 NovelAI 数据结构上不断堆兼容和重复数据权威，确保每个阶段有可证明的交付。
-- **Scope limit / E0 next**：冻结**统一职责与阶段/子阶段、设置和跨平台 UX 方向及验收规范**，未冻结精确字段名/HTTP URL/DB/SDK Schema、Provider 具体报价/实测、数据切换迁移步骤、内部阶段详细任务拆分的所有实现选择；**必须先按用户要求进行 D-001～D-013 全量 E0 收口审计，查清关键未冻结接口和真实阻塞，完成前不得创建 `feat/*`**。文档提交不等于 CI/L3/真机通过。
+- **必须先按用户要求进行 D-001～D-013 全量 E0 收口审计，查清关键未冻结接口和真实阻塞，完成前不得创建 `feat/*`**。文档提交不等于 CI/L3/真机通过。
 
 ## 基线与合规约束（非单独由用户冻结的架构方案）
 
 - Atria 当前 Native Session、插画呈现、AssetStore、Task Scheduler 是应审查并优先复用的已存在实现；“完全恢复旧 SD 插件作为主体系”并不是已选择的开发方向。
 - st-chatu8 以 AFPL v9 分发，不得未经许可直接复制代码、预设与素材进入 Atria；可独立借鉴需求/交互。见 [静态审计](baseline-and-reference.md)。
-- 这些是现有事实、工程约束与版权边界，**不等于用户额外批准了某项架构提案**。D-003/D-004 确定 Provider 抽象、范围和配置骨架；D-005 确定角色身份—时点状态—参考图的三层权威，D-006 确定证据混合更新/仲裁原则，D-007 确定分级 Director 与独立预算/可靠作业原则，D-008 确定 Scene/Shot、可解释自适应评分、可调产品初始预算与作业恢复精细策略；D-009 确定 Media Studio、不可变衍生 DAG、主要编辑功能范围与画廊/资产权威；D-010 已确定 Mask/跨 Provider/版本/删除/存档/晋升的可逆与引用安全原则，D-011 冻结 Mask/草稿/Gallery/GC/SavePoint 的中立协议、可调默认与验收；D-012 冻结 Provider 家族/Target 能力矩阵、分级约束降级许可、三级验收责任；D-013 冻结 Native 逻辑 Schema/API、三层设置/三端响应式 UI、7 阶段/25 子阶段与验收/交付路线。**E0 静态审计已完成**，具体数据库/API/真实 Provider 证据缺口及最晚 S 阶段见 [e0-closure-audit.md](e0-closure-audit.md)；没有声称字段已冻结或 Live 已通过。
+- 这些是现有事实、工程约束与版权边界，**不等于用户额外批准了某项架构提案**。D-003/D-004 确定 Provider 抽象、范围和配置骨架；D-005 确定角色身份—时点状态—参考图的三层权威，D-006 确定证据混合更新/仲裁原则，D-007 确定分级 Director 与独立预算/可靠作业原则，D-008 确定 Scene/Shot、可解释自适应评分、可调产品初始预算与作业恢复精细策略；D-009 确定 Media Studio、不可变衍生 DAG、主要编辑功能范围与画廊/资产权威；**E0 静态审计已完成**，具体数据库/API/真实 Provider 证据缺口及最晚 S 阶段见 [e0-closure-audit.md](e0-closure-audit.md)；没有声称字段已冻结或 Live 已通过。
 
 ## Unresolved; **not** decisions
 
 - **E0 静态审计已完成；待 S0/S1 实现合同**：Native IR/Resource/HTTP JSON Schema 精确字段、CAS/Job/Budget/Media 写入事务、权限/SavePoint/GC，以及需逐 Target 的 L3/三端真实环境；共 15 项按最晚阶段/外部依赖分类，详见 [e0-closure-audit.md](e0-closure-audit.md)。未把工程可自行定案的字段变成用户额外审批。
 
-- **D-013 已冻结** Native Image API/资源职责、三层设置/响应式三端 UI、S0～S6 的 25 子阶段及验收；E0 已审计相关 Schema/权限/Job/预算/SourceRef/Provider 实测缺口、阶段依赖与 Codex 交接条件，归档于 [e0-closure-audit.md](e0-closure-audit.md)。**具体接口名/表/路由仍不属于已冻结决策**。
-
-- D-009/D-010/D-011/D-012 已冻结 Media Studio/DAG/编辑类别与 Mask/草稿/Gallery/GC/SavePoint、中立能力与家族差异矩阵、Required/Preferred/Optional 显式降级规则和 L1/L2/L3 验收；**各个用户实际 Target 的具体 verified/live 支持状态仍以连接及实测为准，当前没有执行真实后端测试**。
+- E0 已审计相关 Schema/权限/Job/预算/SourceRef/Provider 实测缺口、阶段依赖与 Codex 交接条件，归档于 [e0-closure-audit.md](e0-closure-audit.md)。**具体接口名/表/路由仍不属于已冻结决策**。
 
 - D-002/D-007/D-008 已冻结 Commit 后启动、跨回合 Scene/Shot、分级检测、可解释自适应评分、默认关闭的自动模式及软性节奏；**待定**：视觉画廊操作、产品 UI 的具体授权交互与运行数据校准。
 - D-005/D-006 已冻结三层视觉权威、证据驱动混合更新、硬门禁/冲突审查与参考图按用途选择原则；精确阈值、状态持续/失效细节、Vibe/Reference 强度和特定 Provider 功能矩阵仍未定案。
-- D-003/D-011/D-012 已冻结语义 IR/Adapter/三态能力清单与分级降级原则；**Round 13 待定**精确 Native 请求/响应与能力声明 Schema、内部资源/持久数据 API、版本/迁移路线和最终验证矩阵。
+- D-003/D-011/D-012 已冻结语义 IR/Adapter/三态能力清单与分级降级原则；
 - Round 4 后端家族、P0/P1/P2 优先级、三层配置与四级选择覆盖已由 D-004 冻结；**具体模型 IDs、协议参数、能力探测与默认生图 Profile** 未冻结。
-- Img2Img/Inpaint/Upscale、Reference/Vibe/LoRA/ControlNet 的跨家族功能矩阵与未知/冲突规则已由 D-012 冻结；**逐模型真实兼容性及专有 API 参数仍需 Adapter 开发与 L3 验证**。视频、批量生成是否进入当前工程及用户实际 UI 仍待决定。
+- Img2Img/Inpaint/Upscale、Reference/Vibe/LoRA/ControlNet 的跨家族功能矩阵与未知/冲突规则已由 D-012 冻结；视频、批量生成是否进入当前工程及用户实际 UI 仍待决定。
 - D-007/D-008 已冻结 Planner/Image 双账、滚动窗口默认、云自动付费默认零授权、持久队列租约/fencing/状态不确定不重发/幂等发布等策略；**待定**：确切表/字段与存储事务实现、Provider 特有请求对账和实际收费、资产 GC 的完整 Schema、后续可测校准。

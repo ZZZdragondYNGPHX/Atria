@@ -256,4 +256,3 @@ A low-profile protagonist may never seek such influence.
 - macro event frequency;
 - nation/state data model;
 - delegation into macro institutions;
-- validation and soak requirements.

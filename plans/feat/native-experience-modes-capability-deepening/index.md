@@ -23,14 +23,14 @@ Build one shared Native Experience Capability Layer for Component / Hybrid / Ful
 | --- | --- | --- |
 | `baseline.md` | Implementation baseline, 32-capability table, P0–P9 map, goals and core principles | — |
 | `experience-model.md` | Experience modes, primitives, local UI, expressions, actions, opening, projection/MVU-native direction | `baseline.md` |
-| `boundaries-history.md` | Legacy absorption limits, runtime/security boundaries, superseded early discussion | `baseline.md` |
+| `boundaries-history.md` || `baseline.md` |
 | `round-2-ledger.md` | Early capability inventory | `baseline.md` |
 | `component-model-v2.md` | Component Model v2 detailed discussion | `experience-model.md` |
 | `taiko-audit.md` | Heavy-frontend MVU case audit | `experience-model.md` |
 | `message-projection.md` | Turn Envelope / Message Projection | `baseline.md` |
 | `capability-gap-analysis.md` | Consolidated benchmark gap analysis | `baseline.md` |
 | `case-01-hanhai.md` | Activity/media/asset/background-task stress test | `capability-gap-analysis.md` |
-| `case-02-tianshu.md` | Action/activity/add-on stress test | `capability-gap-analysis.md` |
+| `case-02-tianshu.md` || `capability-gap-analysis.md` |
 | `case-03-yinqi-a.md` … `case-03-yinqi-e.md` | Large-session/model-task/perspective/authority stress test; split only for reading size | `capability-gap-analysis.md` |
 | `case-04-zhushen-space.md` | Shared-runtime stress test | `capability-gap-analysis.md` |
 | `case-05-cult-leader.md` | Final pressure test / productization evidence | `capability-gap-analysis.md` |

@@ -157,20 +157,6 @@ Game Runtime must integrate with Atria observability from the beginning.
 
 Correlatable chain:
 
-```text
-UI action / LLM command
- -> command validation
- -> calculation
- -> optional semantic interpretation
- -> RNG
- -> event emission
- -> reducer
- -> rule trace
- -> commit
- -> narrator generation
- -> UI selector refresh
-```
-
 Diagnostic evidence should include stable identifiers:
 
 - package id/version;

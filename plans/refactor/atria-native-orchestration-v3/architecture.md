@@ -1,6 +1,6 @@
 # 第二轮 D2：Native Orchestration V3 内核与执行边界（已冻结）
 
-> 详细跨模块决定见 [decisions.md](decisions.md)。本文件只管理 D2 Host/Plan/Effect/Receipt，D3 Graph 控制见 [graph-control.md](graph-control.md)，D4 的 Context/Memory 多 Agent 信息传播见 [context-sharing.md](context-sharing.md)。物理 Schema 与实现位置仍未定，未做产品验证。
+> 详细跨模块决定见 [decisions.md](decisions.md)。本文件只管理 D2 Host/Plan/Effect/Receipt，D3 Graph 控制见 [graph-control.md](graph-control.md)，D4 的 Context/Memory 多 Agent 信息传播见 [context-sharing.md](context-sharing.md)。
 
 ## 1. Native Host 是唯一 Run Authority
 
@@ -17,12 +17,12 @@
 | --- | --- | --- |
 | PlanDefinition / PlanRevision | 原生 Node/Edge/Agent/Tool/ModelRoute/Capability/Budget/OutputContract 的版本化定义，执行时冻结 | 当前响应、Secret、实际成本、运行态 Graph |
 | Run / NodeAttempt | Host-owned scope/owner/PlanRevision/原 source anchor、动态 TaskGraphRevision、parent-child、epoch、pending effects/approvals、Checkpoint/Results/terminal status | 改写 Session World / Project 真相 |
-| EffectIntent | 具有稳定 EffectId、origin node/attempt、类型、预算 reservation、权限/source guard、参数/依赖摘要及幂等/reconcile 意图的持久准入记录 | 已发生却无法证明的成功 |
+| EffectIntent || 已发生却无法证明的成功 |
 | EffectReceipt | 绑定结果 completed/failed/cancelled/stale/unknown、外部 op ID、Source/usage、原 Domain Receipt 引用 | 跨协议 exactly-once 保证、正式领域事务 |
 
-`ResultEnvelope` 是可消费结果及可信 producer/provenance/currentness，不等同 Receipt；`OutputContract` 要求 final owner、consumer（如 Narration、Guidance、Studio Review、Task Artifact）在提交前重验 Run/Source/权限；`RunProjection` 只是受限显示快照，不是恢复 checkpoint，也不携带 Secret、私有 Actor 信息或 provider 的 opaque reasoning。
+`ResultEnvelope` 是可消费结果及可信 producer/provenance/currentness，不等同 Receipt；`RunProjection` 只是受限显示快照，不是恢复 checkpoint，也不携带 Secret、私有 Actor 信息或 provider 的 opaque reasoning。
 
-Planner 的 GraphPatch 仅修改 Run 内任务图版本，不回写原 PlanRevision；D3 已冻结其结构化提案/Host 整补丁校验/CAS 与有界生命周期，详细规则见 [graph-control.md](graph-control.md)。不同 Session/Studio/普通 RP 修订域保持各自真实 anchor，不能合成一个无来源的“全局版本”。
+Planner 的 GraphPatch 仅修改 Run 内任务图版本，不回写原 PlanRevision；不同 Session/Studio/普通 RP 修订域保持各自真实 anchor，不能合成一个无来源的“全局版本”。
 
 ## 3. Native 权威复用，不复制业务真相
 
@@ -36,7 +36,7 @@ Planner 的 GraphPatch 仅修改 Run 内任务图版本，不回写原 PlanRevis
 - 删除旧 Single/Spec/Agenda/Loop/Director 的 mode enum/分派、legacy Generator/Workflow、engine-v2 mode bridges、旧 capsule/takeover 作为编排主合同、旧预设/配置/历史浏览器 Checkpoint、旧编辑器/Run Panel 的编排专属代码与样式。**无旧模式兼容，无旧预设迁移，无双轨/fallback/shim，也无模式一对一映射的 V3 模板**。V3 仅提供原生自由组合的图能力。
 - 旧算法可以作为提炼参考，前提是不引入 SillyTavern 假设或保留历史业务状态机。清退作用于编排专属代码，实施前审查真实共享消费者，不删除仍在正常使用的 Native Game/Memory/Skills/MCP 等公共服务。
 - 新前端不复刻历史 UI：Graph Authoring、Node/Edge/Agent/Capability/Output 编辑器及 Run Graph/Trace/Approval/Diagnostics 视图重新设计。UI/UX 具体流程随后冻结。
-- Windows、CachyOS Linux 和 Android Termux 使用同一 Node Native Host 协议及本地数据权威，界面样式可响应式不同。网页断开不等于取消；Host 进程重启后可核验恢复，不假定系统常驻、关闭设备期间自动执行或跨设备 Run 同步。实际测试与三端验收仍待工程阶段。
+- Windows、CachyOS Linux 和 Android Termux 使用同一 Node Native Host 协议及本地数据权威，界面样式可响应式不同。网页断开不等于取消；
 
 ## 5. D3 控制流冻结引用
 

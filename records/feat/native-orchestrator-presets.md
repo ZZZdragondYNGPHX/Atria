@@ -48,23 +48,3 @@ Imported orchestration presets are always user copies.
 
 This policy makes archive restore/import safe even when an old export contains
 a preset whose ID or visible name matches a shipped native preset.
-
-## Validation
-
-The implementation added or updated coverage for:
-
-- restored predecessor revision-1 Agenda repair;
-- missing/tampered native preset repair;
-- same-name import renaming and fresh IDs;
-- fixed-native UI behavior;
-- duplicate-before-edit flows in English and localized Workspace smoke tests;
-- admitted-run snapshot stability while later user-copy edits affect only
-  future resolutions.
-
-Before merge, the PR passed:
-
-- Atria Migration Guard;
-- ESLint;
-- complete Node unit suite (7953 tests);
-- Workspace Browser Smoke, including Workspace UI, call-count, and binding
-  persistence E2E.

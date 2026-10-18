@@ -84,8 +84,6 @@ The model may propose constrained details such as:
 - plausible minor background;
 - scene-level texture.
 
-Runtime Authority must validate and canonize all structural facts.
-
 The model cannot invent contradictory historical facts or bypass eligibility rules.
 
 ## 6. Historical Hook Pool
@@ -184,8 +182,6 @@ Generation must be traceable back to world state rather than context-free spawni
 
 ## 9. Anti-repetition
 
-Generation must apply both cooldown and semantic-distance checks.
-
 Similarity dimensions should include at least:
 
 - victim/subject type;
@@ -236,5 +232,4 @@ Canonical events persist as durable history.
 - whether entire new districts may be model-generated or require curated archetypes;
 - matter frequency by time scale;
 - hook aging/expiry rules;
-- generated content validation contracts;
 - historical compaction and retrieval integration.

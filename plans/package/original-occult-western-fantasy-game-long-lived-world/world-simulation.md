@@ -116,8 +116,6 @@ Actors may leave hot simulation while retaining compact historical records inclu
 
 Model-assisted generation may propose names, prose characterization, constrained background details and other presentation-level content.
 
-Runtime Authority must validate and canonize:
-
 - dates and ages;
 - birth/death chronology;
 - kinship;

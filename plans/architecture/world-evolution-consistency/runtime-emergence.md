@@ -1,9 +1,6 @@
-# ARCH-DWE-01 · W4 运行时涌现与事实生命周期（讨论草案）
+# ARCH-DWE-01 · 运行时涌现与事实生命周期
 
-- 关联 [Plan 入口](index.md) / [总体设计](design.md) / [研究](research.md) / [唯一 Record](../../../records/architecture/world-evolution-consistency.md)
-- 状态：**Draft / W4-B 方向已获用户确认，完整 Plan 未定稿；未授权开发**。第 6 节为原本候选比较，最终本轮决定见第 8 节。
-- 2026-10-17 承接已确认 W1-B（World Model + Source Library）、W2-B（分层混合内容）、W3-B（分级约束 + 涌现世界）。
-- 新问题：世界并非只有预设内容。NPC、地点、物品、组织、势力、案件和社会关系可能只在游玩中才出现，它们应该如何从叙事/观察进入**已提交的动态世界**，获得可追溯身份与生命周期？
+[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W4-B：渐进接纳、关键交互即时提交**。本模块保留功能与逻辑合同；旧源码片段仅为背景，具体字段按原实现接线，不新增审查／测试阶段。历轮比较与确认历史见 Record。
 
 ## 1. 核心边界：世界定义 ≠ 当前世界的成员全集
 
@@ -81,18 +78,12 @@ Interpretation: background detail? identity? belief/report? durable consequence?
 ### 4.1 事实提交流程与叙事发表
 
 候选强一致路径：
-```text
-interpret / propose -> validate permissions & preconditions -> native commit
--> stable receipt & revision -> publish public prose reflecting confirmed outcome
-```
 - 真相级别事件必须有受约束的 effect + commit，不是“一段叙述说发生就发生”；但不能把所有文学细节都强行变成结构化事务。
 - 叙事如果在提交前就对外发布重大后果，提交失败后不能默默当成真相；可拒绝/修正或重新生成匹配的可发表结果。
-- 重试、离屏任务和多事件结算复用已有 `expectedRevisionId` + `idempotencyKey`/receipt，避免双提交和未经授权新增多条防御性链。
 
 ### 4.2 “出生/发现/被描述/登记”与历史有效期
 
 至少区分：
-- `validAt`：游戏世界中发生的时间（可与事件实际发生不同于角色获知时刻）。
 - `recordedRevision`：在哪个已提交 Session revision 确立/纠正了事实。
 - `observedAt`：某个主体接触到消息的游戏时间，可由 HCM 复用、仅需要时登记。
 - `introducedAt`：该实体第一次进入本故事/角色视野的时刻，不代表实体当时才出生/建成。
@@ -113,41 +104,3 @@ interpret / propose -> validate permissions & preconditions -> native commit
 - 对大量低关联 NPC 使用聚合人口、地区经济/事件摘要，关键角色按热点提升模拟精度；不让全部 NPC 自动成为每轮 LLM Agent。
 - 未预设主线的新人物可以在世界规则允许的场景中由因果事件进入；普通世界作者不必预先填好“所有未来 NPC 名册”。
 - 多主体 HCM 记录不同认知和误报；AI 读取到某实体的名字/传闻不意味着其立即成为确定存在的 NPC。
-
-## 5. main 静态源核对（2026-10-17；没有运行测试）
-
-- [World Session](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/scripts/native/experience/world/session.js)：`projectEvents` 通过 reducers 产生候选状态，`commitEvents` 调用 `nativeRuntime.commitStatePatch` 连同 `atri_world_state` 和 `atri_game_runtime` journal 发布，带 `expectedRevisionId`。存在 action receipts/idempotency 路径；需要 E0 验证具体消费者是否都经单通路。
-- [Session Core](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/session-core.js) + [SavePoint Repo](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/repositories/save-point-repo.js)：Session/Branch/Revision、state publish、存档锚定，以及 runtime update 的 CAS 已存在；不要平行造第二持久化/分支系统。
-- [Native Lifetimes](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/lifetime-authority.js) + [Lifetime Contract](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-lifetime-contract.js)：**已有**受限动态人物生命周期原型：`person.enter`（要求已有因果证据）、`person.promote`、退出、归来、职业、健康和关系，保留 introduction 与 birth 区别，以及 A/B 相关性层级；但它是可选、具体规则域的系统，**不能据此宣称一般叙事 NPC 都已经自动接入**。
-- [Authored Actor Profile](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-actor-profile.js)：`projectActorDefinition` 读取 Package manifest 中被 EntryPoint 引用的演员/角色资料，明确不使用动态 Session 状态；**不要把它与运行时新 NPC 混为一体**。是否需要动态 NPC“获得完整演员表达/对话能力”，是未来 consumer/audience 设计问题，而不是偷改 manifest。
-- [Native Simulation Authority](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/simulation-authority.js)：已有声明式任务、时间、热温冷筛选与预算，适合复用，不能额外启动无限 LLM NPC 循环。
-- [HCM history entities](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/scripts/agents/memory/history-build.js)：已有从历史抽取实体/关系及来源的路径，但它属于记忆证据而非 Session 真相注册器；需要定义同一角色在 HCM 证据与 Native EntityRegistry 投影中的身份映射，避免两个独立权威。
-
-## 6. W4 选择题：怎样接纳并管理游玩中出现的新对象？
-
-**W4-A · 全量立即登记**：只要叙事里出现角色、物体、地点，都立即创建世界实体和变化事件。保证追踪完整，但冗余指数增长，误把传闻/幻觉注册成真相，长期成本不可控。
-
-**W4-B · 渐进接纳 + 关键交互即时提交（推荐）**：普通场景细节保持轻量；一旦新对象承担跨回合承诺、交易、角色关系或影响规则系统，随该事件即时取得稳定身份；随后再根据热度决定需要多少模拟深度。能兼顾活世界、自由写作、长会话成本，但要设计“首次互动已经重要”的触发判断与遗漏修正。
-
-**W4-C · 纯记忆驱动按需重建**：常规只保存生成的剧情与 HCM 记录，再次需要时从文本推断实体及状态。工程轻但身份重复、时间矛盾、跨分支误配与真相权威不稳定。
-
-该三选一表保留最初讨论历史。**用户已在后续轮次确认 W4-B**；具体 API、持久化阈值与 E0 检验尚未冻结，见第 8 节。
-
-## 7. 验收案例（未来 E0/正式实现时核实，当前未测试）
-
-1. NPC 在一轮只被提及不触发永久注册；谣言中不存在的人不能冒充权威真相。
-2. 玩家遇到阿洛、欠债、存档、重新进入城市：同一 ID、债务和认知都正确，且无需每回合推理。
-3. 从欠债前 SavePoint 分叉；一条分支已欠债，另一条没有；跨分支 HCM 检索与索引绝不混淆。
-4. 一个长期真实存在的 NPC 在后来首次登场：`bornAt` 和 `introducedAt` 不混同。
-5. 多实体事件一次提交：交接店铺、收钱、关系变化、NPC 离开按同一权威 revision/receipt 成功或失败。
-6. 大量 NPC 的低频模拟和压缩：可回溯重大历史，无全量 Agent 推理或无界 Token 上涨。
-7. 用用户已经确认的规则重写例外变更世界法则；普通生成剧情不得暗自触发 E3。
-
-**当前尚未决议：** W4 方案选择、注册下限、正式 Entity ID 归属、exact API/Schema、以何事件/状态为事实权威、AI 长期角色精度与预算阈值。最终方案须经过 E0 真正消费者审计后才可规划实现。
-
-
-## 8. W4 决议（2026-10-17）
-
-**已确认 W4-B：渐进接纳 + 关键交互即时提交。** 普通临时细节不强制永久存储；当运行时新增 NPC、地点、组织、物品等与游戏世界形成持续后果（承诺、交易、关系、归属、伤害、任务、定时影响）时，应在现有 Native Host 的一次受控提交流程中取得稳定身份并绑定关键事实、关联事件与分支修订。可持久查询与可自主行动是不同维度；无需给全部实体启动 Agent。用户在明确选择 W4-B 后进入下一轮 W5（NPC 自主性、目标、日程、行为调度），模块 [npc-autonomy.md](npc-autonomy.md)。
-
-**仍未确认：** 具体 Entity ID/ownership/schema、是否某些类型需提早登记、首次提及的叙事回写策略、事务结果与公开文本的原子发布边界、game-time 双时间与分支查询接口、跨域实例化和 NPC 智能调度机制。旧第 6 节是选型比较，不恢复为本轮未决。Plan 继续 Draft；不修改产品代码。

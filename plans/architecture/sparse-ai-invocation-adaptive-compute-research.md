@@ -575,14 +575,6 @@ OpenAI 当前 Prompt Caching 对可复用 prefix 的 cached input 提供显著�
 
 目标：绝大多数 RP 回合。
 
-User input
-→ Native Runtime / State / Authority：0 generation
-→ deterministic event / significance checks：0 generation
-→ graph / vector / context selection：0 generation
-→ Behavior Compiler：0 generation
-→ Main Writer：1 generation
-→ typed output / Runtime commit：0 generation
-
 理想结果：
 
 > **一次正文生成约等于一次主要 generation。**
@@ -783,10 +775,8 @@ Atria 当前已有 Route、Task、Budget、Scheduler、Agent Runtime 等底座�
 
 ### Model evidence
 
-- output validator failure；
 - tool-call failure；
 - low-confidence structured classification；
-- disagreement between cheap checks。
 
 这样可以避免把整个预算系统又交给一个会波动的 LLM 自评。
 
@@ -809,7 +799,6 @@ Atria 当前 Native Task 已经区分：
 
 - selected cognition；
 - required retrieval；
-- mandatory authority check；
 - current writer。
 
 ### Background
@@ -856,7 +845,6 @@ Atria 作为桌面 / 本地可运行产品，可以比纯 SaaS Agent 多一个�
 - intent；
 - basic rerank；
 - route proposal；
-- cheap validation。
 
 Cloud frontier model 只负责：
 
@@ -1011,8 +999,6 @@ Atria 首先需要：
 
 ## 23. 对 Agent Intelligence Runtime 企划的潜在影响
 
-本文不直接修改该 Plan，但后续 Codex 合并本研究时，建议重点检查当前企划是否存在：
-
 - 每个 Cognition capability 独立 Agent；
 - 每轮固定 Experience；
 - 每轮固定 Memory extraction；
@@ -1049,27 +1035,7 @@ User Turn
 
 然后按 evidence 分流：
 
-### Normal Path
-
-0 extra generation
-→ Context / Behavior Compile
-→ Main Writer
-→ Validator / Authority
-
-### Utility Path
-
-local / SLM utility
-→ Context / Behavior Compile
-→ Main Writer
-→ Validator / Authority
-
 ### Deep Path
-
-strong cognition / optional specialist work
-→ Context / Behavior Compile
-→ Main Writer
-→ optional critic / simulation
-→ Validator / Authority
 
 所有路径的非阻塞 evidence 再进入：
 
@@ -1407,7 +1373,6 @@ Memory、Cognition、ToM、Counterfactual、Experience、Director、Critic 可�
 2. 同时读取：
    - plans/architecture/model-prompt-context-frontier-research.md
    - plans/architecture/sparse-ai-invocation-adaptive-compute-research.md
-3. 重新检查当时最新 main 的：
    - Native Task / Scheduler；
    - Generation / Runtime Route；
    - Context Runtime；
@@ -1417,7 +1382,6 @@ Memory、Cognition、ToM、Counterfactual、Experience、Director、Critic 可�
 4. 重新确认当时主流 Provider 的 reasoning、caching、batch、tool search、pricing；
 5. 把两份研究吸收到正式 Plan 的边界、预算与阶段设计；
 6. 不把本文的数字、阈值和档位名称直接当成冻结要求；
-7. 必须显式检查：
    - 普通 RP 是否保持 1-call-first；
    - background 是否与 turn-blocking 分离；
    - 每个新增 AI 调用是否有触发证据；

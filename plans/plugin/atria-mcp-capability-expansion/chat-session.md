@@ -53,7 +53,6 @@ Chat reads should expose useful Native identity/provenance where available, incl
 It should:
 
 - require the target Session and expected current revision identity;
-- fail closed on revision conflict rather than silently rebase;
 - use the existing Session/generation authority;
 - expose generation/cost side-effect metadata;
 - return resulting message/revision/branch identity and runtime provenance.

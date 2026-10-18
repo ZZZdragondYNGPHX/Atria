@@ -11,25 +11,6 @@ Owns current Atria platform-fit assumptions, provisional gameplay loop/presentat
 
 ---
 
-## 7. Atria platform fit — current verified direction
-
-Current Atria Native architecture appears unusually well suited to this project.
-
-Relevant platform concepts include:
-
-- Package capabilities such as narrative, game, world-simulation, orchestration, memory, knowledge, custom-ui and game-runtime;
-- formal separation of Truth / Belief / Memory / Exposure in the Information Runtime;
-- lifecycle and logical-time systems suitable for faction plans, deadlines and autonomous world progression;
-- Model Tasks for separating narrative generation from other AI-assisted functions;
-- Native Frontend v3 for Package-owned presentation;
-- Host Bridge access to conversation, branches, save/restore and composer actions;
-- Package memory bridge and persistent Native session state;
-- Studio build / validation / preview infrastructure.
-
-Design implication:
-
-The game should not rely on the language model to remember or simulate all state implicitly. Deterministic Native state should own authoritative facts; model context should receive curated projections.
-
 ## 8. Candidate game structure
 
 This section is provisional and intentionally broad.
@@ -111,7 +92,6 @@ The following are intentionally unresolved:
 13. What information should the player UI expose versus deliberately hide?
 14. What role should combat play?
 15. How long should one campaign/session be expected to persist?
-
 
 ## 11. Round 7 — Frontend information and interaction constraints
 
@@ -240,4 +220,3 @@ Rejected:
 - generic clue lists that collapse Evidence / Testimony / Finding / Hypothesis;
 - exact hidden probability displays by default;
 - turning every narrative detail into a persistent dashboard variable.
-

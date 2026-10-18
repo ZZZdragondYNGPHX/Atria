@@ -2,7 +2,7 @@
 
 - **Task ID**: `refactor/atria-performance-long-term-experience`
 - **状态（第十六轮）**：第七轮严格存读档 A、第八轮自动 SavePoint C、第九轮分支/铁人终局只读档均已批准；只是设计，不代表产品代码完成。未来实施路线以 [implementation-roadmap.md](implementation-roadmap.md) E2/E3 为候选，必须待用户批准路线且功能分支集成 main。
-- **源码快照**：`feat/agent-compute-runtime@f4815c7277adc02d36860f45dcf12f43f64453e2`；后续实施须以实际集成后的 `main` 复核。
+- **源码快照**：`feat/agent-compute-runtime@f4815c7277adc02d36860f45dcf12f43f64453e2`；
 - **相关权威**：[index.md](index.md) 为 S2/硬切换/增量历史/阶段路由的冻结原则；[runtime-storage.md](runtime-storage.md) 为 Revision、存档和无损保留的底层契约。
 
 ## Responsibility
@@ -10,21 +10,6 @@
 本模块负责 P1 长会话/Native Play 的 UI 交互范围，以及第七轮用户新提议：**退出 SillyTavern 旧「单条消息/楼层 Swipe、Delete、Hide」产品操作，剧情路线主要通过 SavePoint/Load/Branch 管理**。
 
 用户已批准**严格方案 A**：玩家正式游玩阶段移除旧楼层 Swipe/Delete/Hide，并且同时移除 Native `Restart From Here`、`Re-enter Turn`、`Retry Reply`、任意 `Fork from Revision` 玩家快捷入口；从明确的 SavePoint 加载派生新 Branch，已有分支允许切换。游戏路线可因此分化，但不强制每次读档生成不同文本。
-
-## 实际源码核对（不是实时 UI/真机验证）
-
-| 机制 | 代码证据 | 确认事实及产品边界 |
-| --- | --- | --- |
-| SillyTavern Swipe 控件 | [`public/index.html` L7927-L7995](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/index.html#L7927-L7995) | 旧 Message Template 仍有左右箭头、swipe picker 等 |
-| 旧 Swipe 可执行实现 | [`public/script.js` L18254-L18276](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/script.js#L18254-L18276)、[`swipe-picker.js`](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/swipe-picker.js) | 非 Native 路径仍有完整 Swipe 操作；对已提交 Native 消息，`swipe()` 明确调用拒绝逻辑 |
-| 旧 Delete | [`public/script.js` L3771-L3835](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/script.js#L3771-L3835)；[`public/scripts/messages.js` L168-L255](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/messages.js#L168-L255) | 仍有单/批消息 `splice` 与 patch 存储路径；`deleteMessage` 明确拒绝 Native 已提交消息，其他通用 API 的调用方/覆盖仍需逐路径审计 |
-| 旧 Hide / Unhide | [`public/scripts/chats.js` L185-L209](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/chats.js#L185-L209)、[L2157-L2167](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/chats.js#L2157-L2167) | **Hide 改变 `message.is_system`，即是否纳入 AI Prompt，并非单纯将 DOM 隐藏。** 该函数没有直接 `denyCommittedAction` 检查；后续 `patchChatMessages` 在 Native 模式转向 Native persist（不把旧消息 patch 当权威），但内存投影仍可能受调用影响，因此需清理语义入口，不可直接视为 Native 正式状态已安全更新 |
-| 旧当前聊天批量工具 | [`public/script.js` L20595-L20634](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/script.js#L20595-L20634) | 旧 UI 包含批量 Hide/Delete，但 [`resolveChatStateTarget` L11908](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/script.js#L11908-L11910) 在 Native active 时返回 null；批量工具有只读门槛 |
-| Native 显示层 | [`public/scripts/atria-shell/native-play-host.js` L49-L107](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/atria-shell/native-play-host.js#L49-L107)、[`public/css/atria-shell.css` L1918-L1937](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/css/atria-shell.css#L1918-L1937)、[`public/scripts/native/play-product.js` L29-L65](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/native/play-product.js#L29-L65) | Native Play 使用独立 Conversation/Composer，旧 `#sheld` 以 **1px、不可指针交互** 的隐藏生成 ABI 存在；Native 正文 `messageNode` 没有旧楼层 Swipe/Delete/Hide 按钮。这些旧代码存在不等于正常 Native 产品界面暴露 |
-| Native 消息权威 | [`public/scripts/native/session-runtime.js` L332-L345](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/native/session-runtime.js#L332-L345)、[`src/native/session-core.js` L792-L795](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/session-core.js#L792-L795) | 已提交 Timeline 不支持旧式直接改写/选择出生 Variant；但不可因此删掉所有名为 Variant 的 Native 数据契约 |
-| Native 原生“绕过存档点”操作 | [`public/scripts/native/play-controls.js` L269-L312](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/native/play-controls.js#L269-L312)、[`src/native/session-core.js` L912-L965](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/session-core.js#L912-L965) | 原生 UI **仍提供 Restart From Here / Re-enter Turn / Retry Reply / Fork from Revision**，功能创建分支而非直接销毁已提交历史；但可以绕过 SavePoint 选择任意早期位置，是否保留需本轮讨论 |
-| Native SavePoint 恢复语义 | [`src/native/session-core.js` L1004-L1044](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/session-core.js#L1004-L1044)、[`public/scripts/native/play-controls.js` L240-L255](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/native/play-controls.js#L240-L255) | 现有 Load SavePoint **已经非破坏性地从存档 Revision 创建派生 Branch**（如果当前根已经等于该 SavePoint 则返回当前）。旧路线保持不变，符合用户期望 |
-| 相近但不同的操作 | [`public/index.html` L8194-L8196](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/index.html#L8194-L8196) | 图片左右翻页/image swipe 只是媒体浏览；删除 Session、Project、SavePoint 是资源管理，不属于逐楼层删除，**不能凭关键词扫描一并删掉** |
 
 ## 明确的用户意图（第七轮）
 
@@ -49,7 +34,7 @@
 
 **设计 C：用户模式/权限约束两者（未选，不作为现阶段产品要求）**
 
-- 标准游玩仅允许 SavePoint 加载；制作/调试模式允许直接 Fork 具体 Revision。需要新增模式/权限边界、UI 解释和测试，不能自动假设这种复杂度值得引入。
+- 标准游玩仅允许 SavePoint 加载；制作/调试模式允许直接 Fork 具体 Revision。
 
 **实施时须区分的能力边界（严格 A 下的关键要求）**：
 1. Swipe 移除后，原生只读 `Reply Variants` 预览不得再暴露或暗示可直接切换到另一楼层；只读真实分支历史可以保留并统一命名为 Branch/Timeline。
@@ -100,7 +85,7 @@
 - **方案 B — 人工命名为主**：读档时必须输入分支名称；语义明确，但每次读档都会多一次输入。
 - **方案 C — 自动命名 + 自愿重命名（第九轮已批准）**：新的派生 Branch 默认显示来源存档、创建时机与独立路线编号，允许任意时候修改展示名称；内部稳定 ID/来源 Revision 不因重命名变化。若当前 HEAD 已处于该 SavePoint，可明确显示“当前状态”而不产生重复分支。
 - 使用根/分支关系进行树状或列表式视图，列出来源 SavePoint、分叉回合、当前标记、更新时间、原始历史只读预览；是否提供缩略图与标签由后续 UI/性能基线决定。
-- **Branch 删除与“删楼层”不同**：仅允许作为整体路线管理，必须验证该分支是否有已保存锚点、其他引用、进行中任务和共享对象；绝不通过误删引用而破坏其它分支或可恢复性。
+- 绝不通过误删引用而破坏其它分支或可恢复性。
 
 ### 关键权限矩阵候选
 
@@ -113,17 +98,16 @@
 
 **第九轮已确定模式原则**：普通 RP/标准游戏通过 SavePoint 读取、派生新 Branch，现有路线可切换；铁人/无回档玩法的技术恢复仅能续接最新合法 S2 HEAD，不开放历史读档或旧路线切换；死亡后进入不可继续的**只读终局档案**，保留原始剧情/世界状态历史用于查看，但绝不能通过导出导入、历史预览或运行控制等路径复活/回档。玩家主动删除整条历史属于独立资源管理。具体控制凭据、封存数据布局和终局读权限仍待工程设计。
 
-**第九轮已确定路线管理原则**：派生 Branch 自动生成唯一可辨认显示名称，允许改名；内部不可变 Branch ID、来源 SavePoint/Revision 不因重命名变化。路线默认保留并允许折叠/归档、按需搜索；只读归档并非永久删除，主动整条路线删除须保护关联引用、共享段、导出与 S2 完整性。分支标签应存于独立展示元数据或等价的不可变身份外管理层，不改写已确认的历史 Branch 记录。
+**第九轮已确定路线管理原则**：派生 Branch 自动生成唯一可辨认显示名称，允许改名；内部不可变 Branch ID、来源 SavePoint/Revision 不因重命名变化。路线默认保留并允许折叠/归档、按需搜索；分支标签应存于独立展示元数据或等价的不可变身份外管理层，不改写已确认的历史 Branch 记录。
 
 ### 第九轮补充的源码证据与需要澄清的冲突
 
 - [`src/native/session-core.js` L1004-L1044](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/session-core.js#L1004-L1044)：读 SavePoint 现在直接用 `save.displayName` 作为派生 Branch 的名称；同一个存档多次读入，界面可能看到若干重名分支。需要独立的、稳定的 Branch 身份与可修改的**展示元数据**，不能仅复制存档名。
-- [`src/native/repositories/session-repo.js` L208-L218](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/repositories/session-repo.js#L208-L218)：核心 Native Session 的 Branch 记录使用 `putImmutable`；不能为了支持重命名直接篡改已提交的不可变 Branch 身份。可考虑独立的可变展示层元数据，保持历史可验证。
+- [`src/native/repositories/session-repo.js` L208-L218](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/repositories/session-repo.js#L208-L218)：核心 Native Session 的 Branch 记录使用 `putImmutable`；不能为了支持重命名直接篡改已提交的不可变 Branch 身份。
 - [`public/scripts/native/session-history.js` L47-L88](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/native/session-history.js#L47-L88)：已经具备 Branch 搜索、深度缩进与 25 项分页，后续应优化按需检索，而不是又构建平行的 Branch 管理器；当前模型可能仍先加载全部元数据。
 - [`src/native/run-control.js` L89-L99](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/run-control.js#L89-L99)：`ironman` 已拒绝 `rewind`（以及非当前 Head 保存）；应保留服务器端的权威限制，不能仅在 UI 灰掉 Load 按钮。
 - [`src/native/repositories/save-point-repo.js` L44-L71](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/repositories/save-point-repo.js#L44-L71) 与 [`src/native/repositories/session-repo.js` L595-L602](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/repositories/session-repo.js#L595-L602)：现有铁人模式会替换/删除旧 SavePoint；这与普通玩法的“手动保存长期保护”不能用同一个无差别保留策略。
 - [`src/native/session-core.js` L531-L544](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/session-core.js#L531-L544) 与 [`src/native/repositories/session-repo.js` L918-L950](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/repositories/session-repo.js#L918-L950)：当前铁人死亡时尝试删除整个 Session 与 Revision/Timeline/SavePoint 数据，保留终局控制墓碑。**这与此前默认无损保留游戏原始历史的产品目标存在需要明确处理的冲突**：建议将“游戏终局禁止恢复游玩”和“是否保存只读纪念档/回放历史”解耦，而非让删除原文成为防止作弊的唯一方法。实施前必须另行冻结终局历史生命周期及 S2 保护边界。
-- [`tests/native/run-policy-p2.test.js` L112-L150](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/tests/native/run-policy-p2.test.js#L112-L150)：已有针对铁人模式拒绝 rewind 和只导出当前续玩快照的回归测试。第九轮讨论的新规则需要改相关验证，但不默认运行整个测试矩阵。
 
 ### 第九轮已批准与剩余工程问题
 
@@ -132,17 +116,9 @@
 3. **已批准**：普通游戏存档派生分支；自动过期 SavePoint 不能带走仍有效分支的剧情。整条路线/Session 的主动删除是独立管理操作，须按引用安全执行。
 4. **待实施设计**：分支显示元数据的写入模型、自动编号方案、只读终局档案的权限实现及与存储 S2/GC 的依赖，兼顾 dev 硬切换不引入旧兼容层。
 
-## 需要的最小验证（未来实施才执行）
-
-- Native Player 界面中无旧 Swipe/Delete/Hide 或绕过规定 SavePoint 的入口；旧 DOM ABI 不再提供可触发的已提交消息突变，非 Native 路径也不保留独立隐藏入口。
-- 旧高层 API/Slash Commands/键盘/批量工具无法悄悄篡改 Native 已提交的 Timeline、上下文权威与 Revision；不等于删除独立文件/素材的常规管理 API。
-- Load SavePoint 后出现新分支、旧 Branch/HEAD/世界状态与正文内容保持可达；Switch Branch 恢复完整一致的世界状态。
-- 撤销失败/取消的**未提交**生成不会影响已保存回合；空闲/有界后台维护不诱发重复回复。
-- 分析与验证只覆盖实际修改的模块和关键安全边界，不要求不相关全仓测试或真人实时 UI 证据。
-
 ## Material design changes
 
-- 2026-10-13 / 第七轮：根据用户明确诉求新增模块并登记审计，待讨论「严格存读档驱动 / 保留显式 Fork / 模式分级」三种产品边界；未修改产品代码，未做浏览器真机验证。
+- 2026-10-13 / 第七轮：根据用户明确诉求新增模块并登记审计，待讨论「严格存读档驱动 / 保留显式 Fork / 模式分级」三种产品边界；
 - 2026-10-13 / 第八轮开端：用户正式批准第七轮严格方案 A，确认退役旧 Swipe/Delete/Hide 及 Native Retry/Restart/Re-enter/Fork 的正式 Play 入口，只保留 Save/Load/Branch、只读历史、未提交生成恢复及独立资源管理。第八轮新增自动 SavePoint 的选项及公开权限绕过审计要求；尚未实施代码改动。
 - 2026-10-13 / 第九轮开端：用户确认第八轮混合自动存档 C，固定周期、结构化关键选择之前与手动三种触发源已冻结；第九轮新增 Branch 自动命名/重命名、分组管理与普通/有状态/铁人模式权限候选，均未批准。
 - 2026-10-13 / 第九轮静态审计补充：现有读档派生分支复制 SavePoint displayName，Native Branch 身份不可变；铁人 mode 有真实 server-side rewind 拒绝与终局删除 Session 历史的行为。终局“是否留只读纪念/回放档”的设计尚未批准，不应默默把原文销毁当作唯一保护手段。

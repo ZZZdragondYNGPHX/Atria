@@ -5,7 +5,6 @@
 - Goal: remove the custom audio-player implementation from ordinary text-chat startup.
 - Task branch: `perf/lazy-audio-player`
 - Final baseline: `main@f64f2fefb74fbd3ab98f6c68191914fcec23aeaf`
-- Validated task head: `eca65e059f67e688869c412d74174eac7ba852b3`
 - PR: #54
 - Squash merge / resulting main: `f690c015b1c6c0c33ab152ceec2561715f52cd72`
 
@@ -23,15 +22,6 @@
 - Text/image/video attachment behavior is unchanged.
 - Audio rendering still waits for player initialization before the media readiness set resolves.
 - No user data, settings, protocol, storage, Android package, or Docker behavior changed.
-
-## Validation
-
-Final rebased task head passed:
-
-- Atria PR Checks #644.
-- Worldbook Performance Foundation #305, including the real-host Chromium path.
-
-Android JVM/APK and Docker validation were intentionally not run because this was a browser JavaScript startup-path change and those validations are opt-in.
 
 ## Performance interpretation
 

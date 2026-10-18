@@ -3,9 +3,9 @@
 - Task ID: `refactor/atria-settings-and-themes`
 - Primary Workspace: `main`；本 Bundle 属于独立 `docs` 工作空间。
 - Design status: **Approved**。
-- Implementation status: **Completed (I1—I4)**；实现与实际验证见同一份 Record。
+- Implementation status: **Completed (I1—I4)**；
 - Design date: 2026-10-15。
-- Source baseline: `main@60aca695726893e298b7d485f300c6efef3b79fd`。最初审计与已执行产品检查的基线见 [audit-and-research.md](audit-and-research.md)，不能视为已在此提交重跑。
+- Source baseline: `main@60aca695726893e298b7d485f300c6efef3b79fd`。
 - Implementation Record: [atria-settings-and-themes.md](../../../records/refactor/atria-settings-and-themes.md)，记录真实实现 HEAD、阶段结果、失败修复与交付状态。
 
 ## 目标
@@ -23,7 +23,6 @@
 | 定制与交互 | 配色与主题附带高级 CSS；一次临时预览、明确确认或取消；个人行为与辅助偏好独立于主题 | [themes.md](themes.md) |
 | 用户兼容 | 首次升级保留现观感与个人配置；新用户默认跟随系统；旧格式转换、CSS 启用状态和重名另存有明确规则 | [migration.md](migration.md) |
 | 旧设置 | 按当前 Native 职责归位；旧聊天专属项退出主设置并保留兼容数据 | [settings-ui.md](settings-ui.md) |
-| 验收 | 实际颜色、状态、保存结果、迁移、响应式和可访问性可验证 | [validation.md](validation.md) |
 
 本轮不新增背景图或透明度的可视化控制，不恢复旧聊天布局，不迁移技术栈，不建设主题市场。显示模式与主题槽不是作品、会话或工作区的多级偏好系统。
 
@@ -33,47 +32,27 @@
 
 - [Serene Canvas](../atria-serene-canvas/index.md) 继续拥有全产品的既定视觉气质；其首轮“只做浅色”范围不再限制本任务的主题扩展。
 - 本任务对设置、主题、相应升级与导入流程提供后续详细权威，不重开五域、Dock 或整个产品的信息架构。
-- [旧前端重构](../atria-product-frontend-redesign/index.md) 是历史，不以其旧双主题实现或旧测试断言覆盖本 Bundle。
-- 本轮接受的是文字构图、交互与范围，没有新制作或接受独立高保真 HTML。正式实施以现有 Serene Canvas 视觉和本 Bundle 的设置构图为依据，在真实浏览器中核对效果；不得宣称已有新像素稿。
+- 本轮接受的是文字构图、交互与范围，没有新制作或接受独立高保真 HTML。不得宣称已有新像素稿。
 - 同期的资源清理、账户、Runtime、Agents 等独立任务继续拥有各自职责。本页只提供相关入口，不接管其服务或重新实现其功能。
 
 ## 模块图
 
 | 模块 | 唯一详细职责 | 依赖 |
 | --- | --- | --- |
-| [audit-and-research.md](audit-and-research.md) | 实际源码问题、已执行检查及其限制、官方调研与设计推断 | — |
+| [audit-and-research.md](audit-and-research.md) || — |
 | [settings-ui.md](settings-ui.md) | 构图、分类、设置搜索、普通偏好反馈、旧条目归属 | 当前 Shell / Native authority |
 | [themes.md](themes.md) | 主题模型语义、颜色覆盖、CSS、模式与日夜槽、预览编辑状态 | 当前 tokens / settings 服务 |
 | [migration.md](migration.md) | 首次升级、默认值、旧资产保留、原生与旧格式导入导出、冲突处理 | `themes.md` |
-| [validation.md](validation.md) | 本任务验收目标和相应检查入口 | 上述领域模块 |
 
 ## 实施阶段与按需阅读
 
-### I1 — 核对基线与建立契约
-
-必读：本入口 → `audit-and-research.md` 的源码部分 → `settings-ui.md` 的归属与状态部分 → `themes.md` → `migration.md`。
-
-核对当时真实 `main` 与已有工作区，建立任务语义分支；复核设置消费者、主题资产和异步保存链，落实最小版本化主题与偏好状态契约。产品实施从此阶段起记录到同一 Record。字段命名与内部拆分可沿现有架构决定，不能改变本 Bundle 的产品语义。
-
 ### I2 — 原生主题与用户资产
-
-必读：本入口 → `themes.md` → `migration.md` → `validation.md` 对应项。
 
 完成主题解析、日夜选择、系统模式、五款深色配色、Serene Canvas、语义 tokens 与兼容桥接；接通升级、导入导出和真实保存。先保证资产与状态正确，再由界面调用这些权威。
 
 ### I3 — 设置呈现与交互
 
-必读：本入口 → `settings-ui.md` → `themes.md` 的预览/编辑部分 → `validation.md` 对应项。
-
 实现桌面分类、手机子页、搜索定位、原生控件、配色/CSS 编辑及可取消预览；完成有真实 Native 对应的偏好迁移与保存反馈，保留其余兼容数据。
-
-### I4 — 跨界面核对与交付
-
-必读：本入口 → `validation.md`；按发现的问题回读相应领域模块。
-
-核对 Shell、设置、五域、弹窗/通知与兼容插件的主题覆盖，修复硬编码和状态遗漏；完成最小相关回归、Record 与必要方案更新，并按仓库治理交付。
-
-阶段组织依赖与验收。通用执行、验证、API 限制、交付和真实阻塞处理仅归 [Repository Governance](../../../README.md)，本 Bundle 不增加阶段许可或交接规则。
 
 ## 当前范围之外
 

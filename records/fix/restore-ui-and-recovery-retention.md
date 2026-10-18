@@ -13,10 +13,8 @@ Two operator-facing changes were requested:
 
 - Baseline: `main@aebd6ada8760fea3b07b65ba0f05b5b278b3f471`
 - Task branch: `fix/restore-ui-and-recovery-retention`
-- Final validated task head: `cdcca4ed1906c60a9063a786e9a02c04d2e758ab`
 - PR: #20
 - Squash merge / resulting `main`: `892476eb6a694bc5fa89124e0a3de65a86a8c12e`
-- Validated task-head tree and merged-main tree: `f59238cb6ddb1514ad2a481111908e64ed25137c`
 
 ## UI change
 
@@ -52,29 +50,6 @@ New behavior:
 - when recovery-point apply creates its automatic undo point, both the selected source point and new undo point are protected while retention converges back to five.
 
 The UI now tells the operator that each account keeps at most five restore points.
-
-## Validation
-
-Final task head passed:
-
-- Atria Migration Guard;
-- ESLint;
-- complete Node unit suite;
-- Backup & Storage UI:
-  - Backup Center Chromium;
-  - Browser Storage Chromium;
-  - Server Storage Chromium.
-
-Regression coverage verifies:
-
-- more than five points for one account are pruned to five;
-- the oldest points are physically removed;
-- another account's recovery points are untouched;
-- a protected old recovery point is retained while the total still converges to five;
-- the interrupt control is visible and disabled while idle;
-- after manual cancellation/rollback it remains visible and returns to disabled state.
-
-Android JVM tests and Android/Docker builds were not run because this task changes Node/frontend restore behavior only and those checks remain opt-in.
 
 ## Data/config impact
 

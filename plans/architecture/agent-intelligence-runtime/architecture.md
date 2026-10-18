@@ -18,20 +18,7 @@
 
 ### 统一请求链路
 
-```mermaid
-flowchart LR
-  A[现有 Authority / Memory / Cognition] --> B[Task 与获准 Evidence]
-  B --> C[确定性 / Reuse 校验与 Compute 准入]
-  C --> D[Target 求解与 Context / Behavior 编译]
-  D --> E[精确 Request Snapshot]
-  E --> F[Provider / Gateway / Local]
-  F --> G[受控结果消费 / Observation / Authority Receipt]
-  C -->|有效产物减少相应工作| G
-  G --> H[Experience / Eval / Candidate]
-  H --> B
-```
-
-Target 限制与 Context 精确编译有有界复核；依赖最终路径 / 编译绑定的复用仍在消费前重验。命中仅减少对应步骤，正式 mutation 仍经过原 authority / receipt；需要正文时继续 fresh generation。正常选择、FailurePolicy 与候选晋升分别拥有契约。六个 Plane 共享下列领域模块，不另加同名 authority：
+命中仅减少对应步骤，正式 mutation 仍经过原 authority / receipt；需要正文时继续 fresh generation。正常选择、FailurePolicy 与候选晋升分别拥有契约。六个 Plane 共享下列领域模块，不另加同名 authority：
 
 - [behavior-context](behavior-context.md)：语义与编译、身份 / cognition / expression / narration 分离。
 - [compute-policy](compute-policy.md)：稀疏调用、预算准入、非阻塞维护与收益。
@@ -44,23 +31,17 @@ Execution Reuse 消费已完成且仍适用的工作；Adaptive Invocation 沿 [
 
 ## 2. 最小公共证据与 artifact 语义
 
-建议将“统一”限定为同一套**可验证的引用与消费语义**，并允许源域不同：
-
 - 主体：authenticated owner、project / session / actor / package 等精确身份。
 - 来源：producer、run / request / effect、原始 source refs；模型不能填写可信 host 字段。
 - 版本：source domain 及其精确 revision / branch / scope epoch / dependency fingerprint。
-- 内容：schema、representation、受限 payload 或 opaque ref；content hash 与长度预算。
+- 内容：schema、representation、受限 payload 或 opaque ref；
 - 生命周期：current / stale / superseded / unavailable 等状态，按源 authority 重新判断。
 - 消费：谁可读、用途、是否需要展开、是否可重复使用；引用不能自己赋予 mutation 权限。
 
-**不把所有 revision 强行合成一个数字。** Studio Project revision、Native Session revision、PackageVersion、Prompt revision、Skill content hash、Runtime graph revision 有不同意义。
-引用通过对应 source adapter 校验，不允许凭“同一 branch 名称”或显示名称证明数据仍有效。
-普通 RP chat / message variant 的来源与 Native Session、Studio Project 分域；没有 Native branch / revision 的入口不伪造这些字段，使用自身可验证的 source anchor。
-
 首批只实现证据集合、评测结果和真实 candidate consumer 需要的类型。
-保留 engine result / Task Artifact 的原有契约；先做 adapter，再按确实重复的语义抽取共用纯校验器。
+保留 engine result / Task Artifact 的原有契约；
 Artifact Bus 不是新的 World authority，也不默认是分布式消息中间件。
-可复用产物继续使用这些 source / scope / dependency / provenance 与原 consumption grant；详细 proof / invalidation 由 execution-reuse 管理。S02 / S03 的来源 / metadata 捕获是接入基础，不证明已交付一般 Tool / Plan cache。
+可复用产物继续使用这些 source / scope / dependency / provenance 与原 consumption grant；S02 / S03 的来源 / metadata 捕获是接入基础，不证明已交付一般 Tool / Plan cache。
 
 ## 3. 轨迹与长期经验分离
 
@@ -73,8 +54,8 @@ Artifact Bus 不是新的 World authority，也不默认是分布式消息中间
 Experience 使用既有 Host StorageEngine 的明确资源契约，不能把全部模型 chunk 写为 Session revision，也不能依赖 IndexedDB recovery 的 24 小时 prune。
 两个入口各自捕获，然后输出公共 evidence envelope；它不是新的执行配置读取权威。Provider 原生 execution envelope 由 adapter 保留协议状态，与此公共证据及可见 chat message 分开；checkpoint 可持久化并不使 opaque reasoning 成为 Memory / Cognition 或 World Truth。
 
-捕获先解决 parent / child、request / retry、effect、message variant、正式 outcome 的关联和幂等写入。执行快照与响应观察分开，沿原 request identity 关联 target、observable model、usage 完整性与预算 charge；具体语义由 model-routing / compute-policy 管理。
-无法取得 provider usage、正文或旧来源时显式记录 missing / unavailable；不能伪造完整性。
+捕获先解决 parent / child、request / retry、effect、message variant、正式 outcome 的关联和幂等写入。具体语义由 model-routing / compute-policy 管理。
+无法取得 provider usage、正文或旧来源时显式记录 missing / unavailable；
 默认只保存获准的必要内容；Secret、transport header、模型不可见的私有 reasoning 不进入共享轨迹。
 删除来源、角色 / 项目或关闭采集后如何保留、清除与失效，在首批设计中明确。M1 仍只捕获当前可取得的执行证据，不为保存轨迹而提前实现 M8 continuation；后续共享轨迹只消费其获准决定 / loss 元数据。
 
@@ -86,7 +67,7 @@ Experience 使用既有 Host StorageEngine 的明确资源契约，不能把全�
 - critic / tool error / compiler failure 是对应技术信号，不等价为用户文风偏好。
 - explicit preference、人工接受 / 拒绝、authority outcome 各有自己的来源与适用维度。
 - 一条 lesson 需要有适用条件、来源、反例、失效条件和容量策略。
-- 候选从原版本建立，在隔离案例执行；多个 authority 的候选先分别归因，再做组合回归。
+- 候选从原版本建立，在隔离案例执行；
 - 晋升写回现有 Skill / Prompt / Preset 的允许路径，run 固定版本；Experience 只记录发布关系和证据。
 - rollout / judge / training feedback 不回写真实 Memory、World 或正式用户偏好。
 
@@ -100,16 +81,14 @@ Package 已安装资源不能被原位“成长”；作者副本或明确的 Ho
 
 | 概念 | 主体与来源 | 完成 / 更新方式 |
 | --- | --- | --- |
-| User / Project execution goal | 用户发起或明确允许的 Agent 工作 | 正式产物与固定 verification surface |
+| User / Project execution goal | 用户发起或明确允许的 Agent 工作 ||
 | Actor goal / desire / intention | 角色认知；来源为事件、设定或受控提炼 | Actor 可见事件、状态变化与有限认知更新 |
 | Run todo / commitment / open loop | 当前执行计划或叙事提醒 | 继续使用现有语义，与长期 Goal 做显式关联 |
 
-Goal 需要可核对的 criteria、invariants、evidence、progress、blockers、预算和用户控制。
 一次 run complete、模型自称成功或远程 Agent complete 不能单独宣布 Goal 完成。
 
 Native Goal continuation 使用已持久化的 wake intent，再交给现有 scheduler。Project continuation 先补持久任务与幂等结果。
 首次实现优先事件驱动；进程关闭期间的 wall-clock wake 不是现有 TaskScheduler 已有能力，若产品需要必须单独设计 Host lifecycle。
-fork / rollback 后应重验 evidence，关闭旧 branch 的 pending continuation，避免旧目标重复执行写操作。
 
 ## 6. Actor cognition：状态可以真实存在，内容可以是错误解释
 
@@ -149,7 +128,7 @@ Memory 继续回答发生过什么；cognition 决定本轮如何解释与使用
 检索后的 applicability 要考虑 Actor exposure、时间、branch、source 修订、例外和当前 Goal；失败时能放弃旧经验。
 不将所有 actor 模型状态作为 Memory 的“事实”无差别注入其他角色。
 
-D5 将上述限制前移至 [Hybrid 候选域](hybrid-memory.md#32-constraint-first-adaptive-hybrid)，并保留异步返回 / Context 编译 / 消费时复验。三条生成路径沿 [hybrid-memory §2](hybrid-memory.md#2-三条生成路径分别接入) 接入；获准历史、Actor 解读与当前正式状态分开。旁白策略 / disclosure 归 [behavior-context §2.1](behavior-context.md#21-作品叙事策略与角色可知)，Memory 不另建完整 prompt compiler。
+三条生成路径沿 [hybrid-memory §2](hybrid-memory.md#2-三条生成路径分别接入) 接入；获准历史、Actor 解读与当前正式状态分开。旁白策略 / disclosure 归 [behavior-context §2.1](behavior-context.md#21-作品叙事策略与角色可知)，Memory 不另建完整 prompt compiler。
 
 ## 8. Counterfactual 与 metacognition
 
@@ -158,15 +137,14 @@ deterministic dry-run 与语言 / 视觉 World Model 是不同 provider 能力�
 只选中的 action proposal 进入原 authority；所有 rollout 禁止自动 publication、生产工具副作用和真实记忆提取。
 
 调用准入、稀疏事件 gate 与全量费用记录提前由 M1 / G05 提供；不等到 S26 才限制新认知层开销。先以固定 branch / step / token 预算证明选行动的收益，再加入 adaptive controller。
-controller 先调 optional scout、retrieval depth、candidate count、critic rounds 和已授权模型 route；必要权限 / authority / knowledge guard 保留。
+controller 先调 optional scout、retrieval depth、candidate count、critic rounds 和已授权模型 route；
 规则 controller 是基线；只有数据证明小模型 / 主模型 controller 有收益时才启用。
-fast / slow 除开销外也有时序：异步 slow result 必须核对 revision，不能覆盖新回合的 state。
 
 ### 8.1 正式 World Tick与自主 NPC
 
 HCM-04 已冻结：自主 NPC 只按正式游戏 World Tick 推进，不以在线等待、离线真实时间或读取记忆自动推进世界。复用已有 Simulation / Lifecycle 的 canonical clock、合法 advance、bounded jobs / steps / deliberations、task outbox 与原 TaskScheduler；当前源码事实见 [baseline §10](baseline.md#10-d5hybrid-memory-整合时的实际基线)。
 
-只有作品显式启用高度自主认知，且正式 tick 合法推进、scope / job / budget 满足时，才调度该范围 NPC 的认知或意图任务。生成的 NPC plan 是待裁决提案，正式 effect 经原 World / Session authority；异步采纳核对 base revision / scope epoch，回滚或关闭作品策略使旧 pending 任务失效。保留现有 step / deliberation 限制，本设计不自动提额或另建现实时间循环。
+只有作品显式启用高度自主认知，且正式 tick 合法推进、scope / job / budget 满足时，才调度该范围 NPC 的认知或意图任务。生成的 NPC plan 是待裁决提案，正式 effect 经原 World / Session authority；保留现有 step / deliberation 限制，本设计不自动提额或另建现实时间循环。
 
 这是 H5 消费现有 Simulation 的边界，不依赖 S22–S24 新 World Model。后者的 hypothetical rollout 继续隔离，不写正式 Memory；Host / Project 的现实时间 Goal wake 是 §5 的另一契约。
 
@@ -179,8 +157,7 @@ MCP / A2A / AG-UI / A2UI / MCP Apps adapter 固定支持版本、认证来源、
 外部 payload 是数据；外部 resource / Task 完成不获得本地写权限或 Goal 完成权。
 
 Training export 分清 observation / action / receipt / preference / reward，标注缺失、衍生标签和可导出权限。
-训练、prompt 优化或 model selection 的结果都必须重新经过同一 evaluation / promotion 路径。
-latent / opaque representation 只有在 provider 真实暴露并通过兼容测试时才能实现；JSON-safe persistence 不能保存任意模型进程对象。
+训练、prompt 优化或 model selection 的结果都必须重新经过同一 evaluation / promotion 路径。JSON-safe persistence 不能保存任意模型进程对象。
 
 ## 10. 成功的具体表现
 

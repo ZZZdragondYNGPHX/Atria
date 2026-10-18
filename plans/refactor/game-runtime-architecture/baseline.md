@@ -9,16 +9,14 @@
 - Baseline: `main@63da3141a3895d3386ed1bebc30876c9766315ba`
 - Document branch: `docs`
 - Document path: `refactor/game-runtime-architecture.md`
-- Status: architecture approved and in implementation; **R0-R6 are complete against their phase exit criteria. R6 — Game Studio is validated at `refactor/game-runtime-architecture@26692b80aaa073e2442f5ed23b3f082ef25b3e2c`. The next and final planned phase is R7 — Atria Game-first Shell Redesign.**
+- Status: architecture approved and in implementation; **R0-R6 are complete against their phase exit criteria. The next and final planned phase is R7 — Atria Game-first Shell Redesign.**
 
 ## R7 branch-strategy amendment
 
 The original Master Plan assumed R7 would continue directly on `refactor/game-runtime-architecture`. That implementation strategy was superseded after R6 completion.
 
 - R0-R6 are frozen at `refactor/game-runtime-architecture@26692b80aaa073e2442f5ed23b3f082ef25b3e2c`.
-- R7 is implemented independently on `refactor/atria-game-first-shell-redesign`, created from that exact validated R6 HEAD.
 - The frozen R0-R6 branch is retained as the phase archive/baseline during R7 and is not merged separately into `main`.
-- The R7 branch contains the full R0-R6 history and is the only branch that should ultimately be merged into `main` after complete R0-R7 validation.
 - The authoritative expanded R7 product/frontend plan is `docs:refactor/atria-game-first-shell-redesign.md`.
 - Any older instruction in this Master Plan that says to continue R7 on `refactor/game-runtime-architecture` is superseded by this amendment.
 
@@ -85,17 +83,6 @@ Existing legacy chat behavior may continue outside the new Game Runtime, but it 
 For Game Packages, Atria owns the authoritative world model.
 
 The normal write path is:
-
-```text
-Command
-  -> Validate
-  -> Calculate
-  -> Deterministic RNG
-  -> Emit Events
-  -> Reducers
-  -> Rules / derived events
-  -> Commit
-```
 
 Direct arbitrary world-state mutation is not the normal runtime contract.
 
@@ -215,69 +202,6 @@ The current CardApp runtime model (“one entry JS module, hide all native chat 
 ---
 
 ## 3. Target top-level architecture
-
-```text
-                         User
-                          |
-               +----------+----------+
-               |                     |
-             Card UI              Free Text
-               |                     |
-               |               Intent Resolver
-               |                     |
-               +----------+----------+
-                          |
-                          v
-                     Command Bus
-                          |
-                          v
-                +------------------+
-                | Game Logic       |
-                | Runtime          |
-                |                  |
-                | Validators       |
-                | Formula Engine   |
-                | Reducers         |
-                | Rules            |
-                | RNG              |
-                | Simulation       |
-                +----+--------+----+
-                     |        |
-             deterministic    | semantic ambiguity only
-                     |        v
-                     |  +-------------------+
-                     |  | Event Interpreter |
-                     |  | typed meaning only|
-                     |  +---------+---------+
-                     |            |
-                     +------------+
-                          |
-                          v
-                        Events
-                          |
-                          v
-                +------------------+
-                | World Runtime    |
-                |                  |
-                | Schema           |
-                | State            |
-                | Event Journal    |
-                | Snapshots        |
-                | Branches         |
-                | Replay           |
-                +--------+---------+
-                         |
-                +--------+--------+
-                |                 |
-                v                 v
-             Selectors        Observations
-                |                 |
-                v                 v
-             Card UI         Narrative LLM
-                                  |
-                                  v
-                                Prose
-```
 
 Regex Core exists beside this architecture and is not a Game Runtime dependency.
 

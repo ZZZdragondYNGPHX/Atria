@@ -8,9 +8,9 @@
 
 ## 容量与认识边界
 
-canonical hypothesis state属于观察Actor A，有稳定local key、target B、扁平perspective数组、text、相对confidence、明确prediction、原basis及sealed appraisal provenance。先验证maxDepth=1的实际消费者，再允许作者选择2；不提供递归节点、指向他者私有hypothesis state的展开或新fact graph。二阶[A观察B关于C]只保存A自己的解释，C可为A；target/subject须为当前Package Actor并在A引用的可见数据或A公开身份内。文本中的自由推论仍需有限审读，不宣称结构guard可保证每个自然语言claim。
+canonical hypothesis state属于观察Actor A，有稳定local key、target B、扁平perspective数组、text、相对confidence、明确prediction、原basis及sealed appraisal provenance。不提供递归节点、指向他者私有hypothesis state的展开或新fact graph。二阶[A观察B关于C]只保存A自己的解释，C可为A；target/subject须为当前Package Actor并在A引用的可见数据或A公开身份内。
 
-作品policy显式限制depth 1..2、每Actor当前domain总nodes 1..16、每事件updates 1..8。旧/withdrawn节点也占当前容量，不为反复换key删除证据或绕过上限；更新同key不改变主体/perspective，旧值保留原Revision。source refs只用已获准非认知leaf，检索/其它假设不是新认知证据。confidence是相对表达，不是已校准概率；作者直接写入仍核对原view、anchor/source、主体、policy和容量。
+作品policy显式限制depth 1..2、每Actor当前domain总nodes 1..16、每事件updates 1..8。旧/withdrawn节点也占当前容量，不为反复换key删除证据或绕过上限；更新同key不改变主体/perspective，旧值保留原Revision。source refs只用已获准非认知leaf，检索/其它假设不是新认知证据。confidence是相对表达，不是已校准概率；
 
 ## 行为反例与读取
 
@@ -20,6 +20,6 @@ canonical hypothesis state属于观察Actor A，有稳定local key、target B、
 
 ## 最小阶段出口
 
-本地真实installed Host先一阶、再二阶，同一pass/分项原command/费用；合法/过深/过量/foreign/self/hidden source或peer hypothesis负例、只读与反例不发送、缺行为/撤回/源改写/Save恢复解释、旧S18 schema与受影响source guard、private/qualitative-only display及必需Context预算。必要原连接共享结构化ToM与后续正文在同临时Session完成并保留唯一命名的完整normalized、原package/save与Run费用；不重复原S18已通过paid组，不把旧normalized缺失或重放当成补回。S20–S21仍独立后续阶段。
+本地真实installed Host先一阶、再二阶，同一pass/分项原command/费用；必要原连接共享结构化ToM与后续正文在同临时Session完成并保留唯一命名的完整normalized、原package/save与Run费用；不重复原S18已通过paid组，不把旧normalized缺失或重放当成补回。S20–S21仍独立后续阶段。
 
-原HTTP connection可显式选择responseSchemaMode=shape-only解决已观察的结构化schema兼容问题；默认full不变，canonical Task schema与完整本地采纳guard保留，strict:true不能被兼容模式静默削弱。具体HTTP400因果未确证，不能由简化后成功推导所有Provider支持或普遍最优transport。
+原HTTP connection可显式选择responseSchemaMode=shape-only解决已观察的结构化schema兼容问题；具体HTTP400因果未确证，不能由简化后成功推导所有Provider支持或普遍最优transport。

@@ -6,7 +6,7 @@
 
 This remains a formal six-stage Plugin task with `plugin` as the Primary Workspace.
 
-The 2026-09-29 revalidation does **not** add another phase. It reduces Phase 2 product work and moves Native Frontend v3 adaptation into the existing read/mutation/integration phases.
+ It reduces Phase 2 product work and moves Native Frontend v3 adaptation into the existing read/mutation/integration phases.
 
 Atria product changes are made only where a product-owned authority is genuinely missing. Product implementation uses one temporary `main`-derived feature branch across all product phases that actually require product changes.
 
@@ -49,10 +49,8 @@ Plugin-side goals:
 
 - compare configured Product Source with Server Runtime;
 - capture Browser-loaded `serverBootId` and detect stale pages after restart;
-- implement exact/mismatch/unverifiable states;
 - represent Native Frontend Experience Epoch as a separate scoped freshness identity;
 - represent Studio Project/Workspace/Preview provenance separately from product checkout provenance;
-- implement a fixed schema-validated Browser Capability Bridge only for approved Memory/Orchestrator/selected game-runtime methods with no stronger server authority;
 - prohibit arbitrary JavaScript evaluation/dynamic capability dispatch.
 
 User-visible outcome: MCP can prove which product source/server/browser generation it is observing and can also bind frontend/Preview evidence to the exact Session or authoring artifact that produced it.
@@ -92,14 +90,10 @@ Goals:
 - implement trusted user approval integration;
 - implement server-minted Capability Leases;
 - implement unified Operation Receipts;
-- implement double guard/preflight/concurrency validation;
 - retire model-supplied `confirm=true`;
 - enable non-destructive INTERACT/MUTATE actions for approved Chat, Build, Settings, Runtime configuration, Library revision, Work start, Memory and Preview/Simulation operations;
 - support Native Frontend v3 `frontend.patch` through normal Studio Workspace semantics;
 - bind Build evaluation receipts to exact Project/Workspace/change/Preview evidence;
-- preserve Experience Epoch and Session revision guards for frontend-scoped actions.
-
-User-visible outcome: after explicit authorization, AI can reproduce, operate and verify real Atria behavior without a second frontend or persistence authority.
 
 ### Phase 5 — High-risk Operations / Package / Agent Delegation
 
@@ -108,7 +102,6 @@ User-visible outcome: after explicit authorization, AI can reproduce, operate an
 Goals:
 
 - enable DESTRUCTIVE semantic actions with one-shot/narrow cleanup authorization;
-- implement machine-verifiable MCP-created-object cleanup scopes;
 - implement Package artifact handles and Preflight -> Review -> Install;
 - implement Work/Project/Session/Library destructive flows without force bypass;
 - implement delegated Agent capability envelopes;
@@ -117,33 +110,6 @@ Goals:
 
 User-visible outcome: high-risk product workflows become available without weakening the earlier authority/approval model.
 
-### Phase 6 — Integration / Security / Native Frontend v3 Verification
-
-No new capability scope is added in this phase.
-
-Goals include adversarial verification of:
-
-- stale approvals and state races;
-- revision/baseVersion conflicts;
-- server restart and stale-browser detection using `serverBootId`;
-- tracked/untracked product source identity;
-- Native Frontend Experience Epoch revocation;
-- Project baseRevision / Workspace / Preview provenance drift;
-- Frontend Source Graph/diagnostic/semantic-patch flows;
-- formal Preview using the production compiler/renderer contract;
-- GenerationProjection versus committed Conversation separation;
-- Script/Media/Frontend diagnostics and recovery evidence where exposed;
-- Secret/path/history leakage;
-- Package update races;
-- destructive reference blockers;
-- delegated Agent privilege escalation;
-- receipt/cleanup ownership;
-- browser semantic-action bypass attempts.
-
-Run real Atria integration against disposable development data with the configured product worktree/runtime and real browser evidence, including representative desktop/narrow viewport flows and Native Frontend v3 Studio Preview.
-
-Only after any product-side changes are fully verified should the product feature branch merge into `main`. Plugin integration is then revalidated against the final integrated `main`.
-
 ### Multi-stage documentation lifecycle
 
 When implementation begins:
@@ -151,8 +117,6 @@ When implementation begins:
 - create and continuously update `docs:records/plugin/atria-mcp-capability-expansion.md`;
 - create/refresh the single live `docs:HANDOFF.md` for this task;
 - keep the same Plugin Primary Workspace and same product temporary branch through phases that require it;
-- after each formal phase: verify, persist/push, update Record/HANDOFF, provide the next-phase handoff prompt, and stop;
-- final completion cleans the live HANDOFF after all verification/integration work is complete.
 
 ## 20. Migration to MCP v0.2.0 surface
 
@@ -231,8 +195,6 @@ Browser interaction remains subject to capability policy and cannot bypass a kno
 
 The v0.2.0 input schemas should not include legacy `confirm` fields.
 
-Unexpected legacy confirmation parameters should fail normal schema validation rather than being silently ignored.
-
 The old `requireWrite(config, confirmed)` model should be retired.
 
 ### 20.7 Replace `--allow-writes`
@@ -259,41 +221,26 @@ The migration must update in the same implementation lifecycle:
 
 - README tool tables and examples;
 - Claude/Codex example configuration where needed;
-- `atria_verify_change` prompt;
 - Guide/resource descriptions;
 - all tests and helper fixtures referring to old tool names or legacy write confirmation.
-
-The new verification prompt should require Source ↔ Runtime ↔ Browser identity to be established before claiming a current source change was runtime/UI verified.
 
 ### 20.10 Tool-count architecture lock
 
 Tests should enforce the intended compact tool surface.
 
-The target v0.2.0 contract should assert the 18 registered top-level tools and reject accidental proliferation of per-domain public tools such as `atri_chat_*`, `atri_build_*` or `atri_memory_*` unless a later approved Plan explicitly changes the public surface.
-
 Semantic domain growth belongs in the Action Registry by default, not in new top-level MCP tool registrations.
 
 ## 22. Implementation kickoff state
 
-Post-Frontend-Refactor revalidation is complete and this document is frozen as **Approved Implementation Plan v1.1**.
-
 Implementation has **not** started.
-
-Revalidated source checkpoints:
 
 - `main@c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`;
 - `plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225`;
 - pre-update docs baseline `docs@d540d35b74f5f3cbcc8eee1ea0565e8164b6ff7f`.
 
-Recorded hashes are checkpoints only; implementation must re-check remote refs.
-
 Reserved implementation-history path:
 
 - `docs:records/plugin/atria-mcp-capability-expansion.md`.
-
-The Record is created when Phase 1 implementation actually begins, not retroactively during this design-only revalidation.
-
-At revalidation time there is **no live `docs:HANDOFF.md`**. Phase 1 should re-check this before creating the task's live HANDOFF; if another task has acquired the slot by then, it must not be overwritten.
 
 Primary implementation workspace:
 
@@ -305,8 +252,6 @@ Product-side temporary branch, if still required when Phase 2 reaches the remain
 - `feat/mcp-development-authority`.
 
 Do not create that product branch during Phase 1. Phase 1 remains Plugin-only.
-
-Phase 2 should first verify that the current-runtime identity gap still exists at its then-current `main`; if current product authority has filled it by then, do not create product code merely to match this historical checkpoint.
 
 ## 23. Diagnostic workflow target
 
@@ -322,26 +267,6 @@ For chat/generation issues it should support:
 
 `Session/message state -> relevant runtime/config -> authorized test message -> generation/UI result -> diagnostics -> source diagnosis -> authorized cleanup when requested`
 
-## 25. Post-revalidation frozen decisions
-
-The 2026-09-29 audit freezes these clarifications:
-
-- the six implementation phases are retained; no seventh migration/adaptation phase is added;
-- Phase 2 is reduced because `serverBootId`, Native Frontend v3 Host Bridge, Studio Frontend inspection/evaluation/Preview, Experience Epoch and frontend diagnostics already exist;
-- `serverBootId` is the canonical product process-boot identity; MCP does not require a duplicate `runtimeBootId` field;
-- one minimal product runtime-identity addition remains planned unless the then-current product has already supplied direct startup source fingerprint/full revision binding;
-- the MCP Browser Capability Bridge is limited to explicitly allowlisted first-party browser capability APIs without a stronger server authority;
-- Native Frontend v3 Frontend Host Bridge is a distinct product protocol and is not treated as the MCP Browser Capability Bridge;
-- Build remains the semantic action namespace while Native Studio remains the owning authority;
-- Native Frontend Source Graph/diagnostics/`frontend.patch`/evaluation/Preview are reused directly rather than reimplemented for MCP;
-- committed Conversation/Timeline remains immutable; GenerationProjection remains ephemeral and separate;
-- the public v0.2.0 surface remains exactly 18 top-level MCP tools;
-- Action Descriptor / Policy Ceiling / Capability Lease / Operation Receipt remain the authorization architecture;
-- Studio evaluation receipts are MCP receipts that bind existing exact Studio evidence; a duplicate durable product receipt subsystem is not required;
-- implementation details such as internal policy-file serialization, client-specific elicitation UX and artifact root tables may be resolved during their owning phase without reopening these architectural boundaries.
-
-Any later material change to these decisions requires another explicit Plan update.
-
 ## 26. Discussion / change-control workflow
 
 During the design discussion phase:
@@ -349,117 +274,4 @@ During the design discussion phase:
 1. each round begins by updating this Plan with the conclusions accepted in the previous round;
 2. only then does the next design topic begin;
 3. the Plan records design intent and boundaries, not implementation history;
-4. implementation and permanent verification history will use `records/plugin/**` once implementation starts;
 5. the `plugin` implementation remains unchanged until the design is sufficiently frozen or the user explicitly starts implementation.
-
-## Appendix A — Phase 1 implementation kickoff prompt
-
-The following prompt is the post-revalidation draft for starting Phase 1 in a fresh implementation conversation/client. Re-check all remote refs before acting; recorded hashes are checkpoints, not authority.
-
-```text
-继续 ZZZdragondYNGPHX/Atria 的 Atria MCP Capability Expansion。
-
-Task ID：
-plugin/atria-mcp-capability-expansion
-
-Primary Workspace：
-plugin
-
-Approved Plan：
-docs:plans/plugin/atria-mcp-capability-expansion.md
-Status：Approved Implementation Plan v1.1 — Post-Frontend-Refactor Revalidated
-
-审计完成时 checkpoint（开始前必须重新核对真实远端 refs）：
-main@c936b0aa4c42cf5711f40ae4a00f5fc3432813dc
-plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225
-
-当前只执行：
-Phase 1 — MCP Kernel / Repository Observation
-
-不要开始 Phase 2。
-不要修改 Atria main 产品源码。
-不要创建 feat/mcp-development-authority。
-不要提前实现 Native Frontend v3 / Runtime Provenance / Browser Capability Bridge。
-不要把 main merge 到 plugin。
-
-开始前：
-1. fetch / 核对真实远端 main、plugin、docs HEAD；
-2. 读取最新 plugin:AGENTS.md；
-3. 读取最新 docs:README.md；
-4. 读取最新 docs:plans/plugin/atria-mcp-capability-expansion.md；
-5. 检查 docs:HANDOFF.md：
-   - 若不存在，按 Governance 为本多阶段任务创建 live HANDOFF；
-   - 若已属于其他活跃任务，不得覆盖、替换或删除，记录该治理阻塞并只完成当前可完成工作；
-6. Phase 1 真正开始实现时创建并持续更新：
-   docs:records/plugin/atria-mcp-capability-expansion.md
-
-已完成的前置审计结论必须保留：
-- Native Frontend Runtime v3 已进入 main，不要为 MCP 重建第二套 Frontend/Studio authority；
-- 产品已有 canonical serverBootId；
-- Phase 2 只剩“直接 current runtime identity + startup source fingerprint/full revision binding”等必要缺口，且必须到 Phase 2 再按当时 main 复核；
-- Frontend Host Bridge 与 MCP Browser Capability Bridge 是不同层；
-- Browser Capability Bridge 后续只用于没有更强 server authority 的 allowlisted Memory / Orchestrator / selected game-runtime browser APIs；
-- Build 继续作为 semantic action namespace，Native Studio 是 owning authority；
-- v0.2.0 顶层 MCP surface 仍固定为 18 tools。
-
-Phase 1 只做 Plugin：
-plugin:atria-mcp/
-
-Phase 1 目标：
-- Semantic Action Registry kernel；
-- 四级 risk executor 基础骨架，但本阶段不开放真实产品 mutation；
-- Policy Ceiling 表示；
-- ephemeral Receipt Store 基础设施；
-- repository-wide tree/read/search；
-- Git status/diff/log/show/blame 只读证据；
-- safe non-ignored untracked development file 可读；
-- bounded development artifact list/read/search/image/inspect；
-- 独立 RepositoryAccessPolicy；
-- Sensitive path/content policy；
-- 保持 Secret、用户数据、dataRoot、symlink/traversal 边界。
-
-v0.2.0 最终公开工具面冻结为 18 个：
-atri_status
-atri_capabilities
-atri_reference
-atri_repo
-atri_git
-atri_artifact
-atri_api
-atri_diagnose_snapshot
-atri_browser_open
-atri_browser_observe
-atri_browser_screenshot
-atri_browser_interact
-atri_browser_diagnostics
-atri_browser_close
-atri_read
-atri_interact
-atri_mutate
-atri_destructive
-
-Phase 1 可以按阶段迁移内部实现，但不得私自增加 per-domain 顶层 MCP tools。
-
-Breaking cutover 约束：
-- 不长期保留 atri_source_read / atri_source_search 等 legacy aliases；
-- confirm=true 最终删除；
-- --allow-writes / ATRIA_ALLOW_WRITES 最终删除；
-- atri_api 最终只做 Native discovery/detail/read，不可成为产品写入逃生通道；
-- Phase 1 不提前实现 Phase 4 的可信审批/Lease mutation 行为。
-
-Phase 1 验证至少覆盖：
-- exact 18-tool registration architecture 可以逐步落位但不得出现意外 per-domain public tools；
-- tracked repository tree/read/search；
-- safe untracked file read；
-- Git status/diff/log/show/blame；
-- bounded artifact policy；
-- sensitive path/content denial + redaction；
-- traversal/symlink escape denial；
-- product/user data 与 repository evidence 边界；
-- legacy source-tool migration相关测试；
-- Plugin 自身 lint/test/type/schema checks（按仓库实际提供的脚本执行）。
-
-Phase 1 验收通过后进入 Phase 2；执行流程见 [Governance §8](../../../README.md#8-task-lifecycle)。
-
-不要声称未实际执行的测试、构建、CI、浏览器或 UI 验证通过。
-```

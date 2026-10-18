@@ -9,9 +9,7 @@ Refine the World Info Workspace from the live Atria `main` after real mobile-dev
 - Temporary branch: `refactor/world-info-mobile-product-ui`
 - Baseline: `main@59bc6862487331d12378e4fdd1da403a248e12a5`
 - PR: #25
-- Final validated head: `d672ef4e70ada778ba87818804e071501266eab6`
 - Squash merge / resulting `main`: `71dc40588f02c96d16d7be64f1e0ccd0223982ba`
-- Validated task-head tree and merged-main tree: `3e2482f496ad6a5f94681addf667bbea4dec88f2` (identical)
 
 ## Product decisions
 
@@ -62,43 +60,6 @@ Primary implementation surfaces:
 - `public/locales/zh-cn.json`
 - `public/locales/zh-tw.json`
 - `tests/e2e/worldinfo/34-workspace-ui.e2e.js`
-
-## Regression coverage
-
-The real-browser World Info workspace regression now covers:
-
-- Library book-card navigation into Entries;
-- removal of the duplicated active-book strip;
-- mobile library advanced-search access through the compact options menu;
-- full-screen mobile geometry;
-- mobile entry-list usable height;
-- bottom-nav geometry;
-- entry-detail drill-down;
-- removal of list/filter/nav chrome in detail mode;
-- large content-editor geometry;
-- back navigation;
-- close behavior;
-- existing desktop virtualization, Inspector, Issues, relationships, activation test and Continuous Cards behavior.
-
-## Validation
-
-Final head `d672ef4e70ada778ba87818804e071501266eab6` passed:
-
-- Atria PR Checks #563
-  - ESLint;
-  - complete Node unit suite;
-  - Atria Migration Guard;
-  - frontend library build as part of the unit job.
-- Worldbook Performance Foundation #248
-  - focused World Info/storage/performance regressions;
-  - frontend libraries build;
-  - synthetic benchmark;
-  - isolated real-host Chromium smoke;
-  - complete World Info browser acceptance including the updated mobile workspace regression.
-
-Earlier Worldbook runs exposed a real mobile navigation containing-block defect; the regression caught the navigation rendering near the top instead of the viewport bottom. The implementation was corrected by reparenting/anchoring the mobile nav to the Workspace and the final workflow passed.
-
-Android JVM/APK and Docker builds were intentionally not run because repository policy makes them opt-in and this task changes browser JavaScript/CSS/localization/tests only.
 
 ## Data / migration impact
 

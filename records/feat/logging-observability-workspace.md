@@ -4,7 +4,6 @@
 
 - Branch: `refactor/logging-observability-workspace`
 - Baseline: `main@148950dec7a8ab63229bd1f3c616f82438d165f4`
-- Final validated head: `faf9da3a087d59e4560123f9a2db5c15361778b9`
 - PR: #71
 - Squash merge: `main@b8cd63d0a0f7afd647cd455a7555bf283758fea4`
 
@@ -71,30 +70,6 @@ Extension install/update diagnosis classifies DNS, TLS, connection/timeout, Git,
 - Includes frontend logs, admin backend logs, safe Request Inspector metadata, Incidents, StartupSessions and allowed provenance/runtime metadata.
 - Full prompt/message bodies and full response bodies are excluded.
 - Cross-realm plain structured objects are preserved correctly during central redaction.
-
-## A/B/C acceptance scenarios
-
-- A — Orchestrator failure: one Incident carries run/agent/round/provider/model/tool/schema/retry/fallback/final-stage context.
-- B — Extension install/update failure: Incident records operation ID and real failure stage instead of a generic network error.
-- C — Third-party runtime failure: stack/provenance evidence distinguishes third-party fault from an Atria-owned implementation fault.
-
-## Final validation
-
-Final task head `faf9da3a087d59e4560123f9a2db5c15361778b9` passed:
-
-- Atria PR Checks #713
-  - Unit Tests
-  - ESLint
-  - Atria Migration Guard
-- Worldbook Performance Foundation #341
-- Backup and Storage UI #89
-  - Server Storage Chromium
-  - Browser Storage Chromium
-  - Backup Center Chromium
-
-The repeatedly flaky World Info mobile drill-down case was traced to stale bulk selection forcing `mobileDetail=true` when opening a book from the Library. Catalogue-to-Entries transitions now refresh bulk-selection UI without auto-entering bulk detail; actual user-driven multi-selection keeps the original behavior.
-
-Android JVM/APK and Docker builds were not run because they were not requested and remain opt-in.
 
 ## Compatibility / migration impact
 

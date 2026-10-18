@@ -29,15 +29,12 @@ Do not make generic LLM-facing `set_state(path,value)` the normal model.
 
 A command should conceptually support:
 
-1. argument schema validation;
-2. world precondition validation;
 3. deterministic calculation;
 4. RNG consumption;
 5. event production;
 6. reducer application;
 7. rule evaluation;
 8. derived event generation;
-9. invariant/schema validation;
 10. atomic commit;
 11. result envelope generation.
 
@@ -307,7 +304,6 @@ Selectors:
 - may derive values;
 - must be deterministic;
 - do not mutate state;
-- can be cached/incrementally invalidated;
 - provide a stable boundary between internal schema and UI.
 
 Declarative HTML binding should bind to selectors or approved read paths, not raw mutable state references.
@@ -373,17 +369,6 @@ Bad uses:
 
 Example output:
 
-```json
-{
-  "decision": "event",
-  "eventType": "implicit_threat",
-  "severity": "medium",
-  "participants": ["guard_02"],
-  "confidence": 0.88,
-  "evidence": ["..."]
-}
-```
-
 A normal no-op is also valid:
 
 ```json
@@ -392,8 +377,6 @@ A normal no-op is also valid:
   "confidence": 0.93
 }
 ```
-
-Game Logic validates the typed interpretation and decides what deterministic rules/events follow. Low-confidence or invalid interpretation may fail closed, request retry/fallback, or produce no durable state change according to game policy.
 
 ### 10.4 Automatic command tool generation
 
@@ -749,13 +732,6 @@ Retrieval roles remain specialized non-chat workloads:
 
 Consumers request a role rather than hard-coding a provider/profile:
 
-```text
-runtime role
- -> primary connection profile
- -> validation/retry policy
- -> fallback profile queue
-```
-
 Each role may define:
 
 - primary profile;
@@ -764,7 +740,6 @@ Each role may define:
 - retry policy;
 - reasoning policy;
 - structured-output/tool-calling requirements;
-- validation behavior;
 - role-specific defaults.
 
 Do not extend the old profile `mode` enum indefinitely with values such as `state`. The role layer is the scalable abstraction.
@@ -794,10 +769,8 @@ Examples:
 
 - Narration emphasizes generation quality, sampling, streaming, context/cache and fallback.
 - Intent Resolution emphasizes tool/schema reliability, retries, timeout and low-variance defaults.
-- Event Interpretation emphasizes strict structured output, confidence threshold, no-change handling, validation, retries and fallback.
 - Embedding/Rerank keep retrieval-specific forms.
 
 The R5 implementation establishes the role/routing model and functional configuration surface. The final visual/information-architecture redesign belongs to R7.
-
 
 ---

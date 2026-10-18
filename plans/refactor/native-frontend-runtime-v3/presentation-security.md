@@ -90,58 +90,9 @@ Local routing 可基于 View + UI State + lazy loading，并可提供 `view.push
 
 ### 7.6 Forms
 
-Semantic form/input + typed UI/Draft state + closed schema validation。
-
 dirty/touched/errors/busy 都是 local frontend state。
 
 File input/upload 不属于 Core v3；future Host File Service 处理。
-
----
-
-## 8. Visual Security Boundary
-
-完整 Experience visual boundary：
-
-```text
-Shadow DOM Isolation
-+
-Host-owned Visual Containment
-+
-Host System/Escape Layer
-```
-
-ShadowRoot 负责 selector/style namespace。
-
-Component/Hybrid surface 必须具备：
-
-- containing block；
-- paint containment；
-- independent stacking context；
-- clipping/overflow policy；
-- Host-defined bounds。
-
-Package `position: fixed/absolute`、z-index、filter/transform 不得越过授权 Surface。
-
-Package 不直接获得 Browser Top Layer：
-
-- `dialog.showModal`；
-- raw popover top layer；
-- Package-controlled fullscreen。
-
-Full Mode：
-
-- Package 拥有 Full Stage；
-- Host System/Escape Layer 永远在 Package boundary 外。
-
-Host System Layer 至少保留：
-
-- Exit；
-- Stop Generation；
-- Save/SavePoint；
-- Diagnostics；
-- Recovery。
-
-Package 无法覆盖、禁用或永久吞掉最后的 Host recovery path。
 
 ---
 
@@ -223,8 +174,6 @@ Frontend 不获得：
 
 ### 10.1 Binding Registry
 
-Experience-level Registry 是真正 Host 安全边界。
-
 自定义 Binding 只有：
 
 - Reads；
@@ -260,7 +209,6 @@ Collection Binding 声明：
 - stable ordering；
 - allowed filter/search；
 - source adapter；
-- optional invalidation/live-tail policy。
 
 Cursor 是 Host opaque token，绑定 binding/query/revision/order。
 

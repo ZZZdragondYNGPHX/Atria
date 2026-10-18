@@ -2,16 +2,6 @@
 
 > Governance 1.1 migration: the detailed Plan text below is preserved from the former monolithic Plan; this module now owns only the domain named above.
 
-**Task ID:** `plugin/atria-mcp-capability-expansion`  
-**Primary Workspace:** `plugin`  
-**Plan Workspace:** `docs`  
-**Status:** Approved Implementation Plan v1.1 — Post-Frontend-Refactor Revalidated  
-**Current implementation baseline:** `plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225`  
-**Product revalidation baseline:** `main@c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`  
-**Revalidation source docs baseline:** `docs@d540d35b74f5f3cbcc8eee1ea0565e8164b6ff7f`  
-**Implementation path:** `plugin:atria-mcp/`  
-**Design state:** Frozen for implementation after 2026-09-29 revalidation; material changes require explicit user approval and Plan update.
-
 ## 1. Purpose
 
 Expand Atria MCP from the current source/API/browser development bridge into a high-visibility Atria development authority for AI clients.
@@ -25,7 +15,6 @@ The intended role is not to replace Claude Code, Codex, Git, the editor, shell, 
 - runtime state exposed through Atria authority;
 - the real running frontend, including embedded previews;
 - browser diagnostics and visual evidence;
-- explicitly authorized product interactions needed to reproduce and verify behavior.
 
 The long-term mental model is:
 
@@ -46,43 +35,6 @@ The current MCP already provides:
 - warning/error, page exception, failed request and HTTP error diagnostics;
 - optional confirmed UI interaction and non-GET Native API calls;
 - explicit secret/credential endpoint blocking and output redaction.
-
-The current baseline is useful for frontend verification and many runtime bugs, but its repository-read surface is intentionally narrower than the desired end state and its product-operation model is still coarse.
-
-### 2.1 Post-Frontend-Refactor revalidation baseline
-
-This Plan was revalidated on 2026-09-29 against:
-
-- `main@c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`;
-- `plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225`;
-- pre-update `docs@d540d35b74f5f3cbcc8eee1ea0565e8164b6ff7f`;
-- completed Native Frontend Runtime v3 Plan/Record.
-
-The product baseline has materially advanced since the prior MCP design baseline `main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`.
-
-Native Frontend Runtime v3 is now the formal non-Text frontend path and provides:
-
-- Source-only Studio authoring with a compiled exact Runtime Graph;
-- Preview and Production on the same compiler/renderer semantics;
-- a versioned Frontend Host Bridge with typed Reads / Actions / Operations;
-- exact binding schemas/digests, revision guards, idempotency and Bridge receipts;
-- fixed Host Conversation / Session / Media / Presentation / External services;
-- separate committed Conversation and ephemeral GenerationProjection semantics;
-- Experience Epoch revocation for stale handles/cursors/async completion;
-- Native Frontend Source Graph inspection, source-addressable diagnostics and semantic `frontend.patch` authoring;
-- formal Studio evaluation/Preview paths that restore Project source after temporary evaluation;
-- Script Sandbox / Canvas / Media / recovery diagnostics under Host-owned authority.
-
-The broader product also already has a per-process `serverBootId` in the existing startup diagnostics authority. This satisfies the unique process-boot identity requirement in substance. MCP must reuse that canonical identity instead of adding a second synonymous `runtimeBootId`.
-
-Important remaining provenance gap: the product does not yet expose one direct current-runtime identity document that binds `serverBootId` to a full Git revision plus a startup-time source-content fingerprint. Existing `/version`, startup sessions and diagnostics provenance are useful evidence but are not by themselves sufficient to prove Source ↔ Runtime exactness after the checkout changes.
-
-The revalidation therefore changes the amount and placement of work, but not the core MCP philosophy:
-
-- Phase 2 product work is reduced;
-- Native Frontend v3 / Studio authorities should be reused rather than duplicated;
-- the fixed Browser Capability Bridge remains necessary only for first-party browser capability APIs that do not have an equivalent stable server authority;
-- the fixed 18-tool MCP surface and Descriptor / Policy Ceiling / Lease / Receipt model remain appropriate.
 
 ## 3. Agreed product philosophy
 

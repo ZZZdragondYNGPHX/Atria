@@ -11,7 +11,6 @@
 - [`public/scripts/atria-shell/app-shell.js`](https://github.com/ZZZdragondYNGPHX/Atria/blob/695acf3bcad1d42e331459189532a76056278bec/public/scripts/atria-shell/app-shell.js)（1333 行）
 - [`public/scripts/atria-shell/navigation-authority.js`](https://github.com/ZZZdragondYNGPHX/Atria/blob/695acf3bcad1d42e331459189532a76056278bec/public/scripts/atria-shell/navigation-authority.js)（340 行）
 - [`public/scripts/atria-shell/product-search.js`](https://github.com/ZZZdragondYNGPHX/Atria/blob/695acf3bcad1d42e331459189532a76056278bec/public/scripts/atria-shell/product-search.js)（271 行）
-- [`public/scripts/atria-shell/workspace-leave-guard.js`](https://github.com/ZZZdragondYNGPHX/Atria/blob/695acf3bcad1d42e331459189532a76056278bec/public/scripts/atria-shell/workspace-leave-guard.js)（78 行）
 
 ## PLAY
 

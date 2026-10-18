@@ -70,8 +70,6 @@ Final commit 后消息通过 committed Conversation Collection 出现。
 - restart current entry/session（Host policy允许时）；
 - diagnostics。
 
-所有 branch/save/restore/retry 有 exact/current revision guard。
-
 Destructive/navigation-like action 的 confirmation 由 Host policy 决定。
 
 ### 11.5 Experience Epoch
@@ -106,8 +104,6 @@ Prose nodes baseline：
 - safe link；
 - semantic inline mark。
 
-AST 通过 canonical content span/range 或 exact textual mapping 验证。
-
 禁止 raw HTML/script/style/iframe/embed。
 
 Native Declarative Runtime 将 Prose AST 展开成 Experience-owned semantic DOM，因此 Package CSS 完整控制视觉。
@@ -119,8 +115,6 @@ Message Blocks 保持独立 typed block，不吸收进 Prose AST。
 ---
 
 ## 13. Media / Assets
-
-Frontend Asset Graph 复用现有 exact AssetRef / Asset Pack / content hash 基础。
 
 覆盖：
 
@@ -134,8 +128,6 @@ Frontend Asset Graph 复用现有 exact AssetRef / Asset Pack / content hash 基
 - presentation resources。
 
 ### 13.1 Local Media
-
-Embedded Exact AssetRef 可离线、可重复验证。
 
 支持 image/audio/video/speech presentation；播放、autoplay、visibility、user gesture 服从 Host/平台策略。
 
@@ -152,7 +144,6 @@ Remote media identity：
 
 - mediaId；
 - URL/source candidates；
-- optional integrity；
 - dimensions/MIME；
 - loading/cache hints；
 - fallback。

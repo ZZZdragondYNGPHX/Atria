@@ -7,8 +7,6 @@
 
 The long-lived world has no fixed Day 30, Year 30 or similar authority cutoff.
 
-Practical limits should come from state integrity, lifecycle consequences and available world evolution, not an arbitrary calendar ceiling.
-
 ## 2. Time hierarchy
 
 Authoritative long-horizon time should support:
@@ -81,8 +79,6 @@ Candidate domains:
 - **Social:** low profile, network expansion, institutional influence.
 - **Wealth:** preserve, invest, expand, liquidate.
 - **Investigation:** normal cases, occult-only, delegated, inactive.
-
-Stances guide compressed resolution and remain active until changed, invalidated or interrupted.
 
 ## 7. Unresolved matters
 

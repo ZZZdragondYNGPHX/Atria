@@ -2,7 +2,7 @@
 
 > **性质：讨论输入**。这份文档不是产品合同、冻结设计或实施授权。它把 [前端审计](../index.md) 的 189 个功能组逐项映射到建议的页面、入口、控件、状态与三端表现，配合 [`atria-visual-direction.html`](atria-visual-direction.html)（视觉参考）与 [`atria-frontend-guidelines.md`](atria-frontend-guidelines.md)（设计指导）一起阅读。
 >
-> 审计中的「接通」只是源码静态证据，所有运行验收都是 **NOT_RUN**。本文沿用审计原有的状态词，不把 mockup、演示交互或任意后端 class 写成已完成的产品能力。凡是改变产品能力或信息架构的内容，都标为 **P-xx 提案**，等用户决定。
+> 本文沿用审计原有的状态词，不把 mockup、演示交互或任意后端 class 写成已完成的产品能力。凡是改变产品能力或信息架构的内容，都标为 **P-xx 提案**，等用户决定。
 
 ## 0. 阅读约定
 
@@ -68,10 +68,10 @@ Agents 域的旧载体（O01–O05 的旧 preset、mode、绑定、Run Panel）�
 
 | 机制 | 建议表现 | 约束 |
 | --- | --- | --- |
-| 五域切换 G01 | D：左侧 72px 导航轨（图标 + 中文标签）；M：底部五域栏。当前域用实心标记与 `aria-current=page` | 离开有未保存稿时由 leave-guard 拦截；异步激活 token 拒绝旧响应 |
+| 五域切换 G01 | D：左侧 72px 导航轨（图标 + 中文标签）；M：底部五域栏。当前域用实心标记与 `aria-current=page` |异步激活 token 拒绝旧响应|
 | 边缘导航 G10 | 保留 Show/Hide、grip、Left/Right/Bottom 位置与 ArrowLeft/Right/Down。HTML 的导航轨是常驻形态；edge-dock 作为用户可选的沉浸形态 | 不能只靠边缘悬停或长按才发现五域；键盘焦点在导航上时不自动隐藏；软键盘开启时暂时隐藏 |
 | 搜索与命令 G03 | `Ctrl/⌘ K`，D 是居中面板，M 是全屏 Sheet。结果按来源分组：命令、作品、故事、项目、World、Knowledge、Prompt。某个来源失败时只在该组显示「重试」 | IME 组合中不选择；Arrow/Home/End/Enter/Escape；Search Tools（X11）是模型工具，不是这个搜索 |
-| 深链 | `#/{domain}/{child}/{id}?rev={exact}`；HTML 演示用 `#/app/{domain}` 和 `#/{scene}` | URL 只表示位置，不是授权；打开时由原服务复验权限、revision 和 scope。preset detail、扩展子标签、Inspector 选择目前不可深链（AR16），见 P-05 |
+| 深链 | `#/{domain}/{child}/{id}?rev={exact}`；HTML 演示用 `#/app/{domain}` 和 `#/{scene}` | URL 只表示位置，不是授权；preset detail、扩展子标签、Inspector 选择目前不可深链（AR16），见 P-05|
 | 返回 | 顶栏 Back 和 Android Back 用同一个层栈（§6.3）：先关临时层，再返回域内子页，再走 Atria 历史 | 一次 Back 只消费一层；焦点归还给触发器；生成中按 Back 不默认取消（P-11） |
 | 修复往返 R14/L07 | 从「缺 Route」跳到运行域时带一条修复横幅：「你正在为《雾港十三夜·线索整理》配置模型，完成后返回原操作」 | 回来后重新 preflight，并恢复原草稿和原操作；不把刷新当作修复已提交 |
 
@@ -146,7 +146,7 @@ Studio（S04）、Library 修订（K03–K07）、Persona（P02）、Prompt（Q0
 | G03 | 搜索／Command，多来源结果；接通／保留 | 导航轨的搜索按钮、全局菜单第一项、`Ctrl/⌘ K` | 来源分组，部分失败的组单独「重试」；无结果给清除 query；IME 保护 | D：居中面板；M：全屏 Sheet，输入框贴在键盘上方 | 01·命令面板 | — |
 | G04 | 全局菜单：Learning/Diagnostics/Extensions/Settings/Account；接通／整合 | 导航轨底部的「更多」网格按钮，打开 utility 菜单；菜单项带次要提示（如「可安全清理 1.2 GB」「1 条未读」） | 权限仍由原服务判断；菜单里的数字没有来源时不显示 | D：弹出菜单；M：底栏「更多」打开全屏列表，不能只在桌面出现 | 01·全局菜单 | P-02（新增「存储中心」项） |
 | G05 | 学习中心课程、Resume/Back/Next/Skip/Done/Redo；接通／保留 | utility › 学习中心；首次空库页加「从零开始」；空状态卡片可以链接到相关课程 | 课程只带用户去真实页面；browser storage 不可用时课程进度不保存，不阻断产品 | D：右侧引导浮层；M：底部 Sheet，可以收起到一条进度条 | 仅文档（菜单入口有） | — |
-| G06 | Loading/empty/error/retry 与未保存离开确认；接通／整合 | 统一状态组件：空、加载、部分失败、错误 + 重试；离开确认对话框写出「未保存：N 处」 | guard 取消后留在原处；refresh 失败不撤销回执；旧响应不覆盖新页 | 两端相同；M 上的离开确认是全屏层 | 03·01–03、07 | — |
+| G06 | Loading/empty/error/retry 与未保存离开确认；接通／整合 | 统一状态组件：空、加载、部分失败、错误 + 重试；离开确认对话框写出「未保存：N 处」 |refresh 失败不撤销回执；旧响应不覆盖新页| 两端相同；M 上的离开确认是全屏层 | 03·01–03、07 | — |
 | G07 | 登录：账户列表、handle/password、Sign in；接通/条件／保留 | 独立登录页：账户卡片列表 → 密码 → 登录；失败信息写在表单内 | 鉴权失败保留可重试入口；密码永远不进诊断材料；CSRF 或连接失败分开提示 | 单栏居中；M 上账户卡片纵向排列，输入框不被键盘遮挡 | 仅文档 | — |
 | G09 | 条件注册、找回密码、OAuth、返回登录；接通/条件／保留 | 登录页次级链接，只在服务器开启时出现 | 注册关闭、discreet login、错误 code、密码不一致、连接失败各自提示；OAuth 提供方以服务器返回为准 | 同 G07 | 仅文档 | — |
 | G08 | 作者作品 UI：host surface、drawer/modal、full/hybrid Stage、恢复菜单；接通/条件／保留 | 故事 › 会话 › 舞台。作品可以占据 slot（`app.root` `chat.header` `chat.footer` `composer.before` `composer.after`）或接管整个舞台；宿主门是一个固定在舞台角落的小按钮，展开后是：退出作品界面、停止、保存、Persona、诊断、重载表现 | Work 拿不到 raw Host 写权限；作品界面故障时宿主门依然可用；重载只重挂作品界面，不影响故事、存档和生成任务 | D：舞台右上角；M：顶栏右侧，且不被作品 UI 覆盖；作品界面自己的控件尺寸由作品决定，宿主门固定 44px 触控区 | 01·故事（宿主门菜单）；04·作品边界 | P-04 宿主门形态 |
@@ -162,7 +162,7 @@ Studio（S04）、Library 修订（K03–K07）、Persona（P02）、Prompt（Q0
 | L04 | 已安装版本：Details、Start from this version、Create Session on this version；接通／保留 | 书库 › 作品 › 详情 › 已安装版本：每个版本一行，有「从此版本开始…」 | 明确标出「非默认版本」；不切换 Work 的默认版本；创建成功后锁定字段防重复 | 同 L03；M 上版本列表折叠 | 01·书库（版本行） | — |
 | L05 | Review dependent Sessions、Delete Work；接通／重组 | 书库 › 作品 › 详情 › 管理（分隔线后的危险区）：「查看依赖的故事」「删除作品…」 | 有 Session 时删除被阻断，并列出精确的 Session 和跳转；建议先导出 .atriasave；删除不是隐式 GC | 两端相同，M 上阻碍列表用全屏层 | 01·书库（阻断提示） | — |
 | L06 | My Games：Continue、Manage、Rename、Worlds & Knowledge、Export、Delete；接通／整合 | 书库 › 我的故事：故事卡片列表，每张卡片一个溢出菜单（重命名、World 与 Knowledge、导出 .atriasave、删除…） | 重命名带 expectedDisplayTitle；删除会同时删 SavePoint，单独确认；缺版本时继续和导出按现有条件禁用，依赖详情仍可读 | D：列表 + 右侧详情；M：卡片列表，操作走溢出菜单 | 仅文档（书库标签存在） | — |
-| L07 | task model setup：slot→Route、Configure Runtime、Refresh、Save and continue、Cancel；接通／保留 | 由 L03/L04/Y01「开始/继续」触发的对话框：每个 slot 一行（用途、需要的能力、Route 下拉）；「没有合适的 Route？去运行域配置」 | 不跳过缺失能力；保存绑定不等于已生成；从运行域回来时恢复原草稿和原操作，并重新验证 | D：对话框；M：全屏层，「去配置」跳到运行域后顶部有修复横幅 | 01·书库；01·运行（修复横幅） | — |
+| L07 | task model setup：slot→Route、Configure Runtime、Refresh、Save and continue、Cancel；接通／保留 | 由 L03/L04/Y01「开始/继续」触发的对话框：每个 slot 一行（用途、需要的能力、Route 下拉）；「没有合适的 Route？去运行域配置」 | 不跳过缺失能力；保存绑定不等于已生成；| D：对话框；M：全屏层，「去配置」跳到运行域后顶部有修复横幅 | 01·书库；01·运行（修复横幅） | — |
 | L08 | Work/Session 的 World/Knowledge setup：exact selection；接通／保留 | 书库 › 作品 › 详情 › 资源与权限 ›「World 与 Knowledge」；我的故事 › 菜单 › 同名项 | 先说明作用范围（每作品 or 每故事）；作品原件和书库副本分开显示；缺失的引用要修，不自动换成 latest | D：对话框，左侧 scope、右侧 exact 选择器；M：全屏两步流程 | 仅文档 | — |
 | L09 | Work 权限/Package resources、Game Regex、知识覆盖；接通/条件／重组 | 书库 › 作品 › 详情 › 资源与权限：权限声明和当前 grant、只读的包内资源、合法的 override | 改表现不扩大 grant；包原件不能直接覆盖；每作品和每故事分开标注 | D：详情抽屉里的分组；M：详情页的折叠分组 | 01·书库（入口行） | — |
 
@@ -174,12 +174,12 @@ Studio（S04）、Library 修订（K03–K07）、Persona（P02）、Prompt（Q0
 | K02 | Resource bundle 导入、预检、Export、Copy to Library；接通／保留 | 列表工具栏「导入资源包」「导出」；包内资源详情页有「复制到书库」 | 缺依赖和同身份冲突在预检里列出；复制会形成独立身份 | 两端相同，预检在 M 上用全屏层 | 01·书库（工具栏） | — |
 | K03 | World：名称、typed 字段、Add/Remove field、Source、Review Changes；接通／保留 | World 详情 › 编辑：分段「字段 / Source」；字段行带类型选择器和移除按钮；底部「审阅变更」 | 禁止危险属性名和重复字段；JSON 或类型错误留在草稿里；新修订不迁移已有消费者 | D：两栏字段表；M：单列，类型选择器用原生 select；Source 用全宽等宽文本框 | 01·书库（World 编辑） | — |
 | K04 | Knowledge 条目：搜索/过滤/分页、详情、Add/Edit/Enable/Delete；接通／保留 | Knowledge 详情 › 条目：表格（D）/卡片（M），操作会进入新修订草稿 | 空库和无匹配分开；删除要确认；已有绑定保持原 exact revision | D：虚拟化表格 + 右侧条目编辑；M：卡片列表 → 条目全屏页 | 仅文档 | — |
-| K05 | Knowledge 字段：title/content、关键词、状态条件、关系、delivery/budget；接通／保留 | 条目编辑器分组：内容 · 发现 · 条件（all/any + 条件行）· 关系 · 投递与预算；分段「字段 / Source」 | 条件数量与类型校验；提交时整体 validate；提交中表单 inert；失败后原稿还在 | D：分组卡片；M：分组折叠，条件行用纵向小表单 | 仅文档 | — |
+| K05 | Knowledge 字段：title/content、关键词、状态条件、关系、delivery/budget；接通／保留 | 条目编辑器分组：内容 · 发现 · 条件（all/any + 条件行）· 关系 · 投递与预算；分段「字段 / Source」 |提交中表单 inert；失败后原稿还在| D：分组卡片；M：分组折叠，条件行用纵向小表单 | 仅文档 | — |
 | K06 | Binding：exact revision、target/visibility、augment/override、priority、Used By、Attach/Detach Worlds；接通／重组 | Knowledge 详情 › 绑定：列表 + 绑定编辑对话框；World 附加单独走 World 修订 | 绑定、条目编辑、World Truth、Memory 纠错四者分开；被历史 World 引用也不能删；引用行可以跳到 World 或 Studio | D：对话框；M：全屏层 | 仅文档 | — |
 | K07 | 修订历史：查看 exact、对比、promote、fork、Used By；接通／保留 | 资源详情 › 修订：时间线列表，当前修订用实心印记，历史用斜纹印记；每行「检视」「对比」「设为当前…」「Fork…」 | promote 只移动 Library head，不改历史内容；失败后重载 | D：右侧时间线；M：修订标签页 | 01·书库（对比、删除、Fork） | — |
 | K08 | 名称更新、删除、反向引用修复；接通／保留 | 资源详情 › 溢出菜单 ›「删除…」→ 阻碍对话框，列出消费者和跳转 | 不静默 detach，不级联；确认后服务端再查一次；失败时资源还在 | 两端相同 | 03·10 | — |
 | K09 | Package 原件：详情、exact、Fork/Copy、Used By；接通／保留 | 原件详情顶部有一条历史色横幅：「作品包原件，只读」+「Fork 到书库…」 | 只读要写清原因，不能只放一个灰掉的保存；说明复制之后谁会用新副本 | 两端相同 | 03·09 | — |
-| K10 | Session embedded knowledge 晋升；接通/条件／重组 | 我的故事 › 菜单 ›「整理故事知识…」；故事 Inspector › 上下文里的条目也可以发起 | 显式晋升；复验当前 Session 和 revision；模型推测不能直接成为世界事实 | D：对话框，左边是选中的数据，右边是目标；M：两步全屏 | 仅文档 | — |
+| K10 | Session embedded knowledge 晋升；接通/条件／重组 | 我的故事 › 菜单 ›「整理故事知识…」；故事 Inspector › 上下文里的条目也可以发起 | 显式晋升；模型推测不能直接成为世界事实| D：对话框，左边是选中的数据，右边是目标；M：两步全屏 | 仅文档 | — |
 | K11 | 修订详情：Export exact、Delete unused、compare、Create revision from this、fork；接通／保留 | 修订行的溢出菜单 | 只能删除更早且没有引用的修订；current 不能当成 unused 删除；fork 后跳转失败不重建同一身份 | 同 K07 | 01·书库（部分） | — |
 
 ### 3.4 Persona（P01–P04）
@@ -204,48 +204,36 @@ Studio（S04）、Library 修订（K03–K07）、Persona（P02）、Prompt（Q0
 | Y07 | 存档 Load/Export、`.atriasave` 导出与导入（密码、Review）；接通／保留 | 存档行的「载入」「导出」；更多 ›「导出 .atriasave」；书库 ›「导入存档」 | 上限 64 MiB；导入前和导入时各做一次依赖预检；缺 Work 可以按 exact 依赖安装；密码错误时保留文件；导入成功但打开失败时不再导入 | 两端相同，导入流程在 M 上用全屏层 | 01·故事（导出、载入入口） | — |
 | Y08 | History：Find branch、Show archived、分页、Explore/All/Current、Rename/Archive；接通／保留 | Inspector › 历史与存档 › 分支：分支线图（当前实心，其它空心）+ 每行「预览」「重命名」；底部「查找分支 · 显示已归档 · 共 N」 | 能看不等于能切；显示 incomplete history；损坏的 exact 目标禁用写操作，当前分支不变 | D：Dock；M：Sheet 全屏 | 01·故事；02·B | — |
 | Y09 | Preview/Inspect revision、Switch branch、Return to current；接通/条件／保留原生，废弃旧 swipe | 「预览」进入只读预览（舞台变成历史斜纹、Composer 写明「历史预览为只读」）→ 横幅里有「切换到此分支…」和「返回当前故事」；切换走确认对话框 | Preview 只读；Switch 是真实写入，忙碌、历史、过期时禁用；**不画 swipe/regenerate** | 两端相同 | 01·故事（预览 + 切换对话框）；02·B | — |
-| Y10 | Context Inspector：已纳入/排除、预算、来源；接通/部分／保留 | Inspector › 上下文：标题写明「证据来自最近一次真实生成 · T41」；预算条（已纳入、排除、余量）；来源列表 | 没生成过就显示「暂无证据」；不显示 Actor 的私有思维或 Secret；hash 不是授权或缓存命中；未知值写 UNKNOWN | D：Dock；M：Sheet | 01·故事 | — |
+| Y10 | Context Inspector：已纳入/排除、预算、来源；接通/部分／保留 | Inspector › 上下文：标题写明「证据来自最近一次真实生成 · T41」；预算条（已纳入、排除、余量）；来源列表 | 没生成过就显示「暂无证据」；不显示 Actor 的私有思维或 Secret；未知值写 UNKNOWN| D：Dock；M：Sheet | 01·故事 | — |
 | Y11 | Prompt choices：动态字段、Save overrides、Restore defaults；接通／保留 | Inspector › Prompt 选项：按 exact Program 的参数声明渲染字段；底部「保存为本故事选项」「恢复默认」 | 没有 Route、未知选项、缺必填字段时给修复；不写书库 Program，也不算发布新版本（见 HTML 03.3 易混动作） | D：Dock；M：Sheet | 01·故事 | — |
 | Y12 | Experience health、Shared session、条件朗读、插图工具；接通/条件／保留 | 健康：Inspector 第四个标签；共享会话：更多菜单；朗读：段落操作和 Composer；插图：段落操作「选文插图」和 Composer「插图」 | 条件不满足时不显示常驻入口；不是每个 Work 都支持语音、共享或插图 | D：段落悬停时显示操作；M：长按段落弹出操作条 | 01·故事 | — |
-| Y13 | Experience health：Refresh、Retry、Open Diagnostics、Check Task bindings、Preview/Confirm repair；接通/条件／保留 | Inspector › 健康：能力列表（required 阻断 vs optional 降级）、诊断链接、「预览修复」→ 修复提案 →「确认修复」 | active/revision 复验；source 变化后要重新预览；恢复 Session 不回卷 Player/Realm | D：Dock；M：Sheet 全屏 | 01·故事（健康标签，有计数） | — |
+| Y13 |接通/条件／保留| Inspector › 健康：能力列表（required 阻断 vs optional 降级）、诊断链接、「预览修复」→ 修复提案 →「确认修复」 |source 变化后要重新预览；恢复 Session 不回卷 Player/Realm| D：Dock；M：Sheet 全屏 | 01·故事（健康标签，有计数） | — |
 
 ### 3.6 工坊：项目与通用编辑链（S01–S15）
 
 | 审计功能 ID | 当前能力／实现状态 | 建议页面／入口／控件 | 状态／权限／恢复 | 桌面／手机 | HTML | 提案 |
 | --- | --- | --- | --- | --- | --- | --- |
-| S01 | 项目列表：name、Create、Search、Open、Delete；接通／保留 | 工坊首页：项目卡片（名称、package 版本、最近修订、未审变更数）；「新建项目」；溢出菜单「删除项目…」→ S22 | 空名校验；空列表、加载失败分别显示并可重试；删除的 exact revision 过期时要重新审查 | D：卡片网格；M：列表 | 01·工坊（项目切换器） | — |
+| S01 | 项目列表：name、Create、Search、Open、Delete；接通／保留 | 工坊首页：项目卡片（名称、package 版本、最近修订、未审变更数）；「新建项目」；溢出菜单「删除项目…」→ S22 |空列表、加载失败分别显示并可重试；删除的 exact revision 过期时要重新审查| D：卡片网格；M：列表 | 01·工坊（项目切换器） | — |
 | S02 | Resource tree：Filter、20 视图、Source file、动态插件资源；Compact 五段；接通／重组 | 工坊 › 项目 › 资源树，分四组：项目（概览、体验模式、包元数据）、内容（角色、入口、World、Knowledge、Library 引用）、叙事与运行（Prompt 编排、运行需求、游戏逻辑、Memory、Agents 源、Skills、Plugins）、表现（作品界面 UI、Assets、Source 文件）；每个节点带草稿数和问题数 | 每个视图保留自己的草稿、滚动和选择；支持数据读取失败时节点显示「部分」并可重试 | D：左侧 264px 树；M：「项目」分段 + 顶部过滤框 | 01·工坊；02·C | 视图分组方式未冻结 |
-| S03 | 顶部 Validate、Preview、Simulate、Inspector、Build、AI；接通／整合 | 项目顶栏：校验、预览、模拟、构建分成一组；Inspector 和 AI 是面板开关；最右边是主按钮「审阅变更 N」 | 按钮可点不代表项目已通过；执行结果进 Activity | D：顶栏；M：校验、模拟、构建放进「更多」分段，审阅变更是常驻底条 | 01·工坊；02·C | — |
-| S04 | Review Changes → Changes → Apply ChangeSet；Cancel；接通／保留 | 「审阅变更」对话框：左边是操作列表（`source.write` / `project.save`…），右边是逐条 diff，底部是校验和模拟摘要，以及「应用 ChangeSet → rev 新」 | inspecting/applying 防重入；校验失败回滚；409 保留冲突草稿；已提交但刷新失败时显示回执，不能再次应用 | D：宽对话框；M：全屏层，diff 逐条折叠 | 01·工坊（Review 对话框）；02·C；03·07–08 | — |
-| S05 | Activity：Problems、Output、History、Changes；Reload Latest、Copy draft；接通／保留 | 编辑区底部的可折叠面板，标签：变更、问题、输出、历史；「复制草稿」 | 大输出截断时写明；「重读最新」会重设基线，所以先走 guard；历史不是 Undo | D：底部抽屉；M：「更多」分段里的列表 | 01·工坊 | — |
+| S03 |接通／整合|Inspector 和 AI 是面板开关；最右边是主按钮「审阅变更 N」| 按钮可点不代表项目已通过；执行结果进 Activity | D：顶栏；| 01·工坊；02·C | — |
+| S04 | Review Changes → Changes → Apply ChangeSet；Cancel；接通／保留 || inspecting/applying 防重入；409 保留冲突草稿；已提交但刷新失败时显示回执，不能再次应用| D：宽对话框；M：全屏层，diff 逐条折叠 | 01·工坊（Review 对话框）；02·C；03·07–08 | — |
+| S05 | Activity：Problems、Output、History、Changes；Reload Latest、Copy draft；接通／保留 | 编辑区底部的可折叠面板，标签：变更、问题、输出、历史；「复制草稿」 | 大输出截断时写明；历史不是 Undo| D：底部抽屉；M：「更多」分段里的列表 | 01·工坊 | — |
 | S06 | Inspector：resource/graph node、exact refs、dependencies；接通／整合 | 右侧 Inspector：选中资源的 exact 引用、正向依赖、Used By；可以和 Project Agent 面板切换 | 某部分读取失败时显示「部分」，不显示「无依赖」；不另存第二份 Project/World | D：右侧 Dock；M：「更多」→ Inspector 全屏 | 01·工坊 | — |
 | S07 | Overview：display name、package name/version、Review；接通／保留 | 资源树 › 概览：表单 | 输入不等于保存；Review 之后还要 Apply；版本格式错误先修 | 两端单列表单 | 仅文档 | — |
 | S08 | Experience：text/component/hybrid/full、Frontend source index、Runtime features JSON；接通／保留 | 资源树 › 体验模式：四张模式卡片（说明作品对舞台的所有权），下面是 source index 和 features JSON | 改的是布局所有权，不推导新权限；错误留在草稿 | 两端相同；M 上卡片纵向 | 仅文档（树节点显示 hybrid） | — |
-| S09 | Actors：字段/Collection Source、actor selector、身份配置、增删、Review；接通／保留 | 资源树 › 角色：头部有头像、名称和**锁定的稳定 ID**；分段「字段 / Source」；作者描述是原文保留的长文本框；AI 的提议字段带「proposal」印记 | stable ID 和重复检查；切视图前 guard；作者知识 ≠ 角色信念（字段旁注明） | D：两栏表单；M：单列 | 01·工坊；02·C | — |
+| S09 | Actors：字段/Collection Source、actor selector、身份配置、增删、Review；接通／保留 | 资源树 › 角色：头部有头像、名称和**锁定的稳定 ID**；分段「字段 / Source」；作者描述是原文保留的长文本框；AI 的提议字段带「proposal」印记 |作者知识 ≠ 角色信念（字段旁注明）| D：两栏表单；M：单列 | 01·工坊；02·C | — |
 | S10 | EntryPoints：字段/Source、入口 selector、首场景/启动配置、增删；接通／保留 | 资源树 › 入口：入口列表 + 编辑表单 | 空或重复入口进诊断；选择只用于预览和构建，不改变已安装的 Session | 同 S09 | 仅文档 | — |
 | S11 | Worlds/Knowledge 视图：selector、字段/Source、typed/条目编辑；接通／保留 | 资源树 › World / Knowledge：复用书库的编辑器（K03/K05），保存范围变成 Project ChangeSet | 书库和包内原件不直接写；同名不等于同身份；ID 重复或选择丢失时可以回到 Collection Source | 同 K03/K05 | 仅文档 | — |
 | S12 | Library references：exact selector、Attach/Fork/Update/Review detach、Used By；接通／保留 | 资源树 › Library 引用：引用列表（exact 印记），每行「更新到…」「Fork」「解除…」；「附加书库资源…」 | detach/update 先查消费者；Fork 是新身份；不能一键全改 latest；只读来源可以跳回原页 | D：列表 + Inspector；M：列表 → 详情 | 仅文档（树节点有「1↑」） | — |
-| S13 | Game Logic、Memory、Agents、Plugins、Package Metadata（JSON/typed）；接通/部分／保留有效源，旧编排废弃 | 资源树对应节点：typed source 编辑器（等宽文本 + 校验）；Agents 源节点标「V3」印记，说明旧 orchestration 字段待硬切 | 这些是真实编辑功能，但不是完整的可视化设计器；Agents 源 ≠ Project Agent | 两端：等宽全宽编辑器，M 上带横向滚动保护 | 仅文档（树节点存在） | — |
+| S13 | Game Logic、Memory、Agents、Plugins、Package Metadata（JSON/typed）；接通/部分／保留有效源，旧编排废弃 |Agents 源节点标「V3」印记，说明旧 orchestration 字段待硬切| 这些是真实编辑功能，但不是完整的可视化设计器；Agents 源 ≠ Project Agent | 两端：等宽全宽编辑器，M 上带横向滚动保护 | 仅文档（树节点存在） | — |
 | S14 | Skills declarations：Available、Add、Remove、Fields/Source、Review；接通／保留 | 资源树 › Skills：左边是可用 Skills（全局 + 项目），右边是已声明列表 | 声明不等于已安装或有执行权限；安装管理在 扩展 › Skills | D：两栏；M：已声明列表 +「添加」全屏选择器 | 仅文档 | — |
 | S15 | Plugin resource（动态，只读 inspection）；接通/条件／保留 | 资源树 › Plugins 下的动态节点：只读 JSON 检视，标题处写「插件未提供专用编辑器」 | 不把 JSON 检视画成完整表单 | 两端相同 | 仅文档 | — |
-
-### 3.7 工坊：Source、作品前端、Assets、测试与构建（S16–S22）
-
-| 审计功能 ID | 当前能力／实现状态 | 建议页面／入口／控件 | 状态／权限／恢复 | 桌面／手机 | HTML | 提案 |
-| --- | --- | --- | --- | --- | --- | --- |
-| S16 | Source file chooser、textarea、diff、Review Source Change、Reload file；接通／保留 | 资源树 › Source 文件：文件选择器 → 等宽编辑器（行号）→ 与基线的 diff →「审阅 Source 变更」 | 二进制或不可编辑的文件只读；读取失败时显示可复制的旧草稿；diff 截断不影响正式写入；迟到的响应不覆盖新文件 | D：编辑器 + diff 并排；M：分段「编辑 / Diff」 | 01·工坊（角色视图的 Source 分段） | — |
-| S17 | UI editor：owner/component/file、属性/JSON 路径、Check source、Review、Preview draft；接通／保留 | 资源树 › 作品界面 UI：组件树 + 属性表单 / Source；「检查 Source」把诊断定位到文件和字符；「预览草稿」 | structured 和 source 草稿冲突时先处理；只读来源禁写；**这个预览不是 Prompt 草稿预览** | D：三栏（组件、属性、预览）；M：分段「组件 / 属性 / 预览」 | 02·C（预览分段的说明） | — |
-| S18 | Assets：Import/Replace、logical name、path、media type、metadata、Preview、Used By、Remove；接通／保留 | 资源树 › Assets：网格 + 详情；导入和替换都进入同一个 ChangeSet | 有引用时先清理；导入未 Apply 前不算项目已改；删除不影响已安装的 Work | D：网格 + 侧栏；M：两列网格 → 详情页 | 仅文档 | — |
-| S19 | Preview：entrypoint、Reload、Host capabilities；接通／保留 | 顶栏「预览」→ 预览面板：入口选择器、重载、能力清单；顶部写「绑定 rev 8b21」 | compile、权限或 unsupported 失败要显示原因，不能空白；dispose 不写正式游戏 | D：替换编辑区或开新面板；M：「预览」分段 | 02·C | — |
-| S20 | Simulation：fixture 文本、Load/Stage fixture、Run；接通／保留 | 顶栏「模拟」→ fixture 编辑 + 运行结果 | JSON 错误和未知入口能定位到行；**模拟 ≠ 真实 Provider 的内容质量**（结果卡片上写明） | D：面板；M：「更多 › 模拟」全屏 | 01·工坊（Review 里的模拟摘要） | — |
-| S21 | Build：Preflight、Build `.atria`、下载、输出与问题；接通／保留 | 顶栏「构建」→ 两步：「运行 Preflight」→「构建 .atria」→ 下载；结果卡片提示「下一步：在书库安装」 | Preflight 不生成安装结果；失败结果不能称为可发行 | D：对话框；M：全屏层，下载失败给重试 | 仅文档 | — |
-| S22 | Delete Project review：确认对象、Delete permanently、Reload revision；接通／保留 | 项目菜单 ›「删除项目…」→ 审查对话框：列出删除的对象和保留的对象（Work、Session、存档、已导出的构建、独立 Skills） | exact revision guard；409 必须重审；物理删除，不冒称可撤销；需要显式勾选 | 两端相同，M 全屏 | 仅文档（与 03·10 同模式） | — |
 
 ### 3.8 工坊：Project Agent（A01–A04）
 
 | 审计功能 ID | 当前能力／实现状态 | 建议页面／入口／控件 | 状态／权限／恢复 | 桌面／手机 | HTML | 提案 |
 | --- | --- | --- | --- | --- | --- | --- |
-| A01 | Task chooser、Intent、Create Task、New Task；接通／保留 | 工坊 › AI 面板：标题「Project Agent · 可选」，当前任务卡片 +「新任务」；底部是补充要求输入框 | 切换任务前 dirty guard；创建失败时保留 intent；Task ≠ 聊天记录 | D：右侧面板（和 Inspector 切换）；M：「AI」分段 | 01·工坊；02·C | — |
+| A01 | Task chooser、Intent、Create Task、New Task；接通／保留 | 工坊 › AI 面板：标题「Project Agent · 可选」，当前任务卡片 +「新任务」；底部是补充要求输入框 |创建失败时保留 intent；Task ≠ 聊天记录| D：右侧面板（和 Inspector 切换）；M：「AI」分段 | 01·工坊；02·C | — |
 | A02 | Prepare only、Continue、计划步骤、会话与执行结果；接通／保留 | 任务卡片：阶段轨（规划、执行、评估、审阅、提交）+ 步骤清单 + 底部「仅准备」「继续」；预算行「4.2k / 20k tokens」 | planning、working、evaluating、repair、review、blocked、conflict、completed 各有不同的状态片；可以取消或接管 | 同 A01 | 01·工坊；02·C | — |
 | A03 | Inspect changes、Review & Commit / High-impact review、Human Takeover；接通／保留 | 任务卡片里的提议块：「提议 1 个 ChangeSet · 2 个操作」+ 影响说明 +「审阅并提交…」「检视变更」「接管」 | AI 不能提交；已提交但刷新失败时不能再提交；高影响变更显示真实风险；权限仍在 Host | D：面板；M：「审阅并提交」打开全屏 Review | 01·工坊；02·C | — |
 | A04 | Task 内 Goals、Experience/Eval/Evolution；部分／保留，受 E0 Gate | 任务卡片的「目标与评估」折叠区：链接到 智能体 › 目标与反馈 的同一条记录 | `source_unready` 显示为阻塞印记；不承诺自动优化通过 | 同 A01 | 01·工坊（「来源未就绪」任务） | — |
@@ -254,24 +242,24 @@ Studio（S04）、Library 修订（K03–K07）、Persona（P02）、Prompt（Q0
 
 | 审计功能 ID | 当前能力／实现状态 | 建议页面／入口／控件 | 状态／权限／恢复 | 桌面／手机 | HTML | 提案 |
 | --- | --- | --- | --- | --- | --- | --- |
-| Q01 | Preset 列表：New、Import、Open、Export、Delete；接通／保留原生 | 书库 › Prompt 预设：新建可选空白/通用骨架/RP/写作/Agent 任务模板；在同一 Library 管理官方基础、作者共享和私人派生，独立作者无需创建游戏 | 导入验证类型与完整依赖并创建本地身份；作者署名/Hash 不等于认证；删除前确认、保留 pinned 历史，不提供 ST 兼容 | D：列表 + 详情；M：列表 → 详情 | 仅文档（书库标签存在） | — |
+| Q01 | Preset 列表：New、Import、Open、Export、Delete；接通／保留原生 | 书库 › Prompt 预设：新建可选空白/通用骨架/RP/写作/Agent 任务模板；在同一 Library 管理官方基础、作者共享和私人派生，独立作者无需创建游戏 |删除前确认、保留 pinned 历史，不提供 ST 兼容| D：列表 + 详情；M：列表 → 详情 | 仅文档（书库标签存在） | — |
 | Q02 | Preset detail：Program/Modules/Generation/Regex、Back、菜单；接通／整合 | 独立专业创作视图复用原 Program/Modules/Generation/Regex 编辑器；从游戏工作台深链进入时显示同一个 preset 身份/保存归属；官方模板只初始化可编辑资源，不锁死原文或静默更新 | 多个入口不等于多个存储；dirty 时取消返回仍保留编辑 | D：标签页；M：分段 + 内部 Back | 仅文档 | — |
 | Q03 | Module category：创建、改名、parent、移动、过滤、删除、影响确认；接通／保留 | Modules 标签：左边是分类树，右边是模块列表；删除时显示受影响对象 | 不能形成循环 parent；不静默改其它 Program；冲突时重载 | D：两栏；M：分类过滤器 + 列表 | 仅文档 | — |
 | Q04 | Module：name、exact、target、stages、body、priority、条件/参数/provenance；接通／保留并按 D8 深化 | 模块编辑器：同一草稿的结构化 / 完整原文两种编辑方式；清晰区分正文内联变量与可独立编排的来源贡献，完整保留原作者正文 | 当前字段 / JSON 模式**不等于** D8 无损双视图已实现；任何 target/宏/外部来源均不赋予新 Role/Grant | D：表单 + 原文；M：分段编辑 | 仅文档 | — |
-| Q05 | Program：stages、Module picker、Add/Remove、Move up、Response Directive、继承/条件/参数；接通／保留 | Program 标签：模板以 Native Stage/Module/受控 Anchor 呈现职责/作者意图/获准 Context/历史/当前输入/输出约束，按合法有效顺序展示；精确父版本、继承/替换/禁用/新增差异有明确标识，选中条目在中区编辑并显示来源/条件 | 已选目标为 Stage 显式顺序与同 target 内 Module/受控 Anchor 显式顺序，**只有原生 Program/Compiler 一份顺序权威**；旧 `target → priority → ID` 仍是现有执行规则，不能画成新排序已上线；跨 target 不因拖拽提升权限，实际写入经原校验与版本保存；新增条目须显式选择插入位置、失败保留草稿，不自动追随父级 latest；Anchor 同一 Program 版本化，来源类别/必需性不是权限；物理字段与同位置动态贡献排序细则待定 | D：结构树 + 编辑 + 按需 Inspector；M：列表 → 编辑 / 上移下移 | 仅文档 | — |
-| Q06 | Generation：tokens、temperature、topP、streaming、stop、tool choice/name；接通／保留 | Generation 标签：每个字段「默认 / 显式」；官方模板不强制绑定某个 Provider，真实 Route/Model 与输出预算需另行选择 | 区分缺省和显式；数值和 schema 先校验；adapter 不支持的组合在预览时拒绝；选 named tool 才显示 name 字段 | 两端单列表单 | 03·05（stop JSON 示例） | — |
+| Q05 | Program：stages、Module picker、Add/Remove、Move up、Response Directive、继承/条件/参数；接通／保留 | Program 标签：模板以 Native Stage/Module/受控 Anchor 呈现职责/作者意图/获准 Context/历史/当前输入/输出约束，按合法有效顺序展示；精确父版本、继承/替换/禁用/新增差异有明确标识，选中条目在中区编辑并显示来源/条件 | 已选目标为 Stage 显式顺序与同 target 内 Module/受控 Anchor 显式顺序，**只有原生 Program/Compiler 一份顺序权威**；旧 `target → priority → ID` 仍是现有执行规则，不能画成新排序已上线；新增条目须显式选择插入位置、失败保留草稿，不自动追随父级 latest；Anchor 同一 Program 版本化，来源类别/必需性不是权限；物理字段与同位置动态贡献排序细则待定| D：结构树 + 编辑 + 按需 Inspector；M：列表 → 编辑 / 上移下移 | 仅文档 | — |
+| Q06 | Generation：tokens、temperature、topP、streaming、stop、tool choice/name；接通／保留 | Generation 标签：每个字段「默认 / 显式」；官方模板不强制绑定某个 Provider，真实 Route/Model 与输出预算需另行选择 | 区分缺省和显式；adapter 不支持的组合在预览时拒绝；选 named tool 才显示 name 字段| 两端单列表单 | 03·05（stop JSON 示例） | — |
 | Q07 | thinking mode/effort/level/budget；cache key/retention/mode/ttl；接通／保留 | Generation 标签的「Provider 专属」折叠区，带说明 | 不宣称所有模型都支持或都命中缓存；不泄露真实 reasoning；unsupported 要明写 | 同 Q06 | 仅文档 | — |
 | Q08 | Save revision、Review/save、Simple/Advanced、错误；接通／保留 | 原保存入口不变；将「保存修订」「导出分享」「受权发布/绑定」「消费者采用/升级」分开表示；导出作者可编辑包与游戏 Build `.atria` 不同，分别展示 exact refs、影响范围和真实回执 | pending 防重入；失败保留字段；保存≠分享≠发布绑定≠消费者采用；新发行包不会自动重钉 Route/Plan/Package，冲突或来源歧义保留本地旧版和候选 | 两端相同 | 仅文档 | — |
-| Q09 | 通用资源库：filter、origin、New/New revision、Archive/Restore、Delete、Used By、Fork/Derive；接通／重组入口 | 书库 › Prompt 预设 › 资源：共用修订、Used By、来源/自包含依赖、导入身份映射、Fork/Derive 和手动版本比较；官方/共享/私人是来源标记，不建第二资源库 | 导入生成本地独立 IDs，来源声明不能冒充签名认证；校验完整依赖/可见性/Secret 排除，歧义时不猜测升级；包原件只读、有引用不能删 | 同 K07 | 仅文档 | P-06 统一资源详情 |
-| Q10 | Studio Prompt Authoring：resource kind、New/Edit、Attach exact、Fork/Derive、Used By；接通／整合 | 工坊 › 资源树 › Prompt 编排：游戏作者可直接选官方 RP/写作/Agent 任务基础模板或已共享的 exact Preset/Program，不必自制；按需 Fork/Derive；有新发行候选时先 Diff/Review，再经 Project ChangeSet/Review 绑定或升级 | 无需从零制作 Prompt；共享修订/离线导出不改变现有游戏绑定；升级需核对来源映射、本地改动、exact Diff、依赖、Provider 能力与 CAS，包原件只读 | 同 S09 | 仅文档 | P-06 |
+| Q09 | 通用资源库：filter、origin、New/New revision、Archive/Restore、Delete、Used By、Fork/Derive；接通／重组入口 | 书库 › Prompt 预设 › 资源：共用修订、Used By、来源/自包含依赖、导入身份映射、Fork/Derive 和手动版本比较；官方/共享/私人是来源标记，不建第二资源库 | 导入生成本地独立 IDs，来源声明不能冒充签名认证；包原件只读、有引用不能删| 同 K07 | 仅文档 | P-06 统一资源详情 |
+| Q10 | Studio Prompt Authoring：resource kind、New/Edit、Attach exact、Fork/Derive、Used By；接通／整合 | 工坊 › 资源树 › Prompt 编排：游戏作者可直接选官方 RP/写作/Agent 任务基础模板或已共享的 exact Preset/Program，不必自制；按需 Fork/Derive；有新发行候选时先 Diff/Review，再经 Project ChangeSet/Review 绑定或升级 | 无需从零制作 Prompt；共享修订/离线导出不改变现有游戏绑定；| 同 S09 | 仅文档 | P-06 |
 | Q11 | Runtime Design：role、capabilities、推荐 Prompt/Generation、requirements、Inspect closure；接通／保留 | 工坊 › 资源树 › 运行需求：展示 Narrator/Agent 任务模板的需求、实际 Model/Route/Provider Capability 与适配结果 | 推荐 ≠ 玩家的 Route 或 Secret 配置；构建 closure 和运行时 slot 解析分开 | 两端卡片纵向 | 仅文档 | — |
-| Q12 | D8 全文无损双编辑、Authored/Effective/Wire 三层 Diff、未发布 Prompt Draft Preview；原审计时为**设计／BLOCKED**，后续实现状态需按 Host/Record 复核 | Library 独立 Prompt 作者与 Studio 项目作者共用 Module/Program 的「编辑 / Authored / Effective / Provider Wire / 对比」，但不重复编译器；按需来源 Trace 解释父/子精确版本、条件、Anchor 纳入/排除、合法来源/位置和 Provider lowering；作者自测与独立受审质量标签必须区分；Diff 先校对 Program/Context/Route/Model/Compiler 身份，Token 计数等级如实标注 | **不能**在 Browser 自行拼 wire 或借 execute 做假预览；无游戏的独立 Host fixture Preview 仍待真正接通；付费试读必须显式 Route/预算/外发许可且不自动 Judge；Host 投影须受众脱敏，区分静态 exact 与本请求动态 Source/Grant 证据，版本/currentness 一致；来源 Contribution 只读不允许拖成指令；未接入时准确标 BLOCKED，不能伪装通用 Pass Trace/Replay 已实现 | D：按需双栏/分层检查；M：完整分段与 Unified Diff | 仅文档；旧 HTML 的 BLOCKED 状态是当时快照 | 设计合同，不画成已接通 |
+| Q12 | D8 全文无损双编辑、Authored/Effective/Wire 三层 Diff、未发布 Prompt Draft Preview；| Library 独立 Prompt 作者与 Studio 项目作者共用 Module/Program 的「编辑 / Authored / Effective / Provider Wire / 对比」，但不重复编译器；按需来源 Trace 解释父/子精确版本、条件、Anchor 纳入/排除、合法来源/位置和 Provider lowering；作者自测与独立受审质量标签必须区分；Diff 先校对 Program/Context/Route/Model/Compiler 身份，Token 计数等级如实标注 | **不能**在 Browser 自行拼 wire 或借 execute 做假预览；无游戏的独立 Host fixture Preview 仍待真正接通；付费试读必须显式 Route/预算/外发许可且不自动 Judge；Host 投影须受众脱敏，区分静态 exact 与本请求动态 Source/Grant 证据，版本/currentness 一致；来源 Contribution 只读不允许拖成指令；未接入时准确标 BLOCKED，不能伪装通用 Pass Trace/Replay 已实现 |M：完整分段与 Unified Diff| 仅文档；旧 HTML 的 BLOCKED 状态是当时快照 | 设计合同，不画成已接通 |
 
 ### 3.10 运行：连接、模型、Route、检索与诊断（R01–R14）
 
 | 审计功能 ID | 当前能力／实现状态 | 建议页面／入口／控件 | 状态／权限／恢复 | 桌面／手机 | HTML | 提案 |
 | --- | --- | --- | --- | --- | --- | --- |
-| R01 | 五个 section、搜索、New/Edit、source JSON、Save/Back、Duplicate/Delete；接通／保留 | 运行域子导航：就绪、Routes、Models、Connections、Retrieval、外部服务、诊断；每个子页是列表 + 编辑器，编辑器有「字段 / Source」分段 | shape 校验；表单 busy；删除前查引用；新建模型 ≠ 已有可用 Route | D：子导航 + 列表 + 编辑器；M：子导航变成顶部分段，列表 → 编辑器 | 01·运行 | — |
+| R01 | 五个 section、搜索、New/Edit、source JSON、Save/Back、Duplicate/Delete；接通／保留 | 运行域子导航：就绪、Routes、Models、Connections、Retrieval、外部服务、诊断；每个子页是列表 + 编辑器，编辑器有「字段 / Source」分段 |表单 busy；删除前查引用；新建模型 ≠ 已有可用 Route| D：子导航 + 列表 + 编辑器；M：子导航变成顶部分段，列表 → 编辑器 | 01·运行 | — |
 | R02 | Readiness checklist / 修复跳转；接通／保留 | 运行 › 就绪：每个任务一条「就绪链」：Connection →（条件）Secret → Model → Program → Generation → Route；缺的环节有虚线和「修复」 | **Secret 只在需要时出现**；每个节点点开就是对应的编辑器 | D：横向链；M：纵向链 | 01·运行 | — |
 | R03 | Connection：adapter、transport、endpoint、Secret selector、Create/Store Secret、Test；接通/部分／保留 | 运行 › Connections › 编辑器：endpoint 输入框带「不含凭证」提示；Secret 选择器 +「新建 Secret」；「测试连接」结果写在下方 | endpoint 不嵌凭证；测试不授权发送 Secret；保存 Secret 后仍要保存 connection；没有完整的 rotate/delete Secret 页面 | D：表单；M：单列，测试结果在按钮下 | 01·运行 | P-08（Secret 管理页） |
 | R04 | Credential destination：Review、exact evidence、allow-local、Allow、Cancel；接通／保留 | 保存后的 connection 上出现一张琥珀色卡片「凭证目的地 · 需要你审查」：目标指纹、本机地址勾选、「允许发送到此目的地」 | 草稿一改，审查就失效；409 要重审；inspect、save、test 都不授权、不发送；不显示 key 原文 | D：卡片；M：全屏审批层 | 01·运行；02·D（同一模式） | — |
@@ -294,12 +282,12 @@ Studio（S04）、Library 修订（K03–K07）、Persona（P02）、Prompt（Q0
 | --- | --- | --- | --- | --- | --- | --- |
 | O01 | Agents hub（旧 panel.js，默认 Run）；旧载体重组 | 智能体域的子导航：Memory、目标与反馈、运行观察、编排、诊断与回放。默认进 Memory（真实接通的原生能力），不再默认进旧 Run | 不写成「V3 RunProjection 已上线」 | D：子导航；M：顶部分段 | 01·智能体 | P-03 |
 | O02 | Orchestration：preset 列表、mode picker（spec/loop/agenda/director）、Single 模板、Import；**废弃** | 过渡期：智能体 › 编排 › 「旧编排（待清退）」折叠区，只读列表加清退说明；**不设计新的 mode picker** | 没有迁移、兼容或改名模板化 | 两端：折叠区 | 仅文档 | 确认废弃（审计） |
-| O03 | Preset Inspector：budget/scheduler、owner、arbitration、node、raw JSON；**旧配置废弃** | 同 O02 的过渡区；新功能按 V3 合同在 O08 设计 | dirty guard 和冲突保留草稿在过渡期照旧 | 同 O02 | 仅文档 | 确认废弃 |
+| O03 | Preset Inspector：budget/scheduler、owner、arbitration、node、raw JSON；**旧配置废弃** | 同 O02 的过渡区；新功能按 V3 合同在 O08 设计 || 同 O02 | 仅文档 | 确认废弃 |
 | O04 | Agent Inspector：instructions、route、skills/tools、add/delete；**旧 carrier 废弃，原生能力保留** | 原生的 Agent 行为、Route、Skill、权限在 V3 Node Inspector 里重建（O08）；Route 引用和 Skill 服务不跟旧 UI 一起删 | — | — | 仅文档 | — |
 | O05 | preset 绑定：enabled、default/character/chat/session binding；**旧 binding/mode 废弃** | 不设计。原生的 Session/Project/World 本体在各自的域保留 | — | — | 仅文档 | 确认废弃 |
 | O06 | Run：Timeline/Graph、节点、事件、指标、Stop Run、Inspect step；保留用户任务，重组为 V3 投影 | 智能体 › 运行观察：时间线和图两个视图是同一个 Host 投影；没有当前 Run 时显示空态；「停止 Run」停止中禁用 | 不复制旧 Run Panel；runId/chatKey 限制照旧 | D：时间线 + 图并排；M：时间线优先，图是可选标签 | 01·智能体（V3 示意，标注「非实现」） | — |
 | O07 | Agent Diagnostics：health、context/token、step/tool/recall evidence、Export Trace、Import replay；保留诊断，清退旧 checkpoint | 智能体 › 诊断与回放：回放模式下顶部是历史色横幅「回放 · 只读」，Memory 管理禁用 | 私有节点详情按权限和来源；replay 只读 | D：两栏；M：列表 → 详情 | 仅文档（01·智能体有占位） | — |
-| O08 | V3 Plan Draft/Validate/Publish、Graph+Inspector、Node/Edge、Approval/恢复；**设计/部分，受 E0** | 智能体 › 编排：Plan 草稿 → 校验 → 发布；图 + Inspector 双向编辑；运行观察里是 Attempt、Effect、Approval、Receipt、Result 各自的状态 | Plan publish 和 Run admission 分开；不共用一个「Run 失败」；**当前新 UI 未完成** | D：图 + Inspector；M：列表、Sheet、Tab 等价方案，不依赖精确拖拽 | 01·智能体（示意图，明确标注设计目标） | 设计合同 |
+| O08 |**设计/部分，受 E0**|图 + Inspector 双向编辑；运行观察里是 Attempt、Effect、Approval、Receipt、Result 各自的状态| Plan publish 和 Run admission 分开；不共用一个「Run 失败」；**当前新 UI 未完成** | D：图 + Inspector；M：列表、Sheet、Tab 等价方案，不依赖精确拖拽 | 01·智能体（示意图，明确标注设计目标） | 设计合同 |
 | O09 | V3 显式有界回边、条件、visits、transition evidence；**设计/局部控制流** | 编排图里回边用独立的线型（虚线弧 + 次数上限徽标）；Inspector 显示 transition evidence | 去掉回边后必须是 DAG；deadline Join 允许 partial；**不等于调度器或模型已接通** | 同 O08；M 上回边在列表里用「↺ 回到 X（≤3 次）」文字表达 | 仅文档 | 设计合同 |
 
 ### 3.12 智能体 › Memory（M01–M08）
@@ -319,7 +307,7 @@ Studio（S04）、Library 修订（K03–K07）、Persona（P02）、Prompt（Q0
 
 | 审计功能 ID | 当前能力／实现状态 | 建议页面／入口／控件 | 状态／权限／恢复 | 桌面／手机 | HTML | 提案 |
 | --- | --- | --- | --- | --- | --- | --- |
-| E01 | Persistent goals：criteria/progress/blockers/budget、Check evidence、Pause/Resume/Cancel；接通／保留 | 智能体 › 目标与反馈 › 目标：目标卡片（标准、进度、阻碍、预算）+「检查已保存的证据」 | readOnly 禁止控制；终态不能继续；**这里没有「新建目标」表单**（不从后端能力推出按钮） | D：卡片列表 + 详情；M：卡片 → 详情 | 01·智能体（目标检查入口） | P-03 |
+| E01 |接通／保留|| readOnly 禁止控制；终态不能继续；**这里没有「新建目标」表单**（不从后端能力推出按钮） | D：卡片列表 + 详情；M：卡片 → 详情 || P-03 |
 | E02 | Link Task、Continue linked Task、预算与 unresolved execution；接通/条件／保留 | 目标卡片的「关联的工坊任务」行 + 「继续任务」（跳到 工坊 › AI） | 不是系统后台自主唤醒；unknown execution 不自动重发 | 同 E01 | 仅文档 | — |
 | E03 | Feedback：signal/note、保存、Collect saved result、Correct、Withdraw/Delete、diagnosis；接通／保留 | 目标与反馈 › 反馈：列表；每条区分「明确偏好」和「推测」；溢出菜单：更正、撤回、删除 | source stale、collection 未确认、unknown 要显式显示；不会因为文字内容变成 World Truth | D：列表 + 详情；M：两页 | 01·智能体（反馈保存提示） | — |
 | E04 | retention days、Purge expired、Delete scope feedback、account budget；接通／保留 | 目标与反馈 › 设置：保留天数、清除过期、删除范围内的反馈… | 删除后不再声称旧来源可审计 | 两端单列 | 仅文档 | — |
@@ -331,13 +319,13 @@ Studio（S04）、Library 修订（K03–K07）、Persona（P02）、Prompt（Q0
 
 | 审计功能 ID | 当前能力／实现状态 | 建议页面／入口／控件 | 状态／权限／恢复 | 桌面／手机 | HTML | 提案 |
 | --- | --- | --- | --- | --- | --- | --- |
-| X01 | Extensions → Skills/Plugins；Plugins → External/Local/Built-in/Official；接通／整合 | utility › 扩展：一级标签 Skills / Plugins；Plugins 下二级标签：外部、本地脚本、内置、官方 | 切标签前 dirty guard；子页加载失败时保留返回和重试；内部标签要能深链（P-05） | D：标签页；M：分段 + 列表 | 仅文档（菜单入口有） | P-05 |
+| X01 | Extensions → Skills/Plugins；Plugins → External/Local/Built-in/Official；接通／整合 | utility › 扩展：一级标签 Skills / Plugins；Plugins 下二级标签：外部、本地脚本、内置、官方 |子页加载失败时保留返回和重试；内部标签要能深链（P-05）| D：标签页；M：分段 + 列表 | 仅文档（菜单入口有） | P-05 |
 | X02 | Skills：Installed/Bundled、scope filter、search/folder、Create、Refresh、Import（bundled/file/URL）；接通／保留原生 | Skills：左边是文件夹，右边是列表；scope 过滤器只列 global/project/package；导入时冲突要选 replace 或 skip | 包内 Skill 只读；旧的 preset/orch-preset/character scope 不出现在新 UI（零兼容） | D：两栏；M：文件夹作为过滤器 | 仅文档 | — |
 | X03 | Skill item：View/Edit/Move/Rename/Delete、scope picker；接通／保留 | 列表行的溢出菜单 | 移动会改变解析 scope，但不改写名称引用；重命名冲突由服务器拒绝；批量导入如实显示部分成功 | 两端相同 | 仅文档 | — |
-| X04 | Skill editor：file tree、Save（`Ctrl/⌘ S`）、新建/改名/删除文件；接通／保留 | Skill 编辑器：文件树 + 等宽编辑器；只有这里绑定 `Ctrl/⌘ S` | expectedSha256 冲突不强写；切文件保留草稿；关闭前先审未保存稿 | D：两栏；M：文件列表 → 编辑器，保存按钮在顶栏 | 仅文档 | — |
+| X04 | Skill editor：file tree、Save（`Ctrl/⌘ S`）、新建/改名/删除文件；接通／保留 | Skill 编辑器：文件树 + 等宽编辑器；只有这里绑定 `Ctrl/⌘ S` |切文件保留草稿；关闭前先审未保存稿| D：两栏；M：文件列表 → 编辑器，保存按钮在顶栏 | 仅文档 | — |
 | X05 | Skill organization：folder、Narrative/Studio/Agents off/on-demand/always、Save；接通／保留 | Skills › 组织：每个 Skill 在三个场景（叙事、工坊、智能体）各有一个分段（关 / 按需 / 总是） | invocation mode 是调度策略，不授予 Tool 权限（行内写明）；删除文件夹会把 Skill 移到「未分类」 | D：表格；M：每个 Skill 一张卡片 | 仅文档 | — |
 | X06 | External plugin：HTTPS URL、Install、Edit、Update、Delete、files disclosure；接通/条件／保留 | Plugins › 外部：安装对话框先**披露文件**，再选 targets（enabled、global、preset、work） | **可信 JS 在页面执行，和 Work 沙箱是不同的信任级**：安装对话框顶部用一条琥珀色横幅说明；安装或更新后默认不启用；外部仓库的运行结果 UNKNOWN | D：对话框；M：全屏层 | 仅文档 | — |
-| X07 | Local script：New、Import JS（≤4 MiB）、code、enabled、scope、Save；接通／保留 | Plugins › 本地脚本：列表 + 等宽编辑器 | 未启用就不运行；dirty guard 和 409 时保留草稿；保存成功但刷新失败时不重写 | 同 X04 | 仅文档 | — |
+| X07 | Local script：New、Import JS（≤4 MiB）、code、enabled、scope、Save；接通／保留 | Plugins › 本地脚本：列表 + 等宽编辑器 | 未启用就不运行；保存成功但刷新失败时不重写| 同 X04 | 仅文档 | — |
 | X08 | Built-in：Regex/Search Tools 启停、Work plugins/permissions；接通/条件／整合 | Plugins › 内置：每个内置工具一张卡片（开关 + 设置）；Work 的插件和权限链接到 书库 › 作品 › 资源与权限 | Regex 不能悄悄改 World 或权限；Search Tools 是模型工具，不是全局搜索 | 两端卡片 | 仅文档 | — |
 | X09 | Official illustration：启用、配置、状态；接通/条件／保留 | Plugins › 官方 › 插图：开关、配置入口（→ V05/V06）、状态 | 默认关闭；不是所有故事都有插图按钮 | 两端相同 | 仅文档 | — |
 | X10 | Native Regex：New、Import/Export、Enable/Disable、Edit/Delete、Move up/down；接通／保留原生 | 内置 › Regex：规则列表，按 scope（账户 / 预设 / 作品）分组；上移下移按钮 | 删除要确认；顺序影响处理；旧 ST depth/order 注入不复活 | D：表格；M：卡片 + 上下移按钮 | 仅文档 | — |
@@ -353,11 +341,11 @@ Studio（S04）、Library 修订（K03–K07）、Persona（P02）、Prompt（Q0
 | V03 | Compose from sections、Generate prompt、Cancel、prompt history / Use version、request preview；接通／保留 | 标注 › prompt 区：「从分段组合」「生成 prompt」、版本列表；「使用此版本」只把内容放进编辑器，要保存才生效 | prompt 编译预览、文本/图像模型实际生成、保存与付费审批分开；独立作者使用 ImagePromptIR/Visual Job 的无会话任务方案仍待真正实现，任务清单失败不代表没有活动任务 | 同 V02 | 仅文档 | — |
 | V04 | Generate image、override、prepare/approval、Cancel、history、Use/Hide、Delete annotation；接通／保留 | 「生成图像」→ 准备 → 审批（V11）→ 提交 → 状态；图像卡片的菜单：使用此版本、隐藏、在 Media Studio 中打开 | 费用分 unknown、free、estimated；取消请求 ≠ 未收费或已回滚；选择显示版本不改剧情；删除标注保留图像历史 | D：面板 + 对话框；M：全屏层 | 01·故事（插图卡片）；02·D | — |
 | V05 | Illustration settings：角色、scope、preset、target/style/prompt Route、模板；接通／保留 | 保留扩展 › 官方 › 插图设置和作品覆盖；Library 独立 Visual Prompt 作者入口复用 Rendering/Target/ImagePromptIR 风格和模板，管理全局 Style/Quality/Negative，而不强制绑定游戏 | 现有全局设置可独立于作品保存；新的 Library 独立创作工作流只是设计，尚无无 Session 图片 Job/历史闭环；恢复模板是草稿变更，要保存，预算/Target 仍归原视觉服务 | D：表单；M：单列 + 角色卡片 | 仅文档 | — |
-| V06 | Image target/style：Connection、model、params、Comfy workflow（≤2 MiB）、bindings、output node、budget；接通／保留 | 视觉资源共用 Library 原生 Image Target/Rendering 编辑与版本权威：workflow 文件导入、语义输入绑定、风格、预算；可由独立或作品上下文入口打开；可移交的 Visual Rendering/Target 资源与预设文字包独立，不能携带 Secret、私密图像或已付费 Job | node、input、output 校验；保存能力 ≠ 实测能力；provider 限制或费用未知要写明 | D：两栏（workflow 节点 / 绑定）；M：绑定列表 | 仅文档 | — |
+| V06 | Image target/style：Connection、model、params、Comfy workflow（≤2 MiB）、bindings、output node、budget；接通／保留 | 视觉资源共用 Library 原生 Image Target/Rendering 编辑与版本权威：workflow 文件导入、语义输入绑定、风格、预算；可由独立或作品上下文入口打开；可移交的 Visual Rendering/Target 资源与预设文字包独立，不能携带 Secret、私密图像或已付费 Job |保存能力 ≠ 实测能力；provider 限制或费用未知要写明| D：两栏（workflow 节点 / 绑定）；M：绑定列表 | 仅文档 | — |
 | V07 | Image candidates（Visual Director）：passage/score/reason、Analyze with model、Review and generate；接通/条件／保留 | 插图 Sheet › 候选：段落 + 分数 + 理由；「用模型分析」默认不自动运行 | **Visual Director 是有效的视觉能力，不是要废弃的旧 Agent Director** | 同 V02 | 仅文档 | — |
-| V08 | Gallery：分页、Use version、Compare original、Hide、Open Media Studio、reference、Confirm reference；接通／保留 | 插图卡片 ›「全部版本」→ Gallery 网格（每页 12）；参考图设置在详情里 | 隐藏 ≠ 删除；提升为参考图 ≠ World fact；离开 Media 草稿前先同步或 guard | D：网格 + 详情；M：两列网格 | 01·故事（版本、隐藏、Media Studio 入口） | — |
+| V08 | Gallery：分页、Use version、Compare original、Hide、Open Media Studio、reference、Confirm reference；接通／保留 | 插图卡片 ›「全部版本」→ Gallery 网格（每页 12）；参考图设置在详情里 | 隐藏 ≠ 删除；提升为参考图 ≠ World fact；| D：网格 + 详情；M：两列网格 | 01·故事（版本、隐藏、Media Studio 入口） | — |
 | V09 | Media Studio：regenerate/img2img/inpaint/upscale、reference、preserve outside mask、Save draft、Preview edit task；接通／保留 | 现有会话图片的全屏编辑器：左工具、中画布、右参数；独立作者的付费试生成/非 Session 资产工作流未来复用原 Media/Asset 服务，不能把会话画廊当独立图库 | 保存中不能提交；409 时保留草稿或另存；upscale 可能改变细节（写明）；任务独立于阅读 | D：三栏；M：画布全屏 + 底部工具条 + 参数 Sheet | 仅文档 | — |
-| V10 | Mask Canvas：brush/erase/rect/pan、radius、Undo/Redo/Clear/Fit、坐标表单、pointer/pinch/wheel；接通／保留 | Media Studio 画布工具栏；「坐标」按钮打开矩形坐标表单（x、y、w、h →「添加矩形」） | `Ctrl/⌘ Z` 只撤销遮罩命令；清除是可撤销命令，不删原图；多指和像素映射需真机验证 | D：指针 + 滚轮；M：双指缩放 + 坐标表单作为等价操作 | 仅文档；02 节选对照表 | — |
+| V10 | Mask Canvas：brush/erase/rect/pan、radius、Undo/Redo/Clear/Fit、坐标表单、pointer/pinch/wheel；接通／保留 | Media Studio 画布工具栏；「坐标」按钮打开矩形坐标表单（x、y、w、h →「添加矩形」） | `Ctrl/⌘ Z` 只撤销遮罩命令；清除是可撤销命令，不删原图；| D：指针 + 滚轮；M：双指缩放 + 坐标表单作为等价操作 | 仅文档；02 节选对照表 | — |
 | V11 | Visual approval：cost limit/currency、unknown-cost consent、asset/mask transfer、degradation consent、Approve/Cancel；接通／保留 | 审批对话框：目标、请求指纹、费用印记、外发素材缩略图、三个同意复选框，全部勾选后「批准并提交」才可用 | **从不预选**；版本或 target 变化要重新准备；只针对这一个任务；模型 prompt 不授予批准 | D：对话框；M：全屏层，主按钮在拇指区 | 01·故事（审批对话框）；02·D | — |
 | V12 | 条件朗读：Read aloud、voice、Stop、audio；接通/条件／保留 | 段落操作「朗读」；Composer「朗读」；第一次使用时先选声线 | 来源变化时中止并重置；失败退回文本；不是实时语音聊天 | D：段落操作 + 迷你播放条；M：底部播放条 | 01·故事（入口） | — |
 
@@ -376,11 +364,11 @@ Studio（S04）、Library 修订（K03–K07）、Persona（P02）、Prompt（Q0
 | --- | --- | --- | --- | --- | --- | --- |
 | T01 | 六类设置、搜索、结果定位、Back、related links；接通／保留并可重组 | utility › 设置：左侧六类（外观与主题、阅读与输入、通用与语言、通知与声音、无障碍与性能、隐私与媒体）+ 顶部搜索（中英别名） | 搜索结果定位后展开并聚焦该项；无匹配要解释；每类记住自己的滚动位置 | D：两栏；M：类别列表 → 设置页 | 仅文档（菜单入口有） | — |
 | T02 | Appearance light/dark/system、主题画廊、预览、Use theme、Cancel preview；接通／保留 | 外观与主题：模式三选一；昼/夜主题画廊，每张主题卡片有「预览」和「使用」 | 离开页面即取消预览；busy 或 migrationPending 时禁止冲突操作；主题缺失时显示 fallback 并提示修复 | D：画廊网格；M：两列 | 04 + 演示控制（夜/昼切换） | 夜 Nocturne / 昼 Folio 只是视觉提案 |
-| T03 | theme name、colors/accent、建议恢复、contrast note；接通／保留 | 主题详情 › 自定义：编辑内置主题会生成自定义副本；颜色字段旁实时显示对比度（复用 04.1 的计算） | 对比度检查只给说明，不强制拒绝；保存失败要提示 | D：表单 + 实时预览；M：单列 + 底部预览条 | 04·色彩（对比度实时计算） | 建议：显示对比度数值 |
+| T03 | theme name、colors/accent、建议恢复、contrast note；接通／保留 | 主题详情 › 自定义：编辑内置主题会生成自定义副本；颜色字段旁实时显示对比度（复用 04.1 的计算） |保存失败要提示| D：表单 + 实时预览；M：单列 + 底部预览条 | 04·色彩（对比度实时计算） | 建议：显示对比度数值 |
 | T04 | 主题 CSS、Export/Import、Delete custom、original export、Retry upgrade；接通；旧迁移桥接待清退 | 主题详情 › 高级：「启用主题 CSS」开关 + 等宽编辑器；导入后不自动应用；横幅写明恢复快捷键 `Ctrl+Alt+Shift+R` 和 `atriaNoThemeCss=1` | 自定义 CSS 出故障时可以临时抑制，原文不删；旧主题迁移不等于未来继续兼容 ST | D：编辑器；M：全宽编辑器 | 仅文档 | — |
 | T05 | Interface size slider、Send on Enter；接通／保留 | 阅读与输入：界面大小滑块（松手后保存）、Send on Enter（auto / Control-Enter / plain Enter） | saving、error、重试保存；IME 下不发送；缩放影响整个界面 | 两端单列 | 02·A（Composer 的按键提示） | — |
 | T06 | Language en/zh-cn、Confirm before leaving；接通／保留 | 通用与语言：语言（切换后重新加载，说明只对这个浏览器生效）、离开确认（smart / always / off） | 语言保存在浏览器本地，不写成跨设备同步；保存失败保留值并可重试 | 两端单列 | 仅文档 | — |
-| T07 | Reduce motion、Reduce blur；接通／保留 | 无障碍与性能：两个开关；说明系统的 prefers-reduced-motion 同样生效 | 子 UI 是否都遵守要运行验证 | 两端单列 | 演示控制（减动、减模糊） | — |
+| T07 | Reduce motion、Reduce blur；接通／保留 | 无障碍与性能：两个开关；说明系统的 prefers-reduced-motion 同样生效 || 两端单列 | 演示控制（减动、减模糊） | — |
 | T08 | Notifications & sound（现为说明 + Open Diagnostics）；部分／重组 | 通知与声音：保留说明页；**不画**能用的完成通知或声音开关 | 旧的通知、声音、keepalive 偏好没接到 Native Session 生命周期 | 两端单列 | 仅文档 | P-07（是否新增真实通知） |
 | T09 | Privacy & media（说明 + Open Library）；部分／重组 | 隐私与媒体：说明「外部媒体权限按每个作品或每个故事授予」+ 链接到 书库 › 作品 › 资源与权限 | 不是账户级的「一键允许所有外部媒体」 | 两端单列 | 仅文档 | — |
 | T10 | 相关入口：Account & backups、Extensions、Diagnostics、Storage、Learning；接通／整合 | 每类设置底部的「相关」链接行 | 可以整合，但不能删掉低频的数据恢复入口 | 两端相同 | 仅文档 | — |
@@ -402,7 +390,7 @@ Studio（S04）、Library 修订（K03–K07）、Persona（P02）、Prompt（Q0
 | B01 | Automatic backups：保留策略、Cleanup now、Restore defaults、history；接通混合／保留原生，废弃旧兼容项 | 账户与备份 › 自动备份：保留策略表单 + 备份历史搜索；说明「这是保留策略，不是定时创建完整 ZIP」 | 旧 chat/character/group 的保留项不在新 UI 出现；原生快照和备份保留 | D：表单 + 历史；M：两段 | 仅文档 | — |
 | B02 | Archives：scope、Select all/recommended/none、Create & download；接通／保留并重组 | 账户与备份 › 归档：原生类别复选（作品、故事、书库、Runtime、项目源码、所需 blob）；Secrets 单独一组，带敏感提示 | Secret 是敏感选择，不是自动外发；不复刻旧 ST 类别 | D：两列复选；M：单列 | 仅文档 | — |
 | B03 | Choose ZIP、merge/overwrite/full、Preflight、Start restore；接通／保留 | 账户与备份 › 恢复：选 ZIP → 模式 → 预检报告（类别、冲突、engine、需要的凭证）→「开始恢复」 | 没有预检就不写入；结果未知时查回执，不直接重发 | D：分步对话框；M：全屏分步 | 仅文档 | — |
-| B04 | Cancel and roll back、progress、recovery points、restore previous state；接通／保留 | 恢复进度视图：阶段（读取、写入、验证、回滚）+「取消并回滚」；恢复点列表 | 网络断开、没有完成回执时显示「结果未确认」（HTML 03·16）；Cancel 后等真实回滚；从恢复点再恢复之前也先保存当前状态 | 两端相同；M 上进度页不能被 Back 意外关闭（先确认） | 03·16 | — |
+| B04 | Cancel and roll back、progress、recovery points、restore previous state；接通／保留 |恢复点列表| 网络断开、没有完成回执时显示「结果未确认」（HTML 03·16）；Cancel 后等真实回滚；从恢复点再恢复之前也先保存当前状态 | 两端相同；M 上进度页不能被 Back 意外关闭（先确认） | 03·16 | — |
 | B05 | Device sync → LAN Sync：device/server、scope、冲突、progress/cancel/recovery；部分证据／保留 | 账户与备份 › 设备同步 › LAN：对端列表 + 「配对新设备」 | 完整的 LAN 配对、双端传输和恢复 **UNKNOWN/NOT_RUN**；不是公网云同步 | D：列表 + 详情；M：两页 | 仅文档 | — |
 | B06 | Cloud sync provider 列表/说明（占位）；设计/占位 | 设备同步 › 云：说明「暂无可用的云服务」，**不画已连接状态** | 新 provider 是产品提案 | 两端说明 | 仅文档 | 待确认 |
 | B07 | LAN pairing：label、categories、Generate/Copy link、Accept link、basic auth；接通/静态／保留 | 配对对话框：两个标签「生成链接」/「接受链接」；类别复选；链接自动填表单；用户确认 scope 后连接 | 剪贴板失败时给手动复制；配对不是共享故事邀请；实际双端 NOT_RUN | D：对话框；M：全屏两步 | 仅文档 | — |
@@ -414,12 +402,12 @@ Studio（S04）、Library 修订（K03–K07）、Persona（P02）、Prompt（Q0
 | --- | --- | --- | --- | --- | --- | --- |
 | C01 | Scope（服务器账户 / 当前浏览器）、五个分区、Refresh/Close；接通／保留 | utility › 存储中心（全页）：顶部 scope 分段，左侧分区：概览、清理、备份与回收站、操作历史、高级 | 测量失败不显示假 0；切 scope 清空选择；关闭停止浏览器任务，服务器任务在后台持续 | D：两栏全页；M：分区变成顶部分段 | 01·存储 | P-02（全页） |
 | C02 | 分类卡：故事与存档、作品与项目、World 与 Knowledge、媒体、身份、智能体资料、设置、恢复与缓存、离线；接通／保留 | 概览：用量环 + 分类卡片（字节数、数量、状态）；受保护的条目跳到对应业务页 | 「高级 / 旧 / 未识别」≠ 可以安全删除 | D：卡片网格；M：单列 | 01·存储 | — |
-| C03 | list search/sort/paging（50）、select、Details、Open business workspace；接通／保留 | 清理列表：搜索、排序、多选；只有带 managed target 的条目可选，其它的复选框禁用并写明原因 | IME 中不刷新；阻碍在详情抽屉里检查；迟到的详情不覆盖另一 scope | D：表格 + 多选栏；M：卡片 + 底部多选栏 | 01·存储 | — |
+| C03 | list search/sort/paging（50）、select、Details、Open business workspace；接通／保留 | 清理列表：搜索、排序、多选；只有带 managed target 的条目可选，其它的复选框禁用并写明原因 | IME 中不刷新；迟到的详情不覆盖另一 scope| D：表格 + 多选栏；M：卡片 + 底部多选栏 | 01·存储 | — |
 | C04 | 回收/永久删除预览、safe cleanup、review task、Execute/Cancel；接通／保留 | 多选栏：「预览移入回收站」与「预览永久删除…」两个按钮，语气和颜色不同 | 预览绑定固定对象；过期就重新预览；拒绝被引用、运行中、保留的对象 | 两端相同 | 01·存储；03·03.3 | — |
 | C05 | 回收站 View & restore、恢复原身份、purge、interrupted repair、Review local Git publication；接通／保留 | 备份与回收站：回收站列表 → 详情抽屉（原身份、依赖）→「恢复原身份」 | 身份冲突不覆盖；依赖缺失先修；本地 Git 审查不运行模型，也不自动 push | D：列表 + 抽屉；M：列表 → 纵向 Sheet | 01·存储（入口） | — |
 | C06 | Operation history、统计、progress、Stop after current、Review remaining、Refresh；接通／保留 | 操作历史：任务列表；任务详情有进度（已完成 / 失败 / 剩余）+「在当前对象后停止」「重审剩余」 | **已完成的对象保持有效，不整批回滚**；partial、interrupted、paused、blocked、unknown 分开显示；浏览器任务要保持页面打开 | 两端相同 | 03·17 | — |
 | C07 | Advanced inspector：breadcrumb、drill、View/Edit/Create/Delete raw record；接通/条件／重组入口 | 高级：默认折叠，进入时有横幅「原始记录检视，可能绕过业务保护」 | 原生受保护的数据不能绕过业务 writer；能力缺失、配额、隐私模式分开显示；不是给所有用户的默认编辑器 | D：面包屑 + 表格；M：逐级列表 | 01·存储（入口） | 待确认：是否只对高级用户显示 |
-| C08 | 资源变化后的业务 UI 刷新/失效；接通/部分／保留 | 没有独立入口。删除或恢复之后，打开着的业务页显示横幅「此资源已被移动或删除」 | 旧页不能继续编辑已删除的实体；失效事件不能替代授权复验 | 两端相同 | 仅文档 | — |
+| C08 | 资源变化后的业务 UI 刷新/失效；接通/部分／保留 | 没有独立入口。删除或恢复之后，打开着的业务页显示横幅「此资源已被移动或删除」 | 旧页不能继续编辑已删除的实体；| 两端相同 | 仅文档 | — |
 | C09 | Detail/recovery drawer：Close、Escape、拖动关闭、移动端 Sheet、Tab 边界、focus return；接通／保留 | 详情抽屉（D 右侧、M 纵向 Sheet，760px 切换） | pointercancel、resize、减动切换都要收束；后台刷新在抽屉打开或输入中时延后，不打断 IME | 见左 | 01·存储；02·B（同一 Sheet 模式） | — |
 | C10 | 永久删除/清理的二次确认：说明、复选、Permanently delete/Back to preview；接通／保留 | 二次确认对话框：不可恢复说明 + 已审列表 + 一个**未预选**的勾选 +「永久删除」（实心红）/「返回预览」 | 不勾选就不提交；返回预览时保留审查结果；不扩大范围 | D：对话框；M：全屏层 | 01·存储（永久删除对话框） | — |
 
@@ -443,7 +431,7 @@ HTML「03 状态协议」给出每种状态的画法：用户看到什么、能�
 | 02 | 加载中 | 全部列表；Y04 窗口读取；M01 快照 | 点名正在读的对象；保留定位；异步 token 丢弃旧响应 |
 | 03 | 部分来源失败 | G03 搜索；L01 Works/Games；S02 支持数据；S06 Inspector；C01 测量 | 只重试失败的那个来源；缺数据不画成 0 |
 | 04 | 交互态与禁用原因 | 全部；重点是 L03 开始按钮、Y05 写操作、R04 允许、V11 批准 | 禁用原因就近可读，手机不靠 hover |
-| 05 | 草稿 · 校验 · 解析错误 | K03 K05 S04 S09–S17 Q04–Q08 R01 X04 X07 T04 | 原稿保留，定位到字段或行列 |
+| 05 || K03 K05 S04 S09–S17 Q04–Q08 R01 X04 X07 T04 | 原稿保留，定位到字段或行列 |
 | 06 | 保存中 · 防重入 | P02 Q08 S04 R01 X04 V02 V09 Y06 | busy，字段锁定，只认原服务回执 |
 | 07 | 已提交但刷新失败 | S04 A03 L02 Y07 K07 R01 X07 | 回执 + 重读，不再给提交 |
 | 08 | CAS 冲突 · 来源变化 | S04 S16 P02 P03 R04 V02 V09 X04 K06 | 复制草稿、对比、重审；不默认强制覆盖 |
@@ -494,18 +482,9 @@ HTML「03 状态协议」给出每种状态的画法：用户看到什么、能�
 2. **带进项目**：工坊 › 项目 › 资源树 › Library 引用 →「附加书库资源…」→ 选 exact r4 → 加入 ChangeSet。想改内容就「Fork」，形成独立身份 [S12]。
 3. **编辑**：角色 › 柳絮：字段视图里改「说话风格」（青色草稿竖线 + 未保存印记）；切到 Source 分段可以看到同一份草稿的原文 [S09 S16]。
 4. **AI 协助（可选）**：AI 面板 › 新任务，填写意图 → 规划、执行、评估 → 提议 1 个 ChangeSet → 人类「审阅并提交…」[A01–A03]。
-5. **审阅**：顶栏「审阅变更 3」→ 对话框列出 3 个 exact 操作和逐条 diff，以及「校验通过 · 模拟 3/3（只证明 fixture 可运行）」→「应用 ChangeSet → rev 8b22」[S04 S20]。
 6. **冲突**：如果有人先把项目改到 rev 8b23，应用返回 409 → 横幅「别处已更新为 rev 8b23」+「复制我的草稿」「对比后重审」；草稿留在变更列表里 [S04 S05]。
 7. **刷新失败**：应用成功但刷新失败 → 回执「已应用 · rev 8b22 · 刷新失败」+「重读」；不再显示「应用」[S04]。
 8. **预览与构建**：「预览」（绑定 rev 8b22，不写正式游戏）→「构建」→「运行 Preflight」→「构建 .atria」→ 下载 → 结果卡片提示「下一步：在书库安装」[S19 S21 L02]。
-
-### 5.4 高阶用户：查 Memory 来源并纠错，看真实 Eval/source_unready，检查受权 candidate diff（F14, F15）
-
-1. **Memory**：智能体 › Memory › 知识 → 搜索「柳絮」→ 实体 Inspector：事实列表里，模型推断的事实带「推断」印记 [M01 M03]。
-2. **查来源**：事实旁「来源」→ 来源标签里定位到 episode → 「定位到故事」跳到时间线的对应 Turn；如果该 Turn 不在已加载窗口，就提示「打开该 Turn？」[M04 M06]。
-3. **纠错**：「拒绝推断」→ 必填理由 → 保存 → 来源列表多一条「用户纠错」；故事正文和 World Truth 不变 [M07]。
-4. **Eval**：目标与反馈 › 评估：「文风一致性」target 显示 `source_unready` 阻塞印记，「评估」禁用并写「受审来源未就绪」；旧 Workspace/Director target 标「旧 · 待清退」[E05]。
-5. **候选 diff**：已有的候选详情 → A/B 对比 + 各维度 delta → 审阅勾选；「发布」受原 target authority 和 server gate 约束，V3 plan-prompt 链 BLOCKED 时写明 [E06]。
 
 ### 5.5 插图：选文 → 标注 → prompt → 图像审批 → Gallery → Mask 编辑（F17）
 
@@ -532,7 +511,7 @@ HTML「03 状态协议」给出每种状态的画法：用户看到什么、能�
 
 | 链 | 路径 | 关键状态 | ID |
 | --- | --- | --- | --- |
-| Skills 安装与调用 | 扩展 › Skills › 导入（冲突时选 replace/skip）→ 编辑（`Ctrl/⌘ S`，expectedSha256）→ 组织：叙事/工坊/智能体 三个场景的调用模式 → 工坊项目 › Skills 声明 → Review/Apply | 包内 Skill 只读；调用模式 ≠ 工具权限 | X02–X05 S14 |
+| Skills 安装与调用 || 包内 Skill 只读；调用模式 ≠ 工具权限 | X02–X05 S14 |
 | 外部插件 | 扩展 › Plugins › 外部 › URL → 文件披露 + 信任横幅 → 安装（默认不启用）→ 编辑 targets → 启用 | 可信 JS ≠ Work 沙箱；外部运行结果 UNKNOWN | X06 X07 |
 | 共享会话 | 故事 › 更多 › 共享 → 启用 → 成员与席位 → 回合收集 → Host 提交或取消 | observer 不能提交；不是邀请链接 | H01–H04 |
 | 设置快照 | 账户与备份 › 设置快照 → 创建 → 查看 → 恢复（单独确认） | 只含设置 | U03 |
@@ -560,7 +539,7 @@ HTML「03 状态协议」给出每种状态的画法：用户看到什么、能�
 - **视口**：使用 `interactive-widget=resizes-content` 和 `visualViewport`；Composer、Stop、Sheet 底部按钮始终在键盘上方。
 - **长文本框**：作者描述、Prompt 正文、Source 都是全宽、可增高的文本框，最大高度到视口的 60%，超出后内部滚动。粘贴大段文字不触发自动格式化。
 - **等宽编辑器**：手机上横向滚动只在编辑器内部发生，页面本身没有横向滚动；行号可以收起。
-- **IME**：Enter、Escape、命令面板选择、搜索刷新都检查 `isComposing` 和 keyCode 229；后台刷新在输入时延后（与 C09 一致）。
+- 后台刷新在输入时延后（与 C09 一致）。
 - **旋转**：保留草稿、选区和滚动锚点。
 
 ### 6.3 Android Back 与层栈
@@ -573,9 +552,8 @@ HTML「03 状态协议」给出每种状态的画法：用户看到什么、能�
 ```
 
 - 只有真正处理了 Back 的那一层才消费它。
-- **生成处理**：建议显示「停止 / 留在后台」的提示，不默认取消（P-11，需要先核对现有 handler 的实际行为）。
 - 要删除的是末尾的 legacy fallback，不是前面的原生恢复语义。
-- Termux 普通浏览器没有 Kotlin 桥，用同一套网页解析器 + 浏览器历史取得同等效果；APK 先尊重 Web consumed，再交给 WebView history，最后退出确认。两者分开验证。
+- Termux 普通浏览器没有 Kotlin 桥，用同一套网页解析器 + 浏览器历史取得同等效果；APK 先尊重 Web consumed，再交给 WebView history，最后退出确认。
 
 ### 6.4 键盘与无障碍
 
@@ -663,10 +641,9 @@ HTML「03 状态协议」给出每种状态的画法：用户看到什么、能�
 
 | 问题 | 本稿的处理 |
 | --- | --- |
-| AR01 旧 Agents 挂载与 mode | 智能体域重组（P-03），旧编排只进折叠过渡区；V3 实现受 E0 阻塞 |
+| AR01 旧 Agents 挂载与 mode | 智能体域重组，有效 Memory/Goals/Experience 等迁至原生入口；旧编排随 V3 替代清退，不保留折叠过渡区 |
 | AR02 Memory/Goals 在旧容器里 | 作为一级子页独立出来（P-03） |
 | AR03 fallback 换 Program 被拦 | Route 编辑器的 fallback 行写明 E0-01 阻塞（R08） |
-| AR04 context 信任边界 | 上下文 Inspector 不显示私有思维，未知写 UNKNOWN（Y10）；lowering 本身不在 UI 范围 |
 | AR05 多个 Prompt 入口 | 统一资源详情组件，保存范围写进按钮文案（P-06） |
 | AR06 已有 Preview 被误当成 D8 | Q12 在原位放阻塞印记；S17 和 R12 写明「不是 Prompt 草稿预览」 |
 | AR07 mutation 反馈不统一 | §2.3 的统一顺序 + 回执组件，各服务的回执和 CAS 保持不变 |
@@ -693,7 +670,7 @@ HTML「03 状态协议」给出每种状态的画法：用户看到什么、能�
 | --- | --- | --- | --- |
 | P-01 | 五个域使用中文标签：故事、书库、工坊、智能体、运行 | 文案、学习课程、搜索别名 | 保留英文标签，中文只做副标签 |
 | P-02 | 存储中心升级为 utility 全页视图 | 新增菜单项和深链；Account/Settings 改为跳转卡片 | 保持对话框形态，只统一样式 |
-| P-03 | 智能体域重组：默认进 Memory；新增「目标与反馈」子页；旧编排进折叠过渡区 | AR02 的迁移位置；旧 Run 不再是默认 | 保持现有四个子页，只把 Goals/Evolution 挂在 Memory 下 |
+| P-03 | 智能体域重组：有效 Memory、目标与反馈等归原生入口；默认页沿统一导航设计 | 旧编排折叠过渡区已排除；原生替代接通后清退旧模式 | 调整有效能力的入口位置，不保留旧执行模式 |
 | P-04 | 宿主门：作品接管舞台时常驻的统一恢复按钮 | 作品 UI 少占一个角落 | 恢复菜单只放在顶栏「更多」里 |
 | P-05 | 深链扩展到 preset 详情、扩展子标签、Inspector 选择、Memory 实体 | 路由协议扩展；URL 仍不是授权 | 只保证到 workspace child 级别 |
 | P-06 | 统一资源详情组件（修订、Used By、Fork、引用），在 World、Knowledge、Prompt 资源、Persona 之间共用 | 实现层面的整合，保存语义不变 | 各页各自实现，只统一视觉 |
@@ -701,6 +678,6 @@ HTML「03 状态协议」给出每种状态的画法：用户看到什么、能�
 | P-08 | 新增 Secret 管理页（列表、轮换、删除、使用者） | 新的产品能力 | 维持在 Connection 内创建和选择 |
 | P-09 | Search Tools 单条删除加确认或撤销 | 行为变更 | 维持现状，作为已知交互问题 |
 | P-10 | 工作台密度（舒适 / 紧凑）成为用户设置 | 新偏好项；只改间距和字号，不隐藏控件 | 只提供一种密度 |
-| P-11 | 生成中按 Android Back 时显示「停止 / 留在后台」提示 | 需要先核对现有 generation handler 的行为 | 沿用现有 handler |
+| P-11 | 生成中按 Android Back 时显示「停止 / 留在后台」提示 || 沿用现有 handler |
 
 另有几个**待确认**项（不是提案，是审计本身未定）：边缘导航是否默认（G10）、资源树分组方式（S02）、高级存储检视的可见范围（C07）、云同步（B06）、Memory「Legacy node graph」入口（M06）。

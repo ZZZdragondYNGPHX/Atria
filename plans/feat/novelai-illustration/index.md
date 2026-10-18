@@ -23,9 +23,3 @@
 | S4 NovelAI 与最终集成 | core + plugin + generation + [novelai](novelai.md) | 两类接口、独立任务、取消与历史、最终集成 |
 
 S1 → S2 → S3 → S4。内核公开稳定服务，插件只通过这些服务操作正式数据；复用现有存储、模型路线、密钥、任务调度与 AssetStore。新增字段可选，旧数据无需迁移。
-
-## Execution and validation
-
-每阶段只执行本地最小相关验证，记录实际运行的证据，不运行远程 CI 或声称未执行的 UI/真机检查通过。呈现部分使用本地 `ui-ux-pro-max` Skill 指导替代文字、加载和布局稳定性；S2 交互验证需要本地浏览器工具时加载 `playwright-cli`。不要求代理并行工作。
-
-S4 全部验收通过后集成 main；通用执行流程见 [Governance §8](../../../README.md#8-task-lifecycle)。

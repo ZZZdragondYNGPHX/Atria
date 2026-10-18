@@ -5,7 +5,7 @@
 - Main baseline: `402b53a98a823573591db4e9fd015f98e6effbdb`
 - Starting HEAD: `a4d08510f3bcd00b5a2caba1459247f5201058e0`
 - Implementation HEAD: `a30698dda124eb5544afe7c2e37d0d3f7fd56d6c`
-- Status: implemented, validated, committed and pushed. Not merged into main.
+- Not merged into main.
 - Phases 1–7 complete; Phase 8 outstanding. Stop pending user continuation.
 
 ## Delivered
@@ -26,13 +26,12 @@ Plugins has Native declaration rows, exact version evidence in Details and an
 Advanced extension compatibility area. Extension switches have accessible names,
 saving/reload feedback and failure rollback. Built-in product features are not
 misclassified as third-party extensions. The Native list has loading, empty,
-service-error and Refresh states. A real navigation race found during browser
-validation is fixed: an old lazy Plugins mount cannot replace newly opened Settings.
+service-error and Refresh states.
 
 Agents has a clearer hub and one embedded section navigation. Orchestration is
 composed from a preset source-list, authoring canvas and optional Inspector; the
 compact list starts collapsed. Shared Popup handles preset/agent names and deletion
-confirmation. Validation focuses the error. The existing resolver, compile/import/
+confirmation. The existing resolver, compile/import/
 export/bind/save paths and human authority remain. Run, Memory (Knowledge, Sources,
 Maintenance) and Agent Diagnostics use the same controller in the new frame.
 
@@ -54,54 +53,10 @@ No second router, runtime, configuration or persistence system was introduced.
 Native Session/generation, exact resources, plugin permissions and all unaffected
 Studio/Library/Runtime authorities remain intact.
 
-## Contract and test decisions
-
-The A6 guard's former Account card/Advanced DOM pin was presentation-only. It now
-requires the primary Account surface to mount `authority.openUserProfile`; all
-other authority guards remain. Utility unit tests assert the actual controller,
-retry/disposal behavior, DOM restoration, switch rollback and stale mount isolation.
-No behavior guard was deleted to preserve the redesign.
-
-Root AGENTS.md and FORK_MAINTENANCE.md had user/external changes before this phase.
-They were read, preserved and excluded from the commit. SillyTavern migration
-remains retired. Phase 8 was not implemented.
-
-## Executed validation
-
-- Full Shell unit suite: 26 suites / 115 tests passed.
-- Final targeted utility, Agent authority, Diagnostics and lazy account suites:
-  9 suites / 44 tests passed (includes the 7 Shell utility cases above).
-- Full frontend/backend lint and changed frontend/test lint passed.
-- Aggregate `check-p8-model-prompt-integration.mjs` passed: P0–P7, A0–A9, N9/N10,
-  exact reads, no dual-write and no hidden Native fallback. This is the existing
-  architecture guard, not delivery Phase 8 acceptance.
-- Three cold frontend builds passed, including `phase7-build-acceptance`.
-- Final Microsoft Edge / Playwright acceptance: 5 tests passed. Compact/Chinese
-  polish follow-up: 2 passed. Preset-create follow-up: 1 passed. Compatibility keyboard follow-up: 1 passed.
-- `git diff --check` passed.
-
-Real browser coverage: 1440 desktop, 900 medium, 320 compact; Settings persistence
-across navigation; Theme/Font Scale visibility; account snapshots/reset cancellation;
-backup/storage dialogs; Guided incident capture/detail/Escape, Startup, Expert and
-empty filters; preset duplication and shared name popup; Inspector focus/close;
-keyboard route updates; Memory Knowledge/Sources/Maintenance; Agent Run/Diagnostics
-empty states; gated Account loading and real endpoint failure/retry for Account,
-Diagnostics and Native Plugins. Advanced extensions and plugin-owned configuration
-were opened at 320px. Existing drawer headers have 44px targets and keyboard activation, with their original handlers/attributes restored on disposal. Assertions check document and domain horizontal overflow.
-Chinese/light mode is asserted before each capture, with 20px text, reduced motion,
-simulated 24px safe area/420px keyboard viewport and the 720px medium transition.
-
-Screenshots were opened and visually reviewed, not only produced by tests. Final
-shots wait for dialog animations and profile loading. Earlier nominal light shots
-that were reset by color-picker reconnection were not accepted as light evidence;
-the final test sets the existing picker and asserts the resolved appearance.
-
 ## Review corrections
 
 Frontend-design followed DESIGN. ui-ux-pro-max reviewed hierarchy, grouped forms,
-responsive navigation and dense workflows. Post-implementation
-[Web Interface Guidelines](https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md)
-review checked labelled actions, focus, recovery feedback and narrow-screen overflow.
+responsive navigation and dense workflows.
 Resolved implementation locations include `utility-workspaces.js` (mount isolation,
 profile recovery), `panel.js` (Inspector/focus/route ordering), `userProfile.html`
 (native buttons), and `atria-utilities.css` (targets, contrast and overflow).
@@ -114,7 +69,7 @@ Emil design-engineering review:
 | Compact preset list pushed the editor out of view | Selected preset disclosure starts collapsed | Make narrow screens a deliberate composition |
 | Medium Inspector covered focusable main controls | Main is inert; Inspector receives/restores focus | Keyboard position remains visible |
 | Arrow navigation changed content without the route | Existing host navigation owns every section change | URL and visible workspace agree |
-| Browser prompt/confirm for preset operations | Existing product Popup with scope checks | Consistent focus, mobile keyboard and cancellation |
+| Browser prompt/confirm for preset operations || Consistent focus, mobile keyboard and cancellation |
 | Plugin save errors only reached the console | Visible status and switch rollback | Make pending, failed and saved states distinguishable |
 | Async Plugins completion replaced a newer destination | Mount before await and discard obsolete work | Rapid navigation remains reliable |
 | Account cancel produced an error incident | Cancel exits without an error | Diagnostics reflects actual failures |
@@ -125,8 +80,7 @@ Emil design-engineering review:
 
 ## Limits and next phase
 
-Safe-area and virtual-keyboard checks are browser simulations, not real Android/
-Termux/IME evidence. No Android/Docker build, live external model run, authenticated
+ No Android/Docker build, live external model run, authenticated
 multi-account matrix, complete third-party extension catalog, SQL matrix or full
 repository test suite was run. Seed data has no declared Native plugin or installed
 third-party extension; positive exact-package projection and switch persistence are
@@ -143,9 +97,8 @@ alternative deletion was attempted. Local Phase 7 test outputs, fixture data and
 cold caches remain and are excluded from commits; only selected visual
 evidence is stored on docs under `phase-7-images/`.
 
-Next: Phase 8 — Final Acceptance, only after user continuation. Keep this branch,
-fetch first and read latest handoff and DESIGN. Perform cross-product regression
-and final acceptance; do not redo completed phases or restore migration support.
+ Keep this branch,
+fetch first and read latest handoff and DESIGN.
 
 ## Selected screenshots
 

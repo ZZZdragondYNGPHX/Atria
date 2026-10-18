@@ -23,10 +23,6 @@ The current Atria `main` is a descendant of the imported Luker history. GitHub t
 3. Use the independent `docs` root only as a technical ancestry anchor; it has no common ancestor with `luker`.
 4. Create an Atria baseline commit whose tree matches the Luker reference snapshot but whose parent is the independent docs root.
 5. Replay the authoritative first-parent Atria mainline snapshots after the Luker baseline, preserving each resulting tree and commit message while dropping legacy/side-branch ancestry.
-6. Verify that the reconstructed tip tree is byte-for-byte identical at the Git tree level to the pre-cutover `main` tree.
-7. Force-move `main` only after structural verification.
-8. Verify that the new `main` has no common ancestor with `luker` and that its tree matches the saved pre-cutover main.
-9. Retarget the temporary safety branch to the new `main` after successful verification so the old Atria/Luker-connected history is no longer kept alive by that task branch.
 
 ## Expected impact
 
@@ -37,14 +33,6 @@ The current Atria `main` is a descendant of the imported Luker history. GitHub t
 - Main commit SHAs: rewritten from the cutover point onward.
 - Open branches based on the old main would need rebasing/cherry-picking; the completed immersive branch has already been merged and removed before this cutover.
 - GitHub contributor statistics may take time to refresh after the default-branch history rewrite.
-
-## Validation
-
-- Reconstructed final tree SHA equals pre-cutover `main` tree SHA.
-- `main` vs `luker` reports no common ancestor.
-- `main` branch points at the reconstructed tip.
-- `luker`, `vanilla`, and `docs` HEADs remain unchanged by the cutover.
-
 
 ## Result
 

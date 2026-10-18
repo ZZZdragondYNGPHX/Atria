@@ -7,7 +7,6 @@ Complete the localization coverage for the World Info Workspace introduced by PR
 - Baseline: `main@5645020e68c95d37c1ee44a375b22328173948b8`
 - Task branch: `fix/world-info-workspace-zh-localization`
 - PR: #24
-- Final validated task head: `fe91c5692e6fe03d2f6a953ca3d41b8e4264812e`
 - Squash merge / resulting `main`: `59bc6862487331d12378e4fdd1da403a248e12a5`
 - Final task tree is identical to the merged `main` tree.
 
@@ -60,30 +59,6 @@ The final automatic key audit covered 124 Workspace / Issues / Test Activation k
 
 Existing established translations remain authoritative where the same key already existed, e.g. the Chinese `Basic` label resolves to the repository's existing “基本信息” translation.
 
-### Compatibility fixes found during validation
-
-Localization work preserved the English fallback contract:
-
-- singular entry count remains `1 entry`;
-- plural count remains `N entries`;
-- Chinese uses the localized count form for both cases.
-
-No raw `critical` / `scene` / `optional` budget-tier enum is shown in the Workspace badges; the visible label is localized while persistence remains unchanged.
-
-## Browser regression
-
-World Info E2E #34 now includes a real Simplified Chinese browser scenario that verifies:
-
-- top-level Workspace navigation;
-- display mode label;
-- all six Inspector section headings;
-- quick filters;
-- Issues diagnostic messages;
-- Required / Related picker placeholders;
-- Global Rules group headings.
-
-The regression runs through the actual `zh-cn` locale setting rather than asserting locale JSON in isolation.
-
 ## Compatibility / data impact
 
 - No World Info persistence schema change.
@@ -95,29 +70,3 @@ The regression runs through the actual `zh-cn` locale setting rather than assert
 - No storage migration.
 - Diagnostics remain deterministic and non-mutating.
 - Android JVM/APK and Docker builds were not run because they remain opt-in and this task changes browser JavaScript/locales/tests only.
-
-## Validation
-
-Final task head: `fe91c5692e6fe03d2f6a953ca3d41b8e4264812e`.
-
-### Atria PR Checks #547
-
-Passed:
-
-- ESLint
-- frontend libraries build
-- complete Node unit suite
-- Atria Migration Guard
-
-### Worldbook Performance Foundation #232
-
-Passed:
-
-- focused World Info regression tests
-- synthetic performance baseline
-- real-host Chromium smoke
-- complete World Info browser acceptance
-- existing desktop/mobile Workspace checks
-- new Simplified Chinese Workspace localization regression
-
-No mandatory follow-up remains for this localization fix.

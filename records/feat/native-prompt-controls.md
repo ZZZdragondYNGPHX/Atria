@@ -1,9 +1,5 @@
 # Atria Native Prompt Controls
 
-Status: complete — NPC-001–006 verified and integrated; temporary branch deleted
-Implementation branch: `feat/native-prompt-controls`  
-Base: `main@d29c2b3170798b136eb41249eaad902a23aab5bd`
-
 ## Goal
 
 Track and implement the current Native product gaps discovered while adapting real user content to Atria.
@@ -27,7 +23,6 @@ Required behavior:
 - Runtime selection must not create a new immutable Prompt Program revision merely because a player changed a choice.
 - Defaults remain defined by the authored Prompt Program/resource contract.
 - Invalid or stale option values must fail or recover visibly; they must not silently activate conflicting modules.
-- Preview and execution must use the same selected values and expose enough diagnostics to verify which effective values/modules were applied.
 - Controls must remain usable on desktop and mobile.
 - State must use an existing/native authority. Do not introduce SillyTavern DOM state, Tavern Helper, ad-hoc `localStorage`, or another parallel preset authority.
 
@@ -41,21 +36,6 @@ Representative use cases:
 - Character behavior mode: off / realism / fandom, where realism and fandom are mutually exclusive.
 
 The feature must be generic. TGbreak is a motivating example, not a hard-coded product special case.
-
-#### Acceptance criteria
-
-- A Prompt Program can declare at least boolean controls and a finite mutually exclusive choice.
-- End users can change those controls without editing raw JSON or typing internal enum strings.
-- Exactly one option in an exclusive group is effective.
-- Toggling/changing runtime choices does not create a new Prompt Program revision.
-- Defaults work when the user has made no override.
-- Effective values reach Native compilation through validated typed prompt parameters.
-- Preview and execute agree on effective values.
-- Invalid/stale values are surfaced safely.
-- Reload/lifecycle behavior matches the chosen Native persistence scope.
-- Desktop and narrow/mobile layouts are verified.
-- Focused unit/integration tests cover schema validation, compilation, persistence/lifecycle and UI behavior.
-- Relevant Native guards/lint/build pass.
 
 #### Explicit non-goals
 
@@ -73,7 +53,7 @@ Required behavior:
 
 - Provide an explicit delete path for user-owned Prompt Programs and Prompt Modules where deletion is safe.
 - Archive and delete must remain distinct actions: archive is reversible visibility/lifecycle management; delete is destructive removal.
-- Deletion must respect Native exact-reference integrity. A referenced resource must not disappear silently and leave broken Runtime Routes, Prompt Programs, Project/Package dependencies, or other owners.
+- A referenced resource must not disappear silently and leave broken Runtime Routes, Prompt Programs, Project/Package dependencies, or other owners.
 - When deletion is blocked by references, show the user what is using the resource and what must be changed first.
 - When deletion is allowed, require a clear destructive confirmation and remove the resource according to the real Native persistence model.
 - Immutable revision semantics must remain intact; do not simulate deletion by mutating an immutable revision in place.
@@ -82,18 +62,6 @@ Required behavior:
 - Desktop/mobile resource actions must expose the lifecycle consistently.
 
 Implementation must first inspect the existing Library/versioned resource deletion and dependency graph behavior. Do not assume physical storage deletion is always the correct operation if the current persistence contract uses tombstones/history; preserve the Native authority while giving the user a real product-level delete action.
-
-#### Acceptance criteria
-
-- A safe, user-owned, unreferenced Prompt Program can be deleted.
-- A safe, user-owned, unreferenced Prompt Module can be deleted.
-- Delete and Archive are visibly separate actions with different semantics.
-- Referenced resources cannot be destructively removed without resolving references; the UI identifies blocking usages.
-- Deletion cannot corrupt exact-resource closure or leave Runtime/Project/Package references dangling.
-- Read-only/package-owned originals cannot be deleted.
-- Imported bundle copies behave like ordinary Library-owned Prompt resources.
-- Deletion state remains correct after reload.
-- Focused persistence/dependency/UI tests and relevant Native guards pass.
 
 ### NPC-003 — Knowledge entry browsing / World-book-style information density
 
@@ -111,17 +79,6 @@ Required behavior:
 - Do not merge unrelated runtime Knowledge selection, retrieval logic, or legacy migration into this item unless current code proves they are required for the browsing surface.
 
 SillyTavern World Info is a usability reference for clarity and scanability only. Do not copy its storage authority, DOM assumptions, or legacy schema.
-
-#### Acceptance criteria
-
-- A Knowledge Base with many entries presents a compact, clearly separated overview.
-- Users can identify an entry without expanding its full content.
-- Expanding/editing one entry does not force all entries into full-detail layout.
-- Search/filter navigation works for realistic entry counts, or an equivalent current-Native navigation mechanism is implemented and justified.
-- Returning from an entry preserves useful list context where practical.
-- Desktop and narrow/mobile layouts are verified with many entries.
-- Existing Knowledge semantics, exact identities and bindings remain unchanged unless a separately documented contract change is necessary.
-- Focused Knowledge UI/state tests and relevant Native guards/lint/build pass.
 
 ### NPC-004 — Per-entry Knowledge enable / disable
 
@@ -144,19 +101,6 @@ Required behavior:
 - Desktop and mobile must expose the state clearly and consistently.
 
 SillyTavern World Info's per-entry toggle is the usability reference. The implementation must remain Native and must not reuse the legacy World Info `disable` field, storage authority or DOM behavior.
-
-#### Acceptance criteria
-
-- A user can disable one Knowledge entry while leaving other entries in the same Knowledge Base active.
-- A disabled entry cannot be selected or injected through ordinary keyword/state/direct/related/required activation paths.
-- Re-enabling the entry restores normal eligibility without rebuilding unrelated entries.
-- Binding-level disable and entry-level disable are independently represented and diagnosed.
-- NPC-003's compact list shows and can operate the per-entry state.
-- Exact identities, immutable revision semantics and dependency closure remain valid.
-- Resource Bundle / Package / Project and other Native Knowledge serialization paths preserve the state.
-- Runtime tests prove disabled entries do not consume selection/budget or reach prompt channels.
-- Desktop and narrow/mobile UI tests cover toggle state, revision/save flow and reload behavior.
-- Relevant Knowledge/Native guards, lint and build pass.
 
 ### NPC-005 — Persistent guided learning / interactive product tour
 
@@ -225,25 +169,6 @@ The implementation must have an explicit lesson/state model rather than one long
 
 The exact schema is an implementation decision to be derived from current code. Avoid a second generic workflow/orchestration engine: this is a focused learning/tour state machine owned by the product shell.
 
-#### Acceptance criteria
-
-- Fresh install automatically opens the persistent guide at Step 1 with name/language.
-- Next from Step 1 navigates to the intended real product surface and shows the next instruction without losing guide state.
-- Users can operate the real underlying interface during interactive lessons.
-- Previous/Next can traverse a lesson and reliably restore the correct target surface.
-- Required-action lessons detect the real product event/state rather than treating a decorative click as success.
-- Close/Exit leaves Atria in a usable normal state and preserves progress.
-- First-run Skip/Finish stops automatic onboarding without removing the persistent guide.
-- Partial progress survives reload/restart and resumes predictably.
-- Completed users are not forced through onboarding again on startup.
-- At any later time, users can reopen the learning center/guide, browse the curriculum, revisit completed lessons and jump directly to a selected lesson.
-- Replaying a lesson does not reset unrelated user data or destructive product state.
-- Language switching in Step 1 affects subsequent guide text immediately.
-- Desktop and narrow/mobile E2E cover cross-workspace navigation, overlays/sheets and Back behavior.
-- Tests cover first run, resume, back/forward navigation, completion, skip, close/reopen, direct lesson selection, replay, unavailable optional dependencies and persistent access after completion.
-- Existing onboarding persona/language persistence behavior remains correct.
-- Relevant Shell/navigation/localization guards, lint and frontend build pass.
-
 #### Explicit non-goals
 
 - Making the guide inaccessible after onboarding completion.
@@ -293,21 +218,6 @@ Hard-cut requirement:
 
 The existing "Regex Presets" feature (groups of enabled Regex scripts) is conceptually separate from "Preset Scripts" stored inside a Chat Completion Preset. Audit it independently: keep it if it is still an Atria-owned useful grouping feature, but do not confuse it with or use it to preserve the legacy Chat Completion Preset scope.
 
-#### Acceptance criteria
-
-- Creating a non-global Regex script never requires or mutates a legacy Chat Completion Preset or character card.
-- No active Native product flow resolves Regex ownership from `getPresetManager(...).writePresetExtensionField(...regex_scripts...)` or `characters[this_chid]` / character `regex_scripts`.
-- Legacy `preset_allowed_regex` / `character_allowed_regex` no longer control Native Regex execution.
-- Users can clearly distinguish account-wide scripts from Atria-native configuration/project/package-local scripts in the Regex UI.
-- The effective Regex set for a runtime/session is resolved only from the documented Atria-native owners/bindings plus registered runtime Plugin providers.
-- Project/package-associated scripts survive build/install/reopen according to the chosen Native ownership model.
-- Exact/read-only resources cannot be mutated outside their normal fork/revision/update lifecycle.
-- Import/export and Regex Presets continue to work where still applicable without reintroducing legacy preset/card authority.
-- Diagnostics identify Native scope/provenance and disabled/skipped state.
-- Tests cover persistence, scope precedence, runtime selection, project/package lifecycle, deletion, import/export and hard-cut residual guards.
-- Desktop and narrow/mobile Regex UI are verified.
-- A residual guard fails if product code reintroduces active legacy Chat Completion Preset or character-card Regex persistence.
-
 #### Explicit non-goals
 
 - Rewriting the Regex matching/replacement engine merely for naming consistency.
@@ -350,22 +260,6 @@ Required behavior:
 
 "Regex Presets" — the Regex plugin feature that saves/switches groups of enabled rules — must not automatically be conflated with SillyTavern "Preset Scripts". Audit it separately. It may remain if it is useful and can operate purely on valid Atria-owned Regex rules after preset/card scopes are removed.
 
-#### Acceptance criteria
-
-- Regex UI no longer exposes "Preset Scripts" or character/card "Scoped Scripts" as authoring sections.
-- Users cannot create, move, import or save Regex rules into SillyTavern prompt-preset or character-card ownership.
-- Runtime Regex execution no longer reads those retired authorities.
-- Regex no longer imports or calls legacy preset-manager APIs for script ownership.
-- `SCRIPT_TYPES.PRESET` and `SCRIPT_TYPES.SCOPED` are removed from the live product contract unless code audit proves a differently named Native scope is required and documented.
-- `preset_allowed_regex` / `character_allowed_regex` and equivalent obsolete state no longer hydrate/serialize as live Atria capability authority.
-- Global user Regex rules continue to work.
-- Plugin/runtime-registered read-only Regex rules continue to work where supported.
-- Regex Presets, if retained, reference only supported Atria-owned rule identities and no longer encode retired scope buckets.
-- No hidden legacy preset/card Regex path can change generation or display output.
-- Import/export/bulk edit/debugger UI reflects only supported Atria scopes.
-- Regression covers execution placement, display/prompt post-processing, import/export, Regex Presets if retained, plugin-provided rules and reload persistence.
-- Relevant Regex/Plugin/Shell guards, lint and frontend build pass.
-
 #### Explicit non-goals
 
 - Reintroducing legacy SillyTavern preset or character-card Regex compatibility under new labels.
@@ -383,7 +277,7 @@ Required behavior:
 - Authoring owns Prompt control definitions/defaults; runtime owns the player's effective selection. Do not conflate authoring edits with runtime choices.
 - Reuse the existing Prompt compiler condition system rather than adding a second conditional prompt engine.
 - Saved resource names/values remain data, not localization keys. UI chrome and authored display metadata may be localized through existing product patterns.
-- For destructive actions, resolve Native dependency/reference integrity before deciding storage behavior. Product semantics are authoritative; do not bolt a UI delete button onto unsafe persistence.
+- Product semantics are authoritative; do not bolt a UI delete button onto unsafe persistence.
 
 ## Implementation questions to resolve from code, not assumptions
 
@@ -392,7 +286,6 @@ Before editing, inspect the current contracts and product surfaces and resolve:
 1. The smallest Native schema extension needed to describe enum/single-choice and boolean Prompt presentation metadata.
 2. The correct Native persistence scope for Prompt runtime selections so they survive the expected lifecycle without mutating immutable Prompt resources.
 3. The correct player-facing surface(s) in Play/Runtime and any authoring surface needed to define Prompt labels/options/groups.
-4. How preview/execute payloads carry effective Prompt values without bypassing existing validation.
 5. How diagnostics/Request Inspector should show effective Prompt parameter values and included/skipped modules.
 6. What the current archive/delete/versioned-resource/dependency contracts already support for Prompt Program/Module removal, and which references must block destructive deletion.
 7. What current Knowledge Entry fields are most useful in the compact list and which current UI/state path should own search/filter/sort/expanded-entry state.
@@ -431,43 +324,19 @@ Baseline: d29c2b3170798b136eb41249eaad902a23aab5bd. Code HEAD: 2958b9c2bacfebd87
   enables editing; disabling it removes the override on Save. Restore defaults
   persists an empty override map. Unsaved choices are explicitly described as drafts.
 - Authenticated prompt-controls GET reads inherited definitions using RouteResolver
-  and flattenPromptProgram over existing Library/Project/Package readers. PUT
-  validates typed partial overrides and serializes a compare-and-update against the
-  loaded route. Stale concurrent edits fail visibly without overwriting route config.
-- Changing Program refs does not silently migrate/drop stale selections. Unknown
-  parameters, wrong types and retired choices fail closed before send, with localized
-  remediation and explicit reset. Required parameters without defaults remain required
+  and flattenPromptProgram over existing Library/Project/Package readers. Stale concurrent edits fail visibly without overwriting route config.
+- Changing Program refs does not silently migrate/drop stale selections. Required parameters without defaults remain required
   at compilation; users can save a partial setup without inventing defaults.
 - Preview/execute carry identical snapshot.promptIr.compilation evidence: effective
   parameters, selected stages and included/disabled/condition-false module decisions.
-- Parameter validation now lives in a pure dual-host public/shared contract, with a
-  localized frontend wrapper. This fixes the baseline Core import of a browser
-  localization module; the P0 guard scans the shared module too.
-- P5/P6 guards were updated for existing Library Generation Profile ownership and
-  block-form Library authoring actions, preserving their substantive checks.
-
-### Validation and scope
-
-- Related unit/integration suite: 12 suites / 158 tests passed; subsequent focused
-  suite after added schema/Project/Package coverage: 5 suites / 91 tests passed.
-- Real-host Playwright: 1440px desktop and 390px narrow viewport, 2 cases passed.
-  Actual controls save/reopen, restore defaults, compile preview and generate through
-  the real Native HTTP host against a local synthetic provider. Effective values agree.
-  Narrow-screen sheet closure and inspector navigation use the existing Shell contract.
-- Root lint, focused test lint, zh-CN/zh-TW localization coverage, frontend prebuild,
-  and relevant P0–P7 guards pass (final command evidence recorded in handoff).
-- Broader P8 aggregate also passes A0–A6, then stops on an existing A7 Studio guard
-  requiring attachResource/forkResource/updateResource strings in studio-workspace.js.
-  Those calls were already absent at the baseline. This baseline guard failure is recorded, not claimed as passing. The later user instruction limits validation to changed surfaces; unrelated A7 reconciliation is outside this task.
-- No live paid model, Android device/build, Docker build or GitHub CI wait was needed.
 
 ### Revised execution policy
 
-The user superseded the original per-group stop/push gates: complete remaining work continuously, validate affected paths only, then integrate and push once. No unrelated full-suite reconciliation or CI wait is required.
+ No unrelated full-suite reconciliation or CI wait is required.
 
 ## Remaining implementation decisions (2026-09-25)
 
-User updated execution: continue all remaining items without per-group pauses/pushes. Validate only changed paths and direct dependents; integrate and push once at completion.
+User updated execution: continue all remaining items without per-group pauses/pushes.
 
 NPC-003/004: compact 25-row paginated overview, content/title/trigger search, enabled filter, authored/title/priority ordering; transient browse state stays with mounted workspace. Optional entry.enabled defaults to enabled without materializing it in old immutable snapshots. Changes are revision drafts with explicit review/save and never retarget existing bindings. Filter disabled entries before applicability, exclusivity, dependency expansion, lifecycle and budgeting.
 
@@ -479,21 +348,11 @@ NPC-005 curriculum audit: existing main Shell owns Play, Library, Build, Agents,
 
 ## NPC-002–006 completion record (2026-09-25)
 
-- NPC-002: authenticated Library Program/Module deletion removes all immutable revisions and root only after all-revision reverse-reference and Runtime Route checks. Referenced resources show Used By blockers. Archive remains distinct; Package/Project originals cannot be deleted through this endpoint. Library commits and Runtime Route saves validate exact Library refs inside the existing serialized runtime write path.
+- Referenced resources show Used By blockers. Archive remains distinct; Package/Project originals cannot be deleted through this endpoint.
 - NPC-003: shared compact, paginated entry browser is used by Library revision authoring and read-only Package resources. Search/filter/order and expansion state survive draft/review/save; full editing is opened explicitly for one entry. Authored text is never interpreted as localization keys.
-- NPC-004: optional enabled preserves old immutable hashes when absent. Disabled entries are rejected before selection, lifecycle, related-entry expansion and budget/rendering; sticky state is cleared. Runtime distinguishes entry_disabled. Revision, bundle, Session, save snapshot and promotion retain the flag; existing bindings remain pinned until explicitly changed.
+- Disabled entries are rejected before selection, lifecycle, related-entry expansion and budget/rendering; sticky state is cleared. Runtime distinguishes entry_disabled. Revision, bundle, Session, save snapshot and promotion retain the flag; existing bindings remain pinned until explicitly changed.
 - NPC-005: permanent nonmodal Learning center uses existing Shell navigation, Back handling and AccountStorage. Twelve audited lessons include real account, provider, model, route, work/session, Play, Knowledge, Prompt choices, save and settings surfaces. Next acknowledges review; Skip does not complete a lesson. Close/resume, curriculum jump, replay, fresh identity and live language switching work without requiring paid inference or credentials. Storage is injected from the existing app entry to avoid a Shell-to-script circular import.
-- NPC-006: removed live Preset/Scoped ownership, allow flags, editor/move/import paths and old scope UI/localization. Account rules, registered Plugin contributions and existing exact Native Package processor rules remain in deterministic execution order. Runtime rules are read-only and expose provenance. Regex Presets retain only existing account rule IDs; imports invalidate execution cache and deletion removes dangling group members. Bulk enable/disable treats an omitted disabled flag as enabled.
-
-### Executed affected-surface checks
-
-- Initial focused Jest: 12 suites / 100 tests passed (Knowledge contracts/runtime/selection/editing/browser, Prompt persistence, learning state, Regex engine).
-- Direct resource/Session/Prompt/shell regressions: 7 suites passed; file-backed save and snapshot checks passed. An attempted broader save matrix encountered six environment failures: missing Node 24 SQLite native binary and unconfigured MySQL/PostgreSQL test databases. These are not claimed as passing and were not expanded further.
-- Focused HTTP deletion and Knowledge snapshot/promotion selection: 3 tests passed, including authentication, all-revision Runtime/Project blockers, protected Package refs and complete deletion.
-- Shell navigation/Back and Regex focused run: 7 suites / 50 tests passed; after removing the circular dependency, AppShell and group normalization: 2 suites / 8 tests passed.
-- Real-host browser: Knowledge search/toggle/review/save/rename/reload, Prompt reference-blocked and successful deletion, account Regex creation/execution/reload, and usable learning panel passed at both 1440px and 390px. Screenshots inspected. Fresh onboarding language/name preservation, continuation, account progress reload and Escape passed separately.
-- Targeted changed-file ESLint, zh-CN/zh-TW localization guard, frontend prebuild cache and diff whitespace checks passed. Final Regex import/bulk/group/export/delete browser result and final commit references are recorded in latest handoff.
-- No Android/Docker build, paid provider call, unrelated full suite or GitHub CI wait. Existing A7 aggregate baseline string guard is outside the revised user-authorized validation scope.
+- NPC-006: removed live Preset/Scoped ownership, allow flags, editor/move/import paths and old scope UI/localization. Account rules, registered Plugin contributions and existing exact Native Package processor rules remain in deterministic execution order. Runtime rules are read-only and expose provenance. Bulk enable/disable treats an omitted disabled flag as enabled.
 
 ### Data impact
 
@@ -504,16 +363,16 @@ No new storage authority or automatic legacy Regex migration. Old Knowledge entr
 - NPC-001 commit: `2958b9c2bacfebd876a69b12e2dcffb3a30d5779`.
 - NPC-002–006 commit: `fd3dffeb59aff7bae4dc6c540011eef30b1b590c`.
 - Integrated/pushed main: `aa3a0b0dcfbfc451c696990794ccf16390e7fba3`.
-- Fresh fetch confirmed main baseline unchanged. Merge completed without conflicts; `git diff --exit-code feat/native-prompt-controls HEAD` proved the integrated tree identical to the verified feature tree. Working tree clean.
-- Final Regex browser passed: import changes cached execution immediately; bulk disable, group reapply, export download, delete and dangling-group cleanup. Focused execution-plan tests: 11 passed. Changed-file lint and whitespace checks passed.
+- Fresh fetch confirmed main baseline unchanged. Working tree clean.
+- Final Regex browser passed: import changes cached execution immediately; bulk disable, group reapply, export download, delete and dangling-group cleanup. Focused execution-plan tests: 11 passed.
 - Remote and local `feat/native-prompt-controls` deleted after main push; remote main confirmed. `docs` remains permanent. No remaining NPC work or stop gate.
 
 ## Follow-up: World / Knowledge workflows (2026-09-25)
 
-User reported that installed Work originals have no usable entry CRUD/toggle flow, parameters are hidden in JSON disclosures, copies are difficult to find, and Work/Session bindings cannot change. This reopens product workflow acceptance; prior tests proved only Library paths.
+User reported that installed Work originals have no usable entry CRUD/toggle flow, parameters are hidden in JSON disclosures, copies are difficult to find, and Work/Session bindings cannot change.
 
 Branch: fix/world-knowledge-workflows from main aa3a0b0dc. Scope includes existing Sessions per explicit user answer.
 
-Decisions: use existing bundle fork/import for prominent editable-copy actions; expose entry CRUD and named parameter groups directly. Keep Package originals immutable. Work defaults belong to existing PackageState; Session changes belong to immutable Session revisions with optimistic concurrency and historical recovery. Exact World snapshots travel in Session state, changed World baselines are explicit resets while unchanged exact Worlds retain state. Knowledge selection reuses the existing binding-set snapshot authority. Validate UI workflows, runtime resolution, revision recovery and portable save paths affected by these changes only.
+Decisions: use existing bundle fork/import for prominent editable-copy actions; expose entry CRUD and named parameter groups directly. Keep Package originals immutable. Work defaults belong to existing PackageState; Session changes belong to immutable Session revisions with optimistic concurrency and historical recovery. Exact World snapshots travel in Session state, changed World baselines are explicit resets while unchanged exact Worlds retain state. Knowledge selection reuses the existing binding-set snapshot authority.
 
-Follow-up completion: `docs:fix/world-knowledge-workflows.md` records the corrected installed-original workflow acceptance, parameter/entry UX, explicit Work and existing Session bindings, and portable World snapshot/asset handling. Implemented at `45f0fdbd56dac8dd46e80431b3cd094eb67a34ea`, integrated/pushed main `23bfdc608b5e5ee2b6b863f116d118d529b0bab9`. Affected tests and 1440px/390px browser paths passed; temporary fix branch removed.
+ Implemented at `45f0fdbd56dac8dd46e80431b3cd094eb67a34ea`, integrated/pushed main `23bfdc608b5e5ee2b6b863f116d118d529b0bab9`. Affected tests and 1440px/390px browser paths passed; temporary fix branch removed.

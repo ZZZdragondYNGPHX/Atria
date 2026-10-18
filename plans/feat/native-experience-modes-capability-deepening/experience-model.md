@@ -241,7 +241,6 @@ Local UI State 的特点：
 
 - 不执行任意 JS；
 - 表达式有明确作用域；
-- 输入可验证；
 - blocked prototype/path；
 - 有复杂度 / 深度上限；
 - 所有 Native 权威写入仍必须经过 Command / Runtime contract。
@@ -280,7 +279,6 @@ Local UI State 的特点：
 
 - `form.submit`
 - `form.reset`
-- `form.validate`
 
 ### Surface
 
@@ -353,11 +351,8 @@ Hybrid 可进一步在开局阶段用 Wizard 取代正常布局，提交后切�
 
 ```text
 assistant narrative
-+
 status component
-+
 story options
-+
 message-local actions
 ```
 

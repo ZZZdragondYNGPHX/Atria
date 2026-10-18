@@ -1,6 +1,6 @@
 # D3 已冻结：Narrator 文笔 / Character Expression / Agent Behavior
 
-> **D3 已冻结：E2 + A2 + K2 + G1（2026-10-15）**。本模块是这四个决定的唯一详细语义定义；候选项保留用于说明为何未选，但不重新开放。冻结的是设计，**不是完成了产品实现/验证**。仍不能建立新的 V3/Memory/World Authority；依赖已有 [V3 D7 N2](../atria-native-orchestration-v3/narrative-project-quality.md)、[V3 D4 C2](../atria-native-orchestration-v3/context-sharing.md)、[V3 原生合同](../atria-native-orchestration-v3/interface-contracts.md) 和 [前沿研究](../../architecture/model-prompt-context-frontier-research.md) §17。
+> **D3 已冻结：E2 + A2 + K2 + G1（2026-10-15）**。本模块是这四个决定的唯一详细语义定义；候选项保留用于说明为何未选，但不重新开放。仍不能建立新的 V3/Memory/World Authority；依赖已有 [V3 D7 N2](../atria-native-orchestration-v3/narrative-project-quality.md)、[V3 D4 C2](../atria-native-orchestration-v3/context-sharing.md)、[V3 原生合同](../atria-native-orchestration-v3/interface-contracts.md) 和 [前沿研究](../../architecture/model-prompt-context-frontier-research.md) §17。
 
 ## 1. 五种角色职责，而非五个必定调用的模型
 
@@ -82,7 +82,7 @@ Authorized Author Instructions / Scene & Genre preferences
 
 - Context 中原 C2/HCM 按 Audience/Actor/Source/Time/Branch/Display 授权筛选为前置门槛；第三人称宽视角、非线性叙事、艺术性间接描写只在**有权可读且允许披露**的材料范围内表达。
 - NPC 不因 Narrator 知道而获得知识；角色猜测和 ToM 必须保持“该角色的推测”而不是被推测角色的事实。即使 Artist Intent 强调亲密/悬疑/心理描写，也不能将没有来源的角色同意、知晓秘密或完成事件写成事实。
-- Writer/Reviewer 对自由文本的含蓄泄漏、玩家代写、违反知识边界作**概率性质量审查**，只有源隔离/Domain 写入检查的确定性结论可以被称为硬保证；不能承诺任何模型审稿能百分之百检测隐含泄漏。
+- 不能承诺任何模型审稿能百分之百检测隐含泄漏。
 
 ### G1 — 默认低成本，条件审稿与可恢复局部重做
 

@@ -12,11 +12,8 @@
 - arbitrary JSON `metadata`；
 - Branch / Revision / active Variant identity。
 
-但 Native Play 当前只把 `entry.content` 当纯文本渲染，完全没有经过验证的一等 Message Presentation contract。
-
 不能简单把未来复杂 UI 塞进 `metadata.atri_xxx`，否则：
 
-- schema 无法验证；
 - Studio 无法 authoring / preview；
 - Package 输出权限无法限制；
 - Save / migration 无法形成稳定契约；
@@ -54,7 +51,6 @@ Assistant Turn Envelope
 
 - 只负责表现；
 - 默认不进入未来 Prompt；
-- 通过已验证 Component template 渲染；
 - 可以包含 Quick Actions、状态快照、提示卡、结算卡等。
 
 #### outcomes
@@ -66,7 +62,6 @@ Assistant Turn Envelope
 
 #### diagnostics/provenance
 
-- parser/validator/routing 等运行信息；
 - 不作为角色正文；
 - 不作为 Package 可任意渲染的隐藏思维通道。
 
@@ -128,8 +123,6 @@ canonical content
 = concatenate(all prose segments)
 ```
 
-并验证 Timeline `content` 与 projection prose 的 canonical result 一致。
-
 这样：
 
 - Prompt history 永远使用纯 narrative；
@@ -138,8 +131,6 @@ canonical content
 - display/prompt separation 成为数据结构本身，而不是 Regex trick。
 
 ### 22.5 模型不能生成 Component Tree
-
-这是安全边界。
 
 模型只允许返回：
 
@@ -169,8 +160,6 @@ quick-actions
 → allowedActions
 → maxInstances
 ```
-
-真正 UI tree 来自 Package 内经过验证的 reusable Component template。
 
 因此模型不能：
 
@@ -259,16 +248,6 @@ Native：
 不能只作为 UI block。
 
 建议：
-
-```text
-validated battle-start outcome
-        ↓
-battle.started Event / battle state
-        ↓
-projection shows battle-start card/button
-        ↓
-surface.open("battle")
-```
 
 Battle 数据必须经过 Package schema，不能让模型 JSON 直接成为 Game Runtime authority。
 
@@ -391,7 +370,6 @@ Provider 支持 `generation.structured-output` 时，模型返回符合 Package 
 优点：
 
 - 最严格；
-- schema 校验清晰；
 - outcome / block 数据天然分离。
 
 #### B. Native text-envelope adapter
@@ -427,16 +405,6 @@ Runtime 解析成同一个 Turn Envelope。
 
 兼容 parser 的权限只到：
 
-```text
-raw model text
- ↓
-safe extractor
- ↓
-typed data
- ↓
-validated Turn Envelope
-```
-
 不能：
 
 ```text
@@ -454,7 +422,6 @@ HTML/JS
 - line list；
 - numbered choices；
 - delimited prose；
-- schema-validated scalar/list/object。
 
 是否允许 arbitrary regex extractor 需谨慎；当前倾向首版只允许有限 parser primitive，复杂 Regex 留在 legacy Regex engine，而不是 Native projection parser。
 
@@ -467,19 +434,8 @@ HTML/JS
 - narrative draft 可持续 streaming；
 - projection/outcome 默认在本轮 finalize 时才显示/提交；
 - authoritive outcome 永远不能在 streaming 中途 commit；
-- Quick Actions / BattleStart / Unlock Card 在 final validation 后出现。
 
 如果采用 text-envelope：
-
-```text
-stream narrative
- ↓
-sidecar arrives
- ↓
-validate projection/outcome
- ↓
-finalize Turn
-```
 
 如果 provider structured-output 无法安全流 prose，则 adapter 可以选择：
 
@@ -492,37 +448,12 @@ finalize Turn
 
 复杂 Turn 必须避免：
 
-```text
-正文已保存
-→ outcome 校验失败
-→ World State 没更新
-```
-
 Native 目标：
-
-```text
-Draft narrative/projection/outcomes
- ↓
-validate all required contracts
- ↓
-simulate authoritative outcomes
- ↓
-全部成功
- ↓
-commit one Turn boundary
-   ├─ Timeline Variant
-   ├─ Projection
-   ├─ World State
-   ├─ Event Journal
-   └─ Knowledge/runtime state
-```
 
 Presentation-only block 失败可以按 Package policy：
 
 - required → 整轮失败；
 - optional → block dropped + diagnostics。
-
-Authority outcome 校验失败不能静默忽略后提交 narrative，除非 Package 明确声明该 outcome 是 optional advisory。
 
 ### 22.16 Conversation Host 需要 presentation mode
 
@@ -600,7 +531,6 @@ Block 内允许少量非权威 Local UI State，例如：
 3. Turn Envelope 分为 narrative / projection / outcomes / diagnostics。
 4. Projection 使用 ordered flow，支持正文前、后和穿插 block。
 5. Timeline canonical content 只由 prose segments 构成。
-6. 模型只能生成 block type + validated data，不能生成 Component tree。
 7. block UI 来自 Package 预编译 template。
 8. Message Block 默认 snapshot-only，不直接绑定 live World State。
 9. Projection display-only，不能自行注入 Prompt。
@@ -661,8 +591,6 @@ Block 内允许少量非权威 Local UI State，例如：
 
 这些全部由 Package Contract + Runtime 补齐。
 
-**Committed Turn Envelope** 是验证、解析、authority resolution 后写入 Native Session 的结果：
-
 ```text
 CommittedTurn
 ├─ canonicalContent
@@ -685,7 +613,6 @@ Runtime 接收 Model Turn Output 后：
 2. 形成 `Variant.content`；
 3. 将每个 prose segment 归一化为 `{ kind: "prose", start, end }`；
 4. block 保持在 flow 原位置；
-5. 校验所有 prose range 单调、无重叠、完整对应 canonical content。
 
 因此 committed projection 不重复保存整段正文。
 
@@ -712,7 +639,6 @@ Block Registry 不放进 Component Model v2 UI Document。
 
 原因：
 
-- Block type 是模型输出 contract 与 runtime validation authority；
 - template 是 UI presentation；
 - 同一个 block type 未来可能有不同 presentation；
 - Text Experience / accessibility fallback 也需要认识 block，不应反向依赖整个 UI tree。
@@ -762,8 +688,6 @@ Route 有 `generation.structured-output` 时使用现有 `PromptIR.outputContrac
 没有该能力时，只有 Package 明确允许 text transport 才转入 text-envelope；不能让 GenerationService 的 provider fallback 静默丢掉 output authority。
 
 ### 22.24 不默认增加“修复模型调用”
-
-required output 校验失败时，**默认不自动再调用一次模型修复**。
 
 原因：
 
@@ -823,8 +747,6 @@ Block/Outcome requirement 固定在 Package Turn Contract。
 - model-supplied `https://...`；
 - CSS `url()`；
 - dynamic arbitrary filesystem path。
-
-现有 AssetRef 已拥有 `assetId + contentHash + mediaType + logicalName`，可直接作为基础。
 
 Session/generated attachment 是另一条 authority，不在 Message Block 首版混入。
 
@@ -902,23 +824,6 @@ User/UI Action
 
 适合 RP / MVU 风格游戏：
 
-```text
-Model Turn Output
-├─ prose
-├─ blocks
-└─ semantic outcome proposals
-       ↓
-schema validation
-       ↓
-map to typed Command/Event
-       ↓
-simulate authority result
-       ↓
-success
-       ↓
-atomic Turn commit
-```
-
 模型提出的是**语义 outcome**，不是任意 World JSON Patch。
 
 例如：
@@ -933,16 +838,7 @@ location.arrived { locationId }
 
 #### Policy B 的两种 Native 执行策略
 
-经过后续重型 MVU 样本压力测试，`narrative-outcome` 不应只绑定“同一模型一次输出 prose + outcome”。
-
 **B1 — inline outcome**
-
-```text
-Narrator
-→ prose + declared blocks + semantic outcome sidecar
-→ validate / simulate
-→ atomic commit
-```
 
 优点：
 
@@ -956,15 +852,6 @@ Narrator
 - 模型同时写叙事与结构化 sidecar 的质量可接受。
 
 **B2 — post-narrative semantic interpretation**
-
-```text
-Narrator
-→ Draft prose
-→ dedicated Outcome/Event Interpreter
-→ semantic outcome proposals
-→ validate / map / simulate
-→ atomic commit Draft prose + projection + authority outcome
-```
 
 这是一个**原生策略**，不是 Legacy MVU compatibility。
 
@@ -989,7 +876,6 @@ Narrator
 为减少“正文说造成 20 伤害，Reducer 实际只造成 7”的冲突：
 
 - Model outcome 应尽量是 semantic intent/result class，不直接声称最终权威数值；
-- 若 Package 允许 exact value proposal，该值仍必须通过 validator/rule；
 - Runtime 的 committed outcome 是最终 authority；
 - Package Prompt 应告诉 Narrator 避免在尚未计算的字段上宣称精确结果；
 - 对必须严格一致的玩法使用 `authority-first`。
@@ -1024,7 +910,5 @@ Round 4 至此冻结：
 22. 长期目标是 atomic Native Turn Commit Envelope。
 
 Round 4 完成。下一步进入 **Round 5 — MVU / Legacy Migration**。
-
-
 
 ---

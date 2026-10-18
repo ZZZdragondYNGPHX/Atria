@@ -9,9 +9,7 @@ Real-device follow-up after the World Info mobile controls fix. Android field te
 - Temporary branch: `fix/world-info-book-menu`
 - Baseline: `main@75c77b23112fe3ce89d4f28c4ee26b2f20b73769`
 - PR: #27
-- Final validated head: `dcdff643aa30ca161a267b09d06ce34c35315447`
 - Squash merge / resulting `main`: `f7dd82ee4089e9e59f6effdd61509b14b39daa2d`
-- Validated task-head tree and merged-main tree: `fb428d5ddf1088bee7bf01498c09a9050baf00c7` (identical)
 
 ## Root cause
 
@@ -31,31 +29,6 @@ The per-book menu now uses an explicit Atria-controlled interaction:
 - existing Entries / Export / Rename / Duplicate / Tags / Pin / Delete actions are unchanged.
 
 No World Info persistence, API, activation, import/export format, selection or storage semantics changed.
-
-## Regression coverage
-
-The real-browser World Info workspace regression now asserts that clicking the actual three-dot trigger:
-
-1. changes `aria-expanded` to `true`;
-2. makes the action menu visible;
-3. exposes the existing book-level actions.
-
-## Validation
-
-Final head `dcdff643aa30ca161a267b09d06ce34c35315447` passed:
-
-- Atria PR Checks #566
-  - ESLint
-  - complete Node unit suite
-  - frontend libraries build
-  - Atria Migration Guard
-- Worldbook Performance Foundation #251
-  - focused regressions
-  - synthetic benchmark
-  - real-host Chromium smoke
-  - complete World Info browser acceptance
-
-Android JVM/APK and Docker builds were not run because this task changes browser JavaScript/CSS/tests only.
 
 ## Data / migration impact
 

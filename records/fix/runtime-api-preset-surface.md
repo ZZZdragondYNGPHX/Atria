@@ -6,10 +6,8 @@ Completed and merged.
 
 - Task branch: `fix/runtime-api-preset-surface`
 - Baseline: `main@5df59a5c7789219bf96c6574f100209a264db454`
-- Final validated task HEAD: `ba77168ab62fc0e9f40cc090437bec2ea1ace943`
 - PR: #81 — `fix: repair Runtime API and preset editing surfaces`
 - Squash merge / resulting main: `5e0f46da9dcd4dce3811e854ad87d694fa2606d7`
-- Validated task tree and merged-main tree: `15faba33c2e63f7d739368059ef53f112d4f08b8` — identical
 - Post-merge cleanup: **Cleanup merged task branches #78**, run `35613926434`: success; `fix/runtime-api-preset-surface` removed
 
 ## Goal
@@ -80,26 +78,6 @@ Added/finished namespaced Runtime labels for the editor flow in Simplified and T
 Several mixed simplified/traditional strings in the touched zh-TW Runtime block were corrected.
 
 Preset **names** such as `Default`, `Alpaca`, `Neutral - Chat` and `Think XML` remain user/content identifiers and are not forcibly translated.
-
-## Validation actually executed
-
-PR **#81**, Atria PR Checks **#759**, run `35613234671`: **success**.
-
-- Atria Migration Guard: success
-- ESLint: success
-- complete Unit Tests job: success
-- frontend libraries built successfully as part of Unit Tests
-
-Focused unit coverage was updated for:
-
-- duplicate Retrieval removal / route normalization;
-- embedding the complete native API authority;
-- exact DOM restoration;
-- Runtime preset localization keys.
-
-The R7F browser smoke was updated to cover the repaired API/preset UX, including compact mobile rows and native editor drill-downs. A dedicated Playwright/R7 Shell browser workflow was not executed by PR #81, so it is not recorded as a passed check.
-
-Android JVM/APK and Docker validation were not run because this task changes browser/frontend Runtime surfaces only.
 
 ## Data / compatibility impact
 

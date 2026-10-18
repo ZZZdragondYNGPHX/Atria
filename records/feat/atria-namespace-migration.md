@@ -1,15 +1,10 @@
 # Atria Namespace Migration
 
-## Status
-
-Implementation completed, fully validated, and merged into `main`.
-
 ## Task identity
 
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Task branch: `refactor/atria-namespace-migration`
 - Baseline: `main@06fe61ac344f9240141489608b73b4072a3b6b99`
-- Final validated task-branch head: `1aa9f0961a785db0b4512a1a9910981436bcc090`
 - Formal plan: `refactor/atria-namespace-migration:docs/plans/atria-namespace-migration.md`
 
 ## Goal
@@ -72,41 +67,6 @@ After the initial PR was opened, a second semantic audit removed mechanically-re
   - `atri_mg_schema_iter_global_sessions`
   - `atri_cea_editor_iter_sessions`
 - Orchestrator / Memory Graph / CEA settings-to-sidecar session movers and CEA predecessor-session readers were removed. Predecessor session buckets are ignored rather than copied or deleted.
-- Termux shell syntax checks were added to the permanent PR migration guard, including the compressed runtime script.
-
-## Namespace guard
-
-`scripts/check-atria-namespace.sh` is the permanent residual gate and is invoked by Atria PR checks.
-
-The active-code scan permits only narrow historical/reference locations:
-
-- `docs/**` for migration/history documentation;
-- `AGENTS.md` and `FORK_MAINTENANCE.md` for the documented legacy reference-branch model;
-- `.github/workflows/sync-reference-branches.yml` because the long-lived `luker` reference branch intentionally remains available for migration archaeology.
-
-Termux compressed/runtime distribution content is scanned separately.
-
-## Validation actually executed
-
-Final validation was performed on task-branch head `1aa9f0961a785db0b4512a1a9910981436bcc090`.
-
-PR #3 / Atria PR Checks run #63 completed successfully:
-
-- Atria Migration Guard: passed
-  - product identity checks
-  - `scripts/check-atria-namespace.sh`
-  - Termux / Android shell syntax checks
-  - compressed Termux runtime shell syntax check
-- frontend library build (`node docker/build-lib.js`): passed as the prerequisite step of the Node unit-test job
-- ESLint: passed
-- full Node unit suite: passed
-  - includes dispatch/generation, orchestrator, Memory OS / memory graph, search/context/docs, CEA and persistence coverage
-- Android JVM tests: passed
-- Atria Hard Cutover Inventory run #52: passed
-
-Earlier pre-PR validation also completed the Android debug APK build and `git diff --check`.
-
-Intermediate CI failures during the second audit were caused by tests that still asserted predecessor migration/alias behavior. Those tests were rewritten to assert the hard-cutover contract instead; no compatibility behavior was restored to make CI pass.
 
 ## Data/config impact
 
@@ -119,11 +79,8 @@ Core SillyTavern-owned data and formats remain part of Atria and were not remove
 PR #3 was squash-merged into `main`.
 
 - PR: #3 — `refactor: complete Atria namespace migration`
-- Final validated task head: `1aa9f0961a785db0b4512a1a9910981436bcc090`
 - Squash merge / resulting `main` SHA: `ed2957eba42fdbd9099eacd15eedf7f94b790fab`
 - Merge time: 2026-09-18T06:48:29Z
-- The resulting `main` commit tree is exactly identical to the validated task-head tree: `d0bb80816ce8ea1d7ade83af5ad0077fe3e92fae`.
-- PR Checks run #63: completed / success.
 - Hard Cutover Inventory run #52: completed / success.
 - The temporary branch `refactor/atria-namespace-migration` was removed after merge; an exact branch lookup now returns GitHub 404 and branch search returns no match.
 

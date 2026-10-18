@@ -1,8 +1,6 @@
-# ARCH-DWE-01 · Candidate Design & Discussion Agenda
+# ARCH-DWE-01 · 历史设计讨论与选型背景
 
-- 状态：**Draft / Paused（用户主动暂缓）**。W1–W22 的 B 总体方向已确认，但 Gate 0 尚未就绪、精确 ABI/Schema/实施尚未批准。待 Native Orchestration、Prompt Preset 与整体前端重构完成并由用户明确要求 Codex 接手后恢复；旧决议按历史保留。
-- 当前工作状态：**暂停 Gate 0 Preflight**；现有 [e0-preflight-execution.md](e0-preflight-execution.md) 和 [唯一暂停交接](../../../handoff/ARCH-DWE-01.md) 仅用于未来 Codex 恢复。等待用户明确指令，不继续审计或新建 W23 机制选题。
-- 入口：[index.md](index.md)；材料：[research.md](research.md)
+当前功能入口为 [index.md](index.md)，实施职责见[实现分工](e0-preflight-execution.md)。**Draft / Paused**；本次未恢复产品实施。本文保留 W1～W22 的讨论过程，其中“下一轮”“待批准”“Gate/Preflight”“先取证／测试”等仅表示当时讨论，不是当前工作队列或实施前置。当前已确认方向与普通工程选择按入口及同一 Record 理解。
 
 ## 1. 问题的正确切分
 
@@ -16,7 +14,7 @@
 6. **叙事文本的修辞/虚构**：梦境、谎言、角色台词或作者文风不等于新世界事实。
 7. **推演候选**：「可能爆发内战」尚未发生。
 
-因此不应只给所有来源排序：**权限、有效时间、主体可见性、断言状态、出处**是独立维度。最终编译给每个 target 的是有界的有效视图，而不是把所有原文串接成“大上下文”。
+最终编译给每个 target 的是有界的有效视图，而不是把所有原文串接成“大上下文”。
 
 ## 2. 三套备选路线
 
@@ -27,41 +25,6 @@
 | C. Full Temporal World Graph | 全部世界关系转时序知识图谱、每轮统一推理和图更新 | 精细查询、多跳、复杂社会模拟上限高 | 巨大建模负担、双重权威风险、运行成本高，与现有 Runtime 容易重叠 | 暂不推荐默认；可用于特定作品的可选能力 |
 
 研究结论支持的是「状态更新可追溯 + 时间有效性 + 主体隔离」，而不是「必须新建四个存储系统」。
-
-## 3. 推荐验证的最小数据语义（结构示意，**不是最终 API**）
-
-### 3.1 声明的类型
-
-- **world_law**：原始法则/不变量（可配置是否允许受指定特殊事件修订）。
-- **initial_fact**：只保证起始时间为真，不保证永远为真。
-- **historical_fact**：已确认历史事实，必须带历史时期/证据。
-- **current_fact**：对应有明确所有者的 Session 原生当前状态。
-- **belief_or_report**：主体信念、听闻、推测、谎言；不能无依据升级为 current_fact。
-- **prediction**：候选推演/可能性，不可作为已发生事件。
-- **narrative_style**：作者写作指导，不作为世界真相断言。
-
-一段 KnowledgeEntry 可以同时包含风格、背景事实、变动事实，不能粗暴给整篇贴「current」或完全自动重写。可先让关键事实存在少量**作者确认的结构化锚点/片段**，自由文本部分保留原貌与来源；机器提取只做建议，不自动确立强约束。
-
-### 3.2 一个事实需要回答的查询维度
-
-- subject / predicate / value：哪个主体的什么事实
-- branchId + revisionId：哪个已提交分支/状态版本
-- validFromTick / validUntilTick：游戏世界中实际有效的期间
-- sourceRef + originEventId：为什么认为是真的，何事件改变了它
-- assertionStatus：已提交、候选、推测、已撤销、无从证实等（需再定边界）
-- observer/visibility：谁能查询/知道，部分事实仅 Narrator/Internal 可见
-- discoveredAtTick（可选）：角色何时获悉，而非事实何时发生
-- lawEpoch/version（仅重大规则修订可能需要）：避免隐式改写世界物理规则
-
-并非所有字段都要持久化；先核对现有 SessionRevision、Authority、History、Information/Memory 的字段如何提供等价语义，避免重复元数据。
-
-### 3.3 写入与读取建议链路
-
-**写入：** 玩家/AI/定时任务提出意图 → 模型可生成候选事件 → 原生预演/约束验证 → 单一 Native SessionCore 提交 state + journal + event provenance + receipt → 派生索引/投影更新（可重建）。
-
-**读取：** 固定 Session/Branch/Revision + Game Tick + target/audience → 编译静态设定与相关动态证据 → 抑制过期“当前时态”声明、保留必要历史信息 → 独立投影角色可知/误信事实 → 限预算输出 Effective World Context。
-
-**硬边界：** Memory/HCM、World/Knowledge、Simulation、Orchestrator、Hypothetical、History 不得各自成为独立可写「世界真相」，重用现有已有单 Native Host 发布通道；模型不会因为叙述段落提及某事件而直接获得 world effect 权限。
 
 ## 4. 关键冲突处理示例
 
@@ -83,7 +46,7 @@
 ### R1 — 静态事实如何与动态状态关联（本轮主议题）
 
 - **R1-A 全文结构化**：全部事实转原生实体/关系；一致性最好，但创作成本、旧自由文本体验损失严重。
-- **R1-B 关键动态事实显式绑定（推荐讨论）**：保留完整自由文本，仅重点可变断言（职位、阵营、关系、生死、地理归属等）带字段/事实锚点；由编译器以当前状态重述。
+- 由编译器以当前状态重述。
 - **R1-C 完全自动语义矛盾检测**：LLM 每轮扫描/改写冲突段落；编辑负担低，但稳定性、真实性和推演成本不受控。
 - **R1-D 纯状态提示词覆盖**：工程最轻，不保证模型理解；仅可作为临时缓解。
 
@@ -109,13 +72,9 @@
 
 明确 valid game time vs recorded revision vs observer discovery；已提交保存，分支继承历史锚点后隔离新事件，不把全部历史变成一个跨分支 mutable latest；修正过去认知不等于修改过去物理事实。
 
-### R7 — 预算与验证
-
-区分 L0 静态合约检查、L1 原生纯逻辑/状态提交校验、L2 浏览器/模拟回合、L3 Windows/CachyOS/Termux 真实客户端。后两项在正式实施阶段按必要证据完成；本轮没有运行任何测试。预算受现有 Simulation、Authority、Context 编译器约束，具体扩充须基于 E0 实测。
-
 ## 6. 风险清单
 
-| 风险 | 失效方式 | 应验证的措施 |
+| 风险 | 失效方式 ||
 | --- | --- | --- |
 | 双真相源 | WorldState 与新图谱互相写入竞争 | Native SessionCore 唯一发布；只读衍生投影 |
 | 语义失效盲点 | 静态文本包含不受 stateConditions 控制的「仍在位」 | 关键动态事实锚点与条目冲突 Inspector |
@@ -137,10 +96,8 @@
 5. Round 5: 离屏世界模拟、范围、预算、时间跳跃（R4）。
 6. Round 6: 世界法则/元规则变动和作者权限（R2）。
 7. Round 7: Studio/Library/Play UI、上下文有效视图与调试 Inspector。
-8. Round 8: 与当前架构的 E0 全调用方审计、最小实现边界、分阶段验收，用户批准后定稿。
 
 真正的轮次数量可以根据讨论修改；任何一轮都不能自动宣布最终方案已定。
-
 
 ---
 
@@ -159,17 +116,17 @@
 | 用户的问题 | 候选抽象 | 持久化/权威所有者 | 不承担的责任 |
 | --- | --- | --- | --- |
 | 这个世界是什么、有哪些规律与存在？ | World Definition：实体、关系、规则、起始值、历史基线、资料绑定 | Library / Studio 的固定修订、游戏启动时已选 Package/World | 不在游玩中擅自覆写原始修订 |
-| 这段内容从哪里来，声称什么，对谁有用？ | Knowledge Source / Assertion：自然语言资料、经过确认的关键断言、引用、可见性、适用期 | 可重用作者资料与来源修订；不是当前运行状态所有者 | 不因为检索命中就创造世界事实 |
+| 这段内容从哪里来，声称什么，对谁有用？ || 可重用作者资料与来源修订；不是当前运行状态所有者 | 不因为检索命中就创造世界事实 |
 | 这一分支此刻实际发生了什么？ | Effective State + Event History：世界当前值及其提交缘由 | **现有 Native SessionCore / Session/Branch/Revision**，投影可重建 | 不创建第二个可写世界事实数据库 |
 | 谁看见、相信、误解或记住了什么？ | Epistemic View：认知/证据/传播/秘密 | 复用原生 HCM/Information/Memory 与既有消费者 | 不因为一个 NPC 相信而改写共同真相 |
 
-**知识的“权威”至少拆成两个维度**：①这份资料的作者/出处/可信等级；②它的陈述是否是在某个世界分支与时刻正式成立。高可信史书可准确描述过去，但不能自动成为“如今仍然如此”的断言；多个相矛盾的民间传闻也可以合法共存。
+**知识的“权威”至少拆成两个维度**：①这份资料的作者/出处/可信等级；②它的陈述是否是在某个世界分支与时刻正式成立。多个相矛盾的民间传闻也可以合法共存。
 
 ### 8.3 三条原生重构路线（本轮请用户取舍）
 
 **A · Semantic Lorebook：** 保留 World + Knowledge 条目和激活框架，补实体标签、时态和当前态过滤。工程小，但“每条记录怎样触发”仍是主语；可能治标不治本。
 
-**B · World Model + Source Library（优先推荐讨论）：** World 成为实体 / 关系 / 法则 / 起始态 / 资料引用的创作主语；Knowledge 变为可复用的文献与事实来源、证据及检索资料库。少数影响实际演化的断言与 Native state key 显式链接，其余自由文本不强制结构化。Context 检索只是 World View 的消费者。与 Native Host/HCM/Orchestration 单向职责对齐。
+**B · World Model + Source Library（优先推荐讨论）：** World 成为实体 / 关系 / 法则 / 起始态 / 资料引用的创作主语；Knowledge 变为可复用的文献与事实来源、证据及检索资料库。Context 检索只是 World View 的消费者。与 Native Host/HCM/Orchestration 单向职责对齐。
 
 **C · Universal World Knowledge Graph：** 将几乎所有描述、事件、认知都存成图与规则，从图计算出世界状态。关系推理潜力大，但强迫所有作者建模、重复 Native 权威、读写/性能成本明显，不建议作为默认。
 
@@ -181,12 +138,12 @@
 | recursive entry activation | 优先以显式实体/关系/依赖检索替代；保持有界图遍历 | 文本相互提关键词不是语义关联 |
 | probability / sticky / cooldown / delay | 从“知识真伪/知识是否存在”剥离；仅可能归于叙事线索/随机遭遇/规则触发 | 世界物理事实不能以抽中条目为准 |
 | before / after insertion, priority | 变成内部 Context 编译与预算策略；创作 UI 不以 Prompt 排列为核心 | 用户关心世界内容，而不是 Prompt 拼装技巧 |
-| override / augment | 复核为可解释的资源组合/作者明确的修订优先，而非简单文本覆盖 | 多 World/Package 组合需要冲突诊断 |
+| override / augment || 多 World/Package 组合需要冲突诊断 |
 | stateConditions / target / visibility | 保留有效场景与权限的原生意义，补实体/时态语义 | 现有能力可复用，但条件不能替代明确的事实模型 |
 | Content 自由文本 | **必须保留一等公民地位**；增加实体引用、可选事实锚点与有效范围 | 世界构建/人物文学表达不应被迫变成表格 |
 | 按关键词浏览“世界书” | Studio/Library 以世界实体、组织、规则、历史、资料等导航；高级检索独立提供 | 从“条目管理器”转向“世界创作器” |
 
-上述是未来重构对象，不是“已证实可以安全删除”的代码清单。E0 必须核对所有消费者、具体路径和归属；Atria dev 阶段不需为旧 ST 卡或旧未发布 API 设置兼容双轨。
+上述是未来重构对象，不是“已证实可以安全删除”的代码清单。Atria dev 阶段不需为旧 ST 卡或旧未发布 API 设置兼容双轨。
 
 ### 8.5 混合内容的三段式策略（核心待议）
 
@@ -201,13 +158,13 @@
 - **Library / Worlds**：一个“世界”作为容器，可按概览、地理/实体、组织/关系、规则、时间与历史浏览；支持文学段落。
 - **Library / Knowledge**：作品内文献、百科、研究笔记、传说/证词、可复用资料，保留引用和原文，不强迫它们成为顶级世界规则。
 - **Studio**：围绕世界实体与规则创作游戏初始状态和事件/效果，显示“原始设定 / 当前预演 / 受众有效视图”的差异；作者只需在重要动态事实上选择严格建模。
-- **Play**：玩家看自然的叙事、档案和时间线；开发/作者模式可检查某个陈述为什么成立、什么信息被注入、来源及过期原因。不能默认把所有内部状态暴露给普通 NPC/玩家。
+- **Play**：玩家看自然的叙事、档案和时间线；不能默认把所有内部状态暴露给普通 NPC/玩家。
 
 **UI 原则**：默认简洁的创作界面 + 按需展开结构化属性/引用/调试；避免把几十个权威/条件字段平铺给普通用户。
 
 ### 8.7 必须满足的边界与风险
 
-- 单 Native Host 真相与提交通路；新的 Entity/Assertion 查询视图必须与 Session State/Events 的所有权明确，不能反向写动另一个“真相库”。
+- 单 Native Host 真相与提交通路；
 - 时间事实区分 author revision、有效 game time、记录 session revision、主体信息到达时刻；事实越复杂，才越需要这些附加维度。
 - 发布的 World/Knowledge 修订与绑定精确、Session/SavePoint 分支隔离；Library 头部编辑不偷偷影响已经开始的游戏。
 - 保密与故事悬念：作者已设定的秘密、角色认知、玩家能看到的线索、叙事者有权看到的真相应区别；过滤在 Context 编译前生效。
@@ -217,12 +174,11 @@
 
 ### 8.8 下一步设计取舍（本轮均未冻结）
 
-**首要决策 W1**：未来的核心创作对象究竟继续是“World + 独立 Knowledge 条目”为双核心，还是 **World Model 作为中心、Knowledge 作为可引用的资料/来源库**？支持高级内容系统使用知识断言，但不要求所有世界文字有结构化身份。
+**首要决策 W1**：未来的核心创作对象究竟继续是“World + 独立 Knowledge 条目”为双核心，还是 **World Model 作为中心、Knowledge 作为可引用的资料/来源库**？
 
 **次要决策 W2**：采用 Hybrid 内容模型、关键事实锚点，还是全文结构化；哪些事实必须由引擎掌握，哪些只要求文本可检索。
 
 **后续序列**：实体与关系建模 → 世界法则与可演化边界 → 实际事件/状态对接 → 认知/资料真伪 → 检索/编译 → 多域 UI → E0 全面消费者审计与实施阶段。用户明确定稿前始终 Draft。
-
 
 ---
 
@@ -232,15 +188,13 @@
 
 ### 9.1 下一轮 W2：先界定要表达的东西，而不是先决定数据库
 
-**候选：轻量世界语义骨架 + 自由文本源文 + 关键动态断言链接。** 五种逻辑概念不一定要五套资源/数据表：
-
 1. **Entity / 实体**：人物、地点、国家、组织、物件、概念等拥有稳定的**身份**（不是名称）。实体 ID 的引用与显示名/别名分离；不要求所有路人、抽象词、小说段落都建立实体。
 2. **Relation / 关系**：有主语、关系类型、目标/值、适用范围的表达，可指向其他实体；如「莱恩-亲属-二皇子」「帝国-统治者-莱恩」。关系语义依类型判断静态/动态/主体主观，不能全都一个通用真假布尔。
-3. **Assertion / 断言**：某个来源对某段关系或属性的声明，包含出处、时态、语境和确认级别。一个记载可以是真的历史、误报或官方宣传；“资料声称”不同于“Session 当前为真”。
+3. 一个记载可以是真的历史、误报或官方宣传；“资料声称”不同于“Session 当前为真”。
 4. **Rule / 法则或约束**：作者规定的世界可行性、恒定条件、变化许可；不能从普通资料文本未经确认地提升为 Runtime 强约束。
-5. **Source / 自由内容**：自然语言世界设定、文学说明、百科/史料/传说/证词/参考资料。完整保存原文；可将少量重要片段链接至 Entity/Assertion，也可以完全自由文本。
+5. **Source / 自由内容**：自然语言世界设定、文学说明、百科/史料/传说/证词/参考资料。完整保存原文；
 
-**运行时 Current State/Event** 不属于 Knowledge 的第五个可写真相库；它已经由 Native Host 持有。新的 Entity/Relation/Assertion 模型只能为这些状态提供语义定义、创作起点与可重建的读取投影。
+**运行时 Current State/Event** 不属于 Knowledge 的第五个可写真相库；它已经由 Native Host 持有。
 
 ### 9.2 三类关系/事实的建议治理边界
 
@@ -250,7 +204,7 @@
 | 运行时可演化关系 | “帝国目前由莱恩统治”；“王国与帝国交战” | **Native committed state/event**，由明确 state path/owner 或 effect 确定当前值；资料不能覆写 |
 | 认知/来源陈述 | “将领相信莱恩仍在位”；“史书记载莱恩不死” | HCM 的主体视角/信息传播或 Source 的引述；允许与真相并存，不自动变成真相 |
 
-分类是针对具体**谓词与使用语境**，而不是强规定 Person=动态、Place=静态。相同文字的“统治者”在历史书中是过去断言，在当前世界投影中是动态关系，在谣言中是主观信念。
+分类是针对具体**谓词与使用语境**，而不是强规定 Person=动态、Place=静态。
 
 ### 9.3 身份和范围（候选约束，非最终 Schema）
 
@@ -267,31 +221,12 @@
 建议提供三档创作体验（不是三套完全不同的后端）：
 
 - **Freeform：** 纯文字设定直接可用；不会强制转换 JSON/三元组，也不能承诺对全部自由文字做完美语义一致性审计。
-- **Assisted：** AI 建议实体、别名、人物/阵营关系、需要追踪的动态事实；人工复核“这是世界真相还是来源主张”。
+- **Assisted：** AI 建议实体、别名、人物/阵营关系、需要追踪的动态事实；
 - **Structured：** 需要确定性玩法的作品显式指定动态属性/关系、状态拥有者、约束、effect 和时间规则，供 Native Runtime 使用。
 
-动态断言在作者确认后可用 **Fact Anchor / State Binding** 连接正确 native state path 或 predicate，不能由模型自作主张认定真相。公开资料可用 EntityRef / SourceRef 描述，而不能碰到同名就合并实体。
+公开资料可用 EntityRef / SourceRef 描述，而不能碰到同名就合并实体。
 
 ### 9.5 查询和语义冲突（示意，不是 API）
-
-```text
-Authored World vN:
-  Entity[empire], Entity[ryan], Entity[prince]
-  Assertion[empire.currentRuler = ryan] @ game_start
-  Source[palace-chronicle]: "莱恩身为皇帝..."
-
-Committed Session Branch B / Tick 80:
-  EmperorDeath committed -> ruler = vacant
-  PrinceCoronation committed -> ruler = prince
-
-Current narrator view:
-  Empire ruler: prince
-  Ryan: former ruler / deceased
-Historical as-of Tick 0:
-  Empire ruler: ryan
-Northern general belief view:
-  "Ryan is still ruler" [belief, observed information may be stale]
-```
 
 所有对“当前真相”敏感的资料都应该能被降为历史/来源信息、条件化呈现或由动态值重述；未锚定文本无法证明安全时不做静默全局改写。需要 Inspector 追踪检索来源、事实裁定、受众和排除原因。文本中人物台词、梦境、假设和反事实永远不能仅因关键词“死亡”就变成已提交事件。
 
@@ -302,7 +237,6 @@ Northern general belief view:
 - **W2-C 自动抽取为主**：作者全程自然语言、AI 自动转写所有关系/事实；编辑轻，自动错判和长会话成本不可控。
 
 **下一轮目标：** 在 W1 已确认的大方向下，确定 W2 的结构化下限、哪些事实要求强一致、Source 文档如何关联锚点、是否默认启用辅助抽取，再进入 Rule/State/时间/认知/检索/UI 的更深讨论。决策前不修改 main，也不把推荐 W2-B 当成用户选择。
-
 
 ---
 
@@ -328,7 +262,7 @@ Northern general belief view:
 | Initial Fact（起点事实） | “开局莱恩在位，帝国与北境和平” | WorldRevision 中的起始快照/事实；只要求 T0 成立 |
 | Committed Current Fact（当前事实） | “T80 二皇子在位” | Session/Branch/Revision 的有效状态/事件；随时间改变 |
 | Authored Hidden Canon（作者预设的秘密真相） | “二皇子其实是失散的第一继承人” | 作者已固定但角色未知；可以在 World/Package 内容中承载，并遵守可见性；曝光时间不是成立时间 |
-| Unknown / Open Detail（留白） | “未指定港口镇长是谁” | 不可凭缺失断言“不存在”；在演化权限允许时可由 AI 合理创造 |
+| Unknown / Open Detail（留白） | “未指定港口镇长是谁” |在演化权限允许时可由 AI 合理创造|
 | Report / Belief / Prediction（来源/认知/推测） | “将领听说皇帝活着”；“可能开战” | Source/HCM/候选推演；不是自动可写世界状态 |
 
 **重要区别**：“魔法一直存在但无人知晓” = 新信息被发现，不是新物理法则被创造；“此前绝无魔法，今天世界规律改变” = 真正的 Law Mutation，必须通过更高等级权限和可追溯事件。也要区分作者**未规定**、作者**明确规定不存在**、作者**规定秘密存在**。
@@ -341,34 +275,24 @@ Northern general belief view:
 | --- | --- | --- |
 | E0 — 局部叙事细节 | 杯子颜色、短暂天气描写、无后效动作 | 可在局部叙事中自由生成；保持近期连贯，不必每个名词都存永久事实 |
 | E1 — 普通新增持久事实 | 合理新增客栈老板、街道名称、NPC 关系 | 如不冲突且受世界/场景开放域授权，可走默认 Native event/effect 提交；跨场景继续引用时有身份和出处 |
-| E2 — 重大世界状态改变 | 君主死亡、战争爆发、城池归属改变、关键 NPC 身份揭露 | 必须明确效果/前置条件与权限，Native 验证并记录；**不等于每次都弹人工审批**，可由事先授权的游戏规则自主结算 |
-| E3 — 世界法则改变 | 死亡突然可逆、魔法从无到有、时间规则重写 | 默认禁止模型自主变更；仅在作者定义的特殊机制、授权场景或显式人类同意时进行；需独立核验与版本化语义 |
+| E2 — 重大世界状态改变 | 君主死亡、战争爆发、城池归属改变、关键 NPC 身份揭露 |**不等于每次都弹人工审批**，可由事先授权的游戏规则自主结算|
+| E3 — 世界法则改变 | 死亡突然可逆、魔法从无到有、时间规则重写 | 默认禁止模型自主变更；仅在作者定义的特殊机制、授权场景或显式人类同意时进行；|
 
 **等级不是场景内容审查评级**；只是“谁可以将某种描述升级为游戏事实”的权威/影响划分。用户可在作品级配置开放式/叙事式/规则式体验（具体 UI 下一轮再定）。
 
 ### 10.4 推荐的原生演化路径（尚未决定接口）
 
-```text
-User / NPC / AI proposes action or new detail
-→ classify: transient narration | proposed persistent fact | structural world change | law change
-→ resolve stable identities, affected state ownership and authored constraints
-→ check game time, branch/revision, preconditions and permissions
-→ Native Host single authoritative commit (when persistence required)
-→ derived Effective World View / HCM observations / context cache invalidate by scope
-→ public narrative reflects confirmed effects; rumors/dreams/proposals remain source/subjective
-```
-
 - “AI 写出了国王死亡”**并不自动**意味着已提交国王死亡。强一致事件应在对外叙事确定前取得有效提交/授权，或通过同一受控事务协调，避免“故事已播、状态没改”。
 - 影响未来行为的普通新实体/社会关系可以渐进进入 Session 事实；避免每回合无界地建立数千条 trivially irrelevant 状态字段。
 - 文本中的 NPC 台词、宣传、梦境、假设、怀疑，哪怕非常肯定，也默认属于**来源陈述**而非真相提交。
 - 规则重写需要区分作者将 Library/WorldRevision 升为新修订，还是游戏分支内的**已授权世界法则变更事件**；不能暗中更新固定 Package 或其它分支。
-- LLM 分类/生成只是候选，关键校验必须由已有原生规则、权限、事件/状态权威完成；具体接口与 Atomicity 由后续 E0 消费者审计证明。
+- 具体接口与 Atomicity 由后续 E0 消费者审计证明。
 
 ### 10.5 W3 候选方案（本轮供用户选择）
 
 **W3-A：封闭型世界**。只有作者预先列举的类型、关系和事件才能持久化；AI 只组织表现。游戏确定性强，但自由 RP 空间不足。
 
-**W3-B：分级约束 + 涌现世界（推荐）**。硬法则默认守护；起点事实可按因果事件演化；作者留白允许 AI 补充；低风险持续性新事实经 Native commit 自动确立；重大变化走明确效果和授权；改写法则需要特殊门槛。综合自由创作与世界一致性。
+**W3-B：分级约束 + 涌现世界（推荐）**。硬法则默认守护；起点事实可按因果事件演化；作者留白允许 AI 补充；低风险持续性新事实经 Native commit 自动确立；重大变化走明确效果和授权；综合自由创作与世界一致性。
 
 **W3-C：充分生成型世界**。除极少硬底线外，模型可自由重写实体、历史与规则，主要依赖事后纠错。创作自由最大，但故事因果、长期一致性和 Save/Branch 稳定性风险高。
 
@@ -380,10 +304,9 @@ User / NPC / AI proposes action or new detail
 2. 当作者写“帝王绝不会死亡”，这是世界硬法则、人物主观形容还是文学夸饰？机器能否仅从自然语言将其升级为硬约束？（建议必须经作者明确确认。）
 3. AI 提出的“玩家眼前新开一家旅馆”何时获得持久身份？是否仅在后续继续引用时才从场景细节晋升成实体，如何防“临时叙事反复改口”？
 4. 故事必须发生但违反作者世界法则时，是拒绝、显式授权改变、解释为误传，还是转入非正史分支？
-5. 一次重大事件牵涉多实体关系/副作用时，如何确保**只发生一次**并与叙述、分支和有效视图一致？复用现有 Native receipt / state revision，不能另造无限重试/防御性系统。
+5. 一次重大事件牵涉多实体关系/副作用时，如何确保**只发生一次**并与叙述、分支和有效视图一致？
 
 **S4 时点状态：** 当时 W1/W2 已确认、W3 尚未选择；用户随后选定 W3-B，当前状态见 §11。每轮先更新 Plan 与唯一 Record，最终定稿须由用户明确批准。
-
 
 ---
 
@@ -391,7 +314,7 @@ User / NPC / AI proposes action or new detail
 
 ### 11.1 已确认 W3-B：分级约束 + 涌现世界
 
-用户明确选定 **W3-B**：世界硬法则保护、初始事实可经因果事件更新、作者未定义的开放区域允许 AI 在授权范围内逐步补完；AI 生成事实的影响和持久性分级，重大变化须经过 Native 验证/事件提交，世界法则改变默认禁止自由执行，仅允许特别授权路径。可发生的剧情事件不要求每一次都弹人类审批。
+用户明确选定 **W3-B**：世界硬法则保护、初始事实可经因果事件更新、作者未定义的开放区域允许 AI 在授权范围内逐步补完；可发生的剧情事件不要求每一次都弹人类审批。
 
 与 W1-B / W2-B 一起作为已确认的**设计方向**，但 `E0-E3` 等级边界、具体 Schema/审核 UI、权限 API、默认启用范围与实际消费者接线**未定稿**；完整企划继续保持 Draft。
 
@@ -448,7 +371,6 @@ User / NPC / AI proposes action or new detail
 
 **当前仍为 Draft。** W5 的调度、模型预算、角色身份/认知接口、时间跳跃和跨分支缓存机制全部未冻结；不修改 main，不创建实现分支。
 
-
 ---
 
 ## 13. S7 · W5-B 已确认与 W6 NPC 社会认知/关系边界（2026-10-17）
@@ -462,7 +384,7 @@ User / NPC / AI proposes action or new detail
 - 离屏演化按游戏内时间与作用域有界结算，不默认设备关机或退出游戏后继续实时后台生成。
 - 当前 Native Simulation 的有限静态 jobs、现有 actor/perspective 入口并不能证明开放世界 NPC 已全部接入；具体统一身份和任务预算未冻结。
 
-以上不代表 API、行为默认阈值、配置 UI、E0 审计、真实三端验证或整体 Plan 已定稿。参见 [npc-autonomy.md §10](npc-autonomy.md)。
+参见 [npc-autonomy.md §10](npc-autonomy.md)。
 
 ### 13.2 当前 W6 议题：NPC 如何真正形成社会关系与主观认知？
 
@@ -471,7 +393,7 @@ User / NPC / AI proposes action or new detail
 - 例：阿洛相信米拉会出卖他，米拉实际上尊敬阿洛；这种非对称心理状态完全合法，但不能据此声称他们已经正式结盟、解除雇佣或签订契约。
 - NPC 可以听信假情报或不了解事实。有效视图应按 NPC/分支/时间/来源权限限制，HCM 可维护它的经历与误信；单一 Native Session 继续拥有世界真相。
 - 一个社交事件只有按因果与行动条件提交后，才可作为双方/其他 NPC 的外部世界变化；每个参与者的获知/接受时间又可能不同。
-- 新 NPC 的 Entity ID 与现有静态 Actor/Information actor/ToM perspective 并不天然等价，**E0 必须验证合法身份绑定的完整调用方**。不可简单让新 NPC 获得 Narrator 记忆权限，或反向修改 Package Manifest。
+- 不可简单让新 NPC 获得 Narrator 记忆权限，或反向修改 Package Manifest。
 
 ### 13.3 当前讨论入口
 
@@ -503,8 +425,7 @@ W7 专属模块：[npc-memory-information-flow.md](npc-memory-information-flow.m
 
 ### 14.3 本轮授权与状态
 
-只在 `docs` 同一 Plan Bundle / 唯一 Record 中持续讨论。W7 的身份绑定、记忆语义、消息传播事件、保密级别、延迟到达、纠错与分支一致性仍未批准；**不修改 main、不创建实现分支、不声称测试/CI/UI 验收**。用户明确确认全案后才允许标记 Approved/最终定稿。
-
+只在 `docs` 同一 Plan Bundle / 唯一 Record 中持续讨论。W7 的身份绑定、记忆语义、消息传播事件、保密级别、延迟到达、纠错与分支一致性仍未批准；用户明确确认全案后才允许标记 Approved/最终定稿。
 
 ---
 
@@ -534,7 +455,6 @@ W7 专属模块：[npc-memory-information-flow.md](npc-memory-information-flow.m
 
 **状态与边界：** W8 所有选择均待用户讨论确认；只修改 `docs`，不更改 `main`，最终定稿需用户另行明确批准。
 
-
 ---
 
 ## 16. S10 · W8-B 确认与 W9 身份及跨域引用权威（2026-10-17）
@@ -554,7 +474,7 @@ W7 专属模块：[npc-memory-information-flow.md](npc-memory-information-flow.m
 
 此次讨论的核心断点是：一个 World 里的人物可能同时拥有 authored Actor、Native World Session 主体、可选 Lifetime person、HCM evidence Entity、Cognition Perspective 和 Timeline participant，不能让多套本地 ID 变成彼此冲突的多份世界真相，也不应强迫它们变为同一个万能对象。
 
-**W9 详细候选与精确静态代码核对仅在 [entity-identity-authority.md](entity-identity-authority.md) 维护**。当前研究倾向：
+当前研究倾向：
 
 - W9-A：所有系统强制共用一个 ID 和实体对象；容易混淆 HCM 假设与 Native 客观身份。
 - **W9-B：Canonical World Subject + 受控跨域映射/投影（推荐，尚未获用户批准）**；正式持久世界对象有单一 Native 可审计主体引用，不同领域保留有权限/来源/版本的 LocalRef 和独立业务所有权。
@@ -571,7 +491,6 @@ W7 专属模块：[npc-memory-information-flow.md](npc-memory-information-flow.m
 
 **W9-B 仅为本轮建议，不因用户选择 W8-B 而自动获批。**
 
-
 ---
 
 ## 17. S11 · W9-B 已确认与 W10 定义到运行时主体实例化（2026-10-17）
@@ -581,15 +500,15 @@ W7 专属模块：[npc-memory-information-flow.md](npc-memory-information-flow.m
 用户对上一轮推荐的 **W9-B「Canonical World Subject + 受控跨域映射与投影」**回复“认同”；现将 W1-B 至 W9-B 都记为用户已确认的**顶层设计方向**：
 
 - 同一个已提交世界主体拥有稳定可追溯的 Canonical Subject；它可与 Authored Actor/World Definition、Lifetime Person、Cognition Perspective、HCM 证据 Entity 和 Timeline participant 存在**受控、具来源、分支/版本限定、可见性受约束的关联**。
-- Authored Profile/World 资源与 Session 主体有不同生命周期，HCM Entity 中的传言/未决人物不得仅因语义匹配而成为真实世界成员；世界主体身份与个人认知/自主行动资格仍须分别验证。
+- Authored Profile/World 资源与 Session 主体有不同生命周期，HCM Entity 中的传言/未决人物不得仅因语义匹配而成为真实世界成员；
 - 跨域一致不意味着所有领域强行共享一个 ID 字符串/万能对象，更不授权新建 Native SessionCore 之外的可写世界真相数据库；分支祖先已存在的主体按历史继承，分叉后的状态/秘密/映射分别有效。
-- 该决定**不构成**具体 Entity ID family、绑定 Schema、全部消费者适配、跨平台端到端验证或正式开发授权。Plan 仍是 Draft。
+- Plan 仍是 Draft。
 
 ### 17.2 W10 研究问题与当前推荐
 
 进入 W10：固定的 WorldEntityDefinition/ActorProfile 如何实例化为 Session Subject；没有预设角色卡的涌现 NPC 如何在持续互动后获得表达、受限 Cognition/HCM 视角和有界 Task/Simulation 能力；这些关系如何在分支、历史与多人秘密身份中保持真实且不越权。
 
-详细候选、源码核对与验收场景仅在同一 Plan 模块 [subject-instantiation.md](subject-instantiation.md) 维护。候选三选一：
+候选三选一：
 
 - W10-A：运行时将新 NPC 直接追加/改写 Package Actor Manifest；破坏固定创作资产与 Session 隔离。
 - **W10-B：固定定义 → Session 实例化 + 类型化能力绑定（研究推荐，W10 尚未获用户批准）**；Native 只管理正式 Subject/事件，表达模板、个人视角、生命周期记录和 Task 都通过合法绑定/投影引用，保留自由生成 NPC。
@@ -602,7 +521,6 @@ W7 专属模块：[npc-memory-information-flow.md](npc-memory-information-flow.m
 需要 E0 审计 Timeline、ActorProfile、Host/Orchestration、Cognition/Information/ToM、HCM、Lifetime、Visual/Speech、Session/Save/Branch 的全部真实调用方，确定最小、没有兼容双轨的受控 cutover。不能因设计确认就说这些功能已经实现。
 
 **状态**：W1–W9 方向已选，W10 只为候选；本轮只有 docs 文档修改，未实施代码、测试/CI 或真实三端 UI。所有接口需后续讨论后才能定稿。
-
 
 ---
 
@@ -626,10 +544,7 @@ W11 讨论不再单纯描述“应该统一身份”，而是确定哪些接口�
 
 ### 18.3 E0 现有证据及阻塞
 
-定向静态核对 `src/native/session-core.js` Timeline `actorId` 属于 `manifest.actors`、`public/shared/native-actor-profile.js` 仅作者定义、`public/shared/native-information-contract.js` assertInformationClosure 需要声明 actor 属于 manifest、`src/native/cognition-authority.js` / `tom-authority.js` 的部分权限及身份校验，以及 `public/shared/native-frontend-host.js` Message schema / `src/native/speech-service.js` / `src/native/visual-continuity.js` 仍涉及 `actorId` 或临时视觉身份；`src/native/agent-intelligence/goal-contracts.js` 的 actor Goal 也使用 Native Actor ID。**这些是部分可核验的路径，不构成全量 E0 或 E0 通过证据。**
-
-下一步要完成完整 caller/callee map、允许 Subject→表达/Perspective/Participant 的最小原生契约、版本和保密约束、上下文编译与回档安全、最终 cutover 阶段/验收规则；必须先由用户在讨论后批准设计定稿才能授权产品代码变更。当前只在 `docs` 修改方案和唯一 Record。
-
+必须先由用户在讨论后批准设计定稿才能授权产品代码变更。当前只在 `docs` 修改方案和唯一 Record。
 
 ---
 
@@ -639,23 +554,20 @@ W11 讨论不再单纯描述“应该统一身份”，而是确定哪些接口�
 
 用户对上一轮明确推荐的 **W11-B「Typed Subject / Participant / Perspective + Native Host Capability Resolution」**回复“认同”，故 W1-B 至 W11-B 均为当前已获用户确认的**顶层架构方向**。世界 Subject、表达 Actor Profile、私人受限 Perspective、正式对话/事件 Participant 有不同含义，通过现有单 Native Host 结合 Session/Branch/Revision/受众合法解析；按实际调用方最小重构，不能新建平行可写真相权威、不能将旧 Actor 全域一体化、不能用 Narrator 代演来冒充事实写入。
 
-该确认**不意味着**用户已批准精确字段/ID family、受众动态签发实现、事务边界、UI、E0 全消费者审查结论、任何跨端验收或正式开发。
-
 ### 19.2 进入 W12：接口级 E0 与硬切边界
 
-W12 的**唯一详细模块**为 [e0-consumer-cutover.md](e0-consumer-cutover.md)，包括已核对生产源码路径、Source-of-Truth/Consumer Matrix、Native World event / state / Receipt / Timeline 出版事务、游戏时间有效期、Save/Branch/认知隔离、世界/知识创作 UI 以及分阶段 Cutover 的候选 Gate。不要把它写成另一份独立 Plan 或已完成审计。
+不要把它写成另一份独立 Plan 或已完成审计。
 
 W12 方案暂列：
 - W12-A：不先完成实际 E0 便大范围同时重写所有领域 Schema，消费者漏改和事务一致性风险高；
-- **W12-B：E0 证据驱动的原生硬切 + 单权威提交收口（研究推荐，尚待用户选择）**；先实际查清生产调用方和权威来源，必要最小 Native 合约原子接线，最后清退旧双轨；明确时态、分支、受众与端上验收阻塞；
+- **W12-B：E0 证据驱动的原生硬切 + 单权威提交收口（研究推荐，尚待用户选择）**；先实际查清生产调用方和权威来源，必要最小 Native 合约原子接线，最后清退旧双轨；
 - W12-C：为了老数据长期维持新的 World Subject 与旧 Actor/World/Knowledge 并行的真相或兼容引擎，不适合当前 Dev 项目。
 
 ### 19.3 已有证据不是 E0 通过
 
-定向读 `src/native/repositories/session-repo.js`：`commitSnapshot` 的现有资源事务负责 immutable dependencies/commit receipt/expectedRevision/Session root 发布；`public/scripts/native/experience/world/session.js` 的 `commitEvents` 同步 World State 和 Game Runtime Journal 的 state patch。**但所有 Narrative + Task/Authority + World Effects/Cognition 的具体端到端原子性尚未核验**，不能从两处代码直接推断全域一致。当前 `public/shared/native-chronicle-host.js` 的世界视图主要围绕特定 Lifetime 查询，尚非通用可任意游戏规则使用的 World Entity 时态 Inspector；`public/scripts/native/world-editor.js` 仍以 World revision `schema/baseline` 等为主。W12 必须同时考虑 Library/Studio/Play 的实际消费重构，而非只写新的数据类型。
+定向读 `src/native/repositories/session-repo.js`：`commitSnapshot` 的现有资源事务负责 immutable dependencies/commit receipt/expectedRevision/Session root 发布；`public/scripts/native/experience/world/session.js` 的 `commitEvents` 同步 World State 和 Game Runtime Journal 的 state patch。当前 `public/shared/native-chronicle-host.js` 的世界视图主要围绕特定 Lifetime 查询，尚非通用可任意游戏规则使用的 World Entity 时态 Inspector；`public/scripts/native/world-editor.js` 仍以 World revision `schema/baseline` 等为主。W12 必须同时考虑 Library/Studio/Play 的实际消费重构，而非只写新的数据类型。
 
-W12 本轮继续**仅更新 docs 同一 Plan 和唯一 Record，保持 Draft，不创建实现分支、不修改 main、未执行 E0 完整审计或跨端测试**。后续用户明确选择 W12 后下一轮才按协议写回已确认方向和讨论更细 Gate。
-
+后续用户明确选择 W12 后下一轮才按协议写回已确认方向和讨论更细 Gate。
 
 ---
 
@@ -663,7 +575,7 @@ W12 本轮继续**仅更新 docs 同一 Plan 和唯一 Record，保持 Draft，�
 
 ### 20.1 已确认 W12-B
 
-用户对上一轮推荐的 **W12-B「E0 证据驱动的原生硬切 + 单权威提交收口」**回复「认同」。W1-B 至 W12-B 现为已确认的**顶层方向**。这项决策要求在未来正式实施前先对真实生产消费者、写入入口、契约权威和旧路径做完整 E0 审计；开发目标是利用**现有 Native Host/Session/Branch/Revision**受控提交，并在可验证后完成无长期兼容双轨的原生 cutover，而非再建一套可写 World/Actor/Knowledge/Memory DB。
+用户对上一轮推荐的 **W12-B「E0 证据驱动的原生硬切 + 单权威提交收口」**回复「认同」。W1-B 至 W12-B 现为已确认的**顶层方向**。这项决策要求在未来正式实施前先对真实生产消费者、写入入口、契约权威和旧路径做完整 E0 审计；
 
 **重要界限**：选择 W12-B 仅批准这种审查与切换方向，**没有**批准任何具体新 ID/Schema、全量 E0 通过、发布/事务范围已经满足目标、改动产品代码或切换实施分支。完整企划仍是 Draft。
 
@@ -685,7 +597,6 @@ W12 本轮继续**仅更新 docs 同一 Plan 和唯一 Record，保持 Draft，�
 - W13-C：另建平行 Event Store/Temporal DB 并异步对齐 Native；会造成双权威和分支/持久化故障窗口，不适合当前 Dev 原生硬切目标。
 
 `SessionRepo.commitSnapshot` 的现有同事务发布和 `world/session.js` `commitEvents` 的 state patch 为**可利用的事实基础**；但所有 Story Turn/NPC 自主演化/Task/World/Timeline/Cognition 端到端是否原子发布、通用有效时间和历史更正能否查询依旧是 E0 阻塞。当前**只修改 docs**，未开展实际代码变更、Node/CI/真机测试。用户若认可 W13 方向，下一轮依讨论协议先更新原 Plan/唯一 Record，再进入 World/Knowledge Effective View、Library/Studio/Play 与真正剩余 E0 Gate 的讨论。
-
 
 ---
 
@@ -720,10 +631,9 @@ W12 本轮继续**仅更新 docs 同一 Plan 和唯一 Record，保持 Draft，�
 - **W14-B：Effective World View First + Claim/Source-Aware Context（研究推荐，尚未获批准）**；在现有 Host 中先得到受众安全的当前/历史/法则/Claim 有效投影，再按用途检索 World/Knowledge/HCM；可变声明的真假/有效期不能靠文本排名决定；
 - W14-C：让 LLM 每轮重写新的“最新世界书”作为权威；会篡改作者资料、产生双真相和长会话成本。
 
-当前 `knowledge-runtime.js` 已定义来源权威排序、State Conditions/Exclusive Group 和有限的 memory conflict filtering；`context-compiler.js` 已有 `current_state_event`、`knowledge`、`memory` 等预算 lane，当前部分情况下将完整 `atri_world_state` JSON 和已选知识正文一起纳入 Context。**Rank/priority 并非通用自然语言事实语义验证器**，且 Library/Studio 编辑器仍以 Source/JSON 资源为主。这些静态代码事实为 W14 设计基础，不能冒称当前已有通用、按任意实体时态/角色视角的 Effective World View。
+当前 `knowledge-runtime.js` 已定义来源权威排序、State Conditions/Exclusive Group 和有限的 memory conflict filtering；`context-compiler.js` 已有 `current_state_event`、`knowledge`、`memory` 等预算 lane，当前部分情况下将完整 `atri_world_state` JSON 和已选知识正文一起纳入 Context。这些静态代码事实为 W14 设计基础，不能冒称当前已有通用、按任意实体时态/角色视角的 Effective World View。
 
 **W14 待用户决定；W15 还需 E0 完整 Source-of-Truth/ABI/Consumer/Deletion/Gate 收口，所有真实客户端与实施仍为阻塞**。仅 docs 同一 Plan Bundle/唯一 Record 被更新，不创建实现分支。
-
 
 ---
 
@@ -731,31 +641,17 @@ W12 本轮继续**仅更新 docs 同一 Plan 和唯一 Record，保持 Draft，�
 
 ### 22.1 已确认 W14-B
 
-用户明确认可上一轮推荐的 **W14-B「Effective World View First + Claim/Source-Aware Context」**。目前 **W1-B 至 W14-B 均属于已获用户选择的顶层设计方向**；完整企划仍为 **Draft**，并未批准具体 Projection API、Claim/Fact/Persona Schema、代码实现、E0 完整审计或三端验收。
+用户明确认可上一轮推荐的 **W14-B「Effective World View First + Claim/Source-Aware Context」**。目前 **W1-B 至 W14-B 均属于已获用户选择的顶层设计方向**；
 
 W14-B 的稳定原则：在现有 Native Host 的受众合法只读投影上先识别固定 Hard Law、初始但可变事实、已提交当前/历史事实、Source Claim 和私人 Belief，再把有关的自由文本/Knowledge/HCM 来源按有效性、来源、时态、场景与权限带入 Context/Library/Studio/Play。Context rank/关键词激活不等于自然语言事实失效；作者原始资料不可被 Play 覆写，真正硬法则不能被低权限事件突破。详细确认见 [effective-world-view.md §10](effective-world-view.md)。
-
-### 22.2 W15 核心目标：使既定方案有可核验的实施边界
-
-此轮不再扩展新的平行世界架构，集中审查 **哪份数据由谁写入、哪些真实生产消费者读取、目标合同如何与现有 Native SessionCore/Knowledge/Information/HCM/Context/Media/Frontend 融合、哪些旧 actorId/world-info/Orchestrator 适配需要根据活入口证据进行清退**，以及开发前/实施期应分别取得什么验收证据。
-
-完整 Source-of-Truth/Owner/Consumer/Contract/Deletion 表、实际 main 静态代码探针、E0-01～09 未解决阻塞和 Gate 0～4 只维护在 [e0-final-closure.md](e0-final-closure.md)，它是同一 Plan Bundle 的 W15 子模块，不创建另一个 Plan 或 Record。
-
-**当前特别明确的代码事实与局限**：
-- `knowledge-runtime.js` 既有 rank/部分状态条件；`context-compiler.js` 将当前 `atri_world_state` 与原始知识正文分 lane 输入。这并未证明旧文本被语义级淘汰。
-- `SessionCore/SessionRepo` 有 CAS/Receipt/Revision 发布基础，但不能在未审真实调用链前宣称所有 World Effect/Narrative/Participant/Cognition 都处于相同原子提交。
-- `actorId` 仍贯穿 Timeline/Information/Frontend/Play/Speech/Visual；HCM/Lifetime 另有本地身份；动态 Subject 的类型化接线须逐个消费者证明，而非盲目字段替换。
-- `public/scripts/atri-world-info-*`、`agents/orchestrator/legacy-*` 和 `native/knowledge-prompt-channels.js` 等源码仍存在。静态搜索发现部分 Legacy Orchestrator 生产引用，但**不能因此声称所有旧 World Info/Orchestrator 路径都正活跃**；应按真实 call graph 分类保留/替换/删除，不能为硬切误杀现役插件能力。
-- 本次 GitHub 远端代码搜索有条数上限、多文件读取不在同一个固定 `main` commit 快照，且未运行 Node、CI、UI 或 Windows/CachyOS/Android Termux；**E0 是 PARTIAL / BLOCKED，不是 PASS**。
 
 ### 22.3 W15 候选路线及审批边界
 
 - W15-A：直接把十四轮方向性决策当作 E0 完成、标记 Final 并创建实现分支，当前缺可靠消费者/事务/权限证据，不推荐。
-- **W15-B：以证据门槛 E0 收口并形成可执行交接清单（研究推荐，尚未获用户批准）**。逐项获得完整固定 HEAD 的真实生产调用图、Authority/Contract/Consumer/Deletion 与权限/时态/存档/跨端验收门槛，审明实际阻塞，最后再向用户申请全案定稿与开发授权。
+- **W15-B：以证据门槛 E0 收口并形成可执行交接清单（研究推荐，尚未获用户批准）**。
 - W15-C：仅继续抽象设计而不建立退出 Gate，会扩大范围并让方案长期无法交接，不推荐。
 
-**重要**：此轮只确认 W14-B。W15-B 仍是助手推荐；E0-01～09 和目标 API、业务归属/清退表/验证计划没有被宣布已通过。下轮讨论 W15 后仍需完整 E0/最终交接审计，才能决定正式实现前置条件。当前只修改 `docs`，不修改 `main`。
-
+**重要**：此轮只确认 W14-B。W15-B 仍是助手推荐；下轮讨论 W15 后仍需完整 E0/最终交接审计，才能决定正式实现前置条件。当前只修改 `docs`，不修改 `main`。
 
 ---
 
@@ -765,7 +661,7 @@ W14-B 的稳定原则：在现有 Native Host 的受众合法只读投影上先�
 
 用户对上一轮推荐的 **W15-B「证据门槛式 E0 收口 + 可执行交接清单」**回复「认同」，因此 **W1-B 至 W15-B 都属于已获用户选择的设计/收口方向**。W15-B 确认在开发前按真实 HEAD 和生产 Consumer/Owner/Schema/Deletion 形成明确阻塞及交接表，并针对必要的安全、时态、分支和端上证据设置 Gate；它**没有**授权新实现分支、修改产品代码、批准具体 API/Schema、宣布 E0 完成或整份方案 Final。
 
-E0-01～09 依旧 **PARTIAL / BLOCKED**。W15 的完整方法、E0 问题及验收 Gate 见 [e0-final-closure.md §8](e0-final-closure.md)，当前不新建第二 Plan 或 Record。
+E0-01～09 依旧 **PARTIAL / BLOCKED**。
 
 ### 23.2 W16：精确 HEAD 下的真实新接口
 
@@ -786,13 +682,12 @@ Prompt Preset 分支的 `prompt-compiler.js` `worldUsePolicy / memoryUsePolicy` 
 ### 23.3 W16 待选方案及实际阻塞
 
 - W16-A：仅按当前 main 的旧生成链冻结 World/Prompt ABI，忽略并行 V3/Prompt 分支接口；合流冲突大。
-- **W16-B：跨分支锚定 E0 + 优先锁定 Native Domain/Context/Receipt 所有权，再冻结世界最小接口（本轮推荐，尚未获用户确认）**。依实际接口冲突重验最新集成 HEAD，先完成 World Subject/Fact/Capability 的单权威与编排/Prompt 的消费边界，形成真实入口/调用/清退表，拒绝并行适配真相；不要求等待全部无关分支完成。
+- **W16-B：跨分支锚定 E0 + 优先锁定 Native Domain/Context/Receipt 所有权，再冻结世界最小接口（本轮推荐，尚未获用户确认）**。不要求等待全部无关分支完成。
 - W16-C：为了同时支持旧 main/新 V3/Prompt 保留长期多层兼容适配，将引入多权威与变更成本。
 
-特别明确：旧 `worldInfo*`、旧 Orchestrator 代码的源码存在不能证明全部模块正活跃；某些旧 Adapter 仍有生产引用，**需要在固定目标集成 HEAD 下核对合法消费者再决定保留/替换/删除**。本轮没有足够证据把任何产品文件标为立即删除。V3/Prompt 也尚未合入 main，不能伪称当前产品已经具有其新增接口。
+特别明确：旧 `worldInfo*`、旧 Orchestrator 代码的源码存在不能证明全部模块正活跃；本轮没有足够证据把任何产品文件标为立即删除。V3/Prompt 也尚未合入 main，不能伪称当前产品已经具有其新增接口。
 
 **本轮工作边界**：只修改 `docs` 的同一 Plan Bundle 和唯一 Record；不开实现分支、不更新产品代码、不运行 CI/Node/E2E/Windows/CachyOS/Termux。若用户后续批准 W16-B，下一阶段应明确最小 Interface/Native Publication/有效视图接线与 E0-06 的全消费者实际审查完成要求，不机械延长抽象选型轮次。全案仍保持 Draft。
-
 
 ---
 
@@ -809,10 +704,10 @@ W16-B 强调在锁定当前 main、Native Orchestration V3、Prompt Preset、Vis
 本轮进一步在明确的 main/V3/Prompt SHA 下读具体函数：
 - `SessionCore.finalizeTurn` 的某些 `authority-first` 路径，在已有 Domain Authority Candidate 上准备并将 State 与 Narrator Timeline entry 一起交由 `_publish`；`_publishLocked` 生成 Revision、Action/Task Receipts 并使用 `SessionRepo.commitSnapshot` 发布。
 - `public/scripts/native/experience/world/session.js` 的 `commitEvents` 会使用 Native `commitStatePatch` 原子提交 **World State + Game Event Journal 的候选 patch**，但它不是“所有 Narrative/World/Task 自动共享一次提交”的证明。
-- V3 `native-turn-orchestration.js` 的 `#commitSessionOutput` 根据 `sessionCore.finalizeTurn` 和原 Domain Receipt 校验正式效果；`effect-controller.js` `prepare/ready/claim/observe` 只是编排流程结果观测。编排 Effect Receipt **≠** World 事实注册。
-- V3 `context-port.js` 持有 SourceBinding/Audience/Grant/Token Budget、Memory 授权和异步完成后再验证，当前还会调用 `compileNativeContextPlan`；Prompt Preset `prompt-compiler.js` 有证据/历史使用 policy 和 semanticBlocks，但这些不是事实或可见性授权接口。
+- `effect-controller.js` `prepare/ready/claim/observe` 只是编排流程结果观测。编排 Effect Receipt **≠** World 事实注册。
+- Prompt Preset `prompt-compiler.js` 有证据/历史使用 policy 和 semanticBlocks，但这些不是事实或可见性授权接口。
 
-**关键设计缺口**：`World Subject admission + World Fact/Epoch + Participant + Cognition + committed narrative` 的完整开局/涌现 NPC 跨业务路径合约尚未在生产代码中被证明闭合；动态 Perspective 仍有 Manifest Actor 限制；通用世界双时间查询与 Source Claim 适用性未实际验证。上述局部静态读取不能声称 E0 完全通过。
+**关键设计缺口**：`World Subject admission + World Fact/Epoch + Participant + Cognition + committed narrative` 的完整开局/涌现 NPC 跨业务路径合约尚未在生产代码中被证明闭合；动态 Perspective 仍有 Manifest Actor 限制；上述局部静态读取不能声称 E0 完全通过。
 
 ### 24.3 W17 的唯一详细模块、候选选择
 
@@ -822,8 +717,7 @@ W17 详细 Source/Owner/Receipt/Read-Projections/Context Binding/候选 ABI、�
 - **W17-B「Domain-first Commit + Revision-anchored Authorized Effective Projection」（本轮推荐，用户尚未确认）**：让 World Subject/事实通过现有 Native Domain Session/Revision/Receipt 变更；让 Orchestration Run/Effect 消费原领域收据和执行证据；有效世界只读视图按合法 Branch/Revision/GameTick/Audience 向 V3 ContextPort/Context Compiler/Prompt 分层提供事实/历史/认知/Source Claim；最小补充确实缺失的身份、参与者和时态接口。
 - W17-C：从 Prompt/LLM 自由语义判断推断新的 World Fact，违背来源及写入权限。
 
-**W17-B 当前是推荐方案，不是用户已批准决定。** E0-01～09 仍为 PARTIAL / BLOCKED，`main` 及活动分支全部保持原样；本轮只修改 `docs` 同一企划与唯一 Record，不运行 CI/测试/真实 UI/三端验收。
-
+**W17-B 当前是推荐方案，不是用户已批准决定。** E0-01～09 仍为 PARTIAL / BLOCKED，`main` 及活动分支全部保持原样；
 
 ---
 
@@ -831,12 +725,12 @@ W17 详细 Source/Owner/Receipt/Read-Projections/Context Binding/候选 ABI、�
 
 ### 25.1 W17-B 正式确认
 
-用户对上一轮明确推荐的 **W17-B「Domain-first Commit + Revision-anchored Authorized Effective Projection」**回复「认同」。**W1-B 至 W17-B 均获总体方向确认**，但整体企划仍为 **Draft**，尚未批准物理 ID/Schema、所有 API、生产代码切线、E0 完整验证与开发实施。
+用户对上一轮明确推荐的 **W17-B「Domain-first Commit + Revision-anchored Authorized Effective Projection」**回复「认同」。
 
 确认的硬边界：
 - 只有现有 Native Session/Domain Authority 能正式提交 World Subject、Fact/Relation、有效 Event/State 和 Domain Receipt，Orchestration V3 的 Plan/Run/Effect 负责执行与观察凭据，Prompt 的 Effective/Wire 只负责已获授权来源的表达。
 - `World Game reducer.commitEvents` 与 `SessionCore.finalizeTurn` 各有现存合法事务，但**跨两条独立调用路径的全局原子提交尚未证明**。具有持续效果的对话/世界事件在正式发表前应以原 Domain Receipt/Revision 为依据，不用模型文本或编排 Effect `confirmed` 冒充世界事实。
-- Host-owned Effective World 是受限只读投影，按确切 Session/Branch/Revision/GameTick/Source/Audience/Scope 构建，经 V3 `ContextPort` SourceBinding/Grant/Currentness 校验后传入 Knowledge/HCM/Context Compiler；Prompt 不获得额外秘密权限或写权。
+- Prompt 不获得额外秘密权限或写权。
 - 最小类型按真正缺口加入，不建立独立 FactStore/EntityRegistry/万能 Adapter；固定作者角色卡仍是资源，不因新 NPC 出现而由 Play 修改 Package Manifest。
 
 ### 25.2 W18 已定位的实际 Schema 约束
@@ -844,21 +738,19 @@ W17 详细 Source/Owner/Receipt/Read-Projections/Context Binding/候选 ABI、�
 本轮以同一冻结的 `main=c57fada6edeea255b29d857ba2585c1dbc9c098b` 与 V3/Prompt 分支 SHA 读取更多实际合约：
 
 - `src/native/identity.js` 现在未定义独立 World Subject ID family（已有 Actor/World/Session/Branch/Revision）；如何分配 `SubjectRef` 必须由 E0 确认，不能假称 `subject_*` 已存在。
-- `src/native/contracts.js` `assertTimelineEntry` 校验可选 `actorId` 为 `actor_*`；`SessionCore._newEntry` 还约束其必须属于 Package Manifest；`native-frontend-host.js` `MESSAGE_SCHEMA`、`play-product.js`、`speech-service.js` 和 `visual-continuity.js` 均依赖相关身份/表达。需要拆分真实 Participant 与 AuthoredActor Expression，而**不是所有 actorId 全局字符串替换**。
+- `SessionCore._newEntry` 还约束其必须属于 Package Manifest；`native-frontend-host.js` `MESSAGE_SCHEMA`、`play-product.js`、`speech-service.js` 和 `visual-continuity.js` 均依赖相关身份/表达。需要拆分真实 Participant 与 AuthoredActor Expression，而**不是所有 actorId 全局字符串替换**。
 - `native-information-contract.js` `assertInformationClosure` 强制 Actor 属 Manifest，动态 NPC 不会自动合法拥有 Perspective；`native-information-runtime.js` 对未声明 Actor 判 unavailable，Source/Scope Epoch 与受众权限应复用而非跳过。
 - `src/native/world-knowledge.js` `WorldRevision` 和 `KnowledgeEntry` 还没有通用 FactKey/valid interval 语义；`native-chronicle-host.js` 的 `WORLD_QUERY` 只是特定 Lifestyle/History/World View 类别，不能宣称已提供任意 Subject 的双时间 as-of 查询。
-- V3 `ContextPort` 已明确 `sourceBinding/audience/grantDigest/tokenBudget` 并在 Memory/Context 编译后复核；Prompt 分支的 worldUsePolicy/semanticBlocks 是语义/编译层而非世界事实签发权威。
+- Prompt 分支的 worldUsePolicy/semanticBlocks 是语义/编译层而非世界事实签发权威。
 
 完整逐代码 old→target/retain/replace/investigate、最小逻辑类型、测试目标与 W18-A/B/C 候选**只在** [e0-minimal-contract-cutover.md](e0-minimal-contract-cutover.md) 维护，避免总设计与专题重复。
 
 ### 25.3 W18 方案待选
 
 - W18-A：立即冻结一整套全新 ID/Schema，忽略有界缺口和未合入消费者，易创建冗余模型和后续重构。
-- **W18-B：差异最小的 Typed ABI + 实际消费者验收驱动硬切（推荐，尚未获用户确认）**。先定清楚 Subject/Participant/Expression/Perspective/Fact/EffectiveRead 的语义及唯一 Domain Owner，再以最终真实集成 HEAD 定义最少新增字段/合同并逐消费者验证，保留作者自由文本、既有权限/Receipt/History，清退确证的旧权威，不保留旧数据兼容双轨。
 - W18-C：为旧/新全部 ID 造万能 SubjectAdapter，长期保持新旧语义混合，与 W12/W16 已确认的单权威冲突。
 
-**E0-01～09 仍 PARTIAL / BLOCKED**。以上均为 GitHub 静态代码审查及 docs 文档调整，没有运行 CI、Node、浏览器或 Windows/CachyOS/Termux 实测，未修改 `main` 或开发分支。若用户后续选择 W18-B，下一阶段应转为真正的 Gate 0 最终消费者/字段 cutover 审计与通用有效期合约验证，不无限延长抽象架构讨论。
-
+**E0-01～09 仍 PARTIAL / BLOCKED**。以上均为 GitHub 静态代码审查及 docs 文档调整，没有运行 CI、Node、浏览器或 Windows/CachyOS/Termux 实测，未修改 `main` 或开发分支。
 
 ---
 
@@ -866,22 +758,7 @@ W17 详细 Source/Owner/Receipt/Read-Projections/Context Binding/候选 ABI、�
 
 ### 26.1 用户确认 W18-B（总体架构方向，非物理 API 冻结）
 
-用户对上一轮推荐 **W18-B「差异最小的 Typed ABI + 实际消费者验收驱动硬切」**明确回复「认同」。因此 W1-B～W18-B 为已确认总体方向，重点是：**Subject/Participant/Expression/Perspective/DurableFact/EffectiveRead 的语义分离 + 原生单 Domain Authority + 以实际消费接口差异和可信验收为依据的硬切**。不因架构概念数量而增加同等数量的数据库、服务或 ID family；只有对照现有版本证明缺口才能添加。
-
-W18-B 不是批准具体 `subject_*`、`participantRef`、FactKey/valid-time 字段、Command 或 Host ABI、旧生产代码删除，也不代表 E0-01～09、三端真实验收或正式开发已获批准。
-
-### 26.2 W19：对原生物理数据和通用 as-of 查询的更具体核对
-
-本轮冻结的 `main=c57fada6edeea255b29d857ba2585c1dbc9c098b` 与 Orchestration V3/Prompt/Visual 分支 HEAD 未改变；定向源码审读新增了：
-
-- `SessionCore.initialWorldState` 支持 `worlds[worldId].{worldRevisionId,state}`、多 World/可选 primary 和 Worldless `initialState`。正式动态主体不可天然等同某一书籍的名称或作者 Actor 模板。
-- `atri_game_runtime.events` 当前 Event 具有 branch/sequence/type/payload 和可选 meta，`commitEvents` 将其与 World State 一起提交；`_publishLocked` 的 Action Receipt 在合格情形下记录 `committedRevisionId/branchId/eventRefs`。**Event payload 并未证明已经有通用 FactKey、游戏有效期、最终修订和来源的可查询联接**。
-- 在 `authority-first` 环境，`SessionCore.applyRuntimeCommit` 明确阻止对 `atri_world_state / atri_game_runtime` 的不合法 Raw Patch，抛出 `native_authority_typed_publication_required`。**该权限边界应保留**；不能以“补一个开放世界写 API”为名绕过原生领域准备/提交。
-- `atri_lifecycle.history.facts/heads` 现有特定领域 `key/value/tick/eventId/previousId` 的结构与来源，`queryHistory` 仅接受 `kind/facet/value/id/limit/cursor/memory`，并将 Cursor 锚定当前 Snapshot Revision。不能声称已提供任意 `asOfGameTick/asKnownRevision` 的通用查询；应先查询准确旧 Revision，再在合法的 Domain facts/transitions 上按 GameTick 判有效。
-- `state-delta.js` 已经为 `atri_world_state` 提供 Snapshot/Delta 与深度控制。其存在不等于旧 Revision 永久保留，也不能仅靠二进制差分猜测某条事实的客观有效期或某 NPC 何时得知。
-- `src/endpoints/native-session.js → SessionCore.applyRuntimeCommit`、`experience/logic/runtime.js → world/session.commitEvents → session-runtime.commitStatePatch`、`authority-transaction.js → SessionCore publication` 等实际生产符号路径已定位，但由于尚未穷尽动态插件/集成分支的完整调用图，**E0-06 仍是 PARTIAL/OPEN**。
-
-W19 的物理候选、查询算法轮廓、真实调用边界、Gate 0 和实施后 Gate 1～4 的区别均只在 [e0-gate0-physical-contracts.md](e0-gate0-physical-contracts.md) 维护。特别注意**开发前 Gate 0 要求可实施的 ABI/Owner/Consumer/删除及测试计划，而尚未编写的新功能的 Node/CI/三端实测只能在正式实施后完成**；不能陷入“要求先实测未实现功能才可写代码”的逻辑循环。
+不因架构概念数量而增加同等数量的数据库、服务或 ID family；只有对照现有版本证明缺口才能添加。
 
 ### 26.3 W19 待议方向
 
@@ -891,27 +768,24 @@ W19 的物理候选、查询算法轮廓、真实调用边界、Gate 0 和实施
 
 W19 仍为用户待选方案；本阶段未修改 `main` 或其它代码分支，未运行测试/CI/Windows/CachyOS/Android Termux，E0-01～09 仍 PARTIAL / BLOCKED。用户若选择 W19 后，下一轮应评估 Gate 0 是否已具备可执行交接条件，以及最终物理字段/Owner/Consumer 的剩余最小阻塞，不继续平行扩建架构。
 
-
 ---
 
 ## 27. S21 · W19-B 确认与 W20 受保护物理契约及 Gate 0 工程分包（2026-10-17）
 
 ### 27.1 W19-B 正式确认
 
-用户对第十九轮明确推荐的 **W19-B「Session 原生最小 Subject + 来源型 Fact Transition / Revision-Tick 双锚查询 + Gate 0 证据收口」**回复「认同」。现在 W1-B 至 W19-B 均是用户已确认的**架构方向**，并不代表具体物理字段/历史 API、E0 完整验收、Schema/工程实现和全案定稿已批准。
+用户对第十九轮明确推荐的 **W19-B「Session 原生最小 Subject + 来源型 Fact Transition / Revision-Tick 双锚查询 + Gate 0 证据收口」**回复「认同」。
 
 - 已确立持续世界后果的主体身份由现有 Native Session/Domain Authority 拥有；关键事实应有可追溯 Event/Fact transition 与正确的有效时间，已有 Domain State、Native Event/Action Receipt、History/Clock/Revision 应尽可能复用，不建平行可写 EventStore/FactStore。
-- 查询先核对合法 `Session/Branch/asKnownRevision` 和 Snapshot 保留/祖先，再按具体 Domain 声明的 `asOfGameTick`/有效期投影事实，最后按真正的 Perspective/Source Grant 输出；没有 GameClock 的纯叙事不可伪造 Tick。
-- 开发前 Gate 0 应冻结实际调用图/接口 Owner/旧路径切换和测试计划，实施后 Gate 1～4 才实际运行新增功能的 Node/DB/UI/三端/长会话验证，避免“尚未实现先实测”的循环。
+- 没有 GameClock 的纯叙事不可伪造 Tick。
 - 物理 Namespace/ID family/查询 Schema 及开发分支**仍未获批准**，整体 Plan 继续 Draft。
 
 ### 27.2 W20 新的必要安全发现（main 固定 SHA 静态审查）
 
 本轮仍以 `main=c57fada6edeea255b29d857ba2585c1dbc9c098b` 及 V3/Prompt/Visual 未合入 SHA 对照，额外查看：
 
-- `src/native/session-snapshot.js` 明确枚举 `RESERVED_SESSION_NAMESPACES`，`SessionCore.applyRuntimeCommit` 以 `validateRuntimeStateChanges` 阻止直接覆写这些命名空间。**若新增 Session `atri_world_subjects` 等物理区，必须同时纳入全模式 Reserved/Typed Authority validation 和 Save/Restore/GC/Domain publication 的可信链**，否则建立新 Raw Patch 后门。若在 `atri_world_state` 根加受保护子树，也需要审查现有 Game reducer/普通 State Patch 路径的权限，而不是默认已有 `authority-first` guard 就保护一切模式。
 - `SessionCore._publishLocked` 与 `SessionRepo.commitSnapshot` 把多个 Session State namespace 的 Heads 一起写进单 Revision，提供强一致基础；`save-system.js` 遍历 `revision.stateHeads` 及 Branch/Revision ancestry，`state-delta.js` 只为 World State 提供专用压缩。选择不同物理布局会影响 Save/Restore/GC 和长会话成本。
-- `history-authority.js` `validateHistory` 对声明域、可见性、大小/来源做严格检查，不宜让所有 Worldless/NPC 强行写入 `atri_lifecycle.history`；`native-history-runtime.js.queryHistory` 无通用 `asOfGameTick`，已确认要在 exact Revision 读取后再进行受 Domain 约束的时间投影。
+- `native-history-runtime.js.queryHistory` 无通用 `asOfGameTick`，已确认要在 exact Revision 读取后再进行受 Domain 约束的时间投影。
 - GitHub 默认分支搜索定位了 `src/endpoints/native-session.js → SessionCore.applyRuntimeCommit`、`experience/logic/runtime.js → WorldSession.commitEvents → Runtime.commitStatePatch`、`authority-transaction.js` 的 Typed Prepare 与 SessionCore Publish、`frontend/host-services.js → readWorldView/readChronicle`、Play/Context/Knowledge 的真实**符号级**消费者；但未做动态插件/未合并分支完整 AST/运行时审计，E0-06 仍 OPEN。
 
 ### 27.3 W20 讨论的具体物理选型与推荐路线
@@ -924,7 +798,6 @@ W19 仍为用户待选方案；本阶段未修改 `main` 或其它代码分支�
 
 **当前 W20-B 仅是建议，不得视为用户决定。** E0-01～09 仍 PARTIAL / BLOCKED；所有 CI/真实 UI/Windows/CachyOS/Android Termux 证据未运行。若确认下一步应直接开展**最后的 Gate 0 执行前置审计/交接清单**，不继续无限拆概念；整个 `ARCH-DWE-01` 仍为 Draft，未授权修改产品代码。
 
-
 ---
 
 ## 28. S22 · W20-B 确认与 W21 最终 Gate 0 交接前审查（2026-10-17）
@@ -933,29 +806,24 @@ W19 仍为用户待选方案；本阶段未修改 `main` 或其它代码分支�
 
 用户对上一轮明确推荐的 **W20-B「受保护 Session-owned Identity + Domain-owned Fact transitions / Two-anchor Query + Consumer Work Packages」**回复「认同」。因此 W1-B～W20-B 的**总体设计路线**已获明确确认，但整份企划仍 **Draft**、E0-01～09 **PARTIAL / BLOCKED**，不表示具体物理 Schema/ABI 已获批准、Gate 0 完成或开始开发的授权。
 
-这项确认确定：世界 Subject 的原生身份只能通过受保护 Typed Native Domain Session Revision 的合法写入口创建、变更合法可引用的 Origin/Scope；原交易/关系/生命周期/历史等业务 Domain 继续拥有其事实；双时间查询先核对合法 Revision/Branch 再根据声明时钟查询 Fact 有效时间并按合法受众裁剪；WP-A～F 必须跟踪真实生产消费者并做无长期兼容双轨的原生切换。**P1/P2 原生物理布局尚未选择**。
+这项确认确定：世界 Subject 的原生身份只能通过受保护 Typed Native Domain Session Revision 的合法写入口创建、变更合法可引用的 Origin/Scope；原交易/关系/生命周期/历史等业务 Domain 继续拥有其事实；WP-A～F 必须跟踪真实生产消费者并做无长期兼容双轨的原生切换。**P1/P2 原生物理布局尚未选择**。
 
 ### 28.2 W21 本轮具体证据：P2 是优先候选而非“第二数据库”
 
-已在相同冻结的 `main=c57fada6edeea255b29d857ba2585c1dbc9c098b` 继续核验：
-
-- `SessionCore.validateRuntimeStateChanges` 按 `RESERVED_SESSION_NAMESPACES` 拒绝 Generic Runtime Patch；`applyRuntimeCommit` 的 Authority-first 禁止非 Typed World patch，不能推断 P1 的 World Root 所有游戏模式都已保护新身份子树。
-- `SessionRepo.commitSnapshot` 将各 `SessionRevision.stateHeads` 中的状态资源作为同一 Native Session commit；`readSessionSnapshot` 动态读取所有 State Heads 并检验哈希；`save-system.portableNamespace` 保留非缓存状态并沿 Revision/Branch 闭包构造存档。
-- `SessionRepo.reachabilitySnapshot` 从保留的 Revision 读取 `stateHeads`、标记状态文件及依赖，`session-maintenance.js` 处理 `sessionState` GC；`loadSnapshot` 在请求旧 Revision 时进行可达性验证。因此 P2 可作为**同一 Revision 下受保护的一个原生状态文档**而非并行 World Truth DB。但它必须新增业务合法性 Validator/Typed Writer/初始化和切档 Scope 检查，且通用 State 不享受 `atri_world_state` 独有的 Snapshot/Delta 压缩。
-- `SessionCore.updateResources` 可能替换 WorldSelection 并按匹配的 WorldRevision 保留旧 World slot：P1 位于 World Root 中时尤其需要核对 Subject identity 是否被初始状态重建无声抹除；P2 则需要证明 World Scope 解绑/变更不留下非法关联。
+- `applyRuntimeCommit` 的 Authority-first 禁止非 Typed World patch，不能推断 P1 的 World Root 所有游戏模式都已保护新身份子树。
+- `SessionRepo.commitSnapshot` 将各 `SessionRevision.stateHeads` 中的状态资源作为同一 Native Session commit；`save-system.portableNamespace` 保留非缓存状态并沿 Revision/Branch 闭包构造存档。
+- `SessionRepo.reachabilitySnapshot` 从保留的 Revision 读取 `stateHeads`、标记状态文件及依赖，`session-maintenance.js` 处理 `sessionState` GC；因此 P2 可作为**同一 Revision 下受保护的一个原生状态文档**而非并行 World Truth DB。
+- P2 则需要证明 World Scope 解绑/变更不留下非法关联。
 - `native-information-contract.js` 的 Manifest Actor 声明、Timeline `actorId` 与 Play/Speech/Visual 的 Actor-template 依赖及 V3 ContextPort 的 SourceBinding/Grant 仍是实际消费者边界；不能因为选 P2 就声明动态 Perspective/Timeline 自然支持所有 NPC。
 - `History/Chronicle` 仍无通用 `asKnownRevision/asOfGameTick` 主体查询，可复用部分事实来源/旧 Revision 快照；必须区分世界中何时有效、修订何时得知、角色个人何时听闻。
 
-详细 P1/P2 安全/持久化比较、WP-A～F 真实 Owner/Consumer/验证、Gate 0 遗留阻塞、候选工作包顺序和 W21 选项统一见 [e0-handoff-evidence-review.md](e0-handoff-evidence-review.md)。
-
 ### 28.3 W21 候选路线（用户尚未确认）
 
-- W21-A：P1 优先，将 Session Subject 合入 `atri_world_state`，但必须证明所有模式中 World Root 的权限和资源绑定改变不会污染身份；贸然指定有信任边界风险。
-- **W21-B：P2 优先，显式 Reserved/Typed Session Subject、Domain Fact Owner 和基于证据门槛的最终交接（当前研究推荐，尚未获批准）**。在既有 Native Revision 下最小存储身份证据，明确 Validator、Typed Publish、Save/GC、Context/Media/Host ABI 和 WP-A～F、Gate 0 所需的 Head/Callgraph/测试计划；P1 若提供更少修改且同等级全模式保护，可据新证据再考虑。
+- W21-A：P1 优先，将 Session Subject 合入 `atri_world_state`，但必须证明所有模式中 World Root 的权限和资源绑定改变不会污染身份；
+- **W21-B：P2 优先，显式 Reserved/Typed Session Subject、Domain Fact Owner 和基于证据门槛的最终交接（当前研究推荐，尚未获批准）**。P1 若提供更少修改且同等级全模式保护，可据新证据再考虑。
 - W21-C：不做任何物理选择，把保护、历史和消费者决定全部放到正式编码时处理，容易使核心 WP-A/B 与后续工作包重复改接口。
 
-**W21-B 尚未由用户批准**，P2 的 Namespace 名/SubjectID 前缀、完整 Schema、正式 API 和具体 DELETE 文件清单均未冻结。完整 E0 生产调用图和 V3/Prompt 最终整合版本仍是 Gate 0 待核，真实 CI/端测为实施后验收。当前仍只修改 docs、不创建产品实现分支或称 E0 PASS。
-
+**W21-B 尚未由用户批准**，P2 的 Namespace 名/SubjectID 前缀、完整 Schema、正式 API 和具体 DELETE 文件清单均未冻结。当前仍只修改 docs、不创建产品实现分支或称 E0 PASS。
 
 ---
 
@@ -965,7 +833,7 @@ W19 仍为用户待选方案；本阶段未修改 `main` 或其它代码分支�
 
 用户对第 21 轮明确推荐的 **W21-B「P2 优先，显式 Reserved/Typed Session Identity + Domain Fact Owner + 证据门槛式交接」**回复“认同”。据此 **W1-B 至 W21-B** 是用户已确认的总体架构路线；但 `ARCH-DWE-01` 整份 Plan 仍 **Draft**，并未批准特定 `subject_*` ID/Namespace/Schema/Native Host ABI、E0-01～09 PASS、产品代码修改或创建临时开发分支。
 
-已确认的约束：**P2 是优先原生物理架构，而非新 DB**。一个 Native SessionRevision 中的受保护 `sessionState` 仅维持 Canonical Subject identity、origin、scope 和合法 admission；交易/社会关系/世界规则/生命周期/历史等已有 Domain 保持其事实 Owner。新的 Typed Subject 只能经既有 Native Host 单权威 prepare/validation/commit 发表，普通 Runtime Patch/插件/LLM 不获得写入权限；`readSessionSnapshot`、Save/Restore、Revision ancestry、GC 和跨 WorldSelection 的作用域有效性必须一同审查，避免保护只覆盖部分游戏模式。
+已确认的约束：**P2 是优先原生物理架构，而非新 DB**。一个 Native SessionRevision 中的受保护 `sessionState` 仅维持 Canonical Subject identity、origin、scope 和合法 admission；交易/社会关系/世界规则/生命周期/历史等已有 Domain 保持其事实 Owner。`readSessionSnapshot`、Save/Restore、Revision ancestry、GC 和跨 WorldSelection 的作用域有效性必须一同审查，避免保护只覆盖部分游戏模式。
 
 **P1 仅为条件性回退**：Gate 0 若证明它在所有活模式下有同等级完整保护、更少真实消费者改造和更合理存储成本，才能把证据提交到同一 Plan 再确认；本轮不能未经证据直接把 P1/P2 同时作为产品中的双轨写权。
 
@@ -973,25 +841,21 @@ W19 仍为用户待选方案；本阶段未修改 `main` 或其它代码分支�
 
 本轮继续以锁定 `main=c57fada6edeea255b29d857ba2585c1dbc9c098b`、V3/Prompt/Visual 未合入分支 SHA 进行静态审读：
 
-- `SessionRepo.commitSnapshot` 将 `SessionRevision.stateHeads` 对应的不可变状态资源、原 Domain Receipt/Revision/Session Root 统一发表；`readSessionSnapshot` 读取状态并校验哈希；`save-system` 基于 `revision.stateHeads` 的依赖闭包导出，`reachabilitySnapshot` 及 `session-maintenance` GC 以合法修订图标记 `sessionState`。这些是 P2 可复用的**存储基础**，但不会自动提供新增 Subject 的 Typed Schema/初始化/存档导入校验。
-- `SessionCore.validateRuntimeStateChanges` 按 `RESERVED_SESSION_NAMESPACES` 禁止 Generic Patch 修改现有核心 Namespace；P2 若增加正式 Namespace 必须加入该边界、相应 Domain Validator/Writer、WorldSelection 变更规则，而不能以合法的 `stateHeads` 为由接受普通写请求。
+- `SessionRepo.commitSnapshot` 将 `SessionRevision.stateHeads` 对应的不可变状态资源、原 Domain Receipt/Revision/Session Root 统一发表；`save-system` 基于 `revision.stateHeads` 的依赖闭包导出，`reachabilitySnapshot` 及 `session-maintenance` GC 以合法修订图标记 `sessionState`。
 - `SessionCore.updateResources` 可变更 Session 的 WorldSelection，`ProductService.saveResourceSetup` 是真实调用方；P2 Subject 的 `worldScopes` 及历史事实必须有合法解绑/重新绑定行为。
-- `native-history-runtime.queryHistory` 受声明历史和已选 Snapshot 限制，`NativeSessionObservation.history` 经 exact Revision 获取该投影；这只验证“Revision 锚”可复用，尚未支持正式通用 `asOfGameTick` 的 World Subject fact 查询。
+- `native-history-runtime.queryHistory` 受声明历史和已选 Snapshot 限制，`NativeSessionObservation.history` 经 exact Revision 获取该投影；
 - `native-information-runtime.projectInformation` 在多个已定位生产 Consumer 中使用，动态 NPC Perspective 必须经 Host Source/Grant 重新审查，不能直接放宽静态 Package Actor 限制。
-- `worldInfoBefore` 等旧 ST 相关字段和 Legacy Orchestrator 部分生产引用真实存在；`nativeKnowledgePromptChannels` 的静态索引仅见定义/测试，不能将这两类相反证据概括成“所有旧 WorldInfo 可删”或“必须永远保留双轨”。
+- `worldInfoBefore` 等旧 ST 相关字段和 Legacy Orchestrator 部分生产引用真实存在；
 
 这些都是**带冻结 SHA 的定向源码/文件级搜索发现**，不是全部动态插件、未合入分支的最终运行调用图，更不是任何新功能的实测结果。E0-01～09 继续 `PARTIAL / BLOCKED`。
 
 ### 29.3 W22 唯一详细子模块与候选方案
 
-详细 Gate 0 可交接/不得交接条件、P2 最小 Schema 的可推导字段和真信任边界、WP-A～F 文件级 Owner/测试/依赖、最终 legacy 分类、用户授权之前需要完成的 preflight，统一由同一 Plan Bundle 的 [e0-final-implementation-handoff.md](e0-final-implementation-handoff.md) 持有，不再重复创建另一份 Plan/Record。
-
 - W22-A：忽略仍未收口的 Gate 0/最终集成 HEAD/生产调用图，直接将整份 Plan 标为 Approved/Final 并开工；当前证据不足。
-- **W22-B：「具名阻塞 + 可执行 preflight + 条件化最终开发交接」（本轮推荐、用户尚未确认）**：不再扩张抽象架构，把所有剩余 E0-01～09 转成可由固定最新集成 HEAD、具体代码调用及责任文件验证/关闭的工作项；只在 Gate 0 有充足责任分配、最小合同/旧路径切线、测试计划且用户明确最终授权后定稿和开始实现。新增功能的 Node/CI/三端 PASS 属实施期 Gate 1～4。
+- 只在 Gate 0 有充足责任分配、最小合同/旧路径切线、测试计划且用户明确最终授权后定稿和开始实现。新增功能的 Node/CI/三端 PASS 属实施期 Gate 1～4。
 - W22-C：继续无限增加新抽象层但不设置退出点；与 W15–W21 的收口目标相违背。
 
 **W22-B 目前只是建议，不能误记为用户批准**。整份 Plan 仍为 Draft、E0 未 PASS，`main` 及所有开发/参考分支未修改；没有创建实现分支、执行 Node/CI/真实 UI/Windows/CachyOS/Termux。
-
 
 ---
 
@@ -999,18 +863,18 @@ W19 仍为用户待选方案；本阶段未修改 `main` 或其它代码分支�
 
 ### 30.1 用户确认边界
 
-用户针对上一轮唯一推荐的 **W22-B「具名阻塞 + 可执行 Preflight + 条件化开发交接」**明确回复「认同」。因此 **W1-B 至 W22-B** 均已得到方向性认可；其中 W22-B 确认的是**停止继续扩张世界架构、把剩余 Gate 0 转为可执行证据检查与正式交接前置条件**，并不意味着 E0 全量已审 PASS、具体 Subject/Fact/Perspective Schema 已被冻结、完整企划批准 Final 或允许创建实现分支。Plan 一直为 **Draft**，没有修改产品代码。
+用户针对上一轮唯一推荐的 **W22-B「具名阻塞 + 可执行 Preflight + 条件化开发交接」**明确回复「认同」。因此 **W1-B 至 W22-B** 均已得到方向性认可；Plan 一直为 **Draft**，没有修改产品代码。
 
 ### 30.2 本次有界 Preflight 中已经取得的新增静态证据
 
 基于依然未变化的 SHA `main=c57fada6edeea255b29d857ba2585c1dbc9c098b`、V3 `a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`、Prompt `760327891149216dffdc1e3fa0c846496007a013`、Visual `ae587be0c64487ba922528bdd0146444bcf5e92e`：
 
 - **V3 与 Prompt 真实差异交集**：GitHub Compare 路径交集是 10 个共同修改的生产文件，包括 `src/endpoints/native-generation.js`、`src/native/adapters/generation-host.js`、Agent Intelligence 评价/进化的四个文件及 `src/native/model-prompt-runtime/{compiled-binding,contracts,execution-utils,prompt-candidates}.js`；这是**交集，不是已出现十处 merge conflict**。Visual 分支与 V3/Prompt 的交集受到 GitHub Compare 300 项上限影响，尚未完整列举。
-- **P2 存储/写入真实 Owner**：`SessionCore._create/_publishLocked/applyRuntimeCommit/updateResources`、`session-snapshot.RESERVED_SESSION_NAMESPACES/readSessionSnapshot`、`SessionRepo.commitSnapshot/loadSnapshot/reachabilitySnapshot`、`NativeSaveSystem.portableNamespace` 与 `session-maintenance` GC 已找到真实位置；P2 的新增 Subject业务 Validator、Typed prepare/writer、Root/Scope 更新和导入校验**仍不存在**，不能写为已通过的合同。
+- **P2 存储/写入真实 Owner**：`SessionCore._create/_publishLocked/applyRuntimeCommit/updateResources`、`session-snapshot.RESERVED_SESSION_NAMESPACES/readSessionSnapshot`、`SessionRepo.commitSnapshot/loadSnapshot/reachabilitySnapshot`、`NativeSaveSystem.portableNamespace` 与 `session-maintenance` GC 已找到真实位置；
 - **原生发行者不是单一 Raw Patch**：World Game reducer 的 `commitEvents → session-runtime.commitStatePatch` 与 `authority-transaction.prepareAuthorityPublications → SessionCore._publishLocked`、V3 的 `sessionCore.finalizeTurn` 确有不同合法业务入口，必须审查何时是**同一次原 Domain Revision**及正式叙事发表边界。
-- **动态认知消费面扩大**：GitHub `projectInformation(` 文件搜索命中 39 个文件（17 个生产文件），包括 Cognition/Expression/Visual/Task/Goal/SharedAuthority 等；是检索命中，**不是**所有生产 Caller 已逐行验证。仅改 `Information Actor` 的 Manifest 限制，不能代表动态 Perspective 全消费者已经接线。
-- **旧 WorldInfo 不能一刀切**：`worldInfoBefore` 在多个真正生产路径中出现（文件级检索命中 13 个生产文件），`nativeKnowledgePromptChannels` 静态索引仅发现定义/测试；均需进一步核对动态插件/引用，当前无任何特定产品文件获充分 `DELETE` 证据。
-- **时态与存档第一段可复用**：`NativeSessionObservation.history` 基于合法 exact Revision Snapshot 的 `queryHistory`；通用 `asOfGameTick` 与 Subject/Fact 有效区间、秘密投影未完成。已有 Save/GC 的依赖可达基础，不代表新 P2 对应业务校验和规模性能已实测。
+- **动态认知消费面扩大**：GitHub `projectInformation(` 文件搜索命中 39 个文件（17 个生产文件），包括 Cognition/Expression/Visual/Task/Goal/SharedAuthority 等；仅改 `Information Actor` 的 Manifest 限制，不能代表动态 Perspective 全消费者已经接线。
+- **旧 WorldInfo 不能一刀切**：`worldInfoBefore` 在多个真正生产路径中出现（文件级检索命中 13 个生产文件），`nativeKnowledgePromptChannels` 静态索引仅发现定义/测试；
+- **时态与存档第一段可复用**：`NativeSessionObservation.history` 基于合法 exact Revision Snapshot 的 `queryHistory`；通用 `asOfGameTick` 与 Subject/Fact 有效区间、秘密投影未完成。
 
 这些证据及 P0–P7 的实际行动/退出模板、可复制的只读 Preflight 指令均只保存在同一 Bundle 的 [e0-preflight-execution.md](e0-preflight-execution.md)。它不是第二 Plan、不是已获执行许可的产品 HANDOFF。
 
@@ -1018,10 +882,9 @@ W19 仍为用户待选方案；本阶段未修改 `main` 或其它代码分支�
 
 真正阻塞**开发前设计就绪**的是：①确定最终目标集成 HEAD/重叠接口 Owner，②P2 最小身份业务 Schema 与 Reserved/Typed Writer/Save/GC/WorldScope 的完整设计，③跨 Game/Authority/Narrator 的 Domain Effect/Receipt 协调，④动态 NPC Perspective/Context/Prompt 的完整授权 Owner/消费者，⑤原生 Fact/History 的双锚读取与纠错/无时钟策略，⑥WP-A～F 全实际生产 Consumer 及 Legacy/插件 `RETAIN/REPLACE/DELETE/INVESTIGATE` 证据。
 
-不要求本阶段已经通过尚未实现的功能运行测试；Schema/DB/Provider Wire/UI/长会话与 Windows/CachyOS/Termux 三端属于未来实施期 Gate 1～4。**但缺少真正的 Owner/合法写入/最终调用者证据时，仍不得声称 Gate 0 PASS。**
+Schema/DB/Provider Wire/UI/长会话与 Windows/CachyOS/Termux 三端属于未来实施期 Gate 1～4。**但缺少真正的 Owner/合法写入/最终调用者证据时，仍不得声称 Gate 0 PASS。**
 
-**状态结论**：W1–W22 方向已确认，E0 **PARTIAL / BLOCKED**，有界 Preflight 文件已就绪，但完整目标 API/代码变更尚未通过静态设计证据门槛；不修改 `main`、不开 `feat/*`，直到用户明确批准整份 Plan 的 Final 与实现启动，并且必要 Gate 0 工程责任有实际可执行证据。
-
+不修改 `main`、不开 `feat/*`，直到用户明确批准整份 Plan 的 Final 与实现启动，并且必要 Gate 0 工程责任有实际可执行证据。
 
 ---
 
@@ -1031,10 +894,9 @@ W19 仍为用户待选方案；本阶段未修改 `main` 或其它代码分支�
 
 ### 暂停时状态
 
-- 已确认架构方向：W1-B～W22-B，最后决定为“具名阻塞 + 可执行 Gate 0 Preflight + 条件化交接”；P2 受保护 Native Session Subject 为优先选型（具体 ID、Namespace、业务 Validator、有效查询 API 尚未冻结）。
+- 已确认架构方向：W1-B～W22-B，最后决定为“具名阻塞 + 可执行 Gate 0 Preflight + 条件化交接”；
 - 全案 **Draft / Paused**；E0-01～09 **PARTIAL / BLOCKED**；尚未取得全部生产调用图、P2 Typed Publisher/Save/GC、Native World/Narrator 回执协调、动态 Perspective/Host Context、Legacy/插件清退证据。
-- 最新已核验的历史源锚点（**不是今后可直接开发的 HEAD**）：`main=c57fada6edeea255b29d857ba2585c1dbc9c098b`，`refactor/atria-native-orchestration-v3=a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`，`refactor/atria-native-prompt-preset-deepening=760327891149216dffdc1e3fa0c846496007a013`，`feat/native-visual-generation-deepening=ae587be0c64487ba922528bdd0146444bcf5e92e`。整体前端重构未来的实际 HEAD 未在本任务中确定，不得猜测。
+- 整体前端重构未来的实际 HEAD 未在本任务中确定，不得猜测。
 - **后续依赖**：用户明确确认上述工作完成并指示 Codex 接手后，Codex 需重新读取实际 `main`/相关分支 HEAD、真正的现役接口与动态插件消费者，再按 [唯一 Preflight 清单](e0-preflight-execution.md) 执行 P0–P7。不得将旧静态证据误标 E0 PASS。
-- 此轮仅将暂停状态写入 `docs` 的同一 Plan/唯一 Record，并按用户明确中断要求创建唯一可恢复的 `handoff/ARCH-DWE-01.md`，不产生新方案分支、不修改产品代码、不启动 CI/三端验证。
 
 **恢复与授权边界**：重新开始 Preflight ≠ 自动批准 Final/实施分支。正式实施必须以用户当时明确授权、当前仓库治理规则以及 Gate 0 的实际代码证据为依据。暂停期间不自动轮询、不做背景审查、不主动变更其他分支。

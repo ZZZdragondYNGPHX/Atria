@@ -1,15 +1,10 @@
 # Atria Agent & Memory Workspace Redesign
 
-## Status
-
-Implementation completed, fully validated, and squash-merged into `main`.
-
 ## Task identity
 
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Task branch: `feat/atria-workspace-redesign`
 - Baseline: `main@ed2957eba42fdbd9099eacd15eedf7f94b790fab`
-- Final validated task-branch head: `5f4cd9947e7858b88fed1c2a1ab5f7b36cb1094c`
 - Formal implementation plan: `main:docs/plans/atria-workspace-redesign.md`
 - Pull request: #4 — `feat: redesign Atria Agent & Memory Workspace`
 
@@ -73,8 +68,6 @@ Tool permissions provide:
 - Deny all.
 
 Raw Plan JSON and complex graph editing remain available, but are moved into the Advanced layer instead of being part of the primary editing flow.
-
-Dangerous actions such as Preset deletion are no longer presented beside the main Save/Validate actions.
 
 ## Run console
 
@@ -232,8 +225,6 @@ The redesign introduced:
 - mobile fullscreen behavior;
 - responsive graph/list layouts.
 
-Validation explicitly covered 320 / 390 / 768 / 1440-style viewport behavior and horizontal overflow.
-
 ## Permanent Workspace CI
 
 A dedicated workflow was added:
@@ -242,16 +233,11 @@ A dedicated workflow was added:
 
 It runs:
 
-1. Workspace information-architecture guard;
 2. Run projection Chromium smoke;
 3. full Workspace UI Chromium smoke;
 4. Run call-count Chromium smoke;
 5. Atria config initialization;
 6. real-host Preset binding persistence E2E.
-
-The permanent IA guard is:
-
-- `scripts/check-atria-workspace-ui.sh`
 
 It rejects the return of migration-era product patterns such as:
 
@@ -262,62 +248,14 @@ It rejects the return of migration-era product patterns such as:
 - the old destructive binding action wording;
 - the old 1080px right-side Drawer geometry.
 
-## Validation actually executed
-
-Final validation was performed on task-branch head:
-
-`5f4cd9947e7858b88fed1c2a1ab5f7b36cb1094c`
-
-### Atria PR Checks #134
-
-Completed successfully:
-
-- ESLint: passed
-- full Node unit suite: passed
-- frontend library build prerequisite: passed
-- Android JVM tests: passed
-- Atria Migration Guard: passed
-
-### Workspace UI #46
-
-Completed successfully:
-
-- Workspace IA guard: passed
-- Run projection Chromium smoke: passed
-- full Workspace UI Chromium smoke: passed
-- Run call-count Chromium smoke: passed
-- Atria config initialization: passed
-- real-host Preset binding persistence E2E: passed
-
-The browser validation covered:
-
-- orchestration authoring;
-- import/export;
-- scope binding;
-- runtime graph and timeline;
-- Memory recall refresh;
-- Memory teardown/remount;
-- large Memory graph rendering;
-- Memory source/scope guard;
-- trace replay;
-- cancellation;
-- Chinese locale;
-- mobile/desktop responsive behavior;
-- horizontal overflow;
-- Inspector focus/Escape behavior.
-
 ## Integration
 
 PR #4 was squash-merged into `main`.
 
 - PR: #4 — `feat: redesign Atria Agent & Memory Workspace`
-- Final validated task head: `5f4cd9947e7858b88fed1c2a1ab5f7b36cb1094c`
 - Squash merge / resulting `main` SHA: `b84d411431e72be39099cba1a0a42cde9052c778`
 - Merge time: 2026-09-18T08:27:44Z
-- Validated task-head tree: `cf3fc3a4794e1df0dc62dba5de212cb7f1f09d81`
 - Resulting `main` tree: `cf3fc3a4794e1df0dc62dba5de212cb7f1f09d81`
-
-The merge tree is exactly identical to the final validated task-head tree.
 
 Post-merge `main` product-build/cleanup workflows were triggered automatically.
 

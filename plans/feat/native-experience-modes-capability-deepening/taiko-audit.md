@@ -186,13 +186,11 @@ Assistant Turn Result
 主要问题：
 
 - 形成 UI 与 Game Runtime 双重事实源；
-- 绕过 Command validator / reducer；
 - 绕过 Event Journal；
 - Branch / Retry / SavePoint 难以正确回滚；
 - 很难回答“谁改了这个变量、为什么改”；
 - UI mount/refresh 可能产生隐藏副作用；
 - 迁移、schema version、权限和 diagnostics 都会恶化；
-- Package UI 一旦有任意 patch 权限，声明式安全边界被实质打穿。
 
 但是该样本明确证明另一件事：
 
@@ -216,22 +214,6 @@ Assistant Turn Result
 建议不新增第二套 `world.patch(path, value)`。
 
 继续以：
-
-```text
-UI
- ↓
-typed Command
- ↓
-validator
- ↓
-Event
- ↓
-Reducer
- ↓
-World State
- ↓
-Session Revision / Event Journal
-```
 
 作为唯一权威写入路径。
 
@@ -288,7 +270,6 @@ Build 时将其**编译/降低成标准 Command → Event → Reducer**。
 建议 Mutation shorthand 必须：
 
 - 声明允许写入的 schema path；
-- args 经过 schema 验证；
 - expression 纯函数；
 - 不能动态构造任意 root path；
 - transaction atomic；
@@ -344,6 +325,5 @@ Native 不应复制这个模式。
 8. UI mount/render 不允许隐式修改 World State。
 9. 初始化/迁移使用独立 versioned bootstrap/migration contract。
 10. Message Projection 需要直接支持 structured block，而不是依赖 Regex HTML tag parser。
-
 
 ---

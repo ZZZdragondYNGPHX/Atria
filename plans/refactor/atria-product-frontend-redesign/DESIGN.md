@@ -1,6 +1,5 @@
 # Atria Product Frontend Redesign — Design Specification
 
-Status: completed and integrated into main; acceptance recorded in `PHASE-8.md`.
 Input boundary map: `audit.md` in this Plan Bundle.
 This document is the visual and interaction authority for the redesign. It does
 not change product capability, routing, persistence or runtime authority.
@@ -25,8 +24,6 @@ Principles:
    with hairline separators. Shadows only for things that float.
 5. **Honest state.** Loading, empty, error, read-only and recovery states are
    designed surfaces with a next action, never raw JSON or bare text.
-6. **Technical depth on demand.** Revision ids, hashes and raw payloads live
-   behind "Details" disclosures in monospace, never as the primary view.
 7. **Adaptive, not squeezed.** Expanded, medium and compact are distinct
    compositions of the same DOM, not a desktop layout shrunk down.
 
@@ -238,15 +235,10 @@ migrated with the new design and recorded in the phase log.
 
 ## 8. Delivery phases
 
-Phases 1–8 are complete. Phases 2–8 used the retained
-`refactor/atria-product-frontend-redesign` branch through final acceptance.
-The user authorized final integration and push on 2026-09-24. Main integration
-is `ad15c1e0c3e15e625ba163e284a300c00811f10d`; see `PHASE-8.md` for validation,
-interaction corrections, visual evidence and explicit environment limitations.
+Phases 1–8 are complete.
+The user authorized final integration and push on 2026-09-24.
 
-1. **Foundations and frame:** tokens, appearance, icon set, shared component
-   stylesheet/builders, responsive Shell, search, inspector, menu, state panels,
-   affected presentation tests and browser acceptance. Domain-specific CSS
+1. Domain-specific CSS
    extraction follows the phase that redesigns its owning domain.
 2. **Entry surfaces:** startup/loading, login, onboarding, global dialogs/toasts.
 3. **Play and Native Game:** landing, transcript, composer, controls, host surfaces.
@@ -254,7 +246,6 @@ interaction corrections, visual evidence and explicit environment limitations.
 5. **Runtime:** grouped configuration surfaces and compact editor.
 6. **Build/Studio:** complete authoring workspace, review, preview and Project Agent.
 7. **Agents and utilities:** embedded orchestration, Settings, Plugins, Account, Diagnostics.
-8. **Final acceptance:** cross-domain regression, complete screenshots and integration.
 
 Phase 1 does not claim redesigned domain content or entry surfaces. Existing
 domain controllers remain inside the new frame; their remaining mixed language
@@ -307,8 +298,7 @@ now lives in `atria-play.css`; the Shell retains viewport, ABI isolation and sta
 ownership rules.
 
 - **Landing:** a typographic invitation, Continue session objects and a Recent
-  works shelf. Covers use the existing icon and semantic palette, selected by a
-  stable package-id hash. No invented artwork, new cover persistence or resource
+  works shelf. No invented artwork, new cover persistence or resource
   identity is introduced. Loading, missing dependencies, empty and retry states
   are visible; Browse Library and work covers use WorkspaceHost.
 - **Reading:** restrained actor labels, unboxed narrative at the existing reading
@@ -360,10 +350,8 @@ typography and WorkspaceHost. No visual direction is replaced.
   filterable origin-aware list and structured editor. Library saves immutable
   revisions; Studio remains a separate Review/Apply authority. Package originals
   stay read-only and support the existing exact-closure Fork/Derive operations.
-  Advanced data survives switching editor mode, validation failure and retry.
 - **Skills:** grouped inventory, keyboard tabs and native action buttons in the
-  same frame. Secondary/import actions are disclosed; file editing reuses existing
-  scope and expectedSha256 ownership. Conflicts remain visible in the editor and
+  same frame. Conflicts remain visible in the editor and
   preserve draft text. The bundled importer acts on the whole collection: only an
   explicit collection action is shown, with a notice that differing local copies
   are replaced. This corrects misleading UI without adding an install authority.
@@ -395,19 +383,16 @@ editor uses the existing Environment's 719px breakpoint and measured visual
 viewport, retains its draft across resizing, traps Tab, consumes Escape and
 restores Shell inert/focus state. Form errors receive focus; pending writes are
 announced and deduplicated. The same exact Native resources and Secret references
-are saved; immutable profile writes never silently repin routes. Unsupported
-capabilities/controls remain explicit and fail closed. Visual Prompt authoring is
+are saved; immutable profile writes never silently repin routes. Visual Prompt authoring is
 reached through the already delivered Library. No new configuration authority.
 
 Runtime CSS is extracted into its own domain stylesheet using the Phase 1 tokens.
-See `PHASE-5.md` for acceptance, review corrections and screenshots.
 
 ## 13. Phase 6 Build / Studio specification and decisions — 2026-09-24
 
 Build retains the approved calm IDE direction. Projects are searchable rows with
 an inline New Project disclosure. Inside a project, the resource tree and editor
-own the canvas; Inspector and Project Agent are optional side panels. Activity is
-a collapsed strip until validation, review or an error needs attention. Successful
+own the canvas; Inspector and Project Agent are optional side panels. Successful
 apply restores editor focus and space.
 
 Structured resources use labelled fields and nested disclosures with a lossless
@@ -429,9 +414,6 @@ Intent survives service errors; evidence/conversation are disclosures. UI
 Design/Structure/Bindings/Source continue the shared Component Model, and preview
 continues without Session persistence. Native creation, exact Library attachment,
 resource writes and build use the existing backend endpoints.
-
-See `PHASE-6.md` for validation, review corrections and screenshot evidence.
-
 
 ## 14. Phase 7 Agents and Utilities specification and decisions — 2026-09-24
 
@@ -466,4 +448,3 @@ Filters keep bounded log rendering; refreshed lists preserve keyboard focus.
 The domain stylesheet is `atria-utilities.css`; embedded Agent rules stay with
 its controller. Phase 1 tokens, Environment breakpoints and measured keyboard
 viewport remain authoritative. Stale lazy mounts cannot replace a newer route.
-See `PHASE-7.md` for actual validation, review corrections and screenshot evidence.

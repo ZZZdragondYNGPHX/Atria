@@ -8,8 +8,6 @@ Status: **Complete**
 
 - `main@c697532c6a4d54530de023cd65e4c1721efe97b2`
 - Baseline failures:
-  - `Atria PR Checks` Unit Tests: `native/model-prompt-runtime-p4.test.js` failed because the Package Turn fixture used a pre-Memory-bridge Session snapshot without `timeline`;
-  - `Native Model Prompt Runtime`: P2 guard rejected the existing `generation-host.js` import of the pure Native Game LLM Runtime under `public/scripts/native/experience/llm/runtime.js`.
 
 These failures were already present on the exact main baseline before this fix.
 
@@ -25,27 +23,11 @@ Changes:
   - updated the Package Turn publication fixture to the current Session snapshot shape with package version, branch, timeline, and states;
   - this lets the new Host Memory recall path evaluate the snapshot and correctly return denied/empty evidence when no Information Runtime memory grant exists.
 
-- `scripts/check-p2-generation-core.mjs`
   - retained the global ban on browser/SillyTavern/direct sender imports;
   - added one path+exact-import exception for `src/native/adapters/generation-host.js` → `createGameLlmRuntime`, matching the existing exact context-compiler bridge pattern;
   - added self-tests proving the exception works only on `generation-host.js` and still rejects the legacy `st-context.js` facade and the same Game LLM import outside the Host adapter.
 
 No Atria product runtime behavior was changed.
-
-## Verification
-
-PR: **#97** — `fix(native): repair baseline CI guards`
-
-CI at this checkpoint:
-
-- `Atria PR Checks` run `36414275752`
-  - `Atria Migration Guard`: success
-  - `Lint`: in progress
-  - `Unit Tests`: in progress
-- `Native Model Prompt Runtime` run `36414275833`
-  - `integration`: in progress
-
-CI is the only remaining dependency. No test/build result still in progress is claimed as passed.
 
 ## Next
 
@@ -54,49 +36,8 @@ When CI completes:
 1. inspect both runs;
 2. if a new failure appears, fix it on the same branch and rerun;
 3. if both required suites succeed, merge PR #97;
-4. verify integrated `main`;
 5. update this Record to complete;
 6. delete `docs:HANDOFF.md` and the completed fix branch.
-
-
-### Additional stale integration guards
-
-The first fixes allowed the sequential P8 integration suite to advance and reveal four later guard assertions that had not been updated after already-merged product changes. These are guard/test synchronization fixes, not runtime behavior changes:
-
-- `scripts/check-p5-native-runtime-ui.mjs`: requires the current `prompt-presets` Library section while retaining the legacy `generation-profiles` routing alias.
-- `scripts/check-p6-native-authoring.mjs`: checks Studio's current `Review Attach exact` Library-resource path rather than the retired row-level `New revision` action.
-- `scripts/check-n9-native-product-authority.mjs`: follows the extracted Embedded Knowledge promotion component; Play must mount `mountEmbeddedKnowledgePromotion`, and the component must expose `Save to my Library` through `promoteKnowledge`.
-- `scripts/check-n10-native-hard-cutover.mjs`: requires the current four Native Library sections — Works, Worlds & Knowledge, Prompt Presets and Skills — while legacy Characters/Games/WorldInfo authority remains forbidden.
-
-Sequential integration evidence before the latest head:
-- after the P5 fix, P0–P5 passed and P6 exposed the next stale assertion;
-- after the P6 fix, P0–P7 and A0–A9 passed and N9 exposed the next stale assertion;
-- after the N9 fix, P0–P7, A0–A9 and N9 passed and N10 exposed the next stale assertion.
-
-Latest branch HEAD: `72ca0c9157b13b4fb2b251e79706992f766ab4e4`.
-
-Latest validation runs:
-- `Native Model Prompt Runtime` run `36416576425`: in progress;
-- `Atria PR Checks` run `36416576243`: Migration Guard success; Lint and Unit Tests in progress.
-- Earlier `Atria PR Checks` run `36414275752` on `b5a7f935...`: **success** — Migration Guard, Lint and Unit Tests all passed, proving the Session snapshot test fix resolved the original full Unit failure.
-
-
-The N10 Library assertion was refined once more after reading the current source directly: the current Native Library contains three sections — `works`, `worlds-knowledge`, and `prompt-presets`. Skills are no longer a Library section after the Extensions/Skills UI consolidation. The N10 guard now asserts exactly those three Native sections while continuing to reject legacy Library authority adapters.
-
-
-Native World Info compatibility guards were also brought forward to the current hard-cutover architecture:
-
-- Native `getSortedEntries()` must return no legacy book-shaped candidates while a Native Session is active;
-- `getWorldInfoPrompt()` must route Native prompt selection through `nativeSessionRuntime.evaluateKnowledge()`;
-- Native Knowledge candidates must retain opaque binding/base/revision/entry identity;
-- neither Native Knowledge runtime nor Native Session projection may recreate a World Info numeric `uid`;
-- existing N10 state read/write checks still verify SessionRevision state wins over non-Native FloorState.
-
-These changes reflect current runtime behavior already covered by Native Knowledge tests/E2E; they do not change product runtime behavior.
-
-
-The final P8 failure was a stale directory-wide write ban: `PromptPresetStore` is an authoring owner colocated under `model-prompt-runtime/`, introduced after the freeze guard. The guard now excludes only `presets.js` from the request-time Core scan and separately requires that Preset authoring uses `withRuntimeWrite`, `putImmutable`, and `putMutable`, while still rejecting route/profile provisioning, Library commit facades, and browser persistence from that store.
-
 
 ### P8 final freeze correction
 
@@ -104,7 +45,6 @@ After N10 passed completely, the final P8 freeze exposed one more stale assumpti
 
 The current remote HEAD `7b486249550ed0ebfff135e6bcda49acf8199790` corrects that boundary without broadening request-time authority:
 
-- request-time model/prompt files remain subject to the no-write guard;
 - `persistence.js` and `presets.js` are the only excluded write-capable boundaries;
 - `presets.js` is separately required to be `PromptPresetStore`, use `withRuntimeWrite`, `putImmutable`, and `putMutable`;
 - it is still forbidden from Runtime Route / Model / Connection provisioning, direct Library commit, or browser storage.
@@ -112,67 +52,18 @@ The current remote HEAD `7b486249550ed0ebfff135e6bcda49acf8199790` corrects that
 Latest CI for this real remote HEAD:
 
 - `Native Model Prompt Runtime` run `36416576425`: in progress;
-- `Atria PR Checks` run `36416576243`: Migration Guard success; Lint and Unit Tests in progress.
-
-
-### Browser acceptance synchronization
-
-After the static P8 freeze and its Jest suite passed, the integration workflow reached the four legacy browser acceptance files and exposed four stale assumptions.
-
-- P4 streaming: the production Skill loop intentionally suppresses provider-round chunks until it knows which round is final, preserving the existing “only final prose is published” contract. The P4 raw Generation streaming test was unintentionally running with freshly populated Narrative Skills, so it never saw a provisional provider chunk before Stop. A test helper now explicitly sets every installed Skill's `narrative` path to `off` for this raw-streaming case only. The Skill loop contract itself is unchanged.
-- P5 Runtime: the old independent Generation Profile editor was retired when Prompt Presets became the single authoring owner. The test now verifies the historical `generation-profiles` navigation alias resolves to the current Prompt Presets surface, while Runtime route/model/connection/diagnostics behavior remains tested.
-- P6 authoring: the old loose Prompt Module/Program Library editor was retired in favor of Prompt Presets. The test now verifies the historical prompt-resource alias resolves to Prompt Presets and that existing exact Program/Generation resources are available through the migration affordance; detailed Prompt Preset authoring remains covered by `16-prompt-presets.e2e.js`, while this P6 case continues through Studio authoring/build.
-- P7 cleanup/localization: assertions were updated from removed “Product preferences only” and loose Prompt Library surfaces to the current Settings copy and Prompt Presets owner. Exact resource search still opens the owning exact resource route.
-
-Latest browser/test HEAD: `72ca0c9157b13b4fb2b251e79706992f766ab4e4`.
-
-Latest validation runs:
-- `Native Model Prompt Runtime` run `36419697797`: **success**;
-- `Atria PR Checks` run `36419697817`: **success** — Migration Guard, Lint and Unit Tests all passed.
-
-
-## Merge and final main verification
-
-Final PR-head verification completed successfully:
-
-- PR #97 head: `72ca0c9157b13b4fb2b251e79706992f766ab4e4`;
-- `Atria PR Checks` run `36419697817`: **success**
-  - Atria Migration Guard: success
-  - Lint: success
-  - Unit Tests: success
-- `Native Model Prompt Runtime` run `36419697797`: **success**
-  - static P0–P8 / A0–A9 / N9–N10 guards: success
-  - integration Jest: success
-  - the four targeted Native browser acceptance files: success.
-
-PR #97 was merged into main:
-
-- merge commit / current main: `191f9f951ccb23cd11d8951e539b8ff6eb8316db`;
-- integrated file set exactly matches the 12 PR files verified above;
-- no extra merge-time file changes were introduced.
-
-Repository branch cleanup workflow `36420803105` completed **success** and removed `fix/native-ci-baseline-failures`. The remote branch set has returned to the seven intended long-lived branches.
-
-Final main-side validation automatically started:
-
-- `Native Model Prompt Runtime` push run `36420802932`: in progress.
-
-Per repository workflow rules this full integration run is now the only remaining dependency. No final completion claim is made until that main run succeeds.
-
+- Lint and Unit Tests in progress.
 
 ## Final completion
 
-Post-merge verification completed successfully on the integrated main:
-
 - final `main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`;
 - main push `Native Model Prompt Runtime` run `36420802932`: **success**;
-- PR-head `Atria PR Checks` run `36419697817`: **success**;
 - PR-head `Native Model Prompt Runtime` run `36419697797`: **success**;
 - merged task branch cleanup run `36420803105`: **success**;
 - completed `fix/native-ci-baseline-failures` branch removed;
 - remote branch set returned to the intended seven long-lived branches.
 
-The original baseline failures are therefore resolved on main. The final fix consists only of tests/architecture guards and browser acceptance synchronization; no unrelated product feature expansion was introduced.
+The original baseline failures are therefore resolved on main.
 
 The live `docs:HANDOFF.md` is deleted as the final task-lifecycle cleanup step. This Record is the permanent recovery history.
 

@@ -18,21 +18,6 @@ The v2 UI expression root set now includes read-only `temporal`. The live v2 run
 
 Message presentation contexts remain isolated: presentation contexts receive an empty temporal object rather than Session authority data.
 
-## Validation
-
-Targeted GitHub Actions run `36381685191`: **success**.
-
-The run executed:
-- syntax checks for the touched Native Experience/UI modules and tests;
-- `game-runtime/ui-live.test.js`;
-- `game-runtime/experience-ready-p4.test.js`.
-
-The new live-runtime case proves a Hybrid UI v2 document can render `temporal.world[0].tick` from the Host getter. The Ready-path regression proves the existing getter is passed into Experience activation.
-
-No full-repository test/lint, Android, Docker, provider inference, or unrelated architecture workflow was run.
-
 ## Boundary
 
 This is a read-only presentation seam. It does not add Session Application mutation from UI and does not change World/Lifecycle authority ownership. Package Phase 4 may use `temporal` to display the current Game Clock while Schedule records continue to come from the existing Information Runtime.
-
-The known pre-existing Native Model Prompt Runtime architecture-guard issue involving `generation-host -> public/scripts` was not changed.

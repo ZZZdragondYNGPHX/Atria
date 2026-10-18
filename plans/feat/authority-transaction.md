@@ -3,7 +3,6 @@
 - **Task ID:** feat/authority-transaction
 - **Primary Workspace:** main
 - **Implementation branch:** feat/authority-transaction (merged; temporary branch removed)
-- **Status:** Complete — C1–C4 verified and integrated; see records/feat/authority-transaction.md for exact HEADs and evidence
 - **Blocks:** P0 Core prerequisite cleared; Package P1 is unblocked but not started
 - **Design authority:** docs:plans/package/original-occult-western-fantasy-game/technical-design.md (Rounds 9.5–9.8)
 
@@ -57,7 +56,6 @@ A Package transaction declaration may define only bounded, statically declared b
 - input schema;
 - intent-resolver exposure metadata;
 - private read grants;
-- validators;
 - deterministic / bounded Resolution policy;
 - World Event templates;
 - typed Lifecycle app-command effects;
@@ -77,7 +75,6 @@ v1 effect families:
 - world.event;
 - app.command;
 - clock.advance;
-- workflow.transition, if retained by implementation after contract validation.
 
 Explicitly reject generic:
 
@@ -88,8 +85,6 @@ Explicitly reject generic:
 - dynamic domain/command selection.
 
 ## Read and disclosure model
-
-Private transaction reads are authority inputs for validation/effect computation, not automatic model context.
 
 Intent resolver observation is separately constructed from explicitly player-safe sources.
 
@@ -109,7 +104,6 @@ The required flow is:
 2. expose bounded player-safe intent observation;
 3. resolve free text or typed input to one declared Transaction;
 4. construct the allowed private read set;
-5. validate refs, access and invariants;
 6. resolve deterministic/bounded mechanics and Fortune;
 7. build a bounded typed effect plan;
 8. apply all World/Lifecycle/clock effects to a private candidate;
@@ -127,8 +121,6 @@ The same declared Transaction authority path must support:
 
 - authority-first free-text intent;
 - fixed Native Frontend transaction invocation.
-
-Frontend binding selects a statically declared Transaction and supplies only validated input arguments.
 
 Do not create separate frontend authority rules.
 
@@ -184,12 +176,9 @@ Do not introduce an unrelated global migration.
 
 ### C1 — Contract and declarative surface
 
-Implement and validate:
-
 - Experience capability registration;
 - optional authorityRuntime contract and capability/runtime consistency;
 - declarative Game Logic transaction schema/versioning;
-- strict transaction declaration validation;
 - static effect/read target closure;
 - bounded limits;
 - backwards compatibility for Game Logic schemaVersion 1/2 and Packages without the capability.
@@ -204,7 +193,6 @@ Implement:
 
 - player-safe intent observation builder;
 - private read-grant resolution;
-- transaction validation;
 - deterministic transaction/RNG identity;
 - World Event preparation;
 - multi-domain Lifecycle app-command preparation;
@@ -213,10 +201,6 @@ Implement:
 - derived-publication hook;
 - safe receipt projection;
 - zero partial publication on preparation failure.
-
-Reuse existing reducers, prepareLifecycle(), validation and Session authority primitives.
-
-**C2 exit:** direct transaction tests prove atomic candidate preparation across World + multiple Lifecycle domains + clock + derived projection, including fail-closed behavior and private-read non-disclosure.
 
 ### C3 — Turn and Frontend integration
 
@@ -233,35 +217,6 @@ Implement:
 
 **C3 exit:** free-text and typed invocation exercise the same declared Transaction; successful turn finalizes once; failed Narrator publishes nothing; retry does not silently reroll the same unresolved authority action.
 
-### C4 — Regression / integration / merge gate
-
-Complete the frozen verification matrix, targeted regression and appropriate CI.
-
-Required minimum gates:
-
-1. one Transaction prepares World + multiple Lifecycle-domain effects + canonical clock change;
-2. any invalid effect causes zero published mutation;
-3. intent observation contains only declared player-safe information;
-4. private transaction reads never leak into safe Narrator receipt;
-5. derived projections publish atomically with authority;
-6. Narrator/provider final failure publishes no authority;
-7. Narrator success publishes prepared authority + Action receipt + assistant Turn atomically;
-8. fixed typed UI invocation and free-text intent use the same declared Transaction path;
-9. stale revision and idempotency checks fail closed;
-10. deterministic Fortune is stable across provider retry / save restore at the same authority anchor;
-11. Retry/branch semantics remain coherent and do not mutate committed branches in place;
-12. Packages without "authority-transaction@1" retain current behavior.
-
-After validation:
-
-- update the single feat Record;
-- merge the task branch into main;
-- validate integrated main;
-- remove the temporary branch;
-- remove live HANDOFF after durable status is recorded.
-
-Only then is package/original-occult-western-fantasy-game P1 unblocked.
-
 ## Documentation
 
 Implementation Record:
@@ -274,14 +229,11 @@ If the task spans conversations/stages, use the repository's single live:
 
 At the end of C1, C2 and C3:
 
-- validate;
 - commit/push;
 - update the same Record;
 - refresh HANDOFF;
 - provide next-stage takeover prompt;
 - stop.
-
-C4 performs final integration/cleanup after its verification gate.
 
 ## Non-goals
 

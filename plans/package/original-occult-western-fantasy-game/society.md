@@ -45,8 +45,6 @@ Population registries, standardized names, mapped property, courts, synchronized
 
 Modern states therefore stabilize reality more strongly than earlier societies.
 
-This explains why older periods can feel more mythic without relying on a generic “magic used to be stronger” premise: older reality was often less densely recorded, synchronized and cross-verified.
-
 ### 6.14.3 Census and registry as supernatural infrastructure
 
 Population census, birth registration, death registration, residence, legal identity and property records are approved as major forms of civic supernatural infrastructure.
@@ -270,7 +268,6 @@ They are trained in procedures that stabilize and preserve reality:
 - photograph or catalogue evidence;
 - control scene access;
 - preserve documents;
-- verify identity;
 - call licensed abnormal investigators when necessary.
 
 Specialist units handle true supernatural cases.

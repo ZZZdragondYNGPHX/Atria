@@ -2,7 +2,6 @@
 
 - Task ID: `refactor/atria-product-frontend-redesign`
 - Primary Workspace: `main`
-- Status: Complete and integrated; final acceptance is recorded in `records/refactor/atria-product-frontend-redesign/PHASE-8.md`.
 
 ## Goal
 
@@ -22,7 +21,6 @@ This task is complete.
 For future UI work:
 - read `index.md` then `DESIGN.md` for visual-system authority;
 - add `audit.md` only when old/new product topology or a protected behavior/runtime boundary matters;
-- load the exact phase Record only when historical execution/acceptance evidence is needed.
 
 ## Material routing/design changes
 

@@ -1,10 +1,10 @@
 # V3 后端接口与跨任务整合入口
 
-> 当前接口入口（2026-10-17）。详细合同归 [interface-contracts](interface-contracts.md)，阶段核销归 [acceptance-matrix](acceptance-matrix.md)，精确提交、失败和验证只归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。旧接口快照和过期缺口已有 Record 保存，本文只保留当前接入合同。
+> 当前接口入口（2026-10-17）。旧接口快照和过期缺口已有 Record 保存，本文只保留当前接入合同。
 
 ## 当前收敛入口
 
-当前能力状态、真实缺口和阶段核销只见 [acceptance-matrix](acceptance-matrix.md)，停止条件只见 [实施方案 §6](implementation-plan.md#6-p3-收敛边界与结束条件)，精确源码/失败/分次验证归同一 Record。下文保留当前具体协议，不再把每组历史追加为当前无限待办；实现以当前源码及本表为准。
+下文保留当前具体协议，不再把每组历史追加为当前无限待办；实现以当前源码及本表为准。
 
 | 当前后端接口增补 | 合同与限制 |
 | --- | --- |
@@ -13,28 +13,27 @@
 | `/tools/observe`、`/tools/consume` | read envelope；body `{runId,effectId}`。observe仅事实；consume只读已完成Tool advisory Result，重新核当前owner/Source/Plan/Secret target/原bank并发新recipient grant，cold不重发。 |
 | `/api/native/studio/projects/:projectId/agent/tasks/:taskId/commit/resume` | body `{runId,effectId}`；原path IDs必须匹配。仅未claim ready Effect可经原Source/预算重新准入同Effect，旧批准失效、隔离Origin重新批准；未知效果保持观察。 |
 | Run Projection `controls.resume` | 仅实际部署resume callback的上述有限Project场景显示true，其他场景仍false；不提供泛用`/runs/start`、`/runs/resume`或任意Effect dispatcher。 |
-| Delegate Context pin | 原`native_rp_message`精确message/variant/contentHash；父/子独立owned pin交集，接收方重新授权。默认brief-only，父Memory与private Context不可继承。 |
+| Delegate Context pin |父/子独立owned pin交集，接收方重新授权。默认brief-only，父Memory与private Context不可继承。|
 | RP / Session / Project Model失败策略 | 仅预声明owned候选、原Route policy与原能力/Source/预算准入。每send稳定ordinal、原银行保留失败/unknown；opaque cache/价格/continuation如实unknown/miss/reset。三域正式消费者已接，精确支持范围见[接口§18](interface-contracts.md#18-工程收敛后的端口合同)，不从发布成功推导任意组合执行支持。 |
 
-首次后端交接源码为`01ef2053b`，状态READY_FOR_P5；精确验证与限制归同一Record和acceptance-matrix。最终产品Gate仍未通过。
+首次后端交接源码为`01ef2053b`，状态READY_FOR_P5；最终产品Gate仍未通过。
 
 ## Authoring 与公共 envelope
 
-当前 `/api/native/orchestration` 的 Plan authoring 与原领域 Binding 路由已挂载，源码为 `src/endpoints/native-orchestration.js`。全部为 POST，沿原登录、CSRF、账户启用和 Native Host owner 检查；响应 `Cache-Control: private, no-store`。
+当前 `/api/native/orchestration` 的 Plan authoring 与原领域 Binding 路由已挂载，源码为 `src/endpoints/native-orchestration.js`。响应 `Cache-Control: private, no-store`。
 
 | 子路径 | body 的精确字段 | envelope |
 | --- | --- | --- |
 | `/plans/list` | `cursor, limit` | read |
 | `/plans/get` | `planId` | read |
 | `/plans/revisions` | `planId, cursor, limit` | read |
-| `/plans/validate` | `planId, expectedDraftVersion, expectedDefinitionHash` | read；只验证，不发送 |
 | `/plans/create` | `definition, dependencyPins, viewState` | mutation |
-| `/plans/save` | `planId, expectedDraftVersion, expectedDefinitionHash, definition, dependencyPins, viewState` | mutation |
-| `/plans/publish` | `planId, expectedDraftVersion, expectedDefinitionHash, validationDigest` | mutation |
+| `/plans/save` || mutation |
+| `/plans/publish` || mutation |
 | `/bindings/get` | `sourceSelector` | read |
 | `/bindings/save` | `sourceSelector, planRef, expectedVersion` | mutation；原 source 存在/关联/owner + CAS |
 
-read envelope 为 `{schemaVersion:1, body}`；mutation 为 `{schemaVersion:1, commandId, expectedHostBootId, body}`，并须发送同值 `X-Atria-Host-Boot-Id`。HostBootId 来自实际 read 响应，不能在 Browser 自创。成功响应为 `{schemaVersion:1, hostBootId, commandId?, outcome}`；结构定义使用原共享 contracts 和 PlanRepository，不在前端复制不同 validator/hash。
+read envelope 为 `{schemaVersion:1, body}`；mutation 为 `{schemaVersion:1, commandId, expectedHostBootId, body}`，并须发送同值 `X-Atria-Host-Boot-Id`。HostBootId 来自实际 read 响应，不能在 Browser 自创。成功响应为 `{schemaVersion:1, hostBootId, commandId?, outcome}`；
 
 HostBootId 变化返回 409 `native_orchestration_host_changed`；CAS/命令冲突和 `storage_commit_unknown` 返回 409。未知提交不能靠生成新 commandId 自动重发。writer/read-only/authority unavailable 返回 503；其他错误按实际路由映射。界面要保留可编辑草稿、显示实际冲突/未知，重新读取再决定后续操作，不能把未知显示为失败后“安全重试成功”。
 
@@ -47,9 +46,7 @@ Binding 只保存用户选择，精确 sourceSelector 使用原共享合同的 n
 | `/api/native/orchestration` POST 后缀 | read body / 返回 |
 | --- | --- |
 | `/plans/revision` | `{planRef}`；返回精确已发布修订，含 definition/dependencyPins |
-| `/dependencies/inspect` | `{pinId,port,resourceRef}`；只返回原 authority 算出的 `{pinId,port,resourceRef,integrity}`，不返回资源正文，不授运行权 |
-
-`/plans/validate` 的响应头 `X-Atria-Validation-Digest` 可直接用于 `/plans/publish` 的 validationDigest。Draft 保存返回的 definitionHash 用作下一次 CAS 的 expectedDefinitionHash；前端不需复制 Node 的 hash 实现。依赖 inspect 只表示精确数据指纹，机制可用性仍由完整 Validate/Publish 判断。
+| `/dependencies/inspect` | `{pinId,port,resourceRef}`；|
 
 ### Run 观察与取消
 
@@ -62,14 +59,14 @@ Binding 只保存用户选择，精确 sourceSelector 使用原共享合同的 n
 | `/runs/details` | `{runId,collection,cursor,limit}`；collection 为 nodes/edges/attempts/effects/approvals/events；有界完整分页 |
 | `/runs/diagnostics` | `{runId}`；只返回状态推导的脱敏 code/controls |
 | `/runs/cancel` | mutation envelope；body `{runId,expectedEpoch,expectedStateVersion,expectedGraphRevision,reasonCode}`；沿原 Run CAS，未知费用/外部效果不退款、不假称撤销 |
-| `/runs/recover` | mutation envelope；body `{runId,expectedEpoch,expectedStateVersion,expectedGraphRevision}`；仅重绑 Host 控制元数据、失效旧批准，返回 `resumed:false`；后续执行和未知结果核对仍须原领域 authority，详见接口 §17.83 |
-| `/runs/reconcile` | 同 recover body；核对唯一正式顶层 RP 或有限 Native Session 输出的原 marker/DomainReceipt/银行事实；沿同耐久请求重放，返回 `resumed:false`，详见接口 §17.85–§17.86 |
+| `/runs/recover` | mutation envelope；body `{runId,expectedEpoch,expectedStateVersion,expectedGraphRevision}`；仅重绑 Host 控制元数据、失效旧批准，返回 `resumed:false`；|
+| `/runs/reconcile` | 同 recover body；沿同耐久请求重放，返回 `resumed:false`，详见接口 §17.85–§17.86|
 
 projection envelope 为 `{schemaVersion,runId,projectionId,hostBootId,epoch,projectionVersion,visibilityDigest,seq,cursor,kind,payload}`。snapshot payload 含 Source selector、planRef、CAS versions、Graph 元数据、Attempt/Effect/Approval 状态、events、原银行 costs、diagnostics、controls 和 hasMore。没有 Result/Context/模型正文、Secret、审批 nonce、dispatch token 或原输入。Timeline 只投影封闭事件类型与 opaque eventId，不返回内部 eventSeq/reasonCode。
 
 每个 collection 在 snapshot 内最多 limit 项，hasMore 为真时由 `/runs/details` 获取其余；分页绑定同一 Run stateVersion/epoch/visibility。deltaBatch payload 是 `{fromSeq,toSeq,baseProjectionVersion,changes:[{seq,snapshot}]}`，snapshot 同样带 hasMore，空批次不增加 seq。前端原子替换该有限窗口，并对仍需显示的 collection 重读同版本完整分页，不能拼不同版本的页。
 
-cursor 是 Host 内有界、约 5 分钟有效的 opaque token；观察 cursor 单次推进且固定 limit，重复/并发消费、改 limit、跨用户/Run/类型、重启或 epoch/visibility/storage generation 变化返回 409 `native_orchestration_projection_resync_required`。重新以 null 取 snapshot；旧 projection/页立即丢弃。关闭观察请求不取消 Run。approve 不通过普通 Origin；resume 仅顶部有限 Project Commit callback 实际可用时显示。recover 与受限 reconcile 按接口 §17.83–§17.87 的实际能力显示。仍 pending 的核对请求可从 `reconciliationRequest` 取回同 commandId。Approval 的 reviewAvailable 只在同 Host 有效挑战存在时显示 true，最终批准仍由隔离 listener 与原领域复核。
+cursor 是 Host 内有界、约 5 分钟有效的 opaque token；观察 cursor 单次推进且固定 limit，重复/并发消费、改 limit、跨用户/Run/类型、重启或 epoch/visibility/storage generation 变化返回 409 `native_orchestration_projection_resync_required`。重新以 null 取 snapshot；旧 projection/页立即丢弃。关闭观察请求不取消 Run。approve 不通过普通 Origin；resume 仅顶部有限 Project Commit callback 实际可用时显示。recover 与受限 reconcile 按接口 §17.83–§17.87 的实际能力显示。
 
 costs 来自原银行同事务事实：knownTotalTokens 与 unknownAttempts/reservedUpperTokens 分开，providerWork 按 generation/embedding/rerank/other 分项；localJobs/localUnknownJobs/localWallMs 独立，不虚构货币费用或“已退款”。`settled/pending/unavailable/not_started` 不等于正式领域输出成功；以实际 Run/领域收据为准。
 
@@ -111,19 +108,18 @@ Session Resolver/Narrator最终Model明确拒绝时，原Attempt失败，所有�
 
 POST `/api/native/orchestration/approvals/launch` 复用 mutation envelope，body `{runId,approvalId}`，仅允许原回环客户端。它启动同 Host 的隔离 Review Origin；详情、再认证和一次精确决定只在该 Origin 完成，批准绑定实际 Effect/Source/账户/配置/期限。普通同源按钮、LLM、插件或 SDK 的 approved boolean 无资格；不要把 launch URL、nonce 或批准数据放入公共 Projection。详细协议见接口 §15、§17.80、§17.138。
 
-P5 由 Claude Code 完成 Plan Library、Graph+Inspector、同语义 Node/Edge List 与移动 Sheet、Draft/Validate/Publish 冲突处理；Run Timeline/Graph、Source/Audience/成本/未知/诊断、可信 Approval、Cancel/Status；Shell Search/deep-link/history/Back 与移动键盘/IME/无障碍。沿 Serene Canvas 和现有组件，不另建主题或 Browser 编排权威。布局不改变同一 Draft/definitionHash 和同一 Host Projection；移动端保留相同语义。
+Run Timeline/Graph、Source/Audience/成本/未知/诊断、可信 Approval、Cancel/Status；Shell Search/deep-link/history/Back 与移动键盘/IME/无障碍。沿 Serene Canvas 和现有组件，不另建主题或 Browser 编排权威。移动端保留相同语义。
 
-两次交接与条件只归 [实施方案 §2](implementation-plan.md#2-执行分工与两次交接)：Codex 后端完成 → Claude Code 前端及组装 → 回交 Codex 做 P6 清退和最终验证。P5前端与组装已完成并回交（源码`94d677c6d`）：前端只消费本页列出的接口；Review Origin `GET /review` 现按 Accept 返回不含数据的静态审阅文档，JSON bootstrap 不变。组装发现的后端缺口（RP 预发送失败后 Run 不结算、authoring 解析 package 范围路由资源、`commit/prepare` 所需 reviewHash 无读取接口等）记录于同一 Record，由 Codex 修复。P6等回交Codex后执行；main集成/推送/结束分支仍待后续指令。准确Gate只见acceptance-matrix，不把后端就绪等同最终产品完成。
+P5前端与组装已完成并回交（源码`94d677c6d`）：前端只消费本页列出的接口；Review Origin `GET /review` 现按 Accept 返回不含数据的静态审阅文档，JSON bootstrap 不变。P6等回交Codex后执行；main集成/推送/结束分支仍待后续指令。
 
 ## 同期源码整合
 
-源码沿同一 `refactor/atria-native-orchestration-v3` 工作树；Plan/Record 在独立 docs 分支。提示词预设等同期任务的既往 merge-tree 结果仅是其当时字节证据，实际组装须按届时 HEAD 和未提交状态重新核对，保护所有本机修改。重点保留原 Prompt 行为/可信 preview、稳定模型与 local 身份、预算 ACK unknown 只观察、Source/Audience 最后复验和安全错误码。
+源码沿同一 `refactor/atria-native-orchestration-v3` 工作树；Plan/Record 在独立 docs 分支。
 
 没有旧 Single/Spec/Loop/Agenda/Director 兼容、别名、迁移、模板化或双轨发布；P6 清退等前端组装回交后执行，保护仍有业务用途的 Memory/Secret/Studio 等共享服务、真实数据、未知外部效果与费用历史。后端首次交接和最终产品 Gate 不混同，平台、真实 Browser、独立质量/价格等未取证项继续按原阶段保留 NOT_RUN/BLOCKED。
 
-
 ## 2026-10-18 P6 checkpoint 补充
 
-源码 `b7c12fdc6`：Studio `GET /projects/:projectId/agent/tasks/:taskId` 在原Task快照上增加Host计算的`reviewHash`（无review时null），`commit/prepare`仍要求同一当前`expectedSequence/expectedReviewHash`；Browser无hash算法复制。原 `/api/native/generation/operations/:id` 在真实RP worker建立Root后即可返回`runId`，不授予执行权。Run投影区分pending approval与不可用通道，并对终态隐藏recover控制。
+原 `/api/native/generation/operations/:id` 在真实RP worker建立Root后即可返回`runId`，不授予执行权。Run投影区分pending approval与不可用通道，并对终态隐藏recover控制。
 
-原冻结能力核销以 [acceptance-matrix](acceptance-matrix.md) 为准；RP有限Profile不能证明角色独立Audience或Game/Project通用条件协作已完成。旧Browser模式/capability/设置/Skill scope无执行或迁移路径。原领域writer、可信审批、unknown费用和持久收据继续原权威。用户要求的安全checkpoint恢复见唯一HANDOFF；最终产品Gate仍NOT_READY。
+RP有限Profile不能证明角色独立Audience或Game/Project通用条件协作已完成。旧Browser模式/capability/设置/Skill scope无执行或迁移路径。原领域writer、可信审批、unknown费用和持久收据继续原权威。用户要求的安全checkpoint恢复见唯一HANDOFF；最终产品Gate仍NOT_READY。

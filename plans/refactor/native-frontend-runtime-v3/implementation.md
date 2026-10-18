@@ -24,12 +24,8 @@
 - exact resource graph；
 - Compiled Bridge Descriptor；
 - Source Map/Provenance；
-- Build/Package validation path。
-
-验收：
 
 - 最小 `frontend.json + Main.aui` 可通过正式 Compiler 生成 exact Runtime Graph；
-- invalid source/binding/style/resource fail closed；
 - Preview和Build共用Compiler；
 - installed Runtime只消费compiled artifacts；
 - 不执行author TS/source/npm scripts。
@@ -51,8 +47,6 @@
 - NodeRef measurement/observer/pointer capture；
 - responsive Environment基础。
 
-验收：
-
 - Component/Hybrid/Full均可运行自定义DOM/CSS/fonts；
 - Package fixed/z-index/top-layer无法越过授权surface；
 - Full Host System Layer始终可用；
@@ -71,14 +65,10 @@
 - Action；
 - Operation；
 - unified Receipt/Error；
-- idempotency/revision guards；
 - Experience Epoch/stale revocation；
 - prefs/environment fixed projections。
 
-验收：
-
 - 未声明 Binding不可调用；
-- cursor/query/revision stale fail closed；
 - collection pagination不读取raw DB；
 - Authority write只经过正式typed target；
 - late async completion在Epoch变化后被丢弃；
@@ -98,11 +88,8 @@
 - SavePoint/reload/recovery/diagnostics；
 - Host Failure Surface。
 
-验收：
-
 - Managed与Headless UI对同一Session得到一致语义；
 - streaming永远不冒充committed Timeline；
-- retry/fork/switch/save/restore都有revision guard；
 - raw HTML不能进入Prose renderer；
 - Full/Hybrid自绘Conversation无需Host-owned message DOM。
 
@@ -120,8 +107,6 @@
 - VisualViewport/keyboard inset；
 - Accessibility environment/diagnostics；
 - Error/Loading Boundaries。
-
-验收：
 
 - 大量Remote Portrait不打入Package bytes；
 - denied/offline Remote Media有fallback；
@@ -147,8 +132,6 @@
 - Canvas2D command buffer；
 - source-mapped diagnostics。
 
-验收：
-
 - Script无法访问window/document/fetch/storage；
 - Script只能访问Component `uses` handles；
 - runaway loop可被Host terminate；
@@ -170,72 +153,16 @@
 - permission/feature visibility；
 - Accessibility/Localization/Health diagnostics。
 
-验收：
-
 - Studio编辑不直接改IR；
 - Preview与Production无第二套语义；
 - AI可按semantic ID修改Component/Node/Binding；
 - Source comments/format尽量稳定；
 - invalid frontend在Build前得到source-level diagnostics。
 
-### Phase 8 — Integration / Heavy Frontend Acceptance
-
-目标：
-
-使用与 `native-heavy-frontend-reference` 等价的重前端 acceptance fixture 验证：
-
-- Story / Headless Conversation；
-- Phone/SMS/Social/Mail；
-- Church/经营；
-- Schedule；
-- People/Character；
-- Remote Portrait；
-- Collection pagination；
-- AI Operation；
-- Canvas关系图；
-- Component/Hybrid/Full；
-- mobile/touch/IME；
-- offline/denied/recovery。
-
-注意：`package` 是独立长期 workspace，本 Core task 不把 `main` merge 到 `package`。Core acceptance fixture应存在于 `main` 测试/fixture体系；Core稳定后如需升级正式 Package，另开 Package workspace任务。
-
-验收：
-
-- representative heavy frontend不再依赖v2 style/semantics workaround；
-- providerCalls在deterministic tests中保持0；
-- Desktop/Mobile关键E2E通过；
-- Package build/install/preflight通过；
-- Session/Authority/Memory/Lifecycle邻接回归通过。
-
-### Phase 9 — Legacy Removal / Regression / Finalize
-
-目标：
-
-- 删除 Native UI v1/v2 正式Runtime/compiler路径；
-- 删除 legacy manifest/componentModelVersion plumbing；
-- 删除/改写旧Studio/Preview paths；
-- 清理 dead CSS/fixtures/tests；
-- 最小相关本地验证；
-- 最终 Docs Record；
-- merge回 `main`；
-- 删除 task branch。
-
-验收：
-
-- 非Text Native Experience只存在 v3 正式路径；
-- repo搜索无意外 legacy Runtime selector；
-- 受影响路径的最小相关本地检查通过；
-- docs Record记录最终 HEAD、实际本地验证和关键决策；
-- HANDOFF在任务最终完成后删除；
-- task branch确认merge后删除。
-
----
-
 ## 23. 实施纪律
 
 正式实现开始前：
 
-1. 重新核对真实远端 refs；
 2. 读取最新 `main:AGENTS.md` 与 `docs:README.md`；
 3. 从最新 `main` 创建 `refactor/native-frontend-runtime-v3`；
 4. 创建 Implementation Record；

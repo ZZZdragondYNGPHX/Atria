@@ -12,20 +12,12 @@ Atria Native Content & Session Architecture Refactor
 
 `refactor/atria-native-content-session-architecture`
 
-N8 已正式完成并验证。
-
-N8 validated HEAD：
-
 `f6f629800f8dae2da5c9870f6c0d6965920ea960`
 
-最终验证：
-
-- Workflow：Native Content Session Dev Checks #136
 - Run：`35715208736`
 - N0 Native Contracts：success
 - N1 Storage + N3/N5 Core + N4 Projection：success
 - N2 Package Project Composition：success
-- N4 real-host Chromium Native Session acceptance：4 passed
 - N5 Runtime State & Revision Lifecycle：success
 - N6 Native Knowledge Runtime Integration：success
 - N7 Native Context Architecture / Checkpoint C：success
@@ -42,7 +34,7 @@ Native Session 可以运行 → 退出/重启 → save → load → export `.atr
 
 N9 — Product UI Cutover
 
-开始前先重新 fetch 工作分支，以实际最新 HEAD 为准；如果其他会话已经继续推进，保留所有已有提交，不要回退到 validated HEAD。
+开始前先重新 fetch 工作分支，以实际最新 HEAD 为准；
 
 依次重新读取：
 
@@ -119,8 +111,6 @@ Native 产品界面应隐藏/退休：
 - 不机械删除仍被 runtime compatibility adapter 使用的 SillyTavern 成熟生成/World Info ABI。
 - 不合并 main。
 
-验证至少覆盖：
-
 - Native Works / World / Knowledge Library 路由与 CRUD/read-only revision surfaces
 - EntryPoint start / Continue / My Games
 - Save / Quick Save / Load / historical derived-Branch behavior
@@ -130,29 +120,22 @@ Native 产品界面应隐藏/退休：
 - explicit Save-to-my-Library promotion
 - Native UI 不再暴露 Swipe / committed Edit/Delete / in-place Regenerate
 - R7 Shell 路由与桌面/移动端关键布局回归
-- Native authority residual/fallback checks
 - relevant Node regression
 - frontend build
 - full root lint
-- 适用的 real-host Chromium acceptance
 
 普通代码、测试、CI 问题自行诊断修复并继续推进。
 
 只有以下情况停下等我：
 
-1. CI 进入明显长时间验证；
 2. 必须依赖 Android / Termux 真机日志；
 3. 必须依赖真实 UI 截图；
 4. 需要权限、Secrets 或外部账号授权。
 
-N9 完成并验证后停止，不要直接进入 N10。
-
 届时更新 docs / handoff，记录：
 
-- N9 validated HEAD
 - CI workflow / run
 - 完成内容与边界
-- Product UI Cutover 验证
 - 下一阶段 N10 目标
 
 最后发我一段新的 N10 接手提示词。

@@ -182,4 +182,3 @@ Further eras may continue evolving according to the setting's alternate technolo
 - public awareness of the occult by era;
 - degree of player-directed research;
 - how visual/frontend presentation reacts to era changes;
-- validation requirements for century-scale era transitions.

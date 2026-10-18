@@ -34,7 +34,6 @@
 - Native Runtime Descriptor；
 - Native Session / Branch / SessionRevision；
 - `atri_world_state` / `atri_game_runtime` 与 Native Session State；
-- A1 Studio Workspace / ChangeSet / Validation / Commit；
 - A2 Resource Registry / derived-readonly Resource Graph；
 - A4 Component Model / Native Preview；
 - A5 Plugin / Skill boundaries；
@@ -272,7 +271,7 @@ V1：
 - replace；
 - configure。
 
-Build 时 resolve + validate + flatten + freeze exact revisions。Package runtime 不追“latest”。
+Package runtime 不追“latest”。
 
 ## 6. Request Context
 
@@ -297,7 +296,6 @@ Prompt Program 不直接生成 provider-specific messages。
 链路：
 
     RequestContextPlan
-           +
       Prompt Program
            |
            v
@@ -390,8 +388,6 @@ Secret value 不进入 Package、Library、Prompt、Project、普通 diagnostics
 ## 10. Fallback
 
 Fallback 是完整 Route，不是只换一个旧 connection preset 名。
-
-切换前重新验证：
 
 - Model capability；
 - context budget；
@@ -487,8 +483,6 @@ Search：
 
 ### 13.3 A6 global-nav decision
 
-当前 A6 guard 明确把 `Build` 作为 primary authoring domain，并拒绝 primary `Studio`。
-
 本任务不为 Model/Prompt 重构顺带重开整个 global IA，所以保留 `Build` primary route；Prompt/Runtime Authoring 在已有 A7 Studio workspace 内产品化。
 
 未来若正式升级整个 Atria Product Frontend V2，再单独讨论 Build → Studio 的一级导航变化。
@@ -539,24 +533,6 @@ Legacy ST compatibility island可继续使用，不等于 Native 仍依赖它。
 - 以后若需要 Legacy Importer，只做显式、一次性、单向转换；
 - importer 不是本 refactor 完成 blocker。
 
-## 15. Frozen guard evolution
-
-冻结的是**语义不变量**，不是所有阶段性正则永久不可变。
-
-当前 main 已确认几个字面冲突：
-
-1. A6 guard 要求 Runtime Connections 保留 `atriaRuntimeConnectionAdvanced` compatibility editor。
-2. A6 guard 要求 standalone `capabilities` route。
-3. A8 guard 要求 Studio Agent 代码出现 `generateTask` 与 tools projection。
-
-本 refactor 在新 native replacement 完成前不得提前删这些 seam；完成后必须：
-
-- 修改对应 old guard，使其断言新的正式 seam；
-- 保留原 guard 中其他 frozen invariants；
-- 新增本 refactor residual guard；
-- 不能 wholesale disable A0–A9/N0–N10 guards；
-- 不能为了通过 stale regex 恢复 legacy authority。
-
 ## 16. Non-goals
 
 - 重做整个 A6 shell；
@@ -570,10 +546,7 @@ Legacy ST compatibility island可继续使用，不等于 Native 仍依赖它。
 - 自动无损转换所有 ST 用户数据；
 - Android / Docker 默认构建。
 
-
 ## 17. P0 contract realization
-
-P0 已把本设计的核心边界冻结为代码合同，validated HEAD 为 `472e1a9f0759a460d845a2e6c618983c35e18654`。
 
 ### 已冻结的具体 ABI
 
@@ -608,46 +581,22 @@ P0 freezes these minimum Port shapes:
 
 These are structural contracts only. P0 does not yet implement P2 Generation Service or provider adapters.
 
-### No New SillyTavern Authority guard
-
-`src/native/model-prompt-runtime/` may not directly depend on:
-
-- `Atria.getContext()`
-- `generateTask`
-- PresetManager / PromptManager
-- `extension_settings` / `power_user` / `oai_settings`
-- host DOM / browser persistence
-- direct `atria-dispatch` sender modules
-- `package.presets` runtime authority
-
-The guard includes a self-test proving that representative violations are detected.
-
 ## 18. P2 execution realization
 
-P2 is implemented at `5d5ab196c37ad7ff25db44d9dd249c0863b94115`.
-See P2-VALIDATION.md and the implementation branch's
-src/native/model-prompt-runtime/README.md for concrete Port signatures, fallback
-policy, immutable request configuration and validation. Prompt preparation remains
+P2 is implemented at `5d5ab196c37ad7ff25db44d9dd249c0863b94115`. Prompt preparation remains
 an injected Port for P3; no first-party or UI cutover occurred in P2.
 
 ## P3 completion checkpoint (2026-09-23)
 
-P3 is complete at `5e51332b34146236fd4d4a6d45c25ef7c37a9e08` on the existing work branch.
-Request Context Providers, exact Prompt Compiler, typed request-local values and declared
-artifacts, bounded condition DSL, derive/conflict checks, semantic stage/target projections,
-immutable IR/provenance and protocol render fixtures are implemented. No first-party/UI
+P3 is complete at `5e51332b34146236fd4d4a6d45c25ef7c37a9e08` on the existing work branch. No first-party/UI
 cutover or main merge occurred. Earlier P3-future statements above are historical.
 
-Local validation: Native FS/SQLite 49 suites / 385 tests; final P3 focused 38 tests;
-P0–P3 and A1/A2/A7/A8 guards, root/focused lint, syntax and frontend build passed.
-See planning/atria-model-prompt-settings/P3-VALIDATION.md for exact commands, the final
-narrow adapter change retest and exclusions. P4 First-party Runtime Cutover is next,
+ P4 First-party Runtime Cutover is next,
 only after explicit continuation. A6/A8 transitional gates remain unchanged in P3.
 
 ## P4 implementation checkpoint (2026-09-23)
 
-P4 complete at `6cba266814a7ff04666220f1031efdb844ad4e46`. See P4-VALIDATION.md
-for exact commands, exclusions and actual transport/browser evidence. P4 composes
+P4 complete at `6cba266814a7ff04666220f1031efdb844ad4e46`. P4 composes
 existing storage/context/Session/Studio authorities and cuts first-party Native
 requests over to GenerationService. Legacy dispatch is an explicit non-Native
 island; native preset/WI lookups and outer retries are bypassed. A8
@@ -661,13 +610,9 @@ use Native compile-only preview instead of legacy Generate dryRun.
 
 P5 complete at `0cb56b9a0d37789025fb8069d08f6f43ead2413d`. Native Runtime Routes/Models/Connections/Profiles/Diagnostics
 replace the compatibility editors, reuse P1 exact storage and P4 host, and provide
-compile-only preview, remediation, search deep links and mobile fullscreen editors.
-A6/P0 replacement gates evolved after actual visual verification. Broad FS/SQLite:
-206 suites / 1811 tests; final focused: 6 / 39; real P4/P5 browser: 8 passed.
-Guards/lint/syntax/prebuild passed. Exact commands, intermediate visual defects,
-exclusions and P6 obligations: P5-VALIDATION.md. No main merge or P6 implementation.
+compile-only preview, remediation, search deep links and mobile fullscreen editors. Broad FS/SQLite:
+206 suites / 1811 tests; final focused: 6 / 39; real P4/P5 browser: 8 passed. No main merge or P6 implementation.
 P6 Library & Studio Authoring is next, only after explicit continuation.
-
 
 ## P6 completion checkpoint (2026-09-23)
 
@@ -677,10 +622,8 @@ pickers/preview, Package derive freeze and owner-aware Package Resource Graph ar
 implemented. Primary Build and A1/A2/A7/A8 authority remain. Final regression:
 209 suites / 1830 tests; final P6 real-browser desktop/mobile: 2 passed, with 8
 adjacent P4/P5 cases passing separately in the combined run. Final screenshots
-inspected. Broader storage run has four failures reproduced on unchanged P5;
-see P6-VALIDATION.md for exact evidence, intermediate failures and exclusions.
+inspected.
 No main merge or P7/P8 implementation. P7 is next only on explicit continuation.
-
 
 ## P7 completion checkpoint (2026-09-23)
 
@@ -690,9 +633,7 @@ Library details and refreshes on Command open, and legacy preset UI reads are
 Native-disabled behind one explicit compatibility boundary. Simplified Chinese
 Prompt/Runtime/Settings labels and dynamic stages use existing localization.
 Final FS/SQLite regression: 210 suites / 1837 tests; P4-P7 combined browser: 12
-passed, final P4/P7 follow-up: 6 passed (overlapping). Screenshots inspected.
-P0-P7/A0-A8/N9-N10 guards, lint/syntax/diff and prebuild-cache passed.
-Details/exclusions: P7-VALIDATION.md. No main merge; stop before P8.
+passed, final P4/P7 follow-up: 6 passed (overlapping). Screenshots inspected. No main merge; stop before P8.
 
 ## 2026-09-25：Native Regex 作用域正式扩展
 
@@ -709,6 +650,5 @@ portable save 保真，不改变普通 Package 升级的 exact/pinned 语义。
 删除 Preset 清除其规则与归属、保留 immutable Prompt 历史；Game 删除沿用现有 Session
 引用保护。两者均不污染 Global。
 
-完整所有权、持久化、校验、删除、导入导出和验证记录见
-[Native Regex 三层作用域](../../../records/feat/native-regex-scopes.md)。该扩展不恢复
+该扩展不恢复
 Character Card、ST Prompt Manager、Tavern Helper DOM 或其他 legacy authority。

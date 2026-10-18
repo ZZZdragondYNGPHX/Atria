@@ -208,4 +208,3 @@ Extreme conflicts may lead to:
 - reporting/summary cadence;
 - protagonist-only decision classes;
 - remote multi-region management budgets;
-- verification gates for autonomous organizations.

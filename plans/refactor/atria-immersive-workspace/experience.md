@@ -35,9 +35,9 @@
 
 ## Workspaces
 
-Library 使用四类 scope 切换，各类自己的列表与详情；世界与知识保持不同实际编辑权限。安装/存档导入为完整流程页：文件与预检、权限/依赖审阅、结果与打开入口。详情标出确切版本，长 ID/hash 放详情披露。
+Library 使用四类 scope 切换，各类自己的列表与详情；世界与知识保持不同实际编辑权限。安装/存档导入为完整流程页：文件与预检、权限/依赖审阅、结果与打开入口。
 
-Studio 为资源树、主编辑区、右侧工具、活动区。右侧检查器与 AI 互斥，切换保留各自任务状态。世界/知识/资产主编辑页中的“资料库引用”负责 Attach/Fork/Update/Review detach/Used By；完整字段及 Source 仍在同一资源页可达。手机按 Project / Editor / Preview / AI / More 单任务切换。
+Studio 为资源树、主编辑区、右侧工具、活动区。世界/知识/资产主编辑页中的“资料库引用”负责 Attach/Fork/Update/Review detach/Used By；完整字段及 Source 仍在同一资源页可达。手机按 Project / Editor / Preview / AI / More 单任务切换。
 
 Runtime 首屏按模型用途解释缺少哪项，以及修复后如何继续；高级提供商参数、备用路线、Embedding/Rerank 和编译证据各在其所属页面。连接测试和编译预览使用不同动作与结果语义。
 

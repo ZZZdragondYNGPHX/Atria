@@ -2,12 +2,11 @@
 
 - Task ID: `refactor/atria-serene-canvas`
 - Primary Workspace: `main`（产品任务；方案与视觉输入归 `docs`）
-- Status: Implemented — 已授权的视觉重构和已确定流程完成本地实施及相关验证；原型接受与产品验证仍分别记录。
-- Current stage: I5 completed — 已接受的 v0.8 Dock 接入产品，经相关验证后集成并同步 `main@60aca6957`。I4 completed — 五域、入口、全局工具、条件媒体与作品宿主已完成代表流程验收，已集成并同步产品 `main@ec51db9a9`。外部服务及真实设备限制见 Record。
+- 外部服务及真实设备限制见 Record。
 - Current iteration: v0.8 Dock 已接受，快照见 [accepted-dock-v0.8.html](references/accepted-dock-v0.8.html)；交互规则与本轮边界见 [dock.md](dock.md)。v0.6 的完整代表交互持续作为依据；v0.7 补充欠覆盖页面，尚未获得新视觉基线接受。原型内存状态不作为产品服务实现。
 - Latest discussion HTML: [discussion-preview-v0.8.html](references/discussion-preview-v0.8.html) 为 Dock 交互试玩，继承 [v0.7](references/discussion-preview-v0.7.html) 的补充页面；完整前版见 [v0.6](references/discussion-preview-v0.6.html)。
 - Implementation authorization: 2026-10-15 收到明确“开始重构”；重大新能力或视觉改向仍须讨论。
-- Source audit baseline: `main@cc5e90eac`，实施分支 `refactor/atria-serene-canvas`。历史盘点入口仍需逐项复核。
+- Source audit baseline: `main@cc5e90eac`，实施分支 `refactor/atria-serene-canvas`。
 - Implementation record: [records/refactor/atria-serene-canvas.md](../../../records/refactor/atria-serene-canvas.md)。
 
 ## Goal
@@ -29,7 +28,6 @@
 | [visual.md](visual.md) | 视觉基线、HTML 迭代与实施对照方法 | `decisions.md` |
 | [coverage.md](coverage.md) | 当前能力、初稿覆盖和待补界面矩阵 | `decisions.md`, `visual.md` |
 | [migration.md](migration.md) | 原生设施替代路径与兼容语义 | `decisions.md`, `coverage.md` |
-| [validation.md](validation.md) | 交互、行为、视觉与性能验收目标 | `visual.md`, `coverage.md`, `migration.md` |
 | [references/README.md](references/README.md) | 输入文件出处、版本与用途 | `visual.md` |
 
 ## Stage routing
@@ -38,42 +36,32 @@
 
 必读：`index.md` → `decisions.md` → `visual.md` → `coverage.md`。
 
-讨论 Dock 时增加 `dock.md`。讨论底座替代时增加 `migration.md`；定义验收或验证原型时增加 `validation.md`。参考文件按 `references/README.md` 路由，不把所有资料每次重新加载。
+讨论 Dock 时增加 `dock.md`。讨论底座替代时增加 `migration.md`；参考文件按 `references/README.md` 路由，不把所有资料每次重新加载。
 
 ### I1 — 视觉基础、Shell 与原生设施
 
-必读：`index.md`、`decisions.md`、`visual.md`、`migration.md`、`validation.md`，以及 `coverage.md` 中涉及的 Shell/设置/生成部分。实际实施顺序由依赖和当时源码核查结果确定。
+实际实施顺序由依赖和当时源码核查结果确定。
 
 ### I2 — 登录、引导、Play 与 Library
 
-必读：`index.md`、`visual.md`、`coverage.md` 的对应域、`validation.md`；生成与作品宿主变更再读 `migration.md` 对应项。
+生成与作品宿主变更再读 `migration.md` 对应项。
 
 ### I3 — Studio、Agents 与 Runtime
 
-必读：`index.md`、`visual.md`、`coverage.md` 的对应域、`validation.md`；状态/持久化或基础设施变更再读 `migration.md`。
-
-### I4 — 全局工具、扩展、作品界面与综合验收
-
-必读：`index.md`、`visual.md`、`coverage.md` 的剩余项、`migration.md` 的兼容边界、`validation.md`。
-
-阶段用于依赖与验收组织。通用执行、记录及交付规则归 [Governance](../../../README.md)，本 Plan 不增加阶段审批或交接规则。
+状态/持久化或基础设施变更再读 `migration.md`。
 
 ## Cross-module dependencies
 
-功能矩阵决定需要补充哪些原型视图；原型决定这些视图的视觉表达；迁移方案决定哪些调用关系可以替代。视觉接受不等于功能完成或技术迁移已通过验证。
-
-## Validation strategy
-
-任务验收目标见 [validation.md](validation.md)，通用验证方式与 API 测试限制见 [Governance §12 / §13.1](../../../README.md#12-execution-adapters)。
+功能矩阵决定需要补充哪些原型视图；原型决定这些视图的视觉表达；迁移方案决定哪些调用关系可以替代。
 
 ## Material routing/design changes
 
 - 2026-10-14：首轮 v0.1 初稿获得满意反馈，进入第二轮，建立本 Bundle 并保存完全一致的视觉快照。
 - 2026-10-14：确定 Runtime 缺项引导 + 完整编辑、Agents 时间线默认 + Graph 切换；详细决定只见 `decisions.md`。
 - 2026-10-14：确定 Play 默认回到上次阅读，并保存 Play/Library v0.4 讨论稿；详细决定只见 `decisions.md`。
-- 2026-10-14：保存 Library Prompt/Persona 与 Settings v0.5 讨论稿；覆盖与验证证据见 `coverage.md`、`references/README.md`，仍处于 D2。
+- 2026-10-14：保存 Library Prompt/Persona 与 Settings v0.5 讨论稿；
 - 2026-10-15：先更新本轮范围，再保存 Studio 非 Prompt 编辑与冲突恢复 v0.6 讨论稿；仍处于 D2，未开始产品重构。
 
 - 2026-10-15：按当前交互选择新增 v0.8 Dock HTML；仅设计讨论，不启动产品修改，详见 `dock.md`。
 
-- 2026-10-15：明确接受 v0.8 并授权实装；Dock 接入从实际 `main@2686aa40a` 开始，产品分支 `feat/edge-dock`，原型与产品验证继续分别记录。
+- 2026-10-15：明确接受 v0.8 并授权实装；

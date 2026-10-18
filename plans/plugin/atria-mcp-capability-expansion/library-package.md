@@ -45,8 +45,6 @@ Deleting an immutable Library revision or an entire Library resource root is DES
 
 Before asking the user to approve deletion, MCP must call the owning delete-safety/reference authority and surface blockers.
 
-If references make deletion invalid, MCP should fail closed without offering a force-delete bypass.
-
 There is no MCP-level force delete.
 
 ### 14.4 Library versus Build ownership
@@ -114,7 +112,6 @@ flow.
 Preflight/review evidence should expose at least:
 
 - packageId / exact packageVersionId;
-- archive/content hash;
 - previous/current version identity;
 - required permissions;
 - added/removed/changed permissions;
@@ -130,14 +127,11 @@ The user authorization is for the reviewed exact PackageVersion plus the display
 
 The install authorization/receipt should bind:
 
-- artifact hash;
 - packageId;
 - packageVersionId;
 - base/current PackageVersion identity;
 - granted permissions;
 - normalized preflight result/fingerprint.
-
-Apply must fail closed if the current installed base changed after review.
 
 ### 14.10 Work edits derive PackageVersions
 

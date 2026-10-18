@@ -1,8 +1,6 @@
-# ARCH-DWE-01 · W9 统一世界身份与跨域引用权威（讨论草案）
+# ARCH-DWE-01 · 世界主体身份与领域表示
 
-- Task ID：`ARCH-DWE-01`；Primary Workspace：`docs`；[Plan index](index.md) / [总设计](design.md) / [W8 记忆连续性](npc-memory-continuity.md) / [唯一 Record](../../../records/architecture/world-evolution-consistency.md)。
-- 当前状态：**Draft；W1-B 至 W9-B 已获用户方向性确认；W10 的实例化与能力绑定候选及所有具体接口未批准**。此前 §6 的 W9-A/B/C 为原始选型历史，正式确认见 §11；不修改 `main` 或创建实现分支。
-- 当前问题：同一个“人”可能同时出现在 World Definition、Package Actor、运行时 NPC、Lifetime、Native Cognition、HCM Entity、Timeline 以及玩家角色卡中；怎样让它们正确地引用同一名世界主体，避免重复身份、名称冲突、权限泄漏和跨分支污染，同时不把各种不同记录都强制转成一个对象/数据库？
+[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W9-B：Canonical Subject、类型化投影与来源绑定**。本模块保留功能与逻辑合同；旧源码片段仅为背景，具体字段按原实现接线，不新增审查／测试阶段。历轮比较与确认历史见 Record。
 
 ## 1. 必须先区分“主体身份”与“各域的表示”
 
@@ -24,7 +22,7 @@
 
 - [Native Identity](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/identity.js) 的 `NATIVE_ID_FAMILIES` 有 `actor`、`world`、`session`、`branch`、`revision` 等家族，但读取的清单中**未发现独立的 World Entity ID family**。不能在设计讨论中虚构现成的正式 `entity_*` 契约。
 - [Actor Profile](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-actor-profile.js) 的 `projectActorDefinition` 仅读取 Package/EntryPoint 指定的 `manifest.actors`，明确不以动态 Session 状态为输入。预设的 Actor 是作者资产/角色表现入口，不应由 Play 直接修改 Package Manifest。
-- [SessionCore](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/session-core.js) 的 Timeline entry `actorId` 校验要求 ID 属于确切 PackageVersion 的 `manifest.actors`。这限制运行时新 NPC 直接以同一种 Actor ID 充当 Timeline speaker；未来是否区分 ParticipantRef 与 ActorRef 需端到端 E0。
+- 这限制运行时新 NPC 直接以同一种 Actor ID 充当 Timeline speaker；未来是否区分 ParticipantRef 与 ActorRef 需端到端 E0。
 - [Lifetime Authority](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/lifetime-authority.js) 使用 `life.person.*` 等局部身份，含引入、职业、继承、死亡和地域记录。它是可选游戏领域中的正式记录，却未证明这些 ID 已成为所有 World/HCM/Actor 消费者共享的主体 ID。
 - [Native Cognition Contract](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-cognition-runtime.js) 的 `actor`/情感 `target` ID 使用 `actor_[a-f0-9]{32}` 形状，且多个来源以 Package Actor/声明式 Information 约束视角。不能简单将 `life.person.*` 塞入 cognition，亦不能为运行时 NPC 自动开通全局记忆权限。
 - [Information Runtime](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-information-runtime.js) 以 `actors/views` 声明、scope 和 exact Session/Branch/Revision 授权；缺失的 actor 返回 unavailable。
@@ -32,7 +30,7 @@
 - [Session Repo](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/repositories/session-repo.js) 与 [SavePoint](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/repositories/save-point-repo.js) 已经持有 Branch/Revision 的写入与回溯锚点；新 identity binding 的有效性必须随同一权威提交和分支读取，不能另起跨分支共享 mutable latest。
 - [World Revision](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/world-knowledge.js) 已有固定版本 World/Knowledge 资源，但不是完整的运行时主体身份模型；要明确 authored entity 与其 Session 投影之间的匹配/实例化。
 
-以上仅说明**已核验的静态代码事实**。并未完成全部消费者引用与实时 UI/存档/跨端测试；“缺少跨域身份”仅可作为待补齐的语义/调用方路径，不表示项目没有任何实体系统。
+并未完成全部消费者引用与实时 UI/存档/跨端测试；“缺少跨域身份”仅可作为待补齐的语义/调用方路径，不表示项目没有任何实体系统。
 
 ## 3. 候选架构：Canonical Subject + Typed Views + Evidence Links
 
@@ -78,8 +76,6 @@ Library/Studio World Definition + Authored Actor (fixed revisions)
 
 公开人物“苍鹰”实际是皇帝本人：Host 可以根据作者已确立秘密真相知道其 Canonical World Subject 关系，但没有获得证据的 NPC 只能持有两个未连通身份的**主观认知节点/猜测**。不应因为全局 identity map 已合并，就把秘密实情无条件反映在玩家可见的知识图或 Memory 检索中。
 
-公开的 **alias**、私密真实身份、假身份/冒名者，必须有不同的认知可见性和身份断言来源，不能只放一个全局 `aliases` 列表来“解决”。
-
 ### 4.3 预设 Actor 与运行时 NPC
 
 作者写了一张“莱恩”的角色卡，世界中也有莱恩：Studio/Package 可以显式绑定已创作 Actor Definition 到 World Subject Definition；Session 开始时实例化成实际人物，Play 只改变其 World State/认知，不重写作者 Profile。后来 NPC 莱恩遇害，角色卡文本依然是作者原件，而当前有效视图显示已故莱恩。
@@ -120,16 +116,6 @@ ProjectedActorView:
 
 不要求每种绑定在物理存储中独立占一条记录，关键是单一原生写入和可重建读投影。特别注意 **分支身份引用的语义应先明确再选 ID 格式**：不能因用分支 ID 前缀而将从共同祖先继承的实体误生成两个不同角色，也不能因重用 `actor_*` 让两种来源碰撞。
 
-## 6. W9 三条路线（本轮待选）
-
-| 方案 | 机制 | 优点 | 核心问题 |
-| --- | --- | --- | --- |
-| W9-A：强行统一所有原生 ID | World/Actor/Lifetime/HCM 全部直接改成一个实体 ID、一个对象 | 名义上的简单 | 混淆证据和真相、固定资源与 Session 实例；会逼迫 HCM 传闻进入世界、破坏现有权限 |
-| **W9-B：统一 Canonical Subject + 受控映射/投影（推荐）** | 已提交世界成员有唯一稳定主体引用；各领域维持自身 record/ref，明确绑定来源、时间、Branch、可见性和权限 | 避免双真相与身份重复，同时尊重不同领域的职责；兼容 W1–W8 已定方向 | 需要 E0 全消费者审计、创作实例化与 Runtime speaker/认知入口的实际最小改动 |
-| W9-C：完全独立身份，检索时由 AI 猜测合并 | Actor/NPC/HCM/Lifetime 各自维护 ID 和状态，Prompt 按姓名解析 | 初期改动少 | 同名冲突、历史漂移、角色复用、分支泄漏、长期记忆误绑 |
-
-**推荐 W9-B，但并未获用户选择**。这里的“统一”是**世界主体的引用权威统一**，不是给所有子系统引入一份可写中央大表或一个万能对象。
-
 ## 7. UI / Studio / Play 的身份体验（候选）
 
 - **Library**：作者可创建独立 World Entity/Actor Profile/Knowledge Source；能看到“引用了谁”，但不强制把每段自由文案实体化。
@@ -138,37 +124,8 @@ ProjectedActorView:
 - **Inspector**：显示有权限的 Authored Origin、Session Subject、绑定 Domain/LocalRef、来源 Revision/Event、关联可信度/歧义、差异与有效时间。**普通玩家不应看见 Host 的隐藏真身映射**，以免剧透。
 - **轻量编辑**：默认沿用自由文本写作、AI 推荐实体/别名绑定；高级用户才管理冲突或强约束。不是让作者手动录入大量内部 ID。
 
-## 8. E0 必做的接口与验收审查（未执行）
-
-1. **身份/资源契约**：原生 `NativeId` families 与 `WorldRevision`/Package/EntryPoint/Session` 的身份边界、何时需要新的稳定 Subject ID、哪项现有数据已经承担等价责任。
-2. **输入/输出消费者**：SessionCore Timeline `actorId`、Actor Profile、Native Context Compiler、generation host/Orchestrator、Visual/Speech 等能否合法引用动态 Participant，而不在 `manifest.actors` 之上做覆盖式兼容。
-3. **个人权限**：Information actors/views、Cognition/ToM `actor_*`、Memory/HCM requester 与来源证明，审查动态主体映射是否打开任何跨角色读取、秘密暴露或模型效果写入。
-4. **Domain 记录**：Lifetime 人口、家庭关系与 `life.person.*` 等局部域数据，有无既有可复用的跨域身份锚点；拒绝简单重写局部 ID 导致旧历史悬空。
-5. **HCM 消歧/同名冲突**：`entityPending`、手动 merge/split、source invalidation、graph evidence 合法性与 Native Subject 正式绑定的 API，防模型自行“合并真实人物”。
-6. **Save/Branch**：创生 Revision、分叉祖先身份、事件去重/receipt、分支后映射修订和回档，保证同一 Subject 实体在每条时间线中有符合历史的状态。
-7. **不同对象类型**：人、组织、地点、物品的确切 identity/lifecycle 归属；别让可说话角色专用 `actorId` 契约成为所有 World Entity 的错误通用类型。
-8. **性能与三端**：动态上百/上千低精度实体时检索、状态增量、存档回放与 UI 的成本，尤其 Windows、CachyOS、Android Termux 的真实证据。当前未运行构建/测试/UI/跨端验收。
-
 ## 9. 额外研究参考（仅概念参考）
 
 - [Martin Fowler — Identity Map](https://martinfowler.com/eaaCatalog/identityMap.html)：避免一次工作单元把同一已持久对象加载成多个相互冲突的内存副本；这是**事务级内存身份管理模式**，不是 Atria 现成的跨域全局 ID 系统。可以借鉴“单一对象身份带来一致引用”，但不能据此建立世界真相二写。
 - [Microsoft DDD — Entities, Value Objects, Aggregates](https://learn.microsoft.com/en-us/azure/architecture/microservices/model/tactical-ddd)：需要跨时间跟踪身份时才将对象提升为实体；基于一致性边界的受控写入比跨模块直接互改重要。
 - [W3C PROV-O](https://www.w3.org/TR/prov-o/)：来源、派生、修订和 `alternateOf/specializationOf` 可以帮助区分“同一对象的不同描述版本”与“不一定同一的记录”；不要求使用 RDF 或把来源关系自动升格为世界真相。
-
-## 10. 下一轮讨论的决策焦点
-
-本轮选择 W9-A/B/C。重点应确定：**世界身份的稳定范围、World Definition ↔ Session Instance 的实例化关系、Authored Actor ↔ Runtime NPC 的语义映射、HCM 证据消歧与跨分支身份继承**。确认总体路线以后再决定是否需要最小新增 ID family、受控的 Binding/Projection 类型、Timeline/Information 消费者的实施计划和验收。
-
-**状态仍为 Draft**。用户未明确批准 W9 选择、整份方案最终定稿或代码实施；此阶段禁止改动 `main` 和其他长期工作空间。
-
-## 11. W9-B 已确认（2026-10-17）
-
-用户对上一轮明确推荐的 **W9-B：Canonical World Subject + 受控跨域映射与投影**回复「认同」。纳入 `ARCH-DWE-01` 已确认的**总体设计方向**：
-
-- 已由 Native Host 正式接纳的世界对象拥有稳定、可追溯的世界主体引用。不同领域继续维护其本地职责：Authored Actor 是创作/表达资产、Lifetime 是业务域记录、Cognition/Perspective 是授权主体视角、HCM Entity 是有证据的语义指称。
-- 映射不是通过同名自动合并，须有明确来源、版本、权限与受众界限。可保留候选、歧义与不同主体对身份的误解；Host 内部知道同一真身不自动向角色/玩家泄露。
-- 存档分叉继承分叉点前已存在的主体与绑定，分叉后的状态、秘密和新增实体按各自分支隔离。固定 World/Actor Profile 不随 Play 写回。
-- 统一的是世界对象的 **identity reference authority**，并不意味着所有领域使用同一 ID 字符串、同一张表，或创建独立于 Native SessionCore 的第二个可写实体数据库。
-- 本决定**不等于** W9 相关 ID family、绑定 Schema、动态 Speaker/ToM/Memory/Visual/Speech 的 API、实施阶段或 E0 验收已获批准。
-
-**下一轮 W10** 专门讨论定义到实例的实体创建/复用和运行时功能准入：`World/Actor Definition → Session Subject`、角色表达资源绑定、NPC 对话参与者与合法 Cognition/Task 权限、HCM 证据节点是否/怎样受控映射、分支恢复的跨域一致性。候选见同一 Plan 的 [subject-instantiation.md](subject-instantiation.md)。W10 尚未获用户选择，完整企划继续 Draft。

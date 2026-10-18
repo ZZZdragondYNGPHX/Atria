@@ -1,74 +1,59 @@
-# Atria Native Prompt Preset / Behavior 深化企划（唯一入口）
+# Atria 提示词／行为深化与全产品前端重构（唯一入口）
 
-> **当前设计状态（2026-10-18）**：D1–D8 原有功能合同和后端实施授权继续有效，E0/三端验收尚未收口。用户已确认在原生 Program/Stage/Module/PromptCompiler/PromptIR 中采用**单一显式顺序、受控 Anchor、请求级 Contribution 与 exact 增量继承**，并确定**双入口、一套资源**：Library 提供无需创建游戏的独立提示词创作；Game Studio 在同一资源权威下精确引用、Fork/Derive；Play 仅按授权选择与覆盖。生图作者可独立创作风格/模板的目标工作流复用原 Native Image Target/Rendering/ImagePromptIR/Job/Asset 权威，**不与文本编译器合并**。编排详见 [D5](semantic-ir-lowering.md)，编辑与作者入口详见 [D8](preset-studio-experience.md)，前端布局仍按[设计建议](../../architecture/atria-frontend-audit/design-proposal/atria-frontend-guidelines.md)继续讨论。现有独立测试与无 Session 的付费试生成尚未证明接通；本轮仅修订设计，不宣称已实施。正式工程状态以 [backend-implementation.md](backend-implementation.md)、[E0](e0-audit.md) 与同一 Record 为准。
+Task ID：`refactor/atria-native-prompt-preset-deepening`。产品设计已收口，功能尚未全部实现；产品源码在同名任务分支，文档在独立 `docs` 工作空间。实际进展记入[同一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md)。本次仅整理企划，不启动产品开发。
 
-> **2026-10-18 企划收口**：LoomStudio 参考与后续九轮原生深化的**产品设计讨论已完成，交付 Codex 的文档入口已就绪（`PLANNING_CLOSED / HANDOFF_READY`）**；不是实现完成或 E0 Gate 通过。当前本助手仅提交 `docs`，用户将在 Codex 中另行开始实际开发/整合。最新跨分支 19 路径重叠、增量物理接口、责任分工、验收与阻塞统一见 [E0 §9](e0-audit.md#9-2026-10-18-企划收口与-codex-交接审查)。已有已授权的 Prompt 后端语义分支继续保留，V3 P3/P4/P6 与最终 Gate 依原 V3 Record/验收矩阵为准，不能借本次设计收尾销账。
+## 要交付的用户能力
 
-> Task ID: `refactor/atria-native-prompt-preset-deepening`。Primary Workspace: `main`；当前产品实现使用同名 `refactor/atria-native-prompt-preset-deepening` 语义分支，文档仍在独立 `docs` 长期分支。仓库治理见 [README](../../../README.md)。全程更新同一个 Plan Bundle 与同一份 [Record](../../../records/refactor/atria-native-prompt-preset-deepening.md)。
-
-- 讨论日期：2026-10-15。
-- **D1 已冻结**：方案 **B**（深化原生 Behavior / Expression / Prompt 体系），优先方向 **RP 文笔与 Agent 行为并重**；不另造既有基础设施。
-- **创作自由 D1/D2 已冻结**：重视成年人合法虚构 RP 的文体表现、强作者指令和创作自由，避免 Atria 自己对合法成熟题材无端说教或误拒；先进 Jailbreak / Prompt Injection 研究用于机制、创作优化和误拒诊断，不复制攻击载荷，不承诺绕过 Provider 固定限制。
-- **D2 已冻结**：**J2 编译型 Authorial Control + F2 结构化控制与完整自由文本 + R3 拒答诊断/合法优化/用户控制 Route**；具体物理 Schema 和实现仍待后续阶段。
-- **D3 已冻结（2026-10-15）**：**E2 分层表达 + A2 默认严格且明示有限叙述委托 + K2 来源先行/文学审读 + G1 单 Narrator 优先、条件质量回路**。五种逻辑职责不是五个默认模型；详细合同见 [narrative-behavior.md](narrative-behavior.md)。
-- **D4 已冻结（2026-10-15）**：**B2 V3 Node 独立精确 Program/Route 绑定 + I2 原生 parentRef/derive 与 E2 类型化 Overlay + C2 Host NodeAttempt 原 Compiler 编译/证据**。当前 Node/Route/Program 接口未打通，仍为未来真实工程阻塞，详见 [agent-behavior-binding.md](agent-behavior-binding.md)。
-- **D5 已冻结（2026-10-15）**：**S2 Typed SemanticBlocks + L2 Capability-aware Provider Lowering + D2 分级可解释诊断 + K2 Stable/Dynamic Scoped Cache + T2 Context/Provider 双阶段 Token/Compute 预算**；详见 [semantic-ir-lowering.md](semantic-ir-lowering.md)。设计冻结不表示物理接口或质量已验收。**官方默认方向**：同一简洁原生骨架，按 RP/叙事、文学写作、Agent Task 提供可编辑任务模板；视觉 Prompt 另走 ImagePromptIR/Rendering。Provider 适配沿 L2 原端口，不另建每模型一套排序/资源。
-- **D6 已冻结（2026-10-15）**：**U2 每消费者 Source-bound Context + E2 类型化认识地位 + H2 来源完整的长会话分层 + V2 Source-aware 定向失效及消费前复验**；仅消费现有 V3 C2 / HCM-01–08，不重建 Memory/Context/Actor/World 权威。详见 [context-memory-consumption.md](context-memory-consumption.md)。
-- **D7 已冻结（2026-10-15）**：**Q2 文学/角色/Agent 多维 QualityProfile 与不可抵消硬约束 + F2 原 Experience 来源/根因归属 + O2 合法成熟虚构 RP 过度拒答正反控制 + P2 条件反思候选/独立评价/Review/PlanRevision/PlanBinding CAS 发布**。此外已确定**官方基础 / 作者共享 / 私人及游戏派生**的分层来源、开发样例与独立 Promotion 的证据分级、保存/导出/正式发布/消费者采用四个不同动作；不建在线市场、自动升级或额外发布权威。离线作者包保留完整可编辑依赖闭包，游戏 Package 为冻结运行快照；导入建立本地身份映射，来源/Hash 仅作归因与一致性线索，升级需显式 Diff/Review。实际质量来源与 V3 `plan-prompt` 闭环仍待验证，细则归 [quality-evolution.md](quality-evolution.md)。
-- **D8 已冻结（2026-10-15）**：W2 原生 Library/Studio/Play 三域协作 + R2 单 Draft 结构化/完整原文无损双编辑 + P2 Authored/Effective/Provider Wire 真实预览与精确 Diff + I2 来源驱动质量/故障 Inspector + M2 Windows/CachyOS Linux/Android Termux 全功能交互等价；详见 [preset-studio-experience.md](preset-studio-experience.md)。**仅冻结功能/交互语义；视觉审美完全留待用户后续外部设计参考与多轮讨论，不由本助手决定。** **后续确认的入口细化**：独立预设作者无需建游戏，Game Studio 以引用/派生消费同一资源，视觉作者独立创作入口复用原视觉资源与 Job 权威，均不是新增顶层域或第二存储。 **已确认专业调试方向**：Authored/Effective/Provider Wire 同源观察、来源级 Trace、按需精确 Diff、Host 受权独立测试；付费试读须另外确认，不实时自动试写，实际实现需对照当前 Host 证明。 **生态入口细化**：独立作者可管理、导入导出及共享资源，游戏作者可以直接选择基础/共享预设并钉定版本，升级另经显式 Diff/Review；具体线上分发与发布 UI 尚未确定。 **分享/升级 UI 方向**：Library 展示发行内容与来源证明等级、导入本地 identity mapping、受影响消费者和升级冲突；Studio 原 exact 绑定不能因导入新版本自动移动。无在线订阅、自动下载或认证服务承诺。 **开箱可用目标**：普通游戏作者可选官方基础版本及合法 Route，不要求自己从空 `stage.main` 编写；默认模板创建的是可修改的原生资源，模板更新不隐式覆盖已钉资源；官方身份不等于质量已验收。
-- **D9/E0 本地续审（NOT_CLOSED）**：已从远端有界首审推进为本地全产品静态索引与核心消费者追踪；物理接口、动态来源消费者和开发前 Gate 仍见唯一 [e0-audit.md](e0-audit.md)，未写为全量通过。
-- 前轮前端静态盘点基线：main@695acf3bcad1d42e331459189532a76056278bec、V3@31bef95723885c1547a9c3686200cbaf122799a8；保留其固定索引证据。2026-10-16 后端从同一 main 建语义分支，V3 已并发推进到4e0ce4bad；当前实现与增量只见 E0 §8 / 同一 Record，不把旧静态索引或另一任务工作树混入本任务提交。
-- **全产品前端研究已整理**：[Atria 前端功能与交互审计](../../architecture/atria-frontend-audit/index.md) 独立提供页面/控件/状态、端到端操作、组件问题、三端矩阵与处置。外部 [三份设计输入](../../architecture/atria-frontend-audit/design-proposal/atria-function-presentation.md) 已收到，189 个功能组映射无缺漏/重复；它们仍不是第二个功能权威。后端接口见 [实施落点](backend-implementation.md)，交 Claude Code 的实施提示词见 [前端交接](../../architecture/atria-frontend-audit/claude-code-frontend-prompt.md)。
-
-## 核心目标与实施边界
-
-1. **创作表达**：Narrator 文笔、风格、叙事节奏、角色台词与人格、成人主题表达/浪漫张力、玩家自主权、避免全知与说教、自由自定义作者指令。
-2. **Agent 行为**：Agent Task、Evidence、Constraints、输出契约和可引用的创作控制作为 V3 节点可编译输入；普通 RP 单模型优先，按证据需要增派 Agent。
-3. **Prompt 不是事实或权限**：World/Session/Memory/Cognition 的来源选择与真实状态仍由原 Domain Authority；TaskGraph/Run/Effect/Receipt 与 Approval 仍属**唯一 Node Native Host V3**；Tool/Secret/Provider Model/预算/Eval/Experience 沿用原服务。
-4. **正式重构零兼容**：不迁移 ST 预设/旧注入 depth/old prompt_order、旧 Agent Workspace/Director/Loop/Agenda 等设置；不保留 ST 旧数据/接口兼容层、双读双写和旧模式转换。但原生 exact refs、Immutable Revisions、CAS/receipt 的正确性不可删。
-5. **负责任的“破限”研究**：可研究公开 Jailbreak 攻击机制及局限，并用于防误拒评测、创作者意图编译和调试；不采用偷换 system 权限、恶意数据提权、泄密或绕过外部 Provider 固定限制作为产品能力；不得承诺跨厂商“万能破限”。
-
-## 职责归属 / 只读依赖
-
-- [V3 Native Orchestration](../atria-native-orchestration-v3/index.md)：T2 单 Host、Plan/Run/Effect/Receipt、计划绑定、权限、预算和 UI 主权；本 Plan 不复制这些合同。
-- [V3 Narrative Quality](../atria-native-orchestration-v3/narrative-project-quality.md)：Narrative Intent、Actor Cognition、Expression、唯一 Narrator、Judge/Review、玩家自主权等领域行为。
-- [V3 Interface Contracts](../atria-native-orchestration-v3/interface-contracts.md)：`plan-prompt` 的 exact PromptModuleRef、Evolution target、PlanBinding 与可靠回执，V3 仍在实现。
-- [Native Model/Prompt/Runtime](../atria-model-prompt-settings/index.md)：已实现 Prompt Program/Module、Generation Profile、RouteResolver、PromptCompiler、PromptIR 和 RequestContextPlan。
-- [此前大型技术调研](../../architecture/model-prompt-context-frontier-research.md)：2026-10-06 Prompt/Context/RP/优化研究是基线，本 Plan 不复制其完整内容。
-- 原 Agent Intelligence/Experience/Eval、Hybrid Memory、Game Runtime、Studio/Package 与 Provider Port 继续保有现存权威。
-
-## 文档路由（先 index，再本轮模块）
-
-| 文件 | 唯一职责 | 何时阅读 |
+| 用户 | 操作与结果 | 实现归属 |
 | --- | --- | --- |
-| [decisions.md](decisions.md) | 用户明确冻结的选择 + 未决点 | **每轮** |
-| [baseline.md](baseline.md) | 源码证据、旧注入与新 Native 能力、实证待查 | 第二轮/E0 |
-| [research.md](research.md) | 外部 2024–2026 来源与“破限方法”机制/适用性矩阵 | 第二轮/证据更新 |
-| [creative-injection.md](creative-injection.md) | **D2 唯一冻结模块**：J2/F2/R3、正式作者指令、成年人虚构 RP、Provider/拒答边界与验收 | D2 及后续相关实现 |
-| [narrative-behavior.md](narrative-behavior.md) | **D3 已冻结**：E2/A2/K2/G1，Narrator/Character/Agent、反全知、玩家自主权与按需质量回路 | D3 及后续表达与质量实现 |
-| [agent-behavior-binding.md](agent-behavior-binding.md) | **D4 已冻结**：B2/I2/C2 Node Exact Program/Route、精确父级继承/显式差异、NodeAttempt 快照；明确接口缺口 | D4 / D5 / 最终 E0 |
-| [semantic-ir-lowering.md](semantic-ir-lowering.md) | **D5 已冻结**：S2/L2/D2/K2/T2、Role/Context 信任边界、Fallback、缓存与预算；原生语义位置、来源贡献与正文宏的职责边界 | D5 / E0 / 提示词编排讨论 |
-| [context-memory-consumption.md](context-memory-consumption.md) | **D6 已冻结**：U2/E2/H2/V2 的受众 Context 投影、认识地位、长会话证据、请求级装配与 Source-aware 失效/复验 | D6 和实施相关接口 |
-| [quality-evolution.md](quality-evolution.md) | **D7 已冻结**：Q2/F2/O2/P2；受审文学/Agent 质量、来源归因、合法误拒、精确候选与受控发布 | D7 / E0 / 质量实施 |
-| [preset-studio-experience.md](preset-studio-experience.md) | **D8 功能与交互已冻结**：W2/R2/P2/I2/M2；原生创作大纲、受信三层预览、来源 Trace/按需 Diff、独立作者受控测试；具体视觉未冻结 | D8 / 前端讨论与实现 |
-| [e0-audit.md](e0-audit.md) | **设计期收口、工程 Gate 未收口**：三分支源码交叉核查、19 个重叠路径、物理接口/消费者阻塞、顺序与实际验收责任（最新见 §9） | 后续 Codex 实施前必读 |
-| [全产品前端研究](../../architecture/atria-frontend-audit/index.md) | **独立研究输入，非最终设计**：页面/组件/交互/跨端/来源与外部设计AI委托；详细状态仍归E0/Record | 外部设计前；后续HTML与双文档覆盖核对 |
-| [同一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md) | 真实文档提交、代码/测试/验证状态与未完成项 | 每轮更新 |
+| 独立提示词作者 | 无需建游戏，在 Library 新建／编辑 Program、Module、Generation；可从空白或官方任务模板开始 | 原 Library 资源与修订服务 |
+| 专业作者 | 结构化与完整原文编辑同一草稿；编排 Stage、Module、Anchor；查看继承与差异，保存原文和自定义内容 | 原 Authoring Draft、Program/Module、PromptCompiler |
+| 游戏作者 | Studio 选择现成预设并钉定版本，按需 Fork／Derive；无需自行写一套 Prompt | 原 Project/Package、Route 与资源引用 |
+| 调整预设的作者 | 按需看 Authored／Effective／Provider Wire、来源和 Diff；可手动选择模型与预算试读 | 原 Host、Context、Compiler、Provider、Compute |
+| 分享资源的作者 | 导出可编辑依赖包，导入时映射本地身份；手动处理升级与私人修改冲突 | 原 Preset/Library import/export、Revision/CAS |
+| 视觉作者 | 独立编辑 Image Target、Rendering、风格／模板，并由原视觉系统持有试生成任务与图片 | 原 ImagePromptIR、Visual Job/Asset；独立于文本 Compiler |
+| 玩家 | 使用作品允许的预设选择与覆盖，保留角色声音、剧情连续性、玩家自主权及合法成熟虚构表达 | 原 Play、Session、Information/Memory、Generation |
+| 全产品用户 | Library、Play、Studio、Agents、Runtime 与设置／媒体／存储等完整能力采用统一前端，桌面和手机均可操作 | 原 Shell 与各领域服务 |
 
-## 已确认的设计与工程状态（D1–D8 冻结，E0 待工程核销）
+## 实现主线
 
-| 轮次 | 核心议题 |
+1. **整合已有后端**：保留 Prompt 的可信 Program selection、Typed SemanticBlocks、Draft Preview，以及 V3 的真实角色、Source、费用、Result、Receipt 与业务提交。处理实际共改接口，不按旧快照重写已完成能力。
+2. **实现单一编排语义**：Stage 的显式顺序；同一合法 target 内 ModuleRef/Anchor 一份顺序；exact 父修订加显式差异；替换／禁用保留原位置，新增指定插入点。同步 Compiler、编辑器、Preview、Package freeze 和导入导出，不保留 `priority` 与新序列竞争。
+3. **接通独立作者**：Library/Studio 共用编辑器；提供无需 Session 的受限样例上下文、无发送预览、按需付费试读和少量可编辑模板。
+4. **实现发行与采用**：分享包的可编辑依赖、本地身份映射、Fork/Derive、三方升级差异及 exact 消费者更新。保存、导出、发布、采用是不同动作。
+5. **完成全产品前端**：沿[统一前端交接](../../architecture/atria-frontend-audit/claude-code-frontend-prompt.md)接入现有功能与新增作者流程；189 组是旧功能盘点，不是新增功能上限。旧编排入口随原生替代接通一起清退。
+6. **接入可选质量与视觉功能**：Quality/Evolution 按原服务提供反馈、候选、Review/发布；非 Session 图像任务由原视觉领域接入。各依赖只影响相应操作，不让质量认证材料拖住编辑、保存、分享和普通生成。
+
+具体接口落点见[后端实施](backend-implementation.md)，尚需接线的功能见[实现依赖](e0-audit.md)。各步骤按实际依赖推进，可独立实现的页面和功能继续做。
+
+## 已确认的设计边界
+
+- **D1/D2**：深化原 Native Prompt/Behavior/Expression；完整作者指令与结构化控制并存，尊重合法成年虚构创作。Provider 明确限制与文学偏好分开，内容拒绝不静默跨供应商重发。
+- **D3**：表达与身份／认知分开；默认严格保留玩家自主权，有限叙述委托须来自原授权。普通 RP 单 Narrator 优先，精修与 Judge 是按需能力。
+- **D4**：V3 Node 精确绑定 Program/Route；Host 构造可信选择，fallback 保持有效 Program、工具与输出语义。
+- **D5**：Typed SemanticBlocks、合法 Provider lowering、显式顺序、受控 Anchor、请求级 Contribution、exact 增量继承、原 Context/Provider 双阶段预算。
+- **D6**：先按 Source/Actor/Audience/Branch/Revision 授权，再选择上下文；当前事实、历史、角色信念、传闻与假设分别表达。长会话保留必要因果、承诺和角色声线。
+- **D7**：原 Quality/Evolution 提供可选多维反馈与受控候选发布；质量未知不冒充认证，认证不是普通创作入口的前置条件。
+- **D8**：Library/Studio/Play 共用资源、同一草稿双编辑、三层预览与 Diff、按需 Inspector、Windows/CachyOS/Android Termux 功能等价。视觉外观按用户提供的设计材料及其实际批准范围执行。
+- **单一权威、原生硬切**：不重建 World/Memory/Context/Secret/预算／Run 服务；不迁移 ST、旧 Workspace/Director/Loop/Agenda，不做双轨或旧 sender 回退。保留其中有效的 Memory、Goals、Experience、Visual Director 等能力。
+
+## 两案衔接
+
+动态世界重构提供正式事实、有效时间、Subject/Perspective 和受众视图；本案负责消费这些数据并编译 Prompt。当前提示词和全产品前端继续实现，不等待尚在暂停的世界企划。后续世界模块接入原 Context/Information 和相同前端组件，不再建立第二编译器或另起一套 Shell。
+
+## 按功能阅读
+
+| 模块 | 内容 |
 | --- | --- |
-| D1 完成 | 方案 B，RP 文笔与 Agent 行为并重；重构无旧兼容 |
-| **D2 已冻结** | **J2 + F2 + R3**；创作控制、Provider 与过度拒答研究边界已定 |
-| **D3 已冻结** | **E2 + A2 + K2 + G1**；分层表达、有限委托、来源先行、稀疏质量回路 |
-| **D4 已冻结** | **B2 + I2 + C2**；V3 精确绑定/原 Native 继承/Host Attempt 编译及接口缺口 |
-| **D5 已冻结** | **S2 + L2 + D2 + K2 + T2**：语义 IR、Lowering、诊断、缓存及双阶段预算 |
-| **D6 已冻结** | **U2 + E2 + H2 + V2**：合法受众投影、信息地位、长会话保真与定向失效 |
-| **D7 已冻结** | **Q2 + F2 + O2 + P2**；文学/Agent 评价、真实归因、合法误拒、精确候选/评审发布 |
-| **D8 已冻结（仅功能/交互）** | W2 + R2 + P2 + I2 + M2；最终视觉审美与实际 HTML 参考尚未决定 |
-| **设计期收口 / E0 工程未完** | 九轮增量决策已写回原有 D3/D4/D5/D6/D7/D8；当前 G1/G2 与整合、来源、UI/三端验收仍未核销；Codex 交接见 E0 §9 |
+| [decisions.md](decisions.md) | 跨模块已确认选择 |
+| [creative-injection.md](creative-injection.md)／[narrative-behavior.md](narrative-behavior.md) | 作者控制、文学表达、角色行为与玩家自主权 |
+| [agent-behavior-binding.md](agent-behavior-binding.md) | Node/Program/Route 与 exact 继承 |
+| [semantic-ir-lowering.md](semantic-ir-lowering.md) | 编排、Contribution、Typed IR、Provider 与预算 |
+| [context-memory-consumption.md](context-memory-consumption.md) | 受众、认识状态、长会话 |
+| [preset-studio-experience.md](preset-studio-experience.md) | 独立作者与 Library/Studio/Play 操作 |
+| [quality-evolution.md](quality-evolution.md) | 产品内可选 Quality/Evolution 功能 |
+| [backend-implementation.md](backend-implementation.md)／[e0-audit.md](e0-audit.md) | 实现归属与功能依赖 |
+| [前端资料](../../architecture/atria-frontend-audit/index.md) | 现有功能、操作链、跨端要求、外部参考 |
+| [baseline.md](baseline.md)／[research.md](research.md) | 需要追溯时读取的旧源码与研究背景 |
 
-## 当前事实
-
-D1–D8 功能/交互语义保持，视觉未由本后端任务冻结。用户已授权正式实施；后端 `760327891` 已提交到同名语义分支，未合 main。受信 Host Program/fallback、Typed trust/lowering、无损 literal/表达范围、来源消费前复验、未发布 Draft 三层预览/Diff、浏览器私密诊断边界和质量元数据/协议拒答分类已有针对性本地证据，详见 [E0 §8](e0-audit.md#8-2026-10-16-后端实施增量与真实剩余-gate) 与同一 Record。**整体 E0 仍 NOT_CLOSED**：V3 实际 Node/Plan-prompt/发布组合、旧消费者同切、真实受审独立质量来源、长会话质量与前端/三端仍未完成。2026-10-18 已核三分支，Prompt 与 V3 基于共同祖先存在 19 个同时修改路径，不能不做三方合并/回归就宣布可整合。外部三文件是实施参考，HTML 漏项不能减少完整功能。
+企划的工作项以功能和接线为单位。历史 E0/Gate、固定 SHA、测试数量和审计记录不构成新的实施前置；不安排独立审查、测试矩阵或验证项目。产品内的预览、连接检测、付费试读、Quality/Eval 是用户可选功能，不因此自动运行工程测试或模型任务。

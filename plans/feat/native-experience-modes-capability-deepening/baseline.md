@@ -6,7 +6,6 @@
 
 - 任务：Native Experience Modes & Capability Deepening
 - 类型：`feat/*`
-- 文档状态：**Implementation Baseline v1.0 / P0–P9 已实施，最终集成验证中**
 - 当前实现基线：`main@4dab353ac639d42eae885c79e18245267abd6820`
 - 正式工作分支：`feat/native-experience-modes-capability-deepening`
 - 分支起点：`main@4dab353ac639d42eae885c79e18245267abd6820`
@@ -19,7 +18,7 @@
 
 ## 〇、实施规范基线（Implementation Baseline v1.0）
 
-> 本节自 2026-09-26 起是本任务的**规范性实施入口**。后续“一～二十八”保留为完整讨论、压力测试与设计证据。若历史章节与本节冲突，以本节和之后明确更新的实施决策为准；不要为了维持早期草案一致性而恢复已经被后续样本推翻的设计。
+> 本节自 2026-09-26 起是本任务的**规范性实施入口**。若历史章节与本节冲突，以本节和之后明确更新的实施决策为准；不要为了维持早期草案一致性而恢复已经被后续样本推翻的设计。
 
 ### 0.1 当前冻结目标
 
@@ -154,39 +153,12 @@ Presentation
 
 ### 0.6 P0–P9 实施阶段
 
-#### P0 — Contract Foundation & Regression Fence
-
-目标：
-
-- 把 32 项能力所需的顶层名词、版本边界、资源引用与 capability vocabulary 落到现有 Native contract；
-- 明确哪些是新 schema/version，哪些复用现有 contract；
-- 建立拒绝 Legacy authority / arbitrary executable / unknown capability 的回归护栏；
-- 不做大规模 UI 产品行为。
-
-重点现有地基：
-
-- `src/native/authoring-contracts.js`
-- `src/native/runtime-descriptor.js`
-- `src/native/session-core.js`
-- `public/scripts/native/session-runtime.js`
-- `public/scripts/native/experience/index.js`
-- `tests/native/authoring-contracts.test.js`
-- 现有 A0–A4 hard-cut / runtime guards
-
-阶段完成条件：
-
-- 新 contract 可被 fixture 表达；
-- old v1 Package 行为保持；
-- 新字段 strict validation；
-- 没有第二套 Session / World persistence。
-
 #### P1 — Component v2 / Form / Local State / Action / Opening Foundation
 
 覆盖：
 
 - #1 / #2 / #3 / #4 / #6 / #7 / #8；
 - #14 的基础 Opening / Wizard；
-- Form validation 的 `allowed / advisory / confirm_required / blocked`；
 - Host-owned Collection View 基础；
 - Native Composer action。
 
@@ -301,7 +273,6 @@ Presentation
 
 - Session Branch restore 不能复制已 externalize 的资产；
 - Add-on 不 patch Base Package source；
-- Community payload install 时重新 validate / sanitize；
 - Player Continuity 可 local-first，云同步不是 Package 前提。
 
 #### P8 — Shared Session & Realm Runtime
@@ -332,7 +303,7 @@ P8 实施决策（2026-09-27）：
 - Snapshot+Cursor 使用 authenticated HTTP pull/heartbeat；Presence 不进入 World/Session authority；变化时返回 bounded granted projection snapshot 和最近 receipt projection，不回放权威副作用。Host 控制刷新，Package 不持有网络或身份凭证。
 - Realm 复用 P7 revision repository 和 Transfer Saga 的适配入口，保持独立资源/marker/ledger。跨域矩阵实现 Session↔Player 与 Session↔Realm；Session transfer endpoints 不重叠，不声称直接 Player↔Realm asset exchange 或三 ledger 原子事务。未来直接交换必须另行设计 lineage/reservation adapter，禁止通过共享 authority 绕过已有 ownership 防线。
 - Participant Realm Commands 仅限显式授权的 typed Command，记录身份由 Host 派生；Realm/display 数据仍不自动进 Context。多 Scene 使用同一 Session Truth，现有 loader/v2 renderer 承接 Shared Host mount。
-- 本决策明确 v1 可执行边界，不把历史案例中的完整公会/市场/竞技场、动态大厅、Host election、分布式协调自动计为已实现。P9 承接 visual authoring、产品绑定与最终验证；详见 `feat/native-experience-p8-completed.md`。
+- 本决策明确 v1 可执行边界，不把历史案例中的完整公会/市场/竞技场、动态大厅、Host election、分布式协调自动计为已实现。详见 `feat/native-experience-p8-completed.md`。
 
 #### P9 — Studio / Health / Productization / Final Integration
 
@@ -352,22 +323,17 @@ P8 实施决策（2026-09-27）：
 - 跨阶段 broad regression；
 - final docs cleanup；
 - `main` merge；
-- integrated verification；
 - delete temporary branch。
 
 **P9 已实施的具体边界（2026-09-27）：**
 
 - `studio-authoring@2` 与 `experience-health@1` 按实际实现启用。Studio 在同一编辑器中显式区分 v1/v2，沿用既有 ChangeSet Review/Commit；v2 支持视图、组件树、字段/绑定及声明文档编辑，沿用生产编译器与 renderer，不新增作者执行沙箱。
-- Author preview 绑定已编译归档的 exact UI，而非后来变化的 Source；可交互 Local UI State，隔离真实 Session/World、私有 Native conversation/composer 与持久化。Scene 在无有效 Session Scope 时显示明确占位，不声称完成真实媒体播放验证。
-- Scenario v1 是最多 64 步的封闭 fixture 协议，使用临时 FS Engine、真实 PackageInstaller/SessionCore/SharedAuthority、实际 Command/Task result/SavePoint/Restore。录制或 mock Task 结果走既有事实与 prose 边界；不连接 provider，不引入第二个 scheduler。支持断言与预期失败，失败停止；测试账本与用户 Player/Realm/Save 完全隔离。真实设备、付费模型与长时多机网络不在该证据内。
-- Health 只读诊断、能力/Task binding 预检复用现有权威。Repair 仅接受 retention compaction、prepared Player/Realm transfer resume、Session 发布前 cancellation；必须先显示 diff，再显式确认，重新验证 Session/Branch/package/Player/Realm anchors，并调用既有 typed Command/Saga。无 raw state patch 或撤销外部历史。
+- Author preview 绑定已编译归档的 exact UI，而非后来变化的 Source；可交互 Local UI State，隔离真实 Session/World、私有 Native conversation/composer 与持久化。
+- Scenario v1 是最多 64 步的封闭 fixture 协议，使用临时 FS Engine、真实 PackageInstaller/SessionCore/SharedAuthority、实际 Command/Task result/SavePoint/Restore。录制或 mock Task 结果走既有事实与 prose 边界；不连接 provider，不引入第二个 scheduler。测试账本与用户 Player/Realm/Save 完全隔离。真实设备、付费模型与长时多机网络不在该证据内。
+- Health 只读诊断、能力/Task binding 预检复用现有权威。Repair 仅接受 retention compaction、prepared Player/Realm transfer resume、Session 发布前 cancellation；无 raw state patch 或撤销外部历史。
 - Migration 实施为明确审阅、无损的静态 UI v1→v2 ChangeSet。动态 binding/action/appearance/input 的语义迁移需作者显式修改，拒绝隐式转换。Session/Player/Realm schema 继续 exact-version-pinned；没有安全版本化 adapter 时只诊断并拒绝替换，不提供通用自动迁移器。
 - P8 产品绑定使用固定席位 Host 面板：共享启用、认证账户连接、成员授权、显式 heartbeat/refresh、Host open/commit/cancel、参与者按声明 schema 提交。角色、all-required/submit-once、ACL/scope epochs、独立 Realm 与两条分离 Saga 保持不变；没有动态大厅、自动超时或 direct Player↔Realm 交换。远程 mount 显式隔离 Native slots，不能回退到本地私有 DOM。
 - P0–P8 纳入 broad unit regression，P9 增加真实浏览器桌面/窄屏与 Health/Shared 完整交互；细节与最终集成状态以 `feat/native-experience-p9-completed.md` 为准。
-
-### 0.7 阶段执行与验证规则
-
-本任务验收覆盖 targeted unit / contract / regression、changed-area lint / syntax / guard，必要时增加相邻集成检查；P9 覆盖与最终集成范围相称的回归。通用验证与执行方式见 [Governance §12](../../../README.md#12-execution-adapters)。
 
 ### 0.8 明确非目标
 

@@ -19,24 +19,6 @@ Owns Round 4: player identity, starting social position, initial access to insti
 
 The player begins as an ordinary licensed professional rather than a predestined supernatural figure.
 
-#### 6.20.1 Fixed present role — independent Civil Verifier
-
-The starting profession is provisionally an **independent Civil Verifier**: a licensed civilian specialist who resolves inconsistencies in modern identity and civil records.
-
-Typical work includes:
-
-- death-record conflict;
-- insurance identity verification;
-- inheritance claims;
-- duplicate registration;
-- broken title chains;
-- marriage-status conflict;
-- migrant name mismatch;
-- worker-roll discrepancies;
-- determining whether a claimant is legally the person they claim to be.
-
-The exact setting-native profession title remains open.
-
 #### 6.20.2 Why this role is preferred
 
 The profession gives the player limited but plausible access to:
@@ -120,8 +102,6 @@ Initial mundane explanations remain plausible:
 - insurance crime;
 - migration / registration mismatch.
 
-The case reaches the player because identity verification is their ordinary work.
-
 #### 6.20.7 Escalation
 
 Investigation establishes that the recently deceased person did not merely adopt the identity recently.
@@ -151,7 +131,6 @@ The player's professional habits matter:
 
 - independent notes;
 - evidence separation;
-- repeated verification;
 - direct Witness;
 - refusal to collapse contradiction prematurely.
 
@@ -216,7 +195,6 @@ This makes the first supernatural commitment a story decision rather than charac
 
 Guaranteed:
 
-- professional verification license;
 - small practice / work-source network;
 - ordinary civil-record access;
 - limited police / court / registry contact.
@@ -265,13 +243,10 @@ The long-term supernatural arc increasingly asks:
 
 **who are you, and what still makes you the same person?**
 
-This mirror between Civil Verification and personal Identity is approved as a central character theme.
-
 ### 6.21 Round 4 decision
 
 Approved:
 
-- independent Civil Verifier as the fixed starting profession;
 - institutional independence at game start;
 - fixed present / flexible past character design;
 - no chosen-one origin;
@@ -282,7 +257,6 @@ Approved:
 - ability to postpone Investiture;
 - tiered starting institutional access;
 - modest economic life without survival-sim focus;
-- verification-of-others → definition-of-self as the protagonist's core thematic arc.
 
 Rejected:
 
@@ -305,16 +279,12 @@ The default flow is:
 
 1. **Identity** — name, pronouns / gender presentation, adult age, appearance and other personal descriptors.
 2. **Origin** — social and geographic upbringing.
-3. **Prior Life** — training or work before becoming a Civil Verifier.
 4. **Faith** — relationship to the dominant religious world and local tradition.
 5. **Anchor** — one important person and optionally one important place / community.
-6. **Reason** — why the protagonist currently performs Civil Verification and what ordinary life goal matters now.
 
 Do not add class, Principle, supernatural profession, talent-point or stat-allocation selection at character creation.
 
 #### 6.22.2 Fully free personal expression
-
-The following may be entered freely within ordinary validation limits:
 
 - name;
 - pronouns / gender presentation;
@@ -538,8 +508,6 @@ Rejected:
 
 ### 6.24 Approved first-Claim generation and stabilization — Round 4.6
 
-The first Claim is generated through deterministic, validated play history rather than free model invention.
-
 The approved flow is:
 
 **Resolved Actions → Breach Imprints → Claim Catalog Eligibility → 2–4 concrete Claim Seeds → choose / postpone → Anchor + Price stabilization → formal Claim**
@@ -551,7 +519,6 @@ Opening behavior is represented by discrete **Breach Imprints** rather than cont
 Representative Imprints include:
 
 - `preserved_conflicting_evidence`;
-- `verified_identity_across_sources`;
 - `protected_relationship_continuity`;
 - `mapped_invalid_location`;
 - `followed_residual_trace`;
@@ -626,7 +593,6 @@ Typical starter Jurisdiction is limited to one of:
 
 - Self;
 - one personally observed object;
-- one personally verified person;
 - one personally traversed location;
 - one explicit fact;
 - one already-established relationship.
@@ -655,8 +621,6 @@ The following are approved as design examples, not mandatory final names.
 
 **Unlost Evidence** — Witness + Memory
 
-A personally verified contradictory fact cannot be fully erased from the protagonist's own cognition by ordinary subsequent settlement.
-
 Limits:
 
 - does not prove which version is Truth;
@@ -665,8 +629,6 @@ Limits:
 - does not force institutions to recognize the fact.
 
 **A Name Still Bound** — Name + Bond
-
-When the protagonist personally verifies that a person continues to sustain a real social relationship, they can notice severe discontinuity between that relationship and the person's formal Identity.
 
 Limits:
 
@@ -793,8 +755,6 @@ They do not own Principles or Claim categories.
 
 Immediate safe Self-Investiture is not available by default.
 
-A newly Breached Civil Verifier does not yet possess enough operational knowledge to freely design stable Anchor / Price structures.
-
 The player may eventually gain Self-Investiture through:
 
 - research;
@@ -857,16 +817,12 @@ The player may then compose from approved primitives such as:
 - Price;
 - Jurisdiction.
 
-A validator must reject:
-
 - self-contradictory structures;
 - world-rule violations;
 - unsupported Jurisdiction;
 - inadequate Anchors;
 - conflicts with existing Claims;
 - prohibited Principle behavior.
-
-The model may render an approved structure into natural language but not bypass validation.
 
 This enables the long-term fantasy of discovering or founding a new supernatural tradition without turning free text into unrestricted power creation.
 
@@ -877,7 +833,6 @@ Approved:
 - discrete Breach Imprints instead of hidden Principle XP;
 - only resolved authoritative world actions create Imprints;
 - multiple independent Imprints for first-Claim eligibility;
-- curated and validated Claim Catalog;
 - 2–4 concrete candidate Seeds plus postponement;
 - intentionally narrow first-Claim Jurisdiction;
 - investigative / perceptual starter emphasis for the opening Breach;
@@ -887,7 +842,6 @@ Approved:
 - Self-Investiture gated behind acquired knowledge;
 - playable Breached-but-uninvested state through limited Contradiction Sensitivity;
 - strict model / Native authority boundary;
-- later validated Claim Engineering.
 
 Rejected:
 
@@ -897,5 +851,3 @@ Rejected:
 - immediate large-area or high-impact starter Claims;
 - institutions owning entire Claim categories;
 - free safe Self-Investiture at the opening;
-- free-text ability descriptions overriding mechanical validation.
-

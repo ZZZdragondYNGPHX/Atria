@@ -14,8 +14,6 @@
 ## Authoritative documents
 
 1. `planning/atria-product-frontend-redesign/DESIGN.md`
-2. `planning/atria-product-frontend-redesign/PHASE-2.md` (implementation, decisions,
-   executed checks, limits, and screenshot evidence)
 3. `planning/atria-product-frontend-redesign/PHASE-1.md` (already integrated)
 4. `refactor/atria-product-frontend-redesign.md` (original boundary audit)
 
@@ -37,22 +35,6 @@ foundation are retained; this does not authorize unrelated legacy cleanup.
 No new routing, persistence, configuration or runtime authority. No Phase 3+
 product surface was redesigned. The formal design remains Apple-style,
 restrained, precise and content-first; not decorative blur or generic cards.
-
-## Executed acceptance
-
-- Targeted Jest: 6 suites / 43 tests.
-- Shell Jest: 24 suites / 96 tests.
-- Edge entry browser acceptance: 9 tests.
-- Existing Edge foundation/navigation: 13 tests.
-- Aggregate P8 architecture/residual guards, root lint, targeted test lint,
-  cold frontend build and diff whitespace checks passed.
-- Real screenshots inspected: 1440 / 900 / 390 / 320px, dark/light, loading,
-  login errors/empty/pending, onboarding, nested dialogs, toasts, keyboard focus,
-  simulated keyboard and safe areas. Selected screenshots are in the Phase 2 record.
-
-No physical Android/Termux, real-device IME, external OAuth/generation calls,
-Docker, MySQL/Postgres, or whole-repository suite. Authentication responses in the
-entry tests are deterministic mocks; actual controllers/pages are exercised.
 
 ## Next authorized target (after continuation)
 

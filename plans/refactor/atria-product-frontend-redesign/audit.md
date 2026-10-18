@@ -17,7 +17,6 @@
 这份文档只负责告诉实施者：
 
 1. 当前前端由哪些产品层和兼容层组成；
-2. 哪些页面 / 组件 / CSS / 路由是本次必须检查的范围；
 3. 当前实现存在哪些结构性设计债务；
 4. 哪些行为、数据权威和运行时边界不能因为视觉重构被误伤；
 5. 哪些现有测试只是旧表现结构的历史约束，不能反过来绑死新设计。
@@ -377,7 +376,6 @@ Studio 的核心契约不能被 UI 重构弱化：
 - conflict boundary
 - Resource Graph
 - Library Attach / Fork / Update
-- validation
 - preview
 - simulation
 - preflight / build
@@ -423,62 +421,9 @@ Runtime 必须继续使用 Native model / connection / route / generation / prom
 - touch input
 - Android WebView usable layout
 
-## 5. Test / guard interpretation
-
-当前仓库已有大量 guard。实施者必须先区分：
-
-### A. Real behavior / architecture contract
-
-例如：
-
-- Native authority ownership
-- no second persistence
-- route ownership
-- exact resource references
-- Studio review / execute
-- Native Play ABI isolation
-- hard-cut legacy product authority
-- game host ownership
-- accessibility / keyboard behavior
-- real E2E flows
-
-这些不能为了新设计直接删掉。
-
-### B. Historical presentation contract
-
-部分测试 / regex guard 固定了当前：
-
-- class name
-- specific region order
-- exact mobile view naming
-- exact DOM marker
-- CSS selector
-- current fullscreen geometry
-- old presentation structure
-
-如果这些只是在证明上一轮前端“长这样”，而不是证明产品行为正确，那么本次视觉重构可以修改相应测试，而不是为了过旧测试保留旧设计。
-
-需要重点阅读：
-
-- `scripts/check-a6-native-product-frontend.mjs`
-- `scripts/check-a7-studio-authoring-ux.mjs`
-- `scripts/check-a9-hard-cutover-product-finalization.mjs`
-- `scripts/check-p5-native-runtime-ui.mjs`
-- `scripts/check-p7-product-cleanup.mjs`
-- `scripts/check-n9-native-product-authority.mjs`
-- `scripts/check-n10-native-hard-cutover.mjs`
-- `tests/atria-shell/*`
-- `tests/e2e/atria-shell/*`
-- `tests/e2e/native-session/*`
-- relevant Game Runtime / Studio / Workspace tests
-
-不要通过机械保留旧 DOM 来“证明”新设计完成。
-
 ## 6. Mandatory redesign coverage
 
 最终不能只交付 Shell 或 Studio。
-
-至少要主动检查并有明确设计结果的表面包括：
 
 - startup / loading
 - login
@@ -558,25 +503,6 @@ Runtime 必须继续使用 Native model / connection / route / generation / prom
 - 跳过 compatibility / extension surfaces；
 - 因旧截图测试失败就回退新设计；
 - 因为某块历史代码复杂就留着不碰且不说明。
-
-## 9. Validation expectations
-
-本任务完成后至少应有：
-
-- targeted unit / guard tests for touched frontend contracts；
-- route / workspace regression；
-- Native Play regression；
-- Library / Runtime regression；
-- Studio authoring regression；
-- real browser validation；
-- desktop screenshots；
-- compact/mobile screenshots；
-- keyboard / focus sanity checks；
-- no horizontal overflow on supported compact widths；
-- loading / error / empty / review states verified；
-- relevant existing full frontend lint / build checks。
-
-视觉验收不能只靠 DOM 测试。
 
 ## 10. Designer autonomy
 

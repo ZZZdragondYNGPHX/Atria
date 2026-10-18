@@ -13,7 +13,7 @@
 
 Read the relevant Plan index and [Record](../records/README.md). When resuming a user-requested interruption, read root `HANDOFF.md` first when it exists. Execution rules belong to [Governance](../README.md), not individual Plans.
 
-Plans 记录设计与理由，不定义执行许可。先核对入口状态；已完成、被取代的设计与历史 checkpoint 不恢复为新任务的测试或兼容义务。实现原则见 [Governance §12.1](../README.md#121-minimal-implementation)，API 配额见 [§13.1](../README.md#131-api-测试执行规则)。
+Plans 记录设计与理由，不定义执行许可。已完成、被取代的设计与历史 checkpoint 不恢复为新任务的测试或兼容义务。实现原则见 [Governance §12.1](../README.md#121-minimal-implementation)，API 配额见 [§13.1](../README.md#131-api-测试执行规则)。
 
 按语义放入 `feat/`、`fix/`、`refactor/`、`package/`、`plugin/`、`architecture/` 等目录。
 

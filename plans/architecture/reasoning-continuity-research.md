@@ -224,11 +224,6 @@ Character / Chat
 
 Atria 更适合的是：
 
-```text
-Reasoning Continuity
-└── scoped + invalidatable + branch-aware
-```
-
 ---
 
 # 4. Anthropic：Thinking 已从“展示思考”演变成正式协议状态
@@ -273,8 +268,6 @@ Claude thinking + tool_use
 ## 4.3 最新 Preserved Thinking 引入 Prefix Binding
 
 Anthropic 目前的 Preserved Thinking 比传统多轮历史机制更严格。
-
-对于受支持的新模型，thinking signature 会验证：
 
 1. **生成它的模型 / 可读取它的兼容模型**
 2. **它之前的完整前缀**
@@ -602,8 +595,6 @@ OpenAI-compatible = supported
 - feature probe；
 - 实际运行 evidence；
 
-把状态提升为 verified。
-
 ---
 
 # 10. 建议的 Atria Capability 模型
@@ -656,24 +647,6 @@ ReasoningContinuityCapability
 实际状态建议被 Runtime 视为 opaque handle。
 
 概念上：
-
-```text
-ReasoningContinuation
-├── continuationId
-├── provider
-├── endpoint / execution-path identity
-├── protocol
-├── resolved target
-├── model compatibility key
-├── provider-native state
-├── originating task / turn / revision / branch
-├── parent continuation
-├── prompt/tool binding evidence
-├── policy
-├── createdAt
-├── validity
-└── invalidation / drop reason
-```
 
 规则：
 
@@ -789,11 +762,6 @@ Regenerate
 
 因此建议平台统一规则：
 
-```text
-history before checkpoint changed
-→ invalidate continuation after checkpoint
-```
-
 ## 13.3 Restore Older Revision
 
 恢复旧 Revision 时，可以：
@@ -834,20 +802,12 @@ Atria 已经在讨论：
 
 - 检索结果；
 - 世界状态 projection；
-- 已验证计算结果；
 - Narrative Intent；
 - Task Summary；
 - 显式 Plan；
 - 结构化候选结论。
 
 它们可以具备：
-
-```text
-inputs hash
-provenance
-revision applicability
-validity contract
-```
 
 ## 14.2 Opaque Reasoning State 不应默认作为普通 Artifact Cache
 
@@ -967,23 +927,6 @@ RP 正文需要：
 - Explicit Style Constraints
 
 而不是依赖旧 hidden reasoning。
-
-## 15.5 Critic / Validator
-
-推荐：**默认独立 reasoning**
-
-如果 Critic 继承 Planner 的全部 reasoning，容易继承同一批假设。
-
-对于：
-
-- contradiction check；
-- rule validation；
-- correctness verification；
-- second opinion；
-
-独立 reasoning 更有价值。
-
----
 
 # 16. 建议的 Continuation Policy
 
@@ -1169,14 +1112,6 @@ Atria 可能无法知道全部内部路由。
 
 因此 continuity 证据也应有等级，例如：
 
-```text
-verified_native
-verified_gateway_preserved
-declared_only
-unknown
-observed_broken
-```
-
 而不是一个静态 boolean。
 
 ---
@@ -1219,17 +1154,6 @@ model = xxx
 Atria Core 不应该理解厂商 opaque payload。
 
 Provider Adapter 至少负责：
-
-```text
-detectCapability()
-captureContinuation()
-serializeContinuation()
-restoreContinuation()
-validateCompatibility()
-mapContinuationToRequest()
-extractContinuationFromResponse()
-describeLossReason()
-```
 
 Runtime 负责：
 
@@ -1359,13 +1283,10 @@ Atria 导出：
 - Continuation lineage
 - Effective Execution Snapshot
 - continue / fork / reset / discard
-- invalidation reasons
 
 不要求所有 Provider 立即实现。
 
 ## Phase B — OpenAI Responses Reference Implementation
-
-优先验证：
 
 - `previous_response_id`
 - stored responses
@@ -1381,8 +1302,6 @@ OpenAI 目前最适合做 Atria 的 reference implementation。
 
 ## Phase C — Anthropic Native
 
-验证：
-
 - thinking block round-trip
 - redacted_thinking preservation
 - tool loop
@@ -1394,8 +1313,6 @@ OpenAI 目前最适合做 Atria 的 reference implementation。
 - thinking block clearing
 
 ## Phase D — Gemini Native
-
-验证：
 
 - Interactions stateful
 - `previous_interaction_id`
@@ -1510,7 +1427,6 @@ streaming
 ## 26.3 Runtime Correctness
 
 - restore 后 continuation 是否正确
-- edit 后是否正确 invalidation
 - branch fork 是否隔离
 - regenerate 是否不会误续旧计划
 - provider switch 是否记录 loss
@@ -1530,7 +1446,6 @@ streaming
 | Research Agent | `task` |
 | Memory Retrieval | `none` / `active_execution` |
 | Narrator | `none` / short-horizon / current-turn |
-| Critic / Validator | `none`，独立推理 |
 | Background Summarizer | `active_execution` |
 | Deterministic Runtime | 不使用 reasoning |
 
@@ -1611,8 +1526,6 @@ explicit task state / plan / receipt / artifact
 长期：
 authoritative world state + memory + summary
 ```
-
-信息越长期，就越应该从 Provider-private reasoning 状态迁移到 Atria 自己可解释、可验证的状态。
 
 ---
 
@@ -1712,10 +1625,6 @@ Atria 核心逻辑不得依赖 raw chain-of-thought。
 
 Narrator 不追求无限 reasoning continuity。
 
-### RC-9：Native-first, gateway-verified
-
-优先使用 Provider 原生 continuation；Gateway 经 probe 后才提升能力等级。
-
 ### RC-10：Adaptive lifecycle
 
 最终目标不是永久保存，而是正确地 continue / fork / reset / discard。
@@ -1812,38 +1721,6 @@ Atria 第一阶段不应：
 ---
 
 # 36. Codex 可直接使用的合并任务说明
-
-```text
-请把《Atria Reasoning Continuity / Persistent Reasoning 前沿调研报告》的架构结论并入当前 Atria 企划。
-
-要求：
-
-1. 不要整篇复制调研报告，而是将“已确认架构结论”融入现有模型 / Provider Routing、Agent Runtime、Task / Revision、Context Runtime 相关章节。
-2. 将 Reasoning Continuity 定义为 Model / Execution Runtime 一级能力，与 Memory、Conversation、Prompt、Task Artifact、Authoritative State 明确分离。
-3. 保留以下核心语义：
-   - opaque Provider state
-   - path-aware capability
-   - Provider Adapter mapping
-   - continue / fork / reset / discard
-   - Revision / Branch invalidation
-   - routing/fallback continuity loss
-   - Effective Execution Snapshot evidence
-   - native-first / gateway-verified
-   - no raw CoT dependency
-   - Planner 高连续性、Narrator 短 horizon
-4. 不要把任何示例 TypeScript / 概念结构误写成已经定稿的 Schema。
-5. 如果企划已有相近术语，以既有正式术语为主，消除重复概念，不创建平行体系。
-6. Gateway 能力不得根据“OpenAI-compatible”自动推断；应保留 exact execution path / capability evidence / probe 思路。
-7. 把分阶段实施建议加入实现 roadmap：
-   A. Runtime contracts
-   B. OpenAI Responses reference
-   C. Anthropic native
-   D. Gemini native
-   E. Gateway probes
-   F. Adaptive policy / eval
-8. 将实际结果保存到同一正式 Record；交接条件见 [Governance §7](../../README.md#7-handoff)。
-9. 不要实施代码，本轮只更新企划与必要的研究/记录文档。
-```
 
 ---
 

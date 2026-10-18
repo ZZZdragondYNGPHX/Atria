@@ -4,8 +4,6 @@
 
 ## 28. Architectural invariants
 
-The following invariants are load-bearing and should receive automated guards where practical:
-
 1. Native identity never derives from display name, filename, avatar filename, path, or array index.
 2. A Package is distributable authored content; a Session is user runtime progress.
 3. Package content never owns current user progression.
@@ -39,30 +37,24 @@ The following invariants are load-bearing and should receive automated guards wh
 
 ## 29. Next implementation action
 
-N3 remains the last fully validated phase at `c42ee3e98a27fbea97ded0917de081bcc8893680` (Native Content Session Dev Checks #44, run `35679448236`, success).
-
 N4 has progressed further and is **not to be restarted or reset**. At the time of this architecture amendment, the live work branch is:
 
 `refactor/atria-native-content-session-architecture@952410a3f3d200754b046ccc2868166282958094`
 
-The commits from the original N4 projection work and live-runtime E2E are useful and must be preserved. Their acceptance semantics now change.
+The commits from the original N4 projection work and live-runtime E2E are useful and must be preserved.
 
 Continue N4 as follows:
 
 1. fetch/re-read the live remote working-branch HEAD; if another conversation advanced beyond the SHA above, use the actual latest HEAD and never reset;
 2. read current `main:AGENTS.md`, `main:FORK_MAINTENANCE.md`, both docs handoffs and this Master Plan;
 3. preserve completed N0/N1/N2/N3 and all reusable N4 projection/generation/attachment/prompt/Regex/Knowledge/Branch/reload work;
-4. add the committed Timeline Write Barrier and fail-closed direct-projection mutation protection;
 5. remove committed `revise/remove/removeVariant/selectVariant` from the Native product command path rather than translating ST mutations into Native history changes;
 6. keep ST swipe-shaped structures only where the mutable Draft/generator ABI still needs them;
 7. change Native Retry Reply from Regenerate→Variant into Fork-from-post-user-revision → new Assistant message;
 8. change committed Continue into append-continuation semantics;
-9. rewrite N4 real-host tests: Edit/Delete/Swipe/Swipe-delete become negative/fail-closed cases; Send/Stop/Retry/Continue-as-append/Branch/reload/prompt/Regex/Knowledge/attachments remain positive acceptance;
 10. add a direct third-party/projected `chat[]` committed-content mutation test proving Native authority does not change and no `/api/chats/*` fallback occurs;
 11. do not begin N5 state migration, N6 KnowledgeCompiler, N7 Context Architecture, N9 UI cutover or N10 retirement early;
-12. record actual N4 local validation and continue along the implementation dependencies.
 
 Do not create another branch, merge to main, or introduce an old-store fallback.
-
 
 ---

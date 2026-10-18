@@ -187,7 +187,6 @@ This is a product-level taxonomy; it does not imply one database table or one de
 
 Keep the author-facing model small:
 
-- **Attach** — project pins an exact immutable Library revision/content hash.
 - **Fork** — create an independent project-owned derivative while retaining origin provenance.
 - **Create / Import** — create project-owned resources.
 - **Publish to Library** — publish reusable project-owned assets when supported.
@@ -203,8 +202,6 @@ Host-only development tools are excluded. Allowed package runtime contributions 
 ---
 
 ## Resource Registry and Resource Graph
-
-Create a formal **Resource Registry** that allows Atria Core and Plugins to register authoring resource types and their schemas/editors/validators/generators.
 
 Plugin-defined authoring resources may include domain concepts such as:
 
@@ -259,7 +256,6 @@ StudioService / related authoring services should support, as appropriate by pha
 - resource CRUD through operation registry
 - asset import/bind
 - dependency inspection
-- validation / diagnostics
 - diff / ChangeSet
 - history / commit / rollback
 - simulation
@@ -273,12 +269,6 @@ No Native Studio endpoint may use Character/card filename identity.
 ## Authoring Operations, Workspace and ChangeSet
 
 Human structured editors, source editors, Project Agent and eligible Plugin authoring contributions share the same mutation infrastructure.
-
-```text
-Human UI ─┐
-          ├─> Authoring Operations -> Workspace -> ChangeSet -> Validate -> Commit
-AI Tools ─┘
-```
 
 The AI must not have a privileged or separate write path.
 
@@ -296,7 +286,7 @@ Do not silently rebase AI work over human edits.
 
 ChangeSet/Task history is semantic development history, not a second source-history authority.
 
-Project revision/Git remains source history. Tasks/ChangeSets record intent, operations, validation results and resulting commit/revision references.
+Project revision/Git remains source history.
 
 ---
 
@@ -305,18 +295,6 @@ Project revision/Git remains source history. Tasks/ChangeSets record intent, ope
 Replace the old “AI chat beside code” model with a Project-level agent.
 
 Primary model:
-
-```text
-Intent
- -> Plan
- -> Authoring Workspace
- -> Operations
- -> ChangeSet
- -> Validate
- -> Simulate / Preview
- -> Review
- -> Commit
-```
 
 The AI UI centers on:
 
@@ -333,8 +311,6 @@ Project Agent uses Resource Registry/Operation schemas to discover domain tools.
 
 Relevant Skills provide know-how; Plugins/resources provide capabilities.
 
-A bounded automatic repair loop may validate/fix/simulate/preview, but must have a repair-round limit and review gates for high-impact changes.
-
 Atria Studio must remain fully functional without AI.
 
 ---
@@ -349,7 +325,6 @@ Potential contribution surfaces include:
 
 - Build resource types/editors/panels
 - asset importers
-- validators
 - generators
 - component palette items
 - Play components/inspectors/commands
@@ -380,8 +355,6 @@ Use one plugin ecosystem with distinct trust/execution identities:
 
 Package runtime v1 must **not execute arbitrary package JavaScript**.
 
-Initial package contributions are controlled/declarative and capability-defined: schemas, commands, rules, reducers, selectors, components, validators and other host-validated definitions.
-
 Do not treat an ordinary Web Worker as a secure sandbox.
 
 A truly programmable package-plugin sandbox (for example an isolated QuickJS/WASM-like runtime with explicit capability bridge) is deferred to a separate future design.
@@ -397,7 +370,6 @@ The existing mature Game Runtime contains valuable algorithms but its old author
 ### Retain/migrate useful capabilities
 
 - formula/compiler/evaluator
-- command registry and validation
 - reducers
 - rules engine
 - deterministic RNG
@@ -643,22 +615,7 @@ Low-frequency legacy compatibility controls may temporarily remain behind an Adv
 
 ## Implementation phases
 
-Use one task branch, update the same Record and run minimum relevant local validation at each phase, then continue. Handoff follows Governance §7.
-
-### A0 — Contracts & Hard-cutover Guards
-
-Define/freeze:
-
-- Experience contract
-- Resource descriptors / registry contracts
-- Authoring Operation / Workspace / ChangeSet contracts
-- project revision/conflict contracts
-- Runtime Descriptor contract
-- Atria Plugin contracts and package-runtime v1 restrictions
-- Native Skill scope contract
-- residual guards against reintroducing retired authorities
-
-No broad UI implementation yet.
+ Handoff follows Governance §7.
 
 ### A1 — Native Authoring Backend
 
@@ -668,7 +625,6 @@ Implement the project-authoring backend boundary:
 - project source CRUD
 - transactional/batch operation path
 - workspace / ChangeSet plumbing
-- validation/diagnostic hooks
 - Git/history integration on ProjectStore directory
 - build/preview/simulation seams
 
@@ -757,15 +713,12 @@ Implement:
 - Plan
 - AI tool projection from Authoring Operations
 - workspace/ChangeSet execution
-- validation/repair loop
 - simulation/preview inspection
 - human takeover
 - optimistic revision conflict handling
 - semantic development history
 
 ### A9 — Hard Cutover & Product Finalization
-
-After replacements are validated, delete retired systems:
 
 - CardApp Studio/runtime product paths
 - `/api/card-app/*`
@@ -777,8 +730,6 @@ After replacements are validated, delete retired systems:
 - old product-facing Play DOM
 - obsolete compatibility entrypoints that no longer have justified consumers
 
-Run full residual scans, focused acceptance, full regression/build/lint and final product validation.
-
 ---
 
 ## Phase execution rule
@@ -788,64 +739,11 @@ This is a multi-stage project.
 After each A0–A9 phase:
 
 1. finish the coherent phase;
-2. run phase-appropriate targeted and broader checks;
 3. commit and push the same implementation branch;
 4. update the formal plan only when architecture/scope changed;
-5. update the docs handoff with branch HEAD, completed work, decisions, actual validation, known issues and next phase;
 6. stop and provide a ready-to-copy prompt for the next phase/new conversation.
 
 Do not create a new implementation branch per phase.
 Do not merge `main` until the user explicitly reaches final integration after the complete refactor.
-Do not redo prior completed phases unless validation proves a defect.
 
 ---
-
-## Acceptance criteria
-
-### Authoring
-
-A user can stay inside Build/Studio to:
-
-Create project → choose Text/Component/Hybrid/Full → create/attach Actors/Worlds/Knowledge/assets → author logic/UI → use Skills/Plugins → validate/simulate/preview → build `.atria`.
-
-No CardApp Studio is required.
-
-### Runtime
-
-All four experiences execute from Native Package + Native Session authority.
-
-No active Native path depends on:
-
-- charId package identity
-- `game.json` runtime authority
-- swipe-derived game branch authority
-- Chat State game-world authority
-
-### Library
-
-Reusable supported assets can be created/imported, attached/forked, revision-pinned, inspected and explicitly updated. Release build produces a self-contained immutable dependency closure.
-
-### Plugin / Skill
-
-New Plugin and Skill concepts are distinct. New Plugin contributions can extend Build/Play without creating competing Native authority. Package runtime v1 has no arbitrary package JS execution.
-
-### Vibe Coding
-
-Project Agent can plan and apply domain Authoring Operations, validate/simulate/preview, expose ChangeSets, handle revision conflicts and allow human takeover. The same project remains fully authorable with AI disabled.
-
-### Frontend
-
-Normal product paths present Atria-native Play, Library, Build, Agents, Runtime and principal utility surfaces using the unified product design system. Legacy SillyTavern drawers/CardApp Studio/chat-file concepts are not part of the normal Native product experience.
-
-### Hard-cutover residuals
-
-Final active Native authoring/runtime/product code must not reintroduce:
-
-- CardApp Studio authority
-- `/api/card-app`
-- `GAME_MANIFEST_PATH` / `game.json` authority
-- charId Native game-package identity
-- swipe-id Game World branch authority
-- Chat State Game World authority
-
-Legacy SillyTavern generation internals may remain only as justified internal ABI behind Native/Atria product adapters.

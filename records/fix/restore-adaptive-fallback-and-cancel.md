@@ -11,10 +11,8 @@ Improve large Android archive restore in two ways:
 
 - Baseline: `main@ea757892a2b0e7caf1e8d81cdf0e636a91d35cf5`
 - Task branch: `fix/restore-adaptive-fallback`
-- Final validated task head: `fd75188f261351db34255aba994757bb6e92e949`
 - PR: #18
 - Squash merge / resulting `main`: `c51d8b779a741f0cf87758b5f8565be581f17556`
-- Validated task-head tree and merged-main tree: `e6407588da5c13a0ba31a425a4b6e1841e562df3`
 
 ## Field evidence
 
@@ -74,29 +72,6 @@ To make the rollback guarantee honest for that scope:
 - rollback restores both the user data and the global third-party extension directory;
 - recovery-point apply/undo retains the same global-extension coverage;
 - the tracked `.gitkeep` protection from PR #16 remains intact.
-
-## Validation
-
-Final task head passed:
-
-- Atria Migration Guard;
-- ESLint;
-- complete Node unit suite;
-- Backup & Storage UI workflow:
-  - Backup Center Chromium;
-  - Browser Storage Chromium;
-  - Server Storage Chromium.
-
-Regression coverage includes:
-
-- adaptive 15-second → 1-second primary-probe policy;
-- manual cancellation identity and rolled-back terminal metadata;
-- aborting a stalled entry before its watchdog fires;
-- aborting Android archive staging;
-- Backup Center manual interrupt-and-rollback UI;
-- snapshot-only global-extension payload never leaking into user-root restoration.
-
-Android JVM tests and Android/Docker builds were not run because this task changes Node/frontend restore logic only and those checks remain opt-in.
 
 ## Data/config impact
 

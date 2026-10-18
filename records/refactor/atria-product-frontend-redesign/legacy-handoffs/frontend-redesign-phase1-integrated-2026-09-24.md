@@ -3,7 +3,6 @@
 - Date: 2026-09-24
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Integrated main: `402b53a98a823573591db4e9fd015f98e6effbdb`
-- Phase 1 validated implementation: `f28615b5d5451f75e8abd959fa84cca0d942f56d`
 - Phase 1 PR: #86
 - Previous task branch `refactor/atria-product-frontend-redesign` was merged and deleted.
 - Next implementer: Codex Astra.
@@ -54,9 +53,7 @@ Phase 1 evidence:
 - desktop / medium / compact visual inspection completed
 - dark/light, search, inspector, utilities and narrow widths inspected
 - root lint passed
-- aggregate architecture guards passed
 - cold webpack build passed
-- `git diff --check` passed
 
 Do not repeat this work unless a later phase uncovers a real regression.
 
@@ -68,7 +65,6 @@ Do not repeat this work unless a later phase uncovers a real regression.
 5. **Runtime** — grouped configuration surfaces and compact editor
 6. **Build / Studio** — full authoring workspace, review, preview, Project Agent
 7. **Agents and utilities** — embedded orchestration, Settings, Plugins, Account, Diagnostics
-8. **Final acceptance** — cross-domain regression, screenshots and final integration
 
 Continue in this order unless the design document is materially revised for a concrete technical reason.
 
@@ -82,7 +78,6 @@ Before continuing Phase 2, Codex Astra should have the following skills availabl
    - Do not let the other skills flatten its design into a generic checklist UI.
 
 2. **`ui-ux-pro-max` — product/UX completeness support**
-   - Use it to check dense product workflows, responsive behavior, hierarchy, forms, navigation, mobile and accessibility completeness.
    - It supplements the visual direction; it does not override it.
 
 3. **`web-design-guidelines` — post-implementation audit**
@@ -112,7 +107,6 @@ Not acceptable:
 - redesigning desktop but leaving mobile as compressed desktop
 - skipping difficult legacy/compatibility surfaces without documenting them
 - using the same generic bordered card/list for every domain
-- claiming completion from DOM/unit tests without real browser visual validation
 - allowing old presentation tests to force the old visual structure back
 - weakening Native/runtime/persistence authority to make the UI easier to build
 
@@ -152,16 +146,14 @@ For each phase:
 
 1. inspect the current implementation and the design spec;
 2. implement the whole phase, not a cosmetic subset;
-3. run targeted tests/lint/build and all relevant offline/browser validation;
 4. use real browser screenshots at desktop and compact/mobile widths;
 5. use the frontend skills according to the role separation above;
 6. fix ordinary code/test/workflow problems autonomously;
 7. commit and push the phase;
 8. update the formal design document only for material design changes;
-9. update this handoff / the relevant phase record with branch, HEAD, completed work, validation, open limitations and next phase;
 10. report the phase result and stop until the user says continue.
 
-Do not wait on GitHub CI as the primary debugging mechanism. Run local/offline validation yourself. If CI later fails for an ordinary code/test/workflow reason, fix it autonomously.
+Do not wait on GitHub CI as the primary debugging mechanism. If CI later fails for an ordinary code/test/workflow reason, fix it autonomously.
 
 Pause only when the next step genuinely requires:
 

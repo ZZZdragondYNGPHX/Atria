@@ -388,7 +388,6 @@ OpenAI 2026 的 Agent Improvement Loop 把：
 - tools；
 - routing；
 - output requirements；
-- validation。
 
 这再次说明未来优化对象不是“提示词字符串”，而是**整个 behavior harness**。
 
@@ -428,17 +427,14 @@ OpenAI 当前甚至明确建议：
 - game command 文本协议；
 - state mutation 格式；
 - result envelope 格式；
-- deterministic validation 规则；
 - permission；
 - capability；
-- irreversible action guard。
 
 这些应该由：
 
 - Tool Contract；
 - Output Contract；
 - Authority；
-- Validator；
 - Runtime Policy
 
 承担。
@@ -611,11 +607,8 @@ ACL 2026 PersonaForge 也表明：
 
 ```text
 Stable Identity Model
-        +
 Current Scene
-        +
 Retrieved Persona Evidence
-        +
 Current Cognitive / Emotional State
         ↓
 Expression / Action
@@ -850,7 +843,6 @@ Atria 将来如果发展 Cognitive Runtime：
 - structured output；
 - result envelope；
 - response type；
-- validation。
 
 **应尽量使用 Provider/Runtime 原生结构，不靠文本模拟。**
 
@@ -1108,8 +1100,6 @@ Wire Request
 
 编译过程可以有 deterministic pass：
 
-- validation；
-- scope checking；
 - contradiction detection；
 - redundancy elimination；
 - stable/dynamic partition；
@@ -1243,47 +1233,6 @@ BehaviorControlArtifact
 > 同一 Semantic Behavior Profile 可以由 text prompt backend 或 trained adapter backend 实现。
 
 而不是让产品层知道底下究竟用了多少文字。
-
----
-
-## 22. Test-time Compute 也应该脱离 Prompt
-
-当前模型越来越多支持显式 reasoning effort。
-
-研究也持续显示：
-
-- 增加 test-time compute 可以提升困难任务；
-- 但边际收益快速下降；
-- 不同任务值得投入的 compute 不同。
-
-因此：
-
-> “请仔细思考”“请一步一步想”“请反复检查三次”
-
-不应该成为 Creative Preset 的长期组成部分。
-
-未来应由：
-
-- Metacognitive Controller；
-- Generation Profile；
-- Runtime Budget；
-- Model Adapter
-
-决定：
-
-- reasoning effort；
-- critic 数量；
-- rollout 数；
-- parallel branch；
-- retry；
-- escalation。
-
-参考：
-
-- OpenAI Reasoning Models  
-  https://developers.openai.com/api/docs/guides/reasoning
-- Adaptive Test-Time Compute Allocation  
-  https://arxiv.org/abs/2604.14853
 
 ---
 
@@ -1509,7 +1458,6 @@ Atria 作为试验田反而应该保留高级自由度。
 - World Authority；
 - tool permission；
 - state transaction；
-- output validation；
 - secret boundary。
 
 ---
@@ -1933,8 +1881,6 @@ Atria 越可以把旧的 Prompt hack 删除掉，把更高阶的语义和 Runtim
 
 1. 先读取当时最新的 Native Runtime / State / Authority / Model-Prompt / Agent Runtime 真实代码；
 2. 再读取本文作为研究背景；
-3. 重新检查当时 OpenAI / Anthropic / Gemini / 主流开源模型的最新能力；
-4. 重新检查 2026 之后 Prompt optimization、long-horizon context、role-playing agent、learned control 的最新研究；
 5. 不把本文中的候选命名或分层当成已经批准的最终设计；
 6. 基于新的 `main` 创建正式 Plan；
 7. 设计时默认 Atria 是独立产品，不为 SillyTavern preset / injection / extension 结构保留兼容层。

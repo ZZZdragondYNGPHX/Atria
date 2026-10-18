@@ -193,10 +193,6 @@ GenerationService 又冻结 EffectiveRequestSnapshot。
 
 这与上一份 Prompt / Context 调研完全一致。
 
-### 3.4 Secret 只进入 send boundary
-
-这个安全边界应该继续保留。
-
 ### 3.5 Fallback 不静默改变 Tool / Output authority
 
 当前 fallback 保持工具和输出契约一致，这也是未来动态 Routing 必须继续保护的 invariant。
@@ -1547,8 +1543,6 @@ Declared / Observed Model Identity。
 
 ### Active probe
 
-验证：
-
 - tools；
 -structured output；
 -reasoning；
@@ -1738,7 +1732,6 @@ Shadow 结果不展示，只进入 Eval。
 
 -比较新模型；
 -校准 router；
--验证第三方网关；
 -测试 Prompt lowering；
 -发现 provider regression。
 
@@ -1857,8 +1850,6 @@ Atria 应评估：
 通常可以自动。
 
 ### B. Equivalent-model failover
-
-换成被验证为相近行为 / 能力的目标。
 
 可能自动，也可能要求 policy 允许。
 
@@ -2107,7 +2098,6 @@ Callable Target
 这保留了当前系统最有价值的：
 
 -明确连接；
--能力验证；
 -exact snapshot；
 -provider adapter；
 -fallback safety；
@@ -2163,26 +2153,6 @@ Effective Execution Snapshot
 Provider / Gateway
         ↓
 Observation / Eval / Experience
-
----
-
-## 45. 后续 Codex 合并进正式企划时必须检查
-
-1. 当前 Agent Intelligence Runtime 是否把具体 Model / Route 写死在过多阶段；
-2. Prompt / Generation 是否被错误当作 Routing 的同一对象；
-3. Computation Allocation 是否真正能动态选择 Model tier；
-4. New API / Sub2API / OpenRouter 这类 Gateway 是否有独立语义；
-5. remote model ID 是否被误当 canonical model identity；
-6. Capability 是否带 provenance / freshness；
-7. Pricing 是否允许 gateway-specific / user-specific evidence；
-8. Quality Routing 与 Failure Fallback 是否拆开；
-9. nested gateway retry 是否有全链路 attempt budget；
-10. Execution Snapshot 是否仍可 replay / audit；
-11. opaque gateway 是否会被诚实标为 upstream unknown；
-12. session affinity 是否可选且受 policy 约束；
-13. local utility model 是否能作为正常 target 参与路由；
-14. 每个 dynamic routing decision 是否进入 trace；
-15. 是否能用真实 RP eval 衡量“路由省的钱是否值得”。
 
 ---
 
@@ -2261,7 +2231,6 @@ Observation / Eval / Experience
    - model-prompt-context-frontier-research.md
    - sparse-ai-invocation-adaptive-compute-research.md
    - model-provider-routing-frontier-research.md
-4. 重新检查当时最新 main 的：
    - src/native/model-prompt-runtime/**
    - src/native/adapters/provider-discovery.js
    - Provider adapters

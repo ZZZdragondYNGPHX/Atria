@@ -12,20 +12,12 @@ Atria Native Content & Session Architecture Refactor
 
 `refactor/atria-native-content-session-architecture`
 
-N7 已正式完成并验证。
-
-N7 validated HEAD：
-
 `8fa25d1175603da905a45b9de7b8de5a8d4b776f`
 
-最终验证：
-
-- Workflow：Native Content Session Dev Checks #121
 - Run：`35711043211`
 - N0 Native Contracts：success
 - N1 Storage + N3/N5 Core + N4 Projection：success
 - N2 Package Project Composition：success
-- N4 real-host Chromium Native Session acceptance：4 passed
 - N5 Runtime State & Revision Lifecycle：success
 - N6 Native Knowledge Runtime Integration：success
 - N7 Checkpoint C：6 suites / 53 tests passed
@@ -37,7 +29,7 @@ N7 validated HEAD：
 
 N8 — Save System & `.atriasave`
 
-开始前先重新 fetch 工作分支，以实际最新 HEAD 为准；如果其他会话已经继续推进，保留所有已有提交，不要回退到 validated HEAD。
+开始前先重新 fetch 工作分支，以实际最新 HEAD 为准；
 
 依次重新读取：
 
@@ -96,7 +88,6 @@ Native Session 可以运行 → 退出 → 重启 → save → load → export `
 - Narrative / Commitment / derived coverage round-trip；
 - Memory / Orchestrator authoritative state round-trip；
 - optional AEAD 正确密码、错误密码、篡改失败关闭；
-- missing dependency fail-closed / structured diagnostics；
 - FS / SQLite 及现有适用的存储回归；
 - no JSONL / Character / World Info authority fallback；
 - complete relevant Node regression、frontend build、full root lint。
@@ -105,19 +96,14 @@ Native Session 可以运行 → 退出 → 重启 → save → load → export `
 
 只有以下情况停下等我：
 
-1. CI 进入明显的长时间验证；
 2. 需要 Android / Termux 真机日志；
 3. 需要真实 UI 截图；
 4. 需要权限、Secrets 或外部授权。
 
-N8 完成并验证后停止，不要直接进入 N9。
-
 届时更新 docs / handoff，记录：
 
-- N8 validated HEAD
 - CI workflow / run
 - 完成内容与边界
-- Checkpoint B 验证
 - 下一阶段 N9 目标
 
 并发我一段新的 N9 接手提示词。

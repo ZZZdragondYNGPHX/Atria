@@ -73,8 +73,6 @@ The authoritative state may establish:
 - physical properties;
 - what content it contains.
 
-The content's assertion is not automatically World Truth.
-
 A valid death certificate proves that a death certificate was issued with certain content. It does not by itself prove that the recorded death actually occurred as stated.
 
 #### 6.32.4 Belief
@@ -289,7 +287,6 @@ Correct flow:
 
 1. project only permitted institutional information;
 2. model proposes one of the allowed actions / commands;
-3. Native authority validates the proposal;
 4. valid command is committed;
 5. later narration reflects the new state.
 
@@ -398,7 +395,6 @@ Approved:
 
 - use Atria Native Lifecycle + Information as the simulation foundation;
 - no independent all-purpose World State engine;
-- separate World Truth, Institutional State, Artifact assertions, Belief, Memory, Open Loops and Narrative;
 - artifact content does not automatically equal Truth;
 - resolve / commit before narrative generation;
 - narrator and NPC perspective projection instead of hidden omniscience;
@@ -408,7 +404,6 @@ Approved:
 - bounded graph projection;
 - one canonical world clock;
 - Agenda as state machine with Clock as scheduler;
-- Model Tasks propose only validated commands;
 - Major / Supporting / Population simulation tiers;
 - lazy location materialization;
 - selective long-term Actor Memory;
@@ -506,7 +501,6 @@ Evidence may reference:
 - location;
 - source;
 - custody;
-- integrity;
 - observed content.
 
 A Case references Evidence rather than copying it.
@@ -641,7 +635,6 @@ Creation or alteration of a formal Claim requires supernatural authority command
 - Origin;
 - Prior Life;
 - Faith relationship;
-- current Civil Verifier profession state;
 - office / practice state;
 - Personal Anchor references;
 - home / community Anchor;
@@ -659,8 +652,6 @@ Formal debts should not be flattened into a player numeric field; they belong in
 - Investiture eligibility;
 - Claim-candidate state;
 - Self-Investiture learning / research.
-
-When a Seed becomes a formal Claim, a validated progression command creates an entry in `claims`.
 
 #### 6.34.15 No general Economy domain
 
@@ -755,8 +746,6 @@ Applies to:
 
 The language model cannot raw-patch these domains.
 
-Mutation requires validated commands.
-
 **Perspective Authority**
 
 Applies primarily to:
@@ -765,8 +754,6 @@ Applies primarily to:
 - memories.
 
 A model may propose actor-perspective updates only when the actor plausibly observed, learned or experienced the supporting source.
-
-Actor identity and source provenance must be validated.
 
 **Intent Authority**
 
@@ -979,7 +966,6 @@ It must not receive:
 
 Permitted Reflection functions include:
 
-- consistency checking;
 - evidence relationship mapping;
 - highlighting unanswered questions;
 - surfacing contradictions among already known records;
@@ -1021,8 +1007,6 @@ Do not use one floating-point truth-confidence value such as `0.73` as the prima
 Prefer source and status distinctions such as:
 
 - Police testimony — disputed;
-- Player Finding — verified from two sources;
-- Newspaper report — unverified;
 - Institutional Record — active.
 
 This reflects actual information structure rather than inventing pseudo-probabilities.
@@ -1118,8 +1102,6 @@ Player statements inside dialogue are speech Events, not system facts.
 
 If the player tells an NPC “you already know the mayor is guilty,” the Actor context still contains only the NPC's actual Beliefs.
 
-This prevents prompt-style user assertions from silently rewriting character knowledge.
-
 #### 6.36.21 AI output authority classes
 
 Every AI-facing task has an explicit output authority.
@@ -1143,8 +1125,6 @@ May organize already-known player information.
 **Advisory Output**
 
 May explain permitted mechanics under player Knowledge policy.
-
-Any hard world mutation still requires validated Native commands.
 
 ### 6.37 Round 6.6 decision
 
@@ -1190,8 +1170,6 @@ World simulation advances deterministically by default.
 Background Model Tasks are an exception reserved for genuinely open-ended deliberation.
 
 The approved post-action order is:
-
-**Player / World Action Commit → Advance Canonical Clock → Process deterministic due events → Evaluate conditional Agenda steps → Collect deliberative Agenda candidates → Relevance / Priority / Budget gate → Run bounded background tasks → Validate proposals against anchored revision → Commit in deterministic order → Stop at bounded reaction depth → Build Perspective Projection → Foreground Narrative**
 
 #### 6.38.1 Deterministic updates run before any model
 
@@ -1346,7 +1324,6 @@ Flow:
 
 1. capture baseline revision;
 2. produce independent proposals;
-3. validate proposals;
 4. commit according to deterministic world ordering.
 
 World history must not depend on which provider response arrived first.
@@ -1365,16 +1342,6 @@ Potential categories may include:
 Exact priority taxonomy is deferred to technical design.
 
 Within equal priority, a stable deterministic identifier or equivalent rule must resolve ordering.
-
-#### 6.38.14 Stale proposals fail validation
-
-A proposal that was valid against its anchored revision may become invalid after an earlier same-tick commit.
-
-It must fail closed as stale / blocked rather than being reinterpreted into a new action.
-
-The Agenda may enter a blocked state and reconsider at a later eligible opportunity.
-
-Do not immediately recurse into repeated Model Task calls until one succeeds.
 
 #### 6.38.15 Bounded reaction depth
 
@@ -1434,21 +1401,6 @@ Skipping time still processes:
 
 The player cannot avoid world consequences merely by requesting a long time skip.
 
-#### 6.38.19 Background Model Tasks fail closed
-
-If a background Model Task:
-
-- times out;
-- produces invalid output;
-- loses provider availability;
-- violates its Action Catalog,
-
-no hard world mutation is committed.
-
-The Agenda remains pending / blocked or uses an explicitly authored safe fallback.
-
-Provider failure must never invent arbitrary world consequences.
-
 #### 6.38.20 Foreground gameplay outranks background work
 
 A delayed or failed Warm / Cold background decision must not block normal player interaction.
@@ -1494,7 +1446,6 @@ Approved:
 - perspective isolation during scheduling batches;
 - pending decisions may supersede, committed Events may not;
 - same-tick anchored snapshots and deterministic commit ordering;
-- stale proposals fail closed;
 - bounded reaction depth;
 - secret background changes remain hidden until legitimately observed;
 - event-driven fast-forward;
@@ -1513,4 +1464,3 @@ Rejected:
 - provider failure causing speculative fallback events;
 - background tasks blocking foreground play;
 - save reload re-rolling already accepted institutional decisions.
-

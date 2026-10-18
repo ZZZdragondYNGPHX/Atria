@@ -23,8 +23,7 @@ Hybrid Cognitive Memory 2.0 的成功不是向量检索分数提高，而是：�
 2. Actor Identity 的作者定义、动态 Belief/Emotion/Relationship/Intention 仍归对应 Actor/Cognition 与原 State authority。Memory 不成为第二个心理状态 writer。
 3. 当前 Context 的选择、权限、预算和 Provider Lowering 仍走已存在的 Native Context Compiler / Runtime Port。Memory 只贡献来源足够的候选 ContextItems，不另建完整 prompt compiler。
 4. Runtime/TaskScheduler/RunControl/Host Provider 发出模型请求并计费；Memory 不自带绕开预算的第二个模型调用器。
-5. Narrative 需要正文时继续 fresh generation。可复用已验证的查询/来源/意图/稳定前缀，不把旧正文作为普通语义缓存直接返回。
-6. 任何提高性能的动作不能取消来源 currentness、Actor exposure、Branch reachability、正式 authority checks、证据异步消费前复验。
+5. Narrative 需要正文时继续 fresh generation。
 7. 若用户已删除来源、切换分支、替换 Variant、修改隐私权限，任何相似向量/旧缓存命中都不得覆盖该结果。
 
 ## 2. 接入现有三条生成路径，而非虚构一条万能流水线
@@ -35,7 +34,7 @@ Hybrid Cognitive Memory 2.0 的成功不是向量检索分数提高，而是：�
 | Native Game free-text / UI command | [Game LLM runtime](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/scripts/native/experience/llm/runtime.js)，[memory-bridge](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/scripts/native/experience/llm/memory-bridge.js)，Narrative Contract | 官方 World 结算后读取已授权历史；Narrator/Orchestrator 共享合法证据，但 Actor 的决策不能拿 Narrator 全视角内容 | Memory 反过来污染 World、失效结果覆盖新回合、错信升级为事实 |
 | Native Package Turn | [play-generation](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/scripts/native/play-generation.js)，[Information Runtime](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-information-runtime.js) | Memory grant/sourceMessageIds 与 Context final admission 保留，并且在统一检索**之前**确定请求的可见候选域 | 不可见 Episode 在向量元数据/LLM 提示/诊断日志中出现 |
 
-不要认为所有路径都已经运行同样的召回流程：接入前应分别做真实调用图和针对性契约测试。重构统一的是**对外语义与安全边界**，不是强迫所有世界先运行相同数量的 Agent 或任务阶段。
+不要认为所有路径都已经运行同样的召回流程：接入前应分别做真实调用图和针对性契约测试。
 
 ## 3. 认知语义模型：一次来源，多种合法解释
 
@@ -83,34 +82,19 @@ type RetrievalRequest = {
 };
 ~~~
 
-这是 **概念模型**，不是要求立刻创建全局 Runtime 类型或持久资源。合法 requester 必须由原服务端和 Information Authority 计算/验证，不能相信由客户端或工具返回文本自报的 actorId/privilege。
+这是 **概念模型**，不是要求立刻创建全局 Runtime 类型或持久资源。
 
 ### 4.2 Memory Evidence Packet
 
 每个合法证据项应能追溯：
-- 稳定 ID、种类、源 Reference / revision / active Variant、源 hash、有效时间；
 - Query/Actor 适用原因、世界事实/角色认知/历史传闻的地位；
 - Actor exposure proof 或只对 Narrator 的获准用途；
 - 摘要/引用的衍生生产者版本、依赖/失效条件；
-- 完整性状态：current / superseded / disputed / unknown / stale，不把缺字段解释成 truth；
 - 已核算 Token 成本、所选 packet 的覆盖类别、必要的冲突并列来源。
 
 不必将算法评分、私有推理过程或可泄露秘密的完整链路暴露给 Narrator。系统 Trace 保存了就不需要再复制到每次正文 prompt。
 
 ## 5. 推荐检索执行管线：约束先行、自适应升级
-
-~~~text
-1. Resolve requester / authority snapshot / branch / world time
-2. Obtain only eligible source-backed records from owned projections
-3. Build deterministic query intent / actor & scene seeds / temporal horizon
-4. Run cheap lanes (lexical, typed graph; optional vector when configured)
-5. Fuse candidate rankings (RRF baseline), check provenance and actor view
-6. If insufficient coverage AND budget/capability permits:
-     typed multi-hop/path -> optional PPR -> optional rerank/LLM rewrite
-7. Select diverse yet source-complete evidence under Context token budget
-8. Revalidate source/actor/branch before compilation and downstream consumption
-9. Return structured evidence; Narrator/Orchestrator keep original authorities
-~~~
 
 ### 5.1 Hard eligibility before similarity ranking
 
@@ -141,9 +125,9 @@ type RetrievalRequest = {
 | Lexical | BM25-like + 中文短语/别名/结构化 token | 专名、原话、明确承诺、无 Embedding 场景 | 本地索引更新和中文歧义 |
 | Typed temporal graph | 现有 BFS/邻接 + 有类型的边、有效时间 | 关系、传言传播、因果证据、状态变化 | 必须仅遍历授权/时间适用关系，不将可达性视为因果证明 |
 | Vector | 当前 Native Retrieval/Embedding Profile | 隐含语义、口语同义词、长 Episode | 依赖可用 profile、网络/API/存储开销及索引新鲜度 |
-| Historical/narrative | Narrative Spine / Rollup / Commitment refs | 长章节、旧约定、关键转折 | 原有压缩版本和源校验，不得与当前 authoritative lane 竞争硬预算 |
+| Historical/narrative | Narrative Spine / Rollup / Commitment refs | 长章节、旧约定、关键转折 ||
 
-图谱种子弱时，PPR 也救不了无意义查询。不要把大范围 PageRank 作为每轮默认；应对真实多跳失败执行 typed path/PPR 的有限消融，并核验完整合法证据链。
+图谱种子弱时，PPR 也救不了无意义查询。不要把大范围 PageRank 作为每轮默认；
 
 ### 5.4 Rank：事实权威与相关度是两回事
 
@@ -158,7 +142,7 @@ rrfScore(record) = sum_over_lane(weight[lane] / (k + rank[lane, record]))
 - **软相关度**：与当前演员/场景/意图关联、因果邻近、未履行承诺、重要性、时间距离、检索历史；
 - **覆盖和成本**：最终选择应避免相似 Episode 重复占据 memory lane，同时保留冲突双方和来源上下文。
 
-置信度分为来源支持、角色信念、检索相关度三个不同量，不能统一当作校准概率。具体 boost/weight、RRF k、MMR lambda 留在实验中以固定验证集调整，不做经验拍脑袋常数。
+置信度分为来源支持、角色信念、检索相关度三个不同量，不能统一当作校准概率。
 
 ### 5.5 Coverage-aware packing
 
@@ -201,20 +185,6 @@ Memory 查询本身不能当作剧情变化的证据。“检索器回忆了师�
 
 **表达边界**：记忆提供人物经历/心态依据；Expression Profile 决定语言、节奏与细节。过去的文本只作为证据，不当作必须复制的文风；Narrator 正文新鲜生成，避免“清冷=机器人”的机械化固定反应。
 
-## 8. Cache/Index：先验证有效性，再计算收益
-
-| 层 | 候选复用 | 必要条件 | 失效或降级 |
-| --- | --- | --- | --- |
-| Source / Index | source-valid 的 corpus 投影、图邻接、中文词表、向量 fingerprint | Source ref/Variant/epoch、Chat/Package、索引器/Embedding 版本 | source edit/delete/branch 改动触发 dependency delta；不能证明依赖完整则全量重建 |
-| Retrieval | query-seed/候选 rank 与 ID 集 | audience/Actor、scope、Query signature、时间、授权投影、retriever version、有效的 dependency proof | 不得因相同 query 文本/相同向量自动允许跨 Actor 或跨 Branch |
-| Context segments | Immutable Actor/Rule/Knowledge 元数据与可用稳定前缀 | 原 Resource exact revision、编译版本、工具 schema/权限、source validity | 动态 Scene/Memories 后置，但不得为 cache 命中藏匿必要事实 |
-| Provider prompt cache | 真实 Provider 支持的系统/工具/消息前缀 | 确切 Provider/Model/Gateway/协议、TTL/usage 观测 | NewAPI/SubAPI 这类代理能力未确证则 unknown；不虚报 cached_tokens |
-| Workflow/Intent | 已核验的上下文/计划/叙事意图 | 原 Execution Reuse Contract 的依赖和权限重验 | 不缓存普通 RP 的最终正文；正式 effect 不因命中省略 |
-
-当前 Hybrid 每次向量召回都需要投影 corpus、计算指纹、与远端 hash 集合核对，已有不重复 embedding 设计，**但没有跳过所有 O(N) 索引检查**。先基准化 100/1000/10000 篇合法 Episode 的 CPU、index bytes、network、Embedding 调用与 p50/p90 延迟，再引入 index delta，测修订/删除后的 false-hit。
-
-错误的跨权限缓存命中属于正确性失败，而不仅是性能波动；即便 cache 未来被清理，World/Actor 正式状态也不能变化。
-
 ## 9. 失败回退：哪类允许降级，哪类必须停止
 
 | 故障 | 推荐行为 |
@@ -222,11 +192,10 @@ Memory 查询本身不能当作剧情变化的证据。“检索器回忆了师�
 | Embedding 未配置或可选向量服务不可用 | 降至合法 lexical+graph lane，记录 vector_unconfigured/unavailable；不绕过来源和权限 |
 | Rerank 超时/失败 | 保留受保护候选和合法的融合排名，记录失败；不伪装 rerank 成功 |
 | LLM 查询重写失败 | 使用受证据约束的原查询；对必要隐含关系查不到要标记未知 |
-| 权限无授权 / Actor 身份无效 / 当前 source 被撤回 | **Fail closed**，不返回其他 Actor 的候选或旧缓存 |
 | Branch/Revision 在 async retrieval 期间改变 | 拒绝旧结果；通过原现行请求路径按预算重算，绝不能晚到覆盖 |
 | 关键 Source/Current World 不可获取 | 标注不可用；若后续正式操作必须依赖它则阻断/审阅，不能凭摘要补事实 |
 | 后台维护失败 / 超额 | 保留 source 和已提交认知，记录 pending/unavailable，禁止假定已整理 |
-| Narrative 生成文本疑似利用未知秘密 | 独立测试/审阅/有界修正；不能宣称静态检索检查保证所有自由文本绝无串知 |
+| Narrative 生成文本疑似利用未知秘密 | 独立测试/审阅/有界修正；|
 
 ## 10. 工程交付与证伪方式
 
@@ -242,8 +211,6 @@ Memory 查询本身不能当作剧情变化的证据。“检索器回忆了师�
 
 ## 11. 已冻结与仍由工程负责的分界
 
-**冻结**：HCM-01–08，包括唯一 Hybrid、A/B/C 旁白策略、Actor belief 对 World Truth 的隔离、事件驱动混合认知、作品可选的自主 NPC、World Tick、轻度默认遗忘/深度可选、强约束优先检索、旧模式硬切、保留有效原生记忆、必要 correctness checks 同步执行。
-
 **不冻结的工程变量**：物理 Schema/存储、分词器、RRF k 与 lane weights、PPR/Beam/MMR/LLM 触发器阈值、Token budget、超时、Embedding provider、cache key 的最终编码、UI 组件、G/S 阶段精确归属。要求 Codex 以实际 HEAD、原合同和针对性实验选择并记录，不在尚无生产事实时捏造性能 SLO。
 
-本研究只提供后续正式集成依据。当前 M1 正式验收是否完成、可否在同一开发分支继续，必须读取当时 [正式 Plan](../agent-intelligence-runtime/index.md) 与其 Record，不能由本研究提前改变。
+本研究只提供后续正式集成依据。

@@ -29,7 +29,6 @@
   - 左侧 Sheet 是 Project Explorer。
   - 中央宽 Sheet 是编辑器（采用 JetBrains Mono 字体和克制的代码高亮）。
   - 右侧 Sheet 是 AI Project Agent。
-- **编辑安全与验证:** 脏状态（未保存）通过文件名旁边的红色小圆点提示。点击 `Review Changes` 后，整个画布背景会稍微变暗，一份新的 Sheet（ChangeSet Modal）会像实体纸张一样盖在最上方要求验证。
 
 ## 5. 必须遵守的废弃/剥离红线 (旧层处置)
 - **旧聊天控件:** 所有的 Swipe, 重生成, `#message_template`, `#sheld` 面板在新设计中**连遗迹都不留**。新的交互理念是“如同出版物一般确定的文字”，重生成将通过选中整段文字弹出的 Context Menu（轻量级气泡）完成。

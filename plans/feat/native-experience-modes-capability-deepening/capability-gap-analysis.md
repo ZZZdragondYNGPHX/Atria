@@ -30,8 +30,6 @@ SillyTavern、MVU、Tavern Helper、CardApp、重前端 Regex 卡只作为：
 - Tavern Helper API 复刻；
 - 为旧格式保留双重事实源。
 
-角色卡适配可以继续作为人工验证手段，但它不是产品架构目标。
-
 ### 23.2 对照原则：吸收能力，不吸收实现
 
 对照示例：
@@ -80,7 +78,7 @@ SillyTavern、MVU、Tavern Helper、CardApp、重前端 Regex 卡只作为：
 - **Game Turn Controller** 已有 Turn Transaction phase、Attempt、retry、switch variant、stop/undo/delete，以及不改变 authoritative fingerprint 的 prose-only `rewriteNarrative`。未来 Turn Envelope 与 Reply Variant facade 必须扩展并整合这套机制，同时落到现有 Session Branch / Revision，而不是再造一套 turn/variant 状态机。
 - **Declarative Logic** 已有 declarative Command / Reducer / Rule / Interpretation Mapping，并最终进入现有 typed Command → Event → Reducer authority 链路。未来 Declarative Mutation 只能是更低样板成本的 authoring shorthand，不能形成第二套 mutation authority 或平行 DSL/runtime。
 - **Host / Environment** 已有 device、orientation、touch、keyboard、viewport 环境投影，以及 Full Host 的基础 focus/recovery 行为；后续缺口集中在 Browser Fullscreen、semantic focus navigation、gamepad、safe-area、overlay/input policy 等高级 Host capability。
-- **Game LLM Runtime** 已有强 `authority-first` 路径，也已有 `Event Interpreter → Interpretation Mapping → typed Command` 的受控语义映射。未来 `narrative-outcome` 的缺口不是“第一次允许模型提出语义状态变化”，而是把 prose + projection + semantic outcomes 纳入统一 Package Turn Contract / Turn Envelope，并提供验证、模拟与原子提交语义。
+- **Game LLM Runtime** 已有强 `authority-first` 路径，也已有 `Event Interpreter → Interpretation Mapping → typed Command` 的受控语义映射。
 
 ### 23.4 第一组差距：UI 基础能力
 
@@ -193,8 +191,6 @@ Atria 当前 Game Runtime 更偏：
 适合确定性游戏、战斗、经济、规则系统。
 
 #### narrative-outcome
-
-适合开放式 RP，让模型提出 semantic outcome，再由 typed runtime 验证、模拟和提交。
 
 不是为了兼容 MVU，而是 Atria 本身需要同时支持：
 
@@ -342,20 +338,17 @@ Studio 后续至少应支持：
 - 为什么这个 Component 没显示？
 - 哪个 selector 失败？
 - Action 为什么被拒绝？
-- 哪个 Command validator 失败？
 - 哪个 block schema 不合法？
 - 本轮 structured output 为什么 rejected？
-- 哪个 Runtime Automation 被 cycle guard 阻止？
 - 当前 UI 读的是 World / UI / Preference 哪个状态？
 
-因此 Experience Runtime 需要统一 Health / Diagnostics surface，而不是 console-only。后续《银麒赎世》压力测试进一步证明还需要 preflight、typed repair 与 save migration，详见 §26.16。
+因此 Experience Runtime 需要统一 Health / Diagnostics surface，而不是 console-only。
 
 ### 23.18 后续所有样本的使用方法
 
 以后继续拿 SillyTavern/MVU/重前端卡对照时，只做三件事：
 
 1. 提取它展示出来的**用户能力**；
-2. 检查 Atria Native 是否已有；
 3. 没有则判断是否值得变成通用 Native capability。
 
 不再讨论：

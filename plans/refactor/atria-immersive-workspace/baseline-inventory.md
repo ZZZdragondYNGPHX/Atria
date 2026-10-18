@@ -1,8 +1,8 @@
 # Existing capability inventory — baseline snapshot
 
-本文件保存原任务的 S00–S19 源码能力清单（2026-10-04）。功能采样基线 `main @ 8cb5be336`，语言清理后核对基线 `main @ 783bb6fd3`。它定义旧能力/字段保留范围；其中的建议布局、手机底栏与“未批准”讨论结论由本 Bundle 的 decisions/experience 覆盖，不是第二份导航 authority。新增 S20 由 personas.md 定义。
+本文件保存原任务的 S00–S19 源码能力清单（2026-10-04）。它定义旧能力/字段保留范围；其中的建议布局、手机底栏与“未批准”讨论结论由本 Bundle 的 decisions/experience 覆盖，不是第二份导航 authority。新增 S20 由 personas.md 定义。
 
-原清单保持原文以便逐动作核对；“源码存在”不代表已经实测。实施前按最新源码重验当前挂载能力，不能恢复 legacy 平行主入口或仅删除隐藏 DOM。原型证据和实际验证状态进入 Record。
+“源码存在”不代表已经实测。
 
 ---
 ATRIA 页面、按钮与状态清单
@@ -31,12 +31,11 @@ Task Binding：把作品要求的模型用途绑定到合适路线。
 Skill / Plugin：不同类型扩展，统一入口、分别管理。
 
 S00 全局外壳与搜索
-现有页面：五大域；全局菜单；搜索/命令弹层；检查器；手机上下文面板。
-现有操作：Play / Library / Build / Agents / Runtime；返回；搜索；账户与设置菜单；打开/关闭检查器；关闭命令面板；执行搜索结果；搜索部分失败时重试并查看覆盖范围。
+现有页面：五大域；全局菜单；搜索/命令弹层；手机上下文面板。
+现有操作：Play / Library / Build / Agents / Runtime；返回；搜索；账户与设置菜单；关闭命令面板；执行搜索结果；搜索部分失败时重试并查看覆盖范围。
 全局工具：学习中心、命令、诊断、扩展、设置、账户。
 P0：当前任务标题、主导航与返回。P1：搜索和上下文入口。P2：低频全局工具可集中到菜单。
-状态：当前导航项、子页面、加载/挂载失败、空搜索、部分结果不可用、遮罩与焦点、键盘选择结果。
-布局：桌面侧栏＋主区＋可选检查器；中屏图标栏＋主区；手机主区＋底部导航，检查器用 sheet。
+状态：当前导航项、子页面、加载/挂载失败、空搜索、部分结果不可用、遮罩与焦点、键盘选择结果。中屏图标栏＋主区；
 代码：public/scripts/atria-shell/constants.js、app-shell.js、navigation-authority.js、back-resolver.js、workspace-host.js、product-search.js。
 
 S01 登录、首次进入与启动
@@ -65,17 +64,13 @@ P0：输入、发送；生成中变为停止。P1：跳到最新、会话工具�
 S04 会话操作、时间线与存档
 当前可见工具：Timeline、Context、Prompt choices、Save、More。
 More 内：体验健康、共享会话、重试回复、重新输入回合、从此处重开、快速保存、读取。
-时间线与存档：读取某存档、导出某存档；逐条“从此处重开”；适用用户回合“重新输入”；嵌入知识提升入口；修订与分支浏览。
-历史浏览：刷新、全部/当前分支、探索分支、翻页、预览/检查修订；回复变体上一条/下一条；按挂载方提供的能力显示切换分支、重试、从修订分叉。
+时间线与存档：读取某存档、导出某存档；逐条“从此处重开”；适用用户回合“重新输入”；嵌入知识提升入口；修订与分支浏览。回复变体上一条/下一条；按挂载方提供的能力显示切换分支、重试、从修订分叉。
 重要：当前 Play 时间线的 mountSessionHistory 主要传入 onInspect；不要把辅助模块存在的全部回调认定为该面板中全部常驻按钮。
 P0：保存入口、读取入口可发现。P1：历史与重试。P2：上下文详情、分支细节、体验健康。
 状态：不能写历史、生成中不能修改进度、无可重试回复、没有适合重新输入的用户回合、空存档、修订不完整、操作失败与重试。
 建议：可以把多个通往同一时间线的入口合并，但保留各操作的明确语义。
 代码：native/play-controls.js；session-history.js；reply-variants.js；session-runtime.js；session-lifecycle.js。
 
-S05 存档导入与依赖恢复
-现有操作：选择 .atriasave、检查、输入存档密码、导入并打开；重查已安装依赖、检查现有作品、选择匹配作品、安装匹配作品。
-状态：正确依赖、缺失确切版本、错误文件/密码、冲突、安装检查中。
 已有冲突文案要求用独立账户保留两份冲突数据；不得画一个并不存在的“自动合并存档”按钮。
 代码：native/save-dependency-recovery.js；play-controls.js；library-workspaces.js。
 
@@ -86,8 +81,6 @@ P1：导入存档、配置世界与知识、查看作品描述与版本、查看
 P2：能力与确切依赖详情、从指定版本开始并审阅、查看依赖会话、管理作品。
 会话管理：改名、名称冲突时重新载入当前名称、配置资源、导出 .atriasave、删除会话。
 作品管理：删除作品，必须呈现依赖影响；不要与删除某次游玩混淆。
-安装：选文件—预检查—权限/版本审阅—确认安装/更新—结果。
-开始：选择可游玩入口—检查模型用途—配置缺项—创建会话。
 状态：列表空、安装中、无效包、权限声明、无法开始、旧版本、依赖缺失。
 代码：native/library-workspaces.js；session-naming.js；package-permissions.js；task-binding-ui.js。
 
@@ -97,7 +90,6 @@ P0：打开、创建世界/知识库、知识条目搜索/浏览。
 P1：新增条目、编辑知识、创建新修订、查看历史与引用、导入/导出资源包。
 P2：改名、删除、生成可编辑副本、Fork、查看确切来源、包资源原始版本。
 边界：不是所有“原始资源”编辑规则相同。package-library-resources.js 对世界显示只读来源，对知识提供编辑原始知识的独立路径；请显示对象实际允许的动作，不能统一画成全都只读或全都随意编辑。
-资源包：选文件—预检查—冲突与闭包详情—导入—打开导入资源。
 知识编辑字段：标题、内容、启用；发现关键词/别名/正则；适用范围和状态条件；概率/持续/冷却/延迟；关系；插入位置/优先级/目标；预算等级和压缩内容；源 JSON。
 现有操作：条目新增/删除/上下移动、返回列表、字段/源码切换、Review Changes。
 世界编辑：字段/源码切换、添加/删除字段、引用选择、移除失效引用、审阅变更。
@@ -149,22 +141,17 @@ P0：编译预览与明确反馈。P1：配置选择。P2：编译结果和失�
 
 S12 创作项目列表与工作台
 项目列表：新建项目、项目名、打开项目；删除项目为危险管理动作。
-工作台结构：项目资源导航/树、主体编辑区、检查器、活动区、AI 面板、诊断与差异审阅。
 现有 20 类视图：Overview、Experience、Prompt Authoring、Runtime Design、Actors、EntryPoints、Worlds、Knowledge、Game Logic、UI、Assets、Memory、Agents、Skills、Plugins、Package Metadata、Test/Simulation、Preview、Build、Source。
-P0：当前编辑、Review Changes、Cancel / Apply ChangeSet、必要的 Validate。
 P1：Preview、Simulate、Inspector、AI、Build、活动记录。P2：源代码/高级 JSON/确切闭包。
 资源操作：Attach、Fork、Update、Review detach、Used By；必须保留确切版本选择。
-UI 编辑：选择原生界面文件、结构化或源码编辑、Check source、Review source changes、Preview draft、Reload file、定位编译诊断。
 资产：媒体文件编辑与源文件维护；与 manifest 一并进入变更审阅。
 测试：加载/暂存 scenario fixture、Run Simulation。构建：Run Preflight、Build .atria。
 冲突：显示 revision 变化，Reload Latest；不能静默覆盖用户草稿。
 AI：输入项目任务、模型路线配置、执行状态、生成的变更提案审阅；不能把 AI 生成内容自动当成已应用源代码。
-手机：Project / Editor / Preview / AI / More 的次级切换，不能同时挤出资源树、编辑器和检查器三栏。
 代码：native/studio-workspace.js；studio-authoring.js；studio-agent.js；studio-frontend-editor.js；studio-preview-ui.js；source-editor.js；asset-editor.js；project-lifecycle.js。
 
 S13 智能体：编排
 现有页面：Agents 入口、Orchestration、Run、Memory、Diagnostics。
-编排：预设选择、新建、添加/恢复原生预设、Single Agent 模板、保存、校验、复制、导出、删除。
 支持 spec / loop / agenda / director 模式，编辑器会因模式变化。
 内部编辑：预设设置、工人阶段/专家、智能体详情、提示词、工具/权限、模型路线；可把 JSON 应用到草稿。
 绑定：按现有上下文选绑定目标、绑定/清除、前往 Runtime Routes。
@@ -172,9 +159,8 @@ S13 智能体：编排
 状态：没有预设、无效配置、脏草稿、缺少路线、不同模式能力限制。
 代码：agents/orchestrator/workspace/orchestration/page.js；host-presets.js；agent-editing.js；native/agent-settings.js。
 
-S14 智能体：运行、记忆与诊断
-运行：运行摘要、Graph / Timeline 切换、选择节点、步骤检查、分页、清除选择；按当前运行显示状态。
-记忆：Overview / Knowledge / Sources / Maintenance；Memory OS / Memory / Recall / 自动抽取 / 自动压缩开关；检索配置；搜索与类型筛选、历史显示、实体/关系/事实检查器、来源证据、维护与刷新。
+按当前运行显示状态。
+记忆：Overview / Knowledge / Sources / Maintenance；Memory OS / Memory / Recall / 自动抽取 / 自动压缩开关；检索配置；
 危险动作：重置当前会话记忆。不要画成全局无差别清空。
 智能体诊断：Trace 导出、导入回放（依实现提供的文件入口）、返回 live run、事件/调用/召回统计、步骤详情。
 状态：没有当前会话/运行、插件不可用、记忆加载失败、图无数据、回放与 live 的区分。

@@ -12,28 +12,17 @@ Atria Native Content & Session Architecture Refactor
 
 `refactor/atria-native-content-session-architecture`
 
-N9 已正式完成并验证。
-
-N9 validated HEAD：
-
 `503fbb4da05c90a1e6d2022e17df0c6bac79b1ee`
 
-最终验证：
-
-- Workflow：Native Content Session Dev Checks #193
 - Run：`35723060389`
 - N0 Native Contracts：success
 - N1 Storage + N3/N5 Core + N4 Projection：success
 - N2 Package Project Composition：success
-- N4 real-host Chromium Native Session acceptance：4 passed
 - N5 Runtime State & Revision Lifecycle：success
 - N6 Native Knowledge Runtime Integration：success
 - N7 Native Context Architecture / Checkpoint C：success
 - N8 Save System / Checkpoint B：success
 - N9 Product UI unit/integration：6 suites / 22 tests passed
-- N9 Native Product authority residual guard：success
-- N9 source lint / guard syntax：success
-- N9 real-host Chromium Product UI acceptance：1 passed
 - full root lint：success
 - complete Node regression：757 suites / 8802 tests passed
 - frontend webpack build：success
@@ -42,7 +31,7 @@ N9 validated HEAD：
 
 N10 — Hard Cutover & Legacy Retirement
 
-开始前重新 fetch 远端工作分支，以实际最新 HEAD 为准。如果其他会话已经继续推进，保留已有提交，不要回退到 validated HEAD。
+开始前重新 fetch 远端工作分支，以实际最新 HEAD 为准。
 
 依次重新读取：
 
@@ -72,7 +61,6 @@ N10 核心目标：
 - 退休 Native committed message Edit/Delete；
 - 退休 Native floor/swipe structural-event Authority；
 - 在 SessionRevision 已替代之处退休 FloorState Native Authority；
-- 建立 residual guards，阻止旧 persistence/content/timeline Authority 再次回流。
 
 边界：
 
@@ -83,9 +71,6 @@ N10 核心目标：
 - 不要回退 N0–N9 的 immutable Timeline、Revision、Knowledge pinning、bounded Context、Save System 与 Product UI cutover；
 - Active Native 产品路径不得重新 fallback 到 Character / JSONL / World Info 文件 Authority。
 
-验证至少包括：
-
-- Native authority residual scan/guard；
 - 旧格式/旧身份/旧 Library authority 无法从 Active Native 产品流重新进入；
 - committed Swipe/Edit/Delete/legacy Regenerate 不再成为 Native Authority；
 - WorldInfoRepo / legacy book identity 不再成为 Native Authority；
@@ -105,22 +90,13 @@ N10 核心目标：
 
 仅在以下情况停下：
 
-- CI 已进入明显耗时的验证阶段；
 - 下一步必须依赖 Android/Termux 真机日志；
 - 下一步必须依赖真实 UI 截图；
 - 需要我本人完成权限、Secret、账号授权等操作。
 
-不要长时间轮询 CI。进入明显耗时验证阶段后，汇报当前 HEAD / Workflow / Run 并停止，等我告诉你“CI 已完成”后继续。
-
-N10 完整 residual scan 与 phase validation 成功前，保持 `main` 不动。
-
-N10 全部验证完成后，按照 Master Plan 的 final completion 顺序：
+不要长时间轮询 CI。
 
 1. 更新永久 docs / handoff；
 2. 创建或更新到 `main` 的最终 PR；
-3. 验证要求的 CI；
 4. 合并；
-5. 验证 integrated `main`；
 6. 确认成功后删除临时 refactor 分支。
-
-不要提前删除长期工作分支，也不要在 N10 验证完成前合并 `main`。

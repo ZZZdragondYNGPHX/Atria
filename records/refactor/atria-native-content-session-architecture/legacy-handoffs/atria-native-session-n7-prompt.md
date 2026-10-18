@@ -12,20 +12,12 @@ Atria Native Content & Session Architecture Refactor
 
 "refactor/atria-native-content-session-architecture"
 
-N6 已正式完成并验证。
-
-N6 validated HEAD：
-
 "b1043b2e0158cf4d5ade4d057570efe2a7af8ac1"
 
-最终验证：
-
-- Workflow：Native Content Session Dev Checks #118
 - Run："35703649183"
 - N0 Native Contracts：success
 - N1 Storage + N3/N5 Core + N4 Projection：success
 - N2 Package Project Composition：success
-- N4 real-host Chromium Native Session acceptance：success
 - N5 Runtime State & Revision Lifecycle：success
 - N6 Knowledge Runtime / Checkpoint K：7 suites / 99 tests passed
 - complete Node regression：749 suites / 8750 tests passed
@@ -73,8 +65,6 @@ N7 核心目标：
 - Narrator / Actor / Agent target isolation 必须继续成立；
 - N6 KnowledgePlan 作为结构化 lane 接入，不允许退化成按正文反查 identity。
 
-N7 必须保留 N0–N6 已验证约束：
-
 - committed Timeline 永久 immutable；
 - Context 是 derived projection，不能删除、改写或总结替代 canonical history；
 - coherent SessionState / SessionRevision authority；
@@ -87,8 +77,6 @@ N7 必须保留 N0–N6 已验证约束：
 - stable Knowledge identity 到最终 prompt assembly；
 - 不允许 JSONL、"/api/chats/*"、Character/World Info authority fallback；
 - 不允许 floor/swipe 重新成为 Native authority。
-
-N7 Checkpoint C 至少验证：
 
 1. 固定模型预算下，synthetic 100 / 1,000 / 10,000+ turn Timeline 的最终 Context 仍有界；
 2. 被排除的 raw history 仍可按稳定 ID/range 从 SessionRepo 精确读取；
@@ -107,9 +95,8 @@ N7 Checkpoint C 至少验证：
 
 普通代码、测试和 CI 问题自行处理。只有以下情况主动停下告诉我：
 
-1. GitHub CI 进入明显耗时验证；
 2. 必须依赖 Android/Termux 真机日志；
 3. 必须依赖真实 UI 截图；
 4. 需要我本人完成权限、Secret 或授权操作。
 
-不要自己一直等待长 CI。N7 完成后停下，更新 docs/handoff，记录 validated HEAD、CI、完成内容和剩余边界，并发我 N8 接手提示词。
+不要自己一直等待长 CI。

@@ -6,8 +6,6 @@
 
 ### 20.1 版本策略：新增 Component Model v2
 
-当前 v1 是一个刻意收敛的最小声明式模型，节点、binding、action 和 surface 都很少，且 validation fail-closed。
-
 本次能力扩展规模已经涉及：
 
 - Local UI State；
@@ -191,12 +189,6 @@ on.input → ui.set
 
 每个表单控件可以声明受限的 `model`：
 
-```text
-input.value ↔ ui.wizard.name
-checkbox.checked ↔ ui.wizard.enabled
-select.value ↔ ui.wizard.race
-```
-
 `model` 只能写 Local UI State 的已声明路径。
 
 World State 永远不允许 two-way binding。写 World 必须经过 typed Command/Event。
@@ -270,7 +262,6 @@ v2 建议至少支持：
 
 - `text`
 - `value`
-- `checked`
 - `disabled`
 - `hidden`
 - `progress/value`
@@ -372,28 +363,12 @@ Submit 时 Runtime 提供只读 `form` context，包含当前表单已绑定字�
 
 典型自定义开局：
 
-```text
-form submit
-  ↓
-validate Local UI State
-  ↓
-composer.set(template)
-  ↓
-composer.submit
-  ↓
-ui.reset / 切换正常布局
-```
-
-Field validation 首版候选：
-
 - required；
 - min/max；
 - minLength/maxLength；
 - enum；
 - pattern（受限 regex）；
 - numeric step。
-
-复杂跨字段验证可使用 Expression condition。
 
 ### 20.12 Dynamic Repeat
 
@@ -415,7 +390,6 @@ repeat
 - 单个 repeat 最大 item 数；
 - Experience 最大动态 rendered-node 数；
 - stable key 必须唯一；
-- 超限 fail closed / diagnostics；
 - 不允许通过 repeat 绕过静态组件复杂度限制。
 
 对象 map 的迭代是否首版支持，尚待决定；优先支持数组。
@@ -537,8 +511,6 @@ v2 contract 必须在 schema 层支持：
 
 ### 20.18 性能与限制
 
-建议继续 fail-closed：
-
 - static component node limit；
 - component nesting limit；
 - selector count；
@@ -569,8 +541,6 @@ templateId + block data + message snapshot context
 - story options；
 - 战斗结算；
 - message card
-
-可以复用 Package 已编译验证的 Component template。
 
 ### 20.20 Round 3 当前建议冻结项
 
@@ -603,7 +573,6 @@ templateId + block data + message snapshot context
 2. **safe style 的自由度**
    - 太窄会无法替代精美 HTML 卡；
    - 太宽会重新形成 CSS 沙盒逃逸。
-   - 需要在 Studio preview 中验证可表达性。
 
 3. **Expression 是否支持直接字符串拼接**
    - 当前倾向：Formula 负责逻辑/数值，Template 负责字符串组合，避免 `+` 同时承担数字和字符串语义。

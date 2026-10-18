@@ -26,7 +26,6 @@ A Session belongs to a Package version, not to a Character PNG/filename.
 Example record fields:
 
 - sessionId;
-- packageId / packageVersion / packageContentHash;
 - entryPointId;
 - display title;
 - activeBranchId;
@@ -250,7 +249,6 @@ Default user action exports `snapshot`.
 A snapshot export includes everything necessary to continue the selected SavePoint coherently, including applicable:
 
 - Session metadata;
-- package reference/version/hash;
 - EntryPoint reference;
 - Branch ancestry required by the snapshot;
 - Timeline/message variants;
@@ -318,13 +316,11 @@ An `.atriasave` identifies:
 
 - packageId;
 - packageVersion;
-- packageContentHash;
 - EntryPoint;
 - Native/runtime schema versions as required.
 
 Load cases:
 
-1. exact Package ID/version/hash available → load;
 2. same Package but different version → only a declared Native save-migration path may upgrade it;
 3. Package missing → surface unresolved dependency; never attach to a package based on a similar display name.
 

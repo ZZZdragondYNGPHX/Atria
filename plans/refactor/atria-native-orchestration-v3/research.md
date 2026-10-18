@@ -1,6 +1,6 @@
 # 第一轮公开技术调研（官方原始来源）
 
-核对时间：2026-10-15。以下是**设计参照**，不等于 Atria 实现，也不代表当前框架提供对 Atria 的开箱兼容、性能/安全收益或测试通过。
+以下是**设计参照**，不等于 Atria 实现，也不代表当前框架提供对 Atria 的开箱兼容、性能/安全收益或测试通过。
 
 | 参照系统 | 一手来源 | 设计价值 | Atria 不应直接照搬的部分 |
 | --- | --- | --- | --- |
@@ -8,7 +8,7 @@
 | LangGraph (JS) | [Thinking in LangGraph](https://docs.langchain.com/oss/javascript/langgraph/thinking-in-langgraph) | 显式图状态、checkpoint 边界、恢复/interrupt、人类审批、按错误类型路由；节点粒度决定重复工作的风险 | Node checkpoint 重跑与外部副作用的准确一次/幂等并非天然等价；需原 Effect receipt |
 | Anthropic | [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)、[Agent evals](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents) | 简单可组合 workflow、routing、parallel、orchestrator-workers、evaluator-optimizer；用真实任务质量/开销来判断是否需要多 Agent | 不把所有 RP 回合变成多模型链，也不把 Judge 意见视为正确世界事实 |
 | Microsoft Agent Framework | [Workflows](https://learn.microsoft.com/en-us/agent-framework/journey/workflows)、[Checkpoints](https://learn.microsoft.com/en-us/agent-framework/workflows/checkpoints)、[HITL](https://learn.microsoft.com/en-us/agent-framework/workflows/human-in-the-loop) | 对 checkpoint 包含 executor/pending requests 的粒度划分；审批请求和恢复事件可追踪 | 不迁移到第二套 Workflow storage/权限体系 |
-| Mastra | [Durable Agents](https://mastra.ai/docs/harness/durable-agents) | 在 TS/JS 语境中区分 pending/paused/suspended/running 快照、审批与进程恢复路径 | Snapshot 机制是架构样本，仍需 Atria 原 Native Source Guard、提交和成本语义 |
+| Mastra | [Durable Agents](https://mastra.ai/docs/harness/durable-agents) | 在 TS/JS 语境中区分 pending/paused/suspended/running 快照、审批与进程恢复路径 ||
 
 ## 可采纳的跨框架共同做法
 
@@ -22,4 +22,4 @@
 
 ## 结论与限制
 
-第一轮选择 **自研 Atria Orchestration V3（方案 B）**，复用现有基础，不把任何外部框架升级为唯一执行依赖。框架研究提供设计启发，而不是把库名当成验收标准。API/协议成熟度、兼容性、具体部署以及所有性能收益应在实施期间针对当前版本单独核验。
+第一轮选择 **自研 Atria Orchestration V3（方案 B）**，复用现有基础，不把任何外部框架升级为唯一执行依赖。

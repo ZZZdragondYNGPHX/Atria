@@ -35,18 +35,9 @@ Captured before physical retirement on `6cb86b33c`. Static imports include produ
 
 ## Import edges
 
-### assets
-
-
 ### atria-tabs.js
 
 - `public/scripts/st-context.js`
-
-### attachments
-
-
-### caption
-
 
 ### character-editor-assistant
 
@@ -104,9 +95,6 @@ Captured before physical retirement on `6cb86b33c`. Static imports include produ
 - `tests/profile-retry.test.js`
 - `tests/retry-whitelist-parser.test.js`
 
-### expressions
-
-
 ### field-help.js
 
 - `public/scripts/extensions/memory-graph/ui-templates.js`
@@ -123,9 +111,6 @@ Captured before physical retirement on `6cb86b33c`. Static imports include produ
 - `public/scripts/openai.js`
 - `tests/function-call-runtime.test.js`
 - `tests/memory-graph/fact-extraction-pipeline.test.js`
-
-### gallery
-
 
 ### game-runtime
 
@@ -172,12 +157,8 @@ Captured before physical retirement on `6cb86b33c`. Static imports include produ
 - `tests/game-runtime/ui-package.test.js`
 - `tests/game-runtime/ui-selectors.test.js`
 - `tests/game-runtime/ui-surfaces.test.js`
-- `tests/game-runtime/validators.test.js`
 - `tests/game-runtime/world-package.test.js`
 - `tests/game-runtime/world-session.test.js`
-
-### hook-order
-
 
 ### json-state-journal.js
 
@@ -243,9 +224,6 @@ Captured before physical retirement on `6cb86b33c`. Static imports include produ
 - `tests/orchestrator/loop-integration.test.js`
 - `tests/performance/worldbook-performance-bench.mjs`
 
-### object-diff-view.js
-
-
 ### orchestrator
 
 - `public/scripts/atria-shell/workspace-host.js`
@@ -283,7 +261,6 @@ Captured before physical retirement on `6cb86b33c`. Static imports include produ
 - `tests/orchestrator-agent-preset-resolver/unit.test.js`
 - `tests/orchestrator-skills/skill-orchestration-tools.test.js`
 - `tests/orchestrator-skills/skill-resolution.test.js`
-- `tests/orchestrator/abort-mid-run.test.js`
 - `tests/orchestrator/agenda-spec-customs-seed.test.js`
 - `tests/orchestrator/agenda-tool-safety.test.js`
 - `tests/orchestrator/agenda-world-info.test.js`
@@ -294,7 +271,6 @@ Captured before physical retirement on `6cb86b33c`. Static imports include produ
 - `tests/orchestrator/custom-tool-bridge-st.test.js`
 - `tests/orchestrator/custom-tool-flags.test.js`
 - `tests/orchestrator/custom-tool-iter-studio.test.js`
-- `tests/orchestrator/custom-tool-per-run.test.js`
 - `tests/orchestrator/custom-tool-portable-roundtrip.test.js`
 - `tests/orchestrator/custom-tool-register.test.js`
 - `tests/orchestrator/custom-tool-runtime-agenda.test.js`
@@ -331,12 +307,10 @@ Captured before physical retirement on `6cb86b33c`. Static imports include produ
 - `tests/orchestrator/editor-ops/pipe-from.test.js`
 - `tests/orchestrator/editor-ops/reasoning-sections.test.js`
 - `tests/orchestrator/editor-ops/slicing.test.js`
-- `tests/orchestrator/ensure-settings-migration.test.js`
 - `tests/orchestrator/execution-mode-contract.test.js`
 - `tests/orchestrator/factory-preset-shape.test.js`
 - `tests/orchestrator/get-effective-profile-presets.test.js`
 - `tests/orchestrator/grep-tool.test.js`
-- `tests/orchestrator/iter-arg-validator.test.js`
 - `tests/orchestrator/iter-studio-lorebook-filter.test.js`
 - `tests/orchestrator/iter-studio-session-store.test.js`
 - `tests/orchestrator/loop-integration.test.js`
@@ -356,18 +330,14 @@ Captured before physical retirement on `6cb86b33c`. Static imports include produ
 - `tests/orchestrator/notes-panel-refresh.test.js`
 - `tests/orchestrator/open-notes-cross-mode-injection.test.js`
 - `tests/orchestrator/open-notes-injection.test.js`
-- `tests/orchestrator/per-run-custom-tools-isolation.test.js`
 - `tests/orchestrator/persistence-loop.test.js`
 - `tests/orchestrator/persistence.test.js`
 - `tests/orchestrator/resolve-tool-source.test.js`
-- `tests/orchestrator/run-state-helpers.test.js`
-- `tests/orchestrator/run-state-store.test.js`
 - `tests/orchestrator/runtime-trace-export.test.js`
 - `tests/orchestrator/schema/director-fields.test.js`
 - `tests/orchestrator/simulation-payload-adapter.test.js`
 - `tests/orchestrator/skill-resolution-runtime-plumbing.test.js`
 - `tests/orchestrator/skill-resolution-scope-precedence.test.js`
-- `tests/orchestrator/snapshot-cache-hits-invalidates.test.js`
 - `tests/orchestrator/spec-agenda-loop-three-modes.test.js`
 - `tests/orchestrator/system-prompt-patch.test.js`
 - `tests/orchestrator/tool-call-source-tagging.test.js`
@@ -417,21 +387,6 @@ Captured before physical retirement on `6cb86b33c`. Static imports include produ
 - `public/scripts/extensions/vectors/index.js`
 - `public/scripts/st-context.js`
 
-### stable-diffusion
-
-
-### third-party
-
-
-### token-counter
-
-
-### translate
-
-
-### tts
-
-
 ### vectors
 
 - `public/scripts/native/retrieval-client.js`
@@ -449,11 +404,7 @@ Captured before physical retirement on `6cb86b33c`. Static imports include produ
 - `public/scripts/capability-host.js` explicitly boots the two Global Plugins plus Agents Orchestration, Agents Memory and Native Experience. It has no discovered catalog or arbitrary module installer.
 - Retained implementation lives in `public/scripts/agents/orchestrator/`, `public/scripts/agents/memory/`, `public/scripts/native/experience/` and named `public/scripts/lib/` helpers. Native Studio editors and package runtime consumers use those owners.
 - Current Atria capability settings are saved as `atri_capabilities`. Initial hydration retains only the current capability allowlist from pre-cutover Atria settings; all later reads/writes use the Native-owned object. Retired profile, vector, expression, media and extension-manager keys do not hydrate or serialize. Boot-watchdog recovery disables only Regex and Search Tools.
-- Memory vector and hybrid retrieval use exact Native Retrieval references. The server rejects raw provider configuration without an exact reference, including attempted nested override bags. Browser embeddings use the bundled WebLLM SDK, serialized model ownership and abort checks; Runtime offers the supported embedding-model catalog.
-- Retired source, manifests, templates and server endpoints were removed, including extension installation/discovery/update, Stable Diffusion providers, Quick Reply authoring/default seeds, translation, caption/classification and speech products. File-name validation remains a core helper used by Native file uploads. The legacy manager stylesheet was reduced to the retained Global Plugin staging layout.
+- Memory vector and hybrid retrieval use exact Native Retrieval references. The server rejects raw provider configuration without an exact reference, including attempted nested override bags. Runtime offers the supported embedding-model catalog.
+- Retired source, manifests, templates and server endpoints were removed, including extension installation/discovery/update, Stable Diffusion providers, Quick Reply authoring/default seeds, translation, caption/classification and speech products. The legacy manager stylesheet was reduced to the retained Global Plugin staging layout.
 - Backup category selection no longer offers user/global extension installation trees. Native backups, exact resources, project sources and asset blobs retain their existing storage and restore authorities.
 - Regression fixtures follow retained module moves; retired-only tests and published feature pages were removed. Native Agents onboarding replaces the obsolete preset-assistant workflow.
-
-## Validation boundaries
-
-The SDK catalog was loaded in real Edge and inspected at 390px. Browser embedding execution uses injected SDK/GPU tests; actual GPU inference and model downloads were not exercised. Android and Docker builds and external MySQL/PostgreSQL services were not provisioned.

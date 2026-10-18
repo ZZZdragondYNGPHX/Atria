@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation and branch validation are complete. PR #7 is ready for integration into `main`. Final merge metadata is appended after the merge is verified.
+ PR #7 is ready for integration into `main`.
 
 ## Task identity
 
@@ -57,16 +57,6 @@ Settings snapshot content remains owned by the upstream Settings Snapshots UI; B
 ZIP/local-file restore is no longer treated as a direct "upload ZIP and write" operation.
 
 The restore pipeline is:
-
-```
-Provider / Artifact
-  -> Preflight
-  -> Restore Plan
-  -> Recovery Point
-  -> Staging / Apply
-  -> Verification
-  -> Commit or Rollback
-```
 
 Preflight is mandatory. Invalid or incompatible archives stop before mutation.
 
@@ -136,18 +126,14 @@ A dedicated safe storage-management service provides path-whitelisted resources 
 Supported text-like resources can expose:
 
 - view;
-- validated edit;
 - delete;
 - recovery.
 
 Server editing adds:
 
-- JSON validation;
-- JSONL per-line validation;
 - edit-size bounds;
 - optimistic modified-time conflict detection;
 - temporary-file write;
-- validation before atomic rename;
 - pre-mutation recovery points.
 
 Protected resources such as `secrets.json`, SQLite database files, WAL/SHM files, and engine dump/meta artifacts expose only safe metadata through the generic manager.
@@ -199,70 +185,13 @@ Preserved backend foundations include:
 - storage engine implementations;
 - storage migration backend/CLI capability.
 
-## Validation
-
-The task adds permanent Chromium coverage in:
-
-- `.github/workflows/backup-storage-ui.yml`
-
-The workflow is split into parallel jobs:
-
-- Backup Center Chromium
-- Browser Storage Chromium
-- Server Storage Chromium
-
-It uses PR-level concurrency with stale-run cancellation.
-
-Default repository validation for this task is:
-
-- Atria Migration Guard
-- ESLint
-- full Node unit suite
-- Backup/Storage Chromium suites
-
-Android JVM tests and Docker builds remain opt-in and were intentionally not part of the default validation for this task.
-
-## Final validation
-
-Validated task head:
-
-- `feat/backup-sync-storage-center@7f8063e5f8ed0c6bcb639a6ae819653163ded662`
-
-Required CI passed:
-
-- Atria PR Checks run `35345241830`
-  - Atria Migration Guard: passed
-  - ESLint: passed
-  - full Node unit suite: passed
-- Backup and Storage UI run `35345241821`
-  - Backup Center Chromium: passed
-  - Server Storage Chromium: passed
-  - Browser Storage Chromium: passed
-
-Android JVM tests and Docker builds were intentionally not run because repository/task policy makes them opt-in.
-
-### Final E2E stabilization
-
-The final Chromium validation exposed and fixed four integration issues that were not visible in the Node suite:
-
-1. `public/scripts/user.js` had dropped the still-required `getConfigValidationMessage` export while `public/script.js` continued to import it. That prevented the main browser module graph from instantiating and left `#preloader` mounted indefinitely.
-2. Fresh E2E data roots could show the first-run Atria onboarding dialog after the preloader disappeared, blocking account UI controls.
-3. Storage CRUD tests could target a popup that was still in its closing animation. The CRUD suite now targets active popup content explicitly instead of generic hidden template inputs.
-4. IndexedDB record writes now await the full read/write transaction commit, not only the individual `put()` request success.
-
-The dedicated UI workflow now stops each lane after the first failing test (`--max-failures=1`) and `awaitMainUI()` fails fast with browser console/page-error diagnostics, preventing repeated multi-minute opaque timeouts.
-
 ## Integration
 
 PR #7 was squash-merged into `main`.
 
-- validated task head: `7f8063e5f8ed0c6bcb639a6ae819653163ded662`
 - merge commit / current main: `65321bb522febd369901127cd2b4b2c9883d4658`
-- validated head tree: `95f5586b87c029e3c0a67df6b6ecb8ea9139f951`
 - merged main tree: `95f5586b87c029e3c0a67df6b6ecb8ea9139f951`
 - tree equality: confirmed
 - PR #7 state: merged
 - cleanup workflow run: `35345750721` — passed
 - temporary branch `feat/backup-sync-storage-center`: deleted
-
-The merged `main` working tree is therefore byte-for-byte the same Git tree that passed the final PR Checks and all three Backup/Storage Chromium lanes.

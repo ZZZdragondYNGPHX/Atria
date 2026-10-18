@@ -5,7 +5,7 @@
 ## 二十九、修订记录
 ### 2026-09-26 — Implementation Baseline v1.0
 
-用户结束当前压力测试讨论并授权 Codex Astra 开始实施。将 Discussion Draft v2.3 规范化为顶部 Implementation Baseline：冻结 8 条架构不变量、32 项能力主表、Authority 总图、P0–P9 单分支实施顺序、阶段交接/验证规则与明确非目标。历史 Round/案例章节完整保留为设计证据，但出现冲突时不再覆盖顶部规范基线。正式实现分支为 `feat/native-experience-modes-capability-deepening`，基于 `main@4dab353ac639d42eae885c79e18245267abd6820`。
+用户结束当前压力测试讨论并授权 Codex Astra 开始实施。历史 Round/案例章节完整保留为设计证据，但出现冲突时不再覆盖顶部规范基线。正式实现分支为 `feat/native-experience-modes-capability-deepening`，基于 `main@4dab353ac639d42eae885c79e18245267abd6820`。
 
 ### 2026-09-26 — Discussion Draft v2.3
 
@@ -14,7 +14,6 @@
 ### 2026-09-26 — Discussion Draft v2.2
 
 完成第四个大型样本 `1102052563-a11y/zhushen-space@7af6f389` 的架构压力测试。该项目首次把审计边界从“单玩家 / 单 Session 重型应用”推到跨存档玩家连续性与多人/Realm 共享权威：新增 #30 Player Continuity State / Account Authority Domain 与 #31 Shared Session & Realm Runtime / Multi-participant Authority；补 Cross-Authority Transfer Receipt/Saga、multi-participant Turn、one-truth/multi-perspective、Scene Scope、Presence、late-join Snapshot+Cursor、Realm Domain 与 server/host deterministic authority。其余 Advisor/Branch Tree/World scope/Workshop/TTS/Agent 能力压回既有 primitive。能力主表由 29 项增至 31 项。
-
 
 ### 2026-09-26 — Discussion Draft v2.1
 
@@ -26,7 +25,7 @@
 
 ### 2026-09-26 — Discussion Draft v2.0
 
-继续压力测试《银麒赎世》的十通道模型配置，发现第 27 项只定义 Model Task 而未定义玩家如何高效绑定实际模型。新增 Task Binding Slot，并明确区分 Package Task semantic、author-owned Task Program 与 player-owned execution choice；同时指出当前 Runtime Route 把 Model/Connection 与 Prompt/Generation 绑定得过粗，复杂 Package Task 不应被迫一 Task 一 Route。提出可复用 Model Execution Lane / Effective Task Execution Plan，Task Prompt 与玩家 Model binding 独立组合，Package 更新按稳定 slot 复用并重新验证。能力总数仍为 29。
+继续压力测试《银麒赎世》的十通道模型配置，发现第 27 项只定义 Model Task 而未定义玩家如何高效绑定实际模型。新增 Task Binding Slot，并明确区分 Package Task semantic、author-owned Task Program 与 player-owned execution choice；同时指出当前 Runtime Route 把 Model/Connection 与 Prompt/Generation 绑定得过粗，复杂 Package Task 不应被迫一 Task 一 Route。能力总数仍为 29。
 
 ### 2026-09-26 — Discussion Draft v1.9
 
@@ -46,7 +45,7 @@
 
 ### 2026-09-26 — Discussion Draft v1.4
 
-继续以《银麒赎世》的开发/测试体系反向压力测试 Studio。确认“Studio visual authoring”定义过窄，将第 19 项深化为 Visual Authoring + Scenario Simulation / Test Bench：以 deterministic fixture、mock/recorded/live Model Task、Action/Activity/WorldProcess/SessionApp/Perspective assertions 和多设备环境模拟验证 Package，并要求 Test Bench 复用生产 Runtime contract。能力总数仍维持 28，不新增第 29 项。
+继续以《银麒赎世》的开发/测试体系反向压力测试 Studio。能力总数仍维持 28，不新增第 29 项。
 
 ### 2026-09-26 — Discussion Draft v1.3
 
@@ -66,7 +65,7 @@
 
 ### 2026-09-26 — Discussion Draft v0.9
 
-完成当前 `main@4dab353a` 的实现基线复核：确认 Component Model v1 / responsive surfaces、Studio Structured UI + Preview、Game Turn Controller Attempt/Retry/Switch、Declarative Logic、Host Environment/focus 与 semantic interpretation mapping 已存在。相应校正能力缺口措辞，冻结 Turn Envelope、Reply Variant、Mutation shorthand、Composer capability 与 Studio v2 必须建立在现有 Native runtime 上深化，不另建平行体系。
+相应校正能力缺口措辞，冻结 Turn Envelope、Reply Variant、Mutation shorthand、Composer capability 与 Studio v2 必须建立在现有 Native runtime 上深化，不另建平行体系。
 
 ### 2026-09-26 — Discussion Draft v0.8
 

@@ -8,7 +8,6 @@
 - Start docs HEAD: `73e22d1698fd396f5bc52dcb2b0fcc0224e55f72`
 - Content migration HEAD: `c7c6a8569b8304e5f9e89a3873fbedad3285e603`
 - Bundle sizing refinement: `8d98bd006c65d033cc4f4a907f4b0a7dd692539d`
-- Post-write verification baseline: `8d98bd006c65d033cc4f4a907f4b0a7dd692539d`
 
 ## Summary
 
@@ -25,16 +24,7 @@ Normalized the remaining large/legacy Atria Plans to Governance 1.1 Plan Bundle 
 - Left the concurrently migrated `plans/package/original-occult-western-fantasy-game/` Bundle untouched.
 - Did not modify product/package/plugin/skills/reference workspaces and did not merge `main` into `docs`.
 
-## Validation
-
-- The migration is produced from the actual remote docs HEAD and committed as one tree change.
-- Old converted monolithic Plan files are removed in the same tree that creates their Bundle entrypoints/modules.
-- No product test/build, Android/Termux, device or UI validation is claimed for this docs-only migration.
-- Exact post-write tree/path verification is recorded in the finalization commit.
-
 ## Final state
-
-Post-write verification passed against `8d98bd006c65d033cc4f4a907f4b0a7dd692539d`:
 
 - all eight routed Plan Bundle entrypoints are present, including the concurrently migrated active Western-fantasy game Bundle;
 - all seven replaced monolithic Plan paths are absent;
@@ -44,4 +34,3 @@ Post-write verification passed against `8d98bd006c65d033cc4f4a907f4b0a7dd692539d
 - `records/README.md` and category routers are present;
 - the active MCP HANDOFF was preserved rather than repurposed/deleted;
 - no product/package/plugin/skills/reference content was modified by this migration;
-- no product test/build, Android/Termux, physical-device or UI validation is claimed.

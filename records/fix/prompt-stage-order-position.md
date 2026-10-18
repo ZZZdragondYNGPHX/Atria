@@ -16,11 +16,7 @@ compensates ancestor scroll offsets for inserted rows, keeping the picker at
 the same viewport position. Empty or duplicate additions no longer rebuild the
 stage tree. No persistence format or migration changes.
 
-Validation: 60 tests across prompt authoring, preset ownership and P3 compiler
-suites passed. Fixed an obsolete P3 fixture write order to persist module
-dependencies before their referencing program. Edge at 1440px and 390px passed
-consecutive insertions, picker focus/position (under 3px displacement), ordering
-and save/reload checks. Changed-file ESLint, native localization and whitespace
-checks passed. No Android/Docker builds or external model calls.
+ Fixed an obsolete P3 fixture write order to persist module
+dependencies before their referencing program. No Android/Docker builds or external model calls.
 
 The preceding loading fixes and this task remain local, not pushed.

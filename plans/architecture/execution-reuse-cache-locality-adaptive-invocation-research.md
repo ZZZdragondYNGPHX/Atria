@@ -5,7 +5,6 @@
 - **主题**：缓存命中率、Tool / Plan / Workflow 复用、Prompt Cache、Context Segment、KV Cache、Agent-aware Scheduling、Adaptive Invocation 与正文生成加速
 - **关联研究**：`reasoning-continuity-research.md`
 - **文档性质**：架构调研与企划输入，不是最终 API / Schema 定稿
-- **核心目标**：在不牺牲正确性、Revision 隔离、RP 新鲜度与安全边界的前提下，减少重复 AI 调用、重复 Prompt Prefill、重复 Tool 执行、重复 Planning 和重复上下文处理
 
 ---
 
@@ -151,8 +150,6 @@ Temporal Semantic Caching 的研究明确指出：
 
 如果世界状态已经发生变化，旧结果也不能复用。
 
-因此 Atria 的 Semantic Reuse 必须额外验证：
-
 ```text
 Temporal Validity
 Revision Validity
@@ -265,7 +262,7 @@ KV retention / offload / prefetch hint
 | Decode Acceleration | EAGLE-3 | Speculative Decoding | ★★★★☆（Local） |
 | Decode Acceleration | Medusa | 多 decoding heads | ★★★☆☆（Local） |
 | Distributed KV | Mooncake | KV-centric 分布式 Serving | ★★★☆☆（规模化） |
-| KV Security | HijackKV | 揭示 Position-independent KV 污染攻击 | ★★★★★（安全边界） |
+| KV Security | HijackKV | 揭示 Position-independent KV 污染攻击 ||
 
 ---
 
@@ -503,22 +500,6 @@ volatile counters
 
 建议 Context Runtime 长期采用类似概念：
 
-```text
-ContextSegment
-├── segmentId
-├── semanticType
-├── content
-├── contentHash
-├── canonicalVersion
-├── scope
-├── dependencies
-├── volatility
-├── sensitivity
-├── cacheability
-├── revisionBinding
-└── providerHints
-```
-
 注意：
 
 这不是建议现在就锁死这些字段，而是建议正式企划保留：
@@ -643,7 +624,7 @@ World Revision 一变化
 
 ---
 
-# 13. Dependency-Aware Cache Validation
+# 13. Dependency-Aware Cache
 
 这是建议写进 Atria 企划的核心概念。
 
@@ -674,8 +655,6 @@ GetCharacterLocation(character)
 dependsOn:
   character.location
 ```
-
-于是 Cache Validation 可以是：
 
 ```text
 dependency versions unchanged
@@ -861,10 +840,6 @@ AgentReuse 的真实数据分析发现，大约 30% 请求具有相同或相近�
 
 不要缓存：
 
-```text
-“首先查询商店，然后检查余额，然后……”
-```
-
 这种自然语言计划。
 
 更适合：
@@ -896,13 +871,10 @@ shop
 - 旧实体残留；
 - 旧 ID 污染；
 - 旧价格污染；
-- 文本计划不可验证。
 
 ---
 
-# 20. Plan Reuse 的安全边界
-
-Plan 本身可以复用，但执行前必须重新验证：
+# 20. Plan Reuse 的
 
 ```text
 Preconditions
@@ -1060,16 +1032,6 @@ content version
 
 因此建议：
 
-```text
-KnowledgeSegment
-├── segmentId
-├── version
-├── contentHash
-├── source
-├── dependencies
-└── scope
-```
-
 今天它可以帮助：
 
 ```text
@@ -1179,7 +1141,7 @@ Atria Core 不能假设任意 Segment KV 拼接都保持语义等价。
 
 ---
 
-# 28. HijackKV：非 Prefix Cache 引入新的安全边界
+# 28. HijackKV：非 Prefix Cache 引入新的
 
 2026 USENIX Security 的 HijackKV 指出：
 
@@ -1210,8 +1172,6 @@ cross-session
 position-independent KV reuse
 ```
 
-则必须有严格 Trust Boundary。
-
 ---
 
 # 29. Atria KV Cache 安全原则
@@ -1235,17 +1195,6 @@ Cache Trust Domain
 - Tool permission domain
 
 推荐原则：
-
-```text
-cross-user KV reuse
-→ default deny
-
-cross-package KV reuse
-→ default deny unless content is trusted immutable public resource
-
-user-controlled segment
-→ never promote to shared trusted KV without safe recomputation / verification
-```
 
 Cache 命中率不能高于隔离边界。
 
@@ -1360,7 +1309,6 @@ Agent B → Agent C
 
 ```text
 Explicit Workflow Hint
-+
 Observed Transition Statistics
 ```
 
@@ -1568,28 +1516,6 @@ Reuse Contract
 
 以下是概念模型，不是最终 Schema：
 
-```text
-ReuseContract
-├── artifactType
-├── identity
-├── inputFingerprint
-├── semanticIntent?
-├── scope
-├── dependencies
-├── authority
-├── revisionBinding
-├── temporalValidity
-├── purity
-├── sideEffects
-├── permissionScope
-├── providerBinding?
-├── modelBinding?
-├── trustDomain
-├── freshness
-├── invalidationPolicy
-└── provenance
-```
-
 Runtime 用它回答：
 
 > 这份东西在当前执行环境下为什么可以复用？
@@ -1605,21 +1531,6 @@ cacheHit = true
 ```
 
 建议 Execution Snapshot 记录：
-
-```text
-ReuseDecision
-├── requested
-├── candidateFound
-├── reused
-├── reuseType
-├── sourceArtifact
-├── validityChecks
-├── invalidationReason
-├── savedCalls
-├── savedTokens
-├── savedToolExecutions
-└── latencySavedEstimate?
-```
 
 这能让 Atria 真正评估：
 
@@ -1789,7 +1700,6 @@ NarrativeIntent
 
 ```text
 不重新做完整 Planner
-+
 仍得到新的正文
 ```
 
@@ -1991,15 +1901,10 @@ Endpoint B
 
 ```text
 raw token price
-+
 cache read/write cost
-+
 expected cache hit
-+
 reasoning continuity loss
-+
 tool locality
-+
 network latency
 ```
 
@@ -2013,38 +1918,11 @@ network latency
 
 建议扩展语义：
 
-```text
-EffectiveExecutionSnapshot
-├── model / endpoint / route
-├── prompt layout version
-├── context segment identities
-├── provider cache mode
-├── cache breakpoints
-├── prewarm state
-├── provider cached tokens
-├── reuse decisions
-├── plan reuse
-├── tool-value reuse
-├── artifact reuse
-├── reasoning continuation
-├── local KV hit/miss（若可见）
-└── cache loss / invalidation reasons
-```
-
 ---
 
 # 52. Cache Hit Reason 与 Miss Reason 都应该可观测
 
 建议常见命中原因：
-
-```text
-exact_identity
-semantic_validated
-dependencies_unchanged
-same_revision_scope
-provider_prefix_hit
-reasoning_continued
-```
 
 常见 miss：
 
@@ -2219,8 +2097,6 @@ Intent / Capability
 → Candidate Tool Resources
 ```
 
-但仍应验证：
-
 - 当前工具是否启用；
 - 权限是否变化；
 - Package 是否变化；
@@ -2233,14 +2109,6 @@ Intent / Capability
 比 Plan Cache 更进一步：
 
 如果某类任务总是：
-
-```text
-Resolve Intent
-→ Query State
-→ Validate Rule
-→ Execute Command
-→ Narrate Receipt
-```
 
 则可以把这一结构做成 Runtime Workflow。
 
@@ -2409,13 +2277,9 @@ Tool Result（若依赖相关状态）
 
 Dependency Graph 应负责：
 
-```text
-targeted invalidation
-```
-
 ---
 
-# 64. Cache Invalidation 应成为 Graph 问题
+# 64. Cache  应成为 Graph 问题
 
 推荐理解：
 
@@ -2474,7 +2338,6 @@ Revision Applicability
 
 ```text
 Artifact Graph
-+
 Reuse Contract
 ```
 
@@ -2484,7 +2347,6 @@ Reuse Contract
 - dependencies；
 - revision；
 - scope；
-- invalidation。
 
 ---
 
@@ -2628,18 +2490,6 @@ dynamic segment放后面并更新
 
 建议 Model / Provider Runtime 表达：
 
-```text
-PromptCacheCapability
-├── implicit
-├── explicitBreakpoints
-├── explicitCacheObjects
-├── prewarm
-├── ttlControl
-├── accountingKey
-├── usageTelemetry
-└── invalidationRules
-```
-
 Local Runtime：
 
 ```text
@@ -2690,14 +2540,6 @@ Cache Evidence
 ```
 
 应支持：
-
-```text
-provider_reported
-gateway_reported
-locally_verified
-estimated
-unknown
-```
 
 ---
 
@@ -2818,7 +2660,6 @@ OpenAI 2026 已经提供 Prompt Cache Dashboard / Diagnostics，这也说明可�
 
 - plan generation avoided
 - template reuse rate
-- validation-failure rate
 
 ## Agent
 
@@ -2945,8 +2786,6 @@ same intent but tool unavailable
 same intent but changed Authority
 ```
 
-Plan Template 可以命中，但执行前 validation 必须挡住失效条件。
-
 ---
 
 # 81. Eval：RP 正文
@@ -3001,17 +2840,6 @@ fresh narrator
 
 # 83. 第二阶段：需要 Agent Runtime 成熟
 
-```text
-✅ Adaptive Reuse Resolver
-✅ Intent-based Plan Reuse
-✅ Narrative Intent Reuse
-✅ Targeted invalidation graph
-✅ Cache-aware model routing
-✅ Workflow hints
-✅ Tool progress hints
-✅ Adaptive retrieval
-```
-
 ---
 
 # 84. 第三阶段：需要 Local / Self-hosted Inference
@@ -3049,7 +2877,6 @@ Atria 不应该为了这些远期功能提前实现自己的 CUDA / Attention Ru
 - Dependency
 - Validity
 - Provenance
-- Invalidation
 - Reuse Decision
 
 这一阶段不需要真正复杂缓存。
@@ -3082,7 +2909,6 @@ Atria 不应该为了这些远期功能提前实现自己的 CUDA / Attention Ru
 - dependency-aware cache
 - purity / side-effect contract
 - temporal validity
-- targeted invalidation
 - branch isolation
 
 ---
@@ -3094,7 +2920,6 @@ Atria 不应该为了这些远期功能提前实现自己的 CUDA / Attention Ru
 - intent identity
 - workflow templates
 - parameter binding
-- precondition validation
 - plan provenance
 
 ---
@@ -3147,10 +2972,6 @@ Provider / Backend Integration：
 
 是否能复用与缓存放在哪里分离。
 
-### ER-3：Dependencies drive invalidation
-
-优先依赖级失效，不采用全局 `clearAll()`。
-
 ### ER-4：Stable context has stable identity
 
 Prompt 中长期稳定内容应具有稳定 Segment / Resource Identity。
@@ -3158,10 +2979,6 @@ Prompt 中长期稳定内容应具有稳定 Segment / Resource Identity。
 ### ER-5：Canonical serialization matters
 
 相同语义应尽量产生稳定 Provider 输入。
-
-### ER-6：Plan structure may outlive resolved values
-
-Plan Template 可以长期复用，动态事实必须重新验证。
 
 ### ER-7：Side effects are never skipped by naive cache hits
 
@@ -3174,10 +2991,6 @@ Mutation / external actions 必须明确 replay semantics。
 ### ER-9：Cache locality participates in routing
 
 Provider/Model Routing 应逐渐感知 Cache Locality。
-
-### ER-10：Trust boundaries outrank hit rate
-
-禁止为了 KV 命中率突破用户 / Package / Session 安全隔离。
 
 ### ER-11：Reasoning Continuity is a special continuation state
 
@@ -3316,7 +3129,6 @@ Context Runtime
 9. Adaptive Invocation ladder；
 10. Routing + Cache Locality；
 11. Narrator Final Prose 默认不缓存；
-12. Trust Domain / HijackKV 安全约束；
 13. Effective Execution Snapshot observability；
 14. Roadmap Phase A–F。
 
@@ -3325,38 +3137,6 @@ Context Runtime
 ---
 
 # 92. Codex 可直接使用的合并任务说明
-
-```text
-请读取 docs 分支中的 Execution Reuse / Cache Locality / Adaptive Invocation 调研报告，并把已确认的架构结论整合进当前 Atria 企划。
-
-要求：
-
-1. 不要整篇复制 Research 文档；Research 保留为证据，主企划只吸收正式架构结论。
-2. 将 Execution Reuse 定义为 Runtime 一级能力，与 Storage Cache 实现分离。
-3. 引入“Reuse 必须证明当前仍有效”的原则；Embedding similarity 只能找候选，不能单独决定复用。
-4. 把 Reuse Contract 与 Atria 已有 Revision / Branch / Authority / Task Artifact / Provenance / Effective Execution Snapshot 体系对齐，不创建平行状态系统。
-5. 设计 dependency-aware targeted invalidation，避免 Revision 变化就全局 clear cache。
-6. Context Runtime 应保留稳定 Context Segment identity / version / volatility / dependency 概念，并支持 deterministic canonical serialization。
-7. Model Runtime 加入 Provider Prompt Cache capability；OpenAI / Anthropic / Gemini 的具体字段只进入 Provider Adapter，不泄漏到上层核心模型。
-8. Tool Value Cache 必须感知 purity、side effects、state dependencies、time、permission、Authority 与 Branch。
-9. Plan / Workflow Reuse 应优先缓存结构化 Workflow Template，不缓存未经验证的动态事实。
-10. Final RP prose 默认不得作为 Semantic Cache 返回；优先复用 facts、retrieval、plan、Narrative Intent、prompt prefix，再 fresh-generate Narrator。
-11. Reasoning Continuity 继续沿用现有独立定义，把它作为 Execution Continuation，而不是普通 Cache Entry。
-12. 将 cache locality 纳入未来 Routing Cost Model，但第一阶段不要过度实现预测模型。
-13. Local KV / Segment KV / EAGLE / Medusa / KVFlow / CacheScout 属于未来 Self-hosted Inference capability，不要求当前自行实现 GPU serving。
-14. 加入 HijackKV 风险与 Trust Domain 约束：默认禁止不受控的 cross-user / cross-package position-independent KV reuse。
-15. 加入 Cache / Reuse observability：valid hit、miss reason、saved calls/tokens/tool executions、false reuse、TTFT/E2E 等指标。
-16. 将实施顺序写入 roadmap：
-    A. Reuse semantics
-    B. Cache-aware context
-    C. Tool/artifact reuse
-    D. Plan/workflow reuse
-    E. Adaptive invocation
-    F. Local inference optimization
-17. 如果现有企划已有相近术语，以现有正式术语为准，消除重复概念。
-18. 不要把本报告中的概念字段示例误写成已冻结 TypeScript Schema。
-19. 本轮只更新企划、Research 索引及同一 Record，不实施产品代码。
-```
 
 ---
 
@@ -3563,10 +3343,6 @@ https://ai.google.dev/gemini-api/docs/caching
 ## 一
 
 > **Atria 的 Context 不应再只是一段 Prompt String，而应是一组有稳定 Identity、Version、Dependency 与 Volatility 的 Context Segments。**
-
-## 二
-
-> **Atria 的 Cache Hit 必须由 Validity Proof 决定，而不是只由 Hash 或 Embedding Similarity 决定。**
 
 ## 三
 

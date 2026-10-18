@@ -22,15 +22,12 @@ restoration. Orchestrator/Memory, third-party installation, the legacy manager a
 unfiltered extension settings are absent from this product surface. Workspace command
 copy now reflects Work/Global ownership. The physical retirement follows in NUX-042.
 
-Validation: five focused/adjacent suites passed 30 cases, including Package plugin
-capability/dependency guards. Three real Edge utility/navigation/settings scenarios
+ Three real Edge utility/navigation/settings scenarios
 and an additional two-installed-version Work plugin scenario passed. 390px screenshots
-were inspected. Changed JavaScript lint and diff checks passed. An initial browser
+were inspected. An initial browser
 command was interrupted because its test-edit script used the wrong relative path;
 the corrected final cases passed. Existing absent Stable Diffusion service startup
 probes were non-fatal and will disappear with the planned physical retirement.
-
-
 
 ### NUX-042
 
@@ -41,24 +38,14 @@ installation/update, arbitrary extension loading and legacy profile authority.
 Current Atria capability settings retain only supported data and persist under
 `atri_capabilities`; watchdog recovery cannot disable Agents or Work capabilities.
 Memory and Hybrid retrieval now use exact Native Retrieval references exclusively.
-The vector HTTP boundary rejects raw legacy provider requests. Browser embedding
-uses the bundled WebLLM SDK with supported-model selection in Runtime, serialized
-model switching and cancellation/result guards. File uploads retain core filename
-validation. Retired UI, source, providers, routes, default Quick Reply seeds,
+The vector HTTP boundary rejects raw legacy provider requests. Retired UI, source, providers, routes, default Quick Reply seeds,
 installation backup categories, tests and feature documentation were removed.
 See the dependency inventory for module owners and preserved contracts.
 
-Validation: the full related Native/Shell/Agents/Memory/Experience/Skills/Regex/Search
-regression passed 354 suites, 3532 tests (72 optional database cases skipped).
 Six boundary/cache/browser-provider suites passed 47 tests; seven adjacent startup,
 retained-editor and FS/SQLite restore suites passed 29 tests (22 optional/unselected
-cases skipped). Content seeding and retirement guards passed 11 tests (8 external-DB
 cases skipped). A3/A4/A5/A6/A9/P4 residual scripts passed after updating their
-module paths and obsolete Secret/Plugin expectations to the current product contracts.
-Full JavaScript lint, changed backend lint, frontend cache build and
-diff checks passed. Six real Edge cross-domain scenarios passed. The strengthened
-Plugins case verified all five capabilities ready and retired install/SD/Quick Reply
-routes returning 404. A separate real Edge case loaded the bundled browser model
+module paths and obsolete Secret/Plugin expectations to the current product contracts. Six real Edge cross-domain scenarios passed. A separate real Edge case loaded the bundled browser model
 catalog; its 390px rendered result was inspected. Actual GPU inference was not run.
 
 An exploratory whole-repository run, before obsolete-fixture corrections, returned

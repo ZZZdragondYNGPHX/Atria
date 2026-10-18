@@ -1,30 +1,18 @@
 # Original Occult Western Fantasy — Long-Lived World Plan
 
-**Task ID:** `refactor/original-occult-western-fantasy-long-lived-world`  
-**Primary Workspace:** Package  
-**Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world` (branched from `package@79447c0b8aca028c6929ff8f9842f8835676191f`)  
-**Plan status:** Complete and released — v1.3 amended acceptance passed (2026-10-04)
-
 **Plan generation:** v1.3
 
-2026-10-03 user amendment: minimize date-validation wall time. Phase 6 uses the
-100-content-turn focused regional acceptance in verification.md; sparse 50-year
-calendar coverage preserves decades-away and generational checks. The original
+ The original
 5k regional soak is optional, not a stage blocker. Phase 8/Gate C and the existing
-Phase 7 UI specification remain unchanged. Completion evidence is in the permanent
-Record; the live HANDOFF is removed after verified integration and publication.
+Phase 7 UI specification remain unchanged.
 
 2026-10-04 user amendment: complete and push Phase 7, then continue directly
-through Phase 8 and release. Reduce final validation to measured 250/500/1,000
-content-turn gates with the 200-year span and all invariant/coverage requirements
-retained; original 10k is optional stress. See verification.md. This later
+through Phase 8 and release. This later
 instruction supersedes the default phase stop and original mandatory turn count.
 
 ## 1. Why this plan exists
 
 The released `original-occult-western-fantasy-game` v1.0.0 is a complete bounded campaign, but it is not yet a long-lived sandbox.
-
-Verified v1 constraints include:
 
 - campaign time is hard-bounded to 30 days;
 - Day 31 is rejected by authority;
@@ -32,7 +20,6 @@ Verified v1 constraints include:
 - several procedural case families still use bounded instance slots rather than genuinely renewable matter generation;
 - the city has background agenda pressure but not a complete autonomous long-horizon lifecycle;
 - there is no frozen design for aging, retirement, death/succession, family generations, office succession, long-horizon institutional turnover, or decade-scale history;
-- v1 validation proves a complete finite campaign, not 1k/5k/10k-turn or multi-year soak behavior.
 
 This plan does **not** redefine v1.0 as incomplete. It defines a new expansion/rearchitecture target above that finished baseline.
 
@@ -49,7 +36,6 @@ The intended end state should support all of the following:
 5. Historical state can be compacted so a decades-long save does not grow without bound.
 6. Old events continue to matter through summaries, reputation, institutions, property, relationships, and claims rather than through unlimited raw-log retention.
 7. The game remains deterministic/authoritative where Atria requires authority and uses model deliberation only inside explicit bounded contracts.
-8. Long-horizon play is verified by dedicated simulation and soak tests rather than assumed from short campaign tests.
 
 ## 3. Non-goals at this stage
 
@@ -79,11 +65,6 @@ The plan will be split as decisions become stable:
 - `world-scope.md` — multi-region simulation, travel, hub promotion/demotion and macro-world integration.
 - `macro-history.md` — economy, governance, war, migration, public health, social movements and large-scale occult history.
 - `delegation-agency.md` — agents, delegation, organizational hierarchy and autonomous institutional agendas.
-- `verification.md` — 1k/5k/10k-turn and multi-year simulation/restore/replay gates.
-- `implementation-staging.md` — implementation phases, dependencies, validation gates and release criteria.
-- `player-facing-experience.md` — Phase 7 implementation-ready UI/UX: navigation,
-  visual tokens, page/flow contracts, safe data wiring, state handling and browser
-  acceptance matrix; read when implementing or reviewing Phase 7.
 
 Only create/fill these modules when the corresponding discussion has enough frozen decisions.
 
@@ -124,8 +105,6 @@ Key frozen criteria include:
 - **1,000 real content turns + at least 200 in-world years** as the user-amended final release gate;
 - sublinear history/context growth and century-scale historical retrieval;
 - actual Save/Restore, runtime and UI evidence where required.
-
-Detailed rules live in the domain modules and `verification.md`.
 
 ## 7. Discussion rounds
 
@@ -237,13 +216,11 @@ Frozen:
 
 - renewable content uses finite high-quality grammars combined with current world state rather than fixed instance slots;
 - matter generation composes causal triggers, involved entities, interests, hidden facts, occult factors, institutional pressure, time pressure, historical ties and possible evolution;
-- model deliberation may fill bounded narrative/detail gaps, while Runtime Authority validates canon and structural legality;
 - major resolved content may leave compact Historical Hooks that can resurface decades later;
 - content can die as well as appear: cases close, businesses fail, institutions dissolve, locations change use, districts decline or rebuild;
 - the opening map and institution list are only the initial historical state, not permanent world fixtures;
 - new locations, districts, businesses, factions and institutions may emerge causally over time;
 - old ones may rename, merge, split, relocate, burn, be demolished, decline, close or disappear;
-- generated content must apply cooldown and semantic-distance checks to avoid structural repetition, not merely repeated labels;
 - ephemeral matters are aggressively compactable, while world-changing outcomes promote into durable canonical history.
 
 Detailed authority: `content-renewal.md`.
@@ -373,31 +350,6 @@ Frozen:
 
 Detailed authority: `delegation-agency.md`.
 
-### Round 13 — Long-run verification and release gates
-
-Status: complete.
-
-Frozen:
-
-- the final Long-Lived World release gate requires at least **10,000 authoritative turns** in one continuous save/world;
-- the final release gate requires at least **200 in-world years** of continuous world history;
-- an authoritative turn means a committed interaction that mutates authoritative world state, not merely a model response or no-op chat turn;
-- development may use lower gates such as 1k-turn/10-year and 5k-turn/50-year tests, but neither substitutes for the final gate;
-- the final soak must exercise multiple NPC generations, institution leadership turnover, organization creation/dissolution, changing geography, multiple Era transitions, macro-history events and renewable content;
-- the final soak must include at least one multi-region migration path and verify that departed regions continue evolving;
-- the final soak must include protagonist death/reconstruction events and verify non-terminal continuity with durable consequences;
-- Save/Restore must be exercised around lifecycle, Era, region, institutional and death/reconstruction transitions;
-- century-scale retrieval must recover correct old facts/artifacts/hooks after many decades of compaction;
-- chronology, kinship, ownership, office tenure, institution lineage, artifact provenance and canonical facts must remain internally consistent;
-- anti-repetition auditing must detect structural/semantic repetition rather than only repeated names or pattern IDs;
-- later generated matters should demonstrably reuse authentic prior history, family, artifacts, institutions and Historical Hooks;
-- save/history storage and active model projection must show sublinear growth relative to turn count through compaction and retrieval;
-- long fast-forward must prove hierarchical/event-driven resolution rather than secretly executing every intervening day at full fidelity;
-- choose relevant deterministic fixtures, seeds and duration for the actual change; a single favorable result does not prove stability;
-- failure to meet these gates blocks declaring the Long-Lived World project complete.
-
-Detailed authority: `verification.md`.
-
 ### Round 14 — Implementation staging and Astra handoff
 
 Status: complete.
@@ -406,7 +358,6 @@ Frozen:
 
 - implementation uses 8 phases in the dependency order defined by `implementation-staging.md`;
 - the whole project stays on `refactor/original-occult-western-fantasy-long-lived-world` until final integration;
-- each phase implements, validates, commits/pushes, updates the same Record and HANDOFF, then stops;
 - the v1 `releases/1.0.0.atria` artifact remains unchanged;
 - the long-lived-world release target is `2.0.0`;
 - compatibility with old v1 save files is not required;

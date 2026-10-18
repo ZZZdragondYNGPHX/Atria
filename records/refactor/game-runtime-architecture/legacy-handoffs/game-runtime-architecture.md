@@ -3,7 +3,6 @@
 ## Current branches and HEADs
 
 - R0-R6 frozen branch: `refactor/game-runtime-architecture`
-- R0-R6 validated/frozen HEAD: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
 - R7 implementation branch: `refactor/atria-game-first-shell-redesign`
 - R7 preparation/current HEAD: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
 - Baseline/live `main`: `63da3141a3895d3386ed1bebc30876c9766315ba`
@@ -11,7 +10,7 @@
 - Authoritative expanded R7 plan: `docs:refactor/atria-game-first-shell-redesign.md`
 - Current status: **R0-R6 are complete and frozen. R7 — Atria Game-first Shell Redesign is prepared on its own branch; functional implementation has not started in the planning/preparation conversation.**
 - The old assumption that R7 would continue directly on `refactor/game-runtime-architecture` is superseded.
-- Do not merge either long-running branch into `main` during R7 development. Because the R7 branch is based on the complete R0-R6 history, only the final validated R7 branch is merged into `main` after R0-R7 validation.
+- Do not merge either long-running branch into `main` during R7 development.
 
 ## R3 checkpoint — Game Logic Runtime
 
@@ -19,7 +18,6 @@ R3 implementation is complete against the Master Plan exit contract.
 
 Implemented under `public/scripts/extensions/game-runtime/logic/`:
 
-- typed Command Registry with argument schemas and precondition validators;
 - one Command Bus for JS-authored and declarative-authored logic;
 - safe Formula AST with bounded parsing/evaluation and no JavaScript `eval`;
 - deterministic namespaced RNG with trace output and committed outcome provenance;
@@ -45,13 +43,9 @@ Important invariants now covered by tests:
 - no public generic `set_state(path,value)` or broad SillyTavern/Atria context was introduced;
 - declarative reducer path assignment is compile-time authoring only and is not exposed as a UI/LLM mutation primitive.
 
-R3 focused validation:
-
-- Workflow: `Game Runtime Dev Checks`
 - Run: `35548001015` (#88)
 - HEAD: `9276e460c7534c6ad097771f462b3917f6c53080`
 - Result: success
-- Includes the dedicated `r3-exit-matrix.test.js` plus Command/Validator/Rules/Reducer/Formula/RNG/Simulation/World tests and focused ESLint.
 
 ## Midpoint completed
 
@@ -82,14 +76,12 @@ Current manifest contract includes:
 - optional World schema/initial entry
 - optional Logic entry
 - strict unknown-field rejection
-- safe package-relative path validation
 
 Game Package discovery:
 
 - root entry is `game.json`, not `index.js`;
 - missing `game.json` means “no Game Package”, not an error;
 - malformed/incompatible packages do not activate;
-- declared `world/ui/logic` files are checked against the real character file inventory before activation;
 - invalid packages leave the normal Atria host UI available as the recovery shell.
 
 Transport reuse:
@@ -110,7 +102,6 @@ Implemented:
   - changing an earlier swipe selects another event lineage instead of manually rolling variables backward.
 
 - `world/schema.js`
-  - deterministic JSON-schema subset for World State validation;
   - no DOM dependency and no JavaScript `eval`.
 
 - `world/journal.js`
@@ -125,8 +116,6 @@ Implemented:
 - `world/runtime.js`
   - Initial State + Event Journal + Snapshot + Branch/Replay projection;
   - atomic persistence update path;
-  - schema validation before a commit becomes durable;
-  - failed state validation leaves persistence unchanged;
   - bounded snapshots.
 
 - `world/persistence.js`
@@ -139,14 +128,12 @@ Implemented:
   - rejects invalid JSON roots and invalid initial states.
 
 - `world/session.js`
-  - binds a validated package World to the current chat;
   - loads the current swipe branch;
   - supports branch synchronization and reload from persisted Event Journal;
   - exposes an internal event commit primitive for the upcoming Command Bus.
 
 Runtime integration:
 
-- `game-runtime/index.js` creates a World Session for a validated package that declares `world`;
 - malformed World definitions downgrade package activation to invalid rather than taking over the host;
 - structural chat events synchronize the active world branch;
 - the extension API currently exposes World state/journal/branch as read-only views;
@@ -158,8 +145,6 @@ R3 now provides one deterministic mutation contract shared by JavaScript-authore
 
 Implemented runtime pieces:
 
-- typed Command Registry with JSON-schema argument validation;
-- semantic command validators that run before command execution;
 - safe Formula AST parser/evaluator with bounded numeric behavior and inspectable AST;
 - deterministic RNG streams with bounded integer/dice/weighted domains and recorded RNG trace;
 - typed reducer registry with per-event payload schemas;
@@ -174,19 +159,6 @@ Implemented runtime pieces:
 
 The normal write path is now:
 
-```text
-typed Command
- -> argument schema validation
- -> command validators
- -> Formula / deterministic calculation
- -> deterministic RNG
- -> initial Event drafts
- -> typed reducer projection
- -> deterministic Rules / derived Events
- -> World schema validation
- -> atomic commit
-```
-
 Simulation follows the same pipeline through projection and Rule Trace but does not persist the Journal or projected World State.
 
 Important boundaries preserved:
@@ -200,7 +172,6 @@ Important boundaries preserved:
 
 R3 exit matrix is explicitly tested:
 
-- command matrix and validation;
 - deterministic replay after a committed derived-event transaction;
 - deterministic RNG/provenance;
 - Rule Trace and rule ordering;
@@ -209,11 +180,7 @@ R3 exit matrix is explicitly tested:
 - simulation produces no persisted mutation;
 - malformed declarative logic and unsafe reducer assignment paths fail before runtime activation.
 
-Final R3 focused validation:
-
-- Game Runtime Dev Checks run `35547976049` at `01ec11315990e9b149580a275cea79081d85e085`: success, including the formal R3 exit matrix.
 - Subsequent hardening runs through #88 also passed.
-- Latest validated R3 HEAD: `9276e460c7534c6ad097771f462b3917f6c53080`.
 
 Android and Docker were not run because R3 changes are browser/Node runtime logic only and those builds remain opt-in.
 
@@ -252,7 +219,6 @@ Implemented under `public/scripts/extensions/game-runtime/ui/`:
 - Escape recovery owned by the host;
 - broken Full packages fail before completed takeover and leave the host usable;
 - live package logic is now wired into production World Sessions for declarative `.json` logic entries;
-- advanced package JavaScript logic remains fail-closed until the restricted advanced-JavaScript runtime is implemented.
 
 UI takeover semantics:
 
@@ -269,10 +235,6 @@ R4 exit coverage:
 - Mobile browser smoke: Hybrid composition + mobile/portrait/touch responsive contract in real Chromium.
 - Broken-package recovery: invalid Full native ownership aborts takeover and restores/retains the host.
 
-Final R4 validation:
-
-- `Game Runtime Dev Checks` #160 — run `35550867047` — HEAD `adc607bc5c1bdbe383d2647d82b1e0b323743df4` — success.
-- `Game Runtime R4 Browser Checks` #2 — run `35550867046` — same HEAD — success.
 - The first browser run failed only because the synthetic smoke page lacked the real Atria mobile viewport meta tag; after matching the production viewport contract, desktop and mobile Chromium smoke both passed.
 - Android and Docker builds were not run because they remain opt-in and R4 changed browser runtime/UI contracts only.
 
@@ -287,8 +249,6 @@ Important R4 boundaries:
 ## R5 — LLM Runtime & Model Roles complete
 
 **R5 is complete and is the formal midpoint checkpoint for the Master Refactor.**
-
-Validated implementation HEAD:
 
 `refactor/game-runtime-architecture@1da96c37598223e3a2b89f9561a7722d12e58b6b`
 
@@ -328,10 +288,8 @@ Implemented:
 - LLM-safe tool catalog generated from typed Command definitions;
 - explicit `llm.expose` opt-in;
 - dynamic Host-side visibility predicates;
-- visibility errors fail closed;
 - provider-safe transport tool-name mapping;
 - reserved `game_no_change` path;
-- Host re-validates every model-proposed Command against the real Command schema before execution;
 - model-invented arithmetic/state fields cannot bypass the Command Bus.
 
 ### Intent Resolver
@@ -341,7 +299,6 @@ Implemented:
 - receives user input + bounded authoritative Observation + branch anchor;
 - can only choose currently visible typed Commands or `game_no_change`;
 - cannot emit World patches, Event Journal writes, damage/HP/inventory deltas or final prose;
-- provider/tool output is revalidated by Host code;
 - no-change creates no Command/Event noise.
 
 ### Event Interpreter
@@ -353,20 +310,9 @@ Implemented:
 - confidence threshold and explicit no-change;
 - low confidence defaults to no-change, with optional strict reject policy;
 - no mutation tools are supplied;
-- forbidden numeric/state-patch fields fail closed;
-- runtime verifies World State and Event Journal are unchanged across interpretation;
 - accepted semantic interpretations are recorded in Turn Context only.
 
 Deterministic mapping:
-
-```text
-accepted typed interpretation
- -> Interpretation Mapping Registry
- -> at most one typed Command proposal
- -> Command validation
- -> Command Bus
- -> committed Events
-```
 
 The Interpreter's semantic `eventType` is never written directly to the Event Journal.
 
@@ -397,7 +343,6 @@ Implemented:
 - query derives from user input, resolved Commands, committed Events and bounded Observation;
 - does not reconstruct current World truth from Memory prose;
 - Memory packets are tagged `historical_context` / authority rank 5;
-- source-current guard plus Game Runtime branch guard before/after recall;
 - swipe/branch changes reject stale recall;
 - Memory-unavailable path degrades without breaking the Turn;
 - runtime rejects any recall path that mutates World State or Event Journal.
@@ -425,7 +370,6 @@ Implemented:
 - Game Runtime receives a read-only authoritative Turn view;
 - spec / agenda / loop reuse the existing Orchestrator runtimes and return **advisory guidance only**;
 - Orchestrator guidance has authority rank 6 and cannot override World/Event facts;
-- Game Runtime checks World/Journal are unchanged across orchestration;
 - Director uses the existing Director main-agent runtime with a buffer-only handle;
 - Game Runtime Director API does not directly write a chat floor;
 - Director takeover replaces Narrator as the **sole** final-body producer for that Turn;
@@ -462,7 +406,6 @@ Each role supports:
 Fallback behavior:
 
 - provider/network/timeout/rate-limit/server failures may retry/fallback;
-- invalid input/schema/validation/abort errors fail closed instead of silently switching providers.
 
 Functional Model Runtime settings/API:
 
@@ -535,37 +478,6 @@ R5 LLM modules share `llm/clone.js`:
 
 This fixed jsdom/older-WebView compatibility exposed by the final UI-button integration test.
 
-### R5 exit verification
-
-Dedicated coverage includes:
-
-- `r5-exit-matrix.test.js`
-- `r5-ui-button.test.js`
-- `llm-intent-resolver.test.js`
-- `llm-event-interpreter.test.js`
-- `interpretation-mapping.test.js`
-- `llm-memory-bridge.test.js`
-- `llm-memory-ingestion.test.js`
-- `llm-orchestrator-narrative.test.js`
-- `llm-roles.test.js`
-- `llm-model-runtime-config.test.js`
-- `llm-turn-controller.test.js`
-- World sibling-attempt branch regression tests;
-- Memory Graph authoritative source/write/stale/rebuild regressions.
-
-Final validation:
-
-- Workflow: **Game Runtime Dev Checks**
-- Run: **#280 / `35556314851`**
-- HEAD: **`1da96c37598223e3a2b89f9561a7722d12e58b6b`**
-- Result: **success**
-- Includes R0-R5 focused tests and focused ESLint.
-- R4 browser regression also remained green after UI actions gained the host-dispatch path: **Game Runtime R4 Browser Checks #3**, HEAD `29fbc5f824324aadddbf550cfc6a7c18c85f1f54`.
-
-The final R5 gate was preceded by two expected test-environment failures (#265/#266) caused by jsdom lacking native `structuredClone`. The fix was applied at the R5 runtime compatibility layer rather than papering over production code in the fixture; #280 is the validated result.
-
-Android and Docker builds were not run because they remain opt-in and R5 changes are browser/Node runtime architecture.
-
 ### R5 boundaries preserved
 
 - no generic public `set_state`;
@@ -582,8 +494,6 @@ Android and Docker builds were not run because they remain opt-in and R5 changes
 ## R6 — Game Studio complete
 
 **R6 is complete against the Master Plan exit contract.**
-
-Validated implementation HEAD:
 
 `refactor/game-runtime-architecture@26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
 
@@ -610,9 +520,6 @@ Structured authoring now includes:
 - Selector Editor;
 - Observation Editor.
 
-Validation reuses runtime contracts:
-
-- R2 World Schema validator;
 - R3 declarative compiler;
 - Command Registry;
 - Reducer Registry;
@@ -642,7 +549,6 @@ The Studio simulation harness:
 
 - constructs an isolated, memory-backed World Runtime from Source Project files;
 - calls the real R3 `logic.simulate()` path;
-- exposes Command validation;
 - exposes Before / Projected World State;
 - exposes Event Timeline;
 - exposes deterministic RNG Trace;
@@ -650,9 +556,6 @@ The Studio simulation harness:
 - exposes the actual R5 Command Tool catalog for a selected Runtime Role;
 - exposes Observation Preview;
 - exposes Selector Preview;
-- verifies a mutation guard after every simulation.
-
-The mutation guard requires:
 
 - persistence writes = 0;
 - authoritative in-memory World State unchanged;
@@ -674,8 +577,6 @@ R6 added:
 - runtime-aware source map/system prompt appendix;
 - explicit R2-R6 architectural guardrails;
 - virtual post-edit project preflight before approval/commit.
-
-For Game Projects, AI batches are checked against:
 
 - `game.json`;
 - declared-file inventory;
@@ -710,8 +611,6 @@ The root container manifest records:
 - optional source card id metadata;
 - fixed Game Project root/entry;
 - full file inventory;
-- per-file SHA-256;
-- canonical inventory SHA-256.
 
 Default build exclusion:
 
@@ -738,7 +637,6 @@ Import/inspection fails closed for:
 - undeclared/missing files;
 - malformed inventory;
 - container/game metadata mismatch;
-- SHA-256 mismatch;
 - compressed archive limit;
 - entry count limit;
 - per-file size limit;
@@ -748,9 +646,6 @@ Import/inspection fails closed for:
 
 Restore semantics:
 
-1. inspect and validate the full archive in memory;
-2. validate the contained Game Project against runtime contracts;
-3. write validated files to staging;
 4. move existing Source Project content, excluding `.git`, to rollback backup;
 5. install staged project;
 6. restore backup on failure;
@@ -764,42 +659,6 @@ Studio now exposes:
 - **Build .atria**
 - **Import .atria**
 
-Import performs validate-only preview before the user confirms restore.
-
-### R6 exit verification
-
-Dedicated R6 coverage includes:
-
-- Studio Project Navigator;
-- structured World/Initial editors;
-- structured Game Logic editors;
-- Selector/Observation editors;
-- declarative Observation resource;
-- non-persistent Simulation Runtime;
-- Game-aware AI project guard;
-- .atria distribution/security/round-trip suite.
-
-The .atria tests prove:
-
-- nested UTF-8 text survives build/import;
-- binary assets survive byte-for-byte;
-- authored knowledge/skills survive nested paths;
-- excluded Save/Progress/Git paths are absent;
-- hostile/malformed archive inputs fail safely;
-- restore preserves `.git` and removes stale authored source;
-- invalid restore leaves existing source untouched;
-- build -> inspect -> restore preserves Game Runtime simulation behavior.
-
-Final R6 validation:
-
-- Workflow: **Game Runtime Dev Checks**
-- Run: **#340 / `35559636615`**
-- HEAD: **`26692b80aaa073e2442f5ed23b3f082ef25b3e2c`**
-- Result: **success**
-- focused unit tests: success
-- focused ESLint: success
-- Android/Docker builds: not run; they remain opt-in and R6 changes browser/Node authoring/runtime/package code.
-
 ### R6 boundaries preserved
 
 - Narrative Cards without `game.json` remain first-class.
@@ -808,7 +667,6 @@ Final R6 validation:
 - no LLM-owned World mutation;
 - no UI-owned authoritative game rules;
 - no speculative Entity Store;
-- package-loaded advanced JavaScript Game Logic remains fail-closed pending an explicitly designed restricted runtime;
 - no R7 global host-shell redesign was pulled forward.
 
 ## Important architecture decisions preserved
@@ -871,42 +729,8 @@ Final R6 validation:
     - complete Atria Game Packages should gain a native *.atria distribution artifact instead of indefinitely embedding growing multi-file/binary projects into PNG metadata or giant JSON/base64 payloads;
     - .atria is planned as a standard ZIP container with a versioned root package manifest, card data, Game Runtime project files, knowledge/skills and binary assets;
     - manifest.json (container/package contract) remains distinct from game/game.json (Game Runtime contract);
-    - Game Studio edits an unpacked source project and builds/validates the distribution artifact;
-    - package extraction must enforce path traversal/archive/resource/manifest validation;
     - Game Package and live Save are separate contracts; a future portable save may use a separate *.atria-save style artifact;
     - R6 Game Studio owns the native package build/import/export pipeline. Do not expand the current R5 scope to implement it early.
-## Validation completed
-
-Final focused workflow:
-
-- Workflow: `Game Runtime Dev Checks`
-- Run: `35523372735`
-- HEAD: `d72058d33c9471d8514ca540d775079f97dd54a9`
-- Result: success
-
-The final run passed:
-
-- Game Package manifest tests
-- Game Package loader tests
-- declared-file rejection tests
-- package-only nested text/binary import-export round-trip
-- CardApp transport regression tests
-- Regex lane semantics
-- Regex/Game Runtime architecture boundary tests
-- World branch mapping tests
-- World Event Journal deterministic replay tests
-- snapshot replay tests
-- alternate swipe branch restoration tests
-- World Runtime atomic commit/reload tests
-- schema-failure no-partial-write test
-- World package schema/initial loading tests
-- live World Session branch synchronization/reload tests
-- focused ESLint for Game Runtime, World Runtime, Regex engine and CardApp endpoint
-
-The run immediately before the final lint fix already reported 11 passing suites / 59 tests; the final run then passed both the focused unit-test step and focused ESLint.
-
-Android and Docker were not run, per repository/user policy and because this midpoint touches browser/Node runtime architecture only.
-
 ## Current limitations / intentionally unfinished
 
 **R0-R6 are complete. The Master Refactor is not complete.**
@@ -917,7 +741,6 @@ Remaining phase:
 
 Known deferred boundaries carried into R7/future work:
 
-- package-loaded advanced JavaScript Game Logic remains fail-closed until a restricted execution environment is deliberately designed;
 - large-world Entity Store/query/index evolution remains measurement/use-case gated;
 - R5 Runtime Role configuration is functionally available, but final role-oriented **Model & Runtime UI/IA** belongs to R7;
 - R6 Studio-specific UI changes are complete, but the product-wide host shell/design system/navigation are intentionally still old-era until R7.
@@ -927,8 +750,6 @@ Known deferred boundaries carried into R7/future work:
 R7 now uses the independent implementation branch:
 
 `refactor/atria-game-first-shell-redesign@26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
-
-The branch was created directly from the final validated R6 HEAD.
 
 The R0-R6 branch remains frozen at:
 
@@ -978,11 +799,4 @@ Key approved decisions:
 
 Final integration policy:
 
-```text
-refactor/atria-game-first-shell-redesign@<R7_FINAL_VALIDATED_HEAD>
-    -> main
-```
-
 Do **not** separately merge `refactor/game-runtime-architecture` into `main`, because the R7 branch already contains the complete R0-R6 history.
-
-After final R7 merge and verification, archive/clean up both long-running branches according to repository policy.

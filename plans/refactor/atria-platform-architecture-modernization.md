@@ -21,7 +21,7 @@ Atria 已经明显超出原 SillyTavern 宿主架构的规模和职责边界。
 
 本项目值得进行底层架构升级，但目标不是“换技术栈重写”，而是：
 
-> **简化 ownership、初始化图与模块边界；保持当前有效业务与数据完整性。实现与兼容取舍遵循 [Governance §12.1](../../README.md#121-minimal-implementation)。**
+> **简化 ownership、初始化图与模块边界；实现与兼容取舍遵循 [Governance §12.1](../../README.md#121-minimal-implementation)。**
 
 核心判断：
 
@@ -82,7 +82,7 @@ R7H 候选 `982c1256f42a255626b22cbf97aa054bce08b936` 的研究快照：
 
 ## 4. 绝对前置条件
 
-开始前按 [Governance §8 / §12](../../README.md#8-task-lifecycle) 核对真实 main、任务分支和当前设计，确认相关前置已集成，再在真实基线上采集 R8A 数据。恢复只使用用户要求中断时的 `docs:HANDOFF.md`，不使用旧 `handoff/` 路径。
+恢复只使用用户要求中断时的 `docs:HANDOFF.md`，不使用旧 `handoff/` 路径。
 
 ---
 
@@ -143,7 +143,6 @@ FS / SQLite / MySQL / PostgreSQL
 
 重点：
 
-- `chats.js` 等大型 endpoint 逐步只保留 HTTP translation / validation / response；
 - 业务语义进入 application service；
 - persistence 继续通过现有 repository/storage engine；
 - 更多低频 endpoint 可按证据转 lazy router；
@@ -151,10 +150,7 @@ FS / SQLite / MySQL / PostgreSQL
 
 ### 5.3 开发效率
 
-- 引入 architecture/import boundary guards；
 - 收敛循环依赖和跨域直接 import；
-- 关键 service/event contract 增强类型检查；
-- 利用现有 TypeScript 工具做边界检查，而不是全仓 TS 重写；
 - 让新功能默认进入 Feature/Service/Workspace 边界，而不是继续向巨型文件堆代码。
 
 ---
@@ -178,7 +174,7 @@ R8 默认明确排除：
 
 ## 7. 当前契约边界
 
-实施时核对真实调用方和当前 Plan。保留仍受支持的角色卡/世界书/聊天互换格式、原生服务职责及持久化一致性；不因旧 alias、DOM 节点或 namespace 曾存在而冻结它们。旧插件、全局 facade 和历史格式不默认构成兼容义务，已替代的入口随调用方一起删除。
+保留仍受支持的角色卡/世界书/聊天互换格式、原生服务职责及持久化一致性；不因旧 alias、DOM 节点或 namespace 曾存在而冻结它们。旧插件、全局 facade 和历史格式不默认构成兼容义务，已替代的入口随调用方一起删除。
 
 现有服务仍是唯一权威；不要为兼容再包一层 Adapter。
 
@@ -206,8 +202,6 @@ R8 默认明确排除：
 - Android/Termux 启动基线；
 - Node runtime matrix；
 - plugin/API/DOM ABI 清单。
-
-建立 CI guard：
 
 - architecture import boundaries；
 - forbidden cross-domain imports；
@@ -296,7 +290,6 @@ R8 默认明确排除：
 - router 薄化；
 - application service 独立；
 - repository/storage port 继续复用；
-- 请求 validation、domain error、HTTP response 映射分层；
 - 低频 endpoint 的 lazy registration。
 
 URL、response shape 和状态码按当前契约调整，同步真实调用方；不默认增加旧接口分支。
@@ -309,7 +302,6 @@ URL、response shape 和状态码按当前契约调整，同步真实调用方�
 - 关键边界启用更严格 typecheck；
 - 消除新代码对未声明 globals 的依赖；
 - 收敛 event listener 生命周期和 dispose；
-- 建立 cycle / forbidden import guard。
 
 不做全仓 TypeScript 改写。
 
@@ -340,7 +332,6 @@ Express 4 → 5：
 - first Play / Workspace switch 有可解释结果；
 - heavy feature 不再无条件进入首屏模块图；
 - 巨型模块职责显著收敛；
-- architecture guards 生效；
 - Node/ESLint 受支持；
 - final residual/dependency/cycle scan。
 
@@ -354,11 +345,9 @@ R8 不追求“所有指标都更快”，而要求任何复杂化都由数据�
 
 ### 判断规则
 
-- startup/Play 热路径新增 eager dependency：默认视为回归；
 - 重型 feature 若可 lazy load，禁止重新静态挂进 bootstrap；
 - 性能优化保持当前正确性契约；不能正确处理的已支持输入应修复或停用该优化，不默认保留双实现；
 - 单一微基准不得代替 real-host browser profile；
-- 缓存必须先有 invalidation contract；
 - worker 化只针对经过 profile 证明的 CPU-bound 路径。
 
 ---
@@ -398,7 +387,6 @@ R8 不以“某个框架迁完”为完成标准。
 - Atria Application Kernel 成为新功能的默认宿主；
 - 已替代的 legacy 入口和失效依赖已删除；
 - 首屏不再无条件初始化大量非 Play 功能；
-- 巨型核心文件职责有明显收敛并受架构 guard 约束；
 - backend HTTP / application / repository 边界清晰；
 - state/event/service ownership 明确；
 - Node / ESLint 回到受支持版本；

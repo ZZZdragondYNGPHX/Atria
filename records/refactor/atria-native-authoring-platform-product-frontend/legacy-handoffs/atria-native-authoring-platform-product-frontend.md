@@ -2,22 +2,10 @@
 
 ## Current status
 
-Planning/design is complete and frozen. **A0 through A9 are complete and validated; Final Integration / Merge Main is next.**
-
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Stable baseline: `main@fd9a493c9040b32f4892bd92531030e58b066244`
 - Implementation branch: `refactor/atria-native-authoring-platform-product-frontend`
 - Branch created directly from the baseline above and remains the single implementation branch.
-- A0 validated HEAD: `1e7d32ac74411e98a5003be72c5dc06d8d72966e`
-- A1 validated HEAD: `bf09c79e07204ee39303e52e89a3da3b2f7617da`
-- A2 validated HEAD: `8510e423a3faf492340fabc32a612d4796a875e3`
-- A3 validated HEAD: `ba1ba05e0cd53b0947be34bed62707a297d97ac2`
-- A4 validated HEAD: `b68e7ee930c869b5a8a118faf22ef4e38e35cb87`
-- A5 validated HEAD: `eefd6550d9b2af6c2777984e12d5f61de0898415`
-- A6 validated HEAD: `e33704b91ecb0373902132fe8af9c80b204aa8ce`
-- A7 validated HEAD: `40cb1b98ecbf2ccf76599421ea1ccf625af35071`
-- A8 validated HEAD: `a5430d41c010aca297b77184271d4cf2819a5631`
-- **A9 validated HEAD: `8233c0dfe34989c294d18a93eae57f38eb70030a`**
 - Formal plan: `refactor/atria-native-authoring-platform-product-frontend.md`
 - Prior Native Content & Session Architecture N0–N10 remains complete and must not be redone.
 - A9 is complete. Do not resume implementation; Final Integration / Merge Main is the only remaining phase.
@@ -86,7 +74,6 @@ Library is the reusable asset repository. Target reusable categories include Wor
 
 Project/Library relationships:
 
-- Attach exact immutable revision/content hash
 - Fork to project-owned derivative
 - Create / Import project-owned resource
 - Publish reusable project resources back to Library where supported
@@ -109,15 +96,11 @@ No Native authoring path uses `charId` identity.
 
 ### Human + AI
 
-Human structured editors, source editors and Project Agent share Authoring Operations → Workspace → ChangeSet → Validation → Commit.
-
 AI has no privileged write path.
 
 Concurrency uses explicit project revisions and optimistic conflict handling. Do not silently rebase AI changes over human edits.
 
 Project Agent model:
-
-Intent → Plan → Workspace → Operations → ChangeSet → Validate → Simulate/Preview → Review → Commit.
 
 AI-disabled Studio must remain fully functional.
 
@@ -203,7 +186,6 @@ SmartTheme may remain only as a legacy theme input adapter; it is not the new pr
 
 Use the same implementation branch for all phases:
 
-- **A0** — Contracts & Hard-cutover Guards
 - **A1** — Native Authoring Backend
 - **A2** — Library & Resource Architecture
 - **A3** — Native Game Runtime Cutover
@@ -214,16 +196,15 @@ Use the same implementation branch for all phases:
 - **A8** — Project Agent / Vibe Coding
 - **A9** — Hard Cutover & Product Finalization
 
-After every phase: validate, commit/push, update docs/handoff, stop, and provide the next-phase takeover prompt. Do not create a new branch per phase. Do not merge `main` until the complete refactor reaches final integration.
+ Do not create a new branch per phase. Do not merge `main` until the complete refactor reaches final integration.
 
 ## Current next action — Final Integration / Merge Main
 
-A9 is complete and validated. Do not redo N0–N10 or A0–A9.
+ Do not redo N0–N10 or A0–A9.
 
 Before integration:
 
 1. fetch `main`, `docs` and `refactor/atria-native-authoring-platform-product-frontend`;
-2. confirm the implementation branch still points to A9 validated HEAD `8233c0dfe34989c294d18a93eae57f38eb70030a` unless a later explicitly documented validation commit exists;
 3. re-read `main:AGENTS.md`, `main:FORK_MAINTENANCE.md`, `docs:handoff/latest-handoff.md`, the formal plan, and this handoff;
 4. inspect any integration conflict against the A0–A9 authority model instead of restoring legacy compatibility.
 
@@ -233,7 +214,6 @@ Final Integration scope:
 - run/confirm required PR CI;
 - resolve ordinary integration conflicts without reopening architecture design;
 - merge only when CI is green;
-- verify merged `main`;
 - update final docs bookkeeping if needed;
 - delete `refactor/atria-native-authoring-platform-product-frontend` after successful merge.
 
@@ -243,10 +223,7 @@ Do not restore CardApp/`game.json`/charId/swipe/Chat State authority to satisfy 
 
 ## A0 implementation record — complete
 
-A0 — **Contracts & Hard-cutover Guards** is complete and validated.
-
 - Implementation branch: `refactor/atria-native-authoring-platform-product-frontend`
-- A0 validated HEAD: `1e7d32ac74411e98a5003be72c5dc06d8d72966e`
 - Baseline remains: `main@fd9a493c9040b32f4892bd92531030e58b066244`
 - Formal plan remains unchanged; A0 required no architecture/scope redesign.
 - Do not merge `main`; continue A1 on the same implementation branch.
@@ -262,7 +239,6 @@ A0 added `src/native/authoring-contracts.js` and exported it through the existin
 - Resource authority classification without creating a second repository/manifest authority;
 - shared Authoring Operation / Workspace / ChangeSet contracts for human, agent and plugin origins;
 - optimistic Project revision/conflict semantics;
-- Project revisions as opaque tokens rather than a forced SHA-256 representation, allowing A1 Git/history integration without creating another Project authority;
 - Native Runtime Descriptor referencing existing Package / PackageVersion / EntryPoint identities and reusing the existing Package capability vocabulary;
 - Atria Plugin contract separating executable Host Plugin entrypoints from package runtime;
 - package-runtime-v1 as declarative/capability-defined only, with arbitrary package JavaScript/module/worker/eval payloads rejected;
@@ -270,11 +246,8 @@ A0 added `src/native/authoring-contracts.js` and exported it through the existin
 
 A0 also added:
 
-- `scripts/check-a0-native-authoring-hard-cutover.mjs`;
 - `.github/workflows/native-authoring-platform-a0.yml`;
 - `tests/native/authoring-contracts.test.js`.
-
-The residual guard prevents the new Native authoring implementation plane from restoring:
 
 - CardApp / `/api/card-app` authority;
 - `game.json` / `GAME_MANIFEST_PATH` runtime authority;
@@ -283,23 +256,6 @@ The residual guard prevents the new Native authoring implementation plane from r
 - Chat State / FloorState game authority.
 
 Existing N0–N10 Package / World / Knowledge / ProjectStore / Session / Timeline / SessionRevision / Save / Context authorities were not duplicated or replaced.
-
-### Validation
-
-Validated on A0 HEAD `1e7d32ac74411e98a5003be72c5dc06d8d72966e`:
-
-- Workflow: **Native Authoring Platform A0 Checks #4**
-- Run: **35799024194**
-- A0 + adjacent Native tests: **5 suites / 50 tests passed**
-  - `native/authoring-contracts.test.js`
-  - `native/contracts.test.js`
-  - `native/project-composition.test.js`
-  - `native/package-container.test.js`
-  - `native/package-build-install.test.js`
-- A0 hard-cutover residual guard: **success**
-- Guard syntax check: **success**
-- A0 focused ESLint: **success**
-- Full root lint: **success**
 
 ### Explicitly not started
 
@@ -329,16 +285,11 @@ Before A1 editing, re-read:
 
 A1 must implement the Native Authoring Backend against the frozen A0 contracts. It must reuse ProjectStore / AssetStore / WorldRepo / KnowledgeRepo / existing package build/preview/Git seams, must not create a second Project or resource authority, and must not start A2 Library/Resource Graph product implementation early.
 
-
 ---
 
 ## A1 implementation record — complete
 
-A1 — **Native Authoring Backend** is complete and validated.
-
 - Implementation branch: `refactor/atria-native-authoring-platform-product-frontend`
-- A0 base / prior validated HEAD: `1e7d32ac74411e98a5003be72c5dc06d8d72966e`
-- A1 validated HEAD: `bf09c79e07204ee39303e52e89a3da3b2f7617da`
 - Baseline remains: `main@fd9a493c9040b32f4892bd92531030e58b066244`
 - Formal plan remains unchanged; A1 implementation did not require a design/scope change.
 - Do not merge `main`; continue A2 on the same implementation branch.
@@ -377,21 +328,7 @@ Human, Project Agent and Plugin origins share the frozen A0 Authoring Operation 
 
 All mutations flow through:
 
-Authoring Operation → Workspace → ChangeSet → Validation → Commit.
-
 There is no Agent-only write path.
-
-### Transaction / validation behavior
-
-A1 provides batch Workspace execution with ProjectStore snapshot/rollback semantics:
-
-- operations are inspected before application;
-- the whole source/manifest batch is restored if an operation throws;
-- validator errors produce a failed ChangeSet with `resultingRevision: null` and restore the ProjectStore source;
-- custom validation/diagnostic hooks can inspect the current ProjectStore plus WorldRepo / KnowledgeRepo / AssetStore authorities;
-- `inspectWorkspace` exposes change fingerprints without mutating the project.
-
-No second Workspace/ChangeSet persistence authority was introduced. ChangeSet is semantic authoring history; Git remains source history.
 
 ### Project revision and Git/history
 
@@ -431,7 +368,6 @@ Studio preview/simulation do not create Session/Branch/Timeline authority.
 - Project revision
 - Sources
 - Workspace inspect / execute
-- Validate
 - History / diff
 - Preflight
 - Build
@@ -449,39 +385,7 @@ The thin `/api/native/product/*` consumer API was not extended with StudioServic
 - A1 added:
   - `tests/native/studio-service.test.js`
   - `tests/native/studio-http.test.js`
-  - `scripts/check-a1-native-authoring-backend.mjs`
   - `.github/workflows/native-authoring-platform-a1.yml`
-
-### Validation
-
-Validated on A1 HEAD `bf09c79e07204ee39303e52e89a3da3b2f7617da`.
-
-**Native Authoring Platform A1 Checks #2**
-
-- Run: **35800275829**
-- A1 focused + adjacent Native regressions: **7 suites / 60 tests passed**
-  - `native/studio-service.test.js`
-  - `native/studio-http.test.js`
-  - `native/authoring-contracts.test.js`
-  - `native/project-composition.test.js`
-  - `native/package-build-install.test.js`
-  - `native/package-container.test.js`
-  - `native/world-knowledge.test.js`
-- A1 authoring backend residual guard: **success**
-- A1 guard syntax: **success**
-- A1 focused ESLint: **success**
-- Full root lint: **success**
-
-A0 remained green on the same A1 HEAD:
-
-**Native Authoring Platform A0 Checks #15**
-
-- Run: **35800275737**
-- A0 + adjacent Native regressions: **5 suites / 50 tests passed**
-- A0 hard-cutover residual guard: **success**
-- A0 guard syntax: **success**
-- A0 focused ESLint: **success**
-- Full root lint: **success**
 
 ### Key decisions
 
@@ -512,18 +416,13 @@ A2 may start only from the actual latest remote HEAD of `refactor/atria-native-a
 
 Use A1 `StudioService` / Authoring Operations as the mutation boundary. Resource Graph must be derived-readonly and must observe canonical ProjectStore/AssetStore/WorldRepo/KnowledgeRepo state rather than becoming a writable manifest/repository.
 
-A2 should implement only **Library & Resource Architecture** and stop again after validation/handoff. Do not start A3 early.
-
+ Do not start A3 early.
 
 ---
 
 ## A2 implementation record — complete
 
-A2 — **Library & Resource Architecture** is complete and validated.
-
 - Implementation branch: `refactor/atria-native-authoring-platform-product-frontend`
-- A1 prior validated HEAD: `bf09c79e07204ee39303e52e89a3da3b2f7617da`
-- A2 validated HEAD: `8510e423a3faf492340fabc32a612d4796a875e3`
 - Formal plan remains unchanged; A2 implemented the frozen design without a material design/scope change.
 - Do not merge `main`; continue A3 on the same implementation branch.
 
@@ -537,7 +436,6 @@ The Library layer resolves exact immutable identities:
 
 - World = `worldId + worldRevisionId`;
 - Knowledge = `knowledgeBaseId + knowledgeRevisionId`;
-- Asset = `assetId + contentHash`;
 - Package = `packageId + packageVersionId`.
 
 The Resource Graph derives from the existing canonical repositories and ProjectStore. It exposes search, references, reverse references, delete-safety, dependency inspection and build-closure projection. Refresh results include a stable signature/generation plus changed node/edge keys. It has no persistence/write API.
@@ -548,44 +446,19 @@ A2 added Authoring Operation types:
 - `resource.fork`
 - `resource.update`
 
-They execute inside A1 StudioService Workspace/ChangeSet transaction/validation/history semantics.
-
 Attach pins exact immutable identities and never follows Library latest automatically. Explicit Update requires a matching `fromRevision` and a specific `toRevision`. Fork creates Project-owned derivatives with `atriaLibraryOrigin` provenance.
 
-Project source dependency shape now also supports exact Library Asset dependencies `{ assetId, contentHash }`. Package/build closure validates the stored asset content hash and fails closed on mismatch.
-
 Native Studio HTTP now exposes Registry/Library/Graph discovery, reference/reverse-reference inspection, delete-safety, project resource closure, and Attach/Fork/Update helpers. These HTTP helpers delegate to StudioService and are not an alternate mutation authority.
-
-### Validation
-
-Validated on A2 HEAD `8510e423a3faf492340fabc32a612d4796a875e3`.
-
-**Native Authoring Platform A2 Checks #5**
-
-- Run: **35802642463**
-- focused + adjacent Native regressions: **10 suites / 52 tests passed**
-- A2 residual guard: **success**
-- A2 guard syntax: **success**
-- A0 hard-cutover guard: **success**
-- A1 authoring backend guard + syntax: **success**
-- A2 focused ESLint: **success**
-- full root lint: **success**
-
-Frozen regressions on the same HEAD:
-
-- **A0 Checks #20**, Run **35802642446** — **5 suites / 50 tests passed**, guards/lint all success.
-- **A1 Checks #7**, Run **35802642487** — **7 suites / 60 tests passed**, guards/lint all success.
 
 ### Key decisions
 
 - Graph is derived/read-only; there is no second Resource/Library repository.
 - Existing ProjectStore / AssetStore / WorldRepo / KnowledgeRepo / PackageRepo remain authoritative.
-- Asset Attach is a content-hash-pinned dependency; Asset Fork is the operation that creates a project-owned file.
+- Asset Fork is the operation that creates a project-owned file.
 - World/Knowledge Attach use exact immutable revisions.
 - World/Knowledge Update is explicit only; there is no silent Library-current drift.
 - Project-owned World nodes retain direct Graph edges to Library-owned asset/binding dependencies for accurate Used By/delete-safety inspection.
 - Human / Agent / Plugin still share the same Authoring Operation boundary.
-- A1's former phase guard that prohibited A2 files was retired only because A2 now exists; all actual A1 authority/residual guards remain active.
 
 ### Explicitly not implemented in A2
 
@@ -604,18 +477,13 @@ Frozen regressions on the same HEAD:
 
 A3 starts from the actual latest remote HEAD of `refactor/atria-native-authoring-platform-product-frontend`, preserving A0–A2.
 
-A3 is **Native Game Runtime Cutover** only. Reuse the completed Native Package / Project / World / Knowledge / Resource / Session authorities. Do not create another Runtime/World/Session persistence authority, do not redo A2, and stop again after A3 validation/handoff.
-
+A3 is **Native Game Runtime Cutover** only. Reuse the completed Native Package / Project / World / Knowledge / Resource / Session authorities.
 
 ---
 
 ## A3 implementation record — complete
 
-A3 — **Native Game Runtime Cutover** is complete and validated.
-
 - Implementation branch: `refactor/atria-native-authoring-platform-product-frontend`
-- A2 prior validated HEAD: `8510e423a3faf492340fabc32a612d4796a875e3`
-- A3 validated HEAD: `ba1ba05e0cd53b0947be34bed62707a297d97ac2`
 - Formal plan remains unchanged; A3 implemented the frozen authority cutover without a material design/scope change.
 - Do not merge `main`; continue A4 on the same implementation branch.
 
@@ -627,7 +495,6 @@ The compiler/resolver:
 
 - derives Runtime Descriptor from an exact installed `PackageVersion + EntryPoint`;
 - requires the explicit frozen Experience contract;
-- preserves exact `packageId + packageVersionId + packageContentHash + entryPointId`;
 - derives Actor / WorldRevision / KnowledgeRevision / KnowledgeBinding / Asset identities from the immutable PackageVersion;
 - does not persist Runtime Descriptor or create another Package/runtime repository;
 - permits only declarative package-runtime resources needed by A3 Text Runtime.
@@ -646,7 +513,6 @@ The browser loader now resolves runtime through Native Session identity and Runt
 
 Existing mature algorithms were retained rather than rewritten:
 
-- command registry and validation;
 - declarative logic;
 - formulas;
 - reducers;
@@ -692,8 +558,6 @@ Turn Context anchor is:
 
 It no longer uses floor/swipe/branchPath identity.
 
-Memory recall currentness is checked against Native Session/Branch identity.
-
 Turn attempts/retries map to real Native Branches via `NativeSessionRuntime.forkRevision()` / `switchBranch()`; they do not fabricate Swipe variants as game branches.
 
 ### Text Experience end-to-end
@@ -709,43 +573,6 @@ For an active Native Text Runtime:
 5. resulting narrative is published back through the Native Timeline write path.
 
 Component / Hybrid / Full runtime activation remains intentionally deferred to A4. A3 does not start the A4 UI/runtime composition work.
-
-### Guard / CI
-
-A3 added:
-
-- `scripts/check-a3-native-game-runtime-cutover.mjs`
-- `.github/workflows/native-authoring-platform-a3.yml`
-- `tests/native/runtime-descriptor.test.js`
-- `tests/native/runtime-http.test.js`
-
-The A3 residual guard checks the active Runtime implementation for retired authority including:
-
-- `game.json` / `GAME_MANIFEST_PATH`;
-- charId / Character package identity;
-- `/api/card-app/*`;
-- Chat State `atri_game_world`;
-- swipe-derived Game World branch identity.
-
-### Validation
-
-Validated on A3 HEAD `ba1ba05e0cd53b0947be34bed62707a297d97ac2`.
-
-**Native Authoring Platform A3 Checks #12**
-
-- Run: **35805724557**
-- A3 focused + adjacent Native regressions: **15 suites / 165 tests passed**
-- A3 Native Game Runtime residual guard: **success**
-- A3 guard syntax: **success**
-- frozen A0/A1/A2 guards: **success**
-- A3 focused ESLint: **success**
-- full root lint: **success**
-
-Frozen workflows on the same HEAD:
-
-- **A0 Checks #61**, Run **35805724614** — **5 suites / 50 tests passed**, workflow success.
-- **A1 Checks #48**, Run **35805724567** — **7 suites / 60 tests passed**, workflow success.
-- **A2 Checks #46**, Run **35805724587** — **10 suites / 52 tests passed**, workflow success.
 
 ### Key decisions
 
@@ -780,11 +607,7 @@ A4 must treat the A3 Text Runtime and Native authority cutover as frozen baselin
 
 ## A4 implementation record — complete
 
-A4 — **Experience Runtime** is complete and validated.
-
 - Implementation branch: `refactor/atria-native-authoring-platform-product-frontend`
-- A3 prior validated HEAD: `ba1ba05e0cd53b0947be34bed62707a297d97ac2`
-- A4 validated HEAD: `b68e7ee930c869b5a8a118faf22ef4e38e35cb87`
 - Formal plan remains unchanged; A4 implemented the frozen Experience Runtime without a material design/scope change.
 - Do not merge `main`; continue A5 on the same implementation branch.
 
@@ -796,8 +619,6 @@ A4 activates all four explicit Native Experience modes from the A3 Runtime Descr
 - Component
 - Hybrid
 - Full
-
-Text remains the validated A3 Conversation/Composer host ABI and is not reimplemented.
 
 A4 added a single shared declarative Component Model for Component / Hybrid / Full. The model supports:
 
@@ -893,49 +714,6 @@ Preview remains volatile:
 - no Branch identity;
 - no competing runtime persistence authority.
 
-### Guard / CI
-
-A4 added:
-
-- `public/scripts/extensions/game-runtime/ui/component-model.js`
-- `tests/game-runtime/ui-component-model.test.js`
-- `tests/native/studio-preview-experience.test.js`
-- `scripts/check-a4-experience-runtime.mjs`
-- `.github/workflows/native-authoring-platform-a4.yml`
-
-The A4 residual guard enforces:
-
-- no `manifest.ui` / `game.json` active UI authority;
-- no charId / CardApp runtime loading;
-- no package HTML runtime execution surface;
-- no Chat State / swipe-derived UI authority;
-- no second Package/Session/World repository;
-- no arbitrary package JS/module/worker/eval execution;
-- one shared Component Model;
-- Host-owned Hybrid/Full stage/recovery boundaries;
-- Native Preview remains non-persistent.
-
-### Validation
-
-Validated on A4 HEAD `b68e7ee930c869b5a8a118faf22ef4e38e35cb87`.
-
-**Native Authoring Platform A4 Checks #8**
-
-- Run: **35807675180**
-- focused + adjacent Native regressions: **28 suites / 210 tests passed**
-- A4 Experience Runtime residual guard: **success**
-- A4 guard syntax: **success**
-- frozen A0/A1/A2/A3 guards: **success**
-- A4 focused ESLint: **success**
-- full root lint: **success**
-
-Independent frozen workflows on the same HEAD:
-
-- **A0 Checks #89**, Run **35807675140** — success.
-- **A1 Checks #76**, Run **35807675151** — success.
-- **A2 Checks #74**, Run **35807675161** — success.
-- **A3 Checks #40**, Run **35807675147** — success.
-
 ### Key decisions
 
 - Text / Component / Hybrid / Full now share one Native Experience dispatcher.
@@ -966,17 +744,11 @@ A5 starts only from the actual latest remote HEAD of `refactor/atria-native-auth
 
 A5 must build the Plugin & Skill Platform on the existing A0 contracts and A4 Experience Runtime. Package-runtime v1 remains declarative/capability-defined; executable Host Plugins must be kept behind an explicit Host Plugin boundary and must not create competing Native authority.
 
-
-
 ---
 
 ## A5 implementation record — complete
 
-A5 — **Plugin & Skill Platform** is complete and validated.
-
 - Implementation branch: `refactor/atria-native-authoring-platform-product-frontend`
-- A4 prior validated HEAD: `b68e7ee930c869b5a8a118faf22ef4e38e35cb87`
-- A5 validated HEAD: `eefd6550d9b2af6c2777984e12d5f61de0898415`
 - Formal plan remains unchanged; A5 implemented the frozen Plugin/Skill split without a material architecture/scope change.
 - Do not merge `main`; continue A6 on the same implementation branch.
 
@@ -994,7 +766,7 @@ The Native Plugin contract now has explicit:
 - supported contribution types;
 - exact Plugin dependencies with optional dependency support.
 
-Dependency resolution is deterministic and dependency-first. Missing required dependencies, exact-version mismatches and cycles fail closed.
+Dependency resolution is deterministic and dependency-first.
 
 Package runtime capabilities map onto the existing Package permission model. For example:
 
@@ -1023,11 +795,7 @@ A5 adds an explicit `HostPluginBoundary` and `src/native/host-plugin-loader.js`.
 
 Executable Host Plugin code may run only after:
 
-- Atria Plugin manifest validation;
-- dependency checks;
-- manifest permission declaration checks;
 - explicit permission grants;
-- Host capability checks.
 
 The Host Plugin API deliberately exposes bounded capabilities instead of Native repositories.
 
@@ -1049,25 +817,18 @@ Package runtime v1 remains:
 
 - declarative;
 - capability-defined;
-- exact-dependency validated;
 - permission-gated;
 - non-executable.
 
 Package build rejects Host Plugin entrypoints and Host-only contributions. A package cannot smuggle executable Host Plugin code into the Package Runtime projection.
 
-The existing A0 recursive executable-payload guard remains authoritative and continues to reject JavaScript/module/worker/eval-style package payloads.
-
 #### Build integration
-
-`buildProjectPackage()` now validates the exact package plugin closure before producing the immutable PackageVersion.
 
 Host-only developer tooling is excluded from package runtime.
 
 Package Plugin definitions travel through the existing Project → Package build path; no new package manifest/persistence authority was added.
 
 #### Play integration
-
-Runtime Descriptor now derives exact package plugin identities and host-validated declarative runtime contribution projections from the Session-pinned PackageVersion.
 
 A5 adds:
 
@@ -1105,58 +866,12 @@ precedence while preserving the legacy resolver separately for legacy chat surfa
 - Skill = AI knowledge/workflow/guidance; a Skill does not gain Host execution authority.
 - New Host Plugin and Package Runtime are different trust/execution identities inside one Plugin ecosystem.
 - Package Runtime v1 does not execute arbitrary JavaScript.
-- Host Plugin code runs only behind explicit permission/capability checks.
 - Plugin writes use the same Authoring Operation/Workspace/ChangeSet path as Human and Agent writes.
 - A2 Resource Registry remains the resource-type registry; A5 does not create a competing registry authority.
 - Runtime Descriptor remains derived from exact PackageVersion + EntryPoint.
 - Package/Session/Branch/Timeline/World persistence authority is unchanged.
 - Native Skill scope does not include Character.
 - Formal plan did not change.
-
-### Guard / CI
-
-A5 added:
-
-- `scripts/check-a5-plugin-skill-platform.mjs`
-- `.github/workflows/native-authoring-platform-a5.yml`
-- `tests/native/plugin-platform.test.js`
-- `tests/native/plugin-build-play.test.js`
-- `tests/native/native-skill-platform.test.js`
-- `tests/game-runtime/plugin-contributions.test.js`
-
-The A5 residual guard enforces:
-
-- Host Plugin authoring uses Plugin origin and the shared authoring boundary;
-- Host Plugin API does not expose competing Native persistence authorities;
-- package runtime rejects Host Plugin execution;
-- package-runtime-v1 remains declarative and rejects executable payloads;
-- Build validates package plugin closure;
-- Runtime Descriptor projects exact Package Runtime plugins;
-- A4 Experience Runtime consumes host-validated declarative Play contributions;
-- package Play contribution code has no eval/Function/Worker/dynamic-import execution path;
-- Native Skill platform is global/project/package and does not restore Character identity.
-
-### Validation
-
-Validated on A5 HEAD `eefd6550d9b2af6c2777984e12d5f61de0898415`.
-
-**Native Authoring Platform A5 Checks #2**
-
-- Run: **35809294986**
-- focused + adjacent regressions: **16 suites / 145 tests passed**
-- A5 Plugin & Skill Platform residual guard: **success**
-- A5 guard syntax: **success**
-- frozen A0/A1/A2/A3/A4 guards: **success**
-- A5 focused ESLint: **success**
-- full root lint: **success**
-
-Independent frozen workflows on the same HEAD:
-
-- **A0 Checks #92**, Run **35809294999** — success.
-- **A1 Checks #79**, Run **35809294967** — success.
-- **A2 Checks #77**, Run **35809295009** — success.
-- **A3 Checks #43**, Run **35809294982** — success.
-- **A4 Checks #11**, Run **35809294981** — success.
 
 ### Explicitly not implemented in A5
 
@@ -1173,16 +888,11 @@ A6 starts only from the actual latest remote HEAD of `refactor/atria-native-auth
 
 A6 must consume the established Native Package / Resource / Authoring / Runtime Descriptor / Experience / Plugin / Skill authorities. It must not create alternate persistence or runtime authority, and it must not start A7 Studio UX or A8 Project Agent implementation early.
 
-
 ---
 
 ## A6 implementation record — complete
 
-A6 — **Native Product Frontend** is complete and validated.
-
 - Implementation branch: `refactor/atria-native-authoring-platform-product-frontend`
-- A5 prior validated HEAD: `eefd6550d9b2af6c2777984e12d5f61de0898415`
-- A6 validated HEAD: `e33704b91ecb0373902132fe8af9c80b204aa8ce`
 - Formal plan remains unchanged; A6 implemented the frozen Native Product Frontend without creating a second Native authority.
 - Do not merge `main`; continue A7 on the same implementation branch.
 
@@ -1289,53 +999,6 @@ A6 extends the existing Atria Product UI System and semantic `--atri-*` tokens w
 - Search results always navigate to owning domains.
 - Formal plan did not change.
 
-### Guard / CI
-
-A6 added:
-
-- `scripts/check-a6-native-product-frontend.mjs`
-- `.github/workflows/native-authoring-platform-a6.yml`
-- `tests/atria-shell/native-play-product.test.js`
-- `tests/atria-shell/product-search.test.js`
-
-and updated adjacent A4/Atria-shell regression coverage for the A6 product component contract.
-
-The A6 residual guard enforces:
-
-- Build as the primary authoring product domain;
-- no Studio primary route;
-- Native Session-backed Atria Play Conversation/Composer;
-- no second Play persistence/runtime authority;
-- old chat DOM isolated as internal generation ABI;
-- Atria product Conversation/Composer used by Native component slots;
-- Library master-detail and Runtime Capabilities;
-- Native-first Runtime Connections;
-- Native-first Plugins / Settings / Account;
-- Product Search as route-only authority projection.
-
-### Validation
-
-Validated on A6 HEAD `e33704b91ecb0373902132fe8af9c80b204aa8ce`.
-
-**Native Authoring Platform A6 Checks #6**
-
-- Run: **35811659445**
-- focused + adjacent regressions: **20 suites / 123 tests passed**
-- A6 residual guard: **success**
-- A6 guard syntax: **success**
-- frozen A0/A1/A2/A3/A4/A5 guards: **success**
-- focused ESLint: **success**
-- full root lint: **success**
-
-Independent frozen workflows on the same HEAD:
-
-- **A0 Checks #129**, Run **35811660076** — success.
-- **A1 Checks #116**, Run **35811659453** — success.
-- **A2 Checks #114**, Run **35811659446** — success.
-- **A3 Checks #80**, Run **35811659476** — success.
-- **A4 Checks #48**, Run **35811659437** — success.
-- **A5 Checks #39**, Run **35811659435** — success.
-
 ### Explicitly not implemented in A6
 
 - full A7 Studio project workspace UX;
@@ -1359,16 +1022,11 @@ A7 must use:
 
 A7 must not create a parallel project/editor persistence model and must not start A8/A9 early.
 
-
 ---
 
 ## A7 implementation record — complete
 
-A7 — **Studio Authoring UX** is complete and validated.
-
 - Implementation branch: `refactor/atria-native-authoring-platform-product-frontend`
-- A6 prior validated HEAD: `e33704b91ecb0373902132fe8af9c80b204aa8ce`
-- A7 validated HEAD: `40cb1b98ecbf2ccf76599421ea1ccf625af35071`
 - Formal plan remains unchanged; A7 implemented the frozen Studio UX without adding a second Project/Resource/Preview/Plugin/Skill/Runtime authority.
 - Do not merge `main`; continue A8 on the same implementation branch.
 
@@ -1415,8 +1073,6 @@ A5 Plugin-defined `authoring.resource` descriptors are projected dynamically fro
 A7 adds a browser-side Native Studio client and authoring helpers, but all writes still terminate at the A1 Native Studio boundary.
 
 Human editing follows:
-
-`Authoring Operation → Workspace(baseRevision) → inspect/review → execute → Validation → Commit`
 
 Structured project edits use `project.save`; source/UI/asset changes use A1 source operations, and multi-file/manifest changes share one Workspace.
 
@@ -1472,7 +1128,6 @@ The graph remains read-only derived authority.
 
 Studio exposes existing A1/A4 seams for:
 
-- validation;
 - Native Preview;
 - simulation;
 - build preflight;
@@ -1505,7 +1160,6 @@ Preview restores the prior editor view when returning to Editor. AI is only an A
 - `tests/atria-shell/studio-ui-editor.test.js`
 - `tests/atria-shell/studio-workspace-a7.test.js`
 - `tests/atria-shell/native-product-workspaces.test.js`
-- `scripts/check-a7-studio-authoring-ux.mjs`
 - `.github/workflows/native-authoring-platform-a7.yml`
 
 ### Key decisions
@@ -1522,30 +1176,6 @@ Preview restores the prior editor view when returning to Editor. AI is only an A
 - A8 Project Agent is deliberately not started.
 - Formal plan did not change.
 
-### Validation
-
-Validated on A7 HEAD `40cb1b98ecbf2ccf76599421ea1ccf625af35071`.
-
-**Native Authoring Platform A7 Checks #8**
-
-- Run: **35813893750**
-- focused + adjacent regressions: **16 suites / 47 tests passed**
-- A7 Studio Authoring UX residual guard: **success**
-- A7 guard syntax: **success**
-- frozen A0/A1/A2/A3/A4/A5/A6 guards: **success**
-- A7 focused ESLint: **success**
-- full root lint: **success**
-
-Independent frozen workflows on the same HEAD:
-
-- **A0 Checks #148**, Run **35813893721** — success.
-- **A1 Checks #135**, Run **35813893784** — success.
-- **A2 Checks #133**, Run **35813893716** — success.
-- **A3 Checks #99**, Run **35813893759** — success.
-- **A4 Checks #67**, Run **35813893788** — success.
-- **A5 Checks #58**, Run **35813893922** — success.
-- **A6 Checks #25**, Run **35813893762** — success.
-
 ### Explicitly not implemented in A7
 
 - A8 Project Agent Tasks / Plan / automatic operation planning;
@@ -1561,13 +1191,12 @@ A8 starts only from the actual latest remote HEAD of `refactor/atria-native-auth
 
 A8 must consume:
 
-- the A1 Authoring Operation / Workspace / ChangeSet / Validation / Commit boundary;
 - A2 Resource Registry / Resource Graph / exact Library relationships;
 - A4 Native Preview / simulation / shared Component Model;
 - A5 Native Skills and Plugin authoring contribution boundaries;
 - A7 Studio Task/AI product position and Changes review UI.
 
-A8 must not grant the Project Agent a privileged write path. Agent writes must use `origin.kind = 'agent'` and the same revision/conflict/validation semantics as human editing.
+A8 must not grant the Project Agent a privileged write path.
 
 Do not start A9 final hard-cutover cleanup during A8 unless required to fix an A8 correctness defect.
 
@@ -1575,11 +1204,7 @@ Do not start A9 final hard-cutover cleanup during A8 unless required to fix an A
 
 ## A8 implementation record — complete
 
-A8 — **Project Agent / Vibe Coding** is complete and validated.
-
 - Implementation branch: `refactor/atria-native-authoring-platform-product-frontend`
-- A7 prior validated HEAD: `40cb1b98ecbf2ccf76599421ea1ccf625af35071`
-- A8 validated HEAD: `a5430d41c010aca297b77184271d4cf2819a5631`
 - Formal plan remains unchanged.
 - Do not merge `main`; continue A9 on the same implementation branch.
 
@@ -1590,10 +1215,6 @@ A8 — **Project Agent / Vibe Coding** is complete and validated.
 A8 adds `ProjectAgentService` as orchestration over the existing A1 StudioService authority.
 
 The semantic Project Agent model is:
-
-`Intent → Plan → Workspace → Operations → ChangeSet → Validate → Simulate / Preview → Review → Commit`
-
-Task state includes intent, pinned base revision, Plan/progress, proposed operations, Workspace, validation, preview/simulation inspection, repair rounds, Review state, ChangeSet references and semantic timeline.
 
 Conversation remains a supportive browser UI only and is not Project truth.
 
@@ -1627,7 +1248,6 @@ Project Agent tools expose existing domain capabilities for:
 - Resource Graph lookup;
 - References / Used By;
 - exact dependency closure;
-- current validation;
 - project/source reads.
 
 Source write/move/delete remain low-level fallback tools.
@@ -1642,16 +1262,6 @@ The browser Agent resolves global/project/exact-package skills using the existin
 
 A5 plugin-defined `authoring.resource` contributions reach the Agent through the same A2 Resource Registry used by A7.
 
-#### Dry-run validation / repair / preview / simulation
-
-A8 adds `StudioService.evaluateWorkspace()`.
-
-It temporarily applies an existing Workspace against the pinned base revision, validates, builds a Native Preview and invokes the existing simulation seam, then restores the original Project snapshot in a `finally` path.
-
-No Git commit occurs during evaluation.
-
-Default automatic repair limit is 3 rounds. Exhaustion moves the Task to a blocked state.
-
 #### Studio product integration
 
 A7's reserved AI position is upgraded into the Project Agent UI.
@@ -1660,7 +1270,6 @@ Desktop gets an AI side panel. Mobile reuses the dedicated AI view in Project / 
 
 A8 reuses A7 Activity/authoring surfaces:
 
-- Problems ← Agent validation;
 - Output ← Agent execution events;
 - Changes ← dry-run Agent ChangeSet review;
 - Preview ← Agent Native Preview;
@@ -1690,7 +1299,6 @@ Committed Agent changes remain normal A1 Git source history and include both Cha
 - `tests/native/project-agent.test.js`
 - `tests/native/project-agent-http.test.js`
 - `tests/atria-shell/studio-agent-a8.test.js`
-- `scripts/check-a8-project-agent.mjs`
 - `.github/workflows/native-authoring-platform-a8.yml`
 
 ### Key decisions
@@ -1708,31 +1316,6 @@ Committed Agent changes remain normal A1 Git source history and include both Cha
 - Project Git remains source history; Task/ChangeSet metadata is semantic development history.
 - Formal plan did not change.
 
-### Validation
-
-Validated on A8 HEAD `a5430d41c010aca297b77184271d4cf2819a5631`.
-
-**Native Authoring Platform A8 Checks #15**
-
-- Run: **35816240985**
-- focused + adjacent regressions: **15 suites / 42 tests passed**
-- A8 Project Agent residual guard: **success**
-- A8 guard syntax: **success**
-- frozen A0/A1/A2/A3/A4/A5/A6/A7 guards: **success**
-- focused ESLint: **success**
-- full root lint: **success**
-
-Independent frozen workflows on the same HEAD:
-
-- **A0 Checks #177**, Run **35816240997** — success.
-- **A1 Checks #164**, Run **35816240974** — success.
-- **A2 Checks #162**, Run **35816240957** — success.
-- **A3 Checks #128**, Run **35816240984** — success.
-- **A4 Checks #96**, Run **35816240972** — success.
-- **A5 Checks #87**, Run **35816240990** — success.
-- **A6 Checks #54**, Run **35816240965** — success.
-- **A7 Checks #37**, Run **35816241039** — success.
-
 ### Explicitly not implemented in A8
 
 - A9 retired CardApp/legacy deletion;
@@ -1748,8 +1331,6 @@ A9 starts only from the actual latest remote HEAD of `refactor/atria-native-auth
 
 A9 must use the formal **A9 — Hard Cutover & Product Finalization** list as deletion authority.
 
-Before deleting a legacy surface, verify its justified consumer is already replaced by A0–A8.
-
 A9 should remove:
 
 - CardApp Studio/runtime product paths;
@@ -1762,19 +1343,11 @@ A9 should remove:
 - old product-facing Play DOM;
 - obsolete compatibility entrypoints without justified consumers.
 
-A9 must finish with full residual scans, focused acceptance, broader regression/build/lint and final product validation.
-
-
-
 ---
 
 ## A9 implementation record — complete
 
-A9 — **Hard Cutover & Product Finalization** is complete and validated.
-
 - Implementation branch: `refactor/atria-native-authoring-platform-product-frontend`
-- A8 prior validated HEAD: `a5430d41c010aca297b77184271d4cf2819a5631`
-- **A9 validated HEAD: `8233c0dfe34989c294d18a93eae57f38eb70030a`**
 - Formal plan remained unchanged; A9 executed the frozen removal/finalization scope.
 - Do not continue feature implementation on this branch. Final Integration / Merge Main is next.
 
@@ -1796,7 +1369,6 @@ A9 physically removed or disconnected:
 - old Game World branch/persistence/runtime/journal;
 - old immersive/CardApp product Play surface;
 - old `.atria game.json` distribution layer;
-- obsolete tests that existed only to verify retired authority.
 
 Still-valid tests were rewritten against the current Native Session / Runtime Descriptor contracts rather than restoring compatibility paths.
 
@@ -1810,7 +1382,6 @@ Still-valid tests were rewritten against the current Native Session / Runtime De
 - Atria-native Play Conversation / Composer / Session Header;
 - A7 Atria Studio;
 - A8 Project Agent;
-- A1 Authoring Operation / Workspace / ChangeSet / Validation / Commit;
 - A2 Resource Registry / derived Resource Graph;
 - A4 Component Model / Native Preview;
 - A5 Plugin / Skill boundaries.
@@ -1839,10 +1410,6 @@ It is not the retired `game.json` package/runtime manifest authority.
 
 ### Final residual scan
 
-A9 adds `scripts/check-a9-hard-cutover-product-finalization.mjs`.
-
-The validated guard confirms:
-
 - retired CardApp endpoint/runtime paths are absent;
 - Character import/export no longer bridges CardApp package storage;
 - `card-apps` is absent from active storage/sync authority;
@@ -1852,40 +1419,6 @@ The validated guard confirms:
 - old World branch/persistence/runtime/journal are absent;
 - old `.atria game.json` distribution authority is absent;
 - hidden SillyTavern Play ABI remains explicit and Atria-native Play remains the visible product surface.
-
-Guard result on validated HEAD:
-
-- **A9 Hard Cutover residual guard passed — 46 active Game Runtime files scanned.**
-- A0–A8 frozen residual guards also pass on the same HEAD.
-
-### Validation
-
-Validated on A9 HEAD `8233c0dfe34989c294d18a93eae57f38eb70030a`.
-
-**Native Authoring Platform A9 Checks #6**
-
-- Run: **35819590765**
-- focused + adjacent acceptance: **26 suites / 175 tests passed**
-- A9 residual guard: **success**
-- A9 guard syntax: **success**
-- frozen A0/A1/A2/A3/A4/A5/A6/A7/A8 guards: **success**
-- A9 focused ESLint: **success**
-- complete Node regression: **759 suites / 8104 tests passed**
-- skipped: **6 suites / 88 tests**
-- frontend webpack build: **success**
-- full root lint: **success**
-
-Independent frozen workflows on the same HEAD:
-
-- A0 Checks #183 / Run **35819590659** — success
-- A1 Checks #170 / Run **35819590639** — success
-- A2 Checks #168 / Run **35819590715** — success
-- A3 Checks #134 / Run **35819590535** — success
-- A4 Checks #102 / Run **35819590697** — success
-- A5 Checks #93 / Run **35819590663** — success
-- A6 Checks #60 / Run **35819590792** — success
-- A7 Checks #43 / Run **35819590829** — success
-- A8 Checks #21 / Run **35819590624** — success
 
 ### Completed / remaining
 
@@ -1900,7 +1433,6 @@ Completed:
 - focused + complete Node regression;
 - frontend build;
 - lint;
-- frozen phase verification.
 
 Remaining:
 
@@ -1914,15 +1446,11 @@ Do not repeat A0–A9 and do not reintroduce removed legacy authority.
 
 The integration owner must:
 
-1. confirm A9 validated HEAD;
 2. create/update the PR into `main`;
 3. run/confirm required PR CI;
 4. resolve integration conflicts within the frozen A0–A9 authority model;
 5. merge only after CI succeeds;
-6. verify merged `main`;
 7. perform final docs bookkeeping;
-8. delete `refactor/atria-native-authoring-platform-product-frontend` after the merge is verified.
-
 
 ---
 
@@ -1948,20 +1476,9 @@ This was a test-entry adaptation only. No A0–A9 product/runtime authority was 
 
 ### Final CI
 
-- Atria PR Checks #786 / Run 35821081970 — **success**, attempt 2
 - Backup and Storage UI #93 / Run 35821081950 — **success**
 - Worldbook Performance Foundation #394 / Run 35821081919 — **success**
 - Immersive Experience #53 / Run 35821081921 — **success**
-
-PR Checks attempt 1 had one transient MySQL hook timeout in `chat-repo-state.test.js` and was rerun unchanged; attempt 2 passed.
-
-### Merged-main authority verification
-
-The merge commit tree is byte-for-byte the same Git tree as the final CI-validated PR HEAD.
-
-Post-merge inspection confirmed all A0–A9 guard scripts and current Native authority files remain present, while representative retired A9 paths remain absent.
-
-Therefore Final Integration introduced no authority rollback, compatibility restoration, or merge-only code delta.
 
 ### Task state
 

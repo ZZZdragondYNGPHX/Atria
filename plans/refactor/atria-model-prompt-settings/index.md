@@ -30,14 +30,12 @@ Move Atria Model / Prompt / Runtime authority out of legacy SillyTavern configur
 Implementation evidence and phase execution are **Records**, not Plan modules:
 - `records/refactor/atria-model-prompt-settings/EVIDENCE.md`
 - `records/refactor/atria-model-prompt-settings/IMPLEMENTATION.md`
-- `records/refactor/atria-model-prompt-settings/P*-VALIDATION.md`
 
 ## Stage routing
 
 The task is complete. Future work reads `index.md` first, then:
 - design/authority change: `DESIGN.md`;
 - historical summary only: `overview.md`;
-- implementation evidence: the exact Record file needed, not all validation files.
 
 ## Material routing/design changes
 

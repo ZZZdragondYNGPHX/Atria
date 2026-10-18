@@ -84,4 +84,3 @@ Its exact triggers, opt-in semantics and relationship to deliberate campaign end
 - whether resurrection/reconstruction is guaranteed after ordinary death or can itself create branching failure states;
 - exact costs and recovery windows;
 - interaction between longevity and public/legal identity;
-- long-term memory integrity and whether century-scale experience creates special mechanics.

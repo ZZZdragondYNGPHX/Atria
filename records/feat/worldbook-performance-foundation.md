@@ -4,12 +4,10 @@
 
 - Task branch: `feat/worldbook-performance-foundation`
 - Implementation baseline: `main@65321bb522febd369901127cd2b4b2c9883d4658`
-- Final validated task head: `b5949b5a62b5907b0863bad0bcb4b904d409ad3f`
 - Pull request: #8 — `feat: worldbook performance foundation`
 - Squash merge / resulting main: `3ca80415386dff83017b608e23ee9475ee8e0128`
 - Master plan: `docs/plans/worldbook-performance-master-plan.md`
 - W-04/W-05 continuation baseline: `main@3ca80415386dff83017b608e23ee9475ee8e0128`
-- W-04/W-05 final validated task head: `3dfe21f469389e85a96441b6e657daf9bde45f0c`
 - W-04/W-05 pull request: #9 — `feat: worldbook W04-W05 selection foundation`
 - W-04/W-05 squash merge / resulting main: `03d97d655370b31c2a27dd1235f917deadd6246e`
 
@@ -20,13 +18,6 @@ Establish a measured foundation for long-chat / World Info work without replacin
 The merged scope covers P-00/P-01 and W-00 through W-05. PR #10 continues the performance content block with P-02 through P-05 under the explicit no-storage-migration boundary described below.
 
 ## Implementation
-
-### P-00 / W-00 verification foundation
-
-- Added focused deterministic World Info regressions.
-- Added a synthetic offline performance baseline.
-- Added an isolated real-host Chromium smoke using a temporary data root and no provider credentials.
-- Kept the baseline separate from external model latency and user data.
 
 ### P-01 bounded chat snapshot lifecycle
 
@@ -55,7 +46,6 @@ The merged scope covers P-00/P-01 and W-00 through W-05. PR #10 continues the pe
 
 - Added bounded, restricted scalar conditions with operators `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, and `contains`.
 - Conditions use three-valued `true / false / unknown` logic.
-- Missing providers, missing fields, provider initialization/error, malformed paths, and incompatible values fail closed as `unknown`.
 - MVU / LoreState integration is read-only; World Info does not write provider state.
 - Added structured author UI and character-book extension-field round-trip.
 
@@ -76,7 +66,6 @@ The merged scope covers P-00/P-01 and W-00 through W-05. PR #10 continues the pe
 - When explicitly enabled, a non-empty state-condition set that evaluates `true` may activate the entry without a repeated keyword mention.
 - The provider remains the source of truth: repeated generations keep the scene entry active only while the committed provider state still matches; a false/unknown result exits immediately.
 - No parallel scene database or writable World Info state source was introduced.
-- Added author toggle, documentation, focused unit coverage, card export support, and real-host Chromium verification.
 
 ### W-04 incremental indexing and explicit selection
 
@@ -85,7 +74,7 @@ The merged scope covers P-00/P-01 and W-00 through W-05. PR #10 continues the pe
   - unchanged descriptors are reused;
   - changed/removed entries update only their affected index records;
   - regex, dynamic macro, vectorized, constant, state-activation, active sticky and otherwise unsafe shapes remain in the compatibility candidate set.
-- Indexed candidates still pass through the existing `WorldInfoBuffer.matchKeys` checks. The index narrows candidates only; it never decides activation by itself.
+- The index narrows candidates only; it never decides activation by itself.
 - Index-query failure degrades to the complete candidate set with an explicit diagnostic reason.
 - Added explicit required-entry dependencies supporting local UID and `Book#UID` references.
   - dependency closure is dependency-first;
@@ -119,45 +108,6 @@ The merged scope covers P-00/P-01 and W-00 through W-05. PR #10 continues the pe
   - `extensions.atria_compact_content`
 - Character-book import/export round-trips the new fields while preserving unknown top-level and extension fields.
 - No storage-format migration, automatic user-data rewrite, duplicate state owner or deletion was added.
-- The isolated worldinfo browser harness now self-bootstraps on a clean CI runner when a developer-local data seed is absent; personal seed data is no longer an acceptance-test prerequisite.
-
-## Validation
-
-Latest validated task head: `3dfe21f469389e85a96441b6e657daf9bde45f0c`.
-Latest resulting main: `03d97d655370b31c2a27dd1235f917deadd6246e`.
-
-Passed:
-
-- Worldbook Performance Foundation #83
-  - focused Jest regressions
-  - synthetic offline benchmark capture
-  - isolated real-host Chromium smoke
-- Workspace UI #144
-- Atria PR Checks #330
-  - Atria Migration Guard
-  - ESLint
-  - complete Node unit suite
-
-W-04/W-05 continuation passed:
-
-- Worldbook Performance Foundation #105
-  - focused Jest regressions including dependency/mutex/degradation/atomic-budget coverage
-  - synthetic 1k/10k candidate-index benchmark
-  - isolated real-host Chromium smoke
-  - worldinfo #25 real mock-model request acceptance proving a required dependency reaches the actual completion request
-  - worldinfo #29 export/delete/re-import round-trip proving W-04 and unknown fields survive
-- Atria PR Checks #352
-  - Atria Migration Guard
-  - ESLint
-  - complete Node unit suite
-
-The W-03c Chromium smoke specifically verified:
-
-1. a state-only scene entry activates at `scene.place = clocktower` without a keyword;
-2. repeated generation at the same committed state keeps it active;
-3. changing the provider state to `castle` removes the scene entry.
-
-Android JVM tests and Android / Docker builds were intentionally not run for this task, matching the task constraints and current repository validation policy.
 
 ## Compatibility and data impact
 
@@ -184,9 +134,7 @@ Android JVM tests and Android / Docker builds were intentionally not run for thi
 - Continuation baseline: `main@03d97d655370b31c2a27dd1235f917deadd6246e`
 - Temporary branch: `feat/worldbook-performance-foundation`
 - Pull request: #10 — `perf: continue worldbook performance P02-P05`
-- P-02–P-05 final validated task head: `f752e0e1f532d2796b5b476acc2c57149973ef5a`
 - P-02–P-05 squash merge / resulting main: `ff804b53adb514919cc3bfb6ac82334df5fe7cf2`
-- Android and Docker remain opt-in and are intentionally not part of the default validation.
 
 ### P-02 diagnostics on demand
 
@@ -238,7 +186,7 @@ The storage transaction surface now supports optional chat-specific capabilities
 
 - Character and group `/get-delta` route through `ChatRepo.getRange()`.
 - List/recent-chat metadata can use `ChatRepo.getInfo()` rather than pulling the whole body into Node.
-- FS uses a bounded process-local JSONL byte-offset index. Cold index construction validates all JSONL lines; warm reads parse only the requested message spans.
+- FS uses a bounded process-local JSONL byte-offset index.
 - SQLite uses JSON1.
 - MySQL uses native JSON/JSON_TABLE.
 - PostgreSQL uses JSONB array operations.
@@ -247,9 +195,7 @@ The FS performance regression demonstrates that a warm one-message read from a 5
 
 #### Native append
 
-- FS appends only new JSONL rows and rotates a same-length header integrity value in place with fsync; generation-ID dedup is retained in the lightweight range index.
 - Old/incompatible FS headers return `unsupported` and automatically fall back to the established full rewrite.
-- SQLite, MySQL and PostgreSQL update their JSON document inside the database and preserve OCC/integrity checks plus generation-ID dedup.
 - Character/group append and generation-persistence paths use the common Repo append capability.
 - Backup payload creation is lazy: a throttled backup materializes the complete chat only when the throttle actually executes, instead of serializing a complete chat for calls that the throttle discards.
 
@@ -261,7 +207,7 @@ SQLite, MySQL and PostgreSQL support the high-frequency whole-message JSON Patch
 - `replace /N`
 - `remove /N`
 
-Nested paths and other operation shapes return `unsupported` before mutation and fall back to the established path. Character and group patch endpoints prefer the native path and retain the existing integrity/test conflict behavior.
+Nested paths and other operation shapes return `unsupported` before mutation and fall back to the established path.
 
 FS variable-length replace/remove intentionally remains on the atomic full-rewrite fallback. A crash-safe truly local replace/remove for canonical JSONL requires a journal, physical record layer or another storage-format migration. The master plan explicitly treats that expansion as a separate approval boundary, so this continuation does not introduce a hidden storage migration.
 
@@ -285,45 +231,19 @@ Synthetic CI evidence from Worldbook Performance #183:
 
 The expected top result remained `relation:r42` for every measured fixture. These values describe the CI synthetic fixture only and do not include embedding, rerank network calls or model generation.
 
-### Continuation validation
-
-The continuation validation matrix is intentionally split:
-
-- **Worldbook Performance Foundation:** P-02/P-03/P-04/P-05 focused regressions, synthetic benchmark artifact, isolated real-host Chromium smoke, and W-04/W-05 real-request/import-export E2E.
-- **Atria PR Checks:** ESLint, Atria Migration Guard and the complete Node unit suite with real MySQL 8.4 and PostgreSQL 16 service containers.
-
-Final validation for PR #10 passed on `f752e0e1f532d2796b5b476acc2c57149973ef5a`:
-
-- Worldbook Performance Foundation #185 — success:
-  - focused P-02/P-03/P-04/P-05 regressions;
-  - synthetic benchmark artifact;
-  - isolated real-host Chromium smoke;
-  - W-04/W-05 real-request and import/export E2E.
-- Atria PR Checks #432 — success:
-  - ESLint;
-  - Atria Migration Guard;
-  - complete Node unit suite using MySQL 8.4 and PostgreSQL 16.
-- The same code tree before the documentation-only master-plan status commit also passed Atria PR Checks #431 with **590 test suites / 7,920 tests**.
-
-PR #10 was squash-merged to `main@ff804b53adb514919cc3bfb6ac82334df5fe7cf2`. The merged main tree `848d4d8d88717737baec6e1d58abb90379fdf6e9` exactly matches the final task-head tree.
-
-
 ## Follow-up
 
 W-04/W-05 are complete in PR #9 and merged to `main@03d97d655370b31c2a27dd1235f917deadd6246e`.
 
-PR #10 implements the no-migration P-02–P-05 continuation described above. Remaining deeper work is limited to boundaries that require a new contract or explicit architectural approval, notably exact formatter-cache invalidation / partial Markdown streaming and crash-safe FS local replace/remove storage representation.
+PR #10 implements the no-migration P-02–P-05 continuation described above.
 
 W-04/W-05 should not be reopened as a compatibility migration unless a new measured requirement justifies it.
-
 
 ## P-04 FS local whole-message patch continuation · PR #11
 
 - Baseline: `main@ff804b53adb514919cc3bfb6ac82334df5fe7cf2`
 - Temporary branch: `feat/p04-fs-message-storage`
 - Pull request: #11 — `feat: deepen P04 filesystem chat patch storage`
-- Validated implementation tree before the master-plan-only status commit: `a11bf58d94ef7351676d6af3b901b4db999412b0`
-- Final validated task head: `0c8e18964acf8b1c85ee41feea4b8c1232994204`
 - Squash merge / resulting main: `32227e997c136228477bb4571e828f3852fe8eb1`
 - Final merged tree: `7e6dd92fc4cc6943ecded805667c8b3512c6725c`, identical to the final task-head tree.
 - Master plan: `docs/plans/worldbook-performance-master-plan.md`
@@ -340,7 +260,6 @@ Cross the explicitly deferred P-04 FS crash-safety boundary without replacing At
 - A transient sibling `<chat>.jsonl.atria-patch-journal` protects the in-place mutation:
   1. store the original fixed-width header plus original affected suffix;
   2. fsync the journal;
-  3. rewrite/truncate the affected target suffix and rotate the fixed-width integrity header;
   4. fsync the target;
   5. write and fsync the committed marker;
   6. remove the journal.
@@ -360,48 +279,25 @@ The focused FS performance regression uses a 5,000-message chat and a warm range
 - keep the canonical JSONL inode unchanged, proving the operation did not use the full-file atomic rename path;
 - read less than 1% of the original chat bytes;
 - write less than 2% of the original chat bytes;
-- persist the replacement and rotate integrity.
 
 Focused coverage also exercises variable-length replace, sequential remove/replace shifting, fixed-width metadata merge, safe header-growth fallback, exact pending-journal rollback, committed-journal cleanup, process-restart recovery, and uncertain commit-marker fsync rollback.
 
 LAN Sync regressions pin both directions of the portability boundary.
-
-### Validation recorded before merge
-
-The implementation code tree `a11bf58d94ef7351676d6af3b901b4db999412b0` passed:
-
-- Worldbook Performance Foundation #198;
-- Atria PR Checks #445:
-  - ESLint;
-  - Atria Migration Guard;
-  - complete Node unit suite: **591 suites / 7,930 tests**;
-  - MySQL 8.4 and PostgreSQL 16 service-backed storage coverage;
-  - the new `sync/shadow-snapshot.test.js` and `sync/shadow-reconcile.test.js` cases.
-
-The immediately preceding safety head `d7e02c77f1c23f61951b732a3eda2c3a546a1730` also passed Worldbook Performance Foundation #195 and Atria PR Checks #442. #195 explicitly passed the P-04 focused suites, synthetic benchmark, isolated real-host Chromium smoke, and W-04/W-05 E2E.
-
-The final task head adds only the master-plan status update on top of the validated implementation tree. It passed Worldbook Performance Foundation #199 and Atria PR Checks #446, then was squash-merged as `main@32227e997c136228477bb4571e828f3852fe8eb1`.
-
-Android JVM tests and Android/Docker builds were intentionally not run because they remain opt-in and this task did not touch Android delivery code.
 
 ### Compatibility and remaining boundary
 
 - Existing chat JSONL requires no batch migration.
 - Import/export and ordinary direct JSONL consumers continue to see the canonical file.
 - The journal is transient recovery state and is not portable user content.
-- Integrity/OCC, existing reliable full-rewrite fallback, backup materialization and SQL-engine behavior remain intact.
 - An edit near the front or middle of a JSONL chat still rewrites and journals the affected suffix. Cost therefore scales with that suffix, not strictly with one message.
 - If measured workloads later require near-single-message cost for arbitrary old-message edits, that should be a separate physical-record / segmented-storage migration with its own compatibility and recovery contract.
-
 
 ## Worldbook author UI Chinese localization · PR #12
 
 - Baseline: `main@32227e997c136228477bb4571e828f3852fe8eb1`
 - Temporary branch: `fix/worldbook-zh-localization`
-- Final validated task head: `e55659943b59b38b1dff42f0d5b7580f480838a5`
 - Pull request: #12 — `fix: localize Atria worldbook author controls`
 - Squash merge / resulting main: `2c8141a532338eba0756805b741bb258a113043d`
-- Final merged tree: `c3ba1507b0ec557797b5e1d38e96991ed0f3d480`, identical to the validated task-head tree.
 
 ### Implementation
 
@@ -418,17 +314,3 @@ Android JVM tests and Android/Docker builds were intentionally not run because t
   - dependency/related/mutual-exclusion/budget/compact-content fields and hints.
 - Added dedicated World Info budget-tier i18n keys so `critical` renders as “关键/關鍵” without changing the global `Critical` severity translation.
 - Localized the new placeholders/examples while preserving all persisted enum values and extension-field names unchanged.
-
-### Compatibility and validation
-
-This is UI-only localization. It does not change World Info selection semantics, state-provider behavior, import/export shape or persisted data.
-
-Final validation on `e55659943b59b38b1dff42f0d5b7580f480838a5` passed:
-
-- Worldbook Performance Foundation #200;
-- Atria PR Checks #447:
-  - ESLint;
-  - Atria Migration Guard;
-  - complete Node unit suite: **591 suites / 7,930 tests**.
-
-Android JVM tests and Android/Docker builds were intentionally not run because they remain opt-in and this task changed only web localization/UI strings.

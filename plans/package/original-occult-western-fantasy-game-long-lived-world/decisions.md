@@ -272,14 +272,6 @@ The Long-Lived World project cannot be declared complete until a continuous auth
 
 The final soak must demonstrate real lifecycle, institutional, geographic, Era, macro-history, renewable-content, history-compaction and multi-region behavior. A world that merely remains process-stable while nothing meaningfully changes does not pass.
 
-### D-063 — Long-run validation requires multiple evidence types
-
-Final validation requires deterministic fixtures, a multi-seed matrix and long-running soak coverage. One favorable deterministic path is insufficient.
-
-### D-064 — Historical integrity is a hard invariant
-
-Chronology, kinship, ownership, office tenure, institution lineage, artifact provenance, Canonical Facts and other causally significant facts must survive compaction, Save/Restore and long-horizon progression without contradiction.
-
 ### D-065 — Storage and context growth must be sublinear
 
 Long-lived history must compact and retrieve selectively so state/history storage and active model context do not scale linearly with every turn.
@@ -296,12 +288,6 @@ Implementation follows the dependency order in `implementation-staging.md`:
 6. Multi-Region / Era / Macro History
 7. Player-Facing Long-Life Experience
 8. Century Integration / Stress / Release
-
-Each formal phase ends with validation, persistence, Record/HANDOFF refresh and a stop.
-
-### D-067 — One task branch across all phases
-
-All implementation phases use `refactor/original-occult-western-fantasy-long-lived-world` until final verified integration into the long-lived `package` workspace.
 
 ### D-068 — Version 2.0 release preserves 1.0
 

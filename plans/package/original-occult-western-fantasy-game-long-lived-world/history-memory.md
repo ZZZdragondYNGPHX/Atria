@@ -70,10 +70,6 @@ Archived information remains queryable.
 
 ## 3. Canonical Fact Ledger
 
-Narrative summaries are not sufficient for world integrity.
-
-Precise facts required for future validation should live in a separate ledger.
-
 Examples:
 
 - birth/death dates;
@@ -101,7 +97,6 @@ Examples:
 - institutional scandal;
 - unknown heir;
 - dormant Claim;
-- unverified testimony;
 - hidden archive.
 
 Hooks have explicit state and may later activate, expire, be disproven or become canonical events.

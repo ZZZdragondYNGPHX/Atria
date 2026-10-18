@@ -14,13 +14,13 @@ Package 定义何时开展工作，Atria 负责受控触发、调度、恢复及
 
 事务内必须强制的游戏规则由 Authority 执行；提交后的正式事实可驱动后续编排。Task / Generation 的运行通知与 UI 挂载、更新和卸载按各自用途消费，不能混同为已经发生的游戏事实。
 
-复用 Scope、工作流、时钟、自动化、持久 Task 意图、重复调用与结果有效性机制。Experience 的事件反应仍是提出后续任务或 Intent，正式变化继续经过领域规则和平台校验。
+复用 Scope、工作流、时钟、自动化、持久 Task 意图、重复调用与结果有效性机制。
 
 后续工作与其正式原因、运行范围和资源依据保持可追踪关系。恢复、重复处理、取消及迟到结果不能重复产生未经允许的领域效果；具体事件目录、调度交付和推进策略由技术设计确定。
 
 ## Tool 调用与操作路由
 
-模型只能使用获准、声明的工具。工具输入受 Schema 与 Capability 约束；业务写入通过固定 Command / Intent 的领域规则执行，模型不能临时选择 validator、规则实现或任意写补丁。
+模型只能使用获准、声明的工具。工具输入受 Schema 与 Capability 约束；
 
 只读查询、辅助任务和领域操作有各自结果边界。复用现有 Task / Generation 输出约束和 Authority 路径，避免另建工具专属状态写入 Authority。
 
@@ -43,14 +43,6 @@ Package 定义何时开展工作，Atria 负责受控触发、调度、恢复及
 
 S4 先贯通 Experience 的领域请求、Task / Tool 调度与 Lifecycle；S5 统一处理阶段和原生交互，并完善作者声明与预览。具体宿主接口、事件和 Processor 粒度由阶段设计补入本模块。
 
-## 行为验证
-
-- 事务内规则不依赖 UI 监听是否存在；运行范围结束、恢复与重复投递不重复提交不合法效果。
-- Tool、按钮、脚本和自动化使用相同领域规则路径，调用入口不能改变合法性。
-- 消息重新呈现保持正式历史与 State 不变；正式编辑产生正确版本关系。
-- 输出解析成功不直接授予奖励或写权；未声明组件类型、超界数据和文本内代码不取得执行能力。
-- Processor 顺序、作用范围、失败和预算可解释，原生请求与呈现链路真正消费声明的处理结果。
-
 ## 起读代码
 
 `src/native/lifecycle-authority.js`、`session-core.js` 的 Lifecycle 与 Task 提交；`public/shared/native-lifecycle-contract.js`、`native-task-contract.js`；`src/native/task-scheduler.js`；`src/native/frontend/bridge.js`；`public/scripts/native/frontend/script.js`、`runtime.js`、`conversation.js`；`public/scripts/extensions/regex/engine.js`；`public/shared/native-message-contract.js`、`native-frontend-host.js`。
@@ -59,7 +51,7 @@ S4 先贯通 Experience 的领域请求、Task / Tool 调度与 Lifecycle；S5 �
 
 沿用 Frontend Bridge action / operation、Controller 和 Authority-first Turn。新增固定 `target.lifecycle`，仅接受 workflow.transition（固定 workflowId / transitionId）、workflow.cancel（固定 workflowId）、clock.advance（固定 commandId，输入 ticks 1..maxTicks）与 interaction.schedule（固定 interactionId，输入 proposalId）。编译时解析真实声明并固定 digest，调用者不能提供路由字段、StatePatch 或规则。所有动作进入原 SessionCore Lifecycle CAS；模型 Tool 继续原固定 Transaction catalog / resolver / Authority 路径，Task 继续原 scheduler。
 
-新增 outbox 项在发布时保存 cause 的真实 Revision / Branch / invocation；Task 保存从 durable outbox 派生 lifecycleCause / Scope epoch / Workflow，忽略外来同名数据。旧 outbox 无 cause 仍可恢复；不建立事件事实缓存。工作流推进保持显式 gate，不把 Task 通知当作业务事实，取消与迟到采用继续由原 anchor / Scope 检查拒绝。
+新增 outbox 项在发布时保存 cause 的真实 Revision / Branch / invocation；Task 保存从 durable outbox 派生 lifecycleCause / Scope epoch / Workflow，忽略外来同名数据。旧 outbox 无 cause 仍可恢复；不建立事件事实缓存。
 
 S4 没有新增任意事件订阅、跨 Session 事务或自动重放 Controller 写入。既有 ready / clocks / logical.interval / workflows / durable Task intents 承载编排，Processing 与作者工作流在 S5 完成。
 
@@ -68,9 +60,9 @@ S4 没有新增任意事件订阅、跨 Session 事务或自动重放 Controller
 ExperienceContract 新增 required `processing@1` 与 `processingRuntime: { schemaVersion: 1, processors }`，必须同时声明。按列表顺序执行，每项固定 id / stage / kind；最多 32 项，声明最多 256 KiB。kind 为 trim、字面 replace（非空 find / replacement），或固定 JS/TS script source。Script 沿用 Package 闭包编译与 QuickJS 的同步 `default.transform({ text, stage, source, seed })`；只返回文本，不获得 State、Task、Bridge、I/O 或提交句柄。Presentation 只接受数据式 trim / replace。单文本最多 65536 字符、每 pipeline 累计最多 262144 字符；上下文编译另限制历史输入和输出总量。VM 既有 128 KiB 消息、CPU / heap 限制继续生效。失败拒绝候选，保留安全 Processor / stage 定位。
 
 - output：原 Native Turn narrator 的候选正文，在 Interpreter / 正式 finalize 前处理；正式消息与领域效果仍由原 Authority / SessionCore 同次 CAS 采用。结构化 Task artifact 保持真实生产身份，不暗中改写 payload 或赋予 uses。已有 MessageProjection 的 prose 必须仍等于新正文；不匹配就拒绝，不能静默丢弃 Blocks。流式片段仍是 provisional。
-- context：现有 ContextCompiler 已通过 visibility 的 recent_raw TurnGroups 在计数/选择前处理，清除旧 tokenEstimate，保留 sourceRefs 和处理证据；实际展开文本进入同一预算与 Provider 最终请求检查。Information 视图替代 raw history 时，不为了执行 Processor 重新读取 Timeline；Persona / 当前事实与私有 projections 不进入这个文本处理接点。Knowledge 仍走 S3 的固定 derive / selector。
+- context：现有 ContextCompiler 已通过 visibility 的 recent_raw TurnGroups 在计数/选择前处理，清除旧 tokenEstimate，保留 sourceRefs 和处理证据；Information 视图替代 raw history 时，不为了执行 Processor 重新读取 Timeline；Persona / 当前事实与私有 projections 不进入这个文本处理接点。Knowledge 仍走 S3 的固定 derive / selector。
 - presentation：临时 `displayContent` 来自正式正文，原 `content` 和 MessageProjection / Timeline 保持不变。新增 host.conversation.presentation 读取与原生 Play 消费共享派生；旧 messages 的 Schema / digests 不变。字符串仍由 safe prose 渲染，不取得执行能力；超预算显示明确错误并保留原消息和控制项。
 
-既有 Regex lane / package regex 编辑继续兼容，没有把未验证的其它处理层声称为新的正式 Authority。处理证据保存阶段、Processor ID、输入/输出 hash、固定 Script source / resourceHash；不保存另一份私有输入事实库。
+不保存另一份私有输入事实库。
 
-Studio Runtime Design 可编辑同一 ExperienceContract，校验后经原 Review / ChangeSet 保存；Processor 可添加、移除、排序和选择类型。Source 与结构化草稿共享，非法 Source / 冲突留在本地。saved revision 的 Processing preview 使用当前精确项目源码、显式 sample text 与 stage，不读取正式 State、不发送模型请求、不提交或采用结果；拒绝过期 Revision 和调用者指定源码。
+Processor 可添加、移除、排序和选择类型。Source 与结构化草稿共享，非法 Source / 冲突留在本地。saved revision 的 Processing preview 使用当前精确项目源码、显式 sample text 与 stage，不读取正式 State、不发送模型请求、不提交或采用结果；拒绝过期 Revision 和调用者指定源码。

@@ -6,7 +6,6 @@
 - 类型：`feat/*`
 - 工作分支：`feat/immersive-experience-refactor`
 - 基线：`main@fad1dd44c11854861db0a5b2d92335792def8ecc`
-- 状态：已实现、已完成 CI 验证，并通过 PR #74 squash 合并到 main
 - 产品原则：沉浸模式不是“把酒馆放全屏”，而是建立在现有聊天运行时之上的自适应剧情呈现系统。
 
 ## 一、背景与现状
@@ -463,8 +462,6 @@ Reduced Motion 下：
 
 ## 十八、无障碍
 
-必须作为首版验收内容：
-
 - 使用真实 button/input；
 - 提供 `aria-label` / `aria-expanded`；
 - HUD transient 仅对重要文本使用 `aria-live="polite"`；
@@ -486,7 +483,7 @@ Reduced Motion 下：
 
 ## 二十、建议代码结构
 
-正式实现前必须再次检查当前代码，不机械照此创建文件；但建议把沉浸逻辑从 `script.js` 中拆出，避免继续膨胀核心文件。
+但建议把沉浸逻辑从 `script.js` 中拆出，避免继续膨胀核心文件。
 
 建议目标结构：
 
@@ -556,53 +553,6 @@ Android `MainActivity.kt` 只处理系统级窗口能力和 Back/IME 桥，不�
 - 第三方工具入口；
 - LoreState/CardApp 接入点与示例。
 
-### Phase 6 — Accessibility / Regression / Polish
-
-- keyboard/focus/aria；
-- mobile safe-area/IME；
-- performance audit；
-- browser E2E；
-- Android bridge JVM tests（仅当 Kotlin 有实际改动时）。
-
-## 二十二、主要验收标准
-
-1. 进入沉浸模式后，不再只是隐藏顶栏，而出现完整独立剧情呈现层。
-2. Fullscreen API 失败不导致沉浸模式失败。
-3. 普通纯文本角色卡无需适配即可获得完整沉浸体验。
-4. 有头像时自动增强；只有明确 Provider 资源才启用立绘。
-5. LoreState/CardApp/第三方可通过 Provider 提供 HUD、视觉和行动选项。
-6. HUD 常驻内容严格受预算限制。
-7. 普通聊天数据、swipe、generation、Regex、World Info、Memory、Orchestrator 生命周期不复制、不分叉。
-8. 中断后的继续/重写/保留可用。
-9. 自动 fallback 成功不打扰；最终失败可进入现有 Diagnostics。
-10. Desktop 与 Mobile 是不同 presentation profile，而不是简单缩放。
-11. Android 原生 system-bars/cutout/IME/Back 能力继续正常。
-12. Reduced Motion 生效。
-13. 键盘与屏幕阅读器核心路径可用。
-14. 未接入 Provider 的第三方插件不因进入沉浸模式而失去功能。
-15. 退出沉浸后普通 UI、滚动位置、聊天状态和运行状态恢复正确。
-
-## 二十三、验证要求
-
-按 touched surface 选择并实际执行：
-
-- ESLint；
-- 相关 Node unit/regression tests；
-- 新增 immersive controller/provider/HUD 单测；
-- 浏览器 Chromium E2E：桌面进入/退出、生成、abort、swipe、edit；
-- Mobile Chromium：安全区、输入、长按、HUD、历史滚动；
-- Reduced Motion 回归；
-- Provider 故障隔离回归；
-- Diagnostics error handoff 回归；
-- Atria Migration Guard；
-- frontend build / 必要的静态资源构建。
-
-如实际修改 Android/Kotlin：
-
-- Android JVM tests。
-
-除非用户另外要求，不构建 APK，不执行 Docker build。
-
 ## 二十四、非目标
 
 第一版不做：
@@ -623,7 +573,7 @@ Android `MainActivity.kt` 只处理系统级窗口能力和 Back/IME 桥，不�
 
 沉浸呈现不能通过大规模搬移/销毁原聊天节点破坏第三方委托事件或上游选择器。
 
-优先采用稳定容器、CSS presentation、受控 wrapper/portal；若必须调整 DOM，需要真实浏览器回归。
+优先采用稳定容器、CSS presentation、受控 wrapper/portal；
 
 ### Mobile WebView
 
@@ -645,12 +595,9 @@ Provider 必须受到预算、优先级、隔离和 dispose 生命周期约束�
 
 纯文本卡像小说；有视觉资源时像视觉叙事；有 LoreState/CardApp 时像轻量 RP 游戏。所有复杂 AI、Memory、Orchestrator、Search、插件和 Diagnostics 能力仍在后台工作，但不会无理由打断剧情。
 
-
 ## 二十七、最终实现记录（2026-09-20）
 
 ### 实现结果
-
-本任务已按定稿方案完成 Phase 1～6，工作分支最终验证 HEAD：
 
 `feat/immersive-experience-refactor@76a8b894281c0e05b90b5210b385cfa5fb310876`
 
@@ -714,8 +661,6 @@ Android 侧实际新增：
 
 ### 实施过程中发现并修复的问题
 
-CI/真实浏览器验证实际暴露并修复了以下问题：
-
 1. `controller.js` 一处 ESLint trailing-comma 错误。
 2. 初版沉浸初始化错误调用 tagged-template `t(value)`，导致真实前端启动失败。
 3. 改用 `translate()` 后进一步暴露循环 ESM TDZ：`trackMissingDynamicTranslate` 尚未初始化。
@@ -725,35 +670,7 @@ CI/真实浏览器验证实际暴露并修复了以下问题：
 7. Worldbook runtime smoke 增加 startup timeout 时的 `pageerror` 与 server log 输出，使前端启动类回归能够直接定位真实异常。
 8. Android Back 对沉浸 HUD dialog 与输入焦点的消费顺序进一步修正。
 
-### 最终验证结果
-
-最终验证 HEAD：
-
-`76a8b894281c0e05b90b5210b385cfa5fb310876`
-
-全部通过：
-
-- Immersive Experience — run `35512227222` — **success**
-- Android JVM Tests — run `35512227176` — **success**
-- Atria PR Checks — run `35512227165` — **success**
-- Worldbook Performance Foundation — run `35512227196` — **success**
-
-其中覆盖：
-
-- ESLint；
-- Node unit/regression；
-- immersive controller/provider/HUD/visuals/diagnostics/breathing tests；
-- Desktop + Mobile Chromium immersive smoke；
-- frontend build；
-- Atria Migration Guard；
-- Worldbook / Performance runtime smoke；
-- Android JVM Back policy tests。
-
-本任务没有构建 APK，也没有构建 Docker image。
-
 ### 结论
-
-PR #74 已通过 squash merge 合入 `main@9767257e3ecce049936c68072d9328c14bab3243`，并已验证主线可读取沉浸 controller/provider/CSS 与 Android Back policy 等关键文件。
 
 首版“真正的沉浸模式”已从原来的“隐藏顶栏 + fullscreen”升级为独立剧情呈现层，同时保持现有 Atria 运行时为唯一事实源。
 

@@ -7,7 +7,6 @@
 - Temporary branch: `fix/r7-shell-zh-localization`
 - Final task HEAD: `af3eb380e26bc52f74ebede9855d4b05d2debd77`
 - PR: **#80 — fix: localize R7 Shell surfaces**
-- Validation: **Atria PR Checks #758**, run `35608606942`, success
 - Squash merge / resulting main: `5df59a5c7789219bf96c6574f100209a264db454`
 
 ## Result

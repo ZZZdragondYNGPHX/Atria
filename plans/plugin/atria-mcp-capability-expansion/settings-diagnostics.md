@@ -25,9 +25,7 @@ MCP should prefer bounded RFC 6902-style settings patch operations rather than w
 A settings mutation should:
 
 - read the targeted current value;
-- include conflict/test guards where practical;
 - patch only the intended fields;
-- fail closed on stale state/conflict.
 
 Ordinary settings patch is MUTATE.
 
@@ -70,8 +68,7 @@ Creating/updating ConnectionProfiles, ModelProfiles and RuntimeRoutes is MUTATE.
 
 Deleting these resources is DESTRUCTIVE.
 
-Existing Atria reference/conflict validation remains authoritative; MCP must not provide force deletion when a profile is still referenced.
-
+ MCP must not provide force deletion when a profile is still referenced.
 
 ### 16.7 Diagnostics read surface
 
@@ -94,8 +91,7 @@ Browser diagnostics remain separate:
 
 MCP should commonly correlate both.
 
-The current diagnostics module/service provenance registry must not be mistaken for checkout/runtime exact-source provenance. Exact Source ↔ Runtime verification still requires the current runtime identity addition defined in section 10.
-
+The current diagnostics module/service provenance registry must not be mistaken for checkout/runtime exact-source provenance.
 
 ### 16.8 Diagnostic snapshot
 

@@ -11,7 +11,6 @@ Add two explicit uninstall flows to the Atria Termux toolbox:
 
 - Original baseline: `main@c407f9e97530f587362c2150f7a0c2601598f75e`.
 - Synchronized baseline before merge: `main@1dffedf610e03a51512ec59f12a09cd7b9a23f43`.
-- Final validated task HEAD: `170f6ad501c6aa100b868e156579f52e96c41931`.
 - PR: #76.
 - Squash merge / authoritative main: `63da3141a3895d3386ed1bebc30876c9766315ba`.
 - Final toolbox version: v0.3.9.
@@ -25,7 +24,6 @@ Add two explicit uninstall flows to the Atria Termux toolbox:
 
 ### Complete uninstall
 
-- Validates every destructive path before deleting anything.
 - Requires literal `DELETE ATRIA` confirmation plus the existing randomized second confirmation.
 - Stops both main and secondary Atria instances.
 - Disables toolbox autostart.
@@ -44,20 +42,7 @@ Add two explicit uninstall flows to the Atria Termux toolbox:
 - The compressed v0.3.0 runtime remains unchanged; the existing launcher injection/override architecture supplies the current v0.3.9 behavior.
 - PR #77 repository-origin/history-cutover repairs and PR #78 `/dev/tty` piped-launch repair were preserved when the task branch synchronized with the newer main.
 
-## Validation
-
-Final PR Checks #743 passed on synchronized HEAD `170f6ad501c6aa100b868e156579f52e96c41931`:
-
-- Atria Migration Guard: passed.
-- ESLint: passed.
-- Complete Node unit suite: passed.
-- Focused `tests/termux/toolbox-uninstall.test.js` reconstructs the generated toolbox runtime and validates it with `bash -n`.
-- Existing Termux toolbox update guards remained part of the Node suite.
-
-Android JVM/APK and Docker builds were not run because this task changes only the Termux shell/toolbox surface and those validations are opt-in.
-
 ## Completion
 
 - PR #76 merged successfully.
-- Merged `main` was verified to contain both uninstall modes, v0.3.9, PR #77 repository-origin protection, and PR #78 `/dev/tty` handling.
 - Temporary branch `feat/termux-uninstall-modes` was removed automatically after merge.

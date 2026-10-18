@@ -189,22 +189,6 @@ Temporal Runtime 不允许：
 
 Package-facing 合法路径仍然是：
 
-```text
-Action / World Process / Activity Settlement / Model Outcome
-        ↓
-typed advance-time proposal
-        ↓
-validate temporal policy
-        ↓
-World Command
-        ↓
-time.advanced Event
-        ↓
-World Reducer / Temporal state
-        ↓
-one Session Revision
-```
-
 因此：
 
 > **Temporal Runtime 提供统一时间语义与计算 primitive，不提供绕过 Command/Event/Reducer 的写口。**
@@ -337,16 +321,6 @@ Task freshness 首先看：
 
 - WorldInstant constraint。
 
-#### Studio Test Bench
-
-必须能：
-
-- freeze World Clock；
-- advance duration；
-- jump to instant；
-- simulate catch-up；
-- assert schedule fired exactly once。
-
 ### 26.63 Custom Calendar 也必须声明式
 
 Atria 不能只支持现实 Gregorian。
@@ -439,7 +413,6 @@ Package 可以定义：
 - 可以为 Interpreter 选择更擅长结构化输出、低方差的模型；
 - prose 可以自然 streaming；
 - 复杂 World schema 不必全部压进 Narrator 的输出格式要求；
-- Interpreter 可以专门检查“本轮叙事究竟产生了哪些 durable semantic outcomes”。
 
 因此此前：
 
@@ -499,18 +472,6 @@ Intent Resolver
 冻结：
 
 #### Strategy 1 — inline
-
-```text
-Narrator
-→ {
-     prose,
-     blocks,
-     outcomes
-   }
-→ validate
-→ simulate
-→ commit
-```
 
 优点：
 
@@ -587,7 +548,6 @@ inventory[3] = ...
 
 最终具体数值仍由：
 
-- Command validator；
 - Rule；
 - Reducer；
 - deterministic calculation；
@@ -605,15 +565,6 @@ inventory[3] = ...
 ### 26.69 Draft prose 在 Interpreter 完成前仍然是 provisional
 
 这与 `26.46–26.55 的 Scoped Operation model 对齐。
-
-```text
-Narrator stream
-→ provisional Draft prose
-→ Narrator terminal result
-→ Outcome Interpreter
-→ validate / simulate
-→ final Turn commit
-```
 
 在 Interpreter 完成前：
 

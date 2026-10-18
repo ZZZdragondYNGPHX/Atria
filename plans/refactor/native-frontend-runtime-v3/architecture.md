@@ -26,8 +26,6 @@ Atria Native Frontend v3 的目标不是给 Native UI v2 增加更多白名单�
 
 Package 应能够几乎完全控制自己的游戏/应用前端，包括 DOM、CSS、字体、布局、组件、动画、响应式、Headless Conversation、Phone/IM、经营面板、Inventory、Visual Novel、Remote Portrait、Canvas 与受控前端计算。
 
-Host 继续拥有 World / Session / Memory / Continuity / Realm / Shared、Model / Provider / Secret、Session/Timeline/Branch、裸网络、文件系统、Host DOM、浏览器全局环境、权限、调度、恢复与最终安全边界。
-
 “几乎完全前端权限”指 Presentation/Interaction 自由，不指 Browser/Host/Authority 裸权限。
 
 ---
@@ -95,7 +93,6 @@ Preview 与 Production 共用同一 Compiler + Renderer。
 - 删除 `componentModelVersion` 作为现代 Runtime selector；
 - 删除旧 `component / selectors / surface` legacy runtime declaration；
 - 删除 Native UI v1/v2 renderer/compiler 及只服务旧 schema 的 compatibility path；
-- Studio、Preview、Health、Package validation 迁移到 v3；
 - 开发期 fixture / sample / test data 可直接改写或删除。
 
 不实施：
@@ -234,14 +231,6 @@ Required/Optional negotiation：
 
 Native v3 使用：
 
-```text
-Authoring Source Graph
-    ↓ compile
-Canonical Runtime Graph
-    ↓ validate
-Native Frontend Runtime
-```
-
 推荐工程结构：
 
 ```text
@@ -328,13 +317,10 @@ Compiled Frontend Index
 └─ Frontend media/assets
 ```
 
-Runtime resource identity 使用 stable logical id + exact content identity/hash。
-
 Source path 只属于 provenance，不成为 Runtime authority identity。
 
 Activation：
 
-1. 加载/验证 Frontend Index；
 2. Preflight Runtime Features / Permissions / Bridge；
 3. 加载 Primary View；
 4. 按需加载 View/Component/Controller/Style/Media。

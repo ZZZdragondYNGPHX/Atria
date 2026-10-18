@@ -8,14 +8,12 @@
 
 The target MCP is accepted as an Atria-wide development bridge rather than a narrowly scoped source/Build debugger.
 
-Subject to each domain's authority and security boundaries, the intended coverage includes:
-
 | Domain | Default observation target | Authorized operation direction |
 | --- | --- | --- |
 | Repository / Git | tracked tree, files, search, status, diff, history and commit evidence | no source-code writes through MCP |
 | Browser / UI | page structure, screenshots, frames, diagnostics and responsive state | bounded navigation and interaction |
 | Chat / Session | sessions, messages, generation/runtime state | send, regenerate, edit, delete, create/switch where supported |
-| Build / Studio | projects, sources, revisions, history, diffs, validation and preview state | create/modify/execute/delete through Studio authority |
+| Build / Studio || create/modify/execute/delete through Studio authority |
 | Library | resources, revisions, references and closure | attach/fork/update/delete through Library authority |
 | Package / Work | manifests, exact versions, dependencies, contributions and permission/status evidence | bounded install/uninstall/activation-style operations through Package authority |
 | Memory | entries/graph/search/diagnostic evidence exposed by product authority | approved mutation/cleanup through Memory authority |
@@ -151,8 +149,6 @@ Important product writes must flow through the Semantic Action Registry so autho
 
 Browser navigation, observation, screenshots and interaction remain dedicated `atri_browser_*` instrumentation rather than being folded into semantic product executors.
 
-Browser is an observation/verification device with Playwright-specific concerns such as selectors, frames, viewport, image output and navigation lifecycle.
-
 It must still obey the previously frozen rule that generic UI interaction cannot bypass stricter semantic authorization for recognized product operations.
 
 ### 17.7 Registry as policy center
@@ -167,7 +163,6 @@ It becomes the shared source of truth for:
 - side-effect/cost metadata;
 - product authority ownership;
 - concurrency/evaluation/reference-safety requirements;
-- capability-lease checks;
 - delegated Agent authority;
 - operation-receipt metadata/audit.
 
@@ -193,7 +188,6 @@ Every registered semantic action must have a versioned descriptor containing at 
 - owning authority/adapter;
 - input/output schema;
 - external-effect metadata;
-- required guards;
 - approval/lease characteristics;
 - availability requirements.
 
@@ -205,32 +199,6 @@ Example authorities include:
 - Native Studio;
 - Native Library/Product;
 - fixed Browser Capability Bridge for Memory/Orchestrator.
-
-### 18.2 Guard metadata
-
-Descriptors should declare execution guards rather than relying on ad-hoc per-tool behavior.
-
-Guard classes include, where applicable:
-
-- optimistic concurrency / expected revision;
-- preflight;
-- prior evaluation receipt;
-- reference/delete safety;
-- exact artifact/content identity;
-- product Source ↔ Server Runtime identity requirements;
-- Browser-loaded `serverBootId` freshness;
-- Session revision/branch and Native Frontend Experience Epoch where applicable;
-- Studio Project/Workspace/Preview compiled-artifact identity where applicable.
-
-Examples:
-
-- Chat send requires expected Session revision;
-- Build apply requires base revision + matching evaluation receipt;
-- Package install requires reviewed artifact/preflight + base PackageVersion;
-- Library destructive actions require delete/reference safety;
-- Memory targeted edits should use stale-state/fingerprint protection where practical.
-
-If a product guard already proves an action invalid, MCP should fail before asking the user for approval.
 
 ### 18.3 Policy Ceiling
 
@@ -253,7 +221,6 @@ A lease may bind:
 - maximum uses;
 - issuance/expiry;
 - MCP instance identity;
-- narrow machine-verifiable ownership conditions such as objects created by specific receipts.
 
 Leases are not model-authored policy documents.
 
@@ -316,8 +283,6 @@ Useful origin fields include:
 - parent receipt id;
 - creating receipt id for created objects.
 
-This enables narrow cleanup leases to verify exactly which objects were created by the current MCP workflow.
-
 ### 18.9 Agent receipt composition
 
 Agent-run receipts may reference child receipt IDs for semantic actions performed by the Agent.
@@ -341,20 +306,12 @@ Persistent product evidence should be promoted deliberately into Atria-owned dia
 
 ### 18.11 Unified executor sequence
 
-Semantic executors should follow a common fail-closed sequence:
-
 1. resolve Action Descriptor;
 2. require executor risk to match descriptor risk;
-3. check action availability;
 4. enforce server Policy Ceiling;
-5. validate input schema;
-6. perform product guard/preflight/concurrency checks;
 7. resolve a valid Capability Lease;
 8. if absent, request trusted user approval where supported;
-9. re-check guards after approval;
 10. execute only through the owning authority;
 11. redact/filter output;
 12. mint Operation Receipt;
 13. return result + receipt.
-
-Guard state must be checked again after approval because product state may have changed while waiting for the user.

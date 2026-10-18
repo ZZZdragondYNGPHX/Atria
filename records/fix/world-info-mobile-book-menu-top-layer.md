@@ -9,9 +9,7 @@ Real-device follow-up after the first mobile lorebook action-menu repair still f
 - Temporary branch: `fix/world-info-book-menu-portal`
 - Baseline: `main@f7dd82ee4089e9e59f6effdd61509b14b39daa2d`
 - PR: #28
-- Final validated head: `9f1abf3004e51428ea0be3c9f5a161a9037b6f66`
 - Squash merge / resulting `main`: `653b1b59f771e0c494e73af64f799790c6c3a856`
-- Validated task-head tree and merged-main tree: `adad34a4b45a1b5eb3a1463c054cbc0c9dc6f4b1` (identical)
 
 ## Root causes
 
@@ -60,38 +58,6 @@ Mobile-specific search controls are visible by default and hidden only on deskto
 No World Info persistence, activation, API, import/export format, selection, state-condition/event or storage semantics changed.
 
 This is a presentation / interaction reliability hardening only.
-
-## Regression coverage
-
-The real-browser World Info workspace acceptance now verifies:
-
-- the actual lorebook three-dot trigger opens;
-- `aria-expanded` changes to `true`;
-- the modal action sheet is visible;
-- the action sheet remains within the mobile viewport;
-- Export / Rename / Duplicate are visible;
-- the sheet closes without closing World Info;
-- Library remains active after closing the sheet;
-- the underlying Manager drawer content remains visible;
-- mobile Library and Entries search menus remain interactable;
-- desktop World Info behavior remains unchanged.
-
-## Validation
-
-Final head `9f1abf3004e51428ea0be3c9f5a161a9037b6f66` passed:
-
-- Atria PR Checks #587
-  - ESLint
-  - complete Node unit suite
-  - frontend libraries build
-  - Atria Migration Guard
-- Worldbook Performance Foundation #272
-  - focused regressions
-  - synthetic benchmark
-  - real-host Chromium smoke
-  - complete World Info runtime/workspace acceptance
-
-Android JVM/APK and Docker builds were intentionally not run because this task changes browser JavaScript/CSS/tests only.
 
 ## Data / migration impact
 

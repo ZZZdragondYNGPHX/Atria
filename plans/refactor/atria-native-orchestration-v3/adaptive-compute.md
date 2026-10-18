@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | [Compute Policy](../../architecture/agent-intelligence-runtime/compute-policy.md)、Native RunControl、原 Studio Project Task | 提供请求需求、父子 Run identity、资源限制、预算 reservation 的引用及 EffectReceipt；必要时等待/阻断 | 新的独立扣费账本、绕过原 Host provider send 的模型请求 |
 | [Model Routing](../../architecture/agent-intelligence-runtime/model-routing.md)、Native RouteResolver / Provider Adapter | 针对合法任务给出冻结 requirements、可选择目标集合与失败策略，消费真实 Snapshot/Observation | 独立 Model Gateway、Secret resolver、私有 continuation 平台 |
-| [Execution Reuse](../../architecture/agent-intelligence-runtime/execution-reuse.md)、Task Artifact / Source adapters | 取得先找候选后验有效的 ReuseDecision，减少当前节点的重复工作 | 仅凭 hash/相似度跳过业务写入、为缓存另建 Source 权威 |
+| [Execution Reuse](../../architecture/agent-intelligence-runtime/execution-reuse.md)、Task Artifact / Source adapters | 取得先找候选后验有效的 ReuseDecision，减少当前节点的重复工作 ||
 | [Behavior/Context](../../architecture/agent-intelligence-runtime/behavior-context.md)、D4 C2 | 每 Agent 编译获准 Context，固定 request fingerprint 与合法 source refs | 把不同 Actor/Narrator 的私有上下文合并成一个全局前缀 |
 | NativeTaskScheduler | 请求原资源 permits、执行优先级及公平排队 | 把现有进程内队列当作 V3 的持久 Run Ledger |
 
@@ -18,7 +18,6 @@
 
 Host 的调用准入采用“先满足已知需求、证据不足才升级”，不是每轮运行固定多 Agent 的流水线，也不是每轮先问 Meta-Agent 要不要继续。
 
-1. **确定性与正式事实优先**：验证 Run/TaskGraph 的当前合法身份、Source/Actor/Branch、必要 World/Project/Output guard，能用现有状态或纯规则处理就不新增模型调用。
 2. **有效已完成工作复用**：依原 ReuseContract 搜索 Task Artifact、确定性只读 Tool 值、可信 Source、Graph/Plan 结构等候选，源/权限/输入/依赖/时点得到 proof 才消费。局部 valid hit 仅缩减对应工作，不说明其它 Effect 已执行。
 3. **廉价受控工具和唯一 Hybrid Memory**：实际缺必要证据时请求获准的只读工具/检索；Embedding、Rerank、PPR 或辅助 LLM 均属于按需升级，需原预算与 Authority 准入，不默认所有候选方法并行执行。
 4. **符合任务质量的目标**：产生内容/做复杂推理/生成正式可消费结果时，NodeAttempt 向原 Model Routing 提交 output、tool、context、privacy、quality、deadline 与预算要求。明显复杂任务允许直接路由到高能力模型，禁止强制 cheap→failed→strong cascade。
@@ -30,9 +29,9 @@ Host 的调用准入采用“先满足已知需求、证据不足才升级”，
 
 ## 3. 任务感知 Model Routing、Fallback 与路径证据
 
-- **硬约束优先**：选择 target 之前核对 effective owner/Plan、D4 audience/隐私与数据驻留许可、精确 Tool/JSON-schema/stream/reasoning 支持、实际 Context fit、任务质量底线、deadline、合法 Route/Connection/Model identity 与预算。缺必要证明不从模型名、网关兼容标签或缓存相似度猜测。
+- 缺必要证明不从模型名、网关兼容标签或缓存相似度猜测。
 - **优选在合格集合内发生**：RouteResolver / RoutingPolicy 在满足硬条件的目标里权衡 quality/cost/latency/health/affinity 与 cache locality；Cache 命中估计不能覆盖 Source/currentness 与 OutputContract、不能因 sticky 目标降低保密或要求。
-- **正常 Routing 不等于 FailurePolicy**：实际 fallback 从获准的同一 target retry、同模型部署、已验证等价目标到 policy 明确许可的跨模型 target；各级重新检查工具、Output、Context、质量、隐私、残余预算、deadline、continuation。没有合格目标应报告 unavailable/blocked/review，而不是静默绕过质量底线。
+- 没有合格目标应报告 unavailable/blocked/review，而不是静默绕过质量底线。
 - **请求时快照**：发出前记录 selected target、route/connection/adapter、source/Plan/context、实际 capabilities 证据、budget reservation、retry 级别与预期费用；响应后补真实 reported provider/upstream（若有）、usage、failed attempts、cache status、latency。Snapshot 与 Observation 不能相互伪造。
 - **网关边界**：OpenRouter/New API/Sub2API/LiteLLM/opaque gateway 可以隐藏上游池、真实 canonical model、重试和价格；外部看不见时标 `unknown`，不声称全链路 exactly-once、真实金额上限或始终同一模型。
 - **Provider fallback 的副作用**：部分 stream、工具调用或正式业务写入已发生时，重试必须先看 D2 EffectIntent/Receipt 与原 domain reconcile，不能为“模型失败”重做可能已提交的写效果。
@@ -45,7 +44,7 @@ V3 不拥有独立的“余额真相”；其 Run/NodeAttempt/Effect 显示的�
 | --- | --- | --- |
 | GraphPatch / Fanout 提议 | 计算需要的资源种类、质量要求、子任务与 deadline | 查询合法作用域现有 allowance，不生成虚假 provider usage |
 | 准备并行派发 | 向同一父 scope 申请所有待发分支足够的保守 reservation，尊重运行中的占用及 scheduler permits | 原预算 authority 用 CAS/锁等序列化机制 **竞争地保证兄弟不重复花相同余额** |
-| 真实模型/工具发送前 | 固定 effectId/nodeAttempt/parent/route/request snapshot，原 Host 再检验来源与权限 | 仅原 sender 按真实 send-attempt ID 记一次 charge；多层账本约束共享其 identity，不重复 charge |
+| 真实模型/工具发送前 || 仅原 sender 按真实 send-attempt ID 记一次 charge；多层账本约束共享其 identity，不重复 charge |
 | 完成/失败/取消 | 追加 EffectReceipt、结果、实际 usage/unknown | 原 authority 结算；只有明确未发出的保留款可释放，已发但未知不默认退款 |
 | Host 崩溃或恢复 | 先从 Host Run Ledger 与原预算状态恢复同一身份 | 通过 durable identity/reconcile 保留已发生费用、未知用量与旧父占用，不能重新生成额度 |
 | Retry/Fallback/Review/Replan | 新 NodeAttempt/EffectId，保留旧已发发送与预算记录 | 新发送再次由原父 scope 准入；旧已发尝试不因新图版本删除 |
@@ -60,19 +59,19 @@ V3 不拥有独立的“余额真相”；其 Run/NodeAttempt/Effect 显示的�
 
 | 层 | 真正复用的对象 | 主要准入/禁区 |
 | --- | --- | --- |
-| **Application Reuse** | 只读 Tool Value、正式 Task Artifact、Source/Result、可验证结构化 Workflow/Plan、Context segments | exact source/provenance/dependencies、caller/actor/branch/time/currentness、producer/tool schema/permissions/Trust Domain 的 **validity proof**；不能用语义相似命中跳过新业务 mutation |
+| **Application Reuse** || exact source/provenance/dependencies、caller/actor/branch/time/currentness、producer/tool schema/permissions/Trust Domain 的 **validity proof**；不能用语义相似命中跳过新业务 mutation |
 | **Provider Prompt Cache** | Provider 实际支持的 prefix / canonical prompt / tool schema、显式 breakpoint 或隐式缓存 | Adapter 的确切 target+connection+gateway+model+protocol+affinity 能力、prefix binding、TTL、收费与真实 usage；相同字节只意味“可能命中” |
 | **Local Inference Cache** | 本地/自托管 backend 的 KV/prefix/segment、decode 优化 | 本地推理后端的真实能力/安全域/性能，不由 V3 自建 CUDA/Attention/KV manager，也不把任意非 prefix KV 视为可安全复用 |
 
-- Cache/Reuse 先找候选、再让原 source adapter 在**消费时**证明 Authority、scope、依赖、版本、有效时间、Target、内容 hash 与消费能力。Source 撤销/Branch fork 或 restore/Variant 编辑/Actor exposure 改变传播失效；无 proof 时 cache miss/blocked，不能复用撤销的数据。
-- D4 C2 规定公共 immutable 数据可在合法 trust domain 中复用低层只读读取，但**每个 Agent 最终上下文独立编译**。Narrator、NPC 私密记忆、Project Agent、另一个用户/Branch 的相同摘要不因 hash 或 embedding 相似而合法跨域共享。
+- Source 撤销/Branch fork 或 restore/Variant 编辑/Actor exposure 改变传播失效；无 proof 时 cache miss/blocked，不能复用撤销的数据。
+- D4 C2 规定公共 immutable 数据可在合法 trust domain 中复用低层只读读取，但**每个 Agent 最终上下文独立编译**。
 - 已完成的只读 work 可以缩减模型调用。`Idempotent mutation` 仅根据**原操作身份与真实领域 receipt** 决定重送后的状态；`non-idempotent mutation` 不能靠普通结果缓存冒充已执行或跳过。复用 Graph 结构不等于继承旧运行余额、旧 World 值或旧 Effect。
 - RP 优先复用合法 facts、前置 Memory/Context/Task Intent、Model prompt prefix，不直接将上回合 Final Prose 作为一般 Semantic Cache 输出。稳定 Context 不为 cache-hit 保留 stale World 或撤销的私人来源。
 - 默认不主动预热所有 target/Agent 或无条件写 Prompt Cache；预热/缓存写本身可能有上游成本、TTL、存储、延迟与安全风险。只有实测/合法 policy 才启用并标记实际命中与成本；“可发缓存字段”不等于真实部署支持。
 
 ## 6. Reasoning Continuity 与 Fallback、Checkpoint 不是一回事
 
-- `RunCheckpoint` 记录 Host 图/Effect/Attempt 状态；`Application Reuse` 对已完成且可证明适用的显式产物重用；`Provider Prompt Cache` 优化模型服务的输入前缀；`Reasoning Continuity` 是由 Provider/Adapter 承载的可能不透明执行状态。各自不同 identity、lifecycle 与权限检查。
+- `RunCheckpoint` 记录 Host 图/Effect/Attempt 状态；`Application Reuse` 对已完成且可证明适用的显式产物重用；`Provider Prompt Cache` 优化模型服务的输入前缀；`Reasoning Continuity` 是由 Provider/Adapter 承载的可能不透明执行状态。
 - 只沿原 [Model Routing `7](../../architecture/agent-intelligence-runtime/model-routing.md#7-reasoning-continuity执行状态与生命周期) 由原 Provider 能力证据与 request snapshot 决定 continuation 保留、重置或丢弃。换 Agent/Actor audience/Role、Source/Branch、Model/Gateway/affinity、Context/Tool/Output schema 不满足则不能盲续接，更不能把私有 opaque reasoning 当公共 Result 跨 Agent 传递。
 - Provider managed alias/opaque gateway 状态不可见时保持 `loss/unknown`；合法 fallback 需要新 attempt / 预算准入，不用旧 continuation 证明新请求费用或质量。
 - 旧正式 World/Studio action 已提交并有原 DomainCommitReceipt 时，不因 Fallback/Retry/Run Replay 自动重复写入；中断时先 reconcile 未知 Effect。

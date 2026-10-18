@@ -6,7 +6,7 @@
 > **Code baseline:** `main@ed1fd90521a63363e29856601abbf5e908c99d10`  
 > **Primary workspace:** `docs`  
 > **Purpose:** 为后续逐项深化 Atria 智能体能力，并将 Atria 演进为可持续吸收未来 Agent / RP / World Model / Multimodal / Learning 技术的前沿运行平台，提供研究背景、现状基线、候选方向与架构兼容性依据。  
-> **Not a Plan:** 本文不是实施指导书，不冻结模块划分、API、数据结构、文件路径、阶段验收项或具体技术方案。后续任一方向正式进入开发前，应结合当时 `main` 真实状态单独形成实现 Plan。
+> 后续任一方向正式进入开发前，应结合当时 `main` 真实状态单独形成实现 Plan。
 
 ## 1. 调研问题
 
@@ -93,7 +93,6 @@ Atria 已经拥有编排与记忆两条较成熟的 Agent 能力线。下一步�
 
 - **Memory**：世界、人物、对话中发生了什么；
 - **Experience**：Agent 自己做过什么、为什么失败或成功；
-- **Skill / Policy**：从多次 Experience 中验证后沉淀出的程序性知识。
 
 这三个概念如果继续混在一起，会造成后续演进时来源、生命周期与修改权限不清。
 
@@ -113,8 +112,6 @@ Atria 已经拥有编排与记忆两条较成熟的 Agent 能力线。下一步�
 - `open_loop`；
 - context/display exposure；
 - projection anchor 与 scope epoch。
-
-Director 侧又已有 `epistemic_scout` 检查知识边界。
 
 因此“角色认知系统”不是从零开始，而是已有一阶 epistemic substrate，后续可研究如何把它提升为长期 BDI / Theory of Mind。
 
@@ -149,7 +146,6 @@ Task Scheduler 已有 concurrency、per-resource、queue、retry、timeout、sup
 
 - production revision；
 - branch；
-- task definition hash；
 - dependency fingerprint；
 - exact input；
 - `same_revision / same_branch`；
@@ -216,7 +212,6 @@ OpenAI 的 Agent Improvement Loop 把完整运行轨迹、人工/模型反馈、
 OpenAI 2026 年 Codex Goals 将 Goal 定义为持久目标/完成契约，而不是更大的 prompt。它强调：
 
 - measurable outcome；
-- verification surface；
 - constraints；
 - lifecycle；
 - budget；
@@ -234,7 +229,7 @@ OpenAI 2026 年 Codex Goals 将 Goal 定义为持久目标/完成契约，而不
 
 GEPA 与 ACE 都指向一个很适合 Atria 的方向：从 trajectory / execution feedback 中提炼自然语言策略、规则和 playbook，并对 prompt/context 进行增量进化。
 
-GEPA 强调从少量 trajectory 反思问题、提出 prompt update、验证候选；ACE 则把 context 视为可持续积累、整理和演化的 playbook，避免每次压缩都损失细节。
+ACE 则把 context 视为可持续积累、整理和演化的 playbook，避免每次压缩都损失细节。
 
 这与 Atria 已有 Skill 系统天然兼容。
 
@@ -336,8 +331,6 @@ Anthropic 的 Agent eval 工程总结强调：Agent 的困难来自多步工具�
 - critic method；
 - budget heuristic。
 
-任何候选都应该先被历史案例和固定 eval 验证，再进入正式运行环境。
-
 ### 5.4 可能的 Experience 信号
 
 Atria 已经或较容易观测到：
@@ -367,7 +360,6 @@ Atria 已经或较容易观测到：
 - 同一个 Director profile 使用越久越懂该卡容易犯什么错；
 - 某个 card / project 能沉淀自己的经验；
 - global skill 能从多个项目中提炼通用规则；
-- 用户修改能够逐渐变成可验证的行为偏好，而不是一次性 correction；
 - Agent 能解释“为什么我现在选择这套流程”。
 
 ### 5.6 主要风险
@@ -447,7 +439,6 @@ Prospective Memory 保存：
 例如：
 
 - NPC 承诺三天后回来；
-- 一个长期 Project 仍缺验证证据；
 - 某个世界事件到期；
 - 某个关系条件变化后需要重新评估计划。
 
@@ -624,8 +615,6 @@ Counterfactual 则应该是：
 
 ### 8.4 第一版研究重点不应是训练 World Model
 
-在产品验证阶段，可以先研究：
-
 - 多个 cheap rollout；
 - 一个 stronger evaluator；
 - 只在高影响节点触发；
@@ -707,23 +696,6 @@ Atria 已有：
 - 不确定度没有下降才升级；
 - 无额外信息价值时停止继续思考。
 
-### 9.4 与现有 mandatory guard 的关系
-
-当前 Director 的 lorebook / epistemic / intent 等 mandatory guard 是为了保护高价值 invariant。
-
-未来元认知控制器不应未经 eval 就跳过这些 guard。
-
-第一阶段更适合调节：
-
-- optional work；
-- depth；
-- branch count；
-- model tier；
-- rerun；
-- additional critic。
-
-当 Experience/Eval 能证明某些 invariant 在特定条件下可安全 fast-path 后，再研究动态跳过。
-
 ### 9.5 主要风险
 
 - controller 本身成本大于节省；
@@ -800,7 +772,6 @@ Epistemic ─── Hypothesis ─┘                  │
 
 - 降低上下文复制；
 - 减少多层摘要失真；
-- 让 eval 能检查“哪条证据支持哪项判断”；
 - 提升恢复/replay；
 - 给 Counterfactual、Goal evidence、Experience 提供共享 substrate；
 - 让不同 Agent 对同一 evidence set 做独立判断。
@@ -1087,8 +1058,6 @@ Goal、background task、counterfactual 和 self-improvement 都需要：
 
 - 哪些信号能可靠估计“继续思考的价值”？
 - controller 使用规则、小模型还是当前主模型？
-- 哪些 mandatory guard 永远不能 fast-path？
-- 如何验证节省成本没有隐藏质量退化？
 
 ### Blackboard
 
@@ -1130,7 +1099,6 @@ Atria 当前最值得做的，不是继续扩大 Orchestrator 的“执行形态
 最重要的三个研究方向是：
 
 1. **Experience / Evolution** —— 让 Agent 从真实运行历史中学习；
-2. **Persistent Goal** —— 让 Agent 拥有跨 run 的可验证目标；
 3. **Cognitive Graph / ToM** —— 让角色拥有长期演化且彼此不同的认知世界。
 
 Counterfactual、Metacognition 和 Typed Blackboard 则分别补上：
@@ -1180,7 +1148,6 @@ Counterfactual、Metacognition 和 Typed Blackboard 则分别补上：
 
 - Anthropic — How we built our multi-agent research system  
   https://www.anthropic.com/engineering/multi-agent-research-system
-
 
 ---
 
@@ -1397,21 +1364,6 @@ CHARM 把 Character Hallucination 区分成：
 ### 24.2 Epistemic Firewall
 
 长期值得研究从“scout advice”升级成执行级：
-
-```text
-Candidate Claim / Action
-        ↓
-Actor Knowledge Projection
-        ↓
-Knowledge Boundary Check
-      /       \
-   allowed    denied/uncertain
-      │             │
-      │      suppress / hedge /
-      │      reframe / seek evidence
-      ▼             ▼
-Generation / Action
-```
 
 它不要求马上实现句子级 symbolic checker，但架构上应为：
 
@@ -1933,24 +1885,6 @@ single LLM judge -> score
 
 更适合：
 
-```text
-Deterministic invariants
-      +
-Epistemic / Authority checks
-      +
-State transition checks
-      +
-Contrastive character eval
-      +
-Multiple independent judges
-      +
-Behavioral signals
-      +
-Human feedback
-      +
-Trajectory cost / efficiency
-```
-
 这会成为 Experience / Evolution 的真正地基。
 
 参考：
@@ -2136,7 +2070,6 @@ content or opaqueRef
 - scope；
 - derived vs authority；
 - representation neutrality；
-- invalidation；
 - lazy expansion；
 - typed consumption。
 

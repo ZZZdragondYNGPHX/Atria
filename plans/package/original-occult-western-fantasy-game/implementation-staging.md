@@ -1,9 +1,5 @@
 # Original Occult Western Fantasy Game — Implementation Staging
 
-## Responsibility
-
-Owns Round 10: Codex-ready implementation phases, dependency order, workspace routing, per-phase reading map, validation gates, integration criteria and release handoff.
-
 ## Dependencies
 
 - index.md
@@ -55,10 +51,6 @@ P0 is a separate product task. It follows normal "main" short-lived branch lifec
 
 #### P0 exit gate
 
-P0 is complete only after the twelve verification gates frozen in "technical-design.md" Round 9.8 pass, appropriate targeted/regression CI succeeds, the implementation is merged into "main", integrated "main" is revalidated, and the temporary branch is removed.
-
-Package P1 may then revalidate the new real "main" and proceed.
-
 ---
 
 ## P1 — Package Foundation
@@ -69,8 +61,6 @@ Package P1 may then revalidate the new real "main" and proceed.
 
 The long-lived Package workspace is independent from "main"; do not merge "main" into "package".
 
-Create the Package root and "releases/", then establish an installable/validatable skeleton containing:
-
 - manifest / EntryPoint;
 - approved Experience capabilities;
 - modular Package Data declarations;
@@ -80,13 +70,10 @@ Create the Package root and "releases/", then establish an installable/validatab
 - four core Task classes;
 - Authority Runtime / transaction bindings against the integrated P0 Core contract;
 - minimal bootstrap seed;
-- minimum build / validate / preview path.
 
 Do not bulk-author the full game in P1.
 
 #### P1 exit gate
-
-The skeleton installs and validates against the current real Atria "main"; declared runtime contracts resolve; a minimal session starts; no temporary Core workaround exists.
 
 ---
 
@@ -95,7 +82,6 @@ The skeleton installs and validates against the current real Atria "main"; decla
 Implement the foundational gameplay transaction surface:
 
 - observe;
-- verify;
 - interview;
 - access;
 - test;
@@ -103,8 +89,6 @@ Implement the foundational gameplay transaction surface:
 - create_hypothesis;
 - create_lead;
 - advance_time.
-
-Implement and validate:
 
 - Resolution Frame;
 - Automatic / Impossible / Uncertain;
@@ -187,7 +171,6 @@ Implement the playable opening from character creation through the first Signatu
 Required content/system path:
 
 - six-step character creation;
-- Civil Verifier starting state;
 - Personal Anchor creation;
 - Second Death opening Matter;
 - multi-path investigation;
@@ -352,7 +335,6 @@ If the Skill persists a design system, keep it project-local to the Package fron
 Load:
 
 - **emil-design-eng** — primary;
-- **ui-ux-pro-max** — secondary for accessibility/reduced-motion/touch checks.
 
 Responsibilities:
 
@@ -395,49 +377,12 @@ Aesthetic or motion advice may never weaken accessibility, disclosure safety, ty
 
 #### P8 exit gate
 
-Validate desktop/mobile behavior, long investigation data, graph interaction, overflow, touch affordances, important-state reachability and absence of hidden authority leakage.
-
 P8 cannot exit until:
 
 - P8-A visual direction is deliberate and game-specific rather than template-derived;
 - P8-B design-system/component structure is responsive and semantically faithful;
 - P8-C motion/polish is purposeful, interruptible where appropriate and reduced-motion-safe;
 - P8-D latest-guideline audit has no unresolved launch-critical findings;
-- real UI evidence exists for presentation quality that code-level validation cannot establish.
-
----
-
-## P9 — Integration / Regression / Release
-
-No new gameplay systems.
-
-Validate:
-
-- full campaign smoke;
-- varied Signature Case order;
-- failed / costly routes;
-- save / restore;
-- branch retry;
-- provider failure;
-- background Agenda;
-- fast-forward;
-- Claim Prices;
-- Settlement consequences;
-- Revelation Predicate convergence;
-- information-leak boundaries;
-- Package Data size;
-- install / validate / build / preview;
-- appropriate regression suites.
-
-Produce the final ".atria" release under:
-
-"original-occult-western-fantasy-game/releases/"
-
-Historical releases are retained and not overwritten.
-
-#### P9 exit gate
-
-All launch-critical functional, authority, leakage, regression and release checks pass; the Package Record contains tested HEAD / CI evidence; the release artifact is retained in the Package workspace.
 
 ---
 
@@ -497,7 +442,6 @@ P1–P9 remain one multi-stage Package implementation task.
 
 At the end of every formal Package phase:
 
-1. implement and validate the phase;
 2. persist/push the tested Package HEAD;
 3. update the same Package Record;
 4. update the single live "HANDOFF.md";
@@ -506,12 +450,6 @@ At the end of every formal Package phase:
 7. stop.
 
 After each phase, record the result and continue along the dependencies.
-
----
-
-## Validation and execution
-
-At each stage and completion, run only the minimum relevant local validation. Diagnose, fix and retest ordinary failures, then continue; phases, long-running CI and missing device matrices do not create approval checkpoints. Remote storage is not a verification dependency. API tests follow Governance §13.1; genuine external blockers follow §13.
 
 ---
 

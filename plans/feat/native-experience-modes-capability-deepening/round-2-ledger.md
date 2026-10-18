@@ -120,28 +120,6 @@ Atria Native 已存在更明确的：
 
 因此后续必须明确区分状态 authority，禁止继续把所有内容都叫“变量”。Round 5 的重型案例已经进一步把这套模型拆细为 World State、Session Application State、Activity State、Local UI State、Message-local UI State、Player Preference State；Legacy Provider State 只属于兼容读取，详见 §26.11。
 
-### 19.6 MVU 卡的典型行为已经验证
-
-实际角色卡验证了常见 MVU 前端链路至少包含：
-
-- 当前 `stat_data` 注入；
-- 变量定义；
-- 变量更新规则；
-- 模型输出结构化 `UpdateVariable / JSONPatch`；
-- 正文状态标签；
-- `story_options`；
-- Regex 将结构化标签转成可交互 HTML；
-- 点击按钮后将文本发送/触发下一轮。
-
-这说明后续不能只补“状态栏 Component”，还必须同时覆盖：
-
-- state update contract；
-- message structured block；
-- quick action；
-- composer submit；
-- message-local rendering；
-- prompt/display separation。
-
 ### 19.7 Timeline / Swipe / Variant / Branch
 
 SillyTavern 的 swipe 是同一楼层内可切换的可变候选文本，首条 `first_mes + alternate_greetings` 也复用这套机制。
@@ -258,8 +236,6 @@ Atria Native Prompt Runtime 已经提供语义 Prompt target：
 
 ### 19.12 Quick Reply / Automation 应独立成 Runtime Trigger Layer
 
-Vanilla Quick Reply 的自动执行已经验证包含：
-
 - startup；
 - user message 后；
 - AI message 后；
@@ -305,7 +281,6 @@ Atria 当前 Declarative Rule 主要消费 Game World Event；Native Session 另
 
 必须有：
 
-- reentrancy guard；
 - per-turn execution budget；
 - cycle detection；
 - deterministic ordering；
@@ -393,8 +368,7 @@ Assistant narrative
 
 1. **Simulation-first only**  
    所有变化必须先解释成 Command/Event，再生成 prose。最干净，但对开放式 RP 迁移成本最高。
-2. **Single-call structured turn result**  
-   模型一次返回 narrative + typed outcome sidecar，再验证/提交 outcome。效率高，但对 streaming / provider structured-output 能力有要求。
+2. 效率高，但对 streaming / provider structured-output 能力有要求。
 3. **Post-narrative reconciler**  
    先生成 prose，再由专门 resolver 将叙事解释成受限 Command/Event。兼容传统 MVU，但存在 prose 与最终 commit 不一致风险。
 4. **Draft → resolve outcome → commit → final prose**  
@@ -402,7 +376,6 @@ Assistant narrative
 
 无论选择哪条路线，模型都不能直接写任意 JSON Patch 到权威 World State。最终写入必须经过：
 
-- schema validation；
 - typed Command/Event 或受限 mutation contract；
 - World reducer；
 - Session Revision；
@@ -480,6 +453,5 @@ Round 2 的第一轮 capability inventory 已覆盖：
 3. Lifecycle Automation 是否作为独立 Package resource；
 4. Knowledge 动态启停优先使用 World State condition，还是开放 session-scoped entry override；
 5. MVU Narrative Outcome Resolution 采用哪一条主路径。
-
 
 ---

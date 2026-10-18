@@ -5,7 +5,7 @@ Task branch: `feat/prompt-presets`.
 Baseline: `23bfdc608b5e5ee2b6b863f116d118d529b0bab9` (fetched before editing).
 Implementation: `416474080`.
 Integrated main: `7a7b96d898b2c8bc317bd5d3f4642dc291da2ec6`.
-Status: complete; main pushed. The integrated tree exactly matches the verified task branch. Task branch removed locally; it was never pushed remotely.
+Status: complete; main pushed. Task branch removed locally; it was never pushed remotely.
 
 ## Accepted product contract
 
@@ -39,7 +39,7 @@ an empty array for previously exported files).
 
 `PromptPresetStore` uses existing Native versioned JSON Library roots and immutable revision records. The main program root stores the preset membership manifest and taxonomy; owned roots carry `presetOwner`. There is no new database, localStorage authority, generation engine or legacy preset-manager dependency.
 
-Publication reuses `withRuntimeWrite` and the storage engine transaction. It validates the complete closure before writing, rejects stale expected revisions and cross-preset ownership, creates exact immutable definitions, rewrites internal references, then updates roots. Imported resource identities are always new; module ID ordering preserves compiler tie-break order. Parent programs are allowed only as part of the main inheritance chain. Category cycles, excessive depth, dangling refs and multiple generation profiles are rejected.
+Publication reuses `withRuntimeWrite` and the storage engine transaction. Imported resource identities are always new; module ID ordering preserves compiler tie-break order. Parent programs are allowed only as part of the main inheritance chain. Category cycles, excessive depth, dangling refs and multiple generation profiles are rejected.
 
 Removed modules leave active preset membership and their Library roots become archived. Historical definitions remain available for pinned Runtime/Project/Session consumers. Their exact historical programs are not rewritten. Current preset program references are removed together with module membership, so the editable program remains valid. Generic resource commit/archive/delete cannot bypass preset ownership.
 
@@ -53,19 +53,6 @@ The interchange is Native JSON `{ format: "atria.prompt-preset", schemaVersion: 
 
 Existing standalone Library/Project/Package resources are preserved. Use the preset page's existing-resource migration picker to make an independent copy, then choose that preset in Runtime to switch a route. The migration does not guess which standalone generation profile belongs to a program and does not change existing exact bindings automatically.
 
-## Verification actually run
-
-- New real-FsEngine preset + authenticated HTTP tests: 3 passed. Independent import/edit, all-unclassified fallback, empty category preservation, mixed classified/unclassified import, export/import, exact historical readability, cross-owner rejection, same-preset route pairing, stale writes, authentication, category cycles and malformed closure validation.
-- Existing Prompt resource persistence: 6 passed; Prompt editor: 8 passed.
-- Native generation HTTP/transport and configuration suite: 29 passed (local fixture transport; no paid inference).
-- Library adapter: 3 passed; Runtime workspace: 12 passed; WorkspaceHost: 11 passed. Old expected navigation labels were updated to the accepted new entry point.
-- Real Edge browser, 1440px and 390px: 2 scenarios passed. Create preset, nested category CRUD, module authoring/movement, program attachment, complete export/import, affected-program deletion confirmation, isolation, historical inspector → owning preset navigation, and paired Runtime selection. Rendered desktop/mobile screenshots inspected; theme inheritance and control styling corrected.
-- Separate real-browser migration scenario: 1 passed. Existing program/module + explicit generation selection copied into a preset; unreferenced standalone module copied with a new identity and retained content.
-- Changed JavaScript ESLint, zh-CN/zh-TW localization guard and `git diff --check` passed.
-- `npm run frontend:prebuild-cache` succeeded using the existing bundle cache. Native source/CSS behavior was exercised by the real-host browser tests; no fresh full webpack rebuild was claimed.
-
-No unrelated full suite, GitHub CI waiting, Android, Docker or live provider testing was performed. No remaining task blocker.
-
 ## 2026-09-25 confirmed follow-up
 
-The completed follow-up `docs:fix/knowledge-originals-preset-boundaries.md` supersedes the earlier standalone-module copying UI described above: preset interiors no longer expose any global resource picker. Whole-preset import/export remains on the preset list, with Export on each row. Existing-resource migration remains an explicit action on that list. A new browser check verifies all three internal editors contain no other-preset data and make no global resource catalog request.
+The completed follow-up `docs:fix/knowledge-originals-preset-boundaries.md` supersedes the earlier standalone-module copying UI described above: preset interiors no longer expose any global resource picker. Whole-preset import/export remains on the preset list, with Export on each row. Existing-resource migration remains an explicit action on that list.

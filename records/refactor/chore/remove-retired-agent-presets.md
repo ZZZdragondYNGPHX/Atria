@@ -17,10 +17,7 @@ No installed user preset copies, storage or route bindings are changed.
 Remaining plugin-only matches in tests are an unrelated Regex fixture ID and a
 historical user-seed example comment; neither references a bundled asset.
 
-Validation: 18 tests passed across atri-agenda-defaults (4),
-native-orchestration-prompts (9), workspace-preset-help (5). Changed-test ESLint,
-native localization coverage (both locales, including JSON parsing), and git diff
-whitespace checks passed. No full suite, paid inference, Android or Docker build.
+ No full suite, paid inference, Android or Docker build.
 
 Earlier prompt work: `fix/native-orchestration-presets.md`. Its no-push hold was
 superseded by the user's explicit push request for this follow-up.

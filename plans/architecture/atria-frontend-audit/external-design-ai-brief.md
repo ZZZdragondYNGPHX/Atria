@@ -22,9 +22,9 @@ Atria 是原生交互叙事／角色扮演与作品创作平台。玩家安装 W
 2. 四份功能清单：[Shell/Library/Play](surface-inventory.md)、[Studio/Prompt/Runtime](authoring-runtime-inventory.md)、[Agents/Memory/扩展/媒体](agents-extensions-media-inventory.md)、[Settings/账户/Storage/Diagnostics](settings-storage-diagnostics-inventory.md)。**所有功能 ID 都须在你的完整交互文档中映射。**
 3. [interaction-flows](interaction-flows.md)：端到端流程、状态、审批和恢复。
 4. [component-and-architecture-findings](component-and-architecture-findings.md) 与 [cross-platform](cross-platform.md)：架构问题、复用、清退与三端需求。
-5. [source-map](source-map.md)、[coverage-and-evidence](coverage-and-evidence.md)、必要时 `evidence/*.tsv`：源码追溯与未验证范围。没有代码访问条件时，以功能正文为输入，不要自行猜测缺失实现。
+5. 没有代码访问条件时，以功能正文为输入，不要自行猜测缺失实现。
 
-本资料的“接通”是源码静态证据，所有运行验收 NOT_RUN。请保持已实现／部分／设计／旧待清退／UNKNOWN 的区分；不要把你的 mockup 或任意后端 class 当作产品已完成。
+请保持已实现／部分／设计／旧待清退／UNKNOWN 的区分；不要把你的 mockup 或任意后端 class 当作产品已完成。
 
 ## 请交付三项成果
 
@@ -32,7 +32,7 @@ Atria 是原生交互叙事／角色扮演与作品创作平台。玩家安装 W
 
 建议文件名 `atria-visual-direction.html`，可以直接浏览器打开。你决定审美方向：配色、字体、视觉主题、材质、图标、造型、留白、密度、动效和布局。本资料**没有预先批准这些答案**。
 
-选择少量最能体现整体方向的代表场景，形成连贯、精致、可交互的样例；例如故事阅读/Composer、Library 作品与资源、一个作者工作台或专业审查场景。场景选择由你解释，不要求把所有产品功能塞进 HTML。若用模拟数据/状态/交互，明确标注演示，不暗示接通服务或已通过质量、权限、三端验收。
+选择少量最能体现整体方向的代表场景，形成连贯、精致、可交互的样例；例如故事阅读/Composer、Library 作品与资源、一个作者工作台或专业审查场景。场景选择由你解释，不要求把所有产品功能塞进 HTML。
 
 应能说明桌面与手机的设计思路，展示核心控件和关键状态；允许适量本地 JS 演示。不要为展示审美而真实发模型请求、外发数据、要求用户 API key、连接第三方服务、操作真实账户或执行危险功能。
 
@@ -44,7 +44,6 @@ Atria 是原生交互叙事／角色扮演与作品创作平台。玩家安装 W
 
 - 页面树、导航/搜索/深链/返回关系，以及每个功能 ID 的展示位置和发现路径。
 - 每项按钮、输入、菜单、弹窗、Sheet、Inspector、toolbar、shortcut 如何使用，触发条件、权限、数据来源和保存范围。
-- 全部状态：empty/loading/partial/error/retry、dirty/validation/busy/saved、CAS conflict、历史/原件只读、来源过期、依赖缺失、budget/quota、approval pending/expired/denied、取消/unknown/partial recovery。
 - 玩家从安装到故事与存档；作者从编辑到 Review/Build；模型/Prompt 配置；Memory/Skills/插件/媒体；账户备份/清理/诊断的完整链。
 - 手机、桌面如何取得同等编辑/审查/审批能力，长文本、软键盘、Android Back、键盘/IME、无障碍与长列表的表现。
 - 入口整合、改名、搬迁的映射；任何建议删除应指明正式产品依据，不能用“样稿没画”“使用频率低”删除能力。
@@ -71,7 +70,7 @@ Atria 是原生交互叙事／角色扮演与作品创作平台。玩家安装 W
 | D8 三域协作 | Library 管资源，Studio 管创作与 review，Play 管获准的运行选项；不要强迫普通 RP 学 Graph，也不把所有 Prompt 合并成一个万能页 |
 | 原文表达与可信预览 | 作者自由文本不能被表单静默改写；Authored/Effective/Wire 有不同语义和权限；未发布 Prompt Draft Preview 当前 BLOCKED，不能借 execute 绕过 |
 | V3 单 Native Host | 新 Graph/Node/Run/Effect/Approval/Result 是正式目标，当前新 UI 未完成；Browser 是编辑草稿和投影，不是执行/费用/世界状态主机 |
-| Source/Audience/Actor/Branch/Grant | Inspector 仅显示合法受众的来源；检索/模型 Judge/角色信念不等于 World Truth；hash/TTL/缓存不是授权 |
+| Source/Audience/Actor/Branch/Grant | Inspector 仅显示合法受众的来源；检索/模型 Judge/角色信念不等于 World Truth；|
 | 原生创作和演化 | Memory、Goals、Experience、Eval、Skills、Visual Director 等有效能力不能随旧 Workspace 容器误删；`source_unready` 不得画成通过 |
 | 零旧 ST／Workspace 兼容 | 不复活旧 preset depth/order、旧 mode picker、旧 Agent Director/Loop/Agenda/Workspace/checkpoint/migration/shim/双轨；按真实消费链硬切，保留仍有效 Atria 原生功能 |
 | 作者作品表现自由 | Work 可以增补 surface 或在 full/hybrid 接管 Stage，仍需 Host escape/Stop/Save/Persona/Diagnostics/Reload；不能用统一壳吞掉作品能力 |
@@ -84,7 +83,6 @@ Atria 是原生交互叙事／角色扮演与作品创作平台。玩家安装 W
 - 新用户安装作品，发现缺 Route，配置模型和精确 Prompt 后回到原故事启动流程。
 - 玩家阅读长篇、软键盘输入、停止生成、切 Persona、存档、查看历史并明确切分支。
 - 作者从 Library exact resource fork/attach 到 Project，结构化/Source 修改，处理冲突，再 Review/Apply/Preview/Build。
-- 高阶用户查 Memory 来源并纠错、查看真实 Eval/source_unready、检查受权 candidate diff。
 - 插图从选文到 annotation/prompt/image approval，再到 Gallery/Mask edit，明确费用、外发和取消终态。
 - 用户处理资源被引用、清理 partial/interrupted、回收站 identity restore、备份网络中断和 Diagnostics。
 

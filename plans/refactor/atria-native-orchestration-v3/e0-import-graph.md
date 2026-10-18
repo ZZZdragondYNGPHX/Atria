@@ -216,7 +216,6 @@
 | `tests/orchestrator-agent-preset-resolver/unit.test.js:17` | module | `public/scripts/agents/orchestrator/agent-preset-resolver.js` | true |
 | `tests/orchestrator-skills/skill-orchestration-tools.test.js:43` | dynamic | `public/scripts/agents/orchestrator/skill-orchestration-tools.js` | true |
 | `tests/orchestrator-skills/skill-resolution.test.js:26` | dynamic | `public/scripts/agents/orchestrator/skill-resolution.js` | true |
-| `tests/orchestrator/abort-mid-run.test.js:28` | module | `public/scripts/agents/orchestrator/run-state/store.js` | true |
 | `tests/orchestrator/agenda-host-gate.test.js:9` | URL | `public/scripts/agents/orchestrator/main.js` | true |
 | `tests/orchestrator/agenda-spec-customs-seed.test.js:70` | dynamic | `public/scripts/agents/orchestrator/agenda-profile.js` | true |
 | `tests/orchestrator/agenda-spec-customs-seed.test.js:71` | dynamic | `public/scripts/agents/orchestrator/spec-schema.js` | true |
@@ -233,7 +232,6 @@
 | `tests/orchestrator/custom-tool-bridge-st.test.js:51` | dynamic | `public/scripts/agents/orchestrator/loop-tools.js` | true |
 | `tests/orchestrator/custom-tool-flags.test.js:3` | module | `public/scripts/agents/orchestrator/persistence.js` | true |
 | `tests/orchestrator/custom-tool-iter-studio.test.js:53` | dynamic | `public/scripts/agents/orchestrator/custom-tool-iter-studio.js` | true |
-| `tests/orchestrator/custom-tool-per-run.test.js:3` | module | `public/scripts/agents/orchestrator/per-run-custom-tools.js` | true |
 | `tests/orchestrator/custom-tool-portable-roundtrip.test.js:70` | dynamic | `public/scripts/agents/orchestrator/persistence.js` | true |
 | `tests/orchestrator/custom-tool-portable-roundtrip.test.js:71` | dynamic | `public/scripts/agents/orchestrator/spec-schema.js` | true |
 | `tests/orchestrator/custom-tool-portable-roundtrip.test.js:72` | dynamic | `public/scripts/agents/orchestrator/agenda-profile.js` | true |
@@ -266,8 +264,6 @@
 | `tests/orchestrator/default-custom-tools.test.js:76` | dynamic | `public/scripts/agents/orchestrator/spec-schema.js` | true |
 | `tests/orchestrator/default-custom-tools.test.js:77` | dynamic | `public/scripts/agents/orchestrator/agenda-profile.js` | true |
 | `tests/orchestrator/default-custom-tools.test.js:78` | dynamic | `public/scripts/agents/orchestrator/director-defaults.js` | true |
-| `tests/orchestrator/delegated-run.test.js:2` | module | `public/scripts/agents/orchestrator/delegated-run.js` | true |
-| `tests/orchestrator/delegated-run.test.js:3` | module | `public/scripts/lib/orchestration-engine/capabilities.js` | true |
 | `tests/orchestrator/director-default-prompt-presets.test.js:2` | module | `public/scripts/agents/orchestrator/director-default-prompt.js` | true |
 | `tests/orchestrator/director-factory-presets.test.js:2` | module | `public/scripts/agents/orchestrator/director-defaults.js` | true |
 | `tests/orchestrator/director-load-shape.test.js:16` | dynamic | `public/scripts/agents/orchestrator/director-defaults.js` | true |
@@ -301,7 +297,6 @@
 | `tests/orchestrator/editor-ops/pipe-from.test.js:3` | module | `public/scripts/agents/orchestrator/editor-ops.js` | true |
 | `tests/orchestrator/editor-ops/reasoning-sections.test.js:3` | module | `public/scripts/agents/orchestrator/editor-ops.js` | true |
 | `tests/orchestrator/editor-ops/slicing.test.js:3` | module | `public/scripts/agents/orchestrator/editor-ops.js` | true |
-| `tests/orchestrator/ensure-settings-migration.test.js:317` | dynamic | `public/scripts/agents/orchestrator/main.js` | true |
 | `tests/orchestrator/execution-mode-contract.test.js:3` | module | `public/scripts/agents/orchestrator/execution-mode-contract.js` | true |
 | `tests/orchestrator/execution-mode-contract.test.js:4` | module | `public/scripts/agents/orchestrator/anchors.js` | true |
 | `tests/orchestrator/execution-mode-contract.test.js:5` | module | `public/scripts/agents/orchestrator/snapshot-cache.js` | true |
@@ -312,7 +307,6 @@
 | `tests/orchestrator/get-effective-profile-presets.test.js:324` | dynamic | `public/scripts/agents/orchestrator/workspace/host-presets.js` | true |
 | `tests/orchestrator/get-effective-profile-presets.test.js:336` | dynamic | `public/scripts/agents/orchestrator/main.js` | true |
 | `tests/orchestrator/grep-tool.test.js:2` | module | `public/scripts/agents/orchestrator/grep-tool.js` | true |
-| `tests/orchestrator/iter-arg-validator.test.js:25` | module | `public/scripts/agents/orchestrator/iter-arg-validator.js` | true |
 | `tests/orchestrator/iter-studio-lorebook-filter.test.js:3` | module | `public/scripts/agents/orchestrator/lorebook-filter.js` | true |
 | `tests/orchestrator/iter-studio-session-store.test.js:2` | module | `public/scripts/agents/orchestrator/iter-studio/session-store.js` | true |
 | `tests/orchestrator/loop-integration.test.js:27` | module | `public/scripts/agents/orchestrator/loop-runtime.js` | true |
@@ -387,34 +381,12 @@
 | `tests/orchestrator/open-notes-cross-mode-injection.test.js:148` | dynamic | `public/scripts/agents/orchestrator/agenda-runtime.js` | true |
 | `tests/orchestrator/open-notes-cross-mode-injection.test.js:149` | dynamic | `public/scripts/agents/orchestrator/spec-runtime.js` | true |
 | `tests/orchestrator/open-notes-injection.test.js:20` | module | `public/scripts/agents/orchestrator/open-notes-injection.js` | true |
-| `tests/orchestrator/per-run-custom-tools-isolation.test.js:26` | module | `public/scripts/agents/orchestrator/per-run-custom-tools.js` | true |
 | `tests/orchestrator/persistence-loop.test.js:19` | module | `public/scripts/agents/orchestrator/persistence.js` | true |
 | `tests/orchestrator/persistence-loop.test.js:23` | module | `public/scripts/agents/orchestrator/loop-default-prompt.js` | true |
 | `tests/orchestrator/persistence.test.js:15` | module | `public/scripts/agents/orchestrator/persistence.js` | true |
 | `tests/orchestrator/persistence.test.js:22` | module | `public/scripts/agents/orchestrator/anchors.js` | true |
 | `tests/orchestrator/resolve-tool-source.test.js:10` | module | `public/scripts/agents/orchestrator/loop-tools.js` | true |
 | `tests/orchestrator/resolve-tool-source.test.js:11` | module | `public/scripts/agents/orchestrator/register-custom-tool.js` | true |
-| `tests/orchestrator/run-state-helpers.test.js:8` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
-| `tests/orchestrator/run-state-helpers.test.js:9` | dynamic | `public/scripts/agents/orchestrator/run-state/helpers.js` | true |
-| `tests/orchestrator/run-state-store.test.js:10` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
-| `tests/orchestrator/run-state-store.test.js:52` | module | `public/scripts/agents/orchestrator/run-state/events.js` | true |
-| `tests/orchestrator/run-state-store.test.js:58` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
-| `tests/orchestrator/run-state-store.test.js:67` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
-| `tests/orchestrator/run-state-store.test.js:77` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
-| `tests/orchestrator/run-state-store.test.js:86` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
-| `tests/orchestrator/run-state-store.test.js:98` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
-| `tests/orchestrator/run-state-store.test.js:112` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
-| `tests/orchestrator/run-state-store.test.js:132` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
-| `tests/orchestrator/run-state-store.test.js:147` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
-| `tests/orchestrator/run-state-store.test.js:154` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
-| `tests/orchestrator/run-state-store.test.js:166` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
-| `tests/orchestrator/run-state-store.test.js:240` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
-| `tests/orchestrator/run-state-store.test.js:256` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
-| `tests/orchestrator/run-state-store.test.js:266` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
-| `tests/orchestrator/run-state-store.test.js:279` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
-| `tests/orchestrator/run-state-store.test.js:294` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
-| `tests/orchestrator/run-state-store.test.js:304` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
-| `tests/orchestrator/run-state-store.test.js:311` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
 | `tests/orchestrator/runtime-trace-export.test.js:12` | module | `public/scripts/agents/orchestrator/runtime-trace-export.js` | true |
 | `tests/orchestrator/schema/director-fields.test.js:7` | module | `public/scripts/agents/orchestrator/director-defaults.js` | true |
 | `tests/orchestrator/schema/director-fields.test.js:13` | module | `public/scripts/agents/orchestrator/persistence.js` | true |
@@ -425,7 +397,6 @@
 | `tests/orchestrator/skill-resolution-runtime-plumbing.test.js:135` | dynamic | `public/scripts/agents/orchestrator/spec-runtime.js` | true |
 | `tests/orchestrator/skill-resolution-scope-precedence.test.js:41` | dynamic | `public/scripts/agents/orchestrator/skill-resolution.js` | true |
 | `tests/orchestrator/skill-resolution-scope-precedence.test.js:242` | dynamic | `public/scripts/agents/orchestrator/skill-resolution.js` | true |
-| `tests/orchestrator/snapshot-cache-hits-invalidates.test.js:21` | module | `public/scripts/agents/orchestrator/snapshot-cache.js` | true |
 | `tests/orchestrator/spec-agenda-loop-three-modes.test.js:77` | dynamic | `public/scripts/agents/orchestrator/defaults.js` | true |
 | `tests/orchestrator/spec-agenda-loop-three-modes.test.js:78` | dynamic | `public/scripts/agents/orchestrator/agenda-profile.js` | true |
 | `tests/orchestrator/spec-agenda-loop-three-modes.test.js:79` | dynamic | `public/scripts/agents/orchestrator/persistence.js` | true |
@@ -454,11 +425,6 @@
 | `tests/skills-ui/playwright/run-panel-live.spec.js:152` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
 | `tests/skills-ui/playwright/run-panel-live.spec.js:259` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
 | `tests/skills-ui/skill-iter-studio-tools.test.js:80` | dynamic | `public/scripts/agents/orchestrator/skill-iter-studio-prompt.js` | true |
-| `tests/skills/run-pins.test.js:19` | dynamic | `public/scripts/agents/orchestrator/skill-resolution.js` | true |
-| `tests/skills/run-pins.test.js:20` | dynamic | `public/scripts/agents/orchestrator/skill-orchestration-tools.js` | true |
-| `tests/skills/run-pins.test.js:21` | dynamic | `public/scripts/agents/orchestrator/register-custom-tool.js` | true |
-| `tests/skills/run-pins.test.js:22` | dynamic | `public/scripts/agents/orchestrator/director-runtime.js` | true |
-| `tests/skills/run-pins.test.js:24` | dynamic | `public/scripts/agents/orchestrator/run-state/store.js` | true |
 | `tests/world-info/provenance.test.js:2` | module | `public/scripts/agents/orchestrator/lorebook-filter.js` | true |
 
 ## 根外间接消费者全集
@@ -738,8 +704,6 @@
 - `tests/agent-intelligence/live-bridge.js`
 - `tests/agent-intelligence/live-bridge.test.js`
 - `tests/agent-intelligence/live.mjs`
-- `tests/agent-intelligence/m1-acceptance.js`
-- `tests/agent-intelligence/m1-acceptance.test.js`
 - `tests/agent-intelligence/m1-development-selection.test.js`
 - `tests/agent-intelligence/m1-f2.js`
 - `tests/agent-intelligence/m1-f3-lifecycle.test.js`
@@ -836,7 +800,6 @@
 - `tests/atria-shell/studio-worlds-editor.test.js`
 - `tests/atria-shell/utility-workspaces.test.js`
 - `tests/atria-shell/workspace-host.test.js`
-- `tests/atria-shell/workspace-leave-guard.test.js`
 - `tests/atria-shell/world-editor.test.js`
 - `tests/bookmarks/_mocks/checkpoint-module-stack.js`
 - `tests/bookmarks/checkpoint-group.test.js`
@@ -1029,7 +992,6 @@
 - `tests/e2e/preset/53-cardbound-rename.e2e.js`
 - `tests/e2e/preset/54-cardbound-rename-collision-in-card.e2e.js`
 - `tests/e2e/preset/55-cardbound-rename-collision-across-origin.e2e.js`
-- `tests/e2e/preset/56-cardbound-delete-guard.e2e.js`
 - `tests/e2e/preset/58-hasUnsavedChanges-collision.e2e.js`
 - `tests/e2e/preset/59-hasUnsavedChanges-name-mismatch.e2e.js`
 - `tests/e2e/preset/60-cardbound-active-onSettingsPresetChange.e2e.js`
@@ -1288,9 +1250,6 @@
 - `tests/native/responses-provider-g04.test.js`
 - `tests/native/retrieval-compute-g05.test.js`
 - `tests/native/retrieval-runtime.test.js`
-- `tests/native/run-compute-retirement.test.js`
-- `tests/native/run-contract-p2.test.js`
-- `tests/native/run-policy-p2.test.js`
 - `tests/native/runtime-checkpoint-consumer.test.js`
 - `tests/native/runtime-http.test.js`
 - `tests/native/session-history-p2.test.js`
@@ -1323,7 +1282,6 @@
 - `tests/orchestrator-agent-preset-resolver/unit.test.js`
 - `tests/orchestrator-skills/skill-orchestration-tools.test.js`
 - `tests/orchestrator-skills/skill-resolution.test.js`
-- `tests/orchestrator/abort-mid-run.test.js`
 - `tests/orchestrator/agenda-host-gate.test.js`
 - `tests/orchestrator/agenda-spec-customs-seed.test.js`
 - `tests/orchestrator/agenda-tool-safety.test.js`
@@ -1335,7 +1293,6 @@
 - `tests/orchestrator/custom-tool-bridge-st.test.js`
 - `tests/orchestrator/custom-tool-flags.test.js`
 - `tests/orchestrator/custom-tool-iter-studio.test.js`
-- `tests/orchestrator/custom-tool-per-run.test.js`
 - `tests/orchestrator/custom-tool-portable-roundtrip.test.js`
 - `tests/orchestrator/custom-tool-register.test.js`
 - `tests/orchestrator/custom-tool-runtime-agenda.test.js`
@@ -1345,7 +1302,6 @@
 - `tests/orchestrator/custom-tool-sanitize.test.js`
 - `tests/orchestrator/custom-tool-studio-prompt.test.js`
 - `tests/orchestrator/default-custom-tools.test.js`
-- `tests/orchestrator/delegated-run.test.js`
 - `tests/orchestrator/director-default-prompt-presets.test.js`
 - `tests/orchestrator/director-factory-presets.test.js`
 - `tests/orchestrator/director-load-shape.test.js`
@@ -1373,12 +1329,10 @@
 - `tests/orchestrator/editor-ops/pipe-from.test.js`
 - `tests/orchestrator/editor-ops/reasoning-sections.test.js`
 - `tests/orchestrator/editor-ops/slicing.test.js`
-- `tests/orchestrator/ensure-settings-migration.test.js`
 - `tests/orchestrator/execution-mode-contract.test.js`
 - `tests/orchestrator/factory-preset-shape.test.js`
 - `tests/orchestrator/get-effective-profile-presets.test.js`
 - `tests/orchestrator/grep-tool.test.js`
-- `tests/orchestrator/iter-arg-validator.test.js`
 - `tests/orchestrator/iter-studio-lorebook-filter.test.js`
 - `tests/orchestrator/iter-studio-session-store.test.js`
 - `tests/orchestrator/loop-integration.test.js`
@@ -1398,18 +1352,14 @@
 - `tests/orchestrator/notes-panel-refresh.test.js`
 - `tests/orchestrator/open-notes-cross-mode-injection.test.js`
 - `tests/orchestrator/open-notes-injection.test.js`
-- `tests/orchestrator/per-run-custom-tools-isolation.test.js`
 - `tests/orchestrator/persistence-loop.test.js`
 - `tests/orchestrator/persistence.test.js`
 - `tests/orchestrator/resolve-tool-source.test.js`
-- `tests/orchestrator/run-state-helpers.test.js`
-- `tests/orchestrator/run-state-store.test.js`
 - `tests/orchestrator/runtime-trace-export.test.js`
 - `tests/orchestrator/schema/director-fields.test.js`
 - `tests/orchestrator/simulation-payload-adapter.test.js`
 - `tests/orchestrator/skill-resolution-runtime-plumbing.test.js`
 - `tests/orchestrator/skill-resolution-scope-precedence.test.js`
-- `tests/orchestrator/snapshot-cache-hits-invalidates.test.js`
 - `tests/orchestrator/spec-agenda-loop-three-modes.test.js`
 - `tests/orchestrator/system-prompt-patch.test.js`
 - `tests/orchestrator/tool-call-source-tagging.test.js`
@@ -1456,7 +1406,6 @@
 - `tests/skills-ui/skill-manager-panel.test.js`
 - `tests/skills/api.test.js`
 - `tests/skills/embed-lifecycle-orch-preset.test.js`
-- `tests/skills/run-pins.test.js`
 - `tests/skills/scope-picker.test.js`
 - `tests/startup-launcher-telemetry.test.js`
 - `tests/startup-milestone-telemetry.test.js`
@@ -1520,7 +1469,6 @@
 | `public/shared/native-frontend-media.js:35` | URL | `new URL(source.url)` |
 | `public/shared/native-safe-prose.js:6` | URL | `new URL(value)` |
 | `public/shared/novelai-illustration.js:32` | URL | `new URL(connection.endpoint)` |
-| `scripts/check-native-studio-health.mjs:12` | URL | `new URL('../' + path, import.meta.url)` |
 | `src/additional-headers.js:253` | URL | `new URL(server)` |
 | `src/atria-dispatch/providers/chat-completions/azure-openai.js:84` | URL | `new URL(\`/openai/deployments/${azure_deployment_name}/chat/completions\`, azure_base_url)` |
 | `src/atria-dispatch/providers/chat-completions/claude.js:122` | URL | `new URL(body.reverse_proxy &#124;&#124; body.base_url &#124;&#124; API_CLAUDE)` |
@@ -1654,7 +1602,6 @@
 | `tests/frontend/native-frontend-script.smoke.mjs:44` | URL | `new URL(req.url, 'http://localhost')` |
 | `tests/frontend/native-frontend-v3.smoke.mjs:14` | URL | `new URL(req.url, 'http://localhost')` |
 | `tests/frontend/native-play-window.smoke.mjs:20` | URL | `new URL(req.url, 'http://local')` |
-| `tests/frontend/workspace-baseline-check.mjs:13` | URL | `new URL(route.request().url())` |
 | `tests/google-models.test.js:57` | URL | `new URL(fetchMock.mock.calls[0][0])` |
 | `tests/google-models.test.js:62` | URL | `new URL(fetchMock.mock.calls[1][0])` |
 | `tests/google-models.test.js:73` | URL | `new URL(fetchMock.mock.calls[0][0])` |

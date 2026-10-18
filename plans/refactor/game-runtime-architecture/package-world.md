@@ -65,8 +65,6 @@ The exact directory names may evolve during implementation, but the separation o
 - minimum Atria runtime version;
 - optional advanced UI module entrypoints.
 
-The manifest must be schema validated before runtime activation.
-
 ### 4.3 Distribution and interchange formats
 
 A Game Package travels with the character card, but Atria must distinguish **compatibility interchange formats** from the long-term native package ceiling.
@@ -88,7 +86,6 @@ Requirements shared by all package transports:
 - nested files round-trip;
 - binary assets round-trip without semantic loss;
 - path traversal remains rejected;
-- package metadata is validated;
 - imports normalize into Atria's internal per-character/project representation;
 - export format does not change Game Runtime semantics;
 - ordinary character-card semantics remain usable when Game Runtime is unavailable.
@@ -148,23 +145,14 @@ The native package manifest should eventually support:
 - Atria runtime compatibility;
 - declared entries/components;
 - capability/permission summary;
-- optional integrity hashes;
 - optional dependency metadata;
 - optional localization metadata.
-
-Path normalization, archive bomb/resource limits, traversal protection and manifest validation are mandatory before extraction.
 
 ### 4.5 Source project vs distribution artifact
 
 Game Studio authors should work against an unpacked project tree, not edit a compressed .atria archive directly.
 
 Conceptually:
-
-~~~text
-authoring project directory
- -> validate/build
- -> distributable .atria package
-~~~
 
 The source project may contain authoring-only files such as tests, Studio metadata or development history that do not all need to enter the runtime package.
 
@@ -243,7 +231,6 @@ Narrative Card
 
 Creating a Game Package must be an explicit author action. Atria must not silently “upgrade” ordinary cards into game projects.
 
-
 ---
 
 ## 5. World Runtime
@@ -254,7 +241,6 @@ Each game defines a formal schema for authoritative state.
 
 Schema should support enough metadata to power:
 
-- validation;
 - defaults;
 - Studio form generation;
 - formula autocomplete;
@@ -274,8 +260,6 @@ State constraints should include, where applicable:
 - references;
 - entity identifiers;
 - optional derived/readonly annotations.
-
-Schema validation occurs before commits.
 
 World Schema is intentionally author-defined. Runtime code must not special-case canonical RPG paths such as `player.hp`, `player.mp`, `inventory` or `quests`.
 

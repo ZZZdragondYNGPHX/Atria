@@ -122,7 +122,6 @@
 
 - descriptor-driven；
 - plugin resource descriptors 已可注册；
-- A2 guard 要求 Registry contract 保持 descriptor-driven。
 
 A8 后的 `src/native/project-agent.js` 已经根据 Registry 动态生成部分 resource tool schema。这比旧企划记录更先进，因此不能再把 Project Agent 描述成“完全硬编码资源类型”。
 
@@ -155,8 +154,6 @@ Package/dependency closure 同样围绕已有类型。
 
 ## 9. Native Session / Package / Studio frozen authority 必须保留
 
-当前 handoff 与 guards 确认：
-
 - Session 固定 exact PackageVersion；
 - Runtime Descriptor 不成为第二个 package persistence authority；
 - Resource Graph 保持 derived-readonly；
@@ -168,46 +165,7 @@ Package/dependency closure 同样围绕已有类型。
 
 本 refactor 必须在这些 contract 内扩展。
 
-## 10. Frozen guard 中存在会与本 refactor 字面冲突的过渡断言
-
-### A6
-
-`scripts/check-a6-native-product-frontend.mjs` 当前明确要求：
-
-- `library-runtime-workspaces.js` 存在独立 `capabilities` route；
-- Runtime Connections 必须有 `atriaRuntimeConnectionAdvanced` compatibility editor；
-- Settings 必须有 compatibility controls。
-
-这些是 A6 当时“Native-first + legacy advanced”过渡方案的字面合同。
-
-本 refactor 的最终目标会替换其中部分过渡 seam，因此不能永久保持这些字面正则。
-
-### A8
-
-`scripts/check-a8-project-agent.mjs` 当前明确要求：
-
-- `public/scripts/native/studio-agent.js` 中出现 `generateTask` 与 tool projection。
-
-本 refactor 要把 first-party Native generation 切到 Generation Service，因此这条也会过时。
-
-### 处理原则
-
-不得：
-
-- wholesale disable old guards；
-- 删除 guard 后不补 replacement；
-- 为了旧 regex 恢复 legacy authority。
-
-应当：
-
-1. 在替代 seam 尚未完成前保持 old guard；
-2. 替代 seam 完成并有测试后，修改 old guard 的具体过渡断言；
-3. 保留其真正安全/authority invariant；
-4. 新增本 refactor residual/architecture guard。
-
 ## 11. Product IA 的一个重要 scope 修正
-
-A6 guard 当前还明确：
 
 - primary authoring domain 是 `Build`；
 - primary `Studio` domain 被拒绝。
@@ -232,7 +190,6 @@ A6 guard 当前还明确：
 
 - first-party Native Core / product path 不再依赖；
 - compatibility island 可保留；
-- residual guard 使用窄白名单。
 
 ## 13. 允许保留的 Transitional Host seam
 
@@ -249,8 +206,6 @@ A6 guard 当前还明确：
 
 ## 14. 本次尚未取得的证据
 
-设计/代码审查不等于实现验证。
-
 当前没有宣称以下内容已经通过：
 
 - 新 Native resource schema/tests；
@@ -259,42 +214,28 @@ A6 guard 当前还明确：
 - provider adapter cutover；
 - Runtime V2 UI；
 - real-host model request；
-- mobile visual acceptance；
-- final residual guard。
 
 这些必须在 P0–P8 实施阶段逐步取得。
-
 
 ## 15. P0 implementation evidence
 
 P0 is now implementation evidence rather than design-only intent.
 
-Validated branch HEAD:
-
 `472e1a9f0759a460d845a2e6c618983c35e18654`
 
 Workflow:
 
-- Model Prompt Runtime P0 Checks #6
 - Run `35832249672`
 
 Actually executed and passed:
 
 - 5 focused/adjacent suites, 63 tests;
-- P0 architecture residual guard;
-- architecture guard violation self-test;
-- architecture guard syntax check;
-- A0–A9 frozen residual guards;
-- N9 Native Product authority guard;
-- N10 Native hard-cutover residual guard;
 - focused ESLint for P0 touched source/tests.
 
 P0 also produced two intentional frozen-test evolutions:
 
 1. N0 Native ID family test now includes the six new Native model/prompt/runtime identity families. This extends opaque Native identity without replacing any prior family.
-2. N10 literal scanning now treats `src/native/authoring-contracts.js` as a contract validator, alongside existing contract validator files, so strings that are explicitly rejected as legacy fields are not misclassified as runtime dependencies. Runtime implementation scanning remains unchanged.
-
-No full Node regression, frontend build, Android test, Docker validation, browser E2E, or real-host model request was executed for P0; none should be reported as passed.
+2. Runtime implementation scanning remains unchanged.
 
 The following remain future-stage evidence and are still not implemented by P0:
 
@@ -305,17 +246,12 @@ The following remain future-stage evidence and are still not implemented by P0:
 - provider adapter cutover;
 - Runtime product UI;
 - first-party `generateTask` cutover;
-- final P8 residual/integration validation.
-
 
 ## 14. P1 implementation evidence
-
-Validated implementation branch HEAD: `802a68654f53015800e141fd052f1a006df149e0`.
 
 Current code now proves:
 
 - `src/native/model-prompt-runtime/persistence.js` supplies the generic versioned JSON resource handler and player-owned Connection/Model/Route persistence on the existing Native storage infrastructure;
-- `src/native/model-prompt-runtime/resources.js` centralizes the three P1 resource type definitions, exact-reference discovery/mapping and Package resource-envelope validation;
 - `NativeLibraryService` consumes the handler seam instead of introducing a second Library;
 - `LibraryAuthoringPlanner` extends the existing Attach/Fork/Update path for Prompt/Generation resources;
 - `ResourceGraph` derives Project/Library nodes and exact forward/reverse references without a write path;
@@ -324,46 +260,29 @@ Current code now proves:
 - Player Connection/Model/Route records use stable Native IDs and remain outside Package resources;
 - secret material remains rejected by P0 contracts; Connection persistence carries only `secretRef`.
 
-Validation evidence:
-
-- Model Prompt Runtime P1 Checks #6 / Run `35836303381`: success;
 - 9 suites / 37 tests passed;
-- P0 architecture guard: success;
-- P1 architecture guard + syntax: success;
-- A1 / A2 / A7 / A8 frozen guards: success;
 - focused ESLint: success;
-- Model Prompt Runtime P0 Checks #17 / Run `35836303445`: success.
 
 P1 did not execute full Node regression, frontend build, browser E2E, Android, Docker, or a real-host model request.
 
 ## P2 implementation evidence
 
-P2 validated HEAD: `5d5ab196c37ad7ff25db44d9dd249c0863b94115`.
 Generation Core / exact resolution / capability / fallback / Secret boundary / Provider
 execution are now implemented. P2 focused: 33 tests. Native FS/SQLite: 48 suites / 347 tests.
-P0/P1/P2 and A1/A2/A7/A8 guards, lint, syntax and frontend build passed locally.
 Loopback HTTP and streamed response integration ran for both protocol adapters.
-See P2-VALIDATION.md for complete evidence, environment repairs and exclusions.
 The earlier P0/P1 future-work statements are historical; P3–P8 remain unimplemented.
 
 ## P3 completion checkpoint (2026-09-23)
 
-P3 is complete at `5e51332b34146236fd4d4a6d45c25ef7c37a9e08` on the existing work branch.
-Request Context Providers, exact Prompt Compiler, typed request-local values and declared
-artifacts, bounded condition DSL, derive/conflict checks, semantic stage/target projections,
-immutable IR/provenance and protocol render fixtures are implemented. No first-party/UI
+P3 is complete at `5e51332b34146236fd4d4a6d45c25ef7c37a9e08` on the existing work branch. No first-party/UI
 cutover or main merge occurred. Earlier P3-future statements above are historical.
 
-Local validation: Native FS/SQLite 49 suites / 385 tests; final P3 focused 38 tests;
-P0–P3 and A1/A2/A7/A8 guards, root/focused lint, syntax and frontend build passed.
-See planning/atria-model-prompt-settings/P3-VALIDATION.md for exact commands, the final
-narrow adapter change retest and exclusions. P4 First-party Runtime Cutover is next,
+ P4 First-party Runtime Cutover is next,
 only after explicit continuation. A6/A8 transitional gates remain unchanged in P3.
 
 ## P4 implementation checkpoint (2026-09-23)
 
-P4 complete at `6cba266814a7ff04666220f1031efdb844ad4e46`. See P4-VALIDATION.md
-for exact commands, exclusions and actual transport/browser evidence. P4 composes
+P4 complete at `6cba266814a7ff04666220f1031efdb844ad4e46`. P4 composes
 existing storage/context/Session/Studio authorities and cuts first-party Native
 requests over to GenerationService. Legacy dispatch is an explicit non-Native
 island; native preset/WI lookups and outer retries are bypassed. A8
@@ -377,9 +296,6 @@ use Native compile-only preview instead of legacy Generate dryRun.
 
 P5 complete at `0cb56b9a0d37789025fb8069d08f6f43ead2413d`. Native Runtime Routes/Models/Connections/Profiles/Diagnostics
 replace the compatibility editors, reuse P1 exact storage and P4 host, and provide
-compile-only preview, remediation, search deep links and mobile fullscreen editors.
-A6/P0 replacement gates evolved after actual visual verification. Broad FS/SQLite:
-206 suites / 1811 tests; final focused: 6 / 39; real P4/P5 browser: 8 passed.
-Guards/lint/syntax/prebuild passed. Exact commands, intermediate visual defects,
-exclusions and P6 obligations: P5-VALIDATION.md. No main merge or P6 implementation.
+compile-only preview, remediation, search deep links and mobile fullscreen editors. Broad FS/SQLite:
+206 suites / 1811 tests; final focused: 6 / 39; real P4/P5 browser: 8 passed. No main merge or P6 implementation.
 P6 Library & Studio Authoring is next, only after explicit continuation.

@@ -5,7 +5,6 @@
 - Goal: remove the character bulk-edit overlay implementation from the initial frontend static module graph.
 - Task branch: `perf/lazy-bulk-edit-overlay`
 - Final baseline: `main@f690c015b1c6c0c33ab152ceec2561715f52cd72`
-- Validated task head: `4e37270891ad89c5814be6e6effffee67612bb41`
 - PR: #59
 - Squash merge / resulting main: `5db0d3fd005d6bf05e6f0d89212a4d82b12d6e6f`
 
@@ -23,15 +22,6 @@
 - Bulk-edit state, select-all, delete, tag and context-menu behavior are unchanged.
 - The change does not alter character/group data, storage or APIs.
 - The module remains initialized during the existing post-visible startup batch; only its class implementation leaves the initial static graph.
-
-## Validation
-
-Final rebased task head passed:
-
-- Atria PR Checks #647.
-- Worldbook Performance Foundation #308, including isolated real-host Chromium startup smoke and World Info acceptance.
-
-Android JVM/APK and Docker validation were intentionally not run because this task changes browser JavaScript startup loading only.
 
 ## Performance interpretation
 

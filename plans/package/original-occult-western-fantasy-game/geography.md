@@ -471,8 +471,6 @@ The game rejects a simple ending where discovering a definitive list automatical
 
 Four decades of later reality now depend on current property, families, institutions, contracts, infrastructure and civil status.
 
-Restoring an older Truth may invalidate or destabilize present Bonds.
-
 A central thematic question is therefore:
 
 **should every buried truth be restored if the present has become real around the compromise?**
@@ -544,4 +542,3 @@ Approved:
 - first long mystery beginning with the second death of an already-dead person;
 - civic Identity of rational competence;
 - possible deeper pre-modern Boundary cause reserved for later revelation.
-

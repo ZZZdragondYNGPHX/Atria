@@ -31,29 +31,6 @@ The Native UI authoring reference documents the distinction:
 - `command.dispatch` -> declared World Command;
 - `application.command` -> declared Session Application Domain/Command.
 
-## Validation
-
-Targeted GitHub Actions run `36386573137`: **success**.
-
-The targeted job executed:
-- syntax checks for `v2-document.js` and `v2-runtime.js`;
-- `game-runtime/ui-v2.test.js`;
-- `game-runtime/lifecycle-client-p4.test.js`;
-- `native/background-task-app-bridge-g2.test.js`;
-- `native/lifecycle-contract-p4.test.js`.
-
-The added UI v2 tests prove:
-- Session Application writes use the Host lifecycle client and do not call World authority;
-- an uncertain transport retry reuses the exact original App Command payload and generated record identity;
-- explicit projected record identities are supported;
-- missing Domain declarations and mixed double-authority writes fail closed.
-
-The repository-wide PR Unit Tests job also ran incidentally and reported the already-existing unrelated `native/model-prompt-runtime-p4.test.js` Session-snapshot fixture failure; 811/812 suites and 10277/10278 tests passed. This was not used as Phase 5 validation and was not modified.
-
-The Native Model Prompt Runtime workflow failed at the already-known pre-existing `src/native/adapters/generation-host.js` architecture guard. It is unrelated to this Gap and remains unchanged.
-
-No Android, Docker, paid provider inference, or Phase 6 validation was run.
-
 ## Boundary
 
 This seam only lets declarative Native UI invoke an already-declared Session Application typed Command. It does not:

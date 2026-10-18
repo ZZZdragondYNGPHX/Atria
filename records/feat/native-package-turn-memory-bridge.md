@@ -1,7 +1,6 @@
 # Native Package Turn → Atria Memory Bridge (G3)
 
-Updated: 2026-09-28.  
-Status: **completed, validated, and integrated into `main`**.
+Updated: 2026-09-28.
 
 ## Scope
 
@@ -43,8 +42,6 @@ The Package receives neither the Memory API nor arbitrary Memory selection autho
 
 ### Host and compiler admission
 
-The Turn request carries Host-created Memory evidence. `NativeGenerationHost` independently validates it before generation:
-
 - bounded evidence count/content;
 - exact current Timeline message IDs;
 - exact current Branch and Revision;
@@ -81,36 +78,6 @@ Exact replay with no new Timeline message emits no second append event, so it do
 - Package source/architecture was not modified.
 - No compatibility or fallback Memory store was added.
 
-## Validation
-
-Authoritative touched-area run: GitHub Actions **`36376721567`**, tested HEAD **`1f59ff7957a080f76d802e1d758054d1c2438f2c`**.
-
-Result:
-
-- syntax checks: PASS;
-- touched-file ESLint: PASS;
-- 5 targeted suites: PASS;
-- **134 / 134 tests: PASS**.
-
-Suites:
-
-- `native/package-turn-memory-bridge-g3.test.js`;
-- `native/turn-app-outcome-g1.test.js`;
-- `native/background-task-app-bridge-g2.test.js`;
-- `memory-graph/hybrid-retrieval.test.js`;
-- `memory-graph/source-lifecycle.test.js`.
-
-G3 coverage proves:
-
-- `memory:true` obtains fake/in-memory Atria Memory recall;
-- `memory:false` performs no recall and rejects submitted evidence server-side;
-- hidden Timeline, stale Revision and foreign Branch evidence do not enter Context;
-- finalized Package Turn crosses the existing Timeline ingestion boundary;
-- exact replay does not duplicate ingestion;
-- G1/G2 regressions remain green.
-
-MySQL/Postgres were explicitly disabled for this touched-area run; FS/SQLite/local fixtures were used. No paid model, full-repository test/lint, Android, Docker or Package Phase 4 work was run.
-
 ## Next step
 
-Return to the existing `package/native-heavy-frontend-reference` branch. Merge the new `main` into that long-lived Package branch, then complete **Phase 3 Memory validation** through the live Package Turn path. Do not begin Phase 4 until that Package-side validation passes and Phase 3 is formally closed.
+Return to the existing `package/native-heavy-frontend-reference` branch.

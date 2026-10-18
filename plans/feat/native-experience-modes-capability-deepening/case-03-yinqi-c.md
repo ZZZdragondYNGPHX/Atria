@@ -161,15 +161,6 @@ ModelTaskResultPolicy
 
 合法路径仍然是：
 
-```text
-Model Result
-→ schema validation
-→ semantic proposal
-→ domain validator / rule
-→ typed Command / Event
-→ World Reducer
-```
-
 不能得到：
 
 `world.patch`
@@ -200,8 +191,6 @@ Package 可以声明：
 但这不能等价于：
 
 > “这个 Task 获得 World write 权限。”
-
-Host 必须检查：
 
 - Package 是否存在对应 typed result adapter；
 - adapter 是否只映射到已注册 Command；
@@ -239,22 +228,6 @@ Result Adapter 也不能是 Package JavaScript。
 
 每个可持久化 Task result 至少应能追溯：
 
-```text
-Task Result Record
-├─ taskId / invocationId
-├─ task definition revision
-├─ execution class
-├─ Session / Branch / Revision anchor
-├─ ContextPlan snapshot ref/hash
-├─ Runtime Route snapshot
-├─ Prompt Program / Generation refs
-├─ raw/normalized result hash
-├─ validation outcome
-├─ result class
-├─ applied receipt / committedRevisionId
-└─ diagnostics
-```
-
 Secret 与 provider credential 永远不进入该记录。
 
 这使：
@@ -279,7 +252,6 @@ Secret 与 provider credential 永远不进入该记录。
 - timeout / abort；
 - busy detection；
 - 自动生成队列上限；
-- 同一角色跨 chat / group / forum / live 的 cooldown / conflict guard。
 
 这些不是某个具体 phone App 的能力。
 
@@ -420,27 +392,14 @@ world_dynamics(revision 102)
 
 至少需要：
 
-```text
-user stop
-session switch
-branch fork
-retry from earlier revision
-experience exit
-task superseded
-dependency invalidated
-```
-
 能够取消仍未提交的 Task。
 
 对于已经发出的 provider 请求：
 
 - 尽力 Abort；
-- 即使 provider 不合作，晚回结果仍需 anchor/stale 检查；
 - cancelled Task 永远不能凭“请求已经完成”恢复写权限。
 
 因此：
-
-> Cancellation 与 stale-result check 是两层保护，不是二选一。
 
 ### 26.43 Actor / Channel 冲突不应变成全局 mutex API
 
@@ -696,8 +655,6 @@ Host 使用这些 claim 判断：
 
 `reviewing`
 
-但 reward Action 在 Task result validate + commit 前保持不可用。
-
 ### 26.49 Component / Action 应读取 Operation Projection
 
 Component Model v2 的 read-only context 不应只有：
@@ -757,15 +714,6 @@ Provisional Presentation
 ```
 
 #### 主 Narrative
-
-```text
-stream chunks
-→ provisional prose
-→ final response complete
-→ validate Turn Contract
-→ atomic Turn commit
-→ committed Variant
-```
 
 如果：
 

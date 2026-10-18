@@ -1,11 +1,11 @@
 # S27：原文字消费者的有界 ExpressionPlan
 
-状态：2026-10-13 有限文字工程消费者及真实单样本语义对照完成；工程source `4fe3a172a`，live脚本 `c5447144a`。两臂同原foundation Prompt，声明ExpressionPlan组的7维模型观察均通过；旧路径在角色话语与安抚意图两项未通过，其余通过。3次HTTP200共6703tokens，不声称统计收益或人工偏好。依赖原S18/S25工程消费者；M4的实际provider出口与更广泛收益分别记录。S28的Windows本地语音消费者与S29原renderer实际画面已验证，各自范围见对应模块和Record；不自动播放声音。
+状态：2026-10-13 有限文字工程消费者及真实单样本语义对照完成；工程source `4fe3a172a`，live脚本 `c5447144a`。两臂同原foundation Prompt，声明ExpressionPlan组的7维模型观察均通过；旧路径在角色话语与安抚意图两项未通过，其余通过。3次HTTP200共6703tokens，不声称统计收益或人工偏好。依赖原S18/S25工程消费者；M4的实际provider出口与更广泛收益分别记录。不自动播放声音。
 
 作品在原Information narration中显式声明可选expression：绑定已有Actor、有限communicative intent（inform/ask/reassure/decline/reflect）及已有context和display view共同选择的source。不新增Library资源、心理state writer、ExpressionTask、自动推断用户意图或每回合默认模型调用。现有Actor表达资源和Narration Prompt仍是语言/文风authority。
 
 ExpressionPlan是当前exact snapshot上的只读派生物，只选择原Player disclosure中该Actor获准、source-current的有界items与其原epistemic/认知qualifiers。不复制private context、emotion数值或rationale，没有独立display grant就不能用作公开文字依据；belief、appraisal、intention仍分别是解释、认知状态和计划，不成为World Truth/已发生行为/Goal完成。表达意图不替玩家动作或强制角色心理行为。
 
-原context compiler把同一typed plan送入已有prose consumer，沿原Host/source fingerprints、prompt模块、provider、Task/Run预算、取消与late result复验，不另建authority或发布出口。没有配置保持旧路径；公开依据缺失/陈旧/不可用、超界或projection截断时typed文字fallback，不从隐藏记录补齐，也不捏造音频/gesture结果。plan不能作为客户端回传的publication proof，跨revision/scope的变更要重新派生。
+没有配置保持旧路径；公开依据缺失/陈旧/不可用、超界或projection截断时typed文字fallback，不从隐藏记录补齐，也不捏造音频/gesture结果。plan不能作为客户端回传的publication proof，跨revision/scope的变更要重新派生。
 
-本地验证覆盖strict声明/旧schema兼容、公开/私有与他者隔离、认知qualifiers/current/fallback、真实installed Host到本地HTTP adapter的文字输入和原费用、取消/late/source-change拒绝；本地adapter仅证明工程消费，不替代真实语义与质量观察。S28真实音频/延迟及S29真实画面保持独立出口。
+本地adapter仅证明工程消费，不替代真实语义与质量观察。S28真实音频/延迟及S29真实画面保持独立出口。

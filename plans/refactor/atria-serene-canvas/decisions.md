@@ -8,20 +8,16 @@
 
 - **Decision:** 采用已接受 v0.1 的温纸画布、深灰墨色、衬线叙事、悬浮导航、画廊资源与白纸工作台方向。参考稿的精致程度是后续视觉设计的基线。
 - **Reason:** 各域需要具有辨识度且一致的审美，专业密度与沉浸阅读共同成立。
-- **Affected modules:** `visual.md`, `coverage.md`, `validation.md`。
 
 ### 2. 首轮只设计浅色主题
 
 - **Decision:** 当前重构范围仅含浅色系统界面，不增加暗色主题设计。旧用户配置和数据兼容问题按 `migration.md` 研究，不据此自动扩展主题范围。
-- **Reason:** 使当前视觉与验证目标明确。
-- **Affected modules:** `visual.md`, `coverage.md`, `migration.md`, `validation.md`。
 - **后续范围:** 设置与明暗主题扩展由 [Atria 设置界面与原生主题重构](../atria-settings-and-themes/index.md) 接续；其详细设计归该 Bundle，本节保留 Serene Canvas 首轮范围的历史。
 
 ### 3. 不加入选文重生成
 
 - **Decision:** 不实现“选中正文段落 → 重生成”。旧 swipe、逐消息重生成与旧消息按钮不自动成为新默认 Play 的需求。
 - **Reason:** 该能力来自外部设计稿的自行添加，已明确排除。现有历史修订与分支能力按真实源码完整呈现。
-- **Affected modules:** `coverage.md`, `migration.md`, `validation.md`。
 
 ### 4. 新能力需要单独讨论
 
@@ -31,39 +27,33 @@
 
 ### 5. 旧外观舍弃，必要设施积极原生化
 
-- **Decision:** 按用户价值舍弃旧聊天控件；对仍承担生成、停止、会话、设置或扩展职责的兼容设施，研究并实施可验证的原生替代。复用已有服务、状态和持久层，保持既有用户数据语义。
+- **Decision:** 按用户价值舍弃旧聊天控件；复用已有服务、状态和持久层，保持既有用户数据语义。
 - **Reason:** 旧 DOM 不是长期产品架构目标，现有原生执行链已提供替代切口。
-- **Affected modules:** `migration.md`, `coverage.md`, `validation.md`。
 
 ### 6. 沿实际技术栈改造素材
 
 - **Decision:** 沿 Atria 当前原生 ES modules / DOM / CSS 架构设计，复用现有组件与权威。素材的 React/Tailwind 实现不构成迁移整个项目的理由；新增依赖以具体实现价值判断。
 - **Reason:** 同一交互机制可适配当前产品架构，避免引入平行状态和持久化系统。
-- **Affected modules:** `visual.md`, `migration.md`, `validation.md`。
 
 ### 7. HTML 与方案共同成为实施依据
 
 - **Decision:** 讨论中持续更新可浏览 HTML；已接受视觉快照、最新讨论稿与文字方案保持可区分。正式实施同时读取相关 HTML 和领域模块，实质视觉偏离先更新稿件并讨论。
 - **Reason:** 具体稿件可固定布局、比例、材质与交互关系，防止仅凭文字自由发挥。
-- **Affected modules:** `visual.md`, `coverage.md`, `validation.md`。
 
 ### 8. Runtime 缺项引导与完整编辑并存
 
 - **Decision:** 首次/未就绪时显示当前用途的缺项与明确下一步，跳转到真实 Connection、Model、Prompt/Generation、Route 配置页；熟练用户可直接进入完整编辑。
 - **Reason:** 初次配置需要清楚的去向，高级配置仍需完整表达。引导不自动创建整套资源，也不假定所有 adapter 都需要 Secret。
-- **Affected modules:** `coverage.md`, `visual.md`, `validation.md`。
 
 ### 9. Agents 默认时间线，保留 Graph
 
-- **Decision:** 运行页默认时间线，点击事件检查节点、工具调用、记忆与来源证据；同时保留 Graph 切换。手机优先时间线，详情使用同体系 Bottom Sheet。
+- 同时保留 Graph 切换。手机优先时间线，详情使用同体系 Bottom Sheet。
 - **Reason:** 运行过程和证据应先可阅读，再按需要进入拓扑与技术细节。
-- **Affected modules:** `coverage.md`, `visual.md`, `validation.md`。
 
 ### 10. Play 默认回到上次阅读
 
 - **Decision:** Dock 的 Play 入口优先回到有效的最近会话阅读，保留可发现的最近会话首页入口；没有可恢复会话或缺少精确 Work 版本时显示首页与修复去向，不自动新建故事。
 - **Reason:** 持续阅读应保持位置和上下文，最近会话与新作品探索仍需可达。
-- **Affected modules:** `coverage.md`, `visual.md`, `validation.md`。
 
 ### 11. Dock 边缘吸附与隐藏
 

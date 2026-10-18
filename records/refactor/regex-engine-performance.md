@@ -7,9 +7,7 @@ Reduce regex-system stalls as active rule counts grow, especially when many rule
 - Baseline: `main@9b9801ab941f8bb0c08a3cbf52974b045a96da82`
 - Task branch: `refactor/regex-engine-performance`
 - PR: #22
-- Final validated task head: `345e4f06f6169c7383ae840997775c5cc3dfb669`
 - Squash merge / resulting `main`: `21f11b93f0e165485488236b74072a12c7df0c4e`
-- Validated task tree is identical to the merged `main` tree.
 
 ## Root cause
 
@@ -34,17 +32,6 @@ The plan:
 - keeps invalid-placement handling and ReDoS reporting intact.
 
 Plain runtime provider callbacks remain dynamic and are evaluated on every call. Their output is narrowed by placement/lane without being persisted into the static plan.
-
-### Cache invalidation
-
-The plan revision is invalidated by normal regex mutation paths, including:
-
-- global/scoped/preset `saveScriptsByType()`;
-- scoped/preset allow/disallow changes;
-- preset embedded-regex import/clear paths;
-- Regex Debugger rule-order saves.
-
-This avoids stale execution plans after edits, imports or reorder operations.
 
 ### Compiled RegExp cache
 
@@ -89,25 +76,3 @@ The editor surfaces a small active duplicate/conflict summary without changing r
 - No automatic rule deduplication.
 - Existing placement, lane, edit, depth and sequential replacement semantics are preserved.
 - Runtime provider callbacks remain dynamically evaluated.
-
-## Validation
-
-PR Checks passed on final task head `345e4f06f6169c7383ae840997775c5cc3dfb669`:
-
-- Atria Migration Guard
-- ESLint
-- frontend libraries build
-- complete Node unit suite
-
-New regression coverage verifies:
-
-- static plan reuse;
-- plan invalidation after persisted saves;
-- runtime providers remain dynamic;
-- static-before-runtime ordering;
-- duplicate rules still execute sequentially;
-- duplicate/conflict diagnostics;
-- non-overlapping placement/lane rules are not false-positive conflicts;
-- compiled-regex capacity grows beyond the historical 1000-rule ceiling.
-
-Android JVM/APK and Docker builds were not run because this task changes browser JavaScript/CSS/HTML only and those validations remain opt-in.

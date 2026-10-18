@@ -11,10 +11,8 @@ Fix two user-visible regressions reported from Android:
 
 - Baseline: `main@9dc4cf842ca20d95caa07dfefb51efe856ce80f5`
 - Task branch: `fix/workbench-backup-restore-ui`
-- Final validated task head: `2d0ffd0b6863befd2d851c7b664a345f7fa23642`
 - PR: #14
 - Squash merge / resulting `main`: `dbaf8f2f397220a4e9544e44df55a114ea408067`
-- Merged tree: `834345892694a4c58dfc4530a9b55d6616327d4c` (identical to validated task-head tree)
 
 ## Field evidence
 
@@ -47,33 +45,10 @@ The mandatory pre-restore recovery snapshot also used synchronous recursive file
 - Give the restore button native `disabled` state in addition to visual state.
 - Add a preflight generation token so stale async preflight responses cannot re-enable the wrong restore state.
 - Request `application/x-ndjson` for archive restore and consume the existing backend progress stream.
-- Show explicit restore phases in the Backup & Sync Center: archive analysis, recovery snapshot, extraction/write, storage conversion, and final verification.
 - Preserve JSON fallback for older/non-streaming backend responses.
 - Disable conflicting archive/mode/category controls while a restore is active.
 - Change migration snapshot/rollback directory copies from synchronous `cpSync` to awaited `fs.promises.cp`, keeping the event loop responsive while preserving completion ordering.
-- Guard same-mode filesystem restore with the migration lock/read-only gate so asynchronous snapshotting cannot race normal writes.
 - Add backend phase logging for analysis, recovery-point creation, extraction progress, and completion/failure timing.
-
-## Validation
-
-Final task head passed:
-
-- Atria Migration Guard;
-- ESLint;
-- complete Node unit suite;
-- Workspace UI workflow;
-- Backup & Storage UI workflow;
-  - Backup Center Chromium;
-  - Browser Storage Chromium;
-  - Server Storage Chromium.
-
-New regressions cover:
-
-- hidden Memory maintenance rows so detached help buttons cannot remain visible;
-- successful restore preflight enabling the native restore button;
-- NDJSON restore progress consumption and final UI state.
-
-Android JVM tests and Android/Docker builds were not run because this task did not change Android/Kotlin or container delivery code and those checks are opt-in under repository policy.
 
 ## Data/config impact
 

@@ -16,11 +16,6 @@ reveal the failed section and its ancestors before focusing a control. Stage
 renaming updates disclosure identity. Existing module ordering and picker scroll
 anchoring are retained; no stage ownership or module eligibility changes.
 
-Validation: 15 unit tests across prompt authoring/semantics passed. Four Edge
-scenarios at 1440px/390px passed default-collapse, new-stage expansion, local
-validation reveal, preset save state, module insertion position, sorting and
-module-category workflows. Program screenshots inspected at both widths.
-Changed-file ESLint had no errors (two existing conditional-test warnings in
-05-native-authoring-p6); localization and whitespace checks passed. Older
+ Program screenshots inspected at both widths. Older
 authoring browser scenarios were updated to open sections but not executed.
 No Android/Docker builds or external model calls. Local integration only.

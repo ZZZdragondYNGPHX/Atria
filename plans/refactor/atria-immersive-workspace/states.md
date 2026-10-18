@@ -2,11 +2,11 @@
 
 ## Responsibility
 
-本模块负责 UI 生命周期，复用现有对象与操作 authority。拟新增草稿往返、来源级重试或恢复能力时先核对现有控制器；缺失能力作为工作包实现，不能仅靠样例状态变量宣称完成。
+本模块负责 UI 生命周期，复用现有对象与操作 authority。缺失能力作为工作包实现，不能仅靠样例状态变量宣称完成。
 
 ## State matrix
 
-| 状态 | 呈现与可操作项 | authority / 接线要求 | 验收观察 |
+| 状态 | 呈现与可操作项 | authority / 接线要求 ||
 | --- | --- | --- | --- |
 | loading | 保留标题、范围和导航；说明加载对象 | 订阅当前 scope，dispose 后不更新页面 | 延迟响应不会污染新对象 |
 | empty | 区分未创建、无搜索结果、上下文不适用 | 从真实结果和 capabilities 判断 | CTA 去准确的创建/返回位置 |
@@ -16,11 +16,11 @@
 | reviewing | 展示对象、确切基准、差异、影响和取消 | 复用原 Review/ChangeSet/preflight | 取消不写入，不丢草稿 |
 | submitting | 阻止重复提交，保留操作上下文 | 服务侧 receipt/idempotency 或既有操作保证 | 双击不会产生两个实体/提交 |
 | committed | 呈现已保存修订/结果 | 服务返回真实成功，不依赖列表刷新 | 刷新失败不重放成功写入 |
-| save failed | 就近错误；草稿/选择保留，可重试 | 区分验证、权限、网络、存储原因 | 重试仍基于同一确切对象 |
-| conflict / stale | 展示最新变化；重新载入/重新审阅 | CAS/base revision/preflight 二次检查 | 不静默覆盖，不自动 latest |
+| save failed | 就近错误；草稿/选择保留，可重试 || 重试仍基于同一确切对象 |
+| conflict / stale | 展示最新变化；重新载入/重新审阅 || 不静默覆盖，不自动 latest |
 | cancelling | 说明正在停止对应任务 | 区分文本、Prompt、图片、共享等任务 ID | 旧 cancel 不停止后来任务 |
 | archived / missing ref | 保留出处，明确修复 | 实际引用闭包、确切版本和快照 | 可读历史不因来源归档丢失 |
-| deleted / scope lost | 保留安全草稿，给返回/重新获取 | 重验 owner、对象与页面当前 scope | 失效结果不能继续写入 |
+| deleted / scope lost | 保留安全草稿，给返回/重新获取 || 失效结果不能继续写入 |
 
 ## Draft and revision discipline
 
@@ -28,15 +28,15 @@
 
 保存失败保留草稿；保存成功但刷新失败显示真实成功，并单独重试读取。冲突可导出/保留草稿，再加载最新重新比较。首轮可以复用现有 editor draft 生命周期，但须证明它覆盖新的导航出口；不为了统一 UI 引入第二套资源写入路径。
 
-A1 的外壳离开检查接到现有 navigation authority，覆盖跨域、子路由和 browser Back：原生确认框取消时保留当前控制器/表面/字段，确认时丢弃并导航。World/Knowledge 的实际模型草稿与 Studio 的待审阅状态提供 dirty 标记，普通字段仅观察值差异；Library/Runtime 写入成功回执清除观察，不依赖后续列表刷新。这不是新增跨路由草稿持久化。控制器内部换页与更细的冲突/恢复操作仍由 A2/A3 原路径负责。
+World/Knowledge 的实际模型草稿与 Studio 的待审阅状态提供 dirty 标记，普通字段仅观察值差异；Library/Runtime 写入成功回执清除观察，不依赖后续列表刷新。这不是新增跨路由草稿持久化。控制器内部换页与更细的冲突/恢复操作仍由 A2/A3 原路径负责。
 
-A2 在 Library revision / Prompt editor 与 preset 内部 Back 复用相同 dirty 判定；取消保留原字段和 Source，保存失败保留草稿。revision 与 preset 已保存后的读取失败显示真实回执并仅重试读取。安装/导入的结果页保留 write receipt，打开失败不能再提交；文件/候选 response 只更新原流程。Native 未被接受的输入在失败时恢复到原 Session/基准 revision；已提交输入和新 Session 不接收旧草稿。Stop 在实际生成期间保持可用，防重复提交不覆盖它。历史面板按 facade 实时 capability 禁用动作并在 handler 重验；切换 Session 关闭旧 drawer。
+A2 在 Library revision / Prompt editor 与 preset 内部 Back 复用相同 dirty 判定；取消保留原字段和 Source，保存失败保留草稿。revision 与 preset 已保存后的读取失败显示真实回执并仅重试读取。安装/导入的结果页保留 write receipt，打开失败不能再提交；文件/候选 response 只更新原流程。Native 未被接受的输入在失败时恢复到原 Session/基准 revision；已提交输入和新 Session 不接收旧草稿。Stop 在实际生成期间保持可用，防重复提交不覆盖它。切换 Session 关闭旧 drawer。
 
 A3 将相同离开判定接入 Studio 内部视图/集合/引用定位、Source reload、Runtime Back/复制/compact 独立编辑层、Agents preset/Task、扩展切换与插图关闭配置。观察器只观察原草稿，不持久化；重绘后移除旧字段观察，模型标记保留未选文件的真实草稿。资源编辑器/Fields/Source/引用页签共用原编辑表面。
 
-Studio/Runtime/检索/扩展成功写入后清除 dirty、保留只读回执并单独重试读取；Agent Commit 在 Task 成功后同步项目，列表失败不能再次 Commit。项目辅助来源失败不阻止已有项目编辑，重试不重建当前草稿。Preview/Simulation/Build 的迟到响应按编辑表面与基准 revision 重验。
+Studio/Runtime/检索/扩展成功写入后清除 dirty、保留只读回执并单独重试读取；Agent Commit 在 Task 成功后同步项目，列表失败不能再次 Commit。项目辅助来源失败不阻止已有项目编辑，重试不重建当前草稿。
 
-Runtime 缺项修复暂存原控制器与 DOM，返回同一启动回调并重验绑定；原标题/选择、PackageVersionId 保留，即使修复期间安装新版也不替换旧版本。它是临时 UI 返回状态，不是新的启动/资源 authority。Agents 固定当前 Session；Session/branch/revision 变化仍由原 lifecycle 清理运行状态与重挂控制器。Memory reset 在确认后、停止任务后及删除前重验目标，迟到确认拒绝写入新 Session。
+原标题/选择、PackageVersionId 保留，即使修复期间安装新版也不替换旧版本。它是临时 UI 返回状态，不是新的启动/资源 authority。Agents 固定当前 Session；Session/branch/revision 变化仍由原 lifecycle 清理运行状态与重挂控制器。
 
 ## Review authority
 

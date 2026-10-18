@@ -128,8 +128,6 @@ Package 仍然可以让一个 Task 拥有独立 slot，但不应默认一 Task �
 
 ### 26.77 当前 Runtime Route 的组合粒度对 Package Task 太粗
 
-继续核对 `main@4dab353a` 后发现一个真实结构问题。
-
 当前 Runtime Route 同时绑定：
 
 - Connection / Model；
@@ -252,7 +250,6 @@ generationPolicy:
 无论哪种，都必须：
 
 - 有 exact EffectiveRequestSnapshot；
-- 通过 capability validation；
 - 不 silent-follow latest。
 
 本轮暂不冻结最终字段名，但冻结：
@@ -319,40 +316,6 @@ ExperienceTaskBindings
 
 不能偷偷 fallback 到 Legacy sender 或任意全局模型。
 
-### 26.82 Package 更新时复用绑定，但必须重新验证
-
-Slot ID 应在 Package family 内保持稳定。
-
-例如：
-
-`social`
-
-从 V1 → V2 仍然可以复用玩家原来的 execution binding。
-
-但新 PackageVersion 可能新增：
-
-- structured output requirement；
-- context minimum；
-- image capability；
-- tool requirement。
-
-因此每次打开 exact PackageVersion 时：
-
-```text
-existing player binding
-→ validate against new slot requirements
-→ compatible   → reuse
-→ incompatible → Health / Preflight remediation
-```
-
-禁止：
-
-- 因版本更新自动换 Model；
-- 自动改 Route；
-- 自动启用 provider capability override。
-
-历史 Model Task invocation 已保存自己的 EffectiveRequestSnapshot / provenance，因此玩家后来改 binding 不会改写旧结果。
-
 ### 26.83 Play / Runtime UX 应按 Slot 配置，而不是按内部 Task 列表轰炸玩家
 
 Package Health / Runtime Setup 应显示类似：
@@ -380,8 +343,6 @@ Game intelligence
 应支持受控的批量操作：
 
 > “对所有兼容的 text slot 使用当前 Narrator model”。
-
-但真正保存前逐 slot 做 capability validation。
 
 这比让普通玩家理解：
 
@@ -441,8 +402,6 @@ Task Binding Slot / Model Execution Lane 是第 27 项：
 因此能力主表仍保持 **29 项**。
 
 ### 26.86 二次深挖：六种状态还缺一条正交维度
-
-继续逐段检查 V24.4 的 9 个 TavernHelper script、29 个 Regex、182 个 Worldbook entry 与长期修复记录后，发现此前 §26.11 的“六种状态”分类仍有一个容易被误解的地方。
 
 六种状态主要回答：
 
@@ -661,8 +620,6 @@ rendered once
 
 同时另一些条件继续保持硬门槛。
 
-这说明 Action v2 / Form Validation 的结果不能只有 Boolean。
-
 建议统一成 typed Constraint Result：
 
 ```text
@@ -804,7 +761,6 @@ FeatureCapabilityProfile
 所有降级都必须：
 
 - Package 预声明；
-- Host 验证；
 - Diagnostics 可解释；
 - 玩家看得见当前 effective mode。
 
@@ -873,17 +829,6 @@ Atria Native 不应让每个 Package 重写这套启动竞态处理。
 
 Session load 的候选 lifecycle 应明确：
 
-```text
-restore Session Revision
-→ restore Session Application domains
-→ run schema migration / health check
-→ resolve Package / Add-on / Asset dependencies
-→ validate capability / Task bindings
-→ initialize projections
-→ Experience Ready
-→ start startup automations / world processes
-```
-
 默认：
 
 - `session.loaded` 不等于 `experience.ready`；
@@ -904,8 +849,6 @@ restore Session Revision
 - 同一社交关系从不同账号观察；
 - 空格脏 key；
 - 旧名称漂移。
-
-旧实现只能不断加 alias table / normalize helper / trim guard。
 
 Native 设计应明确：
 

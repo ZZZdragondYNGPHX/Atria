@@ -4,7 +4,7 @@
 
 ## Fields, modes, output and handlers
 
-| 类型 | 字段/模式与展示去向 | 原 handler / authority / validation |
+| 类型 | 字段/模式与展示去向 ||
 | --- | --- | --- |
 | Prompt Module | schema/id/revision/name；target/stages/priority/body；typed parameters(type/required/default/label/description/options)、condition(op/path/value/all/any/not)；只读provenance；Simple folds与完整Advanced Source | mountPromptEditor→Library runtime resource revision或Studio stageProject；原assertPromptModule/compiler；system provenance不可作者改写 |
 | Prompt Program | identity；ordered stages(stageId/targets/moduleRefs/condition/consumes/contextConsumers)、parameters/locals/artifacts/exclusiveTargets、parentRef/derive(add/disable/replace/configure)、responseDirective任意JSON、provenance | 原 stage/module tree、semantics helpers、Advanced Source；Library immutable或Project source exact refs，Fork closure/Derive保留确切依赖和旧资源 |
@@ -21,6 +21,6 @@
 
 ## State gaps and gates
 
-既有专属控件/folds已符合设计，不为替换名义重复实现。局部缺口：Prompt Fields补optional默认/隐式排序；Runtime没有full Source、Model tokenizer普通保存重写source；retrieval没有full Source、provider切换丢未保存options；Runtime Delete确认后未重验scope。保持原错误/receipt/Back/compact焦点/独立services，补具体缺口。
+既有专属控件/folds已符合设计，不为替换名义重复实现。局部缺口：Prompt Fields补optional默认/隐式排序；Runtime没有full Source、Model tokenizer普通保存重写source；retrieval没有full Source、provider切换丢未保存options；保持原错误/receipt/Back/compact焦点/独立services，补具体缺口。
 
-验证门：原Prompt semantics/authoring、preset/choices、Runtime全字段/ref/fallback/Secret/能力发现/receipt/Source与延迟scope、retrieval全provider合约/Source/选项切换/保存失败、compiler不发送/不解析Secret/不写Session。新旧canonical输出、未知高级字段/非法JSON原文、真实FS/HTTP/immutable pin、English和中文320/719/720与keyboard/browser；现有mockprovider不称真实外部模型。具体执行与限制只记Record。
+新旧canonical输出、未知高级字段/非法JSON原文、真实FS/HTTP/immutable pin、English和中文320/719/720与keyboard/browser；现有mockprovider不称真实外部模型。具体执行与限制只记Record。

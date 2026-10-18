@@ -1,6 +1,6 @@
 # Sparse Compute：调用准入、预算与收益
 
-> D2 / D4 / D5 正式架构约束；本模块唯一管理 Sparse / Adaptive Invocation 准入、预算与收益。策略阈值、档位名称与 SLO 保持待实测。M1 的有限预算已冻结，完整跨入口 substrate 在 G05 交付，S26 再深化自适应策略；D5 的 Memory 升级与收益未实施 / 未验证。
+> D2 / D4 / D5 正式架构约束；本模块唯一管理 Sparse / Adaptive Invocation 准入、预算与收益。策略阈值、档位名称与 SLO 保持待实测。M1 的有限预算已冻结，完整跨入口 substrate 在 G05 交付，S26 再深化自适应策略；
 > 输入研究：[Sparse AI 报告](../sparse-ai-invocation-adaptive-compute-research.md)、[Execution Reuse 报告](../execution-reuse-cache-locality-adaptive-invocation-research.md)。复用证明见 [execution-reuse](execution-reuse.md)，实际目标解析见 [model-routing](model-routing.md)。
 
 ## 1. 默认路径与适用范围
@@ -8,13 +8,13 @@
 `0-call first → 1 main generation for ordinary RP → evidence-driven escalation`
 
 “0-call”指不新增生成模型调用，不代表 embedding、索引、CPU / GPU 或检索没有成本。已有状态、authority、图遍历、规则和确定性编译优先；正常 RP 以一次主要正文生成作为架构目标。
-这不是已测 SLO，也不要求 Project 的多步工具任务只运行一次模型。显式启用的 Director、Package 必需 resolver 或高影响任务可有更多调用，但须标明依赖、预算和收益；必要 authority / knowledge / output guard 始终保留。
+这不是已测 SLO，也不要求 Project 的多步工具任务只运行一次模型。显式启用的 Director、Package 必需 resolver 或高影响任务可有更多调用，但须标明依赖、预算和收益；
 M1 的当前基线如实记录，不为了达成 one-call 指标改写既有 execution contract。
 
 | 路径 | 触发 | 额外工作 |
 | --- | --- | --- |
 | 普通 RP | 现有证据足够、无必需重判断 | 编译与检索后正文；不固定 Planner / Critic / Reflection |
-| Utility | 确定性证据不足，且轻量 classifier 已有验证 | 有界本地 / 低成本窄任务，再正文；classifier 开销计入 |
+| Utility || 有界本地 / 低成本窄任务，再正文；classifier 开销计入 |
 | Selective cognition | 重要事件、知识冲突、未解承诺或多角色依赖 | 一个共享事件 pass；按受控采纳分别消费派生结果 |
 | Deep / Director | 显式模式、高影响行动或独立 specialist 需求 | 有界 critique、rollout、并行工作；硬预算及退出条件 |
 | Background / Maintenance | 事件 / 阈值、完整 outcome / feedback 或用户请求 | Memory consolidation、Experience、eval / optimization 批处理 |
@@ -28,12 +28,12 @@ Adaptive Invocation 是现有 ComputePolicy / policy controller 对“是否执�
 默认纯规则、先复用可证有效工作；不是每个 turn 额外运行一个 AI controller。建议顺序是按 task 的未满足需求选择：
 
 1. 确定性 Runtime / 已有获准 state 能回答时直接使用。
-2. 依 [execution-reuse](execution-reuse.md) 重验可用 Task Artifact、Tool Value，或实例化结构化 Plan / Workflow；局部命中只减少相应步骤。
+2. 局部命中只减少相应步骤。
 3. 尚有信息缺口时优先获准廉价确定性 tool；retrieval 按需要选择不检索、单步或有限多步，不能因工具存在就默认每轮调用。
 4. 仍有生成 / 推理需求时，按任务 quality floor 选择可证明足够的 small / fast 或 strong target 与 reasoning controls；明显复杂任务直接进入合适路径，避免生成 cascade 浪费。
 5. 需要正文表达时 fresh-generate Narrator；前置复用不将旧 Final Prose 作为普通 Semantic Cache 返回。
 
-该阶梯按 task 的未满足需求选择相应工作；Plan 命中不意味着工具 / 正式 effect 已执行，必要 guard / 当前证据继续满足。Continuation 的使用 / 重置决定引用 model-routing §7，不重新定义为 cache hit。
+该阶梯按 task 的未满足需求选择相应工作；Continuation 的使用 / 重置决定引用 model-routing §7，不重新定义为 cache hit。
 每个决定带 trigger、仍未满足的需求、复用 / 缺失证据、预算与退出原因，记录 no-call / partial-reuse / tool / retrieval / model / narration 等实际动作。具体名称、阈值及允许模型矩阵按 G05 / G06 冻结；缺必要证明就走获准重算或原阻断路径。
 
 ## 2. 共享认知与稀疏更新
@@ -45,8 +45,7 @@ Adaptive Invocation 是现有 ComputePolicy / policy controller 对“是否执�
 
 多数回合读取已有 cognition；规则可处理已冻结的 decay / transition。事件 gate 的详细数值在 M3 前定稿。
 事件驱动默认、作品可选高度自主与角色遗忘沿 [architecture §6.1](architecture.md#61-事件驱动认知与角色遗忘)，不把 retrieval 成功当作认知触发。自主 NPC 的唯一时间准入见 [architecture §8.1](architecture.md#81-正式-world-tick与自主-npc)；复用现有 Simulation / outbox，不另建 timer 或每 NPC 固定 LLM pass。
-Memory 写入与 Experience reflection 积累必要 evidence 后触发；普通低信息 turn 不默认执行 extraction。保留待处理 source anchors，让 consolidation 延迟不会丢证据或越过 actor 可见边界。
-后台结果必须重验 source / revision / scope，不能覆盖新回合；失败显示 pending / stale，不伪装成已学会。
+Memory 写入与 Experience reflection 积累必要 evidence 后触发；普通低信息 turn 不默认执行 extraction。保留待处理 source anchors，让 consolidation 延迟不会丢证据或越过 actor 可见边界。失败显示 pending / stale，不伪装成已学会。
 
 ## 3. 一个预算 substrate，沿原 authority 准入
 
@@ -55,9 +54,7 @@ M1 Evolution owner 预算与前台运行预算是不同用途的额度，共用 
 一次收费事件有单一 identity，由指定 authority 记一次账；多层限制共享该记录做准入，不重复累计为多笔费用。
 
 支持 owner / scope、session / task、turn / job 与 background 子额度。子项不能突破父项；并行申请必须先 reservation，不能各看同一剩余额度。
-约束可包含 paid / local requests、input / output / reasoning token、工具 / media、金额、deadline、critic / rollout / subagent 上限和并发。
-Continuation 与 prompt / context cache、Task Artifact reuse 是不同优化，沿 [model-routing §7](model-routing.md#7-reasoning-continuity执行状态与生命周期) 重验；保留状态不保证调用数、token 或费用下降。恢复、重置、probe、compaction / summary、fallback 与 adaptive controller 的新增发送仍经过同一 reservation / charge。
-Reuse 查找 / 校验、embedding / intent classifier、retrieval、模板实例化、cache read / write / storage 与 prewarm / prefetch 的可观察开销全部纳入原预算和成本证据。未发出的模型调用不记 send charge，也不虚构零-cost Provider usage；重新执行和预热仍按真实 attempt 准入，预热不保证后续命中或回本。
+约束可包含 paid / local requests、input / output / reasoning token、工具 / media、金额、deadline、critic / rollout / subagent 上限和并发。保留状态不保证调用数、token 或费用下降。恢复、重置、probe、compaction / summary、fallback 与 adaptive controller 的新增发送仍经过同一 reservation / charge。未发出的模型调用不记 send charge，也不虚构零-cost Provider usage；重新执行和预热仍按真实 attempt 准入，预热不保证后续命中或回本。
 reasoning / cache-read 常是 total usage 的子集；按 provider usage 语义归一化，不能将 output 与其 reasoning 子项再相加。只存有限 usage 元数据，不保存私有思维链。
 
 `prepared → reserved → send-attempt charged → settled | unknown → reconcile`
@@ -71,33 +68,33 @@ StorageEngine 的 SQL / FS 差异沿 M1 commit-last 与单 Host writer 边界设
 
 ### 3.1 G05 首批发送准入矩阵
 
-2026-10-11 source `9599dad35`，有限 checkpoint，尚非完整 G05/G06 验收。原 RuntimeRoute.executionPolicy 可选 computeBudget `{maxRequests,maxTokens}`：请求上限1–32，token上限为正安全整数，均明确来自用户配置。无字段的旧 Route 不增加默认额度/费用限制。这个首批额度的父作用域是原 Session RunControl operation 或原 Project Task；M1 Evolution owner 的不同用途额度保持原 authority，不挪用。本 checkpoint 未新增账户总额、金额硬上限或所有 CPU/media 子额度。
+原 RuntimeRoute.executionPolicy 可选 computeBudget `{maxRequests,maxTokens}`：请求上限1–32，token上限为正安全整数，均明确来自用户配置。无字段的旧 Route 不增加默认额度/费用限制。这个首批额度的父作用域是原 Session RunControl operation 或原 Project Task；M1 Evolution owner 的不同用途额度保持原 authority，不挪用。本 checkpoint 未新增账户总额、金额硬上限或所有 CPU/media 子额度。
 
 Host 沿原发送边界，从冻结 Snapshot 的 prepared input count + reserved output 固定估计上界，Secret/编译/preview/不准入阶段不创建 send attempt；明确拒绝上界时 attempts 为空。原 RunControl lock/Project Task CAS 在发出前将准入及 charge 合为一次 durable mutation，内部 attempt ID 唯一。既有 Package generationBudget 同一次 mutation 增加原计数与 compute evidence，不双计收费事件。retry、fallback和当前工具续接仍各占真实发送；相同 operation/Task 的新 request ID 不重建父额度，已保存额度只能收紧，Route 回退不恢复余额。
 
-原 operation/Task 的可选 compute ledger 仅保留请求/目标指纹、上界、charged/settled/unknown、有限直接数值 usage。合法 totalTokens 可 settle；仅 input/output 或缺 usage 时保留部分计数并按上界占用，reasoning/cache 子集不重复相加。合法数值已取得后，正文/schema/Secret/stream 完整性失败也保留计数，不保存被拒正文或opaque状态。取消/崩溃且无法确定总计保持占用，不自动退款。reopen及原 background Save restore 保留原 identity/余额；这些实际断言不扩大为所有 Session fork/跨账户预算保证。
+原 operation/Task 的可选 compute ledger 仅保留请求/目标指纹、上界、charged/settled/unknown、有限直接数值 usage。合法 totalTokens 可 settle；仅 input/output 或缺 usage 时保留部分计数并按上界占用，reasoning/cache 子集不重复相加。取消/崩溃且无法确定总计保持占用，不自动退款。reopen及原 background Save restore 保留原 identity/余额；
 
-2026-10-11 source `ad21a1379` 将有限规则 Invocation 接入唯一 Hybrid consumer：普通查询只用基础检索，因果证据缺失时不靠 rerank 造事实；仅多个不同合法 Episode 来源的因果候选允许请求排序。相同来源的 fact/relation/episode 不算多份独立证据。skip/trigger/completed/unavailable/stop 进入原 recall trace；未配置或没有原 Run/Task authority 时跳过。必需 source/Information/Actor/时间/Branch currentness 在可选拒绝后仍核验。该纯规则不是新的生成 classifier，也不说明每个难例必须 rerank。
+2026-10-11 source `ad21a1379` 将有限规则 Invocation 接入唯一 Hybrid consumer：普通查询只用基础检索，因果证据缺失时不靠 rerank 造事实；仅多个不同合法 Episode 来源的因果候选允许请求排序。相同来源的 fact/relation/episode 不算多份独立证据。skip/trigger/completed/unavailable/stop 进入原 recall trace；未配置或没有原 Run/Task authority 时跳过。该纯规则不是新的生成 classifier，也不说明每个难例必须 rerank。
 
 原 Native `/rerank` 必须提供当前 Session anchor 或原 Project Task；省略上下文、缺显式 Route computeBudget 或锚点不符在收费前拒绝。原 profile exact revision/Secret 仍唯一解析，沿原 Run operation/Task CAS 与正文共享发送额度。每个真实 provider fetch 前 charge；usage 存在时保留直接数值，即使排序响应无效；失败/取消/无 total 保持 unknown 上界，不自动退还。64 documents/256KiB 数据、原120s timeout 为首批有界输入/退出条件；request upper 使用送出 JSON UTF-8 bytes 估计，不能宣称 rerank search-unit/金额或隐藏网关开销被精确封顶。没有退款证据就保持占用。原 embedding/profile 配置仍独立保留；本 checkpoint 未声称所有 embedding/local inference/CPU 都已硬准入。
 
-纯规则首批与共享发送成本语义已接入；retrieval/validation CPU、增量索引和后台消费者继续推进。货币价格、canonical upstream、隐藏网关 retries 未知仍 unknown，估计 token admission 不证明金额硬上限或真实加速。
+纯规则首批与共享发送成本语义已接入；货币价格、canonical upstream、隐藏网关 retries 未知仍 unknown，估计 token admission 不证明金额硬上限或真实加速。
 
-2026-10-11 source `90c0dd72d`：原 Route editor 提供可选共享发送次数/Token 上界，不自动替旧 Route 设额度，保留其它 executionPolicy；关闭仅删除 Route 配置，同一原 operation/Task 的 durable limits 仍有效。Host routing.compute 的 limits 来自实际 charge receipt，而非放宽后的 Route 配置；attempts 只含 current_request，金额 unavailable，不冒充父余额。Studio 显示原 Task.compute；诊断保留 selected target、执行/恢复决定、Provider usage 与 unknown 身份。有限 UI/账本反例见 Record，不计作全部 G06 收益验收。
+2026-10-11 source `90c0dd72d`：原 Route editor 提供可选共享发送次数/Token 上界，不自动替旧 Route 设额度，保留其它 executionPolicy；关闭仅删除 Route 配置，同一原 operation/Task 的 durable limits 仍有效。Host routing.compute 的 limits 来自实际 charge receipt，而非放宽后的 Route 配置；attempts 只含 current_request，金额 unavailable，不冒充父余额。Studio 显示原 Task.compute；诊断保留 selected target、执行/恢复决定、Provider usage 与 unknown 身份。
 
 ### 3.2 有限 Native index 本地工作准入
 
 source `304d0d199`，原RuntimeRoute.computeBudget可选localWork、原Run operation/Task同一compute ledger扩展；具体数值与完成条件只在[G01 本地索引组](g01-substrate.md#已交付有限-g05原-native-insert-的本地索引工作)维护，不建立第二预算authority。model sends/token与本地job/输入项/输入字节独立准入，generation/Embedding写账保留另一lane，durable limits继续只能收紧。旧未配置且未持有本地限额不自动添加allowance；有原computeContext的index在原owner额度前不发送Embedding，不用token伪造CPU开销。
 
-成本记录为实际process范围CPU与wall观察，不证明job独占CPU、CPU毫秒硬cap、设备功耗或金额；没有provider调用不记model attempt/usage。native insert在临时Vectra副本处理，最终在原Session Run锁或原Task锁+Studio Project队列内重验/同步原子发布；取消/Task变动/写失败反例与普通Session实际消费通过。索引与账本之间没有跨域原子性，publish后结算不可写继续保守保留charged占用。仅原account recovery/冷engine恢复额度已检查，不扩大为所有fork/跨foreground revision费用历史保证。query/校验/其它local inference/后台消费者仍按依赖继续。
+成本记录为实际process范围CPU与wall观察，不证明job独占CPU、CPU毫秒硬cap、设备功耗或金额；没有provider调用不记model attempt/usage。取消/Task变动/写失败反例与普通Session实际消费通过。索引与账本之间没有跨域原子性，publish后结算不可写继续保守保留charged占用。
 
-source `1ccc6194a` 接续有限Native query/query-multi；工作单位与物理扫描边界见[G01 query组](g01-substrate.md#已交付有限-g05原-native-queryquery-multi-的本地索引工作)，不重新定义上节limit字段。原父work lane与Embedding sends分别准入/settle；空候选不创建index、不发送Embedding、不造usage0。结果在计算及cost settle后原scope重验，已完成CPU但此时取消/Task变动可以拒绝consumer返回，completed work成本不退、也不代表请求接受成功。旧unscoped readonly读取保持，所有其它read/validation/local model/background准入继续。
+source `1ccc6194a` 接续有限Native query/query-multi；工作单位与物理扫描边界见[G01 query组](g01-substrate.md#已交付有限-g05原-native-queryquery-multi-的本地索引工作)，不重新定义上节limit字段。原父work lane与Embedding sends分别准入/settle；空候选不创建index、不发送Embedding、不造usage0。
 
-source `1d1bf3f79` 接原Native query-by-vector，完成条件/输入边界见[G01 supplied-vector组](g01-substrate.md#已交付有限-g05原-native-query-by-vector-本地读取)。同一index_query lane累计输入字节与collection工作单位，不生成Embedding/provider attempt；readonly旧无scope读兼容。新computeContext入口与已存在的insert/query共用原限额/account恢复；没有给browser/local推理增加预算consumer。其它read/校验/后台与跨foreground revision历史费用继续保留未验收。
+source `1d1bf3f79` 接原Native query-by-vector，完成条件/输入边界见[G01 supplied-vector组](g01-substrate.md#已交付有限-g05原-native-query-by-vector-本地读取)。同一index_query lane累计输入字节与collection工作单位，不生成Embedding/provider attempt；readonly旧无scope读兼容。新computeContext入口与已存在的insert/query共用原限额/account恢复；没有给browser/local推理增加预算consumer。
 
-source `77820a6d2` 接Native Memory原listHashes与`/list`同一原localWork的index_list类别，具体完成条件在[G01 枚举组](g01-substrate.md#已交付有限-g05native-memory-的原索引枚举)。供给列表无provider发送或虚构token；input/scan/currentness/physical permit沿已有read实现，额外请求仍只做所需枚举。实际current collection的Memory消费已检查，retired namespace转发仅静态/既有安全检查；delete/purge等成本仍未验收。
+供给列表无provider发送或虚构token；input/scan/currentness/physical permit沿已有read实现，额外请求仍只做所需枚举。
 
-source `2074ed7b9` 接原Hybrid按hash delta删除及Native `/delete`，index_delete仍沿同一原localWork，完成条件见[G01 删除组](g01-substrate.md#已交付有限-g05hybrid-派生索引按hash删除)。沿原insert的临时副本/原scope同步publish边界，不增加源信息写权限；保留异常bytes和真实成本。空hash无job，missing index的实际读取可观测、不创建；actual current-collection delta已检查，retired namespace仅静态/既有安全检查。purge成本与其他计算消费者仍未验收。
+沿原insert的临时副本/原scope同步publish边界，不增加源信息写权限；保留异常bytes和真实成本。
 
 ### 3.3 原 Run 过期工作成本保留
 
@@ -109,20 +106,10 @@ source `f1a04c041`修复HEAD改变/intent退出后仍在结算的model/local ope
 只有当前回复正确性依赖的工作才进入 blocking path；批量 reflection / consolidation / eval 不加入正文等待链。
 Host durable intent 保存 job，TaskScheduler 执行；取消且 worker 尚未结束时继续占用 permit，防止表面取消后超并发。首批不新增应用关闭期间系统级唤醒。
 
-升级、重试、模型降级与工具执行权限分别检查。预算不足先删 optional work；必需证据 / guard 不能完成时停止、等待或进入已有审阅路径，不能用低成本成功状态掩盖失败。
-昂贵计划前检查 deadline 与剩余额度；每个新增调用带 trigger、预期收益、选择层级与退出原因。
+预算不足先删 optional work；每个新增调用带 trigger、预期收益、选择层级与退出原因。
 Gateway 内部重试未知时，外层只能限制自己可控 attempts，并记录 unknown amplification；不得宣称限制了不可观测上游总调用，详细处理见 model-routing。
 
-Task graph / 当前 stage / possible next stages 与 Tool progress 可经原 scheduler 向支持的 backend 提供获准 locality / near-completion hints，指导 retention / offload / prefetch；它们是建议，不是已完成 receipt 或新的执行授权。缺 progress 保留 unknown；backend 不支持时忽略 hint 并保持原语义。Workflow-aware eviction、transition learning 与 speculative decode 留在 model-routing §8 的后续能力。
-Prewarm / prefetch 仅在已有显式 policy、发送许可、有限预算和近期复用依据下准入，沿 background / maintenance 路径支持取消与 stale-source 重验；不放大正文等待链或占用必要工作额度。本轮未启用这些策略。
-
-### 4.1 Hybrid Memory同步核验与后台工作
-
-HCM-08 将普通回合零额外认知 LLM 作为目标，内部检索仍按 [hybrid-memory §3.2](hybrid-memory.md#32-constraint-first-adaptive-hybrid) 选择必要 lanes。当前正文依赖的 source currentness、Actor 知识边界、Branch / Variant 与正式 World 状态必须同步核验；预算和低时延不允许跳过它们。缺必要证明返回 unknown / unavailable 或阻断相关操作，不用辅助模型猜测补事实。
-
-非关键 reflection、整理、压缩与索引维护沿 background / maintenance 有界执行；若本轮必须等 source / index 修复才能取得正确证据，就显式进入原 blocking 准入，不能在陈旧证据上先返回正文。后台保留 exact pending source anchors，重验后提交，不自行认定 Actor 已学会或已忘记。
-
-H3 的 typed path / PPR 有节点 / 边 / CPU / deadline 上限；rerank / query rewrite 还必须有覆盖缺口、可用 exact profile / target、G05 reservation / charge 与停止原因，G06 验实际收益。可选能力失败或额度耗尽退回合法基础检索，硬条件失败保持拒绝。Embedding、rerank、LLM、index / cache / proof 的费用与资源开销沿 §3 / §5 记录；不复用 M1 Evolution 额度作为新的前台或 NPC 自主预算。
+Task graph / 当前 stage / possible next stages 与 Tool progress 可经原 scheduler 向支持的 backend 提供获准 locality / near-completion hints，指导 retention / offload / prefetch；它们是建议，不是已完成 receipt 或新的执行授权。缺 progress 保留 unknown；backend 不支持时忽略 hint 并保持原语义。Workflow-aware eviction、transition learning 与 speculative decode 留在 model-routing §8 的后续能力。不放大正文等待链或占用必要工作额度。本轮未启用这些策略。
 
 ## 5. 评价与观测
 
@@ -143,6 +130,5 @@ G06 追加协议合法的 none / active_execution / task / adaptive 对照，按
 - S06 / S09：可用配置的隔离 ablation 与有界 optional-work 候选，M1 不自动晋升 routing / connection policy。
 - G05 / G06：双入口统一准入、send 记账、恢复、事件 / 批处理策略，实际消费 §1.1 阶梯和有预算的复用 / retrieval 决定；退出需并发、取消、预算耗尽、restore 与难例底线、失效复用拒绝和 RP 新鲜度对照。
 - S18 / S19 / S24：共享 pass、有界 ToM / rollout 是 substrate 消费者。
-- S25 / S26：以已有规则基线深化异步 fast / slow 与适应性分配，learnt router 需独立收益和撤回验证。
 
 报告中的平均约 1.x 调用、候选频率、节省百分比均不作为冻结 SLO。实际数值在真实模型与有限预算可用时定稿；本轮未发起模型调用。

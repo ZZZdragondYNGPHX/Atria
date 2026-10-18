@@ -14,20 +14,12 @@ https://github.com/ZZZdragondYNGPHX/Atria
 
 `refactor/atria-native-content-session-architecture`
 
-N4 已正式完成并验证。
-
-N4 validated HEAD：
-
 `ec95a260f4a26a4c23091227f77865dba1ae2273`
 
-最终验证：
-
-- Workflow：**Native Content Session Dev Checks #87**
 - Run：`35693455407`
 - N0 Native Contracts：success
 - N2 Package Project Composition：success
 - N1 Storage + N3 Core + N4 Projection：success
-- N4 real-host Chromium Native Session acceptance：success
 - complete Node regression：**748 suites / 8705 tests passed**
 - frontend build：success
 - full root lint：success
@@ -59,11 +51,8 @@ N5 核心目标：
 - Legacy/ST session 可以继续保留 FloorState 和旧结构事件兼容；
 - 需要保留的旧 public API 名称可以做 compatibility wrapper，但 Native Session 激活时必须落到 Native revision/state semantics。
 
-必须保持 N4 已验证约束：
-
 - committed Timeline immutable；
 - product/runtime Timeline 写入 append-only；
-- Write Barrier fail-closed；
 - Continue 是新 TimelineEntry；
 - Retry Reply 是 post-user Revision Fork + 新 Assistant；
 - Stop 只处理 Generation Draft；
@@ -84,9 +73,8 @@ N5 Exit：
 
 普通代码、测试和 CI 问题自行处理。只有以下情况主动停下告诉我：
 
-1. GitHub CI 进入明显耗时验证；
 2. 必须依赖 Android/Termux 真机日志；
 3. 必须依赖真实 UI 截图；
 4. 需要我本人完成权限、Secret 或授权操作。
 
-不要自己一直等待长 CI。N5 完成后停下，更新 docs/handoff，记录 validated HEAD、CI、完成内容和剩余边界，并发我 N6 接手提示词。
+不要自己一直等待长 CI。

@@ -36,7 +36,7 @@
 - 卡片到详情保持封面与纸张的空间连续性；正文保持阅读稳定。高频键盘路径即时响应，触屏不依赖 hover。
 - reduced-motion 改变位移与弹性，保留纸色、阴影与状态反馈；透明度偏好单独处理。
 - 具体实现按任务读取已安装 Skills：视觉使用 frontend-design / emil-design-eng；控件使用 microinteractions；逐页动效机会使用 find-animation-opportunities；实现使用 animate / motion；手势使用 apple-design；实际卡顿使用 animation-performance；完成后明确调用 review-animations 和 web-design-guidelines。
-- 素材研究对应 [references/README.md](references/README.md) 的七库链接。抽取适合的机制，统一 tokens 与动效；直接复用源码时核对对应文件的许可，不能假设各库许可相同。
+- 素材研究对应 [references/README.md](references/README.md) 的七库链接。抽取适合的机制，统一 tokens 与动效；
 
 ## HTML iteration and implementation comparison
 
@@ -46,7 +46,7 @@
 4. 正式实施将浏览器结果与对应已确认稿比较：构图、纸张比例、字体层级、密度、材质、导航、工具与状态的位置关系都需要一致。
 5. 常规实现细节可在确定的系统内完善；新能力或实质视觉改向按 `decisions.md` 的边界处理。
 
-初稿中的内存演示、模拟生成、固定验证结果和占位页是设计演示设施。正式产品逻辑继续连接真实服务，不复制这些演示实现作为业务权威。
+正式产品逻辑继续连接真实服务，不复制这些演示实现作为业务权威。
 
 ## v0.7 supplement
 

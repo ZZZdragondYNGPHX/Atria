@@ -41,19 +41,14 @@ No real-device speedup is claimed yet for the changes below; a new post-merge me
 ### PR #62 — lazy Stable Diffusion router
 
 - Baseline: `main@ffc2857b9fdf8225958c2bf8934b360ad4cff91b`
-- Validated head: `af268179846624d19bc7db5b5c6f4c3c3f5345ce`
 - Squash merge: `41602d8ba78e9cb70e108a19d787608692792dcf`
-- Atria PR Checks #657 passed.
 
 `/api/sd/*` now loads `src/endpoints/stable-diffusion.js` on the first SD request through a memoized, retryable lazy-router middleware. This removes the SD endpoint plus its broad provider/dispatch fan-out from ordinary pre-listen evaluation.
 
 ### PR #63 — browser-launch and first-visible telemetry
 
 - Baseline: `main@ffc2857b9fdf8225958c2bf8934b360ad4cff91b`
-- Validated head: `ce71c0026660974b88e89d7215f358b298acfd3a`
 - Squash merge: `95eb234171198ff8c75e731ff396df6d806186da`
-- Atria PR Checks #658 passed.
-- Worldbook Performance Foundation #317 passed, including real-host Chromium startup smoke and full World Info acceptance.
 
 Added:
 
@@ -71,17 +66,13 @@ Both direct `atria-termux` and Toolbox launch paths emit the browser boundary ev
 ### PR #64 — lazy Search router
 
 - Baseline after #62/#63: `main@95eb234171198ff8c75e731ff396df6d806186da`
-- Final validated head: `65115f0a425ac13e93102bda02ed98a5fa88216d`
 - Squash merge: `dce66e4338d693fdd2f555d028219f72ef101ad5`
-- Final Atria PR Checks #662 passed.
 
 `/api/search/*` now loads on first search/visit/transcript request. This keeps the Search endpoint's exclusive `cheerio`, HTML entity and URL/IP parsing stack out of ordinary server startup.
 
 ### PR #66 — lazy LAN Sync router
 
-- Final validated head before merge: `f7b08712ddfe3f7e8da1654f4be377cca6343737`
 - Squash merge: `f65adfea5732031478e61d31c9d4ad381b1091c6`
-- Final Atria PR Checks #664 passed.
 
 `/api/sync/v1` now loads on its first sync request while remaining mounted at exactly the same authentication boundary: before `requireLoginMiddleware` and before the authenticated write gate. Bearer-token/basic-auth semantics are unchanged.
 
@@ -89,7 +80,6 @@ Both direct `atria-termux` and Toolbox launch paths emit the browser boundary ev
 
 - Final rebased head: `b529e2913906faec5132445aa92226af87df8e96`
 - Squash merge / resulting main: `95644b11837161041048f167f1989ba68869216a`
-- Final Atria PR Checks #666 passed.
 
 `/api/horde/*` now loads on first Horde request. This keeps the endpoint's exclusive `@zeldafan0225/ai_horde` client stack out of ordinary pre-listen evaluation.
 
@@ -138,7 +128,6 @@ Required lines:
 
 That measurement determines whether the next work should target remaining Node static imports, Android browser launch, pre-visible browser module execution, or post-visible batches.
 
-
 ## Post-deferral real-device measurement
 
 Real-device Termux log on 2026-09-20 after the router-deferral pass, baseline `main@95644b11837161041048f167f1989ba68869216a`:
@@ -161,7 +150,6 @@ Real-device Termux log on 2026-09-20 after the router-deferral pass, baseline `m
 - `server-main.module-evaluated`: 3252ms -> 3546ms (+294ms, about +9.0%).
 - `server.listening`: 3868ms -> 4097ms (+229ms, about +5.9%).
 - `pre-setup.total`: 548ms -> 487ms (-61ms, about -11.1%).
-- warm frontend-cache check: 3ms -> 2ms.
 
 One real-device run is not enough to claim a causal regression, but this is sufficient to say that #62/#64/#65/#66 did **not** demonstrate a measurable backend-startup win. Do not keep splitting optional server routers on source-code intuition alone. The router-deferral direction is now paused unless later measurements show a specific static dependency is still dominant and independently removable.
 
@@ -184,10 +172,7 @@ This moved the optimization target again: first-visible Atria startup is already
 ### PR #67 — granular post-visible timing
 
 - Baseline: `main@95644b11837161041048f167f1989ba68869216a`
-- Final validated head: `26500c9f38a3617644e0909f3759817685bdcb5c`
 - Squash merge: `48c28adc82c0764392e7261b89031c883512dda8`
-- Atria PR Checks #667 passed.
-- Worldbook Performance Foundation #318 passed, including real-host Chromium startup smoke and complete World Info acceptance.
 
 No startup order changed. The telemetry now separates:
 
@@ -218,9 +203,7 @@ Extension activation semantics remain unchanged. In particular, different `loadi
 ### PR #68 — launcher-to-root timing in backend logs
 
 - Baseline after #67: `main@48c28adc82c0764392e7261b89031c883512dda8`
-- Final validated head: `db2464702bcee20c43a65dcbc25b3872b38c704a`
 - Squash merge / resulting main: `8fd9fb53af028c6453338ae845827df91898122c`
-- Final Atria PR Checks #672 passed.
 
 The previous Termux launcher markers were written only to the raw shell log and therefore were absent from the in-app backend log the user supplied. #68 adds a loopback-only diagnostic path so the same backend log now contains:
 

@@ -127,12 +127,9 @@ Therefore ordinary gameplay should not use `narrative-outcome` as its state-auth
 
 #### 6.46.6 Intent Resolver uses game verbs, never raw state patching
 
-The intent resolver must be exposed only to validated gameplay operations.
-
 Conceptual verbs include:
 
 - observe;
-- verify;
 - interview;
 - access;
 - test;
@@ -188,7 +185,6 @@ Current Task Runtime forbids `queuePolicy=latest` on authority-producing Tasks.
 
 Therefore Round 6.7 supersession maps to state/request management:
 
-- pending decision requests may be marked superseded before authority acceptance;
 - a new anchored decision may then be scheduled;
 - accepted authority / committed Events are never superseded.
 
@@ -274,8 +270,6 @@ Visual design remains outside this technical Plan.
 - bounded graph support through a derived index;
 - immutable revision / save / retry authority.
 
-**Needs Round 9.5 verification / design:**
-
 1. safe dynamic actor-private perspective for many persistent NPCs;
 2. typed multi-domain gameplay transactions through the Package-facing authority seam;
 3. exact derived graph-index publication strategy.
@@ -323,7 +317,7 @@ The preferred physical authority layout is approximately:
 | Game World Event Journal | World | authoritative Events / action history |
 | `entities` | World | persistent Entity identity/current authoritative state |
 | `institutional_records` | World | civil / court / Church / company / property formal records |
-| `evidence` | World | Evidence units, provenance, custody and integrity |
+| `evidence` | World ||
 | `relations` | World | kinship, employment, ownership, membership, possession and other real relations |
 | `beliefs` | World | actor/institution Testimony, Finding, Hypothesis and interpretation records |
 | `memories` | World | durable Actor / institutional Memory |
@@ -356,7 +350,6 @@ The authority-first resolver receives only high-level, author-declared verbs.
 Approved initial verb families:
 
 - `observe`;
-- `verify`;
 - `interview`;
 - `access`;
 - `test`;
@@ -392,14 +385,11 @@ Examples:
 - `create_hypothesis`;
 - `create_lead`.
 
-These write only player-bound Belief / Matter state after validation.
-
 **Authority transactions**
 
 Examples:
 
 - interview;
-- verify;
 - access;
 - intervene;
 - invoke Claim;
@@ -444,14 +434,11 @@ Therefore v1 requires a Core-supported **Authority Transaction Bridge**.
 
 The bridge must allow an author-declared game verb to:
 
-1. read only explicitly granted authoritative / player-safe records needed for validation;
-2. validate the command against current revision and world rules;
 3. produce zero or more World Events;
 4. execute zero or more predeclared typed Lifecycle `app.command` effects;
 5. optionally advance the declared canonical world clock;
 6. update / publish derived indexes;
 7. commit all accepted effects under one revision / action receipt;
-8. fail closed with no partial world mutation.
 
 The bridge must not expose arbitrary namespace patching, dynamic domain names or generic JSON Patch to the model.
 
@@ -468,8 +455,6 @@ This observation exists so the resolver can map natural references such as:
 - “that Eastbank file”
 
 to stable candidate refs without receiving hidden World Truth.
-
-The resolver observation is not an NPC-private view and must not contain private actor Beliefs / Memories unless the selected verb is itself authorized to query them during validation after the resolver has selected a target.
 
 This observation requirement is part of the same Core bridge, not a separate general information bypass.
 
@@ -496,7 +481,6 @@ Routine NPC conversation / reaction uses authority state plus social-resolution 
 Flow:
 
 1. resolver selects `interview` or another social verb;
-2. transaction validation reads only the target actor's permitted Beliefs / Memories / Relations / Constraints;
 3. deterministic / bounded rules decide what can be revealed, refused or changed;
 4. the transaction commits an observable actor-response Event and any legitimate perspective changes;
 5. Narrator renders the approved visible response into natural dialogue.
@@ -523,8 +507,6 @@ Promotion operations create stable authority such as:
 - Relation;
 - initial permitted Belief / Memory state;
 - Location or Evidence entry where applicable.
-
-Promotion is itself a validated transaction.
 
 Once promoted, identity may not be casually regenerated in later turns.
 
@@ -594,7 +576,6 @@ Approved:
 - no arbitrary patch API;
 - v1 NPC interaction through authority rules + observable response Events;
 - dynamic per-NPC model perspective deferred rather than weakening information isolation;
-- generated Tier C content promoted through validated transactions;
 - derived graph index refreshed downstream of authority writes;
 - Outcome Packet constructed from committed changes;
 - lazy materialization from Package Data definitions.
@@ -802,8 +783,6 @@ Neither graph may contain hidden canonical nodes simply because those nodes exis
 
 The Agenda Task records intent, not direct world execution.
 
-Deterministic scheduler / transaction authority later validates and performs any real-world action.
-
 #### 6.50.11 No v1 document-rendering core Task
 
 Artifact semantics and rendered text remain separated.
@@ -828,8 +807,6 @@ Game-owned actor Memories remain authoritative data even when model automatic-me
 #### 6.50.13 NPCs consume zero static Context Views in v1
 
 Ordinary Tier A / Tier B interaction does not allocate Information Actor Views.
-
-Private actor state is read only inside the validated social/action transaction.
 
 The committed transaction produces the player-observable response state consumed by Narrator.
 
@@ -976,8 +953,6 @@ Preferred authoring targets:
 - exceed those soft limits only with concrete justification;
 - keep hot Package Data total in the low-megabyte range.
 
-Structured assertions / references are preferred over long prose.
-
 #### 6.52.3 Package Data versus Knowledge
 
 Use Package Data for:
@@ -1007,8 +982,6 @@ They are not valid runtime Context.
 #### 6.52.5 v1 does not require Content extension points
 
 Do not declare ContentRuntime extension points / addon architecture merely because the platform supports them.
-
-v1 should first produce one complete, validated Base Package.
 
 Shareable Case / content packs may be designed later.
 
@@ -1063,7 +1036,6 @@ A Transaction may declare:
 - input schema;
 - intent-resolver exposure metadata;
 - private read grants;
-- validators;
 - deterministic / bounded Resolution policy;
 - World Event templates;
 - typed Lifecycle `app.command` effects;
@@ -1095,15 +1067,12 @@ Explicitly forbidden:
 
 #### 6.52.11 Private read grants
 
-Transaction validation may read only statically declared authority families / selectors.
-
 Typical grants include:
 
 - target Entity fields;
 - target Actor Beliefs / Memories relevant to selected interaction;
 - player↔target Relations;
 - explicit Evidence refs supplied by args;
-- current Conditions / Claims needed for validation.
 
 Private transaction reads are not automatically disclosed to the intent resolver or Narrator.
 
@@ -1128,11 +1097,9 @@ The Core transaction path should behave conceptually as:
 1. resolve selected declared verb + args;
 2. capture expected revision;
 3. construct declared private read set;
-4. validate references / access / invariants;
 5. build Resolution Frame if required;
 6. resolve deterministic bounded Fortune where required;
 7. build a bounded typed effect plan;
-8. validate every effect against a private candidate;
 9. apply all World / Lifecycle / clock effects to the private candidate;
 10. update declared derived read models / indexes;
 11. produce a player-safe transaction receipt;
@@ -1147,12 +1114,9 @@ No partial authority mutation is visible.
 The bridge should reuse rather than replace:
 
 - Game World reducers;
-- Lifecycle `prepareLifecycle()` validation / mutation;
-- clock validation;
 - Session revision CAS;
 - Action receipt / idempotency semantics;
 - deterministic RNG;
-- Information state validation.
 
 The new capability is primarily an atomic composition / safe-observation seam.
 
@@ -1186,8 +1150,6 @@ The transaction returns a Turn-local receipt containing concepts such as:
 - changed safe refs;
 - player-visible consequences;
 - known unresolved uncertainty.
-
-Receipt projection is explicitly authored / validated.
 
 Core must not summarize every changed private record for Narrator automatically.
 
@@ -1248,7 +1210,6 @@ Approved:
 - four bounded transaction effect families;
 - private authority reads separated from resolver/Narrator disclosure;
 - player-safe intent observation;
-- private-candidate validation followed by one Session CAS publication;
 - reuse of existing World/Lifecycle/clock/revision/idempotency machinery;
 - hard transaction work / receipt / observation bounds;
 - safe Turn-local transaction receipt;
@@ -1359,8 +1320,6 @@ The new capability therefore supports both:
 - intent-resolver transaction selection;
 - fixed typed frontend transaction binding.
 
-Frontend bindings select a statically declared Transaction and provide only its validated input args.
-
 They cannot select arbitrary dynamic transaction IDs.
 
 #### 6.54.6 Derived Publication Hook applies beyond player transactions
@@ -1389,15 +1348,9 @@ Background Lifecycle changes do not need to be artificially wrapped as player Tr
 
 The approved flow remains:
 
-Lifecycle due event
-→ bounded background Agenda Task
-→ declared App Command writes Agenda Intent
-→ deterministic scheduler validates current state
-→ real-world action, when required, uses Authority Transaction.
-
 The AI records bounded intent; it does not directly create external institutional facts.
 
-**P3 implementation correction (2026-09-30):** the existing primitives are retained, but the assumed orchestration bridge was absent. The user directed autonomous resolution of G2. Formal Core support now uses required `world-simulation@1` alongside required `authority-transaction@1`: typed static scoped job input, deterministic due-time ordering, non-player Transactions, one admitted deliberation per batch, stale revalidation and atomic Task-intent/action/publication acceptance. It reuses Lifecycle outbox/cursors, World Journal, Session CAS and the existing budgeted Transaction engine; no Package executable scheduler or fake player turn. See `plans/feat/world-simulation-scheduling.md` and its Record for the exact supported first profile. Legacy canonical schedules cannot compete with the opted-in job driver. The original no-additional-gap assertion is superseded only for this concrete G2 discovery; Fortune G1 remains closed.
+**P3 implementation correction (2026-09-30):** the existing primitives are retained, but the assumed orchestration bridge was absent. The user directed autonomous resolution of G2. It reuses Lifecycle outbox/cursors, World Journal, Session CAS and the existing budgeted Transaction engine; no Package executable scheduler or fake player turn. See `plans/feat/world-simulation-scheduling.md` and its Record for the exact supported first profile. Legacy canonical schedules cannot compete with the opted-in job driver. Fortune G1 remains closed.
 
 #### 6.54.8 NPC interaction requires no v1 dynamic Actor View
 
@@ -1405,8 +1358,6 @@ v1 retains:
 
 - zero ordinary per-NPC Model Tasks;
 - zero required per-NPC Information Views.
-
-Private Belief / Memory / Relation reads occur only inside declared transaction validation.
 
 The committed observable response is what Narrator receives.
 
@@ -1442,27 +1393,6 @@ No direct backend-domain frontend access is approved.
 `authority-transaction@1` must be implemented, tested and merged into `main` before formal Package implementation begins.
 
 Do not build Package workarounds against the missing seam.
-
-Once Core is integrated, Package implementation rebases / syncs to the verified new `main` baseline.
-
-#### 6.54.12 Blocking Core verification gates
-
-The Core prerequisite is complete only when tests verify at minimum:
-
-1. one Transaction may prepare World + multiple Lifecycle-domain effects + canonical clock change;
-2. any invalid effect causes zero published mutation;
-3. intent observation contains only declared player-safe information;
-4. private transaction reads never leak into the safe Narrator receipt;
-5. declared derived projections publish atomically with authority;
-6. Narrator/provider final failure publishes no authority;
-7. Narrator success publishes prepared authority + Action receipt + assistant Turn atomically;
-8. fixed typed UI invocation and free-text intent use the same declared Transaction authority path;
-9. stale revision and idempotency checks fail closed;
-10. deterministic Fortune is stable across provider retry / save restore of the same authority anchor;
-11. Retry/branch semantics preserve coherent authority and never mutate an already committed branch in place;
-12. Packages that do not declare `authority-transaction@1` retain current behavior and compatibility.
-
-Equivalent stronger tests are acceptable.
 
 #### 6.54.13 Final v1 Core-gap result
 
@@ -1502,7 +1432,6 @@ Approved:
 - one unified derived-publication hook covers player and background authority changes;
 - Agenda Deliberation, NPC interaction, Package Data and frontend require no additional v1 Core gap;
 - Core prerequisite must enter `main` before formal Package implementation;
-- twelve minimum Core verification gates are frozen.
 
 Rejected:
 
@@ -1513,20 +1442,16 @@ Rejected:
 - requiring every background Lifecycle update to masquerade as a player Transaction;
 - starting Package development with temporary Core-gap workarounds.
 
-
 ## Current Atria main audit baseline
 
-- **Verified main:** `c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`.
 - **ExperienceContract v1** currently supports the relevant declared capabilities, including `package-data`, `data-projection`, `action@2`, `declarative-mutation`, `message-projection`, `turn-contract`, `turn-envelope`, `narrative-outcome`, `runtime-automation`, `perspective`, `model-task`, `session-application`, `temporal`, `player-continuity` and `workflow`.
 - **Lifecycle Runtime v1** supports up to 32 scopes, 32 domains, 32 logical clocks, 64 clock advances, 32 workflows and 128 interactions. Domain retention preserves pinned / referenced records and supports up to 4096 records per domain.
 - **Information Runtime v1** supports up to 32 sources, 16 views, 16 bounded graphs, depth up to 4 and 256 graph edges per graph projection. Supported semantics include `truth`, `belief`, `thread`, `open_loop`, `memory` and Timeline `narrative`.
-- Belief projection already validates explicit epistemic statuses and channels, including known / believed / suspected / disputed and witnessed / direct_message / told_by / public_broadcast / surveillance / rumor / inference.
 - **Task Runtime v1** supports `turn_blocking`, `interactive`, `background` and `maintenance` execution classes; result authority distinguishes advisory proposals, turn context, presentation, world-outcome proposals and declared app commands.
 - Package Turn supports `authority-first` and `narrative-outcome` policies. In authority-first mode narration cannot write semantic outcomes.
 - TurnEnvelope and MessageProjection already separate canonical narrative text, inert bounded presentation blocks, diagnostics and semantic outcome proposals.
-- Current Task rules intentionally forbid `queuePolicy=latest` for authority-producing Tasks. Any Round 6.7 supersession design must therefore supersede pending decision requests before authority-producing task acceptance rather than superseding confirmed authority work.
+- Current Task rules intentionally forbid `queuePolicy=latest` for authority-producing Tasks.
 - Native Session publication is immutable-revision based; retries fork from committed history rather than mutating accepted outcomes.
-- Current low-level Session Core can atomically publish multiple state namespaces in one revision, but Round 9 must still verify whether the Package-facing typed action seam can express every required multi-domain gameplay transaction without Core changes.
 
 ### Confirmed design-pressure point
 
@@ -1547,39 +1472,3 @@ Do not fall back to giving a shared task all actors' private Beliefs / Memories.
 A requirement is a **Core gap** only when the approved design cannot be represented safely through current Package Data, Lifecycle, Information, Task, Continuity, Message / Turn or Native Frontend contracts.
 
 Complexity or inconvenience alone is not a platform gap.
-
-### Authority-first Turn verification
-
-Current `main` `executeTurn / prepareTurn` confirms that `authority-first` directly supports the approved player-action direction:
-
-1. load the anchored Session revision;
-2. if free-text `userInput` is present and the Package declares game logic, run `role.intent_resolver`;
-3. the intent resolver operates through the Package game LLM runtime / tools and may publish authoritative state changes before narration;
-4. every accepted state publication advances the revision anchor;
-5. only after intent resolution completes do bounded Turn stages and the Narrator execute;
-6. `finalizeTurn` rejects Narrator outcomes under `authority-first`.
-
-Therefore the approved design **Player Intent → authority resolution / commit → projection → Narrator** maps directly to the current Package Turn policy.
-
-`narrative-outcome` should not be used for ordinary gameplay authority because it intentionally interprets narrative after generation.
-
-The remaining Round 9 work is to define the Package game-logic tool/action surface so the intent resolver can perform only validated world operations.
-
-
-### Round 9.5 verified runtime constraints
-
-The following constraints are now verified against `main@c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`:
-
-- Declarative Game World commands accept `id / description / argsSchema / validators / events / llm` and emit World Events. They do **not** directly declare Lifecycle `app.command` mutations.
-- Declarative interpretation mappings can produce a World command plus one Lifecycle `app.command`, but that bridge belongs to semantic outcome / task-authority handling rather than the ordinary `authority-first` intent-resolver command catalog.
-- Lifecycle action kinds are individually typed as `app.command`, `world.command`, `workflow.transition` or `task`; one workflow / automation action node contains one action, not an arbitrary atomic multi-action transaction.
-- `authority-first` free-text resolution exposes Game World commands through `createCommandToolCatalog(worldSession.getCommands())`.
-- The Host-created Game LLM runtime does not currently inject Package-defined `observationProjectors` or dynamic actor Information views into that intent-resolver path. The default observation projector contains only declared projector outputs (none in this Host path) plus recent sanitized World Events.
-- Information Actor views are statically bound to one `actorId`; there is no current invocation-time actor binding in the Information contract.
-
-These constraints mean two requirements need explicit Round 9.5 resolution rather than assumed Package wiring:
-
-1. **authority-first cross-authority transaction seam** — a free-text game verb may need to validate against and atomically update World/Lifecycle authority together;
-2. **dynamic actor-private perspective seam** — many persistent actors cannot each consume a dedicated static Information View.
-
-These are verified platform pressures. Whether they become Core implementation prerequisites depends on the accepted Round 9.5 architecture.

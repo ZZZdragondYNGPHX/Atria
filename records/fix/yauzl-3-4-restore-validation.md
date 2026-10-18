@@ -1,4 +1,4 @@
-# yauzl 3.4 restore-path validation
+# yauzl 3.4 restore-path
 
 ## Task
 
@@ -7,11 +7,8 @@ Investigate and address the primary ZIP extractor repeatedly stalling on Android
 ## Branch and PR
 
 - Baseline: `main@c51d8b779a741f0cf87758b5f8565be581f17556`
-- Task branch: `chore/yauzl-3-4-restore-validation`
-- Final validated task head: `b2880dfb84cc2441fa3d2c55dc637132f3aac819`
 - PR: #19
 - Squash merge / resulting `main`: `aebd6ada8760fea3b07b65ba0f05b5b278b3f471`
-- Validated task-head tree and merged-main tree: `5105973901122b21eaf33bbca8987d1d31ce69dd`
 
 ## Field evidence
 
@@ -49,30 +46,6 @@ The working hypothesis is therefore a yauzl 3.3.0 stream-lifecycle edge interact
   - bounded `adm-zip` fallback;
   - manual interrupt and rollback.
 
-## Regression validation
-
-Added a real interoperability test that:
-
-1. creates a ZIP with Atria's own `archiver` dependency;
-2. includes a >1 MiB Unicode worldbook-style JSON entry;
-3. includes a 2 MiB binary/image-style entry;
-4. opens the ZIP through yauzl;
-5. extracts both entries using the same primary stream helper used by restore;
-6. verifies byte counts and exact output bytes.
-
-The complete Node unit suite passed with this regression.
-
-## Validation
-
-Final task head passed:
-
-- Atria Migration Guard;
-- ESLint;
-- complete Node unit suite;
-- archiver → yauzl large-entry primary-path round-trip regression.
-
-The Backup & Storage browser workflow was not path-triggered by this dependency/test-only change, so it was not reported as executed for PR #19.
-
 ## Limitations / interpretation
 
 The passing Linux CI round-trip confirms that:
@@ -80,7 +53,7 @@ The passing Linux CI round-trip confirms that:
 - Atria's archiver ZIPs are structurally compatible with yauzl 3.4.0;
 - the upgraded primary extraction path handles representative large Unicode JSON and binary entries.
 
-It does not by itself prove the Android/Termux field-only stall is fully eliminated. The watchdog/fallback/rollback layers intentionally remain in place. The decisive field check is whether the same real Android archive still logs `Entry stream stalled` after updating to this main revision.
+It does not by itself prove the Android/Termux field-only stall is fully eliminated. The watchdog/fallback/rollback layers intentionally remain in place.
 
 ## Data/config impact
 

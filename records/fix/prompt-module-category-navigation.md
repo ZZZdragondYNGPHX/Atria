@@ -31,20 +31,3 @@ listeners close on render, navigation and disposal. Existing icons/tokens are us
 Scroll offsets are captured on the real ancestor scroll containers before editing
 and restored after Back/save together with filter and module focus. No global
 view-state store or parallel resource authority was added.
-
-## Validation actually run
-
-- 13 Jest tests: native/prompt-presets (5), atria-shell/prompt-authoring-p6 (8).
-- Edge: existing resource migration plus desktop/mobile nested category lifecycle,
-  rename, module move, export/import and cascade deletion: 3 scenarios passed.
-- Edge: desktop/mobile 36-module filtering/menu/return scenarios: 2 passed. Covers
-  all/uncategorized/empty/parent/grandchild filters, Back and save scroll position
-  within 3px, focus, keyboard menu actions, parent-cycle prevention, category move,
-  empty-name rejection, creation in selection and delete cancel/confirm.
-- Final desktop scenario rerun after correcting root-parent default selection: passed.
-- Desktop/mobile screenshots inspected; menu and list have no horizontal overflow.
-- Changed JavaScript ESLint, native zh-CN/zh-TW localization coverage and whitespace
-  checks passed.
-
-No paid inference, Android, Docker, full repository suite or remote push.
-Previous task: `chore/remove-retired-agent-presets.md`.

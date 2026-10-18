@@ -2,8 +2,6 @@
 
 Updated: 2026-09-28.
 
-Status: **Phase 6 — Branch / Regression / Build is complete and validated. Implementation Baseline v1.0 v1 closure is complete. Stop before Package release or any new phase.**
-
 - Repository: `ZZZdragondYNGPHX/Atria`.
 - Long-lived Package branch: `package/native-heavy-frontend-reference`.
 - Final Package HEAD: `b3b6c4f01729325a789c92a15cc6946e1a97603a`.
@@ -41,19 +39,6 @@ The Scenario:
 9. advances Branch B time and records a different canonical Timeline Turn;
 10. proves Branch B is current and Branch A has no ghost future.
 
-This validates the frozen model: World + Session Application + Lifecycle + Timeline restore through one Native revision graph, rather than each application repairing itself.
-
-### Four core Scenario regression
-
-All four v1 core Scenarios pass through production Studio simulation:
-
-- `church-day-cycle`;
-- `story-turn`;
-- `communication`;
-- `branch-restore`.
-
-All are recorded/mock, non-persistent and `providerCalls = 0`.
-
 ### Experience Health
 
 Phase 6 builds the exact authored Package, installs it in isolated production storage, creates a Session, executes `experience.ready`, then inspects Experience Health.
@@ -82,20 +67,15 @@ Phase 6 adds `previews/phase6-phone-unread.json`:
 
 ### Studio preflight / prepare_review / human review / Build
 
-The validator exercises the real Studio authoring seams.
-
 Exact formal Project Source:
 
-- validation: PASS;
 - preflight: PASS;
 - Preview: PASS / non-persistent;
 - Build: PASS.
 
 A separate isolated recorded Project Agent Workspace exercises:
 
-`proposal → prepare_review → validation + Preview + branch-restore simulation → Review gate → explicit Commit → Build`.
-
-The reviewed proposal is a source-only ephemeral marker with no Runtime Authority effect. Human diff review confirmed the Phase 6 repository change contains only Package asset/validator/dedicated-workflow files and no Atria Core source changes.
+The reviewed proposal is a source-only ephemeral marker with no Runtime Authority effect.
 
 ### Manual Playtest
 
@@ -115,50 +95,6 @@ Reviewed surfaces:
 - Studio Review / Build.
 
 The Playtest is deliberately provider-free and non-device. It does not claim live-model prose quality, Android behavior, or screenshot-level visual QA.
-
-## Validation
-
-Final workflow: `36395818903`, job `Phase 6 Branch Regression and Build` — **success**.
-
-Package validators:
-
-- Phase 1: PASS;
-- Phase 2: PASS;
-- Phase 3: PASS;
-- Phase 4: PASS;
-- Phase 5: PASS;
-- Phase 6: PASS;
-- four core Scenarios: PASS;
-- Health / Preview / preflight / prepare_review / Review / Build: PASS;
-- `providerCalls = 0`.
-
-Adjacent Native suites:
-
-- `game-runtime/ui-v2.test.js`;
-- `game-runtime/ui-live.test.js`;
-- `game-runtime/experience-ready-p4.test.js`;
-- `native/background-task-app-bridge-g2.test.js`;
-- `native/lifecycle-contract-p4.test.js`;
-- `native/message-projection-contract.test.js`;
-- `native/message-presentation.test.js`;
-- `native/package-turn-memory-bridge-g3.test.js`;
-- `native/turn-app-outcome-g1.test.js`;
-- `native/studio-health-p9.test.js`;
-- `native/studio-service.test.js`;
-- `native/project-agent.test.js`.
-
-Result: **12 / 12 suites, 488 / 488 tests PASS**.
-
-MySQL/Postgres were explicitly disabled. No Android, Docker, paid provider or unrelated repository-wide validation was run.
-
-Initial Phase 6 run `36393922495` failed only because the Package validator read non-public Project Agent snapshot field `task.proposals`. Phase 1–5 had already passed and `prepare_review` had completed. The validator was corrected to public `task.operations`; final run `36395818903` passed completely.
-
-Known unrelated repository issues remain unchanged:
-
-- repository-wide old fixture failure `native/model-prompt-runtime-p4.test.js` (missing Session snapshot; previously 811 / 812 suites, 10277 / 10278 tests);
-- prior `generation-host → public/scripts` Native Model Prompt Runtime architecture guard.
-
-Neither is a Phase 6 regression.
 
 ## Authority boundaries retained
 

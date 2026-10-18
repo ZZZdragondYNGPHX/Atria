@@ -16,8 +16,6 @@ R8 已完成立项准备，但**尚未允许开始功能开发**。
 
 真正开发基线必须是：
 
-> **R0-R7 已全部完成、验证并合并后的最新 `main`。**
-
 Astra 接手时不得从 R7 长期分支、R7 候选 HEAD 或当前预留 HEAD 直接开始改代码。
 
 ---
@@ -45,7 +43,6 @@ Astra 接手时不得从 R7 长期分支、R7 候选 HEAD 或当前预留 HEAD �
 3. 切换 R8 分支
 4. `git merge --ff-only origin/main`
 5. 推送 R8 分支
-6. 验证：
    - `git rev-parse HEAD`
    - `git rev-parse origin/main`
 7. 两个 SHA 必须完全相同。
@@ -98,7 +95,6 @@ R8A 必须先完成：
 - Android/Termux startup baseline；
 - runtime matrix；
 - plugin/API/DOM ABI inventory；
-- architecture guard 设计并落地。
 
 所有之后的拆分必须引用 R8A 的实际 profile / dependency evidence。
 
@@ -144,7 +140,6 @@ R8A 必须先完成：
 目标方向：
 
 - Node 24 LTS 作为 primary；
-- Node 22 是否保留为 minimum，由 R8A 实际平台兼容验证决定；
 - Node 20 必须退出；
 - ESLint 8 升到当前受支持 ESLint 10；
 - Express 5 是独立兼容 checkpoint，可 defer。
@@ -157,7 +152,6 @@ R8A 必须先完成：
 
 只在以下情况停下：
 
-1. GitHub CI 进入明显耗时验证；
 2. 必须依赖 Android / Termux 真机日志；
 3. 必须依赖真实 UI 截图；
 4. 用户本人必须完成权限 / Secret / 授权。
@@ -167,7 +161,6 @@ R8A 必须先完成：
 每个 R8 子阶段完成后：
 
 - 更新正式方案的实际状态；
-- 记录 validated HEAD；
 - 记录 workflow/run；
 - 更新本 handoff；
 - 若正式切换到 R8 且 R7 已归档，再更新 `docs:handoff/latest-handoff.md`。
@@ -182,7 +175,6 @@ R8A 必须先完成：
 
 1. R7H 最终 CI；
 2. R0-R7 合并到 `main`；
-3. merged `main` 验证完成。
 
 然后由 Astra：
 

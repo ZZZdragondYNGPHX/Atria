@@ -25,7 +25,7 @@ Replace Character Card/chat-file product identity and persistence with Native Pa
 | `session-runtime.md` | Session, BranchGraph, Timeline, state, revisions, saves, storage, compatibility adapter | `identity-package-storage.md` |
 | `immutability-context.md` | Timeline immutability and bounded Native Context | `session-runtime.md`, `world-knowledge.md` |
 | `product-sync.md` | Product UX and sync/backup boundary | preceding authority modules |
-| `implementation.md` | N0–N10 phase design, verification strategy, workflow, non-goals | routed modules |
+| `implementation.md` || routed modules |
 | `invariants-next.md` | Architectural invariants and historical next-action section | all authority modules |
 | `legacy-implementation-history.md` | Old in-Plan execution notes retained for audit only | — |
 

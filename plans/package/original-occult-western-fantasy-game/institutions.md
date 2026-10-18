@@ -27,7 +27,6 @@ Basic abnormal-scene procedure includes:
 - separate witnesses;
 - establish and record time;
 - preserve scene boundaries;
-- verify identity;
 - avoid casually moving unknown relics or contradictory records;
 - escalate persistent Name / address / map / death-status contradictions.
 
@@ -173,8 +172,6 @@ They are especially important for Eastbank because worker families and mutual so
 The telegraph network primarily controls speed, synchronization and transmission.
 
 Major newspapers interpret events and create rapid Public Belief.
-
-Large newspapers therefore require abnormal fact-checking discipline because a widely repeated wrong Name or event framing can become a powerful Belief Anchor before Truth settles.
 
 Journalists gain unusual gameplay relevance through the combination of access and mass publication.
 
@@ -328,4 +325,3 @@ Rejected:
 - a single villain faction secretly causing every city problem;
 - supernatural cases making ordinary police and civil procedure irrelevant;
 - treating worker and neighborhood organizations as background-only populations.
-

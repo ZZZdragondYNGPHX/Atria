@@ -2,7 +2,7 @@
 
 ## Phase 1 定案与证据基线
 
-2026-10-04完成 Phase 1 源码契约核对及 Phase 2 Core 最小支持；下方审计表保留 Phase 1 基线，Phase 2 已实施接口见末节。游戏内容已在 Phase 3 接入，真实前端留 Phase 4。核对基线：任务分支 `d7be6f1abff4d9d756f2dfa24c5492104e72aa75`、package `48b1d97fa660ab5fdd5e2a0c1e50c5e91a57148e`、main `c8d2d0e0c11c283ade2fa3c730740a0dc480c746`。精确实施历史见唯一 Record。
+下方审计表保留 Phase 1 基线，Phase 2 已实施接口见末节。游戏内容已在 Phase 3 接入，真实前端留 Phase 4。精确实施历史见唯一 Record。
 
 路径标记 `Package:` 相对游戏根 `original-occult-western-fantasy-game/`，`Core:` 相对 main 根。下面的函数、字段和限制均从对应代码读取；设计中的新增契约名称尚未存在。继续复用 SessionCore、Lifecycle、authority transaction、Information、Simulation、Task 和 Native frontend，不另建游戏执行器、数据库或调度权威。
 
@@ -10,14 +10,14 @@
 
 | 领域 | 当前事实与直接代码证据 | 实施归属与结论 |
 | --- | --- | --- |
-| 构建入口 | Package: `tools/package.mjs` 默认依次运行 compileOpening/Network/Convergence/LongHorizon/History/Lifetimes/Renewal/Enterprise/Regional，再 compileInquiry；原 manifest/runtime JSON主要是 fixture输入，不能只改JSON就认为默认产品已变 | Package：新角色扮演编译入口接管默认路径；旧路径保留显式回归入口 |
-| 问答 | Package: `tools/opening-compile.mjs:compileOpening` 六事务第六步授予Civil Verifier及Second Death家族委托；Core: `SessionCore.create` 仅接受既有创建参数，初始Timeline来自固定entryPoint | 已有Native app.command可以无模型写单domain，但没有多domain角色＋预写开篇＋宿主mode的统一受校验确认；Package编写组合素材，Core A补这一最小提交点，避免排列组合成大量entryPoints |
+| 构建入口 | Package: `tools/package.mjs` 默认依次运行 compileOpening/Network/Convergence/LongHorizon/History/Lifetimes/Renewal/Enterprise/Regional，再 compileInquiry；原 manifest/runtime JSON主要是 fixture输入，不能只改JSON就认为默认产品已变 | Package：新角色扮演编译入口接管默认路径；|
+| 问答 |Core: `SessionCore.create` 仅接受既有创建参数，初始Timeline来自固定entryPoint|Package编写组合素材，Core A补这一最小提交点，避免排列组合成大量entryPoints|
 | 自由文字 | Core: `src/native/authority-turn.js:resolverRequest` 只允许一个已声明事务、严格inputSchema；`adapters/generation-host.js:prepareTurn` 有authorityRuntime时走此路径 | Package新增通用生活原语；不改为任意JSON效果。无需Core多动作引擎 |
 | 旧resolver | `public/scripts/native/experience/llm/intent-resolver.js` 是另一条无authority事务路径，最多8命令及game_no_change；不是当前游戏执行路线 | 不套用八命令假设；Package声明一个受限表达/无法裁定事务供真实resolver选择 |
-| 结果与随机 | Core: `authority-transaction.js:executeTransaction` 校验读授权、validator、Resolution、effects；随机identity绑定Session/branch/revision/playerMessage/transaction/ordinal，输入hash单独保存；`SessionCore.finalizeTurn` 用私有proof发布 | 复用。Package编写确定性及风险表；Core B补跨进程选择/调用续接，不开放模型状态patch |
+| 结果与随机 |`SessionCore.finalizeTurn` 用私有proof发布| 复用。Package编写确定性及风险表；Core B补跨进程选择/调用续接，不开放模型状态patch |
 | 叙述与提交 | `generation-host.js:prepareTurn` 先算私有candidate，再让Narrator读candidate和receipt；`SessionCore.finalizeTurn` 将状态、玩家输入（typed时）、叙述、回执一次发布；叙述空白/含outcomes拒绝 | “先裁定”目前是先准备，不是先持久提交；普通轮次保留该原子路径。Core A仅增加预写开篇的确定性路径 |
 | 动态记录 | `experience/logic/bound-expressions.js:recordSelector/reads` 支持受类型约束的recordId表达式；`lifecycle-authority.js:prepareLifecycle` 可创建闭合schema记录；Package当前开局只用静态目标 | 基本容器已支持；Package控制身份、可达性、来源、版本和上限。不能把存在recordId表达式说成任意事实发布已安全 |
-| 动态提案 | `SessionCore.recordTaskResult` 的simulation Task先写声明App Command，再在同次candidate上prepareWorldSimulation(admit:false)，最后发布；simulation读/写及Task resultBinding必须是同scope静态目标 | Package用私有收件箱＋静态槽位推广事务。复用校验和原子发布，不增加通用动态dispatch |
+| 动态提案 | `SessionCore.recordTaskResult` 的simulation Task先写声明App Command，再在同次candidate上prepareWorldSimulation(admit:false)，最后发布；simulation读/写及Task resultBinding必须是同scope静态目标 | Package用私有收件箱＋静态槽位推广事务。|
 | 世界更新 | `simulation-authority.js:prepareWorldSimulation` 先确定性赶时，再挑hot/warm、排除cold；只允许1 deliberation且有pending simulation就不再准入；队列/cursor保存于Lifecycle | Package用有效轮数和重要度门控静态批次；Core B补实际发送次数持久限额，现有每次准入上限并不等于跨重试AI预算 |
 | 历史轮数 | `history-authority.js:prepareHistory` 的transactions与meaningful turns不同；记忆标记等操作也可能计turn，Host发布用countTurn:false | 不直接当游玩计数；Package唯一play_progress记录只由推进事务更新 |
 | 保存与回退 | `SessionCore.createSavePoint/restoreSavePoint/forkBranch/switchBranch/retryReply`；restore创建新branch，Retry回到用户边界；`NativeSaveSystem._collectClosure` 导出会追溯parent/branches/save roots | 普通复用；铁人需要Core C服务端限制全路径及专用head续玩闭包 |
@@ -28,7 +28,7 @@
 
 新增 opt-in 的确定性开始契约（拟名 `storyStart`），绑定当前安装的PackageVersion、闭合选择schema、固定bootstrap事务、预写开篇模板。问答与组合规则归 [player-experience.md](player-experience.md)。编辑、返回及摘要均为草稿；按确认才提交，不能逐题调用generation。
 
-Core已有`frontend/host-bridge.js:write`的App Command → applyLifecycleCommand无模型路径，可用于一般声明应用状态；不能把此能力漏记为“所有Native写操作都调用AI”。它不提供本任务的多domain角色校验、开篇模板与宿主不可回退mode一起提交，Core A在该能力之上补一个受保护的开始动作，而非新建第二套执行器。
+Core已有`frontend/host-bridge.js:write`的App Command → applyLifecycleCommand无模型路径，可用于一般声明应用状态；不能把此能力漏记为“所有Native写操作都调用AI”。
 
 新Session可以处于未开始态；开始前禁止生成、世界演化及可续玩保存。拟新增固定Host开始动作及HTTP入口，输入只有声明的选择ID、姓名/个人修饰、普通或铁人、expectedRevisionId、invocationId。服务器从同一份编写素材派生背景、资源、关系和开篇，不信任客户端送来的总结、成功结果或initialStateOverlay。
 
@@ -40,7 +40,7 @@ Core已有`frontend/host-bridge.js:write`的App Command → applyLifecycleComman
 
 Package默认声明 `roleplay.express`、`talk`、`work`、`travel`、`rest`、`learn`、`practice`、`invoke`、`wait`、`close_episode` 等少量事务族；最终名称由编译时定，功能和边界由本设计定。参数均为闭合schema：目标稳定ID、方法enum、玩家表达、有限时长/目标；不接收 outcome、费用delta、能力规则、他人同意或隐藏真相作为玩家/模型可写字段。
 
-公开观察只给当前可达目标、已知条件、关系、已掌握能力与合理方法。私有读授权可用 `args.targetId` 选择记录，但validator必须确认目标已公开、位置可达、角色可行动、资源与许可满足。空槽、旧身份、远方未知ID不能通过猜测调用；未知schema/越界先拒绝，正常能力不足用有意义的impossible/denied回执，不作为服务器崩溃。
+公开观察只给当前可达目标、已知条件、关系、已掌握能力与合理方法。空槽、旧身份、远方未知ID不能通过猜测调用；未知schema/越界先拒绝，正常能力不足用有意义的impossible/denied回执，不作为服务器崩溃。
 
 `express` 接受个人言语/尝试与受限分类（expression/clarify/unsupported），只记玩家表达或需要澄清的尝试，不能默认推进关系、获得物品或替他人作决定。纯表达、不支持输入及澄清不增有效轮数。实际互动必须落到talk等声明原语；“我成为院长”“他同意了”不能发布任命或同意。非目录措辞可通过这些原语进入交流、谋生、旅行及实践，不恢复调查白名单。未来新方向扩展声明，不伪称已经支持任何行为。
 
@@ -64,7 +64,7 @@ Core B新增持久operation continuation，复用现有invocation/任务持久�
 
 世界创作Task只能返回一个候选（或defer）：kind、公共名/描述、已有parentID、关系/事务模板ID；不得返回法则、授职、现成Claim、隐藏因果、任意时钟或状态效果。Task结果写私有 `world_proposal.main`，其中待选槽位及锚定信息由已排队输入决定；不向Narrator/frontend绑定此domain。
 
-每槽一个静态promotion事务/job；所有读写位于同一world scope，符合simulation静态限制。它核对空槽、提案类别/parent可用、请求身份、当前有效轮数及源revision、模板许可，再按已编写结构写新槽和公共引入事实；无合法提案则defer/reject并消费收件箱，不发布部分内容。自由文本只能作该模板容许的公开外观/台词，不能驱动资格或超凡结果。关键世界属性只由模板决定。
+每槽一个静态promotion事务/job；所有读写位于同一world scope，符合simulation静态限制。无合法提案则defer/reject并消费收件箱，不发布部分内容。自由文本只能作该模板容许的公开外观/台词，不能驱动资格或超凡结果。关键世界属性只由模板决定。
 
 推广与Task完成沿用recordTaskResult的同次模拟反应及CAS；固定层不写，收件箱清理与新实体原子发布。确定性机会也可走同槽机制，无需AI。生成的关系/事件后续仍由talk/work等事务裁定。首版最多8推广job＋1创作job＋2确定性时限job，低于16 jobs；静态出版分支也要计入24 App Commands/32 effects，不按运行互斥偷减声明预算。
 
@@ -82,23 +82,23 @@ Package的 `play_progress.main.effectiveTurns` 是游玩计数唯一权威。tal
 
 预算初值：新开始0模型发送；普通自由文字最多1 resolver＋1 narrator的初次发送，每lane最多1显式续接发送，总计每逻辑轮不超过4次；typed事务跳过resolver。world创作每4有效轮窗口最多一个逻辑批次，初次＋一次续接共最多2实际发送；每20有效轮最多10次世界发送，无结转突发；始终只允许一个pending。失败、fallback、网络重试均占实际发送额度；不得按“成功次数”计。每次发送前Core B持久扣额，未知发送仍视为已消费；额度同时按run/anchor/lane归属，不允许客户端新建invocation或普通回退消除已花费记录。达到限额等待下一合格窗口或让玩家继续/取消；不换invocation重置。
 
-Package声明门槛/数额，Core B只执行通用opt-in invocation quota与持久计费；不能仅靠route.maxRetries，generation-service还可能fallback。原有Task queue/cursor仍拥有调度，quota不调度世界。正文重试与批次重试在原操作中使用剩余额度；重入/刷新只能恢复待处理项。批次期间前台推进致simulationTaskCurrent失效时取消旧候选，已发送额度不返还；后续轮数门槛允许时新批次才准入。普通读档恢复旧世界，同时不能逆转运行记录中的已花费发送额度；铁人根本不回退。
+Package声明门槛/数额，Core B只执行通用opt-in invocation quota与持久计费；不能仅靠route.maxRetries，generation-service还可能fallback。原有Task queue/cursor仍拥有调度，quota不调度世界。正文重试与批次重试在原操作中使用剩余额度；重入/刷新只能恢复待处理项。批次期间前台推进致simulationTaskCurrent失效时取消旧候选，已发送额度不返还；普通读档恢复旧世界，同时不能逆转运行记录中的已花费发送额度；铁人根本不回退。
 
 ## 普通、铁人与终局：Core C
 
-拟新增opt-in `runPolicy` 能力及固定Host状态读口，Run identity使用宿主sessionId；普通/铁人由Core A确认时冻结在宿主管理根记录，不能用可回退App domain变更。Package提供death条件和公开结束文字，Core校验终局声明对应的受保护结果，AI文本及普通app.command不能发起删档。
+拟新增opt-in `runPolicy` 能力及固定Host状态读口，Run identity使用宿主sessionId；普通/铁人由Core A确认时冻结在宿主管理根记录，不能用可回退App domain变更。
 
 | 操作 | 普通 | 铁人 |
 | --- | --- | --- |
 | 活着时继续/持久化 | 现有SavePoint与Session保存 | 只保最新已提交head的续玩点；不生成可读历史版本 |
 | restore/fork/switch/已提交Reply Retry/切换variant | 既有能力 | 服务端拒绝；前端依据同一状态不展示回退入口 |
 | 未提交generation重试 | 原操作续接，额度不重置 | 同样允许；不算复活或读档 |
-| export/import | 精确Package依赖与原有closure | 专用head续玩闭包；本宿主记录校验同run当前head/状态，旧head拒绝；新宿主首次导入依赖合法闭包 |
+| export/import | 精确Package依赖与原有closure | 专用head续玩闭包；新宿主首次导入依赖合法闭包|
 | 已提交死亡 | 该角色终局，仍可读旧SavePoint建立新分支 | 已确认终局后该局不可恢复，清产品管理的该局保存 |
 
-铁人正常续玩容器不遍历旧parent、旧branch、自动/quick/manual SavePoint；闭包仅包含当前head所需状态、展示Timeline和必要依赖，明确不含可恢复历史root。容器格式/NativeSaveSystem导入校验须在Core C中设计相应版本能力，不能截几个字段后当普通closure使用。导入到已存在同run时，仅当前head相等的幂等确认或合法最新续接可接受，不允许覆盖别的局。
+铁人正常续玩容器不遍历旧parent、旧branch、自动/quick/manual SavePoint；闭包仅包含当前head所需状态、展示Timeline和必要依赖，明确不含可恢复历史root。导入到已存在同run时，仅当前head相等的幂等确认或合法最新续接可接受，不允许覆盖别的局。
 
-死亡是权威结果成功发布后的终局。Core C在同一Session提交锁/存储协议下记录不可回退terminal墓碑与已提交deathRevisionId，取消generation/Task并撤销frontend epoch，然后进入cleanup_pending；清理SessionRepo.delete列出的该局全部branch/revision/state/timeline/save和宿主管理续玩导出索引，最后只留不含恢复状态的终局/墓碑。使用现有storage commit-last语义：死亡发布的current HEAD包含terminal标记，所有入口先检查当前不可回退根；随后在同锁下持久墓碑，墓碑确认前禁止清理root。若死亡HEAD已提交而墓碑写入中断，恢复从terminal HEAD补墓碑并封锁一切回退；若死亡HEAD未提交，未确认的候选不能当死亡。墓碑先于清理可见，session root最后删除，清理可重入；FS不能假称有跨资源rollback。并发保存/导出/导入/任务最终化必须共享run锁和terminal检查，不能仅在HTTP层检查。
+死亡是权威结果成功发布后的终局。Core C在同一Session提交锁/存储协议下记录不可回退terminal墓碑与已提交deathRevisionId，取消generation/Task并撤销frontend epoch，然后进入cleanup_pending；清理SessionRepo.delete列出的该局全部branch/revision/state/timeline/save和宿主管理续玩导出索引，最后只留不含恢复状态的终局/墓碑。随后在同锁下持久墓碑，墓碑确认前禁止清理root。若死亡HEAD已提交而墓碑写入中断，恢复从terminal HEAD补墓碑并封锁一切回退；若死亡HEAD未提交，未确认的候选不能当死亡。墓碑先于清理可见，session root最后删除，清理可重入；FS不能假称有跨资源rollback。
 
 拦截范围包括SessionCore全部写入/分叉/重试、NativeSaveSystem auto/quick/manual/export/import、SessionRepo.importClosure及直接repository保存路径、Native bridge、HTTP及启动恢复入口。墓碑在游戏保存之外，由owner＋session/run key定位，不能被restore、import、常规session删除或history compact清除；不做全包死亡封锁。普通死亡不产生不可恢复铁人墓碑，因此合法旧SavePoint可恢复。terminal普通局同样不能直接发送继续行动。
 
@@ -112,15 +112,15 @@ Package声明门槛/数额，Core B只执行通用opt-in invocation quota与持�
 
 Phase 4沿用Native现成dialog/focus/inert能力，问答以有语义的button选项卡片代替select/checkbox/radio；建议填草稿，重大不可逆规则在真正提交前提示，普通交流无统一确认勾选。视觉权威仍为frontend模块与原TXT，本阶段不重写页面。
 
-新声明以能力version和schema显式gate；旧游戏无opt-in声明时保留原行为。新重构Package拟为3.0.0及独立packageVersionId，不复用现行2.0.0 hash identity，保留packageId表达同一游戏；最终版本及ID在Phase 3编译时固化。不承诺旧v1/v2状态迁移，新版仅接受精确依赖的新局；旧发布/旧存档继续在其对应版本使用。
+新声明以能力version和schema显式gate；旧游戏无opt-in声明时保留原行为。最终版本及ID在Phase 3编译时固化。不承诺旧v1/v2状态迁移，新版仅接受精确依赖的新局；旧发布/旧存档继续在其对应版本使用。
 
 ## Core缺口、暂缓与后续完成标准
 
-只有三组确认的Core工作：A无模型确定性开始；B持久选择续接及实际发送限额；C不可回退模式/终局、head续玩及死亡清理。Phase 2从当时已核对main建立 `refactor/open-roleplay-core` 辅助分支，沿用同一Task ID/Record。若基线前移，逐点核对相关变化；不把main合并游戏/docs。
+只有三组确认的Core工作：A无模型确定性开始；B持久选择续接及实际发送限额；C不可回退模式/终局、head续玩及死亡清理。不把main合并游戏/docs。
 
-Package负责问答、原语、因果/风险、机构/野路子、8槽动态发布、有效轮数与批次策略、内容编译及全部前端。暂缓：任意模型发明可执行Claim/规则、任意职业专用引擎、无限实体、全城逐轮模拟、自动世代接管、全量经济、强制长生/千回合验收、旧保存无损迁移、OS级防回退。
+Package负责问答、原语、因果/风险、机构/野路子、8槽动态发布、有效轮数与批次策略、内容编译及全部前端。
 
-Phase 2完成必须以隔离数据证明：开始0发送且原子/幂等；跨进程重试保同选择/抽样与quota；失败/fallback不超额；非法proposal及stale结果无发布；普通恢复可用；铁人全部回退路径拒绝；死亡/清理中断后墓碑有效；无关局不变。已有局部测试与具体Phase 3/4闭环检查路由见 [implementation-staging.md](implementation-staging.md)，Phase 1源码证据验收见 [verification.md](verification.md)。
+Phase 2完成必须以隔离数据证明：开始0发送且原子/幂等；跨进程重试保同选择/抽样与quota；失败/fallback不超额；非法proposal及stale结果无发布；普通恢复可用；铁人全部回退路径拒绝；死亡/清理中断后墓碑有效；无关局不变。
 
 ## Phase 2 已实施接口（2026-10-04）
 
@@ -158,9 +158,9 @@ Core 辅助分支为 `refactor/open-roleplay-core`；精确 tested HEAD 以本�
 }
 ```
 
-**A 开始。** `story.begin` 必须是未暴露给 resolver 的确定性 player Transaction；其 closed input 必须要求 `mode`，枚举为 `ordinary` / `ironman`，其 receipt 的 `opening` 为有界字符串。开始事务不能推进时钟或 workflow；可复用现有 World Event、App Command、validator、derived publication 写入角色与多个 domain。Package 把五题组合校验写在声明中，开篇投影只使用已校验输入与确定性结果。Core 先要求 Ready、准备整个 candidate，再以一次 Session CAS 同时提交角色、开篇、Action receipt 和宿主模式。
+**A 开始。** `story.begin` 必须是未暴露给 resolver 的确定性 player Transaction；其 closed input 必须要求 `mode`，枚举为 `ordinary` / `ironman`，其 receipt 的 `opening` 为有界字符串。开始事务不能推进时钟或 workflow；Core 先要求 Ready、准备整个 candidate，再以一次 Session CAS 同时提交角色、开篇、Action receipt 和宿主模式。
 
-正式入口是 `SessionCore.beginStory(handle, sessionId, { input, invocationId, expectedRevisionId })`；HTTP Session router 的 `/begin` 使用同一参数。固定 Native Host 为 `host.session.begin`，输入 `{ inputJson, invocationId }`，其中 `inputJson` 是 closed bootstrap input 的 JSON 字符串；它不是 effect/patch 接口。同 invocation / fingerprint 返回当前已提交局，不再次开始；不同输入或再次选模式拒绝。pending 局只允许检查、Ready、正式开始，模型执行和保存被阻挡。
+正式入口是 `SessionCore.beginStory(handle, sessionId, { input, invocationId, expectedRevisionId })`；HTTP Session router 的 `/begin` 使用同一参数。固定 Native Host 为 `host.session.begin`，输入 `{ inputJson, invocationId }`，其中 `inputJson` 是 closed bootstrap input 的 JSON 字符串；它不是 effect/patch 接口。同 invocation / fingerprint 返回当前已提交局，不再次开始；不同输入或再次选模式拒绝。
 
 **B 续接与发送。** 新的宿主资源 `atri_run_control` 按 owner / session 存储，独立于可回退 Session states。它保留当前 anchor 的输入 fingerprint、选定 Transaction/input、每 lane 的已用 attempts、后台窗口和有效轮数 high-water。相同 anchor 换 invocation/requestId 继续共用额度；重开进程从固定选择重算私有 proof / Fortune，旧 Package 的 WeakMap 行为保持原契约。已完成 foreground anchor 随 HEAD 推进退出活动续接集；普通 restore 创建新 Revision / Branch，不能重新发布那个旧 anchor。pending 后台批次的 attempts 跨其它 HEAD 发布保留，已消费后台窗口与 high-water 随普通读档保留。
 
@@ -170,16 +170,15 @@ Core 辅助分支为 `refactor/open-roleplay-core`；精确 tested HEAD 以本�
 
 普通权威死亡停止直接继续；同一已提交 invocation 可返回旧结果，明确 restore / fork / retry 可恢复旧状态。铁人的 restore、branch fork/switch、已提交 Reply Retry、历史 Revision load/save、变体路线与无私有 publication proof 的 repository HEAD 写均受服务端限制。铁人每次发布清除旧 HEAD 的 SavePoint，新建保存只保留当前 HEAD。
 
-铁人导出使用 `.atriasave schemaVersion: 2, scope: resume`，容器外层版本仍为 1，普通/旧导出仍为 schema 1。resume 闭包只有当前 Revision、单 root Branch、当前所需 states / 展示 Timeline / 必要依赖，无 parent/fork root、历史 SavePoint 或不可达 state/message/variant；`resume.sourceRevisionId` 等于闭包 root，附带经过闭合校验的发送续接 ledger。fresh store 导入继续该 HEAD；同宿主既有 run 只确认相等 HEAD / sequence，旧文件与普通容器不能回退铁人。正常重开局使用新的 sessionId。
+铁人导出使用 `.atriasave schemaVersion: 2, scope: resume`，容器外层版本仍为 1，普通/旧导出仍为 schema 1。resume 闭包只有当前 Revision、单 root Branch、当前所需 states / 展示 Timeline / 必要依赖，无 parent/fork root、历史 SavePoint 或不可达 state/message/variant；fresh store 导入继续该 HEAD；同宿主既有 run 只确认相等 HEAD / sequence，旧文件与普通容器不能回退铁人。正常重开局使用新的 sessionId。
 
 终局依据声明的 authority outcome，文本和 app.command 无删档权。死亡 HEAD 的 CAS 是先行封锁点，随后持久 tombstone、取消该局其它未 finalizing 的 Task / frontend epoch，再隔离清理该局 Session / Branch / Timeline / state / revision / SavePoint。tombstone 不在保存闭包中，删除该局后仍有效。HEAD→墓碑间中断由当前死亡 state 恢复；墓碑后部分删除和 root 删除后完成标记中断均由 `/run` / `runStatus` 继续清理。死亡 bridge 动作返回已提交 receipt，后续 epoch 失效；清理后的重试读取终局状态，不重建旧叙述或旧局。
 
-此实现遵循现有 FS 单服务进程写入边界；独立进程恢复已测，不承诺多进程同时写 FS。回环 HTTP 合成 provider 用于发送计数与失败测试，不代表生产模型质量或 OS / 跨宿主防作弊。Phase 3 必须使用明确 tested Core，接入真实 Package 后再验证游戏条件和内容。
-
+此实现遵循现有 FS 单服务进程写入边界；独立进程恢复已测，不承诺多进程同时写 FS。回环 HTTP 合成 provider 用于发送计数与失败测试，不代表生产模型质量或 OS / 跨宿主防作弊。
 
 ## Phase 3 已实施 Package 接口（2026-10-04）
 
-精确 tested Package 为 `2aa07d7adfdfd51552d82545d3457dd003fe6675`，Core 沿用 `5f9e8feb0c7166b45e30c330104a7444beb7692e`。默认 `tools/package.mjs validate|preview --core <tested-Core>` 编译新 profile；`--legacy`、历史 only flags、`--v1-campaign`、`--fixture` 保留显式历史编译路径，新素材不进入旧 profile Data 载荷。3.0.0 的 PackageVersion 为 `pkgv_d5f1d44b7a9f4edc7266bf4d547a3112`，packageId 不变；正式构建/发布留 Phase 5，本阶段仅内存容器。
+精确 tested Package 为 `2aa07d7adfdfd51552d82545d3457dd003fe6675`，Core 沿用 `5f9e8feb0c7166b45e30c330104a7444beb7692e`。`--legacy`、历史 only flags、`--v1-campaign`、`--fixture` 保留显式历史编译路径，新素材不进入旧 profile Data 载荷。3.0.0 的 PackageVersion 为 `pkgv_d5f1d44b7a9f4edc7266bf4d547a3112`，packageId 不变；正式构建/发布留 Phase 5，本阶段仅内存容器。
 
 实际字段与原语的唯一游戏说明在 `Package:runtime/ROLEPLAY.md`；选择素材/schema 为 `data/roleplay.foundation.json`、`tools/roleplay-schema.mjs`。`story.begin` 输入为 mode/name/appearance/residence/livelihood/attachment/contact/aim；五维素材分别组合，无笛卡尔 entryPoints。Timeline 写预写引子，选中背景/关系片段同次写入状态与公共 overview，P4 从这些已提交值展示。
 
@@ -187,7 +186,7 @@ Core 辅助分支为 `refactor/open-roleplay-core`；精确 tested HEAD 以本�
 
 八个静态槽写入分支共用一个 `world.reconcile` job，与确定性日费/维护/追查一起处理；另一个 job 为 `world.create`。原逐槽 job 设计会在每次扫描中重复消耗私有读取，超过 16-read 展开上限，因此改为同一静态事务内的逐槽分支。模板、稳定身份、同 scope、单 pending 和 Task-result 一次 CAS 约束保持。sourceBatchId/sourceRevision 可关联真实 queue input 的 batchId/batchRevision 与 Core Task invocation；模型不能选择写入槽或覆写旧身份。十九个事务/两个 jobs，所有分支加 publication 最大 23 App Commands / 23 effects，实际运行最大前台 prepared readGrants 11 / appCommands 7 / effects 8。
 
-生命周期/免费开始、两个机构闭环、个人载体/缩窄条件的实际管辖、反噬/死亡、具名证据追查/拘捕/求助、八槽发布/交互/保存、生成失败/额度/stale/普通回退、真实 Host 后台派发及铁人 current resume/终局清理已用隔离 FS 与回环合成 provider 验证。原 fixture 回归通过；Core 无新产品改动。生产模型、真实 Native 页面、浏览器、其它数据库和新发布不属于本次通过证据。详情和原始报告见同一 Record Phase 3。
+原 fixture 回归通过；Core 无新产品改动。生产模型、真实 Native 页面、浏览器、其它数据库和新发布不属于本次通过证据。详情和原始报告见同一 Record Phase 3。
 
 ## Phase 4 实际前端与最小 Host 补口（2026-10-04）
 
@@ -195,12 +194,11 @@ Core 辅助分支更新至 `1661af11245c856363bfc1084275c02b55a97452`，继续�
 
 固定 `host.conversation.recent` 使用 `read.snapshot`，closed 输入为可选非负 integer `beforeSequence`，返回当前已提交 branch 的至多 32 条 MESSAGE_SCHEMA、原顺序/sequence/content，默认取最新，指定 sequence 向前读。保留原 messages 接口与字段。Package 新消息页绑定使用此固定服务，公开 domain 仍只有 roleplay_summary / roleplay_visible。
 
-`atri_run_control` 增存安装身份 origin（packageId/packageVersionId/entryPointId/packageContentHash），不携可恢复 Session 或 Timeline。清理后 bridge.open 只从宿主墓碑定位和核对安装 hash，产生终局 revision 的新 epoch。该 epoch 只允许 status、经过 component scope/closed schema/精确 revision 校验的 host.session.run 读取，以及 host.session.exit 宿主导航；所有游戏、保存、restore 和其它数据读口拒绝。原死亡 epoch 继续失效，Session 不重建，清理语义不变。旧墓碑若无 origin，仍可用 /run，但不声明支持重开该 Native 图。
+所有游戏、保存、restore 和其它数据读口拒绝。原死亡 epoch 继续失效，Session 不重建，清理语义不变。旧墓碑若无 origin，仍可用 /run，但不声明支持重开该 Native 图。
 
 Package 问卷调用 begin，输入调用 Host composer，资料读取已提交派生输出，保存使用固定 Host save/saves/restore；失效/未知结果保草稿，轮询只有读取且不会重放动作。问答重试保留同 invocation/fingerprint/idempotency/revision/epoch，已提交开始丢响应可通过读取确认。普通终局提供明确旧保存恢复；铁人终局保持不可续玩/回退。
 
-Core 最小风险验证为 run-policy-p2 + frontend-bridge 的 57 项（FS/SQLite，含终局重开、scope/schema/revision/owner/写入和 restore 拒绝），以及 frontend-conversation 的 7 项（有界最新/向前/空窗口与非法参数）。实际 UI 验证另用隔离 FS、编译 Native/QuickJS/Host 与回环合成 provider；没有以浏览器展示覆盖全部模型路线或 P2 全部恢复风险。精确命令、HEAD 与限制见唯一 Record Phase 4。
-
+没有以浏览器展示覆盖全部模型路线或 P2 全部恢复风险。精确命令、HEAD 与限制见唯一 Record Phase 4。
 
 ## Phase 5 集成与发行
 

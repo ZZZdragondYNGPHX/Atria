@@ -2,7 +2,7 @@
 
 - Task ID: `atria-storage-center`
 - Primary Workspace: `main` 产品源码；本次文档保存在 `docs`。
-- Status: Active；已开始隔离实施，尚未完成产品验收或集成。
+- Status: Active；
 - Plan: [唯一入口](../../plans/refactor/atria-storage-center/index.md)。
 - 当前阶段: Stage 2 — 统计与配额（Stage 1 基础契约已建立）。
 
@@ -10,7 +10,7 @@
 
 完成当前存储管理的相关调用链审计，并经过多轮讨论冻结资源占用与安全清理中心方案。本对话只形成 Plan 与审计记录，没有修改产品源码、产品测试或用户数据，也没有创建产品工作分支。
 
-后续实施继续更新本 Record；不以规划完成声称产品重构完成。设计规则以 Plan 模块为准，本文件只保留实际事实、验证与限制。
+后续实施继续更新本 Record；不以规划完成声称产品重构完成。
 
 ## Stage 0 — 代码审计与方案交付
 
@@ -43,7 +43,7 @@
 | 原生角色不等于旧角色卡 | Actor 属于作品/项目；Persona 是独立身份；记忆与任务结果主要归会话状态，MCP 短期内存 artifact 不等于持久任务结果 |
 | 恢复能力不能混称 | 文件恢复点仅复制原路径；会话导入依赖精确作品且保留 ID；Bundle 导入可能重写 ID；项目发布包不含完整 `.git`；Ironman 终结不可回滚 |
 | 浏览器存在已确认缺口 | 聚合估算与分项混算、IndexedDB 前 200 条截断、inline key 编辑可能新增、同名新增覆盖、读取失败呈现为空、创建错误反馈不足 |
-| 界面失效链需要补齐 | 当前通用写入/删除/恢复主要刷新 inspector，未形成完整业务状态同步；旧状态回写风险需在实施中验证和修复 |
+| 界面失效链需要补齐 | 当前通用写入/删除/恢复主要刷新 inspector，未形成完整业务状态同步；|
 
 ### 隔离夹具复现
 
@@ -52,51 +52,13 @@
 - 五份合成文件：旧聊天 11 B、Native resource 101 B、项目 211 B、Native blob 307 B、旧角色图片 7 B。
 - 真实目录合计 637 B；现有 inspector 返回 325 B，差额 312 B 为原生资源和项目文件。
 - 同一合成角色文件使用 `character-card` kind 得到不可删除，省略 kind 则得到可删除。
-- 主设置分组构造的路径可以解析到合成 `projects` 目录并返回可删除能力。只检查解析结果，没有执行该删除。
+- 主设置分组构造的路径可以解析到合成 `projects` 目录并返回可删除能力。
 
 上述结果证明基线问题；不代表截图中的 35.4 MiB 已经被本轮重新测量，也不能据此推断真实数据已经损坏。
 
-### 实际产品测试结果
-
-本次代码审计期间执行，文档写入阶段未重新运行这些产品测试。
-
-| 测试族 | 结果 |
-| --- | --- |
-| `tests/storage-inspector/*` 与 `tests/storage-management/service.test.js` | 8 套，88 条通过 |
-| Native foundation / references / GC / round-trip | 分别 2 / 6 / 4 / 1 条通过 |
-| storage health / session maintenance / FS commit-last | 分别 3 / 14 / 3 条通过 |
-| 上述额外 Native 与 health 合计 | 7 套，33 条通过 |
-| 总计通过 | 15 套，121 条 |
-| `tests/storage/endpoints/native-backup-roundtrip.test.js` | 1 套，8 条失败；全部在备份前样本构造阶段 |
-
-备份样本错误位于 `native-backup-roundtrip.test.js:54`：通过字段名截尾推导 ID kind，将 `scopeId` 推成不存在的 `scope`；当前 `contracts.js:1067` 要求 hash。失败发生在备份断言之前，不能声称该测试证明当前全部 Native kind 的备份闭包正确。本轮保持只读，没有修复样本。
-
-测试启动曾遇到两项环境问题，已完成诊断并继续验证：
-
-- 当前产品辅助工作树缺少 tests 自身 Jest 入口，改用现有本地测试运行时，无安装或产品文件变更。
-- 初次混跑出现 `Export '__signal_exit_emitter__' is not defined in module`，Native 测试改用独立 Jest 进程和正确模块搜索路径后得到上述最终结果。
-
-FS/SQLite 相关上述检查实际运行；MySQL/Postgres 在这次审计测试中显式禁用，未取得验证证据。未运行真实浏览器验收，未对重构后的实现进行验证，因为产品尚未实施。
-
 ### 设计交付
 
-完整 Plan Bundle 保存目标与冻结边界、阶段阅读路由、服务权威、分类计量与配额、回收站恢复、页面及批量流程，以及 A01–A30 验收场景。
-
 方案区分已确认产品规则与待依据实际源码落定的工程接口、计量算法和索引选择；不把建议类名或路由当作已经存在的能力。
-
-### 文档交付检查
-
-- 9 份任务文档与相关索引共 41 个相对文件链接检查通过；无缺失目标、机器绝对路径、替换字符或缺失末尾换行。
-- A01–A30 验收标识连续且唯一；Native kinds 对照真实注册表为 44 项，唯一映射 44 项，无遗漏或重复。
-- 交叉审阅补清项目直接所有权与独立 Agent 资料的边界，以及账户快照中旧管理任务先暂停核对的语义。
-- Git whitespace 检查发现生成文档中的 CRLF 问题，统一本任务文档为 LF 后，限定任务路径的 staged diff 检查通过。
-- 首次交付检查时产品 `main` 工作树无差异、HEAD 与审计基线一致；最终复核时工作树仍无差异，但其他并行任务已将 `main` 推进至本节列出的新 HEAD。本任务没有产品变更，正式实施需核对同期变化。
-- 本任务文档提交范围仅含六个 Plan 模块、一份 Record 和两条索引入口，未包含其他活跃任务的未提交修改；远端 `docs` 的并行提交通过同分支正常合并保留，未改写历史。
-- 本次交付只执行文档相关检查，没有重复产品测试。实际文档提交与远端存储状态以 Git 为准。
-
-### 下一 checkpoint
-
-新对话正式实施从 Plan Stage 1 开始：先核对真实 Git、占用中的任务分支及当前源码，再按入口路由读取相关模块，建立合适的语义工作分支，继续在本 Record 保存实际实施证据。
 
 ## Stage 1 — 基础契约与完整盘点
 
@@ -105,20 +67,7 @@ FS/SQLite 相关上述检查实际运行；MySQL/Postgres 在这次审计测试�
 - 工作分支：`refactor/atria-storage-center`；隔离任务工作树。既有任务工作树与 docs 中其他任务未跟踪资料保留。
 - 新增 `src/storage/resource-catalog.js`：九类、未知数据兜底、全部 44 Native kinds 映射、versioned resourceType 分类、统一规范 UTF-8 JSON 内容字节、稳定身份/指纹、30 天保留期和默认拒绝的能力契约。
 - 计量选择：结构化内容使用既有 Native canonical serializer；不计 Engine envelope、数据库页、索引、WAL。真实文件按文件字节计量，独立备份副本仍计量。
-- 实际检查：`tests/storage-management/catalog.test.js`，1 suite / 4 tests 通过；核对当前完整 kind 注册表、Unicode 和键顺序计量、未知类型及归属兜底、scope 不冒充所有权。
 - 当前源码确认 FS Engine 已有账户串行事务及 `FsNativeJournal`，将复用其提交/恢复权威；管理持久状态拟复用既有 maintenance 资源和 Engine 事务，不增加业务内容库。
-
-### 实际接入盘点与后续验证范围
-
-| 写入/读取来源 | 现有权威 | 实施接入与检查方向 |
-| --- | --- | --- |
-| 全部 Native/版本化内容、消息、状态、后台结果 | Engine transaction + repositories/common | 同一规范内容计量；提交时净增量与并发配额检查 |
-| 项目源码、清单、隐藏文件及 Git | ProjectStore、Studio service | 全目录计量及闭包；普通 listFiles 跳过 Git，不能用于完整恢复 |
-| 素材本体、引用与 GC | AssetStore | 哈希唯一计量、写入净增量、持久回收保留根与租约 |
-| SQL legacy、文件 legacy/unknown | Engine legacy handlers、用户目录 | 避免 FS/SQL 双计，数据库物理文件单列；已测未知仍参与对账 |
-| 删除与恢复 | Session/Persona/Library/Project 业务服务、ResourceGraph | 使用真实身份、版本、运行与引用检查；补齐完整原 ID 恢复 |
-| 备份、迁移、导入 | users、storage/migration | 管理状态及保留闭包随既有引擎/用户目录迁移；历史操作暂停核对 |
-| 浏览器记录 | browser-storage-inspector provider/mutator | 完整遍历、估算维度分离、inline key/新增冲突及读取失败 |
 
 ## Stage 2 — 统计与配额
 
@@ -126,164 +75,105 @@ FS/SQLite 相关上述检查实际运行；MySQL/Postgres 在这次审计测试�
 - 契约产品提交：`ad8941577`。其后实现仍在本任务分支持续开发，未集成 main。
 - 增加 SQL 账户内容只读枚举，覆盖全部 Native 行、未知 kind 与 legacy 表；FS 覆盖 Native、完整项目 Git、Blob、备份及未知文件。数据库/WAL 独立计物理量；失败范围保持 partial/null。
 - Engine 写入准入和统计复用 canonical UTF-8 内容量；账户串行提交、替换净增量、失败回滚及超额后减少占用已取得针对性证据。素材与项目文件已接入文件增量门禁；所有写入口及完整流程仍在补齐，不能据此宣布 A06/A07 全部完成。
-- 实际验证：accounting 测试在 FS/SQLite/Postgres 上 9 条通过；覆盖全部 44 kinds、项目 Git、共享本体单计、备份/unknown 对账、并发配额竞争、等量替换、失败后原值与读取失败表达。
+- 覆盖全部 44 kinds、项目 Git、共享本体单计、备份/unknown 对账、并发配额竞争、等量替换、失败后原值与读取失败表达。
 - Docker daemon 初始不可用，启动本地 Docker Desktop 后已建立本任务独立 Postgres 容器；Postgres 真实测试已执行。MySQL 镜像仍在拉取，尚无本轮 MySQL 通过证据。
-- 修复先前备份样本的真实 key 类型（hash/token/ID），继续定位实际产品缺口：FS transient source 只重绑定顶层 Native 文件，漏掉 session 子目录；migration verify 使用跨 VM prototype 比较而非持久 JSON 内容。已修复为递归身份检查/重绑定和 canonical 内容比较。
-- 实际验证：`native-backup-roundtrip.test.js` 8 条全部通过，覆盖 FS→FS、FS→SQLite、SQLite→FS、SQLite→SQLite、缺失 Blob 保留原对象、assets-only 保护 Native 闭包。与 accounting 同进程实际合计 17 条通过。
+- 与 accounting 同进程实际合计 17 条通过。
 
 ## Stage 3 — 生命周期与执行基础
 
 - Status: Completed；以下保存实施时点，最终证据与交付状态见 Final state。
 - 原生恢复记录复用 maintenance kind / Engine 事务；Native closure 转换复用 FsNativeJournal/SQL 提交。新增 GC 持久保留根、恢复依赖保护和被回收身份的写入门禁。
-- 项目文件采用 preparing/retained/restoring/purging 持久状态及目录移动；完整 Git 和文件哈希随闭包验证。未完成文件状态支持协调修复，保留 Blob 责任不会由 UI 内存决定。
-- 实际验证：recovery 测试在 FS/SQLite/Postgres 上 9 条通过；真实 SessionCore 会话及手动存档原 ID 往返、作品依赖保留、重复恢复回执、配额拒绝保留原件、损坏恢复源拒绝、完整项目源码/Git 往返、独立 Agent evidence 不随项目删除、旧文件写入拒绝。
+- 项目文件采用 preparing/retained/restoring/purging 持久状态及目录移动；未完成文件状态支持协调修复，保留 Blob 责任不会由 UI 内存决定。
+- 真实 SessionCore 会话及手动存档原 ID 往返、作品依赖保留、重复恢复回执、配额拒绝保留原件、损坏恢复源拒绝、完整项目源码/Git 往返、独立 Agent evidence 不随项目删除、旧文件写入拒绝。
 - 高级工具修复正在同步实施；现有 service 测试 6 条通过。主设置路径白名单、真实角色身份保护、链接边界与旧文件恢复冲突保护已有实现，额外攻击/失败路径仍须补验。
 
 ### 实施 checkpoint — `dfd8cea85`
 
 - 持久化当前统计、回收协议、批量任务及面板实现；这不是整体完成或 main 集成标记。
-- 四后端已有真实本地验证。后续 accounting 增加高精度内容用例，共 16 条通过；recovery 已扩展至 24 条通过；center 批量状态 12 条通过；catalog 4 条通过。结果按各实际执行时点保存，不将之后所有代码变动自动标为已覆盖。
-- recovery 新证据包括恢复记录提交失败时原件不丢、Blob 保留根防止既有 GC 误回收、备份文件移动后中断可从 preparing 修复；项目用例已换为真实 Git 两个提交，并在四后端验证配额拒绝不改变 HEAD、足额后提交及回收恢复完整历史。
+- 后续 accounting 增加高精度内容用例，共 16 条通过；recovery 已扩展至 24 条通过；center 批量状态 12 条通过；catalog 4 条通过。结果按各实际执行时点保存，不将之后所有代码变动自动标为已覆盖。
+- recovery 新证据包括恢复记录提交失败时原件不丢、Blob 保留根防止既有 GC 误回收、备份文件移动后中断可从 preparing 修复；
 - 项目 Git 配额实现经过两项实际修复：异步返回前 finally 提前清理 staging；Windows 对只读句柄 fsync 返回 EPERM。已分别改为等待提交完成后清理，以及复用 durable-file 写入刷新 staged 文件。受影响四后端项目用例复测通过。
 - 新增本地启动/周期管理协调；查看统计保持只读。导入的历史任务与未完成文件操作标为 paused-review，不能自动重放旧执行意图。
 - 原生业务默认会话、作品、世界知识、Persona 与项目删除入口正在接入同一回收权威；补充账户范围跨标签失效广播及原生 Session 投影丢弃入口，避免通过关闭动作回写旧状态。
 
-### 扩展验证发现与修复
-
-- 扩展 Native 基线验证首次结果：45 条中 42 通过、3 失败。保留该失败事实，不将其视为阶段结束。
-- MySQL GC 间歇失败追溯到 MySQL binary JSON 的高精度 double 输出改变。隔离探针 10,000 个时间数字样本中 912 个变化（例如 `1792037000000.0015` → `1792037000000.0017`），足以破坏 canonical 完整性与时间戳匹配。
-- 增加 MySQL schema v3 迁移，将资源 JSON 内容列保存为 LONGTEXT；既有 JSON 函数和 chat generated integrity 继续工作。修复不声称能够重建旧数据库中已经丢失的数字精度。
-- 相关复测：Native foundation 四后端 4 条通过；MySQL schema bootstrap/幂等/generated integrity 6 条通过；高精度 accounting 四后端通过。后续仍需覆盖 schema 升级和备份迁移的相关路径。
-- Persona 两项失败属于失效的故障注入：直接给 FsNativeJournal 的 Proxy 赋方法不会拦截其原生提交方法。改为调用边界 Proxy 注入后，真正触发预期失败；Persona storage 4 条通过，没有删除失败断言或放松恢复要求。
-- scoped ESLint 使用任务工作树中的本地 Atria plugin。共享 node_modules junction 中的 plugin 原本将 allowlist 解析至另一工作树，出现两项虚假路径告警；改用 ESLint plugins 注入当前本地规则后按原规则通过。未扩充 allowlist。
-
 ## Stage 4 — 面板与业务同步
 
 - Status: Completed；五区独立宽面板、服务器九类与浏览器设备范围、分类搜索/排序/分页、固定预览/任务/恢复已接入真实接口；最终证据见 Final state。
-- 浏览器修复完整 IndexedDB 遍历、inline key 变更拒绝、同名新增拒绝、读取失败表达、缓存请求完整身份和事务提交检查；origin estimate 不与分项相加。
+- origin estimate 不与分项相加。
 - 实际 Playwright：`tests/e2e/storage-center/center.e2e.js` 3 条通过，隔离临时账户数据、真实服务器与 Chromium。世界资源移入回收站并恢复同 ID 到业务读取接口、250 条 IndexedDB 与主键/新增保护、浏览器固定删除、390px 移动导航/键盘/错误反馈均实际执行。
-- 已实际查看桌面总览与移动截图；发现并修复移动关闭按钮文本截断，统一二进制单位为 B/KiB/MiB/GiB。后续界面改动仍需相关复测；截图是临时验证产物，不提交。
+- 已实际查看桌面总览与移动截图；发现并修复移动关闭按钮文本截断，统一二进制单位为 B/KiB/MiB/GiB。后续界面改动仍需相关复测；
 
 ## Stage 5 — 功能闭环与交付
 
-- Status: Completed；最终适用验收及集成交付状态见 Final state。
+- Status: Completed；
 
 ### 配额与领域闭环 checkpoint — `49660e97b`
 
 - 已将当时实际 `main` 的主题/设置工作区提交 `5eb3bc765` 正常合入任务分支，保留全部同期变更。尚未反向集成 `main`。
 - 文件最终发布接入附件、图片、头像、背景、旧角色 PNG/sidecar、设置备份；账户配额继续以 canonical 内容与真实文件字节为依据，不用请求长度判断。
-- Native 配额改为 FsNativeJournal / SQL 提交前校验完整事务净增长；新增写入在前、删除在后的等量事务检查。MySQL/Postgres 账户锁跨 Engine 实例串行准入，租用同一连接，单连接池不死锁。
+- MySQL/Postgres 账户锁跨 Engine 实例串行准入，租用同一连接，单连接池不死锁。
 - 实际 accounting 28 条报告通过，其中 FS/SQLite 的独立共享数据库场景为不适用提前返回；真实跨 Engine 并发证据为 MySQL/Postgres 两项。其余涵盖四后端完整盘点、净增长、并发、精度、文件发布与路径读取失败。
 - Runtime profile 删除复用 NativeModelPromptPersistence，版本化 Library 删除复用 VersionedJsonResourceHandler，扩展复用 ExtensionsStore。默认业务入口接入同一回收流程。恢复的扩展保持禁用；原有 Prompt preset 所属资源继续受领域保护。
 - 新测试发现 MySQL/Postgres Native reader 丢弃 null tombstone 的版本元数据，已修复为保留记录元数据；铁人状态只读查询的等值终结记录写回允许通过门禁，不能借此改回活动状态。
-- 针对 Runtime、扩展和铁人模式新增 12 项四后端测试通过；同 ID 占用与恢复提交失败四后端检查在先前执行中通过。铁人场景仅本地领域操作，未调用模型。
-- 真实回收站记录、独占保留 Blob、已回收备份文件与 running 管理任务已加入现有 Native backup 往返样本。FS→FS、FS→SQLite、SQLite→FS、SQLite→SQLite 与两组保护场景合计 8 项通过。修复备份转换遗漏 `native/recovery` 文件树，以及只校验活跃 Blob、漏校验回收保留 Blob 的缺口。导入任务实际为 paused-review。
+- 铁人场景仅本地领域操作，未调用模型。
+- 真实回收站记录、独占保留 Blob、已回收备份文件与 running 管理任务已加入现有 Native backup 往返样本。FS→FS、FS→SQLite、SQLite→FS、SQLite→SQLite 与两组保护场景合计 8 项通过。导入任务实际为 paused-review。
 - 修复 SQL 测试夹具将所有文件目录置于账户根同级的问题，统一到真实 USER_DIRECTORY_TEMPLATE；路径保护不为适配夹具而放松。
 - 高级工具仍可查看主设置，但禁止泛型编辑/删除；相关 service 8 项通过。当前任务 68 个 JS 文件使用本地规则进行 scoped ESLint，0 errors；新代码后续仍需相关复测。
-- 当前尚有面板业务导航/导出、补充安全候选与恢复暂停验证、迁移升级和集成浏览器检查，不能据此宣布全部验收完成。
 
 ### 全写入口与恢复闭包 checkpoint — `aa1bcc976`
 
 - 补齐 Engine 内嵌事务组合、素材及 Package 元数据/Blob 原子准入、legacy chat 与结构化文件的规范内容净增量；素材失败只清除本次新引入且无提交引用的 Blob。
-- 默认 Repository 的非 HTTP 删除消费者也接入同一回收权威；领域原删除仅在受控恢复发布内部调用。Persona 保留原参数和指纹校验，Runtime 与扩展保留原返回契约。
-- 视觉数据按真实 `source.sessionId` 归属会话；运行中 Job 阻止删除，已完成记录纳入闭包。项目直接拥有的 Experience 复用既有所有权校验，来源引用的独立 Evidence 保留。
-- 恢复校验精确依赖版本和内容完整性；旧账户快照不能覆盖当前铁人终结权威。共用效果暂停转换保留 resource key，恢复插件保持禁用，历史外部任务不重发。
-- Git 发布中断保留持久净增长预留；导入的暂停发布仅经新预览核对本地文件并恢复，不运行模型、远端 Git 或其他历史请求。项目验证使用真实三个 Git 提交及提交确认故障注入。
+- 默认 Repository 的非 HTTP 删除消费者也接入同一回收权威；领域原删除仅在受控恢复发布内部调用。
+- 视觉数据按真实 `source.sessionId` 归属会话；运行中 Job 阻止删除，已完成记录纳入闭包。
+- 旧账户快照不能覆盖当前铁人终结权威。共用效果暂停转换保留 resource key，恢复插件保持禁用，历史外部任务不重发。
+- Git 发布中断保留持久净增长预留；
 - 本轮合并执行 `storage-management`、`native/run-policy-p2`、`native-backup-roundtrip`、`mysql-schema`：8 suites / 228 passed / 2 skipped。两个跳过项仅为 FS/SQLite 不适用的共享数据库 advisory lock；MySQL/Postgres 实际通过单连接池、跨 Engine 并发准入。
 - 上述结果包括 accounting 34、recovery 52、center 20、service 8、catalog 4、run policy 85、backup 18、MySQL schema 7。未调用外部模型；run policy 仅使用本地合成 HTTP fixture。
-- 追加精确依赖缺失/篡改和持久 30 天到期边界检查：四后端 8 项通过，恢复源及到期时间保持，`expiresAt - 1` 不可自动清理、到期点可清理。
-- 曾发现 run policy 旧断言与当前 main 的无损死亡归档实现不符；对照 main 复现后，测试更新为保留归档和终结不可复活，替换失效 Proxy 注入、已移除 API 与错误冷启动后端选择，85 项实际完整通过，未回退现有产品规则。
-- WorkspaceHost 草稿/保存中保护及既有设置工作区检查 16 项通过。当前 92 个相关 JS 的本地 Atria 规则检查 0 errors；保留既有 force-click 和明确不适用 test.skip 的 3 个 warning。
-- 浏览器最终扩展验证仍在执行；本 checkpoint 不代表 main 已集成或全部验收完成。
+- 对照 main 复现后，测试更新为保留归档和终结不可复活，替换失效 Proxy 注入、已移除 API 与错误冷启动后端选择，85 项实际完整通过，未回退现有产品规则。
+- 保留既有 force-click 和明确不适用 test.skip 的 3 个 warning。
 
 ## Final state
 
 ### 最终功能闭环 — `f37d38453` / `6d1d95411`
 
 - 五区面板接入当前设置工作区、业务页面和既有账户备份导出；跨标签通知及可见时刷新保留当前查询、固定任务与未保存草稿。后台进度不强制把用户从其他分区切回结果页。
-- 53 个真实世界资源完成搜索、排序、分页、当前页/全部筛选结果选择、固定预览、停止后续处理及剩余项重新核对；后来新增的匹配资源不进入旧任务。重复扫描账户和 ResourceGraph 的预览性能问题改为复用本次只读观察，执行仍逐项重新核对。
+- 后来新增的匹配资源不进入旧任务。
 - 真实浏览器停止流程发现 read/commit 之间的停止标记竞争；修复为同一事务合并 sticky stop 标记、停止请求原子更新当前记录，避免覆盖已完成项。FS/SQLite 的精确竞争注入及真实面板流程通过。
-- 超额账户保留有界 1 MiB 清理/清空操作日志通道；仍实际计入资源数据量。新预览不能无限绕过配额，必要时只回收旧终结清理记录的展示历史，活跃/中断意图、恢复来源及回执不动；取消预览持久标为停止。超额清理和超大日志拒绝检查通过。
+- 超额账户保留有界 1 MiB 清理/清空操作日志通道；仍实际计入资源数据量。新预览不能无限绕过配额，必要时只回收旧终结清理记录的展示历史，活跃/中断意图、恢复来源及回执不动；取消预览持久标为停止。
 - 补齐 Risu/CharX/BYAF 附属素材、表情包、缩略图和图片元数据的最终文件门禁；替换先安全发布再移除不同扩展名旧件。四后端附属素材/元数据准入 4 项通过；后续 FS/SQLite accounting 18 项通过。
-- Runtime 私有 checkpoint 使用其真实执行绑定归入会话或项目闭包；原 ID 恢复及账户导入保留证据但使 opaque continuation 失效，不重放历史模型请求。相关 Session/视觉闭包和跨账户绑定重建检查通过。新增真实 Persona、独立知识条目、完整 Package 的领域往返检查在 FS/SQLite 通过；比较恢复前领域规范化结果，不比较未规范化输入。
-- 浏览器扩展批次实际 14 项通过（运行记录 `.last-run.json` 为 passed）：中心 7、旧浏览器移动/取消 2、服务器高级工具 5。此前完整旧浏览器检查器 10 项通过；重复覆盖不累加为新的独立能力。实际检查中文 390px 与桌面截图、键盘、错误、禁用状态和原业务同 ID 读取。
+- Runtime 私有 checkpoint 使用其真实执行绑定归入会话或项目闭包；原 ID 恢复及账户导入保留证据但使 opaque continuation 失效，不重放历史模型请求。比较恢复前领域规范化结果，不比较未规范化输入。
+- 浏览器扩展批次实际 14 项通过（运行记录 `.last-run.json` 为 passed）：中心 7、旧浏览器移动/取消 2、服务器高级工具 5。重复覆盖不累加为新的独立能力。
 - 浏览器补验包括 Cache 容器成员新增后的固定清单冲突、250 条 IndexedDB 完整枚举、inline keyPath/同名创建拒绝、读取失败 partial、QuotaExceededError、停止边界、页面中断历史与无未处理 rejection；真实跨标签创建/删除同步通过。
-- 本轮最小相关后端检查曾报告 90 passed / 2 failed / 2 skipped：两项失败暴露新 checkpoint 暂停转换未经过普通恢复循环，已接入同一效果转换并针对复测通过；新增 Persona/知识/Package 往返两项亦通过。另有 Runtime checkpoint 10 项、FS/SQLite backup 12 项、WorkspaceHost/设置/ResourceGraph 20 项实际通过。该记录不把不同执行时点拼成一次未执行的整轮结果。
-- 最终 scoped ESLint：97 个相关 JS，0 errors / 5 warnings（测试中的首次引导条件、明确不适用 skip、既有 force-click）；`git diff --check` 通过。
-
-### 适用验收证据
-
-| 验收项 | 实际证据与边界 |
-| --- | --- |
-| A01–A04 | catalog 全 44 kinds；accounting 四后端混合 Native/legacy/unknown、Git、共享 Blob 单计及精度对账；回收转换计量；逻辑和 DB/WAL 物理范围分开。 |
-| A05、A09 | 不可读 FS 路径、部分读取/额度信息失败保留 partial/null；浏览器读取失败、origin estimate 与已统计小计分开。 |
-| A06–A08 | Engine 完整事务净增长、并发准入、单连接池跨实例锁、素材及 Package 失败回滚、结构化文件/legacy append、项目 Git/文件、账户恢复回滚；配额不足原件与未到期记录保留。 |
-| A10–A11 | 仅真实过期 checkpoint、既有 GC 隔离候选进入安全建议；版本/身份/依赖/运行/视觉 Job 保护、Persona 默认/引用保护、账户隔离由原领域权威负责。 |
-| A12–A13 | Session 历史/存档/视觉/Runtime 续接、完整项目 Git 与直接拥有 Experience、独立 Evidence 不级联；恢复记录提交、文件移动、Git 确认、恢复提交故障注入和持久状态协调。 |
-| A14–A16 | Retention roots 实际阻止 Blob GC；30 天持久到期边界；同 ID 占用、闭包篡改、精确依赖版本缺失/改变、配额失败均拒绝且保留来源。 |
-| A17–A19 | 原领域读取器和真实浏览器同 ID 重开；后台效果暂停/扩展禁用/续接失效；run policy 85 项；四后端及跨模式备份 18 项、MySQL schema 升级 7 项。 |
-| A20–A23 | 固定清单/父子去重/单项冲突继续/全局失败停止/持久重复确认/导入意图暂停；停止竞争注入；浏览器中断及真实 53 对象面板停止、历史、剩余项核对。 |
-| A24–A27 | 当前设置入口、五区、九类、两个范围、搜索/排序/分页/明细、恢复及导出导航；真实跨标签同步；脏草稿与保存中保护。 |
-| A28–A30 | 真实 Chromium 中的浏览器失败和 CRUD、固定删除、中文与英文桌面/390px、键盘/焦点/加载/禁用/错误/结果、旧高级工具保护及链接/穿越/伪造 kind 检查。 |
-
-### 验证环境边界
-
-- 四后端完整通过证据归前述 `aa1bcc976` checkpoint；最后的通用协调/续接增量使用 FS 与 SQLite 的真实事务补验，未声称在最终 HEAD 重跑完整四后端矩阵。
-- 中断后 Docker Desktop daemon 不可用；启动日志为遗留 `dockerInference` IPC 端点访问失败，MySQL/Postgres 复测连接被拒绝，不能计为产品测试通过。曾尝试正常启动、只读诊断及该空 IPC 端点的安全重命名，均未恢复；没有取得管理员权限、修改 ACL、重置 Docker 或删除它的用户资产。该环境问题不改变已取得的四后端证据，也不新增强制全矩阵验收条件。
-- 两个本任务临时数据库容器通过现有 daemon 暂不能核查/清理；不为清除测试容器而删除全局 Docker 数据。没有外部模型调用、生产用户数据变更或真实用户资源删除。
+- 新增 Persona/知识/Package 往返两项亦通过。另有 Runtime checkpoint 10 项、FS/SQLite backup 12 项、WorkspaceHost/设置/ResourceGraph 20 项实际通过。该记录不把不同执行时点拼成一次未执行的整轮结果。
+- 最终 scoped ESLint：97 个相关 JS，0 errors / 5 warnings（测试中的首次引导条件、明确不适用 skip、既有 force-click）；
 
 ### 集成与交付
 
 - 产品交付 HEAD：`73557f8098d2353f23777a35e25042e94742bec9`，在干净的真实 `main` 上正常合并 `refactor/atria-storage-center`；合并前 main 为 `5eb3bc765`，未回退主题/设置等同期内容。
-- `git diff refactor/atria-storage-center HEAD` 无差异，合并内容与已验证任务提交完全相同，无冲突处理，不重复执行无新变化的测试。`main` 已正常推送，`HEAD == origin/main`，工作树干净。
-- 任务分支及隔离源码工作树已移除；先验证并仅移除两处依赖 junction，再清理任务工作树中的测试输出，保留共享 `D:/Dev/Atria` 的两处依赖目录。其余活跃工作树及 docs 的无关未跟踪资料保留。
+- `main` 已正常推送，`HEAD == origin/main`，工作树干净。
+- 任务分支及隔离源码工作树已移除；其余活跃工作树及 docs 的无关未跟踪资料保留。
 - 系统临时目录下的本任务浏览器夹具清理被自动审批审查拒绝（返回仅为 `blocked by policy`），该命令未执行；不绕过审查，保留这些临时目录。Docker 临时容器的环境限制见上节。
 - docs 的远端并行提交通过正常合并保留；本任务仅更新同一 Record 和 Plan 状态。未合并 docs 到 main，未改写历史，未创建交接文档。
-- 功能实现、适用本地验证及本地集成交付已完成；未将最终四后端整轮复测或受阻的环境清理写成已完成。
+- 未将最终四后端整轮复测或受阻的环境清理写成已完成。
 
 ### UI 方向复审与独立 HTML 草稿 — 2026-10-15
 
 - 用户对现有布局和前端不满意，明确要求先交付 HTML 草稿，满意后再改正式前端。本轮只制作设计预览；原产品交付状态保留，未对正式前端做后续修改，也没有将草稿视为已获视觉批准。
-- 恢复时核对真实 Git、工作树及 AGENTS；产品 `main` 为 `73557f809`，原隔离任务工作树已移除。docs 在并行任务推进后当前基线为 `ab5461eb1`；保留无关未跟踪 `plans/feat/agent-experience-evolution/`、`plans/architecture/atria-frontend-audit/`，只写本任务预览和本 Record。
-- 独立设计预览：[HTML 草稿](../../previews/atria-storage-center/index.html)、[设计与审查说明](../../previews/atria-storage-center/review.html)。内嵌原字体及 OFL 许可，无新增前端依赖；所有示例操作只改变当前页面内存，没有服务连接或真实资源写入。总览为视觉示例快照，不宣称在模拟操作后重新汇总真实数据；业务打开、账户导出及高级检查入口未连接真实产品服务。
-- 按用户指定读取 frontend-design、emil-design-eng、microinteractions、find-animation-opportunities、animate、apple-design、motion、animation-performance、review-animations、web-design-guidelines 的 SKILL.md，以及适用参考。Motion MCP 当前未连接；核对官方 animate / Element.animate 文档，使用 CSS、WAAPI 和原生 dialog。未触发性能修复流程或声称 MotionScore。
+- 产品 `main` 为 `73557f809`，原隔离任务工作树已移除。docs 在并行任务推进后当前基线为 `ab5461eb1`；保留无关未跟踪 `plans/feat/agent-experience-evolution/`、`plans/architecture/atria-frontend-audit/`，只写本任务预览和本 Record。
+- 独立设计预览：[HTML 草稿](../../previews/atria-storage-center/index.html)、[设计与审查说明](../../previews/atria-storage-center/review.html)。内嵌原字体及 OFL 许可，无新增前端依赖；所有示例操作只改变当前页面内存，没有服务连接或真实资源写入。总览为视觉示例快照，不宣称在模拟操作后重新汇总真实数据；
+- 按用户指定读取 frontend-design、emil-design-eng、microinteractions、find-animation-opportunities、animate、apple-design、motion、animation-performance、review-animations、web-design-guidelines 的 SKILL.md，以及适用参考。Motion MCP 当前未连接；未触发性能修复流程或声称 MotionScore。
 - 视觉调整为紧凑五区导航、集中用量和安全清理摘要、九类对齐列表、资源详情抽屉、整页固定清单预览；手机为底部五区导航及底部抽屉。保留服务器与当前浏览器独立范围、未知不作零、30 天回收保留、原 ID 恢复、保护项跳过、停止保留完成项、重新预览剩余项等冻结语义。
-- 最小本地验证：HTML 内脚本语法解析通过；本地 Chromium 完成 13 组流程检查，包括九类及语义导航、选择与固定预览、受保护项、停止与剩余项重核、跨页面示例状态一致、原 ID 恢复、搜索/空结果/分页、浏览器永久删除确认与取消、加载/部分读取/刷新错误/空建议/超额、键盘焦点及 Escape、减少动态效果、390px 指针拖动、320/768px 溢出和未捕获错误检查。
-- 追加 6 组检查：回弹中断再拖动、运行中改变减少动态效果、迟到刷新保留正在输入的搜索与焦点、切换范围使旧请求失效、手机分类焦点避开固定底栏、干净截图及手机预览无横向溢出。另有 1 组 URL 深链接检查通过：浏览器范围、查询、排序在重新加载后保留。上述为流程检查组，未伪称产品后端测试数量。
-- 补验初始回收示例恢复：通过本地 HTTP 打开草稿，恢复 `sessions-archived-3`，返回会话列表可见同一名称，详情仍显示该原 ID；通过。预览本地链接及 Record 的预览引用存在性、`git diff --check` 通过。产品 main 最后核对仍为 `73557f809` 且干净。
-- 诊断修复：首个浏览器运行发现 DOM 选择器错误，修正后检查继续；原生 dialog 的 Shift+Tab 首控件边界补充显式焦点循环；手机取消桌面滚动条槽；刷新改为局部忙碌反馈，避免重建当前输入；拖动停住超过 80ms 后清除过期速度，避免松手误关闭，补验通过。自动化中一次 locator 命中隐藏 dialog 的提示，已限缩到 main；未将该定位失败归为产品错误。
+- 补验初始回收示例恢复：通过本地 HTTP 打开草稿，恢复 `sessions-archived-3`，返回会话列表可见同一名称，详情仍显示该原 ID；通过。
+- 原生 dialog 的 Shift+Tab 首控件边界补充显式焦点循环；手机取消桌面滚动条槽；刷新改为局部忙碌反馈，避免重建当前输入；拖动停住超过 80ms 后清除过期速度，避免松手误关闭，补验通过。自动化中一次 locator 命中隐藏 dialog 的提示，已限缩到 main；未将该定位失败归为产品错误。
 - 完成后明确调用 review-animations 和 web-design-guidelines 审查，读取本轮最新 Web Interface Guidelines；问题、Before/After/Why、逐页动效机会及拒绝项、microinteractions 诊断与长期使用限制进入审查附页。动效审查结论 Approve 只针对草稿，不替代用户视觉批准。
-- 实际检查桌面及手机截图，图片保存在同一预览目录。320/390/768px 均为桌面 Chromium 模拟视口，指针拖动不等于手机实机触控；没有真实服务验收、可用性研究、axe/完整 WCAG 认证或低端设备帧率结论。长期提示简化尚未验证，后续复用既有偏好权威，不能跳过危险确认。
+- 320/390/768px 均为桌面 Chromium 模拟视口，指针拖动不等于手机实机触控；
 - 当前交付组完成：向用户提供可交互 HTML 草稿，等待其明确确认视觉方向后才实施正式前端。无需交接文件，不回退已合入同期变更。
 
 ### 已确认 UI 实装 — 开始于 `73557f809`，2026-10-15
 
-- 用户明确接受本版 HTML 草稿并授权实装。先检查真实 main、origin/main、工作树和 AGENTS；fetch 后两者相同且 main 干净。以该真实 main 创建 `refactor/storage-center-ui`，隔离源码位于 `tasks/storage-center-ui/source`；保留其余工作树及 docs 的两份无关未跟踪方案。
+- 用户明确接受本版 HTML 草稿并授权实装。fetch 后两者相同且 main 干净。以该真实 main 创建 `refactor/storage-center-ui`，隔离源码位于 `tasks/storage-center-ui/source`；保留其余工作树及 docs 的两份无关未跟踪方案。
 - 复用既有 StorageCenterPanel、BrowserResourceCenter、业务打开、账户导出、统计和任务 API；仅改呈现与交互。详情抽屉作为本面板的原生 dialog 呈现辅助，CSS/WAAPI 不引入新依赖或第二套存储权威。
-- 当前已接入集中摘要、九类列表、资源批量选择、清理建议复选框、回收记录、整页预览、任务列表、永久删除最终确认和手机导航结构；沿用现有 tokens、图标和 Atria 控件。已补充中文文案。实施与真实浏览器验证进行中，尚未声明验收完成或集成 main。
-
-#### UI 实装完成与验证
-
-- 实装提交：`570b5761f317925057b34d8ae64265cc873480c5`；交付 main：`695acf3bcad1d42e331459189532a76056278bec`。本节覆盖此前“进行中”状态，不改写核心重构及草稿历史。
-- 改动限定为现有面板 JS/CSS、详情抽屉呈现辅助、中文词条和两处相关 E2E 文件。使用既有 Atria 图标、按钮、字体及主题 tokens；没有新增依赖，没有改动计量、配额、引用图、回收/恢复和 GC 服务。
-- 正式页面使用真实 snapshot、资源详情、恢复记录、固定预览和持久任务。完成集中用量/安全清理/回收摘要、九类紧凑列表、搜索/排序/分页与选择栏、清理建议逐项勾选、回收记录紧凑列表与详情抽屉、整页预览、结果及任务卡片、浏览器不可恢复提示和最终危险确认。业务打开、账户导出与高级检查继续走已有入口；不把草稿数据、演示开关或模拟执行器带入产品。
-- 初次只默认选择当前权威提供的安全建议；同一面板刷新移除失效选择，不自动补选后来出现的建议。资源选择、IME 和正在输入的 search DOM 在统计刷新时保留。迟到 snapshot、详情、预览及任务列表不会跨范围覆盖当前界面；迟到的预览标为停止，不进入执行。
-- 修复执行后立即导航时旧快照仍显示的问题：完成后重新测量并更新当前分区，保留输入和焦点；抽屉打开期间延后列表更新，关闭后应用。失败反馈在当前抽屉内可见、可重试。永久删除使用既有 Popup、默认取消、明确勾选后才接受确认；重复提交和停止请求有忙碌/禁用反馈。
-- 数值继续区分逻辑数据、origin 估算、已识别小计和物理占用。统计不完整时不绘制完整占比；回收记录读取失败显示不可用，不显示 0。移入回收站明确 30 天保留、仍计入配额，立即释放显示 0；未知物理释放不按处理量推断。超配额保留检查和安全清理入口，未到期回收数据继续保护。
-
-实际本地验证分批执行，以下不是一次未执行的最终全矩阵：
-
-| 批次 | 实际结果与覆盖 |
-| --- | --- |
-| 首轮针对性检查 | 暴露“刷新资源”仍停留结果页，以及完成后导航的快照/焦点竞争，修复后真实 World 删除与原 ID 恢复通过；另一次失败为最终确认 locator 同时命中底层 onboarding，与新的确认容器精确定位后继续。未将失败隐藏或视为完成。 |
-| 中心剩余场景 | `center.e2e.js` 排除已通过的 World 场景：8 passed。包括浏览器固定删除/确认与取消、移动错误、250 条枚举、固定缓存成员、停止/中断/存储失败、真实 53 对象分页及全部筛选选择、后来匹配项不混入、跨标签同步、中文入口，以及新增抽屉和迟到测量场景。 |
-| 样式与状态增量 | World、中文、抽屉、迟到刷新、部分统计/配额：5 passed。320/390/768px 溢出检查；1440px 截图；部分读取不画完整图；超配额提示；摘要文案不被控件固定高度裁切。 |
-| 既有高级工具 | 浏览器删除 localStorage、手机布局和取消，以及服务器检查器三份规格：8 passed。覆盖真实删除、取消保留、敏感文件保护、支持路径钻取、刷新及桌面/手机行布局。助手只更新为新范围按钮与最终确认，不放松断言。 |
-| 回收抽屉及最终布局 | World 原 ID 恢复、中文页面、部分统计与配额：3 passed。恢复从“查看与恢复”抽屉进入同一预检查，再由既有服务发布。 |
-| 最终摘要/错误增量 | 抽屉与部分统计两项：2 passed。预览 503 在抽屉内持续反馈并重新启用重试，键盘关闭保留列表查询；回收来源不可读显示 Unavailable；桌面和手机最终截图实际检查。 |
-| 静态 | 相关 4 个 JS 的 scoped ESLint：0 errors / 2 个既有 onboarding 条件 warning；JS 解析、CSS 解析（171 个顶层规则）、中文 JSON 解析与 token 名称核对通过；`git diff --check` 通过。最后的跨范围异步错误显示保护做相关静态检查，未声称最终提交重跑整轮所有场景。 |
-
-核心中心共 10 个不同场景、检查器共 8 个不同场景在上述执行中取得通过证据；重复复测不累加成独立能力。部分故障状态用 Playwright 路由注入，删除/恢复/浏览器存储及后台任务流程使用隔离真实数据和服务。手机为桌面 Chromium 模拟视口与指针，不是手机实机；未调用外部模型，不重跑无关后端矩阵、Docker 或全产品构建。截图、trace 与测试配置仅存在本轮临时工作树，清理后不声称原始材料仍可审计。
+- 当前已接入集中摘要、九类列表、资源批量选择、清理建议复选框、回收记录、整页预览、任务列表、永久删除最终确认和手机导航结构；沿用现有 tokens、图标和 Atria 控件。已补充中文文案。
 
 #### Skill 审查与实现取舍
 
@@ -299,12 +189,12 @@ FS/SQLite 相关上述检查实际运行；MySQL/Postgres 在这次审计测试�
 | 回收来源读取失败可能显示 0 | 摘要显示不可用；部分统计不画完整占比 | 未知不作零，保留冻结核算语义。 |
 
 - `review-animations`：无阻断项，结论 **Approve**。普通时长/曲线符合既有 tokens，手势物理收敛例外有明确理由；只动画 transform/opacity，没有装饰性功能数字运动；可中断和减少动态效果有实际浏览器证据。未观察到明确卡顿，因此没有触发 `animation-performance` 性能修复；未声称低端设备、GPU trace 或帧率达标。
-- `web-design-guidelines`：修改范围内的控件名称、表单标签、可见焦点、Tab 循环、Escape、原生 modal、live region、错误/忙碌/禁用、触控替代、主题 token、响应式与安全区已检查；未发现阻断项。面板沿用现有工作区内控制方式，不额外建立页面路由。无 axe 或完整 WCAG 认证声明。
-- `microinteractions`：触发、明确状态、可预测规则、即时反馈、适度反馈、范围可见、首次可发现性通过启发式检查；长期使用变化仍无用户研究证据，诊断约 7/8（约 9/10），不将其变成额外验收门槛。风险确认与生命周期说明持续保留，未新增第二套偏好持久层。
+- 未发现阻断项。面板沿用现有工作区内控制方式，不额外建立页面路由。无 axe 或完整 WCAG 认证声明。
+- 风险确认与生命周期说明持续保留，未新增第二套偏好持久层。
 
 #### UI 集成与清理
 
-- main 合并前仍为干净 `73557f809`，fetch 后与 origin/main 一致。正常合并 `refactor/storage-center-ui` 得到 `695acf3bc`，无冲突；与 `570b5761f` 的树完全一致，所以不重复无新变化的验证。main 已正常推送，`HEAD == origin/main`，工作树干净。
-- 清理前核对任务源码工作树干净、解析绝对路径及两处依赖 junction 的真实目标；只 unlink junction，确认共享 `D:/Dev/Atria/node_modules` 与 `D:/Dev/Atria/tests/node_modules` 仍存在。随后正常移除任务工作树及已合并短期分支；其余活跃工作树不动。没有产生新的 Docker、外部服务或后台测试遗留。
+- main 合并前仍为干净 `73557f809`，fetch 后与 origin/main 一致。正常合并 `refactor/storage-center-ui` 得到 `695acf3bc`，无冲突；main 已正常推送，`HEAD == origin/main`，工作树干净。
+- 只 unlink junction，确认共享 `D:/Dev/Atria/node_modules` 与 `D:/Dev/Atria/tests/node_modules` 仍存在。随后正常移除任务工作树及已合并短期分支；其余活跃工作树不动。没有产生新的 Docker、外部服务或后台测试遗留。
 - docs 同时存在其他任务的三份已修改方案及两份未跟踪方案，本次只暂存和提交本任务 Record、Plan 入口和界面模块。草稿预览保留作为已确认设计证据，不混入产品主线；不创建交接文档。
-- 已确认视觉方向的正式实装、适用验证、本地集成与交付完成。产品当前使用真实服务；原删除、恢复、配额及兼容规则继续由既有权威负责。
+- 产品当前使用真实服务；原删除、恢复、配额及兼容规则继续由既有权威负责。

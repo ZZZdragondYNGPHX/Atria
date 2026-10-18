@@ -1,8 +1,6 @@
-# ARCH-DWE-01 · W8 长期记忆、遗忘与人格连续性（讨论草案）
+# ARCH-DWE-01 · 长期记忆、遗忘与人格连续性
 
-- Task ID：`ARCH-DWE-01`；Primary Workspace：`docs`；[唯一 Plan 入口](index.md) / [总体设计](design.md) / [W7 信息流](npc-memory-information-flow.md) / [唯一 Record](../../../records/architecture/world-evolution-consistency.md)。
-- 状态：**Draft；W1-B 至 W8-B 的方向均已获用户确认**，具体接口、HCM/Native 所有权实现、记忆参数与整体定稿均未获授权。本文件原 §7 是 W8 选型比较，正式选择见 §11；不修改 `main`、不新建实现分支或并行记忆系统。
-- 本轮问题：玩家经历几千回合或跳跃数年游戏时间后，新增的 NPC 怎样既保持有依据的人格连续性，又能淡忘琐事、改变态度、重新理解过去，并且绝不“遗忘”掉世界已发生的客观事实？
+[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W8-B：来源保真、分层回忆与人格连续性**。本模块保留功能与逻辑合同；旧源码片段仅为背景，具体字段按原实现接线，不新增审查／测试阶段。历轮比较与确认历史见 Record。
 
 ## 1. 区分五种常被混称的“记忆”
 
@@ -15,18 +13,6 @@
 | **Stable Character / 连续人格** | 阿洛谨慎、怕欠债，后来因玩家多次守信而更乐于赊账 | 作者稳定特质 + 有出处的长期经验/关系变化；人格不是一轮摘要随意重写，也不是永远无法成长 |
 
 **核心原则：** 存储了历史 ≠ NPC 一定想得起来；NPC 现在忘记了 ≠ 世界事件没发生；检索召回了文本 ≠ NPC 获得该来源合法权限；模型总结或“反思”≠ 新的世界事实。
-
-## 2. 当前 Atria main 的已有基础（仅静态代码检查）
-
-- [Native Memory Contract](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-memory-contract.js)：明确 `identity`/`commitment`/`relationship`/`key_event` 受保护角色，`detail` 可采用 `light/deep` 与 `fadeAfter`；支持 `clarity`（clear/blurred/forgotten/reconstructed）和 `use`（willing/reluctant/unavailable）、`applicability` 与证据 `basis`。这是**已有能力**，不能宣称尚需创建一个遗忘引擎。
-- [Native Cognition Runtime](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-cognition-runtime.js)：对符合条件的 `detail` 依据当前逻辑游戏时间呈现 blurred/reluctant；受保护类别仍保持 clear/willing。认知适用性还依赖原始证据、目标和来源指纹；不是“隔 N 回合无条件物理删除”。
-- [Cognition Authority](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/cognition-authority.js)：认知更新依据明确的 SourceRefs、精确视图/修订/作用域，并在分支切换时对有效证据执行恢复/重绑定；不能让模型靠自由文本改写已提交真相。
-- [HCM Source Lifecycle](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/scripts/agents/memory/source-provenance.js) / [Temporal Graph](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/scripts/agents/memory/temporal-graph.js)：以 Episode 证据关联事实/实体/关系，变更时可失效来源；HCM 更适合来源检索/解释，不能成为世界权威。
-- [HCM Eligibility](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/scripts/agents/memory/eligibility.js)：按照当前已授权 `Information` 投影、Requester、Branch/Revision 限定可检索信息，避免未经授权读取秘密。
-- [HCM Retrieval](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/scripts/agents/memory/query-plan.js)：基于合法的查询/场景种子检索而不直接发明新目标或新记忆；[HCM memory graph](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/docs/features/memory-graph.md) 已有图谱与可选压缩能力，但实际默认和消费者仍需 E0 逐一核验。
-- [Information Runtime](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-information-runtime.js)：投影绑 Session/PackageVersion/Revision/Branch/Scope，限制受众与输出预算；部分新 NPC 视角仍需要 W7 的动态资格接线。
-
-**事实限制：** 即使当前已具 `fadeAfter` 与角色语义，尚无证据显示任意新生 NPC 自动拥有这些数据流或其记忆能跨长时间、所有分支正确维护。W8 是明确语义和扩展边界，不重写现有 Memory 2.0/Host 系统。
 
 ## 3. 建议的“留痕 + 可回忆性”双视图（不是双数据库）
 
@@ -88,51 +74,7 @@ Committed Native World Event / Timeline / authorized external source
 - 按游戏内时间推进的遗忘/检索状态不意味着每 tick 都修改磁盘或运行 LLM。可根据当前时钟和已存的 `recordedAt` 等值派生可回忆状态，只在确有重要认知改变时经原生事务发布。
 - **推理费用需要上限**：优先规则/轻量索引筛选，核心 NPC 才做有限反思或检索增强；禁止每个 NPC 每一回合全量回忆与人格重估。
 
-## 7. W8 路线选择（待用户决定）
-
-| 路线 | 内容 | 优点 | 缺点 |
-| --- | --- | --- | --- |
-| W8-A：永久完整回忆 | 所有有名字的 NPC 记录并永远可完整回忆每条有效经历 | 简单直观，一致性表面上强 | 长会话膨胀，缺少遗忘/误记等合理人性，隐私披露风险 |
-| **W8-B：来源保真 + 分层回忆与人格连续性（推荐）** | 世界历史/义务永不由忘记决定；HCM 提供合法来源与历史检索；Native Cognition 管主体视图/长期倾向/认知适用性，普通细节可随时态模糊，关系与角色发展由经历驱动 | 复用既有能力，来源可审计，叙事有成长且兼顾性能 | 原生与 HCM 的 owner 边界、动态 NPC 身份与失效语义需要 E0 核实 |
-| W8-C：单一角色摘要权威 | 为每个 NPC 维护一个不断覆盖的“人物概况”，其余旧来源由模型按需想象 | 存储和 Prompt 表面简洁 | 容易丢事件、角色重写、编造细节、秘密泄漏，分支回退错误 |
-
-推荐 W8-B，但**当前用户只批准至 W7-B，不可将 W8-B 写为已选**。
-
-## 8. 候选验收场景（不是已执行测试）
-
-1. 玩家欠阿洛 100 金币，一年后阿洛可能不清楚借款现场颜色，但 Native 债务仍可查询；阿洛对还款的印象允许依证据变化，不能改变欠款权威金额。
-2. 阿洛初时极度谨慎，经多次守约更信任玩家；原始人物描述仍保持完整，他的长期信任变化能追溯数次已提交经历，而非 LLM 一句话反转人格。
-3. 米拉只听说皇帝活着并深信，后来获得证明皇帝已死的密报：旧信念可解释为什么曾经持有，但不能污染现在的世界状态。
-4. 不同分支中阿洛的信任和已知秘密不同；从 T0 SavePoint 分叉后，T20 的学习不会从 HCM 缓存跨线泄漏。
-5. 外来 NPC 尚未获得合法 Perspective 时，不能擅自使用其他 NPC 的个人记忆或读 Narrator 全部真相。
-6. 记忆被允许淡忘的场景无需全量史料扫描/每 tick LLM，重要承诺与事件可通过 Native 查询追踪。
-7. 某回合阅读“十年前的一封信”触发一次有出处的回忆或认知更新，不自动篡改十年前客观世界历史。
-8. 角色死亡、离开或长期休眠后仍可按历史版本查其过去经历，当前活跃上下文与计算成本受约束。
-
 ## 9. 外部研究类比（不引入新框架）
 
 - [Park et al., Generative Agents, UIST 2023](https://doi.org/10.1145/3586183.3606763)：经历、反思、规划与相关记忆检索可用于可信社会行为，但这是受限研究环境，不构成开放世界无界推理的可行性证明。
 - [Packer et al., MemGPT, arXiv 2023](https://arxiv.org/abs/2310.08560)：分层记忆和有限上下文的虚拟管理可指导“哪些内容放入当前 Prompt”，不能作为删除不可变事件或授予隐私读取权限的理由。
-
-## 10. 仍待决定的精确边界
-
-- 动态 Perspective 与已有 `actor_[...]` Identity、`memoryStateSchema` 及 HCM graph source ID 的合法映射（是否需最小 authority 扩充由 E0 决定）。
-- 受保护记忆与 `forgetting`、`withdrawn` 的区别；是否允许魔法失忆/受控虚假记忆，如何显式验证。
-- 人格变化的跨时间证据门槛；“角色性格”与可变“对某人态度”应如何在 Studio/Play 展示与纠错。
-- HCM 搜索/压缩、Native Memory/Cognition、World History 三者的确切 owner 和复用路径；不建立重复持久化 authority。
-- 各游戏类型的自然语言自由度、分支、成本预算、隐私与上下文编译缺口；具体实现阶段与跨端验收仍需正式 E0。
-
-**本节形成时的结论状态：** W1–W7 已确认，W8 尚待选择；用户随后明确认可 W8-B，当前状态见 §11。整体 Plan 仍 Draft，继续每轮先更新 docs 原 Plan/唯一 Record 后再讨论。
-
-## 11. W8-B 确认（2026-10-17）
-
-用户对上一轮明确推荐的 **W8-B「来源保真 + 分层回忆与人格连续性」**回复「认同」，将其纳入 ARCH-DWE-01 已确认的**总体设计方向**。
-
-- **历史不能被遗忘抹去**：Native World/Session/Event 与客观契约/债务/关系仍由单 Host 权威拥有；NPC 的遗忘、回忆困难或主观误信不重写历史。
-- **记忆来源可追溯**：HCM 的 Episode / facts / entity graph 与 Native Information/Cognition 必须基于授权证据；合法可检索、是否真正相信、是否愿意回忆、是否模糊是不同维度。HCM 不是并行的 World Truth Registry。
-- **记忆允许逐层淡化**：普通细节可随游戏时间和上下文变模糊、难取回；identity/commitment/relationship/key_event 的保护语义与客观合同约束不能因简单压缩损坏。特殊失忆/植入记忆由作品已授权的认知事件解释，不是删改世界历史。
-- **人物连续性有因果**：作者稳定核心与后天人格倾向、临时情绪、信念/计划区分；重要人格变化应能指向源经历、分支和游戏时间，不能模型每轮凭空反转。
-- **复用已有机制**：Native `memoryPolicy / fadeAfter / clarity / use / basis`、Information/Cognition/Host、HCM 有证据的检索/压缩，不创建另一套 Memory DB。 
-- **W8-B 的选择不是实现验收**：不冻结实际角色数据 Schema、动态 Actor/Perspective、HCM 来源映射、记忆预算常量、反思策略、UI 或具体存储切换；继续 Draft。
-
-下一轮 W9 重点转向「**World Entity、Package Actor、运行时 NPC、Lifetime Person、HCM Entity 等不同身份域，如何指向同一真实世界对象并保持清晰的权威边界**」。详见同一 Plan Bundle 的 [entity-identity-authority.md](entity-identity-authority.md)；W9 的选型尚未获得用户批准。

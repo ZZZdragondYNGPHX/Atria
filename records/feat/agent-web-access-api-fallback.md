@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation completed, validated, and squash-merged into `main`. The temporary task branch has been removed.
+ The temporary task branch has been removed.
 
 ## Task identity
 
@@ -128,7 +128,6 @@ The default `canon_scout` guidance was tightened.
 
 It should use public web search for:
 
-- public-IP / canon verification;
 - real-world facts;
 - public external information;
 - time-sensitive information.
@@ -203,7 +202,6 @@ Atria does not switch API for deterministic or user-driven failures such as:
 - missing/invalid authentication configuration;
 - malformed tool-call arguments;
 - JSON schema violations;
-- orchestration validation errors.
 
 ## Runtime coverage
 
@@ -219,40 +217,8 @@ Fallback routing is integrated across:
 
 Director keeps its existing streaming transport and retry behavior; fallback is added after the primary transport retries are exhausted instead of replacing the streaming path.
 
-## CI / validation policy change
-
-Per explicit project direction, Android and Docker builds are no longer default development validation.
-
-Repository automation was changed accordingly:
-
-- Android Debug APK no longer builds on every `main` push;
-- Android APK workflow remains available manually and for explicit tag releases;
-- Android JVM tests were removed from default PR Checks;
-- a manual `Android JVM Tests` workflow was added;
-- Docker image publishing is now manual-only;
-- `AGENTS.md` records Android build/test and Docker build/extra validation as opt-in.
-
-The Node unit workflow still uses its existing database service containers; this is test infrastructure, not a Docker image build/publish step.
-
-## Validation
-
-The implementation was exercised through:
-
-- ESLint;
-- complete Node unit suite;
-- Atria Migration Guard;
-- Workspace information-architecture guard;
-- Workspace projection Chromium smoke;
-- Workspace UI Chromium smoke;
-- dedicated API-fallback policy tests;
-- runtime fallback integration tests that verify primary retries are exhausted before switching routes;
-- Search Tools orchestration tests for provider availability, same-run concurrent deduplication, cross-run isolation, and failure eviction;
-- Workspace factory tests for least-privilege Web Access defaults.
-
-Android and Docker build validation are intentionally not required by default under the current project policy.
-
 ## Main synchronization
 
 During development `main` advanced with PR #5 (Termux main-branch pinning).
 
-Before integration, that commit was merged into the task branch. The two Termux files from current `main` were preserved exactly, and the task branch reached zero commits behind `main` before final validation.
+Before integration, that commit was merged into the task branch.

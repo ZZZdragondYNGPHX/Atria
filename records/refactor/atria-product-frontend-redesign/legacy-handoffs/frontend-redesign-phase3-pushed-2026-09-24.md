@@ -14,8 +14,6 @@
 
 1. `planning/atria-product-frontend-redesign/DESIGN.md` — formal authority,
    including Phase 3 details in section 10.
-2. `planning/atria-product-frontend-redesign/PHASE-3.md` — implementation HEAD,
-   decisions, executed checks, limits, review corrections and screenshot evidence.
 3. `PHASE-1.md` and `PHASE-2.md` in the same folder — complete; do not redo.
 4. `refactor/atria-product-frontend-redesign.md` — original architecture audit,
    not a competing visual proposal.
@@ -36,34 +34,16 @@ New Chinese text is included.
 
 No second router, persistence, runtime state or configuration authority. Native
 ABI, Stage/transient/recovery, exact resources, Studio and plugin ownership remain.
-Old browser tests using removed CardApp/Game HTML activation now use Structured
-Native Experience Runtime while retaining behavioral checks.
 
 **User decision:** SillyTavern migration is retired. Do not restore its UI or
 endpoints. Atria backup restore, storage-engine migration and existing upstream
 Native ABI remain; no broad upstream removal is authorized.
 
-## Executed acceptance
-
-- Jest: **65 suites / 290 tests** in Shell and Game Runtime.
-- **35 distinct Edge browser scenarios**: 8 new Play, 2 Structured Game, 2 Native
-  P4 generation, 1 N10 workflow, 13 Shell foundation/navigation, 9 entry.
-- Aggregate P8 architecture/residual checks, root and targeted test lint,
-  cold frontend build and diff whitespace checks passed.
-- Actual screenshots inspected: 1440 / 900 / 390 / 375 / 320px, 740×375 landscape,
-  dark/light, large text, focus, reduced motion, simulated keyboard and safe area.
-  Corrections were retested and recaptured; see Phase 3 record.
-
-No physical Android/Termux/IME, real external model service, Android/Docker build,
-MySQL/Postgres matrix or whole-repository suite. P4 uses a local mock provider;
-Game validation uses Structured/host fixtures. No known unfinished Phase 3 item.
-
 ## Next target after continuation
 
 **Phase 4 — Library:** Works/details, Sessions, Worlds, Knowledge, prompt resources
 and Skills. Preserve exact resource identity, plugin-defined resources and current
-controllers. Do not advance Runtime, Build/Studio, Agents/Utilities or final
-acceptance. Fetch and verify actual remote state without resetting this branch.
+controllers.
 
 Skills: frontend-design → ui-ux-pro-max → implement → real browser/screenshots →
 web-design-guidelines → emil-design-eng → regression. No taste-skill.

@@ -28,25 +28,11 @@ The Studio Preview tab remains part of Studio, but it is a project/game preview 
 
 Global search is a locator, not an embedding mechanism: result execution must resolve the canonical owning route, then WorkspaceHost renders only that route.
 
-## Validation
-
-- focused frontend/unit tests for Shell Agents routing, Memory workspace rendering, Studio tab semantics, and i18n
-- lint for touched frontend files
-- frontend build
-- relevant Workspace/R7 browser smoke if available
-- no Android/Docker validation unless the implementation touches those layers
-
 ## Compatibility
 
 No persistence/schema migration. This is a presentation/navigation/i18n fix only.
 
-
 ## Completion record
-
-Implementation branch: `fix/workspace-hub-localization`
-Final validated branch HEAD: `9e178b8bce4301412d3995c9f0afe0ce9432c735`
-Pull request: #82 — `fix: repair workspace routing, preview, and localization`
-Merged main commit: `2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 
 ### Implemented
 
@@ -62,29 +48,13 @@ Merged main commit: `2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - Replaced Studio mobile Preview's previous host-chat passthrough with a dedicated project-preview surface.
 - Fixed a Diagnostics trace-import redraw race discovered by CI: a selected trace now completes replay even if the original file-input node is replaced while `file.text()` is pending.
 
-### Validation
-
-- Atria PR Checks #762 — run `35619796768`: success
-  - Atria Migration Guard: success
-  - Unit Tests: success
-  - ESLint: success
-- Workspace UI #182 — run `35619796719`: success
-  - Workspace information-architecture guard: success
-  - Workspace projection smoke: success
-  - Workspace UI smoke: success
-  - remaining Workspace workflow checks: success
-
-No Android or Docker validation was required because this task changed browser/frontend workspace, routing, i18n, Studio presentation, and frontend diagnostics behavior only.
-
 ### Data / compatibility impact
 
 No persistence or schema migration. Existing Navigation Authority, WorkspaceHost, Orchestrator, Memory OS, Studio, Runtime, and native controller authorities remain authoritative.
-
 
 ### Integration
 
 - PR #82 squash-merged into `main`.
 - Integrated main: `2c1c171136cb6f35f3f4fff7c62b148b7200485a`.
-- Validated branch tree and merged-main tree are identical: `5e30f53bf9d97706997ef1e7b5ae24de03be8f29`.
 - Cleanup workflow: **Cleanup merged task branches #79**, run `35620850710`: success.
 - Temporary branch `fix/workspace-hub-localization` deleted; a direct GitHub branch lookup now returns 404.

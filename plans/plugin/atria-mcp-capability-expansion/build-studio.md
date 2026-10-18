@@ -13,11 +13,9 @@ Current authority includes:
 - Project history and diff;
 - Resource Graph, references, closure and delete-safety;
 - Workspace create/inspect/execute with exact `baseRevision`;
-- Project validation, preflight, build and simulation;
 - Preview create/list/detail/close;
 - Native Frontend v3 Source Graph inspection;
 - Source-addressable Frontend diagnostics;
-- formal Frontend Workspace evaluation that temporarily applies the reviewed Workspace, validates/builds a Preview and restores Project source;
 - format-preserving semantic `frontend.patch` operations over Authoring Source.
 
 MCP should treat **Build** as the stable user-facing semantic namespace while recording **Native Studio** as the owning product authority in each Action Descriptor. There is no need to rename the public semantic domain merely to mirror internal endpoint/service names.
@@ -33,7 +31,6 @@ Representative READ action IDs include:
 - `build.diff`;
 - `build.resources`;
 - `build.resource.closure`;
-- `build.validate`;
 - `build.preflight`;
 - `build.frontend.inspect`;
 - `build.preview.list`;
@@ -57,7 +54,6 @@ The accepted READ direction includes semantic actions for:
 - source list/read;
 - history/diff;
 - Resource Graph/references/closure/delete-safety;
-- validation/preflight;
 - Preview inventory/detail;
 - Native Frontend Source Graph/diagnostics/features/permissions/remote origins through `build.frontend.inspect`;
 - compiled Preview UI/runtime identity where exposed.
@@ -82,7 +78,6 @@ Representative semantic actions:
 
 - `build.change.prepare` — normalize/construct a Workspace proposal;
 - `build.change.inspect` — exact before/after fingerprints without persistence;
-- `build.change.evaluate` — temporary Studio evaluation and validation, optionally composing formal Frontend Preview and/or simulation, then restoring Project source;
 - `build.change.apply` — execute the reviewed Workspace through Studio authority.
 
 Native Frontend-specific convenience actions may include:
@@ -103,29 +98,19 @@ The MCP evaluation receipt binds product evidence rather than requiring a new du
 - projectId;
 - baseRevision;
 - workspaceId;
-- normalized operations fingerprint/hash;
 - exact change fingerprints;
-- validation result;
 - Preview identity/runtime descriptor when created;
 - simulation evidence when requested.
 
-Apply re-checks the exact current Project base revision and normalized operation set. Existing Studio revision guards remain authoritative. Any drift fails closed and requires re-evaluation.
+ Any drift fails closed and requires re-evaluation.
 
 ### 13.5 Preview and simulation
-
-Preview is a first-class verification capability.
 
 Current product authority already supports Preview create/list/detail/close and a compiled Native Frontend v3 Preview produced from the same compiler/renderer semantics as Production.
 
 Preview evidence should compose with browser snapshot/screenshot/resize/diagnostics, while retaining the Project/Workspace/Preview provenance chain defined in section 10.
 
 Simulation is INTERACT by default and carries external-effect metadata if a particular simulation path invokes configured model/provider services.
-
-### 13.6 Validation/preflight are semantically read-only
-
-Validation and preflight remain READ-class even when implemented with POST-shaped product APIs because they do not intentionally mutate Project authority.
-
-Risk classification follows product semantics, not HTTP verbs.
 
 ### 13.7 Project history and source delete
 
@@ -149,7 +134,6 @@ MCP returns bounded metadata by default:
 - manifest;
 - PackageVersion identity;
 - preflight result;
-- archive size/hash/file name.
 
 Large archive transfer uses an explicit artifact path rather than model-context base64.
 
@@ -169,7 +153,6 @@ The following product-side work that the original MCP design might otherwise hav
 - exact compiled frontend runtime graph/descriptor;
 - formal Preview create/get/close;
 - temporary frontend evaluation with source restoration;
-- versioned Frontend Host Bridge receipts/idempotency/revision guards;
 - Experience Epoch stale-handle revocation;
 - Script/Media/Frontend recovery boundaries.
 

@@ -22,8 +22,5 @@ A custom editorial heading/sidebar proposal was rejected because UI v2 does not 
 
 Left-align content. Keep secondary scene/letter/story details collapsed. Expose selected navigation, action prerequisites, character counters, clear empty states and bounded lists. No new animation. Separate Phone channels before pagination using existing Information View authority. Reuse Schedule and Story Event projections on People instead of duplicating those identical views, keeping the total within the 16-view contract.
 
-## Validation
-Run Phase 1–6, add targeted refactor coverage, inspect real Native renderer + Atria CSS in Edge at desktop/compact/mobile widths and light/dark themes. Check keyboard, empty/loading/error/retry, pagination and mutation behavior. Label mocked slots in component preview; no claim of installed-session/provider playtesting.
-
 ## Execution
-One implementation/validation cycle. Publish verified Package source and one Record. Preserve the unrelated live CI-fix HANDOFF.
+ Preserve the unrelated live CI-fix HANDOFF.

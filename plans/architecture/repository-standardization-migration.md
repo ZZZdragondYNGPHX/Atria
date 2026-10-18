@@ -7,8 +7,6 @@ Governance control plane: `docs`
 
 ## Source of truth
 
-This Plan implements the user-approved **Atria / 通用项目仓库规范化与迁移施工说明 v1.0** and the verified reference structure in `ZZZdragondYNGPHX/Standardized-project`.
-
 The migration is not a redesign exercise. Actual Git state is the factual baseline; the approved standard is the target state.
 
 ## Target branch model
@@ -31,7 +29,6 @@ Short-lived product work continues to use semantic branches such as `feat/*`, `f
 - Do not rewrite reference mirrors into local orphan templates; preserve their upstream history.
 - Reference read permission and update permission remain separate.
 - Do not read or update reference contents unless explicitly authorized.
-- Preserve all valuable source, documentation, Package assets, tools, Skills, and releases until the new structure is verified.
 - Atria runtime Skills under `main:default/skills/**` remain product assets in `main`; they are not repository-agent Skills.
 - Product `main:plugins/**` remains product/plugin runtime source; it is not the standalone-tool `plugin` workspace.
 - Old handoff documents are not copied wholesale into the new live handoff model. Valuable facts must be retained in the relevant permanent Record before stale handoffs are removed.
@@ -48,8 +45,6 @@ Current -> target:
 - `luker` -> rename/migrate ref identity to `reference/luker` while preserving history.
 - no current `plugin` branch -> create a clean independent `plugin` root.
 - no current `skills` branch -> create a clean independent `skills` root for repository-agent Skills.
-- completed/stale temporary branches -> retain until the migration is verified, then delete if no longer needed.
-- `migration-backup/20260928/*` -> temporary safety refs only; remove in final cleanup after verification.
 
 ## Documentation migration policy
 
@@ -80,7 +75,7 @@ The current Package asset is the content under:
 
 `packages/native-heavy-frontend-reference/`
 
-It will become a top-level game directory in the new `package` workspace. The migrated directory must preserve its Plan, platform-gap record, playtest record, project source, previews, scenarios, and phase validators.
+It will become a top-level game directory in the new `package` workspace.
 
 A per-game `releases/` directory will be established. No tracked `.atria` release currently appears in the audited main/docs/Package trees, so migration must not invent a historical release artifact.
 
@@ -88,7 +83,6 @@ A per-game `releases/` directory will be established. No tracked `.atria` releas
 
 ### Phase 1 — Audit / Mapping / Safety
 
-- verify actual remote branch/HEAD state;
 - inspect the reference implementation;
 - audit existing governance/docs/Package structure;
 - establish migration protection refs;
@@ -113,19 +107,5 @@ A per-game `releases/` directory will be established. No tracked `.atria` releas
 - update main-side governance files on the task branch;
 - establish `SKILLS.md` routing;
 - migrate reference names without contaminating mirrors;
-- validate content completeness;
 - update Record/HANDOFF;
 - stop.
-
-### Phase 4 — Verification / cleanup
-
-- verify all independent roots and workspace boundaries;
-- verify reference naming/history and Package content;
-- verify docs lifecycle and adapters;
-- integrate main-side task-branch changes;
-- remove superseded branches and migration backups only after validation;
-- finalize Record and delete live HANDOFF.
-
-## Completion condition
-
-The task is complete only when the standardized branch model is real, migrated assets are verified, independent roots are parentless, reference histories are preserved, docs lifecycle is normalized, Web/Local adapters are separated, temporary migration state is removed, and no source/data/document/Package/Skill/release is lost.

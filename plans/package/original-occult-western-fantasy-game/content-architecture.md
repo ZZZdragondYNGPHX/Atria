@@ -135,7 +135,6 @@ Preferred launch target: approximately **10–20 patterns**.
 
 Examples may include:
 
-- identity verification;
 - insurance dispute;
 - property conflict;
 - missing person;
@@ -219,8 +218,6 @@ Variation should primarily come from:
 Do not count every institutional Anchor / Price variant as a completely separate ability unless its mechanical rule actually differs.
 
 #### 6.40.9 Claim primitives
-
-Claim content should reuse validated effect primitives where possible.
 
 Examples:
 
@@ -424,7 +421,6 @@ Working role: mandatory opening Case.
 
 Primary gameplay responsibilities:
 
-- Civil Verifier professional loop;
 - Evidence / Testimony / Finding / Hypothesis distinction;
 - first shared Case Graph;
 - first meaningful Contradiction;
@@ -820,7 +816,6 @@ A Signature Case may present primarily as:
 - insurance;
 - burial administration;
 - labor / transport;
-- identity verification.
 
 The supernatural should emerge through the same social reality rather than making every Case a monster hunt.
 
@@ -1052,7 +1047,6 @@ A Canon Fragment must define:
 
 - Subject;
 - Time Scope;
-- Canonical Assertions;
 - referenced Entities / Events;
 - Conflicting Records;
 - Initial Knowledge Holders;
@@ -1098,7 +1092,6 @@ Semantic Payload may include:
 - signatures;
 - custody;
 - provenance;
-- integrity;
 - access restriction.
 
 Rendered prose may then be produced from this payload without changing the underlying facts.
@@ -1140,16 +1133,6 @@ Hard Canon should distinguish:
 
 Do not expose Canon prose directly merely because the system needs to reason about a Case.
 
-#### 6.44.15 Production validation questions
-
-Before a Hard-authored asset is accepted, authoring should answer:
-
-1. **What world state can this asset change or constrain?**
-2. **Through what legitimate route can the player or an actor learn it?**
-3. **If the player never discovers it, does the world remain coherent?**
-
-If an asset changes nothing, has no discoverable route and exists only as exposition, it should be challenged as unnecessary worldbook content.
-
 ### 6.45 Round 8.6 decision
 
 Approved:
@@ -1168,7 +1151,6 @@ Approved:
 - Artifact Semantic Payload separated from Rendered Text;
 - runtime separation of design-only metadata;
 - Truth separated from currently revealable claims / evidence paths;
-- three production-validation questions for Hard-authored assets.
 
 Rejected:
 
@@ -1178,4 +1160,3 @@ Rejected:
 - AI inference of required fields from unstructured lore;
 - rendered document prose as the source of Artifact semantics;
 - passing author spoiler notes into runtime Context.
-

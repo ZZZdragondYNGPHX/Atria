@@ -3,7 +3,6 @@
 - Task ID: `package/foglight-inn`
 - Primary Workspace: `package`
 - Status: P5 候选交付 — `1.0.0-rc.4` 已构建；MiniMax 中国区连接及六次真实游戏样本通过
-- Current stage: P5 — 规则/媒体/宿主和有限真实模型样本已验证，三天全部剧情的模型体验尚未完整验收
 - Distribution: 已按用户要求作为 Atria 初始游戏内置，`main@2686aa40a`；制作源码与历史发布仍归 package
 - Record: [制作记录](../../../records/package/foglight-inn.md)
 - Product baseline: `main@9241325a7`（2026-10-14 的代码核查基线；正式实施重查实际 Git）
@@ -35,7 +34,7 @@
 - 三天、四名核心 NPC、五个可访问地点；紧凑的行动预算与三条完整结局路线，具体规则归 [gameplay.md](gameplay.md)。
 - 人物、旧事、异常与分日事件归 [story.md](story.md)，其中包含作者保密内容。
 - 单人普通模式。首版不加入实时操作战斗、无限经营、大型地图、多人或跨局继承；不以运行期生图和外部 MCP/A2A 为通关依赖。
-- 正式交付为独立游戏 `.atria` 及其必要媒体。正式制作已在本对话启动，当前实施与验证事实见制作记录。
+- 正式交付为独立游戏 `.atria` 及其必要媒体。
 
 ## 4. 模块权威与阅读路由
 
@@ -44,15 +43,15 @@
 | [story.md](story.md) | 世界事实、人物、作者秘密、线索与披露、事件内容、结局叙事意义 | 本入口核心原则 |
 | [gameplay.md](gameplay.md) | 时钟、行动、资源、协助、状态、结局门槛与可达性 | `story.md` 的身份和事件 |
 | [media-and-runtime.md](media-and-runtime.md) | 图片/SFX 清单、媒体制作与运行边界、Atria 能力映射及产品补口 | 故事与规则中的状态 |
-| [delivery.md](delivery.md) | 外部三项产物职责、整合流程、阶段与验收、正式实施准备 | 其他模块 |
+| [delivery.md](delivery.md) || 其他模块 |
 | [frontend-integration.md](frontend-integration.md) | 三原件来源与采用决定、完整前端呈现落点、参考局限和适配要求 | 原始界面语义、玩法与媒体边界 |
 | [HTML 原件](frontend-reference/foglight-inn-concept.html)、[功能说明原件](frontend-reference/feature-presentation.md)、[整体指导原件](frontend-reference/frontend-guidelines.md) | 已归档的用户前端参考；正式制作必须实际查看 HTML 并阅读两文档 | 采纳与冲突处理只归整合模块 |
 | [implementation-prompt.md](implementation-prompt.md) | 用户新对话正式制作的可复制任务入口 | 本终稿与对应必读模块 |
-| [frontend-design-package/README.md](frontend-design-package/README.md) | 发给外部 AI 的任务、交付格式与质量检查 | 下列两份输入 |
+| [frontend-design-package/README.md](frontend-design-package/README.md) || 下列两份输入 |
 | [frontend-design-package/design-brief.md](frontend-design-package/design-brief.md) | 无剧透游戏背景、体验目标、媒体意图与演示文案 | 作者企划的公开设计投影 |
 | [frontend-design-package/interface-requirements.md](frontend-design-package/interface-requirements.md) | 前端完整功能、操作、流程和状态清单 | 规则的可见需求 |
 
-外部需求包是保留的 v0.9 设计输入投影；实现玩法时以本 Bundle 的作者模块为权威。外部原件未覆盖的功能已在整合模块补齐，不按原件自评认定完整验收。
+外部需求包是保留的 v0.9 设计输入投影；实现玩法时以本 Bundle 的作者模块为权威。
 
 **正式制作必读顺序：** 本入口 → `frontend-integration.md` → 浏览器实际查看 HTML 并全文读两份原件 → `interface-requirements.md` → `gameplay.md` / `media-and-runtime.md` / `delivery.md`；内容制作读取 `story.md`。不能只读启动请求或原件标题就开始搭界面。
 
@@ -64,18 +63,9 @@
 | P1 — 企划细化与需求包 | 已完成；完整游戏结构、公开设计输入和可转交任务 | `index.md` → `story.md` / `gameplay.md` → `media-and-runtime.md` → 需求包三文件 |
 | P2 — 外部设计整合 | 已完成；三原件归档、浏览器审阅、差异与完整功能呈现整合 | `index.md` → `frontend-integration.md` → 三原件及原需求清单 |
 | P3 — 终稿与启动提示词 | 已完成；v1.0 制作基线和可复制启动请求，正式制作由用户新对话发起 | `index.md` → `implementation-prompt.md` → `delivery.md` |
-| P4 — 正式制作 | 已实现；媒体与玩法、最小音频宿主能力、完整游戏流程及分项验收 | 本入口的正式制作必读顺序；按当前任务加载内容模块 |
-| P5 — 验收交付 | 候选包已交付；真实模型完整体验按用户要求待补 | `index.md` → `delivery.md` 的验收矩阵 → 对应模块 |
+| P4 — 正式制作 | 已实现；| 本入口的正式制作必读顺序；按当前任务加载内容模块 |
 
-当前阶段的完成不会被写成游戏已实现或通过运行验收。未来产品变更使用语义源码分支，游戏资产属于独立 `package` 工作空间；治理和 API 测试规则只归 [Repository Governance](../../../README.md)。
-
-## 6. 本轮验证范围
-
-文档检查覆盖相对链接与路径、功能/状态标识引用、故事和规则的一致性、各主要结局的计划可达性、外部包自包含和无作者剧透。它们不代替产品运行、浏览器或真实模型验收；实际检查结果在本轮交付说明中报告。
-
-2026-10-15 文档验证通过：10 份 Markdown、34 个本地链接；13 个界面、37 项操作、16 类状态；15 项游戏行动、20 个故事事件和 12 行人物日程的标识与结构完整。五种安全设施与路线准备组合的资源预算回放均可达。外部三文件包不含作者秘密与本机路径，`git diff --check` 通过。上述结果只证明设计文档的一致性与计划可达性。
-
-同日回归整合已核对三原件哈希，实际浏览器审阅结果归 [frontend-integration.md §9](frontend-integration.md#9-本轮参考审阅事实)。局部原型的已发现问题已转为正式呈现与验收要求，不宣称原型或游戏已经通过完整验收。
+未来产品变更使用语义源码分支，游戏资产属于独立 `package` 工作空间；治理和 API 测试规则只归 [Repository Governance](../../../README.md)。
 
 ## 7. 实质设计变化
 
@@ -83,5 +73,5 @@
 - 2026-10-14：确定有限时间内自主安排过程、旧式海岛生活感、场景/声音/简洁文字和分层信息的整体呈现。
 - 2026-10-14：确定制作期生图与制作方选择声音；前端采用外部 HTML 和两份设计文档的协作流程，正式实施提示词在终稿之后提供。
 - 2026-10-14：整体讨论结束，授权细节设计；将单文件讨论稿整理成本 Bundle，并保留原路径为入口链接。当前制作基线为 v0.9，视觉整合完成后再形成终稿。
-- 2026-10-15：完成故事、玩法、媒体与运行边界、交付验收和外部前端设计输入；导出可直接转交的单文件与三文件压缩包，进入 P2。
+- 导出可直接转交的单文件与三文件压缩包，进入 P2。
 - 2026-10-15：接收并原样归档 HTML、功能说明和整体前端指导；采纳 ADV 舞台呈现，补齐功能、恢复、阅读和宿主适配差异，形成 v1.0 正式制作基线与新对话启动请求。规则数值与三条安全路线不变。

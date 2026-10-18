@@ -5,13 +5,11 @@
 ## Status
 
 - **Decision state:** product / data / storage / runtime / UX direction frozen
-- **Implementation state:** **N0–N8 are complete and validated; N9 — Product UI Cutover is next.** N8 validated HEAD: `f6f629800f8dae2da5c9870f6c0d6965920ea960`; workflow **Native Content Session Dev Checks #136**, run `35715208736`, success.
 - **Authoritative development baseline:** `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - **Working branch:** `refactor/atria-native-content-session-architecture`
 - **Branch creation point:** `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - **Document branch:** `docs`
 - **Implementation phases:** N0–N10
-- **Merge policy:** keep the long-lived refactor branch isolated until the complete Native Package/Session/World/Knowledge cutover is validated; merge to `main` only after N10.
 
 This plan is authoritative for the implementation conversation. Do not restart product design unless a concrete implementation contradiction is discovered.
 
@@ -271,19 +269,10 @@ Installed Package versions are immutable.
 
 Conceptually:
 
-```text
-pkg_123
-├─ v1.0 / hash_A
-├─ v1.1 / hash_B
-└─ v2.0 / hash_C
-       ↑ current
-```
-
 A Session records the exact package dependency:
 
 - packageId;
 - packageVersion;
-- packageContentHash;
 - EntryPoint;
 - runtime/native schema version where applicable.
 
@@ -309,8 +298,6 @@ Normal Native UI must not export work content as PNG, Character JSON, CharX, BYA
 
 ### 8.2 Evolution from current main
 
-Current `.atria-distribution v1` is a useful security/validation foundation and should be evolved rather than discarded.
-
 Current reusable concepts include:
 
 - archive-size limits;
@@ -318,9 +305,6 @@ Current reusable concepts include:
 - path normalization / traversal rejection;
 - compression-ratio limits;
 - inventory;
-- SHA-256 integrity;
-- Source Project validation;
-- validate-before-restore;
 - exclusion of save/progress/checkpoint paths.
 
 The new format becomes a general Package Container v2 rather than a `game/`-only distribution.
@@ -328,16 +312,6 @@ The new format becomes a general Package Container v2 rather than a `game/`-only
 ### 8.3 Source vs artifact
 
 Studio Source Projects remain readable, diffable, Git-friendly authoring trees.
-
-```text
-Source Project
-  ↓ normalize / validate
-Package Manifest + content
-  ↓ compress
-binary envelope / obfuscation / encryption layer
-  ↓
-*.atria
-```
 
 Internal authoring may still use JSON, JS, CSS, images, audio, SVG, etc. The hard cutover applies to **user-facing native exchange artifacts**, not to developer-friendly source files.
 
@@ -351,7 +325,6 @@ Use an Atria binary envelope around the compressed payload with:
 - container/schema version;
 - bounded metadata necessary for safe preflight;
 - encrypted/obfuscated payload;
-- integrity/authentication;
 - optional creator signature.
 
 The normal package protection goal is:
@@ -429,13 +402,12 @@ Studio Preview must use an ephemeral preview session and must not contaminate th
 
 Package/runtime assets are no longer owned by a Character directory.
 
-Use a content-addressed, immutable AssetStore. Blob identity is based on content hash; logical package asset IDs reference the blob.
+Use a content-addressed, immutable AssetStore.
 
 Benefits:
 
 - filename changes do not affect identity;
 - deduplication across Package versions/packages;
-- stable integrity checking;
 - independent lifecycle/GC;
 - Sessions can retain a referenced asset even after a Package is hidden/removed;
 - large binary assets do not need to live inside SQL JSON documents.

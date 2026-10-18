@@ -8,7 +8,6 @@ Memory and Agents currently own substantial first-party runtime authority in the
 
 MCP should preserve those authorities instead of duplicating their state models.
 
-
 ### 15.1 Fixed Browser Capability Bridge
 
 A fixed Browser Capability Bridge remains necessary, but its scope is narrower after Native Frontend v3.
@@ -26,7 +25,7 @@ The Native Frontend v3 **Frontend Host Bridge** and this MCP **Browser Capabilit
 - Frontend Host Bridge is Package Frontend ↔ Host typed product authority;
 - Browser Capability Bridge is MCP ↔ selected first-party browser capability API adaptation.
 
-MCP must not expose arbitrary Frontend Host Bridge binding dispatch as a generic product-operation escape hatch. It may inspect/verify the formal bridge/runtime where useful, while product mutations continue through the most direct owning authority and MCP Action Registry.
+MCP must not expose arbitrary Frontend Host Bridge binding dispatch as a generic product-operation escape hatch.
 
 This bridge is not arbitrary JavaScript evaluation.
 
@@ -41,7 +40,6 @@ MCP must not expose:
 Every bridged method has an explicit schema, risk class, availability rule and output filter.
 
 Bridge evidence is browser/runtime-bound and should include `serverBootId` plus applicable Session/Experience provenance where practical.
-
 
 ### 15.2 Memory read surface
 
@@ -90,18 +88,6 @@ Accepted mutation direction includes semantic operations for:
 These are MUTATE operations. Compaction is high-impact because it changes graph hierarchy/projection while preserving its product-defined history/evidence semantics.
 
 Physical node deletion and relation deletion are DESTRUCTIVE.
-
-### 15.5 Memory concurrency/source guards
-
-MCP must preserve Memory Graph's existing source-session/persistence guards.
-
-Where practical, MCP should add optimistic identity/fingerprint checks for targeted node/graph edits so a stale read cannot silently overwrite a more recent Memory mutation.
-
-This follows the same cross-domain pattern as:
-
-- Session `expectedRevisionId`;
-- Build `baseRevision`;
-- Package `baseVersionId`.
 
 ### 15.6 Memory batch mutation
 

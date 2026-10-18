@@ -242,7 +242,7 @@ A person may establish Claims from more than one Principle.
 
 The limiting factor is **self-consistency**.
 
-Claims that assert incompatible things about the practitioner create contradiction. Resolving that contradiction may require:
+ Resolving that contradiction may require:
 
 - narrowing Conditions;
 - introducing stronger Anchors;
@@ -453,8 +453,6 @@ The player may discover that Witness, Name, Memory and the other Principles are 
 
 The Common Eight remain mechanically valid at ordinary scales even if they are not the final metaphysical truth.
 
-This preserves progression into deeper mystery without invalidating earlier gameplay.
-
 ### 6.11 Round 2.5 decision
 
 Approved:
@@ -555,7 +553,6 @@ The Common Eight can support the major expected gameplay families without adding
 Representative mappings:
 
 - investigation: **Witness + Echo**;
-- identity verification / disguise: **Name + Witness**;
 - infiltration: **Name + Witness / Boundary**;
 - tracking: **Echo + Bond / Name**;
 - institutional authority: **Name + Bond + Witness**;

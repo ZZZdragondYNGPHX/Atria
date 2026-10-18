@@ -260,7 +260,6 @@ Workflow 可以有：
 
 - named states；
 - allowed transitions；
-- transition guards；
 - async gate；
 - completion effect；
 - timeout/cancel policy。
@@ -268,8 +267,6 @@ Workflow 可以有：
 但最终 authority 仍是 Session Application Domain，不建立第二套 workflow persistence。
 
 #### Relationship / Social Graph
-
-关系网、好友圈、群成员、共同经历、谁认识谁，进一步验证了第 5 项不能只有简单 selector。
 
 Data Projection 应支持一组**有界、确定性的 query primitive**：
 
@@ -326,18 +323,6 @@ Data Projection 应支持一组**有界、确定性的 query primitive**：
 
 例如：
 
-```text
-Quest Evaluation Result
-→ validate
-→ {
-     World: reward +100
-     SessionApp: quest = completed
-     Journal: quest.completed
-     Observation: reward summary
-   }
-→ one Revision commit
-```
-
 这不是新的裸 patch API。
 
 Package 仍然只调用 typed Action / Command / Task result apply；Runtime 负责组装 transaction。
@@ -363,137 +348,6 @@ Package 仍然只调用 typed Action / Command / Task result apply；Runtime 负
 
 这说明当前能力表开始出现可组合性，而不是“每来一个新玩法就新增一个平台 API”。
 
-### 26.27 作者侧压力测试：Studio 不能只做可视化编辑
-
-《银麒赎世》的开发过程本身也是一个重要 benchmark。
-
-该项目已经建立：
-
-- 大量单元测试；
-- build artifact 正向 / 负向 marker；
-- 编译门禁；
-- prompt payload 拦截；
-- 多轮实机 smoke；
-- schema / hot-update / conflict guard；
-- 多种设备与运行配置检查。
-
-这说明复杂 Native Experience 的作者真正需要的不是：
-
-> “拖几个组件出来看看”。
-
-而是：
-
-> **在发布前可重复验证整个 Experience contract。**
-
-当前 Atria `main` 已有：
-
-- Studio Structured UI editor / Native Preview；
-- Prompt `/preview`；
-- Effective Request Snapshot；
-- ContextPlan / token / capability diagnostics；
-- Command `simulate`；
-- Build validation。
-
-这些是很好的地基，但还没有一等的 Package-level scenario test workflow。
-
-因此第 19 项应正式扩展为：
-
-> **Studio Visual Authoring + Scenario Simulation / Test Bench**
-
-候选测试用例：
-
-```text
-ExperienceScenario
-├─ scenarioId
-├─ package revision
-├─ entry point
-├─ initial World / Session fixtures
-├─ opening selections
-├─ environment fixture
-│  ├─ viewport
-│  ├─ touch / keyboard / gamepad
-│  ├─ reduced motion
-│  └─ host capabilities
-├─ deterministic RNG seed
-├─ clock / world-time fixture
-├─ scripted actions / user inputs
-├─ model task mode
-│  ├─ mock
-│  ├─ recorded
-│  └─ live preview
-├─ expected assertions
-└─ capture policy
-```
-
-Studio 应能逐步执行并检查：
-
-- Opening Wizard 分支是否可达；
-- Action availability / disabled reason；
-- Command simulation；
-- Activity start / cancel / settlement；
-- Session Application workflow transition；
-- World Process tick / catch-up；
-- Auxiliary Task stale policy；
-- Epistemic actor context；
-- Message Projection schema；
-- Conversation thread；
-- responsive / host capability fallback；
-- exact Prompt / ContextPlan；
-- token budget；
-- Health / Diagnostics。
-
-### 26.28 测试必须复用生产 Runtime，而不是 Studio 特制解释器
-
-冻结原则：
-
-> **Preview / Test Bench 与真实 Play 必须走同一套 compiler / validator / reducer / projection contract。**
-
-允许 mock：
-
-- Model Task output；
-- wall clock；
-- RNG；
-- Host environment；
-- external capability availability。
-
-不允许 mock 成另一套语义：
-
-- Studio-only selector；
-- Studio-only Action；
-- Studio-only reducer；
-- Studio-only Message Projection parser。
-
-否则会重新出现：
-
-> “Studio 预览能跑，安装后的 Package 不能跑”。
-
-### 26.29 Experience Assertions 应是声明式的
-
-Package / Studio scenario 可以声明：
-
-```text
-after action "equip"
-expect:
-- world.player.equipment.main == "sword-01"
-- event "equipment.changed" emitted once
-- sessionApp.inventoryView.selection unchanged
-- no unauthorized namespace write
-```
-
-常见 assertion primitive：
-
-- state path equals / matches schema；
-- Event emitted / not emitted；
-- Action available / denied；
-- Revision advanced exactly once；
-- Projection block valid；
-- Model Task output accepted / rejected；
-- token budget under threshold；
-- expected capability fallback selected；
-- diagnostic code present / absent。
-
-不能让 Package test fixture 执行 arbitrary JS assertion。
-
 ### 26.30 Golden UI 只做辅助证据
 
 重前端当然需要：
@@ -511,42 +365,10 @@ expect:
 
 优先级应为：
 
-1. typed structural assertion；
-2. runtime semantic assertion；
 3. accessibility/layout diagnostics；
 4. screenshot / visual review。
 
 这样 Studio 测试才不依赖“像不像某张旧卡”。
-
-### 26.31 Authoring Test Bench 与 Experience Health 共用诊断语言
-
-测试失败和玩家运行失败应使用同一 diagnostics vocabulary。
-
-例如：
-
-```text
-action.command.validation_failed
-model_task.route_missing
-context.budget.hard_reserve_overflow
-activity.settlement.rejected
-session_app.schema_mismatch
-perspective.source_stale
-asset_pack.required_missing
-host.scene3d.unavailable
-```
-
-Studio 可以：
-
-- 在测试里 assert diagnostic；
-- 跳到对应 authoring owner；
-- 给出修复位置。
-
-Player Runtime 则：
-
-- 显示用户可理解状态；
-- 提供 Host-owned remediation。
-
-这样第 19 与第 20 项不会成为两套工具链。
 
 ### 26.32 本轮仍不新增第 29 项
 
@@ -643,19 +465,6 @@ Package 可以声明 idempotency scope，例如：
    - 不伪装成普通 Action undo。
 
 推荐：
-
-```text
-purchase
-→ commit
-→ receipt(undoable=true)
-
-undo(receipt)
-→ validate receipt still compensatable
-→ typed compensation Command
-→ Event
-→ Reducer
-→ new Revision
-```
 
 这样历史仍不可变。
 

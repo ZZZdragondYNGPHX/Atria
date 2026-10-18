@@ -1,8 +1,6 @@
-# ARCH-DWE-01 · W14 Effective World View、World/Knowledge 创作与上下文一致性（讨论草案）
+# ARCH-DWE-01 · 有效世界、资料适用性与用户操作
 
-- Task ID：`ARCH-DWE-01`；Primary Workspace：`docs`；[唯一 Plan](index.md) / [总设计](design.md) / [W13 世界时态](event-temporality-branch.md) / [唯一 Record](../../../records/architecture/world-evolution-consistency.md)。
-- **状态：Draft**。W1-B 至 W14-B 的总体方向均已获用户确认；具体 Effective World View、Source Claim、Context Compiler/Library/Studio/Play API/UX、完整 E0 和实施仍待讨论。§8 是此前的选型比较，W14-B 正式确认见 §10。本模块仍属同一 Plan Bundle；不修改 `main`、不创建实现分支。
-- **W14 主问题**：WorldRevision 与 Knowledge Source 是静态的，但 Canonical Subject/事实/社会关系不断变化。怎样为指定 `Session + Branch + Revision + GameTick + Audience` 计算**有效世界视图（Effective World View）**，然后让 Prompt/Library/Studio/Play 只消费适用的事实与资料，并解释为何某条旧资料不能继续被当作当前事实？
+[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W14-B：有效视图优先、Claim/Source-aware Context**。本模块保留功能与逻辑合同；旧源码片段仅为背景，具体字段按原实现接线，不新增审查／测试阶段。历轮比较与确认历史见 Record。
 
 ## 1. 必须区分“固定作者资料”中的五种语义
 
@@ -22,11 +20,8 @@
 
 ```text
 Pinned PackageVersion / WorldRevision(s) / KnowledgeRevision(s)
-                     +
   Native Session State/Events/Subject/History at exact Revision
-                     +
        Canonical game clock / requested asOfGameTick
-                     +
        Authorized audience/Subject Perspective & Scope
                      |
              Effective World Resolver
@@ -73,7 +68,7 @@ Pinned PackageVersion / WorldRevision(s) / KnowledgeRevision(s)
 | 读取旧编年史 | 正确引用“该文献写到莱恩在位”，标注时间/可信来源 | 把文献文本直接转为全新 World Effect |
 | SavePoint T7 另开分支 | 分叉前莱恩在位；后续事件按分支独立演化 | 将另一分支的 T10 死亡或 T12 继位泄漏到新线 |
 
-**自由文本一等支持**：作者不需要手动给每段故事添加字段。但“会随剧情改变的关键事实”若需要参与原生模拟、强约束推理或精确消歧，必须能由作者显式建立少量结构化事实/目标引用或由 AI **提出待验证的 Source Claim/事实绑定候选**。模型的未经审核抽取不能自动将任意历史传闻升级为当前 Canon。
+**自由文本一等支持**：作者不需要手动给每段故事添加字段。模型的未经审核抽取不能自动将任意历史传闻升级为当前 Canon。
 
 ## 4. 现有 Atria main 确实已有的功能及缺口（静态审读，非 E0 完成）
 
@@ -82,7 +77,7 @@ Pinned PackageVersion / WorldRevision(s) / KnowledgeRevision(s)
 - [Native Knowledge Runtime](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/scripts/native/knowledge-runtime.js) 显式定义来源权威等级：`runtime_mechanics`=900、`current_session_state`=800、`committed_event_journal`=700、`knowledge_override`=600、`package_canonical`=500、library augment=400、session augment=300、memory history evidence=200。
 - `compileNativeKnowledgePlan` 对已固定的 Knowledge Binding/Entry 进行 target/visibility、`applicability.stateConditions`、`relations.exclusiveGroup` 的有限判断，命中的条件冲突可给出 `current_state_conflict`。`normalizeMemoryEvidence` 对带显式 `stateClaim` 的相关路径可拒绝与当前 Native State 不一致的记忆证据。
 - [State Conditions](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/scripts/native/state-conditions.js) 是纯三态比较（true/false/unknown），未知不自动变真；这些是**已有能力，应该复用**。
-- **真实缺口**：已有条件与排他组只对**显式声明条件/组或来源状态 claim** 的有限候选生效；当前代码并未证明能够**理解一切自由文本断言**、自动把旧皇帝的无条件静态描述判定为历史过期，或在任意未来 Source/Branch 中提供通用 Fact-level `asOf`。较高 `authorityRank` 不能阻止两段互相矛盾的内容同时出现在 Prompt。
+- **真实缺口**：已有条件与排他组只对**显式声明条件/组或来源状态 claim** 的有限候选生效；较高 `authorityRank` 不能阻止两段互相矛盾的内容同时出现在 Prompt。
 
 ### 4.2 Context Compiler 已有专门的世界、事件、知识、记忆预算
 
@@ -105,7 +100,7 @@ Pinned PackageVersion / WorldRevision(s) / KnowledgeRevision(s)
 ### 5.1 推荐的有效上下文编译顺序
 
 1. **固定身份与作用域**：选择当前 Session/Branch/Revision（或历史查询的指定 Revision）、规范游戏时钟、World(s)/Worldless、明确的目标受众/用途；不能从未知请求随意读取全知 Narrator。
-2. **加载规则与确切世界事实**：由固定作者规则/已批准 E3 变化及 Native State/Event/History 构建当前有效事实和必要的 `as-of` 历史。先验证硬约束，不靠“世界排名高”处理非法世界效果。
+2. **加载规则与确切世界事实**：由固定作者规则/已批准 E3 变化及 Native State/Event/History 构建当前有效事实和必要的 `as-of` 历史。
 3. **做主体与场景范围筛选**：使用正式 Subject identity、位置/关系/最近事件/承诺/任务来控制关联范围，生成简洁而充分的世界事实，而不是永远将所有 Snapshot JSON 原样注入。
 4. **权限裁剪先于文字检索**：根据 Host source grants/角色 Perspective 先限制其可见事实、消息、HCM Episode/Knowledge Source；保证角色不能因关联检索而间接读到未公开身份与秘密。
 5. **Knowledge 的事实适用性判定**：知识来源按用途分为背景/创作规则、当前状态候选、历史记录、传闻或未核实说法。对关联了已知 Subject/FactKey/有效条件的可变声明，判定 current/historical/superseded/disputed/unknown，明确重定位或排除“已过期状态”的当前事实用法。对无结构化声明的自由正文，不臆测其客观真相，保留源作为**标注语境/出处的参考**，遇到关键当前事实潜在冲突时优先要求补充绑定或以 background/source-only 语义送入而不无条件宣布为当前世界。
@@ -121,7 +116,7 @@ Pinned PackageVersion / WorldRevision(s) / KnowledgeRevision(s)
 | 旧编年史“莱恩是皇帝”（无明确时间） | 当作文献来源/时间未明 claim，不能作为 T12 当前在位证据 | `source_claim_unresolved`，提示作者可选绑定 |
 | NPC 从别人处听闻“莱恩仍在位” | 在该 NPC 的已授权 belief/rumour 用途内表述为“听说/认为” | `actor_belief` 与传播链 |
 | 未被世界定义的地名/普通场景细节 | 可作为创作背景文本，必要时再走 W4-B 持续后果正式接纳 | `background_only`，非已确认事实 |
-| 两个正式相互矛盾的 Native Effects | **阻止或标为正式事务/状态冲突，交给 Native 校验**；不能任凭 Context rank 选一个 | `authority_conflict`（阻塞） |
+| 两个正式相互矛盾的 Native Effects |不能任凭 Context rank 选一个| `authority_conflict`（阻塞） |
 
 这些原因代码仅是**候选语义标签**，没有声称 Atria 目前已有对应的结构或 UI。普通文学描写与不可随意解释的结构化世界事实应采用不同治理路径。
 
@@ -135,43 +130,13 @@ Pinned PackageVersion / WorldRevision(s) / KnowledgeRevision(s)
 - **三栏工作区概念**：左侧世界/来源/人物导航，中间场景与世界工作区，右侧按选中对象展示 Inspector/Effective/History/Diff。移动端改为单主工作区与按需抽屉/浮层，不能堆三栏缩窄卡片；这是**信息组织原则**，不是本项目最终 UI 动画/像素稿，不与未来前端统一重构抢权威。
 - **Inspector 应答“为什么？”**：为什么它当下在位、何时失效、从哪个 WorldRevision/事件/Knowledge 来源得出、是否只是 NPC 认为、某条 entry 为什么被接受/拒绝、哪个有效 Revision/游戏 Tick/受众过滤了内容。界面只读投影，不能暗中编辑 Play 的世界事实。
 
-## 7. 真实消费者和 E0 的主要阻塞
+## 7. 功能接线的具体工作
 
 1. **Fact identity/effective time**：现有 World State/Event、History/Lifetimes、Memory、Knowledge Baseline 如何表示统一的 `Subject + FactKey/Relation + valid interval`？哪些需要真实的最小 Native 扩充？不能虚构已存在的通用 Semantic Fact Registry。
 2. **Source Binding**：自由文本与重要可变声明怎样关联既有 Subject/Fact，而不要求 LLM 每轮重新理解全套历史？旧 Knowledge Source `stateConditions` 能复用多少，哪部分需要更明确的 `claim`/effect applicability 语义？
 3. **Compiler input**：目前 `currentStateItems` 直接包含 World JSON、`knowledgeItems` 包含已选原始正文，是否需要把源正文使用目的与事实真值严格区分？怎样保证旧 World/Knowledge 文本不比有效事实“更能被语言模型采信”？
 4. **Perspective security**：权限裁剪是否发生在 Source retrieval 与 token selection 前？涉及 Narrator 的 Host 真实有效视图是否需要专门的公开/角色披露投影？
-5. **Studio/Play 消费者**：World editor、Studio Worlds/EntryPoints/Knowledge、Library workspace、Play Frontend bridge/Chronicle、Inspector 的所有 production callsite/权限审计尚未完成。
+5. **Studio/Play**：WP-E/F 接通 World/Knowledge/EntryPoint 编辑、起点预览、Play 档案／历史、Frontend Host 与按需 Inspector；各操作使用同一合法投影。
 6. **多 World/Worldless 与不同玩法**：World 不选、一次引用多个 World、Package Actor 只做说话模板、运行时新增对象不依附特定书籍的情况，怎样保留明确 `scope` 与实例化/有效规则？
-7. **版本/缓存**：改变 Revision/Branch、编辑知识源/绑定修订、收到新事件、Source Claim 失效、角色获知新情报时，Context 缓存/摘要/检索/World Inspector 的刷新锚点和失效粒度，必须可验证。
 8. **效率**：数千回合、上百冷态 Subject、有限 Context token；重要当前约束不可因挑选随机知识项和长段文本挤出，且不需要每轮重写世界图或调用 LLM 裁判真假。
-9. **Final E0**：完整产品 consumer census、目标 API/Schema、旧路径清退、Native Action/State/Narrative 事务与时态一致性、Windows/CachyOS/Termux 实测仍需补齐。W14 的讨论文档不是已通过的全面 E0。
-
-## 8. W14 候选路线（等待用户决定）
-
-**W14-A · 基于现有激活/优先级的世界提示词**：继续用 `KNOWLEDGE_AUTHORITY` 和现有状态条件 + 关键词/正则选择世界资料，主要依赖更高 rank 的当前状态文本抵消旧内容。改动少，但不能保证自然语言旧事实失效、历史真相与玩家误信分离，更难向用户解释某条静态条目为何仍然进入 Prompt。
-
-**W14-B · Effective World View First + Claim/Source-Aware Context（研究推荐，未获用户批准）**：以固定法则和当前 Session/Branch/Revision/GameTick 的正式事实为先，构建受众安全的按范围 Effective World View；World/Knowledge 自由源可作事实候选、历史/背景/传闻及角色认知，但重要可变声明需要受控关联并按 valid-time/SourceRef 明确是否当前有效，冲突不靠 rank 掩盖；Context Compiler、Library/Studio/Play 与 Inspector 共用同一 Host 只读投影，不复制第二套世界权威。优点是 W1–W13 设计真正进入用户可用的事实/上下文体验；缺点是需要对部分静态 Knowledge 激活/编译管线和 UI 消费者做实际切换，必须 E0 审计。
-
-**W14-C · LLM 每轮重写“最新世界书”**：允许模型按过去聊天和当前记忆把整个 World/Knowledge 描述改写成一份最新版长文，作为事实权威。似乎创作方便，但易重写硬法则、丢失历史和秘密、产生双轨真相、成本随回合增长，回档后难精确恢复，故不推荐。
-
-**推荐 W14-B，仅供本轮选择，**不能从用户确认 W13-B 推断 W14 已获批。
-
-## 9. 后续 W15 / E0 收口目标
-
-若用户确认 W14 的总体方向，下一轮建议正式按`World / Knowledge / Native Runtime / Cognition / Context / Library- Studio-Play`收敛剩余的**Owner/Contract/Consumer/Deletion/Acceptance Gates**，同时核查其他并行开发项目/Native Orchestration V3 的真实 HEAD；列阻塞与实施顺序，避免只靠几轮方向选型就宣布全部可开工。完整方案定稿/创建实现分支/修改 main 仍须用户明确批准。
-
-**状态继续 Draft。** 每轮更新同一 Plan Bundle 和唯一 Record；本阶段不改动产品代码、不执行全量 CI 或三端测试。
-
-## 10. W14-B 用户确认（2026-10-17）
-
-用户对上一轮推荐的 **W14-B「Effective World View First + Claim/Source-Aware Context」**答复「认同」，将其记为已确认的**总体设计方向**。当前 W1-B 至 W14-B 均已获得用户的路线认可；**不代表全案 Final、具体 ABI 已冻结或已授权产品代码开发**。
-
-- **事实/来源先分语义**：固定的 Hard Law、可变 Initial State、Native 当前事实、Historical Fact、文献/谣言的 Source Claim 和私人 Actor Belief 分开；普通动态新事实不能用提示词 Rank 违反高约束规则，旧起点声明也不能因被关键词命中而覆盖已提交的后续有效状态。
-- **Host-owned 只读有效视图**：由当前 Session/Branch/Revision/GameTick/World scope/获授权的 Audience/Perspective 结合固定 WorldRevision、正式 World State/Event/History 生成相关当前/历史/法则/未决资料的合法投影；不另建一份可写 World Truth/Effective State DB。
-- **Source/Claim-aware 上下文**：Knowledge/HCM 保留自由文本为一等入口，但重要可变声明需要受控关联 Subject/事实来源与有效期；已过期文本可以转为历史/证据，不再无条件等同“当前事实”。来源授权过滤优先于检索、摘要和 Token 筛选；不让 Narrator 的内部真相泄漏给玩家/NPC。
-- **已有代码能力须复用**：`knowledge-runtime.js` 中 rank/状态条件/排他组、`state-conditions.js` 三态校验、`context-compiler.js` 分 lane 预算和 SourceRefs 可以继续使用；但不把排名高低冒充自然语言语义纠错器，不靠 LLM 每轮自由重写世界书。
-- **Library / Studio / Play**：固定作者资源、场景/EntryPoint 装配及真实 Session 动态世界应共享合法 Effective View/Inspector 概念；保留自由文本和未来整体前端重构的视觉主权，不要求普通作者手工维护庞大的实体/ID 图。
-- **未批准事项**：完整 Source Claim 绑定 Schema、FactKey/valid-time、Host 投影和缓存 API、旧 Knowledge 激活清退范围、上下文必需事实/预算、UI 的详细控件/授权差异、真实 E0 Consumer Census 与 Windows/CachyOS/Termux 验收。
-
-**W15 下一轮**进入同一 Plan Bundle 的 [e0-final-closure.md](e0-final-closure.md)，进一步核对 World/Knowledge/Session/Event/Actor/HCM/Context/Studio/Play 各方 Source-of-Truth、Contract、真正 Consumer、目标/删除路径和验收阻塞，形成可转交正式实施的 E0 检查清单。W15 的候选路线未获用户批准；完整 Plan 仍为 Draft。
+9. **实际调用方**：目标 API/Schema、旧路径替换、提交／叙事与时间接线随各 WP 完成；三端采用统一前端功能，不另设全量审计或实测阶段。

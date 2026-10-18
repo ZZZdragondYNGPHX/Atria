@@ -62,8 +62,6 @@ Branching may be created automatically by Retry/Load/Re-enter/Restart; ordinary 
 
 ### 21A.2 Variant boundary
 
-The existing Native Variant contract is retained during this refactor because N0–N3 already validate it and the SillyTavern generator may still use swipe-shaped candidate buffers internally.
-
 However:
 
 - a committed Native message does not expose later user-selectable Swipe semantics;
@@ -85,8 +83,6 @@ At Native-open/commit boundaries, committed messages must retain canonical finge
 - committed content;
 - canonical attachment references;
 - committed metadata/provenance.
-
-If legacy/plugin code mutates a committed projected message directly, the adapter must fail closed with a Native committed-history mutation error, reject the write, avoid any JSONL/chat fallback, and require projection reload/recovery.
 
 A difference in a committed projection is never translated into `revise`, `remove`, `removeVariant`, or committed `selectVariant` Native commands.
 

@@ -6,15 +6,13 @@
 
 ## Status
 
-**P0–P8 已完成验收并通过 PR #85 合入 main（c664ede）；临时分支已删除。**
-
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Baseline: `main@2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`
 - Implementation branch: `refactor/atria-model-prompt-settings`
 - Detailed planning pack: `planning/atria-model-prompt-settings/`
 - Prior frozen foundations: Native Content & Session N0–N10; Native Authoring Platform & Product Frontend A0–A9.
 
-This refactor follows the repository's staged-task rule. Complete one phase, validate it, update docs/handoff, stop, then continue in a new conversation with the next phase prompt.
+This refactor follows the repository's staged-task rule.
 
 ## Product direction
 
@@ -95,7 +93,7 @@ Generation path:
 
 `context.generateTask()` becomes a compatibility facade, not the Native core.
 
-Capabilities use supported / unsupported / unknown with provenance. Required unsupported or unknown capabilities fail closed unless the user explicitly overrides an unknown capability. Fallback re-resolves the complete route and must not silently weaken required tools/output contracts.
+Capabilities use supported / unsupported / unknown with provenance. Fallback re-resolves the complete route and must not silently weaken required tools/output contracts.
 
 Existing mature provider senders may remain behind transitional adapters during this refactor, but adapters must consume explicit resolved requests and must not read current ST presets/settings as hidden request authority.
 
@@ -156,17 +154,14 @@ No automatic bidirectional migration or dual-write is allowed. Legacy import, if
 
 N0–N10 and A0–A9 semantic authorities remain frozen: Package/PackageVersion, Native Session/Branch/Revision, Native State, A1 Workspace/ChangeSet, A2 Registry/derived graph, A4 component model, A5 Plugin/Skill boundaries, Native Play, Studio and Project Agent review/commit boundaries must not be replaced.
 
-Some old guard assertions encode transitional implementation details that this refactor intentionally supersedes. Examples already confirmed on current main:
+ Examples already confirmed on current main:
 
 - A6 requires the Advanced Connection compatibility editor.
 - A6 requires a standalone Runtime Capabilities route.
 - A8 requires Studio Agent generation through `generateTask`.
 
-When the new native authority replaces those seams, update the old guard deliberately so it preserves the original invariant while asserting the new seam. Do not disable frozen guards wholesale or restore legacy behavior merely to satisfy stale literal patterns.
-
 ## Implementation phases
 
-- P0 — Baseline / contracts / guard evolution
 - P1 — Native resources and persistence
 - P2 — Generation Core and route resolution
 - P3 — Request Context + Prompt Compiler
@@ -175,8 +170,6 @@ When the new native authority replaces those seams, update the old guard deliber
 - P6 — Library + Studio authoring
 - P7 — product-surface cleanup
 - P8 — hard cut / integration / freeze
-
-See `planning/atria-model-prompt-settings/IMPLEMENTATION.md` for phase exits and validation.
 
 ## Non-goals
 
@@ -188,13 +181,8 @@ See `planning/atria-model-prompt-settings/IMPLEMENTATION.md` for phase exits and
 - no automatic lossless conversion of all ST presets;
 - no Android or Docker build unless explicitly requested.
 
-
 ## P0 completion record
 
-P0 — Baseline / Contracts / Guard Evolution 已在 `refactor/atria-model-prompt-settings` 完成并验证。
-
-- validated HEAD: `472e1a9f0759a460d845a2e6c618983c35e18654`
-- workflow: Model Prompt Runtime P0 Checks #6
 - run: `35832249672`
 - baseline main: `2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`
 - branch remained ahead-only; no merge to main was performed.
@@ -215,19 +203,13 @@ P0 froze these Native contracts in code:
 
 The package-side author-intent contract is frozen at `AtriaPackage.runtime.modelPrompt`. It may carry role capability requirements and exact package Prompt Program / Generation Profile refs. It must not carry player Connection, Model, concrete Runtime Route, secret material, or secret values.
 
-The new Core boundary is `src/native/model-prompt-runtime/`. Its P0 architecture guard rejects direct dependency on SillyTavern globals/DOM/PresetManager/PromptManager, `Atria.getContext()`, `generateTask`, direct Atria dispatch senders, browser persistence, and `package.presets` authority.
+The new Core boundary is `src/native/model-prompt-runtime/`.
 
 No user-visible Runtime/UI cutover occurred in P0.
 
-
 ## P1 completion record
 
-P1 — Native Resource & Persistence Foundation 已完成并验证。
-
-- validated HEAD: `802a68654f53015800e141fd052f1a006df149e0`
-- P1 workflow: Model Prompt Runtime P1 Checks #6
 - P1 run: `35836303381`
-- P0 workflow on the same HEAD: Model Prompt Runtime P0 Checks #17
 - P0 run: `35836303445`
 - baseline main remains: `2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`
 - branch remains ahead-only; no merge to main was performed.
@@ -245,7 +227,6 @@ P1 implemented:
 - Project source `resources` and exact `dependencies.resources`;
 - Package dependency closure that recursively resolves exact Prompt Program → Prompt Module dependencies and fails closed on missing exact revisions;
 - Package build vendoring that rewrites Project/Library exact refs to exact Package-scope refs for the generated PackageVersion;
-- Package resource closure validation, including `runtime.modelPrompt` exact resource membership;
 - player-owned Connection Profile / Model Profile / Runtime Route persistence;
 - Connection persistence remains `secretRef` only; secret material is rejected by the frozen P0 contract;
 - project/library/package origin and provenance remain explicit.
@@ -266,25 +247,13 @@ P1 commits:
 - `bff67534` — integrate P1 resources with A2 authoring authority
 - `1822358d` — close P1 model/prompt Package dependencies
 - `577eeedc` — preserve frozen P0 Package metadata contract
-- `84d3fe50` — add P1 resource/package integration tests
 - `fd38b8ec` — add P1 CI workflow
 - `342452b4` — align persistence test fixture with normalized Model contract
 - `ce900854` — focused lint fix
 - `61f0b1aa` — prove project/library/package origin + provenance
-- `0ff8fcb4` — add P1 architecture guard
-- `802a6865` — enforce P1 architecture guard in CI
-
-Actually validated on `802a68654f53015800e141fd052f1a006df149e0`:
 
 - P1 focused + adjacent Native: 9 suites / 37 tests passed;
-- P0 architecture guard: success;
-- P1 resource/persistence architecture guard + syntax: success;
-- frozen A1 guard: success;
-- frozen A2 guard: success;
-- frozen A7 guard: success;
-- frozen A8 guard: success;
 - focused ESLint: success;
-- P0 Checks #17: success.
 
 Not executed in P1:
 
@@ -297,49 +266,30 @@ Not executed in P1:
 
 ## P2 completion record
 
-Validated HEAD: `5d5ab196c37ad7ff25db44d9dd249c0863b94115` on the same work branch.
-GenerationService.execute, exact RouteResolver, capability tri-state/provenance,
-fail-closed requirements, full-route fallback, immutable config, send-boundary Secret
-and explicit Provider adapters are complete.
-Local results: P2 33 tests; Native FS/SQLite 48 suites / 347 tests; P0/P1/P2 guards,
-A1/A2/A7/A8 guards, root/focused lint, syntax and frontend build passed.
-No main merge or first-party/UI cutover. See planning/atria-model-prompt-settings/P2-VALIDATION.md
-for unavailable external engines and other limits. P3 is next after explicit continuation.
+Local results: P2 33 tests; Native FS/SQLite 48 suites / 347 tests;
+No main merge or first-party/UI cutover. P3 is next after explicit continuation.
 
 ## P3 completion checkpoint (2026-09-23)
 
-P3 is complete at `5e51332b34146236fd4d4a6d45c25ef7c37a9e08` on the existing work branch.
-Request Context Providers, exact Prompt Compiler, typed request-local values and declared
-artifacts, bounded condition DSL, derive/conflict checks, semantic stage/target projections,
-immutable IR/provenance and protocol render fixtures are implemented. No first-party/UI
+P3 is complete at `5e51332b34146236fd4d4a6d45c25ef7c37a9e08` on the existing work branch. No first-party/UI
 cutover or main merge occurred. Earlier P3-future statements above are historical.
 
-Local validation: Native FS/SQLite 49 suites / 385 tests; final P3 focused 38 tests;
-P0–P3 and A1/A2/A7/A8 guards, root/focused lint, syntax and frontend build passed.
-See planning/atria-model-prompt-settings/P3-VALIDATION.md for exact commands, the final
-narrow adapter change retest and exclusions. P4 First-party Runtime Cutover is next,
+ P4 First-party Runtime Cutover is next,
 only after explicit continuation. A6/A8 transitional gates remain unchanged in P3.
 
 ## P4 completion checkpoint (2026-09-23)
 
 P4 is complete at `6cba266814a7ff04666220f1031efdb844ad4e46`. First-party Native
-generation uses the exact route service/context/compiler. A8 seam replacement is
-verified; human Review/Commit and A6 gates remain. Broad 206 suites/1807 tests,
-final callers 143 suites/1744 tests, four real desktop/mobile browser cases, guards,
-lint and webpack passed. See P4-VALIDATION.md in the planning pack. Earlier
+generation uses the exact route service/context/compiler. Earlier
 P4-future statements are historical. Next is P5 only after explicit continuation.
 
 ## P5 completion checkpoint (2026-09-23)
 
 P5 complete at `0cb56b9a0d37789025fb8069d08f6f43ead2413d`. Native Runtime Routes/Models/Connections/Profiles/Diagnostics
 replace the compatibility editors, reuse P1 exact storage and P4 host, and provide
-compile-only preview, remediation, search deep links and mobile fullscreen editors.
-A6/P0 replacement gates evolved after actual visual verification. Broad FS/SQLite:
-206 suites / 1811 tests; final focused: 6 / 39; real P4/P5 browser: 8 passed.
-Guards/lint/syntax/prebuild passed. Exact commands, intermediate visual defects,
-exclusions and P6 obligations: P5-VALIDATION.md. No main merge or P6 implementation.
+compile-only preview, remediation, search deep links and mobile fullscreen editors. Broad FS/SQLite:
+206 suites / 1811 tests; final focused: 6 / 39; real P4/P5 browser: 8 passed. No main merge or P6 implementation.
 P6 Library & Studio Authoring is next, only after explicit continuation.
-
 
 ## P6 completion checkpoint (2026-09-23)
 
@@ -349,10 +299,8 @@ pickers/preview, Package derive freeze and owner-aware Package Resource Graph ar
 implemented. Primary Build and A1/A2/A7/A8 authority remain. Final regression:
 209 suites / 1830 tests; final P6 real-browser desktop/mobile: 2 passed, with 8
 adjacent P4/P5 cases passing separately in the combined run. Final screenshots
-inspected. Broader storage run has four failures reproduced on unchanged P5;
-see P6-VALIDATION.md for exact evidence, intermediate failures and exclusions.
+inspected.
 No main merge or P7/P8 implementation. P7 is next only on explicit continuation.
-
 
 ## P7 completion checkpoint (2026-09-23)
 
@@ -362,21 +310,13 @@ Library details and refreshes on Command open, and legacy preset UI reads are
 Native-disabled behind one explicit compatibility boundary. Simplified Chinese
 Prompt/Runtime/Settings labels and dynamic stages use existing localization.
 Final FS/SQLite regression: 210 suites / 1837 tests; P4-P7 combined browser: 12
-passed, final P4/P7 follow-up: 6 passed (overlapping). Screenshots inspected.
-P0-P7/A0-A8/N9-N10 guards, lint/syntax/diff and prebuild-cache passed.
-Details/exclusions: P7-VALIDATION.md. No main merge; stop before P8.
+passed, final P4/P7 follow-up: 6 passed (overlapping). Screenshots inspected. No main merge; stop before P8.
 
 ## P8 integrated completion (2026-09-23)
 
-P0-P8 is complete and merged through PR #85. Validated task head:
-`de6fe31b9bd0f6f364c4d34e040628d91d114fb3`; integrated main:
-`c664eded79b86df37bd951f1e5236a4335ce784b`. The temporary branch was deleted.
+P0-P8 is complete and merged through PR #85. The temporary branch was deleted.
 Earlier phase-specific future/stop statements in this document are historical.
 
 Local: 210 suites / 1844 tests; current P4-P7 browser 12 cases plus Workspace
-2 cases, desktop/mobile screenshots inspected; P0-P8/A0-A9/N9-N10 guards,
-root lint and cold build passed. All eight PR checks passed, including the full
-Linux unit run (776 suites / 8914 tests). Main tree matched the validated task
-head exactly and aggregate guards passed again after merge. Full evidence and
-explicit exclusions: `planning/atria-model-prompt-settings/P8-VALIDATION.md` on docs.
+2 cases, desktop/mobile screenshots inspected;
 No new phase is implicitly started. Future independent work begins from live main.

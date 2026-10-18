@@ -87,8 +87,6 @@ Where world logic permits, later generations may inherit or receive:
 - unresolved cases;
 - selected Claims or supernatural liabilities.
 
-Inheritance must be causal and authority-validated.
-
 ## 7. Longevity and loved ones
 
 The protagonist's longevity does not automatically extend to loved ones.

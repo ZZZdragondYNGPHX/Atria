@@ -2,7 +2,7 @@
 
 ## Authority
 
-本模块仅保存跨模块决策。D01–D20 为范围决策；P01–P06 是 D1 根据源码核对冻结的实施选择。实施按本 Bundle 推进，常规工程问题自主处理。
+本模块仅保存跨模块决策。D01–D20 为范围决策；实施按本 Bundle 推进，常规工程问题自主处理。
 
 ## User-confirmed decisions
 
@@ -16,7 +16,7 @@
 | D06 | 先进行多轮讨论，再形成正式 Plan | index、delivery |
 | D07 | 桌面“历史与存档”默认收起，按需展开 | experience |
 | D08 | 手机阅读隐藏五域底栏，使用顶部全局入口 | experience |
-| D09 | Studio 右侧区域切换检查器 / AI | experience |
+| D09 || experience |
 | D10 | Runtime 默认用途路线与就绪情况，提供缺项修复 | experience |
 | D11 | Library 分类切换，默认作品 | experience |
 | D12 | Agents 默认运行，保持固定会话范围；另有编排/记忆/诊断 | experience |
@@ -52,4 +52,3 @@
 
 - 2026-10-05 D1：范围与实施默认冻结，D01–D20 保持；P01 按现有设置兼容修订，其余按表接受。
 - 按阶段实施；A1–A5、B1–B4（逐资源 checkpoint）、F 顺序按 delivery。
-- personas 冻结新增契约与迁移/兼容范围，validation C20 给出待实现测试；冻结设计不表示产品验收通过。

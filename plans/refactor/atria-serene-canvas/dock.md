@@ -1,6 +1,5 @@
 # Dock 边缘交互
 
-- Status: Implemented — v0.8 已明确接受，产品 `main@60aca6957` 已完成本项接入与相关验证。
 - Accepted snapshot: [accepted-dock-v0.8.html](references/accepted-dock-v0.8.html)，与讨论稿字节一致，仅冻结本项 Dock 交互；v0.1 仍决定整体视觉方向。
 - Preview: [discussion-preview-v0.8.html](references/discussion-preview-v0.8.html)。继承 v0.7，保留旧稿与 v0.1 视觉基线。
 - Decision boundary: [decisions.md §11](decisions.md#11-dock-边缘吸附与隐藏)。本页是交互细则的唯一详细来源。
@@ -40,4 +39,4 @@ Dock 可停靠左、右或底边。闲置时整块移出视口，不留下把手
 
 顶部体验方式、停靠位置、唤出按钮和说明是原型审阅设施。桌面可用顶部按钮走键盘替代路径；产品使用同一搜索里的“展开导航”和仅聚焦时显示的同名入口，抓手方向键与菜单三边选择作为拖动替代。产品按同次 Shell 使用分别记住鼠标/触屏位置，不新增跨会话或跨设备持久化。软键盘沿既有 visual viewport 与输入焦点判断，弹出时收起并隐藏把手，恢复后把手可达。本稿不写偏好、不调用产品 API，也不将阅读样例或 v0.7/v0.6 内存状态转为业务权威。刷新复原，鼠标和触屏的位置在本次预览中分别记忆。
 
-原型验证及审查只归 [references/README.md](references/README.md#v08-dock-actual-prototype-checks)，实际交付归同一 [Record](../../../records/refactor/atria-serene-canvas.md)。本项产品实施与验收仍归同一 Record；既有生成、草稿、版本冲突和已发出提交的语义均未改变。
+既有生成、草稿、版本冲突和已发出提交的语义均未改变。

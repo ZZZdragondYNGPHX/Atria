@@ -120,8 +120,6 @@ Studio identifies source by projectId.
 
 ### 22.8 Import/install
 
-`.atria` import must validate before mutation and show a preflight summary including:
-
 - name/author/version;
 - Package ID;
 - capabilities;

@@ -1,6 +1,6 @@
 # D2 方案：高自由度原生作者指令编译与成人虚构 RP
 
-**D2 已冻结：J2 + F2 + R3（2026-10-15）**。本模块是创作指令、合法成熟虚构 RP、Provider 真实能力及误拒诊断的唯一详细语义合同；物理 Schema、Compiler passes、具体 UI/API 留后续阶段，当前未开发。目标不是拆掉 Provider 安全边界，也不是压低用户文字 RP 自由度；两者应明确分离。
+**D2 已冻结：J2 + F2 + R3（2026-10-15）**。本模块是创作指令、合法成熟虚构 RP、Provider 真实能力及误拒诊断的唯一详细语义合同；物理 Schema、Compiler passes、具体 UI/API 留后续阶段，当前未开发。两者应明确分离。
 
 ## 1. 原产品为什么不够强
 
@@ -26,7 +26,7 @@
 3. **积极示例与反例**：小规模、精心挑选的台词/旁白样例和反面风格示例，配置预算、语言、目标场景与精确版本；避免万字“越狱”对话和无限上下文填充。
 4. **针对合法成熟题材的表达控制**：在使用者自愿选择和适用法律/Provider 支持范围内设置故事强度、亲密关系表达、人物欲望、现实边界、非说教风格等；“成人题材”本身不作为 Atria 自己的泛拒信号。不得把“提高表达强度”当作任何 Provider 必然愿意生成的证明。
 5. **请求预览与来源解剖**：同一 Native PromptIR 显示各块的来源、有效 role、stage/target、是否被包括、最终 Provider wire request 摘要、Token、哪些指令被遮蔽/冲突。敏感源和 Secret 需脱敏。
-6. **拒答/失败的独立归因**：Provider hard refuse / content blocked；本地 validation；Host Authority 拒绝；Model 有条件退避或未按文学任务作答；质量不足。不同原因用不同可行整改，不向用户谎称突破安全规则。
+6. **拒答/失败的独立归因**：Provider hard refuse / content blocked；Host Authority 拒绝；Model 有条件退避或未按文学任务作答；质量不足。不同原因用不同可行整改，不向用户谎称突破安全规则。
 7. **候选变更与无害误拒评价**：目标是最大化合法作品满足度与人物连续性，非攻击成功率。用 OR-Bench 思路训练“误拒诊断”，GEPA 式文字反馈产生少量作者可审批的 exact 候选。
 8. **更合适的模型路由**：支持经过真实 capabilities 测试的 Provider 和合法本地/开权重模型选项；能力差异写明，不承诺远端隐含安全可关闭，也不通过未经授权外部渠道重发内容。
 
@@ -35,7 +35,7 @@
 | 方向 | 设计 | 评估 |
 | --- | --- | --- |
 | **J1 原生 Slot 加强** | 扩展当前 target、stage、模块顺序、标签和预览，保留大部分纯文本手调 | 快速、简单；但容易只做到新的“高级 PromptManager” |
-| **J2 编译型 Authorial Control（已选）** | 已授权作者指令、Expression / AgentBehavior / Evidence 数据分层；确定性 compiler + model lowering + 拒答诊断 + 质量候选发布 | 与 B / V3 最一致；工程范围可控；需要有限 schema/前端改造与信任边界整改 |
+| **J2 编译型 Authorial Control（已选）** | 已授权作者指令、Expression / AgentBehavior / Evidence 数据分层；确定性 compiler + model lowering + 拒答诊断 + 质量候选发布 | 与 B / V3 最一致；工程范围可控；|
 | **J3 全新创作 DSL/元编译器** | 再建独立文本规则语言、条件执行、自动 Prompt 搜索/写入 | 极致自由但二次编译/二次编排/跨域提权风险高，不建议现阶段 |
 
 ## 5. 重要边界的设计答复
