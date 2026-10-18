@@ -178,4 +178,3 @@ async function readControlInputFacts(tx, handle, child, producer, intent, public
     }
     return { input, sources, bindings: replacement ? [] : bundle.bindings, loops, replacement };
 }
-
