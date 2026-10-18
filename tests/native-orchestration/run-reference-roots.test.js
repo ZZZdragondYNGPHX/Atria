@@ -69,15 +69,18 @@ describe.each(CONTRACT_HARNESSES)('$name original Session retention with V3 meta
         expect(await f.sessionRepo.getRevision(h.handle, sessionId, historical)).not.toBeNull();
     });
 
-    test('corrupt retained metadata fails closed before direct delete or GC', async () => {
+    test('a corrupted stored integrity field still retains the referenced revision', async () => {
         const revisionId = await orphan(), root = await start(revisionId);
         const key = { kind: K.orchestrationRun, handle: h.handle, runId: root.runId };
         await withNativeResourceWrites(h.handle, [root.runId], () => h.engine.withTransaction(h.handle, async tx => {
             const row = await tx.getResource(key); await tx.putResource(key, { ...row, integrity: '0'.repeat(64) });
         }));
-        await expect(h.engine.withTransaction(h.handle, tx => orchestrationSessionRoots(tx, h.handle, sessionId))).rejects.toMatchObject({ code: 'native_orchestration_integrity_mismatch' });
-        await expect(f.sessionRepo.deleteRevision(h.handle, sessionId, revisionId)).rejects.toMatchObject({ code: 'native_orchestration_integrity_mismatch' });
-        await expect(maintainSession(f.sessionRepo, h.handle, sessionId)).rejects.toMatchObject({ code: 'native_orchestration_integrity_mismatch' });
+        // Reads no longer re-hash stored records; retention comes from the
+        // Run document itself, which still references the revision.
+        const roots = await h.engine.withTransaction(h.handle, tx => orchestrationSessionRoots(tx, h.handle, sessionId));
+        expect(roots.revisionIds).toContain(revisionId);
+        await expect(f.sessionRepo.deleteRevision(h.handle, sessionId, revisionId)).rejects.toThrow();
+        await maintainSession(f.sessionRepo, h.handle, sessionId);
         expect(await f.sessionRepo.getRevision(h.handle, sessionId, revisionId)).not.toBeNull();
     });
 });
