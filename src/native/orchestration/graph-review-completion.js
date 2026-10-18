@@ -13,6 +13,11 @@ import { readContextRetrievalCompletions } from './context-retrieval-contracts.j
 import { readGraphPlannerCompletion } from './graph-planner-completion.js';
 import { readGraphNodeResults } from './graph-result-contracts.js';
 import { audienceContextPin, assertAudienceRunCapture } from './audience-source-contracts.js';
+import { joinIdForAttempt } from './join-controller.js';
+import { readRunControl } from '../run-control.js';
+import { readOriginalProjectTask } from './project-tool-receipts.js';
+import { assertBudgetAuthorityRef, effectBudgetClosure } from './budget-port.js';
+import { inspectComputeEffectClosure } from '../../../public/shared/native-compute-budget.js';
 
 const invalid = () => { throw new TypeError('Invalid Graph Review completion facts'); };
 export const graphReviewModelReceiptId = (runId, attemptId) => 'oreceipt_' + hash({ kind: 'graph_review_model', runId, attemptId }).slice(0, 32);
@@ -22,7 +27,7 @@ export const graphReviewControlRef = (runId, attemptId) => ({ kind: 'graph_revie
 /** Historical Model/Review facts without a graph-shape assumption. The
  * original domain verifies its bank work and fixed quality vocabulary.
  * This reader never grants a Source, replacement, Effect or domain write. */
-export async function readGraphReviewCompletion(tx, handle, root, attemptId, { verifyControlWork, reasonCodes, recipient = null }) {
+export async function readGraphReviewCompletion(tx, handle, root, attemptId, { verifyControlWork, reasonCodes, recipient = null, readFanoutCompletion = null }) {
     if (typeof verifyControlWork !== 'function' || !Array.isArray(reasonCodes) || !reasonCodes.length) invalid();
     const producer = (await readAttempt(tx, handle, root, attemptId)).doc, receiptId = graphReviewModelReceiptId(root.runId, attemptId);
     const receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
@@ -107,7 +112,8 @@ export async function readGraphReviewCompletion(tx, handle, root, attemptId, { v
     if (!command || command.schemaVersion !== 1 || command.commandId !== commandId || command.operation !== 'runs.control.review.decide' || command.target !== root.runId
         || command.payloadHash !== hash({ operation: command.operation, body: { runId: root.runId, operation: 'review.decide', detail } })
         || !equal(command.outcome?.reviewReceipt, review)) invalid();
-    if (review.decision === 'rerun') await readReplacements(tx, handle, root, review, targetEvidence, verifyControlWork);
+    const rerunFanouts = review.decision === 'rerun'
+        ? await readReplacements(tx, handle, root, review, targetEvidence, verifyControlWork, readFanoutCompletion) : [];
     await verifyControlWork(tx, handle, root, receipt.modelEffectId, receipt.localWork);
     const controlRef = graphReviewControlRef(root.runId, attemptId);
     if (recipient) {
@@ -118,15 +124,15 @@ export async function readGraphReviewCompletion(tx, handle, root, attemptId, { v
             || !recipient.inputRefs.some(ref => equal(ref, controlRef))
             || !root.graph.edges.some(edge => edge.from.nodeId === producer.nodeId && edge.to.nodeId === recipient.nodeId)) invalid();
     }
-    return { producer, settlement, receipt, review, evidence, targets: targetEvidence.map(fact => fact.producer), controlRef, retrievalCompletions: retrieval };
+    return { producer, settlement, receipt, review, evidence, targets: targetEvidence.map(fact => fact.producer), controlRef, retrievalCompletions: retrieval, rerunFanouts };
 }
 
-async function readReplacements(tx, handle, root, review, evidence, verifyControlWork) {
+async function readReplacements(tx, handle, root, review, evidence, verifyControlWork, readFanoutCompletion) {
     const snapshot = await readTaskGraphRevision(tx, handle, root, review.graphRevision);
     if (review.replacements.length !== review.targetAttemptIds.length || new Set(review.invalidatedAttemptIds).size !== review.invalidatedAttemptIds.length
         || new Set(review.replacements.map(item => item.targetAttemptId)).size !== review.replacements.length
         || !review.targetAttemptIds.every(id => review.invalidatedAttemptIds.includes(id))) invalid();
-    const staleRefs = new Set();
+    const staleRefs = new Set(), fanouts = [], invalidatedFanouts = [];
     for (const id of review.invalidatedAttemptIds) {
         const attempt = (await readAttempt(tx, handle, root, id)).doc;
         const node = snapshot.graph.nodes.find(node => node.nodeId === attempt.nodeId);
@@ -135,7 +141,16 @@ async function readReplacements(tx, handle, root, review, evidence, verifyContro
             || !invalidation || invalidation.reviewReceiptId !== review.receiptId
             || !evidence.some(fact => graphReachable(snapshot.graph, fact.producer.nodeId, attempt.nodeId))) invalid();
         if ((node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
-            && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork })) invalid();
+            && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork, readFanoutCompletion,
+                reviewTargets: evidence.map(fact => fact.producer) })) invalid();
+        if (node?.kind === 'join') {
+            const group = await readReviewableFanoutCompletion(tx, handle, root, attempt.attemptId,
+                { targets: evidence.map(fact => fact.producer), readCompletion: readFanoutCompletion });
+            if (!group || [group.fanout, group.producer, ...group.scopeAttempts.map(item => item.attempt)]
+                .some(member => !review.invalidatedAttemptIds.includes(member.attemptId))) invalid();
+            fanouts.push(group);
+        }
+        if (node?.kind === 'fanout') invalidatedFanouts.push(attempt.attemptId);
         for (const ref of attempt.resultRefs) staleRefs.add(hash(ref));
         const effects = [];
         for (const id of attempt.effectRefs) effects.push((await readEffect(tx, handle, root, id)).doc);
@@ -147,6 +162,7 @@ async function readReplacements(tx, handle, root, review, evidence, verifyContro
                     || effect.risk !== 'R1' || effect.requiresApproval)) invalid();
         }
     }
+    if (invalidatedFanouts.some(id => !fanouts.some(group => group.fanout.attemptId === id))) invalid();
     for (const replacement of review.replacements) {
         const target = evidence.find(fact => fact.producer.attemptId === replacement.targetAttemptId)?.producer;
         const next = (await readAttempt(tx, handle, root, replacement.attemptId)).doc;
@@ -155,13 +171,14 @@ async function readReplacements(tx, handle, root, review, evidence, verifyContro
             || next.sourceBindingDigest !== root.sourceBinding.bindingDigest || !equal(next.budgetRef, root.budgetAuthorityRef)
             || next.inputDigest !== hash(next.inputRefs) || [...next.inputRefs, ...(next.inputRefs[0]?.acceptedGraphResultRefs ?? [])].some(ref => staleRefs.has(hash(ref)))) invalid();
     }
+    return fanouts;
 }
 
 
 /** Accepted advisory topology is not rolled back by Review. Its completed
  * pure Model work can be recomputed at the current revision, while the original
  * Patch/Model/bank/sequence proof and all irreversible dependency checks remain. */
-export async function readReviewablePlannerCompletion(tx, handle, root, attemptId, { verifyControlWork }) {
+export async function readReviewablePlannerCompletion(tx, handle, root, attemptId, { verifyControlWork, readFanoutCompletion = null, reviewTargets = null }) {
     if (!['rp_chat', 'native_session', 'project'].includes(root.sourceBinding.sourceAuthority)) return null;
     const fact = await readGraphPlannerCompletion(tx, handle, root, attemptId, { verifyControlWork });
     if (!fact) return null;
@@ -174,10 +191,24 @@ export async function readReviewablePlannerCompletion(tx, handle, root, attemptI
                 || Object.hasOwn(input, 'acceptedGraphResultRefs') && !equal(input.acceptedGraphResultRefs, evidence)
                 || Object.hasOwn(input, 'acceptedControlRefs') && !equal(input.acceptedControlRefs, controls))
             || input.parentRunId !== ref.parentRunId || input.parentAttemptId !== ref.nodeAttemptId || input.childRunId !== root.runId
-            || fact.producer.effectiveGrantDigest !== ref.effectiveGrantDigest || input.fanoutAttemptId
+            || fact.producer.effectiveGrantDigest !== ref.effectiveGrantDigest
             || !equal(fact.producer.inputRefs, [input, ...ref.inputRefs, ...evidence, ...controls])) return null;
         if (!rp && (input.parentEpoch !== ref.parentEpoch || input.childEpoch !== fact.producer.epoch
             || input.delegationInputDigest !== ref.inputDigest)) return null;
+    }
+    const fanoutAttemptId = fact.producer.inputRefs[0]?.fanoutAttemptId;
+    if (fanoutAttemptId) {
+        if (typeof readFanoutCompletion !== 'function' || !reviewTargets?.length) return null;
+        let contained = false;
+        for (const id of root.attemptRefs) {
+            const attempt = (await readAttempt(tx, handle, root, id)).doc;
+            if (root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind !== 'join' || attempt.status !== 'completed') continue;
+            const barrier = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', 'barrier:' + joinIdForAttempt(id))))?.doc;
+            if (barrier?.fanoutAttemptId !== fanoutAttemptId) continue;
+            const group = await readReviewableFanoutCompletion(tx, handle, root, id, { targets: reviewTargets, readCompletion: readFanoutCompletion });
+            if (group?.scopeAttempts.some(item => item.attempt.attemptId === attemptId)) { contained = true; break; }
+        }
+        if (!contained) return null;
     }
     const revisions = await readTaskGraphRevisions(tx, handle, root, [fact.producer.graphRevision, fact.patch.newGraphRevision]);
     const before = revisions.get(fact.producer.graphRevision).graph, after = revisions.get(fact.patch.newGraphRevision).graph;
@@ -204,5 +235,31 @@ export async function readReviewablePlannerCompletion(tx, handle, root, attemptI
                 || target.capabilities.some(capability => !['generation.send', 'graph.patch'].includes(capability))) return null;
         }
     }
+    return fact;
+}
+
+/** Redo a closed scope only as a complete causal unit. The original domain
+ * reader supplies the immutable Frame/Join, typed inputs and settled bank
+ * facts; no completed sibling is attached to a new barrier. */
+export async function readReviewableFanoutCompletion(tx, handle, root, joinAttemptId, { targets, readCompletion }) {
+    if (typeof readCompletion !== 'function' || !Array.isArray(targets) || !targets.length) return null;
+    const fact = await readCompletion(tx, handle, root, joinAttemptId);
+    if (!fact || fact.producer.status !== 'completed' || fact.fanout.status !== 'completed'
+        || fact.scopeAttempts.some(item => item.attempt.status !== 'completed')) return null;
+    const group = [fact.fanout, ...fact.scopeAttempts.map(item => item.attempt), fact.producer];
+    if (targets.some(target => group.some(attempt => attempt.nodeId === target.nodeId))
+        || !targets.some(target => graphReachable(root.graph, target.nodeId, fact.fanout.nodeId))
+        || group.some(attempt => !targets.some(target => graphReachable(root.graph, target.nodeId, attempt.nodeId)))) return null;
+    for (const { attempt } of fact.scopeAttempts) {
+        const node = root.graph.nodes.find(node => node.nodeId === attempt.nodeId);
+        if (!node || !['agent', 'planner', 'review', 'judge'].includes(node.kind)
+            || node.capabilities.some(capability => !['generation.send', 'graph.patch', 'memory.retrieve'].includes(capability))) return null;
+    }
+    const authority = assertBudgetAuthorityRef(root.budgetAuthorityRef);
+    const compute = authority.domain === 'session' ? (await readRunControl(tx, handle, authority.sessionId))?.operations[authority.operationId]?.compute
+        : authority.authority === 'project_task' ? (await readOriginalProjectTask(tx, handle, authority))?.compute
+            : (await checkedRecord(tx, { kind: K.rpRunControl, handle, controlId: authority.controlId }))?.doc.operations[authority.operationId]?.compute;
+    const effectIds = [...new Set(fact.scopeAttempts.flatMap(item => item.attempt.effectRefs))];
+    if (!compute || !effectIds.length || !effectBudgetClosure(authority, inspectComputeEffectClosure({ compute }, effectIds)).closed) return null;
     return fact;
 }

@@ -1,5 +1,5 @@
 import { fields } from '../../../public/shared/native-values.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument as hash } from '../repositories/common.js';
 import { canonicalCredentialTarget } from '../model-prompt-runtime/credential-targets.js';
 import { executeProjectSkillWork, verifyProjectSkillCompletion } from '../skill-invocation.js';
 import { checkCancellation } from '../model-prompt-runtime/execution-utils.js';
@@ -54,7 +54,7 @@ export class ToolPort {
 
     async #completionObservation({ handle, tx, root, intent, evidence, localWorkAttemptIds }) {
         const ref = intent.budgetAttemptRef;
-        if (root.ownerRef.handle !== handle || ref?.kind !== 'local_work' || hash(ref.authorityRef) !== hash(root.budgetAuthorityRef)
+        if (root.ownerRef.handle !== handle || ref?.kind !== 'local_work' || !equalNativeDocuments(ref.authorityRef, root.budgetAuthorityRef)
             || !localWorkAttemptIds.length || localWorkAttemptIds.length > 31) fail('native_orchestration_tool_completion_budget_invalid');
         const ids = [ref.attemptId, ...localWorkAttemptIds];
         for (const [index, attemptId] of ids.entries()) {
@@ -62,7 +62,7 @@ export class ToolPort {
             if (attemptId !== localWorkAttemptId(intent.effectId, ordinal)) fail('native_orchestration_tool_completion_budget_invalid');
             const row = await this.budgetPort.observeAttempt(handle, { ...ref, attemptId, localWorkOrdinal: ordinal });
             if (row.status !== 'settled' || row.usage?.outcome !== 'completed' || (row.reservationId ?? null) !== ref.reservationId
-                || hash(row.orchestration ?? null) !== hash({ kind: 'local_work', effectId: intent.effectId, ordinal }))
+                || !equalNativeDocuments(row.orchestration ?? null, { kind: 'local_work', effectId: intent.effectId, ordinal }))
                 fail('native_orchestration_tool_completion_budget_invalid');
         }
         await this.budgetPort.verifyBudgetAttempt({ handle, tx, root, intent, budgetAttemptRef: ref });
@@ -96,7 +96,7 @@ export class ToolPort {
                 if (error.code !== 'storage_commit_unknown') throw error;
                 // Never repeat the write or the Tool call to resolve an unknown ACK.
                 const saved = await this.observe(handle, { protocol: intent.actionRef.protocol }, { runId: intent.runId, effectId: intent.effectId });
-                if (!saved.observation || hash(saved.observation) !== hash(current.observation)) throw error;
+                if (!saved.observation || !equalNativeDocuments(saved.observation, current.observation)) throw error;
             }
         } finally { this.#liveCompletions.delete(key); }
     }
@@ -168,11 +168,11 @@ export class ToolPort {
                     return { root, intent: persisted };
                 })() : await this.verifyDispatch({ handle, ...request });
                 if (!current?.root || !current?.intent || (phase === 'consume' && this.runs
-                    ? this.#completionDigest(current.intent) !== this.#completionDigest(intent) : hash(current.intent) !== hash(intent))
-                || hash(current.root.budgetAuthorityRef) !== hash(root.budgetAuthorityRef)) fail('native_orchestration_tool_dispatch_denied');
+                    ? this.#completionDigest(current.intent) !== this.#completionDigest(intent) : !equalNativeDocuments(current.intent, intent))
+                || !equalNativeDocuments(current.root.budgetAuthorityRef, root.budgetAuthorityRef)) fail('native_orchestration_tool_dispatch_denied');
                 if (phase === 'consume' && requiresSkillCompletion) {
                     const saved = await this.#savedCompletion(handle, tx, current.root, current.intent);
-                    if (current.intent.status !== 'confirmed' || !saved || hash(saved) !== hash(savedCompletion))
+                    if (current.intent.status !== 'confirmed' || !saved || !equalNativeDocuments(saved, savedCompletion))
                         fail('native_orchestration_tool_consume_denied');
                 }
                 const grant = await this.authorizeTool({ handle, root: current.root, intent, input, captured, phase, tx });
@@ -194,7 +194,7 @@ export class ToolPort {
         };
         const grant = await authorize();
         const reservationId = intent.budgetAttemptRef?.reservationId ?? null;
-        if (hash(intent.budgetAttemptRef?.authorityRef ?? null) !== hash(root.budgetAuthorityRef))
+        if (!equalNativeDocuments(intent.budgetAttemptRef?.authorityRef ?? null, root.budgetAuthorityRef))
             fail('native_orchestration_tool_budget_unavailable');
         let ordinal = intent.budgetAttemptRef.kind === 'local_work' ? intent.budgetAttemptRef.localWorkOrdinal + 1 : 0;
         const localWorkAttemptIds = [];
@@ -263,7 +263,7 @@ export class ToolPort {
                 const currentIntent = (await readEffect(tx, handle, currentRoot, intent.effectId)).doc;
                 const currentSaved = await this.#savedCompletion(handle, tx, currentRoot, currentIntent);
                 if (currentIntent.status !== 'confirmed' || this.#completionDigest(currentIntent) !== this.#completionDigest(intent)
-                    || !currentSaved || hash(currentSaved) !== hash(saved)) return deny();
+                    || !currentSaved || !equalNativeDocuments(currentSaved, saved)) return deny();
                 return { ...currentSaved, operationRef: null, result };
             }
             // Non-body metadata actions do not claim a completion receipt.
@@ -278,8 +278,8 @@ export class ToolPort {
             || operationRef.sessionId !== root.sourceBinding.sourceRef.sessionId) return null;
         const anchor = { branchId: root.sourceBinding.sourceRef.branchId, revisionId: root.sourceBinding.sourceRef.revisionId };
         const receipt = await this.a2aService?.acceptedObservation(handle, { ...operationRef, anchor }, { tx });
-        if (!receipt || hash(receipt.binding) !== hash(this.#acceptanceBinding(intent))
-            || hash(receipt.binding.budgetAttemptRef.authorityRef) !== hash(root.budgetAuthorityRef)) return null;
+        if (!receipt || !equalNativeDocuments(receipt.binding, this.#acceptanceBinding(intent))
+            || !equalNativeDocuments(receipt.binding.budgetAttemptRef.authorityRef, root.budgetAuthorityRef)) return null;
         const ref = receipt.binding.budgetAttemptRef, firstOrdinal = ref.localWorkOrdinal + 1;
         if (receipt.localWorkAttemptIds.some((id, i) => id !== localWorkAttemptId(intent.effectId, firstOrdinal + i))) return null;
         const bank = (await readRunControl(tx, handle, operationRef.sessionId))?.operations[root.budgetAuthorityRef.operationId]?.compute;
@@ -287,7 +287,7 @@ export class ToolPort {
         if (attemptIds.some((id, i) => {
             const row = bank?.localWork?.find(item => item.attemptId === id);
             return !row || row.status !== 'settled' || row.usage?.outcome !== 'completed' || (row.reservationId ?? null) !== ref.reservationId
-                || hash(row.orchestration ?? null) !== hash({ kind: 'local_work', effectId: intent.effectId, ordinal: ref.localWorkOrdinal + i });
+                || !equalNativeDocuments(row.orchestration ?? null, { kind: 'local_work', effectId: intent.effectId, ordinal: ref.localWorkOrdinal + i });
         })) return null;
         await this.budgetPort.verifyBudgetAttempt({ handle, tx, root, intent, budgetAttemptRef: ref });
         const receiptRef = { ...operationRef, receiptDigest: hash(receipt) };
@@ -301,19 +301,19 @@ export class ToolPort {
     // facts are checked against the frozen Effect, never a fresh send claim.
     async verifyObservation({ handle, tx, root, intent, observation }) {
         const persisted = (await readEffect(tx, handle, root, intent.effectId)).doc;
-        if (hash(persisted) !== hash(intent)) fail('native_orchestration_tool_observation_invalid');
+        if (!equalNativeDocuments(persisted, intent)) fail('native_orchestration_tool_observation_invalid');
         if (['mcp', 'skill'].includes(intent.actionRef.protocol)) {
             // Durable receipts are only for reads/replay. They cannot mint a
             // fresh observation after the original live proof has disappeared.
             const pending = this.#liveCompletions.get(this.#completionKey(handle, intent));
-            if (!pending || hash(pending.observation) !== hash(observation)) fail('native_orchestration_tool_completion_proof_required');
+            if (!pending || !equalNativeDocuments(pending.observation, observation)) fail('native_orchestration_tool_completion_proof_required');
             const evidence = pending.verify(pending.proof);
             const expected = await this.#completionObservation({ handle, tx, root, intent, evidence, localWorkAttemptIds: pending.localWorkAttemptIds });
-            if (hash(expected) !== hash(observation)) fail('native_orchestration_tool_observation_invalid');
+            if (!equalNativeDocuments(expected, observation)) fail('native_orchestration_tool_observation_invalid');
             return expected;
         }
         const expected = await this.#acceptedObservation({ handle, tx, root, intent, operationRef: observation.remoteOperationRef ?? {} });
-        if (!expected || hash(expected) !== hash(observation)) fail('native_orchestration_tool_observation_invalid');
+        if (!expected || !equalNativeDocuments(expected, observation)) fail('native_orchestration_tool_observation_invalid');
         return expected;
     }
 

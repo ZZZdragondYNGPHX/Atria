@@ -20,7 +20,7 @@ import { readTaskGraphRevision } from './graph-revision-contracts.js';
 
 const invalid = () => { throw new TypeError('Invalid RP control graph facts'); };
 export const rpPlannerReaderOptions = { verifyControlWork: assertRpControlWork };
-export const rpReviewReaderOptions = { verifyControlWork: assertRpControlWork, reasonCodes: RP_REVIEW_REASON_CODES };
+export const rpReviewReaderOptions = { verifyControlWork: assertRpControlWork, reasonCodes: RP_REVIEW_REASON_CODES, readFanoutCompletion: readRpControlFanoutCompletion };
 export const rpJudgeReaderOptions = { verifyControlWork: assertRpControlWork,
     readControlInputs: (tx, handle, root, producer, input) => {
         // The shared Judge reader has already proved every candidate and will
@@ -175,7 +175,7 @@ async function assertRpIterationHistory(tx, handle, root, entries, narrator, fan
             consumed.add(trigger.producer.attemptId);
         }
         for (const source of inputProof.sources) if (touched.has(source.producer.nodeId)
-            && ['agent', 'planner', 'review', 'judge'].includes(root.graph.nodes.find(node => node.nodeId === source.producer.nodeId)?.kind)
+            && ['agent', 'planner', 'review', 'judge', 'fanout', 'join'].includes(root.graph.nodes.find(node => node.nodeId === source.producer.nodeId)?.kind)
             && source.producer.attemptId !== inputProof.replanFrom
             && current.get(source.producer.nodeId)?.producer.attemptId !== source.producer.attemptId) invalid();
         if (prior) {
@@ -193,7 +193,7 @@ async function assertRpIterationHistory(tx, handle, root, entries, narrator, fan
             const redo = review && review.review.decision === 'rerun' && review.review.invalidatedAttemptIds.includes(prior.producer.attemptId)
                 && fact.producer.attemptNumber === prior.producer.attemptNumber + 1 && fact.receipt.decisionSeq > review.receipt.decisionSeq
                 && (directReplacement || inputProof.sources.some(source => source.receipt.decisionSeq > review.receipt.decisionSeq));
-            if (node.kind === 'planner' ? !loop && !redo : ['agent', 'judge'].includes(node.kind) ? !loop && !redo
+            if (['planner', 'agent', 'judge', 'fanout', 'join'].includes(node.kind) ? !loop && !redo
                 : node.kind === 'review' && !loop && prior.review.decision !== 'rerun' && !redo) invalid();
             replacements.delete(node.nodeId);
         } else if (inputProof.replanFrom) invalid();
@@ -206,7 +206,7 @@ async function assertRpIterationHistory(tx, handle, root, entries, narrator, fan
         previous.set(node.nodeId, fact); current.set(node.nodeId, fact);
     }
     for (const source of narrator.sources) if (touched.has(source.producer.nodeId)
-        && ['agent', 'planner', 'review', 'judge'].includes(root.graph.nodes.find(node => node.nodeId === source.producer.nodeId)?.kind)
+        && ['agent', 'planner', 'review', 'judge', 'fanout', 'join'].includes(root.graph.nodes.find(node => node.nodeId === source.producer.nodeId)?.kind)
         && current.get(source.producer.nodeId)?.producer.attemptId !== source.producer.attemptId) invalid();
     if (replacements.size || consumed.size !== root.progress.replans) invalid();
 }
@@ -264,6 +264,17 @@ export async function readRpControlGraphHistory(tx, handle, root, narrator) {
             (node.kind === 'planner' ? plannerCompletions : node.kind === 'review' ? reviewCompletions : judgeCompletions)
                 .push({ ...fact, modelEffectId: fact.receipt.modelEffectId, retrievalCompletions });
         } else graphResults.push(fact);
+    }
+    // Structural controls retain each original Frame/Join identity. They
+    // participate in the same causal Review chronology as their Model leaves.
+    for (const fact of fanoutCompletions) {
+        const input = fact.fanout.inputRefs[0];
+        const sources = await readControlInputFacts(tx, handle, root, input.controlGraph,
+            { targetNodeId: fact.fanout.nodeId }, ownedFacts);
+        entries.push({ fact: { ...fact, producer: fact.fanout, receipt: fact.frame },
+            node: root.graph.nodes.find(node => node.nodeId === fact.fanout.nodeId), inputProof: { sources, replanFrom: null } });
+        entries.push({ fact, node: root.graph.nodes.find(node => node.nodeId === fact.producer.nodeId),
+            inputProof: { sources: fact.members, replanFrom: null } });
     }
     const narratorProof = await assertControlInputFacts(tx, handle, root, narrator, plan, ownedFacts);
     await assertRpIterationHistory(tx, handle, root, entries, narratorProof, fanoutCompletions);

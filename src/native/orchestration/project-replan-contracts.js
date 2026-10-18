@@ -54,7 +54,7 @@ async function readPureFacts(tx, handle, root) {
         const node = root.graph.nodes.find(node => node.nodeId === producer.nodeId);
         let fact;
         if (node.kind === 'planner') fact = await readGraphPlannerCompletion(tx, handle, root, id, { verifyControlWork: assertProjectControlWork });
-        else if (node.kind === 'review') fact = await readGraphReviewCompletion(tx, handle, root, id, { verifyControlWork: assertProjectControlWork, reasonCodes: PROJECT_QUALITY_REASONS });
+        else if (node.kind === 'review') fact = await readGraphReviewCompletion(tx, handle, root, id, { verifyControlWork: assertProjectControlWork, reasonCodes: PROJECT_QUALITY_REASONS, readFanoutCompletion: readProjectFanoutCompletion });
         else if (node.kind === 'judge') fact = await readGraphJudgeCompletion(tx, handle, root, id, projectJudgeReaderOptions);
         else if (node.kind === 'join') fact = await readProjectFanoutCompletion(tx, handle, root, id);
         else if (node.kind === 'agent' && node.outputs[0]?.type === 'text') {
@@ -106,6 +106,10 @@ export async function readProjectReplanHistory(tx, handle, root, { recipient = n
         const bundle = input.controlGraph ?? { bindings: admission?.bindings ?? [] };
         if (!Array.isArray(bundle.bindings)) invalid();
         if (node.kind === 'join') { current.set(node.nodeId, fact); previous.set(node.nodeId, fact); continue; }
+        const scoped = input.fanoutAttemptId ? facts.find(joined => joined.joinReceipt
+            && joined.frame.fanoutAttemptId === input.fanoutAttemptId
+            && joined.scopeAttempts.some(item => equal(item.attempt, producer))) : null;
+        if (input.fanoutAttemptId && !scoped) invalid();
         const sources = [...input.acceptedGraphResultRefs ?? [], ...input.acceptedControlRefs ?? []].map(ref => facts.find(source => equal(source.controlRef ?? source.receipt.resultRef, ref)));
         if (sources.some(source => !source || source.receipt.decisionSeq >= seq)) invalid();
         const bindings = [...bundle.bindings].sort((a, b) => a.edgeId.localeCompare(b.edgeId));
@@ -133,7 +137,7 @@ export async function readProjectReplanHistory(tx, handle, root, { recipient = n
         const direct = sources.filter(source => bindings.some(binding => binding.producerAttemptId === source.producer.attemptId));
         if (bindings.some(binding => !direct.some(source => source.producer.attemptId === binding.producerAttemptId
             && snapshot.graph.edges.some(edge => edge.edgeId === binding.edgeId && edge.from.nodeId === source.producer.nodeId && edge.to.nodeId === node.nodeId)))) invalid();
-        for (const port of node.inputs.filter(port => port.required)) if (!bindings.some(binding => snapshot.graph.edges.some(edge => edge.edgeId === binding.edgeId && edge.to.port === port.name))) invalid();
+        for (const port of node.inputs.filter(port => port.required && !scoped)) if (!bindings.some(binding => snapshot.graph.edges.some(edge => edge.edgeId === binding.edgeId && edge.to.port === port.name))) invalid();
         const feedback = input.projectQualityTask?.feedback;
         let reviewedReplacement = null;
         if (feedback) {
@@ -158,7 +162,7 @@ export async function readProjectReplanHistory(tx, handle, root, { recipient = n
             await assertOutputTransition(tx, handle, { ...root, graph: snapshot.graph }, { published: direct[0], additionalProducers: direct.slice(1),
                 output: producer, producerBindings: bindings, allowLoopBack: !!loops.length,
                 receipt: { decisionSeq: fact?.receipt.decisionSeq ?? root.eventSeq + 1, traversalReceiptRef: { runId: root.runId, receiptId: traversal } } });
-        } else if (!bindings.length && !snapshot.graph.entryNodeIds.includes(node.nodeId) && !reviewedReplacement) {
+        } else if (!bindings.length && !snapshot.graph.entryNodeIds.includes(node.nodeId) && !reviewedReplacement && !scoped) {
             // A cancelled optional predecessor has no Result or traversal.
             // Its accepted original revision, never a missing ref, proves why.
             const incoming = snapshot.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === node.nodeId);

@@ -63,7 +63,7 @@ export async function readProjectDelegation(tx, handle, parent, childRunId) {
     if (input?.kind !== 'native_project_delegation' || input.role !== 'studio' || !equal(input.sourceRef, parent.sourceBinding.sourceRef)
         || !equal(input.planRef, parent.planRef) || !equal(input.childPlanRef, child.planRef)
         || input.nodeId !== facts.parentAttempt.nodeId || !equal(child.sourceBinding, parent.sourceBinding)
-        || !equal(facts.parentAttempt.inputRefs, [input, ...input.acceptedGraphResultRefs, ...(input.acceptedControlRefs ?? [])])) invalid();
+        || !equal(facts.parentAttempt.inputRefs, [input, ...(parent.parentRef?.inputRefs ?? []), ...input.acceptedGraphResultRefs, ...(input.acceptedControlRefs ?? [])])) invalid();
     const snapshot = await readTaskGraphRevision(tx, handle, parent, facts.parentAttempt.graphRevision);
     const node = snapshot.graph.nodes.find(node => node.nodeId === facts.parentAttempt.nodeId);
     await readProjectDelegationInputs(tx, handle, parent, facts.parentAttempt);
@@ -82,8 +82,10 @@ export async function readProjectDelegatedModelInput(tx, handle, child, producer
 // Only this module can provide facts obtained by its own complete typed
 // Result/control reads. The public entry above always starts from fresh durable delegation.
 async function readProjectDelegatedModelInputFacts(tx, handle, child, producer, intent, publicationSeq, lineage, ownedInputs = null) {
-    const parent = lineage?.parent, input = intent.inputRef;
-    if (!lineage || input?.kind !== 'native_project_delegated_intent' || !equal(input, producer.inputRefs[0])
+    const parent = lineage?.parent, input = intent.inputRef, storedInput = producer.inputRefs[0];
+    const nested = storedInput?.kind === 'native_project_delegation'
+        ? await readProjectDelegationContinuation(tx, handle, child, producer, intent) : null;
+    if (!lineage || input?.kind !== 'native_project_delegated_intent' || !nested && !equal(input, storedInput)
         || input.parentRunId !== parent.runId || input.parentAttemptId !== lineage.parentAttempt.attemptId
         || input.parentEpoch !== child.parentRef.parentEpoch || input.childRunId !== child.runId || input.childEpoch !== producer.epoch
         || input.delegationInputDigest !== child.parentRef.inputDigest || input.role !== 'studio'
@@ -130,7 +132,7 @@ async function readProjectDelegatedModelInputFacts(tx, handle, child, producer, 
     const controlRefs = [...new Map(ordered.filter(fact => fact.controlRef).map(fact => [hash(fact.controlRef), fact.controlRef])).values()];
     const bindings = edges.map((edge, index) => ({ edgeId: edge.edgeId, producerAttemptId: ordered[index].producer.attemptId }));
     if (!equal(input.acceptedGraphResultRefs, refs) || !equal(input.acceptedControlRefs ?? [], controlRefs) || !equal(input.graphBindings, bindings)
-        || !equal(producer.inputRefs, [input, ...child.parentRef.inputRefs, ...refs, ...controlRefs]) || producer.inputDigest !== hash(producer.inputRefs)) invalid();
+        || !equal(producer.inputRefs, [storedInput, ...child.parentRef.inputRefs, ...refs, ...controlRefs]) || producer.inputDigest !== hash(producer.inputRefs)) invalid();
     let replacement = null;
     if (input.reviewFeedbackRef) replacement = await readProjectDelegatedReviewReplacement(tx, handle, child, producer, input);
     else if (!edges.length) {
@@ -144,7 +146,7 @@ async function readProjectDelegatedModelInputFacts(tx, handle, child, producer, 
         await assertOutputTransition(tx, handle, { ...child, graph: snapshot.graph }, { published: ordered[0], additionalProducers: ordered.slice(1), output: producer,
             receipt: { decisionSeq: publicationSeq, traversalReceiptRef: { runId: child.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } }, producerBindings: bindings, allowLoopBack: !!loops.length });
     }
-    return { lineage, input, sources: ordered, bindings, loops, replacement };
+    return { lineage, input, sources: ordered, bindings, loops, replacement, ...(nested ? { nested } : {}) };
 }
 
 /** Complete original Model/Result/Transition/Task-bank history, not a grant. */
@@ -204,7 +206,8 @@ export async function readProjectDelegatedGraphHistory(tx, handle, child, { fina
     }
     const fanouts = [];
     for (const producer of attempts.filter(attempt => graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'join')) {
-        const joined = await readProjectDelegatedFanoutCompletion(tx, handle, child, producer.attemptId);
+        const joined = controls.flatMap(fact => fact.rerunFanouts ?? []).find(joined => equal(joined.producer, producer))
+            ?? await readProjectDelegatedFanoutCompletion(tx, handle, child, producer.attemptId);
         if (!joined) invalid(); controls.push(joined); fanouts.push(joined);
     }
     if (attempts.filter(attempt => graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'fanout').length !== fanouts.length) invalid();
@@ -217,6 +220,9 @@ export async function readProjectDelegatedGraphHistory(tx, handle, child, { fina
     const ownedInputs = lineage ? { results: new Map(results.map(fact => [hash(fact.receipt.resultRef), fact])),
         controls: new Map(controls.map(fact => [hash(fact.controlRef), fact])) } : null;
     const effects = [], expectedRefs = [], usedEdges = new Map(), entries = [];
+    const reservations = new Map([[child.runId, { reservationId: child.runId,
+        parentReservationId: child.parentRef.depth === 1 ? null : child.parentRef.parentRunId, status: 'released' }]]);
+    const budgetReservations = new Map();
     for (const joined of fanouts) for (const binding of joined.fanout.inputRefs[0].graphBindings) usedEdges.set(binding.edgeId, (usedEdges.get(binding.edgeId) ?? 0) + 1);
     for (const joined of fanouts) for (const id of [...joined.frame.edgeAdmissionRefs, ...joined.joinReceipt.edgeAdmissionRefs]) {
         const admitted = (await checkedRecord(tx, controlRecordKey(handle, child.runId, 'receipt', id)))?.doc;
@@ -237,6 +243,18 @@ export async function readProjectDelegatedGraphHistory(tx, handle, child, { fina
             || producer.graphRevision > child.graphRevision || producer.epoch > child.epoch || producer.sourceBindingDigest !== child.sourceBinding.bindingDigest
             || producer.effectiveGrantDigest !== child.parentRef.effectiveGrantDigest || !equal(producer.budgetRef, authority))) invalid();
         const effect = (await readEffect(tx, handle, child, producer.effectRefs[0])).doc;
+        if (producer.inputRefs[0]?.kind === 'native_project_delegation') {
+            const nested = await readProjectDelegationContinuation(tx, handle, child, producer, effect), closure = nested.output.closure;
+            if (!closure || !nested.publication.graphHistory.settled) invalid();
+            for (const ref of closure.reservationRefs) {
+                if (reservations.has(ref.reservationId) || ref.status !== 'released') invalid();
+                reservations.set(ref.reservationId, ref);
+            }
+            for (const ref of closure.budgetAttemptRefs) {
+                if (!equal(ref.authorityRef, authority) || budgetReservations.has(ref.attemptId)) invalid();
+                budgetReservations.set(ref.attemptId, ref.reservationId); expectedRefs.push(ref.attemptId);
+            }
+        }
         if (fact?.record && fact.record.envelope.sourceRefs.length !== 2) invalid();
         if (controls.includes(fact)) {
             if (lineage) await readProjectDelegatedModelInputFacts(tx, handle, child, producer, effect, fact.receipt.decisionSeq, lineage, ownedInputs);
@@ -268,7 +286,11 @@ export async function readProjectDelegatedGraphHistory(tx, handle, child, { fina
             || rows[0].orchestration.ordinal !== 0 || !['settled', 'unknown', 'charged'].includes(rows[0].status)
             || local.some(row => row.reservationId !== child.runId || row.status !== 'settled')) invalid();
         if (rows.some(row => row.status !== 'settled')) settled = false;
-        effects.push(effect); expectedRefs.push(...rows.map(row => row.attemptId), ...local.map(row => row.attemptId));
+        effects.push(effect);
+        for (const row of [...rows, ...local]) {
+            if (budgetReservations.has(row.attemptId)) invalid();
+            budgetReservations.set(row.attemptId, row.reservationId); expectedRefs.push(row.attemptId);
+        }
     }
     if (!lineage) invalid();
     const rounds = await assertDelegatedRounds(tx, handle, child, entries, controls);
@@ -280,7 +302,9 @@ export async function readProjectDelegatedGraphHistory(tx, handle, child, { fina
     if (output) usedEdges.set(graph.edges.find(edge => edge.to.nodeId === output.nodeId).edgeId, 1);
     if (child.progress.loopIterations !== rounds.loopIterations || child.progress.edgeVisits !== [...usedEdges.values()].reduce((sum, count) => sum + count, 0)
         || !equal(child.progress.edgeVisitCounts, Object.fromEntries(usedEdges))) invalid();
-    const history = { ...shape, lineage, results, controls, fanouts, finalProducer, effects, rootDigest: hash(child), budgetAttemptIds: expectedRefs, settled, loopIterations: rounds.loopIterations };
+    const history = { ...shape, lineage, results, controls, fanouts, finalProducer, effects, rootDigest: hash(child), budgetAttemptIds: expectedRefs,
+        reservationRefs: [...reservations.values()].sort((a, b) => a.reservationId.localeCompare(b.reservationId)),
+        budgetReservations: Object.fromEntries(budgetReservations), settled, loopIterations: rounds.loopIterations };
     if (closure) assertProjectDelegatedClosure(child, history, closure);
     return history;
 }
@@ -341,11 +365,11 @@ async function assertDelegatedRounds(tx, handle, child, entries, controls) {
 /** Pure comparison with this invocation's freshly verified complete history. */
 export function assertProjectDelegatedClosure(child, history, closure) {
     if (history.rootDigest !== hash(child) || !history.settled
-        || !equal(closure.reservationRefs, [{ reservationId: child.runId, parentReservationId: child.parentRef.depth === 1 ? null : history.lineage.parent.runId, status: 'released' }])
+        || !equal(closure.reservationRefs, history.reservationRefs)
         || closure.budgetAttemptRefs.length !== history.budgetAttemptIds.length
         || new Set(closure.budgetAttemptRefs.map(ref => ref.attemptId)).size !== history.budgetAttemptIds.length
         || closure.budgetAttemptRefs.some(ref => !history.budgetAttemptIds.includes(ref.attemptId)
-            || ref.reservationId !== child.runId || !equal(ref.authorityRef, child.budgetAuthorityRef))) invalid();
+            || ref.reservationId !== history.budgetReservations[ref.attemptId] || !equal(ref.authorityRef, child.budgetAuthorityRef))) invalid();
 }
 
 /** Original typed parent brief; these reads convey no new recipient grant. */
@@ -356,9 +380,29 @@ export async function readProjectDelegationInputs(tx, handle, root, parent, { li
         || !equal(input.sourceRef, root.sourceBinding.sourceRef) || !equal(input.planRef, root.planRef)
         || !Array.isArray(input.graphBindings) || !equal(input.graphBindings, [...input.graphBindings].sort((a, b) => a.edgeId.localeCompare(b.edgeId)))
         || new Set(input.graphBindings.map(binding => binding.edgeId)).size !== input.graphBindings.length
-        || !equal(parent.inputRefs, [input, ...input.acceptedGraphResultRefs, ...(input.acceptedControlRefs ?? [])]) || parent.inputDigest !== hash(parent.inputRefs)) invalid();
+        || !equal(parent.inputRefs, [input, ...(root.parentRef?.inputRefs ?? []), ...input.acceptedGraphResultRefs, ...(input.acceptedControlRefs ?? [])]) || parent.inputDigest !== hash(parent.inputRefs)) invalid();
     const bundle = { evidenceRefs: input.acceptedGraphResultRefs, controlRefs: input.acceptedControlRefs ?? [], bindings: input.graphBindings };
-    const facts = await readProjectControlInputs(tx, handle, root, null, bundle, { targetNodeId: parent.nodeId });
+    let facts;
+    if (root.parentRef) {
+        const ancestor = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: root.parentRef.parentRunId }))?.doc;
+        const lineage = ancestor && await readProjectDelegation(tx, handle, ancestor, root.runId);
+        const pin = lineage && nodeModelRoutePins(node, lineage.plan.dependencyPins)[0];
+        if (!lineage || !pin || input.parentRunId !== root.parentRef.parentRunId || input.parentAttemptId !== root.parentRef.nodeAttemptId
+            || input.parentEpoch !== root.parentRef.parentEpoch || input.childRunId !== root.runId || input.childEpoch !== parent.epoch
+            || input.delegationInputDigest !== root.parentRef.inputDigest || !equal(input.audience, { kind: 'task', id: root.runId })
+            || input.grantDigest !== root.parentRef.effectiveGrantDigest || parent.effectiveGrantDigest !== input.grantDigest
+            || !equal(input.routeRef, pin.resourceRef) || input.routeIntegrity !== pin.integrity) invalid();
+        facts = [];
+        for (const ref of bundle.evidenceRefs) {
+            const fact = await readGraphNodeResult(tx, handle, root, ref.resultId);
+            if (!fact || !equal(ref, fact.receipt.resultRef)) invalid(); facts.push(fact);
+        }
+        for (const ref of bundle.controlRefs) {
+            const fact = await readProjectDelegatedControl(tx, handle, root, ref);
+            if (!fact || !equal(ref, fact.controlRef) || fact.review?.decision === 'rerun') invalid(); facts.push(fact);
+        }
+        assertProjectDelegatedJudgeSelections({ ...root, graph: snapshot.graph }, node, bundle.evidenceRefs, facts.filter(fact => fact.selectedResultRef));
+    } else facts = await readProjectControlInputs(tx, handle, root, null, bundle, { targetNodeId: parent.nodeId });
     const bindings = bundle.bindings;
     for (const fact of facts) {
         if (fact.record && !fact.record.envelope.audienceConstraint.nodeIds.includes(parent.nodeId)) invalid();
@@ -376,7 +420,12 @@ export async function readProjectDelegationInputs(tx, handle, root, parent, { li
         const traversal = 'oreceipt_' + hash({ runId: root.runId, bindings, reservedAttemptId: null }).slice(0, 32);
         await assertOutputTransition(tx, handle, { ...root, graph: snapshot.graph }, { published: direct[0], additionalProducers: direct.slice(1), output: parent, producerBindings: bindings,
             receipt: { decisionSeq: root.eventSeq + 1, traversalReceiptRef: { runId: root.runId, receiptId: traversal } } });
-    } else if (facts.length || !snapshot.graph.entryNodeIds.includes(parent.nodeId) || snapshot.graph.edges.some(edge => edge.to.nodeId === parent.nodeId)) invalid();
+    } else {
+        const incoming = snapshot.graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === parent.nodeId);
+        const cancelledInputs = incoming.length && incoming.every(edge => !node.inputs.find(port => port.name === edge.to.port).required
+            && snapshot.nodeControl[edge.from.nodeId]?.disposition === 'cancelled');
+        if (facts.length || !(snapshot.graph.entryNodeIds.includes(parent.nodeId) && !incoming.length || cancelledInputs)) invalid();
+    }
     return facts;
 }
 
@@ -427,7 +476,7 @@ async function assertDelegationReviewReplacement(tx, handle, root, parent, snaps
 /** Exact parent continuation, from a lawful child output and actual mode. */
 export async function readProjectDelegationContinuation(tx, handle, parent, producer, intent) {
     const input = intent.inputRef, ref = input?.acceptedResultRef, parentInput = producer.inputRefs[0];
-    if (parentInput?.kind !== 'native_project_delegation' || input?.kind !== 'native_project_intent'
+    if (parentInput?.kind !== 'native_project_delegation' || input?.kind !== (parent.parentRef ? 'native_project_delegated_intent' : 'native_project_intent')
         || !ref || input.parentInputDigest !== producer.inputDigest || producer.inputDigest !== hash(producer.inputRefs)
         || intent.nodeAttemptId !== producer.attemptId || input.nodeId !== producer.nodeId || !equal(input.planRef, parent.planRef)
         || intent.sourceBindingDigest !== parent.sourceBinding.bindingDigest || input.role !== 'studio' || parentInput.role !== input.role
@@ -437,6 +486,12 @@ export async function readProjectDelegationContinuation(tx, handle, parent, prod
         || !equal(input.acceptedControlRefs ?? [], parentInput.acceptedControlRefs ?? [])
         || parentInput.reviewFeedbackRef && !equal(input.projectQualityTask?.feedback, parentInput.reviewFeedbackRef)) invalid();
     if (parent.sourceBinding.sourceAuthority !== 'project') invalid();
+    if (parent.parentRef) {
+        const expected = { ...parentInput, kind: 'native_project_delegated_intent', acceptedResultRef: input.acceptedResultRef,
+            returnReceiptRef: input.returnReceiptRef, parentInputDigest: producer.inputDigest };
+        delete expected.childPlanRef;
+        if (!equal(input, expected)) invalid();
+    }
     const actualParent = await durableParent(tx, handle, parent);
     const child = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: ref.runId }))?.doc;
     if (!child || child.sourceBinding.sourceAuthority !== 'project' || child.status !== 'completed') invalid();

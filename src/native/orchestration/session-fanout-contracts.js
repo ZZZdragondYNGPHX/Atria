@@ -1,7 +1,9 @@
+import { readAttempt } from './controller-common.js';
+import { readSessionReviewCompletion } from './session-review-contracts.js';
 import { readSessionDelegatedFanoutCompletion } from './session-delegated-fanout-contracts.js';
 import { hashNativeDocument as hash, equalNativeDocuments as same } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
-import { readGraphFanoutCompletion } from './graph-fanout-completion.js';
+import { readGraphFanoutCompletion, readGraphFanoutInput } from './graph-fanout-completion.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { readEffect } from './effect-contracts.js';
@@ -37,23 +39,31 @@ export async function readSessionFanoutCompletion(tx, handle, root, joinAttemptI
                 || attempt.inputDigest !== hash(attempt.inputRefs) || attempt.effectiveGrantDigest !== input.grantDigest || attempt.effectRefs.length > 1
                 || (attempt.status === 'completed' ? results.length !== (['planner', 'judge'].includes(node.kind) ? 0 : 1) : results.length !== 0)) invalid();
             assertAudienceRunCapture(root, node, plan.dependencyPins, input);
-            if (attempt.attemptId === branch.entryAttemptId) {
-                if (!same(input.acceptedGraphResultRefs, []) || (input.acceptedControlRefs ?? []).length || Object.hasOwn(input, 'fanoutGraphBindings') || attempt.inputRefs.length !== 1) invalid();
-                return;
-            }
-            const sources = [];
+            const original = (await readAttempt(tx, handle, root, frame.fanoutAttemptId)).doc.inputRefs[0];
+            const inheritedRefs = Object.hasOwn(original, 'graphBindings') ? original.acceptedGraphResultRefs ?? [] : [];
+            const inheritedControls = Object.hasOwn(original, 'graphBindings') ? original.acceptedControlRefs ?? [] : [];
+            const inherited = [], sources = [];
             for (const ref of input.acceptedGraphResultRefs) {
                 const saved = await readGraphNodeResult(tx, handle, root, ref.resultId);
-                if (!saved || !same(ref, saved.receipt.resultRef) || !branch.scopeNodeIds.includes(saved.producer.nodeId)
-                    || !saved.record.envelope.audienceConstraint.nodeIds.includes(node.nodeId)) invalid();
-                sources.push(saved);
+                if (!saved || !same(ref, saved.receipt.resultRef) || !saved.record.envelope.audienceConstraint.nodeIds.includes(node.nodeId)) invalid();
+                if (inheritedRefs.some(actual => same(actual, ref))) {
+                    await readGraphFanoutInput(tx, handle, root, frame.fanoutAttemptId, attempt, ref, saved, { historical: true }); inherited.push(saved);
+                } else { if (!branch.scopeNodeIds.includes(saved.producer.nodeId)) invalid(); sources.push(saved); }
             }
             for (const ref of input.acceptedControlRefs ?? []) {
                 const saved = ref.kind === 'graph_judge_control' ? await readSessionJudgeCompletion(tx, handle, root, ref.attemptId)
-                    : await readSessionPlannerCompletion(tx, handle, root, ref.attemptId);
-                if (!saved || !same(ref, saved.controlRef) || !branch.scopeNodeIds.includes(saved.producer.nodeId)
-                    || saved.receipt.decisionSeq >= settlement.decisionSeq) invalid();
-                sources.push(saved);
+                    : ref.kind === 'graph_review_control' ? await readSessionReviewCompletion(tx, handle, root, ref.attemptId)
+                        : await readSessionPlannerCompletion(tx, handle, root, ref.attemptId);
+                if (!saved || !same(ref, saved.controlRef) || saved.receipt.decisionSeq >= settlement.decisionSeq) invalid();
+                if (inheritedControls.some(actual => same(actual, ref))) {
+                    await readGraphFanoutInput(tx, handle, root, frame.fanoutAttemptId, attempt, ref, saved, { historical: true }); inherited.push(saved);
+                } else { if (!branch.scopeNodeIds.includes(saved.producer.nodeId)) invalid(); sources.push(saved); }
+            }
+            if (!same(inherited.filter(fact => fact.record).map(fact => fact.receipt.resultRef), inheritedRefs)
+                || !same(inherited.filter(fact => fact.controlRef).map(fact => fact.controlRef), inheritedControls)) invalid();
+            if (attempt.attemptId === branch.entryAttemptId) {
+                if (sources.length || Object.hasOwn(input, 'fanoutGraphBindings')) invalid();
+                return;
             }
             assertSessionJudgeSelections({ ...root, graph }, node, input.acceptedGraphResultRefs, sources.filter(source => source.selectedResultRef));
             const incoming = graph.edges.filter(edge => edge.to.nodeId === node.nodeId).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
@@ -65,8 +75,8 @@ export async function readSessionFanoutCompletion(tx, handle, root, joinAttemptI
             });
             const ordered = bindings.map(binding => sources.find(source => source.producer.attemptId === binding.producerAttemptId));
             if (!sources.length || !same(input.fanoutGraphBindings, bindings) || sources.length !== bindings.length
-                || !same(input.acceptedGraphResultRefs, ordered.filter(source => source.record).map(source => source.receipt.resultRef))
-                || !same(input.acceptedControlRefs ?? [], ordered.filter(source => source.controlRef).map(source => source.controlRef))
+                || !same(input.acceptedGraphResultRefs, [...inheritedRefs, ...ordered.filter(source => source.record).map(source => source.receipt.resultRef)])
+                || !same(input.acceptedControlRefs ?? [], [...inheritedControls, ...ordered.filter(source => source.controlRef).map(source => source.controlRef)])
                 || attempt.reservationRef?.producerAttemptId !== frame.fanoutAttemptId) invalid();
             const identity = hash({ runId: root.runId, bindings, reservedAttemptId: attempt.attemptId });
             await assertOutputTransition(tx, handle, { ...root, graph }, { published: sources[0], additionalProducers: sources.slice(1), output: attempt,
@@ -97,16 +107,36 @@ export async function readSessionFanoutCompletion(tx, handle, root, joinAttemptI
                     : attempt.status === 'failed' ? fact.kind !== 'rejected' || fact.outcome !== 'failed' : fact.kind !== 'late_response')) invalid();
         },
         verifyControlInput: async (_tx, _handle, _root, attempt, { frame, settlement }) => {
-            const input = attempt.inputRefs[0], refs = input.acceptedControlRefs ?? [];
-            assertObject(input, ['kind', 'nodeId', 'planRef', 'sourceRef', ...(refs.length ? ['acceptedControlRefs'] : [])], 'Session control input');
+            const input = attempt.inputRefs[0], refs = input.acceptedControlRefs ?? [], resultRefs = input.acceptedGraphResultRefs ?? [];
+            assertObject(input, ['kind', 'nodeId', 'planRef', 'sourceRef',
+                ...Object.hasOwn(input, 'acceptedControlRefs') ? ['acceptedControlRefs'] : [],
+                ...Object.hasOwn(input, 'acceptedGraphResultRefs') ? ['acceptedGraphResultRefs'] : [],
+                ...Object.hasOwn(input, 'graphBindings') ? ['graphBindings'] : [],
+                ...Object.hasOwn(input, 'fanoutAttemptId') ? ['fanoutAttemptId'] : []], 'Session control input');
             if (input.kind !== 'native_session_graph_control' || input.nodeId !== attempt.nodeId || !same(input.planRef, root.planRef)
-                || !same(input.sourceRef, root.sourceBinding.sourceRef) || !same(attempt.inputRefs, [input, ...refs])
+                || !same(input.sourceRef, root.sourceBinding.sourceRef) || !same(attempt.inputRefs, [input, ...resultRefs, ...refs])
                 || attempt.effectiveGrantDigest !== hash({ handle, source: root.sourceBinding, inputRefs: attempt.inputRefs })
-                || attempt.attemptId === frame.fanoutAttemptId && settlement.reasonCode !== 'session_fanout_join_' + settlement.outcome) invalid();
-            for (const ref of refs) {
-                const fact = await readSessionPlannerCompletion(tx, handle, root, ref.attemptId);
-                if (!fact || !same(ref, fact.controlRef) || !root.graph.edges.some(edge => edge.from.nodeId === fact.producer.nodeId && edge.to.nodeId === attempt.nodeId)) invalid();
+                || attempt.attemptId === frame.fanoutAttemptId && settlement.reasonCode !== 'session_fanout_join_' + settlement.outcome
+                || input.fanoutAttemptId && input.fanoutAttemptId !== frame.fanoutAttemptId) invalid();
+            const facts = [];
+            for (const ref of resultRefs) {
+                const fact = await readGraphNodeResult(tx, handle, root, ref.resultId);
+                if (!fact || !same(ref, fact.receipt.resultRef)) invalid(); facts.push(fact);
             }
+            for (const ref of refs) {
+                const fact = ref.kind === 'graph_review_control' ? await readSessionReviewCompletion(tx, handle, root, ref.attemptId)
+                    : ref.kind === 'graph_judge_control' ? await readSessionJudgeCompletion(tx, handle, root, ref.attemptId)
+                        : await readSessionPlannerCompletion(tx, handle, root, ref.attemptId);
+                if (!fact || !same(ref, fact.controlRef) || !root.graph.edges.some(edge => edge.from.nodeId === fact.producer.nodeId && edge.to.nodeId === attempt.nodeId)) invalid();
+                facts.push(fact);
+            }
+            if (Object.hasOwn(input, 'graphBindings')) {
+                if (!Array.isArray(input.graphBindings) || !input.graphBindings.length || input.graphBindings.some(binding => !facts.some(fact => fact.producer.attemptId === binding.producerAttemptId))) invalid();
+                const identity = hash({ runId: root.runId, bindings: input.graphBindings, reservedAttemptId: null });
+                await assertOutputTransition(tx, handle, root, { published: facts[0], additionalProducers: facts.slice(1), output: attempt,
+                    producerBindings: input.graphBindings, receipt: { decisionSeq: settlement.decisionSeq,
+                        traversalReceiptRef: { runId: root.runId, receiptId: 'oreceipt_' + identity.slice(0, 32) } } });
+            } else if (resultRefs.length) invalid();
         },
     });
 }

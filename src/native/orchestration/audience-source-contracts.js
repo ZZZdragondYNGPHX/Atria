@@ -1,7 +1,7 @@
 import { SessionCore } from '../session-core.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { actorAvailability, informationContext } from '../../../public/shared/native-information-runtime.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument as hash } from '../repositories/common.js';
 import { ConflictError } from '../../storage/errors.js';
 import { assertRunAccess } from '../run-control.js';
 
@@ -97,7 +97,7 @@ export async function audienceResultAccess(handle, producer, recipient, pins, co
     const [from, to] = recipientPins === pins ? await readAudiencePins(handle, [producer, recipient], pins, core)
         : [await readAudiencePin(handle, producer, pins, core), await readAudiencePin(handle, recipient, recipientPins, core)];
     if (!from) return !to; // ordinary RP history is not an Actor grant
-    if (!to || hash(from.actualRef) === hash(to.actualRef)) return !!to;
+    if (!to || equalNativeDocuments(from.actualRef, to.actualRef)) return !!to;
     if (from.audience.kind === 'narrator' && to.audience.kind === 'actor') return false; // the RP prefix is separately narrator-scoped
     const a = from.actualRef, b = to.actualRef;
     if (a.sessionId !== b.sessionId || a.branchId !== b.branchId || a.revisionId !== b.revisionId) return false;
@@ -125,7 +125,7 @@ export function assertAudienceRunCapture(root, node, pins, input) {
     if (node?.policy?.audiencePinId !== undefined && !pin) fail();
     if (pin) {
         assertAudienceRef(pin.resourceRef);
-        if (!input?.audience || hash(input.audience) !== hash(pin.resourceRef.audience)) fail();
+        if (!input?.audience || !equalNativeDocuments(input.audience, pin.resourceRef.audience)) fail();
     }
     if (pin?.resourceRef.anchor !== 'run_source') {
         if (input && Object.hasOwn(input, 'audienceCapture')) fail();
@@ -136,10 +136,10 @@ export function assertAudienceRunCapture(root, node, pins, input) {
     assertAudienceRef(capture.sourceRef);
     const expected = source.sourceAuthority === 'native_session' ? { kind: ref.kind, ...source.sourceRef, audience: ref.audience } : capture.sourceRef;
     if (!['native_session', 'rp_chat'].includes(source.sourceAuthority) || capture.sourceRef.anchor !== undefined
-        || capture.sourceRef.sessionId !== ref.sessionId || hash(capture.sourceRef.audience) !== hash(ref.audience)
+        || capture.sourceRef.sessionId !== ref.sessionId || !equalNativeDocuments(capture.sourceRef.audience, ref.audience)
         || source.sourceAuthority === 'native_session' && ref.sessionId !== source.sourceRef.sessionId
-        || capture.pinId !== pin.pinId || hash(capture.policyRef) !== hash(ref) || capture.policyIntegrity !== pin.integrity
-        || hash(capture.sourceRef) !== hash(expected) || !/^[a-f0-9]{64}$/.test(capture.integrity)
-        || hash(input.audience) !== hash(ref.audience)) fail();
+        || capture.pinId !== pin.pinId || !equalNativeDocuments(capture.policyRef, ref) || capture.policyIntegrity !== pin.integrity
+        || !equalNativeDocuments(capture.sourceRef, expected) || !/^[a-f0-9]{64}$/.test(capture.integrity)
+        || !equalNativeDocuments(input.audience, ref.audience)) fail();
     return capture;
 }

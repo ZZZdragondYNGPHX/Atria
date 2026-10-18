@@ -1,5 +1,5 @@
 import { assertNativeId } from '../identity.js';
-import { hashNativeDocument as hash, serializeNativeDocument } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument as hash, serializeNativeDocument } from '../repositories/common.js';
 import { assertObject, assertCounter, assertDigest, assertToken, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 
 const fields = ['schemaVersion', 'resultId', 'runId', 'producerAttemptId', 'outputType', 'outputSchemaRef', 'payloadRef', 'sourceRefs',
@@ -53,7 +53,7 @@ export function assertResultAudience(value) {
         assertObject(value, ['kind', 'runId', 'nodeIds', 'epoch', 'sourceBindingDigest', 'grantDigest', 'taskPurpose'], 'Graph Result audience');
         assertNativeId(value.runId, 'orchestrationRun'); assertCounter(value.epoch, 'recipient epoch');
         if (!Array.isArray(value.nodeIds) || !value.nodeIds.length || new Set(value.nodeIds).size !== value.nodeIds.length
-            || hash(value.nodeIds) !== hash([...value.nodeIds].sort())) fail('Graph recipients must be unique canonical nodes');
+            || !equalNativeDocuments(value.nodeIds, [...value.nodeIds].sort())) fail('Graph recipients must be unique canonical nodes');
         for (const id of value.nodeIds) assertNativeId(id, 'orchestrationNode');
         for (const field of ['sourceBindingDigest', 'grantDigest']) assertDigest(value[field], field);
         if (!['original_rp_graph_result', 'original_native_graph_result', 'original_native_project_graph_result'].includes(value.taskPurpose)) fail('Graph Result purpose');
@@ -205,7 +205,7 @@ export function assertResultEnvelope(envelope, { policy, expected = {} }) {
         effectReceiptRef: envelope.sourceRefs[1], audienceConstraint: envelope.audienceConstraint };
     for (const [key, value] of Object.entries(expected)) {
         if (!Object.hasOwn(actual, key)) fail('unknown expected binding');
-        if (hash(actual[key]) !== hash(value)) fail('expected ' + key + ' mismatch');
+        if (!equalNativeDocuments(actual[key], value)) fail('expected ' + key + ' mismatch');
     }
     return envelope;
 }

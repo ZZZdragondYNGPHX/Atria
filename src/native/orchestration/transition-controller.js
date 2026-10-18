@@ -1,7 +1,7 @@
 import { ConflictError } from '../../storage/errors.js';
 import { assertNativeId } from '../identity.js';
 import { assertObject, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
-import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
+import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
 import { controlCommandId, controlRecordKey, readAttempt, assertAttemptConsumable } from './controller-common.js';
 import { readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 import { admitGraphEdges } from './graph-costs.js';
@@ -76,7 +76,7 @@ export class TransitionController {
                 admission = cloneNativeDocument(await this.authorizeTransition(request));
                 if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(new ConflictError('native_orchestration_transition_not_admitted'));
                 const current = await this.authorizeTransition(request);
-                if (hashNativeDocument(current) !== hashNativeDocument(admission)
+                if (!equalNativeDocuments(current, admission)
                     || hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(new ConflictError('native_orchestration_transition_not_admitted'));
             } catch (error) {
                 if (error instanceof ConflictError || error.code === 'native_rp_source_missing') return deny(error);

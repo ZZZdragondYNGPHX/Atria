@@ -90,11 +90,12 @@ export async function completeProjectDelegatedPlanner({ state, service, port, re
             const paid = producer.inputRefs[0].fanoutAttemptId ? await readProjectFanoutPaidModelNodes(tx, handle, active) : null;
             const cancelled = new Set(candidate.nodes.filter(node => active.nodeControl[node.nodeId]?.disposition === 'cancelled').map(node => node.nodeId));
             for (const operation of actual.operations) if (operation.op === 'cancelPending') cancelled.add(operation.nodeId);
-            const required = profile.models.filter(node => !cancelled.has(node.nodeId) && (scope?.affectedNodeIds.includes(node.nodeId)
-                || node.nodeId !== producer.nodeId && !progress.has(node.nodeId) && !paid?.has(node.nodeId))).length;
+            const remaining = profile.models.filter(node => !cancelled.has(node.nodeId) && (scope?.affectedNodeIds.includes(node.nodeId)
+                || node.nodeId !== producer.nodeId && !progress.has(node.nodeId) && !paid?.has(node.nodeId)));
+            const required = remaining.reduce((count, node) => count + 1 + (state.child.resolveDelegation(node)?.ceiling.maxRequests ?? 0), 0);
             const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: runId }, { tx });
             if (!capacity || capacity.overrun || capacity.remaining.requests < required) fail('native_orchestration_graph_budget_unavailable');
-            if (repeating && active.progress.attempts + required + 1 > active.limits.maxAttempts) fail('native_orchestration_limit_exhausted');
+            if (repeating && active.progress.attempts + remaining.length + 1 > active.limits.maxAttempts) fail('native_orchestration_limit_exhausted');
             const effect = (await readEffect(tx, handle, active, effectId)).doc;
             await readProjectDelegatedModelInput(tx, handle, active, producer, effect);
             await current();

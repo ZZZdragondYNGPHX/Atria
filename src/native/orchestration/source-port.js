@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { ConflictError } from '../../storage/errors.js';
-import { hashNativeDocument, withNativeResourceWrite } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument, withNativeResourceWrite } from '../repositories/common.js';
 import { fields } from '../../../public/shared/native-values.js';
 import { assertRunAccess } from '../run-control.js';
 import { SessionRepo } from '../repositories/session-repo.js';
@@ -38,7 +38,7 @@ export class SourcePort {
                 || request?.domain !== 'rp_chat' || typeof request.controlId !== 'string' || !request.controlId || ref?.controlId !== request.controlId
                 || typeof ref.prefixDigest !== 'string' || !/^[a-f0-9]{64}$/.test(ref.prefixDigest)
                 || bank?.authority !== 'run_control' || bank.domain !== 'rp_chat' || bank.controlId !== request.controlId
-                || hashNativeDocument(bank.source) !== hashNativeDocument(request.source)
+                || !equalNativeDocuments(bank.source, request.source)
                 || bank.operationId !== hashNativeDocument({ controlId: request.controlId, input: request.source?.input, purpose: request.source?.purpose, outputSlot: request.source?.outputSlot })
                 || typeof bindingDigest !== 'string' || hashNativeDocument(source) !== bindingDigest)
                 throw new ConflictError('native_orchestration_consumption_authority_unavailable');
@@ -150,14 +150,14 @@ export class SourcePort {
     async revalidate(handle, binding, options) {
         if (binding.sourceAuthority === 'project' && options?.root) {
             const { root, tx } = options;
-            if (root.ownerRef.handle !== handle || hashNativeDocument(root.sourceBinding) !== hashNativeDocument(binding)) conflict();
+            if (root.ownerRef.handle !== handle || !equalNativeDocuments(root.sourceBinding, binding)) conflict();
             // A formal Commit has its own fresh Root and frozen Review source.
             // Prior Review/tool lineage is historical evidence, not permission
             // to continue once the original Task leaves its reviewed state.
             if (binding.sourceRequest.purpose === 'formal_commit') {
                 if (root.parentRef !== null) conflict();
                 const current = await this.capture(handle, binding.sourceRequest, { tx });
-                if (hashNativeDocument(current.sourceBinding) !== hashNativeDocument(binding)) conflict();
+                if (!equalNativeDocuments(current.sourceBinding, binding)) conflict();
                 return current;
             }
             const check = async active => {
@@ -177,7 +177,7 @@ export class SourcePort {
             return tx ? check(tx) : this.projectAgent._repository.engine.withTransaction(handle, check);
         }
         const current = await this.capture(handle, binding.sourceRequest, options);
-        if (hashNativeDocument(current.sourceBinding) !== hashNativeDocument(binding)) conflict();
+        if (!equalNativeDocuments(current.sourceBinding, binding)) conflict();
         return current;
     }
 }

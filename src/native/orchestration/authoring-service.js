@@ -1,7 +1,7 @@
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { validateOutputCapability } from './output-capability-authority.js';
 import { PlanRepository, readPlanRevision } from './plan-repository.js';
-import { hashNativeDocument } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument } from '../repositories/common.js';
 import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../model-prompt-runtime/persistence.js';
 import { assertExactResourceRef } from '../model-prompt-runtime/contracts.js';
 import { assertObject, assertDependencyPins } from '../../../public/shared/native-orchestration-contracts.js';
@@ -41,7 +41,7 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
         }
         if (['context', 'model', 'narrative', 'evaluation'].includes(port) && ref.scope === 'library') {
             const normalized = assertExactResourceRef(ref);
-            if (hashNativeDocument(normalized) !== hashNativeDocument(ref)) throw new TypeError('Unexpected fields in original resource reference');
+            if (!equalNativeDocuments(normalized, ref)) throw new TypeError('Unexpected fields in original resource reference');
             return (await library.getExact(handle, normalized)).snapshot;
         }
         if (port === 'model' && ref.scope === 'player') {

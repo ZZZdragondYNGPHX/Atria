@@ -1,6 +1,6 @@
 import { ConflictError } from '../../storage/errors.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments } from '../repositories/common.js';
 import { ProjectAgentService } from '../project-agent.js';
 import { readEffect } from './effect-contracts.js';
 import { readProjectToolReceipt } from './project-tool-receipts.js';
@@ -28,7 +28,7 @@ async function facts(execution, projectAgent, handle, tx, root, intent) {
 
 export async function verifyProjectToolReconciliation(execution, projectAgent, { handle, tx, root, intent, observation }) {
     const fact = await facts(execution, projectAgent, handle, tx, root, intent);
-    if (!fact || hash(fact.observation) !== hash(observation)) fail();
+    if (!fact || !equalNativeDocuments(fact.observation, observation)) fail();
 }
 
 /** Original Task/call/Model/bank receipts only. No tool result body or writer. */

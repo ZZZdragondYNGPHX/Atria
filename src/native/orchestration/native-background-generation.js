@@ -404,7 +404,7 @@ export class NativeBackgroundOrchestrationAuthority {
             if (!selected || !equal(selected.binding, state.selected.binding) || selected.configDigest !== state.selected.configDigest
                 || root.runId !== runId || root.epoch !== admitted.epoch || !equal(root.sourceBinding, state.sourceBinding)
                 || root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation
-                || !finalized || hash(current) !== hash(finalized.snapshot)) fail('native_orchestration_background_completion_stale');
+                || !finalized || !equal(current, finalized.snapshot)) fail('native_orchestration_background_completion_stale');
             await ContextPort.prototype.revalidateBackgroundMemory.call(state.contextPort, handle, { context: state.context });
         };
         try {

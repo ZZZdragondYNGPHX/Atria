@@ -1,3 +1,5 @@
+import { readSessionFanoutCompletion } from './session-fanout-contracts.js';
+import { joinIdForAttempt } from './join-controller.js';
 import { assertAudienceRunCapture } from './audience-source-contracts.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
@@ -8,7 +10,7 @@ import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { RP_REVIEW_REASON_CODES } from './rp-review-profile.js';
 import { assertNativeId } from '../identity.js';
-import { readGraphReviewCompletion, readReviewablePlannerCompletion } from './graph-review-completion.js';
+import { readGraphReviewCompletion, readReviewablePlannerCompletion, readReviewableFanoutCompletion } from './graph-review-completion.js';
 import { assertSessionControlWork, readSessionPlannerCompletion } from './session-planner-contracts.js';
 import { readSessionJudgeCompletion } from './session-judge-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
@@ -96,7 +98,7 @@ export async function readSessionReviewCompletion(tx, handle, root, attemptId, o
         return readLegacySessionReviewCompletion(tx, handle, root, attemptId);
     }
     const fact = await readGraphReviewCompletion(tx, handle, root, attemptId,
-        { verifyControlWork: assertSessionControlWork, reasonCodes: RP_REVIEW_REASON_CODES, ...options });
+        { verifyControlWork: assertSessionControlWork, reasonCodes: RP_REVIEW_REASON_CODES, readFanoutCompletion: readSessionFanoutCompletion, ...options });
     if (!fact) return null;
     const input = fact.producer.inputRefs[0];
     if (root.sourceBinding.sourceAuthority !== 'native_session'
@@ -115,7 +117,18 @@ export async function readSessionReviewCompletion(tx, handle, root, attemptId, o
         if (!control || !equal(control.controlRef, ref) || control.receipt.decisionSeq >= fact.receipt.decisionSeq) invalid();
         controls.push(control);
     }
-    const sources = [...fact.evidence, ...controls], incoming = snapshot.graph.edges.filter(edge => edge.to.nodeId === fact.producer.nodeId && !edge.loopBack);
+    const joins = [];
+    for (const ref of input.joinReceiptRefs ?? []) {
+        const barrier = ref.runId === root.runId ? (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', 'barrier:' + ref.joinId)))?.doc : null;
+        const joined = barrier ? await readSessionFanoutCompletion(tx, handle, root, barrier.nodeAttemptId) : null;
+        if (!joined || joined.joinReceipt.joinId !== ref.joinId || joined.joinReceipt.outcome !== 'completed'
+            || joins.some(actual => actual.producer.attemptId === joined.producer.attemptId)
+            || !joined.joinReceipt.acceptedResultRefs.every(actual => fact.evidence.some(item => equal(item.receipt.resultRef, actual)))) invalid();
+        joins.push(joined);
+    }
+    const joinedRefs = joins.flatMap(joined => joined.joinReceipt.acceptedResultRefs);
+    const sources = [...fact.evidence.filter(item => !joinedRefs.some(ref => equal(ref, item.receipt.resultRef))), ...controls, ...joins];
+    const incoming = snapshot.graph.edges.filter(edge => edge.to.nodeId === fact.producer.nodeId && !edge.loopBack);
     if (sources.some(source => !bindings.some(binding => binding.producerAttemptId === source.producer.attemptId))
         || bindings.some(binding => !sources.some(source => source.producer.attemptId === binding.producerAttemptId
             && incoming.some(edge => edge.edgeId === binding.edgeId && edge.from.nodeId === source.producer.nodeId)))
@@ -132,9 +145,10 @@ export async function readSessionReviewCompletion(tx, handle, root, attemptId, o
     }
     for (const id of fact.review.invalidatedAttemptIds) {
         const attempt = (await readAttempt(tx, handle, root, id)).doc, node = snapshot.graph.nodes.find(node => node.nodeId === attempt.nodeId);
-        if (['fanout', 'join'].includes(node?.kind) || node?.capabilities.includes('agent.delegate')
+        if (['fanout', 'join'].includes(node?.kind) ? !fact.rerunFanouts.some(group => group.fanout.attemptId === attempt.attemptId || group.producer.attemptId === attempt.attemptId)
+            : node?.capabilities.includes('agent.delegate')
             || (node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
-                && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork: assertSessionControlWork })) invalid();
+                && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork: assertSessionControlWork, reviewTargets: fact.targets, readFanoutCompletion: readSessionFanoutCompletion })) invalid();
     }
     return fact;
 }
@@ -154,4 +168,19 @@ export async function sessionReviewRerunRequirements(tx, handle, root, reviewer,
     return { requests: remaining.filter(node => ['agent', 'review', 'planner', 'judge'].includes(node.kind)).length,
         attempts: remaining.filter(node => !admitted.has(node.nodeId)).length,
         reviews: remaining.filter(node => node.kind === 'review').length };
+}
+
+/** Resolve a passive task by its original barrier identity, never the first
+ * Join with the same nodeId. The shared reader proves the entire paid group. */
+export async function readSessionReviewableFanout(tx, handle, root, attempt, targets) {
+    if (root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind === 'join')
+        return readReviewableFanoutCompletion(tx, handle, root, attempt.attemptId, { targets, readCompletion: readSessionFanoutCompletion });
+    for (const id of root.attemptRefs) {
+        const join = (await readAttempt(tx, handle, root, id)).doc;
+        if (root.graph.nodes.find(node => node.nodeId === join.nodeId)?.kind !== 'join') continue;
+        const barrier = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', 'barrier:' + joinIdForAttempt(id))))?.doc;
+        if (barrier?.fanoutAttemptId !== attempt.attemptId) continue;
+        return readReviewableFanoutCompletion(tx, handle, root, id, { targets, readCompletion: readSessionFanoutCompletion });
+    }
+    return null;
 }

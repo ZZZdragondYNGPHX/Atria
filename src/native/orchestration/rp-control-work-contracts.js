@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument as hash } from '../repositories/common.js';
 import { checkedRecord } from './plan-repository.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertBudgetAuthorityRef, localWorkAttemptId } from './budget-port.js';
@@ -13,7 +13,7 @@ export async function assertRpControlWork(tx, handle, root, effectId, jobs) {
         const row = local?.find(item => item.attemptId === job.attemptId);
         if (job.kind !== ['graph_control_parse', 'graph_control_adopt'][index] || !row || hash(row) !== job.rowHash || row.kind !== job.kind
             || row.targetFingerprint !== job.targetFingerprint || row.attemptId !== localWorkAttemptId(effectId, job.ordinal)
-            || hash(row.orchestration) !== hash({ kind: 'local_work', effectId, ordinal: job.ordinal }) || row.status !== 'settled' || row.usage?.outcome !== 'completed')
+            || !equalNativeDocuments(row.orchestration, { kind: 'local_work', effectId, ordinal: job.ordinal }) || row.status !== 'settled' || row.usage?.outcome !== 'completed')
             throw new TypeError('Invalid RP control work facts');
     }
 }

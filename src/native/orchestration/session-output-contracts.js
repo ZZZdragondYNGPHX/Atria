@@ -126,14 +126,14 @@ export async function readSessionOutput(tx, handle, root) {
         || host.observedAt > receipt.createdAt || host.budgetObservationRef.status !== 'settled'
         || !equal(Object.fromEntries(Object.keys(intent.budgetAttemptRef).map(field => [field, host.budgetObservationRef[field]])), intent.budgetAttemptRef)) invalid();
     const retrieval = published.retrievalCompletions, retrievalIds = new Set(retrieval.map(item => item.effectId));
-    const modelIds = [], effectIds = [], nodes = new Set();
+    const modelIds = [], effectIds = [], nodes = new Map();
     const cancelled = new Set(root.graph.nodes.filter(node => root.nodeControl[node.nodeId]?.disposition === 'cancelled').map(node => node.nodeId));
     if (root.attemptRefs.length < root.graph.nodes.length - cancelled.size) invalid();
     for (const ref of root.attemptRefs) {
         const attempt = (await readAttempt(tx, handle, root, ref)).doc;
         if (cancelled.has(attempt.nodeId) && !attempt.effectRefs.length && !attempt.resultRefs.length && attempt.startedAt === null) {
             if (attempt.status !== 'cancelled' || attempt.endedAt === null || attempt.sourceBindingDigest !== root.sourceBinding.bindingDigest) invalid();
-            nodes.add(attempt.nodeId); continue;
+            nodes.set(attempt.nodeId, attempt); continue;
         }
         const fanoutGroup = published.fanoutCompletions.find(item => item.scopeAttempts.some(member => member.attempt.attemptId === attempt.attemptId));
         const scopeMember = fanoutGroup?.scopeAttempts.find(item => item.attempt.attemptId === attempt.attemptId);
@@ -142,12 +142,14 @@ export async function readSessionOutput(tx, handle, root) {
         if ((attempt.status !== 'completed' && (!fanoutMember || !['failed', 'cancelled'].includes(attempt.status))) || attempt.epoch !== receipt.epoch
             || attempt.sourceBindingDigest !== root.sourceBinding.bindingDigest
             || !equal(attempt.budgetRef, root.budgetAuthorityRef) && !(fanoutMember && attempt.inputState === 'reserved' && attempt.budgetRef === null)) invalid();
+        const passive = published.fanoutCompletions.find(item => item.producer.attemptId === attempt.attemptId || item.fanout.attemptId === attempt.attemptId);
+        if (nodes.has(attempt.nodeId) && passive && !await readAttemptInvalidation(tx, handle, root, nodes.get(attempt.nodeId))) invalid();
         if (nodes.has(attempt.nodeId) && (attempt.nodeId === output.nodeId || attempt.nodeId === published.producer.nodeId
-            || !published.graphResults.some(result => result.producer.nodeId === attempt.nodeId)
+            || !passive && !published.graphResults.some(result => result.producer.nodeId === attempt.nodeId)
                 && !published.reviewCompletions.some(result => result.producer.nodeId === attempt.nodeId)
                 && !published.judgeCompletions.some(result => result.producer.nodeId === attempt.nodeId)
                 && !(published.loopHistory && published.plannerCompletions.some(result => result.producer.nodeId === attempt.nodeId)))) invalid();
-        nodes.add(attempt.nodeId);
+        nodes.set(attempt.nodeId, attempt);
         const settled = await readAttemptSettlement(tx, handle, root, attempt);
         if (attempt.nodeId !== output.nodeId && attempt.nodeId !== published.producer.nodeId) {
             const graphResult = published.graphResults.find(result => result.producer.attemptId === attempt.attemptId);

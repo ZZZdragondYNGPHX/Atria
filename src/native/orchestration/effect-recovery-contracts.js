@@ -1,6 +1,6 @@
 import { ConflictError } from '../../storage/errors.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument as hash } from '../repositories/common.js';
 import { assertObject, assertCounter, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { checkedRecord } from './plan-repository.js';
 import { controlCommandId, controlRecordKey, readAttempt, assertAttemptCurrent } from './controller-common.js';
@@ -22,7 +22,7 @@ export async function readReadyEffectRecovery(tx, handle, root, effectId) {
         || attempt.status !== 'waiting_effect' || attempt.inputState !== 'prepared' || attempt.epoch !== intent.epoch
         || attempt.graphRevision !== root.graphRevision || attempt.sourceBindingDigest !== intent.sourceBindingDigest
         || attempt.effectiveGrantDigest !== intent.grantDigest || attempt.resultRefs.length || attempt.endedAt !== null
-        || attempt.effectRefs.length !== 1 || attempt.effectRefs[0] !== effectId || hash(attempt.budgetRef) !== hash(root.budgetAuthorityRef)) denied();
+        || attempt.effectRefs.length !== 1 || attempt.effectRefs[0] !== effectId || !equalNativeDocuments(attempt.budgetRef, root.budgetAuthorityRef)) denied();
     await assertAttemptCurrent(tx, handle, root, attempt);
     const command = await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId: controlCommandId('effect.claim', effectId) });
     if (command) throw new ConflictError('native_orchestration_effect_already_claimed');
@@ -48,7 +48,7 @@ export async function readReadyEffectResume(tx, handle, root, intent) {
         || receipt.previousEpoch >= receipt.epoch || receipt.epoch !== intent.epoch || receipt.epoch > root.epoch
         || receipt.hostBootId !== intent.hostBootId || receipt.hostGeneration !== intent.hostGeneration
         || receipt.sourceBindingDigest !== root.sourceBinding.bindingDigest || receipt.decisionDigest !== hash(effectDecision(intent))
-        || receipt.inputDigest !== attempt.inputDigest || hash(receipt.budgetAttemptRef) !== hash(intent.budgetAttemptRef)
+        || receipt.inputDigest !== attempt.inputDigest || !equalNativeDocuments(receipt.budgetAttemptRef, intent.budgetAttemptRef)
         || attempt.epoch !== intent.epoch || attempt.effectiveGrantDigest !== intent.grantDigest
         || receipt.decisionSeq < 1 || receipt.decisionSeq > root.eventSeq) throw new TypeError('Invalid ready Effect resume facts');
     const commandId = effectResumeCommandId(root.runId, intent.effectId, intent.epoch);

@@ -121,14 +121,13 @@ export function nativeRecord(value, {
 }
 
 export async function putImmutable(tx, key, value) {
-    const doc = cloneNativeDocument(value);
-    const integrity = hashNativeDocument(doc);
+    const record = nativeRecord(value);
+    const { doc, integrity } = record;
     const existing = await tx.getResource(key);
     if (existing) {
         if (existing.integrity === integrity) return existing.doc;
         throw new ConflictError('native_immutable_conflict', { key });
     }
-    const record = nativeRecord(doc);
     const result = await tx.putResourceIfMatch(key, null, record);
     if (result.updated) return doc;
     const raced = await tx.getResource(key);

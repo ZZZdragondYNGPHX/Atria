@@ -6,6 +6,8 @@ import { readGraphNodeResult } from './graph-result-contracts.js';
 import { readSessionPlannerCompletion } from './session-planner-contracts.js';
 import { readSessionReviewCompletion } from './session-review-contracts.js';
 import { readSessionJudgeCompletion, assertSessionJudgeSelections } from './session-judge-contracts.js';
+import { readSessionDelegatedReviewCompletion, readSessionDelegatedJudgeCompletion } from './session-delegated-quality-contracts.js';
+import { readSessionDelegatedFanoutCompletion } from './session-delegated-fanout-contracts.js';
 import { readSessionFanoutCompletion } from './session-fanout-contracts.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
 import { sessionGraphResultReadable } from './session-agent-graph-profile.js';
@@ -21,7 +23,7 @@ export async function readSessionDelegationInputs(tx, handle, root, parent, cont
     const incoming = snapshot.graph.edges.filter(edge => edge.to.nodeId === parent.nodeId).toSorted((a, b) => a.edgeId.localeCompare(b.edgeId));
     if (input?.kind !== 'native_session_delegation' || input.nodeId !== node?.nodeId || !Array.isArray(input.graphBindings)
         || !equal(input.planRef, root.planRef) || !equal(input.sourceRef, root.sourceBinding.sourceRef)
-        || !equal(parent.inputRefs, [input, ...input.acceptedGraphResultRefs, ...(input.acceptedControlRefs ?? [])])
+        || !equal(parent.inputRefs, [input, ...(root.parentRef?.inputRefs ?? []), ...input.acceptedGraphResultRefs, ...(input.acceptedControlRefs ?? [])])
         || parent.inputDigest !== hash(parent.inputRefs) || !equal(input.graphBindings, [...input.graphBindings].sort((a, b) => a.edgeId.localeCompare(b.edgeId)))
         || new Set(input.graphBindings.map(item => item.edgeId)).size !== input.graphBindings.length
         || incoming.some(edge => node.inputs.find(port => port.name === edge.to.port)?.required && !input.graphBindings.some(binding => binding.edgeId === edge.edgeId))) invalid();
@@ -48,7 +50,7 @@ export async function readSessionDelegationInputs(tx, handle, root, parent, cont
             || !['always', 'success'].includes(edge.condition) || edge.loopBack) invalid();
         let fact;
         if (producer.kind === 'join') {
-            fact = await readSessionFanoutCompletion(tx, handle, root, attempt.attemptId);
+            fact = await (root.parentRef ? readSessionDelegatedFanoutCompletion : readSessionFanoutCompletion)(tx, handle, root, attempt.attemptId);
             if (!fact || fact.joinReceipt.outcome !== 'completed') invalid();
             for (const ref of fact.joinReceipt.acceptedResultRefs) await addResult(ref);
         } else if (producer.kind === 'planner') {
@@ -59,13 +61,13 @@ export async function readSessionDelegationInputs(tx, handle, root, parent, cont
                 content: readable(producer) ? 'Advisory graph control only; this never grants Source, tools or domain writes: ' + JSON.stringify(fact.patch.appliedOperations)
                     : 'Graph control is reference-only for this Actor. Do not infer its hidden contents.' });
         } else if (producer.kind === 'judge') {
-            fact = await readSessionJudgeCompletion(tx, handle, root, attempt.attemptId);
+            fact = await (root.parentRef ? readSessionDelegatedJudgeCompletion : readSessionJudgeCompletion)(tx, handle, root, attempt.attemptId);
             if (!fact) invalid();
             controlRefs.push(fact.controlRef); judges.push(fact);
             controls.push({ controlRef: fact.controlRef, sourceRefs: [{ kind: 'graph_judge', ...fact.controlRef }],
                 content: 'Quality selection is advisory only and grants no Source, permissions or official effects: ' + JSON.stringify({ selectedResultRef: fact.selectedResultRef, reasonCode: 'candidate_selected' }) });
         } else if (producer.kind === 'review') {
-            fact = await readSessionReviewCompletion(tx, handle, root, attempt.attemptId);
+            fact = await (root.parentRef ? readSessionDelegatedReviewCompletion : readSessionReviewCompletion)(tx, handle, root, attempt.attemptId);
             if (!fact || fact.review.decision !== 'approve') invalid();
             if (fact.controlRef) controlRefs.push(fact.controlRef);
             const reference = fact.controlRef ? { controlRef: fact.controlRef, sourceRefs: [fact.controlRef] }

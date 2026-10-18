@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments } from '../repositories/common.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { rpAgentGraphProfile } from './rp-agent-graph-profile.js';
 import { rpPlannerExpansionProfile, rpPlannerExpansionTemplates } from './rp-planner-expansion-profile.js';
@@ -23,16 +23,16 @@ export function rpPlannerProfile(plan) {
         || planner.inputs.length !== 1 || planner.inputs[0].name !== loop.to.port || planner.inputs[0].type !== 'json' || planner.inputs[0].required)) fail();
     if (graph.graphChangePolicy.allowedOperations.includes('addNode') || graph.graphChangePolicy.allowedOperations.includes('addEdge')) {
         if ((!loop && planner.inputs.length) || planner.outputs.length !== 1 || planner.outputs[0].type !== 'json'
-            || hash([...planner.capabilities].sort()) !== hash(plannerCapabilities.sort())
+            || !equalNativeDocuments([...planner.capabilities].sort(), plannerCapabilities.sort())
             || !nodeModelRoutePins(planner, plan.dependencyPins).length || planner.dependencyPinIds.length !== nodeModelRoutePins(planner, plan.dependencyPins).length + retrievalPins.length + audiencePins
-            || hash(graph.entryNodeIds) !== hash([planner.nodeId])) fail();
+            || !equalNativeDocuments(graph.entryNodeIds, [planner.nodeId])) fail();
         return rpPlannerExpansionProfile(plan, { planner, output, loop, allowed });
     }
     if (graph.nodes.filter(node => node.kind === 'agent').length > 1) {
         if ((!loop && planner.inputs.length) || planner.outputs.length !== 1 || planner.outputs[0].type !== 'json'
-            || hash([...planner.capabilities].sort()) !== hash(plannerCapabilities.sort())
+            || !equalNativeDocuments([...planner.capabilities].sort(), plannerCapabilities.sort())
             || !nodeModelRoutePins(planner, plan.dependencyPins).length || planner.dependencyPinIds.length !== nodeModelRoutePins(planner, plan.dependencyPins).length + retrievalPins.length + audiencePins
-            || hash(graph.entryNodeIds) !== hash([planner.nodeId]) || graph.graphChangePolicy.allowedNodeKinds.length || !graph.graphChangePolicy.allowedOperations.length
+            || !equalNativeDocuments(graph.entryNodeIds, [planner.nodeId]) || graph.graphChangePolicy.allowedNodeKinds.length || !graph.graphChangePolicy.allowedOperations.length
             || graph.graphChangePolicy.allowedOperations.some(op => !allowed.includes(op))) fail();
         const transfers = graph.edges.filter(edge => edge.from.nodeId === planner.nodeId && !edge.loopBack);
         if (!transfers.length || new Set(transfers.map(edge => edge.to.nodeId)).size !== transfers.length) fail();
@@ -49,10 +49,10 @@ export function rpPlannerProfile(plan) {
             graphChangePolicy: { allowedOperations: [], allowedNodeKinds: [] } }, dependencyPins: plan.dependencyPins.filter(pin => used.has(pin.pinId)) });
         return { planner, transfer: transfers[0], transfers, loop: loop ?? null, agentGraph, narration: agentGraph.narration };
     }
-    if (graph.nodes.length !== 3 || !narrator || !output || graph.outputContract.kind !== 'rp_narration' || graph.edges.length !== 2 + loops.length || hash(graph.entryNodeIds) !== hash([planner.nodeId])
+    if (graph.nodes.length !== 3 || !narrator || !output || graph.outputContract.kind !== 'rp_narration' || graph.edges.length !== 2 + loops.length || !equalNativeDocuments(graph.entryNodeIds, [planner.nodeId])
         || !loop && planner.inputs.length || planner.outputs.length !== 1 || planner.outputs[0].type !== 'json'
         || narrator.inputs.length !== 1 || narrator.inputs[0].type !== 'json' || !narrator.inputs[0].required
-        || hash([...planner.capabilities].sort()) !== hash(plannerCapabilities.sort())
+        || !equalNativeDocuments([...planner.capabilities].sort(), plannerCapabilities.sort())
         || !nodeModelRoutePins(planner, plan.dependencyPins).length
         || planner.dependencyPinIds.length !== nodeModelRoutePins(planner, plan.dependencyPins).length + retrievalPins.length + audiencePins
         || graph.graphChangePolicy.allowedNodeKinds.length || !graph.graphChangePolicy.allowedOperations.length

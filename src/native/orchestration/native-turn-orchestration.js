@@ -1,3 +1,4 @@
+import { readGraphFanoutInput } from './graph-fanout-completion.js';
 import { SessionDelegationAuthority } from './session-delegation-authority.js';
 import { ResultPort } from './result-port.js';
 import { inspectGraphReadiness } from './graph-work-readiness.js';
@@ -58,7 +59,7 @@ import { readGraphNodeResult } from './graph-result-contracts.js';
 import { ResultController } from './result-controller.js';
 import { ReviewController, reviewReceiptId } from './review-controller.js';
 import { rpReviewOutputContract as sessionReviewOutputContract } from './rp-review-profile.js';
-import { parseSessionReview, parseSessionGraphReview, readSessionReviewCompletion, sessionReviewModelReceiptId, sessionGraphReviewOutputContract, sessionReviewRerunRequirements } from './session-review-contracts.js';
+import { parseSessionReview, parseSessionGraphReview, readSessionReviewCompletion, sessionReviewModelReceiptId, sessionGraphReviewOutputContract, sessionReviewRerunRequirements, readSessionReviewableFanout } from './session-review-contracts.js';
 import { graphReviewModelReceiptId, graphReviewControlRef, readReviewablePlannerCompletion } from './graph-review-completion.js';
 import { sessionReplanScope, sessionReplanRequirements, sessionPlannerProgressFingerprint } from './session-replan-contracts.js';
 import { assertSessionFanoutPlannerPatch, readSessionFanoutPaidModelNodes } from './session-fanout-planner-contracts.js';
@@ -408,7 +409,7 @@ export class NativeNarratorOrchestrationAuthority {
         for (const node of profile.ordered) profiles.push(await this.#resolveSessionGraphModel(host, handle, base, input, plan, node, profile.narrator.nodeId));
         return { binding, plan, ...profiles.at(-1), resolver: null, collaboration: { profile, profiles },
             topologyDigest: hash(profiles.map(item => ({ nodeId: item.node.nodeId, configDigest: item.configDigest, audience: item.audienceSource.pin,
-                delegation: item.delegation ? { pin: item.delegation.pin, models: item.delegation.profiles.map(child => ({ configDigest: child.configDigest, source: child.audienceSource.descriptor })),
+                delegation: item.delegation ? { pin: item.delegation.pin, selectionDigest: item.delegation.selectionDigest, models: item.delegation.profiles.map(child => ({ configDigest: child.configDigest, source: child.audienceSource.descriptor })),
                     pool: item.delegation.poolProfiles.map(child => ({ pin: child.pin, configDigest: child.configDigest, source: child.audienceSource.descriptor })) } : null }))) };
     }
 
@@ -442,7 +443,7 @@ export class NativeNarratorOrchestrationAuthority {
         if (!state || state.authority !== this || state.host !== host || state.handle !== handle || !equal(state.base, base)
             || !equal(state.input, input) || !equal(state.transaction, transaction)) fail('native_orchestration_turn_selection_invalid');
         await this.#current(selection);
-        return immutable(state.collaboration ? state.collaboration.profiles.flatMap(item => [item.resolved.route, ...(item.delegation?.poolProfiles.map(child => child.resolved.route) ?? [])])
+        return immutable(state.collaboration ? state.collaboration.profiles.flatMap(item => [item.resolved.route, ...(item.delegation?.resourceProfiles.map(child => child.resolved.route) ?? [])])
             : [state.resolved.route, ...state.resolver ? [state.resolver.resolved.route] : []]);
     }
 
@@ -523,7 +524,7 @@ export class NativeNarratorOrchestrationAuthority {
     async prepareResolver(args) { return this.#prepareRole(args, 'intent_resolver'); }
 
     async #prepareRole({ host, handle, base, input, lanePlan, request, quotaProof, selection, signal, authorityTurn = null, resolverCapture = null,
-        graphProfile = null, graphProgress = null, preparedGraphAttemptId = null, reservedGraphAttemptId = null, graphFanoutAttemptId = null, graphFeedback = null, graphLoopBindings = [], graphPrepareOnly = false, delegationPrepareOnly = false, delegationContinuation = null }, role) {
+        graphProfile = null, graphProgress = null, preparedGraphAttemptId = null, reservedGraphAttemptId = null, graphFanoutAttemptId = null, graphFeedback = null, graphLoopBindings = [], graphInheritedBindings = [], graphPrepareOnly = false, delegationPrepareOnly = false, delegationContinuation = null }, role) {
         if (selection === null) return null;
         checkCancellation(signal);
         const selectionState = await this.#current(selection), resolverRole = role === 'intent_resolver';
@@ -585,13 +586,13 @@ export class NativeNarratorOrchestrationAuthority {
             if (selected.node.inputs.find(port => port.name === item.edge.to.port)?.required) fail('native_orchestration_judge_required_input');
             return false;
         });
-        const graphInputs = graphBindings.flatMap(item => item.joinReceiptRef
+        const graphInputs = [...graphInheritedBindings, ...graphBindings.flatMap(item => item.joinReceiptRef
             ? item.results.map(result => ({ ...result, edge: item.edge, joinReceiptRef: item.joinReceiptRef, joinAttemptId: item.attemptId }))
-            : item.fanoutAttemptId ? [] : [item]);
+            : item.fanoutAttemptId ? [] : [item])];
         const graphResultRefs = graphInputs.flatMap(item => item.resultRef ? [item.resultRef] : []);
         if (selected.collaboration) {
             logicalInputRef.acceptedGraphResultRefs = graphResultRefs;
-            const controls = graphBindings.filter(item => item.controlRef).map(item => item.controlRef);
+            const controls = [...new Map(graphInputs.filter(item => item.controlRef).map(item => [hash(item.controlRef), item.controlRef])).values()];
             if (controls.length) logicalInputRef.acceptedControlRefs = controls;
             const joins = graphBindings.filter(item => item.joinReceiptRef).map(item => item.joinReceiptRef);
             if (joins.length) logicalInputRef.joinReceiptRefs = joins;
@@ -602,7 +603,7 @@ export class NativeNarratorOrchestrationAuthority {
                 logicalInputRef.fanoutAttemptId = graphFanoutAttemptId;
                 if (!fanout) logicalInputRef.fanoutGraphBindings = graphBindings.map(item => ({ edgeId: item.edge.edgeId, producerAttemptId: item.attemptId }));
             }
-            if (selected.collaboration.profile.loops.length || ['judge', 'review'].includes(selected.node.kind) && !(selected.node.kind === 'review' && selected.collaboration.profile.qualityReview)) logicalInputRef.controlGraph = { bindings: graphBindings.map(item => ({ edgeId: item.edge.edgeId, producerAttemptId: item.attemptId })) };
+            if (selected.collaboration.profile.loops.length || ['judge', 'review'].includes(selected.node.kind) && !(selected.node.kind === 'review' && selected.collaboration.profile.qualityReview)) logicalInputRef.controlGraph = { bindings: fanout ? [] : graphBindings.map(item => ({ edgeId: item.edge.edgeId, producerAttemptId: item.attemptId })) };
             if (selected.audienceSource.pin.resourceRef.anchor === 'run_source') logicalInputRef.audienceCapture = audienceRunCapture(selected.audienceSource.pin, selected.audienceSource);
         }
         const reviewInput = graphInputs.find(item => item.reviewReceiptRef);
@@ -695,7 +696,7 @@ export class NativeNarratorOrchestrationAuthority {
                         return admission;
                     } }).advance(handle, { ...runGuard(transitionRoot), bindings: [{ edgeId: edge.edgeId, producerAttemptId }], reservedAttemptId: null }));
                 } else ({ attemptId } = await service.runs.beginAttempt(handle, controlCommandId('native.turn.attempt', { ...commandIdentity, role,
-                    ...(selected.collaboration ? { nodeId: selected.node.nodeId } : {}) }), { ...runGuard(await service.runs.get(handle, root.runId)), nodeId: selected.node.nodeId, ...admission }));
+                    ...(selected.collaboration ? { nodeId: selected.node.nodeId, ...(logicalInputRef.fanoutAttemptId ? { fanoutAttemptId: logicalInputRef.fanoutAttemptId, inputDigest: admission.inputDigest } : {}) } : {}) }), { ...runGuard(await service.runs.get(handle, root.runId)), nodeId: selected.node.nodeId, ...admission }));
                 state.attemptId = attemptId;
                 if (graphPrepareOnly) return;
                 if (!delegationContinuation) await new AttemptController({ runs: service.runs, authorizeAttempt: args => this.#authorize(args) }).activate(handle, { ...runGuard(await service.runs.get(handle, root.runId)), attemptId });
@@ -940,7 +941,10 @@ export class NativeNarratorOrchestrationAuthority {
             }
             for (const input of state.graphInputs) {
                 if (input.controlRef?.kind === 'graph_judge_control') {
-                    const saved = await readSessionJudgeCompletion(tx, handle, root, input.attemptId, recipient.status === 'completed' ? {} : { recipient });
+                    const inherited = !!state.decision.inputRef.fanoutAttemptId && input.edge.to.nodeId !== recipient.nodeId;
+                    const saved = await readSessionJudgeCompletion(tx, handle, root, input.attemptId, recipient.status === 'completed' || inherited ? {} : { recipient });
+                    if (saved && inherited) await readGraphFanoutInput(tx, handle, root, state.decision.inputRef.fanoutAttemptId,
+                        recipient, input.controlRef, saved, { historical: recipient.status === 'completed' });
                     if (!saved || !equal(saved.controlRef, input.controlRef)) fail('native_orchestration_judge_producer_denied');
                     judges.push(saved);
                     results.push({ controlRef: input.controlRef, sourceRefs: [{ kind: 'graph_judge', ...input.controlRef }],
@@ -948,7 +952,10 @@ export class NativeNarratorOrchestrationAuthority {
                     continue;
                 }
                 if (input.controlRef?.kind === 'graph_review_control') {
-                    const saved = await readSessionReviewCompletion(tx, handle, root, input.attemptId, recipient.status === 'completed' ? {} : { recipient });
+                    const inherited = !!state.decision.inputRef.fanoutAttemptId && input.edge.to.nodeId !== recipient.nodeId;
+                    const saved = await readSessionReviewCompletion(tx, handle, root, input.attemptId, recipient.status === 'completed' || inherited ? {} : { recipient });
+                    if (saved && inherited) await readGraphFanoutInput(tx, handle, root, state.decision.inputRef.fanoutAttemptId,
+                        recipient, input.controlRef, saved, { historical: recipient.status === 'completed' });
                     if (!saved || saved.review.decision !== 'approve' || !equal(saved.controlRef, input.controlRef)) fail('native_orchestration_review_decision_required');
                     await assertAttemptConsumable(tx, handle, root, saved.producer);
                     results.push({ controlRef: input.controlRef, sourceRefs: [input.controlRef],
@@ -956,7 +963,10 @@ export class NativeNarratorOrchestrationAuthority {
                     continue;
                 }
                 if (input.controlRef) {
-                    const saved = await readSessionPlannerCompletion(tx, handle, root, input.attemptId, recipient.status === 'completed' ? {} : { recipient });
+                    const inherited = !!state.decision.inputRef.fanoutAttemptId && input.edge.to.nodeId !== recipient.nodeId;
+                    const saved = await readSessionPlannerCompletion(tx, handle, root, input.attemptId, recipient.status === 'completed' || inherited ? {} : { recipient });
+                    if (saved && inherited) await readGraphFanoutInput(tx, handle, root, state.decision.inputRef.fanoutAttemptId,
+                        recipient, input.controlRef, saved, { historical: recipient.status === 'completed' });
                     if (!saved || !equal(saved.controlRef, input.controlRef)) fail('native_orchestration_planner_producer_denied');
                     await assertAttemptConsumable(tx, handle, root, saved.producer);
                     const creator = root.graph.nodes.find(node => node.nodeId === saved.producer.nodeId);
@@ -1271,9 +1281,10 @@ export class NativeNarratorOrchestrationAuthority {
                     if (attempt.attemptId === reviewer.attemptId || await readAttemptInvalidation(tx, handle, root, attempt)) continue;
                     const node = root.graph.nodes.find(node => node.nodeId === attempt.nodeId);
                     if (!targets.some(target => graphReachable(root.graph, target.nodeId, node.nodeId))) continue;
-                    if (['fanout', 'join'].includes(node?.kind) || node?.capabilities.includes('agent.delegate')
+                    if (['fanout', 'join'].includes(node?.kind) ? !await readSessionReviewableFanout(tx, handle, root, attempt, targets)
+                        : node?.capabilities.includes('agent.delegate')
                         || (node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
-                            && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, sessionPlannerReaderOptions))
+                            && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { ...sessionPlannerReaderOptions, reviewTargets: targets, readFanoutCompletion: readSessionFanoutCompletion }))
                         fail('native_orchestration_review_irreversible_dependency');
                 }
             },
@@ -1404,27 +1415,34 @@ export class NativeNarratorOrchestrationAuthority {
             await BudgetPort.prototype.assertCurrent.call(service.budgetPort, handle, root.budgetAuthorityRef, tx ? { tx } : undefined);
             return root;
         };
-        const begin = async node => {
-            const root = await current(), inputRefs = [{ kind: 'native_session_graph_control', nodeId: node.nodeId,
-                planRef: selected.binding.planRef, sourceRef: root.sourceBinding.sourceRef }];
-            const bindings = node.kind === 'fanout' ? selected.collaboration.profile.incoming[node.nodeId].map(edge => ({ edge, ...progress.get(edge.from.nodeId) })) : [];
-            const controls = bindings.map(item => item.controlRef);
-            if (controls.length) {
-                if (controls.some(ref => !ref)) fail('native_orchestration_fanout_denied');
-                inputRefs[0].acceptedControlRefs = controls; inputRefs.push(...controls);
-                return (await new TransitionController({ runs: service.runs, authorizeTransition: async ({ tx, root: active, target, producers }) => {
-                    await current(tx);
-                    if (target.nodeId !== node.nodeId || !equal(producers.map(item => item.attempt.attemptId).sort(), bindings.map(item => item.attemptId).sort())) fail('native_orchestration_fanout_denied');
-                    for (const binding of bindings) {
-                        const fact = await readSessionPlannerCompletion(tx, handle, active, binding.attemptId);
-                        if (!fact || !equal(fact.controlRef, binding.controlRef)) fail('native_orchestration_fanout_denied');
-                    }
-                    return { inputRefs, inputDigest: hash(inputRefs), effectiveGrantDigest: hash({ handle, source: active.sourceBinding, inputRefs }), budgetRef: active.budgetAuthorityRef };
-                } }).advance(handle, { ...runGuard(root), bindings: bindings.map(item => ({ edgeId: item.edge.edgeId, producerAttemptId: item.attemptId })), reservedAttemptId: null })).outcome.attemptId;
-            }
-            return (await service.runs.beginAttempt(handle, controlCommandId('native.turn.control', { ...identity, nodeId: node.nodeId }), {
-                ...runGuard(root), nodeId: node.nodeId, inputRefs, inputDigest: hash(inputRefs),
-                effectiveGrantDigest: hash({ handle, source: root.sourceBinding, inputRefs }), budgetRef: root.budgetAuthorityRef })).attemptId;
+        const inherited = selected.collaboration.profile.incoming[profile.fanout.nodeId].map(edge => {
+            const source = progress.get(edge.from.nodeId); if (!source) fail('native_orchestration_fanout_denied'); return { edge, ...source };
+        });
+        const begin = async (node, fanoutAttemptId = null) => {
+            const root = await current(), bindings = node.kind === 'fanout' ? inherited : [];
+            const results = bindings.flatMap(item => item.resultRef ? [item.resultRef] : []), controls = bindings.flatMap(item => item.controlRef ? [item.controlRef] : []);
+            if (bindings.length !== results.length + controls.length) fail('native_orchestration_fanout_denied');
+            const graphBindings = bindings.map(item => ({ edgeId: item.edge.edgeId, producerAttemptId: item.attemptId })).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
+            const inputRefs = [{ kind: 'native_session_graph_control', nodeId: node.nodeId,
+                planRef: selected.binding.planRef, sourceRef: root.sourceBinding.sourceRef,
+                ...(results.length ? { acceptedGraphResultRefs: results } : {}), ...(controls.length ? { acceptedControlRefs: controls } : {}),
+                ...(bindings.length ? { graphBindings } : {}), ...(fanoutAttemptId ? { fanoutAttemptId } : {}) }, ...results, ...controls];
+            const admission = { inputRefs, inputDigest: hash(inputRefs), effectiveGrantDigest: hash({ handle, source: root.sourceBinding, inputRefs }), budgetRef: root.budgetAuthorityRef };
+            if (bindings.length) return (await new TransitionController({ runs: service.runs, authorizeTransition: async ({ tx, root: active, target, producers }) => {
+                await current(tx);
+                if (target.nodeId !== node.nodeId || !equal(producers.map(item => item.attempt.attemptId).sort(), bindings.map(item => item.attemptId).sort())) fail('native_orchestration_fanout_denied');
+                for (const binding of bindings) {
+                    const fact = binding.resultRef ? await readGraphNodeResult(tx, handle, active, binding.resultRef.resultId)
+                        : binding.controlRef?.kind === 'graph_review_control' ? await readSessionReviewCompletion(tx, handle, active, binding.attemptId)
+                            : binding.controlRef?.kind === 'graph_judge_control' ? await readSessionJudgeCompletion(tx, handle, active, binding.attemptId)
+                                : await readSessionPlannerCompletion(tx, handle, active, binding.attemptId);
+                    if (!fact || !equal(fact.controlRef ?? fact.receipt.resultRef, binding.controlRef ?? binding.resultRef)) fail('native_orchestration_fanout_denied');
+                    await assertAttemptConsumable(tx, handle, active, fact.producer);
+                }
+                return admission;
+            } }).advance(handle, { ...runGuard(root), bindings: graphBindings, reservedAttemptId: null })).outcome.attemptId;
+            return (await service.runs.beginAttempt(handle, controlCommandId('native.turn.control', { ...identity, nodeId: node.nodeId,
+                ...(fanoutAttemptId ? { fanoutAttemptId, inputDigest: admission.inputDigest } : {}) }), { ...runGuard(root), nodeId: node.nodeId, ...admission })).attemptId;
         };
         const fanoutAttemptId = await begin(profile.fanout);
         await new AttemptController({ runs: service.runs, authorizeAttempt: async ({ tx, attempt }) => {
@@ -1436,7 +1454,7 @@ export class NativeNarratorOrchestrationAuthority {
         const declared = [], plannerProgress = new Map();
         for (const node of profile.branches) {
             const model = selected.collaboration.profiles.find(item => item.node.nodeId === node.nodeId);
-            const prepared = await this.#prepareRole({ ...args, graphProfile: model, graphProgress: progress, graphPrepareOnly: true }, 'narrator');
+            const prepared = await this.#prepareRole({ ...args, graphProfile: model, graphProgress: progress, graphInheritedBindings: inherited, graphPrepareOnly: true }, 'narrator');
             const scope = profile.branchScopes.find(scope => scope.entry.nodeId === node.nodeId), attempts = new Map([[node.nodeId, prepared.attemptId]]);
             const models = new Map([[node.nodeId, model]]);
             for (const member of scope.ordered.filter(member => member.nodeId !== node.nodeId)) {
@@ -1450,7 +1468,7 @@ export class NativeNarratorOrchestrationAuthority {
             }
             declared.push({ model, attemptId: prepared.attemptId, scope, attempts, models });
         }
-        const joinAttemptId = await begin(profile.join), branches = declared.map(item => ({ entryAttemptId: item.attemptId,
+        const joinAttemptId = await begin(profile.join, fanoutAttemptId), branches = declared.map(item => ({ entryAttemptId: item.attemptId,
             memberAttemptIds: [...item.attempts.values()].sort(), scopeNodeIds: item.scope.scopeNodeIds }));
         const terminalIds = [...new Set(profile.members.map(edge => declared.find(item => item.attempts.has(edge.from.nodeId)).attempts.get(edge.from.nodeId)))];
         const authorize = async ({ tx, root }) => {
@@ -1500,7 +1518,7 @@ export class NativeNarratorOrchestrationAuthority {
                             const model = item.models.get(ready.node.nodeId);
                             completed = await this.#runSessionModelWorker({ ...args, signal: boundary.signal, quotaProof }, selected, model, progress,
                                 { ...(entry ? { preparedGraphAttemptId: item.attemptId } : { reservedGraphAttemptId: item.attempts.get(model.node.nodeId) }),
-                                    graphFanoutAttemptId: fanoutAttemptId, fanoutMember: true, plannerProgress });
+                                    graphFanoutAttemptId: fanoutAttemptId, graphInheritedBindings: inherited, fanoutMember: true, plannerProgress });
                             if (completed.error) return completed;
                             pending.delete(model.node.nodeId);
                         }

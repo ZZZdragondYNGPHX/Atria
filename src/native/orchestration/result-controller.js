@@ -45,8 +45,7 @@ export class ResultController {
         const { runs, sourcePort, delegates } = this.execution;
         const before = await NativeNarratorOrchestrationAuthority.prototype.inspectDelegation.call(this.host.turnOrchestration, capture, { host: this.host, handle, tx });
         const rootStamp = hash(before.root), parentStamp = hash(before.parentRoot);
-        if (before.root.parentRef?.parentRunId !== before.parentRunId
-            || before.root.sourceBinding.sourceAuthority === 'rp_chat' && before.parentRoot.parentRef !== null) fail('native_orchestration_result_publication_stale');
+        if (before.root.parentRef?.parentRunId !== before.parentRunId) fail('native_orchestration_result_publication_stale');
         const childPlan = await this.host.turnOrchestration.plans.getRevision(handle, before.childPlanRef);
         const scope = { handle, tx, parent: before.parentRoot, parentAttempt: before.parentAttempt, childPlan,
             inputRefs: before.inputRefs, effectiveGrantDigest: before.grantDigest, budgetCeiling: before.root.parentRef.budgetCeiling, phase: 'confirm_budget' };
@@ -99,7 +98,7 @@ export class ResultController {
                     const { root, proof, payload, childPlan, identity: current } = checked;
                     const saved = await runs.control(handle, controlCommandId('result.publish', { runId, effectId }), {
                         ...runGuard(root), operation: 'result.publish', detail: { effectId, resultId } }, async ({ tx, root, now }) => {
-                        if (hash(root) !== hash(checked.root) || root.cancelRequested || root.status !== 'running') fail('native_orchestration_result_publication_stale');
+                        if (!equal(root, checked.root) || root.cancelRequested || root.status !== 'running') fail('native_orchestration_result_publication_stale');
                         const record = await readAttempt(tx, handle, root, proof.producerAttemptId), intent = (await readEffect(tx, handle, root, effectId)).doc;
                         if (root.sourceBinding.sourceAuthority === 'rp_chat' && root.resultRefs.length && !isRpDelegatedControlGraph(root) || root.outputClaims.length || record.doc.status !== 'running' || record.doc.epoch !== root.epoch || !equal(record.doc.effectRefs, [effectId])
                             || record.doc.resultRefs.length || intent.status !== 'confirmed' || root.pendingEffectRefs.includes(effectId)

@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments } from '../repositories/common.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { audienceContextPin } from './audience-source-contracts.js';
 
@@ -19,7 +19,7 @@ export function rpAgentGraphProfile(plan) {
         const retrievalPins = node.capabilities.includes('memory.retrieve') ? plan.dependencyPins.filter(pin => node.dependencyPinIds.includes(pin.pinId)
             && pin.port === 'context' && pin.resourceRef.scope === 'player' && pin.resourceRef.retrievalProfileId) : [];
         if (node.outputs.length !== 1 || node.outputs[0].type !== 'text'
-            || hash([...node.capabilities].sort()) !== hash(['generation.send', ...retrievalPins.length ? ['memory.retrieve'] : []].sort()) || !nodeModelRoutePins(node, plan.dependencyPins).length
+            || !equalNativeDocuments([...node.capabilities].sort(), ['generation.send', ...retrievalPins.length ? ['memory.retrieve'] : []].sort()) || !nodeModelRoutePins(node, plan.dependencyPins).length
             || node.dependencyPinIds.length !== nodeModelRoutePins(node, plan.dependencyPins).length + retrievalPins.length + (audienceContextPin(node, plan.dependencyPins) ? 1 : 0)) fail();
         inputs[node.nodeId] = graph.edges.filter(edge => edge.to.nodeId === node.nodeId).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
         if (inputs[node.nodeId].length !== node.inputs.length || new Set(inputs[node.nodeId].map(edge => edge.from.nodeId)).size !== inputs[node.nodeId].length
@@ -33,7 +33,7 @@ export function rpAgentGraphProfile(plan) {
                 || !next?.inputs.some(port => port.name === edge.to.port && port.type === 'text' && port.required)) fail();
         }
     }
-    if (hash([...graph.entryNodeIds].sort()) !== hash(agents.filter(node => !inputs[node.nodeId].length).map(node => node.nodeId).sort())) fail();
+    if (!equalNativeDocuments([...graph.entryNodeIds].sort(), agents.filter(node => !inputs[node.nodeId].length).map(node => node.nodeId).sort())) fail();
     while (ordered.length < agents.length) {
         const ready = agents.find(node => !ordered.includes(node) && inputs[node.nodeId].every(edge => ordered.some(producer => producer.nodeId === edge.from.nodeId)));
         if (!ready) fail();

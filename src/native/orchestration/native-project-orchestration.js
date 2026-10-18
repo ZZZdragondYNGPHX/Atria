@@ -214,7 +214,7 @@ export class NativeProjectOrchestrationAuthority {
                 if (!delegationPlans.has(pinId)) {
                     const child = await this.#delegate().planSelection(handle, plan, pinId, resolveControlModel);
                     delegationPlans.set(pinId, child);
-                    delegationDigests.push([pinId, { pin: child.pin, models: child.profiles.map(model => ({ nodeId: model.node.nodeId, configDigest: model.configDigest })),
+                    delegationDigests.push([pinId, { pin: child.pin, closureDigest: child.closureDigest, models: child.profiles.map(model => ({ nodeId: model.node.nodeId, configDigest: model.configDigest })),
                         pool: child.poolProfiles.map(model => ({ pinId: model.pin.pinId, configDigest: model.configDigest })) }]);
                 }
             }
@@ -255,7 +255,7 @@ export class NativeProjectOrchestrationAuthority {
             if (!route || hash(route) !== pin.integrity) fail('native_orchestration_project_route_mismatch');
             resources.push(...await host.executionResources(handle, route));
         }
-        for (const child of state.delegationPlans.values()) for (const model of child.poolProfiles) resources.push(...await host.executionResources(handle, model.resolved.route));
+        for (const child of state.delegationPlans.values()) for (const model of child.resourceProfiles ?? child.poolProfiles) resources.push(...await host.executionResources(handle, model.resolved.route));
         return [...new Set(resources)].sort();
     }
 
@@ -673,7 +673,7 @@ export class NativeProjectOrchestrationAuthority {
                     fail('native_orchestration_project_round_completion_stale');
                 await this.#current(state.selection);
                 const current = await inspectNativeProjectRoundCompletion(finished.completion, { host, handle, runId });
-                if (hash(current) !== hash(descriptor) || root.sourceBinding.bindingDigest !== descriptor.sourceBindingDigest) fail('native_orchestration_project_round_completion_stale');
+                if (!equal(current, descriptor) || root.sourceBinding.bindingDigest !== descriptor.sourceBindingDigest) fail('native_orchestration_project_round_completion_stale');
                 const receipt = { schemaVersion: 1, receiptKind: 'project_round', receiptId, ...descriptor, createdAt: now };
                 await putImmutable(tx, controlRecordKey(handle, runId, 'receipt', receiptId), receipt);
                 root.progress.steps++;

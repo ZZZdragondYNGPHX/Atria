@@ -1,6 +1,6 @@
 import { assertNativeTurnPermit } from './native-turn-permit.js';
 import { assertNativeExperienceContract } from '../../../public/shared/native-experience-contract.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument as hash } from '../repositories/common.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 
 const captures = new WeakMap();
@@ -15,7 +15,7 @@ export function captureNativeAuthorityResolver({ host, handle, base, producer })
     const contract = assertNativeExperienceContract(base.manifest.runtime?.experienceContract), user = base.timeline.at(-1);
     if (!contract.authorityRuntime || !contract.capabilities.some(item => item.id === 'authority-transaction' && item.version === 1)
         || user?.role !== 'user' || typeof user.content !== 'string' || !user.messageId
-        || hash(anchor) !== hash({ branchId: base.revision.branchId, revisionId: base.revision.revisionId })) denied();
+        || !equalNativeDocuments(anchor, { branchId: base.revision.branchId, revisionId: base.revision.revisionId })) denied();
     const snapshot = immutable(base), capture = Object.freeze({});
     const logicalDescriptor = immutable({ sourceRef: { sessionId: base.session.sessionId, branchId: base.revision.branchId, revisionId: base.revision.revisionId },
         packageRef: { packageId: base.session.packageId, packageVersionId: base.session.packageVersionId, entryPointId: base.session.entryPointId },

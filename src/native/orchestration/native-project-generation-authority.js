@@ -5,7 +5,7 @@ import { ProjectAgentService } from '../project-agent.js';
 import { ProjectTaskRepository } from '../agent-intelligence/project-task-repository.js';
 import { StudioService } from '../authoring/studio-service.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument as hash } from '../repositories/common.js';
 import { executeProjectSkillWork } from '../skill-invocation.js';
 import { prepareRetrievalCompute } from '../retrieval-compute.js';
 import { pinSkillEntries, loadAlwaysSkills, boundSkillFile } from '../../../public/shared/skill-invocation.js';
@@ -13,7 +13,7 @@ import { ModelPort } from './model-port.js';
 import { readFanoutFrame } from './fanout-controller.js';
 import { readEffect } from './effect-contracts.js';
 import { readAttempt } from './controller-common.js';
-import { checkedRecord } from './plan-repository.js';
+import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { readProjectDelegation, readProjectDelegationInputs } from './project-delegation-contracts.js';
@@ -190,25 +190,37 @@ export async function captureNativeProjectWorker(capture, { requestId, task, out
  * actual opaque parent capture and fresh original delegation/Task/bank facts
  * can bind that child to the already allocated private Scheduler scope. */
 async function readDelegatedBoundary(capture, { candidateChild = null, candidateParentAttempt = null, bound = null, permit = null }) {
-    const original = generations.get(capture);
+    return readDelegatedGenerationBoundary(generations.get(capture), { candidateChild, candidateParentAttempt, bound, permit });
+}
+
+async function readDelegatedGenerationBoundary(original, { candidateChild = null, candidateParentAttempt = null, bound = null, permit = null, controlPermit = null }) {
     if (!original?.workerStage) fail();
     const outer = original.state.fanoutChildPermit ? fanoutChildren.get(original.state.fanoutChildPermit) : null;
-    if (original.state.fanoutChildPermit && (!outer?.delegation || !bound || hash(bound) !== hash(outer.delegation) || candidateChild || candidateParentAttempt || permit)) fail();
-    const lineageOwner = outer?.generation ?? original;
+    if (original.state.fanoutChildPermit && !outer?.delegation) fail();
+    const inherited = outer && bound && equalNativeDocuments(bound, outer.delegation);
+    if (inherited && (candidateChild || candidateParentAttempt || permit)) fail();
+    // A deeper boundary must come from this actual captured child Node. The
+    // parent allocation is re-read recursively; a supplied Run id cannot bind it.
+    const parentLineage = outer && !inherited ? await readDelegatedGenerationBoundary(outer.generation,
+        { bound: outer.delegation, controlPermit: outer.controlPermit }) : null;
+    const lineageOwner = inherited ? outer.generation : original;
     const { host, handle } = original.state, engine = host.persistence._engine;
     const scope = permit ? fanoutChildren.get(permit) : null;
     if (permit && scope?.generation !== original) fail();
     const scopeState = scope ? { ...original.state, fanoutChildPermit: permit, fanoutParentState: original.state } : original.state;
-    await currentGeneration(original, { host, handle }, scopeState);
+    await currentGeneration(original, { host, handle }, scopeState, controlPermit);
     return engine.withTransaction(handle, async tx => {
         const runId = bound?.childRunId ?? candidateChild?.runId;
         const child = runId && (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId }))?.doc;
-        if (!child?.parentRef || candidateChild && hash(candidateChild) !== hash(child)) fail();
+        if (!child?.parentRef || candidateChild && !equalNativeDocuments(candidateChild, child)) fail();
         const parent = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: child.parentRef.parentRunId }))?.doc;
         if (!parent) fail();
         const lineage = await readProjectDelegation(tx, handle, parent, child.runId), source = child.sourceBinding.sourceRef;
         const task = await readOriginalProjectTask(tx, handle, source), generation = task?.attempts.find(attempt => attempt.attemptId === original.projectAttemptId);
-        if (!lineage || candidateParentAttempt && hash(candidateParentAttempt) !== hash(lineage.parentAttempt)
+        if (parentLineage && (parent.runId !== parentLineage.lineage.child.runId
+            || lineage?.parentAttempt.nodeId !== original.workerStage.task.nodeId
+            || !parentLineage.lineage.graph.nodes.some(node => node.nodeId === original.workerStage.task.nodeId && node.capabilities.includes('agent.delegate')))) fail();
+        if (!lineage || candidateParentAttempt && !equalNativeDocuments(candidateParentAttempt, lineage.parentAttempt)
             || parent.status !== 'running' || parent.cancelRequested || child.cancelRequested || !['admitted', 'running'].includes(child.status)
             || child.parentRef.parentEpoch !== parent.epoch || lineage.parentAttempt.epoch !== parent.epoch
             || lineage.parentAttempt.status !== (lineage.mode === 'handoff' ? 'waiting_child' : 'running')
@@ -223,7 +235,7 @@ async function readDelegatedBoundary(capture, { candidateChild = null, candidate
         const binding = immutable({ childRunId: child.runId, parentRunId: parent.runId, parentAttemptId: lineage.parentAttempt.attemptId,
             childEpoch: child.epoch, parentEpoch: parent.epoch, planRef: child.planRef,
             sourceBindingDigest: child.sourceBinding.bindingDigest, requestId: lineageOwner.requestId, projectAttemptId: original.projectAttemptId });
-        if (bound && hash(bound) !== hash(binding)) fail();
+        if (bound && !equalNativeDocuments(bound, binding)) fail();
         return { lineage, binding };
     });
 }
@@ -237,8 +249,8 @@ export async function captureNativeProjectDelegatedWorker(capture, permit, { req
         if (!child.delegation) fail();
         const { lineage } = await readDelegatedBoundary(capture, { bound: child.delegation, permit });
         const node = lineage.graph.nodes.find(node => node.nodeId === nodeId), pin = node && nodeModelRoutePins(node, lineage.plan.dependencyPins)[0];
-        if (!node || node.kind !== 'agent' || hash(node.capabilities) !== hash(['generation.send']) || node.dependencyPinIds.length !== 1
-            || !pin || pin.port !== 'model' || hash(routeRef) !== hash(pin.resourceRef)
+        if (!node || !['agent', 'planner', 'review', 'judge'].includes(node.kind) || !node.capabilities.includes('generation.send')
+            || !pin || pin.port !== 'model' || !equalNativeDocuments(routeRef, pin.resourceRef)
             || lineage.plan.definition.nodes.some(initial => initial.nodeId === nodeId)) fail();
     }
     const route = await original.state.host.persistence.getRuntimeRoute(original.state.handle, routeRef.runtimeRouteId);
@@ -246,7 +258,7 @@ export async function captureNativeProjectDelegatedWorker(capture, permit, { req
     const state = { ...original.state, fanoutChildPermit: permit, fanoutParentState: original.state };
     const stage = Object.freeze({});
     generations.set(stage, { ...original, state, requestId, originalRequestId: original.originalRequestId ?? original.requestId,
-        workerStage: immutable({ task, outputContract, routeRef }), toolReceipts: [], toolResults: [] });
+        workerStage: immutable({ task: { ...task, nodeId }, outputContract, routeRef }), toolReceipts: [], toolResults: [] });
     await inspectNativeProjectGeneration(stage, { host: state.host, handle: state.handle });
     return stage;
 }
@@ -282,8 +294,8 @@ export function inspectNativeProjectGenerationIdentity(capture, expected) {
         selection: NativeProjectAgentExecutor.prototype.assertOriginalPreflight.call(state.executor, state.preflight).selection });
 }
 
-async function currentGeneration(generation, expected, scopeState = generation.state) {
-    const current = await currentOperation(scopeState, expected), attempt = current.task.attempts.find(item => item.attemptId === generation.projectAttemptId);
+async function currentGeneration(generation, expected, scopeState = generation.state, controlPermit = null) {
+    const current = await currentOperation(scopeState, expected, controlPermit), attempt = current.task.attempts.find(item => item.attemptId === generation.projectAttemptId);
     if (current.task.executionFingerprint !== generation.currentSourceFingerprint || hash(current.task.conversation) !== generation.conversationDigest
         || attempt?.status !== 'started' || attempt.kind !== 'generation' || attempt.requestId !== (generation.originalRequestId ?? generation.requestId)
         || hash(attempt.calls) !== generation.callsDigest) fail('native_orchestration_source_stale');
@@ -316,7 +328,8 @@ export async function withNativeProjectDelegatedFanout(capture, { fanoutAttemptI
 
 async function withProjectChildren(capture, workers, options, delegatedMode, fanoutAttemptId = null) {
     const generation = generations.get(capture);
-    if (!generation || Boolean(generation.workerStage) !== delegatedMode || generation.state.fanoutChildPermit && !fanoutAttemptId || !Array.isArray(workers) || !workers.length) fail();
+    if (!generation || Boolean(generation.workerStage) !== delegatedMode || !Array.isArray(workers) || !workers.length
+        || generation.state.fanoutChildPermit && !fanoutAttemptId && (!delegatedMode || workers.some(worker => !worker.delegatedChild || !worker.delegatedParentAttempt))) fail();
     const { state } = generation, parentScope = schedulerFrame(state), expected = parentScope.expected;
     await inspectNativeProjectGeneration(capture, { host: state.host, handle: state.handle });
     const delegated = new Map();
@@ -330,17 +343,17 @@ async function withProjectChildren(capture, workers, options, delegatedMode, fan
                 || workers.length !== frame.branches.length) fail();
             for (const worker of workers) {
                 const branch = frame.branches.find(branch => branch.entryAttemptId === worker.entryAttemptId);
-                if (!branch || hash([...worker.nodeIds].sort()) !== hash([...branch.scopeNodeIds].sort())) fail();
+                if (!branch || !equalNativeDocuments([...worker.nodeIds].sort(), [...branch.scopeNodeIds].sort())) fail();
                 const resources = [];
                 for (const id of branch.scopeNodeIds) {
                     const node = lineage.graph.nodes.find(node => node.nodeId === id), pin = node && nodeModelRoutePins(node, lineage.plan.dependencyPins)[0];
                     if (!['agent', 'planner', 'judge'].includes(node?.kind) || !pin
-                        || hash([...node.capabilities].sort()) !== hash(['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []].sort())) fail();
+                        || !equalNativeDocuments([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []].sort())) fail();
                     const route = await state.host.persistence.getRuntimeRoute(state.handle, pin.resourceRef.runtimeRouteId);
                     if (hash(route) !== pin.integrity) fail();
                     resources.push(...await state.host.executionResources(state.handle, route));
                 }
-                if (hash([...new Set(resources)].sort()) !== hash([...new Set(worker.resources)].sort())) fail();
+                if (!equalNativeDocuments([...new Set(resources)].sort(), [...new Set(worker.resources)].sort())) fail();
             }
         });
     }
@@ -348,15 +361,28 @@ async function withProjectChildren(capture, workers, options, delegatedMode, fan
         if (worker.delegatedChild === undefined && worker.delegatedParentAttempt === undefined) continue;
         const { lineage, binding } = await readDelegatedBoundary(capture, { candidateChild: worker.delegatedChild, candidateParentAttempt: worker.delegatedParentAttempt });
         const ids = lineage.plan.definition.nodes.filter(node => node.capabilities.includes('generation.send')).map(node => node.nodeId).sort();
-        if (hash([...worker.nodeIds].sort()) !== hash(ids) || lineage.child.graphRevision !== 0) fail();
+        if (!equalNativeDocuments([...worker.nodeIds].sort(), ids) || lineage.child.graphRevision !== 0) fail();
         const resources = [];
-        for (const pin of lineage.plan.dependencyPins) {
-            if (pin.port !== 'model' || pin.resourceRef.scope !== 'player') fail();
-            const route = await state.host.persistence.getRuntimeRoute(state.handle, pin.resourceRef.runtimeRouteId);
-            if (hash(route) !== pin.integrity) fail();
-            resources.push(...await state.host.executionResources(state.handle, route));
-        }
-        if (hash([...new Set(resources)].sort()) !== hash([...new Set(worker.resources)].sort())) fail();
+        const readResources = async (plan, path = new Set()) => {
+            const identity = hash(plan);
+            if (path.has(identity)) fail();
+            const next = new Set(path); next.add(identity);
+            for (const pin of plan.dependencyPins) {
+                if (pin.port === 'plan') {
+                    const child = await state.host.persistence._engine.withTransaction(state.handle, tx => readPlanRevision(tx, state.handle, pin.resourceRef));
+                    if (hash(child) !== pin.integrity || !plan.definition.nodes.some(node => node.capabilities.includes('agent.delegate')
+                        && node.policy.allowedPlanPinIds?.includes(pin.pinId) && node.dependencyPinIds.includes(pin.pinId))) fail();
+                    await readResources(child, next);
+                } else {
+                    if (pin.port !== 'model' || pin.resourceRef.scope !== 'player') fail();
+                    const route = await state.host.persistence.getRuntimeRoute(state.handle, pin.resourceRef.runtimeRouteId);
+                    if (hash(route) !== pin.integrity) fail();
+                    resources.push(...await state.host.executionResources(state.handle, route));
+                }
+            }
+        };
+        await readResources(lineage.plan);
+        if (!equalNativeDocuments([...new Set(resources)].sort(), [...new Set(worker.resources)].sort())) fail();
         delegated.set(worker, binding);
     }
     const controlPermit = Object.freeze({}), control = { generation, active: true };
@@ -396,7 +422,7 @@ export async function runNativeProjectSkillWork(capture, { context, operation, i
     const current = await currentOperation(state, { host: state.host, handle: state.handle });
     if (context.kind !== 'project' || context.projectId !== state.projectId || context.taskId !== state.taskId || context.revision !== state.preflight.baseRevision) fail();
     const routeRef = { scope: 'player', runtimeRouteId: state.startInput.runtimeRouteId };
-    if (context.routeRef && hash(context.routeRef) !== hash(routeRef)) fail();
+    if (context.routeRef && !equalNativeDocuments(context.routeRef, routeRef)) fail();
     const settings = operation === 'list' ? (await state.host.extensions.settings(state.handle)).value : undefined;
     const compute = await prepareRetrievalCompute({ handle: state.handle, context: { ...context, routeRef }, profile: { mode: 'embed', purpose: 'studio.skill.v1' },
         persistence: state.host.persistence, core: state.host.sessionCore, agent: state.host.agent, studio: state.host.studio });
@@ -415,7 +441,7 @@ export async function readNativeProjectSkillInventory(capture, expected) {
     const inventories = records.filter(record => record.operation === 'list');
     if (inventories.length !== 1) fail();
     const resultFor = (operation, input) => {
-        const matches = records.filter(record => record.operation === operation && hash(record.input) === hash(input));
+        const matches = records.filter(record => record.operation === operation && equalNativeDocuments(record.input, input));
         if (matches.length !== 1) fail();
         return matches[0].result;
     };
@@ -434,7 +460,7 @@ export async function prepareNativeProjectTaskTool(capture, { port, result, mode
     const proof = await ModelPort.prototype.inspectResultCompletion.call(port, state.handle, { result, runId: root.runId, effectId: modelEffectId });
     const calls = result.generated.response.toolCalls ?? [], matches = calls.filter(call => (call.raw?.id || call.id) === input.callId);
     if (proof.outputType !== 'json' || proof.sourceBinding.sourceAuthority !== 'project' || input.attemptId !== identity.projectAttemptId
-        || matches.length !== 1 || matches[0].name !== input.name || hash(matches[0].args) !== hash(input.args)
+        || matches.length !== 1 || matches[0].name !== input.name || !equalNativeDocuments(matches[0].args, input.args)
         || root.sourceBinding.sourceRef.executionFingerprint !== identity.sourceRequest.executionFingerprint) fail();
     const attempt = await port.runs.engine.withTransaction(state.handle, async tx => (await readAttempt(tx, state.handle, root, proof.producerAttemptId)).doc);
     const node = root.graph.nodes.find(item => item.nodeId === attempt.nodeId);
@@ -454,7 +480,7 @@ export async function prepareNativeProjectTaskTool(capture, { port, result, mode
 export async function consumeNativeProjectToolPermit(permit, { agent, handle, projectId, taskId, task, input }) {
     const value = toolPermits.get(permit), state = value?.generation.state;
     if (!value || value.used || state.host.agent !== agent || state.handle !== handle || state.projectId !== projectId || state.taskId !== taskId
-        || hash(value.input) !== hash(input) || hash(value.result) !== value.resultHash) fail();
+        || !equalNativeDocuments(value.input, input) || hash(value.result) !== value.resultHash) fail();
     await inspectNativeProjectGeneration(value.capture, { host: state.host, handle });
     const rejected = await value.port.runs.engine.withTransaction(handle, async tx => {
         try {
@@ -466,19 +492,19 @@ export async function consumeNativeProjectToolPermit(permit, { agent, handle, pr
             || root.hostGeneration !== fence.generation || intent.status !== 'dispatching' || !intent.dispatchToken || intent.nodeAttemptId !== value.nodeAttemptId
             || intent.actionRef.kind !== projectToolAction(input.name) || intent.capability !== projectToolCapability(input.name)
             || intent.inputRef.kind !== projectToolAction(input.name) || model.status !== 'confirmed' || model.capability !== 'generation.send'
-            || intent.inputHash !== hash(intent.inputRef) || hash(intent.inputRef.call) !== hash(input)
+            || intent.inputHash !== hash(intent.inputRef) || !equalNativeDocuments(intent.inputRef.call, input)
             || intent.inputRef.modelEffectId !== value.modelEffectId || intent.inputRef.modelResultHash !== value.resultHash
             || intent.grantDigest !== model.grantDigest || intent.risk !== 'R1' || intent.requiresApproval || intent.approvalRef !== null
-            || hash(intent.targetRef) !== hash({ projectId, taskId, name: input.name })
+            || !equalNativeDocuments(intent.targetRef, { projectId, taskId, name: input.name })
             || intent.sourceBindingDigest !== root.sourceBinding.bindingDigest
-            || hash(intent.budgetAttemptRef?.authorityRef) !== hash(root.budgetAuthorityRef)
+            || !equalNativeDocuments(intent.budgetAttemptRef?.authorityRef, root.budgetAuthorityRef)
             || root.sourceBinding.bindingDigest !== value.root.sourceBinding.bindingDigest) fail();
             await value.port.budgetPort.verifyBudgetAttempt({ handle, tx, root, intent, budgetAttemptRef: intent.budgetAttemptRef });
             await inspectNativeProjectGeneration(value.capture, { host: state.host, handle });
             if (hash(value.result) !== value.resultHash) fail();
             const currentFence = await value.port.runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
             const current = await value.port.runs.get(handle, root.runId);
-            if (current.cancelRequested || current.status !== 'running' || hash(current) !== hash(root)
+            if (current.cancelRequested || current.status !== 'running' || !equalNativeDocuments(current, root)
             || currentFence.hostBootId !== fence.hostBootId || currentFence.generation !== fence.generation)
                 fail('native_orchestration_project_tool_denied');
             return null;
@@ -520,14 +546,14 @@ export async function executeNativeProjectTaskTool(permit) {
             if (error.code !== 'storage_commit_unknown' || !value.completed) throw error;
             const task = await state.host.agent._repository.get(state.handle, state.projectId, state.taskId);
             const saved = task?.attempts.find(item => item.attemptId === value.input.attemptId)?.calls.find(item => item.callId === value.input.callId)?.nativeReceipt;
-            if (hash(saved ?? null) !== hash(value.completed.receipt)) throw error;
+            if (!equalNativeDocuments(saved ?? null, value.completed.receipt)) throw error;
             result = value.completed.result;
         }
         const current = await ProjectAgentService.prototype.observeComputeSource.call(state.host.agent, state.handle, state.projectId, state.taskId);
         const attempt = current.task.attempts.find(item => item.attemptId === value.input.attemptId);
         const call = attempt?.calls.find(item => item.callId === value.input.callId), receipt = call?.nativeReceipt;
         assertProjectToolReceipt(receipt);
-        if (!value.completed || hash(receipt) !== hash(value.completed.receipt) || receipt.runId !== value.root.runId || receipt.effectId !== value.toolEffectId
+        if (!value.completed || !equalNativeDocuments(receipt, value.completed.receipt) || receipt.runId !== value.root.runId || receipt.effectId !== value.toolEffectId
             || receipt.resultHash !== hash(projectToolResultPayload(value.input.name, result)) || receipt.toFingerprint !== current.task.executionFingerprint
             || receipt.fromFingerprint !== value.generation.currentSourceFingerprint || receipt.fromFingerprint !== state.currentSourceFingerprint
             || current.project.revision.revision !== state.preflight.baseRevision) fail();
@@ -551,7 +577,7 @@ export async function finishNativeProjectGeneration(capture, { port, result, eff
     const conversation = projectAgentRoundConversation({ conversation: identity.conversation, intent: identity.intent,
         response: result.generated.response, results: generation.toolResults });
     if (proof.outputType !== 'json' || proof.sourceBinding.sourceAuthority !== 'project' || input.attemptId !== generation.projectAttemptId
-        || input.status !== 'completed' || hash(input.conversation) !== hash(conversation)) fail('native_orchestration_project_round_conversation_changed');
+        || input.status !== 'completed' || !equalNativeDocuments(input.conversation, conversation)) fail('native_orchestration_project_round_conversation_changed');
     const root = await port.runs.get(state.handle, runId), model = await port.runs.engine.withTransaction(state.handle,
         async tx => (await readEffect(tx, state.handle, root, effectId)).doc);
     await port.effects.authorizeEffect({ handle: state.handle, root, intent: model, phase: 'consume' });
@@ -568,11 +594,11 @@ export async function finishNativeProjectGeneration(capture, { port, result, eff
         const observed = await ProjectAgentService.prototype.observeComputeSource.call(state.host.agent, state.handle, state.projectId, state.taskId);
         const attempt = observed.task.attempts.find(item => item.attemptId === generation.projectAttemptId);
         if (attempt?.status !== 'completed' || observed.task.executionFingerprint !== generation.currentSourceFingerprint
-            || hash(observed.task.conversation) !== hash(conversation) || hash(attempt.calls) !== generation.callsDigest) throw error;
+            || !equalNativeDocuments(observed.task.conversation, conversation) || hash(attempt.calls) !== generation.callsDigest) throw error;
         task = observed.task;
     }
     const attempt = task.attempts.find(item => item.attemptId === generation.projectAttemptId), completion = Object.freeze({});
-    if (attempt?.status !== 'completed' || task.executionFingerprint !== generation.currentSourceFingerprint || hash(task.conversation) !== hash(conversation)
+    if (attempt?.status !== 'completed' || task.executionFingerprint !== generation.currentSourceFingerprint || !equalNativeDocuments(task.conversation, conversation)
         || hash(attempt.calls) !== generation.callsDigest) fail('native_orchestration_project_round_finish_denied');
     roundCompletions.set(completion, { generation, port, result, resultHash: hash(result), proof, task,
         descriptor: immutable({ runId, nodeAttemptId: proof.producerAttemptId, effectId, modelReceiptRef: proof.receiptRef, modelPayloadHash: proof.payloadHash,
@@ -588,12 +614,12 @@ export async function finishNativeProjectGeneration(capture, { port, result, eff
 export async function consumeNativeProjectGenerationPermit(permit, expected) {
     const value = generationPermits.get(permit), state = value?.generation.state;
     if (!value || value.used || state.host.agent !== expected.agent || state.handle !== expected.handle
-        || state.projectId !== expected.projectId || state.taskId !== expected.taskId || hash(expected.input) !== hash(value.input))
+        || state.projectId !== expected.projectId || state.taskId !== expected.taskId || !equalNativeDocuments(expected.input, value.input))
         fail('native_orchestration_project_round_finish_denied');
     value.used = true;
     const proof = await ModelPort.prototype.inspectResultCompletion.call(value.port, state.handle,
         { result: value.result, runId: value.proof.runId, effectId: value.effectId });
-    if (hash(value.result) !== value.resultHash || hash(proof) !== hash(value.proof)) fail('native_orchestration_project_round_finish_denied');
+    if (hash(value.result) !== value.resultHash || !equalNativeDocuments(proof, value.proof)) fail('native_orchestration_project_round_finish_denied');
     // This includes the real producer, Source, Route and installed Skills.
     // A rejection happens before the writer has cached an older mutable Task.
     await readNativeProjectSkillInventory(value.capture, { host: value.port.host, handle: state.handle });
@@ -603,7 +629,7 @@ export async function consumeNativeProjectGenerationPermit(permit, expected) {
 export function assertNativeProjectGenerationWrite(permit, { agent, handle, projectId, taskId, task, writerTask, input }) {
     const value = generationPermits.get(permit), generation = value?.generation, state = generation?.state;
     if (!value || !value.used || value.applied || state.host.agent !== agent || state.handle !== handle
-        || state.projectId !== projectId || state.taskId !== taskId || hash(input) !== hash(value.input))
+        || state.projectId !== projectId || state.taskId !== taskId || !equalNativeDocuments(input, value.input))
         fail('native_orchestration_project_round_finish_denied');
     assertFrame(state, { host: state.host, handle });
     const attempt = task.attempts.find(item => item.attemptId === generation.projectAttemptId);
@@ -625,7 +651,7 @@ export async function inspectNativeProjectRoundCompletion(completion, { host, ha
         || hash(attempt) !== value.descriptor.attemptDigest || hash(current.task.conversation) !== value.descriptor.conversationDigest)
         fail('native_orchestration_project_round_completion_stale');
     const proof = await ModelPort.prototype.inspectResultCompletion.call(value.port, handle, { result: value.result, runId, effectId: value.descriptor.effectId });
-    if (hash(proof) !== hash(value.proof)) fail('native_orchestration_project_round_completion_stale');
+    if (!equalNativeDocuments(proof, value.proof)) fail('native_orchestration_project_round_completion_stale');
     return value.descriptor;
 }
 
@@ -645,13 +671,13 @@ export async function confirmNativeProjectRoundSettlement(completion) {
             await current();
             const root = await port.runs.get(state.handle, descriptor.runId), { doc: attempt } = await readAttempt(tx, state.handle, root, descriptor.nodeAttemptId);
             const round = await readProjectRoundReceipt(tx, state.handle, root, descriptor.nodeAttemptId, { projectAgent: state.host.agent });
-            if (!round || Object.entries(descriptor).some(([key, field]) => hash(round.receipt[key]) !== hash(field)) || attempt.status !== 'completed')
+            if (!round || Object.entries(descriptor).some(([key, field]) => !equalNativeDocuments(round.receipt[key], field)) || attempt.status !== 'completed')
                 fail('native_orchestration_project_round_not_ready');
             const settlement = await readAttemptSettlement(tx, state.handle, root, attempt);
             const costs = await port.budgetPort.observeEffectClosure(state.handle, { authorityRef: root.budgetAuthorityRef, effectIds: attempt.effectRefs }, { tx });
             await current();
             if (settlement.reasonCode !== 'project_round_ready' || !costs.closed || root.cancelRequested || root.status !== 'running'
-                || hash(await port.runs.get(state.handle, descriptor.runId)) !== hash(root)) fail('native_orchestration_project_round_not_ready');
+                || !equalNativeDocuments(await port.runs.get(state.handle, descriptor.runId), root)) fail('native_orchestration_project_round_not_ready');
             return {};
         } catch (error) {
             if (['native_orchestration_project_round_not_ready', 'native_orchestration_project_round_completion_stale',

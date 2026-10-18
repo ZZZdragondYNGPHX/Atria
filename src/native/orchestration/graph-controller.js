@@ -1,5 +1,5 @@
 import { assertNativeId } from '../identity.js';
-import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
+import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertObject, assertCounter, assertDigest, assertPlanDefinition } from '../../../public/shared/native-orchestration-contracts.js';
 import { controlCommandId, controlRecordKey, readAttempt } from './controller-common.js';
@@ -109,7 +109,7 @@ export class GraphController {
                     pending.push(...candidate.graph.edges.filter(edge => edge.from.nodeId === id).map(edge => edge.to.nodeId));
                 }
                 if (!reachable.has(candidate.graph.outputContract.ownerNodeId)) throw issue('native_orchestration_patch_removes_output_path');
-                if (!requests.finalize && !requests.replan && hashNativeDocument({ graph: candidate.graph, control: candidate.nodeControl }) === hashNativeDocument({ graph: root.graph, control: root.nodeControl })) throw issue('native_orchestration_patch_no_progress');
+                if (!requests.finalize && !requests.replan && equalNativeDocuments({ graph: candidate.graph, control: candidate.nodeControl }, { graph: root.graph, control: root.nodeControl })) throw issue('native_orchestration_patch_no_progress');
                 await this.authorizePatch({ handle, tx, root, producer, patch });
                 if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(issue('native_orchestration_patch_denied'));
             } catch (error) {

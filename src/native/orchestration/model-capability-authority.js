@@ -1,6 +1,6 @@
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { GenerationError } from '../model-prompt-runtime/execution-utils.js';
-import { hashNativeDocument } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument } from '../repositories/common.js';
 import { assertComputeBudget } from '../../../public/shared/native-compute-budget.js';
 import { prepareExecutionPlan } from '../model-prompt-runtime/execution-evidence.js';
 import { isProjectDelegatedControlPlan } from './project-delegated-graph-profile.js';
@@ -32,9 +32,9 @@ async function readModelFailurePlan({ handle, node, dependencyPins, resolver, ro
         required = [...new Set([...required, ...resolved.requirements])];
         if (hashNativeDocument(resolved.route) !== pin.integrity) throw new GenerationError('generation_fallback_route_stale');
         primary ??= resolved;
-        if (hashNativeDocument(resolved.route.promptProgramRef) !== hashNativeDocument(primary.route.promptProgramRef))
+        if (!equalNativeDocuments(resolved.route.promptProgramRef, primary.route.promptProgramRef))
             throw new GenerationError('generation_semantic_authority_changed');
-        if (hashNativeDocument(resolved.connection.networkPolicy) !== hashNativeDocument(primary.connection.networkPolicy))
+        if (!equalNativeDocuments(resolved.connection.networkPolicy, primary.connection.networkPolicy))
             throw new GenerationError('generation_target_policy_denied');
         prepareExecutionPlan(resolved, primary.route.executionPolicy, resolver.provider(resolved.connection.providerAdapter));
         assertComputeBudget(resolved.route.executionPolicy.computeBudget);

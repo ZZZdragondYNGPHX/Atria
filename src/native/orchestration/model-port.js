@@ -5,7 +5,7 @@ import { inspectNativeBackgroundGenerationIdentity } from './native-background-g
 import { NativeGenerationHost } from '../adapters/generation-host.js';
 import { immutable, checkCancellation } from '../model-prompt-runtime/execution-utils.js';
 import { compiledSendIdentity } from '../model-prompt-runtime/compiled-binding.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument as hash } from '../repositories/common.js';
 import { BudgetPort, sendAttemptId } from './budget-port.js';
 import { EffectController } from './effect-controller.js';
 import { readEffect } from './effect-contracts.js';
@@ -72,18 +72,18 @@ export class ModelPort {
             || !sends.length || intent.sourceBindingDigest !== root.sourceBinding.bindingDigest) fail('native_orchestration_model_completion_proof_invalid');
         const reported = generated.routing?.compute?.attempts;
         if (!Array.isArray(reported) || reported.length !== sends.length
-            || hash(generated.snapshot) !== hash(sends.at(-1).snapshot)
+            || !equalNativeDocuments(generated.snapshot, sends.at(-1).snapshot)
             || !generated.response || typeof generated.response.text !== 'string') fail('native_orchestration_model_response_invalid');
         const attempts = [];
         for (const [ordinal, send] of sends.entries()) {
             const ref = send.budgetAttemptRef, expectedSend = compiledSendIdentity(send);
             if (ref.kind !== undefined || ref.effectId !== intent.effectId || ref.providerSendOrdinal !== ordinal
                 || ref.attemptId !== sendAttemptId(intent.effectId, ordinal)
-                || hash(ref.authorityRef) !== hash(root.budgetAuthorityRef)
-                || hash(send.compiledBinding) !== hash(send.snapshot.diagnostics.compiledBinding)
-                || (ordinal === 0 && hash(ref) !== hash(intent.budgetAttemptRef))) fail('native_orchestration_model_send_invalid');
+                || !equalNativeDocuments(ref.authorityRef, root.budgetAuthorityRef)
+                || !equalNativeDocuments(send.compiledBinding, send.snapshot.diagnostics.compiledBinding)
+                || (ordinal === 0 && !equalNativeDocuments(ref, intent.budgetAttemptRef))) fail('native_orchestration_model_send_invalid');
             const row = await this.budgetPort.observeAttempt(handle, ref);
-            if (hash(row) !== hash(reported[ordinal]) || !['charged', 'unknown', 'settled'].includes(row.status))
+            if (!equalNativeDocuments(row, reported[ordinal]) || !['charged', 'unknown', 'settled'].includes(row.status))
                 fail('native_orchestration_model_budget_observation_invalid');
             await this.budgetPort.verifyBudgetAttempt({ handle, tx, root, intent, budgetAttemptRef: ref, expectedSend });
             attempts.push({ budgetAttemptRef: ref, ...expectedSend, status: row.status, usageHash: hash(row.usage),
@@ -114,11 +114,11 @@ export class ModelPort {
         for (const [ordinal, send] of pending.sends.entries()) {
             const fact = facts.attempts[ordinal], ref = send.budgetAttemptRef, expectedSend = compiledSendIdentity(send);
             if (ref.effectId !== intent.effectId || ref.providerSendOrdinal !== ordinal || ref.attemptId !== sendAttemptId(intent.effectId, ordinal)
-                || hash(ref) !== hash(fact.budgetAttemptRef) || ordinal === 0 && hash(ref) !== hash(intent.budgetAttemptRef)
-                || hash(expectedSend) !== hash(Object.fromEntries(['requestId', 'targetFingerprint', 'inputFingerprint'].map(field => [field, fact[field]])))
+                || !equalNativeDocuments(ref, fact.budgetAttemptRef) || ordinal === 0 && !equalNativeDocuments(ref, intent.budgetAttemptRef)
+                || !equalNativeDocuments(expectedSend, Object.fromEntries(['requestId', 'targetFingerprint', 'inputFingerprint'].map(field => [field, fact[field]])))
                 || fact.requestId !== facts.requestId || fact.requestSnapshotHash !== hash(send.snapshot)
                 || fact.compiledBindingFingerprint !== send.compiledBinding.fingerprint
-                || hash(send.compiledBinding) !== hash(send.snapshot.diagnostics.compiledBinding)) fail('native_orchestration_model_send_invalid');
+                || !equalNativeDocuments(send.compiledBinding, send.snapshot.diagnostics.compiledBinding)) fail('native_orchestration_model_send_invalid');
             const row = await this.budgetPort.observeAttempt(handle, ref);
             if (row.status !== fact.status || hash(row.usage) !== fact.usageHash) fail('native_orchestration_model_budget_observation_invalid');
             await this.budgetPort.verifyBudgetAttempt({ handle, tx, root, intent, budgetAttemptRef: ref, expectedSend });
@@ -165,25 +165,25 @@ export class ModelPort {
         const assertPermit = delegated ? () => {
             const identity = inspectNativeRpDelegationIdentity(nativeRpDelegationCapture, { host: this.host, handle });
             if (identity.childRunId !== runId || identity.parentRunId !== logicalInputRef.parentRunId
-                || identity.parentAttemptId !== logicalInputRef.parentAttemptId || hash(identity.request) !== hash(request)
-                || hash(identity.sourceBinding.sourceRef) !== hash(logicalInputRef.sourceRef)) fail('native_orchestration_model_scope_invalid');
+                || identity.parentAttemptId !== logicalInputRef.parentAttemptId || !equalNativeDocuments(identity.request, request)
+                || !equalNativeDocuments(identity.sourceBinding.sourceRef, logicalInputRef.sourceRef)) fail('native_orchestration_model_scope_invalid');
             return identity;
         } : background ? () => {
             const identity = inspectNativeBackgroundGenerationIdentity(nativeBackgroundCapture, { host: this.host, handle });
-            if (hash(identity.request) !== hash(request) || identity.input.invocationId !== logicalInputRef.invocationId
+            if (!equalNativeDocuments(identity.request, request) || identity.input.invocationId !== logicalInputRef.invocationId
                 || identity.input.taskId !== logicalInputRef.taskId) fail('native_orchestration_model_scope_invalid');
             return identity;
         } : rp ? () => {
             const identity = inspectNativeRpGenerationIdentity(nativeRpCapture, { host: this.host, handle });
             if (identity.request.requestId !== request.requestId || identity.sourceRequest.controlId !== logicalInputRef.sourceRef.controlId
-                || identity.prefixDigest !== logicalInputRef.sourceRef.prefixDigest || hash(identity.request) !== hash(request))
+                || identity.prefixDigest !== logicalInputRef.sourceRef.prefixDigest || !equalNativeDocuments(identity.request, request))
                 fail('native_orchestration_model_scope_invalid');
             return identity;
         } : project ? () => {
             const identity = inspectNativeProjectGenerationIdentity(nativeProjectCapture, { host: this.host, handle });
             if (identity.projectId !== request.projectId || identity.taskId !== request.taskId || identity.revision !== request.revision
                 || identity.requestId !== request.requestId || identity.projectAttemptId !== request.projectAttemptId
-                || identity.operationId !== logicalInputRef.operationId || hash(identity.request.routeRef) !== hash(request.routeRef))
+                || identity.operationId !== logicalInputRef.operationId || !equalNativeDocuments(identity.request.routeRef, request.routeRef))
                 fail('native_orchestration_model_scope_invalid');
             return identity;
         } : () => assertNativeTurnPermit(nativeTurnPermit, permitExpected);
@@ -202,7 +202,7 @@ export class ModelPort {
             || intent.epoch !== root.epoch || intent.capability !== 'generation.send'
             || intent.risk !== 'R1' || intent.requiresApproval || intent.approvalRef !== null
             || hash(logicalInputRef) !== logicalInputHash || logicalInputHash !== intent.inputHash
-            || hash(logicalInputRef) !== hash(intent.inputRef)) fail('native_orchestration_model_scope_invalid');
+            || !equalNativeDocuments(logicalInputRef, intent.inputRef)) fail('native_orchestration_model_scope_invalid');
         const activeKey = key(handle, intent);
         if (this.#active.size >= 64 || this.#active.has(activeKey)) fail('native_orchestration_model_busy');
         const pending = { binding: digest(intent), sends: [], generated: null, observation: null, project,
@@ -242,7 +242,7 @@ export class ModelPort {
             } catch (error) {
                 if (error.code !== 'storage_commit_unknown') throw error;
                 const saved = await this.observe(handle, { runId, effectId });
-                if (!saved.observation || hash(saved.observation) !== hash(current.observation)) throw error;
+                if (!saved.observation || !equalNativeDocuments(saved.observation, current.observation)) throw error;
             }
             let completion;
             const result = await this.runs.withConsumption(handle, runId, async ({ tx, root, fence, deny }) => {
@@ -252,7 +252,7 @@ export class ModelPort {
                     || pending.binding !== digest(intent)) fail('native_orchestration_model_consume_denied');
                 await assertChildRunCurrent(tx, handle, root);
                 const saved = await this.#saved(handle, tx, root, intent);
-                if (!saved || hash(saved.observation) !== hash(pending.observation)) fail('native_orchestration_model_consume_denied');
+                if (!saved || !equalNativeDocuments(saved.observation, pending.observation)) fail('native_orchestration_model_consume_denied');
                 checkCancellation(signal);
                 try {
                     await revalidateConsume({ tx });
@@ -266,7 +266,7 @@ export class ModelPort {
                 }
                 const finalIntent = (await readEffect(tx, handle, root, effectId)).doc;
                 const finalSaved = await this.#saved(handle, tx, root, finalIntent);
-                if (pending.binding !== digest(finalIntent) || !finalSaved || hash(finalSaved.observation) !== hash(pending.observation)) return deny();
+                if (pending.binding !== digest(finalIntent) || !finalSaved || !equalNativeDocuments(finalSaved.observation, pending.observation)) return deny();
                 assertPermit();
                 checkCancellation(signal);
                 if (typeof generated.response.text === 'string' && (generated.response.toolCalls === undefined
@@ -299,7 +299,7 @@ export class ModelPort {
                 } catch (writeError) {
                     if (writeError.code !== 'storage_commit_unknown') throw writeError;
                     const saved = await this.observe(handle, { runId, effectId });
-                    if (!saved.observation || hash(saved.observation) !== hash(observation)) throw writeError;
+                    if (!saved.observation || !equalNativeDocuments(saved.observation, observation)) throw writeError;
                 }
             }
             throw error;
@@ -313,7 +313,7 @@ export class ModelPort {
         const descriptor = completion.descriptor, generated = result.generated;
         if (!generated || typeof generated.response?.text !== 'string' || hash(resultPayload(generated.response, descriptor.outputType)) !== descriptor.payloadHash
             || hash(generated.response) !== completion.responseHash || hash(generated.snapshot) !== completion.snapshotHash
-            || hash(generated.routing?.compute?.attempts) !== completion.providerRowsHash || hash(result.receiptRef) !== hash(descriptor.receiptRef))
+            || hash(generated.routing?.compute?.attempts) !== completion.providerRowsHash || !equalNativeDocuments(result.receiptRef, descriptor.receiptRef))
             fail('native_orchestration_model_result_payload_changed');
     }
 
@@ -334,13 +334,13 @@ export class ModelPort {
                 || root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation
                 || root.hostBootId !== completion.hostBootId || root.hostGeneration !== completion.hostGeneration
                 || intent.hostBootId !== root.hostBootId || intent.hostGeneration !== root.hostGeneration
-                || hash(root.sourceBinding) !== hash(descriptor.sourceBinding) || intent.nodeAttemptId !== attempt.attemptId
+                || !equalNativeDocuments(root.sourceBinding, descriptor.sourceBinding) || intent.nodeAttemptId !== attempt.attemptId
                 || attempt.status !== 'running' || attempt.epoch !== root.epoch || attempt.sourceBindingDigest !== root.sourceBinding.bindingDigest
                 || attempt.effectiveGrantDigest !== intent.grantDigest || !attempt.effectRefs.includes(effectId)
                 || intent.epoch !== root.epoch || intent.status !== 'confirmed' || completion.binding !== digest(intent))
                 fail('native_orchestration_model_result_completion_stale');
             const saved = await this.#saved(handle, tx, root, intent);
-            if (!saved || hash(saved.receiptRef) !== hash(descriptor.receiptRef) || hash(saved.observation) !== completion.observationHash
+            if (!saved || !equalNativeDocuments(saved.receiptRef, descriptor.receiptRef) || hash(saved.observation) !== completion.observationHash
                 || saved.observation.dispatchEvidence.reference.responseHash !== completion.responseHash
                 || saved.observation.dispatchEvidence.reference.finalRequestHash !== completion.snapshotHash)
                 fail('native_orchestration_model_result_receipt_changed');
@@ -367,10 +367,10 @@ export class ModelPort {
     async verifyObservation({ handle, tx, root, intent, observation }) {
         const persisted = (await readEffect(tx, handle, root, intent.effectId)).doc;
         const pending = this.#active.get(key(handle, intent));
-        if (hash(persisted) !== hash(intent) || !pending || hash(pending.observation) !== hash(observation))
+        if (!equalNativeDocuments(persisted, intent) || !pending || !equalNativeDocuments(pending.observation, observation))
             fail('native_orchestration_model_completion_proof_required');
         const expected = await this.#observation({ handle, tx, root, intent, pending });
-        if (hash(expected) !== hash(observation)) fail('native_orchestration_model_observation_invalid');
+        if (!equalNativeDocuments(expected, observation)) fail('native_orchestration_model_observation_invalid');
         return expected;
     }
 

@@ -48,7 +48,7 @@ export function graphResultContract(root, producer, graphSnapshot = null) {
         || node.outputs.length !== 1 || !['text', 'json'].includes(node.outputs[0].type)) invalid();
     const direct = graph.edges.filter(edge => edge.from.nodeId === node.nodeId && !edge.loopBack).map(edge => graph.nodes.find(item => item.nodeId === edge.to.nodeId));
     const recipients = direct.flatMap(item => {
-        if (item?.kind === 'fanout' && (['project', 'rp_chat'].includes(root.sourceBinding.sourceAuthority) || root.sourceBinding.sourceAuthority === 'native_session' && root.parentRef !== null)) {
+        if (item?.kind === 'fanout') {
             return [item, ...graphFanoutModelScope(graph, item.nodeId).map(id => graph.nodes.find(node => node.nodeId === id))];
         }
         if (item?.kind !== 'join') return [item];
@@ -56,8 +56,7 @@ export function graphResultContract(root, producer, graphSnapshot = null) {
         if (!successors.length || successors.some(node => !kinds.includes(node?.kind))) invalid();
         return [item, ...successors];
     });
-    if (!recipients.length || recipients.some(item => !kinds.includes(item?.kind) && item?.kind !== 'join'
-        && !(item?.kind === 'fanout' && (['project', 'rp_chat'].includes(root.sourceBinding.sourceAuthority) || root.sourceBinding.sourceAuthority === 'native_session' && root.parentRef !== null)))) invalid();
+    if (!recipients.length || recipients.some(item => !kinds.includes(item?.kind) && !['join', 'fanout'].includes(item?.kind))) invalid();
     return { output: { kind: 'result', ownerNodeId: node.nodeId, slot: 'graph_result', allowPartial: false,
         resultPolicy: { outputType: node.outputs[0].type, maxBytes: policy.maxBytes } },
     audience: { kind: 'graph_nodes', runId: root.runId, nodeIds: [...new Set(recipients.map(item => item.nodeId))].sort(), epoch: producer.epoch,
@@ -164,7 +163,7 @@ async function readGraphResultFacts(tx, handle, root, resultId, recipient, snaps
         || intent.epoch !== producer.epoch || intent.graphRevision !== producer.graphRevision || intent.sourceBindingDigest !== root.sourceBinding.bindingDigest
         || !equal(record.envelope.sourceRefs[1], { kind: 'effect_receipt', runId: root.runId, effectId: intent.effectId, receiptId: receipt.modelReceiptRef.receiptId, observedEpoch: producer.epoch })
         || !equal(record.envelope.sourceRefs.slice(2), plan ? graphResultAudienceSources(root, producer, plan.dependencyPins, snapshot) : [])
-        || producer.inputRefs[0]?.audienceCapture && producer.inputRefs[0]?.kind !== 'native_session_delegation'
+        || producer.inputRefs[0]?.audienceCapture && !['native_session_delegation', 'native_project_delegation', 'native_rp_delegation'].includes(producer.inputRefs[0]?.kind)
             && (!equal(intent.inputRef, producer.inputRefs[0]) || intent.inputHash !== hash(producer.inputRefs[0]))
         || !model || !equal(model.receiptRef, receipt.modelReceiptRef) || receipt.modelPayloadHash !== hash(root.sourceBinding.sourceAuthority === 'project' ? { text, toolCalls: [] } : text)
         || model.observation.dispatchEvidence.reference.resultOutputType !== (root.sourceBinding.sourceAuthority === 'project' ? 'json' : 'text')
@@ -194,7 +193,7 @@ async function readGraphResultFacts(tx, handle, root, resultId, recipient, snaps
             const input = recipient.inputRefs[0];
             if (root.sourceBinding.sourceAuthority === 'native_session') {
                 let accepted = false;
-                if (root.parentRef && input.fanoutAttemptId) {
+                if (input.fanoutAttemptId) {
                     await readGraphFanoutInput(tx, handle, root, input.fanoutAttemptId, recipient, receipt.resultRef, { producer, settlement, receipt });
                     accepted = true;
                 }

@@ -1,5 +1,5 @@
 import { resolveSkillInvocation, pinSkillEntries, loadAlwaysSkills, skillInstructions } from '../../../public/shared/skill-invocation.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument as hash } from '../repositories/common.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_skill_source_stale'), { code: 'native_orchestration_skill_source_stale' }); };
@@ -25,7 +25,7 @@ export async function prepareRpSkillContext({ host, handle, locator, work }) {
 }
 export async function assertRpSkillContext(captured, { host, handle }) {
     if (!captured) return;
-    if (hash(await host.extensions.settings(handle)) !== hash(captured.configuration)
-        || hash(await selection(captured.repository, captured.configuration.value, captured.context)) !== hash(captured.selected)) fail();
+    if (!equalNativeDocuments(await host.extensions.settings(handle), captured.configuration)
+        || !equalNativeDocuments(await selection(captured.repository, captured.configuration.value, captured.context), captured.selected)) fail();
     for (const pin of captured.pins) if ((await captured.repository.pin({ scope: pin.scope, name: pin.name })).version !== pin.version) fail();
 }

@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments } from '../repositories/common.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { audienceContextPin } from './audience-source-contracts.js';
 
@@ -13,14 +13,14 @@ export function rpReviewProfile(plan) {
     const draft = graph.nodes.find(node => graph.entryNodeIds.includes(node.nodeId)), agents = graph.nodes.filter(node => node.kind === 'agent');
     const narrator = agents.find(node => node !== draft), output = graph.nodes.find(node => node.kind === 'output');
     if (graph.nodes.length !== 4 || agents.length !== 2 || !draft || draft.kind !== 'agent' || !narrator || !output || graph.edges.length !== 4
-        || graph.outputContract.kind !== 'rp_narration' || hash(graph.entryNodeIds) !== hash([draft.nodeId]) || draft.inputs.length || !one(draft.outputs, 'text')
+        || graph.outputContract.kind !== 'rp_narration' || !equalNativeDocuments(graph.entryNodeIds, [draft.nodeId]) || draft.inputs.length || !one(draft.outputs, 'text')
         || !one(review.inputs, 'text') || !review.inputs[0].required || !one(review.outputs, 'json') || narrator.inputs.length !== 2
         || narrator.inputs.some(port => !port.required) || !narrator.inputs.some(port => port.type === 'text') || !narrator.inputs.some(port => port.type === 'json')
         || graph.graphChangePolicy.allowedOperations.length || graph.graphChangePolicy.allowedNodeKinds.length || graph.limits.maxReviews < 1 || graph.limits.maxAttempts < 4) fail();
     for (const node of [draft, review]) {
         const retrievalPins = node.capabilities.includes('memory.retrieve') ? plan.dependencyPins.filter(pin => node.dependencyPinIds.includes(pin.pinId)
             && pin.port === 'context' && pin.resourceRef.scope === 'player' && pin.resourceRef.retrievalProfileId) : [];
-        if (hash([...node.capabilities].sort()) !== hash(['generation.send', ...retrievalPins.length ? ['memory.retrieve'] : []].sort()) || !nodeModelRoutePins(node, plan.dependencyPins).length
+        if (!equalNativeDocuments([...node.capabilities].sort(), ['generation.send', ...retrievalPins.length ? ['memory.retrieve'] : []].sort()) || !nodeModelRoutePins(node, plan.dependencyPins).length
             || node.dependencyPinIds.length !== nodeModelRoutePins(node, plan.dependencyPins).length + retrievalPins.length + (audienceContextPin(node, plan.dependencyPins) ? 1 : 0)) fail();
     }
     const edge = (from, to, type) => graph.edges.find(item => item.from.nodeId === from.nodeId && item.to.nodeId === to.nodeId

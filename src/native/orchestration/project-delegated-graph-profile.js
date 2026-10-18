@@ -11,22 +11,27 @@ export function projectDelegatedGraphProfile(plan) {
     const graph = plan.definition, models = graph.nodes.filter(node => ['agent', 'planner', 'review', 'judge'].includes(node.kind));
     const reviews = models.filter(node => node.kind === 'review'), judges = models.filter(node => node.kind === 'judge');
     const passive = graph.nodes.filter(node => ['fanout', 'join'].includes(node.kind)), pure = [...models, ...passive];
+    const delegates = models.filter(node => node.capabilities.includes('agent.delegate'));
     const planners = models.filter(node => node.kind === 'planner'), outputs = graph.nodes.filter(node => node.kind === 'output');
     const loops = graph.edges.filter(edge => edge.loopBack), canReplan = graph.graphChangePolicy.allowedOperations.includes('requestReplan');
-    const canAddAgent = graph.graphChangePolicy.allowedOperations.includes('addNode') && graph.graphChangePolicy.allowedNodeKinds.includes('agent');
+    const canAddModel = graph.graphChangePolicy.allowedOperations.includes('addNode')
+        && graph.graphChangePolicy.allowedNodeKinds.some(kind => ['agent', 'planner', 'review', 'judge'].includes(kind));
+    const patchAuthority = planners.length || delegates.some(node => node.capabilities.includes('graph.patch'));
     if (!models.some(node => node.kind === 'agent') || outputs.length !== 1 || graph.nodes.length !== pure.length + 1
         || graph.outputContract.kind !== 'result' || graph.outputContract.allowPartial || graph.outputContract.resultPolicy?.outputType !== 'text'
-        || !equal([...graph.capabilityCeiling].sort(), ['generation.send', ...planners.length ? ['graph.patch'] : []].sort())
-        || graph.graphChangePolicy.allowedNodeKinds.some(kind => kind !== 'agent') || (!planners.length ? graph.graphChangePolicy.allowedOperations.length
+        || !equal([...graph.capabilityCeiling].sort(), ['generation.send', ...patchAuthority ? ['graph.patch'] : [], ...delegates.length ? ['agent.delegate'] : []].sort())
+        || graph.graphChangePolicy.allowedNodeKinds.some(kind => !['agent', 'planner', 'review', 'judge', 'fanout', 'join'].includes(kind)) || (!patchAuthority ? graph.graphChangePolicy.allowedOperations.length
         : !graph.graphChangePolicy.allowedOperations.length || graph.graphChangePolicy.allowedOperations.some(op => !['setPendingPriority', 'cancelPending', 'markBlocked', 'requestFinalize', 'requestReplan', 'addNode', 'addEdge'].includes(op)))
-        || loops.length && !canReplan
-        || graph.nodes.some(node => node.policy.allowedPlanPinIds?.length)) fail();
+        || loops.length && !canReplan) fail();
     const output = outputs[0], incoming = {}, ordered = [];
     if (output.nodeId !== graph.outputContract.ownerNodeId || output.capabilities.length || output.dependencyPinIds.length
         || output.inputs.length !== 1 || output.inputs[0].type !== 'text' || !output.inputs[0].required || output.outputs.length) fail();
     for (const node of pure) {
-        if (models.includes(node) && (nodeModelRoutePins(node, plan.dependencyPins).length !== 1 || node.dependencyPinIds.length !== 1
-            || !equal(node.capabilities, ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []])
+        if (models.includes(node) && (nodeModelRoutePins(node, plan.dependencyPins).length !== 1 || node.dependencyPinIds.length !== 1 + (node.policy.allowedPlanPinIds?.length ?? 0)
+            || !equal(node.capabilities, ['generation.send', ...node.kind === 'planner' || delegates.includes(node) && node.capabilities.includes('graph.patch') ? ['graph.patch'] : [], ...delegates.includes(node) ? ['agent.delegate'] : []])
+            || delegates.includes(node) !== Boolean(node.policy.allowedPlanPinIds?.length)
+            || delegates.includes(node) && (!['agent', 'planner'].includes(node.kind) || node.kind === 'agent' && node.policy.allowedPlanPinIds.length !== 1
+                || node.policy.allowedPlanPinIds.some(id => !node.dependencyPinIds.includes(id) || !plan.dependencyPins.some(pin => pin.pinId === id && pin.port === 'plan')))
             || node.outputs.length !== 1 || node.outputs[0].type !== (['planner', 'review', 'judge'].includes(node.kind) ? 'json' : 'text')
             || node.inputs.some(port => !['text', 'json'].includes(port.type) && !(port.type === 'task.result' && graph.edges.some(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name && graph.nodes.find(source => source.nodeId === edge.from.nodeId)?.kind === 'fanout'))))) fail();
         if (passive.includes(node) && (node.capabilities.length || node.dependencyPinIds.length
@@ -55,15 +60,16 @@ export function projectDelegatedGraphProfile(plan) {
     }
     const final = models.find(node => node.nodeId === terminal[0]?.from.nodeId);
     if (terminal.length !== 1 || final?.kind !== 'agent' || needed.size !== graph.nodes.length
-        || plan.dependencyPins.some(pin => pin.port !== 'model' || pin.resourceRef.scope !== 'player' || typeof pin.resourceRef.runtimeRouteId !== 'string'
-            || !canAddAgent && !models.some(node => node.dependencyPinIds.includes(pin.pinId)))) fail();
+        || plan.dependencyPins.some(pin => pin.port === 'plan' ? !delegates.some(node => node.policy.allowedPlanPinIds.includes(pin.pinId))
+            : pin.port !== 'model' || pin.resourceRef.scope !== 'player' || typeof pin.resourceRef.runtimeRouteId !== 'string'
+                || !canAddModel && !models.some(node => node.dependencyPinIds.includes(pin.pinId)))) fail();
     for (const loop of loops) projectReplanScope(graph, loop.from.nodeId);
     const fanouts = projectFanoutGroups(graph, final.nodeId);
-    return { ordered: ordered.filter(node => models.includes(node)), pure, models, planners, reviews, judges, fanouts, incoming, output, final, terminalNodeId: final.nodeId };
+    return { ordered: ordered.filter(node => models.includes(node)), pure, models, planners, reviews, judges, delegates, fanouts, incoming, output, final, terminalNodeId: final.nodeId };
 }
 
 /** Narrow capability-mechanism recognition; an explicit text Result contract
  * is mandatory. This does not replace the existing pure Agent contract. */
 export function isProjectDelegatedControlPlan(plan) {
-    try { const shape = projectDelegatedGraphProfile(plan); return shape.planners.length + shape.reviews.length + shape.judges.length + shape.fanouts.length > 0; } catch { return false; }
+    try { const shape = projectDelegatedGraphProfile(plan); return shape.planners.length + shape.reviews.length + shape.judges.length + shape.fanouts.length + shape.delegates.length > 0; } catch { return false; }
 }

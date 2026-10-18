@@ -1,5 +1,5 @@
 import { ConflictError } from '../../storage/errors.js';
-import { hashNativeDocument } from '../repositories/common.js';
+import { equalNativeDocuments } from '../repositories/common.js';
 import { BudgetPort } from './budget-port.js';
 import { SourcePort } from './source-port.js';
 import { RunRepository, assertChildRunCurrent, assertRunTreeConcurrency } from './run-repository.js';
@@ -63,7 +63,7 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
                 || intent.hostBootId !== root.hostBootId || intent.hostGeneration !== root.hostGeneration) fail('native_orchestration_dispatch_stale');
             await sourcePort.revalidate(handle, root.sourceBinding, { tx, root });
             const decision = await effectAuthority.authorize({ handle, tx, root, intent, phase: 'dispatch' });
-            if (hashNativeDocument(decision) !== hashNativeDocument(effectDecision(intent))) fail('native_orchestration_effect_authority_changed');
+            if (!equalNativeDocuments(decision, effectDecision(intent))) fail('native_orchestration_effect_authority_changed');
             return { root, intent };
         });
     }
@@ -93,7 +93,7 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
                 || intent.sourceBindingDigest !== current.sourceBinding.bindingDigest) fail('native_orchestration_effect_not_prepared');
             await sourcePort.revalidate(handle, current.sourceBinding, { tx, root: current });
             const decision = await effectAuthority.authorize({ handle, tx, root: current, intent, phase: 'prepare_context' });
-            if (hashNativeDocument(decision) !== hashNativeDocument(effectDecision(intent))) fail('native_orchestration_effect_authority_changed');
+            if (!equalNativeDocuments(decision, effectDecision(intent))) fail('native_orchestration_effect_authority_changed');
             return { current, intent };
         });
         let token = null;
@@ -126,8 +126,8 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
                 } finally { bindingContext = false; }
             }, beforeSend: async ({ receipt, prepared, resolved, snapshot, compiledBinding, budgetAttemptRef }) => runs.withSourceControl(handle, runId, async () => {
                 const expectedSend = compiledSendIdentity({ snapshot, resolved });
-                if (hashNativeDocument(compiledBinding) !== hashNativeDocument(snapshot.diagnostics.compiledBinding)
-                || hashNativeDocument(budgetAttemptRef) !== hashNativeDocument(receipt.budgetAttemptRef)) fail('native_orchestration_budget_attempt_invalid');
+                if (!equalNativeDocuments(compiledBinding, snapshot.diagnostics.compiledBinding)
+                || !equalNativeDocuments(budgetAttemptRef, receipt.budgetAttemptRef)) fail('native_orchestration_budget_attempt_invalid');
                 if (!token) {
                     const { current, intent } = await preparedEffect();
                     if (actualContext) await assertContext(actualContext, current, intent);
@@ -153,9 +153,9 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
         const parent = await runs.get(handle, parentRunId), child = await runs.get(handle, childRunId);
         if (parent.cancelRequested || !['admitted', 'running'].includes(parent.status) || child.cancelRequested || child.status !== 'admitted'
             || child.parentRef?.parentRunId !== parent.runId || child.rootRunId !== parent.rootRunId
-            || hashNativeDocument(child.budgetAuthorityRef) !== hashNativeDocument(parent.budgetAuthorityRef)
+            || !equalNativeDocuments(child.budgetAuthorityRef, parent.budgetAuthorityRef)
             || child.sourceBinding.bindingDigest !== parent.sourceBinding.bindingDigest) fail('native_orchestration_child_authority_invalid');
-        if (hashNativeDocument(ceiling) !== hashNativeDocument(child.parentRef.budgetCeiling)) fail('native_orchestration_budget_reservation_mismatch');
+        if (!equalNativeDocuments(ceiling, child.parentRef.budgetCeiling)) fail('native_orchestration_budget_reservation_mismatch');
         await sourcePort.revalidate(handle, parent.sourceBinding, { root: parent });
         return budgetPort.reserveChild(handle, { authorityRef: parent.budgetAuthorityRef, parentReservationId: parent.parentRef ? parent.runId : null, childRunId, ceiling, limits });
     }

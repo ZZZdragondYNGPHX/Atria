@@ -5,7 +5,7 @@ import { checkedRecord } from './plan-repository.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readAttempt, readAttemptInvalidation } from './controller-common.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
-import { readGraphReviewCompletion, readReviewablePlannerCompletion } from './graph-review-completion.js';
+import { readGraphReviewCompletion } from './graph-review-completion.js';
 import { readGraphJudgeCompletion } from './graph-judge-completion.js';
 import { readGraphPlannerCompletion } from './graph-planner-completion.js';
 import { assertProjectControlWork } from './project-quality-contracts.js';
@@ -47,7 +47,7 @@ async function controlInputs(tx, handle, root, producer, input) {
 export async function readProjectDelegatedReviewCompletion(tx, handle, root, attemptId, options = {}) {
     assertObject(options, Object.hasOwn(options, 'recipient') ? ['recipient'] : [], 'Project child Review read');
     const fact = await readGraphReviewCompletion(tx, handle, root, attemptId,
-        { verifyControlWork: assertProjectControlWork, reasonCodes: PROJECT_QUALITY_REASONS, ...options });
+        { verifyControlWork: assertProjectControlWork, reasonCodes: PROJECT_QUALITY_REASONS, readFanoutCompletion: readProjectDelegatedFanoutCompletion, ...options });
     if (!fact) return null;
     const input = await inputIdentity(tx, handle, root, fact.producer), snapshot = await readTaskGraphRevision(tx, handle, root, fact.producer.graphRevision);
     const controls = await controlInputs(tx, handle, root, fact.producer, input), sources = [...fact.evidence, ...controls];
@@ -66,11 +66,12 @@ export async function readProjectDelegatedReviewCompletion(tx, handle, root, att
         const input = { ...target.inputRefs[0], reviewFeedbackRef: { reviewReceiptRef: fact.receipt.reviewReceiptRef, reasonCode: fact.review.reasonCode } };
         if (!equal(next.inputRefs, [input, ...target.inputRefs.slice(1)]) || next.effectiveGrantDigest !== target.effectiveGrantDigest) invalid();
     }
+    const groupAttempts = new Set(fact.rerunFanouts.flatMap(joined => [joined.fanout, joined.producer, ...joined.scopeAttempts.map(item => item.attempt)]).map(attempt => attempt.attemptId));
     for (const id of fact.review.invalidatedAttemptIds) {
         const attempt = (await readAttempt(tx, handle, root, id)).doc, node = snapshot.graph.nodes.find(node => node.nodeId === attempt.nodeId);
-        if (['fanout', 'join'].includes(node?.kind) || node?.capabilities.includes('agent.delegate')
-            || (node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
-                && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork: assertProjectControlWork })) invalid();
+        // The original generic readReplacements above already proved each
+        // Planner and whole group once in this invocation.
+        if (['fanout', 'join'].includes(node?.kind) && !groupAttempts.has(id) || node?.capabilities.includes('agent.delegate')) invalid();
     }
     return fact;
 }

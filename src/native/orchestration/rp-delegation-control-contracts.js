@@ -8,7 +8,7 @@ const invalid = () => { throw new TypeError('Invalid RP delegated control facts'
 export const isRpDelegatedControlGraph = root => root.sourceBinding.sourceAuthority === 'rp_chat' && !!root.parentRef
     && (root.graph.nodes.some(node => ['planner', 'review', 'judge'].includes(node.kind))
         || root.graph.nodes.filter(node => node.kind === 'agent').length >= 2
-        || root.graph.nodes.some(node => node.policy?.audiencePinId !== undefined));
+        || root.graph.nodes.some(node => node.policy?.audiencePinId !== undefined || node.capabilities.includes('agent.delegate')));
 export const rpDelegatedPlannerReaderOptions = { verifyControlWork: assertRpControlWork };
 
 /** Public reads always start a new full fact boundary. No caller can supply
@@ -20,9 +20,11 @@ export function readRpDelegatedControlInput(tx, handle, child, producer, intent,
 
 export function assertRpDelegatedClosure(child, history, closure) {
     if (history.rootDigest !== hash(child) || !history.settled
-        || !equal(closure.reservationRefs, [{ reservationId: child.runId, parentReservationId: child.parentRef.depth === 1 ? null : history.lineage.parent.runId, status: 'released' }])
+        || !equal([...closure.reservationRefs].sort((a, b) => a.reservationId.localeCompare(b.reservationId)),
+            [...history.reservationRefs].sort((a, b) => a.reservationId.localeCompare(b.reservationId)))
         || closure.budgetAttemptRefs.length !== history.budgetAttemptIds.length
         || new Set(closure.budgetAttemptRefs.map(ref => ref.attemptId)).size !== history.budgetAttemptIds.length
         || closure.budgetAttemptRefs.some(ref => !history.budgetAttemptIds.includes(ref.attemptId)
-            || ref.reservationId !== child.runId || !equal(ref.authorityRef, child.budgetAuthorityRef))) invalid();
+            || !history.budgetAttemptReservations.some(actual => actual.attemptId === ref.attemptId && actual.reservationId === ref.reservationId)
+            || !equal(ref.authorityRef, child.budgetAuthorityRef))) invalid();
 }

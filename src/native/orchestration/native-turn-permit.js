@@ -1,7 +1,7 @@
 import { fields as assertFields } from '../../../public/shared/native-values.js';
 import { nativeTaskScheduler } from '../task-scheduler.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
-import { hashNativeDocument } from '../repositories/common.js';
+import { equalNativeDocuments } from '../repositories/common.js';
 
 const permits = new WeakMap();
 const finalizationPermits = new WeakMap();
@@ -30,7 +30,7 @@ export function assertNativeTurnPermit(permit, expected = {}) {
     if (!value || !expected || Object.keys(expected).some(key => !fields.includes(key))) denied();
     for (const field of ['host', 'selection']) if (Object.hasOwn(expected, field) && value[field] !== expected[field]) denied();
     for (const field of ['handle', 'sessionId', 'anchor', 'invocationId', 'requestHash'])
-        if (Object.hasOwn(expected, field) && hashNativeDocument(value[field]) !== hashNativeDocument(expected[field])) denied();
+        if (Object.hasOwn(expected, field) && !equalNativeDocuments(value[field], expected[field])) denied();
     if (Object.hasOwn(expected, 'requiredResources') && (!Array.isArray(expected.requiredResources)
         || expected.requiredResources.some(resource => typeof resource !== 'string' || !value.expected.resources.includes(resource)))) denied();
     const active = assertFrame(value, false);
@@ -67,7 +67,8 @@ export function captureNativeTurnFanoutChildPermit(permit, boundary, expected) {
 /** Derive a witness only from this Turn's actual original Scheduler group. */
 export function captureNativeTurnChildPermit(permit, boundary, expected) {
     const original = permits.get(permit);
-    if (!original || original.parent) denied();
+    if (!original) denied();
+    assertFrame(original, true);
     nativeTaskScheduler.assertFanoutChildBoundary(original.boundary, original.expected, boundary, expected);
     const capture = Object.freeze({});
     permits.set(capture, Object.freeze({ ...original, parent: original, boundary, expected: immutable(expected) }));
@@ -93,7 +94,7 @@ export function assertNativeTurnFinalizationPermit(capture, expected = {}, origi
     if (!value || !expected || Object.keys(expected).some(key => !fields.includes(key))) denied();
     for (const field of ['host', 'selection']) if (Object.hasOwn(expected, field) && value[field] !== expected[field]) denied();
     for (const field of ['handle', 'sessionId', 'anchor', 'invocationId', 'requestHash'])
-        if (Object.hasOwn(expected, field) && hashNativeDocument(value[field]) !== hashNativeDocument(expected[field])) denied();
+        if (Object.hasOwn(expected, field) && !equalNativeDocuments(value[field], expected[field])) denied();
     if (Object.hasOwn(expected, 'requiredResources') && (!Array.isArray(expected.requiredResources)
         || expected.requiredResources.some(resource => typeof resource !== 'string' || !value.expected.resources.includes(resource)))) denied();
     const active = nativeTaskScheduler.assertFinalizationBoundary(saved.finalizationBoundary, value.boundary, value.expected);

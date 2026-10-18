@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { ConflictError } from '../../storage/errors.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument as hash } from '../repositories/common.js';
 import { ApprovalController } from './approval-controller.js';
 import { approvalBinding, currentApprovalBinding, effectDecision, readApproval, readEffect } from './effect-contracts.js';
 import { runGuard } from './controller-common.js';
@@ -31,12 +31,12 @@ export class ReviewAuthority {
                 if (error.code?.startsWith('native_')) deny();
                 throw error;
             }
-            if (hash(decision) !== hash(effectDecision(intent))) deny();
+            if (!equalNativeDocuments(decision, effectDecision(intent))) deny();
             if (root.ownerRef.handle !== handle || root.cancelRequested || !['running', 'waiting_approval'].includes(root.status)
                 || intent.hostBootId !== root.hostBootId || intent.hostGeneration !== root.hostGeneration || intent.epoch !== root.epoch) deny();
             // An authority callback can await and can perform legitimate control writes.
             // Never authorize against its obsolete caller snapshot.
-            if (hash(await runs.get(handle, root.runId)) !== hash(root)) deny();
+            if (!equalNativeDocuments(await runs.get(handle, root.runId), root)) deny();
         };
         const approvals = new ApprovalController({ runs,
             authorizeRequest: async args => {

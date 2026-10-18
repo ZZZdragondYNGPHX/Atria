@@ -1,5 +1,5 @@
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
-import { hashNativeDocument as hash, cloneNativeDocument } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument as hash, cloneNativeDocument } from '../repositories/common.js';
 import { readSessionPlannerCompletion } from './session-planner-contracts.js';
 import { sessionGraphResultReadable } from './session-agent-graph-profile.js';
 
@@ -12,7 +12,7 @@ export async function sessionPlannerContextView(tx, handle, root, recipient, { b
         .filter(row => row.doc.accepted && row.doc.newGraphRevision <= snapshot.graphRevision);
     for (const row of patches) {
         const saved = await readSessionPlannerCompletion(tx, handle, root, row.doc.producerAttemptId);
-        if (!saved || row.integrity !== hash(row.doc) || hash(saved.patch) !== hash(row.doc)) throw new TypeError('Invalid Session Planner inventory');
+        if (!saved || row.integrity !== hash(row.doc) || !equalNativeDocuments(saved.patch, row.doc)) throw new TypeError('Invalid Session Planner inventory');
         const creator = root.graph.nodes.find(node => node.nodeId === saved.producer.nodeId);
         if (sessionGraphResultReadable(base, creator, recipient, plan.dependencyPins)) continue;
         for (const operation of saved.patch.appliedOperations) {

@@ -1,5 +1,5 @@
 import { assertObject, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument as hash } from '../repositories/common.js';
 import { BudgetPort, assertBudgetAttemptRef, sendAttemptId } from './budget-port.js';
 import { effectDecision } from './effect-contracts.js';
 import { checkedRecord } from './plan-repository.js';
@@ -25,8 +25,8 @@ async function readTerminalFact(handle, tx, root, intent, budgetPort = null) {
         || receipt.reasonCode !== (kind === 'rejected' ? 'generation_provider_rejected' : 'generation_response_not_consumed')
         || receipt.dispatchEvidence.kind !== 'original_port_observation' || reference?.protocol !== 'generation_terminal'
         || reference.kind !== kind || reference.completionBindingDigest !== modelCompletionBindingDigest(intent)
-        || receipt.remoteOperationRef !== null || receipt.domainReceiptRef !== null || hash(receipt.resultRefs) !== hash([])
-        || hash(receipt.sourceRefs) !== hash([root.sourceBinding.sourceRef]) || !Array.isArray(reference.attempts) || !reference.attempts.length) invalid();
+        || receipt.remoteOperationRef !== null || receipt.domainReceiptRef !== null || !equalNativeDocuments(receipt.resultRefs, [])
+        || !equalNativeDocuments(receipt.sourceRefs, [root.sourceBinding.sourceRef]) || !Array.isArray(reference.attempts) || !reference.attempts.length) invalid();
     assertObject(reference, ['protocol', 'kind', 'completionBindingDigest', 'responseHash', 'finalRequestHash', 'attempts'], 'Model terminal fact');
     assertDigest(reference.finalRequestHash, 'finalRequestHash');
     if (kind === 'rejected' ? reference.responseHash !== null : !/^[a-f0-9]{64}$/.test(reference.responseHash)) invalid();
@@ -35,7 +35,7 @@ async function readTerminalFact(handle, tx, root, intent, budgetPort = null) {
         assertObject(send, ['budgetAttemptRef', 'requestId', 'targetFingerprint', 'inputFingerprint', 'compiledBindingFingerprint', 'requestSnapshotHash', 'outcome', 'httpStatus', 'status', 'usageHash'], 'Model terminal send');
         const ref = send.budgetAttemptRef; assertBudgetAttemptRef(ref);
         if (ref.kind !== undefined || ref.effectId !== intent.effectId || ref.providerSendOrdinal !== ordinal || ref.attemptId !== sendAttemptId(intent.effectId, ordinal)
-            || hash(ref.authorityRef) !== hash(root.budgetAuthorityRef) || ordinal === 0 && hash(ref) !== hash(intent.budgetAttemptRef)
+            || !equalNativeDocuments(ref.authorityRef, root.budgetAuthorityRef) || ordinal === 0 && !equalNativeDocuments(ref, intent.budgetAttemptRef)
             || !['charged', 'unknown', 'settled'].includes(send.status)) invalid();
         for (const field of ['targetFingerprint', 'inputFingerprint', 'compiledBindingFingerprint', 'requestSnapshotHash', 'usageHash']) assertDigest(send[field], field);
         const response = kind === 'late_response' && ordinal === reference.attempts.length - 1;
@@ -52,7 +52,7 @@ async function readTerminalFact(handle, tx, root, intent, budgetPort = null) {
         }
     }
     if (reference.finalRequestHash !== reference.attempts.at(-1).requestSnapshotHash
-        || hash(receipt.budgetObservationRef) !== hash({ authorityRef: root.budgetAuthorityRef,
+        || !equalNativeDocuments(receipt.budgetObservationRef, { authorityRef: root.budgetAuthorityRef,
             attempts: reference.attempts.map(({ budgetAttemptRef, status, usageHash }) => ({ budgetAttemptRef, status, usageHash })) })) invalid();
     const { schemaVersion: _schema, runId: _run, effectId: _effect, receiptId: _receipt, observedAt: _time, ...observation } = receipt;
     return { outcome: receipt.outcome, kind, ...(budgetPort ? { closed } : {}), receiptRef: { runId: root.runId, receiptId }, observation };

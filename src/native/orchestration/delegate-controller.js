@@ -1,7 +1,7 @@
 import { ConflictError } from '../../storage/errors.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertNativeId } from '../identity.js';
-import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
+import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
 import { assertObject, assertToken, assertPlanRef, assertPlanDefinition, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertComputeAllocation } from '../../../public/shared/native-compute-budget.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
@@ -37,7 +37,7 @@ export class DelegateController {
     async #allowedPlan(handle, tx, parent, node, childPlanRef, parentPlan) {
         const blueprint = parentPlan ?? await readPlanRevision(tx, handle, parent.planRef);
         const allowed = blueprint.dependencyPins.filter(pin => pin.port === 'plan' && node.policy.allowedPlanPinIds.includes(pin.pinId)
-            && node.dependencyPinIds.includes(pin.pinId) && hashNativeDocument(pin.resourceRef) === hashNativeDocument(childPlanRef));
+            && node.dependencyPinIds.includes(pin.pinId) && equalNativeDocuments(pin.resourceRef, childPlanRef));
         if (!allowed.length) fail('native_orchestration_child_plan_not_allowed');
         const child = await readPlanRevision(tx, handle, childPlanRef);
         if (!allowed.some(pin => pin.integrity === hashNativeDocument(child))) fail('native_orchestration_child_plan_pin_stale');
@@ -77,14 +77,14 @@ export class DelegateController {
             if (parent.cancelRequested || parent.status !== 'running' || parentAttempt.status !== 'running' || parentAttempt.epoch !== parent.epoch
                 || parentAttempt.sourceBindingDigest !== parent.sourceBinding.bindingDigest || !node.capabilities.includes('agent.delegate')
                 || !['agent', 'router', 'planner', 'judge', 'review'].includes(node.kind)
-                || hashNativeDocument(parentAttempt.budgetRef) !== hashNativeDocument(parent.budgetAuthorityRef)) fail('native_orchestration_delegation_not_admitted');
+                || !equalNativeDocuments(parentAttempt.budgetRef, parent.budgetAuthorityRef)) fail('native_orchestration_delegation_not_admitted');
             // This first handoff profile yields an effect-free parent. A late
             // Effect observation must never reactivate a suspended producer.
             if (handoff && (parentAttempt.effectRefs.length || parentAttempt.resultRefs.length)) fail('native_orchestration_handoff_not_admitted');
             const revision = await this.#allowedPlan(handle, tx, parent, node, childPlanRef, plan);
             assertPlanDefinition(revision.definition, revision.dependencyPins);
             const definition = revision.definition;
-            if (definition.outputContract.kind !== 'result' || hashNativeDocument(returnContract) !== hashNativeDocument(definition.outputContract)
+            if (definition.outputContract.kind !== 'result' || !equalNativeDocuments(returnContract, definition.outputContract)
                 || definition.capabilityCeiling.some(capability => !parent.graph.capabilityCeiling.includes(capability) || !node.capabilities.includes(capability))
                 || Object.keys(definition.limits).some(field => definition.limits[field] > parent.limits[field])) fail('native_orchestration_child_authority_invalid');
             const ancestorRecords = [];
@@ -124,7 +124,7 @@ export class DelegateController {
                 }
                 if (!handoff) for (const attemptId of ancestor.attemptRefs) if (holdsConcurrencySlot(ancestor, (await readAttempt(tx, handle, ancestor, attemptId)).doc)) live++;
                 if (ancestor.cancelRequested || ancestor.hostBootId !== fence.hostBootId || ancestor.hostGeneration !== fence.generation
-                    || ancestor.sourceBinding.bindingDigest !== parent.sourceBinding.bindingDigest || hashNativeDocument(ancestor.budgetAuthorityRef) !== hashNativeDocument(parent.budgetAuthorityRef)
+                    || ancestor.sourceBinding.bindingDigest !== parent.sourceBinding.bindingDigest || !equalNativeDocuments(ancestor.budgetAuthorityRef, parent.budgetAuthorityRef)
                     || ancestor.treeProgress.delegates >= Math.min(ancestor.limits.maxDelegates, ancestor.parentRef?.logicalCeiling.delegates ?? Infinity)
                     || (handoff && (ancestor.treeProgress.handoffs >= Math.min(ancestor.limits.maxHandoffs, ancestor.parentRef?.logicalCeiling.handoffs ?? Infinity)
                         || ancestor.treeProgress.steps >= Math.min(ancestor.limits.maxSteps, ancestor.parentRef?.logicalCeiling.steps ?? Infinity)))
@@ -196,7 +196,7 @@ export class DelegateController {
             const observation = await this.verifyReservation({ handle, tx, root, parent });
             const parentReservationId = parent.parentRef ? parent.runId : null;
             if (observation?.status !== 'held' || observation.reservationId !== root.runId || observation.parentReservationId !== parentReservationId
-                || hashNativeDocument(observation.authorityRef) !== hashNativeDocument(root.budgetAuthorityRef)) fail('native_orchestration_child_budget_unconfirmed');
+                || !equalNativeDocuments(observation.authorityRef, root.budgetAuthorityRef)) fail('native_orchestration_child_budget_unconfirmed');
             const receipt = { schemaVersion: 1, receiptKind: 'child_budget_ready', receiptId, runId: root.runId, epoch: root.epoch,
                 reservationId: root.runId, parentReservationId, authorityRef: root.budgetAuthorityRef, sourceBindingDigest: root.sourceBinding.bindingDigest,
                 budgetCeilingDigest: hashNativeDocument(root.parentRef.budgetCeiling),

@@ -2,7 +2,7 @@ import { RpRunControl, rpOperationInput } from '../rp-run-control.js';
 import { ConflictError } from '../../storage/errors.js';
 import { assertObject, assertCounter, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertNativeId } from '../identity.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { sourceMessageId } from '../../../public/scripts/agents/memory/source-provenance.js';
 
 export const delegatedRpSourcePins = plan => plan.dependencyPins.filter(pin => pin.port === 'context' && pin.resourceRef.kind === 'native_rp_message');
@@ -32,12 +32,12 @@ export async function readDelegatedRpSource(handle, ref, rpControl, { tx } = {})
 }
 
 /** Parent and recipient must independently own the same exact immutable pin. */
-export async function readDelegatedRpSources(handle, { parentPlan, childPlan, controlId, floor }, rpControl, options) {
+export async function readDelegatedRpSources(handle, { parentPlan, parentNode = null, childPlan, controlId, floor }, rpControl, options) {
     const parents = delegatedRpSourcePins(parentPlan), children = delegatedRpSourcePins(childPlan);
-    if (parents.length !== children.length) denied();
+    if (!parentNode && parents.length !== children.length) denied();
     const sources = [];
     for (const pin of children) {
-        if (!parents.some(parent => hash(parent.resourceRef) === hash(pin.resourceRef) && parent.integrity === pin.integrity)
+        if (!parents.some(parent => equal(parent.resourceRef, pin.resourceRef) && parent.integrity === pin.integrity && (!parentNode || parentNode.dependencyPinIds.includes(parent.pinId)))
             || pin.resourceRef.controlId !== controlId) denied();
         const source = await readDelegatedRpSource(handle, pin.resourceRef, rpControl, options);
         if (hash(source) !== pin.integrity || source.index > floor) denied();

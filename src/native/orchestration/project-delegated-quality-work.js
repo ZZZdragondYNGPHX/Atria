@@ -6,9 +6,10 @@ import { runGenerationLocalWork } from './generation-local-work.js';
 import { assertProjectControlWork } from './project-quality-contracts.js';
 import { ReviewController, reviewReceiptId } from './review-controller.js';
 import { parseProjectDelegatedReview, projectDelegatedRerunRequirements } from './project-delegated-quality-contracts.js';
-import { graphReviewModelReceiptId, graphReviewControlRef, readReviewablePlannerCompletion } from './graph-review-completion.js';
+import { graphReviewModelReceiptId, graphReviewControlRef, readReviewablePlannerCompletion, readReviewableFanoutCompletion } from './graph-review-completion.js';
 import { graphJudgeModelReceiptId, graphJudgeControlRef } from './graph-judge-completion.js';
 import { controlCommandId, controlRecordKey, readAttempt, readReviewAdmission, readAttemptInvalidation, graphReachable, runGuard } from './controller-common.js';
+import { readProjectDelegatedFanoutCompletion } from './project-delegated-fanout-contracts.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { writeAttemptSettlement } from './attempt-settlement.js';
 
@@ -60,9 +61,23 @@ export async function completeProjectDelegatedReview(args) {
             if (attempt.attemptId === reviewer.attemptId || await readAttemptInvalidation(tx, handle, root, attempt)) continue;
             const node = root.graph.nodes.find(node => node.nodeId === attempt.nodeId);
             if (!targets.some(target => graphReachable(root.graph, target.nodeId, attempt.nodeId))) continue;
-            if (['fanout', 'join'].includes(node?.kind) || node?.capabilities.includes('agent.delegate')
+            if (node?.kind === 'join' && !await readReviewableFanoutCompletion(tx, handle, root, attempt.attemptId,
+                { targets, readCompletion: readProjectDelegatedFanoutCompletion })) fail('native_orchestration_review_irreversible_dependency');
+            if (node?.kind === 'fanout') {
+                let complete = false;
+                for (const id of root.attemptRefs) {
+                    const join = (await readAttempt(tx, handle, root, id)).doc;
+                    if (root.graph.nodes.find(node => node.nodeId === join.nodeId)?.kind !== 'join'
+                        || join.inputRefs[0]?.fanoutAttemptId !== attempt.attemptId) continue;
+                    if (await readReviewableFanoutCompletion(tx, handle, root, join.attemptId,
+                        { targets, readCompletion: readProjectDelegatedFanoutCompletion })) complete = true;
+                }
+                if (!complete) fail('native_orchestration_review_irreversible_dependency');
+            }
+            if (node?.capabilities.includes('agent.delegate')
                 || (node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
-                    && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork: assertProjectControlWork }))
+                    && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId,
+                        { verifyControlWork: assertProjectControlWork, reviewTargets: targets, readFanoutCompletion: readProjectDelegatedFanoutCompletion }))
                 fail('native_orchestration_review_irreversible_dependency');
         }
     }, admitRerun: async ({ tx, root, reviewer, target, invalidatedAttemptIds }) => {

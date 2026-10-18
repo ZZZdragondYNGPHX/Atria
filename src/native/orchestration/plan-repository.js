@@ -5,7 +5,7 @@ import { assertWritable } from '../../storage/read-only-mode.js';
 import { withRuntimeWrite } from '../model-prompt-runtime/runtime-write.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { createNativeId, assertNativeId } from '../identity.js';
-import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable, withNativeResourceWrites } from '../repositories/common.js';
+import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument, putImmutable, putMutable, withNativeResourceWrites } from '../repositories/common.js';
 import { assertPlanDefinition, assertSourceSelector, assertPlanRef, assertDigest, assertCounter, assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertPlanEvolutionTarget, assertPlanEvolutionMetadata, planBindingIdentity, planStrategyMinimum, assertPlanRouteValue, planNodeRouteChoices, readPlanStrategyValue, applyPlanStrategyValue, planDeclarationKey, planEvolutionCommandId } from './plan-evolution-contracts.js';
 
@@ -57,7 +57,7 @@ export async function readPlanRevision(tx, handle, planRef) {
         assertObject(ref, ['presetId', 'candidateId'], 'Original Prompt candidate ref');
         assertNativeId(ref.presetId, 'promptProgram'); assertDigest(ref.candidateId, 'candidateId');
         for (const resourceRef of doc.evolutionSource.resourceRefs)
-            if (resourceRef.scope !== 'library' || hashNativeDocument(assertExactResourceRef(resourceRef)) !== hashNativeDocument(resourceRef)) throw new TypeError('Invalid Plan prompt provenance ref');
+            if (resourceRef.scope !== 'library' || !equalNativeDocuments(assertExactResourceRef(resourceRef), resourceRef)) throw new TypeError('Invalid Plan prompt provenance ref');
     }
     assertPlanDefinition(doc.definition, doc.dependencyPins);
     if (!validated) validatedRevisionContents.set(tx, new Set([contentKey]));
@@ -278,10 +278,10 @@ export class PlanRepository {
         const id = promptCandidateRef?.presetId ?? originalRoute.promptProgramRef.resourceId;
         const { preset, root } = selected ?? await prompts._read(handle, id), metadata = root.promptEvolution ?? { declaration: null, candidates: [] };
         const module = preset.entries.find(entry => entry.resourceType === 'core.prompt-module' && entry.resource.promptModuleId === target.promptModuleRef.resourceId);
-        if (hashNativeDocument(checked?.candidate.moduleRef ?? target.promptModuleRef) !== hashNativeDocument(target.promptModuleRef)
-            || !preset.refs.some(ref => hashNativeDocument(ref) === hashNativeDocument(target.promptModuleRef))
+        if (!equalNativeDocuments(checked?.candidate.moduleRef ?? target.promptModuleRef, target.promptModuleRef)
+            || !preset.refs.some(ref => equalNativeDocuments(ref, target.promptModuleRef))
             || !module || module.resource.target !== 'system.style'
-            || hashNativeDocument(originalRoute.promptProgramRef) !== hashNativeDocument(preset.refs.find(ref => ref.resourceId === id)))
+            || !equalNativeDocuments(originalRoute.promptProgramRef, preset.refs.find(ref => ref.resourceId === id)))
             throw new TypeError('Plan prompt target must be an exact style module on its selected original Preset route');
         return { prompts, pin, preset, metadata, route: originalRoute, body: module.resource.body, checked };
     }
@@ -289,7 +289,7 @@ export class PlanRepository {
     async captureEvolution(handle, target) {
         return this.engine.withTransaction(handle, async tx => {
             const { binding, plan } = await this.#evolutionSource(tx, handle, target);
-            if (binding.version !== target.expectedBindingVersion || hashNativeDocument(binding.planRef) !== hashNativeDocument(target.planRef))
+            if (binding.version !== target.expectedBindingVersion || !equalNativeDocuments(binding.planRef, target.planRef))
                 throw new ConflictError('native_orchestration_evolution_binding_stale');
             const { doc } = await this.#root(tx, key(K.orchestrationPlan, handle, { planId: target.planRef.planId }));
             const declaration = doc.evolution?.declarations.find(item => planDeclarationKey(item.target) === planDeclarationKey(target)) ?? null;
@@ -311,7 +311,7 @@ export class PlanRepository {
         const capture = await this.captureEvolution(handle, target), commandId = planEvolutionCommandId('declare', hashNativeDocument(target));
         return this.#command(handle, commandId, 'plans.evolution.declare', { target }, [target.planRef.planId], async (tx, { target }) => {
             const current = await this.captureEvolution(handle, target);
-            if (hashNativeDocument(current.base) !== hashNativeDocument(capture.base)) throw new ConflictError('native_orchestration_evolution_binding_stale');
+            if (!equalNativeDocuments(current.base, capture.base)) throw new ConflictError('native_orchestration_evolution_binding_stale');
             const resourceKey = key(K.orchestrationPlan, handle, { planId: target.planRef.planId }), record = await this.#root(tx, resourceKey);
             if (target.kind === 'plan-prompt') {
                 const prompt = await this.#promptSource(handle, target, (await this.#evolutionSource(tx, handle, target)).plan);
@@ -331,7 +331,7 @@ export class PlanRepository {
         if (prompt) {
             if (typeof value !== 'string' || Buffer.byteLength(value, 'utf8') > 65536 || value === capture.body) throw new TypeError('Invalid native Plan prompt body');
         } else if (route) assertPlanRouteValue(value); else assertCounter(value, 'candidate limit', planStrategyMinimum(target));
-        if ((!prompt && !route && value >= capture.body || route && hashNativeDocument(value) === hashNativeDocument(capture.body)) || hashNativeDocument(capture.declaration) !== hashNativeDocument({ target, binding: capture.base }))
+        if ((!prompt && !route && value >= capture.body || route && equalNativeDocuments(value, capture.body)) || !equalNativeDocuments(capture.declaration, { target, binding: capture.base }))
             throw new ConflictError('native_orchestration_evolution_declaration_required');
         // Exact Prompt resources are prepared by their original authority before
         // Plan publication. A failure leaves an inert candidate, never an active route.
@@ -343,7 +343,7 @@ export class PlanRepository {
         const candidateId = hashNativeDocument(seed), commandId = planEvolutionCommandId('prepare', candidateId);
         return this.#command(handle, commandId, 'plans.evolution.prepare', { target, value }, [target.planRef.planId], async (tx) => {
             const current = await this.captureEvolution(handle, target);
-            if (hashNativeDocument(current) !== hashNativeDocument(capture)) throw new ConflictError('native_orchestration_evolution_binding_stale');
+            if (!equalNativeDocuments(current, capture)) throw new ConflictError('native_orchestration_evolution_binding_stale');
             const resourceKey = key(K.orchestrationPlan, handle, { planId: target.planRef.planId }), record = await this.#root(tx, resourceKey);
             const base = await this.#revision(tx, handle, target.planRef), definition = cloneNativeDocument(base.definition);
             const pins = cloneNativeDocument(base.dependencyPins);
@@ -370,7 +370,7 @@ export class PlanRepository {
             const { binding, plan } = await this.#evolutionSource(tx, handle, target);
             const record = await this.#root(tx, key(K.orchestrationPlan, handle, { planId: target.planRef.planId }));
             const candidate = record.doc.evolution?.candidates.find(item => item.candidateId === candidateId);
-            if (!candidate || hashNativeDocument(candidate.target) !== hashNativeDocument(target)) throw new NotFoundError('orchestration_plan_candidate');
+            if (!candidate || !equalNativeDocuments(candidate.target, target)) throw new NotFoundError('orchestration_plan_candidate');
             const declaration = record.doc.evolution.declarations.find(item => planDeclarationKey(item.target) === planDeclarationKey(target));
             if (!rollback && hashNativeDocument(declaration ?? null) !== candidate.declarationDigest) throw new ConflictError('native_orchestration_evolution_declaration_required');
             const expected = cloneNativeDocument(plan.definition), prompt = target.kind === 'plan-prompt';
@@ -383,21 +383,21 @@ export class PlanRepository {
                 const report = await this.#validate(handle, tx, { ...record.doc, definition: revision.definition, dependencyPins: revision.dependencyPins, definitionHash: revision.definitionHash }, original?.checked.desiredRoute);
                 if (report.status !== 'valid') throw new ConflictError('native_orchestration_evolution_dependency_stale');
             }
-            if (hashNativeDocument(candidate.diff.before) !== hashNativeDocument(prompt ? original.body : readPlanStrategyValue(plan.definition, target, plan.dependencyPins))
-                || hashNativeDocument(expected) !== hashNativeDocument(revision.definition)
-                || hashNativeDocument(pins) !== hashNativeDocument(revision.dependencyPins)
-                || prompt && (hashNativeDocument(revision.evolutionSource?.promptCandidateRef) !== hashNativeDocument(candidate.promptCandidateRef)
-                    || hashNativeDocument(revision.evolutionSource?.target) !== hashNativeDocument(target))
-                || hashNativeDocument(candidate.baseBinding) !== hashNativeDocument({ ...planBindingIdentity(binding), planRef: target.planRef, version: target.expectedBindingVersion }))
+            if (!equalNativeDocuments(candidate.diff.before, prompt ? original.body : readPlanStrategyValue(plan.definition, target, plan.dependencyPins))
+                || !equalNativeDocuments(expected, revision.definition)
+                || !equalNativeDocuments(pins, revision.dependencyPins)
+                || prompt && (!equalNativeDocuments(revision.evolutionSource?.promptCandidateRef, candidate.promptCandidateRef)
+                    || !equalNativeDocuments(revision.evolutionSource?.target, target))
+                || !equalNativeDocuments(candidate.baseBinding, { ...planBindingIdentity(binding), planRef: target.planRef, version: target.expectedBindingVersion }))
                 throw new TypeError('Invalid native Plan candidate closure');
             const base = candidate.baseBinding, desired = { ...base, planRef: candidate.planRef, version: base.version + 1 }, current = planBindingIdentity(binding);
             const rolledBack = (await checkedRecord(tx, key(K.orchestrationCommand, handle, { commandId: planEvolutionCommandId('rollback', candidateId) })))?.doc;
             const ownedRollback = rolledBack?.operation === 'bindings.save' && rolledBack.payloadHash === hashNativeDocument({ operation: 'bindings.save', body: {
                 sourceSelector: base.sourceSelector, planRef: base.planRef, expectedVersion: desired.version } })
-                && hashNativeDocument(planBindingIdentity(rolledBack.outcome)) === hashNativeDocument(current);
+                && equalNativeDocuments(planBindingIdentity(rolledBack.outcome), current);
             if (![hashNativeDocument(base), hashNativeDocument(desired)].includes(hashNativeDocument(current)) && !ownedRollback)
                 throw new ConflictError('native_orchestration_evolution_binding_stale');
-            if (prompt && (hashNativeDocument(current) === hashNativeDocument(desired)) !== original.checked.alreadyApplied)
+            if (prompt && (equalNativeDocuments(current, desired)) !== original.checked.alreadyApplied)
                 throw new ConflictError('native_orchestration_evolution_publication_conflict');
             return { candidate, base, desired, previous: base, actual: ownedRollback ? base : current, rolledBack: Boolean(ownedRollback) };
         });
@@ -408,12 +408,12 @@ export class PlanRepository {
             const checked = await this.checkEvolution(handle, target, candidateId, { rollback });
             if (checked.rolledBack && !rollback) throw new ConflictError('native_orchestration_evolution_candidate_consumed');
             const expected = rollback ? checked.desired : checked.base, desired = rollback ? checked.base : checked.desired;
-            if (hashNativeDocument(checked.actual) === hashNativeDocument(desired)) return checked;
+            if (equalNativeDocuments(checked.actual, desired)) return checked;
             // The original Evolution journal accepts its publication gate
             // before the bounded original Binding CAS; it is not a new grant.
             await beforeCommit();
             const current = await this.checkEvolution(handle, target, candidateId, { rollback });
-            if (hashNativeDocument(current.actual) !== hashNativeDocument(expected)) throw new ConflictError('native_orchestration_evolution_binding_stale');
+            if (!equalNativeDocuments(current.actual, expected)) throw new ConflictError('native_orchestration_evolution_binding_stale');
             const save = () => this.saveBinding(handle, planEvolutionCommandId(rollback ? 'rollback' : 'apply', candidateId), {
                 sourceSelector: expected.sourceSelector, planRef: desired.planRef, expectedVersion: expected.version });
             if (target.kind !== 'plan-prompt') return save();
@@ -423,7 +423,7 @@ export class PlanRepository {
             return this.engine.withTransaction(handle, async tx => {
                 await this.assertWriter(handle, tx);
                 const latest = await this.checkEvolution(handle, target, candidateId, { rollback });
-                if (hashNativeDocument(latest.actual) !== hashNativeDocument(expected)) throw new ConflictError('native_orchestration_evolution_binding_stale');
+                if (!equalNativeDocuments(latest.actual, expected)) throw new ConflictError('native_orchestration_evolution_binding_stale');
                 const ref = latest.candidate.promptCandidateRef;
                 await this.prompts[rollback ? 'rollback' : 'apply'](handle, ref.presetId, ref.candidateId);
                 return save();
@@ -438,7 +438,7 @@ export class PlanRepository {
         return this.#command(handle, planEvolutionCommandId('discard', candidateId), 'plans.evolution.discard', { target, candidateId }, [target.planRef.planId], async tx => {
             await this.#evolutionSource(tx, handle, target);
             const current = await this.checkEvolution(handle, target, candidateId, { rollback: true });
-            if (hashNativeDocument(current.actual) === hashNativeDocument(current.desired)) throw new ConflictError('native_orchestration_evolution_candidate_active');
+            if (equalNativeDocuments(current.actual, current.desired)) throw new ConflictError('native_orchestration_evolution_candidate_active');
             const resourceKey = key(K.orchestrationPlan, handle, { planId: target.planRef.planId }), record = await this.#root(tx, resourceKey);
             const evolution = { ...record.doc.evolution, candidates: record.doc.evolution.candidates.filter(item => item.candidateId !== candidateId) };
             await putMutable(tx, resourceKey, { ...record.doc, evolution }, { expectedIntegrity: record.integrity }); return { discarded: true };

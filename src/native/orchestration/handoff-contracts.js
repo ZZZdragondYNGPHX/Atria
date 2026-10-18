@@ -1,5 +1,5 @@
 import { ConflictError } from '../../storage/errors.js';
-import { hashNativeDocument } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { checkedRecord } from './plan-repository.js';
 import { controlRecordKey } from './controller-common.js';
@@ -20,10 +20,10 @@ export async function readHandoff(tx, handle, parent, attempt, child) {
         || receipt.parentEpoch !== parent.epoch || receipt.hostBootId !== parent.hostBootId || receipt.hostGeneration !== parent.hostGeneration
         || receipt.sourceBindingDigest !== parent.sourceBinding.bindingDigest || receipt.parentGrantDigest !== attempt.effectiveGrantDigest
         || receipt.childGrantDigest !== child.parentRef.effectiveGrantDigest || receipt.inputDigest !== child.parentRef.inputDigest
-        || hashNativeDocument(receipt.childPlanRef) !== hashNativeDocument(child.planRef)
+        || !equalNativeDocuments(receipt.childPlanRef, child.planRef)
         || receipt.budgetCeilingDigest !== hashNativeDocument(child.parentRef.budgetCeiling)
         || receipt.returnContractDigest !== hashNativeDocument(child.parentRef.returnContract)
-        || hashNativeDocument(receipt.entryNodeIds) !== hashNativeDocument(child.graph.entryNodeIds)
+        || !equalNativeDocuments(receipt.entryNodeIds, child.graph.entryNodeIds)
         || receipt.returnNodeId !== attempt.nodeId || receipt.terminalPolicy !== 'verified_result_or_failure'
         || receipt.controlToken !== hashNativeDocument(identity) || !Number.isSafeInteger(receipt.decisionSeq)
         || receipt.decisionSeq < 1 || receipt.decisionSeq > parent.eventSeq

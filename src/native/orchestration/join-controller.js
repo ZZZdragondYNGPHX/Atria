@@ -1,7 +1,7 @@
 import { ConflictError } from '../../storage/errors.js';
 import { assertNativeId } from '../identity.js';
 import { assertObject, assertCounter } from '../../../public/shared/native-orchestration-contracts.js';
-import { cloneNativeDocument, hashNativeDocument, putImmutable } from '../repositories/common.js';
+import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument, putImmutable } from '../repositories/common.js';
 import { checkedRecord } from './plan-repository.js';
 import { controlCommandId, controlRecordKey, graphReachable, readAttempt, assertAttemptCurrent, assertAttemptConsumable } from './controller-common.js';
 import { readAttemptSettlement, writeAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
@@ -79,7 +79,7 @@ export class JoinController {
                     const { doc } = await readAttempt(tx, handle, root, id);
                     if (root.graph.edges.some(edge => edge.from.nodeId === doc.nodeId && edge.to.nodeId === join.nodeId)) expected.push(id);
                 }
-                if (hashNativeDocument(expected.sort()) !== hashNativeDocument(memberAttemptIds)) throw new ConflictError('native_orchestration_join_invalid_membership');
+                if (!equalNativeDocuments(expected.sort(), memberAttemptIds)) throw new ConflictError('native_orchestration_join_invalid_membership');
             }
             const members = [], memberEdges = [];
             const nodeIds = new Set();

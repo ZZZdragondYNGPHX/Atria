@@ -44,10 +44,11 @@ async function controlInputs(tx, handle, root, producer, input) {
 export async function readSessionDelegatedReviewCompletion(tx, handle, root, attemptId, options = {}) {
     assertObject(options, Object.hasOwn(options, 'recipient') ? ['recipient'] : [], 'Session child Review read');
     const fact = await readGraphReviewCompletion(tx, handle, root, attemptId,
-        { verifyControlWork: assertSessionControlWork, reasonCodes: RP_REVIEW_REASON_CODES, ...options });
+        { verifyControlWork: assertSessionControlWork, reasonCodes: RP_REVIEW_REASON_CODES, readFanoutCompletion: readSessionDelegatedFanoutCompletion, ...options });
     if (!fact) return null;
     const input = await inputIdentity(tx, handle, root, fact.producer), snapshot = await readTaskGraphRevision(tx, handle, root, fact.producer.graphRevision);
-    const controls = await controlInputs(tx, handle, root, fact.producer, input), sources = [...fact.evidence, ...controls];
+    const controls = await controlInputs(tx, handle, root, fact.producer, input), joinedRefs = controls.flatMap(item => item.joinReceipt?.acceptedResultRefs ?? []);
+    const sources = [...fact.evidence.filter(item => !joinedRefs.some(ref => equal(ref, item.receipt.resultRef))), ...controls];
     const bindings = input.graphBindings;
     if (!Array.isArray(bindings) || !bindings.length || new Set(bindings.map(item => item.edgeId)).size !== bindings.length
         || fact.targets.some(target => snapshot.graph.nodes.find(node => node.nodeId === target.nodeId)?.kind !== 'agent')
@@ -65,9 +66,10 @@ export async function readSessionDelegatedReviewCompletion(tx, handle, root, att
     }
     for (const id of fact.review.invalidatedAttemptIds) {
         const attempt = (await readAttempt(tx, handle, root, id)).doc, node = snapshot.graph.nodes.find(node => node.nodeId === attempt.nodeId);
-        if (['fanout', 'join'].includes(node?.kind) || node?.capabilities.includes('agent.delegate')
+        if (['fanout', 'join'].includes(node?.kind) ? !fact.rerunFanouts.some(group => group.fanout.attemptId === attempt.attemptId || group.producer.attemptId === attempt.attemptId)
+            : node?.capabilities.includes('agent.delegate')
             || (node?.kind === 'planner' || node?.capabilities.includes('graph.patch'))
-                && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork: assertSessionControlWork })) invalid();
+                && !await readReviewablePlannerCompletion(tx, handle, root, attempt.attemptId, { verifyControlWork: assertSessionControlWork, reviewTargets: fact.targets, readFanoutCompletion: readSessionDelegatedFanoutCompletion })) invalid();
     }
     return fact;
 }

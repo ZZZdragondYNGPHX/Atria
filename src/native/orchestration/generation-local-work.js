@@ -1,6 +1,6 @@
 import { performance } from 'node:perf_hooks';
 import { GenerationError, checkCancellation } from '../model-prompt-runtime/execution-utils.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument as hash } from '../repositories/common.js';
 import { ContextPort } from './context-port.js';
 import { BudgetPort, localWorkAttemptId, assertOriginalSendBank } from './budget-port.js';
 import { ContextRetrievalPort } from './context-retrieval-port.js';
@@ -45,8 +45,8 @@ export async function runGenerationLocalWork({ signal, attempt, admit, settle, a
 /** Pay for the actual existing compiler once, using the send's original bank. */
 export async function compileNativeContextMetered({ handle, port, request, bank, budgetPort, root, effectId, limits, workDescriptor, assertCurrent, signal, contextRetrieval }) {
     if (!(port instanceof ContextPort) || !(budgetPort instanceof BudgetPort) || typeof assertCurrent !== 'function'
-        || root.ownerRef.handle !== handle || hash(root.sourceBinding) !== hash(request.sourceBinding)
-        || hash(bank.authorityRef) !== hash(root.budgetAuthorityRef) || !limits?.localWork
+        || root.ownerRef.handle !== handle || !equalNativeDocuments(root.sourceBinding, request.sourceBinding)
+        || !equalNativeDocuments(bank.authorityRef, root.budgetAuthorityRef) || !limits?.localWork
         || typeof workDescriptor?.requestId !== 'string' || !workDescriptor.requestId
         || typeof workDescriptor.pathFingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(workDescriptor.pathFingerprint))
         fail('native_orchestration_context_compile_invalid');
@@ -83,7 +83,7 @@ export async function compileNativeContextMetered({ handle, port, request, bank,
         retrievalScope ? { port: contextRetrieval, scope: retrievalScope } : undefined));
     if (!entry?.orchestration || entry.orchestration.kind !== 'local_work' || entry.orchestration.effectId !== effectId
         || entry.attemptId !== localWorkAttemptId(effectId, entry.orchestration.ordinal)
-        || hash(compiled.request) !== hash(request)) fail('native_orchestration_context_compile_invalid');
+        || !equalNativeDocuments(compiled.request, request)) fail('native_orchestration_context_compile_invalid');
     const ref = { kind: 'local_work', authorityRef: bank.authorityRef, effectId, localWorkOrdinal: entry.orchestration.ordinal,
         attemptId: entry.attemptId, reservationId: entry.reservationId ?? null };
     const proof = Object.freeze({});
@@ -97,7 +97,7 @@ export async function compileNativeContextMetered({ handle, port, request, bank,
 export async function assertContextCompilation({ proof, handle, port, compiled, bank, root, intent, source }) {
     const value = compilations.get(proof);
     if (!value || value.handle !== handle || value.port !== port || value.compiled !== compiled || value.bank !== bank
-        || hash(compiled.request.sourceBinding) !== hash(value.sourceBinding) || compiled.request.grantDigest !== value.grantDigest)
+        || !equalNativeDocuments(compiled.request.sourceBinding, value.sourceBinding) || compiled.request.grantDigest !== value.grantDigest)
         fail('native_orchestration_context_compile_proof_invalid');
     if (root && rootBinding(root) !== value.rootBinding) fail('native_orchestration_context_compile_proof_invalid');
     if (intent && (intent.runId !== value.runId || intent.effectId !== value.effectId

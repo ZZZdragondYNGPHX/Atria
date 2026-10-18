@@ -3,7 +3,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertNativeId } from '../identity.js';
-import { hashNativeDocument as hash, cloneNativeDocument, putImmutable } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument as hash, cloneNativeDocument, putImmutable } from '../repositories/common.js';
 import { assertObject, assertCounter, assertSourceSelector } from '../../../public/shared/native-orchestration-contracts.js';
 import { createBindingSourceAuthority } from './binding-source-authority.js';
 import { assertRunAccess } from '../run-control.js';
@@ -33,7 +33,7 @@ const matches = (root, selector) => {
     const source = selectorFor(root);
     return source.domain === selector.domain && !(selector.taskRef && !source.taskRef)
         && Object.entries(source).every(([field, value]) => field === 'entryPointId'
-            || field === 'taskId' && selector.taskId === null || field === 'taskRef' && !selector.taskRef || hash(selector[field]) === hash(value));
+            || field === 'taskId' && selector.taskId === null || field === 'taskRef' && !selector.taskRef || equalNativeDocuments(selector[field], value));
 };
 const boundedLimit = limit => {
     assertCounter(limit, 'limit', 1);
@@ -273,7 +273,7 @@ export class RunObservationService {
                         approve: false }, createdAt: root.createdAt, updatedAt: root.updatedAt };
                 if (visibilityDigest !== await this.#authorize(handle, tx, root)) resync();
                 const current = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId }))?.doc;
-                if (hash(current) !== hash(root)) resync();
+                if (!equalNativeDocuments(current, root)) resync();
                 return { view: { root, visibilityDigest, hostGeneration: fence.generation, payload: cloneNativeDocument(payload) } };
             } catch (error) {
                 // Preserve lawful reentrant source/control changes even when

@@ -11,7 +11,7 @@ import { ConflictError } from '../../storage/errors.js';
 import { hashNativeDocument as hash, putImmutable, putMutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { immutable, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
 import { readPlanRevision } from './plan-repository.js';
-import { readAttempt, assertAttemptConsumable, runGuard, controlCommandId, controlRecordKey } from './controller-common.js';
+import { readAttempt, assertAttemptConsumable, readGraphReviewReceipt, readAttemptInvalidation, runGuard, controlCommandId, controlRecordKey } from './controller-common.js';
 import { sessionGraphAudience } from './session-agent-graph-profile.js';
 import { audienceRunCapture } from './audience-source-contracts.js';
 import { assertNativeTurnQuota, captureNativeTurnChildQuota, captureNativeTurnFanoutChildQuota, assertNativeTurnControlQuota } from './native-turn-quota.js';
@@ -20,6 +20,7 @@ import { AttemptController } from './attempt-controller.js';
 import { TransitionController } from './transition-controller.js';
 import { ContextPort } from './context-port.js';
 import { compileNativeContextMetered } from './generation-local-work.js';
+import { ResultPort } from './result-port.js';
 import { ResultController } from './result-controller.js';
 import { TaskLocalOutputController } from './task-local-output-controller.js';
 import { HandoffReturnController } from './handoff-return-controller.js';
@@ -92,7 +93,11 @@ export class SessionDelegationAuthority {
         // Every actual and future pinned route uses this same held allocation.
         const ceiling = profiles[0].resolved.route.executionPolicy.computeBudget;
         if ([...profiles, ...poolProfiles].some(model => !equal(model.resolved.route.executionPolicy.computeBudget, ceiling))) fail();
-        return { pin, plan: childPlan, planRef: pin.resourceRef, topology, profiles, poolProfiles, ceiling, parentSource };
+        const resourceProfiles = [...poolProfiles, ...[...new Set([...profiles, ...poolProfiles])].flatMap(model => model.delegation?.resourceProfiles ?? [])];
+        const selectionDigest = hash({ pin, models: profiles.map(model => ({ node: model.node, configDigest: model.configDigest,
+            source: model.audienceSource.descriptor, nested: model.delegation?.selectionDigest ?? null })),
+        pool: poolProfiles.map(model => ({ pin: model.pin, configDigest: model.configDigest, source: model.audienceSource.descriptor })) });
+        return { pin, plan: childPlan, planRef: pin.resourceRef, topology, profiles, poolProfiles, resourceProfiles, selectionDigest, ceiling, parentSource };
     }
 
     async #resolveChildModel(parent, node) {
@@ -110,8 +115,8 @@ export class SessionDelegationAuthority {
     parentInput(state, child, mode) {
         const selected = state.selectionState, ref = state.decision.inputRef, source = selected.audienceSource;
         if (!['delegate', 'handoff'].includes(mode) || !child) fail();
-        const input = { kind: 'native_session_delegation', role: 'narrator', requestId: state.request.requestId,
-            sourceRef: state.sourceBinding.sourceRef, bindingRef: ref.bindingRef, planRef: ref.planRef, nodeId: ref.nodeId,
+        const input = { ...ref, kind: 'native_session_delegation', role: 'narrator', requestId: state.request.requestId,
+            sourceRef: state.sourceBinding.sourceRef, ...(ref.bindingRef ? { bindingRef: ref.bindingRef } : {}), planRef: ref.planRef, nodeId: ref.nodeId,
             childPlanRef: child.planRef, audience: ref.audience,
             delegationScope: { parentPinId: source.pin.pinId, childPinId: child.profiles[0].audienceSource.pin.pinId,
                 sourceRef: source.actualRef ?? source.pin.resourceRef, integrity: hash(source.descriptor) },
@@ -182,10 +187,14 @@ export class SessionDelegationAuthority {
                     if (!saved || !equal(saved.controlRef, binding.controlRef) || saved.review?.decision === 'rerun') fail();
                     for (const ref of binding.evidenceRefs ?? []) {
                         const active = state.activeNode ? (await readAttempt(tx, identity.handle, root, state.activeNode.nodeAttemptId)).doc : null;
-                        const recipient = !output && active && ['running', 'waiting_effect'].includes(active.status) ? active : null;
+                        const ownReview = !output && active && state.model.node.kind === 'review' ? await readGraphReviewReceipt(tx, identity.handle, root, active) : null;
+                        const justDecided = ownReview?.decision === 'rerun';
+                        const recipient = !output && !justDecided && active && ['running', 'waiting_effect'].includes(active.status) ? active : null;
                         const member = await readGraphNodeResult(tx, identity.handle, root, ref.resultId, { recipient });
                         if (!member || !saved.joinReceipt?.acceptedResultRefs.some(actual => equal(actual, ref))) fail();
-                        await assertAttemptConsumable(tx, identity.handle, root, member.producer);
+                        const invalidation = justDecided ? await readAttemptInvalidation(tx, identity.handle, root, member.producer) : null;
+                        if (!invalidation || invalidation.reviewReceiptId !== ownReview.receiptId)
+                            await assertAttemptConsumable(tx, identity.handle, root, member.producer);
                         results.push({ resultRef: ref, sourceRefs: member.record.envelope.sourceRefs, content: member.record.payload });
                     }
                     results.push({ controlRef: binding.controlRef, sourceRefs: [binding.controlRef], content: 'Advisory graph control only; this never grants Source, tools or official writes: '
@@ -370,7 +379,7 @@ export class SessionDelegationAuthority {
             await service.reserveChild(handle, { parentRunId: state.runId, childRunId: state.childRunId, ceiling: child.ceiling,
                 limits: state.selectionState.resolved.route.executionPolicy.computeBudget });
             await service.delegates.confirmBudget(handle, runGuard(await service.runs.get(handle, state.childRunId)));
-            const resources = [...new Set((await Promise.all(child.poolProfiles.map(model => host.executionResources(handle, model.resolved.route)))).flat())];
+            const resources = [...new Set((await Promise.all(child.resourceProfiles.map(model => host.executionResources(handle, model.resolved.route)))).flat())];
             const expected = { owner: handle, anchor: schedulerProof.expected.anchor, kind: 'model_task', executionClass: 'turn_blocking', resources,
                 key: 'session-child:' + state.childRunId, fingerprint: hash({ childRunId: state.childRunId, childPlanRef: child.planRef }) };
             const output = await nativeTaskScheduler.withResourceHandoff(schedulerProof.boundary, schedulerProof.expected, {
@@ -505,11 +514,17 @@ export class SessionDelegationAuthority {
             egressDigest: hash({ pathFingerprint: model.resolved.pathFingerprint, sourceBindingDigest: root.sourceBinding.bindingDigest, grantDigest: state.identity.grantDigest, audience }),
             budgetEnvelopeDigest: hash(model.resolved.route.executionPolicy.computeBudget), dispatchPolicy: { idempotency: 'none', operationKey: null, reconcile: 'manual' } };
         await service.runs.withSourceControl(handle, root.runId, async () => {
-            await new AttemptController({ runs: service.runs, authorizeAttempt: args => this.authorize(args) }).activate(handle, { ...runGuard(await service.runs.get(handle, root.runId)), attemptId });
+            if (!state.nestedReturn) await new AttemptController({ runs: service.runs, authorizeAttempt: args => this.authorize(args) }).activate(handle, { ...runGuard(await service.runs.get(handle, root.runId)), attemptId });
+            else {
+                const current = (await this.owner.engine.withTransaction(handle, tx => readAttempt(tx, handle, root, attemptId))).doc;
+                if (current.status !== 'running' || current.effectRefs.length || current.epoch !== root.epoch) fail();
+                await this.inspectDelegation(capture, { host, handle });
+            }
             await service.effects.prepare(handle, { ...runGuard(await service.runs.get(handle, root.runId)), effectId, nodeAttemptId: attemptId,
                 proposal: Object.fromEntries(['actionRef', 'targetRef', 'inputRef', 'inputHash'].map(key => [key, state.decision[key]])) });
         }, { withAuthority: service.sourcePort.consumptionBoundary(handle, root.sourceBinding, { engine: this.owner.engine }) });
         state.contextPort = new ContextPort({ sessionCore: this.owner.sessionCore, sessionDelegationCapture: capture, sessionDelegationHost: host,
+            ...(state.nestedReturn ? { rpReturnCapture: state.nestedReturn.capture, resultPort: new ResultPort({ host }) } : {}),
             sessionModelPolicy: { fallbackMode: 'disabled', routes: model.failurePlan.routes }, authorizeContext: async ({ request }) => {
                 await this.inspectDelegation(capture, { host, handle });
                 if (!equal(request.inputRefs, inputRefs) || request.taskPurpose !== state.identity.taskPurpose || request.grantDigest !== state.identity.grantDigest
@@ -633,7 +648,7 @@ export class SessionDelegationAuthority {
                 const snapshot = await this.owner.engine.withTransaction(handle, tx => readTaskGraphRevision(tx, handle, active));
                 const topology = sessionDelegatedGraphProfile({ ...child.plan, definition: snapshot.graph });
                 if (topology.terminalNodeId !== child.topology.terminalNodeId || !equal(topology.output, child.topology.output)) fail();
-                state.root = active;
+                state.root = active; state.activeNestedParent = null;
                 let loopBindings = [], model;
                 const replan = [...progress].find(([, entry]) => entry.requests?.replan);
                 if (replan) {
@@ -684,7 +699,7 @@ export class SessionDelegationAuthority {
                 const results = [...new Map(bindings.flatMap(item => [item.resultRef, ...item.evidenceRefs ?? []].filter(Boolean)).map(ref => [hash(ref), ref])).values()];
                 const controls = [...new Map(bindings.filter(item => item.controlRef).map(item => [hash(item.controlRef), item.controlRef])).values()];
                 const audience = model.audienceSource.audience;
-                const logical = { kind: 'native_session_delegated_intent', role: 'narrator', requestId: state.request.requestId,
+                const modelInput = { kind: 'native_session_delegated_intent', role: 'narrator', requestId: state.request.requestId,
                     invocationId: parent.proofExpected.invocationId, requestHash: parent.proofExpected.requestHash, sourceRef: root.sourceBinding.sourceRef,
                     planRef: root.planRef, nodeId: model.node.nodeId, parentRunId: parent.runId, parentAttemptId: parent.attemptId,
                     parentEpoch: root.parentRef.parentEpoch, childRunId: root.runId, childEpoch: root.epoch, delegationInputDigest: root.parentRef.inputDigest,
@@ -695,6 +710,8 @@ export class SessionDelegationAuthority {
                     delegationScope: { parentPinId: child.parentSource.pin.pinId, childPinId: model.audienceSource.pin.pinId,
                         sourceRef: model.audienceSource.actualRef ?? model.audienceSource.pin.resourceRef, integrity: hash(model.audienceSource.descriptor) },
                     ...(model.audienceSource.pin.resourceRef.anchor === 'run_source' ? { audienceCapture: audienceRunCapture(model.audienceSource.pin, model.audienceSource) } : {}) };
+                const logical = model.delegation ? this.parentInput({ selectionState: model, sourceBinding: root.sourceBinding,
+                    decision: { inputRef: modelInput }, request: state.request, graphBindings: bindings }, model.delegation, 'handoff') : modelInput;
                 const inputRefs = [logical, ...root.parentRef.inputRefs, ...results, ...controls]; state.contextInputRefs = immutable(inputRefs);
                 const admission = { inputRefs, inputDigest: hash(inputRefs), effectiveGrantDigest: state.identity.grantDigest, budgetRef: root.budgetAuthorityRef };
                 let attemptId;
@@ -714,7 +731,26 @@ export class SessionDelegationAuthority {
                     } }).advance(handle, { ...runGuard(await service.runs.get(handle, root.runId)), bindings: logical.graphBindings, reservedAttemptId: null });
                     attemptId = transitioned.outcome.attemptId;
                 }
-                const { effectId, result, send, limits } = await this.#sendChildStage(state, parent, { attemptId, model, logical, inputRefs });
+                let stage, nestedParent = null;
+                try {
+                    if (model.delegation) {
+                        nestedParent = { host, handle, runId: root.runId, attemptId, selection: parent.selection,
+                            selectionState: { ...model, base: parent.selectionState.base, input: parent.selectionState.input, binding: { planRef: root.planRef } },
+                            sourceBinding: root.sourceBinding, quotaProof: state.quotaProof, proofExpected: parent.proofExpected,
+                            request: state.request, graphBindings: bindings, decision: { inputRef: logical, inputHash: hash(logical), grantDigest: state.identity.grantDigest } };
+                        state.activeNestedParent = nestedParent;
+                        state.activeNode = { nodeId: model.node.nodeId, nodeAttemptId: attemptId,
+                            effectId: 'oeffect_' + hash({ runId: root.runId, attemptId, taskPurpose: state.identity.taskPurpose }).slice(0, 32) };
+                        state.decision = nestedParent.decision;
+                        await new AttemptController({ runs: service.runs, authorizeAttempt: args => this.authorize(args) }).activate(handle,
+                            { ...runGuard(await service.runs.get(handle, root.runId)), attemptId });
+                        state.nestedReturn = await this.run({ parentState: nestedParent, childPlanPinId: model.delegation.pin.pinId, mode: 'handoff' });
+                    }
+                    const continuation = state.nestedReturn ? { ...modelInput, acceptedResultRef: state.nestedReturn.acceptedResultRef,
+                        returnReceiptRef: state.nestedReturn.returnReceiptRef, parentInputDigest: state.nestedReturn.parentInputDigest } : modelInput;
+                    stage = await this.#sendChildStage(state, parent, { attemptId, model, logical: continuation, inputRefs });
+                } finally { if (nestedParent) this.release(nestedParent); state.nestedReturn = null; }
+                const { effectId, result, send, limits } = stage;
                 const controller = new ResultController({ host, modelPort: port });
                 if (model.node.kind === 'planner') {
                     progress.set(model.node.nodeId, await completeSessionDelegatedPlanner({ state, service, port, result, send, limits,
@@ -757,7 +793,7 @@ export class SessionDelegationAuthority {
             }
         } catch (error) {
             await this.#proveNotDispatched(state);
-            await this.#failRun(parent, root.runId, state.activeNode?.nodeAttemptId ?? null, error);
+            await this.#failRun(state.activeNestedParent ?? parent, root.runId, state.activeNode?.nodeAttemptId ?? null, error);
             throw error;
         } finally { this.#delegations.delete(capture); this.#children.delete(root.runId); }
     }

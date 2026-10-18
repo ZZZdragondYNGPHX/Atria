@@ -8,7 +8,7 @@ import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { createNativeId, assertNativeId } from '../identity.js';
-import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable, withNativeResourceWrites } from '../repositories/common.js';
+import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument, putImmutable, putMutable, withNativeResourceWrites } from '../repositories/common.js';
 import { assertCounter, assertDigest, assertObject, assertPlanRef, assertPlanDefinition, assertToken } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertComputeAllocation } from '../../../public/shared/native-compute-budget.js';
 import { checkedRecord, planDefinitionHash } from './plan-repository.js';
@@ -89,7 +89,7 @@ export async function assertChildRunCurrent(tx, handle, root, { requireBudget = 
             || (parent.parentRef?.depth ?? 0) + 1 !== ref.depth
             || !['running', 'waiting_effect', 'waiting_approval', 'waiting_child'].includes(attempt.status)
             || parent.rootRunId !== root.rootRunId || parent.sourceBinding.bindingDigest !== root.sourceBinding.bindingDigest
-            || hashNativeDocument(parent.budgetAuthorityRef) !== hashNativeDocument(root.budgetAuthorityRef)
+            || !equalNativeDocuments(parent.budgetAuthorityRef, root.budgetAuthorityRef)
             || parent.hostBootId !== root.hostBootId || parent.hostGeneration !== root.hostGeneration) throw new ConflictError('native_orchestration_parent_stale');
         if (attempt.status === 'waiting_child') await readHandoff(tx, handle, parent, attempt, child);
         child = parent;
@@ -100,7 +100,7 @@ export async function assertChildRunCurrent(tx, handle, root, { requireBudget = 
         if (!receipt || receipt.receiptKind !== 'child_budget_ready' || receipt.runId !== root.runId || receipt.epoch !== root.epoch
             || receipt.reservationId !== root.runId || receipt.sourceBindingDigest !== root.sourceBinding.bindingDigest
             || receipt.budgetCeilingDigest !== hashNativeDocument(root.parentRef.budgetCeiling)
-            || hashNativeDocument(receipt.authorityRef) !== hashNativeDocument(root.budgetAuthorityRef)) throw new ConflictError('native_orchestration_child_budget_unconfirmed');
+            || !equalNativeDocuments(receipt.authorityRef, root.budgetAuthorityRef)) throw new ConflictError('native_orchestration_child_budget_unconfirmed');
     }
 }
 
@@ -122,7 +122,7 @@ export function assertRunRoot(root, handle) {
         }
         if (!Array.isArray(root.parentRef.inputRefs) || hashNativeDocument(root.parentRef.inputRefs) !== root.parentRef.inputDigest
             || root.rootRunId === root.runId || root.parentRef.parentRunId === root.runId
-            || root.parentRef.returnContract?.kind !== 'result' || hashNativeDocument(root.parentRef.returnContract) !== hashNativeDocument(root.graph.outputContract)
+            || root.parentRef.returnContract?.kind !== 'result' || !equalNativeDocuments(root.parentRef.returnContract, root.graph.outputContract)
             || root.runId !== 'orun_' + hashNativeDocument({ parentRunId: root.parentRef.parentRunId, parentAttemptId: root.parentRef.nodeAttemptId, delegationId: root.parentRef.delegationId }).slice(0, 32)) throw new TypeError('Invalid child Run identity/inputs');
     } else if (root.rootRunId !== root.runId) throw new TypeError('Root Run must own its root identity');
     for (const field of ['epoch', 'stateVersion', 'graphRevision', 'eventSeq', 'createdAt', 'updatedAt']) assertCounter(root[field], field);
@@ -371,12 +371,14 @@ export class RunRepository {
             await assertChildRunCurrent(tx, handle, root);
             if (root.cancelRequested || !['admitted', 'running'].includes(root.status) || root.nodeControl[input.nodeId]?.disposition !== 'eligible') throw new ConflictError('native_orchestration_attempt_not_admitted');
             if (root.parentRef) {
-                if (hashNativeDocument(input.budgetRef) !== hashNativeDocument(root.budgetAuthorityRef)
+                if (!equalNativeDocuments(input.budgetRef, root.budgetAuthorityRef)
                     || input.effectiveGrantDigest !== root.parentRef.effectiveGrantDigest) throw new ConflictError('native_orchestration_child_authority_invalid');
                 if (input.inputDigest !== root.parentRef.inputDigest) {
                     const passiveChild = ['project', 'native_session', 'rp_chat'].includes(root.sourceBinding.sourceAuthority) && input.inputRefs[0]?.kind === ({ project: 'native_project_delegated_control', native_session: 'native_session_delegated_control', rp_chat: 'native_rp_delegated_control' })[root.sourceBinding.sourceAuthority]
                         && ['fanout', 'join'].includes(root.graph.nodes.find(node => node.nodeId === input.nodeId)?.kind);
-                    if (!passiveChild && input.inputRefs[0]?.kind !== ({ native_session: 'native_session_delegated_intent', project: 'native_project_delegated_intent', rp_chat: 'native_rp_delegated_intent' })[root.sourceBinding.sourceAuthority]
+                    const delegatedInput = ({ native_session: ['native_session_delegated_intent', 'native_session_delegation'],
+                        project: ['native_project_delegated_intent', 'native_project_delegation'], rp_chat: ['native_rp_delegated_intent', 'native_rp_delegation'] })[root.sourceBinding.sourceAuthority];
+                    if (!passiveChild && !delegatedInput?.includes(input.inputRefs[0]?.kind)
                         || !['native_session', 'project', 'rp_chat'].includes(root.sourceBinding.sourceAuthority)
                         || typeof this.authorizeChildAttempt !== 'function') throw new ConflictError('native_orchestration_child_authority_invalid');
                     const decision = await this.authorizeChildAttempt({ handle, tx, root, input });
@@ -429,26 +431,26 @@ export class RunRepository {
                 const receipt = await readHandoffReturn(tx, handle, { ...next, eventSeq: root.eventSeq + 1 }, input.detail.childRunId);
                 if (!receipt || receipt.decisionSeq !== root.eventSeq + 1) throw new TypeError('Handoff return requires complete facts');
             }
-            if (hashNativeDocument(next.outputClaims) !== hashNativeDocument(root.outputClaims) && input.operation !== 'output.publish')
+            if (!equalNativeDocuments(next.outputClaims, root.outputClaims) && input.operation !== 'output.publish')
                 throw new TypeError('Only output publication may claim output');
-            if (hashNativeDocument(next.treeProgress) !== hashNativeDocument(root.treeProgress)) throw new TypeError('Only RunRepository may accumulate treeProgress');
+            if (!equalNativeDocuments(next.treeProgress, root.treeProgress)) throw new TypeError('Only RunRepository may accumulate treeProgress');
             for (const field of ['runId', 'ownerRef', 'planRef', 'sourceBinding', 'parentRef', 'rootRunId', 'budgetAuthorityRef', 'hostBootId', 'hostGeneration', 'epoch', 'limits', 'retentionPolicyRef', 'createdAt']) {
-                if (hashNativeDocument(next[field]) !== hashNativeDocument(root[field])) throw new TypeError('Controller cannot rewrite Run identity/authority: ' + field);
+                if (!equalNativeDocuments(next[field], root[field])) throw new TypeError('Controller cannot rewrite Run identity/authority: ' + field);
             }
             if (next.cancelRequested !== root.cancelRequested || (TERMINAL.has(root.status) && input.operation !== 'effect.observe')) throw new ConflictError('native_orchestration_run_not_mutable');
             if (TERMINAL.has(root.status) && (!['reconciling', 'blocked', root.status].includes(next.status)
-                || hashNativeDocument(next.outputClaims) !== hashNativeDocument(root.outputClaims)
-                || hashNativeDocument(next.resultRefs) !== hashNativeDocument(root.resultRefs))) throw new TypeError('Late observations cannot replace published output/results');
+                || !equalNativeDocuments(next.outputClaims, root.outputClaims)
+                || !equalNativeDocuments(next.resultRefs, root.resultRefs))) throw new TypeError('Late observations cannot replace published output/results');
             for (const field of PROGRESS) if (next.progress[field] < root.progress[field]) throw new TypeError('Controller cannot reset progress');
             if (next.progress.deadlineAt > root.progress.deadlineAt) throw new TypeError('Controller cannot extend the original deadline');
             for (const [edgeId, count] of Object.entries(root.progress.edgeVisitCounts)) if ((next.progress.edgeVisitCounts[edgeId] ?? 0) < count) throw new TypeError('Controller cannot reset edge visits');
             assertPlanDefinition(next.graph, record.planRevision.dependencyPins);
             for (const field of ['capabilityCeiling', 'graphChangePolicy', 'outputContract', 'limits', 'entryNodeIds']) {
-                if (hashNativeDocument(next.graph[field]) !== hashNativeDocument(record.planRevision.definition[field])) throw new TypeError('Controller cannot raise/change Plan graph authority: ' + field);
+                if (!equalNativeDocuments(next.graph[field], record.planRevision.definition[field])) throw new TypeError('Controller cannot raise/change Plan graph authority: ' + field);
             }
             if (input.operation === 'graph.patch') {
                 if (![root.graphRevision, root.graphRevision + 1].includes(next.graphRevision)) throw new TypeError('Graph revision must advance once per accepted patch');
-            } else if (next.graphRevision !== root.graphRevision || hashNativeDocument(next.graph) !== hashNativeDocument(root.graph)) throw new TypeError('Only GraphPatch can change the task graph');
+            } else if (next.graphRevision !== root.graphRevision || !equalNativeDocuments(next.graph, root.graph)) throw new TypeError('Only GraphPatch can change the task graph');
             assertToken(result.eventType, 'eventType');
             if (result.reasonCode !== null) assertToken(result.reasonCode, 'reasonCode');
             const updated = await this.#commit(tx, handle, record, next, result.eventType, result.reasonCode, timestamp);
@@ -467,10 +469,10 @@ export class RunRepository {
         if (!revision || revision.doc.definitionHash !== record.doc.planRef.definitionHash
             || planDefinitionHash(revision.doc.definition, revision.doc.dependencyPins) !== record.doc.planRef.definitionHash) throw new TypeError('RunRoot Plan dependency mismatch');
         assertPlanDefinition(record.doc.graph, revision.doc.dependencyPins);
-        if (hashNativeDocument(record.doc.limits) !== hashNativeDocument(revision.doc.definition.limits)
-            || hashNativeDocument(record.doc.graph.limits) !== hashNativeDocument(record.doc.limits)) throw new TypeError('RunRoot limits cannot exceed the immutable Plan');
+        if (!equalNativeDocuments(record.doc.limits, revision.doc.definition.limits)
+            || !equalNativeDocuments(record.doc.graph.limits, record.doc.limits)) throw new TypeError('RunRoot limits cannot exceed the immutable Plan');
         for (const field of ['capabilityCeiling', 'graphChangePolicy', 'outputContract', 'entryNodeIds']) {
-            if (hashNativeDocument(record.doc.graph[field]) !== hashNativeDocument(revision.doc.definition[field]))
+            if (!equalNativeDocuments(record.doc.graph[field], revision.doc.definition[field]))
                 throw new TypeError('Run immutable graph contract differs from its Plan: ' + field);
         }
         record.planRevision = revision.doc;
@@ -524,7 +526,7 @@ export class RunRepository {
             if (!ancestorRecord) throw new NotFoundError('orchestration_run');
             const ancestor = cloneNativeDocument(ancestorRecord.doc); assertRunRoot(ancestor, handle);
             const treeProgress = accumulate(ancestor.treeProgress, root.treeProgress.depth, ancestor.progress.deadlineAt);
-            if (hashNativeDocument(treeProgress) !== hashNativeDocument(ancestor.treeProgress)) {
+            if (!equalNativeDocuments(treeProgress, ancestor.treeProgress)) {
                 ancestor.treeProgress = treeProgress; ancestor.stateVersion++; ancestor.eventSeq++; ancestor.updatedAt = timestamp;
                 check(ancestor); assertRunRoot(ancestor, handle); ancestors.push({ record: ancestorRecord, next: ancestor });
             }

@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments } from '../repositories/common.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { audienceContextPin } from './audience-source-contracts.js';
 
@@ -21,7 +21,7 @@ export function rpJudgeProfile(plan) {
     for (const node of [...candidates, judge]) {
         const retrievalPins = node.capabilities.includes('memory.retrieve') ? plan.dependencyPins.filter(pin => node.dependencyPinIds.includes(pin.pinId)
             && pin.port === 'context' && pin.resourceRef.scope === 'player' && pin.resourceRef.retrievalProfileId) : [];
-        if (hash([...node.capabilities].sort()) !== hash(['generation.send', ...retrievalPins.length ? ['memory.retrieve'] : []].sort()) || !nodeModelRoutePins(node, plan.dependencyPins).length
+        if (!equalNativeDocuments([...node.capabilities].sort(), ['generation.send', ...retrievalPins.length ? ['memory.retrieve'] : []].sort()) || !nodeModelRoutePins(node, plan.dependencyPins).length
             || node.dependencyPinIds.length !== nodeModelRoutePins(node, plan.dependencyPins).length + retrievalPins.length + (audienceContextPin(node, plan.dependencyPins) ? 1 : 0)) fail();
     }
     const edge = (from, to, type) => graph.edges.find(item => item.from.nodeId === from.nodeId && item.to.nodeId === to.nodeId

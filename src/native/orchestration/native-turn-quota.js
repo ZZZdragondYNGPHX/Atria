@@ -1,6 +1,6 @@
 import { fields } from '../../../public/shared/native-values.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
-import { hashNativeDocument } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument } from '../repositories/common.js';
 import { assertNativeTurnPermit, captureNativeTurnChildPermit, assertNativeTurnControlPermit, captureNativeTurnFanoutChildPermit, assertNativeTurnFinalizationPermit, captureNativeTurnFinalizationPermit } from './native-turn-permit.js';
 import { inspectNativeBackgroundGenerationIdentity } from './native-background-generation.js';
 
@@ -16,7 +16,7 @@ function mintNativeTurnQuota(role, { host, handle, request, snapshot, anchor, in
         || typeof requestHash !== 'string' || !/^[a-f0-9]{64}$/.test(requestHash) || !selection
         || request.sessionId !== snapshot.session.sessionId
         || request.revisionId !== snapshot.revision.revisionId
-        || hashNativeDocument(anchor) !== hashNativeDocument({ branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId })) denied();
+        || !equalNativeDocuments(anchor, { branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId })) denied();
     const policy = snapshot.manifest.runtime?.experienceContract?.generationBudget ?? null;
     const metadata = immutable({ handle, sessionId: snapshot.session.sessionId, requestId: request.requestId, invocationId, requestHash, role, anchor, policy,
         quota: policy === null ? null : { request: { role, background: false, anchor }, policy } });
@@ -69,8 +69,8 @@ function assertTurnQuotaMetadata(value, expected) {
         || (expected.invocationId !== undefined && value.invocationId !== expected.invocationId)
         || (expected.requestHash !== undefined && value.requestHash !== expected.requestHash)
         || (expected.selection !== undefined && value.selection !== expected.selection)
-        || (expected.anchor !== undefined && hashNativeDocument(value.anchor) !== hashNativeDocument(expected.anchor))
-        || (Object.hasOwn(expected, 'policy') && hashNativeDocument(value.policy) !== hashNativeDocument(expected.policy))) denied();
+        || (expected.anchor !== undefined && !equalNativeDocuments(value.anchor, expected.anchor))
+        || (Object.hasOwn(expected, 'policy') && !equalNativeDocuments(value.policy, expected.policy))) denied();
 }
 
 export function assertNativeTurnQuota(proof, expected) {
@@ -79,8 +79,8 @@ export function assertNativeTurnQuota(proof, expected) {
         const captured = inspectNativeBackgroundGenerationIdentity(value.backgroundCapture, { host: value.host, handle: value.handle });
         if (Object.entries(expected ?? {}).some(([key, item]) => ['host', 'sessionCore'].includes(key) ? value[key] !== item
             : key === 'policy' ? hashNativeDocument(item) !== captured.policyDigest
-                : key === 'sourceRequest' ? hashNativeDocument(item) !== hashNativeDocument(captured.sourceRequest)
-                    : hashNativeDocument(value[key] ?? null) !== hashNativeDocument(item))) denied();
+                : key === 'sourceRequest' ? !equalNativeDocuments(item, captured.sourceRequest)
+                    : !equalNativeDocuments(value[key] ?? null, item))) denied();
         return { ...value, quota: { request: { role: value.role, background: true, anchor: { invocationId: captured.input.invocationId } },
             policy: captured.policy } };
     }

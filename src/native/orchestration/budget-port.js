@@ -1,5 +1,5 @@
 import { ConflictError } from '../../storage/errors.js';
-import { hashNativeDocument } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument } from '../repositories/common.js';
 import { assertNativeId } from '../identity.js';
 import { readRunControl } from '../run-control.js';
 import { fields } from '../../../public/shared/native-values.js';
@@ -77,7 +77,7 @@ function assertAttemptProvenance(ref, row) {
     if (!row || (row.reservationId ?? null) !== ref.reservationId) fail('native_orchestration_budget_attempt_missing');
     const provenance = { kind: ref.kind === 'local_work' ? 'local_work' : 'provider_send', effectId: ref.effectId,
         ordinal: ref.kind === 'local_work' ? ref.localWorkOrdinal : ref.providerSendOrdinal };
-    if (hashNativeDocument(row.orchestration ?? null) !== hashNativeDocument(provenance)) fail('native_orchestration_budget_attempt_invalid');
+    if (!equalNativeDocuments(row.orchestration ?? null, provenance)) fail('native_orchestration_budget_attempt_invalid');
     return row;
 }
 
@@ -141,7 +141,7 @@ export class BudgetPort {
                 for (const runId of ids) {
                     const root = (await checkedRecord(active, { kind: K.orchestrationRun, handle, runId }))?.doc;
                     if (!root || root.ownerRef.handle !== handle || root.cancelRequested || root.status !== 'running'
-                        || hashNativeDocument(root.budgetAuthorityRef) !== hashNativeDocument(ref)) continue;
+                        || !equalNativeDocuments(root.budgetAuthorityRef, ref)) continue;
                     try {
                         const progress = await readProjectOwnedSource(active, handle, root, { projectAgent: this.projectAgent });
                         if (progress.currentFingerprint === task.executionFingerprint) return;
@@ -326,7 +326,7 @@ export class BudgetPort {
             if (!ledger.reservations?.some(row => row.reservationId === reservationId)) fail('native_orchestration_child_budget_unavailable');
             const facts = inspectComputeChildClosure({ compute: ledger }, reservationId);
             if (facts.reservation.parentReservationId !== expectedParentReservationId
-                || hashNativeDocument(facts.reservation.limits) !== hashNativeDocument(expectedCeiling)) fail('native_orchestration_budget_reservation_mismatch');
+                || !equalNativeDocuments(facts.reservation.limits, expectedCeiling)) fail('native_orchestration_budget_reservation_mismatch');
             const reservations = [facts.reservation, ...facts.descendantReservations].sort((a, b) => a.reservationId.localeCompare(b.reservationId));
             for (const row of reservations) {
                 assertNativeId(row.reservationId, 'orchestrationRun');
@@ -357,13 +357,13 @@ export class BudgetPort {
     async verifyReservation({ handle, tx, root, parent }) {
         const authorityRef = assertBudgetAuthorityRef(root.budgetAuthorityRef);
         if (!root.parentRef || root.parentRef.parentRunId !== parent.runId
-            || hashNativeDocument(authorityRef) !== hashNativeDocument(parent.budgetAuthorityRef)) fail('native_orchestration_child_authority_invalid');
+            || !equalNativeDocuments(authorityRef, parent.budgetAuthorityRef)) fail('native_orchestration_child_authority_invalid');
         const ledger = await this.#ledger(handle, tx, authorityRef);
         const reservation = ledger?.reservations?.find(row => row.reservationId === root.runId);
         const parentReservationId = parent.parentRef ? parent.runId : null;
         if (!reservation || reservation.status !== 'held' || reservation.consumerId !== root.runId || reservation.parentReservationId !== parentReservationId)
             fail('native_orchestration_child_budget_unavailable');
-        if (hashNativeDocument(reservation.limits) !== hashNativeDocument(root.parentRef.budgetCeiling)) fail('native_orchestration_budget_reservation_mismatch');
+        if (!equalNativeDocuments(reservation.limits, root.parentRef.budgetCeiling)) fail('native_orchestration_budget_reservation_mismatch');
         return { status: 'held', reservationId: root.runId, authorityRef: structuredClone(authorityRef), parentReservationId };
     }
 
@@ -374,7 +374,7 @@ export class BudgetPort {
      */
     async verifyBudgetAttempt({ handle, tx, root, intent, budgetAttemptRef, expectedSend }) {
         const ref = assertBudgetAttemptRef(budgetAttemptRef), authority = ref.authorityRef;
-        if (hashNativeDocument(authority) !== hashNativeDocument(root.budgetAuthorityRef)) fail('native_orchestration_budget_authority_mismatch');
+        if (!equalNativeDocuments(authority, root.budgetAuthorityRef)) fail('native_orchestration_budget_authority_mismatch');
         if (ref.effectId !== intent.effectId) fail('native_orchestration_budget_attempt_invalid');
         if (root.parentRef && ref.reservationId !== root.runId) fail('native_orchestration_budget_reservation_mismatch');
         const ledger = await this.#ledger(handle, tx, authority);
@@ -427,7 +427,7 @@ export class BudgetPort {
             const background = input.kind === 'native_background_intent';
             if (parent.capability !== 'generation.send' || parent.status !== 'prepared'
                 || (background ? !task || input.taskId !== task.taskId || input.variantId !== task.variantId
-                    || hashNativeDocument(input.planRef) !== hashNativeDocument(root.planRef) || input.nodeId !== root.graph.entryNodeIds[0]
+                    || !equalNativeDocuments(input.planRef, root.planRef) || input.nodeId !== root.graph.entryNodeIds[0]
                     || input.sourceBindingDigest !== root.sourceBinding.bindingDigest
                     : input.kind !== 'native_turn_intent' || input.role !== 'narrator' || task)
                 || child.capability !== 'memory.retrieve' || child.actionRef.kind !== 'context_retrieval' || child.status !== 'prepared'

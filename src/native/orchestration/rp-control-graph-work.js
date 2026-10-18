@@ -15,7 +15,7 @@ import { graphPlannerControlRef, graphPlannerReceiptId, readGraphPlannerCompleti
 import { controlCommandId, controlRecordKey, runGuard, readAttempt, graphReachable, readReviewAdmission,
     readGraphReviewReceipt, readAttemptInvalidation, assertAttemptConsumable, assertAttemptCurrent } from './controller-common.js';
 import { ReviewController, reviewReceiptId } from './review-controller.js';
-import { graphReviewModelReceiptId, graphReviewControlRef, readGraphReviewCompletion, readReviewablePlannerCompletion } from './graph-review-completion.js';
+import { graphReviewModelReceiptId, graphReviewControlRef, readGraphReviewCompletion, readReviewablePlannerCompletion, readReviewableFanoutCompletion } from './graph-review-completion.js';
 import { RP_REVIEW_REASON_CODES } from './rp-review-profile.js';
 import { graphJudgeModelReceiptId, graphJudgeControlRef, readGraphJudgeCompletion } from './graph-judge-completion.js';
 import { readEffect } from './effect-contracts.js';
@@ -96,9 +96,14 @@ export class RpControlGraphWork {
         for (const fact of facts) {
             const invalidation = await readAttemptInvalidation(tx, handle, root, fact.producer);
             if (!invalidation) { await assertAttemptConsumable(tx, handle, root, fact.producer); continue; }
-            const planner = fact.controlRef?.kind === 'graph_planner_control'
-                ? await readReviewablePlannerCompletion(tx, handle, root, fact.producer.attemptId, rpPlannerReaderOptions) : null;
-            if (!planner || !equal(planner, fact) || invalidation.reviewReceiptId !== review.receiptId
+            const targets = await Promise.all(review.targetAttemptIds.map(async id => (await readAttempt(tx, handle, root, id)).doc));
+            const readCompletion = this.readFanoutCompletion ?? readRpControlFanoutCompletion;
+            const completed = fact.controlRef?.kind === 'graph_join_control'
+                ? await readReviewableFanoutCompletion(tx, handle, root, fact.producer.attemptId, { targets, readCompletion })
+                : fact.controlRef?.kind === 'graph_planner_control'
+                    ? await readReviewablePlannerCompletion(tx, handle, root, fact.producer.attemptId, { ...this.plannerReaderOptions ?? rpPlannerReaderOptions,
+                        reviewTargets: targets, readFanoutCompletion: readCompletion }) : null;
+            if (!completed || !equal(completed, fact) || invalidation.reviewReceiptId !== review.receiptId
                 || invalidation.reviewIntegrity !== hash(review) || !review.invalidatedAttemptIds.includes(fact.producer.attemptId)
                 || fact.receipt.decisionSeq >= review.decisionSeq)
                 fail('native_orchestration_review_producer_denied');
@@ -255,9 +260,12 @@ export class RpControlGraphWork {
                         || active.graph.nodes.find(node => node.nodeId === target.nodeId).kind !== 'agent')) fail('native_orchestration_review_producer_denied');
                 if (decision === 'rerun') for (const [nodeId, fact] of this.records) {
                     if (!targets.some(target => graphReachable(active.graph, target.nodeId, nodeId))) continue;
+                    const readCompletion = this.readFanoutCompletion ?? readRpControlFanoutCompletion;
                     if (fact.controlRef?.kind === 'graph_join_control'
+                        && !await readReviewableFanoutCompletion(tx, handle, active, fact.attemptId, { targets, readCompletion })
                         || fact.controlRef?.kind === 'graph_planner_control'
-                            && !await readReviewablePlannerCompletion(tx, handle, active, fact.attemptId, rpPlannerReaderOptions))
+                            && !await readReviewablePlannerCompletion(tx, handle, active, fact.attemptId, { ...this.plannerReaderOptions ?? rpPlannerReaderOptions,
+                                reviewTargets: targets, readFanoutCompletion: readCompletion }))
                         fail('native_orchestration_review_irreversible_dependency');
                 }
                 await this.current();
@@ -265,9 +273,12 @@ export class RpControlGraphWork {
             admitRerun: async ({ tx, root: active, reviewer, target, attemptId: replacementId, invalidatedAttemptIds }) => {
                 await this.current();
                 const capacity = await service.budgetPort.observeCapacity(handle, { authorityRef: active.budgetAuthorityRef, reservationId: this.reservationId ?? null }, { tx });
-                const affected = [...this.records.values()].filter(fact => invalidatedAttemptIds.includes(fact.attemptId)).length;
                 const admission = await readReviewAdmission(tx, handle, active, reviewer);
-                const requiredRequests = this.reviewRerunRequests ? this.reviewRerunRequests(active, reviewer, invalidatedAttemptIds) : affected + 2;
+                const requiredRequests = this.reviewRerunRequests ? this.reviewRerunRequests(active, reviewer, invalidatedAttemptIds)
+                    : active.graph.nodes.filter(node => ['agent', 'planner', 'review', 'judge'].includes(node.kind)
+                        && active.nodeControl[node.nodeId]?.disposition !== 'cancelled'
+                        && (node.nodeId === reviewer.nodeId || !this.records.has(node.nodeId)
+                            || invalidatedAttemptIds.includes(this.records.get(node.nodeId).attemptId))).length;
                 if (!capacity || capacity.overrun || capacity.remaining.requests < requiredRequests
                     || !admission || admission.round >= active.graph.nodes.find(node => node.nodeId === reviewer.nodeId).policy.maxRounds
                     || active.progress.reviews >= active.limits.maxReviews)
@@ -318,7 +329,7 @@ export class RpControlGraphWork {
         } catch (error) {
             if (error.code !== 'storage_commit_unknown') throw error;
             const observed = await service.runs.engine.withTransaction(handle, async tx => readGraphReviewCompletion(tx, handle,
-                await service.runs.get(handle, runId), attemptId, rpReviewReaderOptions));
+                await service.runs.get(handle, runId), attemptId, this.reviewReaderOptions ?? rpReviewReaderOptions));
             if (!observed || !equal(observed.review, review)) throw error;
         }
         return { attemptId, controlRef: graphReviewControlRef(runId, attemptId), status: 'completed', review, replacements };
@@ -443,7 +454,7 @@ export class RpControlGraphWork {
             } }).advance(handle, { ...runGuard(root), bindings: bundle.bindings, reservedAttemptId: null });
             return advanced.outcome.attemptId;
         }
-        return (await runs.beginAttempt(handle, controlCommandId('rp.graph.control', { runId, nodeId: node.nodeId, fanoutAttemptId }),
+        return (await runs.beginAttempt(handle, controlCommandId('rp.graph.control', { runId, nodeId: node.nodeId, fanoutAttemptId, inputDigest: admission.inputDigest }),
             { ...runGuard(root), nodeId: node.nodeId, ...admission })).attemptId;
     }
 

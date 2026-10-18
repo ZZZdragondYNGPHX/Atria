@@ -1,5 +1,5 @@
 import { ConflictError } from '../../storage/errors.js';
-import { cloneNativeDocument, hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
+import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
 import { assertNativeId } from '../identity.js';
 import { assertObject, assertDigest, assertToken } from '../../../public/shared/native-orchestration-contracts.js';
 import { controlCommandId, controlRecordKey, graphReachable, readAttempt, assertAttemptCurrent, readAttemptInvalidation, attemptInvalidationId, graphReviewReceiptId as reviewReceiptId, readReviewAdmission } from './controller-common.js';
@@ -101,7 +101,7 @@ export class ReviewController {
                     assertObject(admission, ['inputRefs', 'inputDigest', 'effectiveGrantDigest', 'budgetRef'], 'review rerun admission');
                     assertDigest(admission.inputDigest, 'inputDigest'); assertDigest(admission.effectiveGrantDigest, 'effectiveGrantDigest');
                     const staleResults = new Set(attempts.filter(item => invalidated.includes(item.attemptId)).flatMap(item => item.resultRefs).map(hash));
-                    if (!Array.isArray(admission.inputRefs) || hash(admission.inputRefs) !== admission.inputDigest || hash(admission.budgetRef) !== hash(root.budgetAuthorityRef)
+                    if (!Array.isArray(admission.inputRefs) || hash(admission.inputRefs) !== admission.inputDigest || !equalNativeDocuments(admission.budgetRef, root.budgetAuthorityRef)
                         || admission.inputRefs.some(ref => staleResults.has(hash(ref)))
                         || root.nodeControl[target.nodeId].disposition !== 'eligible') deny('native_orchestration_review_rerun_denied');
                     const next = { ...target, attemptId, attemptNumber: Math.max(...attempts.filter(item => item.nodeId === target.nodeId).map(item => item.attemptNumber)) + 1,

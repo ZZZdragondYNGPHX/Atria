@@ -13,12 +13,13 @@ import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { readAttempt, controlCommandId, controlRecordKey, readAttemptInvalidation, readGraphReviewReceipt, assertAttemptConsumable, assertAttemptCurrent } from './controller-common.js';
 import { readGraphNodeResults } from './graph-result-contracts.js';
 import { readGraphPlannerCompletion } from './graph-planner-completion.js';
-import { readGraphReviewCompletion, graphReviewControlRef, readReviewablePlannerCompletion } from './graph-review-completion.js';
+import { readGraphReviewCompletion, graphReviewControlRef, readReviewablePlannerCompletion, readReviewableFanoutCompletion } from './graph-review-completion.js';
 import { readGraphJudgeCompletion, graphJudgeControlRef } from './graph-judge-completion.js';
 import { assertRpControlWork } from './rp-control-work-contracts.js';
 import { RP_REVIEW_REASON_CODES } from './rp-review-profile.js';
 import { isRpDelegatedControlGraph, rpDelegatedPlannerReaderOptions, assertRpDelegatedClosure } from './rp-delegation-control-contracts.js';
 import { taskLocalReceiptId } from './task-local-output-contracts.js';
+import { readHandoffReturnInspection } from './handoff-return-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { readDelegationCompletion } from './delegation-completion-contracts.js';
 import { rpDelegatedControlProfile, assertRpDelegatedAudiencePin } from './rp-delegated-control-profile.js';
@@ -53,7 +54,7 @@ async function readControl(tx, handle, root, ref, historyFacts = null) {
     let fact; const completedControls = [];
     if (ref.kind === 'graph_planner_control') fact = await readGraphPlannerCompletion(tx, handle, root, ref.attemptId, { verifyControlWork: assertRpControlWork });
     else if (ref.kind === 'graph_review_control') fact = await readGraphReviewCompletion(tx, handle, root, ref.attemptId,
-        { verifyControlWork: assertRpControlWork, reasonCodes: RP_REVIEW_REASON_CODES });
+        { verifyControlWork: assertRpControlWork, reasonCodes: RP_REVIEW_REASON_CODES, readFanoutCompletion: readRpDelegatedFanoutCompletion });
     else if (ref.kind === 'graph_judge_control') fact = await readGraphJudgeCompletion(tx, handle, root, ref.attemptId,
         { verifyControlWork: assertRpControlWork, readControlInputs: async (_tx, _handle, _root, _producer, input) => {
             const controls = [];
@@ -148,7 +149,7 @@ async function readInputSources(tx, handle, root, bundle, targetNodeId, { live =
     }
     const ownReview = recipient && root.graph.nodes.find(node => node.nodeId === targetNodeId)?.kind === 'review'
         ? await readGraphReviewReceipt(tx, handle, root, recipient) : null;
-    if (ownReview?.decision === 'rerun' && facts.some(fact => fact.controlRef?.kind === 'graph_planner_control')) {
+    if (ownReview?.decision === 'rerun' && facts.some(fact => ['graph_planner_control', 'graph_join_control'].includes(fact.controlRef?.kind))) {
         const commandId = controlCommandId('review.decide', ownReview.receiptId);
         const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
         const detail = { reviewAttemptId: recipient.attemptId, decision: ownReview.decision,
@@ -169,10 +170,19 @@ async function readInputSources(tx, handle, root, bundle, targetNodeId, { live =
             if (!ownReview.evidenceRefs.some(ref => equal(ref, fact.receipt.resultRef))) invalid();
             continue;
         }
-        const planner = fact.controlRef?.kind === 'graph_planner_control' && bundle.controlRefs.some(ref => equal(ref, fact.controlRef))
-            ? await readReviewablePlannerCompletion(tx, handle, root, fact.producer.attemptId, rpDelegatedPlannerReaderOptions) : null;
-        const { rpDelegatedInput, ...completed } = fact;
-        if (!rpDelegatedInput || !planner || !equal(planner, completed)) invalid();
+        if (!bundle.controlRefs.some(ref => equal(ref, fact.controlRef))) invalid();
+        const targets = await Promise.all(ownReview.targetAttemptIds.map(async id => (await readAttempt(tx, handle, root, id)).doc));
+        if (fact.controlRef?.kind === 'graph_join_control') {
+            const group = await readReviewableFanoutCompletion(tx, handle, root, fact.producer.attemptId,
+                { targets, readCompletion: readRpDelegatedFanoutCompletion });
+            if (!group || !equal(group, fact)) invalid();
+        } else {
+            const planner = fact.controlRef?.kind === 'graph_planner_control'
+                ? await readReviewablePlannerCompletion(tx, handle, root, fact.producer.attemptId, { ...rpDelegatedPlannerReaderOptions,
+                    reviewTargets: targets, readFanoutCompletion: readRpDelegatedFanoutCompletion }) : null;
+            const { rpDelegatedInput, ...completed } = fact;
+            if (!rpDelegatedInput || !planner || !equal(planner, completed)) invalid();
+        }
     }
     return facts;
 }
@@ -221,10 +231,55 @@ async function readControlInputFacts(tx, handle, child, producer, intent, public
     return proof;
 }
 
+// RunRepository's original TaskLocal writer checks its exact prospective
+// Root before saving it. Only that receipt-authorized single event is allowed.
+async function durableRpChild(tx, handle, child) {
+    const durable = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: child.runId }))?.doc;
+    if (!durable) invalidHistory();
+    if (!equal(durable, child)) {
+        // The original RunRepository proves the exact prospective TaskLocal
+        // output before saving its Root. All lineage still uses the real row.
+        const receipt = (await checkedRecord(tx, controlRecordKey(handle, child.runId, 'receipt', taskLocalReceiptId(child.runId))))?.doc;
+        if (!receipt || receipt.receiptKind !== 'task_local_output' || durable.status !== 'running' || durable.outputClaims.length
+            || durable.cancelRequested || receipt.runId !== durable.runId || receipt.epoch !== durable.epoch
+            || receipt.graphRevision !== durable.graphRevision || receipt.decisionSeq !== durable.eventSeq + 1) invalidHistory();
+        const pending = { ...durable, status: 'completed', outputClaims: [receipt.claimRef],
+            progress: { ...durable.progress, steps: durable.progress.steps + 1 },
+            treeProgress: { ...durable.treeProgress, steps: durable.treeProgress.steps + 1 },
+            stateVersion: durable.stateVersion + 1, eventSeq: durable.eventSeq + 1, updatedAt: receipt.createdAt };
+        if (!equal(pending, child)) invalidHistory();
+    }
+    return durable;
+}
+
+/** The resumed Model keeps its original resolver Attempt and consumes only
+ * the actual returned descendant. This is historical proof, not a read grant. */
+export async function readRpDelegationContinuation(tx, handle, parent, producer, intent) {
+    const resolver = producer.inputRefs[0], input = intent.inputRef, ref = input?.acceptedResultRef;
+    if (!parent.parentRef || resolver?.kind !== 'native_rp_delegation' || input?.kind !== 'native_rp_delegated_intent'
+        || !ref || input.parentInputDigest !== producer.inputDigest || producer.inputDigest !== hash(producer.inputRefs)
+        || intent.nodeAttemptId !== producer.attemptId || intent.sourceBindingDigest !== parent.sourceBinding.bindingDigest
+        || producer.effectiveGrantDigest !== parent.parentRef.effectiveGrantDigest
+        || !equal(input, { ...resolver, kind: 'native_rp_delegated_intent', acceptedResultRef: ref,
+            returnReceiptRef: input.returnReceiptRef, parentInputDigest: producer.inputDigest })) invalid();
+    const child = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: ref.runId }))?.doc;
+    if (!child || child.status !== 'completed' || !equal(child.planRef, resolver.childPlanRef)
+        || !equal(child.parentRef?.inputRefs, producer.inputRefs)) invalid();
+    const durableParent = await durableRpChild(tx, handle, parent);
+    const lineage = await readDelegationCompletion(tx, handle, durableParent, child);
+    if (!lineage || lineage.mode !== 'handoff' || lineage.parentAttempt.attemptId !== producer.attemptId) invalid();
+    const returned = await readHandoffReturnInspection(tx, handle, durableParent, child.runId);
+    if (!returned || !equal(input.returnReceiptRef, { runId: parent.runId, receiptId: returned.receipt.receiptId })
+        || !equal(returned.receipt.resultRef, ref) || !equal(returned.output.claim.resultRef, ref)) invalid();
+    return { lineage: { ...lineage, parent: durableParent, child }, output: returned.output, publication: returned.publication, returnReceipt: returned.receipt };
+}
+
 /** Exact stage inputs, original dependency receipts and original child grant. */
 async function readControlInputFactsFresh(tx, handle, child, producer, intent, publicationSeq, ownedFacts) {
-    const input = intent.inputRef, bundle = input.controlGraph;
-    if (!isRpDelegatedControlGraph(child) || input.kind !== 'native_rp_delegated_intent' || input.role !== 'narrator'
+    const resolver = producer.inputRefs[0];
+    const nested = resolver?.kind === 'native_rp_delegation' ? await readRpDelegationContinuation(tx, handle, child, producer, intent) : null;
+    const input = nested ? resolver : intent.inputRef, bundle = input.controlGraph;
+    if (!isRpDelegatedControlGraph(child) || input.kind !== (nested ? 'native_rp_delegation' : 'native_rp_delegated_intent') || input.role !== 'narrator'
         || input.nodeId !== producer.nodeId || input.parentRunId !== child.parentRef.parentRunId || input.childRunId !== child.runId
         || input.parentAttemptId !== child.parentRef.nodeAttemptId || !equal(input.planRef, child.planRef)
         || !equal(input.sourceRef, child.sourceBinding.sourceRef)
@@ -232,7 +287,7 @@ async function readControlInputFactsFresh(tx, handle, child, producer, intent, p
         || intent.nodeAttemptId !== producer.attemptId || intent.graphRevision !== producer.graphRevision || intent.epoch !== producer.epoch
         || !bundle || !Array.isArray(bundle.evidenceRefs) || !equal(input.acceptedGraphResultRefs ?? [], bundle.evidenceRefs) || !Array.isArray(bundle.controlRefs) || !Array.isArray(bundle.bindings)
         || !equal(input.acceptedControlRefs, bundle.controlRefs) || !equal(producer.inputRefs, [input, ...child.parentRef.inputRefs, ...bundle.evidenceRefs, ...bundle.controlRefs])
-        || producer.inputDigest !== hash(producer.inputRefs) || intent.inputHash !== hash(input)) invalid();
+        || producer.inputDigest !== hash(producer.inputRefs) || intent.inputHash !== hash(intent.inputRef)) invalid();
     const snapshot = await readTaskGraphRevision(tx, handle, child, producer.graphRevision);
     const plan = await readPlanRevision(tx, handle, child.planRef), node = snapshot.graph.nodes.find(node => node.nodeId === producer.nodeId);
     const pin = plan.dependencyPins.find(pin => pin.pinId === node?.policy.agentPinId);
@@ -285,7 +340,7 @@ async function readControlInputFactsFresh(tx, handle, child, producer, intent, p
             producerBindings: bindings, allowLoopBack: loops.length > 0,
             receipt: { decisionSeq: publicationSeq, traversalReceiptRef: { runId: child.runId, receiptId } } });
     }
-    return { input, sources, bindings: replacement ? [] : bundle.bindings, loops, replacement,
+    return { input, sources, bindings: replacement ? [] : bundle.bindings, loops, replacement, nested,
         requestedRootDigest: hash(child), producerDigest: hash(producer), effectDigest: hash(intent) };
 }
 
@@ -306,21 +361,7 @@ async function readGraphHistory(tx, handle, child, { pendingProducer = null, fin
         || !equal(snapshot.graph.edges.filter(edge => edge.loopBack), plan.definition.edges.filter(edge => edge.loopBack))) invalidHistory();
     const parent = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: child.parentRef.parentRunId }))?.doc;
     if (!parent || !profile) invalidHistory();
-    const durable = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: child.runId }))?.doc;
-    if (!durable) invalidHistory();
-    if (!equal(durable, child)) {
-        // The original RunRepository proves the exact prospective TaskLocal
-        // output before saving its Root. All lineage still uses the real row.
-        const receipt = (await checkedRecord(tx, controlRecordKey(handle, child.runId, 'receipt', taskLocalReceiptId(child.runId))))?.doc;
-        if (!receipt || receipt.receiptKind !== 'task_local_output' || durable.status !== 'running' || durable.outputClaims.length
-            || durable.cancelRequested || receipt.runId !== durable.runId || receipt.epoch !== durable.epoch
-            || receipt.graphRevision !== durable.graphRevision || receipt.decisionSeq !== durable.eventSeq + 1) invalidHistory();
-        const pending = { ...durable, status: 'completed', outputClaims: [receipt.claimRef],
-            progress: { ...durable.progress, steps: durable.progress.steps + 1 },
-            treeProgress: { ...durable.treeProgress, steps: durable.treeProgress.steps + 1 },
-            stateVersion: durable.stateVersion + 1, eventSeq: durable.eventSeq + 1, updatedAt: receipt.createdAt };
-        if (!equal(pending, child)) invalidHistory();
-    }
+    const durable = await durableRpChild(tx, handle, child);
     const delegated = await readDelegationCompletion(tx, handle, parent, durable);
     if (!delegated) invalidHistory();
     const finalProducer = pendingProducer ?? finalPublication.producer
@@ -329,7 +370,7 @@ async function readGraphHistory(tx, handle, child, { pendingProducer = null, fin
     const bankControl = (await checkedRecord(tx, { kind: K.rpRunControl, handle, controlId: child.budgetAuthorityRef.controlId }))?.doc;
     const bank = bankControl?.operations[child.budgetAuthorityRef.operationId]?.compute;
     if (!bank) invalidHistory();
-    const effects = [], budgetAttemptIds = [], planners = [], reviews = [], judges = [], results = [], entries = [], counts = {}, latest = new Map(), previous = new Map(), replaced = new Map(), consumed = new Set(); let settled = true, loopIterations = 0;
+    const effects = [], budgetAttemptIds = [], nestedClosures = [], planners = [], reviews = [], judges = [], results = [], entries = [], counts = {}, latest = new Map(), previous = new Map(), replaced = new Map(), consumed = new Set(); let settled = true, loopIterations = 0;
     const attempts = [];
     for (const id of child.attemptRefs) attempts.push((await readAttempt(tx, handle, child, id)).doc);
     const fanouts = [];
@@ -362,6 +403,12 @@ async function readGraphHistory(tx, handle, child, { pendingProducer = null, fin
             if (!receipt || receipt.receiptKind !== 'edge_admission') invalidHistory();
             counts[receipt.edgeId] = (counts[receipt.edgeId] ?? 0) + 1;
         }
+        const inherited = fact.fanout.inputRefs[0];
+        const sources = await readInputSources(tx, handle, child, { evidenceRefs: inherited.acceptedGraphResultRefs,
+            controlRefs: inherited.acceptedControlRefs, bindings: inherited.graphBindings }, fact.fanout.nodeId,
+        { beforeSeq: fact.frame.decisionSeq }, ownedFacts);
+        entries.push({ producer: fact.fanout, fact: { ...fact, producer: fact.fanout, receipt: fact.frame },
+            proof: { sources, bindings: [], loops: [], replacement: null } });
         entries.push({ producer: fact.producer, fact, proof: { sources: fact.members, bindings: [], loops: [], replacement: null } });
     }
     for (const producer of attempts.filter(attempt => profile.models.some(node => node.nodeId === attempt.nodeId))) {
@@ -411,6 +458,7 @@ async function readGraphHistory(tx, handle, child, { pendingProducer = null, fin
             : producer.attemptId === finalProducer.attemptId
                 ? await readControlInputFactsFresh(tx, handle, child, producer, effect, fact?.receipt.decisionSeq ?? child.eventSeq + 1, ownedFacts)
                 : await readControlInputFacts(tx, handle, child, producer, effect, fact?.receipt.decisionSeq ?? child.eventSeq + 1, ownedFacts);
+        if (proof.nested) nestedClosures.push(proof.nested.output.closure);
         if (!unsuccessful) entries.push({ producer, fact, proof });
         for (const binding of unsuccessful ? [] : proof.bindings) {
             counts[binding.edgeId] = (counts[binding.edgeId] ?? 0) + 1;
@@ -480,8 +528,21 @@ async function readGraphHistory(tx, handle, child, { pendingProducer = null, fin
     if (child.progress.loopIterations !== loopIterations || child.progress.edgeVisits !== Object.values(counts).reduce((a, b) => a + b, 0)
         || !equal(child.progress.edgeVisitCounts, counts)) invalidHistory();
     if (hash(child) !== rootDigest) invalidHistory();
+    const reservationRefs = [{ reservationId: child.runId,
+        parentReservationId: child.parentRef.depth === 1 ? null : parent.runId, status: 'released' }];
+    const budgetAttemptReservations = budgetAttemptIds.map(attemptId => ({ attemptId, reservationId: child.runId }));
+    for (const nested of nestedClosures) {
+        if (!equal(nested.authorityRef, child.budgetAuthorityRef)
+            || nested.reservationRefs.some(ref => reservationRefs.some(actual => actual.reservationId === ref.reservationId))
+            || nested.budgetAttemptRefs.some(ref => budgetAttemptIds.includes(ref.attemptId))) invalidHistory();
+        reservationRefs.push(...nested.reservationRefs);
+        for (const ref of nested.budgetAttemptRefs) {
+            budgetAttemptIds.push(ref.attemptId); budgetAttemptReservations.push({ attemptId: ref.attemptId, reservationId: ref.reservationId });
+        }
+    }
     const history = { plan, profile, graph: snapshot.graph, models: profile.models, output: profile.output, terminalNodeId: profile.terminalNodeId,
-        lineage: { ...delegated, parent, child }, finalProducer, effects, planners, reviews, judges, fanouts, results, rootDigest: hash(child), budgetAttemptIds, settled, loopIterations };
+        lineage: { ...delegated, parent, child }, finalProducer, effects, planners, reviews, judges, fanouts, results, rootDigest: hash(child),
+        budgetAttemptIds, budgetAttemptReservations, reservationRefs, settled, loopIterations };
     if (closure) assertRpDelegatedClosure(child, history, closure);
     return history;
 }

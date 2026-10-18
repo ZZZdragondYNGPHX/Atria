@@ -25,7 +25,7 @@ import { readProjectControlInputs, projectControlItems, projectJudgeReaderOption
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { checkedRecord } from './plan-repository.js';
 import { ReviewController, reviewReceiptId } from './review-controller.js';
-import { graphReviewModelReceiptId, graphReviewControlRef, readGraphReviewCompletion, readReviewablePlannerCompletion } from './graph-review-completion.js';
+import { graphReviewModelReceiptId, graphReviewControlRef, readGraphReviewCompletion, readReviewablePlannerCompletion, readReviewableFanoutCompletion } from './graph-review-completion.js';
 import { graphJudgeModelReceiptId, graphJudgeControlRef, readGraphJudgeCompletion } from './graph-judge-completion.js';
 import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
 import { ConflictError } from '../../storage/errors.js';
@@ -34,7 +34,7 @@ import { writeAttemptSettlement } from './attempt-settlement.js';
 import { controlCommandId, controlRecordKey, readAttempt, runGuard, graphReachable } from './controller-common.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
-const readerOptions = { verifyControlWork: assertProjectControlWork };
+const readerOptions = { verifyControlWork: assertProjectControlWork, readFanoutCompletion: readProjectFanoutCompletion };
 
 /** One domain consumer of original Graph/Transition/Model controllers. Ready
  * ordering is shared and read-only; this class owns no durable execution state. */
@@ -252,7 +252,7 @@ export class ProjectControlGraphWork {
             } }).advance(handle, { ...runGuard(root), bindings: bundle.bindings, reservedAttemptId: null });
             return advanced.outcome.attemptId;
         }
-        return (await runs.beginAttempt(handle, controlCommandId('project.graph.control', { runId, nodeId: node.nodeId, fanoutAttemptId }),
+        return (await runs.beginAttempt(handle, controlCommandId('project.graph.control', { runId, nodeId: node.nodeId, fanoutAttemptId, inputDigest: admission.inputDigest }),
             { ...runGuard(root), nodeId: node.nodeId, ...admission })).attemptId;
     }
 
@@ -455,10 +455,17 @@ export class ProjectControlGraphWork {
             if (decision === 'rerun') {
                 const affected = [...this.records.entries()].filter(([nodeId, fact]) => fact.attemptId !== reviewer.attemptId
                     && targets.some(target => graphReachable(root.graph, target.nodeId, nodeId)));
-                for (const [, fact] of affected) {
-                    if (fact.controlRef?.kind === 'graph_join_control'
+                const completeGroups = new Set();
+                for (const [, fact] of affected.filter(([, fact]) => fact.controlRef?.kind === 'graph_join_control')) {
+                    const joined = await readReviewableFanoutCompletion(tx, handle, root, fact.attemptId,
+                        { targets, readCompletion: readProjectFanoutCompletion });
+                    if (!joined) fail('native_orchestration_review_irreversible_dependency');
+                    for (const attempt of [joined.fanout, joined.producer, ...joined.scopeAttempts.map(item => item.attempt)]) completeGroups.add(attempt.attemptId);
+                }
+                for (const [nodeId, fact] of affected) {
+                    if (['fanout', 'join'].includes(root.graph.nodes.find(node => node.nodeId === nodeId)?.kind) && !completeGroups.has(fact.attemptId)
                         || fact.controlRef?.kind === 'graph_planner_control'
-                            && !await readReviewablePlannerCompletion(tx, handle, root, fact.attemptId, readerOptions))
+                            && !await readReviewablePlannerCompletion(tx, handle, root, fact.attemptId, { ...readerOptions, reviewTargets: targets }))
                         fail('native_orchestration_review_irreversible_dependency');
                 }
                 for (const [nodeId, recorded] of affected) {
@@ -482,11 +489,12 @@ export class ProjectControlGraphWork {
         }, admitRerun: async ({ tx, root, reviewer, target, attemptId, invalidatedAttemptIds }) => {
             const capacity = await budgetPort.observeCapacity(handle, { authorityRef: root.budgetAuthorityRef, reservationId: null }, { tx });
             const affected = [...this.records.entries()].filter(([, fact]) => invalidatedAttemptIds.includes(fact.attemptId));
-            const requests = affected.reduce((count, [nodeId]) => count + 1
-                + (this.state.selected.resolveDelegation(root.graph.nodes.find(node => node.nodeId === nodeId))?.ceiling.maxRequests ?? 0), 2);
+            const requests = affected.filter(([nodeId]) => root.graph.nodes.find(node => node.nodeId === nodeId).capabilities.includes('generation.send'))
+                .reduce((count, [nodeId]) => count + 1
+                    + (this.state.selected.resolveDelegation(root.graph.nodes.find(node => node.nodeId === nodeId))?.ceiling.maxRequests ?? 0), 2);
             const admission = await readReviewAdmission(tx, handle, root, reviewer);
             const reviews = 1 + affected.filter(([nodeId]) => root.graph.nodes.find(node => node.nodeId === nodeId).kind === 'review').length;
-            if (!capacity || capacity.overrun || capacity.remaining.requests < requests || !admission
+            if (!capacity || capacity.overrun || capacity.remaining.requests < requests || root.progress.attempts + affected.length + 2 > root.limits.maxAttempts || !admission
                 || admission.round >= root.graph.nodes.find(node => node.nodeId === reviewer.nodeId).policy.maxRounds
                 || root.progress.reviews + reviews > root.limits.maxReviews)
                 fail('native_orchestration_project_quality_rerun_limit');

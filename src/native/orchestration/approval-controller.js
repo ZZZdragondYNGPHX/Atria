@@ -1,6 +1,6 @@
 import { ConflictError } from '../../storage/errors.js';
 import { assertNativeId } from '../identity.js';
-import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
+import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
 import { assertObject, assertCounter, assertDigest, assertToken } from '../../../public/shared/native-orchestration-contracts.js';
 import { controlCommandId, controlRecordKey } from './controller-common.js';
 import { readEffect, readApproval, approvalBinding, currentApprovalBinding } from './effect-contracts.js';
@@ -35,7 +35,7 @@ export class ApprovalController {
                 if (error.code === 'native_orchestration_review_unavailable') return deny(error);
                 throw error;
             }
-            if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== hashNativeDocument(root)) return deny(new ConflictError('native_orchestration_approval_invalid'));
+            if (!equalNativeDocuments(await this.runs.get(handle, root.runId), root)) return deny(new ConflictError('native_orchestration_approval_invalid'));
             assertObject(challenge, ['actorRequirement', 'requestNonceHash'], 'ApprovalChallenge');
             assertObject(challenge.actorRequirement, ['handle'], 'actorRequirement');
             if (challenge.actorRequirement.handle !== root.ownerRef.handle) throw new TypeError('Approval actor must be the original authorized owner');
@@ -75,7 +75,7 @@ export class ApprovalController {
                 if (error.code === 'native_orchestration_review_unavailable') return deny(error);
                 throw error;
             }
-            if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== hashNativeDocument(root)) return deny(new ConflictError('native_orchestration_approval_invalid'));
+            if (!equalNativeDocuments(await this.runs.get(handle, root.runId), root)) return deny(new ConflictError('native_orchestration_approval_invalid'));
             assertObject(principal, ['principalRef', 'authenticationContextRef'], 'ApprovalPrincipal');
             assertObject(principal.principalRef, ['handle'], 'principalRef');
             if (principal.principalRef.handle !== approval.actorRequirement.handle) conflict('native_orchestration_approval_principal_mismatch');

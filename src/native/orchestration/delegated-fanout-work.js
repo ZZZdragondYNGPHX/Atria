@@ -27,7 +27,7 @@ export async function runDelegatedFanout({ state, service, group, inherited, pro
             effectiveGrantDigest: root.parentRef.effectiveGrantDigest, budgetRef: root.budgetAuthorityRef };
         state.controlAdmission = admission;
         try {
-            if (!graphBindings.length) return (await runs.beginAttempt(handle, controlCommandId(reasonPrefix + '.child.control', { runId, nodeId: node.nodeId, fanoutAttemptId }),
+            if (!graphBindings.length) return (await runs.beginAttempt(handle, controlCommandId(reasonPrefix + '.child.control', { runId, nodeId: node.nodeId, fanoutAttemptId, inputDigest: admission.inputDigest }),
                 { ...runGuard(root), nodeId: node.nodeId, ...admission })).attemptId;
             return (await new TransitionController({ runs, authorizeTransition: async ({ target, producers }) => {
                 await fresh(); if (target.nodeId !== node.nodeId || producers.some(item => !bindings.some(binding => binding.attemptId === item.attempt.attemptId && binding.edge.edgeId === item.edge.edgeId))) fail('native_orchestration_' + reasonPrefix + '_control_stale');

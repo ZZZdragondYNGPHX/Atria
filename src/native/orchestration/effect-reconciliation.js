@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument as hash } from '../repositories/common.js';
 import { controlRecordKey, runGuard } from './controller-common.js';
 import { checkedRecord } from './plan-repository.js';
 
@@ -16,7 +16,7 @@ export async function observeReconciledEffect({ runs, effects }, handle, { root,
         const id = 'oreceipt_' + hash({ effectId, observationId: observation.observationId }).slice(0, 32);
         const saved = await runs.engine.withTransaction(handle, tx => checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', id)));
         const { observedAt, ...record } = saved?.doc ?? {};
-        if (!Number.isSafeInteger(observedAt) || observedAt < 0 || hash(record) !== hash({ schemaVersion: 1,
+        if (!Number.isSafeInteger(observedAt) || observedAt < 0 || !equalNativeDocuments(record, { schemaVersion: 1,
             receiptId: id, effectId, runId: root.runId, ...observation })) throw error;
         receiptId = id;
     }

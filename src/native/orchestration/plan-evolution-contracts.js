@@ -1,7 +1,7 @@
 import { assertObject, assertCounter, assertDigest, assertPlanRef, assertSourceSelector, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertExactResourceRef } from '../model-prompt-runtime/contracts.js';
 import { assertNativeId } from '../identity.js';
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument as hash } from '../repositories/common.js';
 
 // Native strategies tighten limits or select an already declared exact route. Neither
 // arbitrary paths nor capability/output/source/credential edits are proposals.
@@ -22,7 +22,7 @@ export function assertPlanPromptTarget(target) {
     assertDigest(target.bindingId, 'bindingId'); assertCounter(target.expectedBindingVersion, 'expectedBindingVersion');
     assertPlanRef(target.planRef); assertNativeId(target.nodeId, 'orchestrationNode');
     const ref = assertExactResourceRef(target.promptModuleRef, 'core.prompt-module');
-    if (ref.scope !== 'library' || hash(ref) !== hash(target.promptModuleRef)) throw new TypeError('Exact Library Prompt module required');
+    if (ref.scope !== 'library' || !equalNativeDocuments(ref, target.promptModuleRef)) throw new TypeError('Exact Library Prompt module required');
     return target;
 }
 export const assertPlanEvolutionTarget = target => target?.kind === 'plan-prompt' ? assertPlanPromptTarget(target) : assertPlanStrategyTarget(target);
@@ -52,16 +52,16 @@ export const readPlanStrategyValue = (definition, target, dependencyPins = []) =
     if (assertPlanStrategyTarget(target).fieldPath !== 'routeRef') return strategyOwner(definition, target)[planStrategyField(target)];
     const choices = planNodeRouteChoices(definition, dependencyPins, target.nodeId), node = definition.nodes.find(node => node.nodeId === target.nodeId);
     const pin = dependencyPins.find(pin => pin.pinId === node?.policy.agentPinId);
-    if (choices.length < 2 || !choices.some(ref => hash(ref) === hash(pin?.resourceRef))) throw new TypeError('Plan route strategy requires declared node alternatives');
+    if (choices.length < 2 || !choices.some(ref => equalNativeDocuments(ref, pin?.resourceRef))) throw new TypeError('Plan route strategy requires declared node alternatives');
     return pin.resourceRef;
 };
 export function applyPlanStrategyValue(definition, target, value, dependencyPins = []) {
     if (assertPlanStrategyTarget(target).fieldPath === 'routeRef') {
         assertPlanRouteValue(value); readPlanStrategyValue(definition, target, dependencyPins);
         const choices = planNodeRouteChoices(definition, dependencyPins, target.nodeId);
-        if (!choices.some(ref => hash(ref) === hash(value))) throw new TypeError('Plan route candidate is outside the original node pins');
+        if (!choices.some(ref => equalNativeDocuments(ref, value))) throw new TypeError('Plan route candidate is outside the original node pins');
         const node = definition.nodes.find(node => node.nodeId === target.nodeId);
-        node.policy.agentPinId = dependencyPins.find(pin => pin.port === 'model' && node.dependencyPinIds.includes(pin.pinId) && hash(pin.resourceRef) === hash(value)).pinId;
+        node.policy.agentPinId = dependencyPins.find(pin => pin.port === 'model' && node.dependencyPinIds.includes(pin.pinId) && equalNativeDocuments(pin.resourceRef, value)).pinId;
         return;
     }
     assertCounter(value, 'candidate strategy', planStrategyMinimum(target));
@@ -72,7 +72,7 @@ function assertBaseBinding(binding, target) {
     assertObject(binding, ['bindingId', 'sourceSelector', 'planRef', 'version'], 'Plan candidate Binding');
     assertSourceSelector(binding.sourceSelector); assertPlanRef(binding.planRef); assertCounter(binding.version, 'Binding version');
     if (binding.bindingId !== hash(binding.sourceSelector) || binding.bindingId !== target.bindingId || binding.version !== target.expectedBindingVersion
-        || hash(binding.planRef) !== hash(target.planRef)) throw new TypeError('Invalid Plan candidate source Binding');
+        || !equalNativeDocuments(binding.planRef, target.planRef)) throw new TypeError('Invalid Plan candidate source Binding');
 }
 export function assertPlanEvolutionMetadata(value) {
     assertObject(value, ['declarations', 'candidates'], 'Plan evolution');
@@ -105,7 +105,7 @@ export function assertPlanEvolutionMetadata(value) {
         }
         if (candidate.schemaVersion !== 1 || candidateId !== hash(seed) || candidates.has(candidateId)
             || candidate.diff.field !== (prompt ? 'body' : candidate.target.fieldPath)
-            || (prompt || candidate.target.fieldPath === 'routeRef' ? hash(candidate.diff.after) === hash(candidate.diff.before) : candidate.diff.after >= candidate.diff.before)
+            || (prompt || candidate.target.fieldPath === 'routeRef' ? equalNativeDocuments(candidate.diff.after, candidate.diff.before) : candidate.diff.after >= candidate.diff.before)
             || planRef.planId !== candidate.target.planRef.planId || planRef.planRevisionId !== 'oprev_' + candidateId.slice(0, 32))
             throw new TypeError('Invalid native Plan candidate');
         candidates.add(candidateId);

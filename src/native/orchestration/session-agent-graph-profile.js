@@ -68,7 +68,7 @@ export function sessionAgentGraphProfile(plan) {
     if (steps.at(-1) !== narrator || plan.dependencyPins.some(pin => !models.some(node => node.dependencyPinIds.includes(pin.pinId)))) fail();
     const fanouts = [], usedJoins = new Set(), usedBranches = new Set();
     for (const fanout of controls.filter(node => node.kind === 'fanout')) {
-        if (incoming[fanout.nodeId].some(edge => !planners.some(node => node.nodeId === edge.from.nodeId)) || !['continue', 'fail_fast'].includes(fanout.policy.failurePolicy)) fail();
+        if (incoming[fanout.nodeId].some(edge => !models.some(node => node.nodeId === edge.from.nodeId && ['agent', 'planner', 'review', 'judge'].includes(node.kind))) || !['continue', 'fail_fast'].includes(fanout.policy.failurePolicy)) fail();
         const transfers = graph.edges.filter(edge => edge.from.nodeId === fanout.nodeId);
         const branches = transfers.map(edge => models.find(node => node.nodeId === edge.to.nodeId));
         if (!branches.length || branches.some(node => !node || !['agent', 'planner', 'judge'].includes(node.kind) || node === narrator || node.policy.allowedPlanPinIds?.length || usedBranches.has(node.nodeId)

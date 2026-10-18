@@ -1,5 +1,5 @@
 import { ConflictError } from '../../storage/errors.js';
-import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
+import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
 import { assertNativeId } from '../identity.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { controlCommandId, controlRecordKey, graphReachable, holdsConcurrencySlot, readAttempt, assertAttemptCurrent, readReviewAdmission, reviewAdmissionId } from './controller-common.js';
@@ -47,7 +47,7 @@ export class AttemptController {
                 if (!join || !barrier || join.schemaVersion !== 1 || join.joinId !== joinId || join.runId !== root.runId || join.epoch !== root.epoch
                     || join.decisionSeq > root.eventSeq || !['completed', 'partial', 'failed'].includes(join.outcome)
                     || barrier.fanoutAttemptId !== fanoutAttemptId || barrier.sourceBindingDigest !== root.sourceBinding.bindingDigest
-                    || hashNativeDocument(barrier.fanoutFrameRef) !== hashNativeDocument({ receiptId: frame.receiptId, integrity: hashNativeDocument(frame) })
+                    || !equalNativeDocuments(barrier.fanoutFrameRef, { receiptId: frame.receiptId, integrity: hashNativeDocument(frame) })
                     || !isFanoutBranchExcluded(frame, barrier, join, attempt))
                     throw new ConflictError('native_orchestration_fanout_cancellation_denied');
             }

@@ -1,3 +1,4 @@
+import { readGraphFanoutInput } from './graph-fanout-completion.js';
 import { readSessionReplanHistory } from './session-replan-contracts.js';
 import { readSessionDelegationContinuation } from './session-delegation-contracts.js';
 import { readSessionPlannerCompletion } from './session-planner-contracts.js';
@@ -138,15 +139,21 @@ export async function readSessionNarrationResult(tx, handle, root) {
         const incoming = snapshot.graph.edges.filter(edge => edge.to.nodeId === fact.producer.nodeId
             && ['planner', 'judge', 'review'].includes(snapshot.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind)).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
         const available = [...plannerCompletions, ...judgeCompletions, ...reviewCompletions.filter(item => item.controlRef)];
-        const controls = incoming.flatMap(edge => {
-            const actual = available.filter(item => item.producer.nodeId === edge.from.nodeId
-                && (modelInput.acceptedControlRefs ?? []).some(ref => equal(ref, item.controlRef)));
-            if (actual.length > 1) invalid();
-            if (!actual.length && snapshot.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind === 'review'
-                && reviewCompletions.some(item => !item.controlRef && item.producer.nodeId === edge.from.nodeId)) return [];
-            if (!actual.length && !snapshot.graph.nodes.find(node => node.nodeId === fact.producer.nodeId).inputs.find(port => port.name === edge.to.port)?.required) return [];
-            return actual.length ? actual : [null];
-        });
+        const controls = [];
+        for (const ref of modelInput.acceptedControlRefs ?? []) {
+            const actual = available.filter(item => equal(item.controlRef, ref));
+            if (actual.length !== 1) invalid();
+            const [control] = actual;
+            if (!incoming.some(edge => edge.from.nodeId === control.producer.nodeId)) {
+                if (!modelInput.fanoutAttemptId) invalid();
+                await readGraphFanoutInput(tx, handle, root, modelInput.fanoutAttemptId, fact.producer, ref, control, { historical: true });
+            }
+            controls.push(control);
+        }
+        if (incoming.some(edge => !controls.some(item => item.producer.nodeId === edge.from.nodeId)
+            && snapshot.graph.nodes.find(node => node.nodeId === fact.producer.nodeId).inputs.find(port => port.name === edge.to.port)?.required
+            && !(snapshot.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind === 'review'
+                && reviewCompletions.some(item => !item.controlRef && item.producer.nodeId === edge.from.nodeId)))) invalid();
         assertSessionJudgeSelections(root, snapshot.graph.nodes.find(node => node.nodeId === fact.producer.nodeId), modelInput.acceptedGraphResultRefs ?? [], controls.filter(item => item?.candidates));
         const delegated = fact.producer.inputRefs[0]?.kind === 'native_session_delegation';
         if (delegated) await readSessionDelegationContinuation(tx, handle, root, fact.producer, effect);
@@ -182,24 +189,31 @@ export async function readSessionNarrationResult(tx, handle, root) {
         for (const result of graphResults) if (loopHistory ? loopHistory.current.get(result.producer.nodeId)?.producer.attemptId === result.producer.attemptId
             : !await readAttemptInvalidation(tx, handle, root, result.producer)) current.push(result);
         if (new Set(current.map(result => result.producer.nodeId)).size !== current.length) invalid();
-        const accepted = incoming.flatMap(edge => {
+        const accepted = [];
+        for (const edge of incoming) {
             if (root.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind !== 'join') {
                 const result = current.find(result => result.producer.nodeId === edge.from.nodeId);
                 const selectors = judgeCompletions.filter(judge => root.graph.edges.some(item => item.from.nodeId === judge.producer.nodeId && item.to.nodeId === producer.nodeId));
                 if (result && selectors.some(judge => judge.candidates.some(candidate => equal(candidate.receipt.resultRef, result.receipt.resultRef))
                     && !equal(judge.selectedResultRef, result.receipt.resultRef))) {
                     if (narratorNode.inputs.find(port => port.name === edge.to.port)?.required) invalid();
-                    return [];
+                    continue;
                 }
-                return [result];
+                accepted.push(result); continue;
             }
-            const joined = fanoutCompletions.find(item => item.producer.nodeId === edge.from.nodeId);
+            const candidates = fanoutCompletions.filter(item => item.producer.nodeId === edge.from.nodeId
+                && input.joinReceiptRefs?.some(ref => equal(ref, { runId: root.runId, joinId: item.joinReceipt.joinId })));
+            if (candidates.length !== 1) invalid();
+            const [joined] = candidates;
+            if (await readAttemptInvalidation(tx, handle, root, joined.producer)
+                || joined.members.some(member => !current.some(item => item.producer.attemptId === member.producer.attemptId))) invalid();
             if (!joined || joined.joinReceipt.outcome !== 'completed'
                 || !input.joinReceiptRefs?.some(ref => equal(ref, { runId: root.runId, joinId: joined.joinReceipt.joinId }))) invalid();
-            return joined.members;
-        });
+            accepted.push(...joined.members);
+        }
         const expectedJoins = incoming.filter(edge => root.graph.nodes.find(node => node.nodeId === edge.from.nodeId)?.kind === 'join')
-            .map(edge => fanoutCompletions.find(item => item.producer.nodeId === edge.from.nodeId))
+            .map(edge => fanoutCompletions.find(item => item.producer.nodeId === edge.from.nodeId
+                && input.joinReceiptRefs?.some(ref => equal(ref, { runId: root.runId, joinId: item.joinReceipt.joinId }))))
             .map(item => ({ runId: root.runId, joinId: item.joinReceipt.joinId }));
         if (expectedJoins.length ? !equal(input.joinReceiptRefs, expectedJoins) : Object.hasOwn(input, 'joinReceiptRefs')) invalid();
         if (accepted.some(result => !result) || !equal(input.acceptedGraphResultRefs, accepted.map(result => result.receipt.resultRef))

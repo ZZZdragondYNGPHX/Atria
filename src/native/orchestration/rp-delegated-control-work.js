@@ -1,3 +1,6 @@
+import { RP_REVIEW_REASON_CODES } from './rp-review-profile.js';
+import { assertRpControlWork } from './rp-control-work-contracts.js';
+import { readRpDelegatedFanoutCompletion } from './rp-delegated-fanout-contracts.js';
 import { RpControlGraphWork } from './rp-control-graph-work.js';
 import { rpDelegatedControlProfile } from './rp-delegated-control-profile.js';
 import { rpDelegatedPlannerReaderOptions } from './rp-delegation-control-contracts.js';
@@ -17,6 +20,9 @@ export class RpDelegatedControlWork extends RpControlGraphWork {
         super(args);
         this.reservationId = this.runId;
         this.plannerReaderOptions = rpDelegatedPlannerReaderOptions;
+        this.readFanoutCompletion = readRpDelegatedFanoutCompletion;
+        this.reviewReaderOptions = { verifyControlWork: assertRpControlWork, reasonCodes: RP_REVIEW_REASON_CODES,
+            readFanoutCompletion: readRpDelegatedFanoutCompletion };
         this.admitGraph = graph => {
             const plan = this.state.selected.plan, initial = rpDelegatedControlProfile(plan), profile = rpDelegatedControlProfile({ ...plan, definition: graph });
             if (!profile || profile.terminalNodeId !== initial.terminalNodeId || !equal(profile.output, initial.output)

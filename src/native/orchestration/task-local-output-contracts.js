@@ -69,7 +69,7 @@ export async function readTaskLocalOutput(tx, handle, root) {
         || closure.budgetCeilingDigest !== hash(root.parentRef.budgetCeiling) || !equal(closure.authorityRef, root.budgetAuthorityRef)
         || closure.epoch !== receipt.epoch || closure.decisionSeq !== receipt.decisionSeq || closure.createdAt !== receipt.createdAt) invalid();
     assertBudgetAuthorityRef(closure.authorityRef); assertDigest(closure.snapshotDigest, 'closure snapshot');
-    if (!Array.isArray(closure.reservationRefs) || closure.reservationRefs.length !== 1 || !Array.isArray(closure.budgetAttemptRefs)) invalid();
+    if (!Array.isArray(closure.reservationRefs) || !closure.reservationRefs.length || !Array.isArray(closure.budgetAttemptRefs)) invalid();
     const ids = new Set();
     for (const row of closure.reservationRefs) {
         assertObject(row, ['reservationId', 'parentReservationId', 'status'], 'Closed reservation ref');

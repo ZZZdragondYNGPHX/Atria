@@ -48,8 +48,9 @@ export class ContextPort {
         if (typeof authorizeContext !== 'function') fail('native_orchestration_context_authority_required');
         if (!Array.isArray(rpGraphResults) || new Set(rpGraphResults.map(hashNativeDocument)).size !== rpGraphResults.length
             || rpGraphResults.length && rpReturnCapture) fail('native_orchestration_context_authority_conflict');
-        if ((rpReturnCapture || resultPort || rpGraphResults.length) && (!rpCapture || !(rpReturnCapture || rpGraphResults.length) || !(resultPort instanceof ResultPort)
-            || resultPort.execution.sourcePort.rpControl !== rpControl)) fail('native_orchestration_context_authority_conflict');
+        if ((rpReturnCapture || resultPort || rpGraphResults.length) && (!(rpCapture || rpDelegationCapture || sessionDelegationCapture)
+            || rpGraphResults.length && !rpCapture || !(rpReturnCapture || rpGraphResults.length) || !(resultPort instanceof ResultPort)
+            || (sessionDelegationCapture ? resultPort.host !== sessionDelegationHost : resultPort.execution.sourcePort.rpControl !== rpControl))) fail('native_orchestration_context_authority_conflict');
         if ([authorityTurn, resolverCapture, projectCapture, projectDelegationCapture, rpCapture, rpDelegationCapture, sessionDelegationCapture, taskCapture].filter(Boolean).length > 1) fail('native_orchestration_context_authority_conflict');
         if ((rpDelegationCapture || sessionDelegationCapture || projectDelegationCapture) && (memoryAuthority || readMemoryEvidence || Object.keys(contextOptions).length || compilationInputs !== null || sessionGraphInputs !== null))
             fail('native_orchestration_context_delegation_scope_invalid');
@@ -151,15 +152,16 @@ export class ContextPort {
             const information = informationContext(snapshot, context.sourceAudience);
             if (!information?.projection || information.projection.truncated || information.projection.availability.some(item => !item.available))
                 fail('native_orchestration_context_audience_denied');
+            const parentResult = this.rpReturnCapture ? await ResultPort.prototype.readForParent.call(this.resultPort, handle, { capture: this.rpReturnCapture }) : null;
             const descriptor = { sourceBinding: binding, parentRunId: sessionDelegation.parentRunId,
                 parentAttemptId: sessionDelegation.parentAttemptId, parentEpoch: sessionDelegation.parentEpoch,
                 childRunId: sessionDelegation.childRunId, childEpoch: sessionDelegation.childEpoch, childPlanRef: sessionDelegation.childPlanRef,
                 mode: sessionDelegation.mode, request: sessionDelegation.request, grantDigest: sessionDelegation.grantDigest,
                 contextInputRefs: sessionDelegation.contextInputRefs, sourceAudience: context.sourceAudience,
-                information, task: context.task, results: context.results,
+                information, task: context.task, results: context.results, ...(parentResult ? { parentResult } : {}),
                 handoffReceiptRef: sessionDelegation.handoffReceiptRef, delegationReceiptRef: sessionDelegation.delegationReceiptRef,
                 budgetReadyReceiptRef: sessionDelegation.budgetReadyReceiptRef };
-            return { sessionDelegation, information, descriptor, authorityDigest: hashNativeDocument(descriptor) };
+            return { sessionDelegation, information, descriptor, parentResult, authorityDigest: hashNativeDocument(descriptor) };
         }
         if (this.rpDelegationCapture) {
             if (!(this.rpControl instanceof RpRunControl)) fail('native_orchestration_context_domain_unavailable');
@@ -171,7 +173,8 @@ export class ContextPort {
             const { audienceContext, ...taskContext } = rpDelegation.context;
             if (rpDelegation.context.messages.length !== 1 + (audienceContext ? 0 : rpDelegation.delegatedSources?.length ?? 0) || rpDelegation.context.messages[0].role !== 'user'
                 || typeof rpDelegation.context.messages[0].content !== 'string') fail('native_orchestration_context_delegation_scope_invalid');
-            const descriptor = { ...taskContext, ...(audienceContext ? { audienceSource: audienceContext.descriptor } : {}) };
+            const parentResult = this.rpReturnCapture ? await ResultPort.prototype.readForParent.call(this.resultPort, handle, { capture: this.rpReturnCapture }) : null;
+            const descriptor = { ...taskContext, ...(audienceContext ? { audienceSource: audienceContext.descriptor } : {}), ...(parentResult ? { parentResult } : {}) };
             const authorityDigest = hashNativeDocument({ sourceBinding: rpDelegation.sourceBinding,
                 parentRunId: rpDelegation.parentRunId, parentAttemptId: rpDelegation.parentAttemptId, parentEpoch: rpDelegation.parentEpoch,
                 childRunId: rpDelegation.childRunId, childEpoch: rpDelegation.childEpoch, childPlanRef: rpDelegation.childPlanRef,
@@ -179,7 +182,7 @@ export class ContextPort {
                 budgetReadyReceiptRef: rpDelegation.budgetReadyReceiptRef,
                 request: rpDelegation.request, grantDigest: rpDelegation.grantDigest, inputRefs: rpDelegation.contextInputRefs ?? rpDelegation.inputRefs,
                 taskPurpose: rpDelegation.taskPurpose, context: descriptor });
-            return { rpDelegation, descriptor, authorityDigest };
+            return { rpDelegation, descriptor, parentResult, authorityDigest };
         }
         if (this.rpCapture) {
             if (!(this.rpControl instanceof RpRunControl)) fail('native_orchestration_context_domain_unavailable');
@@ -376,12 +379,13 @@ export class ContextPort {
             { kind: 'context.input', id: 'native-delegated-task', content: JSON.stringify(delegated.task),
                 provenance: [{ source: 'native.session-delegation', ref: hashNativeDocument(delegated.task) }] },
             ...delegated.results.map(item => ({ kind: 'context.history', id: 'delegated-result:' + (item.resultRef?.resultId ?? item.controlRef.receiptId),
-                content: { role: 'user', content: item.content }, provenance: [{ source: 'native.session-graph-result', ref: hashNativeDocument(item.resultRef ?? item.controlRef) }] }))] };
+                content: { role: 'user', content: item.content }, provenance: [{ source: 'native.session-graph-result', ref: hashNativeDocument(item.resultRef ?? item.controlRef) }] })),
+            ...(parentResult ? [parentResult.item] : [])] };
             if ((await this.#current(handle, request, 'compiled')).authorityDigest !== authorityDigest) fail('native_orchestration_context_source_stale');
             const proof = { sourceBindingDigest: request.sourceBinding.bindingDigest, grantDigest: request.grantDigest,
                 audienceDigest: hashNativeDocument(request.audience), projectionDigest: hashNativeDocument(information.projection), authorityDigest };
             const context = immutable({ schemaVersion: 1, contextId: hashNativeDocument({ request, plan, proof }), request, plan,
-                evidenceRefs: [request.sourceBinding.sourceRef, ...delegated.results.flatMap(item => item.sourceRefs)], currentnessProof: proof });
+                evidenceRefs: [request.sourceBinding.sourceRef, ...delegated.results.flatMap(item => item.sourceRefs), ...(parentResult?.sourceRefs ?? [])], currentnessProof: proof });
             this.#contexts.set(context, { handle, request, proof, sessionDelegation: { request: sessionDelegation.request } });
             return context;
         }
@@ -398,6 +402,7 @@ export class ContextPort {
                     content: { role: 'user', content: item.content }, provenance: [{ source: 'native.context', ref: item.contextItemId },
                         ...(item.sourceRefs ?? []).map(ref => ({ source: 'native.context-source', ref: JSON.stringify(ref) }))] })),
                 ...(rpDelegation.context.graphItems ?? []),
+                ...(parentResult ? [parentResult.item] : []),
                 ...(rpDelegation.context.task ? [{ kind: 'context.input', id: 'native-rp-delegated-task',
                     content: JSON.stringify(rpDelegation.context.task),
                     provenance: [{ source: 'native.rp-delegated-task', ref: hashNativeDocument(rpDelegation.context.task) }] }] : []),
@@ -407,7 +412,7 @@ export class ContextPort {
             const proof = { sourceBindingDigest: request.sourceBinding.bindingDigest, grantDigest: request.grantDigest,
                 audienceDigest: hashNativeDocument(request.audience), projectionDigest: authorityDigest, authorityDigest };
             const context = immutable({ schemaVersion: 1, contextId: hashNativeDocument({ request, plan, proof }), request, plan,
-                evidenceRefs: [rpDelegation.sourceBinding.sourceRef, ...(rpDelegation.context.sourceRefs ?? [])], currentnessProof: proof });
+                evidenceRefs: [rpDelegation.sourceBinding.sourceRef, ...(rpDelegation.context.sourceRefs ?? []), ...(parentResult?.sourceRefs ?? [])], currentnessProof: proof });
             this.#contexts.set(context, { handle, request, proof, rpDelegation: { request: rpDelegation.request } });
             return context;
         }

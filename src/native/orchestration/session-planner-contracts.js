@@ -1,4 +1,4 @@
-import { hashNativeDocument as hash } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument as hash } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertBudgetAuthorityRef, localWorkAttemptId } from './budget-port.js';
 import { readRunControl } from '../run-control.js';
@@ -14,7 +14,7 @@ export async function assertSessionControlWork(tx, handle, root, effectId, jobs)
         const row = local?.find(item => item.attemptId === job.attemptId);
         if (job.kind !== ['graph_control_parse', 'graph_control_adopt'][index] || !row || hash(row) !== job.rowHash || row.kind !== job.kind
             || row.targetFingerprint !== job.targetFingerprint || row.attemptId !== localWorkAttemptId(effectId, job.ordinal)
-            || hash(row.orchestration) !== hash({ kind: 'local_work', effectId, ordinal: job.ordinal }) || row.status !== 'settled' || row.usage?.outcome !== 'completed')
+            || !equalNativeDocuments(row.orchestration, { kind: 'local_work', effectId, ordinal: job.ordinal }) || row.status !== 'settled' || row.usage?.outcome !== 'completed')
             throw new TypeError('Invalid Session graph control work');
     }
 }

@@ -1,6 +1,6 @@
 import { assertNativeId } from '../identity.js';
 import { assertObject, assertCounter, assertToken } from '../../../public/shared/native-orchestration-contracts.js';
-import { hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
+import { equalNativeDocuments, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
 import { checkedRecord } from './plan-repository.js';
 import { controlRecordKey } from './controller-common.js';
 
@@ -46,7 +46,7 @@ export async function readAttemptSettlement(tx, handle, root, attempt) {
         || receipt.nodeAttemptId !== attempt.attemptId || receipt.epoch !== attempt.epoch || receipt.graphRevision !== attempt.graphRevision
         || receipt.sourceBindingDigest !== attempt.sourceBindingDigest || receipt.inputState !== attempt.inputState || receipt.inputDigest !== attempt.inputDigest
         || !SETTLED_ATTEMPT_STATUSES.includes(receipt.outcome) || receipt.outcome !== attempt.status
-        || hashNativeDocument(receipt.resultRefs) !== hashNativeDocument(attempt.resultRefs) || receipt.createdAt !== attempt.endedAt
+        || !equalNativeDocuments(receipt.resultRefs, attempt.resultRefs) || receipt.createdAt !== attempt.endedAt
         || receipt.reasonCode !== attempt.reasonCode) throw new TypeError('Attempt receipt identity/state mismatch');
     assertResultRefs(receipt.resultRefs);
     assertCounter(receipt.decisionSeq, 'decisionSeq', 1); assertCounter(receipt.createdAt, 'createdAt');

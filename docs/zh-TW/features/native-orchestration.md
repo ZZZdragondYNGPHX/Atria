@@ -10,8 +10,10 @@
 
 RP、Game 和 Project 的主圖及委派子圖已實作已發布 Agent、Planner、Review、Judge 任務的組合：DAG 相依、有界回邊、動態增加 owned Agent，以及對純模型 Planner 工作的安全局部 Review 重做。各領域消費者仍檢查實際圖、資源 pin 與權限。儲存或發布圖本身不證明任意組合都能執行。
 
-RP 主圖的獨立 Actor 協作已有 FS、SQLite 和 SQL 執行證據。委派子任務現已接入 owned Actor pin、獲准 Information 與逐接收方 Result 可見性；這部分新接線目前只有靜態證據，尚未執行。凍結 Fanout scope 內 Judge 接後繼 Agent 的工作也在整合：Game、Project 已接線，RP 尚在實作。不能把這些新增接線記作執行 PASS。
+RP 主圖的獨立 Actor 協作已有 FS、SQLite 和 SQL 執行證據。委派子任務使用 owned Actor pin、獲准 Information 與逐接收方 Result 可見性。三域凍結 Fanout scope 已接入 Judge 到後繼 Agent 的工作。
 
-唯一 Narrator 輸出邊界，以及 Project 正式工具和人工 Review 要求仍然保留。跨已完成 Fanout/Join 的 Review 重做、scope 拓撲變更及巢狀委派仍受限。三域對尚未執行任務的取消和明確 blocked 結果仍在補齊。原預算與已知／未知費用帳仍是權威，不據此宣稱任意圖支援或產品完整驗收通過。
+已發布的 advisory 子方案可沿同一 Host、資源許可和預算樹進一步委派。Review 可對目標任務下游已完成、費用已結清的整個純 Fanout/Join 組建立新嘗試和新屏障，保留舊結果及費用。未執行任務取消和明確 blocked 結果也已接線。這些新增能力只有靜態檢查，執行驗收尚未取得。
+
+唯一 Narrator 輸出邊界，以及 Project 正式工具和人工 Review 要求繼續有效。凍結 scope 仍不允許拓撲變更、內部委派、內部 Review 重做或回環，也不能把已完成 sibling 接入新 Join。未知費用保持 unknown。上述限制和未執行驗收不構成任意圖支援或完整產品驗收通過。
 
 旧 Browser 执行模式、预设设置和 checkpoint 协议已退出，无兼容执行或迁移路径。当前协议外的历史文件保持不可执行；原领域数据、收据和未知费用保留。

@@ -12,7 +12,7 @@ import { assertOutputTransition } from './output-transition-contracts.js';
 import { readProjectReplanHistory } from './project-replan-contracts.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
-const readerOptions = { verifyControlWork: assertProjectControlWork };
+const readerOptions = { verifyControlWork: assertProjectControlWork, readFanoutCompletion: readProjectFanoutCompletion };
 export const projectJudgeReaderOptions = { verifyControlWork: assertProjectControlWork,
     readControlInputs: (tx, handle, root, _producer, input) => readProjectControlInputs(tx, handle, root, null,
         { controlRefs: input.controlGraph.controlRefs }, { checkSelections: false }) };

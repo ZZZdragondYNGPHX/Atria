@@ -23,27 +23,30 @@ export function rpDelegatedControlProfile(plan) {
     const graph = plan.definition, planners = graph.nodes.filter(node => node.kind === 'planner');
     if (!graph.nodes.some(node => ['planner', 'review', 'judge'].includes(node.kind))
         && graph.nodes.filter(node => node.kind === 'agent').length < 2
-        && !graph.nodes.some(node => audienceContextPin(node, plan.dependencyPins))) return null;
+        && !graph.nodes.some(node => audienceContextPin(node, plan.dependencyPins) || node.capabilities.includes('agent.delegate'))) return null;
     const models = graph.nodes.filter(node => ['agent', 'planner', 'review', 'judge'].includes(node.kind)), agents = models.filter(node => node.kind === 'agent');
+    const delegators = agents.filter(node => node.capabilities.includes('agent.delegate'));
     const passive = graph.nodes.filter(node => ['fanout', 'join'].includes(node.kind)), pure = [...models, ...passive];
     const outputs = graph.nodes.filter(node => node.kind === 'output'), output = outputs[0], sources = delegatedRpSourcePins(plan);
     if (!agents.length || outputs.length !== 1 || graph.nodes.length !== pure.length + 1
         || graph.outputContract.kind !== 'result' || graph.outputContract.allowPartial || assertResultPolicy(graph.outputContract).outputType !== 'text'
         || output.nodeId !== graph.outputContract.ownerNodeId || output.capabilities.length || output.dependencyPinIds.length || output.outputs.length
         || output.inputs.length !== 1 || !output.inputs[0].required || output.inputs[0].type !== 'text'
-        || !equal([...graph.capabilityCeiling].sort(), ['generation.send', ...planners.length ? ['graph.patch'] : []].sort())
-        || planners.length && !graph.graphChangePolicy.allowedOperations.length || graph.graphChangePolicy.allowedNodeKinds.some(kind => kind !== 'agent')
+        || !equal([...graph.capabilityCeiling].sort(), ['generation.send', ...planners.length || delegators.some(node => node.capabilities.includes('graph.patch')) ? ['graph.patch'] : [], ...delegators.length ? ['agent.delegate'] : []].sort())
+        || planners.length && !graph.graphChangePolicy.allowedOperations.length || graph.graphChangePolicy.allowedNodeKinds.some(kind => !['agent', 'planner', 'review', 'judge', 'fanout', 'join'].includes(kind))
         || graph.graphChangePolicy.allowedOperations.some(op => !['addNode', 'addEdge', 'setPendingPriority', 'cancelPending', 'markBlocked', 'requestReplan', 'requestFinalize'].includes(op))) fail();
     const incoming = {}, ordered = [];
     for (const node of models) {
         const routes = nodeModelRoutePins(node, plan.dependencyPins), sourcePins = sources.filter(pin => node.dependencyPinIds.includes(pin.pinId)),
-            audience = audienceContextPin(node, plan.dependencyPins);
-        if (!equal([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' ? ['graph.patch'] : []].sort())
+            audience = audienceContextPin(node, plan.dependencyPins), delegated = delegators.includes(node),
+            plans = plan.dependencyPins.filter(pin => pin.port === 'plan' && node.dependencyPinIds.includes(pin.pinId));
+        if (!equal([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' || delegated && node.capabilities.includes('graph.patch') ? ['graph.patch'] : [], ...delegated ? ['agent.delegate'] : []].sort())
             || node.outputs.length !== 1 || node.outputs[0].type !== (node.kind === 'agent' ? 'text' : 'json')
             || !routes.length || sourcePins.length !== (audience ? 0 : sources.length)
             || audience && (audience.resourceRef.kind !== 'native_information_context' || audience.resourceRef.audience.kind !== 'actor')
             || node.policy.audiencePinId !== undefined && !audience
-            || node.dependencyPinIds.length !== routes.length + sourcePins.length + Number(!!audience)
+            || plans.length !== Number(delegated) || delegated && !equal(node.policy.allowedPlanPinIds, [plans[0]?.pinId])
+            || node.dependencyPinIds.length !== routes.length + sourcePins.length + Number(!!audience) + plans.length
             || node.inputs.some(port => !['text', 'json'].includes(port.type) && !(port.type === 'task.result'
                 && graph.edges.some(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name && passive.some(source => source.kind === 'fanout' && source.nodeId === edge.from.nodeId))))) fail();
         incoming[node.nodeId] = graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === node.nodeId);
@@ -67,8 +70,9 @@ export function rpDelegatedControlProfile(plan) {
     const terminalEdges = graph.edges.filter(edge => edge.to.nodeId === output.nodeId), terminal = models.find(node => node.nodeId === terminalEdges[0]?.from.nodeId);
     if (terminalEdges.length !== 1 || terminal?.kind !== 'agent') fail();
     const used = new Set(models.flatMap(node => node.dependencyPinIds));
-    const canAddAgent = graph.graphChangePolicy.allowedOperations.includes('addNode') && graph.graphChangePolicy.allowedNodeKinds.includes('agent');
-    if (plan.dependencyPins.some(pin => !used.has(pin.pinId) && (!canAddAgent || pin.port !== 'model' || pin.resourceRef.scope !== 'player'))) fail();
+    const canAddModel = graph.graphChangePolicy.allowedOperations.includes('addNode')
+        && graph.graphChangePolicy.allowedNodeKinds.some(kind => ['agent', 'planner', 'review', 'judge'].includes(kind));
+    if (plan.dependencyPins.some(pin => !used.has(pin.pinId) && (!canAddModel || pin.port !== 'model' || pin.resourceRef.scope !== 'player'))) fail();
     const needed = new Set([output.nodeId]);
     for (let changed = true; changed;) {
         changed = false;
@@ -83,6 +87,7 @@ export function rpDelegatedControlProfile(plan) {
     }
     for (const loop of graph.edges.filter(edge => edge.loopBack)) rpControlReplanScope(graph, loop.from.nodeId);
     const fanouts = rpControlFanoutGroups(graph, terminal.nodeId, ['agent', 'planner', 'judge']);
-    if (fanouts.some(group => group.branches.some(branch => branch.scopeNodeIds.some(id => !['agent', 'planner', 'judge'].includes(graph.nodes.find(node => node.nodeId === id).kind))))) fail();
+    if (fanouts.some(group => group.branches.some(branch => branch.scopeNodeIds.some(id => !['agent', 'planner', 'judge'].includes(graph.nodes.find(node => node.nodeId === id).kind)
+        || graph.nodes.find(node => node.nodeId === id).capabilities.includes('agent.delegate'))))) fail();
     return { models, planners, narrator: terminal, output, terminalNodeId: terminal.nodeId, incoming, ordered: ordered.filter(node => models.includes(node)), pure, fanouts };
 }
