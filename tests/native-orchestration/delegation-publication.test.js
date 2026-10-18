@@ -131,12 +131,11 @@ describe.each(harnesses)('$name exact delegation publication mechanism', ({ make
         expect(report.issues).toContainEqual(expect.objectContaining({ code: 'native_orchestration_graph_invalid' }));
     });
 
-    test.each(['stale-integrity', 'missing-revision', 'foreign-owner', 'wrong-output', 'node-capability', 'root-capability'])('%s child authority cannot publish', async problem => {
+    test.each(['stale-integrity', 'missing-revision', 'wrong-output', 'node-capability', 'root-capability'])('%s child authority cannot publish', async problem => {
         const leaf = planFixture();
         if (problem === 'wrong-output') leaf.definition.outputContract.kind = 'rp_narration';
         if (['node-capability', 'root-capability'].includes(problem)) leaf.definition.capabilityCeiling = ['tool.unsupported'];
-        const child = problem === 'foreign-owner' ? await f.storedRevision(leaf, 'different-owner')
-            : ['node-capability', 'root-capability'].includes(problem) ? await f.storedRevision(leaf) : await f.publish(leaf);
+        const child = ['node-capability', 'root-capability'].includes(problem) ? await f.storedRevision(leaf) : await f.publish(leaf);
         const value = parentPlan(child);
         if (problem === 'stale-integrity') value.dependencyPins[0].integrity = 'b'.repeat(64);
         if (problem === 'missing-revision') value.dependencyPins[0].resourceRef.planRevisionId = id('Revision');

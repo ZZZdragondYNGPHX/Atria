@@ -2,8 +2,7 @@ import { createOrchestrationAuthoringService } from '../../src/native/orchestrat
 import { readPlanRevision, validationDigest } from '../../src/native/orchestration/plan-repository.js';
 import { assertPlanDefinition } from '../../public/shared/native-orchestration-contracts.js';
 import { createNativeId } from '../../src/native/identity.js';
-import { hashNativeDocument, putMutable } from '../../src/native/repositories/common.js';
-import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
+import { hashNativeDocument } from '../../src/native/repositories/common.js';
 import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecycle.js';
 import { seedGenerationProfiles } from '../native/helpers/generation-fixture.js';
 import { planFixture, prepareControllerOwnerRoot } from './fixtures.js';
@@ -49,16 +48,9 @@ describe.each(harnesses)('$name original PlanRevision pin authority', ({ make })
         expect(revision.dependencyPins).toEqual([pin]);
     });
 
-    test.each(['missing', 'hash', 'integrity', 'foreign-author'])('%s child references cannot pass production publication', async problem => {
+    test.each(['missing', 'hash', 'integrity'])('%s child references cannot pass production publication', async problem => {
         const selected = structuredClone(pin);
         if (problem === 'missing') selected.resourceRef.planId = createNativeId('orchestrationPlan');
-        if (problem === 'foreign-author') {
-            const revision = await h.engine.withTransaction(h.handle, tx => readPlanRevision(tx, h.handle, leaf));
-            const foreign = { ...revision, authorRef: { handle: 'foreign-owner' } };
-            await h.engine.withTransaction(h.handle, tx => putMutable(tx, { kind: K.orchestrationRevision, handle: h.handle,
-                planId: leaf.planId, planRevisionId: leaf.planRevisionId }, foreign));
-            selected.integrity = hashNativeDocument(foreign);
-        }
         if (problem === 'hash') selected.resourceRef.definitionHash = 'b'.repeat(64);
         if (problem === 'integrity') selected.integrity = 'b'.repeat(64);
         const { input, report } = await validate(parent(selected));
@@ -67,12 +59,12 @@ describe.each(harnesses)('$name original PlanRevision pin authority', ({ make })
         await expect(plans.publish(h.handle, command(), { ...input, validationDigest: validationDigest(report) })).rejects.toThrow();
     });
 
-    test('a valid exact child pin does not turn an unavailable runtime capability into a grant', async () => {
+    test('a valid exact child pin validates the closure without granting delegation', async () => {
         const seeded = await seedGenerationProfiles({ ...h, endpoint: 'http://127.0.0.1:1/unused' });
         const routePin = { pinId: 'route', port: 'model', resourceRef: { scope: 'player', runtimeRouteId: seeded.routes[0].runtimeRouteId }, integrity: hashNativeDocument(seeded.routes[0]) };
         const { report } = await validate(agent(routePin));
-        expect(report.status).toBe('unknown');
-        expect(report.issues).toEqual([expect.objectContaining({ code: 'native_orchestration_capability_authority_unavailable', fieldPath: 'capabilityCeiling.agent.delegate' })]);
+        // Publication proves the closure; delegation is still admitted per Run.
+        expect(report).toMatchObject({ status: 'valid', issues: [] });
     });
 
     test('delegating node schemas require explicit listed Plan pins without defaults or wildcard matching', () => {

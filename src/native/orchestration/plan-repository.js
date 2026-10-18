@@ -14,6 +14,8 @@ export const validationDigest = report => hashNativeDocument(Object.fromEntries(
 export async function readPlanRevision(tx, handle, planRef) {
     const record = await tx.getResource(key(K.orchestrationRevision, handle, { planId: planRef.planId, planRevisionId: planRef.planRevisionId }));
     if (!record) throw new NotFoundError('orchestration_plan_revision');
+    // A pin names exact immutable content; a mismatched hash is not that revision.
+    if (record.doc.definitionHash !== planRef.definitionHash) throw new ConflictError('native_orchestration_revision_mismatch');
     return record.doc;
 }
 

@@ -2,6 +2,7 @@ import { projectCommitFixture } from './helpers/project-commit-fixture.js';
 import { StorageCommitUnknownError } from '../../src/storage/errors.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { controlRecordKey } from '../../src/native/orchestration/controller-common.js';
+import { readProjectCommitOutput } from '../../src/native/orchestration/project-commit-contracts.js';
 import { hashNativeDocument as hash } from '../../src/native/repositories/common.js';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 
@@ -106,14 +107,14 @@ describe.each(CONTRACT_HARNESSES)('$name original trusted Project Commit', ({ ma
                 const key = controlRecordKey(f.h.handle, root.runId, 'effect', prepared.effectId), saved = await tx.getResource(key), altered = structuredClone(saved.doc);
                 altered.inputRef.descriptorIntegrity = 'f'.repeat(64); altered.inputHash = hash(altered.inputRef);
                 await tx.putResource(key, { ...saved, doc: altered, integrity: hash(altered) });
-                try { await expect(f.authority.execution.runs.get(f.h.handle, root.runId)).rejects.toThrow(); }
+                try { await expect(readProjectCommitOutput(tx, f.h.handle, root, f.authority.projectAgent)).rejects.toThrow(); }
                 finally { await tx.putResource(key, saved); }
                 const taskKey = { kind: K.projectAgentTask, handle: f.h.handle, projectId: f.projectId, taskId: f.taskId };
                 const savedTask = await tx.getResource(taskKey), alteredTask = structuredClone(savedTask.doc);
                 const work = alteredTask.compute.localWork.find(row => row.orchestration.effectId === prepared.effectId && row.orchestration.ordinal === 1);
                 expect(work).toBeDefined(); work.targetFingerprint = 'e'.repeat(64);
                 await tx.putResource(taskKey, { ...savedTask, doc: alteredTask, integrity: hash(alteredTask) });
-                try { await expect(f.authority.execution.runs.get(f.h.handle, root.runId)).rejects.toThrow(); }
+                try { await expect(readProjectCommitOutput(tx, f.h.handle, root, f.authority.projectAgent)).rejects.toThrow(); }
                 finally { await tx.putResource(taskKey, savedTask); }
             });
             expect((await f.authority.execution.runs.get(f.h.handle, prepared.runId)).status).toBe('completed');

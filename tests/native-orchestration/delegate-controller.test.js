@@ -365,11 +365,11 @@ describe.each(harnesses)('$name guarded child Run and original bank', ({ make })
         expect(scopeCalls).toBe(0);
     });
 
-    test('foreign author metadata is refused by the original Plan reader before any scope callback', async () => {
+    test('a rewritten child revision is refused by its exact pin before any scope callback', async () => {
         const revision = await h.engine.withTransaction(h.handle, tx => readPlanRevision(tx, h.handle, childPlanRef));
         await h.engine.withTransaction(h.handle, tx => putMutable(tx, { kind: K.orchestrationRevision, handle: h.handle,
             planId: childPlanRef.planId, planRevisionId: childPlanRef.planRevisionId }, { ...revision, authorRef: { handle: 'foreign-owner' } }));
-        await expect(delegates.delegate(h.handle, await body())).rejects.toThrow('PlanRevision author mismatch');
+        await expect(delegates.delegate(h.handle, await body())).rejects.toMatchObject({ code: 'native_orchestration_child_plan_pin_stale' });
         expect(scopeCalls).toBe(0);
     });
 

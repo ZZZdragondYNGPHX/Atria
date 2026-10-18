@@ -40,7 +40,8 @@ describe.each(harnesses)('$name original background Task output', ({ make }) => 
             await engine(f).withTransaction(f.h.handle, async tx => {
                 for (const [key, change] of changes) {
                     const saved = await tx.getResource(key), doc = structuredClone(saved.doc); change(doc);
-                    try { await tx.putResource(key, { ...saved, doc, integrity: hash(doc) }); await expect(getRoot(f)).rejects.toThrow(); }
+                    // Plain Root reads no longer re-prove terminal facts; the cold reader does.
+                    try { await tx.putResource(key, { ...saved, doc, integrity: hash(doc) }); await expect(readBackgroundTaskOutput(tx, f.h.handle, root)).rejects.toThrow(); }
                     finally { await tx.putResource(key, saved); }
                 }
             });

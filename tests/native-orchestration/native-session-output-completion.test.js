@@ -137,7 +137,7 @@ describe.each(harnesses)('$name original Session output terminal proof', ({ make
             await f.h.engine.withTransaction(f.h.handle, async tx => {
                 for (const [key, change] of changes) {
                     const saved = await tx.getResource(key), doc = structuredClone(saved.doc); change(doc);
-                    try { await tx.putResource(key, { ...saved, doc, integrity: hash(doc) }); await expect(f.authority.execution.runs.get(f.h.handle, root.runId)).rejects.toThrow(); }
+                    try { await tx.putResource(key, { ...saved, doc, integrity: hash(doc) }); await expect(readSessionOutput(tx, f.h.handle, root)).rejects.toThrow(); }
                     finally { await tx.putResource(key, saved); }
                 }
             });
