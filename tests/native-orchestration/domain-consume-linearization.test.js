@@ -62,8 +62,13 @@ describe.each(harnesses)('$name original domain and Port consumption order', ({ 
         // Run ancestry lock, Session publication lock or Runtime write lock.
         const writer = trigger.promise.then(async () => { changed = await write(domain); events.push('domain_committed'); });
         try {
-            const observe = exec.effects.observe.bind(exec.effects);
-            exec.effects.observe = async (...args) => { const ack = await observe(...args); charged = await fees(); trigger.resolve(); await writer; return ack; };
+            // Observation now runs under the Run's source lock, so the writer
+            // commits at consumption entry, before any consumption lock is taken.
+            const consume = exec.runs.withConsumption.bind(exec.runs); let entered = false;
+            exec.runs.withConsumption = async (...args) => {
+                if (!entered) { entered = true; charged = await fees(); trigger.resolve(); await writer; }
+                return consume(...args);
+            };
             if (model) {
                 const generate = f.port.generate.bind(f.port);
                 f.port.generate = async (...args) => { const result = await generate(...args); bodies.push(result); return result; };
@@ -115,9 +120,9 @@ describe.each(harnesses)('$name original domain and Port consumption order', ({ 
             expect(model ? f.requests.length : f.calls.length).toBe(model ? 1 : 0);
             expect(await fees()).toEqual(charged); expect((await f.observe()).outcome).toBe('confirmed');
             const current = await f.core.observe(f.h.handle, sessionId);
-            // Source changes after the Port decision still meet the original
-            // Native HEAD CAS. This is not a V3 P4 OutputClaim proof.
-            expect(current.timeline.some(item => item.content === 'Synthetic native narrator response.')).toBe(model && domain === 'binding');
+            // Source and Binding changes after the Port decision are fenced before
+            // the Native publication, so the decided body never lands.
+            expect(current.timeline.some(item => item.content === 'Synthetic native narrator response.')).toBe(false);
             await f.cold(); expect((await f.observe()).outcome).toBe('confirmed');
             expect(events).toEqual(['consume_decided', 'domain_lock_acquired', 'domain_committed']);
         } finally { release.resolve(); await f.cleanup(); }

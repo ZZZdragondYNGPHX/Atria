@@ -96,8 +96,10 @@ describe.each(harnesses)('$name independent Run consumption order', ({ make }) =
         const writer = trigger.promise.then(async () => { await changeCurrent(runs, f.h.handle, ref(), change); events.push('writer_committed'); });
         try {
             const observe = exec.effects.observe.bind(exec.effects);
-            exec.effects.observe = async (...args) => { const ack = await observe(...args); trigger.resolve(); await writer; return ack; };
-            await expect(f.start()).rejects.toThrow();
+            // Observation holds the Run's source lock: start the writer, which
+            // queues ahead of consumption on that lock, without awaiting it here.
+            exec.effects.observe = async (...args) => { const ack = await observe(...args); trigger.resolve(); return ack; };
+            await expect(f.start()).rejects.toThrow(); await writer;
             expect(events).toEqual(['writer_committed']); expect(model ? f.requests.length : f.calls.length).toBe(model ? 1 : 0);
             const current = await runs.get(f.h.handle, ref().runId);
             expect(change === 'cancel' ? current.cancelRequested : (await f.observe()).outcome === 'unknown').toBe(true);
@@ -126,9 +128,12 @@ describe.each(harnesses)('$name independent Run consumption order', ({ make }) =
                 trigger.resolve(); await release.promise;
                 const value = await work(scope); events.push('consume_decided'); return value;
             });
-            const result = await f.start(); await driver;
+            const outcome = await f.start().then(value => ({ value }), error => ({ error })); await driver;
             expect(events).toEqual(['consume_decided', 'writer_lock_acquired', 'writer_committed']); expect(model ? f.requests.length : f.calls.length).toBe(model ? 1 : 0);
-            expect(JSON.stringify(result)).toContain(model ? 'Synthetic native narrator response.' : 'Synthetic Skill body');
+            // The Port decided first; a later Model consumption step is fenced by the committed change.
+            const settled = outcome.error ? model && outcome.error.code === 'native_orchestration_consumption_stale'
+                : JSON.stringify(outcome.value).includes(model ? 'Synthetic native narrator response.' : 'Synthetic Skill body');
+            expect(settled).toBe(true);
             expect(change === 'cancel' ? (await runs.get(f.h.handle, ref().runId)).cancelRequested : (await f.observe()).outcome === 'unknown').toBe(true);
             // This proves the Port decision only. Native finalize/OutputClaim
             // cancellation fencing is a separate P4 business-write requirement.
