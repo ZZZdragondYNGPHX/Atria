@@ -42,7 +42,8 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => ['FsEngine', 'SqliteEngine
                     { routeRef: { scope: 'player', runtimeRouteId: 'other' } }, { requestId: 'other' }])
                     expect(() => port.assertProjectRequest(f.h.handle, { context, request: { ...fixed, ...change } })).toThrow('native_orchestration_project_request_mismatch');
                 expect(() => port.projectRequest(f.h.handle, { context: structuredClone(context) })).toThrow('native_orchestration_context_proof_invalid');
-                const resolved = { route: f.route, model: f.seeded.model };
+                // The real resolved route: the Project Model candidate binds its full config digest.
+                const resolved = await f.modelResolver.resolve({ handle: f.h.handle, routeRef: fixed.routeRef, role: 'role.studio' });
                 const expected = await port.provider(f.h.handle, { context }).buildRequestContextPlan(fixed, resolved);
                 const service = { requestId: fixed.requestId, role: 'role.studio', routeRef: fixed.routeRef, requirements: [], tools: fixed.tools,
                     outputContract: null, fallbackMode: 'disabled', unknownCapabilityOverrides: [],

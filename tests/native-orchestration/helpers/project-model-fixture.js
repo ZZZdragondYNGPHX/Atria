@@ -88,7 +88,7 @@ export async function projectModelFixture(make, { responseBody = null, responseS
             operations.set(operation.operationId, { scheduler, result: scheduler.operations.get(operation.operationId)?.handle?.result }); return operation;
         };
         const finish = operation => operations.get(operation.operationId)?.result;
-        return { h, ...svc, ...seeded, seeded, core, original, task, projectId, route, host, authority, plans, plan, planRef, sourceSelector, input, requests, effects,
+        return { h, ...svc, ...seeded, seeded, core, original, task, projectId, route, host, authority, modelResolver, plans, plan, planRef, sourceSelector, input, requests, effects,
             get scheduler() { return scheduler; }, get executor() { return executor; },
             get round() { return round; }, get roundArgs() { return roundArgs; },
             preflight, start, finish, run: async view => finish(await start(view)),
