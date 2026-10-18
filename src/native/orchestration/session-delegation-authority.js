@@ -486,9 +486,10 @@ export class SessionDelegationAuthority {
                 const reservedTrees = [];
                 if (root.parentRef) reservedTrees.push(root);
                 else {
+                    // No ledger yet means nothing was admitted or reserved under this
+                    // operation (e.g. a Delegate refused a child slot): no child tree.
                     const compute = (await readRunControl(tx, handle, root.budgetAuthorityRef.sessionId))?.operations[root.budgetAuthorityRef.operationId]?.compute;
-                    if (!compute) fail('native_orchestration_budget_unavailable');
-                    for (const reservation of compute.reservations ?? []) if (reservation.parentReservationId === null) {
+                    for (const reservation of compute?.reservations ?? []) if (reservation.parentReservationId === null) {
                         const candidate = await service.runs.get(handle, reservation.reservationId);
                         if (candidate.parentRef?.parentRunId === root.runId) reservedTrees.push(candidate);
                     }

@@ -144,7 +144,7 @@ test('only an admitted child of the original suspended Turn can derive its bound
                 expect(() => assertNativeTurnPermit(permit)).toThrow('operation_boundary_denied');
                 derived = captureNativeTurnChildPermit(permit, boundary, child);
                 expect(assertNativeTurnPermit(derived, { host, selection, requiredResources: ['model:model'] }).signal).toBe(boundary.signal);
-                expect(() => captureNativeTurnChildPermit(derived, boundary, child)).toThrow('native_orchestration_turn_permit_denied');
+                expect(() => captureNativeTurnChildPermit(derived, boundary, child)).toThrow('operation_handoff_denied');
                 expect(() => captureNativeTurnFinalizationPermit({ permit: derived, finalizationBoundary: {} })).toThrow('native_orchestration_turn_permit_denied');
                 expect(() => captureNativeTurnChildPermit(permit, { ...boundary }, child)).toThrow('operation_boundary_denied');
                 expect(() => captureNativeTurnChildPermit(permit, boundary, { ...child, anchor: { ...anchor, revisionId: 'other' } })).toThrow('operation_boundary_denied');
