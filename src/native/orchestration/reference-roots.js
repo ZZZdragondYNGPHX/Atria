@@ -1,8 +1,6 @@
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { hashNativeDocument } from '../repositories/common.js';
-import { assertRunRoot } from './run-repository.js';
-import { checkedRecord } from './plan-repository.js';
-import { assertEffectIntent } from './effect-contracts.js';
+
 
 /** Retention only: these references never make an uncommitted revision readable.
  * There is no V3 retention-release authority yet, so terminal Runs and historical
@@ -10,15 +8,13 @@ import { assertEffectIntent } from './effect-contracts.js';
 async function retentionRecords(tx, handle) {
     const roots = new Map(), records = [];
     for (const row of await tx.listResources({ kind: K.orchestrationRun, handle })) {
-        const checked = await checkedRecord(tx, row.key);
+        const checked = await tx.getResource(row.key);
         if (!checked || checked.doc.runId !== row.key.runId) throw new TypeError('Missing or mismatched orchestration retention root');
-        assertRunRoot(checked.doc, handle);
         roots.set(checked.doc.runId, checked.doc); records.push({ ...checked, key: row.key });
     }
     for (const row of await tx.listResources({ kind: K.orchestrationRecord, handle })) {
-        const checked = await checkedRecord(tx, row.key), root = roots.get(row.key.runId);
+        const checked = await tx.getResource(row.key), root = roots.get(row.key.runId);
         if (!checked || !root || checked.doc.runId !== root.runId) throw new TypeError('Missing orchestration record retention owner');
-        if (row.key.recordType === 'effect') assertEffectIntent(checked.doc, root, row.key.recordId);
         records.push({ ...checked, key: row.key });
     }
     return { roots, records };
@@ -44,7 +40,7 @@ export async function orchestrationSessionRoots(tx, handle, sessionId) {
         if (row.key.recordType === 'effect' && row.doc.actionRef?.kind === 'native_session_output'
             && row.doc.actionRef.sessionId === sessionId) {
             const root = roots.get(row.key.runId), input = row.doc.inputRef;
-            const committed = await checkedRecord(tx, { kind: K.commitReceipt, handle, sessionId, commitId: input.commitId });
+            const committed = await tx.getResource({ kind: K.commitReceipt, handle, sessionId, commitId: input.commitId });
             if (committed) {
                 const receipt = committed.doc;
                 if (root.sourceBinding.sourceAuthority !== 'native_session' || receipt.schemaVersion !== 1 || receipt.status !== 'committed'
@@ -81,7 +77,7 @@ export async function orchestrationPinReferences(tx, handle, reference) {
     const references = [];
     for (const kind of [K.orchestrationPlan, K.orchestrationRevision]) {
         for (const record of await tx.listResources({ kind, handle })) {
-            if (hashNativeDocument(record.doc) !== record.integrity || !Array.isArray(record.doc.dependencyPins)) throw new TypeError('Corrupt orchestration dependency root');
+            if (!Array.isArray(record.doc.dependencyPins)) throw new TypeError('Corrupt orchestration dependency root');
             for (const pin of [...record.doc.dependencyPins, ...(record.doc.evolutionSource?.resourceRefs ?? []).map((resourceRef, i) => ({ pinId: 'evolution.' + i, resourceRef }))]) {
                 const ref = pin.resourceRef;
                 const matches = reference.runtimeRouteId ? ref?.scope === 'player' && ref.runtimeRouteId === reference.runtimeRouteId

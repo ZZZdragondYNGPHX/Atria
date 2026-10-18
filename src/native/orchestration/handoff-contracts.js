@@ -1,7 +1,7 @@
 import { ConflictError } from '../../storage/errors.js';
 import { equalNativeDocuments, hashNativeDocument } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { controlRecordKey } from './controller-common.js';
 
 export const handoffReceiptId = childRunId => 'oreceipt_' + hashNativeDocument({ kind: 'handoff', childRunId }).slice(0, 32);
@@ -9,7 +9,7 @@ export const handoffReceiptId = childRunId => 'oreceipt_' + hashNativeDocument({
 /** A waiting parent permits only the exact durable child it yielded to. */
 export async function readHandoff(tx, handle, parent, attempt, child) {
     const receiptId = handoffReceiptId(child.runId);
-    const receipt = (await checkedRecord(tx, controlRecordKey(handle, parent.runId, 'receipt', receiptId)))?.doc;
+    const receipt = (await tx.getResource(controlRecordKey(handle, parent.runId, 'receipt', receiptId)))?.doc;
     if (!receipt) throw new ConflictError('native_orchestration_handoff_unconfirmed');
     assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'childRunId', 'parentAttemptId', 'parentEpoch',
         'hostBootId', 'hostGeneration', 'sourceBindingDigest', 'parentGrantDigest', 'childGrantDigest', 'inputDigest',

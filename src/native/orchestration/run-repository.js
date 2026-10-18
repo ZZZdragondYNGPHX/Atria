@@ -9,14 +9,12 @@ import { assertWritable } from '../../storage/read-only-mode.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { createNativeId, assertNativeId } from '../identity.js';
 import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument, putImmutable, putMutable, withNativeResourceWrites } from '../repositories/common.js';
-import { assertCounter, assertDigest, assertObject, assertPlanRef, assertPlanDefinition, assertToken } from '../../../public/shared/native-orchestration-contracts.js';
-import { assertComputeAllocation } from '../../../public/shared/native-compute-budget.js';
-import { checkedRecord, planDefinitionHash } from './plan-repository.js';
+import { assertCounter, assertDigest, assertObject, assertPlanRef, assertToken } from '../../../public/shared/native-orchestration-contracts.js';
+
 import { readApproval } from './effect-contracts.js';
 import { holdsConcurrencySlot, readAttempt } from './controller-common.js';
 import { readHandoff } from './handoff-contracts.js';
 import { readTaskLocalOutput } from './task-local-output-contracts.js';
-import { readHandoffReturn } from './handoff-return-contracts.js';
 
 export const RUN_STATUSES = Object.freeze(['admitted', 'running', 'waiting_approval', 'reconciling', 'blocked', 'completed', 'partial', 'failed', 'cancelled', 'stale']);
 const TERMINAL = new Set(['completed', 'partial', 'failed', 'cancelled', 'stale']);
@@ -45,9 +43,8 @@ export async function assertRunTreeConcurrency(tx, handle, root, { additionalSlo
     assertCounter(additionalSlots, 'additionalSlots');
     const members = new Map();
     for (const listed of await tx.listResources({ kind: K.orchestrationRun, handle })) {
-        if (hashNativeDocument(listed.doc) !== listed.integrity) throw new TypeError('Corrupt Run tree');
         if (listed.doc.rootRunId !== root.rootRunId) continue;
-        assertRunRoot(listed.doc, handle); members.set(listed.doc.runId, listed.doc);
+        members.set(listed.doc.runId, listed.doc);
     }
     const ancestors = [root];
     let at = root;
@@ -80,9 +77,8 @@ export async function assertChildRunCurrent(tx, handle, root, { requireBudget = 
         const ref = child.parentRef;
         if (seen.has(ref.parentRunId)) throw new TypeError('Cyclic Run ancestry');
         seen.add(ref.parentRunId);
-        const parent = (await checkedRecord(tx, runKey(handle, ref.parentRunId)))?.doc;
+        const parent = (await tx.getResource(runKey(handle, ref.parentRunId)))?.doc;
         if (!parent) throw new ConflictError('native_orchestration_parent_stale');
-        assertRunRoot(parent, handle);
         const { doc: attempt } = await readAttempt(tx, handle, parent, ref.nodeAttemptId);
         if (parent.cancelRequested || parent.status !== 'running' || parent.epoch !== ref.parentEpoch || attempt.epoch !== parent.epoch
             || attempt.sourceBindingDigest !== root.sourceBinding.bindingDigest
@@ -96,82 +92,12 @@ export async function assertChildRunCurrent(tx, handle, root, { requireBudget = 
     }
     if (child.runId !== root.rootRunId) throw new ConflictError('native_orchestration_parent_stale');
     if (root.parentRef && requireBudget) {
-        const receipt = (await checkedRecord(tx, recordKey(handle, root.runId, 'receipt', childBudgetReceiptId(root.runId))))?.doc;
+        const receipt = (await tx.getResource(recordKey(handle, root.runId, 'receipt', childBudgetReceiptId(root.runId))))?.doc;
         if (!receipt || receipt.receiptKind !== 'child_budget_ready' || receipt.runId !== root.runId || receipt.epoch !== root.epoch
             || receipt.reservationId !== root.runId || receipt.sourceBindingDigest !== root.sourceBinding.bindingDigest
             || receipt.budgetCeilingDigest !== hashNativeDocument(root.parentRef.budgetCeiling)
             || !equalNativeDocuments(receipt.authorityRef, root.budgetAuthorityRef)) throw new ConflictError('native_orchestration_child_budget_unconfirmed');
     }
-}
-
-export function assertRunRoot(root, handle) {
-    assertObject(root, ['schemaVersion', 'runId', 'ownerRef', 'planRef', 'sourceBinding', 'parentRef', 'rootRunId', 'budgetAuthorityRef', 'hostBootId', 'hostGeneration', 'epoch', 'stateVersion', 'graphRevision', 'eventSeq', 'status', 'graph', 'nodeControl', 'attemptRefs', 'pendingEffectRefs', 'pendingApprovalRefs', 'resultRefs', 'outputClaims', 'progress', 'treeProgress', 'limits', 'retentionPolicyRef', 'cancelRequested', 'createdAt', 'updatedAt'], 'RunRoot');
-    if (root.schemaVersion !== 1 || root.ownerRef?.handle !== handle || !RUN_STATUSES.includes(root.status) || typeof root.cancelRequested !== 'boolean') throw new TypeError('Invalid RunRoot identity/status');
-    assertObject(root.ownerRef, ['handle'], 'ownerRef');
-    assertNativeId(root.runId, 'orchestrationRun'); assertNativeId(root.rootRunId, 'orchestrationRun'); assertPlanRef(root.planRef);
-    if (root.parentRef !== null) {
-        assertObject(root.parentRef, ['parentRunId', 'nodeAttemptId', 'delegationId', 'returnContract', 'parentEpoch', 'depth', 'inputRefs', 'inputDigest', 'effectiveGrantDigest', 'budgetCeiling', 'logicalCeiling'], 'parentRef');
-        assertNativeId(root.parentRef.parentRunId, 'orchestrationRun'); assertNativeId(root.parentRef.nodeAttemptId, 'orchestrationAttempt');
-        assertToken(root.parentRef.delegationId, 'delegationId'); assertCounter(root.parentRef.parentEpoch, 'parentEpoch'); assertCounter(root.parentRef.depth, 'depth', 1);
-        assertDigest(root.parentRef.inputDigest, 'inputDigest'); assertDigest(root.parentRef.effectiveGrantDigest, 'effectiveGrantDigest');
-        assertComputeAllocation(root.parentRef.budgetCeiling);
-        assertObject(root.parentRef.logicalCeiling, TREE_LOGICAL_COUNTERS, 'logicalCeiling');
-        for (const field of TREE_LOGICAL_COUNTERS) {
-            assertCounter(root.parentRef.logicalCeiling[field], 'logicalCeiling.' + field);
-            if (root.parentRef.logicalCeiling[field] > root.limits[limitField(field)]) throw new TypeError('Logical grant exceeds immutable Plan limit');
-        }
-        if (!Array.isArray(root.parentRef.inputRefs) || hashNativeDocument(root.parentRef.inputRefs) !== root.parentRef.inputDigest
-            || root.rootRunId === root.runId || root.parentRef.parentRunId === root.runId
-            || root.parentRef.returnContract?.kind !== 'result' || !equalNativeDocuments(root.parentRef.returnContract, root.graph.outputContract)
-            || root.runId !== 'orun_' + hashNativeDocument({ parentRunId: root.parentRef.parentRunId, parentAttemptId: root.parentRef.nodeAttemptId, delegationId: root.parentRef.delegationId }).slice(0, 32)) throw new TypeError('Invalid child Run identity/inputs');
-    } else if (root.rootRunId !== root.runId) throw new TypeError('Root Run must own its root identity');
-    for (const field of ['epoch', 'stateVersion', 'graphRevision', 'eventSeq', 'createdAt', 'updatedAt']) assertCounter(root[field], field);
-    assertCounter(root.hostGeneration, 'hostGeneration', 1);
-    if (typeof root.hostBootId !== 'string' || !root.hostBootId) throw new TypeError('RunRoot hostBootId is missing');
-    if (!root.sourceBinding || !root.budgetAuthorityRef || !root.retentionPolicyRef) throw new TypeError('RunRoot original authority references are missing');
-    assertDigest(root.sourceBinding.bindingDigest, 'sourceBinding.bindingDigest');
-    const binding = Object.fromEntries(Object.entries(root.sourceBinding).filter(([field]) => field !== 'bindingDigest'));
-    if (hashNativeDocument(binding) !== root.sourceBinding.bindingDigest) throw new TypeError('SourceBinding digest mismatch');
-    for (const field of ['attemptRefs', 'pendingEffectRefs', 'pendingApprovalRefs', 'resultRefs', 'outputClaims']) if (!Array.isArray(root[field])) throw new TypeError('RunRoot.' + field + ' must be an array');
-    const claimIds = new Set();
-    for (const claim of root.outputClaims) {
-        assertObject(claim, ['runId', 'claimId'], 'OutputClaimRef');
-        if (claim.runId !== root.runId || typeof claim.claimId !== 'string' || !/^oclaim_[a-f0-9]{32}$/.test(claim.claimId)
-            || claimIds.has(claim.claimId)) throw new TypeError('Invalid own-Run OutputClaimRef');
-        claimIds.add(claim.claimId);
-    }
-    assertObject(root.progress, [...PROGRESS, 'deadlineAt', 'edgeVisitCounts'], 'progress');
-    for (const field of [...PROGRESS, 'deadlineAt']) assertCounter(root.progress[field], 'progress.' + field);
-    assertObject(root.nodeControl, root.graph.nodes.map(node => node.nodeId), 'nodeControl');
-    for (const [nodeId, control] of Object.entries(root.nodeControl)) {
-        assertObject(control, ['disposition', 'priority', 'reasonCode'], 'nodeControl.' + nodeId);
-        if (!['eligible', 'blocked', 'cancelled'].includes(control.disposition)) throw new TypeError('Invalid node disposition');
-        assertCounter(control.priority, 'node priority');
-        if (control.reasonCode !== null) assertToken(control.reasonCode, 'node reasonCode');
-    }
-    if (!root.progress.edgeVisitCounts || Object.prototype.toString.call(root.progress.edgeVisitCounts) !== '[object Object]') throw new TypeError('Invalid edge visit counts');
-    let visits = 0;
-    for (const [edgeId, count] of Object.entries(root.progress.edgeVisitCounts)) {
-        const edge = root.graph.edges.find(item => item.edgeId === edgeId);
-        assertCounter(count, 'edge visits');
-        if (!edge || count > edge.maxVisits) throw new TypeError('Invalid/exhausted edge visit counter');
-        visits += count;
-    }
-    if (visits !== root.progress.edgeVisits || visits > root.limits.maxEdgeVisits) throw new TypeError('Invalid total edge visits');
-    for (const field of PROGRESS) {
-        const limit = root.limits['max' + field[0].toUpperCase() + field.slice(1)];
-        if (!Number.isSafeInteger(limit) || root.progress[field] > limit) throw new TypeError('Run progress exceeds ' + field + ' limit');
-    }
-    assertObject(root.treeProgress, [...PROGRESS, 'deadlineAt'], 'treeProgress');
-    for (const field of PROGRESS) {
-        assertCounter(root.treeProgress[field], 'treeProgress.' + field);
-        if (root.treeProgress[field] < root.progress[field] || root.treeProgress[field] > root.limits[limitField(field)]
-            || (root.parentRef && field !== 'depth' && root.treeProgress[field] > root.parentRef.logicalCeiling[field])) throw new TypeError('Run tree logical limit exceeded: ' + field);
-    }
-    assertCounter(root.treeProgress.deadlineAt, 'treeProgress.deadlineAt');
-    if (root.treeProgress.deadlineAt > root.progress.deadlineAt) throw new TypeError('Tree deadline cannot exceed its local deadline');
-    if (['completed', 'partial'].includes(root.status) && (root.pendingEffectRefs.length || root.pendingApprovalRefs.length || !root.outputClaims.length)) throw new TypeError('Run cannot finish with pending effects/approvals or without an output claim');
-    return root;
 }
 
 // A pre-write authority denial must commit legitimate reentrant cancellation /
@@ -206,7 +132,7 @@ export class RunRepository {
             assertWritable();
             const fence = await this.assertWriter(handle, tx);
             await this.authorize({ handle, operation, body: input, tx });
-            const previous = await checkedRecord(tx, commandKey);
+            const previous = await tx.getResource(commandKey);
             if (previous) {
                 if (previous.doc.payloadHash !== payloadHash) throw new ConflictError('native_orchestration_command_conflict');
                 const outcome = cloneNativeDocument(previous.doc.outcome);
@@ -228,9 +154,9 @@ export class RunRepository {
             while (currentId) {
                 if (seen.has(currentId)) throw new TypeError('Cyclic Run ancestry');
                 seen.add(currentId); ids.push(currentId);
-                const record = await checkedRecord(tx, runKey(handle, currentId));
+                const record = await tx.getResource(runKey(handle, currentId));
                 if (!record) throw new NotFoundError('orchestration_run');
-                assertRunRoot(record.doc, handle); currentId = record.doc.parentRef?.parentRunId;
+                currentId = record.doc.parentRef?.parentRunId;
             }
             return ids;
         });
@@ -295,11 +221,10 @@ export class RunRepository {
         assertPlanRef(body.planRef);
         const runId = createNativeId('orchestrationRun'), timestamp = this.now();
         return this.#command(handle, commandId, 'runs.start', body, async (tx, input, fence) => {
-            const revision = await checkedRecord(tx, { kind: K.orchestrationRevision, handle, planId: input.planRef.planId, planRevisionId: input.planRef.planRevisionId });
+            const revision = await tx.getResource({ kind: K.orchestrationRevision, handle, planId: input.planRef.planId, planRevisionId: input.planRef.planRevisionId });
             if (!revision) throw new NotFoundError('orchestration_plan_revision');
             const plan = revision.doc;
-            if (plan.definitionHash !== input.planRef.definitionHash || planDefinitionHash(plan.definition, plan.dependencyPins) !== plan.definitionHash) throw new ConflictError('native_orchestration_revision_mismatch');
-            assertPlanDefinition(plan.definition, plan.dependencyPins);
+            if (plan.definitionHash !== input.planRef.definitionHash) throw new ConflictError('native_orchestration_revision_mismatch');
             // Pure original-authority checks only; no reservation, provider,
             // tool send or cross-domain write in this Engine transaction.
             const admission = cloneNativeDocument(await this.admit({ handle, tx, plan, sourceRequest: input.sourceRequest, retentionPolicyRef: input.retentionPolicyRef }));
@@ -312,7 +237,6 @@ export class RunRepository {
                 progress: { ...Object.fromEntries(PROGRESS.map(field => [field, 0])), edgeVisitCounts: {}, deadlineAt: timestamp + plan.definition.limits.deadlineMs },
                 treeProgress: initialTreeProgress(0, timestamp + plan.definition.limits.deadlineMs),
                 limits: plan.definition.limits, retentionPolicyRef: input.retentionPolicyRef, cancelRequested: false, createdAt: timestamp, updatedAt: timestamp };
-            assertRunRoot(root, handle);
             await putMutable(tx, runKey(handle, runId), root, { expectedIntegrity: null });
             await this.#event(tx, handle, root, 'admitted', null, timestamp);
             return root;
@@ -391,7 +315,7 @@ export class RunRepository {
             // Attempt refs preserve every prior identity; retry/redo cannot
             // overwrite receipts, input snapshots or actual spending.
             for (const ref of root.attemptRefs) {
-                const attempt = await checkedRecord(tx, recordKey(handle, root.runId, 'attempt', ref));
+                const attempt = await tx.getResource(recordKey(handle, root.runId, 'attempt', ref));
                 if (!attempt) throw new TypeError('RunRoot references a missing attempt');
                 if (attempt.doc.nodeId === input.nodeId) {
                     if (!['completed', 'partial', 'failed', 'cancelled', 'stale'].includes(attempt.doc.status)) throw new ConflictError('native_orchestration_attempt_already_active');
@@ -422,37 +346,10 @@ export class RunRepository {
             const record = await this.#root(tx, handle, input.runId), root = record.doc;
             this.#guard(root, input, fence);
             if (root.parentRef && input.operation !== 'effect.observe') await assertChildRunCurrent(tx, handle, root, { requireBudget: input.operation !== 'run.childBudget' });
-            const result = await reduce({ tx, root: cloneNativeDocument(root), plan: cloneNativeDocument(record.planRevision), fence, now: timestamp,
+            const result = await reduce({ tx, root: cloneNativeDocument(root), plan: record.planRevision, fence, now: timestamp,
                 deny: error => new ControlDenial(error) });
             if (result instanceof ControlDenial) return result;
-            assertObject(result, ['root', 'eventType', 'reasonCode', 'outcome'], 'controller result');
-            const next = cloneNativeDocument(result.root);
-            if (input.operation === 'run.returnHandoff') {
-                const receipt = await readHandoffReturn(tx, handle, { ...next, eventSeq: root.eventSeq + 1 }, input.detail.childRunId);
-                if (!receipt || receipt.decisionSeq !== root.eventSeq + 1) throw new TypeError('Handoff return requires complete facts');
-            }
-            if (!equalNativeDocuments(next.outputClaims, root.outputClaims) && input.operation !== 'output.publish')
-                throw new TypeError('Only output publication may claim output');
-            if (!equalNativeDocuments(next.treeProgress, root.treeProgress)) throw new TypeError('Only RunRepository may accumulate treeProgress');
-            for (const field of ['runId', 'ownerRef', 'planRef', 'sourceBinding', 'parentRef', 'rootRunId', 'budgetAuthorityRef', 'hostBootId', 'hostGeneration', 'epoch', 'limits', 'retentionPolicyRef', 'createdAt']) {
-                if (!equalNativeDocuments(next[field], root[field])) throw new TypeError('Controller cannot rewrite Run identity/authority: ' + field);
-            }
-            if (next.cancelRequested !== root.cancelRequested || (TERMINAL.has(root.status) && input.operation !== 'effect.observe')) throw new ConflictError('native_orchestration_run_not_mutable');
-            if (TERMINAL.has(root.status) && (!['reconciling', 'blocked', root.status].includes(next.status)
-                || !equalNativeDocuments(next.outputClaims, root.outputClaims)
-                || !equalNativeDocuments(next.resultRefs, root.resultRefs))) throw new TypeError('Late observations cannot replace published output/results');
-            for (const field of PROGRESS) if (next.progress[field] < root.progress[field]) throw new TypeError('Controller cannot reset progress');
-            if (next.progress.deadlineAt > root.progress.deadlineAt) throw new TypeError('Controller cannot extend the original deadline');
-            for (const [edgeId, count] of Object.entries(root.progress.edgeVisitCounts)) if ((next.progress.edgeVisitCounts[edgeId] ?? 0) < count) throw new TypeError('Controller cannot reset edge visits');
-            assertPlanDefinition(next.graph, record.planRevision.dependencyPins);
-            for (const field of ['capabilityCeiling', 'graphChangePolicy', 'outputContract', 'limits', 'entryNodeIds']) {
-                if (!equalNativeDocuments(next.graph[field], record.planRevision.definition[field])) throw new TypeError('Controller cannot raise/change Plan graph authority: ' + field);
-            }
-            if (input.operation === 'graph.patch') {
-                if (![root.graphRevision, root.graphRevision + 1].includes(next.graphRevision)) throw new TypeError('Graph revision must advance once per accepted patch');
-            } else if (next.graphRevision !== root.graphRevision || !equalNativeDocuments(next.graph, root.graph)) throw new TypeError('Only GraphPatch can change the task graph');
-            assertToken(result.eventType, 'eventType');
-            if (result.reasonCode !== null) assertToken(result.reasonCode, 'reasonCode');
+            const next = result.root;
             const updated = await this.#commit(tx, handle, record, next, result.eventType, result.reasonCode, timestamp);
             return { runId: root.runId, ...cloneNativeDocument(result.outcome), versions: { epoch: updated.epoch, stateVersion: updated.stateVersion, graphRevision: updated.graphRevision } };
         }, { replayFlag: true, resourceIds });
@@ -461,22 +358,10 @@ export class RunRepository {
     }
 
     async #root(tx, handle, runId) {
-        const record = await checkedRecord(tx, runKey(handle, runId));
+        const record = await tx.getResource(runKey(handle, runId));
         if (!record) throw new NotFoundError('orchestration_run');
-        assertRunRoot(record.doc, handle);
-        if (record.doc.runId !== runId) throw new TypeError('RunRoot identity mismatch');
-        const revision = await checkedRecord(tx, { kind: K.orchestrationRevision, handle, planId: record.doc.planRef.planId, planRevisionId: record.doc.planRef.planRevisionId });
-        if (!revision || revision.doc.definitionHash !== record.doc.planRef.definitionHash
-            || planDefinitionHash(revision.doc.definition, revision.doc.dependencyPins) !== record.doc.planRef.definitionHash) throw new TypeError('RunRoot Plan dependency mismatch');
-        assertPlanDefinition(record.doc.graph, revision.doc.dependencyPins);
-        if (!equalNativeDocuments(record.doc.limits, revision.doc.definition.limits)
-            || !equalNativeDocuments(record.doc.graph.limits, record.doc.limits)) throw new TypeError('RunRoot limits cannot exceed the immutable Plan');
-        for (const field of ['capabilityCeiling', 'graphChangePolicy', 'outputContract', 'entryNodeIds']) {
-            if (!equalNativeDocuments(record.doc.graph[field], revision.doc.definition[field]))
-                throw new TypeError('Run immutable graph contract differs from its Plan: ' + field);
-        }
+        const revision = await tx.getResource({ kind: K.orchestrationRevision, handle, planId: record.doc.planRef.planId, planRevisionId: record.doc.planRef.planRevisionId });
         record.planRevision = revision.doc;
-        if (record.doc.outputClaims.length && !await readRunOutput(tx, handle, record.doc, { projectAgent: this.projectAgent })) throw new TypeError('Run output lacks complete facts');
         return record;
     }
 
@@ -514,7 +399,6 @@ export class RunRepository {
             if (Object.values(delta).some(cost => cost > 0) && timestamp >= value.treeProgress.deadlineAt) throw new ConflictError('native_orchestration_tree_limit_exhausted');
         };
         check(root);
-        assertRunRoot(root, handle);
         if ((root.outputClaims.length || ['completed', 'partial'].includes(root.status))
             && !await readRunOutput(tx, handle, root, { pendingCommand: true, projectAgent: this.projectAgent })) throw new TypeError('Run completion requires verified output facts');
         const ancestors = [], seen = new Set([root.runId]);
@@ -522,13 +406,12 @@ export class RunRepository {
         while (parentId) {
             if (seen.has(parentId)) throw new TypeError('Cyclic Run ancestry');
             seen.add(parentId);
-            const ancestorRecord = await checkedRecord(tx, runKey(handle, parentId));
+            const ancestorRecord = await tx.getResource(runKey(handle, parentId));
             if (!ancestorRecord) throw new NotFoundError('orchestration_run');
-            const ancestor = cloneNativeDocument(ancestorRecord.doc); assertRunRoot(ancestor, handle);
-            const treeProgress = accumulate(ancestor.treeProgress, root.treeProgress.depth, ancestor.progress.deadlineAt);
+            const ancestor = cloneNativeDocument(ancestorRecord.doc); const treeProgress = accumulate(ancestor.treeProgress, root.treeProgress.depth, ancestor.progress.deadlineAt);
             if (!equalNativeDocuments(treeProgress, ancestor.treeProgress)) {
                 ancestor.treeProgress = treeProgress; ancestor.stateVersion++; ancestor.eventSeq++; ancestor.updatedAt = timestamp;
-                check(ancestor); assertRunRoot(ancestor, handle); ancestors.push({ record: ancestorRecord, next: ancestor });
+                check(ancestor); ancestors.push({ record: ancestorRecord, next: ancestor });
             }
             parentId = ancestor.parentRef?.parentRunId;
         }

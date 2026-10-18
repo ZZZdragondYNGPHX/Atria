@@ -2,7 +2,7 @@ import { readProjectDelegatedFanoutCompletion } from './project-delegated-fanout
 import { hashNativeDocument as hash, equalNativeDocuments as same } from '../repositories/common.js';
 import { readGraphFanoutCompletion } from './graph-fanout-completion.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
-import { readPlanRevision, checkedRecord } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt, readModelTerminalFact } from './model-port.js';
 import { readOriginalProjectTask } from './project-tool-receipts.js';
@@ -67,7 +67,7 @@ async function memberInput(tx, handle, root, attempt, { frame, branch, reservati
     const feedback = input.projectQualityTask?.feedback;
     if (feedback) {
         const ref = feedback.reviewReceiptRef;
-        const saved = ref?.runId === root.runId ? (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', ref.receiptId)))?.doc : null;
+        const saved = ref?.runId === root.runId ? (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', ref.receiptId)))?.doc : null;
         const review = saved?.receiptKind === 'graph_review' ? await readGraphReviewCompletion(tx, handle, root, saved.reviewAttemptId,
             { verifyControlWork: assertProjectControlWork, reasonCodes: PROJECT_QUALITY_REASONS, readFanoutCompletion: readProjectFanoutCompletion }) : null;
         const replacement = review?.review.replacements.find(item => item.attemptId === attempt.attemptId);

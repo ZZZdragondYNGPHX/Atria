@@ -5,7 +5,7 @@ import { inspectComputeEffectClosure } from '../../../public/shared/native-compu
 import { assertResultRecord, resultDependencyDigest } from './result-contracts.js';
 import { effectBudgetClosure } from './budget-port.js';
 import { controlCommandId, controlRecordKey, readAttempt, readAttemptInvalidation } from './controller-common.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { readProjectRoundReceipt } from './project-round-contracts.js';
 import { readOriginalProjectTask } from './project-tool-receipts.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
@@ -51,7 +51,7 @@ export async function projectReviewCosts(tx, handle, root) {
 
 async function assertPublicationCommand(tx, handle, root, kind, operation, detail, outcome, epoch) {
     const commandId = controlCommandId('project.review.' + kind, root.runId);
-    const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+    const command = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId }))?.doc;
     if (!command || command.schemaVersion !== 1 || command.commandId !== commandId || command.target !== root.runId
         || command.operation !== 'runs.control.' + operation || command.payloadHash !== hash({ operation: command.operation,
         body: { runId: root.runId, operation, detail } }) || command.outcome?.versions?.epoch !== epoch
@@ -62,8 +62,8 @@ async function assertPublicationCommand(tx, handle, root, kind, operation, detai
 export async function readProjectReviewResult(tx, handle, root) {
     if (root.graph.outputContract.kind !== 'project_review' || root.sourceBinding.sourceAuthority !== 'project' || root.parentRef) return null;
     const resultId = projectReviewId('result', root.runId), receiptId = projectReviewId('publication', root.runId);
-    const saved = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'result', resultId));
-    const row = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId));
+    const saved = await tx.getResource(controlRecordKey(handle, root.runId, 'result', resultId));
+    const row = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId));
     for (const ref of root.resultRefs.filter(ref => ref.resultId !== resultId)) {
         if (ref.runId !== root.runId || !await readGraphNodeResult(tx, handle, root, ref.resultId)) invalid();
     }
@@ -103,8 +103,8 @@ export async function readProjectReviewResult(tx, handle, root) {
 
 export async function readProjectReviewOutput(tx, handle, root, { pendingCommand = false } = {}) {
     const claimId = projectReviewId('claim', root.runId), receiptId = projectReviewId('output', root.runId);
-    const claimRow = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'output', claimId));
-    const outputRow = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId));
+    const claimRow = await tx.getResource(controlRecordKey(handle, root.runId, 'output', claimId));
+    const outputRow = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId));
     if (!claimRow && !outputRow && !root.outputClaims.length) return null;
     if (!claimRow || !outputRow || !equal(root.outputClaims, [{ runId: root.runId, claimId }])) invalid();
     const published = await readProjectReviewResult(tx, handle, root), claim = claimRow.doc, receipt = outputRow.doc;

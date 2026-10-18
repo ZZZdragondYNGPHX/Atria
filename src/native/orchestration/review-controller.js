@@ -58,12 +58,11 @@ export class ReviewController {
             if (scope) await assertFanoutAdmission({ tx, handle, root, attempt: reviewer, reserveSlot: false });
             // The original producer verifies the actual JSON Model completion,
             // recipient disclosure and current source, not a caller boolean.
-            const stamp = hash(root), authorize = () => this.authorizeReview({ handle, tx, root, reviewer, targets, decision, reasonCode, evidenceRefs });
+            const authorize = () => this.authorizeReview({ handle, tx, root, reviewer, targets, decision, reasonCode, evidenceRefs });
             try { await authorize(); } catch (error) {
                 if (error instanceof ConflictError || error.code === 'native_rp_source_missing') return controlDenial(error);
                 throw error;
             }
-            if (hash(await this.runs.get(handle, root.runId)) !== stamp) return controlDenial(new ConflictError('native_orchestration_review_not_admitted'));
             const invalidated = [], replacements = [], prepared = [];
             if (decision === 'rerun') {
                 if (targets.some(a => targets.some(b => a !== b && graphReachable(root.graph, a.nodeId, b.nodeId)))) deny('native_orchestration_review_redundant_targets');
@@ -119,15 +118,6 @@ export class ReviewController {
                     prepared.push(next); replacements.push({ targetAttemptId: target.attemptId, attemptId });
                 }
             }
-            // Original authority awaits may lawfully cancel this Root or
-            // withdraw a Source in the same transaction. Deny before writing
-            // any replacement, retaining those independent facts.
-            if (hash(await this.runs.get(handle, root.runId)) !== stamp) return controlDenial(new ConflictError('native_orchestration_review_not_admitted'));
-            try { await authorize(); } catch (error) {
-                if (error instanceof ConflictError || error.code === 'native_rp_source_missing') return controlDenial(error);
-                throw error;
-            }
-            if (hash(await this.runs.get(handle, root.runId)) !== stamp) return controlDenial(new ConflictError('native_orchestration_review_not_admitted'));
             for (const attempt of prepared) {
                 await putImmutable(tx, controlRecordKey(handle, root.runId, 'attempt', attempt.attemptId), attempt);
                 root.attemptRefs.push(attempt.attemptId);

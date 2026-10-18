@@ -5,7 +5,7 @@ import { hashNativeDocument as hash, equalNativeDocuments as same } from '../rep
 import { readGraphFanoutCompletion } from './graph-fanout-completion.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt, readModelTerminalFact } from './model-port.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertAudienceRunCapture, audienceContextPin } from './audience-source-contracts.js';
 import { readRpControlInputs, assertRpControlInput, rpPlannerReaderOptions, rpReviewReaderOptions } from './rp-control-input-contracts.js';
@@ -69,7 +69,7 @@ async function controlInput(tx, handle, root, attempt, { settlement }) {
  * No usage is invented and unselected work is never omitted from the facts. */
 async function memberCost(tx, handle, root, attempt, { settlement, results, frame }) {
     const bank = root.budgetAuthorityRef;
-    const control = (await checkedRecord(tx, { kind: K.rpRunControl, handle, controlId: bank.controlId }))?.doc;
+    const control = (await tx.getResource({ kind: K.rpRunControl, handle, controlId: bank.controlId }))?.doc;
     const compute = control?.operations[bank.operationId]?.compute;
     if (!compute || bank.domain !== 'rp_chat' || !same(root.sourceBinding.budgetAuthorityRef, bank)) invalid();
     if (!attempt.effectRefs.length) {

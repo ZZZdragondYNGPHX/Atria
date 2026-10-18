@@ -2,11 +2,11 @@ import { assertObject, assertCounter, assertDigest } from '../../../public/share
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertNativeId } from '../identity.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { controlRecordKey, readAttempt } from './controller-common.js';
 import { handoffReceiptId } from './handoff-contracts.js';
 import { readTaskLocalOutput } from './task-local-output-contracts.js';
-import { assertRunRoot } from './run-repository.js';
+
 
 export const handoffReturnReceiptId = childRunId => 'oreceipt_' + hash({ kind: 'handoff_return', childRunId }).slice(0, 32);
 const invalid = () => { throw new TypeError('Invalid Handoff return facts'); };
@@ -27,7 +27,7 @@ export function readHandoffReturnInspection(tx, handle, parent, childRunId) {
 
 async function readHandoffReturnFacts(tx, handle, parent, childRunId) {
     assertNativeId(childRunId, 'orchestrationRun');
-    const receiptId = handoffReturnReceiptId(childRunId), saved = await checkedRecord(tx, controlRecordKey(handle, parent.runId, 'receipt', receiptId));
+    const receiptId = handoffReturnReceiptId(childRunId), saved = await tx.getResource(controlRecordKey(handle, parent.runId, 'receipt', receiptId));
     if (!saved) return null;
     const receipt = saved.doc;
     assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'parentAttemptId', 'parentInputDigest',
@@ -44,9 +44,8 @@ async function readHandoffReturnFacts(tx, handle, parent, childRunId) {
     }
     assertObject(receipt.resultRef, ['runId', 'resultId'], 'Returned ResultRef');
     assertNativeId(receipt.resultRef.resultId, 'orchestrationResult');
-    const child = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: childRunId }))?.doc;
+    const child = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: childRunId }))?.doc;
     if (!child) invalid();
-    assertRunRoot(child, handle);
     const attempt = (await readAttempt(tx, handle, parent, receipt.parentAttemptId)).doc;
     if (receipt.childEpoch > child.epoch || child.parentRef?.parentRunId !== parent.runId || child.parentRef.nodeAttemptId !== attempt.attemptId
         || child.parentRef.parentEpoch !== receipt.epoch || child.parentRef.effectiveGrantDigest !== receipt.childGrantDigest
@@ -59,7 +58,7 @@ async function readHandoffReturnFacts(tx, handle, parent, childRunId) {
         || receipt.controlToken !== hash({ parentRunId: parent.runId, parentAttemptId: attempt.attemptId, childRunId, parentEpoch: receipt.epoch })
         || !equal(receipt.handoffReceiptRef, { runId: parent.runId, receiptId: handoffReceiptId(childRunId) })) invalid();
     const output = await readTaskLocalOutput(tx, handle, child);
-    const result = await checkedRecord(tx, controlRecordKey(handle, childRunId, 'result', receipt.resultRef.resultId));
+    const result = await tx.getResource(controlRecordKey(handle, childRunId, 'result', receipt.resultRef.resultId));
     if (!output || !result || output.receipt.epoch !== receipt.childEpoch || !equal(output.claim.resultRef, receipt.resultRef)
         || !equal(receipt.outputReceiptRef, { runId: childRunId, receiptId: output.receipt.receiptId })
         || !equal(receipt.budgetClosureReceiptRef, { runId: childRunId, receiptId: output.closure.receiptId })
@@ -71,7 +70,7 @@ async function readHandoffReturnFacts(tx, handle, parent, childRunId) {
     if (['native_session', 'project'].includes(parent.sourceBinding.sourceAuthority)) {
         // The parent supplied by the return writer may have its staged next
         // event sequence. Lineage is checked against the actual original row.
-        const actual = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: parent.runId }))?.doc;
+        const actual = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: parent.runId }))?.doc;
         // The complete TaskLocalOutput read above has just proved the original
         // delegation, including its parent inputs and every child Model/bank
         // fact. Reuse only that invocation's historical lineage; the fresh

@@ -104,8 +104,6 @@ AGENT: "预请求 Agent 模式" {
 
 ## 全局 API
 
-
-
 ### 属性
 
 | 属性 | 类型 | 说明 |
@@ -122,25 +120,6 @@ AGENT: "预请求 Agent 模式" {
 | `search(args)` | `Promise` | 直接执行搜索，返回搜索结果 |
 | `visit(args)` | `Promise` | 直接访问指定网页，返回页面内容 |
 | `getSettings()` | `Object` | 返回当前搜索插件的设置快照 |
-
-### 使用示例
-
-```javascript
-const api = Atria.searchTools;
-if (api) {
-  // 检查是否为搜索工具
-  api.isToolName('atri_web_search'); // true
-
-  // 获取工具定义
-  const defs = api.getToolDefs();
-
-  // 直接调用搜索
-  const results = await api.search({ query: '...', maxResults: 5 });
-
-  // 访问网页
-  const page = await api.visit({ url: 'https://...', maxChars: 10000 });
-}
-```
 
 ## 结果复用
 

@@ -5,7 +5,7 @@ import { readProjectDelegatedControl } from './project-delegated-quality-contrac
 import { ConflictError } from '../../storage/errors.js';
 import { hashNativeDocument as hash, putImmutable, putMutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { immutable, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readReviewablePlannerCompletion, readReviewableFanoutCompletion } from './graph-review-completion.js';
 import { assertProjectControlWork } from './project-quality-contracts.js';
@@ -67,7 +67,7 @@ async function ownsReviewInvalidatedControl(tx, handle, root, state, binding, sa
         || !equal(review.evidenceRefs, input.acceptedGraphResultRefs) || review.decisionSeq <= saved.receipt.decisionSeq
         || review.decisionSeq > root.eventSeq) return false;
     const commandId = controlCommandId('review.decide', review.receiptId);
-    const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+    const command = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId }))?.doc;
     const detail = { reviewAttemptId: reviewer.attemptId, decision: review.decision, targetAttemptIds: [...review.targetAttemptIds],
         reasonCode: review.reasonCode, evidenceRefs: review.evidenceRefs };
     if (!command || command.schemaVersion !== 1 || command.commandId !== commandId || command.operation !== 'runs.control.review.decide'

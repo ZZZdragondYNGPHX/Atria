@@ -199,7 +199,6 @@ try {
 | `unsupported_api` | 解析出的请求 API 在运行时不支持。 |
 | `stream_unavailable` | 解析后的请求 API 不支持通过 `generateTaskStream` 流式输出（kobold / koboldhorde / novel / textgenerationwebui）。 |
 | `tool_call_parse` | 模型返回的 tool call `arguments` 无法 `JSON.parse`。 |
-| `json_schema_violation` | `jsonSchema` 模式校验失败。 |
 | `no_response` | 发送方没返回可用内容。 |
 | `unknown` | 未分类失败的兜底。 |
 
@@ -442,8 +441,6 @@ context.unregisterFunctionTool('my_plugin_tool');
 |------|------|
 | `context.registerFunctionTool(tool)` | 将工具注册到全局注册表 |
 | `context.unregisterFunctionTool(name)` | 从全局注册表移除工具 |
-| `context.isToolCallingSupported()` | 检查当前 API/模型是否支持工具调用 |
-| `context.canPerformToolCalls(type)` | 检查指定请求类型是否可以执行工具调用 |
 
 ::: warning 全局工具 vs 单次请求工具
 `registerFunctionTool` 将工具添加到**全局注册表**——它们在主聊天中可供模型调用。`generateTask` 的 `tools` 参数仅为**该次请求**提供工具，不影响全局注册表。

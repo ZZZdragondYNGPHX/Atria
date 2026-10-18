@@ -91,7 +91,7 @@ export async function readRunControl(tx, handle, sessionId) {
     const record = await tx.getResource(key(handle, sessionId));
     let control = record?.doc ? structuredClone(record.doc) : null;
     if (control) {
-        if (hashNativeDocument(control) !== record.integrity || control.schemaVersion !== 1) throw runFailure('native_run_control_integrity');
+        if (control.schemaVersion !== 1) throw runFailure('native_run_control_integrity');
         if (control.restoreState !== undefined && !['ready', 'review_required'].includes(control.restoreState)) throw runFailure('native_run_control_invalid');
         assertRunContinuation({ operations: control.operations, background: control.background, highWaterTurn: control.highWaterTurn,
             ...(control.retiredCompute === undefined ? {} : { retiredCompute: control.retiredCompute }) });

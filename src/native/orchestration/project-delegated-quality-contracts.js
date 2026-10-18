@@ -1,7 +1,7 @@
 import { readProjectDelegatedFanoutCompletion, readProjectDelegatedFanoutInput } from './project-delegated-fanout-contracts.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readAttempt, readAttemptInvalidation } from './controller-common.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
@@ -18,7 +18,7 @@ import { readTaskGraphRevision } from './graph-revision-contracts.js';
 const invalid = () => { throw new TypeError('Invalid original Project child quality facts'); };
 
 async function inputIdentity(tx, handle, root, producer) {
-    const parent = root.parentRef ? (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: root.parentRef.parentRunId }))?.doc : null;
+    const parent = root.parentRef ? (await tx.getResource({ kind: K.orchestrationRun, handle, runId: root.parentRef.parentRunId }))?.doc : null;
     if (!parent || root.sourceBinding.sourceAuthority !== 'project') invalid();
     const lineage = await readProjectDelegation(tx, handle, parent, root.runId), input = producer.inputRefs[0];
     if (!lineage || input.kind !== 'native_project_delegated_intent' || input.role !== 'studio' || !equal(input.audience, { kind: 'task', id: root.runId })
@@ -104,7 +104,7 @@ export function readProjectDelegatedControl(tx, handle, root, ref, options = {})
  * not invent a second Transition or spend their old incoming edges again. */
 export async function readProjectDelegatedReviewReplacement(tx, handle, root, producer, input) {
     const ref = input.reviewFeedbackRef?.reviewReceiptRef;
-    const stored = ref?.runId === root.runId ? await checkedRecord(tx, { kind: K.orchestrationRecord, handle, runId: root.runId,
+    const stored = ref?.runId === root.runId ? await tx.getResource({ kind: K.orchestrationRecord, handle, runId: root.runId,
         recordType: 'receipt', recordId: ref.receiptId }) : null;
     if (!stored || stored.doc.receiptKind !== 'graph_review') invalid();
     const fact = await readProjectDelegatedReviewCompletion(tx, handle, root, stored.doc.reviewAttemptId);

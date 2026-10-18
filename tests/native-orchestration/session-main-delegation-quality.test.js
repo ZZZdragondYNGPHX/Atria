@@ -8,7 +8,7 @@ import { readSessionPlannerCompletion } from '../../src/native/orchestration/ses
 import { readSessionReviewCompletion } from '../../src/native/orchestration/session-review-contracts.js';
 import { readTaskLocalOutput, childClosureReceiptId } from '../../src/native/orchestration/task-local-output-contracts.js';
 import { readAttempt, readAttemptInvalidation, controlRecordKey } from '../../src/native/orchestration/controller-common.js';
-import { checkedRecord } from '../../src/native/orchestration/plan-repository.js';
+
 import { handoffReceiptId } from '../../src/native/orchestration/handoff-contracts.js';
 import { handoffReturnReceiptId } from '../../src/native/orchestration/handoff-return-contracts.js';
 import { hashNativeDocument as hash } from '../../src/native/repositories/common.js';
@@ -71,8 +71,8 @@ test('SQLite Game published Planner Agent Review DAG feeds an explicit Delegate 
             expect(delegated.parentInput.acceptedControlRefs).toEqual(expect.arrayContaining([planned.controlRef, reviewed[1].controlRef]));
             expect(delegated.parentInput.acceptedControlRefs).not.toContainEqual(reviewed[0].controlRef);
             expect(await readTaskLocalOutput(tx, f.h.handle, child)).toBeTruthy();
-            expect(await checkedRecord(tx, controlRecordKey(f.h.handle, parent.runId, 'receipt', handoffReceiptId(child.runId)))).toBeNull();
-            expect(await checkedRecord(tx, controlRecordKey(f.h.handle, parent.runId, 'receipt', handoffReturnReceiptId(child.runId)))).toBeNull();
+            expect(await tx.getResource(controlRecordKey(f.h.handle, parent.runId, 'receipt', handoffReceiptId(child.runId)))).toBeNull();
+            expect(await tx.getResource(controlRecordKey(f.h.handle, parent.runId, 'receipt', handoffReturnReceiptId(child.runId)))).toBeNull();
             return readSessionOutput(tx, f.h.handle, parent);
         });
         expect(proof).toBeTruthy();

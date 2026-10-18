@@ -12,7 +12,7 @@ import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../re
 import { assertResultRecord, resultDependencyDigest } from './result-contracts.js';
 import { modelResultId } from './result-publication-contracts.js';
 import { controlRecordKey, readAttempt, readAttemptInvalidation } from './controller-common.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
@@ -48,7 +48,7 @@ export async function readSessionNarrationResult(tx, handle, root) {
     if (root.parentRef !== null || root.graph.outputContract.kind !== 'rp_narration' || root.sourceBinding.sourceAuthority !== 'native_session') invalid();
     const finals = [], graphResults = [];
     for (const ref of root.resultRefs) {
-        const receipt = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', sessionNarrationPublicationId(ref.resultId)));
+        const receipt = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', sessionNarrationPublicationId(ref.resultId)));
         if (receipt) finals.push(ref);
         else {
             const result = await readGraphNodeResult(tx, handle, root, ref.resultId);
@@ -58,8 +58,8 @@ export async function readSessionNarrationResult(tx, handle, root) {
     if (!finals.length) return null;
     if (finals.length !== 1) invalid();
     const [resultRef] = finals;
-    const saved = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'result', resultRef.resultId));
-    const publication = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', sessionNarrationPublicationId(resultRef.resultId)));
+    const saved = await tx.getResource(controlRecordKey(handle, root.runId, 'result', resultRef.resultId));
+    const publication = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', sessionNarrationPublicationId(resultRef.resultId)));
     if (!saved || !publication) invalid();
     const record = assertResultRecord(saved.doc, { outputContract: root.graph.outputContract }), receipt = publication.doc;
     assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'producerAttemptId', 'resultRef', 'resultIntegrity',

@@ -3,7 +3,7 @@ import { hashNativeDocument as hash, putImmutable } from '../../src/native/repos
 import { assertPlanDefinition, assertResultPolicy } from '../../public/shared/native-orchestration-contracts.js';
 import { assertResultJson, assertResultRecord, resultDependencyDigest } from '../../src/native/orchestration/result-contracts.js';
 import { controlRecordKey } from '../../src/native/orchestration/controller-common.js';
-import { checkedRecord } from '../../src/native/orchestration/plan-repository.js';
+
 import { planFixture } from './fixtures.js';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 
@@ -141,7 +141,7 @@ describe.each(harnesses)('$name task-local Result contract fixture', ({ make }) 
             // Direct storage is a fixture only. No production Result writer,
             // model completion proof or domain grant is claimed by this test.
             await h.engine.withTransaction(h.handle, tx => putImmutable(tx, key, f.record));
-            const stored = await h.engine.withTransaction(h.handle, tx => checkedRecord(tx, key));
+            const stored = await h.engine.withTransaction(h.handle, tx => tx.getResource(key));
             expect(assertResultRecord(stored.doc, f)).toEqual(f.record);
         } finally { await h.engine.close(); await h.cleanup(); }
     });
@@ -165,7 +165,7 @@ describe.each(harnesses)('$name task-local Result contract fixture', ({ make }) 
             await h.engine.withTransaction(h.handle, tx => putImmutable(tx, key, f.record));
             const changed = structuredClone(f.record); changed.payload = 'different unverified body';
             await h.engine.withTransaction(h.handle, tx => tx.putResource(key, { doc: changed, integrity: hash(changed), createdAt: 10, updatedAt: 11 }));
-            const stored = await h.engine.withTransaction(h.handle, tx => checkedRecord(tx, key));
+            const stored = await h.engine.withTransaction(h.handle, tx => tx.getResource(key));
             expect(() => assertResultRecord(stored.doc, f)).toThrow('payload integrity');
         } finally { await h.engine.close(); await h.cleanup(); }
     });

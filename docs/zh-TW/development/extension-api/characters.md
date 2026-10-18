@@ -289,7 +289,7 @@ importFromExternalUrl(
 ): Promise<void>
 ```
 
-從外部 URL 或內容 UUID 匯入角色或世界書。伺服器檢查回應的 `Content-Type` 並路由到對應的匯入路徑：
+從外部 URL 或內容 UUID 匯入角色或世界書。
 
 - `'character'` → 進入 `processDroppedFiles`
 - `'lorebook'` → 進入 `importWorldInfo`

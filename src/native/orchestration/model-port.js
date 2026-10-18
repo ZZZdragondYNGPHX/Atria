@@ -9,7 +9,7 @@ import { equalNativeDocuments, hashNativeDocument as hash } from '../repositorie
 import { BudgetPort, sendAttemptId } from './budget-port.js';
 import { EffectController } from './effect-controller.js';
 import { readEffect } from './effect-contracts.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { controlRecordKey, runGuard, readAttempt } from './controller-common.js';
 import { RunRepository, assertChildRunCurrent } from './run-repository.js';
 import { resolveNativeNarratorScope } from './native-turn-orchestration.js';
@@ -38,7 +38,7 @@ export async function readModelCompletionReceipt(handle, tx, root, intent) {
     if (root.ownerRef.handle !== handle || intent.status !== 'confirmed' || intent.capability !== 'generation.send') return null;
     const observationId = 'model.completed:' + intent.effectId;
     const receiptId = 'oreceipt_' + hash({ effectId: intent.effectId, observationId }).slice(0, 32);
-    const receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
+    const receipt = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
     if (!receipt || receipt.schemaVersion !== 1 || receipt.receiptId !== receiptId || receipt.runId !== root.runId || receipt.effectId !== intent.effectId
         || receipt.observationId !== observationId || receipt.observedEpoch !== intent.epoch || receipt.outcome !== intent.status
         || receipt.reasonCode !== 'generation_response_validated' || receipt.dispatchEvidence?.kind !== 'original_port_observation'

@@ -1,7 +1,7 @@
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 import { sessionOutputFixture as setup } from './helpers/session-output-fixture.js';
 import { controlRecordKey } from '../../src/native/orchestration/controller-common.js';
-import { checkedRecord } from '../../src/native/orchestration/plan-repository.js';
+
 import { readSessionNarrationResult } from '../../src/native/orchestration/session-narration-result-contracts.js';
 import { StorageCommitUnknownError } from '../../src/storage/errors.js';
 import { BudgetPort } from '../../src/native/orchestration/budget-port.js';
@@ -19,8 +19,8 @@ describe.each(harnesses)('$name original Session output Effect', ({ make }) => {
             const root = await runs.get(f.h.handle, f.effectRef.runId);
             const facts = await f.h.engine.withTransaction(f.h.handle, async tx => {
                 const published = await readSessionNarrationResult(tx, f.h.handle, root);
-                const effect = (await checkedRecord(tx, controlRecordKey(f.h.handle, root.runId, 'effect', f.effectRef.effectId))).doc;
-                const attempt = (await checkedRecord(tx, controlRecordKey(f.h.handle, root.runId, 'attempt', effect.nodeAttemptId))).doc;
+                const effect = (await tx.getResource(controlRecordKey(f.h.handle, root.runId, 'effect', f.effectRef.effectId))).doc;
+                const attempt = (await tx.getResource(controlRecordKey(f.h.handle, root.runId, 'attempt', effect.nodeAttemptId))).doc;
                 return { published, effect, attempt };
             });
             expect(facts.published.record.payload).toBe('Synthetic native narrator response.');

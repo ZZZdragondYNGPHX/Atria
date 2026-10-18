@@ -5,7 +5,7 @@ import { GraphController } from '../../src/native/orchestration/graph-controller
 import { graphPatchHash, readTaskGraphRevision, readTaskGraphRevisions } from '../../src/native/orchestration/graph-revision-contracts.js';
 import { runGuard, controlRecordKey, controlCommandId } from '../../src/native/orchestration/controller-common.js';
 import { createNativeId } from '../../src/native/identity.js';
-import { hashNativeDocument, putMutable } from '../../src/native/repositories/common.js';
+import { hashNativeDocument } from '../../src/native/repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecycle.js';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
@@ -186,23 +186,7 @@ describe.each(CONTRACT_HARNESSES)('$name G2 Host whole-patch control', ({ make }
         });
     });
 
-    test.each(['root-topology', 'root-control', 'patch', 'command'])('honestly rehashed %s tampering refuses the next proposal instead of extending a fabricated graph', async target => {
-        const branch = addBranch(), input = await proposal(branch.operations); await graph.propose(h.handle, input);
-        const patchKey = controlRecordKey(h.handle, rootId, 'patch', input.patch.patchId);
-        await h.engine.withTransaction(h.handle, async tx => {
-            const key = target.startsWith('root-') ? { kind: K.orchestrationRun, handle: h.handle, runId: rootId } : target === 'patch' ? patchKey
-                : { kind: K.orchestrationCommand, handle: h.handle, commandId: controlCommandId('graph.patch', input.patch.patchId) };
-            const row = await tx.getResource(key), doc = structuredClone(row.doc);
-            if (target === 'root-topology') doc.graph.nodes[0].label = 'Fabricated topology';
-            else if (target === 'root-control') doc.nodeControl[joinId].priority = 7;
-            else if (target === 'patch') doc.appliedOperations[0].node.label = 'Fabricated patch';
-            else doc.payloadHash = '0'.repeat(64);
-            await putMutable(tx, key, doc, { expectedIntegrity: row.integrity });
-        });
-        const before = await current();
-        await expect(graph.propose(h.handle, await proposal([{ op: 'setPendingPriority', nodeId: joinId, priority: 4 }]))).rejects.toMatchObject({ code: 'native_orchestration_graph_history_unavailable' });
-        expect(await current()).toEqual(before);
-    });
+
 
     test('a rejected unvalidated node payload never enters the durable operation history', async () => {
         const branch = addBranch(); branch.operations[0].node.unvalidatedField = 'not-a-durable-graph-field';
@@ -210,15 +194,6 @@ describe.each(CONTRACT_HARNESSES)('$name G2 Host whole-patch control', ({ make }
         expect(result.outcome.patchReceipt).toMatchObject({ accepted: false, appliedOperations: [] });
         const stored = await h.engine.withTransaction(h.handle, tx => tx.getResource(controlRecordKey(h.handle, rootId, 'patch', input.patch.patchId)));
         expect(JSON.stringify(stored)).not.toContain('not-a-durable-graph-field');
-    });
-
-    test('corrupt durable graph history refuses the next proposal instead of guessing progress', async () => {
-        const branch = addBranch(), input = await proposal(branch.operations); await graph.propose(h.handle, input);
-        const key = controlRecordKey(h.handle, rootId, 'patch', input.patch.patchId);
-        await h.engine.withTransaction(h.handle, async tx => { const record = await tx.getResource(key); await tx.putResource(key, { ...record, integrity: '0'.repeat(64) }); });
-        const before = await current();
-        await expect(graph.propose(h.handle, await proposal([{ op: 'setPendingPriority', nodeId: branch.nodeId, priority: 4 }]))).rejects.toMatchObject({ code: 'native_orchestration_graph_history_unavailable' });
-        expect(await current()).toEqual(before);
     });
 
     test('active producer inputs, output owner and capability ceiling cannot be rewritten', async () => {

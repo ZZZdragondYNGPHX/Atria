@@ -2,7 +2,7 @@ import { assertObject, assertCounter, assertDigest } from '../../../public/share
 import { assertNativeId } from '../identity.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { controlRecordKey, readAttempt } from './controller-common.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { readResultPublication } from './result-publication-contracts.js';
 import { readAttemptSettlement, attemptReceiptId } from './attempt-settlement.js';
 import { assertBudgetAttemptRef, assertBudgetAuthorityRef } from './budget-port.js';
@@ -45,9 +45,9 @@ export function assertTaskLocalClaim(claim, root) {
 /** Historical consistency only. This never reauthorizes a recipient or observes a new bank balance. */
 export async function readTaskLocalOutput(tx, handle, root) {
     if (!root.parentRef) return null;
-    const claimId = taskLocalClaimId(root), claimRow = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'output', claimId));
-    const outputRow = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', taskLocalReceiptId(root.runId)));
-    const closedRow = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', childClosureReceiptId(root.runId)));
+    const claimId = taskLocalClaimId(root), claimRow = await tx.getResource(controlRecordKey(handle, root.runId, 'output', claimId));
+    const outputRow = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', taskLocalReceiptId(root.runId)));
+    const closedRow = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', childClosureReceiptId(root.runId)));
     if (!claimRow && !outputRow && !closedRow && !root.outputClaims.length) return null;
     if (!claimRow || !outputRow || !closedRow || !equal(root.outputClaims, [{ runId: root.runId, claimId }])) invalid();
     const claim = assertTaskLocalClaim(claimRow.doc, root), receipt = outputRow.doc, closure = closedRow.doc;
@@ -110,7 +110,7 @@ export async function readTaskLocalOutput(tx, handle, root) {
         assertRpDelegatedClosure(root, published.graphHistory, closure);
         return { claim, receipt, closure, publication: published };
     }
-    const traversal = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receipt.traversalReceiptRef.receiptId)))?.doc;
+    const traversal = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receipt.traversalReceiptRef.receiptId)))?.doc;
     const producer = (await readAttempt(tx, handle, root, published.receipt.producerAttemptId)).doc;
     const graphEdge = root.graph.edges.find(item => item.from.nodeId === producer.nodeId && item.to.nodeId === output.nodeId);
     const bindings = graphEdge ? [{ edgeId: graphEdge.edgeId, producerAttemptId: producer.attemptId }] : [];
@@ -126,7 +126,7 @@ export async function readTaskLocalOutput(tx, handle, root) {
         || !Array.isArray(traversal.edgeAdmissionRefs) || traversal.edgeAdmissionRefs.length !== 1) invalid();
     const edgeId = 'oreceipt_' + hash({ kind: 'edge_admission', runId: root.runId, edgeId: graphEdge.edgeId,
         producerAttemptId: producer.attemptId, nodeAttemptId: output.attemptId }).slice(0, 32);
-    const admitted = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', edgeId)))?.doc;
+    const admitted = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', edgeId)))?.doc;
     if (!admitted) invalid();
     assertObject(admitted, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'graphRevision', 'edgeId', 'producerAttemptId',
         'nodeAttemptId', 'sourceBindingDigest', 'edgeVisit', 'loopIteration', 'decisionSeq', 'createdAt'], 'Output edge admission');

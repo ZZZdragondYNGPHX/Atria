@@ -5,7 +5,7 @@ import { StudioService } from '../authoring/studio-service.js';
 import { ProjectTaskRepository, assertProjectTask } from '../agent-intelligence/project-task-repository.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { readEffect, readApproval, currentApprovalBinding } from './effect-contracts.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { controlRecordKey, readAttempt, controlCommandId } from './controller-common.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
 import { assertResultRecord, resultDependencyDigest } from './result-contracts.js';
@@ -149,12 +149,12 @@ export async function readProjectCommitCompletion(tx, handle, root, agent) {
                 || intent.endpointBindingDigest !== hash(pin.resourceRef) || intent.egressDigest !== hash({ domain: 'local_project', projectId: input.projectId })
                 || !equal(intent.dispatchPolicy, { idempotency: 'domain_key', operationKey: input.changeSetId, reconcile: 'domain_status' })) fail();
             const approval = (await readApproval(tx, handle, root, intent.approvalRef)).doc;
-            const decision = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'approval', approval.decisionRef)))?.doc;
+            const decision = (await tx.getResource(controlRecordKey(handle, root.runId, 'approval', approval.decisionRef)))?.doc;
             if (approval.status !== 'consumed' || approval.bindingHash !== currentApprovalBinding(intent, approval) || approval.effectId !== effectId
                 || !decision || decision.decision !== 'approve' || decision.bindingHash !== approval.bindingHash || decision.principalRef.handle !== handle
                 || decision.authenticationContextRef.authority !== 'native_user_reauthentication') fail();
             const receiptId = 'oreceipt_' + hash({ effectId, observationId: 'project.commit:' + effectId }).slice(0, 32);
-            const receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
+            const receipt = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
             const domain = await readProjectCommitDomain(agent, handle, input);
             if (!receipt || !domain || receipt.outcome !== 'confirmed' || receipt.effectId !== effectId || receipt.runId !== root.runId
                 || !equal(receipt.domainReceiptRef, domain) || receipt.dispatchEvidence.reference?.domainReceiptHash !== hash(domain)) fail();
@@ -191,13 +191,13 @@ export function projectCommitResult(root, completion, now) {
 }
 
 export async function readProjectCommitOutput(tx, handle, root, agent, { pendingCommand = false } = {}) {
-    const claimId = projectCommitId('claim', root.runId), row = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'output', claimId));
+    const claimId = projectCommitId('claim', root.runId), row = await tx.getResource(controlRecordKey(handle, root.runId, 'output', claimId));
     if (!row && !root.outputClaims.length) return null;
     const completion = await readProjectCommitCompletion(tx, handle, root, agent);
-    const output = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', projectCommitId('output', root.runId))))?.doc;
-    const result = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'result', projectCommitId('result', root.runId)));
+    const output = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', projectCommitId('output', root.runId))))?.doc;
+    const result = await tx.getResource(controlRecordKey(handle, root.runId, 'result', projectCommitId('result', root.runId)));
     if (!completion || !output || !result || !row || !completion.costs.closed || !equal(root.outputClaims, [{ runId: root.runId, claimId }])) fail();
-    const publication = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', projectCommitId('publication', root.runId))))?.doc;
+    const publication = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', projectCommitId('publication', root.runId))))?.doc;
     if (!publication) fail();
     const claim = row.doc, attempt = (await readAttempt(tx, handle, root, claim.nodeAttemptId)).doc;
     const settled = await readAttemptSettlement(tx, handle, root, attempt), producerSettled = await readAttemptSettlement(tx, handle, root, completion.producer);
@@ -235,7 +235,7 @@ export async function readProjectCommitOutput(tx, handle, root, agent, { pending
     ];
     for (const [namespace, operation, detail, expected] of commands) {
         const commandId = controlCommandId(namespace, root.runId);
-        const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+        const command = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId }))?.doc;
         if (!command || command.commandId !== commandId || command.operation !== 'runs.control.' + operation || command.target !== root.runId
             || command.payloadHash !== hash({ operation: command.operation, body: { runId: root.runId, operation, detail } })
             || command.outcome.versions?.epoch !== root.epoch || Object.entries(expected).some(([key, value]) => !equal(command.outcome[key], value))) fail();

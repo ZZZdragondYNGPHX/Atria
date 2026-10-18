@@ -5,7 +5,7 @@ import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { readSessionOutput } from '../../src/native/orchestration/session-output-contracts.js';
 import { readTaskLocalOutput } from '../../src/native/orchestration/task-local-output-contracts.js';
 import { controlRecordKey } from '../../src/native/orchestration/controller-common.js';
-import { checkedRecord } from '../../src/native/orchestration/plan-repository.js';
+
 import { handoffReturnReceiptId } from '../../src/native/orchestration/handoff-return-contracts.js';
 import { hashNativeDocument as hash } from '../../src/native/repositories/common.js';
 
@@ -72,7 +72,7 @@ test.each([
         expect(bank.attempts[0].reservationId).toBe(child.runId);
         expect(bank.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released',
             limits: expect.objectContaining({ maxRequests: options.childRequests ?? 3 }) })]);
-        expect(await f.h.engine.withTransaction(f.h.handle, tx => checkedRecord(tx, controlRecordKey(f.h.handle, parent.runId, 'receipt', handoffReturnReceiptId(child.runId))))).toBeNull();
+        expect(await f.h.engine.withTransaction(f.h.handle, tx => tx.getResource(controlRecordKey(f.h.handle, parent.runId, 'receipt', handoffReturnReceiptId(child.runId))))).toBeNull();
         const current = await f.core.observe(f.h.handle, f.base.session.sessionId);
         expect(current.timeline).toEqual(f.base.timeline); expect(current.states.atri_lifecycle.domains).toEqual(f.base.states.atri_lifecycle.domains);
         await expect(f.start()).rejects.toThrow(); expect(f.requests).toHaveLength(1);

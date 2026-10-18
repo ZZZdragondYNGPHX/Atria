@@ -1,7 +1,7 @@
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { controlRecordKey, readAttempt, readGraphReviewReceipt } from './controller-common.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
@@ -18,7 +18,7 @@ export const rpReviewModelReceiptId = (runId, attemptId) => 'oreceipt_' + hash({
 /** Original Model-to-Review facts only; approve is not an Effect approval. */
 export async function readRpReviewCompletion(tx, handle, root, attemptId) {
     const { doc: producer } = await readAttempt(tx, handle, root, attemptId), receiptId = rpReviewModelReceiptId(root.runId, attemptId);
-    const receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
+    const receipt = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
     if (!receipt) return null;
     assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'producerAttemptId', 'sourceBindingDigest', 'grantDigest',
         'modelEffectId', 'modelReceiptRef', 'modelPayloadHash', 'responseText', 'reviewReceiptRef', 'reviewIntegrity', 'localWork', 'decisionSeq', 'createdAt'], 'RP Review Model receipt');

@@ -2,7 +2,7 @@ import { ConflictError } from '../../storage/errors.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { equalNativeDocuments, hashNativeDocument as hash } from '../repositories/common.js';
 import { assertObject, assertCounter, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { controlCommandId, controlRecordKey, readAttempt, assertAttemptCurrent } from './controller-common.js';
 import { readEffect, effectDecision, readApproval } from './effect-contracts.js';
 
@@ -24,7 +24,7 @@ export async function readReadyEffectRecovery(tx, handle, root, effectId) {
         || attempt.effectiveGrantDigest !== intent.grantDigest || attempt.resultRefs.length || attempt.endedAt !== null
         || attempt.effectRefs.length !== 1 || attempt.effectRefs[0] !== effectId || !equalNativeDocuments(attempt.budgetRef, root.budgetAuthorityRef)) denied();
     await assertAttemptCurrent(tx, handle, root, attempt);
-    const command = await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId: controlCommandId('effect.claim', effectId) });
+    const command = await tx.getResource({ kind: K.orchestrationCommand, handle, commandId: controlCommandId('effect.claim', effectId) });
     if (command) throw new ConflictError('native_orchestration_effect_already_claimed');
     if (intent.approvalRef !== null && (await readApproval(tx, handle, root, intent.approvalRef)).doc.status !== 'invalidated') denied();
     return { record, attemptRecord };
@@ -34,7 +34,7 @@ export async function readReadyEffectRecovery(tx, handle, root, effectId) {
 export async function readReadyEffectResume(tx, handle, root, intent) {
     if (intent.epoch === 0) return null;
     const receiptId = effectResumeReceiptId(root.runId, intent.effectId, intent.epoch);
-    const stored = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId));
+    const stored = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId));
     if (!stored) throw new TypeError('Recovered ready Effect lacks its authorization receipt');
     const receipt = stored.doc;
     assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'effectId', 'nodeAttemptId', 'previousEpoch', 'epoch',
@@ -52,8 +52,8 @@ export async function readReadyEffectResume(tx, handle, root, intent) {
         || attempt.epoch !== intent.epoch || attempt.effectiveGrantDigest !== intent.grantDigest
         || receipt.decisionSeq < 1 || receipt.decisionSeq > root.eventSeq) throw new TypeError('Invalid ready Effect resume facts');
     const commandId = effectResumeCommandId(root.runId, intent.effectId, intent.epoch);
-    const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
-    const event = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'event', 'event:' + receipt.decisionSeq)))?.doc;
+    const command = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId }))?.doc;
+    const event = (await tx.getResource(controlRecordKey(handle, root.runId, 'event', 'event:' + receipt.decisionSeq)))?.doc;
     if (command?.operation !== 'runs.control.run.resume' || command.target !== root.runId || command.outcome.receiptId !== receiptId
         || command.payloadHash !== hash({ operation: 'runs.control.run.resume', body: { runId: root.runId, operation: 'run.resume', detail: { effectId: intent.effectId } } })
         || command.outcome.versions?.epoch !== intent.epoch

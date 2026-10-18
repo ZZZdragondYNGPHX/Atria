@@ -393,22 +393,6 @@ context.eventSource.on(context.eventTypes.CHAT_BRANCH_CREATED, async (payload) =
 
 A plugin's settings panel is injected into the extension settings area via an HTML fragment. Use the `inline-drawer` class to create a collapsible settings panel:
 
-```js
-jQuery(async () => {
-  const settingsHtml = await $.get(`${extensionFolderPath}/settings.html`);
-  $('#extensions_settings').append(settingsHtml);
-
-  // Bind settings control events
-  $('#my_plugin_enabled').on('change', function () {
-    extension_settings[EXTENSION_NAME].enabled = $(this).prop('checked');
-    saveSettingsDebounced();
-  });
-
-  // Initialize control states
-  $('#my_plugin_enabled').prop('checked', extension_settings[EXTENSION_NAME].enabled);
-});
-```
-
 ### Popup Dialogs
 
 Atria provides popup APIs such as `callGenericPopup` for displaying custom dialogs:
@@ -478,11 +462,9 @@ Atria includes a built-in frontend log manager that intercepts `console` output 
 
 | Issue | Troubleshooting Direction |
 |-------|---------------------------|
-| Plugin not loading | Check that `manifest.json` is properly formatted and the `js` path exists |
 | Settings not saving | Ensure `saveSettingsDebounced()` is being called |
 | Event not firing | Use `getListenersMeta()` to confirm the listener is registered |
 | Style conflicts | Use CSS class names prefixed with your plugin name |
-| State lost | Verify the correct namespace is used and check that the chat state was written successfully |
 
 ### Hot Reload
 

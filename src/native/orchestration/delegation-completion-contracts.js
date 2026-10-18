@@ -1,9 +1,9 @@
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject, assertCounter } from '../../../public/shared/native-orchestration-contracts.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { controlCommandId, controlRecordKey, readAttempt } from './controller-common.js';
-import { assertRunRoot, childBudgetReceiptId, TREE_LOGICAL_COUNTERS } from './run-repository.js';
+import { childBudgetReceiptId, TREE_LOGICAL_COUNTERS } from './run-repository.js';
 import { delegatedRunId } from './delegate-controller.js';
 import { handoffReceiptId, readHandoff } from './handoff-contracts.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
@@ -14,15 +14,14 @@ const runKey = (handle, runId) => ({ kind: K.orchestrationRun, handle, runId });
 const receiptRef = (runId, receipt) => ({ runId, receiptId: receipt.receiptId });
 
 async function storedRoot(tx, handle, supplied) {
-    assertRunRoot(supplied, handle);
-    const actual = (await checkedRecord(tx, runKey(handle, supplied.runId)))?.doc;
+    const actual = (await tx.getResource(runKey(handle, supplied.runId)))?.doc;
     if (!actual || !equal(actual, supplied)) invalid();
     return actual;
 }
 
 async function commandFact(tx, handle, run, operation, identity, detail) {
     const commandId = controlCommandId(operation, identity);
-    const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+    const command = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId }))?.doc;
     if (!command) return null;
     assertObject(command, ['schemaVersion', 'commandId', 'operation', 'target', 'payloadHash', 'outcome'], 'Delegation command');
     if (command.schemaVersion !== 1 || command.commandId !== commandId || command.operation !== 'runs.control.' + operation
@@ -41,7 +40,7 @@ async function commandFact(tx, handle, run, operation, identity, detail) {
 async function eventFact(tx, handle, root, receipt, { type, epoch, graphRevision, reasonCode = null }) {
     assertCounter(receipt.decisionSeq, 'delegation decisionSeq', 1);
     assertCounter(receipt.createdAt, 'delegation createdAt');
-    const event = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'event', 'event:' + receipt.decisionSeq)))?.doc;
+    const event = (await tx.getResource(controlRecordKey(handle, root.runId, 'event', 'event:' + receipt.decisionSeq)))?.doc;
     if (!event || receipt.decisionSeq > root.eventSeq || !equal(event, { schemaVersion: 1, runId: root.runId,
         eventSeq: receipt.decisionSeq, epoch, graphRevision, type, reasonCode, createdAt: receipt.createdAt })) invalid();
 }
@@ -76,7 +75,7 @@ async function readCompletion(tx, handle, suppliedParent, suppliedChild, seen) {
     const mode = handedOff ? 'handoff' : 'delegate', command = handedOff ?? delegate;
     assertObject(command.outcome, ['runId', 'childRunId', 'delegationReceipt', ...handedOff ? ['handoffReceipt'] : [], 'versions'], 'Delegation outcome');
     const receiptId = 'oreceipt_' + hash({ kind: 'delegation', childRunId: child.runId }).slice(0, 32);
-    const delegation = (await checkedRecord(tx, controlRecordKey(handle, parent.runId, 'receipt', receiptId)))?.doc;
+    const delegation = (await tx.getResource(controlRecordKey(handle, parent.runId, 'receipt', receiptId)))?.doc;
     if (!delegation) invalid();
     assertObject(delegation, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'childRunId', 'parentRef', 'budgetCeiling',
         'sourceBindingDigest', 'authorityRef', 'decisionSeq', 'createdAt'], 'Delegation receipt');
@@ -104,7 +103,7 @@ async function readCompletion(tx, handle, suppliedParent, suppliedChild, seen) {
             || parent.parentRef && ref.logicalCeiling[field] > parent.parentRef.logicalCeiling[field])) invalid();
     await eventFact(tx, handle, parent, delegation, { type: handedOff ? 'control_handed_off' : 'child_delegated',
         epoch: ref.parentEpoch, graphRevision: command.outcome.versions.graphRevision });
-    const admission = (await checkedRecord(tx, controlRecordKey(handle, child.runId, 'event', 'event:0')))?.doc;
+    const admission = (await tx.getResource(controlRecordKey(handle, child.runId, 'event', 'event:0')))?.doc;
     if (!equal(admission, { schemaVersion: 1, runId: child.runId, eventSeq: 0, epoch: 0, graphRevision: 0,
         type: 'child_admitted_unfunded', reasonCode: 'original_reservation_unconfirmed', createdAt: delegation.createdAt })) invalid();
     let handoff = null;
@@ -114,9 +113,9 @@ async function readCompletion(tx, handle, suppliedParent, suppliedChild, seen) {
         handoff = await readHandoff(tx, handle, { ...parent, epoch: ref.parentEpoch }, parentAttempt, child);
         if (!equal(handoff, command.outcome.handoffReceipt) || handoff.decisionSeq !== delegation.decisionSeq
             || handoff.createdAt !== delegation.createdAt) invalid();
-    } else if (await checkedRecord(tx, controlRecordKey(handle, parent.runId, 'receipt', handoffReceiptId(child.runId)))) invalid();
+    } else if (await tx.getResource(controlRecordKey(handle, parent.runId, 'receipt', handoffReceiptId(child.runId)))) invalid();
     const budgetId = childBudgetReceiptId(child.runId);
-    const budgetReady = (await checkedRecord(tx, controlRecordKey(handle, child.runId, 'receipt', budgetId)))?.doc;
+    const budgetReady = (await tx.getResource(controlRecordKey(handle, child.runId, 'receipt', budgetId)))?.doc;
     const budgetCommand = await commandFact(tx, handle, child, 'run.childBudget', budgetId, {});
     if (!budgetReady && !budgetCommand) return null;
     if (!budgetReady || !budgetCommand) invalid();
@@ -133,7 +132,7 @@ async function readCompletion(tx, handle, suppliedParent, suppliedChild, seen) {
         || budgetCommand.outcome.versions.stateVersion !== budgetReady.decisionSeq) invalid();
     await eventFact(tx, handle, child, budgetReady, { type: 'child_budget_confirmed', epoch: budgetReady.epoch, graphRevision: 0 });
     if (parent.parentRef) {
-        const ancestor = (await checkedRecord(tx, runKey(handle, parent.parentRef.parentRunId)))?.doc;
+        const ancestor = (await tx.getResource(runKey(handle, parent.parentRef.parentRunId)))?.doc;
         if (!ancestor || !await readCompletion(tx, handle, ancestor, parent, seen)) invalid();
     } else if (parent.runId !== child.rootRunId) invalid();
     return { mode, parentAttempt, delegation, handoff, budgetReady,

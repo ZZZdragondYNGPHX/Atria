@@ -2,7 +2,7 @@ import { ConflictError } from '../../storage/errors.js';
 import { assertNativeId } from '../identity.js';
 import { assertObject, assertCounter } from '../../../public/shared/native-orchestration-contracts.js';
 import { cloneNativeDocument, hashNativeDocument, putImmutable, equalNativeDocuments } from '../repositories/common.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { controlCommandId, controlRecordKey, graphReachable, holdsConcurrencySlot, readAttempt } from './controller-common.js';
 import { readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 import { admitGraphEdges } from './graph-costs.js';
@@ -26,7 +26,7 @@ export function isFanoutBranchExcluded(frame, barrier, join, attempt) {
 
 export async function readFanoutMembership(tx, handle, root, frame, attemptId) {
     const receiptId = membershipId(root.runId, frame.receiptId, attemptId);
-    const record = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId));
+    const record = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId));
     if (!record) return null;
     const row = record.doc;
     assertObject(row, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'frameId', 'nodeAttemptId', 'epoch', 'sourceBindingDigest', 'decisionSeq', 'createdAt'], 'FanoutMembership');
@@ -82,7 +82,7 @@ async function readFanoutLocalScope(tx, handle, root, reviewer, targets, { decis
     for (const id of root.attemptRefs) {
         const join = (await readAttempt(tx, handle, root, id)).doc;
         if (root.graph.nodes.find(node => node.nodeId === join.nodeId)?.kind !== 'join' || join.inputRefs?.[0]?.fanoutAttemptId !== fanoutAttemptId) continue;
-        const barrier = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', 'barrier:' + joinIdForAttempt(id))))?.doc;
+        const barrier = (await tx.getResource(controlRecordKey(handle, root.runId, 'join', 'barrier:' + joinIdForAttempt(id))))?.doc;
         if (!barrier || barrier.frozenSeq >= decisionSeq || barrier.epoch !== frame.epoch
             || barrier.fanoutFrameRef?.receiptId !== frame.receiptId || barrier.fanoutFrameRef.integrity !== hashNativeDocument(frame)
             || rerun && targets.some(target => barrier.memberAttemptIds.includes(target.attemptId))) return null;
@@ -108,7 +108,7 @@ async function terminalPreparedAfter(tx, handle, root, terminal, decisionSeq) {
     if (!Array.isArray(bindings) || !bindings.length) return false;
     const ordered = [...bindings].sort((a, b) => a.edgeId.localeCompare(b.edgeId));
     const receiptId = 'oreceipt_' + hashNativeDocument({ runId: root.runId, bindings: ordered, reservedAttemptId: terminal.attemptId }).slice(0, 32);
-    const receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
+    const receipt = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
     return !!receipt && receipt.receiptKind === 'graph_transition' && receipt.nodeAttemptId === terminal.attemptId
         && receipt.runId === root.runId && receipt.epoch === terminal.epoch && receipt.inputDigest === terminal.inputDigest
         && receipt.decisionSeq > decisionSeq && receipt.decisionSeq <= root.eventSeq && equalNativeDocuments(receipt.bindings, ordered);
@@ -146,7 +146,7 @@ export async function inheritFanoutMembership({ tx, handle, root, producers, tar
 }
 
 export async function readFanoutFrame(tx, handle, root, fanoutAttemptId) {
-    const record = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', fanoutFrameId(root.runId, fanoutAttemptId)));
+    const record = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', fanoutFrameId(root.runId, fanoutAttemptId)));
     if (!record) return null;
     const frame = record.doc;
     assertObject(frame, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'fanoutAttemptId', 'epoch', 'graphRevision', 'sourceBindingDigest', 'parentBudgetRef', 'branches', 'maxConcurrency', 'failurePolicy', 'edgeAdmissionRefs', 'decisionSeq', 'createdAt'], 'FanoutFrame');

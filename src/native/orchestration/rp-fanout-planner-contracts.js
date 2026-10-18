@@ -1,7 +1,7 @@
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertComputeLedger } from '../../../public/shared/native-compute-budget.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { readAttempt } from './controller-common.js';
 import { readEffect } from './effect-contracts.js';
 import { readFanoutFrame, readFanoutMembership, readFanoutReplanScope } from './fanout-controller.js';
@@ -45,7 +45,7 @@ export async function readRpFanoutPaidModelNodes(tx, handle, root) {
     if (authority.domain !== 'rp_chat' || root.sourceBinding.sourceAuthority !== 'rp_chat'
         || root.parentRef && (!root.parentRef.budgetCeiling || !root.parentRef.effectiveGrantDigest) || !equal(root.sourceBinding.budgetAuthorityRef, authority))
         denied('native_orchestration_budget_unavailable');
-    const control = (await checkedRecord(tx, { kind: K.rpRunControl, handle, controlId: authority.controlId }))?.doc;
+    const control = (await tx.getResource({ kind: K.rpRunControl, handle, controlId: authority.controlId }))?.doc;
     const bank = assertComputeLedger(control?.operations[authority.operationId]?.compute), paid = new Set();
     if (root.parentRef) {
         const allocation = bank.reservations.find(row => row.reservationId === root.runId);

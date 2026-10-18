@@ -6,7 +6,7 @@ import { readSessionSnapshot } from '../session-snapshot.js';
 import { readRunControl } from '../run-control.js';
 import { inspectComputeEffectClosure } from '../../../public/shared/native-compute-budget.js';
 import { effectBudgetClosure, sendAttemptId, localWorkAttemptId } from './budget-port.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { controlCommandId, controlRecordKey, readAttempt } from './controller-common.js';
@@ -46,8 +46,8 @@ export async function readBackgroundTaskDelivery(tx, handle, root, effectId, dom
         || intent.egressDigest !== hash({ pathFingerprint: intent.targetRef.pathFingerprint, sourceBindingDigest: root.sourceBinding.bindingDigest,
             grantDigest, audience: { kind: 'task', id: input.taskId } })) invalid();
     for (const field of ['taskDefinitionHash', 'configDigest', 'intentDigest', 'inputDigest']) assertDigest(input[field], field);
-    const session = (await checkedRecord(tx, { kind: K.session, handle, sessionId: source.sessionId }))?.doc;
-    const revision = (await checkedRecord(tx, { kind: K.sessionRevision, handle, sessionId: source.sessionId, revisionId: domainRef.revisionId }))?.doc;
+    const session = (await tx.getResource({ kind: K.session, handle, sessionId: source.sessionId }))?.doc;
+    const revision = (await tx.getResource({ kind: K.sessionRevision, handle, sessionId: source.sessionId, revisionId: domainRef.revisionId }))?.doc;
     if (!session || !revision) invalid();
     const snapshot = await readSessionSnapshot(tx, handle, session, revision);
     const records = snapshot.states.atri_task_results?.records.filter(item => item.invocationId === input.invocationId) ?? [];
@@ -87,7 +87,7 @@ export async function readBackgroundTaskDelivery(tx, handle, root, effectId, dom
     }
     // The queued intent was frozen before sending; only its terminal status changes.
     if (hash({ ...queued, status: 'pending' }) !== input.intentDigest) invalid();
-    const sourceRevision = (await checkedRecord(tx, { kind: K.sessionRevision, handle, sessionId: source.sessionId, revisionId: source.revisionId }))?.doc;
+    const sourceRevision = (await tx.getResource({ kind: K.sessionRevision, handle, sessionId: source.sessionId, revisionId: source.revisionId }))?.doc;
     if (!sourceRevision) invalid();
     const original = await readSessionSnapshot(tx, handle, session, sourceRevision);
     const pending = original.states.atri_lifecycle?.outbox.find(item => item.invocationId === input.invocationId);
@@ -144,7 +144,7 @@ export async function backgroundTaskCosts(tx, handle, root, effectId) {
 
 async function command(tx, handle, root, kind, operation, detail, outcome, epoch) {
     const id = controlCommandId('native.background.' + kind, root.runId);
-    const saved = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId: id }))?.doc;
+    const saved = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId: id }))?.doc;
     if (!saved || saved.schemaVersion !== 1 || saved.commandId !== id || saved.target !== root.runId
         || saved.operation !== 'runs.control.' + operation || saved.payloadHash !== hash({ operation: saved.operation, body: { runId: root.runId, operation, detail } })
         || saved.outcome?.versions?.epoch !== epoch || Object.entries(outcome).some(([key, value]) => !equal(saved.outcome[key], value))) invalid();
@@ -152,8 +152,8 @@ async function command(tx, handle, root, kind, operation, detail, outcome, epoch
 
 export async function readBackgroundTaskResult(tx, handle, root) {
     if (root.sourceBinding.sourceAuthority !== 'native_session' || root.parentRef || root.graph.outputContract.kind !== 'result') return null;
-    const resultId = backgroundOutputId('result', root.runId), row = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'result', resultId));
-    const publication = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', backgroundOutputId('publication', root.runId)));
+    const resultId = backgroundOutputId('result', root.runId), row = await tx.getResource(controlRecordKey(handle, root.runId, 'result', resultId));
+    const publication = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', backgroundOutputId('publication', root.runId)));
     if (!row && !publication && !root.resultRefs.length) return null;
     if (!row || !publication || !equal(root.resultRefs, [{ runId: root.runId, resultId }])) invalid();
     const record = assertResultRecord(row.doc, { outputContract: root.graph.outputContract }), receipt = publication.doc;
@@ -161,7 +161,7 @@ export async function readBackgroundTaskResult(tx, handle, root) {
     for (const key of ['epoch', 'decisionSeq', 'createdAt']) assertCounter(receipt[key], key);
     const producer = (await readAttempt(tx, handle, root, record.envelope.producerAttemptId)).doc;
     const delivery = await readBackgroundTaskDelivery(tx, handle, root, receipt.effectId, record.payload);
-    const adopted = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', backgroundOutputId('delivery', root.runId))))?.doc;
+    const adopted = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', backgroundOutputId('delivery', root.runId))))?.doc;
     if (!adopted || !equal(adopted, { schemaVersion: 1, receiptKind: 'background_task_delivery', receiptId: backgroundOutputId('delivery', root.runId),
         runId: root.runId, epoch: receipt.epoch, effectId: receipt.effectId, domainRef: delivery.domainRef, modelReceiptRef: delivery.model.receiptRef })) invalid();
     const settlement = await readAttemptSettlement(tx, handle, root, producer);
@@ -182,8 +182,8 @@ export async function readBackgroundTaskResult(tx, handle, root) {
 
 export async function readBackgroundTaskOutput(tx, handle, root, { pendingCommand = false } = {}) {
     if (root.sourceBinding.sourceAuthority !== 'native_session' || root.parentRef || root.graph.outputContract.kind !== 'result') return null;
-    const claimId = backgroundOutputId('claim', root.runId), row = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'output', claimId));
-    const saved = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', backgroundOutputId('output', root.runId)));
+    const claimId = backgroundOutputId('claim', root.runId), row = await tx.getResource(controlRecordKey(handle, root.runId, 'output', claimId));
+    const saved = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', backgroundOutputId('output', root.runId)));
     if (!row && !saved && !root.outputClaims.length) return null;
     if (!row || !saved || !equal(root.outputClaims, [{ runId: root.runId, claimId }])) invalid();
     const published = await readBackgroundTaskResult(tx, handle, root), claim = row.doc, receipt = saved.doc;

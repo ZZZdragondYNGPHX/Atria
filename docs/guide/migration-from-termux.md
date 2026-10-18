@@ -155,10 +155,6 @@ If you have third-party extensions, place their contents under:
 Atria APK maintains a `_runtime-persist/` directory inside `atria-data/` for runtime persistence artifacts. **Don't overwrite or delete it** — original SillyTavern doesn't produce this directory, so it won't appear in your export.
 :::
 
-### 5. Restart Atria and verify
-
-Reopen the APK. After loading, your characters, chats, lorebooks, presets, and API connections should all come back.
-
 ### File manager can't access Android/data?
 
 Android 11+ restricts `Android/data/`, and different OEMs handle it differently:
@@ -197,11 +193,9 @@ The wizard only appears the first time a fresh data directory is opened. If Atri
 
 **Restore says "Archive does not match selected restore categories"**
 
-The ZIP doesn't contain any of `characters/`, `chats/`, `worlds/`, etc. anywhere inside. Check what you packed: `zip -r ... default-user` from inside `~/SillyTavern/data` is correct; `zip -r ... data` from inside `~/SillyTavern` works too; but `zip -r ... SillyTavern` from `~/` packs the whole source tree and fails.
-
 **Empty character list after restart (manual-copy flow)**
 
-Check the copy depth: `atria-data/` should contain `default-user/` (or your username directory) directly, not a nested `atria-data/data/default-user/`. If the extra `data/` layer crept in, lift its contents up one level.
+ If the extra `data/` layer crept in, lift its contents up one level.
 
 **White screen / errors after launch (manual-copy flow)**
 

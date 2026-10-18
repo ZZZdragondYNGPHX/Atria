@@ -2,7 +2,7 @@ import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../re
 import { assertObject, assertCounter } from '../../../public/shared/native-orchestration-contracts.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { controlCommandId, controlRecordKey } from './controller-common.js';
-import { checkedRecord } from './plan-repository.js';
+
 
 const invalid = () => { throw new TypeError('Invalid original output graph traversal'); };
 
@@ -26,8 +26,8 @@ export async function assertOutputTransition(tx, handle, root, { published, outp
     const bindings = entries.map(({ transfer }) => ({ edgeId: transfer.edgeId, producerAttemptId: transfer.producerAttemptId }));
     if (reservedAttemptId !== null && (reservedAttemptId !== output.attemptId || !output.reservationRef)) invalid();
     const identity = hash({ runId: root.runId, bindings, reservedAttemptId });
-    const traversalId = 'oreceipt_' + identity.slice(0, 32), traversal = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', traversalId)))?.doc;
-    const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId: controlCommandId('loop.advance', identity) }))?.doc;
+    const traversalId = 'oreceipt_' + identity.slice(0, 32), traversal = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', traversalId)))?.doc;
+    const command = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId: controlCommandId('loop.advance', identity) }))?.doc;
     if (!traversal || !command) invalid();
     assertObject(traversal, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'graphRevision', 'bindings', 'producerReceiptRefs',
         'nodeAttemptId', 'inputDigest', 'edgeAdmissionRefs', 'edgeVisits', 'loopIterations', 'decisionSeq', 'createdAt'], 'Output traversal');
@@ -47,7 +47,7 @@ export async function assertOutputTransition(tx, handle, root, { published, outp
     if (loopIteration < 0) invalid();
     for (const { source, edge, transfer, admissionId } of entries) {
         if (edge.loopBack) loopIteration++;
-        const admission = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', admissionId)))?.doc;
+        const admission = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', admissionId)))?.doc;
         if (!admission) invalid();
         assertObject(admission, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'graphRevision', 'edgeId', 'producerAttemptId',
             'nodeAttemptId', 'sourceBindingDigest', 'edgeVisit', 'loopIteration', 'decisionSeq', 'createdAt'], 'Output edge');

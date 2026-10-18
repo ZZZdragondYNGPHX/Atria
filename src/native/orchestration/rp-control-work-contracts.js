@@ -1,5 +1,5 @@
 import { equalNativeDocuments, hashNativeDocument as hash } from '../repositories/common.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertBudgetAuthorityRef, localWorkAttemptId } from './budget-port.js';
 
@@ -7,7 +7,7 @@ import { assertBudgetAuthorityRef, localWorkAttemptId } from './budget-port.js';
 export async function assertRpControlWork(tx, handle, root, effectId, jobs) {
     const authority = assertBudgetAuthorityRef(root.budgetAuthorityRef);
     if (authority.domain !== 'rp_chat' || !Array.isArray(jobs) || jobs.length !== 2) throw new TypeError('Invalid RP control work facts');
-    const control = (await checkedRecord(tx, { kind: K.rpRunControl, handle, controlId: authority.controlId }))?.doc;
+    const control = (await tx.getResource({ kind: K.rpRunControl, handle, controlId: authority.controlId }))?.doc;
     const local = control?.operations[authority.operationId]?.compute?.localWork;
     for (const [index, job] of jobs.entries()) {
         const row = local?.find(item => item.attemptId === job.attemptId);

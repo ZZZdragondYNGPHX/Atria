@@ -25,7 +25,7 @@ import { AttemptController } from './attempt-controller.js';
 import { controlCommandId, runGuard, readAttempt, controlRecordKey } from './controller-common.js';
 import { compileNativeContextMetered, runGenerationLocalWork } from './generation-local-work.js';
 import { assertChildRunCurrent, childBudgetReceiptId } from './run-repository.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { readHandoff } from './handoff-contracts.js';
 import { BudgetPort } from './budget-port.js';
 import { assertObject, assertResultPolicy, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
@@ -239,7 +239,7 @@ async function inspectDelegation(capture, expected, output) {
         if (parentAttempt.status !== 'waiting_child' || parentAttempt.effectRefs.length || parentAttempt.resultRefs.length) fail('native_orchestration_parent_stale');
         const handoff = await readHandoff(tx, expected.handle, parentRoot, parentAttempt, root);
         const delegationId = 'oreceipt_' + hash({ kind: 'delegation', childRunId: root.runId }).slice(0, 32);
-        const delegation = (await checkedRecord(tx, controlRecordKey(expected.handle, parentRoot.runId, 'receipt', delegationId)))?.doc;
+        const delegation = (await tx.getResource(controlRecordKey(expected.handle, parentRoot.runId, 'receipt', delegationId)))?.doc;
         if (!delegation) fail('native_orchestration_handoff_unconfirmed');
         assertObject(delegation, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'childRunId', 'parentRef', 'budgetCeiling',
             'sourceBindingDigest', 'authorityRef', 'decisionSeq', 'createdAt'], 'delegation receipt');
@@ -2063,7 +2063,7 @@ export class NativeRpOrchestrationAuthority {
             const outcome = joined.outcome.joinReceipt.outcome;
             await service.runs.withSourceControl(handle, runId, async () => new AttemptController({ runs: service.runs, authorizeAttempt: authorizeGroup, verifySettlement: async args => {
                 await authorizeGroup(args);
-                const receipt = (await checkedRecord(args.tx, controlRecordKey(handle, runId, 'join', frozen.outcome.joinBarrier.joinId)))?.doc;
+                const receipt = (await args.tx.getResource(controlRecordKey(handle, runId, 'join', frozen.outcome.joinBarrier.joinId)))?.doc;
                 if (args.attempt.attemptId !== fanoutAttemptId || args.outcome !== outcome || args.resultRefs.length || args.receipts.length
                 || !equal(receipt, joined.outcome.joinReceipt)) fail('native_orchestration_fanout_denied');
             } }).settle(handle, { ...runGuard(await current()), attemptId: fanoutAttemptId, outcome, resultRefs: [], effectReceiptRefs: [], reasonCode: 'rp_fanout_join_' + outcome }),

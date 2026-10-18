@@ -1,7 +1,7 @@
 import { assertNativeId } from '../identity.js';
 import { assertObject, assertCounter, assertToken } from '../../../public/shared/native-orchestration-contracts.js';
 import { equalNativeDocuments, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { controlRecordKey } from './controller-common.js';
 
 export const SETTLED_ATTEMPT_STATUSES = Object.freeze(['completed', 'partial', 'failed', 'cancelled', 'stale']);
@@ -38,7 +38,7 @@ export async function writeAttemptSettlement({ tx, handle, root, record, outcome
 
 export async function readAttemptSettlement(tx, handle, root, attempt) {
     const receiptId = attemptReceiptId(root.runId, attempt.attemptId);
-    const record = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId));
+    const record = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId));
     if (!record) throw new TypeError('Settled Attempt lacks an immutable receipt');
     const receipt = record.doc;
     assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'nodeAttemptId', 'epoch', 'graphRevision', 'sourceBindingDigest', 'inputState', 'inputDigest', 'outcome', 'resultRefs', 'effectReceiptRefs', 'decisionSeq', 'reasonCode', 'createdAt'], 'NodeAttemptReceipt');

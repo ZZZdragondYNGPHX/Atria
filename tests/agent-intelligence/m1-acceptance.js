@@ -1,4 +1,4 @@
-import { evolutionEvaluatorRevision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
+import { EVOLUTION_EVALUATOR_VERSION } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { evolutionHash as hash } from '../../src/native/agent-intelligence/evolution-repository.js';
 import { CASE_SET_REVISION, selectCases } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { validateQualityReport, qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
@@ -27,7 +27,7 @@ export function developmentReadiness(report, independent, owner, jobId) {
 function evaluateAcceptance(report, independent, owner, jobId, tokensAdvisory, development) {
     const reasons = [], required = selectCases({ purpose: 'evaluation', split: development ? 'development' : 'promotion' }).filter(c => c.entrance === report?.domain);
     let wins = 0, baselineTokens = 0, candidateTokens = 0;
-    if (report?.origin !== 'host_evaluator' || ![1, 2].includes(report.schemaVersion) || report.evaluatorRevision !== evolutionEvaluatorRevision() || report.caseSetRevision !== CASE_SET_REVISION) reasons.push('evaluation_identity_changed');
+    if (report?.origin !== 'host_evaluator' || ![1, 2].includes(report.schemaVersion) || report.evaluatorRevision !== EVOLUTION_EVALUATOR_VERSION || report.caseSetRevision !== CASE_SET_REVISION) reasons.push('evaluation_identity_changed');
     if (report?.schemaVersion === 2) {
         try {
             validateQualityReport(report);

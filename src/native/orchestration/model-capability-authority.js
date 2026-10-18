@@ -30,7 +30,7 @@ async function readModelFailurePlan({ handle, node, dependencyPins, resolver, ro
         const resolved = !routes.length && freshPrimary ? freshPrimary
             : await resolver.resolve({ handle, routeRef: ref, role, requirements: required });
         required = [...new Set([...required, ...resolved.requirements])];
-        if (hashNativeDocument(resolved.route) !== pin.integrity) throw new GenerationError('generation_fallback_route_stale');
+
         primary ??= resolved;
         if (!equalNativeDocuments(resolved.route.promptProgramRef, primary.route.promptProgramRef))
             throw new GenerationError('generation_semantic_authority_changed');

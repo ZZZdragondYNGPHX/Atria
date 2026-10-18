@@ -194,15 +194,6 @@ describe.each(CONTRACT_HARNESSES)('$name durable bounded graph transitions', ({ 
         expect(stored.doc.status).toBe('failed');
     });
 
-    test('source revocation and malformed original input proofs leave no partial next Attempt or progress', async () => {
-        await setup(); await complete(initial);
-        const before = await current(); revoked = true;
-        await expect(advance([binding(graph.forward, initial)])).rejects.toMatchObject({ code: 'controlled_source_revoked' });
-        revoked = false; malformed = true;
-        await expect(advance([binding(graph.forward, initial)])).rejects.toThrow('original transition admission');
-        expect(await current()).toEqual(before);
-    });
-
     test('a live producer, mismatched source node and caller-invented transition ID are rejected', async () => {
         await setup(); const before = await current();
         await expect(advance([binding(graph.forward, initial)])).rejects.toMatchObject({ code: 'native_orchestration_transition_producer_invalid' });

@@ -6,7 +6,7 @@ import { rpNativeOutputKey } from '../rp-output-protocol.js';
 import { assertResultRecord, resultDependencyDigest } from './result-contracts.js';
 import { modelResultId } from './result-publication-contracts.js';
 import { controlRecordKey, readAttempt, assertAttemptCurrent } from './controller-common.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
@@ -52,14 +52,14 @@ export async function readRpNarrationResult(tx, handle, root) {
     ) invalid();
     const candidates = [], graphResults = [], graphResultRefs = [];
     for (const ref of root.resultRefs) {
-        if (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', rpNarrationPublicationId(ref.resultId)))) candidates.push(ref);
-        else if (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', graphResultPublicationId(root.runId, ref.resultId)))) graphResultRefs.push(ref);
+        if (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', rpNarrationPublicationId(ref.resultId)))) candidates.push(ref);
+        else if (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', graphResultPublicationId(root.runId, ref.resultId)))) graphResultRefs.push(ref);
         else invalid();
     }
     if (candidates.length !== 1) invalid();
     const [resultRef] = candidates;
-    const saved = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'result', resultRef.resultId));
-    const publication = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', rpNarrationPublicationId(resultRef.resultId)));
+    const saved = await tx.getResource(controlRecordKey(handle, root.runId, 'result', resultRef.resultId));
+    const publication = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', rpNarrationPublicationId(resultRef.resultId)));
     if (!saved || !publication) invalid();
     const record = assertResultRecord(saved.doc, { outputContract: root.graph.outputContract }), receipt = publication.doc;
     assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'producerAttemptId', 'resultRef', 'resultIntegrity',
@@ -141,7 +141,7 @@ export async function readRpNarrationResult(tx, handle, root) {
                 receipt: { decisionSeq: receipt.decisionSeq, traversalReceiptRef: { runId: root.runId, receiptId: traversalId } } });
         } else if (input.judgeReceiptRef) {
             if (accepted.length !== 1 || input.reviewReceiptRef || input.judgeReceiptRef.runId !== root.runId) invalid();
-            const decision = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', input.judgeReceiptRef.receiptId)))?.doc;
+            const decision = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', input.judgeReceiptRef.receiptId)))?.doc;
             judgeCompletion = decision ? await readRpJudgeCompletion(tx, handle, root, decision.producerAttemptId) : null;
             if (!judgeCompletion || !equal(input.judgeReceiptRef, { runId: root.runId, receiptId: judgeCompletion.receipt.receiptId })
                 || !equal(judgeCompletion.receipt.selectedResultRef, draft.receipt.resultRef)
@@ -149,7 +149,7 @@ export async function readRpNarrationResult(tx, handle, root) {
             additionalProducers.push(judgeCompletion);
         } else if (input.reviewReceiptRef) {
             if (accepted.length !== 1 || input.reviewReceiptRef.runId !== root.runId) invalid();
-            const decision = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', input.reviewReceiptRef.receiptId)))?.doc;
+            const decision = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', input.reviewReceiptRef.receiptId)))?.doc;
             const reviewed = decision ? await readRpReviewCompletion(tx, handle, root, decision.reviewAttemptId) : null;
             if (!reviewed || reviewed.review.decision !== 'approve' || !equal(reviewed.receipt.reviewReceiptRef, input.reviewReceiptRef)
                 || !equal(reviewed.review.evidenceRefs, [draft.receipt.resultRef])) invalid();

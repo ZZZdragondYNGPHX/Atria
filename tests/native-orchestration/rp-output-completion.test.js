@@ -8,7 +8,7 @@ import { createNativeId } from '../../src/native/identity.js';
 import { controlRecordKey, runGuard } from '../../src/native/orchestration/controller-common.js';
 import { hashNativeDocument as hash } from '../../src/native/repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
-import { checkedRecord } from '../../src/native/orchestration/plan-repository.js';
+
 import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecycle.js';
 import { StorageCommitUnknownError } from '../../src/storage/errors.js';
 
@@ -38,7 +38,7 @@ describe.each(harnesses)('$name real RP output terminal proof', ({ make }) => {
             cold = new f.h.engine.constructor({ url: f.h.url, nativeHostTopology: 'direct_single_primary', directoriesByHandle: () => f.h.dirs });
             attachNativeHostLifecycle(cold, { directoriesByHandle: () => f.h.dirs });
             const observed = await cold.withTransaction(f.h.handle, async tx => {
-                const stored = await checkedRecord(tx, { kind: K.orchestrationRun, handle: f.h.handle, runId: root.runId });
+                const stored = await tx.getResource({ kind: K.orchestrationRun, handle: f.h.handle, runId: root.runId });
                 return readRpOutput(tx, f.h.handle, stored.doc);
             });
             expect(observed.claim).toEqual(facts.claim); expect(f.requests).toHaveLength(1);
@@ -78,7 +78,7 @@ describe.each(harnesses)('$name real RP output terminal proof', ({ make }) => {
             cold = new f.h.engine.constructor({ url: f.h.url, nativeHostTopology: 'direct_single_primary', directoriesByHandle: () => f.h.dirs });
             attachNativeHostLifecycle(cold, { directoriesByHandle: () => f.h.dirs });
             const observed = await cold.withTransaction(f.h.handle, async tx => {
-                const stored = await checkedRecord(tx, { kind: K.orchestrationRun, handle: f.h.handle, runId: root.runId });
+                const stored = await tx.getResource({ kind: K.orchestrationRun, handle: f.h.handle, runId: root.runId });
                 return readRpOutput(tx, f.h.handle, stored.doc);
             });
             expect(observed !== null).toBe(ack === 'saved');

@@ -1,6 +1,6 @@
 import { taskLocalReceiptId } from './task-local-output-contracts.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readAttempt, controlRecordKey } from './controller-common.js';
 import { readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
@@ -16,12 +16,12 @@ import { readEffect } from './effect-contracts.js';
 const invalid = () => { throw new TypeError('Invalid original Project child Fanout facts'); };
 
 async function childIdentity(tx, handle, root) {
-    const parent = root.parentRef && (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: root.parentRef.parentRunId }))?.doc;
+    const parent = root.parentRef && (await tx.getResource({ kind: K.orchestrationRun, handle, runId: root.parentRef.parentRunId }))?.doc;
     if (!parent || root.sourceBinding.sourceAuthority !== 'project') invalid();
     const lineage = await readProjectDelegation(tx, handle, parent, root.runId);
     if (!lineage) invalid();
     if (!equal(lineage.child, root)) {
-        const actual = lineage.child, receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', taskLocalReceiptId(root.runId))))?.doc;
+        const actual = lineage.child, receipt = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', taskLocalReceiptId(root.runId))))?.doc;
         if (!receipt || receipt.receiptKind !== 'task_local_output' || actual.status !== 'running' || actual.outputClaims.length || actual.cancelRequested
             || receipt.runId !== actual.runId || receipt.epoch !== actual.epoch || receipt.graphRevision !== actual.graphRevision || receipt.decisionSeq !== actual.eventSeq + 1) invalid();
         const pending = { ...actual, status: 'completed', outputClaims: [receipt.claimRef], progress: { ...actual.progress, steps: actual.progress.steps + 1 },

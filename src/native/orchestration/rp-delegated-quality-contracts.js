@@ -12,7 +12,7 @@ import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readGraphFanoutInput, graphFanoutModelScope } from './graph-fanout-completion.js';
 import { rpControlReplanScope } from './rp-control-graph.js';
 import { assertOutputTransition } from './output-transition-contracts.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { readAttempt, controlCommandId, controlRecordKey, readAttemptInvalidation, readGraphReviewReceipt, assertAttemptConsumable, assertAttemptCurrent } from './controller-common.js';
 import { readGraphNodeResults } from './graph-result-contracts.js';
 import { readGraphPlannerCompletion } from './graph-planner-completion.js';
@@ -154,7 +154,7 @@ async function readInputSources(tx, handle, root, bundle, targetNodeId, { live =
         ? await readGraphReviewReceipt(tx, handle, root, recipient) : null;
     if (ownReview?.decision === 'rerun' && facts.some(fact => ['graph_planner_control', 'graph_join_control'].includes(fact.controlRef?.kind))) {
         const commandId = controlCommandId('review.decide', ownReview.receiptId);
-        const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+        const command = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId }))?.doc;
         const detail = { reviewAttemptId: recipient.attemptId, decision: ownReview.decision,
             targetAttemptIds: [...ownReview.targetAttemptIds].sort(), reasonCode: ownReview.reasonCode, evidenceRefs: ownReview.evidenceRefs };
         if (!command || command.schemaVersion !== 1 || command.commandId !== commandId || command.target !== root.runId
@@ -199,7 +199,7 @@ export function readRpDelegatedReviewReplacement(tx, handle, root, producer, inp
 
 async function readReviewReplacement(tx, handle, root, producer, input, ownedFacts = null) {
     const ref = input.reviewFeedbackRef?.reviewReceiptRef;
-    const stored = ref?.runId === root.runId ? await checkedRecord(tx, { kind: K.orchestrationRecord, handle, runId: root.runId,
+    const stored = ref?.runId === root.runId ? await tx.getResource({ kind: K.orchestrationRecord, handle, runId: root.runId,
         recordType: 'receipt', recordId: ref.receiptId }) : null;
     if (!stored || stored.doc.receiptKind !== 'graph_review') invalid();
     const modelRef = graphReviewControlRef(root.runId, stored.doc.reviewAttemptId);
@@ -238,13 +238,13 @@ async function readControlInputFacts(tx, handle, child, producer, intent, public
 // RunRepository's original TaskLocal writer checks its exact prospective
 // Root before saving it. Only that receipt-authorized single event is allowed.
 async function durableRpChild(tx, handle, child) {
-    const durable = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: child.runId }))?.doc;
+    const durable = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: child.runId }))?.doc;
     if (!durable) invalidHistory();
     if (!equal(durable, child)) {
         // The original RunRepository proves the exact prospective TaskLocal
         // output before saving its Root. All lineage still uses the real row.
         const receiptId = child.parentRef ? taskLocalReceiptId(child.runId) : rpOutputReceiptId(child.runId);
-        const receipt = (await checkedRecord(tx, controlRecordKey(handle, child.runId, 'receipt', receiptId)))?.doc;
+        const receipt = (await tx.getResource(controlRecordKey(handle, child.runId, 'receipt', receiptId)))?.doc;
         if (!receipt || receipt.receiptKind !== (child.parentRef ? 'task_local_output' : 'rp_output') || durable.status !== 'running' || durable.outputClaims.length
             || durable.cancelRequested || receipt.runId !== durable.runId || receipt.epoch !== durable.epoch
             || receipt.graphRevision !== durable.graphRevision || receipt.decisionSeq !== durable.eventSeq + 1) invalidHistory();
@@ -282,7 +282,7 @@ export async function readRpDelegationContinuation(tx, handle, parent, producer,
             : hash({ owner: handle, logicalInputRef: resolver, sourceBindingDigest: parent.sourceBinding.bindingDigest }))
         || !equal(input, { ...resolver, kind: nested ? 'native_rp_delegated_intent' : 'native_rp_intent', acceptedResultRef: ref,
             returnReceiptRef: input.returnReceiptRef, parentInputDigest: producer.inputDigest })) invalid();
-    const child = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: ref.runId }))?.doc;
+    const child = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: ref.runId }))?.doc;
     if (!child || child.status !== 'completed' || !equal(child.planRef, resolver.childPlanRef)
         || !equal(child.parentRef?.inputRefs, producer.inputRefs)) invalid();
     const durableParent = await durableRpChild(tx, handle, parent);
@@ -314,7 +314,7 @@ async function readControlInputFactsFresh(tx, handle, child, producer, intent, p
     assertAudienceRunCapture(child, node, plan.dependencyPins, input);
     if (!equal(input.audience, audienceContextPin(node, plan.dependencyPins)?.resourceRef.audience ?? { kind: 'task', id: child.runId })) invalid();
     if (audienceContextPin(node, plan.dependencyPins)) {
-        const parent = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: child.parentRef.parentRunId }))?.doc;
+        const parent = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: child.parentRef.parentRunId }))?.doc;
         if (!parent) invalid();
         const parentAttempt = (await readAttempt(tx, handle, parent, child.parentRef.nodeAttemptId)).doc;
         const parentPlan = await readPlanRevision(tx, handle, parent.planRef), parentNode = parent.graph.nodes.find(item => item.nodeId === parentAttempt.nodeId);
@@ -379,7 +379,7 @@ async function readGraphHistory(tx, handle, child, { pendingProducer = null, fin
     const initial = rpDelegatedControlProfile(plan), profile = rpDelegatedControlProfile({ ...plan, definition: snapshot.graph });
     if (!initial || profile?.terminalNodeId !== initial.terminalNodeId || !equal(profile.output, initial.output)
         || !equal(snapshot.graph.edges.filter(edge => edge.loopBack), plan.definition.edges.filter(edge => edge.loopBack))) invalidHistory();
-    const parent = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: child.parentRef.parentRunId }))?.doc;
+    const parent = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: child.parentRef.parentRunId }))?.doc;
     if (!parent || !profile) invalidHistory();
     const durable = await durableRpChild(tx, handle, child);
     const delegated = await readDelegationCompletion(tx, handle, parent, durable);
@@ -387,7 +387,7 @@ async function readGraphHistory(tx, handle, child, { pendingProducer = null, fin
     const finalProducer = pendingProducer ?? finalPublication.producer
         ?? (await readAttempt(tx, handle, child, finalPublication.receipt.producerAttemptId)).doc;
     if (finalProducer.nodeId !== profile.terminalNodeId) invalidHistory();
-    const bankControl = (await checkedRecord(tx, { kind: K.rpRunControl, handle, controlId: child.budgetAuthorityRef.controlId }))?.doc;
+    const bankControl = (await tx.getResource({ kind: K.rpRunControl, handle, controlId: child.budgetAuthorityRef.controlId }))?.doc;
     const bank = bankControl?.operations[child.budgetAuthorityRef.operationId]?.compute;
     if (!bank) invalidHistory();
     const effects = [], budgetAttemptIds = [], nestedClosures = [], planners = [], reviews = [], judges = [], results = [], entries = [], counts = {}, latest = new Map(), previous = new Map(), replaced = new Map(), consumed = new Set(); let settled = true, loopIterations = 0;
@@ -419,7 +419,7 @@ async function readGraphHistory(tx, handle, child, { pendingProducer = null, fin
     for (const fact of fanouts) {
         for (const binding of fact.fanout.inputRefs[0].graphBindings) counts[binding.edgeId] = (counts[binding.edgeId] ?? 0) + 1;
         for (const id of [...fact.frame.edgeAdmissionRefs, ...fact.joinReceipt.edgeAdmissionRefs]) {
-            const receipt = (await checkedRecord(tx, controlRecordKey(handle, child.runId, 'receipt', id)))?.doc;
+            const receipt = (await tx.getResource(controlRecordKey(handle, child.runId, 'receipt', id)))?.doc;
             if (!receipt || receipt.receiptKind !== 'edge_admission') invalidHistory();
             counts[receipt.edgeId] = (counts[receipt.edgeId] ?? 0) + 1;
         }

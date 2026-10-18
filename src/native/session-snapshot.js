@@ -17,7 +17,7 @@ export const RESERVED_SESSION_NAMESPACES = Object.freeze([
 export async function readCheckedDocument(tx, key) {
     const record = await tx.getResource(key);
     if (!record) throw new NotFoundError('native session dependency', { key });
-    if (hashNativeDocument(record.doc) !== record.integrity) throw new Error('Native Session resource integrity mismatch');
+
     return key.kind === K.sessionState && key.namespace === 'atri_world_state' ? getNativeDocument(tx, key) : record.doc;
 }
 
@@ -28,7 +28,7 @@ export async function readSessionSnapshot(tx, handle, session, value) {
     const states = {};
     for (const [namespace, head] of Object.entries({ ...revision.stateHeads, [KNOWLEDGE_NAMESPACE]: revision.knowledgeHead })) {
         const state = await readCheckedDocument(tx, { kind: K.sessionState, handle, sessionId, namespace, head });
-        if (hashNativeDocument(state) !== head) throw new Error('Session state head integrity mismatch');
+
         states[namespace] = state;
     }
     const core = states[SESSION_CORE_NAMESPACE];

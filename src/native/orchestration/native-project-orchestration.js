@@ -24,7 +24,7 @@ import { readAttempt } from './controller-common.js';
 import { TransitionController } from './transition-controller.js';
 import { BudgetPort, localWorkAttemptId } from './budget-port.js';
 import { readEffect } from './effect-contracts.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { ProjectAgentService } from '../project-agent.js';
 import { StudioService } from '../authoring/studio-service.js';
 import { ContextPort } from './context-port.js';
@@ -646,7 +646,7 @@ export class NativeProjectOrchestrationAuthority {
             });
         } catch (error) {
             if (error.code !== 'storage_commit_unknown' || !expected) throw error;
-            const saved = await runs.engine.withTransaction(handle, tx => checkedRecord(tx, key));
+            const saved = await runs.engine.withTransaction(handle, tx => tx.getResource(key));
             if (!saved || !equal(saved.doc, expected)) throw error;
         }
     }
@@ -778,7 +778,7 @@ export class NativeProjectOrchestrationAuthority {
             if (result.error) throw result.error;
         } catch (error) {
             if (error.code !== 'storage_commit_unknown' || !expected) throw error;
-            const saved = await runs.engine.withTransaction(handle, tx => checkedRecord(tx, receiptKey));
+            const saved = await runs.engine.withTransaction(handle, tx => tx.getResource(receiptKey));
             if (!saved || !equal(saved.doc, expected)) throw error;
         }
     }
@@ -840,7 +840,7 @@ export class NativeProjectOrchestrationAuthority {
             const saved = await runs.engine.withTransaction(handle, async tx => {
                 const active = await runs.get(handle, runId), intent = (await readEffect(tx, handle, active, effectId)).doc;
                 const receiptId = 'oreceipt_' + hash({ effectId, observationId: tool.observation.observationId }).slice(0, 32);
-                const receipt = (await checkedRecord(tx, controlRecordKey(handle, runId, 'receipt', receiptId)))?.doc;
+                const receipt = (await tx.getResource(controlRecordKey(handle, runId, 'receipt', receiptId)))?.doc;
                 return intent.status === 'confirmed' && receipt && Object.entries(tool.observation).every(([key, value]) => equal(receipt[key], value));
             });
             if (!saved) throw error;

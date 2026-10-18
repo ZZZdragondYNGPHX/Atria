@@ -5,7 +5,7 @@ import { assertObject, assertResultPolicy } from '../../../public/shared/native-
 import { assertResultRecord, resultDependencyDigest } from './result-contracts.js';
 import { modelResultId } from './result-publication-contracts.js';
 import { controlCommandId, controlRecordKey, readAttempt, assertAttemptConsumable } from './controller-common.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
@@ -116,8 +116,8 @@ export async function readGraphNodeResults(tx, handle, root, resultIds, { recipi
 
 async function readGraphResultFacts(tx, handle, root, resultId, recipient, snapshots, joins) {
     assertNativeId(resultId, 'orchestrationResult');
-    const stored = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'result', resultId));
-    const publication = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', graphResultPublicationId(root.runId, resultId)));
+    const stored = await tx.getResource(controlRecordKey(handle, root.runId, 'result', resultId));
+    const publication = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', graphResultPublicationId(root.runId, resultId)));
     if (!stored && !publication) return null;
     if (!stored || !publication) invalid();
     const receipt = publication.doc;
@@ -131,7 +131,7 @@ async function readGraphResultFacts(tx, handle, root, resultId, recipient, snaps
     }
     if (snapshot) {
         const commandId = controlCommandId('graph.result.publish', { runId: root.runId, effectId: receipt.modelEffectId });
-        const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+        const command = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId }))?.doc;
         if (!command || command.schemaVersion !== 1 || command.commandId !== commandId || command.target !== root.runId || command.operation !== 'runs.control.result.publish'
             || command.payloadHash !== hash({ operation: command.operation, body: { runId: root.runId, operation: 'result.publish', detail: { effectId: receipt.modelEffectId, resultId } } })
             || command.outcome?.status !== 'published' || command.outcome.runId !== root.runId || command.outcome.versions?.graphRevision !== receipt.graphRevision

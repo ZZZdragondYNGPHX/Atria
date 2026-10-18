@@ -1,7 +1,7 @@
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { controlRecordKey, readAttempt, assertAttemptCurrent } from './controller-common.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
@@ -17,7 +17,7 @@ export const rpJudgeReceiptId = (runId, attemptId) => 'oreceipt_' + hash({ kind:
 
 /** Durable quality selection, never a source, disclosure or Effect grant. */
 export async function readRpJudgeCompletion(tx, handle, root, attemptId) {
-    const receiptId = rpJudgeReceiptId(root.runId, attemptId), receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
+    const receiptId = rpJudgeReceiptId(root.runId, attemptId), receipt = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
     if (!receipt) return null;
     assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'producerAttemptId', 'sourceBindingDigest', 'grantDigest',
         'modelEffectId', 'modelReceiptRef', 'modelPayloadHash', 'responseText', 'candidateRefs', 'selectedResultRef', 'localWork', 'decisionSeq', 'createdAt'], 'RP Judge receipt');

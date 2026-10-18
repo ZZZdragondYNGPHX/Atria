@@ -1,13 +1,13 @@
 import { assertNativeId } from '../identity.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject, assertCounter, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { controlRecordKey, readAttempt } from './controller-common.js';
 import { assertResultRecord } from './result-contracts.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 import { handoffReceiptId } from './handoff-contracts.js';
-import { childBudgetReceiptId, assertRunRoot } from './run-repository.js';
+import { childBudgetReceiptId } from './run-repository.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readSessionDelegation, sessionDelegationResultSources, readSessionDelegatedGraphHistory } from './session-delegation-contracts.js';
@@ -44,9 +44,9 @@ export function assertResultPublicationReceipt(receipt) {
 /** Historical protected payload and complete immutable facts; never a recipient grant. */
 export async function readResultPublication(tx, handle, root, resultId) {
     assertNativeId(resultId, 'orchestrationResult');
-    const result = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'result', resultId));
+    const result = await tx.getResource(controlRecordKey(handle, root.runId, 'result', resultId));
     const receiptId = resultPublicationReceiptId(root.runId, resultId);
-    const publication = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId));
+    const publication = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId));
     if (!result && !publication) return null;
     if (!result || !publication || !root.parentRef) invalid();
     const receipt = assertResultPublicationReceipt(publication.doc), envelope = result.doc.envelope;
@@ -76,7 +76,7 @@ export async function readResultPublication(tx, handle, root, resultId) {
     const parentRunId = root.parentRef.parentRunId;
     if (['native_session', 'project'].includes(root.sourceBinding.sourceAuthority)) {
         const session = root.sourceBinding.sourceAuthority === 'native_session';
-        const parent = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: parentRunId }))?.doc;
+        const parent = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: parentRunId }))?.doc;
         if (!parent) invalid();
         let lineage = session ? await readSessionDelegation(tx, handle, parent, root.runId) : null;
         const publication = { record: result.doc, receipt, attemptReceipt: settlement, producer: attempt };
@@ -105,9 +105,9 @@ export async function readResultPublication(tx, handle, root, resultId) {
     if (!equal(receipt.handoffReceiptRef, { runId: parentRunId, receiptId: handoffReceiptId(root.runId) })
         || !equal(receipt.delegationReceiptRef, { runId: parentRunId, receiptId: 'oreceipt_' + hash({ kind: 'delegation', childRunId: root.runId }).slice(0, 32) })
         || !equal(receipt.budgetReadyReceiptRef, { runId: root.runId, receiptId: childBudgetReceiptId(root.runId) })) invalid();
-    const handoff = (await checkedRecord(tx, controlRecordKey(handle, parentRunId, 'receipt', receipt.handoffReceiptRef.receiptId)))?.doc;
-    const delegation = (await checkedRecord(tx, controlRecordKey(handle, parentRunId, 'receipt', receipt.delegationReceiptRef.receiptId)))?.doc;
-    const ready = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receipt.budgetReadyReceiptRef.receiptId)))?.doc;
+    const handoff = (await tx.getResource(controlRecordKey(handle, parentRunId, 'receipt', receipt.handoffReceiptRef.receiptId)))?.doc;
+    const delegation = (await tx.getResource(controlRecordKey(handle, parentRunId, 'receipt', receipt.delegationReceiptRef.receiptId)))?.doc;
+    const ready = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receipt.budgetReadyReceiptRef.receiptId)))?.doc;
     if (!handoff || !delegation || !ready) invalid();
     assertObject(handoff, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'childRunId', 'parentAttemptId', 'parentEpoch',
         'hostBootId', 'hostGeneration', 'sourceBindingDigest', 'parentGrantDigest', 'childGrantDigest', 'inputDigest', 'childPlanRef',
@@ -116,9 +116,8 @@ export async function readResultPublication(tx, handle, root, resultId) {
         'sourceBindingDigest', 'authorityRef', 'decisionSeq', 'createdAt'], 'Historical delegation receipt');
     assertObject(ready, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'reservationId', 'parentReservationId',
         'authorityRef', 'sourceBindingDigest', 'budgetCeilingDigest', 'decisionSeq', 'createdAt'], 'Historical child budget receipt');
-    const parent = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: parentRunId }))?.doc;
+    const parent = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: parentRunId }))?.doc;
     if (!parent) invalid();
-    assertRunRoot(parent, handle);
     const parentAttempt = (await readAttempt(tx, handle, parent, root.parentRef.nodeAttemptId)).doc;
     assertCounter(handoff.decisionSeq, 'handoff decisionSeq', 1); assertCounter(handoff.createdAt, 'handoff createdAt');
     assertCounter(ready.decisionSeq, 'budget decisionSeq', 1); assertCounter(ready.createdAt, 'budget createdAt');

@@ -3,7 +3,7 @@ import { readProjectDelegatedControl, readProjectDelegatedReviewReplacement, ass
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertObject, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { controlRecordKey, readAttempt, assertAttemptConsumable, assertAttemptCurrent, readAttemptInvalidation } from './controller-common.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readDelegationCompletion } from './delegation-completion-contracts.js';
@@ -24,12 +24,12 @@ import { readGraphFanoutInput } from './graph-fanout-completion.js';
 const invalid = () => { throw new TypeError('Invalid Project delegation facts'); };
 
 async function durableParent(tx, handle, supplied) {
-    const actual = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: supplied.runId }))?.doc;
+    const actual = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: supplied.runId }))?.doc;
     if (!actual) invalid();
     if (equal(actual, supplied)) return actual;
     // The original Review writer validates its exact prospective output step
     // before RunRepository saves it. No other staged or reconstructed Root fits.
-    const output = (await checkedRecord(tx, controlRecordKey(handle, actual.runId, 'receipt', projectReviewId('output', actual.runId))))?.doc;
+    const output = (await tx.getResource(controlRecordKey(handle, actual.runId, 'receipt', projectReviewId('output', actual.runId))))?.doc;
     if (!output || output.receiptKind !== 'project_review_output' || actual.status !== 'running' || actual.outputClaims.length
         || actual.cancelRequested || output.runId !== actual.runId || output.epoch !== actual.epoch
         || output.graphRevision !== actual.graphRevision || output.decisionSeq !== actual.eventSeq + 1) invalid();
@@ -57,7 +57,7 @@ export async function readProjectDelegatedPlan(tx, handle, child) {
 export async function readProjectDelegation(tx, handle, parent, childRunId) {
     if (parent.sourceBinding.sourceAuthority !== 'project') invalid();
     parent = await durableParent(tx, handle, parent);
-    const child = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: childRunId }))?.doc;
+    const child = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: childRunId }))?.doc;
     if (!child || child.sourceBinding.sourceAuthority !== 'project') invalid();
     const facts = await readDelegationCompletion(tx, handle, parent, child);
     if (!facts) return null;
@@ -75,7 +75,7 @@ export async function readProjectDelegation(tx, handle, parent, childRunId) {
 
 /** One exact causal Model step, including the original child Transition. */
 export async function readProjectDelegatedModelInput(tx, handle, child, producer, intent, publicationSeq = child.eventSeq + 1) {
-    const parent = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: child.parentRef?.parentRunId }))?.doc;
+    const parent = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: child.parentRef?.parentRunId }))?.doc;
     if (!parent) invalid();
     const lineage = await readProjectDelegation(tx, handle, parent, child.runId);
     return readProjectDelegatedModelInputFacts(tx, handle, child, producer, intent, publicationSeq, lineage);
@@ -170,8 +170,8 @@ export async function readProjectDelegatedGraphHistory(tx, handle, child, { fina
     // exact original parent and child in this same history invocation.
     const intermediateLineage = results.find(fact => fact.delegationLineage)?.delegationLineage;
     if (intermediateLineage) {
-        const actualParent = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: child.parentRef.parentRunId }))?.doc;
-        const actualChild = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: child.runId }))?.doc;
+        const actualParent = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: child.parentRef.parentRunId }))?.doc;
+        const actualChild = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: child.runId }))?.doc;
         if (!actualParent || !actualChild || !equal(intermediateLineage.parent, actualParent)
             || !equal(intermediateLineage.child, actualChild)) invalid();
         // The original output writer also checks its precise prospective
@@ -227,7 +227,7 @@ export async function readProjectDelegatedGraphHistory(tx, handle, child, { fina
     const budgetReservations = new Map();
     for (const joined of fanouts) for (const binding of joined.fanout.inputRefs[0].graphBindings) usedEdges.set(binding.edgeId, (usedEdges.get(binding.edgeId) ?? 0) + 1);
     for (const joined of fanouts) for (const id of [...joined.frame.edgeAdmissionRefs, ...joined.joinReceipt.edgeAdmissionRefs]) {
-        const admitted = (await checkedRecord(tx, controlRecordKey(handle, child.runId, 'receipt', id)))?.doc;
+        const admitted = (await tx.getResource(controlRecordKey(handle, child.runId, 'receipt', id)))?.doc;
         if (!admitted || admitted.receiptKind !== 'edge_admission') invalid();
         usedEdges.set(admitted.edgeId, (usedEdges.get(admitted.edgeId) ?? 0) + 1);
     }
@@ -388,7 +388,7 @@ export async function readProjectDelegationInputs(tx, handle, root, parent, { li
     const bundle = { evidenceRefs: input.acceptedGraphResultRefs, controlRefs: input.acceptedControlRefs ?? [], bindings: input.graphBindings };
     let facts;
     if (root.parentRef) {
-        const ancestor = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: root.parentRef.parentRunId }))?.doc;
+        const ancestor = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: root.parentRef.parentRunId }))?.doc;
         const lineage = ancestor && await readProjectDelegation(tx, handle, ancestor, root.runId);
         const pin = lineage && nodeModelRoutePins(node, lineage.plan.dependencyPins)[0];
         if (!lineage || !pin || input.parentRunId !== root.parentRef.parentRunId || input.parentAttemptId !== root.parentRef.nodeAttemptId
@@ -478,7 +478,7 @@ async function assertDelegationReviewReplacement(tx, handle, root, parent, snaps
     assertObject(feedback, ['reviewReceiptRef', 'reasonCode'], 'Project delegation Review feedback');
     assertObject(feedback.reviewReceiptRef, ['runId', 'receiptId'], 'Project delegation Review receipt');
     if (feedback.reviewReceiptRef.runId !== root.runId) invalid();
-    const saved = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', feedback.reviewReceiptRef.receiptId)))?.doc;
+    const saved = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', feedback.reviewReceiptRef.receiptId)))?.doc;
     if (!saved || saved.receiptKind !== 'graph_review' || saved.receiptId !== feedback.reviewReceiptRef.receiptId) invalid();
     const [completed] = await readProjectControlInputs(tx, handle, root, null,
         { controlRefs: [graphReviewControlRef(root.runId, saved.reviewAttemptId)] });
@@ -536,7 +536,7 @@ export async function readProjectDelegationContinuation(tx, handle, parent, prod
         if (!equal(input, expected)) invalid();
     }
     const actualParent = await durableParent(tx, handle, parent);
-    const child = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: ref.runId }))?.doc;
+    const child = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: ref.runId }))?.doc;
     if (!child || child.sourceBinding.sourceAuthority !== 'project' || child.status !== 'completed') invalid();
     let returnReceipt = null, output;
     if (input.returnReceiptRef !== null) {
@@ -544,7 +544,7 @@ export async function readProjectDelegationContinuation(tx, handle, parent, prod
         if (!returnReceipt || !equal(input.returnReceiptRef, { runId: parent.runId, receiptId: returnReceipt.receiptId }) || !equal(returnReceipt.resultRef, ref)) invalid();
         output = returnReceipt.output;
     } else {
-        if (await checkedRecord(tx, controlRecordKey(handle, parent.runId, 'receipt', handoffReturnReceiptId(ref.runId)))) invalid();
+        if (await tx.getResource(controlRecordKey(handle, parent.runId, 'receipt', handoffReturnReceiptId(ref.runId)))) invalid();
         output = await readTaskLocalOutput(tx, handle, child);
     }
     const publication = output?.publication;

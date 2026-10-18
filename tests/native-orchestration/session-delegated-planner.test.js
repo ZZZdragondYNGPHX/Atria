@@ -5,7 +5,7 @@ import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { readSessionOutput } from '../../src/native/orchestration/session-output-contracts.js';
 import { readTaskLocalOutput } from '../../src/native/orchestration/task-local-output-contracts.js';
 import { controlRecordKey } from '../../src/native/orchestration/controller-common.js';
-import { checkedRecord } from '../../src/native/orchestration/plan-repository.js';
+
 import { handoffReturnReceiptId } from '../../src/native/orchestration/handoff-return-contracts.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { hashNativeDocument as hash } from '../../src/native/repositories/common.js';
@@ -81,7 +81,7 @@ test.each(['source', 'unknown'])('Game child Planner %s preserves real paid fact
         expect(child.outputClaims).toEqual([]); expect(parent.outputClaims).toEqual([]); expect(child.resultRefs).toEqual([]);
         const bank = await bankOf(f, parent); expect(bank.attempts.map(row => row.status)).toEqual(kind === 'unknown' ? ['settled', 'settled', 'unknown'] : ['settled', 'settled']);
         expect(bank.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: kind === 'unknown' ? 'held' : 'released' })]);
-        expect(await f.h.engine.withTransaction(f.h.handle, tx => checkedRecord(tx, controlRecordKey(f.h.handle, parent.runId, 'receipt', handoffReturnReceiptId(child.runId))))).toBeNull();
+        expect(await f.h.engine.withTransaction(f.h.handle, tx => tx.getResource(controlRecordKey(f.h.handle, parent.runId, 'receipt', handoffReturnReceiptId(child.runId))))).toBeNull();
         await expect(f.start()).rejects.toThrow(); expect(f.requests).toHaveLength(kind === 'unknown' ? 3 : 2);
     } finally { await f.cleanup(); }
 }, 120000);

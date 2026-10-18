@@ -12,7 +12,6 @@ export async function personaBackupManifest(engine, handle, directories) {
     const records = await engine.withTransaction(handle, async tx => (await Promise.all(PERSONA_BACKUP_KINDS.map(kind => tx.listResources({ kind, handle })))).flat());
     const repo = new PersonaRepo({ engine, assetStore: new AssetStore({ engine, directoriesByHandle: () => directories }) });
     const index = records.map(record => {
-        if (record.integrity !== hashNativeDocument(record.doc)) throw personaFailure('native_persona_invalid', { reason: 'backup_integrity' });
         const { handle: _handle, ...key } = record.key;
         return { key, hash: record.integrity };
     }).sort((a, b) => JSON.stringify(a.key).localeCompare(JSON.stringify(b.key)));
@@ -84,10 +83,6 @@ export async function reviewPersonaBackup({ sourceEngine, sourceHandle, sourceDi
     for (const item of actual.records.filter(item => item.key.kind !== K.personaDefault)) {
         const target = await targetEngine.withTransaction(targetHandle, tx => tx.getResource({ ...item.key, handle: targetHandle }));
         if (target && target.integrity !== item.hash) conflicts.push(item.key);
-    }
-    for (const avatar of actual.avatars) {
-        const target = await targetEngine.withTransaction(targetHandle, tx => tx.getResource({ kind: K.assetRef, handle: targetHandle, assetId: avatar.assetId }));
-        if (target && hashNativeDocument(target.doc) !== hashNativeDocument(avatar)) conflicts.push({ kind: K.assetRef, assetId: avatar.assetId });
     }
     const sourceRepo = new PersonaRepo({ engine: sourceEngine, assetStore: new AssetStore({ engine: sourceEngine, directoriesByHandle: () => sourceDirs }) });
     const defaultStatus = actual.defaultSelection ? (await sourceRepo.get(sourceHandle, { ref: actual.defaultSelection })).root.archived ? 'archived' : 'available' : 'none';

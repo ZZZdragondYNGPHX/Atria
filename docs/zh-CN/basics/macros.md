@@ -19,8 +19,6 @@
 | 多遍展开时的稳定替换顺序（从左到右、内层先于外层） | ✓ |
 | 一般 <code v-pre>{{user}}</code>、<code v-pre>{{setvar::name::value}}</code>、<code v-pre>{{time}}</code>…… | 两种都能用 |
 
-本页里某个特性看起来不生效，先检查这个开关。
-
 ## 语法
 
 宏的形态是 <code v-pre>{{name}}</code>、<code v-pre>{{name::arg}}</code>，或 <code v-pre>{{name::arg1::arg2}}</code>。宏名**大小写不敏感**——<code v-pre>{{user}}</code>、<code v-pre>{{User}}</code>、<code v-pre>{{USER}}</code> 解析到同一个宏。花括号和宏名之间允许空白：<code v-pre>{{ user }}</code> 等价于 <code v-pre>{{user}}</code>。
@@ -398,7 +396,7 @@ Atria 用**逐楼层变量提取**解决这个问题。一条消息（AI 回复�
 |---|---|
 | <code v-pre>{{roll::1d20}}</code> | 用 droll 语法掷骰（`1d6`、`3d6+4`……）。只有数字 `N` 时等价 `1dN`。每次渲染都重掷。 |
 | <code v-pre>{{random::red::green::blue}}</code> | 随机一项。每次渲染都重掷。 |
-| <code v-pre>{{pick::red::green::blue}}</code> | 随机一项，但**对同一 chat 同一位置稳定**。Seed = chat hash + content hash + 位置 + reroll seed。用 `/reroll-pick` 重置。 |
+| <code v-pre>{{pick::red::green::blue}}</code> | 随机一项，但**对同一 chat 同一位置稳定**。用 `/reroll-pick` 重置。|
 
 ### 环境与 API
 

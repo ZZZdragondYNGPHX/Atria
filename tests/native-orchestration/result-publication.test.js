@@ -9,7 +9,7 @@ import { BudgetPort } from '../../src/native/orchestration/budget-port.js';
 import { readResultPublication, modelResultId } from '../../src/native/orchestration/result-publication-contracts.js';
 import { readAttempt, controlRecordKey, runGuard } from '../../src/native/orchestration/controller-common.js';
 import { attemptReceiptId } from '../../src/native/orchestration/attempt-settlement.js';
-import { checkedRecord } from '../../src/native/orchestration/plan-repository.js';
+
 import { createNativeId } from '../../src/native/identity.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { hashNativeDocument as hash } from '../../src/native/repositories/common.js';
@@ -35,7 +35,7 @@ async function unpublished(f) {
     await f.h.engine.withTransaction(f.h.handle, async tx => {
         expect(await readResultPublication(tx, f.h.handle, root, modelResultId(root.runId, effect.effectId))).toBeNull();
         expect((await readAttempt(tx, f.h.handle, root, root.attemptRefs[0])).doc.status).toBe('running');
-        expect(await checkedRecord(tx, controlRecordKey(f.h.handle, root.runId, 'receipt', attemptReceiptId(root.runId, root.attemptRefs[0])))).toBeNull();
+        expect(await tx.getResource(controlRecordKey(f.h.handle, root.runId, 'receipt', attemptReceiptId(root.runId, root.attemptRefs[0])))).toBeNull();
     });
     expect(root.resultRefs).toEqual([]); expect(root.outputClaims).toEqual([]);
     expect((await operation(f)).compute.attempts[0]).toMatchObject({ status: 'settled', usage: { totalTokens: 20 } });
@@ -210,7 +210,7 @@ describe.each(harnesses)('$name original RP child Result publication', ({ make }
             cold = new f.h.engine.constructor({ url: f.h.url, nativeHostTopology: 'direct_single_primary', directoriesByHandle: () => f.h.dirs });
             attachNativeHostLifecycle(cold, { directoriesByHandle: () => f.h.dirs });
             const facts = await cold.withTransaction(f.h.handle, async tx => {
-                const root = (await checkedRecord(tx, { kind: K.orchestrationRun, handle: f.h.handle, runId: effect.runId })).doc;
+                const root = (await tx.getResource({ kind: K.orchestrationRun, handle: f.h.handle, runId: effect.runId })).doc;
                 return readResultPublication(tx, f.h.handle, root, resultRef.resultId);
             });
             expect(facts !== null).toBe(boundary === 'saved');

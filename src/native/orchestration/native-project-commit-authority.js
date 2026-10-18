@@ -8,7 +8,7 @@ import { StudioService } from '../authoring/studio-service.js';
 import { hashNativeDocument as hash, serializeNativeDocument, withNativeResourceWrite, equalNativeDocuments as equal } from '../repositories/common.js';
 import { createOrchestrationExecutionService } from './execution-service.js';
 import { createOrchestrationAuthoringService } from './authoring-service.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { readEffect, effectDecision, readApproval } from './effect-contracts.js';
 import { AttemptController } from './attempt-controller.js';
 import { controlCommandId, controlRecordKey, runGuard, readAttempt } from './controller-common.js';
@@ -148,7 +148,7 @@ export class NativeProjectCommitAuthority {
     }
     async #replay(handle, input) {
         return this.engine.withTransaction(handle, async tx => {
-            const saved = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId: input.commandId }))?.doc;
+            const saved = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId: input.commandId }))?.doc;
             if (!saved) return null;
             if (saved.operation !== 'runs.start') throw new ConflictError('native_orchestration_command_conflict');
             const root = await this.execution.runs.get(handle, saved.target);
@@ -269,7 +269,7 @@ export class NativeProjectCommitAuthority {
         const decision = commitDecision(ref, logical, limits);
         if (!equal(effectDecision(intent), decision) || root.cancelRequested) fail();
         await this.engine.withTransaction(handle, async tx => {
-            const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId: logical.requestId }))?.doc;
+            const command = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId: logical.requestId }))?.doc;
             if (command?.operation !== 'runs.start' || command.target !== root.runId
                 || !equal(command.outcome.sourceBinding, root.sourceBinding) || !equal(command.outcome.planRef, root.planRef)) fail();
         });
@@ -316,7 +316,7 @@ export class NativeProjectCommitAuthority {
             if (root.cancelRequested || root.status !== 'running' || root.epoch !== state.epoch || intent.status !== (confirmed ? 'confirmed' : 'dispatching')
                 || root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation || !equal(effectDecision(intent), state.decision)) fail();
             const approval = (await readApproval(tx, state.handle, root, intent.approvalRef)).doc;
-            const decision = (await checkedRecord(tx, controlRecordKey(state.handle, root.runId, 'approval', approval.decisionRef))).doc;
+            const decision = (await tx.getResource(controlRecordKey(state.handle, root.runId, 'approval', approval.decisionRef))).doc;
             if (approval.status !== 'consumed' || decision.decision !== 'approve' || approval.expiresAt <= Date.now()) fail();
             await getNativeReviewOrigin(this.engine).authority.verifyApproval({ handle: state.handle, root, intent, approval, decision });
             if (!equal(root, await this.execution.runs.get(state.handle, state.runId))) fail();
@@ -378,7 +378,7 @@ export class NativeProjectCommitAuthority {
             const saved = await this.engine.withTransaction(state.handle, async tx => {
                 const root = await this.execution.runs.get(state.handle, state.runId);
                 const receiptId = 'oreceipt_' + hash({ effectId: state.effectId, observationId: observation.observationId }).slice(0, 32);
-                return (await checkedRecord(tx, controlRecordKey(state.handle, root.runId, 'receipt', receiptId)))?.doc;
+                return (await tx.getResource(controlRecordKey(state.handle, root.runId, 'receipt', receiptId)))?.doc;
             });
             if (!saved || Object.entries(observation).some(([key, value]) => !equal(saved[key], value))) throw error;
         }

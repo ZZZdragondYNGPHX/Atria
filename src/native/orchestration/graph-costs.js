@@ -1,7 +1,7 @@
 import { ConflictError } from '../../storage/errors.js';
 import { assertObject, assertCounter } from '../../../public/shared/native-orchestration-contracts.js';
 import { hashNativeDocument, putImmutable } from '../repositories/common.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { controlRecordKey, readAttempt } from './controller-common.js';
 
 /** Shared control counters, not a Compute bank or dispatch permit. Callers
@@ -19,7 +19,7 @@ export async function admitGraphEdges({ tx, handle, root, transfers, now }) {
         const receiptId = 'oreceipt_' + hashNativeDocument({ kind: 'edge_admission', runId: root.runId, ...transfer }).slice(0, 32);
         if (seen.has(receiptId)) throw new TypeError('Duplicate edge transfer');
         seen.add(receiptId); refs.push(receiptId);
-        const previous = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId));
+        const previous = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId));
         if (previous) {
             const row = previous.doc;
             assertObject(row, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'graphRevision', 'edgeId', 'producerAttemptId', 'nodeAttemptId', 'sourceBindingDigest', 'edgeVisit', 'loopIteration', 'decisionSeq', 'createdAt'], 'EdgeAdmission');

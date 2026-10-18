@@ -88,7 +88,7 @@ Atria 在标准 V2 格式的基础上，为角色卡增加了几项实用的扩�
 
 ### 原生 Plan
 
-导入角色卡不会创建可执行的编排配置。通过 [Agents → Plans](/zh-CN/features/native-orchestration) 验证并发布带显式资源 pin 和当前 Binding 的 Plan。历史角色卡元数据保留，但不执行已退役协议。
+导入角色卡不会创建可执行的编排配置。历史角色卡元数据保留，但不执行已退役协议。
 
 ### 记忆图 Schema 覆盖
 

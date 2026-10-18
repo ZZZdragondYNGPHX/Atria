@@ -42,7 +42,7 @@ metadata:
 
 Skill 支援 `global`、`project`、`package`、`preset` 和 `character`。Project 路徑使用 `project/<projectId>`；Package 使用 `package/<packageId>/<packageVersionId>`；預設使用 `preset/<name>`，不含 API 段。只有屬於目前上下文的作用域參與選擇。
 
-原生 Project/Package 按 global → project → 精確 Package 版本的順序覆寫；保留的聊天選擇按 global → 目前預設 → 角色卡覆寫。這兩種上下文不同，移動或改名可能改變實際選中的內容，編輯後應重新核對消費者。
+原生 Project/Package 按 global → project → 精確 Package 版本的順序覆寫；保留的聊天選擇按 global → 目前預設 → 角色卡覆寫。
 
 預設和角色卡的 Skill 仍可透過 `embedded_skills_source` 隨原始資產匯出。匯入這些內容不會匯入可執行的原生 Plan。
 

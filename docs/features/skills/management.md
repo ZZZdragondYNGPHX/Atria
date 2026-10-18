@@ -33,11 +33,11 @@ Row actions (right side):
 | **Edit** | Opens the inline editor (see [Inline editor](#inline-editor) below). |
 | **Move to…** | Atomic move to another scope. Recheck the selection and exact pins after moving. |
 | **Rename** | Atomic rename within the current scope. The directory and frontmatter `name` update together; update consumers that still use the old name. |
-| **Delete** | Removes the Skill directory. Check consumers and pins before reuse. |
+| **Delete** | Removes the Skill directory.|
 
 ### Bulk select
 
-Toggle **Multi-select** at the top to get a checkbox per row. With ≥1 row checked, the toolbar gains a **Pack selected into preset…** action — see [Embed export](#embed-export-into-presets-and-cards) below.
+Toggle **Multi-select** at the top to get a checkbox per row.
 
 ## Tab 2 — Browse bundled
 
@@ -46,7 +46,6 @@ The bundled tab compares your local copy of each shipped skill against what ship
 | Badge | Meaning |
 |---|---|
 | **installed (matches)** | Local copy is byte-identical to the bundled version. |
-| **installed (your version differs)** | A local copy exists but its hash doesn't match the bundled one — you (or an iter-studio session) edited it. |
 | **not installed** | No local copy. Click **Install** to materialize it into `global`. |
 
 ![Browse bundled, mixed states](/screenshots/skills/manager-bundled-tab.png)
@@ -63,7 +62,7 @@ Four entry points:
 
 ### Import from file
 
-Upload a `.zip` of a single skill directory. The server validates the archive, previews any conflicts (per skill: `new` / `same` / `different`), and waits for your decision on each conflict before committing.
+Upload a `.zip` of a single skill directory.
 
 ### Import from URL
 
@@ -97,7 +96,7 @@ Clicking **Edit** on a skill row opens an in-popup editor:
 - Right pane: Markdown editor with YAML-aware frontmatter highlighting.
 - Top bar: file path, dirty indicator, **Save** (writes through `.staging/` and atomic-commits), **Add file** (creates a new sub-file at a path you specify).
 
-Writes go through the same `.staging/` discipline as install: the new content is validated (path safety, size limits, frontmatter parse), and only on full validation does the staging file atomically replace the original. Failed writes leave the original untouched.
+ Failed writes leave the original untouched.
 
 `SKILL.md` is special — you can edit it but you can't delete it from the editor (it's the required entry point). The skill itself can be deleted from the row action.
 
@@ -107,7 +106,6 @@ Skills are most useful when they ship with the artifact that depends on them. A 
 
 ### Packing into a preset
 
-
 The packer writes the skills into the preset's `extensions.atria.embedded_skills_source` field. On the next preset save the embed rides with the JSON. Other Atria users who import that preset see the embed extraction dialog described above.
 
 ### Packing into a character card
@@ -115,14 +113,14 @@ The packer writes the skills into the preset's `extensions.atria.embedded_skills
 In the character editor, the **Bundled skills** section behaves the same way: select skills, pack, and they're written into `data.extensions.atria.embedded_skills_source`. On PNG export the embed serializes into the card's metadata, so distributing the card distributes the skills.
 
 ::: tip Threshold for inline vs zip
-Small text-only skills use `inline-files-v1` format (Markdown content embedded directly). Larger or binary skills auto-upgrade to `archive-base64-v1` (zip + base64 + sha256). The packer picks per skill; you don't choose.
+Small text-only skills use `inline-files-v1` format (Markdown content embedded directly). The packer picks per skill; you don't choose.
 :::
 
 ## Scope migration
 
 You can move a skill from `global` → `preset` → `character` (or back) at any time via the **Move to…** row action. The migration is an atomic filesystem rename — no copy, no temp state.
 
-Scope determines which content the current consumer selects. Moving a Skill can change precedence or make it unavailable in that context; check selection and refresh exact pins after a move.
+Scope determines which content the current consumer selects.
 
 Typical migrations:
 
@@ -132,7 +130,7 @@ Typical migrations:
 
 ## Stale references
 
-After moving, renaming or deleting a Skill, check its invocation settings and any consumers that declared it. Native consumers pin exact versions; a changed or missing pin must be resolved before reuse. The retired profile visible-list and silent-dispatch behavior do not apply.
+ Native consumers pin exact versions; a changed or missing pin must be resolved before reuse. The retired profile visible-list and silent-dispatch behavior do not apply.
 
 ## Related
 

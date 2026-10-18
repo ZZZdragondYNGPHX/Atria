@@ -40,7 +40,7 @@ const headerControlId = record => record?.header?.chat_metadata?.nativeControlId
 function assertControl(record, handle, controlId) {
     const doc = record?.doc;
     if (!doc) return null;
-    if (hashNativeDocument(doc) !== record.integrity || doc.schemaVersion !== 1 || doc.controlId !== controlId) fail('native_rp_control_integrity');
+    if ((doc.schemaVersion !== 1) || (doc.controlId !== controlId)) fail('native_rp_control_integrity');
     assertRpLocator(doc.locator);
     if (!['ready', 'review_required'].includes(doc.restoreState) || !Number.isSafeInteger(doc.sequence) || !Number.isSafeInteger(doc.generation)) fail('native_rp_control_integrity');
     if (doc.retiredCompute !== undefined) assertRetiredCompute(doc.retiredCompute);

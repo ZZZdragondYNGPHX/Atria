@@ -9,7 +9,7 @@ import { assertOriginalSendBank, BudgetPort } from './budget-port.js';
 import { readEffect, effectDecision } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { runGuard, readAttempt, controlRecordKey } from './controller-common.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { createNativeId } from '../identity.js';
 import { rerank } from '../../vectors/rerank.js';
 import { buildMemoryCorpus, applyMemoryCorpusEligibility, memoryVectorCollectionId, retiredMemoryVectorCollectionIds, RETRIEVAL_DEFAULTS } from '../../../public/scripts/agents/memory/hybrid-retrieval.js';
@@ -389,7 +389,7 @@ export class ContextRetrievalPort {
                 || state.observation.budgetObservationRef.usageHash !== hash(row.usage)) fail();
             await this.runs.engine.withTransaction(handle, async tx => {
                 const intent = (await readEffect(tx, handle, root, effectId)).doc;
-                const receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', contextRetrievalReceiptId(effectId))))?.doc;
+                const receipt = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', contextRetrievalReceiptId(effectId))))?.doc;
                 if (!receipt || intent.status !== 'confirmed' || !equal(effectDecision(intent), state.decision)
                     || intent.nodeAttemptId !== value.scope.attemptId || intent.epoch !== root.epoch || intent.sourceBindingDigest !== root.sourceBinding.bindingDigest
                     || completionBinding(intent) !== state.observation.dispatchEvidence.reference.completionBindingDigest

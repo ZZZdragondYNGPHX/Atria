@@ -7,7 +7,7 @@ import { readAttempt } from '../../src/native/orchestration/controller-common.js
 import { assertRunTreeConcurrency } from '../../src/native/orchestration/run-repository.js';
 import { handoffReceiptId } from '../../src/native/orchestration/handoff-contracts.js';
 import { handoffReturnReceiptId } from '../../src/native/orchestration/handoff-return-contracts.js';
-import { checkedRecord } from '../../src/native/orchestration/plan-repository.js';
+
 import { controlRecordKey } from '../../src/native/orchestration/controller-common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { resultDependencyDigest } from '../../src/native/orchestration/result-contracts.js';
@@ -127,8 +127,8 @@ test('Game original Host explicit Delegate keeps the parent slot and returns wit
         expect(children).toHaveLength(1);
         const child = await runs.get(f.h.handle, children[0].runId);
         await f.h.engine.withTransaction(f.h.handle, async tx => {
-            expect(await checkedRecord(tx, controlRecordKey(f.h.handle, root.runId, 'receipt', handoffReceiptId(child.runId)))).toBeNull();
-            expect(await checkedRecord(tx, controlRecordKey(f.h.handle, root.runId, 'receipt', handoffReturnReceiptId(child.runId)))).toBeNull();
+            expect(await tx.getResource(controlRecordKey(f.h.handle, root.runId, 'receipt', handoffReceiptId(child.runId)))).toBeNull();
+            expect(await tx.getResource(controlRecordKey(f.h.handle, root.runId, 'receipt', handoffReturnReceiptId(child.runId)))).toBeNull();
             expect(await readSessionOutput(tx, f.h.handle, root)).toBeTruthy();
         });
     } finally { await f.cleanup(); }
@@ -174,7 +174,7 @@ test.each(['known', 'unknown', 'source', 'usage_unknown'])('Game child %s failur
         expect(bank.attempts).toHaveLength(1); expect(bank.attempts[0].status).toBe(['unknown', 'usage_unknown'].includes(kind) ? 'unknown' : 'settled');
         expect(bank.reservations.find(row => row.reservationId === child.runId).status).toBe(['unknown', 'usage_unknown'].includes(kind) ? 'held' : 'released');
         await f.h.engine.withTransaction(f.h.handle, async tx => {
-            expect(await checkedRecord(tx, controlRecordKey(f.h.handle, parent.runId, 'receipt', handoffReturnReceiptId(child.runId)))).toBeNull();
+            expect(await tx.getResource(controlRecordKey(f.h.handle, parent.runId, 'receipt', handoffReturnReceiptId(child.runId)))).toBeNull();
         });
         await f.cold(); await expect(f.start()).rejects.toThrow(); expect(f.requests).toHaveLength(1);
     } finally { await f.cleanup(); }
@@ -199,7 +199,7 @@ test('Game parent cancellation during its paid child preserves the original canc
         expect(bank.attempts).toHaveLength(1); expect(bank.attempts[0].status).toBe('settled');
         expect(bank.reservations.find(row => row.reservationId === child.runId).status).toBe('released');
         await f.h.engine.withTransaction(f.h.handle, async tx => {
-            expect(await checkedRecord(tx, controlRecordKey(f.h.handle, parent.runId, 'receipt', handoffReturnReceiptId(child.runId)))).toBeNull();
+            expect(await tx.getResource(controlRecordKey(f.h.handle, parent.runId, 'receipt', handoffReturnReceiptId(child.runId)))).toBeNull();
         });
     } finally { await f.cleanup(); }
 }, 90000);

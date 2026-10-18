@@ -8,7 +8,7 @@ import { assertComputeBudget } from '../../../public/shared/native-compute-budge
 import { assertA2aAcceptanceBinding } from '../../../public/shared/native-run-contract.js';
 import { readEffect, effectDecision } from './effect-contracts.js';
 import { readRunControl } from '../run-control.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { controlRecordKey, runGuard } from './controller-common.js';
 import { RunRepository, assertChildRunCurrent } from './run-repository.js';
 import { EffectController } from './effect-controller.js';
@@ -107,7 +107,7 @@ export class ToolPort {
             || !(protocol === 'mcp' && ['tool', 'resource'].includes(operation) || protocol === 'skill' && ['read', 'files'].includes(operation))) return null;
         const observationId = 'tool.completed:' + intent.effectId;
         const receiptId = 'oreceipt_' + hash({ effectId: intent.effectId, observationId }).slice(0, 32);
-        const receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
+        const receipt = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
         if (!receipt || receipt.schemaVersion !== 1 || receipt.runId !== root.runId || receipt.effectId !== intent.effectId || receipt.observationId !== observationId
             || receipt.outcome !== intent.status || receipt.observedEpoch !== intent.epoch || receipt.dispatchEvidence.kind !== 'original_port_observation'
             || receipt.dispatchEvidence.reference?.completionBindingDigest !== this.#completionDigest(intent)

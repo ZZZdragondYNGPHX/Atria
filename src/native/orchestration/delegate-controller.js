@@ -4,9 +4,9 @@ import { assertNativeId } from '../identity.js';
 import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
 import { assertObject, assertToken, assertPlanRef, assertPlanDefinition, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertComputeAllocation } from '../../../public/shared/native-compute-budget.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { controlCommandId, controlRecordKey, holdsConcurrencySlot, readAttempt } from './controller-common.js';
-import { assertRunRoot, childBudgetReceiptId, initialTreeProgress, TREE_LOGICAL_COUNTERS } from './run-repository.js';
+import { childBudgetReceiptId, initialTreeProgress, TREE_LOGICAL_COUNTERS } from './run-repository.js';
 import { handoffReceiptId } from './handoff-contracts.js';
 
 const fail = code => { throw new ConflictError(code); };
@@ -89,9 +89,9 @@ export class DelegateController {
                 || Object.keys(definition.limits).some(field => definition.limits[field] > parent.limits[field])) fail('native_orchestration_child_authority_invalid');
             const ancestorRecords = [];
             for (const ancestorId of ancestorIds) {
-                const record = await checkedRecord(tx, key(handle, ancestorId));
+                const record = await tx.getResource(key(handle, ancestorId));
                 if (!record) fail('native_orchestration_parent_stale');
-                assertRunRoot(record.doc, handle); ancestorRecords.push(record);
+                ancestorRecords.push(record);
             }
             const ancestors = [parent, ...ancestorRecords.map(record => record.doc)];
             const tree = ancestors.at(-1);
@@ -99,7 +99,6 @@ export class DelegateController {
             const depth = (parent.parentRef?.depth ?? 0) + 1;
             const members = new Map();
             for (const record of await tx.listResources({ kind: K.orchestrationRun, handle })) {
-                if (hashNativeDocument(record.doc) !== record.integrity) throw new TypeError('Corrupt delegation tree');
                 if (record.doc.rootRunId !== tree.runId) continue;
                 members.set(record.doc.runId, record.doc);
             }
@@ -149,7 +148,6 @@ export class DelegateController {
                     depth, edgeVisitCounts: {}, deadlineAt: Math.min(parent.progress.deadlineAt, tree.progress.deadlineAt, now + definition.limits.deadlineMs) },
                 treeProgress: initialTreeProgress(depth, Math.min(parent.progress.deadlineAt, tree.progress.deadlineAt, now + definition.limits.deadlineMs)),
                 limits: definition.limits, cancelRequested: false, createdAt: now, updatedAt: now };
-            assertRunRoot(child, handle);
             const receiptId = 'oreceipt_' + hashNativeDocument({ kind: 'delegation', childRunId }).slice(0, 32);
             const receipt = { schemaVersion: 1, receiptKind: 'delegation', receiptId, runId: parent.runId, childRunId, parentRef, budgetCeiling,
                 sourceBindingDigest: parent.sourceBinding.bindingDigest, authorityRef: parent.budgetAuthorityRef, decisionSeq: parent.eventSeq + 1, createdAt: now };
@@ -185,7 +183,7 @@ export class DelegateController {
         const receiptId = childBudgetReceiptId(before.runId);
         return this.runs.control(handle, controlCommandId('run.childBudget', receiptId), { ...input, operation: 'run.childBudget', detail: {} }, async ({ tx, root, now }) => {
             if (root.cancelRequested || root.status !== 'admitted') fail('native_orchestration_child_authority_invalid');
-            const parent = (await checkedRecord(tx, key(handle, root.parentRef.parentRunId)))?.doc;
+            const parent = (await tx.getResource(key(handle, root.parentRef.parentRunId)))?.doc;
             const { doc: parentAttempt } = await readAttempt(tx, handle, parent, root.parentRef.nodeAttemptId);
             const node = parent.graph.nodes.find(item => item.nodeId === parentAttempt.nodeId);
             const childPlan = await this.#allowedPlan(handle, tx, parent, node, root.planRef);

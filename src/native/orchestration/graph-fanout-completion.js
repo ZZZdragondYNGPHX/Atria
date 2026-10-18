@@ -1,7 +1,7 @@
 import { hashNativeDocument as hash, equalNativeDocuments as same } from '../repositories/common.js';
 import { assertObject, assertCounter } from '../../../public/shared/native-orchestration-contracts.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { controlCommandId, controlRecordKey, readAttempt, graphReachable, assertAttemptConsumable } from './controller-common.js';
 import { readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 import { readFanoutFrame, readFanoutMembership, isFanoutBranchExcluded } from './fanout-controller.js';
@@ -32,7 +32,7 @@ export function graphFanoutModelScope(graph, fanoutNodeId) {
 
 async function commandFact(tx, handle, root, kind, identity, detail, field, value) {
     const commandId = controlCommandId(kind, identity), operation = 'runs.control.' + kind;
-    const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+    const command = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId }))?.doc;
     if (!command || command.schemaVersion !== 1 || command.commandId !== commandId || command.operation !== operation || command.target !== root.runId
         || command.payloadHash !== hash({ operation, body: { runId: root.runId, operation: kind, detail } })
         || !same(command.outcome?.[field], value) || command.outcome.runId !== root.runId
@@ -48,7 +48,7 @@ async function edgeFacts(tx, handle, root, graph, transfers, refs, decisionSeq, 
         const producer = (await readAttempt(tx, handle, root, transfer.producerAttemptId)).doc;
         const target = (await readAttempt(tx, handle, root, transfer.nodeAttemptId)).doc;
         const receiptId = 'oreceipt_' + hash({ kind: 'edge_admission', runId: root.runId, ...transfer }).slice(0, 32);
-        const fact = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
+        const fact = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
         if (!fact) invalid();
         assertObject(fact, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'graphRevision', 'edgeId', 'producerAttemptId',
             'nodeAttemptId', 'sourceBindingDigest', 'edgeVisit', 'loopIteration', 'decisionSeq', 'createdAt'], 'EdgeAdmission');
@@ -98,7 +98,7 @@ async function assertEdgeHistory(tx, handle, root) {
 async function cancelFact(tx, handle, root, frame, joinId, item, failedAttemptId) {
     const detail = { fanoutAttemptId: frame.fanoutAttemptId, failedAttemptId, joinId, attemptId: item.attempt.attemptId };
     const commandId = controlCommandId('fanout.cancelPending', { runId: root.runId, ...detail }), operation = 'runs.control.attempt.settle';
-    const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+    const command = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId }))?.doc;
     return !!command && command.commandId === commandId && command.operation === operation && command.target === root.runId
         && command.payloadHash === hash({ operation, body: { runId: root.runId, operation: 'attempt.settle', detail } })
         && same(command.outcome?.attemptReceipt, item.completed);
@@ -162,7 +162,7 @@ async function reservationFact(tx, handle, root, frame, attempt, snapshot) {
     const detail = { producerAttemptId: frame.fanoutAttemptId, nodeId: attempt.nodeId };
     const identity = hash({ kind: 'fanout_reservation', runId: root.runId, ...detail });
     const receiptId = 'oreceipt_' + identity.slice(0, 32);
-    const receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
+    const receipt = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
     if (!receipt) invalid();
     assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'producerAttemptId', 'nodeAttemptId', 'epoch',
         'graphRevision', 'decisionSeq', 'createdAt'], 'Attempt reservation');
@@ -214,7 +214,7 @@ export async function readGraphFanoutInput(tx, handle, root, fanoutAttemptId, re
     const traversal = rows[0].doc, reservedAttemptId = fanout.reservationRef ? fanout.attemptId : null;
     const identity = hash({ runId: root.runId, bindings: traversal.bindings, reservedAttemptId });
     const commandId = controlCommandId('loop.advance', identity);
-    const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+    const command = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId }))?.doc;
     const snapshot = await readTaskGraphRevision(tx, handle, root, fanout.graphRevision);
     if (rows[0].integrity !== hash(traversal) || rows[0].key.recordId !== traversal.receiptId || traversal.receiptId !== 'oreceipt_' + identity.slice(0, 32)
         || fanout.attemptId !== (reservedAttemptId ?? 'oattempt_' + identity.slice(0, 32))
@@ -259,8 +259,8 @@ export async function readGraphFanoutCompletion(tx, handle, root, joinAttemptId,
     };
     const join = await attemptAt(joinAttemptId);
     const joinId = joinIdForAttempt(join.attemptId);
-    const barrierRow = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', 'barrier:' + joinId));
-    const receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', joinId)))?.doc;
+    const barrierRow = await tx.getResource(controlRecordKey(handle, root.runId, 'join', 'barrier:' + joinId));
+    const receipt = (await tx.getResource(controlRecordKey(handle, root.runId, 'join', joinId)))?.doc;
     if (!barrierRow || !receipt) return null;
     const barrier = barrierRow.doc;
     assertObject(barrier, ['schemaVersion', 'joinId', 'runId', 'fanoutAttemptId', 'nodeAttemptId', 'epoch', 'graphRevision', 'memberAttemptIds',

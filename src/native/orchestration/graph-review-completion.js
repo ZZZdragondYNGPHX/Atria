@@ -2,7 +2,7 @@ import { assertNativeId } from '../identity.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { readAttempt, controlCommandId, controlRecordKey, readGraphReviewReceipt, readAttemptInvalidation,
     assertAttemptConsumable, graphReachable, readReviewAdmission } from './controller-common.js';
 import { readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
@@ -31,7 +31,7 @@ export const graphReviewControlRef = (runId, attemptId) => ({ kind: 'graph_revie
 export async function readGraphReviewCompletion(tx, handle, root, attemptId, { verifyControlWork, reasonCodes, recipient = null, readFanoutCompletion = null }) {
     if (typeof verifyControlWork !== 'function' || !Array.isArray(reasonCodes) || !reasonCodes.length) invalid();
     const producer = (await readAttempt(tx, handle, root, attemptId)).doc, receiptId = graphReviewModelReceiptId(root.runId, attemptId);
-    const receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
+    const receipt = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
     if (!receipt) return null;
     assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'producerAttemptId', 'sourceBindingDigest', 'grantDigest',
         'modelEffectId', 'modelReceiptRef', 'modelPayloadHash', 'responseText', 'reviewReceiptRef', 'reviewIntegrity', 'localWork', 'decisionSeq', 'createdAt'], 'Graph Review Model receipt');
@@ -108,7 +108,7 @@ export async function readGraphReviewCompletion(tx, handle, root, attemptId, { v
     const targetEvidence = evidence.filter(fact => targets.includes(fact.producer.attemptId));
     if (!equal([...new Set(targetEvidence.map(fact => fact.producer.attemptId))].sort(), targets)) invalid();
     const commandId = controlCommandId('review.decide', review.receiptId);
-    const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+    const command = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId }))?.doc;
     const detail = { reviewAttemptId: attemptId, decision: review.decision, targetAttemptIds: [...targets], reasonCode: review.reasonCode, evidenceRefs: review.evidenceRefs };
     if (!command || command.schemaVersion !== 1 || command.commandId !== commandId || command.operation !== 'runs.control.review.decide' || command.target !== root.runId
         || command.payloadHash !== hash({ operation: command.operation, body: { runId: root.runId, operation: 'review.decide', detail } })
@@ -227,7 +227,7 @@ export async function readReviewablePlannerCompletion(tx, handle, root, attemptI
             if (contained) break;
             const attempt = (await readAttempt(tx, handle, root, id)).doc;
             if (root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind !== 'join' || attempt.status !== 'completed') continue;
-            const barrier = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', 'barrier:' + joinIdForAttempt(id))))?.doc;
+            const barrier = (await tx.getResource(controlRecordKey(handle, root.runId, 'join', 'barrier:' + joinIdForAttempt(id))))?.doc;
             if (barrier?.fanoutAttemptId !== fanoutAttemptId) continue;
             const group = await readReviewableFanoutCompletion(tx, handle, root, id, { targets: reviewTargets, readCompletion: readFanoutCompletion });
             if (group?.scopeAttempts.some(item => item.attempt.attemptId === attemptId)) { contained = true; break; }
@@ -286,7 +286,7 @@ export async function readReviewableFanoutCompletion(tx, handle, root, joinAttem
             && (results.length !== 1 || !reviewableDelegationWithBank(root, results[0], compute))) return null;
         const invalidation = await readAttemptInvalidation(tx, handle, root, attempt);
         if (invalidation) {
-            const review = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', invalidation.reviewReceiptId))).doc;
+            const review = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', invalidation.reviewReceiptId))).doc;
             const reviewer = (await readAttempt(tx, handle, root, review.reviewAttemptId)).doc;
             // A prior branch-local redo already retired this historical member.
             // Keep its original invalidation and fees rather than overwriting
@@ -305,7 +305,7 @@ export async function readReviewableFanoutCompletion(tx, handle, root, joinAttem
 async function originalCompute(tx, handle, authority) {
     return authority.domain === 'session' ? (await readRunControl(tx, handle, authority.sessionId))?.operations[authority.operationId]?.compute
         : authority.authority === 'project_task' ? (await readOriginalProjectTask(tx, handle, authority))?.compute
-            : (await checkedRecord(tx, { kind: K.rpRunControl, handle, controlId: authority.controlId }))?.doc.operations[authority.operationId]?.compute;
+            : (await tx.getResource({ kind: K.rpRunControl, handle, controlId: authority.controlId }))?.doc.operations[authority.operationId]?.compute;
 }
 
 /** Only a completed advisory child can be redone. Its Result still belongs to

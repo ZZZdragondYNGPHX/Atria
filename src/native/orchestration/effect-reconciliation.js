@@ -1,6 +1,6 @@
 import { equalNativeDocuments, hashNativeDocument as hash } from '../repositories/common.js';
 import { controlRecordKey, runGuard } from './controller-common.js';
-import { checkedRecord } from './plan-repository.js';
+
 
 /** Observe one domain-verified historical fact through the original controller.
  * This helper has no sender, writer, receipt authority or source-grant factory. */
@@ -14,7 +14,7 @@ export async function observeReconciledEffect({ runs, effects }, handle, { root,
     } catch (error) {
         if (error.code !== 'storage_commit_unknown') throw error;
         const id = 'oreceipt_' + hash({ effectId, observationId: observation.observationId }).slice(0, 32);
-        const saved = await runs.engine.withTransaction(handle, tx => checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', id)));
+        const saved = await runs.engine.withTransaction(handle, tx => tx.getResource(controlRecordKey(handle, root.runId, 'receipt', id)));
         const { observedAt, ...record } = saved?.doc ?? {};
         if (!Number.isSafeInteger(observedAt) || observedAt < 0 || !equalNativeDocuments(record, { schemaVersion: 1,
             receiptId: id, effectId, runId: root.runId, ...observation })) throw error;

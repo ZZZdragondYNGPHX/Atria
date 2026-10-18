@@ -8,7 +8,7 @@ import { controlCommandId, controlRecordKey, readAttempt, runGuard } from './con
 import { hashNativeDocument as hash, putImmutable, putMutable, equalNativeDocuments as equal } from '../repositories/common.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { handoffReturnReceiptId, readHandoffReturn } from './handoff-return-contracts.js';
-import { checkedRecord } from './plan-repository.js';
+
 
 const fail = code => { throw new ConflictError(code); };
 const DENIALS = new Set(['native_orchestration_source_stale', 'native_orchestration_parent_stale', 'native_orchestration_return_stale',
@@ -65,7 +65,7 @@ export class HandoffReturnController {
                             || root.progress.steps >= root.limits.maxSteps) fail('native_orchestration_return_stale');
                         const record = await readAttempt(tx, handle, root, checked.parentAttemptId);
                         if (!equal(record.doc, checked.attempt)) fail('native_orchestration_return_stale');
-                        const result = await checkedRecord(tx, controlRecordKey(handle, checked.childRunId, 'result', checked.resultRef.resultId));
+                        const result = await tx.getResource(controlRecordKey(handle, checked.childRunId, 'result', checked.resultRef.resultId));
                         const receipt = { schemaVersion: 1, receiptKind: 'handoff_return', receiptId, runId: root.runId, epoch: root.epoch,
                             parentAttemptId: record.doc.attemptId, parentInputDigest: record.doc.inputDigest, parentGrantDigest: record.doc.effectiveGrantDigest,
                             childRunId: checked.childRunId, childEpoch: checked.childEpoch, childGrantDigest: checked.childGrantDigest,

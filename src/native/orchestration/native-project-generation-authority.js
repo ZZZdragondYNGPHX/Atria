@@ -13,7 +13,7 @@ import { ModelPort } from './model-port.js';
 import { readFanoutFrame, readFanoutMembership } from './fanout-controller.js';
 import { readEffect } from './effect-contracts.js';
 import { readAttempt } from './controller-common.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { readProjectDelegation, readProjectDelegationInputs } from './project-delegation-contracts.js';
@@ -211,9 +211,9 @@ async function readDelegatedGenerationBoundary(original, { candidateChild = null
     await currentGeneration(original, { host, handle }, scopeState, controlPermit);
     return engine.withTransaction(handle, async tx => {
         const runId = bound?.childRunId ?? candidateChild?.runId;
-        const child = runId && (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId }))?.doc;
+        const child = runId && (await tx.getResource({ kind: K.orchestrationRun, handle, runId }))?.doc;
         if (!child?.parentRef || candidateChild && !equalNativeDocuments(candidateChild, child)) fail();
-        const parent = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: child.parentRef.parentRunId }))?.doc;
+        const parent = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: child.parentRef.parentRunId }))?.doc;
         if (!parent) fail();
         const lineage = await readProjectDelegation(tx, handle, parent, child.runId), source = child.sourceBinding.sourceRef;
         const task = await readOriginalProjectTask(tx, handle, source), generation = task?.attempts.find(attempt => attempt.attemptId === original.projectAttemptId);

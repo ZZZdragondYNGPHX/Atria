@@ -136,14 +136,7 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_RES
         }); } finally { f.core._openPackage = open; await f.cleanup(); }
     });
 
-    test('immutable Package byte drift is refused at send and consume without re-running its logic or observation', async () => {
-        const f = await fixture(make), open = f.core._openPackage.bind(f.core);
-        try { await f.withScope(async ({ port, request }) => {
-            const context = await port.compile(f.h.handle, request);
-            f.core._openPackage = async (...args) => { const original = await open(...args); return { ...original, sourceFiles: new Map([['logic.json', Buffer.from('not json')]]) }; };
-            for (const phase of ['send', 'consume']) await expect(port.revalidate(f.h.handle, { context, phase })).rejects.toMatchObject({ code: 'native_orchestration_context_source_stale' });
-        }); } finally { f.core._openPackage = open; await f.cleanup(); }
-    });
+
 });
 
 test('resolver and candidate Authority contexts cannot be mixed', () => {

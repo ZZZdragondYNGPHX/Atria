@@ -5,7 +5,7 @@ import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../re
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertSessionTurnOutput, sessionTurnCommitIdentity } from '../session-turn-output.js';
 import { readSessionSnapshot } from '../session-snapshot.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { controlRecordKey, readAttempt, readAttemptInvalidation } from './controller-common.js';
 import { readSessionNarrationResult, sessionOutputKey } from './session-narration-result-contracts.js';
 import { readModelCompletionReceipt, readModelTerminalFact } from './model-port.js';
@@ -42,9 +42,9 @@ export async function readSessionOutputDescriptor(tx, handle, root) {
 /** Historical consistency only; it issues no current body or execution capability. */
 export async function readSessionOutput(tx, handle, root) {
     if (root.graph.outputContract.kind !== 'rp_narration' || root.sourceBinding.sourceAuthority !== 'native_session' || root.parentRef !== null) return null;
-    const claimId = sessionOutputClaimId(root), claimRow = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'output', claimId));
-    const receiptRow = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', sessionOutputReceiptId(root.runId)));
-    const closureRow = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', sessionOutputClosureId(root.runId)));
+    const claimId = sessionOutputClaimId(root), claimRow = await tx.getResource(controlRecordKey(handle, root.runId, 'output', claimId));
+    const receiptRow = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', sessionOutputReceiptId(root.runId)));
+    const closureRow = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', sessionOutputClosureId(root.runId)));
     if (!claimRow && !receiptRow && !closureRow && !root.outputClaims.length) return null;
     if (!claimRow || !receiptRow || !closureRow || !equal(root.outputClaims, [{ runId: root.runId, claimId }])) invalid();
     const claim = claimRow.doc, receipt = receiptRow.doc, closure = closureRow.doc, domainRef = claimRow.doc.domainReceiptRef;
@@ -95,9 +95,9 @@ export async function readSessionOutput(tx, handle, root) {
         || receipt.outputAttemptReceiptRef.receiptId !== attemptReceiptId(root.runId, output.attemptId)) invalid();
     const intent = (await readEffect(tx, handle, root, receipt.outputEffectId)).doc;
     const input = intent.inputRef;
-    const originalRow = await checkedRecord(tx, { kind: K.commitReceipt, handle, sessionId: expected.sessionId, commitId: identity.commitId });
-    const sessionRow = await checkedRecord(tx, { kind: K.session, handle, sessionId: expected.sessionId });
-    const revisionRow = await checkedRecord(tx, { kind: K.sessionRevision, handle, sessionId: expected.sessionId, revisionId: domainRef.revisionId });
+    const originalRow = await tx.getResource({ kind: K.commitReceipt, handle, sessionId: expected.sessionId, commitId: identity.commitId });
+    const sessionRow = await tx.getResource({ kind: K.session, handle, sessionId: expected.sessionId });
+    const revisionRow = await tx.getResource({ kind: K.sessionRevision, handle, sessionId: expected.sessionId, revisionId: domainRef.revisionId });
     if (!originalRow || !sessionRow || !revisionRow) invalid();
     const snapshot = await readSessionSnapshot(tx, handle, sessionRow.doc, revisionRow.doc);
     const original = assertSessionTurnOutput(expected, originalRow.doc, snapshot);
@@ -112,7 +112,7 @@ export async function readSessionOutput(tx, handle, root) {
         || input.invocationId !== expected.invocationId || input.requestHash !== expected.requestHash || input.fingerprint !== hash(envelope)
         || input.commitId !== identity.commitId || input.requestFingerprint !== identity.requestFingerprint
         || !equal(intent.dispatchPolicy, { idempotency: 'domain_key', operationKey: identity.commitId, reconcile: 'domain_status' })) invalid();
-    const host = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receipt.outputEffectReceiptRef.receiptId)))?.doc;
+    const host = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receipt.outputEffectReceiptRef.receiptId)))?.doc;
     if (!host) invalid();
     assertObject(host, ['schemaVersion', 'receiptId', 'effectId', 'runId', 'observationId', 'observedEpoch', 'outcome', 'dispatchEvidence', 'remoteOperationRef',
         'domainReceiptRef', 'budgetObservationRef', 'resultRefs', 'sourceRefs', 'reasonCode', 'observedAt'], 'Session Host Effect receipt');
@@ -242,13 +242,13 @@ export async function readSessionOutput(tx, handle, root) {
     const edge = root.graph.edges.find(item => item.from.nodeId === published.producer.nodeId && item.to.nodeId === output.nodeId);
     const bindings = edge ? [{ edgeId: edge.edgeId, producerAttemptId: published.producer.attemptId }] : [];
     const traversalId = 'oreceipt_' + hash({ runId: root.runId, bindings, reservedAttemptId: null }).slice(0, 32);
-    const traversal = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', traversalId)))?.doc;
+    const traversal = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', traversalId)))?.doc;
     if (!traversal || !edge || receipt.traversalReceiptRef.receiptId !== traversalId) invalid();
     assertObject(traversal, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'graphRevision', 'bindings', 'producerReceiptRefs',
         'nodeAttemptId', 'inputDigest', 'edgeAdmissionRefs', 'edgeVisits', 'loopIterations', 'decisionSeq', 'createdAt'], 'Session output traversal');
     const edgeId = 'oreceipt_' + hash({ kind: 'edge_admission', runId: root.runId, edgeId: edge.edgeId,
         producerAttemptId: published.producer.attemptId, nodeAttemptId: output.attemptId }).slice(0, 32);
-    const admission = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', edgeId)))?.doc;
+    const admission = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', edgeId)))?.doc;
     if (!admission) invalid();
     assertObject(admission, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'graphRevision', 'edgeId', 'producerAttemptId',
         'nodeAttemptId', 'sourceBindingDigest', 'edgeVisit', 'loopIteration', 'decisionSeq', 'createdAt'], 'Session edge admission');

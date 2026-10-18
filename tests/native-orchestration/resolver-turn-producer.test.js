@@ -2,7 +2,7 @@ import { jest } from '@jest/globals';
 import { resolverTurnFixture } from './helpers/resolver-turn-fixture.js';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 import { hashNativeDocument as hash } from '../../src/native/repositories/common.js';
-import { checkedRecord } from '../../src/native/orchestration/plan-repository.js';
+
 import { controlRecordKey } from '../../src/native/orchestration/controller-common.js';
 
 if (process.env.ATRIA_TEST_RESOLVER_TURN_SQL === '1') jest.setTimeout(60_000);
@@ -40,7 +40,7 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_RES
             const service = f.authority.execution, root = await service.runs.get(f.h.handle, f.effectRef.runId);
             expect(root.attemptRefs).toHaveLength(2);
             expect(root.progress.edgeVisitCounts[f.resolverEdgeId]).toBe(1);
-            const attempts = await service.runs.engine.withTransaction(f.h.handle, tx => Promise.all(root.attemptRefs.map(id => checkedRecord(tx, controlRecordKey(f.h.handle, root.runId, 'attempt', id)))));
+            const attempts = await service.runs.engine.withTransaction(f.h.handle, tx => Promise.all(root.attemptRefs.map(id => tx.getResource(controlRecordKey(f.h.handle, root.runId, 'attempt', id)))));
             expect(attempts.find(item => item.doc.nodeId === f.resolverNodeId)?.doc.status).toBe('completed');
             expect(await f.observe()).toMatchObject({ outcome: 'confirmed' });
             expect((await f.start()).revision).toEqual(result.revision); expect(f.requests).toHaveLength(2);
@@ -126,7 +126,7 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_RES
             expect(result.timeline.at(-1).content).toBe('Synthetic native narrator response.');
             expect(await operation(f)).toMatchObject({ total: 2, attempts: { intent_resolver: 1, narrator: 1 } });
             const service = f.authority.execution, root = await service.runs.get(f.h.handle, f.effectRef.runId);
-            const records = await service.runs.engine.withTransaction(f.h.handle, tx => Promise.all(root.attemptRefs.map(id => checkedRecord(tx, controlRecordKey(f.h.handle, root.runId, 'attempt', id)))));
+            const records = await service.runs.engine.withTransaction(f.h.handle, tx => Promise.all(root.attemptRefs.map(id => tx.getResource(controlRecordKey(f.h.handle, root.runId, 'attempt', id)))));
             const reused = records.find(record => record.doc.nodeId === f.resolverNodeId)?.doc;
             expect(reused).toMatchObject({ status: 'completed', reasonCode: 'original_selection_reused', effectRefs: [], resultRefs: [] });
             expect(root.progress.edgeVisitCounts[f.resolverEdgeId]).toBe(1);

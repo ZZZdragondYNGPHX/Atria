@@ -5,7 +5,7 @@ import { assertDigest } from '../../../public/shared/native-orchestration-contra
 import { retrievalPostTarget } from '../retrieval-send-contracts.js';
 import { readEffect, effectDecision } from './effect-contracts.js';
 import { controlRecordKey } from './controller-common.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { rpAgentGraphProfile } from './rp-agent-graph-profile.js';
 import { rpJudgeProfile } from './rp-judge-profile.js';
 import { rpReviewProfile } from './rp-review-profile.js';
@@ -80,23 +80,23 @@ export async function readContextRetrievalCompletions(tx, handle, root, parent, 
     if (!node?.capabilities.includes('memory.retrieve')) invalid();
     const completed = [];
     const modelReceiptId = 'oreceipt_' + hash({ effectId: parent.effectId, observationId: 'model.completed:' + parent.effectId }).slice(0, 32);
-    let modelReceipt = parent.status === 'confirmed' ? (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', modelReceiptId)))?.doc : null;
+    let modelReceipt = parent.status === 'confirmed' ? (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', modelReceiptId)))?.doc : null;
     if (!modelReceipt) {
         const terminal = await readModelTerminalFact(handle, tx, root, parent);
-        modelReceipt = terminal ? (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', terminal.receiptRef.receiptId)))?.doc : null;
+        modelReceipt = terminal ? (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', terminal.receiptRef.receiptId)))?.doc : null;
     }
     if (!modelReceipt || !['confirmed', 'failed'].includes(modelReceipt.outcome)) invalid();
     const bank = root.budgetAuthorityRef;
     const session = root.sourceBinding.sourceAuthority === 'native_session';
     if (bank.authority !== 'run_control' || (session ? bank.domain !== 'session' || bank.sessionId !== root.sourceBinding.sourceRef.sessionId
         : bank.domain !== 'rp_chat' || bank.controlId !== root.sourceBinding.sourceRequest.controlId)) invalid();
-    const control = session ? await readRunControl(tx, handle, bank.sessionId) : (await checkedRecord(tx, { kind: K.rpRunControl, handle, controlId: bank.controlId }))?.doc;
+    const control = session ? await readRunControl(tx, handle, bank.sessionId) : (await tx.getResource({ kind: K.rpRunControl, handle, controlId: bank.controlId }))?.doc;
     const ledger = control?.operations[bank.operationId]?.compute;
     if (!ledger) invalid();
     for (const effectId of refs) {
         const intent = (await readEffect(tx, handle, root, effectId)).doc, input = intent.inputRef;
         const ref = intent.targetRef.nativeRetrievalRef;
-        const savedProfile = ref ? await checkedRecord(tx, { kind: K.retrievalProfile, handle, retrievalProfileId: ref.retrievalProfileId, revision: ref.revision }) : null;
+        const savedProfile = ref ? await tx.getResource({ kind: K.retrievalProfile, handle, retrievalProfileId: ref.retrievalProfileId, revision: ref.revision }) : null;
         if (!savedProfile) invalid();
         const profile = assertRetrievalProfile(savedProfile.doc);
         const pins = plan.dependencyPins.filter(pin => pin.port === 'context' && node.dependencyPinIds.includes(pin.pinId));
@@ -108,7 +108,7 @@ export async function readContextRetrievalCompletions(tx, handle, root, parent, 
         if (!equal(effectDecision(intent), decision) || intent.nodeAttemptId !== producer.attemptId || intent.epoch !== parent.epoch
             || intent.graphRevision !== parent.graphRevision || intent.hostBootId !== parent.hostBootId || intent.hostGeneration !== parent.hostGeneration
             || intent.sourceBindingDigest !== parent.sourceBindingDigest || intent.status !== 'confirmed' || !intent.dispatchToken || intent.approvalRef !== null) invalid();
-        const receiptId = contextRetrievalReceiptId(effectId), receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
+        const receiptId = contextRetrievalReceiptId(effectId), receipt = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
         const budgetAttemptRef = { authorityRef: root.budgetAuthorityRef, effectId, providerSendOrdinal: 0, attemptId: sendAttemptId(effectId, 0), reservationId: null };
         if (!receipt || receipt.schemaVersion !== 1 || receipt.receiptId !== receiptId || receipt.runId !== root.runId || receipt.effectId !== effectId
             || receipt.observationId !== 'retrieval.completed:' + effectId || receipt.observedEpoch !== parent.epoch || receipt.outcome !== 'confirmed'

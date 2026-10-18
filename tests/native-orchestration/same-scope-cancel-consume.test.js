@@ -5,7 +5,7 @@ import { createNativeId } from '../../src/native/identity.js';
 import { runGuard, controlRecordKey } from '../../src/native/orchestration/controller-common.js';
 import { readEffect } from '../../src/native/orchestration/effect-contracts.js';
 import { putMutable } from '../../src/native/repositories/common.js';
-import { checkedRecord } from '../../src/native/orchestration/plan-repository.js';
+
 import { toolCompletionFixture } from './helpers/tool-completion-fixture.js';
 
 if (process.env.ATRIA_TEST_SAME_SCOPE_SQL === '1') jest.setTimeout(60000);
@@ -52,8 +52,7 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_SAM
             expect(charged.attempts).toHaveLength(1); expect(charged.attempts[0].status).toBe('settled');
             await f.cold();
             expect((await f.observe()).outcome).toBe(fault === 'cancel' ? 'confirmed' : 'unknown');
-            const coldReceipt = await f.authority.execution.runs.engine.withTransaction(f.h.handle, tx => checkedRecord(tx,
-                controlRecordKey(f.h.handle, before.runId, 'receipt', confirmed.receiptRef.receiptId)));
+            const coldReceipt = await f.authority.execution.runs.engine.withTransaction(f.h.handle, tx => tx.getResource(controlRecordKey(f.h.handle, before.runId, 'receipt', confirmed.receiptRef.receiptId)));
             expect(coldReceipt.doc).toMatchObject({ outcome: 'confirmed', effectId: f.effectRef.effectId });
             const restored = await f.core.runs.status(f.h.handle, f.base.session.sessionId);
             expect(restored.operations[before.budgetAuthorityRef.operationId].compute).toEqual(charged);
@@ -108,8 +107,7 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_SAM
             expect(charged.localWork.every(row => row.status === 'settled' && row.usage?.outcome === 'completed')).toBe(true);
             await f.cold();
             expect((await f.observe()).outcome).toBe(fault === 'cancel' ? 'confirmed' : 'unknown');
-            const coldReceipt = await f.exec.runs.engine.withTransaction(f.h.handle, tx => checkedRecord(tx,
-                controlRecordKey(f.h.handle, before.runId, 'receipt', confirmed.receiptRef.receiptId)));
+            const coldReceipt = await f.exec.runs.engine.withTransaction(f.h.handle, tx => tx.getResource(controlRecordKey(f.h.handle, before.runId, 'receipt', confirmed.receiptRef.receiptId)));
             expect(coldReceipt.doc).toMatchObject({ outcome: 'confirmed', effectId: f.effectId });
             const restored = await f.core.runs.status(f.h.handle, f.root.budgetAuthorityRef.sessionId);
             expect(restored.operations[before.budgetAuthorityRef.operationId].compute).toEqual(charged);

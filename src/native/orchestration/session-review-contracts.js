@@ -6,7 +6,7 @@ import { joinIdForAttempt } from './join-controller.js';
 import { assertAudienceRunCapture } from './audience-source-contracts.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { controlRecordKey, readAttempt, readGraphReviewReceipt, readAttemptInvalidation } from './controller-common.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
@@ -30,7 +30,7 @@ export function parseSessionReview(text) {
 
 /** Original Model/Review/Attempt facts only; this grants no current read or redo. */
 async function readLegacySessionReviewCompletion(tx, handle, root, attemptId) {
-    const id = sessionReviewModelReceiptId(root.runId, attemptId), stored = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', id));
+    const id = sessionReviewModelReceiptId(root.runId, attemptId), stored = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', id));
     if (!stored) return null;
     const receipt = stored.doc;
     assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'producerAttemptId', 'sourceBindingDigest', 'grantDigest',
@@ -95,7 +95,7 @@ export const sessionGraphReviewOutputContract = Object.freeze({ name: 'atria_ses
  * legacy fact never falls through to a different completion protocol. */
 export async function readSessionReviewCompletion(tx, handle, root, attemptId, options = {}) {
     assertObject(options, Object.hasOwn(options, 'recipient') ? ['recipient'] : [], 'Session Review read');
-    const legacy = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', sessionReviewModelReceiptId(root.runId, attemptId)));
+    const legacy = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', sessionReviewModelReceiptId(root.runId, attemptId)));
     if (legacy) {
         if (Object.hasOwn(options, 'recipient')) invalid();
         return readLegacySessionReviewCompletion(tx, handle, root, attemptId);
@@ -130,7 +130,7 @@ export async function readSessionReviewCompletion(tx, handle, root, attemptId, o
         }
         const joins = [];
         for (const ref of input.joinReceiptRefs ?? []) {
-            const barrier = ref.runId === root.runId ? (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', 'barrier:' + ref.joinId)))?.doc : null;
+            const barrier = ref.runId === root.runId ? (await tx.getResource(controlRecordKey(handle, root.runId, 'join', 'barrier:' + ref.joinId)))?.doc : null;
             const joined = barrier ? await readSessionFanoutCompletion(tx, handle, root, barrier.nodeAttemptId) : null;
             if (!joined || joined.joinReceipt.joinId !== ref.joinId || joined.joinReceipt.outcome !== 'completed'
                 || joins.some(actual => actual.producer.attemptId === joined.producer.attemptId)
@@ -188,8 +188,7 @@ export async function sessionReviewRerunRequirements(tx, handle, root, reviewer,
             if (hash(child) !== pin.integrity) invalid();
             let ceiling = null;
             for (const model of child.dependencyPins.filter(pin => pin.port === 'model')) {
-                const route = model.resourceRef.scope === 'player' ? (await checkedRecord(tx,
-                    { kind: K.runtimeRoute, handle, runtimeRouteId: model.resourceRef.runtimeRouteId }))?.doc : null;
+                const route = model.resourceRef.scope === 'player' ? (await tx.getResource({ kind: K.runtimeRoute, handle, runtimeRouteId: model.resourceRef.runtimeRouteId }))?.doc : null;
                 if (!route || hash(route) !== model.integrity) invalid();
                 const budget = assertComputeAllocation(route.executionPolicy.computeBudget);
                 if (ceiling && !equal(ceiling, budget)) invalid(); ceiling = budget;
@@ -210,7 +209,7 @@ export async function readSessionReviewableFanout(tx, handle, root, attempt, tar
     for (const id of root.attemptRefs) {
         const join = (await readAttempt(tx, handle, root, id)).doc;
         if (root.graph.nodes.find(node => node.nodeId === join.nodeId)?.kind !== 'join') continue;
-        const barrier = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', 'barrier:' + joinIdForAttempt(id))))?.doc;
+        const barrier = (await tx.getResource(controlRecordKey(handle, root.runId, 'join', 'barrier:' + joinIdForAttempt(id))))?.doc;
         if (barrier?.fanoutAttemptId !== attempt.attemptId) continue;
         return readReviewableFanoutCompletion(tx, handle, root, id, { targets, readCompletion: readSessionFanoutCompletion });
     }
@@ -220,7 +219,7 @@ export async function readSessionReviewableFanout(tx, handle, root, attempt, tar
 /** Exact original Review replacement; it consumes no new incoming edge. */
 export async function readSessionReviewReplacement(tx, handle, root, producer, input) {
     const ref = input.reviewFeedbackRef?.reviewReceiptRef;
-    const stored = ref?.runId === root.runId ? await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', ref.receiptId)) : null;
+    const stored = ref?.runId === root.runId ? await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', ref.receiptId)) : null;
     if (!stored || stored.doc.receiptKind !== 'graph_review') invalid();
     const fact = await readSessionReviewCompletion(tx, handle, root, stored.doc.reviewAttemptId);
     const replacement = fact?.review.replacements.find(item => item.attemptId === producer.attemptId);

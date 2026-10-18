@@ -3,7 +3,7 @@ import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument, putImmut
 import { assertNativeId } from '../identity.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { controlCommandId, controlRecordKey, graphReachable, holdsConcurrencySlot, readAttempt, assertAttemptCurrent, readReviewAdmission, reviewAdmissionId } from './controller-common.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { readEffect } from './effect-contracts.js';
 import { assertResultRefs, writeAttemptSettlement, readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 import { assertFanoutAdmission, readFanoutFrame, readFanoutMembership, isFanoutBranchExcluded } from './fanout-controller.js';
@@ -46,8 +46,8 @@ export class AttemptController {
                 failure = await readAttemptSettlement(tx, handle, root, failed);
                 if (failure.outcome !== 'failed' || failure.decisionSeq <= frame.decisionSeq) throw new ConflictError('native_orchestration_fanout_cancellation_denied');
             } else {
-                join = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', joinId)))?.doc;
-                const barrier = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'join', 'barrier:' + joinId)))?.doc;
+                join = (await tx.getResource(controlRecordKey(handle, root.runId, 'join', joinId)))?.doc;
+                const barrier = (await tx.getResource(controlRecordKey(handle, root.runId, 'join', 'barrier:' + joinId)))?.doc;
                 if (!join || !barrier || join.schemaVersion !== 1 || join.joinId !== joinId || join.runId !== root.runId || join.epoch !== root.epoch
                     || join.decisionSeq > root.eventSeq || !['completed', 'partial', 'failed'].includes(join.outcome)
                     || barrier.fanoutAttemptId !== fanoutAttemptId || barrier.sourceBindingDigest !== root.sourceBinding.bindingDigest
@@ -55,12 +55,9 @@ export class AttemptController {
                     || !isFanoutBranchExcluded(frame, barrier, join, attempt))
                     throw new ConflictError('native_orchestration_fanout_cancellation_denied');
             }
-            const stamp = hashNativeDocument(root), request = { handle, tx, root, frame, failed, failure, join, attempt };
+            const request = { handle, tx, root, frame, failed, failure, join, attempt };
             try {
                 await this.authorizePendingCancellation(request);
-                if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(new ConflictError('native_orchestration_fanout_cancellation_denied'));
-                await this.authorizePendingCancellation(request);
-                if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(new ConflictError('native_orchestration_fanout_cancellation_denied'));
             } catch (error) {
                 if (error instanceof ConflictError || error.code === 'native_rp_source_missing') return deny(error);
                 throw error;
@@ -131,12 +128,8 @@ export class AttemptController {
                 || root.progress.steps >= root.limits.maxSteps) throw new ConflictError('native_orchestration_limit_exhausted');
             await assertRunTreeConcurrency(tx, handle, root, { additionalSlots: holdsConcurrencySlot(root, { ...attempt, status: 'running' }) ? 1 : 0 });
             await assertFanoutAdmission({ tx, handle, root, attempt });
-            const stamp = hashNativeDocument(root);
             try {
                 await this.authorizeAttempt({ handle, tx, root, attempt });
-                if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(new ConflictError('native_orchestration_attempt_not_admitted'));
-                await this.authorizeAttempt({ handle, tx, root, attempt });
-                if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(new ConflictError('native_orchestration_attempt_not_admitted'));
             } catch (error) {
                 if (error instanceof ConflictError || error.code === 'native_rp_source_missing') return deny(error);
                 throw error;
@@ -170,7 +163,7 @@ export class AttemptController {
             const receipts = [];
             for (const receiptId of effectReceiptRefs) {
                 assertNativeId(receiptId, 'orchestrationReceipt');
-                const stored = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId));
+                const stored = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId));
                 if (!stored || stored.doc.receiptId !== receiptId || stored.doc.runId !== root.runId || !attempt.effectRefs.includes(stored.doc.effectId)) throw new TypeError('EffectReceipt does not belong to Attempt');
                 receipts.push(stored.doc);
             }

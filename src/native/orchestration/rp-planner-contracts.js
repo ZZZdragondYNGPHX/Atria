@@ -1,7 +1,7 @@
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { controlRecordKey, readAttempt } from './controller-common.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
@@ -56,11 +56,11 @@ export async function readRpPlannerCompletion(tx, handle, root) {
 
 async function readPlannerAttempt(tx, handle, root, producer) {
     const receiptId = 'oreceipt_' + hash({ kind: 'rp_planner', runId: root.runId, attemptId: producer.attemptId }).slice(0, 32);
-    const receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
+    const receipt = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
     if (!receipt) invalid();
     assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'producerAttemptId', 'sourceBindingDigest', 'modelEffectId',
         'modelReceiptRef', 'payloadHash', 'patchId', 'patchIntegrity', 'localWork', 'decisionSeq', 'createdAt'], 'RP Planner receipt');
-    const patch = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'patch', receipt.patchId)))?.doc;
+    const patch = (await tx.getResource(controlRecordKey(handle, root.runId, 'patch', receipt.patchId)))?.doc;
     const settlement = await readAttemptSettlement(tx, handle, root, producer), intent = (await readEffect(tx, handle, root, receipt.modelEffectId)).doc;
     const model = await readModelCompletionReceipt(handle, tx, root, intent);
     const retrievalCompletions = await readContextRetrievalCompletions(tx, handle, root, intent, producer);

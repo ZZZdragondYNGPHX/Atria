@@ -1,7 +1,7 @@
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { cloneNativeDocument, hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject, assertCounter, assertPlanDefinition } from '../../../public/shared/native-orchestration-contracts.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { controlCommandId, readAttempt } from './controller-common.js';
 
 export const graphPatchHash = patch => hash(Object.fromEntries(Object.entries(patch).filter(([field]) => field !== 'payloadHash')));
@@ -41,7 +41,7 @@ export async function readTaskGraphRevisions(tx, handle, root, graphRevisions) {
         if (row.integrity !== hash(receipt) || row.key.recordId !== receipt.patchId) invalid();
         const producer = (await readAttempt(tx, handle, root, receipt.producerAttemptId)).doc;
         const commandId = controlCommandId('graph.patch', receipt.patchId);
-        const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+        const command = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId }))?.doc;
         facts.push({ receipt, producer, command, commandId });
     }
     // Only identical pure replay/schema work is reused in this transaction.

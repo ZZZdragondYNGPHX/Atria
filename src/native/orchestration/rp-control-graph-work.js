@@ -23,7 +23,7 @@ import { readContextRetrievalCompletions } from './context-retrieval-contracts.j
 import { readGraphNodeResult } from './graph-result-contracts.js';
 import { writeAttemptSettlement } from './attempt-settlement.js';
 import { ConflictError } from '../../storage/errors.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertRpFanoutPlannerPatch, readRpFanoutPaidModelNodes } from './rp-fanout-planner-contracts.js';
 
@@ -84,7 +84,7 @@ export class RpControlGraphWork {
             || !equal(reviewer.inputRefs[0]?.controlGraph, bundle) || reviewer.inputDigest !== hash(reviewer.inputRefs)
             || !equal(review.evidenceRefs, bundle.evidenceRefs)) fail('native_orchestration_review_producer_denied');
         const commandId = controlCommandId('review.decide', review.receiptId);
-        const command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+        const command = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId }))?.doc;
         const detail = { reviewAttemptId: reviewer.attemptId, decision: review.decision,
             targetAttemptIds: [...review.targetAttemptIds].sort(), reasonCode: review.reasonCode, evidenceRefs: review.evidenceRefs };
         if (!command || command.schemaVersion !== 1 || command.commandId !== commandId || command.target !== root.runId

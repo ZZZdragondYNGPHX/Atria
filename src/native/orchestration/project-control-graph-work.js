@@ -22,7 +22,7 @@ import { graphPlannerControlRef, graphPlannerReceiptId, readGraphPlannerCompleti
 import { assertProjectControlWork } from './project-quality-contracts.js';
 import { readProjectControlInputs, projectControlItems, projectJudgeReaderOptions } from './project-control-input-contracts.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { ReviewController, reviewReceiptId } from './review-controller.js';
 import { graphReviewModelReceiptId, graphReviewControlRef, readGraphReviewCompletion, readReviewablePlannerCompletion, readReviewableFanoutCompletion, readReviewableDelegationCompletion } from './graph-review-completion.js';
 import { graphJudgeModelReceiptId, graphJudgeControlRef, readGraphJudgeCompletion } from './graph-judge-completion.js';
@@ -203,7 +203,7 @@ export class ProjectControlGraphWork {
                 } }).propose(handle, { expectedStateVersion: root.stateVersion, patch });
             } catch (error) {
                 if (error.code !== 'storage_commit_unknown') throw error;
-                const saved = await runs.engine.withTransaction(handle, tx => checkedRecord(tx, controlRecordKey(handle, runId, 'patch', patch.patchId)));
+                const saved = await runs.engine.withTransaction(handle, tx => tx.getResource(controlRecordKey(handle, runId, 'patch', patch.patchId)));
                 if (!saved || saved.doc.payloadHash !== patch.payloadHash) throw error;
                 return { outcome: { patchReceipt: saved.doc } };
             }

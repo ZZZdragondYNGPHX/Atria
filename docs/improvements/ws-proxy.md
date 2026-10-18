@@ -60,7 +60,7 @@ The WS proxy has multiple built-in robustness mechanisms:
 
 ### Heartbeat Keep-Alive
 
-After the connection is established, the client and server periodically exchange heartbeat messages to ensure the connection remains active. If either side hasn't received a heartbeat for an extended period, it will proactively check the connection status.
+After the connection is established, the client and server periodically exchange heartbeat messages to ensure the connection remains active.
 
 ### Automatic Reconnection on Disconnect
 
@@ -72,7 +72,7 @@ If the connection is briefly interrupted during AI generation, the WS proxy supp
 
 ## Internal Dispatch Mechanism
 
-The WS proxy is two-staged: **the upgrade is gated by a single-use ticket**, and **dispatched requests run through `app.handle()` in-process**. Application-layer middleware (cookieSession, CSRF, login checks) still runs on every dispatched request, but Basic Auth — an HTTP-only gate — is verified once at ticket issuance, so the WS channel itself becomes the auth boundary.
+The WS proxy is two-staged: **the upgrade is gated by a single-use ticket**, and **dispatched requests run through `app.handle()` in-process**.
 
 ```d2
 direction: down
@@ -114,27 +114,11 @@ Native browser `WebSocket` does not let JavaScript set HTTP headers, so the upgr
 
 1. **Mint a ticket.** The client `POST`s to `/api/ws-ticket`, which is mounted in `setupPrivateEndpoints` and therefore protected by the full HTTP middleware stack: Basic Auth, cookieSession, setUserData, requireLogin, CSRF. The server returns `{ ticket }` — a 64-character hex string from `crypto.randomBytes(32)`, recorded in an in-process `Map` with a 30-second TTL.
 2. **Carry it on upgrade.** The client opens `new WebSocket('/ws/proxy', [`atria-ws-ticket.${ticket}`])`. The browser writes the value into `Sec-WebSocket-Protocol`.
-3. **Validate at upgrade.** `server.on('upgrade')` extracts the ticket and calls `consumeTicket()`, which atomically validates and removes it (single-use). On failure the proxy writes `HTTP/1.1 401` and destroys the socket.
+3. On failure the proxy writes `HTTP/1.1 401` and destroys the socket.
 4. **Echo the protocol.** `wss.handleUpgrade` invokes the configured `handleProtocols` callback, which selects the same `atria-ws-ticket.<ticket>` string back; `ws` writes it into the `101 Switching Protocols` response so the handshake completes.
 5. **Build a mock request.** `startJob` constructs an `IncomingMessage` over a `Readable` socket (Node's internal `_destroy`/`eos` plumbing requires a real Readable), pushes the body, and pushes `null` to signal end-of-body.
 6. **Mark dispatched.** The mock request is tagged with the `WS_PROXY_AUTH_BYPASS` Symbol exported from `basicAuth.js`. The Symbol is module-scoped, so headers / query / body fields can never set a same-keyed property on the request object.
-7. **`app.handle(req, res)`.** The request flows through every Express middleware: cookieSession parses the cookie, setUserData populates `request.user`, CSRF validates the token, requireLogin gates by login state, and basicAuth — seeing the Symbol — short-circuits.
 8. **Stream responses.** A mock `ServerResponse` (over a `Writable` sink) intercepts `writeHead` / `setHeader` / `write` / `end` and forwards them through the WS tunnel as `{ type: "head" }` / `{ type: "chunk" }` / `{ type: "end" }` messages.
-
-### Security boundary
-
-| Threat | HTTP path today | Ticket scheme |
-|---|---|---|
-| Anonymous caller | basicAuth blocks | `/api/ws-ticket` blocked by basicAuth — no ticket |
-| Stolen cookie alone | basicAuth blocks (no Auth header) | `/api/ws-ticket` blocked by basicAuth — no ticket |
-| Stolen basicAuth alone | requireLogin blocks (no session) | `/api/ws-ticket` blocked by requireLogin — no ticket |
-| Both stolen | full access | full access — no new attack surface |
-| Ticket in transit (MITM) | n/a | 30 s TTL + single-use, infeasible over HTTPS |
-| Ticket replay | n/a | single-use, deleted on consume |
-
-- **Tickets do not carry user identity.** They authorize *channel access* only. Per-user identity is decided on every dispatched request by `cookieSession` + `setUserDataMiddleware` + `requireLoginMiddleware`. A stolen ticket gives an attacker exactly nothing if they don't also have a valid login session — and if they have one, they could mint their own ticket anyway.
-- **The Symbol cannot be forged.** `WS_PROXY_AUTH_BYPASS` is a module-private `Symbol`; no header, query parameter, or body field can install a same-key property on the request object.
-- **Application-layer middleware still runs.** cookieSession, CSRF, setUserData, and requireLogin gate every dispatched request regardless of the bypass marker. Unauthenticated callers — even those holding a valid ticket — are still rejected.
 
 ### Connection Robustness
 
@@ -142,7 +126,6 @@ Native browser `WebSocket` does not let JavaScript set HTTP headers, so the upgr
 - **Stream offset recovery**: If the connection briefly drops mid-generation, the client can reconnect and resume from the breakpoint
 - **Job cleanup**: Stale jobs are detected via the `lastActivity` timestamp rather than `createdAt`, ensuring active long-running generations are never killed by accident
 - **Re-mint ticket on reconnect**: Each reconnection first calls `POST /api/ws-ticket` for a fresh ticket; the old ticket has already been consumed and cannot be reused.
-
 
 ## Use Cases
 

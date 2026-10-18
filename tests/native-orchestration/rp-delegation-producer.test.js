@@ -5,7 +5,7 @@ import { rpDelegationFixture, runDelegationMetadata } from './helpers/rp-delegat
 import { RP_MODEL_TEXT } from './helpers/rp-model-fixture.js';
 import { inspectNativeRpDelegationIdentity, inspectNativeRpDelegation } from '../../src/native/orchestration/native-rp-generation.js';
 import { ContextPort } from '../../src/native/orchestration/context-port.js';
-import { checkedRecord } from '../../src/native/orchestration/plan-repository.js';
+
 import { readAttempt, controlRecordKey, runGuard } from '../../src/native/orchestration/controller-common.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { nativeTaskScheduler } from '../../src/native/task-scheduler.js';
@@ -88,7 +88,7 @@ describe.each(harnesses)('$name original RP delegated Model', ({ make }) => {
             expect(parent.resultRefs).toEqual([]); expect(child.resultRefs).toEqual([result.resultRef]); expect(parent.outputClaims).toEqual([]);
             await f.h.engine.withTransaction(f.h.handle, async tx => {
                 expect((await readAttempt(tx, f.h.handle, parent, identity.parentAttemptId)).doc.status).toBe('running');
-                expect((await checkedRecord(tx, controlRecordKey(f.h.handle, child.runId, 'effect', result.effectId))).doc.status).toBe('confirmed');
+                expect((await tx.getResource(controlRecordKey(f.h.handle, child.runId, 'effect', result.effectId))).doc.status).toBe('confirmed');
             });
             const operation = await stateOf(f), compute = operation.compute;
             expect(Object.keys((await f.control.status(f.h.handle, f.controlId)).operations)).toHaveLength(1);

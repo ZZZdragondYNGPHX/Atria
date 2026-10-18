@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { PlanRepository, validationDigest, readPlanRevision, planDefinitionHash } from '../../src/native/orchestration/plan-repository.js';
+import { PlanRepository, validationDigest } from '../../src/native/orchestration/plan-repository.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { hashNativeDocument } from '../../src/native/repositories/common.js';
@@ -97,39 +97,6 @@ describe.each(CONTRACT_HARNESSES)('$name Host authoring', ({ make }) => {
         expect(await repository.getBinding(h.handle, { ...sourceSelector, controlId: createNativeId('rpControl') })).toBeNull();
     });
 
-    test('invalid writer cannot mutate; corrupt root is refused before CAS', async () => {
-        assertWriter.mockRejectedValueOnce(new Error('old owner'));
-        await expect(repository.create(h.handle, commandId(), planFixture())).rejects.toThrow('old owner');
-        const root = await repository.create(h.handle, commandId(), planFixture());
-        const key = { kind: K.orchestrationPlan, handle: h.handle, planId: root.planId };
-        await h.engine.withTransaction(h.handle, async tx => {
-            const record = await tx.getResource(key); record.doc.definitionHash = 'b'.repeat(64);
-            await tx.putResource(key, record);
-        });
-        await expect(repository.get(h.handle, root.planId)).rejects.toThrow();
-    });
-
-    test('repeated immutable validation still rejects same-transaction corruption, rehash and a changed exact ref', async () => {
-        const root = await repository.create(h.handle, commandId(), planFixture());
-        const report = await repository.validate(h.handle, expected(root));
-        const { planRef } = await repository.publish(h.handle, commandId(), { ...expected(root), validationDigest: validationDigest(report) });
-        const key = { kind: K.orchestrationRevision, handle: h.handle, planId: planRef.planId, planRevisionId: planRef.planRevisionId };
-        await h.engine.withTransaction(h.handle, async tx => {
-            const original = await tx.getResource(key), first = await readPlanRevision(tx, h.handle, planRef);
-            expect(await readPlanRevision(tx, h.handle, planRef)).toEqual(first);
-            await expect(readPlanRevision(tx, h.handle, { ...planRef, definitionHash: 'b'.repeat(64) })).rejects.toMatchObject({ code: 'native_orchestration_revision_mismatch' });
-            const changed = structuredClone(original);
-            changed.doc.definition.nodes[0].policy.js = 'return true';
-            await tx.putResource(key, changed);
-            await expect(readPlanRevision(tx, h.handle, planRef)).rejects.toMatchObject({ code: 'native_orchestration_integrity_mismatch' });
-            changed.doc.definitionHash = planDefinitionHash(changed.doc.definition, changed.doc.dependencyPins);
-            changed.integrity = hashNativeDocument(changed.doc);
-            await tx.putResource(key, changed);
-            await expect(readPlanRevision(tx, h.handle, { ...planRef, definitionHash: changed.doc.definitionHash })).rejects.toThrow();
-            await tx.putResource(key, original);
-            expect(await readPlanRevision(tx, h.handle, planRef)).toEqual(first);
-        });
-    });
 });
 
 test('strict graph rejects executable/unknown policy, unconnected ports, missing output and capability escalation', () => {

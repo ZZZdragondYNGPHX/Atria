@@ -2,7 +2,7 @@ import { assertNativeId } from '../identity.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { readAttempt, controlCommandId, controlRecordKey, assertAttemptConsumable } from './controller-common.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
 import { readEffect } from './effect-contracts.js';
@@ -21,11 +21,11 @@ export const graphPlannerControlRef = (runId, attemptId) => ({ kind: 'graph_plan
 export async function readGraphPlannerCompletion(tx, handle, root, attemptId, { verifyControlWork, recipient = null }) {
     if (typeof verifyControlWork !== 'function') invalid();
     const { doc: producer } = await readAttempt(tx, handle, root, attemptId), receiptId = graphPlannerReceiptId(root.runId, attemptId);
-    const receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
+    const receipt = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
     if (!receipt) return null;
     assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'producerAttemptId', 'sourceBindingDigest', 'grantDigest',
         'modelEffectId', 'modelReceiptRef', 'modelPayloadHash', 'responseText', 'patchId', 'patchIntegrity', 'localWork', 'decisionSeq', 'createdAt'], 'Graph Planner receipt');
-    const patch = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'patch', receipt.patchId)))?.doc;
+    const patch = (await tx.getResource(controlRecordKey(handle, root.runId, 'patch', receipt.patchId)))?.doc;
     if (!patch?.accepted) invalid();
     const revisions = await readTaskGraphRevisions(tx, handle, root, [producer.graphRevision, patch.previousGraphRevision, patch.newGraphRevision]);
     const before = revisions.get(producer.graphRevision), node = before.graph.nodes.find(node => node.nodeId === producer.nodeId);
@@ -81,7 +81,7 @@ export async function readGraphPlannerCompletion(tx, handle, root, attemptId, { 
     const proposal = { schemaVersion: 1, patchId: patch.patchId, runId: root.runId, producerAttemptId: producer.attemptId, expectedEpoch: producer.epoch,
         expectedGraphRevision: patch.previousGraphRevision, operations: patch.appliedOperations, reasonRefs: patch.reasonRefs, payloadHash: patch.payloadHash };
     if (graphPatchHash(proposal) !== patch.payloadHash) invalid();
-    const commandId = controlCommandId('graph.patch', patch.patchId), command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+    const commandId = controlCommandId('graph.patch', patch.patchId), command = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId }))?.doc;
     if (!command || command.operation !== 'runs.control.graph.patch' || command.target !== root.runId
         || command.payloadHash !== hash({ operation: command.operation, body: { runId: root.runId, operation: 'graph.patch', detail: proposal } })
         || !equal(command.outcome?.patchReceipt, patch)) invalid();

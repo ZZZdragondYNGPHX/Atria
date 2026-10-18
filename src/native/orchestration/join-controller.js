@@ -2,7 +2,7 @@ import { ConflictError } from '../../storage/errors.js';
 import { assertNativeId } from '../identity.js';
 import { assertObject, assertCounter } from '../../../public/shared/native-orchestration-contracts.js';
 import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument, putImmutable } from '../repositories/common.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { controlCommandId, controlRecordKey, graphReachable, readAttempt, assertAttemptCurrent, assertAttemptConsumable } from './controller-common.js';
 import { readAttemptSettlement, writeAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 import { admitGraphEdges } from './graph-costs.js';
@@ -115,14 +115,14 @@ export class JoinController {
         assertNativeId(joinId, 'orchestrationJoin');
         return this.runs.control(handle, controlCommandId('join.settle', joinId), { ...guard, operation: 'join.settle', detail: { joinId } }, async ({ tx, root, now }) => {
             assertLive(root);
-            const stored = await checkedRecord(tx, barrierKey(handle, root.runId, joinId));
+            const stored = await tx.getResource(barrierKey(handle, root.runId, joinId));
             if (!stored) throw new TypeError('Join membership was not frozen');
             const barrier = stored.doc;
             assertObject(barrier, ['schemaVersion', 'joinId', 'runId', 'fanoutAttemptId', 'nodeAttemptId', 'epoch', 'graphRevision', 'memberAttemptIds', 'memberEdges', 'fanoutFrameRef', 'sourceBindingDigest', 'parentBudgetRef', 'policy', 'quorum', 'deadlineAt', 'frozenSeq', 'createdAt'], 'JoinBarrier');
             if (barrier.fanoutFrameRef !== null) {
                 assertObject(barrier.fanoutFrameRef, ['receiptId', 'integrity'], 'fanoutFrameRef');
                 const frame = await readFanoutFrame(tx, handle, root, barrier.fanoutAttemptId);
-                if (!frame || frame.receiptId !== barrier.fanoutFrameRef.receiptId || hashNativeDocument(frame) !== barrier.fanoutFrameRef.integrity) throw new TypeError('Join FanoutFrame reference is unavailable');
+                if (!frame || frame.receiptId !== barrier.fanoutFrameRef.receiptId) throw new TypeError('Join FanoutFrame reference is unavailable');
             }
             const joinRecord = await readAttempt(tx, handle, root, barrier.nodeAttemptId), join = joinRecord.doc;
             await assertAttemptCurrent(tx, handle, root, join);

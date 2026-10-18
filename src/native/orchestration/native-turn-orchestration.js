@@ -21,7 +21,7 @@ import { hashNativeDocument as hash, cloneNativeDocument, putImmutable, putMutab
 import { assertObject, assertCounter, assertPlanRef, assertSourceSelector, assertResultPolicy, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { hasRetainedOrchestrationCompute } from '../../../public/shared/native-compute-budget.js';
 import { createOrchestrationAuthoringService } from './authoring-service.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { createOrchestrationExecutionService } from './execution-service.js';
 import { AttemptController } from './attempt-controller.js';
 import { ContextPort } from './context-port.js';
@@ -299,7 +299,7 @@ export class NativeNarratorOrchestrationAuthority {
             for (const entryPointId of [base.session.entryPointId, null]) {
                 const selector = { domain: 'native_session', sessionId: base.session.sessionId, entryPointId };
                 const bindingId = hash(selector);
-                const row = await checkedRecord(tx, { kind: K.orchestrationBinding, handle, bindingId });
+                const row = await tx.getResource({ kind: K.orchestrationBinding, handle, bindingId });
                 if (!row) continue;
                 const binding = row.doc;
                 assertObject(binding, ['schemaVersion', 'bindingId', 'sourceSelector', 'planRef', 'version', 'changedBy', 'changedAt'], 'PlanBinding');
@@ -1910,7 +1910,7 @@ export class NativeNarratorOrchestrationAuthority {
             } catch (error) {
                 if (error.code !== 'storage_commit_unknown') throw error;
                 const receiptId = 'oreceipt_' + hash({ effectId: state.outputEffectId, observationId: state.outputObservation.observationId }).slice(0, 32);
-                const saved = await this.engine.withTransaction(handle, tx => checkedRecord(tx, controlRecordKey(handle, runId, 'receipt', receiptId)));
+                const saved = await this.engine.withTransaction(handle, tx => tx.getResource(controlRecordKey(handle, runId, 'receipt', receiptId)));
                 if (!saved) return committed.snapshot;
             }
             await this.#finishSessionOutput(handle, output, committed.committed);

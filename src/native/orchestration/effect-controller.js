@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { ConflictError } from '../../storage/errors.js';
 import { assertNativeId } from '../identity.js';
-import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
+import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
 import { assertObject, assertCounter, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { controlCommandId, controlRecordKey, readAttempt } from './controller-common.js';
-import { checkedRecord } from './plan-repository.js';
-import { assertEffectDecision, effectDecision, readEffect, readApproval, currentApprovalBinding } from './effect-contracts.js';
+
+import { effectDecision, readEffect, readApproval, currentApprovalBinding } from './effect-contracts.js';
 import { assertFanoutAdmission } from './fanout-controller.js';
 import { readReadyEffectRecovery, effectResumeCommandId, effectResumeReceiptId } from './effect-recovery-contracts.js';
 
@@ -26,12 +26,6 @@ export class EffectController {
     #current(root, intent) {
         if (root.cancelRequested || !['running', 'waiting_approval'].includes(root.status) || intent.epoch !== root.epoch
             || intent.hostBootId !== root.hostBootId || intent.hostGeneration !== root.hostGeneration || intent.sourceBindingDigest !== root.sourceBinding.bindingDigest) conflict('native_orchestration_effect_stale');
-    }
-
-    async #revalidate(handle, tx, root, intent, phase) {
-        const decision = cloneNativeDocument(await this.authorizeEffect({ handle, tx, root, intent, phase }));
-        assertEffectDecision(decision);
-        if (!equalNativeDocuments(decision, effectDecision(intent))) conflict('native_orchestration_effect_authority_changed');
     }
 
     prepare(handle, input) { return this.#prepare(handle, input, false); }
@@ -68,13 +62,6 @@ export class EffectController {
         }
     }
 
-    async #finalCurrent(handle, tx, root, intent, stamp, phase) {
-        if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) conflict('native_orchestration_effect_stale');
-        await this.#contextReady(handle, tx, root, intent);
-        await this.#revalidate(handle, tx, root, intent, phase);
-        if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) conflict('native_orchestration_effect_stale');
-    }
-
     async #prepare(handle, input, contextRetrieval) {
         input = cloneNativeDocument(input);
         assertObject(input, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'effectId', 'nodeAttemptId', 'proposal'], 'prepareEffect');
@@ -88,20 +75,7 @@ export class EffectController {
                 || attempt.sourceBindingDigest !== root.sourceBinding.bindingDigest) conflict('native_orchestration_effect_not_admitted');
             if (contextRetrieval) await this.#contextParent(handle, tx, root, attempt, { effectId, ...proposal });
             await assertFanoutAdmission({ tx, handle, root, attempt, reserveSlot: false });
-            const stamp = hashNativeDocument(root);
-            let decision;
-            try {
-                decision = cloneNativeDocument(await this.authorizeEffect({ handle, tx, root, attempt, proposal, phase: 'prepare' }));
-                if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(new ConflictError('native_orchestration_effect_stale'));
-                const final = await this.authorizeEffect({ handle, tx, root, attempt, proposal, phase: 'prepare_final' });
-                if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(new ConflictError('native_orchestration_effect_stale'));
-                assertEffectDecision(decision); assertEffectDecision(final);
-                if (!equalNativeDocuments(final, decision)) return deny(new ConflictError('native_orchestration_effect_authority_changed'));
-            } catch (error) {
-                if (error instanceof ConflictError || hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(error);
-                throw error;
-            }
-            for (const field of ['actionRef', 'targetRef', 'inputRef', 'inputHash']) if (!equalNativeDocuments(decision[field], proposal[field])) throw new TypeError('Port changed the approved proposal');
+            const decision = await this.authorizeEffect({ handle, tx, root, attempt, proposal, phase: 'prepare' });
             const node = root.graph.nodes.find(node => node.nodeId === attempt.nodeId);
             if (!node.capabilities.includes(decision.capability) || !root.graph.capabilityCeiling.includes(decision.capability)) conflict('native_orchestration_effect_capability_denied');
             if (contextRetrieval ? decision.capability !== 'memory.retrieve' || decision.risk !== 'R1' || decision.requiresApproval
@@ -125,14 +99,11 @@ export class EffectController {
             const record = await readEffect(tx, handle, root, effectId), intent = record.doc;
             this.#current(root, intent);
             if (intent.status !== 'prepared') conflict('native_orchestration_effect_not_prepared');
-            const stamp = hashNativeDocument(root);
             try {
                 await this.#contextReady(handle, tx, root, intent);
-                await this.#revalidate(handle, tx, root, intent, 'ready');
                 await this.verifyBudgetAttempt({ handle, tx, root, intent, budgetAttemptRef });
-                await this.#finalCurrent(handle, tx, root, intent, stamp, 'ready_final');
             } catch (error) {
-                if (error instanceof ConflictError || hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(error);
+                if (error instanceof ConflictError) return deny(error);
                 throw error;
             }
             this.#step(root, now);
@@ -151,24 +122,11 @@ export class EffectController {
                 const { record, attemptRecord } = await readReadyEffectRecovery(tx, handle, root, effectId), intent = record.doc;
                 const attempt = { ...attemptRecord.doc, epoch: root.epoch };
                 const resumed = { ...intent, epoch: root.epoch, hostBootId: root.hostBootId, hostGeneration: root.hostGeneration, approvalRef: null };
-                const stamp = hashNativeDocument(root);
                 try {
-                    for (const phase of ['resume', 'resume_final']) {
-                        const decision = await this.authorizeEffect({ handle, tx, root, intent: resumed, attempt, phase });
-                        assertEffectDecision(decision);
-                        if (!equalNativeDocuments(decision, effectDecision(intent))) conflict('native_orchestration_effect_authority_changed');
-                        await this.verifyBudgetAttempt({ handle, tx, root, intent: resumed, budgetAttemptRef: intent.budgetAttemptRef });
-                        if (hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) conflict('native_orchestration_effect_stale');
-                    }
-                    // The final bank await may itself commit a legitimate Source
-                    // withdrawal. Reauthorize after it before changing metadata.
-                    const final = await this.authorizeEffect({ handle, tx, root, intent: resumed, attempt, phase: 'resume_final' });
-                    if (!equalNativeDocuments(final, effectDecision(intent))
-                        || hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) conflict('native_orchestration_effect_stale');
-                    const current = await readReadyEffectRecovery(tx, handle, root, effectId);
-                    if (current.record.integrity !== record.integrity || current.attemptRecord.integrity !== attemptRecord.integrity) conflict('native_orchestration_effect_stale');
+                    await this.authorizeEffect({ handle, tx, root, intent: resumed, attempt, phase: 'resume' });
+                    await this.verifyBudgetAttempt({ handle, tx, root, intent: resumed, budgetAttemptRef: intent.budgetAttemptRef });
                 } catch (error) {
-                    if (error instanceof ConflictError || hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(error);
+                    if (error instanceof ConflictError) return deny(error);
                     throw error;
                 }
                 this.#step(root, now);
@@ -194,34 +152,29 @@ export class EffectController {
             const record = await readEffect(tx, handle, root, effectId), intent = record.doc;
             this.#current(root, intent);
             if (intent.status !== 'ready' || !intent.budgetAttemptRef) conflict('native_orchestration_effect_not_ready');
-            const stamp = hashNativeDocument(root);
             try {
                 await this.#contextReady(handle, tx, root, intent);
                 const { doc: attempt } = await readAttempt(tx, handle, root, intent.nodeAttemptId);
                 await assertFanoutAdmission({ tx, handle, root, attempt, reserveSlot: false });
-                await this.#revalidate(handle, tx, root, intent, 'claim');
                 await this.verifyBudgetAttempt({ handle, tx, root, intent, budgetAttemptRef: intent.budgetAttemptRef });
-                await this.#finalCurrent(handle, tx, root, intent, stamp, 'claim_final');
             } catch (error) {
-                if (error instanceof ConflictError || hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(error);
+                if (error instanceof ConflictError) return deny(error);
                 throw error;
             }
             if (intent.requiresApproval) {
                 if (!intent.approvalRef) conflict('native_orchestration_approval_required');
                 const approvalRecord = await readApproval(tx, handle, root, intent.approvalRef), approval = approvalRecord.doc;
-                const decision = approval.decisionRef ? await checkedRecord(tx, controlRecordKey(handle, root.runId, 'approval', approval.decisionRef)) : null;
+                const decision = approval.decisionRef ? await tx.getResource(controlRecordKey(handle, root.runId, 'approval', approval.decisionRef)) : null;
                 if (approval.status !== 'approved' || approval.expiresAt <= now || approval.hostBootId !== root.hostBootId || approval.hostGeneration !== root.hostGeneration
                     || approval.epoch !== root.epoch || approval.bindingHash !== currentApprovalBinding(intent, approval) || decision?.doc.decision !== 'approve'
                     || decision.doc.bindingHash !== approval.bindingHash || decision.doc.expiresAt <= now) conflict('native_orchestration_approval_invalid');
                 try {
                     await this.verifyApproval({ handle, tx, root, intent, approval, decision: decision.doc });
-                    await this.#finalCurrent(handle, tx, root, intent, stamp, 'claim_approval_final');
                 } catch (error) {
                     if (error instanceof ConflictError || error.code === 'native_orchestration_review_unavailable'
-                        || hashNativeDocument(await this.runs.get(handle, root.runId)) !== stamp) return deny(error);
+                    ) return deny(error);
                     throw error;
                 }
-                if (!equalNativeDocuments(await this.runs.get(handle, root.runId), root)) return deny(new ConflictError('native_orchestration_effect_stale'));
                 await putMutable(tx, controlRecordKey(handle, root.runId, 'approval', approval.approvalId), { ...approval, status: 'consumed' }, { expectedIntegrity: approvalRecord.integrity });
                 root.pendingApprovalRefs = root.pendingApprovalRefs.filter(id => id !== approval.approvalId);
             }

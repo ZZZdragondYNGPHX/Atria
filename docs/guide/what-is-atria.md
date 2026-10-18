@@ -40,12 +40,9 @@ Before the creative LLM generates a response, multiple agents are automatically 
 
 An AI-assisted editor for SillyTavern-compatible character cards and World Info, with natural-language edits, diff review and iteration history. Native game/project authoring now lives in Build → Atria Studio.
 
-
-
 ### Native Build / Atria Studio / Project Agent
 
-Build is Atria's product authoring entry point. Atria Studio provides the project resource tree, structured editors, UI Builder, Source, Preview, Simulation, Build, Problems, Changes and Git History. Project Agent plans, validates and previews through the same Authoring Operation / Workspace / ChangeSet boundary and stops at explicit human Review.
-
+Build is Atria's product authoring entry point. Atria Studio provides the project resource tree, structured editors, UI Builder, Source, Preview, Simulation, Build, Problems, Changes and Git History.
 
 ### Search Tools
 

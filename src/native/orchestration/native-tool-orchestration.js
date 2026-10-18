@@ -13,7 +13,7 @@ import { createOrchestrationAuthoringService } from './authoring-service.js';
 import { ToolPort } from './tool-port.js';
 import { captureNativeTool, nativeToolDecision } from './native-tool-contracts.js';
 import { readNativeToolCompletion, readNativeToolOutput, nativeToolResult, nativeToolId, assertNativeToolPayload } from './native-tool-output-contracts.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { readEffect, effectDecision } from './effect-contracts.js';
 import { controlCommandId, controlRecordKey, runGuard, readAttempt } from './controller-common.js';
 import { localWorkAttemptId } from './budget-port.js';
@@ -94,7 +94,7 @@ export class NativeToolOrchestrationAuthority {
     async prepare(handle, input) {
         fields(input, ['commandId', 'planRef'], 'Native Tool prepare'); assertNativeId(input.commandId, 'orchestrationCommand');
         return withNativeResourceWrite(handle, input.commandId, async () => {
-            const saved = await this.engine.withTransaction(handle, tx => checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId: input.commandId }));
+            const saved = await this.engine.withTransaction(handle, tx => tx.getResource({ kind: K.orchestrationCommand, handle, commandId: input.commandId }));
             if (saved) {
                 if (saved.doc.operation !== 'runs.start') fail('native_orchestration_command_conflict');
                 const root = await this.execution.runs.get(handle, saved.doc.target);
@@ -193,7 +193,7 @@ export class NativeToolOrchestrationAuthority {
                     const state = this.#states.get(this.#key(handle, root.runId));
                     const accepted = intent.actionRef.protocol === 'a2a' && intent.status === 'confirmed';
                     const completionId = 'oreceipt_' + hash({ effectId, observationId: 'tool.completed:' + effectId }).slice(0, 32);
-                    const receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', completionId)))?.doc;
+                    const receipt = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', completionId)))?.doc;
                     return { runId: root.runId, effectId, status: root.status === 'completed' ? 'completed' : intent.status === 'failed' ? 'failed' : intent.status === 'ready' ? state ? 'ready' : 'recovery_required' : 'unknown',
                         effectStatus: intent.status, accepted, remoteCompleted: false, failureCode: state?.failureCode ?? null,
                         reasonCode: receipt?.reasonCode ?? null,

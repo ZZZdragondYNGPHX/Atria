@@ -4,45 +4,6 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { ConflictError } from '../../storage/errors.js';
 import { readWorldState } from '../state-delta.js';
 
-class InvalidJsonValue extends Error {
-    constructor(reason) { super(reason); this.path = []; }
-}
-
-function assertJsonValue(value, seen = new Set()) {
-    if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
-    if (typeof value === 'number' && Number.isFinite(value)) return;
-    if (typeof value !== 'object') throw new InvalidJsonValue('must contain JSON values only');
-    if (seen.has(value)) throw new InvalidJsonValue('must not contain cycles');
-    seen.add(value);
-    if (Array.isArray(value)) {
-        const length = value.length;
-        let index = 0;
-        try {
-            for (; index < length; index++) if (index in value) assertJsonValue(value[index], seen);
-        } catch (error) {
-            if (error instanceof InvalidJsonValue) error.path.unshift(index);
-            throw error;
-        }
-    } else {
-        // Jest VM modules and plugin/worker boundaries can hand us ordinary
-        // JSON objects from another realm, where direct prototype identity
-        // differs from this realm's Object.prototype. Brand-check instead:
-        // Dates/Maps/Sets/etc. retain distinct tags while cross-realm plain
-        // objects (including null-prototype objects) remain [object Object].
-        if (Object.prototype.toString.call(value) !== '[object Object]') {
-            throw new InvalidJsonValue('must contain plain JSON objects only');
-        }
-        let key;
-        try {
-            for (const entry of Object.entries(value)) { key = entry[0]; assertJsonValue(entry[1], seen); }
-        } catch (error) {
-            if (error instanceof InvalidJsonValue) error.path.unshift(key);
-            throw error;
-        }
-    }
-    seen.delete(value);
-}
-
 function stableJson(value) {
     if (value === null || typeof value !== 'object') return JSON.stringify(value);
     // Preserve the existing canonical bytes (including sparse array slots),
@@ -65,23 +26,14 @@ function stableJson(value) {
     return text + '}';
 }
 
-export function cloneNativeDocument(value, field = 'Native resource') {
-    // Successful validation does not construct or maintain an error path.
-    // Keep the original traversal/getter order; build its exact location only
-    // when an invalid value propagates out of the recursive walk.
-    try { assertJsonValue(value); } catch (error) {
-        if (!(error instanceof InvalidJsonValue)) throw error;
-        const location = field + error.path.map(key => typeof key === 'number' ? `[${key}]` : '.' + key).join('');
-        throw new TypeError(`${location} ${error.message}`);
-    }
+export function cloneNativeDocument(value) {
     return structuredClone(value);
 }
 
 export function serializeNativeDocument(value) {
-    return stableJson(cloneNativeDocument(value));
+    return stableJson(value);
 }
 
-/** Digest admitted JSON bytes; validation belongs at the input/write boundary. */
 export function hashNativeDocument(value) {
     return createHash('sha256').update(stableJson(value)).digest('hex');
 }

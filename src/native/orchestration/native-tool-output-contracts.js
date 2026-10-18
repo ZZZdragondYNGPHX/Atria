@@ -4,7 +4,7 @@ import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readRunControl } from '../run-control.js';
 import { inspectComputeEffectClosure } from '../../../public/shared/native-compute-budget.js';
 import { readEffect, effectDecision } from './effect-contracts.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { controlRecordKey, readAttempt, controlCommandId } from './controller-common.js';
 import { effectBudgetClosure, localWorkAttemptId } from './budget-port.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
@@ -42,7 +42,7 @@ export async function readNativeToolCompletion(tx, handle, root) {
                 || producer.sourceBindingDigest !== root.sourceBinding.bindingDigest || !equal(producer.effectRefs, [effectId])
                 || !equal(producer.inputRefs, [logical]) || producer.inputDigest !== hash([logical])) fail();
             const receiptId = 'oreceipt_' + hash({ effectId, observationId: 'tool.completed:' + effectId }).slice(0, 32);
-            const receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
+            const receipt = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
             const completionBindingDigest = hash({ runId: root.runId, effectId, epoch: intent.epoch, hostBootId: intent.hostBootId,
                 hostGeneration: intent.hostGeneration, sourceBindingDigest: intent.sourceBindingDigest, decision: effectDecision(intent), budgetAttemptRef: intent.budgetAttemptRef });
             const reference = receipt?.dispatchEvidence?.reference, evidence = reference?.evidence, budget = intent.budgetAttemptRef;
@@ -95,12 +95,12 @@ export function assertNativeToolPayload(completion, payload) {
 }
 
 export async function readNativeToolOutput(tx, handle, root, { pendingCommand = false } = {}) {
-    const claimId = nativeToolId('claim', root.runId), claimRow = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'output', claimId));
+    const claimId = nativeToolId('claim', root.runId), claimRow = await tx.getResource(controlRecordKey(handle, root.runId, 'output', claimId));
     if (!claimRow && !root.outputClaims.length) return null;
     const completion = await readNativeToolCompletion(tx, handle, root), claim = claimRow?.doc;
-    const publication = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', nativeToolId('publication', root.runId))))?.doc;
-    const output = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', nativeToolId('output', root.runId))))?.doc;
-    const result = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'result', nativeToolId('result', root.runId)));
+    const publication = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', nativeToolId('publication', root.runId))))?.doc;
+    const output = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', nativeToolId('output', root.runId))))?.doc;
+    const result = await tx.getResource(controlRecordKey(handle, root.runId, 'result', nativeToolId('result', root.runId)));
     if (!completion || !claim || !publication || !output || !result || !completion.costs.closed) fail();
     assertNativeToolPayload(completion, result.doc.payload);
     const attempt = (await readAttempt(tx, handle, root, claim.nodeAttemptId)).doc;
@@ -133,7 +133,7 @@ export async function readNativeToolOutput(tx, handle, root, { pendingCommand = 
         ['native.tool.result', 'result.publish', { effectId: completion.intent.effectId }, { resultRef: root.resultRefs[0] }],
         ...pendingCommand ? [] : [['native.tool.output', 'output.publish', { attemptId: attempt.attemptId }, { claimRef: root.outputClaims[0] }]],
     ]) {
-        const commandId = controlCommandId(namespace, root.runId), command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+        const commandId = controlCommandId(namespace, root.runId), command = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId }))?.doc;
         if (!command || command.operation !== 'runs.control.' + operation || command.target !== root.runId
             || command.payloadHash !== hash({ operation: command.operation, body: { runId: root.runId, operation, detail } })
             || command.outcome.versions?.epoch !== root.epoch || Object.entries(expected).some(([key, value]) => !equal(command.outcome[key], value))) fail();

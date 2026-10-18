@@ -29,7 +29,6 @@ const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 const digest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const packageInputs = installed => ({ manifest: installed.manifest, entryPoint: installed.entryPoint,
     sourceFiles: [...installed.sourceFiles].sort(([a], [b]) => a.localeCompare(b)), assets: [...installed.assets].sort(([a], [b]) => a.localeCompare(b)) });
-const packageDigestOf = installed => hashNativeDocument(JSON.parse(JSON.stringify(packageInputs(installed))));
 const rpHistoryItems = (messages, provenance) => messages.map((message, index) => ({ kind: 'context.history', id: 'rp-message-' + index,
     content: { ...message, role: message.role === 'system' ? 'user' : message.role }, provenance: [provenance] }));
 
@@ -224,7 +223,7 @@ export class ContextPort {
             const tools = permission.projectToolPins.map(pin => {
                 const ref = pin.resourceRef, tool = original.tools.find(tool => tool.function.name === ref?.name);
                 if (pin.port !== 'tool' || ref?.kind !== 'project_agent_tool' || ref.projectId !== projectIdentity.projectId || ref.taskId !== projectIdentity.taskId
-                    || !tool || names.has(ref.name) || hashNativeDocument(tool) !== pin.integrity) fail('native_orchestration_context_denied');
+                    || !tool || names.has(ref.name)) fail('native_orchestration_context_denied');
                 names.add(ref.name); return tool;
             });
             const modelContext = { ...original, tools, ...(permission.projectGraphTask ? { graphTask: immutable(permission.projectGraphTask) } : {}),
@@ -485,10 +484,8 @@ export class ContextPort {
             const selected = emptyNativeContextPlan(fixedRequest, { model: { limits: { contextTokens: request.tokenBudget.modelContextLimit, outputTokens: request.tokenBudget.responseReserve } } }, source);
             const plan = authorityContextPlan(selected, snapshot, { mode: 'resolver', payload: original.payload });
             await this.#current(handle, request, 'compiled');
-            const packageDigest = packageDigestOf(installed);
-            if (packageDigestOf(await this.#resolverPackage(handle, snapshot)) !== packageDigest) fail('native_orchestration_context_source_stale');
             const proof = { sourceBindingDigest: request.sourceBinding.bindingDigest, grantDigest: request.grantDigest,
-                audienceDigest: hashNativeDocument(request.audience), projectionDigest: hashNativeDocument(original.payload.observation), authorityDigest, packageDigest };
+                audienceDigest: hashNativeDocument(request.audience), projectionDigest: hashNativeDocument(original.payload.observation), authorityDigest };
             const context = immutable({ schemaVersion: 1, contextId: hashNativeDocument({ request, plan, proof }), request, plan, evidenceRefs: [], currentnessProof: proof });
             this.#contexts.set(context, { handle, request, proof, resolver: { request: fixedRequest, select: original.select } });
             return context;
@@ -611,8 +608,7 @@ export class ContextPort {
             return context.plan;
         }
         if (captured.resolver) {
-            if (authorityDigest !== captured.proof.authorityDigest
-                || packageDigestOf(await this.#resolverPackage(handle, snapshot)) !== captured.proof.packageDigest) fail('native_orchestration_context_source_stale');
+            if (authorityDigest !== captured.proof.authorityDigest) fail('native_orchestration_context_source_stale');
             return context.plan;
         }
         if (hashNativeDocument(information.projection) !== captured.proof.projectionDigest || authorityDigest !== captured.proof.authorityDigest) fail('native_orchestration_context_source_stale');

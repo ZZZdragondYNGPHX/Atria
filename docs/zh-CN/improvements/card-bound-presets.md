@@ -52,7 +52,7 @@ Prompt Manager、补全预设助手 (CPA)，以及任何最终走到「更新当
 
 ## 原生执行
 
-原生 Agent Plan 使用 Host 验证的精确资源 pin。角色卡绑定预设仍是聊天资产；导入角色卡不会发布或绑定原生 Plan、授予能力或启动工作。卡元数据中的历史编排覆写保持惰性。见[原生 Plan 与 Run](/zh-CN/features/native-orchestration)。
+角色卡绑定预设仍是聊天资产；导入角色卡不会发布或绑定原生 Plan、授予能力或启动工作。卡元数据中的历史编排覆写保持惰性。见[原生 Plan 与 Run](/zh-CN/features/native-orchestration)。
 
 ## 角色卡携带默认人设
 

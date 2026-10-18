@@ -3,7 +3,7 @@ import { assertNativeId } from '../identity.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { rpNativeOutputKey, rpNativeOutputOperationId, assertRpOutputReceipts, rpNarrationPayload } from '../rp-output-protocol.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { controlRecordKey, readAttempt } from './controller-common.js';
 import { readRpNarrationResult } from './rp-narration-result-contracts.js';
 import { readEffect } from './effect-contracts.js';
@@ -35,9 +35,9 @@ export const rpNarrationProviderEffectIds = published => [...new Set([
 /** Historical consistency only; it issues no current body or execution capability. */
 export async function readRpOutput(tx, handle, root) {
     if (root.graph.outputContract.kind !== 'rp_narration' || root.sourceBinding.sourceAuthority !== 'rp_chat' || root.parentRef !== null) return null;
-    const claimId = rpOutputClaimId(root), claimRow = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'output', claimId));
-    const receiptRow = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', rpOutputReceiptId(root.runId)));
-    const closureRow = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', rpOutputClosureId(root.runId)));
+    const claimId = rpOutputClaimId(root), claimRow = await tx.getResource(controlRecordKey(handle, root.runId, 'output', claimId));
+    const receiptRow = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', rpOutputReceiptId(root.runId)));
+    const closureRow = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', rpOutputClosureId(root.runId)));
     if (!claimRow && !receiptRow && !closureRow && !root.outputClaims.length) return null;
     if (!claimRow || !receiptRow || !closureRow || !equal(root.outputClaims, [{ runId: root.runId, claimId }])) invalid();
     const claim = claimRow.doc, receipt = receiptRow.doc, closure = closureRow.doc, domainRef = rpOutputDomainRef(root);
@@ -82,7 +82,7 @@ export async function readRpOutput(tx, handle, root) {
         || !equal(settlement.effectReceiptRefs, [receipt.outputEffectReceiptRef.receiptId])
         || receipt.outputAttemptReceiptRef.receiptId !== attemptReceiptId(root.runId, output.attemptId)) invalid();
     const intent = (await readEffect(tx, handle, root, receipt.outputEffectId)).doc;
-    const control = await checkedRecord(tx, { kind: K.rpRunControl, handle, controlId: domainRef.controlId });
+    const control = await tx.getResource({ kind: K.rpRunControl, handle, controlId: domainRef.controlId });
     if (!control || control.doc.schemaVersion !== 1 || control.doc.controlId !== domainRef.controlId) invalid();
     assertRpOutputReceipts(control.doc);
     const original = control.doc.outputReceipts[claim.outputKey];
@@ -102,7 +102,7 @@ export async function readRpOutput(tx, handle, root) {
         || !equal(intent.inputRef.modelReceiptRef, published.receipt.modelReceiptRef) || !equal(intent.inputRef.inputAnchor, original.inputAnchor)
         || intent.inputRef.controlId !== domainRef.controlId || intent.inputRef.outputKey !== claim.outputKey || intent.inputRef.operationId !== domainRef.operationId
         || !equal(intent.dispatchPolicy, { idempotency: 'domain_key', operationKey: domainRef.operationId, reconcile: 'domain_status' })) invalid();
-    const host = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receipt.outputEffectReceiptRef.receiptId)))?.doc;
+    const host = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receipt.outputEffectReceiptRef.receiptId)))?.doc;
     if (!host) invalid();
     assertObject(host, ['schemaVersion', 'receiptId', 'effectId', 'runId', 'observationId', 'observedEpoch', 'outcome', 'dispatchEvidence', 'remoteOperationRef',
         'domainReceiptRef', 'budgetObservationRef', 'resultRefs', 'sourceRefs', 'reasonCode', 'observedAt'], 'RP Host Effect receipt');
@@ -145,13 +145,13 @@ export async function readRpOutput(tx, handle, root) {
     const edge = root.graph.edges.find(item => item.from.nodeId === published.producer.nodeId && item.to.nodeId === output.nodeId);
     const bindings = edge ? [{ edgeId: edge.edgeId, producerAttemptId: published.producer.attemptId }] : [];
     const traversalId = 'oreceipt_' + hash({ runId: root.runId, bindings, reservedAttemptId: null }).slice(0, 32);
-    const traversal = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', traversalId)))?.doc;
+    const traversal = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', traversalId)))?.doc;
     if (!traversal || !edge || receipt.traversalReceiptRef.receiptId !== traversalId) invalid();
     assertObject(traversal, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'graphRevision', 'bindings', 'producerReceiptRefs',
         'nodeAttemptId', 'inputDigest', 'edgeAdmissionRefs', 'edgeVisits', 'loopIterations', 'decisionSeq', 'createdAt'], 'RP output traversal');
     const edgeId = 'oreceipt_' + hash({ kind: 'edge_admission', runId: root.runId, edgeId: edge.edgeId,
         producerAttemptId: published.producer.attemptId, nodeAttemptId: output.attemptId }).slice(0, 32);
-    const admission = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', edgeId)))?.doc;
+    const admission = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', edgeId)))?.doc;
     const completedLoops = published.producer.inputRefs[0].controlGraph ? published.loopIterations : Math.max(0, published.plannerCompletions.length - 1);
     if (!admission) invalid();
     assertObject(admission, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'epoch', 'graphRevision', 'edgeId', 'producerAttemptId',

@@ -7,7 +7,7 @@ import { assertNativeTurnQuota } from './native-turn-quota.js';
 import { orchestrationComputeAttemptId, inspectComputeChildClosure, inspectComputeEffectClosure, inspectComputeReservation, assertComputeBudget } from '../../../public/shared/native-compute-budget.js';
 import { RpRunControl } from '../rp-run-control.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { readEffect } from './effect-contracts.js';
 import { readProjectOwnedSource } from './project-tool-receipts.js';
 
@@ -139,7 +139,7 @@ export class BudgetPort {
             const check = async active => {
                 const ids = [...new Set(task.attempts.flatMap(attempt => attempt.calls.map(call => call.nativeReceipt?.runId).filter(Boolean)))];
                 for (const runId of ids) {
-                    const root = (await checkedRecord(active, { kind: K.orchestrationRun, handle, runId }))?.doc;
+                    const root = (await active.getResource({ kind: K.orchestrationRun, handle, runId }))?.doc;
                     if (!root || root.ownerRef.handle !== handle || root.cancelRequested || root.status !== 'running'
                         || !equalNativeDocuments(root.budgetAuthorityRef, ref)) continue;
                     try {
@@ -417,7 +417,7 @@ export class BudgetPort {
             || value.effectId !== attempt.orchestration.effectId || attempt.orchestration.ordinal !== 0) fail('native_generation_budget_lane_denied');
         const engine = this.sessionCore.runs.repo._engine;
         await engine.withTransaction(handle, async tx => {
-            const root = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: value.runId }))?.doc;
+            const root = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: value.runId }))?.doc;
             if (!root || root.cancelRequested || root.status !== 'running' || root.parentRef !== null || root.epoch !== value.epoch
                 || root.hostBootId !== value.hostBootId || root.hostGeneration !== value.hostGeneration
                 || hashNativeDocument(root.budgetAuthorityRef) !== value.authorityDigest || root.sourceBinding.sourceAuthority !== 'native_session'

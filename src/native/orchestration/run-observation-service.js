@@ -7,8 +7,8 @@ import { equalNativeDocuments, hashNativeDocument as hash, cloneNativeDocument, 
 import { assertObject, assertCounter, assertSourceSelector } from '../../../public/shared/native-orchestration-contracts.js';
 import { createBindingSourceAuthority } from './binding-source-authority.js';
 import { assertRunAccess } from '../run-control.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
-import { RunRepository, assertRunRoot, TREE_LOGICAL_COUNTERS } from './run-repository.js';
+import { readPlanRevision } from './plan-repository.js';
+import { RunRepository, TREE_LOGICAL_COUNTERS } from './run-repository.js';
 import { BudgetPort } from './budget-port.js';
 import { controlRecordKey, controlCommandId, readAttempt, readAttemptInvalidation, readGraphReviewReceipt } from './controller-common.js';
 import { readEffect, readApproval } from './effect-contracts.js';
@@ -47,7 +47,7 @@ const emptyProviderWork = () => Object.fromEntries(['generation', 'embedding', '
 const reconciliationKey = (handle, root, effectId) => controlRecordKey(handle, root.runId, 'receipt',
     'oreceipt_' + hash({ kind: reconciliationProtocol(root).requestKind, runId: root.runId, epoch: root.epoch, effectId }).slice(0, 32));
 async function readReconciliationRequest(tx, handle, root, effectId) {
-    const record = await checkedRecord(tx, reconciliationKey(handle, root, effectId));
+    const record = await tx.getResource(reconciliationKey(handle, root, effectId));
     if (!record) return null;
     const request = record.doc;
     assertObject(request, ['schemaVersion', 'receiptKind', 'runId', 'epoch', 'effectId', 'commandId', 'decisionSeq', 'createdAt'], 'Reconciliation request');
@@ -80,9 +80,8 @@ export class RunObservationService {
         this.runs = new RunRepository({ engine, projectAgent, admit: async () => { throw new TypeError('Observation cannot admit Runs'); },
             assertWriter: (handle, tx) => engine.nativeHostLifecycle.assertWriter(handle, tx),
             authorize: async ({ handle, body, tx }) => {
-                const row = await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: body.runId });
+                const row = await tx.getResource({ kind: K.orchestrationRun, handle, runId: body.runId });
                 if (!row) throw new NotFoundError('orchestration_run');
-                assertRunRoot(row.doc, handle);
                 await this.#authorize(handle, tx, row.doc);
             } });
     }
@@ -159,9 +158,8 @@ export class RunObservationService {
             if (previous && previous.hostGeneration !== fence.generation) resync();
             const rows = [];
             for (const listed of await tx.listResources({ kind: K.orchestrationRun, handle })) {
-                const root = (await checkedRecord(tx, listed.key))?.doc;
+                const root = (await tx.getResource(listed.key))?.doc;
                 if (!root) throw new TypeError('Missing Run list record');
-                assertRunRoot(root, handle);
                 if (!matches(root, sourceSelector)) continue;
                 await this.#authorize(handle, tx, root);
                 rows.push(root);
@@ -201,7 +199,7 @@ export class RunObservationService {
                             && ['dispatching', 'unknown', 'confirmed'].includes(effect.status)) reconcilable.push(effectId);
                         if (effect.actionRef.kind === 'native_project_commit' && effect.status === 'ready' && effect.dispatchToken === null && effect.budgetAttemptRef
                             && attempt.status === 'waiting_effect' && attempt.effectRefs.length === 1 && (recoveryRequired || effect.epoch < root.epoch)
-                            && !await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId: controlCommandId('effect.claim', effectId) })) resumable.push(effectId);
+                            && !await tx.getResource({ kind: K.orchestrationCommand, handle, commandId: controlCommandId('effect.claim', effectId) })) resumable.push(effectId);
                     }
                 }
                 for (const id of root.pendingApprovalRefs) {
@@ -212,7 +210,7 @@ export class RunObservationService {
                 }
                 const events = [];
                 for (const row of await tx.listResources({ kind: K.orchestrationRecord, handle, runId, recordType: 'event' })) {
-                    const event = (await checkedRecord(tx, row.key))?.doc;
+                    const event = (await tx.getResource(row.key))?.doc;
                     if (!event || event.runId !== runId || event.schemaVersion !== 1 || !Number.isSafeInteger(event.eventSeq)
                         || event.eventSeq < 0 || event.eventSeq > root.eventSeq || row.key.recordId !== 'event:' + event.eventSeq)
                         throw new TypeError('Invalid Run timeline event');
@@ -272,7 +270,7 @@ export class RunObservationService {
                             && !['completed', 'partial', 'failed', 'cancelled', 'stale'].includes(root.status) && reconcilable.length === 1,
                         approve: false }, createdAt: root.createdAt, updatedAt: root.updatedAt };
                 if (visibilityDigest !== await this.#authorize(handle, tx, root)) resync();
-                const current = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId }))?.doc;
+                const current = (await tx.getResource({ kind: K.orchestrationRun, handle, runId }))?.doc;
                 if (!equalNativeDocuments(current, root)) resync();
                 return { view: { root, visibilityDigest, hostGeneration: fence.generation, payload: cloneNativeDocument(payload) } };
             } catch (error) {

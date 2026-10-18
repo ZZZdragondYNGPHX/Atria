@@ -88,7 +88,7 @@ See [Preset System](/basics/presets) and [Card-Bound Presets and Personas](/impr
 
 ### Native Plans
 
-Importing a character card does not create an executable orchestration configuration. Use [Agents → Plans](/features/native-orchestration) to validate and publish a Plan with explicit resource pins and a current Binding. Historical card metadata is preserved without executing the retired protocol.
+Importing a character card does not create an executable orchestration configuration. Historical card metadata is preserved without executing the retired protocol.
 
 ### Memory Graph Schema Override
 

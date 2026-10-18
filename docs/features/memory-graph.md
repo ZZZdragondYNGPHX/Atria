@@ -41,9 +41,9 @@ You can throttle extraction with the **Extraction Interval** setting — for exa
 
 ### Smart recall
 
-Hybrid Memory is the only recall path. It resolves the current requester, Information exposure, Branch, active Variant and time before constructing any lexical, graph or optional vector candidates. Missing sources or grants fail closed; optional retrieval failures keep the legal lexical/graph path.
+Hybrid Memory is the only recall path. It resolves the current requester, Information exposure, Branch, active Variant and time before constructing any lexical, graph or optional vector candidates.
 
-Chinese references, verified aliases and source-backed commitments supply bounded query seeds. Coverage packing preserves complete source groups and competing assertions within the Context budget. Retrieval does not establish World truth, Actor recollection or promise completion, and ordinary turns add no fixed recall LLM call.
+ Retrieval does not establish World truth, Actor recollection or promise completion, and ordinary turns add no fixed recall LLM call.
 
 Enable **Memory** and **Recall** to consume permitted history. **Source writes** independently opts into source-backed extraction; switching it off preserves readable history. Configure optional exact Embedding and rerank revisions in **Runtime → Retrieval**, then **Memory → Maintenance**. Old LLM/RAG mode, recall presets and query rewrite controls have been removed.
 
@@ -56,7 +56,6 @@ Compression is recursive. When summaries at one tier exceed the threshold, they 
 Compression uses its existing Memory controls:
 
 **Built-in compression** — When the **Auto compression** toggle in the Memory panel is on, Memory Graph runs a one-shot LLM summarize call once leaf events accumulate past the threshold.
-
 
 ## What it actually looks like
 
@@ -209,7 +208,7 @@ Recall injection has its own placement settings:
 
 ### Result reuse
 
-Swipes and regeneration revalidate the current source, variant and Information domain. HM1 performs bounded retrieval again; it does not reuse generated prose or promise candidate caching.
+ HM1 performs bounded retrieval again; it does not reuse generated prose or promise candidate caching.
 
 ## Configuration Reference
 
@@ -255,7 +254,6 @@ Swipes and regeneration revalidate the current source, variant and Information d
 
 1. Resolve the original source and Information authority before candidate/index IO.
 2. Build deterministic legal query seeds, lexical ranking and bounded typed graph lanes; add vector ranking only when configured. Fuse lanes by RRF. Optional rerank failure stays inside Hybrid.
-3. Pack complete evidence groups with typed historical/assertion hints, independent competing sources and explicit missing-group diagnostics. Revalidate at asynchronous return and Context consumption; budget rejection does not truncate a source chain.
 
 This HM1 path does not enable PPR, LLM query rewrite, candidate caching, delta indexing, cognition or forgetting writers.
 

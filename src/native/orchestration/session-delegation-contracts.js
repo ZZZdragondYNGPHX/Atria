@@ -7,7 +7,7 @@ import { assertSessionJudgeSelections } from './session-judge-contracts.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { controlRecordKey, readAttempt } from './controller-common.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { audienceContextPin, assertAudienceRunCapture } from './audience-source-contracts.js';
@@ -29,13 +29,13 @@ import { sessionPlannerProgressFingerprint, sessionReplanScope } from './session
 const invalid = () => { throw new TypeError('Invalid Session delegation facts'); };
 
 async function durableParent(tx, handle, supplied) {
-    const actual = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: supplied.runId }))?.doc;
+    const actual = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: supplied.runId }))?.doc;
     if (!actual) invalid();
     if (equal(actual, supplied)) return actual;
     // RunRepository checks original output facts before publishing its next
     // Root. Accept only that exact prospective Session output step; lineage
     // still comes from the actual original row, never a reconstructed Host.
-    const output = (await checkedRecord(tx, controlRecordKey(handle, actual.runId, 'receipt',
+    const output = (await tx.getResource(controlRecordKey(handle, actual.runId, 'receipt',
         actual.parentRef ? taskLocalReceiptId(actual.runId) : sessionOutputReceiptId(actual.runId))))?.doc;
     if (!output || output.receiptKind !== (actual.parentRef ? 'task_local_output' : 'session_output') || actual.status !== 'running' || actual.outputClaims.length
         || actual.cancelRequested || output.runId !== actual.runId || output.epoch !== actual.epoch
@@ -61,7 +61,7 @@ export async function readSessionDelegatedPlan(tx, handle, child) {
 export async function readSessionDelegation(tx, handle, parent, childRunId) {
     if (parent.sourceBinding.sourceAuthority !== 'native_session') invalid();
     parent = await durableParent(tx, handle, parent);
-    const child = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: childRunId }))?.doc;
+    const child = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: childRunId }))?.doc;
     if (!child || child.sourceBinding.sourceAuthority !== 'native_session') invalid();
     const facts = await readDelegationCompletion(tx, handle, parent, child);
     if (!facts) return null;
@@ -108,7 +108,7 @@ export function readSessionDelegatedModelInput(tx, handle, child, producer, inte
 /** Only this module's current History call can supply its own fully read
  * facts. Public input reads always enter without reusable facts. */
 async function readModelInput(tx, handle, child, producer, intent, publicationSeq, ownedFacts) {
-    const parent = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: child.parentRef?.parentRunId }))?.doc;
+    const parent = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: child.parentRef?.parentRunId }))?.doc;
     if (!parent) invalid();
     const lineage = await readSessionDelegation(tx, handle, parent, child.runId);
     if (!lineage) invalid();
@@ -209,7 +209,7 @@ export async function readSessionDelegatedGraphHistory(tx, handle, child, { fina
     if (Boolean(finalPublication) === Boolean(pendingProducer)) invalid();
     const finalProducer = pendingProducer ?? finalPublication.producer ?? (await readAttempt(tx, handle, child, finalPublication.receipt.producerAttemptId)).doc;
     if (finalProducer.nodeId !== shape.terminalNodeId) invalid();
-    const parent = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: child.parentRef.parentRunId }))?.doc;
+    const parent = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: child.parentRef.parentRunId }))?.doc;
     if (!parent) invalid();
     const lineage = await readSessionDelegation(tx, handle, parent, child.runId);
     if (!lineage) invalid();
@@ -260,7 +260,7 @@ export async function readSessionDelegatedGraphHistory(tx, handle, child, { fina
     for (const fact of fanouts) {
         for (const binding of fact.fanout.inputRefs[0].graphBindings) usedEdges.set(binding.edgeId, (usedEdges.get(binding.edgeId) ?? 0) + 1);
         for (const id of [...fact.frame.edgeAdmissionRefs, ...fact.joinReceipt.edgeAdmissionRefs]) {
-            const receipt = (await checkedRecord(tx, controlRecordKey(handle, child.runId, 'receipt', id)))?.doc;
+            const receipt = (await tx.getResource(controlRecordKey(handle, child.runId, 'receipt', id)))?.doc;
             if (!receipt || receipt.receiptKind !== 'edge_admission') invalid();
             usedEdges.set(receipt.edgeId, (usedEdges.get(receipt.edgeId) ?? 0) + 1);
         }
@@ -425,7 +425,7 @@ export async function readSessionDelegationContinuation(tx, handle, parent, prod
             || !equal(returnReceipt.resultRef, ref)) invalid();
         output = returnReceipt.output;
     } else {
-        if (input.returnReceiptRef !== null || await checkedRecord(tx, controlRecordKey(handle, parent.runId, 'receipt', handoffReturnReceiptId(ref.runId)))) invalid();
+        if (input.returnReceiptRef !== null || await tx.getResource(controlRecordKey(handle, parent.runId, 'receipt', handoffReturnReceiptId(ref.runId)))) invalid();
         output = await readTaskLocalOutput(tx, handle, lineage.child);
     }
     const publication = output?.publication;

@@ -9,7 +9,7 @@ import { inspectNativeRpDelegation, inspectNativeRpDelegationOutput } from '../.
 import { controlRecordKey, runGuard } from '../../src/native/orchestration/controller-common.js';
 import { childClosureReceiptId, taskLocalReceiptId } from '../../src/native/orchestration/task-local-output-contracts.js';
 import { taskLocalClaimId } from '../../src/native/orchestration/task-local-output-contracts.js';
-import { checkedRecord } from '../../src/native/orchestration/plan-repository.js';
+
 import { hashNativeDocument as hash } from '../../src/native/repositories/common.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { StorageCommitUnknownError } from '../../src/storage/errors.js';
@@ -208,7 +208,7 @@ describe.each(harnesses)('$name real RP task-local output', ({ make }) => {
             cold = new f.h.engine.constructor({ url: f.h.url, nativeHostTopology: 'direct_single_primary', directoriesByHandle: () => f.h.dirs });
             attachNativeHostLifecycle(cold, { directoriesByHandle: () => f.h.dirs });
             const facts = await cold.withTransaction(f.h.handle, async tx => {
-                const stored = (await checkedRecord(tx, { kind: K.orchestrationRun, handle: f.h.handle, runId: root.runId })).doc;
+                const stored = (await tx.getResource({ kind: K.orchestrationRun, handle: f.h.handle, runId: root.runId })).doc;
                 return readTaskLocalOutput(tx, f.h.handle, stored);
             });
             expect(facts !== null).toBe(ack === 'saved'); expect(f.requests).toHaveLength(ack === 'saved' ? 2 : 1);
@@ -220,7 +220,7 @@ describe.each(harnesses)('$name real RP task-local output', ({ make }) => {
         try {
             const result = await runDelegationMetadata(f), runs = f.authority.execution.runs, root = await runs.get(f.h.handle, result.childRunId);
             await f.h.engine.withTransaction(f.h.handle, async tx => {
-                const output = await checkedRecord(tx, controlRecordKey(f.h.handle, root.runId, 'receipt', taskLocalReceiptId(root.runId)));
+                const output = await tx.getResource(controlRecordKey(f.h.handle, root.runId, 'receipt', taskLocalReceiptId(root.runId)));
                 const cases = [[controlRecordKey(f.h.handle, root.runId, 'output', result.outputClaimRef.claimId), 'outputKey', 'b'.repeat(64)],
                     [controlRecordKey(f.h.handle, root.runId, 'receipt', childClosureReceiptId(root.runId)), 'reservationId', root.parentRef.parentRunId],
                     [controlRecordKey(f.h.handle, root.runId, 'receipt', output.doc.traversalReceiptRef.receiptId), 'inputDigest', 'c'.repeat(64)],

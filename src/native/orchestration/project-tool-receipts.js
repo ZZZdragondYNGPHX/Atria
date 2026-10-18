@@ -4,7 +4,7 @@ import { ProjectTaskRepository, assertProjectTask } from '../agent-intelligence/
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertProjectToolReceipt, projectToolCapability, projectToolAction, projectToolReason, projectReviewSource } from './project-tool-contracts.js';
-import { checkedRecord, readPlanRevision } from './plan-repository.js';
+import { readPlanRevision } from './plan-repository.js';
 import { controlRecordKey, readAttempt } from './controller-common.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
@@ -18,7 +18,7 @@ export async function readOriginalProjectTask(tx, handle, source, projectAgent) 
         if (!(projectAgent instanceof ProjectAgentService) || !(projectAgent._repository instanceof ProjectTaskRepository)) invalid();
         await projectAgent._repository.engine.withTransaction(handle, active => { if (active !== tx) invalid(); });
     }
-    const row = await checkedRecord(tx, { kind: K.projectAgentTask, handle, projectId: source.projectId, taskId: source.taskId });
+    const row = await tx.getResource({ kind: K.projectAgentTask, handle, projectId: source.projectId, taskId: source.taskId });
     if (!row) return null;
     const task = assertProjectTask(row.doc);
     if (task.projectId !== source.projectId || task.taskId !== source.taskId) invalid();
@@ -28,7 +28,7 @@ export async function readOriginalProjectTask(tx, handle, source, projectAgent) 
 /** Original durable facts only. No live permit, body, Source advancement or tool grant is returned. */
 export async function readProjectToolReceipt(tx, handle, root, effectId, { projectAgent, requireHostReceipt = false } = {}) {
     if (root.ownerRef.handle !== handle || root.sourceBinding.sourceAuthority !== 'project') invalid();
-    const saved = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: root.runId }))?.doc;
+    const saved = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: root.runId }))?.doc;
     if (!saved || !equal(saved.sourceBinding, root.sourceBinding) || !equal(saved.planRef, root.planRef) || !equal(saved.graph, root.graph)) invalid();
     const tool = (await readEffect(tx, handle, root, effectId)).doc;
     if (!['native_project_read', 'native_project_proposal'].includes(tool.actionRef.kind)) return null;
@@ -91,7 +91,7 @@ export async function readProjectToolReceipt(tx, handle, root, effectId, { proje
         dispatchEvidence: { kind: 'original_domain_receipt', reference: domainReceiptRef }, domainReceiptRef, remoteOperationRef: null,
         budgetObservationRef: { ...budget, status: row.status, usageHash: hash(row.usage) }, resultRefs: [], sourceRefs: [root.sourceBinding.sourceRef], reasonCode: projectToolReason(call.name) };
     const receiptId = 'oreceipt_' + hash({ effectId, observationId: observation.observationId }).slice(0, 32);
-    const host = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
+    const host = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
     if (host && (host.schemaVersion !== 1 || host.receiptId !== receiptId || host.runId !== root.runId || host.effectId !== effectId
         || !Object.entries(observation).every(([key, value]) => equal(host[key], value)))) invalid();
     if (tool.status === 'confirmed' && !host) invalid();
@@ -105,7 +105,7 @@ export async function readProjectOwnedSource(tx, handle, root, { projectAgent } 
     if (!(projectAgent instanceof ProjectAgentService) || !(projectAgent._repository instanceof ProjectTaskRepository)
         || root.ownerRef.handle !== handle || root.sourceBinding.sourceAuthority !== 'project') invalid();
     await projectAgent._repository.engine.withTransaction(handle, active => { if (active !== tx) invalid(); });
-    const stored = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: root.runId }))?.doc;
+    const stored = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: root.runId }))?.doc;
     if (!stored || !equal(stored.sourceBinding, root.sourceBinding) || !equal(stored.planRef, root.planRef) || !equal(stored.graph, root.graph)) invalid();
     const source = root.sourceBinding.sourceRef;
     const task = await ProjectTaskRepository.prototype.get.call(projectAgent._repository, handle, source.projectId, source.taskId);

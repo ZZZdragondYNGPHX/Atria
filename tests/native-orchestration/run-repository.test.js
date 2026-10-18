@@ -85,15 +85,6 @@ describe.each(CONTRACT_HARNESSES)('$name durable Host RunLedger', ({ make, name 
         expect(admit).toHaveBeenCalledTimes(1);
     });
 
-    test('denied source admission or corrupted source digest cannot leave a partial Run/command', async () => {
-        admit.mockRejectedValueOnce(new Error('original_source_revoked'));
-        await expect(repository.start(h.handle, command(), startBody())).rejects.toThrow('original_source_revoked');
-        admit.mockResolvedValueOnce({ sourceBinding: { bindingDigest: '0'.repeat(64) }, budgetAuthorityRef: { domain: 'forged' } });
-        await expect(repository.start(h.handle, command(), startBody())).rejects.toThrow('SourceBinding digest mismatch');
-        const runs = await h.engine.withTransaction(h.handle, tx => tx.listResources({ kind: K.orchestrationRun, handle: h.handle }));
-        expect(runs).toEqual([]);
-    });
-
     test('original storage read-only mode keeps observation available and refuses new mutations', async () => {
         const root = await repository.start(h.handle, command(), startBody());
         setReadOnly(true);

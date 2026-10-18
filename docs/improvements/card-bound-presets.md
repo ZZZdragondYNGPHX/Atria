@@ -52,7 +52,7 @@ Prompt Manager, the Chat Completion Preset Assistant (CPA), and any AI iteration
 
 ## Native execution
 
-Native Agent Plans use exact Host-validated resource pins. Card-bound presets remain chat artifacts; importing a card does not publish or bind a Native Plan, grant capabilities, or start work. Historical orchestration overrides carried in card metadata remain inert. See [Native Plans and Runs](/features/native-orchestration).
+ Card-bound presets remain chat artifacts; importing a card does not publish or bind a Native Plan, grant capabilities, or start work. Historical orchestration overrides carried in card metadata remain inert. See [Native Plans and Runs](/features/native-orchestration).
 
 ## Character cards carrying default personas
 

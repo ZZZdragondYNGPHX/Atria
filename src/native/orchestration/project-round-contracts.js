@@ -2,7 +2,7 @@ import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { assertObject, assertCounter, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { controlCommandId, controlRecordKey, readAttempt } from './controller-common.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
 import { readProjectToolReceipt, readOriginalProjectTask } from './project-tool-receipts.js';
@@ -19,9 +19,9 @@ export const projectRoundCommandId = (runId, nodeAttemptId) => controlCommandId(
 /** Historical original Task/Model/tool completion facts, never a replay or next-round grant. */
 export async function readProjectRoundReceipt(tx, handle, root, nodeAttemptId, { projectAgent } = {}) {
     if (root.ownerRef.handle !== handle || root.sourceBinding.sourceAuthority !== 'project') invalid();
-    const stored = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: root.runId }))?.doc;
+    const stored = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: root.runId }))?.doc;
     if (!stored || !equal(stored.sourceBinding, root.sourceBinding) || !equal(stored.planRef, root.planRef) || !equal(stored.graph, root.graph)) invalid();
-    const receiptId = projectRoundReceiptId(root.runId, nodeAttemptId), row = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId));
+    const receiptId = projectRoundReceiptId(root.runId, nodeAttemptId), row = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId));
     if (!row) return null;
     const receipt = row.doc;
     assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'nodeAttemptId', 'effectId', 'modelReceiptRef', 'modelPayloadHash',
@@ -32,7 +32,7 @@ export async function readProjectRoundReceipt(tx, handle, root, nodeAttemptId, {
     for (const field of ['round', 'taskSequence', 'conversationLength', 'createdAt']) assertCounter(receipt[field], field);
     for (const field of ['modelPayloadHash', 'sourceBindingDigest', 'fromFingerprint', 'toFingerprint', 'conversationDigest', 'attemptDigest']) assertDigest(receipt[field], field);
     const { schemaVersion: _schema, receiptKind: _kind, receiptId: _id, createdAt: _at, ...descriptor } = receipt;
-    const commandId = projectRoundCommandId(root.runId, nodeAttemptId), command = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId }))?.doc;
+    const commandId = projectRoundCommandId(root.runId, nodeAttemptId), command = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId }))?.doc;
     if (!command || command.schemaVersion !== 1 || command.commandId !== commandId || command.operation !== 'runs.control.project.round.finish'
         || command.target !== root.runId || command.payloadHash !== hash({ operation: command.operation, body: { runId: root.runId, operation: 'project.round.finish', detail: descriptor } })
         || command.outcome?.receiptIntegrity !== row.integrity || !equal(command.outcome.receiptRef, { runId: root.runId, receiptId })) invalid();
@@ -62,7 +62,7 @@ export async function readProjectRoundReceipt(tx, handle, root, nodeAttemptId, {
         const candidates = [];
         for (const ref of root.attemptRefs) {
             if (ref === nodeAttemptId) continue;
-            const row = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', projectRoundReceiptId(root.runId, ref)));
+            const row = await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', projectRoundReceiptId(root.runId, ref)));
             if (row?.doc.round === receipt.round - 1) candidates.push((await readAttempt(tx, handle, root, ref)).doc);
         }
         if (candidates.length !== 1) invalid();
@@ -72,7 +72,7 @@ export async function readProjectRoundReceipt(tx, handle, root, nodeAttemptId, {
         for (const ref of root.attemptRefs) {
             const item = (await readAttempt(tx, handle, root, ref)).doc;
             if (item.nodeId !== nodeAttempt.nodeId || ref === nodeAttemptId) continue;
-            const fact = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', projectRoundReceiptId(root.runId, ref))))?.doc;
+            const fact = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', projectRoundReceiptId(root.runId, ref))))?.doc;
             if (fact && fact.round < receipt.round) nodeRounds.push(item);
         }
         if (!prior || !loop || !prior.receipt.toolReceiptRefs.length || prior.receipt.round + 1 !== receipt.round
@@ -101,15 +101,15 @@ export async function readProjectRoundReceipt(tx, handle, root, nodeAttemptId, {
         }
         const producerReceiptRefs = bindings.map(binding => sources.find(source => source.producer.attemptId === binding.producerAttemptId).settlement.receiptId);
         const edgeAdmissionRefs = bindings.map(binding => 'oreceipt_' + hash({ kind: 'edge_admission', runId: root.runId, ...binding, nodeAttemptId }).slice(0, 32));
-        const traversalId = 'oreceipt_' + identity.slice(0, 32), traversal = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', traversalId)))?.doc;
+        const traversalId = 'oreceipt_' + identity.slice(0, 32), traversal = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', traversalId)))?.doc;
         const transfer = { edgeId: loop.edgeId, producerAttemptId: previous.attemptId, nodeAttemptId },
             edgeReceiptId = 'oreceipt_' + hash({ kind: 'edge_admission', runId: root.runId, ...transfer }).slice(0, 32);
-        const edge = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', edgeReceiptId)))?.doc;
+        const edge = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', edgeReceiptId)))?.doc;
         // Loop progress is global to the authored graph. A Planner loop can
         // precede the formal Task loop; retain the exact previous admission
         // baseline rather than equating it with this node's attempt number.
         const previousAdmissionId = 'oreceipt_' + previous.attemptId.slice('oattempt_'.length);
-        const previousAdmission = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', previousAdmissionId)))?.doc;
+        const previousAdmission = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', previousAdmissionId)))?.doc;
         const previousWasTransitioned = prior.receipt.round > 0 || Boolean(previous.inputRefs[0].controlGraph || previous.inputRefs[0].qualityApproval);
         if (Boolean(previousAdmission) !== previousWasTransitioned || previousAdmission && (previousAdmission.receiptKind !== 'graph_transition'
             || previousAdmission.nodeAttemptId !== previous.attemptId || previousAdmission.runId !== root.runId)) invalid();
@@ -124,7 +124,7 @@ export async function readProjectRoundReceipt(tx, handle, root, nodeAttemptId, {
             || edge.loopIteration !== expectedLoopIterations || traversal.loopIterations !== expectedLoopIterations || edge.epoch !== nodeAttempt.epoch
             || edge.edgeVisit > (root.progress.edgeVisitCounts[loop.edgeId] ?? 0) || edge.loopIteration > root.progress.loopIterations
             || edge.edgeVisit > loop.maxVisits || edge.loopIteration > root.limits.maxLoopIterations) invalid();
-        const loopCommandId = controlCommandId('loop.advance', identity), loopCommand = (await checkedRecord(tx, { kind: K.orchestrationCommand, handle, commandId: loopCommandId }))?.doc;
+        const loopCommandId = controlCommandId('loop.advance', identity), loopCommand = (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId: loopCommandId }))?.doc;
         if (!loopCommand || loopCommand.operation !== 'runs.control.loop.advance' || loopCommand.target !== root.runId
             || !equal(loopCommand.outcome?.traversalReceipt, traversal) || loopCommand.outcome.attemptId !== nodeAttemptId
             || !nodeAttempt.inputRefs.some(ref => equal(ref, prior.receiptRef))) invalid();

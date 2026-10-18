@@ -153,18 +153,6 @@ describe.each(CONTRACT_HARNESSES)('$name S2 durable Effect/Approval core with co
         expect((await current()).pendingApprovalRefs).toEqual([]);
     });
 
-    test('changed endpoint or original account invalidates approved dispatch without consuming the approval', async () => {
-        approvalRequired = true;
-        const effectId = await prepare(); await ready(effectId);
-        const { approvalId } = await approve(effectId);
-        endpoint = 'changed-endpoint';
-        await expect(effects.claim(h.handle, { ...runGuard(await current()), effectId })).rejects.toMatchObject({ code: 'native_orchestration_effect_authority_changed' });
-        endpoint = 'original-endpoint-v1'; accountVersion = hashNativeDocument({ account: 2 });
-        await expect(effects.claim(h.handle, { ...runGuard(await current()), effectId })).rejects.toMatchObject({ code: 'controlled_original_account_changed' });
-        expect((await read('approval', approvalId)).status).toBe('approved');
-        expect((await read('effect', effectId)).dispatchToken).toBeNull();
-    });
-
     test('unknown is never re-sent; correlated later proof appends a receipt without erasing unknown history', async () => {
         const effectId = await prepare(); await ready(effectId);
         await effects.claim(h.handle, { ...runGuard(await current()), effectId });

@@ -11,7 +11,7 @@ import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../re
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
 import { localWorkAttemptId, BudgetPort } from './budget-port.js';
 import { controlRecordKey, runGuard } from './controller-common.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { SourcePort } from './source-port.js';
 
 const fail = code => { throw new ConflictError(code); };
@@ -98,7 +98,7 @@ export class RpOutputController {
         } catch (error) {
             if (error.code !== 'storage_commit_unknown') throw error;
             const receiptId = 'oreceipt_' + hash({ effectId: spec.effectId, observationId: observation.observationId }).slice(0, 32);
-            const saved = await runs.engine.withTransaction(handle, tx => checkedRecord(tx, controlRecordKey(handle, identity.runId, 'receipt', receiptId)));
+            const saved = await runs.engine.withTransaction(handle, tx => tx.getResource(controlRecordKey(handle, identity.runId, 'receipt', receiptId)));
             if (saved && equal(saved.doc.dispatchEvidence, observation.dispatchEvidence)) effectReceiptRef = { runId: identity.runId, receiptId };
         }
         const completed = committed.status === 'committed' && effectReceiptRef

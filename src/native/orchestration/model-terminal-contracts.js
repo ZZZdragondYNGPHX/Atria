@@ -2,7 +2,7 @@ import { assertObject, assertDigest } from '../../../public/shared/native-orches
 import { equalNativeDocuments, hashNativeDocument as hash } from '../repositories/common.js';
 import { BudgetPort, assertBudgetAttemptRef, sendAttemptId } from './budget-port.js';
 import { effectDecision } from './effect-contracts.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { controlRecordKey } from './controller-common.js';
 
 export const modelCompletionBindingDigest = intent => hash({ runId: intent.runId, effectId: intent.effectId, epoch: intent.epoch,
@@ -17,7 +17,7 @@ async function readTerminalFact(handle, tx, root, intent, budgetPort = null) {
     const kind = intent.status === 'failed' ? 'rejected' : 'late_response';
     const observationId = modelTerminalObservationId(intent.effectId, kind);
     const receiptId = 'oreceipt_' + hash({ effectId: intent.effectId, observationId }).slice(0, 32);
-    const receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
+    const receipt = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
     if (!receipt) return null;
     const reference = receipt.dispatchEvidence?.reference;
     if (receipt.schemaVersion !== 1 || receipt.receiptId !== receiptId || receipt.runId !== root.runId || receipt.effectId !== intent.effectId

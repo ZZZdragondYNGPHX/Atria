@@ -6,7 +6,7 @@ import { assertRpFanoutPlannerOperations } from './rp-fanout-planner-contracts.j
 import { assertBudgetAttemptRef, sendAttemptId } from './budget-port.js';
 import { taskLocalReceiptId } from './task-local-output-contracts.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { readAttempt, controlRecordKey } from './controller-common.js';
 import { readFanoutFrame, readFanoutMembership, readFanoutReplanScope } from './fanout-controller.js';
@@ -25,15 +25,15 @@ import { assertOutputTransition } from './output-transition-contracts.js';
 const invalid = () => { throw new TypeError('Invalid original RP child Fanout facts'); };
 
 async function childIdentity(tx, handle, root) {
-    const parent = root.parentRef && (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: root.parentRef.parentRunId }))?.doc;
+    const parent = root.parentRef && (await tx.getResource({ kind: K.orchestrationRun, handle, runId: root.parentRef.parentRunId }))?.doc;
     if (!parent || root.sourceBinding.sourceAuthority !== 'rp_chat') invalid();
-    const actual = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: root.runId }))?.doc;
+    const actual = (await tx.getResource({ kind: K.orchestrationRun, handle, runId: root.runId }))?.doc;
     const facts = actual && await readDelegationCompletion(tx, handle, parent, actual);
     const plan = await readPlanRevision(tx, handle, root.planRef), profile = rpDelegatedControlProfile(plan);
     if (!facts || !profile || !equal(actual.sourceBinding, root.sourceBinding) || !equal(actual.planRef, root.planRef)) invalid();
     const lineage = { ...facts, parent, child: actual, plan, profile };
     if (!equal(lineage.child, root)) {
-        const actual = lineage.child, receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', taskLocalReceiptId(root.runId))))?.doc;
+        const actual = lineage.child, receipt = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', taskLocalReceiptId(root.runId))))?.doc;
         if (!receipt || receipt.receiptKind !== 'task_local_output' || actual.status !== 'running' || actual.outputClaims.length || actual.cancelRequested
             || receipt.runId !== actual.runId || receipt.epoch !== actual.epoch || receipt.graphRevision !== actual.graphRevision || receipt.decisionSeq !== actual.eventSeq + 1) invalid();
         const pending = { ...actual, status: 'completed', outputClaims: [receipt.claimRef], progress: { ...actual.progress, steps: actual.progress.steps + 1 },
@@ -189,7 +189,7 @@ async function memberCost(tx, handle, root, attempt, { frame, settlement, result
     if (judge && (results.length || !equal(judge.producer, attempt) || !equal(judge.settlement, settlement)
         || !completed || !equal(judge.receipt.modelReceiptRef, completed.receiptRef))) invalid();
     if (!equal(root.sourceBinding.budgetAuthorityRef, root.budgetAuthorityRef)) invalid();
-    const control = (await checkedRecord(tx, { kind: K.rpRunControl, handle, controlId: root.budgetAuthorityRef.controlId }))?.doc;
+    const control = (await tx.getResource({ kind: K.rpRunControl, handle, controlId: root.budgetAuthorityRef.controlId }))?.doc;
     const bank = control?.operations[root.budgetAuthorityRef.operationId]?.compute;
     const fees = bank?.attempts.filter(row => row.orchestration?.effectId === effect.effectId), local = bank?.localWork?.filter(row => row.orchestration?.effectId === effect.effectId) ?? [];
     if (!fact || !fees || fees.length !== 1 || fees[0].orchestration.kind !== 'provider_send' || fees[0].orchestration.ordinal !== 0

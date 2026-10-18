@@ -165,19 +165,7 @@ When you create a new skill, you pick a scope. Heuristics:
 - **`preset`** — Use when the skill only makes sense paired with a specific Chat Completion preset (a model-tuned prompt convention, a sampler-dependent style rule). The skill rides with the preset on export.
 - **`character`** — Use when the skill encodes card-specific lore or voice rules. The skill rides with the character card on export (PNG metadata).
 
-Scope determines which content the current consumer selects. Moving a Skill can change precedence or make it unavailable in that context; check selection and refresh exact pins after a move.
-
-## Validation and safety
-
-The server validates a skill at install / write time:
-
-- Frontmatter must parse as YAML.
-- `name` must match the directory name.
-- File paths inside the skill must not escape the skill directory (no `..`, no absolute paths).
-- Size limits (above) are enforced fail-fast.
-- `scripts/` is parsed but never executed — present for forward-compat. The UI shows a risk badge when a skill ships scripts.
-
-If validation fails, the install or write rolls back atomically (writes go through a `.staging/` directory and only commit after validation passes).
+Scope determines which content the current consumer selects.
 
 ## Related
 

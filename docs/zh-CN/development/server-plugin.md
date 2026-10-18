@@ -286,7 +286,7 @@ id: 'my plugin'     // 包含空格
 
 ### 路径穿越防护
 
-Atria 的插件加载器会检测路径穿越攻击，防止插件通过 `../../` 等方式逃逸 `plugins/` 目录。但插件自身的路由处理器中如果接受用户输入作为文件路径，仍需自行做路径校验：
+Atria 的插件加载器会检测路径穿越攻击，防止插件通过 `../../` 等方式逃逸 `plugins/` 目录。
 
 ```js
 import path from 'path';
@@ -389,7 +389,7 @@ res.status(500).json({ error: '描述错误原因的简短文字' });
 
 ### Git 自动更新
 
-如果插件是从 Git 仓库克隆的，Atria 在启动时会自动检查更新。加载器使用 `simple-git`（如未安装则回退到 `isomorphic-git`）执行 `git pull`，拉取最新的代码。
+加载器使用 `simple-git`（如未安装则回退到 `isomorphic-git`）执行 `git pull`，拉取最新的代码。
 
 要启用自动更新，确保插件目录是一个 Git 仓库，且 `config.yaml` 中 `enableServerPlugins` 为 `true`。
 
@@ -407,8 +407,6 @@ npm install
 ## 实战示例
 
 ### Hello World
-
-一个最小的后端插件，提供一个健康检查端点：
 
 ```
 plugins/hello-world/

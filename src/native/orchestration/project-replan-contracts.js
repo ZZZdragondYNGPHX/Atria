@@ -1,6 +1,6 @@
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
 import { readAttempt, readAttemptInvalidation, controlRecordKey } from './controller-common.js';
-import { checkedRecord } from './plan-repository.js';
+
 import { readEffect } from './effect-contracts.js';
 import { readTaskGraphRevision } from './graph-revision-contracts.js';
 import { readGraphNodeResult } from './graph-result-contracts.js';
@@ -76,7 +76,7 @@ export async function readProjectReplanHistory(tx, handle, root, { recipient = n
     if (recipient) {
         const actual = (await readAttempt(tx, handle, root, recipient.attemptId)).doc;
         if (!equal(actual, recipient)) invalid();
-        const admission = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', 'oreceipt_' + actual.attemptId.slice('oattempt_'.length))))?.doc;
+        const admission = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', 'oreceipt_' + actual.attemptId.slice('oattempt_'.length))))?.doc;
         if (admission) {
             if (admission.receiptKind !== 'graph_transition' || admission.nodeAttemptId !== actual.attemptId
                 || admission.runId !== root.runId || admission.inputDigest !== actual.inputDigest) invalid();
@@ -102,7 +102,7 @@ export async function readProjectReplanHistory(tx, handle, root, { recipient = n
                 || intent.grantDigest !== producer.effectiveGrantDigest || intent.nodeAttemptId !== producer.attemptId) invalid();
         }
         if (input.kind === 'native_project_intent' && !equal(producer.inputRefs, [input, ...input.acceptedGraphResultRefs ?? [], ...input.acceptedControlRefs ?? []])) invalid();
-        const admission = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', 'oreceipt_' + producer.attemptId.slice('oattempt_'.length))))?.doc;
+        const admission = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', 'oreceipt_' + producer.attemptId.slice('oattempt_'.length))))?.doc;
         const bundle = input.controlGraph ?? { bindings: admission?.bindings ?? [] };
         if (!Array.isArray(bundle.bindings)) invalid();
         if (node.kind === 'join') { current.set(node.nodeId, fact); previous.set(node.nodeId, fact); continue; }

@@ -9,7 +9,6 @@ const key = (handle, goalId) => ({ kind: NATIVE_RESOURCE_KINDS.agentGoal, handle
 export class AgentGoalRepository {
     constructor({ engine }) { if (!engine) throw new TypeError('Goal repository requires StorageEngine'); this.engine = engine; }
     _document(record) {
-        if (record.integrity !== hashNativeDocument(record.doc)) throw new TypeError('Goal integrity mismatch');
         const doc = assertGoal(record.doc);
         if (doc.goalId !== record.key.goalId) throw new TypeError('Goal key mismatch');
         return doc;

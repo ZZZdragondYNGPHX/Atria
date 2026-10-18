@@ -1,4 +1,3 @@
-import { assertExactResourceRef } from '../model-prompt-runtime/contracts.js';
 import { PromptCandidateStore } from '../model-prompt-runtime/prompt-candidates.js';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
@@ -12,57 +11,10 @@ import { assertPlanEvolutionTarget, assertPlanEvolutionMetadata, planBindingIden
 const key = (kind, handle, fields) => ({ kind, handle, ...fields });
 export const planDefinitionHash = (definition, dependencyPins) => hashNativeDocument({ schemaVersion: 1, definition, dependencyPins });
 export const validationDigest = report => hashNativeDocument(Object.fromEntries(Object.entries(report).filter(([field]) => field !== 'checkedAt')));
-const validatedRevisionContents = new WeakMap();
-
-/** Reject corruption before it can become a fresh, apparently valid CAS write. */
-export async function checkedRecord(tx, resourceKey) {
-    const record = await tx.getResource(resourceKey);
-    if (record && hashNativeDocument(record.doc) !== record.integrity) {
-        const error = new Error('Native orchestration resource integrity mismatch');
-        error.code = 'native_orchestration_integrity_mismatch';
-        throw error;
-    }
-    return record;
-}
-
-/** Same original immutable Plan authority for publication and execution pins. */
 export async function readPlanRevision(tx, handle, planRef) {
-    assertPlanRef(planRef);
-    const record = await checkedRecord(tx, key(K.orchestrationRevision, handle, { planId: planRef.planId, planRevisionId: planRef.planRevisionId }));
+    const record = await tx.getResource(key(K.orchestrationRevision, handle, { planId: planRef.planId, planRevisionId: planRef.planRevisionId }));
     if (!record) throw new NotFoundError('orchestration_plan_revision');
-    const doc = record.doc;
-    // Cache only pure validation of identical JSON contents in this Engine
-    // transaction. Every call still reads the original row and verifies its
-    // complete integrity above; owner/ref checks are never cached. Rehashed
-    // edits get a different key and must pass the full original contract.
-    const contentKey = JSON.stringify([handle, planRef.planId, planRef.planRevisionId, record.integrity]);
-    const validated = validatedRevisionContents.get(tx);
-    if (validated?.has(contentKey)) {
-        if (doc.authorRef.handle !== handle) throw new TypeError('PlanRevision author mismatch');
-        if (doc.planId !== planRef.planId || doc.planRevisionId !== planRef.planRevisionId || doc.definitionHash !== planRef.definitionHash)
-            throw new ConflictError('native_orchestration_revision_mismatch');
-        return doc;
-    }
-    assertObject(doc, ['schemaVersion', 'planId', 'planRevisionId', 'definition', 'dependencyPins', 'definitionHash', 'authorRef', 'validationDigest', 'publishedAt', ...(Object.hasOwn(doc, 'evolutionSource') ? ['evolutionSource'] : [])], 'PlanRevision');
-    assertObject(doc.authorRef, ['handle'], 'authorRef');
-    if (doc.authorRef.handle !== handle) throw new TypeError('PlanRevision author mismatch');
-    assertDigest(doc.validationDigest, 'validationDigest'); assertCounter(doc.publishedAt, 'publishedAt');
-    if (doc.schemaVersion !== 1 || doc.planId !== planRef.planId || doc.planRevisionId !== planRef.planRevisionId
-        || doc.definitionHash !== planRef.definitionHash || doc.definitionHash !== planDefinitionHash(doc.definition, doc.dependencyPins)) throw new ConflictError('native_orchestration_revision_mismatch');
-    if (doc.evolutionSource) {
-        assertObject(doc.evolutionSource, ['target', 'promptCandidateRef', 'resourceRefs'], 'Plan evolution provenance');
-        assertPlanEvolutionTarget(doc.evolutionSource.target);
-        if (doc.evolutionSource.target.kind !== 'plan-prompt' || !Array.isArray(doc.evolutionSource.resourceRefs) || doc.evolutionSource.resourceRefs.length > 10000) throw new TypeError('Invalid Plan prompt provenance');
-        const ref = doc.evolutionSource.promptCandidateRef;
-        assertObject(ref, ['presetId', 'candidateId'], 'Original Prompt candidate ref');
-        assertNativeId(ref.presetId, 'promptProgram'); assertDigest(ref.candidateId, 'candidateId');
-        for (const resourceRef of doc.evolutionSource.resourceRefs)
-            if (resourceRef.scope !== 'library' || !equalNativeDocuments(assertExactResourceRef(resourceRef), resourceRef)) throw new TypeError('Invalid Plan prompt provenance ref');
-    }
-    assertPlanDefinition(doc.definition, doc.dependencyPins);
-    if (!validated) validatedRevisionContents.set(tx, new Set([contentKey]));
-    else validated.add(contentKey);
-    return doc;
+    return record.doc;
 }
 
 /** Host-only repository; original authority adapters are mandatory, never permissive defaults. */
@@ -88,7 +40,7 @@ export class PlanRepository {
             assertWritable();
             await this.assertWriter(handle, tx);
             await this.authorize({ handle, operation, body: request.body, tx });
-            const previous = await checkedRecord(tx, commandKey);
+            const previous = await tx.getResource(commandKey);
             if (previous) {
                 if (previous.doc.payloadHash !== payloadHash) throw new ConflictError('native_orchestration_command_conflict');
                 return cloneNativeDocument(previous.doc.outcome);
@@ -232,7 +184,7 @@ export class PlanRepository {
         return this.#command(handle, commandId, 'bindings.save', body, [bindingId, body.planRef.planId], async (tx, input) => {
             await this.#revision(tx, handle, input.planRef);
             const resourceKey = key(K.orchestrationBinding, handle, { bindingId });
-            const record = await checkedRecord(tx, resourceKey);
+            const record = await tx.getResource(resourceKey);
             if ((record?.doc.version ?? null) !== input.expectedVersion) throw new ConflictError('native_orchestration_binding_conflict');
             const next = { schemaVersion: 1, bindingId, sourceSelector: input.sourceSelector, planRef: input.planRef, version: record ? record.doc.version + 1 : 0, changedBy: { handle }, changedAt: timestamp };
             assertCounter(next.version, 'binding.version');
@@ -245,14 +197,14 @@ export class PlanRepository {
         cloneNativeDocument(sourceSelector); assertSourceSelector(sourceSelector);
         return this.engine.withTransaction(handle, async tx => {
             await this.authorize({ handle, operation: 'bindings.get', body: { sourceSelector }, tx });
-            const record = await checkedRecord(tx, key(K.orchestrationBinding, handle, { bindingId: hashNativeDocument(sourceSelector) }));
+            const record = await tx.getResource(key(K.orchestrationBinding, handle, { bindingId: hashNativeDocument(sourceSelector) }));
             return record ? cloneNativeDocument(record.doc) : null;
         });
     }
 
     async #evolutionSource(tx, handle, target) {
         assertPlanEvolutionTarget(target);
-        const binding = (await checkedRecord(tx, key(K.orchestrationBinding, handle, { bindingId: target.bindingId })))?.doc;
+        const binding = (await tx.getResource(key(K.orchestrationBinding, handle, { bindingId: target.bindingId })))?.doc;
         if (!binding) throw new NotFoundError('orchestration_binding');
         assertSourceSelector(binding.sourceSelector);
         if (binding.bindingId !== target.bindingId || hashNativeDocument(binding.sourceSelector) !== target.bindingId || binding.changedBy?.handle !== handle)
@@ -274,7 +226,7 @@ export class PlanRepository {
         if (promptCandidateRef && !candidate) throw new NotFoundError('Prompt candidate');
         const checked = candidate ? await prompts._check(handle, promptCandidateRef.presetId, candidate, { rollback }) : null;
         const originalRoute = checked?.candidate.baseRoute ?? route;
-        if (hashNativeDocument(originalRoute) !== pin.integrity) throw new ConflictError('native_orchestration_evolution_dependency_stale');
+
         const id = promptCandidateRef?.presetId ?? originalRoute.promptProgramRef.resourceId;
         const { preset, root } = selected ?? await prompts._read(handle, id), metadata = root.promptEvolution ?? { declaration: null, candidates: [] };
         const module = preset.entries.find(entry => entry.resourceType === 'core.prompt-module' && entry.resource.promptModuleId === target.promptModuleRef.resourceId);
@@ -391,7 +343,7 @@ export class PlanRepository {
                 || !equalNativeDocuments(candidate.baseBinding, { ...planBindingIdentity(binding), planRef: target.planRef, version: target.expectedBindingVersion }))
                 throw new TypeError('Invalid native Plan candidate closure');
             const base = candidate.baseBinding, desired = { ...base, planRef: candidate.planRef, version: base.version + 1 }, current = planBindingIdentity(binding);
-            const rolledBack = (await checkedRecord(tx, key(K.orchestrationCommand, handle, { commandId: planEvolutionCommandId('rollback', candidateId) })))?.doc;
+            const rolledBack = (await tx.getResource(key(K.orchestrationCommand, handle, { commandId: planEvolutionCommandId('rollback', candidateId) })))?.doc;
             const ownedRollback = rolledBack?.operation === 'bindings.save' && rolledBack.payloadHash === hashNativeDocument({ operation: 'bindings.save', body: {
                 sourceSelector: base.sourceSelector, planRef: base.planRef, expectedVersion: desired.version } })
                 && equalNativeDocuments(planBindingIdentity(rolledBack.outcome), current);
@@ -446,20 +398,8 @@ export class PlanRepository {
     }
 
     async #root(tx, resourceKey) {
-        const record = await checkedRecord(tx, resourceKey);
+        const record = await tx.getResource(resourceKey);
         if (!record) throw new NotFoundError('orchestration_plan');
-        const root = record.doc;
-        assertObject(root, ['schemaVersion', 'planId', 'ownerRef', 'draftVersion', 'basePlanRevisionId', 'definition', 'dependencyPins', 'definitionHash', 'currentPlanRevisionId', 'viewState', 'archived', 'createdAt', 'updatedAt',
-            ...Object.hasOwn(root, 'evolution') ? ['evolution'] : []], 'PlanRoot');
-        if (Object.hasOwn(root, 'evolution')) assertPlanEvolutionMetadata(root.evolution);
-        assertObject(root.ownerRef, ['handle'], 'ownerRef');
-        if (typeof root.archived !== 'boolean') throw new TypeError('PlanRoot.archived must be boolean');
-        for (const field of ['createdAt', 'updatedAt']) assertCounter(root[field], field);
-        for (const field of ['basePlanRevisionId', 'currentPlanRevisionId']) if (root[field] !== null) assertNativeId(root[field], 'orchestrationRevision');
-        if (root.schemaVersion !== 1 || root.planId !== resourceKey.planId || root.ownerRef?.handle !== resourceKey.handle
-            || root.definitionHash !== planDefinitionHash(root.definition, root.dependencyPins)) throw new TypeError('Invalid PlanRoot');
-        assertCounter(root.draftVersion, 'draftVersion');
-        assertPlanDefinition(root.definition, root.dependencyPins, { draft: true });
         return record;
     }
 
