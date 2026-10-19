@@ -431,3 +431,13 @@
 - 用户要求后端完成后停下并转交前端。整体任务继续沿同一 Task ID／分支／Record，前端尚未完成，main 仍为 `745dbd190`，本轮不集成 main、不清理活跃任务分支。创建本任务 live HANDOFF；前端待办包括新增 Stage 控件和 scoped Program 选择器、独立视觉 UI、全产品领域操作链／表现、可选反馈展示及过时入口清退。
 
 - 交接源码最终 HEAD：`3ca28c49828464261e44af86321f62e15b4f9a41`（末次提交只补旧测试桩的原只读方法）。产品工作树 clean；本任务后端完成，按用户指令停止实现，Claude Code 按 HANDOFF 接续前端。源码分支已同步 origin 到此 HEAD；GitHub TLS EOF 经连接重试后成功。前端实施输入、同一 Record 与本任务 HANDOFF 归 docs 分支同次交接提交。
+
+## 2026-10-19 — 接续全产品前端：继承 Stage、scoped Program 与独立图像
+
+- 按当前用户指令恢复同一 Task，从源码 `3ca28c498` 继续；fetch origin 后源码分支已同步，独立 docs 从 `2ce0bc193` 快进至 `48d4ed044`。保留其他活跃视觉任务及 docs 原有未提交参考改动；参考文件与新版冲突已逐块合并，原始改动仍有 Git stash 备份，不将它混入本次产品提交。
+- 共用 PromptEditor 新增继承 Stage 的条件／消费设置及首尾／相对移动。Stage configure 与 move 可同时存在于同一 Stage，字段／JSON 沿原 Draft 与 Undo/Redo；父修订不改写。升级比较支持空 Stage、缺失 Stage 和缺失移动参照分别重选／移除，继续进入原草稿。
+- Plan Inspector 与 Pins 表单显示 Library／Project／Package exact Program；注明当前执行来源与自动候选的 Library 限制。固定内容身份仍调用原 `/dependencies/inspect`，未在浏览器重算原始 JSON fingerprint。
+- Library 新增图像工作室，复用原视觉配置组件、runtimeRequest、图像批准组件与 Job／Asset 接口。编辑 Target／Rendering 后选 exact ref；无 Session 预览不发送，显式批准后提交，支持读取观察、显式重连／取消、原账号图片下载、归档／恢复。图库读取失败与已提交回执分开，未知费用沿原结果保留；自动读取不会重发或重连。
+- 相关组件自查：Prompt 作者／Stage／升级／图像／Plan 生命周期 5 套件 35 项通过；新增 scoped Program Pins 用例 1 项通过，验证三种 owner 和原 Host fingerprint 调用。产品 JS ESLint、简体中文覆盖及 diff 检查通过。
+- 真实 Chromium 使用隔离临时数据启动本任务源码；实际 Library 图像入口、空图库、缺目标提示、中文输入、1280×900／390×844 无横向溢出通过。继承 Stage 使用明确的临时前端资源 fixture，在手机浏览器完成配置／移动字段与完整 JSON 往返，条件布尔值和相对顺序保持。未调用付费 Provider，未将 fixture 操作说成真实 Plan 发布或真机验证。
+- 源码提交 `79645537d`。此单元完成后继续新版 Atrium Shell、工作区及全产品剩余范围，任务仍进行中；未集成 main，未清理活跃任务或刷新 HANDOFF。
