@@ -20,7 +20,7 @@ export async function sessionFanoutPlannerFixture(make, { crossBranchPriority = 
         configureSessionOutput(args);
         const { plan, h, core, base, seeded } = args, narrator = plan.definition.nodes[0], output = plan.definition.nodes[1];
         const route = await seeded.persistence.getRuntimeRoute(h.handle, plan.dependencyPins[0].resourceRef.runtimeRouteId);
-        await seeded.persistence.saveRuntimeRoute(h.handle, { ...route, executionPolicy: { ...route.executionPolicy, computeBudget: {
+        await seeded.persistence.saveRuntimeRoute(h.handle, { ...route, policy: { ...route.policy, timeoutMs: replan ? 60000 : route.policy.timeoutMs }, executionPolicy: { ...route.executionPolicy, computeBudget: {
             ...route.executionPolicy.computeBudget, maxRequests: replan ? 7 : 6,
             localWork: { ...route.executionPolicy.computeBudget.localWork, maxJobs: 192, maxItems: 10000 } } } });
         const ownerRoute = await seeded.persistence.getRuntimeRoute(h.handle, route.runtimeRouteId);
