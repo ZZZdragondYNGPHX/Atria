@@ -382,3 +382,14 @@
 - 本单元源码提交 `90ef12ac8`。4 套件 44 项作者样例／编辑器／Draft Preview 测试通过；另跑 Host 来源与 Program selection 等 3 套件 23 项通过。新增自动 fallback 用例初轮因测试未设置原 `fallbackMode:automatic` 而失败，修正实际请求设置后作者样例 9 项全部通过，证明两次 HTTP 均使用作者草稿且 unknown/settled 两次用量保留。未进行真实付费 Provider 调用。
 - 8 个变更产品 JS 模块 ESLint、中文本地化覆盖、`git diff --check` 通过。真实 Chromium 1280×900 与 390×844 检查独立样例 10 项表单与中文输入，页面无横向溢出；未配置 Route 时预览／试读正确禁用并提示原 Runtime 入口。临时浏览器已关闭，隔离服务器已停止；临时数据与截图完成用途后清理。
 - 下一实现单元为 Node 独立 Program 的原 schema／Inspector／V3 各域调用与 plan-prompt 接线，之后继续分享／升级和全产品前端；Task 保持进行中，main 尚未合入。
+
+## 2026-10-19 — Node 独立 Program（实施中）
+
+- Node policy 新增可选 `promptPinId`，使用原 model 依赖中的 exact Library Program；未选择继续使用 Route 默认。准备编译、Fallback 与原 ModelPort 从同一已发布 Plan／当前 Node 选择，Route pin 仍固定原 Route，模型／连接／费用／业务结果沿 V3 原链。
+- 正在同步各域 graph profile、子 Plan／动态 Node、Project 逐 Worker 和 Inspector，避免新增 Pin 被旧数量假设拒绝或实际发送退回 Route 默认。plan-prompt 候选正在接同一 Program pin，普通 Route 默认采用仍保留原路径。
+- 当前 5 个已有相关套件 207 项通过；新增四域真实本地 HTTP 用例中 Session／Project／RP／background 均已通过，证明实际请求使用 Node Program 且 Route 默认未改。后续候选与协作／委托范围仍在实施，不宣称这一单元完成。
+
+- Node 单元源码提交 `e65447321`：原 `model` 依赖可固定 Library Program，`promptPinId` 与 `agentPinId` 分开；Inspector 可选／打开 Program，并显示 Route 默认。各域准备与实际 ModelPort 共用原 RouteResolver 选择，动态模板／资源探测保留 Program，未新增 Behavior Store。
+- Project Worker 共用原 Task 的 Route／费用链，但可各自选 Program；准备／重检包含各 Worker 的有效配置。Node 的 plan-prompt 候选在原 PromptCandidateStore 保留 exact 修订，生成新 Plan pin，采用／回滚只更新原 Binding；普通 Route 默认候选维持原采用方式。新增 Program-only 候选不能误用普通 Route apply。
+- 实际相关自查分组：原机制／三域 producer／Draft 5 套件 207 项通过；Node／原候选等 3 套件 36 项通过；补充 Node 候选 FS/SQLite 后原 plan-prompt 套件 14 项通过；协作、Session fallback 和 Node 5 套件 69 项通过。最终新增 Node 功能套件 8 项通过，涵盖四域真实本地 HTTP、RP 独立节点、Session 委托子 Run、Project 三 Worker 各自 Program，以及 V3 自动 fallback 两次原费用记录。组间有重复，未累加成独立用例数。
+- 产品 JS ESLint、本地化覆盖与 diff 检查通过；此单元尚未做 Inspector 的真实浏览器操作，归后续全产品前端浏览器串联。Task 继续分享／多修订映射／私人升级与后续前端接线，仍未合 main。
