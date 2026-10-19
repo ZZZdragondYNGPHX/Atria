@@ -86,3 +86,18 @@ tests/.e2e-screenshots/
 _probe-th/
 node_modules
 tests/node_modules
+
+# Test code, configuration and fixtures stay local to this checkout.
+test/
+tests/
+__tests__/
+e2e/
+integration-tests/
+*.test.*
+*.spec.*
+*-smoke.mjs
+jest.config.*
+vitest.config.*
+playwright.config.*
+pytest.ini
+conftest.py
