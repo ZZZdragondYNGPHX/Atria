@@ -117,3 +117,41 @@ test.each(PROMPT_TEMPLATES)('%s template saves as an editable exact closure and 
         expect(preset.entries.every(item => item.resource.provenance?.some(origin => origin.source === 'atria.template') || template === 'blank')).toBe(true);
     } finally { await h.cleanup(); }
 });
+
+test('a child configures and moves an inherited Stage without changing parent entries or identity', () => {
+    const a = module('Parent first', { stages: ['stage.first'] }), b = module('Parent last', { stages: ['stage.last'] });
+    const parent = program([], { stages: [{ stageId: 'stage.first', entries: [entry('entry.first', a)] }, { stageId: 'stage.last', entries: [entry('entry.last', b)] }] });
+    const child = program([], { stages: [{ stageId: 'stage.extra', entries: [] }], parentRef: ref(parent),
+        parameters: { show: { type: 'boolean', default: true } }, derive: [
+            { op: 'stage.configure', stageId: 'stage.first', config: { condition: { op: 'eq', path: 'param.show', value: true } } },
+            { op: 'stage.move', stageId: 'stage.last', position: { before: 'stage.first' } },
+        ] });
+    const value = fixture(child, [parent, a, b]);
+    expect(compile(value).semanticBlocks.map(block => block.message.content)).toEqual(['Parent last', 'Parent first']);
+    expect(flattenPromptProgram(value.resolved).stages.map(stage => stage.stageId)).toEqual(['stage.last', 'stage.first', 'stage.extra']);
+    value.request.prompt = { parameters: { show: false } };
+    expect(compile(value).semanticBlocks.map(block => block.message.content)).toEqual(['Parent last']);
+    expect(parent.stages[0].stageId).toBe('stage.first'); expect(parent.stages[0].condition).toBeUndefined();
+    const owner = { scope: 'package', packageId: createNativeId('package'), packageVersionId: createNativeId('packageVersion') };
+    const packaged = [child, parent, a, b].map(resource => ({ resourceType: ref(resource).resourceType,
+        resource: mapVersionedModelPromptResourceRefs(ref(resource).resourceType, resource, original => ({ ...original, ...owner })), origin: owner }));
+    const frozen = freezePackagePromptPrograms(packaged, owner).find(item => item.resource.promptProgramId === child.promptProgramId).resource;
+    expect(frozen.stages.map(stage => stage.stageId)).toEqual(['stage.last', 'stage.first', 'stage.extra']);
+    expect(frozen.stages[1].condition).toEqual(child.derive[0].config.condition); expect(frozen.derive).toEqual([]);
+    child.derive[1].position = { after: 'stage.missing' };
+    expect(() => compile(value)).toThrow('derive_stage_position_missing');
+    child.derive[1].stageId = 'stage.missing';
+    expect(() => compile(value)).toThrow('cannot select itself');
+});
+
+test('an Anchor deduplicates an identical source contribution locally while preserving distinct sources and deliberate reuse', () => {
+    const root = program([anchor('anchor.one'), anchor('anchor.two')]);
+    const one = fact('fact.one', 'Same words'), other = fact('fact.two', 'Same words');
+    const value = fixture(root, [], [one, structuredClone(one), other]);
+    const ir = compile(value);
+    expect(ir.semanticBlocks.map(block => block.message.content)).toEqual(['Same words', 'Same words', 'Same words', 'Same words']);
+    expect(ir.compilation.modules.filter(item => item.kind === 'anchor').map(item => item.contributions.length)).toEqual([2, 2]);
+    expect(ir.contextSlots).toHaveLength(4);
+    value.contextPlan.items[1].content = 'Different fragment with a reused ID';
+    expect(() => compile(value)).toThrow('context_duplicate');
+});

@@ -647,6 +647,26 @@ function assertProgramStage(value, field) {
 
 function assertDeriveOperation(value, field) {
     object(value, field);
+    if (['stage.configure', 'stage.move'].includes(value.op)) {
+        const stageId = namespaced(value.stageId, field + '.stageId');
+        if (value.op === 'stage.configure') {
+            only(value, ['op', 'stageId', 'config'], field);
+            object(value.config, field + '.config');
+            only(value.config, ['condition', 'targets', 'consumes', 'contextConsumers'], field + '.config');
+            const normalized = assertProgramStage({ ...value.config, stageId, moduleRefs: [] }, field + '.config');
+            return Object.freeze({ op: value.op, stageId, config: Object.freeze(Object.fromEntries(Object.keys(value.config).map(key => [key, normalized[key]]))) });
+        }
+        only(value, ['op', 'stageId', 'position'], field);
+        object(value.position, field + '.position'); only(value.position, ['before', 'after', 'edge'], field + '.position');
+        if (Object.keys(value.position).length !== 1) throw new TypeError(field + '.position requires one insertion point');
+        if (value.position.edge !== undefined) {
+            if (!['start', 'end'].includes(value.position.edge)) throw new TypeError(field + '.position.edge is unsupported');
+        } else {
+            const sibling = namespaced(value.position.before ?? value.position.after, field + '.position');
+            if (sibling === stageId) throw new TypeError(field + '.position cannot select itself');
+        }
+        return Object.freeze({ op: value.op, stageId, position: Object.freeze({ ...value.position }) });
+    }
     only(value, ['op', 'stageId', 'entryId', 'moduleId', 'replacementRef', 'config', 'entry', 'position'], field);
     if (!['add', 'disable', 'replace', 'configure'].includes(value.op)) {
         throw new TypeError(field + '.op is unsupported');

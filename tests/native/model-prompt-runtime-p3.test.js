@@ -128,7 +128,7 @@ describe('P3 Prompt compiler', () => {
         expect(() => compile(value)).toThrow('derive_operation_conflict');
     });
 
-    test('exact missing revision, cycles, duplicates and illegal configure fail closed', () => {
+    test('exact missing revisions, cycles, ambiguous entry selection and illegal configure are rejected', () => {
         const value = args([mod('A')]);
         value.resolved.resources[1].ref.revision = 'missing';
         expect(() => compile(value)).toThrow('exact_resource_missing');
@@ -136,7 +136,9 @@ describe('P3 Prompt compiler', () => {
         expect(() => flattenPromptProgram(cyclic.resolved)).toThrow('derive_cycle');
         const duplicate = args([mod('A')]);
         duplicate.resolved.resources[0].resource.stages[0].moduleRefs.push(duplicate.resolved.resources[1].ref);
-        expect(() => compile(duplicate)).toThrow('duplicate_module');
+        expect(compile(duplicate).promptIr.directives).toEqual(['A', 'A']);
+        duplicate.resolved.resources[0].resource.derive = [{ op: 'disable', moduleId: duplicate.resolved.resources[1].ref.resourceId }];
+        expect(() => compile(duplicate)).toThrow('derive_entry_ambiguous');
         const invalid = args([mod('A')]);
         invalid.resolved.resources[0].resource.derive = [{ op: 'configure', moduleId: invalid.resolved.resources[1].resource.promptModuleId, config: { tools: [] } }];
         expect(() => compile(invalid)).toThrow('parameter_unknown');

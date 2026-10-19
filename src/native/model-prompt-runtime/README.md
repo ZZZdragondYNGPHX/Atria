@@ -515,7 +515,7 @@ pricing evidence. The UI keeps sample data and results during editor view change
 
 Model nodes (`agent`, `planner`, `judge`, `review`) may set
 `policy.promptPinId` to an attached `port:"model"` dependency whose resource ref
-is an exact Library `core.prompt-program`. `policy.agentPinId` continues to select
+is an exact `core.prompt-program` from Library, Project or installed Package. `policy.agentPinId` continues to select
 the original player Runtime route. Omitting `promptPinId` uses the Route default.
 The Plan Inspector shows both choices and links to the selected original Program;
 the Pins form can select a Library Program and ask the original Host to pin its
@@ -564,3 +564,33 @@ Standalone Module samples mirror the Module's parameter declarations into their
 ordinary temporary Program and configure that exact Module entry from the sample
 parameter values. Each baseline uses its own declared stage and parameter schema;
 no game identity or undeclared artifact is fabricated.
+
+### Inherited Stage controls (compiler `native.prompt.v5`)
+
+A Program keeps its exact `parentRef`. Its normal `stages` add stages; entries
+keep their existing exact entry operations. Two additional `derive` operations
+edit an inherited Stage without rewriting the parent:
+
+```json
+[
+  {"op":"stage.configure","stageId":"stage.main","config":{"condition":{"op":"eq","path":"param.enabled","value":true}}},
+  {"op":"stage.move","stageId":"stage.main","position":{"after":"stage.prepare"}}
+]
+```
+
+Stage configuration accepts only `condition`, `targets`, `consumes` and
+`contextConsumers`. A move accepts exactly one `before`, `after`, or
+`edge:"start"|"end"`; self/missing targets are errors. Add new stages with normal
+`stages`, then position them with `stage.move`. The compiler, preview, editable
+resource sharing and Package freeze preserve this order and configuration.
+
+Within one Anchor, identical identified Context contributions are emitted once.
+Different identities/provenance and anonymous repeated turns remain distinct;
+using the same source in two explicit Anchors remains intentional reuse.
+
+Scoped Node Programs are read through original owners. A Project execution still
+requires its own Project resources; a Session still requires its installed Package
+closure. Publishing a reusable Plan does not grant access from another source.
+`plan-prompt` automatic candidates currently operate on Library copies; copy an
+external Program to Library before declaring such a candidate. Ordinary exact
+selection and manual editing do not require evaluation/candidate eligibility.

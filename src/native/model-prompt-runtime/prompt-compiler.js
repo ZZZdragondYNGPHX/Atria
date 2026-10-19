@@ -8,6 +8,8 @@ import { semanticBlocks } from './semantic-blocks.js';
 
 export { PROMPT_TARGETS };
 const refKey = value => JSON.stringify(assertExactResourceRef(value));
+// Without a source/item identity, equal prose can be separate conversation turns.
+const contributionKey = item => item.id || item.provenance.some(source => source.ref) ? hashNativeDocument(item) : item;
 // This is compiler-owned interpretation policy, never retrieved instructions or facts.
 const worldUsePolicy = 'Native World evidence use: current World fields establish only explicitly declared state. '
     + 'A location does not establish weather, surroundings, another Actor\'s presence, actions or thoughts. '
@@ -86,9 +88,25 @@ export function flattenPromptProgram(resolved, { validateBindings = true } = {})
         }
         const operated = new Set();
         for (const operation of program.derive) {
-            const key = operation.stageId + ':' + (operation.entryId ?? operation.moduleId);
+            const key = operation.op.startsWith('stage.') ? operation.op + ':' + operation.stageId : operation.stageId + ':' + (operation.entryId ?? operation.moduleId);
             if (operated.has(key)) promptError('derive_operation_conflict');
             operated.add(key);
+            if (operation.op.startsWith('stage.')) {
+                const index = result.stages.findIndex(stage => stage.stageId === operation.stageId);
+                if (index < 0) promptError('derive_stage_missing');
+                const stage = result.stages[index];
+                if (operation.op === 'stage.configure') Object.assign(stage, operation.config);
+                else {
+                    const position = operation.position, sibling = position.before ?? position.after;
+                    const target = sibling === undefined ? null : result.stages.find(item => item.stageId === sibling);
+                    if (sibling !== undefined && !target) promptError('derive_stage_position_missing');
+                    result.stages.splice(index, 1);
+                    const insertion = target ? result.stages.indexOf(target) + Number(position.after !== undefined)
+                        : position.edge === 'start' ? 0 : result.stages.length;
+                    result.stages.splice(insertion, 0, stage);
+                }
+                continue;
+            }
             if (operation.op === 'add' && operation.entryId) {
                 const stage = result.stages.find(stage => stage.stageId === operation.stageId);
                 if (!stage || stage.entries.some(entry => entry.id === operation.entryId)) promptError('derive_add_conflict');
@@ -212,7 +230,11 @@ export class PromptCompiler {
                         diagnostics.push({ stageId: stage.stageId, entryId: entry.id, kind: 'anchor', status: entry.disabled ? 'disabled' : 'condition-false' });
                         continue;
                     }
-                    const items = plan.items.filter(item => entry.accepts.includes(item.kind));
+                    const seen = new Set();
+                    const items = plan.items.filter(item => {
+                        if (!entry.accepts.includes(item.kind)) return false;
+                        const key = contributionKey(item); if (seen.has(key)) return false; seen.add(key); return true;
+                    });
                     if (!items.length && entry.required) promptError('anchor_required:' + stage.stageId + ':' + entry.id);
                     for (const item of items) blocks.push({ target: entry.target, item, anchorId: entry.id, stageId: stage.stageId });
                     diagnostics.push({ stageId: stage.stageId, entryId: entry.id, kind: 'anchor', target: entry.target, status: items.length ? 'included' : 'empty', contributions: items.map(item => ({ id: item.id ?? null, kind: item.kind, provenance: item.provenance })) });
@@ -258,11 +280,15 @@ export class PromptCompiler {
         const directiveSources = [], historySources = [], responseSources = [];
         const emitDirective = (content, source) => { ir.directives.push(content); directiveSources.push(source); };
         const input = [];
-        const ids = new Set();
-        const consumed = new Set(blocks.filter(block => block.item).map(block => block.item));
+        const ids = new Map();
+        const consumedKeys = new Set(blocks.filter(block => block.item).map(block => contributionKey(block.item)));
+        const consumed = new Set(plan.items.filter(item => consumedKeys.has(contributionKey(item))));
         for (const item of plan.items) {
-            if (item.id && ids.has(item.id)) promptError('context_duplicate');
-            if (item.id) ids.add(item.id);
+            if (item.id && ids.has(item.id)) {
+                if (consumed.has(item) && ids.get(item.id) === contributionKey(item)) continue;
+                promptError('context_duplicate');
+            }
+            if (item.id) ids.set(item.id, contributionKey(item));
             provenance.push(...item.provenance);
             const scope = { ...plan.source }; delete scope.revisionId; delete scope.revision;
             segments.push({ identity: hashNativeDocument({ scope, kind: item.kind, id: item.id ?? null }),
@@ -342,7 +368,7 @@ export class PromptCompiler {
                 provenance: [{ source: 'native.narrative-use-policy', ref: 'v1' }], contentFingerprint: hashNativeDocument(narrativeUsePolicy),
                 volatility: 'stable', cacheability: 'candidate', consumed: true });
         }
-        ir.compilation = { versions: { compiler: 'native.prompt.v4', canonical: 'native.json.v1', layout: 'native.semantic-blocks.v2' }, segments,
+        ir.compilation = { versions: { compiler: 'native.prompt.v5', canonical: 'native.json.v1', layout: 'native.semantic-blocks.v2' }, segments,
             source: plan.source, directiveSources, historySources, responseSources,
             authoredBehaviorFingerprint: hashNativeDocument({ blocks: blocks.filter(block => !block.item), parameters: env.param, selectedStages: stages.filter(id => selected.includes(id)), programRef: resolved.route.promptProgramRef }),
             ...(plan.personaEvidence ? { personaEvidence: { ...plan.personaEvidence, consumerStages: personaStages,
