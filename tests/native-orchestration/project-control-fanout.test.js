@@ -21,7 +21,7 @@ async function fixture(make, { unknown = false, any = false, scopeDag = false, w
     let fanout, proposed, pureModels, scopeNode, scopeTail, sibling, business = 0, arrivals = 0, plannerRound = 0, both;
     const gate = new Promise(resolve => { both = resolve; });
     const f = await projectModelFixture(make, { maxModelRounds: 3, responseStatus: index => failure && index === 1 ? 400 : 200, changeRoute: route => ({ ...route,
-        policy: { ...route.policy, timeoutMs: scopeReplan ? 60000 : route.policy.timeoutMs }, executionPolicy: { ...route.executionPolicy,
+        policy: { ...route.policy, timeoutMs: scopeReplan || scopeDag ? 60000 : route.policy.timeoutMs }, executionPolicy: { ...route.executionPolicy,
             computeBudget: { ...route.executionPolicy.computeBudget, maxRequests: scopePlanner ? 7 + Number(scopeReplan) : 10, localWork: { ...route.executionPolicy.computeBudget.localWork, maxJobs: 160 } } } }),
     configurePlan: async args => {
         const { plan, seeded, h, original, route } = args;
