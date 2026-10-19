@@ -6,6 +6,9 @@ import { prepareIndependent } from '../../../public/shared/native-independent-pr
 import { optionalComputeOptions, COMPUTE_ADMISSION_CODES } from '../../../public/shared/native-compute-budget.js';
 import { observeEvolutionProject, prepareEvolutionProject } from '../agent-intelligence/evolution-observer.js';
 import { createPreviewSkillRepository } from '../model-prompt-runtime/preview-skills.js';
+import { tryAuthoringSample } from '../model-prompt-runtime/draft-preview.js';
+import { captureAuthoringSample, authoringSamplePlan } from '../model-prompt-runtime/authoring-sample.js';
+import { chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork } from '../../../public/shared/native-compute-budget.js';
 import { previewPromptDraft } from '../model-prompt-runtime/draft-preview.js';
 import { assertPreviewDisclosure } from '../model-prompt-runtime/preview-disclosure.js';
 import { assertExactResourceRef } from '../model-prompt-runtime/contracts.js';
@@ -33,7 +36,7 @@ import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { PromptCompiler } from '../model-prompt-runtime/prompt-compiler.js';
 import { createNativeSessionContextAdapter, nativeSessionContextOptions } from './native-session-context.js';
 import { assertInformationActorAvailable, informationDefinition, informationContext, informationSourceMessageIds, memoryEvidenceApplicability } from '../../../public/shared/native-information-runtime.js';
-import { immutable, ProviderFailure, GenerationError, checkCancellation, containsSecret, inspectProviderHttpFailure } from '../model-prompt-runtime/execution-utils.js';
+import { immutable, ProviderFailure, GenerationError, checkCancellation, containsSecret, inspectProviderHttpFailure, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
 import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
 import { assertTaskValue, normalizeTaskGenerationResult } from '../../../public/shared/native-task-contract.js';
 import { nativeTaskScheduler } from '../task-scheduler.js';
@@ -1001,11 +1004,15 @@ export class NativeGenerationHost {
         });
     }
 
+    async tryAuthoring(handle, input, signal) {
+        return tryAuthoringSample(this, handle, input, signal);
+    }
+
     async previewDraft(handle, input, signal) {
         return previewPromptDraft(this, handle, input, signal);
     }
 
-    async execute(handle, value, signal, onChunk, { preview = false, draftOverrides = null, programSelection = null, taskPlan = null, scheduled = false, lanePlan = null, illustrationPlan = null, preflight = false, preflightPackage = null, preflightSnapshot = null, effectPolicy = null, retainResult = false, approvedReview = null, orchestrationSend = null } = {}) {
+    async execute(handle, value, signal, onChunk, { preview = false, draftOverrides = null, programSelection = null, previewContext = null, authoringRun = null, taskPlan = null, scheduled = false, lanePlan = null, illustrationPlan = null, preflight = false, preflightPackage = null, preflightSnapshot = null, effectPolicy = null, retainResult = false, approvedReview = null, orchestrationSend = null } = {}) {
         const sendBank = orchestrationSend?.bank;
         const scopedContext = orchestrationSend?.context;
         const quotaProof = orchestrationSend?.quotaProof;
@@ -1026,9 +1033,9 @@ export class NativeGenerationHost {
         }
         effectPolicy ??= lanePlan?.effectPolicy ?? null;
         const input = immutable(value);
-        if (draftOverrides && !preview) fail('native_generation_preview_only');
-        if (['drafts', 'draftOverrides', 'baselineDrafts', 'programSelection', 'promptProgramRef', 'semanticBlocks', 'sourceBinding', 'audience', 'grant'].some(key => Object.hasOwn(input, key))) fail('native_generation_request_authority_denied');
-        if (input.previewRefs && !preview) fail('native_generation_preview_only');
+        if (draftOverrides && !preview && !authoringRun) fail('native_generation_preview_only');
+        if (['drafts', 'draftOverrides', 'baselineDrafts', 'programSelection', 'promptProgramRef', 'semanticBlocks', 'sourceBinding', 'audience', 'grant', 'authoringRun', 'previewContext'].some(key => Object.hasOwn(input, key))) fail('native_generation_request_authority_denied');
+        if (input.previewRefs && !preview && !authoringRun) fail('native_generation_preview_only');
         if (programSelection) {
             if (typeof programSelection.assertCurrent !== 'function' || taskPlan || illustrationPlan || lanePlan?.prediction || draftOverrides || input.previewRefs)
                 throw new GenerationError('generation_program_authority_required');
@@ -1036,6 +1043,11 @@ export class NativeGenerationHost {
             if (hashNativeDocument(ref) !== hashNativeDocument(programSelection.promptProgramRef)) throw new GenerationError('generation_program_authority_required');
             programSelection = Object.freeze({ promptProgramRef: immutable(ref), assertCurrent: programSelection.assertCurrent });
         }
+        const sample = input.sample === undefined ? null : captureAuthoringSample(input.sample);
+        if (sample && (input.sessionId || input.projectId || input.taskId || input.messages?.length || input.tools?.length || taskPlan || illustrationPlan || orchestrationSend || !preview && !authoringRun)) fail('native_generation_context_ambiguous');
+        if (authoringRun && !sample || previewContext && !preview) fail('native_generation_preview_only');
+        if (input.resourceProjectId && !sample) fail('native_generation_context_ambiguous');
+        const sampleProject = input.resourceProjectId ? immutable(await this.studio.getProject(handle, input.resourceProjectId)) : null;
         const prediction = predictionLanes.has(lanePlan) ? lanePlan.prediction : null;
         if (lanePlan?.prediction && !prediction) fail('native_prediction_capture_required');
         if (prediction) {
@@ -1044,7 +1056,7 @@ export class NativeGenerationHost {
         }
         // Compilation is observation: reconciliation can publish/rollback and
         // must remain confined to an explicitly executing invocation.
-        if (!preview && !preflight && effectPolicy !== 'no-background-model') await prepareEvolutionProject(this, handle, input.projectId);
+        if (!preview && !preflight && effectPolicy !== 'no-background-model' && input.projectId) await prepareEvolutionProject(this, handle, input.projectId);
         if (!ROLES.has(input.role)) fail('native_generation_role_invalid');
         if (input.role === 'illustration_prompt' && !illustrationPlan) fail('native_generation_context_required');
         // The HTTP host currently owns player routes only. Never reinterpret an
@@ -1055,7 +1067,9 @@ export class NativeGenerationHost {
             || Object.keys(input.routeRef).some(key => !['scope', 'runtimeRouteId'].includes(key)))) fail('native_generation_route_ref_invalid');
         const role = 'role.' + input.role;
         let snapshot; let sourceAuthoritySnapshot; let project; let source; let runtime; let projectTaskEvidence; let projectConversation; let rpMessages; let projectWorker = null;
-        if (input.sessionId) {
+        if (sample) {
+            source = { kind: 'authoring', sampleId: hashNativeDocument(sample) };
+        } else if (input.sessionId) {
             snapshot = immutable(illustrationPlan?.snapshot ?? (preflight ? preflightSnapshot : null) ?? lanePlan?.authorityContext?.snapshot
                 ?? (preview ? await this.sessionCore.observe(handle, input.sessionId, { revisionId: input.revisionId })
                     : await this.sessionCore[effectPolicy === 'no-background-model' ? 'observe' : 'load'](handle, input.sessionId)));
@@ -1109,7 +1123,8 @@ export class NativeGenerationHost {
             if (budget && !lanePlan?.budgetContext) fail('native_generation_budget_lane_denied');
         }
         const packageIdentity = snapshot?.session ?? preflightPackage?.manifest;
-        const routeList = lanePlan ? Object.values(lanePlan.routes) : await this.persistence.listRuntimeRoutes(handle);
+        const routeList = previewContext?.routes ?? (lanePlan ? Object.values(lanePlan.routes) : await this.persistence.listRuntimeRoutes(handle));
+        if (previewContext) previewContext.routes ??= immutable(routeList);
         let route = selectNativeRuntimeRoute(routeList, role, input.routeRef);
         if (programSelection) {
             const validate = programSelection.assertCurrent;
@@ -1123,11 +1138,11 @@ export class NativeGenerationHost {
             let worker;
             const operation = nativeTaskScheduler.submit({ owner: handle, anchor: source, executionClass: 'interactive', resources, retry: false, retainResult,
                 timeoutMs: executionTimeout(captured),
-                key: (input.sessionId ?? input.projectId ?? source.controlId) + ':' + role + ':' + input.requestId, fingerprint: hashNativeDocument(programSelection ? { input, promptProgramRef: programSelection.promptProgramRef } : input), signal, onChunk,
-                fresh: async () => sendBank ? (await sendBank.assertCurrent(), true) : input.sessionId ? (await this.sessionCore[effectPolicy === 'no-background-model' ? 'observe' : 'load'](handle, input.sessionId)).revision.revisionId === input.revisionId
+                key: (input.sessionId ?? input.projectId ?? source.controlId ?? source.sampleId) + ':' + role + ':' + input.requestId, fingerprint: hashNativeDocument(authoringRun ? { input, drafts: draftOverrides.identities, limits: authoringRun.compute.limits } : programSelection ? { input, promptProgramRef: programSelection.promptProgramRef } : input), signal, onChunk,
+                fresh: async () => sample ? true : sendBank ? (await sendBank.assertCurrent(), true) : input.sessionId ? (await this.sessionCore[effectPolicy === 'no-background-model' ? 'observe' : 'load'](handle, input.sessionId)).revision.revisionId === input.revisionId
                     : (await this.studio.getProject(handle, input.projectId)).revision.revision === input.revision,
                 run: boundary => {
-                    worker = this.execute(handle, input, boundary.signal, boundary.onChunk, { taskPlan, scheduled: true, lanePlan: captured, effectPolicy, approvedReview, orchestrationSend, programSelection });
+                    worker = this.execute(handle, input, boundary.signal, boundary.onChunk, { taskPlan, scheduled: true, lanePlan: captured, effectPolicy, approvedReview, orchestrationSend, programSelection, authoringRun, draftOverrides });
                     return worker;
                 },
                 projectResult: result => ({ usage: result.response?.usage ?? null, compute: result.routing?.compute ?? null,
@@ -1143,10 +1158,10 @@ export class NativeGenerationHost {
                 throw error;
             });
         }
-        if (input.previewRefs && !preview) fail('native_generation_preview_only');
+        if (input.previewRefs && !preview && !authoringRun) fail('native_generation_preview_only');
         if (input.previewRefs && (typeof input.previewRefs !== 'object' || Array.isArray(input.previewRefs)
             || Object.keys(input.previewRefs).some(key => !['promptProgramRef', 'generationProfileRef'].includes(key)))) fail('native_generation_preview_refs_invalid');
-        if (preview && input.previewRefs) route = { ...route,
+        if ((preview || authoringRun) && input.previewRefs) route = { ...route,
             ...(input.previewRefs.promptProgramRef ? { promptProgramRef: input.previewRefs.promptProgramRef } : {}),
             ...(input.previewRefs.generationProfileRef ? { generationProfileRef: input.previewRefs.generationProfileRef } : {}),
         };
@@ -1162,31 +1177,46 @@ export class NativeGenerationHost {
                 const opened = preflightPackage ?? await this.packageInstaller.open(owner, ref.packageId, ref.packageVersionId);
                 entries = opened.manifest.resources;
             } else {
-                if (!project || ref.projectId !== project.source.project.projectId) fail('native_generation_resource_owner');
-                entries = project.source.resources;
+                const resourceProject = sampleProject ?? project;
+                if (!resourceProject || ref.projectId !== resourceProject.source.project.projectId) fail('native_generation_resource_owner');
+                entries = resourceProject.source.resources;
             }
             const entry = (entries || []).find(item => {
                 const identity = getVersionedModelPromptResourceIdentity(item.resourceType, item.resource);
                 return identity.resourceId === ref.resourceId && identity.resourceType === ref.resourceType && identity.revision === ref.revision;
             });
+            if (!entry && ref.scope === 'project') return draftOverrides?.resourceOverrides.newResource({ ref });
             return entry && { snapshot: entry.resource, origin: ref.scope === 'project' ? { scope: 'project', projectId: ref.projectId } : entry.origin };
         };
         const persistence = Object.create(this.persistence);
+        if (previewContext) {
+            persistence.getRuntimeRoute = async (_owner, id) => previewContext.routes.find(route => route.runtimeRouteId === id);
+            const profiles = previewContext.profiles ??= new Map();
+            for (const method of ['getConnectionProfile', 'getModelProfile']) persistence[method] = async (owner, id) => {
+                const key = method + ':' + id;
+                if (!profiles.has(key)) profiles.set(key, immutable(await this.persistence[method](owner, id)));
+                return profiles.get(key);
+            };
+        }
         if (lanePlan) {
             persistence.getRuntimeRoute = async (_owner, id) => lanePlan.routes[id] ?? null;
             persistence.getConnectionProfile = async (_owner, id) => lanePlan.connections[id] ?? null;
             persistence.getModelProfile = async (_owner, id) => lanePlan.models[id] ?? null;
         }
+        const readCapturedRoute = persistence.getRuntimeRoute.bind(persistence);
         if (project && !taskPlan) {
             route = projectRuntimeRoute(route, input.projectId);
-            persistence.getRuntimeRoute = async (owner, id) => projectRuntimeRoute(lanePlan ? lanePlan.routes[id] : await this.persistence.getRuntimeRoute(owner, id), input.projectId);
+            persistence.getRuntimeRoute = async (owner, id) => projectRuntimeRoute(await readCapturedRoute(owner, id), input.projectId);
         }
         if (taskPlan) {
             const compose = lane => taskRuntimeRoute(lane, role, taskPlan, packageIdentity);
             route = compose(route);
-            persistence.getRuntimeRoute = async (owner, id) => compose(lanePlan ? lanePlan.routes[id] : await this.persistence.getRuntimeRoute(owner, id));
+            persistence.getRuntimeRoute = async (owner, id) => compose(await readCapturedRoute(owner, id));
         }
-        if (preview && input.previewRefs) persistence.getRuntimeRoute = async (owner, id) => id === route.runtimeRouteId ? route : this.persistence.getRuntimeRoute(owner, id);
+        if ((preview || authoringRun) && input.previewRefs) {
+            const readEffectiveRoute = persistence.getRuntimeRoute.bind(persistence);
+            persistence.getRuntimeRoute = async (owner, id) => ({ ...await readEffectiveRoute(owner, id), ...input.previewRefs });
+        }
         const resolver = new RouteResolver({ persistence, library: this.library, providers: this.providers, getScopedResource,
             resourceOverrides: draftOverrides?.resourceOverrides });
         if (preflight) return resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, role, requirements, programSelection });
@@ -1208,7 +1238,8 @@ export class NativeGenerationHost {
             return runGenerationLocalWork({ signal, attempt, discardResult,
                 onAdmitted: entry => localWorkAttempts.push(entry), admit: async () => {
                     let receipt;
-                    if (sendBank) receipt = await sendBank.chargeLocalWork(limits, attempt);
+                    if (authoringRun) receipt = chargeLocalWork(authoringRun, limits, attempt);
+                    else if (sendBank) receipt = await sendBank.chargeLocalWork(limits, attempt);
                     else if (input.sessionId) {
                         const context = lanePlan?.budgetContext;
                         receipt = await this.sessionCore.runs.chargeLocalWork(handle, context?.snapshot ?? snapshot,
@@ -1217,11 +1248,11 @@ export class NativeGenerationHost {
                     } else if (projectTaskEvidence) receipt = await this.agent.chargeLocalWork(handle, input.projectId, input.taskId, input.revision, limits, attempt, projectTaskEvidence.ref.slice(-64));
                     else if (limits?.localWork) throw new GenerationError('native_generation_budget_lane_denied');
                     return receipt;
-                }, settle: ({ receipt, usage }) => sendBank ? sendBank.settleLocalWork(attempt.attemptId, usage)
+                }, settle: ({ receipt, usage }) => authoringRun ? settleLocalWork(authoringRun, attempt.attemptId, usage) : sendBank ? sendBank.settleLocalWork(attempt.attemptId, usage)
                     : input.sessionId ? this.sessionCore.runs.settleLocalWork(handle, input.sessionId, receipt.operation, attempt.attemptId, usage)
                         : this.agent.settleLocalWork(handle, input.projectId, input.taskId, attempt.attemptId, usage) }, operation);
         };
-        const skills = !sendBank && !prediction && !authorityContext && this.skillRepository && isNarrativeSkillInvocation(input.role, taskPlan, runtime)
+        const skills = !sample && !sendBank && !prediction && !authorityContext && this.skillRepository && isNarrativeSkillInvocation(input.role, taskPlan, runtime)
             ? await prepareNarrativeSkills({ repository: preview ? createPreviewSkillRepository(this.skillRepository(handle)) : this.skillRepository(handle), settings: (await this.extensions.settings(handle)).value,
                 work: (kind, descriptor, operation) => localWork(kind, { resolved: { effectiveExecutionPolicy: route.executionPolicy,
                     pathFingerprint: hashNativeDocument(route) } }, operation, descriptor),
@@ -1239,6 +1270,7 @@ export class NativeGenerationHost {
             ? [{ source: 'native.session-task-compaction', ref: '1:' + hashNativeDocument(taskHistory.compaction) }] : [])];
         const scopedProvider = scopedContext?.port.provider(handle, { context: scopedContext.compiled, source });
         const buildContext = async (request, resolved) => {
+            if (sample) return authoringSamplePlan(request, resolved, sample);
             if (scopedProvider) return scopedProvider.buildRequestContextPlan(request, resolved);
             if (prediction) {
                 await assertPredictionCaptureCurrent(prediction.capture);
@@ -1308,6 +1340,8 @@ export class NativeGenerationHost {
         };
         const assertSourceCurrent = async ({ phase, contextPlan } = {}) => {
             checkCancellation(signal);
+            if (sampleProject && (await this.studio.getProject(handle, input.resourceProjectId)).revision.revision !== sampleProject.revision.revision)
+                throw new GenerationError('native_generation_revision_conflict');
             if (sendBank) await sendBank.assertCurrent();
             if (prediction) await assertPredictionCaptureCurrent(prediction.capture);
             if (source.kind === 'session') {
@@ -1340,14 +1374,21 @@ export class NativeGenerationHost {
         };
         let meteredContextIncluded = false;
         const contextProvider = { buildRequestContextPlan: async (request, resolved) => {
+            if (previewContext?.plan) {
+                const reservedOutputTokens = effectiveOutputReserve(resolved);
+                return { ...previewContext.plan, requestId: request.requestId, budget: { maxTokens: resolved.model.limits.contextTokens - reservedOutputTokens, reservedOutputTokens } };
+            }
             if (scopedContext?.compileProof) {
                 const verified = await assertContextCompilation({ proof: scopedContext.compileProof, handle, port: scopedContext.port,
                     compiled: scopedContext.compiled, bank: sendBank, source });
                 if (!meteredContextIncluded) { localWorkAttempts.unshift(verified.localWork); meteredContextIncluded = true; }
                 return buildContext(request, resolved);
             }
-            return contextBuildWork(request, resolved, () => buildContext(request, resolved));
+            const plan = await contextBuildWork(request, resolved, () => buildContext(request, resolved));
+            if (previewContext) previewContext.plan = immutable(plan);
+            return plan;
         }, assertCurrent: assertSourceCurrent };
+        if (previewContext) (previewContext.checks ??= []).push(assertSourceCurrent);
         if (input.prompt?.host !== undefined) fail('native_generation_host_readonly');
         const hostView = { role, sourceKind: source.kind, sessionId: source.sessionId || '', branchId: source.branchId || '',
             revisionId: source.revisionId || '', projectId: source.projectId || '', projectRevision: source.revision || '' };
@@ -1378,7 +1419,8 @@ export class NativeGenerationHost {
         const budgetedResolver = { resolve: request => localWork('route_resolve', { resolved: { effectiveExecutionPolicy: route.executionPolicy,
             pathFingerprint: hashNativeDocument(route) } }, () => resolver.resolve(request), { route, request }), provider: id => resolver.provider(id) };
         const service = new GenerationService({ resolver: budgetedResolver, contextProvider, preparePrompt: args => promptCompileWork(args), secretPort: this.secretPort,
-            beforeSend: sendBank || approvedReview || lanePlan?.controlledTurn ? async ({ snapshot, resolved }) => {
+            beforeSend: authoringRun || sendBank || approvedReview || lanePlan?.controlledTurn ? async ({ snapshot, resolved }) => {
+                if (authoringRun) draftOverrides?.assertConsumed();
                 if (sendBank) capturedSend = { snapshot, resolved };
                 await lanePlan?.controlledTurn?.check();
                 if (!approvedReview) return;
@@ -1402,7 +1444,7 @@ export class NativeGenerationHost {
                 const settleAttempt = async usage => {
                     if (!pendingCharge) return;
                     const { receipt, attemptId, entry } = pendingCharge;
-                    const settled = sendBank ? await sendBank.settle(attemptId, usage) : input.sessionId
+                    const settled = authoringRun ? settleComputeAttempt(authoringRun, attemptId, usage) : sendBank ? await sendBank.settle(attemptId, usage) : input.sessionId
                         ? await this.sessionCore.runs.settleCompute(handle, input.sessionId, receipt.operation, attemptId, usage)
                         : await this.agent.settleGeneration(handle, input.projectId, input.taskId, attemptId, usage);
                     Object.assign(entry, settled);
@@ -1497,7 +1539,7 @@ export class NativeGenerationHost {
                                 if (sendBank) await sendBank.assertCurrent();
                                 const computeOptions = optionalComputeOptions(resolved.route.executionPolicy, lanePlan?.budgetContext?.background === true ? 'background' : taskPlan || projectTaskEvidence ? 'model_task' : input.role);
                                 if ('reserve' in computeOptions && !limits) throw new GenerationError('native_generation_budget_unavailable');
-                                const compute = !sendBank && (limits || input.sessionId || input.taskId) ? { limits, options: computeOptions, attempt: { attemptId: randomUUID(), requestId: input.requestId,
+                                const compute = !sendBank && (authoringRun || limits || input.sessionId || input.taskId) ? { limits: limits ?? authoringRun?.compute.limits, options: computeOptions, attempt: { attemptId: randomUUID(), requestId: input.requestId,
                                     targetFingerprint: resolved.pathFingerprint, estimatedTokens: prepared.snapshot.diagnostics.inputTokens + prepared.snapshot.contextPlan.budget.reservedOutputTokens } } : null;
                                 let receipt;
                                 if (sendBank) {
@@ -1506,6 +1548,8 @@ export class NativeGenerationHost {
                                             upperBound: actualSnapshot.diagnostics.inputTokens + actualSnapshot.contextPlan.budget.reservedOutputTokens, limits,
                                             ...computeOptions });
                                     } catch (error) { throw new GenerationError(error.code ?? 'generation_execution_failed'); }
+                                } else if (authoringRun) {
+                                    receipt = { compute: chargeComputeAttempt(authoringRun, compute.limits, compute.attempt, compute.options), limits: authoringRun.compute.limits };
                                 } else if (budget) {
                                     const context = lanePlan.budgetContext;
                                     try { receipt = await this.sessionCore.runs.charge(handle, context.snapshot, { anchor: context.anchor, role: input.role, background: context.background === true, ...(compute ? { compute } : {}) }, budget); } catch (error) {
@@ -1630,7 +1674,7 @@ export class NativeGenerationHost {
         if (draftOverrides) draftOverrides.assertConsumed();
         return immutable({ ...result, routing: { fallbackUsed: result.snapshot.runtimeRouteId !== route.runtimeRouteId, attempts,
             compute: { configured: Boolean(computeAttempts.length || localWorkAttempts.length || result.snapshot.diagnostics.executionPlan?.policy?.computeBudget),
-                scope: input.sessionId || source.kind === 'rp_chat' ? 'run_operation' : input.taskId ? 'project_task' : 'unavailable',
+                scope: sample ? 'authoring_request' : input.sessionId || source.kind === 'rp_chat' ? 'run_operation' : input.taskId ? 'project_task' : 'unavailable',
                 limits: computeLimits ?? result.snapshot.diagnostics.executionPlan?.policy?.computeBudget ?? null, attempts: computeAttempts, localWork: localWorkAttempts,
                 observationScope: 'current_request', currencyStatus: 'unavailable' },
             ...(projectTaskCapture ? { projectTaskCapture } : {}) } });

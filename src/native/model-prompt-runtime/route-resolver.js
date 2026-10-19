@@ -10,6 +10,7 @@ import {
 import { GenerationError, immutable } from './execution-utils.js';
 import { capabilityAtPath, executionPathFingerprint } from './execution-evidence.js';
 import { hashNativeDocument } from '../repositories/common.js';
+import { NotFoundError } from '../../storage/errors.js';
 
 // Read-through ports over P1 authorities; this resolver owns no persistence/cache.
 export class RouteResolver {
@@ -71,9 +72,14 @@ export class RouteResolver {
             if (visited.has(key)) return visited.get(key);
             if (resources.length >= 1024) throw new GenerationError('generation_resource_limit');
             active.add(key);
-            const envelope = ref.scope === 'library'
-                ? await this.library.getExact(handle, ref)
-                : await this.getScopedResource?.(handle, ref);
+            let envelope;
+            try {
+                envelope = ref.scope === 'library' ? await this.library.getExact(handle, ref) : await this.getScopedResource?.(handle, ref);
+            } catch (error) {
+                if (!(error instanceof NotFoundError) || ref.scope !== 'library' || !resourceOverrides?.newResource) throw error;
+                envelope = await resourceOverrides.newResource({ handle, ref });
+                if (!envelope) throw error;
+            }
             if (!envelope || envelope.origin?.scope !== ref.scope
                 || ['projectId', 'packageId', 'packageVersionId'].some(k => envelope.origin[k] !== ref[k])) {
                 throw new GenerationError('generation_resource_origin_mismatch');

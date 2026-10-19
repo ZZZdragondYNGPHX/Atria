@@ -15,7 +15,7 @@ export const ATRIA_CAPABILITY_PROVENANCE_KINDS = Object.freeze([
 ]);
 export const ATRIA_RESOURCE_REF_SCOPES = Object.freeze(['project', 'library', 'package']);
 export const ATRIA_RUNTIME_ROUTE_SCOPES = Object.freeze(['player', 'session']);
-export const ATRIA_CONTEXT_SOURCE_KINDS = Object.freeze(['session', 'studio', 'task', 'rp_chat']);
+export const ATRIA_CONTEXT_SOURCE_KINDS = Object.freeze(['session', 'studio', 'task', 'rp_chat', 'authoring']);
 export const ATRIA_PACKAGE_MODEL_PROMPT_FIELD = 'modelPrompt';
 
 const TOKEN_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
@@ -846,6 +846,11 @@ function assertContextSource(value) {
     object(value, 'RequestContextPlan.source');
     if (!ATRIA_CONTEXT_SOURCE_KINDS.includes(value.kind)) {
         throw new TypeError('RequestContextPlan.source.kind is unsupported');
+    }
+    if (value.kind === 'authoring') {
+        only(value, ['kind', 'sampleId'], 'RequestContextPlan.source');
+        if (!/^[a-f0-9]{64}$/.test(value.sampleId)) throw new TypeError('Author sample identity required');
+        return Object.freeze({ kind: 'authoring', sampleId: value.sampleId });
     }
     if (value.kind === 'rp_chat') {
         only(value, ['kind', 'controlId'], 'RequestContextPlan.source');

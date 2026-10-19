@@ -2054,3 +2054,12 @@ not a wall of unlabeled inputs.
 @media (max-width: 700px) { .atria-app-shell .atria-product-settings-grid { grid-template-columns: minmax(0, 1fr); } }
 
 @media (max-width: 700px) { .atria-app-shell .atria-product-setting-card label { min-height: 44px; } }
+
+/* The authoring sample follows the same editor flow at every width. */
+.atri-prompt-preview { min-width: 0; padding: 16px; border: 1px solid var(--atri-separator); border-radius: var(--atri-radius-md); }
+.atri-prompt-preview > summary { cursor: pointer; min-height: 32px; font-weight: 600; }
+.atri-prompt-sample-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+.atri-prompt-preview-result { min-width: 0; }
+.atri-prompt-preview-result pre { max-height: 480px; overflow: auto; padding: 12px; background: var(--atri-surface-1); border-radius: var(--atri-radius-sm); }
+.atri-prompt-preview [aria-pressed="true"] { outline: 2px solid var(--atri-accent); outline-offset: 1px; }
+@media (max-width: 700px) { .atri-prompt-sample-fields { grid-template-columns: minmax(0, 1fr); } }

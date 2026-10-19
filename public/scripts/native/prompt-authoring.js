@@ -11,6 +11,7 @@ import { runtimeRequest } from './runtime-client.js';
 import { nativeStudioClient } from './studio-client.js';
 import { promptStageEntries, promptStageModuleRefs, mapPromptStageRefs } from '../../shared/prompt-module-order.js';
 import { NATIVE_GENERATION_DEFAULTS as generationDefaults } from '../../shared/native-generation-defaults.js';
+import { mountPromptSamplePreview } from './prompt-sample-preview.js';
 
 export const PROMPT_TYPES = Object.freeze({
     'core.prompt-program': ['Prompt Programs', 'promptProgramId', 'pprog'],
@@ -165,6 +166,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
     let renderVersion = 0; let jsonBuffer = null; let readActive = () => draft; let rawActive = () => jsonBuffer; let lastEdit = null;
     const history = [{ draft: clone(draft), jsonBuffer }]; const future = [];
     const textSelections = new Map();
+    const sampleState = {};
     const root = element(doc, 'section', undefined, parent); root.className = 'atri-prompt-editor';
     root.dataset.atriPromptEditor = 'true';
     if (librarySurface) root.dataset.atriLibraryEditor = 'true';
@@ -401,6 +403,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
             const provenance = fold(root, 'provenance', 'System provenance (read-only)');
             element(doc, 'pre', JSON.stringify(draft.provenance || [], null, 2), provenance);
         }
+        mountPromptSamplePreview({ document: doc, parent: root, entry, entries, state: sampleState, readDraft: () => { if (jsonBuffer !== null) jsonValue(jsonBuffer); return readActive(); } });
         const save = action(doc, root, librarySurface ? 'Save revision' : 'Review / save revision', async () => {
             if (save.disabled || submitting || submitted || !root.isConnected) return; submitting = true; save.disabled = true; save.setAttribute('aria-busy', 'true'); status.replaceChildren();
             try {

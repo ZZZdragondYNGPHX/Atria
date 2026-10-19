@@ -115,11 +115,12 @@ Use `GET /resources` entry `fingerprint` or the baseline's
 `authored.resources[].baseFingerprint` as `expectedFingerprint`; it hashes the
 original validator-normalized resource, not an arbitrary raw JSON representation.
 
-Supported replacements are existing Library/current Project Prompt Programs,
+Supported replacements are Library/current Project Prompt Programs,
 Modules and Generation Profiles with unchanged type/ID/revision. Package originals
 must first be forked through their existing authoring flow. The original reader
-checks owner/origin/exact base before the ephemeral replacement. New dependencies
-must still resolve through the same original readers. Unreferenced replacements,
+checks owner/origin/exact base before the ephemeral replacement. For a new exact
+revision, set `expectedFingerprint:null`; it must not already exist. Dependencies
+may include other declared new drafts, with the same original owner checks. Unreferenced replacements,
 duplicate refs, stale bases and changed identities fail closed. Limits are 32
 replacements, 512 KiB replacement JSON and 1 MiB total request JSON.
 
@@ -130,8 +131,9 @@ layer. Authored resources retain full bodies; effective contains the actual IR,
 count/budget, compilation and binding; wire is the adapter's public request body
 without credentials or opaque reasoning/continuation state. `baseFingerprint` and
 `resourceFingerprint` distinguish the committed base from a replacement. Diff
-compiles baseline, candidate and a final baseline verification; it never accepts
-a browser-authored result as evidence. No Secret resolution, Provider send,
+compiles each side once, captures shared Context/Runtime configuration and then
+rechecks the original source. Optional `baselineRefs` and `candidateRefs` select
+exact `promptProgramRef`/`generationProfileRef` independently for each side. No Secret resolution, Provider send,
 resource write, publication or new persistence occurs.
 
 Handle `native_generation_draft_conflict` / `...draft_source_conflict` by retaining
@@ -490,3 +492,21 @@ dependencies, shared budgets, Review, automatic promotion and runtime monitoring
 ```sh
 node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-runtime/workspace-strategy-versions.test.js tests/agent-intelligence/project-strategy.test.js
 ```
+
+### Independent author samples
+
+Use `request.sample:{input,materials,persona,history}` for an author-owned sample;
+`history` contains user/assistant text messages. No Session/Project is created.
+`request.prompt.parameters` supplies normal Program parameters. Studio may set
+`request.resourceProjectId` to read its original Project resources while retaining
+the sample Context. The shared editor exposes this same sample and three-layer
+revision preview in Library and Studio.
+
+Authenticated `POST /api/native/generation/authoring/try` accepts
+`{request,refs,drafts,limits,send:true}`. `refs` has the same two exact selection
+fields as preview. Explicit Compute `limits` apply to this request through the
+original Scheduler/Host/Provider. This action sends; preview never does. The
+result contains the sample response and current-request Compute usage, or a failed
+trial with its actual unknown/settled attempts. It does not publish, save a preset,
+or apply output to a game. Currency cost remains unavailable without original
+pricing evidence. The UI keeps sample data and results during editor view changes.

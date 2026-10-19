@@ -1044,7 +1044,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             return response.sendStatus(404);
         } catch (error) { response.status(error.code === 'native_generation_configuration_conflict' ? 409 : 400).json({ error: ['native_runtime_fallback_role', 'native_generation_configuration_conflict'].includes(error.code) ? error.code : 'native_generation_configuration_invalid' }); }
     });
-    router.post('/preview/draft', async (request, response) => {
+    router.post(['/preview/draft', '/authoring/try'], async (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);
         response.set('Cache-Control', 'private, no-store');
@@ -1052,7 +1052,8 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         const abort = () => { if (!response.writableEnded) controller.abort(); };
         response.on('close', abort);
         try {
-            const result = await getHost().previewDraft(handle, request.body, controller.signal);
+            const host = getHost();
+            const result = await host[request.path === '/authoring/try' ? 'tryAuthoring' : 'previewDraft'](handle, request.body, controller.signal);
             if (!controller.signal.aborted) response.json(result);
         } catch (error) {
             const code = /^(native_generation_|generation_)[a-z_]+$/.test(error.code || '') ? error.code : 'native_generation_draft_invalid';
