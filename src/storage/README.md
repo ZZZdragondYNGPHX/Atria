@@ -322,6 +322,15 @@ Legacy non-Native FS resources retain their existing semantics. FS requires a
 single server process per data root; missing directory-sync support fails the
 write rather than silently reducing its durability.
 
+Android/Termux may use the toolbox's primary shared data directory under
+`/storage/emulated/<user>/`. Its FUSE type is accepted only on Android when the
+enclosing mount in `/proc/self/mountinfo` is the system `/dev/fuse` mount at
+`/storage/emulated` or `/storage/emulated/<user>`. Nested mounts are checked;
+arbitrary FUSE/SSHFS volumes remain unsupported. File/directory sync barriers
+and the same exclusive Host guard still apply. This supports the existing
+toolbox data layout without moving data or treating shared-storage file locks
+as the writer authority.
+
 SQLite requires WAL with synchronous FULL. External content-addressed Blobs are
 synced, including newly created directories, before publishing database refs.
 Session root, Revision, commit receipt and RunControl publish in one engine

@@ -14,6 +14,24 @@ function run(argv) {
     return Number(ObjC.unwrap(values.objectForKey($.NSURLVolumeIsLocalKey))) === 1 ? 'local' : 'remote';
 }`;
 
+function isAndroidEmulatedVolume(root) {
+    if (process.platform !== 'android' || !/^\/storage\/emulated\/\d+(?:\/|$)/.test(root)) return false;
+    // Android's primary shared storage is a local FUSE projection. Check the
+    // actual enclosing mount, including any nested mount, rather than allowing
+    // every FUSE volume or trusting a directory name on desktop Linux.
+    let enclosing;
+    for (const line of fs.readFileSync('/proc/self/mountinfo', 'utf8').split('\n')) {
+        const fields = line.split(' ');
+        const separator = fields.indexOf('-');
+        if (separator < 6) continue;
+        const mount = fields[4].replace(/\\([0-7]{3})/g, (_, octal) => String.fromCharCode(parseInt(octal, 8)));
+        if (root !== mount && !root.startsWith(mount === '/' ? mount : mount + '/')) continue;
+        if (!enclosing || mount.length >= enclosing.mount.length) enclosing = { mount, type: fields[separator + 1], source: fields[separator + 2] };
+    }
+    return enclosing?.type === 'fuse' && enclosing.source === '/dev/fuse'
+        && /^\/storage\/emulated(?:\/\d+)?$/.test(enclosing.mount);
+}
+
 function assertLocalRoot(root, localVolumes) {
     if (process.platform === 'win32') {
         const volume = path.parse(root).root;
@@ -29,7 +47,9 @@ function assertLocalRoot(root, localVolumes) {
         // Linux magic values are 32-bit; Android/libuv can sign-extend them.
         // Read as BigInt before narrowing so a uint64 value cannot lose bits.
         const type = Number(fs.statfsSync(root, { bigint: true }).type & 0xffffffffn);
-        if (!LOCAL_LINUX_FILESYSTEMS.has(type)) throw unavailable(new Error(`Native Host filesystem has not demonstrated local ownership/durability (type=0x${type.toString(16)})`));
+        if (!LOCAL_LINUX_FILESYSTEMS.has(type) && !(type === 0x65735546 && isAndroidEmulatedVolume(root))) {
+            throw unavailable(new Error(`Native Host filesystem has not demonstrated local ownership/durability (type=0x${type.toString(16)}, root=${JSON.stringify(root)})`));
+        }
     } else if (process.platform === 'darwin') {
         // Fixed Foundation code, with the canonical path passed as argv.
         // Never interpolate a data-root string into an AppleScript or shell.
