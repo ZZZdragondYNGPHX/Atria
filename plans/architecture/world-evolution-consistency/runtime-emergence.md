@@ -1,6 +1,6 @@
 # ARCH-DWE-01 · 运行时涌现与事实生命周期
 
-[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W4-B：渐进接纳、关键交互即时提交**。本模块保留功能与逻辑合同；旧源码片段仅为背景，具体字段按原实现接线，不新增审查／测试阶段。历轮比较与确认历史见 Record。
+[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W4-B：渐进接纳、关键交互即时提交**。本模块保留功能与逻辑合同；旧源码片段仅为背景，具体字段按原实现接线。历轮比较与确认历史见 Record。
 
 ## 1. 核心边界：世界定义 ≠ 当前世界的成员全集
 
@@ -15,7 +15,7 @@ Library/Studio 规定世界规律、初始实体、可用内容类型与发生�
 
 不要将这四条轴强制塞进同一个枚举：一座城市可长期存在但无需主动思考；一个短期角色可在当前场景高度活跃；一个未登场的阴谋者可早已真实存在，却尚无人知晓。
 
-## 2. 候选：动态实体接纳（Entity Admission）
+## 2. 动态实体接纳（Entity Admission）
 
 ```text
 Narrative mention / player action / sim job / knowledge observation
@@ -47,7 +47,7 @@ Interpretation: background detail? identity? belief/report? durable consequence?
 - **来源不足**：模型虚构对话中的隐喻、梦境、据传的某人、未证实传言只产生资料或角色认知，不能以“提到”直接授予世界真相身份。
 - **提取/确认边界**：作者编辑期机器抽取仍需审核关键硬设定；Play 中 E1 已获世界规则授权的普通涌现事实可以自动接纳，不要求用户每次点击同意；E2/E3 仍受前置规则/特殊权限约束。
 
-## 3. 候选：持久化与自主性解耦
+## 3. 持久化与自主性解耦
 
 | 维度 | 等级 | 示例 | 处理 |
 | --- | --- | --- | --- |
@@ -60,7 +60,7 @@ Interpretation: background detail? identity? belief/report? durable consequence?
 | 自主性 | A2 低频自主 | 离屏商人改换城市、势力关系变化 | 按需调度/聚合追赶 |
 | 自主性 | A3 深度 NPC | 核心角色的目标/计划/社交反应 | 按参与度与预算调度 HCM/Orchestration/LLM 决策 |
 
-**这两个刻度是供讨论的表达方式，不是已确认 Schema。** 必须区分“是否存在”和“是否积极模拟”；`P2` 才能保证跨场景连续性，但一名 NPC 可以 P2/A0，而临时场景里的互动角色可以 P1/A3（短时推理但未进入永久实体库）。
+**这两个刻度说明功能语义，具体字段按原实现决定。** 必须区分“是否存在”和“是否积极模拟”；`P2` 才能保证跨场景连续性，但一名 NPC 可以 P2/A0，而临时场景里的互动角色可以 P1/A3（短时推理但未进入永久实体库）。
 
 **何时应立刻 P2？** 当角色被玩家明确交互、命名并发生持续影响（获得承诺、债务、物品转移、好感/伤害、任务与后续约定），应与该事件的效果一并正式登记，**不建议等第二次出现才注册**。普通过场路人则不应因被描述一次就累积无数永久记录。
 
@@ -73,11 +73,11 @@ Interpretation: background detail? identity? belief/report? durable consequence?
 5. 若阿洛去世/破产，更新状态并产生历史，后续改由继任者经营；原始创作世界资料不需更改。
 6. 从第 2 天另开 Save/Branch 后，阿洛在分支 A 的债务不能污染 B；若两个分支共享分叉前的阿洛，身份可共享历史来源但其后事件独立。
 
-## 4. W4 四个关键技术议题（全部待议）
+## 4. 事件、时间与分支接线
 
 ### 4.1 事实提交流程与叙事发表
 
-候选强一致路径：
+正式效果与叙事的衔接：
 - 真相级别事件必须有受约束的 effect + commit，不是“一段叙述说发生就发生”；但不能把所有文学细节都强行变成结构化事务。
 - 叙事如果在提交前就对外发布重大后果，提交失败后不能默默当成真相；可拒绝/修正或重新生成匹配的可发表结果。
 
@@ -95,7 +95,7 @@ Interpretation: background detail? identity? belief/report? durable consequence?
 
 - 当前 SavePoint 锚定 branchId + revisionId；分支继承分叉点的有效状态与身份，分叉后的新增事实/自动活动不得反向污染祖先或其他分支。
 - 查询必须与确切 Session/Branch/Revision 绑定，不存在跨 Session 的 `global latest NPC status`。
-- 当存档回到 P2 注册之前，该分支可以没有该实体的正式身份，尽管另一分支存在同名人物；如何对跨分支实体作稳定显示/引用，待进一步定细节。
+- 当存档回到 P2 注册之前，该分支可以没有该实体的正式身份，尽管另一分支存在同名人物；显示与引用沿当前分支的正式身份来源处理。
 - 不应让图索引、HCM 派生缓存或搜索命中成为独立可写“另一份世界真相”。
 
 ### 4.4 自主演化如何接纳新对象

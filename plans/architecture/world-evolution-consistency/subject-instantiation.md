@@ -13,7 +13,7 @@
 
 对已有 Subject 关联一份角色卡、生成语音形象、授予某种认知视角、升级 A1→A3，自身都不意味着世界新增了第二个人。区分 `define`、`instantiate`、`admit`、`observe`、`bind`、`speak`。
 
-## 2. 推荐的逻辑关系（W10-B 候选，非 API）
+## 2. 逻辑关系（W10-B 已确认方向，非 API）
 
 ```text
 Library / Studio (immutable authored revisions)
@@ -88,7 +88,7 @@ Library / Studio (immutable authored revisions)
 
 ## 5. 身份绑定何时成立、可撤销或保密？
 
-- **Binding 的真假**：`AuthoredActorProfileRef → SubjectRef` 是确定性的创作者绑定还是临时拟用模板？`HcmEntityRef → SubjectRef` 是有证据的确定关联还是候选？需要显式类型及 `confirmed/candidate/disputed/revoked` 等审查语义，不把它们写成统一“等于”。
+- **Binding 的真假**：`AuthoredActorProfileRef → SubjectRef` 是确定性的创作者绑定还是临时拟用模板？`HcmEntityRef → SubjectRef` 是有证据的确定关联还是候选？需要显式类型及 `confirmed/candidate/disputed/revoked` 等关联状态，不把它们写成统一“等于”。
 - **来源与 Scope**：有固定作者修订的绑定应引用 `PackageVersion/WorldRevision/ActorRef`；运行时建立的身份映射必须有 Native Receipt/Revision 和相应 Session/Branch/受众。不能以名称近似直接跨 World/Session 合并。
 - **秘密与伪装**：Host 可以在内部持有“苍鹰 == 阿洛”的已确认真身绑定；阿洛的敌人若只见到苍鹰，个人 Perspective 不得自动读取阿洛的身份及其私有记忆。身份消歧与事实曝光必须是分开的操作。
 - **死亡/离开/改名**：同一 Subject 不需要重新分配身份；角色死亡后保留可回溯历史，仅行为和可访问资源按当前能力规则改变。NPC 归档不会抹掉它参与过的世界事件。
@@ -108,9 +108,9 @@ Library / Studio (immutable authored revisions)
 
 所处 Branch/Revision 是否能在当前权威状态回放到？该绑定是否合法/生效且有足够来源？如果无，则返回 unknown/disputed 而不是凭姓名猜测“当然是他”。
 
-## 8. Library / Studio / Play 的自然创作体验（候选）
+## 7. Library / Studio / Play 的自然创作体验（候选）
 
 - **Library**：World 描述人物、地点、组织等静态来源和重要结构；Actor Profile 负责表达、文风与角色预设。所有资产可继续完全自由文本编辑，不强制每次写文案就新建 Entity。
 - **Studio**：用户明确绑定“这张角色卡代表世界中的某个人”或“这张卡只是角色表达模板”；预览已配置的首次实例化和潜在同名/秘密映射歧义，确定 EntryPoint 起始成员。
 - **Play**：新 NPC 由剧情触发正式接纳后可保持身份、被任务/人物关系系统认识，并按条件获得表达、私人记忆与有限行动能力。玩家默认只看到符合故事知识条件的资料；可授权的 Inspector 能解释绑定来源、版本、权限与分支。
-- **不显示系统内部 ID 为主界面**；高阶审查可以查看 `Source / Subject / Actor template / Perspective / event receipts` 的关系与差异。
+- **不显示系统内部 ID 为主界面**；高级 Inspector 可以查看 `Source / Subject / Actor template / Perspective / event receipts` 的关系与差异。

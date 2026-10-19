@@ -1,6 +1,6 @@
 # ARCH-DWE-01 · NPC 认知、社会关系与信息传播
 
-[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W6-B：世界关系事实、主体认知与来源事件**。本模块保留功能与逻辑合同；旧源码片段仅为背景，具体字段按原实现接线，不新增审查／测试阶段。历轮比较与确认历史见 Record。
+[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W6-B：世界关系事实、主体认知与来源事件**。本模块保留功能与逻辑合同；旧源码片段仅为背景，具体字段按原实现接线。历轮比较与确认历史见 Record。
 
 ## 1. 五类不能混为一谈的信息
 
@@ -75,13 +75,13 @@ Native Entity identity (born/introduced/committed, exact branch)
 
 ## 6. 候选行为接口原则（非实际 API）
 
-- 动态实体**不一定**具备 Agent 权限；先拥有稳定 World Entity ID，再在获得合规自主性/受众许可时取得可用的 Perspective ID / view（是否单独 ID 待讨论）。
+- 动态实体**不一定**具备 Agent 权限；先拥有稳定 World Entity ID，再在获得合规自主性/受众许可时取得可用的 Perspective ID / view（标识符按原实现决定）。
 - **一名角色的目标/态度**更新不应自动提交另一名角色的状态。共同社会事实必须通过已授权交互/关系事件触发。
 - 涌现 NPC 不直接编辑 Knowledge Library 或其他 NPC 的记忆；传播是具场景/通道/时间/来源的世界事件，可供对方形成自己的独立认知。
 - 让模型只看严格按分支、角色、已知事实、现场与时间汇编的 Context；秘密、未知和错觉保持可表示，不因助理/叙事者已经了解真相而泄露。
 - 少量关键 NPC 可以参与 W5-B A3 deliberation；大多数认知反应可规则/有界计算，LLM 不被设为默认事实裁定引擎。
 
-## 9. 外部参照（用于模型取舍，不是直接选用这些框架）
+## 7. 外部参照（用于模型取舍，不是直接选用这些框架）
 
 - [Park et al., Generative Agents, UIST 2023](https://doi.org/10.1145/3586183.3606763)：观察、经历、反思与规划可以产生社会互动，但模拟的是受限实验环境，不证明可无限扩到开放世界。
 - [Evans & Short, Versu—A Simulationist Storytelling System](https://ieeexplore.ieee.org/document/6648395/)：社会惯例为角色提供可选择的社交行动机会，并不替角色强制决定；规则辅助与个人自主可并行。

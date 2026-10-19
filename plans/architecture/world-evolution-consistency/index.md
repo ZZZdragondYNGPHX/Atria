@@ -29,7 +29,13 @@ Task ID：`ARCH-DWE-01`。**Draft / Paused**；等待已排队的编排、提示
 5. **对话与媒体（WP-E）**：更新 Timeline、Frontend Host、Play、Speech/Visual 的参与者、模板与可见别名；不把后台真身映射暴露给玩家。
 6. **世界创作与界面（WP-F）**：完成 Library/Studio 的轻量正文＋关键绑定、起点有效预览、Play 档案／历史／来源；沿统一前端组件完成手机操作，同步替换旧 WorldInfo/Actor-only 调用。
 
-WP-F 的作者内容编辑可与基础功能并行；运行态预览和 Play 读取依赖对应后端。完整分工见[实现分工与接口依赖](e0-preflight-execution.md)。只处理实际用到的调用方，不增加全仓审计或 Gate 取证阶段。
+WP-F 的作者内容编辑可与基础功能并行；运行态预览和 Play 读取依赖对应后端。完整分工见[实现分工与接口依赖](e0-preflight-execution.md)。只处理实际用到的调用方。
+
+## 实施时的连续推进
+
+用户恢复并授权实施后，按上述功能依赖持续推进到整体完成；WP-A～F 用于组织工作，不是停下汇报或等待“继续”的节点。记录随实际工作更新，交付时集中说明结果。普通字段、函数签名、代码冲突和接线选择由执行者处理，执行与真实阻塞统一遵循[仓库治理 §8、§13](../../../README.md#8-task-lifecycle)。
+
+必要自查限于本次实际改动及直接使用者；不另立测试／验证工作包、覆盖率目标、跨端矩阵、取证关卡或独立审查流程。
 
 ## 功能边界
 
@@ -60,6 +66,6 @@ WP-F 的作者内容编辑可与基础功能并行；运行态预览和 Play 读
 | [e0-gate0-physical-contracts.md](e0-gate0-physical-contracts.md)／[e0-gate0-integration-workpackages.md](e0-gate0-integration-workpackages.md) | 存储与 WP-A～F 的职责 |
 | [e0-consumer-cutover.md](e0-consumer-cutover.md)／[e0-integration-readiness.md](e0-integration-readiness.md) | 调用方替换与跨任务接口 |
 | [e0-final-closure.md](e0-final-closure.md)／[e0-handoff-evidence-review.md](e0-handoff-evidence-review.md)／[e0-final-implementation-handoff.md](e0-final-implementation-handoff.md) | 遗留编号的功能对应、P2 选择及恢复说明 |
-| [design.md](design.md)／[research.md](research.md) | 需要追溯时读的历史讨论与研究；旧“下一轮／Gate／Preflight”不再形成当前执行队列 |
+| [design.md](design.md)／[research.md](research.md) | 当前架构说明与研究背景 |
 
-本企划不以测试数量、反例、完整调用图、独立审查、全平台实测或质量认证作为实施工作包。实际未实现的功能如实列明，不把正确性、权限、预算、存档等产品行为删成空壳。本次未运行任何验证／测试，暂停状态不变。
+实际未实现的功能如实列明；权限、预算、提交一致性与存读档属于产品行为，随对应功能落实。

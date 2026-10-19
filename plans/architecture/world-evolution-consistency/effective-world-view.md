@@ -70,7 +70,7 @@ Pinned PackageVersion / WorldRevision(s) / KnowledgeRevision(s)
 
 **自由文本一等支持**：作者不需要手动给每段故事添加字段。模型的未经审核抽取不能自动将任意历史传闻升级为当前 Canon。
 
-## 4. 现有 Atria main 确实已有的功能及缺口（静态审读，非 E0 完成）
+## 4. 原实现可复用的功能与接线位置（2026-10-17 静态阅读）
 
 ### 4.1 Knowledge Runtime 已有来源级排序和有条件过滤
 
@@ -95,7 +95,7 @@ Pinned PackageVersion / WorldRevision(s) / KnowledgeRevision(s)
 - [Native Chronicle Host](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-chronicle-host.js) 的已有 World Query 仍偏特定 Lifetime/History 域，不能伪称其已支持通用 `EffectiveWorldView(subject, asOfTick)`。
 - [World Game Session](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/scripts/native/experience/world/session.js) 依托 Native Runtime/World Revision/Reducer 和受控 revision commit，提供状态/事件来源；不能把它直接视为“全域 World Fact graph”已完成。
 
-## 5. W14-B 候选：有效视图优先、可溯源 Source Claim 结合的 Context
+## 5. W14-B：有效视图优先、可溯源 Source Claim 结合的 Context
 
 ### 5.1 推荐的有效上下文编译顺序
 
@@ -138,5 +138,5 @@ Pinned PackageVersion / WorldRevision(s) / KnowledgeRevision(s)
 4. **Perspective security**：权限裁剪是否发生在 Source retrieval 与 token selection 前？涉及 Narrator 的 Host 真实有效视图是否需要专门的公开/角色披露投影？
 5. **Studio/Play**：WP-E/F 接通 World/Knowledge/EntryPoint 编辑、起点预览、Play 档案／历史、Frontend Host 与按需 Inspector；各操作使用同一合法投影。
 6. **多 World/Worldless 与不同玩法**：World 不选、一次引用多个 World、Package Actor 只做说话模板、运行时新增对象不依附特定书籍的情况，怎样保留明确 `scope` 与实例化/有效规则？
-8. **效率**：数千回合、上百冷态 Subject、有限 Context token；重要当前约束不可因挑选随机知识项和长段文本挤出，且不需要每轮重写世界图或调用 LLM 裁判真假。
-9. **实际调用方**：目标 API/Schema、旧路径替换、提交／叙事与时间接线随各 WP 完成；三端采用统一前端功能，不另设全量审计或实测阶段。
+7. **效率**：数千回合、上百冷态 Subject、有限 Context token；重要当前约束不可因挑选随机知识项和长段文本挤出，且不需要每轮重写世界图或调用 LLM 裁判真假。
+8. **实际调用方**：目标 API/Schema、旧路径替换、提交／叙事与时间接线随各 WP 完成；各端采用统一前端功能。

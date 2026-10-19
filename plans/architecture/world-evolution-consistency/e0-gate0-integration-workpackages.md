@@ -1,6 +1,6 @@
 # ARCH-DWE-01 · WP-A～F 实现职责
 
-[唯一入口](index.md) · [完整实现分工](e0-preflight-execution.md)。本文件沿用旧路径，描述工作包的功能归属；不设 Gate 0 或实施期测试阶段。当前 **Draft / Paused**，尚未启动产品改动。
+[唯一入口](index.md) · [完整实现分工](e0-preflight-execution.md)。本文件沿用旧路径，描述工作包的功能归属。当前 **Draft / Paused**，尚未启动产品改动。
 
 | 工作包 | 实现结果 | 主要原代码落点 | 依赖 |
 | --- | --- | --- | --- |
@@ -11,4 +11,4 @@
 | WP-E Play／媒体 | 正式参与者、可见别名、表达模板、语音／图片绑定 | Timeline/contracts、Frontend Host、session-projection、Play、Speech/Visual | WP-A/C/D 的合法投影 |
 | WP-F 作者／界面 | 世界自由创作、关键绑定、起点装配／预览、Play 档案与旧入口替换 | World/Knowledge service、Library、Studio editors、Package build、统一前端 | 作者编辑可并行；有效预览依 WP-A/D |
 
-每个包完成相应产品链及其直接使用者；字段与函数落在原 owner，不创建通用 SubjectAdapter、第二 World/FactDB、另一 Shell 或测试平台。某项依赖未接只限制该操作，其余实现继续推进。
+每个包完成相应产品链及其直接使用者；字段与函数落在原 owner，不创建通用 SubjectAdapter、第二 World/FactDB、另一 Shell。某项依赖未接只限制该操作，其余实现继续推进。

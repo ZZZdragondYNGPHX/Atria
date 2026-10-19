@@ -6,6 +6,8 @@
 - Plan: [plans/architecture/world-evolution-consistency/index.md](../../plans/architecture/world-evolution-consistency/index.md)
 - Initiated: 2026-10-17
 
+当前仅完成方案整理与静态源码阅读，产品实施仍为 **Draft / Paused**。以下 Stage 保存当时的决策、提交与发现；其中旧 Gate、Preflight、PASS/BLOCKED 及授权状态均为历史记录。当前设计与实施方式以 [Plan 入口](../../plans/architecture/world-evolution-consistency/index.md)为准，原讨论流程已于 Stage 27 清理。
+
 ## Stage 1 — 建立方案与首轮广泛调研（2026-10-17）
 
 - Start HEAD: 未在操作前捕获 docs 原 HEAD；不据此推断其他分支进度。
@@ -27,12 +29,6 @@
 - 没有证据证明全量文本矛盾自动识别可以稳定无误；保留此方案的误判/成本风险。
 - Round 1 尚未收到用户对 A/B/C/D 关联模式的选择；无已冻结的设计决定。
 
-### Next checkpoint
-
-- Round 1 深入讨论「静态设定中哪些是初始事实、哪些是世界法则；如何把自由文本中的可变事实与 Native State 绑定，而不破坏创作自由」。
-- 用户做出选择后，于 **下一轮讨论前** 更新同一 Plan/Record，再继续下一议题。
-- 全部核心决策获用户明确批准后才定稿；实施由后续独立授权启动。
-
 ## Stage 2 — S2 世界 / 知识原生重构扩域研究与候选方案（2026-10-17）
 
 - Trigger: 用户明确提出「现有 World / Knowledge 仍受 SillyTavern 时代世界书影响，希望趁机进一步重构」。
@@ -48,12 +44,11 @@
 - 区分“已有原生重构成果”与“仍继承旧条目/触发器心智模型”：前者有原生版本、binding、state/events、权限和上下文；后者仍以 discovery/lifecycle/delivery 字段为重要语义。
 - 补充外部原始资料对照；
 - 用户此前未就 R1 事实锚点与四层解释模型正式批准任何路线，保持未决。
-- 未修改 main、未创建产品分支、未运行测试/CI/真机/跨端 UI。
+- 未修改 main、未创建产品分支。
 
-### Limitations and next checkpoint
+### 当时的未决问题
 
-- 后续每轮依用户要求：**先在 docs 更新 Plan 与唯一 Record、提交并核查，再讨论**。用户最终确认前一直 Draft。
-- 下一次需围绕 World 与 Knowledge 主体关系和是否采用 Hybrid Authoring / 精确事实锚点做正式取舍；之后再展开实体/时间/认知/索引/UI/E0。
+- 当时待议的是 World 与 Knowledge 主体关系和是否采用 Hybrid Authoring / 精确事实锚点的取舍。
 - 外部模型仅为方法论；严禁无证据引入第二世界权威、新 DB 或创建旧数据兼容负担。
 
 ## Stage 3 — W1 方向决定与 W2 建模讨论准备（2026-10-17）
@@ -61,7 +56,6 @@
 - 用户明确同意上一轮推荐的 **B · World Model + Source Library**（W1）：世界模型是创作主语，知识是资料/来源；产品心智模型脱离以 ST Lorebook 的条目激活为中心。
 - 此项是**总体设计方向获得认可**，不是整份方案定稿或全部子接口冻结；以 SessionCore/Session/Branch/Revision 为唯一运行时真相的原则与用户所选 B 一致；不创设新可写事实权威，不强迫纯文字作者全面结构化。
 - Plan index 已标记 W1 认可与 W2 待议；W2 推荐 B 的混合模型尚未获用户选择，不可提前宣称批准。
-- 下一轮仍是**先更新同一 Plan/Record，再讨论**。
 
 ## Stage 4 — W2 确认与 W3 法则/事实权限讨论准备（2026-10-17）
 
@@ -69,13 +63,12 @@
 - Decision (confirmed design direction): W1-B World Model + Source Library；W2-B Hybrid Authoring，保留完整自由文本的创作地位，实体身份与影响演化的关键事实按需结构化，辅助 AI 的作者阶段抽取要经确认，Play 事实继续以现有 Native Session/Branch/Revision 的已提交状态为权威。
 - Design commit: `a266429d78d55ca75e0281fae95933bc471ad720` — 同一 design.md 增补 §10，记录 W2 决策并编写 W3 法则/起点/动态真相/隐藏 Canon/未知和秘密、AI 提议的影响等级、Native commit、重大法则变更、W3-A/B/C 方案和风险。
 - Index commit: `24534fad80eaf97e3344c4c84403b041bd2de75b` — 同一 index.md 路由到 §10，标明 W1/W2 已选而 W3 未选。
-- 静态对照 main 的 `src/native/world-knowledge.js`、`public/scripts/native/experience/world/session.js`、`public/scripts/native/experience/logic/runtime.js`、`src/native/simulation-authority.js`。未进行构建/自动测试/CI/客户端实测。
+- 静态对照 main 的 `src/native/world-knowledge.js`、`public/scripts/native/experience/world/session.js`、`public/scripts/native/experience/logic/runtime.js`、`src/native/simulation-authority.js`。
 - Changes: **仅 docs**。未修改 main / 任何产品代码，未创建实现分支，未对 World/Knowledge Schema 或权限 API 做正式实现承诺。
-- Next checkpoint: 本轮就 W3 讨论是否采用 **B：分级约束 + 涌现世界**（研究推荐）；具体哪些新事实可由 AI 自动确立、作者未定义与作者硬约束的区别、如何判定持久化时机与改变世界法则的门槛。用户下轮确认后须**先写回同一 Plan / Record 再讨论下一轮**。
 
 ## Stage 5 — W3-B 确认、W4 涌现实体与事实生命周期（2026-10-17）
 
-- Trigger：用户明确选择 **W3-B 分级约束 + 涌现世界**，要求先更新 docs 上同一 Plan 及唯一 Record，再讨论事实事件提交、持久化时机、历史有效期、分支一致性；本工作轮补充：**游玩中新出现的 NPC、物品、地点与非预设内容如何真正加入活世界**。
+- Trigger：用户明确选择 **W3-B 分级约束 + 涌现世界**；本工作轮扩展事实事件、持久化、历史与分支设计，补充：**游玩中新出现的 NPC、物品、地点与非预设内容如何真正加入活世界**。
 - Decision **已确认的设计方向**：W1-B World Model + Source Library，W2-B 分层混合结构，W3-B 分级约束 + 涌现世界。W3-B 以不变法则守护与现有 Native Session Host 提交为核心；作者留白允许授权范围内的新增事实；重大事件/世界规律更动有专门约束。用户**没有**批准细粒度权限 API、实体类型数据库、W4 选项或实施开工。
 - Plan 模块新增：`plans/architecture/world-evolution-consistency/runtime-emergence.md`，仍为**同一 ARCH-DWE-01 Plan Bundle**，没有第二份企划书。它提出 Entity Admission、临时场景/见闻/持久实体/活跃主体的分离、NPC 出场→持续交互→正式登记→时钟演化、事实提交与发表一致性、有效游戏时间/提交修订/角色获知时间和分支隔离，附 W4-A/B/C 三选候选与测试案例。
 - `src/native/session-core.js`/ `save-point-repo.js` 管 Session/Branch/Revision/SavePoint；`src/native/state-delta.js` 支持世界状态快照/增量；`src/native/lifetime-authority.js`已有受特定可选策略约束的 `person.enter`, `person.promote`, `person.exit`，并区分出生和介绍时间；`public/shared/native-actor-profile.js`的 authored Actor 仅来自固定 Package/EntryPoint，不应与运行时新增 NPC 混淆；HCM entity extraction 不是 Native 世界真相；Simulation Authority 有有界调度机制。具体所有调用方/端到端功能尚需 E0 审计。
@@ -83,8 +76,7 @@
   - `bf7b77936685566d87c5caa13d2d1ab5c734c666`：新增同一 Plan 的 W4 模块 `runtime-emergence.md`。
   - `1ad46dbe704ed1a4f911fa24553d717048f54bad`：`design.md` §11 记录 W3-B 已确认并关联 W4。
   - `ca5dc676cb0699df3c9f7d725183a6410a151f84`：`index.md` 路由到 W4，明确 W1-B/W2-B/W3-B 已确认、W4 未决。
-- 本轮没有运行产品构建、测试、CI、真实 UI 或 Windows/CachyOS/Termux；只修改 docs，不修改 main / 产品源码，不创建实现分支。
-- Next checkpoint：围绕 **W4-B（研究推荐、尚待用户决定）渐进接纳 + 关键交互即时提交**，具体讨论 NPC 首次出现和首次深度互动何时升级为持久实体、事实与叙述何时一起发表、时间化历史如何保留、回档/分支之后的 UID 与 HCM 如何隔离，以及按需模拟与预算。下轮仍先更新同一 Plan 与唯一 Record 再讨论。只有用户最终明确同意全案才定稿。
+- 本轮只修改 docs，不修改 main / 产品源码，不创建实现分支。
 
 ## Stage 6 — W4-B 确认与 W5 NPC 自主性/离屏演化设计（2026-10-17）
 
@@ -98,7 +90,6 @@
 - **外部参考：**Generative Agents 2023 论文、Google DeepMind Concordia 及其 Engine 文档、Unreal Mass Gameplay Simulation LOD / StateTree 官方文档。借鉴“记忆/目标/行动结算”和“模拟粒度按重要性调整”，不建议直接引入新框架。
 - **main 静态审查（非实测）：**`src/native/simulation-authority.js` 已有游戏时钟、scope、hot/warm/cold、界限任务；`public/shared/native-simulation-contract.js` 当前静态约束是 jobs≤16、steps≤16、deliberations≤1，并约束同作用域静态读取——动态 NPC 不能机械地各占一个固定 job；`public/shared/native-information-contract.js` 有 desire/intention/belief 等语义；`src/native/lifetime-authority.js` 有人物进出及重要度；`public/shared/native-actor-profile.js` 从 Package/EntryPoint 才投影 authored Actor；`public/scripts/agents/memory/eligibility.js` 有 requester 权限边界。没有证据证明任意生成的 NPC 已自动具备全套角色视图或认知/Orchestrator 调用权限。
 - **W5 推荐但未确认：**W5-B 分层事件驱动自主性：A1 规则/日程、A2 有界反应和效用选择、A3 少数重要 NPC 的有限 LLM 辅助提案，统一由现有 Native Authority 提交；游戏时间推进触发离屏结算，不默认用户离线时继续后台运行。
-- 未运行代码、测试、CI、浏览器、Windows/CachyOS/Termux 真机或 UI，未改变产品行为。没有修改 main、长期分支结构、Governance 或 reference 分支。
 - **Plan 状态：**Draft。
 
 ## Stage 7 — W5-B 确认与 W6 社会认知/关系权限讨论（2026-10-17）
@@ -114,7 +105,6 @@
 - **外部资料对照**：Park et al. (2023) Generative Agents（经历/反思/计划）、Evans & Short (2013/2014) Versu（社会实践为自主角色提供行动机会但不强制执行）、Treanor et al. (2015) Social Play in NPC Dialog（多阶段、可参与的社会互动）。外部机制用于概念比较，未引入依赖或执行对方项目。
 - **W6 研究推荐**：W6-B「世界关系事实 + 主体认知 + 来源事件」。双向成立的客观契约/联盟由 Native 提交；私人态度、目标、误信、情绪与其他角色的推测由已授权 Cognition/HCM 视图表达；通过可追溯通信/观察事件传播，防全知、串档和模型无权替玩家决定行动。**推荐不是用户已批准的冻结决策**。
 - 未修改产品 main、Package、Plugin、reference、Governance。
-- 确认后下一工作轮先更新同一 Plan/Record，再讨论“动态 NPC 的合法 Perspective 身份、知识/秘密传播事件、共同关系的形成条件和 HCM 与 World state 的写入边界”；持续保留 Draft，最终定稿须用户明确确认。
 
 ## Stage 8 — W6-B 确认与 W7 私人记忆/信息传播设计（2026-10-17）
 
@@ -127,7 +117,6 @@
   - `91c8bd0392433ee8dba671488c3d2623f3ccde44`：更新同一 Plan `index.md`，明确 W1–W6 状态、W7 为当前阶段而非已批准方向。
 - `public/shared/native-information-runtime.js` 未声明 actor 视为 unavailable，快照与 scope anchor、输出预算已具备；`src/native/cognition-authority.js` 与 `src/native/tom-authority.js` 部分目标身份受 `manifest.actors` 约束；`public/scripts/agents/memory/eligibility.js` 由当前授权视图/来源与 branch 限制可取回记忆；`public/shared/native-memory-contract.js` 已有 identity/commitment/relationship/key_event/detail 记忆类别与时效语义。未证实新生 NPC 能自动取得这些权限，不能靠读取 Narrator 全部资料或修改 Package Manifest 绕过。
 - **W7 研究建议但未获批准**：W7-B「动态受众资格 + 证据驱动信息流」。NPC 获得稳定世界身份≠自动获得独立思考/隐私读取权限；合法 Perspective 的接纳与源可见性须分别处理。发送/送达/获知/相信/更正为不同事件或主体状态，真正世界后果仍由唯一 Native commit 确立。避免每 NPC 独立常驻 Agent。
-- 未运行 Node 单测、CI、模拟回合、真实 UI、Windows/CachyOS/Android Termux；未修改 main、Package、Plugin、reference 或 Governance，未执行任何实现。
 - E0 全消费者审计与具体实现阶段尚未完成，完整企划继续保持 Draft。
 
 ## Stage 9 — W7-B 确认与 W8 长期记忆/人格连续性讨论（2026-10-17）
@@ -142,8 +131,6 @@
 - `public/shared/native-cognition-runtime.js` 按合法时间、记忆类别及来源适用性投影模糊/使用意愿；`public/scripts/agents/memory/source-provenance.js`、`temporal-graph.js` 与 `eligibility.js` 提供来源证据、图谱与受众过滤；
 - 借鉴检索/预算机制，不将实验结论冒充 Atria 跨端可靠性证据或作为引入新框架的理由。
 - **W8 建议，明确未获得用户批准**：W8-B「来源保真 + 分层回忆与人格连续性」。客观历史和持续义务的权威不随个人遗忘消失；HCM 负责合法证据检索/来源链，Native Memory/Cognition 负责在受众资格下解释回忆适用性、主观信念及人格变化；没有足够证据时不得将心理猜测写成事实。
-- 未运行 Node tests、CI、浏览器、Windows/CachyOS/Termux 真机、UI 或端到端游戏模拟，不能声明这些均已通过。
-- **下一 checkpoint**：请用户选择 W8-A/B/C。直到全部核心方案获用户明确确认才定稿。
 
 ## Stage 10 — W8-B 确认与 W9 跨域身份/权限映射讨论（2026-10-17）
 
@@ -157,8 +144,6 @@
 - `public/shared/native-actor-profile.js` 的 Authored Actor 严格来自 manifest/EntryPoint；`src/native/lifetime-authority.js` 的 `life.person.*` 是可选领域局部身份；`public/shared/native-cognition-runtime.js` 的 Actor ID regex/受众限制与世界新 NPC 的标识并不自动相容；`public/scripts/agents/memory/temporal-graph.js` 有独立本地图实体/别名/来源支撑的合并/拆分与 ambiguous/pending 身份；`src/native/repositories/session-repo.js`/SavePoint 持有唯一 Session/Branch/Revision 权威。没有全消费者 E0 证据表明它们已共用统一身份，不能写成现有已完成能力。
 - **外部概念对照**：Martin Fowler Identity Map（单一工作单元内保持引用一致，不是全局可写实体表），Microsoft DDD Entities/Aggregates（长期身份与一致性边界），W3C PROV-O（来源、alternate/specialization，不能因关联自动证明同一对象）。仅作方案类比，未引入数据库/框架依赖。
 - **待议 W9 推荐，不是用户决定**：W9-B「Canonical World Subject + 受控跨域映射/投影」。已提交世界成员由 Native Session 持有稳定主体身份，不同领域保留自己的 ID/权限/历史引用，通过明确来源、分支、可见范围关联；HCM 未确认的传闻实体不自动变成客观角色；Authored Actor 是表达资产而非必然一对一的物理世界人物。不要把“一个世界人物”误译为“所有模块使用同一个 ID 字符串/存一份万能对象”。
-- 研究/静态代码阅读均不代表测试；未执行 Node、CI、浏览器 UI、Windows/CachyOS/Android Termux、真实 RP 回合或主仓库 Git 合并。**仅修改 docs**。
-- **下一 checkpoint**：用户选择 W9-A/B/C 后，下一轮依约先更新**同一 Plan/唯一 Record** 再讨论具体 authored↔session 身份实例化、证据图候选匹配与权限、动态角色对话/认知合法入口、存档与分支引用、UI 及最终 E0。完整企划继续 Draft，直到用户明确确认全部核心边界与正式定稿。
 
 ## Stage 11 — W9-B 已确认与 W10 实例化/能力绑定讨论（2026-10-17）
 
@@ -185,8 +170,6 @@
 - **局部 main 静态证据**：SessionCore `_newEntry` 仍拒绝不属于 Manifest Actors 的 `draft.actorId`；ActorProfile 取材固定 EntryPoint/Package；`assertInformationClosure` 要求 Info Actors 是 Manifest Actors；Information/Cognition/ToM 及 Goal Contracts 使用 Actor 身份和来源权限；`public/shared/native-frontend-host.js` Message ABI / `public/scripts/native/session-projection.js` committed fingerprint 暴露 actorId；HCM Evidence Entity/Lifetime 局部 ID 不等同于 Subject。以上仅是选择性静态读和搜索，**不是完整 E0 caller census**，也没有自动证明新 NPC 已可合法发言或维护私人记忆。
 - **W11 建议（未获用户批准）**：W11-B「Typed Subject / Participant / Perspective + Native Host Capability Resolution」。受控实体与已提交对话/事件分离，表达 Profile 与个人记忆/任务授权单独授予、分支/修订/受众解析；要最小化对现有 Authority 的改动、一次性切换旧 Actor 强耦合真实消费者，而不是新建多套可写 DB、向 Narrator 申请全知或在运行时重写 Package。
 - **风险/E0 保留**：Timeline/Context Compiler/Generation Host/Orchestration、HCM/Information/Cognition/ToM、Native Host 前端 ABI、Goal/Lifetime/Task/Simulation、Visual/Speech/Persona、Studio/Library/Play 与 Save/Branch 的**生产调用方、权限、跨分支、版本、预算、UI**尚未全量审查。不能以“发现文件路径”代替运行时接线确认。
-- 不运行 Node/test、CI、浏览器、真实 UI、Windows/CachyOS/Android Termux，未修改任何产品代码或其它长期分支。
-- **下一 checkpoint**：用户明确选择 W11-A/B/C 后，下一轮依约先更新同一 Plan 和唯一 Record，再讨论 W11 目标接口粒度、静态 Actor → 动态 Subject 的真实 caller cutover、权限边界与正式 E0 清单，以及最后设计定稿前剩余必须确认的实现前置条件。
 - **状态**：完整企划继续 **Draft**，未授权开工。 
 
 ## Stage 13 — W11-B 确认与 W12 接口级 E0 / 事务与切换讨论（2026-10-17）
@@ -212,10 +195,10 @@
   - `a56333f152b91defec755cc376e179da40391d40`：在同一 Plan Bundle 创建 W13 `event-temporality-branch.md`，研究“意图/叙事声明 vs 已提交效果”、Native Commit/Receipt/Revision、世界事实 valid time/记录 revision/角色 observed time、历史纠正/Retcon、存档分支和故障矩阵、W13-A/B/C。
   - `6c97b64cf54a12a7947bd6a0fddd366d18b780eb`：在同一 `design.md` §20 记录 W12-B、路由 W13，严格区分静态事实与拟议目标。
   - `1cea3eb6eb1c8cea490a7df60b0b68781eb8e9a1`：在同一 `index.md` 将 W1–W12 标记为已确认、W13 待选，更新路由和 Draft 状态。
-- **静态源证据（2026-10-17 main，无代码测试）**：`src/native/repositories/session-repo.js` 的 `commitSnapshot` 在已有事务中处理 Session/Revision、`expectedRevisionId` CAS 与提交指纹/Receipt；`public/scripts/native/experience/world/session.js` 的 `commitEvents` 通过 `commitStatePatch` 同步更新 `atri_world_state` 与 `atri_game_runtime` Journal，事件示例使用 branch+sequence 身份。证据只表示可复用机制存在，**没有**完成 Actor/Task/Narrator/World 全入口的原子性证明。
+- **静态源证据（2026-10-17 main）**：`src/native/repositories/session-repo.js` 的 `commitSnapshot` 在已有事务中处理 Session/Revision、`expectedRevisionId` CAS 与提交指纹/Receipt；`public/scripts/native/experience/world/session.js` 的 `commitEvents` 通过 `commitStatePatch` 同步更新 `atri_world_state` 与 `atri_game_runtime` Journal，事件示例使用 branch+sequence 身份。证据只表示可复用机制存在，**没有**完成 Actor/Task/Narrator/World 全入口的原子性证明。
 - **时态与分支证据**：现有 `src/native/history-authority.js`、`public/shared/native-chronicle-host.js` 含特定领域 game tick、事实/来源/历史查询；
 - **W13 推荐尚未选定**：W13-B「Native Revision 一致性提交 + 双时间/分支受控投影」。正式 Subject admission/持续性世界效果/事件与参与者在可合法实现的现有 Native publication 边界达成一致；HCM/Context 可恢复派生而非新 World Truth；普通叙事细节不全量入事件表，真正 Retcon 需独立权限与依赖处置。W13-A Snapshot-first 松散摘要及 W13-C 平行 Event Store 为对照。
-- **故障与权限门槛（拟议，未测试）**：同物品双卖的 CAS/前置条件、未知提交结果先查 receipt 后重试、叙事成功/世界事务拒绝时防错误发布、HCM 索引失败时可从原生已提交来源恢复、旧分支异步结果不得穿越、未公开身份与秘密在历史查询不能泄漏。
+- **当时拟议的故障与权限行为**：同物品双卖的 CAS/前置条件、未知提交结果先查 receipt 后重试、叙事成功/世界事务拒绝时防错误发布、HCM 索引失败时可从原生已提交来源恢复、旧分支异步结果不得穿越、未公开身份与秘密在历史查询不能泄漏。
 - 保持 Draft，不创建开发分支，除非用户另行明确批准整个企划。
 
 ## Stage 15 — W13-B 已确认与 W14 Effective World View / 知识创作讨论（2026-10-17）
@@ -263,7 +246,6 @@
   - `d4a4ec63cb18eeb0f5e35cf0db326ba605b70769` — 同一 `design.md` §23 记录 W15-B 决议与 W16 消费者/接口路线；
   - `adc51df4d56e188fac9a638bc56a7ddd2e0eaf17` — 更新同一 `index.md`：W1–W15 确认，W16 候选未批准，保持 Draft。
 - **W16 当前推荐但未确认**：W16-B「跨分支锚定 E0，先确认 Native Domain/Context/Receipt 所有权，再冻结最小 Subject/Fact/Temporal/EffectiveView 接口」。与 W16-A 仅按旧 main 接口冻结、W16-C 构建旧新平行 Adapter 对比；避免无效双轨，同时不把所有无关分支完工当作前置条件。**本轮只形成推荐，不替用户批准 W16**。
-- 未执行完整 repository call graph、Node、CI、真实 RP/Studio/Play UI、长会话基准、Windows/CachyOS/Android Termux 实测。E0-01～09 尚无全项可标为 PASS；外部开发分支未来可能变动，实施前必须取当前 HEAD 重查。
 - 全案继续 Draft；不直接创建实现分支或合并产品代码。
 
 ## Stage 18 — W16-B 确认与 W17 原生 Domain 接口/有效世界投影审查（2026-10-17）
@@ -287,8 +269,7 @@
   - `298010734a439a105fc8f5ee85c96ff50e368146`：在同一 Plan Bundle 新增 W17 `e0-domain-world-context-contract.md`，记录本轮代码证据、五类逻辑契约、World Effect Write Lane 与 Context Read Lane 事务/权限时序、E0-01/02/04/05/06 退出目标和 W17-A/B/C。
   - `4a07ead23a56ad436337c4accd2044570a6af4e0`：同一总设计 `design.md` §24 记录 W16-B 与 W17 路由。
   - `09994f6498fb3fd1fa15590a77282f00a1a51082`：同一入口 `index.md` 将 W1–W16 标记已确认、W17 仍为候选，并保持 Draft。
-- **本轮 E0 状态**：`E0-01` WorldSubject/Fact/Participant 合法 Schema、`E0-02` Native 事务及跨入口叙事发表/未知回执恢复、`E0-03` 通用双时间/分支有效查询、`E0-04` 动态 Perspective 与私人 HCM/Context 安全、`E0-05` World Effective 与 Claim-aware Prompt 实际行为、`E0-06` 全生产 caller/旧代码删除、`E0-07` Library/Studio/Play、`E0-08` 长会话/DB/GC、`E0-09` 合并分支依赖，**仍未形成 PASS 证据**。W17 做到的是**具体接口及观察点更清楚**，不是运行测试或提交修改已实现。
-- **下一 checkpoint**：用户若选择 W17-B，先照例把确认写回同一 Plan/Record，然后面向固定**最新整合 HEAD** 核实最小 `Subject/Participant/Perspective/Fact/Effective World` 数据结构、Owner/Producer/Consumer、所有活跃调用路径和 old→target→retain/delete 表；继续 Draft，直至全案被明确批准并允许实现。未运行 Node/CI/浏览器/Windows/CachyOS/Termux 实测。
+- **本轮 E0 状态**：`E0-01` WorldSubject/Fact/Participant 合法 Schema、`E0-02` Native 事务及跨入口叙事发表/未知回执恢复、`E0-03` 通用双时间/分支有效查询、`E0-04` 动态 Perspective 与私人 HCM/Context 安全、`E0-05` World Effective 与 Claim-aware Prompt 实际行为、`E0-06` 全生产 caller/旧代码删除、`E0-07` Library/Studio/Play、`E0-08` 长会话/DB/GC、`E0-09` 合并分支依赖，**仍未形成 PASS 证据**。W17 做到的是**具体接口及观察点更清楚**，尚未形成产品实现。
 
 ## Stage 19 — W17-B 确认与 W18 最小 ABI/真实消费者硬切讨论（2026-10-17）
 
@@ -307,8 +288,6 @@
   - `SessionCore.finalizeTurn` 特定 authority-first 路径能 State+Narrator 一起 `_publish`；World Game `commitEvents` 则通过 `commitStatePatch` 更新 World State + Journal；**没有证明这两条不同业务入口的所有场景都在一次事务里**，仍为 E0-02 的关键阻塞。
 - 不建立万能 SubjectAdapter、平行 EventStore/TruthDB 或长期旧新双写。W18-A “直接冻结全套新 Schema”与 W18-C “万能适配器”仅作为对比。
 - 尤其 E0-01 真正 Subject/Fact 物理合同、E0-02跨 World/Narrator 事件事务、E0-03通用双时间查询、E0-04动态 Perspective 许可、E0-05 Claim-aware Prompt、E0-06 真正完整生产 Consumer/Deletion Map、E0-07 Studio/Play/UI、E0-08 长会话持久化、E0-09 分支合入最终代码均无 PASS。
-- 未运行 Node、CI、E2E、浏览器/真 UI、Windows/CachyOS/Android Termux，且部分生产消费者需最终集成 HEAD 后重新审查。**不能将部分静态 E0 判为 PASS**。
-- **下一 checkpoint**：用户决定 W18-A/B/C 后，按协议先在同一 Plan 和 Record 记录本轮选择，再进入固定最新 HEAD 下的 E0-06 完整 old→target/retain/delete 表与 E0-01/03 物理合同/时态查询、真实工程 Gate 0 收口；整体企划继续 Draft，正式启动开发须用户后续明确批准。
 
 ## Stage 20 — W18-B 确认与 W19 Gate 0 物理主体/事实/时态收口（2026-10-17）
 
@@ -327,9 +306,8 @@
   - 但旧修订的 GC/Pin、因果有效期与主体得知时间不可仅由 State Delta 自然推断。
   - GitHub 代码搜索找到 `src/endpoints/native-session.js → SessionCore.applyRuntimeCommit`、`experience/logic/runtime.js → world/session.commitEvents → session-runtime.commitStatePatch`、`authority-transaction.js → SessionCore Typed Authority Publication` 等**符号级候选链**；搜索未穷尽所有动态加载/第三方插件和活跃未合入分支调用，因此 **E0-06 仍为 PARTIAL/OPEN**。
 - **W19 研究推荐，用户未选择**：**W19-B「Session 原生最小 Subject + 来源型 Fact Transition / Revision-Tick 双锚查询 + Gate 0 证据收口」**，以现有 Native Session State/Events/Receipts/History 为权威，必要时加最小物理 Subject/Fact Transition；不添加平行 EventStore，也不强制无 Game Clock 的 Worldless RP 伪造时间戳。W19-A 依 LLM 从 Snapshot 猜历史及 W19-C 新建独立双时间数据库仅供比较。
-- **开发后 Gate 1～4** 才能取得新增功能的 Node/CI/数据库/真实 Studio/Play/Windows/CachyOS/Termux 证据。
+- 当时没有新增功能的产品运行结果。
 - **E0 状态**：E0-01 Subject/Fact 物理合同、E0-02 Native Domain/跨入口事务、E0-03 通用历史有效期、E0-04 动态私人 Perspective、E0-05 Claim-aware Context、E0-06 全生产消费者和旧路径删除、E0-07 Library/Studio/Play、E0-08 长会话/持久化、E0-09 集成分支依赖，**全部仍有未关闭阻塞，整体 PARTIAL/BLOCKED**。本轮仅 GitHub 文件静态阅读、Tree/Code Search 和 docs 写入；没有 Node/CI/真 UI/三端实测。
-- **下一 checkpoint**：用户明确选择 W19-A/B/C 后，先依讨论协议更新同一 Plan 和唯一 Record，再对 E0-01/03 的最小物理 Schema/受控历史查询接口与 E0-06 完整生产调用/删除证据开展最终 Gate 0 交接前审查，评估是否具备整个 Plan 定稿与正式开发分支授权的前置条件。未获用户最终批准前继续 Draft。
 
 ## Stage 21 — W19-B 确认与 W20 受保护物理契约及 Gate 0 工作包（2026-10-17）
 
@@ -345,8 +323,7 @@
 - **GitHub 搜索定位的部分生产调用方**：`src/endpoints/native-session.js → SessionCore.applyRuntimeCommit`；`experience/logic/runtime.js → world/session.commitEvents → session-runtime.commitStatePatch`；`authority-transaction.js → SessionCore Native Publication`；`frontend/host-services.js → readWorldView/readChronicle`；`context-compiler.js → knowledge-runtime.js`；Play/Frontend/Speech/Visual 仍有 `actorId`。**这是函数名搜索/选择性源码阅读，未涵盖完整动态插件/所有 V3 调用，不能标为 E0-06 PASS 或直接删除具体 Legacy 文件**。
 - **W20 推荐未批准**：**W20-B「受保护 Session-owned Identity + Domain-owned Fact transitions / Two-anchor Query + Consumer Work Packages」**。物理选择 P1（现有 `atri_world_state` 根受保护子树）或 P2（同 SessionRevision 下显式 Reserved Native state namespace）应按合法写者、存档/GC 与最小消费者改造成本决定，不能先建数据库再补安全。Domain Fact Owner 保持原合法业务单源，FactRef/转换只增加确有必要的来源和有效期，不为每句背景文本建 State。
 - 现阶段只有文件/设计提案，**没有运行 Node/DB/CI/真实浏览器 UI/Windows/CachyOS/Android Termux**，E0-01～09 继续 PARTIAL / BLOCKED。
-- **开发前后证据边界**：Gate 0 可在最终 HEAD 的 Authority/Consumer/最小合约/写入安全/清退和实测计划有足够可执行依据时退出；未实现的新行为的 Node/Provider Wire/Play/Studio/性能/跨端 PASS 属实施期 Gate 1～4，不应设为目前没有代码就不能开工的前置条件，也不可凭计划称已通过。
-- **下一 checkpoint**：用户若认可 W20-A/B/C，下一轮先更新原 Plan 和唯一 Record，再直接进入**正式工程交接前 E0 收口**：做最终需要决断的 Protected Namespace 与 Fact owner/Query 方案、Caller→Target 工作包/依赖、具体 Gate 0 剩余阻塞及正式企划是否具备定稿授权条件。继续 Draft，不创造产品分支，除非用户另行明确批准整份方案及启动。
+- 当时区分了设计材料与产品运行结果，尚未开展产品实施。
 
 ## Stage 22 — W20-B 确认与 W21 最终 Gate 0 交接前审查（2026-10-17）
 
@@ -365,9 +342,8 @@
   - `src/native/history-authority.js` 的公开/私有 Domain History 受已声明 Source/Policy 管理，不是新的通用历史 TruthDB；`queryHistory` 无通用 as-of tick；`native-information-contract.js`/Timeline/Frontend/Play/Media Actor 引用仍需真实 Typed Consumer cutover。
 - **本轮工程候选与建议，未获用户认可**：W21-B「**P2 作为首选**、显式 Reserved/Typed Session Subject 最小身份索引 + 各原 Domain 事实/时态 + 证据门槛式最终交接」。若 Gate 0 发现 P1 完整保护更简单，可以基于实际证据重新比较。W21-A 立即 P1 优先和 W21-C 全部物理位置延后均为对照。
 - **WP-A～F 交接目标**：WP-A Native Domain typed submission + 原 Domain Receipt、WP-B Subject/History/Save/GC、WP-C Information/Cognition/HCM/ContextPort 动态 Perspective、WP-D EffectiveWorld/Knowledge/Prompt、WP-E Timeline/Media/Play/Frontend ABI、WP-F Library/Studio/Legacy 切换。
-- **E0 当前 PARTIAL / BLOCKED，Gate 0 尚未 PASS**；后续可执行新功能的 Node/CI/真 UI/Windows/CachyOS/Termux 必须在正式实施后完成 Gate 1～4，不能假称当前通过。
+- 当时 E0 标记为 PARTIAL / BLOCKED，尚未开始产品实施。
 - 没有本地完整 repository call graph，未运行 Node/CI/浏览器、UI 截图、长会话基准或三端客户端，也没有创建/修改产品代码文件。
-- **下一 checkpoint**：用户选择 W21-A/B/C 后继续先更新同一 Plan Bundle/本 Record，再对确定的 Protected Subject 布局、最小物理 schema、Native Domain/History Query/Context 真实合约与 WP-A～F 的 Gate 0 工作包作最后一轮可交接证据审计；达到要求后再请用户明确认可整份企划 Final 和正式开发。未获最终授权继续 Draft，不创建 `feat/*`。
 
 ## Stage 23 — W21-B 确认与 W22 Gate 0 最终交接 Preflight 审查（2026-10-17）
 
@@ -387,12 +363,12 @@
   - `worldInfoBefore` 等旧 WI 字段在一些真实生产源码中仍出现；**没有足够证据宣布全部 Legacy 模块都无现役消费者，也没有凭据列出任一明确可立刻删除的产品文件**。
 - **W22 当前推荐尚未获用户确认**：**W22-B「具名阻塞 + 可执行 Preflight + 条件化开发交接」**。W22-A 未充分审查即 Final/开工、W22-C 继续无限新设计均不推荐。
 - **E0 当前状态和现实限制**：`E0-01～09` 仍 PARTIAL / BLOCKED，Gate 0 **没有 PASS**。
-- 若真正的 HEAD/调用链/关键权限尚不充分，维持 Draft、列最小阻塞并留待证据补齐，不能自行标记 Final 或创建开发分支。
+- 当时 HEAD/调用链/关键权限材料尚不充分，方案维持 Draft，未创建开发分支。
 
 ## Stage 24 — W22-B 确认与有界 Gate 0 Preflight 执行清单（2026-10-17）
 
 - **用户确认的唯一决策**：对上一轮明确推荐的 **W22-B「具名阻塞 + 可执行 Preflight + 条件化开发交接」**回复「认同」。W1-B～W22-B 均为已确认的**总体方案及收口方法**；用户没有因此批准全案 Final/Approved、E0-01～09 PASS、具体物理 ABI/Schema、创建实现分支或开始修改产品代码。
-- **唯一资产纪律**：任务继续是 `ARCH-DWE-01`；Primary Workspace `docs`，继续同一 Plan Bundle `plans/architecture/world-evolution-consistency/` 和本唯一 Record。没有创建新顶层 Plan/新 Record/HANDOFF，不修改 `main`、V3/Prompt/Visual 分支，不实施代码、CI 或三端测试。
+- **唯一资产纪律**：任务继续是 `ARCH-DWE-01`；Primary Workspace `docs`，继续同一 Plan Bundle `plans/architecture/world-evolution-consistency/` 和本唯一 Record。没有创建新顶层 Plan/新 Record/HANDOFF，未修改 `main`、V3/Prompt/Visual 分支或产品代码。
 - **本阶段 GitHub 审计锚点**（Branch GET 重新核实，未变）：
   - `main=c57fada6edeea255b29d857ba2585c1dbc9c098b`;
   - `refactor/atria-native-orchestration-v3=a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`;
@@ -416,7 +392,7 @@
   - P4/E0-04/05：动态 Perspective/Source Grants、V3 ContextPort/ContextCompiler/Prompt 的 Context 与秘密隔离消费者未闭合。
   - P5/E0-06/07：Host/Frontend/Play/Media/Studio/Legacy 插件实际 ABI 和 `retain/replace/delete/investigate` 的生产调用图未闭合。
 - **可执行而未授权实施的 Preflight**：`e0-preflight-execution.md` 末附一个只读英文 Codex Preflight 指令，要求不建开发分支、不修改产品代码、只更新原 docs Plan 和唯一 Record；对每项 E0 输出固定 SHA、Owner、Caller、Target、Disposition、静态退出证据和 `OPEN/BRANCH_RECHECK/DESIGN_READY/IMPLEMENTATION_GATE` 状态。
-- 只有 Gate 0 设计证据可交接且用户明确批准全案 Final/开始开发，才可创建实现分支。没有做任何 Node/CI/真实 UI/Windows/CachyOS/Android Termux 测试，不能宣称通过。
+- 当时尚未取得实施授权，未创建实现分支，也没有新增功能的运行结果。
 
 ## Stage 25 — 用户明确暂缓，等待编排/提示词/整体前端完成后由 Codex 接手（2026-10-17）
 
@@ -429,7 +405,7 @@
   - `6756e4b308e23af05a6063e71ee8df3d817a2c89`：根据用户此次**明确中断**，在 `docs` 创建唯一任务恢复文件 `handoff/ARCH-DWE-01.md`，记录冻结 HEAD、已确认设计、全部 E0 阻塞、触发条件、Codex 只读 Preflight 和后续授权界限；它不是第二份 Plan/Record。
   - 此唯一 Record 随后增量记录 Stage 25，仍保留 `## Final state` 之下的 `Not yet applicable`。
 - **完成与未完成**：W1–W22 总体方向已讨论完成，Gate 0 Preflight **仅有限静态代码审查完成**，并非完整调用图或设计退出；Node/CI/Play/Studio/长会话及 Windows/CachyOS/Termux 都没有执行。无产品代码修改，没有新建/合并任何实施分支，没有自动化提醒/后台巡检。
-- **恢复触发**：仅在用户明确表示前述排队重构已完成并要求 Codex 接手时恢复。优先阅读同一 Plan、Preflight、Record 及唯一 `handoff/ARCH-DWE-01.md`，以当前 HEAD 处理具名 E0；只有 Gate 0 设计证据可交接、用户后续明确批准全案 Final/实施时才创建开发分支。否则维持 Draft / Paused。
+- **暂停事实**：用户要求等排队重构完成后，再主动指示 Codex 接手。当前恢复状态和功能分工见同一 Plan 入口及 `handoff/ARCH-DWE-01.md`。
 
 ## Stage 26 — 聚焦功能实现，整理两案衔接（2026-10-18，仅文档）
 
@@ -437,8 +413,16 @@
 - 入口与旧 E0/Preflight 路径改为功能职责：WP-A 主体／正式效果，WP-B 历史／Save/Branch，WP-C 动态 Perspective／NPC／记忆与行为，WP-D Effective World／Claim-aware Context，WP-E Timeline/Play/媒体，WP-F 世界创作／装配／预览与旧入口替换。具体字段与接线由相应原 owner 落实，不为普通工程选择重开多轮审查。
 - 保留 W1-B～W22-B 的单 Native 权威、P2 优先最小身份、原领域事实、自由文本、按游戏事件／时间的有限自主性、合法个人认知及分支／历史设计。删除重复候选／下一轮要求，旧讨论留作背景；旧 Gate／完整调用图／取证／测试清单不再成为当前实施工作包。
 - 明确提示词／统一前端先完成，不等待本暂停企划；世界恢复后复用原 Context/Information/Compiler 与同一前端组件。正式债务按领域持续，记忆遗忘／检索缺失不使其消失；无 Clock 不伪造 Tick，跨领域不暗定统一时钟。
-- 这次没有产品代码修改、实现分支操作、验证／测试脚本、构建、浏览器、模型／Provider 调用或审查子代理；旧历史运行状态不被本次文档整理改写。未来恢复按当前功能入口与用户实际实施授权，旧暂停快照中的 Preflight 指令不恢复为新工作队列。
+- 这次仅整理文档，旧历史运行状态未被改写；恢复方式按当前功能入口与用户实际实施授权。
 
-## Final state
+## Stage 27 — 清理重复关卡与阶段停顿指令（2026-10-19，仅文档）
 
-Not yet applicable. Discussion in progress.
+- 用户要求仔细检查动态世界文档，去掉无意义的测试／验证要求和阶段停下汇报的内容。
+- 逐篇整理同一 Plan Bundle：`design.md` 从累计讨论改为当前架构，保留已确认的世界／资料分工、自由创作、演化权限、身份与能力、P2 存储、正式效果、历史／分支、NPC／记忆及完整 UI 功能；旧选项与提交历史继续保存在本 Record。
+- 删除设计正文与暂停交接中的 Gate／Preflight 工作队列、重复未测试声明、反复确认与旧只读审查提示词。Record 删除过期的下一轮 checkpoint 指令与重复未执行工具清单，保留各阶段的决策、提交、静态发现与当时状态。
+- Plan 入口统一说明：WP-A～F 只表达功能依赖；恢复并授权实施后持续推进到整体完成，记录随实际工作更新，交付时集中说明结果。普通实现选择由执行者处理，必要自查限于实际改动与直接使用者。
+- 本次修改仅限上述文档与本任务交接，产品实施仍为 **Draft / Paused**。
+
+## Current state
+
+方案已整理，产品实施继续暂停；恢复状态见 Plan 入口。

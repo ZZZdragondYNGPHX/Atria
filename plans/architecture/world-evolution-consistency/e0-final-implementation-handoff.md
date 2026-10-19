@@ -1,6 +1,6 @@
 # ARCH-DWE-01 · 功能实施入口与恢复范围
 
-[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**。W1-B～W22-B 的已确认架构方向保持，旧轮次不再扩展为 Preflight／Gate 审查阶段。
+[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**。W1-B～W22-B 的已确认架构方向保持。
 
 ## 已确定的实现方向
 
@@ -20,8 +20,8 @@
 | Participant／Expression／展示投影 | 动态对话人物、档案、语音与插图 |
 | 作者定义／EntryPoint／预览／冻结及旧调用替换 | 世界创作器、Studio 装配与 Play 可见世界 |
 
-具体字段、ID 名称、函数签名与原服务整合由执行者按原实现落实；只有改变已确认产品语义或超出用户范围的取舍才需再讨论。工作项不包括全量调用图取证、独立审查、数据库／Provider／跨端测试矩阵或性能验证阶段。
+具体字段、ID 名称、函数签名与原服务整合由执行者按原实现落实；只有改变已确认产品语义或超出用户范围的取舍才需再讨论。执行方式见[入口：实施时的连续推进](index.md#实施时的连续推进)。
 
 ## 当前边界
 
-当前仅修订文档，不创建实现分支、不修改产品代码，不把功能列出视为已经实现。等待排队的编排、提示词、整体前端完成，并由用户明确恢复世界任务及实际实施范围；不自行解除暂停或追加 Gate 通过条件。
+当前仅修订文档，不创建实现分支、不修改产品代码，不把功能列出视为已经实现。等待排队的编排、提示词、整体前端完成，并由用户明确恢复世界任务及实际实施范围；当前暂停状态见[入口](index.md)。

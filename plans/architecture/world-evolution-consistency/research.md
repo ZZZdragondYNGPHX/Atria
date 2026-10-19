@@ -2,9 +2,9 @@
 
 - 调研日期：2026-10-17
 - 文档状态：Research / Draft；资料结论不等于 Atria 冻结设计
-- Plan 入口：[index.md](index.md)；候选接口：[design.md](design.md)
+- Plan 入口：[index.md](index.md)；架构说明：[design.md](design.md)
 - 范围：事件溯源、时间化知识、信念/真相区隔、生成式模拟、叙事编排、存档、成本约束
-- 方法：优先官方产品技术文档、原始论文及实际 GitHub 源文件；未做 Atria 运行、UI、CI 或跨端实测。
+- 方法：优先官方产品技术文档、原始论文及实际 GitHub 源文件。
 
 ## A. 外部案例与可借鉴机制
 
@@ -21,7 +21,7 @@
 | 生成式 NPC | [Generative Agents][S12] | 主体从经历、回忆、反思和计划中形成行为 | 角色所知、所想可以随信息传播与时间而演化 | NPC 的生成式记忆不是客观世界真相 |
 | LLM 世界主持人 | [Concordia][S13]、[Concordia GM Components][S14] | Agent 提出行动，Game Master 解析可行性、结算影响并分发观察 | 模型提供叙事建议/候选结果，原生提交器掌握是否发生的决定权 | 不新增与现有 Native SessionCore/Authority 并列的 GM 真相库 |
 | 时间知识图谱 | [IJCAI Temporal KG Survey][S15] | 静态关系在时间变化时会导致错误的补全或预测 | 事实最少应具备有效时间/事件/出处/分支，检索支持 as-of | 不等于必须让所有 World/Knowledge 内容图谱化 |
-| 游戏效果边界 | [Unreal GAS][S16] || 状态改变需要明确的作用域与受控 effect，而非模型自由编辑 | Atria 不需要依赖 Unreal 或其完整技能系统 |
+| 游戏效果边界 | [Unreal GAS][S16] | Gameplay Ability 与 Gameplay Effect 分离 | 状态改变需要明确的作用域与受控 effect，而非模型自由编辑 | Atria 不需要依赖 Unreal 或其完整技能系统 |
 
 ## B. 从资料形成的判断（仅作为提议）
 
@@ -29,19 +29,19 @@
 2. **世界知识不只有一个时间。** 至少区分游戏内事实生效时刻（valid game time）、Atria 提交/获知该声明的版本（recorded revision）、角色的接触/相信时刻（actor-observed time，仅在需要时）。
 3. **错误情报不是错误世界状态。** 世界真相「莱恩已经死亡」，北境将领「相信莱恩仍在位」可同时存在，并各有来源。
 4. **编译优先级不代表语义冲突自动消失。** 给状态更高权重，只能指导排序/提示词；若旧自由文本写「莱恩现在在位」仍被同时注入，模型仍可能矛盾。需要显式状态绑定、局部文本失效/重述或证据层冲突检测。
-6. **选择性模拟比全世界全量推演更适合长会话。** 根据作用域、重要度、时钟、等待事件和预算调度；冷数据可聚合追赶，而非每轮调用所有 NPC。
-7. **不应默认改为全量 Event Sourcing、全图谱或新数据库。** Atria 已有 Native 状态版本、增量、游戏事件、编排和模拟调度；
+5. **选择性模拟比全世界全量推演更适合长会话。** 根据作用域、重要度、时钟、等待事件和预算调度；冷数据可聚合追赶，而非每轮调用所有 NPC。
+6. **不应默认改为全量 Event Sourcing、全图谱或新数据库。** Atria 已有 Native 状态版本、增量、游戏事件、编排和模拟调度；
 
-## D. 关键试验用例（设计审查时复用）
+## C. 功能场景说明
 
 1. **王位继承：** 初始「莱恩是皇帝」→ 皇帝死亡 → 权力真空 → 二皇子继位。普通 Lore 不应恢复莱恩在位，但查询旧年份仍可正确提及。
 2. **误传与欺骗：** 皇帝死亡，北境将领被蒙蔽，宫廷史官知道真相。两个 NPC 用不同知识视图，但同一世界状态。
 3. **离屏事件：** 玩家离开帝都一年，世界按有限任务追赶并产生可追溯摘要；没有执行的战争不得凭预测自动写成已发生。
-5. **分支与时间旅行：** 从刺杀前 SavePoint 另开分支，另一线上的死亡消息、继承与记忆不得污染新分支。
-7. **非结构化叙事：** 生成文本出现「国王死了」但没有 event receipt；下一轮不能假装状态同步完成。
-8. **资源压力：** 十万份历史记录、上百 NPC、多年游戏时间跨度；不允许全量扫描/无界模型调用阻塞回合。
+4. **分支与时间旅行：** 从刺杀前 SavePoint 另开分支，另一线上的死亡消息、继承与记忆不得污染新分支。
+5. **非结构化叙事：** 生成文本出现「国王死了」但没有 event receipt；后续游戏回合不能假装状态同步完成。
+6. **长会话：** 历史和冷态 NPC 增长时仍按关联范围读取、按游戏时间有限结算。
 
-## E. 来源目录（原始资料）
+## D. 来源目录（原始资料）
 
 [S1]: https://github.com/SillyTavern/SillyTavern-Docs/blob/main/Usage/worldinfo.md
 [S2]: https://learn.microsoft.com/en-us/azure/architecture/patterns/event-sourcing
@@ -81,16 +81,16 @@
 
 ---
 
-## F. S2 扩域补充研究：从 ST Lorebook 到 Native World Model（2026-10-17）
+## E. S2 扩域补充研究：从 ST Lorebook 到 Native World Model（2026-10-17）
 
 > 本节是“要不要彻底改变世界/知识创作模型”的新增调研，不替代前述事实。
 
-### F.1 外部系统对比
+### E.1 外部系统对比
 
 | 案例 | 经原始文档确认的核心机制 | 可借鉴部分 | 不宜照搬 |
 | --- | --- | --- | --- |
 | [ST World Info][S1] | 默认以 keys/regex/递归/排序/预算动态注入知识文本，World Info 是 Prompt 引导工具；即使注入也不保证模型表现 | 全文召回、编辑自由度和 token 预算 | 触发次数/位置/概率不是事实真伪、实体或时态模型 |
-| [W3C SHACL][S17] || 显式规则、关键实体/关系 schema、错误路径清晰 | 不要求 Atria 采用 RDF 或全图化 |
+| [W3C SHACL][S17] | 以 Shape 表达数据约束 | 显式规则、关键实体/关系 schema、错误路径清晰 | 不要求 Atria 采用 RDF 或全图化 |
 | [W3C PROV-O][S18] | 区分 entity/activity/agent，提供“来源、派生、失效、责任归属”等出处关系 | 一个事实为何成立、从哪个事件/文件/修订而来 | 不复制 PROV-O 全套本体到 Runtime |
 | [W3C RDF datasets][S19] | 允许默认图和命名图，但多图语义需要明确选择 | 认知/世界/来源范围不能靠简单拼在一起解决 | named graph 不会自动决定谁对谁可见或谁是真理 |
 | [XTDB valid/system time][S4] | valid time 是事实生效期，system time 是何时记录/改变该声明 | 区分历史事实、后来发现、修订与 as-of 查询 | 不直接引入 XTDB 或要求所有属性都有双时间列 |
@@ -98,18 +98,18 @@
 | [inkle ink variables][S21] | 剧情逻辑能引用明确世界变量，并可让文本条件分支 | 自由叙事和确定状态连接，关键 facts 可以 anchor | 开放 RP 无法将所有叙事写成固定变量 |
 | [Generative Agents][S12] | 记录经历、从记忆提炼反思并形成计划 | HCM 主体记忆与行动推演 | 不将主体观察自动变成世界全局真相 |
 
-### F.2 Atria 原生契约的精确静态事实
+### E.2 Atria 原生契约的精确静态事实
 
 - main:src/native/world-knowledge.js 的 WorldRevision 当前含 worldRevisionId/worldId/schema/baseline/knowledgeBindingIds/assetIds/metadata；KnowledgeEntry 含 content/discovery/applicability/lifecycle/relations/delivery/metadata，且显式禁止旧 ST 身份字段。这说明**现有确是原生资源模型**，不是简单复用 ST JSON 记录，但知识语义仍以条目为中心。[A19]
 - main:public/scripts/native/knowledge-contracts.js 中 discovery 可用 keywords/aliases/regex，lifecycle 包含 probability/sticky/cooldown/delay，delivery 包含 before/after 和 target，state applicability 支持 typed scalar predicates；World Info conditions 的操作符常量仍被引用。[A20]
 - main:public/scripts/native/knowledge-runtime.js 中 currentState、eventJournal、knowledgeOverride、packageCanonical、libraryAugment、sessionAugment、memoryEvidence 有明确权威阶梯；排序不自动解析自由文本的语义矛盾。[A5]
 - 不是缺少状态/事件的空白系统。[A1]
 - main:docs/features/native-knowledge.md 已明确 Native Knowledge 读取 committed snapshot、拒绝 legacy World Info baselines，并具有 Library/Studio revision 编辑、Binding manager、Session Knowledge 提升、语义 editor。[A6]
-- main:public/scripts/native/knowledge-selection.js 可见关键词/regex 的选择流程；此类检索逻辑可被新检索器取代或降为召回层，但在 E0 前不能声称已找到全部实际消费者。[A7]
+- main:public/scripts/native/knowledge-selection.js 可见关键词/regex 的选择流程；此类检索逻辑可被新检索器取代或降为召回层，相应替换随实际功能接线完成。[A7]
 
 **综合判断：** 应重点改革“World / Knowledge 的语义边界、实体识别、可变事实锚点、来源、检索、作者心智模型、有效视图与 UI”；原生 Session authority、Save/Branch、Simulation、HCM 是复用对象，不是拟重建的对手。
 
-### F.3 进一步研究的反证/成本
+### E.3 进一步研究的反证/成本
 
 1. **仅新增关系图**不保证模型输出永不矛盾：不可信自由文本、缓存、受众隔离与未提交叙事仍需要治理。
 2. **仅给知识打“高优先级”**不能解决历史片段在当前时间的语义失效。

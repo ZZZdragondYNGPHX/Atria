@@ -18,7 +18,7 @@
 
 **重要**：不要把“一个世界主体只有一个权威引用”误解为“所有系统必须存同一个 ID 字符串、同一份 JSON 文档”。身份可统一引用，信息的所有者、生命周期和权限必须保持独立。
 
-## 2. main 静态审查的真正身份断点（2026-10-17）
+## 2. 原实现中的身份接线位置（2026-10-17 静态阅读）
 
 - [Native Identity](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/identity.js) 的 `NATIVE_ID_FAMILIES` 有 `actor`、`world`、`session`、`branch`、`revision` 等家族，但读取的清单中**未发现独立的 World Entity ID family**。不能在设计讨论中虚构现成的正式 `entity_*` 契约。
 - [Actor Profile](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/public/shared/native-actor-profile.js) 的 `projectActorDefinition` 仅读取 Package/EntryPoint 指定的 `manifest.actors`，明确不以动态 Session 状态为输入。预设的 Actor 是作者资产/角色表现入口，不应由 Play 直接修改 Package Manifest。
@@ -30,7 +30,7 @@
 - [Session Repo](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/repositories/session-repo.js) 与 [SavePoint](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/repositories/save-point-repo.js) 已经持有 Branch/Revision 的写入与回溯锚点；新 identity binding 的有效性必须随同一权威提交和分支读取，不能另起跨分支共享 mutable latest。
 - [World Revision](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/native/world-knowledge.js) 已有固定版本 World/Knowledge 资源，但不是完整的运行时主体身份模型；要明确 authored entity 与其 Session 投影之间的匹配/实例化。
 
-并未完成全部消费者引用与实时 UI/存档/跨端测试；“缺少跨域身份”仅可作为待补齐的语义/调用方路径，不表示项目没有任何实体系统。
+以上是当时源码中的接线位置；恢复时按实际整合后的原接口落实跨域身份。
 
 ## 3. 候选架构：Canonical Subject + Typed Views + Evidence Links
 
@@ -58,12 +58,12 @@ Library/Studio World Definition + Authored Actor (fixed revisions)
 ```
 
 - Canonical **World Subject** 是“游戏世界认定的同一个对象”的稳定引用，不要求所有人物拥有人工智能、每一个名词都要注册。
-- 与其说“统一 ID 格式”，更重要的是**统一身份归属与身份关联的审查路径**：新主体通过 W4-B 的事件/状态接纳获取持久身份；所有真正能改变世界的跨域映射必须由有权限的 Native 操作确立，读取投影可重建。
+- 与其说“统一 ID 格式”，更重要的是**统一身份归属与合法关联**：新主体通过 W4-B 的事件/状态接纳获取持久身份；所有真正能改变世界的跨域映射必须由有权限的 Native 操作确立，读取投影可重建。
 - `AuthoredActorRef → SubjectRef` 可以是一次明确的实例化绑定，也可能只是可重复使用的人物**表达模板**；相同角色卡不意味着一定只有一个世界实例。重用同一个 Actor 说话风格不等于两名 NPC 是同一个人。
-- `LifetimePersonRef`、`PerspectiveRef`、`HcmEvidenceEntityRef` 是不同用途的引用；可经过来源审查链接到 SubjectRef，**不将本地 ID 简单替换为同一字符串**。
+- `LifetimePersonRef`、`PerspectiveRef`、`HcmEvidenceEntityRef` 是不同用途的引用；可根据合法来源链接到 SubjectRef，**不将本地 ID 简单替换为同一字符串**。
 - **HCM 的未决身份仍可保持为候选/传闻**。如果“城里流传一个叫阿洛的神秘人”，不能只因记忆库里存在 Entity 节点就从 Native World 中自动创建真实阿洛；名词抽取与世界接纳仍是不同动作。
 - 身份映射的类型、来源与有效版本须可解释。绝不可通过“显示名等于阿洛”就擅自绑定。自动语义匹配只负责提出候选，不能获得创建/合并官方主体的写入权限。
-- 选择 canonical subject **不等于必须新建全局 EntityRegistry 服务、独立数据库或所有对象的万能超类**。先审核能否依附现有 World State/Session Revision 与具体域的身份/关系数据，确有缺口再制定最小 Schema。
+- 选择 canonical subject **不等于必须新建全局 EntityRegistry 服务、独立数据库或所有对象的万能超类**。优先依附现有 Session Revision 与具体域的身份/关系数据，仅补实际缺失的字段。
 - 不统一所有记忆、Profile、Lifetime 与 World State 的所有权。只有世界主体身份/真实效果属于 Native 已提交状态，各领域保留自己的业务规则。
 
 ## 4. 身份的五种常见“看似一致、实则冲突”情况
@@ -85,7 +85,7 @@ Library/Studio World Definition + Authored Actor (fixed revisions)
 ### 4.4 跨分支与跨 Session
 
 - **同一 Session** 分叉点前已正式存在的 NPC，其 Canonical Subject 可沿共同祖先继承；之后不同 Branch 上的位置、关系、死亡、秘密与个人认知各自由对应 Revision 得出。
-- **分叉后新增**的 NPC 需要无冲突的身份产生机制和事件归属（候选：非可复用 UUID 或由唯一 origin event 派生；最终方案待定），两条分支中都出现“阿洛”并不能证明他们必为同一实体。
+- **分叉后新增**的 NPC 需要无冲突的身份产生机制和事件归属（具体分配沿原实现决定，保留唯一 origin event 来源），两条分支中都出现“阿洛”并不能证明他们必为同一实体。
 - **不同 Session/不同 Package Version** 的同名角色即使源于同一作者定义，也不自动共享动态状态；可显式保留 Authored Definition 的来源/实例谱系以便展示，但避免 `global latest`。
 - SavePoint 锚定 exact `Branch/Revision`。从 NPC 注册前存档启动新分支，该分支不应自动拥有另一分支后续注册的 Subject/Perspective；从注册后分叉可以继承其有效起点及过去合法证据。
 
@@ -116,15 +116,15 @@ ProjectedActorView:
 
 不要求每种绑定在物理存储中独立占一条记录，关键是单一原生写入和可重建读投影。特别注意 **分支身份引用的语义应先明确再选 ID 格式**：不能因用分支 ID 前缀而将从共同祖先继承的实体误生成两个不同角色，也不能因重用 `actor_*` 让两种来源碰撞。
 
-## 7. UI / Studio / Play 的身份体验（候选）
+## 6. UI / Studio / Play 的身份体验（候选）
 
 - **Library**：作者可创建独立 World Entity/Actor Profile/Knowledge Source；能看到“引用了谁”，但不强制把每段自由文案实体化。
-- **Studio**：可显式将角色卡关联至世界人物定义，管理相同姓名/重复模板等歧义；可预览起始实例、表达 Profile/世界身份/规则状态分属什么权威，并用 Inspector 审查绑定来源。
+- **Studio**：可显式将角色卡关联至世界人物定义，管理相同姓名/重复模板等歧义；可预览起始实例、表达 Profile/世界身份/规则状态分属什么权威，并用 Inspector 查看绑定来源。
 - **Play**：新 NPC 在产生持续性影响时获正式 Subject，叙事、物品/任务/关系/回忆与个人身份保持一致；历史分支选择时不沿用另一条线的身份/感知/外部行动。
 - **Inspector**：显示有权限的 Authored Origin、Session Subject、绑定 Domain/LocalRef、来源 Revision/Event、关联可信度/歧义、差异与有效时间。**普通玩家不应看见 Host 的隐藏真身映射**，以免剧透。
 - **轻量编辑**：默认沿用自由文本写作、AI 推荐实体/别名绑定；高级用户才管理冲突或强约束。不是让作者手动录入大量内部 ID。
 
-## 9. 额外研究参考（仅概念参考）
+## 7. 额外研究参考（仅概念参考）
 
 - [Martin Fowler — Identity Map](https://martinfowler.com/eaaCatalog/identityMap.html)：避免一次工作单元把同一已持久对象加载成多个相互冲突的内存副本；这是**事务级内存身份管理模式**，不是 Atria 现成的跨域全局 ID 系统。可以借鉴“单一对象身份带来一致引用”，但不能据此建立世界真相二写。
 - [Microsoft DDD — Entities, Value Objects, Aggregates](https://learn.microsoft.com/en-us/azure/architecture/microservices/model/tactical-ddd)：需要跨时间跟踪身份时才将对象提升为实体；基于一致性边界的受控写入比跨模块直接互改重要。

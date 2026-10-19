@@ -1,6 +1,6 @@
 # ARCH-DWE-01 · Subject、Participant、Perspective 与表达契约
 
-[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W11-B：类型区分、原 Host 能力解析**。本模块保留功能与逻辑合同；旧源码片段仅为背景，具体字段按原实现接线，不新增审查／测试阶段。历轮比较与确认历史见 Record。
+[唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**，本次仅整理文档；已确认方向为 **W11-B：类型区分、原 Host 能力解析**。本模块保留功能与逻辑合同；旧源码片段仅为背景，具体字段按原实现接线。历轮比较与确认历史见 Record。
 
 ## 1. 五种语义各自回答什么问题
 
@@ -66,7 +66,7 @@ CommittedParticipant = {
 - **身份秘密**：Host 确认“苍鹰”=“阿洛”是一个 Subject，角色 A 可能只知道前者，角色 B 知道全部；`ParticipantRef` 对内部需准确但对公开输出只能显示本人所知的 alias，不可越权回传原始绑定。
 - **世界无角色卡**：新生成的阿洛在赊账事件中正式登记；即使没有 Actor Profile，也应有可控、可解释的最低表达/行为能力，不要求编辑 Package Revision；若无法合法获得 Cognition Perspective，则不能模拟其内心。
 
-## 5. 分级的接口/能力接纳矩阵（候选权限模型）
+## 4. 分级的接口/能力接纳矩阵（候选权限模型）
 
 | Subject 当前能力 | 可使用的身份和信息 | 禁止越权 |
 | --- | --- | --- |

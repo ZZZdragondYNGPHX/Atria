@@ -26,4 +26,4 @@
 
 主体／提交→历史与存档→动态视角／NPC 和世界 Context→Timeline/Play/媒体→作者装配／有效预览。作者正文编辑可并行。直接调用方的 schema、读取和资源引用跟随相应功能更新，旧 WorldInfo/注入／Actor-only 路径在对应替代完成时清退。
 
-保留有效 Memory/Goals/Experience、检索、Visual Director、原插件／作品的受支持能力；不按 `legacy` 目录名整树删除，也不为了省改动保留 ST 旧数据双写／旧模式 fallback。实际原接口缺项记为该功能的接线工作，不另安排全量审计、测试或性能阶段。
+保留有效 Memory/Goals/Experience、检索、Visual Director、原插件／作品的受支持能力；不按 `legacy` 目录名整树删除，也不为了省改动保留 ST 旧数据双写／旧模式 fallback。实际原接口缺项随该功能接线完成。
