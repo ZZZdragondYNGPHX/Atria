@@ -309,3 +309,24 @@ describe('A1 immersive navigation and search recovery', () => {
         shell.destroy();
     });
 });
+
+test('magnetic navigation keeps global tools in the topbar and exposes all five domains on a phone', () => {
+    setViewport(390, 844);
+    const shell = createAtriaAppShell({ document, window, registry: createCommandRegistry() });
+    const dock = shell.root.querySelector('.atria-edge-dock');
+    expect([...dock.querySelectorAll('[data-atria-domain]')].map(node => node.dataset.atriaDomain)).toEqual(['play', 'library', 'build', 'agents', 'runtime']);
+    expect(dock.querySelector('[data-atria-utility]')).toBeNull();
+    expect(shell.root.querySelector('.atria-toolbar [data-atria-utility=command]')).not.toBeNull();
+    expect(dock.getAttribute('aria-hidden')).toBe('false'); shell.destroy();
+});
+
+test('four-edge keyboard positioning and visibility modes preserve mounted business content', () => {
+    setViewport(1280, 900); window.localStorage.removeItem('atria.navigation.layout');
+    const shell = createAtriaAppShell({ document, window, registry: createCommandRegistry() });
+    const grip = shell.root.querySelector('.atria-edge-dock-grip'), workspace = shell.slots.workspace;
+    grip.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true }));
+    expect(shell.root.querySelector('.atria-edge-dock').dataset.edge).toBe('top');
+    expect(JSON.parse(window.localStorage.getItem('atria.navigation.layout')).edge).toBe('top');
+    expect(shell.slots.workspace).toBe(workspace);
+    shell.destroy(); window.localStorage.removeItem('atria.navigation.layout');
+});

@@ -184,3 +184,20 @@
 .atri-studio-actors-section textarea, .atri-studio-entrypoints-section textarea { min-height: 120px; resize: vertical; }
 
 .atri-studio-entrypoints-section button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+
+/* Adaptive panes keep their original mounted editors and change geometry only. */
+.atria-studio-workspace { gap:12px; padding:0 16px 16px; --atri-studio-activity-height:216px; }
+.atria-studio-workspace[data-activity-open=true] { grid-template-rows:auto minmax(0,1fr) minmax(160px,var(--atri-studio-activity-height)); }
+.atria-studio-workspace[data-atria-viewport=expanded] .atria-studio-layout { grid-template-columns:var(--atri-studio-tree-width,250px) minmax(0,1fr); gap:12px; }
+.atria-studio-workspace[data-atria-viewport=expanded]:is([data-inspector-open=true],[data-ai-open=true]) .atria-studio-layout { grid-template-columns:var(--atri-studio-tree-width,250px) minmax(0,1fr) var(--atri-studio-side-width,320px); }
+.atria-studio-workspace:not([data-atria-viewport=compact])[data-tree-open=false] .atria-studio-resource-tree { display:none; }
+.atria-studio-workspace:not([data-atria-viewport=compact])[data-tree-open=false] .atria-studio-layout { grid-template-columns:minmax(0,1fr); }
+.atria-studio-workspace[data-atria-viewport=expanded][data-tree-open=false]:is([data-inspector-open=true],[data-ai-open=true]) .atria-studio-layout { grid-template-columns:minmax(0,1fr) var(--atri-studio-side-width,320px); }
+.atria-studio-resource-tree,.atria-studio-inspector,.atria-studio-ai-placeholder { background:var(--atri-fill); border-radius:16px; box-shadow:none; border-color:transparent; }
+.atria-studio-center { border-radius:12px; box-shadow:none; border-color:transparent; background:var(--atri-surface-1); }
+.atria-studio-topbar h2,.atria-studio-section-heading h3 { font-family:var(--atri-font-sans); font-weight:550; }
+.atria-studio-layout-menu { position:relative; }
+.atria-studio-layout-menu > summary { min-height:44px; display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:8px; background:var(--atri-fill); }
+.atria-studio-layout-menu[open] { z-index:12; }
+.atria-studio-layout-options { position:absolute; top:calc(100% + 6px); right:0; width:240px; max-width:calc(100vw - 32px); padding:8px; background:var(--atri-material-overlay); border:1px solid var(--atri-separator); border-radius:12px; box-shadow:var(--atri-shadow-2); }
+.atria-studio-layout-options > button { display:block; width:100%; text-align:start; margin-top:4px; }

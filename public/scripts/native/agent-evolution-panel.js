@@ -56,7 +56,8 @@ export function mountAgentEvolution({ slot, scope, sourceKind, sourceId, request
         if (!state || disposed) return; content.replaceChildren();
         const doc = state.scope, policy = doc?.policy, owner = state.owner;
         el('p', 'Policy: ' + (policy?.mode || 'review') + (policy?.reason ? ' · ' + policy.reason : '') + (state.readOnly ? ' · read only' : ''));
-        el('p', 'Automatic publication needs nine independent paired reviews, agreement with the evaluator, no regressions and known costs. Each job evaluates one field.');
+        if (!(doc?.jobs || []).some(job => job.candidates?.some(candidate => candidate.report))) el('p', 'Not evaluated. Saving, sharing and sample trials remain available.');
+        el('p', 'Automatic publication uses the original paired reports, human decisions and known costs. Each job evaluates one declared field.');
         button('Refresh', async () => {}, content, false).disabled = busy;
         button('Export evidence and reports', async () => download({ experience: await request('experience', 'export', identity), evolution: await invoke('export') }));
         const feedback = el('section'); el('h4', 'Feedback on this saved output', feedback);
@@ -109,7 +110,7 @@ export function mountAgentEvolution({ slot, scope, sourceKind, sourceId, request
             const mode = select('Policy', [['review', 'Review'], ['auto', 'Local automatic']], configure);
             const source = input('Price source', 'text', configure), currency = input('Currency', 'text', configure, 'USD');
             const inPrice = input('Input price / million tokens', 'number', configure), outPrice = input('Output price / million tokens', 'number', configure);
-            el('p', 'Leave prices blank to keep automatic publication ineligible. Only an already visible always-invoked local Skill or a supported bounded Director can be evaluated automatically.', configure);
+            el('p', 'Leave prices blank to keep automatic publication ineligible. Choose a declared local Skill, native Plan, Prompt or bounded task field from the original target list.', configure);
             button('Declare this field and enable policy', async () => {
                 const choice = catalog.choices[Number(target.value)]; if (!choice) throw new Error('Choose a target');
                 await invoke('declare', { target: choice.target, expectedBaseHash: choice.baseHash });
@@ -124,6 +125,7 @@ export function mountAgentEvolution({ slot, scope, sourceKind, sourceId, request
         }
         for (const job of doc?.jobs || []) {
             const section = el('details'); el('summary', 'Job · ' + job.status + (job.reason ? ' · ' + job.reason : ''), section); json('Exact sources', job.dependencies, section);
+            if (job.reason === 'source_unready') el('p', 'Reviewed source evidence is missing for this evaluation.', section);
             for (const c of job.candidates) {
                 el('p', c.rationale, section); json('Candidate diff', c.diff, section); json('Decision and costs', c.decision, section);
                 if (!c.report) continue;

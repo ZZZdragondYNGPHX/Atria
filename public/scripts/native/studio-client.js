@@ -81,6 +81,7 @@ export const nativeStudioClient = Object.freeze({
     }),
     resolveResourceClosure: projectId => request(`projects/${encode(projectId)}/resources/closure`),
 
+    observeAgentTasks: projectId => request(`projects/${encode(projectId)}/agent/observations`),
     listAgentTasks: projectId => request(`projects/${encode(projectId)}/agent/tasks`),
     createAgentTask: (projectId, body) => request(`projects/${encode(projectId)}/agent/tasks`, {
         method: 'POST',

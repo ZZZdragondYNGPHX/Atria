@@ -3,8 +3,8 @@ import { BUILTIN_THEMES, contrastRatio, convertLegacyTheme, parseThemeImport, pl
 
 const legacy = { name: 'Dark Lite', main_text_color: '#eeeeee', blur_tint_color: '#171717', custom_css: 'body { --legacy: 1; }', font_scale: 1, mystery: { retained: true } };
 
-test('all six builtins resolve complete roles and readable text, controls and statuses', () => {
-    expect(BUILTIN_THEMES.map(theme => theme.name)).toEqual(['Serene Canvas', 'Azure', 'Cappuccino', 'Celestial Macaron', 'Dark Lite', 'Dark V 1.0']);
+test('all builtins resolve complete roles and readable text, controls and statuses', () => {
+    expect(BUILTIN_THEMES.map(theme => theme.name)).toEqual(['Folio', 'Nocturne', 'Serene Canvas', 'Azure', 'Cappuccino', 'Celestial Macaron', 'Dark Lite', 'Dark V 1.0']);
     for (const theme of BUILTIN_THEMES) {
         expect(Object.keys(validateNativeTheme(theme).colors)).toEqual(THEME_COLOR_ROLES);
         for (const text of ['text-primary', 'text-secondary', 'accent-text', 'success', 'warning', 'danger']) expect(contrastRatio(theme.colors[text], theme.colors['surface-1'])).toBeGreaterThanOrEqual(4.5);
@@ -21,7 +21,7 @@ test('mode and slot identity remain independent, missing selections survive fall
     selection.mode = 'system';
     expect(resolveThemeSelection(selection, BUILTIN_THEMES, true).theme.name).toBe('Azure');
     selection.night = 'deleted';
-    expect(resolveThemeSelection(selection, BUILTIN_THEMES, true)).toMatchObject({ missing: 'deleted', theme: { name: 'Dark Lite' } });
+    expect(resolveThemeSelection(selection, BUILTIN_THEMES, true)).toMatchObject({ missing: 'deleted', theme: { name: 'Nocturne' } });
     expect(selection.night).toBe('deleted');
 });
 test('legacy imports keep full originals and never execute behavior or enable CSS', () => {

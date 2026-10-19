@@ -2,8 +2,8 @@ import { parseAtriaColor, relativeLuminance } from './appearance.js';
 
 export const THEME_FORMAT = 'atria-theme';
 export const THEME_VERSION = 1;
-export const DEFAULT_DAY = 'builtin:serene';
-export const DEFAULT_NIGHT = 'builtin:dark-lite';
+export const DEFAULT_DAY = 'builtin:folio';
+export const DEFAULT_NIGHT = 'builtin:nocturne';
 const clone = value => JSON.parse(JSON.stringify(value));
 export const sameThemeDocument = (a, b) => {
     const stable = value => JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item) ? Object.fromEntries(Object.entries(item).sort(([x], [y]) => x.localeCompare(y))) : item);
@@ -65,6 +65,8 @@ function builtin(id, name, appearance, canvas, surface, text, secondary, accent)
         colors: Object.freeze(createPalette({ appearance, canvas, surface, text, secondary, accent })), css: Object.freeze({ enabled: false, text: '' }) });
 }
 export const BUILTIN_THEMES = Object.freeze([
+    builtin('folio', 'Folio', 'light', '#f2ede3', '#fbf8f2', '#1f1a14', '#554d43', '#94672b'),
+    builtin('nocturne', 'Nocturne', 'dark', '#0c0e14', '#141720', '#f1ece2', '#c2bbaf', '#e6c391'),
     builtin('serene', 'Serene Canvas', 'light', '#f9f8f6', '#ffffff', '#1c1c1e', '#67676d', '#ff5a36'),
     builtin('azure', 'Azure', 'dark', '#11191e', '#1b2730', '#abc6df', '#9eafc0', '#8b9eff'),
     builtin('cappuccino', 'Cappuccino', 'dark', '#201c19', '#2d2723', '#f0e1cb', '#c0af9c', '#d4ac87'),
@@ -162,7 +164,7 @@ export function planThemeMigration(settings, documents, originals = []) {
     }
     let day = DEFAULT_DAY;
     if (!fresh && typeof prefs.custom_css === 'string' && prefs.custom_css) {
-        const theme = clone(BUILTIN_THEMES[0]);
+        const theme = clone(BUILTIN_THEMES.find(item => item.id === 'builtin:serene'));
         theme.id = 'migration:day'; theme.name = uniqueThemeName('Serene Canvas · migrated', documents);
         theme.css = { enabled: prefs.custom_css_enabled !== false, text: prefs.custom_css };
         theme.compatibility = { source: 'upgrade', raw: clone(prefs) };

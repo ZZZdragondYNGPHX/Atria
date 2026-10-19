@@ -1,3 +1,4 @@
+import { mountPaneResizer } from '../atria-shell/pane-resizer.js';
 import { formatAtriaDate } from '../atria-shell/components.js';
 import { confirmAtriaDraftLeave, observeAtriaDrafts } from '../atria-shell/workspace-leave-guard.js';
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
@@ -537,7 +538,7 @@ async function loadProjectState(projectId) {
     return { detail, ...support };
 }
 
-async function mountProjectStudio(documentRef, root, projectId, host) {
+async function mountProjectStudio(documentRef, root, projectId, host, initialTaskId = null) {
     const loaded = await loadProjectState(projectId);
     const state = {
         projectId,
@@ -564,7 +565,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         activityTab: 'problems',
         disposed: false,
         renderEditor: () => {}, editorSequence: 0, refreshRequired: null,
-        aiOpen: false, inspectorOpen: false, activityOpen: Boolean(loaded.failures.length), inspecting: false, applying: false,
+        treeOpen: true, focusLayout: null, aiOpen: false, inspectorOpen: false, activityOpen: Boolean(loaded.failures.length), inspecting: false, applying: false,
     };
 
     const shell = documentRef.createElement('section');
@@ -572,7 +573,8 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     shell.dataset.atriaStudioWorkspace = projectId;
     root.replaceChildren(shell);
     const environment = createAtriaShellEnvironment(shell);
-    state.aiOpen = environment.get().mode === 'expanded';
+    state.aiOpen = Boolean(initialTaskId) || environment.get().mode === 'expanded';
+    if (initialTaskId) state.mobileView = 'ai';
     let inspectorSequence = 0;
 
     const topbar = documentRef.createElement('header');
@@ -604,6 +606,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     ai.className = 'atria-studio-ai-placeholder';
     ai.dataset.atriaStudioAi = 'agent';
 
+    const resizers = [];
     const drafts = observeAtriaDrafts({ document: documentRef, root: shell });
     state.confirmEditorLeave = () => !state.applying && !state.inspecting && confirmAtriaDraftLeave(documentRef, center);
     function resourceTreeSelect(view, index, pluginType, sourcePath) {
@@ -679,7 +682,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     const aiController = mountNativeStudioAgent({
         document: documentRef,
         slot: ai,
-        projectId,
+        projectId, initialTaskId,
         getRevision: () => state.revision,
         onReviewRequested: () => {
             state.activityTab = 'changes'; state.activityOpen = true;
@@ -1523,6 +1526,8 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     }
 
     function updateMobile() {
+        shell.dataset.treeOpen = String(state.treeOpen);
+        for (const resize of resizers) resize.refresh();
         center.inert = Boolean(state.refreshRequired || state.applying || state.inspecting || environment.get().mode === 'medium' && (state.inspectorOpen || state.aiOpen));
         for (const item of topActions.children) { if (item.textContent === t('Inspector')) item.setAttribute('aria-expanded', String(state.inspectorOpen)); if (item.textContent === t('AI')) item.setAttribute('aria-expanded', String(state.aiOpen)); }
         shell.dataset.activityOpen = String(state.activityOpen); shell.dataset.inspectorOpen = String(state.inspectorOpen); shell.dataset.aiOpen = String(state.aiOpen);
@@ -1543,6 +1548,31 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         }
     }
 
+    function toggleTree() {
+        if (environment.get().mode === 'compact') state.mobileView = state.mobileView === 'project' ? 'editor' : 'project';
+        else state.treeOpen = !state.treeOpen;
+        treeToggle.setAttribute('aria-expanded', String(state.treeOpen)); updateMobile(); layoutSummary.focus({ preventScroll: true });
+    }
+    const treeToggle = button(documentRef, 'Resources', toggleTree); treeToggle.setAttribute('aria-expanded', 'true');
+    const focusToggle = button(documentRef, 'Focus editor', () => {
+        if (state.focusLayout) { Object.assign(state, state.focusLayout); state.focusLayout = null; } else { state.focusLayout = { treeOpen: state.treeOpen, aiOpen: state.aiOpen, inspectorOpen: state.inspectorOpen, activityOpen: state.activityOpen }; state.treeOpen = state.aiOpen = state.inspectorOpen = state.activityOpen = false; }
+        focusToggle.textContent = t(state.focusLayout ? 'Restore workspace' : 'Focus editor'); treeToggle.setAttribute('aria-expanded', String(state.treeOpen)); updateMobile();
+    });
+    const layoutMenu = documentRef.createElement('details'); layoutMenu.className = 'atria-studio-layout-menu';
+    const layoutSummary = documentRef.createElement('summary'); layoutSummary.textContent = t('Workspace layout'); layoutSummary.tabIndex = 0;
+    const layoutOptions = documentRef.createElement('div'); layoutOptions.className = 'atria-studio-layout-options';
+    layoutMenu.append(layoutSummary, layoutOptions); layoutOptions.append(treeToggle, focusToggle,
+        button(documentRef, 'Reset panel sizes', () => { for (const resize of resizers) resize.reset(); }));
+    topActions.append(layoutMenu);
+    const resizeEnabled = () => environment.get().mode === 'expanded';
+    resizers.push(
+        mountPaneResizer({ document: documentRef, root: main, pane: tree.root, property: '--atri-studio-tree-width', label: 'Resource tree width', min: 180,
+            max: () => Math.max(180, main.clientWidth - 360 - (state.aiOpen || state.inspectorOpen ? 300 : 0)), enabled: () => resizeEnabled() && state.treeOpen, onCollapse: toggleTree }),
+        ...[inspector, ai].map(pane => mountPaneResizer({ document: documentRef, root: main, pane, property: '--atri-studio-side-width', label: pane === ai ? 'Agent panel width' : 'Inspector width', side: 'start', min: 260,
+            max: () => Math.max(260, main.clientWidth - 360 - (state.treeOpen ? 250 : 0)), enabled: resizeEnabled, onCollapse: () => { state.aiOpen = state.inspectorOpen = false; updateMobile(); layoutSummary.focus(); } })),
+        mountPaneResizer({ document: documentRef, root: shell, pane: activity, property: '--atri-studio-activity-height', label: 'Activity panel height', axis: 'y', side: 'start', min: 160,
+            max: () => shell.clientHeight * .55, enabled: () => resizeEnabled() && state.activityOpen, onCollapse: () => { state.activityOpen = false; renderActivity(); updateMobile(); layoutSummary.focus(); } }),
+    );
     topActions.append(
         button(documentRef, 'Validate', runValidation),
         button(documentRef, 'Preview', runPreview),
@@ -1559,6 +1589,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     inspectorToggle.setAttribute('aria-controls', inspector.id);
     environment.subscribe(() => { updateMobile(); });
     function dismissTransient() {
+        if (layoutMenu.open) { layoutMenu.open = false; layoutSummary.focus(); return true; }
         if (!state.aiOpen && !state.inspectorOpen && state.mobileView !== 'ai') return false;
         const label = state.inspectorOpen ? 'Inspector' : 'AI';
         state.aiOpen = false; state.inspectorOpen = false;
@@ -1581,6 +1612,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
             state.structuredEditor?.dispose();
             state.previewMount?.dispose();
             if (state.preview) void nativeStudioClient.closePreview(state.preview.previewId).catch(() => {});
+            for (const resize of resizers) resize.dispose();
             environment.dispose(); aiController.dispose();
         },
     };
@@ -1607,8 +1639,8 @@ export function mountNativeStudioWorkspace({
             projectController = null;
             const childId = String(nextRoute?.child?.id || '');
             if (childId.startsWith('project:')) {
-                const projectId = childId.slice('project:'.length);
-                const mounted = await mountProjectStudio(documentRef, root, projectId, host);
+                const [projectId, taskId] = childId.slice('project:'.length).split(':task:');
+                const mounted = await mountProjectStudio(documentRef, root, projectId, host, taskId || null);
                 if (disposed || token !== sequence) { mounted.dispose(); return; }
                 projectController = mounted;
             } else {

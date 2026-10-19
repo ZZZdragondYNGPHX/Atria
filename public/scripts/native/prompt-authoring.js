@@ -1,3 +1,4 @@
+import { mountPromptQuality } from './prompt-quality.js';
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { mountStudioRuntimeEditor } from './studio-runtime-editor.js';
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
@@ -168,7 +169,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
     let upgradeDependencies = [];
     const history = [{ draft: clone(draft), jsonBuffer, dependencies: [] }]; const future = [];
     const textSelections = new Map();
-    const sampleState = {}, upgradeState = {};
+    const sampleState = {}, upgradeState = {}, qualityState = {};
     const root = element(doc, 'section', undefined, parent); root.className = 'atri-prompt-editor';
     root.dataset.atriPromptEditor = 'true';
     if (librarySurface) root.dataset.atriLibraryEditor = 'true';
@@ -408,6 +409,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
             element(doc, 'pre', JSON.stringify(draft.provenance || [], null, 2), provenance);
         }
         mountPromptSamplePreview({ document: doc, parent: root, entry, entries: availableEntries, readDependencies: () => upgradeDependencies, state: sampleState, readDraft: () => { if (jsonBuffer !== null) jsonValue(jsonBuffer); return readActive(); } });
+        mountPromptQuality({ document: doc, parent: root, state: qualityState });
         mountPromptUpgrade({ document: doc, parent: root, entry, resource: draft, state: upgradeState,
             readDraft: () => { if (jsonBuffer !== null) jsonValue(jsonBuffer); return readActive(); }, applyDraft: (resource, { resources }) => {
                 capture();

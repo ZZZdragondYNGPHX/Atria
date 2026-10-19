@@ -88,8 +88,8 @@
         "atria_theme": {
             "version": 1,
             "mode": "system",
-            "day": "builtin:serene",
-            "night": "builtin:dark-lite"
+            "day": "builtin:folio",
+            "night": "builtin:nocturne"
         },
         "counting_tokenizer": 99,
         "encoding_tokenizer": 99,

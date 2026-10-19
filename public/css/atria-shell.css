@@ -1791,3 +1791,45 @@ body[data-atria-native-session-active="true"] #char_connections_button {
 .atria-app-shell[data-atria-viewport="compact"] .atria-shell-menu { left: 0; right: 0; top: auto; bottom: 0; width: 100%; max-height: calc(var(--atri-viewport-height) - 28px); padding: 20px 24px calc(24px + var(--atri-safe-area-bottom)); border-radius: 24px 24px 0 0; }
 body.no-blur :is(.atria-navigation-rail, .atria-bottom-navigation, .atria-play-composer) { background: var(--atri-material-solid-bar); backdrop-filter: none; }
 @media (prefers-reduced-transparency: reduce) { :is(.atria-navigation-rail, .atria-bottom-navigation, .atria-play-composer) { background: var(--atri-material-solid-bar); backdrop-filter: none !important; } }
+
+/* Atrium chrome keeps global tools outside the five-domain Dock. */
+.atria-app-shell { grid-template-rows:56px minmax(0,1fr); background:var(--atri-canvas); }
+.atria-toolbar { padding-inline:24px; background:var(--atri-material-bar); }
+.atria-toolbar__title { font-family:var(--atri-font-sans); font-size:var(--atri-text-headline); font-weight:550; }
+.atria-toolbar__trailing { min-width:0; gap:8px; }
+.atria-toolbar__trailing .atria-toolbar-search { display:flex; align-items:center; gap:8px; min-height:44px; padding:8px 12px; border:0; border-radius:var(--atri-radius-pill); background:var(--atri-fill); color:var(--atri-text-secondary); cursor:pointer; }
+.atria-toolbar__trailing .atria-toolbar__menu { display:grid; place-items:center; width:44px; min-height:44px; border-radius:50%; background:var(--atri-fill); color:var(--atri-text-secondary); }
+.atria-toolbar__trailing .atria-toolbar-search__shortcut { margin-inline-start:8px; }
+.atria-toolbar__trailing .atria-toolbar__menu::before { display:none; }
+.atria-domain-workspace__title { font-family:var(--atri-font-sans); font-weight:550; }
+@media(max-width:719px) {
+    .atria-toolbar { padding-inline:12px; }
+    .atria-toolbar__trailing .atria-toolbar-search { width:44px; padding:10px; justify-content:center; }
+    .atria-toolbar__trailing .atria-toolbar-search__label,.atria-toolbar__trailing .atria-toolbar-search__shortcut { display:none; }
+    .atria-toolbar__trailing { gap:4px; }
+}
+
+/* Agent activity is an observation surface, separate from story generation. */
+.atria-activity-island { position:absolute; z-index:51; left:50%; top:var(--atri-island-top,8px); transform:translateX(-50%); max-width:calc(100% - 24px); color:var(--atri-island-text); }
+.atria-activity-island__summary { display:flex; align-items:center; gap:10px; min-height:40px; max-width:min(360px,calc(100vw - 32px)); padding:8px 16px; color:inherit; background:var(--atri-material-island); border:1px solid color-mix(in srgb,var(--atri-island-text) 12%,transparent); border-radius:999px; box-shadow:var(--atri-shadow-2); cursor:pointer; }
+.atria-activity-island__summary > span:not(.atria-activity-island__count) { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.atria-activity-island__count { font-variant-numeric:tabular-nums; color:var(--atri-material-island); background:var(--atri-island-text); min-width:20px; padding:1px 5px; border-radius:99px; font-size:12px; }
+.atria-activity-island__panel { position:absolute; top:calc(100% + 8px); left:50%; transform:translateX(-50%); width:min(440px,calc(100vw - 24px)); max-height:calc(var(--atri-viewport-height,100dvh) - var(--atri-island-top,8px) - 80px); overflow:auto; overscroll-behavior:contain; border-radius:20px; padding:16px; background:var(--atri-material-overlay); color:var(--atri-text-primary); box-shadow:var(--atri-shadow-3); border:1px solid var(--atri-separator); }
+.atria-activity-island__header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.atria-activity-island__header > button,.atria-activity-island__row > .atria-icon-button { width:44px; min-height:44px; display:grid; place-items:center; flex:none; }
+.atria-activity-island__status { font-size:var(--atri-text-footnote); color:var(--atri-text-secondary); }
+.atria-activity-island__row { display:flex; align-items:center; border-bottom:1px solid var(--atri-separator); gap:8px; }
+.atria-activity-island__open { appearance:none; display:grid; gap:4px; text-align:start; min-width:0; min-height:64px; flex:1; padding:12px 4px; background:transparent; border:0; color:inherit; cursor:pointer; }
+.atria-activity-island__open strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:550; }
+.atria-activity-island__open span { color:var(--atri-text-secondary); font-size:var(--atri-text-footnote); }
+.atria-activity-island__refresh { min-height:44px; margin-top:12px; border:0; border-radius:8px; padding:8px 12px; color:inherit; background:var(--atri-fill); cursor:pointer; }
+.atria-app-shell[data-atria-viewport=compact] .atria-focus-area { padding-top:var(--atri-activity-band,0px); }
+.atria-domain-workspace__header h1 { font:550 var(--atri-text-title-1)/1.25 var(--atri-font-sans); letter-spacing:-.02em; }
+.atria-domain-workspace__header { padding:16px 28px 20px; }
+.atria-domain-workspace__nav { padding-inline:28px; }
+
+.atria-pane-separator { position:absolute; z-index:8; border-radius:6px; outline-offset:1px; background:transparent; touch-action:none; }
+.atria-pane-separator[data-axis=x] { width:8px; cursor:col-resize; }
+.atria-pane-separator[data-axis=y] { height:8px; cursor:row-resize; }
+.atria-pane-separator:hover,.atria-pane-separator:focus-visible,.atria-pane-separator[data-atria-resizing=true] { background:var(--atri-info-soft); outline:1px solid var(--atri-info); }
+.atria-pane-separator[hidden] { display:none!important; }

@@ -22,7 +22,7 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
     live.setAttribute('role', 'status');
     live.setAttribute('aria-live', 'polite');
     viewport.append(live);
-    const guides = ['left', 'right', 'bottom'].map(edge => { const node = make('div', 'atria-edge-dock-guide'); node.dataset.edge = edge; node.setAttribute('aria-hidden', 'true'); viewport.append(node); return node; });
+    const guides = ['left', 'right', 'top', 'bottom'].map(edge => { const node = make('div', 'atria-edge-dock-guide'); node.dataset.edge = edge; node.setAttribute('aria-hidden', 'true'); viewport.append(node); return node; });
     const reveal = make('button', 'atria-skip-link atria-edge-dock-reveal');
     reveal.type = 'button';
     reveal.textContent = tl('Show navigation');
@@ -31,20 +31,29 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
     viewport.append(safeProbe);
     let dock = rail, mode = '', edge = 'left', visible = false, gesture = null, pendingReveal = 0, pendingHide = 0, frame = null, motion = null, suppressedClick = null, dead = false;
     const edges = { desktop: 'left', touch: 'bottom' };
+    let displayMode = 'auto';
+    try {
+        const saved = JSON.parse(windowRef.localStorage.getItem('atria.navigation.layout') || 'null');
+        if (['left', 'right', 'top', 'bottom'].includes(saved?.edge)) edges.desktop = saved.edge;
+        if (['auto', 'always', 'reading'].includes(saved?.displayMode)) displayMode = saved.displayMode;
+    } catch { /* Device layout is optional; navigation remains usable. */ }
+    const persist = () => { try { windowRef.localStorage.setItem('atria.navigation.layout', JSON.stringify({ edge: edges.desktop, displayMode })); } catch { /* Device storage may be unavailable. */ } };
+    const restingVisible = () => size().mode === 'compact' || displayMode === 'always' || displayMode === 'reading' && root.dataset.atriaDomain !== 'play';
     let pose = { x: 0, y: 0, vx: 0, vy: 0 }, destination = { x: 0, y: 0 }, lastPointer = { x: -1, y: -1 };
-    let layoutAnimations = [], measured = { w: 0, h: 0 }, safe = { bottom: 0, left: 0, right: 0 };
+    let layoutAnimations = [], measured = { w: 0, h: 0 }, safe = { top: 0, bottom: 0, left: 0, right: 0 };
     const size = () => environment.get();
     const reduced = { get matches() { return size().reducedMotion || document.body.classList.contains('reduced-motion'); } };
     const syncLabels = () => {
         grip.setAttribute('aria-label', tl(mode === 'touch' ? 'Hide navigation; hold to move' : 'Drag navigation to another edge'));
-        grip.title = tl('Drag to an edge. Keyboard: Left, Right or Down.');
+        grip.title = tl('Drag to an edge. Keyboard: Left, Right, Up or Down.');
         handle.setAttribute('aria-label', tl('Show navigation; hold to move'));
         note(tl('Navigation position') + ': ' + edgeName(edge));
         for (const button of positionButtons) {
+            button.hidden = size().mode === 'compact' && button.dataset.edge !== 'bottom';
             button.setAttribute('aria-checked', String(button.dataset.edge === edge));
         }
     };
-    const edgeName = value => ({ left: tl('left edge'), right: tl('right edge'), bottom: tl('bottom edge') })[value];
+    const edgeName = value => ({ left: tl('left edge'), right: tl('right edge'), top: tl('top edge'), bottom: tl('bottom edge') })[value];
     const touch = () => mode === 'touch';
     const note = text => { live.textContent = text; };
     const cancelTimers = () => { clearTimeout(pendingReveal); clearTimeout(pendingHide); pendingReveal = pendingHide = 0; };
@@ -54,6 +63,7 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
     function targets(open = visible) {
         const { w, h } = box(), gap = touch() ? 16 : 20, bottom = Math.max(16, safe.bottom + 8);
         const off = touch() ? 12 : 64;
+        if (edge === 'top') return { x: size().width / 2, y: open ? 72 + safe.top + h / 2 : -h / 2 - off };
         if (edge === 'bottom')
             return { x: size().width / 2, y: open ? size().height - bottom - h / 2 : size().height + h / 2 + off };
         return { x: open ? (edge === 'left' ? gap + safe.left + w / 2 : size().width - gap - safe.right - w / 2) : (edge === 'left' ? -w / 2 - off : size().width + w / 2 + off), y: Math.max(h / 2 + 12, Math.min(size().height - h / 2 - 12, size().height * 0.53)) };
@@ -66,7 +76,7 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
         handle.dataset.edge = edge;
         dock.inert = !visible || gesture?.kind === 'reveal';
         dock.setAttribute('aria-hidden', String(!visible));
-        handle.hidden = size().keyboardOpen || !touch() || (visible && !gesture && !suppressedClick);
+        handle.hidden = size().keyboardOpen || (visible && !gesture && !suppressedClick);
         handle.dataset.captured = String(Boolean(gesture || suppressedClick));
         handle.setAttribute('aria-expanded', String(visible));
         reveal.setAttribute('aria-expanded', String(visible));
@@ -75,7 +85,7 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
     function paint() {
         dock.style.visibility = 'visible';
         dock.style.transform = `translate3d(${pose.x}px,${pose.y}px,0) translate(-50%,-50%)`;
-        const a = targets(true), b = targets(false), progress = edge === 'bottom' ? (b.y - pose.y) / (b.y - a.y) : (pose.x - b.x) / (a.x - b.x);
+        const a = targets(true), b = targets(false), progress = ['top', 'bottom'].includes(edge) ? (b.y - pose.y) / (b.y - a.y) : (pose.x - b.x) / (a.x - b.x);
         dock.style.opacity = touch() && gesture?.kind !== 'move' ? String(Math.max(0, Math.min(1, progress * 3))) : '1';
     }
     // Sample the same critical spring as paper-transition, then let WAAPI compose
@@ -118,7 +128,7 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
         let duration = 0;
         for (let index = 0; index <= 60; index++) {
             const time = index / 60, value = sample(time, seed, target);
-            const progress = edge === 'bottom' ? (hidden.y - value.y) / (hidden.y - shown.y) : (value.x - hidden.x) / (shown.x - hidden.x);
+            const progress = ['top', 'bottom'].includes(edge) ? (hidden.y - value.y) / (hidden.y - shown.y) : (value.x - hidden.x) / (shown.x - hidden.x);
             frames.push({ transform: `translate3d(${value.x}px,${value.y}px,0) translate(-50%,-50%)`, opacity: touch() ? String(Math.max(0, Math.min(1, progress * 3))) : '1' });
             duration = time * 1000;
             if (index > 5 && Math.hypot(value.x - target.x, value.y - target.y) < .3 && Math.hypot(value.vx, value.vy) < 3) break;
@@ -135,6 +145,7 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
         }).catch(() => {});
     }
     function show(open, { instant = false, force = false } = {}) {
+        if (!open && !size().keyboardOpen && restingVisible()) open = true;
         if (!open && !force && blocked())
             return;
         cancelTimers();
@@ -149,10 +160,10 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
     function nearEdge(point) {
         if (point.x < 0 || point.y < 0 || point.x > size().width || point.y > size().height)
             return false;
-        return edge === 'left' ? point.x <= 8 : edge === 'right' ? point.x >= size().width - 8 : point.y >= size().height - 8;
+        return edge === 'left' ? point.x <= 8 : edge === 'right' ? point.x >= size().width - 8 : edge === 'top' ? point.y <= 8 : point.y >= size().height - 8;
     }
     function scheduleHide() {
-        if (touch() || blocked())
+        if (touch() || blocked() || restingVisible())
             return;
         clearTimeout(pendingHide);
         pendingHide = setTimeout(() => {
@@ -195,8 +206,8 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
         for (const animation of layoutAnimations)
             animation.cancel();
         layoutAnimations = [];
-        edge = next;
-        edges[mode] = next;
+        edge = size().mode === 'compact' ? 'bottom' : next;
+        edges[mode] = next; persist(); resetMagnification();
         state();
         paint();
         if (!instant && !reduced.matches) {
@@ -223,7 +234,7 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
     }
     function nearest(x, y, vx = 0, vy = 0) {
         const px = Math.max(0, Math.min(size().width, x + (vx / 1000) * 0.99 / (1 - 0.99))), py = Math.max(0, Math.min(size().height, y + (vy / 1000) * 0.99 / (1 - 0.99)));
-        return [['left', px], ['right', size().width - px], ['bottom', size().height - py]].sort((a, b) => a[1] - b[1])[0][0];
+        return [['left', px], ['right', size().width - px], ['top', py], ['bottom', size().height - py]].sort((a, b) => a[1] - b[1])[0][0];
     }
     function guide(candidate) {
         for (const el of guides)
@@ -239,6 +250,7 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
         if (!visible)
             show(true, { instant: true });
         stopSpring();
+        resetMagnification();
         gesture.kind = 'move';
         gesture.originPose = { x: pose.x, y: pose.y };
         gesture.originPointer = { x: gesture.x, y: gesture.y };
@@ -277,7 +289,7 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
                 beginDrag();
                 g.originPointer = { x: g.startX, y: g.startY };
             } else {
-                const inward = edge === 'left' ? dx : edge === 'right' ? -dx : -dy, tangent = edge === 'bottom' ? Math.abs(dx) : Math.abs(dy);
+                const inward = edge === 'left' ? dx : edge === 'right' ? -dx : edge === 'top' ? dy : -dy, tangent = ['top', 'bottom'].includes(edge) ? Math.abs(dx) : Math.abs(dy);
                 if (Math.abs(inward) < tangent) {
                     g.kind = 'cancelled';
                     return;
@@ -301,7 +313,7 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
             g.candidate = nearest(pose.x, pose.y, pose.vx, pose.vy);
             guide(g.candidate);
         } else if (g.kind === 'reveal') {
-            const inward = edge === 'left' ? dx : edge === 'right' ? -dx : -dy, travel = Math.hypot(g.shown.x - g.hidden.x, g.shown.y - g.hidden.y);
+            const inward = edge === 'left' ? dx : edge === 'right' ? -dx : edge === 'top' ? dy : -dy, travel = Math.hypot(g.shown.x - g.hidden.x, g.shown.y - g.hidden.y);
             g.progress = Math.max(0, Math.min(1, (g.beforeVisible ? 1 : 0) + inward / Math.max(44, travel)));
             pose.x = g.hidden.x + (g.shown.x - g.hidden.x) * g.progress;
             pose.y = g.hidden.y + (g.shown.y - g.hidden.y) * g.progress;
@@ -386,15 +398,15 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
             dock.classList.remove('atria-edge-dock');
             dock = nextDock;
             mode = next;
-            edge = edges[mode];
+            edge = compact ? 'bottom' : edges[mode];
             dock.classList.add('atria-edge-dock');
             dock.prepend(grip);
             dock.prepend(skin);
-            visible = false;
+            visible = restingVisible();
         }
         root.dataset.atriaEdgeDock = 'true';
         const s = windowRef.getComputedStyle(safeProbe);
-        safe = { bottom: parseFloat(s.paddingBottom) || 0, left: parseFloat(s.paddingLeft) || 0, right: parseFloat(s.paddingRight) || 0 };
+        safe = { top: parseFloat(s.paddingTop) || 0, bottom: parseFloat(s.paddingBottom) || 0, left: parseFloat(s.paddingLeft) || 0, right: parseFloat(s.paddingRight) || 0 };
         state();
         syncLabels();
         moveTo(targets(), true);
@@ -405,23 +417,45 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
             handle.hidden = true;
         }
     }
-    const positionButtons = [];
+    const positionButtons = [], displayButtons = [];
     const caption = make('div', 'atria-shell-menu__heading');
     caption.textContent = tl('Navigation position');
     menu.append(caption);
-    for (const e of ['left', 'right', 'bottom']) {
+    for (const e of ['left', 'right', 'top', 'bottom']) {
         const button = make('button', 'atria-shell-menu__item');
         button.type = 'button';
         button.dataset.edge = e;
-        button.textContent = tl({ left: 'Left edge', right: 'Right edge', bottom: 'Bottom edge' }[e]);
+        button.textContent = tl({ left: 'Left edge', right: 'Right edge', top: 'Top edge', bottom: 'Bottom edge' }[e]);
         button.setAttribute('role', 'menuitemradio');
-        listen(button, 'click', event => chooseEdge(e, { instant: event.detail === 0 }));
+        listen(button, 'click', event => chooseEdge(size().mode === 'compact' ? 'bottom' : e, { instant: event.detail === 0 }));
         menu.append(button);
         positionButtons.push(button);
     }
+    const displayCaption = make('div', 'atria-shell-menu__heading'); displayCaption.textContent = tl('Navigation visibility'); menu.append(displayCaption);
+    for (const [value, label] of [['auto', 'Auto hide'], ['always', 'Always visible'], ['reading', 'Hide while reading']]) {
+        const button = make('button', 'atria-shell-menu__item'); button.type = 'button'; button.textContent = tl(label);
+        button.setAttribute('role', 'menuitemradio'); button.setAttribute('aria-checked', String(displayMode === value));
+        listen(button, 'click', () => { displayMode = value; persist(); for (const control of displayButtons) control.setAttribute('aria-checked', String(control === button)); closeMenu(); show(restingVisible(), { instant: true, force: true }); if (!restingVisible()) scheduleHide(); });
+        displayButtons.push(button); menu.append(button);
+    }
+    function resetMagnification() {
+        for (const icon of dock.querySelectorAll('.atria-shell-nav-icon')) icon.style.removeProperty('transform');
+    }
+    for (const nav of [rail, bottomNavigation]) {
+        listen(nav, 'pointermove', event => {
+            if (touch() || reduced.matches || gesture || event.pointerType === 'touch') { resetMagnification(); return; }
+            const horizontal = ['top', 'bottom'].includes(edge);
+            for (const button of nav.querySelectorAll('[data-atria-domain]')) {
+                const box = button.getBoundingClientRect(), distance = Math.abs((horizontal ? event.clientX - box.left - box.width / 2 : event.clientY - box.top - box.height / 2));
+                const scale = 1 + .28 * Math.max(0, 1 - distance / 100) ** 2;
+                button.querySelector('.atria-shell-nav-icon').style.transform = `scale(${scale})`;
+            }
+        }, { passive: true });
+        listen(nav, 'pointerleave', resetMagnification);
+    }
     for (const node of [grip, handle]) {
         listen(node, 'pointerdown', event => {
-            if (isBlocked() || size().keyboardOpen)
+            if (isBlocked() || size().keyboardOpen || size().mode === 'compact')
                 return;
             pointerDown(event);
         });
@@ -439,10 +473,10 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
         listen(node, 'keydown', event => {
             if (event.isComposing || event.keyCode === 229)
                 return;
-            const e = { ArrowLeft: 'left', ArrowRight: 'right', ArrowDown: 'bottom' }[event.key];
+            const e = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'top', ArrowDown: 'bottom' }[event.key];
             if (e) {
                 event.preventDefault();
-                chooseEdge(e, { instant: true });
+                chooseEdge(size().mode === 'compact' ? 'bottom' : e, { instant: true });
                 grip.focus({ preventScroll: true });
             }
         });
@@ -492,7 +526,7 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
     const unsubscribe = environment.subscribe(refresh);
     const observer = new windowRef.MutationObserver(() => {
         if (reduced.matches) {
-            cancelGesture({ instant: true });
+            cancelGesture({ instant: true }); resetMagnification();
             for (const a of layoutAnimations)
                 a.cancel();
             moveTo(targets(), true);
@@ -502,7 +536,7 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
     refresh();
     return Object.freeze({
         refresh,
-        positionButtons,
+        positionButtons: [...positionButtons, ...displayButtons],
         show: () => { show(true, { instant: getInputMode() === 'keyboard' }); },
         reveal: () => { show(true, { instant: true }); dock.querySelector('[data-atria-domain]')?.focus({ preventScroll: true }); },
         getEdge: () => edge,
@@ -519,7 +553,8 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
             return true;
         },
         navigated() {
-            if (touch())
+            if (restingVisible()) show(true);
+            else if (touch())
                 show(false, { force: true });
             else
                 scheduleHide();

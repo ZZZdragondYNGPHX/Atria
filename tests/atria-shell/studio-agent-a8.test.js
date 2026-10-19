@@ -319,8 +319,9 @@ describe('A8 Native Studio Project Agent client', () => {
         });
         await runNativeStudioAgentTask({ projectId, taskId });
         expect(prompts[0].messages[0].content).toContain('LOADED ALWAYS');
-        expect(prompts[0].messages[0].content).toContain('reference-guide');
-        expect(prompts[0].messages[0].content).not.toContain('agents-only');
+        expect(prompts[0].messages[0].content).not.toContain('reference-guide');
+        expect(prompts[0].messages.find(message => message.role === 'user' && message.content.includes('reference-guide'))).toBeDefined();
+        expect(JSON.stringify(prompts[0].messages)).not.toContain('agents-only');
         expect(reads).toHaveLength(2);
         expect(reads[1]).toMatchObject({ operation: 'read', input: { scope: { kind: 'global' }, name: 'reference-guide', path: 'ref.md', offset: 201, limit: 5, version: demand.installedHash },
             computeContext: { kind: 'project', projectId, taskId, revision: baseRevision } });

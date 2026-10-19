@@ -13,6 +13,7 @@ import {
     createAtriaStatusChip,
 } from './primitives.js';
 import { formatShellText, translateShellText } from './localization.js';
+import { mountPaneResizer } from './pane-resizer.js';
 import { createAtriaEdgeDock } from './edge-dock.js';
 import { createAtriaPaperTransition } from './paper-transition.js';
 
@@ -225,7 +226,7 @@ export function createAtriaAppShell({
     inspectorToggle.hidden = true;
     inspectorToggle.append(createAtriaIcon(documentRef, 'inspector', { size: 20 }));
     contextBar.append(contextActions, runtimeChip, inspectorToggle);
-    railFooter.append(searchButton, menuButton);
+    contextBar.append(searchButton, menuButton);
     globalBar.append(toolbarLeading, contextBar);
 
     // Focus area: Stage (Play) and Workspace (every other surface).
@@ -525,7 +526,7 @@ export function createAtriaAppShell({
         railButton.addEventListener('click', () => navigate(domain.id, { reason: 'rail' }));
         bottomButton.addEventListener('click', () => navigate(domain.id, { reason: 'bottom-navigation' }));
         railItems.append(railButton);
-        if (!['agents', 'runtime'].includes(domain.id)) bottomNavigation.append(bottomButton);
+        bottomNavigation.append(bottomButton);
         navButtons.set(domain.id, [railButton, bottomButton]);
     }
 
@@ -545,8 +546,7 @@ export function createAtriaAppShell({
         viewport = environment.get(),
     ) {
         const compact = isCompact(viewport);
-        if (compact) bottomNavigation.append(searchButton, menuButton);
-        else railFooter.append(searchButton, menuButton);
+        contextBar.append(searchButton, menuButton);
         const contextTitle = tl(contextState.title);
         dock.dataset.atriaOpen = String(contextState.open);
         dockTitle.textContent = contextTitle;
@@ -892,17 +892,15 @@ export function createAtriaAppShell({
         if (menuOpen) return false;
         closeCommand({ restoreFocus: false });
         menuOpen = true;
-        navigationDock?.show();
         syncModalIsolation();
         menuMotion.present(true);
         const anchor = menuButton.getBoundingClientRect();
-        const edge = navigationDock?.getEdge() || 'left';
         const bounds = menu.getBoundingClientRect();
-        const x = edge === 'left' ? anchor.right + 12 : edge === 'right' ? anchor.left - bounds.width - 12 : anchor.right - bounds.width;
-        const y = edge === 'bottom' ? anchor.top - bounds.height - 12 : anchor.bottom - bounds.height;
+        const x = anchor.right - bounds.width;
+        const y = anchor.bottom + 8;
         menu.style.left = Math.max(12, Math.min(environment.get().width - bounds.width - 12, x)) + 'px';
         menu.style.top = Math.max(12, Math.min(environment.get().height - bounds.height - 12, y)) + 'px';
-        menu.style.transformOrigin = edge === 'bottom' ? 'bottom center' : edge === 'right' ? 'right center' : 'left center';
+        menu.style.transformOrigin = 'top right';
         menuButton.setAttribute('aria-expanded', 'true');
         queueMicrotask(() => { if (menuOpen && !disposed) menuItems.find(item => !item.disabled)?.focus(); });
         return true;
@@ -1056,8 +1054,12 @@ export function createAtriaAppShell({
         return closeSheet();
     }
 
+    function dismissActivityForBack() {
+        return !documentRef.dispatchEvent(new windowRef.CustomEvent('atria-activity-back', { cancelable: true }));
+    }
+
     function dismissCommandForBack() {
-        return closeMenu({ restoreFocus: true }) || closeCommand();
+        return closeMenu({ restoreFocus: true }) || closeCommand() || dismissActivityForBack();
     }
 
     function dismissChildRouteForBack(kind) {
@@ -1103,7 +1105,7 @@ export function createAtriaAppShell({
             return;
         }
 
-        if (event.key !== 'Escape') return;
+        if (event.key !== 'Escape' || root.querySelector('[data-atria-resizing=true]')) return;
         if (navigationDock?.isDragging()) {
             navigationDock.escape();event.preventDefault();event.stopImmediatePropagation();return;
         }
@@ -1132,6 +1134,7 @@ export function createAtriaAppShell({
             consumeEscape();
             return;
         }
+        if (dismissActivityForBack()) { consumeEscape(); return; }
         if (dismissContextForBack()) {
             consumeEscape();
             return;
@@ -1233,6 +1236,8 @@ export function createAtriaAppShell({
     menuItems.push(...navigationDock.positionButtons);
     commandDisposers.push(registry.register({ id: 'navigation.reveal', title: tl('Show navigation'), group: 'Navigation', keywords: ['dock', 'navigation'], run: () => navigationDock.reveal() }));
 
+    const contextResizer = mountPaneResizer({ document: documentRef, root, pane: dock, property: '--atri-inspector-width', label: 'Inspector width', side: 'start', min: 260,
+        max: () => Math.min(640, environment.get().width - 360), enabled: () => environment.get().mode === 'expanded' && !dock.hidden, onCollapse: () => { setDockOpen(false); inspectorToggle.focus(); } });
     const api = Object.freeze({
         root,
         registry,
@@ -1312,6 +1317,7 @@ export function createAtriaAppShell({
             closeMenu();
             closeCommand({ restoreFocus: false });
             closeSheet();
+            contextResizer.dispose();
             dockObserver?.disconnect();
             readingObserver?.disconnect();
             focusObserver?.disconnect();

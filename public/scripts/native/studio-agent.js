@@ -253,6 +253,7 @@ export function mountNativeStudioAgent({
     slot,
     projectId,
     getRevision,
+    initialTaskId = null,
     onProjectCommitted = async () => {},
     beforeCommit = () => true,
     onTaskState = () => {},
@@ -276,7 +277,7 @@ export function mountNativeStudioAgent({
     };
 
     const notifyTask = () => {
-        if (!disposed) onTaskState(activeTask ? clone(activeTask) : null);
+        if (!disposed) { onTaskState(activeTask ? clone(activeTask) : null); documentRef.dispatchEvent(new documentRef.defaultView.CustomEvent('atria-agent-activity-changed')); }
     };
 
     slot.dataset.atriaStudioAi = 'agent';
@@ -544,9 +545,16 @@ export function mountNativeStudioAgent({
     }
 
     void nativeStudioClient.listAgentTasks(projectId)
-        .then(result => {
+        .then(async result => {
             if (disposed) return;
             tasks = result || [];
+            if (initialTaskId) {
+                try {
+                    const task = await nativeStudioClient.getAgentTask(projectId, initialTaskId);
+                    if (disposed) return;
+                    activeTask = task; messages = clone(task.conversation || [{ role: 'user', content: task.intent }]); notifyTask();
+                } catch (error) { showError(error); }
+            }
             render();
         })
         .catch(error => {

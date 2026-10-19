@@ -48,8 +48,8 @@ export function mountVisualAuthoring({ document: doc, body, host, browseStates =
         select(doc, selections, tl('Exact image target'), state.target, [['', tl('Choose a saved target')], ...choices('core.image-target')], value => { state.target = value; changed(); });
         select(doc, selections, tl('Exact image style'), state.rendering, [['', tl('No style')], ...choices('core.image-rendering')], value => { state.rendering = value; changed(); });
     };
-    field(doc, form, tl('Override style negative prompt'), state.overrideNegative, value => { state.overrideNegative = value; negative.disabled = !value; changed(); }, { type: 'checkbox' });
-    const negative = field(doc, form, tl('Negative prompt'), state.negativePrompt, value => { state.negativePrompt = value; changed(); }, { multiline: true }); negative.disabled = !state.overrideNegative;
+    field(doc, form, tl('Override style negative prompt'), state.overrideNegative, value => { state.overrideNegative = value; negative.disabled = !value; negative.parentElement.hidden = !value; changed(); }, { type: 'checkbox' });
+    const negative = field(doc, form, tl('Negative prompt'), state.negativePrompt, value => { state.negativePrompt = value; changed(); }, { multiline: true }); negative.disabled = !state.overrideNegative; negative.parentElement.hidden = !state.overrideNegative;
     const actions = node(doc, form, 'div', undefined, 'atri-illustration-actions');
     button(doc, actions, tl('Preview image request'), run(async () => {
         if (!state.target || !state.prompt.trim()) { status.textContent = tl('Choose a saved target and enter an image prompt.'); prompt.focus(); return; }
@@ -77,7 +77,10 @@ export function mountVisualAuthoring({ document: doc, body, host, browseStates =
         const [visual, runtime, catalog] = await Promise.all([read('/visual/configuration'), read('/configuration'), read('/resources')]);
         if (disposed) return;
         resources = catalog; drawSelections(); configuration.replaceChildren();
-        mountVisualConfiguration({ document: doc, parent: configuration, data: visual, connections: runtime.connections, request: read, report, refresh: loadResources });
+        mountVisualConfiguration({ document: doc, parent: configuration, data: visual, connections: runtime.connections, request: read, report, refresh: async () => {
+            status.setAttribute('role', 'status'); status.textContent = tl('Visual settings saved.');
+            try { await loadResources(); } catch (error) { report(new Error(tl('Visual settings are saved, but resources could not refresh. Use Refresh resources to read the saved version.') + ' ' + error.message)); }
+        } });
     }
     button(doc, actions, tl('Refresh resources'), run(loadResources));
     const gallery = node(doc, root, 'section'); node(doc, gallery, 'h3', tl('My images'));

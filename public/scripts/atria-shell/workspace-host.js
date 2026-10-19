@@ -1,3 +1,4 @@
+import { mountActivityIsland } from './activity-island.js';
 import { mountExtensionsWorkspace } from '../native/extensions-workspace.js';
 import { createAtriaIcon } from './icons.js';
 import { createAtriaStatePanel } from './primitives.js';
@@ -746,6 +747,8 @@ export function createAtriaWorkspaceHost({
         openRuntimeSection,
         openRuntimeRepair, returnFromRuntimeRepair, hasRuntimeRepair: () => Boolean(runtimeRepair),
         openBuild,
+        openProjectTask: (projectId, taskId, label) => navigateToChild('build', { id: 'project:' + projectId + ':task:' + taskId, label: label || 'Project task', kind: 'detail' }, { history: 'push', reason: 'workspace-project-task' }),
+        openRun: runId => navigateToChild('agents', { id: 'runs:' + runId, label: 'Run', kind: 'detail' }, { history: 'push', reason: 'workspace-agent-run' }),
         openWorldInfo,
         openUtility,
         closeActive,
@@ -765,6 +768,7 @@ export function createAtriaWorkspaceHost({
             unsubscribeNavigation?.();
             leaveGuard.dispose();
             releaseRuntimeRepair();
+            activity.dispose();
             productSearch?.dispose?.();
             productSearch = null;
             for (const dispose of commandDisposers.splice(0)) dispose();
@@ -773,6 +777,8 @@ export function createAtriaWorkspaceHost({
             delete slot.dataset.atriaWorkspaceHost;
         },
     });
+
+    const activity = mountActivityIsland({ document: documentRef, window: windowRef, shell, host: api });
 
     productSearch = createProductSearchIndex({
         registry: shell.registry,

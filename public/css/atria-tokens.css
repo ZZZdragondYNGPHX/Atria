@@ -78,9 +78,9 @@
     --atri-unknown-soft: #ebeaf3;
 
     /* Typography */
-    --atri-font-sans: "Plus Jakarta Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    --atri-font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Microsoft YaHei UI", "Noto Sans SC", system-ui, sans-serif;
     --atri-font-display: var(--atri-font-serif);
-    --atri-font-serif: "Playfair Display", Georgia, "Songti SC", "STSong", "SimSun", serif;
+    --atri-font-serif: "Newsreader", "New York", "Iowan Old Style", "Palatino Linotype", "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
     --atri-frame-gap: 0px;
     --atri-frame-inset: 0px;
     --atri-font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, "Noto Sans Mono", monospace;
@@ -99,7 +99,7 @@
     --atri-leading-tight: 1.2;
     --atri-leading-snug: 1.35;
     --atri-leading-normal: 1.5;
-    --atri-leading-reading: 1.85;
+    --atri-leading-reading: 1.96;
     --atri-tracking-display: -0.022em;
     --atri-tracking-title: -0.015em;
     --atri-tracking-headline: -0.006em;
@@ -141,7 +141,7 @@
     --atri-tabbar-height: 54px;
     --atri-inspector-width: 340px;
     --atri-content-max: 1180px;
-    --atri-reading-max: 740px;
+    --atri-reading-max: 37em;
     --atri-page-gutter: clamp(16px, 3.2vw, 40px);
 
     /* Motion */
@@ -273,3 +273,14 @@ body[data-atria-shell-mounted="true"] {
     --SmartThemeCheckboxBgColorB: 31;
     --SmartThemeShadowColor: rgb(0 0 0 / 0.12);
 }
+
+/* Materials derive from the active palette, including user themes. */
+:root {
+    --atri-material-floating: color-mix(in srgb,var(--atri-surface-1) 86%,transparent);
+    --atri-material-overlay:var(--atri-elevated);
+    --atri-blur-floating:blur(22px) saturate(1.25);
+    --atri-material-island:#17130e;
+    --atri-island-text:#f5eee0;
+}
+:root[data-atria-appearance=dark] { --atri-material-island:#050608; --atri-island-text:#efe9dd; }
+body.no-blur,body.reduced-motion { --atri-blur-floating:none; --atri-material-floating:var(--atri-surface-1); }
