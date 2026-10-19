@@ -1,5 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# Atria Toolbox launcher - v0.3.9
+# Atria Toolbox launcher - v0.3.10
+# v0.3.10：卸载、重装前离开程序目录，修复 npm/Git 因当前目录被删除而失败。
 # v0.3.9：卸载管理收敛为“保留用户数据卸载”和“彻底卸载 Atria”两种安全模式。
 # v0.3.8：修复 curl | bash 启动后菜单 stdin 已耗尽导致反复清屏/“无效选项”。
 # v0.3.7：适配 Atria 独立 Git 历史切割；旧本地主线自动保留安全分支后对齐新 main。
@@ -13,7 +14,13 @@
 set -e
 set -o pipefail
 
-SCRIPT_VERSION="v0.3.9"
+# A previous toolbox session may have removed the caller's current directory.
+cd -- "$HOME" || {
+    echo "[ERROR] 无法进入 Termux 主目录：$HOME" >&2
+    exit 1
+}
+
+SCRIPT_VERSION="v0.3.10"
 RUNTIME_URL="${ATRIA_TOOLBOX_RUNTIME_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.runtime.sh.gz}"
 # v0.3.0 完整运行时；本启动器在执行前注入后续就绪检测、main 分支策略与启动缓存优化。
 RUNTIME_SHA256="${ATRIA_TOOLBOX_RUNTIME_SHA256:-286140c2c810618fa1a00a5a24e5447e0cf06e37b4f878fcf6eddc90955b2965}"
@@ -92,7 +99,8 @@ if [ "$(tail -n 1 "$BASE_FILE")" != "main_menu" ]; then
     echo "[ERROR] 工具箱运行时入口结构发生变化，已停止执行。" >&2
     exit 1
 fi
-sed '$d' "$BASE_FILE" > "$RUNTIME_FILE"
+# The runtime saves itself for later launches, so it needs the same recovery.
+sed -e '1a cd -- "$HOME" || exit 1' -e '$d' "$BASE_FILE" > "$RUNTIME_FILE"
 
 cat >> "$RUNTIME_FILE" <<'ATRIA_V031_READY_FIX'
 
@@ -308,7 +316,7 @@ open_browser() {
 # ============================================================================
 # v0.3.2 main-branch policy
 # ============================================================================
-SCRIPT_VERSION="v0.3.9"
+SCRIPT_VERSION="v0.3.10"
 DEFAULT_BRANCH="main"
 SCRIPT_URL="${ATRIA_TOOLBOX_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.sh}"
 CANONICAL_REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"
@@ -501,6 +509,14 @@ version_menu() {
 # v0.3.9 uninstall modes
 # ============================================================================
 
+# Installation can follow an uninstall in the same menu session. Begin outside
+# the checkout before its original reinstall flow removes and clones it again.
+eval "$(declare -f install_atria | sed '1s/install_atria/install_atria_base/')"
+install_atria() {
+    cd -- "$HOME" || { error "无法进入 Termux 主目录：$HOME"; return 1; }
+    install_atria_base "$@"
+}
+
 atria_uninstall_assert_owned_path() {
     local path="$1"
     local kind="${2:-path}"
@@ -583,6 +599,7 @@ uninstall_current_keep_data() {
     atria_uninstall_assert_owned_path "$ATRIA_DIR" program || return 1
     safe_delete_confirm "卸载当前 Atria 程序（保留用户数据）" || return 1
 
+    cd -- "$HOME" || { error "无法进入 Termux 主目录：$HOME"; return 1; }
     stop_atria || true
     rm -rf -- "$ATRIA_DIR"
 
@@ -636,6 +653,7 @@ uninstall_atria_completely() {
 
     confirm_complete_uninstall || return 1
 
+    cd -- "$HOME" || { error "无法进入 Termux 主目录：$HOME"; return 1; }
     stop_all_atria_instances
     disable_toolbox_autostart
 
