@@ -56,4 +56,6 @@ V3 接续现有页面及路由。Plan Fork/Derive、归档、删除补原服务�
 
 资源详情、Used By、Runtime 配置和错误定位保留返回上下文。Back/Escape 一次处理当前最上层并归还焦点；IME 输入不触发发送或全局快捷键。
 
+全局 Dock 只切换主工作域，搜索/工具/账户在顶栏。Agent 长任务可从灵动岛摘要展开，再回到原 Task/Run/Review/错误位置；收起摘要或切页不自动取消任务。Play 的作品状态与 Composer 生成/Stop 保持独立；历史/上下文等入口按需打开默认关闭的 Inspector。Studio/Agents 面板收起或专注模式不丢编辑上下文，详细表现归[设计指导 §3.4–§3.6](design-proposal/atria-frontend-guidelines.md#34-磁吸导航-dock)。
+
 文本原生 Undo、Prompt 草稿历史、PlanDraft 历史和 Mask 编辑使用各自模型。触屏有列表／表单及上下移动替代；完整长文可选择、滚动和编辑，Stop 与输入在软键盘上方可达。具体平台要求见[跨端操作](cross-platform.md)。

@@ -5,7 +5,8 @@
 | 组件／服务 | 当前作用 | 改造方式 |
 | --- | --- | --- |
 | Shell / NavigationAuthority / WorkspaceHost | 五域、工具、搜索、深链、返回和挂载 | 延续原入口与状态，不重建 Shell |
-| tokens / primitives / components / Dock / Sheet | 材质、文字、控件、层级和反馈 | 将当前已确认设计与外部适用参考映射到现有 --atri-*；一个组件系统 |
+| tokens / primitives / components / Dock / Sheet | 材质、文字、控件、层级和反馈 | 将当前 Atrium 修订稿映射到现有 --atri-*；原 edge-dock 演进为磁吸导航，一个组件系统 |
+| Shell 活动摘要 / 原任务投影 | Agent 任务、Run、审批与错误的发现入口 | 增加灵动岛表现，读取原任务状态并返回原详情/审批；不新增调度权威，与 Play 作品 HUD/Composer 分开 |
 | PromptEditor | Library、Preset、Studio 的原共用字段／JSON 编辑 | 同一组件补正文视图、编辑历史、显式大纲、原文缓冲与错误位置 |
 | PlanDraft / GraphView / PlanWorkspace | 一份图草稿的 Canvas/List/Inspector 与历史 | 复用现有实现，补 Node Program；图几何位置继续只影响展示 |
 | RunWorkspace / orchestration client | Timeline/Graph、费用、结果和控制 | 接续已挂载的 Host API，显示原结果与相应动作 |
@@ -22,6 +23,8 @@
 普通用户先看到阅读、资源或编辑内容。当前版本、保存状态与必要错误在附近显示；来源、Wire、完整 ID、费用和日志按需展开。长 ID 可复制，主列表优先显示名称和短版本。
 
 原文编辑、字段输入和高频键盘路径即时响应；纸张和浮层动效延续现有组件。进入资源详情后能返回原查询、选中项和滚动位置；修复引用后能回到发起操作的对象。
+
+Studio/Agents 面板沿原组件收起与调尺寸，Play Inspector 默认关闭；不以固定三栏或导航轨约束正文。Dock、活动灵动岛与可调面板的规则只归[设计指导 §3.4–§3.6](design-proposal/atria-frontend-guidelines.md#34-磁吸导航-dock)，原型与产品接线的关系归[实施输入](claude-code-frontend-prompt.md)。
 
 ## 当前需要接通的部分
 

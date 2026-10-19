@@ -12,19 +12,32 @@
 
 沿现有 native ES modules/DOM/CSS、Shell、NavigationAuthority 与领域客户端实施；复用已有组件、`--atri-*` tokens、图标和本地化。
 
-当前源码已采用 Serene Canvas，现有已确认稿继续提供对应页面与 Dock 的依据。[外部 HTML](design-proposal/atria-visual-direction.html)、[功能表现](design-proposal/atria-function-presentation.md)与[设计指导](design-proposal/atria-frontend-guidelines.md)作为参考，先将适用部分映射到已有组件。外部稿中的夜色默认、`--surface-*` token 名和固定栏宽不自动成为第二套全局主题；P-01～P-11 中新增产品能力仍按实际确认范围使用。
+当前源码已采用 Serene Canvas；后续前端重构以本次重新提供的 [Atrium HTML](design-proposal/atria-visual-direction.html) 与配套[功能表现](design-proposal/atria-function-presentation.md)、[设计指导](design-proposal/atria-frontend-guidelines.md)为视觉和交互输入，在现有组件上演进。保留 Atrium、Nocturne/Folio、暖金色、Stage/Workbench/Ledger 和语义状态系统，不从零重建原型或另起 Shell。Serene Canvas 旧稿保留作历史与既有交互参考；与本轮 Dock/布局方向不同的部分不再覆盖新稿。
+
+外部 HTML 的 `--surface-*` 等 token 映射到原 `--atri-*` 体系；保留两套主题的对应关系，不另建平行主题系统。原型默认夜色不自动改写用户现有主题偏好，固定栏宽也不是实施要求；P-01～P-11 的新增产品能力仍按实际确认范围使用。
 
 日常页面围绕阅读、资源和编辑内容；完整来源、Wire、费用明细与日志由用户展开。一次实际动作给出对应结果，不把每页做成流程状态控制台。
+
+## 本轮视觉与交互方向
+
+| 项目 | 前端重构采用的方向 |
+| --- | --- |
+| Magnetic Dock | 用悬浮磁吸导航替代固定全局导航轨，只放五个主工作域；支持四边吸附、自动隐藏与鼠标鱼眼，搜索/全局工具/账户独立在顶栏。沿原 `edge-dock.js` 和 NavigationAuthority 改造，完整规则见[设计指导 §3.4](design-proposal/atria-frontend-guidelines.md#34-磁吸导航-dock) |
+| Dynamic Island | 顶部居中的可展开 Agent 活动摘要，汇总任务、进度、审批、阻塞与错误并避让碰撞。复用原任务/Run 投影、详情和审批入口，与 Play 作品 HUD 及 Composer 生成状态分开；见[§3.5](design-proposal/atria-frontend-guidelines.md#35-活动灵动岛-dynamic-island) |
+| Adaptive Workspaces | Studio/Agents 辅助面板保持可达但可收起/调尺寸，支持专注编辑；Play Inspector 默认关闭。按可用空间用分段/Sheet/覆盖层，不强制三栏；见[§3.6](design-proposal/atria-frontend-guidelines.md#36-可调工作区) |
+| Visual Refinement / Polish | 优化留白、文字层级与按需披露，保留信息密度和用户控制；区分 Dock/活动表面与稳定纸面。沿原组件使用克制、可中断的动效，覆盖键盘、触屏、IME 与 reduced-motion，避免通用仪表盘和过量玻璃 |
+
+当前 HTML 在 ≤720px 将 Dock 设为底边常驻并停用换边拖动/鱼眼，活动仍为本地演示，布局偏好仅在本机 `localStorage`。这些限制和[原型变更记录](design-proposal/atria-function-presentation.md#01-当前原型修订)一并交给实施端；不能把演示计时或摘要当成真实调度、审批、后台任务或跨设备同步。保留原型已有交互、功能入口与明确的演示标识；本次资料更新只改原型与文档，应用代码另在原任务源码分支实施。
 
 ## 按领域接线
 
 | 页面 | 实现内容 | 既有落点 |
 | --- | --- | --- |
-| Shell | 五域、搜索、深链、返回、Dock/Sheet、工具页 | `atria-shell/app-shell.js`、`navigation-authority.js`、`workspace-host.js` |
+| Shell | 磁吸五域 Dock、独立顶栏工具、活动灵动岛、搜索、深链、返回与 Sheet | `atria-shell/app-shell.js`、`edge-dock.js`、`navigation-authority.js`、`workspace-host.js`；活动读取原领域任务投影 |
 | Library | Work 安装／启动、Session、World/Knowledge、Persona、预设与专业资源 | `library-workspaces.js`、`prompt-presets.js`、`prompt-authoring.js` 与原资源服务 |
-| Play | 长文、输入、生成／停止、历史／存档、参数、作品 UI 与媒体 | `play-product.js`、`play-generation.js`、SessionRuntime/ConversationWindow |
-| Studio | 20 个视图、人工编辑、Project Agent、Changes/Apply、Source、Assets、预览、Simulation、Build | `studio-workspace.js` 与各原编辑器／客户端 |
-| Agents | 原 Plan Library、Graph/List/Inspector、Binding、Run Timeline/Graph、Memory、Goals/反馈 | `orchestration/agents-v3.js`、PlanDraft、Plan/Run workspace 与原业务组件 |
+| Play | 长文、输入、生成／停止、历史／存档、参数、作品 UI 与媒体；Inspector 默认关闭 | `play-product.js`、`play-generation.js`、SessionRuntime/ConversationWindow |
+| Studio | 20 个视图、人工编辑、Project Agent、Changes/Apply、Source、Assets、预览、Simulation、Build；面板可收起/调尺寸 | `studio-workspace.js` 与各原编辑器／客户端 |
+| Agents | 原 Plan Library、Graph/List/Inspector、Binding、Run Timeline/Graph、Memory、Goals/反馈；控制栏/Inspector 按需展开 | `orchestration/agents-v3.js`、PlanDraft、Plan/Run workspace 与原业务组件 |
 | Runtime | Route、Model、Connection、Generation、Retrieval、请求预览与实际用量 | `runtime-workspace.js`、`runtime-client.js`、原 Generation 服务 |
 | 其他领域 | 设置、账户、扩展、搜索／Regex、语音、媒体、共享、备份与存储 | 原 workspace/client/service；共用导航和表现组件 |
 

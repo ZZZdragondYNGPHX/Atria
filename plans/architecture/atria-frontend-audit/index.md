@@ -10,7 +10,9 @@
 | [操作链](interaction-flows.md) | 日常任务、保存、采用与返回 |
 | [组件归属](component-and-architecture-findings.md) | 当前 Shell、编辑器与原服务复用 |
 | [跨端操作](cross-platform.md) | 桌面／手机的完整操作方式 |
-| [HTML](design-proposal/atria-visual-direction.html)／[功能表现](design-proposal/atria-function-presentation.md)／[设计指导](design-proposal/atria-frontend-guidelines.md) | 外部视觉与交互参考，采用范围见实施输入 |
+| [HTML](design-proposal/atria-visual-direction.html)／[功能表现](design-proposal/atria-function-presentation.md)／[设计指导](design-proposal/atria-frontend-guidelines.md) | 当前 Atrium 修订稿：磁吸 Dock、活动灵动岛、自适应面板；采用范围见实施输入 |
+
+2026-10-19 用用户重新提供的 HTML 替换此前外部稿，并同步上述文档。跨设备开始前端重构时，从本入口进入[实施输入](claude-code-frontend-prompt.md)，再读设计指导与 HTML；旧 Serene Canvas 的固定布局和 Dock 快照保留作历史，不覆盖本轮方向。原型演示不代表应用已接通，变更摘要见[当前原型修订](design-proposal/atria-function-presentation.md#01-当前原型修订)。
 
 ## 旧功能定位资料
 
