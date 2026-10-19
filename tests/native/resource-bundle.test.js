@@ -1,3 +1,4 @@
+import { promptStageModuleRefs } from '../../public/shared/prompt-module-order.js';
 import { StudioService } from '../../src/native/authoring/studio-service.js';
 import { expect, test, jest } from '@jest/globals';
 import { createHash } from 'node:crypto';
@@ -52,7 +53,7 @@ test('Prompt bundle rewrites exact parent/module closure and derive IDs while pr
         const bundle = await service.export(h.handle, ref('core.prompt-program', child.promptProgramId, 'r1')), plan = await service.preflight(h.handle, bundle);
         const result = await service.import(h.handle, bundle, plan.token), value = (await o.library.getExact(h.handle, result.root)).snapshot;
         const importedParent = (await o.library.getExact(h.handle, value.parentRef)).snapshot;
-        expect(value.derive[0].moduleId).toBe(importedParent.stages[0].moduleRefs[0].resourceId); expect(value.derive[0].moduleId).not.toBe(module.promptModuleId);
+        expect(value.derive[0].moduleId).toBe(promptStageModuleRefs(importedParent.stages[0])[0].resourceId); expect(value.derive[0].moduleId).not.toBe(module.promptModuleId);
         expect((await o.library.getExact(h.handle, pr)).snapshot.stages[0].moduleRefs).toEqual([mr]);
     } finally { h.cleanup(); }
 });

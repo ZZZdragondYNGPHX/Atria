@@ -1,3 +1,4 @@
+import { promptStageModuleRefs, mapPromptStageRefs } from '../../shared/prompt-module-order.js';
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { translateShellText as tl, formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { runtimeRequest } from './runtime-client.js';
@@ -5,6 +6,7 @@ import { newPromptResource, resourceRef, PROMPT_TYPES, mountPromptEditor } from 
 import { createStudioNativeId } from './studio-authoring.js';
 import { mountNativeRegexRules } from './regex-authoring.js';
 import { createAtriaIcon } from '../atria-shell/icons.js';
+import { PROMPT_TEMPLATES, newPromptPreset } from './prompt-templates.js';
 
 const PROGRAM = 'core.prompt-program', MODULE = 'core.prompt-module', GENERATION = 'core.generation-profile';
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -21,10 +23,10 @@ export function removePresetCategory(preset, categoryId) {
     next.moduleCategories = Object.fromEntries(Object.entries(next.moduleCategories).filter(([id]) => !moduleIds.has(id)));
     next.entries = next.entries.filter(e => !moduleIds.has(idOf(e)));
     for (const entry of next.entries.filter(e => e.resourceType === PROGRAM)) {
-        entry.resource.stages.forEach(s => { s.moduleRefs = s.moduleRefs.filter(r => !moduleIds.has(r.resourceId)); });
+        entry.resource.stages.forEach(s => { if (s.entries) s.entries = s.entries.filter(item => item.kind !== 'module' || !moduleIds.has(item.moduleRef.resourceId)); else s.moduleRefs = s.moduleRefs.filter(r => !moduleIds.has(r.resourceId)); });
         entry.resource.derive = (entry.resource.derive || []).filter(op => !moduleIds.has(op.moduleId) && !moduleIds.has(op.replacementRef?.resourceId));
     }
-    return { next, modules: preset.entries.filter(e => moduleIds.has(idOf(e))), affected: preset.entries.filter(e => e.resourceType === PROGRAM && (e.resource.stages.some(s => s.moduleRefs.some(r => moduleIds.has(r.resourceId))) || (e.resource.derive || []).some(op => moduleIds.has(op.moduleId) || moduleIds.has(op.replacementRef?.resourceId)))) };
+    return { next, modules: preset.entries.filter(e => moduleIds.has(idOf(e))), affected: preset.entries.filter(e => e.resourceType === PROGRAM && (e.resource.stages.some(s => promptStageModuleRefs(s).some(r => moduleIds.has(r.resourceId))) || (e.resource.derive || []).some(op => moduleIds.has(op.moduleId) || moduleIds.has(op.replacementRef?.resourceId)))) };
 }
 
 export function mountPromptPresets({ document: doc, body, host, route }) {
@@ -196,7 +198,7 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
             if (fresh && entry.resourceType === MODULE && next.categories.some(c => c.id === categoryFilter)) next.moduleCategories[idOf(entry)] = categoryFilter;
             // Exact references inside this editable preset follow the edited module.
             for (const program of next.entries.filter(e => e.resourceType === PROGRAM)) {
-                for (const stage of program.resource.stages) stage.moduleRefs = stage.moduleRefs.map(r => r.resourceId === idOf(entry) ? entryRef(item) : r);
+                program.resource.stages = program.resource.stages.map(stage => mapPromptStageRefs(stage, r => r.resourceId === idOf(entry) ? entryRef(item) : r));
                 if (program.resource.parentRef?.resourceId === idOf(entry)) program.resource.parentRef = entryRef(item);
                 for (const op of program.resource.derive || []) if (op.replacementRef?.resourceId === idOf(entry)) op.replacementRef = entryRef(item);
             }
@@ -284,7 +286,8 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
             const presets = await runtimeRequest('/presets'); if (disposed || token !== sequence) return;
             body.replaceChildren(); const root = node('section'); root.className = 'atri-prompt-preset'; node('h2', 'Prompt Presets', root);
             const tools = node('div', undefined, root); tools.className = 'atri-prompt-actions';
-            button(tools, 'New preset', () => { const program = newPromptResource(PROGRAM), generation = newPromptResource(GENERATION); return create({ format: 'atria.prompt-preset', schemaVersion: 1, programId: program.promptProgramId, categories: [], moduleCategories: {}, entries: [{ resourceType: PROGRAM, resource: program }, { resourceType: GENERATION, resource: generation }] }); });
+            const template = select(tools, 'Start from', PROMPT_TEMPLATES.map(([id, label]) => [id, tl(label)]), 'blank');
+            button(tools, 'New preset', () => create(newPromptPreset(template.value)));
             const file = field(root, 'Import preset'); file.type = 'file'; file.accept = '.json,application/json';
             button(root, 'Import selected preset', async () => { if (!file.files?.length) { file.focus(); return; } await create(JSON.parse(await file.files[0].text()), true); });
             if (!presets.length) node('p', 'No presets yet. Create a preset or import a file.', root);
@@ -312,7 +315,7 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
                     const visit = entry => {
                         const key = JSON.stringify(entry.ref); if (seen.has(key)) return; seen.add(key);
                         if (entry.ref.resourceType === PROGRAM) {
-                            const refs = [entry.resource.parentRef, ...entry.resource.stages.flatMap(s => s.moduleRefs), ...(entry.resource.derive || []).map(op => op.replacementRef)].filter(Boolean);
+                            const refs = [entry.resource.parentRef, ...entry.resource.stages.flatMap(promptStageModuleRefs), ...(entry.resource.derive || []).flatMap(op => [op.replacementRef, op.entry?.moduleRef])].filter(Boolean);
                             for (const ref of refs) { const found = entries.find(e => Object.keys(ref).every(k => e.ref[k] === ref[k])); if (!found) throw new Error(tl('Missing exact dependency')); visit(found); }
                         }
                         selected.push({ resourceType: entry.ref.resourceType, resource: entry.resource });

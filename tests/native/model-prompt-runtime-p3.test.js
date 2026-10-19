@@ -203,14 +203,14 @@ describe('P3 Prompt compiler', () => {
         } finally { await h.cleanup(); }
     });
 
-    test('stage order wins over requested projection order, and equal-priority modules have stable identity order', () => {
+    test('stage order wins over requested projection order, and module order ignores priority and resource identity', () => {
         const a = mod('a', { stages: ['stage.a'] });
         const b = mod('b', { stages: ['stage.b'] });
         const value = args([a, b], { stages: [{ stageId: 'stage.a', moduleRefs: [ref(a)] }, { stageId: 'stage.b', moduleRefs: [ref(b)] }] });
         value.request.prompt = { stageIds: ['stage.b', 'stage.a'] };
         expect(compile(value).promptIr.directives).toEqual(['a', 'b']);
         const first = mod('first', { priority: 1 }); const second = mod('second', { priority: 2 });
-        expect(compile(args([first, second])).promptIr.directives).toEqual(['second', 'first']);
+        expect(compile(args([first, second])).promptIr.directives).toEqual(['first', 'second']);
     });
 });
 
@@ -274,7 +274,8 @@ describe('P3 Context Provider and protocol ports', () => {
         expect(renderPromptMessages(compile(otherSource).promptIr)).not.toEqual(messages);
         expect(messages.filter(message => message.content === evidence)).toEqual([{ role: 'user', content: evidence }]);
         expect(messages.filter(message => message.role === 'system').map(message => message.content))
-            .toEqual(['Runtime instructions', 'Stable foundation', policy, 'Authoritative current state']);
+            .toEqual(['Runtime instructions', 'Stable foundation', policy]);
+        expect(messages).toContainEqual({ role: 'user', content: 'Authoritative current state' });
         expect(value.contextPlan.items.find(item => item.id === 'memory:old-promise').provenance)
             .toContainEqual({ source: 'native.context-source', ref: JSON.stringify(sourceRef) });
         expect(value.contextPlan.budget).toEqual({ maxTokens: 850, reservedOutputTokens: 100 });
@@ -301,7 +302,8 @@ describe('P3 Context Provider and protocol ports', () => {
         expect(renderPromptMessages(ir)).toContainEqual({ role: 'user', content: quotation });
         expect(compile(value).promptIr).toEqual(ir);
         value.resolved.route.role = 'role.narrator';
-        expect(compile(value).promptIr.directives).toEqual(['Stable authoring foundation']);
+        expect(compile(value).promptIr.directives[0]).toBe('Stable authoring foundation');
+        expect(compile(value).promptIr.directives[1]).toMatch(/^Native narrative ownership and expression:/);
         value.resolved.route.role = 'role.studio';
         value.contextPlan.source = { kind: 'session', sessionId: createNativeId('session'), branchId: createNativeId('branch'), revisionId: createNativeId('revision') };
         expect(compile(value).promptIr.directives).toEqual(['Stable authoring foundation']);
@@ -322,13 +324,15 @@ describe('P3 Context Provider and protocol ports', () => {
         expect(renderPromptMessages(ir)).toContainEqual({ role: 'user', content: quotation });
         expect(compile(value).promptIr).toEqual(ir);
         value.contextPlan.provenance = [{ source: 'native.session-task', ref: 'invalid' }];
-        expect(compile(value).promptIr.directives).toEqual(['Stable narration foundation']);
+        expect(compile(value).promptIr.directives).toHaveLength(2);
+        expect(compile(value).promptIr.directives[1]).toMatch(/^Native narrative ownership and expression:/);
         value.contextPlan.provenance = [{ source: 'native.session-task', ref: 'original-invocation:' + 'a'.repeat(64) }];
         value.resolved.route.role = 'role.studio';
         expect(compile(value).promptIr.directives).toEqual(['Stable narration foundation']);
         value.resolved.route.role = 'role.narrator';
         value.contextPlan.source = source;
-        expect(compile(value).promptIr.directives).toEqual(['Stable narration foundation']);
+        expect(compile(value).promptIr.directives).toHaveLength(2);
+        expect(compile(value).promptIr.directives[1]).toMatch(/^Native narrative ownership and expression:/);
     });
 
     test('Native adapter actually invokes existing Context Compiler with real Session fixture', async () => {
@@ -380,8 +384,7 @@ describe('P3 Context Provider and protocol ports', () => {
             const wire = renderPromptProtocol(ir, format);
             expect(JSON.stringify(wire)).toContain('SCENE: ' + quotation);
             expect(wire.tools).toEqual([]); expect(wire.outputContract).toBeNull();
-            if (format === 'anthropic') expect(wire.system).not.toContain(quotation);
-            if (format === 'gemini') expect(JSON.stringify(wire.systemInstruction)).not.toContain(quotation);
+            expect(JSON.stringify({ anthropicSystem: wire.system, geminiSystem: wire.systemInstruction })).not.toContain(quotation);
         }
         expect(snapshot.states.atri_context_derived.narrative[0].content).toBe(quotation);
     });
@@ -400,7 +403,9 @@ describe('P3 Context Provider and protocol ports', () => {
         const ir = compile(args([mod('after', { target: 'context.after_input' })])).promptIr;
         expect(() => renderPromptProtocol(ir, 'anthropic')).toThrow('renderer_unsupported');
         expect(() => renderPromptProtocol(ir, 'gemini')).toThrow('renderer_unsupported');
-        expect(() => renderPromptMessages({ ...ir, history: [{ role: 'tool', content: 'x' }] })).toThrow('message_invalid');
+        expect(() => renderPromptMessages({ ...ir, history: [{ role: 'tool', content: 'x' }] })).toThrow('semantic_projection');
+        const { semanticBlocks: _blocks, ...projection } = ir;
+        expect(() => renderPromptMessages({ ...projection, history: [{ role: 'tool', content: 'x' }] })).toThrow('message_invalid');
     });
 
     test.each(['openai-compatible', 'raw-text'])('GenerationService consumes P3 compiler and %s adapter; final request counted once', async format => {

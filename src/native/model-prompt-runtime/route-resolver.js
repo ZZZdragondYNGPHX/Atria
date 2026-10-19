@@ -13,12 +13,13 @@ import { hashNativeDocument } from '../repositories/common.js';
 
 // Read-through ports over P1 authorities; this resolver owns no persistence/cache.
 export class RouteResolver {
-    constructor({ persistence, library, providers, getScopedResource, getSessionRoute, now = Date.now }) {
+    constructor({ persistence, library, providers, getScopedResource, getSessionRoute, resourceOverrides = null, now = Date.now }) {
         this.persistence = persistence;
         this.library = library;
         this.providers = new Map(Object.entries(providers).map(([id, port]) => [id, assertProviderPort(port)]));
         this.getScopedResource = getScopedResource;
         this.getSessionRoute = getSessionRoute;
+        this.resourceOverrides = resourceOverrides;
         this.now = now;
     }
 
@@ -28,15 +29,26 @@ export class RouteResolver {
         return port;
     }
 
-    async resolve({ handle, routeRef, role, requirements = [], unknownCapabilityOverrides = [] }) {
+    async resolve({ handle, routeRef, role, requirements = [], unknownCapabilityOverrides = [], programSelection = null, resourceOverrides = this.resourceOverrides }) {
         const input = immutable({ routeRef, role, requirements, unknownCapabilityOverrides });
         const raw = input.routeRef.scope === 'player'
             ? await this.persistence.getRuntimeRoute(handle, input.routeRef.runtimeRouteId)
             : await this.getSessionRoute?.(handle, input.routeRef);
-        const route = assertRuntimeRoute(raw);
+        let route = assertRuntimeRoute(raw);
         if (route.runtimeRouteId !== input.routeRef.runtimeRouteId || route.scope !== input.routeRef.scope
             || route.sessionId !== input.routeRef.sessionId || route.role !== input.role) {
             throw new GenerationError('generation_route_mismatch');
+        }
+        let declaredPromptProgramRef;
+        if (programSelection) {
+            // Only a trusted Host call may supply this separate executable port.
+            // It is never copied from request JSON or inferred from a Node label.
+            if (typeof programSelection.assertCurrent !== 'function') throw new GenerationError('generation_program_authority_required');
+            const ref = assertExactResourceRef(programSelection.promptProgramRef, 'core.prompt-program');
+            if (hashNativeDocument(ref) !== hashNativeDocument(programSelection.promptProgramRef)) throw new GenerationError('generation_program_authority_required');
+            await programSelection.assertCurrent({ handle, route, promptProgramRef: ref, phase: 'resolve' });
+            declaredPromptProgramRef = route.promptProgramRef;
+            route = assertRuntimeRoute({ ...route, promptProgramRef: ref });
         }
         const model = assertModelProfile(await this.persistence.getModelProfile(handle, route.modelProfileRef.modelProfileId));
         const connection = assertConnectionProfile(await this.persistence.getConnectionProfile(handle, route.connectionProfileRef.connectionProfileId));
@@ -66,10 +78,21 @@ export class RouteResolver {
                 || ['projectId', 'packageId', 'packageVersionId'].some(k => envelope.origin[k] !== ref[k])) {
                 throw new GenerationError('generation_resource_origin_mismatch');
             }
-            const resource = assertVersionedModelPromptResource(ref.resourceType, envelope.snapshot);
+            let resource = assertVersionedModelPromptResource(ref.resourceType, envelope.snapshot);
             const identity = getVersionedModelPromptResourceIdentity(ref.resourceType, resource);
             if (identity.resourceId !== ref.resourceId || identity.revision !== ref.revision) {
                 throw new GenerationError('generation_exact_resource_mismatch');
+            }
+            if (resourceOverrides) {
+                const overlay = await resourceOverrides({ handle, ref, envelope });
+                if (!overlay || hashNativeDocument(overlay.origin) !== hashNativeDocument(envelope.origin)) {
+                    throw new GenerationError('generation_resource_origin_mismatch');
+                }
+                resource = assertVersionedModelPromptResource(ref.resourceType, overlay.snapshot);
+                const overlayIdentity = getVersionedModelPromptResourceIdentity(ref.resourceType, resource);
+                if (overlayIdentity.resourceId !== ref.resourceId || overlayIdentity.revision !== ref.revision) {
+                    throw new GenerationError('generation_exact_resource_mismatch');
+                }
             }
             resources.push({ ref, resource, origin: envelope.origin });
             for (const dependency of collectVersionedModelPromptResourceRefs(ref.resourceType, resource)) await read(dependency);
@@ -79,7 +102,8 @@ export class RouteResolver {
         };
         const generation = await read(route.generationProfileRef);
         const prompt = await read(route.promptProgramRef);
-        const config = immutable({ route, connection, model, generation, prompt, resources });
+        const config = immutable({ route, connection, model, generation, prompt, resources,
+            ...(declaredPromptProgramRef ? { declaredPromptProgramRef } : {}) });
         const discovered = await this.provider(connection.providerAdapter).resolveCapabilities(config);
         const decisions = new Map();
         const pathFingerprint = executionPathFingerprint({ handle, connection, model });

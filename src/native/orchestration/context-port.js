@@ -464,8 +464,8 @@ export class ContextPort {
                 ...(this.#projectModelPolicy?.fallbackMode === 'automatic' ? { fallbackMode: 'automatic' } : {}) });
             const source = { kind: 'task', projectId: projectIdentity.projectId, taskId: projectIdentity.taskId, revision: projectIdentity.revision };
             const selected = emptyNativeContextPlan(fixedRequest, { model: { limits: { contextTokens: request.tokenBudget.modelContextLimit, outputTokens: request.tokenBudget.responseReserve } } }, source);
-            const plan = { ...selected, items: round.messages.map((message, index) => ({ kind: 'context.history', id: 'task-message-' + index,
-                content: message, provenance: [{ source: 'host.task' }] })) };
+            const plan = { ...selected, items: round.messages.map((message, index) => ({ kind: index === 0 ? 'context.directive' : 'context.history', id: 'task-message-' + index,
+                content: index === 0 ? message.content : message, provenance: [{ source: index === 0 ? 'native.project-policy' : 'host.task' }] })) };
             const after = await this.#current(handle, request, 'compiled');
             if (after.authorityDigest !== authorityDigest) fail('native_orchestration_context_source_stale');
             const proof = { sourceBindingDigest: request.sourceBinding.bindingDigest, grantDigest: request.grantDigest,

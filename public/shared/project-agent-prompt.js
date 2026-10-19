@@ -54,12 +54,12 @@ export function projectAgentPromptInputs(context) {
     return { task, project: context.project, registry: context.registry, tools: context.tools };
 }
 
-export function buildNativeProjectAgentSystemPrompt(context, skillEntries = [], toolNames = null, toolBatchPolicy = null) {
+function projectAgentPromptParts(context, skillEntries = [], toolNames = null, toolBatchPolicy = null) {
     const { task, project } = projectAgentPromptInputs(context);
     const skills = summarizeProjectAgentSkills(skillEntries);
     const plugins = pluginResourceDescriptors(context);
     const available = (...names) => toolNames === null || names.every(name => toolNames.includes(name));
-    return [
+    const instructions = [
         'You are the Atria Project Agent operating inside Native Studio.',
         'The Project Task, Plan, Workspace, Authoring Operations, ChangeSet and Project revision are authoritative. Conversation text is only an auxiliary interface.',
         '',
@@ -86,7 +86,9 @@ export function buildNativeProjectAgentSystemPrompt(context, skillEntries = [], 
             + '. Proposal tools in this request: ' + JSON.stringify(toolBatchPolicy.proposalToolNames)
             + '. Any proposal call must be ' + toolBatchPolicy.proposalOrder
             + ', after all reads. Wait for its tool result before proposing the next action; reset, planning and edits each require their own response.',
-        '',
+        skillInstructions(skillEntries),
+    ].filter(line => line !== null).join('\n');
+    const evidence = [
         'Task intent:',
         String(task.intent || ''),
         '',
@@ -112,18 +114,24 @@ export function buildNativeProjectAgentSystemPrompt(context, skillEntries = [], 
         '',
         available('atri_agent_read_skill') ? 'Resolved Native Skill inventory (read with atri_agent_read_skill only when useful):' : 'Resolved Native Skill inventory (additional Skill tools are unavailable for this request):',
         JSON.stringify(skills),
-        skillInstructions(skillEntries),
-    ].filter(line => line !== null).join('\n');
+    ].join('\n');
+    return { instructions, evidence };
+}
+
+export function buildNativeProjectAgentSystemPrompt(context, skillEntries = [], toolNames = null, toolBatchPolicy = null) {
+    const { instructions, evidence } = projectAgentPromptParts(context, skillEntries, toolNames, toolBatchPolicy);
+    return instructions + '\n\n' + evidence;
 }
 
 // Original message assembly, shared by the Native runner and its admitted
 // Context compilation. This function reads no service and grants no authority.
 export function buildNativeProjectModelRound({ context, skillEntries = [], modelTranscript, previousSystem, tools: scopedTools, toolBatchPolicy = null }) {
     const tools = scopedTools === undefined ? [...(context.tools || []), ...projectAgentSkillTools()] : scopedTools;
-    const system = buildNativeProjectAgentSystemPrompt(context, skillEntries, scopedTools === undefined ? null : tools.map(tool => tool.function.name), toolBatchPolicy);
+    const { instructions, evidence } = projectAgentPromptParts(context, skillEntries, scopedTools === undefined ? null : tools.map(tool => tool.function.name), toolBatchPolicy);
+    const system = instructions + '\n\n' + evidence;
     const initial = context.task.conversation?.length ? context.task.conversation : [{ role: 'user', content: context.task.intent }];
     const transcript = modelTranscript ?? projectAgentResumeMessages(initial);
     const systemChanged = previousSystem !== undefined && system !== previousSystem && transcript.some(message => message.providerState);
     const selected = systemChanged ? projectAgentResumeMessages(transcript) : transcript;
-    return { system, tools, messages: [{ role: 'system', content: system }, ...selected], modelTranscript: selected, systemChanged };
+    return { system, tools, messages: [{ role: 'system', content: instructions }, { role: 'user', content: evidence }, ...selected], modelTranscript: selected, systemChanged };
 }

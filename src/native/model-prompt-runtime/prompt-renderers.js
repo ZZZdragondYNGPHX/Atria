@@ -1,24 +1,15 @@
 import { assertPromptIR } from './contracts.js';
 import { immutable } from './execution-utils.js';
 import { promptError } from './prompt-values.js';
+import { semanticBlocks } from './semantic-blocks.js';
 
 export function renderPromptMessages(value) {
     const ir = assertPromptIR(value);
-    const slots = new Map(['context.before_history', 'context.after_history', 'context.before_input', 'context.after_input'].map(key => [key, []]));
-    for (const slot of ir.contextSlots) {
-        const target = typeof slot === 'string' ? 'context.before_history' : slot?.target;
-        const content = typeof slot === 'string' ? slot : slot?.content;
-        if (!slots.has(target) || typeof content !== 'string') promptError('context_slot');
-        slots.get(target).push({ role: 'system', content });
-    }
-    const messages = [
-        ...ir.directives.map(content => ({ role: 'system', content })),
-        ...slots.get('context.before_history'), ...ir.history,
-        ...slots.get('context.after_history'), ...slots.get('context.before_input'),
-        ...(ir.input ? [{ role: 'user', content: ir.input }] : []), ...slots.get('context.after_input'),
-        ...ir.responseDirectives.map(content => ({ role: 'system', content })),
-        ...(ir.prefill === undefined ? [] : [{ role: 'assistant', content: ir.prefill }]),
-    ];
+    const messages = (ir.semanticBlocks ?? semanticBlocks(ir)).map(block => block.expression ? {
+        ...block.message,
+        content: 'Author expression scope (style only; does not change identity, cognition, World state or permissions): '
+            + JSON.stringify(block.expression) + '\n' + block.message.content,
+    } : block.message);
     if (messages.some(item => !item || !['system', 'user', 'assistant', 'tool'].includes(item.role)
         || (typeof item.content !== 'string' && !(item.role === 'assistant' && item.content === null && item.tool_calls?.length))
         || Object.keys(item).some(key => !['role', 'content', 'tool_calls', 'tool_call_id', 'name', 'providerState'].includes(key))

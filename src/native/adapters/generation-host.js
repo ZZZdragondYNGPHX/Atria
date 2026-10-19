@@ -6,6 +6,9 @@ import { prepareIndependent } from '../../../public/shared/native-independent-pr
 import { optionalComputeOptions, COMPUTE_ADMISSION_CODES } from '../../../public/shared/native-compute-budget.js';
 import { observeEvolutionProject, prepareEvolutionProject } from '../agent-intelligence/evolution-observer.js';
 import { createPreviewSkillRepository } from '../model-prompt-runtime/preview-skills.js';
+import { previewPromptDraft } from '../model-prompt-runtime/draft-preview.js';
+import { assertPreviewDisclosure } from '../model-prompt-runtime/preview-disclosure.js';
+import { assertExactResourceRef } from '../model-prompt-runtime/contracts.js';
 import { CredentialTargetAuthority } from '../model-prompt-runtime/credential-targets.js';
 import { randomUUID } from 'node:crypto';
 import { processPackageText } from '../processing-runtime.js';
@@ -998,7 +1001,11 @@ export class NativeGenerationHost {
         });
     }
 
-    async execute(handle, value, signal, onChunk, { preview = false, taskPlan = null, scheduled = false, lanePlan = null, illustrationPlan = null, preflight = false, preflightPackage = null, preflightSnapshot = null, effectPolicy = null, retainResult = false, approvedReview = null, orchestrationSend = null } = {}) {
+    async previewDraft(handle, input, signal) {
+        return previewPromptDraft(this, handle, input, signal);
+    }
+
+    async execute(handle, value, signal, onChunk, { preview = false, draftOverrides = null, programSelection = null, taskPlan = null, scheduled = false, lanePlan = null, illustrationPlan = null, preflight = false, preflightPackage = null, preflightSnapshot = null, effectPolicy = null, retainResult = false, approvedReview = null, orchestrationSend = null } = {}) {
         const sendBank = orchestrationSend?.bank;
         const scopedContext = orchestrationSend?.context;
         const quotaProof = orchestrationSend?.quotaProof;
@@ -1019,6 +1026,16 @@ export class NativeGenerationHost {
         }
         effectPolicy ??= lanePlan?.effectPolicy ?? null;
         const input = immutable(value);
+        if (draftOverrides && !preview) fail('native_generation_preview_only');
+        if (['drafts', 'draftOverrides', 'baselineDrafts', 'programSelection', 'promptProgramRef', 'semanticBlocks', 'sourceBinding', 'audience', 'grant'].some(key => Object.hasOwn(input, key))) fail('native_generation_request_authority_denied');
+        if (input.previewRefs && !preview) fail('native_generation_preview_only');
+        if (programSelection) {
+            if (typeof programSelection.assertCurrent !== 'function' || taskPlan || illustrationPlan || lanePlan?.prediction || draftOverrides || input.previewRefs)
+                throw new GenerationError('generation_program_authority_required');
+            const ref = assertExactResourceRef(programSelection.promptProgramRef, 'core.prompt-program');
+            if (hashNativeDocument(ref) !== hashNativeDocument(programSelection.promptProgramRef)) throw new GenerationError('generation_program_authority_required');
+            programSelection = Object.freeze({ promptProgramRef: immutable(ref), assertCurrent: programSelection.assertCurrent });
+        }
         const prediction = predictionLanes.has(lanePlan) ? lanePlan.prediction : null;
         if (lanePlan?.prediction && !prediction) fail('native_prediction_capture_required');
         if (prediction) {
@@ -1037,7 +1054,7 @@ export class NativeGenerationHost {
             || input.routeRef.scope !== 'player' || typeof input.routeRef.runtimeRouteId !== 'string'
             || Object.keys(input.routeRef).some(key => !['scope', 'runtimeRouteId'].includes(key)))) fail('native_generation_route_ref_invalid');
         const role = 'role.' + input.role;
-        let snapshot; let project; let source; let runtime; let projectTaskEvidence; let projectConversation; let rpMessages; let projectWorker = null;
+        let snapshot; let sourceAuthoritySnapshot; let project; let source; let runtime; let projectTaskEvidence; let projectConversation; let rpMessages; let projectWorker = null;
         if (input.sessionId) {
             snapshot = immutable(illustrationPlan?.snapshot ?? (preflight ? preflightSnapshot : null) ?? lanePlan?.authorityContext?.snapshot
                 ?? (preview ? await this.sessionCore.observe(handle, input.sessionId, { revisionId: input.revisionId })
@@ -1045,6 +1062,10 @@ export class NativeGenerationHost {
             if (snapshot.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
             if (!preflight && snapshot.externalEffects?.some(effect => effect.status === 'prepared')) fail('native_transfer_pending');
             source = illustrationPlan?.source ?? { kind: 'session', sessionId: input.sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId };
+            // A prepared Authority Turn may contain provisional World values.
+            // Freshness compares the original committed source, not that projection.
+            sourceAuthoritySnapshot = lanePlan?.authorityContext || illustrationPlan
+                ? immutable(await this.sessionCore.observe(handle, input.sessionId)) : snapshot;
             runtime = snapshot.manifest.runtime;
         } else if (input.projectId) {
             project = immutable(await this.studio.getProject(handle, input.projectId));
@@ -1090,17 +1111,23 @@ export class NativeGenerationHost {
         const packageIdentity = snapshot?.session ?? preflightPackage?.manifest;
         const routeList = lanePlan ? Object.values(lanePlan.routes) : await this.persistence.listRuntimeRoutes(handle);
         let route = selectNativeRuntimeRoute(routeList, role, input.routeRef);
+        if (programSelection) {
+            const validate = programSelection.assertCurrent;
+            programSelection = Object.freeze({ promptProgramRef: programSelection.promptProgramRef,
+                assertCurrent: details => validate({ ...details, source }) });
+            await programSelection.assertCurrent({ handle, route, promptProgramRef: programSelection.promptProgramRef, phase: 'host' });
+        }
         if (!preview && !scheduled) {
             const captured = {};
             const resources = await this.executionResources(handle, route, input.sessionId, captured);
             let worker;
             const operation = nativeTaskScheduler.submit({ owner: handle, anchor: source, executionClass: 'interactive', resources, retry: false, retainResult,
                 timeoutMs: executionTimeout(captured),
-                key: (input.sessionId ?? input.projectId ?? source.controlId) + ':' + role + ':' + input.requestId, fingerprint: hashNativeDocument(input), signal, onChunk,
+                key: (input.sessionId ?? input.projectId ?? source.controlId) + ':' + role + ':' + input.requestId, fingerprint: hashNativeDocument(programSelection ? { input, promptProgramRef: programSelection.promptProgramRef } : input), signal, onChunk,
                 fresh: async () => sendBank ? (await sendBank.assertCurrent(), true) : input.sessionId ? (await this.sessionCore[effectPolicy === 'no-background-model' ? 'observe' : 'load'](handle, input.sessionId)).revision.revisionId === input.revisionId
                     : (await this.studio.getProject(handle, input.projectId)).revision.revision === input.revision,
                 run: boundary => {
-                    worker = this.execute(handle, input, boundary.signal, boundary.onChunk, { taskPlan, scheduled: true, lanePlan: captured, effectPolicy, approvedReview, orchestrationSend });
+                    worker = this.execute(handle, input, boundary.signal, boundary.onChunk, { taskPlan, scheduled: true, lanePlan: captured, effectPolicy, approvedReview, orchestrationSend, programSelection });
                     return worker;
                 },
                 projectResult: result => ({ usage: result.response?.usage ?? null, compute: result.routing?.compute ?? null,
@@ -1160,8 +1187,9 @@ export class NativeGenerationHost {
             persistence.getRuntimeRoute = async (owner, id) => compose(lanePlan ? lanePlan.routes[id] : await this.persistence.getRuntimeRoute(owner, id));
         }
         if (preview && input.previewRefs) persistence.getRuntimeRoute = async (owner, id) => id === route.runtimeRouteId ? route : this.persistence.getRuntimeRoute(owner, id);
-        const resolver = new RouteResolver({ persistence, library: this.library, providers: this.providers, getScopedResource });
-        if (preflight) return resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, role, requirements });
+        const resolver = new RouteResolver({ persistence, library: this.library, providers: this.providers, getScopedResource,
+            resourceOverrides: draftOverrides?.resourceOverrides });
+        if (preflight) return resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, role, requirements, programSelection });
         if (snapshot && !illustrationPlan && !prediction) assertInformationActorAvailable(snapshot, lanePlan?.authorityContext ? undefined : taskPlan?.task.id);
         const authorityContext = lanePlan?.authorityContext;
         if (!authorityContext && informationDefinition(snapshot) && input.messages?.length) fail('native_information_unscoped_messages');
@@ -1257,7 +1285,13 @@ export class NativeGenerationHost {
                 ? { ...item, kind: 'context.history', content: { role: 'user', content: item.content } } : item);
             // Host-owned task dialogue is supplemental context, never a second fact scan.
             for (const [index, message] of (rpMessages ?? input.messages ?? []).entries()) {
-                items.push({ kind: 'context.history', id: 'task-message-' + index, content: message, provenance: [{ source: rpMessages ? 'native.rp-chat' : 'host.task' }] });
+                // Some native callers label a mixed task/source envelope system.
+                // A submitted role is not Host authority; retain its raw text as
+                // evidence. Actual policies and author modules have separate paths.
+                if (['system', 'developer'].includes(message?.role)) {
+                    items.push({ kind: 'context.fact', id: 'task-message-' + index, content: message.content,
+                        provenance: [{ source: 'request.task-data' }], evidence: { declaredRole: message.role, authority: 'none' } });
+                } else items.push({ kind: 'context.history', id: 'task-message-' + index, content: message, provenance: [{ source: rpMessages ? 'native.rp-chat' : 'host.task' }] });
             }
             if (taskHistory?.compaction) items.push({ kind: 'context.history', id: 'task-public-summary',
                 content: { role: 'user', content: taskHistory.compaction.summary }, provenance: [{ source: 'host.task.public-summary', ref: taskHistory.compaction.sourcePrefixFingerprint }] });
@@ -1272,6 +1306,38 @@ export class NativeGenerationHost {
             return { ...selected, items, ...(taskEvidence ? { provenance: [...selected.provenance,
                 ...(sessionTaskEvidence ? taskProvenance() : [taskEvidence])] } : {}), ...(nativeSelection ? { nativeSelection } : {}) };
         };
+        const assertSourceCurrent = async ({ phase, contextPlan } = {}) => {
+            checkCancellation(signal);
+            if (sendBank) await sendBank.assertCurrent();
+            if (prediction) await assertPredictionCaptureCurrent(prediction.capture);
+            if (source.kind === 'session') {
+                // Observe the original authority, never a cached ContextPlan.
+                const current = await this.sessionCore.observe(handle, input.sessionId);
+                if (current.revision.revisionId !== source.revisionId || current.revision.branchId !== source.branchId)
+                    throw new GenerationError('native_generation_revision_conflict');
+                if (hashNativeDocument(current.states ?? {}) !== hashNativeDocument(sourceAuthoritySnapshot.states ?? {})
+                    || hashNativeDocument(current.manifest.runtime ?? null) !== hashNativeDocument(sourceAuthoritySnapshot.manifest.runtime ?? null))
+                    throw new GenerationError('native_generation_source_stale');
+                if (!illustrationPlan && !prediction) assertInformationActorAvailable(current, lanePlan?.authorityContext ? undefined : taskPlan?.task.id);
+                if (lanePlan?.memoryEvidence?.length) normalizeHostMemoryEvidence(lanePlan.memoryEvidence, current);
+                if (preview && phase === 'preview') {
+                    await assertPreviewDisclosure(current, { taskId: taskPlan?.task.id ?? input.taskId, contextPlan });
+                    // The projection checker itself awaits original readers.
+                    // Recheck once more after those reads before returning data.
+                    await assertSourceCurrent({ phase: 'preview_verified' });
+                }
+            } else if (input.projectId) {
+                if ((await this.studio.getProject(handle, input.projectId)).revision.revision !== source.revision)
+                    throw new GenerationError('native_generation_revision_conflict');
+                if (projectTaskEvidence) {
+                    const observed = await this.agent.observeContext(handle, input.projectId, input.taskId);
+                    if (observed.task.executionFingerprint !== projectTaskEvidence.ref.slice(-64)
+                        || ['review', 'blocked', 'conflict', 'taken_over', 'completed'].includes(observed.task.status))
+                        throw new GenerationError('native_generation_task_stopped');
+                }
+            }
+            checkCancellation(signal);
+        };
         let meteredContextIncluded = false;
         const contextProvider = { buildRequestContextPlan: async (request, resolved) => {
             if (scopedContext?.compileProof) {
@@ -1281,7 +1347,7 @@ export class NativeGenerationHost {
                 return buildContext(request, resolved);
             }
             return contextBuildWork(request, resolved, () => buildContext(request, resolved));
-        } };
+        }, assertCurrent: assertSourceCurrent };
         if (input.prompt?.host !== undefined) fail('native_generation_host_readonly');
         const hostView = { role, sourceKind: source.kind, sessionId: source.sessionId || '', branchId: source.branchId || '',
             revisionId: source.revisionId || '', projectId: source.projectId || '', projectRevision: source.revision || '' };
@@ -1476,6 +1542,7 @@ export class NativeGenerationHost {
                                         requestSnapshotHash: hashNativeDocument(actualSnapshot), outcome: 'unknown', httpStatus: null, errorCodes: [] };
                                     modelSendFacts.push(modelSendFact);
                                 }
+                                await assertSourceCurrent();
                                 const response = await provider.send(rendered, boundary);
                                 if (modelSendFact) modelSendFact.outcome = 'response';
                                 if (sendBank) completedSendSnapshot = actualSnapshot;
@@ -1512,10 +1579,10 @@ export class NativeGenerationHost {
         try {
             result = skills?.tools.length && !preview ? await runNarrativeSkillLoop({
                 execute: async () => {
-                    try { return await service.execute(request); } catch (error) {
+                    try { return await service.execute(request, { programSelection }); } catch (error) {
                         if (sessionTaskEvidence && error.code === 'generation_context_budget_exceeded' && taskHistory && !taskHistory.compaction) {
                             await compactTaskHistory();
-                            return service.execute(request);
+                            return service.execute(request, { programSelection });
                         }
                         throw error;
                     }
@@ -1527,7 +1594,7 @@ export class NativeGenerationHost {
                         : (await this.studio.getProject(handle, input.projectId)).revision.revision;
                     if (current !== (snapshot ? input.revisionId : input.revision)) fail('native_generation_revision_conflict');
                 },
-            }) : await service.execute(request, { preview });
+            }) : await service.execute(request, { preview, programSelection });
         } catch (error) {
             // Errors between model rounds (for example a cancelled Skill read)
             // must await the same private cleanup as provider failures.
@@ -1560,6 +1627,7 @@ export class NativeGenerationHost {
             } catch { projectTaskCapture = { status: 'failed' }; }
         }
         if (!preview && input.projectId && effectPolicy !== 'no-background-model') { try { await observeEvolutionProject(this, handle, input, result); } catch { /* Observation failure does not change an accepted generation. */ } }
+        if (draftOverrides) draftOverrides.assertConsumed();
         return immutable({ ...result, routing: { fallbackUsed: result.snapshot.runtimeRouteId !== route.runtimeRouteId, attempts,
             compute: { configured: Boolean(computeAttempts.length || localWorkAttempts.length || result.snapshot.diagnostics.executionPlan?.policy?.computeBudget),
                 scope: input.sessionId || source.kind === 'rp_chat' ? 'run_operation' : input.taskId ? 'project_task' : 'unavailable',

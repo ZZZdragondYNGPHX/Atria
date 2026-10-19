@@ -9,7 +9,7 @@ import { formatShellText, translateShellText } from '../atria-shell/localization
 import { createStudioNativeId } from './studio-authoring.js';
 import { runtimeRequest } from './runtime-client.js';
 import { nativeStudioClient } from './studio-client.js';
-import { comparePromptModules } from '../../shared/prompt-module-order.js';
+import { promptStageEntries, promptStageModuleRefs, mapPromptStageRefs } from '../../shared/prompt-module-order.js';
 import { NATIVE_GENERATION_DEFAULTS as generationDefaults } from '../../shared/native-generation-defaults.js';
 
 export const PROMPT_TYPES = Object.freeze({
@@ -112,14 +112,8 @@ function generationFields(doc, fields, draft, isTracking = () => false) {
 // Copies the exact dependency closure. Package originals never receive writes.
 export function forkPromptClosure(entries, selected, { derive = false, scope = { scope: 'library' } } = {}) {
     const output = []; const cache = new Map(); const active = new Set();
-    // One new identity per logical resource, even when several exact revisions are copied.
-    // Sorted module identities retain the compiler's ID tie-break order after a fork.
     const logicalKey = ref => exactKey({ ...ref, revision: '' });
     const identities = new Map();
-    const modules = [...new Map(entries.filter(item => item.ref.resourceType === 'core.prompt-module' && item.ref.scope !== 'library')
-        .map(item => [logicalKey(item.ref), item.ref])).entries()].sort((a, b) => a[1].resourceId.localeCompare(b[1].resourceId));
-    const ids = modules.map(() => createStudioNativeId('pmod')).sort();
-    modules.forEach(([key], index) => identities.set(key, ids[index]));
     const visit = entry => {
         const key = exactKey(entry.ref);
         if (active.has(key)) throw new Error('Prompt dependency cycle');
@@ -139,10 +133,11 @@ export function forkPromptClosure(entries, selected, { derive = false, scope = {
         };
         if (type === 'core.prompt-program') {
             if (resource.parentRef) resource.parentRef = dependency(resource.parentRef);
-            resource.stages.forEach(stage => { stage.moduleRefs = stage.moduleRefs.map(dependency); });
+            resource.stages = resource.stages.map(stage => mapPromptStageRefs(stage, dependency));
             (resource.derive || []).forEach(op => {
                 const previous = op.replacementRef;
                 if (previous) op.replacementRef = dependency(previous);
+                if (op.entry?.kind === 'module') op.entry.moduleRef = dependency(op.entry.moduleRef);
                 const original = entries.find(item => item.ref.resourceType === 'core.prompt-module' && item.ref.resourceId === op.moduleId && cache.has(exactKey(item.ref)) && item.ref.scope === entry.ref.scope
                     && (entry.ref.scope !== 'package' || item.ref.packageVersionId === entry.ref.packageVersionId)
                     && (entry.ref.scope !== 'project' || item.ref.projectId === entry.ref.projectId));
@@ -167,10 +162,58 @@ export function forkPromptClosure(entries, selected, { derive = false, scope = {
 export function mountPromptEditor({ document: doc, parent, entry, entries, onSave, onBack, librarySurface = false, presetSurface = false, foldState = new Map() }) {
     let draft = clone(entry.resource); let advanced = false; let submitted = false; let submitting = false;
     const initialDraft = JSON.stringify(draft);
+    let renderVersion = 0; let jsonBuffer = null; let readActive = () => draft; let rawActive = () => jsonBuffer; let lastEdit = null;
+    const history = [{ draft: clone(draft), jsonBuffer }]; const future = [];
+    const textSelections = new Map();
     const root = element(doc, 'section', undefined, parent); root.className = 'atri-prompt-editor';
     root.dataset.atriPromptEditor = 'true';
     if (librarySurface) root.dataset.atriLibraryEditor = 'true';
     const rememberFolds = () => { for (const node of root.querySelectorAll('[data-prompt-fold]')) foldState.set(node.dataset.promptFold, node.open); };
+    const jsonValue = text => {
+        const value = JSON.parse(text);
+        if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(translateShellText('Enter a resource JSON object.'));
+        if (JSON.stringify(value.provenance || []) !== JSON.stringify(entry.resource.provenance || [])) throw new Error(translateShellText('System provenance is read-only.'));
+        return value;
+    };
+    const isDirty = () => {
+        if (JSON.stringify(draft) !== initialDraft) return true;
+        if (jsonBuffer === null) return false;
+        try { return JSON.stringify(jsonValue(jsonBuffer)) !== initialDraft; } catch { return true; }
+    };
+    const capture = (typingTarget = null) => {
+        if (submitted || submitting) return;
+        if (advanced) jsonBuffer = rawActive();
+        try { draft = clone(readActive()); if (!advanced && jsonBuffer !== null) { jsonValue(jsonBuffer); jsonBuffer = null; } } catch { /* Keep invalid input in its current view. */ }
+        const next = { draft: clone(draft), jsonBuffer };
+        const comparable = state => {
+            let invalid = state.jsonBuffer;
+            if (invalid !== null) { try { jsonValue(invalid); invalid = null; } catch { /* Invalid JSON remains an editable history state. */ } }
+            return JSON.stringify({ draft: state.draft, invalid });
+        };
+        const time = Date.now();
+        if (comparable(next) !== comparable(history.at(-1))) {
+            if (typingTarget && lastEdit?.target === typingTarget && time - lastEdit.time < 500 && history.length > 1) history[history.length - 1] = next;
+            else history.push(next);
+            future.length = 0;
+        } else history[history.length - 1] = next;
+        lastEdit = typingTarget ? { target: typingTarget, time } : null;
+        root.dataset.atriaDraftDirty = String(isDirty());
+    };
+    const restore = state => {
+        const active = doc.activeElement; const label = active?.getAttribute('aria-label');
+        const selection = typeof active?.selectionStart === 'number' ? [active.selectionStart, active.selectionEnd, active.scrollTop] : null;
+        draft = clone(state.draft); jsonBuffer = state.jsonBuffer; render();
+        const control = [...root.querySelectorAll('[aria-label]')].find(node => node.getAttribute('aria-label') === label);
+        control?.focus({ preventScroll: true });
+        if (selection && control?.setSelectionRange) { control.setSelectionRange(selection[0], selection[1]); control.scrollTop = selection[2]; }
+        root.dataset.atriaDraftDirty = String(isDirty());
+    };
+    const undo = () => { if (submitting || submitted) return; capture(); if (history.length > 1) { future.push(history.pop()); restore(history.at(-1)); } };
+    const redo = () => { if (submitting || submitted) return; if (future.length) { const next = future.pop(); history.push(next); restore(next); } };
+    root.addEventListener('keydown', event => {
+        if (event.isComposing || submitting || submitted || !(event.metaKey || event.ctrlKey)) return;
+        if (event.key.toLowerCase() === 'z') { event.preventDefault(); if (event.shiftKey) redo(); else undo(); } else if (event.key.toLowerCase() === 'y' && !event.shiftKey) { event.preventDefault(); redo(); }
+    });
     const guarded = (read, section) => () => { try { return read(); } catch (error) { error.promptSection ||= section; throw error; } };
     function fold(parent, key, label, describe = () => '') {
         const section = element(doc, 'details', undefined, parent); section.className = 'atri-prompt-fold'; section.dataset.promptFold = key;
@@ -183,30 +226,35 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
         return section;
     }
     function render() {
+        const version = ++renderVersion;
         rememberFolds();
+        for (const node of root.querySelectorAll('textarea')) textSelections.set(node.getAttribute('aria-label'), [node.selectionStart, node.selectionEnd, node.scrollTop]);
         root.replaceChildren();
         const title = element(doc, 'h3', undefined, root); title.textContent = draft.displayName; title.tabIndex = -1;
         element(doc, 'p', presetSurface ? 'Save changes to this preset. Other presets and pinned sessions stay unchanged.' : librarySurface ? 'Save a new revision. Existing references keep their exact version.' : 'New exact revision · existing references stay pinned. Review changes before committing in Studio.', root);
         const toolbar = element(doc, 'div', undefined, root); toolbar.className = 'atri-prompt-actions';
         action(doc, toolbar, 'Back to resources', () => { if (confirmAtriaDraftLeave(doc, root)) return onBack(); });
         const status = element(doc, 'div', undefined, root);
+        const undoButton = action(doc, toolbar, 'Undo', undo); undoButton.disabled = history.length < 2;
+        const redoButton = action(doc, toolbar, 'Redo', redo); redoButton.disabled = !future.length;
         if (librarySurface) status.className = 'atri-prompt-editor-status';
         let read; let tracking = false;
-        const trackDraft = () => queueMicrotask(() => {
-            try { tracking = true; root.dataset.atriaDraftDirty = String(!submitted && JSON.stringify(read()) !== initialDraft); } catch { root.dataset.atriaDraftDirty = 'true'; } finally { tracking = false; }
+        const trackDraft = event => queueMicrotask(() => {
+            if (!root.isConnected || version !== renderVersion) return;
+            try { tracking = true; capture(event.type === 'input' ? event.target : null); read(); root.dataset.atriaDraftDirty = String(!submitted && isDirty()); } catch { root.dataset.atriaDraftDirty = 'true'; } finally { tracking = false; }
+            undoButton.disabled = history.length < 2 || submitting || submitted; redoButton.disabled = !future.length || submitting || submitted;
         });
-        root.oninput = trackDraft; root.onchange = trackDraft;
+        root.oninput = trackDraft; root.onchange = trackDraft; root.onclick = trackDraft;
         action(doc, toolbar, advanced ? 'Simple editor' : 'Advanced editor', () => {
             if (submitting) return;
-            try { draft = read(); advanced = !advanced; render(); } catch (e) { status.replaceChildren(); error(doc, status, e); }
+            capture();
+            try { draft = read(); advanced = !advanced; render(); } catch (e) {
+                if (advanced) { advanced = false; render(); } else { status.replaceChildren(); error(doc, status, e); }
+            }
         });
         if (advanced) {
-            const json = input(doc, root, 'Resource JSON — conditions, parameters, provenance', JSON.stringify(draft, null, 2), true);
-            json.className = 'atri-prompt-json'; read = () => {
-                const value = JSON.parse(json.value);
-                if (JSON.stringify(value.provenance || []) !== JSON.stringify(entry.resource.provenance || [])) throw new Error(translateShellText('System provenance is read-only.'));
-                return value;
-            };
+            const json = input(doc, root, 'Resource JSON — conditions, parameters, provenance', jsonBuffer ?? JSON.stringify(draft, null, 2), true);
+            json.className = 'atri-prompt-json'; read = () => jsonValue(json.value); rawActive = () => json.value;
         } else {
             const prompt = ['core.prompt-module', 'core.prompt-program'].includes(entry.ref.resourceType);
             const identityBox = prompt ? fold(root, 'identity', 'Identity', () => name.value) : root;
@@ -223,18 +271,24 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                 fields = fold(sections, 'module', 'Module settings', () => target.value);
                 const target = select(doc, fields, 'Semantic target', ['system.foundation', 'system.character', 'system.world', 'system.style', 'system.response', 'context.before_history', 'context.after_history', 'context.before_input', 'context.after_input', 'response.prefill', 'response.post_history', 'agent.task', 'agent.evidence', 'agent.constraints'].map(v => [v, v]), draft.target);
                 const stages = input(doc, fields, 'Stages (comma separated)', draft.stages.join(', '));
-                const body = input(doc, fields, 'Prompt body', draft.body, true);
-                const priority = input(doc, fields, 'Priority', draft.priority || 0); priority.type = 'number';
-                specific = () => ({ target: target.value, stages: stages.value.split(',').map(v => v.trim()).filter(Boolean), body: body.value, priority: Number(priority.value) });
+                const body = input(doc, sections, 'Prompt body', draft.body, true); body.className = 'atri-prompt-body';
+                const originalBody = draft.body.replace(/\r\n?/g, '\n');
+                const textMode = select(doc, fields, 'Text mode', [['template', 'Template variables'], ['literal', 'Literal text']], draft.textMode || 'template');
+                const expression = select(doc, fields, 'Expression scope', [['', 'Unspecified'], ['global', 'Global'], ['scene', 'Scene'], ['narrator', 'Narrator'], ['actor', 'Actor']], draft.expression?.layer || '');
+                const actor = input(doc, fields, 'Expression actor ID', draft.expression?.actorId || '');
+                const showActor = () => { actor.parentElement.hidden = expression.value !== 'actor'; }; expression.addEventListener('change', showActor); showActor();
+                specific = () => {
+                    const result = { target: target.value, stages: stages.value.split(',').map(v => v.trim()).filter(Boolean), body: body.value === originalBody ? draft.body : body.value };
+                    if (draft.textMode !== undefined || textMode.value !== 'template') result.textMode = textMode.value;
+                    result.expression = expression.value ? { layer: expression.value, ...(expression.value === 'actor' ? { actorId: actor.value } : {}) } : undefined;
+                    return result;
+                };
             } else if (entry.ref.resourceType === 'core.prompt-program') {
-                const stages = clone(draft.stages); const stageConditions = new Map();
+                const stages = clone(draft.stages); const stageConditions = new Map(); const anchorConditions = new Map();
                 const modules = new Map(entries.filter(item => item.ref.resourceType === 'core.prompt-module').map(item => [exactKey(item.ref), item.resource]));
-                const compareRefs = (a, b) => comparePromptModules(
-                    { id: a.resourceId, module: modules.get(exactKey(a)) || {} },
-                    { id: b.resourceId, module: modules.get(exactKey(b)) || {} },
-                );
-                const syncConditions = () => { for (const [stage, read] of stageConditions) if (stages.includes(stage)) { const condition = read(); if (stage.condition !== undefined || condition !== null) stage.condition = condition; } };
-                const treeBox = fold(fields, 'stages', 'Stage / module tree', () => formatShellText('${0} stages · ${1} modules', [stages.length, stages.reduce((count, stage) => count + stage.moduleRefs.length, 0)]));
+                const syncConditions = () => { for (const [anchor, read] of anchorConditions) anchor.condition = read(); for (const [stage, read] of stageConditions) if (stages.includes(stage)) { const condition = read(); if (stage.condition !== undefined || condition !== null) stage.condition = condition; } };
+                const treeBox = fold(fields, 'stages', 'Stage / module tree', () => formatShellText('${0} stages · ${1} modules', [stages.length, stages.reduce((count, stage) => count + promptStageModuleRefs(stage).length, 0)]));
+                if (!foldState.has('stages')) treeBox.open = true;
                 const tree = element(doc, 'section', undefined, treeBox); tree.className = 'atri-prompt-stages';
                 const stageKeys = new WeakMap(stages.map(stage => [stage, 'stage:' + stage.stageId]));
                 const renderStages = (focusIndex, anchor = null) => {
@@ -243,10 +297,11 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                     const scroll = [];
                     if (anchor) for (let node = anchor.parentElement; node; node = node.parentElement) scroll.push([node, node.scrollTop, node.scrollLeft]);
                     rememberFolds();
-                    stageConditions.clear(); tree.replaceChildren();
+                    stageConditions.clear(); anchorConditions.clear(); tree.replaceChildren();
                     stages.forEach((stage, index) => {
                         if (!stageKeys.has(stage)) stageKeys.set(stage, 'stage:' + stage.stageId);
-                        const stageBox = fold(tree, stageKeys.get(stage), formatShellText('Stage ${0}', [index + 1], undefined, 'atria.product.stageIndex'), () => stage.stageId + ' · ' + formatShellText('${0} modules', [stage.moduleRefs.length]));
+                        const stageBox = fold(tree, stageKeys.get(stage), formatShellText('Stage ${0}', [index + 1], undefined, 'atria.product.stageIndex'), () => stage.stageId + ' · ' + formatShellText('${0} modules', [promptStageModuleRefs(stage).length]));
+                        if (!foldState.has(stageKeys.get(stage))) stageBox.open = true;
                         const row = element(doc, 'fieldset', undefined, stageBox);
                         const id = input(doc, row, formatShellText('Stage ID ${0}', [index + 1], undefined, 'atria.product.stageIdIndex'), stage.stageId);
                         id.addEventListener('input', () => {
@@ -256,19 +311,59 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                         });
                         const conditionBox = fold(row, stageKeys.get(stage) + ':condition', 'Condition', () => conditionBox.querySelector('select')?.value ? translateShellText('Configured') : translateShellText('Always'));
                         stageConditions.set(stage, guarded(mountPromptCondition(doc, conditionBox, stage.condition), conditionBox));
-                        for (const ref of [...stage.moduleRefs].sort(compareRefs)) {
-                            const line = element(doc, 'div', undefined, row); const module = entries.find(item => exactKey(item.ref) === exactKey(ref));
-                            element(doc, 'span', (module?.resource.displayName || ref.resourceId) + ' · ' + ref.revision + ' · ' + ref.scope, line);
-                            action(doc, line, 'Remove module', () => { stage.moduleRefs = stage.moduleRefs.filter(v => v !== ref); renderStages(index); });
+                        const ordered = promptStageEntries(stage);
+                        const storeEntries = next => {
+                            if (stage.entries || next.some(item => item.kind === 'anchor')) { stage.entries = next; delete stage.moduleRefs; } else stage.moduleRefs = next.map(item => item.moduleRef);
+                        };
+                        const entryTarget = item => item.kind === 'anchor' ? item.target : modules.get(exactKey(item.moduleRef))?.target;
+                        for (const [entryIndex, item] of ordered.entries()) {
+                            const line = element(doc, 'div', undefined, row); line.className = 'atri-prompt-order-entry';
+                            line.dataset.promptEntry = item.entryId;
+                            if (item.kind === 'module') {
+                                const ref = item.moduleRef; const module = entries.find(entry => exactKey(entry.ref) === exactKey(ref));
+                                element(doc, 'span', (module?.resource.displayName || ref.resourceId) + ' · ' + (module?.resource.target || '') + ' · ' + ref.revision, line);
+                            } else {
+                                const settings = fold(line, 'anchor-settings:' + stage.stageId + ':' + item.entryId, 'Context sources', () => item.accepts.join(', '));
+                                const target = select(doc, settings, 'Anchor position', ['system.foundation', 'system.character', 'system.world', 'system.style', 'system.response', 'agent.task', 'agent.evidence', 'agent.constraints', 'context.before_history', 'context.after_history', 'context.before_input', 'context.after_input', 'response.post_history'].map(target => [target, target]), item.target);
+                                target.addEventListener('change', () => { item.target = target.value; });
+                                const accepts = element(doc, 'fieldset', undefined, settings); element(doc, 'legend', 'Context sources', accepts);
+                                for (const [kind, label] of [['context.fact', 'Facts'], ['context.history', 'History'], ['context.input', 'Input'], ['context.player-persona', 'Player persona'], ['context.directive', 'Host instructions']]) {
+                                    const check = input(doc, accepts, label, ''); check.type = 'checkbox'; check.checked = item.accepts.includes(kind);
+                                    check.addEventListener('change', () => { item.accepts = check.checked ? [...item.accepts, kind] : item.accepts.filter(value => value !== kind); });
+                                }
+                                const required = input(doc, settings, 'Require matching context', ''); required.type = 'checkbox'; required.checked = Boolean(item.required);
+                                required.addEventListener('change', () => { item.required = required.checked; });
+                                const conditions = fold(settings, 'anchor:' + stage.stageId + ':' + item.entryId, 'Condition');
+                                anchorConditions.set(item, guarded(mountPromptCondition(doc, conditions, item.condition), conditions));
+                            }
+                            const move = direction => {
+                                let sibling = entryIndex + direction;
+                                while (sibling >= 0 && sibling < ordered.length && entryTarget(ordered[sibling]) !== entryTarget(item)) sibling += direction;
+                                if (sibling < 0 || sibling >= ordered.length) return;
+                                [ordered[entryIndex], ordered[sibling]] = [ordered[sibling], ordered[entryIndex]];
+                                storeEntries(ordered); renderStages(index);
+                                const node = [...tree.querySelectorAll('[data-prompt-entry]')].find(node => node.dataset.promptEntry === item.entryId); node?.querySelector('button')?.focus();
+                            };
+                            action(doc, line, 'Move entry up', () => move(-1)).disabled = !ordered.slice(0, entryIndex).some(sibling => entryTarget(sibling) === entryTarget(item));
+                            action(doc, line, 'Move entry down', () => move(1)).disabled = !ordered.slice(entryIndex + 1).some(sibling => entryTarget(sibling) === entryTarget(item));
+                            action(doc, line, item.kind === 'module' ? 'Remove module' : 'Remove anchor', () => {
+                                syncConditions(); anchorConditions.delete(item); storeEntries(ordered.filter(entry => entry !== item)); renderStages(index);
+                            });
                         }
+                        action(doc, row, 'Add context anchor', () => {
+                            syncConditions();
+                            storeEntries([...promptStageEntries(stage), { entryId: createStudioNativeId('step'), kind: 'anchor', target: 'context.before_history', accepts: ['context.fact'], required: false }]);
+                            renderStages(index);
+                        });
                         const choices = entries.filter(item => item.ref.resourceType === 'core.prompt-module' && (entry.ref.scope !== 'library' || item.ref.scope === 'library') && item.ref.scope !== 'package');
                         const picker = select(doc, row, formatShellText('Module for stage ${0}', [index + 1], undefined, 'atria.product.stageModuleIndex'), [['', 'Choose exact module…'], ...choices.map(item => [exactKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope, true])]);
                         picker.dataset.atriStageModulePicker = 'true';
                         action(doc, row, 'Add module', () => {
-                            if (!picker.value || stage.moduleRefs.some(v => exactKey(v) === picker.value)) return;
-                            stage.moduleRefs.push(JSON.parse(picker.value)); stage.moduleRefs.sort(compareRefs); renderStages(index, picker);
+                            if (!picker.value || promptStageModuleRefs(stage).some(v => exactKey(v) === picker.value)) return;
+                            if (stage.entries) stage.entries.push({ entryId: createStudioNativeId('step'), kind: 'module', moduleRef: JSON.parse(picker.value) }); else stage.moduleRefs.push(JSON.parse(picker.value)); renderStages(index, picker);
                         });
                         action(doc, row, 'Move stage up', () => { if (index) { [stages[index - 1], stages[index]] = [stages[index], stages[index - 1]]; renderStages(index - 1); } });
+                        action(doc, row, 'Move stage down', () => { if (index < stages.length - 1) { [stages[index + 1], stages[index]] = [stages[index], stages[index + 1]]; renderStages(index + 1); } });
                         action(doc, row, 'Remove stage', () => { if (stages.length > 1) { stages.splice(index, 1); renderStages(Math.min(index, stages.length - 1)); } });
                     });
                     const focusedStage = tree.querySelectorAll(':scope > details')[focusIndex];
@@ -301,7 +396,6 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                     ...(readParameters ? { parameters: readParameters() } : {}), ...(readCondition ? { condition: readCondition() } : {}), ...(readDerive ? readDerive() : {}),
                 };
                 for (const key of ['parameters', 'condition', 'parentRef', 'derive', 'responseDirective']) if (draft[key] === undefined && (value[key] == null || typeof value[key] === 'object' && !Object.keys(value[key]).length)) delete value[key];
-                if (draft.priority === undefined && value.priority === 0) delete value.priority;
                 return value;
             };
             const provenance = fold(root, 'provenance', 'System provenance (read-only)');
@@ -310,13 +404,20 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
         const save = action(doc, root, librarySurface ? 'Save revision' : 'Review / save revision', async () => {
             if (save.disabled || submitting || submitted || !root.isConnected) return; submitting = true; save.disabled = true; save.setAttribute('aria-busy', 'true'); status.replaceChildren();
             try {
-                rememberFolds(); const value = read(); root.inert = true; await onSave(value); element(doc, 'p', librarySurface ? 'Saved immutable Library revision.' : 'Revision submitted. Studio changes require human Review / Apply.', status); submitted = true; root.dataset.atriaDraftDirty = 'false';
+                rememberFolds(); const value = read(); if (!advanced && jsonBuffer !== null) jsonValue(jsonBuffer);
+                root.inert = true; await onSave(value); element(doc, 'p', librarySurface ? 'Saved immutable Library revision.' : 'Revision submitted. Studio changes require human Review / Apply.', status); submitted = true; root.dataset.atriaDraftDirty = 'false';
                 root.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
             } catch (e) { if (root.isConnected) error(doc, status, e); } finally { submitting = false; root.inert = false; save.disabled = submitted; save.removeAttribute('aria-busy'); }
         });
         if (librarySurface) save.classList.add('atri-library-button', 'atri-library-button--primary');
         save.disabled = submitted;
+        readActive = read;
+        if (!advanced && jsonBuffer !== null) { try { jsonValue(jsonBuffer); } catch { element(doc, 'p', 'JSON contains an unfinished edit. Open Advanced editor to correct it before saving.', status).setAttribute('role', 'alert'); } }
         title.focus();
+        for (const node of root.querySelectorAll('textarea')) {
+            const selection = textSelections.get(node.getAttribute('aria-label'));
+            if (selection) { node.setSelectionRange(selection[0], selection[1]); node.scrollTop = selection[2]; }
+        }
     }
     render(); return root;
 }

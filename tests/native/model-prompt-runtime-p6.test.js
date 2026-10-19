@@ -1,3 +1,4 @@
+import { promptStageModuleRefs } from '../../public/shared/prompt-module-order.js';
 import { describe, expect, test } from '@jest/globals';
 import { createNativeId } from '../../src/native/identity.js';
 import { assertPromptModule, assertPromptProgram } from '../../src/native/model-prompt-runtime/contracts.js';
@@ -38,7 +39,7 @@ describe('P6 exact fork and Package freeze', () => {
         expect(JSON.stringify(entries)).toBe(before); expect(freezePackagePromptPrograms(entries, owner)).toEqual(freezePackagePromptPrograms(entries, owner));
         // Only the leaf and its direct module refs are needed after installation; no Library/ancestor authority remains.
         const frozenLeaf = frozen.find(item => item.resource.promptProgramId === leaf.promptProgramId);
-        const refs = frozenLeaf.resource.stages.flatMap(stage => stage.moduleRefs).map(exactKey);
+        const refs = frozenLeaf.resource.stages.flatMap(promptStageModuleRefs).map(exactKey);
         expect(compile([frozenLeaf, ...frozen.filter(item => refs.includes(exactKey(item.ref)))], ref(leaf)).directives).toEqual(original.directives);
     });
     test('ordinary Programs retain pinned module revisions', () => {

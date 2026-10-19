@@ -4,7 +4,7 @@ import { assertContextProviderPort, assertRouteResolverPort, assertSecretPort } 
 import { cancellable, checkCancellation, containsSecret as valueContainsSecret, GenerationError, immutable, ProviderFailure } from './execution-utils.js';
 import { prepareExecutionPlan, assertExecutionEvidenceCurrent, continuityRequirements } from './execution-evidence.js';
 import { compiledRequestBinding } from './compiled-binding.js';
-import { equalNativeDocuments } from '../repositories/common.js';
+import { hashNativeDocument, equalNativeDocuments } from '../repositories/common.js';
 
 // Prompt preparation is an injected port, implemented by PromptCompiler in P3.
 export class GenerationService {
@@ -18,8 +18,19 @@ export class GenerationService {
         this.beforeSend = beforeSend;
     }
 
-    async execute({ signal, handle, onChunk, ...value }, { preview = false } = {}) {
+    async execute({ signal, handle, onChunk, ...value }, { preview = false, programSelection = null, draftOverrides = null } = {}) {
         try {
+            if (draftOverrides && (!preview || typeof draftOverrides.resourceOverrides !== 'function')) {
+                throw new GenerationError('generation_draft_preview_only');
+            }
+            const resourceOverrides = draftOverrides?.resourceOverrides;
+            if (programSelection) {
+                if (typeof programSelection.assertCurrent !== 'function') throw new GenerationError('generation_program_authority_required');
+                // Freeze this internal executable authority across awaits. A caller
+                // cannot swap the selected ref or currentness port during prepare.
+                programSelection = Object.freeze({ promptProgramRef: immutable(programSelection.promptProgramRef),
+                    assertCurrent: programSelection.assertCurrent });
+            }
             const request = immutable(value);
             const mode = request.fallbackMode ?? 'disabled';
             if (!['automatic', 'confirm', 'disabled'].includes(mode)) throw new GenerationError('generation_invalid_fallback_mode');
@@ -31,6 +42,7 @@ export class GenerationService {
             let acceptedPolicy;
             let acceptedPrompt;
             let acceptedNetwork;
+            let acceptedSemantics;
             while (pending.length) {
                 checkCancellation(signal);
                 const routeRef = pending.shift();
@@ -40,15 +52,17 @@ export class GenerationService {
                 let resolved = await cancellable(() => this.resolver.resolve({
                     handle, routeRef, role: request.role, requirements,
                     unknownCapabilityOverrides: request.unknownCapabilityOverrides || [],
+                    programSelection,
+                    resourceOverrides,
                 }), signal);
                 if (visited.size === 1) remaining = resolved.route.policy.maxFallbackAttempts;
                 if (visited.size === 1) acceptedPolicy = resolved.route.executionPolicy;
                 if (visited.size === 1) acceptedPrompt = resolved.route.promptProgramRef;
                 if (visited.size === 1) acceptedNetwork = resolved.connection.networkPolicy;
-                if (acceptedPolicy && !equalNativeDocuments(resolved.route.promptProgramRef, acceptedPrompt)) {
+                if (!equalNativeDocuments(resolved.route.promptProgramRef, acceptedPrompt)) {
                     throw new GenerationError('generation_semantic_authority_changed');
                 }
-                if (acceptedPolicy && !equalNativeDocuments(resolved.connection.networkPolicy, acceptedNetwork)) {
+                if (!equalNativeDocuments(resolved.connection.networkPolicy, acceptedNetwork)) {
                     throw new GenerationError('generation_target_policy_denied');
                 }
                 const provider = this.providerFor(resolved.connection.providerAdapter, resolved);
@@ -60,6 +74,15 @@ export class GenerationService {
                 const contextPlan = immutable(assertRequestContextPlan(await cancellable(
                     () => this.contextProvider.buildRequestContextPlan(request, resolved), signal,
                 )));
+                const assertCurrent = async phase => {
+                    checkCancellation(signal);
+                    await cancellable(async () => {
+                        await this.contextProvider.assertCurrent?.({ handle, request, resolved, contextPlan, phase, signal });
+                        await programSelection?.assertCurrent({ handle, route: resolved.route, promptProgramRef: resolved.route.promptProgramRef, contextPlan, phase });
+                    }, signal);
+                    checkCancellation(signal);
+                };
+                await assertCurrent('compile');
                 const promptIr = immutable(assertPromptIR(await cancellable(
                     () => this.preparePrompt({ request, resolved, contextPlan }), signal,
                 )));
@@ -71,6 +94,19 @@ export class GenerationService {
                     throw new GenerationError('generation_output_authority_changed');
                 }
                 outputAuthority = authority;
+                // Route controls must not silently change the Node's effective
+                // behavior on fallback (same ref alone does not freeze parameters).
+                const semantics = hashNativeDocument({ program: resolved.route.promptProgramRef,
+                    resources: resolved.resources.filter(entry => entry.ref.resourceType !== 'core.generation-profile'),
+                    parameters: promptIr.compilation?.parameters ?? null, selectedStages: promptIr.compilation?.selectedStages ?? null,
+                    ...(promptIr.compilation?.authoredBehaviorFingerprint
+                        ? { authoredBehaviorFingerprint: promptIr.compilation.authoredBehaviorFingerprint }
+                        : { directives: promptIr.directives, responseDirectives: promptIr.responseDirectives, prefill: promptIr.prefill ?? null }),
+                    // Model/context budgets may legally reselect evidence. Lock
+                    // authored behavior while Source ports revalidate data/grants.
+                    contextSlots: promptIr.compilation?.authoredBehaviorFingerprint ? null : promptIr.contextSlots.filter(slot => slot.trust === 'author') });
+                if (acceptedSemantics !== undefined && semantics !== acceptedSemantics) throw new GenerationError('generation_semantic_authority_changed');
+                acceptedSemantics = semantics;
                 // Tool/output requirements cannot be silently dropped on another route.
                 const implied = [
                     ...(promptIr.tools.length ? ['generation.tools'] : []),
@@ -115,6 +151,7 @@ export class GenerationService {
                             model: resolved.model,
                             generation: resolved.generation,
                             resources: resolved.resources,
+                            ...(resolved.declaredPromptProgramRef ? { declaredPromptProgramRef: resolved.declaredPromptProgramRef } : {}),
                         },
                     }),
                 });
@@ -124,10 +161,10 @@ export class GenerationService {
                     ...(rendered.continuityDecision ? { continuity: rendered.continuityDecision } : {}),
                     compiledBinding: compiledRequestBinding({ resolved, contextPlan, promptIr, rendered }),
                 }) });
-                if (preview) return Object.freeze({ snapshot, rendered, preview: true });
+                if (preview) { await assertCurrent('preview'); return Object.freeze({ snapshot, rendered, preview: true }); }
                 try {
                     assertExecutionEvidenceCurrent(resolved, this.now(), executionPlan.policy);
-                    const response = await this._send({ provider, resolved, rendered, snapshot, signal, handle, onChunk });
+                    const response = await this._send({ provider, resolved, rendered, snapshot, signal, handle, onChunk, assertCurrent });
                     return Object.freeze({ snapshot, response: immutable(response) });
                 } catch (error) {
                     // Also covers failure before _send enters its usage/fetch
@@ -148,12 +185,13 @@ export class GenerationService {
         } catch (error) {
             // Never attach an adapter/secret exception, stack, payload, or cause to diagnostics.
             if (error instanceof GenerationError || COMPUTE_ADMISSION_CODES.includes(error.code)) throw new GenerationError(error.code);
+            if (['native_generation_draft_conflict', 'native_generation_resource_owner'].includes(error.code)) throw new GenerationError(error.code);
             if (['prompt_parameter_option', 'prompt_parameter_unknown', 'prompt_parameter_type', 'prompt_parameter_required'].includes(error.code)) throw new GenerationError(error.code);
             throw new GenerationError('generation_execution_failed');
         }
     }
 
-    async _send({ provider, resolved, rendered, snapshot, signal, handle, onChunk }) {
+    async _send({ provider, resolved, rendered, snapshot, signal, handle, onChunk, assertCurrent }) {
         checkCancellation(signal);
         await this.beforeSend?.({ snapshot, resolved, handle, signal });
         checkCancellation(signal);
@@ -170,6 +208,7 @@ export class GenerationService {
         const containsSecret = value => valueContainsSecret(value, secret);
         const secretOverlap = Math.max(secret.length, JSON.stringify(secret).length - 2) - 1;
         if (containsSecret(snapshot) || containsSecret(rendered)) throw new GenerationError('generation_config_contains_secret');
+        await assertCurrent('send');
         assertExecutionEvidenceCurrent(resolved, this.now(), snapshot.diagnostics.executionPlan.policy);
         const controller = new AbortController();
         const abort = () => controller.abort();
@@ -219,9 +258,10 @@ export class GenerationService {
                 observedUsage = provider.readUsage?.(parsed);
                 response = await cancellable(() => provider.normalizeResponse(parsed), controller.signal);
                 observedUsage = response.usage ?? observedUsage;
-            } catch {
+            } catch (error) {
                 checkCancellation(signal);
                 if (controller.signal.aborted) throw new GenerationError('generation_provider_timeout');
+                if (error instanceof GenerationError && error.code === 'generation_provider_content_blocked') throw error;
                 throw new GenerationError('generation_response_invalid');
             }
             checkCancellation(signal);

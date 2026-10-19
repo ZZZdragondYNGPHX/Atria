@@ -97,7 +97,10 @@ test('original runner invokes admitted prepare hook after begin and uses its exa
             expect(args.attemptId).toBe('original-attempt'); expect(f.events).toEqual(['begin']); f.events.push('prepare');
             return buildNativeProjectModelRound({ context: args.context, skillEntries: args.skillEntries, modelTranscript: args.modelTranscript, previousSystem: args.previousSystem });
         }, generate: async request => {
-            f.events.push('generate'); expect(request.messages[1]).toEqual(f.task.conversation[0]);
+            f.events.push('generate'); expect(request.messages[2]).toEqual(f.task.conversation[0]);
+            expect(request.messages[0]).toMatchObject({ role: 'system' });
+            expect(request.messages[0].content).not.toContain('Original runner intent');
+            expect(request.messages[1]).toMatchObject({ role: 'user', content: expect.stringContaining('Original runner intent') });
             expect(request.tools.map(tool => tool.function.name)).toEqual(['atri_agent_skill_files', 'atri_agent_list_skills', 'atri_agent_read_skill']);
             return { assistantText: 'Original response', toolCalls: [] };
         } });

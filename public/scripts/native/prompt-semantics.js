@@ -1,3 +1,4 @@
+import { promptStageEntries, promptStageModuleRefs } from '../../shared/prompt-module-order.js';
 import { el, field, action, disclosure } from './library-ui.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import { validatePromptParameters } from './prompt-parameter-contracts.js';
@@ -102,21 +103,57 @@ export function mountPromptDerive(doc, root, draft, entries, ownerRef, getStages
                 const id = key(program.parentRef); if (active.has(id)) throw new Error(tl('The exact parent chain contains a cycle.')); active.add(id);
                 const found = entries.find(item => key(item.ref) === id); if (!found) throw new Error(tl('The exact parent revision is unavailable.')); visit(found.resource); active.delete(id);
             }
-            for (const stage of program.stages || []) for (const ref of stage.moduleRefs) result.set(ref.resourceId, entries.find(item => key(item.ref) === key(ref)));
+            for (const stage of program.stages || []) for (const ref of promptStageModuleRefs(stage)) result.set(ref.resourceId, entries.find(item => key(item.ref) === key(ref)));
             for (const op of program.derive || []) if (op.replacementRef) result.set(op.moduleId, entries.find(item => key(item.ref) === key(op.replacementRef)));
         }
         visit({ parentRef: parent.value ? JSON.parse(parent.value) : null, stages: getStages() }); return result;
     }
-    function add(value = { op: 'disable', moduleId: '' }) {
+    function inheritedEntries() {
+        const result = []; const active = new Set();
+        function visit(program) {
+            if (program.parentRef) {
+                const id = key(program.parentRef); if (active.has(id)) throw new Error(tl('The exact parent chain contains a cycle.'));
+                active.add(id); const found = entries.find(item => key(item.ref) === id);
+                if (!found) throw new Error(tl('The exact parent revision is unavailable.'));
+                visit(found.resource); active.delete(id);
+            }
+            for (const stage of program.stages || []) for (const item of promptStageEntries(stage)) result.push({ ...item, stageId: stage.stageId });
+            for (const op of program.derive || []) {
+                if (op.op === 'add' && op.entry) result.push({ ...op.entry, stageId: op.stageId });
+                if (op.op === 'replace') {
+                    const item = result.find(item => op.entryId ? item.entryId === op.entryId && item.stageId === op.stageId : item.moduleRef?.resourceId === op.moduleId);
+                    if (item) item.moduleRef = op.replacementRef;
+                }
+            }
+        }
+        visit({ parentRef: parent.value ? JSON.parse(parent.value) : null, stages: getStages() }); return result;
+    }
+    function add(value = { op: 'disable', entryId: '', stageId: '' }) {
         const row = el(doc, 'fieldset', '', undefined, section); const op = select(doc, row, 'Derive action', [['add', 'Add module'], ['disable', 'Disable module'], ['replace', 'Replace module'], ['configure', 'Configure module parameters']], value.op);
+        const exactEntry = value.entryId !== undefined;
         const targetChoices = [...new Map(modules.map(item => [item.ref.resourceId, [item.ref.resourceId, item.resource.displayName]])).values()];
         const target = select(doc, row, 'Affected module', [['', 'Choose module…'], ...targetChoices], value.moduleId);
+        let available = [];
+        try { available = inheritedEntries(); } catch (error) { el(doc, 'p', '', error.message, row); }
+        const selection = select(doc, row, 'Affected stage entry', [['', 'Choose entry…'], ...available.map(item => [JSON.stringify([item.stageId, item.entryId]), item.stageId + ' · ' + item.entryId])], value.entryId ? JSON.stringify([value.stageId, value.entryId]) : '');
+        selection.parentElement.hidden = !exactEntry;
+        const stageId = field(doc, row, 'Insertion stage', value.stageId || available[0]?.stageId || getStages()[0]?.stageId || '');
+        const entryId = field(doc, row, 'New entry ID', value.entryId || '');
+        const position = select(doc, row, 'Insertion point', [['start', 'Start of stage'], ['end', 'End of stage'], ['before', 'Before entry'], ['after', 'After entry']], value.position?.before ? 'before' : value.position?.after ? 'after' : value.position?.edge || 'end');
+        const sibling = field(doc, row, 'Sibling entry ID', value.position?.before ?? value.position?.after ?? '');
         const replacement = select(doc, row, 'Exact replacement module', [['', 'Choose exact module…'], ...choices(modules)], value.replacementRef ? key(value.replacementRef) : '');
         const configBox = el(doc, 'div', '', undefined, row); let configRead = () => ({});
         function drawConfig() {
-            configBox.replaceChildren(); replacement.parentElement.hidden = !['add', 'replace'].includes(op.value); target.parentElement.hidden = op.value === 'add'; configBox.hidden = op.value !== 'configure';
+            configBox.replaceChildren(); replacement.parentElement.hidden = !['add', 'replace'].includes(op.value); target.parentElement.hidden = exactEntry || op.value === 'add'; configBox.hidden = op.value !== 'configure';
+            selection.parentElement.hidden = !exactEntry || op.value === 'add';
+            for (const control of [stageId, entryId, position]) control.parentElement.hidden = !exactEntry || op.value !== 'add';
+            sibling.parentElement.hidden = !exactEntry || op.value !== 'add' || !['before', 'after'].includes(position.value);
             if (op.value !== 'configure') return;
-            let module; try { module = inheritedModules().get(target.value)?.resource; } catch (error) { el(doc, 'p', '', error.message, configBox); }
+            let module; try {
+                const identity = selection.value ? JSON.parse(selection.value) : [];
+                const item = exactEntry ? inheritedEntries().find(item => item.stageId === identity[0] && item.entryId === identity[1]) : null;
+                module = exactEntry ? modules.find(module => key(module.ref) === key(item?.moduleRef || {}))?.resource : inheritedModules().get(target.value)?.resource;
+            } catch (error) { el(doc, 'p', '', error.message, configBox); }
             if (!module) { el(doc, 'p', '', tl('Select a module from the exact parent or current stages to configure it.'), configBox); configRead = () => { throw new Error(tl('The configured module is unavailable.')); }; return; }
             const fields = Object.entries(module.parameters || {}).map(([name, definition]) => {
                 const box = el(doc, 'fieldset', '', undefined, configBox); el(doc, 'legend', '', name, box);
@@ -128,15 +165,27 @@ export function mountPromptDerive(doc, root, draft, entries, ownerRef, getStages
             if (unknown.length) disclosure(doc, configBox, 'Unknown parameter overrides', Object.fromEntries(unknown.map(name => [name, value.config[name]])));
             configRead = () => { if (unknown.length) throw new Error(tl('Unknown parameter overrides require correction in Advanced editor.')); return Object.fromEntries(fields.filter(item => item.enabled.checked).map(item => [item.name, item.read()])); };
         }
-        for (const control of [op, target]) control.addEventListener('change', () => { value.config = {}; drawConfig(); });
+        for (const control of [op, target, selection, position]) control.addEventListener('change', () => { value.config = {}; drawConfig(); });
         parent.addEventListener('change', drawConfig); drawConfig();
         const item = { read: () => {
             const result = { op: op.value, moduleId: target.value };
+            if (exactEntry) {
+                const identity = selection.value ? JSON.parse(selection.value) : [];
+                delete result.moduleId; result.stageId = op.value === 'add' ? stageId.value : identity[0]; result.entryId = op.value === 'add' ? entryId.value : identity[1];
+                if (!result.stageId || !result.entryId) throw new Error(tl('Choose an exact stage entry.'));
+                if (op.value === 'add') {
+                    if (value.entry?.kind === 'anchor') result.entry = clone({ ...value.entry, entryId: result.entryId });
+                    else { if (!replacement.value) throw new Error(tl('Choose an exact replacement module.')); result.entry = { entryId: result.entryId, kind: 'module', moduleRef: JSON.parse(replacement.value) }; }
+                    result.position = ['start', 'end'].includes(position.value) ? { edge: position.value } : { [position.value]: sibling.value };
+                } else if (op.value === 'replace') { if (!replacement.value) throw new Error(tl('Choose an exact replacement module.')); result.replacementRef = JSON.parse(replacement.value); }
+                if (op.value === 'configure') result.config = configRead();
+                return result;
+            }
             if (['add', 'replace'].includes(op.value)) { if (!replacement.value) throw new Error(tl('Choose an exact replacement module.')); result.replacementRef = JSON.parse(replacement.value); if (op.value === 'add') result.moduleId = result.replacementRef.resourceId; }
             if (!result.moduleId) throw new Error(tl('Choose an affected module.'));
             if (op.value === 'configure') result.config = configRead(); return result;
         } }; rows.push(item); action(doc, row, 'Remove derive operation', () => { rows.splice(rows.indexOf(item), 1); row.remove(); });
     }
     for (const operation of draft.derive || []) add(clone(operation)); action(doc, section, 'Add derive operation', () => add());
-    return () => { const derive = rows.map(item => item.read()); if (new Set(derive.map(item => item.moduleId)).size !== derive.length) throw new Error(tl('Only one derive operation is allowed per module.')); return { parentRef: parent.value ? JSON.parse(parent.value) : null, derive }; };
+    return () => { const derive = rows.map(item => item.read()); if (new Set(derive.map(item => item.entryId ? item.stageId + ':' + item.entryId : item.moduleId)).size !== derive.length) throw new Error(tl('Only one derive operation is allowed per entry.')); return { parentRef: parent.value ? JSON.parse(parent.value) : null, derive }; };
 }

@@ -23,7 +23,7 @@ export function nativeContextCompilationOptions(request, resolved, options = {})
     const { countTokens, tokenizerFor, deriveContext, processContext, providers = [], ...settings } = options;
     const config = immutable(settings);
     const stages = flattenPromptProgram(resolved).stages;
-    const consumer = stages.some(stage => stage.contextConsumers?.includes('player_persona') && (!request.prompt?.stageIds || request.prompt.stageIds.includes(stage.stageId)));
+    const consumer = stages.some(stage => (stage.contextConsumers?.includes('player_persona') || stage.entries.some(entry => entry.kind === 'anchor' && !entry.disabled && entry.accepts.includes('context.player-persona'))) && (!request.prompt?.stageIds || request.prompt.stageIds.includes(stage.stageId)));
     return { ...config, countTokens: tokenizerFor?.(resolved) ?? countTokens, deriveContext, processContext, providers: [...providers],
         playerPersona: { enabled: config.personaAllowed === true && consumer, blockedReason: config.personaBlockedReason },
         memoryEvidence: config.memoryEvidence ?? [], modelContextLimit: resolved.model.limits.contextTokens, responseReserve: effectiveOutputReserve(resolved) };

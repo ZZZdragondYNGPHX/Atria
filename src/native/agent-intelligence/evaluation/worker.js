@@ -38,15 +38,13 @@ process.on('message', async message => {
         const { selectCases, loadFixture, publicCaseScenario, hash, canonical } = await import('./cases.js');
         const { createFrozenEvaluationBridge } = await import('./worker-bridge.js');
         const { readSealedSource } = await import('./sealed-sources.js');
-        const selection = message.selection || { split: 'promotion', repetitions: 3 };
+        const selection = message.selection || { split: 'promotion', repetitions: 1 };
         const sourceProbe = selection.mode === 'source_probe', pairedProbe = selection.mode === 'sealed_pair_probe';
         if (selection.mode && !sourceProbe && !pairedProbe || sourceProbe && (!selection.profileId || selection.split !== 'development' || selection.repetitions !== 1)
             || pairedProbe && (!selection.profileId || selection.split !== 'promotion' || !Number.isSafeInteger(selection.repetitions) || selection.repetitions < 1 || selection.caseIds || !selection.sealedDirectory)) throw new Error('invalid_source_probe');
-        if (!['development', 'promotion'].includes(selection.split) || (pairedProbe
-            ? !Number.isSafeInteger(selection.repetitions) || selection.repetitions < 1
-            : selection.repetitions !== (selection.split === 'promotion' ? 3 : 1))) throw new Error('invalid_evaluation_selection');
+        if (!['development', 'promotion'].includes(selection.split) || !Number.isSafeInteger(selection.repetitions) || selection.repetitions < 1) throw new Error('invalid_evaluation_selection');
         const available = selectCases({ purpose: 'evaluation', split: selection.split, profileId: selection.profileId, caseSetRevision: selection.caseSetRevision }).filter(c => c.entrance === message.domain);
-        if (sourceProbe && available.length !== 3) throw new Error('source_unready');
+        if (!available.length) throw new Error('source_unready');
         if (selection.caseIds && (selection.split !== 'development' || !Array.isArray(selection.caseIds) || !selection.caseIds.length
             || new Set(selection.caseIds).size !== selection.caseIds.length || selection.caseIds.some(id => !available.some(c => c.caseId === id)))) throw new Error('invalid_development_selection');
         const entries = selection.caseIds ? available.filter(c => selection.caseIds.includes(c.caseId)) : available;

@@ -1,3 +1,4 @@
+import { promptStageModuleRefs } from '../../public/shared/prompt-module-order.js';
 import { afterEach, expect, jest, test } from '@jest/globals';
 import express from 'express';
 import supertest from 'supertest';
@@ -129,9 +130,9 @@ test('inherited Program candidates retain the exact parent chain and unchanged g
     const desired = await f.library.getExact(f.h.handle, result.desiredRoute.promptProgramRef);
     expect(desired.snapshot.parentRef).toEqual(c.changedRefs.find(r => r.resourceId === parent.promptProgramId));
     const changedParent = await f.library.getExact(f.h.handle, desired.snapshot.parentRef);
-    expect(changedParent.snapshot.stages[0].moduleRefs.find(r => r.resourceId === moduleRef.resourceId)).toEqual(c.changedRefs.find(r => r.resourceId === moduleRef.resourceId));
+    expect(promptStageModuleRefs(changedParent.snapshot.stages[0]).find(r => r.resourceId === moduleRef.resourceId)).toEqual(c.changedRefs.find(r => r.resourceId === moduleRef.resourceId));
     const guardRef = preset.refs.find(r => r.resourceType === 'core.prompt-module' && r.resourceId !== moduleRef.resourceId);
-    expect(changedParent.snapshot.stages[0].moduleRefs).toContainEqual(guardRef);
+    expect(promptStageModuleRefs(changedParent.snapshot.stages[0])).toContainEqual(guardRef);
 });
 
 test.each(['edit', 'delete', 'redeclare'])('Preset %s prevents pending activation and preserves original exact resources', async action => {

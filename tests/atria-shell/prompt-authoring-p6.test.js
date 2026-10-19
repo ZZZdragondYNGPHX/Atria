@@ -64,16 +64,16 @@ test('program stages use compiler ordering and adding keeps focus on the stage m
     button(root, 'Add module').click();
     expect(document.activeElement).toBe(root.querySelector('[data-atri-stage-module-picker]'));
     expect([...root.querySelectorAll('.atri-prompt-stages fieldset > div > span')].map(node => node.textContent.split(' · ')[0]))
-        .toEqual(['High priority', 'Foundation A', 'Foundation Z', 'Agent', 'Context']);
+        .toEqual(['Context', 'Foundation Z', 'Foundation A', 'Agent', 'High priority']);
     button(root, 'Save revision').click(); await flush();
-    expect(onSave.mock.calls[0][0].stages[0].moduleRefs.map(ref => ref.resourceId)).toEqual(['pmod_b', 'pmod_a', 'pmod_z', 'pmod_d', 'pmod_c']);
+    expect(onSave.mock.calls[0][0].stages[0].moduleRefs.map(ref => ref.resourceId)).toEqual(['pmod_c', 'pmod_z', 'pmod_a', 'pmod_d', 'pmod_b']);
     expect(program.stages[0].moduleRefs).toHaveLength(4); // Editor never mutates the pinned input snapshot.
 });
 test('Simple/Advanced retains edits and parse failures; failed save stays editable and success cannot double-submit', async () => {
     const onSave = jest.fn().mockRejectedValueOnce(new Error('Save refused')).mockResolvedValueOnce({});
     const { root } = editor('core.prompt-module', onSave); root.querySelector('[aria-label="Prompt body"]').value = 'Kept text';
     button(root, 'Advanced editor').click(); const json = root.querySelector('textarea'); const good = json.value; json.value = '{';
-    button(root, 'Simple editor').click(); expect(root.querySelector('[role="alert"]')).not.toBeNull(); json.value = good; button(root, 'Simple editor').click();
+    button(root, 'Simple editor').click(); expect(root.querySelector('[role="alert"]')).not.toBeNull(); button(root, 'Advanced editor').click(); expect(root.querySelector('textarea').value).toBe('{'); root.querySelector('textarea').value = good; button(root, 'Simple editor').click();
     expect(root.querySelector('[aria-label="Prompt body"]').value).toBe('Kept text');
     button(root, 'Review / save revision').click(); await flush(); expect(root.textContent).toContain('Save refused');
     expect(button(root, 'Review / save revision').disabled).toBe(false); button(root, 'Review / save revision').click(); await flush();
@@ -175,4 +175,61 @@ test('Generation dirty tracking leaves focus on the current control while JSON i
     const name = root.querySelector('[aria-label="Display name"]'); name.focus(); stop.dispatchEvent(new Event('change', { bubbles:true })); await flush();
     expect(document.activeElement).toBe(name); expect(root.dataset.atriaDraftDirty).toBe('true');
     button(root, 'Review / save revision').click(); await flush(); expect(root.querySelector('[role="alert"]').textContent).toContain('JSON array');
+});
+
+test('shared Undo and Redo retain prose across field and JSON editing without marking a view change dirty', async () => {
+    const { root, onSave } = editor();
+    button(root, 'Advanced editor').click(); await flush();
+    expect(root.dataset.atriaDraftDirty).toBe('false');
+    button(root, 'Simple editor').click();
+    const body = root.querySelector('[aria-label="Prompt body"]'); body.value = 'First draft'; body.dispatchEvent(new Event('input', { bubbles: true })); await flush();
+    button(root, 'Advanced editor').click();
+    const json = root.querySelector('textarea'); const value = JSON.parse(json.value); value.body = 'Second draft'; json.value = JSON.stringify(value); json.dispatchEvent(new Event('input', { bubbles: true })); await flush();
+    button(root, 'Undo').click(); expect(JSON.parse(root.querySelector('textarea').value).body).toBe('First draft');
+    button(root, 'Redo').click(); expect(JSON.parse(root.querySelector('textarea').value).body).toBe('Second draft');
+    button(root, 'Simple editor').click(); expect(root.querySelector('[aria-label="Prompt body"]').value).toBe('Second draft');
+    button(root, 'Review / save revision').click(); await flush(); expect(onSave.mock.calls[0][0].body).toBe('Second draft');
+});
+
+test('invalid JSON survives a view change and blocks saving until repaired; IME does not trigger Undo', async () => {
+    const { root, onSave } = editor();
+    button(root, 'Advanced editor').click(); const json = root.querySelector('textarea'); const valid = json.value;
+    json.value = '{ unfinished'; json.dispatchEvent(new Event('input', { bubbles: true })); await flush();
+    json.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, isComposing: true, bubbles: true }));
+    expect(json.value).toBe('{ unfinished');
+    button(root, 'Simple editor').click(); button(root, 'Review / save revision').click(); await flush(); expect(onSave).not.toHaveBeenCalled();
+    button(root, 'Advanced editor').click(); expect(root.querySelector('textarea').value).toBe('{ unfinished');
+    root.querySelector('textarea').value = valid; button(root, 'Simple editor').click();
+    button(root, 'Review / save revision').click(); await flush(); expect(onSave).toHaveBeenCalledTimes(1);
+});
+
+test('changing view does not add an Undo step before the prose edit', async () => {
+    const { root, resource } = editor();
+    const body = root.querySelector('[aria-label="Prompt body"]'); body.value = 'One edit'; body.dispatchEvent(new Event('input', { bubbles: true })); await flush();
+    button(root, 'Advanced editor').click(); await flush();
+    button(root, 'Undo').click(); expect(JSON.parse(root.querySelector('textarea').value).body).toBe(resource.body);
+    button(root, 'Redo').click(); expect(JSON.parse(root.querySelector('textarea').value).body).toBe('One edit');
+});
+
+test('Module original line endings and text selection survive editing metadata and changing views', () => {
+    const resource = { ...newPromptResource('core.prompt-module'), body: '  原文\r\n{{literal.value}}\r\n尾声  ', textMode: 'literal' };
+    const root = mountPromptEditor({ document, parent: document.body, entry: { resource, ref: resourceRef('core.prompt-module', resource, { scope: 'library' }) }, entries: [], onSave: jest.fn(), onBack() {} });
+    const body = root.querySelector('[aria-label="Prompt body"]'); body.setSelectionRange(2, 8); body.scrollTop = 30;
+    button(root, 'Advanced editor').click(); expect(JSON.parse(root.querySelector('textarea').value).body).toBe(resource.body);
+    button(root, 'Simple editor').click(); const restored = root.querySelector('[aria-label="Prompt body"]');
+    expect([restored.selectionStart, restored.selectionEnd, restored.scrollTop]).toEqual([2, 8, 30]);
+});
+
+test('Anchor and Module move in the same target order and save one explicit entry list', async () => {
+    const resource = newPromptResource('core.prompt-module'); resource.target = 'context.before_history';
+    const module = { resource, ref: resourceRef('core.prompt-module', resource, { scope: 'library' }) };
+    const program = newPromptResource('core.prompt-program'); program.stages[0].moduleRefs = [module.ref];
+    const onSave = jest.fn(); const root = mountPromptEditor({ document, parent: document.body,
+        entry: { resource: program, ref: resourceRef('core.prompt-program', program, { scope: 'library' }) }, entries: [module], onSave, onBack() {} });
+    button(root, 'Add context anchor').click();
+    const anchor = [...root.querySelectorAll('[data-prompt-entry]')].at(-1); button(anchor, 'Move entry up').click();
+    button(root, 'Review / save revision').click(); await flush();
+    const stage = onSave.mock.calls[0][0].stages[0]; expect(stage).not.toHaveProperty('moduleRefs');
+    expect(stage.entries.map(entry => entry.kind)).toEqual(['anchor', 'module']);
+    expect(stage.entries[1].moduleRef).toEqual(module.ref);
 });

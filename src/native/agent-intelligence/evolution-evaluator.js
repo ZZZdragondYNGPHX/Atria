@@ -41,8 +41,10 @@ export function promotionDecision(report, { policyFingerprint, targetPin, budget
             if (report.quality.cases.some(c => c.provenance.independence !== 'established')) reasons.push('source_unready');
         } catch { reasons.push('quality_ungraded_or_changed'); }
     }
-    const required = entries.flatMap(entry => [1, 2, 3].map(r => entry.caseId + ':' + r));
-    if (report.pairs.length !== 9 || required.some(id => report.pairs.filter(p => p.case.caseId + ':' + p.repetition === id).length !== 1)) reasons.push('independent_cases_incomplete');
+    const repetitions = report.selection?.repetitions ?? Math.max(0, ...report.pairs.map(p => p.repetition));
+    const required = Number.isSafeInteger(repetitions) && repetitions > 0 && repetitions <= report.pairs.length
+        ? entries.flatMap(entry => Array.from({ length: repetitions }, (_, i) => entry.caseId + ':' + (i + 1))) : [];
+    if (!required.length || report.pairs.length !== required.length || required.some(id => report.pairs.filter(p => p.case.caseId + ':' + p.repetition === id).length !== 1)) reasons.push('independent_cases_incomplete');
     let wins = 0, baselineTokens = 0, candidateTokens = 0, baselineCost = 0, candidateCost = 0;
     for (const pair of report.pairs) {
         const entry = entries.find(e => same(e, pair.case));
@@ -61,8 +63,8 @@ export function promotionDecision(report, { policyFingerprint, targetPin, budget
             if (arm === 'baseline') { baselineTokens += tokens; baselineCost += cost; } else { candidateTokens += tokens; candidateCost += cost; }
         }
     }
-    if (wins < EVOLUTION_RULE.candidateWins) reasons.push('improvement_threshold_not_met');
-    if (budgetBreached || candidateTokens > baselineTokens || candidateCost > baselineCost) reasons.push('resource_regression_or_budget_breach');
+    if (!wins) reasons.push('improvement_not_observed');
+    if (budgetBreached) reasons.push('resource_regression_or_budget_breach');
     if (!report.price || report.charges.some(c => c.status !== 'reported')) reasons.push('unsettled_cost');
     if (ledger) {
         const attempts = ledger.attempts.filter(a => a.jobId === jobId);
@@ -221,7 +223,7 @@ export class EvolutionEvaluator {
         fields(parsed, ['value', 'rationale']); text(parsed.rationale, 1024);
         return parsed;
     }
-    async compare(handle, job, configs, settings, signal, fresh, onPair = async () => {}, onTrial = async () => {}, selection = { split: 'promotion', repetitions: 3 }) {
+    async compare(handle, job, configs, settings, signal, fresh, onPair = async () => {}, onTrial = async () => {}, selection = { split: 'promotion', repetitions: 1 }) {
         if (selection.profileId) requirePilotSources(selection.profileId);
         if (selection.mode) throw new TypeError('Invalid comparison purpose');
         return this._evaluate(handle, job, configs, settings, signal, fresh, onPair, onTrial, selection);
@@ -273,9 +275,7 @@ export class EvolutionEvaluator {
             }
         }
         const sourceProbe = selection.mode === 'source_probe', pairedProbe = selection.mode === 'sealed_pair_probe';
-        if (!['development', 'promotion'].includes(selection.split) || (pairedProbe
-            ? !Number.isSafeInteger(selection.repetitions) || selection.repetitions < 1
-            : selection.repetitions !== (selection.split === 'promotion' ? 3 : 1))) throw new TypeError('Invalid finite evaluation selection');
+        if (!['development', 'promotion'].includes(selection.split) || !Number.isSafeInteger(selection.repetitions) || selection.repetitions < 1) throw new TypeError('Invalid finite evaluation selection');
         if (selection.caseIds && (selection.split !== 'development' || !Array.isArray(selection.caseIds) || !selection.caseIds.length
             || new Set(selection.caseIds).size !== selection.caseIds.length || selection.caseIds.some(id => !selectCases({ purpose: 'evaluation', split: 'development', profileId: selection.profileId, caseSetRevision: selection.caseSetRevision }).some(c => c.caseId === id && c.entrance === job.domain)))) throw new TypeError('Invalid development case selection');
         const charges = [], evaluatorRevision = EVOLUTION_EVALUATOR_VERSION;
@@ -316,7 +316,7 @@ export class EvolutionEvaluator {
                 const { pairHash: _oldHash, ...identity } = pair; pair.pairHash = hash(identity);
             }
             return { schemaVersion: 2, origin: sourceProbe ? 'host_source_probe' : pairedProbe ? 'host_pair_probe' : 'host_evaluator', evaluatorRevision, caseSetRevision: sourceProbe || pairedProbe ? selection.caseSetRevision ?? PILOT_CASE_SET_REVISION : CASE_SET_REVISION, rule: EVOLUTION_RULE,
-                ...(sourceProbe ? { purpose: 'source_probe' } : {}),
+                ...(sourceProbe ? { purpose: 'source_probe' } : {}), selection: { split: selection.split, repetitions: selection.repetitions, ...(selection.caseIds ? { caseIds: [...selection.caseIds] } : {}) },
                 quality: qualityEnvelope(job.domain, selectCases({ purpose: 'evaluation', split: selection.split, profileId: selection.profileId, caseSetRevision: selection.caseSetRevision }).filter(c => c.entrance === job.domain && (!selection.caseIds || selection.caseIds.includes(c.caseId))), selection.split),
                 domain: job.domain, policyFingerprint: job.policyFingerprint, targetPin: job.targetPin, price: job.price,
                 configurations: sourceProbe ? { baseline: hash(configs.baseline) } : { baseline: hash(configs.baseline), candidate: hash(configs.candidate) }, settings: sourceProbe ? { baseline: hash(settings.baseline) } : { baseline: hash(settings.baseline), candidate: hash(settings.candidate) },

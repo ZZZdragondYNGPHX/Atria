@@ -1,3 +1,4 @@
+import { promptStageModuleRefs, mapPromptStageRefs } from '../../../public/shared/prompt-module-order.js';
 import { assertImageTarget, assertImageRendering } from '../visual-contracts.js';
 import {
     assertExactResourceRef,
@@ -60,9 +61,10 @@ export function collectVersionedModelPromptResourceRefs(resourceType, value) {
     if (resourceType !== 'core.prompt-program') return Object.freeze([]);
     const refs = [];
     if (resource.parentRef) refs.push(resource.parentRef);
-    for (const stage of resource.stages) refs.push(...stage.moduleRefs);
+    for (const stage of resource.stages) refs.push(...promptStageModuleRefs(stage));
     for (const operation of resource.derive) {
         if (operation.replacementRef) refs.push(operation.replacementRef);
+        if (operation.entry?.kind === 'module') refs.push(operation.entry.moduleRef);
     }
     return Object.freeze(refs.map(ref => Object.freeze({ ...ref })));
 }
@@ -80,14 +82,7 @@ export function mapVersionedModelPromptResourceRefs(resourceType, value, mapper)
     if (resource.parentRef) {
         resource.parentRef = mapRef(resource.parentRef, 'core.prompt-program', 'PromptProgram.parentRef');
     }
-    resource.stages = resource.stages.map((stage, stageIndex) => ({
-        ...stage,
-        moduleRefs: stage.moduleRefs.map((ref, refIndex) => mapRef(
-            ref,
-            'core.prompt-module',
-            `PromptProgram.stages[${stageIndex}].moduleRefs[${refIndex}]`,
-        )),
-    }));
+    resource.stages = resource.stages.map((stage, index) => mapPromptStageRefs(stage, ref => mapRef(ref, 'core.prompt-module', `PromptProgram.stages[${index}]`)));
     resource.derive = resource.derive.map((operation, index) => (
         operation.replacementRef
             ? {
@@ -100,6 +95,7 @@ export function mapVersionedModelPromptResourceRefs(resourceType, value, mapper)
             }
             : operation
     ));
+    for (const operation of resource.derive) if (operation.entry?.kind === 'module') operation.entry.moduleRef = mapRef(operation.entry.moduleRef, 'core.prompt-module', 'PromptProgram.derive.entry.moduleRef');
     return assertVersionedModelPromptResource(resourceType, resource);
 }
 

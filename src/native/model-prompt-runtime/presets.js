@@ -1,3 +1,4 @@
+import { mapPromptStageRefs } from '../../../public/shared/prompt-module-order.js';
 import { createNativeId } from '../identity.js';
 import { normalizeNativeRegexScripts } from '../../../public/shared/native-regex.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
@@ -117,15 +118,13 @@ export class PromptPresetStore {
             if (id && (!previous?.preset || previous.currentRevision !== expectedRevision)) throw new ConflictError('native_prompt_preset_conflict');
             if (id && input.programId !== id) throw new TypeError('Cannot change preset identity');
             const mapping = new Map();
-            const moduleIds = modules.map(identity).sort();
-            const newModuleIds = moduleIds.map(() => createNativeId('promptModule')).sort();
             for (const e of entries) {
                 const oldId = identity(e), definition = getVersionedModelPromptResourceDefinition(e.resourceType);
                 if (id) {
                     const existing = await getNativeDocument(tx, key(handle, e.resourceType, oldId));
                     if (existing && existing.presetOwner !== id) throw new TypeError('Resource belongs outside this preset');
                 }
-                mapping.set(oldId, { resourceId: id ? oldId : (e.resourceType === MODULE ? newModuleIds[moduleIds.indexOf(oldId)] : createNativeId(definition.idKind)), revision: createNativeId('revision') });
+                mapping.set(oldId, { resourceId: id ? oldId : createNativeId(definition.idKind), revision: createNativeId('revision') });
             }
             const owner = mapping.get(input.programId).resourceId;
             const mapRef = r => ({ scope: 'library', resourceType: r.resourceType, ...mapping.get(r.resourceId) });
@@ -133,9 +132,10 @@ export class PromptPresetStore {
                 const oldId = identity(e), definition = getVersionedModelPromptResourceDefinition(e.resourceType);
                 if (e.resourceType === PROGRAM) {
                     if (e.resource.parentRef) e.resource.parentRef = mapRef(e.resource.parentRef);
-                    e.resource.stages.forEach(s => { s.moduleRefs = s.moduleRefs.map(mapRef); });
+                    e.resource.stages = e.resource.stages.map(s => mapPromptStageRefs(s, mapRef));
                     e.resource.derive.forEach(op => {
                         if (op.replacementRef) op.replacementRef = mapRef(op.replacementRef);
+                        if (op.entry?.kind === 'module') op.entry.moduleRef = mapRef(op.entry.moduleRef);
                         if (op.moduleId) { if (!mapping.has(op.moduleId)) throw new TypeError('Derive module must belong to preset'); op.moduleId = mapping.get(op.moduleId).resourceId; }
                     });
                 }

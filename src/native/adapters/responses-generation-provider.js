@@ -127,13 +127,14 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch, checkpoin
         },
         async parseStream({ response, binding, sequence, continuityDecision }, { onChunk, onUsage } = {}) {
             if (!response.headers.get('content-type')?.includes('text/event-stream')) return { value: await response.json(), binding, sequence, continuityDecision };
-            let pending = ''; let bytesRead = 0; let text = ''; let completed; const done = new Map();
+            let pending = ''; let bytesRead = 0; let text = ''; let completed; let contentBlocked = false; const done = new Map();
             const decoder = new TextDecoder();
             const consume = line => {
                 if (!line.startsWith('data:')) return;
                 const value = JSON.parse(line.slice(5));
                 if (value.response?.usage) onUsage?.(observedGenerationUsage(value.response.usage, { inputTokens: 'input_tokens', outputTokens: 'output_tokens', totalTokens: 'total_tokens' }));
                 if (completed || ['error', 'response.failed', 'response.incomplete'].includes(value.type)) throw new GenerationError('generation_response_invalid');
+                if (['response.refusal.delta', 'response.refusal.done'].includes(value.type)) contentBlocked = true;
                 if (value.type === 'response.output_text.delta') { text += value.delta; onChunk?.({ text, delta: value.delta }); }
                 if (value.type === 'response.output_item.done') { if (done.has(value.output_index)) throw new GenerationError('generation_response_invalid'); done.set(value.output_index, value.item); }
                 if (value.type === 'response.completed') completed = value.response;
@@ -145,11 +146,15 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch, checkpoin
             consume(pending + decoder.decode());
             if (!completed || completed.status !== 'completed' || !Array.isArray(completed.output)
                 || completed.output.length !== done.size || completed.output.some((item, index) => serializeNativeDocument(item) !== serializeNativeDocument(done.get(index)))) throw new GenerationError('generation_response_invalid');
-            return { value: completed, binding, sequence, continuityDecision };
+            return { value: completed, binding, sequence, continuityDecision, contentBlocked };
         },
         readUsage({ value }) { return observedGenerationUsage(value?.usage, { inputTokens: 'input_tokens', outputTokens: 'output_tokens', totalTokens: 'total_tokens' }); },
-        normalizeResponse({ value, binding, sequence, continuityDecision }) {
+        normalizeResponse({ value, binding, sequence, continuityDecision, contentBlocked }) {
             if (value?.status !== 'completed' || !Array.isArray(value.output) || value.error) throw new GenerationError('generation_response_invalid');
+            if (contentBlocked || value.output.some(item => item?.type === 'message' && item.role === 'assistant'
+                && Array.isArray(item.content) && item.content.some(part => part?.type === 'refusal' && typeof part.refusal === 'string'))) {
+                throw new GenerationError('generation_provider_content_blocked');
+            }
             let text = ''; const toolCalls = [];
             for (const item of value.output) {
                 if (!item || !['message', 'reasoning', 'function_call'].includes(item.type)) throw new GenerationError('generation_response_invalid');

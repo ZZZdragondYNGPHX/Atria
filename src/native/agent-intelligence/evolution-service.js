@@ -10,6 +10,10 @@ import { ConflictError } from '../../storage/errors.js';
 import { assertWritable, isReadOnly } from '../../storage/read-only-mode.js';
 
 const active = new Map();
+// The durable publication/garbage journals remain authoritative. Join concurrent
+// observations of the same recovery, rather than racing two target CAS/cleanup
+// sequences after an Experience invalidation and an explicit reconcile.
+const invalidationWork = new WeakMap();
 const conflict = reason => { throw new ConflictError(reason || 'agent_evolution_conflict'); };
 const terminal = new Set(['failed', 'cancelled', 'invalidated', 'superseded', 'published']);
 const direction = target => target.kind === 'skill' ? 'skill' : target.kind.endsWith('strategy') ? 'orchestration' : 'prompt';
@@ -456,11 +460,39 @@ export class AgentEvolutionService {
             throw error;
         }
     }
-    async _rollbackInvalidated(handle, doc) {
-        for (const p of doc.publications.filter(p => ['published', 'intent', 'finalizing'].includes(p.status))) {
-            try { await this._rollback(handle, doc.scope, doc.subject, p.id); } catch { /* Explicit conflict remains reviewable. */ }
+    _rollbackInvalidated(handle, doc) {
+        const engine = this.host.persistence._engine;
+        if (!invalidationWork.has(engine)) invalidationWork.set(engine, new Map());
+        const pending = invalidationWork.get(engine), key = handle + ':' + doc.scopeId;
+        const noticeHash = hash(doc);
+        if (pending.has(key)) {
+            const queued = pending.get(key);
+            if (queued.noticeHash !== noticeHash) { queued.noticeHash = noticeHash; queued.requested = true; }
+            return queued.promise;
         }
-        await this._cleanup(handle, doc.scope, doc.subject);
+        const queued = { noticeHash, requested: true, promise: null };
+        pending.set(key, queued);
+        queued.promise = Promise.resolve().then(async () => {
+            try {
+                while (queued.requested) {
+                    queued.requested = false;
+                    // The notice only requests another observation. Re-read the
+                    // original journal so a later invalidation is never replaced
+                    // by the first callback's older publication list.
+                    const current = await this.repository.get(handle, doc.scope, doc.subject);
+                    if (!current) return;
+                    for (const p of current.publications.filter(p => ['published', 'intent', 'finalizing'].includes(p.status))) {
+                        try { await this._rollback(handle, current.scope, current.subject, p.id); } catch { /* Explicit conflict remains reviewable. */ }
+                    }
+                    await this._cleanup(handle, current.scope, current.subject);
+                }
+            } finally {
+                // Clear in the same continuation as the drain's last check;
+                // a later microtask must not join an already-finished drain.
+                if (pending.get(key) === queued) pending.delete(key);
+            }
+        });
+        return queued.promise;
     }
     async _cleanup(handle, scope, subject) {
         const doc = await this.repository.get(handle, scope, subject);

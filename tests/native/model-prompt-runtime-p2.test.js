@@ -58,15 +58,13 @@ describe('P2 Generation Core with P1 filesystem authorities', () => {
         expect(format === 'raw-text' ? f.sends.mock.calls[0][0].body.prompt : f.sends.mock.calls[0][0].body.messages).toBeDefined();
     });
 
-    test('A to B fallback re-resolves exactly as direct B, including generation and prompt', async () => {
+    test('A to B fallback re-resolves exactly as direct B while keeping its accepted Program', async () => {
         const f = await fixture({ send: async rendered => {
             if (rendered.body.model === 'a') throw new ProviderFailure('transport');
             return { choices: [{ message: { content: 'B' } }] };
         } });
         await f.library.commit(f.h.handle, 'core.generation-profile', { ...f.generation, revision: 'r2', sampling: { temperature: 0.8 } });
-        await f.library.commit(f.h.handle, 'core.prompt-program', { ...f.prompt, revision: 'r2' });
         f.routes[1].generationProfileRef.revision = 'r2';
-        f.routes[1].promptProgramRef.revision = 'r2';
         await f.persistence.saveRuntimeRoute(f.h.handle, f.routes[1]);
         const switched = await f.service.execute(f.request(0, { fallbackMode: 'automatic' }));
         const direct = await f.service.execute(f.request(1));

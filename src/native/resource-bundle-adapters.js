@@ -88,7 +88,7 @@ export function createCoreBundleAdapters({ library, worldRepo: worlds, knowledge
             const definition = getVersionedModelPromptResourceDefinition(ref.resourceType); resourceId = context.id(definition.idKind, logical); revision = context.id('revision', exact);
             data = clone(mapVersionedModelPromptResourceRefs(ref.resourceType, data, mapped));
             data[definition.idField] = resourceId; data.revision = revision;
-            for (const operation of data.derive || []) operation.moduleId = context.logicalId('core.prompt-module', operation.moduleId, ref);
+            for (const operation of data.derive || []) if (operation.moduleId) operation.moduleId = context.logicalId('core.prompt-module', operation.moduleId, ref);
             data.provenance = [...(data.provenance || []), { source: 'atria.resource-bundle', ref: JSON.stringify(origin) }];
         } else if (ref.resourceType === 'core.world') {
             resourceId = context.id('world', logical); revision = context.id('worldRevision', exact);

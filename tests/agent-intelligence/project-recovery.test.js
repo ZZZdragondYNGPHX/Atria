@@ -309,7 +309,7 @@ test('browser runner restores a durable conversation after interrupted tools and
         const stored = await agent.getTask(h.handle, projectId, task.taskId); expect(stored.attempts.map(item => item.status)).toEqual(['completed', 'failed']);
         expect(JSON.stringify(stored.conversation)).not.toContain('PRIVATE');
         const result = await runNativeStudioAgentTask({ projectId, taskId: task.taskId });
-        expect(result.messages.at(-1).content).toBe('Resumed public reply'); expect(requests[2].messages[0].content).toContain('Current authoritative Task state');
+        expect(result.messages.at(-1).content).toBe('Resumed public reply'); expect(requests[2].messages[1].content).toContain('Current authoritative Task state');
         expect(requests[2].messages.some(message => message.content === 'Public plan')).toBe(true);
         expect(requests[2].messages.some(message => message.role === 'tool' || message.providerState || message.tool_calls)).toBe(false);
         expect((await studio.getRevision(h.handle, projectId)).revision).toBe(task.baseRevision);

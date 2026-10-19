@@ -17,19 +17,21 @@ export function freezePackagePromptPrograms(entries, owner) {
         // not a request; the runtime compiler still validates every selected binding.
         const flat = flattenPromptProgram({ route: { promptProgramRef: refFor(entry) }, resources: resolvedResources }, { validateBindings: false });
         const stages = flat.stages.map(stage => {
-            const refs = [];
-            for (const item of stage.modules.filter(item => !item.disabled)) {
+            const ordered = [];
+            for (const item of stage.entries.filter(item => !item.disabled)) {
+                if (item.kind === 'anchor') { const { id, disabled, ...anchor } = item; ordered.push(anchor); continue; }
+                const moduleId = item.module.promptModuleId;
                 const parameters = structuredClone(item.module.parameters);
                 for (const [name, value] of Object.entries(item.config)) parameters[name].default = value;
-                // Keep logical module IDs (including replacement aliases) so tie ordering is unchanged.
+                // Entry identity and order survive independently of the frozen resource identity.
                 const revision = 'frozen-' + createHash('sha256').update(JSON.stringify({ ref: item.ref, config: item.config, id: item.id })).digest('hex');
-                const resource = assertPromptModule({ ...item.module, promptModuleId: item.id, revision, parameters,
+                const resource = assertPromptModule({ ...item.module, promptModuleId: moduleId, revision, parameters,
                     provenance: [...item.module.provenance, { source: 'atria.package.freeze', ref: JSON.stringify(item.ref) }] });
                 const frozen = { resourceType: 'core.prompt-module', resource, origin: owner };
-                if (!output.some(old => old.resourceType === frozen.resourceType && old.resource.promptModuleId === item.id && old.resource.revision === revision)) output.push(frozen);
-                refs.push(refFor(frozen));
+                if (!output.some(old => old.resourceType === frozen.resourceType && old.resource.promptModuleId === moduleId && old.resource.revision === revision)) output.push(frozen);
+                ordered.push({ entryId: item.id, kind: 'module', moduleRef: refFor(frozen) });
             }
-            return { ...(stage.contextConsumers ? { contextConsumers: stage.contextConsumers } : {}), stageId: stage.stageId, targets: stage.targets, condition: stage.condition, consumes: stage.consumes, moduleRefs: refs };
+            return { ...(stage.contextConsumers ? { contextConsumers: stage.contextConsumers } : {}), stageId: stage.stageId, targets: stage.targets, condition: stage.condition, consumes: stage.consumes, entries: ordered };
         });
         output.push({ ...entry, resource: assertPromptProgram({ ...entry.resource, parentRef: null, derive: [], stages,
             parameters: flat.parameters, locals: flat.locals, artifacts: flat.artifacts, exclusiveTargets: flat.exclusiveTargets,

@@ -1,5 +1,4 @@
-// Shared by the compiler and authoring UI. IDs use code-point ordering,
-// independent of browser locale, to keep exact prompt output deterministic.
+// Targets describe placement; order inside a target belongs to the author.
 export const PROMPT_TARGETS = Object.freeze([
     'system.foundation', 'system.character', 'system.world', 'system.style', 'system.response',
     'agent.task', 'agent.evidence', 'agent.constraints',
@@ -7,8 +6,24 @@ export const PROMPT_TARGETS = Object.freeze([
     'response.post_history', 'response.prefill',
 ]);
 
-export function comparePromptModules(a, b) {
-    return PROMPT_TARGETS.indexOf(a.module.target) - PROMPT_TARGETS.indexOf(b.module.target)
-        || (b.module.priority ?? 0) - (a.module.priority ?? 0)
-        || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+// moduleRefs is the compact module-only form. A stage stores exactly one form.
+export function promptStageEntries(stage) {
+    return stage.entries ?? stage.moduleRefs.map(moduleRef => ({
+        entryId: moduleRef.resourceId, kind: 'module', moduleRef,
+    }));
+}
+
+export function promptStageModuleRefs(stage) {
+    return promptStageEntries(stage).filter(entry => entry.kind === 'module').map(entry => entry.moduleRef);
+}
+
+export function mapPromptStageRefs(stage, mapper) {
+    if (stage.entries) return { ...stage, entries: stage.entries.map(entry => entry.kind === 'module'
+        ? { ...entry, moduleRef: mapper(entry.moduleRef) } : entry) };
+    const mapped = stage.moduleRefs.map(mapper);
+    if (mapped.some((ref, index) => ref.resourceId !== stage.moduleRefs[index].resourceId)) {
+        const { moduleRefs, ...rest } = stage;
+        return { ...rest, entries: moduleRefs.map((ref, index) => ({ entryId: ref.resourceId, kind: 'module', moduleRef: mapped[index] })) };
+    }
+    return { ...stage, moduleRefs: mapped };
 }

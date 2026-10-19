@@ -160,7 +160,7 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
         },
         async parseStream(response, { onChunk, onUsage } = {}) {
             if (!response.headers.get('content-type')?.includes('text/event-stream')) return response.json();
-            let pending = ''; let text = ''; const calls = new Map(); let usage, reportedModel; let modelConflict = false;
+            let pending = ''; let text = ''; const calls = new Map(); let usage, reportedModel, finishReason; let refusal = ''; let modelConflict = false;
             const decoder = new TextDecoder();
             const consume = line => {
                 if (!line.startsWith('data:')) return;
@@ -177,6 +177,8 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
                     onUsage?.(observedGenerationUsage(usage, { inputTokens: 'prompt_tokens', outputTokens: 'completion_tokens', totalTokens: 'total_tokens' }));
                 }
                 const delta = chunk.choices?.[0]?.delta;
+                if (typeof delta?.refusal === 'string') refusal += delta.refusal;
+                if (chunk.choices?.[0]?.finish_reason) finishReason = chunk.choices[0].finish_reason;
                 const content = messages ? (delta?.content || '') : (chunk.choices?.[0]?.text || '');
                 text += content;
                 if (content) onChunk?.({ text, delta: content });
@@ -195,13 +197,18 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
                 if (text.length + pending.length > 8 * 1024 * 1024) throw new GenerationError('generation_response_invalid');
             }
             consume(pending + decoder.decode());
-            return { choices: [{ text, message: { content: text, tool_calls: [...calls.values()] } }], ...(usage ? { usage } : {}),
+            return { choices: [{ text, ...(finishReason ? { finish_reason: finishReason } : {}), message: { content: text, tool_calls: [...calls.values()], ...(refusal ? { refusal } : {}) } }], ...(usage ? { usage } : {}),
                 ...(!modelConflict && reportedModel !== undefined ? { model: reportedModel } : {}) };
         },
         readUsage(raw) { return observedGenerationUsage(raw?.usage, { inputTokens: 'prompt_tokens', outputTokens: 'completion_tokens', totalTokens: 'total_tokens' }); },
         normalizeResponse(raw) {
             const choice = raw?.choices?.[0];
+            if (choice?.finish_reason === 'content_filter' || messages && (typeof choice?.message?.refusal === 'string' && choice.message.refusal.length > 0
+                || Array.isArray(choice?.message?.content) && choice.message.content.some(part => part?.type === 'refusal' && typeof part.refusal === 'string'))) {
+                throw new GenerationError('generation_provider_content_blocked');
+            }
             if (!choice || (messages && !choice.message)) throw new GenerationError('generation_response_invalid');
+            if (choice.finish_reason && !['stop', 'tool_calls', 'function_call'].includes(choice.finish_reason)) throw new GenerationError('generation_response_invalid');
             const text = messages ? (choice?.message?.content ?? '') : choice?.text;
             if (typeof text !== 'string') throw new GenerationError('generation_response_invalid');
             const toolCalls = (choice?.message?.tool_calls || []).map(call => {

@@ -1,3 +1,4 @@
+import { promptStageModuleRefs } from '../../public/shared/prompt-module-order.js';
 import { describe, test, expect } from '@jest/globals';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 import { createNativeId } from '../../src/native/identity.js';
@@ -88,7 +89,7 @@ describe('isolated Prompt presets', () => {
             first = await store.get(h.handle, a.presetId);
             expect(update.revision).not.toBe(a.revision);
             expect((await store.get(h.handle, b.presetId)).entries.find(e => e.resourceType === 'core.prompt-module').resource.body).toBe('Original');
-            expect((await library.getExact(h.handle, oldRef)).snapshot.stages[0].moduleRefs[0].revision).not.toBe(first.refs.find(r => r.resourceType === 'core.prompt-module').revision);
+            expect(promptStageModuleRefs((await library.getExact(h.handle, oldRef)).snapshot.stages[0])[0].revision).not.toBe(first.refs.find(r => r.resourceType === 'core.prompt-module').revision);
             first.categories = [{ id: 'a', name: 'Root', parentId: null }, { id: 'b', name: 'Child', parentId: 'a' }];
             first.moduleCategories = {}; // empty author categories survive the all-unclassified fallback
             const c = await store.save(h.handle, first, { importing: true });
@@ -105,10 +106,10 @@ describe('isolated Prompt presets', () => {
             expect(partialCopy.categories).toEqual(partial.categories);
             expect(Object.values(partialCopy.moduleCategories)).toEqual(['b']);
             first.entries = first.entries.filter(e => e.resourceType !== 'core.prompt-module');
-            first.entries.find(e => e.resourceType === 'core.prompt-program').resource.stages[0].moduleRefs = [];
+            first.entries.find(e => e.resourceType === 'core.prompt-program').resource.stages[0].entries = [];
             await store.save(h.handle, first, { id: first.presetId, expectedRevision: first.revision });
             expect((await store.get(h.handle, a.presetId)).entries).toHaveLength(2);
-            expect((await library.getExact(h.handle, oldRef)).snapshot.stages[0].moduleRefs).toHaveLength(1);
+            expect(promptStageModuleRefs((await library.getExact(h.handle, oldRef)).snapshot.stages[0])).toHaveLength(1);
             expect(await store.list(h.handle)).toHaveLength(4);
             await expect(store.get('another-user', a.presetId)).rejects.toThrow();
         } finally { await h.cleanup(); }

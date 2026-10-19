@@ -2,6 +2,8 @@ import { validatePromptParameters } from '../../../public/shared/prompt-paramete
 import { assertNativeId } from '../identity.js';
 import { assertComputeBudget } from '../../../public/shared/native-compute-budget.js';
 import { connectionRequiresSecret } from '../../../public/shared/native-connection-auth.js';
+import { assertSemanticBlocks } from './semantic-blocks.js';
+import { PROMPT_TARGETS } from '../../../public/shared/prompt-module-order.js';
 
 export const ATRIA_MODEL_PROMPT_SCHEMA_VERSION = 1;
 export const ATRIA_CAPABILITY_STATES = Object.freeze(['supported', 'unsupported', 'unknown']);
@@ -559,11 +561,14 @@ export function assertPromptModule(value) {
         'condition',
         'parameters',
         'body',
+        'textMode',
         'provenance',
+        'expression',
     ], 'PromptModule');
     const base = assertRevisionedResourceBase(value, 'PromptModule', 'promptModule', 'promptModuleId');
     const stages = uniqueStrings(value.stages || [], 'PromptModule.stages', { namespacedValues: true });
     if (stages.length === 0) throw new TypeError('PromptModule.stages must contain at least one stage');
+    if (value.textMode !== undefined && !['literal', 'template'].includes(value.textMode)) throw new TypeError('PromptModule.textMode must be literal or template');
     return Object.freeze({
         ...base,
         target: namespaced(value.target, 'PromptModule.target'),
@@ -572,8 +577,20 @@ export function assertPromptModule(value) {
         condition: assertCondition(value.condition, 'PromptModule.condition'),
         parameters: assertParameterDefinitions(value.parameters, 'PromptModule.parameters'),
         body: text(value.body, 'PromptModule.body', 1024 * 1024, { allowEmpty: true }),
+        ...(value.textMode === undefined ? {} : { textMode: value.textMode }),
+        ...(value.expression === undefined ? {} : { expression: assertExpressionScope(value.expression) }),
         provenance: value.provenance === undefined ? [] : freezeArray(clone(value.provenance, 'PromptModule.provenance')),
     });
+}
+
+// Expression selects the scope of authored prose, never an Actor/Source grant.
+function assertExpressionScope(value) {
+    object(value, 'PromptModule.expression');
+    only(value, ['layer', 'actorId'], 'PromptModule.expression');
+    if (!['global', 'scene', 'narrator', 'actor'].includes(value.layer)
+        || value.layer !== 'actor' && value.actorId !== undefined) throw new TypeError('Invalid expression layer');
+    return Object.freeze({ layer: value.layer,
+        ...(value.layer === 'actor' ? { actorId: token(value.actorId, 'PromptModule.expression.actorId') } : {}) });
 }
 
 function assertArtifactDefinitions(value) {
@@ -589,17 +606,40 @@ function assertArtifactDefinitions(value) {
     return Object.freeze(out);
 }
 
+export function assertPromptEntry(value, field = 'PromptEntry') {
+    object(value, field);
+    const entryId = token(value.entryId, field + '.entryId');
+    if (value.kind === 'module') {
+        only(value, ['entryId', 'kind', 'moduleRef'], field);
+        return Object.freeze({ entryId, kind: 'module', moduleRef: assertExactResourceRef(value.moduleRef, 'core.prompt-module', field + '.moduleRef') });
+    }
+    if (value.kind !== 'anchor') throw new TypeError(field + '.kind must be module or anchor');
+    only(value, ['entryId', 'kind', 'target', 'accepts', 'required', 'condition'], field);
+    if (!PROMPT_TARGETS.includes(value.target) || value.target === 'response.prefill') throw new TypeError(field + '.target is unsupported');
+    const accepts = uniqueStrings(value.accepts, field + '.accepts');
+    if (!accepts.length || accepts.some(kind => !['context.fact', 'context.history', 'context.input', 'context.player-persona', 'context.directive'].includes(kind))) throw new TypeError(field + '.accepts must declare Context kinds');
+    if (value.required !== undefined && typeof value.required !== 'boolean') throw new TypeError(field + '.required must be boolean');
+    return Object.freeze({ entryId, kind: 'anchor', target: value.target, accepts, required: value.required ?? false,
+        condition: assertCondition(value.condition, field + '.condition') });
+}
+
 function assertProgramStage(value, field) {
     object(value, field);
-    only(value, ['stageId', 'targets', 'moduleRefs', 'condition', 'consumes', 'contextConsumers'], field);
-    if (!Array.isArray(value.moduleRefs)) throw new TypeError(field + '.moduleRefs must be an array');
+    only(value, ['stageId', 'targets', 'moduleRefs', 'entries', 'condition', 'consumes', 'contextConsumers'], field);
+    if (value.entries !== undefined && value.moduleRefs !== undefined) throw new TypeError(field + ' must use entries or moduleRefs, never both');
+    let entries;
+    if (value.entries !== undefined) {
+        if (!Array.isArray(value.entries)) throw new TypeError(field + '.entries must be an array');
+        entries = value.entries.map((entry, index) => assertPromptEntry(entry, field + '.entries[' + index + ']'));
+        if (new Set(entries.map(entry => entry.entryId)).size !== entries.length) throw new TypeError(field + '.entryId values must be unique');
+    } else if (!Array.isArray(value.moduleRefs)) throw new TypeError(field + '.moduleRefs must be an array');
     return Object.freeze({
         ...(value.contextConsumers === undefined ? {} : { contextConsumers: uniqueStrings(value.contextConsumers, field + '.contextConsumers').map(lane => { if (lane !== 'player_persona') throw new TypeError('Unknown context consumer'); return lane; }) }),
         stageId: namespaced(value.stageId, field + '.stageId'),
         targets: uniqueStrings(value.targets || [], field + '.targets', { namespacedValues: true }),
-        moduleRefs: freezeArray(value.moduleRefs.map(
+        ...(entries ? { entries: freezeArray(entries) } : { moduleRefs: freezeArray(value.moduleRefs.map(
             (item, index) => assertExactResourceRef(item, 'core.prompt-module', field + '.moduleRefs[' + index + ']'),
-        )),
+        )) }),
         condition: assertCondition(value.condition, field + '.condition'),
         ...(value.consumes === undefined ? {} : { consumes: uniqueStrings(value.consumes, field + '.consumes') }),
     });
@@ -607,15 +647,27 @@ function assertProgramStage(value, field) {
 
 function assertDeriveOperation(value, field) {
     object(value, field);
-    only(value, ['op', 'moduleId', 'replacementRef', 'config'], field);
+    only(value, ['op', 'stageId', 'entryId', 'moduleId', 'replacementRef', 'config', 'entry', 'position'], field);
     if (!['add', 'disable', 'replace', 'configure'].includes(value.op)) {
         throw new TypeError(field + '.op is unsupported');
     }
     const output = {
         op: value.op,
-        moduleId: assertNativeId(value.moduleId, 'promptModule', field + '.moduleId'),
+        ...(value.entryId !== undefined ? { entryId: token(value.entryId, field + '.entryId'), stageId: namespaced(value.stageId, field + '.stageId') }
+            : { moduleId: assertNativeId(value.moduleId, 'promptModule', field + '.moduleId') }),
     };
-    if (value.op === 'replace' || value.op === 'add') {
+    if (value.entryId !== undefined && value.moduleId !== undefined) throw new TypeError(field + ' must select an entry, not a module ID');
+    if (value.op === 'add' && value.entryId !== undefined) {
+        output.entry = assertPromptEntry(value.entry, field + '.entry');
+        if (output.entry.entryId !== output.entryId) throw new TypeError(field + '.entry identity differs');
+        object(value.position, field + '.position');
+        only(value.position, ['before', 'after', 'edge'], field + '.position');
+        if (Object.keys(value.position).length !== 1) throw new TypeError(field + '.position requires one insertion point');
+        if (value.position.edge !== undefined && !['start', 'end'].includes(value.position.edge)) throw new TypeError(field + '.position.edge is unsupported');
+        if (value.position.before !== undefined) token(value.position.before, field + '.position.before');
+        if (value.position.after !== undefined) token(value.position.after, field + '.position.after');
+        output.position = Object.freeze({ ...value.position });
+    } else if (value.op === 'replace' || value.op === 'add') {
         output.replacementRef = assertExactResourceRef(
             value.replacementRef,
             'core.prompt-module',
@@ -840,12 +892,13 @@ export function assertRequestContextPlan(value) {
     const items = value.items.map((item, index) => {
         const field = 'RequestContextPlan.items[' + index + ']';
         object(item, field);
-        only(item, ['kind', 'id', 'content', 'provenance'], field);
+        only(item, ['kind', 'id', 'content', 'provenance', 'evidence'], field);
         return Object.freeze({
             kind: namespaced(item.kind, field + '.kind'),
             ...(item.id === undefined ? {} : { id: token(item.id, field + '.id') }),
             content: clone(item.content, field + '.content'),
             provenance: assertProvenance(item.provenance || [], field + '.provenance'),
+            ...(item.evidence === undefined ? {} : { evidence: clone(object(item.evidence, field + '.evidence'), field + '.evidence') }),
         });
     });
     return Object.freeze({
@@ -882,6 +935,7 @@ export function assertPromptIR(value) {
         'prefill',
         'compilation',
         'provenance',
+        'semanticBlocks',
     ], 'PromptIR');
     if (value.schemaVersion !== 1) throw new TypeError('PromptIR.schemaVersion must be 1');
     const directives = Array.isArray(value.directives)
@@ -922,6 +976,7 @@ export function assertPromptIR(value) {
             : { prefill: text(value.prefill, 'PromptIR.prefill', 1024 * 1024, { allowEmpty: true }) }),
         provenance: assertProvenance(value.provenance || [], 'PromptIR.provenance'),
         ...(value.compilation === undefined ? {} : { compilation: clone(object(value.compilation, 'PromptIR.compilation'), 'PromptIR.compilation') }),
+        ...(value.semanticBlocks === undefined ? {} : { semanticBlocks: assertSemanticBlocks(value.semanticBlocks, value) }),
     });
 }
 
