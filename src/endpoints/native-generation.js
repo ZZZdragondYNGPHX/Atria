@@ -524,6 +524,20 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         res.set('Cache-Control', 'private, no-store');
         try { res.json(await new IllustrationImageService({ host: getHost() }).reconcile(handle, req.body)); } catch (error) { res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_illustration_reconcile_failed' }); }
     });
+    router.post('/authoring/images/prepare', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try { res.json(await new IllustrationImageService({ host: getHost() }).prepareAuthoring(handle, req.body)); } catch (error) { res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_visual_prepare_failed' }); }
+    });
+    router.get('/authoring/images', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try { res.json(await new IllustrationImageService({ host: getHost() }).authoringImages(handle, { archived: req.query.archived === '1' })); } catch { res.status(400).json({ error: 'native_visual_image_list_failed' }); }
+    });
+    router.post('/authoring/images/archive', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        try { res.json(await new IllustrationImageService({ host: getHost() }).archiveAuthoringImage(handle, req.body)); } catch (error) { res.status(400).json({ error: error.code || 'native_visual_image_archive_failed' }); }
+    });
     router.post('/illustration-images/prepared/observe', async (req, res) => {
         const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');

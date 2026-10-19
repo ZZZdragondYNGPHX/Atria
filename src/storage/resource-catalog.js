@@ -64,6 +64,7 @@ export function classifyNativeRecord(record) {
         const type = key.resourceType ?? doc?.resourceType;
         if (settingsTypes.has(type)) return 'settings';
         if (type === 'atri.visual.gc') return 'media';
+        if (visualTypes.has(type) && record.doc?.source?.kind === 'authoring') return 'media';
         if (visualTypes.has(type)) return visualSessionOwner(record) ? 'sessions' : type === 'atri.visual.planner' ? 'cache' : 'advanced';
         return 'advanced';
     }

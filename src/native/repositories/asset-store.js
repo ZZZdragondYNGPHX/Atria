@@ -65,7 +65,8 @@ async function resourceSetupAssetReferences(tx, handle, assetId) {
     }
     // Durable in-flight/uncertain jobs and recent temporary edits are roots.
     // Completed jobs and abandoned drafts retain a recovery grace, while
-    // published media remains rooted by Session/SavePoint presentation.
+    // published media remains rooted by Session/SavePoint presentation or its
+    // independent authoring Job. Archiving an image retains its bytes.
     // GC quarantine markers are never ownership references.
     const holds = value => value === assetId || value && typeof value === 'object' && Object.values(value).some(holds);
     for (const record of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.versionedJsonResource, handle })) {
@@ -73,7 +74,7 @@ async function resourceSetupAssetReferences(tx, handle, assetId) {
         if (!type.startsWith('atri.visual.') || type === 'atri.visual.gc' || type === 'atri.visual.prepared' && record.doc.expiresAt < Date.now()
             || type === 'atri.visual.draft' && age > 30 * 86400000
             || type === 'atri.visual.mask' && record.doc.createdAt && age > 7 * 86400000
-            || type === 'atri.visual.job' && ['published', 'failed', 'cancelled', 'stale'].includes(record.doc.status) && age > 7 * 86400000) continue;
+            || type === 'atri.visual.job' && ['published', 'failed', 'cancelled', 'stale'].includes(record.doc.status) && age > 7 * 86400000 && !(record.doc.source?.kind === 'authoring' && record.doc.status === 'published')) continue;
         if (holds(record.doc)) references.push({ kind: type, resourceId: record.key.resourceId });
     }
     return references;

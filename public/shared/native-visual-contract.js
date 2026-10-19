@@ -61,6 +61,11 @@ export function visualFingerprint(value) {
     return contentSha256(stable(nonSecretVisualJson(value)));
 }
 export function assertVisualSourceRef(value) {
+    if (value?.kind === 'authoring') {
+        visualObject(value, ['kind', 'authoringId', 'title']);
+        visualId(value.authoringId, 'vintent'); visualText(value.title, 256);
+        return structuredClone(value);
+    }
     visualObject(value, ['kind', 'sessionId', 'branchId', 'revisionId', 'annotationId', 'sceneId', 'shotId', 'anchor', 'timeKind']);
     if (value.kind !== 'session' || !['present', 'flashback', 'dream'].includes(value.timeKind)) visualError('source_invalid');
     visualId(value.sessionId, 'ses'); visualId(value.branchId, 'br'); visualId(value.revisionId, 'rev');

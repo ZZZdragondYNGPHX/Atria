@@ -1,3 +1,4 @@
+import { assertExactResourceRef } from './model-prompt-runtime/contracts.js';
 import { PNG } from 'pngjs';
 import { createHash } from 'node:crypto';
 import { composeIllustrationPrompt } from '../../public/shared/illustration-plugin-contract.js';
@@ -11,7 +12,7 @@ import { ImageJobWorker, newImageJob } from './image-worker.js';
 import { createImageRegistry, resolveImageSelection } from './image-registry.js';
 import { VersionedJsonResourceHandler } from './model-prompt-runtime/persistence.js';
 import { resolveVisualSource } from './visual-source.js';
-import { visualFingerprint, assertCompilationEvidence, visualObject, visualError } from '../../public/shared/native-visual-contract.js';
+import { visualFingerprint, assertCompilationEvidence, assertVisualSourceRef, visualObject, visualText, visualError } from '../../public/shared/native-visual-contract.js';
 import { assertWritable } from '../storage/read-only-mode.js';
 
 const terminal = new Set(['published', 'failed', 'cancelled', 'stale', 'uncertain_submission']);
@@ -27,17 +28,20 @@ export class IllustrationImageService {
         if (provider) for (const name of ['provider.novelai-image', 'provider.novelai-image-compatible']) {
             const adapter = registry.get(name); registry.adapters.set(name, { ...adapter, generate: provider.generate.bind(provider) });
         }
-        this.illustrations = new IllustrationService({ sessionRepo: host.sessionCore._sessions });
+        this.illustrations = new IllustrationService({ sessionRepo: host.sessionCore?._sessions });
         this.assets = host.packageInstaller._assetStore;
         this.store = new VisualStore({ engine: host.persistence._engine });
         this.resources = new VersionedJsonResourceHandler({ engine: host.persistence._engine });
         this.worker = new ImageJobWorker({ store: this.store, assets: this.assets, registry, secretPort: host.secretPort, scheduler,
             fresh: async (handle, job) => {
-                assertWritable(); await host.sessionCore.runs.assert(handle, job.source.sessionId, 'generate');
+                assertWritable();
+                if (job.source.kind === 'authoring') { assertVisualSourceRef(job.source); return; }
+                await host.sessionCore.runs.assert(handle, job.source.sessionId, 'generate');
                 await resolveVisualSource(host.sessionCore, handle, job.source);
             },
             publish: async (handle, job) => {
                 const { source, result, evidence } = job;
+                if (source.kind === 'authoring') return; // Job.result is the durable Library image; no Session presentation.
                 const state = (await host.sessionCore._sessions.getIllustrations(handle, source.sessionId, { branchId: source.branchId })).state;
                 if (!state.images.some(image => image.imageVersionId === job.imageVersionId)) await this.illustrations.addImageVersion(handle, source.sessionId, { annotationId: source.annotationId, branchId: source.branchId,
                     imageVersionId: job.imageVersionId, assetId: result.ref.assetId, width: result.width, height: result.height,
@@ -61,6 +65,57 @@ export class IllustrationImageService {
                         prompt: evidence.ir.prompt, negativePrompt: evidence.ir.negativePrompt, parameters: { method: 'canonical-gray8-alpha-composite', providerResultVersion: job.imageVersionId }, mediaOperation: operation });
                 }
             } });
+    }
+    async prepareAuthoring(handle, input) {
+        assertWritable();
+        visualObject(input, ['title', 'prompt', 'negativePrompt', 'imageTargetRef', 'imageRenderingRef', 'omittedPreferred']);
+        visualText(input.title ?? '', 256); visualText(input.prompt); visualText(input.negativePrompt ?? '');
+        if (!input.prompt.trim()) visualError('prompt_empty');
+        const read = async (value, type) => {
+            const ref = assertExactResourceRef(value, type);
+            if (ref.scope !== 'library') visualError('resource_owner');
+            return (await this.resources.getExact(handle, ref)).snapshot;
+        };
+        const target = await read(input.imageTargetRef, 'core.image-target');
+        const rendering = input.imageRenderingRef ? await read(input.imageRenderingRef, 'core.image-rendering') : null;
+        const connection = await this.host.persistence.getConnectionProfile(handle, target.connectionProfileId);
+        const source = { kind: 'authoring', authoringId: createNativeId('visualIntent'), title: input.title ?? '' };
+        const ir = { schemaVersion: 2, source, operation: 'txt2img', authoring: 'raw',
+            prompt: [rendering?.style, rendering?.quality, input.prompt].filter(Boolean).join(', '),
+            negativePrompt: input.negativePrompt ?? rendering?.negativePrompt ?? '', scene: '', style: '', participants: [], references: [], constraints: rendering?.constraints ?? [] };
+        const secret = connection.secretRef && ['provider.sd-webui-image', 'provider.forge-image', 'provider.comfyui-image'].includes(connection.providerAdapter)
+            ? await this.host.secretPort.resolveSecret(connection.secretRef, { handle, connection }) : null;
+        const plan = await this.registry.prepare({ ir, target, rendering, connection, secret, approval: { omittedPreferred: input.omittedPreferred ?? [] } });
+        const evidence = assertCompilationEvidence({ schemaVersion: 2, requestId: createNativeId('imageVersion'), source,
+            connection: { connectionProfileId: connection.connectionProfileId, displayName: connection.displayName, providerAdapter: connection.providerAdapter, fingerprint: hashNativeDocument(connection) },
+            target: { ...target, executionParameters: plan.compiled.body.parameters ?? plan.compiled.body }, ir, capabilities: plan.manifest, constraints: plan.constraints,
+            request: plan.compiled.body, requestHash: visualFingerprint(plan.compiled.body), irHash: visualFingerprint(ir), transforms: plan.compiled.transforms ?? [] });
+        const prepareId = source.authoringId, prepared = { prepareId, source, connection, target, rendering, compiled: plan.compiled, evidence,
+            resourceRefs: { imageTargetRef: input.imageTargetRef, imageRenderingRef: input.imageRenderingRef ?? null },
+            targetFingerprint: plan.fingerprint, mediaOperation: null, expectedHead: null, expiresAt: Date.now() + 300000 };
+        await this.store.write(handle, 'prepared', prepareId, prepared, null);
+        return { prepareId, source, sent: false, targetFingerprint: plan.fingerprint, requestHash: evidence.requestHash, expiresAt: prepared.expiresAt,
+            target: { id: target.imageTargetId, name: target.displayName, model: target.model }, capabilities: plan.manifest, constraints: plan.constraints,
+            cost: plan.manifest.cost, externalAssetIds: [], prompt: ir.prompt, negativePrompt: ir.negativePrompt, evidence };
+    }
+    async authoringImages(handle, { archived = false } = {}) {
+        if (typeof archived !== 'boolean') visualError('invalid');
+        return (await this.store.list(handle, 'job')).filter(job => job.source.kind === 'authoring' && Boolean(job.galleryArchived) === archived)
+            .sort((a, b) => b.createdAt - a.createdAt).map(job => ({ operation: publicJob(job), image: this.authoringImage(job) }));
+    }
+    authoringImage(job) {
+        return job.status === 'published' ? { imageVersionId: job.imageVersionId, ...job.result, title: job.source.title,
+            prompt: job.evidence.ir.prompt, negativePrompt: job.evidence.ir.negativePrompt, archived: Boolean(job.galleryArchived) } : null;
+    }
+    async archiveAuthoringImage(handle, input) {
+        visualObject(input, ['operationId', 'archived']);
+        const { operationId, archived } = input;
+        assertNativeId(operationId, 'imageJob'); if (typeof archived !== 'boolean') visualError('invalid');
+        const job = await this.store.updateJob(handle, operationId, job => {
+            if (job.source.kind !== 'authoring' || job.status !== 'published') visualError('image_unavailable');
+            job.galleryArchived = archived; return job;
+        });
+        return { operation: publicJob(job), image: this.authoringImage(job) };
     }
     async prepare(handle, input, { media = null } = {}) {
         visualObject(input, ['sessionId', 'branchId', 'annotationId', 'expectedHead', 'imageTargetId', 'imageRenderingId', 'operation', 'parentImageVersionIds', 'mask', 'references', 'omittedPreferred', 'expectedTargetFingerprint', 'expectedConnectionFingerprint']);
@@ -145,10 +200,12 @@ export class IllustrationImageService {
         const jobs = await this.store.list(handle, 'job'), existing = jobs.find(job => job.intentKey === input.prepareId);
         if (existing) { this.worker.dispatch(handle, existing); return { operationId: existing.jobId, head: prepared.expectedHead }; }
         if (prepared.expiresAt < Date.now()) visualError('prepare_expired');
-        const presentation = await this.host.sessionCore._sessions.getIllustrations(handle, prepared.source.sessionId, { branchId: prepared.source.branchId });
-        if (presentation.head !== prepared.expectedHead) visualError('head_conflict');
-        await this.host.sessionCore.runs.assert(handle, prepared.source.sessionId, 'generate');
-        await resolveVisualSource(this.host.sessionCore, handle, prepared.source);
+        if (prepared.source.kind !== 'authoring') {
+            const presentation = await this.host.sessionCore._sessions.getIllustrations(handle, prepared.source.sessionId, { branchId: prepared.source.branchId });
+            if (presentation.head !== prepared.expectedHead) visualError('head_conflict');
+            await this.host.sessionCore.runs.assert(handle, prepared.source.sessionId, 'generate');
+            await resolveVisualSource(this.host.sessionCore, handle, prepared.source);
+        } else if (mode !== 'manual') visualError('human_initiation_required');
         if (mode === 'automatic') {
             const config = (await this.host.extensions.illustrationSettings(handle)).value.director;
             if (config.mode !== 'automatic' || !config.autoApproval || config.autoApproval.targetFingerprint !== prepared.targetFingerprint) visualError('automatic_unauthorized');
@@ -165,10 +222,10 @@ export class IllustrationImageService {
         assertNativeId(operationId, 'imageJob');
         let job = (await this.store.read(handle, 'job', operationId)).value;
         if (!job) visualError('job_missing');
-        await this.host.sessionCore.runs.assert(handle, job.source.sessionId, 'inspect');
+        if (job.source.kind !== 'authoring') await this.host.sessionCore.runs.assert(handle, job.source.sessionId, 'inspect');
         await this.worker.recover(handle, operationId);
         job = (await this.store.read(handle, 'job', operationId)).value;
-        return { operation: publicJob(job), ...(terminal.has(job.status) ? summary ? { presentationChanged: true }
+        return { operation: publicJob(job), ...(job.source.kind === 'authoring' ? { image: this.authoringImage(job) } : terminal.has(job.status) ? summary ? { presentationChanged: true }
             : await this.host.sessionCore._sessions.getIllustrations(handle, job.source.sessionId, { branchId: job.source.branchId }) : {}) };
     }
     async observe(handle, input) {
@@ -176,9 +233,9 @@ export class IllustrationImageService {
         assertNativeId(input.operationId, 'imageJob');
         const row = await this.store.read(handle, 'job', input.operationId), job = row.value;
         if (!job) visualError('job_missing');
-        await this.host.sessionCore.runs.assert(handle, job.source.sessionId, 'inspect');
+        if (job.source.kind !== 'authoring') await this.host.sessionCore.runs.assert(handle, job.source.sessionId, 'inspect');
         return { operation: publicJob(job), revision: row.revision, recovery: 'not performed; use explicit reconcile',
-            ...(terminal.has(job.status) ? input.summary ? { presentationChanged: true }
+            ...(job.source.kind === 'authoring' ? { image: this.authoringImage(job) } : terminal.has(job.status) ? input.summary ? { presentationChanged: true }
                 : await this.host.sessionCore._sessions.getIllustrations(handle, job.source.sessionId, { branchId: job.source.branchId }) : {}) };
     }
     async observeList(handle, input) {
@@ -191,7 +248,7 @@ export class IllustrationImageService {
         visualObject(input, ['prepareId']); assertNativeId(input.prepareId, 'visualIntent');
         const row = await this.store.read(handle, 'prepared', input.prepareId), prepared = row.value;
         if (!prepared) visualError('prepare_missing');
-        await this.host.sessionCore.runs.assert(handle, prepared.source.sessionId, 'inspect');
+        if (prepared.source.kind !== 'authoring') await this.host.sessionCore.runs.assert(handle, prepared.source.sessionId, 'inspect');
         return { prepareId: prepared.prepareId, source: prepared.source, expectedHead: prepared.expectedHead,
             revision: row.revision, expiresAt: prepared.expiresAt, expired: prepared.expiresAt <= Date.now(),
             targetFingerprint: prepared.targetFingerprint, requestHash: prepared.evidence.requestHash,

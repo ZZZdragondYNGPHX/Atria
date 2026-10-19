@@ -121,3 +121,35 @@ requires its numeric Workflow ID and typed node catalog as well.
 - https://www.runninghub.ai/runninghub-api-doc-en/api-425761034
 - https://www.runninghub.ai/runninghub-api-doc-en/api-425761099
 - https://www.runninghub.ai/runninghub-api-doc-en/doc-8287467
+
+Independent visual authors
+--------------------------
+The same `IllustrationImageService`, ImagePromptIR, VisualStore, ImageJobWorker,
+Scheduler and AssetStore support manual Library image trials without a Work or
+Session. An immutable `{kind:"authoring",authoringId,title}` source identifies the
+prepared author request. It grants no narrative access.
+
+All paths below use the existing authenticated `/api/native/generation` namespace:
+
+| Method/path | Input/result |
+| --- | --- |
+| `POST /authoring/images/prepare` | `{prompt,imageTargetRef,title?,negativePrompt?,imageRenderingRef?,omittedPreferred?}`; refs are exact Library Target/Rendering; returns `sent:false`, `prepareId`, prompt, evidence, capability/cost and request fingerprints |
+| `POST /illustration-images` | Existing `{prepareId,approval}` starts the original manual Job and returns `operationId`; replaying the same prepare ID returns the same Job |
+| `GET /illustration-images/:id/observation` | Read-only operation plus `image` when published; `image.ref` is the original AssetRef |
+| `POST /illustration-images/reconcile` | Existing `{operationId}` explicitly recovers that Job; no automatic resubmission of unknown work |
+| `DELETE /illustration-images/:id` | Existing cancellation; sent work/unknown charges are retained |
+| `GET /authoring/images?archived=0` | Account-owned Jobs and published images; `archived=1` reads the archive |
+| `POST /authoring/images/archive` | `{operationId,archived:boolean}` archives/restores a published independent image |
+
+`approval` retains the original `targetFingerprint`, `requestHash`, `maxCost`,
+`currency`, `allowUnknownCost`, `externalAssetIds` and `omittedPreferred` fields.
+Prepare does not generate an image. The frontend must obtain the explicit manual
+choice before calling start. Style/quality from Rendering prefix the authored
+prompt; an explicit negativePrompt overrides Rendering.
+
+Published bytes use the original authenticated
+`/api/native/session/asset/:assetId?contentHash=...` owner read; it needs no Session
+parameter for the signed-in owner. Archiving retains bytes and Job history.
+Independent published Job results are permanent AssetStore roots, including after
+the temporary-job grace period. These trials currently expose txt2img; existing
+Session Media Studio keeps its original editing/reference/mask workflow.

@@ -7,6 +7,7 @@ import { illustrationContentHash } from './session-illustrations.js';
 // ancestor of the requested Branch, never merely a readable sibling revision.
 export async function resolveVisualSource(core, handle, sourceValue) {
     const source = assertVisualSourceRef(sourceValue);
+    if (source.kind !== 'session') visualError('session_source_required');
     await core.runs.assert(handle, source.sessionId, 'inspect');
     const current = await core.load(handle, source.sessionId);
     const branch = current.graph.find(item => item.branchId === source.branchId);
