@@ -370,3 +370,15 @@
 
 - 最终相关回归：37 个套件、643 项测试通过，涵盖原 Prompt/Provider/持久化／预览、编辑器、资源分享、候选／恢复，以及 V3 Session/RP/Project/background 实际本地 HTTP 生产链。35 个变更产品 JS 模块 ESLint 通过，中文本地化覆盖与 `git diff --check` 通过。编译解释版本更新为 `native.prompt.v4`／`native.semantic-blocks.v2`；版本标识修改后另跑编排与 Draft Preview 的 25 项直接用例，全部通过。测试中的 Native maintenance fixture 出现 writer-unavailable 警告，未造成套件失败；没有将它说成真实后台设备验证。
 - 本轮源码提交：`5bd38b66c1ce0b751b455a4b274955046f024219`，父提交 `main@745dbd190` 与原 Prompt `760327891`；Task 分支保持活跃，后续继续同一方案与 Record。源码任务分支已同步 `origin/refactor/atria-native-prompt-preset-deepening`；未合入 main，不将本轮提交视为整体方案完成。
+
+## 2026-10-19 — 独立作者样例与双修订预览（实施中）
+
+- 用户明确授权连续推进整体任务，阶段提交不是暂停边界；沿同一分支和 Record 继续，不创建 HANDOFF、不引入独立审查。
+- 新增请求内 authoring Context，直接接原 Host/Compiler/Provider；样例包含输入、历史、场景材料、玩家角色和参数，无需创建 Session/Project。Studio 样例可以读取原 Project 的资源，样例仍不写入游戏上下文。
+- Draft overlay 支持未保存资源与依赖；原 exact 资源仍校验正常化 fingerprint。双侧预览各编译一次，共享 Context 与模型／连接／Route 环境，允许两侧使用不同 Program/Generation 修订；末尾沿原来源再检查，不运行第三次编译。
+- 显式试读沿原 Scheduler 和 Compute admission/settlement，预算仅属于当前作者请求。成功响应与用量、失败 unknown 用量分别返回；不将 unknown 写成零。试读结果留在工作区，不发布或改写资源。
+- 共用编辑器已接样例表单、基准 Program/修订选择、三层预览与差异、模型试读和停止，切换编辑视图保留表单与进行中的请求结果。此单元仍在完成相关自查，尚未提交；不代表整体方案完成。
+
+- 本单元源码提交 `90ef12ac8`。4 套件 44 项作者样例／编辑器／Draft Preview 测试通过；另跑 Host 来源与 Program selection 等 3 套件 23 项通过。新增自动 fallback 用例初轮因测试未设置原 `fallbackMode:automatic` 而失败，修正实际请求设置后作者样例 9 项全部通过，证明两次 HTTP 均使用作者草稿且 unknown/settled 两次用量保留。未进行真实付费 Provider 调用。
+- 8 个变更产品 JS 模块 ESLint、中文本地化覆盖、`git diff --check` 通过。真实 Chromium 1280×900 与 390×844 检查独立样例 10 项表单与中文输入，页面无横向溢出；未配置 Route 时预览／试读正确禁用并提示原 Runtime 入口。临时浏览器已关闭，隔离服务器已停止；临时数据与截图完成用途后清理。
+- 下一实现单元为 Node 独立 Program 的原 schema／Inspector／V3 各域调用与 plan-prompt 接线，之后继续分享／升级和全产品前端；Task 保持进行中，main 尚未合入。
