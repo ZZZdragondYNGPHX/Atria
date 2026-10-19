@@ -1464,3 +1464,19 @@
 ### 状态
 
 - P3/P4 实现与 FS/SQLite 回归收口；P6 旧编排清退完成。最终产品 Gate 仍 **NOT_READY**：缺 SQL 引擎、真实 Provider 与平台证据，且 main 基线失败未在本任务处理。未合 main。
+
+## 2026-10-19 — CachyOS 收尾与分支回环实证
+
+- 远端快进：Source `532805fbb` → `13a510bf2`，Docs `4737d2fbe` → `158a1c5d3`；两个工作树起始 clean。同一任务分支续接，未引入独立审查流程。
+- 环境：CachyOS、Node `24.21.0`、SQLite `3.53.1`；复用本机已有隔离 MySQL `8.4.11` / PostgreSQL `18.6`。Source/Tests 既有依赖和 SQLite 原生绑定可用，无重装或用户库迁移。
+- 新增主 RP、Game、Project 与 RP 委派子图的分支内回环端到端正例，核对未执行节点保留原 reservation/Attempt、重复 Planner 的新身份、兄弟分支不重复发送、原银行计费、唯一正式输出及 cold 只读证明。Game 正例发现入口 Profile 将分支限制为单一输入，合法可选回边端口在发送前即被拒；沿原 typed-port 校验允许唯一必需 task 输入之外的可选端口，未增加执行或授权 authority。其它正例的执行证据随后续记。
+- SQL core：`p3-sql`、`sql-administration`、`sql-owner-loss` 三套 **14/14 PASS，4.398s**。首次 SQL 并行扫描及另行回环 runner 共用 PG database，触发数据库级原 Host 排他，不能计为产品失败或通过；后续每个 runner 创建独立临时 database、内部串行执行并最终删除，不修改产品 Owner/锁协议。
+- Browser：原 `e2e/native-orchestration` 与 `05-workspaces` **6/6 PASS，1.9min**，覆盖 1440/390 宽度、Plans/Runs/Memory、可信 Project 准备与 Shell 工作区路由。
+- 真实 Provider：使用用户指定 `Atria-private/native-api` 的现行配置，按 priority 选择 `chat-1`，新增 **2 次实际 HTTP 200**，未调用 secondary。RP 原 Host→Model/Effect→Chat/Output/Root completed，报告 **222 tokens**；Project 原 Host→Model/Effect→原 Task 消费，报告 **1827 tokens**，没有正式 Review/Commit，Root running 符合该临时 Task 路径。两笔均在原业务银行结算，无 unknown usage；不冒称价格或文学质量达标。滚动发送状态及有限摘要保留私密目录，不保留请求/响应正文；daily/RPM 配置仍为 null。
+- 旧执行根/import/capability 硬切脚本通过；必要 ESLint 与 diff 检查通过。POSIX 全量、SQL 消费者和新增回环仍在运行，最终 Gate 暂不核销；Termux 设备当前不可用，未伪称实测。
+- 用户本轮明确将 Termux 实机验证搁置，后续自行在实际使用中测试；它不再阻塞本次收尾，不改写为已测通过。
+- 原回归命令的裸 `native-orchestration` 匹配到了工作树名称，实际选入其它领域；已改用 `/tests/native-orchestration/` 或精确文件列表。已完成的相关 suite 保留分次证据；误选的 `endpoints/skills` 等结果不作为本次编排验收，也不借此扩展无关产品域。
+- Source checkpoint：`83e96b48b` 保存 Game 入口修复、四组回环正例和三语产品文档；`347c3f8a8` 仅给新 Game 回环 fixture 显式 60s transport headroom；`3ab61b6cd` 删除仍使用退役 `workspace-prompt` 的 S34 live pilot，README 改为真实 `plan-prompt` 合同，保留现行 learning optimizer 本地测试。没有把旧 target 改名成兼容路径。
+- 回环实证分次齐全：RP 四引擎 **4/4 PASS，73.436s**；Game 与 Project 各四引擎均通过 live/cold、原预约身份及兄弟分支不重发。Project 首批 FS/SQLite/MySQL 通过，PG 的 10s synthetic transport 超时在 fixture 显式 60s 后 **1/1 PASS，217.981s**；Game 首批相同生产字节的前三引擎通过，PG 后续同样显式 fixture 期限 **1/1 PASS，75.560s**。上述是分次证据，不记为末版单轮 12 项全绿。Project 另计原三次正式工具续跑回边，夹具明确允许总计三次 loop visits，未放宽产品上限。
+- RP 委派子图完整 **6/6 PASS，76.866s**：新增正例保留冻结 terminal 原 Attempt、父银行中五笔子费用与一笔父费用、子 allocation released、唯一 Chat 与 cold proof。新增轮次超出旧夹具 32 个 local jobs / 父树 50 steps 时原限制确实拒绝；仅为新夹具声明 64 jobs / 60 steps，旧夹具保持，生产 bank/逻辑计数不变。
+- 主线 `6b6ddde4d` 的四个精简提交正在本地整合。冲突按真实 V3 消费者处理，保留退役文档删除、原本地计算 helper/唯一银行，主线去除的重复 `restoreState` 读检查不恢复；合并产品树相对任务树仅该一行差异。集成树原 Run policy / generation local-work 两套 **83/83 PASS，65.213s**。尚未提交 main，完整相关回归继续。
