@@ -26,7 +26,10 @@ function assertLocalRoot(root, localVolumes) {
             localVolumes.set(volume.toLowerCase(), true);
         }
     } else if (['linux', 'android'].includes(process.platform)) {
-        if (!LOCAL_LINUX_FILESYSTEMS.has(Number(fs.statfsSync(root).type))) throw unavailable(new Error('Native Host filesystem has not demonstrated local ownership/durability'));
+        // Linux magic values are 32-bit; Android/libuv can sign-extend them.
+        // Read as BigInt before narrowing so a uint64 value cannot lose bits.
+        const type = Number(fs.statfsSync(root, { bigint: true }).type & 0xffffffffn);
+        if (!LOCAL_LINUX_FILESYSTEMS.has(type)) throw unavailable(new Error(`Native Host filesystem has not demonstrated local ownership/durability (type=0x${type.toString(16)})`));
     } else if (process.platform === 'darwin') {
         // Fixed Foundation code, with the canonical path passed as argv.
         // Never interpolate a data-root string into an AppleScript or shell.
