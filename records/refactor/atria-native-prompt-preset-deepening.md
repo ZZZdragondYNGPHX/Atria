@@ -393,3 +393,17 @@
 - Project Worker 共用原 Task 的 Route／费用链，但可各自选 Program；准备／重检包含各 Worker 的有效配置。Node 的 plan-prompt 候选在原 PromptCandidateStore 保留 exact 修订，生成新 Plan pin，采用／回滚只更新原 Binding；普通 Route 默认候选维持原采用方式。新增 Program-only 候选不能误用普通 Route apply。
 - 实际相关自查分组：原机制／三域 producer／Draft 5 套件 207 项通过；Node／原候选等 3 套件 36 项通过；补充 Node 候选 FS/SQLite 后原 plan-prompt 套件 14 项通过；协作、Session fallback 和 Node 5 套件 69 项通过。最终新增 Node 功能套件 8 项通过，涵盖四域真实本地 HTTP、RP 独立节点、Session 委托子 Run、Project 三 Worker 各自 Program，以及 V3 自动 fallback 两次原费用记录。组间有重复，未累加成独立用例数。
 - 产品 JS ESLint、本地化覆盖与 diff 检查通过；此单元尚未做 Inspector 的真实浏览器操作，归后续全产品前端浏览器串联。Task 继续分享／多修订映射／私人升级与后续前端接线，仍未合 main。
+
+## 2026-10-19 — 分享修订映射与私人升级（实施中）
+
+- 已确认原 ResourceBundle 使用完整 owner/exact ref 闭包、逻辑身份／修订分别映射；PresetStore 仍按单 ID 去重，现正在改为一份逻辑身份可保留多个 exact 修订，并明确 `programRevision` 选择主 Program。Program 同逻辑 ID 的父／子修订可以共同发行。
+- 编辑器保存仅更新被编辑的 exact 引用；Preset 的分类仍按逻辑 Module 组织。原文、Anchor/derive 条目身份和 exact 依赖映射同步；紧凑 moduleRefs 同一逻辑 Module 多修订的条目身份补充出现序号，避免复制时重复 entryId。
+- 同步可选 PromptCandidateStore 与 plan-prompt，候选的 before/after refs 逐 exact 对应，不再只按 Module/Program ID 替换。当前相关自查正在迭代；初轮发现并修复 Package 导入旧输入范围和紧凑同 ID 条目重名问题，不宣称本单元已完成。
+
+- 本单元源码提交 `3874e03bb`。Preset 支持同一逻辑 Module／Program 的多个 exact 修订，显式主 Program 修订、复制和导出保持一致；可选候选通过 `baseRefs`／`changedRefs` 精确成对替换。分类移除同步 exact 派生操作，不留下已删条目引用。普通 ResourceBundle、Preset 和 Fork 均保留可解析的原始来源／本地基版。
+- 私人升级加入旧上游／私人草稿／新上游／合并草稿视图。字段与稳定 Stage/Entry 独立改动合并，正文、删除和顺序冲突由作者选择；派生条目消失时逐项选新条目或删除操作。合并进入同一 Undo/Redo 草稿，后续预览／试读／保存分开；Preset 新依赖复制成自己的资源，并作为未保存 overlay 参与样例预览。保存后可查看固定消费者，Runtime／Project／Package 原引用与新增 Plan pin 行可打开原入口，未自动改写消费者。
+- 补正 Node Inspector 的资源深链，使用原 `openLibraryResource`；实测独立切换 Program 不改变模型 Route，并打开指定修订。Module 独立样例按自身声明生成普通临时 Program 参数与 entry config，基准按自身 Stage 编译；已有预览在正文改变后标记为旧草稿结果。
+- 最终相关分组：分享／编排／候选／编辑器等 10 套件 77 项通过；新增 exact 候选、Node 消费者和升级等 5 套件 43 项通过；新增依赖基版与 UI 的 4 套件 15 项通过；最后 Module 参数样例与升级 UI 的 2 套件 7 项通过。组间重叠，不汇总为独立测试数。15 个变更产品 JS 模块 ESLint、简体中文覆盖和 diff 检查通过。
+- 使用实际 Chromium 和本任务隔离服务器，在 1280×900、390×844 对新编辑组件执行来源对比、冲突选择、Undo/Redo、保存、Node Program 选择与深链回调。浏览器使用明确的临时前端数据／读取 fixture；没有把 fixture 回调说成真实 Plan 发布或真实 Provider 费用证明。实际后端消费者和各域发送证据归上面的原本地 HTTP／存储测试。
+- 浏览器复现手机底部导航手柄遮住末尾保存按钮，增加编辑器底部安全滚动空间后，真实点击保存成功，正文／新标题正确，页面无横向溢出。浏览器已关闭、隔离服务器已停止，本轮临时数据、脚本和截图已清理。
+- 后续继续全产品前端剩余操作链、可选功能与独立视觉接线；任务未整体完成，仍沿原分支和 Record 推进，未合 main。
