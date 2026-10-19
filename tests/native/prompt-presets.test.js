@@ -153,3 +153,65 @@ describe('isolated Prompt presets', () => {
         } finally { await h.cleanup(); }
     });
 });
+
+test('one logical Module can retain multiple exact revisions through preset import, save and re-export', async () => {
+    const h = await makeTempFsEngineHarness();
+    try {
+        const store = new PromptPresetStore({ engine: h.engine }), library = new VersionedJsonResourceHandler({ engine: h.engine });
+        const source = fixture(), first = source.entries.find(entry => entry.resourceType === 'core.prompt-module');
+        const second = { resourceType: first.resourceType, resource: { ...first.resource, revision: 'second', body: 'Second exact voice' } };
+        source.entries.push(second);
+        source.entries[0].resource.stages[0].moduleRefs.push({ scope: 'library', resourceType: second.resourceType, resourceId: second.resource.promptModuleId, revision: second.resource.revision });
+        const saved = await store.save(h.handle, source, { importing: true });
+        const imported = await store.get(h.handle, saved.presetId);
+        const modules = imported.entries.filter(entry => entry.resourceType === 'core.prompt-module');
+        expect(new Set(modules.map(entry => entry.resource.promptModuleId)).size).toBe(1);
+        expect(new Set(modules.map(entry => entry.resource.revision)).size).toBe(2);
+        const program = imported.entries.find(entry => entry.resourceType === 'core.prompt-program');
+        const references = promptStageModuleRefs(program.resource.stages[0]);
+        expect(await Promise.all(references.map(async ref => (await library.getExact(h.handle, ref)).snapshot.body))).toEqual(['Original', 'Second exact voice']);
+        modules[1].resource.body = 'Private second voice';
+        const changed = await store.save(h.handle, imported, { id: saved.presetId, expectedRevision: imported.revision });
+        const next = await store.get(h.handle, saved.presetId);
+        expect(next.entries.filter(entry => entry.resourceType === 'core.prompt-module').map(entry => entry.resource.body)).toEqual(['Original', 'Private second voice']);
+        expect((await library.getExact(h.handle, references[1])).snapshot.body).toBe('Second exact voice');
+        const origin = JSON.parse(next.entries.filter(entry => entry.resourceType === 'core.prompt-module')[1].resource.provenance.at(-1).ref);
+        expect((await library.getExact(h.handle, origin.baseRef)).snapshot.body).toBe('Second exact voice');
+        expect(next.programRevision).toBe(changed.revision);
+        await expect(store.save(h.handle, next, { importing: true })).resolves.toHaveProperty('presetId');
+    } finally { await h.cleanup(); }
+});
+
+test('same-identity parent and child Programs keep distinct revisions and the explicit main revision', async () => {
+    const h = await makeTempFsEngineHarness();
+    try {
+        const store = new PromptPresetStore({ engine: h.engine }), library = new VersionedJsonResourceHandler({ engine: h.engine });
+        const source = fixture(), parent = source.entries[0].resource;
+        const child = { ...parent, revision: 'child', parentRef: { scope: 'library', resourceType: 'core.prompt-program', resourceId: parent.promptProgramId, revision: parent.revision }, stages: [{ stageId: 'stage.main', moduleRefs: [] }] };
+        source.programRevision = child.revision; source.entries.push({ resourceType: 'core.prompt-program', resource: child });
+        const saved = await store.save(h.handle, source, { importing: true }), value = await store.get(h.handle, saved.presetId);
+        const root = await library.getCurrent(h.handle, 'core.prompt-program', saved.presetId);
+        expect(root.snapshot.revision).toBe(value.programRevision);
+        expect(root.snapshot.parentRef.resourceId).toBe(saved.presetId); expect(root.snapshot.parentRef.revision).not.toBe(value.programRevision);
+        expect(promptStageModuleRefs((await library.getExact(h.handle, root.snapshot.parentRef)).snapshot.stages[0])).toHaveLength(1);
+        await expect(store.save(h.handle, value, { id: saved.presetId, expectedRevision: saved.revision })).resolves.toHaveProperty('presetId');
+    } finally { await h.cleanup(); }
+});
+
+test('upgraded unsaved dependency copies record a base revision that resolves after the Preset owns them', async () => {
+    const h = await makeTempFsEngineHarness();
+    try {
+        const store = new PromptPresetStore({ engine: h.engine }), library = new VersionedJsonResourceHandler({ engine: h.engine });
+        const saved = await store.save(h.handle, fixture()), preset = await store.get(h.handle, saved.presetId);
+        const module = { ...preset.entries.find(entry => entry.resourceType === 'core.prompt-module').resource, promptModuleId: createNativeId('promptModule'), revision: 'new-copy', body: 'Upstream dependency' };
+        const ref = { scope: 'library', resourceType: 'core.prompt-module', resourceId: module.promptModuleId, revision: module.revision };
+        module.provenance = [{ source: 'atria.fork', ref: JSON.stringify({ source: ref, baseRef: ref }) }];
+        preset.entries.push({ resourceType: 'core.prompt-module', resource: module });
+        preset.entries.find(entry => entry.resourceType === 'core.prompt-program').resource.stages[0].entries.push({ entryId: 'upgraded', kind: 'module', moduleRef: ref });
+        await store.save(h.handle, preset, { id: saved.presetId, expectedRevision: saved.revision });
+        const next = await store.get(h.handle, saved.presetId), copy = next.entries.find(entry => entry.resource.promptModuleId === ref.resourceId);
+        const origin = JSON.parse(copy.resource.provenance[0].ref);
+        expect(origin.baseRef.revision).toBe(copy.resource.revision);
+        expect((await library.getExact(h.handle, origin.baseRef)).snapshot.body).toBe('Upstream dependency');
+    } finally { await h.cleanup(); }
+});

@@ -8,9 +8,12 @@ export const PROMPT_TARGETS = Object.freeze([
 
 // moduleRefs is the compact module-only form. A stage stores exactly one form.
 export function promptStageEntries(stage) {
-    return stage.entries ?? stage.moduleRefs.map(moduleRef => ({
-        entryId: moduleRef.resourceId, kind: 'module', moduleRef,
-    }));
+    if (stage.entries) return stage.entries;
+    const occurrences = new Map();
+    return stage.moduleRefs.map(moduleRef => {
+        const occurrence = (occurrences.get(moduleRef.resourceId) ?? 0) + 1; occurrences.set(moduleRef.resourceId, occurrence);
+        return { entryId: moduleRef.resourceId + (occurrence === 1 ? '' : '.' + occurrence), kind: 'module', moduleRef };
+    });
 }
 
 export function promptStageModuleRefs(stage) {
@@ -23,7 +26,10 @@ export function mapPromptStageRefs(stage, mapper) {
     const mapped = stage.moduleRefs.map(mapper);
     if (mapped.some((ref, index) => ref.resourceId !== stage.moduleRefs[index].resourceId)) {
         const { moduleRefs, ...rest } = stage;
-        return { ...rest, entries: moduleRefs.map((ref, index) => ({ entryId: ref.resourceId, kind: 'module', moduleRef: mapped[index] })) };
+        return { ...rest, entries: promptStageEntries(stage).map((entry, index) => ({ ...entry, moduleRef: mapped[index] })) };
     }
     return { ...stage, moduleRefs: mapped };
 }
+
+export const promptProgramResourceRefs = resource => [resource.parentRef, ...resource.stages.flatMap(promptStageModuleRefs),
+    ...(resource.derive ?? []).flatMap(operation => [operation.replacementRef, operation.entry?.moduleRef])].filter(Boolean);

@@ -11,7 +11,8 @@ export function renderResourceReferenceRows({ document: doc, root, references, h
         el(doc, 'p', 'atri-library-meta', [item.owner, node.revision || node.metadata?.exactRef?.revision, item.edge?.kind].filter(Boolean).join(' · '), row);
         disclosure(doc, row, 'Exact reference', { ref, edge: item.edge, metadata: node.metadata });
         let open;
-        if (item.edge?.kind === 'runtime-route-exact') open = () => host?.openRuntimeSection('routes', node.resourceId);
+        if (item.edge?.kind === 'plan-pin-exact') open = () => host?.openPlan(node.resourceId, node.displayName);
+        else if (item.edge?.kind === 'runtime-route-exact') open = () => host?.openRuntimeSection('routes', node.resourceId);
         else if (scope[0] === 'project') open = () => onOpen?.(node) === true || host?.openBuild(node.projectId || scope[1], item.owner);
         else if (scope[0] === 'package') open = () => ['core.world', 'core.knowledge', 'core.prompt-program', 'core.prompt-module', 'core.generation-profile'].includes(node.resourceType) ? host?.openLibraryResource(ref, node.displayName) : host?.openLibraryWork(node.packageId || scope[1], item.owner);
         else if (node.resourceType === 'core.world') open = () => host?.openLibraryWorld(node.resourceId, node.displayName);

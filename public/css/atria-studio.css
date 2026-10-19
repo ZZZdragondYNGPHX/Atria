@@ -2063,3 +2063,9 @@ not a wall of unlabeled inputs.
 .atri-prompt-preview-result pre { max-height: 480px; overflow: auto; padding: 12px; background: var(--atri-surface-1); border-radius: var(--atri-radius-sm); }
 .atri-prompt-preview [aria-pressed="true"] { outline: 2px solid var(--atri-accent); outline-offset: 1px; }
 @media (max-width: 700px) { .atri-prompt-sample-fields { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 700px) {
+    .atri-prompt-editor { padding-block-end: calc(72px + env(safe-area-inset-bottom)); }
+}
+
+.atri-prompt-preview fieldset { min-width: 0; margin: 12px 0; padding: 12px; border: 1px solid var(--atri-separator); border-radius: var(--atri-radius-sm); }
+.atri-prompt-preview legend { max-width: 100%; overflow-wrap: anywhere; }

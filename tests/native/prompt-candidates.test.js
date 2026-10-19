@@ -269,3 +269,23 @@ test('HTTP authenticates owner, ignores body owner, uses no-store and respects r
     setReadOnly(false);
     await supertest(app).post(url + 'apply').set('x-user', f.h.handle).send({ candidateId: c.candidateId }).expect(200);
 });
+
+test('a body candidate changes only the selected exact Module revision when the Program also uses another revision of that identity', async () => {
+    const f = await fixture(), draft = await f.presets.get(f.h.handle, f.saved.presetId);
+    const original = draft.entries.find(entry => entry.resource.promptModuleId === f.moduleRef.resourceId);
+    const extra = { resourceType: original.resourceType, resource: { ...original.resource, revision: 'second-voice', body: 'Second voice' } };
+    const extraRef = { ...f.moduleRef, revision: extra.resource.revision };
+    draft.entries.push(extra); draft.entries.find(entry => entry.resourceType === 'core.prompt-program').resource.stages[0].entries.push({ entryId: 'second.voice', kind: 'module', moduleRef: extraRef });
+    const saved = await f.presets.save(f.h.handle, draft, { id: f.saved.presetId, expectedRevision: draft.revision }), preset = await f.presets.get(f.h.handle, saved.presetId);
+    const firstRef = preset.refs.find(ref => ref.resourceType === 'core.prompt-module' && preset.entries.some(entry => entry.resource.promptModuleId === ref.resourceId && entry.resource.revision === ref.revision && entry.resource.body === 'Original style'));
+    const selected = preset.refs.find(ref => ref.resourceId === firstRef.resourceId && ref.revision !== firstRef.revision);
+    const route = { ...f.route, promptProgramRef: preset.refs.find(ref => ref.resourceType === 'core.prompt-program' && ref.revision === preset.programRevision), generationProfileRef: preset.refs.find(ref => ref.resourceType === 'core.generation-profile') };
+    await f.persistence.saveRuntimeRoute(f.h.handle, route);
+    await f.candidates.declare(f.h.handle, saved.presetId, { expectedRevision: saved.revision, moduleRefs: [selected] });
+    const candidate = await f.candidates.prepare(f.h.handle, saved.presetId, { runtimeRouteId: route.runtimeRouteId, expectedRouteFingerprint: hashNativeDocument(route), moduleRef: selected, body: 'Evolved second voice' });
+    const applied = await f.candidates.apply(f.h.handle, saved.presetId, candidate.candidateId);
+    const program = (await f.library.getExact(f.h.handle, applied.desiredRoute.promptProgramRef)).snapshot;
+    const refs = promptStageModuleRefs(program.stages[0]); expect(refs[0]).toEqual(firstRef);
+    expect((await f.library.getExact(f.h.handle, refs.at(-1))).snapshot.body).toBe('Evolved second voice');
+    expect((await f.library.getExact(f.h.handle, firstRef)).snapshot.body).toBe('Original style');
+});

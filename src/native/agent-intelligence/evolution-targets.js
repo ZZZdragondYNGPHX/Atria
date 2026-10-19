@@ -1,3 +1,4 @@
+import { presetProgramRef, presetEntryRef } from '../../../public/shared/prompt-preset.js';
 import { nodePromptProgramPin } from '../../../public/shared/native-orchestration-contracts.js';
 import { PromptCandidateStore } from '../model-prompt-runtime/prompt-candidates.js';
 import { projectStrategyBase } from './project-strategy.js';
@@ -154,7 +155,7 @@ export class EvolutionTargets {
             for (const route of (await this.host.persistence.listRuntimeRoutes(handle)).filter(r => r.role === 'role.studio' && !r.projectPromptBindings?.some(b => b.projectId === subject))) {
                 for (const item of await this.prompts.presets.list(handle)) {
                     const preset = await this.prompts.presets.get(handle, item.presetId);
-                    if (!same(route.promptProgramRef, preset.refs.find(r => r.resourceId === preset.programId))) continue;
+                    if (!same(route.promptProgramRef, presetProgramRef(preset))) continue;
                     for (const ref of preset.refs.filter(r => r.resourceType === 'core.prompt-module' && preset.entries.some(e => e.resource.promptModuleId === r.resourceId && e.resource.target === 'system.style'))) choices.push({ label: item.displayName + ' · module ' + ref.resourceId, target: { kind: 'project-prompt', presetId: item.presetId, runtimeRouteId: route.runtimeRouteId, moduleRef: ref }, baseHash: hash(preset) });
                 }
             }
@@ -198,8 +199,8 @@ export class EvolutionTargets {
         const preset = await this.prompts.presets.get(handle, target.presetId), metadata = await this.prompts.inspect(handle, target.presetId);
         const route = await this.host.persistence.getRuntimeRoute(handle, target.runtimeRouteId);
         if (route.role !== 'role.studio' || route.projectPromptBindings?.some(b => b.projectId === subject) || !metadata.declaration?.moduleRefs.some(r => same(r, target.moduleRef))
-            || !same(route.promptProgramRef, preset.refs.find(r => r.resourceId === preset.programId))) conflict();
-        const module = preset.entries.find(e => e.resource.promptModuleId === target.moduleRef.resourceId);
+            || !same(route.promptProgramRef, presetProgramRef(preset))) conflict();
+        const module = preset.entries.find(entry => same(presetEntryRef(entry), target.moduleRef));
         if (!module || module.resource.target !== 'system.style') conflict();
         return { environment: await this.skillEnvironment(handle, scope, subject, target), base: route, declaration: { presetFingerprint: hash(preset), declaration: metadata.declaration }, body: module.resource.body, field: 'body' };
     }

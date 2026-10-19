@@ -75,7 +75,7 @@ export function mountAgentsV3({ document: doc, slot, route, shell, navigation, h
                 const child = navigation.getRoute().child;
                 if (child?.id === 'plans:' + parsed.planId && child.label !== label) navigation.navigateChild({ id: child.id, label, kind: 'detail' }, { history: 'replace', reason: 'agents-v3-title' });
             },
-            openRuns: () => host.openAgentSection('runs'), openPromptProgram: ref => host.openLibrarySection('prompt-programs:' + encodeURIComponent(JSON.stringify(ref))) });
+            openRuns: () => host.openAgentSection('runs'), openPromptProgram: ref => host.openLibraryResource(ref) });
         else if (parsed.section === 'plans') current = mountPlanLibrary({ ...common, onOpen: openPlan });
         else if (parsed.runId) current = mountRunDetail({ ...common, runId: parsed.runId, openPlan: planId => openPlan(planId) });
         else current = mountRunList({ ...common, onOpenRun: runId => openRun(runId) });

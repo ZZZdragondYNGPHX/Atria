@@ -1,3 +1,6 @@
+import express from 'express';
+import supertest from 'supertest';
+import { createNativeGenerationRouter } from '../../src/endpoints/native-generation.js';
 import { makeTempFsEngineHarness as make } from '../storage/harness/contract-harness.js';
 import { projectReviewFixture } from './helpers/project-review-fixture.js';
 import { projectToolCapability } from '../../src/native/orchestration/project-tool-contracts.js';
@@ -114,3 +117,17 @@ test('a Node Program remains selected across the original V3 model fallback and 
         expect(operations.find(operation => operation.compute).compute.attempts).toHaveLength(2);
     } finally { await f.cleanup(); }
 }, 60000);
+
+
+test('Used By exposes the original exact Plan pin as a consumer for adoption', async () => {
+    const f = await projectModelFixture(make, { configurePlan: selectProgram });
+    try {
+        const app = express(); app.use(express.json()); app.use((req, _res, next) => { req.user = { profile: { handle: f.h.handle } }; next(); });
+        app.use(createNativeGenerationRouter(() => f.host));
+        const ref = f.plan.dependencyPins.find(pin => pin.pinId === 'node.program').resourceRef;
+        const result = await supertest(app).post('/resources/used-by').send(ref).expect(200);
+        expect(result.body).toContainEqual(expect.objectContaining({ owner: 'Agents', edge: expect.objectContaining({ kind: 'plan-pin-exact' }),
+            node: expect.objectContaining({ resourceId: f.planRef.planId, metadata: expect.objectContaining({ exactRef: ref, pinId: 'node.program' }) }) }));
+        expect(f.requests).toEqual([]);
+    } finally { await f.cleanup(); }
+}, 30000);

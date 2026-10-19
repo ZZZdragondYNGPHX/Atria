@@ -9,8 +9,9 @@ import { formatShellText, translateShellText } from '../atria-shell/localization
 import { createStudioNativeId } from './studio-authoring.js';
 import { runtimeRequest } from './runtime-client.js';
 import { nativeStudioClient } from './studio-client.js';
-import { promptStageEntries, promptStageModuleRefs, mapPromptStageRefs } from '../../shared/prompt-module-order.js';
+import { promptStageEntries, promptStageModuleRefs, promptProgramResourceRefs, mapPromptStageRefs } from '../../shared/prompt-module-order.js';
 import { NATIVE_GENERATION_DEFAULTS as generationDefaults } from '../../shared/native-generation-defaults.js';
+import { mountPromptUpgrade } from './prompt-upgrade.js';
 import { mountPromptSamplePreview } from './prompt-sample-preview.js';
 
 export const PROMPT_TYPES = Object.freeze({
@@ -111,10 +112,10 @@ function generationFields(doc, fields, draft, isTracking = () => false) {
 }
 
 // Copies the exact dependency closure. Package originals never receive writes.
-export function forkPromptClosure(entries, selected, { derive = false, scope = { scope: 'library' } } = {}) {
+export function forkPromptClosure(entries, selected, { derive = false, scope = { scope: 'library' }, copyLibrary = false, retainedRefs = [] } = {}) {
     const output = []; const cache = new Map(); const active = new Set();
     const logicalKey = ref => exactKey({ ...ref, revision: '' });
-    const identities = new Map();
+    const identities = new Map(), retained = new Set(retainedRefs.map(exactKey));
     const visit = entry => {
         const key = exactKey(entry.ref);
         if (active.has(key)) throw new Error('Prompt dependency cycle');
@@ -124,10 +125,10 @@ export function forkPromptClosure(entries, selected, { derive = false, scope = {
         const resource = clone(entry.resource);
         if (!identities.has(logicalKey(entry.ref))) identities.set(logicalKey(entry.ref), createStudioNativeId(prefix));
         resource[id] = identities.get(logicalKey(entry.ref)); resource.revision = createStudioNativeId('rev');
-        resource.provenance = [...(resource.provenance || []), { source: 'atria.fork', ref: key }];
         const mapped = resourceRef(type, resource, scope); cache.set(key, mapped);
+        resource.provenance = [...(resource.provenance || []), { source: 'atria.fork', ref: JSON.stringify({ source: entry.ref, baseRef: mapped }) }];
         const dependency = ref => {
-            if (ref.scope === 'library') return clone(ref);
+            if (retained.has(exactKey(ref)) || ref.scope === 'library' && !copyLibrary) return clone(ref);
             const found = entries.find(item => exactKey(item.ref) === exactKey(ref));
             if (!found) throw new Error(formatProductText('Missing exact dependency: ${0}@${1}', [ref.resourceId, ref.revision]));
             return visit(found);
@@ -164,9 +165,10 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
     let draft = clone(entry.resource); let advanced = false; let submitted = false; let submitting = false;
     const initialDraft = JSON.stringify(draft);
     let renderVersion = 0; let jsonBuffer = null; let readActive = () => draft; let rawActive = () => jsonBuffer; let lastEdit = null;
-    const history = [{ draft: clone(draft), jsonBuffer }]; const future = [];
+    let upgradeDependencies = [];
+    const history = [{ draft: clone(draft), jsonBuffer, dependencies: [] }]; const future = [];
     const textSelections = new Map();
-    const sampleState = {};
+    const sampleState = {}, upgradeState = {};
     const root = element(doc, 'section', undefined, parent); root.className = 'atri-prompt-editor';
     root.dataset.atriPromptEditor = 'true';
     if (librarySurface) root.dataset.atriLibraryEditor = 'true';
@@ -174,7 +176,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
     const jsonValue = text => {
         const value = JSON.parse(text);
         if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(translateShellText('Enter a resource JSON object.'));
-        if (JSON.stringify(value.provenance || []) !== JSON.stringify(entry.resource.provenance || [])) throw new Error(translateShellText('System provenance is read-only.'));
+        if (JSON.stringify(value.provenance || []) !== JSON.stringify(draft.provenance || [])) throw new Error(translateShellText('System provenance is read-only.'));
         return value;
     };
     const isDirty = () => {
@@ -186,7 +188,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
         if (submitted || submitting) return;
         if (advanced) jsonBuffer = rawActive();
         try { draft = clone(readActive()); if (!advanced && jsonBuffer !== null) { jsonValue(jsonBuffer); jsonBuffer = null; } } catch { /* Keep invalid input in its current view. */ }
-        const next = { draft: clone(draft), jsonBuffer };
+        const next = { draft: clone(draft), jsonBuffer, dependencies: clone(upgradeDependencies) };
         const comparable = state => {
             let invalid = state.jsonBuffer;
             if (invalid !== null) { try { jsonValue(invalid); invalid = null; } catch { /* Invalid JSON remains an editable history state. */ } }
@@ -200,11 +202,12 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
         } else history[history.length - 1] = next;
         lastEdit = typingTarget ? { target: typingTarget, time } : null;
         root.dataset.atriaDraftDirty = String(isDirty());
+        if (sampleState.result) sampleState.refresh?.();
     };
     const restore = state => {
         const active = doc.activeElement; const label = active?.getAttribute('aria-label');
         const selection = typeof active?.selectionStart === 'number' ? [active.selectionStart, active.selectionEnd, active.scrollTop] : null;
-        draft = clone(state.draft); jsonBuffer = state.jsonBuffer; render();
+        draft = clone(state.draft); jsonBuffer = state.jsonBuffer; upgradeDependencies = clone(state.dependencies ?? []); render();
         const control = [...root.querySelectorAll('[aria-label]')].find(node => node.getAttribute('aria-label') === label);
         control?.focus({ preventScroll: true });
         if (selection && control?.setSelectionRange) { control.setSelectionRange(selection[0], selection[1]); control.scrollTop = selection[2]; }
@@ -228,6 +231,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
         return section;
     }
     function render() {
+        const availableEntries = [...entries, ...upgradeDependencies];
         const version = ++renderVersion;
         rememberFolds();
         for (const node of root.querySelectorAll('textarea')) textSelections.set(node.getAttribute('aria-label'), [node.selectionStart, node.selectionEnd, node.scrollTop]);
@@ -287,7 +291,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                 };
             } else if (entry.ref.resourceType === 'core.prompt-program') {
                 const stages = clone(draft.stages); const stageConditions = new Map(); const anchorConditions = new Map();
-                const modules = new Map(entries.filter(item => item.ref.resourceType === 'core.prompt-module').map(item => [exactKey(item.ref), item.resource]));
+                const modules = new Map(availableEntries.filter(item => item.ref.resourceType === 'core.prompt-module').map(item => [exactKey(item.ref), item.resource]));
                 const syncConditions = () => { for (const [anchor, read] of anchorConditions) anchor.condition = read(); for (const [stage, read] of stageConditions) if (stages.includes(stage)) { const condition = read(); if (stage.condition !== undefined || condition !== null) stage.condition = condition; } };
                 const treeBox = fold(fields, 'stages', 'Stage / module tree', () => formatShellText('${0} stages · ${1} modules', [stages.length, stages.reduce((count, stage) => count + promptStageModuleRefs(stage).length, 0)]));
                 if (!foldState.has('stages')) treeBox.open = true;
@@ -322,7 +326,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                             const line = element(doc, 'div', undefined, row); line.className = 'atri-prompt-order-entry';
                             line.dataset.promptEntry = item.entryId;
                             if (item.kind === 'module') {
-                                const ref = item.moduleRef; const module = entries.find(entry => exactKey(entry.ref) === exactKey(ref));
+                                const ref = item.moduleRef; const module = availableEntries.find(entry => exactKey(entry.ref) === exactKey(ref));
                                 element(doc, 'span', (module?.resource.displayName || ref.resourceId) + ' · ' + (module?.resource.target || '') + ' · ' + ref.revision, line);
                             } else {
                                 const settings = fold(line, 'anchor-settings:' + stage.stageId + ':' + item.entryId, 'Context sources', () => item.accepts.join(', '));
@@ -357,7 +361,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                             storeEntries([...promptStageEntries(stage), { entryId: createStudioNativeId('step'), kind: 'anchor', target: 'context.before_history', accepts: ['context.fact'], required: false }]);
                             renderStages(index);
                         });
-                        const choices = entries.filter(item => item.ref.resourceType === 'core.prompt-module' && (entry.ref.scope !== 'library' || item.ref.scope === 'library') && item.ref.scope !== 'package');
+                        const choices = availableEntries.filter(item => item.ref.resourceType === 'core.prompt-module' && (entry.ref.scope !== 'library' || item.ref.scope === 'library') && item.ref.scope !== 'package');
                         const picker = select(doc, row, formatShellText('Module for stage ${0}', [index + 1], undefined, 'atria.product.stageModuleIndex'), [['', 'Choose exact module…'], ...choices.map(item => [exactKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope, true])]);
                         picker.dataset.atriStageModulePicker = 'true';
                         action(doc, row, 'Add module', () => {
@@ -391,7 +395,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
             const conditionBox = entry.ref.resourceType === 'core.prompt-module' ? fold(fields, 'condition', 'Condition', () => conditionBox.querySelector('select')?.value ? translateShellText('Configured') : translateShellText('Always')) : null;
             const readCondition = conditionBox ? guarded(mountPromptCondition(doc, conditionBox, draft.condition), conditionBox) : null;
             const deriveBox = entry.ref.resourceType === 'core.prompt-program' ? fold(fields, 'derive', 'Derive operations', () => formatShellText('${0} operations', [deriveBox.querySelectorAll('.atri-prompt-derive > fieldset').length])) : null;
-            const readDerive = deriveBox ? guarded(mountPromptDerive(doc, deriveBox, draft, entries, entry.ref, () => specific().stages), deriveBox) : null;
+            const readDerive = deriveBox ? guarded(mountPromptDerive(doc, deriveBox, draft, availableEntries, entry.ref, () => specific().stages), deriveBox) : null;
             for (const box of [parameterBox, conditionBox, deriveBox]) box?.querySelector('h4, legend')?.remove();
             read = () => {
                 const value = { ...draft, displayName: name.value, revision: revision.value, ...specific(),
@@ -403,12 +407,35 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
             const provenance = fold(root, 'provenance', 'System provenance (read-only)');
             element(doc, 'pre', JSON.stringify(draft.provenance || [], null, 2), provenance);
         }
-        mountPromptSamplePreview({ document: doc, parent: root, entry, entries, state: sampleState, readDraft: () => { if (jsonBuffer !== null) jsonValue(jsonBuffer); return readActive(); } });
+        mountPromptSamplePreview({ document: doc, parent: root, entry, entries: availableEntries, readDependencies: () => upgradeDependencies, state: sampleState, readDraft: () => { if (jsonBuffer !== null) jsonValue(jsonBuffer); return readActive(); } });
+        mountPromptUpgrade({ document: doc, parent: root, entry, resource: draft, state: upgradeState,
+            readDraft: () => { if (jsonBuffer !== null) jsonValue(jsonBuffer); return readActive(); }, applyDraft: (resource, { resources }) => {
+                capture();
+                if (presetSurface && entry.ref.resourceType === 'core.prompt-program') {
+                    const selected = { resource, ref: resourceRef(entry.ref.resourceType, resource, { scope: 'library' }) };
+                    const copies = forkPromptClosure([...resources, ...upgradeDependencies], selected, { copyLibrary: true, retainedRefs: [...entries, ...upgradeDependencies].map(item => item.ref) });
+                    const root = copies.entries.find(item => exactKey(item.ref) === exactKey(copies.ref));
+                    resource = { ...root.resource, displayName: resource.displayName, promptProgramId: resource.promptProgramId, revision: resource.revision, provenance: resource.provenance };
+                    upgradeDependencies.push(...copies.entries.filter(item => item !== root));
+                }
+                const pending = new Map(upgradeDependencies.map(item => [exactKey(item.ref), item])), used = new Set();
+                const visit = resource => {
+                    if (!resource.promptProgramId) return;
+                    for (const ref of promptProgramResourceRefs(resource)) {
+                        const key = exactKey(ref); if (!pending.has(key) || used.has(key)) continue;
+                        used.add(key); visit(pending.get(key).resource);
+                    }
+                };
+                visit(resource); upgradeDependencies = upgradeDependencies.filter(item => used.has(exactKey(item.ref)));
+                draft = clone(resource); jsonBuffer = null; lastEdit = null; future.length = 0;
+                history.push({ draft: clone(draft), jsonBuffer, dependencies: clone(upgradeDependencies) }); render(); root.dataset.atriaDraftDirty = String(isDirty());
+            } });
         const save = action(doc, root, librarySurface ? 'Save revision' : 'Review / save revision', async () => {
             if (save.disabled || submitting || submitted || !root.isConnected) return; submitting = true; save.disabled = true; save.setAttribute('aria-busy', 'true'); status.replaceChildren();
             try {
                 rememberFolds(); const value = read(); if (!advanced && jsonBuffer !== null) jsonValue(jsonBuffer);
-                root.inert = true; await onSave(value); element(doc, 'p', librarySurface ? 'Saved immutable Library revision.' : 'Revision submitted. Studio changes require human Review / Apply.', status); submitted = true; root.dataset.atriaDraftDirty = 'false';
+                root.inert = true;
+                if (upgradeDependencies.length) await onSave(value, { dependencies: upgradeDependencies }); else await onSave(value); element(doc, 'p', librarySurface ? 'Saved immutable Library revision.' : 'Revision submitted. Studio changes require human Review / Apply.', status); submitted = true; root.dataset.atriaDraftDirty = 'false';
                 root.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
             } catch (e) { if (root.isConnected) error(doc, status, e); } finally { submitting = false; root.inert = false; save.disabled = submitted; save.removeAttribute('aria-busy'); }
         });
@@ -452,6 +479,11 @@ export function mountPromptLibrary({ document: doc, body, route, host }) {
                     }
                     root.replaceChildren(); void host.refreshSearch?.();
                     element(doc, 'p', 'Saved immutable Library revision.', root).setAttribute('role', 'status');
+                    action(doc, root, 'Review pinned consumers', async () => {
+                        const rows = element(doc, 'section', undefined, root);
+                        element(doc, 'p', 'Saving keeps consumer versions pinned. Open each owner to adopt this revision through its existing controls.', rows);
+                        renderResourceReferenceRows({ document: doc, root: rows, references: await runtimeRequest('/resources/used-by', { method: 'POST', body: entry.ref }), host });
+                    });
                     action(doc, root, 'Back to resources', render).focus();
                 } });
             };

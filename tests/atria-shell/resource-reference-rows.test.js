@@ -37,3 +37,11 @@ test('local selection and relationship review are explicit and package originals
     [...root.querySelectorAll('button')].find(item => item.textContent === 'Review relationship').click();
     expect(onManage).toHaveBeenCalledWith(library, resourceReferenceForNode(library));
 });
+
+
+test('a pinned Plan consumer opens the original Plan authoring page', async () => {
+    const root = document.createElement('div'), host = { openPlan: jest.fn() };
+    renderResourceReferenceRows({ document, root, host, references: [{ node: { resourceType: 'core.orchestration-plan', resourceId: 'plan', displayName: 'Narration Plan', scope: 'player', revision: 'published' }, edge: { kind: 'plan-pin-exact' }, owner: 'Agents' }] });
+    root.querySelector('button').click(); await Promise.resolve();
+    expect(host.openPlan).toHaveBeenCalledWith('plan', 'Narration Plan');
+});

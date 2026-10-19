@@ -1,3 +1,4 @@
+import { presetProgramRef, presetEntryRef } from '../../../public/shared/prompt-preset.js';
 import { PromptCandidateStore } from '../model-prompt-runtime/prompt-candidates.js';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
@@ -233,11 +234,11 @@ export class PlanRepository {
 
         const id = promptCandidateRef?.presetId ?? programRef.resourceId;
         const { preset, root } = selected ?? await prompts._read(handle, id), metadata = root.promptEvolution ?? { declaration: null, candidates: [] };
-        const module = preset.entries.find(entry => entry.resourceType === 'core.prompt-module' && entry.resource.promptModuleId === target.promptModuleRef.resourceId);
+        const module = preset.entries.find(entry => equalNativeDocuments(presetEntryRef(entry), target.promptModuleRef));
         if (!equalNativeDocuments(checked?.candidate.moduleRef ?? target.promptModuleRef, target.promptModuleRef)
             || !preset.refs.some(ref => equalNativeDocuments(ref, target.promptModuleRef))
             || !module || module.resource.target !== 'system.style'
-            || !equalNativeDocuments(programRef, preset.refs.find(ref => ref.resourceId === id))
+            || !equalNativeDocuments(programRef, presetProgramRef(preset))
             || checked && !equalNativeDocuments(checked.candidate.programRef ?? originalRoute.promptProgramRef, programRef))
             throw new TypeError('Plan prompt target must be an exact style module on its selected original Preset route');
         return { prompts, pin, programPin, programRef, preset, metadata, route: originalRoute, body: module.resource.body, checked };

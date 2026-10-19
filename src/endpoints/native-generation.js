@@ -847,6 +847,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         } catch { response.status(400).json({ error: 'native_resource_archive_failed' }); }
     });
     router.post('/resources/used-by', async (request, response) => {
+        response.set('Cache-Control', 'private, no-store');
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);
         try {
@@ -857,6 +858,11 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
                 if ([route.promptProgramRef, route.generationProfileRef, ...(route.projectPromptBindings || []).map(b => b.promptProgramRef)].some(item => item.scope === 'library' && item.resourceType === ref.resourceType && item.resourceId === ref.resourceId && item.revision === ref.revision)) {
                     references.push({ node: { displayName: route.displayName, resourceType: 'core.runtime-route', resourceId: route.runtimeRouteId, scope: 'player', metadata: { exactRef: ref } }, owner: 'Runtime', edge: { kind: 'runtime-route-exact', from: route.runtimeRouteId } });
                 }
+            }
+            for (const pin of await host.library.getOrchestrationReferences(handle, ref)) {
+                references.push({ node: { displayName: pin.planId, resourceType: 'core.orchestration-plan', resourceId: pin.planId, scope: 'player',
+                    revision: pin.planRevisionId, metadata: { exactRef: ref, pinId: pin.pinId, planRevisionId: pin.planRevisionId } },
+                owner: 'Agents', edge: { kind: 'plan-pin-exact', from: pin.planId } });
             }
             response.json(references);
         } catch { response.status(400).json({ error: 'native_resource_references_failed' }); }

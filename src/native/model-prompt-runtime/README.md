@@ -534,3 +534,33 @@ candidate resource revisions and an immutable Plan with the new Program pin.
 Adoption/rollback changes the original Plan Binding; it leaves the Route default
 alone. Candidates on a Route-default Program retain their original Route/Binding
 adoption path. The authoring Draft and already admitted Runs retain their versions.
+
+### Editable preset sharing and private upgrades
+
+Preset `entries` may contain multiple exact revisions of one logical Module or
+Program. `programRevision` identifies the main Program when its identity occurs
+more than once. Import maps logical identities and exact revisions separately;
+Stage/Entry identity and all parent/module/derive references stay exact. The same
+format exports the complete editable definitions. Resource Bundle continues to
+use its full owner/exact closure mapping. Optional Prompt candidates pair each
+`baseRefs` entry with its corresponding `changedRefs` entry.
+
+Fork/import provenance records the upstream and an immutable local `baseRef` for
+later author comparison. The shared editor compares old upstream, current private
+text and a selected new upstream revision. Independent field/entry changes merge;
+conflicting text, entry deletion and order require an explicit choice. Derived
+Programs retain their private operations and choose replacement entries or remove
+operations whose targets disappeared. The merged result enters the same Undo/Redo
+draft; preview, trial and save remain separate actions. Preset upgrades copy new
+dependencies into that preset and include unsaved copies in sample preview.
+
+Save receipts offer **Review pinned consumers**. Original Used By includes exact
+Runtime routes, Projects/Packages and native Plan pins. Open each original owner
+to update its selection, publish/apply/build or create the next Session as
+appropriate. Saving or comparing alone does not retarget existing consumers or
+already admitted Runs.
+
+Standalone Module samples mirror the Module's parameter declarations into their
+ordinary temporary Program and configure that exact Module entry from the sample
+parameter values. Each baseline uses its own declared stage and parameter schema;
+no game identity or undeclared artifact is fabricated.

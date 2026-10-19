@@ -5,8 +5,8 @@ const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 const button = text => [...document.querySelectorAll('button')].find(node => node.textContent === text);
 const field = label => document.querySelector(`[aria-label="${label}"]`);
 afterEach(() => { document.body.replaceChildren(); delete globalThis.fetch; });
-async function fixture(type = 'core.prompt-module') {
-    const resource = newPromptResource(type); const ref = resourceRef(type, resource, { scope: 'library' });
+async function fixture(type = 'core.prompt-module', configure = () => {}) {
+    const resource = newPromptResource(type); configure(resource); const ref = resourceRef(type, resource, { scope: 'library' });
     const baseline = { ...resource, revision: 'earlier' }; const earlier = { ...ref, revision: 'earlier' };
     const route = { runtimeRouteId: 'route-sample', scope: 'player', role: 'role.narrator', displayName: 'My model',
         promptProgramRef: { scope: 'library', resourceType: 'core.prompt-program', resourceId: 'route-default', revision: 'r1' },
@@ -51,4 +51,14 @@ test('changing text during a preview cannot display an obsolete compilation as c
     field('Prompt body').value = 'Newer text'; field('Prompt body').dispatchEvent(new Event('input', { bubbles: true }));
     resolve({ ok: true, json: async () => ({ trial: { status: 'completed' }, response: { text: 'Obsolete preview' } }) });
     await flush(); expect(document.body.textContent).toContain('The draft changed.'); expect(document.body.textContent).not.toContain('Obsolete preview');
+});
+
+
+test('standalone Module sample parameters use ordinary Program declarations and exact entry configuration', async () => {
+    const f = await fixture('core.prompt-module', resource => { resource.parameters = { tone: { type: 'string', default: 'quiet' } }; resource.body = 'Tone: {{module.tone}}'; });
+    field('Sample parameters (JSON)').value = '{"tone":"bright"}'; button('Preview sample').click(); await flush();
+    const wrapper = f.payloads[0].body.drafts[1].resource;
+    expect(wrapper.parameters).toMatchObject({ tone: { type: 'string', default: 'quiet' } });
+    expect(wrapper.derive).toEqual([{ op: 'configure', stageId: 'stage.main', entryId: f.ref.resourceId, config: { tone: 'bright' } }]);
+    expect(f.payloads[0].body.request.prompt.parameters).toEqual({ tone: 'bright' });
 });

@@ -1,3 +1,4 @@
+import { presetEntryRef, presetRefKey, presetProgramRef } from '../../../public/shared/prompt-preset.js';
 import { createNativeId } from '../identity.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { getNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
@@ -23,7 +24,7 @@ const body = value => {
     if (typeof value !== 'string' || Buffer.byteLength(value) > 65536) throw new TypeError('Prompt candidate body exceeds 64 KiB');
     return value;
 };
-const envelope = (preset, refs = preset.refs) => ({ route: { promptProgramRef: refs.find(r => r.resourceId === preset.programId) }, resources: preset.entries.map(e => ({ ref: refs.find(r => r.resourceId === (e.resource.promptModuleId || e.resource.promptProgramId || e.resource.generationProfileId)), resource: e.resource })) });
+const envelope = preset => ({ route: { promptProgramRef: presetProgramRef(preset) }, resources: preset.entries.map(entry => ({ ref: presetEntryRef(entry), resource: entry.resource })) });
 
 function validateBodyBindings(preset, moduleId) {
     const flat = flattenPromptProgram(envelope(preset), { validateBindings: false });
@@ -120,23 +121,23 @@ export class PromptCandidateStore {
             if (declaration?.schemaVersion !== 1 || !declaration.moduleRefs.some(r => same(r, moduleRef))) throw new TypeError('Prompt body is not declared evolvable');
             const route = await this.persistence.getRuntimeRoute(handle, input.runtimeRouteId);
             if (!route || hashNativeDocument(route) !== input.expectedRouteFingerprint) conflict();
-            if (route.scope !== 'player' || !same(programRef ?? route.promptProgramRef, preset.refs.find(r => r.resourceId === id)) || !programRef && !preset.refs.some(r => same(r, route.generationProfileRef))) throw new TypeError('Choose this Preset exact pair on the target Route');
-            const source = preset.entries.find(e => e.resourceType === MODULE && e.resource.promptModuleId === moduleRef.resourceId);
+            if (route.scope !== 'player' || !same(programRef ?? route.promptProgramRef, presetProgramRef(preset)) || !programRef && !preset.refs.some(r => same(r, route.generationProfileRef))) throw new TypeError('Choose this Preset exact pair on the target Route');
+            const source = preset.entries.find(entry => same(presetEntryRef(entry), moduleRef));
             body(source.resource.body);
             if (source.resource.body === input.body) throw new TypeError('Prompt candidate must change body');
             const seed = { schemaVersion: 1, presetId: id, basePresetFingerprint: fingerprint, declarationFingerprint: hashNativeDocument(declaration), baseRoute: route, ...(programRef ? { programRef } : {}), moduleRef, diff: { field: 'body', before: source.resource.body, after: input.body } };
             const candidateId = hashNativeDocument(seed);
             const previous = root.promptEvolution.candidates.find(c => c.candidateId === candidateId);
             if (previous) { await this._check(handle, id, previous); return structuredClone(previous); }
-            const changedRefs = preset.refs.filter(r => [PROGRAM, MODULE].includes(r.resourceType) && (r.resourceType === PROGRAM || same(r, moduleRef)))
-                .map(r => ({ ...r, revision: createNativeId('revision') }));
-            const candidate = { ...seed, candidateId, changedRefs };
+            const baseRefs = preset.refs.filter(ref => ref.resourceType === PROGRAM || same(ref, moduleRef));
+            const changedRefs = baseRefs.map(ref => ({ ...ref, revision: createNativeId('revision') }));
+            const candidate = { ...seed, candidateId, baseRefs, changedRefs };
             const candidates = [...root.promptEvolution.candidates, candidate];
             if (candidates.length > 16 || Buffer.byteLength(JSON.stringify(candidates)) > 2 * 1024 * 1024) throw new TypeError('Prompt candidate capacity exceeded');
             const desired = this._desired(preset, candidate);
             validateBodyBindings(desired, moduleRef.resourceId);
             await this.engine.withTransaction(handle, async tx => {
-                for (const ref of changedRefs) await putImmutable(tx, key(handle, ref), desired.entries.find(e => (e.resource.promptModuleId || e.resource.promptProgramId) === ref.resourceId).resource);
+                for (const ref of changedRefs) await putImmutable(tx, key(handle, ref), desired.entries.find(entry => same(presetEntryRef(entry), ref)).resource);
                 // Commit metadata last; orphan immutable revisions are never effective.
                 await putMutable(tx, key(handle, rootRef(id)), { ...root, promptEvolution: { declaration, candidates } });
             });
@@ -145,53 +146,55 @@ export class PromptCandidateStore {
     }
 
     _desired(preset, candidate) {
-        const refs = preset.refs.map(r => candidate.changedRefs.find(c => c.resourceId === r.resourceId) || r);
-        const entries = preset.entries.map(e => {
-            const resourceId = e.resource.promptModuleId || e.resource.promptProgramId || e.resource.generationProfileId;
-            const changed = candidate.changedRefs.find(r => r.resourceId === resourceId);
-            if (!changed) return e;
-            const resource = mapVersionedModelPromptResourceRefs(e.resourceType, { ...e.resource, revision: changed.revision, ...(same(candidate.moduleRef, preset.refs.find(r => r.resourceId === resourceId)) ? { body: candidate.diff.after } : {}) }, r => refs.find(v => v.resourceId === r.resourceId));
-            return { resourceType: e.resourceType, resource };
+        const mapping = new Map(candidate.baseRefs.map((ref, index) => [presetRefKey(ref), candidate.changedRefs[index]]));
+        const mapped = ref => mapping.get(presetRefKey(ref)) ?? ref;
+        const refs = preset.refs.map(mapped);
+        const entries = preset.entries.map(entry => {
+            const ref = presetEntryRef(entry), changed = mapping.get(presetRefKey(ref));
+            if (!changed) return entry;
+            return { resourceType: entry.resourceType, resource: mapVersionedModelPromptResourceRefs(entry.resourceType,
+                { ...entry.resource, revision: changed.revision, ...(same(candidate.moduleRef, ref) ? { body: candidate.diff.after } : {}) }, mapped) };
         });
-        return { ...preset, refs, entries };
+        return { ...preset, programRevision: mapped(presetProgramRef(preset)).revision, refs, entries };
     }
 
     async _check(handle, id, candidate, { projectId = null, rollback = false } = {}) {
-        fields(candidate, ['schemaVersion', 'presetId', 'basePresetFingerprint', 'declarationFingerprint', 'baseRoute', 'moduleRef', 'diff', 'candidateId', 'changedRefs', 'programRef']);
+        fields(candidate, ['schemaVersion', 'presetId', 'basePresetFingerprint', 'declarationFingerprint', 'baseRoute', 'moduleRef', 'diff', 'candidateId', 'changedRefs', 'baseRefs', 'programRef']);
         const { preset, root, fingerprint } = await this._read(handle, id);
         const declaration = root.promptEvolution?.declaration;
         if (candidate.schemaVersion !== 1 || candidate.presetId !== id || fingerprint !== candidate.basePresetFingerprint || !rollback && (declaration?.schemaVersion !== 1 || hashNativeDocument(declaration) !== candidate.declarationFingerprint)) conflict();
-        const { candidateId, changedRefs, ...seed } = candidate;
+        const { candidateId, changedRefs, baseRefs, ...seed } = candidate;
         if (candidateId !== hashNativeDocument(seed)) throw new TypeError('Prompt candidate identity mismatch');
         fields(candidate.diff, ['field', 'before', 'after']);
         body(candidate.diff.before); body(candidate.diff.after);
         const moduleRef = assertExactResourceRef(candidate.moduleRef, MODULE);
         if (candidate.diff.field !== 'body' || !rollback && !declaration.moduleRefs.some(r => same(r, moduleRef)) || !preset.refs.some(r => same(r, moduleRef))) throw new TypeError('Invalid Prompt body declaration');
-        const source = preset.entries.find(e => e.resource.promptModuleId === moduleRef.resourceId);
+        const source = preset.entries.find(entry => same(presetEntryRef(entry), moduleRef));
         if (candidate.diff.before !== source.resource.body || candidate.diff.after === source.resource.body) throw new TypeError('Invalid Prompt diff');
         const required = preset.refs.filter(r => r.resourceType === PROGRAM || same(r, moduleRef));
-        if (!Array.isArray(changedRefs) || changedRefs.length !== required.length || new Set(changedRefs.map(r => r.resourceId)).size !== required.length) throw new TypeError('Invalid candidate closure');
-        for (const ref of changedRefs) {
+        if (!Array.isArray(changedRefs) || changedRefs.length !== required.length || new Set(changedRefs.map(presetRefKey)).size !== required.length || !same(baseRefs, required)) throw new TypeError('Invalid candidate closure');
+        for (const [index, ref] of changedRefs.entries()) {
             assertExactResourceRef(ref);
-            if (ref.scope !== 'library' || !required.some(r => r.resourceType === ref.resourceType && r.resourceId === ref.resourceId && r.revision !== ref.revision)) throw new TypeError('Invalid candidate revision');
+            const original = required[index];
+            if (ref.scope !== 'library' || original.resourceType !== ref.resourceType || original.resourceId !== ref.resourceId || original.revision === ref.revision) throw new TypeError('Invalid candidate revision');
         }
         const route = assertRuntimeRoute(candidate.baseRoute);
         const programRef = candidate.programRef ? assertExactResourceRef(candidate.programRef, PROGRAM) : null;
         if (programRef && (programRef.scope !== 'library' || projectId)) throw new TypeError('Program candidate is adopted through its Plan binding');
-        if (route.scope !== 'player' || !same(programRef ?? route.promptProgramRef, preset.refs.find(r => r.resourceId === id)) || !programRef && !preset.refs.some(r => same(r, route.generationProfileRef))) throw new TypeError('Invalid candidate base binding');
+        if (route.scope !== 'player' || !same(programRef ?? route.promptProgramRef, presetProgramRef(preset)) || !programRef && !preset.refs.some(r => same(r, route.generationProfileRef))) throw new TypeError('Invalid candidate base binding');
         const desired = this._desired(preset, candidate);
         for (const e of desired.entries) {
-            const ref = desired.refs.find(r => r.resourceId === (e.resource.promptModuleId || e.resource.promptProgramId || e.resource.generationProfileId));
+            const ref = presetEntryRef(e);
             const actual = await this.engine.withTransaction(handle, tx => getNativeDocument(tx, key(handle, ref)));
             if (!actual) throw new NotFoundError('Candidate exact Prompt revision');
             if (!same(actual, e.resource)) throw new TypeError('Candidate exact Prompt content mismatch');
         }
         validateBodyBindings(desired, moduleRef.resourceId);
         if (projectId && route.projectPromptBindings?.some(b => b.projectId === projectId)) throw new TypeError('Choose an unevolved Project Prompt binding');
-        const desiredProgramRef = desired.refs.find(r => r.resourceId === id);
+        const desiredProgramRef = presetProgramRef(desired);
         const desiredRoute = assertRuntimeRoute(programRef ? route : projectId ? { ...route, projectPromptBindings: [...(route.projectPromptBindings || []), {
-            projectId, candidateId, promptProgramRef: desired.refs.find(r => r.resourceId === id),
-        }] } : { ...route, promptProgramRef: desired.refs.find(r => r.resourceId === id) });
+            projectId, candidateId, promptProgramRef: presetProgramRef(desired),
+        }] } : { ...route, promptProgramRef: presetProgramRef(desired) });
         const current = await this.persistence.getRuntimeRoute(handle, route.runtimeRouteId);
         const alreadyApplied = !programRef && same(current, desiredRoute);
         if (!alreadyApplied && !same(current, route)) conflict();

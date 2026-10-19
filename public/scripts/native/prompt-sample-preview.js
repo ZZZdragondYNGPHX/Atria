@@ -5,7 +5,7 @@ import { translateShellText as tl, formatShellText as fmt } from '../atria-shell
 const key = ref => JSON.stringify(ref, Object.keys(ref).sort());
 const idFields = { 'core.prompt-module': 'promptModuleId', 'core.prompt-program': 'promptProgramId', 'core.generation-profile': 'generationProfileId' };
 
-export function mountPromptSamplePreview({ document: doc, parent, entry, entries = [], readDraft, state }) {
+export function mountPromptSamplePreview({ document: doc, parent, entry, entries = [], readDependencies = () => [], readDraft, state }) {
     const el = (tag, text, parent) => { const node = doc.createElement(tag); if (text !== undefined) node.textContent = tl(text); parent?.append(node); return node; };
     const root = el('details', undefined, parent); root.className = 'atri-prompt-preview'; root.open = state.open ?? false;
     el('summary', 'Sample preview and trial', root); root.addEventListener('toggle', () => { state.open = root.open; if (root.open && !config) void load(); });
@@ -28,7 +28,7 @@ export function mountPromptSamplePreview({ document: doc, parent, entry, entries
     controls.addEventListener('input', remember); controls.addEventListener('change', remember);
     el('p', 'Preview sends nothing. Trial uses the selected model and budget; its output stays in this workspace.', root);
     const actions = el('div', undefined, root); actions.className = 'atri-prompt-actions';
-    const button = (label, handler, parent = actions) => { const node = el('button', label, parent); node.type = 'button'; node.addEventListener('click', handler); return node; };
+    const button = (label, handler, parent = actions) => { const node = el('button', label, parent); node.type = 'button'; node.className = 'atri-library-button'; node.addEventListener('click', handler); return node; };
     const status = el('p', undefined, root); status.setAttribute('role', 'status');
     const output = el('section', undefined, root); output.className = 'atri-prompt-preview-result';
     let config = null; let catalog = []; let loading = false;
@@ -36,6 +36,8 @@ export function mountPromptSamplePreview({ document: doc, parent, entry, entries
     function renderResult() {
         output.replaceChildren();
         const result = state.result; if (!result) return;
+        let current = false; try { current = state.resultIdentity === JSON.stringify(readDraft()); } catch { /* The draft is being edited. */ }
+        if (!current) el('p', 'This result reflects an earlier draft. Preview or try the current text again.', output);
         if (result.trial) {
             el('h4', result.trial.status === 'completed' ? 'Sample response' : 'Trial failed', output);
             el('pre', undefined, output).textContent = result.response?.text ?? result.trial.errorCode ?? '';
@@ -66,10 +68,12 @@ export function mountPromptSamplePreview({ document: doc, parent, entry, entries
         state.notice = tl(trial ? 'Running sample…' : 'Preparing preview…'); state.refresh();
         try {
             const resource = readDraft(); const identity = JSON.stringify(resource);
+            const sampleParameters = JSON.parse(parameters.value);
             const selected = config.routes.find(item => item.runtimeRouteId === route.value);
             if (!selected) throw new Error(tl('Choose a sample model route.'));
             const currentRef = candidateRef(resource); const original = catalog.find(item => key(item.ref) === key(currentRef));
             const drafts = [{ ref: currentRef, resource, expectedFingerprint: original?.fingerprint ?? null }];
+            drafts.push(...readDependencies().map(item => ({ ref: item.ref, resource: item.resource, expectedFingerprint: null })));
             const baselineDrafts = [];
             const previousRef = baselineResource.value ? JSON.parse(baselineResource.value) : entry.ref;
             const previous = catalog.find(item => key(item.ref) === key(previousRef));
@@ -82,12 +86,17 @@ export function mountPromptSamplePreview({ document: doc, parent, entry, entries
             else if (entry.ref.resourceType === 'core.generation-profile') refs.generationProfileRef = currentRef;
             else {
                 state.wrapperId ??= createStudioNativeId('pprog');
-                const wrapper = { schemaVersion: 1, promptProgramId: state.wrapperId, revision: 'sample', displayName: 'Module sample',
-                    stages: [{ stageId: resource.stages[0], moduleRefs: [currentRef], contextConsumers: ['player_persona'] }] };
+                const wrap = (module, moduleRef, revision) => {
+                    const config = Object.fromEntries(Object.entries(sampleParameters).filter(([key]) => Object.hasOwn(module.parameters ?? {}, key)));
+                    return { schemaVersion: 1, promptProgramId: state.wrapperId, revision, displayName: 'Module sample', parameters: module.parameters ?? {},
+                        stages: [{ stageId: module.stages[0], moduleRefs: [moduleRef], contextConsumers: ['player_persona'] }],
+                        derive: Object.keys(config).length ? [{ op: 'configure', stageId: module.stages[0], entryId: moduleRef.resourceId, config }] : [] };
+                };
+                const wrapper = wrap(resource, currentRef, 'sample');
                 const ref = { scope: 'library', resourceType: 'core.prompt-program', resourceId: wrapper.promptProgramId, revision: wrapper.revision };
                 refs.promptProgramRef = ref; drafts.push({ ref, resource: wrapper, expectedFingerprint: null });
                 if (!baseline.value) {
-                    const baselineWrapper = { ...wrapper, revision: 'sample-baseline', stages: [{ ...wrapper.stages[0], moduleRefs: [baseRef] }] };
+                    const baselineWrapper = wrap(baseResource, baseRef, 'sample-baseline');
                     const baselineRef = { ...ref, revision: baselineWrapper.revision };
                     baselineRefs.promptProgramRef = baselineRef;
                     baselineDrafts.push({ ref: baselineRef, resource: baselineWrapper, expectedFingerprint: null });
@@ -97,13 +106,13 @@ export function mountPromptSamplePreview({ document: doc, parent, entry, entries
             if (entry.ref.resourceType === 'core.generation-profile') baselineRefs.generationProfileRef = baseRef;
             const sample = { input: input.value, materials: materials.value ? [materials.value] : [], persona: persona.value, history: JSON.parse(history.value) };
             const request = { ...(entry.ref.scope === 'project' ? { resourceProjectId: entry.ref.projectId } : {}), requestId: createStudioNativeId('preview'), role: selected.role.slice(5), routeRef: { scope: 'player', runtimeRouteId: selected.runtimeRouteId }, sample,
-                prompt: { parameters: JSON.parse(parameters.value) } };
+                prompt: { parameters: sampleParameters } };
             const body = trial ? { request, refs, drafts, limits: { maxRequests: Number(requests.value), maxTokens: Number(tokens.value) }, send: true }
                 : { request, drafts, baselineDrafts: baseline.value && entry.ref.resourceType !== 'core.generation-profile' ? [] : baselineDrafts, baselineRefs, candidateRefs: refs };
             const result = await runtimeRequest(trial ? '/authoring/try' : '/preview/draft', { method: 'POST', body, signal: state.controller.signal });
             if (state.sequence !== generation) return;
             if (!trial && JSON.stringify(readDraft()) !== identity) { state.notice = tl('The draft changed. Preview again to see the current text.'); return; }
-            state.result = result; state.notice = tl(trial ? 'Trial finished.' : 'Preview ready. No model request sent.');
+            state.result = result; state.resultIdentity = identity; state.notice = tl(trial ? 'Trial finished.' : 'Preview ready. No model request sent.');
         } catch (error) {
             if (state.sequence === generation) state.notice = error.name === 'AbortError' ? tl('Stopped. Provider usage may be unavailable.') : error.message;
         } finally { state.controller = null; state.refresh(); }
