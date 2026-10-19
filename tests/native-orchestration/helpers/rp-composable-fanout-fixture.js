@@ -6,12 +6,12 @@ import { hashNativeDocument as hash } from '../../../src/native/repositories/com
 const id = kind => createNativeId('orchestration' + kind);
 export const bodyText = body => body.messages.flatMap(message => typeof message.content === 'string' ? [message.content] : message.content.map(part => part.text ?? '')).join('\n');
 
-export async function rpComposableFanoutFixture(make, { usage = true, maxRequests = null, maxConcurrency = 2, judge = true, withPlanner = true, quality = true, scopePlanner = false, joinStrategy = 'all-success', scopeResponse = null } = {}) {
-    let nodes, source;
+export async function rpComposableFanoutFixture(make, { usage = true, maxRequests = null, maxConcurrency = 2, judge = true, withPlanner = true, quality = true, scopePlanner = false, scopeReplan = false, joinStrategy = 'all-success', scopeResponse = null } = {}) {
+    let nodes, source, scopeRound = 0;
     const f = await rpModelFixture(make, { usage, configurePlan: async (plan, env) => {
         const [narrator, output] = plan.definition.nodes;
         const route = { ...env.route, executionPolicy: { ...env.route.executionPolicy,
-            computeBudget: { ...env.route.executionPolicy.computeBudget, maxRequests: maxRequests ?? 5 + Number(withPlanner) + Number(quality) + Number(quality && judge), localWork: { ...env.route.executionPolicy.computeBudget.localWork, maxJobs: 64 } } } };
+            computeBudget: { ...env.route.executionPolicy.computeBudget, maxRequests: maxRequests ?? 5 + Number(withPlanner) + Number(quality) + Number(quality && judge) + Number(scopeReplan), localWork: { ...env.route.executionPolicy.computeBudget.localWork, maxJobs: scopeReplan ? 96 : 64 } } } };
         await env.seeded.persistence.saveRuntimeRoute(env.h.handle, route);
         plan.dependencyPins[0].integrity = hash(await env.seeded.persistence.getRuntimeRoute(env.h.handle, route.runtimeRouteId));
         const port = (name, type, required = true) => ({ name, type, required });
@@ -51,9 +51,13 @@ export async function rpComposableFanoutFixture(make, { usage = true, maxRequest
             edge(fanout, a, 'task'), edge(fanout, b, 'task'), edge(a, a2, 'previous'), edge(a2, join, 'a', 'always'), edge(b, join, 'b', 'always'),
             edge(join, after, 'joined'), edge(after, narrator, 'draft'), ...review ? [edge(after, review, 'draft'), edge(review, narrator, 'quality')] : [],
             ...chooser ? [edge(after, chooser, 'draft'), edge(review, chooser, 'quality'), edge(chooser, narrator, 'choice')] : [], ...plan.definition.edges];
+        if (scopeReplan) {
+            a.inputs.push(port('return', 'json', false));
+            plan.definition.edges.push({ ...edge(a, a, 'return'), loopBack: true });
+        }
         plan.definition.capabilityCeiling = ['generation.send', ...planner || scopePlanner ? ['graph.patch'] : [], 'chat.output'];
-        plan.definition.graphChangePolicy = { allowedOperations: scopePlanner ? ['requestFinalize', 'setPendingPriority'] : planner ? ['requestFinalize'] : [], allowedNodeKinds: [] };
-        Object.assign(plan.definition.limits, { maxSteps: 100, maxAttempts: plan.definition.nodes.length, maxConcurrency, maxNodes: plan.definition.nodes.length,
+        plan.definition.graphChangePolicy = { allowedOperations: scopePlanner ? ['requestFinalize', 'setPendingPriority', ...scopeReplan ? ['requestReplan'] : []] : planner ? ['requestFinalize'] : [], allowedNodeKinds: [] };
+        Object.assign(plan.definition.limits, { maxSteps: 100, maxAttempts: plan.definition.nodes.length + Number(scopeReplan), maxConcurrency, maxNodes: plan.definition.nodes.length,
             maxEdges: plan.definition.edges.length, maxEdgeVisits: plan.definition.edges.length });
         Object.assign(plan.definition.outputContract, { kind: 'rp_narration', slot: 'assistant', resultPolicy: { outputType: 'text', maxBytes: 65536 } });
         source = await seedControlActorAudiences(plan, env); nodes = { planner, fanout, a, a2, b, join, after, review, judge: chooser, narrator };
@@ -67,8 +71,9 @@ export async function rpComposableFanoutFixture(make, { usage = true, maxRequest
     }, responsePayload: body => {
         const content = bodyText(body), nodeId = content.match(/"task":\{"nodeId":"([^"]+)"/)?.[1];
         if (nodeId === nodes.planner?.nodeId) return JSON.stringify({ operations: [{ op: 'requestFinalize' }] });
-        if (scopePlanner && nodeId === nodes.a.nodeId) return JSON.stringify({ operations: scopeResponse ? scopeResponse(nodes)
-            : [{ op: 'setPendingPriority', nodeId: nodes.a2.nodeId, priority: 2 }, { op: 'requestFinalize' }] });
+        if (scopePlanner && nodeId === nodes.a.nodeId) return JSON.stringify({ operations: scopeResponse ? scopeResponse(nodes, ++scopeRound)
+            : scopeReplan && ++scopeRound === 1 ? [{ op: 'requestReplan' }]
+                : [{ op: 'setPendingPriority', nodeId: nodes.a2.nodeId, priority: 2 }, { op: 'requestFinalize' }] });
         for (const name of ['a', 'a2', 'b', 'after']) if (nodeId === nodes[name].nodeId) return 'ADVISORY_' + name.toUpperCase();
         if (nodeId === nodes.review?.nodeId) return JSON.stringify({ decision: 'approve', reasonCode: 'quality_ready',
             targetAttemptIds: JSON.parse(content.match(/"evidence":(\[[^\]]+\])/)?.[1] ?? '[]').map(item => item.attemptId) });

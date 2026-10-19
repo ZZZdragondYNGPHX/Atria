@@ -14,14 +14,14 @@ export const sessionScopeTask = body => body.input.map(item => {
 
 /** A published frozen scope, actual Model/Graph/Transition/Join consumers and
  * original Session bank. HTTP alone is synthetic. No dynamic scope topology. */
-export async function sessionFanoutPlannerFixture(make, { crossBranchPriority = false, maxConcurrency = 2 } = {}) {
-    let topology;
+export async function sessionFanoutPlannerFixture(make, { crossBranchPriority = false, maxConcurrency = 2, replan = false } = {}) {
+    let topology, plannerRound = 0;
     const f = await modelPortFixture(make, { configurePlan: async args => {
         configureSessionOutput(args);
         const { plan, h, core, base, seeded } = args, narrator = plan.definition.nodes[0], output = plan.definition.nodes[1];
         const route = await seeded.persistence.getRuntimeRoute(h.handle, plan.dependencyPins[0].resourceRef.runtimeRouteId);
         await seeded.persistence.saveRuntimeRoute(h.handle, { ...route, executionPolicy: { ...route.executionPolicy, computeBudget: {
-            ...route.executionPolicy.computeBudget, maxRequests: 6,
+            ...route.executionPolicy.computeBudget, maxRequests: replan ? 7 : 6,
             localWork: { ...route.executionPolicy.computeBudget.localWork, maxJobs: 192, maxItems: 10000 } } } });
         const ownerRoute = await seeded.persistence.getRuntimeRoute(h.handle, route.runtimeRouteId);
         plan.dependencyPins[0].integrity = hash(ownerRoute);
@@ -57,15 +57,19 @@ export async function sessionFanoutPlannerFixture(make, { crossBranchPriority = 
         plan.definition.edges = [edge(fanout, planner, 'task'), edge(fanout, sibling, 'task'), edge(planner, first, 'control'), edge(planner, preferred, 'control'),
             edge(first, merge, 'first'), edge(preferred, merge, 'preferred'), edge(merge, join, 'actorA'), edge(sibling, join, 'actorB'), edge(join, narrator, 'joined'), ...plan.definition.edges];
         plan.definition.entryNodeIds = [fanout.nodeId]; plan.definition.capabilityCeiling.push('graph.patch');
-        plan.definition.graphChangePolicy = { allowedOperations: ['setPendingPriority', 'requestFinalize'], allowedNodeKinds: [] };
+        if (replan) {
+            planner.inputs.push(port('return', 'json', false));
+            plan.definition.edges.push({ ...edge(planner, planner, 'return'), loopBack: true });
+        }
+        plan.definition.graphChangePolicy = { allowedOperations: ['setPendingPriority', 'requestFinalize', ...replan ? ['requestReplan'] : []], allowedNodeKinds: [] };
         Object.assign(plan.definition.limits, { maxSteps: 240, maxConcurrency: Math.max(2, maxConcurrency), deadlineMs: 300000,
             maxNodes: plan.definition.nodes.length, maxEdges: plan.definition.edges.length,
-            maxAttempts: plan.definition.nodes.length, maxEdgeVisits: plan.definition.edges.length, maxPatches: 1 });
+            maxAttempts: plan.definition.nodes.length + Number(replan), maxEdgeVisits: plan.definition.edges.length, maxPatches: replan ? 2 : 1 });
         topology = { fanout, planner, first, preferred, merge, sibling, join, narrator,
             operations: [{ op: 'setPendingPriority', nodeId: (crossBranchPriority ? sibling : preferred).nodeId, priority: 7 }, { op: 'requestFinalize' }] };
     }, responseBody: async ({ body, index }) => {
         const nodeId = sessionScopeTask(body)?.nodeId;
-        const text = nodeId === topology.planner.nodeId ? JSON.stringify({ operations: topology.operations })
+        const text = nodeId === topology.planner.nodeId ? JSON.stringify({ operations: replan && ++plannerRound === 1 ? [{ op: 'requestReplan' }] : topology.operations })
             : nodeId === topology.narrator.nodeId ? 'The NPC waits for the player choice.' : 'GAME_SCOPE_ADVICE_' + index;
         return { id: 'game-scope-response-' + index, status: 'completed', output: [{ id: 'game-scope-message-' + index, type: 'message', status: 'completed', role: 'assistant',
             content: [{ type: 'output_text', text, annotations: [] }] }], usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } };

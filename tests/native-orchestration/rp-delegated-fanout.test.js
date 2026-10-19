@@ -11,6 +11,7 @@ import { readFanoutFrame, readFanoutMembership } from '../../src/native/orchestr
 import { readEffect } from '../../src/native/orchestration/effect-contracts.js';
 import { readAttempt, controlRecordKey } from '../../src/native/orchestration/controller-common.js';
 import { rpOperationInput } from '../../src/native/rp-run-control.js';
+import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecycle.js';
 
 const id = kind => createNativeId('orchestration' + kind);
 const port = (name, type, required = true) => ({ name, type, required });
@@ -22,19 +23,20 @@ const bankOf = async f => Object.values((await f.control.status(f.h.handle, f.co
 const leftModel = 'rp-child-fanout-independent-A', rightModel = 'rp-child-fanout-independent-B', plannerModel = 'rp-child-fanout-independent-P';
 const branchModel = body => [leftModel, rightModel].includes(body.model);
 
-async function fixture({ usageUnknown = false, sourceWithdraw = false, scopePlanner = false, childRequests = null } = {}) {
-    let release, releasePublication, arrived = 0, sharedPin, nodes, atBarrier, publicationBarrier = null;
+async function fixture({ usageUnknown = false, sourceWithdraw = false, scopePlanner = false, scopeReplan = false, childRequests = null } = {}) {
+    let release, releasePublication, arrived = 0, plannerRound = 0, sharedPin, nodes, atBarrier, publicationBarrier = null;
     const publishReady = new Promise(resolve => { releasePublication = resolve; });
     let restorePublisher = () => {};
     const both = new Promise(resolve => { release = resolve; });
     const f = await rpDelegationFixture(makeTempSqliteEngineHarness, {
         configurePlan: async (plan, env) => {
             if (!scopePlanner) return;
-            const route = { ...env.route, executionPolicy: { ...env.route.executionPolicy, computeBudget: { ...env.route.executionPolicy.computeBudget, maxRequests: 5 } } };
+            const route = { ...env.route, executionPolicy: { ...env.route.executionPolicy, computeBudget: { ...env.route.executionPolicy.computeBudget, maxRequests: 5 + Number(scopeReplan),
+                localWork: { ...env.route.executionPolicy.computeBudget.localWork, maxJobs: scopeReplan ? 64 : env.route.executionPolicy.computeBudget.localWork.maxJobs } } } };
             await env.seeded.persistence.saveRuntimeRoute(env.h.handle, route); plan.dependencyPins[0].integrity = hash(route);
         },
-        configureChildRoute: route => { route.executionPolicy.computeBudget = { ...route.executionPolicy.computeBudget, maxRequests: childRequests ?? (scopePlanner ? 4 : 3),
-            localWork: { maxJobs: 32, maxItems: 10000, maxInputBytes: 16777216 } }; },
+        configureChildRoute: route => { route.executionPolicy.computeBudget = { ...route.executionPolicy.computeBudget, maxRequests: childRequests ?? (scopePlanner ? 4 + Number(scopeReplan) : 3),
+            localWork: { maxJobs: scopeReplan ? 64 : 32, maxItems: 10000, maxInputBytes: 16777216 } }; },
         configureChildPlan: async (plan, env) => {
             const [terminal, output] = plan.definition.nodes, base = await env.persistence.getRuntimeRoute(env.h.handle, plan.dependencyPins[0].resourceRef.runtimeRouteId);
             const make = async (remoteModelId, label, kind = 'agent') => {
@@ -69,8 +71,12 @@ async function fixture({ usageUnknown = false, sourceWithdraw = false, scopePlan
                 plan.definition.nodes.splice(1, 0, planner);
                 plan.definition.edges = [edge(fanout, planner, 'scope'), edge(planner, left, 'control'), ...plan.definition.edges.filter(item => !(item.from.nodeId === fanout.nodeId && item.to.nodeId === left.nodeId))];
                 plan.definition.capabilityCeiling = ['generation.send', 'graph.patch'];
-                plan.definition.graphChangePolicy = { allowedOperations: ['setPendingPriority', 'requestFinalize'], allowedNodeKinds: [] };
-                Object.assign(plan.definition.limits, { maxNodes: 7, maxEdges: 7, maxAttempts: 7, maxEdgeVisits: 10 });
+                plan.definition.graphChangePolicy = { allowedOperations: ['setPendingPriority', 'requestFinalize', ...scopeReplan ? ['requestReplan'] : []], allowedNodeKinds: [] };
+                if (scopeReplan) {
+                    planner.inputs.push(port('return', 'json', false));
+                    plan.definition.edges.push({ ...edge(planner, planner, 'return'), loopBack: true });
+                }
+                Object.assign(plan.definition.limits, { maxNodes: 7, maxEdges: 7 + Number(scopeReplan), maxAttempts: 7 + Number(scopeReplan), maxEdgeVisits: 10 });
             }
             nodes = { fanout, left, right, join, terminal, output, planner };
         },
@@ -79,14 +85,16 @@ async function fixture({ usageUnknown = false, sourceWithdraw = false, scopePlan
             plan.definition.capabilityCeiling = [...plan.definition.nodes[0].capabilities, 'chat.output'];
             Object.assign(plan.definition.outputContract, { kind: 'rp_narration', slot: 'assistant', resultPolicy: { outputType: 'text', maxBytes: 65536 } });
             plan.definition.limits.maxConcurrency = 2;
+            if (scopeReplan) plan.definition.limits.maxSteps = 60;
             if (scopePlanner) {
                 plan.definition.nodes[0].capabilities.push('graph.patch'); plan.definition.capabilityCeiling.push('graph.patch');
-                plan.definition.graphChangePolicy = { allowedOperations: ['setPendingPriority', 'requestFinalize'], allowedNodeKinds: [] };
+                plan.definition.graphChangePolicy = { allowedOperations: ['setPendingPriority', 'requestFinalize', ...scopeReplan ? ['requestReplan'] : []], allowedNodeKinds: [] };
             }
             plan.dependencyPins.push(sharedPin); plan.definition.nodes[0].dependencyPinIds.push(sharedPin.pinId);
         },
         usage: body => !(usageUnknown && body.model === rightModel),
-        responsePayload: body => scopePlanner && body.model === plannerModel ? JSON.stringify({ operations: [{ op: 'setPendingPriority', nodeId: nodes.left.nodeId, priority: 7 }] }) : branchModel(body) ? body.model === leftModel ? 'RP_CHILD_CONCURRENT_A' : 'RP_CHILD_CONCURRENT_B' : 'RP_JOINED_CHILD_AND_PARENT',
+        responsePayload: body => scopePlanner && body.model === plannerModel ? JSON.stringify({ operations: scopeReplan && ++plannerRound === 1 ? [{ op: 'requestReplan' }]
+            : [{ op: 'setPendingPriority', nodeId: nodes.left.nodeId, priority: 7 }] }) : branchModel(body) ? body.model === leftModel ? 'RP_CHILD_CONCURRENT_A' : 'RP_CHILD_CONCURRENT_B' : 'RP_JOINED_CHILD_AND_PARENT',
     });
     f.onResponse(async body => {
         if (!(scopePlanner ? [plannerModel, rightModel].includes(body.model) : branchModel(body))) return;
@@ -313,6 +321,34 @@ test('SQLite RP child frozen scope Planner controls its reserved Agent before or
         });
         expect(f.requests).toHaveLength(5);
     } finally { f.release(); await f.cleanup(); }
+}, 180000);
+
+test('SQLite RP child branch-local replan retains frozen reservation and released parent-bank allocation through cold output', async () => {
+    const f = await fixture({ scopePlanner: true, scopeReplan: true }); let cold;
+    try {
+        const result = await f.run(), roots = await rootsOf(f), child = roots.find(root => root.parentRef), parent = roots.find(root => !root.parentRef);
+        expect(child.status).toBe('completed'); expect(parent.status).toBe('completed'); expect(result.output.runStatus).toBe('completed');
+        expect(child.progress.loopIterations).toBe(1); expect(child.progress.attempts).toBe(8); expect(child.graphRevision).toBe(2);
+        expect(f.requests).toHaveLength(6); expect(f.requests.filter(body => body.model === plannerModel)).toHaveLength(2);
+        expect(f.requests.filter(body => body.model === leftModel)).toHaveLength(1); expect(f.requests.filter(body => body.model === rightModel)).toHaveLength(1);
+        const reserved = f.atBarrier.attempts.find(attempt => attempt.nodeId === f.nodes.left.nodeId);
+        expect(reserved.status).toBe('reserved');
+        const proof = await f.h.engine.withTransaction(f.h.handle, async tx => {
+            const local = await readTaskLocalOutput(tx, f.h.handle, child);
+            const tails = local.publication.graphHistory.fanouts[0].scopeAttempts.filter(item => item.attempt.nodeId === f.nodes.left.nodeId);
+            expect(tails).toHaveLength(1); expect(tails[0].attempt.attemptId).toBe(reserved.attemptId);
+            expect(tails[0].attempt.reservationRef).toEqual(reserved.reservationRef);
+            expect(local.publication.graphHistory.planners).toHaveLength(2);
+            return readRpOutput(tx, f.h.handle, parent);
+        });
+        const bank = await bankOf(f); expect(bank.attempts).toHaveLength(6); expect(bank.attempts.every(row => row.status === 'settled')).toBe(true);
+        expect(bank.attempts.filter(row => row.reservationId === child.runId)).toHaveLength(5);
+        expect(bank.reservations).toEqual([expect.objectContaining({ reservationId: child.runId, status: 'released', limits: expect.objectContaining({ maxRequests: 5 }) })]);
+        await f.h.engine.close(); cold = new f.h.engine.constructor({ directoriesByHandle: () => f.h.dirs });
+        attachNativeHostLifecycle(cold, { directoriesByHandle: () => f.h.dirs });
+        expect((await cold.withTransaction(f.h.handle, tx => readRpOutput(tx, f.h.handle, parent))).receipt).toEqual(proof.receipt);
+        expect(f.requests).toHaveLength(6);
+    } finally { await cold?.close(); f.release(); await f.cleanup(); }
 }, 180000);
 
 test('RP child frozen scope Planner cannot increase the original held three-request allocation before any scope send', async () => {

@@ -72,7 +72,8 @@ export function sessionAgentGraphProfile(plan) {
         const transfers = graph.edges.filter(edge => edge.from.nodeId === fanout.nodeId);
         const branches = transfers.map(edge => models.find(node => node.nodeId === edge.to.nodeId));
         if (!branches.length || branches.some(node => !node || !['agent', 'planner', 'review', 'judge'].includes(node.kind) || node === narrator || usedBranches.has(node.nodeId)
-            || node.inputs.length !== 1 || node.inputs[0].type !== 'task.result' || incoming[node.nodeId].length !== 1)) fail();
+            || node.inputs.filter(port => port.required).length !== 1 || !node.inputs.some(port => port.required && port.type === 'task.result')
+            || incoming[node.nodeId].length !== 1)) fail();
         const branchScopes = branches.map(entry => {
             const scope = new Set(), joins = new Set(), pending = [entry.nodeId];
             while (pending.length) {

@@ -8,6 +8,7 @@ import { controlRecordKey } from '../../src/native/orchestration/controller-comm
 import { readProjectFanoutCompletion } from '../../src/native/orchestration/project-fanout-contracts.js';
 import { readAttempt } from '../../src/native/orchestration/controller-common.js';
 import { readProjectReviewOutput } from '../../src/native/orchestration/project-review-output-contracts.js';
+import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecycle.js';
 
 const harnesses = CONTRACT_HARNESSES;
 const edge = (from, fromPort, to, toPort) => ({ edgeId: createNativeId('orchestrationEdge'), from: { nodeId: from.nodeId, port: fromPort },
@@ -16,11 +17,12 @@ const response = (text, index, unknown = false) => ({ id: 'fanout-response-' + i
     type: 'message', status: 'completed', role: 'assistant', content: [{ type: 'output_text', text, annotations: [] }] }],
 ...unknown ? {} : { usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } } });
 
-async function fixture(make, { unknown = false, any = false, scopeDag = false, withInput = false, failure = false, scopePlanner = false, crossScope = false } = {}) {
-    let fanout, proposed, pureModels, scopeNode, scopeTail, sibling, business = 0, arrivals = 0, both;
+async function fixture(make, { unknown = false, any = false, scopeDag = false, withInput = false, failure = false, scopePlanner = false, scopeReplan = false, crossScope = false } = {}) {
+    let fanout, proposed, pureModels, scopeNode, scopeTail, sibling, business = 0, arrivals = 0, plannerRound = 0, both;
     const gate = new Promise(resolve => { both = resolve; });
-    const f = await projectModelFixture(make, { maxModelRounds: 3, responseStatus: index => failure && index === 1 ? 400 : 200, changeRoute: route => ({ ...route, executionPolicy: { ...route.executionPolicy,
-        computeBudget: { ...route.executionPolicy.computeBudget, maxRequests: scopePlanner ? 7 : 10, localWork: { ...route.executionPolicy.computeBudget.localWork, maxJobs: 160 } } } }),
+    const f = await projectModelFixture(make, { maxModelRounds: 3, responseStatus: index => failure && index === 1 ? 400 : 200, changeRoute: route => ({ ...route,
+        policy: { ...route.policy, timeoutMs: scopeReplan ? 60000 : route.policy.timeoutMs }, executionPolicy: { ...route.executionPolicy,
+            computeBudget: { ...route.executionPolicy.computeBudget, maxRequests: scopePlanner ? 7 + Number(scopeReplan) : 10, localWork: { ...route.executionPolicy.computeBudget.localWork, maxJobs: 160 } } } }),
     configurePlan: async args => {
         const { plan, seeded, h, original, route } = args;
         proposed = structuredClone(original); proposed.project.displayName = 'Joined advisory proposal';
@@ -63,6 +65,10 @@ async function fixture(make, { unknown = false, any = false, scopeDag = false, w
             graph.nodes.splice(graph.nodes.indexOf(join), 0, tail);
             graph.edges = graph.edges.filter(item => !(item.from.nodeId === left.nodeId && item.to.nodeId === join.nodeId));
             graph.edges.push(edge(left, 'control', tail, 'control'), edge(tail, 'draft', join, 'left'));
+            if (scopeReplan) {
+                left.inputs.push({ name: 'return', type: 'json', required: false });
+                graph.edges.push({ ...edge(left, 'control', left, 'return'), loopBack: true });
+            }
         }
         if (scopeDag) {
             for (const [entry, port] of [[left, 'left'], [right, 'right']]) {
@@ -79,15 +85,16 @@ async function fixture(make, { unknown = false, any = false, scopeDag = false, w
             planner.inputs.push({ name: 'evidence', type: 'text', required: true }); fanout.inputs.push({ name: 'evidence', type: 'text', required: true });
             graph.edges.push(edge(upstream, 'draft', planner, 'evidence'), edge(upstream, 'draft', fanout, 'evidence'));
         }
-        graph.capabilityCeiling.push('graph.patch'); graph.graphChangePolicy = { allowedOperations: ['setPendingPriority', ...scopePlanner ? ['requestFinalize'] : []], allowedNodeKinds: [] };
-        Object.assign(graph.limits, { maxNodes: 12, maxEdges: 24, maxSteps: 180, maxAttempts: 16, maxPatches: 2, maxConcurrency: 2, maxLoopIterations: 2, maxEdgeVisits: 16, deadlineMs: 240000 });
+        graph.capabilityCeiling.push('graph.patch'); graph.graphChangePolicy = { allowedOperations: ['setPendingPriority', ...scopePlanner ? ['requestFinalize'] : [], ...scopeReplan ? ['requestReplan'] : []], allowedNodeKinds: [] };
+        Object.assign(graph.limits, { maxNodes: 12, maxEdges: 24, maxSteps: 180, maxAttempts: 16, maxPatches: scopeReplan ? 3 : 2, maxConcurrency: 2, maxLoopIterations: 2 + Number(scopeReplan), maxEdgeVisits: 16, deadlineMs: 240000 });
         Object.assign(graph.outputContract, { kind: 'project_review', resultPolicy: { outputType: 'json', maxBytes: 16384 } });
     }, responseBody: async ({ body, index }) => {
         const authored = (body.input ?? []).flatMap(item => { try { return [JSON.parse(item.content)]; } catch { return []; } })
             .findLast(item => item?.kind?.startsWith('native_project_graph'));
         if (authored?.kind === 'native_project_graph_planner' && authored.authoredTask === scopeNode?.label) {
             arrivals++; if (arrivals === 2) both(); if (!crossScope) await gate;
-            return response(JSON.stringify({ operations: [{ op: 'setPendingPriority', nodeId: crossScope ? sibling.nodeId : scopeTail.nodeId, priority: 7 }, { op: 'requestFinalize' }] }), index);
+            return response(JSON.stringify({ operations: scopeReplan && ++plannerRound === 1 ? [{ op: 'requestReplan' }]
+                : [{ op: 'setPendingPriority', nodeId: crossScope ? sibling.nodeId : scopeTail.nodeId, priority: 7 }, { op: 'requestFinalize' }] }), index);
         }
         if (authored?.kind === 'native_project_graph_planner') return response(JSON.stringify({ operations: [{ op: 'setPendingPriority', nodeId: fanout.nodeId, priority: 1 }] }), index);
         if (authored?.kind === 'native_project_graph_work') {
@@ -198,6 +205,42 @@ describe.each(harnesses)('$name original Project composable Fanout Join', ({ mak
 
 
 describe.each(harnesses)('$name original Project frozen scope Planner', ({ make }) => {
+    test('branch-local replan preserves reserved terminal, sibling, original Review and cold output', async () => {
+        const f = await fixture(make, { scopePlanner: true, scopeReplan: true });
+        let reserved, cold;
+        f.onResponse(async ({ body }) => {
+            if (body.model !== 'project-fanout-left' || reserved) return;
+            const root = await f.authority.execution.runs.get(f.h.handle, f.effects[0].runId);
+            reserved = await f.h.engine.withTransaction(f.h.handle, async tx => {
+                const rows = await Promise.all(root.attemptRefs.map(id => readAttempt(tx, f.h.handle, root, id)));
+                return rows.find(row => row.doc.nodeId === f.scopeTail.nodeId).doc;
+            });
+        });
+        try {
+            await f.run(); const root = await f.authority.execution.runs.get(f.h.handle, f.effects[0].runId);
+            expect(root.status).toBe('completed'); expect(root.graphRevision).toBe(3); expect(root.progress.loopIterations).toBe(3);
+            expect(f.requests).toHaveLength(8); expect(root.outputClaims).toHaveLength(1); expect(reserved.status).toBe('reserved');
+            expect(f.requests.filter(body => body.model === 'project-fanout-right')).toHaveLength(1);
+            const proof = await f.h.engine.withTransaction(f.h.handle, async tx => {
+                const rows = await Promise.all(root.attemptRefs.map(id => readAttempt(tx, f.h.handle, root, id)));
+                const tails = rows.filter(row => row.doc.nodeId === f.scopeTail.nodeId);
+                expect(tails).toHaveLength(1); expect(tails[0].doc.attemptId).toBe(reserved.attemptId);
+                expect(tails[0].doc.reservationRef).toEqual(reserved.reservationRef);
+                return readProjectReviewOutput(tx, f.h.handle, root);
+            });
+            const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+            expect(task.status).toBe('review'); expect(task.compute.attempts).toHaveLength(8);
+            expect(task.compute.attempts.every(row => row.status === 'settled')).toBe(true);
+            expect(proof.receipt.costs.closed).toBe(true);
+            expect((await f.studio.observeProject(f.h.handle, f.projectId)).source.project.displayName).toBe(f.original.project.displayName);
+            await f.h.engine.close();
+            cold = new f.h.engine.constructor({ url: f.h.url, nativeHostTopology: 'direct_single_primary', directoriesByHandle: () => f.h.dirs });
+            attachNativeHostLifecycle(cold, { directoriesByHandle: () => f.h.dirs });
+            expect((await cold.withTransaction(f.h.handle, tx => readProjectReviewOutput(tx, f.h.handle, root))).receipt).toEqual(proof.receipt);
+            expect(f.requests).toHaveLength(8);
+        } finally { await cold?.close(); await f.cleanup(); }
+    }, 240000);
+
     test('Planner control reaches its reserved Agent and original sole Task Review', async () => {
         const f = await fixture(make, { scopePlanner: true });
         try {
