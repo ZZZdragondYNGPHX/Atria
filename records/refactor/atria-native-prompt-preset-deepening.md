@@ -407,3 +407,27 @@
 - 使用实际 Chromium 和本任务隔离服务器，在 1280×900、390×844 对新编辑组件执行来源对比、冲突选择、Undo/Redo、保存、Node Program 选择与深链回调。浏览器使用明确的临时前端数据／读取 fixture；没有把 fixture 回调说成真实 Plan 发布或真实 Provider 费用证明。实际后端消费者和各域发送证据归上面的原本地 HTTP／存储测试。
 - 浏览器复现手机底部导航手柄遮住末尾保存按钮，增加编辑器底部安全滚动空间后，真实点击保存成功，正文／新标题正确，页面无横向溢出。浏览器已关闭、隔离服务器已停止，本轮临时数据、脚本和截图已清理。
 - 后续继续全产品前端剩余操作链、可选功能与独立视觉接线；任务未整体完成，仍沿原分支和 Record 推进，未合 main。
+
+## 2026-10-19 — Plan 生命周期接线（实施中）
+
+- 源码起点 `3874e03bb`。正在原 PlanRepository／HTTP／客户端补 Fork、Derive、归档／恢复和草稿删除，Library 与修订面板使用这些原操作。
+- Plan Derive 从明确的已发布 exact graph/pins 快照建立自己的 Draft，并保留原来源；执行继续使用本 Plan 发布后的完整定义，不新增另一套动态 Graph 继承或 Behavior Store。Prompt Program 的增量 parent/derive 语义保持原设计。
+- 归档只整理 Library，原 Binding／Run 的已发布修订保留；归档 Draft 需恢复后编辑。当前 V3 没有历史来源释放 authority，因此已发布 Plan 走归档保留历史，物理删除针对未发布 Draft；不以新的清理服务删除历史证据。
+- 新列表操作与创建保留原 commandId 供用户显式重试未知结果；列表筛选／分页和保存回执正在同步。相关自查尚在进行，本单元未提交，不宣称全任务完成。
+
+- Plan 生命周期相关 4 套件 29 项通过，包含归档已绑定 Plan 后实际原 ModelPort/本地 HTTP 发送与费用记录；归档错误信息细化后 FS/SQLite 生命周期 6 项复测通过。6 个变更产品 JS 模块 ESLint、中文覆盖和 diff 检查通过。未新增浏览器实测。
+- 用户最新要求：后端完成后停下，提供前端交接词给另一设备 Claude Code。后续仅收齐剩余后端（scoped Node Program、独立视觉接线）及必要验证，保留已完成前端修改；完成后记录实际源码 HEAD 并生成本任务 HANDOFF，不将整个前端方案标为完成，也不合 main／清理活跃任务分支。
+
+- 生命周期源码提交 `312f9db53`，保留既有已接界面和可显式重试的命令；按用户最新安排，不再开展新的前端实现。
+
+## 2026-10-19 — 后端收齐，等待另一设备 Claude Code 接手前端
+
+- Scoped Node Program 提交 `5c1a18013`：原 dependency reader／RouteResolver／ModelPort 支持 Library、Project、Package exact Program；原实际发送仍限制当前 Project／安装 Package。Project 生产链实际本地 HTTP 测试通过，Package 使用原 reader 的机制发布测试覆盖 FS/SQLite 与三类模型角色。自动 plan-prompt 候选仍明确针对 Library 私人副本；普通 scoped 选择无需评价或候选。
+- 实际 scoped Project 测试复现 Studio 写队列重入死锁，改用原 `observeProject` 只读接口后，原发布／准备／ModelPort 发送通过。没有增加假 Session、绕过实际资源归属或新增权限服务。最终旧 Host fixture 补上同一只读接口，P4 38 项通过。
+- 独立视觉提交 `46541a9fa`：原 IllustrationImageService 增加账号归属 authoring source、exact Target/Rendering 预览；显式手动发送继续原 Job／Worker／Scheduler／预算／Provider／AssetStore，新增图片列表和归档／恢复。结果保存在原 Job.result，无 Session、Annotation 或伪作品；已发布独立图片长期保留资产根，归档不删字节。当前独立试生成是 txt2img；原 Session Media Studio 图像编辑、引用、Mask 不变。产品接口说明已写入源码 `docs/native-visual-generation.md`。
+- 继承 Stage 与去重提交 `e2905ace2`：`derive` 增加 `stage.configure`（condition／targets／consumes／contextConsumers）与 `stage.move`（before／after／start／end）；同一 Compiler／Preview／导出／Package freeze 读取。缺失／自身定位明确报错，父资源不改变。Anchor 对同一已识别贡献在本位置去重；不同来源、匿名重复回合和两个显式 Anchor 的有意复用保留。Compiler 版本 `native.prompt.v5`。原 P3 的重复 compact Module 旧断言同步为稳定条目出现与 moduleId 歧义拒绝。
+- 最终相关分组：8 套件 216 项编排／候选／视觉测试通过；10 套件 143 项资源／编译／预览合同测试通过；Anchor 收尾后 4 套件 89 项通过；最终 Host P4 38 项通过。分组有重复，不相加为独立测试总数。额外最终运行的 Node／P6／升级 UI 已通过；维护 fixture 有 writer-unavailable 警告，未造成这些套件失败。13 个产品 JS 模块 ESLint、简体中文覆盖和 diff 检查通过。
+- 没有新增真实付费模型或图像 Provider 调用，没有把合成远端图像／本地 HTTP 当成真实账户能力证明；此后端收尾没有新增浏览器视觉结论。此前作者编辑／样例／私人升级的浏览器结果保留在前文。
+- 用户要求后端完成后停下并转交前端。整体任务继续沿同一 Task ID／分支／Record，前端尚未完成，main 仍为 `745dbd190`，本轮不集成 main、不清理活跃任务分支。创建本任务 live HANDOFF；前端待办包括新增 Stage 控件和 scoped Program 选择器、独立视觉 UI、全产品领域操作链／表现、可选反馈展示及过时入口清退。
+
+- 交接源码最终 HEAD：`3ca28c49828464261e44af86321f62e15b4f9a41`（末次提交只补旧测试桩的原只读方法）。产品工作树 clean；本任务后端完成，按用户指令停止实现，Claude Code 按 HANDOFF 接续前端。源码分支已同步 origin 到此 HEAD；GitHub TLS EOF 经连接重试后成功。前端实施输入、同一 Record 与本任务 HANDOFF 归 docs 分支同次交接提交。

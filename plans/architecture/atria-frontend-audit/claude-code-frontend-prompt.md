@@ -52,13 +52,13 @@
 
 | 现有接口组 | 继续使用的能力 |
 | --- | --- |
-| `/plans/list`、`get`、`revisions`、`revision`、`validate`、`create`、`save`、`publish` | 列表、Draft、修订与发布 |
+| `/plans/list`、`get`、`revisions`、`revision`、`validate`、`create`、`save`、`publish`、`fork`、`archive`、`delete` | 列表、Draft、修订、发布、复制／派生、归档／恢复及未发布草稿删除 |
 | `/dependencies/inspect` | 原资源引用与当前内容身份 |
 | `/bindings/get`、`save` | Session、Project/Task、RP 选择已发布 Plan |
 | `/runs/list`、`observe`、`details`、`diagnostics`、`cancel`、`recover`、`reconcile` | Host 运行投影和控制 |
 | `/tools/prepare`、`dispatch`、`observe`、`consume`；`/approvals/launch` | 原工具操作、结果与相应人工决定入口 |
 
-上表为已挂载的 POST 路径，payload 沿现有 `orchestration/client.js`，不是所有 Source/Plan 组合均可执行的声明。Plan Fork/Derive、归档、删除没有现成路由，作为缺项补原 Plan 服务。Node 独立 Program 按[D4](../../refactor/atria-native-prompt-preset-deepening/agent-behavior-binding.md)接通，不能只加表单。
+上表为已挂载的 POST 路径，payload 沿现有 `orchestration/client.js`，不是所有 Source/Plan 组合均可执行的声明。Plan Fork/Derive、归档／恢复和未发布草稿删除均沿原 Plan 服务及命令 envelope；已发布 Plan 保留修订并使用归档。Node 独立 Program 可固定 Library／Project／Package exact refs，执行仍受当前原来源归属约束；按[D4](../../refactor/atria-native-prompt-preset-deepening/agent-behavior-binding.md)接通，不能只加表单。
 
 ## Prompt API 接续
 
@@ -74,3 +74,10 @@
 桌面分栏、手机 List/Detail/Tab/Sheet 承载同一功能。图与拖拽有表单／上下移动替代；IME 不误发，软键盘上方可访问输入和 Stop，Back/Escape 每次处理一层并返回焦点。长文选区、滚动锚点、键盘与 reduced-motion 继续使用原组件机制。
 
 旧 ST/Workspace/Director/Loop/Agenda 随原生替代清退。Memory、Goals、Experience、Skills、Visual Director 等有效业务迁到原生入口。按页面和直接依赖推进，实际完成结果记[原 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md)。
+
+## 本次前后端交接
+
+最新断点与源码 HEAD 见 [HANDOFF](../../../HANDOFF.md)，已交付与验证事实见原 Record。
+前端需接入 `derive` 中的 `stage.configure`／`stage.move`，并补上游 Stage 消失／移动目标冲突；保持同一 Draft 与 Undo/Redo。Inspector 当前 Program 选择器仍只筛 Library，需根据当前原来源呈现 Project／Package 固定引用。
+
+独立视觉沿 `POST /api/native/generation/authoring/images/prepare` 和原 `/illustration-images` 提交／观察／取消；列表与归档使用 `/authoring/images`。完整字段、资源读取和保留语义见源码 `docs/native-visual-generation.md`，无需创建 Session。普通试生成当前是 txt2img，Session Media Studio 的编辑／Mask／引用仍走原流程。

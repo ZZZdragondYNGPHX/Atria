@@ -21,7 +21,7 @@
 
 - 复用现有 Shell、Library/Studio 原编辑器和 V3 页面。先给已有用户能力接统一组件，再把新增作者操作接到原客户端。
 - PromptEditor 增加共享编辑状态与 Undo/Redo，区分 JSON 和正文，保留原文缓冲。具体语义归[D8](preset-studio-experience.md)。
-- Plan Library 已有创建、列表、保存与发布；Fork/Derive、归档、删除若保留为交付项，在原 PlanRepository/Authoring 中补相应操作和引用处理，现有路由不具备这些方法。
+- Plan Library 的复制／派生、归档／恢复和未发布草稿删除使用原 PlanRepository/Authoring 的 `/plans/fork`、`archive`、`delete`；沿原命令 envelope 与版本比较，已发布修订通过归档保留。
 - 全产品范围、页面顺序、当前 API 与视觉输入详见[前端实施输入](../../architecture/atria-frontend-audit/claude-code-frontend-prompt.md)。
 
 ## 集成依赖
