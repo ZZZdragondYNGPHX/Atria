@@ -100,7 +100,7 @@ async function fixture({ format = 'openai-compatible', stream = false, handler }
     project.source.resources = [];
     const task = await svc.agent.createTask(h.handle, projectId, { intent: 'Exercise Native generation transport', baseRevision: project.revision.revision });
     const secretPort = { resolveSecret: jest.fn(async (_, owner) => { expect(owner.handle).toBe(h.handle); return 'p4-credential'; }) };
-    const host = new NativeGenerationHost({ ...seeded, studio: { getProject: async () => project }, agent: svc.agent,
+    const host = new NativeGenerationHost({ ...seeded, studio: { getProject: async () => project, observeProject: async () => project }, agent: svc.agent,
         providers: { ['provider.' + format]: createHttpGenerationProvider({ format }) }, secretPort });
     const request = { role: 'narrator', projectId, taskId: task.taskId, revision: project.revision.revision, requestId: 'req-1', messages: [{ role: 'user', content: 'Selected task' }] };
     return { ...seeded, h, host, request, requests, secretPort, project };
