@@ -1,3 +1,4 @@
+import { createHostRouteResolver } from '../model-prompt-runtime/prompt-controls.js';
 import { nodeProgramSelection } from './node-prompt-program.js';
 import { readPlanRevision } from './plan-repository.js';
 import { fields } from '../../../public/shared/native-values.js';
@@ -209,7 +210,7 @@ export class ModelPort {
             const { doc: attempt } = await readAttempt(tx, handle, root, intent.nodeAttemptId);
             const plan = await readPlanRevision(tx, handle, root.planRef);
             return nodeProgramSelection({ handle, node: root.graph.nodes.find(node => node.nodeId === attempt.nodeId),
-                dependencyPins: plan.dependencyPins, library: this.host.library });
+                dependencyPins: plan.dependencyPins, resolver: createHostRouteResolver(this.host) });
         });
         const activeKey = key(handle, intent);
         if (this.#active.size >= 64 || this.#active.has(activeKey)) fail('native_orchestration_model_busy');

@@ -83,8 +83,8 @@ export const nodeModelRoutePins = (node, pins) => node ? pins.filter(pin => pin.
 export function nodePromptProgramPin(node, pins) {
     if (!node?.policy.promptPinId) return null;
     const pin = pins.find(pin => pin.pinId === node.policy.promptPinId && node.dependencyPinIds.includes(pin.pinId));
-    if (pin?.port !== 'model' || pin.resourceRef.scope !== 'library' || pin.resourceRef.resourceType !== 'core.prompt-program')
-        throw new TypeError('Node Program requires an exact Library Prompt Program dependency pin');
+    if (pin?.port !== 'model' || !['library', 'project', 'package'].includes(pin.resourceRef.scope) || pin.resourceRef.resourceType !== 'core.prompt-program')
+        throw new TypeError('Node Program requires an exact Prompt Program dependency pin');
     return pin;
 }
 export const nodePromptPinCount = node => Number(Boolean(node?.policy.promptPinId));

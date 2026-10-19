@@ -1,3 +1,4 @@
+import { assertPromptProgram } from '../../src/native/model-prompt-runtime/contracts.js';
 import { createHostRouteResolver } from '../../src/native/model-prompt-runtime/prompt-controls.js';
 import { createOrchestrationAuthoringService } from '../../src/native/orchestration/authoring-service.js';
 import { validationDigest } from '../../src/native/orchestration/plan-repository.js';
@@ -64,6 +65,11 @@ describe.each(mechanisms)('%s original %s mechanism validation', (_name, role, m
         const value = input();
         expect((await validateModelCapability({ handle: h.handle, ...value, resolver })).issues).toEqual([]);
         expect(readers).toHaveLength(3);
+        value.dependencyPins.push({ pinId: 'package.program', port: 'model', resourceRef: resourceRef('core.prompt-program', prompt.promptProgramId), integrity: hash(assertPromptProgram(prompt)) });
+        value.definition.nodes[0].dependencyPinIds.push('package.program'); value.definition.nodes[0].policy.promptPinId = 'package.program';
+        const packagePlans = createOrchestrationAuthoringService(h.engine, { modelResolver: resolver }).plans;
+        expect((await validate(value, packagePlans)).report.status).toBe('valid');
+        expect(sends).toBe(0);
         resources.pop();
         expect((await validateModelCapability({ handle: h.handle, ...value, resolver })).issues).toContainEqual(expect.objectContaining({
             code: 'native_orchestration_dependency_invalid', reasonCode: 'generation_resource_origin_mismatch', severity: 'blocking',

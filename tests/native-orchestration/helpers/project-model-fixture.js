@@ -6,7 +6,7 @@ import { NativeTaskScheduler } from '../../../src/native/task-scheduler.js';
 import { NativeNarratorOrchestrationAuthority } from '../../../src/native/orchestration/native-turn-orchestration.js';
 import { createOrchestrationAuthoringService } from '../../../src/native/orchestration/authoring-service.js';
 import { validationDigest } from '../../../src/native/orchestration/plan-repository.js';
-import { RouteResolver } from '../../../src/native/model-prompt-runtime/route-resolver.js';
+import { createHostRouteResolver } from '../../../src/native/model-prompt-runtime/prompt-controls.js';
 import { createHttpGenerationProvider } from '../../../src/native/adapters/http-generation-provider.js';
 import { createResponsesGenerationProvider } from '../../../src/native/adapters/responses-generation-provider.js';
 import { attachNativeHostLifecycle } from '../../../src/storage/native-host-lifecycle.js';
@@ -55,7 +55,7 @@ export async function projectModelFixture(make, { responseBody = null, responseS
         const host = new NativeGenerationHost({ persistence: seeded.persistence, library: seeded.library, sessionCore: core, ...svc, providers,
             skillRepository: () => createSkillRepository(h.dirs.root), extensions: { settings: async () => ({ value: {} }) },
             secretPort: { resolveSecret: async () => 'synthetic-project-only-secret' } });
-        const modelResolver = new RouteResolver({ persistence: host.persistence, library: host.library, providers });
+        const modelResolver = createHostRouteResolver(host);
         const { plans } = createOrchestrationAuthoringService(h.engine, { sessionCore: core, projectAgent: svc.agent, studio: svc.studio, modelResolver });
         const authority = new NativeNarratorOrchestrationAuthority({ engine: h.engine, sessionCore: core, projectAgent: svc.agent, projectRepository: svc.repository, modelResolver, plans });
         host.turnOrchestration = authority;

@@ -15,7 +15,7 @@ export function createHostRouteResolver(host) {
     return new RouteResolver({ persistence: host.persistence, library: host.library, providers: host.providers,
         getScopedResource: async (owner, ref) => {
             const entries = ref.scope === 'project'
-                ? (await host.studio.getProject(owner, ref.projectId)).source.resources
+                ? (await host.studio.observeProject(owner, ref.projectId)).source.resources
                 : (await host.packageInstaller.open(owner, ref.packageId, ref.packageVersionId)).manifest.resources;
             const entry = entries.find(item => {
                 const identity = getVersionedModelPromptResourceIdentity(item.resourceType, item.resource);

@@ -1,3 +1,4 @@
+import { assertPromptProgram } from '../../src/native/model-prompt-runtime/contracts.js';
 import express from 'express';
 import supertest from 'supertest';
 import { createNativeGenerationRouter } from '../../src/endpoints/native-generation.js';
@@ -145,4 +146,26 @@ test('archiving a published Plan preserves its original Binding, ModelPort send 
         const operations = Object.values((await f.core.runs.status(f.h.handle, f.base.session.sessionId)).operations);
         expect(operations.find(operation => operation.compute).compute.attempts).toHaveLength(1);
     } finally { await f.cleanup(); }
+}, 60000);
+
+
+test('Project Node Program reads its exact Project-owned closure through publication and original send', async () => {
+    let program, ref;
+    const f = await projectModelFixture(make, {
+        configureSource: async ({ source }) => {
+            const projectId = source.project.projectId;
+            const module = { schemaVersion: 1, promptModuleId: createNativeId('promptModule'), revision: 'r1', displayName: 'Project body',
+                target: 'system.foundation', stages: ['stage.main'], body: 'This Program is owned by the original Project.' };
+            const moduleRef = { scope: 'project', projectId, resourceType: 'core.prompt-module', resourceId: module.promptModuleId, revision: module.revision };
+            program = { schemaVersion: 1, promptProgramId: createNativeId('promptProgram'), revision: 'r1', displayName: 'Project Program', stages: [{ stageId: 'stage.main', moduleRefs: [moduleRef] }] };
+            ref = { scope: 'project', projectId, resourceType: 'core.prompt-program', resourceId: program.promptProgramId, revision: program.revision };
+            source.resources = [{ resourceType: 'core.prompt-module', resource: module }, { resourceType: 'core.prompt-program', resource: program }];
+        },
+        configurePlan: async ({ plan }) => {
+            plan.dependencyPins.push({ pinId: 'project.program', port: 'model', resourceRef: ref, integrity: hash(assertPromptProgram(program)) });
+            plan.definition.nodes[0].dependencyPinIds.push('project.program'); plan.definition.nodes[0].policy.promptPinId = 'project.program';
+        },
+    });
+    try { await f.run(); expect(f.requests).toHaveLength(1); expect(JSON.stringify(f.requests[0])).toContain('This Program is owned by the original Project.'); }
+    finally { await f.cleanup(); }
 }, 60000);

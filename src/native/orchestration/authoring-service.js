@@ -1,3 +1,4 @@
+import { readNodePromptProgram } from './node-prompt-program.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { validateOutputCapability } from './output-capability-authority.js';
 import { PlanRepository, readPlanRevision } from './plan-repository.js';
@@ -39,6 +40,7 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
                 throw error;
             }
         }
+        if (port === 'model' && ref.resourceType === 'core.prompt-program') return readNodePromptProgram(sources.modelResolver ?? { library }, handle, ref);
         if (['context', 'model', 'narrative', 'evaluation'].includes(port) && ref.scope === 'library') {
             const normalized = assertExactResourceRef(ref);
             if (!equalNativeDocuments(normalized, ref)) throw new TypeError('Unexpected fields in original resource reference');
@@ -125,7 +127,7 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
                 // Malformed/missing references cannot be published. Actual
                 // storage/transport faults must retain their failure status.
                 if (!(error instanceof TypeError) && error.name !== 'NotFoundError'
-                    && !['native_orchestration_revision_mismatch', 'native_orchestration_project_commit_stale', 'native_orchestration_native_tool_unavailable'].includes(error.code)) throw error;
+                    && !['generation_resource_origin_mismatch', 'generation_exact_resource_mismatch', 'generation_program_authority_required', 'native_orchestration_revision_mismatch', 'native_orchestration_project_commit_stale', 'native_orchestration_native_tool_unavailable'].includes(error.code)) throw error;
                 evidence.push({ pinId: pin.pinId, status: 'invalid' });
                 issues.push({ code: 'native_orchestration_dependency_invalid', severity: 'blocking', fieldPath: 'dependencyPins.' + pin.pinId });
             }

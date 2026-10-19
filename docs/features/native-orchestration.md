@@ -17,3 +17,16 @@ Published advisory child Plans can delegate further through the same Host, resou
 The sole Narrator output boundary and Project’s formal tools and human Review remain in force. Before Join, a branch Review can redo its own nonterminal predecessors and then feed their new results to the still-unstarted frozen terminal; unrelated branches retain their work. A branch Planner can request bounded rework along published return edges within its own scope, before the frozen terminal starts. Repeated work gets new Attempts and retains its original costs; unstarted members keep their reserved identities, and sibling branches keep their work. A frozen scope cannot change topology, replace its frozen terminal, or attach a completed sibling to a new Join. Nested Fanout scopes and cross-scope replan remain restricted. Unknown costs remain unknown.
 
 The retired Browser execution modes, preset settings and checkpoint protocol have no execution or migration path. Historical files outside the active protocol remain inert; current domain data, receipts and unknown costs are retained.
+
+Plans can be copied from a saved draft or an exact published revision. Derive
+records an exact published source and creates an independent draft containing
+that graph and its pins. It does not create runtime graph inheritance. Archive
+and restore organize the library without changing existing Bindings or Runs.
+Only never-published drafts can be deleted; published history remains readable.
+All lifecycle mutations use the original command envelope and compare the draft
+version/hash. An unknown result must be retried with the same command ID/body.
+
+A model node can pin a Prompt Program independently of its Runtime Route using
+`policy.promptPinId`. The Program pin uses `port:"model"` and a Library, Project
+or Package exact resource reference. The original owner and current execution
+source still control which scoped resources are available.
