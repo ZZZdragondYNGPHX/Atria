@@ -1,25 +1,25 @@
 # Atria Native Orchestration V3 — 智能体编排补强企划
 
-> **唯一入口**。Task ID：`refactor/atria-native-orchestration-v3`。Primary Workspace：`main`（未来实现）；实现使用同一任务分支 `refactor/atria-native-orchestration-v3`，企划/Record继续在长期 `docs` 工作空间。规则只引用 [Repository Governance](../../../README.md)，不在本 Plan 复制执行规则。
+> **唯一入口**。Task ID：`refactor/atria-native-orchestration-v3`。Primary Workspace：`main`；实现沿任务分支 `refactor/atria-native-orchestration-v3` 完成后集成，企划/Record继续在长期 `docs` 工作空间。规则只引用 [Repository Governance](../../../README.md)，不在本 Plan 复制执行规则。
 
-2026-10-19 从远端源码 `13a510bf2` 续接 CachyOS 收尾。P3/P4 实现与既有 FS/SQLite 回归已收口，P6 旧编排清退完成；当前补分支内有界回环的 live/cold 正例、SQL、POSIX 与真实 Provider 证据。用户已明确将 Termux 实机测试延期，留待其实际使用时验证，不阻塞本次重构收尾。实施结果和当前源码身份只归同一 [Record](../../../records/refactor/atria-native-orchestration-v3.md) 与真实 Git；原有限 Profile 证据不外推任意组合或独立质量/价格合格。
+2026-10-19 本次收尾已完成并集成、推送至 **main `745dbd190`**，任务分支及工作树已清理。分支内有界回环 live/cold、SQL、POSIX、Browser 与真实 Provider 的实际结果见同一 [Record](../../../records/refactor/atria-native-orchestration-v3.md)。用户已明确将 Termux 实机测试延期，留待其实际使用时验证，不阻塞本次交付。支持范围及限制沿当前明示 Profile；有限证据不外推任意图组合或独立质量/价格合格。
 
 - 创建/调研日期：2026-10-15。
 - 第一轮状态：**D1 已定案：方案 B（原生 Orchestration V3）**。
 - 第二轮状态：**D2 已冻结：T2 Native Host 唯一运行权威、Plan/Run/Effect/Receipt 边界和旧编排零兼容硬切**。
-- 当前不将 V3 集成回 main。E0 附件保留其原准确基线，不冒充当前消费闭包。
+- 本轮按 Governance 完成 main 集成与清理；Termux 实机验证按用户当前决定延期。E0 附件保留其原准确基线，不冒充当前消费闭包。
 - 第三轮状态：**D3 已冻结：G2 不可变 Plan + Host 受控动态图、Delegate/Handoff、Join、Planner/Judge/Review、局部重做、失败恢复与有界循环**。
 - 第五轮状态：**D5 已冻结：F2 Evidence-driven Adaptive Compute；按实际证据与任务质量选择性准入、原 Native Route/Compute 预算和三层缓存/执行复用**。
 - 第六轮状态：**D6 已冻结：S2 Native Effect Authorization Gate；按实际动作/后果授权、分级审批、Secret/Egress 保护、Prompt Injection 隔离及持久 EffectIntent/Receipt 安全恢复**。
 - 第七轮状态：**D7 已冻结：N2 分层叙事与条件质量回路，区分 Actor Cognition、Narrative Intent、Character Expression 与唯一 Narrator；反全知、玩家自主权、Project Review/Commit 和质量分层**。
-- 第九轮状态：**D9=E1，E0_DESIGN_READY。用户已于2026-10-15明确授权正式开发；同一实现分支已从当时最新main建立，P1/P2/P3均有局部实证，完整Gate未通过。P1–P8产品证据逐组取得，未测项仍NOT_RUN/BLOCKED。**
+- 第九轮状态：**D9=E1，E0_DESIGN_READY，开发 AUTHORIZED。本轮实现与清退成果已集成 main，收尾验收完成；实际证据、支持范围和 Termux 延期以同一 Record 为准，不将设计冻结等同无限制的产品能力。**
 - 文档性质：冻结设计与实施路由；开发已获授权。实际代码/测试/提交状态只归同一Record；
 - Codex后端首次交接已就绪；换机HANDOFF已消费，不重写为当前状态。
 - 只对比模式和契约，不宣称框架直接兼容 Atria。
 
 ## 目标与现状
 
-Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint/并行等）、`public/scripts/lib/orchestration-engine`（Graph/Controller/Judge/Synthesize）、`public/scripts/agents/orchestrator/engine-v2`（旧模式到新运行时的适配）和 `src/native`（原生 Session / RunControl / TaskScheduler / Resource / MCP / A2A 等）。问题不是从零发明 Agent，而是浏览器侧编排与 Native Authority 的职责交错、历史模式适配尚未退出、恢复/预算/写入/可组合性跨链路不一致。详情以 [代码基线](baseline.md) 为准。
+立项时 Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint/并行等）、`public/scripts/lib/orchestration-engine`（Graph/Controller/Judge/Synthesize）、`public/scripts/agents/orchestrator/engine-v2`（旧模式适配）和 `src/native`。问题是浏览器编排与 Native Authority 职责交错、恢复/预算/写入/可组合性不一致。该历史基线见 [baseline](baseline.md)；旧执行根已在本轮硬切删除，当前产品使用原生 Plan/Run 权威。
 
 **D1/D2 定案方向**：建设 Native Plan → Host Run/Graph → EffectIntent/Receipt → Result → Native Consumer。现有纯算法及 Native 基础可按需复用，**但彻底删除旧 Single/Spec/Loop/Agenda/Director 模式及旧编排执行代码，不转换为同名或等价 V3 模板，不保留旧配置和兼容层**。新 Graph/Agent 工作流及前端全部重新设计；D1 曾提出的旧模式模板化设想已由 D2 明确废止。
 
@@ -47,7 +47,7 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 | [graph-editor-experience.md](graph-editor-experience.md) | **D8 冻结**：U2 Graph+Inspector、强类型 Node/Edge、Plan Draft/Publish、Run Timeline/Projection、审批/Diagnostics、Serene Canvas/移动端与性能 | 前端 V3 Authoring 与 Run UX 设计权威 |
 | [e0-audit.md](e0-audit.md) | **E0_DESIGN_READY**：§11是当前R01–R08设计/实施证据分账及核销；§1–10保留早期审计事实 | D9 E0 与实施方案讨论 |
 | [e0-consumer-inventory.md](e0-consumer-inventory.md) / [e0-import-graph.md](e0-import-graph.md) | 最新 main 全仓逐文件/行号、151 文件清退 manifest、AST 直接/间接依赖及动态表达式证据附件；处置仍归 e0-audit ||
-| [interface-contracts.md](interface-contracts.md) | **物理合同 v1（设计冻结）**：6个编排metadata kinds及原Storage/RunControl域扩展；§12–16收束HostOwner/RP预算/Chat输出/ReviewOrigin/SQL未知；实证未通过 | E0 物理接口核查与实施 P1–P4 |
+| [interface-contracts.md](interface-contracts.md) | **物理合同 v1（设计冻结）**：6个编排metadata kinds及原Storage/RunControl域扩展；§12–16收束HostOwner/RP预算/Chat输出/ReviewOrigin/SQL未知；实施实证见 Record | E0 物理接口核查与实施 P1–P4 |
 | [backend-integration.md](backend-integration.md) | 实际已挂载API、内部Host接口、前端并行任务整合边界与真实未交付项 | 跨任务整合/前端接入前 |
 | [implementation-plan.md](implementation-plan.md) | **D9 E1 正式路线**：实施依赖、全域消费者硬切及工作包 | E0 审核、正式交接与实施期间 |
 | [decisions.md](decisions.md) | 仅跨模块的用户冻结决定、明确未定项 | 每轮先读、选择后更新 |
@@ -69,12 +69,12 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 | **6 已完成** | Tool/Skill/MCP/A2A 能力授予、审批、危险副作用与跨协议恢复 | **D6 = S2 Native Effect Authorization Gate** |
 | **7 已完成** | RP Narrator、Actor Cognition/防全知/玩家自主权、Project Agent、Judge/Review 与原生创作体验 | **D7 = N2 分层叙事与条件质量回路** |
 | **8 已完成** | Graph+Inspector 双向编辑、原生 Plan 发布、Timeline/Diagnostics、可信审批与全端体验 | **D8 = U2** |
-| **9 方案已冻结 / E0设计就绪** || **D9=E1；E0_DESIGN_READY，开发AUTHORIZED，P1 IN_PROGRESS** |
+| **9 方案已冻结 / E0设计就绪** || **D9=E1；开发 AUTHORIZED，本轮收尾与 main 集成完成** |
 
 D1–D8 的各模块继续拥有原语义与已冻结决策；其他 HCM、Agent Intelligence、Game Runtime、Serene Canvas、独立 MCP 的权威不复制。D9 设计冻结绝不等于 E0 引用闭包/用户实际开工授权。
 
 ## E1 当前执行入口
 
-E0_DESIGN=DESIGN_READY；DEVELOPMENT_AUTHORIZATION=AUTHORIZED。P5 前端与组装已于 `94d677c6d` 回交，六项后端缺陷已修复；P6 清退和原合同消费者补全正在推进。历史 `READY_FOR_P5` 只保留有限交接事实；
+E0_DESIGN=DESIGN_READY；DEVELOPMENT_AUTHORIZATION=AUTHORIZED。P5 前端与组装已于 `94d677c6d` 回交，六项后端缺陷已修复，P6 清退已完成；本轮 CachyOS、SQL、分支回环与 main 集成收尾已完成。历史 `READY_FOR_P5` 只保留有限交接事实。
 
-当前沿同一任务分支继续，不合 main、不删除任务分支；阶段核销不是自动停止点，执行与真实阻塞统一遵循 Repository Governance。
+本轮最终集成与清理已完成，实际结果和 Termux 延期项保存在同一 Record；本任务已无活跃 HANDOFF。执行规则继续归 Repository Governance。

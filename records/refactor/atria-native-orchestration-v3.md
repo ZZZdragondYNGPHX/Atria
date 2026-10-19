@@ -1480,3 +1480,15 @@
 - 回环实证分次齐全：RP 四引擎 **4/4 PASS，73.436s**；Game 与 Project 各四引擎均通过 live/cold、原预约身份及兄弟分支不重发。Project 首批 FS/SQLite/MySQL 通过，PG 的 10s synthetic transport 超时在 fixture 显式 60s 后 **1/1 PASS，217.981s**；Game 首批相同生产字节的前三引擎通过，PG 后续同样显式 fixture 期限 **1/1 PASS，75.560s**。上述是分次证据，不记为末版单轮 12 项全绿。Project 另计原三次正式工具续跑回边，夹具明确允许总计三次 loop visits，未放宽产品上限。
 - RP 委派子图完整 **6/6 PASS，76.866s**：新增正例保留冻结 terminal 原 Attempt、父银行中五笔子费用与一笔父费用、子 allocation released、唯一 Chat 与 cold proof。新增轮次超出旧夹具 32 个 local jobs / 父树 50 steps 时原限制确实拒绝；仅为新夹具声明 64 jobs / 60 steps，旧夹具保持，生产 bank/逻辑计数不变。
 - 主线 `6b6ddde4d` 的四个精简提交正在本地整合。冲突按真实 V3 消费者处理，保留退役文档删除、原本地计算 helper/唯一银行，主线去除的重复 `restoreState` 读检查不恢复；合并产品树相对任务树仅该一行差异。集成树原 Run policy / generation local-work 两套 **83/83 PASS，65.213s**。尚未提交 main，完整相关回归继续。
+- 对误选失败继续定位后，`endpoints/skills` 实为本次硬切遗留断言：仍尝试安装、重命名、复制及删除退役 `orch-preset`。测试改用现行 character scope，保留 preset scope 及退役 scope 拒绝，**15/15 PASS，1.096s**；未恢复旧接口。
+- Project Fanout 的 typed DAG 模拟 HTTP 要等待兄弟分支实际入站，高负载时兄弟的准入工作耗尽夹具 10s Provider 期限。只在 scopeDag 与新 scopeReplan fixture 明确 60s transport headroom，原生产超时、Graph deadline、预算、并发及失败断言未变。FS 与 PG 两个受影响目标最终 **2/2 PASS，288.983s**；原正向 SQL Fanout 其余目标已通过，不伪记末版整套同轮全绿。
+- SQL Judge 首轮 PG Fanout 正例超过测试 180s，后继四个目标因该 fixture 尚在关闭而触发 Owner 拒绝；独立 database 重跑该正例 **1/1 PASS，121.044s**，剩余四目标 **4/4 PASS，151.430s**。没有改产品或该 suite 的期限/逻辑；这五项与首轮其余目标分次核销。初始过宽的 SQL runner 已在相关 suite 完成后停止，所属临时 database 已交 runner 删除，不继续扫描无关域。
+
+### 收尾结果与交付
+
+- 最终任务 HEAD `afc1a5e53`，合并为 **main `745dbd190`**，已推送并核对 `main == origin/main`。原主线四个精简提交保留；没有恢复重复摘要/逐读守卫或旧编排兼容层。
+- 精确目录共 **227 套 suite**：FS/SQLite 224 套与 SQL-only 3 套。FS/SQLite 先完成 8 套，再跑其余 216 套：后批 **215 套 PASS、1 套 FAIL，3486 PASS / 1 FAIL / 5 SKIP，2720.381s**；唯一失败正是前述 FS typed DAG fixture 超时，已由定向 Fs/Pg 两参数补证通过。逐文件集合比对 **224/224 覆盖，无缺失**，不是宣称同轮全绿。5 个 skip 为 SQLite 不适用的四个 FS redo-journal 故障点及 Linux 不适用的 Windows UNC 检查。
+- CachyOS 实际目录 fsync 故障用例通过：rename 后完整正文/marker 可观察，不自动重发。SQL-only 三套 14 项、所述 SQL 消费者与回环矩阵、集成树相邻运行控制 83 项、Skill HTTP 15 项、桌面/手机 Browser 6 项与两次真实 Provider 的分次证据均如上。其它 SQL flag 的全组合、独立质量/价格与任意业务图组合没有据此冒称实测。
+- Source 最后测试清理提交 `afc1a5e53` 保留现行 character/preset HTTP 覆盖和退役 scope 拒绝，并只调整等待双分支入站的 synthetic DAG 期限。最终改动 ESLint、语法、diff 与硬切检查通过；没有新增真实 Provider 请求。
+- 已确认全部任务提交包含在已同步 main 中；移除完成的任务工作树及本地/远端 `refactor/atria-native-orchestration-v3` 分支。工作树中的忽略项仅为共享依赖 symlink 和生成的测试 scratch/results，清理未触及依赖目标、私密 API 配置、滚动状态或其它活跃任务。旧 HANDOFF 已消费并删除，不建立新交接。
+- **本次收尾 = COMPLETE，main 集成完成。Termux = USER_DEFERRED**，由用户后续实际使用测试；它不是已测 PASS。当前支持范围与限制继续按产品文档，不将本轮工程验收当作独立质量或价格资格，也不声称全仓库单轮无失败。
