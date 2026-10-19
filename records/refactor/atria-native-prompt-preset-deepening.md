@@ -354,3 +354,19 @@
 - 前端实施输入、入口、组件和操作链更新到已有 V3 Plan/Run/Binding 页面与 API。旧四份 189 组盘点降为功能定位资料，不沿用旧状态及执行性要求。外部 HTML 原件保留，未替用户改变审美选择。
 - 对两个已提交分支执行 `git merge-tree --write-tree --name-only --no-messages`，得到 9 个内容冲突：6 个产品／实现文档路径和 3 个已有用例路径。没有合并分支或改工作树；未提交的 Claude 工作不在计算内。后续以其最终源码组合 `orchestrationSend` 和 `programSelection`。
 - 本轮没有运行产品测试、构建、浏览器、模型或 Provider 请求。20 份变更 Markdown 的相对文件链接均存在，git diff --check 通过；当前提示词方案正文与五份前端实施文档的安全／审计／测试／防御／Gate／验证关键词查询无命中。旧盘点和历史 Record 保留其事实，不作为新实施任务。
+
+
+## 2026-10-19 — 提示词／全产品前端正式接续
+
+- 用户要求执行现有提示词／前端重构，后续 `retry` 继续同一任务。产品起点为已集成 V3 的 `main@745dbd190`，docs 起点 `e131851ac`。创建同任务源码工作树与 `refactor/atria-native-prompt-preset-deepening` 分支，保留并行视觉任务工作树。
+- 合入原 Prompt `760327891`，正在组合 `orchestrationSend`、Program selection、SemanticBlocks 与 Draft Preview；实际 9 处冲突按当前 V3 源码处理，不恢复主线已删除的旧 pilot 用例。整合尚未提交，相关自查正在执行，当前不宣称实现或全任务完成。
+
+- 完成首个实现单元：Stage 的 `entries` 保存稳定 `entryId` 与 Module/Anchor 单一顺序；紧凑 `moduleRefs` 仍为模块专用输入，单个 Stage 不允许两种字段共存。Compiler 按合法 target 稳定投影，同 target 不再按 priority、expression layer 或 ID 排序。新增 exact Stage/Entry derive 与同 target 相对插入；旧 moduleId 形式仅接纳单一明确出现。
+- Anchor 消费原 Context 选中项目，保留角色、来源和顺序；已消费材料从旧自动追加路径退出。条件、必需材料和当次贡献可在原编译输出查看。引用收集、映射、Preset 导入／更新、Fork、Package freeze 和候选应用已同步。重映射逻辑身份时固定条目身份；修复替换后的多层旧别名配置。
+- Library/Studio 共用编辑器：正文默认可见、Literal/Template 和表达范围、同位置上下移动、Stage 下移、Anchor 来源与条件、精确派生插入；JSON/字段共享撤销重做、非法 JSON 缓冲、CRLF 原文、选区与滚动。视图切换不占撤销步骤，连续输入合并编辑组，IME 不触发撤销。模板支持空白、通用骨架、RP、创意写作与 Agent Task，全部写入原 Preset/Program/Module/Generation 资源。新增文案补简体中文。
+- V3 整合中发现 Project 原 Context 把带系统说明的整包消息当成历史，和新 SemanticBlocks 合同冲突。原共享 Project prompt builder 已把固定说明、来源材料和对话拆开；ContextPort 使用真实宿主说明通道，项目内容保留为材料，原 Run/Attempt/预算／业务结果服务继续使用。调试输出已移除。
+- 实际 Chromium：使用独立临时数据启动本任务源码，创建 RP 模板；1280×900 桌面与 390×844 手机检查正文可见且页面无横向溢出；手机实际输入中文、字段／JSON 切换、撤销和重做通过。截图与浏览器数据仅为临时证据，不提交。未声称实机 Windows/Android 证明或真实模型／图像 Provider 调用。
+- 当前仍为进行中的实现分支，**不代表整份方案完成**：Node 独立 Program 的 V3 各域 pin 接线、双修订共享环境预览／新资源 overlay、无游戏样例与付费试读、多修订分享／私人三方升级、其余全产品工作流、可选反馈和非 Session 视觉接线尚待继续。主线未合入本轮改动，未清理本任务分支。最终自查结果与源码提交补在本节。
+
+- 最终相关回归：37 个套件、643 项测试通过，涵盖原 Prompt/Provider/持久化／预览、编辑器、资源分享、候选／恢复，以及 V3 Session/RP/Project/background 实际本地 HTTP 生产链。35 个变更产品 JS 模块 ESLint 通过，中文本地化覆盖与 `git diff --check` 通过。编译解释版本更新为 `native.prompt.v4`／`native.semantic-blocks.v2`；版本标识修改后另跑编排与 Draft Preview 的 25 项直接用例，全部通过。测试中的 Native maintenance fixture 出现 writer-unavailable 警告，未造成套件失败；没有将它说成真实后台设备验证。
+- 本轮源码提交：`5bd38b66c1ce0b751b455a4b274955046f024219`，父提交 `main@745dbd190` 与原 Prompt `760327891`；Task 分支保持活跃，后续继续同一方案与 Record。源码任务分支已同步 `origin/refactor/atria-native-prompt-preset-deepening`；未合入 main，不将本轮提交视为整体方案完成。
