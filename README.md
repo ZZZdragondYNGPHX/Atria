@@ -262,6 +262,8 @@ Governance 定义结果，不规定客户端实现。
 
 使用当前工作区 `AGENTS.md`。开发、提交、合并与清理由本地 Git、文件系统、搜索、项目脚本和独立 worktree完成；GitHub API 只在存储管理/配置核查确有必要时使用。保护已有 dirty changes，不为模仿 Web 流程而绕远程 API 或 `skills` 分支。
 
+测试代码、测试配置与专用测试资产只保留本地，不提交到本仓库任何分支。只有用户明确要求上传测试时，才提交到用户指定的专用测试仓库；验证结论仍按任务记录在 Record，不在文档分支存放测试实现或测试资产。
+
 `CLAUDE.md` 只作为 Claude Code 薄入口，不复制第二套 Governance。
 
 ### 12.1 Minimal implementation
