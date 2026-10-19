@@ -298,7 +298,7 @@ The CLI accepts 1–32 local files of at most 256 KiB each.
 "prompt-optimization"`, backend `native-prompt-optimizer-v1`, the trajectory,
 scope, subject and the current Evolution `expectedSequence`. The server compares
 the complete metadata against current owner-authorized Experience. Only existing
-`review` policies for `workspace-prompt` and `project-prompt` are supported.
+`review` policies for `plan-prompt` and `project-prompt` are supported.
 Downloaded JSON cannot introduce prompt bodies, labels, owners or new authority.
 An ordinary completed job is never retroactively marked as a learning job.
 Existing inspect, label, publish and rollback endpoints retain their meanings.
@@ -320,7 +320,6 @@ node tests/agent-intelligence/s23-live.mjs --live
 node tests/agent-intelligence/s25-live.js --live
 node tests/agent-intelligence/s26-live.js --live
 node tests/agent-intelligence/s27-live.js --live
-node tests/agent-intelligence/s34-live.js --live
 ```
 
 S21 longitudinal commits six real turns, saves after the third, imports the save
@@ -336,10 +335,10 @@ and Embedding, compares fixed and reserved request budgets, and preserves unknow
 local work. A tight-budget exhaustion control is separate from the valid paired
 comparison with sufficient budget; Embedding availability is not a benefit claim.
 S27 compares the original undeclared text path with an authored
-ExpressionPlan and reports a blind model observation. S34 runs one development
-pair per domain through the original optimizer and isolated worker. Its report
-does not satisfy the independent production promotion gate, fabricate human
-labels or publish a candidate.
+ExpressionPlan and reports a blind model observation. The S34 live pilot used
+the retired workspace prompt target and has been removed. The local learning
+optimizer tests cover the supported target lifecycle; synthetic results do not
+establish model quality or production promotion eligibility.
 
 ### Native benchmark migration checkpoint
 
