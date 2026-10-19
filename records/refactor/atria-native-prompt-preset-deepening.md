@@ -467,3 +467,11 @@
 - 原生备份实际下载成功，捕获请求中 native=true 且 characters／chats／lorebooks／presets=false。备份 E2E 六项通过，覆盖无效 ZIP 预检、成功进度、重开恢复、人工取消回滚和恢复历史（其中网络进度／恢复结果使用该套件明确的 API fixture）。原 Play 产品 E2E 通过，沿真实安装／启动／History／Context 并确认旧变更入口隐藏。初轮启动遇到 writer guard 端口占用；测试播种移入短进程，在应用启动前退出释放进程级资源，随后重跑通过，产品写者保护未改动。
 - 原 Goals／Evolution 的 RP 与 Project 真实浏览器组件 smoke 均通过，明确使用 fixture API 校验控制、错误、只读、来源说明和销毁。独立图像、跨修订样例和升级的后端／本地 HTTP 证明归前面各实现单元。本轮没有付费 Provider 调用；真实外部图像／语音／插件服务、LAN 双端与云服务不升级为已验证能力。
 - 本任务开始进入 main 集成与同步清理；不因阶段完成另开审查或暂停。docs 原有视觉参考未提交改动继续保留，其他活跃视觉任务不参与此次集成／清理。
+
+## 2026-10-19 — 整体集成与任务清理完成
+
+- `main` 从 `745dbd190` 快进到 `da8c2c1910a0343ec5821ab751116d8a877a0a9d`，包含同一任务的 13 个源码提交；集成时核对 main 与任务 HEAD／文件树一致，已推送 `origin/main`。独立 docs 的本轮 Record 随 docs 提交同步，不合入源码 main。
+- 已删除本任务远端／本地 `refactor/atria-native-prompt-preset-deepening` 分支、本任务 source worktree 和空任务目录；删除本任务 live HANDOFF。命名浏览器和隔离服务器停止，任务隔离数据、下载归档、截图与工作树内测试产物已清理。
+- 集成推送后，共享 Git 本地排除配置另行更新，多个源码工作树的测试文件出现“从索引移除、文件仍在”的暂存变化。最初见到 7 个 Android 测试，后续扩展到 tests；没有把这批变化提交到本任务或回退它们。本任务移除前核对其 HEAD、暂存差异与 main 相同，无额外已跟踪工作区修改或非忽略未跟踪文件；main 与其他工作树保留这批本地状态。main／origin/main 的已发布提交仍为上述精确 HEAD。
+- `feat/native-visual-generation-deepening@f030a38ff` 及 package／plugin／docs 长期工作树保留。docs 原有 `atria-visual-direction.html` 工作区改动及同步前 stash 备份保留，不混入本任务提交。
+- 本任务整体交付完成。可选外部服务、真机、LAN 双端和未确认 P-xx 能力的验证边界仍以前节为准，不以该任务完成声称它们新增或已跑通。
