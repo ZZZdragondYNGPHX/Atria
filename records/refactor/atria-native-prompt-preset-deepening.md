@@ -441,3 +441,14 @@
 - 相关组件自查：Prompt 作者／Stage／升级／图像／Plan 生命周期 5 套件 35 项通过；新增 scoped Program Pins 用例 1 项通过，验证三种 owner 和原 Host fingerprint 调用。产品 JS ESLint、简体中文覆盖及 diff 检查通过。
 - 真实 Chromium 使用隔离临时数据启动本任务源码；实际 Library 图像入口、空图库、缺目标提示、中文输入、1280×900／390×844 无横向溢出通过。继承 Stage 使用明确的临时前端资源 fixture，在手机浏览器完成配置／移动字段与完整 JSON 往返，条件布尔值和相对顺序保持。未调用付费 Provider，未将 fixture 操作说成真实 Plan 发布或真机验证。
 - 源码提交 `79645537d`。此单元完成后继续新版 Atrium Shell、工作区及全产品剩余范围，任务仍进行中；未集成 main，未清理活跃任务或刷新 HANDOFF。
+
+## 2026-10-19 — Atrium Shell、活动与自适应工作区
+
+- 沿原 Shell／NavigationAuthority／edge-dock 实现四边磁吸导航、方向键与菜单换边、设备本地位置和显示模式（自动／始终／阅读时隐藏）。鱼眼只缩放图标，命中框保持稳定；触屏和 reduced-motion 不依赖鱼眼。搜索／账户及其工具菜单移至顶栏，Dock 只承载五域，手机五域全部可达且默认底边常驻，软键盘沿原环境检测隐藏。
+- 新增活动灵动岛读取原 Session／Project Run 列表与 Project Task observation，不做恢复、派发、重试或批准；点击回原 Run／精确 Task。顶部碰撞避让与手机独立活动带、展开／外部点击／Escape／Back 与焦点恢复接原 Shell。状态和数量来自原投影，无百分比推测；读取失败保留前值并说明未刷新。持久任务、审批和错误继续归原服务，故事 Stop 仍在 Composer。
+- Studio 资源树／AI／Inspector／Activity 和 Shell Inspector 增加可聚焦分隔条；方向键、Home/End、Enter 收起、恢复默认尺寸。Studio 专注模式只收起原挂载面板，退出恢复先前布局，不重建业务草稿。手机继续原 Project/Editor/Preview/AI/More 分段，20 个 Studio 视图保留。
+- 添加 Folio／Nocturne 到原主题权威并用于新账户默认槽位，既有显式主题选择不改写；材质与系统字体映射沿原 --atri-*，无新主题系统或外部字体请求。图像工作室补主区／预览布局与设置保存／资源刷新分别反馈。
+- 共用 PromptEditor 增加按需读取原 `/quality-profiles` 的可选反馈面板，显示尚未评价、实际维度／修订与来源就绪；Project 原 Evolution 面板移除旧 Director 指向文案，无报告显示未评价。普通编辑、保存、分享和试读不以评价就绪为前提。
+- 必要自查：12 套件 104 项通过，覆盖 Shell／Workspace／Studio Agent／主题／活动／分隔条及原作者、升级、样例和图像。新增两项 Shell 用例检查手机五域、顶栏工具与四边键盘定位。修正旧 A8 Skill fixture 对已完成后端语义分层的过时断言：来源清单在 user 材料，always Skill 指令仍在 system；产品后端未因此改写。变更产品 JS ESLint、简体中文覆盖和 diff 检查通过。
+- 真实 Chromium：1280×900 用键盘把 Dock 移到顶边，确认业务页未重挂、Dock 不含全局工具；实际新建隔离 Project，资源树 250→260px、专注／恢复和未保存中文稿保留。创建“仅准备，不运行模型”的真实 Task，原 observation 出现在活动摘要，点击进入含 exact task ID 的 Studio 深链，刷新仍定位原 Task；Escape 只关闭活动展开层并返回摘要焦点。390×844 中五域均可见，页面 scrollWidth=390。未发送模型／图像 Provider 请求，未声称真实手机设备测试。
+- 源码提交 `38ad0a90e`。当前继续全产品剩余领域操作链、旧入口清退和跨端收尾；任务仍未整体完成，main 与其他活跃任务保持原状态。未刷新 HANDOFF。
