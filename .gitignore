@@ -1,0 +1,16 @@
+
+
+# Test code, configuration and fixtures stay local to this checkout.
+test/
+tests/
+__tests__/
+e2e/
+integration-tests/
+*.test.*
+*.spec.*
+*-smoke.mjs
+jest.config.*
+vitest.config.*
+playwright.config.*
+pytest.ini
+conftest.py
