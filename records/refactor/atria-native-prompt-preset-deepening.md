@@ -452,3 +452,18 @@
 - 必要自查：12 套件 104 项通过，覆盖 Shell／Workspace／Studio Agent／主题／活动／分隔条及原作者、升级、样例和图像。新增两项 Shell 用例检查手机五域、顶栏工具与四边键盘定位。修正旧 A8 Skill fixture 对已完成后端语义分层的过时断言：来源清单在 user 材料，always Skill 指令仍在 system；产品后端未因此改写。变更产品 JS ESLint、简体中文覆盖和 diff 检查通过。
 - 真实 Chromium：1280×900 用键盘把 Dock 移到顶边，确认业务页未重挂、Dock 不含全局工具；实际新建隔离 Project，资源树 250→260px、专注／恢复和未保存中文稿保留。创建“仅准备，不运行模型”的真实 Task，原 observation 出现在活动摘要，点击进入含 exact task ID 的 Studio 深链，刷新仍定位原 Task；Escape 只关闭活动展开层并返回摘要焦点。390×844 中五域均可见，页面 scrollWidth=390。未发送模型／图像 Provider 请求，未声称真实手机设备测试。
 - 源码提交 `38ad0a90e`。当前继续全产品剩余领域操作链、旧入口清退和跨端收尾；任务仍未整体完成，main 与其他活跃任务保持原状态。未刷新 HANDOFF。
+
+## 2026-10-19 — 全产品接线、旧入口清退与交付验证
+
+- 源码提交 `da8c2c191`。接续原组件和服务完成剩余前端，未重写已完成的 Host、PromptEditor、样例试读、分享、V3 Plan/Run 和生命周期。
+- 清退 Persona 旧迁移表单及无调用客户端；Skill 新界面仅呈现 Global／Project／Package，目标选择不再探测旧 Preset／Character。保留原生 Skill CRUD／导入、只读 Package、调用和组织机制。Search Tools 移除前置 research、旧 Agent preset 和 WI position/depth/role/order 表单及事件；搜索、visit、原条目管理保留。Regex 去掉旧深度表单，新保存规则不写旧深度限制；原生作用域、文本通道、排序和规则读写仍沿原引擎。
+- 备份清退旧 Chat／Character／Group 保留表单、导入旧聊天动作和旧分类勾选；归档请求明确将缺席的旧类别设为 false，避免隐藏后仍按旧默认值导出。设置快照保留规则仍接原服务，保存时保留已读取的旧服务策略，不重置历史数据。原 ZIP 预检、进度、取消／回滚、恢复点及完整恢复语义保留。LAN 新配对不呈现旧 ST 类别，说明所选文件同步与完整原生归档的范围；没有新增或声称云同步／真实双端验证。
+- Play 新增原 Session Goals／反馈入口，继续使用原 scope 与 Goal／Experience／Evolution API。目标选择实际保存的消息或 Project Task 状态，预览 exact 来源和有限预算后创建；普通创建不派发模型。表单更改使预览失效，失败保留输入，保存成功后刷新失败仍保留不可重放的回执。Feedback 的便捷列表只缓存实际 Host 返回的 evidence ID，按 Session／branch 过滤；原服务验证证据归属、当前性与可用性。重载后可用确切回执重新打开，没有回执不捏造评价。历史 Session 禁用写操作；反馈失败保留输入、展开状态和焦点，新报告不继承旧报告的人工确认。
+- Memory 使用原工作区及来源端口，补原生分栏／列表、手机详情层、返回焦点和 Tab 边界、可调 Inspector，图颜色沿原主题 tokens。修复 Memory／Agents 诊断共用 controller key 导致切 URL 仍展示旧页面的问题，增加实际切换用例。设置、课程和上下文说明改为当前产品用语；没有增加未经确认的通知、Secret 管理、云服务或其他 P-xx 产品提案。
+- 修正更换 exact 父 Program 后 Stage／Entry 选择器仍停留旧候选的问题；保留其余私人 Stage 字段。私人升级按顺序计入本地 add 条目，后续操作可引用；兼容原可解析 moduleId 操作，不制造缺失冲突。仍由原 Host 负责最终配置／顺序校验。
+- 必要自查：完整 `atria-shell` 85 套件 418 项通过；Skill 选择／管理及 Library 导航相关 4 套件 32 项通过；Regex Native scope／通道与 utility 4 套件 29 项通过；Stage／升级 2 套件 11 项通过。组间重叠不相加。23 个变更产品 JS 的 ESLint、简体中文覆盖和 diff 检查通过。
+- 实际 Chromium：创作台 20 视图在 1280×900 与 390×844 逐项切换，手机 Project／Editor／Preview 分段保持同一业务页；Library 五节、Runtime 五节、Plans／Runs／Memory／诊断等待实际加载后分别检查桌面／窄屏，无横向溢出。Settings、Account、Skills／内置工具实际加载，旧研究控件不再存在。Folio／Nocturne 和系统 reduced-motion 在原主题服务中预览，保留原账户已保存选择；五域手机磁吸导航仍可达。浏览器是 Chromium 的视口模拟，不声称真实 iOS／Android 设备验证。
+- 使用隔离临时数据完成真实 Project Task 目标预览和创建，只有 `create-preflight`／`create-checked`／`context` 等原目标请求，随后取消测试目标；未请求模型。真实 Plan 草稿 Host 校验正确显示缺 Pin 且禁止发布，Graph／List／手机 Inspector 可达；实际 Fork／Archive／Restore／删除未发布副本完成。已有发布、Node Program 多 owner 和运行发送证明沿前述原服务测试，不将缺 Route 的浏览器草稿说成已发布运行。
+- 原生备份实际下载成功，捕获请求中 native=true 且 characters／chats／lorebooks／presets=false。备份 E2E 六项通过，覆盖无效 ZIP 预检、成功进度、重开恢复、人工取消回滚和恢复历史（其中网络进度／恢复结果使用该套件明确的 API fixture）。原 Play 产品 E2E 通过，沿真实安装／启动／History／Context 并确认旧变更入口隐藏。初轮启动遇到 writer guard 端口占用；测试播种移入短进程，在应用启动前退出释放进程级资源，随后重跑通过，产品写者保护未改动。
+- 原 Goals／Evolution 的 RP 与 Project 真实浏览器组件 smoke 均通过，明确使用 fixture API 校验控制、错误、只读、来源说明和销毁。独立图像、跨修订样例和升级的后端／本地 HTTP 证明归前面各实现单元。本轮没有付费 Provider 调用；真实外部图像／语音／插件服务、LAN 双端与云服务不升级为已验证能力。
+- 本任务开始进入 main 集成与同步清理；不因阶段完成另开审查或暂停。docs 原有视觉参考未提交改动继续保留，其他活跃视觉任务不参与此次集成／清理。
