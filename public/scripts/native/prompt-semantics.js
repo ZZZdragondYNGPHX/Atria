@@ -128,9 +128,24 @@ export function mountPromptDerive(doc, root, draft, entries, ownerRef, getStages
         }
         visit({ parentRef: parent.value ? JSON.parse(parent.value) : null, stages: getStages() }); return result;
     }
+    function availableStages() {
+        const stages = [], active = new Set();
+        function visit(program) {
+            if (program.parentRef) {
+                const id = key(program.parentRef);
+                if (active.has(id)) throw new Error(tl('The exact parent chain contains a cycle.'));
+                const found = entries.find(item => key(item.ref) === id);
+                if (!found) throw new Error(tl('The exact parent revision is unavailable.'));
+                active.add(id); visit(found.resource); active.delete(id);
+            }
+            stages.push(...(program.stages || []));
+        }
+        visit({ parentRef: parent.value ? JSON.parse(parent.value) : null, stages: getStages() });
+        return stages;
+    }
     function add(value = { op: 'disable', entryId: '', stageId: '' }) {
-        const row = el(doc, 'fieldset', '', undefined, section); const op = select(doc, row, 'Derive action', [['add', 'Add module'], ['disable', 'Disable module'], ['replace', 'Replace module'], ['configure', 'Configure module parameters']], value.op);
-        const exactEntry = value.entryId !== undefined;
+        const row = el(doc, 'fieldset', '', undefined, section); const op = select(doc, row, 'Derive action', [['add', 'Add module'], ['disable', 'Disable module'], ['replace', 'Replace module'], ['configure', 'Configure module parameters'], ['stage.configure', 'Configure inherited stage'], ['stage.move', 'Move stage']], value.op);
+        const exactEntry = value.entryId !== undefined || value.op.startsWith('stage.');
         const targetChoices = [...new Map(modules.map(item => [item.ref.resourceId, [item.ref.resourceId, item.resource.displayName]])).values()];
         const target = select(doc, row, 'Affected module', [['', 'Choose module…'], ...targetChoices], value.moduleId);
         let available = [];
@@ -142,12 +157,32 @@ export function mountPromptDerive(doc, root, draft, entries, ownerRef, getStages
         const position = select(doc, row, 'Insertion point', [['start', 'Start of stage'], ['end', 'End of stage'], ['before', 'Before entry'], ['after', 'After entry']], value.position?.before ? 'before' : value.position?.after ? 'after' : value.position?.edge || 'end');
         const sibling = field(doc, row, 'Sibling entry ID', value.position?.before ?? value.position?.after ?? '');
         const replacement = select(doc, row, 'Exact replacement module', [['', 'Choose exact module…'], ...choices(modules)], value.replacementRef ? key(value.replacementRef) : '');
+        let stages = [];
+        try { stages = availableStages(); } catch (error) { el(doc, 'p', '', error.message, row); }
+        const affectedStage = select(doc, row, 'Affected stage', [['', 'Choose stage…'], ...stages.map(stage => [stage.stageId, stage.stageId])], value.stageId || '');
+        const stagePosition = select(doc, row, 'Stage position', [['start', 'First stage'], ['end', 'Last stage'], ['before', 'Before stage'], ['after', 'After stage']], value.position?.before ? 'before' : value.position?.after ? 'after' : value.position?.edge || 'end');
+        const stageSibling = select(doc, row, 'Relative stage', [['', 'Choose stage…'], ...stages.map(stage => [stage.stageId, stage.stageId])], value.position?.before ?? value.position?.after ?? '');
+        const stageConfig = el(doc, 'div', '', undefined, row);
+        const overrideCondition = field(doc, stageConfig, 'Override stage condition', '', 'checkbox'); overrideCondition.checked = Object.hasOwn(value.config || {}, 'condition');
+        const readCondition = mountPromptCondition(doc, stageConfig, value.op === 'stage.configure' ? value.config?.condition : null);
+        const stageFields = ['targets', 'consumes', 'contextConsumers'].map(name => {
+            const enabled = field(doc, stageConfig, 'Override ' + name, '', 'checkbox'); enabled.checked = value.op === 'stage.configure' && Object.hasOwn(value.config || {}, name);
+            const input = field(doc, stageConfig, name + ' (JSON array)', JSON.stringify(value.op === 'stage.configure' ? value.config?.[name] ?? [] : []));
+            input.disabled = !enabled.checked; enabled.addEventListener('change', () => { input.disabled = !enabled.checked; });
+            return { name, enabled, input };
+        });
         const configBox = el(doc, 'div', '', undefined, row); let configRead = () => ({});
         function drawConfig() {
             configBox.replaceChildren(); replacement.parentElement.hidden = !['add', 'replace'].includes(op.value); target.parentElement.hidden = exactEntry || op.value === 'add'; configBox.hidden = op.value !== 'configure';
             selection.parentElement.hidden = !exactEntry || op.value === 'add';
             for (const control of [stageId, entryId, position]) control.parentElement.hidden = !exactEntry || op.value !== 'add';
             sibling.parentElement.hidden = !exactEntry || op.value !== 'add' || !['before', 'after'].includes(position.value);
+            const isStage = op.value.startsWith('stage.');
+            affectedStage.parentElement.hidden = !isStage;
+            stagePosition.parentElement.hidden = op.value !== 'stage.move';
+            stageSibling.parentElement.hidden = op.value !== 'stage.move' || !['before', 'after'].includes(stagePosition.value);
+            stageConfig.hidden = op.value !== 'stage.configure';
+            if (isStage) for (const control of [target, selection, stageId, entryId, position, sibling]) control.parentElement.hidden = true;
             if (op.value !== 'configure') return;
             let module; try {
                 const identity = selection.value ? JSON.parse(selection.value) : [];
@@ -166,8 +201,25 @@ export function mountPromptDerive(doc, root, draft, entries, ownerRef, getStages
             configRead = () => { if (unknown.length) throw new Error(tl('Unknown parameter overrides require correction in Advanced editor.')); return Object.fromEntries(fields.filter(item => item.enabled.checked).map(item => [item.name, item.read()])); };
         }
         for (const control of [op, target, selection, position]) control.addEventListener('change', () => { value.config = {}; drawConfig(); });
+        stagePosition.addEventListener('change', drawConfig);
         parent.addEventListener('change', drawConfig); drawConfig();
         const item = { read: () => {
+            if (op.value.startsWith('stage.')) {
+                if (!affectedStage.value) throw new Error(tl('Choose an affected stage.'));
+                const result = { op: op.value, stageId: affectedStage.value };
+                if (op.value === 'stage.move') {
+                    if (['before', 'after'].includes(stagePosition.value) && (!stageSibling.value || stageSibling.value === affectedStage.value)) throw new Error(tl('Choose a different relative stage.'));
+                    result.position = ['start', 'end'].includes(stagePosition.value) ? { edge: stagePosition.value } : { [stagePosition.value]: stageSibling.value };
+                } else {
+                    result.config = overrideCondition.checked ? { condition: readCondition() } : {};
+                    for (const { name, enabled, input } of stageFields) if (enabled.checked) {
+                        const value = JSON.parse(input.value);
+                        if (!Array.isArray(value)) throw new Error(tl('Stage settings require JSON arrays.'));
+                        result.config[name] = value;
+                    }
+                }
+                return result;
+            }
             const result = { op: op.value, moduleId: target.value };
             if (exactEntry) {
                 const identity = selection.value ? JSON.parse(selection.value) : [];
@@ -187,5 +239,5 @@ export function mountPromptDerive(doc, root, draft, entries, ownerRef, getStages
         } }; rows.push(item); action(doc, row, 'Remove derive operation', () => { rows.splice(rows.indexOf(item), 1); row.remove(); });
     }
     for (const operation of draft.derive || []) add(clone(operation)); action(doc, section, 'Add derive operation', () => add());
-    return () => { const derive = rows.map(item => item.read()); if (new Set(derive.map(item => item.entryId ? item.stageId + ':' + item.entryId : item.moduleId)).size !== derive.length) throw new Error(tl('Only one derive operation is allowed per entry.')); return { parentRef: parent.value ? JSON.parse(parent.value) : null, derive }; };
+    return () => { const derive = rows.map(item => item.read()); if (new Set(derive.map(item => item.op.startsWith('stage.') ? item.op + ':' + item.stageId : item.entryId ? item.stageId + ':' + item.entryId : item.moduleId)).size !== derive.length) throw new Error(tl('Only one derive operation is allowed per entry.')); return { parentRef: parent.value ? JSON.parse(parent.value) : null, derive }; };
 }

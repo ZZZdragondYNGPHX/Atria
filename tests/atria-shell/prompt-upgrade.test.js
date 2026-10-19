@@ -75,3 +75,25 @@ test('a derivative with missing upstream entries requires an exact replacement o
     button('Use merged draft').click(); button('Save revision').click(); await flush();
     expect(onSave.mock.calls[0][0]).toMatchObject({ parentRef: nextRef, derive: [{ op: 'disable', stageId: 'stage.main', entryId: 'new' }] });
 });
+
+test('stage upgrades handle empty inherited stages and require separate choices for a removed stage and move sibling', async () => {
+    const type = 'core.prompt-program', old = { ...newPromptResource(type), stages: [{ stageId: 'stage.old', entries: [] }, { stageId: 'stage.sibling', entries: [] }] };
+    const oldRef = resourceRef(type, old, { scope: 'library' });
+    const upstream = { ...old, revision: 'new', stages: [{ stageId: 'stage.new', entries: [] }, { stageId: 'stage.end', entries: [] }] }, nextRef = { ...oldRef, revision: 'new' };
+    const derivative = { ...newPromptResource(type), parentRef: oldRef, derive: [
+        { op: 'stage.configure', stageId: 'stage.old', config: { condition: null } },
+        { op: 'stage.move', stageId: 'stage.old', position: { before: 'stage.sibling' } },
+    ] };
+    const onSave = jest.fn(); globalThis.fetch = jest.fn(async () => ({ ok: true, json: async () => [{ ref: oldRef, resource: old }, { ref: nextRef, resource: upstream }] }));
+    mountPromptEditor({ document, parent: document.body, entry: { resource: derivative, ref: resourceRef(type, derivative, { scope: 'library' }) }, entries: [{ ref: oldRef, resource: old }], librarySurface: true, onSave, onBack() {} });
+    const panel = [...document.querySelectorAll('details')].find(node => node.querySelector('summary')?.textContent === 'Compare an upstream revision');
+    panel.open = true; panel.dispatchEvent(new Event('toggle')); await flush(); await flush();
+    field('New upstream revision').value = JSON.stringify(nextRef); field('New upstream revision').dispatchEvent(new Event('change')); button('Compare revisions').click(); await flush();
+    expect(button('Use merged draft').disabled).toBe(true);
+    for (const [path, stageId] of [['/derive/0', 'stage.new'], ['/derive/1', 'stage.new'], ['/derive/1/position', 'stage.end']]) {
+        const control = field('Resolve ' + path); control.value = JSON.stringify({ stageId }); control.dispatchEvent(new Event('change'));
+    }
+    expect(button('Use merged draft').disabled).toBe(false);
+    button('Use merged draft').click(); button('Save revision').click(); await flush();
+    expect(onSave.mock.calls[0][0].derive).toEqual([{ op: 'stage.configure', stageId: 'stage.new', config: { condition: null } }, { op: 'stage.move', stageId: 'stage.new', position: { before: 'stage.end' } }]);
+});

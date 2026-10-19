@@ -41,3 +41,15 @@ test('unknown configure keys remain visible and cannot silently disappear', () =
     const read = mountPromptDerive(document, ui, program.resource, [module], program.ref, () => program.resource.stages);
     expect(ui.textContent).toContain('unknown'); expect(read).toThrow('Unknown parameter overrides');
 });
+test('inherited stage configuration and ordering share a draft without conflating their identities', () => {
+    const parent = entry('core.prompt-program', { stages: [{ stageId: 'stage.first', entries: [] }, { stageId: 'stage.second', entries: [] }] });
+    const child = entry('core.prompt-program', { parentRef: parent.ref, derive: [
+        { op: 'stage.configure', stageId: 'stage.second', config: { condition: { op: 'eq', path: 'param.enabled', value: true }, targets: ['context.before_history'] } },
+        { op: 'stage.move', stageId: 'stage.second', position: { before: 'stage.first' } },
+    ] });
+    const ui = root(), before = JSON.stringify(child.resource), read = mountPromptDerive(document, ui, child.resource, [parent], child.ref, () => child.resource.stages);
+    expect(read().derive).toEqual(child.resource.derive);
+    const moves = [...ui.querySelectorAll('fieldset')].filter(node => input(node, 'Derive action')?.value === 'stage.move');
+    change(input(moves[0], 'Relative stage'), 'stage.second'); expect(read).toThrow('different relative stage');
+    expect(JSON.stringify(child.resource)).toBe(before);
+});

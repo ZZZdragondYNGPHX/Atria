@@ -742,8 +742,8 @@ export function mountPlanEditor({ document: doc, root, client, shell, planId, en
             const options = pinOptions(['model']).filter(([pinId]) => node.dependencyPinIds.includes(pinId) && state.draft.pins.find(pin => pin.pinId === pinId).resourceRef.scope === 'player');
             field(doc, tl('Model pin'), select(doc, [['', tl('Not chosen')], ...options], { value: node.policy.agentPinId ?? '', onCommit: value => setPolicy({ agentPinId: value || null }) }),
                 { parent: policy, key: 'node.agentPin', hint: options.length ? tl('An exact Runtime route pinned to this node.') : tl('Attach a model pin to this node under Dependencies first.') });
-            const programs = state.draft.pins.filter(pin => pin.port === 'model' && pin.resourceRef.resourceType === 'core.prompt-program' && pin.resourceRef.scope === 'library' && node.dependencyPinIds.includes(pin.pinId));
-            field(doc, tl('Node Program'), select(doc, [['', tl('Route default Program')], ...programs.map(pin => [pin.pinId, pin.pinId + ' · ' + pin.resourceRef.revision])],
+            const programs = state.draft.pins.filter(pin => pin.port === 'model' && pin.resourceRef.resourceType === 'core.prompt-program' && ['library', 'project', 'package'].includes(pin.resourceRef.scope) && node.dependencyPinIds.includes(pin.pinId));
+            field(doc, tl('Node Program'), select(doc, [['', tl('Route default Program')], ...programs.map(pin => [pin.pinId, pin.pinId + ' · ' + pin.resourceRef.scope + ' · ' + pin.resourceRef.revision])],
                 { value: node.policy.promptPinId ?? '', onCommit: value => setPolicy({ promptPinId: value || null }) }),
             { parent: policy, key: 'node.promptPin', hint: tl('Choose an exact Program independently of the model route. Attach its model dependency pin first.') });
             const selectedProgram = programs.find(pin => pin.pinId === node.policy.promptPinId);
@@ -928,11 +928,11 @@ export function mountPlanEditor({ document: doc, root, client, shell, planId, en
                 let resources;
                 try { resources = await runtimeRequest('/resources', { signal: controller.signal }); } catch (error) { result.textContent = describeError(error); return; }
                 if (!helper.isConnected || port.value !== 'model') return;
-                const programs = resources.filter(item => item.ref.scope === 'library' && item.ref.resourceType === 'core.prompt-program');
-                const program = select(doc, [['', tl('Choose a Prompt Program')], ...programs.map(item => [JSON.stringify(item.ref), item.resource.displayName + ' · ' + item.ref.revision])], { value: '' });
+                const programs = resources.filter(item => ['library', 'project', 'package'].includes(item.ref.scope) && item.ref.resourceType === 'core.prompt-program' && !item.archived);
+                const program = select(doc, [['', tl('Choose a Prompt Program')], ...programs.map(item => [JSON.stringify(item.ref), item.resource.displayName + ' · ' + item.ref.scope + (item.ref.projectId ? ' · ' + item.ref.projectId : item.ref.packageId ? ' · ' + item.ref.packageId + '@' + item.ref.packageVersionId : '') + ' · ' + item.ref.revision])], { value: '' });
                 program.addEventListener('change', () => { if (program.value) { ref.value = program.value; choose.value = ''; } });
                 choose.addEventListener('change', () => { if (choose.value) program.value = ''; });
-                field(doc, tl('Prompt Program'), program, { parent: helper, key: 'pin.program' });
+                field(doc, tl('Prompt Program'), program, { parent: helper, key: 'pin.program', hint: tl('Project execution needs its own Project resources; Session execution needs its installed Package. Automatic candidates require a Library copy.') });
             } else if (port.value === 'plan') {
                 let plans = [];
                 try { plans = (await client.listPlans(null, 100, controller.signal)).items.filter(item => item.planId !== planId && item.currentPlanRevisionId); } catch { plans = []; }

@@ -1,3 +1,4 @@
+import { mountVisualAuthoring } from '../native/visual-authoring.js';
 import { mountPersonaWorkspace } from '../native/persona-ui.js';
 import { mountPromptLibrary } from '../native/prompt-authoring.js';
 import { mountPromptPresets } from '../native/prompt-presets.js';
@@ -25,6 +26,7 @@ export const LIBRARY_SECTIONS = Object.freeze([
     Object.freeze({ id: 'worlds-knowledge', label: 'Worlds & Knowledge' }),
     Object.freeze({ id: 'prompt-presets', label: 'Prompt Presets' }),
     Object.freeze({ id: 'personas', label: 'Personas' }),
+    Object.freeze({ id: 'images', label: 'Image studio' }),
 ]);
 
 export const RUNTIME_SECTIONS = Object.freeze([
@@ -164,6 +166,7 @@ export async function mountSkillsWorkspace({ document: documentRef, body, route,
 
 async function mountLibrarySection(args) {
     const section = normalizeLibrarySection(args.route);
+    if (section === 'images') return mountVisualAuthoring(args);
     if (section === 'personas') return mountPersonaWorkspace(args);
     if (section === 'works') return mountNativeWorksWorkspace(args);
     if (section === 'worlds-knowledge') return mountNativeWorldKnowledgeWorkspace(args);

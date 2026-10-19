@@ -17,15 +17,22 @@ export function mountPromptUpgrade({ document: doc, parent, entry, resource = en
     const result = el('div', undefined, root); result.className = 'atri-prompt-preview-result'; let catalog = null; let loading = false; let comparison = null;
     const button = (text, callback, parent = root) => { const node = el('button', text, parent); node.type = 'button'; node.className = 'atri-library-button'; node.addEventListener('click', callback); return node; };
     const resolve = async ref => catalog.find(item => key(item.ref) === key(ref))?.resource ?? (await runtimeRequest('/resources/exact', { method: 'POST', body: ref })).snapshot;
-    function targets(resource, seen = new Set()) {
+    function stages(resource, seen = new Set()) {
         const output = [];
-        if (resource.parentRef && !seen.has(key(resource.parentRef))) {
-            seen.add(key(resource.parentRef)); const parent = catalog.find(item => key(item.ref) === key(resource.parentRef));
-            if (parent) output.push(...targets(parent.resource, seen));
+        if (resource.parentRef) {
+            const id = key(resource.parentRef);
+            if (seen.has(id)) throw new Error(tl('The exact parent chain contains a cycle.'));
+            seen.add(id);
+            const parent = catalog.find(item => key(item.ref) === id);
+            if (!parent) throw new Error(tl('The exact parent revision is unavailable.'));
+            output.push(...stages(parent.resource, seen));
         }
-        for (const stage of resource.stages) for (const item of promptStageEntries(stage)) output.push({ stageId: stage.stageId, entryId: item.entryId, item });
-        for (const op of resource.derive ?? []) if (op.op === 'add' && op.entry) output.push({ stageId: op.stageId, entryId: op.entry.entryId, item: op.entry });
-        return output;
+        output.push(...(resource.stages ?? []).map(stage => ({ ...stage })));
+        for (const op of resource.derive ?? []) if (op.op === 'add' && op.entry) {
+            const stage = output.find(stage => stage.stageId === op.stageId);
+            if (stage) stage.entries = [...promptStageEntries(stage), op.entry];
+        }
+        return output.map(stage => ({ ...stage }));
     }
     function renderComparison() {
         result.replaceChildren(); if (!comparison) return;
@@ -34,19 +41,34 @@ export function mountPromptUpgrade({ document: doc, parent, entry, resource = en
         let merged, conflicts;
         if (origin.derived) {
             merged = { ...local, parentRef: nextRef, derive: JSON.parse(JSON.stringify(local.derive ?? [])) };
-            const available = targets(upstream);
+            const stageList = [...stages(upstream), ...(local.stages ?? [])];
+            const available = stageList.flatMap(stage => promptStageEntries(stage).map(item => ({ stageId: stage.stageId, entryId: item.entryId, item })));
             conflicts = [];
+            function resolve(path, op, options, apply) {
+                const choice = choices[path];
+                if (choice === 'drop') return false;
+                if (choice && options.some(target => JSON.stringify(target) === choice)) apply(JSON.parse(choice));
+                else conflicts.push({ path, local: op, options });
+                return true;
+            }
             (local.derive ?? []).forEach((op, index) => {
-                const relative = op.position?.before ?? op.position?.after, requested = op.entryId ?? relative;
-                if (op.op === 'add' && !relative && upstream.stages.some(stage => stage.stageId === op.stageId)) return;
-                if (available.some(target => target.stageId === op.stageId && (requested ? target.entryId === requested : target.item.moduleRef?.resourceId === op.moduleId))) return;
-                const path = '/derive/' + index, choice = choices[path];
-                if (choice === 'drop') merged.derive[index] = null;
-                else if (choice) {
-                    const target = JSON.parse(choice), replacement = merged.derive[index]; replacement.stageId = target.stageId;
-                    if (relative) replacement.position = { [op.position.before ? 'before' : 'after']: target.entryId };
-                    else { delete replacement.moduleId; replacement.entryId = target.entryId; }
-                } else conflicts.push({ path, local: op, options: available });
+                const replacement = merged.derive[index], path = '/derive/' + index;
+                const relative = op.position?.before ?? op.position?.after;
+                if (op.op.startsWith('stage.') || op.op === 'add') {
+                    if (!stageList.some(stage => stage.stageId === op.stageId)) {
+                        if (!resolve(path, op, stageList.map(stage => ({ stageId: stage.stageId })), target => { replacement.stageId = target.stageId; })) { merged.derive[index] = null; return; }
+                    }
+                    if (op.op === 'stage.move' && relative && !stageList.some(stage => stage.stageId === relative && stage.stageId !== replacement.stageId)) {
+                        if (!resolve(path + '/position', op, stageList.filter(stage => stage.stageId !== replacement.stageId).map(stage => ({ stageId: stage.stageId })), target => { replacement.position = { [op.position.before ? 'before' : 'after']: target.stageId }; })) merged.derive[index] = null;
+                    } else if (op.op === 'add' && relative && !available.some(target => target.stageId === replacement.stageId && target.entryId === relative)) {
+                        if (!resolve(path + '/position', op, available.filter(target => target.stageId === replacement.stageId).map(({ stageId, entryId }) => ({ stageId, entryId })), target => { replacement.position = { [op.position.before ? 'before' : 'after']: target.entryId }; })) merged.derive[index] = null;
+                    }
+                    return;
+                }
+                if (available.some(target => target.stageId === op.stageId && (op.entryId ? target.entryId === op.entryId : op.moduleId && target.item.moduleRef?.resourceId === op.moduleId))) return;
+                if (!resolve(path, op, available.map(({ stageId, entryId }) => ({ stageId, entryId })), target => {
+                    replacement.stageId = target.stageId; delete replacement.moduleId; replacement.entryId = target.entryId;
+                })) merged.derive[index] = null;
             });
             merged.derive = merged.derive.filter(Boolean);
         } else {
@@ -58,7 +80,7 @@ export function mountPromptUpgrade({ document: doc, parent, entry, resource = en
             const group = el('fieldset', undefined, result); el('legend', undefined, group).textContent = conflict.path;
             const details = el('pre', undefined, group); details.textContent = JSON.stringify({ base: conflict.base, local: conflict.local, upstream: conflict.upstream }, null, 2);
             const choose = el('select', undefined, group); choose.setAttribute('aria-label', fmt('Resolve ${0}', [conflict.path]));
-            const options = origin.derived ? [['', tl('Choose a replacement target')], ['drop', tl('Remove this private operation')], ...conflict.options.map(target => [JSON.stringify({ stageId: target.stageId, entryId: target.entryId }), target.stageId + ' · ' + target.entryId])]
+            const options = origin.derived ? [['', tl('Choose a replacement target')], ['drop', tl('Remove this private operation')], ...conflict.options.map(target => [JSON.stringify(target), target.stageId + (target.entryId ? ' · ' + target.entryId : '')])]
                 : [['', tl('Choose a resolution')], ['local', tl('Keep private edit')], ['upstream', tl('Use upstream change')]];
             for (const [value, text] of options) { const option = el('option', undefined, choose); option.value = value; option.textContent = text; }
             choose.addEventListener('change', () => { choices[conflict.path] = choose.value; renderComparison(); result.querySelector('select, button')?.focus(); });
