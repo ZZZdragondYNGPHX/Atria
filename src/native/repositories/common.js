@@ -6,11 +6,24 @@ import { readWorldState } from '../state-delta.js';
 
 function stableJson(value) {
     if (value === null || typeof value !== 'object') return JSON.stringify(value);
-    if (Array.isArray(value)) return '[' + value.map(stableJson).join(',') + ']';
-    return '{' + Object.keys(value)
-        .sort()
-        .map(key => JSON.stringify(key) + ':' + stableJson(value[key]))
-        .join(',') + '}';
+    // Preserve the existing canonical bytes (including sparse array slots),
+    // without allocating a callback and intermediate array at every level.
+    if (Array.isArray(value)) {
+        let text = '[';
+        for (let index = 0; index < value.length; index++) {
+            if (index) text += ',';
+            if (index in value) text += stableJson(value[index]);
+        }
+        return text + ']';
+    }
+    const keys = Object.keys(value).sort();
+    let text = '{';
+    for (let index = 0; index < keys.length; index++) {
+        if (index) text += ',';
+        const key = keys[index];
+        text += JSON.stringify(key) + ':' + stableJson(value[key]);
+    }
+    return text + '}';
 }
 
 export function cloneNativeDocument(value) {

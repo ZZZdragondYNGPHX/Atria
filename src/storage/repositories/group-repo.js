@@ -1,8 +1,13 @@
 import { assertWritable } from '../read-only-mode.js';
+import { withChatWrite } from './chat-write-boundary.js';
 
 export class GroupRepo {
     constructor({ engine }) {
         this._engine = engine;
+    }
+
+    #writeTransaction(handle, operation) {
+        return withChatWrite(handle, () => this._engine.withTransaction(handle, operation));
     }
 
     _key(handle, id) {
@@ -15,7 +20,7 @@ export class GroupRepo {
 
     async save(handle, id, doc) {
         assertWritable();
-        await this._engine.withTransaction(handle, async (tx) => {
+        await this.#writeTransaction(handle, async (tx) => {
             // Stamp doc.date_added on first save so the value survives FS↔DB
             // migration: FS reports file birthtime and DB reports row
             // created_at, neither of which round-trip through a copy. Once
@@ -34,7 +39,7 @@ export class GroupRepo {
 
     async delete(handle, id) {
         assertWritable();
-        return this._engine.withTransaction(handle, async (tx) => {
+        return this.#writeTransaction(handle, async (tx) => {
             const group = await tx.getResource(this._key(handle, id));
             if (group == null) return { deleted: false, chatsDeleted: 0 };
             let chatsDeleted = 0;

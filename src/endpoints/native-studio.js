@@ -1,3 +1,4 @@
+import { projectCommitReviewHash } from '../native/orchestration/project-commit-contracts.js';
 import express from 'express';
 
 import { getUserDirectories } from '../users.js';
@@ -16,6 +17,7 @@ import { runStudioScenario } from '../native/studio-scenario.js';
 import { nativeMcpArtifacts } from '../native/mcp-artifacts.js';
 import { NativeProjectAgentExecutor } from '../native/project-agent-executor.js';
 import { mountMcpResourceBundles } from '../native/mcp-resource-bundles.js';
+import { assertObject } from '../../public/shared/native-orchestration-contracts.js';
 
 let studioService = null;
 let projectAgentService = null;
@@ -97,7 +99,8 @@ export function createNativeStudioRouter(getServices = services, artifacts = nat
                 request.user.profile.handle,
             );
         } catch (error) {
-            const status = error?.code === 'storage_quota_exceeded' ? 413 : error?.code === 'storage_usage_unavailable' ? 503 : error?.name === 'ConflictError'
+            const unavailable = /^native_orchestration_[a-z_]+_unavailable$/.test(error?.code || '');
+            const status = error?.code === 'storage_quota_exceeded' ? 413 : error?.code === 'storage_usage_unavailable' || unavailable ? 503 : error?.name === 'ConflictError'
                 || String(error?.code || '').includes('conflict')
                 || String(error?.code || '').includes('referenced')
                 || String(error?.code || '').includes('target_exists')
@@ -282,7 +285,8 @@ export function createNativeStudioRouter(getServices = services, artifacts = nat
 
     router.get('/projects/:projectId/agent/tasks/:taskId', route(async (req, res, { agent }, handle) => {
         res.set('Cache-Control', 'no-store');
-        res.json(await agent.getTask(handle, req.params.projectId, req.params.taskId));
+        const task = await agent.getTask(handle, req.params.projectId, req.params.taskId);
+        res.json({ ...task, reviewHash: task.review ? projectCommitReviewHash(task) : null });
     }));
 
     router.get('/projects/:projectId/agent/tasks/:taskId/context', route(async (req, res, { agent }, handle) => {
@@ -304,6 +308,25 @@ export function createNativeStudioRouter(getServices = services, artifacts = nat
 
     router.post('/projects/:projectId/agent/tasks/:taskId/commit', route(async (req, res, { agent }, handle) => {
         res.json(await agent.commit(handle, req.params.projectId, req.params.taskId, req.body || {}));
+    }));
+
+    const commitHost = async () => getGenerationHost ? getGenerationHost() : (await import('./native-generation.js')).getNativeGenerationHost();
+    const commitTarget = req => ({ projectId: req.params.projectId, taskId: req.params.taskId });
+    router.post('/projects/:projectId/agent/tasks/:taskId/commit/prepare', route(async (req, res, _, handle) => {
+        assertObject(req.body, ['commandId', 'planRef', 'expectedSequence', 'expectedReviewHash', 'computeBudget'], 'Project commit request');
+        res.json(await (await commitHost()).prepareProjectCommit(handle, { ...req.body, ...commitTarget(req) }));
+    }));
+    router.post('/projects/:projectId/agent/tasks/:taskId/commit/dispatch', route(async (req, res, _, handle) => {
+        assertObject(req.body, ['runId', 'effectId'], 'Project commit dispatch');
+        res.json(await (await commitHost()).dispatchProjectCommit(handle, req.body, commitTarget(req)));
+    }));
+    router.post('/projects/:projectId/agent/tasks/:taskId/commit/resume', route(async (req, res, _, handle) => {
+        assertObject(req.body, ['runId', 'effectId'], 'Project commit resume');
+        res.json(await (await commitHost()).resumeProjectCommit(handle, req.body, commitTarget(req)));
+    }));
+    router.post('/projects/:projectId/agent/tasks/:taskId/commit/observe', route(async (req, res, _, handle) => {
+        assertObject(req.body, ['runId', 'effectId'], 'Project commit observation');
+        res.json(await (await commitHost()).observeProjectCommit(handle, req.body, commitTarget(req)));
     }));
 
     router.post('/projects/:projectId/agent/tasks/:taskId/takeover', route(async (req, res, { agent }, handle) => {

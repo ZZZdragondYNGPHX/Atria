@@ -4,13 +4,12 @@
 
 本頁講 Atria（與 Anthropic）期望的約定，沿途要做的選擇，以及拿兩個出廠 Skill 逐一拆解的真實例子。
 
-## 寫一個 skill 的兩種方式
+## 編寫 Skill
 
-你不一定要手敲 SKILL.md。大多數使用者從下面兩條路之一開始：
+透過現有管理器建立或匯入 Skill：
 
 | 路徑 | 在哪 | 適合 |
 |---|---|---|
-| **讓 LLM 替你寫** | [AI 迭代工作台](/zh-TW/features/orchestrator/iteration-studio#用工作台編寫-skill) | 在工作台裡用一句話告訴它你想要什麼；它起草 SKILL.md、安裝好，順便（如果你交代了）掛到對應位置。推薦先用這條。 |
 | **自己手寫** | [Skill 管理面板 → 新建](/zh-TW/features/skills/management#tab-1-installed-已安裝) | 你已經清楚知道想要哪些段落、想自己定措辭、想完全控制文字。 |
 
 ![內嵌 Skill 編輯器 — 檔案樹 + 正文區](/screenshots/skills/rp-demo-8.5-editor-body-pasted.png)
@@ -56,7 +55,7 @@ metadata:
 
 | 欄位 | 必需 | 約束 | 備註 |
 |---|---|---|---|
-| `name` | 是 | 小寫 ASCII 字母、數字、`-`、`_`；不超過 128 字元 | 必須與目錄名一致。編排器 `skills.visible` 參照這個欄位。 |
+| `name` | 是 | 小寫 ASCII 字母、數字、`-`、`_`；不超過 128 字元 | 必須與目錄名一致。消費者按此名稱和所選作用域/版本識別 Skill。 |
 | `description` | 是 | 一句話 | 顯示在自動注入的 `<available_skills>` 目錄裡。寫給 **agent** 看，不是給使用者看 —— 解釋這個 Skill 什麼時候相關。 |
 | `license` | 否 | 任意字串（自由格式） | Anthropic 標準。準備分享出去時再用。 |
 | `metadata.author` | 否 | 字串 | Anthropic 標準。 |
@@ -119,7 +118,7 @@ Skill 是給 LLM 看的，不是給人類維運手冊的讀者看的。兩條推
 
 ## 真實例子 1：`director-anti-cliche-zh`
 
-這個出廠 Skill 是單檔案、約 3 KB 的 SKILL.md，沒有子檔案。它在整個預設 director profile 內強制反八股寫作規則。
+這個出廠 Skill 是單檔案、約 3 KB 的 SKILL.md，沒有子檔案。它向選中此內容的消費者提供反八股指引。
 
 frontmatter：
 
@@ -135,7 +134,7 @@ metadata:
 
 正文遵循「規則家族」結構：每一族主要的八股（資料人式文字、契約詞彙、昇華八股、AI 自造標籤）各得一個標題，並給出具體的雙語範例。沒有子檔案 —— 整套契約小到能塞進 `SKILL.md`。
 
-這個 Skill 是模式級可見：每個預設 director 子代理（主代理、口吻評審、連貫性評審、劇情頭腦風暴員……）都看得到。它錨定了整支團隊的寫作標準。
+只為需要這些寫作規則的消費者選擇此指引；安裝內容不代表自動啟用。
 
 ## 真實例子 2：`event-summary-rules-zh`
 
@@ -155,7 +154,7 @@ metadata:
 
 正文先確立心智模型（「索引，不是回放」），然後定義帶閘門循環的 7 步寫作流程，再詳細列出反複述規則。關鍵是每條規則都附了真實範例 —— `✗ 錯` 與 `✓ 對` 並列 —— 因為這種紀律細微，只給抽象規則的 LLM 會一致地違反。
 
-這個 Skill 是按子代理一對一：只有 `memory_curator` 在它的 `skills.visible` 裡有這一條（透過 `"+"` 繼承模式級預設值）。口吻評審不需要、連貫性評審不需要；只有 curator 需要，並且只在它真的在寫摘要時才需要。
+Skill 提供可重用的程序指引。安裝 Skill 不會向原生 Plan 授予工具、Source 存取權或執行權。
 
 ## 選合適的作用域
 
@@ -165,11 +164,11 @@ metadata:
 - **`preset`** —— 該 Skill 僅在搭配特定 Chat Completion 預設時才有意義（一種模型特調的提示約定、依賴取樣器的文風規則）。匯出時跟著預設走。
 - **`character`** —— 該 Skill 編碼了角色卡專屬設定或口吻規則。匯出時跟著角色卡走（PNG 元資料）。
 
-作用域可以隨時改 —— Skill 管理子面板的**遷移到……**會做原子級 move。編排器 profile 裡的參照（僅按名字）在遷移後仍然有效。
+作用域決定目前消費者選中哪些內容。移動可能改變優先級或使目前上下文無法使用它；
 
 ## 相關
 
-- [Skills 概覽](/zh-TW/features/skills/) —— 什麼是 Skill、三種作用域
+- [Skills 概覽](/zh-TW/features/skills/) —— 什麼是 Skill、支援的作用域
 - [Skill 管理](/zh-TW/features/skills/management) —— 安裝、匯入、匯出、遷移作用域
-- [編排器整合](/zh-TW/features/skills/orchestrator-integration) —— 把 Skill 掛到 profile 上
+- [編排器整合](/zh-TW/features/native-orchestration) —— 目前原生執行邊界
 - [Skill 擴充套件 API](/zh-TW/development/extension-api/skills) —— 程式設計式 `context.skills.*`

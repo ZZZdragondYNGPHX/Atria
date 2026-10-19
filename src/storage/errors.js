@@ -59,3 +59,11 @@ export class InvalidArgumentError extends Error {
         this.code = 'invalid_argument';
     }
 }
+
+export class StorageCommitUnknownError extends Error {
+    constructor(cause) {
+        super('Storage commit outcome is unknown; observe the stable operation identity before retrying', { cause });
+        this.name = 'StorageCommitUnknownError';
+        this.code = 'storage_commit_unknown';
+    }
+}

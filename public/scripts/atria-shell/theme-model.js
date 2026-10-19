@@ -27,6 +27,16 @@ export function createPalette({ appearance, canvas, surface, text, secondary, ac
     const accentSoftStrong = mixColor(surface, accent, .22);
     let accentText = accent;
     for (let i = 0; i < 20 && Math.min(contrastRatio(accentText, surface), contrastRatio(accentText, accentSoftStrong)) < 4.5; i++) accentText = mixColor(accentText, text, .18);
+    // Ledger tones keep one meaning each and stay legible on every surface:
+    // info = draft/selection, committed = recorded fact, history = read-only
+    // past, unknown = unverified/blocked. They are never success decoration.
+    const legible = color => {
+        let result = color;
+        for (let i = 0; i < 20 && contrastRatio(result, surface) < 4.5; i++) result = mixColor(result, text, .15);
+        return result;
+    };
+    const tone = (light, night) => legible(dark ? night : light);
+    const tones = { info: tone('#2f5bb7', '#92b1f4'), committed: tone('#226f4e', '#7fcfa9'), history: tone('#7a5a3c', '#c2a286'), unknown: tone('#5b4f9e', '#aa9fdd') };
     const accentState = amount => {
         let result = mixColor(accent, text, amount);
         for (let i = 0; i < 12 && contrastRatio(result, onAccent) < 4.5; i++) { amount *= .75; result = mixColor(accent, text, amount); }
@@ -46,6 +56,7 @@ export function createPalette({ appearance, canvas, surface, text, secondary, ac
         danger: dark ? '#ff9c90' : '#bb2e23', 'danger-soft': mixColor(surface, dark ? '#ff9c90' : '#bb2e23', .12),
         scrim: dark ? '#000000b3' : '#18182052', 'cover-ink': '#ffffff', ink: text,
         'ink-hover': mixColor(text, surface, .12), 'ink-pressed': mixColor(text, surface, .2), blue: dark ? '#83b7ff' : '#225cc5',
+        ...Object.fromEntries(Object.entries(tones).flatMap(([name, value]) => [[name, value], [name + '-soft', mixColor(surface, value, .12)]])),
     };
 }
 

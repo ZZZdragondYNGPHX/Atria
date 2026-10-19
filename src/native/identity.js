@@ -1,6 +1,20 @@
 import { randomUUID } from 'node:crypto';
 
 export const NATIVE_ID_FAMILIES = Object.freeze({
+    orchestrationPlan: 'oplan',
+    orchestrationRevision: 'oprev',
+    orchestrationRun: 'orun',
+    orchestrationNode: 'onode',
+    orchestrationAttempt: 'oattempt',
+    orchestrationEdge: 'oedge',
+    orchestrationPatch: 'opatch',
+    orchestrationJoin: 'ojoin',
+    orchestrationEffect: 'oeffect',
+    orchestrationReceipt: 'oreceipt',
+    orchestrationApproval: 'oapproval',
+    orchestrationResult: 'oresult',
+    orchestrationCommand: 'ocmd',
+    rpControl: 'rpctl',
     persona: 'persona',
     package: 'pkg',
     packageVersion: 'pkgv',

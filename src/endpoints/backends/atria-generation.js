@@ -670,7 +670,7 @@ async function persistGeneratedReply(job, text, generationId = '', modelName = '
             // Route through ChatRepo so writes land in the active engine,
             // not just the FS scratch directory. (filePath is still passed
             // so the sidecar gen-id helpers see a stable key.)
-            handle: job?.requestMeta?.handle,
+            handle: job?.handle,
             charDir: '',
             name: groupId,
             isGroup: true,
@@ -698,7 +698,7 @@ async function persistGeneratedReply(job, text, generationId = '', modelName = '
             chatMetadata: persistTarget.chat_metadata || {},
             integritySlug: persistTarget.integrity || '',
             force: Boolean(persistTarget.force),
-            handle: job?.requestMeta?.handle,
+            handle: job?.handle,
             charDir: avatar,
             name: baseName,
             isGroup: false,

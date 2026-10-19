@@ -100,7 +100,8 @@ export async function previewPersonaBackup(zipPath, engineMeta, options) {
     const { randomBytes } = await import('node:crypto');
     const { withReadOnlyBypass } = await import('../storage/read-only-mode.js');
     const source = await withReadOnlyBypass(() => materializeTransientSource(engineMeta, zipPath, { dataRoot: options.dataRoot,
-        scratchHandle: '_xrestore_' + randomBytes(16).toString('hex'), scratchCreds: options.scratchCreds, reuseEngine: engineMeta.engineKind === options.targetEngine.kind ? options.targetEngine : null }));
+        scratchHandle: '_xrestore_' + randomBytes(16).toString('hex'), scratchCreds: options.scratchCreds, hostLifecycle: options.targetEngine.nativeHostLifecycle,
+        reuseEngine: engineMeta.engineKind === options.targetEngine.kind ? options.targetEngine : null }));
     try {
         return await reviewPersonaBackup({ sourceEngine: source.engine, sourceHandle: source.scratchHandle, sourceDirs: source.scratchDirs,
             manifest: options.manifest, targetEngine: options.targetEngine, targetHandle: options.targetHandle });

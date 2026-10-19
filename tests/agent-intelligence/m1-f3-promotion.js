@@ -1,14 +1,14 @@
 // Delegated private engineering acceptance. Production promotion stays gated.
 import { randomUUID } from 'node:crypto';
 import { gzipSync, gunzipSync } from 'node:zlib';
-import { hash, canonical, selectCases, loadFixture, CASE_SET_REVISION, PILOT_CASE_SET_REVISION, isPilotCaseSetRevision } from '../../src/native/agent-intelligence/evaluation/cases.js';
+import { hash, canonical, selectCases, isPilotCaseSetRevision } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
 import { EVOLUTION_EVALUATOR_VERSION, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
-import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligence/evaluation/worker-bridge.js';
-import { runRp } from '../../src/native/agent-intelligence/evaluation/adapters.js';
+import { ChatRepo } from '../../src/storage/repositories/chat-repo.js';
 import { comparisonCalibrationReady, gradeF3Report, f3JudgeLabels, pilotDevelopmentReadiness } from './m1-f3.js';
 import { projectActivationMatches } from './m1-resume.js';
+import { prepareRestoredNativeRpHost } from './evolution-fixture.js';
 
 const equal = (a, b) => canonical(a) === canonical(b);
 const chargeFields = ['id', 'trialId', 'kind', 'requestHash', 'snapshotHash', 'status', 'tokens', 'usage', 'cost'];
@@ -62,10 +62,11 @@ export function pilotPromotionAcceptance(report, independent, owner, jobId) {
 }
 
 export async function publishConsumeRollback({ f, kind, job, candidate, report, entry, store, signal, fresh }) {
+    if (kind === 'rp-skill') prepareRestoredNativeRpHost(f);
     // Exact configuration/target checks precede the original delegated review.
     for (const arm of ['baseline', 'candidate']) {
         const settings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target, arm === 'candidate' ? candidate.candidateId : undefined);
-        const config = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId, settings.projectPromptRef || null);
+        const config = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId, settings.projectPromptRef || null, settings.nativePlan || null);
         if (hash(config) !== report.configurations[arm] || hash(settings) !== report.settings[arm]) throw new Error('f3_publication_configuration_changed');
     }
     await fresh();
@@ -80,7 +81,7 @@ export async function publishConsumeRollback({ f, kind, job, candidate, report, 
         current: await f.service.targets.publicationCurrent(f.h.handle, f.scope, f.subject, publication) };
     try {
         const nextSettings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
-        const nextConfig = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId, nextSettings.projectPromptRef || null);
+        const nextConfig = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId, nextSettings.projectPromptRef || null, nextSettings.nativePlan || null);
         const selected = { ...candidate, report };
         const configMatches = kind === 'project-prompt' ? projectActivationMatches(nextConfig, nextSettings, publication, selected)
             : hash(nextConfig) === report.configurations.candidate && hash(nextSettings) === report.settings.candidate;
@@ -104,28 +105,42 @@ export async function publishConsumeRollback({ f, kind, job, candidate, report, 
             } };
             const host = new NativeGenerationHost({ ...f.host, providers: { ...f.host.providers, 'provider.openai-compatible': provider } });
             const project = await f.host.studio.getProject(f.h.handle, f.subject);
+            const nextTask = f.nextTask ?? await f.host.agent.createTask(f.h.handle, f.subject, { intent: 'Observe the restored exact prompt', baseRevision: project.revision.revision });
             const next = await host.execute(f.h.handle, { role: 'studio', routeRef: { scope: 'player', runtimeRouteId: f.route.runtimeRouteId },
-                projectId: f.subject, revision: project.revision.revision, requestId: randomUUID(), messages: [{ role: 'user',
+                projectId: f.subject, taskId: nextTask.taskId, revision: project.revision.revision, requestId: randomUUID(), messages: [{ role: 'user',
                     content: 'Briefly acknowledge readiness for human review. Do not perform any operation.' }], tools: [] }, signal);
             entry.lifecycle.nextSnapshotHash = hash(next.snapshot);
             entry.lifecycle.nextExactProgram = next.snapshot.promptProgramRef;
             entry.lifecycle.activation = (await f.repository.get(f.h.handle, f.scope, f.subject)).publications.find(p => p.id === publication.id).activation;
             entry.lifecycle.nextRunConsumed = Boolean(entry.lifecycle.activation && configMatches);
         } else {
-            const entryCase = selectCases({ purpose: 'evaluation', split: 'development', profileId: 'rp.m1.information',
-                caseSetRevision: report.caseSetRevision === CASE_SET_REVISION ? PILOT_CASE_SET_REVISION : report.caseSetRevision })[0];
-            const bridge = await createFrozenEvaluationBridge(nextConfig, async payload => (await f.evaluator.send(f.h.handle, activationJob, nextConfig,
-                { ...payload, arm: 'candidate' }, signal, current)).raw);
-            const capture = { trialId: activationJob.id, refs: { runIds: [], requestIds: [], effectIds: [], taskIds: [], messageVariants: [] },
-                prompts: [], evidence: [], checks: {}, completeness: [], toolCalls: 0, repairCount: 0,
-                observe(name, observed, expected) { this.checks[name] = equal(observed, expected); this.evidence.push({ name, observed, expected }); } };
-            const oldFetch = globalThis.fetch, oldAtria = globalThis.Atria;
-            globalThis.fetch = async () => { throw new Error('f3_activation_unfunded_network_denied'); };
-            try { await runRp(entryCase, loadFixture(entryCase, { purpose: 'evaluation' }), capture, { bridge, settings: { roundLimit: 6, ...nextSettings }, beforeSend: () => {} }); }
-            finally { bridge.cleanup(); globalThis.fetch = oldFetch; globalThis.Atria = oldAtria; }
-            entry.lifecycle.nextRunConsumed = capture.artifact?.targetConsumed === true && Object.values(capture.checks).every(Boolean);
-            entry.lifecycle.activationOrigin = 'client_observation';
-            store(kind + '-f3-next-run.json', capture);
+            // Activation belongs to the original published chat. A cloned
+            // evaluation store cannot mark the owner's publication consumed.
+            let prepared;
+            const base = f.host.providers['provider.openai-compatible'];
+            const provider = { ...base, renderRequest(input) {
+                const rendered = base.renderRequest(input);
+                prepared = { arm: 'candidate', trialId: activationJob.id, rendered, inputTokens: input.snapshot.diagnostics.inputTokens,
+                    outputTokens: input.snapshot.contextPlan.budget.reservedOutputTokens, requestHash: hash(rendered), snapshotHash: hash(input.snapshot) };
+                return rendered;
+            }, async send(_rendered, boundary) {
+                const paid = await f.evaluator.send(f.h.handle, activationJob, nextConfig, prepared, boundary.signal, current);
+                return { headers: { get: () => 'application/json' }, json: async () => paid.raw };
+            } };
+            const host = new NativeGenerationHost({ ...f.host, providers: { ...f.host.providers, 'provider.openai-compatible': provider } });
+            const chats = new ChatRepo({ engine: f.h.engine });
+            const locator = { charDir: f.scope.charDir, name: f.scope.name, isGroup: false, groupId: null };
+            const chat = await chats.get(f.h.handle, locator.charDir, locator.name);
+            const messages = [...chat.body, { memory_os_source_id: randomUUID(), is_user: true, name: 'User', mes: 'Wait for my choice.' }];
+            await chats.save(f.h.handle, locator.charDir, locator.name, chat.header, messages, null);
+            const { controlId } = await f.host.turnOrchestration.rpControl.bind(f.h.handle, locator);
+            const operation = await host.startRp(f.h.handle, { controlId, floor: messages.length - 1, requestId: activationJob.id,
+                routeRef: { scope: 'player', runtimeRouteId: f.route.runtimeRouteId } }, { signal });
+            const result = await operation.result;
+            entry.lifecycle.activation = (await f.repository.get(f.h.handle, f.scope, f.subject)).publications.find(p => p.id === publication.id).activation;
+            entry.lifecycle.nextRunConsumed = Boolean(entry.lifecycle.activation?.origin === 'host' && result.output?.runStatus === 'completed');
+            entry.lifecycle.activationOrigin = entry.lifecycle.activation?.origin ?? null;
+            store(kind + '-f3-next-run.json', { result, activation: entry.lifecycle.activation });
         }
         entry.lifecycle.nextConfigurationMatchesCandidate = configMatches;
     } finally {
@@ -233,7 +248,7 @@ export async function continueF3Promotion({ f, kind, result, source, scope, entr
     if (!entry.developmentReadiness.accepted) throw new Error('f3_development_unqualified');
     const baselineSettings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
     const settings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target, candidate.candidateId);
-    const config = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId, settings.projectPromptRef || null);
+    const config = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId, settings.projectPromptRef || null, settings.nativePlan || null);
     if (hash(primaryConfig) !== report.configurations.baseline || hash(config) !== report.configurations.candidate
         || hash(baselineSettings) !== report.settings.baseline || hash(settings) !== report.settings.candidate) throw new Error('f3_continuation_configuration_changed');
     const job = { ...result.job, id: 'm1-f3-promotion-' + randomUUID(), status: 'evaluating', createdAt: Date.now(),

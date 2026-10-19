@@ -4,6 +4,7 @@ import path from 'node:path';
 import { assertAccountPath } from './path-boundary.js';
 import { accountEngineForDirectory, withAccountFileGrowth } from './account-quota.js';
 import { fileResourceBytes, listAccountFiles } from './resource-accounting.js';
+import { withChatWrite } from './repositories/chat-write-boundary.js';
 
 const TEXT_EXTENSIONS = new Set(['.json', '.jsonl', '.txt', '.md', '.yaml', '.yml', '.css', '.js']);
 const EDITABLE_EXTENSIONS = new Set(['.json', '.jsonl', '.txt', '.md', '.yaml', '.yml']);
@@ -298,7 +299,11 @@ export async function createStorageRecoveryPoint({ recoveryRoot, handle, resourc
     return manifest;
 }
 
-export async function writeStorageResource({ resource, content, recoveryRoot, handle, expectedModifiedMs = null }) {
+export async function writeStorageResource(args) {
+    return withChatWrite(args.handle, () => writeManagedResource(args));
+}
+
+async function writeManagedResource({ resource, content, recoveryRoot, handle, expectedModifiedMs = null }) {
     if (!resource?.capabilities?.edit) throw error('E_READ_ONLY', 'This storage resource is not editable.');
     const stat = await fs.promises.stat(resource.absolutePath).catch(() => null);
     if (!stat?.isFile()) throw error('E_NOT_FOUND', 'Editable storage resource does not exist.');
@@ -327,7 +332,11 @@ export async function writeStorageResource({ resource, content, recoveryRoot, ha
     return { recovery };
 }
 
-export async function deleteStorageResource({ resource, recoveryRoot, handle }) {
+export async function deleteStorageResource(args) {
+    return withChatWrite(args.handle, () => deleteManagedResource(args));
+}
+
+async function deleteManagedResource({ resource, recoveryRoot, handle }) {
     if (!resource?.capabilities?.delete) throw error('E_READ_ONLY', 'This storage resource cannot be deleted here.');
     const recovery = await createStorageRecoveryPoint({ recoveryRoot, handle, resource, action: 'delete' });
     await fs.promises.rm(resource.absolutePath, {
@@ -351,7 +360,11 @@ export async function listStorageRecoveryPoints(recoveryRoot, handle, limit = 25
     return manifests;
 }
 
-export async function restoreStorageRecoveryPoint({ recoveryRoot, handle, userRoot, id }) {
+export async function restoreStorageRecoveryPoint(args) {
+    return withChatWrite(args.handle, () => restoreManagedResource(args));
+}
+
+async function restoreManagedResource({ recoveryRoot, handle, userRoot, id }) {
     assertSegment(id);
     const root = path.join(recoveryRoot, handle, id);
     const manifest = JSON.parse(await fs.promises.readFile(path.join(root, 'manifest.json'), 'utf8'));

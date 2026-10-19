@@ -1,3 +1,5 @@
+import { assertPlanRouteValue } from '../../orchestration/plan-evolution-contracts.js';
+
 // Accept a complete JSON document, optionally enclosed in one JSON fence.
 // Never extract a fragment from commentary or repair malformed model output.
 export function parseEvaluationJson(value) {
@@ -10,6 +12,11 @@ export function parseEvaluationJson(value) {
 // instructions survive byte-for-byte; ambiguous anchors never pick a match.
 export function applyEvolutionProposal(parsed, base) {
     const keys = Object.keys(parsed || {}).sort().join(',');
+    if (base && typeof base === 'object' && Object.keys(base).sort().join(',') === 'runtimeRouteId,scope') {
+        assertPlanRouteValue(base);
+        if (keys !== 'rationale,value') throw new TypeError('evolution_route_proposal_required');
+        assertPlanRouteValue(parsed.value); return parsed;
+    }
     if (typeof base !== 'string') {
         if (keys !== 'rationale,value' || !Number.isSafeInteger(parsed.value)) throw new TypeError('evolution_integer_proposal_required');
         return parsed;

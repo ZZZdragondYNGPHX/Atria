@@ -1,4 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import { consumeNativeProjectToolPermit, completeNativeProjectToolPermit,
+    consumeNativeProjectGenerationPermit, assertNativeProjectGenerationWrite } from './orchestration/native-project-generation-authority.js';
+import { consumeNativeProjectCommitPermit, nativeProjectCommitChangeSet, nativeProjectCommitPreview, assertNativeProjectCommitWrite, assertNativeProjectCommitWork } from './orchestration/native-project-commit-authority.js';
+import { projectToolResultPayload } from './orchestration/project-tool-contracts.js';
 import { listAuthoringReferences, readAuthoringReference } from './authoring-reference.js';
 
 import { ConflictError, NotFoundError } from '../storage/errors.js';
@@ -16,7 +20,8 @@ import { assertWritable, isReadOnly } from '../storage/read-only-mode.js';
 import { assertProjectAgentConversation } from '../../public/shared/project-agent-conversation.js';
 import { fields as allowedFields } from '../../public/shared/native-values.js';
 import { checkProjectStrategyCandidate, updateProjectStrategy } from './agent-intelligence/project-strategy.js';
-import { bindComputeBudget, chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork } from '../../public/shared/native-compute-budget.js';
+import { bindComputeBudget, chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork,
+    reserveComputeChild, releaseComputeChild, admitComputeAttempt } from '../../public/shared/native-compute-budget.js';
 
 export const PROJECT_AGENT_MAX_REPAIR_ROUNDS = 3;
 
@@ -308,6 +313,12 @@ export class ProjectAgentService {
         return JSON.stringify([handle, projectId, id]);
     }
 
+    // The original Task writer lock also fences read-only Host consumption.
+    // It must precede the original Studio queue and any Engine transaction.
+    withTaskLock(handle, projectId, id, operation) {
+        return withNativeResourceWrite(handle, 'project-agent:' + projectId + ':' + id, operation);
+    }
+
     _task(handle, projectId, id) {
         const task = this._tasks.get(this._key(handle, projectId, id));
         if (!task) throw new NotFoundError('native project agent task', { taskId: id });
@@ -394,14 +405,15 @@ export class ProjectAgentService {
         }
     }
 
-    async _operate(handle, projectId, id, operation, { write = true, expectedSequence, expectedReviewHash, effectPolicy } = {}) {
+    async _operate(handle, projectId, id, operation, { write = true, expectedSequence, expectedReviewHash, effectPolicy, beforeLoad } = {}) {
         if (effectPolicy !== undefined && effectPolicy !== 'no-background-model') throw new TypeError('Invalid task effect policy');
         let collectOutcome = false;
         const outcomeHash = task => hashNativeDocument({ status: task.status, validation: task.validation, review: task.review, changeSets: task.changeSets });
         try {
-            return await withNativeResourceWrite(handle, 'project-agent:' + projectId + ':' + id, async () => {
+            return await this.withTaskLock(handle, projectId, id, async () => {
                 if (write) assertWritable();
                 await this._studio.getProject(handle, projectId);
+                if (beforeLoad) await beforeLoad();
                 const task = await this._repository.get(handle, projectId, id);
                 if (!task) throw new NotFoundError('native project agent task', { projectId, taskId: id });
                 if (expectedSequence !== undefined && (!Number.isInteger(expectedSequence) || task.sequence !== expectedSequence)) throw new ConflictError('project_agent_sequence_conflict');
@@ -410,13 +422,16 @@ export class ProjectAgentService {
                 this._tasks.set(this._key(handle, projectId, id), task);
                 this._integrities.set(this._key(handle, projectId, id), hashNativeDocument(task));
                 await this._recover(handle, task);
+                if (beforeLoad && this._tasks.get(this._key(handle, projectId, id)) !== task)
+                    throw new ConflictError('native_orchestration_source_stale');
                 if (hashNativeDocument(task) !== this._integrities.get(this._key(handle, projectId, id)) && !isReadOnly()) await this._persist(handle, task);
                 try {
                     const result = await operation(task);
                     if (!isReadOnly() && hashNativeDocument(task) !== this._integrities.get(this._key(handle, projectId, id))) await this._persist(handle, task);
                     return result?.taskId === id ? this._snapshot(task) : result;
                 } catch (error) {
-                    if (!isReadOnly() && !error.atriTaskPersistence && hashNativeDocument(task) !== this._integrities.get(this._key(handle, projectId, id))) await this._persist(handle, task);
+                    if (!isReadOnly() && !error.atriTaskPersistence && (!beforeLoad || this._tasks.get(this._key(handle, projectId, id)) === task)
+                        && hashNativeDocument(task) !== this._integrities.get(this._key(handle, projectId, id))) await this._persist(handle, task);
                     throw error;
                 } finally {
                     collectOutcome = write && before !== outcomeHash(task);
@@ -463,8 +478,25 @@ export class ProjectAgentService {
         return this._observe(handle, projectId, id, () => this._getContext(handle, projectId, id));
     }
 
+    /** Host transaction reader: no Project/Task writer locks, recovery or cache publication. */
+    async observeComputeSource(handle, projectId, id) {
+        const task = await this._repository.get(handle, projectId, id);
+        if (!task) throw new NotFoundError('native project agent task', { projectId, taskId: id });
+        const revision = await this._studio.observeRevision(handle, projectId);
+        return { task: this._snapshot(task), project: { revision } };
+    }
+
+    // Exact inputs consumed by the original Project prompt builder. No Task
+    // recovery, cache publication, ResourceGraph scan or domain write occurs.
+    async observeModelContext(handle, projectId, id) {
+        const task = await this._repository.get(handle, projectId, id);
+        if (!task) throw new NotFoundError('native project agent task', { projectId, taskId: id });
+        const project = await this._studio.observeProject(handle, projectId), registry = this._studio.getResourceRegistry();
+        return Object.freeze({ task: this._snapshot(task), project, registry, tools: buildProjectAgentTools(registry) });
+    }
+
     async _observe(handle, projectId, id, operation) {
-        return withNativeResourceWrite(handle, 'project-agent:' + projectId + ':' + id, async () => {
+        return this.withTaskLock(handle, projectId, id, async () => {
             await this._studio.getProject(handle, projectId);
             const task = await this._repository.get(handle, projectId, id);
             if (!task) throw new NotFoundError('native project agent task', { projectId, taskId: id });
@@ -531,7 +563,9 @@ export class ProjectAgentService {
     }
 
     commit(handle, projectId, id, options = {}) {
-        return this._operate(handle, projectId, id, () => this._commit(handle, projectId, id), options);
+        if (options.nativeCommitPermit === undefined) return this._operate(handle, projectId, id, () => this._commit(handle, projectId, id), options);
+        return this._operate(handle, projectId, id, () => this._commit(handle, projectId, id, options.nativeCommitPermit), { ...options,
+            beforeLoad: () => consumeNativeProjectCommitPermit(options.nativeCommitPermit, { agent: this, handle, projectId, taskId: id }) });
     }
 
     takeOver(handle, projectId, id, options = {}) {
@@ -539,8 +573,9 @@ export class ProjectAgentService {
     }
 
     executeTool(handle, projectId, id, input = {}) {
-        return this._operate(handle, projectId, id, async task => {
-            fields(input, ['name', 'args', 'attemptId', 'callId', 'expectedSequence', 'effectPolicy'], 'Project Agent tool request');
+        const operate = nativeReceipt => this._operate(handle, projectId, id, async task => {
+            fields(input, ['name', 'args', 'attemptId', 'callId', 'expectedSequence', 'effectPolicy', 'nativeEffectPermit'], 'Project Agent tool request');
+            if (nativeReceipt && this._snapshot(task).executionFingerprint !== nativeReceipt.fromFingerprint) throw new ConflictError('native_orchestration_source_stale');
             let attempt;
             if (input.attemptId !== undefined || input.callId !== undefined) {
                 attempt = task.attempts.find(item => item.attemptId === input.attemptId && item.kind === 'generation' && item.status === 'started');
@@ -552,9 +587,23 @@ export class ProjectAgentService {
                 }
             }
             const result = await this._executeTool(handle, projectId, id, input);
-            if (attempt && !attempt.calls.some(item => item.callId === input.callId)) attempt.calls.push({ callId: input.callId, name: input.name, argsHash: hashNativeDocument(input.args || {}) });
+            if (attempt && !attempt.calls.some(item => item.callId === input.callId)) attempt.calls.push({ callId: input.callId, name: input.name, argsHash: hashNativeDocument(input.args || {}),
+                ...(nativeReceipt ? { nativeReceipt: { ...nativeReceipt, toFingerprint: this._snapshot(task).executionFingerprint,
+                    toSequence: task.sequence + 1, resultHash: hashNativeDocument(projectToolResultPayload(input.name, result)) } } : {}) });
+            if (nativeReceipt) completeNativeProjectToolPermit(input.nativeEffectPermit, { result, receipt: attempt.calls.at(-1).nativeReceipt });
             return result;
         }, { expectedSequence: input.expectedSequence, effectPolicy: input.effectPolicy });
+        if (input.nativeEffectPermit === undefined) return operate(null);
+        // Validate before loading the mutable writer object. A legitimate
+        // nested revocation may replace the original cached Task during an
+        // await; the rejected operation must never persist its older copy.
+        return this.withTaskLock(handle, projectId, id, async () => {
+            const { task } = await ProjectAgentService.prototype.observeComputeSource.call(this, handle, projectId, id);
+            const originalInput = Object.fromEntries(['name', 'args', 'attemptId', 'callId'].map(field => [field, input[field]]));
+            const receipt = await consumeNativeProjectToolPermit(input.nativeEffectPermit,
+                { agent: this, handle, projectId, taskId: id, task, input: originalInput });
+            return operate(receipt);
+        });
     }
 
     resumeTask(handle, projectId, id, options = {}) {
@@ -575,8 +624,9 @@ export class ProjectAgentService {
     }
 
     finishGeneration(handle, projectId, id, input) {
+        fields(input, ['attemptId', 'status', 'conversation', 'nativeCompletionPermit'], 'Generation finish');
+        const { nativeCompletionPermit, ...originalInput } = input;
         return this._operate(handle, projectId, id, task => {
-            fields(input, ['attemptId', 'status', 'conversation'], 'Generation finish');
             if (!['completed', 'failed'].includes(input.status)) throw new TypeError('Invalid generation observation');
             const attempt = task.attempts.find(item => item.attemptId === input.attemptId && item.kind === 'generation');
             if (!attempt || attempt.status === 'interrupted') throw new ConflictError('project_agent_attempt_conflict');
@@ -586,34 +636,80 @@ export class ProjectAgentService {
                 if (attempt.status !== input.status || hashNativeDocument(input.conversation) !== hashNativeDocument(task.conversation)) throw new ConflictError('project_agent_attempt_conflict');
                 return this._snapshot(task);
             }
+            if (nativeCompletionPermit !== undefined) assertNativeProjectGenerationWrite(nativeCompletionPermit,
+                { agent: this, handle, projectId, taskId: id, task: this._snapshot(task), writerTask: task, input: originalInput });
             task.conversation = clone(input.conversation);
             this._finishAttempt(task, attempt, input.status);
             return this._snapshot(task);
-        });
+        }, nativeCompletionPermit === undefined ? {} : { beforeLoad: () => consumeNativeProjectGenerationPermit(nativeCompletionPermit,
+            { agent: this, handle, projectId, taskId: id, input: originalInput }) });
     }
 
     // Internal Generation Host observations. No HTTP endpoint accepts these fields.
+    async _assertComputeSource(handle, projectId, task, revision, executionFingerprint) {
+        this._ensureDraftMutable(task);
+        if (task.baseRevision !== revision || (await this._studio.getRevision(handle, projectId)).revision !== revision) throw new ConflictError('native_generation_revision_conflict');
+        if (this._snapshot(task).executionFingerprint !== executionFingerprint) throw new ConflictError('native_generation_task_stopped');
+    }
+
     chargeGeneration(handle, projectId, id, revision, limits, attempt, executionFingerprint, options = {}) {
         return this._operate(handle, projectId, id, async task => {
             limits ??= task.compute?.limits;
             if (!limits) return null;
-            this._ensureDraftMutable(task);
-            if (task.baseRevision !== revision || (await this._studio.getRevision(handle, projectId)).revision !== revision) throw new ConflictError('native_generation_revision_conflict');
-            if (this._snapshot(task).executionFingerprint !== executionFingerprint) throw new ConflictError('native_generation_task_stopped');
+            await this._assertComputeSource(handle, projectId, task, revision, executionFingerprint);
             const compute = chargeComputeAttempt(task, limits, attempt, options);
             return { compute, limits: clone(task.compute.limits) };
-        });
+        }, { effectPolicy: 'no-background-model' });
     }
 
-    chargeLocalWork(handle, projectId, id, revision, limits, attempt, executionFingerprint) {
+    reserveComputeChild(handle, projectId, id, revision, limits, input, executionFingerprint) {
         return this._operate(handle, projectId, id, async task => {
-            if (!limits?.localWork && !task.compute?.limits.localWork) return null;
+            limits ??= task.compute?.limits;
+            if (!limits) throw new ConflictError('native_generation_budget_unavailable');
+            await this._assertComputeSource(handle, projectId, task, revision, executionFingerprint);
+            return { ...reserveComputeChild(task, limits, input), limits: clone(task.compute.limits) };
+        }, { effectPolicy: 'no-background-model' });
+    }
+
+    admitGeneration(handle, projectId, id, revision, limits, attempt, executionFingerprint, options = {}) {
+        return this._operate(handle, projectId, id, async task => {
+            limits ??= task.compute?.limits;
+            if (!limits) throw new ConflictError('native_generation_budget_unavailable');
+            await this._assertComputeSource(handle, projectId, task, revision, executionFingerprint);
+            const result = admitComputeAttempt(task, limits, attempt, options);
+            return { compute: result.attempt, replayed: result.replayed, limits: clone(task.compute.limits) };
+        }, { effectPolicy: 'no-background-model' });
+    }
+
+    releaseComputeChild(handle, projectId, id, reservationId) {
+        return this._operate(handle, projectId, id, task => releaseComputeChild(task, reservationId), { effectPolicy: 'no-background-model' });
+    }
+
+    // Historical paid-work facts are also read while the original Source
+    // boundary holds the Studio queue. Do not re-enter its writer/cache path.
+    async observeCompute(handle, projectId, id, attemptId) {
+        const stored = await this._repository.get(handle, projectId, id);
+        if (!stored) throw new NotFoundError('native project agent task', { projectId, taskId: id });
+        const task = assertProjectTask(stored), compute = task.compute?.attempts.find(row => row.attemptId === attemptId);
+        if (!compute) throw new ConflictError('native_generation_attempt_conflict');
+        return clone({ compute, limits: task.compute.limits });
+    }
+
+    chargeLocalWork(handle, projectId, id, revision, limits, attempt, executionFingerprint, options = {}) {
+        return this._operate(handle, projectId, id, async task => {
+            if (!limits?.localWork && !task.compute?.limits.localWork) { if (options.reservationId != null) throw new ConflictError('native_generation_budget_unavailable'); return null; }
             assertWritable();
-            this._ensureDraftMutable(task);
-            if (task.baseRevision !== revision || (await this._studio.getRevision(handle, projectId)).revision !== revision) throw new ConflictError('native_generation_revision_conflict');
-            if (this._snapshot(task).executionFingerprint !== executionFingerprint) throw new ConflictError('native_generation_task_stopped');
+            await this._assertComputeSource(handle, projectId, task, revision, executionFingerprint);
+            return chargeLocalWork(task, limits, attempt, options);
+        }, { write: false, effectPolicy: 'no-background-model' });
+    }
+    // A reviewed Task's bank is still the original compute ledger. Only the
+    // opaque exact user/Effect permit can admit these two bounded local jobs.
+    chargeNativeCommitWork(handle, projectId, id, permit, limits, attempt) {
+        return this._operate(handle, projectId, id, async task => {
+            await assertNativeProjectCommitWork(permit, { agent: this, handle, projectId, taskId: id, task, attempt });
             return chargeLocalWork(task, limits, attempt);
-        }, { write: false });
+        }, { write: false, effectPolicy: 'no-background-model' });
     }
     bindGoal(handle, projectId, id, { goalId, definitionHash, intent, revision, limits }) {
         return this._operate(handle, projectId, id, async task => {
@@ -664,7 +760,7 @@ export class ProjectAgentService {
         });
     }
     settleLocalWork(handle, projectId, id, attemptId, usage) {
-        return this._operate(handle, projectId, id, task => settleLocalWork(task, attemptId, usage));
+        return this._operate(handle, projectId, id, task => settleLocalWork(task, attemptId, usage), { effectPolicy: 'no-background-model' });
     }
 
     // A failed Studio evaluation restore cannot enter _operate: its initial
@@ -672,7 +768,7 @@ export class ProjectAgentService {
     // Settle the admitted job and stop this original Task through its own CAS.
     failComparisonRecovery(handle, projectId, id, executionFingerprint, attemptId, usage, originalSourceIdentity) {
         assertOriginalProjectSourceIdentity(originalSourceIdentity);
-        return withNativeResourceWrite(handle, 'project-agent:' + projectId + ':' + id, async () => {
+        return this.withTaskLock(handle, projectId, id, async () => {
             assertWritable();
             const task = await this._repository.get(handle, projectId, id);
             if (!task || this._snapshot(task).executionFingerprint !== executionFingerprint) throw new ConflictError('native_generation_task_stopped');
@@ -706,7 +802,7 @@ export class ProjectAgentService {
         });
     }
     settleGeneration(handle, projectId, id, attemptId, usage) {
-        return this._operate(handle, projectId, id, task => settleComputeAttempt(task, attemptId, usage));
+        return this._operate(handle, projectId, id, task => settleComputeAttempt(task, attemptId, usage), { effectPolicy: 'no-background-model' });
     }
 
     recordGenerationRequest(handle, projectId, id, attemptId, requestId) {
@@ -741,7 +837,7 @@ export class ProjectAgentService {
     }
 
     deleteTask(handle, projectId, id, expectedIntegrity = undefined) {
-        return withNativeResourceWrite(handle, 'project-agent:' + projectId + ':' + id, async () => {
+        return this.withTaskLock(handle, projectId, id, async () => {
             const result = await this._repository.delete(handle, projectId, id, expectedIntegrity);
             this._tasks.delete(this._key(handle, projectId, id)); this._integrities.delete(this._key(handle, projectId, id));
             return result;
@@ -966,6 +1062,9 @@ export class ProjectAgentService {
         if (task.projectId !== projectId) throw new NotFoundError('native project agent task', { taskId: id, projectId });
         this._ensureDraftMutable(task);
         const plan = normalizePlan(planValue);
+        const ids = new Set(plan.steps.map(step => step.id));
+        if (task.proposals.some(proposal => proposal.stepId !== null && !ids.has(proposal.stepId)))
+            throw new ConflictError('project_agent_plan_proposals_conflict', { taskId: task.taskId });
         task.plan = plan;
         task.status = 'planned';
         task.updatedAt = Date.now();
@@ -1235,7 +1334,7 @@ export class ProjectAgentService {
         }
     }
 
-    async _commit(handle, projectId, id) {
+    async _commit(handle, projectId, id, nativeCommitPermit) {
         const task = this._task(handle, projectId, id);
         if (task.status === 'completed') return this._snapshot(task);
         this._ensureMutable(task);
@@ -1243,22 +1342,26 @@ export class ProjectAgentService {
             throw new ConflictError('project_agent_review_required', { taskId: id, status: task.status });
         }
         const assertPreview = () => {
-            if (!task.preview?.previewId) return;
+            const preview = nativeCommitPermit === undefined ? task.preview : nativeProjectCommitPreview(nativeCommitPermit, { agent: this, handle, projectId, taskId: id, task }) ?? task.preview;
+            if (!preview?.previewId) return;
             let current;
-            try { current = this._studio.getPreviewUi(handle, task.preview.previewId); } catch { throw new ConflictError('project_agent_preview_stale'); }
-            if (current.packageVersionId !== task.preview.packageVersionId) throw new ConflictError('project_agent_preview_stale');
+            try { current = this._studio.getPreviewUi(handle, preview.previewId); } catch { throw new ConflictError('project_agent_preview_stale'); }
+            if (current.packageVersionId !== preview.packageVersionId) throw new ConflictError('project_agent_preview_stale');
         };
         assertPreview();
         await this._assertTaskBaseRevision(handle, task);
         const attempt = this._startAttempt(task, 'commit');
-        task.commitIntent = { changeSetId: 'changeset_' + String(this._idFactory()).replaceAll('-', '').toLowerCase(), workspaceHash: hashNativeDocument(task.workspace) };
+        task.commitIntent = { changeSetId: nativeCommitPermit === undefined ? 'changeset_' + String(this._idFactory()).replaceAll('-', '').toLowerCase()
+            : nativeProjectCommitChangeSet(nativeCommitPermit, { agent: this, handle, projectId, taskId: id }), workspaceHash: hashNativeDocument(task.workspace) };
         task.status = 'committing';
         task.updatedAt = Date.now();
         await this._persist(handle, task);
         let result;
         try {
             result = await this._studio.executeWorkspace(handle, task.workspace, { changeSetId: task.commitIntent.changeSetId,
-                beforeCommit: receipt => {
+                beforeCommit: async receipt => {
+                    assertPreview();
+                    if (nativeCommitPermit !== undefined) await assertNativeProjectCommitWrite(nativeCommitPermit, { agent: this, handle, projectId, taskId: id, task, receipt });
                     assertPreview();
                     const candidate = clone(task);
                     // Git SHA-1 IDs have the same length; this placeholder is never stored or consumed.

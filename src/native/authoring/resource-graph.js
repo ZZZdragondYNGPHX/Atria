@@ -697,6 +697,9 @@ export class ResourceGraph {
     async inspectDelete(handle, value) {
         const graphReferences = await this.references(handle, value, { reverse: true });
         const repositoryReferences = [];
+        if (typeof this._versionedJsonResources?.getOrchestrationReferences === 'function') {
+            repositoryReferences.push(...await this._versionedJsonResources.getOrchestrationReferences(handle, value));
+        }
         const repositoryType = !value.scope || value.scope === 'library' ? value.resourceType : null;
         if (repositoryType === 'core.world' && value.revision) {
             repositoryReferences.push(...await this._worlds.getRevisionReferences(

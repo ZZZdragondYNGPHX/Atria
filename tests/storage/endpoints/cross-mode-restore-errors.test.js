@@ -88,6 +88,7 @@ describe('cross-mode restore error mapping (on fs server)', () => {
             .field('mode', 'merge')
             .field('selection', JSON.stringify(ALL_SELECTION))
             .field('scratchMysqlUrl', 'mysql://nobody:wrong@127.0.0.1:1/none')
+            .field('scratchMysqlNativeHostTopology', 'direct_single_primary')
             .attach('avatar', zipBytes, 'mysql.zip');
         expect(res.status).toBe(400);
         expect(res.body?.crossModeScratchConnection?.kind).toBe('mysql');

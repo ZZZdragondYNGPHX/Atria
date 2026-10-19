@@ -16,8 +16,6 @@ const ATRIA_PATH_MARKERS = Object.freeze([
     '/src/ws-delivery',
     '/public/scripts/logging/',
     '/scripts/logging/',
-    '/public/scripts/agents/orchestrator/',
-    '/scripts/agents/orchestrator/',
     '/public/scripts/agents/memory/',
     '/scripts/agents/memory/',
     '/public/scripts/world-info/',

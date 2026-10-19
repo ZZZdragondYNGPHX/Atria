@@ -79,7 +79,7 @@ Retrieves an API object registered by another extension. Returns `undefined` if 
 
 The most common use case is decoupling: one extension provides a capability, another consumes it, without a hard-coded import dependency. For example, CardApp Studio exposes its editor API via `registerExtensionApi`, and other extensions can call it directly once Studio is ready.
 
-The orchestrator extension follows the same convention — it publishes `'orchestrator'` with `registerOrchestrationTool` / `unregisterOrchestrationTool` / `listExtensionTools` (and SillyTavern-bridge helpers) so any other extension can contribute tools that orchestration agents can call. See [Orchestrator Tools API](./orchestrator-tools.md).
+The retired Browser `orchestrator` tool registry is unsupported. Native orchestration uses Host-admitted Plans and Ports; extension API registration does not grant Agent execution or domain-write authority. See [Native Orchestration](../../features/native-orchestration.md).
 
 ## Event System
 

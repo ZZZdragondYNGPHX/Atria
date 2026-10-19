@@ -1,4 +1,4 @@
-import { compilePreparedContext } from './lib/agent-runtime/prepared-context.js';
+import { compilePreparedContext } from './lib/prepared-context/prepared-context.js';
 /**
  * One-stop request API for Atria extensions. Encapsulates profile resolution,
  * prompt assembly, sender dispatch, and response normalization so extensions

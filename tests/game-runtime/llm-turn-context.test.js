@@ -47,7 +47,6 @@ describe('A3 Turn Context contract', () => {
             'command_results',
             'active_branch_chat',
             'memory_recall',
-            'orchestrator_guidance',
         ]);
     });
 
@@ -88,7 +87,6 @@ describe('A3 Turn Context contract', () => {
         });
         const advanced = advanceTurnContext(turn, {
             memories: [{ id: 'fact:key' }],
-            orchestration: { mode: 'agenda' },
         });
         expect(advanced.turnId).toBe(turn.turnId);
         expect(advanced.anchor).toEqual(turn.anchor);

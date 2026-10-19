@@ -21,6 +21,7 @@ import { SETTINGS_FILE, PUBLIC_DIRECTORIES, UPLOADS_DIRECTORY } from '../constan
 import { checkForNewContent, CONTENT_TYPES } from './content-manager.js';
 import { invalidateRecentChatIndex } from './chats.js';
 import { color, Cache, getConfigValue, ensureDirectory, isValidUrl, normalizeZipEntryPath, trimTrailingSlash } from '../util.js';
+import { resolveStorageDbConfig } from '../storage/config-persistence.js';
 import { createLanMigrationOffer, LAN_MIGRATION_PATH_PREFIX } from '../lan-migration.js';
 import { listForUser, mergeReadIds } from '../announcements.js';
 import { getStorageEngine, setReadOnly } from '../storage/index.js';
@@ -31,6 +32,7 @@ import {
     SNAPSHOT_META_ENTRY,
     snapshotUser,
     restoreFromSnapshot,
+    assertSnapshotRestoreAllowed,
 } from '../storage/migration/backup.js';
 import {
     CrossModeScratchCredsRequiredError,
@@ -54,6 +56,7 @@ import {
     writeStorageResource,
 } from '../storage/management.js';
 import { getAdminSettings } from '../admin-settings.js';
+import { withChatWrite } from '../storage/repositories/chat-write-boundary.js';
 import { stageRestoreArchiveForRandomAccess } from '../backup-sync/restore-staging.js';
 import { resetGlobalExtensionsRestoreDirectory } from '../backup-sync/restore-targets.js';
 import {
@@ -157,8 +160,17 @@ function parseScratchCreds(body) {
         ? Number(body.scratchPostgresPoolSize) : undefined;
     if (!mysqlUrl && !postgresUrl) return null;
     const out = {};
-    if (mysqlUrl) { out.mysqlUrl = mysqlUrl; if (mysqlPoolSize !== undefined) out.mysqlPoolSize = mysqlPoolSize; }
-    if (postgresUrl) { out.postgresUrl = postgresUrl; if (postgresPoolSize !== undefined) out.postgresPoolSize = postgresPoolSize; }
+    for (const [mode, url, poolSize, prefix, field] of [
+        ['mysql', mysqlUrl, mysqlPoolSize, 'mysql', 'scratchMysqlNativeHostTopology'],
+        ['postgres', postgresUrl, postgresPoolSize, 'postgres', 'scratchPostgresNativeHostTopology'],
+    ]) {
+        if (!url) continue;
+        const inline = { url, ...(poolSize !== undefined ? { poolSize } : {}), ...(Object.hasOwn(body, field) ? { nativeHostTopology: body[field] } : {}) };
+        const resolved = resolveStorageDbConfig({ inline, fromConfig: getConfigValue('storage.' + mode, null) }).engine;
+        out[prefix + 'Url'] = resolved.url;
+        if (resolved.poolSize !== undefined) out[prefix + 'PoolSize'] = resolved.poolSize;
+        if (resolved.nativeHostTopology !== undefined) out[prefix + 'NativeHostTopology'] = resolved.nativeHostTopology;
+    }
     return out;
 }
 
@@ -770,6 +782,13 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     // above (synthesized engineMeta = fs). The `RestoreLegacyFsOnDbModeError`
     // type remains exported; this path no longer throws it.
 
+    return withChatWrite(handle, () => restoreFsUserBackup({ handle, directories, currentEngine, selection, mode, analysis,
+        targetFiles, targetDirectories, targetRoot, options, signal, reportProgress, restoreStart, analyzeMs, uploadPath }));
+}
+
+async function restoreFsUserBackup({ handle, directories, currentEngine, selection, mode, analysis,
+    targetFiles, targetDirectories, targetRoot, options, signal, reportProgress, restoreStart, analyzeMs, uploadPath }) {
+    throwIfRestoreCancelled(signal);
     // Same-mode fs restore mutates the live user tree directly. Hold the same
     // migration lock/read-only gate used by cross-mode restore so the
     // asynchronous recovery snapshot cannot race normal writes.
@@ -780,6 +799,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     setReadOnly(true);
 
     try {
+        await assertSnapshotRestoreAllowed({ engine: currentEngine, handle, userRoot: directories.root });
         if (isReplacingRestoreMode(mode) && analysis.report.targetableEntries === 0 && !analysis.engineMeta) {
             throw new Error('Archive does not match selected restore categories. Overwrite was cancelled to protect existing data.');
         }
@@ -1206,6 +1226,10 @@ function resolveRestoreRecoveryPath(handle, id) {
 }
 
 async function applyRestoreRecoveryPoint({ handle, directories, recoveryId }) {
+    return withChatWrite(handle, () => applyUserRecoveryPoint({ handle, directories, recoveryId }));
+}
+
+async function applyUserRecoveryPoint({ handle, directories, recoveryId }) {
     const { recoveryPath, meta } = resolveRestoreRecoveryPath(handle, recoveryId);
     const includeGlobalExtensions = meta?.includeGlobalExtensions === true
         || fs.existsSync(path.join(recoveryPath, SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY));
@@ -1219,6 +1243,7 @@ async function applyRestoreRecoveryPoint({ handle, directories, recoveryId }) {
 
     let undoPath = null;
     try {
+        await assertSnapshotRestoreAllowed({ engine, handle, userRoot: directories.root });
         undoPath = await createRestoreRecoveryPoint(handle, directories, engine, null, {
             purpose: 'before-recovery-apply',
             restoreMode: 'recovery',
@@ -1251,6 +1276,25 @@ async function applyRestoreRecoveryPoint({ handle, directories, recoveryId }) {
 }
 
 const RESTORE_STREAM_MIME = 'application/x-ndjson';
+
+async function resetUserAccountData(handle, directories) {
+    return withChatWrite(handle, async () => {
+        const engine = getStorageEngine();
+        return engine.nativeHostLifecycle.withMaintenance(async () => {
+            // SQLite must evict its old connection and SQL must clear rows before
+            // the original account-reset authority replaces the on-disk tree.
+            await engine.deleteUser(handle);
+            // The account survives reset. Its original Host identity/guard also
+            // survives, so subsequent writes cannot inherit an unlinked SQLite
+            // connection or invalidate the other accounts in this Host.
+            for (const entry of await fsPromises.readdir(directories.root)) {
+                if (entry !== 'native-host.identity') await fsPromises.rm(path.join(directories.root, entry), { recursive: true, force: true });
+            }
+            await ensurePublicDirectoriesExist();
+            await checkForNewContent([directories]);
+        });
+    });
+}
 
 function wantsRestoreProgressStream(request) {
     const accept = String(request.headers.accept || '');
@@ -1516,6 +1560,7 @@ router.post('/restore-backup/recovery/apply', async (request, response) => {
         return response.json({ ok: true, ...result });
     } catch (error) {
         console.error('Restore recovery apply failed:', error);
+        if (error?.code === 'native_orchestration_retention_review_required') return response.status(409).json({ error: error.message, code: error.code });
         const locked = String(error?.message || '').includes('another holder is migrating');
         return response.status(locked ? 409 : 400).json({ error: error?.message || 'Failed to apply recovery point' });
     }
@@ -1821,8 +1866,8 @@ router.post('/restore-backup', async (request, response) => {
                 crossModeScratchConnection: { kind: error.kind },
             });
         }
-        if (error?.code === 'MIGRATION_LOCKED') {
-            return response.status(409).json({ error: message });
+        if (['MIGRATION_LOCKED', 'native_orchestration_retention_review_required'].includes(error?.code)) {
+            return response.status(409).json({ error: message, code: error.code });
         }
         if (error instanceof CrossModeConversionFailedError) {
             return response.status(500).json({
@@ -1973,8 +2018,10 @@ router.post('/reset-settings', async (request, response) => {
         }
 
         const pathToFile = path.join(request.user.directories.root, SETTINGS_FILE);
-        await fsPromises.rm(pathToFile, { force: true });
-        await checkForNewContent([request.user.directories], [CONTENT_TYPES.SETTINGS]);
+        await withChatWrite(request.user.profile.handle, async () => {
+            await fsPromises.rm(pathToFile, { force: true });
+            await checkForNewContent([request.user.directories], [CONTENT_TYPES.SETTINGS]);
+        });
 
         return response.sendStatus(204);
     } catch (error) {
@@ -2068,10 +2115,7 @@ router.post('/reset-step2', async (request, response) => {
         }
 
         console.info('Resetting account data:', request.user.profile.handle);
-        await fsPromises.rm(request.user.directories.root, { recursive: true, force: true });
-
-        await ensurePublicDirectoriesExist();
-        await checkForNewContent([request.user.directories]);
+        await resetUserAccountData(request.user.profile.handle, request.user.directories);
 
         await resetLimiter.delete(ip);
         RESET_CACHE.remove(request.user.profile.handle);

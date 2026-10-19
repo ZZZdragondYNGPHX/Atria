@@ -1,8 +1,10 @@
+import { frozenEvaluationRetrieval, sendEvaluationRetrieval } from './evaluation/retrieval-transport.js';
 import { fork } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { isAbsolute } from 'node:path';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
+import { createHostRouteResolver } from '../model-prompt-runtime/prompt-controls.js';
 import { GenerationService } from '../model-prompt-runtime/generation-service.js';
 import { PromptCompiler } from '../model-prompt-runtime/prompt-compiler.js';
 import { observedGenerationUsage } from '../adapters/generation-usage.js';
@@ -11,6 +13,7 @@ import { parseEvaluationJson, applyEvolutionProposal } from './evaluation/json.j
 import { EVOLUTION_RULE, evolutionFields as fields, evolutionHash as hash, evolutionInteger as integer, evolutionText as text, sameEvolutionValue as same } from './evolution-repository.js';
 import { createNativeId } from '../identity.js';
 import { qualityEnvelope, validateQualityReport, qualityProfile, requirePilotSources } from './evaluation/quality.js';
+import { immutable } from '../model-prompt-runtime/execution-utils.js';
 
 export const EVOLUTION_EVALUATOR_VERSION = 1;
 
@@ -82,22 +85,71 @@ export function promotionDecision(report, { policyFingerprint, targetPin, budget
 // Paid work occurs only in the parent Host. The child receives immutable public
 // configuration/fixtures, never credentials, production stores or writer ports.
 export class EvolutionEvaluator {
+    #sourceProbeConfigurations = new WeakSet();
+    #sourceProbeJobs = new WeakMap();
     constructor({ host, repository }) { this.host = host; this.repository = repository; }
-    async configuration(handle, routeId, projectPromptRef = null) {
+    async configuration(handle, routeId, projectPromptRef = null, nativePlan = null) {
+        const primary = await this.#configuration(handle, routeId, projectPromptRef, false);
+        if (!nativePlan) return primary;
+        // These are the existing isolated Native consumers, not arbitrary
+        // Graph execution or a second approval/publication authority.
+        const domain = nativePlan.sourceSelector.domain, definition = nativePlan.revision.definition;
+        if (!['rp_chat', 'project'].includes(domain) || definition.outputContract.kind !== (domain === 'project' ? 'project_review' : 'rp_narration')
+            || definition.nodes.some(node => node.capabilities.includes('agent.delegate') || ['fanout', 'join'].includes(node.kind)))
+            throw new TypeError('native_orchestration_evaluation_unavailable');
+        const pins = nativePlan.revision.dependencyPins, routes = new Map();
+        for (const node of nativePlan.revision.definition.nodes.filter(node => node.capabilities.includes('generation.send'))) {
+            const pin = pins.find(item => item.pinId === node.policy.agentPinId && node.dependencyPinIds.includes(item.pinId));
+            if (pin?.port !== 'model' || pin.resourceRef.scope !== 'player') throw new TypeError('native_orchestration_evaluation_unavailable');
+            const id = pin.resourceRef.runtimeRouteId, override = nativePlan.routeOverride?.runtimeRouteId === id ? nativePlan.routeOverride : null;
+            const config = id === routeId ? primary : routes.get(id) ?? await this.#configuration(handle, id, override?.promptProgramRef ?? null, false);
+            // The current worker bridge sends each trial request exactly once.
+            // It cannot certify a failure graph or a retried remote operation.
+            if (config.route.fallbackRouteRefs.length || config.route.policy.maxRetries !== 0)
+                throw new TypeError('native_orchestration_evaluation_unavailable');
+            if (hash(config.route) !== pin.integrity || override && hash(config.route) !== hash(override)) throw new TypeError('native_orchestration_evaluation_unavailable');
+            // The existing confirmed price names one paired configuration.
+            // Distinct model/provider/generation prices need their own evidence.
+            if (!same(config.model, primary.model) || !same(config.connection, primary.connection) || !same(config.generation, primary.generation))
+                throw new TypeError('native_orchestration_evaluation_configuration_mismatch');
+            routes.set(id, config);
+        }
+        if (!routes.has(routeId)) throw new TypeError('native_orchestration_evaluation_unavailable');
+        const nativeRoutes = [...routes].filter(([id]) => id !== routeId).sort(([a], [b]) => a.localeCompare(b)).map(([, config]) => config);
+        return { ...primary, ...(nativeRoutes.length ? { nativeRoutes } : {}), ...await frozenEvaluationRetrieval(this.host, handle, nativePlan) };
+    }
+    /** Exact user Route ceiling for engineering observations only. No promotion. */
+    async sourceProbeConfiguration(handle, routeId) {
+        const config = immutable(await this.#configuration(handle, routeId, null, true));
+        this.#sourceProbeConfigurations.add(config);
+        return config;
+    }
+    async #configuration(handle, routeId, projectPromptRef, sourceProbe) {
         const original = await this.host.persistence.getRuntimeRoute(handle, routeId);
         const route = projectPromptRef ? { ...original, promptProgramRef: projectPromptRef } : original;
         const persistence = Object.create(this.host.persistence);
         persistence.getRuntimeRoute = async (owner, id) => id === routeId ? route : this.host.persistence.getRuntimeRoute(owner, id);
-        const resolver = new RouteResolver({ persistence, library: this.host.library, providers: this.host.providers });
+        const resolver = createHostRouteResolver({ ...this.host, persistence });
         const resolved = await resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: routeId }, role: route.role, requirements: ['generation.tools'] });
+        const output = resolved.generation.output.maxTokens;
         if (resolved.connection.providerAdapter !== 'provider.openai-compatible' || resolved.resources.some(r => r.ref.scope !== 'library')
-            || resolved.generation.output.maxTokens > 1024 || resolved.generation.streaming.enabled) throw new TypeError('Evaluation requires a supported exact bounded nonstreaming user Route');
+            || (sourceProbe ? !Number.isSafeInteger(output) || output < 1 || output > resolved.model.limits.outputTokens
+                || output >= resolved.model.limits.contextTokens : output > 1024)
+            || resolved.generation.streaming.enabled) throw new TypeError('Evaluation requires a supported exact bounded nonstreaming user Route');
         return structuredClone({ route: resolved.route, connection: resolved.connection, model: resolved.model, generation: resolved.generation,
             resources: resolved.resources.map(({ ref, resource }) => ({ ref, resource })) });
     }
     async send(handle, job, config, payload, signal, fresh) {
+        const sourceProbe = this.#sourceProbeConfigurations.has(config);
+        if (sourceProbe && (this.#sourceProbeJobs.get(config) !== job || payload.arm !== 'baseline')) throw new TypeError('Source probe baseline only');
         await fresh();
-        integer(payload.inputTokens, 1, config.model.limits.contextTokens); integer(payload.outputTokens, 1, 1024);
+        if (sourceProbe && this.#sourceProbeJobs.get(config) !== job) throw new TypeError('Source probe baseline only');
+        integer(payload.inputTokens, 1, config.model.limits.contextTokens); integer(payload.outputTokens, 1, sourceProbe ? config.generation.output.maxTokens : 1024);
+        if (sourceProbe) {
+            const body = payload.rendered?.body;
+            if (!body || ['max_tokens', 'max_completion_tokens'].filter(key => Object.hasOwn(body, key)).length !== 1
+                || (body.max_completion_tokens ?? body.max_tokens) !== payload.outputTokens) throw new TypeError('Source probe output ceiling changed');
+        }
         if (payload.rendered.endpoint !== config.connection.endpoint || payload.rendered.body.model !== config.model.remoteModelId
             || payload.outputTokens > config.generation.output.maxTokens || hash(payload.rendered) !== payload.requestHash) throw new TypeError('Evaluation transport fingerprint changed');
         const id = randomUUID(), kind = payload.arm === 'judge' ? 'judge' : payload.arm === 'extraction' ? 'extraction' : payload.arm;
@@ -127,6 +179,7 @@ export class EvolutionEvaluator {
         } finally { await this.repository.settle(handle, id, usage?.totalTokens ?? null, { usage: usage || null, cost: usageCost(usage, job.price) }); }
     }
     async extract(handle, job, config, signal, fresh, publicInput) {
+        if (this.#sourceProbeConfigurations.has(config)) throw new TypeError('Source probe configuration is observation only');
         let prepared, lastCharge;
         const assessment = publicInput.kind === 'quality_assessment';
         if (assessment) qualityProfile(publicInput.profile, job.domain);
@@ -179,7 +232,12 @@ export class EvolutionEvaluator {
         if (!['rp.m1.information', 'project.m1.related'].includes(selection.profileId) || selection.split !== 'development'
             || selection.repetitions !== 1 || selection.mode !== 'source_probe'
             || selectCases({ purpose: 'evaluation', split: selection.split, profileId: selection.profileId, caseSetRevision: selection.caseSetRevision }).some(c => c.entrance !== job.domain)) throw new TypeError('Invalid source probe');
-        return this._evaluate(handle, job, { baseline: config }, { baseline: settings }, signal, fresh, onPair, onTrial, selection);
+        const extended = this.#sourceProbeConfigurations.has(config);
+        if (extended && this.#sourceProbeJobs.has(config)) throw new TypeError('Source probe already active');
+        if (extended) this.#sourceProbeJobs.set(config, job);
+        try { return await this._evaluate(handle, job, { baseline: config }, { baseline: settings }, signal, fresh, onPair, onTrial, selection); } finally {
+            if (extended) this.#sourceProbeJobs.delete(config);
+        }
     }
     // Explicit engineering observation port, not an automatic promotion path.
     // Both arms are freshly executed; grading is separately calibrated by the
@@ -192,6 +250,28 @@ export class EvolutionEvaluator {
         return this._evaluate(handle, job, configs, settings, signal, fresh, onPair, onTrial, selection);
     }
     async _evaluate(handle, job, configs, settings, signal, fresh, onPair, onTrial, selection) {
+        if (selection.mode !== 'source_probe' && Object.values(configs).some(config => this.#sourceProbeConfigurations.has(config)))
+            throw new TypeError('Source probe configuration is observation only');
+        if (settings.baseline.nativePlan || settings.candidate?.nativePlan) {
+            for (const arm of settings.candidate ? ['baseline', 'candidate'] : ['baseline']) {
+                const plan = settings[arm].nativePlan;
+                if (!plan || plan.sourceSelector.domain !== (job.domain === 'project' ? 'project' : 'rp_chat') || configs[arm].route.role !== (job.domain === 'project' ? 'role.studio' : 'role.narrator')
+                    || plan.revision.authorRef.handle !== handle || settings[arm].runtimeRouteId !== configs[arm].route.runtimeRouteId)
+                    throw Object.assign(new TypeError('native_orchestration_evaluation_unavailable'), { code: 'native_orchestration_evaluation_unavailable' });
+                const retrieval = await frozenEvaluationRetrieval(this.host, handle, plan);
+                if (!same(retrieval, Object.fromEntries(['retrievalProfiles', 'memorySettings'].filter(key => configs[arm][key] !== undefined).map(key => [key, configs[arm][key]]))))
+                    throw new TypeError('native_orchestration_evaluation_retrieval_denied');
+                const declared = new Map();
+                for (const node of plan.revision.definition.nodes.filter(node => node.capabilities.includes('generation.send'))) {
+                    const pin = plan.revision.dependencyPins.find(pin => pin.pinId === node.policy.agentPinId && node.dependencyPinIds.includes(pin.pinId));
+                    if (pin?.port !== 'model' || pin.resourceRef.scope !== 'player') throw new TypeError('native_orchestration_evaluation_unavailable');
+                    declared.set(pin.resourceRef.runtimeRouteId, pin.integrity);
+                }
+                const actual = [configs[arm], ...(configs[arm].nativeRoutes ?? [])], ids = actual.map(config => config.route.runtimeRouteId);
+                if (ids.length !== declared.size || new Set(ids).size !== ids.length
+                    || actual.some(config => declared.get(config.route.runtimeRouteId) !== hash(config.route))) throw new TypeError('native_orchestration_evaluation_unavailable');
+            }
+        }
         const sourceProbe = selection.mode === 'source_probe', pairedProbe = selection.mode === 'sealed_pair_probe';
         if (!['development', 'promotion'].includes(selection.split) || (pairedProbe
             ? !Number.isSafeInteger(selection.repetitions) || selection.repetitions < 1
@@ -213,14 +293,19 @@ export class EvolutionEvaluator {
                     try {
                         if (message.type === 'send') {
                             if (sending || settled) throw new Error('evaluation_serial_send_required'); sending = true;
-                            const config = configs[message.payload.arm === 'candidate' ? 'candidate' : 'baseline'];
+                            const primary = configs[message.payload.arm === 'candidate' ? 'candidate' : 'baseline'];
+                            const config = message.payload.nativeRouteId ? [primary, ...(primary.nativeRoutes ?? [])].find(config => config.route.runtimeRouteId === message.payload.nativeRouteId) : primary;
+                            if (!config || message.payload.nativeRouteId && (message.payload.arm === 'judge' || message.payload.arm === 'extraction')) throw new Error('evaluation_route_unavailable');
                             try {
-                                const result = await this.send(handle, job, config, message.payload, signal, fresh); charges.push(result.charge);
+                                const result = message.payload.kind === 'retrieval'
+                                    ? await sendEvaluationRetrieval({ host: this.host, repository: this.repository, handle, job, config, payload: message.payload, signal, fresh })
+                                    : await this.send(handle, job, config, message.payload, signal, fresh);
+                                charges.push(result.charge);
                                 if (child.connected) child.send({ type: 'response', id: message.id, raw: result.raw });
                             } catch (error) { if (child.connected) child.send({ type: 'response', id: message.id, error: error.code || 'evaluation_send_failed' }); } finally { sending = false; }
                         } else if (message.type === 'trial') await onTrial(message);
                         else if (message.type === 'pair') await onPair(message.pair);
-                        else if (message.type === 'complete') { await fresh(); settled = true; resolve(message.pairs); } else if (message.type === 'failed') { settled = true; reject(new Error(message.code)); }
+                        else if (message.type === 'complete') { await fresh(); settled = true; resolve(message.pairs); } else if (message.type === 'failed') { await fresh(); settled = true; reject(new Error(message.code)); }
                     } catch (error) { settled = true; reject(error); child.kill(); }
                 });
                 child.send({ type: 'run', jobId: job.id, domain: job.domain, configs, settings, selection });

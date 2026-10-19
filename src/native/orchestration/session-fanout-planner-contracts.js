@@ -1,0 +1,100 @@
+import { sessionReplanScope } from './session-replan-contracts.js';
+import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
+import { assertComputeLedger } from '../../../public/shared/native-compute-budget.js';
+import { readRunControl } from '../run-control.js';
+import { readAttempt, controlRecordKey } from './controller-common.js';
+import { readEffect } from './effect-contracts.js';
+import { readFanoutFrame, readFanoutMembership, readFanoutReplanScope } from './fanout-controller.js';
+import { sendAttemptId } from './budget-port.js';
+
+const denied = code => { throw Object.assign(new TypeError(code), { code }); };
+
+/** Original frozen membership bounds scheduling advice. This does not grant
+ * Source access, new members, another Attempt, Model budget or a writer. */
+export async function assertSessionFanoutPlannerPatch(tx, handle, root, producer, patch) {
+    const fanoutAttemptId = producer.inputRefs[0]?.fanoutAttemptId;
+    const frame = fanoutAttemptId ? await readFanoutFrame(tx, handle, root, fanoutAttemptId) : null;
+    const fanout = frame ? (await readAttempt(tx, handle, root, fanoutAttemptId)).doc : null;
+    if (!frame || fanout.status !== 'running' || frame.epoch !== root.epoch || frame.sourceBindingDigest !== root.sourceBinding.bindingDigest
+        || !equal(frame.parentBudgetRef, root.budgetAuthorityRef) || !await readFanoutMembership(tx, handle, root, frame, producer.attemptId))
+        denied('native_orchestration_fanout_stale');
+    assertSessionFanoutPlannerOperations(frame, producer, patch.operations);
+    if (patch.operations.some(operation => operation.op === 'requestReplan')
+        && !await readSessionFanoutReplanScope(tx, handle, root, producer)) denied('native_orchestration_planner_replan_pending');
+}
+
+/** Historical control bounds after the original Frame/Model proof. */
+export function assertSessionFanoutPlannerOperations(frame, producer, operations) {
+    const branch = frame.branches.find(branch => branch.scopeNodeIds.includes(producer.nodeId));
+    if (!branch || producer.inputRefs[0]?.fanoutAttemptId !== frame.fanoutAttemptId) denied('native_orchestration_fanout_stale');
+    for (const operation of operations) {
+        if (!['requestFinalize', 'setPendingPriority', 'requestReplan'].includes(operation.op)) denied('native_orchestration_fanout_planner_control_pending');
+        if (operation.op === 'setPendingPriority' && !branch.scopeNodeIds.includes(operation.nodeId)) denied('native_orchestration_patch_denied');
+    }
+}
+
+/** Accounting only: charged and unknown sibling sends already occupy this
+ * same original bank. They never supply a Result or reusable send grant. */
+export async function readSessionFanoutPaidModelNodes(tx, handle, root, fanoutAttemptId) {
+    const authority = root.budgetAuthorityRef;
+    if (authority.domain !== 'session' || root.parentRef && (!root.parentRef.budgetCeiling || !root.parentRef.effectiveGrantDigest) || root.sourceBinding.sourceAuthority !== 'native_session'
+        || !equal(root.sourceBinding.budgetAuthorityRef, authority)) denied('native_orchestration_budget_unavailable');
+    const frame = await readFanoutFrame(tx, handle, root, fanoutAttemptId);
+    if (!frame || frame.epoch !== root.epoch || frame.sourceBindingDigest !== root.sourceBinding.bindingDigest
+        || !equal(frame.parentBudgetRef, authority)) denied('native_orchestration_fanout_stale');
+    const control = await readRunControl(tx, handle, authority.sessionId);
+    const bank = assertComputeLedger(control?.operations[authority.operationId]?.compute), paid = new Set();
+    if (root.parentRef) {
+        const allocation = bank.reservations.find(row => row.reservationId === root.runId);
+        if (!allocation || allocation.status !== 'held' || !equal(allocation.limits, root.parentRef.budgetCeiling)
+            || allocation.parentReservationId !== (root.parentRef.depth === 1 ? null : root.parentRef.parentRunId))
+            denied('native_orchestration_budget_unavailable');
+    }
+    for (const id of frame.branches.flatMap(branch => branch.memberAttemptIds)) {
+        const attempt = (await readAttempt(tx, handle, root, id)).doc;
+        if (!await readFanoutMembership(tx, handle, root, frame, id)
+            || attempt.inputState !== 'reserved' && attempt.inputRefs[0]?.fanoutAttemptId !== fanoutAttemptId) denied('native_orchestration_fanout_stale');
+        for (const effectId of attempt.effectRefs) {
+            const effect = (await readEffect(tx, handle, root, effectId)).doc;
+            if (effect.capability !== 'generation.send') continue;
+            const rows = bank.attempts.filter(row => row.orchestration?.effectId === effectId);
+            if (!rows.length) continue;
+            const resolver = attempt.inputRefs[0], input = effect.inputRef;
+            const continuation = resolver.kind === 'native_session_delegation';
+            const original = continuation ? { ...input, kind: resolver.kind, requestId: input.requestId ?? input.invocationId,
+                sourceRef: root.sourceBinding.sourceRef, childPlanRef: resolver.childPlanRef, delegationScope: resolver.delegationScope,
+                graphBindings: input.fanoutGraphBindings ?? input.graphBindings ?? [] } : input;
+            if (continuation) for (const field of ['acceptedResultRef', 'returnReceiptRef', 'parentInputDigest']) delete original[field];
+            if (effect.nodeAttemptId !== attempt.attemptId || effect.epoch !== attempt.epoch || effect.sourceBindingDigest !== root.sourceBinding.bindingDigest
+                || effect.grantDigest !== attempt.effectiveGrantDigest || effect.inputHash !== hash(input) || !equal(original, resolver)
+                || continuation && (input.kind !== (root.parentRef ? 'native_session_delegated_intent' : 'native_turn_intent') || input.parentInputDigest !== attempt.inputDigest)
+                || !equal(attempt.budgetRef, authority)) denied('native_orchestration_budget_attempt_invalid');
+            for (const [ordinal, row] of rows.entries()) if (row.orchestration.kind !== 'provider_send' || row.orchestration.ordinal !== ordinal
+                || row.attemptId !== sendAttemptId(effectId, ordinal) || row.requestId !== effect.inputRef.invocationId || (row.reservationId ?? null) !== (root.parentRef ? root.runId : null)
+                || !['charged', 'unknown', 'settled'].includes(row.status)) denied('native_orchestration_budget_attempt_invalid');
+            paid.add(attempt.nodeId);
+        }
+    }
+    return paid;
+}
+
+/** The domain's existing pure Model interval, bounded by the original Frame. */
+export async function readSessionFanoutReplanScope(tx, handle, root, planner, options = {}) {
+    const pure = sessionReplanScope(root.graph, planner.nodeId);
+    const scope = await readFanoutReplanScope(tx, handle, root, planner, { ...options, targetNodeId: pure.target.nodeId });
+    if (!scope || !equal(scope.loops.map(edge => edge.edgeId).sort(), pure.loops.map(edge => edge.edgeId).sort())) return null;
+    return { ...scope, affectedNodeIds: pure.affectedNodeIds.filter(id => scope.branch.scopeNodeIds.includes(id)) };
+}
+
+/** Cold proof for a branch-local return: the original paid Planner request,
+ * bound at the verified Transition that actually visited the published edge. */
+export async function assertSessionFanoutLoopInput(tx, handle, root, { trigger, loops, output, identity, frame }) {
+    const traversal = (await tx.getResource(controlRecordKey(handle, root.runId, 'receipt', 'oreceipt_' + identity.slice(0, 32))))?.doc;
+    const scope = trigger?.patch?.requests.replan && !trigger.patch.requests.finalize && trigger.patch.newGraphRevision <= output.graphRevision
+        && traversal?.nodeAttemptId === output.attemptId
+        ? await readSessionFanoutReplanScope(tx, handle, root, trigger.producer, { decisionSeq: traversal.decisionSeq, targetNodeId: output.nodeId }) : null;
+    if (!scope || scope.frame.receiptId !== frame.receiptId
+        || !equal(loops.map(binding => binding.edgeId).sort(), scope.loops.map(edge => edge.edgeId).sort())
+        || loops.some(binding => binding.producerAttemptId !== trigger.producer.attemptId)) denied('native_orchestration_planner_replan_pending');
+    return scope;
+}

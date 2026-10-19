@@ -1,3 +1,4 @@
+import '../util/browser-context.js';
 import { expect, test } from '@jest/globals';
 import { evolutionFixture, skillMd } from './evolution-fixture.js';
 import { createEvaluationStore } from '../../src/native/agent-intelligence/evaluation/store.js';
@@ -32,7 +33,7 @@ test('frozen evaluator Skill reads charge its original Task and enforce configur
         await expect(work('files', { scope, name: 'guide', version: pinned.version })).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
         await expect(work('list', { context: { projectId: f.scope.projectId } }, { ...context, revision: 'foreign' })).rejects.toThrow();
         expect((await f.host.agent.getTask(f.h.handle, f.scope.projectId, f.nextTask.taskId)).compute.localWork).toEqual(before.compute.localWork);
-    } finally { bridge?.cleanup(); await f.h.cleanup(); }
+    } finally { await bridge?.cleanup(); await f.h.cleanup(); }
 });
 
 test('isolated Studio Skill endpoint accepts only the current task and known operation fields', async () => {

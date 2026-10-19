@@ -4,6 +4,43 @@ import { assertComputeLedger, assertRetiredCompute } from './native-compute-budg
 import { assertSessionTaskHistory, sessionTaskHistoryLimits } from './native-session-task-history.js';
 
 export const RUN_NAMESPACE = 'atri_run';
+export function assertExternalTaskOrchestrationBinding(value) {
+    fields(value, ['schemaVersion', 'runId', 'effectId', 'sourceBindingDigest', 'grantDigest'], 'External task orchestration binding');
+    if (value.schemaVersion !== 1 || !/^orun_[a-f0-9]{32}$/.test(value.runId) || !/^oeffect_[a-f0-9]{32}$/.test(value.effectId)
+        || ![value.sourceBindingDigest, value.grantDigest].every(item => typeof item === 'string' && /^[a-f0-9]{64}$/.test(item)))
+        throw new TypeError('Invalid external task orchestration binding');
+    return value;
+}
+export function assertA2aAcceptanceBinding(value) {
+    fields(value, ['schemaVersion', 'runId', 'effectId', 'epoch', 'sourceBindingDigest', 'grantDigest', 'inputHash',
+        'endpointBindingDigest', 'budgetEnvelopeDigest', 'budgetAttemptRef'], 'A2A acceptance binding');
+    assertExternalTaskOrchestrationBinding(Object.fromEntries(['schemaVersion', 'runId', 'effectId', 'sourceBindingDigest', 'grantDigest'].map(key => [key, value[key]])));
+    integer(value.epoch, 0, Number.MAX_SAFE_INTEGER);
+    if (![value.inputHash, value.endpointBindingDigest, value.budgetEnvelopeDigest].every(item => typeof item === 'string' && /^[a-f0-9]{64}$/.test(item)))
+        throw new TypeError('Invalid A2A acceptance digest');
+    const ref = value.budgetAttemptRef;
+    fields(ref, ['kind', 'authorityRef', 'effectId', 'localWorkOrdinal', 'attemptId', 'reservationId'], 'A2A acceptance budget');
+    if (ref.kind !== 'local_work' || ref.effectId !== value.effectId || !/^[a-f0-9]{64}$/.test(ref.attemptId)
+        || ref.reservationId !== null && (typeof ref.reservationId !== 'string' || !ref.reservationId)) throw new TypeError('Invalid A2A acceptance budget');
+    integer(ref.localWorkOrdinal, 0, 1023);
+    fields(ref.authorityRef, ['authority', 'domain', 'sessionId', 'operationId'], 'A2A acceptance authority');
+    if (ref.authorityRef.authority !== 'run_control' || ref.authorityRef.domain !== 'session'
+        || !/^ses_[a-f0-9]{32}$/.test(ref.authorityRef.sessionId) || !/^[a-f0-9]{64}$/.test(ref.authorityRef.operationId))
+        throw new TypeError('Invalid A2A acceptance authority');
+    return value;
+}
+export function assertA2aAcceptedReceipt(value) {
+    fields(value, ['schemaVersion', 'kind', 'operationId', 'binding', 'sourceFingerprint', 'requestFingerprint', 'responseFingerprint',
+        'responseKind', 'localWorkAttemptIds'], 'A2A accepted receipt');
+    if (value.schemaVersion !== 1 || value.kind !== 'a2a_send_accepted' || !/^[A-Za-z0-9._:-]{1,128}$/.test(value.operationId)
+        || !['task', 'message'].includes(value.responseKind)
+        || ![value.sourceFingerprint, value.requestFingerprint, value.responseFingerprint].every(item => typeof item === 'string' && /^[a-f0-9]{64}$/.test(item))
+        || !Array.isArray(value.localWorkAttemptIds) || !value.localWorkAttemptIds.length || value.localWorkAttemptIds.length > 32
+        || new Set(value.localWorkAttemptIds).size !== value.localWorkAttemptIds.length
+        || value.localWorkAttemptIds.some(item => typeof item !== 'string' || !/^[a-f0-9]{64}$/.test(item))) throw new TypeError('Invalid A2A accepted receipt');
+    assertA2aAcceptanceBinding(value.binding);
+    return assertJsonDeclaration(value, 'A2A accepted receipt', 4096);
+}
 const integer = (value, min, max) => {
     if (!Number.isSafeInteger(value) || value < min || value > max) throw new TypeError('Run policy integer outside bounds');
     return value;
@@ -88,7 +125,9 @@ export function assertRunContinuation(value) {
             if (Object.keys(op.externalTasks).length > 32) throw new TypeError('External task capacity');
             for (const [operationId, record] of Object.entries(op.externalTasks)) {
                 if (typeof operationId !== 'string' || !/^[A-Za-z0-9._:-]{1,128}$/.test(operationId)) throw new TypeError('External operation identity');
-                fields(record, ['protocol', 'input', 'fingerprint', 'identity', 'status', 'expiresAt'], 'External task');
+                fields(record, ['protocol', 'input', 'fingerprint', 'identity', 'status', 'expiresAt', 'orchestrationBinding', 'acceptedReceipt'], 'External task');
+                if (record.orchestrationBinding !== undefined) assertExternalTaskOrchestrationBinding(record.orchestrationBinding);
+                if (record.acceptedReceipt !== undefined) assertA2aAcceptedReceipt(record.acceptedReceipt);
                 if (record.protocol !== 'a2a' || !/^[a-f0-9]{64}$/.test(record.fingerprint)
                     || !['queued', 'dispatched', 'completed', 'unknown', 'failed'].includes(record.status)) throw new TypeError('External task evidence');
                 integer(record.expiresAt, 0, Number.MAX_SAFE_INTEGER);

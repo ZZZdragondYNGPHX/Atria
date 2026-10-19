@@ -1,3 +1,4 @@
+import '../util/browser-context.js';
 import { afterEach, expect, test } from '@jest/globals';
 import express from 'express';
 import supertest from 'supertest';

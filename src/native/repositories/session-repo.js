@@ -10,6 +10,7 @@ import { ILLUSTRATION_NAMESPACE, assertIllustrationState, illustrationAnchorMatc
 import { readIllustrationState, validateIllustrationDependencies, illustrationContentHash } from '../session-illustrations.js';
 import { ContinuityRepo } from './continuity-repo.js';
 import { appendTimelineIndex, readTimelineIndex } from '../timeline-index.js';
+import { orchestrationSessionRoots } from '../orchestration/reference-roots.js';
 import { putWorldState } from '../state-delta.js';
 import {
     NATIVE_RESOURCE_KINDS,
@@ -858,7 +859,8 @@ export class SessionRepo {
             const sessionKey = this._sessionKey(handle, sessionId), session = await tx.getResource(sessionKey);
             if (!session) throw new NotFoundError('native session');
             const saves = await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.savePoint, handle, sessionId });
-            const revisions = await this._reachableRevisions(tx, handle, sessionId, retainRevisionIds);
+            const orchestration = await orchestrationSessionRoots(tx, handle, sessionId);
+            const revisions = await this._reachableRevisions(tx, handle, sessionId, [...retainRevisionIds, ...orchestration.revisionIds]);
             const keys = new Map(), assets = new Set();
             const id = key => JSON.stringify(Object.keys(key).sort().map(field => [field, key[field]]));
             const findAssets = value => {
@@ -882,6 +884,7 @@ export class SessionRepo {
             const controlKey = { kind: NATIVE_RESOURCE_KINDS.runControl, handle, sessionId };
             if (await tx.getResource(controlKey)) await mark(controlKey);
             for (const save of saves) await mark(save.key);
+            for (const branchId of orchestration.branchIds) await mark(this._branchKey(handle, sessionId, branchId));
             for (const revisionId of revisions) {
                 await mark(this._revisionKey(handle, sessionId, revisionId));
                 const revision = await getNativeDocument(tx, this._revisionKey(handle, sessionId, revisionId));
@@ -900,7 +903,7 @@ export class SessionRepo {
                 }
             }
             for (const head of new Set([session.doc.illustrationHead, ...Object.values(session.doc.illustrationHeads ?? {}), ...saves.map(item => item.doc.illustrationHead)].filter(Boolean))) await mark(this._stateKey(handle, sessionId, 'atri_illustrations', head));
-            return { schemaVersion: 1, sessionId, generation: hashNativeDocument({ root: session.integrity, saves: saves.map(item => item.integrity).sort() }),
+            return { schemaVersion: 1, sessionId, generation: hashNativeDocument({ root: session.integrity, saves: saves.map(item => item.integrity).sort(), orchestration: orchestration.fingerprint }),
                 revisionIds: [...revisions], keys: [...keys.values()], assetIds: [...assets], terminal: session.doc.headRevisionId === (await readRunControl(tx, handle, sessionId))?.deathRevisionId };
         })();
     }
@@ -969,6 +972,11 @@ export class SessionRepo {
         if (!references.length && (await this._reachableRevisions(tx, handle, sessionId)).has(revisionId)) {
             references.push({ kind: 'session-history', sessionId });
         }
+        const orchestration = await orchestrationSessionRoots(tx, handle, sessionId);
+        references.push(...orchestration.references.filter(reference => reference.revisionIds.includes(revisionId)));
+        if (!references.length && orchestration.revisionIds.length && (await this._reachableRevisions(tx, handle, sessionId, orchestration.revisionIds)).has(revisionId)) {
+            references.push({ kind: 'orchestration-history', sessionId });
+        }
         return references;
     }
 
@@ -1005,7 +1013,9 @@ export class SessionRepo {
     async deleteBranch(handle, sessionId, branchId) {
         assertWritable();
         return withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async (tx) => {
-            for (const revisionId of await this._reachableRevisions(tx, handle, sessionId)) {
+            const orchestration = await orchestrationSessionRoots(tx, handle, sessionId);
+            if (orchestration.branchIds.includes(branchId)) throw new ConflictError('native_session_branch_referenced');
+            for (const revisionId of await this._reachableRevisions(tx, handle, sessionId, orchestration.revisionIds)) {
                 const revision = await getNativeDocument(tx, this._revisionKey(handle, sessionId, revisionId));
                 if (revision.branchId === branchId) throw new ConflictError('native_session_branch_referenced');
             }
@@ -1033,6 +1043,7 @@ export class SessionRepo {
         return this.continuity.lock(handle, session.packageId, () => withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async (tx) => {
             const current = await getNativeDocument(tx, this._sessionKey(handle, sessionId));
             if (expectedRevisionId !== undefined && current?.headRevisionId !== expectedRevisionId) throw new ConflictError('native_session_delete_conflict');
+            if ((await orchestrationSessionRoots(tx, handle, sessionId)).references.length) throw new ConflictError('native_session_orchestration_referenced');
             const control = await readRunControl(tx, handle, sessionId);
             if (control?.mode === 'ironman') await writeRunControl(tx, handle, sessionId, { ...control, status: 'terminal', cleanup: 'pending' });
             const root = await getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.playerContinuity, handle, packageId: session.packageId });

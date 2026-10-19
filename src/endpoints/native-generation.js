@@ -1,3 +1,4 @@
+import { createHostRouteResolver } from '../native/model-prompt-runtime/prompt-controls.js';
 import multer from 'multer';
 import { createImageRegistry, imageTargetFingerprint } from '../native/image-registry.js';
 import { VisualDirector } from '../native/visual-director.js';
@@ -23,7 +24,8 @@ import { admitMemoryCorpusWork, prepareRetrievalCompute } from '../native/retrie
 import { executeProjectSkillWork } from '../native/skill-invocation.js';
 import { fields } from '../../public/shared/native-values.js';
 import { NATIVE_RETRIEVAL_SCOPE_ERRORS } from '../../public/scripts/native/retrieval-contracts.js';
-import { getStorageEngine } from '../storage/index.js';
+import { getStorageEngine, getSettingsRepo } from '../storage/index.js';
+import { NativeMemoryAuthority } from '../native/memory-authority.js';
 import { getUserDirectories } from '../users.js';
 import { readSecret, SECRET_KEYS, SecretManager } from './secrets.js';
 import { assertWritable } from '../storage/read-only-mode.js';
@@ -31,6 +33,9 @@ import { getNativeSessionServices } from './native-session.js';
 import { getNativeStudioServices } from './native-studio.js';
 import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../native/model-prompt-runtime/persistence.js';
 import { NativeGenerationHost, selectNativeRuntimeRoute } from '../native/adapters/generation-host.js';
+import { NativeNarratorOrchestrationAuthority } from '../native/orchestration/native-turn-orchestration.js';
+import { NativeProjectCommitAuthority } from '../native/orchestration/native-project-commit-authority.js';
+import { NativeToolOrchestrationAuthority } from '../native/orchestration/native-tool-orchestration.js';
 import { createHttpGenerationProvider } from '../native/adapters/http-generation-provider.js';
 import { createResponsesGenerationProvider } from '../native/adapters/responses-generation-provider.js';
 import { createNativeMessagesProvider } from '../native/adapters/native-messages-provider.js';
@@ -48,7 +53,6 @@ import { AgentGoalService } from '../native/agent-intelligence/goal-service.js';
 import { GoalContinuationService } from '../native/agent-intelligence/goal-continuation.js';
 import { AgentExperienceService } from '../native/agent-intelligence/experience-service.js';
 import { getChatRepo } from '../storage/index.js';
-import { observeEvolutionRp } from '../native/agent-intelligence/evolution-observer.js';
 import { AgentEvolutionService } from '../native/agent-intelligence/evolution-service.js';
 import { CredentialTargetAuthority, createCredentialSecretPort } from '../native/model-prompt-runtime/credential-targets.js';
 import { credentialFetch } from '../native/model-prompt-runtime/credential-fetch.js';
@@ -56,13 +60,29 @@ import { mountMcpMediaAssets } from '../native/mcp-media-assets.js';
 import { hashNativeDocument } from '../native/repositories/common.js';
 import { RpEvidenceCaptureService } from '../native/agent-intelligence/rp-capture-service.js';
 import { recycleNativeResource } from '../storage/center-instance.js';
+import { assertObject } from '../../public/shared/native-orchestration-contracts.js';
+import { RpRunControl } from '../native/rp-run-control.js';
+
+// HTTP compositions create fresh Model Hosts. The pending commit's private
+// request must survive those compositions until the original review/dispatch.
+const projectCommitAuthorities = new WeakMap();
+const toolAuthorities = new WeakMap();
+
+function generationFailure(error, fallback = 'native_generation_failed') {
+    const code = error.code === 'native_processing_failed' || ['storage_commit_unknown', 'storage_read_only'].includes(error.code)
+        || /^(native_generation_|native_credential_|native_orchestration_|generation_)[a-z_]{1,100}$/.test(error.code || '') ? error.code : fallback;
+    const orchestration = code.startsWith('native_orchestration_');
+    const status = code === 'storage_read_only' || (orchestration && code.endsWith('_unavailable')) ? 503
+        : code === 'storage_commit_unknown' || code.includes('conflict') || (orchestration && (error.name === 'ConflictError' || code.endsWith('_stale'))) ? 409 : 400;
+    return { code, status };
+}
 
 function services() {
     const { core, packageInstaller } = getNativeSessionServices();
     const { studio, agent } = getNativeStudioServices();
     const persistence = new NativeModelPromptPersistence({ engine: getStorageEngine(), lifecycle: recycleNativeResource });
     const credentials = new CredentialTargetAuthority({ persistence });
-    return new NativeGenerationHost({
+    const host = new NativeGenerationHost({
         persistence,
         library: new VersionedJsonResourceHandler({ engine: getStorageEngine(), lifecycle: recycleNativeResource }),
         sessionCore: core, packageInstaller, studio, agent,
@@ -85,6 +105,23 @@ function services() {
             return '';
         } }),
     });
+    host.turnOrchestration = new NativeNarratorOrchestrationAuthority({ engine: persistence._engine, sessionCore: core,
+        memoryAuthority: new NativeMemoryAuthority({ core, settingsRepo: getSettingsRepo() }),
+        projectAgent: agent, projectRepository: agent._repository,
+        modelResolver: createHostRouteResolver(host) });
+    let commit = projectCommitAuthorities.get(persistence._engine);
+    if (!commit || commit.agent !== agent) {
+        commit = { agent, authority: new NativeProjectCommitAuthority({ engine: persistence._engine, projectAgent: agent }) };
+        projectCommitAuthorities.set(persistence._engine, commit);
+    }
+    host.projectCommitAuthority = commit.authority;
+    let tools = toolAuthorities.get(persistence._engine);
+    if (!tools || tools.core !== core || tools.hostBootId !== persistence._engine.nativeHostLifecycle.hostBootId) {
+        tools = { core, hostBootId: persistence._engine.nativeHostLifecycle.hostBootId, authority: new NativeToolOrchestrationAuthority({ host }) };
+        toolAuthorities.set(persistence._engine, tools);
+    }
+    host.toolOrchestration = tools.authority;
+    return host;
 }
 
 export async function wakeCollectedExperience(handle, result) {
@@ -263,7 +300,6 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             if (result.collection?.status === 'collected') {
                 try { await new AgentEvolutionService({ host, chatRepo: getChats() }).wake(handle, result.collection.scope, result.collection.subject); } catch { result.collection.wake = 'unavailable'; }
             }
-            if (action === 'update') await observeEvolutionRp(host.persistence._engine, handle, req.body.evidenceId);
             return res.json(result);
         } catch (error) {
             res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: 'agent_evidence_' + (error?.status || 'unavailable') });
@@ -348,7 +384,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             res.json({ ...result, automaticPublication: 'suppressed' });
         } catch (error) { res.status(error?.name === 'ConflictError' ? 409 : 400).json({ error: 'agent_evolution_controlled_label_failed' }); }
     });
-    for (const action of ['inspect', 'observe', 'preflight', 'catalog', 'declare', 'budget', 'configure', 'start', 'start-learning', 'mode', 'label', 'publish', 'rollback', 'reconcile', 'export', 'workspace']) router.post('/evolution/' + action, async (req, res) => {
+    for (const action of ['inspect', 'observe', 'preflight', 'catalog', 'declare', 'budget', 'configure', 'start', 'start-learning', 'mode', 'label', 'publish', 'rollback', 'reconcile', 'export']) router.post('/evolution/' + action, async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
@@ -509,6 +545,45 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         if (!req.user?.profile?.handle) return res.sendStatus(401);
         try { res.json(nativeTaskScheduler.project(req.user.profile.handle, req.params.id)); } catch { res.sendStatus(404); }
     });
+    router.post('/rp/preflight', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle || req.user.profile.enabled === false) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            const review = await getHost().preflightRp(handle, req.body);
+            res.set('X-Atria-Preflight-Fingerprint', hashNativeDocument(review)); res.json(review);
+        } catch (error) { const { status, code } = generationFailure(error); res.status(status).json({ error: code }); }
+    });
+    router.post('/rp/source', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle || req.user.profile.enabled === false) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            assertObject(req.body, ['locator', 'expectedHostBootId'], 'RP source identity');
+            const host = getHost(), hostBootId = host.persistence._engine.nativeHostLifecycle.hostBootId;
+            if (req.body.expectedHostBootId !== hostBootId || req.get('X-Atria-Host-Boot-Id') !== hostBootId)
+                return res.status(409).json({ error: 'native_orchestration_host_changed', hostBootId });
+            const control = host.turnOrchestration?.rpControl;
+            if (!(control instanceof RpRunControl) || control._engine !== host.persistence._engine)
+                throw Object.assign(new Error('Original RP source authority required'), { code: 'native_orchestration_rp_authority_unavailable' });
+            res.json({ ...await control.bind(handle, req.body.locator), hostBootId });
+        } catch (error) { const { status, code } = generationFailure(error); res.status(status).json({ error: code }); }
+    });
+    router.post('/rp/start', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle || req.user.profile.enabled === false) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            assertObject(req.body, ['input', 'expectedPreflightFingerprint', 'expectedHostBootId'], 'RP reviewed start');
+            const host = getHost(), hostBootId = host.persistence._engine.nativeHostLifecycle.hostBootId;
+            if (req.body.expectedHostBootId !== hostBootId || req.get('X-Atria-Host-Boot-Id') !== hostBootId)
+                return res.status(409).json({ error: 'native_orchestration_host_changed', hostBootId });
+            if (typeof req.body.expectedPreflightFingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(req.body.expectedPreflightFingerprint))
+                throw new TypeError('Exact RP preflight required');
+            const operation = await host.startRp(handle, req.body.input, { expectedPreflightFingerprint: req.body.expectedPreflightFingerprint });
+            res.status(202).json({ operationId: operation.operationId, hostBootId });
+        } catch (error) { const { status, code } = generationFailure(error); res.status(status).json({ error: code }); }
+    });
     router.get('/operations/:id/result', (req, res) => {
         if (!req.user?.profile?.handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
@@ -593,8 +668,9 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
                 if (!res.headersSent && chunk.operationId) res.status(202).json({ operationId: chunk.operationId });
             });
             if (!res.headersSent) res.json(result);
-        } catch {
-            if (!res.headersSent) res.status(400).json({ error: 'native_task_start_failed' });
+        } catch (error) {
+            const failure = generationFailure(error, 'native_task_start_failed');
+            if (!res.headersSent) res.status(failure.status).json({ error: failure.code });
         }
     });
     const presets = host => new PromptPresetStore({ engine: host.library._engine });
@@ -807,7 +883,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         response.set('Cache-Control', 'private, no-store');
         try {
             fields(request.body, ['routeRef', 'role', 'requirements'], 'Route resolution');
-            const host = getHost(), resolver = new RouteResolver({ persistence: host.persistence, library: host.library, providers: host.providers });
+            const host = getHost(), resolver = createHostRouteResolver(host);
             response.json(await resolver.resolve({ handle, ...request.body }));
         } catch (error) { response.status(400).json({ error: /^generation_[a-z_]+$/.test(error.code || '') ? error.code : 'native_route_resolution_failed' }); }
     });
@@ -956,10 +1032,10 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
                 if (streaming) { emit({ result }); response.end(); } else response.json(result);
             }
         } catch (error) {
-            const code = error.code === 'native_processing_failed' || /^(native_generation_|native_credential_|generation_)[a-z_]+$/.test(error.code || '') ? error.code : 'native_generation_failed';
+            const { code, status } = generationFailure(error);
             const details = code === 'native_processing_failed' ? { resourceId: error.processorId, field: error.stage } : undefined;
             if (!controller.signal.aborted) {
-                if (response.headersSent) { emit({ error: code, ...(details ? { details } : {}) }); response.end(); } else response.status(code.includes('conflict') ? 409 : 400).json({ error: code, ...(details ? { details } : {}) });
+                if (response.headersSent) { emit({ error: code, ...(details ? { details } : {}) }); response.end(); } else response.status(status).json({ error: code, ...(details ? { details } : {}) });
             }
         } finally { response.off('close', abort); }
     });

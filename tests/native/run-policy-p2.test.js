@@ -86,7 +86,8 @@ describe.each(CONTRACT_HARNESSES)('P2 run lifecycle - $name', ({ make }) => {
         await expect(f.host.executeTurn(h.handle, request)).rejects.toThrow();
         const originalNarrator = seen[1];
         // A separate Node process has no WeakMap pins or private proof objects.
-        const code = `import { FsEngine } from './src/storage/engines/fs-engine.js';
+        const code = `import './tests/util/config.js';
+import { FsEngine } from './src/storage/engines/fs-engine.js';
             import { SqliteEngine } from './src/storage/engines/sqlite-engine.js';
             import { MysqlEngine } from './src/storage/engines/mysql-engine.js';
             import { PgEngine } from './src/storage/engines/postgres-engine.js';

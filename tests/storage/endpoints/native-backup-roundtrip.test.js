@@ -21,7 +21,11 @@ import { installAccountQuota } from '../../../src/storage/account-quota.js';
 import { measureAccount } from '../../../src/storage/resource-accounting.js';
 
 const nativeOnly = Object.fromEntries(Object.keys(USER_BACKUP_SELECTION_DEFAULTS).map(key => [key, key === 'native']));
-const otherValues = { scopeId: 'a'.repeat(64), evidenceId: 'b'.repeat(64), sourceDigest: 'c'.repeat(64), checkpointId: 'd'.repeat(64), scope: 'backup-probe', taskId: 'task-1', goalId: 'goal-1', commitId: 'commit-1', namespace: 'atri_backup', head: 'head-1', resourceType: 'core.prompt-module', resourceId: 'pmod-test', revision: 'rev-1' };
+const otherValues = {
+    namespace: 'atri_backup', head: 'head-1', resourceType: 'core.prompt-module', resourceId: 'pmod-test', revision: 'rev-1',
+    scopeId: '1'.repeat(64), evidenceId: '2'.repeat(64), sourceDigest: '3'.repeat(64), checkpointId: '4'.repeat(64),
+    goalId: 'goal-test', taskId: 'task-test', commitId: 'commit-test', scope: 'scope-test',
+};
 
 async function harness(mode) {
     const h = await makeEndpointHarness({ mode, mount(app, { dirs }) {
@@ -54,12 +58,16 @@ async function seed(h) {
     const bytes = Buffer.from('Native package and asset bytes 中文');
     const hash = await assets.putBlob(h.handle, bytes);
     const records = [];
+    const orchestrationValues = {
+        planId: createNativeId('orchestrationPlan'), planRevisionId: createNativeId('orchestrationRevision'), runId: createNativeId('orchestrationRun'),
+        commandId: createNativeId('orchestrationCommand'), controlId: createNativeId('rpControl'), bindingId: 'b'.repeat(64), recordType: 'event', recordId: 'test-event',
+    };
     for (const kind of Object.values(NATIVE_RESOURCE_KINDS)) {
-        if (PERSONA_BACKUP_KINDS.includes(kind)) continue;
+        if (PERSONA_BACKUP_KINDS.includes(kind) || kind === NATIVE_RESOURCE_KINDS.hostFence) continue;
         const key = { kind, handle: h.handle };
         for (const field of getNativeResourceKeyFields(kind)) {
             if (field === 'handle') continue;
-            key[field] = otherValues[field] || createNativeId(field === 'saveId' ? 'savePoint' : field.slice(0, -2));
+            key[field] = otherValues[field] || orchestrationValues[field] || createNativeId(field === 'saveId' ? 'savePoint' : field.slice(0, -2));
         }
         const doc = { marker: kind, exact: key, value: 'unchanged 中文' };
         if (kind === NATIVE_RESOURCE_KINDS.assetRef) Object.assign(doc, { contentHash: hash, size: bytes.length });
@@ -108,6 +116,7 @@ describe.each(backupPairs)('Native backup %s → %s', (sourceMode, targetMode) =
             restore = restore.field(sourceMode === 'mysql' ? 'scratchMysqlUrl' : 'scratchPostgresUrl', scratch.url);
         }
         const response = await restore.attach('avatar', archive, 'native.zip');
+        if (response.status !== 200) throw new Error('Isolated Native restore failed: ' + JSON.stringify({ status: response.status, body: response.body }));
         expect({ status: response.status, body: response.body }).toMatchObject({ status: 200 });
         expect(response.body.verification?.ok).toBe(true);
         const engine = getStorageEngine();

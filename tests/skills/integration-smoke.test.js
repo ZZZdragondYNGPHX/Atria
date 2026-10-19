@@ -61,10 +61,12 @@ describe('Skills integration smoke', () => {
         // Checks a minimum bundled set; it does not assert a complete inventory.
         expect(res.body.length).toBeGreaterThanOrEqual(20);
         const names = res.body.map(e => e.name).sort();
-        // Sample three of the bundled set — one mode-level, one main-agent, one sub-agent.
+        // Sample retained writing and memory methods; retired mode protocols are absent.
         // Exhaustive name checking happens via the length assertion above.
         expect(names).toContain('director-anti-cliche-zh');
-        expect(names).toContain('director-turn-workflow-zh');
+        expect(names).not.toContain('director-turn-workflow-zh');
+        expect(names).not.toContain('director-output-discipline-zh');
+        expect(names).toContain('draft-writer-style-zh');
         expect(names).toContain('event-summary-rules-zh');
     });
 

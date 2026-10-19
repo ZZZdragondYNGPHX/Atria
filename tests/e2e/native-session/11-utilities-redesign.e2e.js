@@ -1,4 +1,13 @@
 import { test, expect } from '@playwright/test';
+import express from 'express';
+import { projectCommitFixture } from '../../native-orchestration/helpers/project-commit-fixture.js';
+import { makeTempFsEngineHarness } from '../../storage/harness/contract-harness.js';
+import { NativeGenerationHost } from '../../../src/native/adapters/generation-host.js';
+import { createNativeStudioRouter } from '../../../src/endpoints/native-studio.js';
+import { createNativeOrchestrationRouter } from '../../../src/endpoints/native-orchestration.js';
+import { createOrchestrationAuthoringService } from '../../../src/native/orchestration/authoring-service.js';
+import { RunObservationService } from '../../../src/native/orchestration/run-observation-service.js';
+import { createNativeId } from '../../../src/native/identity.js';
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { awaitMainUI } from '../_lib/page.js';
 /* eslint-disable playwright/no-conditional-in-test, playwright/no-conditional-expect -- Each named viewport case exercises its own responsive composition and existing controller states. */
@@ -27,7 +36,7 @@ for (const width of [1440, 900, 320]) test(`Utilities and Agents at ${width}px`,
     await awaitMainUI(page, server.baseURL);
     const shot = async name => {
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-        const surface = page.locator('[data-atria-utility-workspace], #agent-memory-workspace, .atriaLogsWorkspace');
+        const surface = page.locator('[data-atria-utility-workspace], .atria-memory-workspace, .atria-orch, .atriaLogsWorkspace');
         expect(await surface.evaluateAll(nodes => nodes.every(node => node.scrollWidth <= node.clientWidth + 1))).toBe(true);
         await page.screenshot({ path: info.outputPath(`${name}-${width}.png`), fullPage: true, animations: 'disabled' });
     };
@@ -36,17 +45,27 @@ for (const width of [1440, 900, 320]) test(`Utilities and Agents at ${width}px`,
         await expect(page.locator(utility === 'diagnostics' ? '.atriaLogsWorkspace' : `[data-atria-utility-workspace="${utility === 'plugins' ? 'extensions' : utility}"]`)).toBeVisible();
         if (utility === 'settings') {
             const settings = page.locator('[data-atria-utility-workspace=settings]');
+            const openCategory = async name => {
+                const back = settings.getByRole('button', { name: 'Back to settings', exact: true });
+                if (await back.isVisible()) await back.click();
+                await settings.getByRole('navigation', { name: 'Settings categories', exact: true })
+                    .getByRole('button', { name, exact: true }).click();
+            };
+            await openCategory('Accessibility & performance');
             const reduced = settings.getByRole('switch', { name: 'Reduce motion', exact: true });
             const original = await reduced.isChecked();
             await reduced.setChecked(!original);
             await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openUtility('plugins'));
             await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openUtility('settings'));
+            await openCategory('Accessibility & performance');
             await expect(reduced).toBeChecked({ checked: !original });
             await reduced.setChecked(original);
             await settings.evaluate(node => { node.scrollTop = 0; });
-            await expect(settings.getByRole('slider', { name: 'Reading size', exact: true })).toBeVisible();
-            await settings.getByText('Theme compatibility', { exact: true }).click();
-            await expect(settings.locator('#themes')).toBeVisible();
+            await openCategory('Reading & input');
+            await expect(settings.getByRole('slider', { name: 'Interface size', exact: true })).toBeVisible();
+            await openCategory('Appearance & themes');
+            await settings.getByText('Original files and upgrade data', { exact: true }).click();
+            await expect(settings.getByRole('combobox', { name: 'Original theme file', exact: true })).toBeVisible();
         }
         if (utility === 'plugins') {
             const plugins = page.locator('[data-atria-utility-workspace=extensions]');
@@ -107,53 +126,57 @@ for (const width of [1440, 900, 320]) test(`Utilities and Agents at ${width}px`,
         await shot(utility);
     }
     await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openAgents('home'));
-    await expect(page.locator('#agent-memory-workspace')).toBeVisible();
-    await expect(page.locator('#agent-memory-workspace .atria-workspace-nav [data-section=run]')).toHaveAttribute('aria-current', 'page');
+    const home = page.locator('[data-atria-domain-workspace=agents]');
+    await expect(home).toBeVisible();
+    await expect(home.getByRole('navigation', { name: 'Agents sections', exact: true }).getByRole('button'))
+        .toHaveText(['Plans', 'Runs', 'Memory', 'Diagnostics']);
     await page.screenshot({ path: info.outputPath(`agents-${width}.png`), fullPage: true, animations: 'disabled' });
-    for (const section of ['orchestration', 'run', 'memory', 'diagnostics']) {
+    for (const section of ['plans', 'runs', 'memory', 'diagnostics']) {
         await page.evaluate(section => window.Atria.shell.getWorkspaceHost().openAgentSection(section), section);
-        await expect(page.locator('#agent-memory-workspace')).toBeVisible();
-        const agents = page.locator('#agent-memory-workspace');
-        await expect(agents.locator(`.atria-workspace-nav [data-section="${section}"]`)).toHaveAttribute('aria-current', 'page');
-        if (section === 'orchestration') {
-            await shot('orchestration');
-            const library = agents.locator('.workspace-authoring-library');
-            if (width === 320) await library.locator('summary').first().click();
-            await library.getByRole('button', { name: 'New', exact: true }).click();
-            await expect(page.locator('dialog[open]')).toBeVisible();
-            await shot('agent-new-preset');
-            await page.keyboard.press('Escape');
-            await expect(page.locator('dialog[open]')).toHaveCount(0);
-            await library.getByRole('button', { name: 'New', exact: true }).click();
-            await page.locator('dialog[open] textarea').fill(`Phase 7 workflow ${width}`);
-            await page.locator('dialog[open]').getByRole('button', { name: 'Save', exact: true }).click();
-            await expect(page.locator('dialog[open]')).toHaveCount(0);
-            await expect(agents.locator('.workspace-authoring-topbar')).toContainText(`Phase 7 workflow ${width}`);
-            const menu = agents.locator('.workspace-more-menu');
-            await menu.locator('summary').click();
-            await menu.getByRole('button', { name: 'Duplicate', exact: true }).click();
-            await expect(agents.locator('.workspace-authoring-topbar')).toContainText('copy');
-            await menu.locator('summary').click();
-            await menu.getByRole('button', { name: 'Preset settings', exact: true }).click();
-            const inspector = agents.locator('.atria-workspace-inspector');
-            await expect(inspector).toBeVisible();
-            await expect(inspector.getByRole('button', { name: 'Close inspector' })).toBeFocused();
-            await shot('agent-inspector');
-            await page.keyboard.press('Escape');
-            await expect(inspector).toBeHidden();
+        if (section === 'plans' || section === 'runs') {
+            const agents = page.locator('[data-atria-domain-workspace=agents]');
             await expect(agents).toBeVisible();
-            await agents.locator('.atria-workspace-nav [data-section=orchestration]').focus();
-            await page.keyboard.press('ArrowRight');
-            await expect(page).toHaveURL(/atriaChild=run/);
+            await expect(agents.locator(`[data-atria-domain-section="${section}"]`)).toHaveAttribute('aria-current', 'page');
+            if (section === 'plans') {
+                await agents.getByRole('textbox', { name: 'New Plan name', exact: true }).fill(`Native workflow ${width}`);
+                await agents.getByRole('button', { name: 'Create draft', exact: true }).click();
+                await expect(agents.getByRole('button', { name: 'Validate on Host', exact: true })).toBeVisible();
+                // Duplicate through the same Native draft authority; published revisions are independent.
+                await page.evaluate(async () => {
+                    const { createOrchestrationClient } = await import('/scripts/native/orchestration/client.js');
+                    const client = createOrchestrationClient();
+                    const planId = new URL(location.href).searchParams.get('atriaChild').slice('plans:'.length);
+                    const source = await client.getPlan(planId);
+                    const { outcome } = await client.createPlan({ definition: source.definition, dependencyPins: source.dependencyPins,
+                        viewState: { ...source.viewState, title: source.viewState.title + ' copy' } });
+                    Atria.shell.getNavigation().navigate('agents', { child: { id: 'plans:' + outcome.planId, label: outcome.viewState.title, kind: 'detail' } });
+                });
+                await expect(agents).toContainText(`Native workflow ${width} copy`);
+                await agents.getByRole('button', { name: 'List', exact: true }).click();
+                await agents.getByRole('list', { name: 'Nodes', exact: true }).locator('.atria-orch-row__main').first().click();
+                const inspector = page.locator('.atria-orch-inspector');
+                await expect(inspector).toBeVisible();
+                const label = inspector.getByRole('textbox', { name: 'Label', exact: true });
+                await label.focus(); await expect(label).toBeFocused();
+                await shot('agent-inspector');
+                await page.keyboard.press('Escape');
+                await expect(inspector).toBeHidden();
+                await expect(agents).toBeVisible();
+                await agents.locator('[data-atria-domain-section=runs]').focus();
+                await page.keyboard.press('Enter');
+                await expect(page).toHaveURL(/atriaChild=runs/);
+            }
         }
         if (section === 'memory') {
-            await expect(agents.locator('.workspace-memory-page')).toBeVisible();
+            const memory = page.locator('.atria-memory-workspace');
+            await expect(memory.locator('.workspace-memory-page')).toBeVisible();
             await shot('memory');
             for (const name of ['Knowledge', 'Sources', 'Maintenance']) {
-                await agents.locator('.workspace-subnav').getByRole('button', { name, exact: true }).click();
+                await memory.locator('.workspace-subnav').getByRole('button', { name, exact: true }).click();
                 await shot(`memory-${name.toLowerCase()}`);
             }
         }
+        if (section === 'diagnostics') await expect(page.locator('.atriaLogsWorkspace')).toBeVisible();
         await shot(`agent-${section}`);
     }
 });
@@ -237,50 +260,100 @@ test('Chinese utilities, light appearance, large text and keyboard', async ({ pa
         await expect(page.locator('html')).toHaveAttribute('data-atria-appearance', 'light');
         await page.screenshot({ path: info.outputPath(`zh-light-${id}-320.png`), animations: 'disabled' });
     }
-    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openAgentSection('orchestration'));
-    const agents = page.locator('#agent-memory-workspace');
+    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openAgentSection('plans'));
+    const agents = page.locator('[data-atria-domain-workspace=agents]');
     await expect(agents).toBeVisible();
-    await agents.locator('.workspace-authoring-library > summary').click();
-    const search = agents.locator('input[type=search]').first();
-    await search.fill('no matching preset');
+    const name = agents.locator('.atria-orch-create input');
+    await name.fill('窄屏原生草稿');
+    await name.focus();
     await page.evaluate(() => {
         Object.defineProperty(window.visualViewport, 'height', { configurable: true, get: () => 420 });
         window.visualViewport.dispatchEvent(new Event('resize'));
     });
-    await expect(agents).toHaveAttribute('data-atria-keyboard', 'open');
+    await expect(page.locator('#atria-app-shell')).toHaveAttribute('data-atria-keyboard', 'open');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: info.outputPath('zh-agents-keyboard-320.png') });
     await page.evaluate(() => { delete window.visualViewport.height; window.visualViewport.dispatchEvent(new Event('resize')); });
     await page.setViewportSize({ width: 720, height: 844 });
-    await expect(agents).toHaveAttribute('data-atria-viewport', 'medium');
+    await expect(page.locator('#atria-app-shell')).toHaveAttribute('data-atria-viewport', 'medium');
     await page.screenshot({ path: info.outputPath('zh-agents-medium-720.png') });
 });
 
-test('an active Run opens in Timeline and retains keyboard-accessible Graph at 390px', async ({ page }, info) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.addInitScript(() => localStorage.setItem('language', 'en'));
-    await page.route('**/api/horde/**', route => route.fulfill({ json: [] }));
-    await awaitMainUI(page, server.baseURL);
-    // Exercise the actual transient Run store, without sending a model request.
-    await page.evaluate(async () => {
-        const store = await import('/scripts/agents/orchestrator/run-state/store.js');
-        window.runViewTest = store.startRun({ mode: 'spec', chatKey: null });
-        window.Atria.shell.getWorkspaceHost().openAgentSection('run');
-    });
-    const run = page.locator('#agent-memory-workspace');
-    const timeline = run.getByRole('button', { name: 'Timeline', exact: true });
-    const graph = run.getByRole('button', { name: 'Graph', exact: true });
-    await expect(timeline).toHaveAttribute('aria-pressed', 'true');
-    await expect(run.getByRole('heading', { name: 'Execution timeline', exact: true })).toBeVisible();
-    await graph.focus(); await page.keyboard.press('Enter');
-    await expect(graph).toHaveAttribute('aria-pressed', 'true');
-    await expect(run).toContainText('No Engine graph has been projected yet.');
-    await timeline.click(); await expect(timeline).toHaveAttribute('aria-pressed', 'true');
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: info.outputPath('active-run-timeline-390.png'), fullPage: true });
-    await page.evaluate(async () => {
-        const store = await import('/scripts/agents/orchestrator/run-state/store.js');
-        store.finishRun({ runId: window.runViewTest, status: 'completed' }); store.clearCurrentRun();
-    });
-    await expect(run.getByRole('heading', { name: 'No active run', exact: true })).toBeVisible();
+test('a Host-prepared Run opens in Timeline and retains keyboard-accessible Graph at 390px', async ({ page }, info) => {
+    test.setTimeout(120000);
+    const f = await projectCommitFixture(makeTempFsEngineHarness);
+    let listener;
+    try {
+        const originalSource = (await f.studio.getProject(f.h.handle, f.projectId)).source;
+        const host = new NativeGenerationHost({ projectCommitAuthority: f.authority });
+        const source = { domain: 'project', projectId: f.projectId, taskId: f.taskId };
+        const authoring = createOrchestrationAuthoringService(f.h.engine, { projectAgent: f.agent, studio: f.studio });
+        await authoring.plans.saveBinding(f.h.handle, createNativeId('orchestrationCommand'), { sourceSelector: source, planRef: f.planRef, expectedVersion: null });
+        const observations = new RunObservationService({ engine: f.h.engine, projectAgent: f.agent, studio: f.studio });
+        const app = express(); app.use(express.json({ limit: '8mb' }));
+        app.use((req, _res, next) => { req.user = { profile: { handle: f.h.handle } }; next(); });
+        app.use('/api/native/studio', createNativeStudioRouter(() => f, undefined, () => host));
+        app.use('/api/native/orchestration', createNativeOrchestrationRouter(() => ({ ...authoring, observations })));
+        listener = await new Promise(resolve => { const value = app.listen(0, '127.0.0.1', () => resolve(value)); });
+        const origin = `http://127.0.0.1:${listener.address().port}`;
+        // Forward to real isolated Native routers, not a fabricated Run projection.
+        const forward = async route => { const response = await route.fetch({ url: origin + new URL(route.request().url()).pathname + new URL(route.request().url()).search }); await route.fulfill({ response }); };
+        await page.route('**/api/native/orchestration/**', forward);
+        await page.route('**/api/native/studio/**', forward);
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.addInitScript(() => localStorage.setItem('language', 'en'));
+        await page.route('**/api/horde/**', route => route.fulfill({ json: [] }));
+        let modelRequests = 0; let dispatchRequests = 0;
+        page.on('request', request => { if (/\/api\/native\/generation\/.*(?:start|execute)/.test(request.url())) modelRequests++; if (request.url().endsWith('/commit/dispatch')) dispatchRequests++; });
+        await awaitMainUI(page, server.baseURL);
+        await page.evaluate(() => Atria.shell.getWorkspaceHost().openAgentSection('runs'));
+        const run = page.locator('[data-atria-domain-workspace=agents]');
+        await run.getByLabel('Source type', { exact: true }).selectOption('project');
+        await run.getByLabel('Project', { exact: true }).selectOption(f.projectId);
+        await run.getByLabel('Task', { exact: true }).selectOption(f.taskId);
+        await run.getByRole('button', { name: 'Prepare trusted commit', exact: true }).click();
+        await expect(page).toHaveURL(/atriaChild=runs%3Aorun_|atriaChild=runs:orun_/);
+        const runId = await page.evaluate(() => new URL(location.href).searchParams.get('atriaChild').slice('runs:'.length));
+        const timeline = run.getByRole('button', { name: 'Timeline', exact: true });
+        const graph = run.getByRole('button', { name: 'Graph', exact: true });
+        await expect(timeline).toHaveAttribute('aria-pressed', 'true');
+        await expect(run.getByRole('list', { name: 'Run timeline', exact: true })).toBeVisible();
+        await graph.focus(); await page.keyboard.press('Enter');
+        await expect(graph).toHaveAttribute('aria-pressed', 'true');
+        await expect(run.locator('.atria-orch-graph')).toBeVisible();
+        await timeline.click(); await expect(timeline).toHaveAttribute('aria-pressed', 'true');
+        const immutable = await page.evaluate(async ({ runId, planId }) => {
+            const { createOrchestrationClient } = await import('/scripts/native/orchestration/client.js');
+            const client = createOrchestrationClient();
+            const before = await client.observeRun(runId, null, 100);
+            const draft = await client.getPlan(planId);
+            await client.savePlan({ planId, expectedDraftVersion: draft.draftVersion, expectedDefinitionHash: draft.definitionHash,
+                definition: draft.definition, dependencyPins: draft.dependencyPins, viewState: { ...draft.viewState, title: 'Independent draft edit during Run' } });
+            const after = await client.observeRun(runId, null, 100);
+            return { before: before.payload.planRef, after: after.payload.planRef };
+        }, { runId, planId: f.planRef.planId });
+        expect(immutable.before).toEqual(f.planRef); expect(immutable.after).toEqual(immutable.before);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+        await page.screenshot({ path: info.outputPath('active-run-timeline-390.png'), fullPage: true });
+        await run.getByRole('button', { name: 'Request cancel…', exact: true }).click();
+        await run.getByRole('button', { name: 'Request cancel', exact: true }).click();
+        await expect(run.getByRole('button', { name: 'Request cancel…', exact: true })).toBeHidden();
+        const final = await page.evaluate(async runId => {
+            const { createOrchestrationClient } = await import('/scripts/native/orchestration/client.js');
+            return (await createOrchestrationClient().observeRun(runId, null, 100)).payload;
+        }, runId);
+        // The original ready commit Effect remains pending: cancel fences new work,
+        // and never pretends to undo or clear the durable Host record.
+        expect(final.cancelRequested).toBe(true); expect(final.status).toBe('reconciling');
+        expect(final.effects).toHaveLength(1); expect(final.effects[0].status).toBe('ready');
+        expect(final.planRef).toEqual(f.planRef);
+        expect(modelRequests).toBe(0); expect(dispatchRequests).toBe(0);
+        expect((await f.agent.getTask(f.h.handle, f.projectId, f.taskId)).changeSets).toEqual([]);
+        expect((await f.studio.getProject(f.h.handle, f.projectId)).source).toEqual(originalSource);
+    } finally {
+        await page.evaluate(() => Atria.shell.getWorkspaceHost().openAgents('home')).catch(() => {});
+        await page.unroute('**/api/native/orchestration/**'); await page.unroute('**/api/native/studio/**');
+        if (listener) await new Promise(resolve => listener.close(resolve));
+        await f.cleanup();
+    }
 });

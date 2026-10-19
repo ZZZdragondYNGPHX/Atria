@@ -1,7 +1,9 @@
-import { AsyncLocalStorage } from 'node:async_hooks';
 import { NotFoundError, ConflictError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
 import { assertCapabilityPublication } from './execution-evidence.js';
+import { withRuntimeWrite } from './runtime-write.js';
+import { orchestrationPinReferences } from '../orchestration/reference-roots.js';
+export { withRuntimeWrite } from './runtime-write.js';
 import {
     NATIVE_RESOURCE_KINDS,
 } from '../contracts.js';
@@ -24,17 +26,6 @@ import {
     collectVersionedModelPromptResourceRefs,
     getVersionedModelPromptResourceIdentity,
 } from './resources.js';
-
-// The FS engine has no transaction isolation. Serialize this authority's writes
-// across persistence instances, as Native Session publication already does.
-const runtimeWrites = new Map();
-const runtimeWriteContext = new AsyncLocalStorage();
-export async function withRuntimeWrite(handle, operation) {
-    if (runtimeWriteContext.getStore() === handle) return operation();
-    const next = (runtimeWrites.get(handle) || Promise.resolve()).catch(() => {}).then(() => runtimeWriteContext.run(handle, operation));
-    runtimeWrites.set(handle, next);
-    try { return await next; } finally { if (runtimeWrites.get(handle) === next) runtimeWrites.delete(handle); }
-}
 
 function exactRef(identity, contentIdentity) {
     return Object.freeze({
@@ -135,6 +126,8 @@ export class VersionedJsonResourceHandler {
             }
             return this._engine.withTransaction(handle, async tx => {
                 assertWritable();
+                const pinned = await orchestrationPinReferences(tx, handle, ref);
+                if (pinned.length) throw new ConflictError('native_resource_referenced', { references: pinned });
                 const revisions = await listNativeDocuments(tx, { kind: NATIVE_RESOURCE_KINDS.versionedJsonResourceRevision, handle, resourceType: ref.resourceType, resourceId: ref.resourceId });
                 for (const revision of revisions) await tx.deleteResource(this._revisionKey(handle, ref.resourceType, ref.resourceId, revision.revision));
                 await tx.deleteResource(this._rootKey(handle, ref.resourceType, ref.resourceId));
@@ -225,6 +218,10 @@ export class VersionedJsonResourceHandler {
                 .map(resource => getVersionedModelPromptResourceIdentity(resourceType, resource).revision)
                 .sort());
         });
+    }
+
+    async getOrchestrationReferences(handle, reference) {
+        return this._engine.withTransaction(handle, tx => orchestrationPinReferences(tx, handle, reference));
     }
 
     async listWithRevisions(handle, { resourceType = null } = {}) {
@@ -415,6 +412,10 @@ export class NativeModelPromptPersistence {
             assertWritable();
             const [resourceKind, idField] = definitions[kind]; const key = playerKey(resourceKind, handle, idField, id);
             if (!await getNativeDocument(tx, key)) throw new NotFoundError('Runtime resource');
+            if (kind === 'routes') {
+                const pinned = await orchestrationPinReferences(tx, handle, { runtimeRouteId: id });
+                if (pinned.length) throw new ConflictError('native_runtime_referenced', { usedBy: pinned });
+            }
             const models = (await listNativeDocuments(tx, { kind: NATIVE_RESOURCE_KINDS.modelProfile, handle })).filter(value => value !== null);
             const routes = (await listNativeDocuments(tx, { kind: NATIVE_RESOURCE_KINDS.runtimeRoute, handle })).filter(value => value !== null);
             const usedBy = [];

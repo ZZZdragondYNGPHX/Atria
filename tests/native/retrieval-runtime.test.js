@@ -6,7 +6,8 @@ import { makeTempSqliteEngineHarness } from '../storage/harness/contract-harness
 import { NativeRetrievalPersistence } from '../../src/native/retrieval-persistence.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { assertRetrievalProfile, retrievalRef, RETRIEVAL_PROVIDERS } from '../../public/scripts/native/retrieval-contracts.js';
-import { createRetrievalMiddleware, resolveRetrievalSecret } from '../../src/native/retrieval-execution.js';
+import { createRetrievalMiddleware, resolveRetrievalSecret, executeNativeEmbedding } from '../../src/native/retrieval-execution.js';
+import { prepareRetrievalCompute } from '../../src/native/retrieval-compute.js';
 import { router as vectors } from '../../src/endpoints/vectors.js';
 import { SecretManager, SECRET_KEYS } from '../../src/endpoints/secrets.js';
 import { setReadOnly } from '../../src/storage/read-only-mode.js';
@@ -18,6 +19,15 @@ afterEach(async () => { setReadOnly(false); for (const cleanup of cleanups.splic
 function profile(overrides = {}) {
     return { retrievalProfileId: createNativeId('retrievalProfile'), revision: createNativeId('revision'), displayName: 'Retrieval', mode: 'embed', source: 'webllm', model: 'exact-local-model', endpoint: '', options: {}, ...overrides };
 }
+test('owned retrieval User-Agent is canonical, non-credential metadata and cannot replace reserved transport headers', () => {
+    const value = profile({ source: 'openai', endpoint: 'https://example.invalid/v1', secretRef: { secretId: 'exact-secret' }, headers: { 'user-agent': 'Atria-Native-Retrieval/1.0' } });
+    expect(assertRetrievalProfile(value).headers).toEqual({ 'User-Agent': 'Atria-Native-Retrieval/1.0' });
+    for (const headers of [{ Authorization: 'Bearer arbitrary' }, { Host: 'foreign.invalid' }, { 'Content-Type': 'other' }, { Cookie: 'other' },
+        { 'User-Agent': 'valid\r\nAuthorization: other' }, { 'User-Agent': 'A', 'user-agent': 'B' }, { 'User-Agent': 'A'.repeat(513) }]) {
+        expect(() => assertRetrievalProfile({ ...value, headers })).toThrow();
+    }
+    expect(() => assertRetrievalProfile(profile({ headers: { 'User-Agent': 'No local HTTP' } }))).toThrow();
+});
 for (const [mode, providers] of Object.entries(RETRIEVAL_PROVIDERS)) for (const source of providers) {
     test(`Native contract retains ${mode}/${source} with explicit ownership`, () => {
         const local = ['webllm', 'transformers'].includes(source);
@@ -45,8 +55,8 @@ for (const [kind, create] of [['fs', makeTempFsEngine], ['sqlite', makeTempSqlit
         await expect(store.commit(h.handle, profile())).rejects.toMatchObject({ code: 'storage_read_only' });
     });
 }
-async function fixture() {
-    const h = await makeTempFsEngine(); cleanups.push(h.cleanup);
+async function fixture(make = makeTempFsEngine) {
+    const h = await make(); cleanups.push(h.cleanup);
     const store = new NativeRetrievalPersistence({ engine: h.engine }); const value = profile(); await store.commit(h.handle, value);
     const app = express(); app.use(express.json()); app.use((req, _res, next) => { req.user = { profile: { handle: h.handle }, directories: h.dirs }; next(); });
     let computeServices;
@@ -68,9 +78,47 @@ test('real vector IO isolates exact revisions and Native purge from compatibilit
     await f.request.post('/delete').send({ ...body, hashes: [1] }).expect(200);
     expect((await f.request.post('/list').send(body).expect(200)).body).toEqual([]);
 });
+
+test.each([['FS', makeTempFsEngine], ['SQLite', makeTempSqliteEngineHarness]])('%s original Host and HTTP consumers share the same exact index and Session bank', async (_kind, make) => {
+    const f = await fixture(make), calls = [], provider = express(); provider.use(express.json());
+    provider.use((req, res) => {
+        calls.push({ input: req.body.input, model: req.body.model, authorization: req.headers.authorization });
+        res.json({ data: req.body.input.map((_, index) => ({ index, embedding: [1, 0] })), usage: { total_tokens: 3 } });
+    });
+    const server = await new Promise(resolve => { const current = provider.listen(0, '127.0.0.1', () => resolve(current)); });
+    cleanups.push(() => new Promise(resolve => server.close(resolve)));
+    const baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
+    const installed = await installFixture(f), base = await installed.core.create(f.handle, installed.start);
+    const seeded = await seedGenerationProfiles({ ...f, endpoint: baseUrl + '/chat/completions' });
+    await seeded.persistence.saveRuntimeRoute(f.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1,
+        allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget: { maxRequests: 4, maxTokens: 32000, localWork: { maxJobs: 16, maxItems: 100, maxInputBytes: 1048576 } } } });
+    const services = { core: installed.core, persistence: seeded.persistence }; f.useComputeServices(services);
+    const manager = new SecretManager(f.dirs), secretId = manager.writeSecret(SECRET_KEYS.ATRIA_RUNTIME, 'shared-exact-secret', 'Shared original consumer', { activate: false });
+    const value = profile({ source: 'openai', model: 'shared-exact-embedding', endpoint: baseUrl, secretRef: { secretId } }); await f.store.commit(f.handle, value);
+    const context = { kind: 'session', sessionId: base.session.sessionId, revisionId: base.revision.revisionId };
+    const body = { nativeRetrievalRef: retrievalRef(value), collectionId: 'shared-original-index', computeContext: context };
+    await f.request.post('/insert').send({ ...body, items: [{ hash: 1, text: 'Original legal source', index: 0 }] }).expect(200);
+    const compute = await prepareRetrievalCompute({ handle: f.handle, context, profile: value, ...services });
+    const signal = new AbortController().signal, secret = resolveRetrievalSecret(f.dirs, value.secretRef);
+    const work = { directories: f.dirs, profile: value, compute, signal, secret };
+    expect(await executeNativeEmbedding(work, 'list', { collectionId: body.collectionId })).toEqual([1]);
+    const query = await executeNativeEmbedding(work, 'query', { collectionId: body.collectionId, searchText: 'Read legal source', topK: 1, threshold: 0, includeVectors: true });
+    expect(query.hashes).toEqual([1]); expect(query.metadata[0].text).toBe('Original legal source');
+    await executeNativeEmbedding(work, 'delete', { collectionId: body.collectionId, hashes: [1] });
+    expect((await f.request.post('/list').send(body).expect(200)).body).toEqual([]);
+    expect(calls).toHaveLength(2); expect(calls.every(row => row.model === value.model && row.authorization === 'Bearer shared-exact-secret')).toBe(true);
+    const bank = Object.values((await installed.core.runs.status(f.handle, base.session.sessionId)).operations)[0].compute;
+    expect(bank.attempts).toHaveLength(2); expect(bank.attempts.every(row => row.status === 'settled')).toBe(true);
+    expect(bank.localWork.map(row => row.kind)).toEqual(['index_insert', 'index_list', 'index_query', 'index_delete', 'index_list']);
+    const request = { nativeRetrieval: { profile: value, compute: { ...compute }, signal, secret } };
+    await expect(executeNativeEmbedding({ ...work, request }, 'query', { collectionId: body.collectionId, searchText: 'Never sent', topK: 1, threshold: 0 }))
+        .rejects.toMatchObject({ code: 'native_retrieval_send_target_mismatch' });
+    expect(Object.values((await installed.core.runs.status(f.handle, base.session.sessionId)).operations)[0].compute).toEqual(bank);
+    expect(calls).toHaveLength(2);
+});
 test('Native boundary rejects configuration injection, wrong task, unknown refs and readonly mutations', async () => {
     const f = await fixture(); const body = { nativeRetrievalRef: retrievalRef(f.value), collectionId: 'memory' };
-    for (const injected of [{ extraBody: { reverse_proxy: 'https://other.invalid' } }, { source: 'openai' }, { model: 'other' }, { proxy_password: 'injected' }, { secret_id: 'other' }, { reverse_proxy: 'https://other.invalid' }]) await f.request.post('/list').send({ ...body, ...injected }).expect(400);
+    for (const injected of [{ extraBody: { reverse_proxy: 'https://other.invalid' } }, { source: 'openai' }, { model: 'other' }, { proxy_password: 'injected' }, { secret_id: 'other' }, { reverse_proxy: 'https://other.invalid' }, { headers: { 'User-Agent': 'Caller override' } }]) await f.request.post('/list').send({ ...body, ...injected }).expect(400);
     await f.request.post('/rerank').send({ nativeRetrievalRef: body.nativeRetrievalRef, query: 'q', documents: [] }).expect(400);
     await f.request.post('/list').send({ ...body, nativeRetrievalRef: { ...body.nativeRetrievalRef, scope: 'library' } }).expect(400);
     setReadOnly(true); const blocked = await f.request.post('/purge').send(body).expect(503); expect(blocked.body.error).toBe('storage_read_only');
@@ -88,12 +136,13 @@ test('Secret resolution never reads or changes an active provider key', async ()
 test('remote embedding and rerank execute Native models, options and exact Secret across protocols', async () => {
     const f = await fixture(); const calls = []; const provider = express(); provider.use(express.json());
     provider.use((req, res) => {
-        calls.push({ path: req.path, body: req.body, authorization: req.headers.authorization, key: req.headers['x-goog-api-key'] });
+        calls.push({ path: req.path, body: req.body, authorization: req.headers.authorization, key: req.headers['x-goog-api-key'], userAgent: req.headers['user-agent'] });
         if (req.path.endsWith('/rerank')) return res.json({ results: [{ index: 0, relevance_score: 0.9 }] });
         if (req.path.includes('batchEmbedContents')) return res.json({ embeddings: [{ values: [1, 0] }] });
         if (req.path.includes('predict')) return res.json({ predictions: [{ embeddings: { values: [1, 0] } }] });
         if (req.path === '/cohere/embed') return res.json({ embeddings: { float: [[1, 0]] } });
         if (req.path === '/api/embed' || req.path === '/nomic') return res.json({ embeddings: [[1, 0]] });
+        if (req.path === '/api/embeddings/compute') return res.json({ embedding: [[1, 0]] });
         return res.json({ data: [{ embedding: [1, 0] }] });
     });
     const server = await new Promise(resolve => { const server = provider.listen(0, '127.0.0.1', () => resolve(server)); });
@@ -102,13 +151,14 @@ test('remote embedding and rerank execute Native models, options and exact Secre
     const manager = new SecretManager(f.dirs);
     manager.writeSecret(SECRET_KEYS.OPENAI, 'wrong-active-key', 'Legacy');
     const secretId = manager.writeSecret(SECRET_KEYS.ATRIA_RUNTIME, 'exact-runtime-key', 'Runtime', { activate: false });
-    for (const source of ['openai', 'cohere', 'jina', 'nomicai', 'ollama', 'palm', 'vertexai', 'koboldcpp']) {
-        const value = profile({ source, endpoint: base + '/' + (source === 'nomicai' ? 'nomic' : source), secretRef: { secretId }, options: source === 'jina' ? { dimensions: 2, lateChunking: true, task: 'retrieval.passage' } : source === 'vertexai' ? { authMode: 'express', projectId: 'test-project', region: 'us-central1' } : {} });
+    for (const source of ['openai', 'cohere', 'jina', 'nomicai', 'ollama', 'palm', 'vertexai', 'koboldcpp', 'llamacpp', 'vllm', 'extras']) {
+        const value = profile({ source, endpoint: base + '/' + (source === 'nomicai' ? 'nomic' : source), secretRef: { secretId }, headers: { 'User-Agent': 'Atria-Exact-Retrieval/' + source }, options: source === 'jina' ? { dimensions: 2, lateChunking: true, task: 'retrieval.passage' } : source === 'vertexai' ? { authMode: 'express', projectId: 'test-project', region: 'us-central1' } : {} });
         await f.store.commit(f.handle, value);
         await f.request.post('/insert').send({ nativeRetrievalRef: retrievalRef(value), collectionId: 'remote', items: [{ hash: 1, text: 'Text', index: 0 }] }).expect(200);
         const wire = calls.at(-1);
         expect(wire.authorization || wire.key).toContain('exact-runtime-key');
-        expect(source === 'koboldcpp' || ['palm', 'vertexai'].includes(source) ? true : wire.body.model === value.model).toBe(true);
+        expect(['koboldcpp', 'palm', 'vertexai', 'llamacpp', 'extras'].includes(source) ? true : wire.body.model === value.model).toBe(true);
+        expect(wire.userAgent).toBe(value.headers['User-Agent']);
     }
     expect(calls.find(call => call.path === '/jina/embeddings').body).toMatchObject({ dimensions: 2, late_chunking: true, task: 'retrieval.passage' });
     expect(calls.find(call => call.path.startsWith('/vertexai/')).path).toContain('/projects/test-project/locations/us-central1/publishers/google/models/');
@@ -119,11 +169,12 @@ test('remote embedding and rerank execute Native models, options and exact Secre
     f.useComputeServices({ core: installed.core, persistence: seeded.persistence });
     const computeContext = { kind: 'session', sessionId: session.session.sessionId, revisionId: session.revision.revisionId };
     for (const source of ['cohere', 'jina', 'custom']) {
-        const value = profile({ mode: 'rerank', source, endpoint: base + '/' + source, secretRef: { secretId } }); await f.store.commit(f.handle, value);
+        const value = profile({ mode: 'rerank', source, endpoint: base + '/' + source, secretRef: { secretId }, headers: { 'User-Agent': 'Atria-Exact-Rerank/' + source } }); await f.store.commit(f.handle, value);
         const result = await f.request.post('/rerank').send({ nativeRetrievalRef: retrievalRef(value), computeContext, query: 'Q', documents: [{ text: 'Doc', index: 0 }], topK: 1 }).expect(200);
         expect(result.body[0]).toMatchObject({ text: 'Doc', relevance_score: 0.9 });
         expect(calls.at(-1).authorization).toBe('Bearer exact-runtime-key');
         expect(calls.at(-1).body.model).toBe(value.model);
+        expect(calls.at(-1).userAgent).toBe(value.headers['User-Agent']);
     }
     const anonymous = profile({ source: 'ollama', endpoint: base }); await f.store.commit(f.handle, anonymous);
     await f.request.post('/insert').send({ nativeRetrievalRef: retrievalRef(anonymous), collectionId: 'anonymous', items: [{ hash: 1, text: 'Text', index: 0 }] }).expect(200);

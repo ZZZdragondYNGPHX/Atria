@@ -1,15 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { projectPreservationEvidence } from './project-preservation.js';
 import { createSkillRepository } from '../../../skills/repository.js';
 import { createGitClient } from '../../../git/client.js';
 import { AssetStore, KnowledgeRepo, ProjectAgentService, ProjectStore, StudioPreviewHost, StudioService, WorldRepo, createNativeId } from '../../../native/index.js';
-import { runMainAgentLoop } from '../../../../public/scripts/agents/orchestrator/director-runtime.js';
-import { createMessageEditorHandle } from '../../../../public/scripts/message-takeover.js';
-import { clearCurrentRun, getCurrentRun, startRun } from '../../../../public/scripts/agents/orchestrator/run-state/store.js';
 import { runNativeStudioAgentTask } from '../../../../public/scripts/native/studio-agent.js';
 import { getRuntimeEvidence, rememberRuntimeEvidence } from '../../../../public/scripts/native/runtime-client.js';
 import { createEvaluationStore as makeTempFsEngine } from './store.js';
-const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 import { hash, canonical } from './cases.js';
 import { skillEntryKey } from '../../../../public/shared/extension-contract.js';
 import { boundedSkillReadOptions } from '../../../../public/shared/skill-invocation.js';
@@ -22,117 +19,6 @@ const call = (id, name, args = {}) => ({ id, name, args });
 const completion = toolCalls => ({ assistantText: '', toolCalls, usage: null });
 function verifyOwnedRoot(dataRoot, root, marker, token) {
     if (fs.realpathSync(dataRoot) !== root || fs.readFileSync(marker, 'utf8') !== token) throw new Error('Fixture cleanup ownership mismatch');
-}
-
-export async function runRp(entry, fixture, capture, evaluation = null) {
-    const player = { mes: fixture.input, is_user: true };
-    const playerBefore = hash(player);
-    const chat = [player, { mes: '', extra: { reasoning: '' }, is_user: false }];
-    let profile = { mode: 'director', director: { mainAgent: { systemPrompt: 'Express only the NPC response. Preserve the player choice and use the revised visible promise.' }, subAgents: [], maxRounds: 6,
-        tools: { message: { write_message: true, apply_message_patches: true } } } };
-    if (evaluation) {
-        if (evaluation.settings.rpProfile) profile = { mode: 'director', director: structuredClone(evaluation.settings.rpProfile) };
-        else profile.director.mainAgent.systemPrompt = evaluation.settings.rpPrompt;
-        profile.director.maxRounds = evaluation.settings.rpProfile?.maxRounds || evaluation.settings.roundLimit;
-    }
-    const oldAtria = globalThis.Atria;
-    let rpStore;
-    if (evaluation?.settings.skill) {
-        rpStore = await makeTempFsEngine();
-        const repo = createSkillRepository(rpStore.dataRoot), scope = { kind: 'global' };
-        const skill = evaluation.settings.skill;
-        await repo.install({ scope, payload: { files: skill.files.map(f => ({ path: f.path, content: f.content, encoding: 'base64' })) } });
-        globalThis.Atria = { getContext: () => ({ skills: { list: opts => repo.list(opts), pin: opts => repo.pin(opts), readFile: opts => repo.readFile(opts),
-            invocationSettings: async () => ({ skills: { [skillEntryKey({ scope, name: skill.name })]: { paths: { agents: 'always' } } } }) } }) };
-    }
-    const payload = { messages: [{ role: 'system', content: canonical(fixture.memory.visible) }, { role: 'user', content: fixture.input }] };
-    const requestTexts = [];
-    let modelRequests = 0;
-    const run = async (variantId, generate, controller = new AbortController()) => {
-        clearCurrentRun();
-        const runId = startRun({ mode: 'director', chatKey: entry.caseId });
-        capture.refs.runIds.push(runId);
-        const variant = { messageId: `${entry.caseId}:npc`, variantId, runId, requestIds: [] };
-        capture.refs.messageVariants.push(variant);
-        const handle = createMessageEditorHandle({ generationType: variantId === 'v1' ? 'normal' : 'regenerate', flushIntervalMs: 0, owner: fixture.actor, abortSignal: controller.signal });
-        handle.setOnUpdate((text, reasoning) => { chat[1].mes = text; chat[1].extra.reasoning = reasoning; });
-        const promise = runMainAgentLoop({ handle, profile, eventData: { abortSignal: controller.signal, placeholderMessageId: 1 }, deps: {
-            chat, runId, getContentPayload: () => payload, contextForNotes: {},
-            generateTaskStreamForMainAgent: async request => {
-                const injectedStaleChallenge = evaluation?.bridge && entry.caseId.startsWith('rp_variant') && variantId === 'v1';
-                if (!injectedStaleChallenge && modelRequests >= entry.limits.maxRequests) throw Object.assign(new Error('Script request budget'), { code: 'script_request_budget' });
-                if (!injectedStaleChallenge) modelRequests++;
-                const requestId = `${capture.trialId}:${evaluation?.bridge ? 'model' : 'script'}-request-${capture.refs.requestIds.length + 1}`;
-                evaluation?.beforeSend(requestId);
-                capture.refs.requestIds.push(requestId); variant.requestIds.push(requestId);
-                requestTexts.push(canonical(request.taskMessages));
-                capture.prompts.push(request.taskMessages);
-                if (evaluation?.bridge) {
-                    // Stale delivery is an injected authority challenge. Its
-                    // pending value never sends a paid request; v2 behavior
-                    // still uses the original model loop and provider.
-                    if (injectedStaleChallenge) return generate(request);
-                    const result = await evaluation.bridge.rp({ requestId, trialId: capture.trialId, fixtureHash: entry.fixtureHash,
-                        messages: request.taskMessages, tools: request.tools, signal: request.abortSignal,
-                        onSend: () => { if (entry.caseId.startsWith('rp_variant') && variantId === 'v1') generate(request); } });
-                    return result.response;
-                }
-                return generate(request);
-            },
-        } }).finally(() => {
-            const state = getCurrentRun();
-            if (state?.runId === runId) capture.toolCalls += state.rounds.flatMap(round => round.sections).filter(section => section.kind === 'tool_result').length;
-        });
-        return { promise, handle, runId };
-    };
-    try {
-        if (entry.caseId.startsWith('rp_variant')) {
-            const entered = deferred(); const late = deferred(); const controller = new AbortController();
-            const old = await run('v1', () => { entered.resolve(); return late.promise; }, controller);
-            // A rejected send must also release this waiter (e.g. a shared budget).
-            await Promise.race([entered.promise, old.promise]);
-            controller.abort();
-            // Observe terminal abort before regeneration; transport result arrives late.
-            try { await old.promise; } catch (error) { if (error.name !== 'AbortError' && !(evaluation?.bridge && error.code === 'generation_cancelled')) throw error; }
-            const next = await run('v2', () => completion([call('write-new', 'write_message', { text: fixture.reply, mode: 'replace' }), call('final-new', 'finalize')]));
-            await next.promise;
-            const committedText = evaluation?.bridge ? chat[1].mes : fixture.reply;
-            late.resolve(completion([call('late-write', 'write_message', { text: 'STALE COMPLETION', mode: 'replace' }), call('late-final', 'finalize')]));
-            await Promise.resolve();
-            let rejected = false;
-            try { old.handle.setText('STALE EDIT'); } catch (error) { rejected = error.code === 'editor_aborted'; }
-            capture.observe('stale_completion', { rejected, text: chat[1].mes, oldStatus: (await old.handle.complete).status }, { rejected: true, text: committedText, oldStatus: 'aborted' });
-            capture.observe('variant_identity', { runs: new Set(capture.refs.runIds).size, requestsDistinct: new Set(capture.refs.requestIds).size === capture.refs.requestIds.length, newStatus: (await next.handle.complete).status }, { runs: 2, requestsDistinct: true, newStatus: 'committed' });
-        } else {
-            const main = await run('v1', () => completion([
-                call('write', 'write_message', { text: fixture.reply, mode: 'replace', messageId: 0, owner: 'player' }), call('final', 'finalize'),
-            ]));
-            await main.promise;
-            const outcome = await main.handle.complete;
-            if (entry.caseId.startsWith('rp_agency')) {
-                if (evaluation?.bridge) capture.observe('player_ownership', hash(player), playerBefore);
-                else capture.observe('player_ownership', { player: hash(player), npc: chat[1].mes }, { player: playerBefore, npc: fixture.reply });
-                capture.observe('single_completion', outcome.status, 'committed');
-            } else {
-                capture.observe('request_exposure', { visible: requestTexts.every(text => fixture.memory.visible.every(item => text.includes(item.text))), private: requestTexts.some(text => text.includes(fixture.memory.private.text)) }, { visible: true, private: false });
-                capture.observe('revision_reference', requestTexts.every(text => text.includes('revision') && text.includes('Revision: meet')), true);
-                capture.completeness.push('production_memory_resolution', 'memory_behavior_application');
-            }
-        }
-        capture.finalTextStatus = chat[1].mes ? 'passed' : 'unavailable';
-        capture.reviewStatus = 'not_run';
-        capture.observe('isolation', hash(player), playerBefore);
-        if (fixture.pilot) {
-            capture.observe('player_ownership', hash(player), playerBefore);
-            capture.observe('single_completion', capture.refs.messageVariants.at(-1)?.variantId, 'v2');
-            capture.observe('request_exposure', { visible: requestTexts.every(text => fixture.memory.visible.every(item => text.includes(item.text))), private: requestTexts.some(text => text.includes(fixture.memory.private.text)) }, { visible: true, private: false });
-            capture.observe('revision_reference', requestTexts.every(text => fixture.memory.visible.every(item => text.includes(item.text))), true);
-        }
-        capture.completeness.push('skill_preset_exact_pinning', 'durable_trace');
-        if (evaluation) capture.artifact = { domain: 'rp_chat', output: chat[1].mes, status: 'observed',
-            sourceHash: hash(fixture), outcomeHash: hash(chat[1]), requestHashes: capture.prompts.map(hash),
-            targetConsumed: capture.prompts.length > 0 && (evaluation.settings.skill ? capture.prompts.some(messages => canonical(messages).includes(evaluation.settings.version)) : evaluation.settings.rpProfile ? profile.director.maxRounds === evaluation.settings.rpProfile.maxRounds && capture.prompts.every(messages => canonical(messages).includes(JSON.stringify(profile.director.mainAgent.systemPrompt).slice(1, -1))) : capture.prompts.every(messages => canonical(messages).includes(JSON.stringify(evaluation.settings.rpPrompt).slice(1, -1)))) };
-    } finally { clearCurrentRun(); globalThis.Atria = oldAtria; rpStore?.cleanup(); }
 }
 
 function treeHash(root) {
@@ -368,14 +254,8 @@ export async function runProject(entry, fixture, capture, evaluation = null) {
             capture.observe('no_silent_rebase', { status: previous.status, base: previous.baseRevision, oldWrites: previous.changeSets.length, freshBase: task.baseRevision, writes: modelChangesets },
                 { status: 'conflict', base: priorConflictTask.baseRevision, oldWrites: 0, freshBase: conflictRevision, writes: 0 });
             capture.observe('related_proposal', hash(validatedProposal ?? null), hash(proposed));
-            const preserved = structuredClone(validatedProposal || {});
-            if (preserved.package?.entryPoints) for (const edit of fixture.projectEdits) {
-                const target = preserved.package.entryPoints[edit.index];
-                const original = source.package.entryPoints[edit.index];
-                if (edit.worldIndex !== undefined) { target.worldIds = structuredClone(original.worldIds); target.primaryWorldId = original.primaryWorldId; }
-                if (edit.bindingIndices !== undefined) target.knowledgeBindingIds = structuredClone(original.knowledgeBindingIds);
-            }
-            capture.observe('preservation', hash(preserved), hash(source));
+            const preservation = projectPreservationEvidence(source, validatedProposal, fixture.projectEdits);
+            capture.observe('preservation', preservation.observed, preservation.expected);
             capture.reviewStatus = validations.some(v => v.validation === 'passed') ? 'passed' : 'unavailable';
         } else if (conflict) {
             capture.observe('human_revision', { revision: beforeReviewRevision, name: (await studio.getProject(h.handle, source.project.projectId)).source.project.displayName }, { revision: conflictRevision ?? null, name: 'Fixture human revision' });

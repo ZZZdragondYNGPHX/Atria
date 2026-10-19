@@ -17,12 +17,26 @@ export function pauseRecoveredRecord(record, current = null, handle = record?.ke
     if (!record?.doc || record.doc.schemaVersion !== 1 && record.key.kind !== K.agentEvolution && !extension) return record;
     const doc = structuredClone(record.doc), kind = record.key.kind;
     if ([K.connectionProfile, K.modelProfile, K.runtimeRoute].includes(kind)) return { ...record, ...nativeRecord(doc, { existing: record, createdAt: record.createdAt, updatedAt: Math.max(Date.now(), record.updatedAt + 1, (current?.updatedAt || 0) + 1) }) };
+    if (kind === K.rpRunControl) {
+        // A restored ledger never re-enables sending or lowers the current spend record.
+        const kept = current?.doc?.controlId === doc.controlId ? structuredClone(current.doc) : doc;
+        kept.restoreState = 'review_required';
+        return { ...record, ...nativeRecord(kept, { existing: record, createdAt: record.createdAt, updatedAt: Math.max(Date.now(), record.updatedAt + 1, (current?.updatedAt || 0) + 1) }) };
+    }
     if (kind === K.runControl) {
         if (current?.doc?.mode === 'ironman' && current.doc.status === 'terminal') return current;
-        doc.background = {};
-        for (const operation of Object.values(doc.operations ?? {})) for (const task of Object.values(operation.externalTasks ?? {})) {
+        // Restore is not a refund. Prefer this store's original bank when it
+        // exists, and require a trusted review before new work even when only
+        // a historical backup is available. Observation/late settlement remain
+        // possible under the original RunControl status path.
+        if (current?.key && current.key.sessionId !== record.key.sessionId) throw new TypeError('Recovered Session bank identity mismatch');
+        const kept = current?.doc ? structuredClone(current.doc) : doc;
+        kept.restoreState = 'review_required';
+        kept.background = {};
+        for (const operation of Object.values(kept.operations ?? {})) for (const task of Object.values(operation.externalTasks ?? {})) {
             if (['queued', 'dispatched'].includes(task.status)) task.status = 'unknown';
         }
+        return { ...record, ...nativeRecord(kept, { existing: record, createdAt: record.createdAt, updatedAt: Math.max(Date.now(), record.updatedAt + 1, (current?.updatedAt || 0) + 1) }) };
     } else if (kind === K.agentGoal && doc.status === 'active') { doc.status = 'paused'; doc.sequence++; } else if (kind === K.agentEvolution && doc.policy) { doc.policy.mode = 'paused'; doc.policy.reason = 'restored'; } else if (kind === K.projectAgentTask) {
         if (['planned', 'planning', 'working', 'evaluating', 'repair', 'committing'].includes(doc.status)) doc.status = 'blocked';
         for (const wake of doc.goalBinding?.wakes ?? []) if (['pending', 'running'].includes(wake.status)) { wake.status = 'unknown'; wake.updatedAt = Date.now(); }

@@ -10,7 +10,7 @@ function safeId(value) {
     return clean(value).replace(/[^a-zA-Z0-9._:-]+/g, '-');
 }
 
-export const PRODUCT_SEARCH_DOMAINS = Object.freeze(['Works', 'Worlds', 'Knowledge Bases', 'Projects', 'Runtime', 'Prompt resources', 'Sessions', 'SavePoints', 'Knowledge entries', 'Skills', 'Orchestration', 'Personas']);
+export const PRODUCT_SEARCH_DOMAINS = Object.freeze(['Works', 'Worlds', 'Knowledge Bases', 'Projects', 'Runtime', 'Prompt resources', 'Sessions', 'SavePoints', 'Knowledge entries', 'Skills', 'Personas', 'Plans']);
 
 function fulfilled(result) {
     return result.status === 'fulfilled' && Array.isArray(result.value) ? result.value : [];
@@ -23,10 +23,12 @@ function fulfilled(result) {
  */
 export function createProductSearchIndex({ registry, host, productClient = nativeProductClient, loadRuntime = runtimeRequest, loadResources = () => runtimeRequest('/resources'),
     loadSkills = () => globalThis.Atria.getContext().skills.list({ scope: 'all' }),
-    loadOrchestration = () => {
-        const settings = globalThis.Atria.getContext().capabilitySettings.orchestrator;
-        if (!settings?.agentWorkspace) throw new Error('Orchestration is not ready');
-        return settings.agentWorkspace.presets;
+    loadPlans = async () => {
+        const { createOrchestrationClient } = await import('../native/orchestration/client.js');
+        const client = createOrchestrationClient(), items = [];
+        let cursor = null;
+        do { const page = await client.listPlans(cursor, 100); items.push(...page.items); cursor = page.cursor; } while (cursor && items.length < 1000);
+        return items;
     },
 }  = {}) {
     if (!registry?.register || !host) throw new Error('Product Search requires registry and WorkspaceHost');
@@ -109,7 +111,7 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
                 run: () => host.openBuild(projectId, title),
             });
         }
-        for (const item of fulfilled(result[11])) add({ id: 'persona.' + item.ref.personaId + '.' + item.ref.revisionId, title: item.revision.name, description: 'Personas', group: 'Library', keywords: ['persona', item.ref.personaId, item.revision.name], run: () => host.openLibraryPersona(item.ref, item.revision.name) });
+        for (const item of fulfilled(result[10])) add({ id: 'persona.' + item.ref.personaId + '.' + item.ref.revisionId, title: item.revision.name, description: 'Personas', group: 'Library', keywords: ['persona', item.ref.personaId, item.revision.name], run: () => host.openLibraryPersona(item.ref, item.revision.name) });
         const runtime = result[4].status === 'fulfilled' ? result[4].value : {};
         for (const [section, key] of Object.entries({ routes: 'runtimeRouteId', models: 'modelProfileId', connections: 'connectionProfileId', retrieval: 'retrievalProfileId' })) {
             for (const item of runtime[section] || []) {
@@ -148,9 +150,10 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
             add({ id: 'skill.' + encodeURIComponent(JSON.stringify([item.scope, item.name])), title: item.name, description: item.description, literalDescription: true, group: 'Library', keywords: ['skill', item.name],
                 run: () => host.openSkill(item.scope, item.name) });
         }
-        for (const item of fulfilled(result[10])) {
-            add({ id: 'orchestration.' + encodeURIComponent(item.id), title: item.name, description: 'Orchestration', group: 'Agents', keywords: ['orchestration', item.mode, item.id],
-                run: () => host.openOrchestration(item.id, item.name) });
+        for (const item of fulfilled(result[11])) {
+            const title = clean(item.viewState?.title) || tl('Untitled Plan');
+            add({ id: 'plan.' + safeId(item.planId), title, description: tl('Agent Plan'), group: 'Agents', keywords: ['plan', 'orchestration', 'agents', item.planId, title],
+                run: () => host.openPlan(item.planId, title) });
         }
         registry.setSearchStatus?.({
             loading: sources.some(source => source.loading), domains: PRODUCT_SEARCH_DOMAINS,
@@ -185,8 +188,9 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
     const loaders = [
         () => productClient.listWorks(), () => productClient.listWorlds(), () => productClient.listKnowledge(),
         () => productClient.listProjects(), loadRuntime, loadResources, () => productClient.listSessions(),
-        null, null, loadSkills, loadOrchestration,
+        null, null, loadSkills,
         async () => { const items = []; let cursor = null; do { const page = await productClient.listPersonas({ cursor, limit: 100, includeArchived: true }); items.push(...page.items); cursor = page.nextCursor; } while (cursor); return items; },
+        loadPlans,
     ];
 
     async function loadSource(index, load, { owner = null, batch = revision } = {}) {

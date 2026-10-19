@@ -45,6 +45,8 @@ describe.each(CONTRACT_HARNESSES)('P2 actual background send budget - $name', ({
     });
     afterEach(async () => { jest.restoreAllMocks(); if (server) await new Promise(resolve => { server.closeAllConnections(); server.close(resolve); }); await h?.cleanup(); });
     async function command(action) { base = await svc.core.applyLifecycleCommand(h.handle, base.session.sessionId, { type: 'lifecycle', invocationId: 'cmd-' + ++serial, action }, { expectedRevisionId: base.revision.revisionId }); }
+    // A declared result-bound schedule stays pending with its reason rather than throwing (e434b42b2).
+    const refusal = promise => promise.then(value => value?.pending?.reason ?? null, error => error.code ?? null);
     const progress = effectiveTurns => command({ kind: 'app.command', domainId: 'progress', commandId: 'advance', recordId: 'main', args: { effectiveTurns } });
     const input = () => ({ sessionId: base.session.sessionId, revisionId: base.revision.revisionId, slotBindings: { structured: { scope: 'player', runtimeRouteId: seeded.routes[0].runtimeRouteId } } });
     test.each([1, 2, 3, 4, 5])('G05 lowering background shares %i local jobs with original intent and keeps period charges separate', async maxJobs => {
@@ -54,7 +56,7 @@ describe.each(CONTRACT_HARNESSES)('P2 actual background send budget - $name', ({
         respond = async () => ({ content: JSON.stringify({ text: 'filed' }) });
         const result = await host.executeLifecycle(h.handle, input()).then(value => ({ value }), error => ({ error }));
         const control = await svc.core.runs.status(h.handle, base.session.sessionId);
-        expect(result.error?.code ?? null).toBe(maxJobs < 5 ? 'native_generation_budget_exhausted' : null);
+        expect(result.error?.code ?? result.value?.pending?.reason ?? null).toBe(maxJobs < 5 ? 'native_generation_budget_exhausted' : null);
         expect(seen).toHaveLength(maxJobs < 5 ? 0 : 1);
         const cost = maxJobs < 5 ? Object.values(control.operations).find(row => row.compute)?.compute : control.retiredCompute;
         const jobs = maxJobs < 5 ? cost.localWork.length : cost.localJobs;
@@ -87,13 +89,13 @@ describe.each(CONTRACT_HARNESSES)('P2 actual background send budget - $name', ({
     test('G06 removing Route compute bounds cannot use the remaining legacy Package allowance', async () => {
         const executionPolicy = { schemaVersion: 1, allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget: { maxRequests: 1, maxTokens: 32000 } };
         await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy });
-        await expect(host.executeLifecycle(h.handle, input())).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+        expect(await refusal(host.executeLifecycle(h.handle, input()))).toBe('native_generation_budget_exhausted');
         const before = await svc.core.runs.status(h.handle, base.session.sessionId);
         const op = Object.values(before.operations).find(row => row.compute);
         expect(op.total).toBe(1); expect(op.compute.attempts).toHaveLength(1);
         delete executionPolicy.computeBudget;
         await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy });
-        await expect(host.executeLifecycle(h.handle, input())).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+        expect(await refusal(host.executeLifecycle(h.handle, input()))).toBe('native_generation_budget_exhausted');
         expect(seen).toHaveLength(1);
         expect(Object.values((await svc.core.runs.status(h.handle, base.session.sessionId)).operations).find(row => row.compute)).toEqual(op);
     });
@@ -108,9 +110,9 @@ describe.each(CONTRACT_HARNESSES)('P2 actual background send budget - $name', ({
         expect(op.compute.attempts.every(row => row.status === 'unknown' && row.usage === null && row.estimatedTokens > 128)).toBe(true);
         expect(new Set(op.compute.attempts.map(row => row.attemptId)).size).toBe(2);
         const reopened = new NativeGenerationHost({ ...host, sessionCore: services(h).core });
-        await expect(reopened.executeLifecycle(h.handle, input())).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+        expect(await refusal(reopened.executeLifecycle(h.handle, input()))).toBe('native_generation_budget_exhausted');
         base = await svc.core.restoreSavePoint(h.handle, base.session.sessionId, saved.saveId, { expectedRevisionId: base.revision.revisionId });
-        await expect(reopened.executeLifecycle(h.handle, input())).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+        expect(await refusal(reopened.executeLifecycle(h.handle, input()))).toBe('native_generation_budget_exhausted');
         expect(seen).toHaveLength(2);
         const after = await svc.core.runs.status(h.handle, base.session.sessionId);
         expect(Object.values(after.operations).find(row => row.compute).compute).toEqual(op.compute);
@@ -121,9 +123,9 @@ describe.each(CONTRACT_HARNESSES)('P2 actual background send budget - $name', ({
         await expect(host.executeLifecycle(h.handle, input())).rejects.toThrow(); expect(seen).toHaveLength(2);
         expect((await svc.core.load(h.handle, base.session.sessionId)).revision).toEqual(before.revision);
         const reopened = new NativeGenerationHost({ ...host, sessionCore: services(h).core });
-        await expect(reopened.executeLifecycle(h.handle, input())).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' }); expect(seen).toHaveLength(2);
+        expect(await refusal(reopened.executeLifecycle(h.handle, input()))).toBe('native_generation_budget_exhausted'); expect(seen).toHaveLength(2);
         base = await svc.core.restoreSavePoint(h.handle, base.session.sessionId, saved.saveId, { expectedRevisionId: base.revision.revisionId });
-        await expect(reopened.executeLifecycle(h.handle, input())).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' }); expect(seen).toHaveLength(2);
+        expect(await refusal(reopened.executeLifecycle(h.handle, input()))).toBe('native_generation_budget_exhausted'); expect(seen).toHaveLength(2);
         expect((await svc.core.runs.status(h.handle, base.session.sessionId)).highWaterTurn).toBe(4);
     });
     test('pending attempts survive unrelated HEAD publication; forged Task invocations cannot create another batch', async () => {
@@ -139,7 +141,7 @@ describe.each(CONTRACT_HARNESSES)('P2 actual background send budget - $name', ({
     });
     test('not-due window and stale inputs stop before send; previews/preflight spend no quota', async () => {
         await progress(0);
-        await expect(host.executeLifecycle(h.handle, input())).rejects.toMatchObject({ code: 'native_generation_background_not_due' }); expect(seen).toEqual([]);
+        expect(await refusal(host.executeLifecycle(h.handle, input()))).toBe('native_generation_background_not_due'); expect(seen).toEqual([]);
         await command({ kind: 'app.command', domainId: 'notes', commandId: 'save', recordId: 'main', args: { text: 'changed' } });
         const cancelled = await host.executeLifecycle(h.handle, input()); base = cancelled.snapshot;
         expect(cancelled.results).toEqual([]); expect(seen).toEqual([]);
@@ -163,11 +165,11 @@ describe.each(CONTRACT_HARNESSES)('P2 actual background send budget - $name', ({
         await command({ kind: 'app.command', domainId: 'notes', commandId: 'save', recordId: 'main', args: { text: 'advanced' } });
         await command({ kind: 'clock.advance', commandId: 'advance', ticks: 1 });
         respond = async () => { throw new Error('second window unknown send'); };
-        await expect(host.executeLifecycle(h.handle, input())).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' }); expect(seen).toHaveLength(3);
+        expect(await refusal(host.executeLifecycle(h.handle, input()))).toBe('native_generation_budget_exhausted'); expect(seen).toHaveLength(3);
         const control = await svc.core.runs.status(h.handle, base.session.sessionId); expect(control.highWaterTurn).toBe(8);
         expect(Object.values(control.background).reduce((total, entry) => total + entry.count, 0)).toBe(3);
         base = await svc.core.restoreSavePoint(h.handle, base.session.sessionId, saved.saveId, { expectedRevisionId: base.revision.revisionId });
-        await expect(host.executeLifecycle(h.handle, input())).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' }); expect(seen).toHaveLength(3);
+        expect(await refusal(host.executeLifecycle(h.handle, input()))).toBe('native_generation_budget_exhausted'); expect(seen).toHaveLength(3);
     });
 
 });

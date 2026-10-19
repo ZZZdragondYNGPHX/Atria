@@ -57,6 +57,9 @@ export async function createLiveBridge({ engine, handle, config, secretPort, fet
             modelProfileRef: { scope: 'player', modelProfileId: model.modelProfileId }, connectionProfileRef: model.connectionProfileRef,
             promptProgramRef: { resourceType: 'core.prompt-program', scope: 'library', resourceId: prompt.promptProgramId, revision: prompt.revision },
             generationProfileRef: { resourceType: 'core.generation-profile', scope: 'library', resourceId: generation.generationProfileId, revision: generation.revision },
+            executionPolicy: { schemaVersion: 1, allowedModelProfileIds: [model.modelProfileId], continuity: 'none', reuse: 'disabled',
+                computeBudget: { maxRequests: Math.min(config.maxRequests, 32), maxTokens: config.maxTotalTokens,
+                    localWork: { maxJobs: 64, maxItems: 100, maxInputBytes: 16777216 } } },
             fallbackRouteRefs: [], policy: { timeoutMs: config.timeoutMs, maxRetries: 0, maxFallbackAttempts: 0 }, requirements: [] };
         await persistence.saveRuntimeRoute(handle, route); routes[role] = route;
     }

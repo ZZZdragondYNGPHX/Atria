@@ -57,7 +57,7 @@ export async function makeTempPgEngineHarness() {
     // so no per-connection SET fires before each query. Verified working
     // against pg 8.x and Postgres 16.
     const urlWithSchema = `${ROOT_URL}?options=-csearch_path%3D${encodeURIComponent(schemaName)}`;
-    const engine = new PgEngine({ url: urlWithSchema });
+    const engine = new PgEngine({ url: urlWithSchema, nativeHostTopology: 'direct_single_primary' });
     const stubRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-contract-pg-'));
     const dirs = buildStubDirs(stubRoot);
     const backupRoot = path.join(stubRoot, '_storage-migrations');

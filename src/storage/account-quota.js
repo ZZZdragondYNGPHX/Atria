@@ -35,7 +35,7 @@ export function installAccountQuota(engine, { directoriesByHandle, limit, makeDe
     const authority = { engine, directoriesByHandle, limit, tails: new Map(), original };
     authorities.set(engine, authority);
     if (makeDefault) defaultEngine = engine;
-    engine.withTransaction = (handle, operation) => {
+    engine.withTransaction = (handle, operation, options = {}) => {
         const active = context.getStore();
         if (active?.open && active.engine === engine && active.handle === handle && active.tx) return operation(active.tx);
         return withAccountQuota(engine, handle, async scope => original(handle, async tx => {
@@ -100,7 +100,7 @@ export function installAccountQuota(engine, { directoriesByHandle, limit, makeDe
                 if (finite && netNative > 0 && scope.used > scope.limit && scope.used > initialUsed) throw new AccountQuotaError('storage_quota_exceeded', { usedBytes: initialUsed, requestedBytes: netNative, quotaBytes: scope.limit });
                 return result;
             } finally { scope.tx = priorTx; }
-        }));
+        }, options));
     };
     return engine;
 }

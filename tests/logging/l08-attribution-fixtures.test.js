@@ -2,7 +2,7 @@ import { describe, expect, test } from '@jest/globals';
 
 import { classifyOperationalFailure, sanitizeDiagnosticUrl } from '../../src/logging/failure-classifier.js';
 import { attributeFrontendOwnership } from '../../public/scripts/logging/ownership.js';
-import { buildOrchestrationFailureDiagnostic } from '../../public/scripts/agents/orchestrator/diagnostics.js';
+
 
 describe('L08 diagnostic attribution fixtures', () => {
     test('B: extension network failures distinguish DNS, TLS, connect and filesystem stages', () => {
@@ -31,40 +31,5 @@ describe('L08 diagnostic attribution fixtures', () => {
         expect(atria.stack.firstThirdPartyFrame.ownerName).toBe('foo');
     });
 
-    test('A: orchestration failure package retains run/agent/round/retry/fallback without conversation text', () => {
-        const diagnostic = buildOrchestrationFailureDiagnostic({
-            mode: 'spec',
-            panelRunId: 'panel-1',
-            profileName: 'builtin-agenda',
-            payload: { atri_generation_id: 'gen-1', agentRuntimeV2: true },
-            error: Object.assign(new Error('tool schema failed'), { code: 'SCHEMA' }),
-            trace: {
-                runId: 'orch-1',
-                reviewRerunCount: 1,
-                attempts: [{
-                    attemptId: 2,
-                    stageId: 'review',
-                    nodeId: 'continuity_critic',
-                    preset: 'critic',
-                    runKind: 'worker',
-                    round: 3,
-                    status: 'failed',
-                    error: 'tool schema failed',
-                    conversation: { messages: [{ content: 'PRIVATE PROMPT' }] },
-                }],
-                events: [{
-                    seq: 4,
-                    type: 'api_fallback.started',
-                    primaryApiPresetName: 'primary',
-                    fallbackApiPresetName: 'fallback',
-                    error: 'provider down',
-                    prompt: 'PRIVATE PROMPT',
-                }],
-            },
-        });
-        expect(diagnostic.correlation).toMatchObject({ orchestrationRunId: 'orch-1', generationId: 'gen-1' });
-        expect(diagnostic.environment.failedAttempt).toMatchObject({ nodeId: 'continuity_critic', round: 3, preset: 'critic' });
-        expect(diagnostic.fallbackHistory[0]).toMatchObject({ type: 'api_fallback.started', primaryApiPresetName: 'primary', fallbackApiPresetName: 'fallback' });
-        expect(JSON.stringify(diagnostic)).not.toContain('PRIVATE PROMPT');
-    });
+
 });

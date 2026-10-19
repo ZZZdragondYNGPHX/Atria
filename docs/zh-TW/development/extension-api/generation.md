@@ -4,7 +4,7 @@
 
 ## 發送 LLM 請求
 
-推薦使用 `context.generateTask` —— 一次呼叫同時處理 profile 解析、世界書啟用、prompt 組裝、分派與回應正規化。Atria 內建的 search-tools、completion-preset-assistant、character-editor-assistant、記憶圖、orchestrator 都透過它發起 LLM 請求。第三方外掛也應該用這個 API，而不是自己拼裝 `sendOpenAIRequest` + `buildPresetAwarePromptMessages` + `connectionProfiles.resolve`。
+推薦使用 `context.generateTask` —— 一次呼叫同時處理 profile 解析、世界書啟用、prompt 組裝、分派與回應正規化。Atria 內建的 search-tools、completion-preset-assistant、character-editor-assistant、記憶圖都透過它發起 LLM 請求。第三方外掛也應該用這個 API，而不是自己拼裝 `sendOpenAIRequest` + `buildPresetAwarePromptMessages` + `connectionProfiles.resolve`。
 
 ::: info 為什麼要統一成一個 API
 手動拼裝意味著每個外掛都得自己重做 profile 解析、世界書啟用、家族分派（openai vs kobold/novel/textgen）、回應解析。`generateTask` 把這些都收斂到一處，無論底層 API 家族是哪一種，都回傳正規化的結果結構。

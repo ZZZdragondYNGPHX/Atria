@@ -50,7 +50,7 @@ export function validateTrial(trial, entry) {
         string(variant.messageId); string(variant.variantId); strings(variant.requestIds);
         assert(trial.refs.runIds.includes(variant.runId) && variant.requestIds.every(id => trial.refs.requestIds.includes(id)), 'Variant/run/request mixing');
         for (const requestId of variant.requestIds) { assert(!variantRequests.has(requestId), 'Request shared across variants'); variantRequests.add(requestId); }
-        const identity = `${variant.messageId}:${variant.variantId}`;
+        const identity = `${variant.messageId}:${variant.variantId}:${variant.runId}`;
         assert(!variants.has(identity), 'Duplicate variant'); variants.add(identity);
     }
     if (entry.entrance === 'rp' && trial.metrics.generationCalls > 0) assert(variantRequests.size === trial.refs.requestIds.length, 'Unanchored variant request');

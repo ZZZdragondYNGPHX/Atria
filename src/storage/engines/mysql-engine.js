@@ -5,9 +5,11 @@ import { StringDecoder } from 'node:string_decoder';
 import mysql from 'mysql2/promise';
 import { MysqlTransaction } from './mysql-engine-transaction.js';
 import { initSchema } from './mysql-schema.js';
-import { withRetry } from '../retry.js';
+import { withRetry, isKnownRollbackError } from '../retry.js';
+import { StorageCommitUnknownError } from '../errors.js';
 import { logEngineError } from '../engine-logger.js';
 import { TransactionScope } from './transaction-scope.js';
+import { assertNativeSqlTopology, inspectMysqlNativeTopology, readMysqlNativeSession, assertNativeSqlSession } from '../native-sql-topology.js';
 
 const DEFAULT_ACQUIRE_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRIES = { transient: 3 };
@@ -107,11 +109,15 @@ export class MysqlEngine {
         poolSize = 10,
         acquireTimeoutMs = DEFAULT_ACQUIRE_TIMEOUT_MS,
         retries = DEFAULT_RETRIES,
+        nativeHostTopology = 'unknown',
     } = {}) {
         if (typeof url !== 'string' || !url) {
             throw new TypeError('MysqlEngine requires { url: "mysql://user:pass@host:port/db" }');
         }
         this.kind = 'mysql';
+        Object.defineProperty(this, 'nativeHostTopology', { value: nativeHostTopology });
+        this._nativeOwnerUrl = url;
+        Object.defineProperty(this, 'nativeHostOwnershipKey', { value: 'mysql:' + createHash('sha256').update(url).digest('hex') });
         this._transactionScope = new TransactionScope();
         this._accountLease = new AsyncLocalStorage();
         this._acquireTimeoutMs = acquireTimeoutMs;
@@ -168,42 +174,77 @@ export class MysqlEngine {
         }
     }
 
+    assertNativeHostTopology() { assertNativeSqlTopology(this.nativeHostTopology); }
+
+    async acquireNativeHostOwnership(onLost) {
+        this.assertNativeHostTopology();
+        // Never take the lifetime lock from the business pool (including max=1).
+        const conn = await mysql.createConnection(this._nativeOwnerUrl);
+        conn.on('error', onLost);
+        conn.on('end', onLost);
+        try {
+            const session = await inspectMysqlNativeTopology(conn), database = session.databaseName;
+            const lockName = 'atria.native-host.' + createHash('sha256').update(database).digest('hex').slice(0, 40);
+            const [rows] = await conn.execute('SELECT GET_LOCK(?, 0) AS acquired', [lockName]);
+            if (rows[0]?.acquired !== 1) throw new Error('Native database already has a Host owner');
+            assertNativeSqlSession(session, await readMysqlNativeSession(conn));
+            return async () => { await conn.end(); };
+        } catch (error) { await conn.end().catch(() => {}); throw error; }
+    }
+
     async withAccountLock(handle, operation) {
         await this._ensureSchema();
-        if (this._accountLease.getStore()?.handle === handle) return operation();
+        if (this._accountLease.getStore()?.open && this._accountLease.getStore().handle === handle) return operation();
         const conn = await acquireWithTimeout(this._pool, this._acquireTimeoutMs);
         const [[{ db }]] = await conn.query('SELECT DATABASE() AS db');
         const name = createHash('sha256').update('atria:account:' + db + ':' + handle).digest('hex');
+        let broken = false;
         try {
             const [[{ acquired }]] = await conn.query('SELECT GET_LOCK(?, 30) AS acquired', [name]);
             if (acquired !== 1) throw new Error('Account storage admission lock unavailable');
-            try { return await this._accountLease.run({ handle, conn }, operation); } finally { await conn.query('SELECT RELEASE_LOCK(?)', [name]); }
-        } finally { conn.release(); }
+            const lease = { handle, conn, open: true };
+            let failure, result;
+            try { result = await this._accountLease.run(lease, operation); } catch (error) { failure = error; }
+            lease.open = false;
+            try { await conn.query('SELECT RELEASE_LOCK(?)', [name]); } catch (error) { broken = true; failure ??= error; }
+            if (failure) throw failure;
+            return result;
+        } finally { if (broken) conn.destroy(); else conn.release(); }
     }
 
-    async withTransaction(handle, fn) {
+    hasActiveTransaction(handle) { return this._transactionScope.get(handle) !== null; }
+
+    async withTransaction(handle, fn, { retryMode = 'known_rollback_only' } = {}) {
+        if (!['known_rollback_only', 'never'].includes(retryMode)) throw new TypeError('Unsupported storage retryMode');
         const active = this._transactionScope.get(handle);
         if (active) return fn(active);
         await this._ensureSchema();
+        const retryableFailures = new WeakSet();
         try {
             return await withRetry(async () => {
-                const leased = this._accountLease.getStore();
+                const scope = this._accountLease.getStore(), leased = scope?.open ? scope : null;
                 const conn = leased?.handle === handle ? leased.conn : await acquireWithTimeout(this._pool, this._acquireTimeoutMs);
                 try {
                     await conn.beginTransaction();
                     const tx = new MysqlTransaction({ conn, handle });
                     try {
                         const result = await this._transactionScope.run(handle, tx, () => fn(tx));
-                        await conn.commit();
+                        try { await conn.commit(); } catch (error) {
+                            if (isKnownRollbackError(error)) throw error;
+                            throw new StorageCommitUnknownError(error);
+                        }
                         return result;
                     } catch (err) {
-                        try { await conn.rollback(); } catch { /* engine may already have rolled back */ }
+                        let rolledBack = false;
+                        try { await conn.rollback(); rolledBack = true; } catch { /* unknown COMMIT stays unknown */ }
+                        if (rolledBack && err.code !== 'storage_commit_unknown') err.storageRollbackConfirmed = true;
+                        if (isKnownRollbackError(err) && (rolledBack || err.code === 'ER_LOCK_DEADLOCK')) retryableFailures.add(err);
                         throw err;
                     }
                 } finally {
                     if (conn !== leased?.conn) conn.release();
                 }
-            }, { retries: this._retries.transient });
+            }, { retries: this._retries.transient, isRetryable: err => retryMode === 'known_rollback_only' && retryableFailures.has(err) });
         } catch (err) {
             logEngineError(this.kind, 'tx', handle, err);
             throw err;
@@ -222,35 +263,18 @@ export class MysqlEngine {
      * is the user-data tables from migrations/mysql/0001-initial.sql.
      * @param {string} handle
      */
+    async _withUserAdministration(handle, fn, options) {
+        const lifecycle = this.nativeHostLifecycle;
+        return lifecycle ? lifecycle.withAdministrativeTransaction(handle, fn, options) : this.withTransaction(handle, fn, options);
+    }
+
     async deleteUser(handle) {
-        await this._ensureSchema();
-        try {
-            await withRetry(async () => {
-                const conn = await acquireWithTimeout(this._pool, this._acquireTimeoutMs);
-                try {
-                    await conn.beginTransaction();
-                    try {
-                        for (const table of [
-                            'chat_states', 'preset_states',
-                            'chats', 'presets', 'worlds',
-                            'named_docs', 'groups_table', 'native_resources',
-                            'settings', 'stats',
-                        ]) {
-                            await conn.query(`DELETE FROM ${table} WHERE handle = ?`, [handle]);
-                        }
-                        await conn.commit();
-                    } catch (err) {
-                        try { await conn.rollback(); } catch { /* best-effort */ }
-                        throw err;
-                    }
-                } finally {
-                    conn.release();
-                }
-            }, { retries: this._retries.transient });
-        } catch (err) {
-            logEngineError(this.kind, 'delete-user', handle, err);
-            throw err;
-        }
+        return this._withUserAdministration(handle, async tx => {
+            for (const table of ['chat_states', 'preset_states', 'chats', 'presets', 'worlds', 'named_docs', 'groups_table', 'native_resources', 'settings', 'stats']) {
+                const predicate = table === 'native_resources' ? ' AND kind <> ?' : '';
+                await tx._conn.query(`DELETE FROM ${table} WHERE handle = ?${predicate}`, table === 'native_resources' ? [handle, 'atri_host_fence'] : [handle]);
+            }
+        });
     }
 
     async close() {
@@ -295,6 +319,7 @@ export class MysqlEngine {
                         [handle],
                     );
                     for (const row of rows) {
+                        if (t.name === 'native_resources' && row.kind === 'atri_host_fence') continue;
                         const params = t.cols.map((c) => normalizeDumpValue(row[c]));
                         yield JSON.stringify({ sql: sqlText, params }) + '\n';
                     }
@@ -307,74 +332,35 @@ export class MysqlEngine {
         return Readable.from(generate());
     }
 
-    /**
-     * mysql restore wipes the handle (idempotent — calls
-     * `deleteUser` which is itself retry-wrapped) then replays the incoming
-     * `{sql, params}` lines inside ONE transaction. A failed line rolls back
-     * the whole restore so the user's slot is either fully restored or
-     * unchanged — never half-applied.
-     *
-     * The wipe runs in its own transaction BEFORE the restore transaction
-     * begins; if the restore later fails, the user is left wiped (not
-     * mid-restored). The restore is idempotent: re-
-     * issuing the same restore from a good dump converges.
-     *
-     * Stream parsing buffers across chunk boundaries — `for await` chunks
-     * arrive at arbitrary byte boundaries so a record split across two
-     * chunks would JSON.parse-fail without the buffer. Critically, the
-     * chunk boundary may also fall MID multi-byte UTF-8 sequence (CJK
-     * chars are 3 bytes, emoji 4), and `chunk.toString('utf8')` on a
-     * partial sequence emits U+FFFD replacement chars in both this chunk
-     * and the next — silent mojibake in restored chat content. We use
-     * `StringDecoder` to buffer incomplete sequences internally so the
-     * decoded text round-trips byte-for-byte regardless of where yauzl
-     * splits the dump. The retry wrapper is for transient pool/connection
-     * failures during the COMMIT itself; a malformed dump line throws
-     * synchronously inside the retry body and surfaces immediately.
-     * @param {string} handle
-     * @param {import('node:stream').Readable} stream
-     */
+    /** Restore the original dump in one non-replayed transaction, retaining the destination Host fence. */
     async restoreUser(handle, stream) {
-        await this._ensureSchema();
-        await this.deleteUser(handle);
-
-        try {
-            await withRetry(async () => {
-                const conn = await acquireWithTimeout(this._pool, this._acquireTimeoutMs);
-                try {
-                    await conn.beginTransaction();
-                    try {
-                        const decoder = new StringDecoder('utf8');
-                        let buf = '';
-                        for await (const chunk of stream) {
-                            buf += decoder.write(chunk);
-                            let nl;
-                            while ((nl = buf.indexOf('\n')) >= 0) {
-                                const line = buf.slice(0, nl).trim();
-                                buf = buf.slice(nl + 1);
-                                if (!line) continue;
-                                const { sql, params } = JSON.parse(line);
-                                await conn.query(sql, params);
-                            }
-                        }
-                        buf += decoder.end();
-                        const tail = buf.trim();
-                        if (tail) {
-                            const { sql, params } = JSON.parse(tail);
-                            await conn.query(sql, params);
-                        }
-                        await conn.commit();
-                    } catch (err) {
-                        try { await conn.rollback(); } catch { /* best-effort */ }
-                        throw err;
-                    }
-                } finally {
-                    conn.release();
+        // One transaction preserves prior data on malformed/failed input. A
+        // consumed stream is never replayed, even after a confirmed rollback.
+        return this._withUserAdministration(handle, async tx => {
+            for (const table of ['chat_states', 'preset_states', 'chats', 'presets', 'worlds', 'named_docs', 'groups_table', 'native_resources', 'settings', 'stats']) {
+                const predicate = table === 'native_resources' ? ' AND kind <> ?' : '';
+                await tx._conn.query(`DELETE FROM ${table} WHERE handle = ?${predicate}`, table === 'native_resources' ? [handle, 'atri_host_fence'] : [handle]);
+            }
+            const apply = async line => {
+                const { sql, params } = JSON.parse(line);
+                // Original dump column order is handle, kind, resource_key...
+                // A source Host fence can never replace the destination Owner.
+                if (/^INSERT INTO native_resources\s/i.test(sql) && params?.[1] === 'atri_host_fence') return;
+                await tx._conn.query(sql, params);
+            };
+            const decoder = new StringDecoder('utf8');
+            let buffer = '';
+            for await (const chunk of stream) {
+                buffer += decoder.write(chunk);
+                let newline;
+                while ((newline = buffer.indexOf('\n')) >= 0) {
+                    const line = buffer.slice(0, newline).trim();
+                    buffer = buffer.slice(newline + 1);
+                    if (line) await apply(line);
                 }
-            }, { retries: this._retries.transient });
-        } catch (err) {
-            logEngineError(this.kind, 'restore-user', handle, err);
-            throw err;
-        }
+            }
+            buffer += decoder.end();
+            if (buffer.trim()) await apply(buffer.trim());
+        }, { retryMode: 'never' });
     }
 }

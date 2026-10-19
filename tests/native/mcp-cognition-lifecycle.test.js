@@ -74,7 +74,7 @@ test('source retention preview performs no deletion and exact Native source-set 
 });
 
 test('controlled Evidence sequence and deletion bind the original Native record even if a client proposes a much newer sequence', async () => {
-    const f = await evolutionFixture(makeTempFsEngineHarness, 'workspace-strategy'); cleanup.push(f.h.cleanup);
+    const f = await evolutionFixture(makeTempFsEngineHarness, 'rp-skill'); cleanup.push(f.h.cleanup);
     const doc = await f.service.experience.repository.get(f.h.handle, f.scope, f.subject), evidenceId = doc.feedback[0].source.id;
     const record = await f.service.experience.evidence.get(f.h.handle, evidenceId);
     const app = express(); app.use(express.json()); app.use((req, _res, next) => { req.user = { profile: { handle: f.h.handle } }; next(); });

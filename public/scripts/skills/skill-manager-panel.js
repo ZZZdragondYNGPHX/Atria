@@ -1,8 +1,8 @@
 /**
  * Skill manager subpanel.
  *
- * A popup launched from the orchestrator config that lists installed skills
- * across all three scopes (global, preset, character), grouped by scope, with
+ * A popup that lists installed skills
+ * across global, project, package, preset, and character scopes, grouped by scope, with
  * per-row actions (View, Edit, Move to, Rename, Delete) plus a top toolbar
  * for import operations (bundled, file, URL) and create-new.
  *
@@ -14,7 +14,7 @@
  * Inline-tested helpers are exported for use by the test suite without
  * needing a DOM (Atria's Jest config runs in node, not jsdom). The
  * interactive `openSkillManagerPanel` entry point is exported for use by
- * orchestrator's main.js.
+ * the Build workspace.
  *
  * Edit + Create-new wire through to `openSkillEditor` / `openCreateNewSkillFlow`
  * from skill-editor.js. Editor's `onChange` callback refreshes the manager
@@ -43,7 +43,7 @@ export function formatScopeLabel(scope, t = (s) => s) {
         case 'project': return `${t('Project')}: ${scope.displayName || scope.projectId}`;
         case 'package': return `${t('Package')}: ${scope.displayName || scope.packageId} @ ${scope.packageVersionId}`;
         case 'preset': return `${t('preset')}: ${scope.name}`;
-        case 'orch-preset': return `${t('orchestrator preset')} (${scope.mode}): ${scope.name}`;
+
         case 'character': return `${t('character')}: ${scope.characterFile}`;
         default: return t('unknown');
     }
@@ -63,7 +63,7 @@ export function scopesEqual(a, b) {
     if (a.kind === 'project') return a.projectId === b.projectId;
     if (a.kind === 'package') return a.packageId === b.packageId && a.packageVersionId === b.packageVersionId;
     if (a.kind === 'preset') return a.name === b.name;
-    if (a.kind === 'orch-preset') return a.mode === b.mode && a.name === b.name;
+
     if (a.kind === 'character') return a.characterFile === b.characterFile;
     return false;
 }
@@ -81,7 +81,7 @@ export function scopeKey(scope) {
         case 'project': return `project/${scope.projectId}`;
         case 'package': return `package/${scope.packageId}/${scope.packageVersionId}`;
         case 'preset': return `preset/${scope.name}`;
-        case 'orch-preset': return `orch-preset/${scope.mode}/${scope.name}`;
+
         case 'character': return `character/${scope.characterFile}`;
         default: return '';
     }
@@ -113,9 +113,8 @@ export function groupSkillsByScope(skills) {
     }
     // Sort groups by kind priority then by key. Order mirrors runtime
     // resolver precedence (specialized last) reversed for reading order:
-    // global (shared) → preset (chat-completion) → orch-preset
-    // (orchestrator preset) → character (card-bound).
-    const kindOrder = { global: 0, project: 1, package: 2, preset: 3, 'orch-preset': 4, character: 5 };
+    // global → project → package → preset → character.
+    const kindOrder = { global: 0, project: 1, package: 2, preset: 3, character: 4 };
     return Array.from(groups.values()).sort((a, b) => {
         const ka = kindOrder[a.scope.kind] ?? 99;
         const kb = kindOrder[b.scope.kind] ?? 99;
@@ -306,12 +305,11 @@ export function buildPanelHtml(groups, allScopes, selectedFilterKey, activeTab, 
             kind === 'global' ? t('Global')
                 : kind === 'project' ? t('Project') : kind === 'package' ? t('Package')
                     : kind === 'preset' ? t('Preset')
-                        : kind === 'orch-preset' ? t('Orchestrator preset')
-                            : kind === 'character' ? t('Character')
-                                : t('unknown'),
+                        : kind === 'character' ? t('Character')
+                            : t('unknown'),
         );
-        // For preset / orch-preset / character scopes the second segment
-        // carries the identifying detail (preset name, mode+name, or
+        // For preset / character scopes the second segment
+        // carries the identifying detail (preset name or
         // character file). Global has no sub-identifier, so the badge
         // stops at the kind name — rendering "Global · Global" would just
         // be redundant noise.
@@ -319,11 +317,9 @@ export function buildPanelHtml(groups, allScopes, selectedFilterKey, activeTab, 
             : kind === 'package' ? esc((scope.displayName || scope.packageId) + ' @ ' + scope.packageVersionId)
                 : kind === 'preset'
                     ? esc(scope.name || '?')
-                    : kind === 'orch-preset'
-                        ? esc(`${scope.mode || '?'}/${scope.name || '?'}`)
-                        : kind === 'character'
-                            ? esc(scope.characterFile || '?')
-                            : null;
+                    : kind === 'character'
+                        ? esc(scope.characterFile || '?')
+                        : null;
         const tail = kindLabel
             ? `<span class="atria_skill_scope_badge_sep">·</span><span class="atria_skill_scope_badge_id">${kindLabel}</span>`
             : '';
@@ -457,7 +453,7 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
     if (!context || !context.skills) {
         throw new Error('openSkillManagerPanel: context.skills missing');
     }
-    // Self-register Skills UI translations so any caller (orchestrator,
+    // Self-register Skills UI translations so any caller (Build,
     // completion-preset-assistant, future extensions) gets zh-CN
     // strings without having to copy our locale table into their own setup.
     ensureSkillI18n();

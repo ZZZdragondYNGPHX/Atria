@@ -10,7 +10,7 @@ import { getMessageDepthFromTail } from '../../public/scripts/atri-message-depth
 import { buildMemoryCorpus, rankMemory } from '../../public/scripts/agents/memory/hybrid-retrieval.js';
 import { largeMemory } from '../memory-graph/fixtures/large-memory.js';
 import { WorldInfoSelectionIndex } from '../../public/scripts/atri-world-info-selection.js';
-import { applyProfileWorldInfoFilter } from '../../public/scripts/agents/orchestrator/lorebook-filter.js';
+import { filterWorldInfoByProvenance } from '../../public/scripts/atri-world-info-provenance.js';
 import { makeEntry, makePayload } from '../world-info/prompt-fixture.js';
 
 const samples = 7;
@@ -87,7 +87,7 @@ const prompt = [100, 1000, 10000].map(count => {
     const entries = Array.from({ length: count }, (_, uid) => makeEntry(uid % 2 ? 'private' : 'public', uid));
     return { entries: count, ...measure(() => {
         const payload = makePayload(entries);
-        applyProfileWorldInfoFilter(payload, { bookPattern: '^private$' });
+        filterWorldInfoByProvenance(payload, payload.worldInfoResolution.worldInfoProvenance, source => source.world === 'private');
         if (payload.worldInfoBeforeEntries.length !== count / 2) throw new Error('Identity regression');
         return { retained: payload.worldInfoBeforeEntries.length };
     }) };

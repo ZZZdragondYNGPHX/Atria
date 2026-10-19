@@ -3,7 +3,6 @@ import { describe, expect, jest, test } from '@jest/globals';
 import { advanceTurnContext } from '../../public/scripts/native/experience/llm/turn-context.js';
 import { createGameLlmRuntime } from '../../public/scripts/native/experience/llm/runtime.js';
 import { createCommandToolCatalog } from '../../public/scripts/native/experience/llm/tools.js';
-import { createNarrativeCoordinator } from '../../public/scripts/native/experience/llm/narrative.js';
 import { createGameTurnController } from '../../public/scripts/native/experience/llm/turn-controller.js';
 import { createRuntimeRoleRouter } from '../../public/scripts/native/experience/llm/roles.js';
 
@@ -101,7 +100,7 @@ function authoritativeProjectors() {
 }
 
 describe('R5 Master Plan exit matrix', () => {
-    test('free text -> Command -> commit -> Memory recall -> orchestration guidance -> Narrator -> Memory update', async () => {
+    test('free text -> Command -> commit -> Memory recall -> Narrator -> Memory update', async () => {
         const world = runtimeWorld();
         const order = [];
         const intentResolver = {
@@ -139,21 +138,14 @@ describe('R5 Master Plan exit matrix', () => {
             },
         };
         const narrativeCoordinator = {
-            async produce(turn, { orchestrationMode }) {
-                order.push('orchestrate+narrate');
-                expect(orchestrationMode).toBe('spec');
+            async produce(turn) {
+                order.push('narrate');
                 expect(turn.observation.views.scene.door).toBe('open');
                 expect(turn.memories[0].authority).toBe('historical_context');
                 return {
                     producer: 'narrator',
                     finalProse: 'The already-open north door swings wider.',
                     turn: advanceTurnContext(turn, {
-                        orchestration: {
-                            mode: 'spec',
-                            advisory: true,
-                            authorityRank: 6,
-                            text: 'Build tension.',
-                        },
                         narrative: {
                             status: 'final',
                             producer: 'narrator',
@@ -194,7 +186,6 @@ describe('R5 Master Plan exit matrix', () => {
             memoryBridge,
             narrativeCoordinator,
             memoryIngestion,
-            getOrchestrationMode: () => 'spec',
         });
         const phases = [];
 
@@ -211,19 +202,17 @@ describe('R5 Master Plan exit matrix', () => {
         expect(order).toEqual([
             'resolve',
             'recall',
-            'orchestrate+narrate',
+            'narrate',
             'memory-write',
         ]);
         expect(phases).toEqual([
             'resolving',
             'calculating',
             'recalling',
-            'orchestrating',
             'narrating',
         ]);
         expect(result.turn.provenance.worldObservation.authorityRank).toBe(1);
         expect(result.turn.provenance.memoryRecall.authorityRank).toBe(5);
-        expect(result.turn.provenance.orchestratorGuidance.authorityRank).toBe(6);
     });
 
     test('UI action skips Resolver and Event Interpreter but still commits, recalls and narrates', async () => {
@@ -330,61 +319,6 @@ describe('R5 Master Plan exit matrix', () => {
         expect(world.getState()).toEqual({ door: 'closed', hp: 10 });
     });
 
-    test('Director mode produces exactly one final body and bypasses Narrator', async () => {
-        const narrator = {
-            narrate: jest.fn(async () => {
-                throw new Error('Narrator must not run');
-            }),
-        };
-        const orchestratorBridge = {
-            async runDirector(turn, { contract }) {
-                expect(contract.mustRemainTrue.worldObservation.views.scene.door).toBe('open');
-                return {
-                    finalProse: 'The open door reveals the road.',
-                    guidance: null,
-                };
-            },
-        };
-        const worldState = { door: 'open', hp: 10 };
-        const journal = { events: [{ id: 'event:1', type: 'DoorOpened' }] };
-        const coordinator = createNarrativeCoordinator({
-            narrator,
-            orchestratorBridge,
-            getWorldState: () => structuredClone(worldState),
-            getJournal: () => structuredClone(journal),
-        });
-        const turn = advanceTurnContext(
-            createGameLlmRuntime({
-                worldSession: runtimeWorld(),
-                observationProjectors: authoritativeProjectors(),
-            }).beginTurn({
-                origin: 'free_text',
-                userInput: 'Continue',
-                observation: {
-                    views: {
-                        scene: { door: 'open', hp: 10 },
-                    },
-                    recentEvents: [],
-                },
-            }),
-            {
-                committedEvents: [{
-                    id: 'event:1',
-                    type: 'DoorOpened',
-                    payload: {},
-                }],
-            },
-        );
-
-        const result = await coordinator.produce(turn, {
-            orchestrationMode: 'director',
-        });
-
-        expect(result.producer).toBe('director');
-        expect(result.finalProse).toBe('The open door reveals the road.');
-        expect(narrator.narrate).not.toHaveBeenCalled();
-    });
-
     test('Runtime Role fallback is provider-only and preserves structured/tool contracts', async () => {
         const generateTask = jest.fn(async request => {
             if (request.apiPresetName === 'primary') {
@@ -463,7 +397,6 @@ describe('R5 Master Plan exit matrix', () => {
                         Object.assign(new Error('stop'), { name: 'AbortError' }),
                     ), { once: true });
                 });
-                return resolve;
             },
         });
         await Promise.resolve();

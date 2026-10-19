@@ -9,7 +9,7 @@ import { BASE_SETTINGS } from './evaluation-settings.js';
 import { getConfigFilePath, setConfigFilePath } from '../../src/util.js';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const adapterRevision = hash(['adapters.js', 'runner.js', 'cases.js', 'report.js', 'budget.js', 'evaluation-settings.js', 'live-bridge.js'].map(name => fs.readFileSync(new URL(name, import.meta.url), 'utf8')));
+const adapterRevision = hash(['adapters.js', 'native-rp-adapter.js', 'runner.js', 'cases.js', 'report.js', 'budget.js', 'evaluation-settings.js', 'live-bridge.js'].map(name => fs.readFileSync(new URL(name, import.meta.url), 'utf8')));
 let running = false;
 export function captureFor(entry, trialId) {
     return {

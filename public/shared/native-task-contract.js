@@ -32,6 +32,10 @@ export function assertTaskValue(value, schema) {
     if (!validateSchemaValue(result, schema).ok) throw new TypeError('Task value violates schema');
     return result;
 }
+/** Original GenerationHost Task normalization, shared with completion evidence. */
+export function normalizeTaskGenerationResult(response, schema) {
+    return assertTaskValue(response.jsonData ?? response.json ?? JSON.parse(response.text), schema);
+}
 export function assertSemanticOutcome(value, request) {
     value = assertOutcomeShape(value);
     fields(value, ['requestId', 'interpretation'], 'Semantic outcome');

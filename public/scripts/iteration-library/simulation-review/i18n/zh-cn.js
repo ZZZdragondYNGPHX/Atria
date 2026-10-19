@@ -1,10 +1,6 @@
 export default {
     'sim.title.cea': '模拟回顾 — 角色卡',
     'sim.title.cpa': '模拟回顾 — 预设',
-    'sim.title.orch_spec': '模拟回顾 — 编排（spec 模式）',
-    'sim.title.orch_agenda': '模拟回顾 — 编排（agenda 模式）',
-    'sim.title.orch_loop': '模拟回顾 — 编排（loop 模式）',
-    'sim.title.orch_director': '模拟回顾 — 编排（director 模式）',
     'sim.section.reasoning': '推理',
     'sim.section.final_output': '最终输出',
     'sim.section.final_capsule': '最终胶囊',

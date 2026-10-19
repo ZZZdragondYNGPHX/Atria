@@ -12,16 +12,11 @@ Memory Graph runs three things in the background: **automatic extraction**, **sm
 
 ### Automatic extraction
 
-After each AI reply, Memory Graph examines what was said and extracts anything worth remembering. Extraction produces structured knowledge nodes and can run through two channels:
+After each AI reply, Memory Graph examines what was said and extracts anything worth remembering. Extraction produces structured knowledge nodes through the Memory controls:
 
 **Built-in extraction** — When the **Auto extraction** toggle in the Memory panel is on, Memory Graph runs its own LLM call after each AI reply to fill the schema's structured fields. This is the default and works without any other plugin.
 
-Both channels can be enabled at the same time; they don't coordinate, so that trades extra LLM cost for resilience. Most users pick one.
-
-To use orchestrator-driven extraction exclusively:
-
-1. Open the Memory panel and uncheck **Auto extraction**.
-2. In the orchestrator profile editor, ensure `memory_curator` is enabled and dispatched by the main agent (default in fresh installs).
+The retired Director `memory_curator` dispatch is unavailable. Memory extraction and maintenance continue through their own controls and Source authorization; publishing a Native Plan does not grant a Memory writer.
 
 Nodes come in two tiers. The **default schema** ships with three types listed below — but the schema is fully customizable. You can add new node types (a `magic_system` for fantasy, a `faction` for politics, an `inventory_item` for survival, whatever your card needs) and remove any of the defaults. The fields shown here are also defaults; each type's fields can be edited from the Schema Editor (covered below).
 
@@ -58,11 +53,9 @@ As the conversation goes on, event memories pile up. Memory Graph compresses old
 
 Compression is recursive. When summaries at one tier exceed the threshold, they get compressed again, recursing upward until node count drops below the limit. For example, multiple battle events first compress into "Forest Campaign," and multiple campaigns may compress into "Northern Expedition." Compressed summaries can still be expanded back to view the originals.
 
-Like extraction, compression has two channels:
+Compression uses its existing Memory controls:
 
 **Built-in compression** — When the **Auto compression** toggle in the Memory panel is on, Memory Graph runs a one-shot LLM summarize call once leaf events accumulate past the threshold.
-
-**Orchestrator-driven compression** — `memory_curator` evaluates `memory_compaction_candidates` after extraction and calls `memory_compact_nodes` with KEEP/FOLD/DROP-style summaries. The multi-round agent can iterate per rollup whereas the built-in path is one-shot.
 
 ## What it actually looks like
 

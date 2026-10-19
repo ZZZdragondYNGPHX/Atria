@@ -8,12 +8,15 @@ import { createResponsesGenerationProvider } from '../../src/native/adapters/res
 import { createNativeMessagesProvider } from '../../src/native/adapters/native-messages-provider.js';
 import { capabilityObservationProof, executionPathFingerprint } from '../../src/native/model-prompt-runtime/execution-evidence.js';
 import { hashNativeDocument } from '../../src/native/repositories/common.js';
+import { projectSource, services as projectServices } from '../agent-intelligence/project-fixture.js';
 
 const cleanups = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup(); });
 const message = text => ({ id: 'message-1', type: 'message', status: 'completed', role: 'assistant', phase: 'final_answer', content: [{ type: 'output_text', text, annotations: [] }] });
 const envelope = { id: 'reasoning-1', type: 'reasoning', summary: [], encrypted_content: 'OPAQUE-STATE-SENTINEL' };
-const functionCall = { id: 'item-1', type: 'function_call', status: 'completed', call_id: 'call-1', name: 'lookup', arguments: '{"q":"current"}' };
+const toolName = 'atri_agent_api_catalog';
+const functionCall = { id: 'item-1', type: 'function_call', status: 'completed', call_id: 'call-1', name: toolName, arguments: '{"query":"current"}' };
+const computeBudget = { maxRequests: 8, maxTokens: 128000, localWork: { maxJobs: 64, maxItems: 1000, maxInputBytes: 16777216 } };
 const result = output => ({ id: 'response-1', status: 'completed', model: 'reported-alias', output,
     usage: { input_tokens: 20, output_tokens: 8, total_tokens: 28, input_tokens_details: { cached_tokens: 12 } } });
 
@@ -24,8 +27,8 @@ test.each(['none', 'active_execution'])('G04 %s cancellation discards the active
     if (mode === 'active_execution') await enableActivePolicy(f);
     const first = await f.host.execute(f.h.handle, f.request); const next = followup(f, first);
     const controller = new AbortController();
-    const failed = expect(f.host.execute(f.h.handle, next, controller.signal)).rejects.toMatchObject({ code: 'generation_cancelled' });
-    await secondReceived; controller.abort(); await failed;
+    const failed = f.host.execute(f.h.handle, next, controller.signal).then(value => ({ value }), error => ({ error }));
+    await secondReceived; controller.abort(); expect((await failed).error).toMatchObject({ code: 'generation_cancelled' });
     await expect(f.host.execute(f.h.handle, next, undefined, undefined, { preview: true })).rejects.toMatchObject({ code: 'generation_continuation_unavailable' });
     expect(f.requests).toHaveLength(2);
 });
@@ -40,15 +43,18 @@ async function fixture(handler, format = 'openai-responses') {
     cleanups.push(() => new Promise(resolve => { server.closeAllConnections(); server.close(resolve); }));
     const h = await makeTempFsEngine(); cleanups.push(h.cleanup);
     const seeded = await seedGenerationProfiles({ ...h, format, roles: ['studio'], endpoint: `http://127.0.0.1:${server.address().port}/v1/responses` });
-    const projectId = createNativeId('project');
-    const project = { source: { project: { projectId }, package: {}, resources: [] }, revision: { revision: 'r1' } };
+    const { studio, agent } = projectServices(h), source = projectSource(), projectId = source.project.projectId;
+    const project = await studio.createProject(h.handle, source);
+    const task = await agent.createTask(h.handle, projectId, { intent: 'Look up current evidence.', baseRevision: project.revision.revision });
+    seeded.routes[0] = { ...seeded.routes[0], executionPolicy: { schemaVersion: 1, allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget } };
+    await seeded.persistence.saveRuntimeRoute(h.handle, seeded.routes[0]);
     const provider = format === 'openai-responses' ? createResponsesGenerationProvider() : createNativeMessagesProvider({ format });
-    const host = new NativeGenerationHost({ ...seeded, studio: { getProject: async () => project }, providers: { ['provider.' + format]: provider },
+    const host = new NativeGenerationHost({ ...seeded, studio, agent, providers: { ['provider.' + format]: provider },
         secretPort: { resolveSecret: jest.fn(async () => 'g04-test-credential') } });
-    const request = { projectId, revision: 'r1', requestId: 'active-loop', role: 'studio',
-        tools: [{ type: 'function', function: { name: 'lookup', parameters: { type: 'object', properties: { q: { type: 'string' } } } } }],
+    const request = { projectId, taskId: task.taskId, revision: project.revision.revision, requestId: 'active-loop', role: 'studio',
+        tools: [(await agent.getContext(h.handle, projectId, task.taskId)).tools.find(tool => tool.function.name === toolName)],
         messages: [{ role: 'user', content: 'Look up current evidence.' }] };
-    return { ...seeded, h, host, provider, request, project, requests };
+    return { ...seeded, h, host, provider, request, project, requests, agent };
 }
 async function enableActivePolicy(f, { mode = 'active_execution', verified = true, expired = false } = {}) {
     const connection = await f.persistence.getConnectionProfile(f.h.handle, f.connection.connectionProfileId);
@@ -61,20 +67,26 @@ async function enableActivePolicy(f, { mode = 'active_execution', verified = tru
     await f.persistence.saveModelProfile(f.h.handle, { ...model, capabilities: [...model.capabilities, decision] }, verified
         ? { observationProof: capabilityObservationProof({ handle: f.h.handle, connection, model }, [decision]) } : {});
     await f.persistence.saveRuntimeRoute(f.h.handle, { ...f.routes[0], executionPolicy: { schemaVersion: 1,
-        allowedModelProfileIds: [model.modelProfileId], continuity: mode } });
+        allowedModelProfileIds: [model.modelProfileId], continuity: mode, computeBudget } });
     return decision;
 }
 const json = (res, body) => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
 const nativeResult = (format, round, signature = 'NATIVE-OPAQUE-SENTINEL') => format === 'anthropic'
     ? { model: 'reported-alias', stop_reason: round === 1 ? 'tool_use' : 'end_turn', content: round === 1
-        ? [{ type: 'thinking', thinking: 'provider-only summary', signature }, { type: 'tool_use', id: 'call-1', name: 'lookup', input: { q: 'current' } }]
+        ? [{ type: 'thinking', thinking: 'provider-only summary', signature }, { type: 'tool_use', id: 'call-1', name: toolName, input: { query: 'current' } }]
         : [{ type: 'text', text: 'Fresh native final.' }] }
     : { modelVersion: 'reported-alias', candidates: [{ finishReason: 'STOP', content: { parts: round === 1
-        ? [{ functionCall: { name: 'lookup', args: { q: 'current' } }, thoughtSignature: signature }]
+        ? [{ functionCall: { name: toolName, args: { query: 'current' } }, thoughtSignature: signature }]
         : [{ text: 'Fresh native final.' }] } }] };
 function followup(f, first) {
     return { ...f.request, messages: [...f.request.messages, { role: 'assistant', content: first.response.text, providerState: first.response.providerState,
         tool_calls: first.response.toolCalls.map(call => call.raw) }, { role: 'tool', tool_call_id: first.response.toolCalls[0].id, content: 'current evidence' }] };
+}
+function transformProvider(f, transform) {
+    // Project Task execution obtains the original adapter's private runtime
+    // store copy. Apply the test observation to that actual copy as well.
+    const wrap = provider => ({ ...transform(provider), withRuntimeCheckpointStore: store => wrap(provider.withRuntimeCheckpointStore(store)) });
+    f.host.providers[f.connection.providerAdapter] = wrap(f.provider);
 }
 
 describe.each(['anthropic', 'gemini'])('G04 Native Host %s envelope', format => {
@@ -87,6 +99,7 @@ describe.each(['anthropic', 'gemini'])('G04 Native Host %s envelope', format => 
         expect((await f.host.execute(f.h.handle, f.request)).response.text).toBe('Fresh native final.');
         expect(f.requests).toHaveLength(2);
         expect(f.requests[0].wire).toBe(f.requests[1].wire);
+        expect((await f.agent.getTask(f.h.handle, f.request.projectId, f.request.taskId)).compute.attempts).toHaveLength(2);
     });
     test.each(['none', 'active_execution'])('%s actual two-round tool consumption preserves opaque wire while preview and response remain private', async mode => {
         const f = await fixture((res, round) => json(res, nativeResult(format, round)), format);
@@ -95,7 +108,7 @@ describe.each(['anthropic', 'gemini'])('G04 Native Host %s envelope', format => 
         expect(first.snapshot.diagnostics.executionPlan.policy.continuity).toBe(mode);
         expect(JSON.stringify(first)).not.toContain('NATIVE-OPAQUE-SENTINEL');
         expect(first.response.observation.nativeExecution).toEqual({ protocol: 'native.' + format + '.v1', lifecycle: 'mandatory_tool_exchange',
-            scope: 'request', retention: 'process_only', transferredCheckpoints: 0, requestAction: 'fresh_protocol_request',
+            scope: 'task', retention: 'process_only', transferredCheckpoints: 0, requestAction: 'fresh_protocol_request',
             responseAction: 'capture_tool_checkpoint', upstreamReuse: 'unknown' });
         const next = followup(f, first);
         expect(JSON.stringify(await f.host.execute(f.h.handle, next, undefined, undefined, { preview: true }))).not.toContain('NATIVE-OPAQUE-SENTINEL');
@@ -113,7 +126,7 @@ describe.each(['anthropic', 'gemini'])('G04 Native Host %s envelope', format => 
         const f = await fixture(res => json(res, nativeResult(format, 1)), format);
         const first = await f.host.execute(f.h.handle, f.request); const next = followup(f, first);
         if (change === 'path') await f.persistence.saveConnectionProfile(f.h.handle, { ...f.connection, secretRef: { scope: 'player', secretId: 'different-account' } });
-        if (change === 'source') { f.project.revision.revision = 'r2'; next.revision = 'r2'; }
+        if (change === 'source') await f.agent.setPlan(f.h.handle, next.projectId, next.taskId, { summary: 'Owner changed Task context', steps: [{ id: 'read', title: 'Read current evidence', impact: 'low' }] });
         if (change === 'history') next.messages[0].content = 'Edited prior user message.';
         if (change === 'tools') next.tools = [];
         if (change === 'forged') next.messages[1].providerState = { ...first.response.providerState, checkpointId: 'a'.repeat(64) };
@@ -133,7 +146,7 @@ test.each(['none', 'active_execution'])('%s Native Project consumes complete Res
     expect(first.snapshot.diagnostics.executionPlan.policy.continuity).toBe(mode);
     expect(first.response.providerState).toHaveProperty('checkpointId');
     expect(first.response.observation.nativeExecution).toEqual({ protocol: 'openai.responses.v1', lifecycle: 'mandatory_tool_exchange',
-        scope: 'request', retention: 'process_only', transferredCheckpoints: 0, requestAction: 'fresh_protocol_request',
+        scope: 'task', retention: 'process_only', transferredCheckpoints: 0, requestAction: 'fresh_protocol_request',
         responseAction: 'capture_tool_checkpoint', upstreamReuse: 'unknown' });
     expect(JSON.stringify(first)).not.toContain('OPAQUE-STATE-SENTINEL');
     const next = followup(f, first);
@@ -150,13 +163,17 @@ test.each(['none', 'active_execution'])('%s Native Project consumes complete Res
     expect(second.response.observation).toMatchObject({ reportedModel: 'reported-alias', upstreamIdentity: 'unknown', cachedInputTokens: 12, hiddenAttempts: 'unknown' });
     await expect(f.host.execute(f.h.handle, next, undefined, undefined, { preview: true })).rejects.toMatchObject({ code: 'generation_continuation_unavailable' });
     expect(f.requests).toHaveLength(2);
+    expect((await f.agent.getTask(f.h.handle, f.request.projectId, f.request.taskId)).compute.attempts).toEqual([
+        expect.objectContaining({ status: 'settled', usage: expect.objectContaining({ totalTokens: 28 }) }),
+        expect.objectContaining({ status: 'settled', usage: expect.objectContaining({ totalTokens: 28 }) }),
+    ]);
 });
 
 test.each(['declaration_only', 'no_consumer', 'path_changed', 'expired', 'task', 'adaptive'])('G06 active policy %s cannot borrow unsupported or stale state', async change => {
     const f = await fixture(res => json(res, nativeResult('gemini', 1)), 'gemini');
     await enableActivePolicy(f, { verified: change !== 'declaration_only', expired: change === 'expired',
         mode: ['task', 'adaptive'].includes(change) ? change : 'active_execution' });
-    if (change === 'no_consumer') f.host.providers['provider.gemini'] = { ...f.provider, continuationScopes: [] };
+    if (change === 'no_consumer') transformProvider(f, provider => ({ ...provider, continuationScopes: [] }));
     if (change === 'path_changed') {
         const connection = await f.persistence.getConnectionProfile(f.h.handle, f.connection.connectionProfileId);
         await f.persistence.saveConnectionProfile(f.h.handle, { ...connection, secretRef: { scope: 'player', secretId: 'other-account' } });
@@ -171,9 +188,9 @@ test('G06 active policy evidence expiring in native token compilation rejects be
     try {
         const f = await fixture(res => json(res, nativeResult('gemini', 1)), 'gemini');
         const decision = await enableActivePolicy(f);
-        f.host.providers['provider.gemini'] = { ...f.provider, countTokens: request => {
-            at = decision.binding.expiresAt; return f.provider.countTokens(request);
-        } };
+        transformProvider(f, provider => ({ ...provider, countTokens: request => {
+            at = decision.binding.expiresAt; return provider.countTokens(request);
+        } }));
         const secret = f.host.secretPort.resolveSecret;
         await expect(f.host.execute(f.h.handle, f.request)).rejects.toMatchObject({ code: 'generation_path_evidence_unavailable' });
         expect(f.requests).toHaveLength(0); expect(secret).not.toHaveBeenCalled();
@@ -205,9 +222,9 @@ test('G06 same-path fallback lowers and captures the accepted active policy inst
     await f.persistence.saveRuntimeRoute(f.h.handle, fallback);
     await f.persistence.saveRuntimeRoute(f.h.handle, { ...route, fallbackRouteRefs: [{ scope: 'player', runtimeRouteId: fallback.runtimeRouteId }] });
     const bindings = [];
-    f.host.providers['provider.gemini'] = { ...f.provider, renderRequest: request => {
-        const rendered = f.provider.renderRequest(request); bindings.push(rendered.binding.policyFingerprint); return rendered;
-    } };
+    transformProvider(f, provider => ({ ...provider, renderRequest: request => {
+        const rendered = provider.renderRequest(request); bindings.push(rendered.binding.policyFingerprint); return rendered;
+    } }));
     const first = await f.host.execute(f.h.handle, { ...f.request, fallbackMode: 'automatic' });
     expect(first.routing.fallbackUsed).toBe(true);
     expect(first.snapshot.runtimeRouteId).toBe(fallback.runtimeRouteId);
@@ -241,7 +258,7 @@ test.each(['path', 'source', 'history', 'tools', 'forged'])('changed %s rejects 
     const first = await f.host.execute(f.h.handle, f.request);
     const next = followup(f, first);
     if (change === 'path') await f.persistence.saveConnectionProfile(f.h.handle, { ...f.connection, secretRef: { scope: 'player', secretId: 'different-account' } });
-    if (change === 'source') { f.project.revision.revision = 'r2'; next.revision = 'r2'; }
+    if (change === 'source') await f.agent.setPlan(f.h.handle, next.projectId, next.taskId, { summary: 'Owner changed Task context', steps: [{ id: 'read', title: 'Read current evidence', impact: 'low' }] });
     if (change === 'history') next.messages[0].content = 'Edited prior user message.';
     if (change === 'tools') next.tools = [];
     if (change === 'forged') next.messages[1].providerState = { ...first.response.providerState, checkpointId: 'a'.repeat(64) };
@@ -261,8 +278,8 @@ test.each(['valid', 'missing_terminal', 'missing_item_done', 'missing_opaque', '
     });
     await f.library.commit(f.h.handle, 'core.generation-profile', { ...f.generation, revision: 'stream', streaming: { enabled: true } });
     await f.persistence.saveRuntimeRoute(f.h.handle, { ...f.routes[0], generationProfileRef: { ...f.routes[0].generationProfileRef, revision: 'stream' } });
-    if (kind === 'valid') expect((await f.host.execute(f.h.handle, f.request)).response.providerState).toHaveProperty('checkpointId');
-    else await expect(f.host.execute(f.h.handle, f.request)).rejects.toMatchObject({ code: 'generation_response_invalid' });
+    const actual = await f.host.execute(f.h.handle, f.request).then(value => ({ checkpoint: Boolean(value.response.providerState?.checkpointId) }), error => ({ error: error.code }));
+    expect(actual).toEqual(kind === 'valid' ? { checkpoint: true } : { error: 'generation_response_invalid' });
 });
 
 test('missing direct usage stays absent/unknown and secret echoed inside an opaque item is rejected', async () => {

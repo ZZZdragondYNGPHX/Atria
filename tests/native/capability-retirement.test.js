@@ -11,7 +11,9 @@ const host = await import('../../public/scripts/capability-host.js');
 
 test('only current Atria capabilities survive settings hydration and persistence', () => {
     host.primeCapabilitySettings({ atri_capabilities: { connectionManager: { secret: 'retired' }, vectors: {}, memory_graph: { enabled: true }, orchestrator: { selected: 'mine' }, disabledPlugins: ['regex', 'orchestrator', 'third-party/anything'] } });
-    expect(host.serializeCapabilitySettings()).toMatchObject({ memory_graph: { enabled: true }, orchestrator: { selected: 'mine' }, disabledPlugins: ['regex'] });
+    // The orchestrator capability was retired by the V3 hard cut; its settings do not survive.
+    expect(host.serializeCapabilitySettings()).toMatchObject({ memory_graph: { enabled: true }, disabledPlugins: ['regex'] });
+    expect(host.serializeCapabilitySettings()).not.toHaveProperty('orchestrator');
     expect(host.serializeCapabilitySettings()).not.toHaveProperty('connectionManager');
     expect(host.serializeCapabilitySettings()).not.toHaveProperty('vectors');
 

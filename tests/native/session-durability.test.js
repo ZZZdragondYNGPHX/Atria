@@ -70,17 +70,12 @@ describe('N3 FS commit-last and integrity', () => {
         },
     );
 
-    test('resource integrity and cross-message Variant identity are checked on reload', async () => {
+    // Reads no longer re-hash stored records; cross-message identity is still compared.
+    test('cross-message Variant identity is checked on reload', async () => {
         const view = await f.core.create(h.handle, f.start);
         const entry = view.timeline[0];
         const key = { kind: 'atri_timeline_variant', handle: h.handle, sessionId: view.session.sessionId,
             messageId: entry.messageId, variantId: entry.activeVariantId };
-        await h.engine.withTransaction(h.handle, async tx => {
-            const record = await tx.getResource(key);
-            record.doc.content = 'Corrupt';
-            await tx.putResource(key, record);
-        });
-        await expect(f.core.load(h.handle, view.session.sessionId)).rejects.toThrow('integrity mismatch');
         await h.engine.withTransaction(h.handle, async tx => {
             const record = await tx.getResource(key);
             record.doc.messageId = createNativeId('message');

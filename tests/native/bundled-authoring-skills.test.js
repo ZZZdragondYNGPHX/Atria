@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url';
 import { join, posix } from 'node:path';
 import { importBundledSkills } from '../../src/skills/bundled.js';
 import { createSkillRepository } from '../../src/skills/repository.js';
+import { executeProjectSkillWork } from '../../src/native/skill-invocation.js';
+import { prepareRetrievalCompute } from '../../src/native/retrieval-compute.js';
+import { seedGenerationProfiles } from './helpers/generation-fixture.js';
 import { resolveSkillInvocation } from '../../public/shared/skill-invocation.js';
 import { listAuthoringReferences, readAuthoringReference } from '../../src/native/authoring-reference.js';
 import { compileFrontend } from '../../src/native/frontend/compiler.js';
@@ -13,7 +16,7 @@ import { createGitClient } from '../../src/git/client.js';
 import { AssetStore, KnowledgeRepo, ProjectAgentService, ProjectStore, StudioPreviewHost, StudioService, WorldRepo } from '../../src/native/index.js';
 import { makeTempFsEngine } from '../storage/harness/fs-harness.js';
 
-const names = ['atri-native-work-authoring', 'atri-native-ui-authoring', 'atri-native-runtime-authoring', 'atri-native-world-authoring', 'atri-native-verification'];
+const names = ['atri-native-work-authoring', 'atri-native-ui-authoring', 'atri-native-runtime-authoring', 'atri-native-world-authoring'];
 const defaultRoot = fileURLToPath(new URL('../../default', import.meta.url));
 const scope = { kind: 'global' };
 let h, repository;
@@ -55,13 +58,19 @@ test('mocked Studio model reads references, proposes compiler-valid v3 and reach
     const source = await example(names[0], 'project.json');
     const ui = (await readAuthoringReference({ id: 'example-frontend-v3' })).content;
     const aui = (await readAuthoringReference({ id: 'example-aui-v3' })).content;
-    const scenario = await example(names[4], 'scenario.json');
+    // The bundled verification Skill was retired; its no-model scenario stays as test data.
+    const scenario = JSON.parse(await readFile(fileURLToPath(new URL('./fixtures/authoring-scenario.json', import.meta.url)), 'utf8'));
     expect(compileFrontend({ source: 'frontend.json', files: new Map([['frontend.json', Buffer.from(ui)], ['Main.aui', Buffer.from(aui)]]), mode: 'component' }).entry).toContain('index.json');
     const projectStore = new ProjectStore({ directoriesByHandle: () => h.dirs });
     const studio = new StudioService({ projectStore, worldRepo: new WorldRepo({ engine: h.engine }), knowledgeRepo: new KnowledgeRepo({ engine: h.engine }),
         assetStore: new AssetStore({ engine: h.engine, directoriesByHandle: () => h.dirs }), gitClient: createGitClient({ backend: 'builtin' }),
         previewHost: new StudioPreviewHost(), simulationRunner: runStudioScenario });
     const agent = new ProjectAgentService({ studio });
+    const seeded = await seedGenerationProfiles({ ...h, roles: ['studio'], endpoint: 'http://fixture.invalid' });
+    await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy: {
+        schemaVersion: 1, allowedModelProfileIds: [seeded.model.modelProfileId],
+        computeBudget: { maxRequests: 8, maxTokens: 64000, localWork: { maxJobs: 32, maxItems: 100, maxInputBytes: 16777216 } },
+    } });
     const created = await studio.createProject(h.handle, source);
     const projectId = source.project.projectId;
     const task = await agent.createTask(h.handle, projectId, { intent: 'Create a local UI using the bundled Native authoring Skill', baseRevision: created.revision.revision });
@@ -82,15 +91,16 @@ test('mocked Studio model reads references, proposes compiler-valid v3 and reach
         const address = new URL(url, 'http://fixture'); const body = options.body ? JSON.parse(options.body) : {};
         let result;
         if (address.pathname === '/api/native/generation/execute') {
-            const calls = rounds[generationCalls++]; if (!calls) throw new Error('Unexpected model round');
+            const calls = rounds[generationCalls++]; if (!calls) throw new Error('Unexpected model round: ' + JSON.stringify((await agent.getTask(h.handle, projectId, task.taskId)).validation));
             result = { response: { assistantText: '', toolCalls: calls.map(([name, args], index) => ({ id: 'call_' + generationCalls + '_' + index, name, args })) } };
-        } else if (address.pathname === '/api/skills') result = await repository.list({ scope: 'all' });
-        else if (address.pathname === '/api/native/extensions/settings') result = { value: { schemaVersion: 1, folders: [], skills: {} } };
-        else if (address.pathname.startsWith('/api/skills/global/')) {
-            const [, , , , name, operation] = address.pathname.split('/');
-            if (operation === 'files') result = { files: await repository.listFiles({ scope, name }) };
-            else { const path = address.searchParams.get('path'); reads.push(path); result = await repository.readFile({ scope, name, path, offset: Number(address.searchParams.get('offset')), limit: Number(address.searchParams.get('limit')) }); }
-        } else if (address.pathname.endsWith('/resume')) result = await agent.resumeTask(h.handle, projectId, task.taskId);
+        } else if (address.pathname === '/api/native/generation/skill-work') {
+            const compute = await prepareRetrievalCompute({ handle: h.handle, context: body.computeContext,
+                profile: { mode: 'embed', purpose: 'studio.skill.v1' }, persistence: seeded.persistence, agent, studio });
+            if (body.operation === 'read') reads.push(body.input.path);
+            result = await executeProjectSkillWork({ ...body, compute, repository, projectId,
+                settings: body.operation === 'list' ? { schemaVersion: 1, folders: [], skills: {} } : undefined });
+        } else if (address.pathname === '/api/native/generation/configuration') result = { routes: seeded.routes };
+        else if (address.pathname.endsWith('/resume')) result = await agent.resumeTask(h.handle, projectId, task.taskId);
         else if (address.pathname.endsWith('/generation/begin')) result = await agent.beginGeneration(h.handle, projectId, task.taskId, body);
         else if (address.pathname.endsWith('/generation/finish')) result = await agent.finishGeneration(h.handle, projectId, task.taskId, body);
         else if (address.pathname.endsWith('/context')) result = await agent.getContext(h.handle, projectId, task.taskId);
@@ -108,6 +118,10 @@ test('mocked Studio model reads references, proposes compiler-valid v3 and reach
         expect(result.task.simulation.status).toBe('completed');
         expect(result.task.simulation.result).toMatchObject({ status: 'passed', providerCalls: 0, persisted: false });
         expect(generationCalls).toBe(5);
+        const localWork = (await agent.getTask(h.handle, projectId, task.taskId)).compute.localWork;
+        expect(localWork.filter(row => row.kind === 'skill_pin')).toHaveLength(resolveSkillInvocation(await repository.list({ scope: 'all' }), { context: { projectId }, path: 'studio' }).length);
+        expect(localWork.filter(row => row.kind === 'skill_read')).toHaveLength(3);
+        expect(localWork.filter(row => row.kind !== 'skill_inventory').every(row => row.status === 'settled')).toBe(true);
         expect((await studio.getProject(h.handle, projectId)).source.package.runtime).toBeUndefined();
     } finally { globalThis.fetch = previousFetch; globalThis.Atria = previousAtria; }
 }, 30000);

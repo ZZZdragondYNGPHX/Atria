@@ -8,7 +8,6 @@
  * Scope shapes:
  *   { kind: 'global' }
  *   { kind: 'preset', name: string }
- *   { kind: 'orch-preset', mode: 'spec'|'agenda'|'loop'|'director', name: string }
  *   { kind: 'character', characterFile: string }
  *   'all' — only valid for list()
  */
@@ -74,9 +73,6 @@ function scopeToUrl(scope) {
     if (scope.kind === 'package') return `package/${scope.packageId}/${scope.packageVersionId}`;
     if (scope.kind === 'preset') {
         return `preset/${scope.name}`;
-    }
-    if (scope.kind === 'orch-preset') {
-        return `orch-preset/${scope.mode}/${scope.name}`;
     }
     if (scope.kind === 'character') {
         return `character/${scope.characterFile}`;
@@ -287,11 +283,10 @@ export const skillsApi = {
     /**
      * Atomically rename a scope directory. `newName` shape depends on kind:
      *   preset:      string (the new preset name)
-     *   orch-preset: { mode: '<mode>', name: '<new-name>' } — mode must match `scope.mode`
-     * Server rejects cross-kind rename and cross-mode rename with 400.
+     * Server rejects unsupported scope kinds with 400.
      * Returns 204 on success, 404 if source missing, 409 if destination exists.
      * @param {object} scope
-     * @param {string|{mode:string,name:string}} newName
+     * @param {string} newName
      */
     renameScope(scope, newName) {
         return jsonFetch('/api/skills/rename-scope', {

@@ -1,3 +1,4 @@
+import { nativeRetrievalHeaders } from './source-settings.js';
 import fetch from 'node-fetch';
 import { getGoogleApiConfig } from '../endpoints/google.js';
 import { attachInspectionEndpoint } from '../request-inspector.js';
@@ -28,7 +29,7 @@ export async function getMakerSuiteBatchVector(texts, model, request) {
     const response = await fetch(url, {
         body: JSON.stringify(body),
         method: 'POST',
-        headers: headers,
+        headers: { ...headers, ...nativeRetrievalHeaders(request) },
     });
 
     if (!response.ok) {
@@ -67,7 +68,7 @@ export async function getVertexBatchVector(texts, model, request) {
     const response = await fetch(url, {
         body: JSON.stringify(body),
         method: 'POST',
-        headers: headers,
+        headers: { ...headers, ...nativeRetrievalHeaders(request) },
     });
 
     if (!response.ok) {

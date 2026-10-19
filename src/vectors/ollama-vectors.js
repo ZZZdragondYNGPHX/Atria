@@ -1,3 +1,4 @@
+import { nativeRetrievalHeaders } from './source-settings.js';
 import fetch from 'node-fetch';
 import { setAdditionalHeadersByType } from '../additional-headers.js';
 import { TEXTGEN_TYPES } from '../constants.js';
@@ -48,6 +49,7 @@ export async function getOllamaBatchVector(texts, apiUrl, model, keep, directori
         headers: {
             'Content-Type': 'application/json',
             ...headers,
+            ...nativeRetrievalHeaders(request),
         },
         body: JSON.stringify(body),
     });

@@ -2,9 +2,23 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { ENGINE_META_ENTRY, ENGINE_DUMP_ENTRY } from '../engine-backup-entries.js';
+import { withChatWrite } from '../repositories/chat-write-boundary.js';
+import { NATIVE_RESOURCE_KINDS as K } from '../../native/contracts.js';
 
 export const SNAPSHOT_META_ENTRY = '_atria_snapshot_meta.json';
 export const SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY = '_atria_global_extensions';
+
+// Account restore may replace the entire root during rollback, including a
+// restore that selected only chats. Reuse the original V3 retention refusal
+// before its snapshot, rather than treating category selection as permission.
+export async function assertSnapshotRestoreAllowed({ engine, handle, userRoot }) {
+    const retained = engine ? await engine.withTransaction(handle, async tx => [
+        ...await tx.listResources({ kind: K.orchestrationRun, handle }),
+        ...await tx.listResources({ kind: K.orchestrationRecord, handle }),
+    ]) : fs.existsSync(path.join(userRoot, 'atria-native')) ? [null] : [];
+    if (retained.length) throw Object.assign(new Error('Native orchestration history requires restore retention review'),
+        { code: 'native_orchestration_retention_review_required' });
+}
 
 /**
  * Snapshot a user's directory tree into <backupRoot>/<timestamp>-<handle>/.
@@ -132,13 +146,18 @@ export async function snapshotUser({ handle, userRoot, backupRoot, engine = null
  * @param {string} args.backupPath
  * @param {object|null} [args.engine] — engine instance with `kind`, `restoreUser`.
  */
-export async function restoreFromSnapshot({ handle, userRoot, backupPath, engine = null }) {
+export async function restoreFromSnapshot(args) {
+    return withChatWrite(args.handle, () => restoreSnapshot(args));
+}
+
+async function restoreSnapshot({ handle, userRoot, backupPath, engine = null }) {
     if (!handle) throw new Error('restoreFromSnapshot: handle is required');
     if (!userRoot) throw new Error('restoreFromSnapshot: userRoot is required');
     if (!backupPath) throw new Error('restoreFromSnapshot: backupPath is required');
     if (!fs.existsSync(backupPath)) {
         throw new Error(`restoreFromSnapshot: backupPath does not exist: ${backupPath}`);
     }
+    await assertSnapshotRestoreAllowed({ engine, handle, userRoot });
     const dumpPath = path.join(backupPath, ENGINE_DUMP_ENTRY);
     const metaPath = path.join(backupPath, ENGINE_META_ENTRY);
     if (engine && engine.kind !== 'fs' && fs.existsSync(dumpPath) && fs.existsSync(metaPath)) {

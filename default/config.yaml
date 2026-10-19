@@ -39,9 +39,15 @@ storage:
     transient: 3
   # The mysql / postgres sub-blocks are only consulted when `mode` matches.
   mysql:
+    # Verify a direct, fixed-session, single writable primary before selecting
+    # direct_single_primary. Unknown/proxy/HA-routing/multi-primary is rejected
+    # by Native Host ownership; a successful ping does not verify topology.
+    nativeHostTopology: unknown
     url: mysql://user:pass@host:3306/atria
     poolSize: 10
   postgres:
+    # Same Native Host deployment boundary as mysql above.
+    nativeHostTopology: unknown
     url: postgresql://user:pass@host:5432/atria
     poolSize: 10
 # -- SERVER CONFIGURATION --

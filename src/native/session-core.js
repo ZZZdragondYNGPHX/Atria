@@ -1,6 +1,7 @@
 import { requestVisualWake } from './visual-events.js';
 import { captureTaskProduction } from './task-artifact-authority.js';
 import { adoptKnowledge } from './knowledge-authority.js';
+import { sessionTurnCommitIdentity } from './session-turn-output.js';
 import { PERSONA_NAMESPACE, assertPersonaState, personaIdentity, personaFailure } from './persona-contract.js';
 import { RunControl, runFailure, runPublicationProof } from './run-control.js';
 import { RUN_NAMESPACE, assertRunState } from '../../public/shared/native-run-contract.js';
@@ -704,6 +705,7 @@ export class SessionCore {
         const base = await this[effectPolicy === 'no-background-model' ? 'observe' : 'load'](handle, sessionId);
         let envelope = assertTurnEnvelope(raw);
         const fingerprint = hashNativeDocument(envelope);
+        const publication = sessionTurnCommitIdentity({ sessionId, branchId: base.revision.branchId, expectedRevisionId, invocationId, requestHash, fingerprint });
         const existing = base.states[TASK_STATE_NAMESPACE]?.records.find(record => record.invocationId === invocationId)
             ?? base.states.atri_lifecycle?.taskTombstones.find(record => record.invocationId === invocationId);
         if (existing) {
@@ -736,7 +738,7 @@ export class SessionCore {
             const { entry, variant } = this._newEntry(candidate, { role: 'assistant', envelope }, candidate.timeline.length, true);
             return this._publish(handle, base, { states: candidate.states, timeline: [...candidate.timeline, entry],
                 entries: [...(player ? [player.entry] : []), entry], variants: [...(player ? [player.variant] : []), variant],
-                authorityPrepared: true, effectPolicy, actionRequest: { ...request, assistantMessageId: entry.messageId },
+                authorityPrepared: true, effectPolicy, ...publication, actionRequest: { ...request, assistantMessageId: entry.messageId },
                 taskRecord: { kind: 'turn', invocationId, fingerprint, requestHash, provenance, anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId,
                     outcomes: [], status: 'applied', authorityReceipt: { kind: 'authority', messageId: entry.messageId, authorityId: prepared.identity, inputHash: prepared.inputHash } } });
         }
@@ -744,7 +746,7 @@ export class SessionCore {
         const patch = envelope.outcomes.some(item => item.interpretation.decision !== 'no_change')
             ? await prepareTaskAuthority(base, installed, { outcomes: envelope.outcomes }) : {};
         const { entry, variant } = this._newEntry(base, { role: 'assistant', envelope }, base.timeline.length, true);
-        return this._publish(handle, base, { states: adoptKnowledge(this, handle, base, { ...base.states, ...patch }, knowledgeProof), timeline: [...base.timeline, entry], entries: [entry], variants: [variant], effectPolicy,
+        return this._publish(handle, base, { states: adoptKnowledge(this, handle, base, { ...base.states, ...patch }, knowledgeProof), timeline: [...base.timeline, entry], entries: [entry], variants: [variant], effectPolicy, ...publication,
             taskRecord: { kind: 'turn', invocationId, fingerprint, requestHash, provenance, anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId,
                 outcomes: envelope.outcomes, status: 'applied', authorityReceipt: { kind: 'authority', messageId: entry.messageId } } });
     }

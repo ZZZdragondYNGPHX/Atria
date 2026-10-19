@@ -350,21 +350,18 @@ describe('crossModeRestore — error paths', () => {
         // We wrap currentEngine.withTransaction to fail when a chat-kind put
         // arrives. Easier: monkey-patch the ChatRepo write boundary.
         const originalSave = dstEngine.withTransaction.bind(dstEngine);
+        let injectedWrites = 0;
         const sabotagedEngine = {
             kind: dstEngine.kind,
             withTransaction(handle, fn) {
-                return originalSave(handle, async (tx) => {
-                    const origPutResource = tx.putResource ? tx.putResource.bind(tx) : null;
-                    if (origPutResource) {
-                        tx.putResource = async (key, value) => {
-                            if (key && key.kind === 'chat') {
-                                throw new Error('intentional chat write failure for rollback test');
-                            }
-                            return origPutResource(key, value);
-                        };
-                    }
-                    return fn(tx);
-                });
+                return originalSave(handle, tx => fn(new Proxy(tx, { get(target, field) {
+                    const value = target[field];
+                    if (field === 'putResource') return async (key, record) => {
+                        if (key?.kind === 'chat') { injectedWrites++; throw new Error('intentional chat write failure for rollback test'); }
+                        return value.call(target, key, record);
+                    };
+                    return typeof value === 'function' ? value.bind(target) : value;
+                } })));
             },
             ping: (...args) => dstEngine.ping(...args),
             dumpUser: (...args) => dstEngine.dumpUser(...args),
@@ -390,6 +387,7 @@ describe('crossModeRestore — error paths', () => {
         ).then(() => null, e => e);
 
         expect(err).toBeInstanceOf(CrossModeConversionFailedError);
+        expect(injectedWrites).toBeGreaterThan(0);
         expect(err.rollback).toBe('ok');
         // Live data is back to PRE_RESTORE state.
         expect((await liveSettings.get('realuser'))?.user_name).toBe('PRE_RESTORE');
@@ -402,21 +400,18 @@ describe('crossModeRestore — error paths', () => {
         await buildSqliteSourceZip(zipPath, path.join(dataRoot, 'src'), 'alice');
 
         const originalSave = dstEngine.withTransaction.bind(dstEngine);
+        let injectedWrites = 0;
         const sabotagedEngine = {
             kind: dstEngine.kind,
             withTransaction(handle, fn) {
-                return originalSave(handle, async (tx) => {
-                    const origPutResource = tx.putResource ? tx.putResource.bind(tx) : null;
-                    if (origPutResource) {
-                        tx.putResource = async (key, value) => {
-                            if (key && key.kind === 'settings') {
-                                throw new Error('merge-mode failure');
-                            }
-                            return origPutResource(key, value);
-                        };
-                    }
-                    return fn(tx);
-                });
+                return originalSave(handle, tx => fn(new Proxy(tx, { get(target, field) {
+                    const value = target[field];
+                    if (field === 'putResource') return async (key, record) => {
+                        if (key?.kind === 'settings') { injectedWrites++; throw new Error('merge-mode failure'); }
+                        return value.call(target, key, record);
+                    };
+                    return typeof value === 'function' ? value.bind(target) : value;
+                } })));
             },
             ping: (...args) => dstEngine.ping(...args),
             dumpUser: (...args) => dstEngine.dumpUser(...args),
@@ -435,6 +430,7 @@ describe('crossModeRestore — error paths', () => {
         ).then(() => null, e => e);
 
         expect(err).toBeInstanceOf(CrossModeConversionFailedError);
+        expect(injectedWrites).toBeGreaterThan(0);
         expect(err.rollback).toBe('ok');
         expect(err.snapshotPath).toBeTruthy();
     });;

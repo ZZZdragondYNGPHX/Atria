@@ -42,7 +42,7 @@ import { NATIVE_STORAGE_KINDS, normalizeNativeResourceKey, nativeResourceFileId 
 
 /**
  * @typedef {object} TransientSource
- * @property {object} engine            Live engine instance matching engineMeta.engineKind.
+ * @property {object} engine            Original Engine implementation scoped to private imported data.
  * @property {string} scratchHandle     Handle the engine's per-user storage lives under.
  * @property {{ root: string }} scratchDirs  Directory map (only `.root` is guaranteed).
  * @property {() => Promise<void>} cleanup   Idempotent teardown.
@@ -54,8 +54,9 @@ import { NATIVE_STORAGE_KINDS, normalizeNativeResourceKey, nativeResourceFileId 
  * @param {{
  *   dataRoot: string,
  *   scratchHandle: string,
- *   scratchCreds: { mysqlUrl?: string, mysqlPoolSize?: number, postgresUrl?: string, postgresPoolSize?: number }|null,
+ *   scratchCreds: { mysqlUrl?: string, mysqlPoolSize?: number, mysqlNativeHostTopology?: string, postgresUrl?: string, postgresPoolSize?: number, postgresNativeHostTopology?: string }|null,
  *   reuseEngine?: object|null,
+ *   hostLifecycle?: object,
  * }} opts
  * @returns {Promise<TransientSource>}
  */
@@ -64,13 +65,14 @@ export async function materializeTransientSource(engineMeta, zipPath, opts) {
     if (!kind) {
         throw new Error('materializeTransientSource: engineMeta.engineKind is required');
     }
-    const { dataRoot, scratchHandle, scratchCreds, reuseEngine = null } = opts;
-    if (!scratchHandle || !scratchHandle.startsWith(SCRATCH_HANDLE_PREFIX)) {
-        throw new Error(`materializeTransientSource: scratchHandle must start with ${SCRATCH_HANDLE_PREFIX}`);
+    const { dataRoot, scratchHandle, scratchCreds, reuseEngine = null, hostLifecycle = reuseEngine?.nativeHostLifecycle } = opts;
+    if (typeof scratchHandle !== 'string' || !new RegExp('^' + SCRATCH_HANDLE_PREFIX + '[a-f0-9]{16,64}$').test(scratchHandle)) {
+        throw new Error(`materializeTransientSource: scratchHandle must start with ${SCRATCH_HANDLE_PREFIX} and contain an isolated hex identity`);
     }
     if (!dataRoot) {
         throw new Error('materializeTransientSource: dataRoot is required');
     }
+    if (['mysql', 'postgres'].includes(kind) && typeof hostLifecycle?.attachStorageEngine !== 'function') throw Object.assign(new Error('SQL transient source requires the original Native Host lifecycle'), { code: 'native_orchestration_writer_unavailable' });
 
     const scratchRoot = path.join(dataRoot, '_storage-migrations', scratchHandle);
     await fsPromises.mkdir(scratchRoot, { recursive: true });
@@ -78,13 +80,13 @@ export async function materializeTransientSource(engineMeta, zipPath, opts) {
     if (kind === 'fs') return buildFsTransient({ scratchRoot, scratchHandle, zipPath });
     if (kind === 'sqlite') return buildSqliteTransient({ scratchRoot, scratchHandle, zipPath });
     if (kind === 'mysql' && reuseEngine?.kind === 'mysql') {
-        return buildSharedDbTransient({ scratchRoot, scratchHandle, zipPath, engine: reuseEngine });
+        return buildSharedDbTransient({ scratchRoot, scratchHandle, zipPath, engine: reuseEngine, hostLifecycle });
     }
     if (kind === 'postgres' && reuseEngine?.kind === 'postgres') {
-        return buildSharedDbTransient({ scratchRoot, scratchHandle, zipPath, engine: reuseEngine });
+        return buildSharedDbTransient({ scratchRoot, scratchHandle, zipPath, engine: reuseEngine, hostLifecycle });
     }
-    if (kind === 'mysql') return buildMysqlTransient({ scratchRoot, scratchHandle, zipPath, scratchCreds });
-    if (kind === 'postgres') return buildPgTransient({ scratchRoot, scratchHandle, zipPath, scratchCreds });
+    if (kind === 'mysql') return buildMysqlTransient({ scratchRoot, scratchHandle, zipPath, scratchCreds, hostLifecycle });
+    if (kind === 'postgres') return buildPgTransient({ scratchRoot, scratchHandle, zipPath, scratchCreds, hostLifecycle });
     throw new Error(`materializeTransientSource: unsupported engineKind "${kind}"`);
 }
 
@@ -132,15 +134,20 @@ async function buildFsTransient({ scratchRoot, scratchHandle, zipPath }) {
     for (const kind of NATIVE_STORAGE_KINDS) {
         const root = path.join(scratchDirs.nativeResources, kind);
         if (!fs.existsSync(root)) continue;
-        for (const file of fs.readdirSync(root, { recursive: true })) {
-            if (!file.endsWith('.json')) continue;
-            const target = path.join(root, file);
-            const envelope = JSON.parse(fs.readFileSync(target, 'utf8'));
-            const key = normalizeNativeResourceKey(envelope.key);
-            const expectedPath = path.join(...(key.sessionId ? [key.sessionId] : []), nativeResourceFileId(key) + '.json');
-            if (key.kind !== kind || path.normalize(file) !== expectedPath) throw new Error('Invalid Native backup resource identity');
-            envelope.key = { ...key, handle: scratchHandle };
-            fs.writeFileSync(target, JSON.stringify(envelope));
+        const pending = [root];
+        while (pending.length) {
+            const directory = pending.pop();
+            for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+                const target = path.join(directory, entry.name);
+                if (entry.isDirectory()) { pending.push(target); continue; }
+                if (!entry.isFile() || !entry.name.endsWith('.json')) throw new Error('Invalid Native backup resource file');
+                const envelope = JSON.parse(fs.readFileSync(target, 'utf8'));
+                const key = normalizeNativeResourceKey(envelope.key);
+                const expected = path.join(root, ...(key.sessionId ? [key.sessionId] : []), nativeResourceFileId(key) + '.json');
+                if (key.kind !== kind || target !== expected) throw new Error('Invalid Native backup resource identity');
+                envelope.key = { ...key, handle: scratchHandle };
+                fs.writeFileSync(target, JSON.stringify(envelope));
+            }
         }
     }
 
@@ -248,13 +255,35 @@ function rewriteSqliteHandleInPlace(sqlitePath, scratchHandle) {
 }
 
 // --------------------------------------------------------------------------
-// Same-engine shared DB source: reuse the live engine's connection pool, but
+// Same-engine shared DB source: reuse the live Host's database ownership, but
 // rewrite every imported row to an isolated scratch handle. This avoids
 // asking the operator for a second MySQL/PostgreSQL URL when source and
 // destination engine kinds already match.
 // --------------------------------------------------------------------------
 
-async function buildSharedDbTransient({ scratchRoot, scratchHandle, zipPath, engine }) {
+async function attachPrivateSqlEngine(engine, hostLifecycle, scratchHandle, scratchDirs) {
+    try {
+        hostLifecycle.attachStorageEngine(engine, { privateHandle: scratchHandle, directoriesByHandle: handle => {
+            if (handle !== scratchHandle) throw new TypeError('Transient source owner mismatch');
+            return scratchDirs;
+        } });
+    } catch (error) {
+        try { await engine.close(); } catch { /* retain the original admission failure */ }
+        throw error;
+    }
+}
+
+async function closeSqlScratch(engine, scratchHandle) {
+    let failure;
+    try {
+        await engine.deleteUser(scratchHandle);
+        await engine.nativeHostLifecycle.retirePrivateHandle();
+    } catch (error) { failure = error; }
+    try { await engine.close(); } catch (error) { failure ??= error; }
+    if (failure) throw failure;
+}
+
+async function buildSharedDbTransient({ scratchRoot, scratchHandle, zipPath, engine, hostLifecycle }) {
     const scratchDirs = buildScratchDirs(scratchRoot);
     ensureScratchDirs(scratchDirs);
     await extractZipTreeToScratch(zipPath, scratchRoot);
@@ -266,11 +295,15 @@ async function buildSharedDbTransient({ scratchRoot, scratchHandle, zipPath, eng
     }
 
     const rewritten = rewriteHandleInDumpStream(dumpStream, scratchHandle);
+    const liveEngine = engine;
+    // A scratch handle is not an account. Reuse the original converter under
+    // the same Host; it cannot fall back to an unfenced live/raw Engine.
+    engine = new liveEngine.constructor({ url: liveEngine._nativeOwnerUrl, poolSize: 1, nativeHostTopology: liveEngine.nativeHostTopology });
+    await attachPrivateSqlEngine(engine, hostLifecycle, scratchHandle, scratchDirs);
     try {
         await engine.restoreUser(scratchHandle, rewritten);
     } catch (err) {
-        try { await engine.deleteUser(scratchHandle); } catch { /* best-effort */ }
-        await fsPromises.rm(scratchRoot, { recursive: true, force: true }).catch(() => {});
+        try { await closeSqlScratch(engine, scratchHandle); await fsPromises.rm(scratchRoot, { recursive: true, force: true }); } catch { /* retain uncertain private state for review */ }
         throw err;
     }
 
@@ -282,9 +315,7 @@ async function buildSharedDbTransient({ scratchRoot, scratchHandle, zipPath, eng
         async cleanup() {
             if (cleanedUp) return;
             cleanedUp = true;
-            try { await engine.deleteUser(scratchHandle); } catch { /* best-effort */ }
-            // The engine belongs to the live server. Never close it here.
-            await fsPromises.rm(scratchRoot, { recursive: true, force: true }).catch(() => {});
+            try { await closeSqlScratch(engine, scratchHandle); await fsPromises.rm(scratchRoot, { recursive: true, force: true }); } catch { /* retain uncertain private state for review */ }
         },
     };
 }
@@ -295,7 +326,7 @@ async function buildSharedDbTransient({ scratchRoot, scratchHandle, zipPath, eng
 // our isolated namespace.
 // --------------------------------------------------------------------------
 
-async function buildMysqlTransient({ scratchRoot, scratchHandle, zipPath, scratchCreds }) {
+async function buildMysqlTransient({ scratchRoot, scratchHandle, zipPath, scratchCreds, hostLifecycle }) {
     if (!scratchCreds?.mysqlUrl) {
         throw new Error('transient mysql source: scratchCreds.mysqlUrl is required');
     }
@@ -306,29 +337,28 @@ async function buildMysqlTransient({ scratchRoot, scratchHandle, zipPath, scratc
     const engine = new MysqlEngine({
         url: scratchCreds.mysqlUrl,
         poolSize: scratchCreds.mysqlPoolSize,
+        nativeHostTopology: scratchCreds.mysqlNativeHostTopology,
     });
+    await attachPrivateSqlEngine(engine, hostLifecycle, scratchHandle, scratchDirs);
     try {
-        await engine.ping();
+        await engine.ping(scratchHandle);
     } catch (err) {
         try { await engine.close(); } catch { /* best-effort */ }
-        await fsPromises.rm(scratchRoot, { recursive: true, force: true }).catch(() => {});
+        // Schema/commit visibility may be unknown; preserve the private root.
         throw new CrossModeScratchConnectionError('mysql', err);
     }
 
     // Stream the dump from the ZIP, rewriting handle on each NDJSON line.
     const dumpStream = await openEngineDumpStream(zipPath);
     if (!dumpStream) {
-        try { await engine.close(); } catch { /* best-effort */ }
-        await fsPromises.rm(scratchRoot, { recursive: true, force: true }).catch(() => {});
+        try { await closeSqlScratch(engine, scratchHandle); await fsPromises.rm(scratchRoot, { recursive: true, force: true }); } catch { /* retain uncertain private state */ }
         throw new Error(`transient mysql source: backup ZIP is missing ${ENGINE_DUMP_ENTRY}`);
     }
     const rewritten = rewriteHandleInDumpStream(dumpStream, scratchHandle);
     try {
         await engine.restoreUser(scratchHandle, rewritten);
     } catch (err) {
-        try { await engine.deleteUser(scratchHandle); } catch { /* best-effort */ }
-        try { await engine.close(); } catch { /* best-effort */ }
-        await fsPromises.rm(scratchRoot, { recursive: true, force: true }).catch(() => {});
+        try { await closeSqlScratch(engine, scratchHandle); await fsPromises.rm(scratchRoot, { recursive: true, force: true }); } catch { /* retain uncertain private state */ }
         throw err;
     }
 
@@ -340,9 +370,7 @@ async function buildMysqlTransient({ scratchRoot, scratchHandle, zipPath, scratc
         async cleanup() {
             if (cleanedUp) return;
             cleanedUp = true;
-            try { await engine.deleteUser(scratchHandle); } catch { /* best-effort */ }
-            try { await engine.close(); } catch { /* best-effort */ }
-            await fsPromises.rm(scratchRoot, { recursive: true, force: true }).catch(() => {});
+            try { await closeSqlScratch(engine, scratchHandle); await fsPromises.rm(scratchRoot, { recursive: true, force: true }); } catch { /* retain uncertain private state */ }
         },
     };
 }
@@ -351,7 +379,7 @@ async function buildMysqlTransient({ scratchRoot, scratchHandle, zipPath, scratc
 // postgres source: same shape as mysql, swapping engine class.
 // --------------------------------------------------------------------------
 
-async function buildPgTransient({ scratchRoot, scratchHandle, zipPath, scratchCreds }) {
+async function buildPgTransient({ scratchRoot, scratchHandle, zipPath, scratchCreds, hostLifecycle }) {
     if (!scratchCreds?.postgresUrl) {
         throw new Error('transient postgres source: scratchCreds.postgresUrl is required');
     }
@@ -362,28 +390,27 @@ async function buildPgTransient({ scratchRoot, scratchHandle, zipPath, scratchCr
     const engine = new PgEngine({
         url: scratchCreds.postgresUrl,
         poolSize: scratchCreds.postgresPoolSize,
+        nativeHostTopology: scratchCreds.postgresNativeHostTopology,
     });
+    await attachPrivateSqlEngine(engine, hostLifecycle, scratchHandle, scratchDirs);
     try {
-        await engine.ping();
+        await engine.ping(scratchHandle);
     } catch (err) {
         try { await engine.close(); } catch { /* best-effort */ }
-        await fsPromises.rm(scratchRoot, { recursive: true, force: true }).catch(() => {});
+        // Schema/commit visibility may be unknown; preserve the private root.
         throw new CrossModeScratchConnectionError('postgres', err);
     }
 
     const dumpStream = await openEngineDumpStream(zipPath);
     if (!dumpStream) {
-        try { await engine.close(); } catch { /* best-effort */ }
-        await fsPromises.rm(scratchRoot, { recursive: true, force: true }).catch(() => {});
+        try { await closeSqlScratch(engine, scratchHandle); await fsPromises.rm(scratchRoot, { recursive: true, force: true }); } catch { /* retain uncertain private state */ }
         throw new Error(`transient postgres source: backup ZIP is missing ${ENGINE_DUMP_ENTRY}`);
     }
     const rewritten = rewriteHandleInDumpStream(dumpStream, scratchHandle);
     try {
         await engine.restoreUser(scratchHandle, rewritten);
     } catch (err) {
-        try { await engine.deleteUser(scratchHandle); } catch { /* best-effort */ }
-        try { await engine.close(); } catch { /* best-effort */ }
-        await fsPromises.rm(scratchRoot, { recursive: true, force: true }).catch(() => {});
+        try { await closeSqlScratch(engine, scratchHandle); await fsPromises.rm(scratchRoot, { recursive: true, force: true }); } catch { /* retain uncertain private state */ }
         throw err;
     }
 
@@ -395,9 +422,7 @@ async function buildPgTransient({ scratchRoot, scratchHandle, zipPath, scratchCr
         async cleanup() {
             if (cleanedUp) return;
             cleanedUp = true;
-            try { await engine.deleteUser(scratchHandle); } catch { /* best-effort */ }
-            try { await engine.close(); } catch { /* best-effort */ }
-            await fsPromises.rm(scratchRoot, { recursive: true, force: true }).catch(() => {});
+            try { await closeSqlScratch(engine, scratchHandle); await fsPromises.rm(scratchRoot, { recursive: true, force: true }); } catch { /* retain uncertain private state */ }
         },
     };
 }

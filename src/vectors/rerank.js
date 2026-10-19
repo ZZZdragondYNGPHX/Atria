@@ -1,3 +1,4 @@
+import { nativeRetrievalHeaders } from './source-settings.js';
 import fetch from 'node-fetch';
 import { SECRET_KEYS, readSecret } from '../endpoints/secrets.js';
 import { attachInspectionEndpoint } from '../request-inspector.js';
@@ -7,11 +8,12 @@ const DEFAULT_JINA_URL = 'https://api.jina.ai/v1';
 
 async function sendRerank(url, headers, body, request) {
     const compute = request?.nativeRetrieval?.compute;
+    const serializedBody = JSON.stringify(body);
     let usage = null, ticket;
     try {
         request?.nativeRetrieval?.signal?.throwIfAborted();
-        ticket = await compute?.beforeSend(body);
-        const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body),
+        ticket = await compute?.beforeSend(JSON.parse(serializedBody), { endpoint: new URL(url).href, method: 'POST' });
+        const response = await (request?.nativeRetrieval?.fetch ?? fetch)(url, { method: 'POST', headers: { ...headers, ...nativeRetrievalHeaders(request) }, body: serializedBody,
             ...(request?.nativeRetrieval ? { redirect: 'error', signal: request.nativeRetrieval.signal } : {}) });
         if (!response.ok) throw new Error(`Rerank provider failed: ${response.status}`);
         const data = await response.json();

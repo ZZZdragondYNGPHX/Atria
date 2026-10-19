@@ -177,17 +177,7 @@ export function createSkillRepository(dataRoot) {
             for (const characterFile of chars) {
                 all.push(...(await listScope({ kind: 'character', characterFile })));
             }
-            const orchPresetRoot = join(skillsRoot, 'orch-preset');
-            const orchModes = await fs.readdir(orchPresetRoot).catch(() => []);
-            for (const mode of orchModes) {
-                if (mode.startsWith('.')) continue;
-                const modeRoot = join(orchPresetRoot, mode);
-                const orchNames = await fs.readdir(modeRoot).catch(() => []);
-                for (const name of orchNames) {
-                    if (name.startsWith('.')) continue;
-                    all.push(...(await listScope({ kind: 'orch-preset', mode, name })));
-                }
-            }
+
             return all;
         }
         return listScope(scope);
@@ -618,16 +608,7 @@ export function createSkillRepository(dataRoot) {
 
     async function renameScope(scope, newName) {
         let toScope;
-        if (scope.kind === 'orch-preset') {
-            if (!newName || typeof newName !== 'object'
-                || typeof newName.mode !== 'string' || typeof newName.name !== 'string') {
-                throw new Error('invalid renameScope: orch-preset requires newName={mode, name}');
-            }
-            if (newName.mode !== scope.mode) {
-                throw new Error('unsupported cross-mode rename (mode must match)');
-            }
-            toScope = { kind: 'orch-preset', mode: newName.mode, name: newName.name };
-        } else if (scope.kind === 'preset') {
+        if (scope.kind === 'preset') {
             if (typeof newName !== 'string' || newName.length === 0) {
                 throw new Error('invalid renameScope: preset newName required as string');
             }
@@ -657,9 +638,7 @@ export function createSkillRepository(dataRoot) {
         if (fromScope.kind !== toScope.kind) {
             throw new Error(`invalid copyScope: kind mismatch (from=${fromScope.kind}, to=${toScope.kind})`);
         }
-        if (fromScope.kind === 'orch-preset' && fromScope.mode !== toScope.mode) {
-            throw new Error('unsupported cross-mode copy (mode must match)');
-        }
+
         const fromDir = join(skillsRoot, encodeScopePath(fromScope));
         const toDir = join(skillsRoot, encodeScopePath(toScope));
         try {
@@ -836,8 +815,7 @@ export function createSkillRepository(dataRoot) {
             let historyTarget = null;
             if (method === 'moveScope') historyTarget = opts.toScope;
             if (method === 'copyScope') historyTarget = args[1];
-            if (method === 'renameScope') historyTarget = scope.kind === 'orch-preset' ? { ...scope, ...args[1] }
-                : scope.kind === 'preset' ? { ...scope, name: args[1] } : { ...scope, characterFile: args[1] };
+            if (method === 'renameScope') historyTarget = scope.kind === 'preset' ? { ...scope, name: args[1] } : { ...scope, characterFile: args[1] };
             if (historyTarget) {
                 const destination = join(skillsRoot, encodeScopePath(historyTarget), name ?? '');
                 if (await fs.stat(destination).catch(() => null)) {
@@ -916,8 +894,7 @@ export function createSkillRepository(dataRoot) {
             case 'copy': await operations.copyScope(scope, toScope); return { copied: true, ...current };
             case 'rename': {
                 if (!toScope || toScope.kind !== scope.kind) throw new TypeError('Matching destination scope required');
-                const destination = scope.kind === 'orch-preset' ? { mode: toScope.mode, name: toScope.name }
-                    : scope.kind === 'preset' ? toScope.name : scope.kind === 'character' ? toScope.characterFile : null;
+                const destination = scope.kind === 'preset' ? toScope.name : scope.kind === 'character' ? toScope.characterFile : null;
                 if (!destination) throw new TypeError('Scope does not support rename');
                 await operations.renameScope(scope, destination); return { renamed: true, ...current };
             }

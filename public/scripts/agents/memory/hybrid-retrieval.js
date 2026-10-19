@@ -306,6 +306,31 @@ async function digest(text) {
         .map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
+export const memoryVectorCollectionId = (key, profile, eligibility = null) => digest(JSON.stringify([key, profile, eligibility]))
+    .then(value => 'memory_hybrid_v1_' + value);
+export const retiredMemoryVectorCollectionIds = async (key, profile) => [buildCollectionId(key), 'memory_os_' + await digest(JSON.stringify([key, profile]))];
+
+/** Original time/atomic-group filter, applied before any provider lane. */
+export function applyMemoryCorpusEligibility(snapshot, corpus, querySeeds, at = null) {
+    const unavailableGroups = [];
+    if (snapshot.eligibility) {
+        const temporal = analyzeMemoryQuery(querySeeds.userInput, corpus.entities, { at });
+        // Time constraints apply to every lane, including vector indexing and
+        // rerank inputs, rather than only suppressing ranked hits afterward.
+        corpus.documents = corpus.documents.filter(doc => temporal.at !== null
+            ? doc.kind !== 'episode' && doc.validAt === true
+            : temporal.history || doc.status === 'active');
+        const present = new Set(corpus.documents.flatMap(doc => (doc.episodeIds || []).flatMap(id => snapshot.state.episodes[id]?.messageIds || [])));
+        for (const group of snapshot.eligibility.atomicGroups || []) {
+            if (!group.sourceMessageIds.every(id => present.has(id))) {
+                corpus.documents = corpus.documents.filter(doc => doc.atomicGroup !== group.id);
+                unavailableGroups.push({ id: group.id, reason: 'complete_group_outside_time_domain' });
+            }
+        }
+    }
+    return unavailableGroups;
+}
+
 /** Content-addressed vectors, isolated by chat and embedding configuration. */
 export async function retrieveMemory(snapshot, query, { service, profile, rerankProfile, countTokens,
     budget = RETRIEVAL_DEFAULTS.tokenBudget, corePacket = '', existingStateText = '', signal, at = null, rebuildVectors = false,
@@ -346,22 +371,7 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
         : { corpus: buildMemoryCorpus(snapshot, at), fingerprints: null, decision: { status: 'miss', reason: 'manual_bypass' } };
     const corpus = reused.corpus;
     const querySeeds = memoryQuerySeeds(query, corpus.entities, sceneText);
-    const unavailableGroups = [];
-    if (snapshot.eligibility) {
-        const temporal = analyzeMemoryQuery(querySeeds.userInput, corpus.entities, { at });
-        // Time constraints apply to every lane, including vector indexing and
-        // rerank inputs, rather than only suppressing ranked hits afterward.
-        corpus.documents = corpus.documents.filter(doc => temporal.at !== null
-            ? doc.kind !== 'episode' && doc.validAt === true
-            : temporal.history || doc.status === 'active');
-        const present = new Set(corpus.documents.flatMap(doc => (doc.episodeIds || []).flatMap(id => snapshot.state.episodes[id]?.messageIds || [])));
-        for (const group of snapshot.eligibility.atomicGroups || []) {
-            if (!group.sourceMessageIds.every(id => present.has(id))) {
-                corpus.documents = corpus.documents.filter(doc => doc.atomicGroup !== group.id);
-                unavailableGroups.push({ id: group.id, reason: 'complete_group_outside_time_domain' });
-            }
-        }
-    }
+    const unavailableGroups = applyMemoryCorpusEligibility(snapshot, corpus, querySeeds, at);
     const corpusReady = performance.now();
     // Admit necessary base work first. Optional index/rerank work may fail,
     // but cannot consume the base path's already charged original allowance.
@@ -400,12 +410,12 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
     }
     if (vectorAdmitted) {
         try {
-            const collectionId = `memory_hybrid_v1_${await digest(JSON.stringify([snapshot.key, profile, snapshot.eligibility?.identity ?? null]))}`;
+            const collectionId = await memoryVectorCollectionId(snapshot.key, profile, snapshot.eligibility?.identity ?? null);
             guard();
             // Only identified derived namespaces are cleared. Source/World/
             // Timeline storage is outside this retrieval service entirely.
             if (snapshot.eligibility) {
-                for (const retired of [buildCollectionId(snapshot.key), `memory_os_${await digest(JSON.stringify([snapshot.key, profile]))}`]) {
+                for (const retired of await retiredMemoryVectorCollectionIds(snapshot.key, profile)) {
                     guard();
                     const hashes = await callService('listHashes', { collectionId: retired, profile, signal,
                         ...(computeContext ? { computeContext } : {}) }); guard();

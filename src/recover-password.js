@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import yaml from 'yaml';
 import storage from 'node-persist';
+import { NativeHostOwner } from './storage/native-host-owner.js';
 import {
     initUserStorage,
     getPasswordSalt,
@@ -21,7 +22,10 @@ async function initStorage(configPath) {
         process.exit(1);
     }
 
-    await initUserStorage(dataRoot);
+    const hostOwner = new NativeHostOwner();
+    await hostOwner.acquireLocal(dataRoot);
+    try { await initUserStorage(dataRoot); } catch (error) { await hostOwner.close(); throw error; }
+    return hostOwner;
 }
 
 /**
@@ -31,8 +35,11 @@ async function initStorage(configPath) {
  * @param {string} [userPassword] - The new password for the account. If not provided, sets an empty password.
  */
 export async function recoverPassword(configPath, userAccount, userPassword) {
-    await initStorage(configPath);
+    const hostOwner = await initStorage(configPath);
+    try { await recoverOwnedAccount(userAccount, userPassword); } finally { await hostOwner.close(); }
+}
 
+async function recoverOwnedAccount(userAccount, userPassword) {
     /**
      * @type {import('./users').User}
      */

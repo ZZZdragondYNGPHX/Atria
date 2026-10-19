@@ -15,6 +15,7 @@ import {
 import { buildProjectPackage, PackageInstaller } from '../package-composition.js';
 import { validateAtriaProjectSource } from '../project-source.js';
 import { StudioPreviewHost } from '../studio-preview.js';
+import { nativeProjectCommitPreviewVersion } from '../orchestration/native-project-commit-authority.js';
 import {
     LibraryAuthoringPlanner,
     STUDIO_RESOURCE_OPERATION_TYPES,
@@ -278,6 +279,27 @@ export class StudioService {
 
     async getRevision(handle, projectId) {
         return this._queue(projectId, () => this._revisionUnlocked(handle, projectId));
+    }
+
+    /** Pure existing-HEAD observation for an enclosing Native transaction.
+     * Never waits on the Studio writer queue or initializes/repairs history.
+     * The actual send must still revalidate through the original queued source
+     * authority outside that transaction, after any in-flight writer finishes. */
+    async observeRevision(handle, projectId) {
+        const directory = this._projects.getProjectDirectory(handle, projectId);
+        const history = await this._git.log(directory, 2);
+        if (!history.length) throw Object.assign(new Error('Existing Project history is required'), { code: 'native_project_source_unavailable' });
+        return assertProjectRevision({ projectId, revision: history[0].fullHash, parentRevision: history[1]?.fullHash ?? null,
+            ...(revisionTime(history[0]) === undefined ? {} : { createdAt: revisionTime(history[0]) }) });
+    }
+
+    // Same Project inputs as getProject, for an enclosing original authority
+    // boundary/transaction. No writer queue, history recovery or initialization.
+    async observeProject(handle, projectId) {
+        const [source, files, revision] = await Promise.all([
+            this._project(handle, projectId), this._projects.listFiles(handle, projectId), this.observeRevision(handle, projectId),
+        ]);
+        return Object.freeze({ source, files, revision });
     }
 
     // Internal local publication: keep the existing Project queue through the
@@ -656,8 +678,11 @@ export class StudioService {
         simulation = true,
         entryPointId = undefined,
         simulationOptions = {},
+        nativeCommitPermit = undefined,
     } = {}) {
         const workspace = assertAuthoringWorkspace(workspaceValue);
+        const previewPackageVersionId = nativeCommitPermit === undefined ? null
+            : nativeProjectCommitPreviewVersion(nativeCommitPermit, { studio: this, handle, workspace });
         if (!workspace.operations.length) {
             throw new TypeError('Authoring workspace must contain at least one operation');
         }
@@ -703,6 +728,7 @@ export class StudioService {
                         worldRepo: this._worlds,
                         knowledgeRepo: this._knowledge,
                         assetStore: this._assets,
+                        ...(previewPackageVersionId ? { idFactory: () => previewPackageVersionId } : {}),
                     });
                     const runtimePreview = this._previewHost.create({
                         projectId: workspace.projectId,
@@ -913,6 +939,15 @@ export class StudioService {
             || commit.parents.length !== 1 || commit.parents[0] !== workspace.baseRevision) throw new ConflictError('project_agent_receipt_conflict');
         return assertAuthoringChangeSet({ changeSetId, workspaceId: workspace.workspaceId, projectId: workspace.projectId,
             baseRevision: workspace.baseRevision, operations: workspace.operations, validation: receipt.validation, resultingRevision: commit.fullHash });
+    }
+
+    // Historical receipt observation for an enclosing Native read transaction.
+    // Reuses the original immutable Git marker parser without entering the
+    // writer queue or synchronizing a later human edit into a new revision.
+    async observeWorkspaceReceipt(handle, workspaceValue, changeSetId) {
+        const workspace = assertAuthoringWorkspace(workspaceValue);
+        if (typeof changeSetId !== 'string' || !/^changeset_[a-z0-9]+$/.test(changeSetId)) throw new TypeError('Invalid Studio changeset identity');
+        return StudioService.prototype._workspaceReceiptUnlocked.call(this, handle, workspace, changeSetId);
     }
 
     async inspectWorkspaceReceipt(handle, workspaceValue, changeSetId) {

@@ -5,7 +5,7 @@ import { summarize, validateReport, validateMeasurements } from './report.js';
 import { PilotBudget } from './budget.js';
 
 let baseline;
-beforeAll(async () => { baseline = await runBaseline(); });
+beforeAll(async () => { baseline = await runBaseline(); }, 120000);
 const edit = change => { const report = JSON.parse(JSON.stringify(baseline.report)); change(report); return report; };
 
 describe('S01 real entrypoint scripted baseline', () => {
@@ -13,18 +13,26 @@ describe('S01 real entrypoint scripted baseline', () => {
         const { report } = baseline;
         expect(report.trials).toHaveLength(12);
         expect(report.trials.every(trial => trial.executionStatus === 'passed' && trial.authorityStatus === 'passed')).toBe(true);
-        expect(report.summary).toMatchObject({ executedTrials: 12, generationCalls: 24, toolCalls: 36, externalProviderCalls: 0, deterministic: { passed: 44, failed: 0 }, behavior: { not_run: 14 }, totalTokensStatus: 'unavailable', usageMissingTrials: 12 });
+        expect(report.summary).toMatchObject({ executedTrials: 12, generationCalls: 22, toolCalls: 24, externalProviderCalls: 0, deterministic: { passed: 44, failed: 0 }, behavior: { not_run: 14 }, totalTokensStatus: 'unavailable', usageMissingTrials: 12 });
         expect(report.empiricalReady).toBe(false);
         expect(validateReport(JSON.parse(JSON.stringify(report)))).toEqual(report);
         expect(validateMeasurements(JSON.parse(JSON.stringify(baseline.sidecar)), report)).toEqual(baseline.sidecar);
     });
-    test('player ownership and late completion results are observed through takeover', () => {
+    test('Native RP cancellation preserves the original variant and rejects a late completion', () => {
         const variants = baseline.report.trials.filter(item => item.caseId.startsWith('rp_variant'));
         expect(variants).toHaveLength(2);
         for (const trial of variants) {
-            expect(trial.refs.messageVariants.map(item => item.variantId)).toEqual(['v1', 'v2']);
-            expect(trial.evidence.find(item => item.evidenceId.endsWith(':stale_completion')).value.observed).toMatchObject({ rejected: true, oldStatus: 'aborted' });
+            expect(trial.refs.messageVariants.map(item => item.variantId)).toEqual(['0', '0']);
+            expect(trial.evidence.find(item => item.evidenceId.endsWith(':stale_completion')).value.observed).toMatchObject({ cancelled: true, oldClaims: 0, staleOutput: false, assistants: 1 });
+            expect(new Set(trial.refs.messageVariants.map(item => item.runId)).size).toBe(2);
         }
+    });
+    test('report rejects duplicate execution identity even when the source variant is shared', () => {
+        const report = edit(value => {
+            const trial = value.trials.find(item => item.caseId.startsWith('rp_variant'));
+            trial.refs.messageVariants[1].runId = trial.refs.messageVariants[0].runId;
+        });
+        expect(() => validateReport(report)).toThrow();
     });
     test('human conflicts retain original base and zero agent changesets', () => {
         for (const trial of baseline.report.trials.filter(item => item.caseId.startsWith('project_conflict'))) {
@@ -79,11 +87,11 @@ describe('strict report consumer rejects corrupt evidence', () => {
         ['fake aggregate', report => { report.summary.deterministic.passed++; }],
         ['success without evidence', report => { report.trials[0].checks.player_ownership.evidenceRefs = []; }],
         ['unknown evidence', report => { report.trials[0].checks.player_ownership.evidenceRefs = ['unknown']; }],
-        ['wrong ownership', report => { report.trials[0].evidence.find(item => item.evidenceId.endsWith(':player_ownership')).value.observed.player = 'changed-player'; }],
+        ['wrong ownership', report => { report.trials[0].evidence.find(item => item.evidenceId.endsWith(':player_ownership')).value.observed = hash('changed-player'); }],
         ['unknown status', report => { report.trials[0].authorityStatus = 'ok'; }],
         ['forged behavioral score', report => { report.trials[0].behavior.player_agency.score = 2; }],
         ['cross-run variant', report => { report.trials[0].refs.messageVariants[0].runId = 'other-run'; }],
-        ['request shared between variants', report => { const trial = report.trials.find(item => item.caseId === 'rp_variant_d1'); trial.refs.messageVariants[1].requestIds = trial.refs.messageVariants[0].requestIds; }],
+        ['request shared between variants', report => { const trial = report.trials.find(item => item.caseId === 'rp_variant_d1'); trial.refs.messageVariants[0].requestIds = [...trial.refs.messageVariants[1].requestIds]; }],
         ['unanchored request', report => { report.trials[0].refs.messageVariants = []; }],
         ['duplicate request across trials', report => { report.trials[1].refs.requestIds = report.trials[0].refs.requestIds; report.trials[1].refs.messageVariants[0].requestIds = report.trials[0].refs.requestIds; }],
         ['missing coverage', report => { report.trials.pop(); report.trialRefs.pop(); report.summary = summarize(report.trials); }],
@@ -92,7 +100,7 @@ describe('strict report consumer rejects corrupt evidence', () => {
     test('failed evidence is retained in the denominator and authority cannot pass', () => {
         const report = edit(report => {
             const trial = report.trials[0];
-            trial.evidence.find(item => item.evidenceId.endsWith(':player_ownership')).value.observed.player = 'wrong-owner';
+            trial.evidence.find(item => item.evidenceId.endsWith(':player_ownership')).value.observed = hash('wrong-owner');
             trial.checks.player_ownership.status = 'failed'; trial.authorityStatus = 'failed';
             report.summary = summarize(report.trials);
         });

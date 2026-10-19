@@ -5,10 +5,8 @@ import { evolutionFixture, runEvolution, labelAll, independentDigest } from './e
 import { AgentEvolutionRepository, evolutionHash as hash } from '../../src/native/agent-intelligence/evolution-repository.js';
 import { promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { AgentEvolutionService } from '../../src/native/agent-intelligence/evolution-service.js';
-import { SettingsRepo } from '../../src/storage/repositories/settings-repo.js';
 import { contentSha256 } from '../../public/shared/content-sha256.js';
 import { setReadOnly } from '../../src/storage/read-only-mode.js';
-import { updatePresetLibrary } from '../../public/scripts/lib/agent-workspace/presets.js';
 
 const cleanup = [];
 afterEach(async () => { setReadOnly(false); jest.restoreAllMocks(); for (const fn of cleanup.splice(0)) await fn(); });
@@ -19,7 +17,7 @@ test('shared content identity matches the existing SHA-256 format for UTF-8 and 
 });
 
 describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarness]])('%s bounded evolution', (_name, make) => {
-    test.each(['project-strategy', 'project-skill', 'rp-skill', 'workspace-prompt', 'workspace-strategy', 'project-prompt'])('%s follows original feedback -> diagnosis -> candidate -> comparison -> local automatic CAS -> rollback', async kind => {
+    test.each(['project-strategy', 'project-skill', 'rp-skill', 'project-prompt'])('%s follows original feedback -> diagnosis -> candidate -> comparison -> local automatic CAS -> rollback', async kind => {
         const f = await fixture(make, kind), before = await f.service.targets.capture(f.h.handle, f.scope, f.subject, f.target);
         const { job, candidate } = await runEvolution(f);
         expect(job.status).toBe('awaiting_review'); expect(candidate.decision.eligible).toBe(false);
@@ -82,27 +80,8 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         await reopened.reconcile(f.h.handle, { scope: f.scope, subject: f.subject });
         expect((await f.host.agent.getTask(f.h.handle, f.subject, f.nextTask.taskId)).sequence).toBe(sequence);
     });
-    test('correcting an exact feedback dependency pauses and clears reports; subsequent user bindings are preserved', async () => {
-        const f = await fixture(make, 'workspace-prompt'); const { job, candidate } = await runEvolution(f); await labelAll(f, job, candidate);
-        const settingsRepo = new SettingsRepo({ engine: f.h.engine }), settings = await settingsRepo.get(f.h.handle);
-        settings.atri_capabilities.orchestrator.agentWorkspace = updatePresetLibrary(settings.atri_capabilities.orchestrator.agentWorkspace, { type: 'bind', scope: 'character', subjectId: 'Actor.png', presetId: null });
-        await settingsRepo.save(f.h.handle, settings);
-        const experience = await f.service.experience.inspect(f.h.handle, { scope: f.scope, subject: f.subject });
-        await f.service.experience.correct(f.h.handle, { scope: f.scope, subject: f.subject, id: experience.feedback[0].id, expectedSequence: experience.sequence,
-            feedback: { kind: 'explicit', signal: 'correction', dimension: 'behavior', note: 'Withdraw the previous hypothesis.' } });
-        const doc = await f.service.reconcile(f.h.handle, { scope: f.scope, subject: f.subject });
-        expect(doc.policy.mode).toBe('paused'); expect(doc.jobs[0].candidates).toEqual([]);
-        expect(doc.publications.filter(publication => publication.status !== 'rollback_conflict')).toEqual([]);
-        expect((await settingsRepo.get(f.h.handle)).atri_capabilities.orchestrator.agentWorkspace.bindings.entries).toEqual([]);
-    });
-    test('Host Workspace generation rejects stale full saves and patches while preserving unrelated settings writes', async () => {
-        const f = await fixture(make, 'workspace-strategy'), repo = new SettingsRepo({ engine: f.h.engine }), stale = await repo.get(f.h.handle);
-        const { job, candidate } = await runEvolution(f); await labelAll(f, job, candidate);
-        await expect(repo.save(f.h.handle, stale)).rejects.toThrow('workspace_write_conflict');
-        await expect(repo.patch(f.h.handle, [{ op: 'replace', path: '/atri_capabilities/orchestrator/agentWorkspace', value: stale.atri_capabilities.orchestrator.agentWorkspace }])).rejects.toThrow('workspace_write_conflict');
-        await repo.patch(f.h.handle, [{ op: 'replace', path: '/unrelated', value: 'new unrelated value' }]);
-        expect((await repo.get(f.h.handle)).unrelated).toBe('new unrelated value');
-    });
+
+
     test('read-only inspect remains readable, while budgets, policy and publish stay blocked', async () => {
         const f = await fixture(make, 'project-strategy'); const { job, candidate } = await runEvolution(f); setReadOnly(true);
         expect((await f.service.inspect(f.h.handle, { scope: f.scope, subject: f.subject })).readOnly).toBe(true);
@@ -135,7 +114,7 @@ test('generic SQLite dump/restore keeps shared unknown reservations and scope jo
     expect(await f.repository.owner(f.h.handle)).toEqual(before); expect(await f.repository.get(f.h.handle, f.scope, f.subject)).toEqual(scope);
 });
 
-test.each(['project-skill', 'workspace-prompt', 'project-prompt'])('source withdrawal removes inactive %s derived history and retains only hash receipts and budget', async kind => {
+test.each(['project-skill', 'project-prompt'])('source withdrawal removes inactive %s derived history and retains only hash receipts and budget', async kind => {
     const f = await fixture(makeTempFsEngineHarness, kind), { job, candidate } = await runEvolution(f); await labelAll(f, job, candidate);
     const source = await f.service.experience.inspect(f.h.handle, { scope: f.scope, subject: f.subject });
     await f.service.experience.withdraw(f.h.handle, { scope: f.scope, subject: f.subject, id: source.feedback[0].id, expectedSequence: source.sequence });
@@ -184,21 +163,4 @@ test('generic FS native resource files survive the original directory backup/res
     expect(await f.repository.owner(f.h.handle)).toBeNull(); expect(await f.repository.get(f.h.handle, f.scope, f.subject)).toBeNull();
     await cp(copy, f.h.dirs.root, { recursive: true });
     expect(await f.repository.owner(f.h.handle)).toEqual(owner); expect(await f.repository.get(f.h.handle, f.scope, f.subject)).toEqual(scope);
-});
-
-test('manual target drift pauses automatic policy and distinguishes the historical receipt from the current binding', async () => {
-    const f = await fixture(makeTempFsEngineHarness, 'workspace-strategy'), { job, candidate } = await runEvolution(f); await labelAll(f, job, candidate);
-    const repo = new SettingsRepo({ engine: f.h.engine }), settings = await repo.get(f.h.handle);
-    settings.atri_capabilities.orchestrator.agentWorkspace = updatePresetLibrary(settings.atri_capabilities.orchestrator.agentWorkspace, { type: 'bind', scope: 'character', subjectId: 'Actor.png', presetId: null });
-    await repo.save(f.h.handle, settings);
-    const view = await f.service.inspect(f.h.handle, { scope: f.scope, subject: f.subject });
-    expect(view.scope.policy).toMatchObject({ mode: 'paused', reason: 'authoritative_binding_changed' });
-    expect(view.bindingStates[0].current).toBe(false); expect(view.scope.publications[0].receipt).not.toBeNull();
-});
-
-test('a second RP chat cannot stack a new Skill policy on a still-published character version', async () => {
-    const f = await fixture(makeTempFsEngineHarness, 'rp-skill'), { job, candidate } = await runEvolution(f); await labelAll(f, job, candidate);
-    const scope = { ...f.scope, name: 'another-chat' };
-    await expect(f.service.configure(f.h.handle, { scope, subject: f.subject, target: f.target, routeId: f.route.runtimeRouteId, price: null, mode: 'auto', expectedSequence: 0 })).rejects.toThrow('existing_publication_requires_rollback');
-    expect((await f.repository.owner(f.h.handle)).attempts).toHaveLength(28);
 });

@@ -1,14 +1,97 @@
+import { preserveNativeOutputMarkers, rejectNativeOutputMarkers } from './native-output-markers.js';
+import { consumeRpNativeOutputPermit, withRpNativeOutputWrite, assertRpOutputReceipts, nativeOutputPayload, RP_OUTPUT_DENIAL_CODES } from '../../native/rp-output-protocol.js';
+import { NATIVE_RESOURCE_KINDS as K } from '../../native/contracts.js';
+import { equalNativeDocuments, hashNativeDocument as hash } from '../../native/repositories/common.js';
+import { rpOperationInput } from '../../native/rp-run-control.js';
+import { sourceMessageId, sourceContent } from '../../../public/scripts/agents/memory/source-provenance.js';
+import { fields } from '../../../public/shared/native-values.js';
 import { randomUUID } from 'node:crypto';
 import _ from 'lodash';
 import { ConflictError, NotFoundError } from '../errors.js';
 import { assertWritable } from '../read-only-mode.js';
 import { applyJsonPatch } from './json-patch.js';
+import { withChatWrite } from './chat-write-boundary.js';
 
 export class ChatRepo {
     // Milliseconds, matching FsEngine's stat.mtimeMs reads and the SQL engines' Date.now() writes.
     constructor({ engine, now = () => Date.now() }) {
         this._engine = engine;
         this._now = now;
+    }
+
+    withWriteLock(handle, operation) { return withChatWrite(handle, operation); }
+
+    #writeTransaction(handle, operation) {
+        return withChatWrite(handle, () => this._engine.withTransaction(handle, operation));
+    }
+
+    /** Original single-chat writer; the permit cannot be serialized or reused. */
+    async commitNativeOutput(handle, request) {
+        fields(request, ['permit'], 'Native chat output');
+        assertWritable();
+        if (this._engine.hasActiveTransaction(handle)) throw new ConflictError('native_rp_output_ambient_transaction');
+        const outcome = await withRpNativeOutputWrite(request.permit, { engine: this._engine, handle }, () => this.#writeTransaction(handle, async tx => {
+            let state;
+            try { state = await consumeRpNativeOutputPermit(request.permit, { engine: this._engine, handle, tx }); } catch (error) {
+                if (RP_OUTPUT_DENIAL_CODES.includes(error.code)) return { denied: true };
+                throw error;
+            }
+            const { receipt, locator, payload, controlId } = state;
+            const observed = await this.observeNativeOutput(handle, { controlId, operationId: receipt.operationId, outputKey: receipt.outputKey }, { tx });
+            if (observed.status === 'committed') return observed;
+            if (observed.status === 'conflict') throw new ConflictError('native_rp_output_conflict');
+            const key = this._key(handle, locator.charDir, locator.name, locator), existing = await tx.getResource(key);
+            const anchor = receipt.inputAnchor;
+            if (!existing || existing.integrity !== receipt.expectedIntegrity || existing.header?.chat_metadata?.nativeControlId !== controlId
+                || existing.body.length !== anchor.floor + 1 || !existing.body[anchor.floor]?.is_user || existing.body[anchor.floor]?.is_system
+                || !equalNativeDocuments(rpOperationInput(existing.body[anchor.floor], anchor.floor), anchor)
+                || hash(existing.body.map(message => ({ messageId: sourceMessageId(message), content: sourceContent(message) }))) !== receipt.sourceDigest)
+                // A lawful edit, deletion or relocation may have committed in this
+                // transaction; deny (commit it) rather than roll it back.
+                return { denied: true };
+            const fence = await this._engine.nativeHostLifecycle.assertWriter(handle, tx);
+            if (!equalNativeDocuments({ hostBootId: fence.hostBootId, generation: fence.generation }, receipt.hostFence)) throw new ConflictError('native_rp_output_stale');
+            const finalRoot = await state.authorization.execution.runs.get(handle, state.authorization.runId);
+            const finalChat = await tx.getResource(key);
+            if (finalRoot.stateVersion !== state.authorization.rootStateVersion || finalChat?.integrity !== existing.integrity) return { denied: true };
+            const marker = { schemaVersion: 1, operationId: receipt.operationId, outputKey: receipt.outputKey, payloadHash: receipt.payloadHash,
+                sourceDigest: receipt.sourceDigest, controlId };
+            const message = { ...payload, extra: { ...(payload.extra ?? {}), gen_id: 'native-output:' + receipt.outputKey, atri_output: marker } };
+            const integrity = randomUUID();
+            await tx.putResource(key, { ...existing, body: [...existing.body, message], integrity, updatedAt: this._now() });
+            return { status: 'committed', receipt: nativeChatReceipt(controlId, receipt, locator, message, integrity) };
+        }));
+        if (outcome.denied) throw new ConflictError('native_rp_output_stale');
+        return outcome;
+    }
+
+    /** Marker and actual bytes are observed together; no write or replay right. */
+    async observeNativeOutput(handle, request, { tx } = {}) {
+        fields(request, ['controlId', 'operationId', 'outputKey'], 'Native output observation');
+        const read = async transaction => {
+            const record = await transaction.getResource({ kind: K.rpRunControl, handle, controlId: request.controlId });
+            if (!record) throw new ConflictError('native_rp_output_missing');
+            assertRpOutputReceipts(record.doc);
+            const receipt = record.doc.outputReceipts[request.outputKey];
+            if (!receipt || receipt.operationId !== request.operationId) throw new ConflictError('native_rp_output_missing');
+            const locator = record.doc.locator, chat = await transaction.getResource(this._key(handle, locator.charDir, locator.name, locator));
+            if (!chat || chat.header?.chat_metadata?.nativeControlId !== request.controlId) return { status: 'unknown', receipt: null };
+            const prefix = chat.body.slice(0, receipt.inputAnchor.floor + 1);
+            if (!sourceMessageId(prefix[receipt.inputAnchor.floor]) || prefix[receipt.inputAnchor.floor]?.atri_native?.messageId || !equalNativeDocuments(rpOperationInput(prefix[receipt.inputAnchor.floor], receipt.inputAnchor.floor), receipt.inputAnchor)
+                || hash(prefix.map(message => ({ messageId: sourceMessageId(message), content: sourceContent(message) }))) !== receipt.sourceDigest)
+                return { status: 'unknown', receipt: null };
+            const matches = chat.body.filter(message => message?.extra?.atri_output?.outputKey === request.outputKey
+                || message?.extra?.gen_id === 'native-output:' + request.outputKey);
+            if (!matches.length) return { status: 'unknown', receipt: null };
+            const message = matches[0], marker = message?.extra?.atri_output;
+            const expectedMarker = { schemaVersion: 1, operationId: request.operationId, outputKey: request.outputKey, payloadHash: receipt.payloadHash,
+                sourceDigest: receipt.sourceDigest, controlId: request.controlId };
+            if (matches.length !== 1 || !equalNativeDocuments(marker, expectedMarker) || hash(nativeOutputPayload(message)) !== receipt.payloadHash
+                || message.extra.gen_id !== 'native-output:' + request.outputKey || message.is_user || message.is_system
+                || chat.body.indexOf(message) !== receipt.inputAnchor.floor + 1) return { status: 'conflict', receipt: null };
+            return { status: 'committed', receipt: nativeChatReceipt(request.controlId, receipt, locator, message, chat.integrity) };
+        };
+        return tx ? read(tx) : this._engine.withTransaction(handle, read);
     }
 
     async get(handle, charDir, name, { isGroup = false, groupId } = {}) {
@@ -53,7 +136,7 @@ export class ChatRepo {
         const key = this._key(handle, charDir, name, { isGroup, groupId });
         const newIntegrity = randomUUID();
         const now = this._now();
-        return this._engine.withTransaction(handle, async (tx) => {
+        return this.#writeTransaction(handle, async (tx) => {
             const existing = await tx.getResource(key);
             if (expectedIntegrity !== null && expectedIntegrity !== undefined) {
                 if (!existing) throw new NotFoundError('chat', { handle, charDir, name });
@@ -66,7 +149,7 @@ export class ChatRepo {
             }
             await tx.putResource(key, {
                 header,
-                body: messages,
+                body: preserveNativeOutputMarkers(existing?.body, messages),
                 integrity: newIntegrity,
                 updatedAt: now,
                 createdAt: existing?.createdAt ?? now,
@@ -83,16 +166,17 @@ export class ChatRepo {
     async saveRaw(handle, charDir, name, record, { isGroup = false, groupId } = {}) {
         assertWritable();
         const key = this._key(handle, charDir, name, { isGroup, groupId });
-        return this._engine.withTransaction(handle, async (tx) =>
+        return this.#writeTransaction(handle, async (tx) =>
             tx.putResource(key, record));
     }
 
     async append(handle, charDir, name, newMessages, expectedIntegrity, { isGroup = false, groupId } = {}) {
         assertWritable();
+        rejectNativeOutputMarkers(newMessages);
         const key = this._key(handle, charDir, name, { isGroup, groupId });
         const newIntegrity = randomUUID();
         const now = this._now();
-        return this._engine.withTransaction(handle, async (tx) => {
+        return this.#writeTransaction(handle, async (tx) => {
             if (typeof tx.appendChatMessages === 'function') {
                 const native = await tx.appendChatMessages(key, newMessages, {
                     expectedIntegrity,
@@ -169,11 +253,24 @@ export class ChatRepo {
         const now = this._now();
         const ops = Array.isArray(operations) ? operations : [];
 
-        return this._engine.withTransaction(handle, async (tx) => {
+        return this.#writeTransaction(handle, async (tx) => {
             if (typeof tx.patchChatMessages !== 'function') {
                 return { status: 'unsupported' };
             }
-            const result = await tx.patchChatMessages(key, ops, {
+            const existing = await tx.getResource(key);
+            let body = existing?.body ?? [];
+            const protectedOps = ops.map(op => {
+                if (!/^\/(0|[1-9]\d*)$/.test(String(op?.path)) || !['test', 'replace', 'remove'].includes(op.op)) return op;
+                const index = Number(op.path.slice(1));
+                if (op.op === 'replace' && index < body.length) {
+                    const [value] = preserveNativeOutputMarkers([body[index]], [op.value]);
+                    body = [...body]; body[index] = value;
+                    return { ...op, value };
+                }
+                if (op.op === 'remove') body = body.filter((_, at) => at !== index);
+                return op;
+            });
+            const result = await tx.patchChatMessages(key, protectedOps, {
                 expectedIntegrity,
                 newIntegrity,
                 updatedAt: now,
@@ -205,7 +302,7 @@ export class ChatRepo {
         const key = this._key(handle, charDir, name, { isGroup, groupId });
         const newIntegrity = randomUUID();
         const now = this._now();
-        return this._engine.withTransaction(handle, async (tx) => {
+        return this.#writeTransaction(handle, async (tx) => {
             const existing = await tx.getResource(key);
             if (!existing) throw new NotFoundError('chat', { handle, charDir, name });
             if (expectedIntegrity !== null && expectedIntegrity !== undefined) {
@@ -221,7 +318,7 @@ export class ChatRepo {
             const docAfter = applyJsonPatch(docBefore, rewrittenOps);
             await tx.putResource(key, {
                 header: docAfter.header,
-                body: docAfter.body,
+                body: preserveNativeOutputMarkers(existing.body, docAfter.body),
                 integrity: newIntegrity,
                 updatedAt: now,
                 createdAt: existing.createdAt,
@@ -233,7 +330,7 @@ export class ChatRepo {
     async delete(handle, charDir, name, { isGroup = false, groupId } = {}) {
         assertWritable();
         const key = this._key(handle, charDir, name, { isGroup, groupId });
-        await this._engine.withTransaction(handle, async (tx) => {
+        await this.#writeTransaction(handle, async (tx) => {
             await tx.deleteResource(key);
         });
     }
@@ -246,7 +343,7 @@ export class ChatRepo {
     async setState(handle, charDir, name, namespace, doc, { isGroup = false, groupId } = {}) {
         assertWritable();
         const key = this._key(handle, charDir, name, { isGroup, groupId });
-        await this._engine.withTransaction(handle, async (tx) => {
+        await this.#writeTransaction(handle, async (tx) => {
             const existing = await tx.getResource(key);
             if (!existing) throw new NotFoundError('chat', { handle, charDir, name });
             await tx.putChatState(key, namespace, doc);
@@ -256,23 +353,24 @@ export class ChatRepo {
     async deleteState(handle, charDir, name, namespace, { isGroup = false, groupId } = {}) {
         assertWritable();
         const key = this._key(handle, charDir, name, { isGroup, groupId });
-        await this._engine.withTransaction(handle, async (tx) => tx.deleteChatState(key, namespace));
+        await this.#writeTransaction(handle, async (tx) => tx.deleteChatState(key, namespace));
     }
 
-    async getStateBatch(handle, charDir, name, namespaces, { isGroup = false, groupId } = {}) {
+    async getStateBatch(handle, charDir, name, namespaces, { isGroup = false, groupId, tx } = {}) {
         const key = this._key(handle, charDir, name, { isGroup, groupId });
-        return this._engine.withTransaction(handle, async (tx) => {
+        const read = async tx => {
             const out = {};
             for (const ns of namespaces) out[ns] = await tx.getChatState(key, ns);
             return out;
-        });
+        };
+        return tx ? read(tx) : this._engine.withTransaction(handle, read);
     }
 
     async rename(handle, charDir, oldName, newName, { isGroup = false, groupId } = {}) {
         assertWritable();
         const oldKey = this._key(handle, charDir, oldName, { isGroup, groupId });
         const newKey = this._key(handle, charDir, newName, { isGroup, groupId });
-        await this._engine.withTransaction(handle, async (tx) => {
+        await this.#writeTransaction(handle, async (tx) => {
             const existing = await tx.getResource(oldKey);
             if (!existing) throw new NotFoundError('chat', { handle, charDir, name: oldName });
             const conflict = await tx.getResource(newKey);
@@ -333,7 +431,7 @@ export class ChatRepo {
     async deleteAllForCharacter(handle, charDir) {
         assertWritable();
         if (typeof charDir !== 'string' || !charDir) throw new Error('deleteAllForCharacter: charDir required');
-        return this._engine.withTransaction(handle, async (tx) => {
+        return this.#writeTransaction(handle, async (tx) => {
             const entries = await tx.listResources({
                 kind: 'chat', handle, charDir, isGroup: false,
             });
@@ -353,7 +451,7 @@ export class ChatRepo {
         if (typeof oldCharDir !== 'string' || !oldCharDir) throw new Error('renameCharDir: oldCharDir required');
         if (typeof newCharDir !== 'string' || !newCharDir) throw new Error('renameCharDir: newCharDir required');
         if (oldCharDir === newCharDir) return 0;
-        return this._engine.withTransaction(handle, async (tx) => {
+        return this.#writeTransaction(handle, async (tx) => {
             const entries = await tx.listResources({
                 kind: 'chat', handle, charDir: oldCharDir, isGroup: false,
             });
@@ -462,7 +560,7 @@ export class ChatRepo {
         const key = this._key(handle, charDir, name, { isGroup, groupId });
         const newIntegrity = randomUUID();
         const now = this._now();
-        return this._engine.withTransaction(handle, async (tx) => {
+        return this.#writeTransaction(handle, async (tx) => {
             const existing = await tx.getResource(key);
             if (!existing) throw new NotFoundError('chat', { handle, charDir, name });
             if (expectedIntegrity !== null && expectedIntegrity !== undefined) {
@@ -559,4 +657,10 @@ function makeIdempotent(ops, doc) {
         }
         return op;
     });
+}
+
+function nativeChatReceipt(controlId, receipt, locator, message, integrity) {
+    return { schemaVersion: 1, controlId, operationId: receipt.operationId, outputKey: receipt.outputKey, payloadHash: receipt.payloadHash,
+        sourceDigest: receipt.sourceDigest, inputAnchor: receipt.inputAnchor, locator, outputFloor: receipt.inputAnchor.floor + 1,
+        messageId: sourceMessageId(message), integrity };
 }

@@ -9,10 +9,10 @@ import { setReadOnly } from '../../src/storage/read-only-mode.js';
 import express from 'express';
 import supertest from 'supertest';
 import { createNativeGenerationRouter } from '../../src/endpoints/native-generation.js';
-import { loadRunGoalContext } from '../../public/scripts/agents/orchestrator/goal-context.js';
-import { configureEvidenceCapture, startRun, clearCurrentRun } from '../../public/scripts/agents/orchestrator/run-state/store.js';
 
-afterEach(() => { setReadOnly(false); configureEvidenceCapture(null); clearCurrentRun(); });
+
+
+afterEach(() => { setReadOnly(false);  });
 const limits = { maxRequests: 2, maxTokens: 64000 };
 const user = { kind: 'user', actorId: null };
 const criterion = (selector, path, equals) => ({ criterionId: 'result', description: 'Exact saved outcome', selector, path, equals });
@@ -28,20 +28,7 @@ async function fixture(make) {
     return { ...h, host, installed, session, chatRepo, service, input };
 }
 for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
-    test(`S14 ${kind} original RP Run context uses frozen evidence scope and rejects switched Run`, async () => {
-        const h = await fixture(make);
-        try {
-            const goal = await h.service.goals.create(h.handle, h.input);
-            configureEvidenceCapture(() => ({ view: () => ({ scope: h.input.scope }) }));
-            const runId = startRun({ mode: 'agenda', chatKey: 'fixed-chat' });
-            const loaded = await loadRunGoalContext(runId, (_action, input) => h.service.goals.context(h.handle, input));
-            expect(loaded.goals.map(row => row.goalId)).toEqual([goal.goalId]);
-            await expect(loadRunGoalContext(runId, async (_action, input) => {
-                const result = await h.service.goals.context(h.handle, input); clearCurrentRun(); return result;
-            })).rejects.toThrow('Goal context run changed');
-            expect(await loadRunGoalContext(runId, () => { throw new Error('Must not fetch after run changed'); })).toBeNull();
-        } finally { await h.cleanup(); }
-    }, 60000);
+
     test(`S14 ${kind} RP explicit events complete only from a later saved source and retain duplicate identity`, async () => {
         const h = await fixture(make);
         try {

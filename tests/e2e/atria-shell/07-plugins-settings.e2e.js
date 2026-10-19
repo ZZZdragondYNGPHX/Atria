@@ -55,8 +55,9 @@ test.describe('R7G Plugins & Settings Reclassification', () => {
         const root = await ensureShellMounted(page);
         await expect.poll(() => page.evaluate(async () => {
             const host = await import('/scripts/capability-host.js');
-            return ['orchestrator', 'memory-graph', 'game-runtime', 'regex', 'search-tools'].map(name => host.getCapabilityLoadState(name));
-        })).toEqual(['ready', 'ready', 'ready', 'ready', 'ready']);
+            return ['memory-graph', 'game-runtime', 'regex', 'search-tools'].map(name => host.getCapabilityLoadState(name));
+        })).toEqual(['ready', 'ready', 'ready', 'ready']);
+        expect(await page.evaluate(() => Atria.getContext().getCapabilityApi('orchestrator'))).toBeFalsy();
         await expect(page.locator('#third_party_extension_button, #extensions_details, #extensions_notify_updates')).toHaveCount(0);
         for (const endpoint of ['/api/extensions/discover', '/api/extensions/install', '/api/sd/generate', '/api/quick-replies/save']) {
             const status = await page.evaluate(async endpoint => (await fetch(endpoint, { method: 'POST', headers: Atria.getContext().getRequestHeaders(), body: '{}' })).status, endpoint);

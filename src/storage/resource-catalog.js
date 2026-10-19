@@ -15,15 +15,15 @@ export const RECOVERY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 export const REDUCTION_JOURNAL_BYTES = 1024 * 1024;
 
 const families = {
-    sessions: ['session', 'runControl', 'branch', 'timelineEntry', 'timelineVariant', 'sessionState', 'sessionRevision', 'savePoint', 'commitReceipt', 'sharedAccess', 'sharedAccessRevision', 'realm', 'realmRevision', 'playerContinuity', 'playerContinuityRevision'],
+    sessions: ['session', 'runControl', 'rpRunControl', 'branch', 'timelineEntry', 'timelineVariant', 'sessionState', 'sessionRevision', 'savePoint', 'commitReceipt', 'sharedAccess', 'sharedAccessRevision', 'realm', 'realmRevision', 'playerContinuity', 'playerContinuityRevision'],
     projects: ['package', 'packageVersion', 'packageState', 'projectAgentTask'],
     knowledge: ['world', 'worldRevision', 'knowledgeBase', 'knowledgeRevision', 'knowledgeEntry', 'knowledgeBinding'],
     media: ['assetRef'],
     personas: ['persona', 'personaRevision', 'personaDefault', 'personaMigration'],
-    agents: ['agentExperience', 'agentEvidence', 'agentGoal', 'agentEvolution', 'agentEvolutionOwner'],
+    agents: ['agentExperience', 'agentEvidence', 'agentGoal', 'agentEvolution', 'agentEvolutionOwner', 'orchestrationPlan', 'orchestrationBinding', 'orchestrationRevision', 'orchestrationRun', 'orchestrationRecord', 'orchestrationCommand'],
     settings: ['connectionProfile', 'credentialTargetPermit', 'modelProfile', 'runtimeRoute', 'retrievalProfile'],
     cache: ['runtimeCheckpoint'],
-    advanced: ['maintenance', 'versionedJsonResource', 'versionedJsonResourceRevision'],
+    advanced: ['hostFence', 'maintenance', 'versionedJsonResource', 'versionedJsonResourceRevision'],
 };
 
 export const NATIVE_CATEGORY_BY_KIND = Object.freeze(Object.fromEntries(

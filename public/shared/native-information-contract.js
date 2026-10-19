@@ -40,6 +40,7 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
         if (!lifecycle.scopes.some(scope => scope.id === source.scopeId)) throw new TypeError('Unknown information scope');
         const paths = informationList(source.fields, 16, path => informationList(path, 8,
             key => source.kind === 'timeline' && key === 'actorId'
+                || source.kind === 'application' && ['sourceMessageIds', 'atomicGroup', 'atomicSourceMessageIds'].includes(key)
                 || (isCognitionSource(source) || hasInformationBasis(source)) && ['goalId', 'commitmentIds', 'conflictKey', 'expiresAt', 'recordedAt', 'exceptionRefs', 'sourceRefs', 'viewId', 'scopeEpochs', 'itemId'].includes(key) ? key : taskId(key)));
         if (!paths.length || paths.some(path => !path.length) || new Set(paths.map(path => path.join('.'))).size !== paths.length) throw new TypeError('Information fields must be unique nonempty paths');
         if (source.kind === 'history') {

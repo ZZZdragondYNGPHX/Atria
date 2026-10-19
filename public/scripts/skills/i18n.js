@@ -2,7 +2,7 @@
  * Locale data for the shared Skills UI (manager panel, inline editor,
  * scope picker, bundled browser, embed dialogs, per-agent chips).
  *
- * Centralising the strings here lets ANY caller — orchestrator,
+ * Centralising the strings here lets ANY caller — Build,
  * completion-preset-assistant, future extensions — open the Skill
  * Manager without having to remember to copy zh-CN tables into
  * their own i18n setup. `ensureSkillI18n()` is idempotent: the first
@@ -14,18 +14,12 @@
  * Jest environment). Lazy-loading keeps the skill modules importable
  * from Jest without dragging the full frontend bundle.
  *
- * The orchestrator extension still carries its own copies of these
- * strings (predates this module). That's harmless — `addLocaleData`
- * skips keys that already exist for fallback locales, and the primary
- * locale overwrites with the same value either way.
  */
 
 let registered = false;
 
 const TRANSLATIONS = {
     'zh-cn': {
-        '(no orchestrator presets)': '（没有编排预设）',
-        'Orchestrator preset scope requires picking a preset.': '使用编排预设范围时需要选择预设。',
         'Project': '项目',
         'Package': '作品包',
         'Package original · Read-only': '作品包原件 · 只读',
@@ -204,21 +198,14 @@ const TRANSLATIONS = {
         'Add': '添加',
         'Remove': '移除',
 
-        // Preset / orch-preset export: bundle-skills confirmation + toasts.
+        // Preset export: bundle-skills confirmation + toasts.
         // Wired from `public/scripts/skills/embed-export-hook.js` via the
-        // orchestrator plugin's `t: i18n` handoff.
         'Include': '包含',
         'Include preset-scope skills in this export?': '导出时一并附带此预设作用域的 Skills 吗？',
-        'Include all skills active for this orchestrator preset in the export?': '导出时一并附带此编排预设当前激活的所有 Skills 吗？',
-        'Bundled skills will install into this preset\u2019s scope on import.': '导入时，附带的 Skills 会安装到该预设的作用域下。',
         'Bundled ${0} skill(s) with this preset.': '已随预设附带 ${0} 个 Skill。',
         'Failed to bundle skills with preset: ${0}': '附带 Skill 到预设失败：${0}',
         'No skills could be bundled with this preset.': '没有可随预设附带的 Skill。',
 
-        // orch-preset scope labels (skill manager, badge, dialogs).
-        'Orchestrator preset': '编排预设',
-        'orchestrator preset': '编排预设',
-        'orch-preset:${0}/${1}': '编排预设:${0}/${1}',
     },
 };
 

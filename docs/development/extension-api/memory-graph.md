@@ -55,8 +55,6 @@ A chat that has never had extraction run still gets a writable session. Read met
 - The context cannot be resolved to a chat target (no `chatId`, or `createFloorState` is missing — typical for test runners that didn't mock the SillyTavern context fully).
 - The runtime store failed to load from floor-state (rare; logged as `console.warn`).
 
-The orchestrator's `memory_*` loop tools translate a `null` session into `ToolError(MEMORY_DISABLED)` so agents can pivot.
-
 ### Method reference
 
 All 16 methods on the returned session object:
@@ -195,7 +193,7 @@ Listener errors are caught and logged; one bad subscriber cannot block the other
 
 ## Overview
 
-`getMemoryGraphReadApi(store, context)` exposes the same data, topology, and recall primitives as a frozen, caller-safe API surface. The intended consumer is an agent-style plugin that wants to run its graph inspection — for example the orchestrator's `memory_scout` sub-agent — with whatever model / preset its operator prefers, against the exact graph inspection projection.
+`getMemoryGraphReadApi(store, context)` exposes the same data, topology, and recall primitives as a frozen, caller-safe API surface. The intended consumer is an agent-style plugin that wants to run its graph inspection — for example a read-only memory inspection plugin — with whatever model / preset its operator prefers, against the exact graph inspection projection.
 
 `getMemoryGraphWriteApi(store, context)` is the companion mutation surface: an extractor-style agent (or a curator agent that edits the graph between turns) goes through it instead of touching store internals. The Write API is documented in [Write API](#write-api) below.
 
@@ -1033,6 +1031,4 @@ if (groups.length > 0) {
 
 ## See Also
 
-- Companion: the orchestrator opens a session via `getExtensionApi('memory-graph').openSession(context)` and stashes the resulting session on `__memoryGraphSession` for its `memory_*` loop tools — see [Director runtime](/features/orchestrator/director).
 - Related extension API: [Plugin Integration](/development/extension-api/plugin-integration) for the broader extension API registry that publishes `'memory-graph'` alongside other extension entry points.
-- To register custom orchestration tools (memory-graph itself does this for its read and write tools), see [Orchestrator Tools API](./orchestrator-tools.md).

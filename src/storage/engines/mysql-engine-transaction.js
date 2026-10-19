@@ -51,6 +51,9 @@ export class MysqlTransaction {
     }
 
     async getResource(key)       { return this._h(key.kind, 'getResource').get(key); }
+    async lockNativeHostFence(handle) {
+        await this._conn.execute('SELECT integrity FROM native_resources WHERE handle = ? AND kind = ? AND resource_key = ? LOCK IN SHARE MODE', [handle, 'atri_host_fence', '[]']);
+    }
     async getChatRange(key, options = {}) {
         if (key?.kind !== 'chat') throw new Error('MysqlTransaction.getChatRange: chat resource required');
         return this._h(key.kind, 'getChatRange').range(key, options);

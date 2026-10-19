@@ -1,4 +1,4 @@
-import { beforeAll, expect, test } from '@jest/globals';
+import { beforeAll, expect, test, jest } from '@jest/globals';
 import { runComparison, validateComparison, blindPair, recordJudgment } from './comparison.js';
 import { BASE_SETTINGS, assertCandidate } from './evaluation-settings.js';
 import { withSyntheticSessionCopies } from './session-copy.js';
@@ -6,11 +6,13 @@ import { hash } from './cases.js';
 import { selectCases, loadFixture } from './cases.js';
 import { captureFor, withIsolatedRuntime } from './runner.js';
 
+// Each pair runs the real Native Host with a fresh private store.
+jest.setTimeout(60000);
 let development, promotion;
 beforeAll(async () => {
     development = await runComparison({ candidate: { target: 'rpPrompt', value: 'React as the NPC. Leave the player action undecided.' }, split: 'development' });
     promotion = await runComparison({ candidate: { target: 'projectSkill', value: 'Inspect metadata, prepare the exact proposal, then wait for human Review.' }, split: 'promotion', repetitions: 2 });
-}, 30000);
+}, 120000);
 
 test('both entrances run fresh paired copies with observed request content and no empirical claim', () => {
     for (const report of [development, promotion]) {
@@ -26,9 +28,9 @@ test('both entrances run fresh paired copies with observed request content and n
             expect(pair.candidate.trial.checks.isolation.status).toBe('passed');
         }
     }
-    expect(development.summary).toMatchObject({ pairCount: 6, generationCalls: 24, toolCalls: 36 });
-    expect(promotion.summary).toMatchObject({ pairCount: 12, generationCalls: 48, toolCalls: 72 });
-    expect(development.ablations.map(item => item.status)).toEqual(['unavailable', 'unavailable', 'unavailable', 'scripted_observation']);
+    expect(development.summary).toMatchObject({ pairCount: 6, generationCalls: 22, toolCalls: 24 });
+    expect(promotion.summary).toMatchObject({ pairCount: 12, generationCalls: 44, toolCalls: 48 });
+    expect(development.ablations.map(item => item.status)).toEqual(['unavailable', 'unavailable', 'unavailable', 'unavailable']);
 });
 
 test('real configuration limits affect the original loop; incomplete outcomes stay failed', async () => {

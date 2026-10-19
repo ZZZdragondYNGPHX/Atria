@@ -17,6 +17,12 @@ export function isTransientError(err) {
     return TRANSIENT_CODES.has(err.code);
 }
 
+// A network error is never proof that a transaction (especially COMMIT) was
+// rolled back. These server responses explicitly establish rollback instead.
+export function isKnownRollbackError(error) {
+    return ['ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT', '40001', '40P01'].includes(error?.code);
+}
+
 function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }

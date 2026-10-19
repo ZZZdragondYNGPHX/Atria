@@ -1,3 +1,4 @@
+import { nativeRetrievalHeaders } from './source-settings.js';
 import fetch from 'node-fetch';
 import urlJoin from 'url-join';
 import { setAdditionalHeadersByType } from '../additional-headers.js';
@@ -42,6 +43,7 @@ export async function getVllmBatchVector(texts, apiUrl, model, directories, sour
         headers: {
             'Content-Type': 'application/json',
             ...headers,
+            ...nativeRetrievalHeaders(request),
         },
         body: JSON.stringify(body),
     });

@@ -11,17 +11,20 @@ import { createHttpGenerationProvider } from '../../src/native/adapters/http-gen
 import { createSkillRepository } from '../../src/skills/repository.js';
 import { ExtensionsStore } from '../../src/native/extensions-store.js';
 import { skillEntryKey } from '../../public/shared/extension-contract.js';
-import { SettingsRepo } from '../../src/storage/repositories/settings-repo.js';
 import { ChatRepo } from '../../src/storage/repositories/chat-repo.js';
 import { AgentEvidenceRepository } from '../../src/native/agent-intelligence/evidence-repository.js';
 import { AgentEvidenceService } from '../../src/native/agent-intelligence/evidence-service.js';
 import { RpEvidenceCaptureService } from '../../src/native/agent-intelligence/rp-capture-service.js';
 import { NativeTaskScheduler } from '../../src/native/task-scheduler.js';
-import { emptyPresetLibrary, normalizeWorkspacePreset, updatePresetLibrary } from '../../public/scripts/lib/agent-workspace/presets.js';
-import { createWorkspaceFactoryPreset } from '../../public/scripts/agents/orchestrator/workspace/host-presets.js';
-import { updateWorkspacePromptVersions } from '../../public/scripts/lib/agent-workspace/prompt-versions.js';
-import { updateWorkspaceStrategyVersions } from '../../public/scripts/lib/agent-workspace/strategy-versions.js';
 import { createLiveBridge } from './live-bridge.js';
+import { NativeNarratorOrchestrationAuthority } from '../../src/native/orchestration/native-turn-orchestration.js';
+import { RpRunControl } from '../../src/native/rp-run-control.js';
+import { RouteResolver } from '../../src/native/model-prompt-runtime/route-resolver.js';
+import { createOrchestrationAuthoringService } from '../../src/native/orchestration/authoring-service.js';
+import { validationDigest } from '../../src/native/orchestration/plan-repository.js';
+import { planFixture, prepareControllerOwnerRoot } from '../native-orchestration/fixtures.js';
+import { services as sessionServices } from '../native/helpers/session-fixture.js';
+import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecycle.js';
 import { services, projectSource } from './project-fixture.js';
 
 export const price = { source: 'Synthetic fixture price, no paid request', currency: 'USD', inputPerMillion: 1, outputPerMillion: 1, confirmedAt: 1000 };
@@ -42,7 +45,7 @@ export function syntheticReport(job, configs, settings) {
         domain: job.domain, policyFingerprint: job.policyFingerprint, targetPin: job.targetPin, price: job.price, pairs, charges: pairs.flatMap(p => [...p.baseline.charges, ...p.candidate.charges]), createdAt: 1000,
         configurations: { baseline: hash(configs.baseline), candidate: hash(configs.candidate) }, settings: { baseline: hash(settings.baseline), candidate: hash(settings.candidate) } };
 }
-export async function evolutionFixture(make, targetKind = 'project-strategy', { realEvaluator = false, fetchImpl, connectionConfig = testConfig, policyMode = 'auto', confirmedPrice = price, repositoryClass = AgentEvolutionRepository, configureEvaluator = () => {} } = {}) {
+export async function evolutionFixture(make, targetKind = 'project-strategy', { realEvaluator = false, fetchImpl, connectionConfig = testConfig, policyMode = 'auto', confirmedPrice = price, repositoryClass = AgentEvolutionRepository, configureEvaluator = () => {}, nativeRpSteps = 1 } = {}) {
     const h = await make();
     const { studio, agent } = services(h), persistence = new NativeModelPromptPersistence({ engine: h.engine }), library = new VersionedJsonResourceHandler({ engine: h.engine });
     await createLiveBridge({ engine: h.engine, handle: h.handle, config: connectionConfig, secretPort: { resolveSecret: async () => 'not-used' }, fetchImpl: async () => { throw new Error('Unused seed bridge'); } });
@@ -81,7 +84,7 @@ export async function evolutionFixture(make, targetKind = 'project-strategy', { 
     const fixtureNow = Date.now();
     const service = new AgentEvolutionService({ host, chatRepo, scheduler: new NativeTaskScheduler({ concurrency: 1, retries: 0 }), evaluator, now: () => fixtureNow });
     let scope, subject, target, evidenceTarget;
-    const rp = targetKind.startsWith('workspace-') || targetKind === 'rp-skill';
+    const rp = targetKind === 'rp-skill';
     scope = rp ? rpScope : { domain: 'project', projectId: source.project.projectId }; subject = rp ? 'Actor' : source.project.projectId;
     if (rp) {
         await chatRepo.save(h.handle, 'Actor', 'evolution', {}, [{ memory_os_source_id: 'user', is_user: true, name: 'User', mes: 'Wait for my choice.' }, { memory_os_source_id: 'npc', is_user: false, name: 'Actor', mes: 'A reply.', swipe_id: 0 }], null);
@@ -96,18 +99,6 @@ export async function evolutionFixture(make, targetKind = 'project-strategy', { 
         const skillScope = rp ? { kind: 'character', characterFile: 'Actor.png' } : { kind: 'project', projectId: subject };
         await host.skillRepository(h.handle).install({ scope: skillScope, payload: { files: [{ path: 'SKILL.md', content: skillMd('Original guidance') }, { path: 'reference.txt', content: 'Original support' }] } });
         target = { kind: 'skill', scope: skillScope, name: 'guide' }; extractionValue = skillMd('Candidate guidance');
-    } else if (targetKind.startsWith('workspace-')) {
-        const preset = createWorkspaceFactoryPreset('director', 'local-director'), owner = preset.planTemplate.nodes.find(n => n.nodeId === 'owner');
-        preset.planTemplate.agents = preset.planTemplate.agents.filter(a => a.id === owner.agentId); preset.planTemplate.nodes = [owner]; preset.planTemplate.edges = preset.planTemplate.edges.filter(e => e.from === 'owner' && e.to === 'owner');
-        preset.planTemplate.budgets.maxSteps = 6;
-        const normalized = normalizeWorkspacePreset(preset), agentId = normalized.planTemplate.agents[0].id;
-        let settings = updatePresetLibrary(emptyPresetLibrary(), { type: 'save', preset: normalized });
-        settings = updatePresetLibrary(settings, { type: 'bind', scope: 'character', subjectId: 'Actor.png', presetId: normalized.id });
-        settings = targetKind === 'workspace-prompt' ? updateWorkspacePromptVersions(settings, { type: 'declare', presetId: normalized.id, expectedPreset: normalized, agentIds: [agentId] })
-            : updateWorkspaceStrategyVersions(settings, { type: 'declare', presetId: normalized.id, expectedPreset: normalized, allowedFields: ['budgets.maxSteps'] });
-        await new SettingsRepo({ engine: h.engine }).save(h.handle, { unrelated: 'preserve', atri_capabilities: { orchestrator: { agentWorkspace: settings } } });
-        target = { kind: targetKind, presetId: normalized.id, bindingSubject: 'Actor.png', ...(targetKind === 'workspace-prompt' ? { agentId } : { field: 'budgets.maxSteps' }) };
-        if (targetKind === 'workspace-strategy') extractionValue = 3;
     } else if (targetKind === 'project-prompt') {
         const presets = new PromptPresetStore({ engine: h.engine });
         const module = { schemaVersion: 1, promptModuleId: createNativeId('promptModule'), revision: createNativeId('revision'), displayName: 'Style', target: 'system.style', stages: ['stage.main'], body: 'Original style' };
@@ -127,25 +118,43 @@ export async function evolutionFixture(make, targetKind = 'project-strategy', { 
     }
     if (targetKind.endsWith('skill')) {
         const store = new ExtensionsStore({ engine: h.engine }), before = await store.settings(h.handle);
-        await store.saveSettings(h.handle, { ...before.value, skills: { [skillEntryKey(target)]: { paths: { [rp ? 'agents' : 'studio']: 'always' } } } }, before.revision);
+        await store.saveSettings(h.handle, { ...before.value, skills: { [skillEntryKey(target)]: { paths: { [rp ? 'narrative' : 'studio']: 'always' } } } }, before.revision);
         host.extensions = store;
-        if (rp) {
-            const preset = createWorkspaceFactoryPreset('director', 'skill-director'), owner = preset.planTemplate.nodes.find(n => n.nodeId === 'owner');
-            preset.planTemplate.agents = preset.planTemplate.agents.filter(a => a.id === owner.agentId); preset.planTemplate.nodes = [owner]; preset.planTemplate.edges = preset.planTemplate.edges.filter(e => e.from === 'owner' && e.to === 'owner'); preset.planTemplate.budgets.maxSteps = 6;
-            preset.planTemplate.metadata.hostAdapters.atria.skills = { visible: ['guide'], deny: [] };
-            for (const a of preset.planTemplate.agents) a.metadata.hostAdapters.atria.skills = { visible: ['guide'], deny: [] };
-            let lib = updatePresetLibrary(emptyPresetLibrary(), { type: 'save', preset: normalizeWorkspacePreset(preset) });
-            lib = updatePresetLibrary(lib, { type: 'bind', scope: 'character', subjectId: 'Actor.png', presetId: preset.id });
-            await new SettingsRepo({ engine: h.engine }).save(h.handle, { atri_capabilities: { orchestrator: { agentWorkspace: lib } } });
-        }
     }
-    const route = (await persistence.listRuntimeRoutes(h.handle)).find(r => r.role === (rp ? 'role.orchestrator' : 'role.studio'));
+    let route = (await persistence.listRuntimeRoutes(h.handle)).find(r => r.role === (rp ? 'role.orchestrator' : 'role.studio'));
     if (rp) {
-        const repo = new SettingsRepo({ engine: h.engine }), settings = await repo.get(h.handle), lib = settings.atri_capabilities.orchestrator.agentWorkspace;
-        for (const preset of lib.presets) for (const a of preset.planTemplate.agents) a.modelProfile = { ...a.modelProfile, nativeRouteRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId } };
-        // Declare against the same original version the live consumer will use.
-        if (target.kind.startsWith('workspace-')) settings.atri_capabilities.orchestrator.agentWorkspace = target.kind === 'workspace-prompt' ? updateWorkspacePromptVersions(lib, { type: 'declare', presetId: target.presetId, expectedPreset: lib.presets[0], agentIds: [target.agentId] }) : updateWorkspaceStrategyVersions(lib, { type: 'declare', presetId: target.presetId, expectedPreset: lib.presets[0], allowedFields: [target.field] });
-        await repo.save(h.handle, settings);
+        await prepareControllerOwnerRoot(h.dirs.root); attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
+        route = await persistence.saveRuntimeRoute(h.handle, { ...route, role: 'role.narrator', executionPolicy: { schemaVersion: 1,
+            allowedModelProfileIds: [route.modelProfileRef.modelProfileId], continuity: 'none', reuse: 'disabled',
+            computeBudget: { maxRequests: Math.max(4, nativeRpSteps + 1), maxTokens: 100000, localWork: { maxJobs: Math.max(32, nativeRpSteps * 16 + 8), maxItems: 10000, maxInputBytes: 16777216 } } } });
+        route = await persistence.getRuntimeRoute(h.handle, route.runtimeRouteId);
+        host.sessionCore = sessionServices(h).core;
+        const control = new RpRunControl({ engine: h.engine, chatRepo }), { controlId } = await control.bind(h.handle, { charDir: rpScope.charDir, name: rpScope.name, isGroup: false, groupId: null });
+        const resolver = new RouteResolver({ persistence, library, providers: host.providers });
+        const { plans } = createOrchestrationAuthoringService(h.engine, { rpControl: control, modelResolver: resolver });
+        host.turnOrchestration = new NativeNarratorOrchestrationAuthority({ engine: h.engine, sessionCore: host.sessionCore, rpControl: control, plans, modelResolver: resolver });
+        const plan = planFixture(), output = plan.definition.nodes[0], nodeId = createNativeId('orchestrationNode');
+        plan.definition.nodes = [{ nodeId, kind: 'agent', label: 'RP narrator', inputs: [], outputs: [{ name: 'response', type: 'text', required: false }], dependencyPinIds: ['rp.route'], capabilities: ['generation.send'], policy: { agentPinId: 'rp.route' } },
+            { ...output, inputs: [{ name: 'response', type: 'text', required: true }], capabilities: ['chat.output'] }];
+        plan.definition.entryNodeIds = [nodeId]; plan.definition.capabilityCeiling = ['generation.send', 'chat.output'];
+        plan.definition.outputContract = { kind: 'rp_narration', ownerNodeId: output.nodeId, slot: 'assistant', allowPartial: false, resultPolicy: { outputType: 'text', maxBytes: 65536 } };
+        plan.definition.edges = [{ edgeId: createNativeId('orchestrationEdge'), from: { nodeId, port: 'response' }, to: { nodeId: output.nodeId, port: 'response' }, condition: 'always', maxVisits: 1, loopBack: false }];
+        if (!Number.isSafeInteger(nativeRpSteps) || nativeRpSteps < 1 || nativeRpSteps > 6) throw new Error('Invalid finite Native RP fixture steps');
+        for (let index = 1; index < nativeRpSteps; index++) {
+            const previous = plan.definition.nodes.at(-2), nextId = createNativeId('orchestrationNode');
+            const next = { ...previous, nodeId: nextId, label: 'RP graph step ' + index, inputs: [{ name: 'response', type: 'text', required: true }] };
+            const edge = plan.definition.edges.find(edge => edge.to.nodeId === output.nodeId);
+            edge.to = { nodeId: nextId, port: 'response' };
+            plan.definition.nodes.splice(plan.definition.nodes.length - 1, 0, next);
+            plan.definition.edges.push({ ...edge, edgeId: createNativeId('orchestrationEdge'), from: { nodeId: nextId, port: 'response' }, to: { nodeId: output.nodeId, port: 'response' } });
+        }
+        plan.definition.limits.maxSteps = 50;
+        plan.dependencyPins = [{ pinId: 'rp.route', port: 'model', resourceRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, integrity: hash(route) }];
+        const draft = await plans.create(h.handle, createNativeId('orchestrationCommand'), plan);
+        const expected = { planId: draft.planId, expectedDraftVersion: draft.draftVersion, expectedDefinitionHash: draft.definitionHash }, report = await plans.validate(h.handle, expected);
+        if (report.status !== 'valid') throw new Error(JSON.stringify(report.issues));
+        const { planRef } = await plans.publish(h.handle, createNativeId('orchestrationCommand'), { ...expected, validationDigest: validationDigest(report) });
+        await plans.saveBinding(h.handle, createNativeId('orchestrationCommand'), { sourceSelector: { domain: 'rp_chat', controlId }, planRef, expectedVersion: null });
     }
     await service.budget(h.handle, { limits: { maxRequests: 120, maxTokens: 1000000, minIntervalMs: 1000 }, expectedSequence: 0 });
     await service.configure(h.handle, { scope, subject, target, mode: policyMode, routeId: route.runtimeRouteId, price: confirmedPrice, expectedSequence: 0 });
@@ -171,8 +180,10 @@ export async function restoreEvolutionFixture(make, directory, result, { fetchIm
         const repository = new repositoryClass({ engine: h.engine }), evaluator = new EvolutionEvaluator({ host, repository });
         const service = new AgentEvolutionService({ host, chatRepo: new ChatRepo({ engine: h.engine }), evaluator, scheduler: new NativeTaskScheduler({ concurrency: 1, retries: 0 }) });
         const { scope, subject } = result.doc, target = baselineOnly ? result.target : result.job.target;
+
         const doc = await repository.get(h.handle, scope, subject);
         if (baselineOnly) {
+            if (scope.domain === 'rp_chat') prepareRestoredNativeRpHost({ h, host });
             if (hash(doc) !== hash(result.doc) || doc.jobs.length || doc.publications.length || hash(target) !== hash(doc.policy?.target)
                 || hash(await service.targets.capture(h.handle, scope, subject, target)) !== doc.policy.targetPin) throw new Error('f2_baseline_restore_changed');
             const route = await host.persistence.getRuntimeRoute(h.handle, target.runtimeRouteId || doc.policy.routeId);
@@ -181,11 +192,13 @@ export async function restoreEvolutionFixture(make, directory, result, { fetchIm
         const publication = doc.publications.find(p => p.jobId === result.job.id && p.candidateId === result.candidate.candidateId);
         const saved = doc.jobs.find(j => j.id === result.job.id)?.candidates.find(c => c.candidateId === result.candidate.candidateId);
         if (evaluationOnly) {
+            if (scope.domain === 'rp_chat') prepareRestoredNativeRpHost({ h, host });
             if (publication || hash(doc) !== hash(result.doc) || !saved || hash(saved) !== hash(result.candidate)
                 || hash(await service.targets.capture(h.handle, scope, subject, target)) !== result.job.targetPin) throw new Error('resume_evaluation_changed');
             const route = await host.persistence.getRuntimeRoute(h.handle, target.runtimeRouteId || result.doc.policy.routeId);
             return { h, host, service, repository, evaluator, scope, subject, target, route };
         }
+        if (scope.domain === 'rp_chat' && requireCurrentPublication && publication?.status === 'published') prepareRestoredNativeRpHost({ h, host });
         if (!publication || !saved || hash(saved.report) !== hash(result.candidate.report)
             || requireCurrentPublication && !await service.targets.publicationCurrent(h.handle, scope, subject, publication)) throw new Error('resume_publication_changed');
         const route = await host.persistence.getRuntimeRoute(h.handle, target.runtimeRouteId || result.doc.policy.routeId);
@@ -202,3 +215,18 @@ export async function labelAll(f, job, candidate) {
     return result;
 }
 export const independentDigest = text => createHash('sha256').update(text).digest('hex');
+
+
+// Reopening a writer is explicit; grading-only restores remain read-only.
+// The original persisted identity is kept, so an active Host correctly rejects
+// a competing restored writer instead of silently minting another authority.
+export function prepareRestoredNativeRpHost(f) {
+    const { h, host } = f;
+    if (!h.engine.nativeHostLifecycle) attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
+    if (host.turnOrchestration) return;
+    host.sessionCore = sessionServices(h).core;
+    const control = new RpRunControl({ engine: h.engine, chatRepo: new ChatRepo({ engine: h.engine }) });
+    const resolver = new RouteResolver({ persistence: host.persistence, library: host.library, providers: host.providers });
+    const { plans } = createOrchestrationAuthoringService(h.engine, { rpControl: control, modelResolver: resolver });
+    host.turnOrchestration = new NativeNarratorOrchestrationAuthority({ engine: h.engine, sessionCore: host.sessionCore, rpControl: control, plans, modelResolver: resolver });
+}

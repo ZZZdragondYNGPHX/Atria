@@ -3,8 +3,8 @@ import { TextEncoder } from 'node:util';
 import { serialize, deserialize } from 'node:v8';
 globalThis.TextEncoder ??= TextEncoder;
 globalThis.structuredClone ??= value => deserialize(serialize(value));
-import { informationSnapshot } from '../native/helpers/information-fixture.js';
-import { createNativeLifecycleClient } from '../../public/scripts/native/lifecycle-client.js';
+const { informationSnapshot } = await import('../native/helpers/information-fixture.js');
+const { createNativeLifecycleClient } = await import('../../public/scripts/native/lifecycle-client.js');
 
 test('Host projection facade reads historical snapshots but disposal rejects further reads', () => {
     const runtime = { active: true, history: true, snapshot: informationSnapshot() };

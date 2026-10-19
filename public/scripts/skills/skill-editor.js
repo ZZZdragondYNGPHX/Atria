@@ -252,7 +252,6 @@ function formatScopeLabel(scope, t = (s) => s) {
         case 'project': return `${t('Project')}: ${scope.displayName || scope.projectId}`;
         case 'package': return `${t('Package')}: ${scope.displayName || scope.packageId} @ ${scope.packageVersionId}`;
         case 'preset': return `${t('preset')}: ${scope.name}`;
-        case 'orch-preset': return `${t('orchestrator preset')} (${scope.mode}): ${scope.name}`;
         case 'character': return `${t('character')}: ${scope.characterFile}`;
         default: return t('unknown');
     }

@@ -1,3 +1,4 @@
+import { nativeRetrievalHeaders } from './source-settings.js';
 import fetch from 'node-fetch';
 import { SECRET_KEYS, readSecret } from '../endpoints/secrets.js';
 import { OPENROUTER_HEADERS } from '../constants.js';
@@ -73,6 +74,14 @@ const SOURCES = {
 
 export const supportsOpenAIEmbeddingSource = source => Object.hasOwn(SOURCES, source);
 
+export function openAIEmbeddingBody(texts, source, model = '') {
+    const config = SOURCES[source];
+    if (!config) throw new Error('Unknown embedding source');
+    const body = { input: texts, model: model || config.model };
+    config.processBody?.(body);
+    return body;
+}
+
 /**
  * Gets the vector for the given text batch from an OpenAI compatible endpoint.
  * @param {string[]} texts - The array of texts to get the vector for
@@ -125,37 +134,32 @@ export async function getOpenAIBatchVector(texts, source, directories, model = '
         throw new Error(`No API URL configured for source ${source}`);
     }
 
-    const body = {
-        input: texts,
-        model: modelName,
-    };
-
-    if (typeof config.processBody === 'function') {
-        config.processBody(body);
-    }
+    const body = openAIEmbeddingBody(texts, source, modelName);
 
     const embeddingsUrl = `${url}/embeddings`;
     if (request) attachInspectionEndpoint(request, embeddingsUrl, key, body);
 
     const compute = request?.nativeRetrieval?.compute;
+    const serializedBody = JSON.stringify(body);
     let usage = null, ticket;
     try {
         request?.nativeRetrieval?.signal?.throwIfAborted();
-        ticket = await compute?.beforeSend(body);
-        const response = await fetch(embeddingsUrl, {
+        ticket = await compute?.beforeSend(JSON.parse(serializedBody), { endpoint: new URL(embeddingsUrl).href, method: 'POST' });
+        const response = await (request?.nativeRetrieval?.fetch ?? fetch)(embeddingsUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${key}`,
                 ...config.headers,
+                ...nativeRetrievalHeaders(request),
             },
-            body: JSON.stringify(body),
+            body: serializedBody,
             ...(request?.nativeRetrieval ? { redirect: 'error', signal: request.nativeRetrieval.signal } : {}),
         });
 
         if (!response.ok) {
             const text = await response.text();
-            console.warn('API request failed', response.statusText, text);
+            console.warn('API request failed', response.statusText, request?.nativeRetrieval ? '' : text);
             throw new Error('API request failed');
         }
 

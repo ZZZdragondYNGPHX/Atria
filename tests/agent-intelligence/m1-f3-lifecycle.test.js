@@ -8,7 +8,6 @@ import { hash } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { AgentEvolutionRepository } from '../../src/native/agent-intelligence/evolution-repository.js';
 import { M1AdvisoryRepository } from './m1-quota.js';
 
-const completion = (name, args, id) => ({ id, type: 'function', function: { name, arguments: JSON.stringify(args) } });
 
 test('oversized development keeps its full evidence for the separate promotion phase', () => {
     const report = { origin: 'm1_f3_development', observations: 'complete synthetic development evidence '.repeat(40000) };
@@ -85,7 +84,7 @@ test.each(['rp-skill', 'project-prompt'])('F3 %s delegated review consumes the s
     const f = await evolutionFixture(makeTempFsEngineHarness, kind, { policyMode: 'review', repositoryClass: ImmediateSyntheticRepository, fetchImpl: async (_url, options) => {
         const body = JSON.parse(options.body); sends.push(body);
         const message = kind === 'project-prompt' ? { content: 'Synthetic readiness acknowledgement.' }
-            : { content: '', tool_calls: [completion('write_message', { text: 'The NPC waits for your choice.', mode: 'replace' }, 'write'), completion('finalize', {}, 'finalize')] };
+            : { content: 'The NPC waits for your choice.' };
         return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ message }], usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } }) };
     } });
     const entry = {}, saved = new Map();
@@ -97,6 +96,7 @@ test.each(['rp-skill', 'project-prompt'])('F3 %s delegated review consumes the s
             fresh: () => f.service._fresh(f.h.handle, f.scope, f.subject, job.id) });
         expect(entry.lifecycle).toMatchObject({ delegatedFixtureReview: true, automaticPromotion: false,
             nextRunConsumed: true, nextConfigurationMatchesCandidate: true, baseRestored: true });
+        expect(entry.lifecycle.activation).toMatchObject({ origin: 'host' });
         const final = await f.repository.get(f.h.handle, f.scope, f.subject);
         expect(final.publications).toHaveLength(1);
         expect(final.publications[0].status).toBe('rolled_back');
@@ -162,4 +162,29 @@ test.each(['rp-skill', 'project-prompt'])('F3 %s restores the base when next-req
         expect(final.publications[0].status).toBe('rolled_back');
         expect(saved.get(kind + '-f3-lifecycle.json').baseRestored).toBe(true);
     } finally { await f.h.cleanup(); }
+}, 45000);
+
+
+test('a saved private RP comparison resumes on its original Native binding and observes Host activation before rollback', async () => {
+    const f = await evolutionFixture(makeTempFsEngineHarness, 'rp-skill', { policyMode: 'review', repositoryClass: ImmediateSyntheticRepository });
+    let restored;
+    try {
+        const result = await runEvolution(f);
+        await f.h.engine.close();
+        restored = await restoreEvolutionFixture(makeTempFsEngineHarness, f.h.dataRoot, result, { evaluationOnly: true, repositoryClass: ImmediateSyntheticRepository, fetchImpl: async () => ({
+            ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ message: { content: 'The NPC waits for your choice.' } }],
+                usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } }) }) });
+        restored.host.secretPort.resolveSecret = async () => 'synthetic-restored-private-key';
+        const owner = await restored.repository.owner(restored.h.handle), entry = {};
+        await publishConsumeRollback({ f: restored, kind: 'rp-skill', job: { ...result.job, scopeId: result.doc.scopeId }, candidate: result.candidate,
+            report: result.candidate.report, entry, store: () => {}, signal: AbortSignal.timeout(30000),
+            fresh: () => restored.service._fresh(restored.h.handle, restored.scope, restored.subject, result.job.id) });
+        expect(entry.lifecycle).toMatchObject({ nextRunConsumed: true, nextConfigurationMatchesCandidate: true, baseRestored: true, activationOrigin: 'host' });
+        const doc = await restored.repository.get(restored.h.handle, restored.scope, restored.subject);
+        expect(doc.publications[0]).toMatchObject({ status: 'rolled_back', activation: { origin: 'host', requestId: result.job.id + ':activation' } });
+        expect(doc.jobs[0].candidates[0].report).toEqual(result.candidate.report);
+        const charges = (await restored.repository.owner(restored.h.handle)).attempts;
+        expect(charges.slice(0, owner.attempts.length)).toEqual(owner.attempts);
+        expect(charges.slice(owner.attempts.length)).toEqual([expect.objectContaining({ kind: 'candidate', jobId: result.job.id + ':activation', status: 'reported', tokens: 10 })]);
+    } finally { await restored?.h.engine.close(); await restored?.h.cleanup(); await f.h.engine.close(); await f.h.cleanup(); }
 }, 45000);

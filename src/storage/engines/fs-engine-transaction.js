@@ -1,3 +1,4 @@
+import { durableWrite } from '../durable-file.js';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
@@ -221,7 +222,7 @@ function registerChatHandler(tx) {
             };
             const lines = [JSON.stringify(headerWithIntegrity)];
             for (const msg of record.body) lines.push(JSON.stringify(msg));
-            writeFileAtomic(filePath, lines.join('\n') + '\n');
+            durableWrite(filePath, lines.join('\n') + '\n');
             invalidateFsChatRangeIndex(filePath);
             // Restore the caller-supplied updatedAt as the file mtime so a
             // migration-time saveRaw doesn't reset every chat's "last edited"
@@ -832,34 +833,48 @@ function registerNativeResourceHandlers(tx) {
             let files;
             try { files = await fsp.readdir(dir, { recursive: true }); } catch (error) { if (error.code === 'ENOENT') return filter.scan ? { records: [], cursor: '', done: true } : []; throw error; }
             files = files.filter(entry => entry.endsWith('.json')).sort();
+            const readEntry = async entry => {
+                let envelope;
+                try {
+                    envelope = JSON.parse(await fsp.readFile(path.join(dir, entry), 'utf-8'));
+                } catch {
+                    return null;
+                }
+                if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope)) return null;
+                let key;
+                try {
+                    key = normalizeNativeResourceKey(envelope.key);
+                } catch {
+                    return null;
+                }
+                if (!nativeResourceMatchesFilter(key, normalizedFilter)) return null;
+                if (path.normalize(entry) !== path.relative(dir, filePath(key))) return null;
+                return {
+                    key,
+                    doc: envelope.doc,
+                    integrity: String(envelope.integrity || ''),
+                    updatedAt: Number(envelope.updatedAt || 0),
+                    createdAt: Number(envelope.createdAt || 0),
+                };
+            };
+            if (!filter.scan) {
+                // Fresh independent envelope reads under the original Engine
+                // isolation. Bound open reads and retain file order before the
+                // existing canonical sort/limit; no row or directory is cached.
+                for (let offset = 0; offset < files.length; offset += 8) {
+                    const batch = await Promise.all(files.slice(offset, offset + 8).map(readEntry));
+                    records.push(...batch.filter(record => record !== null));
+                }
+                return sortAndLimitNativeRecords(records, normalizedFilter);
+            }
             let cursor = filter.after ?? '', scanned = 0, bytes = 0;
             for (const entry of files) {
                 if (filter.scan && entry <= cursor) continue;
                 if (filter.scan && (scanned >= filter.limit || bytes >= filter.maxBytes)) break;
                 cursor = entry; scanned++;
                 if (filter.scan) bytes += (await fsp.stat(path.join(dir, entry))).size;
-                let envelope;
-                try {
-                    envelope = JSON.parse(await fsp.readFile(path.join(dir, entry), 'utf-8'));
-                } catch {
-                    continue;
-                }
-                if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope)) continue;
-                let key;
-                try {
-                    key = normalizeNativeResourceKey(envelope.key);
-                } catch {
-                    continue;
-                }
-                if (!nativeResourceMatchesFilter(key, normalizedFilter)) continue;
-                if (path.normalize(entry) !== path.relative(dir, filePath(key))) continue;
-                records.push({
-                    key,
-                    doc: envelope.doc,
-                    integrity: String(envelope.integrity || ''),
-                    updatedAt: Number(envelope.updatedAt || 0),
-                    createdAt: Number(envelope.createdAt || 0),
-                });
+                const record = await readEntry(entry);
+                if (record) records.push(record);
             }
             if (filter.scan) return { records, cursor, done: !files.some(entry => entry > cursor), scanned, bytes };
             return sortAndLimitNativeRecords(records, normalizedFilter);

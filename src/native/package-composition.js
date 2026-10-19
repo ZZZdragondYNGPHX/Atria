@@ -27,6 +27,43 @@ function digest(bytes) {
     return createHash('sha256').update(bytes).digest('hex');
 }
 
+const PARSED_ARCHIVE_BYTES = 32 * 1024 * 1024;
+const PARSED_ARCHIVE_ENTRIES = 8;
+
+// A returned Buffer's whole backing store belongs to that caller. Small
+// pooled Buffers could otherwise expose a cached neighbour through .buffer.
+function copyPackageBytes(bytes) {
+    const copy = Buffer.allocUnsafeSlow(bytes.length);
+    bytes.copy(copy);
+    return copy;
+}
+
+function copyParsedJson(value) {
+    if (value === null || typeof value !== 'object') return value;
+    const copy = Array.isArray(value) ? value.map(copyParsedJson)
+        : Object.fromEntries(Object.entries(value).map(([key, item]) => [key, copyParsedJson(item)]));
+    return Object.isFrozen(value) ? Object.freeze(copy) : copy;
+}
+
+function parsedJsonBytes(value) {
+    if (typeof value === 'string') return 24 + value.length * 2;
+    if (value === null || typeof value !== 'object') return 8;
+    return Array.isArray(value) ? 32 + value.reduce((bytes, item) => bytes + 8 + parsedJsonBytes(item), 0)
+        : 64 + Object.entries(value).reduce((bytes, [key, item]) => bytes + 32 + key.length * 2 + parsedJsonBytes(item), 0);
+}
+
+function copyParsedArchive(inspected) {
+    return Object.freeze({ manifest: copyParsedJson(inspected.manifest), preflight: copyParsedJson(inspected.preflight),
+        sourceFiles: new Map([...inspected.sourceFiles].map(([key, bytes]) => [key, copyPackageBytes(bytes)])),
+        assets: new Map([...inspected.assets].map(([key, bytes]) => [key, copyPackageBytes(bytes)])) });
+}
+
+function parsedArchiveBytes(archive, inspected) {
+    let bytes = archive.length + parsedJsonBytes(inspected.manifest) + parsedJsonBytes(inspected.preflight);
+    for (const map of [inspected.sourceFiles, inspected.assets]) for (const [key, buffer] of map) bytes += buffer.length + key.length * 2 + 96;
+    return bytes;
+}
+
 function mergeAssetPayload(map, ref, bytes) {
     const existing = map.get(ref.assetId);
     if (existing) {
@@ -189,6 +226,9 @@ export async function buildProjectPackage({
 }
 
 export class PackageInstaller {
+    #parsedArchives = new Map();
+    #parsedArchiveBytes = 0;
+
     constructor({ packageRepo, assetStore }) {
         if (!packageRepo || !assetStore) {
             throw new TypeError('PackageInstaller requires PackageRepo and AssetStore');
@@ -279,6 +319,10 @@ export class PackageInstaller {
     async open(handle, packageId, packageVersionId, { includeArchive = false } = {}) {
         const version = await this._packageRepo.getVersion(handle, packageId, packageVersionId);
         if (!version) return null;
+        assertPackageVersion(version);
+        if (version.packageId !== packageId || version.packageVersionId !== packageVersionId) {
+            throw new Error('Installed PackageVersion metadata does not match exact Package reference');
+        }
         const archive = await this._assetStore.readBlob(handle, version.packageContentHash);
         if (!archive) {
             const error = new Error('Installed Package content blob is missing');
@@ -288,8 +332,16 @@ export class PackageInstaller {
         if (digest(archive) !== version.packageContentHash) {
             throw new Error('Installed Package content hash mismatch');
         }
-        const inspected = inspectAtriaPackageContainer(archive);
-        validateContentComposition(inspected);
+        let cached = this.#parsedArchives.get(version.packageContentHash);
+        // The key is an acceleration hint only. Each open has read the
+        // owner's actual blob and checked its complete digest above.
+        if (cached && !cached.archive.equals(archive)) {
+            this.#parsedArchives.delete(version.packageContentHash);
+            this.#parsedArchiveBytes -= cached.bytes;
+            cached = null;
+        }
+        const inspected = cached?.inspected ?? inspectAtriaPackageContainer(archive);
+        if (!cached) validateContentComposition(inspected);
         if (
             inspected.manifest.packageId !== packageId
             || inspected.manifest.packageVersionId !== packageVersionId
@@ -297,13 +349,27 @@ export class PackageInstaller {
         ) {
             throw new Error('Installed PackageVersion metadata does not match Package content');
         }
+        if (cached) {
+            this.#parsedArchives.delete(version.packageContentHash);
+            this.#parsedArchives.set(version.packageContentHash, cached);
+        } else {
+            const bytes = parsedArchiveBytes(archive, inspected);
+            // A legal large package remains usable; memoization is optional.
+            if (bytes <= PARSED_ARCHIVE_BYTES) {
+                while (this.#parsedArchives.size >= PARSED_ARCHIVE_ENTRIES || this.#parsedArchiveBytes + bytes > PARSED_ARCHIVE_BYTES) {
+                    const oldest = this.#parsedArchives.keys().next().value;
+                    this.#parsedArchiveBytes -= this.#parsedArchives.get(oldest).bytes;
+                    this.#parsedArchives.delete(oldest);
+                }
+                this.#parsedArchives.set(version.packageContentHash, { bytes, archive: copyPackageBytes(archive), inspected: copyParsedArchive(inspected) });
+                this.#parsedArchiveBytes += bytes;
+            }
+        }
+        const opened = copyParsedArchive(inspected);
         return Object.freeze({
             packageVersion: version,
-            manifest: inspected.manifest,
-            sourceFiles: inspected.sourceFiles,
-            assets: inspected.assets,
-            preflight: inspected.preflight,
-            ...(includeArchive ? { archive } : {}),
+            ...opened,
+            ...(includeArchive ? { archive: copyPackageBytes(archive) } : {}),
         });
     }
 

@@ -4,13 +4,12 @@ A skill is a directory with one required file (`SKILL.md`) and optional sub-fold
 
 This page covers the conventions Atria (and Anthropic) expect, the choices you face along the way, and walks through two of the bundled skills as worked examples.
 
-## Two ways to write a skill
+## Write a Skill
 
-You don't have to type a SKILL.md by hand. Most users start one of two ways:
+Create or import a Skill in the existing manager:
 
 | Route | Where | Good for |
 |---|---|---|
-| **Have the LLM write it** | [AI Iteration Studio](/features/orchestrator/iteration-studio#authoring-skills-via-iter-studio) | Just tell the Studio what you want in a sentence; it drafts the SKILL.md, installs it, optionally attaches it to an agent. Recommended starting point. |
 | **Write it by hand** | [Skill management panel → Create new](/features/skills/management#tab-1-installed) | You already know exactly which sections you want and want full control over wording. |
 
 ![Inline skill editor with file tree + body pane](/screenshots/skills/rp-demo-8.5-editor-body-pasted.png)
@@ -56,7 +55,7 @@ Body starts here.
 
 | Field | Required | Constraint | Notes |
 |---|---|---|---|
-| `name` | yes | lowercase ASCII letters, digits, `-`, `_`; ≤128 chars | Must match the directory name. The orchestrator references this from `skills.visible`. |
+| `name` | yes | lowercase ASCII letters, digits, `-`, `_`; ≤128 chars | Must match the directory name. Consumers identify Skills using this name and the selected scope/version. |
 | `description` | yes | one sentence | Shown in the auto-injected `<available_skills>` catalog. Write it for the **agent**, not the user — explain when this skill is relevant. |
 | `license` | no | any string (free-form) | Anthropic-standard. Use if you're sharing outside your own setup. |
 | `metadata.author` | no | string | Anthropic-standard. |
@@ -120,7 +119,7 @@ In `SKILL.md`, point the agent at the sub-files explicitly:
 
 ## Worked example 1: `director-anti-cliche-zh`
 
-This bundled skill is a single ~3 KB SKILL.md with no sub-files. It enforces anti-cliché writing rules across the entire default director profile.
+This bundled skill is a single ~3 KB SKILL.md with no sub-files. It provides reusable anti-cliché guidance to consumers that select it.
 
 The frontmatter:
 
@@ -136,7 +135,7 @@ metadata:
 
 The body follows a "rule families" structure: each major cliché family (data-person prose, contract vocabulary, sublimation clichés, AI-coined labels) gets its own heading with concrete bilingual examples. There are no sub-files — the entire contract is small enough to live in `SKILL.md`.
 
-This skill is mode-level visible: every default director sub-agent (main agent, voice critic, continuity critic, plot brainstormer, …) sees it. It anchors the writing standard for the whole team.
+Select this guidance only for the consumers that need its writing rules; installed content does not imply automatic activation.
 
 ## Worked example 2: `event-summary-rules-zh`
 
@@ -156,7 +155,7 @@ metadata:
 
 The body opens by establishing a mental model ("index, not replay"), then defines a 7-step writing process with a gate loop, then enumerates the anti-paraphrase rules in detail. Crucially, it includes worked examples for every rule — both ✗ wrong and ✓ right side by side — because the discipline is subtle and an LLM with only abstract rules consistently violates them.
 
-This skill is per-sub-agent: only `memory_curator` has it in its `skills.visible` list (via `"+"` inheritance from the mode-level defaults). The voice critic doesn't need it; the continuity critic doesn't need it; only the curator does, and only when it's actively writing a summary.
+Skills provide reusable procedural guidance. Installing a Skill does not grant tools, Source access or execution authority to a Native Plan.
 
 ## Picking the right scope
 
@@ -166,11 +165,11 @@ When you create a new skill, you pick a scope. Heuristics:
 - **`preset`** — Use when the skill only makes sense paired with a specific Chat Completion preset (a model-tuned prompt convention, a sampler-dependent style rule). The skill rides with the preset on export.
 - **`character`** — Use when the skill encodes card-specific lore or voice rules. The skill rides with the character card on export (PNG metadata).
 
-You can change scope later — the skill manager subpanel has a **Move to…** action that does an atomic move. References in orchestrator profiles (which use **name only**, no scope prefix) stay stable across the move.
+Scope determines which content the current consumer selects.
 
 ## Related
 
-- [Skills overview](/features/skills/) — what a skill is, the three scopes
+- [Skills overview](/features/skills/) — what a skill is, available scopes
 - [Skill management](/features/skills/management) — install, import, export, scope migration
-- [Orchestrator integration](/features/skills/orchestrator-integration) — wire skills to a profile
+- [Orchestrator integration](/features/native-orchestration) — current Native execution boundaries
 - [Skills extension API](/development/extension-api/skills) — programmatic `context.skills.*`

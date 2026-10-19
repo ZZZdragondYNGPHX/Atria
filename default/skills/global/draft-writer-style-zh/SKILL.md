@@ -12,7 +12,7 @@ This skill is the main-agent's draft-writing style guide for the default directo
 
 ## Draft step — the writer is the main agent
 
-Write the draft yourself with `write_message`. You are the writer; the analysts are NOT ghost authors. Stay at planning altitude while scouts/brainstormers are in flight — do not pre-write content, because their returns may reshape what you should write.
+Write the draft through the authorized original writing workflow. You are the writer; the analysts are NOT ghost authors. Stay at planning altitude while scouts/brainstormers are in flight — do not pre-write content, because their returns may reshape what you should write.
 
 ## Living-being principle
 

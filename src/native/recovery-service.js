@@ -19,6 +19,7 @@ import { ConflictError, NotFoundError } from '../storage/errors.js';
 import { resourceFingerprint, resourceContentBytes, RECOVERY_RETENTION_MS } from '../storage/resource-catalog.js';
 import { readAccountContent, listAccountFiles } from '../storage/resource-accounting.js';
 import { RECOVERY_PROTOCOL, recoveryKey, recoveryRecords, recoveryReferences, documentReferencesKey, withRecoveryPublication } from './recovery-roots.js';
+import { orchestrationProjectReferences } from './orchestration/reference-roots.js';
 
 export const RECOVERABLE_DESCRIPTORS = {
     session: [K.session, 'sessionId'], package: [K.package, 'packageId'],
@@ -189,6 +190,11 @@ export class NativeRecoveryService {
         if (target.type === 'project' && records.some(row => row.key.kind === K.projectAgentTask
             && ['planning', 'working', 'evaluating', 'repair', 'committing'].includes(row.doc.status))) conflict('native_project_running');
         if (target.type === 'project' && nativeTaskScheduler.hasProjectWork(handle, target.id)) conflict('native_project_running');
+        if (target.type === 'project') {
+            const references = await orchestrationProjectReferences(tx, handle, target.id);
+            closure.references.push(...references.map(reference => ({ ...reference, name: reference.runId })));
+            if (references.length) conflict('native_project_orchestration_referenced');
+        }
         if (target.type === 'persona') {
             const result = await this.personas.usedBy(handle, { personaId: target.id });
             if (result.references.length) conflict('native_persona_referenced');
@@ -388,7 +394,7 @@ export class NativeRecoveryService {
                 // so quota admission measures the actual conversion, not a copy.
                 await tx.deleteResource(recoveryKey(handle, id));
                 for (const record of doc.records) {
-                    if (record.key.kind === K.runControl) {
+                    if ([K.runControl, K.rpRunControl].includes(record.key.kind)) {
                         const current = await tx.getResource(record.key);
                         await tx.putResource(record.key, pauseRecoveredRecord(record, current));
                     } else if ([K.agentGoal, K.agentEvolution].includes(record.key.kind)) {
@@ -487,6 +493,9 @@ export class NativeRecoveryService {
 
     async finishProjectRemoval(handle, doc) {
         if (doc.state !== 'preparing') conflict('native_recovery_not_ready');
+        if (doc.target.type === 'project') await this.engine.withTransaction(handle, async tx => {
+            if ((await orchestrationProjectReferences(tx, handle, doc.target.id)).length) conflict('native_project_orchestration_referenced');
+        });
         const source = this.sourceLocation(handle, doc.target), destination = this.payloadLocation(handle, doc);
         if (await this.exists(source)) {
             if (await this.exists(destination)) conflict('native_recovery_identity_conflict');
@@ -500,6 +509,8 @@ export class NativeRecoveryService {
             const current = await tx.getResource(recoveryKey(handle, doc.id));
             if (current?.doc.state === 'retained') return this.publicRecord(current.doc);
             if (current?.doc.state !== 'preparing') conflict('native_recovery_not_ready');
+            if (doc.target.type === 'project' && (await orchestrationProjectReferences(tx, handle, doc.target.id)).length)
+                conflict('native_project_orchestration_referenced');
             const retainedRecords = await recoveryRecords(tx, handle);
             for (const record of doc.records) {
                 if ((await recoveryReferences(tx, handle, record.key, retainedRecords)).some(reference => reference.recoveryId !== doc.id)) conflict('native_resource_retained_for_recovery');

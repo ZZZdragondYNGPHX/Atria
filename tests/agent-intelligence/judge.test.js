@@ -15,14 +15,14 @@ beforeAll(async () => {
     try {
         const bridge = await createLiveBridge({ engine: h.engine, handle: h.handle, config, secretPort, fetchImpl: async (_url, options) => {
             const body = JSON.parse(options.body);
-            return json(body.tools.some(tool => tool.function.name === 'write_message') ? { content: '', tool_calls: [
+            return json((body.tools ?? []).some(tool => tool.function.name === 'write_message') ? { content: '', tool_calls: [
                 { id: 'write', type: 'function', function: { name: 'write_message', arguments: '{"text":"NPC waits for your answer.","mode":"replace"}' } },
                 { id: 'final', type: 'function', function: { name: 'finalize', arguments: '{}' } },
             ] } : { content: 'No proposal ready.' });
         } });
         comparison = await runComparison({ candidate: { target: 'roundLimit', value: 5 }, split: 'promotion', mode: 'model', bridge });
     } finally { h.cleanup(); }
-}, 30000);
+}, 60000);
 
 async function judge(fetchImpl, prepare = () => {}) {
     const h = await makeTempFsEngine();
@@ -53,7 +53,7 @@ test('model judge sees blinded public outputs and formal outcomes; its typed obs
         value => { value.observations[0].secret = 'forged'; }]) {
         const forged = structuredClone(report); mutate(forged); expect(() => validateJudgeReport(forged, comparison)).toThrow();
     }
-}, 30000);
+}, 60000);
 
 test('malformed model ratings retain every pair and charge actual usage without a fake score or repair call', async () => {
     const report = await judge(async () => json({ content: '{"preference":"left"}' }));

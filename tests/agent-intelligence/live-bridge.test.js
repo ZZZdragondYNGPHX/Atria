@@ -110,7 +110,7 @@ test('live comparison captures independent baseline before candidates and binds 
         const bridge = await createLiveBridge({ engine: h.engine, handle: h.handle, config: { ...config, maxRequests: 6 },
             secretPort: { resolveSecret: async () => 'synthetic-private-key' }, fetchImpl: async (_url, options) => {
                 const body = JSON.parse(options.body);
-                const rp = body.tools.some(tool => tool.function.name === 'write_message');
+                const rp = (body.tools ?? []).some(tool => tool.function.name === 'write_message');
                 return json(rp ? { choices: [{ message: { content: '', tool_calls: [
                     { id: 'write', type: 'function', function: { name: 'write_message', arguments: JSON.stringify({ text: 'NPC waits for your decision.', mode: 'replace' }) } },
                     { id: 'final', type: 'function', function: { name: 'finalize', arguments: '{}' } },

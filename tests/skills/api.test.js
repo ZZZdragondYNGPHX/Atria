@@ -211,7 +211,7 @@ describe('public/scripts/skills/api.js — jsonFetch wrapper', () => {
         expect(r[0].installedHash).toBe('h1');
     });
 
-    test('list() encodes orch-preset scope as orch-preset/<mode>/<name>', async () => {
+    test('list() encodes preset scope as preset/<name>', async () => {
         const { skillsApi } = await import('../../public/scripts/skills/api.js');
         let capturedUrl;
         global.fetch = async (url) => {
@@ -219,10 +219,10 @@ describe('public/scripts/skills/api.js — jsonFetch wrapper', () => {
             return { ok: true, status: 200, json: async () => [] };
         };
 
-        await skillsApi.list({ scope: { kind: 'orch-preset', mode: 'director', name: 'rp4' } });
+        await skillsApi.list({ scope: { kind: 'preset', name: 'rp4' } });
 
         // outer encodeURIComponent turns `/` into `%2F`
-        expect(capturedUrl).toContain('scope=orch-preset%2Fdirector%2Frp4');
+        expect(capturedUrl).toContain('scope=preset%2Frp4');
     });
 
     test('deleteScope() issues DELETE with encoded scope', async () => {
@@ -235,10 +235,10 @@ describe('public/scripts/skills/api.js — jsonFetch wrapper', () => {
             return { ok: true, status: 204, json: async () => { throw new Error('should not be called'); } };
         };
 
-        const r = await skillsApi.deleteScope({ kind: 'orch-preset', mode: 'agenda', name: 'demo' });
+        const r = await skillsApi.deleteScope({ kind: 'preset', name: 'demo' });
 
         expect(capturedMethod).toBe('DELETE');
-        expect(capturedUrl).toBe('/api/skills/orch-preset%2Fagenda%2Fdemo');
+        expect(capturedUrl).toBe('/api/skills/preset%2Fdemo');
         expect(r).toBeNull();
     });
 
@@ -255,15 +255,15 @@ describe('public/scripts/skills/api.js — jsonFetch wrapper', () => {
         };
 
         await skillsApi.renameScope(
-            { kind: 'orch-preset', mode: 'loop', name: 'old' },
-            { mode: 'loop', name: 'new' },
+            { kind: 'preset', name: 'old' },
+            'new',
         );
 
         expect(capturedUrl).toBe('/api/skills/rename-scope');
         expect(capturedMethod).toBe('POST');
         expect(capturedBody).toEqual({
-            scope: { kind: 'orch-preset', mode: 'loop', name: 'old' },
-            newName: { mode: 'loop', name: 'new' },
+            scope: { kind: 'preset', name: 'old' },
+            newName: 'new',
         });
     });
 
@@ -280,15 +280,15 @@ describe('public/scripts/skills/api.js — jsonFetch wrapper', () => {
         };
 
         await skillsApi.copyScope(
-            { kind: 'orch-preset', mode: 'director', name: 'src' },
-            { kind: 'orch-preset', mode: 'director', name: 'dst' },
+            { kind: 'preset', name: 'src' },
+            { kind: 'preset', name: 'dst' },
         );
 
         expect(capturedUrl).toBe('/api/skills/copy-scope');
         expect(capturedMethod).toBe('POST');
         expect(capturedBody).toEqual({
-            fromScope: { kind: 'orch-preset', mode: 'director', name: 'src' },
-            toScope: { kind: 'orch-preset', mode: 'director', name: 'dst' },
+            fromScope: { kind: 'preset', name: 'src' },
+            toScope: { kind: 'preset', name: 'dst' },
         });
     });
 
@@ -298,14 +298,14 @@ describe('public/scripts/skills/api.js — jsonFetch wrapper', () => {
             ok: false,
             status: 404,
             statusText: 'Not Found',
-            text: async () => JSON.stringify({ error: 'renameScope: source scope not found: orch-preset/loop/missing' }),
+            text: async () => JSON.stringify({ error: 'renameScope: source scope not found: preset/missing' }),
         });
 
         let caught;
         try {
             await skillsApi.renameScope(
-                { kind: 'orch-preset', mode: 'loop', name: 'missing' },
-                { mode: 'loop', name: 'target' },
+                { kind: 'preset', name: 'missing' },
+                'target',
             );
         } catch (e) {
             caught = e;

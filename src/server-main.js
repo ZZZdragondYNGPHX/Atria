@@ -7,6 +7,7 @@ import dns from 'node:dns';
 import process from 'node:process';
 import http from 'node:http';
 import https from 'node:https';
+import { getNativeReviewOrigin } from './native/orchestration/review-origin.js';
 
 import cors from 'cors';
 import { csrfSync } from 'csrf-sync';
@@ -62,6 +63,7 @@ import {
     isRequestAdmin,
 } from './users.js';
 import { initStorage, getStorageEngine } from './storage/index.js';
+import { NativeHostOwner } from './storage/native-host-owner.js';
 import { recoverFsChatPatchJournals } from './storage/engines/fs-chat-range.js';
 import { maybeFailFast } from './storage/fail-fast.js';
 
@@ -841,6 +843,8 @@ async function preSetupTasks() {
             await cleanupPlugins();
         }
         diskCache.dispose();
+        await getNativeReviewOrigin(getStorageEngine()).close();
+        await getStorageEngine().close();
         setWindowTitle(consoleTitle);
         process.exit();
     };
@@ -1056,7 +1060,9 @@ function timedStartupStep(name, fn) {
 }
 
 const finishInitUserStorage = startStartupPhase('bootstrap.init-user-storage');
-initUserStorage(globalThis.DATA_ROOT)
+const storageHostOwner = new NativeHostOwner();
+storageHostOwner.acquireLocal(globalThis.DATA_ROOT)
+    .then(() => initUserStorage(globalThis.DATA_ROOT))
     .then((result) => {
         finishInitUserStorage();
         return result;
@@ -1068,6 +1074,8 @@ initUserStorage(globalThis.DATA_ROOT)
     .then(timedStartupStep('bootstrap.migrate-public-overrides', migratePublicOverrides))
     .then(timedStartupStep('bootstrap.verify-security', verifySecuritySettings))
     .then(timedStartupStep('bootstrap.init-storage', () => initStorage({
+        dataRoot: globalThis.DATA_ROOT,
+        hostOwner: storageHostOwner,
         mode: getConfigValue('storage.mode', 'fs'),
         directoriesByHandle: getUserDirectories,
         mysql: getConfigValue('storage.mysql', null),

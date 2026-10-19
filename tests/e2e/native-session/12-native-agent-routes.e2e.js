@@ -5,7 +5,7 @@ import { seedGenerationProfiles } from '../../native/helpers/generation-fixture.
 import { startServer, tearDownServer } from '../_lib/server.js';
 
 import { awaitMainUI } from '../_lib/page.js';
-import { createAndOpenNativeSession, seedNativeSessionDataRoot } from './_helpers.js';
+import { createAndOpenNativeSession, nativeRuntimeState, seedNativeSessionDataRoot } from './_helpers.js';
 
 let server; let routes; let sessionStart;
 
@@ -14,7 +14,7 @@ test.beforeAll(async () => {
     sessionStart = seeded.start;
     const root = resolve(seeded.dataRoot, seeded.handle);
     const engine = new FsEngine({ directoriesByHandle: () => ({ root, assets: resolve(root, 'assets') }) });
-    const resources = await seedGenerationProfiles({ engine, handle: seeded.handle, endpoint: 'https://example.invalid/completions', roles: ['orchestrator', 'orchestrator', 'memory', 'memory'] });
+    const resources = await seedGenerationProfiles({ engine, handle: seeded.handle, endpoint: 'https://example.invalid/completions', roles: ['narrator', 'narrator', 'memory', 'memory'] });
     routes = resources.routes;
     routes[0].displayName = 'Writer'; routes[1].displayName = 'Reviewer';
     await resources.persistence.saveRuntimeRoute(seeded.handle, routes[0]);
@@ -89,7 +89,7 @@ test('Runtime retrieval creates immutable revisions and Memory keeps exact selec
     const second = profiles.find(item => item.model === 'local-model-b');
     expect(first.retrievalProfileId).toBe(second.retrievalProfileId); expect(first.revision).not.toBe(second.revision);
     await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openAgentSection('memory'));
-    const workspace = page.locator('#agent-memory-workspace');
+    const workspace = page.locator('.atria-memory-workspace');
     await workspace.getByRole('button', { name: 'Maintenance', exact: true }).click();
     const form = workspace.locator('form').filter({ has: page.getByRole('heading', { name: 'Memory retrieval', exact: true }) });
     const ref = { scope: 'player', retrievalProfileId: first.retrievalProfileId, revision: first.revision };
@@ -112,7 +112,7 @@ test('Memory saves task-specific Native routes from its existing workspace', asy
     await awaitMainUI(page, server.baseURL);
     await page.evaluate(() => Object.assign(window.Atria.getContext().capabilitySettings.memory_graph, { recallApiPresetName: 'obsolete', extractPresetName: 'obsolete', ragRewriteLlmPresetName: 'obsolete' }));
     await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openAgentSection('memory'));
-    const workspace = page.locator('#agent-memory-workspace');
+    const workspace = page.locator('.atria-memory-workspace');
     await workspace.getByRole('button', { name: 'Maintenance', exact: true }).click();
     const form = workspace.locator('form').filter({ has: page.getByRole('heading', { name: 'Memory Runtime Routes', exact: true }) });
     const tasks = ['Extraction route', 'Schema assistance route'];
@@ -136,51 +136,105 @@ test('Memory saves task-specific Native routes from its existing workspace', asy
 });
 
 
-test('Agents saves distinct exact role routes at 320px', async ({ page }, info) => {
+test('Agents saves distinct exact node Model routes at 320px', async ({ page }, info) => {
     test.setTimeout(180000);
     await page.setViewportSize({ width: 320, height: 900 });
     await page.addInitScript(() => localStorage.setItem('language', 'en'));
     await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
     await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
     await awaitMainUI(page, server.baseURL);
-    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openAgentSection('orchestration'));
-    const workspace = page.locator('#agent-memory-workspace');
-    await expect(workspace.locator('.workspace-agent-card').first()).toBeVisible();
-    await workspace.locator('.workspace-more-menu > summary').click();
-    await workspace.getByRole('button', { name: 'Duplicate', exact: true }).click();
-    const inspector = workspace.locator('.atria-workspace-inspector');
-    for (let index = 0; index < 2; index++) {
-        await workspace.locator('.workspace-agent-card').nth(index).click();
-        const select = inspector.getByLabel('Native Runtime Route', { exact: true });
+    const created = await page.evaluate(async routes => {
+        const { createOrchestrationClient } = await import('/scripts/native/orchestration/client.js');
+        const { starterDocument, newNodeId, newEdgeId } = await import('/scripts/native/orchestration/plan-draft.js');
+        const client = createOrchestrationClient(), doc = starterDocument('Exact independent node routes');
+        const pins = await Promise.all(routes.map((route, index) => client.inspectDependency({ pinId: index ? 'reviewer.model' : 'writer.model', port: 'model',
+            resourceRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId } })));
+        const writer = doc.definition.nodes.find(node => node.kind === 'agent');
+        const output = doc.definition.nodes.find(node => node.kind === 'output');
+        writer.label = 'Writer'; writer.dependencyPinIds = pins.map(pin => pin.pinId); writer.policy.agentPinId = null;
+        const reviewer = { ...structuredClone(writer), nodeId: newNodeId(), label: 'Reviewer', inputs: [{ name: 'in', type: 'text', required: true }] };
+        doc.definition.nodes.splice(1, 0, reviewer); doc.dependencyPins = pins;
+        doc.definition.edges = [{ ...doc.definition.edges[0], to: { nodeId: reviewer.nodeId, port: 'in' } },
+            { ...doc.definition.edges[0], edgeId: newEdgeId(), from: { nodeId: reviewer.nodeId, port: 'out' }, to: { nodeId: output.nodeId, port: 'in' } }];
+        const { outcome } = await client.createPlan(doc);
+        Atria.shell.getNavigation().navigate('agents', { child: { id: 'plans:' + outcome.planId, label: doc.viewState.title, kind: 'detail' } });
+        return { planId: outcome.planId, pins };
+    }, routes.slice(0, 2));
+    const workspace = page.locator('[data-atria-domain-workspace=agents]');
+    await workspace.getByRole('button', { name: 'List', exact: true }).click();
+    const inspector = page.locator('.atria-orch-inspector');
+    for (const [index, label] of ['Writer', 'Reviewer'].entries()) {
+        await workspace.getByRole('list', { name: 'Nodes', exact: true }).locator('.atria-orch-row__main').filter({ hasText: label }).click();
+        const select = inspector.getByLabel('Model pin', { exact: true });
         await expect(select).toBeEnabled();
         await expect(select.locator('option', { hasText: 'memory' })).toHaveCount(0);
-        await select.selectOption(routes[index].runtimeRouteId);
+        await select.selectOption(created.pins[index].pinId);
+        await expect(select).toHaveValue(created.pins[index].pinId);
         await page.screenshot({ path: info.outputPath('agent-route-' + index + '-320.png') });
-        await inspector.getByRole('button', { name: 'Save', exact: true }).click();
-        await inspector.getByRole('button', { name: 'Close inspector', exact: true }).click();
+        await page.keyboard.press('Escape');
+        await workspace.getByRole('button', { name: 'Save draft', exact: true }).click();
+        await expect(workspace.locator('.atria-orch-editor')).toHaveAttribute('data-atria-draft-dirty', 'false');
     }
-    const selected = await page.evaluate(() => {
-        const presets = window.Atria.getContext().capabilitySettings.orchestrator.agentWorkspace.presets;
-        return presets.find(preset => !preset.id.startsWith('builtin-')).planTemplate.agents.slice(0, 2).map(agent => agent.modelProfile.nativeRouteRef);
-    });
-    expect(selected).toEqual(routes.slice(0, 2).map(route => ({ scope: 'player', runtimeRouteId: route.runtimeRouteId })));
-    await workspace.locator('.workspace-agent-card').first().click();
-    await expect(inspector.getByLabel('Native Runtime Route', { exact: true })).toHaveValue(routes[0].runtimeRouteId);
+    const saved = await page.evaluate(async planId => {
+        const { createOrchestrationClient } = await import('/scripts/native/orchestration/client.js');
+        return createOrchestrationClient().getPlan(planId);
+    }, created.planId);
+    const agents = saved.definition.nodes.filter(node => node.kind === 'agent');
+    expect(agents.map(node => saved.dependencyPins.find(pin => pin.pinId === node.policy.agentPinId).resourceRef))
+        .toEqual(routes.slice(0, 2).map(route => ({ scope: 'player', runtimeRouteId: route.runtimeRouteId })));
+    expect(saved.dependencyPins).toEqual(created.pins);
+    await workspace.getByRole('list', { name: 'Nodes', exact: true }).locator('.atria-orch-row__main').filter({ hasText: 'Writer' }).click();
+    await expect(inspector.getByLabel('Model pin', { exact: true })).toHaveValue(created.pins[0].pinId);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test('B3 Plan Source keeps malformed drafts across inspector close and saves through the original preset authority', async ({ page }, info) => {
-    await page.setViewportSize({ width:320,height:900 }); await page.addInitScript(()=>localStorage.setItem('language','en'));
-    await page.route('**/api/horde/text-models',route=>route.fulfill({ json:[] })); await page.route('**/api/horde/status',route=>route.fulfill({ json:{ ok:false } }));
-    await awaitMainUI(page,server.baseURL); await page.evaluate(()=>window.Atria.shell.getWorkspaceHost().openAgentSection('orchestration'));
-    const workspace = page.locator('#agent-memory-workspace'); await workspace.locator('.workspace-more-menu > summary').click(); await workspace.getByRole('button',{ name:'Duplicate',exact:true }).click();
-    await workspace.locator('.workspace-more-menu > summary').click(); await workspace.getByRole('button',{ name:'Preset settings',exact:true }).click();
-    const inspector = workspace.locator('.atria-workspace-inspector'); await inspector.getByText('Advanced Plan',{ exact:true }).click(); await inspector.getByText('Raw Plan JSON',{ exact:true }).click();
-    let editor = inspector.getByLabel('Native Plan JSON',{ exact:true }); const baseline = JSON.parse(await editor.inputValue()); await editor.fill('{ incomplete'); await inspector.getByRole('button',{ name:'Apply JSON to draft',exact:true }).click(); await expect(editor).toHaveValue('{ incomplete');
-    await inspector.getByRole('button',{ name:'Close inspector',exact:true }).click(); await workspace.locator('.workspace-more-menu > summary').click(); await workspace.getByRole('button',{ name:'Preset settings',exact:true }).click(); await inspector.getByText('Advanced Plan',{ exact:true }).click(); await inspector.getByText('Raw Plan JSON',{ exact:true }).click(); await expect(editor).toHaveValue('{ incomplete');
-    const next = structuredClone(baseline); next.agents[0].instructions = 'B3 exact Source saved'; await editor.fill(JSON.stringify(next,null,2)); await page.screenshot({ path:info.outputPath('b3-plan-source-320.png'),fullPage:true }); expect(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await inspector.getByRole('button',{ name:'Apply JSON to draft',exact:true }).click(); await inspector.getByRole('button',{ name:'Save',exact:true }).click();
-    const saved = await page.evaluate(()=>window.Atria.getContext().capabilitySettings.orchestrator.agentWorkspace.presets.find(p=>!p.id.startsWith('builtin-')).planTemplate); expect(saved).toEqual(next);
+test('B3 Native Plan rejects invalid Source without mutation and saves the retained valid draft through the Native authority', async ({ page }, info) => {
+    await page.setViewportSize({ width: 320, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    const baseline = await page.evaluate(async () => {
+        const { createOrchestrationClient } = await import('/scripts/native/orchestration/client.js');
+        const { starterDocument } = await import('/scripts/native/orchestration/plan-draft.js');
+        const client = createOrchestrationClient();
+        const { outcome } = await client.createPlan(starterDocument('B3 Native Source'));
+        Atria.shell.getNavigation().navigate('agents', { child: { id: 'plans:' + outcome.planId, label: outcome.viewState.title, kind: 'detail' } });
+        return outcome;
+    });
+    const rejected = await page.evaluate(async baseline => {
+        const { createOrchestrationClient } = await import('/scripts/native/orchestration/client.js');
+        const client = createOrchestrationClient(), definition = structuredClone(baseline.definition);
+        definition.nodes[0].kind = 'invalid-native-node-kind';
+        let failure = null;
+        try { await client.savePlan({ planId: baseline.planId, expectedDraftVersion: baseline.draftVersion, expectedDefinitionHash: baseline.definitionHash,
+            definition, dependencyPins: baseline.dependencyPins, viewState: baseline.viewState }); }
+        catch (error) { failure = { status: error.status, code: error.code }; }
+        return { failure, actual: await client.getPlan(baseline.planId) };
+    }, baseline);
+    expect(rejected.failure).toMatchObject({ status: 400, code: expect.any(String) });
+    expect(rejected.actual).toEqual(baseline);
+    const workspace = page.locator('[data-atria-domain-workspace=agents]');
+    await workspace.getByRole('button', { name: 'List', exact: true }).click();
+    await workspace.getByRole('list', { name: 'Nodes', exact: true }).locator('.atria-orch-row__main').first().click();
+    const inspector = page.locator('.atria-orch-inspector');
+    await inspector.getByLabel('Label', { exact: true }).fill('B3 exact Source saved');
+    await page.keyboard.press('Tab'); await page.keyboard.press('Escape');
+    await expect(inspector).toBeHidden();
+    await workspace.getByRole('button', { name: 'Open Inspector', exact: true }).click();
+    await expect(inspector.getByLabel('Label', { exact: true })).toHaveValue('B3 exact Source saved');
+    await page.screenshot({ path: info.outputPath('b3-plan-source-320.png'), fullPage: true });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.keyboard.press('Escape');
+    await workspace.getByRole('button', { name: 'Save draft', exact: true }).click();
+    await expect(workspace.locator('.atria-orch-editor')).toHaveAttribute('data-atria-draft-dirty', 'false');
+    const saved = await page.evaluate(async planId => {
+        const { createOrchestrationClient } = await import('/scripts/native/orchestration/client.js');
+        return createOrchestrationClient().getPlan(planId);
+    }, baseline.planId);
+    const next = structuredClone(baseline.definition); next.nodes[0].label = 'B3 exact Source saved';
+    expect(saved.definition).toEqual(next); expect(saved.dependencyPins).toEqual(baseline.dependencyPins);
+    expect(saved.draftVersion).toBe(baseline.draftVersion + 1); expect(saved.definitionHash).not.toBe(baseline.definitionHash);
 });
 
 test('Native browser retrieval offers bundled embedding models without extension inference globals', async ({ page }, info) => {
@@ -207,39 +261,45 @@ test('Native browser retrieval offers bundled embedding models without extension
 });
 
 
-test('A3 Agents fixes the Session scope and rejects a Memory reset confirmed after switching Session', async ({ page }, info) => {
+test('A3 Native Memory rejects a reset confirmed after switching Session without mutating either Source', async ({ page }, info) => {
     test.setTimeout(150000); await page.setViewportSize({ width: 390, height: 844 });
     await page.addInitScript(() => localStorage.setItem('language', 'en'));
     await page.route('**/api/horde/**', route => route.fulfill({ json: [] }));
     await awaitMainUI(page, server.baseURL);
     const first = await createAndOpenNativeSession(page, sessionStart);
-    await page.evaluate(async () => {
-        const store = await import('/scripts/agents/orchestrator/run-state/store.js');
-        const { getChatKey } = await import('/scripts/agents/orchestrator/snapshot-cache.js');
-        const runId = store.startRun({ mode: 'spec', chatKey: getChatKey(Atria.getContext()), quiet: true });
-        store.finishRun({ runId, status: 'completed', finalText: 'First Session evidence' });
-        Atria.shell.getWorkspaceHost().openAgents();
-    });
-    const workspace = page.locator('#agent-memory-workspace');
-    await expect(workspace).toHaveAttribute('data-atria-agent-session', first.sessionId);
-    await expect(workspace.locator('.atria-workspace-context')).toContainText('Session');
+    expect(await nativeRuntimeState(page)).toMatchObject({ sessionId: first.sessionId, revisionId: first.revisionId, history: false });
     await page.evaluate(() => Atria.shell.getWorkspaceHost().openAgentSection('memory'));
-    await workspace.getByRole('button', { name: 'Maintenance', exact: true }).click();
-    await workspace.getByRole('button', { name: 'Reset current chat memory', exact: true }).click();
+    const memory = page.locator('.atria-memory-workspace');
+    await memory.getByRole('button', { name: 'Maintenance', exact: true }).click();
+    await expect(memory.getByRole('button', { name: 'Reset current chat memory', exact: true })).toBeEnabled();
+    // Use the real workspace port so the exact rejected result remains observable
+    // even when changing Session disposes the old workspace's UI operation handler.
+    await page.evaluate(() => {
+        const context = Atria.getContext();
+        const ports = context.getCapabilityApi('memory-graph').getWorkspacePorts(context);
+        window.memoryResetAttempt = ports.resetGraph().then(value => ({ ok: true, value }), error => ({ ok: false, message: error.message }));
+    });
     const popup = page.locator('dialog.popup[open]').last(); await expect(popup).toBeVisible();
     let mutations = 0;
     page.on('request', req => { if (/\/api\/native\/session\/(?:state|states)/.test(req.url()) && req.method() !== 'GET') mutations++; });
     const second = await createAndOpenNativeSession(page, sessionStart);
     await popup.locator('.popup-button-ok').click();
-    await page.evaluate(() => Atria.shell.getWorkspaceHost().openAgentSection('run'));
-    await expect(workspace).toHaveAttribute('data-atria-agent-session', second.sessionId);
+    expect(await page.evaluate(() => window.memoryResetAttempt)).toEqual({ ok: false, message: 'The current Session changed. Reopen Memory before resetting.' });
     expect(mutations).toBe(0);
-    await page.evaluate(() => Atria.shell.getWorkspaceHost().openAgentSection('run'));
-    await expect(workspace).toContainText('No active run');
-    await expect(workspace.getByRole('button', { name: 'Stop Run', exact: true })).toBeHidden();
-    await page.evaluate(() => Atria.shell.getWorkspaceHost().openAgentSection('orchestration'));
-    await expect(workspace.getByRole('button', { name: 'Bind as Session', exact: true })).toBeEnabled();
-    await expect(workspace.getByRole('button', { name: 'Bind as character', exact: true })).toBeDisabled();
+    expect(await nativeRuntimeState(page)).toMatchObject({ sessionId: second.sessionId, revisionId: second.revisionId, history: false });
+    await page.evaluate(() => Atria.shell.getWorkspaceHost().openAgentSection('runs'));
+    const workspace = page.locator('[data-atria-domain-workspace=agents]');
+    const type = workspace.getByLabel('Source type', { exact: true });
+    expect(await type.locator('option').evaluateAll(options => options.map(option => option.value)))
+        .toEqual(['', 'native_session', 'project', 'rp_chat']);
+    await type.selectOption('native_session');
+    await workspace.getByLabel('Session', { exact: true }).selectOption(second.sessionId);
+    await expect(workspace).toContainText('No Runs for this source');
+    await expect(workspace.getByRole('button', { name: 'Request cancel…', exact: true })).toBeHidden();
+    // Confirm that returning to the original Session finds the same Source revision.
+    await page.evaluate(async sessionId => { const mod = await import('/script.js'); await mod.openNativeSession(sessionId); }, first.sessionId);
+    expect(await nativeRuntimeState(page)).toMatchObject({ sessionId: first.sessionId, revisionId: first.revisionId });
+    expect(mutations).toBe(0);
     await page.screenshot({ path: info.outputPath('a3-agents-session-390.png'), fullPage: true });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

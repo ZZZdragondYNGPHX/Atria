@@ -2,7 +2,7 @@
 
 `context.skills.*` 是用于安装、读取、编辑、打包 Skills 的 JavaScript 接口。扩展通过 `Atria.getContext()` 拿到它；CardApp 在自己的 `ctx.skills` 上拿到同样的形状。
 
-Skill 是编排器使用的[知识包](/zh-CN/features/skills/)；这套 API 是支撑 Skill 管理子面板、内嵌编辑器、迭代工作台 17 个 Skill 工具的读写传输层。
+Skill 是供获授权消费者使用的[知识包](/zh-CN/features/skills/)；这套 API 是支撑 Skill 管理子面板、内嵌编辑器、迭代工作台 17 个 Skill 工具的读写传输层。
 
 ::: tip 请先读用户文档
 关于概念模型 —— 作用域、可见性策略、嵌入生命周期 —— 从 [Skills 概览](/zh-CN/features/skills/) 开始。本页是 API 参考。
@@ -208,7 +208,7 @@ install(opts: {
 delete(scope: SkillScope, name: string): Promise<void>
 ```
 
-原子移除 Skill 目录。引用该 Skill 的编排器 profile 仍保留 `skills.visible` 里的旧名 —— 派遣时引用软失败。
+原子移除 Skill 目录。删除不会重写其他消费者已保存的版本引用；
 
 ### `rename(scope, oldName, newName)`
 
@@ -228,7 +228,7 @@ moveScope(
 ): Promise<void>
 ```
 
-跨作用域原子文件系统 move。编排器引用（只按名字）依然有效。想要覆盖目标，先删目标作用域里的同名 Skill 再 move 即可。
+跨作用域原子文件系统 move。已保存的版本引用不会自动迁移。想要覆盖目标，先删目标作用域里的同名 Skill 再 move 即可。
 
 ### `importBundled()`
 
@@ -277,7 +277,7 @@ packForEmbed(opts: {
 
 `mode: 'auto'` 时打包器按每 Skill 自选：小且纯文本的用内联，更大或二进制的用存档。
 
-编排器的嵌入导出钩子会把载荷写入 `preset.extensions.atria.embedded_skills_source`（预设）或 `character.data.extensions.atria.embedded_skills_source`（角色卡），在保存时持久化。
+Skill 的嵌入导出钩子会把载荷写入 `preset.extensions.atria.embedded_skills_source`（预设）或 `character.data.extensions.atria.embedded_skills_source`（角色卡），在保存时持久化。
 
 ### `previewExtractEmbed(opts)`
 
@@ -363,8 +363,7 @@ CardApp 的 `ctx.skills` 接口与 `context.skills.*` 1:1 镜像 —— 签名�
 
 ```js
 async function init(ctx) {
-  // 列出对任何人可见的 Skill（CardApp 不受编排器
-  // per-agent 可见性过滤 —— 它们看到的是原始库存）。
+  // 列出此 CardApp API 暴露的 Skill 库存。
   const skills = await ctx.skills.list({ scope: 'all' });
 
   // 读一个 Skill 的正文
@@ -384,5 +383,5 @@ async function init(ctx) {
 - [Skills 概览](/zh-CN/features/skills/) —— 什么是 Skill、三种作用域
 - [创作 Skill](/zh-CN/features/skills/authoring) —— frontmatter + 正文约定
 - [Skill 管理](/zh-CN/features/skills/management) —— 同等操作的 UI 接口
-- [编排器集成](/zh-CN/features/skills/orchestrator-integration) —— 运行时如何按 `skills.visible` / `deny` 过滤
+- [编排器集成](/zh-CN/features/native-orchestration) —— 原生消费的来源与版本边界
 - [扩展 API 概览](/zh-CN/development/extension-api/) —— `context.*` 上的其它命名空间

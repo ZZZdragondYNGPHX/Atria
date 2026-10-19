@@ -32,6 +32,8 @@ import fs from 'node:fs';
 
 import storage from 'node-persist';
 import request from 'supertest';
+import { jest } from '@jest/globals';
+import { withChatWrite } from '../../../src/storage/repositories/chat-write-boundary.js';
 
 import { ENDPOINT_HARNESSES, makeEndpointHarness } from '../harness/endpoint-harness.js';
 import { router as usersAdminRouter } from '../../../src/endpoints/users-admin.js';
@@ -91,12 +93,16 @@ describe.each(ENDPOINT_HARNESSES)('users-admin /delete on $name', ({ mode }) => 
     let harness;
     let prevDataRoot;
     let targetHandle;
+    let incoming;
 
     beforeEach(async () => {
         targetHandle = nextTargetHandle();
         harness = await makeEndpointHarness({
             mode,
-            mount: (app) => { app.use('/api/users', usersAdminRouter); },
+            mount: (app) => {
+                app.use((_req, _res, next) => { next(); incoming?.(); });
+                app.use('/api/users', usersAdminRouter);
+            },
             // The admin issuer (`admin`) is intentionally different from both
             // the primary handle (`u`) and the deletion target so the
             // self-delete guard at users-admin.js:874 cannot match.
@@ -144,10 +150,29 @@ describe.each(ENDPOINT_HARNESSES)('users-admin /delete on $name', ({ mode }) => 
     });
 
     afterEach(async () => {
+        incoming = null; jest.restoreAllMocks();
         if (harness) await harness.cleanup();
         // Restore the DATA_ROOT the suite set in jest.setup.js so later
         // tests in the same Jest worker keep seeing the public/ fixture.
         globalThis.DATA_ROOT = prevDataRoot;
+    });
+
+    test('deletion waits for the target chat domain before revoking identity or entering Engine', async () => {
+        let enter, release, requestArrived;
+        const entered = new Promise(resolve => { enter = resolve; });
+        const released = new Promise(resolve => { release = resolve; });
+        const arrived = new Promise(resolve => { requestArrived = resolve; });
+        const holder = withChatWrite(targetHandle, async () => { enter(); await released; });
+        await entered;
+        incoming = requestArrived;
+        const remove = jest.spyOn(storage, 'removeItem'), deleteUser = jest.spyOn(harness.engine, 'deleteUser');
+        const pending = request(harness.app).post('/api/users/delete').send({ handle: targetHandle, purge: true }).then(value => value);
+        try {
+            await arrived;
+            expect(remove).not.toHaveBeenCalled(); expect(deleteUser).not.toHaveBeenCalled();
+        } finally { release(); await Promise.allSettled([holder, pending]); }
+        expect((await pending).status).toBe(204);
+        expect(await storage.getItem(`${KEYV_PREFIX}${targetHandle}`)).toBeUndefined();
     });
 
     test('REGRESSION purge=true: every Repo-backed table is empty for the deleted handle', async () => {
@@ -167,12 +192,12 @@ describe.each(ENDPOINT_HARNESSES)('users-admin /delete on $name', ({ mode }) => 
             .send({ handle: targetHandle, purge: true })
             .expect(204);
 
-        // fs/sqlite: handler's purge branch rm'd the user root. Re-create
-        // it so the engine's lazy dir resolution doesn't ENOENT on the
-        // post-delete probes (the Repo `.get(...)` calls below).
-        if (mode === 'fs' || mode === 'sqlite') {
-            fs.mkdirSync(harness.extraDirs[targetHandle].root, { recursive: true });
-        }
+        // Purge also removes the identity owned by the old Host. That Host
+        // must refuse access; a new Host can inspect the empty data without
+        // treating the old ownership as valid for a recreated directory.
+        await expect(getChatRepo().get(targetHandle, 'Alice', 'c1'))
+            .rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
+        await harness.reopenEngine();
 
         // Probe every Repo-backed resource for the deleted user. Each must
         // come back null. The wrapped-object expectation

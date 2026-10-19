@@ -526,24 +526,11 @@ export function createGameLlmRuntime(options = {}) {
         turn = recalled.turn;
         assertContextCurrent(); recalled.assertCurrent?.();
 
-        const orchestrationMode = String(
-            input.orchestrationMode
-            || options.getOrchestrationMode?.()
-            || '',
-        ).trim().toLowerCase();
-        if (['spec', 'agenda', 'loop', 'director'].includes(orchestrationMode)) {
-            input.transition?.('orchestrating', {
-                mode: orchestrationMode,
-            });
-        }
-        input.transition?.('narrating', {
-            producer: orchestrationMode === 'director' ? 'director' : 'narrator',
-        });
+        input.transition?.('narrating', { producer: 'narrator' });
 
         assertContextCurrent(); recalled.assertCurrent?.();
         const narrative = await narrativeCoordinator.produce(turn, {
             assertContextCurrent: () => { assertContextCurrent(); recalled.assertCurrent?.(); },
-            orchestrationMode,
             abortSignal: input.abortSignal,
         });
         turn = narrative.turn;

@@ -1,3 +1,4 @@
+import { nativeRetrievalHeaders } from './source-settings.js';
 import fetch from 'node-fetch';
 import { SECRET_KEYS, readSecret } from '../endpoints/secrets.js';
 import { attachInspectionEndpoint } from '../request-inspector.js';
@@ -59,6 +60,7 @@ export async function getNomicAIBatchVector(texts, source, directories, sourceSe
         headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${key}`,
+            ...nativeRetrievalHeaders(request),
         },
         body: JSON.stringify(body),
     });

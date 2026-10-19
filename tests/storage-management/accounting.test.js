@@ -16,10 +16,11 @@ import { persistCharXAssets } from '../../src/charx.js';
 import { writeMetadataIndex } from '../../src/endpoints/image-metadata.js';
 
 const hash = 'a'.repeat(64);
-const fields = { scopeId: hash, evidenceId: hash, sourceDigest: hash, taskId: 'task-1', goalId: 'goal-1', commitId: 'commit-1', checkpointId: hash, scope: 'probe', namespace: 'atri_probe', head: 'head-1', resourceType: 'core.prompt-module', resourceId: 'probe-resource', revision: 'v1' };
+const fields = { scopeId: hash, evidenceId: hash, sourceDigest: hash, taskId: 'task-1', goalId: 'goal-1', commitId: 'commit-1', checkpointId: hash, scope: 'probe', namespace: 'atri_probe', head: 'head-1', resourceType: 'core.prompt-module', resourceId: 'probe-resource', revision: 'v1', bindingId: hash, recordType: 'event', recordId: 'event:0' };
+const families = { planId: 'orchestrationPlan', planRevisionId: 'orchestrationRevision', runId: 'orchestrationRun', commandId: 'orchestrationCommand', controlId: 'rpControl' };
 function fixtureKey(kind, handle) {
     return Object.fromEntries([['kind', kind], ...getNativeResourceKeyFields(kind).map(field => [field,
-        field === 'handle' ? handle : fields[field] ?? createNativeId(field === 'saveId' ? 'savePoint' : field.slice(0, -2)),
+        field === 'handle' ? handle : fields[field] ?? createNativeId(families[field] ?? (field === 'saveId' ? 'savePoint' : field.slice(0, -2))),
     ])]);
 }
 
@@ -145,6 +146,22 @@ describe.each(CONTRACT_HARNESSES)('resource accounting — $name', ({ make, name
         await h.engine.withTransaction(h.handle, async tx => { await tx.putResource(two, nativeRecord(doc)); await tx.deleteResource(one); });
         expect((await measure()).totalBytes).toBe(resourceContentBytes(doc));
         expect(await h.engine.withTransaction(h.handle, tx => tx.getResource(one))).toBeNull();
+    });
+    if (/Mysql|Pg/.test(name)) test('a detached account-lock continuation reacquires admission after its old scope has closed', async () => {
+        let wakeLate, late, enteredLate = false, enteredSecond, finishSecond;
+        const lateGate = new Promise(resolve => { wakeLate = resolve; });
+        const secondEntered = new Promise(resolve => { enteredSecond = resolve; });
+        const secondGate = new Promise(resolve => { finishSecond = resolve; });
+        await h.engine.withAccountLock(h.handle, async () => {
+            late = (async () => { await lateGate; return h.engine.withAccountLock(h.handle, async () => { enteredLate = true; }); })();
+        });
+        const second = h.engine.withAccountLock(h.handle, async () => { enteredSecond(); await secondGate; });
+        try {
+            await secondEntered; wakeLate();
+            await new Promise(resolve => setImmediate(resolve));
+            expect(enteredLate).toBe(false);
+        } finally { finishSecond(); wakeLate(); await second; await late; }
+        expect(enteredLate).toBe(true);
     });
     if (/Mysql|Pg/.test(name)) test('independent shared-database engines serialize quota admission with a single-connection pool', async () => {
         const other = new h.engine.constructor({ url: h.url, poolSize: 1 });

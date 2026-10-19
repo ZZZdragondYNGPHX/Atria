@@ -638,25 +638,25 @@ describe('SkillRepository - scope-level ops (deleteScope / renameScope / copySco
     }
 
     describe('deleteScope', () => {
-        test('removes an entire orch-preset scope directory including all skills', async () => {
-            const scope = { kind: 'orch-preset', mode: 'spec', name: 'test-preset' };
+        test('removes an entire preset scope directory including all skills', async () => {
+            const scope = { kind: 'preset', name: 'test-preset' };
             await installSkill(scope, 'alpha');
             await installSkill(scope, 'beta');
             expect((await repo.list({ scope })).map(s => s.name).sort()).toEqual(['alpha', 'beta']);
 
             await repo.deleteScope(scope);
 
-            const dir = pjoin(tmpRoot, 'skills', 'orch-preset', 'spec', 'test-preset');
+            const dir = pjoin(tmpRoot, 'skills', 'preset', 'test-preset');
             await expect(fs.access(dir)).rejects.toThrow();
         });
 
         test('is idempotent on missing scope (no throw)', async () => {
-            const scope = { kind: 'orch-preset', mode: 'spec', name: 'never-existed' };
+            const scope = { kind: 'preset', name: 'never-existed' };
             await expect(repo.deleteScope(scope)).resolves.toBeUndefined();
         });
 
-        test('rejects invalid scope kind for orch-preset (missing mode)', async () => {
-            await expect(repo.deleteScope({ kind: 'orch-preset', name: 'x' })).rejects.toThrow();
+        test('rejects invalid scope kind', async () => {
+            await expect(repo.deleteScope({ kind: 'retired', name: 'x' })).rejects.toThrow();
         });
 
         test('works for preset scope kind (sanity)', async () => {
@@ -669,41 +669,34 @@ describe('SkillRepository - scope-level ops (deleteScope / renameScope / copySco
     });
 
     describe('renameScope', () => {
-        test('renames orch-preset scope preserving all skills', async () => {
-            const fromScope = { kind: 'orch-preset', mode: 'spec', name: 'old-name' };
+        test('renames preset scope preserving all skills', async () => {
+            const fromScope = { kind: 'preset', name: 'old-name' };
             await installSkill(fromScope, 'alpha');
 
-            await repo.renameScope(fromScope, { mode: 'spec', name: 'new-name' });
+            await repo.renameScope(fromScope, 'new-name');
 
-            const oldDir = pjoin(tmpRoot, 'skills', 'orch-preset', 'spec', 'old-name');
-            const newDir = pjoin(tmpRoot, 'skills', 'orch-preset', 'spec', 'new-name');
+            const oldDir = pjoin(tmpRoot, 'skills', 'preset', 'old-name');
+            const newDir = pjoin(tmpRoot, 'skills', 'preset', 'new-name');
             await expect(fs.access(oldDir)).rejects.toThrow();
             await expect(fs.access(newDir)).resolves.toBeUndefined();
 
-            const listed = await repo.list({ scope: { kind: 'orch-preset', mode: 'spec', name: 'new-name' } });
+            const listed = await repo.list({ scope: { kind: 'preset', name: 'new-name' } });
             expect(listed.map(s => s.name)).toContain('alpha');
         });
 
-        test('rejects orch-preset cross-mode rename (mode must match)', async () => {
-            const fromScope = { kind: 'orch-preset', mode: 'spec', name: 'foo' };
-            await installSkill(fromScope, 'a');
-            await expect(repo.renameScope(fromScope, { mode: 'director', name: 'foo' }))
-                .rejects.toThrow(/mode/i);
-        });
-
         test('rejects rename when destination already exists', async () => {
-            const fromScope = { kind: 'orch-preset', mode: 'spec', name: 'src' };
-            const dstScope = { kind: 'orch-preset', mode: 'spec', name: 'dst' };
+            const fromScope = { kind: 'preset', name: 'src' };
+            const dstScope = { kind: 'preset', name: 'dst' };
             await installSkill(fromScope, 'a');
             await installSkill(dstScope, 'b');
-            await expect(repo.renameScope(fromScope, { mode: 'spec', name: 'dst' }))
+            await expect(repo.renameScope(fromScope, 'dst'))
                 .rejects.toThrow(/exists|already/i);
         });
 
         test('rejects rename on missing source scope', async () => {
             await expect(repo.renameScope(
-                { kind: 'orch-preset', mode: 'spec', name: 'nope' },
-                { mode: 'spec', name: 'new' },
+                { kind: 'preset', name: 'nope' },
+                'new',
             )).rejects.toThrow();
         });
 
@@ -717,9 +710,9 @@ describe('SkillRepository - scope-level ops (deleteScope / renameScope / copySco
     });
 
     describe('copyScope', () => {
-        test('copies orch-preset scope with all skills to destination', async () => {
-            const fromScope = { kind: 'orch-preset', mode: 'spec', name: 'src' };
-            const toScope = { kind: 'orch-preset', mode: 'spec', name: 'copy' };
+        test('copies preset scope with all skills to destination', async () => {
+            const fromScope = { kind: 'preset', name: 'src' };
+            const toScope = { kind: 'preset', name: 'copy' };
             await installSkill(fromScope, 'alpha');
             await installSkill(fromScope, 'beta');
 
@@ -732,8 +725,8 @@ describe('SkillRepository - scope-level ops (deleteScope / renameScope / copySco
         });
 
         test('rejects copy when destination already exists', async () => {
-            const fromScope = { kind: 'orch-preset', mode: 'spec', name: 'src' };
-            const toScope = { kind: 'orch-preset', mode: 'spec', name: 'dst' };
+            const fromScope = { kind: 'preset', name: 'src' };
+            const toScope = { kind: 'preset', name: 'dst' };
             await installSkill(fromScope, 'a');
             await installSkill(toScope, 'b');
             await expect(repo.copyScope(fromScope, toScope)).rejects.toThrow(/exists|already/i);
@@ -741,50 +734,30 @@ describe('SkillRepository - scope-level ops (deleteScope / renameScope / copySco
 
         test('rejects copy on missing source', async () => {
             await expect(repo.copyScope(
-                { kind: 'orch-preset', mode: 'spec', name: 'nope' },
-                { kind: 'orch-preset', mode: 'spec', name: 'x' },
+                { kind: 'preset', name: 'nope' },
+                { kind: 'preset', name: 'x' },
             )).rejects.toThrow();
         });
 
-        test('rejects cross-kind copy (orch-preset to preset)', async () => {
-            const fromScope = { kind: 'orch-preset', mode: 'spec', name: 'src' };
+        test('rejects cross-kind copy (preset to character)', async () => {
+            const fromScope = { kind: 'preset', name: 'src' };
             await installSkill(fromScope, 'a');
-            await expect(repo.copyScope(fromScope, { kind: 'preset', name: 'x' }))
+            await expect(repo.copyScope(fromScope, { kind: 'character', characterFile: 'x.png' }))
                 .rejects.toThrow(/kind/i);
         });
 
-        test('rejects cross-mode orch-preset copy', async () => {
-            await expect(
-                repo.copyScope(
-                    { kind: 'orch-preset', mode: 'director', name: 'RP-src' },
-                    { kind: 'orch-preset', mode: 'agenda', name: 'RP-dst' },
-                ),
-            ).rejects.toThrow(/unsupported cross-mode/i);
-        });
     });
 
-    describe('list({scope: "all"}) includes orch-preset skills', () => {
-        test('orch-preset skills appear in the "all" enumeration', async () => {
-            await repo.install({
-                scope: { kind: 'orch-preset', mode: 'spec', name: 'preset-a' },
-                payload: { files: [{
-                    path: 'SKILL.md', encoding: 'utf8',
-                    content: '---\nname: orch-a\ndescription: x\n---\n',
-                }] },
-            });
-            await repo.install({
-                scope: { kind: 'orch-preset', mode: 'director', name: 'preset-b' },
-                payload: { files: [{
-                    path: 'SKILL.md', encoding: 'utf8',
-                    content: '---\nname: orch-b\ndescription: y\n---\n',
-                }] },
-            });
-            const all = await repo.list({ scope: 'all' });
-            const labels = all
-                .filter(e => e.scope.kind === 'orch-preset')
-                .map(e => `${e.scope.mode}/${e.scope.name}:${e.name}`)
-                .sort();
-            expect(labels).toEqual(['director/preset-b:orch-b', 'spec/preset-a:orch-a']);
-        });
+    test('retired scope data stays on disk but is inaccessible and excluded from inventory', async () => {
+        const scope = { kind: 'orch-preset', mode: 'spec', name: 'legacy' };
+        const dir = pjoin(tmpRoot, 'skills', 'orch-preset', 'spec', 'legacy', 'old');
+        await fs.mkdir(dir, { recursive: true });
+        const file = pjoin(dir, 'SKILL.md');
+        const content = '---\nname: old\ndescription: preserved\n---\n';
+        await fs.writeFile(file, content);
+        await expect(repo.list({ scope })).rejects.toThrow();
+        await expect(repo.deleteScope(scope)).rejects.toThrow();
+        await expect(repo.list({ scope: 'all' })).resolves.toEqual([]);
+        expect(await fs.readFile(file, 'utf8')).toBe(content);
     });
 });

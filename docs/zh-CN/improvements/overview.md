@@ -13,7 +13,7 @@ Atria 对 SillyTavern 的改进不是简单的功能堆叠，而是从数据传�
 | 功能 | [角色卡绑定预设与人设](/zh-CN/improvements/card-bound-presets) | 角色卡可携带推荐预设和默认人设 |
 | 功能 || 追踪生成请求的完整生命周期与 Token 用量 |
 | 功能 | [预设关联世界书](/zh-CN/improvements/preset-world-info) | 切换预设时自动激活对应的世界书 |
-| 功能 | [Skills](/zh-CN/features/skills/) | 兼容 Anthropic 的本地知识包，编排器 agent 按需读取 |
+| 功能 | [Skills](/zh-CN/features/skills/) | 兼容 Anthropic 的本地知识包，按当前上下文提供过程指导 |
 | 基础设施 | [统一生成层](/zh-CN/improvements/generation-layer) | 多后端生成请求统一封装与 Token 计量 |
 | 基础设施 | [性能优化](/zh-CN/improvements/performance) | 并行加载、懒加载、延迟初始化等启动和运行时优化 |
 | 基础设施 | [WebSocket 代理](/zh-CN/improvements/ws-proxy) | 持久 WS 隧道传输，心跳保活与流偏移恢复 |
@@ -78,9 +78,7 @@ Atria 内置了统一的函数调用（Function Calling）运行时，支持两�
 
 ### Skill
 
-多 agent 编排器 profile 的系统提示词往往越来越长 —— 每条可复用的写作规则、每份评审方法、每份工作流契约，过去都内联在 `systemPrompt` 字段里，经常在多个子代理里重复拷贝。Atria 引入了 **Skill（skills）**：兼容 Anthropic 的本地知识包（`SKILL.md` + frontmatter + 可选子文件），agent 按需读取。Skill 按名字寻址（引用里不带作用域前缀），住在三种作用域下（`global` / `preset` / `character`），派遣时按后者优先解析。
-
-编排器默认 director profile 自带 24 个出厂 Skill，覆盖共享写作规则、主代理工作流，以及每个子代理一份方法 Skill。同一格式与 Anthropic Claude Code 双向可移植 —— Skill 可不经转换跨平台往返。Skill 可以跟角色卡（PNG 元数据）或预设（嵌入载荷）一起分发，所以分发卡片也就分发了支撑它工作的写作规则。Skill 管理子面板覆盖安装、编辑、迁移作用域、嵌入导出；迭代工作台 AI 可以通过专用工具从长 `systemPrompt` 文本里抽出可复用规则到 Skill。概念模型见 [Skills 概览](/zh-CN/features/skills/)，格式见 [创作 Skill](/zh-CN/features/skills/authoring)。
+Skill 使用 `SKILL.md` 和可选辅助文件保存可复用的写作及方法指导。在 **Extensions → Skills** 管理安装内容。Global、Project、Package、预设与角色卡上下文选择对应内容，当前消费者决定调用方式及精确版本 pin。Skill 不授予工具或 Source 权限。原有角色卡及预设嵌入功能保留。见 [Skills](/zh-CN/features/skills/)和[创作 Skill](/zh-CN/features/skills/authoring)。
 
 ## 基础设施
 

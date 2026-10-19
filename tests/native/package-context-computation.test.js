@@ -26,7 +26,7 @@ function contextFixture() {
     f.sync(); return f;
 }
 const options = f => ({ modelContextLimit: 4096, responseReserve: 128, safetyMarginTokens: 8,
-    countTokens: text => Math.max(1, text.length), laneCaps: { knowledge: 64, current_state_event: 1024 },
+    countTokens: text => Math.max(1, text.length), laneCaps: { knowledge: 64, current_state_event: 4096 },
     deriveContext: createPackageContextDerivation(f.base, f.installed) });
 
 describe('Native dynamic context and Knowledge main chain', () => {

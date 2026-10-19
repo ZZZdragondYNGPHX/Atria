@@ -5,7 +5,14 @@ import { getVersionedModelPromptResourceIdentity } from './resources.js';
 
 // Read exact resources through their existing owners, including installed, frozen Programs.
 export async function readPromptControls(host, handle, route) {
-    const resolver = new RouteResolver({ persistence: host.persistence, library: host.library, providers: host.providers,
+    const resolver = createHostRouteResolver(host);
+    const resolved = await resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, role: route.role });
+    return flattenPromptProgram(resolved, { validateBindings: false }).parameters;
+}
+
+/** Exact read-through over the original resource owners; no execution grant. */
+export function createHostRouteResolver(host) {
+    return new RouteResolver({ persistence: host.persistence, library: host.library, providers: host.providers,
         getScopedResource: async (owner, ref) => {
             const entries = ref.scope === 'project'
                 ? (await host.studio.getProject(owner, ref.projectId)).source.resources
@@ -17,8 +24,6 @@ export async function readPromptControls(host, handle, route) {
             return entry && { snapshot: entry.resource, origin: ref.scope === 'project' ? { scope: 'project', projectId: ref.projectId } : entry.origin };
         },
     });
-    const resolved = await resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, role: route.role });
-    return flattenPromptProgram(resolved, { validateBindings: false }).parameters;
 }
 
 export function validatePromptOverrides(definitions, parameters) {

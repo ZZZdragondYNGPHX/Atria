@@ -7,7 +7,6 @@ export function resolveSkillScopes(entries, context = {}, { legacy = false } = {
     const layers = [entry => entry.scope.kind === 'global'];
     if (legacy) {
         layers.push(entry => entry.scope.kind === 'preset' && context.presetName && entry.scope.name === context.presetName,
-            entry => entry.scope.kind === 'orch-preset' && context.orchPreset && entry.scope.mode === context.orchPreset.mode && entry.scope.name === context.orchPreset.name,
             entry => entry.scope.kind === 'character' && context.characterFile && entry.scope.characterFile === context.characterFile);
     } else {
         layers.push(entry => entry.scope.kind === 'project' && context.projectId && entry.scope.projectId === context.projectId,

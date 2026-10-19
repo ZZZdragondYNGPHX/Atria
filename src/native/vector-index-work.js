@@ -5,12 +5,17 @@ import { performance } from 'node:perf_hooks';
 import vectra from 'vectra';
 import { sync as writeFileAtomic } from 'write-file-atomic';
 import { assertWritable } from '../storage/read-only-mode.js';
+import sanitize from 'sanitize-filename';
 
 const writes = new Map();
 let queued = 0;
 const MAX_BYTES = 16777216;
 const indexIdentity = value => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
 const unavailable = () => Object.assign(new Error('Bounded Native index work unavailable'), { code: 'native_retrieval_compute_unavailable' });
+
+/** Same existing physical namespace for HTTP and trusted Context consumers. */
+export const nativeRetrievalIndexPath = (directories, collectionId, indexScope) => path.resolve(directories.vectors, 'atri-retrieval', sanitize(collectionId), sanitize(indexScope));
+
 function indexValues(doc) {
     if (!Array.isArray(doc?.items) || doc.items.length > 10000 || doc.metadata_config?.indexed?.length) throw unavailable();
     let values = 0;
@@ -100,8 +105,8 @@ async function withIndexPermit(indexPath, signal, operation, write) {
 }
 
 export async function queryNativeIndexes({ indexes, query, vector, topK, threshold, includeVectors = false, getVector, compute, signal, mode = 'query' }) {
-    if (!['query', 'list'].includes(mode) || (mode === 'list' && indexes.length !== 1)) throw unavailable();
-    const listing = mode === 'list';
+    if (!['query', 'list', 'list-many'].includes(mode) || (mode === 'list' && indexes.length !== 1)) throw unavailable();
+    const listing = mode !== 'query';
     const supplied = vector !== undefined;
     if (supplied && (!Array.isArray(vector) || !vector.length || vector.length > 65536 || vector.some(n => !Number.isFinite(n)))) throw unavailable();
     // The original caller may wait behind an index writer. Freeze its vector
@@ -138,10 +143,12 @@ export async function queryNativeIndexes({ indexes, query, vector, topK, thresho
             // Existing empty indexes also have no candidates. No provider
             // usage is invented for this deterministic no-send decision.
             if (listing) {
-                result = (stores[0]?.doc.items ?? []).map(item => {
+                const hashes = doc => (doc?.items ?? []).map(item => {
                     if (item.metadata?.hash === null || !Number.isFinite(Number(item.metadata?.hash))) throw unavailable();
                     return Number(item.metadata.hash);
                 });
+                result = mode === 'list-many' ? Object.fromEntries(indexes.map(row => [row.collectionId,
+                    hashes(stores.find(store => store.collectionId === row.collectionId)?.doc)])) : hashes(stores[0]?.doc);
             } else if (!count) result = { groups: {}, single: { hashes: [], metadata: [] } };
             else {
                 if (compute) await compute.publishLocalIndex(() => { signal?.throwIfAborted(); });

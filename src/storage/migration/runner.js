@@ -1,7 +1,8 @@
 import { setReadOnly, withReadOnlyBypass } from '../read-only-mode.js';
 import { PRESET_FOLDER_BY_API_ID } from '../repositories/preset-repo.js';
 import { BUCKET_TO_DIR } from '../repositories/named-doc-repo.js';
-import { snapshotUser, restoreFromSnapshot, removeSnapshot } from './backup.js';
+import { snapshotUser, restoreFromSnapshot, removeSnapshot, assertSnapshotRestoreAllowed } from './backup.js';
+import { withChatWrite } from '../repositories/chat-write-boundary.js';
 import { recordsEqual } from './equality.js';
 import { serializeNativeDocument } from '../../native/repositories/common.js';
 import { NATIVE_STORAGE_KINDS } from '../engines/native-resource-key.js';
@@ -174,7 +175,11 @@ export class MigrationRunner {
      * scratch source handle, which is correct because the runner is operating
      * ON the source.
      */
-    async migrateUser(srcHandle, { onProgress = () => {}, destHandle = null } = {}) {
+    async migrateUser(srcHandle, options = {}) {
+        return withChatWrite(options.destHandle ?? srcHandle, () => this.#migrateUser(srcHandle, options));
+    }
+
+    async #migrateUser(srcHandle, { onProgress = () => {}, destHandle = null } = {}) {
         const effectiveDestHandle = destHandle != null ? destHandle : srcHandle;
         const stats = {
             native: 0,
@@ -192,6 +197,19 @@ export class MigrationRunner {
             errors: [],
             verified: false,
         };
+
+        // The destination may be an older, previously used Engine. Its
+        // existing Run history, banks and immutable pins cannot be replaced
+        // by the source snapshot. Check before snapshot/rollback can touch
+        // the shared user root; category selection is not release authority.
+        if (!this._dryRun && this._dstEngine) {
+            try {
+                await assertSnapshotRestoreAllowed({ engine: this._dstEngine, handle: effectiveDestHandle });
+            } catch (err) {
+                err.message = `migration failed before snapshot for ${srcHandle}: ${err.message}`;
+                throw err;
+            }
+        }
 
         // 1. Snapshot the source state first (skipped on dry-run AND when
         //    skipInternalSnapshot is set — cross-mode-restore passes the
@@ -333,6 +351,9 @@ export class MigrationRunner {
         if (this._categories.native) {
             if (!this._srcEngine || !this._dstEngine) throw new Error('Native migration requires source and destination engines');
             for (const kind of NATIVE_STORAGE_KINDS) {
+                // Ownership belongs to the destination Host lifetime, never
+                // to imported user data or the source Engine's generation.
+                if (kind === 'atri_host_fence') continue;
                 if (this._skipNativeKinds.has(kind)) continue;
                 const records = await this._srcEngine.withTransaction(srcHandle, tx => tx.listResources({ kind, handle: srcHandle }));
                 for (const sourceRecord of records) {
@@ -340,7 +361,7 @@ export class MigrationRunner {
                     const key = { ...record.key, handle: dstHandle };
                     if (!this._dryRun) {
                         await this._dstEngine.withTransaction(dstHandle, async tx => {
-                            if ([NATIVE_RESOURCE_KINDS.runControl, NATIVE_RESOURCE_KINDS.connectionProfile, NATIVE_RESOURCE_KINDS.modelProfile, NATIVE_RESOURCE_KINDS.runtimeRoute].includes(key.kind)) {
+                            if ([NATIVE_RESOURCE_KINDS.runControl, NATIVE_RESOURCE_KINDS.rpRunControl, NATIVE_RESOURCE_KINDS.connectionProfile, NATIVE_RESOURCE_KINDS.modelProfile, NATIVE_RESOURCE_KINDS.runtimeRoute].includes(key.kind)) {
                                 const current = await tx.getResource(key);
                                 record = pauseRecoveredRecord({ ...record, key }, current);
                             }

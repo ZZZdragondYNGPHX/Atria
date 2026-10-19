@@ -14,7 +14,7 @@ import yaml from 'yaml';
  * @param {object} opts
  * @param {object | null | undefined} opts.inline   Body-supplied object (may be partial).
  * @param {object | null | undefined} opts.fromConfig  Config snapshot for the same mode.
- * @returns {{ engine: { url: string, poolSize?: number }, inlineFields: { url?: string, poolSize?: number } | null } | null}
+ * @returns {{ engine: { url: string, poolSize?: number, nativeHostTopology?: string }, inlineFields: { url?: string, poolSize?: number, nativeHostTopology?: string } | null } | null}
  *          Returns null when neither source supplied a non-empty URL.
  */
 export function resolveStorageDbConfig({ inline, fromConfig }) {
@@ -32,10 +32,18 @@ export function resolveStorageDbConfig({ inline, fromConfig }) {
     const engine = { url };
     const effectivePoolSize = inlinePoolSize ?? configPoolSize;
     if (effectivePoolSize !== null) engine.poolSize = effectivePoolSize;
+    // A declaration applies to its exact configured endpoint. Typing a new
+    // URL cannot silently inherit a previously verified deployment boundary.
+    const inlineTopology = inlineObj && Object.hasOwn(inlineObj, 'nativeHostTopology');
+    const topology = inlineTopology ? inlineObj.nativeHostTopology
+        : inlineUrl && inlineUrl !== configUrl ? undefined : configObj?.nativeHostTopology;
+    if (topology !== undefined) engine.nativeHostTopology = topology;
 
     const inlineFields = {};
     if (inlineUrl) inlineFields.url = inlineUrl;
     if (inlinePoolSize !== null) inlineFields.poolSize = inlinePoolSize;
+    if (inlineTopology) inlineFields.nativeHostTopology = inlineObj.nativeHostTopology;
+    else if (inlineUrl && inlineUrl !== configUrl && configObj?.nativeHostTopology !== undefined) inlineFields.nativeHostTopology = 'unknown';
 
     return {
         engine,
@@ -69,8 +77,8 @@ export function resolveStorageDbConfig({ inline, fromConfig }) {
  *        Same safety gate /config/save runs. Wired in by the caller so this
  *        module doesn't depend on the users-admin layer.
  * @param {'fs'|'sqlite'|'mysql'|'postgres'} opts.targetMode
- * @param {{ url?: string, poolSize?: number } | null} [opts.mysqlInline]
- * @param {{ url?: string, poolSize?: number } | null} [opts.postgresInline]
+ * @param {{ url?: string, poolSize?: number, nativeHostTopology?: string } | null} [opts.mysqlInline]
+ * @param {{ url?: string, poolSize?: number, nativeHostTopology?: string } | null} [opts.postgresInline]
  * @returns {Promise<{ ok: true } | { ok: false, error: string }>}
  */
 export async function persistStorageBackendToConfig(opts) {
@@ -109,8 +117,8 @@ export async function persistStorageBackendToConfig(opts) {
  * @param {string} content
  * @param {{
  *     targetMode: 'fs'|'sqlite'|'mysql'|'postgres',
- *     mysqlInline: { url?: string, poolSize?: number } | null,
- *     postgresInline: { url?: string, poolSize?: number } | null,
+ *     mysqlInline: { url?: string, poolSize?: number, nativeHostTopology?: string } | null,
+ *     postgresInline: { url?: string, poolSize?: number, nativeHostTopology?: string } | null,
  * }} opts
  * @returns {string}
  */
@@ -125,6 +133,7 @@ export function rewriteStorageBlock(content, opts) {
         if (Number.isFinite(mysqlInline.poolSize)) {
             doc.setIn(['storage', 'mysql', 'poolSize'], mysqlInline.poolSize);
         }
+        if (Object.hasOwn(mysqlInline, 'nativeHostTopology')) doc.setIn(['storage', 'mysql', 'nativeHostTopology'], mysqlInline.nativeHostTopology);
     }
     if (targetMode === 'postgres' && postgresInline) {
         if (typeof postgresInline.url === 'string' && postgresInline.url) {
@@ -133,6 +142,7 @@ export function rewriteStorageBlock(content, opts) {
         if (Number.isFinite(postgresInline.poolSize)) {
             doc.setIn(['storage', 'postgres', 'poolSize'], postgresInline.poolSize);
         }
+        if (Object.hasOwn(postgresInline, 'nativeHostTopology')) doc.setIn(['storage', 'postgres', 'nativeHostTopology'], postgresInline.nativeHostTopology);
     }
     return doc.toString();
 }

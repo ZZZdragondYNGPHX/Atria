@@ -1,15 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { prepareRetrievalCompute } from '../../src/native/retrieval-compute.js';
+import { executeProjectSkillWork } from '../../src/native/skill-invocation.js';
+import { seedGenerationProfiles } from '../native/helpers/generation-fixture.js';
 import { createSkillRepository } from '../../src/skills/repository.js';
 import { createGitClient } from '../../src/git/client.js';
 import { AssetStore, KnowledgeRepo, ProjectAgentService, ProjectStore, StudioPreviewHost, StudioService, WorldRepo } from '../../src/native/index.js';
-import { runMainAgentLoop } from '../../public/scripts/agents/orchestrator/director-runtime.js';
-import { createMessageEditorHandle } from '../../public/scripts/message-takeover.js';
-import { clearCurrentRun, getCurrentRun, startRun } from '../../public/scripts/agents/orchestrator/run-state/store.js';
+
+
 import { runNativeStudioAgentTask } from '../../public/scripts/native/studio-agent.js';
 import { getRuntimeEvidence, rememberRuntimeEvidence } from '../../public/scripts/native/runtime-client.js';
 import { makeTempFsEngine } from '../storage/harness/fs-harness.js';
-import { deferred } from '../agent-runtime/fakes.js';
 import { hash, canonical } from './cases.js';
 import { skillEntryKey } from '../../public/shared/extension-contract.js';
 import { boundedSkillReadOptions } from '../../public/shared/skill-invocation.js';
@@ -22,92 +23,7 @@ function verifyOwnedRoot(dataRoot, root, marker, token) {
     if (fs.realpathSync(dataRoot) !== root || fs.readFileSync(marker, 'utf8') !== token) throw new Error('Fixture cleanup ownership mismatch');
 }
 
-export async function runRp(entry, fixture, capture, evaluation = null) {
-    const player = { mes: fixture.input, is_user: true };
-    const playerBefore = hash(player);
-    const chat = [player, { mes: '', extra: { reasoning: '' }, is_user: false }];
-    const profile = { mode: 'director', director: { mainAgent: { systemPrompt: 'Express only the NPC response. Preserve the player choice and use the revised visible promise.' }, subAgents: [], maxRounds: 6,
-        tools: { message: { write_message: true, apply_message_patches: true } } } };
-    if (evaluation) {
-        profile.director.mainAgent.systemPrompt = evaluation.settings.rpPrompt;
-        profile.director.maxRounds = evaluation.settings.roundLimit;
-    }
-    const payload = { messages: [{ role: 'system', content: canonical(fixture.memory.visible) }, { role: 'user', content: fixture.input }] };
-    const requestTexts = [];
-    const run = async (variantId, generate, controller = new AbortController()) => {
-        clearCurrentRun();
-        const runId = startRun({ mode: 'director', chatKey: entry.caseId });
-        capture.refs.runIds.push(runId);
-        const variant = { messageId: `${entry.caseId}:npc`, variantId, runId, requestIds: [] };
-        capture.refs.messageVariants.push(variant);
-        const handle = createMessageEditorHandle({ generationType: variantId === 'v1' ? 'normal' : 'regenerate', flushIntervalMs: 0, owner: fixture.actor, abortSignal: controller.signal });
-        handle.setOnUpdate((text, reasoning) => { chat[1].mes = text; chat[1].extra.reasoning = reasoning; });
-        const promise = runMainAgentLoop({ handle, profile, eventData: { abortSignal: controller.signal, placeholderMessageId: 1 }, deps: {
-            chat, runId, getContentPayload: () => payload, contextForNotes: {},
-            generateTaskStreamForMainAgent: async request => {
-                if (capture.refs.requestIds.length >= entry.limits.maxRequests) throw Object.assign(new Error('Script request budget'), { code: 'script_request_budget' });
-                const requestId = `${capture.trialId}:${evaluation?.bridge ? 'model' : 'script'}-request-${capture.refs.requestIds.length + 1}`;
-                evaluation?.beforeSend(requestId);
-                capture.refs.requestIds.push(requestId); variant.requestIds.push(requestId);
-                requestTexts.push(canonical(request.taskMessages));
-                capture.prompts.push(request.taskMessages);
-                if (evaluation?.bridge) {
-                    const result = await evaluation.bridge.rp({ requestId, trialId: capture.trialId, fixtureHash: entry.fixtureHash,
-                        messages: request.taskMessages, tools: request.tools, signal: request.abortSignal,
-                        onSend: () => { if (entry.caseId.startsWith('rp_variant') && variantId === 'v1') generate(request); } });
-                    return result.response;
-                }
-                return generate(request);
-            },
-        } }).finally(() => {
-            const state = getCurrentRun();
-            if (state?.runId === runId) capture.toolCalls += state.rounds.flatMap(round => round.sections).filter(section => section.kind === 'tool_result').length;
-        });
-        return { promise, handle, runId };
-    };
-    try {
-        if (entry.caseId.startsWith('rp_variant')) {
-            const entered = deferred(); const late = deferred(); const controller = new AbortController();
-            const old = await run('v1', () => { entered.resolve(); return late.promise; }, controller);
-            // A rejected send must also release this waiter (e.g. a shared budget).
-            await Promise.race([entered.promise, old.promise]);
-            controller.abort();
-            // Observe terminal abort before regeneration; transport result arrives late.
-            try { await old.promise; } catch (error) { if (error.name !== 'AbortError' && !(evaluation?.bridge && error.code === 'generation_cancelled')) throw error; }
-            const next = await run('v2', () => completion([call('write-new', 'write_message', { text: fixture.reply, mode: 'replace' }), call('final-new', 'finalize')]));
-            await next.promise;
-            const committedText = evaluation?.bridge ? chat[1].mes : fixture.reply;
-            late.resolve(completion([call('late-write', 'write_message', { text: 'STALE COMPLETION', mode: 'replace' }), call('late-final', 'finalize')]));
-            await Promise.resolve();
-            let rejected = false;
-            try { old.handle.setText('STALE EDIT'); } catch (error) { rejected = error.code === 'editor_aborted'; }
-            capture.observe('stale_completion', { rejected, text: chat[1].mes, oldStatus: (await old.handle.complete).status }, { rejected: true, text: committedText, oldStatus: 'aborted' });
-            capture.observe('variant_identity', { runs: new Set(capture.refs.runIds).size, requestsDistinct: new Set(capture.refs.requestIds).size === capture.refs.requestIds.length, newStatus: (await next.handle.complete).status }, { runs: 2, requestsDistinct: true, newStatus: 'committed' });
-        } else {
-            const main = await run('v1', () => completion([
-                call('write', 'write_message', { text: fixture.reply, mode: 'replace', messageId: 0, owner: 'player' }), call('final', 'finalize'),
-            ]));
-            await main.promise;
-            const outcome = await main.handle.complete;
-            if (entry.caseId.startsWith('rp_agency')) {
-                if (evaluation?.bridge) capture.observe('player_ownership', hash(player), playerBefore);
-                else capture.observe('player_ownership', { player: hash(player), npc: chat[1].mes }, { player: playerBefore, npc: fixture.reply });
-                capture.observe('single_completion', outcome.status, 'committed');
-            } else {
-                capture.observe('request_exposure', { visible: requestTexts.every(text => fixture.memory.visible.every(item => text.includes(item.text))), private: requestTexts.some(text => text.includes(fixture.memory.private.text)) }, { visible: true, private: false });
-                capture.observe('revision_reference', requestTexts.every(text => text.includes('revision') && text.includes('Revision: meet')), true);
-                capture.completeness.push('production_memory_resolution', 'memory_behavior_application');
-            }
-        }
-        capture.finalTextStatus = chat[1].mes ? 'passed' : 'unavailable';
-        capture.reviewStatus = 'not_run';
-        capture.observe('isolation', hash(player), playerBefore);
-        capture.completeness.push('skill_preset_exact_pinning', 'durable_trace');
-        if (evaluation) capture.artifact = { domain: 'rp_chat', output: chat[1].mes, status: 'observed',
-            sourceHash: hash(fixture), outcomeHash: hash(chat[1]), requestHashes: capture.prompts.map(hash),
-            targetConsumed: capture.prompts.every(messages => canonical(messages).includes(JSON.stringify(evaluation.settings.rpPrompt).slice(1, -1))) };
-    } finally { clearCurrentRun(); }
-}
+export { runRp } from './native-rp-adapter.js';
 
 function treeHash(root) {
     const files = [];
@@ -136,6 +52,10 @@ export async function runProject(entry, fixture, capture, evaluation = null) {
         simulationRunner: async ({ source }) => ({ displayName: source.project.displayName, mode: 'dry-run' }),
     });
     const agent = new ProjectAgentService({ studio, maxRepairRounds: 2 });
+    const seeded = await seedGenerationProfiles({ ...h, roles: ['studio'], endpoint: 'http://fixture.invalid' });
+    await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1,
+        allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget: { maxRequests: 6, maxTokens: 64000,
+            localWork: { maxJobs: 64, maxItems: 100, maxInputBytes: 16777216 } } } });
     let task; let canaryRoot; let before; let source; let originalRevision; let conflictRevision;
     try {
         source = projectSource(fixture.projectName, evaluation ? entry.fixtureHash : null);
@@ -177,6 +97,13 @@ export async function runProject(entry, fixture, capture, evaluation = null) {
         globalThis.fetch = async (url, options = {}) => {
             const route = String(url); const body = options.body ? JSON.parse(options.body) : null;
             const method = options.method || 'GET';
+            if (method === 'POST' && route === '/api/native/generation/skill-work') {
+                const compute = await prepareRetrievalCompute({ handle: h.handle, context: body.computeContext,
+                    profile: { mode: 'embed', purpose: 'studio.skill.v1' }, persistence: seeded.persistence, agent, studio });
+                return response(await executeProjectSkillWork({ ...body, compute, repository: skillRepo, projectId: source.project.projectId,
+                    settings: body.operation === 'list' ? { skills: evaluation ? { [skillEntryKey(skill)]: { paths: { studio: 'always' } } } : {} } : undefined }));
+            }
+            if (method === 'GET' && route === '/api/native/generation/configuration') return response({ routes: seeded.routes });
             if (method === 'GET' && route === '/api/skills?scope=all') return response(evaluation ? [skill] : []);
             if (method === 'GET' && route === '/api/native/extensions/settings') return response({ value: { skills: evaluation ? { [skillEntryKey(skill)]: { paths: { studio: 'always' } } } : {} } });
             const skillBase = `/api/skills/${encodeURIComponent('project/' + source.project.projectId)}/${skill.name}`;

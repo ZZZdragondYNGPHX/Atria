@@ -35,7 +35,7 @@ import { StatsRepo } from '../repositories/stats-repo.js';
 import { ENGINE_DUMP_ENTRY, ENGINE_META_ENTRY, SCRATCH_HANDLE_PREFIX } from '../engine-backup-entries.js';
 import { setReadOnly, withReadOnlyBypass } from '../read-only-mode.js';
 import { MigrationRunner } from './runner.js';
-import { snapshotUser, restoreFromSnapshot } from './backup.js';
+import { snapshotUser, restoreFromSnapshot, assertSnapshotRestoreAllowed } from './backup.js';
 import { acquireMigrationLock, releaseMigrationLock, makeHolderId, startHeartbeat, stopHeartbeat } from './lock.js';
 import { materializeTransientSource } from './transient-source.js';
 import { pruneRestoreRecoveryPoints } from '../../backup-sync/restore-recovery-retention.js';
@@ -46,6 +46,8 @@ import { AssetStore } from '../../native/repositories/asset-store.js';
 import { NATIVE_RESOURCE_KINDS } from '../../native/contracts.js';
 import { retainedBlobHashes, withRecoveryPublication } from '../../native/recovery-roots.js';
 import { nativeTaskScheduler } from '../../native/task-scheduler.js';
+import { pauseRecoveredRecord } from '../../native/recovery-effects.js';
+import { withChatWrite } from '../repositories/chat-write-boundary.js';
 import { accountQuotaLimit, AccountQuotaError } from '../account-quota.js';
 import { measureAccount } from '../resource-accounting.js';
 import { assertAccountPath } from '../path-boundary.js';
@@ -72,7 +74,7 @@ const CONVERT_STAGES = [
  * @property {object} currentEngine
  * @property {Function} [getUserDirectories]   — directoriesByHandle factory for the live engine.
  * @property {(event: object) => void} [onProgress]
- * @property {{ mysqlUrl?: string, postgresUrl?: string, mysqlPoolSize?: number, postgresPoolSize?: number }} [scratchCreds]
+ * @property {{ mysqlUrl?: string, postgresUrl?: string, mysqlPoolSize?: number, postgresPoolSize?: number, mysqlNativeHostTopology?: string, postgresNativeHostTopology?: string }} [scratchCreds]
  */
 
 
@@ -84,6 +86,7 @@ async function clearSelectedEngineCategories(engine, handle, selection) {
         if (categories.native) {
             await engine.withTransaction(handle, async tx => {
                 for (const kind of NATIVE_STORAGE_KINDS) {
+                    if (kind === NATIVE_RESOURCE_KINDS.hostFence) continue;
                     if (PERSONA_BACKUP_KINDS.includes(kind)) continue;
                     for (const record of await tx.listResources({ kind, handle })) {
                         if (kind === NATIVE_RESOURCE_KINDS.runControl && record.doc?.mode === 'ironman' && record.doc.status === 'terminal') continue;
@@ -195,6 +198,13 @@ async function clearSelectedFsTreeCategories(dirs, selection, includeGlobalExten
  * @param {CrossModeRestoreOpts} opts
  */
 export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mode, opts) {
+    if (!dirs?.root) throw new Error('crossModeRestore: dirs.root is required');
+    // Drain live consumers before snapshot/clear, and keep publication and
+    // rollback in the same original domain. Scratch I/O cannot release it.
+    return withChatWrite(path.basename(dirs.root), () => restoreAcrossModes(zipPath, engineMeta, dirs, selection, mode, opts));
+}
+
+async function restoreAcrossModes(zipPath, engineMeta, dirs, selection, mode, opts) {
     const { dataRoot, currentEngine, onProgress, scratchCreds, signal = null } = opts;
     throwIfRestoreCancelled(signal);
     if (!zipPath) throw new Error('crossModeRestore: zipPath is required');
@@ -248,10 +258,16 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
 
     let cleanupWarning = null;
     try {
+        await assertSnapshotRestoreAllowed({ engine: currentEngine, handle, userRoot: dirs.root });
         const quotaBytes = await accountQuotaLimit(currentEngine, handle);
         const initialUsage = quotaBytes >= 0 ? await measureAccount({ engine: currentEngine, handle, directories: dirs }) : null;
         if (initialUsage?.totalBytes === null) throw new AccountQuotaError('storage_usage_unavailable');
-        const terminalControls = selection.native ? await currentEngine.withTransaction(handle, async tx => (await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.runControl, handle })).filter(row => row.doc?.mode === 'ironman' && row.doc.status === 'terminal')) : [];
+        // Category replacement must not erase this store's newer original
+        // Session/RP spend before the incoming backup can be reviewed.
+        const retainedControls = selection.native ? await currentEngine.withTransaction(handle, async tx => [
+            ...await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.runControl, handle }),
+            ...await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.rpRunControl, handle }),
+        ]) : [];
         // 1. Snapshot the full live destination before every restore. Merge
         //    can mutate both engine rows and filesystem categories, so it must
         //    have the same rollback guarantee as replace/full restores.
@@ -300,6 +316,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             scratchHandle,
             scratchCreds,
             reuseEngine: sameEngineKind ? currentEngine : null,
+            hostLifecycle: currentEngine.nativeHostLifecycle,
         });
         let personaReview = null;
         const retainedAvatars = [];
@@ -342,7 +359,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             );
         }
         await withReadOnlyBypass(() => currentEngine.withTransaction(handle, async tx => {
-            for (const row of terminalControls) await tx.putResource(row.key, row);
+            for (const row of retainedControls) await tx.putResource(row.key, pauseRecoveredRecord(row, row));
         }));
 
         // 3. MigrationRunner: scratch source → live destination.
@@ -429,6 +446,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             },
             cleanupWarning,
         };
+        await currentEngine.nativeHostLifecycle?.afterRestore(handle);
         return {
             restoredCount: extractResult.restoredCount,
             failedCount: extractResult.failedCount,
@@ -444,6 +462,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             },
         };
     } catch (err) {
+        if (!snapshotPath && err?.code === 'native_orchestration_retention_review_required') throw err;
         if (isRestoreCancelledError(err) && !snapshotPath) {
             if (transient) {
                 try { await transient.cleanup(); } catch { /* best-effort */ }

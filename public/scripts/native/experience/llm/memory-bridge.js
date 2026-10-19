@@ -239,7 +239,7 @@ export function createMemoryRecallBridge(options = {}) {
 }
 
 
-function nativeTurnMemoryQuery(snapshot, userInput, information) {
+export function nativeTurnMemoryQuery(snapshot, userInput, information) {
     const parts = [];
     const input = String(userInput ?? '').trim();
     if (input) parts.push('User input: ' + truncate(input, 3000));
@@ -273,9 +273,7 @@ export async function recallNativePackageTurnMemory(options = {}) {
     }
 
     const baseContext = options.context || globalThis.Atria?.getContext?.() || null;
-    const context = baseContext && snapshot
-        ? Object.assign(Object.create(baseContext), { nativeSnapshot: snapshot })
-        : baseContext;
+    const context = Object.assign(Object.create(baseContext), { nativeSnapshot: snapshot });
     const memoryApi = options.memoryApi || context?.getCapabilityApi?.('memory-graph') || null;
     const query = nativeTurnMemoryQuery(snapshot, options.userInput, information);
     if (!memoryApi || typeof memoryApi.openSession !== 'function') {

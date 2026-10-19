@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -86,6 +86,43 @@ function runRaceContract(backendLabel, makeClient) {
 
             const log = await client.log(dir, 5);
             expect(log).toHaveLength(1);
+        });
+
+        test('unchanged synchronization never exposes an unpublished Source revision', async () => {
+            const client = makeClient();
+            await client.init(dir);
+            await client.setConfig(dir, 'user.name', 'test');
+            await client.setConfig(dir, 'user.email', 'test@local');
+            fs.writeFileSync(path.join(dir, 'doc.txt'), 'unchanged');
+            expect(await client.commitIfChanged(dir, 'first')).toBe(true);
+            const originalHead = await git.resolveRef({ fs, dir, ref: 'HEAD' }), observed = [];
+            const commit = git.commit;
+            const spy = jest.spyOn(git, 'commit').mockImplementation(async args => {
+                const result = await commit(args);
+                observed.push(await git.resolveRef({ fs, dir, ref: 'HEAD' }));
+                return result;
+            });
+            try {
+                expect(await client.commitIfChanged(dir, 'synchronize')).toBe(false);
+                expect(observed).toHaveLength(backendLabel === 'builtin' ? 1 : 0);
+                expect(observed.every(oid => oid === originalHead)).toBe(true);
+                expect(await git.resolveRef({ fs, dir, ref: 'HEAD' })).toBe(originalHead);
+            } finally { spy.mockRestore(); }
+        });
+
+        test('explicit allowEmpty publishes the new commit and preserves the old parent', async () => {
+            const client = makeClient();
+            await client.init(dir);
+            await client.setConfig(dir, 'user.name', 'test');
+            await client.setConfig(dir, 'user.email', 'test@local');
+            fs.writeFileSync(path.join(dir, 'doc.txt'), 'same');
+            expect(await client.commitIfChanged(dir, 'first')).toBe(true);
+            const originalHead = await git.resolveRef({ fs, dir, ref: 'HEAD' });
+            expect(await client.commitIfChanged(dir, 'explicit empty', undefined, { allowEmpty: true })).toBe(true);
+            const head = await git.resolveRef({ fs, dir, ref: 'HEAD' });
+            expect(head).not.toBe(originalHead);
+            expect((await git.readCommit({ fs, dir, oid: head })).commit.parent).toEqual([originalHead]);
+            expect((await client.log(dir)).map(item => item.message)).toEqual(['explicit empty', 'first']);
         });
 
         test('commitIfChanged handles deletes alongside same-second rewrites', async () => {

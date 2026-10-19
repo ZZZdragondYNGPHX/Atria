@@ -1,10 +1,6 @@
 export default {
     'sim.title.cea': 'Simulation Review — Character Card',
     'sim.title.cpa': 'Simulation Review — Preset',
-    'sim.title.orch_spec': 'Simulation Review — Orchestrator (Spec)',
-    'sim.title.orch_agenda': 'Simulation Review — Orchestrator (Agenda)',
-    'sim.title.orch_loop': 'Simulation Review — Orchestrator (Loop)',
-    'sim.title.orch_director': 'Simulation Review — Orchestrator (Director)',
     'sim.section.reasoning': 'Reasoning',
     'sim.section.final_output': 'Final Output',
     'sim.section.final_capsule': 'Final Capsule',

@@ -1,16 +1,6 @@
 # Skills
 
-**Skill** 是一個緊湊、自包含的知識包，agent 可以按需讀取。把每條寫作規則、每條口吻約定、每份反八股清單全塞進一份巨型系統提示詞裡是常見痛點；Skill 讓你把它們拆成命名的包，由 agent 在真正需要的時候去拉。
-
-Atria 的 Skill 格式與 [Anthropic Claude Skills](https://www.anthropic.com/news/skills) 相容 —— 同樣的 `SKILL.md` + frontmatter + 可選子檔案結構 —— 所以 Claude Code 裡寫的 Skill 放進 Atria 能直接用，Atria 裡寫的 Skill 放進 Claude Code 也不用轉換。
-
-編排器自帶的預設 director profile 就是建立在 Skill 之上的：一段極薄的主代理身份提示詞 + 24 份出廠 Skill，agent 按名字讀取。你也可以把自己的 profile 調成同樣的樣子。
-
-## 為什麼有這玩意
-
-多 agent 編排裡最常見的痛點之一是「這個 prompt 兩千多行，我不敢動它」。所有可重用的規則 —— 反八股清單、角色口吻約定、七步回合工作流、事件摘要格式 —— 過去都內聯在 `systemPrompt` 欄位裡，經常在多個子代理裡重複拷貝。
-
-Skill 把這整塊拆開。agent 的身份留在 `systemPrompt`（「你是口吻評審，這是你的職責」）；可重用規則放進 Skill 檔案裡。agent 在真正需要時透過 `skill_read` 讀取，規則的編輯、版本管理、分發都跟消費它的 prompt 解耦。
+Skill 提供可重用的程序指引。安裝 Skill 不會向原生 Plan 授予工具、Source 存取權或執行權。
 
 ## Skill 的結構
 
@@ -39,7 +29,7 @@ metadata:
 
 # director-anti-cliche-zh
 
-本 Skill 記錄了預設 director profile 主動防範的八股模式……
+本 Skill 記錄敘事寫作中應避免的八股模式……
 ```
 
 - `name` 和 `description` 是必需的。
@@ -48,110 +38,22 @@ metadata:
 
 完整的寫作手冊見 [創作 Skill](/zh-TW/features/skills/authoring)。
 
-## 三種作用域
+## 作用域
 
-Skill 物理上存放在 `data/<user>/skills/<scope>/`。Atria 有三種作用域：
+Skill 支援 `global`、`project`、`package`、`preset` 和 `character`。Project 路徑使用 `project/<projectId>`；Package 使用 `package/<packageId>/<packageVersionId>`；預設使用 `preset/<name>`，不含 API 段。只有屬於目前上下文的作用域參與選擇。
 
-| 作用域 | 存放位置 | 何時生效 | 用途 |
-|---|---|---|---|
-| `global` | `data/<user>/skills/global/<name>/` | 始終可見 | 通用寫作規則、反八股清單、共享方法文件 |
-| `preset` | `data/<user>/skills/preset/<api>/<preset>/<name>/` | 僅在選中該預設時 | 跟某個 Chat Completion 預設強綁的規則（如為 Claude 4 derive 的編排器預設） |
-| `character` | `data/<user>/skills/character/<file>/<name>/` | 僅在載入該角色卡時 | 角色卡專屬設定、口吻約定、世界內俚語 |
+原生 Project/Package 按 global → project → 精確 Package 版本的順序覆寫；保留的聊天選擇按 global → 目前預設 → 角色卡覆寫。
 
-當 agent 按名字查找 Skill 時，執行時遍歷三種作用域，套用**後者優先**的優先順序：`character` 覆蓋 `preset`，`preset` 覆蓋 `global`。所以一個名為 `voice-rules` 的 `character` 作用域 Skill 會在該卡載入期間悄悄接管同名的 `global` 版本，切換卡片後再退回。
+預設和角色卡的 Skill 仍可透過 `embedded_skills_source` 隨原始資產匯出。匯入這些內容不會匯入可執行的原生 Plan。
 
-重要：編排器 profile 裡寫 `skills.visible: ["voice-rules"]` 時，它**只按名字**參照 —— 沒有作用域前綴。把 Skill 在作用域之間挪動永遠不會破壞參照。
+## 呼叫與執行
 
-### 預設 / 角色卡作用域的 Skill 會隨它們一起匯出
+在 **Extensions → Skills** 管理已安裝內容和呼叫設定。Skill 可關閉、始終納入，或在消費者支援時按需讀取。原生 RP 為 Narrator 捕獲所選始終納入指引的精確安裝版本，不把這些指引繼承給獨立 Actor。
 
-`preset` 和 `character` 作用域不只是你自己存放 Skill 的目錄——它們打包匯出時，Skill 也跟著走：
+Skill 不授予 Source 存取權或能力。Host 准入的 Plan、目前資源 pin、角色上下文和輸出契約仍是權威。目錄條目或正文裡的工具名不能證明目前執行時提供該工具。見[原生 Plan 與 Run](/zh-TW/features/native-orchestration)。
 
-- **預設**作用域的 Skill 會寫進預設的 JSON。匯出預設、發給別人、對方匯入——他們也得到你的 Skill。
-- **角色**作用域的 Skill 會寫進角色卡 PNG 的 metadata。匯出 PNG、分享卡片，你的 Skill 跟著卡走。
+## 內建指引
 
-所以如果你寫的寫作紀律 Skill 依賴某個預設的提示詞結構，或者某條嗓音規則只對一張卡有意義，按這個作用域寫就夠——分享是順帶的事，不用單獨處理。詳見 [把 Skill 打包進預設 / 卡片](/zh-TW/features/skills/management#embed-export-into-presets-and-cards)。
+內建頁列出目前隨 `default/skills/global/` 提供的寫作與方法 Skill。`director-character-voice-zh` 等名稱標識可重用指引，不啟用已退役的 Director 執行協議。安裝內容不會自動讓所有 Agent 消費它。
 
-## agent 如何看到 Skill
-
-編排器 profile 在兩個層級帶著 `skills` 策略：
-
-- **模式級** —— 適用於該模式下每個 agent（主代理 + 子代理）的預設值。
-- **每 agent 覆寫** —— 每個 agent 可以釘自己的 `visible` / `deny` 清單。開頭的 `"+"` 表示繼承模式預設值再追加。
-
-執行時在派遣時把策略與物理庫存對帳，給 agent 交付一份過濾後的清單。由此帶來兩件事：
-
-1. **一份精簡目錄被自動注入到 agent 的系統提示詞**—— `<available_skills>` 區塊逐行列出每個可見 Skill 的名稱和描述。agent 不需要花一輪 `skill_list` 工具呼叫就知道有什麼可用。
-2. **三個函式工具 —— `skill_list`、`skill_read`、`skill_search` —— 提供給 agent**。它們被限制在可見集內；agent 拿不到策略之外的 Skill。`skill_read` 是主力 —— agent 需要正文時就呼叫它。它還接一個 `path` 引數，所以帶子檔案（`references/`、`examples/` 等）的 Skill 可以選擇性按路徑讀：`skill_read({ name: "my-skill", path: "references/checklist.md" })`。skill 作者在 SKILL.md 裡寫明哪些子檔案值得拉、什麼時候拉 —— 見 [創作 Skill](/zh-TW/features/skills/authoring#何時使用子檔案)。
-
-策略解析的完整規則見 [編排器整合](/zh-TW/features/skills/orchestrator-integration)。
-
-## 分層概覽
-
-```d2
-direction: down
-
-user: "使用者安裝 / 自創" {
-  style.fill: "#e1f5ff"
-  fs: "data/<user>/skills/\n  global / preset / character" { style.fill: "#fffde7" }
-}
-
-bundled: "Atria 出廠自帶" {
-  style.fill: "#fff3e0"
-  pop: "default/skills/global/*\n（首次安裝時落到 global 作用域）" { style.fill: "#fffde7" }
-}
-
-orch: "編排器 profile" {
-  style.fill: "#e8f5e9"
-  mode: "mode.skills.visible / deny" { style.fill: "#fffde7" }
-  agent: "agent.skills.visible（+ 繼承）" { style.fill: "#fffde7" }
-}
-
-runtime: "派遣時解析器" {
-  style.fill: "#fce4ec"
-  walk: "遍歷三個作用域\n（後者優先）" { style.fill: "#fffde7" }
-  policy: "套用 visible / deny" { style.fill: "#fffde7" }
-  catalog: "<available_skills> 目錄\n注入到系統提示詞" { style.fill: "#fffde7" }
-}
-
-agent: "執行中的 agent" {
-  style.fill: "#f3e5f5"
-  tools: "skill_list / skill_read / skill_search" { style.fill: "#fffde7" }
-}
-
-bundled.pop -> user.fs: "首次安裝出廠匯入\n（之後只能透過按鈕）"
-user.fs -> runtime.walk
-orch.mode -> runtime.policy
-orch.agent -> runtime.policy
-runtime.walk -> runtime.policy
-runtime.policy -> runtime.catalog
-runtime.catalog -> agent.tools
-```
-
-## 讀 vs 寫
-
-agent 只能透過三個函式工具**讀取**Skill，無法修改。這是有意為之 —— Skill 是使用者管理的底層素材，只有使用者（或者代表使用者工作的 AI 助手，比如 [迭代工作台](/zh-TW/features/orchestrator/iteration-studio) 的 Skill 工具）才能改 Skill 內容。
-
-面向使用者的寫入入口：
-
-- **編排器設定裡的 Skill 管理子面板** —— 安裝、編輯、改名、遷移作用域、刪除。
-- **內嵌 Skill 編輯器** —— 檔案樹 + Markdown 編輯器，編輯 SKILL.md 和子檔案。
-- **匯入 / 匯出** —— 把一個或多個 Skill 打包進角色卡或預設；匯入時從內嵌負載裡抽出 Skill。詳見 [Skill 管理](/zh-TW/features/skills/management)。
-- **迭代工作台工具** —— 讓迭代工作台的 AI「把這條寫作規則抽成一個 Skill」時，它透過一組專門的工具完成抽取，並把 agent 的 `systemPrompt` 同步改寫。
-
-## 24 個出廠 Skill
-
-全新的 Atria 安裝會把 `data/<user>/skills/global/` 填入 24 個出廠預設 Skill，全部由 director profile 原先的內聯 prompt 拆解而來。它們分三類：
-
-- **共享類（5 個）**—— `director-anti-cliche-zh`、`director-character-voice-zh`、`director-no-meta-zh`、`director-output-discipline-zh`、`director-zh-style-baseline`。所有預設 director 子代理都可見。
-- **主代理類（2 個）**—— `director-turn-workflow-zh`、`director-dispatch-protocol-zh`。僅主代理可見。
-- **每子代理一份（17 個）**—— 每個預設子代理一份方法/契約 Skill（如 `voice-critic-method-zh`、`event-summary-rules-zh`、`chat-scout-method-zh`）。
-
-這些出廠 Skill 從原 director 預設值**逐字搬出** —— 沒有改寫、沒有壓縮 —— 所以基於 Skill 的新版 director profile 跟未拆分前同強度。詳見 [Director 模式 → 預設 Skill](/zh-TW/features/orchestrator/director#預設 Skill)。
-
-## 下一步去哪
-
-- **想寫自己的 Skill？** → [創作 Skill](/zh-TW/features/skills/authoring)
-- **想安裝、分享或遷移 Skill？** → [Skill 管理](/zh-TW/features/skills/management)
-- **想把某個 Skill 掛到具體 agent？** → [編排器整合](/zh-TW/features/skills/orchestrator-integration)
-- **在寫擴充套件？** → [Skill 擴充套件 API](/zh-TW/development/extension-api/skills)
-- **想看它實際跑起來？** → [Director 模式](/zh-TW/features/orchestrator/director)
+安裝和編輯見 [Skill 管理](/zh-TW/features/skills/management)，檔案格式及範例見[創作 Skill](/zh-TW/features/skills/authoring)。

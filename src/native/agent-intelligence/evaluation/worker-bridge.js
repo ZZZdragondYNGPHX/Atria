@@ -1,3 +1,4 @@
+import { attachNativeHostLifecycle } from '../../../storage/native-host-lifecycle.js';
 import { createEvaluationStore } from './store.js';
 import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../../model-prompt-runtime/persistence.js';
 import { GenerationService } from '../../model-prompt-runtime/generation-service.js';
@@ -9,41 +10,72 @@ import { hash } from './cases.js';
 import { createNativeId } from '../../identity.js';
 import { collectVersionedModelPromptResourceRefs } from '../../model-prompt-runtime/resources.js';
 import { prepareRetrievalCompute } from '../../retrieval-compute.js';
+import { evaluationRetrievalTransport } from './retrieval-transport.js';
+import { NativeRetrievalPersistence } from '../../retrieval-persistence.js';
 import { executeProjectSkillWork } from '../../skill-invocation.js';
 
-export async function createFrozenEvaluationBridge(config, send) {
-    const store = await createEvaluationStore(), { engine, handle } = store;
+export async function createFrozenEvaluationBridge(config, send, { nativePlan = null } = {}) {
+    const store = await createEvaluationStore(nativePlan ? { handle: nativePlan.revision.authorRef.handle } : {}), { engine, handle } = store;
+    if (nativePlan) attachNativeHostLifecycle(engine, { directoriesByHandle: owner => { if (owner !== handle) throw new Error('evaluation_owner_mismatch'); return store.dirs; } });
     const persistence = new NativeModelPromptPersistence({ engine }), library = new VersionedJsonResourceHandler({ engine });
-    const pending = [...config.resources], committed = new Set();
+    const configurations = [config, ...(nativePlan ? config.nativeRoutes ?? [] : [])];
+    const unique = new Map();
+    for (const candidate of configurations) for (const resource of candidate.resources) {
+        const key = hash(resource.ref);
+        if (unique.has(key) && hash(unique.get(key)) !== hash(resource)) throw new Error('evaluation_resource_closure_conflict');
+        unique.set(key, resource);
+    }
+    const pending = [...unique.values()], committed = new Set();
     while (pending.length) {
         const index = pending.findIndex(({ ref, resource }) => collectVersionedModelPromptResourceRefs(ref.resourceType, resource).every(r => committed.has(hash(r))));
         if (index < 0) throw new Error('evaluation_resource_closure_incomplete');
         const { ref, resource } = pending.splice(index, 1)[0];
         await library.commit(handle, ref.resourceType, resource); committed.add(hash(ref));
     }
-    const connection = { ...config.connection, secretRef: { scope: 'player', secretId: 'evaluation-parent-port' } };
-    await persistence.saveConnectionProfile(handle, connection); await persistence.saveModelProfile(handle, config.model); await persistence.saveRuntimeRoute(handle, config.route);
+    const profiles = new Map();
+    for (const candidate of configurations) {
+        for (const [kind, id, value] of [['connection', candidate.connection.connectionProfileId, candidate.connection], ['model', candidate.model.modelProfileId, candidate.model]]) {
+            const key = kind + ':' + id;
+            if (profiles.has(key) && profiles.get(key) !== hash(value)) throw new Error('evaluation_profile_conflict');
+            profiles.set(key, hash(value));
+        }
+        const connection = { ...candidate.connection, secretRef: { scope: 'player', secretId: 'evaluation-parent-port' } };
+        await persistence.saveConnectionProfile(handle, connection); await persistence.saveModelProfile(handle, candidate.model); await persistence.saveRuntimeRoute(handle, candidate.route);
+    }
+    if (nativePlan && config.retrievalProfiles) for (const profile of config.retrievalProfiles)
+        await new NativeRetrievalPersistence({ engine }).commit(handle, profile);
     let active = null, prepared = null;
+    const retrievalTransport = evaluationRetrievalTransport(config, send, () => active);
     const transport = createHttpGenerationProvider();
     const provider = { ...transport,
         renderRequest(input) {
             const rendered = transport.renderRequest(input);
-            prepared = { inputTokens: input.snapshot.diagnostics.inputTokens, outputTokens: input.snapshot.contextPlan.budget.reservedOutputTokens,
-                requestHash: hash(rendered), snapshotHash: hash(input.snapshot) };
+            prepared = { requestId: input.snapshot.requestId, inputTokens: input.snapshot.diagnostics.inputTokens, outputTokens: input.snapshot.contextPlan.budget.reservedOutputTokens,
+                requestHash: hash(rendered), snapshotHash: hash(input.snapshot),
+                ...(nativePlan ? { nativeRouteId: input.resolved.route.runtimeRouteId } : {}) };
             return rendered;
         },
         async send(rendered, { signal }) {
             if (!active || !prepared || signal.aborted) throw new Error('evaluation_send_unprepared');
-            const { onSend, ...packet } = active;
-            const raw = await send({ ...packet, ...prepared, rendered }); onSend?.();
+            const { onSend, onRendered, beforeSend, ...packet } = active;
+            const injected = beforeSend ? await beforeSend({ signal }) : null;
+            if (injected === null) onRendered?.(rendered, prepared);
+            const raw = injected ?? await send({ ...packet, ...prepared, rendered }); onSend?.();
             return { headers: { get: () => 'application/json' }, json: async () => raw };
         },
     };
     const providers = { 'provider.openai-compatible': provider }, secretPort = { resolveSecret: async () => 'parent-port' };
     const resolver = new RouteResolver({ persistence, library, providers }), compiler = new PromptCompiler();
     return {
+        ...(config.memorySettings ? { memorySettings: config.memorySettings } : {}),
         identity: { configurationHash: hash(config), promptHash: hash(config.resources), modelHash: hash(config.model) },
-        cleanup: () => store.cleanup(),
+        cleanup: async () => { await engine.close(); store.cleanup(); },
+        ...(nativePlan ? { native: { store, persistence, library, providers, resolver, secretPort, retrievalTransport },
+            async nativeTransport({ trialId, onRendered, beforeSend }, operation) {
+                if (active) throw new Error('evaluation_serial_transport_required');
+                active = { trialId, kind: 'model', onRendered, beforeSend };
+                try { return await operation(); } finally { active = null; }
+            } } : {}),
         async projectSkillWork({ studio, agent, repository, settings, request, signal }) {
             const compute = await prepareRetrievalCompute({ handle, context: request.computeContext, profile: { mode: 'embed', purpose: 'studio.skill.v1' },
                 persistence, agent, studio });

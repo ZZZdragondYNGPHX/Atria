@@ -160,6 +160,8 @@ export class SqliteEngine {
         }
     }
 
+    hasActiveTransaction(handle) { return this._transactionScope.get(handle) !== null; }
+
     async withTransaction(handle, fn) {
         const active = this._transactionScope.get(handle);
         if (active) return fn(active);

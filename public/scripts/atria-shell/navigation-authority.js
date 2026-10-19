@@ -65,7 +65,7 @@ function readUrlRoute(windowRef) {
         return {
             domain,
             child: childId
-                ? { id: childId, label: childId, kind: /^(work|world|knowledge|project|resource|orchestration):/.test(childId) ? 'detail' : 'workspace' }
+                ? { id: childId, label: childId, kind: /^(work|world|knowledge|project|resource|plans|runs):/.test(childId) ? 'detail' : 'workspace' }
                 : null,
         };
     } catch {

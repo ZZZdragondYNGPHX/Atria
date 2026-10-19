@@ -1,5 +1,7 @@
 import { AgentEvolutionRepository, evolutionHash as hash, sameEvolutionValue as same } from './evolution-repository.js';
-import { AgentEvidenceRepository } from './evidence-repository.js';
+import { ContextPort } from '../orchestration/context-port.js';
+import { ModelPort } from '../orchestration/model-port.js';
+import { readRpOutput } from '../orchestration/rp-output-contracts.js';
 import { projectStrategyBase } from './project-strategy.js';
 import { ProjectTaskRepository } from './project-task-repository.js';
 import { ChatRepo } from '../../storage/repositories/chat-repo.js';
@@ -42,18 +44,32 @@ export async function observeEvolutionProject(host, handle, input, result) {
         });
     }
 }
-export async function observeEvolutionRp(engine, handle, evidenceId) {
-    const evidence = await new AgentEvidenceRepository({ engine }).get(handle, evidenceId);
-    if (!evidence || evidence.status !== 'completed' || evidence.scope.domain !== 'rp_chat' || !evidence.outputRef) return;
-    const repository = new AgentEvolutionRepository({ engine });
-    const docs = (await repository.list(handle)).filter(d => same(d.scope, evidence.scope));
-    for (const doc of docs) for (const p of doc.publications.filter(p => p.status === 'published' && !p.activation)) {
-        const version = p.target.kind === 'skill' ? p.desired : p.candidateId;
-        const consumed = evidence.trace.events.some(e => e.type === 'version.consumed' && e.runId === evidence.rootRunId && e.targetKind === p.target.kind && e.versionId === version
-            && (p.target.kind === 'skill' ? e.skillName === p.target.name && e.skillScopeKind === p.target.scope.kind && e.characterFile === p.target.scope.characterFile : e.presetId === p.target.presetId));
-        if (consumed) await repository.mutate(handle, doc.scope, doc.subject, d => {
-            const current = d.publications.find(v => v.id === p.id);
-            if (current.status === 'published' && !current.activation) current.activation = { origin: 'client_observation', evidenceId, evidenceHash: hash(evidence), runId: evidence.rootRunId, observedAt: Date.now() };
+/** Capture actual Native consumption, then observe only after its original RP output closes. */
+export async function prepareEvolutionRpObservation(handle, { contextPort, context, modelPort, result, runId, effectId }) {
+    const consumed = await ContextPort.prototype.inspectRpSkillConsumption.call(contextPort, handle, { context });
+    if (!consumed) return async () => {};
+    const completion = await ModelPort.prototype.inspectResultCompletion.call(modelPort, handle, { result, runId, effectId });
+    if (completion.sourceBinding.bindingDigest !== consumed.sourceBindingDigest) throw new TypeError('Native Skill consumption source mismatch');
+    const { engine } = modelPort.runs;
+    return async () => {
+        const output = await engine.withTransaction(handle, async tx => {
+            const root = await modelPort.runs.get(handle, runId);
+            if (!['completed', 'partial'].includes(root.status) || root.sourceBinding.bindingDigest !== consumed.sourceBindingDigest) return null;
+            const saved = await readRpOutput(tx, handle, root);
+            return saved?.published.receipt.modelEffectId === effectId ? saved : null;
         });
-    }
+        if (!output) return;
+        const repository = new AgentEvolutionRepository({ engine });
+        const docs = (await repository.list(handle)).filter(d => same(d.scope, consumed.scope));
+        for (const doc of docs) for (const p of doc.publications.filter(p => p.status === 'published' && !p.activation && p.target.kind === 'skill'
+            && p.receipt?.committedAt <= consumed.capturedAt)) {
+            if (!consumed.pins.some(pin => pin.name === p.target.name && same(pin.scope, p.target.scope) && pin.version === p.desired)) continue;
+            await repository.mutate(handle, doc.scope, doc.subject, d => {
+                const current = d.publications.find(v => v.id === p.id);
+                if (current?.status === 'published' && !current.activation) current.activation = { origin: 'host', runId, effectId,
+                    requestId: result.generated.snapshot.requestId, contextId: consumed.contextId, modelReceiptRef: completion.receiptRef,
+                    outputReceiptRef: { runId, receiptId: output.receipt.receiptId }, consumptionHash: hash({ consumed, completion }), observedAt: Date.now() };
+            });
+        }
+    };
 }

@@ -7476,7 +7476,6 @@ export async function GenerateNative(type, options) {
             commitAssistant: (generationType, text) => saveReply({ type: generationType, getMessage: text, publication: { signal: requestSignal, assertCurrent } }),
             impersonate: text => Atria.shell?.getPlayHost?.()?.product?.composerApi?.setDraft(text),
             gameApi: () => Atria.getContext()?.getCapabilityApi?.('game-runtime'),
-            orchestratorApi: () => Atria.getContext()?.getCapabilityApi?.('orchestrator'),
             context: () => Atria.getContext(),
             onChunk: chunk => document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: { text: chunk.text } })),
             onState: projection => document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: projection })),
@@ -15933,7 +15932,7 @@ async function saveSettingsInternal(loopCounter = 0, options = {}) {
                 const patchResult = await fetch('/api/settings/patch', {
                     method: 'POST',
                     headers: getRequestHeaders(),
-                    body: JSON.stringify({ operations, expectedWorkspaceRevision: payload.atri_capabilities?.orchestrator?.agentWorkspaceRevision || 0 }),
+                    body: JSON.stringify({ operations }),
                     cache: 'no-cache',
                 });
                 saved = patchResult.ok;

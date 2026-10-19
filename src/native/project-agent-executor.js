@@ -6,6 +6,9 @@ import { ConflictError } from '../storage/errors.js';
 import { nativeTaskScheduler } from './task-scheduler.js';
 import { assertComputeBudget } from '../../public/shared/native-compute-budget.js';
 import { fields } from '../../public/shared/native-values.js';
+import { immutable } from './model-prompt-runtime/execution-utils.js';
+import { captureNativeProjectOperation, inspectNativeProjectOperation, beginNativeProjectGeneration,
+    captureNativeProjectGeneration, runNativeProjectSkillWork } from './orchestration/native-project-generation-authority.js';
 
 const stopped = task => ['review', 'blocked', 'conflict', 'taken_over', 'completed', 'committing', 'cancelled'].includes(task.status);
 const identifier = value => { if (typeof value !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/.test(value)) throw new TypeError('Explicit Native identity required'); return value; };
@@ -13,8 +16,15 @@ const identifier = value => { if (typeof value !== 'string' || !/^[A-Za-z0-9][A-
 // One implementation of the existing Studio runner for HTTP and Goal hosts.
 // It always stops at Review. No caller can add a formal Commit tool.
 export async function executeNativeProjectAgent({ host, handle, projectId, taskId, signal, check = async () => {}, routeRef,
-    requestId, maxModelRounds = 12, contextMessage = async () => null, observeCheck = check, initialExpectedSequence }) {
+    requestId, maxModelRounds = 12, contextMessage = async () => null, observeCheck = check, initialExpectedSequence, projectOperation = null }) {
     const { agent, studio } = host;
+    const principal = projectOperation ? await inspectNativeProjectOperation(projectOperation, { host, handle }) : null;
+    if (principal && (principal.projectId !== projectId || principal.taskId !== taskId || principal.signal !== signal))
+        throw new ConflictError('native_orchestration_project_producer_denied');
+    if (!principal && await host.turnOrchestration?.preflightProjectBinding?.({ host, handle, projectId, taskId, routeRef, maxModelRounds }))
+        throw new ConflictError('native_orchestration_project_producer_denied');
+    const beginnings = new Map(), preparedRounds = new Map();
+    const finishedNativeRounds = new Set();
     let contextFingerprint, contextSequence, firstContext = true, round = 0;
     const current = async () => { signal?.throwIfAborted(); await check(); };
     const observe = async () => { signal?.throwIfAborted(); await observeCheck(); };
@@ -32,32 +42,79 @@ export async function executeNativeProjectAgent({ host, handle, projectId, taskI
         beginAgentGeneration: async (project, task) => {
             await current(); const value = await agent.getTask(handle, project, task);
             if (value.executionFingerprint !== contextFingerprint) throw new ConflictError('native_generation_task_stopped');
-            return agent.beginGeneration(handle, project, task, { expectedSequence: value.sequence });
+            const started = principal ? await beginNativeProjectGeneration(projectOperation, { expectedSequence: value.sequence })
+                : await agent.beginGeneration(handle, project, task, { expectedSequence: value.sequence });
+            if (principal) beginnings.set(started.attempts.at(-1).attemptId, started);
+            return started;
         },
-        finishAgentGeneration: (project, task, input) => agent.finishGeneration(handle, project, task, input),
-        executeAgentTool: async (project, task, input) => { await current(); return agent.executeTool(handle, project, task, { ...input, effectPolicy: 'no-background-model' }); },
-    };
-    return runNativeStudioAgentTask({ projectId, taskId, abortSignal: signal, maxModelRounds, client,
-        request: async () => ({ routes: (await host.persistence.listRuntimeRoutes(handle)).filter(route => !routeRef || route.runtimeRouteId === routeRef.runtimeRouteId) }),
-        work: async (context, operation, input) => {
+        finishAgentGeneration: (project, task, input) => {
+            if (!principal) return agent.finishGeneration(handle, project, task, input);
+            if (finishedNativeRounds.has(input.attemptId)) throw new ConflictError('native_orchestration_project_round_finish_consumed');
+            if (input.status !== 'completed') return agent.finishGeneration(handle, project, task, input);
+            finishedNativeRounds.add(input.attemptId);
+            return host.turnOrchestration.finishProjectRound({ host, handle, roundToken: preparedRounds.get(input.attemptId), input });
+        },
+        executeAgentTool: async (project, task, input) => {
             await current();
-            const compute = await prepareRetrievalCompute({ handle, context, profile: { mode: 'embed', purpose: 'studio.skill.v1' }, persistence: host.persistence, core: host.sessionCore, agent, studio });
-            return executeProjectSkillWork({ operation, input, compute, repository: host.skillRepository(handle), projectId,
-                settings: operation === 'list' ? (await host.extensions.settings(handle)).value : undefined, signal });
+            if (principal) return host.turnOrchestration.executeProjectTool({ host, handle, roundToken: preparedRounds.get(input.attemptId), input });
+            return agent.executeTool(handle, project, task, { ...input, effectPolicy: 'no-background-model' });
         },
-        generate: async ({ source, ...request }) => {
-            await current(); const extra = await contextMessage();
-            const result = await host.execute(handle, { ...source, role: request.role, messages: extra ? [request.messages[0], extra, ...request.messages.slice(1)] : request.messages,
-                tools: request.tools, ...(routeRef ? { routeRef } : {}), requestId: requestId(round++) }, signal, undefined,
-            { scheduled: true, ...(routeRef ? { effectPolicy: 'no-background-model' } : {}) });
-            await observe();
-            return { ...result.response, snapshot: result.snapshot, routing: result.routing };
-        },
-    });
+    };
+    try {
+        return await runNativeStudioAgentTask({ projectId, taskId, abortSignal: signal, maxModelRounds, client,
+            ...(principal ? { prepareModelRound: async ({ attemptId, round, previousSystem }) => {
+                const started = beginnings.get(attemptId); if (!started) throw new ConflictError('native_orchestration_project_producer_denied');
+                beginnings.delete(attemptId);
+                const projectCapture = await captureNativeProjectGeneration(projectOperation, { started, round });
+                const prepared = await host.turnOrchestration.prepareProjectRound({ host, handle, projectCapture, selection: principal.selection, previousSystem });
+                const { roundToken, ...actualRound } = prepared;
+                if (!roundToken || typeof roundToken !== 'object') throw new ConflictError('native_orchestration_project_producer_denied');
+                preparedRounds.set(attemptId, roundToken); return actualRound;
+            } } : {}),
+            request: async () => ({ routes: (await host.persistence.listRuntimeRoutes(handle)).filter(route => !routeRef || route.runtimeRouteId === routeRef.runtimeRouteId) }),
+            work: async (context, operation, input) => {
+                await current();
+                if (principal) return runNativeProjectSkillWork(projectOperation, { context, operation, input });
+                const compute = await prepareRetrievalCompute({ handle, context, profile: { mode: 'embed', purpose: 'studio.skill.v1' }, persistence: host.persistence, core: host.sessionCore, agent, studio });
+                return executeProjectSkillWork({ operation, input, compute, repository: host.skillRepository(handle), projectId,
+                    settings: operation === 'list' ? (await host.extensions.settings(handle)).value : undefined, signal });
+            },
+            generate: async ({ source, ...request }) => {
+                if (principal) {
+                    const roundToken = preparedRounds.get(source.projectAttemptId);
+                    if (!roundToken) throw new ConflictError('native_orchestration_project_producer_denied');
+                    const result = await host.turnOrchestration.executeProjectRound({ host, handle, roundToken, source,
+                        role: request.role, messages: request.messages, tools: request.tools });
+                    await observe(); return { ...result.response, snapshot: result.snapshot, routing: result.routing };
+                }
+                await current(); const extra = await contextMessage();
+                const result = await host.execute(handle, { ...source, role: request.role, messages: extra ? [request.messages[0], extra, ...request.messages.slice(1)] : request.messages,
+                    tools: request.tools, ...(routeRef ? { routeRef } : {}), requestId: requestId(round++) }, signal, undefined,
+                { scheduled: true, ...(routeRef ? { effectPolicy: 'no-background-model' } : {}) });
+                await observe();
+                return { ...result.response, snapshot: result.snapshot, routing: result.routing };
+            },
+        });
+    } finally {
+        for (const roundToken of preparedRounds.values()) host.turnOrchestration.closeProjectRound({ host, handle, roundToken });
+    }
 }
 
 export class NativeProjectAgentExecutor {
+    #preflights = new WeakMap();
+    #operations = new WeakMap();
     constructor({ host, scheduler = nativeTaskScheduler }) { Object.assign(this, { host, scheduler }); }
+    assertOriginalPreflight(view) {
+        if (!(#preflights in this) || !this.#preflights.has(view)) throw new ConflictError('native_orchestration_project_producer_denied');
+        return this.#preflights.get(view);
+    }
+    assertOriginalOperation({ host, handle, boundary, preflight, startInput }, { claim = false } = {}) {
+        const original = (#operations in this) && this.#operations.get(boundary);
+        if (!original || original.host !== host || original.handle !== handle || original.preflight !== preflight
+            || original.inputFingerprint !== hashNativeDocument(startInput) || (claim && original.claimed))
+            throw new ConflictError('native_orchestration_project_producer_denied');
+        if (claim) original.claimed = true;
+    }
     async configuration(handle) {
         // Include every fallback and credential target in the approval fence.
         const routes = (await this.host.persistence.listRuntimeRoutes(handle)).filter(value => value.role === 'role.studio');
@@ -77,15 +134,24 @@ export class NativeProjectAgentExecutor {
         const configuration = await this.configuration(handle);
         const route = configuration.routes.find(value => value.runtimeRouteId === input.runtimeRouteId && value.scope === 'player');
         if (!route) throw new ConflictError('native_generation_route_missing');
-        if (route.policy.maxRetries !== 0 || route.policy.maxFallbackAttempts !== 0) throw new ConflictError('native_generation_automatic_resend_denied');
         const budget = assertComputeBudget(route.executionPolicy?.computeBudget);
         // The original Host charges the durable Task bank before each send.
         // A missing budget is never interpreted as unlimited delegation.
-        return { projectId, taskId, baseRevision: task.baseRevision, expectedSequence: task.sequence, runtimeRouteId: input.runtimeRouteId,
+        const selection = await this.host.turnOrchestration?.preflightProjectBinding?.({ host: this.host, handle, projectId, taskId,
+            routeRef: { scope: 'player', runtimeRouteId: input.runtimeRouteId }, maxModelRounds: input.maxModelRounds }) ?? null;
+        if (selection === null && (route.policy.maxRetries !== 0 || route.policy.maxFallbackAttempts !== 0))
+            throw new ConflictError('native_generation_automatic_resend_denied');
+        const selectionDescriptor = selection === null ? null : this.host.turnOrchestration.projectSelectionDescriptor(selection);
+        const view = immutable({ projectId, taskId, baseRevision: task.baseRevision, expectedSequence: task.sequence, runtimeRouteId: input.runtimeRouteId,
             maxModelRounds: input.maxModelRounds, taskFingerprint: hashNativeDocument(task), configurationFingerprint: hashNativeDocument(configuration),
             budget, existingCompute: task.compute ?? null, providerTargets: configuration.connections.map(value => ({ connectionProfileId: value.connectionProfileId,
                 endpoint: value.endpoint, secretRef: value.secretRef ?? null, providerAdapter: value.providerAdapter, transport: value.transport })),
-            effects: ['explicit-paid-model-generation', 'native-task-proposals', 'temporary-review-preview'], stop: 'human-review-before-formal-commit' };
+            effects: ['explicit-paid-model-generation', 'native-task-proposals', 'temporary-review-preview'], stop: 'human-review-before-formal-commit',
+            ...(selectionDescriptor === null ? {} : { orchestration: selectionDescriptor }) });
+        const modelResources = selection === null ? await this.host.executionResources(handle, route)
+            : await this.host.turnOrchestration.projectExecutionResources(selection);
+        this.#preflights.set(view, Object.freeze({ selection, resources: immutable([...new Set([projectId, taskId, ...modelResources])].sort()) }));
+        return view;
     }
     async start(handle, projectId, taskId, input) {
         fields(input, ['runtimeRouteId', 'maxModelRounds', 'requestId', 'expectedPreflightFingerprint'], 'Project Agent generation start');
@@ -106,13 +172,17 @@ export class NativeProjectAgentExecutor {
         };
         let began = false;
         const operation = this.scheduler.submit({ owner: handle, anchor: { projectId, taskId, requestId: input.requestId, runtimeRouteId: input.runtimeRouteId },
-            kind: 'model_task', executionClass: 'interactive', resources: [projectId, taskId], key: 'project-agent:' + taskId,
+            kind: 'model_task', executionClass: 'interactive', resources: this.assertOriginalPreflight(view).resources, key: 'project-agent:' + taskId,
             fingerprint: hashNativeDocument(input), retry: false,
             fresh: async () => { await check(); return began || hashNativeDocument(await host.agent.observeTask(handle, projectId, taskId)) === view.taskFingerprint; },
-            run: async ({ signal }) => {
+            run: async boundary => {
                 began = true;
-                return executeNativeProjectAgent({ host, handle, projectId, taskId, signal, check, routeRef: { scope: 'player', runtimeRouteId: input.runtimeRouteId },
-                    initialExpectedSequence: view.expectedSequence, maxModelRounds: input.maxModelRounds, requestId: round => 'project:' + hashNativeDocument({ requestId: input.requestId, round }) });
+                this.#operations.set(boundary, { host, handle, preflight: view, inputFingerprint: hashNativeDocument(input), claimed: false });
+                try {
+                    const projectOperation = this.assertOriginalPreflight(view).selection ? await captureNativeProjectOperation({ executor: this, host, handle, boundary, preflight: view, startInput: input }) : null;
+                    return await executeNativeProjectAgent({ host, handle, projectId, taskId, signal: boundary.signal, check, projectOperation, routeRef: { scope: 'player', runtimeRouteId: input.runtimeRouteId },
+                        initialExpectedSequence: view.expectedSequence, maxModelRounds: input.maxModelRounds, requestId: round => 'project:' + hashNativeDocument({ requestId: input.requestId, round }) });
+                } finally { this.#operations.delete(boundary); }
             }, finalize: async result => ({ task: result.task }) });
         void operation.result.catch(() => {});
         return this.scheduler.project(handle, operation.operationId);

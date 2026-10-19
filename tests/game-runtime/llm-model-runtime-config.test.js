@@ -16,7 +16,6 @@ describe('R5 Model & Runtime configuration surface', () => {
             'narrator',
             'intent_resolver',
             'event_interpreter',
-            'orchestrator',
             'studio',
         ]);
         expect(config.roles.intent_resolver.requirements.tools).toBe(true);

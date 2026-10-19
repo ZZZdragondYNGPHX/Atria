@@ -1,13 +1,16 @@
 import { mountAgentEvolution } from './agent-evolution-panel.js';
 import { mountAgentGoals } from './agent-goals-panel.js';
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
-import { pinSkillEntries, skillReadPin, loadAlwaysSkills, skillInstructions, boundedSkillReadOptions, boundSkillFile } from '../../shared/skill-invocation.js';
+import { pinSkillEntries, skillReadPin, loadAlwaysSkills, boundedSkillReadOptions, boundSkillFile } from '../../shared/skill-invocation.js';
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { translateShellText as t } from '../atria-shell/localization.js';
 import { executeNativeGeneration } from './generation-client.js';
 import { runtimeRequest } from './runtime-client.js';
 import { nativeStudioClient } from './studio-client.js';
-import { projectAgentConversation, completeProjectAgentConversation, projectAgentResumeMessages } from '../../shared/project-agent-conversation.js';
+import { projectAgentConversation, completeProjectAgentConversation, projectAgentResumeMessages, normalizeProjectAgentToolCalls as normalizeToolCalls,
+    projectAgentAssistantToolMessage as assistantToolMessage, projectAgentToolResultMessage as toolResultMessage } from '../../shared/project-agent-conversation.js';
+import { buildNativeProjectModelRound, summarizeProjectAgentSkills as summarizeSkills } from '../../shared/project-agent-prompt.js';
+export { buildNativeProjectAgentSystemPrompt } from '../../shared/project-agent-prompt.js';
 
 const MAX_MODEL_ROUNDS = 12;
 const STOP_STATES = new Set(['review', 'blocked', 'conflict', 'taken_over', 'completed', 'committing', 'cancelled']);
@@ -50,146 +53,6 @@ async function readNativeSkill(entries, name, { path = 'SKILL.md', offset = 1, l
     return list ? result : boundSkillFile(result);
 }
 
-function skillTools() {
-    return [
-        { type: 'function', function: { name: 'atri_agent_skill_files', description: 'List supporting files available inside one resolved Skill.', parameters: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'], additionalProperties: false } } },
-        {
-            type: 'function',
-            function: {
-                name: 'atri_agent_list_skills',
-                description: 'List A5 Native Skills resolved for this project. Read-only; use Skills for know-how, not project state.',
-                parameters: { type: 'object', properties: {}, additionalProperties: false },
-            },
-        },
-        {
-            type: 'function',
-            function: {
-                name: 'atri_agent_read_skill',
-                description: 'Read SKILL.md or a supporting file in one resolved Skill. Paginated and read-only; follow references instead of guessing API details.',
-                parameters: {
-                    type: 'object',
-                    properties: { name: { type: 'string' }, path: { type: 'string' }, offset: { type: 'integer', minimum: 1, description: 'One-based line offset' }, limit: { type: 'integer', minimum: 1, maximum: 500, description: 'Maximum lines to read' } },
-                    required: ['name'],
-                    additionalProperties: false,
-                },
-            },
-        },
-    ];
-}
-
-function summarizeSkills(entries) {
-    return entries.map(entry => ({
-        name: entry.name,
-        scope: entry.scope,
-        version: entry.version,
-        description: entry.description || entry.frontmatter?.description || '',
-    }));
-}
-
-function pluginResourceDescriptors(context) {
-    return (context?.registry?.descriptors || [])
-        .filter(item => item.provider?.kind === 'plugin')
-        .map(item => ({
-            resourceType: item.resourceType,
-            displayName: item.displayName,
-            pluginId: item.provider.pluginId,
-            capabilities: item.capabilities,
-        }));
-}
-
-export function buildNativeProjectAgentSystemPrompt(context, skillEntries = []) {
-    const task = context.task;
-    const project = context.project;
-    const skills = summarizeSkills(skillEntries);
-    const plugins = pluginResourceDescriptors(context);
-    return [
-        'You are the Atria Project Agent operating inside Native Studio.',
-        'The Project Task, Plan, Workspace, Authoring Operations, ChangeSet and Project revision are authoritative. Conversation text is only an auxiliary interface.',
-        '',
-        'Required lifecycle: Intent → Plan → Workspace → Operations → ChangeSet → Validate → Simulate / Preview → Review → Commit.',
-        'You cannot commit. Stop at Review; the human performs Commit from Studio.',
-        'Every write is only a proposal. The server forces origin.kind="agent", pins the Task baseRevision, and routes writes through StudioService.',
-        'Never request a silent rebase. If the Project revision changes, stop at the conflict boundary and let the human decide.',
-        'Prefer structured/domain Authoring Operations. source.write/move/delete are low-level fallback only.',
-        'For native@3, inspect atri_agent_frontend_graph then propose atri_agent_frontend_patch by Component/Node/Binding semantic ID and contentHash. Edit authoring source only. Preview uses the production Compiler/Renderer. Keep component uses, typed targets and Operation intent intact.',
-        'Library relationships must use exact revisions. Never invent or resolve "latest".',
-        'Use A2 Resource Graph tools for discovery/references/dependency closure, A5 Skills for know-how, and plugin-defined Resource Registry descriptors when relevant.',
-        'Discover current Native Experience contracts with atri_agent_api_catalog and read relevant pages using atri_agent_api_read. This includes Native Frontend v3, Tasks, lifecycle, Activity/Scene, information, Continuity, Shared/Realm and Scenario. Never invent a field from a capability name.',
-        'Skills may link supporting files: list them with atri_agent_skill_files, then read the relevant path with atri_agent_read_skill. Follow pagination when a file is truncated.',
-        'Before proposing writes, call atri_agent_set_plan once with concrete semantic steps.',
-        'When your proposed operation set is coherent, call atri_agent_prepare_review. That dry-runs the Workspace, validates it and inspects Native Preview/simulation without committing.',
-        'If validation/evaluation fails and Task status is repair, diagnose the diagnostics, call atri_agent_reset_operations, propose a corrected set, then call prepare_review again. Repair rounds are bounded by server policy.',
-        'High-impact edits still stop at the same human Review gate.',
-        '',
-        'Task intent:',
-        String(task.intent || ''),
-        '',
-        'Pinned baseRevision:',
-        String(task.baseRevision || ''),
-        '',
-        'Current authoritative Task state (resume from these proposals; never repeat saved operations from conversation):',
-        JSON.stringify({ status: task.status, plan: task.plan, operations: task.operations, validation: task.validation, repairRound: task.repairRound, maxRepairRounds: task.maxRepairRounds, strategyVersionId: task.strategyVersionId }),
-        '',
-        'Current Project summary:',
-        JSON.stringify({
-            project: project?.source?.project || null,
-            package: {
-                name: project?.source?.package?.name || null,
-                version: project?.source?.package?.version || null,
-                entryPoints: project?.source?.package?.entryPoints || [],
-            },
-            files: project?.files || [],
-        }),
-        '',
-        'Plugin authoring resource contributions:',
-        JSON.stringify(plugins),
-        '',
-        'Resolved Native Skill inventory (read with atri_agent_read_skill only when useful):',
-        JSON.stringify(skills),
-        skillInstructions(skillEntries),
-    ].join('\n');
-}
-
-function normalizeToolCalls(result) {
-    return (Array.isArray(result?.toolCalls) ? result.toolCalls : [])
-        .map((call, index) => ({
-            id: String(call?.raw?.id || call?.id || `agent_call_${Date.now()}_${index}`),
-            name: String(call?.name || '').trim(),
-            args: call?.args && typeof call.args === 'object' ? call.args : {},
-            arguments: typeof call?.raw?.function?.arguments === 'string' ? call.raw.function.arguments : JSON.stringify(call?.args || {}),
-        }))
-        .filter(call => call.name);
-}
-
-function assistantToolMessage(text, calls, providerState) {
-    return {
-        role: 'assistant',
-        content: text || '',
-        ...(providerState ? { providerState } : {}),
-        tool_calls: calls.map(call => ({
-            id: call.id,
-            type: 'function',
-            function: {
-                name: call.name,
-                arguments: call.arguments,
-            },
-        })),
-    };
-}
-
-function toolResultMessage(call, result) {
-    if (result?.taskId) {
-        const { conversation: _conversation, attempts: _attempts, timeline: _timeline, ...task } = result;
-        result = task;
-    }
-    return {
-        role: 'tool',
-        tool_call_id: call.id,
-        name: call.name,
-        content: JSON.stringify(result),
-    };
-}
-
 async function executeModelTool(projectId, taskId, call, skillEntries, attemptId, computeContext, signal, client = nativeStudioClient, work = projectSkillWork) {
     if (call.name === 'atri_agent_list_skills') {
         await work(computeContext, 'catalog', { names: skillEntries.map(entry => entry.name) }, signal);
@@ -214,7 +77,7 @@ export async function runNativeStudioAgentTask({
     onUpdate = () => {},
     abortSignal = undefined,
     maxModelRounds = MAX_MODEL_ROUNDS,
-    client = nativeStudioClient, request = runtimeRequest, generate = executeNativeGeneration, work = projectSkillWork,
+    client = nativeStudioClient, request = runtimeRequest, generate = executeNativeGeneration, work = projectSkillWork, prepareModelRound = null,
 }) {
     let context = await client.getAgentContext(projectId, taskId);
     if (STOP_STATES.has(context.task.status)) return { task: context.task, messages: context.task.conversation || messages };
@@ -253,28 +116,22 @@ export async function runNativeStudioAgentTask({
             return { task: context.task, messages: transcript };
         }
 
-        const tools = [...(context.tools || []), ...skillTools()];
-        const system = buildNativeProjectAgentSystemPrompt(context, skillEntries);
-        if (previousSystem !== undefined && system !== previousSystem && modelTranscript.some(message => message.providerState)) {
-            // Changed Task authority needs a new computation from current state
-            // and public observations, rather than replaying an old signed prefix.
-            modelTranscript = projectAgentResumeMessages(modelTranscript);
-            onUpdate({ task: context.task, messages: transcript, continuation: { status: 'reset', reason: 'semantic_prefix_changed' } });
-        }
-        previousSystem = system;
-        const allowed = new Set(tools.map(item => item.function.name));
         const started = await client.beginAgentGeneration(projectId, taskId, { expectedSequence: context.task.sequence });
         const attemptId = started.attempts.at(-1).attemptId;
         const savedLength = transcript.length;
         let stopped = false;
         try {
+            const prepared = prepareModelRound ? await prepareModelRound({ projectId, taskId, attemptId, round, context, skillEntries, modelTranscript, previousSystem })
+                : buildNativeProjectModelRound({ context, skillEntries, modelTranscript, previousSystem });
+            const { tools, system } = prepared;
+            modelTranscript = prepared.modelTranscript;
+            if (prepared.systemChanged) onUpdate({ task: context.task, messages: transcript, continuation: { status: 'reset', reason: 'semantic_prefix_changed' } });
+            previousSystem = system;
+            const allowed = new Set(tools.map(item => item.function.name));
             const result = await generate({
                 role: 'studio',
                 source: { projectId, taskId, revision: context.task.baseRevision, projectAttemptId: attemptId },
-                messages: [
-                    { role: 'system', content: system },
-                    ...modelTranscript,
-                ],
+                messages: prepared.messages,
                 tools,
                 abortSignal,
             });

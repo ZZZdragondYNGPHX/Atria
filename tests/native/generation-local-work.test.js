@@ -19,8 +19,9 @@ async function fixture(make, lane, budget = limits) {
     const h = await make(), seen = []; let status = () => 200;
     const server = createServer(async (req, res) => {
         let raw = ''; for await (const part of req) raw += part; seen.push(JSON.parse(raw));
-        res.writeHead(status(seen.length), { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'Fresh bounded answer.' } }], usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 } }));
+        const responseStatus = status(seen.length);
+        res.writeHead(responseStatus, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'Fresh bounded answer.' } }], usage: responseStatus === 200 ? { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 } : undefined }));
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const installed = await installFixture(h), base = await installed.core.create(h.handle, installed.start);

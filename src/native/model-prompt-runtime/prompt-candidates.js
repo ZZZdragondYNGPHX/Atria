@@ -6,6 +6,7 @@ import { assertWritable } from '../../storage/read-only-mode.js';
 import { NativeModelPromptPersistence, withRuntimeWrite } from './persistence.js';
 import { PromptPresetStore } from './presets.js';
 import { assertExactResourceRef, assertRuntimeRoute } from './contracts.js';
+import { orchestrationPinReferences } from '../orchestration/reference-roots.js';
 import { assertVersionedModelPromptResource, mapVersionedModelPromptResourceRefs } from './resources.js';
 import { flattenPromptProgram } from './prompt-compiler.js';
 import { interpolate, readVariable } from './prompt-values.js';
@@ -91,6 +92,9 @@ export class PromptCandidateStore {
             const routes = await this.persistence.listRuntimeRoutes(handle);
             if (routes.some(r => [r.promptProgramRef, ...(r.projectPromptBindings || []).map(b => b.promptProgramRef)].some(ref => candidate.changedRefs.some(c => same(c, ref))))) conflict();
             await this.engine.withTransaction(handle, async tx => {
+                for (const ref of candidate.changedRefs) {
+                    if ((await orchestrationPinReferences(tx, handle, ref)).length) conflict();
+                }
                 for (const ref of candidate.changedRefs) await tx.deleteResource(key(handle, ref));
                 await putMutable(tx, key(handle, rootRef(id)), { ...root, promptEvolution: { ...root.promptEvolution, candidates: root.promptEvolution.candidates.filter(c => c.candidateId !== candidateId) } });
             });

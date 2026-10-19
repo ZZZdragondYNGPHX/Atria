@@ -1,3 +1,5 @@
+// Same default config path as the Jest setup; some imported modules read config at load.
+import '../../util/config.js';
 // Separate process: no scheduler, selection pin or preparation proof can survive.
 import { makeTempFsEngineHarness } from '../../storage/harness/contract-harness.js';
 import { services } from './session-fixture.js';

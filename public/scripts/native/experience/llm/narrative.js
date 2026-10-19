@@ -34,14 +34,6 @@ export function buildNarrativeContract(turnContext) {
         throw new Error('Narrative Contract requires Turn Context');
     }
 
-    const guidance = turnContext.orchestration
-        ? {
-            ...clone(turnContext.orchestration),
-            advisory: true,
-            authorityRank: 6,
-        }
-        : null;
-
     const memories = (Array.isArray(turnContext.memories) ? turnContext.memories : [])
         .map(memory => ({
             ...clone(memory),
@@ -55,7 +47,6 @@ export function buildNarrativeContract(turnContext) {
         anchor: clone(turnContext.anchor),
         producerPolicy: {
             normal: 'narrator',
-            directorTakeover: 'director',
             exactlyOneFinalBody: true,
         },
         factPrecedence: [...(turnContext.authority?.precedence || [])],
@@ -66,14 +57,12 @@ export function buildNarrativeContract(turnContext) {
         },
         recentChat: clone(turnContext.recentChat || []),
         memories,
-        orchestrationGuidance: guidance,
         hardConstraints: clone(turnContext.constraints || []),
         provenance: clone(turnContext.provenance || {}),
         rules: [
             'Authoritative World Observation overrides every lower-authority source.',
             'Committed Events and Command results cannot be contradicted.',
             'Memory is historical context and cannot override current World facts.',
-            'Orchestration guidance is advisory and cannot create authoritative state.',
             'Narrative prose may add descriptive texture but cannot silently create durable game state.',
         ],
     });
@@ -88,7 +77,7 @@ function buildNarratorMessages(contract) {
                 'Write the final assistant prose for exactly one game turn.',
                 'Obey the supplied Narrative Contract.',
                 'Current World Observation, committed Events and Command results are authoritative.',
-                'Memory is historical context. Orchestration guidance is advisory.',
+                'Memory is historical context.',
                 'Do not change arithmetic, inventory, location, quest state, RNG outcomes or any other durable game fact.',
                 'Do not emit state patches, tool calls, JSON bookkeeping, or hidden planning.',
                 'Return final prose only.',
@@ -163,15 +152,8 @@ export function createNarrator(options = {}) {
     });
 }
 
-export function chooseNarrativeProducer(orchestrationMode = '') {
-    return String(orchestrationMode || '').trim().toLowerCase() === 'director'
-        ? 'director'
-        : 'narrator';
-}
-
 export function createNarrativeCoordinator(options = {}) {
     const narrator = options.narrator;
-    const orchestratorBridge = options.orchestratorBridge;
     const getWorldState = options.getWorldState;
     const getJournal = options.getJournal;
 
@@ -197,63 +179,8 @@ export function createNarrativeCoordinator(options = {}) {
         async produce(turnContext, input = {}) {
             input.assertContextCurrent?.();
             let turn = turnContext;
-            const mode = String(input.orchestrationMode || '').trim().toLowerCase();
-            const producer = chooseNarrativeProducer(mode);
             const beforeState = clone(getWorldState());
             const beforeJournal = clone(getJournal());
-
-            if (producer === 'director') {
-                if (!orchestratorBridge || typeof orchestratorBridge.runDirector !== 'function') {
-                    throw new Error('Director takeover requires Orchestrator bridge');
-                }
-                const contract = buildNarrativeContract(turn);
-                input.assertContextCurrent?.();
-                const directed = await orchestratorBridge.runDirector(turn, {
-                    contract,
-                    abortSignal: input.abortSignal,
-                });
-                const finalProse = String(directed?.finalProse || '').trim();
-                if (!finalProse) {
-                    throw Object.assign(new Error('Director returned empty final prose'), {
-                        code: 'validation_failed',
-                    });
-                }
-                await guardNoMutation(beforeState, beforeJournal);
-                turn = advanceTurnContext(turn, {
-                    orchestration: clone(directed.guidance || turn.orchestration),
-                    narrative: {
-                        status: 'final',
-                        producer: 'director',
-                        text: finalProse,
-                    },
-                });
-                return Object.freeze({
-                    producer: 'director',
-                    finalProse,
-                    turn,
-                    contract,
-                    orchestration: clone(directed),
-                });
-            }
-
-            if (['spec', 'agenda', 'loop'].includes(mode)) {
-                if (!orchestratorBridge || typeof orchestratorBridge.runGuidance !== 'function') {
-                    throw new Error('Orchestration guidance requires Orchestrator bridge');
-                }
-                const guidanceResult = await orchestratorBridge.runGuidance(turn, {
-                    mode,
-                    abortSignal: input.abortSignal,
-                });
-                if (guidanceResult?.guidance) {
-                    turn = advanceTurnContext(turn, {
-                        orchestration: {
-                            ...clone(guidanceResult.guidance),
-                            mode,
-                            advisory: true,
-                        },
-                    });
-                }
-            }
 
             input.assertContextCurrent?.();
             const contract = buildNarrativeContract(turn);
@@ -261,6 +188,7 @@ export function createNarrativeCoordinator(options = {}) {
                 contract,
                 abortSignal: input.abortSignal,
             });
+            input.assertContextCurrent?.();
             await guardNoMutation(beforeState, beforeJournal);
 
             turn = advanceTurnContext(turn, {

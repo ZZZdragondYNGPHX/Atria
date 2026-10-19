@@ -1,6 +1,6 @@
 import { getEncoding } from 'js-tiktoken';
 import { observedGenerationUsage } from './generation-usage.js';
-import { immutable, GenerationError, ProviderFailure, providerHttpFailure } from '../model-prompt-runtime/execution-utils.js';
+import { immutable, GenerationError, ProviderFailure, providerHttpFailure, observeProviderHttpUsage } from '../model-prompt-runtime/execution-utils.js';
 import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
 import { serializeNativeDocument } from '../repositories/common.js';
 
@@ -148,8 +148,13 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
                 throw new ProviderFailure('transport');
             }
             if (!response.ok) {
-                await response.body?.cancel();
-                throw providerHttpFailure(response.status);
+                const failure = providerHttpFailure(response.status);
+                // The failed body and provider message never leave this frame.
+                try {
+                    const raw = await response.json();
+                    observeProviderHttpUsage(failure, observedGenerationUsage(raw?.usage, { inputTokens: 'prompt_tokens', outputTokens: 'completion_tokens', totalTokens: 'total_tokens' }));
+                } catch { /* An unreadable failure retains unknown spending. */ }
+                throw failure;
             }
             return response;
         },

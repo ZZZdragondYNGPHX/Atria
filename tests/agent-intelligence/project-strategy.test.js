@@ -154,6 +154,9 @@ test('original Studio loop sees exact task strategy; once generation starts manu
         else if (url === '/api/native/generation/execute') {
             await onSend();
             value = { response: { assistantText: 'Bounded reply', toolCalls: [] } };
+        } else if (url === '/api/native/generation/skill-work') {
+            if (body.operation !== 'list' || body.computeContext.projectId !== f.projectId || body.computeContext.taskId !== f.task.taskId) throw new Error('Foreign fixture Skill request');
+            value = [];
         } else if (url.endsWith('/context')) value = await f.agent.getContext(f.h.handle, f.projectId, f.task.taskId);
         else if (url.endsWith('/resume')) value = await f.agent.resumeTask(f.h.handle, f.projectId, f.task.taskId);
         else if (url.endsWith('/generation/begin')) value = await f.agent.beginGeneration(f.h.handle, f.projectId, f.task.taskId, body);

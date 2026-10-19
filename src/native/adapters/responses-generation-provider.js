@@ -1,5 +1,5 @@
 import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
-import { GenerationError, ProviderFailure, providerHttpFailure } from '../model-prompt-runtime/execution-utils.js';
+import { GenerationError, ProviderFailure, providerHttpFailure, observeProviderHttpUsage } from '../model-prompt-runtime/execution-utils.js';
 import { serializeNativeDocument } from '../repositories/common.js';
 import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, discardNativeEnvelopes, assertNativeEnvelopeSafe, leaseNativeRequest, consumeNativeRequest, inspectNativeRequest, nativeExecutionObservation, hydrateNativeEnvelopes, publishNativeEnvelope, discardStoredNativeEnvelopes, resetStoredNativeEnvelopes, isDurableNativeContinuity } from '../model-prompt-runtime/native-execution-envelope.js';
 import { observedGenerationUsage } from './generation-usage.js';
@@ -115,7 +115,14 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch, checkpoin
                 response = await fetchImpl(request.endpoint, { method: 'POST', signal, redirect: 'error',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret}` }, body: request.wire });
             } catch { if (signal.aborted) throw new GenerationError('generation_cancelled'); throw new ProviderFailure('transport'); }
-            if (!response.ok) { await response.body?.cancel(); throw providerHttpFailure(response.status); }
+            if (!response.ok) {
+                const failure = providerHttpFailure(response.status);
+                try {
+                    const raw = await response.json();
+                    observeProviderHttpUsage(failure, observedGenerationUsage(raw?.usage, { inputTokens: 'input_tokens', outputTokens: 'output_tokens', totalTokens: 'total_tokens' }));
+                } catch { /* A missing or unreadable report keeps spending unknown. */ }
+                throw failure;
+            }
             return { response, binding: request.binding, sequence: request.sequence, continuityDecision: request.continuityDecision };
         },
         async parseStream({ response, binding, sequence, continuityDecision }, { onChunk, onUsage } = {}) {

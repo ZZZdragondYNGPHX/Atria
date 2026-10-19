@@ -8,6 +8,7 @@ import {
 
 export const NATIVE_STORAGE_KINDS = Object.freeze(Object.values(NATIVE_RESOURCE_KINDS));
 const NATIVE_KIND_SET = new Set(NATIVE_STORAGE_KINDS);
+const encodedKeys = new WeakMap(), fileIds = new WeakMap();
 
 export function isNativeStorageKind(kind) {
     return NATIVE_KIND_SET.has(kind);
@@ -19,8 +20,11 @@ export function normalizeNativeResourceKey(key) {
 
 export function encodeNativeResourceKey(key) {
     const normalized = normalizeNativeResourceKey(key);
+    if (encodedKeys.has(normalized)) return encodedKeys.get(normalized);
     const fields = getNativeResourceKeyFields(normalized.kind).filter(field => field !== 'handle');
-    return JSON.stringify(fields.map(field => normalized[field]));
+    const encoded = JSON.stringify(fields.map(field => normalized[field]));
+    if (typeof normalized.kind === 'string') encodedKeys.set(normalized, encoded);
+    return encoded;
 }
 
 export function decodeNativeResourceKey(kind, handle, encoded) {
@@ -41,11 +45,14 @@ export function decodeNativeResourceKey(kind, handle, encoded) {
 
 export function nativeResourceFileId(key) {
     const normalized = normalizeNativeResourceKey(key);
-    return createHash('sha256')
+    if (fileIds.has(normalized)) return fileIds.get(normalized);
+    const fileId = createHash('sha256')
         .update(normalized.kind)
         .update('\0')
         .update(encodeNativeResourceKey(normalized))
         .digest('hex');
+    if (typeof normalized.kind === 'string') fileIds.set(normalized, fileId);
+    return fileId;
 }
 
 export function nativeResourceMatchesFilter(key, filter) {

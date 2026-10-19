@@ -15,122 +15,9 @@
 // has tools, the mock can be scripted to reply with a tool_calls choice
 // via `nextTool({name, arguments})` before the next chat call.
 //
-// ─────────────────────────────────────────────────────────────────────────
-// Director-aware routing (for orchestrator director-mode runtime tests)
-// ─────────────────────────────────────────────────────────────────────────
-//
-// The director runtime drives a multi-agent loop:
-//   1. main agent receives the user turn + a tools schema including
-//      dispatch_subagent / write_message / apply_message_patches /
-//      get_draft / finalize. Each round MUST return at least one
-//      tool_call — a plain-text reply is rejected as a "no-tool-call"
-//      failure and retried, so a queue of plain replies can NEVER drive
-//      the director to commit.
-//   2. when the main agent emits dispatch_subagent, the runtime forks a
-//      sub-agent mini-loop. The sub-agent's request carries a distinct
-//      system-prompt shape: an anti-RP META_FRAME, the <story_context>
-//      block, an <orchestration_role> block (the sub-agent's persona),
-//      and a final <task> block with the brief. Sub-agents do NOT have
-//      dispatch / write_message tools — they read tools (chat, lorebook,
-//      memory, search) plus get_draft / draft_search, and terminate by
-//      producing a round with ZERO tool calls (the text of that round is
-//      what main reads back via await_subagents).
-//   3. the main agent eventually calls finalize() to commit the in-flight
-//      draft (built up via write_message calls) as the chat bubble.
-//
-// To drive this from a test, call `mock.scriptDirectorRun({ route })`
-// before sending the user turn. `route(req)` is invoked once per
-// /chat/completions hit with a request descriptor:
-//
-//   req.role               — 'director-main' | 'subagent' | 'unknown'
-//   req.subagentId         — best-effort identifier extracted from the
-//                            sub-agent's system prompt (the first non-
-//                            empty line of <orchestration_role>; for
-//                            dispatch_inline_subagent this is whatever
-//                            the inline systemPrompt's first line says).
-//                            Use req.subagentRole as a coarser hint when
-//                            specific ids aren't predictable.
-//   req.subagentTask       — content of the sub-agent's <task> block
-//                            (the brief the main agent passed).
-//   req.systemPrompts      — array of all system message contents
-//   req.userMessages       — array of all user message contents
-//   req.lastUser           — string content of the last user message
-//   req.toolNames          — array of tool names exposed to this caller
-//                            (handy for "is this the main agent's
-//                            tools array?" checks)
-//   req.turn               — per-role call counter starting at 0.
-//                            For 'director-main', increments on every
-//                            director-main call. For 'subagent', a
-//                            single shared counter across all subagent
-//                            calls (tests usually want per-subagent
-//                            counters; track those yourself via a
-//                            closure over local state if needed).
-//   req.body               — raw parsed JSON body if you need more
-//
-// route() returns ONE of:
-//   - { text: '...' }                              plain assistant text
-//   - { tool: 'name', arguments: {...} }           single tool call
-//   - { toolCalls: [{name, arguments}, ...] }      parallel tool calls
-//   - null / undefined                             fall back to queue
-//
-// Both streaming and non-streaming transports are handled — the mock
-// emits the right shape based on the request body's `stream` flag.
-//
-// Example — a complete director turn that dispatches one sub-agent then
-// writes + finalizes the message body:
-//
-//   const FINAL = '*Ash lowers the glass.* "Three hulls north."';
-//   mock.scriptDirectorRun({
-//       route: ({ role, turn, subagentId }) => {
-//           if (role === 'director-main' && turn === 0) {
-//               return { tool: 'dispatch_subagent',
-//                   arguments: { subagentId: 'lorebook_scout', task: 'find reef facts' } };
-//           }
-//           if (role === 'subagent') {
-//               return { text: 'reef shifts on a 19-day cycle.' };
-//           }
-//           if (role === 'director-main' && turn === 1) {
-//               return { toolCalls: [
-//                   { name: 'await_subagents', arguments: { handles: ['subagent-0'] } },
-//               ] };
-//           }
-//           if (role === 'director-main' && turn === 2) {
-//               return { tool: 'write_message', arguments: { text: FINAL } };
-//           }
-//           if (role === 'director-main' && turn === 3) {
-//               return { tool: 'finalize', arguments: {} };
-//           }
-//           return null;  // queue fallback
-//       },
-//   });
-
 import http from 'node:http';
 
 const DEFAULT_REPLY = '*Ash glances toward the sea and answers in two careful sentences, eyes lingering on the path behind you both.* The reef has been restless tonight, but the lantern still holds. We can keep moving.';
-
-// Marker text from the director-mode sub-agent META_FRAME (see
-// director-tools.js#runDispatchInternal). Detecting this in a request's
-// system messages is the most reliable way to tag the request as
-// originating from the sub-agent dispatcher path — the META_FRAME is
-// stamped on every sub-agent call regardless of which subagent id /
-// inline prompt is in play.
-const SUBAGENT_META_FRAME_PREFIX = 'You are an orchestration agent embedded inside a roleplay session.';
-
-// Marker tool names that uniquely identify a director MAIN agent request.
-// `dispatch_subagent` / `dispatch_inline_subagent` / `finalize` /
-// `write_message` / `apply_message_patches` are all main-only tools —
-// sub-agents never see them (see director-tools.js#buildSubAgentToolSchemas
-// which exposes only get_draft + draft_search + loop tools). `finalize`
-// is the strongest signal because director re-purposes loop's finalize
-// name with a different signature, so its presence in the tools array
-// is a director-mode tell.
-const MAIN_ONLY_TOOL_NAMES = new Set([
-    'dispatch_subagent',
-    'dispatch_inline_subagent',
-    'write_message',
-    'apply_message_patches',
-    'finalize',
-]);
 
 /**
  * @param {object} opts
@@ -142,8 +29,6 @@ const MAIN_ONLY_TOOL_NAMES = new Set([
  *   baseURL:string,
  *   scriptReply:(s:string)=>void,
  *   scriptToolCall:(t:object)=>void,
- *   scriptDirectorRun:(opts:{route:Function})=>void,
- *   clearDirectorRun:()=>void,
  *   scriptCompletion:(route:Function|null)=>void,
  *   clearScriptedCompletion:()=>void,
  *   requests:object[],
@@ -161,113 +46,13 @@ export async function startMockLLM({ scriptedReplies = [], scriptedToolCalls = [
     let chunkDelayMsGlobal = streamChunkDelayMs;
     function setChunkDelay(ms) { chunkDelayMsGlobal = Math.max(0, Number(ms) || 0); }
 
-    // Director routing state — single in-flight router. scriptDirectorRun
-    // replaces it; clearDirectorRun nulls it. Per-role turn counters are
-    // co-located so each scripted run starts fresh from turn 0.
-    let directorRoute = null;
-    const turnCounters = { 'director-main': 0, 'subagent': 0 };
-
-    function setDirectorRoute(fn) {
-        directorRoute = typeof fn === 'function' ? fn : null;
-        turnCounters['director-main'] = 0;
-        turnCounters['subagent'] = 0;
-    }
-
-    // Generic completion route — invoked for every /chat/completions
-    // request AFTER the director-role router has passed (i.e. director
-    // returned null OR the request didn't classify as director). Unlike
-    // scriptDirectorRun, this one does NOT gate on role classification,
-    // so it's the right tool for iter-studio-style specs that need to
-    // return a MULTI-toolCall payload on turn 0 and plain text on turn 1
-    // without the director protocol fingerprint. Return shape matches
-    // scriptDirectorRun: { text } | { tool, arguments } | { toolCalls: [...] }
-    // | null (fall through to queue).
+    // Generic completion route: { text } | { tool, arguments } |
+    // { toolCalls: [...] } | null (fall through to the scripted queue).
     let genericRoute = null;
     let genericTurn = 0;
     function setGenericRoute(fn) {
         genericRoute = typeof fn === 'function' ? fn : null;
         genericTurn = 0;
-    }
-
-    function classifyRequest(parsed) {
-        const messages = Array.isArray(parsed?.messages) ? parsed.messages : [];
-        const toolDefs = Array.isArray(parsed?.tools) ? parsed.tools : [];
-        const toolNames = toolDefs
-            .map(t => String(t?.function?.name || t?.name || ''))
-            .filter(Boolean);
-
-        const systemPrompts = messages
-            .filter(m => m && m.role === 'system')
-            .map(m => stringifyMessageContent(m.content));
-        const userMessages = messages
-            .filter(m => m && m.role === 'user')
-            .map(m => stringifyMessageContent(m.content));
-
-        const lastUser = userMessages.length > 0 ? userMessages[userMessages.length - 1] : '';
-
-        // Sub-agent fingerprint: META_FRAME stamped as one of the system
-        // messages in the dispatcher's assembled prompt. Robust against
-        // user-defined main system prompts because the META_FRAME wording
-        // is hard-coded in the runtime and never reused for the main agent.
-        // We `includes` (not `startsWith`) because some chat-completion
-        // presets concatenate multiple system messages into one block
-        // (the openai preset's "main" prompt prepends character / scenario
-        // text before the orchestrator's META_FRAME message), so the
-        // META_FRAME isn't necessarily at index 0 of its own system entry.
-        const hasSubagentFrame = systemPrompts.some(s => s.includes(SUBAGENT_META_FRAME_PREFIX));
-        // Main-agent fingerprint: any of the main-only tool names appear
-        // in the tools array. dispatch_subagent is gated on having
-        // sub-agents configured, but the message-production tools
-        // (write_message/finalize/etc.) appear on EVERY main-agent
-        // request, so detection is reliable even when no sub-agents are
-        // configured.
-        const hasMainTools = toolNames.some(n => MAIN_ONLY_TOOL_NAMES.has(n));
-
-        let role = 'unknown';
-        if (hasSubagentFrame && !hasMainTools) role = 'subagent';
-        else if (hasMainTools) role = 'director-main';
-
-        // Pull <orchestration_role> + <task> content out of the sub-agent's
-        // system messages. The dispatcher emits each as its own discrete
-        // system message wrapping the body in XML-style tags (see
-        // director-tools.js#runDispatchInternal); we only need to find
-        // the system message that contains the tag and unwrap it.
-        let subagentId = '';
-        let subagentRole = '';
-        let subagentTask = '';
-        if (role === 'subagent') {
-            for (const s of systemPrompts) {
-                const roleMatch = /<orchestration_role>\s*([\s\S]*?)\s*<\/orchestration_role>/.exec(s);
-                if (roleMatch) {
-                    subagentRole = roleMatch[1];
-                    // First non-empty line of the role block is the
-                    // strongest "who am I?" hint we have without parsing
-                    // the entire systemPrompt. For the default profile's
-                    // sub-agents this lands on phrases like
-                    // "You are a pre-draft chat scout." which tests can
-                    // pattern-match on. For dispatch_inline_subagent
-                    // this is the first line of the user-supplied
-                    // systemPrompt verbatim.
-                    const firstLine = subagentRole.split('\n').find(l => l.trim().length > 0);
-                    if (firstLine) subagentId = firstLine.trim();
-                }
-                const taskMatch = /<task>\s*([\s\S]*?)\s*<\/task>/.exec(s);
-                if (taskMatch) subagentTask = taskMatch[1];
-            }
-        }
-
-        return {
-            role,
-            subagentId,
-            subagentRole,
-            subagentTask,
-            systemPrompts,
-            userMessages,
-            lastUser,
-            toolNames,
-            stream: parsed?.stream === true,
-            body: parsed,
-        };
     }
 
     // One-shot failure injection for the /responses endpoint. The next
@@ -286,8 +71,7 @@ export async function startMockLLM({ scriptedReplies = [], scriptedToolCalls = [
         // Track when the mock received this request and when it emitted
         // the first response byte. Barrier / cache-warmup tests use
         // these to assert follower-request timing relative to lead
-        // first-chunk delivery — see tests/e2e/orchestrator/
-        // 81-dispatch-barrier-*.e2e.js. The record is appended before
+        // first-chunk delivery. The record is appended before
         // any await so `mock.requests` reflects arrival order.
         const record = { url: req.url, method: req.method, body: parsed, headers: req.headers, receivedAt: Date.now(), firstByteAt: null };
         requests.push(record);
@@ -346,57 +130,9 @@ export async function startMockLLM({ scriptedReplies = [], scriptedToolCalls = [
 
         // Chat completions.
         if (req.url.endsWith('/chat/completions') || req.url.endsWith('/v1/chat/completions')) {
-            // Director routing has priority over the queue when:
-            //   (a) a director router was registered AND
-            //   (b) the incoming request can be classified as director-main
-            //       or subagent (i.e. matches the protocol fingerprint).
-            //
-            // When the router returns null/undefined for a classified
-            // request, OR the request didn't classify as director, we
-            // fall back to the existing queue-based behavior — keeping
-            // every non-director spec (chat-flow, swipe, persistence,
-            // etc.) working unchanged.
-            let routerResponse = null;
-            let classification = null;
-            if (directorRoute) {
-                classification = classifyRequest(parsed);
-                if (classification.role !== 'unknown') {
-                    const reqDescriptor = {
-                        ...classification,
-                        turn: turnCounters[classification.role],
-                    };
-                    try {
-                        routerResponse = directorRoute(reqDescriptor);
-                    } catch (err) {
-                        // Surface router exceptions as an HTTP 500 — the
-                        // test will fail loudly with the message instead
-                        // of silently hanging on a missing reply.
-                        res.writeHead(500, { 'content-type': 'application/json' });
-                        res.end(JSON.stringify({ error: { message: `mock director route threw: ${err?.message || err}` } }));
-                        return;
-                    }
-                    // Only bump the per-role counter when the router
-                    // actually produced something — letting a falsy return
-                    // pass through to the queue without consuming a turn
-                    // slot keeps the counter aligned with director-handled
-                    // calls only.
-                    if (routerResponse !== null && routerResponse !== undefined) {
-                        turnCounters[classification.role] += 1;
-                    }
-                }
-            }
-
             const isStream = parsed.stream === true;
 
-            // Router took over → emit its response and return.
-            if (routerResponse !== null && routerResponse !== undefined) {
-                respondFromRouter(res, parsed, routerResponse, isStream);
-                return;
-            }
-
-            // Generic completion route (role-agnostic). Runs after the
-            // director router has passed. Useful for iter-studio specs
-            // that need multi-toolCall payloads per turn.
+            // Generic completion route supports per-turn text/tool-call scripts.
             if (genericRoute) {
                 let generic = null;
                 try {
@@ -481,11 +217,10 @@ export async function startMockLLM({ scriptedReplies = [], scriptedToolCalls = [
         }
 
         // OpenAI Responses API. Reuses the same scripted queues (replies/tools)
-        // and router/generic routes as chat completions, but emits semantic
+        // and generic route as chat completions, but emits semantic
         // Responses events instead of chat chunks. The request body carries an
         // input[] array instead of messages[], so synthesize a messages view
-        // before director/generic classification (which fingerprints on the
-        // messages array shape).
+        // for the generic route.
         if (req.url.endsWith('/responses')) {
             if (failNext) {
                 const { status, body } = failNext;
@@ -496,32 +231,6 @@ export async function startMockLLM({ scriptedReplies = [], scriptedToolCalls = [
             }
             const isStreamFlagged = parsed.stream === true;
             const classifyView = { ...parsed, messages: responsesInputToMessages(parsed.input) };
-
-            let routerResponse = null;
-            if (directorRoute) {
-                const classification = classifyRequest(classifyView);
-                if (classification.role !== 'unknown') {
-                    const reqDescriptor = {
-                        ...classification,
-                        turn: turnCounters[classification.role],
-                    };
-                    try {
-                        routerResponse = directorRoute(reqDescriptor);
-                    } catch (err) {
-                        res.writeHead(500, { 'content-type': 'application/json' });
-                        res.end(JSON.stringify({ error: { message: `mock director route threw: ${err?.message || err}` } }));
-                        return;
-                    }
-                    if (routerResponse !== null && routerResponse !== undefined) {
-                        turnCounters[classification.role] += 1;
-                    }
-                }
-            }
-
-            if (routerResponse !== null && routerResponse !== undefined) {
-                await respondFromResponsesRoute(res, parsed, isStreamFlagged, { response: routerResponse }, chunkDelayMsGlobal);
-                return;
-            }
 
             if (genericRoute) {
                 let generic = null;
@@ -576,8 +285,6 @@ export async function startMockLLM({ scriptedReplies = [], scriptedToolCalls = [
         scriptReply(s) { replies.push(s); },
         scriptToolCall(t) { tools.push(t); },
         setStreamChunkDelayMs(ms) { setChunkDelay(ms); },
-        scriptDirectorRun({ route } = {}) { setDirectorRoute(route); },
-        clearDirectorRun() { setDirectorRoute(null); },
         scriptCompletion(route) { setGenericRoute(route); },
         clearScriptedCompletion() { setGenericRoute(null); },
         failNextResponses,
@@ -595,11 +302,8 @@ export async function startMockLLM({ scriptedReplies = [], scriptedToolCalls = [
  *   - { toolCalls: [{name, args}], text? }       → N parallel tool_calls (text optional)
  *   - { reasoning } may accompany any of the above
  *
- * When `text` accompanies tool_calls, the runtime sees both — director-
- * mode's main agent loop streams the text into its panel section AND
- * still dispatches the tool calls. Useful for "the agent is narrating
- * what it's about to do" tests that need both the action and the
- * accompanying narration to surface in the panel.
+ * When `text` accompanies tool_calls, both are emitted so callers can
+ * exercise narration alongside tool execution.
  *
  * For streaming, each tool_call gets its own index in the delta array
  * (parallel-dispatch case) — without distinct indices the runtime's
@@ -788,9 +492,8 @@ function splitPieces(s) {
 
 /**
  * Convert a Responses-API input[] back into a chat-completions-style
- * messages array so director/generic classification (which fingerprints on
- * messages) can run unchanged. function_call / function_call_output items
- * are dropped — classification never needs them. A bare string input is
+ * messages array for the generic route. function_call / function_call_output
+ * items are omitted from this message-only view. A bare string input is
  * treated as a single user turn.
  */
 function responsesInputToMessages(input) {

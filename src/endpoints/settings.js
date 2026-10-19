@@ -312,6 +312,7 @@ router.post('/observe', async (request, response) => {
 
 router.post('/patch', async function (request, response) {
     try {
+        if (Object.hasOwn(request.body ?? {}, 'expectedWorkspaceRevision')) return response.status(400).json({ error: 'native_orchestration_legacy_unsupported' });
         const operations = Array.isArray(request.body?.operations)
             ? request.body.operations
             : (_.isObjectLike(request.body?.operations)
@@ -325,7 +326,7 @@ router.post('/patch', async function (request, response) {
         const handle = request.user.profile.handle;
         const repo = getSettingsRepo();
         try {
-            await repo.patch(handle, operations, { expectedWorkspaceRevision: request.body?.expectedWorkspaceRevision || 0 });
+            await repo.patch(handle, operations);
         } catch (err) {
             if (err instanceof NotFoundError) {
                 const seeded = applyJsonPatch({}, operations);
@@ -337,7 +338,7 @@ router.post('/patch', async function (request, response) {
         triggerAutoSave(handle, request.user.directories);
         return response.send({ result: 'ok', applied: operations.length });
     } catch (error) {
-        if (error?.code === 'agent_workspace_write_conflict') return response.status(409).json({ error: error.code });
+        if (error.code === 'native_orchestration_legacy_unsupported') return response.status(400).json({ error: error.code });
         if (error instanceof PatchTestFailedError || error instanceof PatchMissingParentError) {
             return response.status(409).send({
                 error: 'Settings patch test conflict.',
@@ -364,7 +365,7 @@ router.post('/save', async function (request, response) {
         triggerAutoSave(handle, request.user.directories);
         response.send({ result: 'ok' });
     } catch (err) {
-        if (err?.code === 'agent_workspace_write_conflict') return response.status(409).json({ error: err.code });
+        if (err.code === 'native_orchestration_legacy_unsupported') return response.status(400).json({ error: err.code });
         console.error(err);
         response.send(err);
     }

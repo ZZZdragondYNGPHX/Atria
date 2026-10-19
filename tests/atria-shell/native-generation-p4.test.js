@@ -18,7 +18,7 @@ test('single-tool, multi-tool and streaming agent calls retain distinct exact Ru
     const routes = [1, 2, 3].map(index => ({ scope: 'player', runtimeRouteId: 'route_' + String(index).repeat(32) }));
     await requestToolCallWithRetry(context, {}, { functionName: 'inspect', nativeRouteRef: routes[0] });
     await requestToolCallsWithRetry(context, {}, { tools: [{ type: 'function', function: { name: 'inspect', parameters: { type: 'object' } } }], nativeRouteRef: routes[1] });
-    const streaming = streamFirstPartyGeneration(context, 'orchestrator', { nativeRouteRef: routes[2] });
+    const streaming = streamFirstPartyGeneration(context, 'studio', { nativeRouteRef: routes[2] });
     for await (const _chunk of streaming.stream) { /* Drain. */ }
     await streaming.result;
     expect(requests.map(request => request.routeRef)).toEqual(routes);
@@ -36,15 +36,15 @@ test('Native role traffic cannot consult a poisoned legacy facade, preset or con
         return { ok: true, json: async () => ({ response: { assistantText: 'done', toolCalls: [] }, snapshot: { runtimeRouteId: 'native-route' }, routing: { fallbackUsed: true, attempts: [{ retry: 0 }] } }) };
     });
     const router = createRuntimeRoleRouter({ executeGeneration: (role, request) => executeFirstPartyGeneration(context, role, request) });
-    for (const role of ['narrator', 'intent_resolver', 'event_interpreter', 'orchestrator', 'studio']) {
+    for (const role of ['narrator', 'intent_resolver', 'event_interpreter', 'studio']) {
         const result = await router.execute(role, { taskMessages: [{ role: 'user', content: role }], apiPresetName: 'poison', llmPresetName: 'poison' });
         expect(result).toMatchObject({ role, runtimeRouteId: 'native-route', fallbackUsed: true });
     }
     for (const role of ['memory', 'search']) await executeFirstPartyGeneration(context, role, {});
-    const streamed = streamFirstPartyGeneration(context, 'orchestrator', {});
+    const streamed = streamFirstPartyGeneration(context, 'studio', {});
     for await (const _chunk of streamed.stream) { /* Drain before terminal result. */ }
     expect((await streamed.result).assistantText).toBe('done');
-    expect(requests).toHaveLength(8);
+    expect(requests).toHaveLength(7);
     expect(requests.every(request => request.sessionId === 'session' && !Object.hasOwn(request, 'apiPresetName') && !Object.hasOwn(request, 'llmPresetName'))).toBe(true);
 });
 

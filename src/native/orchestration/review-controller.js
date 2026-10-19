@@ -1,0 +1,139 @@
+import { ConflictError } from '../../storage/errors.js';
+import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument as hash, putImmutable } from '../repositories/common.js';
+import { assertNativeId } from '../identity.js';
+import { assertObject, assertDigest, assertToken } from '../../../public/shared/native-orchestration-contracts.js';
+import { controlCommandId, controlRecordKey, graphReachable, readAttempt, assertAttemptCurrent, readAttemptInvalidation, attemptInvalidationId, graphReviewReceiptId as reviewReceiptId, readReviewAdmission } from './controller-common.js';
+import { readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
+import { readEffect } from './effect-contracts.js';
+import { readContextRetrievalCompletions } from './context-retrieval-contracts.js';
+import { readFanoutReviewScope, inheritFanoutMembership, assertFanoutAdmission } from './fanout-controller.js';
+
+const deny = code => { throw new ConflictError(code); };
+export { reviewReceiptId };
+
+/** Host decisions only. Model review never approves an Effect or writes a domain. */
+export class ReviewController {
+    constructor({ runs, authorizeReview, admitRerun }) {
+        if (!runs || typeof authorizeReview !== 'function' || typeof admitRerun !== 'function') throw new TypeError('Review requires original producer, Source, Result and budget authorities');
+        Object.assign(this, { runs, authorizeReview, admitRerun });
+    }
+
+    async decide(handle, input) {
+        assertObject(input, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'reviewAttemptId', 'decision', 'targetAttemptIds', 'reasonCode', 'evidenceRefs'], 'graph review');
+        const { reviewAttemptId, decision, targetAttemptIds, reasonCode, evidenceRefs, ...guard } = cloneNativeDocument(input);
+        assertNativeId(reviewAttemptId, 'orchestrationAttempt'); assertToken(reasonCode, 'reasonCode');
+        if (!['approve', 'rerun'].includes(decision) || !Array.isArray(targetAttemptIds) || !targetAttemptIds.length
+            || new Set(targetAttemptIds).size !== targetAttemptIds.length || !Array.isArray(evidenceRefs) || !evidenceRefs.length) throw new TypeError('Review requires exact targets and evidence');
+        for (const id of targetAttemptIds) assertNativeId(id, 'orchestrationAttempt');
+        for (const ref of evidenceRefs) { assertObject(ref, ['runId', 'resultId'], 'review evidence'); assertNativeId(ref.runId, 'orchestrationRun'); assertNativeId(ref.resultId, 'orchestrationResult'); }
+        if (new Set(evidenceRefs.map(hash)).size !== evidenceRefs.length) throw new TypeError('Duplicate review evidence');
+        targetAttemptIds.sort();
+        const receiptId = reviewReceiptId(guard.runId, reviewAttemptId);
+        return this.runs.control(handle, controlCommandId('review.decide', receiptId), { ...guard, operation: 'review.decide',
+            detail: { reviewAttemptId, decision, targetAttemptIds, reasonCode, evidenceRefs } }, async ({ tx, root, now, deny: controlDenial, unchanged }) => {
+            const { doc: reviewer } = await readAttempt(tx, handle, root, reviewAttemptId);
+            await assertAttemptCurrent(tx, handle, root, reviewer);
+            const node = root.graph.nodes.find(item => item.nodeId === reviewer.nodeId);
+            if (root.cancelRequested || root.status !== 'running' || node.kind !== 'review' || reviewer.status !== 'running'
+                || reviewer.epoch !== root.epoch || reviewer.sourceBindingDigest !== root.sourceBinding.bindingDigest
+                || root.outputClaims.length) deny('native_orchestration_review_not_admitted');
+            const admission = await readReviewAdmission(tx, handle, root, reviewer);
+            const attempts = [];
+            for (const id of root.attemptRefs) {
+                const { doc } = await readAttempt(tx, handle, root, id); attempts.push(doc);
+            }
+            if (!admission || admission.round > node.policy.maxRounds || root.progress.reviews < admission.round) deny('native_orchestration_review_not_admitted');
+            if (now >= root.progress.deadlineAt || root.progress.steps >= root.limits.maxSteps) deny('native_orchestration_limit_exhausted');
+            const targets = [];
+            for (const id of targetAttemptIds) {
+                const target = attempts.find(item => item.attemptId === id);
+                if (!target || id === reviewAttemptId || target.epoch !== root.epoch || target.sourceBindingDigest !== root.sourceBinding.bindingDigest
+                    || !SETTLED_ATTEMPT_STATUSES.includes(target.status) || root.graph.nodes.find(item => item.nodeId === target.nodeId).kind === 'output') deny('native_orchestration_review_target_invalid');
+                await assertAttemptCurrent(tx, handle, root, target);
+                await readAttemptSettlement(tx, handle, root, target); targets.push(target);
+            }
+            const scope = reviewer.inputRefs?.[0]?.fanoutAttemptId
+                ? await readFanoutReviewScope(tx, handle, root, reviewer, targets, { rerun: decision === 'rerun' }) : null;
+            if (reviewer.inputRefs?.[0]?.fanoutAttemptId && !scope) deny('native_orchestration_review_target_invalid');
+            if (scope) await assertFanoutAdmission({ tx, handle, root, attempt: reviewer, reserveSlot: false });
+            // The original producer verifies the actual JSON Model completion,
+            // recipient disclosure and current source, not a caller boolean.
+            const authorize = () => this.authorizeReview({ handle, tx, root, reviewer, targets, decision, reasonCode, evidenceRefs });
+            try { await authorize(); } catch (error) {
+                if (error instanceof ConflictError || error.code === 'native_rp_source_missing') return controlDenial(error);
+                throw error;
+            }
+            const invalidated = [], replacements = [], prepared = [];
+            if (decision === 'rerun') {
+                if (targets.some(a => targets.some(b => a !== b && graphReachable(root.graph, a.nodeId, b.nodeId)))) deny('native_orchestration_review_redundant_targets');
+                for (const attempt of attempts) {
+                    if (attempt.attemptId === reviewAttemptId || !targets.some(target => graphReachable(root.graph, target.nodeId, attempt.nodeId))) continue;
+                    if (await readAttemptInvalidation(tx, handle, root, attempt)) continue;
+                    if (scope && ['pending', 'reserved'].includes(attempt.status) && attempt.startedAt === null
+                        && !attempt.effectRefs.length && !attempt.resultRefs.length
+                        && (attempt.attemptId === scope.join.attemptId || scope.branch.scopeNodeIds.includes(attempt.nodeId))) continue;
+                    // Old settled history remains immutable. Active work needs
+                    // its own cancellation/reconciliation before local redo.
+                    if (!SETTLED_ATTEMPT_STATUSES.includes(attempt.status)) deny('native_orchestration_review_active_dependency');
+                    if (scope && !scope.branch.scopeNodeIds.includes(attempt.nodeId)) deny('native_orchestration_review_irreversible_dependency');
+                    await assertAttemptCurrent(tx, handle, root, attempt);
+                    await readAttemptSettlement(tx, handle, root, attempt);
+                    const effects = [];
+                    for (const effectId of attempt.effectRefs) effects.push((await readEffect(tx, handle, root, effectId)).doc);
+                    // Only completed, independently metered original Context retrieval
+                    // can accompany redoable Model work. A capability label is insufficient.
+                    let retrieval = [];
+                    if (effects.some(effect => effect.capability === 'memory.retrieve')) {
+                        try { retrieval = await readContextRetrievalCompletions(tx, handle, root, effects[0], attempt); } catch (error) {
+                            if (error instanceof TypeError) deny('native_orchestration_review_irreversible_dependency');
+                            throw error;
+                        }
+                    }
+                    const retrievalIds = new Set(retrieval.map(item => item.effectId));
+                    for (const effect of effects) {
+                        const effectId = effect.effectId;
+                        if (root.pendingEffectRefs.includes(effectId) || !['confirmed', 'failed', 'not_dispatched'].includes(effect.status)
+                            || effect.status !== 'not_dispatched' && (effect.capability !== 'generation.send' && !retrievalIds.has(effectId) || effect.risk !== 'R1' || effect.requiresApproval))
+                            deny('native_orchestration_review_irreversible_dependency');
+                    }
+                    invalidated.push(attempt.attemptId);
+                }
+                if (root.progress.attempts + targets.length > root.limits.maxAttempts) deny('native_orchestration_limit_exhausted');
+                for (const target of targets) {
+                    const attemptId = 'oattempt_' + hash({ receiptId, targetAttemptId: target.attemptId }).slice(0, 32);
+                    let admission;
+                    try { admission = cloneNativeDocument(await this.admitRerun({ handle, tx, root, reviewer, target, attemptId, invalidatedAttemptIds: invalidated })); } catch (error) {
+                        if (error instanceof ConflictError || error.code === 'native_rp_source_missing') return controlDenial(error);
+                        throw error;
+                    }
+                    assertObject(admission, ['inputRefs', 'inputDigest', 'effectiveGrantDigest', 'budgetRef'], 'review rerun admission');
+                    assertDigest(admission.inputDigest, 'inputDigest'); assertDigest(admission.effectiveGrantDigest, 'effectiveGrantDigest');
+                    const staleResults = new Set(attempts.filter(item => invalidated.includes(item.attemptId)).flatMap(item => item.resultRefs).map(hash));
+                    if (!Array.isArray(admission.inputRefs) || hash(admission.inputRefs) !== admission.inputDigest || !equalNativeDocuments(admission.budgetRef, root.budgetAuthorityRef)
+                        || admission.inputRefs.some(ref => staleResults.has(hash(ref)))
+                        || root.nodeControl[target.nodeId].disposition !== 'eligible') deny('native_orchestration_review_rerun_denied');
+                    const next = { ...target, attemptId, attemptNumber: Math.max(...attempts.filter(item => item.nodeId === target.nodeId).map(item => item.attemptNumber)) + 1,
+                        epoch: root.epoch, graphRevision: root.graphRevision, inputState: 'prepared', reservationRef: null, ...admission,
+                        sourceBindingDigest: root.sourceBinding.bindingDigest, status: 'pending', effectRefs: [], resultRefs: [], startedAt: null, endedAt: null, reasonCode: null };
+                    prepared.push(next); replacements.push({ targetAttemptId: target.attemptId, attemptId });
+                }
+            }
+            // An admission callback may commit a lawful Root change; refuse before writing.
+            if (!await unchanged()) return controlDenial(new ConflictError('native_orchestration_review_stale'));
+            for (const attempt of prepared) {
+                await putImmutable(tx, controlRecordKey(handle, root.runId, 'attempt', attempt.attemptId), attempt);
+                root.attemptRefs.push(attempt.attemptId);
+            }
+            if (scope && prepared.length) await inheritFanoutMembership({ tx, handle, root, producers: targets, targets: prepared, now });
+            invalidated.sort();
+            const receipt = { schemaVersion: 1, receiptKind: 'graph_review', receiptId, runId: root.runId, epoch: root.epoch, graphRevision: root.graphRevision,
+                reviewAttemptId, reviewerNodeId: node.nodeId, producerInputDigest: reviewer.inputDigest, sourceBindingDigest: root.sourceBinding.bindingDigest,
+                decision, targetAttemptIds, reasonCode, evidenceRefs, invalidatedAttemptIds: invalidated, replacements, decisionSeq: root.eventSeq + 1, createdAt: now };
+            await putImmutable(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId), receipt);
+            for (const attemptId of invalidated) await putImmutable(tx, controlRecordKey(handle, root.runId, 'receipt', attemptInvalidationId(root.runId, attemptId)), {
+                schemaVersion: 1, receiptKind: 'attempt_invalidation', runId: root.runId, attemptId, reviewReceiptId: receiptId, reviewIntegrity: hash(receipt) });
+            root.progress.steps++; root.progress.attempts += replacements.length;
+            return { root, eventType: 'graph_review_decided', reasonCode, outcome: { reviewReceipt: receipt } };
+        });
+    }
+}

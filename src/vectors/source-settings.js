@@ -5,3 +5,9 @@ export function getSourceSettings(source, request) {
     }
     return request.nativeRetrieval.settings;
 }
+import { assertRetrievalHeaders } from '../../public/scripts/native/retrieval-contracts.js';
+
+
+export function nativeRetrievalHeaders(request) {
+    return request?.nativeRetrieval ? assertRetrievalHeaders(request.nativeRetrieval.profile?.headers) : {};
+}

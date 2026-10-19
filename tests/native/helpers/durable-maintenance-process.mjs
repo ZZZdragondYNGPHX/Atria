@@ -1,3 +1,4 @@
+import '../../util/config.js';
 import fs from 'node:fs';
 import { FsEngine } from '../../../src/storage/engines/fs-engine.js';
 import { services } from './session-fixture.js';

@@ -6,7 +6,6 @@ export const TURN_FACT_PRECEDENCE = Object.freeze([
     'command_results',
     'active_branch_chat',
     'memory_recall',
-    'orchestrator_guidance',
 ]);
 
 const clone = cloneGameLlmValue;
@@ -118,12 +117,6 @@ function buildTurnProvenance(input, anchor) {
                     : [],
             })),
         },
-        orchestratorGuidance: {
-            authorityRank: 6,
-            source: 'orchestrator',
-            present: Boolean(input.orchestration),
-            mode: String(input.orchestration?.mode || '').trim() || null,
-        },
     };
 }
 
@@ -153,7 +146,6 @@ export function createTurnContext(input = {}) {
         memories: clone(input.memories || []),
         memoryUpdates: clone(input.memoryUpdates || []),
         constraints: clone(input.constraints || []),
-        orchestration: clone(input.orchestration || null),
         narrative: clone(input.narrative || null),
         authority: {
             precedence: [...TURN_FACT_PRECEDENCE],
@@ -173,7 +165,6 @@ const MUTABLE_TURN_FIELDS = new Set([
     'memories',
     'memoryUpdates',
     'constraints',
-    'orchestration',
     'narrative',
 ]);
 
@@ -206,7 +197,6 @@ export function advanceTurnContext(context, patch = {}) {
         memories: patch.memories ?? context.memories,
         memoryUpdates: patch.memoryUpdates ?? context.memoryUpdates,
         constraints: patch.constraints ?? context.constraints,
-        orchestration: patch.orchestration ?? context.orchestration,
         narrative: patch.narrative ?? context.narrative,
     });
 }

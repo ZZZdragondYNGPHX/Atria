@@ -18,8 +18,8 @@ function fields(value, names) {
 }
 export function evaluationRevision() {
     // Pin dirty implementation bytes too; HEAD alone cannot identify a local evaluator.
-    return hash(['comparison.js', 'evaluation-settings.js', 'live-bridge.js', 'runner.js', 'adapters.js', 'cases.js', 'report.js', 'budget.js',
-        '../../public/scripts/native/studio-agent.js', '../../public/scripts/agents/orchestrator/director-runtime.js',
+    return hash(['comparison.js', 'native-rp-adapter.js', 'evaluation-settings.js', 'live-bridge.js', 'runner.js', 'adapters.js', 'cases.js', 'report.js', 'budget.js',
+        '../../public/scripts/native/studio-agent.js', '../../src/native/orchestration/native-rp-generation.js', '../../src/native/agent-intelligence/evaluation/native-adapters.js', '../../src/native/agent-intelligence/evaluation/worker-bridge.js',
         '../../src/native/project-agent.js', '../../src/native/authoring/studio-service.js', '../../src/native/task-scheduler.js']
         .map(name => [name, fs.readFileSync(new URL(name, import.meta.url), 'utf8')]));
 }
@@ -124,8 +124,7 @@ export async function runComparison({ candidate, split, repetitions = 1, mode = 
             report.ledger = bridge.budget.snapshot();
         }
         report.ablations = ['single_body', 'shared_cognition', 'critic', 'director'].map(kind => ({ kind,
-            status: kind === 'director' && mode === 'scripted' ? 'scripted_observation' : 'unavailable',
-            reason: kind === 'director' && mode === 'scripted' ? 'original_director_path_only_no_behavior_or_cost_evidence' : 'no_pinned_equivalent_adapter' }));
+            status: 'unavailable', reason: 'no_pinned_equivalent_adapter' }));
         report.summary = derived(report);
         return validateComparison(report);
     });
@@ -249,8 +248,7 @@ export function validateComparison(report) {
         requireValue(votes.length <= 3 && same(pair.judge, judgeResult(votes)), 'Forged judgment/disagreement or judge capacity');
     }
     requireValue(Array.isArray(report.ablations) && same(report.ablations, ['single_body', 'shared_cognition', 'critic', 'director'].map(kind => ({ kind,
-        status: kind === 'director' && report.mode === 'scripted' ? 'scripted_observation' : 'unavailable',
-        reason: kind === 'director' && report.mode === 'scripted' ? 'original_director_path_only_no_behavior_or_cost_evidence' : 'no_pinned_equivalent_adapter' }))), 'Ablation availability drift');
+        status: 'unavailable', reason: 'no_pinned_equivalent_adapter' }))), 'Ablation availability drift');
     requireValue(same(report.summary, derived(report)) && report.empiricalReady === false && report.publicationStatus === 'ineligible', 'Forged comparison eligibility/summary');
     return report;
 }

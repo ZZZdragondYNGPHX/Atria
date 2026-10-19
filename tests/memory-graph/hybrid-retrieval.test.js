@@ -215,6 +215,17 @@ describe('Memory OS hybrid retrieval', () => {
         expect(result.metrics.work.responseDataBytes).toBeGreaterThan(0);
     });
 
+    test.each(['vector', 'rerank'])('%s target mismatch is a scope refusal and cannot become optional lexical fallback', async lane => {
+        const chat = [{ memory_os_source_id: 'cause-a', mes: 'Alice left because of the storm.' }, { memory_os_source_id: 'cause-b', mes: 'Alice left because of the promise.' }];
+        const state = emptyProvenance(); state.scopeId = 'causal-chat'; captureEpisodes(state, chat, [0, 1], state.scopeId);
+        const snapshot = { state, chat, key: state.scopeId, assertCurrent: jest.fn() };
+        const refused = jest.fn(async () => { throw Object.assign(new Error('Wrong actual target'), { code: 'native_retrieval_send_target_mismatch' }); });
+        const service = { admitCorpus: async () => ({ admitted: true, metered: false }), listHashes: refused, rerank: refused };
+        await expect(retrieveMemory(snapshot, 'Why did Alice leave?', { service, ...lane === 'vector' ? { profile: {} } : { rerankProfile: {} },
+            computeContext: { kind: 'session' }, countTokens, budget: 10000, packing: 'ranked' })).rejects.toMatchObject({ code: 'native_retrieval_send_target_mismatch' });
+        expect(refused).toHaveBeenCalledTimes(1);
+    });
+
     test('successful rerank reorders only source-valid candidates', async () => {
         const chat = [{ memory_os_source_id: 'cause-a', mes: 'Alice left because of the storm.' }, { memory_os_source_id: 'cause-b', mes: 'Alice left because of the promise.' }];
         const state = emptyProvenance(); state.scopeId = 'causal-chat'; captureEpisodes(state, chat, [0, 1], state.scopeId);

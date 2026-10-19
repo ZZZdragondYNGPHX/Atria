@@ -21,7 +21,7 @@
  * @prop {string} [position]
  *
  * @typedef {Object} BuildArgs
- * @prop {string} kind - 'cea' | 'cpa' | 'orch-spec' | 'orch-agenda' | 'orch-loop' | 'orch-director'
+ * @prop {string} kind - 'cea' | 'cpa'
  * @prop {boolean} cancelled
  * @prop {{reason: string, message?: string} | null} error
  * @prop {ChainSegment[]} [chainSegments]

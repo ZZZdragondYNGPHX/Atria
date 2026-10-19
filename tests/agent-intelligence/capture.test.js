@@ -3,15 +3,6 @@ import { AgentEvidenceRepository, assertEvidenceRecord } from '../../src/native/
 import { RpEvidenceCaptureService } from '../../src/native/agent-intelligence/rp-capture-service.js';
 import { AgentEvidenceService } from '../../src/native/agent-intelligence/evidence-service.js';
 import { createEvidenceTrace, assertEvidenceTrace } from '../../public/shared/agent-evidence-trace.js';
-import { createRpEvidenceCapture } from '../../public/scripts/agents/orchestrator/evidence-capture.js';
-import { createRuntimeObserver } from '../../public/scripts/agents/orchestrator/run-state/runtime-observer.js';
-import { configureEvidenceCapture, startRun, finishRun, clearCurrentRun, getCurrentRun, flushEvidenceOutput } from '../../public/scripts/agents/orchestrator/run-state/store.js';
-import { AgentRuntime, AgentRegistry } from '../../public/scripts/lib/agent-runtime/index.js';
-import { withRuntimeContext } from '../../public/scripts/lib/agent-runtime/prepared-context.js';
-import { executeFirstPartyGeneration } from '../../public/scripts/native/generation-compat.js';
-import { createOrchestratorGameRuntimeApi } from '../../public/scripts/agents/orchestrator/game-runtime-bridge.js';
-import { runMainAgentLoop } from '../../public/scripts/agents/orchestrator/director-runtime.js';
-import { createMessageEditorHandle } from '../../public/scripts/message-takeover.js';
 import { ChatRepo } from '../../src/storage/repositories/chat-repo.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { setReadOnly } from '../../src/storage/read-only-mode.js';
@@ -28,7 +19,7 @@ const limits = { maxSources: 4, maxBytes: 32768, maxScanMessages: 128 };
 const event = (id = 'root/started', extra = {}) => ({ type: 'run.started', eventId: id, runId: 'root', generation: 0, version: 1, ...extra });
 const trace = (...events) => { const value = createEvidenceTrace(); events.forEach(item => value.append(item)); return value.snapshot(); };
 
-afterEach(() => { setReadOnly(false); configureEvidenceCapture(null); clearCurrentRun(); jest.restoreAllMocks(); });
+afterEach(() => { setReadOnly(false); jest.restoreAllMocks(); });
 
 describe('bounded metadata capture', () => {
     test('excludes raw content, reports malformed/conflicting events and preserves exact duplicates', () => {
@@ -105,22 +96,10 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         const dump = await h.engine.dumpUser(h.handle);
         if (h.kind === 'sqlite') {
             await h.engine.restoreUser(h.handle, dump);
-            expect((await new AgentEvidenceRepository({ engine: h.engine }).get(h.handle, marker.evidenceId)).status).toBe('completed');
-        } else expect(dump).toBeNull(); // FS backup uses the original user-directory archive.
+        }
+        expect(h.kind === 'sqlite' ? (await new AgentEvidenceRepository({ engine: h.engine }).get(h.handle, marker.evidenceId)).status : dump).toBe(h.kind === 'sqlite' ? 'completed' : null);
     });
-    test('browser freezes source target, saves a prefix and binds only the exact saved output', async () => {
-        const context = { chat: messages(), characters: [{ avatar: 'Actor.png' }], characterId: 0, chatId: 'capture' };
-        const browser = createRpEvidenceCapture(context, 'browser-root', (action, input) => capture[action](h.handle, input));
-        context.chatId = 'another-chat';
-        for (let i = 0; i < 17; i++) browser.append(event('browser-' + i, { runId: 'browser-root' }));
-        await browser.flush('completed'); expect(browser.view().status).toBe('completed');
-        expect(browser.view().outputBound).toBe(false);
-        await browser.flushOutput(); // End-of-generation can precede handle-finally binding.
-        browser.bindMessage(context.chat[1], 1);
-        await browser.flushOutput(); expect(browser.view().outputBound).toBe(true);
-        const stored = await capture.inspect(h.handle, { evidenceId: browser.view().evidenceId });
-        expect(stored.record.trace.events).toHaveLength(17); expect(stored.record.scope.name).toBe('capture');
-    });
+
 });
 
 test('metadata kind round-trips through FS -> SQLite -> FS; SQL adapters register the same key', async () => {
@@ -141,52 +120,11 @@ test('metadata kind round-trips through FS -> SQLite -> FS; SQL adapters registe
     } finally { await fs.cleanup(); await sql.cleanup(); }
 });
 
-test('transport failure is visible and old bound observers never capture into a replacement run', async () => {
-    const captures = [];
-    configureEvidenceCapture(runId => {
-        const capture = createRpEvidenceCapture({ chat: messages(), characters: [{ avatar: 'Actor.png' }], characterId: 0, chatId: 'capture' }, runId,
-            async () => { throw new Error('storage failed'); }); captures.push(capture); return capture;
-    });
-    const first = startRun({ mode: 'director', chatKey: 'one' }), observer = createRuntimeObserver({ panelRunId: first });
-    observer(event('first', { runId: first })); finishRun({ runId: first, status: 'aborted' });
-    await captures[0].flush('cancelled'); await flushEvidenceOutput(first);
-    expect(getCurrentRun().evidenceCapture.status).toBe('failed');
-    const next = startRun({ mode: 'director', chatKey: 'two' });
-    observer(event('late', { runId: first }));
-    expect(captures[0].snapshot().events).toHaveLength(2); expect(captures[1].snapshot().events).toHaveLength(0);
-    expect(getCurrentRun().runId).toBe(next);
-});
 
-test('real Runtime preserves parent/effect/request/attempt metadata across a retry without persisting bodies', async () => {
-    const captured = createEvidenceTrace(); let sends = 0;
-    const context = { generateTask: async () => { if (!sends++) throw new Error('retry'); return { text: 'PRIVATE', usage: null }; } };
-    const runtime = new AgentRuntime({ registry: new AgentRegistry([{ id: 'actor' }]), eventSink: event => captured.append(event), countTokens: message => message.content.length,
-        ports: { memory: { recall: async () => ({ references: [], assertCurrent() {} }) }, tool: { execute: async () => ({ ok: true }) },
-            model: { request: async effect => {
-                const request = withRuntimeContext({ taskMessages: effect.messages }, context, null, effect);
-                try { await executeFirstPartyGeneration(context, 'orchestrator', request); } catch {}
-                await executeFirstPartyGeneration(context, 'orchestrator', request);
-                return { type: 'complete', output: 'PRIVATE' };
-            } } } });
-    const result = await runtime.startRun({ runId: 'root/child', parentRunId: 'root', agentId: 'actor', task: 'PRIVATE' });
-    expect(result.status).toBe('completed');
-    const attempts = captured.snapshot().events.filter(item => item.type === 'request.attempt.started');
-    expect(attempts.map(item => item.attempt)).toEqual([1, 2]);
-    expect(attempts.every(item => item.parentRunId === 'root' && item.effectId && item.requestId)).toBe(true);
-    expect(captured.snapshot().events.some(item => item.type === 'request.attempt.failed')).toBe(true);
-    expect(JSON.stringify(captured.snapshot())).not.toContain('PRIVATE');
-});
 
-test('actual Director bridge returns a metadata trace correlated with its turn anchor', async () => {
-    const profile = { mode: 'director', mainAgent: {}, subAgents: [], maxRounds: 3, tools: { message: { write_message: true } } };
-    const context = { createMessageEditorHandle, generateTask: async () => ({ assistantText: '',
-        toolCalls: [{ id: 'w', name: 'write_message', args: { text: 'Story.', mode: 'replace' } }, { id: 'f', name: 'finalize', args: {} }], usage: null }) };
-    const bridge = createOrchestratorGameRuntimeApi({ getEffectiveProfile: () => profile, runMainAgentLoop });
-    const result = await bridge.runDirector({ context, turnContext: { anchor: { sessionId: 'source', revisionId: 'exact' } } });
-    expect(result.finalProse).toBe('Story.'); expect(result.trace.anchor.revisionId).toBe('exact');
-    expect(result.trace.events.some(item => item.type === 'request.attempt.started')).toBe(true);
-    expect(result.trace.missing).toBe(0); expect(JSON.stringify(result.trace)).not.toContain('Story.');
-});
+
+
+
 
 describe.each(['openai-compatible', 'anthropic', 'gemini'])('%s observed usage', format => {
     test.each([false, true])('parser preserves final counters without summing subdivisions (stream=%s)', async streaming => {
@@ -214,7 +152,6 @@ describe.each(['openai-compatible', 'anthropic', 'gemini'])('%s observed usage',
         const parsed = await provider.parseStream(format === 'openai-compatible' ? response : { response, binding: { protocol: 'native.' + format + '.v1', executionScope: { kind: 'request' } }, sequence: [] });
         const result = provider.normalizeResponse(parsed);
         expect(result.text).toBe('text'); expect(result.usage).toMatchObject({ inputTokens: 10, outputTokens: 4 });
-        if (format === 'anthropic') expect(result.usage.totalTokens).toBeUndefined();
-        else expect(result.usage.totalTokens).toBe(format === 'gemini' ? 17 : 14);
+        expect(result.usage.totalTokens).toBe(format === 'anthropic' ? undefined : format === 'gemini' ? 17 : 14);
     });
 });

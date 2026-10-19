@@ -195,7 +195,7 @@ test('G05 Skill read accepted fallback keeps one original ledger including faile
         const operations = Object.values((await f.core.runs.status(f.handle, f.request.sessionId)).operations).filter(row => row.compute);
         expect(operations).toHaveLength(1); expect(operations[0].compute.localWork).toHaveLength(18);
         expect(operations[0].compute.localWork.filter(row => row.kind === 'skill_read')).toHaveLength(1);
-        expect(operations[0].compute.attempts.map(row => row.status)).toEqual(['unknown', 'settled', 'settled']); expect(f.readFile).toHaveBeenCalledTimes(1); expect(f.wires).toHaveLength(3);
+        expect(operations[0].compute.attempts.map(row => row.status)).toEqual(['settled', 'settled', 'settled']); expect(f.readFile).toHaveBeenCalledTimes(1); expect(f.wires).toHaveLength(3);
     } finally { await f.cleanup(); }
 });
 for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {

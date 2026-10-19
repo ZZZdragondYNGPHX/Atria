@@ -2,6 +2,7 @@ import { PersonaRepo } from '../native/repositories/persona-repo.js';
 import { installAccountQuota } from './account-quota.js';
 import { installNativeLifecycle } from './native-lifecycle.js';
 import { FsEngine } from './engines/fs-engine.js';
+import { attachNativeHostLifecycle } from './native-host-lifecycle.js';
 import { SqliteEngine } from './engines/sqlite-engine.js';
 import { MysqlEngine } from './engines/mysql-engine.js';
 import { PgEngine } from './engines/postgres-engine.js';
@@ -41,6 +42,9 @@ let _personaRepo = null;
 
 export function initStorage({
     mode = 'fs',
+    dataRoot = null,
+    hostOwner = null,
+    hostLifecycle = null,
     directoriesByHandle,
     mysql,
     postgres,
@@ -59,6 +63,7 @@ export function initStorage({
         _engine = new MysqlEngine({
             url: mysql.url,
             poolSize: mysql.poolSize,
+            nativeHostTopology: mysql.nativeHostTopology,
             acquireTimeoutMs,
             retries,
         });
@@ -69,13 +74,16 @@ export function initStorage({
         _engine = new PgEngine({
             url: postgres.url,
             poolSize: postgres.poolSize,
+            nativeHostTopology: postgres.nativeHostTopology,
             acquireTimeoutMs,
             retries,
         });
     } else {
         throw new Error(`initStorage: unknown storage mode "${mode}" (expected 'fs', 'sqlite', 'mysql', or 'postgres')`);
     }
-    installAccountQuota(_engine, { directoriesByHandle, limit: quotaLimit, makeDefault: true });
+    const installTransactionPolicy = target => installAccountQuota(target, { directoriesByHandle, limit: quotaLimit, makeDefault: true });
+    if (hostLifecycle) hostLifecycle.attachStorageEngine(_engine, { directoriesByHandle, installTransactionPolicy, ...(dataRoot !== null ? { dataRoot } : {}) });
+    else attachNativeHostLifecycle(_engine, { directoriesByHandle, dataRoot, hostOwner, installTransactionPolicy });
     _chatRepo = new ChatRepo({ engine: _engine });
     _settingsRepo = new SettingsRepo({ engine: _engine });
     _presetRepo = new PresetRepo({ engine: _engine });

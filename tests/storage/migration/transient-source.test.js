@@ -16,6 +16,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
+import { jest } from '@jest/globals';
+import mysql from 'mysql2/promise';
+import pg from 'pg';
 import archiver from 'archiver';
 import 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -23,11 +26,13 @@ import { pipeline } from 'node:stream/promises';
 import { materializeTransientSource } from '../../../src/storage/migration/transient-source.js';
 import { CrossModeScratchConnectionError } from '../../../src/storage/migration/cross-mode-errors.js';
 import { ENGINE_DUMP_ENTRY, ENGINE_META_ENTRY, SCRATCH_HANDLE_PREFIX } from '../../../src/storage/engine-backup-entries.js';
-import '../../../src/storage/engines/fs-engine.js';
+import { FsEngine } from '../../../src/storage/engines/fs-engine.js';
+import { attachNativeHostLifecycle } from '../../../src/storage/native-host-lifecycle.js';
 import { SqliteEngine } from '../../../src/storage/engines/sqlite-engine.js';
 import { ChatRepo } from '../../../src/storage/repositories/chat-repo.js';
 import { SettingsRepo } from '../../../src/storage/repositories/settings-repo.js';
 import { WorldInfoRepo } from '../../../src/storage/repositories/world-info-repo.js';
+import { prepareControllerOwnerRoot } from '../../native-orchestration/fixtures.js';
 
 function makeScratchHandle() {
     return SCRATCH_HANDLE_PREFIX + randomBytes(8).toString('hex');
@@ -248,6 +253,31 @@ describe('materializeTransientSource — sqlite', () => {
     });
 });
 
+describe('SQL transient Host admission without a database', () => {
+    let dataRoot, host;
+    beforeEach(() => { dataRoot = makeTempDataRoot(); });
+    afterEach(async () => { await host?.close(); host = null; jest.restoreAllMocks(); fs.rmSync(dataRoot, { recursive: true, force: true }); });
+    test.each(['mysql', 'postgres'])('%s requires the original Host before any ZIP extraction or schema access', async engineKind => {
+        const scratchHandle = makeScratchHandle();
+        await expect(materializeTransientSource({ engineKind }, path.join(dataRoot, 'does-not-exist.zip'), { dataRoot, scratchHandle, scratchCreds: {} }))
+            .rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
+        expect(fs.existsSync(path.join(dataRoot, '_storage-migrations', scratchHandle))).toBe(false);
+    });
+    test.each(['mysql', 'postgres'])('%s unknown scratch topology is refused before opening a driver connection and retains local evidence', async engineKind => {
+        const zipPath = path.join(dataRoot, 'source.zip'); await buildFsSourceZip(zipPath);
+        host = new FsEngine({ directoriesByHandle: () => ({ root: dataRoot }) });
+        const hostLifecycle = attachNativeHostLifecycle(host, { directoriesByHandle: () => ({ root: dataRoot }) });
+        const scratchHandle = makeScratchHandle(), scratchRoot = path.join(dataRoot, '_storage-migrations', scratchHandle);
+        await prepareControllerOwnerRoot(scratchRoot);
+        const factory = engineKind === 'mysql' ? jest.spyOn(mysql, 'createConnection') : jest.spyOn(pg, 'Client');
+        const scratchCreds = engineKind === 'mysql' ? { mysqlUrl: 'mysql://test-host/test-db' } : { postgresUrl: 'postgresql://test-host/test-db' };
+        await expect(materializeTransientSource({ engineKind }, zipPath, { dataRoot, scratchHandle, scratchCreds, hostLifecycle }))
+            .rejects.toMatchObject({ name: 'CrossModeScratchConnectionError', cause: { code: 'native_orchestration_writer_unavailable', cause: { code: 'native_orchestration_sql_topology_unsupported' } } });
+        expect(factory).not.toHaveBeenCalled(); expect(fs.existsSync(scratchRoot)).toBe(true);
+        expect(() => hostLifecycle.assertActive()).not.toThrow();
+    });
+});
+
 // mysql / pg tests: skip without local test DB. Both follow the same shape:
 // seed a real engine with data, build a ZIP from its dumpUser, then
 // materialize and assert the scratch handle on the engine reads through it.
@@ -256,15 +286,21 @@ const describeMysql = skipMysql ? describe.skip : describe;
 describeMysql('materializeTransientSource — mysql', () => {
     let makeTempMysqlEngineHarness;
     let dataRoot;
+    let hostEngine, hostLifecycle;
     beforeAll(async () => {
         ({ makeTempMysqlEngineHarness } = await import('../harness/mysql-harness.js'));
     });
-    beforeEach(() => { dataRoot = makeTempDataRoot(); });
-    afterEach(() => fs.rmSync(dataRoot, { recursive: true, force: true }));
+    beforeEach(() => {
+        dataRoot = makeTempDataRoot();
+        hostEngine = new FsEngine({ directoriesByHandle: () => ({ root: dataRoot }) });
+        hostLifecycle = attachNativeHostLifecycle(hostEngine, { directoriesByHandle: () => ({ root: dataRoot }) });
+    });
+    afterEach(async () => { await hostEngine.close(); fs.rmSync(dataRoot, { recursive: true, force: true }); });
 
     test('mysql source restores under scratch handle (handle rewrite verified)', async () => {
         const srcHarness = await makeTempMysqlEngineHarness();
         try {
+            hostLifecycle.attachStorageEngine(srcHarness.engine, { directoriesByHandle: () => srcHarness.dirs });
             const settingsRepo = new SettingsRepo({ engine: srcHarness.engine });
             const chatRepo = new ChatRepo({ engine: srcHarness.engine });
             await settingsRepo.save(srcHarness.handle, { custom: 'mysql-test', extra: 'value' });
@@ -282,10 +318,12 @@ describeMysql('materializeTransientSource — mysql', () => {
                 {
                     dataRoot,
                     scratchHandle,
+                    hostLifecycle,
                     // Re-use the harness DB as the operator's scratch DB.
                     // Keep the scratch connection on the same dynamic CI port
                     // selected for the main MySQL harness.
                     scratchCreds: {
+                        mysqlNativeHostTopology: 'direct_single_primary',
                         mysqlUrl: `${process.env.ATRIA_TEST_MYSQL_ROOT_URL}/${srcHarness.dbName}`,
                     },
                 },
@@ -331,7 +369,8 @@ describeMysql('materializeTransientSource — mysql', () => {
             {
                 dataRoot,
                 scratchHandle: makeScratchHandle(),
-                scratchCreds: { mysqlUrl: 'mysql://nobody:wrong@127.0.0.1:1/none' },
+                hostLifecycle,
+                scratchCreds: { mysqlUrl: 'mysql://nobody:wrong@127.0.0.1:1/none', mysqlNativeHostTopology: 'direct_single_primary' },
             },
         )).rejects.toThrow(CrossModeScratchConnectionError);
     });
@@ -342,15 +381,21 @@ const describePg = skipPg ? describe.skip : describe;
 describePg('materializeTransientSource — postgres', () => {
     let makeTempPgEngineHarness;
     let dataRoot;
+    let hostEngine, hostLifecycle;
     beforeAll(async () => {
         ({ makeTempPgEngineHarness } = await import('../harness/pg-harness.js'));
     });
-    beforeEach(() => { dataRoot = makeTempDataRoot(); });
-    afterEach(() => fs.rmSync(dataRoot, { recursive: true, force: true }));
+    beforeEach(() => {
+        dataRoot = makeTempDataRoot();
+        hostEngine = new FsEngine({ directoriesByHandle: () => ({ root: dataRoot }) });
+        hostLifecycle = attachNativeHostLifecycle(hostEngine, { directoriesByHandle: () => ({ root: dataRoot }) });
+    });
+    afterEach(async () => { await hostEngine.close(); fs.rmSync(dataRoot, { recursive: true, force: true }); });
 
     test('postgres source restores under scratch handle', async () => {
         const srcHarness = await makeTempPgEngineHarness();
         try {
+            hostLifecycle.attachStorageEngine(srcHarness.engine, { directoriesByHandle: () => srcHarness.dirs });
             const settingsRepo = new SettingsRepo({ engine: srcHarness.engine });
             await settingsRepo.save(srcHarness.handle, { custom: 'pg-test' });
 
@@ -364,7 +409,7 @@ describePg('materializeTransientSource — postgres', () => {
             const transient = await materializeTransientSource(
                 { engineKind: 'postgres', handle: srcHarness.handle },
                 zipPath,
-                { dataRoot, scratchHandle, scratchCreds: { postgresUrl: scratchUrl.href } },
+                { dataRoot, scratchHandle, hostLifecycle, scratchCreds: { postgresUrl: scratchUrl.href, postgresNativeHostTopology: 'direct_single_primary' } },
             );
             try {
                 const got = await new SettingsRepo({ engine: transient.engine }).get(scratchHandle);
@@ -398,7 +443,8 @@ describePg('materializeTransientSource — postgres', () => {
             {
                 dataRoot,
                 scratchHandle: makeScratchHandle(),
-                scratchCreds: { postgresUrl: 'postgresql://nobody:wrong@127.0.0.1:1/none' },
+                hostLifecycle,
+                scratchCreds: { postgresUrl: 'postgresql://nobody:wrong@127.0.0.1:1/none', postgresNativeHostTopology: 'direct_single_primary' },
             },
         )).rejects.toThrow(CrossModeScratchConnectionError);
     });

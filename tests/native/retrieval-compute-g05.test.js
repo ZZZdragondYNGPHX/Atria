@@ -10,6 +10,8 @@ import { projectSource, services as projectServices } from '../agent-intelligenc
 import { NativeRetrievalPersistence } from '../../src/native/retrieval-persistence.js';
 import { createRetrievalMiddleware } from '../../src/native/retrieval-execution.js';
 import { prepareRetrievalCompute } from '../../src/native/retrieval-compute.js';
+import { retrievalSendIdentity } from '../../src/native/retrieval-send-contracts.js';
+import { hashNativeDocument as hash } from '../../src/native/repositories/common.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { retrievalRef } from '../../public/scripts/native/retrieval-contracts.js';
 import { router as vectors } from '../../src/endpoints/vectors.js';
@@ -34,15 +36,20 @@ import { createNativeGenerationRouter } from '../../src/endpoints/native-generat
 import { createSourceLifecycle } from '../../public/scripts/agents/memory/source-lifecycle.js';
 
 async function fixture(make, maxRequests = 2, localWork) {
-    const h = await make(), seen = [];
+    const h = await make(), seen = [], providerErrors = [];
     let respond = () => ({ results: [{ index: 0, relevance_score: .9 }] });
     let respondEmbedding = body => ({ data: body.input.map((_, index) => ({ index, embedding: [1, 0] })), usage: { prompt_tokens: 3, total_tokens: 3 } });
     const server = createServer(async (req, res) => {
-        let raw = ''; for await (const chunk of req) raw += chunk;
-        seen.push({ path: req.url, body: JSON.parse(raw) });
-        const body = req.url.endsWith('/rerank') ? await respond() : req.url.endsWith('/embeddings') ? await respondEmbedding(JSON.parse(raw))
-            : { choices: [{ message: { role: 'assistant', content: 'Fresh answer.' } }], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } };
-        res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body));
+        try {
+            let raw = ''; for await (const chunk of req) raw += chunk;
+            seen.push({ path: req.url, body: JSON.parse(raw) });
+            const body = req.url.endsWith('/rerank') ? await respond() : req.url.endsWith('/embeddings') ? await respondEmbedding(JSON.parse(raw))
+                : { choices: [{ message: { role: 'assistant', content: 'Fresh answer.' } }], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } };
+            res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body));
+        } catch (error) {
+            providerErrors.push(error);
+            res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Synthetic provider callback failed' }));
+        }
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const endpoint = `http://127.0.0.1:${server.address().port}/v1`;
@@ -59,7 +66,7 @@ async function fixture(make, maxRequests = 2, localWork) {
     app.use(createRetrievalMiddleware(() => store, () => 'synthetic-key', async () => computeServices)); app.use(vectors);
     const computeContext = { kind: 'session', sessionId: base.session.sessionId, revisionId: base.revision.revisionId };
     const body = { nativeRetrievalRef: retrievalRef(profile), query: 'Why Alice?', documents: [{ text: 'Because of the storm', index: 0 }], computeContext };
-    return { ...h, ...seeded, ...computeServices, base, profile, body, seen, store, request: supertest(app), respond: fn => { respond = fn; }, respondEmbedding: fn => { respondEmbedding = fn; },
+    return { ...h, ...seeded, ...computeServices, base, profile, body, seen, providerErrors, store, request: supertest(app), respond: fn => { respond = fn; }, respondEmbedding: fn => { respondEmbedding = fn; },
         async cleanup() { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await h.cleanup(); } };
 }
 
@@ -224,6 +231,49 @@ async function embeddingBody(f, items = [{ hash: 1, text: 'Current legal evidenc
 const localLimits = { maxJobs: 3, maxItems: 5, maxInputBytes: 4096 };
 const indexFile = (f, body) => path.join(f.dirs.vectors, 'atri-retrieval', body.collectionId, body.nativeRetrievalRef.retrievalProfileId + '_' + body.nativeRetrievalRef.revision, 'index.json');
 const readCompute = async f => Object.values((await f.core.runs.status(f.handle, f.base.session.sessionId))?.operations ?? {}).find(row => row.compute)?.compute;
+
+for (const [kind, make] of [['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarness]]) for (const mode of ['embed', 'rerank']) {
+    test(`G05 exact transport ${kind}/${mode} charges the actual immutable POST bytes despite admission callback mutation`, async () => {
+        const f = await fixture(make, 2, localLimits);
+        try {
+            const body = mode === 'embed' ? await embeddingBody(f) : f.body;
+            const profile = await f.store.getExact(f.handle, body.nativeRetrievalRef);
+            const compute = await prepareRetrievalCompute({ ...f, context: body.computeContext, profile });
+            let observed;
+            const request = { nativeRetrieval: { profile, signal: new AbortController().signal, compute: {
+                beforeSend: async (input, transport) => {
+                    observed = { input: structuredClone(input), transport: structuredClone(transport) };
+                    const ticket = await compute.beforeSend(input, transport);
+                    input.model = 'MUTATED_AFTER_ADMISSION';
+                    if (input.input) input.input[0] = 'MUTATED_PRIVATE_INPUT';
+                    if (input.documents) input.documents[0] = 'MUTATED_PRIVATE_DOCUMENT';
+                    return ticket;
+                }, settle: (usage, ticket) => compute.settle(usage, ticket),
+            } } };
+            f.respond(() => ({ results: [{ index: 0, relevance_score: .9 }], usage: { total_tokens: 5 } }));
+            if (mode === 'embed') await getOpenAIBatchVector(['Exact source'], profile.source, f.dirs, profile.model,
+                { reverseProxy: profile.endpoint, proxyPassword: 'synthetic-key' }, request);
+            else await rerank(profile.source, { apiUrl: profile.endpoint, apiKey: 'synthetic-key', model: profile.model }, 'Exact query', [{ text: 'Exact source', index: 0 }], 1, f.dirs, request);
+            expect(f.seen).toHaveLength(1); expect(f.seen[0].body).toEqual(observed.input);
+            expect(observed.transport).toEqual({ endpoint: profile.endpoint + (mode === 'embed' ? '/embeddings' : '/rerank'), method: 'POST' });
+            expect((await readCompute(f)).attempts).toEqual([expect.objectContaining({ ...retrievalSendIdentity(profile, f.seen[0].body, observed.transport),
+                inputFingerprint: hash(f.seen[0].body), status: 'settled' })]);
+        } finally { await f.cleanup(); }
+    });
+    test(`G05 exact transport ${kind}/${mode} rejects another endpoint before HTTP or original bank admission`, async () => {
+        const f = await fixture(make, 2, localLimits);
+        try {
+            const body = mode === 'embed' ? await embeddingBody(f) : f.body, profile = await f.store.getExact(f.handle, body.nativeRetrievalRef);
+            const compute = await prepareRetrievalCompute({ ...f, context: body.computeContext, profile });
+            const request = { nativeRetrieval: { profile, compute, signal: new AbortController().signal } };
+            const result = mode === 'embed' ? getOpenAIBatchVector(['Exact source'], profile.source, f.dirs, profile.model,
+                { reverseProxy: profile.endpoint + '/foreign', proxyPassword: 'synthetic-key' }, request)
+                : rerank(profile.source, { apiUrl: profile.endpoint + '/foreign', apiKey: 'synthetic-key', model: profile.model }, 'Query', [{ text: 'Source', index: 0 }], 1, f.dirs, request);
+            await expect(result).rejects.toMatchObject({ code: 'native_retrieval_send_target_mismatch' });
+            expect(f.seen).toEqual([]); expect(await readCompute(f)).toBeUndefined();
+        } finally { await f.cleanup(); }
+    });
+}
 test.each([['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]])('G05 local purge %s shares original allowance and recovery preserves it', async (_kind, make) => {
     const f = await fixture(make, 1, { ...localLimits, maxJobs: 2 });
     try {
@@ -581,6 +631,7 @@ test('G05 retired work actual Session restore during provider HTTP retains usage
         await expect(fs.access(indexFile(f, body))).rejects.toMatchObject({ code: 'ENOENT' });
         expect((await f.core.runs.status(f.handle, f.base.session.sessionId)).retiredCompute).toMatchObject({ modelAttempts: 1, knownTotalTokens: 5, localJobs: 1, localFailedJobs: 1 });
         expect(f.seen).toHaveLength(1);
+        expect(f.providerErrors).toEqual([]);
     } finally { await f.cleanup(); }
 });
 for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
