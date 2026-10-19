@@ -1,7 +1,6 @@
 import { formatAtriaDate } from './atria-shell/components.js';
 import { translateShellText as tl, formatShellText as formatProductText } from './atria-shell/localization.js';
-import { displayPastChats, getRequestHeaders, importCharacterChat } from '../script.js';
-import { importGroupChat } from './group-chats.js';
+import { getRequestHeaders } from '../script.js';
 import { downloadFromServer } from './atria-download.js';
 import { t } from './i18n.js';
 import { callGenericPopup, POPUP_RESULT, POPUP_TYPE } from './popup.js';
@@ -319,10 +318,10 @@ const BACKUP_DEFAULT_SELECTION = Object.freeze({
     native: true,
     settings: true,
     secrets: true,
-    characters: true,
-    chats: true,
-    lorebooks: true,
-    presets: true,
+    characters: false,
+    chats: false,
+    lorebooks: false,
+    presets: false,
     assets: true,
     vectors: false,
 });
@@ -386,7 +385,6 @@ function applyRetentionCard(root, type, policy, usage) {
 
 async function refreshRetention(root) {
     const payload = await postJson('/api/backups/retention/status');
-    applyRetentionCard(root, 'chat', payload.policy?.chat, payload.usage);
     applyRetentionCard(root, 'settings', payload.policy?.settings, payload.usage);
     return payload;
 }
@@ -399,7 +397,7 @@ function collectSelection(root, canManageGlobalExtensions) {
             continue;
         }
         const input = root.querySelector(`input[name="backupCategory"][value="${key}"]`);
-        if (input) selection[key] = input.checked;
+        selection[key] = Boolean(input?.checked);
     }
     return selection;
 }
@@ -545,152 +543,6 @@ async function restoreArchive({ handle, file, preflight, onProgress = () => {} }
     return readRestoreResponse(response, onProgress);
 }
 
-async function previewManagedBackup(name) {
-    const payload = await postJson('/api/backups/managed/preview', { name });
-    const textarea = document.createElement('textarea');
-    textarea.className = 'text_pole monospace';
-    textarea.rows = 24;
-    textarea.readOnly = true;
-    if (payload.type === 'chat') {
-        const rendered = [];
-        for (const line of String(payload.content || '').split('\n')) {
-            if (!line.trim()) continue;
-            try {
-                const item = JSON.parse(line);
-                if (item?.mes) rendered.push(`${item.name || item.character_name || 'Message'}\n${item.mes}`);
-            } catch {
-                rendered.push(line);
-            }
-        }
-        textarea.value = rendered.join('\n\n');
-    } else {
-        textarea.value = String(payload.content || '');
-    }
-    if (payload.truncated) textarea.value += tl('\n\n…Preview truncated…');
-    return callGenericPopup(textarea, POPUP_TYPE.TEXT, '', {
-        okButton: t`Close`,
-        wide: true,
-        large: true,
-        allowVerticalScrolling: true,
-    });
-}
-
-async function downloadManagedBackup(name) {
-    await downloadFromServer({
-        url: '/api/backups/managed/download',
-        fileName: name,
-        mimeType: 'application/octet-stream',
-        method: 'POST',
-        headers: getRequestHeaders(),
-        body: JSON.stringify({ name }),
-    });
-}
-
-async function restoreChatBackup(name) {
-    const response = await fetch('/api/backups/managed/download', {
-        method: 'POST',
-        headers: getRequestHeaders(),
-        body: JSON.stringify({ name }),
-    });
-    if (!response.ok) throw new Error(tl('Could not read the chat backup.'));
-    const blob = await response.blob();
-    const file = new File([blob], name, { type: 'application/octet-stream' });
-    const context = Atria.getContext();
-    const formData = new FormData();
-    formData.set('file_type', 'jsonl');
-    formData.set('avatar', file);
-    formData.set('avatar_url', context.characters[context.characterId]?.avatar || '');
-    formData.set('user_name', context.name1);
-    formData.set('character_name', context.name2);
-    const importFn = context.groupId ? importGroupChat : importCharacterChat;
-    const result = await importFn(formData, { refresh: false });
-    if (!Array.isArray(result) || result.length === 0) throw new Error(tl('Could not import the chat backup.'));
-    await displayPastChats(result);
-    return result;
-}
-
-function renderManagedGroups(root, records, reload) {
-    const list = root.querySelector('.backupManagedList');
-    const query = String(root.querySelector('.backupManagedSearch').value || '').trim().toLowerCase();
-    list.innerHTML = '';
-    const groups = new Map();
-    for (const record of records) {
-        const haystack = `${record.entityKey} ${record.name}`.toLowerCase();
-        if (query && !haystack.includes(query)) continue;
-        const rows = groups.get(record.entityKey) || [];
-        rows.push(record);
-        groups.set(record.entityKey, rows);
-    }
-    if (groups.size === 0) {
-        list.innerHTML = tl('<div class="menu_button_note">No matching chat backups.</div>');
-        return;
-    }
-
-    for (const [entityKey, rows] of groups) {
-        const group = document.createElement('div');
-        group.className = 'backupManagedGroup';
-        const header = document.createElement('div');
-        header.className = 'backupManagedGroupHeader';
-        const title = document.createElement('strong');
-        title.textContent = entityKey.replace(/^chat_/, '');
-        const count = document.createElement('span');
-        count.textContent = formatProductText('${0} versions', [rows.length]);
-        header.append(title, count);
-        const rowsEl = document.createElement('div');
-        rowsEl.className = 'backupManagedRows';
-
-        for (const record of rows) {
-            const row = document.createElement('div');
-            row.className = 'backupManagedRow';
-            const meta = document.createElement('div');
-            meta.className = 'backupManagedRowMeta';
-            const when = formatAtriaDate(Number(record.modifiedMs || 0));
-            meta.textContent = formatProductText('${0} · ${1} · ${2} messages', [when, humanFileSize(Number(record.size || 0)), record.chat?.chat_items ?? '?']);
-
-            const actions = document.createElement('div');
-            actions.className = 'backupManagedRowActions';
-            const make = (icon, titleText, fn, danger = false) => {
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.className = `menu_button menu_button_icon${danger ? ' warning' : ''}`;
-                button.title = titleText;
-                button.innerHTML = `<i class="fa-fw fa-solid fa-${icon}"></i>`;
-                button.addEventListener('click', async () => {
-                    button.disabled = true;
-                    try {
-                        await fn();
-                    } catch (error) {
-                        toastr.error(error.message);
-                    } finally {
-                        if (button.isConnected) button.disabled = false;
-                    }
-                });
-                return button;
-            };
-            actions.append(
-                make('eye', tl('Preview'), () => previewManagedBackup(record.name)),
-                make('download', tl('Download'), () => downloadManagedBackup(record.name)),
-                make('rotate-left', tl('Import as a new chat'), async () => {
-                    const result = await callGenericPopup(tl('Import this backup into the current character or group chat list?'), POPUP_TYPE.CONFIRM);
-                    if (result !== POPUP_RESULT.AFFIRMATIVE) return;
-                    await restoreChatBackup(record.name);
-                    toastr.success(tl('Chat backup imported.'));
-                }),
-                make('trash', tl('Delete'), async () => {
-                    const ok = await callGenericPopup(formatProductText('Delete backup ${0}?', [record.name]), POPUP_TYPE.CONFIRM);
-                    if (ok !== POPUP_RESULT.AFFIRMATIVE) return;
-                    await postJson('/api/backups/managed/delete', { name: record.name });
-                    await reload();
-                }, true),
-            );
-            row.append(meta, actions);
-            rowsEl.appendChild(row);
-        }
-        group.append(header, rowsEl);
-        list.appendChild(group);
-    }
-}
-
 async function loadRestoreRecoveryPoints(root) {
     const payload = await postJson('/api/users/restore-backup/recovery/list');
     const list = root.querySelector('.backupRecoveryList');
@@ -780,7 +632,7 @@ export async function openBackupSyncCenter({
     if (globalItem) globalItem.classList.toggle('displayNone', !canManageGlobalExtensions);
     setSelection(center, BACKUP_DEFAULT_SELECTION, canManageGlobalExtensions);
 
-    let managedRecords = [];
+    let retentionPolicy = null;
     let selectedArchive = null;
     let preflight = null;
     let preflightVersion = 0;
@@ -788,10 +640,9 @@ export async function openBackupSyncCenter({
     let retentionBusy = false;
     archiveRestoreViews.add(center);
 
-    const reloadManaged = async () => {
-        const payload = await postJson('/api/backups/managed/list', { type: 'chat' });
-        managedRecords = Array.isArray(payload?.records) ? payload.records : [];
-        renderManagedGroups(center, managedRecords, reloadManaged);
+    const reloadRetention = async () => {
+        const payload = await refreshRetention(center);
+        retentionPolicy = payload.policy;
     };
 
     const rerunPreflight = async () => {
@@ -862,7 +713,7 @@ export async function openBackupSyncCenter({
             controls.forEach(([node]) => { node.disabled = true; }); button.setAttribute('aria-busy', 'true');
             const payload = await pending; committed = true; accept(payload);
             retentionFeedback.textContent = tl(message);
-            await refreshRetention(center); await reloadManaged();
+            await reloadRetention();
         } catch (error) {
             retentionFeedback.textContent = committed ? tl('Saved, but the backup list could not refresh. Refresh the list to read the saved result.') : error.message;
             retentionFeedback.setAttribute('role', committed ? 'status' : 'alert');
@@ -876,29 +727,23 @@ export async function openBackupSyncCenter({
 
     center.querySelector('.backupRetentionSave').addEventListener('click', async () => {
         await changeRetention(center.querySelector('.backupRetentionSave'), () => postJson('/api/backups/retention/settings', {
-            chat: parseRetentionCard(center, 'chat'),
+            ...(retentionPolicy?.chat ? { chat: retentionPolicy.chat } : {}),
             settings: parseRetentionCard(center, 'settings'),
-        }), 'Chat and settings backup retention saved.', payload => {
-            applyRetentionCard(center, 'chat', payload.policy?.chat, payload.usage);
+        }), 'Settings backup retention saved.', payload => {
+            retentionPolicy = payload.policy;
             applyRetentionCard(center, 'settings', payload.policy?.settings, payload.usage);
         });
-    });
-    center.querySelector('.backupRetentionCleanup').addEventListener('click', async () => {
-        await changeRetention(center.querySelector('.backupRetentionCleanup'), () => postJson('/api/backups/retention/cleanup'), 'Backup cleanup complete.');
-    });
-    center.querySelector('.backupRetentionReset').addEventListener('click', async () => {
-        await changeRetention(center.querySelector('.backupRetentionReset'), () => postJson('/api/backups/retention/reset'), 'Backup retention restored to the server defaults.');
     });
     center.querySelector('.backupManagedRefresh').addEventListener('click', async () => {
         const button = center.querySelector('.backupManagedRefresh');
         if (button.disabled || retentionBusy) return;
         button.disabled = true; button.setAttribute('aria-busy', 'true');
         try {
-            await refreshRetention(center); await reloadManaged();
+            await reloadRetention();
+            center.querySelector('.backupRetentionSave').disabled = false;
             retentionFeedback.textContent = tl('Backup list refreshed.'); retentionFeedback.setAttribute('role', 'status');
         } catch (error) { retentionFeedback.textContent = error.message; retentionFeedback.setAttribute('role', 'alert'); } finally { button.disabled = false; button.removeAttribute('aria-busy'); }
     });
-    center.querySelector('.backupManagedSearch').addEventListener('input', () => renderManagedGroups(center, managedRecords, reloadManaged));
     center.querySelector('.backupOpenSettingsSnapshots').addEventListener('click', () => openSettingsSnapshots?.());
 
     center.querySelector('.backupSelectAll').addEventListener('click', () => {
@@ -1016,8 +861,7 @@ export async function openBackupSyncCenter({
             toastr.success(formatProductText('Restore complete: ${0} items restored; ${1} failed.', [Number(result.restoredCount || 0), Number(result.failedCount || 0)]));
             await onRestored?.(result);
             if (center.isConnected) {
-                await refreshRetention(center);
-                await reloadManaged();
+                await reloadRetention();
             }
         } catch (error) {
             if (error?.code === 'ATRIA_RESTORE_CANCELLED') {
@@ -1046,8 +890,7 @@ export async function openBackupSyncCenter({
     });
     center.querySelector('.backupOpenLanSync').addEventListener('click', () => void PROVIDERS.get('lan-sync').open());
     await Promise.all([
-        refreshRetention(center).catch(error => toastr.error(formatProductText('Could not load backup retention: ${0}', [error.message]))),
-        reloadManaged().catch(error => toastr.error(formatProductText('Could not load chat backups: ${0}', [error.message]))),
+        reloadRetention().catch(error => { center.querySelector('.backupRetentionSave').disabled = true; toastr.error(formatProductText('Could not load backup retention: ${0}', [error.message])); }),
         loadProviders(center).catch(error => toastr.error(formatProductText('Could not load sync services: ${0}', [error.message]))),
         loadRestoreRecoveryPoints(center).catch(error => toastr.error(formatProductText('Could not load recovery points: ${0}', [error.message]))),
     ]);

@@ -1833,3 +1833,15 @@ body.no-blur :is(.atria-navigation-rail, .atria-bottom-navigation, .atria-play-c
 .atria-pane-separator[data-axis=y] { height:8px; cursor:row-resize; }
 .atria-pane-separator:hover,.atria-pane-separator:focus-visible,.atria-pane-separator[data-atria-resizing=true] { background:var(--atri-info-soft); outline:1px solid var(--atri-info); }
 .atria-pane-separator[hidden] { display:none!important; }
+
+/* Goals and feedback share the current Task/Session surface. */
+.atria-goal-authoring, .atria-agent-evolution { min-width: 0; margin-block: 16px; color: var(--atri-text-primary); }
+:is(.atria-goal-authoring, .atria-agent-evolution) summary { cursor: pointer; min-height: 44px; padding-block: 12px; font-weight: 600; }
+:is(.atria-goal-authoring, .atria-agent-evolution) :is(p, pre, li) { overflow-wrap: anywhere; }
+:is(.atria-goal-authoring, .atria-agent-evolution) :is(fieldset, section) { min-width: 0; border: 0; padding: 0; margin-block: 12px 24px; }
+:is(.atria-goal-authoring, .atria-agent-evolution) label { display: grid; gap: 6px; margin-block: 12px; color: var(--atri-text-secondary); font-size: .875rem; }
+:is(.atria-goal-authoring, .atria-agent-evolution) :is(input:not([type="checkbox"]), textarea, select) { box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-sm); padding: 10px 12px; background: var(--atri-surface-1); color: var(--atri-text-primary); font: inherit; }
+.atria-agent-evolution button { min-height: 44px; margin: 4px; padding: 8px 12px; border: 1px solid var(--atri-separator); border-radius: var(--atri-radius-md); background: var(--atri-fill); color: inherit; font: inherit; cursor: pointer; }
+.atria-agent-evolution button:disabled { opacity: .5; cursor: default; }
+:is(.atria-goal-authoring, .atria-agent-evolution) :is(button, summary, input, textarea, select):focus-visible { outline: 2px solid var(--atri-accent); outline-offset: 3px; }
+.atria-agent-evolution pre { white-space: pre-wrap; font-size: .8rem; line-height: 1.6; }

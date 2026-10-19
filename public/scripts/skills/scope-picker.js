@@ -1,22 +1,4 @@
-/**
- * Shared scope picker for the Skill subsystem.
- *
- * Replaces the duplicated `pickTargetScope` implementations that lived
- * inline in `skill-manager-panel.js` (Move to) and `skill-editor.js`
- * (Create-new + change-scope).
- *
- * The preset-scope sub-row asks for a single thing: the chat completion
- * preset to bind to. There is no "connection profile" field, because a
- * preset is decoupled from any particular connection profile in Atria —
- * a skill bound to preset X should travel with X regardless of which
- * connection profile is currently routing requests. The runtime matches
- * preset-scope skills by preset name alone (see
- * `public/shared/skill-invocation.js#resolveSkillScopes`).
- *
- * The character-scope sub-row similarly uses a real <select> populated
- * from `context.characters`. Both sub-rows are hidden via the `hidden`
- * attribute when the user picks a different kind on the radio.
- */
+/** Shared picker for writable Native Skill owners. Package originals remain read-only. */
 
 import { ensureSkillI18n } from './i18n.js';
 
@@ -28,149 +10,22 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({
     '\'': '&#39;',
 })[c]);
 
-/**
- * Collect every chat-completion preset known to any preset manager. Each
- * entry is `{name, api}`; `api` is informational (used for the disambiguation
- * suffix in the label when two managers expose the same preset name). We
- * don't store `api` on the scope — see the module docstring.
- *
- * @param {object} context - SillyTavern context.
- * @returns {Array<{name:string, api:string}>}
- */
-export function listAllPresets(context) {
-    // The set of APIs whose preset managers we walk. ST exposes one preset
-    // manager per chat-completion-flavored backend; "openai" is the legacy
-    // fallback that every install has, and the rest cover the actively-
-    // supported backends in Atria today.
-    const APIS = ['openai', 'claude', 'textgenerationwebui', 'kobold', 'novel'];
-    const seen = new Map(); // name → api (first manager that claimed the name)
-    const out = [];
-    if (!context || typeof context.getPresetManager !== 'function') return out;
-    for (const api of APIS) {
-        let names;
-        try {
-            const mgr = context.getPresetManager(api);
-            names = mgr && typeof mgr.getAllPresets === 'function' ? mgr.getAllPresets() : null;
-        } catch (_) { names = null; }
-        if (!Array.isArray(names)) continue;
-        for (const raw of names) {
-            const name = String(raw || '').trim();
-            if (!name) continue;
-            if (seen.has(name)) continue; // first manager wins — same preset name in two managers is rare and we surface the (api) suffix to distinguish in the label below
-            seen.set(name, api);
-            out.push({ name, api });
-        }
-    }
-    out.sort((a, b) => a.name.localeCompare(b.name));
-    return out;
-}
-
-/**
- * Resolve the currently-active preset name. Used as the default selection
- * when the picker opens without a `suggestScope.name`.
- *
- * Falls through preset managers in the same order as listAllPresets so the
- * "first manager with a selected preset wins" behaviour matches what the
- * dropdown shows.
- *
- * @param {object} context
- * @returns {string}
- */
-export function getActivePresetName(context) {
-    const APIS = ['openai', 'claude', 'textgenerationwebui', 'kobold', 'novel'];
-    if (!context || typeof context.getPresetManager !== 'function') return '';
-    for (const api of APIS) {
-        try {
-            const mgr = context.getPresetManager(api);
-            const sel = mgr && typeof mgr.getSelectedPresetName === 'function'
-                ? String(mgr.getSelectedPresetName() || '').trim()
-                : '';
-            if (sel) return sel;
-        } catch (_) { /* try next */ }
-    }
-    return '';
-}
-
-/**
- * Enumerate visible characters as `{value, label}` pairs. `value` is the
- * avatar file (matches `Scope.characterFile`); label is the display name
- * with the avatar appended in parentheses so duplicates are still
- * distinguishable.
- *
- * @param {object} context
- * @returns {Array<{value:string, label:string}>}
- */
-export function listCharacters(context) {
-    const list = Array.isArray(context?.characters) ? context.characters : [];
-    const out = [];
-    for (const c of list) {
-        if (!c || typeof c !== 'object') continue;
-        const avatar = typeof c.avatar === 'string' ? c.avatar : '';
-        if (!avatar) continue;
-        const name = typeof c.name === 'string' && c.name.trim() ? c.name : avatar;
-        // Disambiguate same-name characters by appending the avatar when it
-        // differs from the display name. Cheap and avoids confusion.
-        const label = name === avatar ? name : `${name} (${avatar})`;
-        out.push({ value: avatar, label });
-    }
-    out.sort((a, b) => a.label.localeCompare(b.label));
-    return out;
-}
-
-/**
- * Build the picker body HTML. Exported so the unit tests can assert
- * dropdown contents without instantiating the popup.
- *
- * @param {object} opts
- * @param {string} opts.title
- * @param {(s:string) => string} opts.t
- * @param {string} opts.suggestKind - 'global'|'project'|'preset'|'character'
- * @param {string} opts.suggestPreset - default preset name
- * @param {string} opts.suggestChar - default character file
- * @param {Array<{name:string, api:string}>} opts.presets
- * @param {Array<{value:string, label:string}>} opts.characters
- * @returns {string}
- */
 export function buildScopePickerHtml({
     title,
     t,
-    suggestKind,
-    suggestPreset,
-    suggestChar,
-    presets,
-    characters,
+    suggestKind = 'global',
     projects = [], suggestProject = '',
 } = {}) {
     const kindRadio = (value, label) => {
-        const checked = suggestKind === value ? ' checked' : '';
+        const checked = (suggestKind === 'project' ? 'project' : 'global') === value ? ' checked' : '';
         return `<label class="atria_skill_scope_kind_option">
             <input type="radio" name="atria_skill_scope_kind" value="${value}"${checked}>
             ${esc(t(label))}
         </label>`;
     };
-    const presetOptions = presets.length > 0
-        ? presets.map(p => {
-            const sel = p.name === suggestPreset ? ' selected' : '';
-            // The (api) suffix is only useful when two managers share a
-            // preset name; otherwise it's noise. listAllPresets already
-            // dedupes by first-manager-wins, so a duplicate is only visible
-            // here if the user constructs custom data. Cheap to always show.
-            const label = p.api ? `${p.name} (${p.api})` : p.name;
-            return `<option value="${esc(p.name)}"${sel}>${esc(label)}</option>`;
-        }).join('')
-        : `<option value="" disabled selected>${esc(t('(no chat completion presets)'))}</option>`;
-    const characterOptions = characters.length > 0
-        ? characters.map(c => {
-            const sel = c.value === suggestChar ? ' selected' : '';
-            return `<option value="${esc(c.value)}"${sel}>${esc(c.label)}</option>`;
-        }).join('')
-        : `<option value="" disabled selected>${esc(t('(no characters loaded)'))}</option>`;
-
     const projectOptions = projects.length
         ? projects.map(item => `<option value="${esc(item.projectId)}"${item.projectId === suggestProject ? ' selected' : ''}>${esc(item.displayName || item.projectId)}</option>`).join('')
         : `<option value="" disabled selected>${esc(t('No projects available. Create one in Build.'))}</option>`;
-    const presetHidden = suggestKind !== 'preset';
-    const charHidden = suggestKind !== 'character';
     return `
 <div class="atria_skill_scope_picker">
     <div class="atria_skill_scope_picker_title">${esc(title)}</div>
@@ -183,25 +38,7 @@ export function buildScopePickerHtml({
         <select class="text_pole" data-skill-scope-project>${projectOptions}</select></label>
     </div>
     <p>${esc(t('Package originals are read-only. Publish changes from the source project.'))}</p>
-    <details class="atri-skill-compatibility"${['preset', 'character'].includes(suggestKind) ? ' open' : ''}>
-        <summary>${esc(t('Advanced compatibility scopes'))}</summary>
-        <div class="atria_skill_scope_picker_kinds">
-        ${kindRadio('preset', 'Preset')}
-        ${kindRadio('character', 'Character')}
-    </div>
-    <div class="atria_skill_scope_preset_fields"${presetHidden ? ' hidden' : ''} data-skill-scope-row="preset">
-        <label class="atria_skill_scope_field">
-            <span class="atria_skill_scope_field_label">${esc(t('Chat completion preset'))}</span>
-            <select class="text_pole" data-skill-scope-preset>${presetOptions}</select>
-        </label>
-    </div>
-    <div class="atria_skill_scope_character_fields"${charHidden ? ' hidden' : ''} data-skill-scope-row="character">
-        <label class="atria_skill_scope_field">
-            <span class="atria_skill_scope_field_label">${esc(t('Character'))}</span>
-            <select class="text_pole" data-skill-scope-character>${characterOptions}</select>
-        </label>
-    </div>
-    </details>
+
 </div>
     `;
 }
@@ -210,8 +47,7 @@ export function buildScopePickerHtml({
  * Open the scope picker popup and resolve to the chosen scope. Returns
  * `null` when the user cancels.
  *
- * @param {object} context - SillyTavern context (must expose Popup,
- *   POPUP_RESULT, POPUP_TYPE, getPresetManager, characters).
+ * @param {object} context - Original popup and Native Skill client context.
  * @param {(s:string) => string} t - i18n helper.
  * @param {string} title - dialog header text.
  * @param {object|null} suggestScope - pre-fill defaults.
@@ -230,21 +66,11 @@ export async function pickTargetScope(context, t = (s) => s, title = '', suggest
         return null;
     }
 
-    const presets = listAllPresets(context);
-    const characters = listCharacters(context);
-    const suggestKind = ['global', 'project', 'preset', 'character'].includes(suggestScope?.kind) ? suggestScope.kind : 'global';
+    const suggestKind = suggestScope?.kind === 'project' ? 'project' : 'global';
     let projects = [];
     try { if (context.skills?.listOwners) projects = (await context.skills.listOwners())?.projects ?? []; } catch { if (typeof toastr !== 'undefined') toastr.error(t('Could not load project scopes. Reopen the picker to retry.')); }
     const suggestProject = suggestScope?.projectId || projects[0]?.projectId || '';
-    // Default preset: suggested → currently-active → first available.
-    const suggestPreset = (suggestScope?.name && presets.some(p => p.name === suggestScope.name))
-        ? suggestScope.name
-        : (getActivePresetName(context) || presets[0]?.name || '');
-    const suggestChar = (suggestScope?.characterFile && characters.some(c => c.value === suggestScope.characterFile))
-        ? suggestScope.characterFile
-        : (characters[0]?.value || '');
-
-    const html = buildScopePickerHtml({ title, t, suggestKind, suggestPreset, suggestChar, presets, characters, projects, suggestProject });
+    const html = buildScopePickerHtml({ title, t, suggestKind, projects, suggestProject });
 
     let chosen = null;
     const popup = new Popup(html, POPUP_TYPE.CONFIRM, '', {
@@ -267,30 +93,7 @@ export async function pickTargetScope(context, t = (s) => s, title = '', suggest
                 }
                 chosen = { kind: 'project', projectId }; return true;
             }
-            if (kind === 'preset') {
-                const presetName = String(dlg.querySelector('[data-skill-scope-preset]')?.value || '').trim();
-                if (!presetName) {
-                    if (typeof toastr !== 'undefined') {
-                        toastr.error(String(t('Preset scope requires picking a preset.')));
-                    }
-                    return false;
-                }
-                chosen = { kind: 'preset', name: presetName };
-                return true;
-            }
-
-            if (kind === 'character') {
-                const characterFile = String(dlg.querySelector('[data-skill-scope-character]')?.value || '').trim();
-                if (!characterFile) {
-                    if (typeof toastr !== 'undefined') {
-                        toastr.error(String(t('Character scope requires picking a character.')));
-                    }
-                    return false;
-                }
-                chosen = { kind: 'character', characterFile };
-                return true;
-            }
-            return true;
+            return false;
         },
     });
 
@@ -300,12 +103,8 @@ export async function pickTargetScope(context, t = (s) => s, title = '', suggest
     const dlg = popup.dlg;
     if (dlg) {
         const projectRow = dlg.querySelector('[data-skill-scope-row="project"]');
-        const presetRow = dlg.querySelector('[data-skill-scope-row="preset"]');
-        const charRow = dlg.querySelector('[data-skill-scope-row="character"]');
         const applyKindVisibility = (kind) => {
             if (projectRow) projectRow.hidden = kind !== 'project';
-            if (presetRow) presetRow.hidden = kind !== 'preset';
-            if (charRow) charRow.hidden = kind !== 'character';
         };
         dlg.querySelectorAll('input[name="atria_skill_scope_kind"]').forEach(radio => {
             radio.addEventListener('change', () => {

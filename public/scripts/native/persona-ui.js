@@ -11,13 +11,6 @@ function multiline(doc, root, label, value) {
     const wrap = el(doc, 'label', 'atri-library-field', tl(label), root);
     const input = el(doc, 'textarea', '', undefined, wrap); input.value = value; input.setAttribute('aria-label', tl(label)); input.rows = 5; return input;
 }
-function exported(doc, parent, label, value) {
-    action(doc, parent, label, () => {
-        const url = URL.createObjectURL(new Blob([value], { type: 'application/json' }));
-        const link = el(doc, 'a'); link.href = url; link.download = 'persona-source.json'; link.click(); URL.revokeObjectURL(url);
-    });
-}
-
 export function mountPersonaWorkspace({ document: doc, body, route, host, browseState = {}, client = nativeProductClient }) {
     const root = el(doc, 'section', 'atri-library-section'); root.dataset.atriaPersonas = 'true'; body.replaceChildren(root);
     let disposed = false, token = 0, lastReceipt = null;
@@ -149,7 +142,6 @@ export function mountPersonaWorkspace({ document: doc, body, route, host, browse
         }
         const reload = () => { browseState.query = query.value; browseState.includeArchived = archived.checked; browseState.sort = sort.value; load().catch(error => feedback(doc, rows, libraryError(error), true)); };
         query.addEventListener('input', reload); archived.addEventListener('change', reload); sort.addEventListener('change', reload); await load();
-        mountPersonaMigration({ doc, root, client, active: () => fresh(current) });
     }
     void show();
     return { updateRoute(next) { void show(next); }, dispose() { disposed = true; ++token; root.remove(); } };
@@ -158,41 +150,6 @@ function stableJson(value) {
     if (Array.isArray(value)) return '[' + value.map(stableJson).join(',') + ']';
     if (value && typeof value === 'object') return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + stableJson(value[key])).join(',') + '}';
     return JSON.stringify(value);
-}
-
-export function mountPersonaMigration({ doc, root, client, active = () => true }) {
-    const section = el(doc, 'details', 'atri-library-details', undefined, root); el(doc, 'summary', '', tl('Import legacy Personas'), section);
-    const file = field(doc, section, 'Legacy JSON file', '', 'file'); file.accept = '.json,application/json';
-    action(doc, section, 'Choose legacy JSON', () => file.click());
-    const filename = el(doc, 'p', 'atri-library-meta', '', section);
-    file.addEventListener('change', () => { filename.textContent = file.files[0]?.name ?? ''; });
-    const convert = field(doc, section, 'Convert {{user}} to the captured name', '', 'checkbox');
-    const review = el(doc, 'div', '', undefined, section);
-    let generation = 0;
-    const invalidate = () => { generation++; review.replaceChildren(); }; file.addEventListener('change', invalidate); convert.addEventListener('change', invalidate);
-    const local = field(doc, section, 'Use legacy Personas from this account', '', 'checkbox'); local.addEventListener('change', invalidate);
-    action(doc, section, 'Preflight', async () => {
-        const selected = file.files[0]; if (!selected && !local.checked) return;
-        if (selected && selected.size > 16 * 1024 * 1024) throw new Error(tl('Legacy JSON is too large.'));
-        const version = ++generation;
-        const localSource = local.checked;
-        const source = localSource ? { convertUser: convert.checked } : { rawSource: await selected.text(), convertUser: convert.checked };
-        const plan = await (localSource ? client.preflightLocalPersonas(source) : client.preflightPersonaMigration(source));
-        if (!active() || generation !== version) return;
-        review.replaceChildren(); disclosure(doc, review, 'Migration review', plan); exported(doc, review, 'Export original source', source.rawSource ?? new TextDecoder().decode(Uint8Array.from(atob(plan.rawSource), char => char.charCodeAt(0))));
-        const apply = action(doc, review, 'Create reviewed copies', async () => {
-            const applyInput = { ...source, planDigest: plan.planDigest, expectedFingerprint: plan.expectedFingerprint };
-            const result = await (localSource ? client.applyLocalPersonas(applyInput) : client.applyPersonaMigration(applyInput));
-            if (!active() || generation !== version) return;
-            apply.dataset.atriaActionComplete = 'true'; apply.disabled = true; disclosure(doc, review, 'Migration receipt', result); feedback(doc, review, result.published ? 'Saved successfully.' : 'Some copies could not publish. Review the receipt and preflight again to retry.', !result.published);
-            action(doc, review, 'Reload receipt', async () => { const receipt = await client.readPersonaMigration({ sourceDigest: plan.sourceDigest }); if (active() && generation === version) disclosure(doc, review, 'Migration receipt', receipt); });
-            action(doc, review, 'Adopt migrated default', async () => {
-                const d = await client.readPersonaDefault();
-                if (!active() || generation !== version || !doc.defaultView.confirm(tl('Set the migrated default? Existing sessions keep their identity.'))) return;
-                await client.adoptPersonaMigrationDefault({ sourceDigest: plan.sourceDigest, expectedFingerprint: result.expectedFingerprint, expectedDefaultFingerprint: d.expectedFingerprint }); feedback(doc, review, 'Saved successfully.');
-            }, { disabled: !plan.defaultLegacyKey || result.receipt.items[plan.defaultLegacyKey]?.status !== 'published' });
-        }, { disabled: !plan.supported, primary: true });
-    });
 }
 
 export function openPersonaSelector({ document: doc, runtime, client = nativeProductClient, expectedRevisionId, sessionId, select, statusText }) {

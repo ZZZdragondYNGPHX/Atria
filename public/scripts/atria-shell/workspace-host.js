@@ -1,3 +1,4 @@
+import { mountPaneResizer } from './pane-resizer.js';
 import { mountActivityIsland } from './activity-island.js';
 import { mountExtensionsWorkspace } from '../native/extensions-workspace.js';
 import { createAtriaIcon } from './icons.js';
@@ -75,7 +76,7 @@ function routeDescriptor(route) {
         const section = normalizeAgentSection(route);
         if (section === 'plans' || section === 'runs') return Object.freeze({ key: 'agents:v3', kind: 'agents-v3', section, title: AGENT_SECTION_LABELS[section] });
         return Object.freeze({
-            key: section === 'home' ? 'agents:home' : 'agents:workspace',
+            key: 'agents:' + section,
             kind: 'agents',
             section,
             title: AGENT_SECTION_LABELS[section] || 'Agents',
@@ -134,7 +135,7 @@ function makeContextSummary(documentRef, title, detail = '') {
 function mountPlaceholder({ document: documentRef, slot, descriptor }) {
     const panel = createLocalizedStatePanel(documentRef, 'empty', {
         title: descriptor.title,
-        message: 'This domain is reserved for the next staged R7 integration phase.',
+        message: 'This workspace is unavailable. Choose a workspace from the navigation.',
     });
     slot.replaceChildren(panel);
     return {
@@ -201,17 +202,42 @@ async function mountAgentsWorkspace({ document: documentRef, slot, descriptor, h
         const css = documentRef.createElement('link'); css.id = 'atria-memory-css'; css.rel = 'stylesheet';
         css.href = '/css/atria-memory.css'; documentRef.head.append(css);
     }
-    slot.replaceChildren(root, inspector);
+    const layout = documentRef.createElement('div'); layout.className = 'atria-memory-layout';
+    layout.append(root, inspector); slot.replaceChildren(layout);
+    const resize = mountPaneResizer({ document: documentRef, root: layout, pane: inspector, label: translateShellText('Resize memory inspector'), property: '--atria-memory-inspector-width', axis: 'x', side: 'start',
+        min: 260, max: () => Math.min(560, layout.clientWidth - 360),
+        enabled: () => !inspector.hidden && layout.clientWidth > 760,
+        onCollapse: () => { inspector.hidden = true; root.querySelector('[data-memory-view="knowledge"]')?.focus(); } });
     const el = (tag, text, parent, className = '') => {
         const node = documentRef.createElement(tag); node.className = className;
         if (text !== undefined) node.textContent = translateShellText(text);
         parent?.append(node); return node;
     };
     const button = (parent, text, action) => { const node = el('button', text, parent); node.type = 'button'; node.addEventListener('click', action); return node; };
+    const controls = new documentRef.defaultView.AbortController();
+    const closeInspector = () => inspector.querySelector('.workspace-inspector-close')?.click();
+    documentRef.addEventListener('atria-workspace-back', event => {
+        if (!inspector.hidden) { closeInspector(); event.preventDefault(); }
+    }, { signal: controls.signal });
+    const syncInspector = () => {
+        const modal = !inspector.hidden && documentRef.defaultView.innerWidth <= 760;
+        inspector.setAttribute('role', modal ? 'dialog' : 'complementary'); inspector.setAttribute('aria-label', translateShellText('Memory details'));
+        if (modal) inspector.setAttribute('aria-modal', 'true'); else inspector.removeAttribute('aria-modal');
+        root.inert = modal;
+    };
+    const inspectorObserver = new documentRef.defaultView.MutationObserver(syncInspector); inspectorObserver.observe(inspector, { attributes: true, attributeFilter: ['hidden'] });
+    documentRef.defaultView.addEventListener('resize', syncInspector, { signal: controls.signal });
+    documentRef.addEventListener('keydown', event => {
+        if (event.key !== 'Tab' || inspector.hidden || documentRef.defaultView.innerWidth > 760) return;
+        const nodes = [...inspector.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, a[href]')].filter(node => node.getClientRects().length);
+        if (!nodes.length) return;
+        const index = nodes.indexOf(documentRef.activeElement);
+        if (index < 0 || event.shiftKey && index === 0 || !event.shiftKey && index === nodes.length - 1) { event.preventDefault(); (event.shiftKey ? nodes.at(-1) : nodes[0]).focus(); }
+    }, { signal: controls.signal });
     const memory = createMemoryWorkspace({ getContext: () => globalThis.Atria.getContext() })(root, {
         el, button, inspector, getView: () => ({ recalls: [], memoryUsers: () => [] }),
     });
-    return { root, dispose() { if (typeof memory === 'function') memory(); else memory?.dispose?.(); root.remove(); inspector.remove(); } };
+    return { root, dispose() { if (typeof memory === 'function') memory(); else memory?.dispose?.(); controls.abort(); inspectorObserver.disconnect(); resize.dispose(); layout.remove(); } };
 }
 
 async function mountAgentsV3Workspace(args) {
@@ -294,20 +320,20 @@ export function createAtriaWorkspaceHost({
         const detail = descriptor.kind === 'agents'
             ? formatShellText('Current Agents view: ${0}', [translateShellText(AGENT_SECTION_LABELS[descriptor.section] || descriptor.section)], undefined, 'atria.shell.context.agents')
             : descriptor.kind === 'build'
-                ? translateShellText('Build projects and exact World / Knowledge dependencies use ProjectStore authority.')
+                ? translateShellText('Edit project resources, compare pending changes, and preview or build your Work.')
                 : descriptor.kind === 'library'
-                    ? formatShellText('Library / ${0} uses exact Native Package, World, Knowledge, Prompt and Generation resources.', [translateShellText(descriptor.title)], undefined, 'atria.shell.context.library')
+                    ? formatShellText('Library / ${0}: browse saved resources and their revisions.', [translateShellText(descriptor.title)])
                     : descriptor.kind === 'runtime'
-                        ? formatShellText('Runtime / ${0} uses Native routes and exact model, connection, Generation and Prompt resources.', [translateShellText(descriptor.title)], undefined, 'atria.shell.context.nativeRuntime')
+                        ? formatShellText('Runtime / ${0}: configure requests and review their results.', [translateShellText(descriptor.title)])
                         : descriptor.kind === 'diagnostics'
-                            ? translateShellText('Incidents, startup diagnostics and raw evidence use the existing diagnostics controller.')
+                            ? translateShellText('Find recent problems and open their reports.')
                             : descriptor.kind === 'plugins'
                                 ? translateShellText('Manage Skills, external plugins, local scripts and built-in tools.')
                                 : descriptor.kind === 'settings'
-                                    ? translateShellText('Global preferences reuse the existing User Settings controls and persistence authorities.')
+                                    ? translateShellText('Choose appearance, language, reading and interaction preferences.')
                                     : descriptor.kind === 'account'
-                                        ? translateShellText('Identity, snapshots, backup and account-isolated storage reuse the existing account controller.')
-                                        : translateShellText('Workspace integration is staged for a later R7 phase.');
+                                        ? translateShellText('Manage your account, settings snapshots, backups and storage.')
+                                        : translateShellText('Choose a workspace from the navigation.');
         shell.setContextContent(
             makeContextSummary(documentRef, descriptor.title, detail),
             {

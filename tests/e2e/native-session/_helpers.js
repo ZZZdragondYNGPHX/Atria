@@ -1,3 +1,5 @@
+import { fork } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { resolve, relative, sep } from 'node:path';
@@ -50,6 +52,19 @@ export function snapshotNativePersistence(dataRoot) {
 }
 
 export async function seedNativeSessionDataRoot({ suffix = 'runtime' } = {}) {
+    // Original seeding services can hold process-lifetime writer guards.
+    // Exit the seed process before the application takes ownership.
+    return new Promise((resolveSeed, rejectSeed) => {
+        const child = fork(fileURLToPath(new URL('./_seed-native-session.mjs', import.meta.url)), [suffix], { stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
+        let result, logs = '';
+        child.on('message', message => { result = message; });
+        for (const pipe of [child.stdout, child.stderr]) pipe.on('data', chunk => { logs = (logs + chunk).slice(-12000); });
+        child.once('error', rejectSeed);
+        child.once('exit', code => { if (code === 0 && result) resolveSeed(result); else rejectSeed(new Error('Native fixture process failed: ' + code + '\n' + logs)); });
+    });
+}
+
+export async function seedNativeSessionFixture({ suffix = 'runtime' } = {}) {
     mkdirSync(SCRATCH_ROOT, { recursive: true });
     const dataRoot = mkdtempSync(resolve(SCRATCH_ROOT, `native-session-n4-${suffix}-`));
     const userRoot = resolve(dataRoot, HANDLE);

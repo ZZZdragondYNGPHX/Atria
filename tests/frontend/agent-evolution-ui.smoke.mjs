@@ -67,7 +67,7 @@ try {
         await pane.getByText('Shared account budget', { exact: true }).click(); await pane.getByLabel('Total request limit').fill('40'); await pane.getByLabel('Total token limit').fill('100000');
         await pane.getByRole('button', { name: 'Save budget', exact: true }).click();
         await pane.getByText('Choose a local target and policy', { exact: true }).click(); await pane.getByRole('button', { name: 'Load available targets', exact: true }).click();
-        await pane.getByText('Choose a local target and policy', { exact: true }).click(); assert.equal(await pane.getByLabel('Policy', { exact: true }).inputValue(), 'review');
+        if (!await pane.getByText('Choose a local target and policy', { exact: true }).evaluate(node => node.parentElement.open)) await pane.getByText('Choose a local target and policy', { exact: true }).click(); assert.equal(await pane.getByLabel('Policy', { exact: true }).inputValue(), 'review');
         await pane.getByRole('button', { name: 'Declare this field and enable policy', exact: true }).click();
         await pane.getByRole('button', { name: 'Evaluate a candidate', exact: true }).click(); await pane.getByText('Job · queued', { exact: true }).waitFor();
         await pane.getByRole('button', { name: 'Pause', exact: true }).click(); assert.ok((await pane.textContent()).includes('Policy: paused'));

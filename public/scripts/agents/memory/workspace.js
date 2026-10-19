@@ -94,7 +94,7 @@ export function createMemoryWorkspace({ getContext }) {
         status.setAttribute('role', 'status');
 
         const nav = el('div', undefined, page);
-        nav.className = 'workspace-subnav';
+        nav.className = 'workspace-subnav'; nav.setAttribute('aria-label', i18n('Memory views'));
         for (const [id, label] of MEMORY_VIEWS) {
             const item = button(nav, label, () => {
                 activeView = id;
@@ -182,6 +182,7 @@ export function createMemoryWorkspace({ getContext }) {
             if (!disposed && page.isConnected) renderView();
         };
 
+        let inspectorReturnFocus = null;
         const showRecord = (record, kind) => {
             if (!inspector || !snapshot) return;
             try {
@@ -190,6 +191,7 @@ export function createMemoryWorkspace({ getContext }) {
                 status.textContent = error.message;
                 return;
             }
+            if (!inspector.contains(parent.ownerDocument.activeElement)) inspectorReturnFocus = parent.ownerDocument.activeElement;
             selected = { record, kind };
             inspector.hidden = false;
             inspector.replaceChildren();
@@ -201,8 +203,10 @@ export function createMemoryWorkspace({ getContext }) {
             el('span', record.status || 'active', head).className = `workspace-status-chip is-${record.status || 'active'}`;
             const close = button(head, 'Close inspector', () => {
                 inspector.hidden = true;
+                if (inspectorReturnFocus?.isConnected) inspectorReturnFocus.focus();
+                else parent.querySelector('[data-memory-view="knowledge"]')?.focus();
             });
-            close.className = 'workspace-inspector-close';
+            close.className = 'workspace-inspector-close'; close.focus();
 
             const data = el('section', undefined, inspector);
             data.className = 'workspace-inspector-section';
@@ -376,6 +380,8 @@ export function createMemoryWorkspace({ getContext }) {
                     if (disposed || !graph.isConnected || version !== paintVersion) return;
                     graphInstance?.destroy?.();
                     graph.replaceChildren();
+                    const colors = getComputedStyle(parent);
+                    const color = key => colors.getPropertyValue(key).trim();
                     graphInstance = cytoscape({
                         container: graph,
                         elements: [
@@ -383,8 +389,8 @@ export function createMemoryWorkspace({ getContext }) {
                             ...relations.map(edge => ({ data: { id: `e:${edge.id}`, source: `n:${edge.sourceEntityId}`, target: `n:${edge.targetEntityId}`, label: edge.predicate, record: edge, kind: 'relation', status: edge.status } })),
                         ],
                         style: [
-                            { selector: 'node', style: { label: 'data(label)', 'background-color': '#779ddd', color: '#ddd', 'font-size': 11 } },
-                            { selector: 'edge', style: { label: 'data(label)', width: 1.5, 'target-arrow-shape': 'triangle', 'curve-style': 'bezier', color: '#bbb', 'font-size': 9 } },
+                            { selector: 'node', style: { label: 'data(label)', 'background-color': color('--atri-accent'), color: color('--atri-text-primary'), 'font-size': 11 } },
+                            { selector: 'edge', style: { label: 'data(label)', width: 1.5, 'target-arrow-shape': 'triangle', 'curve-style': 'bezier', color: color('--atri-text-secondary'), 'line-color': color('--atri-separator-strong'), 'target-arrow-color': color('--atri-separator-strong'), 'font-size': 9 } },
                             { selector: '[status != "active"]', style: { opacity: 0.45 } },
                         ],
                         layout: { name: 'circle', animate: false, fit: true, padding: 24 },

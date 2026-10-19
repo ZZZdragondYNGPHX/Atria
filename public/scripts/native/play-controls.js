@@ -14,6 +14,8 @@ import { createAtriaIcon } from '../atria-shell/icons.js';
 import { mountPlayPromptControls } from './prompt-runtime-controls.js';
 import { mountExperienceHealth } from './experience-health-ui.js';
 import { mountSharedSessionPanel } from './shared-session-ui.js';
+import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
+import { mountSessionAgentPanel } from './session-agent-panel.js';
 import { nativePlayGenerationBusy } from './play-generation.js';
 
 function actionButton(documentRef, label, handler) {
@@ -114,6 +116,7 @@ export function mountNativePlayControls({
     let drawerSessionId = null;
     const shell = () => globalThis.Atria?.shell?.getShell?.();
     function hideDrawer() {
+        if (!confirmAtriaDraftLeave(documentRef, drawer)) return;
         experiencePanel?.dispose(); experiencePanel = null;
         historyPanel?.atriaHistory?.dispose(); historyPanel = null;
         drawerWrites.clear();
@@ -152,6 +155,11 @@ export function mountNativePlayControls({
         else closeDrawer.focus();
         return ++drawerRequest;
     }
+    toolbar.addEventListener('click', event => {
+        if (event.target.closest('button') && !drawer.hidden && !confirmAtriaDraftLeave(documentRef, drawer)) {
+            event.preventDefault(); event.stopImmediatePropagation();
+        }
+    }, true);
     const closeDrawer = actionButton(documentRef, 'Close', hideDrawer);
     drawerHeader.append(drawerTitle, closeDrawer);
 
@@ -507,6 +515,10 @@ export function mountNativePlayControls({
         openDrawer('Shared session');
         experiencePanel = mountSharedSessionPanel({ document: documentRef, root: drawerBody, runtime: activeRuntime() });
     });
+    const goals = actionButton(documentRef, 'Goals & feedback', () => {
+        openDrawer('Goals & feedback');
+        experiencePanel = mountSessionAgentPanel({ root: drawerBody, runtime: activeRuntime() });
+    });
     const leave = actionButton(documentRef, 'Back to Play', async () => {
         const runtime = activeRuntime();
         if (!runtime?.active || runtime.failed || busy || nativePlayGenerationBusy(runtime)) return;
@@ -514,7 +526,7 @@ export function mountNativePlayControls({
         if (draft && !documentRef.defaultView.confirm(tl('Leave this workspace and discard unsaved changes? Cancel to keep editing.'))) return;
         await run('Closing session', async () => { await runtime.close(); hideDrawer(); });
     });
-    moreActions.append(health, sharing, quickSave, load, leave);
+    moreActions.append(health, sharing, goals, quickSave, load, leave);
     moreActions.addEventListener('click', () => {
         more.open = false;
         if (moreActions.contains(documentRef.activeElement)) moreLabel.focus();

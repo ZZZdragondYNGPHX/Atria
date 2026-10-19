@@ -1,3 +1,4 @@
+import { rememberEvidenceReceipt } from './evidence-receipts.js';
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import {
     assertCommittedProjection,
@@ -449,6 +450,7 @@ export class NativeSessionRuntime {
                 await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, { messageIds: appended, reason: 'package_turn' });
             }
         }
+        rememberEvidenceReceipt(this, snapshot);
         return next;
     }
 

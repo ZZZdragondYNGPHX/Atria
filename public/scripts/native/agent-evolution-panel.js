@@ -10,31 +10,38 @@ export async function evolutionRequest(group, action, value) {
 }
 
 // Shared pane lives inside the existing Run / Project Task surfaces.
-export function mountAgentEvolution({ slot, scope, sourceKind, sourceId, request = evolutionRequest }) {
+export function mountAgentEvolution({ slot, scope, sourceKind, sourceId, request = evolutionRequest, writable = () => true }) {
     const document = slot.ownerDocument;
+    const draftValues = new Map();
     let disposed = false, busy = false, identity = null, state = null, experience = null, catalog = null;
     const root = document.createElement('details'); root.className = 'atria-agent-evolution';
     const heading = document.createElement('summary'); heading.textContent = tl('Feedback and local evolution'); root.append(heading);
     const body = document.createElement('div'); root.append(body); slot.append(root);
     const error = document.createElement('p'); error.setAttribute('role', 'status'); body.append(error);
     const content = document.createElement('div'); body.append(content);
-    function el(tag, text, parent = content) { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; parent.append(n); return n; }
+    function el(tag, text, parent = content) { const n = document.createElement(tag); if (text !== undefined) n.textContent = tl(text); parent.append(n); return n; }
     function input(label, type = 'text', parent = content, value = '') {
         const wrap = el('label', label + ' ', parent), n = el(type === 'textarea' ? 'textarea' : 'input', undefined, wrap);
-        if (type !== 'textarea') n.type = type; n.value = value; return n;
+        if (type !== 'textarea') n.type = type; n.value = value; n.dataset.evolutionField = label + ':' + (parent.closest('[data-evolution-owner]')?.dataset.evolutionOwner || 'scope');
+        if (draftValues.has(n.dataset.evolutionField)) { if (type === 'checkbox') n.checked = draftValues.get(n.dataset.evolutionField); else n.value = draftValues.get(n.dataset.evolutionField); } return n;
     }
     function select(label, options, parent = content) {
         const wrap = el('label', label + ' ', parent), n = el('select', undefined, wrap); n.setAttribute('aria-label', label);
-        for (const [value, text] of options) { const o = el('option', text, n); o.value = value; } return n;
+        for (const [value, text] of options) { const o = el('option', text, n); o.value = value; }
+        n.dataset.evolutionField = label + ':' + (parent.closest('[data-evolution-owner]')?.dataset.evolutionOwner || 'scope'); if (draftValues.has(n.dataset.evolutionField)) n.value = draftValues.get(n.dataset.evolutionField); return n;
     }
     function button(label, action, parent = content, disabled = false) {
-        const n = el('button', label, parent); n.type = 'button'; n.disabled = busy || state?.readOnly || disabled;
-        n.addEventListener('click', () => void act(action)); return n;
+        const n = el('button', label, parent); n.type = 'button';
+        const read = ['Refresh', 'Export evidence and reports', 'Load available targets'].includes(label);
+        n.disabled = busy || (!read && (state?.readOnly || !writable())) || disabled;
+        n.dataset.evolutionAction = label + ':' + (parent.closest('[data-evolution-owner]')?.dataset.evolutionOwner || 'scope');
+        n.addEventListener('click', () => { if (!read && !writable()) return; void act(action, n); }); return n;
     }
-    async function act(action) {
+    async function act(action, trigger) {
+        const focusKey = trigger?.dataset.evolutionAction;
         if (busy || disposed) return; busy = true; error.textContent = '';
         for (const b of content.querySelectorAll('button')) b.disabled = true;
-        try { await action(); if (!disposed) await refresh(); } catch (e) { if (!disposed) error.textContent = e.message; } finally { busy = false; if (!disposed) render(); }
+        try { await action(); if (!disposed) await refresh(); } catch (e) { if (!disposed) error.textContent = e.message; } finally { busy = false; if (!disposed) { render(); if (focusKey) ([...content.querySelectorAll('[data-evolution-action]')].find(node => node.dataset.evolutionAction === focusKey) || heading).focus(); } }
     }
     const invoke = (action, value = {}) => request('evolution', action, { ...identity, ...value });
     async function refresh() {
@@ -53,7 +60,10 @@ export function mountAgentEvolution({ slot, scope, sourceKind, sourceId, request
         link.href = url; link.download = 'atria-evolution.json'; link.click(); URL.revokeObjectURL(url);
     }
     function render() {
-        if (!state || disposed) return; content.replaceChildren();
+        if (!state || disposed) return;
+        for (const field of content.querySelectorAll('[data-evolution-field]')) draftValues.set(field.dataset.evolutionField, field.type === 'checkbox' ? field.checked : field.value);
+        const expanded = new Set([...content.querySelectorAll('details[open]')].map(node => node.dataset.evolutionOwner || node.querySelector('summary')?.textContent));
+        content.replaceChildren();
         const doc = state.scope, policy = doc?.policy, owner = state.owner;
         el('p', 'Policy: ' + (policy?.mode || 'review') + (policy?.reason ? ' · ' + policy.reason : '') + (state.readOnly ? ' · read only' : ''));
         if (!(doc?.jobs || []).some(job => job.candidates?.some(candidate => candidate.report))) el('p', 'Not evaluated. Saving, sharing and sample trials remain available.');
@@ -62,10 +72,11 @@ export function mountAgentEvolution({ slot, scope, sourceKind, sourceId, request
         button('Export evidence and reports', async () => download({ experience: await request('experience', 'export', identity), evolution: await invoke('export') }));
         const feedback = el('section'); el('h4', 'Feedback on this saved output', feedback);
         const signal = select('Feedback', [['correction', 'Correction'], ['prefer', 'Prefer'], ['avoid', 'Avoid']], feedback);
-        const note = input('Public note', 'textarea', feedback);
+        const note = input('Public note', 'textarea', feedback); note.addEventListener('input', () => { root.dataset.atriaDraftDirty = String(Boolean(note.value)); });
         button('Save feedback', async () => {
             const selected = await request('experience', 'target', { kind: sourceKind, id: sourceId, scope });
             await request('experience', 'submit', { target: selected.target, feedback: feedbackValue(signal.value, note.value), expectedSequence: experience?.sequence ?? null });
+            note.value = ''; root.dataset.atriaDraftDirty = 'false';
         }, feedback);
         button('Collect saved result', async () => {
             const result = await request('experience', 'collect', { kind: sourceKind, id: sourceId, scope });
@@ -73,7 +84,7 @@ export function mountAgentEvolution({ slot, scope, sourceKind, sourceId, request
         }, feedback);
         if (!experience?.collections?.some(marker => marker.sourceId === sourceId)) el('p', 'Saved-result collection has not been confirmed for this source.', feedback);
         for (const f of experience?.feedback || []) {
-            const row = el('details', undefined, feedback); el('summary', f.signal + ' · ' + f.status + ' · ' + f.applicability, row);
+            const row = el('details', undefined, feedback); row.dataset.evolutionOwner = f.id; el('summary', f.signal + ' · ' + f.status + ' · ' + f.applicability, row);
             el('p', f.note, row); json('Exact source', f.source, row);
             el('p', 'Source: ' + (f.origin || 'unknown'), row);
             if (f.assessment) json('Quality hypothesis and evidence', f.assessment, row);
@@ -124,13 +135,14 @@ export function mountAgentEvolution({ slot, scope, sourceKind, sourceId, request
             for (const mode of ['paused', 'disabled']) button(mode === 'paused' ? 'Pause' : 'Disable', () => invoke('mode', { mode, expectedSequence: doc.sequence }));
         }
         for (const job of doc?.jobs || []) {
-            const section = el('details'); el('summary', 'Job · ' + job.status + (job.reason ? ' · ' + job.reason : ''), section); json('Exact sources', job.dependencies, section);
+            const section = el('details'); section.dataset.evolutionOwner = job.id; el('summary', 'Job · ' + job.status + (job.reason ? ' · ' + job.reason : ''), section); json('Exact sources', job.dependencies, section);
             if (job.reason === 'source_unready') el('p', 'Reviewed source evidence is missing for this evaluation.', section);
             for (const c of job.candidates) {
-                el('p', c.rationale, section); json('Candidate diff', c.diff, section); json('Decision and costs', c.decision, section);
+                const candidateSection = el('section', undefined, section); candidateSection.dataset.evolutionOwner = c.candidateId + ':' + canonicalHash(c.report ?? null);
+                el('p', c.rationale, candidateSection); json('Candidate diff', c.diff, candidateSection); json('Decision and costs', c.decision, candidateSection);
                 if (!c.report) continue;
                 for (const pair of c.report.pairs || []) {
-                    const row = el('details', undefined, section); el('summary', pair.case.caseId + ' · trial ' + pair.repetition + (pair.human ? ' · reviewed' : ''), row);
+                    const row = el('details', undefined, candidateSection); row.dataset.evolutionOwner = pair.pairHash; el('summary', pair.case.caseId + ' · trial ' + pair.repetition + (pair.human ? ' · reviewed' : ''), row);
                     const flipped = parseInt(pair.pairHash.slice(0, 2), 16) % 2 === 1;
                     const a = flipped ? 'candidate' : 'baseline', b = flipped ? 'baseline' : 'candidate';
                     el('p', 'Compare these two outputs against the scenario. Grade B relative to A; negative means worse.', row);
@@ -145,16 +157,17 @@ export function mountAgentEvolution({ slot, scope, sourceKind, sourceId, request
                             deltas: Object.fromEntries(Object.entries(grades).map(([k, n]) => [k, Number(n.value) * (flipped ? -1 : 1)])) });
                     }, row, job.status !== 'awaiting_review');
                 }
-                json('Full comparison report', c.report, section);
-                const review = input('I reviewed this exact diff and report', 'checkbox', section);
+                json('Full comparison report', c.report, candidateSection);
+                const review = input('I reviewed this exact diff and report', 'checkbox', candidateSection);
                 button('Publish reviewed version', () => {
                     if (!review.checked) throw new Error('Review the exact diff and report first');
                     return invoke('publish', { jobId: job.id, candidateId: c.candidateId, expectedReportHash: canonicalHash(c.report), review: true });
-                }, section, job.status !== 'awaiting_review');
+                }, candidateSection, job.status !== 'awaiting_review');
             }
         }
         if (doc?.garbage?.length) el('p', 'Some candidate history is still used by the original authority. Resolve the current binding or task before clearing it.');
         if (doc?.retired?.length) json('Revoked publication receipts (content removed)', doc.retired);
+        for (const detail of content.querySelectorAll('details')) if (expanded.has(detail.dataset.evolutionOwner || detail.querySelector('summary')?.textContent)) detail.open = true;
         for (const p of doc?.publications || []) { json('Publication · ' + p.status + (state.bindingStates?.find(b => b.publicationId === p.id)?.current ? ' · current binding' : ' · historical binding') + (p.activation ? ' · version observed' : ' · awaiting next run'), p); if (p.status !== 'rolled_back') button('Pause and restore previous version', () => invoke('rollback', { publicationId: p.id })); }
     }
     root.addEventListener('toggle', () => { if (root.open && !state) void act(async () => {}); });

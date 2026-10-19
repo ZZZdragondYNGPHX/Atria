@@ -1,4 +1,5 @@
 import { translateShellText as tl } from '../atria-shell/localization.js';
+import { mountGoalAuthoring } from './goal-authoring.js';
 import { runtimeRequest } from './runtime-client.js';
 
 const statusText = { active: 'Ready', waiting: 'Waiting for evidence', blocked: 'Blocked', stale: 'Source changed', paused: 'Paused', cancelled: 'Cancelled', completed: 'Completed' };
@@ -8,15 +9,16 @@ const nextStep = { active: 'Check the saved outcome or continue the linked Task.
 export const goalRequest = (action, value) => runtimeRequest('/goals/' + action, { method: 'POST', body: value });
 
 // One mount per original Run/Task surface. Only the server owns evidence and controls.
-export function mountAgentGoals({ slot, scope, task = null, request = goalRequest }) {
+export function mountAgentGoals({ slot, scope, task = null, request = goalRequest, sources = task ? [{ label: tl('Task status'), selector: { kind: 'task', taskId: task.taskId }, path: ['status'], value: 'review' }] : [], writable = () => true }) {
     const document = slot.ownerDocument;
     const root = document.createElement('details'); root.className = 'atria-agent-goals';
     const heading = document.createElement('summary'); heading.textContent = tl('Persistent goals'); root.append(heading);
     const body = document.createElement('div'); root.append(body); slot.append(root);
     const notice = document.createElement('p'); notice.setAttribute('role', 'status'); body.append(notice);
     const content = document.createElement('div'); body.append(content);
+    let disposeAuthor = null;
     let disposed = false, busy = false, readOnly = false, goals = null, selectedId = null, selected = null;
-    function el(tag, text, parent = content) { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; parent.append(node); return node; }
+    function el(tag, text, parent = content) { const node = document.createElement(tag); if (text !== undefined) node.textContent = tl(text); parent.append(node); return node; }
     function button(label, action, parent = content, disabled = false) {
         const node = el('button', label, parent); node.type = 'button'; node.className = 'menu_button'; node.disabled = busy || disabled;
         node.addEventListener('click', () => void act(action, node)); return node;
@@ -25,7 +27,8 @@ export function mountAgentGoals({ slot, scope, task = null, request = goalReques
         const context = await request('context', { scope });
         if (disposed) return;
         goals = context.goals;
-        readOnly = context.readOnly;
+        readOnly = context.readOnly || !writable();
+        if (!readOnly && sources.length && !disposeAuthor) disposeAuthor = mountGoalAuthoring({ root: body, scope, sources, request, writable: () => !disposed && !readOnly && writable(), onCreated: async () => { await refresh(); if (!disposed) render(); } });
         selected = selectedId ? await request('inspect', { goalId: selectedId }) : null;
     }
     async function act(action, trigger) {
@@ -91,5 +94,5 @@ export function mountAgentGoals({ slot, scope, task = null, request = goalReques
     }
     root.addEventListener('toggle', () => { if (root.open && goals === null) void act(async () => {}); });
     render();
-    return () => { disposed = true; root.remove(); };
+    return () => { disposed = true; disposeAuthor?.(); root.remove(); };
 }

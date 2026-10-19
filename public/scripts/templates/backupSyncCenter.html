@@ -21,14 +21,6 @@
 
     <section class="backupSyncPanel" data-panel="automatic">
         <div class="backupRetentionGrid">
-            <div class="backupRetentionCard" data-retention-type="chat">
-                <h4><i class="fa-fw fa-solid fa-comments" aria-hidden="true"></i><span data-i18n="Chat backups">Chat backups</span></h4>
-                <div class="backupRetentionUsage menu_button_note"><span data-i18n="Loading…">Loading…</span></div>
-                <label class="checkbox_label"><input type="checkbox" data-field="enabled"><span><span data-i18n="Automatically clean up old chat backups">Automatically clean up old chat backups</span></span></label>
-                <label><span data-i18n="Keep per character or group">Keep per character or group</span><input class="text_pole" type="number" min="-1" data-field="maxPerEntity"></label>
-                <label><span data-i18n="Total chat backups">Total chat backups</span><input class="text_pole" type="number" min="-1" data-field="maxTotalBackups"></label>
-                <label><span data-i18n="Chat backup limit in MiB (-1 for unlimited)">Chat backup limit in MiB (-1 for unlimited)</span><input class="text_pole" type="number" min="-1" step="1" data-field="maxTotalSizeMiB"></label>
-            </div>
             <div class="backupRetentionCard" data-retention-type="settings">
                 <h4><i class="fa-fw fa-solid fa-camera" aria-hidden="true"></i><span data-i18n="Settings snapshots">Settings snapshots</span></h4>
                 <div class="backupRetentionUsage menu_button_note"><span data-i18n="Loading…">Loading…</span></div>
@@ -42,14 +34,9 @@
         </div>
         <div class="flex-container flexGap10 flexWrap marginTopBot10">
             <button type="button" class="menu_button backupRetentionSave"><i class="fa-fw fa-solid fa-floppy-disk" aria-hidden="true"></i><span data-i18n="Save retention rules">Save retention rules</span></button>
-            <button type="button" class="menu_button backupRetentionCleanup"><i class="fa-fw fa-solid fa-broom" aria-hidden="true"></i><span data-i18n="Clean up now">Clean up now</span></button>
-            <button type="button" class="menu_button backupRetentionReset"><i class="fa-fw fa-solid fa-rotate-left" aria-hidden="true"></i><span data-i18n="Restore defaults">Restore defaults</span></button>
             <button type="button" class="menu_button backupManagedRefresh"><i class="fa-fw fa-solid fa-arrows-rotate" aria-hidden="true"></i><span data-i18n="Refresh backups">Refresh backups</span></button>
         </div>
 
-        <h4><span data-i18n="Chat backup history">Chat backup history</span></h4>
-        <input class="text_pole backupManagedSearch marginBot10" placeholder="Search characters, groups or backup files" data-i18n="[placeholder]Search characters, groups or backup files;[aria-label]Search backups" aria-label="Search backups">
-        <div class="backupManagedList"></div>
     </section>
 
     <section class="backupSyncPanel displayNone" data-panel="archive">
@@ -58,10 +45,6 @@
             <label class="checkbox_label"><input type="checkbox" name="backupCategory" value="native" checked=""><span data-i18n="Native data and projects">Native data and projects</span></label>
             <label class="checkbox_label"><input type="checkbox" name="backupCategory" value="settings" checked=""><span><span data-i18n="Settings">Settings</span></span></label>
             <label class="checkbox_label"><input type="checkbox" name="backupCategory" value="secrets" checked=""><span>API Keys / Secrets</span></label>
-            <label class="checkbox_label"><input type="checkbox" name="backupCategory" value="characters" checked=""><span><span data-i18n="Characters / avatars">Characters / avatars</span></span></label>
-            <label class="checkbox_label"><input type="checkbox" name="backupCategory" value="chats" checked=""><span><span data-i18n="Chats / groups">Chats / groups</span></span></label>
-            <label class="checkbox_label"><input type="checkbox" name="backupCategory" value="lorebooks" checked=""><span><span data-i18n="World info">World info</span></span></label>
-            <label class="checkbox_label"><input type="checkbox" name="backupCategory" value="presets" checked=""><span><span data-i18n="Presets / interface layouts">Presets / interface layouts</span></span></label>
             <label class="checkbox_label"><input type="checkbox" name="backupCategory" value="assets" checked=""><span><span data-i18n="Assets / files">Assets / files</span></span></label>
             <label class="checkbox_label"><input type="checkbox" name="backupCategory" value="vectors"><span><span data-i18n="Vector indexes">Vector indexes</span></span></label>
         </div>

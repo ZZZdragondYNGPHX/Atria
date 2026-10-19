@@ -202,7 +202,21 @@ export function mountPromptDerive(doc, root, draft, entries, ownerRef, getStages
         }
         for (const control of [op, target, selection, position]) control.addEventListener('change', () => { value.config = {}; drawConfig(); });
         stagePosition.addEventListener('change', drawConfig);
-        parent.addEventListener('change', drawConfig); drawConfig();
+        const refreshParent = () => {
+            const replaceOptions = (control, options) => {
+                const previous = control.value; control.replaceChildren();
+                for (const [id, label] of options) { const option = el(doc, 'option', '', tl(label), control); option.value = id; }
+                control.value = options.some(([id]) => id === previous) ? previous : '';
+            };
+            try {
+                const inherited = inheritedEntries(), currentStages = availableStages();
+                replaceOptions(selection, [['', 'Choose entry…'], ...inherited.map(item => [JSON.stringify([item.stageId, item.entryId]), item.stageId + ' · ' + item.entryId])]);
+                const stageOptions = [['', 'Choose stage…'], ...currentStages.map(stage => [stage.stageId, stage.stageId])];
+                replaceOptions(affectedStage, stageOptions); replaceOptions(stageSibling, stageOptions);
+            } catch (error) { el(doc, 'p', '', error.message, row); }
+            drawConfig();
+        };
+        parent.addEventListener('change', refreshParent); drawConfig();
         const item = { read: () => {
             if (op.value.startsWith('stage.')) {
                 if (!affectedStage.value) throw new Error(tl('Choose an affected stage.'));
@@ -236,7 +250,7 @@ export function mountPromptDerive(doc, root, draft, entries, ownerRef, getStages
             if (['add', 'replace'].includes(op.value)) { if (!replacement.value) throw new Error(tl('Choose an exact replacement module.')); result.replacementRef = JSON.parse(replacement.value); if (op.value === 'add') result.moduleId = result.replacementRef.resourceId; }
             if (!result.moduleId) throw new Error(tl('Choose an affected module.'));
             if (op.value === 'configure') result.config = configRead(); return result;
-        } }; rows.push(item); action(doc, row, 'Remove derive operation', () => { rows.splice(rows.indexOf(item), 1); row.remove(); });
+        } }; rows.push(item); action(doc, row, 'Remove derive operation', () => { rows.splice(rows.indexOf(item), 1); parent.removeEventListener('change', refreshParent); row.remove(); });
     }
     for (const operation of draft.derive || []) add(clone(operation)); action(doc, section, 'Add derive operation', () => add());
     return () => { const derive = rows.map(item => item.read()); if (new Set(derive.map(item => item.op.startsWith('stage.') ? item.op + ':' + item.stageId : item.entryId ? item.stageId + ':' + item.entryId : item.moduleId)).size !== derive.length) throw new Error(tl('Only one derive operation is allowed per entry.')); return { parentRef: parent.value ? JSON.parse(parent.value) : null, derive }; };

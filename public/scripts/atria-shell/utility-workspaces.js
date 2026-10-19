@@ -142,11 +142,12 @@ export async function mountPluginsUtility({
             if (settings.querySelector('[data-atria-workspace-embedded]')) return;
             const node = doc.getElementById(plugin.name === 'regex' ? 'regex_container' : 'search_tools_settings');
             if (!node || !node.childElementCount) {
-                settings.querySelector('.atri-library-feedback')?.remove();
+                retry.hidden = false; settings.querySelector('.atri-library-feedback')?.remove();
                 feedback(doc, settings, translateShellText('Settings are unavailable. Enable this plugin and reload Atria, then retry.'));
                 return;
             }
             settings.querySelector('.atri-library-feedback')?.remove();
+            retry.hidden = true;
             placements.push([node, savePlacement(doc, node)]); node.dataset.atriaWorkspaceEmbedded = 'true'; settings.append(node);
             // Preserve the existing handlers while making the retained drawer keyboard-operable.
             for (const header of node.querySelectorAll('.inline-drawer-header.inline-drawer-toggle')) {
@@ -161,7 +162,7 @@ export async function mountPluginsUtility({
             }
         };
         settings.addEventListener('toggle', () => { if (settings.open) mountSettings(); });
-        action(doc, settings, 'Retry settings', mountSettings);
+        const retry = action(doc, settings, 'Retry settings', mountSettings); retry.hidden = true;
     }
     function renderVersion(parent, work, exact) {
         const manifest = exact.manifest, plugins = manifest.runtime?.plugins || [];

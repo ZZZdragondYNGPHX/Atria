@@ -1,5 +1,4 @@
 import { formatShellText as fmt } from '../../atria-shell/localization.js';
-import { renderRuntimeHelpButton } from '../../lib/runtime-help.js';
 
 export function createSearchToolsSettingsUi(deps) {
     const {
@@ -12,11 +11,8 @@ export function createSearchToolsSettingsUi(deps) {
         clampInteger,
         ensureSharedLorebook,
         escapeHtml,
-        extension_prompt_roles,
         getAvailableSearchProviders,
-        getConnectionProfileOptions,
         getContext,
-        getOpenAIPresetOptions,
         getProviderSettings,
         getSettings,
         hasConfiguredSecret,
@@ -27,32 +23,14 @@ export function createSearchToolsSettingsUi(deps) {
         getManagedEntriesSnapshot,
         POPUP_TYPE,
         Popup,
-        normalizeLorebookPosition,
-        normalizeLorebookRole,
         normalizeProvider,
         normalizeSafeSearch,
         normalizeWhitespace,
         saveSettingsDebounced,
         syncSharedLorebookForCurrentChat,
-        syncSharedLorebookForLoadedChat,
-        world_info_position,
     } = deps;
 
     let activeAgentRunInfoToast = null;
-
-    // Toggle the depth/role input blocks based on the current position
-    // select — these settings only apply when position === atDepth
-    // (`applyManagedEntriesToLorebook` writes them unconditionally to
-    // the entry, but the ST world-info engine ignores non-atDepth entries'
-    // depth/role at inject time). Showing the fields for other positions
-    // implied they had an effect. Root-scoped so the helper works from
-    // both the init hydrate step and the position change handler.
-    function updateLorebookPositionVisibility(root) {
-        const positionVal = Number(root.find('#search_tools_lorebook_position').val());
-        const isAtDepth = positionVal === Number(world_info_position.atDepth);
-        root.find('#search_tools_lorebook_depth_block').toggle(isAtDepth);
-        root.find('#search_tools_lorebook_role_block').toggle(isAtDepth);
-    }
 
     function renderSearchProviderOptions(selectedProvider = '') {
         const selected = normalizeProvider(selectedProvider);
@@ -129,7 +107,7 @@ export function createSearchToolsSettingsUi(deps) {
             <input id="search_tools_enabled" type="checkbox" />
             ${escapeHtml(i18n('Expose Web Search to the main model'))}
         </label>
-        <p class="text_muted">${escapeHtml(i18n('Works without agent orchestration. Agent Web Access is controlled separately in the Atria Workspace.'))}</p>
+        <p class="text_muted">${escapeHtml(i18n('Allow Web Search in the current conversation. Configure Agent web tools in Agents.'))}</p>
         <h4>${escapeHtml(i18n('Provider'))}</h4>
         <label for="search_tools_provider">${escapeHtml(i18n('Search provider'))}</label>
         <select id="search_tools_provider" class="text_pole"></select>
@@ -138,61 +116,9 @@ export function createSearchToolsSettingsUi(deps) {
         <input id="search_tools_default_max_results" class="text_pole" type="number" min="1" max="20" step="1" />
         <label for="search_tools_default_visit_max_chars">${escapeHtml(i18n('Default page excerpt max chars (0 = no truncation)'))}</label>
         <input id="search_tools_default_visit_max_chars" class="text_pole" type="number" min="0" max="50000" step="100" />
-        <details class="search-tools-advanced">
-            <summary>${escapeHtml(i18n('Advanced automatic pre-request research'))}</summary>
-            <p class="text_muted">${escapeHtml(i18n('Optional high-cost mode. Runs a dedicated research agent before every reply. The recommended Atria path is on-demand Web Access from the agents that need it.'))}</p>
-            <label class="checkbox_label">
-                <input id="search_tools_pre_request_enabled" type="checkbox" />
-                ${escapeHtml(i18n('Run automatic research before every reply'))}
-            </label>
-        <label for="search_tools_agent_api_preset_name">${escapeHtml(i18n('Agent API preset (Connection profile)'))}</label>
-        <select id="search_tools_agent_api_preset_name" class="text_pole"></select>
-        <label for="search_tools_agent_preset_name">${escapeHtml(i18n('Agent preset (params + prompt)'))}${renderRuntimeHelpButton({ kind: 'agent' })}</label>
-        <select id="search_tools_agent_preset_name" class="text_pole"></select>
-        <label class="checkbox_label">
-            <input id="search_tools_include_world_info_with_preset" type="checkbox" />
-            ${escapeHtml(i18n('Include world info'))}
-        </label>
-        <label for="search_tools_agent_max_rounds">${escapeHtml(i18n('Agent max rounds'))}</label>
-        <input id="search_tools_agent_max_rounds" class="text_pole" type="number" min="1" max="8" step="1" />
-        <label for="search_tools_tool_call_retry_max">${escapeHtml(i18n('Tool call retry count'))}</label>
-        <input id="search_tools_tool_call_retry_max" class="text_pole" type="number" min="0" max="5" step="1" />
-        <label for="search_tools_lorebook_position">${escapeHtml(i18n('Injection position'))}</label>
-        <select id="search_tools_lorebook_position" class="text_pole">
-            <option value="${world_info_position.before}">${escapeHtml(i18n('Before Character Definitions'))}</option>
-            <option value="${world_info_position.after}">${escapeHtml(i18n('After Character Definitions'))}</option>
-            <option value="${world_info_position.ANTop}">${escapeHtml(i18n('Before Author\'s Note'))}</option>
-            <option value="${world_info_position.ANBottom}">${escapeHtml(i18n('After Author\'s Note'))}</option>
-            <option value="${world_info_position.EMTop}">${escapeHtml(i18n('Before Example Messages'))}</option>
-            <option value="${world_info_position.EMBottom}">${escapeHtml(i18n('After Example Messages'))}</option>
-            <option value="${world_info_position.atDepth}">${escapeHtml(i18n('At Chat Depth'))}</option>
-        </select>
-        <div id="search_tools_lorebook_depth_block" style="display:none">
-            <label for="search_tools_lorebook_depth">${escapeHtml(i18n('Injection depth'))}</label>
-            <input id="search_tools_lorebook_depth" class="text_pole" type="number" min="0" max="9999" step="1" />
-        </div>
-        <div id="search_tools_lorebook_role_block" style="display:none">
-            <label for="search_tools_lorebook_role">${escapeHtml(i18n('Injection role'))}</label>
-            <select id="search_tools_lorebook_role" class="text_pole">
-                <option value="${extension_prompt_roles.SYSTEM}">${escapeHtml(i18n('System'))}</option>
-                <option value="${extension_prompt_roles.USER}">${escapeHtml(i18n('User'))}</option>
-                <option value="${extension_prompt_roles.ASSISTANT}">${escapeHtml(i18n('Assistant'))}</option>
-            </select>
-        </div>
-        <label for="search_tools_lorebook_entry_order">${escapeHtml(i18n('Injection order'))}</label>
-        <input id="search_tools_lorebook_entry_order" class="text_pole" type="number" min="0" max="20000" step="1" />
-        <label for="search_tools_agent_system_prompt">${escapeHtml(i18n('Search-stage agent system prompt'))}</label>
-        <textarea id="search_tools_agent_system_prompt" class="text_pole" rows="12"></textarea>
-        <label for="search_tools_agent_final_stage_prompt">${escapeHtml(i18n('Final-stage agent system prompt'))}</label>
-        <textarea id="search_tools_agent_final_stage_prompt" class="text_pole" rows="12"></textarea>
-        <div class="flex-container">
-            <div id="search_tools_reset_agent_prompt" class="menu_button menu_button_small">${escapeHtml(i18n('Reset search-stage agent prompt'))}</div>
-            <div id="search_tools_reset_agent_final_stage_prompt" class="menu_button menu_button_small">${escapeHtml(i18n('Reset final-stage agent prompt'))}</div>
-        </div>
         <div class="flex-container" style="margin-top: 8px;">
             <div id="search_tools_manage_entries" class="menu_button menu_button_small">${escapeHtml(i18n('Manage stored search entries'))}</div>
         </div>
-        </details>
         <div id="${STATUS_ID}" class="wide100p text_muted" style="margin-top: 8px;"></div>
     </div>
 </div>`;
@@ -581,37 +507,17 @@ export function createSearchToolsSettingsUi(deps) {
             return;
         }
 
-        const context = getContext();
         const settings = getSettings();
-        root.find('#search_tools_agent_api_preset_name').html(getConnectionProfileOptions(settings.agentApiPresetName));
-        root.find('#search_tools_agent_preset_name').html(getOpenAIPresetOptions(context, settings.agentPresetName));
         refreshProviderSettingsUi(root, settings);
         root.find('#search_tools_enabled').prop('checked', Boolean(settings.enabled));
-        root.find('#search_tools_pre_request_enabled').prop('checked', Boolean(settings.preRequestEnabled));
         root.find('#search_tools_provider').val(String(settings.provider || 'ddg'));
         root.find('#search_tools_default_max_results').val(String(settings.defaultMaxResults));
         root.find('#search_tools_default_visit_max_chars').val(String(settings.defaultVisitMaxChars));
-        root.find('#search_tools_agent_api_preset_name').val(String(settings.agentApiPresetName || ''));
-        root.find('#search_tools_agent_preset_name').val(String(settings.agentPresetName || ''));
-        root.find('#search_tools_include_world_info_with_preset').prop('checked', Boolean(settings.includeWorldInfoWithPreset));
-        root.find('#search_tools_agent_max_rounds').val(String(settings.agentMaxRounds));
         root.find('#search_tools_tool_call_retry_max').val(String(settings.toolCallRetryMax));
-        root.find('#search_tools_lorebook_position').val(String(settings.lorebookPosition));
-        root.find('#search_tools_lorebook_depth').val(String(settings.lorebookDepth));
-        root.find('#search_tools_lorebook_role').val(String(settings.lorebookRole));
-        root.find('#search_tools_lorebook_entry_order').val(String(settings.lorebookEntryOrder));
-        updateLorebookPositionVisibility(root);
-        root.find('#search_tools_agent_system_prompt').val(String(settings.agentSystemPrompt || DEFAULT_SETTINGS.agentSystemPrompt));
-        root.find('#search_tools_agent_final_stage_prompt').val(String(settings.agentFinalStagePrompt || DEFAULT_SETTINGS.agentFinalStagePrompt));
 
         root.off('.searchTools');
         root.on('input.searchTools', '#search_tools_enabled', function () {
             settings.enabled = Boolean(jQuery(this).prop('checked'));
-            void syncSharedLorebookForCurrentChat(getContext());
-            saveSettingsDebounced();
-        });
-        root.on('input.searchTools', '#search_tools_pre_request_enabled', function () {
-            settings.preRequestEnabled = Boolean(jQuery(this).prop('checked'));
             void syncSharedLorebookForCurrentChat(getContext());
             saveSettingsDebounced();
         });
@@ -647,85 +553,6 @@ export function createSearchToolsSettingsUi(deps) {
         root.on('change.searchTools', '#search_tools_brave_safe_search', function () {
             settings.providers.brave.safeSearch = normalizeSafeSearch(jQuery(this).val());
             saveSettingsDebounced();
-        });
-        root.on('change.searchTools', '#search_tools_agent_api_preset_name', function () {
-            settings.agentApiPresetName = normalizeWhitespace(jQuery(this).val());
-            jQuery(this).val(settings.agentApiPresetName);
-            saveSettingsDebounced();
-        });
-        root.on('change.searchTools', '#search_tools_agent_preset_name', function () {
-            settings.agentPresetName = normalizeWhitespace(jQuery(this).val());
-            jQuery(this).val(settings.agentPresetName);
-            saveSettingsDebounced();
-        });
-        root.on('input.searchTools', '#search_tools_include_world_info_with_preset', function () {
-            settings.includeWorldInfoWithPreset = Boolean(jQuery(this).prop('checked'));
-            saveSettingsDebounced();
-        });
-        root.on('change.searchTools', '#search_tools_agent_max_rounds', function () {
-            settings.agentMaxRounds = clampInteger(jQuery(this).val(), 1, 8, DEFAULT_SETTINGS.agentMaxRounds);
-            jQuery(this).val(String(settings.agentMaxRounds));
-            saveSettingsDebounced();
-        });
-        root.on('change.searchTools', '#search_tools_tool_call_retry_max', function () {
-            settings.toolCallRetryMax = clampInteger(jQuery(this).val(), 0, 5, DEFAULT_SETTINGS.toolCallRetryMax);
-            jQuery(this).val(String(settings.toolCallRetryMax));
-            saveSettingsDebounced();
-        });
-        root.on('change.searchTools', '#search_tools_lorebook_position', function () {
-            settings.lorebookPosition = normalizeLorebookPosition(jQuery(this).val());
-            jQuery(this).val(String(settings.lorebookPosition));
-            updateLorebookPositionVisibility(root);
-            void syncSharedLorebookForLoadedChat(getContext());
-            saveSettingsDebounced();
-        });
-        root.on('change.searchTools', '#search_tools_lorebook_depth', function () {
-            settings.lorebookDepth = clampInteger(jQuery(this).val(), 0, 9999, DEFAULT_SETTINGS.lorebookDepth);
-            jQuery(this).val(String(settings.lorebookDepth));
-            void syncSharedLorebookForLoadedChat(getContext());
-            saveSettingsDebounced();
-        });
-        root.on('change.searchTools', '#search_tools_lorebook_role', function () {
-            settings.lorebookRole = normalizeLorebookRole(jQuery(this).val());
-            jQuery(this).val(String(settings.lorebookRole));
-            void syncSharedLorebookForLoadedChat(getContext());
-            saveSettingsDebounced();
-        });
-        root.on('change.searchTools', '#search_tools_lorebook_entry_order', function () {
-            settings.lorebookEntryOrder = clampInteger(jQuery(this).val(), 0, 20000, DEFAULT_SETTINGS.lorebookEntryOrder);
-            jQuery(this).val(String(settings.lorebookEntryOrder));
-            void syncSharedLorebookForLoadedChat(getContext());
-            saveSettingsDebounced();
-        });
-        root.on('change.searchTools input.searchTools', '#search_tools_agent_system_prompt', function () {
-            settings.agentSystemPrompt = String(jQuery(this).val() || '').trim() || DEFAULT_SETTINGS.agentSystemPrompt;
-            saveSettingsDebounced();
-        });
-        root.on('change.searchTools input.searchTools', '#search_tools_agent_final_stage_prompt', function () {
-            settings.agentFinalStagePrompt = String(jQuery(this).val() || '').trim() || DEFAULT_SETTINGS.agentFinalStagePrompt;
-            saveSettingsDebounced();
-        });
-        root.on('click.searchTools', '#search_tools_reset_agent_prompt', function () {
-            if (!window.confirm(i18n('Reset search-stage agent prompt to default? This will overwrite the current search-stage system prompt.'))) {
-                return;
-            }
-            settings.agentSystemPrompt = DEFAULT_SETTINGS.agentSystemPrompt;
-            root.find('#search_tools_agent_system_prompt').val(settings.agentSystemPrompt);
-            saveSettingsDebounced();
-            if (typeof toastr !== 'undefined') {
-                toastr.success(i18n('Reset search-stage agent prompt'));
-            }
-        });
-        root.on('click.searchTools', '#search_tools_reset_agent_final_stage_prompt', function () {
-            if (!window.confirm(i18n('Reset final-stage agent prompt to default? This will overwrite the current final-stage system prompt.'))) {
-                return;
-            }
-            settings.agentFinalStagePrompt = DEFAULT_SETTINGS.agentFinalStagePrompt;
-            root.find('#search_tools_agent_final_stage_prompt').val(settings.agentFinalStagePrompt);
-            saveSettingsDebounced();
-            if (typeof toastr !== 'undefined') {
-                toastr.success(i18n('Reset final-stage agent prompt'));
-            }
         });
         root.on('click.searchTools', '#search_tools_manage_entries', function () {
             void openManageEntriesDialog();

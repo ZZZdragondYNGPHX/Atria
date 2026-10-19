@@ -508,7 +508,7 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
         let loadError; let loadedSkills = [];
         try {
             const skills = await context.skills.list({ scope: 'all' });
-            loadedSkills = Array.isArray(skills) ? skills : [];
+            loadedSkills = Array.isArray(skills) ? skills.filter(skill => ['global', 'project', 'package'].includes(skill?.scope?.kind)) : [];
             if (context.skills.listOwners) {
                 const owners = await context.skills.listOwners().catch(() => null);
                 if (owners) loadedSkills = loadedSkills.map(skill => {

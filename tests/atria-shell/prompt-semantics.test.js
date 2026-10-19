@@ -53,3 +53,15 @@ test('inherited stage configuration and ordering share a draft without conflatin
     change(input(moves[0], 'Relative stage'), 'stage.second'); expect(read).toThrow('different relative stage');
     expect(JSON.stringify(child.resource)).toBe(before);
 });
+
+test('changing an exact parent refreshes stage and entry choices while retaining private condition edits', () => {
+    const first = entry('core.prompt-program', { stages: [{ stageId: 'stage.old', entries: [] }] });
+    const second = entry('core.prompt-program', { stages: [{ stageId: 'stage.new', entries: [] }] });
+    const child = entry('core.prompt-program', { parentRef: first.ref, stages: [], derive: [{ op: 'stage.configure', stageId: 'stage.old', config: { targets: ['context.before_history'] } }] });
+    const ui = root(), read = mountPromptDerive(document, ui, child.resource, [first, second], child.ref, () => []);
+    change(input(ui, 'Exact parent program'), [...input(ui, 'Exact parent program').options].find(option => option.value.includes(second.ref.resourceId)).value);
+    expect([...input(ui, 'Affected stage').options].map(option => option.value)).toEqual(['', 'stage.new']);
+    expect(read).toThrow('Choose an affected stage.');
+    change(input(ui, 'Affected stage'), 'stage.new');
+    expect(read().derive[0]).toEqual({ op: 'stage.configure', stageId: 'stage.new', config: { targets: ['context.before_history'] } });
+});

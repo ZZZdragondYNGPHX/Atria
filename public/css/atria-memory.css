@@ -18,3 +18,32 @@
 .atria-memory-workspace .workspace-hint { color: var(--atri-text-secondary); }
 .atria-memory-inspector { padding: 1rem; overflow-wrap: anywhere; }
 .atria-memory-inspector[hidden] { display: none; }
+
+.atria-memory-layout { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; align-items: start; }
+.atria-memory-layout:has(.atria-memory-inspector:not([hidden])) { grid-template-columns: minmax(0, 1fr) var(--atria-memory-inspector-width, 320px); }
+.atria-memory-inspector { position: sticky; top: 0; max-height: calc(100dvh - 96px); overflow-y: auto; border-inline-start: 1px solid var(--atri-separator); background: var(--atri-surface-1); }
+.atria-memory-workspace .workspace-subnav { display: flex; gap: 4px; flex-wrap: wrap; padding-block: 8px; border-block-end: 1px solid var(--atri-separator); }
+.atria-memory-workspace .workspace-subnav button { border-color: transparent; background: transparent; }
+.atria-memory-workspace .workspace-subnav .is-active { background: var(--atri-accent-subtle, var(--atri-fill)); color: var(--atri-accent); }
+.atria-memory-workspace h3 { margin-block: 4px 12px; font-size: 1.5rem; letter-spacing: -.025em; }
+.atria-memory-workspace .workspace-eyebrow { color: var(--atri-text-secondary); font-size: .75rem; letter-spacing: .08em; }
+.atria-memory-workspace .workspace-memory-filterbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-block: 16px; }
+.atria-memory-workspace .workspace-memory-filterbar input[type="search"] { flex: 1 1 220px; }
+.atria-memory-workspace :is(input:not([type="checkbox"]), select, textarea) { min-width: 0; min-height: 44px; padding: 10px 12px; color: inherit; background: var(--atri-surface-1); border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-sm); font: inherit; }
+.atria-memory-workspace .workspace-memory-knowledge-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 30%); gap: 16px; }
+.atria-memory-workspace .workspace-memory-native-graph { min-width: 0; height: clamp(320px, 55dvh, 640px); border: 1px solid var(--atri-separator); border-radius: var(--atri-radius-md); overflow: hidden; }
+.atria-memory-workspace .workspace-memory-record-list { min-width: 0; max-height: 640px; overflow-y: auto; }
+.atria-memory-workspace .workspace-memory-record { display: flex; width: 100%; align-items: center; justify-content: space-between; text-align: start; margin-block: 4px; }
+.atria-memory-workspace .workspace-memory-record > span:first-child { display: grid; min-width: 0; gap: 4px; overflow-wrap: anywhere; }
+.atria-memory-workspace .workspace-memory-record small { color: var(--atri-text-secondary); }
+.atria-memory-workspace .workspace-memory-sources { display: grid; gap: 20px; }
+.atria-memory-workspace .workspace-memory-source-card { padding-block: 12px; border-block-end: 1px solid var(--atri-separator); }
+.atria-memory-workspace .workspace-memory-danger-zone { margin-block-start: 24px; padding-block-start: 16px; border-block-start: 1px solid var(--atri-separator-strong); }
+.atria-memory-inspector dl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 8px; }
+.atria-memory-inspector dd { margin: 0; }
+@media (max-width: 1000px) { .atria-memory-workspace .workspace-memory-knowledge-layout { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) {
+    .atria-memory-layout:has(.atria-memory-inspector:not([hidden])) { grid-template-columns: minmax(0, 1fr); }
+    .atria-memory-inspector { position: fixed; inset: 100px 8px 88px; z-index: 25; max-height: none; border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-lg); box-shadow: var(--atri-shadow-overlay); }
+    .atria-memory-workspace { padding: 12px; }
+}

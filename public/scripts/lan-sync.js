@@ -161,9 +161,13 @@ function formatRelativeTime(timestamp) {
     return t`${days} day(s) ago`;
 }
 
+// Retired ST categories remain in the original server registry for existing peers.
+// New Native UI selections expose only supported file categories; full Native data travels in the archive.
+const RETIRED_SYNC_CATEGORIES = new Set(['characters', 'chats', 'worlds', 'openai-presets', 'novelai-presets', 'koboldai-presets', 'textgen-presets', 'instruct', 'context', 'sysprompt', 'reasoning', 'movingUI', 'quickreplies', 'backgrounds', 'avatars', 'stats']);
+
 function renderCategoryGrid(container, categories, defaultSelected) {
     container.empty();
-    for (const cat of categories) {
+    for (const cat of categories.filter(item => !RETIRED_SYNC_CATEGORIES.has(item.id))) {
         const checked = defaultSelected
             ? defaultSelected.includes(cat.id)
             : cat.syncDefault === 'on';

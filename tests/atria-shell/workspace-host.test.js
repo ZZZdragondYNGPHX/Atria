@@ -383,11 +383,24 @@ describe('R7G WorkspaceHost', () => {
         await flushWorkspace();
 
         expect(agents).toHaveBeenCalledTimes(1);
-        expect(host.getActiveWorkspace()?.key).toBe('agents:workspace');
+        expect(host.getActiveWorkspace()?.key).toBe('agents:memory');
 
         host.dispose();
         shell.destroy();
         navigation.dispose();
+    });
+
+    test('Memory and diagnostics mount their own controller when switching Agents sections', async () => {
+        const navigation = createAtriaNavigationAuthority({ window });
+        const shell = createAtriaAppShell({ document, window, registry: createCommandRegistry(), navigation });
+        const dispose = jest.fn(), agents = jest.fn(() => ({ dispose }));
+        const host = createAtriaWorkspaceHost({ document, window, shell, navigation, adapters: { agents } });
+        host.openAgentSection('memory'); await flushWorkspace();
+        host.openAgentSection('diagnostics'); await flushWorkspace();
+        expect(dispose).toHaveBeenCalledTimes(1);
+        expect(agents.mock.calls.map(([args]) => args.descriptor.section)).toEqual(['memory', 'diagnostics']);
+        expect(host.getActiveWorkspace().section).toBe('diagnostics');
+        host.dispose(); shell.destroy(); navigation.dispose();
     });
 
     test('workspace switching disposes the previous adapter and preserves the one native conversation DOM', async () => {
@@ -595,7 +608,7 @@ describe('R7G WorkspaceHost', () => {
             child: { id: 'memory', kind: 'workspace' },
         });
         expect(host.getActiveWorkspace()).toMatchObject({
-            key: 'agents:workspace',
+            key: 'agents:memory',
             section: 'memory',
         });
 

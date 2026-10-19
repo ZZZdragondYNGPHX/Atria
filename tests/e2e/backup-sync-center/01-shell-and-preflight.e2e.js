@@ -33,11 +33,13 @@ async function openBackupSyncCenter(page) {
 }
 
 test.describe('Backup & Sync Center', () => {
-    test('renders split automatic backup policies and future cloud providers', async ({ page }) => {
+    test('shows Native archive scopes and settings snapshots without retired chat controls', async ({ page }) => {
         await awaitMainUI(page, server.baseURL);
         const center = await openBackupSyncCenter(page);
 
-        await expect(center.locator('.backupRetentionCard[data-retention-type="chat"]')).toBeVisible();
+        await expect(center.locator('.backupRetentionCard[data-retention-type="chat"]')).toHaveCount(0);
+        await expect(center.locator('input[name="backupCategory"][value="characters"]')).toHaveCount(0);
+        await expect(center.locator('input[name="backupCategory"][value="chats"]')).toHaveCount(0);
         await expect(center.locator('.backupRetentionCard[data-retention-type="settings"]')).toBeVisible();
 
         await center.locator('.backupSyncTab[data-tab="cloud"]').click();

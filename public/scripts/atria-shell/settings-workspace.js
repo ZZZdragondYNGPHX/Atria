@@ -13,7 +13,7 @@ export const SETTINGS_CATEGORIES = Object.freeze([
 ]);
 const SETTINGS_INDEX = [
     ['theme-mode', 'appearance', 'Appearance mode', 'Light dark system 浅色 深色 跟随系统 明暗'],
-    ['themes', 'appearance', 'Theme gallery', 'Theme day night Azure Cappuccino Celestial Macaron Dark Lite Dark V 1.0 Serene Canvas 主题 日间 夜间'],
+    ['themes', 'appearance', 'Theme gallery', 'Theme day night Folio Nocturne Azure Cappuccino Celestial Macaron Dark Lite Dark V 1.0 Serene Canvas 主题 日间 夜间'],
     ['theme-accent', 'appearance', 'Accent color', '强调色 accent'],
     ['theme-colors', 'appearance', 'Edit colors and theme details', 'accent surface text 强调色 配色 文字 颜色'],
     ['theme-css', 'appearance', 'Advanced theme CSS', 'Custom CSS 自定义 样式'],
@@ -61,13 +61,13 @@ export function mountSettingsUtility({ document: doc = globalThis.document, slot
         if (id === 'notifications') {
             const note = el(doc, 'section', 'atria-setting-notice', undefined, panel); note.dataset.settingId = 'notification-availability';
             el(doc, 'h4', '', tl('Native completion alerts'), note);
-            el(doc, 'p', '', tl('Native sessions currently show progress and results in the session. Legacy chat notification, sound and background keep-alive preferences are retained, but are not connected to this session lifecycle.'), note);
+            el(doc, 'p', '', tl('View task progress, approvals and results in the activity summary or the current session.'), note);
             action(doc, note, 'Open Diagnostics', () => host?.openUtility('diagnostics'));
         }
         if (id === 'privacy') {
             const note = el(doc, 'section', 'atria-setting-notice', undefined, panel); note.dataset.settingId = 'media-permissions';
             el(doc, 'h4', '', tl('Work media permissions'), note);
-            el(doc, 'p', '', tl('External media is controlled by each Work and Session permission. Review the installed Work in Library. Legacy chat media preferences do not grant access to Native content.'), note);
+            el(doc, 'p', '', tl('Choose which external media a Work can access in its Session permissions. Review installed Works in Library.'), note);
             action(doc, note, 'Open Library', () => host?.openLibrarySection('works'));
         }
     }

@@ -1,3 +1,4 @@
+import { rememberEvidenceReceipt } from './evidence-receipts.js';
 import { executeNativeGeneration, executeNativeOperation } from './generation-client.js';
 import { recallNativePackageTurnMemory } from './experience/llm/memory-bridge.js';
 
@@ -80,6 +81,7 @@ export async function runNativePlayGeneration({ runtime, type, signal, input = '
         runtime.generationProjection.state = 'finalizing'; notifyState();
         await host.commitAssistant(generationType, result.assistantText);
         await runtime.persist();
+        if (ownsProjection()) rememberEvidenceReceipt(runtime, result);
         return result.assistantText;
     } catch (error) {
         if (ownsProjection()) await runtime.finalizeStoppedGeneration();

@@ -112,8 +112,6 @@ function summarizeRegexEditorDomStateForLog(editorHtml) {
         promptOnly: Boolean(editorHtml.find('input[name="only_format_prompt"]').prop('checked')),
         pluginOnly: Boolean(editorHtml.find('input[name="only_format_plugin"]').prop('checked')),
         runOnEdit: Boolean(editorHtml.find('input[name="run_on_edit"]').prop('checked')),
-        minDepthRaw: String(editorHtml.find('input[name="min_depth"]').val() || ''),
-        maxDepthRaw: String(editorHtml.find('input[name="max_depth"]').val() || ''),
         placement: editorHtml
             .find('input[name="replace_position"]')
             .filter(':checked')
@@ -1149,8 +1147,6 @@ function fillRegexEditorFields(editorHtml, script) {
     editorHtml.find('input[name="only_format_plugin"]').prop('checked', script.pluginOnly ?? false);
     editorHtml.find('input[name="run_on_edit"]').prop('checked', script.runOnEdit ?? false);
     editorHtml.find('select[name="substitute_regex"]').val(script.substituteRegex ?? substitute_find_regex.NONE);
-    editorHtml.find('input[name="min_depth"]').val(script.minDepth ?? '');
-    editorHtml.find('input[name="max_depth"]').val(script.maxDepth ?? '');
 
     const existingPlacement = Array.isArray(script.placement) ? script.placement : [];
     existingPlacement.forEach((element) => {
@@ -1337,8 +1333,8 @@ async function onRegexEditorOpenClick(existingId, scriptType, context = null) {
             pluginOnly: editorHtml.find('input[name="only_format_plugin"]').prop('checked'),
             runOnEdit: editorHtml.find('input[name="run_on_edit"]').prop('checked'),
             substituteRegex: Number(editorHtml.find('select[name="substitute_regex"]').val()),
-            minDepth: parseInt(String(editorHtml.find('input[name="min_depth"]').val())),
-            maxDepth: parseInt(String(editorHtml.find('input[name="max_depth"]').val())),
+            minDepth: null,
+            maxDepth: null,
         };
 
         console.info('[Regex] Editor save confirmed', {

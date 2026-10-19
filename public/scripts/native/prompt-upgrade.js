@@ -63,9 +63,10 @@ export function mountPromptUpgrade({ document: doc, parent, entry, resource = en
                     } else if (op.op === 'add' && relative && !available.some(target => target.stageId === replacement.stageId && target.entryId === relative)) {
                         if (!resolve(path + '/position', op, available.filter(target => target.stageId === replacement.stageId).map(({ stageId, entryId }) => ({ stageId, entryId })), target => { replacement.position = { [op.position.before ? 'before' : 'after']: target.entryId }; })) merged.derive[index] = null;
                     }
+                    if (op.op === 'add' && replacement.entry && merged.derive[index] && stageList.some(stage => stage.stageId === replacement.stageId)) available.push({ stageId: replacement.stageId, entryId: replacement.entry.entryId, item: replacement.entry });
                     return;
                 }
-                if (available.some(target => target.stageId === op.stageId && (op.entryId ? target.entryId === op.entryId : op.moduleId && target.item.moduleRef?.resourceId === op.moduleId))) return;
+                if (available.some(target => (!op.stageId || target.stageId === op.stageId) && (op.entryId ? target.entryId === op.entryId : op.moduleId && target.item.moduleRef?.resourceId === op.moduleId))) return;
                 if (!resolve(path, op, available.map(({ stageId, entryId }) => ({ stageId, entryId })), target => {
                     replacement.stageId = target.stageId; delete replacement.moduleId; replacement.entryId = target.entryId;
                 })) merged.derive[index] = null;

@@ -559,7 +559,7 @@ describe('openSkillManagerPanel — integration scenarios', () => {
     test('initial render lists skills + filter dropdown is in place', async () => {
         const skills = [
             { name: 'a', scope: { kind: 'global' }, description: 'desc-a', fileCount: 1 },
-            { name: 'b', scope: { kind: 'character', characterFile: 'C.png' }, description: 'desc-b', fileCount: 2 },
+            { name: 'b', scope: { kind: 'project', projectId: 'p1' }, description: 'desc-b', fileCount: 2 },
         ];
         const { ctx, mount } = await bootstrap({ skills });
         expect(ctx.__skillsApi.list).toHaveBeenCalled();
@@ -649,7 +649,7 @@ describe('openSkillManagerPanel — integration scenarios', () => {
     test('move-scope conflict warns and only calls moveScope when user accepts', async () => {
         const skills = [
             { name: 'shared', scope: { kind: 'global' }, description: '', fileCount: 1 },
-            { name: 'shared', scope: { kind: 'character', characterFile: 'A.png' }, description: '', fileCount: 1 },
+            { name: 'shared', scope: { kind: 'project', projectId: 'p1' }, description: '', fileCount: 1 },
         ];
         // Scope-picker returns character/A.png → collision → user accepts proceed.
         const { ctx, mount } = await bootstrap({
@@ -668,15 +668,15 @@ describe('openSkillManagerPanel — integration scenarios', () => {
                     const dlg = popup.dlg;
                     const radios = dlg.querySelectorAll('[name="atria_skill_scope_kind"]');
                     for (const r of radios) {
-                        r.checked = (r._attrs.get('value') === 'character');
+                        r.checked = (r._attrs.get('value') === 'project');
                     }
-                    const charSelect = dlg.querySelector('[data-skill-scope-character]');
+                    const charSelect = dlg.querySelector('[data-skill-scope-project]');
                     if (charSelect) {
                         // Mark the matching <option> as selected — the stub
                         // <select>.value getter reads from option attrs, not
                         // from a direct .value setter.
                         for (const opt of charSelect._children) {
-                            if (opt._attrs.get('value') === 'A.png') opt._attrs.set('selected', '');
+                            if (opt._attrs.get('value') === 'p1') opt._attrs.set('selected', '');
                             else opt._attrs.delete('selected');
                         }
                     }
@@ -693,6 +693,7 @@ describe('openSkillManagerPanel — integration scenarios', () => {
             },
         });
 
+        ctx.skills.listOwners = async () => ({ projects: [{ projectId: 'p1', displayName: 'Harbor' }] });
         const moveBtns = mount.querySelectorAll('[data-skill-action="move"]');
         // Click the move button for the global 'shared'.
         let target = null;
@@ -712,7 +713,7 @@ describe('openSkillManagerPanel — integration scenarios', () => {
         const args = ctx.__skillsApi.moveScope.mock.calls[0];
         expect(args[0]).toBe('shared');
         expect(args[1]).toEqual({ kind: 'global' });
-        expect(args[2]).toEqual({ kind: 'character', characterFile: 'A.png' });
+        expect(args[2]).toEqual({ kind: 'project', projectId: 'p1' });
     });
 
     test('Import bundled calls importBundled and refreshes', async () => {
@@ -798,16 +799,16 @@ describe('openSkillManagerPanel — integration scenarios', () => {
     test('initialScope filter pre-selects scope in dropdown', async () => {
         const skills = [
             { name: 'a', scope: { kind: 'global' }, description: 'g', fileCount: 1 },
-            { name: 'b', scope: { kind: 'preset', name: 'rp' }, description: 'p', fileCount: 1 },
+            { name: 'b', scope: { kind: 'project', projectId: 'p1' }, description: 'p', fileCount: 1 },
         ];
         // Open with initialScope filter set to that preset.
-        const initialScope = { kind: 'preset', name: 'rp' };
+        const initialScope = { kind: 'project', projectId: 'p1' };
         const { mount } = await bootstrap({ skills, initialScope });
         // The filter dropdown should have the preset scope selected; the panel
         // body should only contain group(s) for that scope.
         const filterSelect = mount.querySelector('[data-skill-filter]');
         expect(filterSelect).toBeTruthy();
-        expect(filterSelect.value).toBe('preset/rp');
+        expect(filterSelect.value).toBe('project/p1');
         // Global skill 'a' should not appear in the rendered list.
         const rows = mount.querySelectorAll('[data-skill-name]');
         const names = [];

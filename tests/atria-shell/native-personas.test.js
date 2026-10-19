@@ -30,7 +30,7 @@ test('failed save keeps draft, successful receipt prevents replay and leaves imm
 test('cancel preserves the editor on rejected leave; creation uses mandatory empty CAS and freezes draft', async () => {
     const client = { listPersonas: async () => ({ items: [], nextCursor: null }), createPersona: jest.fn(async input => ({ ...item, revision: input.content })) };
     const controller = mountPersonaWorkspace({ document, body: document.querySelector('main'), route: {}, host: {}, client });
-    await flush(); button('New Persona').click(); await flush(); const input = document.querySelector('input'); input.value = 'New'; input.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush(); expect(document.body.textContent).not.toContain('Import legacy Personas'); button('New Persona').click(); await flush(); const input = document.querySelector('input'); input.value = 'New'; input.dispatchEvent(new Event('input', { bubbles: true }));
     jest.spyOn(window, 'confirm').mockReturnValue(false); button('Cancel').click(); await flush(); expect(input.isConnected).toBe(true);
     button('Save new revision').click(); await flush(); expect(client.createPersona).toHaveBeenCalledWith(expect.objectContaining({ expectedFingerprint: PERSONA_EMPTY, content: expect.objectContaining({ name: 'New' }) })); controller.dispose();
 });
