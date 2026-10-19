@@ -1,5 +1,5 @@
+import { nodePromptPinCount, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { equalNativeDocuments as equal } from '../repositories/common.js';
-import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_project_quality_plan_unavailable'), { code: 'native_orchestration_project_quality_plan_unavailable' }); };
 const one = (ports, type) => ports.length === 1 && ports[0].type === type;
@@ -25,7 +25,7 @@ export function projectQualityProfile(plan) {
         || loop && (loop.from.nodeId !== worker.nodeId || loop.to.nodeId !== worker.nodeId)) fail();
     for (const node of [draft, review]) {
         if (!equal(node.capabilities, ['generation.send']) || !nodeModelRoutePins(node, plan.dependencyPins).length
-            || node.dependencyPinIds.length !== nodeModelRoutePins(node, plan.dependencyPins).length) fail();
+            || (node.dependencyPinIds.length - nodePromptPinCount(node)) !== nodeModelRoutePins(node, plan.dependencyPins).length) fail();
     }
     const used = new Set([draft, review, worker].flatMap(node => node.dependencyPinIds));
     if (plan.dependencyPins.some(pin => !used.has(pin.pinId))) fail();

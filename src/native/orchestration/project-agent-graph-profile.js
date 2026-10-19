@@ -1,5 +1,5 @@
+import { nodePromptPinCount, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { equalNativeDocuments as equal } from '../repositories/common.js';
-import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { projectToolCapability } from './project-tool-contracts.js';
 
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_project_plan_unavailable'), { code: 'native_orchestration_project_plan_unavailable' }); };
@@ -38,7 +38,7 @@ export function projectAgentGraphProfile(plan, maxModelRounds) {
         const capabilities = ['generation.send', ...['project.read', 'project.propose'].filter(capability => toolPins.some(pin => projectToolCapability(pin.resourceRef.name) === capability))];
         const incoming = index ? transfers[index - 1] : null, inputs = worker.inputs;
         if (!equal(worker.capabilities, capabilities) || worker.outputs.length !== 1 || worker.outputs[0].type !== 'json'
-            || !modelPins.length || worker.dependencyPinIds.length !== modelPins.length + toolPins.length
+            || !modelPins.length || (worker.dependencyPinIds.length - nodePromptPinCount(worker)) !== modelPins.length + toolPins.length
             || inputs.length !== (incoming ? 1 : 0) + (worker === tail && loop ? 1 : 0)
             || incoming && !inputs.some(port => port.name === incoming.to.port && port.type === 'json' && port.required === !(worker === tail && loop))
             || worker === tail && loop && !inputs.some(port => port.name === loop.to.port && port.type === 'json' && !port.required)

@@ -1,5 +1,5 @@
+import { nodePromptPinCount, nodeModelRoutePins, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { equalNativeDocuments as equal } from '../repositories/common.js';
-import { nodeModelRoutePins, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { delegatedRpSourcePins } from './delegated-source-contracts.js';
 import { rpControlReplanScope, rpControlFanoutGroups } from './rp-control-graph.js';
 import { audienceContextPin } from './audience-source-contracts.js';
@@ -46,7 +46,7 @@ export function rpDelegatedControlProfile(plan) {
             || audience && (audience.resourceRef.kind !== 'native_information_context' || audience.resourceRef.audience.kind !== 'actor')
             || node.policy.audiencePinId !== undefined && !audience
             || plans.length !== Number(delegated) || delegated && !equal(node.policy.allowedPlanPinIds, [plans[0]?.pinId])
-            || node.dependencyPinIds.length !== routes.length + sourcePins.length + Number(!!audience) + plans.length
+            || (node.dependencyPinIds.length - nodePromptPinCount(node)) !== routes.length + sourcePins.length + Number(!!audience) + plans.length
             || node.inputs.some(port => !['text', 'json'].includes(port.type) && !(port.type === 'task.result'
                 && graph.edges.some(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name && passive.some(source => source.kind === 'fanout' && source.nodeId === edge.from.nodeId))))) fail();
         incoming[node.nodeId] = graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === node.nodeId);
@@ -54,7 +54,7 @@ export function rpDelegatedControlProfile(plan) {
             || port.required && !incoming[node.nodeId].some(edge => edge.to.port === port.name))) fail();
     }
     for (const node of passive) {
-        if (node.capabilities.length || node.dependencyPinIds.length || node.outputs.length !== 1
+        if (node.capabilities.length || (node.dependencyPinIds.length - nodePromptPinCount(node)) || node.outputs.length !== 1
             || node.outputs[0].type !== (node.kind === 'fanout' ? 'task.result' : 'text') || node.inputs.some(port => !['text', 'json'].includes(port.type))) fail();
         incoming[node.nodeId] = graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === node.nodeId);
         if (node.inputs.some(port => graph.edges.filter(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name).length > 1

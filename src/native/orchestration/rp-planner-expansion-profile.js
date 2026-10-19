@@ -12,7 +12,7 @@ function templateAuthority(narrator, dependencyPins) {
         && pin.port === 'context' && pin.resourceRef.scope === 'player' && pin.resourceRef.retrievalProfileId).map(pin => pin.pinId).sort() : [];
     if (narrator.capabilities.includes('memory.retrieve') && !pins.length) fail();
     const audience = audienceContextPin(narrator, dependencyPins);
-    return { dependencyPinIds: [narrator.policy.agentPinId, ...pins, ...(audience ? [audience.pinId] : [])], capabilities: ['generation.send', ...pins.length ? ['memory.retrieve'] : []] };
+    return { dependencyPinIds: [narrator.policy.agentPinId, ...narrator.policy.promptPinId ? [narrator.policy.promptPinId] : [], ...pins, ...(audience ? [audience.pinId] : [])], capabilities: ['generation.send', ...pins.length ? ['memory.retrieve'] : []] };
 }
 
 /** Same-source advisory additions reuse only the already selected Narrator Model. */
@@ -33,7 +33,7 @@ export function rpPlannerExpansionProfile(plan, { planner, output, loop, allowed
         } else {
             if (node.inputs.length !== 1 || !equal(node.capabilities, authority.capabilities) || node.outputs.length !== 1 || node.outputs[0].type !== 'text'
                 || !equal(node.dependencyPinIds, authority.dependencyPinIds) || node.policy.agentPinId !== narrator.policy.agentPinId
-                || node.policy.audiencePinId !== narrator.policy.audiencePinId) fail();
+                || node.policy.audiencePinId !== narrator.policy.audiencePinId || node.policy.promptPinId !== narrator.policy.promptPinId) fail();
             const outgoing = graph.edges.filter(edge => edge.from.nodeId === node.nodeId);
             if (outgoing.length !== 1 || outgoing[0].to.nodeId !== narrator.nodeId || outgoing[0].from.port !== node.outputs[0].name
                 || outgoing[0].condition !== 'always' || outgoing[0].loopBack || outgoing[0].maxVisits !== 1
@@ -66,7 +66,7 @@ export function rpPlannerExpansionTemplates(graph, dependencyPins = []) {
 
 function templateData(planner, narrator, slot, nodeId, edgeIds, dependencyPins) {
     const node = { nodeId, kind: 'agent', label: 'Declared advisory draft', inputs: [{ name: 'plan', type: 'json', required: true }],
-        outputs: [{ name: 'response', type: 'text', required: false }], ...templateAuthority(narrator, dependencyPins), policy: { agentPinId: narrator.policy.agentPinId,
+        outputs: [{ name: 'response', type: 'text', required: false }], ...templateAuthority(narrator, dependencyPins), policy: { agentPinId: narrator.policy.agentPinId, ...(narrator.policy.promptPinId ? { promptPinId: narrator.policy.promptPinId } : {}),
             ...(narrator.policy.audiencePinId ? { audiencePinId: narrator.policy.audiencePinId } : {}) } };
     const edge = (id, from, to) => ({ edgeId: id, from, to, condition: 'always', maxVisits: 1, loopBack: false });
     return { node, edges: [edge(edgeIds[0], { nodeId: planner.nodeId, port: planner.outputs[0].name }, { nodeId, port: 'plan' }),

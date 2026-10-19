@@ -1,3 +1,4 @@
+import { nodePromptProgramPin } from '../../../public/shared/native-orchestration-contracts.js';
 import { PromptCandidateStore } from '../model-prompt-runtime/prompt-candidates.js';
 import { projectStrategyBase } from './project-strategy.js';
 import { ProjectTaskRepository } from './project-task-repository.js';
@@ -79,8 +80,9 @@ export class EvolutionTargets {
                 if (pin?.resourceRef.scope !== 'player') continue;
                 const route = await this.host.persistence.getRuntimeRoute(handle, pin.resourceRef.runtimeRouteId);
                 const list = await this.prompts.presets.list(handle);
-                if (!list.some(item => item.presetId === route.promptProgramRef.resourceId)) continue;
-                const preset = await this.prompts.presets.get(handle, route.promptProgramRef.resourceId);
+                const programRef = nodePromptProgramPin(node, revision.dependencyPins)?.resourceRef ?? route.promptProgramRef;
+                if (!list.some(item => item.presetId === programRef.resourceId)) continue;
+                const preset = await this.prompts.presets.get(handle, programRef.resourceId);
                 for (const ref of preset.refs.filter(ref => ref.resourceType === 'core.prompt-module'
                     && preset.entries.some(entry => entry.resource.promptModuleId === ref.resourceId && entry.resource.target === 'system.style'))) {
                     const target = { kind: 'plan-prompt', bindingId: binding.bindingId, expectedBindingVersion: binding.version, planRef: binding.planRef,
@@ -307,7 +309,7 @@ export class EvolutionTargets {
             const pin = revision.dependencyPins.find(pin => pin.resourceRef.scope === 'player' && pin.pinId === node?.policy.agentPinId);
             const original = candidateId && target.kind === 'plan-prompt' ? await this.prompts.check(handle, captured.candidate.promptCandidateRef.presetId, captured.candidate.promptCandidateRef.candidateId) : null;
             return { nativePlan: { planRef, revision, sourceSelector: captured.base.sourceSelector, ...(original ? { routeOverride: original.desiredRoute } : {}) },
-                ...(pin ? { runtimeRouteId: pin.resourceRef.runtimeRouteId } : {}), ...(original && original.desiredRoute.runtimeRouteId === pin?.resourceRef.runtimeRouteId ? { projectPromptRef: original.desiredRoute.promptProgramRef } : {}),
+                ...(pin ? { runtimeRouteId: pin.resourceRef.runtimeRouteId } : {}), ...(original && original.desiredRoute.runtimeRouteId === pin?.resourceRef.runtimeRouteId ? { projectPromptRef: original.desiredProgramRef ?? original.desiredRoute.promptProgramRef } : {}),
                 version: candidateId ?? hash(captured.base) };
         }
         const c = candidateId ? (await this.check(handle, scope, subject, target, candidateId)).candidate : null;

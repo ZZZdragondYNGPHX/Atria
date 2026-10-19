@@ -82,10 +82,10 @@ export class SessionDelegationAuthority {
         // Resolve published owned pins before the original Scheduler operation.
         // A probe only describes resources; it creates no Node, Attempt or grant.
         const poolProfiles = [];
-        for (const modelPin of childPlan.dependencyPins.filter(pin => pin.port === 'model')) {
+        for (const modelPin of childPlan.dependencyPins.filter(pin => pin.port === 'model' && pin.resourceRef.scope === 'player')) {
             const initial = profiles.find(model => model.node.kind === 'agent' && model.pin.pinId === modelPin.pinId);
-            const probe = { ...topology.final, dependencyPinIds: [modelPin.pinId, topology.final.policy.audiencePinId],
-                policy: { agentPinId: modelPin.pinId, audiencePinId: topology.final.policy.audiencePinId } };
+            const probe = { ...topology.final, dependencyPinIds: [modelPin.pinId, topology.final.policy.audiencePinId, ...topology.final.policy.promptPinId ? [topology.final.policy.promptPinId] : []],
+                policy: { ...topology.final.policy, agentPinId: modelPin.pinId, audiencePinId: topology.final.policy.audiencePinId } };
             const model = initial ?? await this.resolveModel(host, handle, base, input, childPlan, probe, null);
             if (!equal(model.audienceSource.audience, parentSource.audience) || !equal(model.audienceSource.descriptor, parentSource.descriptor)
                 || model.failurePlan.routes.length !== 1 || model.resolved.route.policy.maxRetries !== 0

@@ -1,5 +1,5 @@
+import { nodePromptPinCount, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { equalNativeDocuments } from '../repositories/common.js';
-import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { rpAgentGraphProfile } from './rp-agent-graph-profile.js';
 import { rpPlannerExpansionProfile, rpPlannerExpansionTemplates } from './rp-planner-expansion-profile.js';
 import { audienceContextPin } from './audience-source-contracts.js';
@@ -24,14 +24,14 @@ export function rpPlannerProfile(plan) {
     if (graph.graphChangePolicy.allowedOperations.includes('addNode') || graph.graphChangePolicy.allowedOperations.includes('addEdge')) {
         if ((!loop && planner.inputs.length) || planner.outputs.length !== 1 || planner.outputs[0].type !== 'json'
             || !equalNativeDocuments([...planner.capabilities].sort(), plannerCapabilities.sort())
-            || !nodeModelRoutePins(planner, plan.dependencyPins).length || planner.dependencyPinIds.length !== nodeModelRoutePins(planner, plan.dependencyPins).length + retrievalPins.length + audiencePins
+            || !nodeModelRoutePins(planner, plan.dependencyPins).length || (planner.dependencyPinIds.length - nodePromptPinCount(planner)) !== nodeModelRoutePins(planner, plan.dependencyPins).length + retrievalPins.length + audiencePins
             || !equalNativeDocuments(graph.entryNodeIds, [planner.nodeId])) fail();
         return rpPlannerExpansionProfile(plan, { planner, output, loop, allowed });
     }
     if (graph.nodes.filter(node => node.kind === 'agent').length > 1) {
         if ((!loop && planner.inputs.length) || planner.outputs.length !== 1 || planner.outputs[0].type !== 'json'
             || !equalNativeDocuments([...planner.capabilities].sort(), plannerCapabilities.sort())
-            || !nodeModelRoutePins(planner, plan.dependencyPins).length || planner.dependencyPinIds.length !== nodeModelRoutePins(planner, plan.dependencyPins).length + retrievalPins.length + audiencePins
+            || !nodeModelRoutePins(planner, plan.dependencyPins).length || (planner.dependencyPinIds.length - nodePromptPinCount(planner)) !== nodeModelRoutePins(planner, plan.dependencyPins).length + retrievalPins.length + audiencePins
             || !equalNativeDocuments(graph.entryNodeIds, [planner.nodeId]) || graph.graphChangePolicy.allowedNodeKinds.length || !graph.graphChangePolicy.allowedOperations.length
             || graph.graphChangePolicy.allowedOperations.some(op => !allowed.includes(op))) fail();
         const transfers = graph.edges.filter(edge => edge.from.nodeId === planner.nodeId && !edge.loopBack);
@@ -54,7 +54,7 @@ export function rpPlannerProfile(plan) {
         || narrator.inputs.length !== 1 || narrator.inputs[0].type !== 'json' || !narrator.inputs[0].required
         || !equalNativeDocuments([...planner.capabilities].sort(), plannerCapabilities.sort())
         || !nodeModelRoutePins(planner, plan.dependencyPins).length
-        || planner.dependencyPinIds.length !== nodeModelRoutePins(planner, plan.dependencyPins).length + retrievalPins.length + audiencePins
+        || (planner.dependencyPinIds.length - nodePromptPinCount(planner)) !== nodeModelRoutePins(planner, plan.dependencyPins).length + retrievalPins.length + audiencePins
         || graph.graphChangePolicy.allowedNodeKinds.length || !graph.graphChangePolicy.allowedOperations.length
         || graph.graphChangePolicy.allowedOperations.some(op => !allowed.includes(op))) fail();
     const transfer = graph.edges.find(edge => edge.from.nodeId === planner.nodeId && edge.to.nodeId === narrator.nodeId);

@@ -1,6 +1,6 @@
+import { nodePromptPinCount, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { delegatedRpSourcePins } from './delegated-source-contracts.js';
 import { equalNativeDocuments as equal } from '../repositories/common.js';
-import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { audienceContextPin } from './audience-source-contracts.js';
 import { RP_REVIEW_REASON_CODES } from './rp-review-profile.js';
 
@@ -76,7 +76,7 @@ export function rpControlGraph(plan, { force = false } = {}) {
             || !graph.nodes.some(node => node.nodeId === edge.to.nodeId && ['agent', 'planner'].includes(node.kind))) || !['always', 'success'].includes(edge.condition)
             || edge.from.nodeId === output.nodeId || edge.from.nodeId === narrator.nodeId && edge.to.nodeId !== output.nodeId)) fail();
     const controls = graph.nodes.filter(node => ['fanout', 'join'].includes(node.kind));
-    for (const node of controls) if (node.capabilities.length || node.dependencyPinIds.length || node.outputs.length !== 1
+    for (const node of controls) if (node.capabilities.length || (node.dependencyPinIds.length - nodePromptPinCount(node)) || node.outputs.length !== 1
         || node.outputs[0].type !== (node.kind === 'fanout' ? 'task.result' : 'text')) fail();
     const models = graph.nodes.filter(node => node !== output && !controls.includes(node));
     for (const node of models) {
@@ -93,7 +93,7 @@ export function rpControlGraph(plan, { force = false } = {}) {
                 ...delegated ? ['agent.delegate'] : [], ...retrieval.length ? ['memory.retrieve'] : []].sort())
             || !routes.length || plans.length !== Number(delegated) || delegated && !equal(node.policy.allowedPlanPinIds, [plans[0]?.pinId])
             || !delegated && (sourcePins.length || audiencePins.length !== Number(!!audience))
-            || node.dependencyPinIds.length !== routes.length + retrieval.length + audiencePins.length + sourcePins.length + plans.length) fail();
+            || (node.dependencyPinIds.length - nodePromptPinCount(node)) !== routes.length + retrieval.length + audiencePins.length + sourcePins.length + plans.length) fail();
     }
     const used = new Set(models.flatMap(node => node.dependencyPinIds));
     if (plan.dependencyPins.some(pin => !used.has(pin.pinId)) || planners.length && !graph.graphChangePolicy.allowedOperations.length) fail();

@@ -1,3 +1,4 @@
+import { resolveNodeModel } from './node-prompt-program.js';
 import { ProjectDelegationAuthority } from './project-delegation-authority.js';
 import { ConflictError } from '../../storage/errors.js';
 import { performance } from 'node:perf_hooks';
@@ -125,7 +126,7 @@ export class NativeProjectOrchestrationAuthority {
         // Every worker uses the original operation's pinned Studio route and
         // failure policy. Its own tool intersection is enforced per round.
         for (const profile of collaboration.profiles) {
-            if (!equal(profile.modelPins, modelPins) || !equal(profile.node.policy, node.policy))
+            if (!equal(profile.modelPins, modelPins) || !equal({ ...profile.node.policy, promptPinId: null }, { ...node.policy, promptPinId: null }))
                 fail('native_orchestration_project_route_mismatch');
         }
         for (const control of quality ? [quality.draft, quality.review] : []) {
@@ -179,7 +180,7 @@ export class NativeProjectOrchestrationAuthority {
         let resolved;
         const routes = [];
         for (const candidate of frozenFailure.routes) {
-            const current = await resolver.resolve({ handle, routeRef: candidate.routeRef, role: 'role.studio', requirements });
+            const current = await resolveNodeModel({ node, dependencyPins: plan.dependencyPins, resolver, handle, routeRef: candidate.routeRef, role: 'role.studio', requirements });
             resolved ??= current;
             if (!equal(current.route.promptProgramRef, resolved.route.promptProgramRef)) fail('generation_semantic_authority_changed');
             prepareExecutionPlan(current, resolved.route.executionPolicy, resolver.provider(current.connection.providerAdapter));
@@ -189,14 +190,15 @@ export class NativeProjectOrchestrationAuthority {
         const resolveControlModel = async (control, controlPlan = plan) => {
             const controlPin = controlPlan.dependencyPins.find(item => item.pinId === control.policy.agentPinId && control.dependencyPinIds.includes(item.pinId));
             if (controlPin?.port !== 'model' || controlPin.resourceRef.scope !== 'player') fail('native_orchestration_project_route_mismatch');
-            const controlRequirements = [...(['planner', 'review', 'judge'].includes(control.kind) ? ['generation.structured-output'] : []),
+            const worker = controlPlan === plan && collaboration.profiles.some(profile => profile.node.nodeId === control.nodeId);
+            const controlRequirements = [...worker ? ['generation.tools'] : [], ...(['planner', 'review', 'judge'].includes(control.kind) ? ['generation.structured-output'] : []),
                 ...(project.source.package.runtime?.modelPrompt?.roles.find(item => item.role === 'role.studio')?.requiredCapabilities ?? [])];
             const inspected = controlPlan === plan ? inspectedModel(control, controlRequirements) : null;
             const failure = inspected?.failurePlan ?? await resolveModelFailurePlan({ handle, node: control, dependencyPins: controlPlan.dependencyPins, resolver: this.owner.modelResolver,
                 routeRef: controlPin.resourceRef, role: 'role.studio', requirements: controlRequirements });
             let primary; const candidates = [];
             for (const candidate of failure.routes) {
-                const current = await resolver.resolve({ handle, routeRef: candidate.routeRef, role: 'role.studio', requirements: controlRequirements });
+                const current = await resolveNodeModel({ node: control, dependencyPins: controlPlan.dependencyPins, resolver, handle, routeRef: candidate.routeRef, role: 'role.studio', requirements: controlRequirements });
                 primary ??= current;
                 if (!equal(current.route.promptProgramRef, primary.route.promptProgramRef)) fail('generation_semantic_authority_changed');
                 prepareExecutionPlan(current, primary.route.executionPolicy, resolver.provider(current.connection.providerAdapter));
@@ -205,7 +207,9 @@ export class NativeProjectOrchestrationAuthority {
             if (!primary.route.executionPolicy?.computeBudget?.localWork) fail('native_orchestration_context_budget_unavailable');
             return { pin: controlPin, resolved: primary, failurePlan: { routes: candidates }, configDigest: candidates.length === 1 ? config(primary) : hash(candidates) };
         };
-        const controlModelDigests = [], delegations = new Map(), delegationPlans = new Map(), delegationDigests = [];
+        const workerModels = new Map();
+        for (const profile of collaboration.profiles) workerModels.set(profile.node.nodeId, await resolveControlModel(profile.node));
+        const controlModelDigests = [...workerModels].map(([id, model]) => [id, model.configDigest]), delegations = new Map(), delegationPlans = new Map(), delegationDigests = [];
         for (const control of (controlGraph?.pure ?? []).filter(node => node.capabilities.includes('generation.send'))) controlModelDigests.push([control.nodeId, (await resolveControlModel(control)).configDigest]);
         for (const control of controlGraph?.pure ?? []) {
             if (!control.capabilities.includes('agent.delegate')) continue;
@@ -229,7 +233,7 @@ export class NativeProjectOrchestrationAuthority {
         // Later stages call the returned resolver again. They must obtain
         // fresh owned routes instead of retaining this invocation's facts.
         currentModels = null;
-        return { binding, plan, node, pin, loop, toolPins, collaboration, quality, controlGraph, resolveControlModel, resolveDelegation, controlModelDigests, delegations, delegationPlans, delegationDigests, resolved,
+        return { binding, plan, node, pin, loop, toolPins, collaboration, workerModels, quality, controlGraph, resolveControlModel, resolveDelegation, controlModelDigests, delegations, delegationPlans, delegationDigests, resolved,
             failurePlan: { routes }, configDigest: routes.length === 1 ? config(resolved) : hash(routes) };
     }
 
@@ -342,7 +346,7 @@ export class NativeProjectOrchestrationAuthority {
     async prepare({ host, handle, projectCapture, selection, previousSystem }) {
         const selectionState = await this.#current(selection), identity = await inspectNativeProjectGeneration(projectCapture, { host, handle });
         const profile = selectionState.collaboration.profiles[Math.min(identity.round, selectionState.collaboration.profiles.length - 1)];
-        const selected = { ...selectionState, node: profile.node, toolPins: profile.toolPins, incoming: profile.incoming, loop: profile.loop };
+        const selected = { ...selectionState, ...selectionState.workerModels.get(profile.node.nodeId), node: profile.node, toolPins: profile.toolPins, incoming: profile.incoming, loop: profile.loop };
         const operationKey = hash({ handle, operationId: identity.operationId }), operation = this.#operations.get(operationKey);
         if (identity.selection !== selection || identity.projectAgent !== host.agent || selected.args.host.agent !== this.projectAgent
             || selected.args.handle !== handle || previousSystem !== operation?.previous?.state.system

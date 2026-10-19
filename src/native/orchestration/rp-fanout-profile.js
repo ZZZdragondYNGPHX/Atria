@@ -1,5 +1,5 @@
+import { nodePromptPinCount, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { equalNativeDocuments as same } from '../repositories/common.js';
-import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { audienceContextPin } from './audience-source-contracts.js';
 
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_rp_fanout_unavailable'), { code: 'native_orchestration_rp_fanout_unavailable' }); };
@@ -25,7 +25,7 @@ export function rpFanoutProfile(plan) {
     const transfers = [], members = [];
     for (const node of agents) {
         const pins = nodeModelRoutePins(node, plan.dependencyPins);
-        if (!pins.length || node.dependencyPinIds.length !== pins.length + (audienceContextPin(node, plan.dependencyPins) ? 1 : 0) || !same(node.capabilities, ['generation.send'])
+        if (!pins.length || (node.dependencyPinIds.length - nodePromptPinCount(node)) !== pins.length + (audienceContextPin(node, plan.dependencyPins) ? 1 : 0) || !same(node.capabilities, ['generation.send'])
             || node.outputs.length !== 1 || node.outputs[0].type !== 'text' || node.inputs.length !== 1 || !node.inputs[0].required
             || node.inputs[0].type !== (node === narrator ? 'text' : 'task.result')) fail();
         const incoming = graph.edges.filter(edge => edge.to.nodeId === node.nodeId), outgoing = graph.edges.filter(edge => edge.from.nodeId === node.nodeId);

@@ -1,3 +1,5 @@
+import { resolveNodeModel, declaredModelRoute } from './node-prompt-program.js';
+import { nodePromptPinCount, planPromptPinCount, assertObject, assertResultPolicy, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { runDelegatedFanout } from './delegated-fanout-work.js';
 import { readRpDelegatedFanoutCompletion } from './rp-delegated-fanout-contracts.js';
 import { NativeMemoryAuthority } from '../memory-authority.js';
@@ -28,7 +30,6 @@ import { assertChildRunCurrent, childBudgetReceiptId } from './run-repository.js
 
 import { readHandoff } from './handoff-contracts.js';
 import { BudgetPort } from './budget-port.js';
-import { assertObject, assertResultPolicy, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { ResultController } from './result-controller.js';
 import { readResultPublication } from './result-publication-contracts.js';
 import { TaskLocalOutputController } from './task-local-output-controller.js';
@@ -93,10 +94,10 @@ function finiteProfile(plan, { delegated = false, explicitResult = false, allowP
     if (graph.nodes.length !== 2 || !node || !output || graph.edges.length !== 1
         || !equal(graph.entryNodeIds, [node.nodeId]) || !sameSet(graph.capabilityCeiling, [...capabilities, ...outputCapabilities])
         || !sameSet(node.capabilities, capabilities) || node.inputs.length || node.outputs.length !== 1 || node.outputs[0].type !== 'text'
-        || !modelPins.length || node.dependencyPinIds.length !== modelPins.length + retrievalPins.length + sourcePins.length + audiencePins + (delegated ? 1 : 0)
+        || !modelPins.length || (node.dependencyPinIds.length - nodePromptPinCount(node)) !== modelPins.length + retrievalPins.length + sourcePins.length + audiencePins + (delegated ? 1 : 0)
         || plan.dependencyPins.some(pin => !node.dependencyPinIds.includes(pin.pinId)) || !sameSet(output.capabilities, outputCapabilities) || output.inputs.length !== 1
         || output.inputs[0].type !== 'text' || !output.inputs[0].required || output.outputs.length || output.dependencyPinIds.length
-        || plan.dependencyPins.length !== modelPins.length + retrievalPins.length + sourcePins.length + audiencePins + (delegated ? 1 : 0) || !['result', 'rp_narration'].includes(graph.outputContract.kind) || graph.outputContract.allowPartial && !allowPartial
+        || (plan.dependencyPins.length - planPromptPinCount(plan)) !== modelPins.length + retrievalPins.length + sourcePins.length + audiencePins + (delegated ? 1 : 0) || !['result', 'rp_narration'].includes(graph.outputContract.kind) || graph.outputContract.allowPartial && !allowPartial
         || !childControl && graph.graphChangePolicy.allowedOperations.length || graph.edges[0].condition !== 'always'
         || graph.edges[0].loopBack || graph.edges[0].maxVisits !== 1
         || graph.edges[0].from.nodeId !== node.nodeId || graph.edges[0].to.nodeId !== output.nodeId
@@ -474,10 +475,10 @@ export class NativeRpOrchestrationAuthority {
             const childResolved = inspected && equal(inspected.node, modelNode) && inspected.resolved.route.role === 'role.narrator'
             && inspected.resolved.route.runtimeRouteId === modelPin.resourceRef.runtimeRouteId
             && (!structured || inspected.resolved.requirements.includes('generation.structured-output'))
-                ? inspected.resolved : await this.owner.modelResolver.resolve({ handle, routeRef: modelPin.resourceRef, role: 'role.narrator',
+                ? inspected.resolved : await resolveNodeModel({ node: modelNode, dependencyPins: childPlan.dependencyPins, resolver: this.owner.modelResolver, handle, routeRef: modelPin.resourceRef, role: 'role.narrator',
                     ...(structured ? { requirements: ['generation.structured-output'] } : {}) });
             const childRoute = childResolved.route;
-            if (hash(childRoute) !== modelPin.integrity || childRoute.role !== 'role.narrator' || childRoute.fallbackRouteRefs.length
+            if (hash(declaredModelRoute(childResolved)) !== modelPin.integrity || childRoute.role !== 'role.narrator' || childRoute.fallbackRouteRefs.length
             || childRoute.policy.maxRetries !== 0 || childRoute.executionPolicy?.continuity !== 'none' || childRoute.executionPolicy?.reuse !== 'disabled'
             || !controlProfile && childRoute.executionPolicy?.computeBudget?.maxRequests !== 1 || !childRoute.executionPolicy.computeBudget.localWork)
                 fail('native_orchestration_rp_route_mismatch');
@@ -495,9 +496,9 @@ export class NativeRpOrchestrationAuthority {
         // permit. A probe discovers resources; it creates no executable
         // Node, Attempt, capture, Source grant or bank allocation.
         const poolModels = [...models];
-        if (controlProfile) for (const pin of childPlan.dependencyPins.filter(pin => pin.port === 'model')) {
+        if (controlProfile) for (const pin of childPlan.dependencyPins.filter(pin => pin.port === 'model' && pin.resourceRef.scope === 'player')) {
             if (poolModels.some(model => model.pin.pinId === pin.pinId)) continue;
-            const sourcePins = childNode.dependencyPinIds.filter(id => childPlan.dependencyPins.find(item => item.pinId === id)?.port !== 'model');
+            const sourcePins = childNode.dependencyPinIds.filter(id => childPlan.dependencyPins.find(item => item.pinId === id)?.resourceRef.scope !== 'player');
             poolModels.push(await resolveChildModel({ ...childNode, dependencyPinIds: [pin.pinId, ...sourcePins], policy: { ...childNode.policy, agentPinId: pin.pinId } }));
         }
         if (poolModels.some(model => !equal(model.resolved.route.executionPolicy.computeBudget, terminal.resolved.route.executionPolicy.computeBudget)))
@@ -541,9 +542,9 @@ export class NativeRpOrchestrationAuthority {
         const validation = await inspectModelCapabilities({ handle, definition: graph, dependencyPins: plan.dependencyPins, resolver: this.owner.modelResolver });
         if (validation.issues.length) fail('native_orchestration_model_authority_unavailable');
         const primary = validation.models.get(node.nodeId);
-        const resolved = primary?.resolved ?? await this.owner.modelResolver.resolve({ handle, routeRef: input.routeRef, role: 'role.narrator' });
+        const resolved = primary?.resolved ?? await resolveNodeModel({ node, dependencyPins: plan.dependencyPins, resolver: this.owner.modelResolver, handle, routeRef: input.routeRef, role: 'role.narrator' });
         const route = resolved.route;
-        if (hash(route) !== pin.integrity || route.role !== 'role.narrator'
+        if (hash(declaredModelRoute(resolved)) !== pin.integrity || route.role !== 'role.narrator'
             || delegated && (route.fallbackRouteRefs.length || route.policy.maxRetries !== 0
                 || (route.executionPolicy?.continuity ?? 'none') !== 'none' || (route.executionPolicy?.reuse ?? 'disabled') !== 'disabled'))
             fail('native_orchestration_rp_route_mismatch');
@@ -561,8 +562,8 @@ export class NativeRpOrchestrationAuthority {
             // dynamic nodes and each later selection still resolve freshly.
             const next = inspected && equal(inspected.node, node) && inspected.resolved.route.role === 'role.narrator'
                 && (!structured || inspected.resolved.requirements.includes('generation.structured-output'))
-                ? inspected.resolved : await this.owner.modelResolver.resolve({ handle, routeRef: pin.resourceRef, role: 'role.narrator', requirements: structured ? ['generation.structured-output'] : [] });
-            if (hash(next.route) !== pin.integrity || next.route.fallbackRouteRefs.length || next.route.policy.maxRetries !== 0
+                ? inspected.resolved : await resolveNodeModel({ node, dependencyPins: plan.dependencyPins, resolver: this.owner.modelResolver, handle, routeRef: pin.resourceRef, role: 'role.narrator', requirements: structured ? ['generation.structured-output'] : [] });
+            if (hash(declaredModelRoute(next)) !== pin.integrity || next.route.fallbackRouteRefs.length || next.route.policy.maxRetries !== 0
                 || (next.route.executionPolicy?.continuity ?? 'none') !== 'none' || (next.route.executionPolicy?.reuse ?? 'disabled') !== 'disabled'
                 || !equal(next.route.executionPolicy.computeBudget, resolved.route.executionPolicy.computeBudget)) fail('native_orchestration_rp_route_mismatch');
             return { binding, plan, node, pin, resolved: next, configDigest: configuration(next), transfer,

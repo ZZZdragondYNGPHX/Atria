@@ -1,5 +1,5 @@
+import { nodePromptPinCount, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { equalNativeDocuments as equal } from '../repositories/common.js';
-import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_project_control_graph_unavailable'), { code: 'native_orchestration_project_control_graph_unavailable' }); };
 
@@ -15,13 +15,13 @@ export function projectControlGraph(plan) {
     if (!pure.length || !pins.length || graph.entryNodeIds.some(id => !pure.some(node => node.nodeId === id))) fail();
     for (const node of pure) {
         if (['fanout', 'join'].includes(node.kind)) {
-            if (node.capabilities.length || node.dependencyPinIds.length || node.outputs.length !== 1
+            if (node.capabilities.length || (node.dependencyPinIds.length - nodePromptPinCount(node)) || node.outputs.length !== 1
                 || node.outputs[0].type !== (node.kind === 'fanout' ? 'task.result' : 'text')) fail();
             continue;
         }
         if (!['agent', 'planner', 'review', 'judge'].includes(node.kind) || node.outputs.length !== 1 || node.outputs[0].type !== (node.kind === 'agent' ? 'text' : 'json')
             || !equal(node.capabilities, ['generation.send', ...node.kind === 'planner' || node.kind === 'agent' && node.capabilities.includes('agent.delegate') && node.capabilities.includes('graph.patch') ? ['graph.patch'] : [], ...node.capabilities.includes('agent.delegate') ? ['agent.delegate'] : []])
-            || !nodeModelRoutePins(node, plan.dependencyPins).length || node.dependencyPinIds.length !== nodeModelRoutePins(node, plan.dependencyPins).length + (node.policy.allowedPlanPinIds?.length ?? 0)) fail();
+            || !nodeModelRoutePins(node, plan.dependencyPins).length || (node.dependencyPinIds.length - nodePromptPinCount(node)) !== nodeModelRoutePins(node, plan.dependencyPins).length + (node.policy.allowedPlanPinIds?.length ?? 0)) fail();
         if (node.capabilities.includes('agent.delegate') && (!['agent', 'planner'].includes(node.kind)
             || !node.policy.allowedPlanPinIds?.length || node.kind === 'agent' && node.policy.allowedPlanPinIds.length !== 1)) fail();
         if (node.kind === 'planner' && !graph.graphChangePolicy.allowedOperations.length) fail();

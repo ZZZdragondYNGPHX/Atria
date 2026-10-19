@@ -8463,7 +8463,7 @@
     "Raw": "原始内容",
     "Escaped": "已转义",
     "Secret": "密钥",
-    "Prompt Program": "提示词程序",
+    "Prompt Program": "提示词 Program",
     "Prompt Module": "提示词模块",
     "Generation Profile": "生成参数",
     "Runtime Route": "运行路由",
@@ -10780,5 +10780,12 @@
     "Current resource": "当前资源",
     "Ready for a sample.": "可以预览或试读样例。",
     "Create a model route in Runtime to preview or try this sample.": "请先在 Runtime 创建模型路由，再预览或试读样例。",
-    "Retry sample routes": "重试加载样例路由"
+    "Retry sample routes": "重试加载样例路由",
+    "Node Program": "节点 Program",
+    "Route default Program": "采用路由默认 Program",
+    "Choose an exact Program independently of the model route. Attach its model dependency pin first.": "可独立于模型路由选择固定修订的 Program。请先附加它的模型依赖 Pin。",
+    "Open selected Program": "打开所选 Program",
+    "Route default: ${0}@${1}": "路由默认：${0}@${1}",
+    "Choose a model route to see its default Program.": "选择模型路由后可查看默认 Program。",
+    "Choose a Prompt Program": "选择提示词 Program"
 }

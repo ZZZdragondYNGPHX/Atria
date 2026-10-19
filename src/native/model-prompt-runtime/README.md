@@ -510,3 +510,27 @@ result contains the sample response and current-request Compute usage, or a fail
 trial with its actual unknown/settled attempts. It does not publish, save a preset,
 or apply output to a game. Currency cost remains unavailable without original
 pricing evidence. The UI keeps sample data and results during editor view changes.
+
+### Per-node Program selection in native Plans
+
+Model nodes (`agent`, `planner`, `judge`, `review`) may set
+`policy.promptPinId` to an attached `port:"model"` dependency whose resource ref
+is an exact Library `core.prompt-program`. `policy.agentPinId` continues to select
+the original player Runtime route. Omitting `promptPinId` uses the Route default.
+The Plan Inspector shows both choices and links to the selected original Program;
+the Pins form can select a Library Program and ask the original Host to pin its
+fingerprint.
+
+Publication resolves the Program and its exact dependency closure with the
+original RouteResolver. Session, Project, RP, background and delegated sends use
+the same Node selection through ModelPort and Host `programSelection`, including
+fallbacks. Route integrity is checked against the original Route, while the
+compiled request records the effective Program and declared Route default.
+Collaborating Project workers can share a Route while using different Programs.
+The selection does not change the Route, its models, connections or budget.
+
+For a declared `plan-prompt` candidate on a Node Program, preparation writes exact
+candidate resource revisions and an immutable Plan with the new Program pin.
+Adoption/rollback changes the original Plan Binding; it leaves the Route default
+alone. Candidates on a Route-default Program retain their original Route/Binding
+adoption path. The authoring Draft and already admitted Runs retain their versions.

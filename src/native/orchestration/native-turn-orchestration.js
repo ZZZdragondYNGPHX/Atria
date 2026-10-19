@@ -1,3 +1,5 @@
+import { resolveNodeModel } from './node-prompt-program.js';
+import { nodePromptPinCount, planPromptPinCount, assertObject, assertCounter, assertPlanRef, assertSourceSelector, assertResultPolicy, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { readGraphFanoutInput } from './graph-fanout-completion.js';
 import { SessionDelegationAuthority } from './session-delegation-authority.js';
 import { ResultPort } from './result-port.js';
@@ -18,7 +20,6 @@ import { audienceRunCapture } from './audience-source-contracts.js';
 import { ConflictError } from '../../storage/errors.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { hashNativeDocument as hash, cloneNativeDocument, putImmutable, putMutable, equalNativeDocuments as equal } from '../repositories/common.js';
-import { assertObject, assertCounter, assertPlanRef, assertSourceSelector, assertResultPolicy, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { hasRetainedOrchestrationCompute } from '../../../public/shared/native-compute-budget.js';
 import { createOrchestrationAuthoringService } from './authoring-service.js';
 
@@ -360,10 +361,10 @@ export class NativeNarratorOrchestrationAuthority {
         if (formalOutput && (graph.outputContract.slot !== 'assistant' || assertResultPolicy(graph.outputContract).outputType !== 'text')) fail('native_orchestration_turn_plan_unavailable');
         if (agents.length !== count || outputs.length !== 1 || graph.nodes.length !== count + 1 || graph.edges.length !== count
             || !equal([...graph.capabilityCeiling].sort(), ['generation.send', ...(formalOutput ? ['chat.output'] : []), ...(retrievalPins.length ? ['memory.retrieve'] : [])].sort())
-            || agents.some(node => !equal([...node.capabilities].sort(), ['generation.send', ...(ownedRetrieval(node).length ? ['memory.retrieve'] : [])].sort()) || node.outputs.length !== 1 || !node.dependencyPinIds.length
-                || node.dependencyPinIds.length !== nodeModelRoutePins(node, plan.dependencyPins).length + ownedRetrieval(node).length)
+            || agents.some(node => !equal([...node.capabilities].sort(), ['generation.send', ...(ownedRetrieval(node).length ? ['memory.retrieve'] : [])].sort()) || node.outputs.length !== 1 || !(node.dependencyPinIds.length - nodePromptPinCount(node))
+                || (node.dependencyPinIds.length - nodePromptPinCount(node)) !== nodeModelRoutePins(node, plan.dependencyPins).length + ownedRetrieval(node).length)
             || !equal(outputs[0].capabilities, formalOutput ? ['chat.output'] : []) || outputs[0].inputs.length !== 1 || outputs[0].outputs.length
-            || plan.dependencyPins.length !== modelPins.length + retrievalPins.length || [...modelPins, ...retrievalPins].some(pin => !agents.some(node => node.dependencyPinIds.includes(pin.pinId))) || outputs[0].dependencyPinIds.length
+            || (plan.dependencyPins.length - planPromptPinCount(plan)) !== modelPins.length + retrievalPins.length || [...modelPins, ...retrievalPins].some(pin => !agents.some(node => node.dependencyPinIds.includes(pin.pinId))) || outputs[0].dependencyPinIds.length
             || !['result', 'rp_narration'].includes(graph.outputContract.kind) || graph.outputContract.allowPartial
             || graph.edges.some(edge => edge.condition !== 'always' || edge.loopBack || edge.maxVisits !== 1)
             || graph.graphChangePolicy.allowedOperations.length) fail('native_orchestration_turn_plan_unavailable');
@@ -383,7 +384,7 @@ export class NativeNarratorOrchestrationAuthority {
             }
             const route = selectNativeRuntimeRoute(routes, role, pin.resourceRef);
             if (route.runtimeRouteId !== pin.resourceRef.runtimeRouteId || hash(route) !== pin.integrity) fail('native_orchestration_turn_route_mismatch');
-            const resolved = await this.modelResolver.resolve({ handle, routeRef: pin.resourceRef, role,
+            const resolved = await resolveNodeModel({ node, dependencyPins: plan.dependencyPins, resolver: this.modelResolver, handle, routeRef: pin.resourceRef, role,
                 ...(role === 'role.intent_resolver' ? { requirements: ['generation.tools'] } : {}) });
             if (!resolved.route.executionPolicy?.computeBudget?.localWork) fail('native_orchestration_context_budget_unavailable');
             const failurePlan = await resolveModelFailurePlan({ handle, node, dependencyPins: plan.dependencyPins, resolver: this.modelResolver,
@@ -423,7 +424,7 @@ export class NativeNarratorOrchestrationAuthority {
         if (route.runtimeRouteId !== pin.resourceRef.runtimeRouteId || hash(route) !== pin.integrity
                 || node.nodeId === narratorNodeId && input.routeRef !== undefined && !equal(input.routeRef, pin.resourceRef)) fail('native_orchestration_turn_route_mismatch');
         const requirements = ['review', 'planner'].includes(node.kind) ? ['generation.structured-output'] : [];
-        const resolved = await this.modelResolver.resolve({ handle, routeRef: pin.resourceRef, role: 'role.narrator', requirements });
+        const resolved = await resolveNodeModel({ node, dependencyPins: plan.dependencyPins, resolver: this.modelResolver, handle, routeRef: pin.resourceRef, role: 'role.narrator', requirements });
         if (!resolved.route.executionPolicy?.computeBudget?.localWork) fail('native_orchestration_context_budget_unavailable');
         const failurePlan = await resolveModelFailurePlan({ handle, node, dependencyPins: plan.dependencyPins, resolver: this.modelResolver, routeRef: pin.resourceRef, role: 'role.narrator', requirements });
         const delegation = await this.#sessionDelegationAuthority().selection(host, handle, base, input, plan, node);

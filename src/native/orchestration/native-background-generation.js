@@ -1,3 +1,5 @@
+import { resolveNodeModel } from './node-prompt-program.js';
+import { nodePromptPinCount, planPromptPinCount, assertResultPolicy, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { ConflictError } from '../../storage/errors.js';
 import { NativeGenerationHost } from '../adapters/generation-host.js';
 import { nativeTaskScheduler } from '../task-scheduler.js';
@@ -16,7 +18,6 @@ import { AttemptController } from './attempt-controller.js';
 import { controlCommandId, controlRecordKey, runGuard } from './controller-common.js';
 import { mintNativeBackgroundQuota } from './native-turn-quota.js';
 import { RunControl } from '../run-control.js';
-import { assertResultPolicy, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { BackgroundTaskOutputController } from './background-task-output-controller.js';
 import { backgroundOutputId, backgroundTaskWorkTarget, backgroundTaskWorkKinds, readBackgroundTaskDelivery, readBackgroundTaskResult, readBackgroundTaskOutput } from './background-task-output-contracts.js';
 import { appraisalEventCurrent } from '../appraisal-authority.js';
@@ -108,7 +109,7 @@ export class NativeBackgroundOrchestrationAuthority {
             || node.outputs.length !== 1 || node.outputs[0].type !== 'json' || output.inputs.length !== 1 || output.inputs[0].type !== 'json'
             || !output.inputs[0].required || output.capabilities.length || output.outputs.length || output.dependencyPinIds.length
             || equal(taskPlan.task.context, ['input']) && retrievalPins.length
-            || !modelPins.length || node.dependencyPinIds.length !== modelPins.length + retrievalPins.length || plan.dependencyPins.length !== modelPins.length + retrievalPins.length
+            || !modelPins.length || (node.dependencyPinIds.length - nodePromptPinCount(node)) !== modelPins.length + retrievalPins.length || (plan.dependencyPins.length - planPromptPinCount(plan)) !== modelPins.length + retrievalPins.length
             || graph.outputContract.kind !== 'result' || graph.outputContract.allowPartial
             || graph.graphChangePolicy.allowedOperations.length || graph.edges[0].from.nodeId !== node.nodeId || graph.edges[0].to.nodeId !== output.nodeId
             || graph.edges[0].condition !== 'always' || graph.edges[0].loopBack || graph.edges[0].maxVisits !== 1)
@@ -134,7 +135,7 @@ export class NativeBackgroundOrchestrationAuthority {
             });
             return entry && { snapshot: entry.resource, origin: entry.origin };
         } });
-        const resolved = await resolver.resolve({ handle, routeRef, role,
+        const resolved = await resolveNodeModel({ node, dependencyPins: plan.dependencyPins, resolver, handle, routeRef, role,
             requirements: [...taskPlan.slot.requiredCapabilities, ...taskPlan.variant.requiredCapabilities, 'generation.structured-output'] });
         return { binding, plan, node, pin, resolved, taskPlan, configDigest: configuration(resolved) };
     }

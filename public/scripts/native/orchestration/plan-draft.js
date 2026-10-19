@@ -223,6 +223,7 @@ export class PlanDraft {
             const { policy, ...fields } = patch;
             Object.assign(node, clone(fields));
             if (policy) node.policy = { ...node.policy, ...clone(policy) };
+            if (node.policy.promptPinId === null || node.policy.promptPinId && !node.dependencyPinIds.includes(node.policy.promptPinId)) delete node.policy.promptPinId;
             if (node.policy.audiencePinId === null || node.policy.audiencePinId && !node.dependencyPinIds.includes(node.policy.audiencePinId)) delete node.policy.audiencePinId;
             if (node.capabilities.includes('agent.delegate') && EXECUTABLE_KINDS.includes(node.kind) && !Array.isArray(node.policy.allowedPlanPinIds)) node.policy.allowedPlanPinIds = [];
             if (!node.capabilities.includes('agent.delegate')) delete node.policy.allowedPlanPinIds;
@@ -299,6 +300,7 @@ export class PlanDraft {
             for (const node of doc.definition.nodes) {
                 node.dependencyPinIds = node.dependencyPinIds.filter(id => id !== pinId);
                 for (const field of ['agentPinId', 'actionPinId']) if (node.policy[field] === pinId) node.policy[field] = null;
+                if (node.policy.promptPinId === pinId) delete node.policy.promptPinId;
                 if (node.policy.audiencePinId === pinId) delete node.policy.audiencePinId;
                 if (Array.isArray(node.policy.allowedPlanPinIds)) node.policy.allowedPlanPinIds = node.policy.allowedPlanPinIds.filter(id => id !== pinId);
             }

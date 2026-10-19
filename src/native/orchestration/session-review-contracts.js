@@ -187,7 +187,7 @@ export async function sessionReviewRerunRequirements(tx, handle, root, reviewer,
             const child = await readPlanRevision(tx, handle, pin.resourceRef);
             if (hash(child) !== pin.integrity) invalid();
             let ceiling = null;
-            for (const model of child.dependencyPins.filter(pin => pin.port === 'model')) {
+            for (const model of child.dependencyPins.filter(pin => pin.port === 'model' && pin.resourceRef.scope === 'player')) {
                 const route = model.resourceRef.scope === 'player' ? (await tx.getResource({ kind: K.runtimeRoute, handle, runtimeRouteId: model.resourceRef.runtimeRouteId }))?.doc : null;
                 if (!route || hash(route) !== model.integrity) invalid();
                 const budget = assertComputeAllocation(route.executionPolicy.computeBudget);

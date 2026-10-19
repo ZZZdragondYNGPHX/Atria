@@ -137,9 +137,9 @@ export class ProjectDelegationAuthority {
         // probes resolve Route resources/requirements; they create no Attempt,
         // capture, Model permission or executable synthetic Node.
         const poolProfiles = [];
-        for (const modelPin of childPlan.dependencyPins.filter(pin => pin.port === 'model')) {
+        for (const modelPin of childPlan.dependencyPins.filter(pin => pin.port === 'model' && pin.resourceRef.scope === 'player')) {
             const initial = profiles.find(model => model.node.kind === 'agent' && model.pin.pinId === modelPin.pinId);
-            const probe = { ...topology.final, dependencyPinIds: [modelPin.pinId], policy: { agentPinId: modelPin.pinId } };
+            const probe = { ...topology.final, dependencyPinIds: [modelPin.pinId, ...topology.final.policy.promptPinId ? [topology.final.policy.promptPinId] : []], policy: { ...topology.final.policy, agentPinId: modelPin.pinId } };
             const model = initial ?? { ...await resolveModel(probe, childPlan), node: probe };
             if (model.failurePlan.routes.length !== 1 || model.resolved.route.policy.maxRetries !== 0
                 || model.resolved.route.executionPolicy.continuity !== 'none' || model.resolved.route.executionPolicy.reuse !== 'disabled') fail();

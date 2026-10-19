@@ -4,8 +4,8 @@ import { assertWritable } from '../../storage/read-only-mode.js';
 import { withRuntimeWrite } from '../model-prompt-runtime/runtime-write.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { createNativeId, assertNativeId } from '../identity.js';
-import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument, putImmutable, putMutable, withNativeResourceWrites } from '../repositories/common.js';
-import { assertPlanDefinition, assertSourceSelector, assertPlanRef, assertDigest, assertCounter, assertObject } from '../../../public/shared/native-orchestration-contracts.js';
+import { getNativeDocument, equalNativeDocuments, cloneNativeDocument, hashNativeDocument, putImmutable, putMutable, withNativeResourceWrites } from '../repositories/common.js';
+import { nodePromptProgramPin, assertPlanDefinition, assertSourceSelector, assertPlanRef, assertDigest, assertCounter, assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertPlanEvolutionTarget, assertPlanEvolutionMetadata, planBindingIdentity, planStrategyMinimum, assertPlanRouteValue, planNodeRouteChoices, readPlanStrategyValue, applyPlanStrategyValue, planDeclarationKey, planEvolutionCommandId } from './plan-evolution-contracts.js';
 
 const key = (kind, handle, fields) => ({ kind, handle, ...fields });
@@ -228,16 +228,19 @@ export class PlanRepository {
         if (promptCandidateRef && !candidate) throw new NotFoundError('Prompt candidate');
         const checked = candidate ? await prompts._check(handle, promptCandidateRef.presetId, candidate, { rollback }) : null;
         const originalRoute = checked?.candidate.baseRoute ?? route;
+        const programPin = nodePromptProgramPin(node, plan.dependencyPins);
+        const programRef = programPin?.resourceRef ?? originalRoute.promptProgramRef;
 
-        const id = promptCandidateRef?.presetId ?? originalRoute.promptProgramRef.resourceId;
+        const id = promptCandidateRef?.presetId ?? programRef.resourceId;
         const { preset, root } = selected ?? await prompts._read(handle, id), metadata = root.promptEvolution ?? { declaration: null, candidates: [] };
         const module = preset.entries.find(entry => entry.resourceType === 'core.prompt-module' && entry.resource.promptModuleId === target.promptModuleRef.resourceId);
         if (!equalNativeDocuments(checked?.candidate.moduleRef ?? target.promptModuleRef, target.promptModuleRef)
             || !preset.refs.some(ref => equalNativeDocuments(ref, target.promptModuleRef))
             || !module || module.resource.target !== 'system.style'
-            || !equalNativeDocuments(originalRoute.promptProgramRef, preset.refs.find(ref => ref.resourceId === id)))
+            || !equalNativeDocuments(programRef, preset.refs.find(ref => ref.resourceId === id))
+            || checked && !equalNativeDocuments(checked.candidate.programRef ?? originalRoute.promptProgramRef, programRef))
             throw new TypeError('Plan prompt target must be an exact style module on its selected original Preset route');
-        return { prompts, pin, preset, metadata, route: originalRoute, body: module.resource.body, checked };
+        return { prompts, pin, programPin, programRef, preset, metadata, route: originalRoute, body: module.resource.body, checked };
     }
 
     async captureEvolution(handle, target) {
@@ -253,7 +256,7 @@ export class PlanRepository {
             return { target: cloneNativeDocument(target), base: planBindingIdentity(binding), declaration,
                 body: prompt ? prompt.body : readPlanStrategyValue(plan.definition, target, plan.dependencyPins), ...(target.fieldPath === 'routeRef' ? { allowedValues: planNodeRouteChoices(plan.definition, plan.dependencyPins, target.nodeId) } : {}), field: prompt ? 'body' : target.fieldPath,
                 mechanismDigest: report.dependencyDigest, ...(prompt ? { prompt: { presetId: prompt.preset.presetId,
-                    presetFingerprint: hashNativeDocument(prompt.preset), declaration: prompt.metadata.declaration, route: prompt.route } } : {}) };
+                    presetFingerprint: hashNativeDocument(prompt.preset), declaration: prompt.metadata.declaration, route: prompt.route, ...(prompt.programPin ? { programRef: prompt.programRef } : {}) } } : {}) };
         });
     }
 
@@ -290,7 +293,7 @@ export class PlanRepository {
         // Exact Prompt resources are prepared by their original authority before
         // Plan publication. A failure leaves an inert candidate, never an active route.
         const originalPrompt = prompt ? await (this.prompts ??= new PromptCandidateStore({ engine: this.engine })).prepare(handle, capture.prompt.presetId, {
-            runtimeRouteId: capture.prompt.route.runtimeRouteId, expectedRouteFingerprint: hashNativeDocument(capture.prompt.route), moduleRef: target.promptModuleRef, body: value }) : null;
+            runtimeRouteId: capture.prompt.route.runtimeRouteId, expectedRouteFingerprint: hashNativeDocument(capture.prompt.route), moduleRef: target.promptModuleRef, body: value }, { programRef: capture.prompt.programRef ?? null }) : null;
         const seed = { schemaVersion: 1, target, baseBinding: capture.base,
             diff: { field: prompt ? 'body' : target.fieldPath, before: capture.body, after: value }, declarationDigest: hashNativeDocument(capture.declaration),
             ...(prompt ? { promptCandidateRef: { presetId: capture.prompt.presetId, candidateId: originalPrompt.candidateId } } : {}) };
@@ -302,8 +305,13 @@ export class PlanRepository {
             const base = await this.#revision(tx, handle, target.planRef), definition = cloneNativeDocument(base.definition);
             const pins = cloneNativeDocument(base.dependencyPins);
             const original = prompt ? await this.#promptSource(handle, target, base, seed.promptCandidateRef) : null;
-            if (prompt) pins.find(pin => pin.pinId === original.pin.pinId).integrity = hashNativeDocument(original.checked.desiredRoute);
-            else applyPlanStrategyValue(definition, target, value, pins);
+            if (prompt) {
+                if (original.programPin) {
+                    const pin = pins.find(pin => pin.pinId === original.programPin.pinId);
+                    pin.resourceRef = original.checked.desiredProgramRef;
+                    pin.integrity = hashNativeDocument(await getNativeDocument(tx, key(K.versionedJsonResourceRevision, handle, { resourceType: pin.resourceRef.resourceType, resourceId: pin.resourceRef.resourceId, revision: pin.resourceRef.revision })));
+                } else pins.find(pin => pin.pinId === original.pin.pinId).integrity = hashNativeDocument(original.checked.desiredRoute);
+            } else applyPlanStrategyValue(definition, target, value, pins);
             const definitionHash = planDefinitionHash(definition, pins), planRevisionId = 'oprev_' + candidateId.slice(0, 32);
             const report = await this.#validate(handle, tx, { ...record.doc, definition, dependencyPins: pins, definitionHash }, original?.checked.desiredRoute);
             if (report.status !== 'valid') throw new ConflictError('native_orchestration_validation_stale');
@@ -330,8 +338,13 @@ export class PlanRepository {
             const expected = cloneNativeDocument(plan.definition), prompt = target.kind === 'plan-prompt';
             const original = prompt ? await this.#promptSource(handle, target, plan, candidate.promptCandidateRef, { rollback }) : null;
             const pins = cloneNativeDocument(plan.dependencyPins);
-            if (prompt) pins.find(pin => pin.pinId === original.pin.pinId).integrity = hashNativeDocument(original.checked.desiredRoute);
-            else applyPlanStrategyValue(expected, target, candidate.diff.after, pins);
+            if (prompt) {
+                if (original.programPin) {
+                    const pin = pins.find(pin => pin.pinId === original.programPin.pinId);
+                    pin.resourceRef = original.checked.desiredProgramRef;
+                    pin.integrity = hashNativeDocument(await getNativeDocument(tx, key(K.versionedJsonResourceRevision, handle, { resourceType: pin.resourceRef.resourceType, resourceId: pin.resourceRef.resourceId, revision: pin.resourceRef.revision })));
+                } else pins.find(pin => pin.pinId === original.pin.pinId).integrity = hashNativeDocument(original.checked.desiredRoute);
+            } else applyPlanStrategyValue(expected, target, candidate.diff.after, pins);
             const revision = await this.#revision(tx, handle, candidate.planRef);
             if (!rollback) {
                 const report = await this.#validate(handle, tx, { ...record.doc, definition: revision.definition, dependencyPins: revision.dependencyPins, definitionHash: revision.definitionHash }, original?.checked.desiredRoute);
@@ -351,7 +364,7 @@ export class PlanRepository {
                 && equalNativeDocuments(planBindingIdentity(rolledBack.outcome), current);
             if (![hashNativeDocument(base), hashNativeDocument(desired)].includes(hashNativeDocument(current)) && !ownedRollback)
                 throw new ConflictError('native_orchestration_evolution_binding_stale');
-            if (prompt && (equalNativeDocuments(current, desired)) !== original.checked.alreadyApplied)
+            if (prompt && !original.programPin && (equalNativeDocuments(current, desired)) !== original.checked.alreadyApplied)
                 throw new ConflictError('native_orchestration_evolution_publication_conflict');
             return { candidate, base, desired, previous: base, actual: ownedRollback ? base : current, rolledBack: Boolean(ownedRollback) };
         });
@@ -371,6 +384,8 @@ export class PlanRepository {
             const save = () => this.saveBinding(handle, planEvolutionCommandId(rollback ? 'rollback' : 'apply', candidateId), {
                 sourceSelector: expected.sourceSelector, planRef: desired.planRef, expectedVersion: expected.version });
             if (target.kind !== 'plan-prompt') return save();
+            const source = await this.#promptSource(handle, target, await this.getRevision(handle, target.planRef), checked.candidate.promptCandidateRef, { rollback });
+            if (source.programPin) return save();
             // These stores share this exact original Engine transaction. The
             // Evolution intent/finalizing/receipt journal still brackets it;
             // no transaction is claimed across independent storage engines.

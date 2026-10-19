@@ -10,7 +10,7 @@ import { StorageCommitUnknownError } from '../../src/storage/errors.js';
 const harnesses = CONTRACT_HARNESSES.filter(({ name }) => ['FsEngine', 'SqliteEngine'].includes(name));
 const before = 'Use the selected Native facts. Produce a concise response.';
 const after = 'Explain the selected Project facts with concrete, concise examples.';
-async function setup(make) {
+async function setup(make, { nodeProgram = false } = {}) {
     const f = await projectModelFixture(make, { configurePlan: async ({ h, plan, seeded, route }) => {
         const presets = new PromptPresetStore({ engine: h.engine });
         const saved = await presets.save(h.handle, { format: 'atria.prompt-preset', schemaVersion: 1, programId: seeded.prompt.promptProgramId,
@@ -19,7 +19,12 @@ async function setup(make) {
         const preset = await presets.get(h.handle, saved.presetId);
         const selected = { ...route, promptProgramRef: preset.refs.find(ref => ref.resourceType === 'core.prompt-program'),
             generationProfileRef: preset.refs.find(ref => ref.resourceType === 'core.generation-profile') };
-        await seeded.persistence.saveRuntimeRoute(h.handle, selected); plan.dependencyPins[0].integrity = hash(selected);
+        if (nodeProgram) {
+            const ref = selected.promptProgramRef;
+            const original = await seeded.library.getExact(h.handle, ref);
+            plan.dependencyPins.push({ pinId: 'node.program', port: 'model', resourceRef: ref, integrity: hash(original.snapshot) });
+            plan.definition.nodes[0].dependencyPinIds.push('node.program'); plan.definition.nodes[0].policy.promptPinId = 'node.program';
+        } else { await seeded.persistence.saveRuntimeRoute(h.handle, selected); plan.dependencyPins[0].integrity = hash(selected); }
     } });
     const targets = new EvolutionTargets({ host: f.host }), scope = { domain: 'project', projectId: f.projectId }, subject = f.projectId;
     const choice = (await targets.catalog(f.h.handle, scope, subject)).find(item => item.target.kind === 'plan-prompt');
@@ -36,6 +41,22 @@ async function prepare(f) {
 }
 
 describe.each(harnesses)('$name original native Plan Prompt evolution', ({ make }) => {
+    test('a Node Program candidate updates only its Plan pin and Binding, then the real Executor consumes it', async () => {
+        const f = await setup(make, { nodeProgram: true }), handle = f.h.handle;
+        try {
+            const { candidate } = await prepare(f);
+            const revision = await f.plans.getRevision(handle, candidate.planRef);
+            expect(revision.dependencyPins.find(pin => pin.pinId === 'node.program').resourceRef)
+                .not.toEqual(f.plan.dependencyPins.find(pin => pin.pinId === 'node.program').resourceRef);
+            await f.targets.write(handle, f.scope, f.subject, f.target, candidate.candidateId);
+            expect(await f.persistence.getRuntimeRoute(handle, f.route.runtimeRouteId)).toEqual(f.route);
+            await f.run(); expect(JSON.stringify(f.requests[0])).toContain(after);
+            await f.targets.write(handle, f.scope, f.subject, f.target, candidate.candidateId, true);
+            expect((await f.plans.getBinding(handle, f.sourceSelector)).planRef).toEqual(f.planRef);
+            expect(await f.persistence.getRuntimeRoute(handle, f.route.runtimeRouteId)).toEqual(f.route);
+        } finally { await f.cleanup(); }
+    }, 30000);
+
     test('original exact Prompt revisions and a new immutable Plan are consumed by the real Project executor; Draft and charged Run survive rollback', async () => {
         const f = await setup(make), handle = f.h.handle;
         try {

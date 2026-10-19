@@ -1,5 +1,5 @@
+import { nodePromptPinCount, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { hashNativeDocument as hash, equalNativeDocuments as equal } from '../repositories/common.js';
-import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { audienceContextPin, projectAudienceSource } from './audience-source-contracts.js';
 
 const fail = () => { throw Object.assign(new TypeError('native_orchestration_turn_plan_unavailable'), { code: 'native_orchestration_turn_plan_unavailable' }); };
@@ -45,9 +45,9 @@ export function sessionAgentGraphProfile(plan) {
             const children = node.policy.allowedPlanPinIds ?? [];
             if (children.length > 1 || children.length && (node.kind !== 'agent' || node === narrator
                 || children.some(id => !node.dependencyPinIds.includes(id) || !plan.dependencyPins.some(pin => pin.pinId === id && pin.port === 'plan')))) fail();
-            if (!pins.length || !audience || node.dependencyPinIds.length !== pins.length + 1 + children.length || !equal([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' || patchDelegates.includes(node) ? ['graph.patch'] : [], ...children.length ? ['agent.delegate'] : []].sort())
+            if (!pins.length || !audience || (node.dependencyPinIds.length - nodePromptPinCount(node)) !== pins.length + 1 + children.length || !equal([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' || patchDelegates.includes(node) ? ['graph.patch'] : [], ...children.length ? ['agent.delegate'] : []].sort())
                 || node.outputs.length !== 1 || node.outputs[0].type !== (['review', 'planner', 'judge'].includes(node.kind) ? 'json' : 'text')) fail();
-        } else if (node.capabilities.length || node.dependencyPinIds.length || node.outputs.length !== 1
+        } else if (node.capabilities.length || (node.dependencyPinIds.length - nodePromptPinCount(node)) || node.outputs.length !== 1
             || node.outputs[0].type !== (node.kind === 'fanout' ? 'task.result' : 'text')) fail();
         const outgoing = graph.edges.filter(edge => edge.from.nodeId === node.nodeId);
         if (!outgoing.length || node === narrator && outgoing.length !== 1) fail();

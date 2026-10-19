@@ -1,7 +1,7 @@
+import { nodePromptPinCount, nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 import { projectFanoutGroups } from './project-control-graph.js';
 import { equalNativeDocuments as equal } from '../repositories/common.js';
 import { projectReplanScope } from './project-replan-contracts.js';
-import { nodeModelRoutePins } from '../../../public/shared/native-orchestration-contracts.js';
 
 const fail = () => { throw new TypeError('Invalid Project delegated graph'); };
 
@@ -27,14 +27,14 @@ export function projectDelegatedGraphProfile(plan) {
     if (output.nodeId !== graph.outputContract.ownerNodeId || output.capabilities.length || output.dependencyPinIds.length
         || output.inputs.length !== 1 || output.inputs[0].type !== 'text' || !output.inputs[0].required || output.outputs.length) fail();
     for (const node of pure) {
-        if (models.includes(node) && (nodeModelRoutePins(node, plan.dependencyPins).length !== 1 || node.dependencyPinIds.length !== 1 + (node.policy.allowedPlanPinIds?.length ?? 0)
+        if (models.includes(node) && (nodeModelRoutePins(node, plan.dependencyPins).length !== 1 || (node.dependencyPinIds.length - nodePromptPinCount(node)) !== 1 + (node.policy.allowedPlanPinIds?.length ?? 0)
             || !equal(node.capabilities, ['generation.send', ...node.kind === 'planner' || delegates.includes(node) && node.capabilities.includes('graph.patch') ? ['graph.patch'] : [], ...delegates.includes(node) ? ['agent.delegate'] : []])
             || delegates.includes(node) !== Boolean(node.policy.allowedPlanPinIds?.length)
             || delegates.includes(node) && (!['agent', 'planner'].includes(node.kind) || node.kind === 'agent' && node.policy.allowedPlanPinIds.length !== 1
                 || node.policy.allowedPlanPinIds.some(id => !node.dependencyPinIds.includes(id) || !plan.dependencyPins.some(pin => pin.pinId === id && pin.port === 'plan')))
             || node.outputs.length !== 1 || node.outputs[0].type !== (['planner', 'review', 'judge'].includes(node.kind) ? 'json' : 'text')
             || node.inputs.some(port => !['text', 'json'].includes(port.type) && !(port.type === 'task.result' && graph.edges.some(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name && graph.nodes.find(source => source.nodeId === edge.from.nodeId)?.kind === 'fanout'))))) fail();
-        if (passive.includes(node) && (node.capabilities.length || node.dependencyPinIds.length
+        if (passive.includes(node) && (node.capabilities.length || (node.dependencyPinIds.length - nodePromptPinCount(node))
             || node.outputs.length !== 1 || !(node.kind === 'fanout' ? node.outputs[0].type === 'task.result' : ['text', 'json'].includes(node.outputs[0].type)) || node.inputs.some(port => !['text', 'json'].includes(port.type) && !(port.type === 'task.result' && graph.edges.some(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name && graph.nodes.find(source => source.nodeId === edge.from.nodeId)?.kind === 'fanout'))))) fail();
         incoming[node.nodeId] = graph.edges.filter(edge => !edge.loopBack && edge.to.nodeId === node.nodeId).toSorted((a, b) => a.edgeId.localeCompare(b.edgeId));
         if (incoming[node.nodeId].length > node.inputs.length || new Set(incoming[node.nodeId].map(edge => edge.from.nodeId)).size !== incoming[node.nodeId].length
@@ -61,7 +61,7 @@ export function projectDelegatedGraphProfile(plan) {
     const final = models.find(node => node.nodeId === terminal[0]?.from.nodeId);
     if (terminal.length !== 1 || final?.kind !== 'agent' || needed.size !== graph.nodes.length
         || plan.dependencyPins.some(pin => pin.port === 'plan' ? !delegates.some(node => node.policy.allowedPlanPinIds.includes(pin.pinId))
-            : pin.port !== 'model' || pin.resourceRef.scope !== 'player' || typeof pin.resourceRef.runtimeRouteId !== 'string'
+            : models.some(node => node.policy.promptPinId === pin.pinId) ? false : pin.port !== 'model' || pin.resourceRef.scope !== 'player' || typeof pin.resourceRef.runtimeRouteId !== 'string'
                 || !canAddModel && !models.some(node => node.dependencyPinIds.includes(pin.pinId)))) fail();
     for (const loop of loops) projectReplanScope(graph, loop.from.nodeId);
     const fanouts = projectFanoutGroups(graph, final.nodeId);

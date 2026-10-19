@@ -106,7 +106,7 @@ export function mountPlanLibrary({ document: doc, root, client, onOpen }) {
 
 /* ─────────────────────────────── Editor ─────────────────────────────── */
 
-export function mountPlanEditor({ document: doc, root, client, shell, planId, environment, onTitle = () => {}, openRuns = () => {} }) {
+export function mountPlanEditor({ document: doc, root, client, shell, planId, environment, onTitle = () => {}, openRuns = () => {}, openPromptProgram = () => {} }) {
     const controller = new AbortController();
     const state = {
         base: null, draft: null, report: null, digest: null, reportFor: null, revisions: [], revisionsCursor: null,
@@ -669,9 +669,22 @@ export function mountPlanEditor({ document: doc, root, client, shell, planId, en
         const policy = group(body, tl('Behaviour'));
         const setPolicy = patch => edit(() => state.draft.updateNode(node.nodeId, { policy: patch }));
         if (['agent', 'planner', 'judge', 'review'].includes(node.kind)) {
-            const options = pinOptions(['model']).filter(([pinId]) => node.dependencyPinIds.includes(pinId));
+            const options = pinOptions(['model']).filter(([pinId]) => node.dependencyPinIds.includes(pinId) && state.draft.pins.find(pin => pin.pinId === pinId).resourceRef.scope === 'player');
             field(doc, tl('Model pin'), select(doc, [['', tl('Not chosen')], ...options], { value: node.policy.agentPinId ?? '', onCommit: value => setPolicy({ agentPinId: value || null }) }),
                 { parent: policy, key: 'node.agentPin', hint: options.length ? tl('An exact Runtime route pinned to this node.') : tl('Attach a model pin to this node under Dependencies first.') });
+            const programs = state.draft.pins.filter(pin => pin.port === 'model' && pin.resourceRef.resourceType === 'core.prompt-program' && pin.resourceRef.scope === 'library' && node.dependencyPinIds.includes(pin.pinId));
+            field(doc, tl('Node Program'), select(doc, [['', tl('Route default Program')], ...programs.map(pin => [pin.pinId, pin.pinId + ' · ' + pin.resourceRef.revision])],
+                { value: node.policy.promptPinId ?? '', onCommit: value => setPolicy({ promptPinId: value || null }) }),
+            { parent: policy, key: 'node.promptPin', hint: tl('Choose an exact Program independently of the model route. Attach its model dependency pin first.') });
+            const selectedProgram = programs.find(pin => pin.pinId === node.policy.promptPinId);
+            if (selectedProgram) policy.append(button(doc, tl('Open selected Program'), () => openPromptProgram(selectedProgram.resourceRef)));
+            const routeDefault = el(doc, 'p', 'atria-orch-group__hint', '', policy);
+            void loadRoutes().then(routes => {
+                if (routeDefault.isConnected) {
+                    const ref = routes.find(route => route.runtimeRouteId === state.draft.pins.find(pin => pin.pinId === node.policy.agentPinId)?.resourceRef.runtimeRouteId)?.promptProgramRef;
+                    routeDefault.textContent = ref ? fmt('Route default: ${0}@${1}', [ref.resourceId, ref.revision]) : tl('Choose a model route to see its default Program.');
+                }
+            });
             const audiences = state.draft.pins.filter(pin => pin.port === 'context' && pin.resourceRef.kind === 'native_information_context' && node.dependencyPinIds.includes(pin.pinId));
             field(doc, tl('Context audience'), select(doc, [['', tl('Source default')], ...audiences.map(pin => [pin.pinId,
                 pin.pinId + ' · ' + pin.resourceRef.audience.kind + (pin.resourceRef.audience.id ? ' · ' + pin.resourceRef.audience.id : '')])],
@@ -842,6 +855,14 @@ export function mountPlanEditor({ document: doc, root, client, shell, planId, en
                 const choose = select(doc, [['', routes.length ? tl('Choose a Runtime route') : tl('No Runtime routes found')], ...routes.map(route => [route.runtimeRouteId, fmt('${0} · ${1}', [route.displayName || route.runtimeRouteId, route.role ?? ''])])], { value: '' });
                 choose.addEventListener('change', () => { if (choose.value) ref.value = JSON.stringify({ scope: 'player', runtimeRouteId: choose.value }); });
                 field(doc, tl('Runtime route'), choose, { parent: helper, key: 'pin.route' });
+                let resources;
+                try { resources = await runtimeRequest('/resources', { signal: controller.signal }); } catch (error) { result.textContent = describeError(error); return; }
+                if (!helper.isConnected || port.value !== 'model') return;
+                const programs = resources.filter(item => item.ref.scope === 'library' && item.ref.resourceType === 'core.prompt-program');
+                const program = select(doc, [['', tl('Choose a Prompt Program')], ...programs.map(item => [JSON.stringify(item.ref), item.resource.displayName + ' · ' + item.ref.revision])], { value: '' });
+                program.addEventListener('change', () => { if (program.value) { ref.value = program.value; choose.value = ''; } });
+                choose.addEventListener('change', () => { if (choose.value) program.value = ''; });
+                field(doc, tl('Prompt Program'), program, { parent: helper, key: 'pin.program' });
             } else if (port.value === 'plan') {
                 let plans = [];
                 try { plans = (await client.listPlans(null, 100, controller.signal)).items.filter(item => item.planId !== planId && item.currentPlanRevisionId); } catch { plans = []; }

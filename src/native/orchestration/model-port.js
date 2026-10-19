@@ -1,3 +1,5 @@
+import { nodeProgramSelection } from './node-prompt-program.js';
+import { readPlanRevision } from './plan-repository.js';
 import { fields } from '../../../public/shared/native-values.js';
 import { normalizeTaskGenerationResult } from '../../../public/shared/native-task-contract.js';
 import { inspectNativeRpGenerationIdentity, inspectNativeRpDelegationIdentity } from './native-rp-generation.js';
@@ -203,6 +205,12 @@ export class ModelPort {
             || intent.risk !== 'R1' || intent.requiresApproval || intent.approvalRef !== null
             || hash(logicalInputRef) !== logicalInputHash || logicalInputHash !== intent.inputHash
             || !equalNativeDocuments(logicalInputRef, intent.inputRef)) fail('native_orchestration_model_scope_invalid');
+        const programSelection = await this.runs.engine.withTransaction(handle, async tx => {
+            const { doc: attempt } = await readAttempt(tx, handle, root, intent.nodeAttemptId);
+            const plan = await readPlanRevision(tx, handle, root.planRef);
+            return nodeProgramSelection({ handle, node: root.graph.nodes.find(node => node.nodeId === attempt.nodeId),
+                dependencyPins: plan.dependencyPins, library: this.host.library });
+        });
         const activeKey = key(handle, intent);
         if (this.#active.size >= 64 || this.#active.has(activeKey)) fail('native_orchestration_model_busy');
         const pending = { binding: digest(intent), sends: [], generated: null, observation: null, project,
@@ -223,7 +231,7 @@ export class ModelPort {
             checkCancellation(signal);
             // Provisional stream text is withheld. Only the original sealed
             // consumer receives the completed, finally revalidated response.
-            const generated = await this.#executeNative.call(this.host, handle, request, signal, undefined, { ...options, orchestrationSend });
+            const generated = await this.#executeNative.call(this.host, handle, request, signal, undefined, { ...options, orchestrationSend, programSelection });
             pending.generated = generated;
             this.#responses.set(generated, pending);
             // Keep the original domain lock before the Engine transaction:

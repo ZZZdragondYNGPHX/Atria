@@ -1037,7 +1037,7 @@ export class NativeGenerationHost {
         if (['drafts', 'draftOverrides', 'baselineDrafts', 'programSelection', 'promptProgramRef', 'semanticBlocks', 'sourceBinding', 'audience', 'grant', 'authoringRun', 'previewContext'].some(key => Object.hasOwn(input, key))) fail('native_generation_request_authority_denied');
         if (input.previewRefs && !preview && !authoringRun) fail('native_generation_preview_only');
         if (programSelection) {
-            if (typeof programSelection.assertCurrent !== 'function' || taskPlan || illustrationPlan || lanePlan?.prediction || draftOverrides || input.previewRefs)
+            if (typeof programSelection.assertCurrent !== 'function' || illustrationPlan || lanePlan?.prediction || draftOverrides || input.previewRefs)
                 throw new GenerationError('generation_program_authority_required');
             const ref = assertExactResourceRef(programSelection.promptProgramRef, 'core.prompt-program');
             if (hashNativeDocument(ref) !== hashNativeDocument(programSelection.promptProgramRef)) throw new GenerationError('generation_program_authority_required');

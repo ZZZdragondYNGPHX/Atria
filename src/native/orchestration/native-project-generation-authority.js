@@ -352,6 +352,8 @@ async function withProjectChildren(capture, workers, options, delegatedMode, fan
                 if (hash(child) !== pin.integrity || !plan.definition.nodes.some(node => node.capabilities.includes('agent.delegate')
                     && node.policy.allowedPlanPinIds?.includes(pin.pinId) && node.dependencyPinIds.includes(pin.pinId))) fail();
                 await readResources(child, resources, next);
+            } else if (pin.port === 'model' && pin.resourceRef.scope === 'library' && pin.resourceRef.resourceType === 'core.prompt-program') {
+                if (hash((await state.host.library.getExact(state.handle, pin.resourceRef)).snapshot) !== pin.integrity) fail();
             } else {
                 if (pin.port !== 'model' || pin.resourceRef.scope !== 'player') fail();
                 const route = await state.host.persistence.getRuntimeRoute(state.handle, pin.resourceRef.runtimeRouteId);

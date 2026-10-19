@@ -90,3 +90,14 @@ describe('orchestration PlanDraft (one edit history for canvas, list and inspect
         expect(diffDefinitions(null, { definition: emptyDefinition(), dependencyPins: [] }).nodes.added).toEqual([]);
     });
 });
+
+
+test('Node Program selection is independent of the Route and participates in the shared draft history', () => {
+    const draft = new PlanDraft(starterDocument('Independent Program')), node = draft.definition.nodes[0];
+    draft.upsertPin({ pinId: 'my.program', port: 'model', resourceRef: { scope: 'library', resourceType: 'core.prompt-program', resourceId: 'pprog_' + 'a'.repeat(32), revision: 'r2' }, integrity: 'b'.repeat(64) });
+    draft.updateNode(node.nodeId, { dependencyPinIds: ['my.program'], policy: { promptPinId: 'my.program' } });
+    expect(draft.node(node.nodeId).policy).toEqual({ agentPinId: null, promptPinId: 'my.program' });
+    draft.removePin('my.program'); expect(draft.node(node.nodeId).policy).toEqual({ agentPinId: null });
+    draft.undo(); expect(draft.node(node.nodeId).policy.promptPinId).toBe('my.program');
+    draft.redo(); expect(draft.node(node.nodeId).policy.promptPinId).toBeUndefined();
+});

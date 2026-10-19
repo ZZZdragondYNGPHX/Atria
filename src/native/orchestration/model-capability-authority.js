@@ -1,3 +1,4 @@
+import { resolveNodeModel, declaredModelRoute } from './node-prompt-program.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { GenerationError } from '../model-prompt-runtime/execution-utils.js';
 import { equalNativeDocuments, hashNativeDocument } from '../repositories/common.js';
@@ -28,7 +29,7 @@ async function readModelFailurePlan({ handle, node, dependencyPins, resolver, ro
         const pin = pins.find(pin => hashNativeDocument(pin.resourceRef) === key);
         if (!pin) throw new GenerationError('generation_fallback_route_unpinned');
         const resolved = !routes.length && freshPrimary ? freshPrimary
-            : await resolver.resolve({ handle, routeRef: ref, role, requirements: required });
+            : await resolveNodeModel({ handle, node, dependencyPins, resolver, routeRef: ref, role, requirements: required });
         required = [...new Set([...required, ...resolved.requirements])];
 
         primary ??= resolved;
@@ -98,8 +99,8 @@ export async function inspectModelCapabilities({ handle, definition, dependencyP
                 && !dependencyPins.some(pin => pin.port === 'tool' && node.dependencyPinIds.includes(pin.pinId));
             const requirements = [...route.role === 'role.intent_resolver' || route.role === 'role.studio' && !pureProject ? ['generation.tools'] : [],
                 ...control ? ['generation.structured-output'] : []];
-            const resolved = await resolver.resolve({ handle, routeRef: pin.resourceRef, role: route.role, requirements });
-            if (hashNativeDocument(resolved.route) !== pin.integrity) {
+            const resolved = await resolveNodeModel({ handle, node, dependencyPins, resolver, routeRef: pin.resourceRef, role: route.role, requirements });
+            if (hashNativeDocument(declaredModelRoute(resolved)) !== pin.integrity) {
                 issues.push({ code: 'native_orchestration_dependency_stale', severity: 'blocking', fieldPath: 'dependencyPins.' + pin.pinId });
                 return { evidence, issues, models };
             }

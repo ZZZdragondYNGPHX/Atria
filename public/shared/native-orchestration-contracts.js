@@ -80,6 +80,16 @@ export function assertSessionTaskRef(value) {
 export const nodeModelRoutePins = (node, pins) => node ? pins.filter(pin => pin.port === 'model' && pin.resourceRef.scope === 'player'
     && node.dependencyPinIds.includes(pin.pinId)) : [];
 
+export function nodePromptProgramPin(node, pins) {
+    if (!node?.policy.promptPinId) return null;
+    const pin = pins.find(pin => pin.pinId === node.policy.promptPinId && node.dependencyPinIds.includes(pin.pinId));
+    if (pin?.port !== 'model' || pin.resourceRef.scope !== 'library' || pin.resourceRef.resourceType !== 'core.prompt-program')
+        throw new TypeError('Node Program requires an exact Library Prompt Program dependency pin');
+    return pin;
+}
+export const nodePromptPinCount = node => Number(Boolean(node?.policy.promptPinId));
+export const planPromptPinCount = plan => new Set(plan.definition.nodes.map(node => node.policy.promptPinId).filter(Boolean)).size;
+
 export function assertDependencyPins(pins) {
     const ids = new Set();
     for (const pin of array(pins, 'dependencyPins')) {
@@ -240,11 +250,19 @@ function assertNodePolicy(node, draft, pins) {
         if (!['agent', 'planner', 'judge', 'review', 'router'].includes(node.kind)) throw new TypeError('Node cannot delegate');
         fields.push('allowedPlanPinIds');
     }
+    if (Object.hasOwn(policy, 'promptPinId')) {
+        if (!['agent', 'planner', 'judge', 'review'].includes(node.kind)) throw new TypeError('Program requires a model node');
+        fields.push('promptPinId');
+    }
     if (Object.hasOwn(policy, 'audiencePinId')) {
         if (!['agent', 'planner', 'judge', 'review'].includes(node.kind)) throw new TypeError('Audience requires a model node');
         fields.push('audiencePinId');
     }
     assertObject(policy, fields, 'node.policy');
+    if (policy.promptPinId !== undefined) {
+        assertToken(policy.promptPinId, 'node.policy.promptPinId');
+        nodePromptProgramPin(node, pins);
+    }
     if (fields.includes('audiencePinId')) {
         assertToken(policy.audiencePinId, 'node.policy.audiencePinId');
         if (!node.dependencyPinIds.includes(policy.audiencePinId)

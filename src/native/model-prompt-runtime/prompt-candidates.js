@@ -71,7 +71,13 @@ export class PromptCandidateStore {
             // evidence for a candidate still bound to its Native Runtime Route.
             const retained = [];
             for (const candidate of root.promptEvolution?.candidates ?? []) {
-                try { if ((await this._check(handle, id, candidate, { rollback: true })).alreadyApplied) retained.push(candidate); } catch { /* A changed/deleted binding is never claimed as ours. */ }
+                try {
+                    if ((await this._check(handle, id, candidate, { rollback: true })).alreadyApplied
+                    || candidate.programRef && await this.engine.withTransaction(handle, async tx => {
+                        for (const ref of candidate.changedRefs) if ((await orchestrationPinReferences(tx, handle, ref)).length) return true;
+                        return false;
+                    })) retained.push(candidate);
+                } catch { /* A changed/deleted binding is never claimed as ours. */ }
             }
             await this.engine.withTransaction(handle, tx => putMutable(tx, key(handle, rootRef(id)), { ...root, promptEvolution: { declaration, candidates: retained } }));
             return declaration;
@@ -102,7 +108,8 @@ export class PromptCandidateStore {
         });
     }
 
-    async prepare(handle, id, input) {
+    async prepare(handle, id, input, { programRef = null } = {}) {
+        if (programRef) { programRef = assertExactResourceRef(programRef, PROGRAM); if (programRef.scope !== 'library') throw new TypeError('Exact Library Program required'); }
         fields(input, ['runtimeRouteId', 'expectedRouteFingerprint', 'moduleRef', 'body']);
         body(input.body);
         const moduleRef = assertExactResourceRef(input.moduleRef, MODULE);
@@ -113,11 +120,11 @@ export class PromptCandidateStore {
             if (declaration?.schemaVersion !== 1 || !declaration.moduleRefs.some(r => same(r, moduleRef))) throw new TypeError('Prompt body is not declared evolvable');
             const route = await this.persistence.getRuntimeRoute(handle, input.runtimeRouteId);
             if (!route || hashNativeDocument(route) !== input.expectedRouteFingerprint) conflict();
-            if (route.scope !== 'player' || !same(route.promptProgramRef, preset.refs.find(r => r.resourceId === id)) || !preset.refs.some(r => same(r, route.generationProfileRef))) throw new TypeError('Choose this Preset exact pair on the target Route');
+            if (route.scope !== 'player' || !same(programRef ?? route.promptProgramRef, preset.refs.find(r => r.resourceId === id)) || !programRef && !preset.refs.some(r => same(r, route.generationProfileRef))) throw new TypeError('Choose this Preset exact pair on the target Route');
             const source = preset.entries.find(e => e.resourceType === MODULE && e.resource.promptModuleId === moduleRef.resourceId);
             body(source.resource.body);
             if (source.resource.body === input.body) throw new TypeError('Prompt candidate must change body');
-            const seed = { schemaVersion: 1, presetId: id, basePresetFingerprint: fingerprint, declarationFingerprint: hashNativeDocument(declaration), baseRoute: route, moduleRef, diff: { field: 'body', before: source.resource.body, after: input.body } };
+            const seed = { schemaVersion: 1, presetId: id, basePresetFingerprint: fingerprint, declarationFingerprint: hashNativeDocument(declaration), baseRoute: route, ...(programRef ? { programRef } : {}), moduleRef, diff: { field: 'body', before: source.resource.body, after: input.body } };
             const candidateId = hashNativeDocument(seed);
             const previous = root.promptEvolution.candidates.find(c => c.candidateId === candidateId);
             if (previous) { await this._check(handle, id, previous); return structuredClone(previous); }
@@ -150,7 +157,7 @@ export class PromptCandidateStore {
     }
 
     async _check(handle, id, candidate, { projectId = null, rollback = false } = {}) {
-        fields(candidate, ['schemaVersion', 'presetId', 'basePresetFingerprint', 'declarationFingerprint', 'baseRoute', 'moduleRef', 'diff', 'candidateId', 'changedRefs']);
+        fields(candidate, ['schemaVersion', 'presetId', 'basePresetFingerprint', 'declarationFingerprint', 'baseRoute', 'moduleRef', 'diff', 'candidateId', 'changedRefs', 'programRef']);
         const { preset, root, fingerprint } = await this._read(handle, id);
         const declaration = root.promptEvolution?.declaration;
         if (candidate.schemaVersion !== 1 || candidate.presetId !== id || fingerprint !== candidate.basePresetFingerprint || !rollback && (declaration?.schemaVersion !== 1 || hashNativeDocument(declaration) !== candidate.declarationFingerprint)) conflict();
@@ -169,7 +176,9 @@ export class PromptCandidateStore {
             if (ref.scope !== 'library' || !required.some(r => r.resourceType === ref.resourceType && r.resourceId === ref.resourceId && r.revision !== ref.revision)) throw new TypeError('Invalid candidate revision');
         }
         const route = assertRuntimeRoute(candidate.baseRoute);
-        if (route.scope !== 'player' || !same(route.promptProgramRef, preset.refs.find(r => r.resourceId === id)) || !preset.refs.some(r => same(r, route.generationProfileRef))) throw new TypeError('Invalid candidate base binding');
+        const programRef = candidate.programRef ? assertExactResourceRef(candidate.programRef, PROGRAM) : null;
+        if (programRef && (programRef.scope !== 'library' || projectId)) throw new TypeError('Program candidate is adopted through its Plan binding');
+        if (route.scope !== 'player' || !same(programRef ?? route.promptProgramRef, preset.refs.find(r => r.resourceId === id)) || !programRef && !preset.refs.some(r => same(r, route.generationProfileRef))) throw new TypeError('Invalid candidate base binding');
         const desired = this._desired(preset, candidate);
         for (const e of desired.entries) {
             const ref = desired.refs.find(r => r.resourceId === (e.resource.promptModuleId || e.resource.promptProgramId || e.resource.generationProfileId));
@@ -179,13 +188,14 @@ export class PromptCandidateStore {
         }
         validateBodyBindings(desired, moduleRef.resourceId);
         if (projectId && route.projectPromptBindings?.some(b => b.projectId === projectId)) throw new TypeError('Choose an unevolved Project Prompt binding');
-        const desiredRoute = assertRuntimeRoute(projectId ? { ...route, projectPromptBindings: [...(route.projectPromptBindings || []), {
+        const desiredProgramRef = desired.refs.find(r => r.resourceId === id);
+        const desiredRoute = assertRuntimeRoute(programRef ? route : projectId ? { ...route, projectPromptBindings: [...(route.projectPromptBindings || []), {
             projectId, candidateId, promptProgramRef: desired.refs.find(r => r.resourceId === id),
         }] } : { ...route, promptProgramRef: desired.refs.find(r => r.resourceId === id) });
         const current = await this.persistence.getRuntimeRoute(handle, route.runtimeRouteId);
-        const alreadyApplied = same(current, desiredRoute);
+        const alreadyApplied = !programRef && same(current, desiredRoute);
         if (!alreadyApplied && !same(current, route)) conflict();
-        return { candidate: structuredClone(candidate), desiredRoute, alreadyApplied, alreadyRolledBack: same(current, route) };
+        return { candidate: structuredClone(candidate), desiredRoute, desiredProgramRef, alreadyApplied, alreadyRolledBack: same(current, route) };
     }
 
     async check(handle, id, candidateId) {
@@ -213,6 +223,7 @@ export class PromptCandidateStore {
             const candidate = root.promptEvolution?.candidates.find(c => c.candidateId === candidateId);
             if (!candidate) throw new NotFoundError('Prompt candidate');
             const result = await this._check(handle, id, candidate);
+            if (candidate.programRef) throw new TypeError('Program candidate is adopted through its Plan binding');
             if (!result.alreadyApplied) await this.engine.withTransaction(handle, async tx => {
                 assertWritable();
                 await putMutable(tx, { kind: K.runtimeRoute, handle, runtimeRouteId: result.desiredRoute.runtimeRouteId }, result.desiredRoute, { expectedIntegrity: hashNativeDocument(candidate.baseRoute) });
@@ -228,6 +239,7 @@ export class PromptCandidateStore {
             const candidate = root.promptEvolution?.candidates.find(c => c.candidateId === candidateId);
             if (!candidate) throw new NotFoundError('Prompt candidate');
             const result = await this._check(handle, id, candidate, { rollback: true });
+            if (candidate.programRef) throw new TypeError('Program candidate is adopted through its Plan binding');
             if (!result.alreadyRolledBack) await this.engine.withTransaction(handle, async tx => {
                 assertWritable();
                 await putMutable(tx, { kind: K.runtimeRoute, handle, runtimeRouteId: candidate.baseRoute.runtimeRouteId }, candidate.baseRoute,
