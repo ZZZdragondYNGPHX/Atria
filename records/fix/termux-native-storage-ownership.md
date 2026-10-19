@@ -28,3 +28,9 @@
 
 - 已将源码修复快进集成 main，沿独立 docs 分支记录；保护原有 main 暂存内容、docs 视觉参考未提交更新和其他活跃任务。
 - 交付同步 main / docs 后清理本任务临时工作树与分支；不创建 HANDOFF。Termux 可通过现有工具箱更新 main，或在 main 工作区 `git pull --ff-only` 后使用原入口启动，无依赖及数据迁移。
+
+## 后续设备诊断 — Atria 目录为 F2FS
+
+- 用户成功执行 `node -p 'require("node:fs").statfsSync(".", { bigint: true })'`，返回 `type: 4076150800n`，即 F2FS `0xf2f52010`；这是 Atria 当前目录的观测值，并非启动数据根目录的已确认观测。
+- 该正值在原允许集合内，单独这项输出不能证实此前的编号表示兼容问题是这台设备启动失败的原因。需要继续核对实际 `dataRoot`、普通数字读取结果、运行的源码提交及更新后日志；不声称设备已恢复启动。
+- 已请用户回传默认 `./data` 的普通数字 `statfsSync` 类型和 `git rev-parse --short HEAD`。源码核对确认检查目标为 `globalThis.DATA_ROOT`；默认 `./data` 可由 CLI `--dataRoot` 或 config.yaml 的 `dataRoot` 覆盖。
