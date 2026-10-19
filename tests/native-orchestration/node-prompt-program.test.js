@@ -131,3 +131,18 @@ test('Used By exposes the original exact Plan pin as a consumer for adoption', a
         expect(f.requests).toEqual([]);
     } finally { await f.cleanup(); }
 }, 30000);
+
+
+test('archiving a published Plan preserves its original Binding, ModelPort send and usage', async () => {
+    const f = await modelPortFixture(make, { configurePlan: selectProgram });
+    try {
+        const root = await f.plans.get(f.h.handle, f.planRef.planId);
+        const binding = await f.plans.getBinding(f.h.handle, f.sourceSelector);
+        await f.plans.archive(f.h.handle, createNativeId('orchestrationCommand'), { planId: root.planId,
+            expectedDraftVersion: root.draftVersion, expectedDefinitionHash: root.definitionHash, archived: true });
+        expect(await f.plans.getBinding(f.h.handle, f.sourceSelector)).toEqual(binding);
+        await f.start(); expect(f.requests).toHaveLength(1); expect(JSON.stringify(f.requests[0])).toContain(sentinel);
+        const operations = Object.values((await f.core.runs.status(f.h.handle, f.base.session.sessionId)).operations);
+        expect(operations.find(operation => operation.compute).compute.attempts).toHaveLength(1);
+    } finally { await f.cleanup(); }
+}, 60000);

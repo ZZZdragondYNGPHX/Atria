@@ -301,3 +301,8 @@ body.reduced-motion .atria-orch *, [data-atria-reduced-motion="true"] .atria-orc
 .atria-orch-editor__surface[data-view="list"] { min-height: auto; }
 .atria-orch-run { flex: 1 0 auto; }
 .atria-orch-run__top { flex-direction: column; align-items: flex-start; gap: var(--atri-space-2); }
+
+.atria-orch-plan-row__actions { flex-wrap: wrap; padding: 0 12px 12px; gap: 8px; }
+.atria-orch-plan-row__actions .atria-orch-status { flex-basis: 100%; }
+.atria-orch-origin { min-width: 0; max-width: 100%; }
+.atria-orch-origin pre { white-space: pre-wrap; overflow-wrap: anywhere; }

@@ -98,7 +98,7 @@ export function createOrchestrationClient({ fetchImpl = (...args) => fetch(...ar
         getHostBootId: () => hostBootId,
         onHostChange(listener) { listeners.add(listener); return () => listeners.delete(listener); },
 
-        listPlans: (cursor = null, limit = 50, signal) => read('/plans/list', { cursor, limit }, { signal }).then(r => r.outcome),
+        listPlans: (cursor = null, limit = 50, signal, { archived = false } = {}) => read('/plans/list', { cursor, limit, ...(archived ? { archived } : {}) }, { signal }).then(r => r.outcome),
         getPlan: (planId, signal) => read('/plans/get', { planId }, { signal }).then(r => r.outcome),
         listRevisions: (planId, cursor = null, limit = 50, signal) => read('/plans/revisions', { planId, cursor, limit }, { signal }).then(r => r.outcome),
         getRevision: (planRef, signal) => read('/plans/revision', { planRef }, { signal }).then(r => r.outcome),
@@ -108,6 +108,9 @@ export function createOrchestrationClient({ fetchImpl = (...args) => fetch(...ar
         },
         inspectDependency: (body, signal) => read('/dependencies/inspect', body, { signal }).then(r => r.outcome),
         createPlan: (body, options) => mutate('/plans/create', body, options),
+        forkPlan: (body, options) => mutate('/plans/fork', body, options),
+        archivePlan: (body, options) => mutate('/plans/archive', body, options),
+        deletePlan: (body, options) => mutate('/plans/delete', body, options),
         savePlan: (body, options) => mutate('/plans/save', body, options),
         publishPlan: (body, options) => mutate('/plans/publish', body, options),
         getBinding: (sourceSelector, signal) => read('/bindings/get', { sourceSelector }, { signal }).then(r => r.outcome),

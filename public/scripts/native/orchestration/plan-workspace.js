@@ -6,7 +6,7 @@ import { createAtriaIcon } from '../../atria-shell/icons.js';
 import { formatAtriaRelativeTime } from '../../atria-shell/components.js';
 import { formatShellText as fmt, translateShellText as tl } from '../../atria-shell/localization.js';
 import { runtimeRequest } from '../runtime-client.js';
-import { classifyOrchestrationError } from './client.js';
+import { classifyOrchestrationError, newCommandId } from './client.js';
 import { PlanDraft, NODE_KINDS, LIMIT_FIELDS, EXECUTABLE_KINDS, starterDocument, autoLayout, precheck, nodeRemovalImpact,
     compatiblePorts, edgeTypeMismatch, diffDefinitions } from './plan-draft.js';
 import { GraphView, KIND_LABELS } from './graph-view.js';
@@ -25,9 +25,29 @@ const planTitle = root => root?.viewState?.title?.trim() || tl('Untitled Plan');
 
 /* ─────────────────────────────── Library ─────────────────────────────── */
 
+function planCopyButton(doc, parent, { client, signal, mode, label, title, source, onOpen }) {
+    let pending = null, created = null;
+    const status = el(doc, 'span', 'atria-orch-status', '', parent); status.setAttribute('role', 'status');
+    const action = button(doc, tl(label), async () => {
+        if (created) return onOpen(created.planId, planTitle(created));
+        action.disabled = true;
+        try {
+            pending ??= { commandId: newCommandId(), body: { ...await source(), mode, title } };
+            const { outcome } = await client.forkPlan(pending.body, { commandId: pending.commandId, signal });
+            created = outcome; status.textContent = tl('New draft saved in Plans.'); action.textContent = tl('Open copied Plan');
+            onOpen(outcome.planId, planTitle(outcome));
+        } catch (error) {
+            if (signal?.aborted) return;
+            if (classifyOrchestrationError(error) === 'unknown') action.textContent = tl('Retry same copy'); else pending = null;
+            status.textContent = describeError(error);
+        } finally { action.disabled = false; }
+    }, { variant: 'plain' });
+    parent.append(action); return action;
+}
+
 export function mountPlanLibrary({ document: doc, root, client, onOpen }) {
     const controller = new AbortController();
-    let cursor = null, items = [], busy = false;
+    let cursor = null, items = [], busy = false, loadVersion = 0, pendingCreate = null;
     const page = el(doc, 'div', 'atria-orch-page', null, root);
     const header = el(doc, 'header', 'atria-orch-page__header', null, page);
     const titles = el(doc, 'div', 'atria-orch-page__titles', null, header);
@@ -39,6 +59,11 @@ export function mountPlanLibrary({ document: doc, root, client, onOpen }) {
     name.maxLength = 200;
     const createButton = button(doc, tl('Create draft'), null, { variant: 'primary', type: 'submit', icon: 'plus' });
     create.append(name, createButton);
+    const receipt = el(doc, 'p', 'atria-orch-status', '', page); receipt.setAttribute('role', 'status');
+    const visibility = select(doc, [['active', tl('Active')], ['archived', tl('Archived')]], { value: 'active' });
+    field(doc, tl('Plan visibility'), visibility, { parent: page, key: 'plans.visibility' });
+    visibility.addEventListener('change', () => void load(true));
+    page.append(button(doc, tl('Reload Plans'), () => load(true), { variant: 'plain' }));
     const status = el(doc, 'div', 'atria-orch-status', null, page);
     status.setAttribute('role', 'status');
     const list = el(doc, 'div', 'atria-orch-plan-list', null, page);
@@ -55,13 +80,16 @@ export function mountPlanLibrary({ document: doc, root, client, onOpen }) {
         status.replaceChildren();
         const title = name.value.trim() || tl('Untitled Plan');
         try {
-            const { outcome } = await client.createPlan(starterDocument(title), { signal: controller.signal });
+            pendingCreate ??= { body: starterDocument(title), commandId: newCommandId() };
+            const { outcome } = await client.createPlan(pendingCreate.body, { commandId: pendingCreate.commandId, signal: controller.signal });
+            pendingCreate = null; name.disabled = false; createButton.textContent = tl('Create draft');
             onOpen(outcome.planId, planTitle(outcome));
         } catch (error) {
             if (controller.signal.aborted) return;
+            if (classifyOrchestrationError(error) === 'unknown') { name.disabled = true; createButton.textContent = tl('Retry same creation'); } else pendingCreate = null;
             status.replaceChildren(banner(doc, { title: tl('Plan not created'), message: describeError(error), tone: classifyOrchestrationError(error) === 'unknown' ? 'warning' : 'danger',
                 actions: classifyOrchestrationError(error) === 'unknown' ? [{ label: tl('Reload Plans'), onClick: () => load(true) }] : [] }));
-        } finally { busy = false; createButton.disabled = false; createButton.removeAttribute('aria-busy'); }
+        } finally { busy = false; name.disabled = Boolean(pendingCreate); createButton.disabled = false; createButton.removeAttribute('aria-busy'); }
     });
 
     function row(plan) {
@@ -81,24 +109,56 @@ export function mountPlanLibrary({ document: doc, root, client, onOpen }) {
             ? seal(doc, { label: fmt('Published ${0}', [shortId(plan.currentPlanRevisionId, 4)]), kind: 'solid', title: plan.currentPlanRevisionId })
             : seal(doc, { label: tl('Not published'), kind: 'unknown' }));
         open.addEventListener('click', () => onOpen(plan.planId, planTitle(plan)));
+        if (plan.archived) seals.append(seal(doc, { label: tl('Archived'), kind: 'history' }));
+        const actions = el(doc, 'div', 'atria-button-row atria-orch-plan-row__actions', null, item);
+        const expected = { planId: plan.planId, expectedDraftVersion: plan.draftVersion, expectedDefinitionHash: plan.definitionHash };
+        planCopyButton(doc, actions, { client, signal: controller.signal, mode: 'fork', label: 'Fork draft', title: fmt('${0} copy', [planTitle(plan)]),
+            source: async () => ({ sourcePlanId: plan.planId, expectedDraftVersion: plan.draftVersion, expectedDefinitionHash: plan.definitionHash }), onOpen });
+        if (plan.currentPlanRevisionId) planCopyButton(doc, actions, { client, signal: controller.signal, mode: 'derive', label: 'Derive published Plan', title: fmt('${0} derivative', [planTitle(plan)]),
+            source: async () => {
+                let cursor = null;
+                do {
+                    const page = await client.listRevisions(plan.planId, cursor, 100, controller.signal), revision = page.items.find(item => item.planRevisionId === plan.currentPlanRevisionId);
+                    if (revision) return { sourcePlanId: plan.planId, planRef: { planId: plan.planId, planRevisionId: revision.planRevisionId, definitionHash: revision.definitionHash } };
+                    cursor = page.cursor;
+                } while (cursor);
+                throw new Error(tl('The published revision is unavailable. Reload Plans.'));
+            }, onOpen });
+        const mutation = (label, method, body, done, confirm = false) => {
+            let commandId = null;
+            const action = button(doc, tl(label), async () => {
+                if (!commandId && confirm && !await confirmInline(doc, item, { title: tl('Delete this draft?'),
+                    message: tl('This removes an unpublished draft. Published Plans can be archived to preserve their revisions.'), confirmLabel: tl('Delete draft'), cancelLabel: tl('Keep draft'), destructive: true })) return;
+                action.disabled = true; commandId ??= newCommandId();
+                try {
+                    await client[method](body, { commandId, signal: controller.signal }); receipt.textContent = tl(done); await load(true);
+                } catch (error) {
+                    if (!controller.signal.aborted) { status.textContent = describeError(error); if (classifyOrchestrationError(error) === 'unknown') action.textContent = tl('Retry same action'); else commandId = null; }
+                } finally { action.disabled = false; }
+            }, { variant: confirm ? 'destructive' : 'plain' }); actions.append(action);
+        };
+        mutation(plan.archived ? 'Restore Plan' : 'Archive Plan', 'archivePlan', { ...expected, archived: !plan.archived }, plan.archived ? 'Plan restored.' : 'Plan archived. Existing bindings keep their revisions.');
+        if (!plan.currentPlanRevisionId) mutation('Delete draft', 'deletePlan', expected, 'Draft deleted.', true);
     }
 
     async function load(reset) {
+        const version = reset ? ++loadVersion : loadVersion;
         if (reset) { cursor = null; items = []; list.replaceChildren(); }
         status.replaceChildren(createAtriaStatePanel(doc, 'loading', { title: tl('Reading Plans'), message: tl('Asking the Native Host for your Plans…') }));
         more.disabled = true;
         try {
-            const outcome = await client.listPlans(cursor, 50, controller.signal);
+            const outcome = await client.listPlans(cursor, 50, controller.signal, { archived: visibility.value === 'archived' });
+            if (controller.signal.aborted || version !== loadVersion) return;
             items.push(...outcome.items);
             cursor = outcome.cursor;
             status.replaceChildren();
             for (const plan of outcome.items.sort((a, b) => b.updatedAt - a.updatedAt)) row(plan);
-            if (!items.length) status.replaceChildren(createAtriaStatePanel(doc, 'empty', { title: tl('No Plans yet'), message: tl('Name a Plan above to create a draft with one agent and one output.') }));
+            if (!items.length) status.replaceChildren(createAtriaStatePanel(doc, 'empty', { title: tl(visibility.value === 'archived' ? 'No archived Plans' : 'No Plans yet'), message: tl(visibility.value === 'archived' ? 'Archived Plans appear here. Their published revisions remain available.' : 'Name a Plan above to create a draft with one agent and one output.') }));
             more.hidden = !cursor;
         } catch (error) {
-            if (controller.signal.aborted) return;
+            if (controller.signal.aborted || version !== loadVersion) return;
             status.replaceChildren(createAtriaStatePanel(doc, 'error', { title: tl('Plans could not be read'), message: describeError(error), action: { label: tl('Try reading again'), onClick: () => load(true) } }));
-        } finally { more.disabled = false; }
+        } finally { if (version === loadVersion) more.disabled = false; }
     }
     void load(true);
     return { dispose() { controller.abort(); page.remove(); } };
@@ -106,7 +166,7 @@ export function mountPlanLibrary({ document: doc, root, client, onOpen }) {
 
 /* ─────────────────────────────── Editor ─────────────────────────────── */
 
-export function mountPlanEditor({ document: doc, root, client, shell, planId, environment, onTitle = () => {}, openRuns = () => {}, openPromptProgram = () => {} }) {
+export function mountPlanEditor({ document: doc, root, client, shell, planId, environment, onTitle = () => {}, openRuns = () => {}, openPromptProgram = () => {}, onOpenPlan = () => {} }) {
     const controller = new AbortController();
     const state = {
         base: null, draft: null, report: null, digest: null, reportFor: null, revisions: [], revisionsCursor: null,
@@ -138,6 +198,7 @@ export function mountPlanEditor({ document: doc, root, client, shell, planId, en
     /* ── data ── */
     function currentDocument() { return state.draft.document(); }
     function edit(action, message = '') {
+        if (state.base?.archived) { announce(tl('Restore this Plan in the library to edit its draft.')); return false; }
         try { action(); } catch (error) {
             announce(fmt('Edit not applied: ${0}', [error.message]));
             return false;
@@ -398,8 +459,15 @@ export function mountPlanEditor({ document: doc, root, client, shell, planId, en
         seals.append(seal(doc, { label: dirty ? fmt('Draft v${0} · unsaved edits', [state.base.draftVersion]) : fmt('Draft v${0} · saved', [state.base.draftVersion]), kind: 'draft' }));
         seals.append(state.base.currentPlanRevisionId ? seal(doc, { label: fmt('Published ${0}', [shortId(state.base.currentPlanRevisionId, 4)]), kind: 'solid', title: state.base.currentPlanRevisionId })
             : seal(doc, { label: tl('Not published'), kind: 'unknown' }));
+        if (state.base.archived) seals.append(seal(doc, { label: tl('Archived'), kind: 'history' }));
         if (state.report) seals.append(reportCurrent() ? chipFor(doc, 'validation', state.report.status) : stateChip(doc, { label: tl('Validation out of date'), tone: 'history', shape: 'history' }));
 
+        if (state.base.origin) {
+            const details = el(doc, 'details', 'atria-orch-origin', null, toolbar);
+            el(doc, 'summary', '', tl(state.base.origin.kind === 'derive' ? 'Derived from an exact published Plan' : 'Copied from a Plan'), details);
+            el(doc, 'pre', '', JSON.stringify(state.base.origin.source, null, 2), details);
+            details.append(button(doc, tl('Open source Plan'), () => onOpenPlan(state.base.origin.source.planId), { variant: 'plain' }));
+        }
         const view = el(doc, 'div', 'atria-segmented atria-orch-toolbar__view', null, toolbar);
         view.setAttribute('role', 'group');
         view.setAttribute('aria-label', tl('Editor view'));
@@ -411,31 +479,32 @@ export function mountPlanEditor({ document: doc, root, client, shell, planId, en
         }
         const edits = el(doc, 'div', 'atria-button-row atria-orch-toolbar__edits', null, toolbar);
         const undo = button(doc, tl('Undo'), () => state.draft.undo(), { icon: 'retry', variant: 'plain' });
-        undo.disabled = !state.draft.canUndo() || Boolean(state.busy);
+        undo.disabled = state.base.archived || !state.draft.canUndo() || Boolean(state.busy);
         const redo = button(doc, tl('Redo'), () => state.draft.redo(), { variant: 'plain' });
-        redo.disabled = !state.draft.canRedo() || Boolean(state.busy);
+        redo.disabled = state.base.archived || !state.draft.canRedo() || Boolean(state.busy);
         const kind = select(doc, NODE_KINDS.map(item => [item, tl(KIND_LABELS[item])]), { value: 'agent' });
         kind.setAttribute('aria-label', tl('Node kind to add'));
         kind.classList.add('atria-orch-toolbar__kind');
         const add = button(doc, tl('Add node'), () => addNode(kind.value), { icon: 'plus' });
-        add.disabled = Boolean(state.busy);
+        add.disabled = state.base.archived || Boolean(state.busy);
         edits.append(undo, redo, kind, add);
 
         const actions = el(doc, 'div', 'atria-button-row atria-orch-toolbar__actions', null, toolbar);
         const busyLabel = { save: tl('Saving…'), validate: tl('Validating…'), publish: tl('Publishing…') };
         const saveButton = button(doc, state.busy === 'save' ? busyLabel.save : tl('Save draft'), () => save(), { variant: dirty ? 'primary' : 'secondary' });
-        saveButton.disabled = !dirty || Boolean(state.busy);
+        saveButton.disabled = state.base.archived || !dirty || Boolean(state.busy);
         const validateButton = button(doc, state.busy === 'validate' ? busyLabel.validate : tl('Validate on Host'), () => validate());
-        validateButton.disabled = dirty || Boolean(state.busy);
+        validateButton.disabled = state.base.archived || dirty || Boolean(state.busy);
         const canPublish = !dirty && reportCurrent() && state.report.status === 'valid' && Boolean(state.digest);
         const publishButton = button(doc, state.busy === 'publish' ? busyLabel.publish : tl('Publish…'), () => confirmPublish(), { variant: !dirty && canPublish ? 'primary' : 'secondary' });
-        publishButton.disabled = !canPublish || Boolean(state.busy);
+        publishButton.disabled = state.base.archived || !canPublish || Boolean(state.busy);
         for (const [node, busy] of [[saveButton, 'save'], [validateButton, 'validate'], [publishButton, 'publish']]) if (state.busy === busy) node.setAttribute('aria-busy', 'true');
         const inspectorButton = button(doc, tl('Open Inspector'), () => openInspector(state.inspectorTab), { icon: 'inspector', variant: 'plain' });
         actions.append(saveButton, validateButton, publishButton, inspectorButton);
         const reason = el(doc, 'p', 'atria-orch-toolbar__reason', dirty ? tl('Save the draft before validating; the Host validates the saved draft only.')
             : !state.report ? tl('Validate on the Host before publishing.') : !reportCurrent() ? tl('The draft changed after validation. Validate again.')
                 : state.report.status !== 'valid' ? tl('Publishing needs a valid Host report. Resolve the problems below.') : '', toolbar);
+        if (state.base.archived) reason.textContent = tl('Restore this Plan in the library to edit its draft.');
         reason.hidden = !reason.textContent;
     }
 
@@ -596,6 +665,7 @@ export function mountPlanEditor({ document: doc, root, client, shell, planId, en
             else if (state.inspectorTab === 'selection' && state.selection.type === 'node' && state.draft.node(state.selection.id)) renderNode(body, state.draft.node(state.selection.id));
             else if (state.inspectorTab === 'selection' && state.selection.type === 'edge' && state.draft.edge(state.selection.id)) renderEdge(body, state.draft.edge(state.selection.id));
             else renderPlanSettings(body);
+            if (state.base.archived) for (const control of body.querySelectorAll('input, textarea, select')) if (!control.closest('[data-field^="binding."]')) control.disabled = true;
         });
         if (!inspector.isConnected) shell?.setContextContent?.(inspector, { title: tl('Plan Inspector'), open: shell.isDockOpen?.() ?? false, state: 'half' });
     }
@@ -911,6 +981,10 @@ export function mountPlanEditor({ document: doc, root, client, shell, planId, en
             if (revision.planRevisionId === state.base.currentPlanRevisionId) top.append(seal(doc, { label: tl('Current'), kind: 'solid' }));
             else top.append(seal(doc, { label: tl('Earlier'), kind: 'history' }));
             el(doc, 'p', 'atria-orch-group__hint', fmt('Published ${0} · ${1} nodes', [formatAtriaRelativeTime(revision.publishedAt), revision.definition.nodes.length]), card);
+            const copies = el(doc, 'div', 'atria-button-row', null, card);
+            for (const mode of ['fork', 'derive']) planCopyButton(doc, copies, { client, signal: controller.signal, mode, label: mode === 'fork' ? 'Fork revision' : 'Derive revision',
+                title: fmt(mode === 'fork' ? '${0} copy' : '${0} derivative', [planTitle(state.base)]), source: async () => ({ sourcePlanId: planId,
+                    planRef: { planId, planRevisionId: revision.planRevisionId, definitionHash: revision.definitionHash } }), onOpen: onOpenPlan });
             const diff = diffDefinitions(revision, currentDocument());
             const changes = diff.nodes.added.length + diff.nodes.removed.length + diff.nodes.changed.length + diff.edges.added.length + diff.edges.removed.length + diff.edges.changed.length + diff.pins.added.length + diff.pins.removed.length + diff.pins.changed.length + diff.fields.length;
             el(doc, 'p', 'atria-orch-group__hint', changes ? fmt('Draft differs: ${0} node, ${1} edge, ${2} pin and ${3} setting changes.', [
@@ -963,6 +1037,7 @@ export function mountPlanEditor({ document: doc, root, client, shell, planId, en
 
     /* ── keyboard ── */
     const keydown = event => {
+        if (state.base?.archived) return;
         if (event.isComposing || event.keyCode === 229 || !(event.ctrlKey || event.metaKey)) return;
         const editable = event.target.closest?.('input, textarea, select, [contenteditable="true"]');
         if (editable) return;

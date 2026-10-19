@@ -49,6 +49,21 @@ describe.each(CONTRACT_HARNESSES)('$name authenticated Native authoring HTTP', (
         expect(revisions.body.outcome.items.map(item => item.planRevisionId)).toEqual([published.body.outcome.planRef.planRevisionId]);
     });
 
+    test('copy/archive/restore/delete use the original authenticated command envelopes', async () => {
+        const root = (await mutation('plans/create', planFixture()).expect(200)).body.outcome;
+        const copy = (await mutation('plans/fork', { sourcePlanId: root.planId, expectedDraftVersion: root.draftVersion, expectedDefinitionHash: root.definitionHash, mode: 'fork', title: 'Independent copy' }).expect(200)).body.outcome;
+        const expected = plan => ({ planId: plan.planId, expectedDraftVersion: plan.draftVersion, expectedDefinitionHash: plan.definitionHash });
+        const archived = (await mutation('plans/archive', { ...expected(copy), archived: true }).expect(200)).body.outcome;
+        expect((await read('plans/list', { cursor: null, limit: 10, archived: true }).expect(200)).body.outcome.items.map(item => item.planId)).toEqual([copy.planId]);
+        await mutation('plans/archive', { ...expected(copy), archived: false }).expect(409);
+        const restored = (await mutation('plans/archive', { ...expected(archived), archived: false }).expect(200)).body.outcome;
+        const command = createNativeId('orchestrationCommand');
+        await mutation('plans/delete', expected(restored), { id: command }).expect(200);
+        expect((await mutation('plans/delete', expected(restored), { id: command }).expect(200)).body.outcome.deleted).toBe(true);
+        await read('plans/get', { planId: copy.planId }).expect(404);
+        expect((await read('plans/get', { planId: root.planId }).expect(200)).body.outcome).toEqual(root);
+    });
+
     test('boot conflicts, owner injection, unregistered execute/approve routes and original read-only mode cannot mutate', async () => {
         await mutation('plans/create', planFixture(), { boot: 'previous-boot' }).expect(409);
         await request(app).post('/api/native/orchestration/plans/create').set('X-Test-Owner', h.handle).set('X-Atria-Host-Boot-Id', service.hostBootId)

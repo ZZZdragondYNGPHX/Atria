@@ -56,8 +56,9 @@ export function createNativeOrchestrationRouter(getServices = services) {
         } finally { response.off('close', disconnected); }
     };
     router.post('/plans/list', route(false, (plans, handle, input) => {
-        assertObject(input.body, ['cursor', 'limit'], 'list');
-        return plans.list(handle, input.body);
+        const body = { ...input.body, archived: input.body?.archived ?? false };
+        assertObject(body, ['cursor', 'limit', 'archived'], 'list');
+        return plans.list(handle, body);
     }));
     router.post('/plans/get', route(false, (plans, handle, input) => {
         assertObject(input.body, ['planId'], 'get');
@@ -76,7 +77,7 @@ export function createNativeOrchestrationRouter(getServices = services) {
         assertObject(input.body, ['planRef'], 'revision'); return plans.getRevision(handle, input.body.planRef);
     }));
     router.post('/dependencies/inspect', route(false, (dependencies, handle, input) => dependencies.inspect(handle, input.body), 'dependencies'));
-    for (const method of ['create', 'save', 'publish']) router.post('/plans/' + method, route(true, (plans, handle, input) => plans[method](handle, input.commandId, input.body)));
+    for (const method of ['create', 'save', 'publish', 'fork', 'archive', 'delete']) router.post('/plans/' + method, route(true, (plans, handle, input) => plans[method](handle, input.commandId, input.body)));
     router.post('/bindings/get', route(false, (plans, handle, input) => {
         assertObject(input.body, ['sourceSelector'], 'getBinding');
         return plans.getBinding(handle, input.body.sourceSelector);

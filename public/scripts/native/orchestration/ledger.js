@@ -163,6 +163,9 @@ export const describeIssue = issue => issue.message && issue.code === 'native_or
 
 /** Request failures in plain words with the next lawful action. */
 const ERRORS = {
+    native_orchestration_plan_archived: 'This Plan is archived. Restore it in Plans before editing.',
+    native_orchestration_plan_published: 'This Plan has published revisions. Archive it to keep its bindings and history.',
+    native_orchestration_plan_referenced: 'Another Plan pins this draft. Remove its reference before deleting.',
     native_orchestration_host_changed: 'The Native Host restarted. Your draft is kept; reload before saving again.',
     native_orchestration_draft_conflict: 'This Plan changed elsewhere. Your draft is kept; compare and reload before saving.',
     native_orchestration_validation_stale: 'The Plan or its dependencies changed after validation. Validate again before publishing.',

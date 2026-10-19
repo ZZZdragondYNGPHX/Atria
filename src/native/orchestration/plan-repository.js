@@ -72,6 +72,64 @@ export class PlanRepository {
         });
     }
 
+    async fork(handle, commandId, body) {
+        assertObject(body, ['sourcePlanId', 'mode', 'title', ...(body?.planRef ? ['planRef'] : ['expectedDraftVersion', 'expectedDefinitionHash'])], 'fork');
+        assertNativeId(body.sourcePlanId, 'orchestrationPlan');
+        if (!['fork', 'derive'].includes(body.mode) || typeof body.title !== 'string' || !body.title.trim() || body.title.length > 200) throw new TypeError('Invalid Plan copy');
+        if (body.planRef) { assertPlanRef(body.planRef); if (body.planRef.planId !== body.sourcePlanId) throw new TypeError('Plan copy source differs'); } else {
+            if (body.mode === 'derive') throw new TypeError('Derive requires an exact published Plan');
+            assertCounter(body.expectedDraftVersion, 'expectedDraftVersion'); assertDigest(body.expectedDefinitionHash, 'expectedDefinitionHash');
+        }
+        const planId = createNativeId('orchestrationPlan'), timestamp = this.now();
+        return this.#command(handle, commandId, 'plans.fork', body, [body.sourcePlanId], async (tx, input) => {
+            const source = (await this.#root(tx, key(K.orchestrationPlan, handle, { planId: input.sourcePlanId }))).doc;
+            const base = input.planRef ? await this.#revision(tx, handle, input.planRef) : source;
+            if (!input.planRef) this.#expected(source, input, { allowArchived: true });
+            const origin = { kind: input.mode, source: input.planRef ?? { planId: source.planId, draftVersion: source.draftVersion, definitionHash: source.definitionHash } };
+            // A derived draft starts from one exact immutable graph snapshot.
+            // Execution still uses its own published full definition and pins.
+            const root = { schemaVersion: 1, planId, ownerRef: { handle }, draftVersion: 0, basePlanRevisionId: null,
+                definition: base.definition, dependencyPins: base.dependencyPins, definitionHash: planDefinitionHash(base.definition, base.dependencyPins),
+                currentPlanRevisionId: null, viewState: { ...(input.planRef ? { positions: {} } : source.viewState), title: input.title.trim() }, origin,
+                archived: false, createdAt: timestamp, updatedAt: timestamp };
+            assertPlanDefinition(root.definition, root.dependencyPins, { draft: true });
+            await putMutable(tx, key(K.orchestrationPlan, handle, { planId }), root, { expectedIntegrity: null });
+            return root;
+        });
+    }
+
+    async archive(handle, commandId, body) {
+        assertObject(body, ['planId', 'expectedDraftVersion', 'expectedDefinitionHash', 'archived'], 'archive');
+        assertNativeId(body.planId, 'orchestrationPlan'); assertCounter(body.expectedDraftVersion, 'expectedDraftVersion'); assertDigest(body.expectedDefinitionHash, 'expectedDefinitionHash');
+        if (typeof body.archived !== 'boolean') throw new TypeError('Archive state required');
+        return this.#command(handle, commandId, 'plans.archive', body, [body.planId], async (tx, input) => {
+            const resourceKey = key(K.orchestrationPlan, handle, { planId: input.planId }), record = await this.#root(tx, resourceKey);
+            this.#expected(record.doc, input, { allowArchived: true });
+            if (record.doc.archived === input.archived) return record.doc;
+            const root = { ...record.doc, archived: input.archived, draftVersion: record.doc.draftVersion + 1, updatedAt: this.now() };
+            assertCounter(root.draftVersion, 'draftVersion');
+            await putMutable(tx, resourceKey, root, { expectedIntegrity: record.integrity }); return root;
+        });
+    }
+
+    async delete(handle, commandId, body) {
+        assertObject(body, ['planId', 'expectedDraftVersion', 'expectedDefinitionHash'], 'delete');
+        assertNativeId(body.planId, 'orchestrationPlan'); assertCounter(body.expectedDraftVersion, 'expectedDraftVersion'); assertDigest(body.expectedDefinitionHash, 'expectedDefinitionHash');
+        return this.#command(handle, commandId, 'plans.delete', body, [body.planId], async (tx, input) => {
+            const resourceKey = key(K.orchestrationPlan, handle, { planId: input.planId }), { doc } = await this.#root(tx, resourceKey);
+            this.#expected(doc, input, { allowArchived: true });
+            // Published definitions remain the original readable history for
+            // Bindings, child Plans, Runs and their domain receipts.
+            if (doc.currentPlanRevisionId || (await tx.listResources({ kind: K.orchestrationRevision, handle, planId: input.planId })).length)
+                throw new ConflictError('native_orchestration_plan_published');
+            for (const row of await tx.listResources({ kind: K.orchestrationPlan, handle })) {
+                if (row.key.planId !== input.planId && row.doc.dependencyPins.some(pin => pin.port === 'plan' && pin.resourceRef.planId === input.planId))
+                    throw new ConflictError('native_orchestration_plan_referenced');
+            }
+            await tx.deleteResource(resourceKey); return { planId: input.planId, deleted: true };
+        });
+    }
+
     async save(handle, commandId, body) {
         assertObject(body, ['planId', 'expectedDraftVersion', 'expectedDefinitionHash', 'definition', 'dependencyPins', 'viewState'], 'save');
         assertNativeId(body.planId, 'orchestrationPlan');
@@ -114,7 +172,7 @@ export class PlanRepository {
             const report = await this.#validate(handle, tx, root), digest = validationDigest(report);
             if (report.status !== 'valid' || digest !== input.validationDigest) throw new ConflictError('native_orchestration_validation_stale', { report });
             const revision = { schemaVersion: 1, planId: root.planId, planRevisionId, definition: root.definition, dependencyPins: root.dependencyPins,
-                definitionHash: root.definitionHash, authorRef: { handle }, validationDigest: digest, publishedAt: timestamp };
+                definitionHash: root.definitionHash, authorRef: { handle }, validationDigest: digest, publishedAt: timestamp, ...(root.origin ? { origin: root.origin } : {}) };
             await putImmutable(tx, key(K.orchestrationRevision, handle, { planId: root.planId, planRevisionId }), revision);
             const next = { ...root, currentPlanRevisionId: planRevisionId, basePlanRevisionId: planRevisionId, draftVersion: root.draftVersion + 1, updatedAt: timestamp };
             assertCounter(next.draftVersion, 'draftVersion');
@@ -131,8 +189,9 @@ export class PlanRepository {
         });
     }
 
-    async list(handle, { cursor = null, limit = 50 } = {}) {
-        return this.#page(handle, K.orchestrationPlan, null, cursor, limit);
+    async list(handle, { cursor = null, limit = 50, archived = false } = {}) {
+        if (typeof archived !== 'boolean') throw new TypeError('Archive filter required');
+        return this.#page(handle, K.orchestrationPlan, null, cursor, limit, archived);
     }
 
     async listRevisions(handle, planId, { cursor = null, limit = 50 } = {}) {
@@ -140,7 +199,7 @@ export class PlanRepository {
         return this.#page(handle, K.orchestrationRevision, planId, cursor, limit);
     }
 
-    async #page(handle, kind, planId, cursor, limit) {
+    async #page(handle, kind, planId, cursor, limit, archived = null) {
         assertCounter(limit, 'limit', 1);
         if (limit > 100) throw new TypeError('limit must be <= 100');
         let after = '';
@@ -148,8 +207,8 @@ export class PlanRepository {
             try {
                 if (typeof cursor !== 'string' || cursor.length > 2048 || !/^[A-Za-z0-9_-]+$/.test(cursor)) throw new TypeError();
                 const value = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
-                assertObject(value, ['handle', 'kind', 'planId', 'after'], 'cursor');
-                if (value.handle !== handle || value.kind !== kind || value.planId !== planId) throw new TypeError();
+                assertObject(value, ['handle', 'kind', 'planId', 'after', 'archived'], 'cursor');
+                if (value.handle !== handle || value.kind !== kind || value.planId !== planId || value.archived !== archived) throw new TypeError();
                 assertNativeId(value.after, kind === K.orchestrationPlan ? 'orchestrationPlan' : 'orchestrationRevision');
                 after = value.after;
             } catch { throw new TypeError('Invalid authoring page cursor'); }
@@ -160,14 +219,14 @@ export class PlanRepository {
             const idField = planId ? 'planRevisionId' : 'planId';
             const records = await tx.listResources({ kind, handle, ...(planId ? { planId } : {}) });
             records.sort((left, right) => left.key[idField].localeCompare(right.key[idField]));
-            const remaining = records.filter(record => record.key[idField] > after), selected = remaining.slice(0, limit);
+            const remaining = records.filter(record => record.key[idField] > after && (archived === null || Boolean(record.doc.archived) === archived)), selected = remaining.slice(0, limit);
             const items = [];
             for (const record of selected) {
                 const doc = planId ? await this.#revision(tx, handle, { planId, planRevisionId: record.key.planRevisionId, definitionHash: record.doc.definitionHash })
                     : (await this.#root(tx, record.key)).doc;
                 items.push(cloneNativeDocument(doc));
             }
-            return { items, cursor: remaining.length > limit ? Buffer.from(JSON.stringify({ handle, kind, planId, after: selected.at(-1).key[idField] })).toString('base64url') : null };
+            return { items, cursor: remaining.length > limit ? Buffer.from(JSON.stringify({ handle, kind, planId, archived, after: selected.at(-1).key[idField] })).toString('base64url') : null };
         });
     }
 
@@ -319,7 +378,7 @@ export class PlanRepository {
             const revision = { schemaVersion: 1, planId: base.planId, planRevisionId, definition, dependencyPins: pins,
                 ...(prompt ? { evolutionSource: { target, promptCandidateRef: seed.promptCandidateRef, resourceRefs: [...original.preset.refs, ...originalPrompt.changedRefs] } }
                     : base.evolutionSource ? { evolutionSource: base.evolutionSource } : {}),
-                definitionHash, authorRef: { handle }, validationDigest: validationDigest(report), publishedAt: this.now() };
+                definitionHash, authorRef: { handle }, validationDigest: validationDigest(report), publishedAt: this.now(), ...(base.origin ? { origin: base.origin } : {}) };
             const candidate = { ...seed, candidateId, planRef: { planId: base.planId, planRevisionId, definitionHash } };
             const evolution = { ...record.doc.evolution, candidates: [...record.doc.evolution.candidates, candidate] };
             assertPlanEvolutionMetadata(evolution);
@@ -421,8 +480,9 @@ export class PlanRepository {
         return record;
     }
 
-    #expected(root, input) {
-        if (root.archived || root.draftVersion !== input.expectedDraftVersion || root.definitionHash !== input.expectedDefinitionHash) throw new ConflictError('native_orchestration_draft_conflict');
+    #expected(root, input, { allowArchived = false } = {}) {
+        if (!allowArchived && root.archived) throw new ConflictError('native_orchestration_plan_archived');
+        if (root.draftVersion !== input.expectedDraftVersion || root.definitionHash !== input.expectedDefinitionHash) throw new ConflictError('native_orchestration_draft_conflict');
     }
 
     async #revision(tx, handle, planRef) {
