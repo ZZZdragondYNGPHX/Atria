@@ -457,6 +457,7 @@ export class SessionCore {
         if (hasAuthorityTransactions(base) && !authorityPrepared && base.revision && states !== base.states
             && (!equalNativeDocuments(states.atri_lifecycle?.domains ?? null, base.states.atri_lifecycle?.domains ?? null)
                 || !equalNativeDocuments(states.atri_lifecycle?.clocks ?? null, base.states.atri_lifecycle?.clocks ?? null)
+                || base.manifest.runtime?.experienceContract?.simulationRuntime && !base.states.atri_lifecycle?.ready && states.atri_lifecycle?.ready
                 || !equalNativeDocuments(states.atri_world_state ?? null, base.states.atri_world_state ?? null))) {
             const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
             states = (await prepareAuthorityPublications({ ...base, states }, installed, authorityBudget, { excludeJobId: completedTask?.simulation?.jobId ?? null })).candidate.states;
@@ -524,6 +525,11 @@ export class SessionCore {
             if (taskRecord) {
                 const queued = states.atri_lifecycle.outbox.find(item => item.invocationId === taskRecord.invocationId);
                 if (queued) queued.status = 'completed';
+                // Derived commands may prune terminal outbox rows while this
+                // very adoption is still preparing. Keep its original intent
+                // in the adoption revision for V3's exact cold delivery proof.
+                // Later lifecycle publications retain their ordinary pruning.
+                else if (completedTask) states.atri_lifecycle.outbox.push({ ...cloneNativeDocument(completedTask), status: 'completed' });
             }
             publishActivities({ ...base, states }, revisionId, branchId, taskRecord);
             validateLifecycle({ ...base, states });
