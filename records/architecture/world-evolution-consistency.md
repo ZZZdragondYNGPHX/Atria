@@ -503,6 +503,14 @@
 - 身份／记录查找计入原 Authority 工作上限。未知／不可用主体不消费原事项；同一规则可依事项处理不同动态 NPC。原进度上限拒绝未推进事项的重复执行，全部候选效果撤回。Subject 模型 Task 绑定尚未接入，不能把此步骤当完整自主行为。
 - 本地 18 项相关测试通过（个人视角／获知 9、动态事项 5、事件反应 4），覆盖两人共用规则、恢复可用性、未知／终止／停域目标、错误 Domain／非直接转发拒绝、执行重验、整体回滚与工作上限。相关 ESLint、diff check 通过。整体继续实施，尚未合入 main。
 
+## Stage 48 — 动态个人 Task 提案与原命令接纳（2026-10-20）
+
+- `ab3dda9f`：原 Simulation 的 Subject 绑定可选择有预算的 FIFO background Task。原 outbox 固定本次 Subject／本人 recordId／实际 Perspective／个人投影摘要；Task 结果绑定只能指向同一 Subject 原 Domain 的既定 Command，模型不能在结果中选择目标。固定事项的 Host 私有读取只用于选择／判断事项，不能直接模板展开进模型 input。
+- 原 ContextPort 从真实 Task capture 取得个人受众，原 Compiler／Memory 沿本人 Perspective 读取，并在发送／消费和 Memory proof 中保持同一身份。Task request 仍用原 Task grant；模型实际 Context 选择保留本人身份和原 cognition/disclosure policy，不回落到 Narrator、raw World 或他人视角。原命令回执与 V3 Task delivery 核对捕获的本人 recordId。
+- 个人投影变化与目标变化使旧提案失效；同 Tick 新个人证据或另一相关人可重新接纳，纯他人信息变化不唤醒。规则按需读取本人原记录的声明字段，且同 Tick 可在原步数上限内处理多个不同目标。模型返回意图与实际执行分开：原 Command 先保存选择，再由原确定性事务执行效果；暂缓／取消不把事项当已完成。
+- 原 Cognition publication 增加实际 Task invocation 锚点：个人认知更新只认原 pending outbox 绑定的个人视角，不能凭 Task ID 借用他人视角；原获取、来源、时间、状态与因果检查继续执行。未扩展动态 appraisal 模型或新增常驻 NPC Agent。
+- 本地个人视角／获取／Task 认知 10 项通过，动态事项／模型输入和命令接纳 13 项通过；与原主体、正式发言／媒体、事件反应相关合跑 27 项通过。相关 ESLint、diff check 通过。Context 测试执行原 Compiler、RequestContext provider 与 Task selection；采用测试提案数据，未请求真实模型，完整真实 Provider／Orchestration 端到端尚无该阶段证据。继续历史纠错及 Play／作者读取，整体尚未合入 main。
+
 ## Current state
 
 产品实施进行中，主体／时间读取、动态个人视角与获知、作者固定依赖、正文编辑、有效 Context 及显式资源采用已有接线；完整 NPC 行动、参与者／媒体与 Play 功能继续实施。当前功能设计、代码差距与待决问题见 [Plan 入口](../../plans/architecture/world-evolution-consistency/index.md)。
