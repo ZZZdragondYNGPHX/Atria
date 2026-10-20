@@ -1,6 +1,7 @@
 import { extensionsRequest } from './extensions-client.js';
 import { runtimeRequest } from './runtime-client.js';
 import { emptyIllustrations } from '../../shared/native-illustration-contract.js';
+import { publicParticipant } from '../../shared/native-participant.js';
 import { readIllustrationSelection, setIllustrationSelectionMode, repaintIllustrationSurfaces, onIllustrationSurfacesChanged, illustrationToolbarInset } from './illustration-surfaces.js';
 
 export const illustrationSettingsClient = Object.freeze({
@@ -40,6 +41,11 @@ export function createIllustrationExtensionApi({ runtime, document: doc, generat
         snapshot: () => structuredClone({ revisionId: runtime.snapshot?.revision?.revisionId, state: runtime.snapshot?.illustrations ?? emptyIllustrations(), head: runtime.snapshot?.session?.illustrationHead ?? null }),
         toolbarInset: scope => illustrationToolbarInset(doc, scope),
         selection: scope => readIllustrationSelection(doc, scope),
+        speaker: (scope, anchor) => {
+            if (runtime.snapshot?.session.sessionId !== scope.sessionId || runtime.snapshot.revision.branchId !== scope.branchId) return null;
+            const entry = runtime.snapshot.timeline.find(item => item.messageId === anchor.messageId && item.activeVariantId === anchor.variantId);
+            return entry?.participant ? publicParticipant(entry) : null;
+        },
         selectionMode: (scope, enabled) => setIllustrationSelectionMode(doc, scope, enabled),
         subscribe: onIllustrationSurfacesChanged,
         async prompt(scope, action, input, signal, step = 'prompts') {

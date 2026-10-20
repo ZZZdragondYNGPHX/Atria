@@ -1,3 +1,4 @@
+import { publicParticipant } from './native-participant.js';
 // Non-secret plugin preferences. Formal annotations remain Session presentation data.
 export const OFFICIAL_ILLUSTRATION_ID = 'atri_official_illustration';
 export const OFFICIAL_PROMPT_TEMPLATE = '根据选文与历史上下文整理绘图提示词。固定外观由程序保留；只补充场景、构图及每个出场角色的动作、表情和剧情服装。不要加入未出场角色。';
@@ -21,9 +22,21 @@ export function assertIllustrationPreset(value) {
     return { style: text(value.style), quality: text(value.quality), negativePrompt: text(value.negativePrompt), parameters: structuredClone(value.parameters) };
 }
 export function assertDrawingCharacter(value) {
-    object(value, ['id', 'name', 'aliases', 'fixedPrompt', 'defaultClothing', 'enabled', 'storyActorId']);
+    object(value, ['id', 'name', 'aliases', 'fixedPrompt', 'defaultClothing', 'enabled', 'storyActorId', 'storyParticipantId']);
     if (!text(value.name, 100).trim() || !Array.isArray(value.aliases) || value.aliases.length > 32 || value.aliases.some(alias => !text(alias, 100).trim()) || typeof value.enabled !== 'boolean') throw new TypeError('Invalid drawing character');
-    return { id: identity(value.id), name: value.name, aliases: [...new Set(value.aliases)], fixedPrompt: text(value.fixedPrompt), defaultClothing: text(value.defaultClothing), enabled: value.enabled, storyActorId: text(value.storyActorId, 128) };
+    if (value.storyParticipantId !== undefined && (!/^participant\.[a-f0-9]{32}$/.test(value.storyParticipantId) || value.storyActorId)) throw new TypeError('Invalid drawing Participant');
+    return { id: identity(value.id), name: value.name, aliases: [...new Set(value.aliases)], fixedPrompt: text(value.fixedPrompt), defaultClothing: text(value.defaultClothing), enabled: value.enabled, storyActorId: text(value.storyActorId, 128),
+        ...(value.storyParticipantId ? { storyParticipantId: value.storyParticipantId } : {}) };
+}
+export function assertDrawingSpeaker(entry, character) {
+    if (!character.storyParticipantId) return null;
+    const speaker = publicParticipant(entry);
+    if (speaker.participantId !== character.storyParticipantId || speaker.displayName !== character.name || character.storyActorId) throw new TypeError('Drawing speaker unavailable in selected source');
+    return speaker;
+}
+export function speakerDrawingCharacter(speaker) {
+    return assertDrawingCharacter({ id: 'speaker_' + speaker.participantId.slice('participant.'.length), name: speaker.displayName,
+        aliases: [], fixedPrompt: '', defaultClothing: '', enabled: true, storyActorId: '', storyParticipantId: speaker.participantId });
 }
 export function assertIllustrationSettings(value) {
     object(value, ['schemaVersion', 'enabled', 'characters', 'works', 'preset', 'imageTargetId', 'imageRenderingId', 'director', 'promptRouteId', 'template']);

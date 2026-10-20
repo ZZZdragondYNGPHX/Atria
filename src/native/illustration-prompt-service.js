@@ -6,7 +6,7 @@ import { hashNativeDocument } from './repositories/common.js';
 import { IllustrationService } from './illustration-service.js';
 import { selectNativeRuntimeRoute } from './adapters/generation-host.js';
 import { nativeTaskScheduler } from './task-scheduler.js';
-import { assertIllustrationDraft, composeIllustrationPrompt, createIllustrationDraft } from '../../public/shared/illustration-plugin-contract.js';
+import { assertDrawingSpeaker, assertIllustrationDraft, composeIllustrationPrompt, createIllustrationDraft } from '../../public/shared/illustration-plugin-contract.js';
 import { immutable } from './model-prompt-runtime/execution-utils.js';
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
@@ -56,6 +56,7 @@ export class IllustrationPromptService {
         const routeId = settings.value.works[state.session.packageId]?.promptRouteId || settings.value.promptRouteId;
         const route = selectNativeRuntimeRoute(await this.host.persistence.listRuntimeRoutes(handle), 'role.illustration_prompt', routeId ? { runtimeRouteId: routeId } : undefined);
         const draft = immutable(annotation.draft ?? createIllustrationDraft(annotation.anchor.quote, settings.value, state.session.packageId).draft);
+        draft.characters.forEach(item => assertDrawingSpeaker(visualSource.entry, item.character));
         const context = immutable(annotation.promptContext ?? await captureIllustrationContext(this.host.sessionCore, handle, sessionId, annotation.anchor));
         // The historical context packet can survive a head-only resume export;
         // current Session state is used only for access/budget checks, never input.

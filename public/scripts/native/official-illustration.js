@@ -3,7 +3,7 @@ import { translateShellText, formatShellText } from '../atria-shell/localization
 import { mountVisualGallery } from './visual-gallery-ui.js';
 import { mountVisualDirector } from './visual-director-ui.js';
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
-import { createIllustrationDraft, assertIllustrationDraft, matchDrawingCharacters, composeIllustrationPrompt } from '../../shared/illustration-plugin-contract.js';
+import { createIllustrationDraft, assertIllustrationDraft, matchDrawingCharacters, composeIllustrationPrompt, speakerDrawingCharacter } from '../../shared/illustration-plugin-contract.js';
 import { illustrationNode as node, illustrationField as field, illustrationSelect as select, illustrationButton as button, ILLUSTRATION_CSS } from './illustration-ui.js';
 import { renderIllustrationPreset, mountIllustrationSettings } from './illustration-settings-ui.js';
 import { nativeAssetUrl } from './session-projection.js';
@@ -187,6 +187,12 @@ export async function activate(sdk) {
         const draft = drafts.get(selectedId) ?? structuredClone(annotation.draft ?? createIllustrationDraft(annotation.anchor.quote, settings, sdk.context.packageId).draft);
         drafts.set(selectedId, draft);
         const editor = node(doc, card, 'fieldset'); editor.disabled = !writable || deleted; node(doc, editor, 'legend', translateShellText('Prompt and characters'));
+        const speaker = sdk.illustrations.speaker(annotation.anchor);
+        if (speaker && !draft.characters.some(item => item.character.storyParticipantId === speaker.participantId)) {
+            button(doc, editor, formatShellText('Add speaker · ${0}', [speaker.displayName]), run(() => {
+                readDraft(); draft.characters.push({ character: speakerDrawingCharacter(speaker), dynamicPrompt: '', clothing: '' }); renderCard();
+            }));
+        }
         const allowed = settings.characters.filter(item => item.enabled && settings.works[sdk.context.packageId]?.characterIds.includes(item.id));
         const matches = matchDrawingCharacters(annotation.anchor.quote, settings.characters, allowed.map(item => item.id));
         for (const ambiguity of matches.ambiguous) node(doc, editor, 'p', formatShellText('Several characters are named “${0}”. Choose the intended character below.', [ambiguity.name]));
@@ -198,7 +204,8 @@ export async function activate(sdk) {
         }));
         for (const item of draft.characters) {
             const group = node(doc, editor, 'fieldset'); node(doc, group, 'legend', item.character.name);
-            node(doc, group, 'p', formatShellText('Fixed appearance: ${0}', [item.character.fixedPrompt || translateShellText('Not provided')]));
+            if (item.character.storyParticipantId) field(doc, group, translateShellText('Fixed appearance prompt'), item.character.fixedPrompt, text => item.character.fixedPrompt = text, { multiline: true });
+            else node(doc, group, 'p', formatShellText('Fixed appearance: ${0}', [item.character.fixedPrompt || translateShellText('Not provided')]));
             field(doc, group, formatShellText('Outfit · ${0}', [item.character.name]), item.clothing, text => item.clothing = text);
             field(doc, group, formatShellText('Scene description · ${0}', [item.character.name]), item.dynamicPrompt, text => item.dynamicPrompt = text, { multiline: true });
             button(doc, group, formatShellText('Remove character · ${0}', [item.character.name]), run(() => { readDraft(); draft.characters = draft.characters.filter(current => current !== item); renderCard(); }));

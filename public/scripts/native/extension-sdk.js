@@ -54,6 +54,7 @@ export function createExtensionSdk({ plugin, context, document: doc, root, isCur
         configuration: illustrationCall(() => illustrationApi.configuration()),
         toolbarInset: () => { assertCurrent(); return illustrationApi.toolbarInset?.(context) ?? 16; },
         selection: () => { assertCurrent(); return illustrationApi.selection(context); },
+        speaker: anchor => { assertCurrent(); return illustrationApi.speaker(context, structuredClone(anchor)); },
         setSelectionMode(enabled) { assertCurrent(); illustrationApi.selectionMode({ ...context, selectionOwner: plugin.id }, Boolean(enabled)); },
         onSurfacesChanged(callback) { assertCurrent(); if (typeof callback !== 'function') throw new TypeError('Listener must be a function'); return own(illustrationApi.subscribe(() => invoke(callback))); },
         command: illustrationCall((command, input) => {

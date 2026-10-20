@@ -39,7 +39,7 @@ export function createNovelaiVisualAdapter({ fetchImpl = fetch } = {}) {
             const { strength = .7, noise = 0, inpaintStrength = 1, referenceStrength = 1, referenceInformation = 1, referenceFidelity = 1, upscaleBlurSigma = 0, ...sampling } = target.nativeParameters;
             for (const value of [strength, noise, inpaintStrength, referenceStrength, referenceInformation, referenceFidelity]) if (!Number.isFinite(value) || value < 0 || value > 1) visualError('parameters_invalid');
             if (![0, .30, .35, .40, .45, .50].includes(upscaleBlurSigma)) visualError('parameters_invalid');
-            const draft = { characters: ir.authoring === 'structured' ? ir.participants.map((p, index) => ({ character: { id: 'visual_' + index, name: p.actorId ?? p.provisionalId, aliases: [], fixedPrompt: p.identity, defaultClothing: '', enabled: true, storyActorId: p.actorId ?? '' }, dynamicPrompt: p.state, clothing: '' })) : [],
+            const draft = { characters: ir.authoring === 'structured' ? ir.participants.map((p, index) => ({ character: { id: 'visual_' + index, name: p.evidence.speaker?.displayName ?? p.actorId ?? p.provisionalId, aliases: [], fixedPrompt: p.identity, defaultClothing: '', enabled: true, storyActorId: p.actorId ?? '', ...(p.participantId ? { storyParticipantId: p.participantId } : {}) }, dynamicPrompt: p.state, clothing: '' })) : [],
                 scene: ir.scene, prompt: ir.prompt, preset: { style: ir.style, quality: '', negativePrompt: ir.negativePrompt, parameters: { ...sampling, model } } };
             if (ir.authoring === 'structured') draft.prompt = composeIllustrationPrompt(draft);
             const rendered = renderNovelaiIllustration(draft, novelaiConnectionCapabilities(connection), seed), body = rendered.body;

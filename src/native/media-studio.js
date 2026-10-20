@@ -101,7 +101,7 @@ export class MediaStudio {
         }
         if (!Array.isArray(input.referenceIds ?? []) || (input.referenceIds ?? []).length > 16) visualError('reference_invalid');
         const eligibleReferences = input.referenceIds?.length ? (await new VisualContinuity({ host: this.host }).references(handle, base.source, null, ['identity', 'outfit', 'style', 'structure', 'vibe'])).selected : [];
-        const participantIds = new Set((base.image.requestSnapshot?.ir.participants ?? []).map(participant => participant.actorId ?? participant.provisionalId));
+        const participantIds = new Set((base.image.requestSnapshot?.ir.participants ?? []).map(participant => participant.participantId ?? participant.actorId ?? participant.provisionalId));
         for (const referenceId of input.referenceIds ?? []) {
             const reference = eligibleReferences.find(ref => ref.referenceId === referenceId);
             if (!reference) visualError('reference_unauthorized');

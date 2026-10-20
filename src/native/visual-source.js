@@ -22,11 +22,7 @@ export async function resolveVisualSource(core, handle, sourceValue) {
             if (!entry || !illustrationAnchorMatches(source.anchor, entry.content) || illustrationContentHash(entry.content) !== source.anchor.contentHash) visualError('source_mismatch');
             return { source, view, entry };
         }
-        const revision = await core._sessions.getRevision(handle, source.sessionId, revisionId);
-        const head = revision?.stateHeads.atri_session_core;
-        const state = head && await core._sessions.getState(handle, source.sessionId, 'atri_session_core', head);
-        if (!state) visualError('source_missing');
-        revisionId = state.parentRevisionId;
+        revisionId = await core._sessions.getStoryParentRevision(handle, source.sessionId, revisionId);
     }
     // An ironman checkpoint keeps an immutable visual source packet while its
     // narrative history remains head-only. The explicit presentation alias may

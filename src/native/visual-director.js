@@ -52,7 +52,7 @@ export class VisualDirector {
                         try { const resolved = await resolveVisualSource(this.host.sessionCore, handle, source); assertVisualDisclosure(resolved.view, source); } catch { continue; }
                         if ((await this.store.read(handle, 'shot', shotId)).value) continue;
                         const matching = createIllustrationDraft(quote, settings, view.session.packageId), draft = matching.draft;
-                        const actors = draft.characters.map(item => item.character.storyActorId || sessionId + ':' + item.character.id).sort();
+                        const actors = draft.characters.map(item => item.character.storyParticipantId || item.character.storyActorId || sessionId + ':' + item.character.id).sort();
                         // Scene continuity uses explicit frame/location/focus and
                         // participant evidence. When location is not known, a
                         // reviewed prior scene is reused only on this Branch.

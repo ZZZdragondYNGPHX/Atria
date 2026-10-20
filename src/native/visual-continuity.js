@@ -3,6 +3,8 @@ import { visualObject, visualError, visualFingerprint, visualText } from '../../
 import { resolveVisualSource } from './visual-source.js';
 import { VisualStore } from './visual-store.js';
 import { createNativeId } from './identity.js';
+import { assertDrawingSpeaker } from '../../public/shared/illustration-plugin-contract.js';
+import { publicParticipant } from '../../public/shared/native-participant.js';
 
 export function visualDisclosure(view) {
     const info = informationContext(view, { kind: 'narrator' }, undefined, { includeRollups: false });
@@ -29,9 +31,10 @@ export class VisualContinuity {
         const changes = await this.store.list(handle, 'state-change');
         for (const item of draft.characters) {
             const character = item.character;
+            const speaker = assertDrawingSpeaker(entry, character);
             const actor = character.storyActorId && view.manifest.actors.find(a => a.actorId === character.storyActorId);
             if (character.storyActorId && (!actor || !view.entryPoint.actorIds.includes(actor.actorId))) visualError('actor_unavailable');
-            const identity = actor ? { actorId: actor.actorId } : { provisionalId: source.sessionId + ':' + character.id };
+            const identity = speaker ? { participantId: speaker.participantId } : actor ? { actorId: actor.actorId } : { provisionalId: source.sessionId + ':' + character.id };
             const facts = {};
             // Final revision state cannot be back-projected onto an earlier
             // span of a multi-moment message. Read only independently displayed
@@ -43,7 +46,7 @@ export class VisualContinuity {
                     }
                 }
             }
-            for (const change of changes.filter(c => c.sessionId === source.sessionId && c.identity === (actor?.actorId ?? identity.provisionalId) && c.timeKind === source.timeKind && c.status === 'accepted')) {
+            for (const change of changes.filter(c => c.sessionId === source.sessionId && c.identity === (identity.participantId ?? actor?.actorId ?? identity.provisionalId) && c.timeKind === source.timeKind && c.status === 'accepted')) {
                 try {
                     await resolveVisualSource(this.host.sessionCore, handle, { ...change.source, branchId: source.branchId });
                     const position = view.timeline.findIndex(e => e.messageId === change.source.anchor.messageId && e.activeVariantId === change.source.anchor.variantId);
@@ -57,7 +60,7 @@ export class VisualContinuity {
             const clothing = facts.clothing?.value ?? item.clothing;
             if (facts.clothing && item.clothing && item.clothing !== facts.clothing.value) conflicts.push({ identity, field: 'clothing', formal: facts.clothing.value, authored: item.clothing });
             participants.push({ ...identity, identity: character.fixedPrompt, state: [clothing, item.dynamicPrompt, ...Object.entries(facts).filter(([field]) => field !== 'clothing').map(([, fact]) => fact.value)].filter(Boolean).join(', '),
-                evidence: { source, actorDefinition: actor ? { packageVersionId: view.session.packageVersionId, actorId: actor.actorId } : null, facts, authoredVisualPreference: true } });
+                evidence: { source, ...(speaker ? { speaker } : {}), actorDefinition: actor ? { packageVersionId: view.session.packageVersionId, actorId: actor.actorId } : null, facts, authoredVisualPreference: true } });
         }
         return { source, participants, conflicts, disclosure: { defined: disclosure.defined, itemIds: disclosure.items.map(item => item.id) }, fingerprint: visualFingerprint({ source, participants, conflicts }) };
     }
@@ -68,7 +71,7 @@ export class VisualContinuity {
             || !Number.isInteger(input.start) || !Number.isInteger(input.end) || input.start < 0 || input.end <= input.start || input.end > input.source.anchor.end
             || entry.content.slice(input.start, input.end) !== input.quote || typeof input.persistent !== 'boolean') visualError('state_evidence_invalid');
         visualText(input.value, 4096); visualText(input.quote, 4096);
-        if (!view.manifest.actors.some(a => a.actorId === input.identity) && !input.identity.startsWith(input.source.sessionId + ':')) visualError('identity_invalid');
+        if ((!entry.participant || input.identity !== publicParticipant(entry).participantId) && !view.manifest.actors.some(a => a.actorId === input.identity) && !input.identity.startsWith(input.source.sessionId + ':')) visualError('identity_invalid');
         const changeId = createNativeId('visualIntent'), value = { ...input, changeId, sourceHash: visualFingerprint(input.source), sessionId: input.source.sessionId, timeKind: input.source.timeKind,
             status: verified && input.confidence >= 0.95 ? 'accepted' : 'awaiting_review' };
         return this.store.write(handle, 'state-change', changeId, value, null);

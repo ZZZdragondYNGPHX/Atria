@@ -88,9 +88,10 @@ export function assertImagePromptIR(value) {
     if (!value.prompt.trim() || !Array.isArray(value.participants) || value.participants.length > 64 || !Array.isArray(value.references) || value.references.length > 32
         || !Array.isArray(value.constraints) || value.constraints.length > 64) visualError('ir_invalid');
     for (const p of value.participants) {
-        visualObject(p, ['actorId', 'provisionalId', 'identity', 'state', 'evidence']);
+        visualObject(p, ['actorId', 'participantId', 'provisionalId', 'identity', 'state', 'evidence']);
+        if ([p.actorId, p.participantId, p.provisionalId].filter(Boolean).length !== 1) visualError('identity_invalid');
         if (p.actorId) visualId(p.actorId, 'actor');
-        else if (!visualText(p.provisionalId, 128).startsWith(value.source.sessionId + ':')) visualError('identity_invalid');
+        else if (p.participantId) { if (!/^participant\.[a-f0-9]{32}$/.test(p.participantId)) visualError('identity_invalid'); } else if (!visualText(p.provisionalId, 128).startsWith(value.source.sessionId + ':')) visualError('identity_invalid');
         visualText(p.identity); visualText(p.state); nonSecretVisualJson(p.evidence);
     }
     for (const ref of value.references) {

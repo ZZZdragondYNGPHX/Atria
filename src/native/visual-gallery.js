@@ -44,7 +44,7 @@ export class VisualGallery {
         }
         const items = visible.slice(offset, offset + limit).map(({ image, id, state }) => ({ imageVersionId: image.imageVersionId, annotationId: image.annotationId, assetId: image.assetId, width: image.width, height: image.height,
             alt: image.alt, createdAt: image.createdAt, sceneId: image.mediaOperation?.source.sceneId ?? null, shotId: image.mediaOperation?.source.shotId ?? null,
-            identities: (image.requestSnapshot?.ir.participants ?? []).map(p => ({ id: p.actorId ?? p.provisionalId, name: actors.get(p.actorId) ?? p.provisionalId?.split(':').at(-1) ?? '角色' })),
+            identities: (image.requestSnapshot?.ir.participants ?? []).map(p => ({ id: p.participantId ?? p.actorId ?? p.provisionalId, name: p.evidence?.speaker?.displayName ?? actors.get(p.actorId) ?? p.provisionalId?.split(':').at(-1) ?? '角色' })),
             operation: image.mediaOperation?.kind ?? 'txt2img', provider: image.requestSnapshot?.connection.providerAdapter ?? '',
             metadataRevision: metadata.has(id) ? hashNativeDocument(state) : null, selected: annotations.get(image.annotationId)?.selectedImageVersionId === image.imageVersionId, metadata: state }));
         return { head: presentation.head, total: visible.length, items, nextOffset: offset + limit < visible.length ? offset + limit : null };
@@ -76,7 +76,7 @@ export class VisualGallery {
         if (!['identity', 'outfit', 'style', 'structure', 'vibe'].includes(input.purpose) || typeof input.standard !== 'boolean' || !Array.isArray(input.allowedBranches)
             || !input.allowedBranches.length || !Array.isArray(input.externalConnectionIds) || input.standard && input.purpose !== 'identity') visualError('reference_invalid');
         if (input.allowedBranches.some(id => !current.graph.some(node => node.branchId === id)) || !input.standard && input.allowedBranches.some(id => id !== input.branchId)) visualError('reference_scope_invalid');
-        const identities = base.image.requestSnapshot?.ir.participants.map(p => p.actorId ?? p.provisionalId) ?? [];
+        const identities = base.image.requestSnapshot?.ir.participants.map(p => p.participantId ?? p.actorId ?? p.provisionalId) ?? [];
         if (input.purpose === 'identity' && !identities.includes(input.identity)) visualError('reference_identity_invalid');
         for (const connectionId of input.externalConnectionIds) await this.host.persistence.getConnectionProfile(handle, connectionId);
         const referenceId = createNativeId('visualReference'), value = { referenceId, source: base.source, imageVersionId: base.image.imageVersionId,

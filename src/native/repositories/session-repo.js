@@ -493,6 +493,26 @@ export class SessionRepo {
         ));
     }
 
+    async _storyParentRevision(tx, handle, sessionId, revision, core) {
+        if (!core.parentRevisionId) return null;
+        const parent = await readCheckedDocument(tx, this._revisionKey(handle, sessionId, core.parentRevisionId));
+        if (parent.branchId === revision.branchId) return parent.revisionId;
+        const priorCore = await readCheckedDocument(tx, this._stateKey(handle, sessionId, SESSION_CORE_NAMESPACE, parent.stateHeads[SESSION_CORE_NAMESPACE]));
+        // Publication order can cross a branch switch or SavePoint restore.
+        // The prior graph captures the selected branch's own previous HEAD;
+        // a newly introduced branch begins at its existing forkRevisionId.
+        return priorCore.branches.find(node => node.branchId === revision.branchId)?.headRevisionId
+            ?? core.branches.find(node => node.branchId === revision.branchId)?.forkRevisionId ?? null;
+    }
+
+    async getStoryParentRevision(handle, sessionId, revisionId) {
+        return this._engine.withTransaction(handle, async tx => {
+            const revision = await readCheckedDocument(tx, this._revisionKey(handle, sessionId, revisionId));
+            const core = await readCheckedDocument(tx, this._stateKey(handle, sessionId, SESSION_CORE_NAMESPACE, revision.stateHeads[SESSION_CORE_NAMESPACE]));
+            return this._storyParentRevision(tx, handle, sessionId, revision, core);
+        });
+    }
+
     async listRevisions(handle, sessionId) {
         return this._engine.withTransaction(handle, tx => listNativeDocuments(tx, {
             kind: NATIVE_RESOURCE_KINDS.sessionRevision,
@@ -941,7 +961,7 @@ export class SessionRepo {
                     visited.add(cursor);
                     const ancestor = await readCheckedDocument(tx, this._revisionKey(handle, sessionId, cursor));
                     const core = await getNativeDocument(tx, this._stateKey(handle, sessionId, SESSION_CORE_NAMESPACE, ancestor.stateHeads[SESSION_CORE_NAMESPACE]));
-                    cursor = core?.parentRevisionId;
+                    cursor = core ? await this._storyParentRevision(tx, handle, sessionId, ancestor, core) : null;
                 }
                 const entry = snapshot.timeline.find(item => item.messageId === illustrationAnchor.messageId && item.activeVariantId === illustrationAnchor.variantId);
                 if (cursor !== target) throw new TypeError('Invalid illustration source ancestry');
