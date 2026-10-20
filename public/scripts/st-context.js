@@ -131,7 +131,6 @@ import {
 } from './capability-host.js';
 import { groups, openGroupChat, selected_group, unshallowGroupMembers } from './group-chats.js';
 import { addLocaleData, getCurrentLocale, setUiLanguage, t, translate } from './i18n.js';
-import { hideLoader, showLoader } from './loader.js';
 import { loader } from './action-loader.js';
 import { MacrosParser } from './macros.js';
 import { getChatCompletionModel, oai_settings, openai_settings, openai_setting_names, sendOpenAIRequest, proxies, ZAI_ENDPOINT, stripOpenAIConnectionFieldsFromPreset, saveOpenAIPreset, hasUnsavedOpenAIPresetChanges, promptManager, applyPresetByName } from './openai.js';
@@ -2638,10 +2637,6 @@ export function getContext() {
         /** @deprecated Use callGenericPopup or Popup instead. */
         callPopup,
         callGenericPopup,
-        /** @deprecated Use loader.show instead. */
-        showLoader,
-        /** @deprecated Use loader.hide instead. */
-        hideLoader,
         get mainApi() { return main_api; },
         capabilitySettings: capabilitySettings,
         ModuleWorkerWrapper,
