@@ -19,6 +19,7 @@ import { assertNativeId } from './identity.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { createTaskWorld } from './task-authority.js';
 import { prepareLifecycle, validateLifecycle } from './lifecycle-authority.js';
+import { packageKnowledgeManifest } from './session-knowledge.js';
 
 // Internal preparation API only. No repository, provider, scheduler or commit
 // handle is accepted. SessionCore remains the sole eventual publication owner.
@@ -45,7 +46,9 @@ function contractFor(base, installed = null) {
         || installed.manifest.packageVersionId !== base.session.packageVersionId
         || installed.entryPoint.entryPointId !== base.session.entryPointId
         || hashNativeDocument(installed.entryPoint) !== hashNativeDocument(installed.manifest.entryPoints.find(item => item.entryPointId === base.session.entryPointId))
-        || hashNativeDocument(installed.manifest) !== hashNativeDocument(base.manifest))) throw new TypeError('Authority Package pin mismatch');
+        // Explicit source adoption changes the captured Knowledge projection,
+        // while executable Work rules remain pinned to the installed Package.
+        || hashNativeDocument(packageKnowledgeManifest(installed.manifest, base.knowledge)) !== hashNativeDocument(base.manifest))) throw new TypeError('Authority Package pin mismatch');
     return contract;
 }
 function snapshotAnchor(base) {

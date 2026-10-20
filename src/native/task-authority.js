@@ -6,6 +6,7 @@ import { assertSemanticOutcome } from '../../public/shared/native-task-contract.
 import { assertTaskValue } from '../../public/shared/native-task-contract.js';
 import { assertNativeId } from './identity.js';
 import { prepareLifecycle } from './lifecycle-authority.js';
+import { selectedWorlds } from './session-worlds.js';
 
 export function validateTaskRecords(base) {
     const state = base.states.atri_task_results;
@@ -64,6 +65,7 @@ export async function createTaskWorld(base, installed, publish = null, authority
     }
     const logic = pinnedLogic(bytes, data, installed.manifest.runtime?.experienceContract);
     const candidate = structuredClone(base);
+    candidate.worlds = selectedWorlds(candidate.states, installed.manifest, installed.entryPoint);
     const statePatch = {};
     const adapter = { active: true, snapshot: candidate, commitStatePatch: async patch => {
         Object.assign(statePatch, patch);
