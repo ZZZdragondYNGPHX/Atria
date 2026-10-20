@@ -551,6 +551,16 @@
 - 新增 FsEngine／SqliteEngine 原 Package→Session→Authority Turn→三次正式发言验证：模板 A→B→解除只有一个 Subject，旧消息依次保留 A／B／无模板；存档恢复回 A 和当时 Timeline。错误模板拒绝整个候选。相关 23 项回归通过；进一步让新夹具采用真实 Native Host ownership、等待维护并 await engine.close 后，新 3 项重跑通过且无清理告警。先前测试清理告警诊断为忽略异步关闭即删除临时目录，未改生产维护行为。
 - 相关 2 个 JS ESLint 与 diff check 通过。继续作者规则执行覆盖／起点受众预览与离屏连续性验证；整体尚未集成 main。
 
+## Stage 54 — 所选起点与受众的只读世界预览（2026-10-20）
+
+- Studio Preview 可明确选择已提交的 starting point；玩法／UI 的原默认起点仍照既有装配，说明同步改为引导在 Preview 选择其他起点。预览重新生成采用请求序号和原 source revision／editor sequence，过期结果只关闭自身，不替换较新的预览。
+- 原 SessionCore 的 `selectedWorlds`／`initialWorldState` 移至共享的原生读取模块，Session 创建与 Studio 使用同一实现，Worldless overlay、primaryWorld、多 World 与 EntryPoint overlay 语义保持一致。只读预览调用原 initialSubjects、initialLifecycle、固定 Package Knowledge 解析、Information projector 与 ContextCompiler；没有玩家 SessionRepo／Branch publication、Provider、真实初始化动作或模型调用。
+- 原 Preview owner 检查后增加 world 读取；关闭 Preview 撤销访问。按 Narrator／Player／已选 Actor／有 Perspective 的初始 Subject 查看受限内容。个人权限和资料适用性仍先于预算与排序：隐藏的继位状态不能影响角色的原文用途；玩家只得到明确 display 字段，未配置视角不回退旁白。使用有界预览文本预算并说明它与实际 API 请求预算的区别，不宣称是已发送 Prompt。
+- UI 沿原 Studio Preview 和统一 disclosure／form／Sources 按需读取，视角搜索与 12 条展示分页有界；IME 合成期间不提交，异步期间保留焦点，关闭／换源后忽略晚到读结果。起点与视角选项明确标记为只读 UI 状态，修正被草稿离开保护误认成作者内容改动的问题。未新增动画。
+- 6 项新测试覆盖不同起点的有效原文用途、明示 player／actor grants、隐藏状态不改变个人用途、owner／close 撤权、纯正文／Worldless、无玩家 Session 持久化及与实际 Session 初始化结果一致。动态世界相关 81 项合跑通过；相关 8 个 JS ESLint、diff check 通过。localization.js 对 HEAD 的既有 215 项诊断新增 0 项，新增文案补中文；全局本地化仍为原 18 项其它页面缺失。
+- 原隔离服务中的真实 Studio Project 完成第二起点选择、生成 Preview、展开来源与 Narrator／Player／Actor 切换：继位后旁白见 Mira／历史用途，Player 仅见 hp=4，Actor 不见秘密／Mira，原文用途为不可确认。390×844 touch／reduced-motion 与 1440×1000 desktop 模拟视口无横向溢出；重载后只读选项不再触发未保存确认，Enter 请求后焦点恢复，IME 查询守卫可用，视角搜索正常。
+- 本预览明确处于初始化动作之前；初始对白和模型输出未在这里执行。作者机制执行关联／覆盖说明、离屏连续性验证及最终集成继续，整体尚未结束。
+
 ## Current state
 
 产品实施进行中，主体／时间读取、动态个人视角与获知、作者固定依赖、正文编辑、有效 Context 及显式资源采用已有接线；作者执行关联与完整起点预览、离屏连续性和最终集成继续实施。当前功能设计、代码差距与待决问题见 [Plan 入口](../../plans/architecture/world-evolution-consistency/index.md)。
