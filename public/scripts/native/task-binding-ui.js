@@ -47,7 +47,7 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
         const missing = report.slots.filter(slot => !selected(slot));
         const missingTurns = (report.turnRoutes ?? []).some(route => route.error);
         if (save) save.disabled = busy || Boolean(missing.length) || missingTurns;
-        if (!busy) status.textContent = missing.length ? fmt('This work needs ${0} model purposes configured before it can start: ${1}.', [missing.length, missing.map(slot => label(slot.id)).join(', ')])
+        if (!busy) status.textContent = missing.length ? fmt('This work needs ${0} model purposes configured before it can start: ${1}.', [missing.length, missing.map(slot => t(label(slot.id))).join(', ')])
             : missingTurns ? t('Configure the required turn routes before continuing.') : t('Model purposes are ready. You can review your API presets before continuing.');
     }
     function draw(next) {
@@ -56,7 +56,7 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
         const missing = report.slots.filter(slot => slot.error);
         const missingRoles = (report.turnRoutes ?? []).filter(route => route.error);
         status.textContent = missing.length
-            ? fmt('This work needs ${0} model purposes configured before it can start: ${1}.', [missing.length, missing.map(slot => label(slot.id)).join(', ')])
+            ? fmt('This work needs ${0} model purposes configured before it can start: ${1}.', [missing.length, missing.map(slot => t(label(slot.id))).join(', ')])
             : missingRoles.length ? t('Configure the required turn routes before continuing.')
                 : t('Model purposes are ready. You can review your API presets before continuing.');
         for (const route of missingRoles) {
