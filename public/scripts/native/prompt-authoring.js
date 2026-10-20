@@ -46,10 +46,12 @@ function action(doc, parent, label, handler) {
 function input(doc, parent, label, value, multiline = false) {
     const wrapper = element(doc, 'label', label, parent);
     const node = element(doc, multiline ? 'textarea' : 'input', undefined, wrapper);
+    node.name = label; node.autocomplete = 'off';
     node.setAttribute('aria-label', translateShellText(label)); if (!multiline) node.type = 'text'; node.value = value ?? ''; return node;
 }
 function select(doc, parent, label, options, value = '') {
     const wrapper = element(doc, 'label', label, parent); const node = element(doc, 'select', undefined, wrapper);
+    node.name = label; node.autocomplete = 'off';
     node.setAttribute('aria-label', translateShellText(label));
     for (const [key, name, literal] of options) { const option = element(doc, 'option', undefined, node); option.textContent = literal ? name : translateShellText(name); option.value = key; }
     if (value && !options.some(([key]) => key === value)) { const option = element(doc, 'option', undefined, node); option.textContent = String(value) + ' (' + translateShellText('retained') + ')'; option.value = value; }
