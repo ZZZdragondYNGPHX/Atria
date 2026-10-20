@@ -10,6 +10,11 @@ const meanings = Object.freeze({
     law: 'Authored world law. Natural-language guidance alone does not establish executable enforcement or authorize effects.',
 });
 
+export function authoredPassageApplicability(note, providers = []) {
+    if (note.context.usage !== 'current' || !note.applicability?.stateConditions?.length) return null;
+    return evaluateStateConditions(note.applicability.stateConditions, providers, note.applicability.stateConditionsLogic ?? 'all');
+}
+
 export function renderAuthoredContent(content, { context, annotations, source, defaultUsage = 'claim', providers = [] } = {}) {
     const normalized = normalizeContentContext(context) ?? { usage: defaultUsage };
     const notes = normalizeContentAnnotations(content, annotations) ?? [];
@@ -19,8 +24,8 @@ export function renderAuthoredContent(content, { context, annotations, source, d
         let statement = describe(note.context);
         // This is a use classification, never a comparison that discloses the
         // Host's hidden replacement value. Beliefs and history keep their use.
-        if (note.context.usage === 'current' && note.applicability?.stateConditions?.length) {
-            const evaluated = evaluateStateConditions(note.applicability.stateConditions, providers, note.applicability.stateConditionsLogic ?? 'all');
+        const evaluated = authoredPassageApplicability(note, providers);
+        if (evaluated) {
             if (evaluated.status !== 'true') statement = evaluated.status === 'false'
                 ? 'Historical source statement; its declared current applicability no longer holds.'
                 : 'Source claim; current applicability is not established by readable evidence.';

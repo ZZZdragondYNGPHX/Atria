@@ -29,7 +29,7 @@ export function mountLibraryRevisionEditor({ document: doc, root, detail, knowle
     const editor = el(doc, 'div', '', undefined, section);
     const review = el(doc, 'section', 'atri-library-section', undefined, section); review.hidden = true;
     const mountEditor = knowledge ? mountKnowledgeEditor : mountWorldEditor;
-    mountEditor({ document: doc, root: editor, value, initialEntryId, initialAction: entryAction, openEntry: entryEnabled === undefined, browseState, label: knowledge ? 'Knowledge revision JSON' : 'World revision JSON',
+    mountEditor({ document: doc, root: editor, value, worldId: resource.worldId, initialEntryId, initialAction: entryAction, openEntry: entryEnabled === undefined, browseState, label: knowledge ? 'Knowledge revision JSON' : 'World revision JSON',
         onReview: (draft, { dependencies = [] } = {}) => {
             editor.hidden = true; review.hidden = false; review.replaceChildren();
             el(doc, 'h3', '', tl('Review revision'), review);

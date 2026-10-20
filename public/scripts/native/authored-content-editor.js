@@ -2,11 +2,13 @@ import { el, action, disclosure, feedback } from './library-ui.js';
 import { knowledgeFormControls } from './knowledge-form-controls.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import { CONTENT_USAGES } from './knowledge-contracts.js';
+import { mountStateConditionEditor } from './state-condition-editor.js';
+import { authoredPassageApplicability } from './authored-content.js';
 
 const usageOptions = CONTENT_USAGES.map((id, index) => [id, ['Author background', 'Current claim', 'Historical account', 'Source claim', 'Personal belief', 'World law'][index]]);
 
 /** Edits only this detached author draft. Text entry never remounts the input. */
-export function mountAuthoredContentEditor({ document: doc, root, value, key = 'content', label = 'Entry content', defaultUsage = 'claim', maxLength = 4 * 1024 * 1024, onInput = () => {} }) {
+export function mountAuthoredContentEditor({ document: doc, root, value, key = 'content', label = 'Entry content', defaultUsage = 'claim', maxLength = 4 * 1024 * 1024, stateFields = [], onInput = () => {} }) {
     const { input } = knowledgeFormControls(doc, () => {});
     const panel = el(doc, 'section', 'atri-authored-editor', undefined, root);
     const area = input(panel, label, value[key] ?? '', next => {
@@ -43,7 +45,27 @@ export function mountAuthoredContentEditor({ document: doc, root, value, key = '
             el(doc, 'blockquote', '', note.quote, row);
             const use = input(row, 'Passage use', note.context.usage, next => { note.context.usage = next; }, 'text', usageOptions); use.name = note.id + '-use';
             contextText(row, note, 'attribution', 'Attribution'); contextText(row, note, 'time', 'Source time');
-            if (note.applicability?.stateConditions?.length) el(doc, 'p', 'atri-library-meta', tl('This passage has an exact state binding. Edit its conditions in Source.'), row);
+            const binding = disclosure(doc, row, 'Current state binding'); let loaded = false;
+            const clearPreview = () => binding.querySelector(':scope > .atri-library-feedback')?.remove();
+            row.addEventListener('input', clearPreview); row.addEventListener('change', clearPreview);
+            binding.addEventListener('toggle', () => {
+                if (!binding.open || loaded) return;
+                loaded = true;
+                el(doc, 'p', 'atri-library-meta', tl('For a current claim, these conditions determine whether this exact passage remains current. They do not execute actions or change starting state.'), binding);
+                mountStateConditionEditor({ document: doc, root: binding, getValue: () => note.applicability,
+                    setValue: next => { note.applicability = next; }, keywordActivation: false, fields: stateFields, onInput });
+                action(doc, binding, 'Preview against this World baseline', () => {
+                    const providers = [...new Set(stateFields.map(field => field.providerId))].map(providerId => ({ providerId, status: 'ready', fields: stateFields.filter(field => field.providerId === providerId) }));
+                    const result = authoredPassageApplicability(note, providers);
+                    feedback(doc, binding, result === null ? 'Only a current claim with state conditions changes its use in this preview.'
+                        : result.status === 'true' ? 'Current applicability matches this World baseline.'
+                            : result.status === 'false' ? 'This passage is historical for this starting state.'
+                                : 'Current applicability cannot be established from this World baseline. The passage remains a source claim.');
+                });
+                action(doc, binding, 'Remove state binding', () => {
+                    delete note.applicability; onInput(); renderNotes(); summary.focus();
+                });
+            });
             action(doc, row, 'Select passage', () => { area.focus(); area.setSelectionRange(note.start, note.end); });
             action(doc, row, 'Remove annotation', () => { value.annotations = value.annotations.filter(item => item !== note); renderNotes(); summary.focus(); });
         }

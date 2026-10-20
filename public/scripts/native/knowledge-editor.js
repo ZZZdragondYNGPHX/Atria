@@ -1,11 +1,11 @@
-import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { knowledgeFormControls } from './knowledge-form-controls.js';
 import { mountKnowledgeEntryBrowser } from './knowledge-entry-browser.js';
 import { createStudioNativeId } from './studio-authoring.js';
-import { KNOWLEDGE_DELIVERY_POSITIONS, KNOWLEDGE_CONDITION_LOGIC, KNOWLEDGE_CONDITION_OPERATORS, validateKnowledgeEditorValue } from './knowledge-contracts.js';
+import { KNOWLEDGE_DELIVERY_POSITIONS, validateKnowledgeEditorValue } from './knowledge-contracts.js';
 import { el, action, disclosure, feedback, confirmLibraryAction } from './library-ui.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import { mountAuthoredContentEditor } from './authored-content-editor.js';
+import { mountStateConditionEditor } from './state-condition-editor.js';
 
 const clone = value => structuredClone(value);
 const entryName = (entry, index) => entry.metadata?.title || entry.metadata?.label || entry.content?.split('\n')[0].slice(0, 60) || tl('Knowledge entry') + ' ' + (index + 1);
@@ -53,27 +53,8 @@ export function mountKnowledgeEditor({ document: doc, root, value, initialEntryI
         draft.entries.splice(selected, 1); syncEntryIds(); selected = Math.max(0, selected - 1); changeView();
     }
     function renderConditions(parent, entry) {
-        const applicability = sectionDraft(entry, 'applicability');
-        const conditions = applicability.stateConditions || [];
-        input(parent, 'Condition matching', applicability.stateConditionsLogic || 'all', value => { applicability.stateConditionsLogic = value; }, 'text', KNOWLEDGE_CONDITION_LOGIC);
-        const activate = checkbox(parent, 'Activate from matching state without keywords', applicability.stateActivation === true, value => { applicability.stateActivation = value; }); activate.disabled = !conditions.length;
-        conditions.forEach((condition, index) => {
-            const row = el(doc, 'div', 'atri-knowledge-rule', undefined, parent);
-            el(doc, 'h4', '', tl('State condition') + ' ' + (index + 1), row);
-            input(row, formatProductText('State provider ${0}', [index + 1]), condition.providerId, value => { condition.providerId = value; });
-            input(row, formatProductText('State path segments ${0}', [index + 1]), Array.isArray(condition.path) ? condition.path.join('\n') : '', value => { condition.path = lines(value); }, 'textarea');
-            el(doc, 'p', 'atri-library-meta', tl('Enter one exact state path segment per line.'), row);
-            input(row, formatProductText('Comparison ${0}', [index + 1]), condition.operator || 'eq', value => { condition.operator = value; }, 'text', KNOWLEDGE_CONDITION_OPERATORS);
-            const type = condition.value === null ? 'null' : typeof condition.value;
-            input(row, formatProductText('Value type ${0}', [index + 1]), type, value => { condition.value = ({ string: '', number: 0, boolean: false, null: null })[value]; changeView(); }, 'text', ['string', 'number', 'boolean', 'null']);
-            if (type === 'boolean') checkbox(row, formatProductText('Expected value ${0}', [index + 1]), condition.value, value => { condition.value = value; });
-            else if (type !== 'null') {
-                const node = input(row, formatProductText('Expected value ${0}', [index + 1]), condition.value, value => { condition.value = type === 'number' ? (value === '' ? undefined : Number(value)) : value; }, type === 'number' ? 'number' : 'text');
-                if (type === 'number') { node.required = true; node.step = 'any'; }
-            }
-            action(doc, row, 'Remove condition', () => { conditions.splice(index, 1); if (!conditions.length) applicability.stateActivation = false; changeView(); });
-        });
-        action(doc, parent, 'Add state condition', () => { applicability.stateConditions = conditions; conditions.push({ providerId: 'atri_variables', path: [], operator: 'eq', value: '' }); changeView(); }, { disabled: conditions.length >= 32 });
+        mountStateConditionEditor({ document: doc, root: parent, getValue: () => entry.applicability,
+            setValue: value => { entry.applicability = value; } });
     }
     function renderRelations(parent, entry) {
         const relations = sectionDraft(entry, 'relations');

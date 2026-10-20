@@ -54,7 +54,7 @@ export function validateWorldEditorValue(value, snapshot = false) {
     json(value, 'World');
 }
 
-export function mountWorldEditor({ document: doc, root, value, label = 'World revision JSON', onReview, projectSource = null, library = null, validate: validateTarget = () => {}, isCurrent = () => true }) {
+export function mountWorldEditor({ document: doc, root, value, worldId = null, label = 'World revision JSON', onReview, projectSource = null, library = null, validate: validateTarget = () => {}, isCurrent = () => true }) {
     let draft = clone(value), source = '', advanced = false, disposed = false, loadSequence = 0;
     const snapshot = projectSource !== null;
     const initialDraft = JSON.stringify(draft);
@@ -156,7 +156,17 @@ export function mountWorldEditor({ document: doc, root, value, label = 'World re
                 note(identity, 'Project edits do not publish Library revisions or change existing Sessions.');
             }
             if (plain(revision())) {
-                mountAuthoredContentEditor({ document: doc, root: body, value: revision(), key: 'body', label: 'World text', defaultUsage: 'background', maxLength: 262144 });
+                const stateFields = [], identity = snapshot ? draft.world.worldId : worldId;
+                const collect = (value, path = []) => {
+                    if (stateFields.length >= 128 || path.length > 9) return;
+                    if (plain(value)) for (const [key, child] of Object.entries(value)) {
+                        if (!['__proto__', 'constructor', 'prototype'].includes(key)) collect(child, [...path, key]);
+                    }
+                    else if (path.length && (value === null || ['string', 'boolean', 'number'].includes(typeof value))) stateFields.push({
+                        label: path.join(' / '), providerId: 'atri_world_state', path: ['worlds', identity, 'state', ...path], value });
+                };
+                if (identity) collect(revision().baseline);
+                mountAuthoredContentEditor({ document: doc, root: body, value: revision(), key: 'body', label: 'World text', defaultUsage: 'background', maxLength: 262144, stateFields });
                 for (const [key, title, items] of [['knowledgeBindingIds', 'Knowledge bindings', catalog.bindings], ['assetIds', 'World assets', catalog.assets]]) {
                     const section = disclosure(doc, body, title);
                     const content = el(doc, 'div', '', undefined, section); dependencySections.set(key, content); dependencies(content, key, items);
