@@ -58,7 +58,10 @@ export function queryHistory(snapshot, query = {}) {
         const result = structuredClone(item);
         if (result.provenance && Array.isArray(result.provenance)) { result.provenanceCount = result.provenance.length; result.provenance = result.provenance.slice(-8); }
         if (result.transitions) { result.transitionCount = result.transitions.length; result.transitions = result.transitions.slice(-8); }
-        if (item.kind === 'fact') result.current = h.heads[item.key] === item.id;
+        if (item.kind === 'fact') {
+            result.current = h.heads[item.key] === item.id && (item.effectiveUntil === undefined || item.effectiveUntil === null);
+            if (item.effectiveFrom !== undefined) { result.recordedTick = item.tick; result.validFrom = item.effectiveFrom; result.validUntil = item.effectiveUntil; }
+        }
         if (query.memory) {
             const memory = h.memory[item.id];
             const tick = snapshot.states.atri_lifecycle.clocks[historyPolicy(snapshot).clockId];
@@ -66,7 +69,10 @@ export function queryHistory(snapshot, query = {}) {
                 clarity: memory?.marked || memory?.journaled || item.kind !== 'event' || tick - item.tick < 20 * 365 * 1440 ? 'clear' : 'faded' };
         }
         const size = JSON.stringify(result).length;
-        if (characters + size > 12000) { offset--; break; }
+        if (characters + size > 12000) {
+            if (!items.length) throw new TypeError('History row exceeds page bound; use an exact fact query');
+            offset--; break;
+        }
         characters += size; items.push(result);
     }
     return { schemaVersion: 1, anchor: { sessionId: snapshot.session.sessionId, revisionId: snapshot.revision.revisionId, branchId: snapshot.revision.branchId },
@@ -97,9 +103,11 @@ function queryFactAt(snapshot, query) {
     if (h.facts[h.heads[query.key]]?.public) while (id && scanned++ < 128) {
         const fact = h.facts[id];
         if (!fact || fact.key !== query.key) throw new TypeError('Fact history unavailable');
-        if (fact.tick <= tick) {
-            if (fact.public) items.push({ ...structuredClone(fact), current: h.heads[query.key] === fact.id,
-                validFrom: fact.tick, ...(Object.hasOwn(fact, 'validUntil') ? { validUntil: fact.validUntil } : {}) });
+        const from = fact.effectiveFrom ?? fact.tick, until = Object.hasOwn(fact, 'effectiveUntil') ? fact.effectiveUntil : fact.validUntil;
+        if (from <= tick && (until == null || tick < until)) {
+            if (fact.public) items.push({ ...structuredClone(fact), current: fact.effectiveFrom === undefined ? h.heads[query.key] === fact.id : tick === now,
+                latestRecord: h.heads[query.key] === fact.id, recordedTick: fact.tick,
+                validFrom: from, ...(until !== undefined ? { validUntil: until } : {}) });
             id = ''; break;
         }
         id = fact.previousId;

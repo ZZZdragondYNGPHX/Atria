@@ -13,6 +13,21 @@ const copy = v => structuredClone(v);
 const same = (a, b) => a === undefined || b === undefined ? a === b : equalNativeDocuments(a, b);
 const record = (snapshot, domain, id = 'main') => snapshot.states.atri_lifecycle.domains[domain]?.records.find(r => r.id === id)?.value;
 const sourceValue = (snapshot, source) => Object.hasOwn(source, 'value') ? source.value : source.path.reduce((v, k) => v?.[k], record(snapshot, source.domainId, source.recordId));
+function effectiveSource(snapshot, source) {
+    if (!source.temporal) return {};
+    const value = record(snapshot, source.domainId, source.recordId);
+    const at = path => path.reduce((item, key) => item?.[key], value);
+    const from = at(source.temporal.fromPath), until = source.temporal.untilPath ? at(source.temporal.untilPath) : 0;
+    const clock = snapshot.states.atri_lifecycle.clocks[historyPolicy(snapshot).clockId];
+    if (!Number.isSafeInteger(from) || from < 0 || from > clock || !Number.isSafeInteger(until)
+        || until !== 0 && (until <= from || until > clock)) throw new TypeError('Historical effective interval unavailable');
+    const targetId = source.temporal.correctsPath ? at(source.temporal.correctsPath) : '';
+    const note = source.temporal.notePath ? at(source.temporal.notePath) : '';
+    if (typeof targetId !== 'string' || targetId.length > 128 || typeof note !== 'string' || note.length > 2048
+        || targetId && (!/^history\.[1-9][0-9]*$/.test(targetId) || !note.trim())) throw new TypeError('Historical correction source unavailable');
+    return { effectiveFrom: from, effectiveUntil: until || null, ...(targetId ? { correction: { targetId, note } } : {}) };
+}
+const effectiveFields = fact => Object.fromEntries(['effectiveFrom', 'effectiveUntil', 'correction'].filter(key => Object.hasOwn(fact, key)).map(key => [key, fact[key]]));
 export const historySources = snapshot => [...(historyPolicy(snapshot)?.sources ?? []), ...lifetimeSources(snapshot), ...renewalSources(snapshot), ...enterpriseSources(snapshot), ...regionalSources(snapshot)];
 const lifetimeMeaning = state => { if (!state) return null; const { work: _work, resolvedTick: _tick, ...value } = state; return value; };
 const id = h => 'history.' + h.nextId++;
@@ -87,7 +102,7 @@ export function prepareHistory(base, candidate, transaction, resolution, operati
     const policy = historyPolicy(candidate); if (!policy) return;
     const state = candidate.states.atri_lifecycle, h = state.history ??= initialHistory();
     const sources = historySources(candidate);
-    const scans = sources.length - policy.sources.length + policy.meaningfulDomains.reduce((n, d) => n + state.domains[d].records.length, 0)
+    let scans = sources.length - policy.sources.length + policy.meaningfulDomains.reduce((n, d) => n + state.domains[d].records.length, 0)
         + policy.sources.reduce((n, source) => n + state.domains[source.domainId].records.length, 0);
     if (scans > 4096) throw new TypeError('History source scan budget');
     if (countTurn) h.transactions++;
@@ -102,13 +117,43 @@ export function prepareHistory(base, candidate, transaction, resolution, operati
         refs: ['actor:' + candidate.manifest.actors[0].actorId, 'era:' + chronology.era_id] };
     for (const source of sources) {
         const value = sourceValue(candidate, source);
+        const effective = effectiveSource(candidate, source);
         if (value === undefined || Buffer.byteLength(JSON.stringify(value)) > 8192) throw new TypeError('Missing or oversized canonical source');
         const previous = h.heads[source.id] ? h.facts[h.heads[source.id]] : null;
-        if (previous && same(previous.value, value)) continue;
+        if (previous && same(previous.value, value) && same(effectiveFields(previous), effective)) continue;
+        let effectivePrevious = null;
+        if (effective.correction) {
+            if (h.facts[effective.correction.targetId]?.key !== source.id) throw new TypeError('Historical correction target unavailable');
+            let row = previous, walked = 0;
+            while (row && row.id !== effective.correction.targetId && walked++ < 128) {
+                if (++scans > 4096) throw new TypeError('History source scan budget');
+                const from = row.effectiveFrom ?? row.tick, until = Object.hasOwn(row, 'effectiveUntil') ? row.effectiveUntil : row.validUntil;
+                if ((effective.effectiveUntil === null || from < effective.effectiveUntil) && (until == null || effective.effectiveFrom < until)) throw new TypeError('Historical correction target was superseded in this interval');
+                row = row.previousId ? h.facts[row.previousId] : null;
+            }
+            if (!row || row.id !== effective.correction.targetId) throw new TypeError('Historical correction target unavailable within work bound');
+        }
+        if (source.temporal && previous && !effective.correction) {
+            let row = previous, walked = 0, laterRecordedFact = false;
+            while (row && walked++ < 128) {
+                if (++scans > 4096) throw new TypeError('History source scan budget');
+                const from = row.effectiveFrom ?? row.tick, until = Object.hasOwn(row, 'effectiveUntil') ? row.effectiveUntil : row.validUntil;
+                laterRecordedFact ||= from > effective.effectiveFrom;
+                const overlaps = (effective.effectiveUntil === null || from < effective.effectiveUntil) && (until == null || effective.effectiveFrom < until);
+                if (overlaps && !same(row.value, value) && (from > effective.effectiveFrom || from === effective.effectiveFrom && effective.effectiveFrom < clock)) throw new TypeError('Past conflicting interval requires an explicit correction');
+                if (!effectivePrevious && from <= effective.effectiveFrom && (until == null || effective.effectiveFrom < until)) effectivePrevious = row;
+                if (effective.effectiveFrom === clock && effectivePrevious) { row = null; break; }
+                row = row.previousId ? h.facts[row.previousId] : null;
+            }
+            if (row) throw new TypeError('Historical effective chain work limit');
+            if (laterRecordedFact && effectivePrevious && !same(effectivePrevious.value, value)) throw new TypeError('Past conflicting interval requires an explicit correction');
+            if (laterRecordedFact) effectivePrevious = null;
+        }
         if (previous) previous.validUntil = clock;
+        if (effectivePrevious) effectivePrevious.effectiveUntil = effective.effectiveFrom;
         const factId = id(h);
         h.facts[factId] = { id: factId, kind: 'fact', key: source.id, label: source.label, value: copy(value), public: source.public,
-            tick: clock, validUntil: null, year: event.year, refs: copy(source.refs), eventId: event.id, previousId: previous?.id ?? '',
+            tick: clock, validUntil: null, ...effective, year: event.year, refs: copy(source.refs), eventId: event.id, previousId: previous?.id ?? '',
             provenance: { sessionId: base.session.sessionId, branchId: base.revision.branchId, sequence: chronology.sequence, source: source.domainId + '.' + source.recordId + '.' + source.path.join('.') } };
         h.heads[source.id] = factId;
         if (source.public) event.refs = [...new Set([...event.refs, ...source.refs])];
@@ -162,6 +207,7 @@ export function validateHistory(snapshot) {
         const fact = h.facts[h.heads[source.id]];
         if (h.turns && (!fact || fact.public !== source.public)) throw new TypeError('Canonical source missing or wrong disclosure');
         if (fact && !same(fact.value, sourceValue(snapshot, source))) throw new TypeError('Canonical fact contradicts authority');
+        if (fact && !same(effectiveFields(fact), effectiveSource(snapshot, source))) throw new TypeError('Historical effective source contradicts authority');
     }
     for (const fact of Object.values(h.facts)) {
         const source = sourceMap.get(fact.key), previous = h.facts[fact.previousId];
@@ -170,6 +216,19 @@ export function validateHistory(snapshot) {
             || !h.anchors[fact.eventId] || (fact.previousId && (!previous || previous.key !== fact.key || previous.tick > fact.tick
                 || Number(previous.id.split('.')[1]) >= Number(fact.id.split('.')[1])))
             || (fact.validUntil !== undefined && fact.validUntil !== null && (!Number.isSafeInteger(fact.validUntil) || fact.validUntil < fact.tick))) throw new TypeError('Canonical provenance');
+        if (source.temporal) {
+            if (!Number.isSafeInteger(fact.effectiveFrom) || fact.effectiveFrom < 0 || fact.effectiveFrom > fact.tick
+                || fact.effectiveUntil !== null && (!Number.isSafeInteger(fact.effectiveUntil) || fact.effectiveUntil < fact.effectiveFrom
+                    || fact.effectiveUntil > snapshot.states.atri_lifecycle.clocks[policy.clockId])) throw new TypeError('Historical effective interval');
+            if (fact.correction) {
+                const target = h.facts[fact.correction.targetId];
+                const end = target && Object.hasOwn(target, 'effectiveUntil') ? target.effectiveUntil : target?.validUntil;
+                if (!source.temporal.correctsPath || !target || target.key !== fact.key
+                    || Number(target.id.split('.')[1]) >= Number(fact.id.split('.')[1]) || !fact.correction.note?.trim()
+                    || fact.correction.note.length > 2048 || fact.effectiveFrom < (target.effectiveFrom ?? target.tick)
+                    || end != null && (fact.effectiveUntil === null || fact.effectiveUntil > end)) throw new TypeError('Historical correction target or interval');
+            }
+        } else if (Object.keys(effectiveFields(fact)).length) throw new TypeError('Undeclared historical effective source');
     }
     for (const artifact of Object.values(h.artifacts)) {
         if (snapshot.states.atri_lifecycle.lifetimes && artifact.provenance.at(-1)?.holderId !== artifact.holderId) throw new TypeError('Artifact custody contradiction');

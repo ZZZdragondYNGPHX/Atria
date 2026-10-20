@@ -3,6 +3,24 @@ import { fixedHostTarget, projectPersonaStatus, projectConversation, projectPres
 import { bridgeFailure } from '../../../public/shared/native-frontend-bridge.js';
 import { informationContext } from '../../../public/shared/native-information-runtime.js';
 import { deriveExpressionPlan } from '../../../public/shared/native-expression-runtime.js';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+
+const historyCursorKey = randomBytes(32);
+function readTemporalHistory(owner, base, input) {
+    const scope = [owner, base.session.sessionId, base.revision.branchId, base.revision.revisionId, input.key, input.tick, input.clockId];
+    const sign = page => createHmac('sha256', historyCursorKey).update(JSON.stringify([scope, page])).digest('hex');
+    let cursor = '';
+    if (input.cursor) {
+        let envelope;
+        try { envelope = JSON.parse(input.cursor); } catch { throw bridgeFailure('bridge_binding_denied'); }
+        if (!envelope?.page || typeof envelope.mac !== 'string' || !/^[a-f0-9]{64}$/.test(envelope.mac)
+            || !timingSafeEqual(Buffer.from(envelope.mac, 'hex'), Buffer.from(sign(envelope.page), 'hex'))) throw bridgeFailure('bridge_binding_denied');
+        cursor = JSON.stringify(envelope.page);
+    }
+    const page = readChronicle(base, { ...input, cursor });
+    if (page.next) { const next = JSON.parse(page.next); page.next = JSON.stringify({ page: next, mac: sign(next) }); }
+    return page;
+}
 
 function expressionStatus(base) {
     const fallback = reason => ({ status: 'fallback', actorId: '', intent: '', reason, revisionId: base.revision.revisionId });
@@ -21,7 +39,8 @@ export async function readFixedHost(core, owner, state, base, binding, input) {
     const { service, method } = binding.target;
     if (fixedHostTarget(binding.target, binding.outputSchema?.properties?.data).local) throw bridgeFailure('bridge_host_local_required');
     if (service === 'host.world' && method === 'view') return readWorldView(base, input);
-    if (service === 'host.history' && ['query', 'at'].includes(method)) return readChronicle(base, input);
+    if (service === 'host.history' && method === 'at') return readTemporalHistory(owner, base, input);
+    if (service === 'host.history' && method === 'query') return readChronicle(base, input);
     if (service === 'host.chronology' && method === 'interval') return reviewInterval(base, input);
     if (service === 'host.session' && method === 'run') return core.runStatus(owner, state.sessionId);
     if (service === 'host.persona' && method === 'status') return projectPersonaStatus(base);

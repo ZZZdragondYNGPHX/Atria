@@ -23,11 +23,22 @@ export function assertHistoryPolicy(raw, lifecycle) {
     raw.meaningfulDomains.forEach(domain);
     if (!Array.isArray(raw.sources) || raw.sources.length > 64 || new Set(raw.sources.map(s => s.id)).size !== raw.sources.length) throw new TypeError('History sources');
     for (const s of raw.sources) {
-        fields(s, ['id', 'domainId', 'recordId', 'path', 'public', 'refs', 'label'], 'History fact source'); taskId(s.id); taskId(s.recordId);
+        fields(s, ['id', 'domainId', 'recordId', 'path', 'public', 'refs', 'label', 'temporal'], 'History fact source'); taskId(s.id); taskId(s.recordId);
         let schema = domain(s.domainId).recordSchema;
         if (!Array.isArray(s.path) || !s.path.length || s.path.length > 8) throw new TypeError('History path');
         for (const key of s.path) { taskId(key); schema = schema?.properties?.[key]; }
         if (!schema || typeof s.public !== 'boolean' || typeof s.label !== 'string' || s.label.length > 160) throw new TypeError('History fact disclosure');
+        if (s.temporal !== undefined) {
+            fields(s.temporal, ['fromPath', 'untilPath', 'correctsPath', 'notePath'], 'History effective time source');
+            if (!s.temporal.fromPath || Boolean(s.temporal.correctsPath) !== Boolean(s.temporal.notePath)) throw new TypeError('History effective time and correction source required');
+            for (const [name, path] of Object.entries(s.temporal)) {
+                if (!Array.isArray(path) || !path.length || path.length > 8) throw new TypeError('History temporal path');
+                let selected = domain(s.domainId).recordSchema;
+                for (const key of path) { taskId(key); selected = selected?.properties?.[key]; }
+                if (name === 'fromPath' || name === 'untilPath' ? selected?.type !== 'integer' || selected.minimum < 0
+                    : selected?.type !== 'string' || selected.maxLength > (name === 'notePath' ? 2048 : 128)) throw new TypeError('History temporal source schema');
+            }
+        }
         if (!Array.isArray(s.refs) || s.refs.length > 16 || s.refs.some(r => typeof r !== 'string' || !/^(actor|family|location|institution|case|claim|era|artifact):[a-zA-Z0-9._-]{1,128}$/.test(r))) throw new TypeError('History facet');
     }
     integer(raw.hot, 1, 32); integer(raw.warm, 1, 128); integer(raw.cold, 1, 128);
