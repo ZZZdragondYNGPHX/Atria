@@ -9,7 +9,7 @@ import { mountNativeRegexRules } from './regex-authoring.js';
 import { createAtriaIcon } from '../atria-shell/icons.js';
 import { PROMPT_TEMPLATES, newPromptPreset } from './prompt-templates.js';
 
-const PROGRAM = 'core.prompt-program', MODULE = 'core.prompt-module', GENERATION = 'core.generation-profile';
+const PROGRAM = 'core.prompt-program', MODULE = 'core.prompt-module';
 const clone = value => JSON.parse(JSON.stringify(value));
 const idOf = entry => entry.resource[PROMPT_TYPES[entry.resourceType][1]];
 const entryRef = entry => resourceRef(entry.resourceType, entry.resource, { scope: 'library' });
@@ -260,16 +260,16 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
             receipt.title = version;
             receipt.className = 'atri-library-feedback'; receipt.setAttribute('role', 'status');
             button(root, 'Review pinned consumers', async () => {
-                const references = (await Promise.all(adoptionRefs.filter(ref => [PROGRAM, GENERATION].includes(ref.resourceType)).map(ref => runtimeRequest('/resources/used-by', { method: 'POST', body: ref })))).flat();
+                const references = (await Promise.all(adoptionRefs.filter(ref => ref.resourceType === PROGRAM).map(ref => runtimeRequest('/resources/used-by', { method: 'POST', body: ref })))).flat();
                 const panel = node('section', undefined, root); node('p', 'Saving keeps consumer versions pinned. Open each owner to adopt this revision through its existing controls.', panel);
                 const unique = [...new Map(references.map(item => [JSON.stringify([item.node, item.edge]), item])).values()];
                 renderResourceReferenceRows({ document: doc, root: panel, references: unique, host });
             });
         }
         if (!section) {
-            node('p', 'This preset owns its program, modules, generation settings and Regex rules. Changes affect only this preset.', root);
+            node('p', 'Prompt presets contain text, ordering and Regex rules. Model and generation settings belong to API presets.', root);
             const cards = node('div', undefined, root); cards.className = 'atri-preset-sections';
-            for (const [type, label] of [[PROGRAM, 'Prompt Programs'], [MODULE, 'Prompt Modules'], [GENERATION, 'Generation Profiles']]) button(cards, label, () => { section = type; renderDetail(); });
+            for (const [type, label] of [[PROGRAM, 'Prompt Programs'], [MODULE, 'Prompt Modules']]) button(cards, label, () => { section = type; renderDetail(); });
             button(cards, 'Preset Regex', () => { section = 'regex'; renderDetail(); });
             return;
         }
@@ -345,7 +345,9 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
             const tools = node('div', undefined, root); tools.className = 'atri-prompt-actions';
             const template = select(tools, 'Start from', PROMPT_TEMPLATES.map(([id, label]) => [id, tl(label)]), 'blank');
             button(tools, 'New preset', () => create(newPromptPreset(template.value)));
+            node('p', 'Prompt presets contain text, ordering and Regex rules. Model and generation settings belong to API presets.', root);
             const file = field(root, 'Import preset'); file.type = 'file'; file.accept = '.json,application/json';
+            node('p', 'Generation parameters in older files are kept separately. Use Reuse saved configuration in an API preset to copy them.', root);
             button(root, 'Import selected preset', async () => { if (!file.files?.length) { file.focus(); return; } await create(JSON.parse(await file.files[0].text()), true); });
             if (!presets.length) node('p', 'No presets yet. Create a preset or import a file.', root);
             for (const preset of presets) {
@@ -366,8 +368,8 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
             button(existing, 'Choose existing resources', async () => {
                 const entries = await runtimeRequest('/resources'); existing.replaceChildren(); node('summary', 'Existing resources — migrate into an independent preset', existing);
                 const options = type => entries.filter(e => e.ref.resourceType === type).map((e, i) => [String(i), e.resource.displayName + ' · ' + e.ref.scope + ' · ' + e.ref.revision]);
-                const programs = entries.filter(e => e.ref.resourceType === PROGRAM), generations = entries.filter(e => e.ref.resourceType === GENERATION);
-                const program = select(existing, 'Prompt Programs', options(PROGRAM), '0'); const generation = select(existing, 'Generation Profiles', [['', tl('Default')], ...options(GENERATION)]);
+                const programs = entries.filter(e => e.ref.resourceType === PROGRAM);
+                const program = select(existing, 'Prompt Programs', options(PROGRAM), '0');
                 button(existing, 'Create independent preset', async () => {
                     if (!programs[Number(program.value)]) throw new Error(tl('Choose a Prompt program.'));
                     const selected = [], seen = new Set();
@@ -380,7 +382,6 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
                         selected.push({ resourceType: entry.ref.resourceType, resource: entry.resource });
                     };
                     const chosen = programs[Number(program.value)]; visit(chosen);
-                    selected.push({ resourceType: GENERATION, resource: generation.value ? generations[Number(generation.value)].resource : newPromptResource(GENERATION) });
                     await create({ format: 'atria.prompt-preset', schemaVersion: 1, programId: chosen.resource.promptProgramId, programRevision: chosen.resource.revision, entries: selected, categories: [], moduleCategories: {} }, true);
                 });
             });
