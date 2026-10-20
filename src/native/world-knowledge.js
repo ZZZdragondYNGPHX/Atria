@@ -136,6 +136,13 @@ export function assertWorld(value) {
     });
 }
 
+function worldBindingSnapshots(values, ids = []) {
+    if (!Array.isArray(values) || values.length !== ids.length) throw new TypeError('World Binding snapshots must match the declared IDs');
+    const snapshots = values.map(assertKnowledgeBinding);
+    if (snapshots.some((binding, index) => binding.knowledgeBindingId !== ids[index])) throw new TypeError('World Binding snapshot order or identity mismatch');
+    return Object.freeze(snapshots);
+}
+
 export function assertWorldRevision(value) {
     noLegacyWorldKnowledgeIdentity(value, 'WorldRevision');
     assertOnlyKeys(
@@ -146,6 +153,9 @@ export function assertWorldRevision(value) {
             'schema',
             'baseline',
             'subjects',
+            'body',
+            'displayName',
+            'knowledgeBindings',
             'knowledgeBindingIds',
             'assetIds',
             'metadata',
@@ -158,6 +168,9 @@ export function assertWorldRevision(value) {
         worldId: assertNativeId(value.worldId, 'world', 'WorldRevision.worldId'),
         ...(value.schema === undefined ? {} : { schema: optionalJsonObject(value.schema, 'WorldRevision.schema') }),
         ...(value.baseline === undefined ? {} : { baseline: optionalJsonObject(value.baseline, 'WorldRevision.baseline') }),
+        ...(value.body === undefined ? {} : { body: text(value.body, 'WorldRevision.body', { allowEmpty: true, maxLength: 262144 }) }),
+        ...(value.displayName === undefined ? {} : { displayName: text(value.displayName, 'WorldRevision.displayName', { maxLength: 256 }) }),
+        ...(value.knowledgeBindings === undefined ? {} : { knowledgeBindings: worldBindingSnapshots(value.knowledgeBindings, value.knowledgeBindingIds) }),
         ...(value.subjects === undefined ? {} : { subjects: subjectDefinitions(value.subjects) }),
         knowledgeBindingIds: uniqueNativeIds(
             value.knowledgeBindingIds,
@@ -192,7 +205,7 @@ export function assertKnowledgeRevision(value) {
     noLegacyWorldKnowledgeIdentity(value, 'KnowledgeRevision');
     assertOnlyKeys(
         value,
-        new Set(['knowledgeRevisionId', 'knowledgeBaseId', 'entryIds', 'metadata', 'createdAt']),
+        new Set(['knowledgeRevisionId', 'knowledgeBaseId', 'entryIds', 'metadata', 'createdAt', 'displayName']),
         'KnowledgeRevision',
     );
     return Object.freeze({
@@ -202,6 +215,7 @@ export function assertKnowledgeRevision(value) {
             'KnowledgeRevision.knowledgeRevisionId',
         ),
         knowledgeBaseId: assertNativeId(value.knowledgeBaseId, 'knowledgeBase', 'KnowledgeRevision.knowledgeBaseId'),
+        ...(value.displayName === undefined ? {} : { displayName: text(value.displayName, 'KnowledgeRevision.displayName', { maxLength: 256 }) }),
         entryIds: uniqueNativeIds(value.entryIds, 'knowledgeEntry', 'KnowledgeRevision.entryIds'),
         metadata: value.metadata === undefined ? {} : optionalJsonObject(value.metadata, 'KnowledgeRevision.metadata'),
         ...(optionalTimestamp(value.createdAt, 'KnowledgeRevision.createdAt') === undefined ? {} : { createdAt: value.createdAt }),

@@ -663,6 +663,11 @@ export function assertAtriaPackageManifest(value) {
         for (const bindingId of snapshot.revision.knowledgeBindingIds) {
             if (!bindingIds.has(bindingId)) throw new TypeError('WorldRevision references unknown knowledgeBindingId ' + bindingId);
         }
+        for (const frozen of snapshot.revision.knowledgeBindings ?? []) {
+            const configured = knowledgeBindings.find(binding => binding.knowledgeBindingId === frozen.knowledgeBindingId);
+            const normalize = binding => ({ ...binding, source: { ...binding.source, kind: 'package' } });
+            if (hashNativeDocument(normalize(frozen)) !== hashNativeDocument(normalize(configured))) throw new TypeError('Package cannot override a fixed World Binding snapshot');
+        }
         for (const assetId of snapshot.revision.assetIds) {
             if (!assetIds.has(assetId)) throw new TypeError('WorldRevision references unknown assetId ' + assetId);
         }

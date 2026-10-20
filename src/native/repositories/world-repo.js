@@ -1,7 +1,7 @@
 import {
     NATIVE_RESOURCE_KINDS,
 } from '../contracts.js';
-import { assertWorld, assertWorldRevision } from '../world-knowledge.js';
+import { assertWorld, assertWorldRevision, assertKnowledgeBinding } from '../world-knowledge.js';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
 import { withNativeResourceWrites, withNativeResourceWrite, getNativeDocument, listNativeDocuments, putImmutable, putMutable } from './common.js';
@@ -105,8 +105,11 @@ export class WorldRepo {
                 throw new ConflictError('native_write_conflict', { expectedRevisionId: options.expectedCurrentRevisionId, actualRevisionId: world.currentRevisionId });
             }
 
+            const bindings = [];
+            const parent = world.currentRevisionId ? await getNativeDocument(tx, this._revisionKey(handle, revision.worldId, world.currentRevisionId)) : null;
             for (const knowledgeBindingId of revision.knowledgeBindingIds) {
-                const binding = await getNativeDocument(tx, {
+                const binding = revision.knowledgeBindings?.find(item => item.knowledgeBindingId === knowledgeBindingId)
+                    ?? parent?.knowledgeBindings?.find(item => item.knowledgeBindingId === knowledgeBindingId) ?? await getNativeDocument(tx, {
                     kind: NATIVE_RESOURCE_KINDS.knowledgeBinding,
                     handle,
                     knowledgeBindingId,
@@ -114,6 +117,12 @@ export class WorldRepo {
                 if (!binding) {
                     throw new NotFoundError('native knowledge binding', { knowledgeBindingId });
                 }
+                const captured = assertKnowledgeBinding(binding);
+                if (captured.source.kind !== 'library') throw new TypeError('Library World requires Library Knowledge sources');
+                const knowledge = await getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.knowledgeRevision, handle,
+                    knowledgeBaseId: captured.source.knowledgeBaseId, knowledgeRevisionId: captured.source.knowledgeRevisionId });
+                if (!knowledge) throw new NotFoundError('native knowledge revision', captured.source);
+                bindings.push(captured);
             }
             for (const assetId of revision.assetIds) {
                 const assetRef = await getNativeDocument(tx, {
@@ -124,10 +133,11 @@ export class WorldRepo {
                 if (!assetRef) throw new NotFoundError('native asset ref', { assetId });
             }
 
+            const capturedRevision = assertWorldRevision({ ...revision, displayName: world.displayName, knowledgeBindings: bindings });
             await putImmutable(
                 tx,
                 this._revisionKey(handle, revision.worldId, revision.worldRevisionId),
-                revision,
+                capturedRevision,
             );
             const next = assertWorld({
                 ...world,
@@ -135,7 +145,7 @@ export class WorldRepo {
                 updatedAt: Math.max(Date.now(), Number(world.updatedAt || 0)),
             });
             await putMutable(tx, worldKey, next);
-            return revision;
+            return capturedRevision;
         }));
     }
 

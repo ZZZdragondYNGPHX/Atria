@@ -46,12 +46,12 @@ export class ResourceBundleService {
     }
     adapter(ref) { const adapter = this.adapters.get(ref.resourceType); if (!adapter) throw new TypeError('Resource type cannot be shared as a Resource Bundle: ' + ref.resourceType); return adapter; }
     async export(handle, rootValue) {
-        const root = bundleRef(rootValue), resources = new Map(), active = new Set(); let totalBytes = 0;
+        const root = bundleRef(rootValue), resources = new Map(), active = new Set(), captured = new Map(); let totalBytes = 0;
         const visit = async value => {
             const ref = bundleRef(value), key = bundleRefKey(ref); if (active.has(key)) throw new TypeError('Resource Bundle dependency cycle'); if (resources.has(key)) return;
             if (active.size >= RESOURCE_BUNDLE_LIMITS.depth || resources.size + active.size >= RESOURCE_BUNDLE_LIMITS.resources) throw new TypeError('Resource Bundle closure exceeds limits');
-            active.add(key); const adapter = this.adapter(ref), data = portable(await adapter.read(handle, ref)); adapter.validate(ref, data); totalBytes += Buffer.byteLength(JSON.stringify(data)); if (totalBytes > RESOURCE_BUNDLE_LIMITS.bytes) throw new TypeError('Resource Bundle exceeds size limit');
-            const dependencies = (await adapter.dependencies(handle, ref, data)).map(bundleRef);
+            active.add(key); const adapter = this.adapter(ref), data = portable(captured.has(key) ? captured.get(key) : await adapter.read(handle, ref)); adapter.validate(ref, data); totalBytes += Buffer.byteLength(JSON.stringify(data)); if (totalBytes > RESOURCE_BUNDLE_LIMITS.bytes) throw new TypeError('Resource Bundle exceeds size limit');
+            const dependencies = (await adapter.dependencies(handle, ref, data, null, (dependency, snapshot) => captured.set(bundleRefKey(dependency), snapshot))).map(bundleRef);
             for (const dependency of dependencies) await visit(dependency);
             resources.set(key, { ref, data, dependencies, integrity: hashNativeDocument(data) }); active.delete(key);
         };
@@ -91,6 +91,7 @@ export class ResourceBundleService {
         const context = {
             id, createdAt: bundle.createdAt, bundleHash,
             ref: ref => { const found = mapped.get(bundleRefKey(ref)); if (!found) throw new TypeError('Resource Bundle dependency mapping is missing'); return found; },
+            data: ref => { const found = prepared.find(item => bundleRefKey(item.source) === bundleRefKey(ref)); if (!found) throw new TypeError('Resource Bundle dependency content is missing'); return cloneNativeDocument(found.data); },
             logicalId: (type, originalId, owner) => {
                 let candidates = ordered.filter(item => item.ref.resourceType === type && item.ref.resourceId === originalId && bundleLogicalKey({ ...item.ref, resourceId: owner.resourceId, resourceType: owner.resourceType }) === bundleLogicalKey(owner));
                 if (!candidates.length) candidates = ordered.filter(item => item.ref.resourceType === type && item.ref.resourceId === originalId);

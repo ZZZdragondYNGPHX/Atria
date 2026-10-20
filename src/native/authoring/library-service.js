@@ -194,7 +194,7 @@ export class NativeLibraryService {
                 throw new NotFoundError('library world revision', { resourceId, revision });
             }
             const snapshot = assertPackagedWorldSnapshot({
-                world: { ...world, currentRevisionId: revision },
+                world: { worldId: resourceId, displayName: worldRevision.displayName ?? resourceId, currentRevisionId: revision },
                 revision: worldRevision,
             });
             return Object.freeze({
@@ -220,7 +220,7 @@ export class NativeLibraryService {
                 throw new NotFoundError('library knowledge revision', { resourceId, revision });
             }
             const snapshot = assertPackagedKnowledgeSnapshot({
-                knowledgeBase: { ...knowledgeBase, currentRevisionId: revision },
+                knowledgeBase: { knowledgeBaseId: resourceId, displayName: knowledgeRevision.displayName ?? resourceId, currentRevisionId: revision },
                 revision: knowledgeRevision,
                 entries,
             });

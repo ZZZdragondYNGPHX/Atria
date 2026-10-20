@@ -187,6 +187,9 @@ export async function resolveProjectDependencyClosure({
             parsed.knowledgeBase.knowledgeBaseId,
             parsed.revision.knowledgeRevisionId,
         );
+        const other = [...knowledge.values()].find(item => item.knowledgeBase.knowledgeBaseId === parsed.knowledgeBase.knowledgeBaseId && item.revision.knowledgeRevisionId !== parsed.revision.knowledgeRevisionId);
+        if (other) throw new NativeDependencyError('native_knowledge_dependency_version_conflict', { knowledgeBaseId: parsed.knowledgeBase.knowledgeBaseId,
+            revisions: [other.revision.knowledgeRevisionId, parsed.revision.knowledgeRevisionId] });
         const existing = knowledge.get(key);
         if (existing && JSON.stringify(existing) !== JSON.stringify(parsed)) {
             throw new NativeDependencyError('native_knowledge_dependency_conflict', { key });
@@ -219,7 +222,7 @@ export async function resolveProjectDependencyClosure({
         }
         return addKnowledgeSnapshot({
             knowledgeBase: {
-                ...base,
+                knowledgeBaseId, displayName: revision.displayName ?? knowledgeBaseId,
                 currentRevisionId: knowledgeRevisionId,
             },
             revision,
@@ -240,6 +243,20 @@ export async function resolveProjectDependencyClosure({
         const vendored = packageBinding(binding);
         bindings.set(knowledgeBindingId, vendored);
         return vendored;
+    };
+
+    const addWorldBindings = async (snapshot) => {
+        if (!snapshot.revision.knowledgeBindings) {
+            for (const id of snapshot.revision.knowledgeBindingIds) await loadBinding(id);
+            return;
+        }
+        for (const binding of snapshot.revision.knowledgeBindings) {
+            const vendored = packageBinding(binding), previous = bindings.get(binding.knowledgeBindingId);
+            if (previous && hashNativeDocument(previous) !== hashNativeDocument(vendored)) throw new NativeDependencyError('native_knowledge_binding_dependency_conflict', {
+                worldId: snapshot.world.worldId, worldRevisionId: snapshot.revision.worldRevisionId, knowledgeBindingId: binding.knowledgeBindingId });
+            await loadLibraryKnowledge(binding.source.knowledgeBaseId, binding.source.knowledgeRevisionId);
+            bindings.set(binding.knowledgeBindingId, vendored);
+        }
     };
 
     const loadAsset = async (assetId, expectedContentHash = null) => {
@@ -283,7 +300,6 @@ export async function resolveProjectDependencyClosure({
             });
         }
         worlds.set(parsed.world.worldId, parsed);
-        for (const bindingId of parsed.revision.knowledgeBindingIds) await loadBinding(bindingId);
         for (const assetId of parsed.revision.assetIds) await loadAsset(assetId);
         return parsed;
     };
@@ -344,7 +360,7 @@ export async function resolveProjectDependencyClosure({
         }
         await addWorldSnapshot({
             world: {
-                ...world,
+                worldId: dependency.worldId, displayName: revision.displayName ?? dependency.worldId,
                 currentRevisionId: dependency.worldRevisionId,
             },
             revision,
@@ -352,9 +368,7 @@ export async function resolveProjectDependencyClosure({
     }
 
     for (const snapshot of worlds.values()) {
-        for (const bindingId of snapshot.revision.knowledgeBindingIds) {
-            if (!bindings.has(bindingId)) await loadBinding(bindingId);
-        }
+        await addWorldBindings(snapshot);
         for (const assetId of snapshot.revision.assetIds) {
             if (!assets.has(assetId) && !projectAssetIds.has(assetId)) {
                 await loadAsset(assetId, exactAssetDependencies.get(assetId) || null);

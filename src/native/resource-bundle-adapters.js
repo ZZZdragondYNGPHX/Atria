@@ -56,16 +56,22 @@ export function createCoreBundleAdapters({ library, worldRepo: worlds, knowledge
         }
         throw missing({ resourceType: type, resourceId: id, revision });
     }
-    async function dependencies(handle, ref, data, resolveBundle = null) {
+    async function dependencies(handle, ref, data, resolveBundle = null, capture = null) {
         if (isPrompt(ref.resourceType)) return collectVersionedModelPromptResourceRefs(ref.resourceType, data);
         const find = (type, id, revision) => resolveBundle ? resolveBundle(type, id, revision) : resolve(handle, ref, type, id, revision);
-        if (ref.resourceType === 'core.world') return Promise.all([
-            ...data.revision.knowledgeBindingIds.map(id => find('core.knowledge-binding', id)),
-            ...data.revision.assetIds.map(id => find('core.asset', id)),
-        ]);
+        if (ref.resourceType === 'core.world') {
+            const bindings = data.revision.knowledgeBindings;
+            const refs = bindings ? bindings.map(binding => {
+                const revision = bindingRevision(binding);
+                const dependency = resolveBundle ? resolveBundle('core.knowledge-binding', binding.knowledgeBindingId, revision)
+                    : bundleRef({ ...ref, resourceType: 'core.knowledge-binding', resourceId: binding.knowledgeBindingId, revision });
+                capture?.(dependency, binding); return dependency;
+            }) : await Promise.all(data.revision.knowledgeBindingIds.map(id => find('core.knowledge-binding', id)));
+            return [...refs, ...await Promise.all(data.revision.assetIds.map(id => find('core.asset', id)))];
+        }
         if (ref.resourceType === 'core.knowledge-binding') {
             const source = data.source;
-            if (!resolveBundle && source.kind === 'library') return [bundleRef({ scope: 'library', resourceType: 'core.knowledge', resourceId: source.knowledgeBaseId, revision: source.knowledgeRevisionId })];
+            if (!resolveBundle && source.kind === 'library' && ref.scope !== 'package') return [bundleRef({ scope: 'library', resourceType: 'core.knowledge', resourceId: source.knowledgeBaseId, revision: source.knowledgeRevisionId })];
             return [await find('core.knowledge', source.knowledgeBaseId, source.knowledgeRevisionId)];
         }
         return [];
@@ -94,6 +100,7 @@ export function createCoreBundleAdapters({ library, worldRepo: worlds, knowledge
             resourceId = context.id('world', logical); revision = context.id('worldRevision', exact);
             data.world = { ...data.world, worldId: resourceId, currentRevisionId: revision };
             data.revision = { ...data.revision, worldId: resourceId, worldRevisionId: revision, knowledgeBindingIds: data.revision.knowledgeBindingIds.map(id => dependency('core.knowledge-binding', id).resourceId), assetIds: data.revision.assetIds.map(id => dependency('core.asset', id).resourceId), metadata: { ...data.revision.metadata, atriaResourceBundle: origin } };
+            if (data.revision.knowledgeBindings) data.revision.knowledgeBindings = item.data.revision.knowledgeBindingIds.map(id => context.data(item.dependencies.find(dep => dep.resourceType === 'core.knowledge-binding' && dep.resourceId === id)));
         } else if (ref.resourceType === 'core.knowledge') {
             resourceId = context.id('knowledgeBase', logical); revision = context.id('knowledgeRevision', exact);
             const entryIds = new Map(data.entries.map(entry => [entry.knowledgeEntryId, context.id('knowledgeEntry', logical + entry.knowledgeEntryId)]));

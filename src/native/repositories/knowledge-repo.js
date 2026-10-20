@@ -141,7 +141,7 @@ export class KnowledgeRepo {
 
     async commitRevision(handle, revisionValue, entryValues, options = {}) {
         assertWritable();
-        const revision = assertKnowledgeRevision(revisionValue);
+        let revision = assertKnowledgeRevision(revisionValue);
         if (!Array.isArray(entryValues)) throw new TypeError('KnowledgeRepo.commitRevision entries must be an array');
         const entries = entryValues.map(assertKnowledgeEntry);
         if (
@@ -174,6 +174,7 @@ export class KnowledgeRepo {
             if (!base) throw new NotFoundError('native knowledge base', {
                 knowledgeBaseId: revision.knowledgeBaseId,
             });
+            revision = assertKnowledgeRevision({ ...revision, displayName: base.displayName });
             if (Object.hasOwn(options, 'expectedCurrentRevisionId') && base.currentRevisionId !== options.expectedCurrentRevisionId) {
                 throw new ConflictError('native_write_conflict', { expectedRevisionId: options.expectedCurrentRevisionId, actualRevisionId: base.currentRevisionId });
             }
@@ -262,6 +263,12 @@ export class KnowledgeRepo {
                 });
             }
         }
+        for (const record of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.worldRevision, handle })) {
+            if (record.doc?.knowledgeBindings?.some(binding => binding.source.kind === 'library'
+                && binding.source.knowledgeBaseId === knowledgeBaseId && binding.source.knowledgeRevisionId === knowledgeRevisionId)) {
+                references.push({ kind: 'world-revision', worldId: record.doc.worldId, worldRevisionId: record.doc.worldRevisionId });
+            }
+        }
         return references;
     }
 
@@ -318,6 +325,9 @@ export class KnowledgeRepo {
                 }
             }
             const deleted = [];
+            for (const record of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.worldRevision, handle })) {
+                for (const binding of record.doc?.knowledgeBindings ?? []) if (binding.source.kind === 'library' && binding.source.knowledgeBaseId === knowledgeBaseId) retained.add(binding.source.knowledgeRevisionId);
+            }
             for (const record of await tx.listResources({
                 kind: NATIVE_RESOURCE_KINDS.knowledgeRevision,
                 handle,
@@ -346,7 +356,7 @@ export class KnowledgeRepo {
                 kind: NATIVE_RESOURCE_KINDS.worldRevision,
                 handle,
             })) {
-                if (record.doc?.knowledgeBindingIds?.includes(knowledgeBindingId)) {
+                if (!record.doc?.knowledgeBindings && record.doc?.knowledgeBindingIds?.includes(knowledgeBindingId)) {
                     references.push({
                         kind: 'world-revision',
                         worldId: record.doc.worldId,
@@ -368,7 +378,7 @@ export class KnowledgeRepo {
                 kind: NATIVE_RESOURCE_KINDS.worldRevision,
                 handle,
             })) {
-                if (record.doc?.knowledgeBindingIds?.includes(knowledgeBindingId)) {
+                if (!record.doc?.knowledgeBindings && record.doc?.knowledgeBindingIds?.includes(knowledgeBindingId)) {
                     references.push({
                         kind: 'world-revision',
                         worldId: record.doc.worldId,
@@ -390,6 +400,11 @@ export class KnowledgeRepo {
         assertWritable();
         return withNativeResourceWrite(handle, knowledgeBaseId, () => this._engine.withTransaction(handle, async (tx) => {
             const references = [];
+            for (const record of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.worldRevision, handle })) {
+                if (record.doc?.knowledgeBindings?.some(binding => binding.source.kind === 'library' && binding.source.knowledgeBaseId === knowledgeBaseId)) {
+                    references.push({ kind: 'world-revision', worldId: record.doc.worldId, worldRevisionId: record.doc.worldRevisionId });
+                }
+            }
             for (const binding of await tx.listResources({
                 kind: NATIVE_RESOURCE_KINDS.knowledgeBinding,
                 handle,

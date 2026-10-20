@@ -168,7 +168,7 @@ export class LibraryAuthoringPlanner {
             worldId: exact.ref.resourceId,
             worldRevisionId: exact.ref.revision,
         });
-        for (const bindingId of exact.snapshot.revision.knowledgeBindingIds) {
+        for (const bindingId of exact.snapshot.revision.knowledgeBindings ? [] : exact.snapshot.revision.knowledgeBindingIds) {
             pushUnique(next.dependencies.knowledgeBindings, bindingId);
         }
         return next;
@@ -275,7 +275,7 @@ export class LibraryAuthoringPlanner {
                 });
             }
             item.worldRevisionId = toRevision;
-            for (const bindingId of exact.snapshot.revision.knowledgeBindingIds) {
+            for (const bindingId of exact.snapshot.revision.knowledgeBindings ? [] : exact.snapshot.revision.knowledgeBindingIds) {
                 pushUnique(next.dependencies.knowledgeBindings, bindingId);
             }
         } else if (operation.target.resourceType === 'core.knowledge') {
@@ -339,7 +339,7 @@ export class LibraryAuthoringPlanner {
             });
         }
 
-        for (const bindingId of exact.snapshot.revision.knowledgeBindingIds) {
+        for (const bindingId of exact.snapshot.revision.knowledgeBindings ? [] : exact.snapshot.revision.knowledgeBindingIds) {
             pushUnique(next.dependencies.knowledgeBindings, bindingId);
         }
         const assets = await this._library.list(handle, { resourceType: 'core.asset' });

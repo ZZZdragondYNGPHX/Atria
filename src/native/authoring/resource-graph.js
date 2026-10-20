@@ -195,7 +195,14 @@ export class ResourceGraph {
                 immutable: true,
                 metadata: {},
             });
-            for (const bindingId of exact.snapshot.revision.knowledgeBindingIds) {
+            for (const binding of exact.snapshot.revision.knowledgeBindings ?? []) {
+                const source = binding.source;
+                const knowledgeNode = await this._addExactLibraryResource(handle, nodes, edges, {
+                    resourceType: 'core.knowledge', resourceId: source.knowledgeBaseId, revision: source.knowledgeRevisionId,
+                });
+                this._addEdge(edges, node.key, knowledgeNode.key, 'references');
+            }
+            for (const bindingId of exact.snapshot.revision.knowledgeBindings ? [] : exact.snapshot.revision.knowledgeBindingIds) {
                 const binding = await this._knowledge.getBinding(handle, bindingId);
                 if (!binding) continue;
                 const bindingRevision = hash(binding);
@@ -544,7 +551,13 @@ export class ResourceGraph {
                     metadata: snapshot.revision.metadata || {},
                 });
                 this._addEdge(edges, project.key, worldNode.key, 'contains');
-                for (const bindingId of snapshot.revision.knowledgeBindingIds) {
+                for (const binding of snapshot.revision.knowledgeBindings ?? []) {
+                    const source = binding.source;
+                    const target = projectKnowledge.get(source.knowledgeBaseId + '@' + source.knowledgeRevisionId)
+                        ?? await this._addExactLibraryResource(handle, nodes, edges, { resourceType: 'core.knowledge', resourceId: source.knowledgeBaseId, revision: source.knowledgeRevisionId });
+                    this._addEdge(edges, worldNode.key, target.key, 'references');
+                }
+                for (const bindingId of snapshot.revision.knowledgeBindings ? [] : snapshot.revision.knowledgeBindingIds) {
                     let target = bindingNodes.get(bindingId);
                     if (!target) {
                         const binding = await this._knowledge.getBinding(handle, bindingId);

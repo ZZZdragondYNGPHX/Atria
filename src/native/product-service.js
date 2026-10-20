@@ -440,7 +440,7 @@ export class NativeProductService {
     }
 
     async commitWorldRevision(handle, worldId, input) {
-        const { baseRevisionId, content } = revisionInput(input, 'worldRevision', ['schema', 'baseline', 'knowledgeBindingIds', 'assetIds', 'metadata']);
+        const { baseRevisionId, content } = revisionInput(input, 'worldRevision', ['body', 'subjects', 'schema', 'baseline', 'knowledgeBindingIds', 'knowledgeBindings', 'assetIds', 'metadata']);
         return this._worlds.commitRevision(handle, { ...content, worldId, worldRevisionId: createNativeId('worldRevision'), createdAt: Date.now() }, { expectedCurrentRevisionId: baseRevisionId });
     }
 
@@ -632,7 +632,7 @@ export class NativeProductService {
         const { world, currentRevision } = await this.getWorld(handle, worldId);
         if (world.currentRevisionId !== input.baseRevisionId) throw new ConflictError('native_write_conflict');
         const content = {};
-        for (const key of ['schema', 'baseline', 'knowledgeBindingIds', 'assetIds', 'metadata']) if (currentRevision?.[key] !== undefined) content[key] = clone(currentRevision[key]);
+        for (const key of ['body', 'subjects', 'schema', 'baseline', 'knowledgeBindingIds', 'assetIds', 'metadata']) if (currentRevision?.[key] !== undefined) content[key] = clone(currentRevision[key]);
         const bindings = new Set(content.knowledgeBindingIds || []);
         if (input.attached) bindings.add(knowledgeBindingId); else bindings.delete(knowledgeBindingId);
         content.knowledgeBindingIds = [...bindings];
