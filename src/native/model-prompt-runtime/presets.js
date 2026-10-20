@@ -71,6 +71,7 @@ export class PromptPresetStore {
 
     async delete(handle, id, expectedRevision) {
         assertWritable();
+        await this.separateGeneration(handle);
         return withRuntimeWrite(handle, () => this.engine.withTransaction(handle, async tx => {
             assertWritable();
             const root = await getNativeDocument(tx, key(handle, PROGRAM, id));
