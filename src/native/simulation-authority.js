@@ -4,6 +4,7 @@ import { privateReads, template, predicate, prepareSimulationStep } from './auth
 import { simulationInstantSchema } from '../../public/shared/native-simulation-contract.js';
 import { addOutbox } from './lifecycle-authority.js';
 import { captureAppraisalEvent } from './appraisal-authority.js';
+import { resolveSimulationSubject } from './subject-authority.js';
 
 const relevanceSchema = { type: 'string', maxLength: 4, enum: ['hot', 'warm', 'cold'] };
 const compare = (a, b) => a.tick - b.tick || a.job.priority - b.job.priority || (a.job.id < b.job.id ? -1 : a.job.id > b.job.id ? 1 : 0);
@@ -13,6 +14,9 @@ function evaluate(base, contract, job, budget, targetTick = base.states.atri_lif
     if (state.scopes[job.scopeId]?.status !== 'active') return null;
     const reads = privateReads(base, contract, job.reads, {}, budget);
     const context = { reads, clock: { tick: state.clocks[contract.simulationRuntime.clockId], targetTick, requestedTick } };
+    const subject = resolveSimulationSubject(base, job, template, context, budget);
+    if (subject === null) return null;
+    if (subject) context.subject = subject;
     if (!predicate(job.enabled, context)) return null;
     return { job, context, tick: budget.typed(template(job.due, context), simulationInstantSchema),
         relevance: budget.typed(template(job.relevance, context), relevanceSchema) };

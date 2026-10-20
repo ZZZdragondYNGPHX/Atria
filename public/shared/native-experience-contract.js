@@ -125,7 +125,7 @@ export function assertNativeExperienceContract(value) {
     const simulationCapability = capabilities.find(item => item.id === 'world-simulation');
     if (Boolean(simulationCapability) !== (value.simulationRuntime !== undefined)
         || (simulationCapability && (!simulationCapability.required || !capabilities.some(item => item.id === 'authority-transaction' && item.required)))) throw new TypeError('World simulation requires both required capabilities and simulationRuntime');
-    const simulationRuntime = value.simulationRuntime === undefined ? undefined : assertSimulationRuntime(value.simulationRuntime, lifecycleRuntime, taskRuntime, authorityRuntime);
+    const simulationRuntime = value.simulationRuntime === undefined ? undefined : assertSimulationRuntime(value.simulationRuntime, lifecycleRuntime, taskRuntime, authorityRuntime, value.informationRuntime);
     for (const [capability, field] of [['story-start', 'storyStart'], ['generation-budget', 'generationBudget'], ['run-policy', 'runPolicy']]) {
         const declared = capabilities.find(item => item.id === capability);
         if (Boolean(declared) !== (value[field] !== undefined) || (declared && (!declared.required || !authorityRuntime))) throw new TypeError(capability + ' requires its runtime declaration and required authority capability');

@@ -3,6 +3,7 @@ import { fields } from '../../public/shared/native-values.js';
 import { taskId } from '../../public/shared/native-task-contract.js';
 import { assertNativeId } from './identity.js';
 import { hashNativeDocument, equalNativeDocuments } from './repositories/common.js';
+import { actorAvailability } from '../../public/shared/native-information-runtime.js';
 
 function subjectId(sessionId, origin) {
     return 'sub_' + hashNativeDocument({ sessionId, origin }).slice(0, 32);
@@ -23,6 +24,23 @@ function perspective(base, id, kind, templateId, localRef) {
     if (kind !== 'person' || !view?.subjectScopeId || view.audience !== 'actor') throw new TypeError('Subject Perspective template unavailable');
     if (view.subjectAvailability && localRef?.domainId !== view.subjectAvailability.domainId) throw new TypeError('Subject availability requires its original Domain reference');
     return { viewId: subjectPerspectiveId(id, templateId), templateId, scopeId: view.subjectScopeId };
+}
+
+// Resolve only the explicit matter's identity. This is a private Host binding,
+// not a population query or permission for a model-selected record path.
+export function resolveSimulationSubject(base, job, evaluate, context, budget) {
+    if (!job.subject) return undefined;
+    const id = evaluate(job.subject.id, context);
+    const subjects = base.states[SUBJECT_NAMESPACE]?.subjects ?? [];
+    budget.scan(subjects.length);
+    const selected = subjects.find(subject => subject.subjectId === id);
+    // The shared availability reader resolves the identity and own record too;
+    // charge those lookups before inspecting their values.
+    budget.scan(subjects.length + (base.states.atri_lifecycle.domains[job.subject.domainId]?.records.length ?? 0));
+    if (!selected || selected.kind !== 'person' || selected.perspective?.templateId !== job.subject.perspective
+        || selected.perspective.scopeId !== job.scopeId || selected.localRef?.domainId !== job.subject.domainId
+        || !actorAvailability(base, id).available) return null;
+    return { id, recordId: selected.localRef.recordId, viewId: selected.perspective.viewId };
 }
 
 export function validateSubjects(base) {

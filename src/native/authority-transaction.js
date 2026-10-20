@@ -1,5 +1,5 @@
 import { readTaskArtifact, markTaskArtifactConsumption } from './task-artifact-authority.js';
-import { prepareSubjects } from './subject-authority.js';
+import { prepareSubjects, resolveSimulationSubject } from './subject-authority.js';
 import { prepareSpeechDraft } from './participant-authority.js';
 import { runPackageComputation } from './package-computation.js';
 import { prepareLifetimes, validateLifetimes } from './lifetime-authority.js';
@@ -130,6 +130,7 @@ function budgetFor(policy, rngSeed) {
         },
         typed(value, schema) { return assertTaskValue(context.value(value), compileDataSchema(schema)); },
         read(records) { add('readGrants', 1, policy.maxReadGrants); add('recordScans', records, AUTHORITY_EXECUTION_LIMITS.recordScans); },
+        scan(records) { add('recordScans', records, AUTHORITY_EXECUTION_LIMITS.recordScans); },
         readValue(value) { add('readBytes', bytes(context.value(value)), AUTHORITY_EXECUTION_LIMITS.readBytes); },
         validateEvents(drafts, reducers) {
             if (!Array.isArray(drafts) || counts.worldEvents + drafts.length > policy.maxWorldEvents
@@ -381,7 +382,11 @@ export async function prepareSimulationStep(base, installed, jobId, tick, budget
         budget.typed(targetTick, simulationInstantSchema);
         budget.typed(requestedTick, simulationInstantSchema);
         if (targetTick < tick || requestedTick < targetTick) throw new TypeError('Invalid simulation target');
-        const context = freeze({ reads, clock: { tick, targetTick, requestedTick } });
+        const context = { reads, clock: { tick, targetTick, requestedTick } };
+        const subject = resolveSimulationSubject(candidate, job, template, context, budget);
+        if (subject === null) throw new TypeError('Unavailable simulation Subject');
+        if (subject) context.subject = subject;
+        freeze(context);
         if (!predicate(job.enabled, context) || budget.typed(template(job.due, context), simulationInstantSchema) > tick) throw new TypeError('Stale simulation job');
         const transaction = logic.transactions.find(item => item.id === job.action.transactionId);
         if (!transaction || transaction.origin !== 'simulation') throw new TypeError('Invalid system Transaction');

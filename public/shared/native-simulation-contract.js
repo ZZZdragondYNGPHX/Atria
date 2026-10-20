@@ -13,12 +13,15 @@ const relevanceSchema = { type: 'string', maxLength: 4, enum: ['hot', 'warm', 'c
 // a declared aggregate job to run once at the interval boundary. tick stays canonical.
 export function simulationContext(job, lifecycle) {
     return { reads: readContext(reads(job.reads, lifecycle)), clock: { type: 'object', additionalProperties: false,
-        properties: { tick: simulationInstantSchema, targetTick: simulationInstantSchema, requestedTick: simulationInstantSchema }, required: ['tick', 'targetTick', 'requestedTick'] } };
+        properties: { tick: simulationInstantSchema, targetTick: simulationInstantSchema, requestedTick: simulationInstantSchema }, required: ['tick', 'targetTick', 'requestedTick'] },
+    ...(job.subject ? { subject: { type: 'object', additionalProperties: false, properties: {
+        id: { type: 'string', maxLength: 64 }, recordId: { type: 'string', maxLength: 64 }, viewId: { type: 'string', maxLength: 128 },
+    }, required: ['id', 'recordId', 'viewId'] } } : {}) };
 }
 
 // Declaration-only. Private state can enter only explicit, schema-bounded Task
 // input; this is not a new state namespace or an ambient expression authority.
-export function assertSimulationRuntime(raw, lifecycle, tasks, authority) {
+export function assertSimulationRuntime(raw, lifecycle, tasks, authority, information) {
     const value = assertJsonDeclaration(raw, 'World simulation', 1048576);
     fields(value, ['schemaVersion', 'clockId', 'policy', 'jobs'], 'World simulation');
     if (value.schemaVersion !== 1 || !lifecycle || !authority) throw new TypeError('World simulation requires Lifecycle and Authority runtime');
@@ -32,10 +35,19 @@ export function assertSimulationRuntime(raw, lifecycle, tasks, authority) {
     integer(value.policy.maxDeliberations, 0, SIMULATION_LIMITS.deliberations, 'simulation deliberations');
     integer(value.policy.maxAdvanceTicks, 1, SIMULATION_LIMITS.advanceTicks, 'simulation advance');
     const jobs = list(value.jobs, SIMULATION_LIMITS.jobs, job => {
-        fields(job, ['id', 'scopeId', 'reads', 'enabled', 'due', 'priority', 'relevance', 'action'], 'Simulation job');
+        fields(job, ['id', 'scopeId', 'reads', 'enabled', 'due', 'priority', 'relevance', 'action', 'subject'], 'Simulation job');
         taskId(job.id); reference(lifecycle.scopes, job.scopeId, 'simulation scope');
         integer(job.priority, 0, 15, 'simulation priority');
         const context = simulationContext(job, lifecycle);
+        if (job.subject !== undefined) {
+            fields(job.subject, ['id', 'domainId', 'perspective'], 'Simulation Subject');
+            const domain = reference(lifecycle.domains, job.subject.domainId, 'simulation Subject Domain');
+            const view = reference(information?.views, job.subject.perspective, 'simulation Subject Perspective');
+            if (job.action?.kind !== 'transaction' || domain.scopeId !== job.scopeId || view.subjectScopeId !== job.scopeId
+                || view.audience !== 'actor' || view.subjectAvailability?.domainId !== domain.id) throw new TypeError('Simulation Subject requires its own available Perspective and Domain');
+            const { subject: _subject, ...selectionContext } = context;
+            template(job.subject.id, { type: 'string', maxLength: 64 }, selectionContext);
+        }
         if (job.reads.some(grant => reference(lifecycle.domains, grant.domainId, 'simulation read').scopeId !== job.scopeId
             || typeof grant.recordId !== 'string')) throw new TypeError('Simulation reads require static same-scope targets');
         predicate(job.enabled, context); template(job.due, simulationInstantSchema, context);
@@ -72,10 +84,16 @@ export function assertSimulationTransactions(simulation, transactions, lifecycle
         if (tx.origin !== 'simulation' || tx.intent.expose) throw new TypeError('Simulation requires a non-player Transaction');
         // Clock movement belongs to the bounded driver, never a recursive job.
         if (tx.effects.some(effect => effect.kind === 'clock.advance' || effect.kind === 'workflow.transition')) throw new TypeError('Simulation Transaction cannot recursively advance or dispatch workflows');
-        if (tx.reads.some(grant => typeof grant.recordId !== 'string'
-            || reference(lifecycle.domains, grant.domainId, 'simulation read').scopeId !== job.scopeId)
-            || tx.effects.some(effect => effect.kind === 'app.command' && (typeof effect.recordId !== 'string'
-                || reference(lifecycle.domains, effect.domainId, 'simulation write').scopeId !== job.scopeId))) throw new TypeError('Simulation Transactions require static same-scope targets');
+        const allowed = (domainId, recordId) => {
+            if (reference(lifecycle.domains, domainId, 'simulation target').scopeId !== job.scopeId) return false;
+            if (typeof recordId === 'string') return true;
+            if (job.subject?.domainId !== domainId || Object.keys(recordId ?? {}).length !== 1) return false;
+            const match = /^args\.([A-Za-z_][A-Za-z0-9_-]*)$/.exec(recordId.formula ?? '');
+            const input = match && job.action.input[match[1]];
+            return input?.formula === 'subject.recordId' && Object.keys(input).length === 1;
+        };
+        if (tx.reads.some(grant => !allowed(grant.domainId, grant.recordId))
+            || tx.effects.some(effect => effect.kind === 'app.command' && !allowed(effect.domainId, effect.recordId))) throw new TypeError('Simulation Transactions require static or bound Subject same-scope targets');
         template(job.action.input, tx.inputSchema, simulationContext(job, lifecycle));
     }
 }
