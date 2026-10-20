@@ -207,7 +207,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         const list = node('div', undefined, listPane); list.className = 'atri-runtime-list';
         const detail = node('section', undefined, split); detail.className = 'atri-runtime-detail';
         const empty = node('div', undefined, detail); empty.className = 'atri-runtime-detail__empty';
-        node('p', fmt('Select a ${0} to edit it, or create a new one.', [translateShellText(resourceLabels[section])]), empty);
+        node('p', section === 'routes' ? 'Select an API preset to edit its connection, model and generation parameters, or create a new one.' : fmt('Select a ${0} to edit it, or create a new one.', [translateShellText(resourceLabels[section])]), empty);
         function fill() {
             list.replaceChildren();
             count.textContent = translateShellText(sectionLabels[section]) + ' · ' + data[section].length;
