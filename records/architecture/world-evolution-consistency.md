@@ -496,6 +496,13 @@
 - 本地相关合跑 23 项通过；扩展后的正式发言测试再次通过，验证媒体 IR 无 Subject 泄漏、错误别名／错误消息拒绝、保存恢复、旧线仍可读、新线不能引用撤销发言、切回旧线正确承接其 HEAD。相关 ESLint、diff check 通过。全量本地化检查报告原有其它页面 18 条缺译，新增按钮已补中文。
 - 隔离真实服务／浏览器完成选文→标注→添加发言者→填写外观→保存，模拟手机重开后数据持久、卡宽 356px／页面宽 390px 无横向溢出，annotation 中无 canonical Subject。未执行付费图片生成、模型请求或真实设备测试。后续继续动态 NPC 与世界读取；整体尚未合入 main。
 
+## Stage 47 — 单人可用性与动态事项目标（2026-10-20）
+
+- `0d6ec2d2`：Subject Perspective 模板可声明原 Domain 的必填 boolean 作为单个主体的可用性；本人的 localRef 必须属于该 Domain。停用／终止本人记录会关闭此人的个人 Context 与正式发言，不影响同模板其他主体，也不删除身份、原业务记录或历史。
+- `167ea491`：原 Simulation job 可从固定事项读取已登记 Subject，Host 解析其既有个人 Perspective 与原 Domain recordId；确定性 Transaction 的动态 read/write 只能直接转发该绑定，不接受任意路径或模型选择目标。执行阶段再次验证身份、原域、视角、作用域与个人可用性，仍沿原 Authority／CAS 提交，无额外 Store、常驻 NPC 或人口行为扫描。
+- 身份／记录查找计入原 Authority 工作上限。未知／不可用主体不消费原事项；同一规则可依事项处理不同动态 NPC。原进度上限拒绝未推进事项的重复执行，全部候选效果撤回。Subject 模型 Task 绑定尚未接入，不能把此步骤当完整自主行为。
+- 本地 18 项相关测试通过（个人视角／获知 9、动态事项 5、事件反应 4），覆盖两人共用规则、恢复可用性、未知／终止／停域目标、错误 Domain／非直接转发拒绝、执行重验、整体回滚与工作上限。相关 ESLint、diff check 通过。整体继续实施，尚未合入 main。
+
 ## Current state
 
 产品实施进行中，主体／时间读取、动态个人视角与获知、作者固定依赖、正文编辑、有效 Context 及显式资源采用已有接线；完整 NPC 行动、参与者／媒体与 Play 功能继续实施。当前功能设计、代码差距与待决问题见 [Plan 入口](../../plans/architecture/world-evolution-consistency/index.md)。
