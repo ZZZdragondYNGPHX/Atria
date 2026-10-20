@@ -519,6 +519,15 @@
 - 同 key 读取／较早区间修复最多沿 128 个相关链接，常规当前变化在命中其前值后结束，180 次连续变化测试保持可执行；所有处理仍受原 source／durable／byte 预算。大行的普通分页明确拒绝，避免返回原游标造成无限翻页。
 - 历史新增 7 项、原历史 5 项与原主体／正式发言回归合跑 22 项通过；相关 ESLint、diff check 通过。测试确认旧修订、区间外状态、已完成领域记录与 Timeline 不变，错误引用／私有来源／分页篡改拒绝。未宣称通用双时间数据库或自动因果重算；继续 Play 读取与作者交互，整体尚未合入 main。
 
+## Stage 50 — Play 世界档案与按时历史查询（2026-10-20）
+
+- `7c7bbe8b`：沿原 Play More／Session inspector 增加“世界档案”，按需展开公开发言者、玩家已知世界与历史。仅投影 `audience: player` 的明确 display grant，拒绝 Actor／Narrator／Inspector 视角；复用原 Information／Chronicle／Participant 读取，无新状态库或后台刷新。
+- 发言者保留每条正式发言的公开称呼与 per-message handle，同名或换名不合并真身映射。12 条逐页展开，长发言指回原时间线。已知状态保留作者选定字段、事实／信念等语义及来源详情；多视图分别按需打开，单次 DOM 展示有界。
+- 历史沿原公开 fact source／Game clock 查询指定 Tick，保留原有效区间、局部更正、来源与分页；没有时钟或信息声明的纯文字作品不捏造档案或时间。选定 Revision 变化即停用旧查询并提示刷新，刷新后焦点返回首个可展开项，历史修订只读。
+- 新增 4 项权限／别名／原历史分页／纯文字测试，与历史更正、个人视角、正式发言合跑 23 项通过；后续惰性读取调整重跑相关 4 项通过。3 个业务 JS ESLint 通过；修改的 localization.js 与 HEAD 比较均为 215 项既有诊断，新增 0 项。全局本地化脚本仍报告原 18 项其他页面缺失，新文案已补中文，diff check 通过。
+- 浏览器实测原会话 More→世界档案→正式公开发言；同一真实浏览器中使用合成档案夹具验证授权字段、Tick 查询、140 链的继续分页、Enter 提交、过期／历史修订刷新及焦点。1440×1000 桌面和 390×844 touch／reduced-motion 模拟视口无横向溢出；修正窄屏底部导航遮挡来源末项。未测试物理移动设备或真实模型服务。按 Web Interface Guidelines 自检并修正标签／name、焦点恢复、末尾可达性；microinteractions 8 项诊断通过（10/10），无失败项；未新增动画。
+- Play 基础读取已接线；完整作者执行关联／起点预览、真实 Task／Orchestration 端到端与最终 main 集成仍待实施，整体任务继续。
+
 ## Current state
 
 产品实施进行中，主体／时间读取、动态个人视角与获知、作者固定依赖、正文编辑、有效 Context 及显式资源采用已有接线；完整 NPC 行动、参与者／媒体与 Play 功能继续实施。当前功能设计、代码差距与待决问题见 [Plan 入口](../../plans/architecture/world-evolution-consistency/index.md)。
