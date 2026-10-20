@@ -103,10 +103,12 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
         return actor;
     });
     const views = informationList(value.views, 16, view => {
-        fields(view, ['id', 'audience', 'actorId', 'taskId', 'sources', 'exposure', 'knowledge', 'memory', 'maxItems', 'maxCharacters'], 'Information view');
+        fields(view, ['id', 'audience', 'actorId', 'taskId', 'sources', 'exposure', 'knowledge', 'memory', 'maxItems', 'maxCharacters', 'subjectScopeId'], 'Information view');
         taskId(view.id); choice(view.audience, ['player', 'narrator', 'actor', 'task', 'inspector']);
         if (view.actorId !== undefined && !actors.some(actor => actor.id === view.actorId)) throw new TypeError('Unknown Perspective Actor');
-        if (view.audience === 'actor' && !view.actorId) throw new TypeError('Actor view requires identity');
+        if (view.subjectScopeId !== undefined && (view.audience !== 'actor' || view.actorId !== undefined
+            || !lifecycle.scopes.some(scope => scope.id === view.subjectScopeId))) throw new TypeError('Invalid Subject Perspective template');
+        if (view.audience === 'actor' && !view.actorId && !view.subjectScopeId) throw new TypeError('Actor view requires identity');
         if (view.audience === 'task' ? !tasks?.tasks.some(task => task.id === view.taskId && task.context.includes('projection')) : view.taskId !== undefined) throw new TypeError('Unknown projection Task');
         const refs = informationList(view.sources, 32, taskId);
         if (refs.some(id => !sources.some(source => source.id === id))) throw new TypeError('Unknown projection source');
@@ -118,7 +120,7 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
         informationInteger(view.maxItems, 1, 128); informationInteger(view.maxCharacters, 1, 32768);
         return { ...view, sources: refs, exposure };
     });
-    const contextKeys = views.filter(view => view.exposure.includes('context')).map(view => view.audience + ':' + (view.audience === 'actor' ? view.actorId : view.taskId ?? ''));
+    const contextKeys = views.filter(view => view.exposure.includes('context')).map(view => view.audience + ':' + (view.subjectScopeId ? view.id : view.audience === 'actor' ? view.actorId : view.taskId ?? ''));
     if (new Set(contextKeys).size !== contextKeys.length) throw new TypeError('Ambiguous Context Perspective');
     for (const task of tasks?.tasks ?? []) for (const variant of task.variants) {
         const binding = variant.resultBinding;

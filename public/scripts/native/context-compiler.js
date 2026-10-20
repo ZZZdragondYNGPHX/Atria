@@ -1,5 +1,6 @@
 import { contextTokenCounter } from './exact-token-count.js';
 import { projectActorDefinition } from '../../shared/native-actor-profile.js';
+import { SUBJECT_NAMESPACE } from '../../shared/native-subject-contract.js';
 import { evaluateNativeKnowledge, KNOWLEDGE_RUNTIME_NAMESPACE } from './knowledge-selection.js';
 import { createDeterministicRng } from './experience/logic/rng.js';
 import { playerPersonaContext } from '../../shared/native-persona-context.js';
@@ -306,6 +307,16 @@ function actorIdentityItems(snapshot, target, information) {
     const actorId = information ? (information.projection?.availability[0]?.available ? information.actorId : null)
         : target.kind === 'actor' ? target.id : snapshot.entryPoint?.primaryActorId ?? snapshot.entryPoint?.actorIds?.[0];
     if (!actorId) return [];
+    const subject = snapshot.states[SUBJECT_NAMESPACE]?.subjects.find(subject => subject.subjectId === actorId);
+    if (subject) {
+        const profile = subject.actorId ? projectActorDefinition(snapshot, subject.actorId) : null;
+        return [normalizeContextItem({ contextItemId: 'identity:subject:' + subject.subjectId,
+            lane: CONTEXT_LANES.currentState, authority: 'actor_definition', authorityRank: 100, priority: 0, required: true,
+            content: 'Acting Subject identity: ' + subject.subjectId + '. Read personal experience only from this request\'s granted perspective.'
+                + (profile ? '\nExpression template only; its names and prior experiences do not establish this Subject\'s identity, facts or memories:\n' + JSON.stringify(profile.identity) : ''),
+            sourceRefs: [{ kind: 'runtime', providerId: 'native.subject-identity', revisionId: snapshot.revision.revisionId, branchId: snapshot.revision.branchId }],
+        })];
+    }
     const definition = projectActorDefinition(snapshot, actorId);
     if (!definition) return [];
     return [normalizeContextItem({

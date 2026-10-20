@@ -1,3 +1,4 @@
+import { hasPerspectiveIdentity, resolvePerspectiveView } from '../../public/shared/native-subject-contract.js';
 import { isCognitionSource, isAppraisalSource, assertCognitionValue, assertCognitionBasis, informationItemFingerprint } from '../../public/shared/native-cognition-runtime.js';
 import { hasInformationBasis, isManagedMemory, assertMemoryValue } from '../../public/shared/native-memory-contract.js';
 import { informationDefinition, projectInformation, refreshInformationCognition, assertInformationAnchor } from '../../public/shared/native-information-runtime.js';
@@ -76,14 +77,14 @@ export function validateCognitionTransition(base, candidate, { taskId = null, ap
             if (!taskId && previous && ['paused', 'cancelled', 'abandoned', 'withdrawn'].includes(value.status)
                 && hashNativeDocument({ ...previous, status: value.status }) === hashNativeDocument(value)) continue;
             if (isAppraisalSource(source)) {
-                if (source.semantic === 'relationship' && !base.manifest.actors.some(actor => actor.actorId === value.target)) throw new TypeError('Appraisal relationship target is outside this Package');
+                if (source.semantic === 'relationship' && !hasPerspectiveIdentity(candidate, value.target)) throw new TypeError('Appraisal relationship target is outside this Package');
                 const { previousHash, ...evidence } = value.appraisal;
                 if (taskId ? !appraisalEvidence || hashNativeDocument(evidence) !== hashNativeDocument(appraisalEvidence)
                     : value.appraisal.origin !== 'author') throw new TypeError('Appraisal provenance requires author or sealed Host adoption');
                 const domain = base.manifest.runtime.experienceContract.lifecycleRuntime.domains.find(domain => domain.id === source.domainId);
                 if (previousHash !== hashNativeDocument(previous ?? domain.initial)) throw new TypeError('Appraisal old state changed');
             }
-            const view = def.views.find(view => view.id === value.basis.viewId);
+            const view = resolvePerspectiveView(candidate, value.basis.viewId);
             const audienceMatches = taskId ? view?.audience === 'task' && view.taskId === taskId : view?.audience === 'actor';
             if (!audienceMatches || view.actorId !== value.actor || !view.exposure.includes('context')) throw new TypeError('Cognition update requires this Actor or exact Task context grant');
             if (previous && previous.actor !== value.actor) throw new TypeError('Cognition Actor is immutable');

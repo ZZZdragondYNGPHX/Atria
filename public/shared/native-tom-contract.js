@@ -1,3 +1,4 @@
+import { isPerspectiveIdentity } from './native-subject-contract.js';
 import { fields, json } from './native-values.js';
 import { appraisalStateSchema, APPRAISAL_OUTPUT_SCHEMA } from './native-appraisal-contract.js';
 
@@ -36,7 +37,7 @@ export function hypothesisShapeValid(source, value) {
     return Boolean(policy && typeof value.key === 'string' && /^[a-z][a-z0-9._-]{0,63}$/.test(value.key)
         && Array.isArray(value.perspective) && value.perspective.length >= 1 && value.perspective.length <= policy.maxDepth
         && value.target === value.perspective[0] && value.target !== value.actor && new Set(value.perspective).size === value.perspective.length
-        && value.perspective.every(id => /^actor_[a-f0-9]{32}$/.test(id))
+        && value.perspective.every(isPerspectiveIdentity)
         && Number.isSafeInteger(value.confidence) && value.confidence >= 0 && value.confidence <= 100
         && value.policy?.id === policy.id && value.policy?.revision === policy.revision
         && typeof value.prediction?.itemId === 'string' && value.prediction.itemId.length <= 256 && typeof value.prediction.expected === 'string' && value.prediction.expected.length <= 128

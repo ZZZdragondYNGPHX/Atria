@@ -1,4 +1,4 @@
-import { SUBJECT_NAMESPACE, subjectKind } from '../../public/shared/native-subject-contract.js';
+import { SUBJECT_NAMESPACE, subjectKind, subjectPerspectiveId } from '../../public/shared/native-subject-contract.js';
 import { fields } from '../../public/shared/native-values.js';
 import { taskId } from '../../public/shared/native-task-contract.js';
 import { assertNativeId } from './identity.js';
@@ -17,6 +17,12 @@ function expression(base, actorId) {
     assertNativeId(actorId, 'actor');
     if (!base.manifest.actors.some(item => item.actorId === actorId)) throw new TypeError('Subject expression unavailable');
 }
+function perspective(base, id, kind, templateId) {
+    if (templateId === undefined) return undefined;
+    const view = base.manifest.runtime?.experienceContract?.informationRuntime?.views.find(view => view.id === templateId);
+    if (kind !== 'person' || !view?.subjectScopeId || view.audience !== 'actor') throw new TypeError('Subject Perspective template unavailable');
+    return { viewId: subjectPerspectiveId(id, templateId), templateId, scopeId: view.subjectScopeId };
+}
 
 export function validateSubjects(base) {
     const state = base.states[SUBJECT_NAMESPACE];
@@ -25,11 +31,12 @@ export function validateSubjects(base) {
     if (state.schemaVersion !== 1 || !Array.isArray(state.subjects)) throw new TypeError('Invalid Subject state');
     const seen = new Set(); const local = new Set();
     for (const item of state.subjects) {
-        fields(item, ['subjectId', 'kind', 'worldId', 'origin', 'admission', 'actorId', 'localRef'], 'Subject');
+        fields(item, ['subjectId', 'kind', 'worldId', 'origin', 'admission', 'actorId', 'localRef', 'perspective'], 'Subject');
         assertNativeId(item.subjectId, 'subject'); subjectKind(item.kind); expression(base, item.actorId);
         if (item.worldId !== null) assertNativeId(item.worldId, 'world');
         if (seen.has(item.subjectId)) throw new TypeError('Duplicate Subject identity');
         seen.add(item.subjectId);
+        if (item.perspective && !equalNativeDocuments(item.perspective, perspective(base, item.subjectId, item.kind, item.perspective.templateId))) throw new TypeError('Subject Perspective binding mismatch');
         fields(item.origin, ['kind', 'packageVersionId', 'worldRevisionId', 'definitionId', 'entryPointId', 'authorityId', 'bindingId'], 'Subject origin');
         if (!['authored', 'emergent'].includes(item.origin.kind)) throw new TypeError('Invalid Subject origin');
         assertNativeId(item.origin.packageVersionId, 'packageVersion');
@@ -61,9 +68,10 @@ export function initialSubjects(base, worlds) {
         expression(base, definition.actorId);
         const origin = { kind: 'authored', packageVersionId: base.session.packageVersionId,
             ...(source.worldRevisionId ? { worldRevisionId: source.worldRevisionId } : { entryPointId: source.entryPointId }), definitionId: definition.id };
-        subjects.push({ subjectId: subjectId(base.session.sessionId, origin), kind: definition.kind,
+        const id = subjectId(base.session.sessionId, origin), view = perspective(base, id, definition.kind, definition.perspective);
+        subjects.push({ subjectId: id, kind: definition.kind,
             worldId: source.worldId, origin, admission: null,
-            ...(definition.actorId ? { actorId: definition.actorId } : {}), ...(definition.localRef ? { localRef: definition.localRef } : {}) });
+            ...(definition.actorId ? { actorId: definition.actorId } : {}), ...(definition.localRef ? { localRef: definition.localRef } : {}), ...(view ? { perspective: view } : {}) });
     }
     return { schemaVersion: 1, subjects };
 }
@@ -85,12 +93,14 @@ export function prepareSubjects(candidate, declarations, evaluate, context, auth
         if (explicitId && !existing) throw new TypeError('Subject is not present in this Revision');
         if (existing) {
             if (existing.kind !== item.kind || existing.worldId !== worldId || (localRef && !equalNativeDocuments(existing.localRef ?? null, localRef))) throw new TypeError('Subject binding mismatch');
+            if (item.perspective !== undefined) existing.perspective = perspective(candidate, existing.subjectId, existing.kind, item.perspective);
             refs[item.id] = existing.subjectId; continue;
         }
         const origin = { kind: 'emergent', packageVersionId: candidate.session.packageVersionId, authorityId, bindingId: item.id };
         const id = subjectId(candidate.session.sessionId, origin);
+        const view = perspective(candidate, id, item.kind, item.perspective);
         if (!state.subjects.some(s => s.subjectId === id)) state.subjects.push({ subjectId: id, kind: item.kind, worldId, origin, admission: null,
-            ...(localRef ? { localRef } : {}), ...(item.actorId ? { actorId: item.actorId } : {}) });
+            ...(localRef ? { localRef } : {}), ...(item.actorId ? { actorId: item.actorId } : {}), ...(view ? { perspective: view } : {}) });
         refs[item.id] = id;
     }
     candidate.states[SUBJECT_NAMESPACE] = state;

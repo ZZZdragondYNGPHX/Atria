@@ -86,8 +86,9 @@ function budget(grants, effects, authority) {
 function subjects(raw = [], context, lifecycle) {
     const properties = {};
     list(raw, 16, item => {
-        fields(item, ['id', 'kind', 'worldId', 'subjectId', 'actorId', 'localRef', 'when'], 'Transaction Subject');
+        fields(item, ['id', 'kind', 'worldId', 'subjectId', 'actorId', 'localRef', 'when', 'perspective'], 'Transaction Subject');
         taskId(item.id); subjectKind(item.kind);
+        if (item.perspective !== undefined) taskId(item.perspective);
         if (item.worldId !== undefined && item.worldId !== null && !/^world_[a-f0-9]{32}$/.test(item.worldId)) throw new TypeError('Invalid Subject World');
         if (item.actorId !== undefined && !/^actor_[a-f0-9]{32}$/.test(item.actorId)) throw new TypeError('Invalid Subject Actor');
         if (item.when !== undefined) predicate(item.when, context);

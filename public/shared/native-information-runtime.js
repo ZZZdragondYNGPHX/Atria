@@ -1,4 +1,5 @@
 import { queryHistory } from './native-history-runtime.js';
+import { SUBJECT_NAMESPACE, hasPerspectiveIdentity, resolvePerspectiveView } from './native-subject-contract.js';
 import { INFORMATION_LIMITS, informationInteger } from './native-information-contract.js';
 import { isCognitionSource, assertCognitionValue, assertCognitionBasis, projectCognitionItems } from './native-cognition-runtime.js';
 import { hasInformationBasis, isManagedMemory, assertMemoryValue } from './native-memory-contract.js';
@@ -8,7 +9,8 @@ const clone = value => structuredClone(value);
 const read = (value, path) => path.reduce((item, key) => item && Object.hasOwn(item, key) ? item[key] : undefined, value);
 const scopeState = (snapshot, id) => snapshot.states?.atri_lifecycle?.scopes?.[id];
 export function actorAvailability(snapshot, actorId) {
-    const actor = informationDefinition(snapshot)?.actors.find(actor => actor.id === actorId);
+    const subject = snapshot.states[SUBJECT_NAMESPACE]?.subjects.find(subject => subject.subjectId === actorId && subject.kind === 'person' && subject.perspective);
+    const actor = subject ? { id: actorId, scopeId: subject.perspective.scopeId } : informationDefinition(snapshot)?.actors.find(actor => actor.id === actorId);
     if (!actor) return { actorId, available: false, reason: 'undeclared' };
     const scope = scopeState(snapshot, actor.scopeId);
     if (scope?.status !== 'active') return { actorId, available: false, reason: 'scope_inactive' };
@@ -31,7 +33,7 @@ export function assertInformationAnchor(snapshot, expected) {
 // World, discovers a second authority, or interprets package expressions.
 export function projectInformation(snapshot, viewId, { purpose = 'display', includeRollups = true, onScan = null } = {}) {
     const def = informationDefinition(snapshot);
-    const view = def?.views.find(view => view.id === viewId);
+    const view = resolvePerspectiveView(snapshot, viewId);
     if (!view || !['display', 'context'].includes(purpose) || !view.exposure.includes(purpose)) throw new TypeError('Information exposure denied');
     const result = { schemaVersion: 1, viewId, anchor: { ...anchor(snapshot), scopeEpochs: {} }, items: [], truncated: false, availability: [] };
     if (view.actorId) {
@@ -157,8 +159,11 @@ export function informationContext(snapshot, target, taskId, { onScan = null, in
     const def = informationDefinition(snapshot);
     if (!def) return null;
     const narration = !taskId && target.kind === 'narrator' ? def.narration : null;
-    const view = def.views.find(view => view.exposure.includes('context') && (!narration || view.id === narration.contextViewId) && (taskId ? view.audience === 'task' && view.taskId === taskId
-        : view.audience === target.kind && (target.kind !== 'actor' || view.actorId === target.id)));
+    const subject = target.kind === 'actor' && !taskId ? snapshot.states[SUBJECT_NAMESPACE]?.subjects.find(subject => subject.subjectId === target.id) : null;
+    const view = subject ? resolvePerspectiveView(snapshot, subject.perspective?.viewId)
+        : def.views.find(view => !view.subjectScopeId && view.exposure.includes('context') && (!narration || view.id === narration.contextViewId) && (taskId ? view.audience === 'task' && view.taskId === taskId
+            : view.audience === target.kind && (target.kind !== 'actor' || view.actorId === target.id)));
+    if (view && !view.exposure.includes('context')) throw new TypeError('Perspective Context exposure denied');
     if (!view) return { items: [], knowledge: false };
     const projection = projectInformation(snapshot, view.id, { purpose: 'context', onScan, includeRollups });
     const disclosure = narration ? projectInformation(snapshot, narration.disclosureViewId, { purpose: 'display', onScan, includeRollups: false }) : null;
@@ -207,8 +212,8 @@ export function validateInformationState(snapshot) {
         count += records.length;
         if (count > INFORMATION_LIMITS.records) throw new TypeError('Information scan budget exceeded');
         for (const { value } of records) {
-            if (source.actorField && !snapshot.manifest.actors.some(actor => actor.actorId === value[source.actorField])) throw new TypeError('Unknown information Actor');
-            if (source.participantsField && (!Array.isArray(value[source.participantsField]) || value[source.participantsField].some(id => !snapshot.manifest.actors.some(actor => actor.actorId === id)))) throw new TypeError('Unknown thread participant');
+            if (source.actorField && !hasPerspectiveIdentity(snapshot, value[source.actorField])) throw new TypeError('Unknown information Actor');
+            if (source.participantsField && (!Array.isArray(value[source.participantsField]) || value[source.participantsField].some(id => !hasPerspectiveIdentity(snapshot, id)))) throw new TypeError('Unknown thread participant');
             if (source.semantic === 'belief' && (!['known', 'believed', 'suspected', 'disputed'].includes(value[source.statusField])
                 || !['witnessed', 'direct_message', 'told_by', 'public_broadcast', 'surveillance', 'rumor', 'inference'].includes(value[source.channelField]))) throw new TypeError('Invalid epistemic record');
             if (source.semantic === 'open_loop' && !['open', 'closed', 'superseded'].includes(value[source.statusField])) throw new TypeError('Invalid Open Loop status');
@@ -221,7 +226,7 @@ export function validateInformationState(snapshot) {
 
 export function displayInformation(snapshot) {
     if (!informationDefinition(snapshot)) return {};
-    return Object.fromEntries(informationDefinition(snapshot).views.filter(view => view.audience !== 'inspector' && view.exposure.includes('display'))
+    return Object.fromEntries(informationDefinition(snapshot).views.filter(view => !view.subjectScopeId && view.audience !== 'inspector' && view.exposure.includes('display'))
         .map(view => [view.id, projectInformation(snapshot, view.id)]));
 }
 
@@ -229,7 +234,7 @@ export function displayInformation(snapshot) {
 // as cognitive updates. Legacy works without a Memory policy retain their path.
 export function memoryEvidenceApplicability(snapshot, information, packet) {
     const def = informationDefinition(snapshot);
-    const view = def?.views.find(view => view.id === information?.projection?.viewId);
+    const view = resolvePerspectiveView(snapshot, information?.projection?.viewId);
     const managed = def?.sources.filter(source => view?.sources.includes(source.id) && isManagedMemory(source)) ?? [];
     if (!managed.length) return { status: 'legacy', memories: [] };
     const refs = packet.sourceRefs ?? [];

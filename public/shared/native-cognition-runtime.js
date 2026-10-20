@@ -1,3 +1,4 @@
+import { isPerspectiveIdentity } from './native-subject-contract.js';
 import { contentSha256 } from './content-sha256.js';
 import { fields } from './native-values.js';
 import { hypothesisShapeValid, hypothesisObservation } from './native-tom-contract.js';
@@ -32,9 +33,9 @@ export function assertCognitionSource(source, domain) {
 
 export function assertCognitionValue(source, value) {
     if (isAppraisalSource(source)) {
-        if (!statuses(source.semantic).includes(value.status) || !/^actor_[a-f0-9]{32}$/.test(value.actor)
+        if (!statuses(source.semantic).includes(value.status) || !isPerspectiveIdentity(value.actor)
             || (source.semantic === 'theory_of_mind' ? !hypothesisShapeValid(source, value)
-                : (source.semantic === 'emotion' ? value.target !== '' : !/^actor_[a-f0-9]{32}$/.test(value.target) || value.target === value.actor)
+                : (source.semantic === 'emotion' ? value.target !== '' : !isPerspectiveIdentity(value.target) || value.target === value.actor)
                 || typeof value.dimension !== 'string' || !/^[a-z][a-z0-9._-]{0,63}$/.test(value.dimension)
                 || !Number.isSafeInteger(value.level) || value.level < (source.semantic === 'emotion' ? 0 : -100) || value.level > 100
                 || typeof value.rationale !== 'string' || value.rationale.length > 1024)
@@ -46,7 +47,7 @@ export function assertCognitionValue(source, value) {
             || ['modelProfileHash', 'requestSnapshotHash', 'previousHash'].some(key => !/^[a-f0-9]{64}$/.test(meta[key]))) throw new TypeError('Invalid appraisal provenance');
     } else {
         if (!statuses(source.semantic).includes(value.status) || typeof value.text !== 'string' || !value.text.trim() || value.text.length > 12000
-        || !/^actor_[a-f0-9]{32}$/.test(value.actor) || (value.goalId !== '' && !/^goal_[a-f0-9]{32}$/.test(value.goalId))
+        || !isPerspectiveIdentity(value.actor) || (value.goalId !== '' && !/^goal_[a-f0-9]{32}$/.test(value.goalId))
         || !integer(value.priority) || value.priority > 100 || typeof value.conflictKey !== 'string' || value.conflictKey.length > 128
         || !integer(value.expiresAt) || !Array.isArray(value.commitmentIds) || value.commitmentIds.length > 16
         || value.commitmentIds.some(id => typeof id !== 'string' || !id || id.length > 256) || new Set(value.commitmentIds).size !== value.commitmentIds.length) throw new TypeError('Invalid cognition record');
@@ -55,7 +56,7 @@ export function assertCognitionValue(source, value) {
 }
 
 export function assertCognitionBasis(value) {
-    if (!/^actor_[a-f0-9]{32}$/.test(value.actor)) throw new TypeError('Invalid basis Actor');
+    if (!isPerspectiveIdentity(value.actor)) throw new TypeError('Invalid basis Actor');
     fields(value.basis, ['viewId', 'anchor', 'sourceRefs'], 'Cognition basis');
     const { anchor, sourceRefs } = value.basis;
     fields(anchor, ['sessionId', 'packageVersionId', 'revisionId', 'branchId', 'scopeEpochs'], 'Cognition anchor');
