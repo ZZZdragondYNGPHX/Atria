@@ -46,6 +46,7 @@ export function mountApiPresetFields({ doc, form, data, resources, route, field,
         remote.value = item.remoteModelId;
         if (item.limits?.contextTokens) context.value = item.limits.contextTokens;
         if (item.limits?.outputTokens) output.value = item.limits.outputTokens;
+        output.dispatchEvent(new doc.defaultView.Event('input'));
         model.limitProvenance = item.limitProvenance ?? {};
         model.capabilities = item.capabilities ?? [];
         for (const control of overrides) { control.value = model.capabilities.find(value => value.capability === control.capability); control.input.value = control.value?.state || ''; }
@@ -80,6 +81,7 @@ export function mountApiPresetFields({ doc, form, data, resources, route, field,
         choices.replaceChildren(); choices.disabled = true; choices.parentElement.hidden = true; feedback.textContent = ''; drawGeneration();
     });
     drawGeneration();
+    output.addEventListener('input', () => { const budget = controls.querySelector('input[name="Output budget"]'); if (budget) budget.max = output.value; });
     form.append(metadata);
     const reuse = doc.createElement('details'); reuse.className = 'atri-api-model-limits';
     const reuseTitle = doc.createElement('summary'); reuseTitle.textContent = t('Reuse saved configuration'); reuse.append(reuseTitle); form.append(reuse);
@@ -89,6 +91,7 @@ export function mountApiPresetFields({ doc, form, data, resources, route, field,
     savedModel.addEventListener('change', () => {
         const item = data.models.find(item => item.modelProfileId === savedModel.value); if (!item) return;
         model = structuredClone(item); remote.value = item.remoteModelId; context.value = item.limits.contextTokens; output.value = item.limits.outputTokens;
+        output.dispatchEvent(new doc.defaultView.Event('input'));
         encoding.value = item.tokenizer.encoding; connection.value = item.connectionProfileRef.connectionProfileId;
         for (const control of overrides) { control.value = item.capabilities.find(value => value.capability === control.capability); control.input.value = control.value?.state || ''; }
         connection.dispatchEvent(new doc.defaultView.Event('change')); form.dispatchEvent(new doc.defaultView.Event('input', { bubbles: true }));

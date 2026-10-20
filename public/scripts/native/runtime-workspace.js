@@ -518,7 +518,11 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         form.addEventListener('submit', async event => {
             event.preventDefault(); if (save.disabled) return;
             let body;
-            try { body = sourceEditor.read(); } catch (error) { status.replaceChildren(); failure(error, status); return; }
+            try { body = sourceEditor.read(); } catch (error) {
+                status.replaceChildren();
+                if (error.code) failure(error, status); else notice(error.message, status, true);
+                form.querySelector(':invalid')?.focus(); return;
+            }
             const fields = [...form.querySelectorAll('input,textarea,select,button')];
             const disabled = fields.map(input => input.disabled); fields.forEach(input => input.disabled = true);
             status.replaceChildren(); notice('Saving…', status); save.setAttribute('aria-busy', 'true'); save.disabled = true; back.disabled = true; let saved = false;
