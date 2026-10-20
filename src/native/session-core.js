@@ -21,7 +21,7 @@ import { activityNarrative, publishActivities } from './activity-authority.js';
 import { assertInformationClosure } from '../../public/shared/native-information-contract.js';
 import { assertMessageProjection, assertTurnEnvelope } from '../../public/shared/native-message-contract.js';
 import { normalizeNativeRegexScripts } from '../../public/shared/native-regex.js';
-import { assertPackagedWorldSnapshot } from './world-knowledge.js';
+import { selectedWorlds, initialWorldState } from './session-worlds.js';
 import {
     assertNativeResourceKey, assertSession, assertSessionRevision, assertTimelineEntry, assertVariant,
     NATIVE_RESOURCE_KINDS,
@@ -77,36 +77,6 @@ function normalizeMessageDraft(draft, allowOutcomes = false) {
 function timelineSelection(entry) {
     return { messageId: entry.messageId, branchId: entry.branchId,
         variantIds: entry.variantIds, activeVariantId: entry.activeVariantId };
-}
-
-function selectedWorlds(states, manifest, entryPoint) {
-    const selection = states.atri_world_selection;
-    if (!selection) return manifest.worlds.filter(item => entryPoint.worldIds.includes(item.world.worldId));
-    if (selection.schemaVersion !== 1 || !Array.isArray(selection.worlds)) throw new TypeError('Invalid Session World selection');
-    const worlds = selection.worlds.map(assertPackagedWorldSnapshot);
-    if (new Set(worlds.map(item => item.world.worldId)).size !== worlds.length || (selection.primaryWorldId !== null && !worlds.some(item => item.world.worldId === selection.primaryWorldId))) throw new TypeError('Invalid primary World');
-    return worlds;
-}
-function initialWorldState(manifest, entryPoint, selection) {
-    const worlds = selectedWorlds({ atri_world_selection: selection }, manifest, entryPoint);
-    const originalPrimary = entryPoint.primaryWorldId ?? (entryPoint.worldIds.length === 1 ? entryPoint.worldIds[0] : null);
-    const overlay = cloneNativeDocument(selection && selection.primaryWorldId !== originalPrimary ? {} : entryPoint.initialStateOverlay ?? {});
-    const primaryWorldId = selection ? selection.primaryWorldId : entryPoint.primaryWorldId ?? (worlds.length === 1 ? worlds[0].world.worldId : null);
-    if (Object.prototype.toString.call(overlay) !== '[object Object]') throw new TypeError('EntryPoint initialStateOverlay must be an object');
-    if (worlds.length > 1 && !primaryWorldId && Object.keys(overlay).length) {
-        throw new TypeError('A multi-World EntryPoint overlay requires primaryWorldId');
-    }
-    return {
-        primaryWorldId,
-        worlds: Object.fromEntries(worlds.map(item => {
-            const worldId = item.world.worldId;
-            const baseline = cloneNativeDocument(item.revision.baseline ?? {});
-            return [worldId, { worldRevisionId: item.revision.worldRevisionId,
-                state: worldId === primaryWorldId ? { ...baseline, ...overlay } : baseline }];
-        })),
-        // World-less narrative starts may still carry an initial state overlay.
-        ...(worlds.length ? {} : { initialState: overlay }),
-    };
 }
 
 function validateWorldState(states, manifest, entryPoint) {

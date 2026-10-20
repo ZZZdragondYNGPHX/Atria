@@ -15,6 +15,7 @@ import {
 import { buildProjectPackage, PackageInstaller } from '../package-composition.js';
 import { validateAtriaProjectSource } from '../project-source.js';
 import { StudioPreviewHost } from '../studio-preview.js';
+import { readStudioWorldPreview } from '../studio-world-preview.js';
 import { nativeProjectCommitPreviewVersion } from '../orchestration/native-project-commit-authority.js';
 import {
     LibraryAuthoringPlanner,
@@ -1248,6 +1249,13 @@ export class StudioService {
             this._previewOwners.get(item.previewId) === handle
             && (projectId == null || item.projectId === projectId)
         ));
+    }
+
+    async getPreviewWorld(handle, previewId, input = {}) {
+        if (this._previewOwners.get(previewId) !== handle) throw new TypeError('Preview unavailable');
+        const preview = this._previewHost.get(previewId);
+        if (!preview) throw new TypeError('Preview unavailable');
+        return readStudioWorldPreview(preview, input);
     }
 
     getPreviewUi(handle, previewId) {

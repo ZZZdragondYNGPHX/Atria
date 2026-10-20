@@ -21,6 +21,7 @@ import {
 } from '../atria-shell/primitives.js';
 import { translateShellText } from '../atria-shell/localization.js';
 import { mountStudioPreviewUi } from './studio-preview-ui.js';
+import { mountStudioWorldPreview } from './studio-world-preview-ui.js';
 import { presentationNegotiation } from './host-capabilities.js';
 import {
     createHumanOrigin,
@@ -553,7 +554,7 @@ function renderLibraryContentEditor(documentRef, body, state, stageProject, view
 function appendFirstEntryTarget(doc, parent, source) {
     const entry = entryPoint(source);
     const note = doc.createElement('p'); note.className = 'atri-studio-action-target';
-    note.textContent = formatProductText('Preview / Experience / UI use the first committed EntryPoint: ${0}. Reordering the collection changes this default; selecting an editor does not.', [entry ? entry.displayName + ' · ' + entry.entryPointId : t('Not specified')]);
+    note.textContent = formatProductText('Experience / UI use the first committed starting point: ${0}. Choose other starting points in Preview.', [entry ? entry.displayName + ' · ' + entry.entryPointId : t('Not specified')]);
     parent.append(note);
 }
 
@@ -597,6 +598,8 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
         validation: null,
         output: [],
         preview: null,
+        previewEntryPointId: null,
+        previewRequest: 0,
         simulation: null,
         buildReport: null,
         activityTab: 'problems',
@@ -863,16 +866,18 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
     async function runPreview() {
         if (!state.confirmEditorLeave() || state.refreshRequired) return;
         const editorToken = state.editorSequence, baseRevision = state.revision.revision;
+        const previewRequest = ++state.previewRequest;
         try {
-            const ep = entryPoint(state.source);
+            const ep = state.source.package.entryPoints.find(entry => entry.entryPointId === state.previewEntryPointId) ?? entryPoint(state.source);
             const result = await nativeStudioClient.preview(projectId, {
                 baseRevision: state.revision.revision,
                 ...(ep?.entryPointId ? { entryPointId: ep.entryPointId } : {}),
             });
-            if (state.disposed) { void nativeStudioClient.closePreview(result.preview.previewId).catch(() => {}); return; }
+            if (state.disposed || previewRequest !== state.previewRequest || editorToken !== state.editorSequence || baseRevision !== state.revision.revision) {
+                void nativeStudioClient.closePreview(result.preview.previewId).catch(() => {}); return;
+            }
             if (state.preview) void nativeStudioClient.closePreview(state.preview.previewId).catch(() => {});
             state.preview = result.preview;
-            if (editorToken !== state.editorSequence || baseRevision !== state.revision.revision) return;
             state.activeView = 'preview';
             state.mobileView = 'preview';
             log('success', formatProductText('Native Preview ${0} created without Session/Branch persistence.', [result.preview.previewId]), result.preview.descriptor);
@@ -1215,7 +1220,18 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
 
     async function renderPreview(body) {
         body.append(heading(documentRef, 'Native Preview', 'Explore the committed project interface without creating a play session.'));
-        appendFirstEntryTarget(documentRef, body, state.source);
+        const field = documentRef.createElement('label'); field.className = 'atri-library-field';
+        field.dataset.atriaDraftDirty = 'false';
+        const caption = documentRef.createElement('span'); caption.textContent = t('Preview starting point');
+        const select = documentRef.createElement('select'); select.name = 'preview-starting-point';
+        for (const entry of state.source.package.entryPoints) {
+            const option = documentRef.createElement('option'); option.value = entry.entryPointId; option.textContent = entry.displayName; select.append(option);
+        }
+        const selectedId = state.previewEntryPointId ?? state.preview?.entryPointId;
+        select.value = state.source.package.entryPoints.some(entry => entry.entryPointId === selectedId) ? selectedId : entryPoint(state.source)?.entryPointId;
+        state.previewEntryPointId = select.value;
+        select.addEventListener('change', () => { state.previewEntryPointId = select.value; });
+        field.append(caption, select); body.append(field, button(documentRef, 'Preview selected starting point', runPreview));
         if (!state.preview) {
             body.append(panel(documentRef, 'empty', 'No active preview', 'Run Preview from the Studio toolbar.'));
             return;
@@ -1234,6 +1250,8 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
         }
 
         const previewId = state.preview.previewId;
+        state.worldPreviewMount = mountStudioWorldPreview({ document: documentRef, root: body, previewId,
+            isCurrent: () => !state.disposed && state.preview?.previewId === previewId });
         if (state.preview.experience?.mode !== 'text') {
             try {
                 const exact = await nativeStudioClient.getPreviewUi(previewId);
@@ -1313,6 +1331,7 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
         state.knowledgeEditor?.dispose?.(); state.knowledgeEditor = null;
         state.structuredEditor?.dispose(); state.structuredEditor = null;
         state.previewMount?.dispose(); state.previewMount = null;
+        state.worldPreviewMount?.dispose(); state.worldPreviewMount = null;
         if (state.disposed) return;
         state.editorSequence++;
         center.inert = Boolean(state.refreshRequired);
@@ -1671,6 +1690,7 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
             drafts.dispose();
             state.structuredEditor?.dispose();
             state.previewMount?.dispose();
+            state.worldPreviewMount?.dispose();
             if (state.preview) void nativeStudioClient.closePreview(state.preview.previewId).catch(() => {});
             for (const resize of resizers) resize.dispose();
             environment.dispose(); aiController.dispose();

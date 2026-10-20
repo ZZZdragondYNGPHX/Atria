@@ -152,6 +152,7 @@ export const nativeStudioClient = Object.freeze({
     }),
     listPreviews: projectId => request('previews' + query({ projectId })),
     getPreviewUi: previewId => request(`previews/${encode(previewId)}/ui`),
+    getPreviewWorld: (previewId, input = {}) => request(`previews/${encode(previewId)}/world` + query(input)),
     closePreview: previewId => request(`previews/${encode(previewId)}`, { method: 'DELETE' }),
 });
 

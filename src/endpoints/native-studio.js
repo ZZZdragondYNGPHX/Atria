@@ -436,6 +436,9 @@ export function createNativeStudioRouter(getServices = services, artifacts = nat
         res.json(studio.listPreviews(handle, req.query.projectId || null));
     }));
 
+    router.get('/previews/:previewId/world', route(async (req, res, { studio }, handle) => {
+        res.set('Cache-Control', 'private, no-store').json(await studio.getPreviewWorld(handle, req.params.previewId, req.query));
+    }));
     router.get('/previews/:previewId/ui', route(async (req, res, { studio }, handle) => {
         res.set('Cache-Control', 'private, no-store').json(studio.getPreviewUi(handle, req.params.previewId));
     }));
