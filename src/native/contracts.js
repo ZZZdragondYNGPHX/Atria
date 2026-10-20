@@ -110,6 +110,7 @@ export const NATIVE_RESOURCE_KINDS = Object.freeze({
     versionedJsonResource: 'atri_versioned_json_resource',
     versionedJsonResourceRevision: 'atri_versioned_json_resource_revision',
     connectionProfile: 'atri_connection_profile',
+    // Existing records remain readable for storage export and recovery only.
     credentialTargetPermit: 'atri_credential_target_permit',
     modelProfile: 'atri_model_profile',
     runtimeRoute: 'atri_runtime_route',

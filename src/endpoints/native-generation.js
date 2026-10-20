@@ -56,7 +56,7 @@ import { AgentExperienceService } from '../native/agent-intelligence/experience-
 import { getChatRepo } from '../storage/index.js';
 import { AgentEvolutionService } from '../native/agent-intelligence/evolution-service.js';
 import { QUALITY_PROFILES, QUALITY_REVISION, requirePilotSources, REFUSAL_CLASSIFICATIONS, DIAGNOSIS_SUPPORT_LEVELS } from '../native/agent-intelligence/evaluation/quality.js';
-import { CredentialTargetAuthority, createCredentialSecretPort } from '../native/model-prompt-runtime/credential-targets.js';
+import { createCredentialSecretPort } from '../native/model-prompt-runtime/credential-targets.js';
 import { credentialFetch } from '../native/model-prompt-runtime/credential-fetch.js';
 import { mountMcpMediaAssets } from '../native/mcp-media-assets.js';
 import { hashNativeDocument } from '../native/repositories/common.js';
@@ -83,7 +83,6 @@ function services() {
     const { core, packageInstaller } = getNativeSessionServices();
     const { studio, agent } = getNativeStudioServices();
     const persistence = new NativeModelPromptPersistence({ engine: getStorageEngine(), lifecycle: recycleNativeResource });
-    const credentials = new CredentialTargetAuthority({ persistence });
     const host = new NativeGenerationHost({
         persistence,
         library: new VersionedJsonResourceHandler({ engine: getStorageEngine(), lifecycle: recycleNativeResource }),
@@ -97,7 +96,7 @@ function services() {
             'provider.anthropic': createNativeMessagesProvider({ format: 'anthropic', fetchImpl: credentialFetch }),
             'provider.gemini': createNativeMessagesProvider({ format: 'gemini', fetchImpl: credentialFetch }),
         },
-        secretPort: createCredentialSecretPort({ authority: credentials, resolveSecret: async (ref, { handle }) => {
+        secretPort: createCredentialSecretPort({ resolveSecret: async (ref, { handle }) => {
             // Native refs identify one exact Secret ID. Never resolve the active key.
             for (const key of Object.values(SECRET_KEYS)) {
                 if (key === SECRET_KEYS.ATRIA_SAVE_PASSWORD) continue;
@@ -881,11 +880,6 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             response.json(references);
         } catch { response.status(400).json({ error: 'native_resource_references_failed' }); }
     });
-    for (const action of ['inspect', 'authorize']) router.post('/connections/credential-target/' + action, async (request, response) => {
-        const handle = request.user?.profile?.handle; if (!handle) return response.sendStatus(401);
-        response.set('Cache-Control', 'private, no-store');
-        try { response.json(await new CredentialTargetAuthority({ persistence: getHost().persistence })[action](handle, request.body)); } catch (error) { response.status(error?.name === 'ConflictError' ? 409 : 400).json({ error: /^native_credential_[a-z_]+$/.test(error.code || '') ? error.code : 'native_credential_authorization_failed' }); }
-    });
     router.post('/connections/probe', async (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);
@@ -896,9 +890,6 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             const host = getHost();
             const connection = assertConnectionProfile(request.body);
             prepareProviderDiscovery(connection);
-            // Even injected Hosts must prove that a saved profile's independently
-            // approved destination is exact before resolving its credential.
-            await new CredentialTargetAuthority({ persistence: host.persistence }).assertConnection(handle, connection);
             const secret = await host.secretPort.resolveSecret(connection.secretRef, { handle, connection });
             if (!secret) throw Object.assign(new Error('Missing Secret'), { code: 'generation_secret_unavailable' });
             response.json(await discoverProviderModels(connection, { secret, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]), fetchImpl: credentialFetch }));

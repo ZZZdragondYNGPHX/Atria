@@ -16,7 +16,6 @@ import { runtimeReadiness } from './runtime-readiness.js';
 import { mountPromptRuntimeControls } from './prompt-runtime-controls.js';
 import { NOVELAI_IMAGE_ENDPOINT, NOVELAI_IMAGE_ADAPTERS, officialNovelaiCapabilities, novelaiConnectionCapabilities } from '../../shared/novelai-illustration.js';
 import { assertComputeBudget } from '../../shared/native-compute-budget.js';
-import { mountCredentialTargetReview } from './credential-target-review.js';
 import { connectionRequiresSecret } from '../../shared/native-connection-auth.js';
 
 const sectionLabels = { routes: 'Routes', models: 'Models', connections: 'Connections', retrieval: 'Retrieval', diagnostics: 'Diagnostics' };
@@ -377,9 +376,6 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 else result.secretRef = { scope: 'player', secretId: secret.value };
                 return result;
             };
-            mountCredentialTargetReview({ root: group(form, 'Credential destination authorization'), form,
-                saved: original && !fresh ? original : null, readDraft: () => ({ ...serialize(), displayName: name.value }),
-                request: runtimeRequest, signal: controller.signal, isCurrent: () => !disposed && editorToken === editorSequence, node, button, notice });
             const probeStatus = node('div', undefined, fields);
             const probe = button('Test connection', async () => {
                 if (probe.disabled) return;

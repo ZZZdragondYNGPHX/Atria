@@ -33,10 +33,10 @@ function workLimits(granted, route) {
 export class ToolPort {
     #liveCompletions = new Map();
 
-    constructor({ mcpService, a2aService, skillAuthority, budgetPort, sourcePort, verifyDispatch, readInput, authorizeTool, credentialAuthority, runs, effects }) {
+    constructor({ mcpService, a2aService, skillAuthority, budgetPort, sourcePort, verifyDispatch, readInput, authorizeTool, runs, effects }) {
         if (![verifyDispatch, readInput, authorizeTool].every(fn => typeof fn === 'function') || !budgetPort)
             throw new TypeError('ToolPort requires original dispatch, input, grant and budget authorities');
-        Object.assign(this, { mcpService, a2aService, skillAuthority, budgetPort, sourcePort, verifyDispatch, readInput, authorizeTool, credentialAuthority, runs, effects });
+        Object.assign(this, { mcpService, a2aService, skillAuthority, budgetPort, sourcePort, verifyDispatch, readInput, authorizeTool, runs, effects });
     }
 
     #acceptanceBinding(intent) {
@@ -181,10 +181,6 @@ export class ToolPort {
                 if (!grant.limits) fail('native_orchestration_tool_budget_unavailable');
                 if (captured) {
                     if (!await service.publicWork.fresh(handle, input, captured)) fail('native_orchestration_tool_source_stale');
-                    if (captured.policy.auth === 'secret') {
-                        if (!this.credentialAuthority) fail('native_orchestration_tool_credential_unavailable');
-                        await this.credentialAuthority.assertConnection(handle, captured.connection);
-                    }
                 } else await skill.revalidate();
                 if (phase === 'consume' && budget) await this.budgetPort.assertCurrent(handle, root.budgetAuthorityRef, { tx });
                 checkCancellation(signal);
