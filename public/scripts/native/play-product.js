@@ -93,14 +93,26 @@ export function mountAtriaPlayProduct({
     const sessionHeader = documentRef.createElement('header');
     sessionHeader.className = 'atria-play-session-header';
     sessionHeader.dataset.atriaPlaySessionHeader = 'true';
-    const heading = documentRef.createElement('div');
+    const heading = documentRef.createElement('nav');
     heading.className = 'atria-play-session-header__identity';
+    heading.setAttribute('aria-label', tl('Location'));
+    const home = documentRef.createElement('button');
+    home.type = 'button'; home.className = 'atria-play-crumb'; home.textContent = tl('Play');
+    home.addEventListener('click', () => navigation?.navigate('play', { child: { id: 'recent-stories', label: tl('Recent stories'), kind: 'workspace' }, reason: 'recent-stories' }));
+    const subtitle = documentRef.createElement('button');
+    subtitle.type = 'button'; subtitle.className = 'atria-play-crumb';
+    subtitle.addEventListener('click', () => {
+        const session = activeRuntime()?.snapshot?.session;
+        if (session?.packageId) globalThis.Atria?.shell?.getWorkspaceHost?.()?.openLibraryWork?.(session.packageId, subtitle.textContent);
+    });
+    const separator = () => { const node = documentRef.createElement('span'); node.className = 'atria-play-crumb-sep'; node.textContent = '/'; node.setAttribute('aria-hidden', 'true'); return node; };
     const title = documentRef.createElement('h2');
-    const subtitle = documentRef.createElement('p');
-    heading.append(title, subtitle);
+    heading.append(home, separator(), subtitle, separator(), title);
     const state = documentRef.createElement('span');
     state.className = 'atria-play-session-header__state';
-    sessionHeader.append(heading, state);
+    const exact = documentRef.createElement('span');
+    exact.className = 'atria-seal atria-play-session-header__seal'; exact.dataset.seal = 'pinned';
+    sessionHeader.append(heading, state, exact);
 
     const appRootSurface = createSurface(documentRef, 'app.root');
 
@@ -171,7 +183,22 @@ export function mountAtriaPlayProduct({
         picker = openPersonaSelector({ document: documentRef, runtime: activeRuntime(), expectedRevisionId: revision, sessionId });
     };
     persona.addEventListener('click', () => { try { openPicker(); } catch (error) { composerStatus.textContent = error.message; } });
-    composer.append(textarea, send, persona, composerStatus, recover);
+    // Key hint follows the real send preference; IME composition never sends.
+    const keyHint = documentRef.createElement('span');
+    keyHint.className = 'atria-play-composer__hint';
+    const renderKeyHint = () => {
+        const enterSends = Number(globalThis.Atria?.getContext?.()?.powerUserSettings?.send_on_enter ?? 0) === 1;
+        const key = label => { const node = documentRef.createElement('kbd'); node.textContent = label; return node; };
+        keyHint.replaceChildren(
+            ...(enterSends
+                ? [key('Enter'), ' ' + tl('Send') + ' · ', key('Shift'), key('Enter'), ' ' + tl('New line')]
+                : [key('Enter'), ' ' + tl('New line') + ' · ', key('Ctrl'), key('Enter'), ' ' + tl('Send')]),
+            ' · ' + tl('IME composition never sends'),
+        );
+    };
+    renderKeyHint();
+    textarea.addEventListener('focus', renderKeyHint);
+    composer.append(textarea, send, persona, keyHint, composerStatus, recover);
     const composerAfterSurface = createSurface(documentRef, 'composer.after');
     composerComponent.append(composerBeforeSurface, composer, composerAfterSurface);
 
@@ -297,14 +324,17 @@ export function mountAtriaPlayProduct({
             title.textContent = tl('Play');
             subtitle.textContent = '';
             state.textContent = '';
+            exact.textContent = '';
             return;
         }
 
         title.textContent = snapshot.session?.displayTitle || snapshot.manifest?.name || 'Native Session';
-        subtitle.textContent = [
-            snapshot.manifest?.name,
-            snapshot.manifest?.version,
-        ].filter(Boolean).join(' · ');
+        subtitle.textContent = snapshot.manifest?.name || '';
+        subtitle.hidden = !subtitle.textContent;
+        subtitle.previousElementSibling.hidden = subtitle.hidden;
+        exact.textContent = snapshot.manifest?.version ? 'v' + snapshot.manifest.version : '';
+        exact.hidden = !exact.textContent;
+        exact.title = tl('This story keeps the exact work version it started with.');
         const terminalArchive = snapshot.states?.atri_run?.status === 'dead' && snapshot.states.atri_run.mode === 'ironman';
         state.textContent = tl(terminalArchive ? 'Story ended' : runtime.history ? 'History' : runtime.failed ? 'Recovery required' : 'Live');
         state.dataset.tone = runtime.failed ? 'danger' : runtime.history ? 'neutral' : 'success';

@@ -1,9 +1,20 @@
 /*
- * Atria Design System — tokens.
+ * Atria Design System — tokens (中庭 Atrium).
  *
- * Serene Canvas is the initial paper palette. The theme authority projects
- * complete light/dark palettes; the legacy bridge follows the mounted Shell.
- * Atria components consume the --atri-* API and never bind to SmartTheme.
+ * Two layers:
+ * 1. --atri-*  Theme API. The theme authority (theme-model.js) projects a
+ *              complete palette here; user themes (T03) edit these roles.
+ *              The values below are 昼 Folio, used before themes restore.
+ * 2. Atrium semantic tokens (--surface-*, --text-*, --tone-*, --line-*,
+ *              materials, motion). Components reference only these. They
+ *              derive from the theme API where a theme owns the color and
+ *              follow the appearance for materials, lines and shadows.
+ *
+ * Seven ledger tones, one meaning each, always paired with shape and text:
+ * 金 lumen (story light, the one primary intent), 青 lapis (draft, info,
+ * selection, focus), 玉 jade (committed, ready), 琥 amber (attention,
+ * pending, budget), 朱 vermilion (danger, refused, missing), 赭 umber
+ * (history, read-only), 黛 dai (unknown, unverified, source_unready).
  */
 
 @font-face {
@@ -20,92 +31,265 @@
     font-display: swap;
 }
 
+/* Han weight mapping: system CJK sans often ships only Regular/Bold, so
+ * 550–600 would jump to Bold. Align Han to three steps; Latin keeps the
+ * continuous Inter / Segoe UI Variable weights. */
+@font-face { font-family: "Atria Han"; font-weight: 100 450; unicode-range: U+2E80-2FDF, U+3000-30FF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FF00-FFEF;
+    src: local("PingFang SC Regular"), local("PingFangSC-Regular"), local("HarmonyOS Sans SC"), local("MiSans Regular"), local("Microsoft YaHei UI"), local("MicrosoftYaHeiUI"), local("Noto Sans SC Regular"), local("NotoSansSC-Regular"), local("Noto Sans CJK SC"); }
+@font-face { font-family: "Atria Han"; font-weight: 451 580; unicode-range: U+2E80-2FDF, U+3000-30FF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FF00-FFEF;
+    src: local("PingFang SC Medium"), local("PingFangSC-Medium"), local("HarmonyOS Sans SC Medium"), local("MiSans Medium"), local("Microsoft YaHei UI"), local("MicrosoftYaHeiUI"), local("Noto Sans SC Medium"), local("NotoSansSC-Medium"), local("Noto Sans CJK SC Medium"); }
+@font-face { font-family: "Atria Han"; font-weight: 581 900; unicode-range: U+2E80-2FDF, U+3000-30FF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FF00-FFEF;
+    src: local("PingFang SC Semibold"), local("PingFangSC-Semibold"), local("HarmonyOS Sans SC Bold"), local("MiSans Semibold"), local("Microsoft YaHei UI Bold"), local("MicrosoftYaHeiUI-Bold"), local("Noto Sans SC Bold"), local("NotoSansSC-Bold"), local("Noto Sans CJK SC Bold"); }
+
+/* ── Theme API defaults: 昼 Folio ───────────────────────────────────────── */
 :root {
-    /* Serene Canvas — paper and ink, before authenticated theme restoration. */
-
-    --atri-canvas: #f9f8f6;
-    --atri-surface-1: #ffffff;
-    --atri-surface-2: #f9f8f6;
-    --atri-surface-3: #efeeeb;
-    --atri-elevated: #ffffff;
-    --atri-material-sidebar: rgb(255 255 255 / .85);
-    --atri-material-bar: rgb(255 255 255 / .85);
-    --atri-material-solid-sidebar: #ffffff;
-    --atri-material-solid-bar: #f9f8f6;
-    --atri-separator: rgb(28 28 30 / .06);
-    --atri-separator-strong: rgb(28 28 30 / .18);
-    --atri-fill: rgb(28 28 30 / .025);
-    --atri-fill-hover: rgb(28 28 30 / .045);
-    --atri-fill-pressed: rgb(0 0 0 / 0.1);
-    --atri-fill-strong: rgb(0 0 0 / 0.12);
-    --atri-text-primary: #1c1c1e;
-    --atri-text-on-accent: #fff;
-    --atri-text-on-ink: #fff;
-    --atri-text-secondary: #67676d;
-    --atri-text-tertiary: #77777e;
-    --atri-text-quaternary: #c7c7cc;
-    --atri-accent: #ff5a36;
-    --atri-accent-hover: #ec4927;
-    --atri-accent-pressed: #d63e20;
-    --atri-accent-text: #b93619;
-    --atri-accent-soft: rgb(255 90 54 / .08);
-    --atri-accent-soft-strong: rgb(255 90 54 / .16);
-    --atri-focus-ring: rgb(50 115 246 / .4);
-    --atri-success: #3273f6;
-    --atri-success-soft: rgb(50 115 246 / .08);
-    --atri-warning: #b7791f;
-    --atri-warning-soft: rgb(183 121 31 / 0.13);
-    --atri-danger: #d93a2b;
-    --atri-danger-soft: rgb(217 58 43 / 0.1);
-    --atri-scrim: rgb(24 24 32 / 0.26);
-    --atri-highlight: inset 0 0 0 .5px rgb(255 255 255 / .9);
-    --atri-shadow-1: 0 20px 40px -10px rgb(0 0 0 / .05), 0 1px 3px rgb(0 0 0 / .02);
-    --atri-shadow-2: 0 12px 32px rgb(0 0 0 / .08);
-    --atri-shadow-3: 0 28px 72px rgb(0 0 0 / .12), 0 2px 8px rgb(0 0 0 / .04);
+    --atri-canvas: #f5f1e8;
+    --atri-surface-1: #fffdf8;
+    --atri-surface-2: #f8f5ee;
+    --atri-surface-3: #ece6da;
+    --atri-elevated: #fffdf8;
+    --atri-material-sidebar: #f8f5ee;
+    --atri-material-bar: #f5f1e8;
+    --atri-material-solid-sidebar: #f8f5ee;
+    --atri-material-solid-bar: #f5f1e8;
+    --atri-separator: #e3ddd1;
+    --atri-separator-strong: #b9b0a2;
+    --atri-fill: #f0ebe1;
+    --atri-fill-hover: #ece6da;
+    --atri-fill-pressed: #e3dccd;
+    --atri-fill-strong: #d9d1c2;
+    --atri-text-primary: #1f1a14;
+    --atri-text-on-accent: #fffaf0;
+    --atri-text-on-ink: #f7efe0;
+    --atri-text-secondary: #574f45;
+    --atri-text-tertiary: #7f7668;
+    --atri-text-quaternary: #a39a8b;
+    --atri-accent: #94672b;
+    --atri-accent-hover: #7a521c;
+    --atri-accent-pressed: #6a4718;
+    --atri-accent-text: #7a521c;
+    --atri-accent-soft: #f1e9dc;
+    --atri-accent-soft-strong: #e6d6bd;
+    --atri-focus-ring: #3b62b6;
+    --atri-success: #226f4e;
+    --atri-success-soft: #e4ece4;
+    --atri-warning: #935509;
+    --atri-warning-soft: #f1e6d6;
+    --atri-danger: #bf4430;
+    --atri-danger-soft: #f4e2da;
+    --atri-scrim: rgb(40 32 20 / .32);
     --atri-cover-ink: #fff;
-    --atri-ink: #1c1c1e;
-    --atri-ink-hover: #39393b;
-    --atri-ink-pressed: #141416;
-    --atri-blue: #3273f6;
-    /* Ledger tones: one meaning each; always paired with a shape and text. */
-    --atri-info: #2f5bb7;
-    --atri-info-soft: #e6ebf6;
+    --atri-ink: #1f1a14;
+    --atri-ink-hover: #2a241c;
+    --atri-ink-pressed: #1b1712;
+    --atri-blue: #3b62b6;
+    --atri-info: #3b62b6;
+    --atri-info-soft: #e9ebf0;
     --atri-committed: #226f4e;
-    --atri-committed-soft: #e4eeea;
-    --atri-history: #7a5a3c;
-    --atri-history-soft: #efebe8;
-    --atri-unknown: #5b4f9e;
-    --atri-unknown-soft: #ebeaf3;
+    --atri-committed-soft: #e4ece4;
+    --atri-history: #866548;
+    --atri-history-soft: #efe8de;
+    --atri-unknown: #6a5bb0;
+    --atri-unknown-soft: #ebe7ef;
+}
 
-    /* Typography */
-    --atri-font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Microsoft YaHei UI", "Noto Sans SC", system-ui, sans-serif;
-    --atri-font-display: var(--atri-font-serif);
-    --atri-font-serif: "Newsreader", "New York", "Iowan Old Style", "Palatino Linotype", "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
+/* ── Atrium semantic layer (theme-derived) ──────────────────────────────── */
+:root {
+    --surface-app: var(--atri-canvas);
+    --surface-content: var(--atri-canvas);
+    --surface-stage: var(--atri-canvas);
+    --surface-paper: var(--atri-surface-2);
+    --surface-panel: var(--atri-surface-2);
+    --surface-raised: var(--atri-surface-1);
+    --surface-hover: var(--atri-fill-hover);
+    --surface-press: var(--atri-fill-pressed);
+    --surface-scrim: var(--atri-scrim);
+    --mat-overlay: var(--atri-elevated);
+
+    --text-1: var(--atri-text-primary);
+    --text-2: var(--atri-text-secondary);
+    --text-3: var(--atri-text-tertiary);
+    --text-4: var(--atri-text-quaternary);
+    --text-inverse: var(--atri-text-on-ink);
+
+    --tone-lumen: var(--atri-accent);
+    --tone-lapis: var(--atri-info);
+    --tone-jade: var(--atri-committed);
+    --tone-amber: var(--atri-warning);
+    --tone-vermilion: var(--atri-danger);
+    --tone-umber: var(--atri-history);
+    --tone-dai: var(--atri-unknown);
+    --soft-lumen: color-mix(in srgb, var(--tone-lumen) 11%, transparent);
+    --soft-lapis: color-mix(in srgb, var(--tone-lapis) 10%, transparent);
+    --soft-jade: color-mix(in srgb, var(--tone-jade) 10%, transparent);
+    --soft-amber: color-mix(in srgb, var(--tone-amber) 11%, transparent);
+    --soft-vermilion: color-mix(in srgb, var(--tone-vermilion) 10%, transparent);
+    --soft-umber: color-mix(in srgb, var(--tone-umber) 10%, transparent);
+    --soft-dai: color-mix(in srgb, var(--tone-dai) 10%, transparent);
+    --hatch-ink: color-mix(in srgb, var(--tone-umber) 15%, transparent);
+    --hatch: repeating-linear-gradient(135deg, transparent 0 5px, var(--hatch-ink) 5px 6px);
+
+    /* Type families: system-first; design fonts are optional and never fetched. */
+    --font-ui: "Inter", "Segoe UI Variable Text", "Segoe UI", "Atria Han", "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Microsoft YaHei UI", "Noto Sans SC", system-ui, sans-serif;
+    --font-read: "Newsreader", "Iowan Old Style", "Palatino Linotype", "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
+    --font-display: "Fraunces", "Newsreader", "Iowan Old Style", "Palatino Linotype", "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif;
+    --font-mono: "JetBrains Mono", "Cascadia Code", "SF Mono", "Consolas", "Noto Sans Mono CJK SC", ui-monospace, monospace;
+
+    /* UI scale (13.5 base). Han strokes merge below 12px: controls ≥13, captions ≥11.5. */
+    --fs-2xs: 10.5px; --fs-xs: 11.5px; --fs-sm: 12.5px; --fs-md: 13.5px;
+    --fs-lg: 15px; --fs-xl: 18px; --fs-2xl: 22px; --fs-3xl: 28px;
+    --fs-4xl: 38px; --fs-5xl: 56px; --fs-6xl: 84px;
+    --read-size: 18px; --read-leading: 1.92; --read-measure: 36em; --read-para: 1.05em;
+
+    --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px;
+    --s-6: 24px; --s-7: 32px; --s-8: 40px; --s-9: 56px; --s-10: 72px;
+
+    /* Structural parts small, stage parts large. */
+    --r-xs: 4px; --r-sm: 6px; --r-md: 9px; --r-lg: 13px; --r-xl: 18px; --r-2xl: 26px; --r-pill: 999px;
+    --r-pane: 16px; --r-capsule: 999px;
+
+    --ease-settle: cubic-bezier(.2, .8, .2, 1);
+    --ease-exit: cubic-bezier(.4, 0, 1, 1);
+    --ease-spring: cubic-bezier(.34, 1.36, .64, 1);
+    --ease-snap: cubic-bezier(.22, 1.08, .36, 1);
+    --dur-1: 110ms; --dur-2: 180ms; --dur-3: 280ms; --dur-4: 460ms; --dur-5: 900ms;
+
+    --topbar-h: 54px;
+    --pane-inset: 8px;
+    --dock-size: 44px; --dock-pad: 6px; --dock-gap: 10px;
+    --z-base: 1; --z-sticky: 20; --z-dock: 40; --z-float: 44; --z-island: 52; --z-sheet: 60; --z-modal: 80; --z-command: 90; --z-toast: 100;
+
+    /* Story mood: a Work may tint stage light only, never host structure. */
+    --mood-a: 120, 160, 190; --mood-b: 230, 195, 145;
+
+    --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Appearance: 昼 light ───────────────────────────────────────────────── */
+:root {
+    color-scheme: light;
+    --surface-input: rgb(255 255 255 / .7);
+    --line-1: rgb(46 34 16 / .07);
+    --line-2: rgb(46 34 16 / .115);
+    --line-3: rgb(46 34 16 / .18);
+    --line-strong: rgb(46 34 16 / .32);
+    --focus-ring: 0 0 0 2px var(--surface-app), 0 0 0 4px color-mix(in srgb, var(--tone-lapis) 75%, transparent);
+    --shadow-1: 0 1px 2px rgb(60 44 20 / .08);
+    --shadow-2: 0 14px 34px -16px rgb(60 44 20 / .28), 0 2px 6px -2px rgb(60 44 20 / .1);
+    --shadow-3: 0 34px 80px -26px rgb(60 44 20 / .38), 0 8px 22px -10px rgb(60 44 20 / .16);
+    --grain-opacity: .055;
+
+    /* Materials, three densities, never stacked: glass = floating controls
+     * (Dock, toolbar capsules, Composer); ink = Island (near-opaque, like
+     * hardware); sidebar = inset low-contrast panes. Text always sits on a
+     * surface opaque enough to read with blur off. */
+    --mat-glass: color-mix(in srgb, var(--surface-raised) 62%, transparent);
+    --mat-glass-strong: color-mix(in srgb, var(--surface-raised) 90%, transparent);
+    --glass-line: rgb(46 34 16 / .1);
+    --glass-rim: inset 0 1px 0 rgb(255 255 255 / .85), inset 0 0 0 1px rgb(255 255 255 / .35);
+    --glass-shadow: 0 1px 2px rgb(60 44 20 / .08), 0 12px 30px -14px rgb(60 44 20 / .28);
+    --mat-sidebar: rgb(255 255 255 / .42);
+    --sidebar-line: rgb(46 34 16 / .07);
+    --mat-ink: #17130e; --mat-ink-line: rgb(255 240 210 / .08);
+    --ink-text-1: #f5eee0; --ink-text-2: rgb(245 238 224 / .66); --ink-text-3: rgb(245 238 224 / .42);
+    --scroll-edge: color-mix(in srgb, var(--surface-content) 80%, transparent);
+
+    /* One primary per screen. Story domains use lumen; technical domains use neutral ink. */
+    --btn-primary-bg: linear-gradient(180deg, #2a241c, #1b1712);
+    --btn-primary-text: #f7efe0;
+    --btn-primary-ring: color-mix(in srgb, var(--tone-lumen) 45%, transparent);
+    --btn-neutral-bg: linear-gradient(180deg, #2b2a28, #1c1b19);
+    --btn-neutral-text: #f7f3ea;
+    --btn-neutral-ring: rgb(30 26 20 / .3);
+
+    /* Domain marks: Dock current item, domain title dot, current tree node only. */
+    --dom-play: #94672b; --dom-library: #9a5434; --dom-studio: #3b62b6;
+    --dom-agents: #6a5bb0; --dom-runtime: #226f4e; --dom-storage: #4b6178;
+}
+
+/* ── Appearance: 夜 dark ────────────────────────────────────────────────── */
+:root[data-atria-appearance="dark"] {
+    color-scheme: dark;
+    --surface-input: rgb(255 250 240 / .035);
+    --line-1: rgb(236 228 210 / .045);
+    --line-2: rgb(236 228 210 / .08);
+    --line-3: rgb(236 228 210 / .14);
+    --line-strong: rgb(236 228 210 / .24);
+    --focus-ring: 0 0 0 2px var(--surface-app), 0 0 0 4px color-mix(in srgb, var(--tone-lapis) 85%, transparent);
+    --shadow-1: 0 1px 0 rgb(255 255 255 / .035) inset, 0 1px 2px rgb(0 0 0 / .35);
+    --shadow-2: 0 1px 0 rgb(255 255 255 / .045) inset, 0 12px 32px -14px rgb(0 0 0 / .7), 0 2px 6px -2px rgb(0 0 0 / .4);
+    --shadow-3: 0 1px 0 rgb(255 255 255 / .05) inset, 0 32px 80px -24px rgb(0 0 0 / .8), 0 8px 24px -10px rgb(0 0 0 / .55);
+    --grain-opacity: .04;
+
+    --mat-glass: color-mix(in srgb, var(--surface-raised) 72%, rgb(60 66 84 / .4));
+    --mat-glass-strong: color-mix(in srgb, var(--surface-raised) 92%, transparent);
+    --glass-line: rgb(255 250 240 / .09);
+    --glass-rim: inset 0 1px 0 rgb(255 252 245 / .09), inset 0 0 0 1px rgb(255 252 245 / .025);
+    --glass-shadow: 0 1px 2px rgb(0 0 0 / .25), 0 12px 32px -12px rgb(0 0 0 / .55);
+    --mat-sidebar: rgb(255 250 240 / .028);
+    --sidebar-line: rgb(255 250 240 / .06);
+    --mat-ink: #050608; --mat-ink-line: rgb(236 228 210 / .09);
+    --ink-text-1: #efe9dd; --ink-text-2: rgb(239 233 221 / .66); --ink-text-3: rgb(239 233 221 / .42);
+    --scroll-edge: color-mix(in srgb, var(--surface-content) 82%, transparent);
+
+    --btn-primary-bg: linear-gradient(180deg, color-mix(in srgb, var(--tone-lumen) 88%, white), color-mix(in srgb, var(--tone-lumen) 90%, black));
+    --btn-primary-text: #24190a;
+    --btn-primary-ring: rgb(255 230 190 / .35);
+    --btn-neutral-bg: linear-gradient(180deg, #f3eee4, #ddd6c9);
+    --btn-neutral-text: #16130e;
+    --btn-neutral-ring: rgb(255 250 240 / .25);
+
+    --dom-play: #e6c391; --dom-library: #dca385; --dom-studio: #92b1f4;
+    --dom-agents: #b6a8f2; --dom-runtime: #7fcfa9; --dom-storage: #9fb4c9;
+}
+
+@supports (transition-timing-function: linear(0, 1)) {
+    :root { --ease-snap: linear(0, .06 2%, .22 5%, .45 9%, .68 14%, .86 20%, .97 27%, 1.02 34%, 1.03 41%, 1.024 49%, 1.01 62%, 1.002 76%, 1); }
+}
+
+/* Density (P-10): only spacing and type size change; nothing is hidden. */
+[data-atria-density="compact"] { --s-3: 10px; --s-4: 13px; --s-5: 16px; --s-6: 20px; --topbar-h: 46px; --fs-md: 13px; --dock-size: 38px; --dock-pad: 5px; }
+
+/* Reduce blur (T07): solid surfaces keep hierarchy and contrast. */
+body.no-blur, body.reduced-motion {
+    --mat-glass: var(--surface-raised);
+    --mat-glass-strong: var(--surface-raised);
+}
+
+/* ── Legacy --atri-* API used by existing components ────────────────────── */
+:root {
+    --atri-highlight: var(--glass-rim);
+    --atri-shadow-1: var(--shadow-1);
+    --atri-shadow-2: var(--shadow-2);
+    --atri-shadow-3: var(--shadow-3);
+
+    --atri-font-sans: var(--font-ui);
+    --atri-font-serif: var(--font-read);
+    --atri-font-display: var(--font-display);
+    --atri-font-mono: var(--font-mono);
     --atri-frame-gap: 0px;
     --atri-frame-inset: 0px;
-    --atri-font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, "Noto Sans Mono", monospace;
-    --atri-base: var(--mainFontSize, 15px);
-    --atri-text-large-title: calc(var(--atri-base) * 3.2);
-    --atri-text-title-1: calc(var(--atri-base) * 1.733);
-    --atri-text-title-2: calc(var(--atri-base) * 1.4);
-    --atri-text-title-3: calc(var(--atri-base) * 1.2);
+    --atri-base: var(--mainFontSize, 13.5px);
+    --atri-text-large-title: calc(var(--atri-base) * 2.8);
+    --atri-text-title-1: calc(var(--atri-base) * 1.63);
+    --atri-text-title-2: calc(var(--atri-base) * 1.33);
+    --atri-text-title-3: calc(var(--atri-base) * 1.11);
     --atri-text-headline: var(--atri-base);
     --atri-text-body: var(--atri-base);
-    --atri-text-callout: calc(var(--atri-base) * 0.933);
-    --atri-text-footnote: calc(var(--atri-base) * 0.867);
-    --atri-text-caption: calc(var(--atri-base) * 0.8);
-    --atri-text-caption-2: calc(var(--atri-base) * 0.733);
-    --atri-text-reading: calc(var(--atri-base) * 1.333);
+    --atri-text-callout: calc(var(--atri-base) * .963);
+    --atri-text-footnote: calc(var(--atri-base) * .926);
+    --atri-text-caption: calc(var(--atri-base) * .852);
+    --atri-text-caption-2: calc(var(--atri-base) * .778);
+    --atri-text-reading: var(--read-size);
     --atri-leading-tight: 1.2;
     --atri-leading-snug: 1.35;
-    --atri-leading-normal: 1.5;
-    --atri-leading-reading: 1.96;
-    --atri-tracking-display: -0.022em;
-    --atri-tracking-title: -0.015em;
-    --atri-tracking-headline: -0.006em;
-    --atri-tracking-caps: 0.04em;
+    --atri-leading-normal: 1.55;
+    --atri-leading-reading: var(--read-leading);
+    --atri-tracking-display: -0.02em;
+    --atri-tracking-title: -0.01em;
+    --atri-tracking-headline: -0.005em;
+    --atri-tracking-caps: 0.12em;
 
-    /* Space — 4pt grid */
     --atri-space-0-5: 2px;
     --atri-space-1: 4px;
     --atri-space-1-5: 6px;
@@ -122,38 +306,34 @@
     --atri-space-12: 48px;
     --atri-space-16: 64px;
 
-    /* Radius */
-    --atri-radius-xs: 5px;
-    --atri-radius-sm: 7px;
-    --atri-radius-md: 10px;
-    --atri-radius-lg: 14px;
-    --atri-radius-xl: 24px;
-    --atri-radius-2xl: 26px;
-    --atri-radius-pill: 999px;
+    --atri-radius-xs: var(--r-xs);
+    --atri-radius-sm: var(--r-sm);
+    --atri-radius-md: var(--r-md);
+    --atri-radius-lg: var(--r-lg);
+    --atri-radius-xl: var(--r-xl);
+    --atri-radius-2xl: var(--r-2xl);
+    --atri-radius-pill: var(--r-pill);
 
-    /* Frame metrics */
     --atri-control-sm: 28px;
-    --atri-control-md: 40px;
+    --atri-control-md: 34px;
     --atri-control-lg: 44px;
-    --atri-sidebar-width: 244px;
+    --atri-sidebar-width: 264px;
     --atri-rail-width: 76px;
-    --atri-toolbar-height: 52px;
+    --atri-toolbar-height: var(--topbar-h);
     --atri-tabbar-height: 54px;
-    --atri-inspector-width: 340px;
+    --atri-inspector-width: 368px;
     --atri-content-max: 1180px;
-    --atri-reading-max: 37em;
-    --atri-page-gutter: clamp(16px, 3.2vw, 40px);
+    --atri-reading-max: var(--read-measure);
+    --atri-page-gutter: clamp(16px, 3.2vw, 32px);
 
-    /* Motion */
-    --atri-duration-fast: 160ms;
-    --atri-duration-base: 220ms;
-    --atri-duration-slow: 260ms;
-    --atri-ease-out: cubic-bezier(.23, 1, .32, 1);
-    --atri-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-    --atri-ease-sheet: cubic-bezier(.22, 1, .36, 1);
+    --atri-duration-fast: var(--dur-1);
+    --atri-duration-base: var(--dur-2);
+    --atri-duration-slow: var(--dur-3);
+    --atri-ease-out: var(--ease-settle);
+    --atri-ease-in-out: cubic-bezier(.4, 0, .2, 1);
+    --atri-ease-sheet: var(--ease-settle);
     --atri-material-filter: blur(20px);
 
-    /* Platform */
     --atri-safe-area-top: env(safe-area-inset-top, 0px);
     --atri-safe-area-right: env(safe-area-inset-right, 0px);
     --atri-safe-area-bottom: env(safe-area-inset-bottom, 0px);
@@ -161,7 +341,12 @@
     --atri-density-control-height: var(--atri-control-md);
     --atri-density-row-gap: var(--atri-space-3);
 
-    /* Compatibility aliases for earlier Atria surfaces. */
+    --atri-material-floating: var(--mat-glass);
+    --atri-material-overlay: var(--mat-overlay);
+    --atri-blur-floating: blur(22px) saturate(1.5);
+    --atri-material-island: var(--mat-ink);
+    --atri-island-text: var(--ink-text-1);
+
     --atri-color-canvas: var(--atri-canvas);
     --atri-color-surface: var(--atri-surface-1);
     --atri-color-raised: var(--atri-surface-2);
@@ -176,7 +361,7 @@
     --atri-color-success: var(--atri-success);
     --atri-color-warning: var(--atri-warning);
     --atri-color-danger: var(--atri-danger);
-    --atri-color-focus: var(--atri-accent-text);
+    --atri-color-focus: var(--atri-info);
     --atri-color-scrim: var(--atri-scrim);
     --atri-font-family-body: var(--atri-font-sans);
     --atri-font-family-mono: var(--atri-font-mono);
@@ -197,24 +382,18 @@
     --atri-ease-standard: var(--atri-ease-out);
 }
 
-:root[data-atria-appearance="light"] { color-scheme: light; }
-:root[data-atria-appearance="dark"] { color-scheme: dark; }
-
 [data-atria-density="compact"] {
     --atri-density-control-height: var(--atri-control-sm);
     --atri-density-row-gap: var(--atri-space-2);
 }
 
+/* Reduced motion (T07 or system): transitions become instant; live dots rest. */
 @media (prefers-reduced-motion: reduce) {
-    :root {
-        --atri-duration-fast: 1ms;
-        --atri-duration-base: 1ms;
-        --atri-duration-slow: 1ms;
-    }
+    :root { --dur-1: 1ms; --dur-2: 1ms; --dur-3: 1ms; --dur-4: 1ms; --dur-5: 1ms; }
 }
-
 body.reduced-motion,
 [data-atria-reduced-motion="true"] {
+    --dur-1: 1ms; --dur-2: 1ms; --dur-3: 1ms; --dur-4: 1ms; --dur-5: 1ms;
     --atri-duration-fast: 1ms;
     --atri-duration-base: 1ms;
     --atri-duration-slow: 1ms;
@@ -231,40 +410,40 @@ body.reduced-motion,
  * the untouched legacy presentation because the Shell is not mounted there.
  */
 body[data-atria-shell-mounted="true"] {
-    --SmartThemeBodyColor: var(--atri-text-primary);
-    --SmartThemeEmColor: var(--atri-text-secondary);
+    --SmartThemeBodyColor: var(--text-1);
+    --SmartThemeEmColor: var(--text-2);
     --SmartThemeUnderlineColor: var(--atri-accent-text);
     --SmartThemeQuoteColor: var(--atri-accent-text);
-    --SmartThemeBlurTintColor: var(--atri-surface-1);
-    --SmartThemeChatTintColor: var(--atri-canvas);
-    --SmartThemeUserMesBlurTintColor: var(--atri-accent-soft);
-    --SmartThemeBotMesBlurTintColor: var(--atri-surface-2);
+    --SmartThemeBlurTintColor: var(--surface-raised);
+    --SmartThemeChatTintColor: var(--surface-app);
+    --SmartThemeUserMesBlurTintColor: var(--soft-lumen);
+    --SmartThemeBotMesBlurTintColor: var(--surface-panel);
     --SmartThemeShadowColor: rgb(0 0 0 / 0.28);
-    --SmartThemeBorderColor: var(--atri-separator-strong);
+    --SmartThemeBorderColor: var(--line-3);
     --SmartThemeCheckboxBgColorR: 245;
     --SmartThemeCheckboxBgColorG: 245;
     --SmartThemeCheckboxBgColorB: 247;
-    --mainFontFamily: var(--atri-font-sans);
-    --monoFontFamily: var(--atri-font-mono);
+    --mainFontFamily: var(--font-ui);
+    --monoFontFamily: var(--font-mono);
     --shadowWidth: 0;
-    --interactable-outline-color: var(--atri-accent-text);
-    --interactable-outline-color-faint: var(--atri-focus-ring);
+    --interactable-outline-color: var(--tone-lapis);
+    --interactable-outline-color-faint: var(--soft-lapis);
     --black30a: var(--atri-fill);
     --black50a: var(--atri-scrim);
     --white20a: var(--atri-fill-strong);
-    --white30a: var(--atri-separator-strong);
+    --white30a: var(--line-3);
     --grey5020a: var(--atri-fill);
     --grey30a: var(--atri-fill);
-    --golden: var(--atri-warning);
-    --active: var(--atri-success);
-    --warning: var(--atri-danger);
-    --preferred: var(--atri-danger);
-    --crimson70a: var(--atri-danger-soft);
-    --okGreen70a: var(--atri-success-soft);
-    --cobalt30a: var(--atri-accent-soft);
-    background-color: var(--atri-canvas);
-    color: var(--atri-text-primary);
-    font-family: var(--atri-font-sans);
+    --golden: var(--tone-amber);
+    --active: var(--tone-jade);
+    --warning: var(--tone-vermilion);
+    --preferred: var(--tone-vermilion);
+    --crimson70a: var(--soft-vermilion);
+    --okGreen70a: var(--soft-jade);
+    --cobalt30a: var(--soft-lumen);
+    background-color: var(--surface-app);
+    color: var(--text-1);
+    font-family: var(--font-ui);
 }
 
 :root[data-atria-appearance="light"] body[data-atria-shell-mounted="true"] {
@@ -274,13 +453,9 @@ body[data-atria-shell-mounted="true"] {
     --SmartThemeShadowColor: rgb(0 0 0 / 0.12);
 }
 
-/* Materials derive from the active palette, including user themes. */
-:root {
-    --atri-material-floating: color-mix(in srgb,var(--atri-surface-1) 86%,transparent);
-    --atri-material-overlay:var(--atri-elevated);
-    --atri-blur-floating:blur(22px) saturate(1.25);
-    --atri-material-island:#17130e;
-    --atri-island-text:#f5eee0;
+/* Film grain: barely there, never intercepts input, off in forced colors. */
+body[data-atria-shell-mounted="true"]::after {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 2147483000;
+    background-image: var(--grain); opacity: var(--grain-opacity); mix-blend-mode: overlay;
 }
-:root[data-atria-appearance=dark] { --atri-material-island:#050608; --atri-island-text:#efe9dd; }
-body.no-blur,body.reduced-motion { --atri-blur-floating:none; --atri-material-floating:var(--atri-surface-1); }
+@media (forced-colors: active) { body[data-atria-shell-mounted="true"]::after { display: none; } }

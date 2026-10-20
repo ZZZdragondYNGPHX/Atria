@@ -1,321 +1,472 @@
-/* Library presentation: resources retain their existing controllers and exact identities. */
-[data-atria-domain-workspace="library"] { color: var(--atri-text-primary); font-family: var(--atri-font-sans); text-shadow: none; }
-[data-atria-domain-workspace="library"] .atria-domain-workspace__body { padding-block: 32px 48px; }
-.atria-native-library, .atri-prompt-library { max-width: 1120px; margin-inline: auto; min-width: 0; }
-.atria-native-library { display: grid; gap: 24px; }
-.atri-library-heading h2 { font-family: var(--atri-font-serif); font-weight: 400; font-size: var(--atri-text-large-title); letter-spacing: var(--atri-tracking-display); margin: 0; text-align: left; overflow-wrap: anywhere; }
-.atri-library-heading p { margin: 8px 0 0; color: var(--atri-text-secondary); max-width: 68ch; line-height: 1.6; }
-.atri-library-meta { font-size: var(--atri-text-footnote); color: var(--atri-text-secondary); margin: 4px 0; overflow-wrap: anywhere; }
+/* Library (书库): works shelf, continue reading, resource details. Controls
+ * come from the Atrium base layer; this file only lays the pages out.
+ * Resources keep their existing controllers and exact identities. */
+[data-atria-domain-workspace="library"] { color: var(--text-1); font-family: var(--font-ui); text-shadow: none; }
+[data-atria-domain-workspace="library"] .atria-domain-workspace__body { padding: 22px 26px 64px; }
+.atria-native-library, .atri-prompt-library { max-width: 1240px; min-width: 0; }
+.atria-native-library { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
+
+.atri-library-heading h2 { margin: 0; font: 600 var(--fs-xl)/1.25 var(--font-ui); letter-spacing: -.01em; text-align: left; overflow-wrap: anywhere; }
+.atri-library-heading p { margin: 6px 0 0; color: var(--text-2); max-width: 68ch; font-size: var(--fs-sm); line-height: 1.6; }
+.atri-library-meta { margin: 2px 0; color: var(--text-3); font-size: var(--fs-xs); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .atri-library-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
-.atria-app-shell .atri-library-button { border: 0; border-radius: var(--atri-radius-md); background: var(--atri-fill); color: var(--atri-text-primary); min-height: 36px; padding: 8px 14px; font: inherit; font-size: var(--atri-text-callout); cursor: pointer; transition: background var(--atri-duration-fast), transform var(--atri-duration-fast); }
-.atria-app-shell .atri-library-button--primary { background: var(--atri-ink); color: var(--atri-text-on-ink); }
-.atria-app-shell .atri-library-button--danger { color: var(--atri-danger); }
-.atri-library-button:disabled { opacity: .5; cursor: default; }
-.atri-library-button[aria-busy="true"] { cursor: progress; }
-.atri-library-button:not(:disabled):active:not(:focus-visible) { transform: scale(.97); }
-.atria-app-shell .atri-library-button--primary:not(:disabled):active { background: var(--atri-ink-pressed); }
-.atri-library-field { display: grid; gap: 8px; font-size: var(--atri-text-callout); min-width: 0; }
-.atria-app-shell .atri-library-field > input, .atria-app-shell .atri-library-field > select, .atria-app-shell .atri-library-field > textarea,
-.atria-app-shell .atri-library-section-picker select { min-width: 0; max-width: 100%; width: 100%; background: var(--atri-surface-2); color: var(--atri-text-primary); border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-md); min-height: 40px; padding: 8px 12px; font: inherit; font-size: max(16px, var(--atri-text-body)); margin: 0; }
+.atri-library-field { display: grid; gap: 6px; min-width: 0; }
 .atri-library-field > input[type="search"] { max-width: 420px; }
 .atri-library-field > input[type="file"] { white-space: normal; }
 .atri-library-field[hidden] { display: none; }
 .atri-library-details { min-width: 0; }
-.atri-library-details > summary { cursor: pointer; padding-block: 10px; color: var(--atri-text-secondary); font-size: var(--atri-text-callout); overflow-wrap: anywhere; }
-.atri-library-details > pre { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--atri-font-mono); font-size: var(--atri-text-caption); padding: 16px; background: var(--atri-surface-2); border-radius: var(--atri-radius-md); margin: 8px 0; }
+.atri-library-details > summary { padding-block: 8px; overflow-wrap: anywhere; }
+.atri-library-details > pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; padding: 14px; border-radius: var(--r-md); border: 1px solid var(--line-1); background: var(--surface-panel); }
+
+/* Library tools (search · import · install) sit in the top bar's tool capsule.
+ * The capsule is outside the workspace control layer, so they carry their own skin. */
+.atri-library-tools { display: flex; align-items: center; gap: 6px; min-width: 0; padding-right: 2px; }
+.atri-library-search { display: flex; align-items: center; gap: 8px; width: 260px; min-width: 0; height: 30px; padding: 0 6px 0 10px; border-radius: var(--r-capsule); background: color-mix(in srgb, var(--text-1) 4%, transparent); color: var(--text-3); }
+.atri-library-search::before { content: ""; width: 15px; height: 15px; flex: none; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6.5'/%3E%3Cpath d='M20 20l-4.2-4.2'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6.5'/%3E%3Cpath d='M20 20l-4.2-4.2'/%3E%3C/svg%3E") center / contain no-repeat; }
+.atri-library-search:focus-within { box-shadow: 0 0 0 1px color-mix(in srgb, var(--tone-lapis) 60%, transparent), 0 0 0 4px var(--soft-lapis); }
+.atri-library-search > input { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; outline: 0; background: transparent; color: var(--text-1); font: 400 var(--fs-sm)/1 var(--font-ui); }
+.atri-library-search > input::-webkit-search-cancel-button { display: none; }
+.atri-library-search > kbd { padding: 1px 6px; border: 1px solid var(--line-2); border-radius: 5px; color: var(--text-3); font: 500 10.5px/1.4 var(--font-mono); }
+.atri-library-tools > button { display: inline-flex; align-items: center; min-height: 30px; padding: 0 12px; border: 0; border-radius: var(--r-capsule); background: transparent; box-shadow: none; color: var(--text-1); font: 500 var(--fs-sm)/1 var(--font-ui); white-space: nowrap; cursor: pointer; }
+.atri-library-tools > button:hover { background: var(--surface-hover); }
+.atri-library-tools > button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.atri-library-tools > button.atri-library-button--primary { background: var(--btn-primary-bg); color: var(--btn-primary-text); font-weight: 600; box-shadow: 0 0 0 1px var(--btn-primary-ring); }
+.atri-library-tools > button.atri-library-button--primary:hover { filter: brightness(1.06); }
+/* Standalone (no shell): the same tools inline above the page. */
+.atria-native-library > .atri-library-tools { flex-wrap: wrap; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-search { width: 36px; padding: 0; justify-content: center; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-search:focus-within { position: absolute; inset: 0 6px; z-index: 2; width: auto; padding: 0 10px; background: var(--surface-panel); }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-search:not(:focus-within) > :is(input, kbd) { position: absolute; opacity: 0; width: 36px; height: 30px; cursor: pointer; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-tools > button:not(.atri-library-button--primary) { display: none; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-tools > button.atri-library-button--primary { width: 30px; padding: 0; justify-content: center; font-size: 0; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-tools > button.atri-library-button--primary::before { content: ""; width: 16px; height: 16px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14'/%3E%3C/svg%3E") center / contain no-repeat; }
+
 .atri-library-imports { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
-.atri-library-import { border-block: 1px solid var(--atri-separator); padding-block: 4px; }
-.atri-library-import p { color: var(--atri-text-secondary); line-height: 1.6; }
-.atri-library-import-review { padding: 16px 0; }
-.atri-library-import-review h4 { margin: 0; font-size: var(--atri-text-headline); }
-.atri-library-permissions { border: 0; padding: 16px 0; min-width: 0; }
-.atri-library-permissions label { display: flex; align-items: center; gap: 8px; min-height: 44px; overflow-wrap: anywhere; }
-.atri-library-posters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; align-items: start; }
-.atri-library-posters > .atria-state-panel { grid-column: 1 / -1; }
-.atri-library-work { min-width: 0; }
-.atria-app-shell .atri-library-work-open { padding: 0; border: 0; display: block; width: 100%; color: var(--atri-text-primary); background: transparent; text-align: left; cursor: pointer; }
-.atri-library-work-open h3 { font: 400 var(--atri-text-title-2)/1.4 var(--atri-font-serif); margin: 12px 0 4px; overflow-wrap: anywhere; }
-.atri-library-cover { aspect-ratio: 4 / 3; background: linear-gradient(145deg, #e8e4d8, #f1eee5 58%, #d8d4c7); color: #655e4d; padding: 24px; border-radius: var(--atri-radius-xl); box-shadow: var(--atri-shadow-1); display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 20px; min-width: 0; }
-.atri-library-cover > span { font: 400 var(--atri-text-title-1)/1.2 var(--atri-font-serif); line-height: 1.2; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
-.atri-library-cover[data-cover="1"] { background: linear-gradient(145deg, #233d40, #49615b); color: #f3eee1; }
-.atri-library-cover[data-cover="2"] { background: linear-gradient(145deg, #dfd9df, #ece8e9); color: #6e626c; }
-.atri-library-cover[data-cover="3"] { background: var(--atri-surface-3); color: var(--atri-text-secondary); }
-.atri-library-cover svg { flex-shrink: 0; }
+.atri-library-import { display: grid; gap: 14px; max-width: 720px; }
+.atri-library-import p { color: var(--text-2); line-height: 1.6; }
+.atri-library-import-review { display: grid; gap: 12px; padding: 16px; border-radius: var(--r-xl); border: 1px solid var(--line-2); background: var(--surface-panel); }
+.atri-library-import-review h4 { margin: 0; font: 600 var(--fs-lg)/1.3 var(--font-ui); }
+.atri-library-permissions { min-width: 0; margin: 0; padding: 4px 0; border: 0; }
+.atri-library-permissions legend { padding: 0 0 6px; font: 600 var(--fs-sm)/1 var(--font-ui); color: var(--text-2); }
+.atri-library-permissions label { display: flex; align-items: flex-start; gap: 10px; min-height: 44px; padding: 10px 0; border-bottom: 1px solid var(--line-1); overflow-wrap: anywhere; line-height: 1.5; }
+
+/* Sections */
 .atri-library-section { min-width: 0; }
+.atri-library-section > h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font: 600 var(--fs-lg)/1.2 var(--font-ui); letter-spacing: -.005em; }
+
+/* Continue reading strip */
+.atri-library-resume { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.atri-library-resume-card {
+    display: grid; grid-template-columns: 56px minmax(0, 1fr); grid-template-rows: auto auto 1fr; gap: 4px 14px; align-items: start;
+    min-width: 0; padding: 12px; border-radius: var(--r-xl); border: 1px solid var(--line-2); background: var(--surface-panel);
+    transition: border-color var(--dur-2), transform var(--dur-3) var(--ease-settle);
+}
+.atri-library-resume-card:hover { border-color: var(--line-3); transform: translateY(-1px); }
+.atri-library-resume-card > .atri-library-cover { grid-row: 1 / span 3; width: 56px; aspect-ratio: auto; height: 76px; border-radius: 8px; box-shadow: var(--shadow-1); }
+.atri-library-resume-card > .atri-library-cover .atri-library-cover__title { font-size: 10.5px; right: 6px; top: 7px; letter-spacing: .02em; }
+.atri-library-resume-card > strong { margin-top: 2px; font: 600 var(--fs-md)/1.35 var(--font-ui); overflow-wrap: anywhere; }
+.atri-library-resume-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; align-self: end; }
+.atri-library-resume-row > .atri-library-meta { flex: 1; }
+.atria-app-shell .atri-library-resume-row > button { min-height: 28px; padding: 0 11px; font-size: var(--fs-sm); }
+
+/* Shelf: heading · count · scope, then books. */
+.atri-library-shelf-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin-bottom: 14px; }
+.atri-library-section > .atri-library-shelf-head > h3 { margin: 0; font: 600 var(--fs-lg)/1.2 var(--font-ui); }
+.atri-library-shelf-head > .atri-library-scope { margin-left: auto; align-self: center; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-shelf-head > .atri-library-scope { margin-left: 0; flex-basis: 100%; width: 100%; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-shelf-head > .atri-library-scope > button { flex: 1; }
+.atri-library-posters { display: grid; grid-template-columns: repeat(auto-fill, minmax(178px, 1fr)); gap: 26px 20px; align-items: start; }
+.atri-library-posters > .atria-state-panel { grid-column: 1 / -1; }
+.atri-library-work { display: grid; gap: 4px; min-width: 0; }
+.atria-app-shell .atri-library-work-open { display: grid; gap: 8px; justify-items: start; width: 100%; min-height: 0; padding: 0; border: 0; border-radius: var(--r-lg); background: transparent; box-shadow: none; color: var(--text-1); text-align: left; font: inherit; cursor: pointer; }
+.atria-app-shell .atri-library-work-open:hover:not(:disabled) { background: transparent; border-color: transparent; }
+.atri-library-work-open > .atri-library-cover { justify-self: stretch; margin-bottom: 2px; transition: transform var(--dur-3) var(--ease-settle), box-shadow var(--dur-3); }
+.atri-library-work-open h3 { margin: 0; font: 600 var(--fs-lg)/1.3 var(--font-ui); overflow-wrap: anywhere; }
+.atri-library-work-open[aria-current="true"] > .atri-library-cover { box-shadow: 0 0 0 2px var(--tone-lumen), var(--shadow-3); }
+@media (hover: hover) { .atri-library-work-open:hover > .atri-library-cover { transform: translateY(-4px) rotate(-.4deg); box-shadow: var(--shadow-3); } }
+.atri-library-work-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.atri-library-chip { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: var(--r-capsule); border: 1px solid var(--line-2); color: var(--text-2); font: 500 var(--fs-xs)/1 var(--font-ui); white-space: nowrap; }
+.atri-library-chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.atri-library-chip[data-tone="ready"] { color: var(--tone-jade); border-color: color-mix(in srgb, var(--tone-jade) 35%, transparent); background: var(--soft-jade); }
+.atri-library-chip[data-tone="missing"] { color: var(--tone-vermilion); border-color: color-mix(in srgb, var(--tone-vermilion) 35%, transparent); background: var(--soft-vermilion); }
+
+/* Split: the shelf keeps scrolling on the left; the selected Work opens in an
+ * inset detail pane on the right (prototype lib__detail). */
+.atria-app-shell[data-atria-viewport] [data-atria-domain-workspace="library"] .atria-domain-workspace__body:has(> .atri-library-split) { padding: 0; overflow: hidden; }
+.atria-app-shell .atria-domain-workspace__body > .atria-native-library.atri-library-split { display: grid; grid-template-columns: minmax(0, 1fr) min(460px, 42%); gap: 0; max-width: none; height: 100%; }
+.atri-library-split > .atri-library-main { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 28px; min-width: 0; min-height: 0; overflow: auto; padding: 22px 26px 64px; }
+.atri-library-split > .atri-library-detail { position: relative; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; border-left: 1px solid var(--line-2); background: var(--surface-panel); animation: atri-library-detail-in var(--dur-3) var(--ease-settle) both; }
+@keyframes atri-library-detail-in { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .atri-library-split > .atri-library-detail { animation: none; } }
+.atri-library-split .atri-library-resume { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.atri-library-split .atri-library-resume > :nth-child(3) { display: grid; }
+.atri-library-detail > :not(.atri-library-work-hero) { margin-inline: 22px; }
+.atri-library-detail > .atri-library-section { padding-block: 16px; border-bottom: 1px solid var(--line-1); }
+.atri-library-detail > .atri-library-section:last-of-type { border-bottom: 0; }
+.atri-library-detail > .atri-library-section > h3 { margin-bottom: 10px; color: var(--text-2); font: 600 var(--fs-sm)/1 var(--font-ui); letter-spacing: .02em; }
+.atri-library-detail > .atri-library-details { padding-block: 10px 24px; }
+
+/* Worlds & Knowledge: resource pane + editor (prototype K01–K11). */
+.atria-app-shell[data-atria-viewport] [data-atria-domain-workspace="library"] .atria-domain-workspace__body:has(> .atri-library-resource-split) { padding: 0; overflow: hidden; }
+.atria-app-shell .atria-domain-workspace__body > .atria-native-library.atri-library-resource-split { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 0; max-width: none; height: 100%; }
+.atri-library-resource-pane { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; overflow-y: auto; padding: 14px 10px 24px; border-right: 1px solid var(--line-2); background: var(--surface-panel); }
+.atri-library-resource-pane > .atri-library-segments { display: grid; grid-template-columns: 1fr 1fr; }
+.atri-library-resource-pane > .atri-library-segments > button { width: 100%; justify-content: center; }
+.atri-library-resource-pane > .atri-library-field:not(:has(input[type="checkbox"])) > span:first-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.atri-library-resource-pane > .atri-library-create { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 0 0 10px; }
+.atri-library-resource-pane > .atri-library-create .atri-library-field { max-width: none; }
+.atria-app-shell .atri-library-resource-pane > .atri-library-create > button { justify-self: stretch; border-color: var(--line-2); background: var(--surface-raised); color: var(--text-1); font-weight: 500; box-shadow: var(--shadow-1); }
+.atri-library-resource-pane > .atri-library-create > button::before { content: "+"; margin-right: 6px; color: var(--text-3); }
+.atri-library-resource-pane .atri-library-grouped-list { display: grid; gap: 1px; }
+.atri-library-resource-pane .atri-library-row { position: relative; gap: 10px; min-height: 40px; padding: 7px 10px; border: 0; border-radius: var(--r-md); color: var(--text-3); cursor: pointer; }
+.atri-library-resource-pane .atri-library-row:hover { background: var(--surface-hover); }
+.atri-library-resource-pane .atri-library-row[aria-current="true"] { background: var(--surface-raised); box-shadow: var(--shadow-1), 0 0 0 1px var(--line-2); }
+.atri-library-resource-pane .atri-library-row[aria-current="true"]::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 2px; border-radius: 2px; background: var(--tone-lumen); }
+.atri-library-resource-pane .atri-library-row h3 { color: var(--text-1); font: 500 var(--fs-md)/1.3 var(--font-ui); }
+.atri-library-resource-pane .atri-library-row p { margin: 1px 0 0; }
+.atria-app-shell .atri-library-resource-pane .atri-library-row > button { min-height: 24px; padding: 0 8px; border-color: transparent; background: transparent; box-shadow: none; color: var(--text-3); font-size: var(--fs-xs); opacity: 0; }
+.atria-app-shell .atri-library-resource-pane .atri-library-row:is(:hover, :focus-within) > button { opacity: 1; }
+.atri-library-resource-pane > .atri-library-section > h3 { margin: 10px 0 6px; color: var(--text-3); font: 600 10.5px/1 var(--font-ui); letter-spacing: .12em; text-transform: uppercase; }
+.atri-library-resource-pane .atria-state-panel { padding: 18px 8px; }
+.atri-library-resource-main { display: grid; align-content: start; gap: 24px; min-width: 0; min-height: 0; overflow-y: auto; padding: 22px 28px 64px; }
+.atri-library-resource-main > .atri-library-heading { position: relative; padding-right: 120px; }
+.atri-library-resource-main > .atri-library-heading h2 { font: 560 28px/1.2 var(--font-display); letter-spacing: -.01em; }
+.atria-app-shell .atri-library-resource-main > .atri-library-heading > .atri-library-detail-close { position: absolute; top: 0; right: 0; }
+.atri-library-resource-pane > .atri-library-pane-heading h2, .atri-prompt-preset-list > h2 { margin: 2px 4px 0; font: 600 var(--fs-lg)/1.25 var(--font-ui); }
+.atri-library-resource-pane > .atri-library-pane-heading p { margin: 2px 4px 4px; font-size: var(--fs-xs); }
+.atri-prompt-preset-list { display: grid; gap: 10px; }
+.atri-prompt-preset-list > .atri-prompt-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 6px; }
+.atri-prompt-preset-list > .atri-prompt-resource { display: flex; align-items: center; gap: 10px; margin: 0; padding: 7px 10px; border: 0; border-radius: var(--r-md); background: transparent; }
+.atri-prompt-preset-list > .atri-prompt-resource h3 { flex: 1; min-width: 0; margin: 0; font: 500 var(--fs-md)/1.3 var(--font-ui); }
+.atri-prompt-preset-list > .atri-prompt-resource[aria-current="true"] { position: relative; background: var(--surface-raised); box-shadow: var(--shadow-1), 0 0 0 1px var(--line-2); }
+.atri-prompt-preset-list > .atri-prompt-resource[aria-current="true"]::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 2px; border-radius: 2px; background: var(--tone-lumen); }
+.atri-prompt-preset-list > .atri-prompt-resource > button { display: none; }
+.atri-prompt-preset-list > .atri-prompt-resource:is(:hover, :focus-within) > button:not(:first-of-type) { display: inline-flex; min-height: 24px; padding: 0 7px; font-size: var(--fs-xs); }
+.atri-prompt-preset-list > .atri-prompt-resource > button:first-of-type { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.atri-prompt-preset-list > .atri-prompt-resource:focus-within > button:first-of-type { position: static; width: auto; height: auto; clip-path: none; display: inline-flex; }
+.atri-library-resource-main > .atri-prompt-preset { position: relative; }
+.atri-library-resource-main > .atri-prompt-preset > .atri-prompt-actions:first-child { justify-content: flex-end; }
+.atri-library-resource-empty { display: grid; place-items: center; align-content: center; gap: 10px; min-height: 320px; color: var(--text-3); font-size: var(--fs-sm); text-align: center; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-domain-workspace__body > .atria-native-library.atri-library-resource-split { grid-template-columns: minmax(0, 1fr); height: auto; }
+.atria-app-shell[data-atria-viewport="compact"] [data-atria-domain-workspace="library"] .atria-domain-workspace__body:has(> .atri-library-resource-split) { overflow: auto; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-split:has(.atri-library-resource-main > .atri-library-heading) > .atri-library-resource-pane,
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-split:not(:has(.atri-library-resource-main > .atri-library-heading)) > .atri-library-resource-main { display: none; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-pane { border-right: 0; background: transparent; padding: 14px 16px 96px; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-main { padding: 14px 16px 96px; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-pane .atri-library-row > button { opacity: 1; }
+
+/* Generated cover art: painted gradients, grain, vertical title. */
+.atri-library-cover {
+    position: relative; overflow: hidden; isolation: isolate; aspect-ratio: 3 / 4; min-width: 0;
+    border-radius: 12px; box-shadow: var(--shadow-2); color: #f6eedf;
+    background: radial-gradient(26% 18% at 32% 54%, rgb(255 222 160 / .9), rgb(255 200 130 / .2) 40%, transparent 70%), linear-gradient(180deg, #2d4752 0%, #3f5d66 40%, #263b44 62%, #121e24 100%);
+}
+.atri-library-cover::after { content: ""; position: absolute; inset: 0; background-image: var(--grain); opacity: .22; mix-blend-mode: overlay; pointer-events: none; }
+.atri-library-cover__title {
+    position: absolute; z-index: 2; right: 14px; top: 16px; max-height: calc(100% - 32px); overflow: hidden;
+    writing-mode: vertical-rl; font: 600 19px/1.15 var(--font-display); letter-spacing: .18em; color: inherit; text-shadow: 0 1px 12px rgb(0 0 0 / .45);
+}
+.atri-library-cover[data-cover="1"] { background: radial-gradient(circle at 20% 30%, #f2c35a 0 6%, transparent 7%), radial-gradient(circle at 60% 18%, #e9a93c 0 5%, transparent 6%), radial-gradient(circle at 42% 62%, #f5d277 0 7%, transparent 8%), radial-gradient(circle at 74% 74%, #d98d2b 0 5%, transparent 6%), linear-gradient(160deg, #5a2f1c, #2a1710 70%); }
+.atri-library-cover[data-cover="2"] { background: radial-gradient(1px 1px at 20% 20%, #fff, transparent), radial-gradient(1px 1px at 70% 30%, #fff, transparent), radial-gradient(1.5px 1.5px at 40% 12%, #fff, transparent), radial-gradient(60% 40% at 50% 100%, rgb(140 120 255 / .45), transparent 70%), linear-gradient(180deg, #0d1030, #241c54 70%, #3a2a6a); }
+.atri-library-cover[data-cover="3"] { background: radial-gradient(2px 2px at 30% 40%, #ffb37a, transparent), radial-gradient(2px 2px at 76% 60%, #ffc48a, transparent), radial-gradient(70% 50% at 50% 110%, rgb(255 96 50 / .65), transparent 70%), linear-gradient(180deg, #1a0f0e, #3b1712 60%, #5c2014); }
+.atri-library-cover[data-cover="4"] { background: radial-gradient(80% 50% at 30% 70%, rgb(255 255 255 / .16), transparent 70%), radial-gradient(60% 30% at 70% 30%, rgb(255 255 255 / .08), transparent), linear-gradient(180deg, #2b2b2b, #111); }
+.atri-library-cover[data-cover="5"] { color: #13303b; background: radial-gradient(120% 60% at 50% 120%, #8fc3d6, transparent 60%), linear-gradient(180deg, #d8e6ea, #a9c8d3 55%, #5f8fa1); }
+.atri-library-cover[data-cover="5"] .atri-library-cover__title { text-shadow: none; }
+
 [data-atria-task-binding-setup] > div { display: grid; gap: 16px; }
 [data-atria-task-binding-setup] p { overflow-wrap: anywhere; }
-.atria-app-shell [data-atria-task-binding-setup] select { min-height: 44px; }
-.atri-library-section > h3 { margin: 8px 0 16px; font-size: var(--atri-text-title-2); }
-.atri-library-row { display: flex; align-items: center; gap: 24px; padding: 20px 0; border-bottom: 1px solid var(--atri-separator); min-width: 0; }
+
+/* Rows (sessions, versions) */
+.atri-library-row > .atri-library-cover { flex: none; width: 44px; height: 60px; aspect-ratio: auto; border-radius: 7px; box-shadow: var(--shadow-1); }
+.atri-library-row > .atri-library-cover .atri-library-cover__title { display: none; }
+.atri-library-row { display: flex; align-items: center; gap: 20px; padding: 14px 0; border-bottom: 1px solid var(--line-1); min-width: 0; }
 .atri-library-row-content { flex: 1; min-width: 0; }
-.atri-library-row h3, .atri-library-row h4 { margin: 0; font-size: var(--atri-text-headline); overflow-wrap: anywhere; }
-.atri-library-row p { margin: 6px 0; color: var(--atri-text-secondary); }
+.atri-library-row h3, .atri-library-row h4 { margin: 0; font: 600 var(--fs-md)/1.35 var(--font-ui); overflow-wrap: anywhere; }
+.atri-library-row p { margin: 4px 0 0; color: var(--text-3); font-size: var(--fs-xs); }
 .atri-library-session > .atri-library-actions { justify-content: flex-end; max-width: 50%; }
 .atri-library-session .atri-library-details[open] { flex-basis: 100%; }
-.atri-library-work-hero { display: grid; grid-template-columns: minmax(160px, 220px) minmax(0, 1fr); gap: 40px; padding-block: 8px 24px; align-items: center; }
-.atri-library-hero-content { display: grid; gap: 16px; min-width: 0; }
-.atri-library-facts { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 12px 24px; margin: 0 0 20px; }
-.atri-library-facts dt { color: var(--atri-text-secondary); }
-.atri-library-facts dd { margin: 0; overflow-wrap: anywhere; }
-.atri-library-version { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 20px; padding-block: 16px; border-bottom: 1px solid var(--atri-separator); }
-.atri-library-version > .atri-library-details { flex-basis: 100%; }
-.atri-library-knowledge-entry { padding-block: 20px; border-bottom: 1px solid var(--atri-separator); }
-.atri-library-knowledge-entry h4 { font-size: var(--atri-text-headline); margin: 0 0 12px; }
-.atri-library-knowledge-entry > p { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 70ch; line-height: var(--atri-leading-reading); margin: 0; }
-.atri-library-create { display: flex; align-items: end; gap: 12px; padding-block: 16px 24px; border-bottom: 1px solid var(--atri-separator); }
-.atri-library-create .atri-library-field { flex: 1; max-width: 420px; }
-.atri-library-segments { display: flex; flex-wrap: wrap; gap: 4px; }
-.atri-library-segments [aria-current="page"] { background: var(--atri-accent-soft); color: var(--atri-accent-text); }
-.atri-library-feedback { flex-basis: 100%; margin: 8px 0; overflow-wrap: anywhere; }
-.atri-library-feedback[role="alert"] { color: var(--atri-danger); }
-.atri-library-section-picker { display: none; }
-[data-atria-domain-workspace="library"] :is(button, input, select, textarea, summary):focus-visible { outline: 2px solid var(--atri-accent-text); outline-offset: 3px; }
-@media (hover: hover) {
-    .atria-app-shell .atri-library-button:not(:disabled):hover:not(:active) { background: var(--atri-fill-hover); }
-    .atria-app-shell .atri-library-button--primary:not(:disabled):hover:not(:active) { background: var(--atri-ink-hover); }
-    .atri-library-work-open:hover .atri-library-cover { filter: brightness(1.08); }
-    :is(.atria-skill-workspace-host, .popup) .atria_skill_manager button:not(:disabled):hover { background: var(--atri-fill-hover); }
-    :is(.atria-skill-workspace-host, .popup) .atria_skill_manager .atria_skill_toolbar_btn_primary:not(:disabled):hover { background: var(--atri-ink-hover); }
-}
-.atria-app-shell[data-atria-viewport="medium"] .atri-library-posters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.atria-app-shell:is([data-atria-viewport="compact"], [data-atria-viewport="medium"]) .atri-library-section-picker { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--atri-separator); font-size: var(--atri-text-footnote); }
-.atria-app-shell[data-atria-viewport="compact"] .atri-library-section-label { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; white-space: nowrap; }
-.atria-app-shell[data-atria-viewport="compact"] [data-atria-domain-workspace="library"] .atria-domain-workspace__body { padding: 24px 16px max(32px, var(--atri-safe-area-bottom)); }
-.atria-app-shell[data-atria-viewport="compact"] .atri-library-imports { grid-template-columns: 1fr; gap: 12px; }
-.atria-app-shell[data-atria-viewport="compact"] .atri-library-posters { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 16px; }
-.atria-app-shell[data-atria-viewport="compact"] .atri-library-cover { padding: 16px; }
-.atria-app-shell[data-atria-viewport="compact"] .atri-library-cover > span { font-size: var(--atri-text-headline); }
-.atria-app-shell[data-atria-viewport="compact"] .atri-library-row { align-items: flex-start; gap: 16px; flex-wrap: wrap; }
-.atria-app-shell[data-atria-viewport="compact"] .atri-library-session > .atri-library-actions { max-width: 100%; justify-content: start; flex-basis: 100%; }
-.atria-app-shell[data-atria-viewport="compact"] .atri-library-work-hero { grid-template-columns: minmax(0, 1fr); gap: 24px; }
-.atria-app-shell[data-atria-viewport="compact"] .atri-library-work-hero > .atri-library-cover { width: 150px; }
-.atria-app-shell[data-atria-viewport="compact"] .atri-library-facts { grid-template-columns: 1fr; gap: 8px; }
-.atria-app-shell[data-atria-viewport="compact"] .atri-library-facts dd { margin-bottom: 12px; }
-.atria-app-shell[data-atria-viewport="compact"] .atri-library-create { flex-direction: column; align-items: stretch; }
-.atria-app-shell[data-atria-viewport="compact"] .atri-library-button { min-height: 44px; }
-@media (pointer: coarse) { .atria-app-shell .atri-library-button { min-height: 44px; } }
-@media (prefers-reduced-motion: reduce) { .atri-library-button { transition: none; } }
 
-/* Exact prompt resources: technical identity is readable without dominating the list. */
-[data-atria-domain-workspace="library"] .atri-prompt-library { display: grid; gap: 28px; }
-[data-atria-domain-workspace="library"] .atri-prompt-library-tools { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; }
-[data-atria-domain-workspace="library"] .atri-prompt-library-tools label { min-width: 0; flex: 1 1 180px; }
-[data-atria-domain-workspace="library"] .atri-prompt-library-tools button { min-height: 40px; margin: 0; }
-[data-atria-domain-workspace="library"] .atri-prompt-resource { padding: 24px 0; border: 0; border-bottom: 1px solid var(--atri-separator); }
-[data-atria-domain-workspace="library"] .atri-prompt-resource > p { color: var(--atri-text-secondary); font-size: var(--atri-text-footnote); }
-[data-atria-domain-workspace="library"] .atri-prompt-resource > details { margin-block: 12px; }
-[data-atria-domain-workspace="library"] .atri-prompt-resource summary { color: var(--atri-text-secondary); cursor: pointer; padding-block: 8px; }
-[data-atria-domain-workspace="library"] .atri-prompt-library :is(input, select, textarea) { padding: 10px 12px; border-radius: var(--atri-radius-md); min-height: 40px; font-size: max(16px, var(--atri-text-body)); background: var(--atri-surface-2); }
-[data-atri-library-editor="true"] { max-width: 900px; gap: 24px; }
-[data-atri-library-editor="true"] > h3 { font: 400 var(--atri-text-title-1)/1.3 var(--atri-font-serif); margin: 0; overflow-wrap: anywhere; }
-[data-atria-domain-workspace="library"] [data-atri-library-editor="true"] { margin-inline: auto; padding: 28px; border: 1px solid var(--atri-separator); border-radius: var(--atri-radius-xl); background: var(--atri-surface-1); box-shadow: var(--atri-highlight), var(--atri-shadow-1); }
-.atria-app-shell [data-atri-library-editor="true"] :is(input, select, textarea) { background: var(--atri-surface-2); border: 1px solid transparent; border-radius: var(--atri-radius-md); }
-[data-atri-library-editor="true"] > p { color: var(--atri-text-secondary); line-height: 1.6; margin: 0; }
-[data-atri-library-editor="true"] .atri-prompt-identity { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding-block: 20px; border-block: 1px solid var(--atri-separator); }
-[data-atri-library-editor="true"] .atri-prompt-fields { display: grid; gap: 20px; }
+/* Work detail: hero over a blurred copy of its cover, then quiet sections. */
+.atri-library-work-hero { position: relative; isolation: isolate; overflow: hidden; display: grid; grid-template-columns: 108px minmax(0, 1fr); gap: 18px; padding: 22px 22px 20px; align-items: start; border-bottom: 1px solid var(--line-2); }
+.atri-library-work-hero > .atri-library-hero-bg { position: absolute; inset: -40px; z-index: -1; aspect-ratio: auto; border-radius: 0; box-shadow: none; filter: blur(40px) saturate(1.2); opacity: .42; }
+.atri-library-work-hero > .atri-library-cover:not(.atri-library-hero-bg) { width: 108px; border-radius: 10px; box-shadow: var(--shadow-3); }
+.atri-library-work-hero .atri-library-cover__title { font-size: 15px; right: 10px; top: 12px; }
+.atria-app-shell .atri-library-work-hero > .atri-library-detail-close { position: absolute; top: 14px; right: 14px; z-index: 1; min-height: 28px; padding: 0 10px; border-color: transparent; background: color-mix(in srgb, var(--surface-panel) 70%, transparent); box-shadow: none; color: var(--text-2); font-size: var(--fs-sm); }
+.atri-library-hero-content { display: grid; gap: 12px; min-width: 0; justify-items: start; padding-top: 22px; }
+.atri-library-hero-content > .atri-library-heading h2 { font: 560 26px/1.2 var(--font-display); letter-spacing: -.01em; }
+.atri-library-hero-content > .atri-library-heading p { font: 400 13.5px/1.7 var(--font-read); color: var(--text-2); }
+.atri-library-hero-content > :is(.atri-library-field, .atria-studio-field) { width: 100%; }
+.atri-library-hero-content > .atri-library-actions > button:first-child { flex: 1 1 auto; }
+/* Without the shell split (standalone or compact), the hero spans the page. */
+.atria-native-library:not(.atri-library-split) > .atri-library-work-hero { padding-inline: 0; border-radius: 0; }
+.atria-native-library:not(.atri-library-split) > .atri-library-work-hero > .atri-library-hero-bg { display: none; }
+
+.atri-library-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; margin: 0 0 16px; font-size: var(--fs-sm); }
+.atri-library-facts dt { color: var(--text-3); }
+.atri-library-facts dd { margin: 0; overflow-wrap: anywhere; }
+.atri-library-version { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-block: 12px; border-bottom: 1px solid var(--line-1); }
+.atri-library-version > strong { font: 500 var(--fs-sm)/1 var(--font-mono); }
+.atri-library-version > .atri-library-details { flex-basis: 100%; }
+.atri-library-knowledge-entry { padding-block: 16px; border-bottom: 1px solid var(--line-1); }
+.atri-library-knowledge-entry h4 { margin: 0 0 10px; font: 600 var(--fs-md)/1.35 var(--font-ui); }
+.atri-library-knowledge-entry > p { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 70ch; line-height: 1.8; margin: 0; font-family: var(--font-read); }
+.atri-library-create { display: flex; align-items: end; gap: 10px; padding-block: 4px 18px; border-bottom: 1px solid var(--line-1); }
+.atri-library-create .atri-library-field { flex: 1; max-width: 420px; }
+.atri-library-segments { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: var(--r-md); background: var(--surface-input); border: 1px solid var(--line-2); }
+.atria-app-shell .atri-library-segments > button { min-height: 26px; padding: 0 11px; border: 0; border-radius: 6px; background: transparent; box-shadow: none; color: var(--text-2); font-size: var(--fs-sm); }
+.atria-app-shell .atri-library-segments > [aria-current="page"] { background: var(--surface-raised); color: var(--text-1); box-shadow: var(--shadow-1), 0 0 0 1px var(--line-2); }
+.atri-library-feedback { flex-basis: 100%; margin: 6px 0; font-size: var(--fs-sm); color: var(--text-2); overflow-wrap: anywhere; }
+.atri-library-feedback[role="alert"] { color: var(--tone-vermilion); }
+.atri-library-section-picker { display: none; }
+
+.atria-app-shell:is([data-atria-viewport="compact"], [data-atria-viewport="medium"]) .atri-library-section-picker { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line-1); font-size: var(--fs-sm); }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-section-label { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; white-space: nowrap; }
+@media (max-width: 1280px) { .atri-library-resume { grid-template-columns: 1fr 1fr; } .atri-library-resume > :nth-child(3) { display: none; } }
+.atria-app-shell[data-atria-viewport="compact"] [data-atria-domain-workspace="library"] .atria-domain-workspace__body { padding: 14px 16px max(40px, var(--atri-safe-area-bottom)); }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-resume { grid-template-columns: 1fr; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-imports { grid-template-columns: 1fr; gap: 12px; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-posters { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 14px; }
+/* Compact: the detail pane takes the page; the shelf waits behind it. */
+.atria-app-shell[data-atria-viewport="compact"] .atria-domain-workspace__body > .atria-native-library.atri-library-split { grid-template-columns: minmax(0, 1fr); }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-split > .atri-library-main { display: none; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-split > .atri-library-detail { border-left: 0; padding-bottom: 96px; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-detail > :not(.atri-library-work-hero) { margin-inline: 16px; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-row { align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-session > .atri-library-actions { max-width: 100%; justify-content: start; flex-basis: 100%; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-work-hero { grid-template-columns: 84px minmax(0, 1fr); gap: 14px; padding: 18px 16px; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-work-hero > .atri-library-cover:not(.atri-library-hero-bg) { width: 84px; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-hero-content { grid-column: 1 / -1; padding-top: 0; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-facts { grid-template-columns: 1fr; gap: 4px; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-facts dd { margin-bottom: 10px; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-create { flex-direction: column; align-items: stretch; }
+@media (prefers-reduced-motion: reduce) { .atri-library-work-open > .atri-library-cover, .atria-app-shell .atri-library-resume-card { transition: none; } }
+
+/* Prompt presets and resources (Q01–Q09): technical identity is readable without dominating the list. */
+[data-atria-domain-workspace="library"] .atri-prompt-library { display: grid; gap: 22px; }
+[data-atria-domain-workspace="library"] .atri-prompt-library-tools { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+[data-atria-domain-workspace="library"] .atri-prompt-library-tools label { min-width: 0; flex: 0 1 260px; }
+[data-atria-domain-workspace="library"] .atri-prompt-resource { padding: 14px 0; border: 0; border-bottom: 1px solid var(--line-1); }
+[data-atria-domain-workspace="library"] .atri-prompt-resource > p { color: var(--text-3); font-size: var(--fs-xs); }
+[data-atria-domain-workspace="library"] .atri-prompt-resource > details { margin-block: 8px; }
+
+/* Preset / resource editor: a matte page, not a card; one primary (Save revision). */
+[data-atri-library-editor="true"] { display: grid; max-width: 920px; gap: 20px; }
+[data-atri-library-editor="true"] > h3 { margin: 0; font: 600 var(--fs-2xl)/1.25 var(--font-ui); letter-spacing: -.01em; overflow-wrap: anywhere; }
+[data-atri-library-editor="true"] > p { margin: 0; color: var(--text-2); font-size: var(--fs-sm); line-height: 1.6; }
+[data-atri-library-editor="true"] label { gap: 6px; margin-block: 0; }
+[data-atri-library-editor="true"] .atri-prompt-identity { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding-block: 16px; border-block: 1px solid var(--line-1); }
+[data-atri-library-editor="true"] .atri-prompt-fields { display: grid; gap: 16px; }
 .atri-prompt-editor-status:empty { display: none; }
-.atri-prompt-editor .atri-prompt-fold { min-width: 0; border-bottom: 1px solid var(--atri-separator); }
-.atri-prompt-editor .atri-prompt-fold > summary { cursor: pointer; min-height: 44px; padding: 12px 4px; overflow-wrap: anywhere; }
-.atri-prompt-editor .atri-prompt-fold > summary small { color: var(--atri-text-secondary); margin-inline-start: 12px; font-weight: normal; }
-.atri-prompt-editor .atri-prompt-fold > summary:focus-visible { outline: 2px solid var(--atri-accent); outline-offset: 2px; }
-.atri-prompt-editor .atri-prompt-fold[open] > :not(summary) { margin-block: 12px; }
-.atri-prompt-editor .atri-prompt-body {
-    min-height: clamp(18rem, 45vh, 42rem);
-    font-family: inherit;
-    font-size: 1rem;
-    line-height: 1.7;
-    tab-size: 4;
-}
-.atri-prompt-editor .atri-prompt-order-entry {
-    min-width: 0;
-    padding-block: 12px;
-    border-block-end: 1px solid var(--atri-separator);
-    overflow-wrap: anywhere;
-}
+.atri-prompt-editor .atri-prompt-fold { min-width: 0; border-bottom: 1px solid var(--line-1); }
+.atri-prompt-editor .atri-prompt-fold > summary { min-height: 40px; padding: 10px 2px; color: var(--text-1); font: 600 var(--fs-md)/1.35 var(--font-ui); overflow-wrap: anywhere; }
+.atri-prompt-editor .atri-prompt-fold > summary small { margin-inline-start: 10px; color: var(--text-3); font-weight: 400; font-size: var(--fs-xs); }
+.atri-prompt-editor .atri-prompt-fold[open] > :not(summary) { margin-block: 10px; }
+/* Author prose: full width, grows, original text kept; read type for long-form. */
+.atri-prompt-editor .atri-prompt-body { min-height: clamp(18rem, 45vh, 42rem); font: 400 var(--fs-lg)/1.75 var(--font-read); tab-size: 4; }
+.atri-prompt-editor .atri-prompt-order-entry { min-width: 0; padding-block: 10px; border-block-end: 1px solid var(--line-1); overflow-wrap: anywhere; }
 .atri-prompt-editor .atri-prompt-order-entry > fieldset { display: flex; flex-wrap: wrap; gap: 8px 16px; }
-.atri-prompt-editor .atri-prompt-order-entry label:has(> input[type="checkbox"]) { display: flex; align-items: center; gap: 8px; min-height: 44px; }
-.atri-prompt-editor .atri-prompt-order-entry input[type="checkbox"] { width: 20px; min-height: 20px; accent-color: var(--atri-accent); }
+.atri-prompt-editor .atri-prompt-order-entry label:has(> input[type="checkbox"]) { display: flex; align-items: center; gap: 8px; min-height: 36px; }
 .atri-prompt-editor .atri-prompt-stages > .atri-prompt-fold { margin-inline-start: 8px; }
-[data-atri-library-editor="true"] label { gap: 8px; }
-[data-atri-library-editor="true"] > button:last-child { justify-self: start; padding: 10px 18px; }
-[data-atria-domain-workspace="library"] .atri-prompt-stages fieldset { border: 0; border-left: 2px solid var(--atri-separator-strong); padding: 12px 20px; }
-[data-atria-domain-workspace="library"] .atri-prompt-stages legend { font-weight: 600; }
+[data-atria-domain-workspace="library"] .atri-prompt-stages fieldset { border: 0; border-left: 2px solid var(--line-3); padding: 10px 16px; }
+[data-atria-domain-workspace="library"] .atri-prompt-stages legend { font: 600 var(--fs-sm)/1 var(--font-ui); color: var(--text-2); }
 .atria-app-shell[data-atria-viewport="compact"] [data-atri-library-editor="true"] .atri-prompt-identity { grid-template-columns: 1fr; }
 
-/* Semantic Prompt fields share the existing stage hierarchy and native check controls. */
-.atria-app-shell .atri-prompt-editor :is(.atri-prompt-condition, .atri-prompt-parameters fieldset, .atri-prompt-derive fieldset) { border: 0; border-inline-start: 2px solid var(--atri-separator-strong); padding: 8px 12px; margin-inline: 0; min-width: 0; }
+/* Semantic Prompt fields share the stage hierarchy; conditions are not grants. */
+.atria-app-shell .atri-prompt-editor :is(.atri-prompt-condition, .atri-prompt-parameters fieldset, .atri-prompt-derive fieldset) { min-width: 0; margin-inline: 0; padding: 8px 12px; border: 0; border-inline-start: 2px solid var(--line-3); }
 .atria-app-shell .atri-prompt-editor .atri-prompt-condition .atri-prompt-condition { padding-inline: 4px; }
-.atria-app-shell .atri-prompt-editor .atri-prompt-toggle { display: flex; align-items: center; min-height: 44px; gap: 8px; }
-.atria-app-shell .atri-prompt-editor .atri-prompt-toggle > input[type="checkbox"] { order: -1; appearance: auto; accent-color: var(--atri-accent); width: 20px; min-width: 20px; height: 20px; min-height: 20px; padding: 0; border: revert; background: revert; }
+.atria-app-shell .atri-prompt-editor .atri-prompt-toggle { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.atria-app-shell .atri-prompt-editor .atri-prompt-toggle > input[type="checkbox"] { order: -1; }
 
-/* Skills reuse their controllers, file hashes, conflict flow and scope authority. */
-:is(.atria-skill-workspace-host, .popup) .atria_skill_manager { display: grid; gap: 24px; min-width: 0; max-width: 1120px; margin-inline: auto; font-family: var(--atri-font-sans); color: var(--atri-text-primary); text-shadow: none; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_manager_tabs { display: flex; width: fit-content; max-width: 100%; gap: 4px; padding: 4px; border: 0; border-radius: var(--atri-radius-md); background: var(--atri-fill); }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_tab { margin: 0; border: 0; box-shadow: none; min-height: 36px; background: transparent; color: var(--atri-text-secondary); font: inherit; padding: 8px 12px; cursor: pointer; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_tab_active { background: var(--atri-surface-3); color: var(--atri-text-primary); border-radius: var(--atri-radius-sm); }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_manager_toolbar { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; border: 0; border-bottom: 1px solid var(--atri-separator); background: transparent; box-shadow: none; border-radius: 0; padding: 0 0 24px; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_filter_label { flex: 1 1 180px; display: grid; gap: 8px; min-width: 0; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_filter_select { min-width: 0; width: 100%; max-width: 100%; min-height: 40px; padding: 8px; border-radius: var(--atri-radius-md); background: var(--atri-surface-2); color: var(--atri-text-primary); font: inherit; font-size: max(16px, var(--atri-text-body)); }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_manager_toolbar_actions { display: flex; flex-wrap: wrap; min-width: 0; gap: 12px; }
+/* Skills (X02–X05): controllers, file hashes, conflict flow and scope authority unchanged.
+ * Also rendered inside legacy popups, so controls carry the full Atrium look here. */
+:is(.atria-skill-workspace-host, .popup) .atria_skill_manager { display: grid; gap: 18px; min-width: 0; max-width: 1120px; margin-inline: 0; color: var(--text-1); font: 400 var(--fs-md)/1.55 var(--font-ui); text-shadow: none; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_manager_tabs { display: inline-flex; width: fit-content; max-width: 100%; gap: 2px; padding: 3px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--surface-input); }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_tab { min-height: 26px; margin: 0; padding: 4px 11px; border: 0; border-radius: 6px; background: transparent; box-shadow: none; color: var(--text-2); font: 500 var(--fs-sm)/1.2 var(--font-ui); cursor: pointer; opacity: 1; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_tab:hover { color: var(--text-1); background: transparent; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_tab_active { background: var(--surface-raised); color: var(--text-1); box-shadow: var(--shadow-1), 0 0 0 1px var(--line-2); }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_manager_toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; padding: 0 0 16px; border: 0; border-bottom: 1px solid var(--line-1); border-radius: 0; background: transparent; box-shadow: none; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_filter_label { flex: 0 1 280px; display: grid; gap: 6px; min-width: 0; color: var(--text-2); font: 550 var(--fs-sm)/1.4 var(--font-ui); }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_filter_select { width: 100%; min-width: 0; max-width: 100%; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_manager_toolbar_actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
 :is(.atria-skill-workspace-host, .popup) .atria_skill_toolbar_group { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; background: transparent; }
 :is(.atria-skill-workspace-host, .popup) .atria_skill_group_rows { display: block; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_group_header { padding-block: 12px; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_scope_badge { text-transform: none; letter-spacing: normal; background: transparent; border: 0; padding: 0; color: var(--atri-text-secondary); font-size: var(--atri-text-footnote); }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; height: auto; min-height: 0; padding: 24px 0; margin: 0; background: transparent; border: 0; border-bottom: 1px solid var(--atri-separator); border-radius: 0; box-shadow: none; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_group_header { padding-block: 10px; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_scope_badge { padding: 0 7px; height: 20px; display: inline-flex; align-items: center; border: 1px solid var(--line-3); border-radius: 5px; background: transparent; color: var(--text-2); font: 500 10.5px/1 var(--font-mono); text-transform: none; letter-spacing: normal; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; height: auto; min-height: 0; margin: 0; padding: 14px 0; border: 0; border-bottom: 1px solid var(--line-1); border-radius: 0; background: transparent; box-shadow: none; }
 :is(.atria-skill-workspace-host, .popup) .atria_skill_row_main { min-width: 0; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_row_head { display: grid; gap: 8px; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_row_name { font: inherit; font-weight: 600; font-size: var(--atri-text-headline); overflow-wrap: anywhere; white-space: normal; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_row_head { display: grid; gap: 4px; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_row_name { font: 600 var(--fs-md)/1.35 var(--font-mono); overflow-wrap: anywhere; white-space: normal; }
 :is(.atria-skill-workspace-host, .popup) .atria_skill_row_meta { gap: 8px; flex-wrap: wrap; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_meta_chip { background: transparent; border: 0; color: var(--atri-text-secondary); padding: 0; font-size: var(--atri-text-caption); }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_row_desc { margin-top: 12px; max-width: 68ch; line-height: 1.6; white-space: normal; overflow-wrap: anywhere; color: var(--atri-text-secondary); -webkit-line-clamp: unset; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_row_actions { display: flex; flex-direction: column; align-items: flex-start; justify-content: start; gap: 8px; margin: 0; }
-:is(.atria-skill-workspace-host, .popup) :is(.atria_skill_row_btn, .atria_skill_toolbar_btn, .atria_bundled_browser button) { margin: 0; background: var(--atri-fill); color: var(--atri-text-primary); border: 0; box-shadow: none; border-radius: var(--atri-radius-md); min-height: 36px; padding: 8px 12px; font: inherit; font-size: var(--atri-text-callout); width: auto; cursor: pointer; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_manager .atria_skill_toolbar_btn_primary { background: var(--atri-accent); color: var(--atri-text-on-accent); }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_row_btn_danger { color: var(--atri-danger); }
-.atri-skill-more > summary, .atri-skill-import > summary { padding: 10px 4px; cursor: pointer; font-size: var(--atri-text-callout); }
-.atri-skill-more[open] .atria_skill_row_actions_group, .atri-skill-import[open] .atria_skill_toolbar_group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_meta_chip { padding: 0; border: 0; background: transparent; color: var(--text-3); font-size: var(--fs-xs); }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_row_desc { margin-top: 6px; max-width: 72ch; color: var(--text-2); font-size: var(--fs-sm); line-height: 1.6; white-space: normal; overflow-wrap: anywhere; -webkit-line-clamp: unset; opacity: 1; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_row_actions { display: flex; flex-direction: row; flex-wrap: wrap; align-items: flex-start; justify-content: flex-end; gap: 6px; margin: 0; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_row_actions_group { display: flex; gap: 6px; padding: 0; background: transparent; }
+:is(.atria-skill-workspace-host, .popup) :is(.atria_skill_row_btn, .atria_skill_toolbar_btn, .atria_bundled_browser button, .atria_skill_editor button) {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: auto; min-height: 32px; margin: 0; padding: 0 12px;
+    border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--surface-raised); box-shadow: var(--shadow-1); color: var(--text-1);
+    font: 500 var(--fs-md)/1.2 var(--font-ui); cursor: pointer; opacity: 1;
+}
+:is(.atria-skill-workspace-host, .popup) :is(.atria_skill_row_btn, .atria_skill_toolbar_btn, .atria_bundled_browser button, .atria_skill_editor button):hover:not(:disabled) { background: var(--surface-hover); border-color: var(--line-3); }
+:is(.atria-skill-workspace-host, .popup) :is(.atria_skill_manager, .atria_skill_editor) button:disabled { opacity: .45; cursor: not-allowed; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_manager .atria_skill_toolbar_btn_primary,
+:is(.atria-skill-workspace-host, .popup) .atria_skill_editor .atria_skill_editor_pane_header [data-editor-save] { border-color: transparent; background: var(--btn-neutral-bg); color: var(--btn-neutral-text); font-weight: 600; box-shadow: 0 0 0 1px var(--btn-neutral-ring); }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_row_btn_danger { border-color: color-mix(in srgb, var(--tone-vermilion) 40%, transparent); background: transparent; box-shadow: none; color: var(--tone-vermilion); }
+:is(.atria-skill-workspace-host, .popup) :is(.atria_skill_manager, .atria_skill_editor) :is(button, summary, select, textarea):focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.atri-skill-more > summary, .atri-skill-import > summary { padding: 6px 2px; color: var(--text-2); font: 550 var(--fs-sm)/1.4 var(--font-ui); cursor: pointer; }
+.atri-skill-more[open] .atria_skill_row_actions_group, .atri-skill-import[open] .atria_skill_toolbar_group { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 :is(.atria-skill-workspace-host, .popup) .atria_bundled_table { width: 100%; table-layout: fixed; border-collapse: collapse; }
-:is(.atria-skill-workspace-host, .popup) .atria_bundled_table :is(th, td) { overflow-wrap: anywhere; white-space: normal; border: 0; border-bottom: 1px solid var(--atri-separator); padding: 16px 8px; background: transparent; color: var(--atri-text-primary); }
-:is(.atria-skill-workspace-host, .popup) .atria_bundled_browser_toolbar { display: grid; gap: 16px; margin-block: 0 20px; }
+:is(.atria-skill-workspace-host, .popup) .atria_bundled_table :is(th, td) { padding: 10px 8px; border: 0; border-bottom: 1px solid var(--line-1); background: transparent; color: var(--text-1); text-align: start; overflow-wrap: anywhere; white-space: normal; font-size: var(--fs-sm); }
+:is(.atria-skill-workspace-host, .popup) .atria_bundled_table th { color: var(--text-3); font: 600 10.5px/1 var(--font-ui); letter-spacing: .12em; text-transform: uppercase; }
+:is(.atria-skill-workspace-host, .popup) .atria_bundled_browser_toolbar { display: grid; gap: 12px; margin-block: 0 16px; }
 :is(.atria-skill-workspace-host, .popup) .atria_bundled_browser_actions { display: flex; flex-wrap: wrap; gap: 8px; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_editor { min-width: 0; color: var(--atri-text-primary); background: transparent; font-family: var(--atri-font-sans); }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_editor_tree { background: var(--atri-surface-1); min-width: 0; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_editor_file { min-width: 0; padding: 4px 8px; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_editor_file_name { display: block; padding: 8px; min-width: 0; text-align: left; white-space: normal; overflow-wrap: anywhere; flex: 1; background: transparent; border: 0; color: var(--atri-text-primary); font: inherit; cursor: pointer; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_editor_textarea { min-height: 240px; max-width: 100%; box-sizing: border-box; background: var(--atri-surface-2); color: var(--atri-text-primary); border: 1px solid var(--atri-separator-strong); font-family: var(--atri-font-mono); text-shadow: none; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_editor button { min-height: 36px; border: 0; border-radius: var(--atri-radius-sm); background: var(--atri-fill); color: var(--atri-text-primary); padding: 8px 12px; cursor: pointer; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_editor :is(.atria_skill_editor_tree, .atria_skill_editor_pane) { background: transparent; border: 0; border-radius: 0; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_editor :is(.atria_skill_editor_tree_header, .atria_skill_editor_pane_header) { background: transparent; border-bottom: 1px solid var(--atri-separator); padding: 12px 0; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_editor_tree_header > span:first-child { text-transform: none; letter-spacing: normal; font-size: var(--atri-text-callout); font-weight: 500; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_editor .atria_skill_editor_file_active { background: var(--atri-accent-soft); border-radius: var(--atri-radius-sm); box-shadow: none; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_editor .atria_skill_editor_file_name { background: transparent; font-weight: 500; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_editor .atria_skill_editor_pane_header [data-editor-save] { background: var(--atri-accent); color: var(--atri-text-on-accent); }
-.popup textarea.text_pole.atria_skill_editor_textarea { min-height: 240px; background: var(--atri-surface-2); padding: 16px; font-size: max(16px, var(--atri-text-body)); }
-.atri-skill-editor-status { margin: 8px 0; padding: 8px; font-size: var(--atri-text-callout); overflow-wrap: anywhere; }
-.atri-skill-editor-status[role="alert"] { color: var(--atri-danger); }
-.atri-skill-editor-title { font-family: var(--atri-font-sans); font-size: var(--atri-text-title-2); color: var(--atri-text-primary); overflow-wrap: anywhere; text-align: left; margin: 0 0 16px; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_editor { min-height: min(64dvh, 680px); gap: 20px; }
-.atria-app-shell [data-atri-library-editor="true"] label { margin-block: 0; }
-.atria-app-shell [data-atri-library-editor="true"] > .atri-library-button--primary { background: var(--atri-ink); color: var(--atri-text-on-ink); border-color: transparent; }
-.atria-app-shell [data-atri-library-editor="true"] > .atri-library-button--primary:not(:disabled):active { background: var(--atri-ink-pressed); }
-@media (hover: hover) { .atria-app-shell [data-atri-library-editor="true"] > .atri-library-button--primary:not(:disabled):hover:not(:active) { background: var(--atri-ink-hover); } }
-@media (max-width: 719px) { [data-atria-domain-workspace="library"] [data-atri-library-editor="true"] { padding: 22px 18px; } }
-:is(.atria-skill-workspace-host, .popup) :is(.atria_skill_tab, .atria_skill_row_desc) { opacity: 1; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_row_actions_group { padding: 0; background: transparent; gap: 8px; }
-:is(.atria-skill-workspace-host, .popup) :is(.atria_skill_manager, .atria_skill_editor) :is(button, summary, select, textarea):focus-visible { outline: 2px solid var(--atri-accent-text); outline-offset: 2px; }
-:is(.atria-skill-workspace-host, .popup) .atria_skill_manager button:disabled { opacity: .5; cursor: default; }
+
+/* Skill file editor (X04): file tree + monospace editor; Ctrl/⌘ S saves only here. */
+:is(.atria-skill-workspace-host, .popup) .atria_skill_editor { min-width: 0; min-height: min(64dvh, 680px); gap: 16px; color: var(--text-1); background: transparent; font-family: var(--font-ui); }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_editor :is(.atria_skill_editor_tree, .atria_skill_editor_pane) { min-width: 0; border: 0; border-radius: 0; background: transparent; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_editor .atria_skill_editor_tree { padding: 6px; border: 1px solid var(--sidebar-line); border-radius: var(--r-pane); background: var(--mat-sidebar); }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_editor :is(.atria_skill_editor_tree_header, .atria_skill_editor_pane_header) { padding: 8px 6px 10px; border-bottom: 1px solid var(--line-1); background: transparent; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_editor_tree_header > span:first-child { color: var(--text-3); font: 600 10.5px/1 var(--font-ui); letter-spacing: .12em; text-transform: uppercase; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_editor_file { min-width: 0; padding: 0 2px; border-radius: 9px; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_editor .atria_skill_editor_file_active { background: color-mix(in srgb, var(--dom-studio) 13%, transparent); box-shadow: none; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_editor .atria_skill_editor_file_name { display: block; flex: 1; min-width: 0; min-height: 30px; padding: 6px 8px; border: 0; background: transparent; box-shadow: none; color: var(--text-1); font: 400 var(--fs-sm)/1.3 var(--font-mono); text-align: left; white-space: normal; overflow-wrap: anywhere; cursor: pointer; }
+:is(.atria-skill-workspace-host, .popup) .atria_skill_editor_textarea,
+.popup textarea.text_pole.atria_skill_editor_textarea { min-height: 240px; max-width: 100%; box-sizing: border-box; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: color-mix(in srgb, var(--text-1) 3.5%, transparent); color: var(--text-1); font: 400 12.5px/1.7 var(--font-mono); text-shadow: none; }
+.atri-skill-editor-status { margin: 6px 0; padding: 0; color: var(--text-2); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.atri-skill-editor-status[role="alert"] { color: var(--tone-vermilion); }
+.atri-skill-editor-title { margin: 0 0 12px; color: var(--text-1); font: 600 var(--fs-xl)/1.25 var(--font-ui); text-align: left; overflow-wrap: anywhere; }
+
 @media (max-width: 719px) {
-    :is(.atria-skill-workspace-host, .popup) .atria_skill_row { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-    :is(.atria-skill-workspace-host, .popup) .atria_skill_row_actions { flex-direction: row; flex-wrap: wrap; gap: 16px; }
+    :is(.atria-skill-workspace-host, .popup) .atria_skill_row { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    :is(.atria-skill-workspace-host, .popup) .atria_skill_row_actions { justify-content: flex-start; }
     :is(.atria-skill-workspace-host, .popup) .atria_skill_manager_toolbar { align-items: stretch; }
-    :is(.atria-skill-workspace-host, .popup) .atria_skill_filter_label { flex-basis: auto; }
+    :is(.atria-skill-workspace-host, .popup) .atria_skill_filter_label { flex-basis: 100%; }
     :is(.atria-skill-workspace-host, .popup) :is(.atria_skill_manager, .atria_skill_editor) button { min-height: 44px; }
     :is(.atria-skill-workspace-host, .popup) .atria_bundled_table thead { display: none; }
     :is(.atria-skill-workspace-host, .popup) .atria_bundled_table :is(tbody, tr, td) { display: block; width: 100%; box-sizing: border-box; }
-    :is(.atria-skill-workspace-host, .popup) .atria_bundled_table tr { padding-block: 16px; border-bottom: 1px solid var(--atri-separator); }
-    :is(.atria-skill-workspace-host, .popup) .atria_bundled_table td { border: 0; padding: 6px 0; }
+    :is(.atria-skill-workspace-host, .popup) .atria_bundled_table tr { padding-block: 12px; border-bottom: 1px solid var(--line-1); }
+    :is(.atria-skill-workspace-host, .popup) .atria_bundled_table td { border: 0; padding: 4px 0; }
     :is(.atria-skill-workspace-host, .popup) .atria_bundled_col_name { font-weight: 600; }
     :is(.atria-skill-workspace-host, .popup) .atria_skill_editor { display: flex; flex-direction: column; height: auto; }
     :is(.atria-skill-workspace-host, .popup) .atria_skill_editor_tree { width: 100%; max-height: 180px; flex: 0 0 auto; overflow: auto; }
     :is(.atria-skill-workspace-host, .popup) .atria_skill_editor_pane { min-height: 300px; }
 }
 
-.atri-library-revision-editor { display: grid; gap: 20px; }
-.atri-library-revision-editor .atria-studio-field { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.atri-library-revision-editor { display: grid; gap: 16px; }
+.atri-library-revision-editor .atria-studio-field { grid-template-columns: minmax(0, 1fr); gap: 6px; }
 
-.atri-knowledge-editor, .atri-knowledge-fields { display: grid; gap: 20px; min-width: 0; }
-.atri-knowledge-editor textarea { resize: vertical; min-height: 96px; }
-.atri-knowledge-rule { display: grid; gap: 12px; padding-block: 16px; border-bottom: 1px solid var(--atri-separator); }
+/* Knowledge (K04–K06): entries browser beside the entry editor; edits form a new revision draft. */
+.atri-knowledge-editor, .atri-knowledge-fields { display: grid; gap: 16px; min-width: 0; }
+.atri-knowledge-editor textarea { min-height: 96px; }
+.atri-knowledge-rule { display: grid; gap: 10px; padding-block: 12px; border-bottom: 1px solid var(--line-1); }
 .atri-knowledge-browser { min-width: 0; }
-.atri-knowledge-browser-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.atri-knowledge-browser-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
 .atri-knowledge-browser-controls > label { flex: 1 1 160px; min-width: 0; }
-.atri-knowledge-entry-list { display: grid; gap: 8px; }
-.atri-knowledge-entry-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 12px; border: 1px solid var(--atri-separator); border-radius: var(--atri-radius-md); background: var(--atri-surface-1); }
+.atri-knowledge-entry-list { display: grid; gap: 1px; }
+.atri-knowledge-entry-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 9px 10px; border: 0; border-radius: var(--r-md); background: transparent; }
+.atri-knowledge-entry-row:hover { background: var(--surface-hover); }
 .atri-knowledge-entry-details { min-width: 0; }
-.atri-knowledge-entry-details > summary { cursor: pointer; min-height: 44px; overflow-wrap: anywhere; }
-.atri-knowledge-entry-title { font-weight: 600; }
-.atri-knowledge-entry-status { margin-inline-start: 12px; font-size: var(--atri-text-caption-1); color: var(--atri-text-secondary); }
-.atri-knowledge-entry-summary { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--atri-text-callout); color: var(--atri-text-secondary); margin-top: 6px; }
+.atri-knowledge-entry-details > summary { min-height: 32px; overflow-wrap: anywhere; color: var(--text-1); }
+.atri-knowledge-entry-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font: 600 var(--fs-md)/1.35 var(--font-ui); }
+.atri-knowledge-entry-status { margin-inline-start: 10px; color: var(--text-3); font-size: var(--fs-xs); }
+.atri-knowledge-entry-summary { display: block; margin-top: 4px; overflow: hidden; color: var(--text-3); font-size: var(--fs-xs); text-overflow: ellipsis; white-space: nowrap; }
 .atri-knowledge-entry-content { overflow-wrap: anywhere; }
-.atri-knowledge-entry-content > p { white-space: pre-wrap; }
-.atri-knowledge-entry-actions { display: flex; flex-wrap: wrap; align-items: start; gap: 8px; }
-.atri-knowledge-entry-toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
-.atri-knowledge-browser :is(button, select, input:not([type=checkbox])) { min-height: 44px; }
-.atri-knowledge-browser :is(summary, input, select, button):focus-visible { outline: 2px solid var(--atri-accent); outline-offset: 2px; }
+.atri-knowledge-entry-content > p { white-space: pre-wrap; font: 400 var(--fs-md)/1.75 var(--font-read); }
+.atri-knowledge-entry-actions { display: flex; flex-wrap: wrap; align-items: start; gap: 6px; }
+.atri-knowledge-entry-toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; cursor: pointer; }
+.atri-knowledge-editor .atri-library-details[open] > :not(summary) { margin-block: 10px; }
+.atri-knowledge-parameters { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; padding: 10px 12px; border: 1px solid var(--line-1); border-radius: var(--r-md); font-size: var(--fs-sm); }
+.atri-knowledge-parameters dt { color: var(--text-3); }
+.atri-knowledge-parameters dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.atri-knowledge-editor [data-section] > :not(summary) { margin-block: 8px; }
+.atri-knowledge-editor [data-section][open] { padding: 10px 14px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface-panel); }
+.atri-knowledge-editor [data-section][open] > summary { grid-column: 1 / -1; color: var(--text-1); font-weight: 600; }
+.atri-knowledge-editor [data-section="Lifecycle"][open] > .atri-knowledge-parameter-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; }
+.atri-knowledge-editor [data-section="Discovery"] textarea { min-height: 72px; }
+.atri-knowledge-parameter-fields { display: grid; gap: 12px; min-width: 0; }
+@media (min-width: 1100px) {
+    .atri-knowledge-fields:has(> details[open]) { grid-template-columns: minmax(18rem, .8fr) minmax(0, 1.2fr); gap: 16px; align-items: start; }
+    .atri-knowledge-fields > .atri-knowledge-browser { position: sticky; top: 0; max-height: 75dvh; overflow: auto; min-width: 0; }
+    .atri-knowledge-fields > details[open] { min-width: 0; padding: 14px 16px; border: 1px solid var(--line-2); border-radius: var(--r-lg); }
+    .atri-knowledge-editor [data-section="Discovery"][open] > .atri-knowledge-parameter-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 12px; }
+    .atri-knowledge-editor [data-section="Discovery"] > .atri-knowledge-parameter-fields > p { grid-column: 1 / -1; }
+}
 @media (max-width: 719px) {
     .atri-knowledge-entry-row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
     .atri-knowledge-entry-actions { justify-content: end; }
     .atri-knowledge-browser-controls > label:first-child { flex-basis: 100%; }
 }
-.atri-knowledge-editor .atri-library-details[open] > :not(summary) { margin-block: 12px; }
 
-.atri-knowledge-parameters { display: grid; grid-template-columns: minmax(8rem, 1fr) minmax(0, 2fr); gap: .4rem 1rem; padding: .75rem; border: 1px solid var(--SmartThemeBorderColor); border-radius: .5rem; }
-.atri-knowledge-parameters dt { font-weight: 600; }
-.atri-knowledge-parameters dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.atri-knowledge-entry-content > p { white-space: pre-wrap; }
-.atri-knowledge-editor [data-section] > :not(summary) { margin-block: .5rem; }
+/* World & Knowledge setup (L08): scope first, then exact choices. */
+.atri-resource-setup-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 14px; }
+.atri-resource-choices { min-width: 0; padding: 2px 12px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface-panel); }
+.atri-resource-choice { padding: 8px 0; border-bottom: 1px solid var(--line-1); }
+.atri-resource-choice:last-child { border-bottom: 0; }
+.atri-resource-choice label { display: flex; align-items: center; gap: 10px; min-height: 32px; }
+.atri-resource-choice p { margin: 2px 0 0 27px; color: var(--text-3); font-size: var(--fs-xs); overflow-wrap: anywhere; }
 
-.atri-resource-setup-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 1rem; }
-.atri-resource-choices { min-width: 0; border: 1px solid var(--SmartThemeBorderColor); border-radius: .5rem; }
-.atri-resource-choice { padding: .6rem; border-bottom: 1px solid var(--SmartThemeBorderColor); }
-.atri-resource-choice label { display: flex; align-items: center; gap: .75rem; min-height: 44px; }
-.atri-resource-choice p { overflow-wrap: anywhere; }
-
-@media (min-width: 1100px) {
-    .atri-knowledge-fields:has(> details[open]) { display: grid; grid-template-columns: minmax(18rem, .8fr) minmax(0, 1.2fr); gap: 1rem; align-items: start; }
-    .atri-knowledge-fields > .atri-knowledge-browser { min-width: 0; }
-    .atri-knowledge-fields > details[open] { min-width: 0; padding: 1rem; border: 1px solid var(--SmartThemeBorderColor); border-radius: .5rem; }
-}
-
-.atri-knowledge-editor [data-section][open] { padding: .75rem; border: 1px solid var(--atri-separator); border-radius: var(--atri-radius-md); background: var(--atri-surface-1); }
-.atri-knowledge-editor [data-section="Lifecycle"][open] > .atri-knowledge-parameter-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: .75rem; }
-.atri-knowledge-editor [data-section][open] > summary { grid-column: 1 / -1; font-weight: 600; }
-.atri-knowledge-editor [data-section="Discovery"] textarea { min-height: 72px; }
-@media (min-width: 1100px) {
-    .atri-knowledge-editor [data-section="Discovery"][open] > .atri-knowledge-parameter-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: .75rem; }
-    .atri-knowledge-editor [data-section="Discovery"] > .atri-knowledge-parameter-fields > p { grid-column: 1 / -1; }
-    .atri-knowledge-fields > .atri-knowledge-browser { position: sticky; top: 4rem; max-height: 75dvh; overflow: auto; }
-}
-.atri-knowledge-parameter-fields { display: grid; gap: .75rem; min-width: 0; }
-.atri-knowledge-entry-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.atri-prompt-preset { display: grid; gap: 16px; min-width: 0; max-width: 1120px; margin-inline: auto; }
-.atri-preset-sections { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 16px; }
-.atria-app-shell .atri-preset-sections > button { min-height: 100px; font-size: 1.1em; }
-.atri-preset-category-form label, .atri-prompt-preset > label { display: grid; gap: 8px; min-width: 0; margin-block: 8px; }
-.atri-prompt-preset input, .atri-prompt-preset select { width: 100%; min-width: 0; min-height: 44px; }
-.atria-app-shell .atri-prompt-preset button { min-height: 44px; margin: 4px; white-space: normal; }
+/* Preset page: section cards, module lists, category forms. */
+.atri-prompt-preset { display: grid; gap: 16px; min-width: 0; max-width: 1120px; margin-inline: 0; }
 .atri-prompt-preset h2, .atri-prompt-preset h4 { overflow-wrap: anywhere; }
-.atri-preset-category-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 12px; align-items: end; }
+.atri-preset-sections { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+.atria-app-shell .atri-preset-sections > button {
+    justify-self: stretch; justify-content: flex-start; align-items: flex-start; min-height: 88px; padding: 14px 16px;
+    border-radius: var(--r-xl); background: var(--surface-panel); box-shadow: none; font: 600 var(--fs-lg)/1.3 var(--font-ui); text-align: start;
+}
+.atria-app-shell .atri-preset-sections > button:hover:not(:disabled) { background: var(--surface-panel); border-color: var(--line-3); transform: translateY(-1px); }
+.atri-preset-category-form label, .atri-prompt-preset > label { display: grid; gap: 6px; min-width: 0; margin-block: 6px; }
+.atri-preset-category-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px; align-items: end; }
+.atri-preset-category-form :is(h3, p) { grid-column: 1 / -1; }
 .atri-prompt-preset .atri-library-field > input[type="file"] { display: block; }
+.atri-prompt-preset > .atri-prompt-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .atri-module-toolbar { display: flex; align-items: end; gap: 8px; min-width: 0; }
 .atri-module-toolbar > label { flex: 1; min-width: 0; }
 .atri-module-create { margin-inline-start: auto !important; }
-.atri-prompt-preset > .atri-prompt-actions { display: flex; flex-wrap: wrap; align-items: center; }
-.atri-preset-menu-trigger { flex: 0 0 44px; width: 44px; height: 44px; padding: 10px; }
+.atria-app-shell .atri-preset-menu-trigger { flex: 0 0 32px; width: 32px; min-height: 32px; padding: 0; border-color: transparent; background: transparent; box-shadow: none; }
 .atri-preset-menu-trigger svg { transform: rotate(90deg); }
-.atri-preset-menu { position: fixed; z-index: 1000; display: grid; width: max-content; min-width: 180px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow: auto; padding: 6px; border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-md); background: var(--atri-surface-2); box-shadow: var(--atri-shadow-raised); }
-.atri-preset-menu > button { text-align: start; min-height: 44px; margin: 0; white-space: normal; }
-.atri-module-row { display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: 4px 12px; }
+.atri-preset-menu { position: fixed; z-index: 1000; display: grid; gap: 1px; width: max-content; min-width: 200px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow: auto; padding: 6px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface-raised); box-shadow: var(--shadow-3); }
+.atria-app-shell .atri-preset-menu > button { justify-self: stretch; justify-content: flex-start; min-height: 32px; margin: 0; padding: 7px 9px; border: 0; border-radius: var(--r-sm); background: transparent; box-shadow: none; font-weight: 400; text-align: start; white-space: normal; }
+.atria-app-shell .atri-preset-menu > button:hover:not(:disabled) { background: var(--surface-hover); }
+.atri-module-row { display: grid; grid-template-columns: minmax(0, 1fr) 32px; align-items: center; gap: 2px 10px; padding: 10px 0; border-bottom: 1px solid var(--line-1); }
 .atri-module-row > h4 { margin: 0; min-width: 0; }
-.atri-module-row > p { grid-column: 1 / -1; margin: 0; overflow-wrap: anywhere; }
-.atria-app-shell .atri-module-row .atri-module-title { margin: 0; padding-inline: 0; border: 0; background: transparent; text-align: start; font: inherit; max-width: 100%; overflow-wrap: anywhere; }
-.atri-preset-category-form :is(input, select) { min-width: 0; width: 100%; min-height: 44px; }
-.atri-preset-category-form :is(h3, p) { grid-column: 1 / -1; }
-.atri-regex-resource > label { display: inline-flex; gap: 12px; align-items: center; min-height: 44px; max-width: 100%; overflow-wrap: anywhere; cursor: pointer; }
-.atria-app-shell .atri-regex-resource input[type="checkbox"] { appearance: auto; accent-color: var(--atri-accent); width: 20px; min-width: 20px; height: 20px; min-height: 20px; padding: 0; border: revert; background: revert; }
-.atri-regex-rule-state { display: inline-block; margin-inline: 12px; color: var(--atri-text-secondary); font-size: var(--atri-text-footnote); }
+.atri-module-row > p { grid-column: 1 / -1; margin: 0; color: var(--text-3); font-size: var(--fs-xs); overflow-wrap: anywhere; }
+.atria-app-shell .atri-module-row .atri-module-title { justify-content: flex-start; max-width: 100%; min-height: 0; margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none; color: var(--text-1); font: 600 var(--fs-md)/1.35 var(--font-ui); text-align: start; overflow-wrap: anywhere; }
+.atria-app-shell .atri-module-row .atri-module-title:hover:not(:disabled) { background: transparent; color: var(--tone-lapis); }
 
-[data-atria-personas] { max-width: 960px; margin-inline: auto; display: grid; gap: 20px; min-width: 0; }
-.atri-persona-editor { display: grid; gap: 16px; min-width: 0; }
-.atri-persona-editor fieldset { display: grid; gap: 18px; border: 0; padding: 0; margin: 0; min-width: 0; }
-.atri-persona-picker { width: min(560px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); box-sizing: border-box; overflow-y: auto; border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-lg); padding: 24px; background: var(--atri-surface-1); color: var(--atri-text-primary); font-family: var(--atri-font-sans); text-shadow: none; }
-.atri-persona-picker::backdrop { background: rgb(0 0 0 / .5); }
-.atri-persona-picker .atri-library-button { background: var(--atri-fill); color: var(--atri-text-primary); border: 0; border-radius: var(--atri-radius-md); padding: 10px 14px; min-height: 44px; font: inherit; cursor: pointer; overflow-wrap: anywhere; }
-.atri-persona-picker .atri-library-field input { width: 100%; min-height: 44px; box-sizing: border-box; background: var(--atri-surface-2); color: var(--atri-text-primary); border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-md); padding: 8px 12px; font: inherit; font-size: max(16px, var(--atri-text-body)); }
-.atri-persona-picker .atri-library-grouped-list { display: grid; gap: 12px; margin-block: 16px; min-width: 0; }
-.atri-persona-picker .atri-library-row { display: block; min-width: 0; }
-.atri-persona-picker pre { white-space: pre-wrap; overflow-wrap: anywhere; }
-[data-atria-personas] .atri-library-button { min-height: 44px; }
-[data-atria-personas] input[type="checkbox"] { width: auto; justify-self: start; }
-.atri-persona-picker button:focus-visible, [data-atria-personas] :is(button, input, textarea, select):focus-visible { outline: 2px solid var(--atri-accent); outline-offset: 3px; }
-.atri-persona-avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; }
+/* Regex (X10): order matters, so rows keep their order controls. */
+.atri-regex-resource > label { display: inline-flex; gap: 10px; align-items: center; min-height: 32px; max-width: 100%; overflow-wrap: anywhere; cursor: pointer; }
+.atri-regex-rule-state { display: inline-block; margin-inline: 10px; color: var(--text-3); font-size: var(--fs-xs); }
+
+/* Personas (P01–P02) */
+[data-atria-personas] { display: grid; gap: 16px; min-width: 0; max-width: 960px; margin-inline: 0; }
+[data-atria-personas] input[type="checkbox"] { justify-self: start; }
+.atri-persona-editor { display: grid; gap: 14px; min-width: 0; }
+.atri-persona-editor fieldset { display: grid; gap: 14px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.atri-persona-avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 1px var(--line-3); }
+
+/* Persona picker (P03): a dialog that may open over the Stage, so its controls are styled here. */
+.atri-persona-picker {
+    width: min(560px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); box-sizing: border-box; overflow-y: auto; padding: 20px 22px;
+    border: 1px solid var(--line-2); border-radius: var(--r-2xl); background: var(--surface-panel); color: var(--text-1); box-shadow: var(--shadow-3);
+    font: 400 var(--fs-md)/1.55 var(--font-ui); text-shadow: none;
+}
+.atri-persona-picker::backdrop { background: var(--surface-scrim); -webkit-backdrop-filter: blur(6px) saturate(.9); backdrop-filter: blur(6px) saturate(.9); }
+.atri-persona-picker :is(h2, h3) { margin: 0 0 6px; font: 600 var(--fs-xl)/1.3 var(--font-ui); }
+.atri-persona-picker .atri-library-button {
+    display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 0 13px; border: 1px solid var(--line-2); border-radius: var(--r-md);
+    background: var(--surface-raised); box-shadow: var(--shadow-1); color: var(--text-1); font: 500 var(--fs-md)/1.2 var(--font-ui); cursor: pointer; overflow-wrap: anywhere;
+}
+.atri-persona-picker .atri-library-button:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--line-3); }
+.atri-persona-picker .atri-library-button--primary { border-color: transparent; background: var(--btn-primary-bg); color: var(--btn-primary-text); font-weight: 600; box-shadow: 0 0 0 1px var(--btn-primary-ring); }
+.atri-persona-picker .atri-library-field { display: grid; gap: 6px; color: var(--text-2); font: 550 var(--fs-sm)/1.4 var(--font-ui); }
+.atri-persona-picker .atri-library-field input { width: 100%; min-height: 34px; box-sizing: border-box; padding: 7px 11px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: color-mix(in srgb, var(--text-1) 3.5%, transparent); color: var(--text-1); font: 400 var(--fs-md)/1.4 var(--font-ui); }
+.atri-persona-picker .atri-library-field input:focus { outline: none; border-color: color-mix(in srgb, var(--tone-lapis) 70%, transparent); box-shadow: 0 0 0 3px var(--soft-lapis); }
+.atri-persona-picker .atri-library-grouped-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; min-width: 0; margin-block: 14px; }
+.atri-persona-picker .atri-library-row { display: block; min-width: 0; padding: 12px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface-raised); }
+.atri-persona-picker .atri-library-row:has([aria-pressed="true"], [aria-checked="true"]) { border-color: color-mix(in srgb, var(--tone-lumen) 55%, transparent); box-shadow: 0 0 0 3px var(--soft-lumen); }
+.atri-persona-picker pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 400 12px/1.6 var(--font-mono); color: var(--text-2); }
+.atri-persona-picker :is(button, input):focus-visible { outline: none; box-shadow: var(--focus-ring); }
+@media (max-width: 719px) {
+    .atri-persona-picker { width: 100vw; max-width: none; height: 100dvh; max-height: none; margin: 0; border: 0; border-radius: 0; padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)); }
+    .atri-persona-picker .atri-library-grouped-list { grid-template-columns: 1fr; }
+    .atri-persona-picker .atri-library-button, .atri-persona-picker .atri-library-field input { min-height: 44px; font-size: 16px; }
+}

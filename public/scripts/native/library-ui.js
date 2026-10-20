@@ -1,5 +1,4 @@
 import { translateShellText as tl } from '../atria-shell/localization.js';
-import { createAtriaIcon } from '../atria-shell/icons.js';
 import { createNativeProductError } from './product-errors.js';
 
 export function el(doc, tag, className = '', text, parent) {
@@ -67,11 +66,12 @@ export function field(doc, parent, label, value = '', type = 'text') {
 }
 
 export function cover(doc, id, title) {
+    // Generated cover art (no network, no image): a stable palette per Work
+    // identity and a vertical title, so the shelf reads as books, not tiles.
     const node = el(doc, 'div', 'atri-library-cover');
     const hash = [...String(id)].reduce((value, char) => (value * 31 + char.charCodeAt(0)) >>> 0, 0);
-    node.dataset.cover = String(hash % 4); node.setAttribute('aria-hidden', 'true');
-    node.append(createAtriaIcon(doc, 'book', { size: 36 }));
-    el(doc, 'span', '', title, node);
+    node.dataset.cover = String(hash % 6); node.setAttribute('aria-hidden', 'true');
+    el(doc, 'span', 'atri-library-cover__title', title, node);
     return node;
 }
 

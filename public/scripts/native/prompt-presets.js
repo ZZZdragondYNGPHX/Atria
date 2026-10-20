@@ -38,7 +38,16 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
     let lastReceipt = null;
     let categoryFilter = 'all', listPosition = null, closeMenu = () => {}, adoptionRefs = [];
     const editorFoldStates = new Map();
-    const node = (tag, text, parent = body) => { const el = doc.createElement(tag); if (text !== undefined) el.textContent = tl(text); parent.append(el); return el; };
+    let split = null, pane = null, detailPane = null, listToken = 0;
+    const ensureSplit = () => {
+        if (split?.isConnected) return;
+        split = doc.createElement('section'); split.className = 'atria-native-library atri-library-resource-split atri-prompt-presets';
+        pane = doc.createElement('aside'); pane.className = 'atri-library-resource-pane'; pane.setAttribute('aria-label', tl('Prompt Presets'));
+        detailPane = doc.createElement('section'); detailPane.className = 'atri-library-resource-main';
+        split.append(pane, detailPane); body.replaceChildren(split);
+    };
+    const main = () => { ensureSplit(); return detailPane; };
+    const node = (tag, text, parent = main()) => { const el = doc.createElement(tag); if (text !== undefined) el.textContent = tl(text); parent.append(el); return el; };
     const literal = (tag, text, parent) => { const el = node(tag, undefined, parent); el.textContent = text; return el; };
     const fail = error => { if (!disposed) { const el = node('p', error.message); el.setAttribute('role', 'alert'); } };
     const button = (parent, text, callback) => {
@@ -65,13 +74,20 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         } catch (error) {
             if (!receipt) throw error;
             if (disposed || token !== sequence) return;
-            body.replaceChildren();
+            main().replaceChildren();
             node('p', 'Saved. The view could not be refreshed.').setAttribute('role', 'status');
-            literal('p', error.message, body).setAttribute('role', 'alert');
-            button(body, 'Try again', refresh);
+            literal('p', error.message, main()).setAttribute('role', 'alert');
+            button(main(), 'Try again', refresh);
         }
     };
-    const open = async id => { const token = ++sequence; closeMenu(); categoryFilter = 'all'; listPosition = null; lastReceipt = null; adoptionRefs = []; body.replaceChildren(); node('p', 'Loading exact resources…'); const value = await runtimeRequest('/presets/' + id); if (disposed || token !== sequence) return; preset = value; section = null; renderDetail(); };
+    const markSelected = () => { for (const row of pane?.querySelectorAll('[data-atri-preset-id]') || []) row.setAttribute('aria-current', String(row.dataset.atriPresetId === preset?.presetId)); };
+    const open = async id => {
+        const token = ++sequence; closeMenu(); categoryFilter = 'all'; listPosition = null; lastReceipt = null; adoptionRefs = [];
+        if (!pane?.isConnected || !pane.childElementCount) void renderPresetList();
+        main().replaceChildren(); node('p', 'Loading exact resources…');
+        const value = await runtimeRequest('/presets/' + id); if (disposed || token !== sequence) return;
+        preset = value; section = null; renderDetail(); markSelected();
+    };
     const create = async (value, importing = false) => { const result = await runtimeRequest('/presets', { method: 'POST', body: { preset: value, importing } }); await open(result.presetId); };
     const exportPreset = value => {
         const data = { format: value.format, schemaVersion: 1, programId: value.programId, ...(value.programRevision ? { programRevision: value.programRevision } : {}), categories: value.categories, moduleCategories: value.moduleCategories, entries: value.entries, regexScripts: value.regexScripts || [] };
@@ -232,9 +248,9 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
     function renderDetail() {
         if (disposed) return;
         closeMenu();
-        body.replaceChildren(); const root = node('section'); root.className = 'atri-prompt-preset'; root.dataset.atriPromptPreset = preset.presetId;
+        main().replaceChildren(); const root = node('section'); root.className = 'atri-prompt-preset'; root.dataset.atriPromptPreset = preset.presetId;
         const nav = node('div', undefined, root); nav.className = 'atri-prompt-actions';
-        button(nav, 'Back to presets', () => { if (confirmAtriaDraftLeave(doc, body)) return list(); });
+        button(nav, 'Back to presets', () => { if (confirmAtriaDraftLeave(doc, body)) return list(); }).classList.add('atri-library-detail-close');
         if (section) button(nav, 'Back to preset', () => { if (confirmAtriaDraftLeave(doc, body)) { section = null; renderDetail(); } });
         literal('h2', preset.entries.find(e => idOf(e) === preset.programId && (!preset.programRevision || e.resource.revision === preset.programRevision)).resource.displayName, root);
         root.dataset.atriPresetRevision = preset.revision;
@@ -310,11 +326,22 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         }
         if (!modules.length) node('p', preset.entries.some(e => e.resourceType === MODULE) ? 'No modules in this category.' : 'No modules yet. Create a module, then add it to the program.', root);
     }
+    function emptyDetail() {
+        main().replaceChildren();
+        const empty = node('div'); empty.className = 'atri-library-resource-empty';
+        node('p', 'Select a preset to edit, or create a new one.', empty);
+    }
     async function list() {
-        const token = ++sequence; closeMenu(); listPosition = null; preset = null; body.replaceChildren(); node('p', 'Loading exact resources…');
+        ++sequence; closeMenu(); listPosition = null; preset = null; emptyDetail();
+        await renderPresetList();
+    }
+    // The pane: create, import, the preset list and migration of existing resources.
+    async function renderPresetList() {
+        const token = ++listToken; ensureSplit();
+        pane.replaceChildren(); node('p', 'Loading exact resources…', pane);
         try {
-            const presets = await runtimeRequest('/presets'); if (disposed || token !== sequence) return;
-            body.replaceChildren(); const root = node('section'); root.className = 'atri-prompt-preset'; node('h2', 'Prompt Presets', root);
+            const presets = await runtimeRequest('/presets'); if (disposed || token !== listToken) return;
+            pane.replaceChildren(); const root = node('section', undefined, pane); root.className = 'atri-prompt-preset atri-prompt-preset-list'; node('h2', 'Prompt Presets', root);
             const tools = node('div', undefined, root); tools.className = 'atri-prompt-actions';
             const template = select(tools, 'Start from', PROMPT_TEMPLATES.map(([id, label]) => [id, tl(label)]), 'blank');
             button(tools, 'New preset', () => create(newPromptPreset(template.value)));
@@ -322,8 +349,10 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
             button(root, 'Import selected preset', async () => { if (!file.files?.length) { file.focus(); return; } await create(JSON.parse(await file.files[0].text()), true); });
             if (!presets.length) node('p', 'No presets yet. Create a preset or import a file.', root);
             for (const preset of presets) {
-                const row = node('article', undefined, root); row.className = 'atri-prompt-resource'; row.dataset.atriPresetId = preset.presetId;
+                const row = node('article', undefined, root); row.className = 'atri-prompt-resource atri-library-row'; row.dataset.atriPresetId = preset.presetId;
+                row.prepend(createAtriaIcon(doc, 'layers', { size: 16 }));
                 literal('h3', preset.displayName, row); button(row, 'Open preset', () => open(preset.presetId));
+                row.addEventListener('click', event => { if (!event.target.closest('button, details')) void open(preset.presetId).catch(fail); });
                 button(row, 'Export preset', async () => exportPreset(await runtimeRequest('/presets/' + preset.presetId)));
                 button(row, 'Delete preset', async () => {
                     const { Popup, POPUP_TYPE } = await import('../popup.js');
@@ -355,7 +384,8 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
                     await create({ format: 'atria.prompt-preset', schemaVersion: 1, programId: chosen.resource.promptProgramId, programRevision: chosen.resource.revision, entries: selected, categories: [], moduleCategories: {} }, true);
                 });
             });
-        } catch (e) { fail(e); button(body, 'Retry resources', list); }
+            markSelected();
+        } catch (e) { if (disposed || token !== listToken) return; pane.replaceChildren(); const alert = node('p', e.message, pane); alert.setAttribute('role', 'alert'); button(pane, 'Retry resources', renderPresetList); }
     }
     // Old links remain readable during migration; all new navigation uses presets.
     const updateRoute = next => {

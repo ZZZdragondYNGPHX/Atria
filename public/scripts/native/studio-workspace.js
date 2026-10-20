@@ -1,8 +1,9 @@
 import { mountPaneResizer } from '../atria-shell/pane-resizer.js';
+import { createAtriaIcon } from '../atria-shell/icons.js';
 import { formatAtriaDate } from '../atria-shell/components.js';
 import { confirmAtriaDraftLeave, observeAtriaDrafts } from '../atria-shell/workspace-leave-guard.js';
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
-import { referenceRemediation } from './library-ui.js';
+import { referenceRemediation, cover } from './library-ui.js';
 import { mountSourceEditor } from './source-editor.js';
 import { mountAssetEditor } from './asset-editor.js';
 import { mountProjectDeletion } from './project-lifecycle.js';
@@ -59,6 +60,21 @@ const STUDIO_VIEWS = Object.freeze([
     ['build', 'Build'],
     ['source', 'Source'],
 ]);
+
+// Tree presentation only: views keep their ids, drafts and selection state.
+const STUDIO_VIEW_GROUPS = Object.freeze([
+    ['Project', ['overview', 'experience', 'metadata']],
+    ['Content', ['actors', 'entrypoints', 'worlds', 'knowledge']],
+    ['Narrative & runtime', ['prompt-authoring', 'runtime-design', 'logic', 'memory', 'agents', 'skills', 'plugins']],
+    ['Presentation', ['ui', 'assets', 'source']],
+    ['Build & preview', ['simulation', 'preview', 'build']],
+]);
+const STUDIO_VIEW_ICONS = Object.freeze({
+    overview: 'document', experience: 'layers', metadata: 'cube', actors: 'persona', entrypoints: 'branch',
+    worlds: 'globe', knowledge: 'book', 'prompt-authoring': 'braces', 'runtime-design': 'tune', logic: 'terminal',
+    memory: 'memory', agents: 'agents', skills: 'wand', plugins: 'plug', ui: 'desktop', assets: 'image',
+    source: 'file', simulation: 'run', preview: 'eye', build: 'download',
+});
 
 const MOBILE_VIEWS = Object.freeze([
     ['project', 'Project'],
@@ -285,6 +301,17 @@ function createResourceTree(documentRef, state, selectView) {
     aside.className = 'atria-studio-resource-tree';
     aside.dataset.atriaStudioResourceTree = 'true'; aside.setAttribute('aria-label', t('Project resources'));
 
+    // Project card: which project this tree belongs to (cover, name, version).
+    const card = documentRef.createElement('div');
+    card.className = 'atria-studio-project-card';
+    card.append(cover(documentRef, state.source.project.projectId || state.source.project.displayName, ''));
+    const cardText = documentRef.createElement('div');
+    const cardName = documentRef.createElement('strong'); cardName.textContent = state.source.project.displayName;
+    const cardMeta = documentRef.createElement('span');
+    cardMeta.textContent = [t('Project'), state.source.package?.version].filter(Boolean).join(' · ');
+    cardText.append(cardName, cardMeta); card.append(cardText);
+    aside.append(card);
+
     const filter = textInput(documentRef, '', 'Filter project resources');
     filter.placeholder = t('Filter resources…'); filter.type = 'search';
     aside.append(filter);
@@ -296,14 +323,24 @@ function createResourceTree(documentRef, state, selectView) {
     function render(filterValue = '') {
         list.replaceChildren();
         const needle = filterValue.trim().toLowerCase();
-        for (const [id, label] of STUDIO_VIEWS) {
+        const labels = new Map(STUDIO_VIEWS);
+        let groupHeading = null;
+        for (const [id, label, group] of STUDIO_VIEW_GROUPS.flatMap(([name, ids]) => ids.map(view => [view, labels.get(view), name]))) {
             const items = sourceSection(state.source, id);
             const paths = id === 'source' ? (state.files || []).map(file => typeof file === 'string' ? file : file.path).filter(Boolean) : [];
             const sectionMatch = t(label).toLowerCase().includes(needle);
             if (needle && !sectionMatch && !paths.some(path => path.toLowerCase().includes(needle)) && !(items || []).some(item => displayNameFor(item, id).toLowerCase().includes(needle))) continue;
+            if (groupHeading?.dataset.group !== group) {
+                groupHeading = documentRef.createElement('div');
+                groupHeading.className = 'atria-studio-resource-tree__group';
+                groupHeading.dataset.group = group;
+                groupHeading.textContent = t(group);
+                list.append(groupHeading);
+            }
             const row = button(documentRef, label, () => selectView(id), { active: state.activeView === id });
             row.className = 'atria-studio-resource-tree__item';
             row.dataset.atriaStudioResource = id;
+            row.prepend(createAtriaIcon(documentRef, STUDIO_VIEW_ICONS[id] || 'document', { size: 16 }));
             list.append(row);
 
             row.setAttribute('aria-current', state.activeView === id ? 'page' : 'false');
@@ -583,7 +620,8 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
     const title = documentRef.createElement('h2');
     title.textContent = state.source.project.displayName;
     const revision = documentRef.createElement('span');
-    revision.className = 'atria-studio-topbar__revision';
+    revision.className = 'atria-studio-topbar__revision atria-seal';
+    revision.dataset.seal = 'current';
     revision.textContent = formatProductText('Revision ${0}', [state.revision.revision.slice(0, 12)]);
     identity.append(title, revision);
 
@@ -1360,10 +1398,10 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
         const tabs = documentRef.createElement('nav');
         tabs.className = 'atria-studio-activity-tabs';
         for (const [id, label] of [
+            ['changes', 'Changes'],
             ['problems', 'Problems'],
             ['output', 'Output'],
             ['history', 'History'],
-            ['changes', 'Changes'],
         ]) {
             tabs.append(button(documentRef, label, () => {
                 state.activityTab = id; state.activityOpen = true;
@@ -1585,6 +1623,26 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
         }, { active: state.aiOpen }),
     );
 
+    const toolIcons = { Validate: 'check-circle', Preview: 'eye', Simulate: 'run', Inspector: 'panel-r', Build: 'cube', AI: 'sparkles' };
+    for (const item of topActions.children) {
+        const name = Object.keys(toolIcons).find(key => item.textContent === t(key));
+        if (!name) continue;
+        item.title = t(name);
+        item.classList.add('atria-studio-tool');
+        if (name !== 'AI') item.classList.add('atria-studio-tool--icon');
+        item.prepend(createAtriaIcon(documentRef, toolIcons[name], { size: 16 }));
+    }
+    layoutSummary.title = t('Workspace layout');
+    layoutSummary.setAttribute('aria-label', t('Workspace layout'));
+    layoutSummary.prepend(createAtriaIcon(documentRef, 'panel-l', { size: 16 }));
+    // In the shell the project tools and revision seal sit in the top bar; the
+    // shell title already names the project. Standalone mounts keep the row.
+    const shellSlots = globalThis.Atria?.shell?.getShell?.()?.slots;
+    if (shellSlots?.contextBar && shellSlots.toolbarLeading) {
+        shellSlots.toolbarLeading.append(revision);
+        shellSlots.contextBar.prepend(topActions);
+        topbar.remove();
+    }
     const inspectorToggle = [...topActions.children].find(item => item.textContent === t('Inspector'));
     inspectorToggle.setAttribute('aria-controls', inspector.id);
     environment.subscribe(() => { updateMobile(); });
@@ -1607,6 +1665,8 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
         dismissTransient,
         dispose() {
             state.disposed = true;
+            if (topActions.parentNode !== topbar) topActions.remove();
+            if (revision.parentNode !== identity) revision.remove();
             state.sourceEditor?.dispose();
             drafts.dispose();
             state.structuredEditor?.dispose();

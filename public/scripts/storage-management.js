@@ -42,7 +42,7 @@ const explain = reason => tl(reasons[reason] || reason || '');
 const node = (tag, className = '', text = null) => { const element = document.createElement(tag); element.className = className; if (text != null) element.textContent = String(text); return element; };
 const button = (label, click, variant = 'secondary') => createAtriaButton(document, { label: tl(label), onClick: click, variant });
 const icons = { overview: 'grid', cleanup: 'wand', recovery: 'stack', tasks: 'timeline', advanced: 'settings', sessions: 'chat', projects: 'folder', knowledge: 'book', media: 'image', personas: 'person', agents: 'runtime', settings: 'settings', cache: 'bolt', offline: 'import', preferences: 'settings' };
-const categoryColors = { sessions: 'var(--atri-accent)', projects: '#d98c72', knowledge: '#c6b6a6', media: '#636575', personas: '#b3a4ad', agents: '#9daab4', settings: '#b8b6aa', recovery: '#8d877f', cache: '#cbc7c1', advanced: '#cbc7c1' };
+const categoryColors = { sessions: 'var(--tone-lumen)', projects: 'var(--tone-lapis)', media: 'var(--tone-umber)', knowledge: 'var(--tone-jade)', agents: 'var(--tone-dai)', personas: 'var(--tone-amber)', settings: 'var(--text-2)', recovery: 'var(--text-3)', cache: 'var(--line-strong)', offline: 'var(--tone-lapis)', preferences: 'var(--text-3)' };
 const numeric = value => new Intl.NumberFormat().format(value);
 const size = bytes => {
     if (bytes == null) return tl('Unavailable');
@@ -61,38 +61,67 @@ export class StorageCenterPanel {
         Object.assign(this, { api, browser, scope: initialScope === 'browser' ? 'browser' : 'server', region: 'overview', data: null, category: null, query: '', offset: 0,
             selection: new Map(), safeSelection: new Set(), generation: 0, closed: false, activeTask: null, keyboard: false, detailGeneration: 0, previewGeneration: 0 });
     }
-    open() {
-        const previousFocus = document.activeElement, dialog = node('dialog', 'storage-center-dialog'); this.dialog = dialog;
-        dialog.setAttribute('aria-labelledby', 'storage-center-title');
-        dialog.addEventListener('pointerdown', () => { this.keyboard = false; dialog.classList.remove('storage-center-keyboard'); }, true);
-        dialog.addEventListener('keydown', event => { this.keyboard = true; dialog.classList.add('storage-center-keyboard'); containStorageDialogFocus(dialog, event); }, true);
-        const sidebar = node('aside', 'storage-center-sidebar'), brand = node('div', 'storage-center-brand');
-        const mark = node('span', 'storage-center-brand-mark'); mark.append(createAtriaIcon(document, 'sparkles'));
-        brand.append(mark, node('span', 'storage-center-wordmark', 'Atria')); sidebar.append(brand, node('p', 'storage-center-workspace-label', tl('Settings workspace')));
+    // Shared chrome for both presentations: section nav, scope switch, status and content.
+    assemble(frame, { page = false } = {}) {
+        frame.addEventListener('pointerdown', () => { this.keyboard = false; frame.classList.remove('storage-center-keyboard'); }, true);
+        frame.addEventListener('keydown', event => { this.keyboard = true; frame.classList.add('storage-center-keyboard'); if (!page) containStorageDialogFocus(frame, event); }, true);
+        const sidebar = node('aside', 'storage-center-sidebar');
+        if (!page) {
+            const brand = node('div', 'storage-center-brand'), mark = node('span', 'storage-center-brand-mark'); mark.append(createAtriaIcon(document, 'sparkles'));
+            brand.append(mark, node('span', 'storage-center-wordmark', 'Atria')); sidebar.append(brand, node('p', 'storage-center-workspace-label', tl('Settings workspace')));
+        }
         this.nav = node('nav', 'storage-center-nav'); this.nav.setAttribute('aria-label', tl('Resource center sections'));
         for (const [key, text] of Object.entries(regions)) {
             const item = button(text, () => this.navigate(key), 'plain'); item.prepend(createAtriaIcon(document, icons[key])); item.dataset.region = key; this.nav.append(item);
         }
         this.scopeNote = node('div', 'storage-center-sidebar-note'); sidebar.append(this.nav, this.scopeNote);
-        const header = node('header', 'storage-center-header'), breadcrumb = node('div', 'storage-center-breadcrumb');
-        breadcrumb.append(node('span', '', tl('Settings')), node('span', '', '/'), node('strong', '', tl('Resource usage & safe cleanup')));
         this.scopeControls = node('div', 'storage-center-scope'); this.scopeControls.setAttribute('role', 'group'); this.scopeControls.setAttribute('aria-label', tl('Storage scope'));
         for (const [key, text] of [['server', 'Server account'], ['browser', 'Current browser']]) {
             const item = button(text, () => this.changeScope(key), 'plain'); item.dataset.scope = key; this.scopeControls.append(item);
         }
-        const close = createAtriaIconButton(document, { label: tl('Close'), icon: 'close', onClick: () => dialog.close() });
-        header.append(breadcrumb, this.scopeControls, close);
         this.content = node('main', 'storage-center-content'); this.content.tabIndex = -1;
         this.status = node('div', 'storage-center-status'); this.status.setAttribute('role', 'status'); this.status.setAttribute('aria-live', 'polite'); this.status.setAttribute('aria-atomic', 'true');
-        this.body = node('div', 'storage-center-body'); this.body.append(this.status, this.content); dialog.append(sidebar, header, this.body); document.body.append(dialog);
-        this.drawer = new StorageCenterDrawer(dialog, () => this.keyboard);
+        this.body = node('div', 'storage-center-body'); this.body.append(this.status, this.content);
+        return sidebar;
+    }
+    watch(frame) {
+        this.drawer = new StorageCenterDrawer(frame, () => this.keyboard);
         this.drawer.dialog.addEventListener('close', () => { if (this.refreshDeferred && !this.closed) this.refreshView(); });
         const changed = event => { if (this.scope === 'server' && event.detail?.handle === this.data?.scope?.handle) void this.refresh({ background: true }); };
         document.addEventListener('atria:resources-changed', changed);
         const timer = setInterval(() => { if (document.visibilityState === 'visible') void this.refresh({ background: true }); }, 15000);
-        dialog.addEventListener('close', event => { if (event.target !== dialog) return; this.closed = true; this.generation++; this.detailGeneration++; this.previewGeneration++; this.drawer.destroy(); clearInterval(timer); document.removeEventListener('atria:resources-changed', changed); if (this.activeTask?.scope === 'browser') this.browser.stop(this.activeTask.id); dialog.remove(); previousFocus?.focus(); });
+        return () => {
+            this.closed = true; this.generation++; this.detailGeneration++; this.previewGeneration++; this.drawer.destroy(); clearInterval(timer);
+            document.removeEventListener('atria:resources-changed', changed); if (this.activeTask?.scope === 'browser') this.browser.stop(this.activeTask.id);
+        };
+    }
+    open() {
+        const previousFocus = document.activeElement, dialog = node('dialog', 'storage-center-dialog'); this.dialog = dialog;
+        dialog.setAttribute('aria-labelledby', 'storage-center-title');
+        const sidebar = this.assemble(dialog);
+        const header = node('header', 'storage-center-header'), breadcrumb = node('div', 'storage-center-breadcrumb');
+        breadcrumb.append(node('span', '', tl('Settings')), node('span', '', '/'), node('strong', '', tl('Resource usage & safe cleanup')));
+        const close = createAtriaIconButton(document, { label: tl('Close'), icon: 'close', onClick: () => dialog.close() });
+        header.append(breadcrumb, this.scopeControls, close);
+        dialog.append(sidebar, header, this.body); document.body.append(dialog);
+        const stop = this.watch(dialog);
+        dialog.addEventListener('close', event => { if (event.target !== dialog) return; stop(); dialog.remove(); previousFocus?.focus(); });
         dialog.showModal(); close.focus(); this.refresh();
         return new Promise(resolve => dialog.addEventListener('close', event => { if (event.target === dialog) resolve(); }));
+    }
+    // Storage center as a full utility page (P-02): section nav + main, no Inspector.
+    // The scope switch joins the shell top bar when one is offered.
+    mount(container, { toolbar = null } = {}) {
+        const page = node('section', 'storage-center-dialog storage-center-page'); this.dialog = page;
+        page.close = () => {};
+        page.setAttribute('aria-labelledby', 'storage-center-title');
+        const sidebar = this.assemble(page, { page: true });
+        if (toolbar) toolbar.append(this.scopeControls);
+        else { const header = node('header', 'storage-center-header'); header.append(this.scopeControls); page.append(header); }
+        page.append(sidebar, this.body); container.replaceChildren(page);
+        const stop = this.watch(page);
+        this.refresh();
+        return { root: page, dispose: () => { stop(); this.scopeControls.remove(); page.remove(); } };
     }
     navigate(region, category = null) {
         this.detailGeneration++; this.previewGeneration++; this.drawer.close(true);
@@ -174,46 +203,63 @@ export class StorageCenterPanel {
         const browser = this.scope === 'browser', partial = this.data.completeness === 'partial';
         if (partial) this.notice('Some storage could not be measured. The known subtotal is not a complete account total.', 'warning');
         if (!browser && this.data.quotaBytes >= 0 && this.data.totalBytes != null && this.data.totalBytes > this.data.quotaBytes) this.notice('Account quota exceeded. You can still inspect resources and clean verified data. Unexpired recovery records are retained.', 'warning');
-        const summary = node('section', 'storage-center-summary'), main = node('div', 'storage-center-summary-main');
+        // Usage: a donut of measured categories beside the category cards (prototype C01).
+        // Unknown or partial totals never draw a complete ring.
+        const summary = node('section', 'storage-center-usage'); summary.setAttribute('aria-label', tl('Usage overview'));
         const amount = browser ? this.data.knownBytes : this.data.totalBytes ?? this.data.knownBytes;
-        main.append(node('p', 'storage-center-summary-label', tl(browser ? 'Identified data subtotal' : 'Resource data')));
-        const quantity = node('strong', 'storage-center-number', size(amount));
-        if (amount != null) { const [value, unit] = size(amount).split(' '); quantity.replaceChildren(node('span', '', value), node('small', '', unit)); }
-        const numbers = node('div', 'storage-center-summary-numbers'); numbers.append(quantity, node('span', 'storage-center-note', ft('Quota: ${0}', [this.data.quotaBytes === -1 ? tl('Unlimited') : size(this.data.quotaBytes)]))); main.append(numbers);
-        if (!browser && !partial && this.data.totalBytes != null) {
-            const bar = node('div', 'storage-center-usage-bar'); bar.setAttribute('role', 'img'); bar.setAttribute('aria-label', tl('Resource data by category'));
-            const denominator = this.data.quotaBytes > 0 ? Math.max(this.data.totalBytes, this.data.quotaBytes) : this.data.totalBytes;
-            Object.entries(this.data.categories).forEach(([category, total]) => { if (!total.bytes || !denominator) return; const segment = node('span'); segment.style.width = `${total.bytes / denominator * 100}%`; segment.style.background = categoryColors[category] || 'var(--atri-text-secondary)'; bar.append(segment); }); main.append(bar);
-        }
-        const measured = node('div', 'storage-center-measured'); measured.append(node('span', '', tl(partial ? 'Known subtotal — some storage could not be measured' : browser ? 'This device · Current site' : 'Recycle bin data is included in the total.')), node('span', '', formatAtriaDate(this.data.completedAt))); main.append(measured);
-        const aside = node('div', 'storage-center-summary-aside');
-        const summaryAction = (title, copy, click, accent = false) => {
-            const control = button('', click, 'plain'); control.classList.add('storage-center-summary-action');
-            const text = node('span'); text.append(node('strong', accent ? 'storage-center-accent' : '', title), node('small', '', copy)); control.replaceChildren(text, createAtriaIcon(document, 'chevron-right', { size: 15 })); aside.append(control);
+        const ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg');
+        svg.setAttribute('viewBox', '0 0 200 200'); svg.setAttribute('class', 'storage-center-donut'); svg.setAttribute('role', 'img');
+        svg.setAttribute('aria-label', ft('${0} used', [size(amount)]));
+        const ring = document.createElementNS(ns, 'g'); ring.setAttribute('transform', 'rotate(-90 100 100)'); svg.append(ring);
+        const circle = (color, length = null, offset = 0) => {
+            const item = document.createElementNS(ns, 'circle'); item.setAttribute('cx', '100'); item.setAttribute('cy', '100'); item.setAttribute('r', '80');
+            item.style.stroke = color; if (length != null) { item.setAttribute('stroke-dasharray', `${length} ${502.65 - length}`); item.setAttribute('stroke-dashoffset', String(-offset)); }
+            ring.append(item);
         };
+        circle('var(--surface-press)');
+        const total = Object.entries(this.data.categories).filter(([key]) => key !== 'advanced').reduce((sum, [, item]) => sum + (item.bytes || 0), 0);
+        if (!partial && total > 0) {
+            let offset = 0;
+            for (const [category, item] of Object.entries(this.data.categories)) {
+                if (category === 'advanced' || !item.bytes) continue;
+                const length = item.bytes / total * 502.65;
+                circle(categoryColors[category] || 'var(--text-3)', Math.max(0, length - 2), offset); offset += length;
+            }
+        }
+        const centre = document.createElementNS(ns, 'text'); centre.setAttribute('class', 'storage-center-donut__value'); centre.setAttribute('x', '100'); centre.setAttribute('y', '104'); centre.textContent = size(amount);
+        const caption = document.createElementNS(ns, 'text'); caption.setAttribute('class', 'storage-center-donut__caption'); caption.setAttribute('x', '100'); caption.setAttribute('y', '126');
+        caption.textContent = tl(partial ? 'Known subtotal' : browser ? 'This device · Current site' : 'Server account');
+        svg.append(centre, caption);
+        const side = node('div', 'storage-center-usage__side');
+        const sideHead = node('div', 'storage-center-usage__head');
+        sideHead.append(node('h2', '', tl(browser ? 'Current site data' : 'Categories')), node('span', 'storage-center-note', tl(browser ? 'Separate from server data' : 'Open a category; protected items open in their business workspace.')));
+        const quick = node('div', 'storage-center-usage__quick');
+        const chip = (text, click, tone = '') => { const control = button(text, click, 'plain'); control.classList.add('storage-center-chip'); if (tone) control.dataset.tone = tone; quick.append(control); };
         if (browser) {
-            summaryAction(size(this.data.totalBytes), tl('Site estimate reported by this browser'), () => this.navigate('advanced'));
-            summaryAction(tl('Inspect local data'), tl('Browser deletion cannot be restored from the server recycle bin.'), () => this.navigate('cleanup'));
+            chip(ft('Site estimate ${0}', [size(this.data.totalBytes)]), () => this.navigate('advanced'));
+            chip(tl('Inspect local data'), () => this.navigate('cleanup'));
         } else {
-            summaryAction(this.data.safeCleanupBytes > 0 ? ft('${0} safe to clean', [size(this.data.safeCleanupBytes)]) : tl('No safe suggestions'), tl('Review the fixed list before processing.'), () => this.navigate('cleanup'), this.data.safeCleanupBytes > 0);
+            chip(this.data.safeCleanupBytes > 0 ? ft('${0} safe to clean', [size(this.data.safeCleanupBytes)]) : tl('No safe suggestions'), () => this.navigate('cleanup'), this.data.safeCleanupBytes > 0 ? 'safe' : '');
             const recoveryBytes = this.data.recoveryUnavailable ? null : this.data.recovery.reduce((sum, item) => sum + (item.bytes || 0), 0);
-            summaryAction(ft('${0} in recycle bin', [size(recoveryBytes)]), tl('Included in usage · retained for 30 days'), () => this.navigate('recovery'));
+            chip(ft('${0} in recycle bin', [size(recoveryBytes)]), () => this.navigate('recovery'));
         }
-        summary.append(main, aside); this.content.append(summary);
-        const sectionHeading = node('div', 'storage-center-section-heading'); sectionHeading.append(node('h2', '', tl(browser ? 'Current site data' : 'Browse by resource')), node('span', '', tl(browser ? 'Separate from server data' : 'Shared media is counted once.'))); this.content.append(sectionHeading);
+        sideHead.append(quick); side.append(sideHead);
         const list = node('section', 'storage-center-categories'); list.setAttribute('aria-label', tl('Resource categories'));
-        const maximum = Math.max(1, ...Object.values(this.data.categories).map(total => total.bytes || 0));
-        for (const [category, total] of Object.entries(this.data.categories)) {
+        for (const [category, item] of Object.entries(this.data.categories)) {
             if (category === 'advanced') continue;
-            const row = node('div', 'storage-center-category'), control = button(labels[category] || category, () => this.navigate(category === 'recovery' ? 'recovery' : 'overview', category === 'recovery' ? null : category), 'plain');
-            control.setAttribute('aria-label', tl(labels[category] || category));
-            const symbol = node('span', 'storage-center-category-icon'); symbol.append(createAtriaIcon(document, icons[category] || 'document', { size: 17 }));
-            const name = node('span', 'storage-center-category-name', tl(labels[category] || category));
-            name.append(node('small', '', browser ? ft('${0} objects', [numeric(total.objectCount ?? total.count)]) : ft('${0} objects · ${1} stored units', [numeric(total.objectCount), numeric(total.count)])));
-            const proportion = node('span', 'storage-center-category-bar'), fill = node('span'); fill.style.width = `${(total.bytes || 0) / maximum * 100}%`; proportion.append(fill); proportion.setAttribute('aria-hidden', 'true');
-            control.replaceChildren(symbol, name, node('strong', 'storage-center-numeric', size(total.bytes)), proportion, createAtriaIcon(document, 'chevron-right', { size: 13 })); row.append(control); list.append(row);
+            const control = button(labels[category] || category, () => this.navigate(category === 'recovery' ? 'recovery' : 'overview', category === 'recovery' ? null : category), 'plain');
+            control.classList.add('storage-center-category'); control.setAttribute('aria-label', tl(labels[category] || category));
+            const swatch = node('i', 'storage-center-category__swatch'); swatch.style.background = categoryColors[category] || 'var(--text-3)';
+            const name = node('strong', 'storage-center-category__name', tl(labels[category] || category));
+            const meta = node('span', 'storage-center-category__meta', browser ? ft('${0} objects', [numeric(item.objectCount ?? item.count)]) : ft('${0} objects · ${1} stored units', [numeric(item.objectCount), numeric(item.count)]));
+            control.replaceChildren(swatch, name, node('span', 'storage-center-category__size storage-center-numeric', size(item.bytes)), meta);
+            list.append(control);
         }
-        this.content.append(list);
+        side.append(list);
+        const measured = node('p', 'storage-center-measured');
+        measured.textContent = [tl(partial ? 'Known subtotal — some storage could not be measured' : browser ? 'This device · Current site' : 'Recycle bin data is included in the total.'), ft('Quota: ${0}', [this.data.quotaBytes === -1 ? tl('Unlimited') : size(this.data.quotaBytes)]), formatAtriaDate(this.data.completedAt)].join(' · ');
+        side.append(measured);
+        summary.append(svg, side); this.content.append(summary);
         const advanced = this.data.categories.advanced;
         const footer = node('div', 'storage-center-overview-footer');
         if (advanced) footer.append(button(ft('Advanced data: ${0}', [size(advanced.bytes)]), () => this.navigate('advanced'), 'plain'));
@@ -522,4 +568,10 @@ export class StorageCenterPanel {
         await inspector.init();
     }
 }
-export function openStorageManagement(options = {}) { return new StorageCenterPanel(options).open(); }
+export function mountStorageCenterPage(container, options = {}) { return new StorageCenterPanel(options).mount(container, options); }
+// Opens the full Storage center page inside the shell; standalone hosts keep the dialog.
+export function openStorageManagement(options = {}) {
+    const workspace = globalThis.Atria?.shell?.getWorkspaceHost?.();
+    if (workspace?.openUtility) { workspace.openUtility(options.initialScope === 'browser' ? 'storage:browser' : 'storage'); return Promise.resolve(); }
+    return new StorageCenterPanel(options).open();
+}

@@ -13,6 +13,7 @@ export const ATRIA_GLOBAL_UTILITIES = Object.freeze([
     Object.freeze({ id: 'plugins', label: 'Extensions', icon: 'fa-solid fa-puzzle-piece', glyph: 'plugins' }),
     Object.freeze({ id: 'settings', label: 'Settings', icon: 'fa-solid fa-gear', glyph: 'settings' }),
     Object.freeze({ id: 'account', label: 'Account', icon: 'fa-solid fa-user', glyph: 'account' }),
+    Object.freeze({ id: 'storage', label: 'Storage center', icon: 'fa-solid fa-database', glyph: 'db' }),
 ]);
 
 export const ATRIA_VIEWPORT_MODES = Object.freeze({

@@ -17,7 +17,8 @@ import { mountPaneResizer } from './pane-resizer.js';
 import { createAtriaEdgeDock } from './edge-dock.js';
 import { createAtriaPaperTransition } from './paper-transition.js';
 
-const MENU_UTILITIES = Object.freeze(['learning', 'settings', 'plugins', 'diagnostics', 'account']);
+// More menu (G04): global tools in two groups; the Dock has its own menu.
+const MENU_UTILITIES = Object.freeze([Object.freeze(['command', 'learning', 'plugins', 'settings']), Object.freeze(['account', 'storage', 'diagnostics'])]);
 const SHEET_STATES = Object.freeze(['peek', 'half', 'full']);
 
 const COMMAND_ICON_RULES = Object.freeze([
@@ -192,7 +193,10 @@ export function createAtriaAppShell({
     const title = element(documentRef, 'h1', 'atria-toolbar__title', tl('Play'));
     title.id = 'atria-shell-title';
     title.tabIndex = -1;
-    titleGroup.append(title);
+    // English domain name as a caps sub-label when the UI language differs (P-01).
+    const titleEyebrow = element(documentRef, 'span', 'atria-toolbar__eyebrow');
+    titleEyebrow.setAttribute('aria-hidden', 'true');
+    titleGroup.append(title, titleEyebrow);
     toolbarLeading.append(backButton, titleGroup);
 
     const contextBar = createAtriaPrimitive(documentRef, 'ContextBar', {
@@ -205,6 +209,8 @@ export function createAtriaAppShell({
     const runtimeChip = createAtriaStatusChip(documentRef, { label: '', tone: 'neutral' });
     runtimeChip.classList.add('atria-toolbar__status');
     runtimeChip.hidden = true;
+    // Two glass capsules: domain tools for the current page, then global tools
+    // (search, utilities, account) that never move into the navigation Dock.
     const commandUtility = ATRIA_GLOBAL_UTILITIES.find(item => item.id === 'command');
     const searchButton = buttonElement(documentRef, 'atria-toolbar-search', tl('Search'));
     searchButton.dataset.atriaUtility = commandUtility.id;
@@ -216,17 +222,24 @@ export function createAtriaAppShell({
         element(documentRef, 'span', 'atria-toolbar-search__label', tl('Search')),
         searchKey,
     );
-    const menuButton = buttonElement(documentRef, 'atria-icon-button atria-toolbar__menu', tl('Account'));
+    const menuButton = buttonElement(documentRef, 'atria-icon-button atria-toolbar__menu', tl('More'));
     menuButton.setAttribute('aria-haspopup', 'menu');
     menuButton.setAttribute('aria-expanded', 'false');
-    menuButton.append(createAtriaIcon(documentRef, 'account', { size: 20 }));
+    menuButton.append(createAtriaIcon(documentRef, 'more', { size: 18 }));
+    const accountButton = buttonElement(documentRef, 'atria-icon-button atria-toolbar__account', tl('Account'));
+    accountButton.dataset.atriaUtility = 'account';
+    accountButton.append(element(documentRef, 'span', 'atria-toolbar__avatar'));
+    accountButton.firstChild.append(createAtriaIcon(documentRef, 'account', { size: 16 }));
     const inspectorToggle = buttonElement(documentRef, 'atria-icon-button atria-toolbar__inspector', tl('Show inspector'));
     inspectorToggle.setAttribute('aria-pressed', 'false');
     inspectorToggle.setAttribute('aria-controls', 'atria-context-dock');
     inspectorToggle.hidden = true;
-    inspectorToggle.append(createAtriaIcon(documentRef, 'inspector', { size: 20 }));
-    contextBar.append(contextActions, runtimeChip, inspectorToggle);
-    contextBar.append(searchButton, menuButton);
+    inspectorToggle.append(createAtriaIcon(documentRef, 'inspector', { size: 18 }));
+    const toolsGroup = element(documentRef, 'div', 'atria-toolbar__tools');
+    toolsGroup.append(contextActions, runtimeChip, inspectorToggle);
+    const globalGroup = element(documentRef, 'div', 'atria-toolbar__global');
+    globalGroup.append(searchButton, menuButton, accountButton);
+    contextBar.append(toolsGroup, globalGroup);
     globalBar.append(toolbarLeading, contextBar);
 
     // Focus area: Stage (Play) and Workspace (every other surface).
@@ -479,6 +492,8 @@ export function createAtriaAppShell({
             back = { label: domainLabel, compactOnly: false };
         }
         title.textContent = titleText;
+        const englishDomain = domain?.label || '';
+        titleEyebrow.textContent = !utility && !route.child && englishDomain && titleText !== englishDomain ? englishDomain : '';
         backLabel.textContent = back?.label || '';
         backButton.dataset.atriaBackScope = back?.compactOnly ? 'compact' : 'all';
         backButton.hidden = !back || (back.compactOnly && !isCompact());
@@ -491,10 +506,8 @@ export function createAtriaAppShell({
         root.dataset.atriaDomain = route.domain;
         root.dataset.atriaRouteKind = utility ? 'utility' : route.child?.kind || 'root';
         for (const item of menuItems) {
-            const selected = item.dataset.atriaUtilityShortcut
-                ? item.dataset.atriaUtilityShortcut === utilityId
-                : item.dataset.atriaPrimaryShortcut === route.domain && !utilityId;
-            item.setAttribute('aria-current', selected ? 'page' : 'false');
+            if (!item.dataset.atriaUtilityShortcut) continue;
+            item.setAttribute('aria-current', item.dataset.atriaUtilityShortcut === utilityId ? 'page' : 'false');
         }
 
         const playActive = route.domain === 'play' && !utilityId;
@@ -546,7 +559,6 @@ export function createAtriaAppShell({
         viewport = environment.get(),
     ) {
         const compact = isCompact(viewport);
-        contextBar.append(searchButton, menuButton);
         const contextTitle = tl(contextState.title);
         dock.dataset.atriaOpen = String(contextState.open);
         dockTitle.textContent = contextTitle;
@@ -599,6 +611,13 @@ export function createAtriaAppShell({
 
     dockClose.addEventListener('click', () => setDockOpen(false));
     inspectorToggle.addEventListener('click', () => setDockOpen(!navigationAuthority.getContext().open));
+
+    // Publish the trailing tool width so Shell-owned floats (host door) align beside it.
+    const resizeObserverType = windowRef.ResizeObserver || globalThis.ResizeObserver;
+    const trailingObserver = typeof resizeObserverType === 'function'
+        ? new resizeObserverType(() => root.style.setProperty('--atri-toolbar-trailing-width', `${Math.ceil(contextBar.getBoundingClientRect().width)}px`))
+        : null;
+    trailingObserver?.observe(contextBar);
 
     const dockObserverType = windowRef.MutationObserver || globalThis.MutationObserver;
     const dockObserver = typeof dockObserverType === 'function'
@@ -665,8 +684,10 @@ export function createAtriaAppShell({
         const route = navigationAuthority.getRoute();
         const reading = route.domain === 'play' && !activeUtilityId(route)
             && Boolean(stage.dataset.atriaStageOwner || stage.querySelector('[data-atria-product-play="true"]:not([hidden])'));
+        const changed = root.dataset.atriaReading !== String(reading);
         root.dataset.atriaReading = String(reading);
         bottomNavigation.hidden = !isCompact();
+        if (changed) navigationDock?.navigated();
     }
     const readingObserver = typeof dockObserverType === 'function'
         ? new dockObserverType(updateReadingPresentation) : null;
@@ -885,24 +906,39 @@ export function createAtriaAppShell({
     commandScrim.addEventListener('click', () => closeCommand());
     commandCancel.addEventListener('click', () => closeCommand());
     searchButton.addEventListener('click', () => openCommand());
+    accountButton.hidden = typeof utilities.account !== 'function';
+    accountButton.addEventListener('click', () => {
+        closeMenu();
+        const utility = ATRIA_GLOBAL_UTILITIES.find(item => item.id === 'account');
+        if (utility) runUtility(utility);
+    });
 
-    // Compact account & settings menu.
+    // One menu layer, two scopes: global tools (More) and Dock options (grip).
     const menuItems = [];
-    function openMenu() {
+    let menuAnchor = menuButton;
+    const scopedMenuItems = () => menuItems.filter(item => !item.disabled && !item.hidden && item.dataset.atriaMenuSection === menu.dataset.atriaMenuScope);
+    function openMenu({ scope = 'global', anchor = menuButton, edge = 'top' } = {}) {
         if (menuOpen) return false;
         closeCommand({ restoreFocus: false });
         menuOpen = true;
+        menuAnchor = anchor;
+        menu.dataset.atriaMenuScope = scope;
         syncModalIsolation();
         menuMotion.present(true);
-        const anchor = menuButton.getBoundingClientRect();
+        const box = anchor.getBoundingClientRect();
         const bounds = menu.getBoundingClientRect();
-        const x = anchor.right - bounds.width;
-        const y = anchor.bottom + 8;
+        // Open toward the content: below the top bar, or beside the docked edge.
+        const [x, y, origin] = {
+            top: [box.right - bounds.width, box.bottom + 8, 'top right'],
+            left: [box.right + 12, box.top, 'top left'],
+            right: [box.left - bounds.width - 12, box.top, 'top right'],
+            bottom: [box.left + box.width / 2 - bounds.width / 2, box.top - bounds.height - 12, 'bottom center'],
+        }[scope === 'dock' ? edge : 'top'];
         menu.style.left = Math.max(12, Math.min(environment.get().width - bounds.width - 12, x)) + 'px';
         menu.style.top = Math.max(12, Math.min(environment.get().height - bounds.height - 12, y)) + 'px';
-        menu.style.transformOrigin = 'top right';
-        menuButton.setAttribute('aria-expanded', 'true');
-        queueMicrotask(() => { if (menuOpen && !disposed) menuItems.find(item => !item.disabled)?.focus(); });
+        menu.style.transformOrigin = origin;
+        anchor.setAttribute('aria-expanded', 'true');
+        queueMicrotask(() => { if (menuOpen && !disposed) scopedMenuItems()[0]?.focus(); });
         return true;
     }
 
@@ -910,9 +946,9 @@ export function createAtriaAppShell({
         if (!menuOpen) return false;
         menuOpen = false;
         menuMotion.present(false);
-        menuButton.setAttribute('aria-expanded', 'false');
+        menuAnchor.setAttribute('aria-expanded', 'false');
         syncModalIsolation();
-        if (restoreFocus) menuButton.focus?.();
+        if (restoreFocus) menuAnchor.focus?.();
         return true;
     }
 
@@ -927,7 +963,7 @@ export function createAtriaAppShell({
     menuLayer.addEventListener('click', event => event.stopPropagation());
     menu.addEventListener('keydown', event => {
         if (event.isComposing || event.keyCode === 229) return;
-        const available = menuItems.filter(item => !item.disabled);
+        const available = scopedMenuItems();
         const index = available.indexOf(documentRef.activeElement);
         if (event.key === 'Home' || event.key === 'End') {
             event.preventDefault();
@@ -1160,37 +1196,39 @@ export function createAtriaAppShell({
     }
 
 
-    const domainHeading = element(documentRef, 'div', 'atria-shell-menu__heading', tl('Workspaces'));
-    menu.append(domainHeading);
-    for (const domain of ATRIA_PRIMARY_DOMAINS) {
-        const item = buttonElement(documentRef, 'atria-shell-menu__item', tl(domain.label));
-        item.setAttribute('role', 'menuitem');
-        item.dataset.atriaPrimaryShortcut = domain.id;
-        item.append(createAtriaIcon(documentRef, domain.glyph, { size: 20 }), element(documentRef, 'span', '', tl(domain.label)));
-        item.addEventListener('click', () => navigate(domain.id, { reason: 'global-navigation' }));
-        menu.append(item); menuItems.push(item);
-    }
-    menu.append(element(documentRef, 'div', 'atria-shell-menu__heading', tl('Utilities')));
-
-    for (const utilityId of MENU_UTILITIES) {
-        const utility = ATRIA_GLOBAL_UTILITIES.find(item => item.id === utilityId);
-        if (!utility) continue;
-        const item = element(documentRef, 'button', 'atria-shell-menu__item');
-        item.type = 'button';
-        item.setAttribute('role', 'menuitem');
-        item.dataset.atriaUtilityShortcut = utility.id;
-        const icon = element(documentRef, 'span', 'atria-shell-menu__icon');
-        icon.append(createAtriaIcon(documentRef, utility.glyph || utility.id, { size: 20 }));
-        item.append(icon, element(documentRef, 'span', 'atria-shell-menu__label', tl(utility.label)));
-        const available = typeof utilities[utility.id] === 'function';
-        item.disabled = !available;
-        item.addEventListener('click', () => {
-            closeMenu();
-            runUtility(utility);
-        });
-        menu.append(item);
-        menuItems.push(item);
-    }
+    MENU_UTILITIES.forEach((group, index) => {
+        if (index) {
+            const separator = element(documentRef, 'div', 'atria-shell-menu__separator');
+            separator.dataset.atriaMenuSection = 'global';
+            separator.setAttribute('role', 'separator');
+            menu.append(separator);
+        }
+        for (const utilityId of group) {
+            const utility = ATRIA_GLOBAL_UTILITIES.find(item => item.id === utilityId);
+            if (!utility) continue;
+            const item = element(documentRef, 'button', 'atria-shell-menu__item');
+            item.type = 'button';
+            item.setAttribute('role', 'menuitem');
+            item.dataset.atriaUtilityShortcut = utility.id;
+            item.dataset.atriaMenuSection = 'global';
+            const icon = element(documentRef, 'span', 'atria-shell-menu__icon');
+            icon.append(createAtriaIcon(documentRef, utility.id === 'command' ? 'command' : utility.glyph || utility.id, { size: 18 }));
+            item.append(icon, element(documentRef, 'span', 'atria-shell-menu__label', tl(utility.id === 'command' ? 'Search and commands' : utility.label)));
+            if (utility.id === 'command') {
+                const key = element(documentRef, 'kbd', 'atria-shell-menu__hint', shortcutLabel);
+                key.setAttribute('aria-hidden', 'true');
+                item.append(key);
+            }
+            item.disabled = utility.id !== 'command' && typeof utilities[utility.id] !== 'function';
+            item.addEventListener('click', () => {
+                closeMenu();
+                if (utility.id === 'command') openCommand();
+                else runUtility(utility);
+            });
+            menu.append(item);
+            menuItems.push(item);
+        }
+    });
 
     for (const domain of ATRIA_PRIMARY_DOMAINS) {
         commandDisposers.push(registry.register({
@@ -1231,9 +1269,10 @@ export function createAtriaAppShell({
         document: documentRef, window: windowRef, root, rail, bottomNavigation, environment, menu,
         tl, getInputMode: () => keyboardInteraction ? 'keyboard' : 'pointer',
         isBlocked: () => commandOpen || menuOpen || (isCompact() && navigationAuthority.getContext().open) || Boolean(documentRef.querySelector('dialog[open]')),
+        openMenu: options => openMenu({ ...options, scope: 'dock' }),
         closeMenu: () => closeMenu(),
     });
-    menuItems.push(...navigationDock.positionButtons);
+    menuItems.push(...navigationDock.menuItems);
     commandDisposers.push(registry.register({ id: 'navigation.reveal', title: tl('Show navigation'), group: 'Navigation', keywords: ['dock', 'navigation'], run: () => navigationDock.reveal() }));
 
     const contextResizer = mountPaneResizer({ document: documentRef, root, pane: dock, property: '--atri-inspector-width', label: 'Inspector width', side: 'start', min: 260,
@@ -1248,6 +1287,7 @@ export function createAtriaAppShell({
             workspace,
             dock: dockBody,
             contextBar: contextActions,
+            toolbarLeading,
             transient: transientLayer,
             recovery,
         }),
@@ -1319,6 +1359,7 @@ export function createAtriaAppShell({
             closeSheet();
             contextResizer.dispose();
             dockObserver?.disconnect();
+            trailingObserver?.disconnect();
             readingObserver?.disconnect();
             focusObserver?.disconnect();
             largeTitleObserver?.disconnect();

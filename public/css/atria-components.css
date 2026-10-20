@@ -174,479 +174,444 @@
     font-weight: 500;
 }
 
-/* ── Buttons ───────────────────────────────────────────────────────────── */
+/* ── Controls (Atrium base layer) ────────────────────────────────────────
+ * One control language for every product surface. The base also covers the
+ * bare and helper-built controls that native pages emit (plain <button>,
+ * .atri-library-button, .menu_button, …) inside the Workspace, Inspector
+ * and Sheet. It never reaches the Play stage: Work UI renders there and
+ * keeps its own presentation. Page stylesheets add layout, not appearance.
+ * Intent: data-variant="primary" (one per screen), "destructive" (first
+ * step outline; solid only in the final confirmation), "plain" (link-like).
+ */
 
-.atria-button {
+/* Buttons */
+.atria-button,
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(button:not([class]), .atri-library-button, .menu_button, .atria-studio-action, .atria-native-play-actions__button, .review-button) {
+    --btn-h: 32px;
     appearance: none;
     position: relative;
     min-width: 0;
-    height: var(--atri-control-md);
+    height: auto;
+    min-height: var(--btn-h);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: var(--atri-space-1-5);
+    gap: 7px;
     margin: 0;
-    padding: 0 var(--atri-space-3-5, 14px);
-    border: 0;
-    border: 1px solid var(--atri-separator);
-    border-radius: var(--atri-radius-pill);
-    background: transparent;
-    color: var(--atri-text-primary);
-    font-family: var(--atri-font-sans);
-    font-size: var(--atri-text-callout);
-    font-weight: 550;
-    line-height: 1;
-    white-space: nowrap;
+    padding: 0 13px;
+    border: 1px solid var(--line-2);
+    border-radius: var(--r-md);
+    background: var(--surface-raised);
+    box-shadow: var(--shadow-1);
+    color: var(--text-1);
+    font: 500 var(--fs-md)/1.2 var(--font-ui);
+    letter-spacing: .005em;
+    text-align: center;
     text-decoration: none;
     text-shadow: none;
+    white-space: normal;
     cursor: pointer;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
-    transition:
-        background-color var(--atri-duration-fast) var(--atri-ease-out),
-        color var(--atri-duration-fast) var(--atri-ease-out),
-        opacity var(--atri-duration-fast) var(--atri-ease-out),
-        transform var(--atri-duration-fast) var(--atri-ease-out);
+    justify-self: start;
+    transition: background-color var(--dur-1) var(--ease-settle), border-color var(--dur-1), color var(--dur-1), transform var(--dur-1), box-shadow var(--dur-2), filter var(--dur-1);
 }
-
-.atria-button:hover:not(:disabled) {
-    background: var(--atri-fill-pressed);
+.atria-button:hover:not(:disabled),
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(button:not([class]), .atri-library-button, .menu_button, .atria-studio-action, .atria-native-play-actions__button, .review-button):hover:not(:disabled) {
+    background: var(--surface-hover);
+    border-color: var(--line-3);
 }
-
-.atria-button:active:not(:disabled):not(:focus-visible) {
-    transform: scale(.97);
-    background: var(--atri-fill-strong);
+.atria-button:active:not(:disabled),
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(button:not([class]), .atri-library-button, .menu_button, .atria-studio-action, .atria-native-play-actions__button, .review-button):active:not(:disabled) {
+    transform: translateY(.5px);
+    background: var(--surface-press);
 }
-
-.atria-button:focus-visible {
-    outline: 2px solid var(--atri-accent-text);
-    outline-offset: 2px;
-}
-
 .atria-button:disabled,
-.atria-button[aria-disabled="true"] {
-    cursor: default;
-    opacity: 0.4;
+.atria-button[aria-disabled="true"],
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(button:not([class]), .atri-library-button, .menu_button, .atria-studio-action, .atria-native-play-actions__button, .review-button):disabled {
+    cursor: not-allowed;
+    opacity: .45;
 }
-
-.atria-button__label {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.atria-button:focus-visible,
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(button, summary, a, [tabindex]):focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
 }
+/* Busy: spinner in place, label hidden, width kept. */
+.atria-button[aria-busy="true"],
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(button:not([class]), .atri-library-button, .menu_button, .atria-studio-action, .review-button)[aria-busy="true"] {
+    color: transparent !important;
+    cursor: progress;
+    opacity: 1;
+}
+.atria-button[aria-busy="true"]::after,
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(button:not([class]), .atri-library-button, .menu_button, .atria-studio-action, .review-button)[aria-busy="true"]::after {
+    content: "";
+    position: absolute;
+    left: calc(50% - 7px);
+    top: calc(50% - 7px);
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1.6px solid var(--text-2);
+    border-right-color: transparent;
+    animation: atria-spin .7s linear infinite;
+}
+@keyframes atria-spin { to { transform: rotate(360deg); } }
 
-.atria-button[data-variant="primary"] {
-    background: var(--atri-ink);
-    color: var(--atri-text-on-ink);
+/* Primary: lumen in story domains, neutral ink in technical domains (tokens). */
+.atria-button[data-variant="primary"],
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(button[data-variant="primary"], .atri-library-button--primary) {
+    border-color: transparent;
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
     font-weight: 600;
+    box-shadow: 0 1px 0 rgb(255 255 255 / .25) inset, 0 0 0 1px var(--btn-primary-ring), 0 6px 18px -8px color-mix(in srgb, var(--tone-lumen) 60%, transparent);
+}
+.atria-button[data-variant="primary"]:hover:not(:disabled),
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(button[data-variant="primary"], .atri-library-button--primary):hover:not(:disabled) {
+    background: var(--btn-primary-bg);
+    border-color: transparent;
+    filter: brightness(1.06);
+}
+.atria-button[data-variant="primary"][aria-busy="true"]::after,
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(button[data-variant="primary"], .atri-library-button--primary)[aria-busy="true"]::after {
+    border-color: var(--btn-primary-text);
+    border-right-color: transparent;
 }
 
-.atria-button[data-variant="primary"]:hover:not(:disabled) {
-    background: var(--atri-ink-hover);
-}
-
-.atria-button[data-variant="primary"]:active:not(:disabled) {
-    background: var(--atri-ink-pressed);
-}
-
-.atria-button[data-variant="tinted"] {
-    background: var(--atri-accent-soft);
-    color: var(--atri-accent-text);
-    font-weight: 600;
-}
-
-.atria-button[data-variant="tinted"]:hover:not(:disabled) {
-    background: var(--atri-accent-soft-strong);
-}
-
-.atria-button[data-variant="plain"] {
-    padding-inline: var(--atri-space-2);
+/* Destructive first step: outline only. */
+.atria-button[data-variant="destructive"],
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(button[data-variant="destructive"], button[data-tone="danger"], .atri-library-button--danger, .atri-runtime-danger) {
+    border-color: color-mix(in srgb, var(--tone-vermilion) 40%, transparent);
     background: transparent;
-    color: var(--atri-accent-text);
+    box-shadow: none;
+    color: var(--tone-vermilion);
+}
+.atria-button[data-variant="destructive"]:hover:not(:disabled),
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(button[data-variant="destructive"], button[data-tone="danger"], .atri-library-button--danger, .atri-runtime-danger):hover:not(:disabled) {
+    border-color: var(--tone-vermilion);
+    background: var(--soft-vermilion);
+}
+.atria-button[data-variant="destructive-solid"] { border-color: transparent; background: var(--tone-vermilion); color: #fff; box-shadow: none; }
+
+/* Plain: link-like, for going to another page ("Configure", "Open"). */
+.atria-button[data-variant="plain"],
+.atria-button[data-variant="tinted"] {
+    padding-inline: 6px;
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+    color: var(--tone-lapis);
+}
+.atria-button:is([data-variant="plain"], [data-variant="tinted"]):hover:not(:disabled) { background: var(--soft-lapis); border-color: transparent; }
+.atria-button[data-variant="ghost"] { border-color: transparent; background: transparent; box-shadow: none; color: var(--text-2); }
+.atria-button[data-variant="ghost"]:hover:not(:disabled) { background: var(--surface-hover); color: var(--text-1); }
+
+.atria-button__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.atria-button[data-size="sm"] { --btn-h: 27px; gap: 5px; padding-inline: 10px; border-radius: var(--r-sm); font-size: var(--fs-sm); }
+.atria-button[data-size="lg"] { --btn-h: 40px; gap: 8px; padding-inline: 18px; border-radius: var(--r-lg); font-size: var(--fs-lg); }
+.atria-button[data-icon-only="true"] { width: var(--btn-h); padding: 0; }
+.atria-button[data-block="true"] { width: 100%; }
+.atria-button-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+@media (pointer: coarse) {
+    .atria-button,
+    .atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(button:not([class]), .atri-library-button, .menu_button, .atria-studio-action, .atria-native-play-actions__button, .review-button) { min-height: 44px; }
 }
 
-.atria-button[data-variant="plain"]:hover:not(:disabled) {
-    background: var(--atri-fill);
-}
-
-.atria-button[data-variant="destructive"] {
-    background: var(--atri-danger-soft);
-    color: var(--atri-danger);
-    font-weight: 600;
-}
-
-.atria-button[data-variant="destructive"]:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--atri-danger) 22%, transparent);
-}
-
-.atria-button[data-size="sm"] {
-    height: var(--atri-control-sm);
-    gap: var(--atri-space-1);
-    padding-inline: var(--atri-space-2-5);
-    border-radius: 6px;
-    font-size: var(--atri-text-footnote);
-}
-
-.atria-button[data-size="lg"] {
-    height: var(--atri-control-lg);
-    gap: var(--atri-space-2);
-    padding-inline: var(--atri-space-5);
-    border-radius: var(--atri-radius-md);
-    font-size: var(--atri-text-body);
-}
-
-.atria-button[data-icon-only="true"] {
-    width: var(--atri-control-md);
-    padding: 0;
-}
-
-.atria-button[data-icon-only="true"][data-size="sm"] {
-    width: var(--atri-control-sm);
-}
-
-.atria-button[data-icon-only="true"][data-size="lg"] {
-    width: var(--atri-control-lg);
-}
-
-.atria-button[data-block="true"] {
-    width: 100%;
-}
-
-.atria-button-row {
+/* Fields */
+.atria-field { position: relative; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.atria-field__label,
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :where(.atri-library-field, .atria-studio-field) > span:first-child {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: var(--atri-space-2);
+    gap: 6px;
+    color: var(--text-2);
+    font: 550 var(--fs-sm)/1.4 var(--font-ui);
 }
-
-/* ── Fields ────────────────────────────────────────────────────────────── */
-
-.atria-field {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--atri-space-1-5);
-}
-
-.atria-field__label {
-    color: var(--atri-text-secondary);
-    font-size: var(--atri-text-footnote);
-    font-weight: 500;
-}
-
-.atria-field__hint {
-    color: var(--atri-text-tertiary);
-    font-size: var(--atri-text-caption);
-    line-height: var(--atri-leading-normal);
-}
+.atria-field__hint { color: var(--text-3); font-size: var(--fs-xs); line-height: 1.5; }
+/* Draft marker: a short lapis bar beside the field. */
+.atria-field[data-dirty]::before { content: ""; position: absolute; left: -12px; top: 26px; width: 2px; height: 18px; border-radius: 2px; background: var(--tone-lapis); }
 
 .atria-input,
 .atria-select,
-.atria-textarea {
+.atria-textarea,
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="hidden"], [type="submit"], [type="button"], [type="image"]), select, textarea) {
     width: 100%;
+    max-width: 100%;
     min-width: 0;
-    min-height: var(--atri-control-md);
+    min-height: 34px;
     margin: 0;
-    padding: 0 var(--atri-space-3);
-    border: 0;
-    border-radius: var(--atri-radius-sm);
+    padding: 7px 11px;
+    border: 1px solid var(--line-2);
+    border-radius: var(--r-md);
     outline: 0;
-    background: var(--atri-fill);
-    box-shadow: inset 0 0 0 1px var(--atri-separator);
-    color: var(--atri-text-primary);
-    font-family: var(--atri-font-sans);
-    font-size: var(--atri-text-callout);
-    line-height: var(--atri-leading-snug);
-    transition: box-shadow var(--atri-duration-fast) var(--atri-ease-out);
+    background: color-mix(in srgb, var(--text-1) 3.5%, transparent);
+    box-shadow: none;
+    color: var(--text-1);
+    font: 400 var(--fs-md)/1.4 var(--font-ui);
+    text-shadow: none;
+    transition: border-color var(--dur-1), box-shadow var(--dur-2), background-color var(--dur-1);
 }
-
-.atria-textarea {
-    min-height: 96px;
-    padding: var(--atri-space-2-5) var(--atri-space-3);
+.atria-textarea,
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) textarea {
+    min-height: 88px;
     resize: vertical;
-    line-height: var(--atri-leading-normal);
+    line-height: 1.65;
 }
-
 .atria-input::placeholder,
-.atria-textarea::placeholder {
-    color: var(--atri-text-tertiary);
+.atria-textarea::placeholder,
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(input, textarea)::placeholder { color: var(--text-4); opacity: 1; }
+.atria-input:hover, .atria-select:hover, .atria-textarea:hover,
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(input, select, textarea):hover:not(:disabled) { border-color: var(--line-3); }
+.atria-input:focus, .atria-select:focus, .atria-textarea:focus,
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]), select, textarea):focus {
+    border-color: color-mix(in srgb, var(--tone-lapis) 70%, transparent);
+    box-shadow: 0 0 0 3px var(--soft-lapis);
+    outline: none;
 }
-
-.atria-input:focus,
-.atria-select:focus,
-.atria-textarea:focus {
-    box-shadow: inset 0 0 0 1px var(--atri-accent), 0 0 0 3px var(--atri-focus-ring);
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(input, select, textarea)[aria-invalid="true"] {
+    border-color: var(--tone-vermilion);
+    box-shadow: 0 0 0 3px var(--soft-vermilion);
 }
-
-.atria-search-field {
-    position: relative;
-    min-width: 0;
-    display: flex;
-    align-items: center;
+/* Read-only: dashed outline, never a grey disabled fill. */
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(input, textarea)[readonly] {
+    border-style: dashed;
+    background: transparent;
+    color: var(--text-2);
 }
-
-.atria-search-field > .atria-icon {
-    position: absolute;
-    left: 10px;
-    color: var(--atri-text-tertiary);
-    pointer-events: none;
-}
-
-.atria-search-field > .atria-input {
-    height: 34px;
-    padding-left: 34px;
-}
-
-/* Switch: <label class="atria-switch"><input type="checkbox"><span class="atria-switch__track"></span>…</label> */
-.atria-switch {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    gap: var(--atri-space-3);
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(input, select, textarea):disabled { opacity: .6; cursor: not-allowed; }
+.atria-select,
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) select:not([multiple]) {
+    appearance: none;
+    padding-right: 30px;
     cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23888' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
 }
-
-.atria-switch > input {
-    position: absolute;
-    opacity: 0;
-    width: 1px;
-    height: 1px;
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) select option { background: var(--surface-raised); color: var(--text-1); }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(input[type="file"]) { max-width: 100%; color: var(--text-2); font: 400 var(--fs-sm)/1.4 var(--font-ui); }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) input[type="file"]::file-selector-button {
+    margin-right: 10px; padding: 6px 12px; border: 1px solid var(--line-2); border-radius: var(--r-md);
+    background: var(--surface-raised); color: var(--text-1); font: 500 var(--fs-sm)/1 var(--font-ui); cursor: pointer;
 }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(.atri-mono, textarea.atria-code, [data-atria-source-editor] textarea) { font: 400 12.5px/1.7 var(--font-mono); }
 
-.atria-switch__track {
-    position: relative;
+/* Checks: consent is never pre-checked; checked = lumen fill + tick. */
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(input[type="checkbox"]:not([role="switch"]), input[type="radio"]) {
+    appearance: none;
     flex: none;
-    width: 42px;
-    height: 26px;
-    border-radius: var(--atri-radius-pill);
-    background: var(--atri-fill-strong);
-    transition: background-color var(--atri-duration-base) var(--atri-ease-out);
+    display: inline-grid;
+    place-items: center;
+    width: 17px;
+    height: 17px;
+    min-height: 17px;
+    margin: 1px 0 0;
+    padding: 0;
+    border: 1.5px solid var(--line-strong);
+    border-radius: 5px;
+    background: var(--surface-input);
+    box-shadow: none;
+    cursor: pointer;
+    transition: background-color var(--dur-1), border-color var(--dur-1);
 }
-
-.atria-switch__track::after {
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) input[type="radio"] { border-radius: 50%; }
+/* Legacy themes draw the tick with a clipped inset shadow; reset it here. */
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(input[type="checkbox"], input[type="radio"]) { filter: none; transform: none; }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(input[type="checkbox"], input[type="radio"])::before { box-shadow: none; clip-path: none; transform-origin: center; }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) input[type="checkbox"]:not([role="switch"])::before {
     content: "";
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: #fff;
-    box-shadow: 0 2px 4px rgb(0 0 0 / 0.24);
-    transition: transform var(--atri-duration-base) var(--atri-ease-out);
+    width: 9px;
+    height: 5px;
+    border: 1.8px solid var(--text-inverse);
+    border-top: 0;
+    border-right: 0;
+    transform: rotate(-45deg) translate(1px, -1px) scale(0);
+    transition: transform var(--dur-2) var(--ease-spring);
 }
-
-.atria-switch > input:checked + .atria-switch__track {
-    background: var(--atri-success);
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) input[type="radio"]::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--tone-lumen); transform: scale(0); transition: transform var(--dur-2) var(--ease-spring); }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) input[type="checkbox"]:not([role="switch"]):checked { background: var(--tone-lumen); border-color: var(--tone-lumen); }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) input[type="checkbox"]:not([role="switch"]):checked::before { transform: rotate(-45deg) translate(1px, -1px) scale(1); }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) input[type="radio"]:checked { border-color: var(--tone-lumen); }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) input[type="radio"]:checked::before { transform: scale(1); }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :is(input[type="checkbox"], input[type="radio"]):focus-visible { box-shadow: var(--focus-ring); outline: none; }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) input[type="range"] { accent-color: var(--tone-lumen); }
+/* Switches (role="switch"): immediate preferences only; consent uses checks. */
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) input[type="checkbox"][role="switch"] {
+    appearance: none; position: relative; flex: none; width: 32px; height: 19px; min-height: 19px; margin: 0; padding: 0;
+    border: 1px solid var(--line-3); border-radius: 99px; background: var(--surface-press); box-shadow: none; cursor: pointer;
+    transition: background-color var(--dur-2), border-color var(--dur-2);
 }
-
-.atria-switch > input:checked + .atria-switch__track::after {
-    transform: translateX(16px);
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) input[type="checkbox"][role="switch"]::before {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border: 0; border-radius: 50%; background: var(--text-2);
+    transform: none; transition: transform var(--dur-2) var(--ease-spring), background-color var(--dur-2);
 }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) input[type="checkbox"][role="switch"]:checked { background: color-mix(in srgb, var(--tone-jade) 30%, var(--surface-press)); border-color: color-mix(in srgb, var(--tone-jade) 60%, transparent); }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) input[type="checkbox"][role="switch"]:checked::before { transform: translateX(13px); background: var(--tone-jade); }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) input[type="checkbox"][role="switch"]:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) input[type="checkbox"][role="switch"]:disabled { opacity: .5; cursor: not-allowed; }
 
-.atria-switch > input:focus-visible + .atria-switch__track {
-    outline: 2px solid var(--atri-accent-text);
-    outline-offset: 2px;
+/* The Play stage hosts Work UI: native checks, only tinted. */
+.atria-stage input[type="checkbox"]:not([role="switch"]) { accent-color: var(--tone-lumen); }
+
+/* Headings: UI type, one scale. Page classes may refine, never re-theme. */
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :where(h1, h2, h3, h4) { margin-top: 0; color: var(--text-1); font-family: var(--font-ui); font-weight: 600; letter-spacing: -.005em; text-align: start; }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :where(h1) { font-size: var(--fs-2xl); line-height: 1.25; }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :where(h2) { font-size: var(--fs-xl); line-height: 1.3; }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :where(h3) { font-size: var(--fs-lg); line-height: 1.3; }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) :where(h4, h5) { font-size: var(--fs-md); line-height: 1.35; }
+
+/* Disclosure */
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) details > summary { cursor: pointer; color: var(--text-2); font: 550 var(--fs-sm)/1.4 var(--font-ui); }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) details > summary:hover { color: var(--text-1); }
+.atria-app-shell :where(.atria-workspace, .atria-dock__body, .atria-sheet-body) pre { font: 400 12px/1.7 var(--font-mono); color: var(--text-2); }
+
+/* Search field with a leading glyph */
+.atria-search-field { position: relative; min-width: 0; display: flex; align-items: center; }
+.atria-search-field > .atria-icon { position: absolute; left: 10px; color: var(--text-3); pointer-events: none; }
+.atria-search-field > .atria-input { height: 34px; padding-left: 34px; }
+
+/* Switch: only for preferences that apply immediately. */
+.atria-switch { position: relative; display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: var(--fs-md); }
+.atria-switch > input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.atria-switch__track { position: relative; flex: none; width: 32px; height: 19px; border-radius: 99px; background: var(--surface-press); border: 1px solid var(--line-3); transition: background-color var(--dur-2), border-color var(--dur-2); }
+.atria-switch__track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%; background: var(--text-2); transition: transform var(--dur-2) var(--ease-spring), background-color var(--dur-2); }
+.atria-switch > input:checked + .atria-switch__track { background: color-mix(in srgb, var(--tone-jade) 30%, var(--surface-press)); border-color: color-mix(in srgb, var(--tone-jade) 60%, transparent); }
+.atria-switch > input:checked + .atria-switch__track::after { transform: translateX(13px); background: var(--tone-jade); }
+.atria-switch > input:focus-visible + .atria-switch__track { box-shadow: var(--focus-ring); }
+
+/* ── Ledger grammar (guidelines §4.2): truth has a shape ─────────────────
+ * Seal = what is this; chip = what is happening; banner = why and what you
+ * can do; receipt = what already happened. Never color alone. */
+.atria-seal {
+    --c: var(--text-2); --b: var(--line-3); --bg: transparent;
+    display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 7px 0 6px;
+    font: 500 10.5px/1 var(--font-mono); letter-spacing: -.01em; white-space: nowrap; vertical-align: middle;
+    color: var(--c); background: var(--bg); border: 1px solid var(--b); border-radius: 5px;
+}
+.atria-seal::before { content: ""; width: 6px; height: 6px; flex: none; border-radius: 1.5px; background: currentColor; }
+.atria-seal[data-seal="current"] { --c: var(--tone-jade); --b: color-mix(in srgb, var(--tone-jade) 42%, transparent); --bg: var(--soft-jade); }
+.atria-seal[data-seal="draft"] { --c: var(--tone-lapis); --b: color-mix(in srgb, var(--tone-lapis) 55%, transparent); border-style: dashed; }
+.atria-seal[data-seal="draft"]::before { background: transparent; border: 1.4px solid currentColor; border-radius: 50%; }
+.atria-seal[data-seal="history"] { --c: var(--tone-umber); --b: color-mix(in srgb, var(--tone-umber) 45%, transparent); background: var(--hatch), var(--soft-umber); }
+.atria-seal[data-seal="origin"] { --c: var(--text-2); --b: var(--line-strong); --bg: var(--surface-raised); }
+.atria-seal[data-seal="pinned"] { --c: var(--tone-lumen); --b: color-mix(in srgb, var(--tone-lumen) 45%, transparent); --bg: var(--soft-lumen); }
+.atria-seal[data-seal="stale"] { --c: var(--tone-amber); --b: color-mix(in srgb, var(--tone-amber) 50%, transparent); --bg: var(--soft-amber); }
+.atria-seal[data-seal="missing"] { --c: var(--tone-vermilion); --b: color-mix(in srgb, var(--tone-vermilion) 55%, transparent); border-style: dashed; }
+.atria-seal[data-seal="unknown"] { --c: var(--tone-dai); --b: color-mix(in srgb, var(--tone-dai) 55%, transparent); border-style: dotted; border-width: 1.5px; --bg: var(--soft-dai); }
+.atria-seal[data-seal="blocked"] { --c: var(--tone-dai); --b: color-mix(in srgb, var(--tone-dai) 55%, transparent); background: repeating-linear-gradient(45deg, transparent 0 4px, var(--soft-dai) 4px 8px); }
+
+.atria-banner {
+    --c: var(--tone-lapis);
+    display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: start;
+    padding: 12px 14px; border-radius: var(--r-lg);
+    background: color-mix(in srgb, var(--c) 7%, var(--surface-panel));
+    border: 1px solid color-mix(in srgb, var(--c) 24%, transparent);
+}
+.atria-banner[data-tone="warning"] { --c: var(--tone-amber); }
+.atria-banner[data-tone="danger"] { --c: var(--tone-vermilion); }
+.atria-banner[data-tone="success"] { --c: var(--tone-jade); }
+.atria-banner[data-tone="unknown"] { --c: var(--tone-dai); }
+.atria-banner[data-tone="history"] { --c: var(--tone-umber); background: var(--hatch), color-mix(in srgb, var(--tone-umber) 7%, var(--surface-panel)); }
+
+.atria-receipt {
+    display: grid; grid-template-columns: 34px 1fr auto; gap: 2px 12px; align-items: center;
+    padding: 11px 14px 11px 11px; border-radius: var(--r-lg);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--tone-jade) 7%, var(--surface-raised)), var(--surface-raised));
+    border: 1px solid color-mix(in srgb, var(--tone-jade) 28%, transparent);
+}
+.atria-receipt::before {
+    content: "印"; grid-row: 1 / span 2; width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center;
+    color: var(--tone-jade); border: 1.5px solid currentColor; font: 700 14px/1 var(--font-display); transform: rotate(-4deg); background: var(--soft-jade);
 }
 
 /* ── Scope bar / segmented control ─────────────────────────────────────── */
 
-.atria-scope-bar {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: var(--atri-space-1-5);
-    overflow-x: auto;
-    scrollbar-width: none;
-}
-
-.atria-scope-bar::-webkit-scrollbar {
-    display: none;
-}
-
+/* Scope bar: filter pills (scope, type). */
+.atria-scope-bar { min-width: 0; display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.atria-scope-bar::-webkit-scrollbar { display: none; }
 .atria-scope-bar__item {
-    appearance: none;
-    flex: none;
-    height: 30px;
-    display: inline-flex;
-    align-items: center;
-    gap: var(--atri-space-1-5);
-    margin: 0;
-    padding: 0 var(--atri-space-3-5, 14px);
-    border: 0;
-    border-radius: var(--atri-radius-pill);
-    background: transparent;
-    color: var(--atri-text-secondary);
-    font-size: var(--atri-text-callout);
-    font-weight: 550;
-    white-space: nowrap;
-    cursor: pointer;
-    transition:
-        background-color var(--atri-duration-fast) var(--atri-ease-out),
-        color var(--atri-duration-fast) var(--atri-ease-out);
+    appearance: none; flex: none; height: 28px; display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 0 12px;
+    border: 1px solid transparent; border-radius: var(--r-pill); background: transparent; color: var(--text-2);
+    font: 550 var(--fs-sm)/1 var(--font-ui); white-space: nowrap; cursor: pointer;
+    transition: background-color var(--dur-1), color var(--dur-1), border-color var(--dur-1);
 }
+.atria-scope-bar__item:hover { background: var(--surface-hover); color: var(--text-1); }
+.atria-scope-bar__item:is(.is-selected, [aria-selected="true"], [aria-current="page"]) { background: var(--surface-raised); border-color: var(--line-2); color: var(--text-1); box-shadow: var(--shadow-1); }
 
-.atria-scope-bar__item:hover {
-    background: var(--atri-fill);
-    color: var(--atri-text-primary);
-}
-
-.atria-scope-bar__item.is-selected,
-.atria-scope-bar__item[aria-selected="true"],
-.atria-scope-bar__item[aria-current="page"] {
-    background: var(--atri-fill-strong);
-    color: var(--atri-text-primary);
-}
-
+/* Segmented: mutually exclusive views of the same thing; switching never drops a draft. */
 .atria-segmented,
 .atria-segmented-control {
-    min-width: 0;
-    display: inline-flex;
-    gap: 2px;
-    padding: 2px;
-    border-radius: 9px;
-    background: var(--atri-fill);
+    min-width: 0; display: inline-flex; justify-self: start; align-self: start; width: max-content; max-width: 100%; gap: 2px; padding: 3px;
+    border-radius: var(--r-md); background: var(--surface-input); border: 1px solid var(--line-2);
 }
+.atria-segmented__item,
+.atria-app-shell .atria-segmented > button.atria-segmented__item {
+    appearance: none; flex: 1 1 0; min-width: 0; height: 26px; min-height: 26px; margin: 0; padding: 0 11px;
+    border: 0; border-radius: 6px; background: transparent; box-shadow: none; color: var(--text-2);
+    font: 500 var(--fs-sm)/1 var(--font-ui); white-space: nowrap; cursor: pointer;
+    transition: background-color var(--dur-1), color var(--dur-1);
+}
+.atria-segmented__item:hover { color: var(--text-1); }
+.atria-segmented__item:is(.is-selected, [aria-selected="true"], [aria-pressed="true"]),
+.atria-app-shell .atria-segmented > button.atria-segmented__item:is(.is-selected, [aria-selected="true"], [aria-pressed="true"]) {
+    background: var(--surface-raised); color: var(--text-1); box-shadow: var(--shadow-1), 0 0 0 1px var(--line-2);
+}
+.atria-segmented__item:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+@media (pointer: coarse) { .atria-segmented__item { height: 36px; } }
 
-.atria-segmented__item {
-    appearance: none;
-    flex: 1 1 0;
-    min-width: 0;
-    height: 28px;
-    margin: 0;
-    padding: 0 var(--atri-space-3);
-    border: 0;
-    border-radius: var(--atri-radius-sm);
-    background: transparent;
-    color: var(--atri-text-secondary);
-    font-size: var(--atri-text-footnote);
-    font-weight: 550;
-    white-space: nowrap;
-    cursor: pointer;
+/* View switch rows rendered by native pages (Editor / Library references,
+ * Extensions sections): the same segmented control. */
+.atria-domain-workspace__tabs { display: inline-flex; flex-wrap: wrap; gap: 2px; justify-self: start; align-self: start; width: max-content; max-width: 100%; padding: 3px; border-radius: var(--r-md); background: var(--surface-input); border: 1px solid var(--line-2); }
+.atria-app-shell .atria-domain-workspace__tabs > button {
+    min-height: 26px; height: auto; padding: 4px 11px; border: 0; border-radius: 6px; background: transparent; box-shadow: none;
+    color: var(--text-2); font: 500 var(--fs-sm)/1.2 var(--font-ui);
 }
-
-.atria-segmented__item.is-selected,
-.atria-segmented__item[aria-selected="true"],
-.atria-segmented__item[aria-pressed="true"] {
-    background: var(--atri-surface-3);
-    color: var(--atri-text-primary);
-    box-shadow: var(--atri-highlight), var(--atri-shadow-1);
-}
-
-:root[data-atria-appearance="light"] .atria-segmented__item.is-selected,
-:root[data-atria-appearance="light"] .atria-segmented__item[aria-selected="true"],
-:root[data-atria-appearance="light"] .atria-segmented__item[aria-pressed="true"] {
-    background: #fff;
-}
+.atria-app-shell .atria-domain-workspace__tabs > button:hover:not(:disabled) { background: transparent; color: var(--text-1); }
+.atria-app-shell .atria-domain-workspace__tabs > button:is(.is-selected, [aria-current="page"]) { background: var(--surface-raised); color: var(--text-1); box-shadow: var(--shadow-1), 0 0 0 1px var(--line-2); }
+@media (pointer: coarse) { .atria-app-shell .atria-domain-workspace__tabs > button { min-height: 36px; } }
 
 /* ── Badges ────────────────────────────────────────────────────────────── */
 
+/* Status chip: capsule + dot. Live breathes; reduced motion rests. */
 .atria-badge {
-    max-width: 100%;
-    min-height: 20px;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 0 var(--atri-space-2);
-    border-radius: var(--atri-radius-pill);
-    background: var(--atri-fill-hover);
-    color: var(--atri-text-secondary);
-    font-size: var(--atri-text-caption-2);
-    font-weight: 600;
-    line-height: 1;
-    white-space: nowrap;
-    vertical-align: middle;
+    --c: var(--text-2);
+    max-width: 100%; height: 22px; display: inline-flex; align-items: center; gap: 6px; padding: 0 9px 0 8px;
+    border-radius: var(--r-pill); border: 1px solid color-mix(in srgb, var(--c) 22%, transparent);
+    background: color-mix(in srgb, var(--c) 10%, transparent); color: var(--c);
+    font: 550 var(--fs-xs)/1 var(--font-ui); white-space: nowrap; vertical-align: middle;
 }
-
-.atria-badge__label {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.atria-badge__dot {
-    width: 6px;
-    height: 6px;
-    flex: none;
-    border-radius: 50%;
-    background: currentColor;
-}
-
-.atria-badge[data-tone="accent"],
-.atria-badge[data-tone="info"] {
-    background: var(--atri-accent-soft);
-    color: var(--atri-accent-text);
-}
-
-.atria-badge[data-tone="success"] {
-    background: var(--atri-success-soft);
-    color: var(--atri-success);
-}
-
-.atria-badge[data-tone="warning"] {
-    background: var(--atri-warning-soft);
-    color: var(--atri-warning);
-}
-
-.atria-badge[data-tone="danger"],
-.atria-badge[data-tone="error"] {
-    background: var(--atri-danger-soft);
-    color: var(--atri-danger);
-}
-
-.atria-badge[data-tone="outline"] {
-    background: transparent;
-    box-shadow: inset 0 0 0 1px var(--atri-separator-strong);
-}
+.atria-badge__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.atria-badge__dot { width: 6px; height: 6px; flex: none; border-radius: 50%; background: currentColor; }
+.atria-badge[data-tone="accent"] { --c: var(--tone-lumen); }
+.atria-badge[data-tone="info"] { --c: var(--tone-lapis); }
+.atria-badge[data-tone="success"] { --c: var(--tone-jade); }
+.atria-badge[data-tone="warning"] { --c: var(--tone-amber); }
+.atria-badge:is([data-tone="danger"], [data-tone="error"]) { --c: var(--tone-vermilion); }
+.atria-badge[data-tone="history"] { --c: var(--tone-umber); }
+.atria-badge[data-tone="unknown"] { --c: var(--tone-dai); }
+.atria-badge[data-tone="live"] { --c: var(--tone-jade); }
+.atria-badge[data-tone="live"] .atria-badge__dot { animation: atria-breathe 2.4s var(--ease-settle) infinite; box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone-jade) 18%, transparent); }
+.atria-badge[data-tone="outline"] { --c: var(--text-2); background: transparent; }
+@keyframes atria-breathe { 0%, 100% { opacity: .55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.18); } }
+@media (prefers-reduced-motion: reduce) { .atria-badge__dot { animation: none !important; } }
 
 /* ── Cards ─────────────────────────────────────────────────────────────── */
 
 .atria-card {
-    min-width: 0;
-    padding: var(--atri-space-5);
-    border-radius: var(--atri-radius-lg);
-    background: var(--atri-surface-1);
-    box-shadow: var(--atri-highlight);
+    min-width: 0; padding: 14px 16px; border-radius: var(--r-xl);
+    background: var(--surface-panel); border: 1px solid var(--line-2); box-shadow: var(--shadow-1);
 }
-
 .atria-card[data-interactive="true"],
 button.atria-card {
-    appearance: none;
-    width: 100%;
-    margin: 0;
-    border: 0;
-    color: inherit;
-    font: inherit;
-    text-align: start;
-    cursor: pointer;
-    transition:
-        background-color var(--atri-duration-fast) var(--atri-ease-out),
-        transform var(--atri-duration-base) var(--atri-ease-out);
+    appearance: none; width: 100%; margin: 0; color: inherit; font: inherit; text-align: start; cursor: pointer;
+    transition: border-color var(--dur-2), transform var(--dur-3) var(--ease-settle);
 }
-
 .atria-card[data-interactive="true"]:hover,
-button.atria-card:hover {
-    background: var(--atri-surface-2);
-}
-
-.atria-card[data-interactive="true"]:active,
-button.atria-card:active {
-    transform: scale(0.992);
-}
-
-.atria-card__title {
-    margin: 0;
-    font-size: var(--atri-text-headline);
-    font-weight: 650;
-    letter-spacing: var(--atri-tracking-headline);
-}
-
-.atria-card__body {
-    margin: var(--atri-space-1-5) 0 0;
-    color: var(--atri-text-secondary);
-    font-size: var(--atri-text-footnote);
-    line-height: var(--atri-leading-normal);
-}
+button.atria-card:hover { border-color: var(--line-3); transform: translateY(-1px); }
+.atria-card__title { margin: 0; font: 600 var(--fs-lg)/1.3 var(--font-ui); letter-spacing: -.005em; }
+.atria-card__body { margin: 6px 0 0; color: var(--text-2); font-size: var(--fs-sm); line-height: 1.6; }
 
 /* ── Lists (inset grouped) ─────────────────────────────────────────────── */
 
@@ -1185,24 +1150,6 @@ body.reduced-motion .atria-spinner,
 }
 
 /* ── Runtime card primitive ────────────────────────────────────────────── */
-
-/* Restore visible native checks inside the product frame. Legacy theme checks
- * use generated glyphs; the new preference switches have their own treatment. */
-.atria-app-shell input[type="checkbox"]:not([role="switch"]),
-.atri-runtime input[type="checkbox"] {
-    appearance: auto;
-    display: inline-block;
-    width: 18px;
-    height: 18px;
-    min-height: 18px;
-    padding: 0;
-    border: initial;
-    background: initial;
-    box-shadow: none;
-    accent-color: var(--atri-ink);
-}
-.atria-app-shell input[type="checkbox"]:not([role="switch"])::before,
-.atri-runtime input[type="checkbox"]::before { content: none; }
 
 .atria-runtime-card {
     min-width: 0;

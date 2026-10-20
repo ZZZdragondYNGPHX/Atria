@@ -11,8 +11,8 @@ export const ATRIA_APPEARANCES = Object.freeze({
 
 /** Browser chrome color per appearance; mirrors --atri-canvas in atria-tokens.css. */
 export const ATRIA_CHROME_COLORS = Object.freeze({
-    dark: '#0e0f12',
-    light: '#f9f8f6',
+    dark: '#0c0e14',
+    light: '#f5f1e8',
 });
 
 const HEX_PATTERN = /^#([0-9a-f]{3,8})$/i;
@@ -126,7 +126,8 @@ export function installAtriaAppearance({
         current = next;
         root.setAttribute('data-atria-appearance', next);
         const colors = resolved?.colors || {};
-        paletteStyle.textContent = resolved ? `:root:root { ${Object.entries(colors).map(([role, value]) => `--atri-${role}: ${value};`).join('\n')}\n--atri-highlight: inset 0 0 0 .5px ${next === 'dark' ? '#ffffff18' : '#ffffffdd'};\n--atri-shadow-1: 0 20px 40px -10px #000000${next === 'dark' ? '45' : '0d'};\n--atri-shadow-2: 0 12px 32px #000000${next === 'dark' ? '66' : '14'};\n--atri-shadow-3: 0 28px 72px #000000${next === 'dark' ? '80' : '1f'}; }` : '';
+        // Shadows and materials follow the appearance in atria-tokens.css; only colors are theme-owned.
+        paletteStyle.textContent = resolved ? `:root:root { ${Object.entries(colors).map(([role, value]) => `--atri-${role}: ${value};`).join('\n')} }` : '';
         if (service) {
             const legacy = documentRef.getElementById('custom-style');
             if (legacy) legacy.textContent = '';

@@ -14,10 +14,9 @@ export function mountVisualAuthoring({ document: doc, body, host, browseStates =
     browseStates.set('visual-authoring', state);
     const root = node(doc, null, 'section', undefined, 'atri-illustration-ui atri-visual-authoring'); body.replaceChildren(root);
     node(doc, root, 'style', ILLUSTRATION_CSS + `
-.atri-visual-authoring { max-width:1200px; margin-inline:auto; padding-bottom:calc(100px + env(safe-area-inset-bottom)); }
-.atri-visual-authoring-work { display:grid; grid-template-columns:minmax(0, 1.3fr) minmax(280px, .8fr); gap:28px; align-items:start; }
-.atri-visual-authoring-preview { min-width:0; background:var(--atri-fill); border-radius:var(--atri-radius-lg); padding:20px; }
-.atri-visual-authoring textarea:disabled { background:var(--atri-fill); opacity:.55; }
+.atri-visual-authoring { max-width:1240px; margin-inline:0; padding-bottom:calc(64px + env(safe-area-inset-bottom)); }
+.atri-visual-authoring-work { display:grid; grid-template-columns:minmax(0, 1.3fr) minmax(280px, .8fr); gap:24px; align-items:start; }
+.atri-visual-authoring-preview { position:sticky; top:0; min-width:0; padding:16px 18px; border:1px solid var(--sidebar-line); border-radius:var(--r-pane); background:var(--mat-sidebar); color:var(--text-2); font-size:var(--fs-sm); }
 .atri-visual-authoring-work > section { min-width:0; }
 @media(max-width:900px) { .atri-visual-authoring-work { grid-template-columns:minmax(0,1fr); gap:16px; } }
 `);

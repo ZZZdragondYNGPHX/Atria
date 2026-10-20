@@ -4,10 +4,9 @@ import { nativePromptUiActive } from '../../native/generation-compat.js';
 import { mountMemoryRouting } from './native-routing-ui.js';
 
 const MEMORY_VIEWS = Object.freeze([
-    ['overview', 'Overview'],
-    ['knowledge', 'Knowledge'],
+    ['graph', 'Graph'],
+    ['list', 'List'],
     ['sources', 'Sources'],
-    ['maintenance', 'Maintenance'],
 ]);
 
 const ENTITY_LIMIT = 250;
@@ -35,6 +34,7 @@ function toggleCard({ host, el, label, description, checked, onChange }) {
     el('small', description, copy);
     const input = el('input', undefined, row);
     input.type = 'checkbox';
+    input.setAttribute('role', 'switch');
     input.checked = checked;
     input.addEventListener('change', () => onChange(input.checked));
     return input;
@@ -53,7 +53,7 @@ function sourceLabel(episode) {
 }
 
 export function createMemoryWorkspace({ getContext }) {
-    let activeView = 'overview';
+    let activeView = 'graph';
     let query = '';
     let entityType = '';
     let includeHistory = false;
@@ -79,31 +79,43 @@ export function createMemoryWorkspace({ getContext }) {
             inspector.hidden = true;
         }
 
+        // Graph-Inspector page: a control rail (status, switches, statistics,
+        // recall, maintenance), the knowledge graph / list / sources, then the
+        // record inspector beside it. The graph always has a list equivalent.
         const page = el('section', undefined, parent);
         page.className = 'workspace-memory-page';
+        const rail = el('aside', undefined, page);
+        rail.className = 'workspace-memory-rail';
+        rail.setAttribute('aria-label', i18n('Memory controls'));
+        const main = el('section', undefined, page);
+        main.className = 'workspace-memory-main';
+        const heading = el('h2', 'Long-term memory', main);
+        heading.className = 'workspace-visually-hidden';
 
-        const heading = el('div', undefined, page);
-        heading.className = 'workspace-page-heading';
-        const title = el('div', undefined, heading);
-        el('span', 'Memory OS', title).className = 'workspace-eyebrow';
-        el('h3', 'Long-term memory', title);
-        el('p', 'Knowledge, provenance and maintenance for the current conversation.', title).className = 'workspace-hint';
-
-        const status = el('div', '', heading);
+        const status = el('p', '', rail);
         status.className = 'workspace-memory-load-status';
         status.setAttribute('role', 'status');
+        const railBody = el('div', undefined, rail);
+        railBody.className = 'workspace-memory-rail__body';
 
-        const nav = el('div', undefined, page);
-        nav.className = 'workspace-subnav'; nav.setAttribute('aria-label', i18n('Memory views'));
+        const nav = el('div', undefined, main);
+        nav.className = 'workspace-memory-toolbar';
+        const filterSlot = el('div', undefined, nav);
+        filterSlot.className = 'workspace-memory-filter-slot';
+        const viewSwitch = el('div', undefined, nav);
+        viewSwitch.className = 'atria-segmented workspace-memory-views';
+        viewSwitch.setAttribute('role', 'group');
+        viewSwitch.setAttribute('aria-label', i18n('Memory views'));
         for (const [id, label] of MEMORY_VIEWS) {
-            const item = button(nav, label, () => {
+            const item = button(viewSwitch, label, () => {
                 activeView = id;
                 renderView();
             });
+            item.className = 'atria-segmented__item';
             item.dataset.memoryView = id;
         }
 
-        const content = el('section', undefined, page);
+        const content = el('section', undefined, main);
         content.className = 'workspace-memory-content';
 
         if (!service) {
@@ -121,7 +133,7 @@ export function createMemoryWorkspace({ getContext }) {
         };
 
         const syncNav = () => {
-            for (const item of nav.children) {
+            for (const item of viewSwitch.children) {
                 const active = item.dataset.memoryView === activeView;
                 item.classList.toggle('is-active', active);
                 item.setAttribute('aria-pressed', String(active));
@@ -137,7 +149,7 @@ export function createMemoryWorkspace({ getContext }) {
                 snapshot = null;
                 computed = null;
                 status.textContent = i18n('Memory OS is disabled.');
-                renderView();
+                renderAll();
                 return;
             }
             status.textContent = i18n('Loading memory…');
@@ -150,14 +162,14 @@ export function createMemoryWorkspace({ getContext }) {
                 snapshot = nextSnapshot;
                 computed = nextComputed;
                 status.textContent = i18nFormat('${0} entities · ${1} relations', computed.graph.entities.length, computed.graph.relations.length);
-                renderView();
+                renderAll();
             } catch (error) {
                 if (disposed || version !== refreshVersion || error?.name === 'AbortError') return;
                 snapshot = null;
                 computed = null;
                 loadError = error?.message || String(error);
                 status.textContent = loadError;
-                renderView();
+                renderAll();
             }
         };
 
@@ -179,7 +191,7 @@ export function createMemoryWorkspace({ getContext }) {
         };
         const setControl = async (name, value) => {
             await operation('control:' + name, null, () => service.setControl?.(name, value));
-            if (!disposed && page.isConnected) renderView();
+            if (!disposed && page.isConnected) renderAll();
         };
 
         let inspectorReturnFocus = null;
@@ -204,7 +216,7 @@ export function createMemoryWorkspace({ getContext }) {
             const close = button(head, 'Close inspector', () => {
                 inspector.hidden = true;
                 if (inspectorReturnFocus?.isConnected) inspectorReturnFocus.focus();
-                else parent.querySelector('[data-memory-view="knowledge"]')?.focus();
+                else parent.querySelector('[data-memory-view="' + activeView + '"]')?.focus();
             });
             close.className = 'workspace-inspector-close'; close.focus();
 
@@ -254,47 +266,47 @@ export function createMemoryWorkspace({ getContext }) {
             el('pre', JSON.stringify(record, null, 2), raw);
         };
 
-        const renderOverview = () => {
+        const railSection = label => {
+            const section = el('section', undefined, railBody);
+            section.className = 'workspace-memory-rail__section';
+            el('h3', label, section);
+            return section;
+        };
+        const renderRail = () => {
+            settingsDisposer?.();
+            settingsDisposer = () => {};
+            railBody.replaceChildren();
             const current = settings();
-            const hero = el('section', undefined, content);
-            hero.className = 'workspace-memory-overview-hero';
-            const heroCopy = el('div', undefined, hero);
-            el('span', 'Memory OS', heroCopy).className = 'workspace-eyebrow';
-            el('h3', current.enabled ? 'Memory is available' : 'Memory is disabled', heroCopy);
-            el('p', current.enabled
-                ? 'Atria can extract, recall and audit long-term knowledge for this conversation.'
-                : 'Enable Memory to read permitted source-backed history.', heroCopy).className = 'workspace-hint';
+            const state = el('span', current.enabled ? 'Memory is available' : 'Memory is disabled', railBody);
+            state.className = 'workspace-status-chip is-' + (current.enabled ? 'active' : 'disabled');
+            railBody.append(status);
 
-            const controls = el('div', undefined, content);
-            controls.className = 'workspace-memory-control-grid';
-            toggleCard({ host: controls, el, label: 'Source writes', description: 'Allow extraction to add source-backed facts and relations.', checked: current.sourceWritesEnabled,
-                onChange: value => void setControl('sourceWritesEnabled', value) });
+            const controls = railSection('Switches');
+            controls.classList.add('workspace-memory-control-grid');
             toggleCard({ host: controls, el, label: 'Memory', description: 'Keep memory active for this conversation.', checked: current.enabled,
                 onChange: value => void setControl('enabled', value) });
             toggleCard({ host: controls, el, label: 'Recall', description: 'Inject relevant memories into replies.', checked: current.recallEnabled,
                 onChange: value => void setControl('recallEnabled', value) });
+            toggleCard({ host: controls, el, label: 'Source writes', description: 'Allow extraction to add source-backed facts and relations.', checked: current.sourceWritesEnabled,
+                onChange: value => void setControl('sourceWritesEnabled', value) });
             toggleCard({ host: controls, el, label: 'Auto extraction', description: 'Extract new memories as chat progresses.', checked: current.autoExtractionEnabled,
                 onChange: value => void setControl('autoExtractionEnabled', value) });
             toggleCard({ host: controls, el, label: 'Auto compression', description: 'Compact older memory using the schema.', checked: current.autoCompressionEnabled,
                 onChange: value => void setControl('autoCompressionEnabled', value) });
 
-            const metrics = el('div', undefined, content);
-            metrics.className = 'workspace-memory-metrics';
-            metric({ host: metrics, el, label: 'Entities', value: computed?.graph.entities.length || 0 });
-            metric({ host: metrics, el, label: 'Relations', value: computed?.graph.relations.length || 0 });
-            metric({ host: metrics, el, label: 'Facts', value: computed?.facts.length || 0 });
-            metric({ host: metrics, el, label: 'Pending', value: computed?.graph.pending?.filter(item => item.status === 'pending').length || 0 });
-            metric({ host: metrics, el, label: 'Episodes', value: snapshot ? Object.keys(snapshot.state.episodes || {}).length : 0 });
-            metric({ host: metrics, el, label: 'This run recalls', value: getView?.().recalls?.length || 0 });
+            const metrics = railSection('Statistics');
+            const grid = el('div', undefined, metrics);
+            grid.className = 'workspace-memory-metrics';
+            metric({ host: grid, el, label: 'Entities', value: computed?.graph.entities.length || 0 });
+            metric({ host: grid, el, label: 'Relations', value: computed?.graph.relations.length || 0 });
+            metric({ host: grid, el, label: 'Facts', value: computed?.facts.length || 0 });
+            metric({ host: grid, el, label: 'Pending', value: computed?.graph.pending?.filter(item => item.status === 'pending').length || 0 });
+            metric({ host: grid, el, label: 'Episodes', value: snapshot ? Object.keys(snapshot.state.episodes || {}).length : 0 });
+            metric({ host: grid, el, label: 'This run recalls', value: getView?.().recalls?.length || 0 });
 
             const recent = getView?.().recalls || [];
             if (recent.length) {
-                const evidence = el('section', undefined, content);
-                evidence.className = 'workspace-memory-overview-section';
-                const head = el('div', undefined, evidence);
-                head.className = 'workspace-section-heading';
-                el('h3', 'Recent recall evidence', head);
-                el('span', String(recent.length), head).className = 'workspace-hint';
+                const evidence = railSection(i18nFormat('Recent recall evidence · ${0}', recent.length));
                 for (const recallEvent of [...recent].reverse().slice(0, 12)) {
                     const row = el('div', undefined, evidence);
                     row.className = 'workspace-memory-recall-row';
@@ -303,10 +315,11 @@ export function createMemoryWorkspace({ getContext }) {
                     el('small', recallEvent.stepId || '', row);
                 }
             }
+            renderMaintenance(railSection('Maintenance'));
         };
 
         const renderKnowledge = () => {
-            const tools = el('div', undefined, content);
+            const tools = el('div', undefined, filterSlot);
             tools.className = 'workspace-memory-filterbar';
             const search = el('input', undefined, tools);
             search.type = 'search';
@@ -327,12 +340,18 @@ export function createMemoryWorkspace({ getContext }) {
             history.type = 'checkbox';
             history.checked = includeHistory;
 
+            const fit = button(tools, 'Fit', () => graphInstance?.fit?.(undefined, 24));
+            fit.hidden = activeView !== 'graph';
             const body = el('div', undefined, content);
             body.className = 'workspace-memory-knowledge-layout';
             const graph = el('div', undefined, body);
             graph.className = 'workspace-memory-native-graph';
+            graph.hidden = activeView !== 'graph';
             const list = el('section', undefined, body);
             list.className = 'workspace-memory-record-list';
+            list.hidden = activeView !== 'list';
+            const footer = el('p', '', content);
+            footer.className = 'workspace-memory-limit';
 
             let paintVersion = 0;
             const paint = () => {
@@ -352,8 +371,7 @@ export function createMemoryWorkspace({ getContext }) {
                 relations = relations.filter(edge => visibleIds.has(edge.sourceEntityId) && visibleIds.has(edge.targetEntityId)).slice(0, RELATION_LIMIT);
 
                 list.replaceChildren();
-                const summary = el('p', i18nFormat('${0} entities · ${1} relations', entities.length, relations.length), list);
-                summary.className = 'workspace-hint';
+                footer.textContent = i18nFormat('Showing ${0} / ${1} entities. The graph shows at most ${2} entities and ${3} relations; not shown does not mean absent.', entities.length, (computed?.graph.entities || []).length, ENTITY_LIMIT, RELATION_LIMIT);
                 for (const entity of entities.slice(0, 100)) {
                     const item = button(list, undefined, () => showRecord(entity, 'entity'));
                     item.className = 'workspace-memory-record';
@@ -363,7 +381,9 @@ export function createMemoryWorkspace({ getContext }) {
                     el('span', String(relations.filter(edge => edge.sourceEntityId === entity.id || edge.targetEntityId === entity.id).length), item).className = 'workspace-memory-degree';
                 }
 
+                if (!entities.length) el('p', 'No matching memory entities.', list).className = 'workspace-empty-copy';
                 graph.replaceChildren();
+                if (graph.hidden) return;
                 if (!entities.length) {
                     el('p', 'No matching memory entities.', graph).className = 'workspace-empty-copy';
                     return;
@@ -389,9 +409,10 @@ export function createMemoryWorkspace({ getContext }) {
                             ...relations.map(edge => ({ data: { id: `e:${edge.id}`, source: `n:${edge.sourceEntityId}`, target: `n:${edge.targetEntityId}`, label: edge.predicate, record: edge, kind: 'relation', status: edge.status } })),
                         ],
                         style: [
-                            { selector: 'node', style: { label: 'data(label)', 'background-color': color('--atri-accent'), color: color('--atri-text-primary'), 'font-size': 11 } },
-                            { selector: 'edge', style: { label: 'data(label)', width: 1.5, 'target-arrow-shape': 'triangle', 'curve-style': 'bezier', color: color('--atri-text-secondary'), 'line-color': color('--atri-separator-strong'), 'target-arrow-color': color('--atri-separator-strong'), 'font-size': 9 } },
-                            { selector: '[status != "active"]', style: { opacity: 0.45 } },
+                            { selector: 'node', style: { label: 'data(label)', width: 38, height: 38, 'background-color': color('--surface-raised'), 'border-width': 1.5, 'border-color': color('--line-strong'), color: color('--text-1'), 'font-size': 11, 'font-weight': 600, 'text-valign': 'center', 'text-halign': 'center' } },
+                            { selector: 'node:selected', style: { 'border-color': color('--tone-lumen'), 'border-width': 2.5 } },
+                            { selector: 'edge', style: { label: 'data(label)', width: 1, 'target-arrow-shape': 'triangle', 'arrow-scale': 0.7, 'curve-style': 'bezier', color: color('--text-3'), 'line-color': color('--line-strong'), 'target-arrow-color': color('--line-strong'), 'font-size': 9, 'text-background-color': color('--surface-app'), 'text-background-opacity': 1, 'text-background-padding': 2 } },
+                            { selector: '[status != "active"]', style: { opacity: 0.5, 'border-style': 'dashed', 'line-style': 'dashed' } },
                         ],
                         layout: { name: 'circle', animate: false, fit: true, padding: 24 },
                         wheelSensitivity: 0.2,
@@ -453,16 +474,11 @@ export function createMemoryWorkspace({ getContext }) {
             }
         };
 
-        const renderMaintenance = () => {
+        const renderMaintenance = host => {
             if (nativePromptUiActive() && service.getNativeRoutes) {
-                try { mountMemoryRouting(content, service); } catch (error) { status.textContent = error.message; }
+                try { mountMemoryRouting(host, service); } catch (error) { status.textContent = error.message; }
             }
-            const hero = el('section', undefined, content);
-            hero.className = 'workspace-memory-maintenance-hero';
-            el('h3', 'Build and maintenance', hero);
-            el('p', 'History rebuilds, schema work and destructive operations live here instead of the everyday memory view.', hero).className = 'workspace-hint';
-
-            const actions = el('div', undefined, content);
+            const actions = el('div', undefined, host);
             actions.className = 'workspace-memory-maintenance-actions';
 
             const runAction = (name, action, { refresh = true } = {}) => {
@@ -487,53 +503,51 @@ export function createMemoryWorkspace({ getContext }) {
                 if (file) void operation('import', importInput, () => service.importGraph?.(file));
             });
 
-            const danger = el('section', undefined, content);
+            const danger = el('section', undefined, host);
             danger.className = 'workspace-memory-danger-zone';
-            el('h3', 'Danger zone', danger);
+            el('h4', 'Danger zone', danger);
             el('p', 'Reset removes the current chat memory graph and its vector index. This cannot be undone.', danger).className = 'workspace-hint';
             const reset = button(danger, 'Reset current chat memory', () => void operation('reset', reset, () => service.resetGraph?.()));
             reset.disabled = pending.has('reset');
             reset.className = 'workspace-danger';
 
-            const advanced = el('details', undefined, content);
+            const advanced = el('details', undefined, host);
             advanced.className = 'workspace-memory-advanced';
             el('summary', 'Advanced memory settings and maintenance', advanced);
-            const host = el('div', undefined, advanced);
-            host.className = 'workspace-memory-advanced-host';
+            const settingsHost = el('div', undefined, advanced);
+            settingsHost.className = 'workspace-memory-advanced-host';
             let mounted = false;
             advanced.addEventListener('toggle', () => {
                 if (!advanced.open || mounted) return;
                 mounted = true;
-                settingsDisposer = service.mountSettings?.(host) || (() => {});
+                settingsDisposer = service.mountSettings?.(settingsHost) || (() => {});
             });
         };
 
         const renderView = () => {
             syncNav();
             content.replaceChildren();
+            filterSlot.replaceChildren();
             graphInstance?.destroy?.();
             graphInstance = null;
-            settingsDisposer?.();
-            settingsDisposer = () => {};
             if (inspector) {
                 inspector.replaceChildren();
                 inspector.hidden = true;
             }
             selected = null;
-            if (activeView === 'overview') renderOverview();
-            else if (activeView === 'knowledge') renderKnowledge();
-            else if (activeView === 'sources') renderSources();
-            else renderMaintenance();
+            if (activeView === 'sources') renderSources();
+            else renderKnowledge();
         };
+        const renderAll = () => { renderRail(); renderView(); };
 
-        renderView();
+        renderAll();
         void loadData();
 
         return {
             updateRun() {
                 if (disposed) return;
-                if (activeView === 'overview') renderView();
-                else if (selected && inspector && !inspector.hidden) showRecord(selected.record, selected.kind);
+                renderRail();
+                if (selected && inspector && !inspector.hidden) showRecord(selected.record, selected.kind);
             },
             dispose() {
                 disposed = true;

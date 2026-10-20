@@ -139,7 +139,7 @@ export function mountExtensionPlugins({ document: doc = document, body, client =
         el(doc, 'legend', '', tl(id ? 'Edit extension' : 'New script'), form);
         const name = field(doc, form, 'Name', value.name); name.maxLength = 100;
         const enabled = field(doc, form, 'Enabled', '', 'checkbox'); enabled.checked = value.enabled;
-        el(doc, 'p', '', tl('Extensions run trusted JavaScript in Atria. Enable only code you trust.'), form);
+        el(doc, 'p', 'atri-extension-trust', tl('Extensions run trusted JavaScript in Atria. Enable only code you trust.'), form);
         const scope = el(doc, 'fieldset', '', undefined, form); el(doc, 'legend', '', tl('Run in these scopes'), scope);
         el(doc, 'p', '', tl('Any matching scope activates this script once. Work covers the entire Package.'), scope);
         const global = field(doc, scope, 'Global', '', 'checkbox'); global.checked = value.targets.global;

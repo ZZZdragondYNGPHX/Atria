@@ -1,49 +1,141 @@
-/* Memory keeps its own read/maintenance UI inside the shared Shell. */
-.atria-memory-workspace { min-width: 0; padding: var(--atri-space-4, 1rem); color: var(--atri-text-primary); }
-.atria-memory-workspace .workspace-page-heading,
-.atria-memory-workspace .workspace-section-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-.atria-memory-workspace .workspace-memory-page { display: grid; gap: 1rem; }
-.atria-memory-workspace .workspace-memory-nav,
-.atria-memory-workspace .workspace-memory-toolbar,
-.atria-memory-workspace .workspace-memory-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
-.atria-memory-workspace .workspace-memory-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: .75rem; }
-.atria-memory-workspace .workspace-memory-metric,
-.atria-memory-workspace .workspace-memory-toggle-card { display: grid; gap: .5rem; padding: 1rem; border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-md, .75rem); }
-.atria-memory-workspace .workspace-memory-toggle-card { grid-template-columns: 1fr auto; }
-.atria-memory-workspace input, .atria-memory-workspace select { max-width: 100%; }
-.atria-memory-workspace button { min-height: 44px; padding: .5rem .75rem; color: inherit; background: var(--atri-surface-1); border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-sm, .5rem); }
-.atria-memory-workspace button:focus-visible { outline: 2px solid var(--atri-accent); outline-offset: 2px; }
-.atria-memory-workspace button:disabled { opacity: .6; }
-.atria-memory-workspace pre, .atria-memory-inspector pre { white-space: pre-wrap; overflow-wrap: anywhere; }
-.atria-memory-workspace .workspace-hint { color: var(--atri-text-secondary); }
-.atria-memory-inspector { padding: 1rem; overflow-wrap: anywhere; }
-.atria-memory-inspector[hidden] { display: none; }
+/*
+ * Agents › Memory (M01–M08) as a Graph-Inspector page: an inset control rail
+ * (status, switches, statistics, recall, maintenance), the matte knowledge
+ * canvas (graph · list · sources) and the record inspector on demand.
+ * Controls come from the Atrium base layer; corrections stay explicit actions.
+ */
 
-.atria-memory-layout { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; align-items: start; }
-.atria-memory-layout:has(.atria-memory-inspector:not([hidden])) { grid-template-columns: minmax(0, 1fr) var(--atria-memory-inspector-width, 320px); }
-.atria-memory-inspector { position: sticky; top: 0; max-height: calc(100dvh - 96px); overflow-y: auto; border-inline-start: 1px solid var(--atri-separator); background: var(--atri-surface-1); }
-.atria-memory-workspace .workspace-subnav { display: flex; gap: 4px; flex-wrap: wrap; padding-block: 8px; border-block-end: 1px solid var(--atri-separator); }
-.atria-memory-workspace .workspace-subnav button { border-color: transparent; background: transparent; }
-.atria-memory-workspace .workspace-subnav .is-active { background: var(--atri-accent-subtle, var(--atri-fill)); color: var(--atri-accent); }
-.atria-memory-workspace h3 { margin-block: 4px 12px; font-size: 1.5rem; letter-spacing: -.025em; }
-.atria-memory-workspace .workspace-eyebrow { color: var(--atri-text-secondary); font-size: .75rem; letter-spacing: .08em; }
-.atria-memory-workspace .workspace-memory-filterbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-block: 16px; }
-.atria-memory-workspace .workspace-memory-filterbar input[type="search"] { flex: 1 1 220px; }
-.atria-memory-workspace :is(input:not([type="checkbox"]), select, textarea) { min-width: 0; min-height: 44px; padding: 10px 12px; color: inherit; background: var(--atri-surface-1); border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-sm); font: inherit; }
-.atria-memory-workspace .workspace-memory-knowledge-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 30%); gap: 16px; }
-.atria-memory-workspace .workspace-memory-native-graph { min-width: 0; height: clamp(320px, 55dvh, 640px); border: 1px solid var(--atri-separator); border-radius: var(--atri-radius-md); overflow: hidden; }
-.atria-memory-workspace .workspace-memory-record-list { min-width: 0; max-height: 640px; overflow-y: auto; }
-.atria-memory-workspace .workspace-memory-record { display: flex; width: 100%; align-items: center; justify-content: space-between; text-align: start; margin-block: 4px; }
-.atria-memory-workspace .workspace-memory-record > span:first-child { display: grid; min-width: 0; gap: 4px; overflow-wrap: anywhere; }
-.atria-memory-workspace .workspace-memory-record small { color: var(--atri-text-secondary); }
-.atria-memory-workspace .workspace-memory-sources { display: grid; gap: 20px; }
-.atria-memory-workspace .workspace-memory-source-card { padding-block: 12px; border-block-end: 1px solid var(--atri-separator); }
-.atria-memory-workspace .workspace-memory-danger-zone { margin-block-start: 24px; padding-block-start: 16px; border-block-start: 1px solid var(--atri-separator-strong); }
-.atria-memory-inspector dl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 8px; }
+/* Frame: the Agents body gives Memory the full height; panes scroll alone. */
+.atria-domain-workspace__body:has(> .atria-memory-layout) { padding: 0; overflow: hidden; }
+.atria-app-shell .atria-domain-workspace__body > .atria-memory-layout { max-width: none; height: 100%; }
+.atria-memory-layout {
+    position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; min-width: 0; min-height: 0;
+    padding: var(--pane-inset);
+}
+.atria-memory-layout:has(.atria-memory-inspector:not([hidden])) { grid-template-columns: minmax(0, 1fr) var(--atria-memory-inspector-width, 360px); gap: var(--pane-inset); }
+.atria-memory-workspace { min-width: 0; min-height: 0; padding: 0; color: var(--text-1); }
+.atria-memory-workspace .workspace-memory-page { display: grid; grid-template-columns: 268px minmax(0, 1fr); gap: var(--pane-inset); height: 100%; min-height: 0; }
+.atria-memory-workspace .workspace-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.atria-memory-workspace .workspace-hint { color: var(--text-3); font-size: var(--fs-sm); }
+.atria-memory-workspace .workspace-empty-copy { margin: 24px 0; color: var(--text-3); font-size: var(--fs-sm); text-align: center; }
+.atria-memory-workspace pre, .atria-memory-inspector pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Rail: inset sidebar panel. */
+.atria-memory-workspace .workspace-memory-rail {
+    min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px 14px 18px;
+    border: 1px solid var(--sidebar-line); border-radius: var(--r-pane); background: var(--mat-sidebar);
+}
+.atria-memory-workspace .workspace-memory-load-status { margin: 8px 0 0; color: var(--text-3); font-size: var(--fs-xs); }
+.atria-memory-workspace .workspace-memory-load-status:empty { display: none; }
+.atria-memory-workspace .workspace-status-chip {
+    --c: var(--text-3);
+    display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px 0 8px; border-radius: var(--r-pill);
+    border: 1px solid color-mix(in srgb, var(--c) 28%, transparent); background: color-mix(in srgb, var(--c) 10%, transparent);
+    color: var(--c); font: 550 var(--fs-xs)/1 var(--font-ui); white-space: nowrap;
+}
+.atria-memory-workspace .workspace-status-chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.atria-memory-workspace .workspace-status-chip.is-active { --c: var(--tone-jade); }
+.atria-memory-workspace .workspace-memory-rail__section { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line-1); }
+.atria-memory-workspace .workspace-memory-rail__section > h3 { margin: 0 0 8px; color: var(--text-3); font: 600 var(--fs-xs)/1 var(--font-ui); letter-spacing: .04em; }
+
+/* Switches: label left, switch right; the description stays for assistive tech. */
+.atria-memory-workspace .workspace-memory-toggle-card {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px;
+    min-height: 34px; padding: 3px 0; border: 0; background: transparent; cursor: pointer;
+}
+.atria-memory-workspace .workspace-memory-toggle-card > span { display: grid; min-width: 0; }
+.atria-memory-workspace .workspace-memory-toggle-card strong { font: 500 var(--fs-md)/1.35 var(--font-ui); }
+.atria-memory-workspace .workspace-memory-toggle-card small { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Statistics: two-column tiles, numbers first. */
+.atria-memory-workspace .workspace-memory-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.atria-memory-workspace .workspace-memory-metric { display: grid; gap: 2px; padding: 10px 12px; border-radius: var(--r-lg); border: 1px solid var(--line-2); background: var(--surface-panel); }
+.atria-memory-workspace .workspace-memory-metric small { order: 2; color: var(--text-3); font-size: var(--fs-xs); }
+.atria-memory-workspace .workspace-memory-metric strong { order: 1; font: 600 20px/1.1 var(--font-display); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.atria-memory-workspace .workspace-memory-recall-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; padding: 6px 2px; font-size: var(--fs-sm); }
+.atria-memory-workspace .workspace-memory-recall-row strong { font-weight: 500; overflow-wrap: anywhere; }
+.atria-memory-workspace .workspace-memory-recall-row span { color: var(--text-3); font: 500 var(--fs-xs)/1.4 var(--font-mono); }
+.atria-memory-workspace .workspace-memory-recall-row small { grid-column: 1 / -1; color: var(--text-3); font-size: var(--fs-xs); }
+
+/* Maintenance: full-width quiet actions; destructive reset sits apart. */
+.atria-memory-workspace .workspace-memory-maintenance-actions { display: grid; gap: 6px; }
+.atria-app-shell .atria-memory-workspace .workspace-memory-maintenance-actions > button { width: 100%; }
+.atria-memory-workspace .workspace-file-action { position: relative; display: inline-flex; align-items: center; justify-content: center; min-height: 32px; border: 1px dashed var(--line-3); border-radius: var(--r-md); color: var(--text-2); font-size: var(--fs-sm); cursor: pointer; }
+.atria-memory-workspace .workspace-file-action input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.atria-memory-workspace .workspace-memory-danger-zone { margin-top: 12px; padding: 10px 12px; border-radius: var(--r-lg); border: 1px solid color-mix(in srgb, var(--tone-vermilion) 28%, transparent); background: color-mix(in srgb, var(--tone-vermilion) 5%, transparent); }
+.atria-memory-workspace .workspace-memory-danger-zone h4 { margin: 0 0 4px; color: var(--tone-vermilion); font: 600 var(--fs-sm)/1.3 var(--font-ui); }
+.atria-memory-workspace .workspace-memory-danger-zone p { margin: 0 0 8px; font-size: var(--fs-xs); }
+.atria-app-shell .atria-memory-workspace .workspace-memory-danger-zone .workspace-danger { width: 100%; border-color: color-mix(in srgb, var(--tone-vermilion) 45%, transparent); color: var(--tone-vermilion); }
+.atria-memory-workspace .workspace-memory-advanced { margin-top: 10px; font-size: var(--fs-sm); }
+
+/* Main: toolbar · canvas · limit note. */
+.atria-memory-workspace .workspace-memory-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 8px 6px 0; }
+.atria-memory-workspace .workspace-memory-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.atria-memory-workspace .workspace-memory-filter-slot { flex: 1 1 auto; min-width: 0; }
+.atria-memory-workspace .workspace-memory-views { margin-left: auto; }
+.atria-memory-workspace .workspace-memory-content { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.atria-memory-workspace .workspace-memory-toolbar { margin-bottom: 10px; }
+.atria-memory-workspace .workspace-memory-filterbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.atria-memory-workspace .workspace-memory-filterbar input[type="search"] { flex: 0 1 240px; }
+.atria-memory-workspace .workspace-memory-filterbar select { width: auto; min-width: 120px; }
+.atria-app-shell .atria-memory-workspace .workspace-memory-filterbar > button { min-height: 30px; padding: 0 10px; border-color: transparent; background: transparent; box-shadow: none; color: var(--text-2); }
+.atria-app-shell .atria-memory-workspace .workspace-memory-filterbar > button:hover { background: var(--surface-hover); color: var(--text-1); }
+.atria-memory-workspace .workspace-toggle-row { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); font-size: var(--fs-sm); }
+.atria-memory-workspace .workspace-memory-knowledge-layout { display: flex; flex: 1; min-height: 320px; }
+.atria-memory-workspace .workspace-memory-native-graph {
+    position: relative; flex: 1; min-width: 0; min-height: 320px; overflow: hidden; border-radius: var(--r-xl);
+    background: radial-gradient(circle at 1px 1px, var(--line-1) 1px, transparent 0) 0 0 / 22px 22px;
+}
+.atria-memory-workspace .workspace-memory-native-graph[hidden],
+.atria-memory-workspace .workspace-memory-record-list[hidden] { display: none; }
+.atria-memory-workspace .workspace-memory-graph-fallback { display: grid; place-items: center; height: 100%; }
+.atria-memory-workspace .workspace-memory-record-list { flex: 1; min-width: 0; overflow-y: auto; display: grid; gap: 1px; align-content: start; }
+.atria-app-shell .atria-memory-workspace .workspace-memory-record {
+    display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 10px; min-height: 38px; margin: 0; padding: 7px 10px;
+    border: 0; border-radius: var(--r-md); background: transparent; box-shadow: none; text-align: start; font-weight: 400;
+}
+.atria-app-shell .atria-memory-workspace .workspace-memory-record:hover:not(:disabled) { background: var(--surface-hover); }
+.atria-memory-workspace .workspace-memory-record > span:first-child { display: grid; min-width: 0; gap: 2px; overflow-wrap: anywhere; }
+.atria-memory-workspace .workspace-memory-record small { color: var(--text-3); font-size: var(--fs-xs); }
+.atria-memory-workspace .workspace-memory-degree { color: var(--text-3); font: 500 var(--fs-xs)/1 var(--font-mono); }
+.atria-memory-workspace .workspace-memory-limit { flex: none; margin: 0; padding: 8px 2px 12px; color: var(--text-3); font-size: var(--fs-xs); }
+.atria-memory-workspace .workspace-memory-limit:empty { display: none; }
+.atria-memory-workspace .workspace-memory-sources { display: grid; gap: 0; max-width: 960px; overflow-y: auto; padding-bottom: 24px; }
+.atria-memory-workspace .workspace-memory-source-section > h3 { margin: 18px 0 8px; font: 600 var(--fs-md)/1.3 var(--font-ui); }
+.atria-memory-workspace .workspace-memory-source-card { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding-block: 10px; border-block-end: 1px solid var(--line-1); }
+
+/* Inspector: inset pane, same material as the rail. */
+.atria-memory-inspector {
+    min-height: 0; overflow-y: auto; overscroll-behavior: contain; overflow-wrap: anywhere; padding: 16px 18px 24px;
+    border: 1px solid var(--sidebar-line); border-radius: var(--r-pane); background: var(--mat-sidebar);
+}
+.atria-memory-inspector[hidden] { display: none; }
+.atria-memory-inspector .workspace-inspector-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding-bottom: 12px; border-bottom: 1px solid var(--line-1); }
+.atria-memory-inspector .workspace-inspector-heading h3 { flex: 1 1 100%; margin: 0; font: 600 var(--fs-xl)/1.25 var(--font-ui); }
+.atria-memory-inspector .workspace-eyebrow { color: var(--text-3); font: 600 10.5px/1 var(--font-ui); letter-spacing: .12em; text-transform: uppercase; }
+.atria-memory-inspector .workspace-inspector-close { margin-left: auto; }
+.atria-memory-inspector .workspace-inspector-section { padding-block: 12px; border-bottom: 1px solid var(--line-1); }
+.atria-memory-inspector h4 { margin: 0 0 8px; color: var(--text-3); font: 600 var(--fs-xs)/1 var(--font-ui); letter-spacing: .04em; }
+.atria-memory-inspector dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; margin: 0; font-size: var(--fs-sm); }
+.atria-memory-inspector dt { color: var(--text-3); }
 .atria-memory-inspector dd { margin: 0; }
-@media (max-width: 1000px) { .atria-memory-workspace .workspace-memory-knowledge-layout { grid-template-columns: minmax(0, 1fr); } }
+
+/* Medium: the rail narrows; compact: rail above the canvas, inspector as a sheet. */
+@media (max-width: 1100px) { .atria-memory-workspace .workspace-memory-page { grid-template-columns: 228px minmax(0, 1fr); } }
+.atria-app-shell[data-atria-viewport="compact"] .atria-domain-workspace__body:has(> .atria-memory-layout) { overflow: auto; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-domain-workspace__body > .atria-memory-layout { height: auto; padding: 10px 12px 96px; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-memory-workspace .workspace-memory-page { grid-template-columns: minmax(0, 1fr); height: auto; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-memory-workspace .workspace-memory-main { order: -1; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-memory-workspace .workspace-memory-native-graph { min-height: 340px; }
 @media (max-width: 760px) {
     .atria-memory-layout:has(.atria-memory-inspector:not([hidden])) { grid-template-columns: minmax(0, 1fr); }
-    .atria-memory-inspector { position: fixed; inset: 100px 8px 88px; z-index: 25; max-height: none; border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-lg); box-shadow: var(--atri-shadow-overlay); }
-    .atria-memory-workspace { padding: 12px; }
+    .atria-memory-inspector {
+        position: fixed; inset: auto 0 0; z-index: var(--z-sheet); max-height: 78%; border-radius: 24px 24px 0 0; border: 0; border-top: 1px solid var(--glass-line);
+        background: var(--mat-overlay); box-shadow: var(--glass-rim), 0 -18px 50px -20px rgb(0 0 0 / .6); padding-bottom: calc(24px + var(--atri-safe-area-bottom));
+    }
 }
+
+/* Diagnostics inside the Agents tab frame: the body already carries the gutter. */
+.atria-domain-workspace__body > .atriaLogsWorkspace[data-atria-workspace-embedded=true] { padding: 0; height: auto; overflow: visible; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-domain-workspace__body > .atriaLogsWorkspace[data-atria-workspace-embedded=true] { padding: 0; height: auto; }
+.atria-domain-workspace__body:has(> .atriaLogsWorkspace) { padding-top: 14px; }

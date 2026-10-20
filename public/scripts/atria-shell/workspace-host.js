@@ -1,4 +1,5 @@
 import { mountPaneResizer } from './pane-resizer.js';
+import { buildAgentsFrame } from './agent-sections.js';
 import { mountActivityIsland } from './activity-island.js';
 import { mountExtensionsWorkspace } from '../native/extensions-workspace.js';
 import { createAtriaIcon } from './icons.js';
@@ -32,7 +33,7 @@ const AGENT_SECTION_LABELS = Object.freeze({
     plans: 'Plans',
     runs: 'Runs',
     memory: 'Memory',
-    diagnostics: 'Diagnostics',
+    diagnostics: 'Diagnostics & replay',
 });
 
 const AGENT_SECTION_DESCRIPTIONS = Object.freeze({
@@ -47,11 +48,12 @@ const UTILITY_LABELS = Object.freeze({
     plugins: 'Extensions',
     settings: 'Settings',
     account: 'Account',
+    storage: 'Storage center',
 });
 
 function normalizeAgentSection(route) {
     const childId = String(route?.child?.id || '').trim();
-    if (!childId) return 'plans';
+    if (!childId) return 'memory';
     if (['plans', 'runs'].includes(childId.split(':')[0])) return childId.split(':')[0];
     if (childId === 'memory') return 'memory';
     if (childId === 'agent-diagnostics') return 'diagnostics';
@@ -193,7 +195,13 @@ async function mountAgentsWorkspace({ document: documentRef, slot, descriptor, h
         return mountAgentsHub({ document: documentRef, slot, host });
     }
 
-    if (descriptor.section === 'diagnostics') return mountDiagnosticsWorkspace({ document: documentRef, slot, isCurrent });
+    // Memory and diagnostics share the Agents tab frame with Runs and Plans.
+    const frame = buildAgentsFrame(documentRef, { active: descriptor.section, onSelect: section => host.openAgentSection(section) });
+    slot.replaceChildren(frame.root);
+    if (descriptor.section === 'diagnostics') {
+        const diagnostics = await mountDiagnosticsWorkspace({ document: documentRef, slot: frame.body, isCurrent });
+        return { ...diagnostics, root: frame.root, dispose() { diagnostics?.dispose?.(); frame.root.remove(); } };
+    }
     const { createMemoryWorkspace } = await import('../agents/memory/workspace.js');
     if (!isCurrent()) return {};
     const root = documentRef.createElement('section'), inspector = documentRef.createElement('aside');
@@ -203,7 +211,7 @@ async function mountAgentsWorkspace({ document: documentRef, slot, descriptor, h
         css.href = '/css/atria-memory.css'; documentRef.head.append(css);
     }
     const layout = documentRef.createElement('div'); layout.className = 'atria-memory-layout';
-    layout.append(root, inspector); slot.replaceChildren(layout);
+    layout.append(root, inspector); frame.body.replaceChildren(layout);
     const resize = mountPaneResizer({ document: documentRef, root: layout, pane: inspector, label: translateShellText('Resize memory inspector'), property: '--atria-memory-inspector-width', axis: 'x', side: 'start',
         min: 260, max: () => Math.min(560, layout.clientWidth - 360),
         enabled: () => !inspector.hidden && layout.clientWidth > 760,
@@ -237,7 +245,7 @@ async function mountAgentsWorkspace({ document: documentRef, slot, descriptor, h
     const memory = createMemoryWorkspace({ getContext: () => globalThis.Atria.getContext() })(root, {
         el, button, inspector, getView: () => ({ recalls: [], memoryUsers: () => [] }),
     });
-    return { root, dispose() { if (typeof memory === 'function') memory(); else memory?.dispose?.(); controls.abort(); inspectorObserver.disconnect(); resize.dispose(); layout.remove(); } };
+    return { root, dispose() { if (typeof memory === 'function') memory(); else memory?.dispose?.(); controls.abort(); inspectorObserver.disconnect(); resize.dispose(); frame.root.remove(); } };
 }
 
 async function mountAgentsV3Workspace(args) {
@@ -250,6 +258,17 @@ async function mountAgentsV3Workspace(args) {
 async function mountBuildWorkspace(args) {
     const studio = await import('../native/studio-workspace.js');
     return studio.mountNativeStudioWorkspace(args);
+}
+
+// Storage center (P-02): a full utility page; the scope switch joins the top bar.
+async function mountStorageUtility({ document: documentRef, slot, shell, route, isCurrent = () => true }) {
+    const { mountStorageCenterPage } = await import('../storage-management.js');
+    if (!isCurrent()) return {};
+    const holder = documentRef.createElement('section');
+    holder.className = 'atria-utility-workspace atria-storage-utility';
+    slot.replaceChildren(holder);
+    const initialScope = String(route?.child?.id || '').endsWith(':browser') ? 'browser' : 'server';
+    return mountStorageCenterPage(holder, { initialScope, toolbar: shell?.slots?.toolbarLeading || null });
 }
 
 async function mountDiagnosticsWorkspace({ slot, isCurrent = () => true }) {
@@ -275,6 +294,7 @@ export function createAtriaWorkspaceAdapters() {
         plugins: mountExtensionsWorkspace,
         settings: mountSettingsUtility,
         account: mountAccountUtility,
+        storage: mountStorageUtility,
         placeholder: mountPlaceholder,
     });
 }
@@ -298,6 +318,7 @@ export function createAtriaWorkspaceHost({
     let disposed = false;
     let sequence = 0;
     let active = null;
+    let contextActionNodes = [];
     let runtimeRepair = null;
     let lastRouteSignature = JSON.stringify(navigation.getRoute());
     const commandDisposers = [];
@@ -669,7 +690,8 @@ export function createAtriaWorkspaceHost({
     }
 
     function openUtility(id) {
-        const utilityId = String(id || '').trim().toLowerCase();
+        const requested = String(id || '').trim().toLowerCase();
+        const utilityId = requested.split(':')[0];
         const label = UTILITY_LABELS[utilityId];
         if (!label) {
             throw new Error(`Unknown Atria workspace utility: ${id}`);
@@ -678,7 +700,7 @@ export function createAtriaWorkspaceHost({
         // Global utilities belong to the neutral Play host. Commit the full
         // destination together so a rejected leave preserves the current owner.
         return navigateToChild('play', {
-            id: `utility.${utilityId}`,
+            id: `utility.${requested}`,
             label,
             kind: 'workspace',
         }, {
@@ -777,6 +799,13 @@ export function createAtriaWorkspaceHost({
         openRun: runId => navigateToChild('agents', { id: 'runs:' + runId, label: 'Run', kind: 'detail' }, { history: 'push', reason: 'workspace-agent-run' }),
         openWorldInfo,
         openUtility,
+        // Domain tools for the current page, shown in the top bar's tool capsule.
+        // Only the nodes set here are replaced; Play keeps its own tools there.
+        setContextActions(nodes = []) {
+            for (const node of contextActionNodes) node.remove();
+            contextActionNodes = nodes.filter(Boolean);
+            shell.slots.contextBar?.append(...contextActionNodes);
+        },
         closeActive,
         refreshActive,
         refreshForResourceChange,

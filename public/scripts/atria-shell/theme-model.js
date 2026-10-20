@@ -36,7 +36,8 @@ export function createPalette({ appearance, canvas, surface, text, secondary, ac
         return result;
     };
     const tone = (light, night) => legible(dark ? night : light);
-    const tones = { info: tone('#2f5bb7', '#92b1f4'), committed: tone('#226f4e', '#7fcfa9'), history: tone('#7a5a3c', '#c2a286'), unknown: tone('#5b4f9e', '#aa9fdd') };
+    // Atrium ledger: 青 lapis, 玉 jade, 赭 umber, 黛 dai.
+    const tones = { info: tone('#3b62b6', '#92b1f4'), committed: tone('#226f4e', '#7fcfa9'), history: tone('#866548', '#b39274'), unknown: tone('#6a5bb0', '#aa9fdd') };
     const accentState = amount => {
         let result = mixColor(accent, text, amount);
         for (let i = 0; i < 12 && contrastRatio(result, onAccent) < 4.5; i++) { amount *= .75; result = mixColor(accent, text, amount); }
@@ -51,22 +52,30 @@ export function createPalette({ appearance, canvas, surface, text, secondary, ac
         separator: mixColor(surface, text, .12), 'separator-strong': mixColor(surface, text, .5),
         fill: mixColor(surface, text, .04), 'fill-hover': mixColor(surface, text, .08), 'fill-pressed': mixColor(surface, text, .14), 'fill-strong': mixColor(surface, text, .2),
         'focus-ring': accentText,
-        success: dark ? '#83b7ff' : '#225cc5', 'success-soft': mixColor(surface, dark ? '#83b7ff' : '#225cc5', .12),
-        warning: dark ? '#edc477' : '#8f5b12', 'warning-soft': mixColor(surface, dark ? '#edc477' : '#8f5b12', .12),
-        danger: dark ? '#ff9c90' : '#bb2e23', 'danger-soft': mixColor(surface, dark ? '#ff9c90' : '#bb2e23', .12),
+        success: tones.committed, 'success-soft': mixColor(surface, tones.committed, .12),
+        warning: tone('#935509', '#f3a85e'), 'warning-soft': mixColor(surface, dark ? '#f3a85e' : '#935509', .12),
+        danger: tone('#bf4430', '#ef7f6d'), 'danger-soft': mixColor(surface, dark ? '#ef7f6d' : '#bf4430', .12),
         scrim: dark ? '#000000b3' : '#18182052', 'cover-ink': '#ffffff', ink: text,
         'ink-hover': mixColor(text, surface, .12), 'ink-pressed': mixColor(text, surface, .2), blue: dark ? '#83b7ff' : '#225cc5',
         ...Object.fromEntries(Object.entries(tones).flatMap(([name, value]) => [[name, value], [name + '-soft', mixColor(surface, value, .12)]])),
     };
 }
 
-function builtin(id, name, appearance, canvas, surface, text, secondary, accent) {
+function builtin(id, name, appearance, canvas, surface, text, secondary, accent, tuned = {}) {
     return Object.freeze({ format: THEME_FORMAT, version: 1, id: `builtin:${id}`, name, appearance,
-        colors: Object.freeze(createPalette({ appearance, canvas, surface, text, secondary, accent })), css: Object.freeze({ enabled: false, text: '' }) });
+        colors: Object.freeze({ ...createPalette({ appearance, canvas, surface, text, secondary, accent }), ...tuned }), css: Object.freeze({ enabled: false, text: '' }) });
 }
 export const BUILTIN_THEMES = Object.freeze([
-    builtin('folio', 'Folio', 'light', '#f2ede3', '#fbf8f2', '#1f1a14', '#554d43', '#94672b'),
-    builtin('nocturne', 'Nocturne', 'dark', '#0c0e14', '#141720', '#f1ece2', '#c2bbaf', '#e6c391'),
+    // 昼 Folio: rice-paper ground, ink text, gold recedes to ochre.
+    builtin('folio', 'Folio', 'light', '#f5f1e8', '#fffdf8', '#1f1a14', '#574f45', '#94672b', {
+        'surface-2': '#f8f5ee', 'surface-3': '#ece6da', 'text-tertiary': '#7f7668', 'text-quaternary': '#a39a8b',
+        'fill-hover': '#ece6da', 'fill-pressed': '#e3dccd', ink: '#1f1a14', 'ink-hover': '#2a241c', 'ink-pressed': '#1b1712', 'text-on-ink': '#f7efe0',
+    }),
+    // 夜 Nocturne (default night): ink ground, warm ivory text, gold is the only warm light.
+    builtin('nocturne', 'Nocturne', 'dark', '#0c0e14', '#171b25', '#f1ece2', '#c2bbaf', '#e6c391', {
+        'surface-2': '#11141c', 'surface-3': '#1e2330', 'text-tertiary': '#9a9488', 'text-quaternary': '#6f6a62',
+        'fill-hover': '#1e2330', 'fill-pressed': '#262c3a', ink: '#f1ece2', 'ink-hover': '#f4d9ae', 'ink-pressed': '#ddd6c9', 'text-on-ink': '#15120d',
+    }),
     builtin('serene', 'Serene Canvas', 'light', '#f9f8f6', '#ffffff', '#1c1c1e', '#67676d', '#ff5a36'),
     builtin('azure', 'Azure', 'dark', '#11191e', '#1b2730', '#abc6df', '#9eafc0', '#8b9eff'),
     builtin('cappuccino', 'Cappuccino', 'dark', '#201c19', '#2d2723', '#f0e1cb', '#c0af9c', '#d4ac87'),

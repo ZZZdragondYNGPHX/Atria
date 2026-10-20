@@ -12,8 +12,9 @@ function multiline(doc, root, label, value) {
     const input = el(doc, 'textarea', '', undefined, wrap); input.value = value; input.setAttribute('aria-label', tl(label)); input.rows = 5; return input;
 }
 export function mountPersonaWorkspace({ document: doc, body, route, host, browseState = {}, client = nativeProductClient }) {
-    const root = el(doc, 'section', 'atri-library-section'); root.dataset.atriaPersonas = 'true'; body.replaceChildren(root);
-    let disposed = false, token = 0, lastReceipt = null;
+    // List-detail (archetype 2): the Persona list stays beside the editor.
+    const root = el(doc, 'section', 'atri-library-section atria-native-library atri-library-resource-split'); root.dataset.atriaPersonas = 'true'; body.replaceChildren(root);
+    let disposed = false, token = 0, lastReceipt = null, area = root, pane = root, selectedId = '';
     const fresh = value => !disposed && value === token;
     async function show(next = route) {
         const current = ++token;
@@ -21,19 +22,30 @@ export function mountPersonaWorkspace({ document: doc, body, route, host, browse
         const parts = id.startsWith('persona:') ? id.slice(8).split(':') : [];
         const detail = parts[0];
         const revision = parts.length === 3 ? { personaId: parts[0], revisionId: parts[1], contentIdentity: parts[2] } : null;
-        root.replaceChildren(); heading(doc, root, 'Personas', 'Personal identities for future player input. Notes stay in your library.');
-        if (lastReceipt) disclosure(doc, root, 'Saved revision', lastReceipt);
+        root.replaceChildren();
+        pane = el(doc, 'aside', 'atri-library-resource-pane', undefined, root); pane.setAttribute('aria-label', tl('Personas'));
+        area = el(doc, 'section', 'atri-library-resource-main', undefined, root);
+        selectedId = detail && detail !== 'new' ? detail : '';
+        const header = heading(doc, pane, 'Personas', 'Personal identities for future player input. Notes stay in your library.');
+        header.classList.add('atri-library-pane-heading');
+        if (lastReceipt) disclosure(doc, area, 'Saved revision', lastReceipt);
         try {
+            // A list failure stays in the list pane; the open Persona remains editable.
+            const listing = list(current).catch(error => { if (fresh(current)) feedback(doc, pane, libraryError(error), true); });
             if (detail === 'new') await editor(null, current);
             else if (detail) {
                 const item = await client.getPersona(revision ? { ref: revision } : { personaId: detail });
                 if (fresh(current)) await editor(item, current);
-            } else await list(current);
-        } catch (error) { if (fresh(current)) { feedback(doc, root, libraryError(error), true); action(doc, root, 'Try again', () => show(next)); } }
+            } else {
+                const empty = el(doc, 'div', 'atri-library-resource-empty', undefined, area);
+                el(doc, 'p', '', tl('Select a Persona to edit, or create a new one.'), empty);
+            }
+            await listing;
+        } catch (error) { if (fresh(current)) { feedback(doc, area, libraryError(error), true); action(doc, area, 'Try again', () => show(next)); } }
     }
     async function editor(item, current, copy = false) {
         const content = item?.revision ?? blank();
-        const form = el(doc, 'form', 'atri-persona-editor', undefined, root); form.addEventListener('submit', event => event.preventDefault()); form.dataset.atriaDraftDirty = 'false';
+        const form = el(doc, 'form', 'atri-persona-editor', undefined, area); form.addEventListener('submit', event => event.preventDefault()); form.dataset.atriaDraftDirty = 'false';
         const fields = el(doc, 'fieldset', '', undefined, form);
         const name = field(doc, fields, 'Persona name', copy ? content.name + ' (copy)' : content.name);
         const description = multiline(doc, fields, 'Description', content.description);
@@ -78,52 +90,53 @@ export function mountPersonaWorkspace({ document: doc, body, route, host, browse
         }, { primary: true });
         action(doc, controls, 'Cancel', () => { if (confirmAtriaDraftLeave(doc, form)) { if (host.openLibrarySection) host.openLibrarySection('personas'); else show({ child: { id: 'personas' } }); } });
         if (item && !copy) {
-            disclosure(doc, root, 'Exact revision', item.ref);
-            const manage = el(doc, 'div', 'atri-library-actions', undefined, root);
-            action(doc, manage, 'Copy', async () => { if (!confirmAtriaDraftLeave(doc, form)) return; root.replaceChildren(); await editor(item, ++token, true); });
-            action(doc, manage, item.root.archived ? 'Restore' : 'Archive', async () => {
+            disclosure(doc, area, 'Exact revision', item.ref);
+            const manage = el(doc, 'div', 'atri-library-actions', undefined, area);
+            action(doc, manage, 'Copy', async () => { if (!confirmAtriaDraftLeave(doc, form)) return; area.replaceChildren(); await editor(item, ++token, true); });
+            action(doc, manage, item.area.archived ? 'Restore' : 'Archive', async () => {
                 if (!confirmAtriaDraftLeave(doc, form)) return;
-                const receipt = await client.archivePersona({ personaId: item.ref.personaId, archived: !item.root.archived, expectedFingerprint: item.expectedFingerprint });
-                disclosure(doc, root, 'Saved revision', receipt.ref); await show({ child: { id: 'personas' } });
+                const receipt = await client.archivePersona({ personaId: item.ref.personaId, archived: !item.area.archived, expectedFingerprint: item.expectedFingerprint });
+                disclosure(doc, area, 'Saved revision', receipt.ref); await show({ child: { id: 'personas' } });
             });
             action(doc, manage, 'Use as default', async () => {
                 const baseline = await client.readPersonaDefault();
                 if (!fresh(current) || !await doc.defaultView.confirm(tl('Set this exact revision as the account default? Existing sessions keep their identity.'))) return;
                 if (!fresh(current)) return;
-                await client.setPersonaDefault({ selection: item.ref, expectedFingerprint: baseline.expectedFingerprint }); feedback(doc, root, 'Saved successfully.');
-            }, { disabled: item.root.archived });
-            action(doc, manage, 'Used By', async () => { const result = await client.getPersonaUsedBy(item.ref.personaId); if (fresh(current)) disclosure(doc, root, 'Used By', result.references); });
+                await client.setPersonaDefault({ selection: item.ref, expectedFingerprint: baseline.expectedFingerprint }); feedback(doc, area, 'Saved successfully.');
+            }, { disabled: item.area.archived });
+            action(doc, manage, 'Used By', async () => { const result = await client.getPersonaUsedBy(item.ref.personaId); if (fresh(current)) disclosure(doc, area, 'Used By', result.references); });
             action(doc, manage, 'Delete permanently', async () => {
                 if (!confirmAtriaDraftLeave(doc, form)) return;
                 const result = await client.getPersonaUsedBy(item.ref.personaId); if (!fresh(current)) return;
-                disclosure(doc, root, 'Used By', result.references);
+                disclosure(doc, area, 'Used By', result.references);
                 if (result.references.length || !doc.defaultView.confirm(tl('Delete this unreferenced Persona permanently?'))) return;
                 if (!fresh(current)) return;
                 await client.deletePersona({ personaId: item.ref.personaId, expectedFingerprint: item.expectedFingerprint }); await show({ child: { id: 'personas' } });
             }, { danger: true });
             const revisions = await client.getPersonaRevisions(item.ref.personaId);
-            if (fresh(current)) for (const revision of revisions) action(doc, root, revision.revisionId, async () => {
+            if (fresh(current)) for (const revision of revisions) action(doc, area, revision.revisionId, async () => {
                 if (!confirmAtriaDraftLeave(doc, form)) return;
                 const exact = await client.getPersona({ personaId: item.ref.personaId });
-                // Obtain exact content identity from the original revision; current root CAS remains authoritative.
+                // Obtain exact content identity from the original revision; current area CAS remains authoritative.
                 const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stableJson(revision)));
                 const contentIdentity = [...new Uint8Array(hash)].map(byte => byte.toString(16).padStart(2, '0')).join('');
                 const old = await client.getPersona({ ref: { personaId: exact.ref.personaId, revisionId: revision.revisionId, contentIdentity } });
-                if (fresh(current)) { root.replaceChildren(); await editor(old, ++token); }
+                if (fresh(current)) { area.replaceChildren(); await editor(old, ++token); }
             });
         }
         name.focus();
     }
     async function list(current) {
-        action(doc, root, 'New Persona', () => { if (host.openLibraryPersona) return host.openLibraryPersona(null); root.replaceChildren(); return editor(null, ++token); });
-        action(doc, root, 'Clear account default', async () => { const d = await client.readPersonaDefault(); if (fresh(current)) { await client.setPersonaDefault({ selection: null, expectedFingerprint: d.expectedFingerprint }); feedback(doc, root, 'Saved successfully.'); } });
-        const query = field(doc, root, 'Search Personas', browseState.query ?? '', 'search');
-        const archived = field(doc, root, 'Include archived', '', 'checkbox'); archived.checked = browseState.includeArchived ?? false;
-        const sortLabel = el(doc, 'label', 'atri-library-field', tl('Sort Personas'), root);
+        action(doc, pane, 'New Persona', () => { if (host.openLibraryPersona) return host.openLibraryPersona(null); area.replaceChildren(); return editor(null, ++token); });
+        action(doc, pane, 'Clear account default', async () => { const d = await client.readPersonaDefault(); if (fresh(current)) { await client.setPersonaDefault({ selection: null, expectedFingerprint: d.expectedFingerprint }); feedback(doc, pane, 'Saved successfully.'); } });
+        const query = field(doc, pane, 'Search Personas', browseState.query ?? '', 'search');
+        query.placeholder = tl('Search Personas');
+        const archived = field(doc, pane, 'Include archived', '', 'checkbox'); archived.checked = browseState.includeArchived ?? false;
+        const sortLabel = el(doc, 'label', 'atri-library-field', tl('Sort Personas'), pane);
         const sort = el(doc, 'select', '', undefined, sortLabel); sort.setAttribute('aria-label', tl('Sort Personas'));
         for (const [value, label] of [['name', 'Name'], ['id', 'ID']]) { const option = el(doc, 'option', '', tl(label), sort); option.value = value; }
         sort.value = browseState.sort ?? 'name';
-        const rows = el(doc, 'div', 'atri-library-grouped-list', undefined, root);
+        const rows = el(doc, 'div', 'atri-library-grouped-list', undefined, pane);
         let cursor = null, listToken = 0;
         async function load(reset = true) {
             const own = ++listToken;
@@ -133,9 +146,10 @@ export function mountPersonaWorkspace({ document: doc, body, route, host, browse
             if (!result.items.length && reset) feedback(doc, rows, 'No matching Personas');
             for (const item of result.items) {
                 const row = el(doc, 'article', 'atri-library-row', undefined, rows);
+                if (item.ref.personaId === selectedId) row.setAttribute('aria-current', 'true');
                 if (item.revision.avatar) { const image = el(doc, 'img', 'atri-persona-avatar', undefined, row); image.alt = ''; image.src = nativeAssetUrl(item.revision.avatar.assetId); image.addEventListener('error', () => image.remove(), { once: true }); }
                 action(doc, row, item.revision.name, () => host.openLibraryPersona ? host.openLibraryPersona(item.ref, item.revision.name) : show({ child: { id: 'persona:' + item.ref.personaId } }));
-                if (item.root.archived) el(doc, 'span', '', tl('Archived'), row);
+                if (item.pane.archived) el(doc, 'span', '', tl('Archived'), row);
             }
             rows.querySelector('[data-persona-more]')?.remove();
             if (cursor) { const more = action(doc, rows, 'Load more', () => load(false)); more.dataset.personaMore = 'true'; }

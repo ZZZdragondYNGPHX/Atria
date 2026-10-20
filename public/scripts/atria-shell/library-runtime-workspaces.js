@@ -10,6 +10,7 @@ import { translateShellText } from './localization.js';
 import { applyAtriaPattern } from './patterns.js';
 import {
     mountNativeWorksWorkspace,
+    mountNativeGamesWorkspace,
     mountNativeWorldKnowledgeWorkspace,
 } from '../native/library-workspaces.js';
 
@@ -23,6 +24,7 @@ function createLocalizedStatePanel(documentRef, kind, options = {}) {
 
 export const LIBRARY_SECTIONS = Object.freeze([
     Object.freeze({ id: 'works', label: 'Works' }),
+    Object.freeze({ id: 'games', label: 'My stories' }),
     Object.freeze({ id: 'worlds-knowledge', label: 'Worlds & Knowledge' }),
     Object.freeze({ id: 'prompt-presets', label: 'Prompt Presets' }),
     Object.freeze({ id: 'personas', label: 'Personas' }),
@@ -169,6 +171,7 @@ async function mountLibrarySection(args) {
     if (section === 'images') return mountVisualAuthoring(args);
     if (section === 'personas') return mountPersonaWorkspace(args);
     if (section === 'works') return mountNativeWorksWorkspace(args);
+    if (section === 'games') return mountNativeGamesWorkspace(args);
     if (section === 'worlds-knowledge') return mountNativeWorldKnowledgeWorkspace(args);
     if (section === 'prompt-presets') {
         let child;

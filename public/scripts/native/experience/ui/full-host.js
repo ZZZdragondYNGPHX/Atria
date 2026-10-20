@@ -1,5 +1,6 @@
 import { NATIVE_SESSION_LIFECYCLE, onNativeSessionLifecycle } from '../../session-lifecycle.js';
 import { translateShellText as tl } from '../../../atria-shell/localization.js';
+import { createAtriaIcon } from '../../../atria-shell/icons.js';
 const HIDDEN_TARGET_IDS = Object.freeze([
     'sheld',
     'top-bar',
@@ -108,8 +109,12 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
 
     const recoveryPanel = documentRef.createElement('details');
     recoveryPanel.className = 'atria-game-recovery-panel';
+    // Host door (G08): a small pill the Work cannot restyle or cover.
     const recoveryTitle = documentRef.createElement('summary');
-    recoveryTitle.textContent = tl('Experience controls');
+    recoveryTitle.setAttribute('aria-label', tl('Experience controls'));
+    const doorLabel = documentRef.createElement('span');
+    doorLabel.textContent = tl('Host');
+    recoveryTitle.append(createAtriaIcon(documentRef, 'atria', { size: 14 }), doorLabel);
     const recoveryActions = documentRef.createElement('div');
     recoveryActions.className = 'atria-game-recovery-actions';
     const recoveryStatus = documentRef.createElement('p');
@@ -118,8 +123,9 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
     recovery.append(recoveryPanel);
     // Reserve the collapsed Host toolbar even when the package fills the Stage.
     // Expanded recovery remains an intentional overlay, independent of package UI.
+    // In the Shell the door sits in the top-bar row, so the Stage needs no reserve.
     const reserveRecoverySpace = () => {
-        root.style.paddingTop = `${Math.ceil(recoveryTitle.getBoundingClientRect().height || 48) + 16}px`;
+        root.style.paddingTop = shellScoped ? '0px' : `${Math.ceil(recoveryTitle.getBoundingClientRect().height || 48) + 16}px`;
     };
     const recoveryResize = typeof globalThis.ResizeObserver === 'function'
         ? new globalThis.ResizeObserver(reserveRecoverySpace) : null;

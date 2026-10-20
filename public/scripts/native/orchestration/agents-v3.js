@@ -7,9 +7,9 @@ import { mountPlanEditor, mountPlanLibrary } from './plan-workspace.js';
 import { mountRunDetail, mountRunList } from './run-workspace.js';
 import { el } from './dom.js';
 import { shortId } from './ledger.js';
+import { buildAgentsFrame } from '../../atria-shell/agent-sections.js';
 
 export const V3_SECTIONS = Object.freeze(['plans', 'runs']);
-const TABS = [['plans', 'Plans'], ['runs', 'Runs'], ['memory', 'Memory'], ['diagnostics', 'Diagnostics']];
 
 export function parseV3Route(route) {
     const childId = String(route?.child?.id || '') || 'plans';
@@ -23,20 +23,9 @@ let sharedClient = null;
 const client = () => sharedClient ??= createOrchestrationClient();
 
 export function mountAgentsV3({ document: doc, slot, route, shell, navigation, host }) {
-    const root = el(doc, 'section', 'atria-domain-workspace atria-orch');
-    root.dataset.atriaDomainWorkspace = 'agents';
-    const header = el(doc, 'header', 'atria-domain-workspace__header', null, root);
-    const title = el(doc, 'h1', '', tl('Agents'), header);
-    title.dataset.atriaLargeTitle = 'true';
-    const nav = el(doc, 'nav', 'atria-domain-workspace__nav', null, root);
-    nav.setAttribute('aria-label', tl('Agents sections'));
-    for (const [id, label] of TABS) {
-        const tab = el(doc, 'button', 'atria-domain-workspace__tab', tl(label), nav);
-        tab.type = 'button';
-        tab.dataset.atriaDomainSection = id;
-        tab.addEventListener('click', () => host.openAgentSection(id));
-    }
-    const body = el(doc, 'div', 'atria-domain-workspace__body atria-orch__body', null, root);
+    const frame = buildAgentsFrame(doc, { active: parseV3Route(route)?.section, onSelect: id => host.openAgentSection(id) });
+    const { root, body } = frame;
+    root.classList.add('atria-orch'); body.classList.add('atria-orch__body');
     slot.replaceChildren(root);
     let current = null, currentKey = '';
 
@@ -47,11 +36,7 @@ export function mountAgentsV3({ document: doc, slot, route, shell, navigation, h
     function show(nextRoute) {
         const parsed = parseV3Route(nextRoute);
         if (!parsed) return;
-        for (const tab of nav.querySelectorAll('[data-atria-domain-section]')) {
-            const selected = tab.dataset.atriaDomainSection === parsed.section;
-            tab.classList.toggle('is-selected', selected);
-            tab.setAttribute('aria-current', selected ? 'page' : 'false');
-        }
+        frame.select(parsed.section);
         // A deep link carries only the child ID; label the section once known.
         const child = nextRoute.child;
         if (child && child.label === child.id && (child.id === 'plans' || child.id === 'runs')) navigation.navigateChild({ id: child.id, label: child.id === 'plans' ? 'Plans' : 'Runs', kind: 'workspace' }, { history: 'replace', reason: 'agents-v3-label' });
@@ -62,6 +47,16 @@ export function mountAgentsV3({ document: doc, slot, route, shell, navigation, h
         shell.slots.dock.querySelector('.atria-orch-inspector')?.remove();
         body.replaceChildren();
         currentKey = key;
+        // Run · Plan share one tab; the lists switch here, details keep their own back path.
+        if (!parsed.planId && !parsed.runId) {
+            const views = el(doc, 'div', 'atria-segmented atria-orch-views', null, body);
+            views.setAttribute('role', 'group'); views.setAttribute('aria-label', tl('Run · Plan'));
+            for (const [id, label] of [['runs', 'Runs'], ['plans', 'Plans']]) {
+                const item = el(doc, 'button', 'atria-segmented__item', tl(label), views);
+                item.type = 'button'; item.setAttribute('aria-pressed', String(parsed.section === id));
+                item.addEventListener('click', () => host.openAgentSection(id));
+            }
+        }
         const summary = el(doc, 'section', 'atria-workspace-context-summary');
         summary.dataset.atriaWorkspaceContext = 'true';
         el(doc, 'strong', '', parsed.section === 'plans' ? tl('Plans') : tl('Runs'), summary);

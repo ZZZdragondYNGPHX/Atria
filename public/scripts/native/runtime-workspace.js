@@ -8,6 +8,7 @@ import { runtimeRequest, runtimeRemediation, getRuntimeEvidence } from './runtim
 import { nativeSessionRuntime } from './session-runtime.js';
 import { createAtriaShellEnvironment } from '../atria-shell/environment.js';
 import { createAtriaStatePanel } from '../atria-shell/primitives.js';
+import { createAtriaIcon } from '../atria-shell/icons.js';
 import { confirmLibraryAction, referenceRemediation } from './library-ui.js';
 import { createStudioNativeId } from './studio-authoring.js';
 import { nativeStudioClient } from './studio-client.js';
@@ -46,6 +47,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
     const drafts = observeAtriaDrafts({ document: doc, root });
     const environment = createAtriaShellEnvironment(root);
     let loadingSequence = 0; let editorSequence = 0;
+    let canvas = root;
     function adaptEditor() {
         if (!activeEditor) return;
         const focused = doc.activeElement;
@@ -64,14 +66,14 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         if (environment.get().keyboardOpen) focused?.scrollIntoView?.({ block: 'nearest' });
     }
     environment.subscribe(adaptEditor);
-    function node(tag, text, parent = root) {
+    function node(tag, text, parent = canvas) {
         const el = doc.createElement(tag); if (text !== undefined) el.textContent = tag === 'pre' ? text : translateShellText(text);
         parent?.append(el); return el;
     }
-    function button(text, action, parent = root) {
+    function button(text, action, parent = canvas) {
         const el = node('button', text, parent); el.type = 'button'; el.addEventListener('click', action); return el;
     }
-    function notice(text, parent = root, error = false) {
+    function notice(text, parent = canvas, error = false) {
         const el = node('p', text, parent); el.className = 'atri-runtime-notice'; el.setAttribute('role', error ? 'alert' : 'status'); return el;
     }
     function failure(error, parent) {
@@ -129,8 +131,11 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         return fmt('${0} · ${1} fallback routes', [translateShellText(roleLabels[item.role.replace('role.', '')] || item.role), item.fallbackRouteRefs.length]);
     }
     function readiness() {
-        const panel = node('details'); panel.className = 'atri-runtime-group';
-        node('summary', 'Runtime setup', panel);
+        const panel = node('section'); panel.className = 'atri-runtime-chain-card';
+        const head = node('header', undefined, panel); head.className = 'atri-runtime-chain-card__head';
+        const chainTitle = node('h3', 'Readiness chain', head);
+        const chainState = node('span', '', head); chainState.className = 'atri-runtime-chain-card__state';
+        node('span', 'Select a link to open its setup. Secrets appear only when the adapter needs one.', head).className = 'atri-runtime-chain-card__hint';
         const content = node('div', undefined, panel);
         const refresh = async (initial = false) => {
             content.replaceChildren(); notice('Checking configuration…', content);
@@ -143,28 +148,37 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 if (disposed || !panel.isConnected) return;
                 const steps = runtimeReadiness(configuration, secrets, resources);
                 content.replaceChildren();
-                const next = steps.find(step => !step.ready); panel.open = !!next;
-                notice(next ? 'Complete the next missing dependency, then check again.' : 'Configuration linked. Use Diagnostics to preview your exact context before generation.', content);
-                const list = node('ol', undefined, content);
+                const next = steps.find(step => !step.ready);
+                const missingCount = steps.filter(step => !step.ready).length;
+                chainState.textContent = missingCount ? fmt('${0} missing', [missingCount]) : translateShellText('Ready');
+                chainState.dataset.state = missingCount ? 'missing' : 'ready';
+                chainTitle.dataset.state = chainState.dataset.state;
+                // Readiness chain (R02): each link shows shape, glyph and text;
+                // only the next missing link offers a repair action.
+                const list = node('ol', undefined, content); list.className = 'atri-runtime-chain';
+                list.setAttribute('aria-label', translateShellText('Readiness chain'));
                 for (const step of steps) {
-                    const item = node('li', undefined, list);
-                    node('span', step.label, item);
-                    node('span', step.ready ? ' — Configured' : ' — Needs setup', item);
+                    const item = node('li', undefined, list); item.className = 'atri-runtime-link';
+                    item.dataset.state = step.ready ? 'ready' : step === next ? 'missing' : 'pending';
+                    const glyph = node('span', undefined, item); glyph.className = 'atri-runtime-link__glyph';
+                    glyph.append(createAtriaIcon(doc, step.ready ? 'check' : { Secret: 'key', Model: 'cube', 'Prompt Program': 'braces', 'Generation Profile': 'gauge', 'Runtime Route': 'route' }[step.label] || 'link', { size: 18 }));
+                    node('strong', step.label, item);
+                    node('span', step.ready ? 'Configured' : 'Needs setup', item).className = 'atri-runtime-link__state';
                     if (step === next) button(fmt('Set up ${0}', [translateShellText(step.label)]), () => step.owner === 'library' ? host.openLibrarySection(step.section) : host.openRuntimeSection(step.section), item);
                 }
                 if (!next) button('Open Diagnostics', () => host.openRuntimeSection('diagnostics'), content);
             } catch {
                 if (disposed || !panel.isConnected) return;
-                panel.open = true;
-                content.replaceChildren(); notice('Could not check Runtime setup. Retry to read the current configuration.', content, true);
+                chainState.textContent = ''; content.replaceChildren(); notice('Could not check Runtime setup. Retry to read the current configuration.', content, true);
             }
-            if (!disposed && panel.isConnected) button('Check setup again', () => refresh(), content);
+            if (!disposed && panel.isConnected) button('Check setup again', () => refresh(), content).className = 'atri-runtime-chain-card__refresh';
         };
         // Inspect dependencies on entry so the first missing item is visible.
         void refresh(true);
     }
     function renderList() {
         editorSequence += 1;
+        canvas = root;
         activeEditor = null; root.onkeydown = null; restoreShell(); body.append(root); root.replaceChildren(); delete root.dataset.editor;
         root.removeAttribute('role'); root.removeAttribute('aria-modal'); root.removeAttribute('aria-label');
         heading(translateShellText(sectionLabels[section]), {
@@ -184,21 +198,36 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             if (missing.length) notice(fmt('Not configured: ${0}. Create a route for each role you use.', [missing.join(', ')]));
             if (ambiguous.length) notice(fmt('Ambiguous primary routes: ${0}. Edit roles or fallback links.', [ambiguous.join(', ')]));
         }
-        const toolbar = node('div'); toolbar.className = 'atri-runtime-toolbar';
+        // List-detail: the list stays put; the editor opens in the pane beside it.
+        const split = node('div'); split.className = 'atri-runtime-split';
+        const listPane = node('aside', undefined, split); listPane.className = 'atri-runtime-listpane';
+        listPane.setAttribute('aria-label', translateShellText(sectionLabels[section]));
+        const listHead = node('header', undefined, listPane); listHead.className = 'atri-runtime-listpane__head';
+        const count = node('h3', undefined, listHead);
+        const create = button(fmt('New ${0}', [translateShellText(resourceLabels[section])]), () => edit(), listHead);
+        create.prepend(createAtriaIcon(doc, 'plus', { size: 15 }));
+        const toolbar = node('div', undefined, listPane); toolbar.className = 'atri-runtime-toolbar';
         const search = field(toolbar, fmt('Filter ${0}', [translateShellText(section)])); search.type = 'search';
-        button(fmt('New ${0}', [translateShellText(resourceLabels[section])]), () => edit(), toolbar);
-        const list = node('div'); list.className = 'atri-runtime-list';
+        search.placeholder = fmt('Filter ${0}', [translateShellText(section)]);
+        const list = node('div', undefined, listPane); list.className = 'atri-runtime-list';
+        const detail = node('section', undefined, split); detail.className = 'atri-runtime-detail';
+        const empty = node('div', undefined, detail); empty.className = 'atri-runtime-detail__empty';
+        node('p', fmt('Select a ${0} to edit it, or create a new one.', [translateShellText(resourceLabels[section])]), empty);
         function fill() {
             list.replaceChildren();
+            count.textContent = translateShellText(sectionLabels[section]) + ' · ' + data[section].length;
             const items = data[section].filter(item => (item.displayName + ' ' + summary(item)).toLowerCase().includes(search.value.toLowerCase()));
             if (!items.length) list.append(createAtriaStatePanel(doc, 'empty', {
                 title: data[section].length ? translateShellText('No matching results.') : fmt('No ${0} yet. Create one to get started.', [translateShellText(section)]),
             }));
             for (const item of items) {
                 const row = node('article', undefined, list); row.className = 'atri-runtime-row';
+                row.dataset.atriaRuntimeItem = item[ids[section]];
+                row.prepend(createAtriaIcon(doc, { routes: 'route', models: 'cube', connections: 'plug' }[section] || 'link', { size: 16 }));
                 const text = node('div', undefined, row); node('h3', undefined, text).textContent = item.displayName; node('p', undefined, text).textContent = summary(item);
                 const editButton = button('Edit', () => edit(item), row);
                 editButton.setAttribute('aria-label', translateShellText('Edit') + ' ' + item.displayName);
+                row.addEventListener('click', event => { if (!event.target.closest('button')) editButton.click(); });
             }
         }
         search.addEventListener('input', fill); fill();
@@ -207,7 +236,8 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         const editorToken = ++editorSequence;
         activeEditor = original?.[ids[section]] || 'new';
         if (section === 'routes' && !cached) {
-            root.replaceChildren(createAtriaStatePanel(doc, 'loading', { title: translateShellText('Loading Native Runtime…') }));
+            const loadingPane = environment.get().mode !== 'compact' && root.querySelector('.atri-runtime-detail') || root;
+            loadingPane.replaceChildren(createAtriaStatePanel(doc, 'loading', { title: translateShellText('Loading Native Runtime…') }));
             try {
                 const resources = await runtimeRequest('/resources', { signal: controller.signal });
                 if (disposed || editorToken !== editorSequence) return;
@@ -218,8 +248,14 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             }
         }
         const value = original ? clone(original) : { schemaVersion: 1, scope: 'player', [ids[section]]: prefixes[section] + '_' + crypto.randomUUID().replaceAll('-', ''), displayName: '' };
-        root.replaceChildren(); root.dataset.editor = 'true';
-        adaptEditor();
+        const pane = environment.get().mode !== 'compact' && root.querySelector('.atri-runtime-detail');
+        if (pane) {
+            canvas = pane; pane.replaceChildren(); root.dataset.editor = 'split';
+            for (const row of root.querySelectorAll('.atri-runtime-row')) row.setAttribute('aria-current', String(row.dataset.atriaRuntimeItem === activeEditor));
+        } else {
+            canvas = root; root.replaceChildren(); root.dataset.editor = 'true';
+            adaptEditor();
+        }
         const header = node('header'); header.className = 'atri-runtime-editor-header';
         const back = button(fmt('Back to ${0}', [translateShellText(section)]), () => { if (!confirmAtriaDraftLeave(doc, root)) return; renderList(); root.querySelector('input')?.focus(); }, header);
         if (host.hasRuntimeRepair?.()) button('Return to model setup', () => host.returnFromRuntimeRepair(), header);

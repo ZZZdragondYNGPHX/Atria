@@ -1,5 +1,7 @@
+import { createAtriaIcon } from './icons.js';
+
 /** Presentation only; AppShell owns navigation, modal state and business data. */
-export function createAtriaEdgeDock({ document: documentRef, window: windowRef, root, rail, bottomNavigation, environment, menu, tl, getInputMode, isBlocked, closeMenu }) {
+export function createAtriaEdgeDock({ document: documentRef, window: windowRef, root, rail, bottomNavigation, environment, menu, tl, getInputMode, isBlocked, openMenu, closeMenu }) {
     const document = documentRef;
     const abort = new windowRef.AbortController();
     const listen = (node, type, handler, options = {}) => node.addEventListener(type, handler, { ...options, signal: abort.signal });
@@ -11,7 +13,7 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
     skin.setAttribute('aria-hidden', 'true');
     const grip = make('button', 'atria-edge-dock-grip');
     grip.type = 'button';
-    grip.innerHTML = '<span aria-hidden="true">\u283F</span>';
+    grip.append(createAtriaIcon(document, 'grip', { size: 18 }));
     const handle = make('button', 'atria-edge-dock-handle');
     handle.type = 'button';
     viewport.append(handle);
@@ -31,20 +33,23 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
     viewport.append(safeProbe);
     let dock = rail, mode = '', edge = 'left', visible = false, gesture = null, pendingReveal = 0, pendingHide = 0, frame = null, motion = null, suppressedClick = null, dead = false;
     const edges = { desktop: 'left', touch: 'bottom' };
-    let displayMode = 'auto';
+    // Guideline §3.4 default: visible, and hidden only while a story is being read.
+    let displayMode = 'reading', magnify = true, movedByLastGesture = false;
     try {
         const saved = JSON.parse(windowRef.localStorage.getItem('atria.navigation.layout') || 'null');
         if (['left', 'right', 'top', 'bottom'].includes(saved?.edge)) edges.desktop = saved.edge;
         if (['auto', 'always', 'reading'].includes(saved?.displayMode)) displayMode = saved.displayMode;
+        if (typeof saved?.magnify === 'boolean') magnify = saved.magnify;
     } catch { /* Device layout is optional; navigation remains usable. */ }
-    const persist = () => { try { windowRef.localStorage.setItem('atria.navigation.layout', JSON.stringify({ edge: edges.desktop, displayMode })); } catch { /* Device storage may be unavailable. */ } };
-    const restingVisible = () => size().mode === 'compact' || displayMode === 'always' || displayMode === 'reading' && root.dataset.atriaDomain !== 'play';
+    const persist = () => { try { windowRef.localStorage.setItem('atria.navigation.layout', JSON.stringify({ edge: edges.desktop, displayMode, magnify })); } catch { /* Device storage may be unavailable. */ } };
+    const restingVisible = () => size().mode === 'compact' || displayMode === 'always' || displayMode === 'reading' && root.dataset.atriaReading !== 'true';
     let pose = { x: 0, y: 0, vx: 0, vy: 0 }, destination = { x: 0, y: 0 }, lastPointer = { x: -1, y: -1 };
     let layoutAnimations = [], measured = { w: 0, h: 0 }, safe = { top: 0, bottom: 0, left: 0, right: 0 };
     const size = () => environment.get();
     const reduced = { get matches() { return size().reducedMotion || document.body.classList.contains('reduced-motion'); } };
     const syncLabels = () => {
-        grip.setAttribute('aria-label', tl(mode === 'touch' ? 'Hide navigation; hold to move' : 'Drag navigation to another edge'));
+        grip.setAttribute('aria-label', tl('Navigation options. Drag to another edge, or use the arrow keys.'));
+        grip.setAttribute('aria-haspopup', 'menu');
         grip.title = tl('Drag to an edge. Keyboard: Left, Right, Up or Down.');
         handle.setAttribute('aria-label', tl('Show navigation; hold to move'));
         note(tl('Navigation position') + ': ' + edgeName(edge));
@@ -81,6 +86,11 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
         handle.setAttribute('aria-expanded', String(visible));
         reveal.setAttribute('aria-expanded', String(visible));
         measured = { w: dock.offsetWidth, h: dock.offsetHeight };
+        // A resting Dock reserves its edge so content never runs underneath it.
+        // A Dock revealed over hidden mode floats instead, so summoning it
+        // never reflows the page being read or edited.
+        const reserve = mode === 'desktop' && restingVisible() ? (['top', 'bottom'].includes(edge) ? measured.h : measured.w) + 32 : 0;
+        for (const side of ['left', 'right', 'top', 'bottom']) root.style.setProperty(`--atri-dock-inset-${side}`, `${side === edge ? reserve : 0}px`);
     }
     function paint() {
         dock.style.visibility = 'visible';
@@ -343,6 +353,7 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
             return;
         lastPointer = { x: event.clientX, y: event.clientY };
         release(g);
+        movedByLastGesture = g.kind === 'move';
         if (g.kind === 'move') {
             morph(g.candidate || nearest(pose.x, pose.y), {});
             visible = true;
@@ -417,33 +428,54 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
             handle.hidden = true;
         }
     }
-    const positionButtons = [], displayButtons = [];
-    const caption = make('div', 'atria-shell-menu__heading');
-    caption.textContent = tl('Navigation position');
-    menu.append(caption);
-    for (const e of ['left', 'right', 'top', 'bottom']) {
-        const button = make('button', 'atria-shell-menu__item');
+    // Dock options open from the grip (guidelines §3.4): edge, visibility, magnify.
+    const positionButtons = [], displayButtons = [], menuItems = [];
+    const section = node => { node.dataset.atriaMenuSection = 'dock'; menu.append(node); return node; };
+    const heading = text => { const node = section(make('div', 'atria-shell-menu__heading')); node.textContent = tl(text); };
+    heading('Navigation position');
+    const edgeRow = section(make('div', 'atria-shell-menu__segmented'));
+    edgeRow.setAttribute('role', 'group');
+    edgeRow.setAttribute('aria-label', tl('Navigation position'));
+    for (const e of ['left', 'bottom', 'right', 'top']) {
+        const button = make('button', 'atria-shell-menu__segment');
         button.type = 'button';
         button.dataset.edge = e;
-        button.textContent = tl({ left: 'Left edge', right: 'Right edge', top: 'Top edge', bottom: 'Bottom edge' }[e]);
+        button.dataset.atriaMenuSection = 'dock';
+        button.textContent = tl({ left: 'Left', right: 'Right', top: 'Top', bottom: 'Bottom' }[e]);
+        button.setAttribute('aria-label', tl({ left: 'Left edge', right: 'Right edge', top: 'Top edge', bottom: 'Bottom edge' }[e]));
         button.setAttribute('role', 'menuitemradio');
         listen(button, 'click', event => chooseEdge(size().mode === 'compact' ? 'bottom' : e, { instant: event.detail === 0 }));
-        menu.append(button);
-        positionButtons.push(button);
+        edgeRow.append(button);
+        positionButtons.push(button); menuItems.push(button);
     }
-    const displayCaption = make('div', 'atria-shell-menu__heading'); displayCaption.textContent = tl('Navigation visibility'); menu.append(displayCaption);
-    for (const [value, label] of [['auto', 'Auto hide'], ['always', 'Always visible'], ['reading', 'Hide while reading']]) {
-        const button = make('button', 'atria-shell-menu__item'); button.type = 'button'; button.textContent = tl(label);
+    section(make('div', 'atria-shell-menu__separator')).setAttribute('role', 'separator');
+    heading('Navigation visibility');
+    for (const [value, label, hint] of [['reading', 'Smart', 'Hide while reading'], ['always', 'Always visible', 'Reserve its edge'], ['auto', 'Auto hide', 'Reveal at the edge']]) {
+        const button = section(make('button', 'atria-shell-menu__item')); button.type = 'button';
+        const text = make('span', 'atria-shell-menu__label'); text.textContent = tl(label);
+        const note = make('span', 'atria-shell-menu__hint'); note.textContent = tl(hint);
+        button.append(text, note);
         button.setAttribute('role', 'menuitemradio'); button.setAttribute('aria-checked', String(displayMode === value));
-        listen(button, 'click', () => { displayMode = value; persist(); for (const control of displayButtons) control.setAttribute('aria-checked', String(control === button)); closeMenu(); show(restingVisible(), { instant: true, force: true }); if (!restingVisible()) scheduleHide(); });
-        displayButtons.push(button); menu.append(button);
+        listen(button, 'click', () => { displayMode = value; persist(); for (const control of displayButtons) control.setAttribute('aria-checked', String(control === button)); closeMenu(); show(restingVisible(), { instant: true, force: true }); if (!restingVisible()) scheduleHide(); state(); });
+        displayButtons.push(button); menuItems.push(button);
     }
+    section(make('div', 'atria-shell-menu__separator')).setAttribute('role', 'separator');
+    const magnifyButton = section(make('button', 'atria-shell-menu__item')); magnifyButton.type = 'button';
+    magnifyButton.setAttribute('role', 'menuitemcheckbox');
+    const magnifyText = make('span', 'atria-shell-menu__label'); magnifyText.textContent = tl('Magnify on hover');
+    const magnifyNote = make('span', 'atria-shell-menu__hint'); magnifyNote.textContent = tl('Mouse only');
+    magnifyButton.append(magnifyText, magnifyNote);
+    const syncMagnify = () => magnifyButton.setAttribute('aria-checked', String(magnify));
+    listen(magnifyButton, 'click', () => { magnify = !magnify; persist(); syncMagnify(); if (!magnify) resetMagnification(); });
+    syncMagnify(); menuItems.push(magnifyButton);
+    const dockNote = section(make('p', 'atria-shell-menu__note'));
+    dockNote.textContent = tl('Drag the grip to another edge, or use the arrow keys on it.');
     function resetMagnification() {
         for (const icon of dock.querySelectorAll('.atria-shell-nav-icon')) icon.style.removeProperty('transform');
     }
     for (const nav of [rail, bottomNavigation]) {
         listen(nav, 'pointermove', event => {
-            if (touch() || reduced.matches || gesture || event.pointerType === 'touch') { resetMagnification(); return; }
+            if (!magnify || touch() || reduced.matches || gesture || event.pointerType === 'touch') { resetMagnification(); return; }
             const horizontal = ['top', 'bottom'].includes(edge);
             for (const button of nav.querySelectorAll('[data-atria-domain]')) {
                 const box = button.getBoundingClientRect(), distance = Math.abs((horizontal ? event.clientX - box.left - box.width / 2 : event.clientY - box.top - box.height / 2));
@@ -467,7 +499,8 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
         listen(node, 'click', event => {
             event.preventDefault();
             event.stopPropagation();
-            if (event.detail === 0)
+            if (node === grip && !movedByLastGesture) openMenu({ anchor: grip, edge });
+            else if (event.detail === 0)
                 show(!visible, { instant: true, force: true });
         });
         listen(node, 'keydown', event => {
@@ -537,6 +570,7 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
     return Object.freeze({
         refresh,
         positionButtons: [...positionButtons, ...displayButtons],
+        menuItems,
         show: () => { show(true, { instant: getInputMode() === 'keyboard' }); },
         reveal: () => { show(true, { instant: true }); dock.querySelector('[data-atria-domain]')?.focus({ preventScroll: true }); },
         getEdge: () => edge,
@@ -553,6 +587,8 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
             return true;
         },
         navigated() {
+            // Release or take the edge reservation at once; the Dock itself may hide later.
+            state();
             if (restingVisible()) show(true);
             else if (touch())
                 show(false, { force: true });
@@ -570,6 +606,7 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
             unsubscribe();
             observer.disconnect();
             delete root.dataset.atriaEdgeDock;
+            for (const side of ['left', 'right', 'top', 'bottom']) root.style.removeProperty(`--atri-dock-inset-${side}`);
         },
     });
 }

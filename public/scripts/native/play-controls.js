@@ -18,11 +18,12 @@ import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js'
 import { mountSessionAgentPanel } from './session-agent-panel.js';
 import { nativePlayGenerationBusy } from './play-generation.js';
 
-function actionButton(documentRef, label, handler) {
+function actionButton(documentRef, label, handler, icon) {
     const node = documentRef.createElement('button');
     node.type = 'button';
     node.className = 'atria-native-play-actions__button';
     node.textContent = tl(label);
+    if (icon) { node.prepend(createAtriaIcon(documentRef, icon, { size: 16 })); node.title = tl(label); }
     node.addEventListener('click', async event => {
         try { await handler(event); } catch (error) {
             node.dispatchEvent(new CustomEvent('atria-play-action-error', { bubbles: true, detail: error }));
@@ -483,50 +484,49 @@ export function mountNativePlayControls({
             kind: 'manual',
             displayName, expectedRevisionId: base.revision.revisionId,
         }));
-    });
+    }, 'save');
+    save.classList.add('atria-native-play-actions__button--save');
     const quickSave = actionButton(documentRef, 'Quick Save', () => {
         const sessionId = currentSessionId();
         if (!sessionId) return;
         void run('Quick saving', () => nativeProductClient.createSave(sessionId, { kind: 'quick', expectedRevisionId: activeRuntime()?.snapshot?.revision?.revisionId }));
-    });
+    }, 'save');
     const load = actionButton(documentRef, 'Load', () => {
         void showTimeline();
-    });
+    }, 'restore');
     const timeline = actionButton(documentRef, 'History & saves', () => {
         void showTimeline();
-    });
-    const context = actionButton(documentRef, 'Context', showContext);
+    }, 'history');
+    const context = actionButton(documentRef, 'Context', showContext, 'context');
     const promptControls = actionButton(documentRef, 'Prompt choices', () => {
         openDrawer('Prompt choices'); drawerBody.replaceChildren();
         void mountPlayPromptControls(documentRef, drawerBody);
-    });
+    }, 'tune');
 
     const more = documentRef.createElement('details');
     more.className = 'atria-play-more';
     const moreLabel = documentRef.createElement('summary');
-    moreLabel.textContent = tl('More');
+    moreLabel.setAttribute('aria-label', tl('More'));
+    moreLabel.title = tl('More');
+    moreLabel.append(createAtriaIcon(documentRef, 'more', { size: 18 }));
     const moreActions = documentRef.createElement('div');
     moreActions.className = 'atria-play-more-actions';
     const health = actionButton(documentRef, 'Experience health', () => {
         openDrawer('Experience health');
         experiencePanel = mountExperienceHealth({ document: documentRef, root: drawerBody, runtime: activeRuntime() });
-    });
+    }, 'gauge');
     const sharing = actionButton(documentRef, 'Shared session', () => {
         openDrawer('Shared session');
         experiencePanel = mountSharedSessionPanel({ document: documentRef, root: drawerBody, runtime: activeRuntime() });
-    });
+    }, 'users');
     const goals = actionButton(documentRef, 'Goals & feedback', () => {
         openDrawer('Goals & feedback');
         experiencePanel = mountSessionAgentPanel({ root: drawerBody, runtime: activeRuntime() });
-    });
-    const leave = actionButton(documentRef, 'Back to Play', async () => {
-        const runtime = activeRuntime();
-        if (!runtime?.active || runtime.failed || busy || nativePlayGenerationBusy(runtime)) return;
-        const draft = root.querySelector('.atria-play-composer__input')?.value;
-        if (draft && !documentRef.defaultView.confirm(tl('Leave this workspace and discard unsaved changes? Cancel to keep editing.'))) return;
-        await run('Closing session', async () => { await runtime.close(); hideDrawer(); });
-    });
-    moreActions.append(health, sharing, goals, quickSave, load, leave);
+    }, 'flow');
+    // Returning to the story list never cancels generation; the session stays open.
+    recentStories.prepend(createAtriaIcon(documentRef, 'arrow-l', { size: 16 }));
+    const separator = () => { const node = documentRef.createElement('div'); node.className = 'atria-play-more-actions__sep'; node.setAttribute('role', 'separator'); return node; };
+    moreActions.append(health, sharing, goals, separator(), quickSave, load, separator(), recentStories);
     moreActions.addEventListener('click', () => {
         more.open = false;
         if (moreActions.contains(documentRef.activeElement)) moreLabel.focus();
@@ -549,11 +549,17 @@ export function mountNativePlayControls({
         // so the destination button can receive its click.
         if (!more.contains(event.relatedTarget)) more.open = false;
     });
-    toolbar.append(recentStories, timeline, context, promptControls, save, more, status);
+    const divider = documentRef.createElement('span'); divider.className = 'atria-native-play-actions__divider'; divider.setAttribute('aria-hidden', 'true');
+    toolbar.append(status, timeline, context, promptControls, divider, save, more);
     root.prepend(landing);
+    // The session crumbs and tools live in the shell top bar while a story is read.
     const sessionHeader = root.querySelector('[data-atria-play-session-header]');
-    if (sessionHeader) sessionHeader.append(toolbar);
-    else root.prepend(toolbar);
+    root.prepend(toolbar);
+    const placeInTopBar = () => {
+        const slots = shell()?.slots;
+        if (slots?.contextBar && toolbar.parentNode !== slots.contextBar) slots.contextBar.prepend(toolbar);
+        if (sessionHeader && slots?.toolbarLeading && sessionHeader.parentNode !== slots.toolbarLeading) slots.toolbarLeading.append(sessionHeader);
+    };
     root.append(drawer);
     const bindingNotice = documentRef.createElement('section'); bindingNotice.className = 'atri-library-section';
     bindingNotice.dataset.atriaTaskBindingRecovery = 'true'; bindingNotice.hidden = true;
@@ -586,7 +592,10 @@ export function mountNativePlayControls({
         if (drawerSessionId && drawerSessionId !== currentSessionId()) { hideDrawer(); drawerSessionId = null; }
         syncBindings();
         const active = documentRef.body.dataset.atriaNativeSessionActive === 'true';
-        toolbar.hidden = !active || recentRoute();
+        const playRoute = !navigation || navigation.getRoute()?.domain === 'play';
+        toolbar.hidden = !active || recentRoute() || !playRoute;
+        placeInTopBar();
+        if (sessionHeader) sessionHeader.hidden = toolbar.hidden;
         landing.hidden = active && !recentRoute();
         if (!landing.hidden) {
             drawer.hidden = true;
@@ -602,7 +611,6 @@ export function mountNativePlayControls({
             rememberedSession = currentSessionId(); resumeAttempted = true;
             try { accountStorage?.setItem('atriaLastReading', rememberedSession); } catch { /* Reading remains available without browser storage. */ }
         }
-        const runtime = activeRuntime();
         const canWrite = writable();
         for (const [button, allowed] of drawerWrites) button.disabled = !allowed();
         historyPanel?.atriaHistory?.syncCapabilities();
@@ -611,7 +619,6 @@ export function mountNativePlayControls({
         load.disabled = !active;
         timeline.disabled = !active;
         context.disabled = !active;
-        leave.disabled = !runtime?.active || runtime.failed || busy || nativePlayGenerationBusy(runtime);
     }
 
     const observer = new MutationObserver(sync);
@@ -649,6 +656,7 @@ export function mountNativePlayControls({
             observer.disconnect();
             documentRef.defaultView?.removeEventListener('atria:game-package-changed', syncBindings);
             bindingNotice.remove();
+            if (sessionHeader?.parentNode !== root) sessionHeader?.remove();
             toolbar.remove();
             landing.remove();
             drawer.remove();

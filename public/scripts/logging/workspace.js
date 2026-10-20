@@ -112,17 +112,24 @@ function buildWorkspaceMarkup({ canViewServerLogs }) {
         : t`Frontend debug capture is limited; errors remain captured.`;
     return `
         <section class="atriaLogsWorkspace" data-mode="guided">
+            <aside class="atriaLogsSections" aria-label="${t`Diagnostics sections`}">
+                <div class="atriaLogsModeSwitch" role="group" aria-label="${t`Diagnostics view`}">
+                    <button type="button" class="menu_button atriaLogsModeButton is-active" data-mode="guided" aria-pressed="true">${t`Guided`}</button>
+                    <button type="button" class="menu_button atriaLogsModeButton" data-mode="startup" aria-pressed="false">${t`Startup`}</button>
+                    <button type="button" class="menu_button atriaLogsModeButton" data-mode="expert" aria-pressed="false">${t`Expert`}</button>
+                </div>
+                <details class="atriaLogsNavPane">
+                    <summary class="atriaLogsPaneTitle">${t`Module health`}</summary>
+                    <div class="atriaLogsHealthList"></div>
+                </details>
+            </aside>
+            <div class="atriaLogsMain">
             <header class="atriaLogsHeader">
                 <div>
                     <h3><i class="fa-solid fa-stethoscope"></i> ${t`Diagnostics`}</h3>
                     <div class="menu_button_note">${t`Start with incidents. Raw logs are available in Expert mode when you need them.`}</div>
                 </div>
                 <div class="atriaLogsHeaderActions">
-                    <div class="atriaLogsModeSwitch" role="group" aria-label="${t`Diagnostics view`}">
-                        <button type="button" class="menu_button atriaLogsModeButton is-active" data-mode="guided" aria-pressed="true">${t`Guided`}</button>
-                        <button type="button" class="menu_button atriaLogsModeButton" data-mode="startup" aria-pressed="false">${t`Startup`}</button>
-                        <button type="button" class="menu_button atriaLogsModeButton" data-mode="expert" aria-pressed="false">${t`Expert`}</button>
-                    </div>
                     <button type="button" class="menu_button menu_button_icon atriaLogsReportNow">
                         <i class="fa-solid fa-bolt"></i><span>${t`My problem just happened`}</span>
                     </button>
@@ -135,10 +142,6 @@ function buildWorkspaceMarkup({ canViewServerLogs }) {
             <p class="atriaLogsFeedback" role="status" hidden></p>
             <div class="atriaLogsGuidedView">
                 <div class="atriaLogsGrid">
-                    <details class="atriaLogsNavPane">
-                        <summary class="atriaLogsPaneTitle">${t`Module health`}</summary>
-                        <div class="atriaLogsHealthList"></div>
-                    </details>
                     <main class="atriaLogsListPane">
                         <div class="atriaLogsPaneTitle">
                             <span>${t`Recent incidents`}</span>
@@ -194,6 +197,7 @@ function buildWorkspaceMarkup({ canViewServerLogs }) {
                     </aside>
                 </div>
                 <div class="menu_button_note atriaLogsExpertNote">${frontendCaptureNote}</div>
+            </div>
             </div>
         </section>
     `;

@@ -1,74 +1,137 @@
-/* Runtime presentation only. Configuration and Secret ownership stay Native. */
-.atri-prompt-runtime-controls { display: grid; gap: 16px; min-width: 0; color: var(--atri-text-primary); overflow-wrap: anywhere; }
-.atri-prompt-runtime-control { min-width: 0; margin: 0 0 16px; padding: 16px; border: 1px solid var(--atri-separator); border-radius: var(--atri-radius-md); }
-.atri-prompt-runtime-control label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 44px; }
-.atri-prompt-runtime-controls select, .atri-prompt-runtime-controls input:not([type="checkbox"]), .atri-prompt-runtime-controls textarea { width: 100%; min-width: 0; box-sizing: border-box; min-height: 44px; }
-.atri-prompt-runtime-controls input[type="checkbox"] { width: 24px; height: 24px; min-height: 24px; }
-.atri-prompt-runtime-controls button { min-height: 44px; white-space: normal; }
-.atri-prompt-runtime-controls :focus-visible { outline: 2px solid var(--atri-accent); outline-offset: 3px; }
-[data-atria-domain-workspace="runtime"], .atri-runtime { color: var(--atri-text-primary); font-family: var(--atri-font-sans); text-shadow: none; }
-.atri-runtime { max-width: 960px; width: 100%; margin: 0 auto; padding: 32px; border: 1px solid var(--atri-separator); border-radius: var(--atri-radius-xl); background: var(--atri-surface-1); box-shadow: var(--atri-shadow-1); box-sizing: border-box; min-width: 0; overflow-wrap: anywhere; }
-.atri-runtime h2 { font-family: var(--atri-font-serif); font-weight: 400; margin: 0; font-size: var(--atri-text-title-1); letter-spacing: var(--atri-tracking-display); text-align: left; }
-.atri-runtime h3 { margin: 0 0 6px; font-size: var(--atri-text-headline); text-align: left; }
-.atri-runtime-description { margin: 10px 0 28px; color: var(--atri-text-secondary); max-width: 68ch; line-height: 1.6; }
-.atri-runtime button { background: var(--atri-fill); color: var(--atri-text-primary); border: 0; border-radius: var(--atri-radius-pill); padding: 9px 14px; min-height: 36px; cursor: pointer; font: inherit; font-size: var(--atri-text-callout); transition: background var(--atri-duration-fast), transform var(--atri-duration-fast); white-space: normal; }
-.atri-runtime button:disabled { opacity: .5; cursor: default; }
-.atri-runtime button[aria-busy="true"] { cursor: progress; }
-.atri-runtime :focus-visible, .atri-runtime-section-picker select:focus-visible { outline: 2px solid var(--atri-accent); outline-offset: 3px; }
-.atri-runtime-toolbar { display: flex; gap: 16px; align-items: end; margin: 24px 0; }
-.atri-runtime label { display: grid; grid-template-columns: minmax(140px, .65fr) minmax(0, 1fr); align-items: center; gap: 12px 24px; min-width: 0; font-size: var(--atri-text-callout); }
-.atri-runtime label.atri-resource-source { grid-template-columns: 1fr; align-items: start; gap: 8px; }
-.atri-runtime-toolbar label { display: grid; grid-template-columns: 1fr; flex: 1; gap: 8px; }
-.atri-runtime input, .atri-runtime select, .atri-runtime textarea, .atri-runtime-section-picker select { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; color: var(--atri-text-primary); background: var(--atri-surface-2); border: 1px solid transparent; border-radius: var(--atri-radius-md); padding: 10px 12px; font: inherit; margin: 0; min-height: 40px; }
-.atri-runtime textarea { min-height: 12em; resize: vertical; }
-.atri-runtime input:disabled, .atri-runtime select:disabled { opacity: .65; }
-.atri-runtime select option, .atri-runtime-section-picker option { background: var(--atri-surface-2); color: var(--atri-text-primary); }
-.atri-runtime-list { background: var(--atri-surface-1); border-radius: var(--atri-radius-lg); padding: 0 20px; }
-.atri-runtime-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 20px 0; border-bottom: 1px solid var(--atri-separator); }
-.atri-runtime-row:last-child { border: 0; }
+/* Runtime (运行): readiness, routes, models, connections, retrieval and
+ * diagnostics. Presentation only; configuration and Secret ownership stay
+ * Native. Controls come from the Atrium base layer. */
+.atri-prompt-runtime-controls { display: grid; gap: 16px; min-width: 0; color: var(--text-1); overflow-wrap: anywhere; }
+.atri-prompt-runtime-control { min-width: 0; margin: 0 0 12px; padding: 14px 16px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface-panel); }
+.atri-prompt-runtime-control label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 40px; }
+
+[data-atria-domain-workspace="runtime"], .atri-runtime { color: var(--text-1); font-family: var(--font-ui); text-shadow: none; }
+/* Matte page, no card: the workbench content sits directly on the window. */
+.atri-runtime { width: 100%; min-width: 0; box-sizing: border-box; overflow-wrap: anywhere; }
+.atri-runtime h2 { margin: 0; font: 600 var(--fs-xl)/1.25 var(--font-ui); letter-spacing: -.01em; text-align: left; }
+.atri-runtime h3 { margin: 0 0 6px; font: 600 var(--fs-lg)/1.3 var(--font-ui); text-align: left; }
+.atri-runtime-description { margin: 6px 0 22px; color: var(--text-2); max-width: 68ch; font-size: var(--fs-sm); line-height: 1.6; }
+.atri-runtime-toolbar { display: flex; gap: 10px; align-items: end; margin: 18px 0; }
+/* Labels above fields (§5.1); short related fields pair up on wide screens. */
+.atri-runtime label { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 6px; min-width: 0; color: var(--text-2); font: 550 var(--fs-sm)/1.4 var(--font-ui); }
+.atri-runtime label.atri-resource-source { grid-template-columns: 1fr; align-items: start; gap: 6px; }
+.atri-runtime-toolbar label { display: grid; grid-template-columns: 1fr; flex: 1; gap: 6px; }
+.atri-runtime textarea { min-height: 12em; }
+
+/* Route / model / connection list: one quiet panel of rows. */
+.atri-runtime-list { display: grid; gap: 2px; }
+/* Section heading stays for assistive tech; the top bar and tabs already name the page. */
+.atri-runtime > .atri-runtime-heading { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.atri-runtime > .atri-runtime-notice { margin: 0 0 12px; }
+
+/* List-detail: an inset list card and the editor card beside it (prototype R03–R05). */
+.atri-runtime-split { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.atri-runtime-listpane { position: sticky; top: 0; min-width: 0; padding: 12px 10px; border: 1px solid var(--line-2); border-radius: var(--r-pane); background: var(--surface-panel); }
+.atri-runtime-listpane__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 6px 8px; }
+.atri-runtime .atri-runtime-listpane__head h3 { margin: 0; color: var(--text-3); font: 600 10.5px/1 var(--font-ui); letter-spacing: .12em; text-transform: uppercase; }
+.atria-app-shell .atri-runtime-listpane__head > button { min-height: 28px; padding: 0 9px; border-color: transparent; background: transparent; box-shadow: none; color: var(--text-2); font-size: var(--fs-sm); }
+.atria-app-shell .atri-runtime-listpane__head > button:hover { background: var(--surface-hover); color: var(--text-1); }
+.atri-runtime-listpane .atri-runtime-toolbar { margin: 0 4px 8px; }
+.atri-runtime-listpane .atri-runtime-toolbar label { font-size: 0; gap: 0; }
+.atri-runtime-detail { min-width: 0; padding: 18px 20px 8px; border: 1px solid var(--line-2); border-radius: var(--r-pane); background: var(--surface-panel); }
+.atri-runtime-detail__empty { display: grid; place-items: center; min-height: 220px; color: var(--text-3); font-size: var(--fs-sm); text-align: center; }
+.atri-runtime-detail .atri-runtime-form { margin-top: 14px; }
+.atri-runtime-row { position: relative; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 10px; border-radius: var(--r-md); color: var(--text-3); cursor: pointer; }
+.atri-runtime-row:hover { background: var(--surface-hover); }
+.atri-runtime-row[aria-current="true"] { background: var(--surface-raised); box-shadow: var(--shadow-1), 0 0 0 1px var(--line-2); }
+.atri-runtime-row[aria-current="true"]::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 2px; border-radius: 2px; background: var(--tone-lumen); }
+.atri-runtime-row > div { flex: 1; }
+.atria-app-shell .atri-runtime-row > button { min-height: 26px; padding: 0 9px; border-color: transparent; background: transparent; box-shadow: none; color: var(--text-3); font-size: var(--fs-xs); opacity: 0; }
+.atria-app-shell .atri-runtime-row:is(:hover, :focus-within, [aria-current="true"]) > button { opacity: 1; }
+
 .atri-runtime-row > div { min-width: 0; }
-.atri-runtime-row p { margin: 4px 0 0; color: var(--atri-text-secondary); font-size: var(--atri-text-footnote); line-height: 1.6; }
-.atri-runtime-row button { flex-shrink: 0; color: var(--atri-accent-text); }
-.atri-runtime-form { display: grid; gap: 28px; margin: 24px 0 0; }
-.atri-runtime-group { margin: 0; padding: 0; min-width: 0; border: 0; display: grid; gap: 0; }
+.atri-runtime .atri-runtime-row :is(strong, h3, h4) { margin: 0; color: var(--text-1); font: 600 var(--fs-md)/1.35 var(--font-ui); }
+.atri-runtime-row p { margin: 2px 0 0; color: var(--text-3); font-size: var(--fs-xs); line-height: 1.6; }
+.atria-app-shell .atri-runtime-row button { flex-shrink: 0; }
+
+.atri-runtime-form { display: grid; gap: 26px; max-width: 880px; margin: 20px 0 0; }
+.atri-runtime-group { margin: 0; padding: 0; min-width: 0; border: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; align-items: start; }
+.atri-runtime-group > :not(label), .atri-runtime-group > label:has(textarea, input[type="checkbox"]), .atri-runtime-group > label.atri-resource-source { grid-column: 1 / -1; }
 .atri-runtime-group[hidden] { display: none; }
-.atri-runtime-group legend { padding: 0 0 12px; font-size: var(--atri-text-title-3); font-weight: 600; float: none; width: 100%; }
-.atri-runtime-group > label { padding: 16px 0; border-bottom: 1px solid var(--atri-separator); }
-.atri-runtime-group > button { justify-self: start; margin-block: 12px 0; }
-.atri-runtime-group > small { padding: 8px 0; font-size: var(--atri-text-caption); color: var(--atri-text-secondary); }
-.atri-runtime-help { margin: 0 0 8px; color: var(--atri-text-secondary); font-size: var(--atri-text-callout); line-height: 1.6; }
-.atri-runtime-form .atri-runtime-notice { background: none; padding: 12px 0; font-size: var(--atri-text-footnote); }
-.atri-runtime-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 16px 0; border-top: 1px solid var(--atri-separator); }
-.atri-runtime button[type="submit"], .atri-runtime-toolbar > button { background: var(--atri-ink); color: var(--atri-text-on-ink); font-weight: 600; }
+.atri-runtime-group legend { float: none; width: 100%; padding: 0 0 10px; font: 600 10.5px/1 var(--font-ui); letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }
+.atri-runtime-group > label:has(input[type="checkbox"]) { display: flex; align-items: center; gap: 10px; color: var(--text-1); font-weight: 400; font-size: var(--fs-md); }
+.atri-runtime-group > button { margin-block: 12px 0; }
+.atri-runtime-group > small { padding: 6px 0; font-size: var(--fs-xs); color: var(--text-3); }
+.atri-runtime-help { margin: 0 0 8px; color: var(--text-2); font-size: var(--fs-sm); line-height: 1.6; }
+.atri-runtime-form .atri-runtime-notice { margin: 0; padding: 6px 0; border: 0; background: none; color: var(--text-3); font-size: var(--fs-xs); }
+.atri-runtime-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 0; border-top: 1px solid var(--line-1); }
+/* Contextual primary: the form submit and the toolbar's create action. */
+.atria-app-shell .atri-runtime button[type="submit"] {
+    border-color: transparent; background: var(--btn-primary-bg); color: var(--btn-primary-text); font-weight: 600;
+    box-shadow: 0 1px 0 rgb(255 255 255 / .28) inset, 0 0 0 1px var(--btn-primary-ring), 0 4px 12px -6px rgb(0 0 0 / .45);
+}
+.atria-app-shell .atri-runtime button[type="submit"]:hover:not(:disabled) { background: var(--btn-primary-bg); filter: brightness(1.06); }
 .atri-runtime-status:empty { display: none; }
-.atri-runtime button.atri-runtime-danger { color: var(--atri-danger); }
-.atri-runtime-evidence:not(:empty) { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--atri-separator); }
-.atri-runtime-evidence > h3 { font-size: var(--atri-text-title-2); }
+.atri-runtime-evidence:not(:empty) { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line-1); }
+.atri-runtime-evidence > h3 { font-size: var(--fs-xl); }
 .atri-runtime label[hidden] { display: none; }
-.atri-runtime details { border-bottom: 1px solid var(--atri-separator); min-width: 0; }
-.atri-runtime summary { cursor: pointer; padding: 14px 0; color: var(--atri-text-secondary); font-size: var(--atri-text-callout); }
-.atri-runtime pre { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--atri-font-mono); font-size: var(--atri-text-caption); max-height: 420px; overflow: auto; padding: 16px; border-radius: var(--atri-radius-md); background: var(--atri-surface-2); }
-.atri-runtime-editor-header { display: grid; gap: 20px; }
-.atri-runtime-editor-header > button { justify-self: start; color: var(--atri-accent-text); }
+.atri-runtime details { border-bottom: 1px solid var(--line-1); min-width: 0; }
+.atri-runtime summary { padding: 12px 0; }
+.atri-runtime pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 420px; overflow: auto; padding: 14px; border-radius: var(--r-md); border: 1px solid var(--line-1); background: var(--surface-panel); }
+.atri-runtime-editor-header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.atri-runtime-editor-header > h2 { order: -1; flex: 1 1 auto; }
+.atri-runtime-detail .atri-runtime-editor-header > button { min-height: 28px; padding: 0 10px; font-size: var(--fs-sm); }
 .atri-runtime-section-picker { display: none; }
 .atri-runtime-section-picker > span { flex-shrink: 0; }
-.atri-runtime input, .atri-runtime select, .atri-runtime textarea, .atri-runtime button, .atri-runtime summary { scroll-margin-block: 16px; touch-action: manipulation; }
+.atri-runtime :is(input, select, textarea, button, summary) { scroll-margin-block: 16px; touch-action: manipulation; }
 
-.atri-runtime[data-atria-viewport="compact"] { padding: 24px 4px 32px; }
-.atri-runtime[data-atria-viewport="compact"] label { grid-template-columns: 1fr; gap: 8px; }
-.atri-runtime[data-atria-viewport="compact"] .atri-runtime-toolbar { flex-direction: column; align-items: stretch; gap: 12px; }
+.atri-runtime[data-atria-viewport="compact"] { padding: 0; }
+.atri-runtime[data-atria-viewport="compact"] label { grid-template-columns: 1fr; gap: 6px; }
+.atri-runtime[data-atria-viewport="compact"] .atri-runtime-toolbar { flex-direction: column; align-items: stretch; gap: 10px; }
 .atri-runtime[data-atria-viewport="compact"] .atri-runtime-row { gap: 12px; }
-.atri-runtime[data-atria-viewport="compact"] .atri-runtime-list { padding-inline: 14px; }
-.atri-runtime[data-atria-viewport="compact"][data-editor] { position: fixed; inset: 0; height: var(--atri-viewport-height, 100dvh); max-height: var(--atri-viewport-height, 100dvh); max-width: none; z-index: 3900; overflow-y: auto; overscroll-behavior: contain; background: var(--atri-canvas); padding: calc(16px + var(--atri-safe-area-top, env(safe-area-inset-top))) calc(16px + var(--atri-safe-area-right, env(safe-area-inset-right))) calc(24px + var(--atri-safe-area-bottom, env(safe-area-inset-bottom))) calc(16px + var(--atri-safe-area-left, env(safe-area-inset-left))); }
-.atri-runtime[data-atria-viewport="compact"] input, .atri-runtime[data-atria-viewport="compact"] select, .atri-runtime[data-atria-viewport="compact"] textarea,
-.atri-runtime-section-picker select { font-size: max(16px, var(--atri-text-body)); min-height: 44px; }
-.atri-runtime[data-atria-viewport="compact"] button, .atri-runtime[data-atria-pointer="coarse"] button { min-height: 44px; }
-.atri-runtime[data-atria-pointer="coarse"] input, .atri-runtime[data-atria-pointer="coarse"] select, .atri-runtime[data-atria-pointer="coarse"] textarea { min-height: 44px; font-size: max(16px, var(--atri-text-body)); }
+.atri-runtime[data-atria-viewport="compact"] .atri-runtime-list { padding-inline: 12px; }
+.atri-runtime[data-atria-viewport="compact"][data-editor] { position: fixed; inset: 0; height: var(--atri-viewport-height, 100dvh); max-height: var(--atri-viewport-height, 100dvh); max-width: none; z-index: 3900; overflow-y: auto; overscroll-behavior: contain; background: var(--surface-app); padding: calc(16px + var(--atri-safe-area-top, env(safe-area-inset-top))) calc(16px + var(--atri-safe-area-right, env(safe-area-inset-right))) calc(24px + var(--atri-safe-area-bottom, env(safe-area-inset-bottom))) calc(16px + var(--atri-safe-area-left, env(safe-area-inset-left))); }
+.atri-runtime[data-atria-viewport="compact"] :is(input, select, textarea), .atri-runtime-section-picker select { font-size: max(16px, var(--fs-md)); min-height: 44px; }
+.atri-runtime[data-atria-pointer="coarse"] :is(input, select, textarea) { min-height: 44px; font-size: max(16px, var(--fs-md)); }
 [data-atria-viewport="compact"] .atri-runtime-section-picker > span { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
-@media (hover: hover) and (pointer: fine) {
-    .atri-runtime button:not(:disabled):hover { background: var(--atri-fill-hover); }
-    .atri-runtime button[type="submit"]:hover:not(:disabled), .atri-runtime-toolbar > button:hover:not(:disabled) { background: var(--atri-ink-hover); }
-    .atri-runtime button:not(:disabled):active:not(:focus-visible) { transform: scale(.97); }
-}
-.atri-runtime[data-atria-reduced-motion="true"] button { transition: none; transform: none; }
-.atri-runtime input[type="checkbox"] { width: 20px; height: 20px; min-height: 20px; padding: 0; accent-color: var(--atri-accent); --SmartThemeCheckboxTickColor: var(--atri-text-primary); }
+
+/* Readiness chain (R02): Connection → (Secret) → Model → Program → Generation → Route.
+ * Ready links are jade; the next missing link is amber with its repair action;
+ * later links are dashed. State is carried by shape, glyph and text together. */
+.atri-runtime-chain-card { position: relative; display: grid; gap: 14px; margin-bottom: 16px; padding: 16px 18px 18px; border: 1px solid var(--line-2); border-radius: var(--r-pane); background: var(--surface-panel); }
+.atri-runtime-chain-card:has(.atri-runtime-link[data-state="missing"]) { border-color: color-mix(in srgb, var(--tone-amber) 28%, var(--line-2)); }
+.atri-runtime-chain-card__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.atri-runtime .atri-runtime-chain-card__head h3 { margin: 0; font: 600 var(--fs-lg)/1.2 var(--font-ui); }
+.atri-runtime-chain-card__state { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: var(--r-pill); font: 550 var(--fs-xs)/1 var(--font-ui); }
+.atri-runtime-chain-card__state:empty { display: none; }
+.atri-runtime-chain-card__state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.atri-runtime-chain-card__state[data-state="missing"] { color: var(--tone-amber); background: var(--soft-amber); border: 1px solid color-mix(in srgb, var(--tone-amber) 40%, transparent); }
+.atri-runtime-chain-card__state[data-state="ready"] { color: var(--tone-jade); background: var(--soft-jade); border: 1px solid color-mix(in srgb, var(--tone-jade) 40%, transparent); }
+.atri-runtime-chain-card__hint { margin-left: auto; color: var(--text-3); font-size: var(--fs-xs); }
+.atri-runtime-chain-card > div { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 8px; }
+.atri-runtime-chain-card > div > :is(.atri-runtime-chain, .atri-runtime-notice) { flex: 1 1 100%; }
+.atri-runtime-chain-card .atri-runtime-notice { margin: 0; padding: 0; border: 0; background: none; color: var(--text-2); font-size: var(--fs-sm); }
+.atria-app-shell .atri-runtime-chain-card .atri-runtime-chain-card__refresh { margin-left: auto; min-height: 26px; padding: 0 9px; border-color: transparent; background: transparent; box-shadow: none; color: var(--text-3); font-size: var(--fs-xs); }
+.atri-runtime-chain { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin: 0; padding: 4px 0 0; list-style: none; }
+.atri-runtime-link { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0 6px; text-align: center; }
+/* A connector is solid only between two ready links. */
+.atri-runtime-link + .atri-runtime-link::before { content: ""; position: absolute; top: 21px; left: calc(-50% + 24px); right: calc(50% + 24px); height: 1.5px; background: repeating-linear-gradient(90deg, var(--line-strong) 0 4px, transparent 4px 8px); }
+.atri-runtime-link[data-state="ready"] + .atri-runtime-link[data-state="ready"]::before { background: var(--tone-jade); }
+.atri-runtime-link[data-state="ready"] + .atri-runtime-link[data-state="missing"]::before { background: linear-gradient(90deg, var(--tone-jade), var(--tone-amber)); }
+.atri-runtime-link__glyph { position: relative; z-index: 1; width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; border: 1.5px solid; }
+.atri-runtime-link[data-state="ready"] .atri-runtime-link__glyph { color: var(--tone-jade); border-color: color-mix(in srgb, var(--tone-jade) 50%, transparent); background: var(--soft-jade); }
+.atri-runtime-link[data-state="missing"] .atri-runtime-link__glyph { color: var(--tone-amber); border-color: var(--tone-amber); background: var(--soft-amber); box-shadow: 0 0 0 5px color-mix(in srgb, var(--tone-amber) 12%, transparent), 0 0 24px -4px var(--tone-amber); }
+.atri-runtime-link[data-state="pending"] .atri-runtime-link__glyph { color: var(--text-3); border-style: dashed; border-color: var(--line-strong); }
+.atri-runtime-link > strong { font: 600 var(--fs-md)/1.3 var(--font-ui); color: var(--text-1); }
+.atri-runtime-link__state { font-size: var(--fs-xs); color: var(--text-3); }
+.atri-runtime-link[data-state="missing"] .atri-runtime-link__state { color: var(--tone-amber); }
+.atria-app-shell .atri-runtime-link > button { margin-top: 2px; --btn-h: 27px; padding-inline: 10px; font-size: var(--fs-sm); }
+@media (max-width: 1100px) { .atri-runtime-chain { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 22px; } .atri-runtime-link:nth-child(3n + 1)::before { display: none; } }
+.atri-runtime[data-atria-viewport="compact"] .atri-runtime-chain { grid-template-columns: 1fr; row-gap: 0; }
+.atri-runtime[data-atria-viewport="compact"] .atri-runtime-link { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 8px 0; text-align: start; }
+.atri-runtime[data-atria-viewport="compact"] .atri-runtime-link::before { display: none; }
+.atri-runtime[data-atria-viewport="compact"] .atri-runtime-link__glyph { width: 36px; height: 36px; border-radius: 11px; }
+
+/* Medium and compact: list above, editor opens as the full-screen layer. */
+@media (max-width: 960px) { .atri-runtime-split { grid-template-columns: minmax(0, 1fr); } .atri-runtime-listpane { position: static; } }
+.atri-runtime[data-atria-viewport="compact"] .atri-runtime-detail { display: none; }
+.atri-runtime[data-atria-viewport="compact"] .atri-runtime-chain-card__hint { display: none; }
+.atri-runtime[data-atria-viewport="compact"] .atri-runtime-listpane .atri-runtime-toolbar { flex-direction: row; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-runtime-row > button { opacity: 1; }
+
+.atri-runtime[data-atria-viewport="compact"] .atri-runtime-group { grid-template-columns: minmax(0, 1fr); }

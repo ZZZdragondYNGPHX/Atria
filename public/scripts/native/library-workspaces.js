@@ -1,4 +1,5 @@
 import { formatAtriaDate } from '../atria-shell/components.js';
+import { createAtriaIcon } from '../atria-shell/icons.js';
 import { ensureTaskBindings } from './task-binding-ui.js';
 import { mountResourceSetup } from './resource-setup.js';
 import { sessionTitleField, mountSessionRename } from './session-naming.js';
@@ -160,21 +161,70 @@ function sessionRow(doc, parent, session, host, refresh, workName) {
     return row;
 }
 
-async function works(doc, root, host, refresh, browseState) {
+// Library-wide tools (search, import, install) live in the top bar's tool capsule
+// when the shell offers it; standalone mounts keep them inline.
+function libraryTools(doc, root, host, browseState, placeholder) {
+    const bar = el(doc, 'div', 'atri-library-tools');
+    const search = el(doc, 'label', 'atri-library-search', undefined, bar);
+    const input = el(doc, 'input', '', undefined, search); input.type = 'search';
+    input.value = browseState.query || ''; input.placeholder = tl(placeholder); input.setAttribute('aria-label', tl(placeholder));
+    el(doc, 'kbd', '', '/', search).setAttribute('aria-hidden', 'true');
+    action(doc, bar, 'Import .atriasave', () => host.openLibrarySection('import-save'));
+    action(doc, bar, 'Install / Update .atria', () => host.openLibrarySection('install'), { primary: true });
+    if (typeof host.setContextActions === 'function') host.setContextActions([bar]);
+    else root.prepend(bar);
+    return input;
+}
+
+function workStatus(doc, parent, work) {
+    const line = el(doc, 'span', 'atri-library-work-status', undefined, parent);
+    const ready = work.status === 'ready';
+    const seal = el(doc, 'span', 'atria-seal', work.packageVersion?.version ? 'v' + work.packageVersion.version : '—', line);
+    if (ready) seal.dataset.seal = 'current';
+    const chip = el(doc, 'span', 'atri-library-chip', tl(ready ? 'Ready' : 'Unavailable'), line);
+    chip.dataset.tone = ready ? 'ready' : 'missing';
+    return line;
+}
+
+async function works(doc, root, host, refresh, browseState, selectedId = '') {
     const [workResult, sessionResult] = await Promise.allSettled([client.listWorks(), client.listSessions()]);
     const items = workResult.status === 'fulfilled' ? workResult.value : [];
     const sessions = sessionResult.status === 'fulfilled' ? sessionResult.value : [];
-    heading(doc, root, 'Works', 'Your collection of interactive stories.');
-    const imports = el(doc, 'div', 'atri-library-imports', undefined, root);
-    action(doc, imports, 'Install / Update .atria', () => host.openLibrarySection('install'));
-    action(doc, imports, 'Import .atriasave', () => host.openLibrarySection('import-save'));
-    const filter = field(doc, root, 'Search works', browseState.query || '', 'search');
-    const count = el(doc, 'p', 'atri-library-meta', '', root); count.setAttribute('role', 'status');
-    const grid = el(doc, 'div', 'atri-library-posters', undefined, root); grid.dataset.atriaNativeWorks = 'true';
+    const filter = libraryTools(doc, root, host, browseState, 'Search works');
+    const nameOf = id => items.find(work => work.package.packageId === id)?.package.displayName;
+    // Continue reading: the latest exact Sessions, only when their Work is ready.
+    const resumable = sessions.filter(item => (item.dependency?.status || 'ready') === 'ready')
+        .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0)).slice(0, 3);
+    if (resumable.length) {
+        const resume = section(doc, root, 'Continue reading', 'atriaResume');
+        const strip = el(doc, 'div', 'atri-library-resume', undefined, resume);
+        resumable.forEach((session, index) => {
+            const workName = nameOf(session.packageId);
+            const card = el(doc, 'article', 'atri-library-resume-card', undefined, strip);
+            card.dataset.atriaSessionId = session.sessionId;
+            card.append(cover(doc, session.packageId, workName || ''));
+            el(doc, 'strong', '', session.displayTitle || workName || tl('Untitled session'), card);
+            el(doc, 'span', 'atri-library-meta', [workName, time(session.updatedAt)].filter(Boolean).join(' · '), card);
+            const row = el(doc, 'div', 'atri-library-resume-row', undefined, card);
+            el(doc, 'span', 'atri-library-meta', `${session.saveCount || 0} ${tl('Saves')}`, row);
+            action(doc, row, 'Continue', () => openSession(host, session.sessionId), { primary: index === 0 });
+        });
+    }
+    const shelf = section(doc, root, 'Works', 'atriaShelf');
+    const head = el(doc, 'div', 'atri-library-shelf-head', undefined, shelf);
+    head.append(shelf.querySelector('h3'));
+    const count = el(doc, 'span', 'atri-library-meta', '', head); count.setAttribute('role', 'status');
+    const scopes = el(doc, 'div', 'atria-segmented atri-library-scope', undefined, head);
+    scopes.setAttribute('role', 'group'); scopes.setAttribute('aria-label', tl('Filter works'));
+    const grid = el(doc, 'div', 'atri-library-posters', undefined, shelf); grid.dataset.atriaNativeWorks = 'true';
+    const scopeTest = { all: () => true, ready: work => work.status === 'ready', attention: work => work.status !== 'ready' };
+    browseState.scope = scopeTest[browseState.scope] ? browseState.scope : 'all';
     const render = () => {
         grid.replaceChildren();
-        const matching = items.filter(item => `${item.package.displayName} ${item.manifest?.description || ''}`.toLowerCase().includes(filter.value.trim().toLowerCase()));
-        count.textContent = `${matching.length} ${tl('Works')}`;
+        const query = filter.value.trim().toLowerCase();
+        const matching = items.filter(item => scopeTest[browseState.scope](item) && `${item.package.displayName} ${item.manifest?.description || ''}`.toLowerCase().includes(query));
+        count.textContent = `${matching.length} / ${items.length}`;
+        for (const button of scopes.children) button.setAttribute('aria-pressed', String(button.dataset.scope === browseState.scope));
         if (workResult.status === 'rejected') {
             state(doc, grid, 'error', 'Library could not be loaded', libraryError(workResult.reason));
             action(doc, grid, 'Try again', refresh);
@@ -183,27 +233,57 @@ async function works(doc, root, host, refresh, browseState) {
             const card = el(doc, 'article', 'atri-library-work', undefined, grid); card.dataset.atriaWorkId = work.package.packageId;
             const open = action(doc, card, 'Open', () => host.openLibraryWork(work.package.packageId, work.package.displayName));
             open.className = 'atri-library-work-open'; open.setAttribute('aria-label', tl('Open') + ' ' + work.package.displayName);
+            if (work.package.packageId === selectedId) open.setAttribute('aria-current', 'true');
             open.replaceChildren(cover(doc, work.package.packageId, work.package.displayName));
             el(doc, 'h3', '', work.package.displayName, open);
-            el(doc, 'p', 'atri-library-meta', work.status === 'ready' ? `${tl('Version')} ${work.packageVersion?.version || '—'}` : tl('Unavailable'), card);
+            workStatus(doc, open, work);
+        }
+    };
+    for (const [key, label] of [['all', 'All'], ['ready', 'Ready'], ['attention', 'Needs attention']]) {
+        const button = el(doc, 'button', 'atria-segmented__item', tl(label), scopes); button.type = 'button'; button.dataset.scope = key;
+        button.addEventListener('click', () => { browseState.scope = key; render(); });
+    }
+    filter.addEventListener('input', () => { browseState.query = filter.value; render(); }); render();
+    if (sessionResult.status === 'rejected') {
+        state(doc, root, 'error', 'Library could not be loaded', libraryError(sessionResult.reason));
+        action(doc, root, 'Try again', refresh);
+    }
+}
+
+// My stories: every exact Session, newest first; broken dependencies stay listed with recovery.
+async function games(doc, root, host, refresh, browseState) {
+    const [workResult, sessionResult] = await Promise.allSettled([client.listWorks(), client.listSessions()]);
+    const items = workResult.status === 'fulfilled' ? workResult.value : [];
+    const filter = libraryTools(doc, root, host, browseState, 'Search stories');
+    heading(doc, root, 'My stories', 'Each story keeps the exact work version and starting point it began with.');
+    const list = el(doc, 'div', 'atri-library-grouped-list', undefined, root); list.dataset.atriaMyGames = 'true';
+    if (sessionResult.status === 'rejected') {
+        state(doc, list, 'error', 'Library could not be loaded', libraryError(sessionResult.reason));
+        action(doc, list, 'Try again', refresh); return;
+    }
+    const sessions = [...sessionResult.value].sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+    const nameOf = id => items.find(work => work.package.packageId === id)?.package.displayName;
+    const render = () => {
+        list.replaceChildren();
+        const query = filter.value.trim().toLowerCase();
+        const matching = sessions.filter(item => `${item.displayTitle || ''} ${nameOf(item.packageId) || ''}`.toLowerCase().includes(query));
+        if (!matching.length) state(doc, list, 'empty', sessions.length ? 'No matching stories' : 'No game progress yet', sessions.length ? 'Try another search.' : 'Open a work and start a new story.');
+        for (const item of matching) {
+            const row = sessionRow(doc, list, item, host, refresh, nameOf(item.packageId));
+            row.prepend(cover(doc, item.packageId, nameOf(item.packageId) || ''));
         }
     };
     filter.addEventListener('input', () => { browseState.query = filter.value; render(); }); render();
-    const games = section(doc, root, 'My Games', 'atriaMyGames');
-    if (sessionResult.status === 'rejected') {
-        state(doc, games, 'error', 'Library could not be loaded', libraryError(sessionResult.reason));
-        action(doc, games, 'Try again', refresh);
-    } else if (!sessions.length) state(doc, games, 'empty', 'No game progress yet', 'Open a work and start a new story.');
-    sessions.forEach(item => sessionRow(doc, games, item, host, refresh, items.find(work => work.package.packageId === item.packageId)?.package.displayName));
 }
 
 async function workDetail(doc, root, host, id, refresh) {
     const work = await client.getWork(id); const manifest = work.manifest;
     const hero = el(doc, 'header', 'atri-library-work-hero', undefined, root); hero.dataset.atriaWorkDetail = id;
-    hero.append(cover(doc, id, work.package.displayName));
+    const backdrop = cover(doc, id, ''); backdrop.classList.add('atri-library-hero-bg'); hero.append(backdrop, cover(doc, id, work.package.displayName));
     const content = el(doc, 'div', 'atri-library-hero-content', undefined, hero);
+    const close = action(doc, hero, 'Close details', () => host.openLibrarySection('works'));
+    close.classList.add('atri-library-detail-close');
     heading(doc, content, work.package.displayName, manifest?.description || '', true);
-    action(doc, content, 'Back to collection', () => host.openLibrarySection('works'));
     el(doc, 'p', 'atri-library-meta', `${tl('Version')} ${work.packageVersion?.version || '—'}`, content);
     if (work.status !== 'ready') state(doc, content, 'error', 'This work is unavailable', 'Reinstall the matching work to continue. Your progress is kept.');
     const entryPoints = manifest?.entryPoints || [];
@@ -282,9 +362,111 @@ async function workDetail(doc, root, host, id, refresh) {
     }, { danger: true });
 }
 
+// Worlds & Knowledge (K01–K11): resource list pane beside the editor, as in the
+// design. The list stays put while a World or Knowledge Base is open.
 async function worldKnowledge(doc, root, route, host, browseState = {}) {
     const child = String(route?.child?.id || '');
     const knowledge = child === 'knowledge' || child.startsWith('knowledge:');
+    if (child.startsWith('world:package:') || child.startsWith('knowledge:package:')) {
+        const ref = JSON.parse(decodeURIComponent(child.split(':').slice(2).join(':')));
+        await mountPackageLibraryOriginal({ document: doc, root, ref, host }); return;
+    }
+    root.classList.add('atri-library-resource-split');
+    const pane = el(doc, 'aside', 'atri-library-resource-pane', undefined, root);
+    pane.setAttribute('aria-label', tl(knowledge ? 'Knowledge Bases' : 'Worlds'));
+    const main = el(doc, 'section', 'atri-library-resource-main', undefined, root);
+    const opened = child.startsWith('world:') || child.startsWith('knowledge:');
+    const target = child.startsWith('knowledge:entry:') ? JSON.parse(decodeURIComponent(child.slice(16))) : null;
+    const selectedId = opened ? target?.knowledgeBaseId || child.split(':').slice(1).join(':') : '';
+    const refresh = async () => { const next = doc.createElement('section'); await worldKnowledge(doc, next, route, host, browseState); if (root.isConnected) { root.replaceChildren(...next.childNodes); } };
+    await Promise.all([
+        // A list failure stays in the pane; an open resource remains usable.
+        resourceList(doc, pane, knowledge, host, browseState, selectedId, refresh).catch(error => state(doc, pane, 'error', 'Library could not be loaded', libraryError(error))),
+        opened ? resourceDetail(doc, main, route, host, browseState) : Promise.resolve(resourceEmpty(doc, main, knowledge)),
+    ]);
+}
+
+function resourceEmpty(doc, main, knowledge) {
+    const empty = el(doc, 'div', 'atri-library-resource-empty', undefined, main);
+    empty.append(createAtriaIcon(doc, knowledge ? 'book' : 'globe', { size: 22 }));
+    el(doc, 'p', '', tl(knowledge ? 'Select a Knowledge Base to edit, or create a new one.' : 'Select a World to edit, or create a new one.'), empty);
+}
+
+async function resourceDetail(doc, root, route, host, browseState = {}) {
+    const child = String(route?.child?.id || '');
+    const knowledge = child === 'knowledge' || child.startsWith('knowledge:');
+    const target = child.startsWith('knowledge:entry:') ? JSON.parse(decodeURIComponent(child.slice(16))) : null;
+    const id = target?.knowledgeBaseId || child.split(':').slice(1).join(':');
+    const detail = await (knowledge ? client.getKnowledge(id, target?.revisionId) : client.getWorld(id));
+    const resource = knowledge ? detail.knowledgeBase : detail.world;
+    const hero = heading(doc, root, resource.displayName, tl(knowledge ? 'Knowledge available to your stories.' : 'A shared setting for your stories.'), true);
+    hero.dataset[knowledge ? 'atriaKnowledgeDetail' : 'atriaWorldDetail'] = id;
+    action(doc, hero, 'Close details', () => host.openLibrarySection(knowledge ? 'knowledge' : 'worlds')).classList.add('atri-library-detail-close');
+    if (target) {
+        const entry = detail.entries.find(item => item.knowledgeEntryId === target.entryId);
+        if (!entry) throw new Error(tl('Knowledge entry unavailable'));
+        const article = el(doc, 'article', 'atri-library-knowledge-entry', undefined, root);
+        article.dataset.atriaKnowledgeEntryId = entry.knowledgeEntryId;
+        el(doc, 'h4', '', entry.metadata?.title || tl('Knowledge entry'), article);
+        el(doc, 'p', '', entry.content, article);
+        disclosure(doc, article, 'Details', { knowledgeRevisionId: target.revisionId, knowledgeEntryId: target.entryId });
+        action(doc, actions(doc, root), 'Open Knowledge Base', () => host.openLibraryKnowledge(id, resource.displayName));
+        article.tabIndex = -1; queueMicrotask(() => article.focus());
+        return;
+    }
+    if (!knowledge) worldParameterSummary(doc, root, detail.currentRevision);
+    const revisionActions = actions(doc, root);
+    resourceBundleExport(doc, revisionActions, { scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId: id, revision: resource.currentRevisionId }, resource.displayName);
+    resourceLibraryCopy(doc, revisionActions, { scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId: id, revision: resource.currentRevisionId }, host);
+    const editRevision = (initialEntryId, entryEnabled, entryAction) => {
+        const reload = async saved => {
+            const next = doc.createElement('section');
+            await resourceDetail(doc, next, route, host, browseState);
+            if (!root.isConnected) return;
+            root.replaceChildren(...next.childNodes);
+            if (initialEntryId) [...root.querySelectorAll('[data-atria-knowledge-entry-id]')].find(row => row.dataset.atriaKnowledgeEntryId === initialEntryId)?.querySelector('summary')?.focus();
+            if (saved) feedback(doc, root, tl('Saved immutable Library revision.') + ' ' + (saved.worldRevisionId || saved.knowledgeRevisionId));
+        };
+        root.replaceChildren();
+        mountLibraryRevisionEditor({ document: doc, root, detail, knowledge, initialEntryId, entryEnabled, entryAction, browseState, onClose: () => reload(), onSaved: reload });
+    };
+    action(doc, revisionActions, resource.currentRevisionId ? 'New revision' : 'Create first revision', () => editRevision(), { primary: true });
+    const manage = disclosure(doc, root, 'Manage resource');
+    const name = field(doc, manage, knowledge ? 'Knowledge Base name' : 'World name', resource.displayName); name.required = true;
+    const controls = actions(doc, manage);
+    action(doc, controls, knowledge ? 'Rename Knowledge Base' : 'Rename World', async () => {
+        if (!name.value.trim()) { name.setCustomValidity(tl('Enter a name.')); name.reportValidity(); return; }
+        name.setCustomValidity('');
+        const updated = await (knowledge ? client.updateKnowledge(id, name.value.trim()) : client.updateWorld(id, name.value.trim()));
+        hero.querySelector('h2').textContent = updated.displayName; name.value = updated.displayName;
+        feedback(doc, controls, tl('Saved'));
+    });
+    name.addEventListener('input', () => name.setCustomValidity(''));
+    action(doc, controls, knowledge ? 'Delete Knowledge Base' : 'Delete World', async () => {
+        controls.querySelector('[data-atria-delete-blockers]')?.remove();
+        const references = await nativeStudioClient.getResourceReferences({ scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId: id }, { reverse: true });
+        if (references.length) {
+            const blockers = el(doc, 'section', 'atri-library-section', undefined, controls); blockers.dataset.atriaDeleteBlockers = 'true';
+            el(doc, 'h4', '', tl('Resolve references before deleting'), blockers);
+            await referenceRemediation(doc, blockers, { details: { references } }, host); return;
+        }
+        if (!await confirmLibraryAction(knowledge ? 'Delete this Native Knowledge Base?' : 'Delete this Native World?')) return;
+        await (knowledge ? client.deleteKnowledge(id) : client.deleteWorld(id)); host.openLibrarySection(knowledge ? 'knowledge' : 'worlds');
+    }, { danger: true });
+    if (knowledge) {
+        const entries = section(doc, root, 'Entries', 'atriaKnowledgeEntries');
+        el(doc, 'p', 'atri-library-meta', tl('Entry changes are drafts. Review and save a new immutable revision; existing bindings keep their exact revision.'), entries);
+        action(doc, entries, 'Add entry', () => editRevision(undefined, undefined, 'add'), { primary: true });
+        mountKnowledgeEntryBrowser({ document: doc, root: entries, entries: detail.entries, state: browseState, onDelete: entry => editRevision(entry.knowledgeEntryId, undefined, 'delete'), onEdit: entry => editRevision(entry.knowledgeEntryId), onToggle: (entry, enabled) => editRevision(entry.knowledgeEntryId, enabled) });
+        if (!detail.entries.length) state(doc, entries, 'empty', 'No entries', 'This revision contains no Knowledge entries.');
+        const bindings = section(doc, root, 'Bindings & references', 'atriaKnowledgeBindings');
+        mountKnowledgeBindingManager({ document: doc, root: bindings, detail, host });
+    }
+    mountLibraryRevisionHistory({ document: doc, root, detail, knowledge, host, onReload: async () => { root.replaceChildren(); await resourceDetail(doc, root, route, host, browseState); } });
+    return;
+}
+
+async function resourceList(doc, root, knowledge, host, browseState, selectedId, refresh) {
     const label = knowledge ? 'Knowledge Bases' : 'Worlds';
     const nav = el(doc, 'nav', 'atri-library-segments', undefined, root); nav.dataset.atriaWorldKnowledgeNav = 'true'; nav.setAttribute('aria-label', tl('Resource type'));
     for (const [key, text] of [['worlds', 'Worlds'], ['knowledge', 'Knowledge Bases']]) {
@@ -292,84 +474,8 @@ async function worldKnowledge(doc, root, route, host, browseState = {}) {
     }
     const key = knowledge ? 'knowledgeBaseId' : 'worldId';
     const open = item => knowledge ? host.openLibraryKnowledge(item[key], item.displayName) : host.openLibraryWorld(item[key], item.displayName);
-    if (child.startsWith('world:package:') || child.startsWith('knowledge:package:')) {
-        const ref = JSON.parse(decodeURIComponent(child.split(':').slice(2).join(':')));
-        await mountPackageLibraryOriginal({ document: doc, root, ref, host }); return;
-    }
-    if (child.startsWith('world:') || child.startsWith('knowledge:')) {
-        const target = child.startsWith('knowledge:entry:') ? JSON.parse(decodeURIComponent(child.slice(16))) : null;
-        const id = target?.knowledgeBaseId || child.split(':').slice(1).join(':');
-        const detail = await (knowledge ? client.getKnowledge(id, target?.revisionId) : client.getWorld(id));
-        const resource = knowledge ? detail.knowledgeBase : detail.world;
-        const hero = heading(doc, root, resource.displayName, tl(knowledge ? 'Knowledge available to your stories.' : 'A shared setting for your stories.'), true);
-        hero.dataset[knowledge ? 'atriaKnowledgeDetail' : 'atriaWorldDetail'] = id;
-        action(doc, hero, 'Back to collection', () => host.openLibrarySection(knowledge ? 'knowledge' : 'worlds'));
-        if (target) {
-            const entry = detail.entries.find(item => item.knowledgeEntryId === target.entryId);
-            if (!entry) throw new Error(tl('Knowledge entry unavailable'));
-            const article = el(doc, 'article', 'atri-library-knowledge-entry', undefined, root);
-            article.dataset.atriaKnowledgeEntryId = entry.knowledgeEntryId;
-            el(doc, 'h4', '', entry.metadata?.title || tl('Knowledge entry'), article);
-            el(doc, 'p', '', entry.content, article);
-            disclosure(doc, article, 'Details', { knowledgeRevisionId: target.revisionId, knowledgeEntryId: target.entryId });
-            action(doc, actions(doc, root), 'Open Knowledge Base', () => host.openLibraryKnowledge(id, resource.displayName));
-            article.tabIndex = -1; queueMicrotask(() => article.focus());
-            return;
-        }
-        if (!knowledge) worldParameterSummary(doc, root, detail.currentRevision);
-        const revisionActions = actions(doc, root);
-        resourceBundleExport(doc, revisionActions, { scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId: id, revision: resource.currentRevisionId }, resource.displayName);
-        resourceLibraryCopy(doc, revisionActions, { scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId: id, revision: resource.currentRevisionId }, host);
-        const editRevision = (initialEntryId, entryEnabled, entryAction) => {
-            const reload = async saved => {
-                const next = doc.createElement('section');
-                await worldKnowledge(doc, next, route, host, browseState);
-                if (!root.isConnected) return;
-                root.replaceChildren(...next.childNodes);
-                if (initialEntryId) [...root.querySelectorAll('[data-atria-knowledge-entry-id]')].find(row => row.dataset.atriaKnowledgeEntryId === initialEntryId)?.querySelector('summary')?.focus();
-                if (saved) feedback(doc, root, tl('Saved immutable Library revision.') + ' ' + (saved.worldRevisionId || saved.knowledgeRevisionId));
-            };
-            root.replaceChildren();
-            mountLibraryRevisionEditor({ document: doc, root, detail, knowledge, initialEntryId, entryEnabled, entryAction, browseState, onClose: () => reload(), onSaved: reload });
-        };
-        action(doc, revisionActions, resource.currentRevisionId ? 'New revision' : 'Create first revision', () => editRevision(), { primary: true });
-        const manage = disclosure(doc, root, 'Manage resource');
-        const name = field(doc, manage, knowledge ? 'Knowledge Base name' : 'World name', resource.displayName); name.required = true;
-        const controls = actions(doc, manage);
-        action(doc, controls, knowledge ? 'Rename Knowledge Base' : 'Rename World', async () => {
-            if (!name.value.trim()) { name.setCustomValidity(tl('Enter a name.')); name.reportValidity(); return; }
-            name.setCustomValidity('');
-            const updated = await (knowledge ? client.updateKnowledge(id, name.value.trim()) : client.updateWorld(id, name.value.trim()));
-            hero.querySelector('h2').textContent = updated.displayName; name.value = updated.displayName;
-            feedback(doc, controls, tl('Saved'));
-        });
-        name.addEventListener('input', () => name.setCustomValidity(''));
-        action(doc, controls, knowledge ? 'Delete Knowledge Base' : 'Delete World', async () => {
-            controls.querySelector('[data-atria-delete-blockers]')?.remove();
-            const references = await nativeStudioClient.getResourceReferences({ scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId: id }, { reverse: true });
-            if (references.length) {
-                const blockers = el(doc, 'section', 'atri-library-section', undefined, controls); blockers.dataset.atriaDeleteBlockers = 'true';
-                el(doc, 'h4', '', tl('Resolve references before deleting'), blockers);
-                await referenceRemediation(doc, blockers, { details: { references } }, host); return;
-            }
-            if (!await confirmLibraryAction(knowledge ? 'Delete this Native Knowledge Base?' : 'Delete this Native World?')) return;
-            await (knowledge ? client.deleteKnowledge(id) : client.deleteWorld(id)); host.openLibrarySection(knowledge ? 'knowledge' : 'worlds');
-        }, { danger: true });
-        if (knowledge) {
-            const entries = section(doc, root, 'Entries', 'atriaKnowledgeEntries');
-            el(doc, 'p', 'atri-library-meta', tl('Entry changes are drafts. Review and save a new immutable revision; existing bindings keep their exact revision.'), entries);
-            action(doc, entries, 'Add entry', () => editRevision(undefined, undefined, 'add'), { primary: true });
-            mountKnowledgeEntryBrowser({ document: doc, root: entries, entries: detail.entries, state: browseState, onDelete: entry => editRevision(entry.knowledgeEntryId, undefined, 'delete'), onEdit: entry => editRevision(entry.knowledgeEntryId), onToggle: (entry, enabled) => editRevision(entry.knowledgeEntryId, enabled) });
-            if (!detail.entries.length) state(doc, entries, 'empty', 'No entries', 'This revision contains no Knowledge entries.');
-            const bindings = section(doc, root, 'Bindings & references', 'atriaKnowledgeBindings');
-            mountKnowledgeBindingManager({ document: doc, root: bindings, detail, host });
-        }
-        mountLibraryRevisionHistory({ document: doc, root, detail, knowledge, host, onReload: async () => { root.replaceChildren(); await worldKnowledge(doc, root, route, host); } });
-        return;
-    }
     const items = await (knowledge ? client.listKnowledge() : client.listWorlds());
-    heading(doc, root, label, knowledge ? 'Keep reusable knowledge for your stories.' : 'The settings your stories share.');
-    mountResourceBundleImport({ document: doc, root, host, onReload: async () => { root.replaceChildren(); await worldKnowledge(doc, root, route, host); } });
+    mountResourceBundleImport({ document: doc, root, host, onReload: refresh });
     const form = el(doc, 'form', 'atri-library-create', undefined, root);
     const name = field(doc, form, knowledge ? 'New Knowledge Base name' : 'New World name'); name.required = true;
     const create = action(doc, form, knowledge ? 'Create Knowledge Base' : 'Create World', async () => {
@@ -380,6 +486,7 @@ async function worldKnowledge(doc, root, route, host, browseState = {}) {
     name.addEventListener('input', () => name.setCustomValidity(''));
     form.addEventListener('submit', event => { event.preventDefault(); create.click(); });
     const search = field(doc, root, 'Search resources', browseState.query || '', 'search');
+    search.placeholder = tl(knowledge ? 'Search Knowledge Bases' : 'Search Worlds');
     const list = el(doc, 'div', 'atri-library-grouped-list', undefined, root); list.dataset[knowledge ? 'atriaKnowledgeLibrary' : 'atriaWorldLibrary'] = 'true';
     const render = () => {
         list.replaceChildren();
@@ -388,6 +495,9 @@ async function worldKnowledge(doc, root, route, host, browseState = {}) {
         for (const item of matching) {
             const resource = knowledge ? item.knowledgeBase : item.world;
             const row = el(doc, 'article', 'atri-library-row', undefined, list);
+            row.prepend(createAtriaIcon(doc, knowledge ? 'book' : 'globe', { size: 16 }));
+            if ((resource[key]) === selectedId) row.setAttribute('aria-current', 'true');
+            row.addEventListener('click', event => { if (!event.target.closest('button')) open(resource); });
             const content = el(doc, 'div', 'atri-library-row-content', undefined, row);
             el(doc, 'h3', '', resource.displayName, content);
             el(doc, 'p', 'atri-library-meta', knowledge ? `${item.bindingCount} ${tl('Bindings')}` : tl(item.currentRevision ? 'Current revision available' : 'No revision'), content);
@@ -400,23 +510,34 @@ async function worldKnowledge(doc, root, route, host, browseState = {}) {
 
 function mount({ document: doc, body, route, host, browseStates = new Map() }, mode) {
     let disposed = false; let sequence = 0; let currentRoute = route;
+    const titles = { works: 'Works', games: 'My stories' };
     async function render(nextRoute = currentRoute) {
         currentRoute = nextRoute;
         const token = ++sequence; body.replaceChildren();
-        state(doc, body, 'loading', mode === 'works' ? 'Works' : 'Worlds & Knowledge', 'Loading your Library…');
+        state(doc, body, 'loading', titles[mode] || 'Worlds & Knowledge', 'Loading your Library…');
         const root = el(doc, 'section', 'atria-native-library'); root.dataset.atriaNativeLibrary = mode;
+        const child = String(nextRoute?.child?.id || '');
         try {
-            const child = String(nextRoute?.child?.id || '');
-            const key = mode === 'works' ? 'works' : child.startsWith('knowledge') ? 'knowledge' : 'worlds';
+            const key = mode !== 'worlds-knowledge' ? mode : child.startsWith('knowledge') ? 'knowledge' : 'worlds';
             if (!browseStates.has(key)) browseStates.set(key, {});
-            if (mode !== 'works') await worldKnowledge(doc, root, nextRoute, host, browseStates.get(key));
+            // Pages without Library-wide tools clear the top bar; the shelf views set their own.
+            if (mode === 'worlds-knowledge' || child === 'install' || child === 'import-save') host.setContextActions?.([]);
+            if (mode === 'worlds-knowledge') await worldKnowledge(doc, root, nextRoute, host, browseStates.get(key));
+            else if (mode === 'games') await games(doc, root, host, () => render(), browseStates.get(key));
             else if (child === 'install' || child === 'import-save') importSurface(doc, root, child === 'install' ? 'package' : 'save', host);
-            else if (String(nextRoute?.child?.id || '').startsWith('work:')) await workDetail(doc, root, host, nextRoute.child.id.slice(5), () => render());
-            else await works(doc, root, host, () => render(), browseStates.get(key));
+            else if (child.startsWith('work:')) {
+                // The shelf stays in place; the selected Work opens in the detail pane beside it.
+                const id = child.slice(5);
+                root.classList.add('atri-library-split');
+                const main = el(doc, 'div', 'atri-library-main', undefined, root);
+                const aside = el(doc, 'aside', 'atri-library-detail', undefined, root);
+                aside.setAttribute('aria-label', tl('Work details'));
+                await Promise.all([works(doc, main, host, () => render(), browseStates.get(key), id), workDetail(doc, aside, host, id, () => render())]);
+            } else await works(doc, root, host, () => render(), browseStates.get(key));
             if (!disposed && token === sequence) {
                 body.replaceChildren(root);
                 const title = root.querySelector('h2'); title?.setAttribute('tabindex', '-1');
-                if (doc.activeElement === doc.body) title?.focus({ preventScroll: true });
+                if (doc.activeElement === doc.body || child.startsWith('work:')) title?.focus({ preventScroll: true });
             }
         } catch (error) {
             if (disposed || token !== sequence) return;
@@ -424,7 +545,9 @@ function mount({ document: doc, body, route, host, browseStates = new Map() }, m
             action(doc, body, 'Try again', () => render());
         }
     }
-    void render(); return { updateRoute: next => { void render(next); }, dispose() { disposed = true; sequence++; } };
+    void render();
+    return { updateRoute: next => { void render(next); }, dispose() { disposed = true; sequence++; host.setContextActions?.([]); } };
 }
 export function mountNativeWorksWorkspace(args) { return mount(args, 'works'); }
+export function mountNativeGamesWorkspace(args) { return mount(args, 'games'); }
 export function mountNativeWorldKnowledgeWorkspace(args) { return mount(args, 'worlds-knowledge'); }
