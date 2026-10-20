@@ -2,11 +2,11 @@
 
 - Task ID: ARCH-DWE-01
 - Primary Workspace: docs
-- Status: Paused · Draft / waiting for queued refactors and user-directed Codex takeover
+- Status: Integration complete · task cleanup in progress
 - Plan: [plans/architecture/world-evolution-consistency/index.md](../../plans/architecture/world-evolution-consistency/index.md)
 - Initiated: 2026-10-17
 
-当前仅完成方案整理与静态源码阅读，产品实施仍为 **Draft / Paused**。以下 Stage 保存当时的决策、提交与发现；其中旧 Gate、Preflight、PASS/BLOCKED 及授权状态均为历史记录。当前设计与实施方式以 [Plan 入口](../../plans/architecture/world-evolution-consistency/index.md)为准，原讨论流程已于 Stage 27 清理。
+以下 Stage 保存各日期的设计、实现、验证与限制；当前产品状态见文末 Current state。
 
 ## Stage 1 — 建立方案与首轮广泛调研（2026-10-17）
 
@@ -561,6 +561,17 @@
 - 原隔离服务中的真实 Studio Project 完成第二起点选择、生成 Preview、展开来源与 Narrator／Player／Actor 切换：继位后旁白见 Mira／历史用途，Player 仅见 hp=4，Actor 不见秘密／Mira，原文用途为不可确认。390×844 touch／reduced-motion 与 1440×1000 desktop 模拟视口无横向溢出；重载后只读选项不再触发未保存确认，Enter 请求后焦点恢复，IME 查询守卫可用，视角搜索正常。
 - 本预览明确处于初始化动作之前；初始对白和模型输出未在这里执行。作者机制执行关联／覆盖说明、离屏连续性验证及最终集成继续，整体尚未结束。
 
+## Stage 55 — 法则执行关联、离屏连续性及主线集成（2026-10-20）
+
+- `efa6c62a`、`c83f18bb`：World 的法则选段可关联作品原 Game Logic transaction。关联保存逻辑路径、事务身份及规范化逻辑／原运行合同摘要；原编译器校验机制，装配、Preview 与显式运行资源更新拒绝缺失／更改的关联。Knowledge 不能声明执行关联，正文说明不生成新动作、验证器或写入权威。旧 Package 继续固定自身代码和依赖；规则摘要是保守的代码关联，不宣称理解自然语言含义。
+- Studio 在原 Project owner／revision 检查下按需读取机制；作者可搜索、选择、查看原参数 schema、条件数量和效果类型，再关联或移除。参数仍经原玩法动作提供，复杂机制仍沿原 Package 逻辑编辑。Library 没有 Work 时明确提示到 Studio 选择，纯文字保存／游玩不以执行关联为前置条件。来源用途改离法则或原选段改变时解除此草稿关联。
+- 起点预览分别显示此起点的动作关联、其它起点的机制、纯文字指导；作者覆盖检查与受众实际 Context 分开。覆盖最多 128 条、32768 字符，片段摘录最多 1200 字符，明细按需展开。不把内部条件、私有读取或法则关联当成对角色／玩家的新披露。预览仍明确处于初始化动作之前。
+- `7d016223`：集成测试发现显式 World 更新后的 Authority 派生发布仍用旧 World 投影；原 `createTaskWorld` 现从候选状态通过同一原选择函数取得 World。另发现显式采用新版 Package Knowledge 后，原 Authority 将合法资料投影误判为执行 Package 不匹配；现按原 `packageKnowledgeManifest` 核对同一捕获资料投影，执行代码／合同仍固定。文件与 SQLite 的原动作、资源更新、保存恢复验证通过，旧规则不会因资料说明更新而被替换。
+- 离屏连续性使用原 Domain／Simulation／Authority 的本地作品夹具验证：营业汇总在 Tick 6 关门处截断；信件在 Tick 3 发送、Tick 8 到达且只收一次费用；从原有限汇总槽具体化一个 Subject 时扣减原数量而不增加销售或收入。反复近景只读、继续推进、Tick 5 保存后恢复再推进保持同一身份、阶段和账目。预算耗尽时保留原已提交 Revision／Clock／状态。未增加生产商店领域、通用水位库或放宽原 16 项读取预算；具体玩法必须定义自己的结算规则和事项阶段。
+- 当前完整本地回归 90 项通过；随后新增 Studio owner／revision 读取检查单独通过，引用不可变处理后重跑法则相关 7 项通过，共 91 个不同测试。相关业务 JS ESLint、diff check 与新增 UI 文案审计通过；localization.js 的 215 项既有诊断新增 0 项。前端缓存构建入口确认现有缓存清单有效，未声称重新编译所有 bundle；全局本地化原有其它页面缺失仍未纳入本任务。
+- 隔离服务真实 Studio 流程完成选择机制→关联→Review→保存→重载→起点覆盖读取；实际读回固定 reference。1440×1000 桌面和 390×844 touch／reduced-motion 模拟视口无横向溢出，Enter 搜索、IME 守卫、只读操作不产生草稿、焦点与原按钮状态可用。按 Web Interface Guidelines 自检补充控件 name、状态播报和按钮间距；无新增动画。未请求真实模型或音图服务，未测试物理手机。
+- `b31c9401` 合入原 `origin/main`；中文文案冲突保留两边内容，合并源码树与合并前相同，原 API／Prompt 重构保留。主线 fast-forward 到 `c83f18bba110bacd528d13b1cd2bbda42b65236e`；首次 push 的 TLS 临时失败经普通重试成功，`ls-remote` 确认远端同一 SHA。产品实现与主线推送已完成，继续完成本任务分支清理与最终文档状态同步。
+
 ## Current state
 
-产品实施进行中，主体／时间读取、动态个人视角与获知、作者固定依赖、正文编辑、有效 Context 及显式资源采用已有接线；作者执行关联与完整起点预览、离屏连续性和最终集成继续实施。当前功能设计、代码差距与待决问题见 [Plan 入口](../../plans/architecture/world-evolution-consistency/index.md)。
+WP-A～F 当前产品实施及 main 合并推送已完成；主体、历史、个人 Task、原资料采用、正文与条件／执行关联、起点预览和 Play 档案已有接线。分支清理与最终文档状态同步进行中；能力边界与验证见 Stage 55。
