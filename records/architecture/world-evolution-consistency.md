@@ -511,6 +511,14 @@
 - 原 Cognition publication 增加实际 Task invocation 锚点：个人认知更新只认原 pending outbox 绑定的个人视角，不能凭 Task ID 借用他人视角；原获取、来源、时间、状态与因果检查继续执行。未扩展动态 appraisal 模型或新增常驻 NPC Agent。
 - 本地个人视角／获取／Task 认知 10 项通过，动态事项／模型输入和命令接纳 13 项通过；与原主体、正式发言／媒体、事件反应相关合跑 27 项通过。相关 ESLint、diff check 通过。Context 测试执行原 Compiler、RequestContext provider 与 Task selection；采用测试提案数据，未请求真实模型，完整真实 Provider／Orchestration 端到端尚无该阶段证据。继续历史纠错及 Play／作者读取，整体尚未合入 main。
 
+## Stage 49 — 原领域的有效时间与局部历史更正（2026-10-20）
+
+- `20397dd0`：原 History fact source 可选声明同一 Domain 记录的有效起止 Tick、被更正 fact ID 与说明字段。值、时间与更正引用均来自原领域实际提交，不接受独立历史 Patch，不另建 correction Store；既有 `tick` 仍是本次接受记录的时刻，旧 Revision 继续保存原记载。
+- 原 fact previous 链同时保留有效区间：晚录入的后续变化可从实际起点生效；局部更正必须引用同 key 的既有事实并落在其有效区间，不能越过后续替代、借旧目标覆盖新事实。冲突的回填要求明确更正引用，未知／跨来源／超范围／未来时刻拒绝。纯说明或日期更正即使值相同也保留新记录。原 Domain 负责该动作的权限、依据和业务因果，History 不裁判自然语言、不重跑既有行动或删除旧经历。
+- `history.at` 仍按选定 Revision、Clock 与 half-open 区间分页，返回接受 Tick、有效期与局部更正引用；原 Chronicle 行 schema 不改，来源详情展示两种时间和更正说明。Host 对 temporal continuation 绑定 owner／Session／Branch／Revision／query，防止伪造游标跳过较新的更正；进程重启后旧分页重新读取，未新增持久密钥或世界状态。
+- 同 key 读取／较早区间修复最多沿 128 个相关链接，常规当前变化在命中其前值后结束，180 次连续变化测试保持可执行；所有处理仍受原 source／durable／byte 预算。大行的普通分页明确拒绝，避免返回原游标造成无限翻页。
+- 历史新增 7 项、原历史 5 项与原主体／正式发言回归合跑 22 项通过；相关 ESLint、diff check 通过。测试确认旧修订、区间外状态、已完成领域记录与 Timeline 不变，错误引用／私有来源／分页篡改拒绝。未宣称通用双时间数据库或自动因果重算；继续 Play 读取与作者交互，整体尚未合入 main。
+
 ## Current state
 
 产品实施进行中，主体／时间读取、动态个人视角与获知、作者固定依赖、正文编辑、有效 Context 及显式资源采用已有接线；完整 NPC 行动、参与者／媒体与 Play 功能继续实施。当前功能设计、代码差距与待决问题见 [Plan 入口](../../plans/architecture/world-evolution-consistency/index.md)。
