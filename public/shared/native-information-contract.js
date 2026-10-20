@@ -103,7 +103,7 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
         return actor;
     });
     const views = informationList(value.views, 16, view => {
-        fields(view, ['id', 'audience', 'actorId', 'taskId', 'sources', 'exposure', 'knowledge', 'memory', 'maxItems', 'maxCharacters', 'subjectScopeId'], 'Information view');
+        fields(view, ['id', 'audience', 'actorId', 'taskId', 'sources', 'exposure', 'knowledge', 'worlds', 'memory', 'maxItems', 'maxCharacters', 'subjectScopeId'], 'Information view');
         taskId(view.id); choice(view.audience, ['player', 'narrator', 'actor', 'task', 'inspector']);
         if (view.actorId !== undefined && !actors.some(actor => actor.id === view.actorId)) throw new TypeError('Unknown Perspective Actor');
         if (view.subjectScopeId !== undefined && (view.audience !== 'actor' || view.actorId !== undefined
@@ -115,6 +115,7 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
         const exposure = informationList(view.exposure, 2, item => choice(item, ['display', 'context']));
         if (view.audience === 'player' && exposure.includes('context')) throw new TypeError('Player-only data cannot enter Context');
         if (typeof view.knowledge !== 'boolean') throw new TypeError('Knowledge exposure must be explicit');
+        if (view.worlds !== undefined) informationList(view.worlds, 16, reference);
         if (view.memory !== undefined && typeof view.memory !== 'boolean') throw new TypeError('Memory exposure must be explicit');
         if (view.audience === 'inspector' && (exposure.length !== 1 || exposure[0] !== 'display' || view.knowledge || view.memory)) throw new TypeError('Inspector grants are display-only');
         informationInteger(view.maxItems, 1, 128); informationInteger(view.maxCharacters, 1, 32768);
@@ -182,6 +183,7 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
 export function assertInformationClosure(contract, manifest) {
     if (!contract) return;
     if (contract.actors.some(actor => !manifest.actors.some(item => item.actorId === actor.id))
+        || contract.views.some(view => view.worlds?.some(id => !manifest.worlds.some(item => item.world.worldId === id)))
         || contract.sources.some(source => source.kind === 'world' && !manifest.worlds.some(item => item.world.worldId === source.worldId))) throw new TypeError('Information reference outside exact Package');
 }
 

@@ -19,6 +19,8 @@ import { informationContext, informationSourceMessageIds, memoryEvidenceApplicab
 import { PROCESSING_LIMITS } from '../../shared/native-processing-contract.js';
 import { deriveExpressionPlan } from '../../shared/native-expression-runtime.js';
 import { contentSha256 } from '../../shared/content-sha256.js';
+import { renderAuthoredContent } from './authored-content.js';
+import { buildNativeKnowledgeStateProviders } from './knowledge-runtime.js';
 
 export const CONTEXT_PLAN_SCHEMA_VERSION = 1;
 
@@ -529,6 +531,27 @@ async function knowledgeItems(snapshot, target, memoryEvidence, options) {
     return { plan, items, rejected, selection };
 }
 
+function worldTextItems(snapshot, target, information, providers) {
+    const selected = new Set(snapshot.entryPoint?.worldIds ?? Object.keys(snapshot.states.atri_world_state?.worlds ?? {}));
+    const granted = information ? new Set(information.worlds ?? []) : target.kind === 'narrator' ? selected : new Set();
+    return (snapshot.manifest.worlds ?? []).filter(item => selected.has(item.world.worldId) && granted.has(item.world.worldId)
+        && item.revision.body && targetMatches(item.revision.delivery?.target ?? 'narrator', target)
+        && (!item.revision.delivery?.visibility?.length || item.revision.delivery.visibility.includes(target.kind))).map(item => {
+        const { world, revision } = item;
+        const ref = { kind: 'world', worldId: world.worldId, worldRevisionId: revision.worldRevisionId,
+            revisionId: snapshot.revision.revisionId, branchId: snapshot.revision.branchId };
+        const disclosureView = information?.narration && snapshot.manifest.runtime.experienceContract.informationRuntime.views.find(view => view.id === information.narration.disclosureViewId);
+        return normalizeContextItem({ contextItemId: 'world:' + world.worldId + ':' + revision.worldRevisionId,
+            lane: CONTEXT_LANES.knowledge, authority: 'authored_world_background', authorityRank: KNOWLEDGE_AUTHORITY.packageCanonical.rank,
+            priority: revision.delivery?.priority ?? 100,
+            content: renderAuthoredContent(revision.body, { context: revision.context, annotations: revision.annotations,
+                source: { worldId: world.worldId, worldRevisionId: revision.worldRevisionId, title: revision.displayName ?? world.displayName },
+                defaultUsage: 'background', providers }) + (information?.narration
+                ? '\nPlayer disclosure: ' + (disclosureView?.worlds?.includes(world.worldId) ? 'this selected author source is display-granted; preserve its qualifiers.' : 'context only; this source is not granted for player disclosure.') : ''),
+            sourceRefs: [ref] });
+    });
+}
+
 function currentBranchScope(snapshot) {
     const current = String(snapshot?.revision?.branchId || '');
     const scope = new Set(current ? [current] : []);
@@ -670,15 +693,14 @@ function memoryItems(memoryEvidence, snapshot, rejectedMemoryIds = new Set(), in
             authority: KNOWLEDGE_AUTHORITY.memoryEvidence.id,
             authorityRank: KNOWLEDGE_AUTHORITY.memoryEvidence.rank,
             priority: Number(raw?.priority ?? raw?.score ?? 0) || 0,
-            content: information ? JSON.stringify({ content, applicability: memoryEvidenceApplicability(snapshot, information, raw),
-                displayGrant: { viewId: information.disclosure?.viewId ?? null, item: null } }) : content,
+            content: information ? JSON.stringify({ content: renderAuthoredContent(content, { context: raw.context, defaultUsage: 'historical', source: memoryId }), applicability: memoryEvidenceApplicability(snapshot, information, raw),
+                displayGrant: { viewId: information.disclosure?.viewId ?? null, item: null } }) : renderAuthoredContent(content, { context: raw.context, defaultUsage: 'historical', source: memoryId }),
             sourceRefs: sourceRefs.length ? sourceRefs : [{
                 kind: 'memory',
                 memoryId,
                 revisionId: snapshot?.revision?.revisionId,
                 branchId: snapshot?.revision?.branchId,
             }],
-            tokenEstimate: raw?.tokens ?? raw?.tokenCount,
             atomicGroup: raw?.atomicGroup,
             metadata: {
                 memoryId,
@@ -892,12 +914,13 @@ export class SessionContextCompiler {
         const onInformationScan = count => { informationScans += count; if (informationScans > 4096) throw new TypeError('Authority context scan limit'); };
         const information = informationContext(snapshot, target, options.informationTaskId, options.authorityTurn ? {
             includeRollups: false, onScan: onInformationScan,
-        } : {});
+        } : {}) ?? (target.kind === 'actor' ? { items: [], worlds: [], knowledge: false, memory: false } : null);
         const knowledgeTarget = information?.actorId ? { kind: 'actor', id: information.actorId } : target;
         const knowledgeTargetKey = JSON.stringify(options.informationTaskId ? ['task', options.informationTaskId] : [knowledgeTarget.kind, knowledgeTarget.id ?? '']);
         const derivations = snapshot.manifest.runtime?.experienceContract?.contextRuntime?.derivations ?? [];
         const dynamicKnowledge = new Map(), dynamicItems = [], derivationEvidence = [];
-        const initialKnowledge = compileNativeKnowledgePlan(snapshot, { target: knowledgeTarget, memoryEvidence: options.memoryEvidence });
+        const stateProviders = buildNativeKnowledgeStateProviders(snapshot, information);
+        const initialKnowledge = compileNativeKnowledgePlan(snapshot, { target: knowledgeTarget, memoryEvidence: options.memoryEvidence, information });
         const eligibleKnowledge = information && !information.knowledge ? { ...initialKnowledge, included: [], rejected: [] } : initialKnowledge;
         const eligibleKnowledgeIds = new Set(eligibleKnowledge.included.map(item => item.knowledgeEntryId));
         let derivationBytes = 0;
@@ -933,7 +956,10 @@ export class SessionContextCompiler {
             random: createDeterministicRng((snapshot.session?.sessionId ?? '') + ':' + snapshot.revision.branchId + ':' + snapshot.revision.revisionId).float,
             render: (text, item, variant) => {
                 const value = dynamicKnowledge.get(item.knowledgeEntryId);
-                return value ? (variant === 'compact' && value.compact !== undefined ? value.compact : value.text) : text;
+                const content = item.entry.annotations?.length ? item.entry.content
+                    : value ? (variant === 'compact' && value.compact !== undefined ? value.compact : value.text) : text;
+                return renderAuthoredContent(content, { context: item.entry.context, annotations: item.entry.annotations,
+                    source: { knowledgeBaseId: item.knowledgeBaseId, knowledgeRevisionId: item.knowledgeRevisionId, knowledgeEntryId: item.knowledgeEntryId }, providers: stateProviders });
             },
         });
         const branchScope = currentBranchScope(snapshot);
@@ -1013,6 +1039,7 @@ export class SessionContextCompiler {
             candidates = [...information.items.map(normalizeContextItem), ...(information.knowledge ? knowledge.items : []), ...memoryItems(memory, snapshot, rejectedMemoryIds, information)];
         }
         candidates.push(...actorIdentityItems(snapshot, target, information), ...informationCognitionItems(snapshot, information), ...expressionItems(snapshot, information, options.authorityTurn ? onInformationScan : null), ...dynamicItems, ...persona.items.map(normalizeContextItem));
+        candidates.push(...worldTextItems(snapshot, knowledgeTarget, information, stateProviders));
         const rejected = [...preRejected];
         candidates = candidates.filter(item => {
             if (visibleTo(item, target)) return true;

@@ -171,7 +171,9 @@ export function informationContext(snapshot, target, taskId, { onScan = null, in
     // A source/record match grants only that display item's selected fields;
     // context-only records and rollups do not gain disclosure by being read.
     const displayItems = new Map((disclosure?.items ?? []).map(item => [item.id, item]));
-    return { knowledge: view.knowledge && (!view.actorId || projection.availability[0]?.available), memory: view.memory === true, actorId: view.actorId, projection,
+    return { knowledge: view.knowledge && (!view.actorId || projection.availability[0]?.available),
+        worlds: !view.actorId || projection.availability[0]?.available ? view.worlds ?? [] : [],
+        memory: view.memory === true, actorId: view.actorId, projection,
         ...(narration ? { narration: clone(narration), disclosure } : {}),
         items: projection.items.map(item => ({ contextItemId: 'projection:' + view.id + ':' + item.id,
             lane: ['open_loop', 'intention'].includes(item.semantic) ? 'commitments' : item.semantic === 'memory' ? 'memory' : ['rollup', 'narrative'].includes(item.semantic) ? 'narrative_spine' : 'current_state_event',

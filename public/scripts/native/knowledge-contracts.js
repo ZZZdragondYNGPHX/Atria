@@ -46,6 +46,33 @@ export function normalizeKnowledgeApplicability(value) {
     });
 }
 
+export const CONTENT_USAGES = Object.freeze(['background', 'current', 'historical', 'claim', 'belief', 'law']);
+export function normalizeContentContext(value) {
+    if (value === undefined) return undefined;
+    object(value, 'Content context', ['usage', 'attribution', 'time']);
+    if (!CONTENT_USAGES.includes(value.usage)) throw new TypeError('Unsupported content usage');
+    for (const key of ['attribution', 'time']) if (value[key] !== undefined && (typeof value[key] !== 'string' || !value[key].trim() || value[key].length > 512)) throw new TypeError('Content ' + key + ' must be bounded text');
+    return Object.freeze({ ...value });
+}
+
+/** Positions belong to this exact immutable source text, never a newer draft. */
+export function normalizeContentAnnotations(content, value) {
+    if (value === undefined) return undefined;
+    if (!Array.isArray(value) || value.length > 64) throw new TypeError('Content annotation budget');
+    const ids = new Set(); let previousEnd = 0;
+    return Object.freeze(value.map(item => {
+        object(item, 'Content annotation', ['id', 'start', 'end', 'quote', 'context', 'applicability']);
+        if (typeof item.id !== 'string' || !/^[a-z][A-Za-z0-9._:-]{0,127}$/.test(item.id) || ids.has(item.id)) throw new TypeError('Invalid annotation identity');
+        ids.add(item.id);
+        if (!Number.isSafeInteger(item.start) || !Number.isSafeInteger(item.end) || item.start < previousEnd || item.end <= item.start || item.end > content.length
+            || typeof item.quote !== 'string' || item.quote !== content.slice(item.start, item.end)) throw new TypeError('Annotation must match its exact source text in order');
+        previousEnd = item.end;
+        if (!item.context) throw new TypeError('Annotation requires an explicit usage');
+        return Object.freeze({ ...item, context: normalizeContentContext(item.context),
+            ...(item.applicability === undefined ? {} : { applicability: normalizeKnowledgeApplicability(item.applicability) }) });
+    }));
+}
+
 
 export const KNOWLEDGE_TARGET_KINDS = Object.freeze(['narrator', 'actor', 'agent', 'user']);
 export const KNOWLEDGE_DELIVERY_POSITIONS = Object.freeze(['before', 'after']);
@@ -98,10 +125,12 @@ export function validateKnowledgeEditorValue(value, { complete = false } = {}) {
         normalizeKnowledgeDelivery(entry.delivery, `entries.${index}.delivery`);
         normalizeKnowledgeDiscovery(entry.discovery, `entries.${index}.discovery`);
         normalizeKnowledgeApplicability(entry.applicability);
+        normalizeContentContext(entry.context);
+        normalizeContentAnnotations(entry.content, entry.annotations);
         normalizeKnowledgeLifecycle(entry.lifecycle);
         const relations = normalizeKnowledgeRelations(entry.relations);
         if (complete) {
-            object(entry, `entries.${index}`, ['knowledgeEntryId', 'enabled', 'content', 'discovery', 'applicability', 'lifecycle', 'relations', 'delivery', 'metadata']);
+            object(entry, `entries.${index}`, ['knowledgeEntryId', 'enabled', 'content', 'context', 'annotations', 'discovery', 'applicability', 'lifecycle', 'relations', 'delivery', 'metadata']);
             if (!/^kentry_[a-f0-9]{32}$/.test(entry.knowledgeEntryId || '')) throw new TypeError(formatProductText('entries.${0}.knowledgeEntryId must be an exact identity', [index]));
             if (typeof entry.content !== 'string' || entry.content.length > 4 * 1024 * 1024) throw new TypeError(formatProductText('entries.${0}.content must be text of at most 4 MiB', [index]));
             for (const key of ['requiredEntryIds', 'relatedEntryIds']) for (const id of relations?.[key] || []) if (!ids.has(id)) throw new TypeError(formatProductText('entries.${0}.relations.${1} references a missing entry', [index, key]));

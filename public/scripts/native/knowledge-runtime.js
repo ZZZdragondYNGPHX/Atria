@@ -93,7 +93,18 @@ function flattenScalars(value, path = [], result = []) {
     return result;
 }
 
-export function buildNativeKnowledgeStateProviders(snapshot) {
+export function buildNativeKnowledgeStateProviders(snapshot, information = null) {
+    if (information) {
+        const fields = [];
+        const sources = snapshot.manifest.runtime?.experienceContract?.informationRuntime?.sources ?? [];
+        for (const item of information.projection?.items ?? []) {
+            const source = sources.find(source => source.id === item.sourceId && source.kind === 'world' && source.semantic === 'truth');
+            if (!source) continue;
+            for (const [key, value] of Object.entries(item.data)) flattenScalars(value, ['worlds', source.worldId, 'state', ...key.split('.')], fields);
+        }
+        return [{ providerId: 'atri_world_state', status: 'ready', fields, revision: snapshot.revision.revisionId,
+            contract: 'Selected Information fields only' }];
+    }
     const providers = [];
     const states = snapshot?.states && typeof snapshot.states === 'object' && !Array.isArray(snapshot.states)
         ? snapshot.states
@@ -181,7 +192,7 @@ function normalizeMemoryEvidence(memoryEvidence, providers) {
     for (const [index, raw] of (Array.isArray(memoryEvidence) ? memoryEvidence : []).entries()) {
         const memoryId = asText(raw?.memoryId || raw?.id) || `memory:${index}`;
         const claim = raw?.stateClaim;
-        if (claim && typeof claim === 'object' && !Array.isArray(claim)) {
+        if (raw?.context?.usage === 'current' && claim && typeof claim === 'object' && !Array.isArray(claim)) {
             const provider = providers.find(item => item.providerId === asText(claim.providerId));
             const path = Array.isArray(claim.path) ? claim.path.map(asText).filter(Boolean) : [];
             const field = provider?.fields?.find(item => JSON.stringify(item.path) === JSON.stringify(path));
@@ -212,7 +223,7 @@ export function compileNativeKnowledgePlan(snapshot, options = {}) {
     if (!snapshot?.knowledge || !snapshot?.manifest) throw new TypeError('Native Knowledge compilation requires a Session snapshot');
     const target = normalizeKnowledgeTarget(options.target ?? 'narrator');
     const sources = resolveSources(snapshot);
-    const providers = buildNativeKnowledgeStateProviders(snapshot);
+    const providers = buildNativeKnowledgeStateProviders(snapshot, options.information);
     const candidates = [];
     const rejected = [];
 

@@ -2,6 +2,7 @@ import { normalizeKnowledgeLifecycle, normalizeKnowledgeRelations, normalizeKnow
 import { subjectDefinitions } from '../../public/shared/native-subject-contract.js';
 import { assertNativeId } from './identity.js';
 import { normalizeKnowledgeEntryEnabled } from '../../public/scripts/native/knowledge-contracts.js';
+import { normalizeContentContext, normalizeContentAnnotations } from '../../public/scripts/native/knowledge-contracts.js';
 
 export const KNOWLEDGE_BINDING_MODES = Object.freeze(['augment', 'override']);
 export const KNOWLEDGE_SOURCE_KINDS = Object.freeze(['package', 'library', 'session', 'project']);
@@ -154,6 +155,9 @@ export function assertWorldRevision(value) {
             'baseline',
             'subjects',
             'body',
+            'context',
+            'annotations',
+            'delivery',
             'displayName',
             'knowledgeBindings',
             'knowledgeBindingIds',
@@ -169,6 +173,9 @@ export function assertWorldRevision(value) {
         ...(value.schema === undefined ? {} : { schema: optionalJsonObject(value.schema, 'WorldRevision.schema') }),
         ...(value.baseline === undefined ? {} : { baseline: optionalJsonObject(value.baseline, 'WorldRevision.baseline') }),
         ...(value.body === undefined ? {} : { body: text(value.body, 'WorldRevision.body', { allowEmpty: true, maxLength: 262144 }) }),
+        ...(value.context === undefined ? {} : { context: normalizeContentContext(value.context) }),
+        ...(value.annotations === undefined ? {} : { annotations: normalizeContentAnnotations(value.body ?? '', value.annotations) }),
+        ...(value.delivery === undefined ? {} : { delivery: normalizeKnowledgeDelivery(value.delivery, 'WorldRevision.delivery') }),
         ...(value.displayName === undefined ? {} : { displayName: text(value.displayName, 'WorldRevision.displayName', { maxLength: 256 }) }),
         ...(value.knowledgeBindings === undefined ? {} : { knowledgeBindings: worldBindingSnapshots(value.knowledgeBindings, value.knowledgeBindingIds) }),
         ...(value.subjects === undefined ? {} : { subjects: subjectDefinitions(value.subjects) }),
@@ -230,6 +237,8 @@ export function assertKnowledgeEntry(value) {
             'knowledgeEntryId',
             'enabled',
             'content',
+            'context',
+            'annotations',
             'discovery',
             'applicability',
             'lifecycle',
@@ -243,6 +252,8 @@ export function assertKnowledgeEntry(value) {
         knowledgeEntryId: assertNativeId(value.knowledgeEntryId, 'knowledgeEntry', 'KnowledgeEntry.knowledgeEntryId'),
         ...(value.enabled === undefined ? {} : { enabled: normalizeKnowledgeEntryEnabled(value.enabled) }),
         content: text(value.content, 'KnowledgeEntry.content', { allowEmpty: true, maxLength: 4 * 1024 * 1024 }),
+        ...(value.context === undefined ? {} : { context: normalizeContentContext(value.context) }),
+        ...(value.annotations === undefined ? {} : { annotations: normalizeContentAnnotations(value.content, value.annotations) }),
         ...(value.discovery === undefined ? {} : { discovery: normalizeKnowledgeDiscovery(value.discovery) }),
         ...(value.applicability === undefined ? {} : { applicability: normalizeKnowledgeApplicability(value.applicability) }),
         ...(value.lifecycle === undefined ? {} : { lifecycle: normalizeKnowledgeLifecycle(value.lifecycle) }),
