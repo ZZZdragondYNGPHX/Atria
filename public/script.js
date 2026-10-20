@@ -284,7 +284,7 @@ import {
     isPersonaPanelOpen,
 } from './scripts/personas.js';
 import { initBackgrounds, loadBackgroundSettings, background_settings } from './scripts/backgrounds.js';
-import { dismissStartupCover, hideLoader, isLoaderVisible, showLoader } from './scripts/loader.js';
+import { dismissStartupCover } from './scripts/loader.js';
 import { loader } from './scripts/action-loader.js';
 import { initTextGenModels, initTextGenModelSelects } from './scripts/textgen-models.js';
 import { appendFileContent, hasPendingFileAttachment, populateFileAttachment, decodeStyleTags, encodeStyleTags, hideChatMessageRange, isExternalMediaAllowed, preserveNeutralChat, restoreNeutralChat, formatCreatorNotes, initChatUtilities, addDOMPurifyHooks } from './scripts/chats.js';
@@ -1955,8 +1955,8 @@ async function firstLoadInit() {
         reportDeliveryBootFailure(err);
     }
 
-    console.debug('[init] csrf-token done, showing loader');
-    showLoader();
+    // The static startup cover already owns loading feedback during boot.
+    console.debug('[init] csrf-token done');
     const bootstrapPromise = fetchBootstrapSnapshot();
     const clientVersionPromise = bootstrapPromise.then(snapshot => getClientVersion(snapshot?.version));
     registerPromptManagerMigration();
@@ -2029,13 +2029,9 @@ async function firstLoadInit() {
     // flashing briefly while extension bootstrap is still running.
     initWorldInfoWorkspace();
 
-    if (isLoaderVisible()) {
-        console.debug('[init] hiding loader');
-        await hideLoader({ immediate: true });
-        console.debug('[init] loader hidden');
-        markClientStartupTiming('loaderHidden');
-        performance.mark('[init] loader hidden');
-    }
+    dismissStartupCover();
+    markClientStartupTiming('loaderHidden');
+    performance.mark('[init] loader hidden');
     await fixViewport();
     await yieldToBrowser();
     markStartupReadiness('shellInteractive');
@@ -15760,9 +15756,7 @@ export async function getSettings(options = {}) {
             // modal. We fire-and-forget the popup; once the user dismisses
             // it we flip `firstRun` and persist the change. While this is
             // pending the rest of the app remains usable.
-            if (isLoaderVisible()) {
-                await hideLoader();
-            }
+            dismissStartupCover();
             const onboardingLocale = getCurrentLocale();
             onboardingTask = doOnboarding(user_avatar)
                 .then(async completed => {
