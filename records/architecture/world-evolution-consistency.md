@@ -544,6 +544,13 @@
 - 新增晚到结果实验：本机 HTTP 发送后，经原 Domain 更新本人的证据，原 Host 拒绝旧结果；个人值保留新证据，行动计数不增加、原事项仍 pending、无 Task 采用记录，而已发生的 20 tokens 仍在原账本。未把请求取消或模型结束等同于事项完成。
 - 此次 SessionCore 改动后动态世界相关 71 项合跑通过；新增晚到用例后本端到端文件 3 项通过。相关 ESLint 与 diff check 通过。作者执行关联／完整起点受众预览、离屏覆盖审计及最终 main 集成继续；整体任务未结束。
 
+## Stage 53 — 原 Authority 中的表达模板更换与解除（2026-10-20）
+
+- 原事务 Subject 声明在绑定已存在的 identity 时，现在明确采用作者指定的 `actorId`，`actorId: null` 可解除模板；未声明则维持既有模板。此前只在新接纳时记录 actorId，复用同一 Subject 时会忽略作者的更换。仍只接受当前固定 Package 中实际可用的 Actor ID，模型无法提交任意模板引用；没有新增玩家全局覆盖器。
+- 变化沿原 pinned transaction、原正式 Domain 效果、同一 Revision／Receipt 发布，身份、kind、World scope、LocalRef、Perspective、origin 与首次 admission 保持原绑定。公开称呼与每条 Participant 的 expressionActorId 保留其发言时的版本，不把模板变更回写到旧发言，也不对玩家暴露 Subject／模板真身映射。
+- 新增 FsEngine／SqliteEngine 原 Package→Session→Authority Turn→三次正式发言验证：模板 A→B→解除只有一个 Subject，旧消息依次保留 A／B／无模板；存档恢复回 A 和当时 Timeline。错误模板拒绝整个候选。相关 23 项回归通过；进一步让新夹具采用真实 Native Host ownership、等待维护并 await engine.close 后，新 3 项重跑通过且无清理告警。先前测试清理告警诊断为忽略异步关闭即删除临时目录，未改生产维护行为。
+- 相关 2 个 JS ESLint 与 diff check 通过。继续作者规则执行覆盖／起点受众预览与离屏连续性验证；整体尚未集成 main。
+
 ## Current state
 
 产品实施进行中，主体／时间读取、动态个人视角与获知、作者固定依赖、正文编辑、有效 Context 及显式资源采用已有接线；作者执行关联与完整起点预览、离屏连续性和最终集成继续实施。当前功能设计、代码差距与待决问题见 [Plan 入口](../../plans/architecture/world-evolution-consistency/index.md)。
