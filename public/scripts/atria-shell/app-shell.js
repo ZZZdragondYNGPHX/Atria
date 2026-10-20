@@ -121,6 +121,9 @@ function commandIconName(command) {
 
 function hasMeaningfulContent(node) {
     for (const child of node.childNodes) {
+        // The workspace's generic one-line description is not inspectable content;
+        // with nothing else to show, the Inspector toggle stays hidden (guidelines §2.1).
+        if (child.nodeType === 1 && child.dataset?.atriaWorkspaceContext === 'true') continue;
         if (child.nodeType === 1) return true;
         if (child.nodeType === 3 && String(child.textContent || '').trim()) return true;
     }
