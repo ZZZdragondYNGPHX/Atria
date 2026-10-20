@@ -17,10 +17,10 @@ import { mountPromptRuntimeControls } from './prompt-runtime-controls.js';
 import { NOVELAI_IMAGE_ENDPOINT, NOVELAI_IMAGE_ADAPTERS, officialNovelaiCapabilities, novelaiConnectionCapabilities } from '../../shared/novelai-illustration.js';
 import { assertComputeBudget } from '../../shared/native-compute-budget.js';
 import { connectionRequiresSecret } from '../../shared/native-connection-auth.js';
-import { mountModelGenerationSettings } from './model-generation-settings.js';
+import { mountApiPresetFields } from './api-preset-fields.js';
 
-const sectionLabels = { routes: 'Routes', models: 'Models', connections: 'Connections', retrieval: 'Retrieval', diagnostics: 'Diagnostics' };
-const resourceLabels = { routes: 'route', models: 'model', connections: 'connection' };
+const sectionLabels = { routes: 'API presets', models: 'API presets', connections: 'Connections', retrieval: 'Retrieval', diagnostics: 'Diagnostics' };
+const resourceLabels = { routes: 'API preset', models: 'API preset', connections: 'connection' };
 const roleLabels = { illustration_prompt: 'Illustration prompt', intent_resolver: 'Intent resolver', event_interpreter: 'Event interpreter', orchestrator: 'Orchestrator', studio: 'Studio', memory: 'Memory', search: 'Search', narrator: 'Narrator', actor: 'Actor', summarizer: 'Summarizer', planner: 'Planner', critic: 'Critic', embedding: 'Embedding', reranker: 'Reranker', director: 'Director', authoring: 'Authoring' };
 const ids = { connections: 'connectionProfileId', models: 'modelProfileId', routes: 'runtimeRouteId' };
 const prefixes = { connections: 'conn', models: 'model', routes: 'route' };
@@ -128,7 +128,9 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
     function summary(item) {
         if (section === 'connections') return item.providerAdapter.replace('provider.', '') + ' · ' + item.endpoint;
         if (section === 'models') return fmt('${0} · ${1} context tokens', [item.remoteModelId, item.limits.contextTokens]);
-        return fmt('${0} · ${1} fallback routes', [translateShellText(roleLabels[item.role.replace('role.', '')] || item.role), item.fallbackRouteRefs.length]);
+        const model = data.models.find(value => value.modelProfileId === item.modelProfileRef.modelProfileId);
+        const connection = data.connections.find(value => value.connectionProfileId === item.connectionProfileRef.connectionProfileId);
+        return [connection?.displayName, model?.remoteModelId].filter(Boolean).join(' · ');
     }
     function readiness() {
         const panel = node('section'); panel.className = 'atri-runtime-chain-card';
@@ -182,22 +184,11 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         activeEditor = null; root.onkeydown = null; restoreShell(); body.append(root); root.replaceChildren(); delete root.dataset.editor;
         root.removeAttribute('role'); root.removeAttribute('aria-modal'); root.removeAttribute('aria-label');
         heading(translateShellText(sectionLabels[section]), {
-            routes: 'Choose how each role runs. Every route binds a model, connection and exact Generation and Prompt resources.',
+            routes: 'Choose a connection and model, then save generation parameters here. Games select this API preset and supply their own prompts.',
             connections: 'Provider endpoints and exact Secret references. Credentials stay in the existing Secret store.',
             models: 'Remote model identity, context limits and capability provenance.',
         }[section]);
-        readiness();
-        if (section === 'routes') {
-            const fallbackIds = new Set(data.routes.flatMap(item => item.fallbackRouteRefs.map(ref => ref.runtimeRouteId)));
-            const missing = []; const ambiguous = [];
-            for (const role of roles) {
-                const matches = data.routes.filter(item => item.role === 'role.' + role && !fallbackIds.has(item.runtimeRouteId));
-                if (!matches.length) missing.push(translateShellText(roleLabels[role] || role));
-                if (matches.length > 1) ambiguous.push(translateShellText(roleLabels[role] || role));
-            }
-            if (missing.length) notice(fmt('Not configured: ${0}. Create a route for each role you use.', [missing.join(', ')]));
-            if (ambiguous.length) notice(fmt('Ambiguous primary routes: ${0}. Edit roles or fallback links.', [ambiguous.join(', ')]));
-        }
+        if (section !== 'routes') readiness();
         // List-detail: the list stays put; the editor opens in the pane beside it.
         const split = node('div'); split.className = 'atri-runtime-split';
         const listPane = node('aside', undefined, split); listPane.className = 'atri-runtime-listpane';
@@ -207,8 +198,8 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         const create = button(fmt('New ${0}', [translateShellText(resourceLabels[section])]), () => edit(), listHead);
         create.prepend(createAtriaIcon(doc, 'plus', { size: 15 }));
         const toolbar = node('div', undefined, listPane); toolbar.className = 'atri-runtime-toolbar';
-        const search = field(toolbar, fmt('Filter ${0}', [translateShellText(section)])); search.type = 'search';
-        search.placeholder = fmt('Filter ${0}', [translateShellText(section)]);
+        const search = field(toolbar, fmt('Filter ${0}', [translateShellText(sectionLabels[section] || section)])); search.type = 'search';
+        search.placeholder = fmt('Filter ${0}', [translateShellText(sectionLabels[section] || section)]);
         const list = node('div', undefined, listPane); list.className = 'atri-runtime-list';
         const detail = node('section', undefined, split); detail.className = 'atri-runtime-detail';
         const empty = node('div', undefined, detail); empty.className = 'atri-runtime-detail__empty';
@@ -218,7 +209,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             count.textContent = translateShellText(sectionLabels[section]) + ' · ' + data[section].length;
             const items = data[section].filter(item => (item.displayName + ' ' + summary(item)).toLowerCase().includes(search.value.toLowerCase()));
             if (!items.length) list.append(createAtriaStatePanel(doc, 'empty', {
-                title: data[section].length ? translateShellText('No matching results.') : fmt('No ${0} yet. Create one to get started.', [translateShellText(section)]),
+                title: data[section].length ? translateShellText('No matching results.') : fmt('No ${0} yet. Create one to get started.', [translateShellText(sectionLabels[section] || section)]),
             }));
             for (const item of items) {
                 const row = node('article', undefined, list); row.className = 'atri-runtime-row';
@@ -257,14 +248,14 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             adaptEditor();
         }
         const header = node('header'); header.className = 'atri-runtime-editor-header';
-        const back = button(fmt('Back to ${0}', [translateShellText(section)]), () => { if (!confirmAtriaDraftLeave(doc, root)) return; renderList(); root.querySelector('input')?.focus(); }, header);
+        const back = button(fmt('Back to ${0}', [translateShellText(sectionLabels[section] || section)]), () => { if (!confirmAtriaDraftLeave(doc, root)) return; renderList(); root.querySelector('input')?.focus(); }, header);
         if (host.hasRuntimeRepair?.()) button('Return to model setup', () => host.returnFromRuntimeRepair(), header);
         const title = node('h2', fmt(original && !fresh ? 'Edit ${0}' : 'New ${0}', [translateShellText(resourceLabels[section])]), header); title.tabIndex = -1;
         const form = node('form'); form.className = 'atri-runtime-form';
         const identity = group(form, 'Identity');
         const name = field(identity, 'Display name', value.displayName); name.required = true;
         details(identity, 'Details', value[ids[section]]);
-        let serialize;
+        let serialize, readApi;
         if (section === 'connections') {
             let fields = group(form, 'Provider connection');
             const adapter = field(fields, 'Provider transport', value.providerAdapter || 'provider.openai-compatible', [['provider.openai-compatible', 'OpenAI-compatible messages'], ['provider.mcp', 'MCP tools and resources'], ['provider.a2a', 'A2A agent'], ['provider.raw-text', 'Raw text completions'], ['provider.anthropic', 'Anthropic Messages'], ['provider.gemini', 'Gemini GenerateContent'], ['provider.novelai-image', 'NovelAI images'], ['provider.novelai-image-compatible', 'NovelAI-compatible images'], ['provider.comfyui-image', 'ComfyUI image workflows'], ['provider.openai-images', 'OpenAI Images API'], ['provider.gemini-image', 'Gemini images'], ['provider.sd-webui-image', 'SD WebUI images'], ['provider.forge-image', 'Forge images'], ['provider.runninghub-image', 'RunningHub image workflows']]);
@@ -388,108 +379,19 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             }, fields);
             const syncProbe = () => { probe.hidden = [...NOVELAI_IMAGE_ADAPTERS, 'provider.mcp', 'provider.a2a'].includes(adapter.value); };
             adapter.addEventListener('change', syncProbe); syncProbe();
-        } else if (section === 'models') {
-            let fields = group(form, 'Model connection');
-            const connection = field(fields, 'Connection', value.connectionProfileRef?.connectionProfileId, options(data.connections.filter(item => ![...NOVELAI_IMAGE_ADAPTERS, 'provider.mcp', 'provider.a2a', 'provider.comfyui-image', 'provider.openai-images', 'provider.gemini-image', 'provider.sd-webui-image', 'provider.forge-image', 'provider.runninghub-image'].includes(item.providerAdapter)), ids.connections)); connection.required = true;
-            button('Manage connections', () => host.openRuntimeSection('connections'), fields);
-            const remote = field(fields, 'Remote model ID', value.remoteModelId); remote.required = true;
-            const discovery = node('div', undefined, fields); discovery.className = 'atri-runtime-group';
-            const discoveryStatus = node('div', undefined, discovery);
-            const choices = field(discovery, 'Available provider models', '', [['', 'Fetch models to choose…']]); choices.disabled = true;
-            let discovered = []; let discoveryVersion = 0;
-            const fetchModels = button('Fetch models', async () => {
-                if (fetchModels.disabled) return;
-                const version = ++discoveryVersion; const selected = data.connections.find(item => item.connectionProfileId === connection.value);
-                if (!selected) { discoveryStatus.replaceChildren(); notice('Select a connection first.', discoveryStatus, true); connection.focus(); return; }
-                fetchModels.disabled = true; fetchModels.setAttribute('aria-busy', 'true'); discoveryStatus.replaceChildren(); notice('Fetching available models…', discoveryStatus);
-                try {
-                    const result = await runtimeRequest('/connections/probe', { method: 'POST', body: selected, signal: controller.signal });
-                    if (disposed || editorToken !== editorSequence || version !== discoveryVersion) return;
-                    discovered = result.models; choices.replaceChildren();
-                    for (const item of [{ remoteModelId: '', displayName: translateShellText('Choose…') }, ...discovered]) {
-                        const option = node('option', undefined, choices); option.value = item.remoteModelId; option.textContent = item.displayName + (item.remoteModelId ? ' · ' + item.remoteModelId : '');
-                    }
-                    choices.disabled = !discovered.length; discoveryStatus.replaceChildren();
-                    notice(discovered.length ? 'Choose a model. Fetching does not change saved configuration.' : 'No generation models returned. You can enter a model ID manually.', discoveryStatus);
-                } catch (error) { if (!disposed && editorToken === editorSequence && version === discoveryVersion) { discoveryStatus.replaceChildren(); failure(error, discoveryStatus); } } finally { fetchModels.disabled = false; fetchModels.removeAttribute('aria-busy'); }
-            }, discovery);
-            connection.addEventListener('change', () => { discoveryVersion += 1; discovered = []; choices.replaceChildren(); choices.disabled = true; discoveryStatus.replaceChildren(); });
-            fields = group(form, 'Model limits');
-            const context = number(fields, 'Context tokens', value.limits?.contextTokens || generationDefaults.contextTokens, 1);
-            const output = number(fields, 'Output token limit', value.limits?.outputTokens || generationDefaults.outputTokens, 1);
-            notice('The context limit includes input and reserved output. Generation parameters choose the actual output budget within these model limits.', fields);
-            const budgetSources = { ...value.limitProvenance };
-            for (const [key, input] of [['contextTokens', context], ['outputTokens', output]]) input.addEventListener('input', () => { budgetSources[key] = [{ kind: 'user-override', source: 'Runtime Models' }]; });
-            const encoding = field(fields, 'Tokenizer encoding', value.tokenizer?.encoding || 'cl100k_base', [['cl100k_base', 'cl100k_base'], ['o200k_base', 'o200k_base']]);
-            fields = group(form, 'Capabilities');
-            notice('All transports support streaming. Message transports support tools, structured output and reasoning. OpenAI and Anthropic support explicit cache controls. Model restrictions still apply.', fields);
-            const capabilities = ['generation.streaming', 'generation.tools', 'generation.structured-output', 'generation.reasoning', 'generation.cache'].map(capability => {
-                const existing = value.capabilities?.find(item => item.capability === capability);
-                const input = field(fields, capability, existing?.state || '', [['', 'Use adapter metadata'], ['unknown', 'Unknown'], ['unsupported', 'Unsupported'], ['supported', 'Supported — explicit user override']]);
-                node('small', existing ? existing.provenance.map(item => item.kind + ': ' + item.source).join(' · ') : 'Provenance: built-in adapter metadata', fields);
-                const entry = { capability, input, existing, dirty: false };
-                input.addEventListener('change', () => { entry.dirty = true; });
-                return entry;
-            });
-            const metadata = node('div', undefined, discovery); metadata.className = 'atri-runtime-group';
-            choices.addEventListener('change', () => {
-                const selected = discovered.find(item => item.remoteModelId === choices.value); resetMetadata();
-                if (!selected) return;
-                remote.value = selected.remoteModelId;
-                details(metadata, 'Discovered metadata', JSON.stringify({ limits: selected.limits, capabilities: selected.capabilities, provenance: selected.provenance }, null, 2));
-                button('Use discovered metadata', () => {
-                    if (remote.value !== selected.remoteModelId) return;
-                    for (const [key, input] of [['contextTokens', context], ['outputTokens', output]]) {
-                        if (selected.limits[key] !== undefined) { input.value = selected.limits[key]; budgetSources[key] = selected.provenance; }
-                    }
-                    for (const item of capabilities) {
-                        const found = selected.capabilities.find(entry => entry.capability === item.capability);
-                        if (found && !item.dirty && !item.existing?.provenance.some(entry => entry.kind === 'user-override')) { item.existing = found; item.input.value = found.state; }
-                    }
-                    notice('Metadata applied to this draft. Explicit capability overrides are preserved. Save to keep changes.', metadata);
-                }, metadata);
-            });
-            const resetMetadata = () => {
-                metadata.replaceChildren();
-                for (const key of Object.keys(budgetSources)) if (budgetSources[key].some(item => item.kind === 'provider-discovery')) delete budgetSources[key];
-                for (const item of capabilities) if (item.existing?.provenance.some(entry => entry.kind === 'provider-discovery')) {
-                    if (!item.dirty) item.input.value = '';
-                    item.existing = null;
-                }
-            };
-            connection.addEventListener('change', resetMetadata);
-            remote.addEventListener('input', () => { choices.value = ''; resetMetadata(); });
-            serialize = () => ({ ...value, connectionProfileRef: { scope: 'player', connectionProfileId: connection.value }, remoteModelId: remote.value,
-                limits: { contextTokens: Number(context.value), outputTokens: Number(output.value) }, tokenizer: original && encoding.value === (value.tokenizer?.encoding || 'cl100k_base') ? { ...value.tokenizer } : { ...value.tokenizer, encoding: encoding.value, source: 'user' },
-                limitProvenance: { contextTokens: budgetSources.contextTokens || [{ kind: 'user-override', source: 'Runtime Models' }], outputTokens: budgetSources.outputTokens || [{ kind: 'user-override', source: 'Runtime Models' }] },
-                capabilities: [...(value.capabilities || []).filter(item => !capabilities.some(entry => entry.capability === item.capability)), ...capabilities.filter(item => item.input.value).map(item => !item.dirty && item.existing?.state === item.input.value ? item.existing : { capability: item.capability, state: item.input.value, provenance: [{ kind: 'user-override', source: 'Runtime Models' }] })] });
         } else {
-            let fields = group(form, 'Routing');
+            readApi = mountApiPresetFields({ doc, form, data, resources: scopedResources, route: value, field, number, group, notice, button, host,
+                signal: controller.signal, isCurrent: () => !disposed && editorToken === editorSequence && form.isConnected });
+            const advanced = node('details', undefined, form); advanced.className = 'atri-api-advanced'; node('summary', 'Advanced routing and non-game prompts', advanced);
+            let fields = group(advanced, 'Default purpose outside games');
             const role = field(fields, 'Role', value.role || 'role.narrator', roles.map(item => ['role.' + item, roleLabels[item] || item]));
-            node('p', 'The model determines the connection. Generation and Prompt stay pinned to the selected revision.', fields).className = 'atri-runtime-help';
-            const model = field(fields, 'Model', value.modelProfileRef?.modelProfileId, options(data.models, ids.models)); model.required = true;
-            const connection = field(fields, 'Connection', value.connectionProfileRef?.connectionProfileId, options(data.connections, ids.connections)); connection.disabled = true;
-            const sync = () => { connection.value = data.models.find(item => item.modelProfileId === model.value)?.connectionProfileRef.connectionProfileId || ''; }; model.addEventListener('change', sync); sync();
-            fields = group(form, 'Exact resources');
-            const presets = data.resources.filter(item => item.preset);
-            const presetPicker = field(fields, 'Prompt Preset', '', [['', 'Keep exact resource selection'], ...presets.map(item => [item.resourceId, item.displayName, true])]);
-            const generation = field(fields, 'Generation — exact revision', value.generationProfileRef ? refKey(value.generationProfileRef) : '', resourceOptions('core.generation-profile')); generation.required = true;
-            const prompt = field(fields, 'Prompt — exact revision', value.promptProgramRef ? refKey(value.promptProgramRef) : '', resourceOptions('core.prompt-program')); prompt.required = true;
-            const syncPreset = () => {
-                const selected = presets.find(item => item.resourceId === presetPicker.value);
-                if (selected) {
-                    prompt.value = refKey({ scope: 'library', resourceType: 'core.prompt-program', resourceId: selected.resourceId, revision: selected.currentRevision });
-                    generation.value = refKey(selected.preset.refs.find(ref => ref.resourceType === 'core.generation-profile'));
-                }
-                prompt.disabled = generation.disabled = Boolean(selected);
-            };
-            presetPicker.addEventListener('change', syncPreset);
-            const currentPreset = presets.find(item => item.resourceId === value.promptProgramRef?.resourceId && item.currentRevision === value.promptProgramRef?.revision && refKey(item.preset.refs.find(ref => ref.resourceType === 'core.generation-profile')) === refKey(value.generationProfileRef));
-            if (currentPreset) { presetPicker.value = currentPreset.resourceId; syncPreset(); }
-            notice('Choose a preset to select its program and generation settings together. Existing exact references stay pinned.', fields);
-            button('Manage models', () => host.openRuntimeSection('models'), fields);
+            notice('Games assign purposes when they select an API preset. This default is used by Studio and other tools.', fields);
+            fields = group(advanced, 'Prompt outside games');
+            const prompt = field(fields, 'Prompt Preset', value.promptProgramRef ? refKey(value.promptProgramRef) : '',
+                [['', 'Use default context'], ...resourceOptions('core.prompt-program').slice(1)]);
+            notice('Games use the work’s prompt. This choice only applies outside package tasks.', fields);
             button('Prompt Presets', () => host.openLibrarySection('prompt-presets'), fields);
-            fields = group(form, 'Fallback order');
+            fields = group(advanced, 'Fallback order');
             let fallbackIds = (value.fallbackRouteRefs || []).map(item => item.runtimeRouteId);
             const fallbackList = node('div', undefined, fields);
             function showFallbacks() {
@@ -523,13 +425,13 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             });
             notice('Fallback routes must use the same role. They are tried in the order shown.', fields);
             showFallbacks();
-            fields = group(form, 'Request policy');
+            fields = group(advanced, 'Request policy');
             const timeout = number(fields, 'Timeout milliseconds', value.policy?.timeoutMs || generationDefaults.timeoutMs, 1);
             const retries = number(fields, 'Retries before fallback', value.policy?.maxRetries ?? 0, 0);
             const attempts = number(fields, 'Maximum fallback attempts', value.policy?.maxFallbackAttempts ?? 0, 0);
             notice('Fallback mode is chosen per request: automatic, confirm or disabled. Game Runtime requests automatic; other callers default to disabled. Zero attempts disables fallback.', fields);
             const requirements = field(fields, 'Required capabilities (comma separated)', value.requirements?.join(', ') || '');
-            fields = group(form, 'Shared compute limits', 'Requests in one run or project task share these limits, including retries and reranking. Sent requests retain their estimated usage when cost is unknown.');
+            fields = group(advanced, 'Shared compute limits', 'Requests in one run or project task share these limits, including retries and reranking. Sent requests retain their estimated usage when cost is unknown.');
             const enabled = field(fields, 'Enable shared request limits'); enabled.type = 'checkbox'; enabled.checked = Boolean(value.executionPolicy?.computeBudget);
             const requests = number(fields, 'Maximum request count', value.executionPolicy?.computeBudget?.maxRequests ?? '', 1, 32); requests.step = '1';
             const tokens = number(fields, 'Token usage limit', value.executionPolicy?.computeBudget?.maxTokens ?? '', 1); tokens.step = '1';
@@ -545,14 +447,14 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 for (const input of [localJobs, localItems, localBytes]) { input.disabled = !enabled.checked || !localEnabled.checked; input.required = enabled.checked && localEnabled.checked; }
             };
             enabled.addEventListener('change', syncLocalBudget); localEnabled.addEventListener('change', syncLocalBudget); syncLocalBudget();
-            const optionalFields = group(form, 'Required work reserve');
+            const optionalFields = group(advanced, 'Required work reserve');
             const reserveEnabled = field(optionalFields, 'Reserve required work'); reserveEnabled.type = 'checkbox'; reserveEnabled.checked = Boolean(value.executionPolicy?.optionalWork);
             const reserveRequests = number(optionalFields, 'Required work requests', value.executionPolicy?.optionalWork?.requiredCompute?.maxRequests ?? '', 1, 32);
             const reserveTokens = number(optionalFields, 'Required work token upper bound', value.executionPolicy?.optionalWork?.requiredCompute?.maxTokens ?? '', 1);
             const optionalRoles = [['rerank', 'Optional rerank'], ['model_task', 'Optional model tasks'], ['background', 'Optional Native background tasks']].map(([id, label]) => {
                 const input = field(optionalFields, label); input.type = 'checkbox'; input.checked = (value.executionPolicy?.optionalWork?.roles ?? ['rerank']).includes(id); return { id, input };
             });
-            const protocolFields = group(form, 'External services');
+            const protocolFields = group(advanced, 'External services');
             const split = input => input.value.split(',').map(value => value.trim()).filter(Boolean);
             const mcpConnection = field(protocolFields, 'MCP connection', value.executionPolicy?.mcp?.connectionProfileId ?? '', options(data.connections.filter(item => item.providerAdapter === 'provider.mcp'), ids.connections));
             const mcpTools = field(protocolFields, 'MCP tools', value.executionPolicy?.mcp?.toolNames?.join(', ') ?? '');
@@ -563,9 +465,9 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const a2aAuth = field(protocolFields, 'A2A authentication', value.executionPolicy?.a2a?.auth ?? 'none', [['none', 'No authentication'], ['secret', 'Stored Secret']]);
             serialize = () => {
                 let executionPolicy = value.executionPolicy ? clone(value.executionPolicy) : undefined;
-                if (enabled.checked || reserveEnabled.checked || mcpConnection.value || a2aConnection.value) executionPolicy ??= { schemaVersion: 1, allowedModelProfileIds: [model.value] };
+                if (enabled.checked || reserveEnabled.checked || mcpConnection.value || a2aConnection.value) executionPolicy ??= { schemaVersion: 1, allowedModelProfileIds: [readApi().model.modelProfileId] };
                 if (enabled.checked) {
-                    executionPolicy ??= { schemaVersion: 1, allowedModelProfileIds: [model.value] };
+                    executionPolicy ??= { schemaVersion: 1, allowedModelProfileIds: [readApi().model.modelProfileId] };
                     executionPolicy.computeBudget = assertComputeBudget({ maxRequests: Number(requests.value), maxTokens: Number(tokens.value),
                         ...(localEnabled.checked ? { localWork: { maxJobs: Number(localJobs.value), maxItems: Number(localItems.value), maxInputBytes: Number(localBytes.value) } } : {}) });
                 } else if (executionPolicy) delete executionPolicy.computeBudget;
@@ -578,7 +480,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                     if (a2aConnection.value) executionPolicy.a2a = { protocolVersion: '1.0', connectionProfileId: a2aConnection.value, skillIds: split(a2aSkills), auth: a2aAuth.value };
                     else delete executionPolicy.a2a;
                 }
-                return { ...value, ...(executionPolicy ? { executionPolicy } : {}), role: role.value, modelProfileRef: { scope: 'player', modelProfileId: model.value }, connectionProfileRef: { scope: 'player', connectionProfileId: connection.value }, generationProfileRef: JSON.parse(generation.value), promptProgramRef: JSON.parse(prompt.value), fallbackRouteRefs: fallbackIds.map(runtimeRouteId => ({ scope: 'player', runtimeRouteId })), policy: { timeoutMs: Number(timeout.value), maxRetries: Number(retries.value), maxFallbackAttempts: Number(attempts.value) }, requirements: requirements.value.split(',').map(item => item.trim()).filter(Boolean) };
+                return { ...value, ...(executionPolicy ? { executionPolicy } : {}), role: role.value, ...(prompt.value ? { promptProgramRef: JSON.parse(prompt.value) } : { promptProgramRef: undefined }), fallbackRouteRefs: fallbackIds.map(runtimeRouteId => ({ scope: 'player', runtimeRouteId })), policy: { timeoutMs: Number(timeout.value), maxRetries: Number(retries.value), maxFallbackAttempts: Number(attempts.value) }, requirements: requirements.value.split(',').map(item => item.trim()).filter(Boolean) };
             };
         }
         const status = node('div', undefined, form); status.className = 'atri-runtime-status';
@@ -604,20 +506,22 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             remove.className = 'atri-runtime-danger';
         }
         form.append(actions);
-        const save = node('button', section === 'models' ? 'Save model' : 'Save', actions); save.type = 'submit';
-        const sourceEditor = mountResourceSource({ document: doc, form, label: 'Runtime resource JSON', readFields: () => ({ ...serialize(), displayName: name.value }), identity: { [ids[section]]: value[ids[section]], scope: value.scope, schemaVersion: value.schemaVersion },
-            onFields: parsed => { assertRuntimeEditorShape(parsed); return edit(parsed, fresh || !original, true); }, isCurrent: () => !disposed && editorToken === editorSequence && form.isConnected,
-        });
+        const save = node('button', section === 'routes' ? 'Save API preset' : 'Save', actions); save.type = 'submit';
+        const sourceEditor = section === 'routes' ? { read: () => ({ route: { ...serialize(), displayName: name.value.trim() }, ...readApi(),
+            expected: { route: !original || fresh ? data.emptyFingerprint : data.routeFingerprints[value.runtimeRouteId],
+                model: !original || fresh ? data.emptyFingerprint : data.modelFingerprints[value.modelProfileRef.modelProfileId] } }) }
+            : mountResourceSource({ document: doc, form, label: 'Runtime resource JSON', readFields: () => ({ ...serialize(), displayName: name.value }),
+                identity: { [ids[section]]: value[ids[section]], scope: value.scope, schemaVersion: value.schemaVersion },
+                onFields: parsed => { assertRuntimeEditorShape(parsed); return edit(parsed, fresh || !original, true); }, isCurrent: () => !disposed && editorToken === editorSequence && form.isConnected });
         form.addEventListener('submit', async event => {
             event.preventDefault(); if (save.disabled) return;
-            if (section === 'models' && root.querySelector('.atri-model-generation[data-atria-draft-dirty="true"]')) {
-                status.replaceChildren(); notice('Save or discard generation parameter edits before saving the model.', status, true); return;
-            }
+            let body;
+            try { body = sourceEditor.read(); } catch (error) { status.replaceChildren(); failure(error, status); return; }
             const fields = [...form.querySelectorAll('input,textarea,select,button')];
             const disabled = fields.map(input => input.disabled); fields.forEach(input => input.disabled = true);
             status.replaceChildren(); notice('Saving…', status); save.setAttribute('aria-busy', 'true'); save.disabled = true; back.disabled = true; let saved = false;
             try {
-                await runtimeRequest('/configuration/' + section, { method: 'PUT', body: sourceEditor.read(), signal: controller.signal, onCommitted: () => {
+                await runtimeRequest(section === 'routes' ? '/api-presets' : '/configuration/' + section, { method: 'PUT', body, signal: controller.signal, onCommitted: () => {
                     saved = true; form.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
                 } });
                 if (disposed || editorToken !== editorSequence) return;
@@ -638,11 +542,6 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             }
         });
         bindEditorKeyboard(back);
-        if (section === 'models') mountModelGenerationSettings({ document: doc, parent: form.parentElement, modelForm: form,
-            modelId: value.modelProfileId, readModel: () => sourceEditor.read(), signal: controller.signal,
-            isCurrent: () => !disposed && editorToken === editorSequence,
-            onChanged: async () => { data = await runtimeRequest('/configuration', { signal: controller.signal }); },
-        });
         title.focus();
     }
     function evidence(result, parent) {

@@ -22,12 +22,33 @@ const logicalKey = entry => entry.resourceType + ':' + identity(entry);
 export class PromptPresetStore {
     constructor({ engine }) { this.engine = engine; }
 
+    async separateGeneration(handle) {
+        return withRuntimeWrite(handle, () => this.engine.withTransaction(handle, async tx => {
+            for (const root of await listNativeDocuments(tx, { kind: K.versionedJsonResource, handle, resourceType: PROGRAM })) {
+                const removed = root.preset?.refs.filter(r => r.resourceType === GENERATION) ?? [];
+                if (!removed.length) continue;
+                assertWritable();
+                for (const r of removed) {
+                    const owned = await getNativeDocument(tx, key(handle, GENERATION, r.resourceId));
+                    if (owned?.presetOwner === root.resourceId) {
+                        const { presetOwner: _owner, ...independent } = owned;
+                        await putMutable(tx, key(handle, GENERATION, r.resourceId), independent);
+                    }
+                }
+                await putMutable(tx, key(handle, PROGRAM, root.resourceId), { ...root,
+                    preset: { ...root.preset, refs: root.preset.refs.filter(r => r.resourceType !== GENERATION) } });
+            }
+        }));
+    }
+
     async list(handle) {
+        await this.separateGeneration(handle);
         return this.engine.withTransaction(handle, async tx => (await listNativeDocuments(tx, { kind: K.versionedJsonResource, handle, resourceType: PROGRAM }))
             .filter(root => root.preset).map(root => ({ presetId: root.resourceId, displayName: root.displayName, revision: root.currentRevision })));
     }
 
     async get(handle, id) {
+        await this.separateGeneration(handle);
         return this.engine.withTransaction(handle, async tx => {
             const root = await getNativeDocument(tx, key(handle, PROGRAM, id));
             if (!root?.preset) throw new NotFoundError('Prompt preset');
@@ -65,16 +86,9 @@ export class PromptPresetStore {
         }));
     }
 
-    async assertPair(handle, programRef, generationRef) {
-        return this.engine.withTransaction(handle, async tx => {
-            const owner = async r => r?.scope === 'library' ? (await getNativeDocument(tx, key(handle, r.resourceType, r.resourceId)))?.presetOwner : null;
-            const programOwner = await owner(programRef), generationOwner = await owner(generationRef);
-            if ((programOwner || generationOwner) && programOwner !== generationOwner) throw new TypeError('Choose the program and generation settings from the same Prompt preset');
-        });
-    }
-
     async save(handle, input, { id = null, expectedRevision = null, importing = false } = {}) {
         assertWritable();
+        await this.separateGeneration(handle);
         if (input.format !== 'atria.prompt-preset' || input.schemaVersion !== 1 || !Array.isArray(input.entries) || !input.entries.length || input.entries.length > 5000) throw new TypeError('Invalid Prompt preset file');
         const regexScripts = normalizeNativeRegexScripts(input.regexScripts);
         const entries = input.entries.map(e => ({ resourceType: e.resourceType, resource: structuredClone(assertVersionedModelPromptResource(e.resourceType, e.resource)) }));
@@ -82,7 +96,7 @@ export class PromptPresetStore {
         if (byExact.size !== entries.length) throw new TypeError('Duplicate preset exact resource identity');
         const programs = entries.filter(entry => entry.resourceType === PROGRAM && identity(entry) === input.programId);
         const main = input.programRevision ? programs.find(entry => entry.resource.revision === input.programRevision) : programs.length === 1 ? programs[0] : null;
-        if (main?.resourceType !== PROGRAM || entries.filter(e => e.resourceType === GENERATION).length !== 1) throw new TypeError('A preset requires one main program and one generation profile');
+        if (main?.resourceType !== PROGRAM || entries.some(e => ![PROGRAM, MODULE, ...(importing ? [GENERATION] : [])].includes(e.resourceType))) throw new TypeError('A Prompt preset contains prompt text and modules only');
         const categories = structuredClone(input.categories || []);
         if (!Array.isArray(categories) || categories.length > 1000) throw new TypeError('Invalid categories');
         const categoryIds = new Set(categories.map(c => c.id));
@@ -158,13 +172,13 @@ export class PromptPresetStore {
             }
             const preset = { programId: owner, programRevision: selected.revision, categories,
                 moduleCategories: Object.fromEntries(Object.entries(assignments).map(([moduleId, category]) => [logical.get(MODULE + ':' + moduleId), category])),
-                refs: entries.map(ref), regexScripts };
+                refs: entries.filter(e => e.resourceType !== GENERATION).map(ref), regexScripts };
             // Validate everything before publication; retain historical definitions
             // for pinned consumers when removing membership or whole categories.
             for (const e of entries) await putImmutable(tx, key(handle, e.resourceType, identity(e), e.resource.revision), e.resource);
             const heads = new Map(entries.map(entry => [logicalKey(entry), entry]));
             heads.set(logicalKey(main), main);
-            for (const e of heads.values()) await putMutable(tx, key(handle, e.resourceType, identity(e)), { resourceType: e.resourceType, resourceId: identity(e), displayName: e.resource.displayName, currentRevision: e.resource.revision, presetOwner: owner, ...(identity(e) === owner ? { preset } : {}) });
+            for (const e of heads.values()) await putMutable(tx, key(handle, e.resourceType, identity(e)), { resourceType: e.resourceType, resourceId: identity(e), displayName: e.resource.displayName, currentRevision: e.resource.revision, ...(e.resourceType === GENERATION ? {} : { presetOwner: owner }), ...(identity(e) === owner ? { preset } : {}) });
             for (const r of previous?.preset.refs || []) if (!entries.some(e => identity(e) === r.resourceId)) {
                 const oldRoot = await getNativeDocument(tx, key(handle, r.resourceType, r.resourceId));
                 await putMutable(tx, key(handle, r.resourceType, r.resourceId), { ...oldRoot, archived: true });

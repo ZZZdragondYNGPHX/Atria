@@ -1,3 +1,4 @@
+import { saveApiPreset } from '../native/model-prompt-runtime/api-presets.js';
 import { createHostRouteResolver } from '../native/model-prompt-runtime/prompt-controls.js';
 import multer from 'multer';
 import { createImageRegistry, imageTargetFingerprint } from '../native/image-registry.js';
@@ -966,6 +967,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             const profiles = await Promise.all(resources.filter(item => item.resourceType === 'core.generation-profile')
                 .map(item => host.library.getCurrent(handle, item.resourceType, item.resourceId)));
             response.json({ connections, models, routes, resources, profiles: profiles.map(item => item.snapshot),
+                emptyFingerprint: hashNativeDocument(null), modelFingerprints: Object.fromEntries(models.map(model => [model.modelProfileId, hashNativeDocument(model)])),
                 routeFingerprints: Object.fromEntries(routes.map(route => [route.runtimeRouteId, hashNativeDocument(route)])) });
         } catch { response.status(500).json({ error: 'native_generation_configuration_unavailable' }); }
     });
@@ -1010,6 +1012,13 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             response.json(await getHost().library.commit(handle, resourceType, resource));
         } catch { response.status(400).json({ error: 'native_generation_resource_invalid' }); }
     });
+    router.put('/api-presets', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try { res.json(await saveApiPreset(getHost(), handle, req.body)); } catch (error) {
+            res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_api_preset_invalid' });
+        }
+    });
     router.put('/configuration/:kind', async (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);
@@ -1050,7 +1059,6 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
                 expectedFingerprint: request.headers['if-match'],
                 validate: async route => {
                     for (const ref of [route.promptProgramRef, route.generationProfileRef, ...(route.projectPromptBindings || []).map(b => b.promptProgramRef)]) if (ref.scope === 'library') await host.library.getExact(handle, ref);
-                    await presets(host).assertPair(handle, route.promptProgramRef, route.generationProfileRef);
                 },
             }));
             return response.sendStatus(404);

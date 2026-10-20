@@ -10,7 +10,7 @@ export async function runtimeRequest(path = '/configuration', { method = 'GET', 
     const payload = await response.json();
     if (!response.ok) throw Object.assign(new Error(payload.message || payload.error || 'Runtime request failed'), { code: payload.error, details: payload.details });
     if (method !== 'GET') await onCommitted?.(payload);
-    if (method !== 'GET' && (/^\/(presets|configuration)(\/|$)/.test(path) || /^\/resources(?:\/(?:revision|delete|archive))?$/.test(path))) {
+    if (method !== 'GET' && (/^\/(api-presets|presets|configuration)(\/|$)/.test(path) || /^\/resources(?:\/(?:revision|delete|archive))?$/.test(path))) {
         // A successful mutation can repaint its owner while dependent scopes
         // refresh. Still await all observers before resolving to the caller.
         await Promise.all([...configurationListeners].map(listener => Promise.resolve().then(listener)));
@@ -25,6 +25,10 @@ export function getRuntimeEvidence() { return latestEvidence; }
 
 export function runtimeRemediation(code) {
     const actions = {
+        native_api_preset_invalid: ['Check the API preset connection, model, output budget and generation parameters.', 'routes'],
+        native_generation_configuration_conflict: ['This API preset changed in another editor. Reload it before saving again.', 'routes'],
+        generation_capability_unknown: ['This model has no confirmed support for a required option. Review the API preset capabilities or choose another model.', 'routes'],
+        generation_capability_unsupported: ['This model does not support a required option. Change the API preset parameters or choose another model.', 'routes'],
         native_processing_failed: ['A declared Processor failed. Open Diagnostics to inspect its stage and fixed source. No candidate was adopted.', 'diagnostics'],
         generation_provider_endpoint_not_found: ['The generation endpoint returned HTTP 404. For OpenAI-compatible messages, use the full /chat/completions URL.', 'connections'],
         generation_provider_request_rejected: ['The provider rejected the request (HTTP 400/422). Check model and tool/output schema compatibility.', 'connections'],

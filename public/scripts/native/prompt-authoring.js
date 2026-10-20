@@ -72,9 +72,7 @@ export function generationFields(doc, fields, draft, isTracking = () => false, {
         if (max !== undefined) field.max = max;
         return field;
     };
-    const defaultOutput = Math.min(generationDefaults.outputTokens, outputLimit?.() || Infinity);
-    const max = numeric('Maximum output tokens', draft.output?.maxTokens || defaultOutput, 1, undefined, true); max.required = true;
-    let maxEdited = false; max.addEventListener('input', () => { maxEdited = true; });
+    const max = numeric('Output budget', draft.output?.maxTokens ?? '', 1, undefined, true); max.placeholder = translateShellText('Follow model limit');
     const temperature = numeric('Temperature', draft.sampling?.temperature ?? '', 0);
     const topP = numeric('Top P (optional)', draft.sampling?.topP ?? '', 0, 1);
     const stream = select(doc, fields, 'Streaming', [['', 'Default'], ['true', 'Enabled'], ['false', 'Disabled']], draft.streaming?.enabled === undefined ? '' : String(draft.streaming.enabled));
@@ -120,9 +118,9 @@ export function generationFields(doc, fields, draft, isTracking = () => false, {
         for (const field of [max, temperature, topP, budget]) if (!field.checkValidity()) { if (!isTracking()) { field.reportValidity(); field.focus(); } throw new Error(translateShellText('Check the numeric limits.')); }
         let sequences;
         try { sequences = JSON.parse(stop.value); if (!Array.isArray(sequences) || sequences.some(item => typeof item !== 'string')) throw new Error(); } catch { if (!isTracking()) stop.focus(); throw new Error(translateShellText('Enter a JSON array of text strings.')); }
-        const result = { output: { ...draft.output, maxTokens: Number(max.value) }, sampling: { ...draft.sampling }, streaming: { ...draft.streaming },
+        const result = { output: { ...draft.output, ...(max.value ? { maxTokens: Number(max.value) } : {}) }, sampling: { ...draft.sampling }, streaming: { ...draft.streaming },
             stop: { ...draft.stop, sequences }, reasoning: { ...draft.reasoning }, cache: { ...draft.cache }, toolChoice: tools.value ? { ...draft.toolChoice, value: tools.value } : {} };
-        if (draft.output?.maxTokens === undefined && !maxEdited && Number(max.value) === defaultOutput) delete result.output.maxTokens;
+        if (!max.value) delete result.output.maxTokens;
         if (draft.stop?.sequences === undefined && !sequences.length) delete result.stop.sequences;
         if (stream.value === '') delete result.streaming.enabled;
         else if (['true', 'false'].includes(stream.value)) result.streaming.enabled = stream.value === 'true';

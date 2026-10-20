@@ -760,7 +760,7 @@ export class SessionCore {
                 outcomes: envelope.outcomes, status: 'applied', authorityReceipt: { kind: 'authority', messageId: entry.messageId } } });
     }
 
-    async recordTaskResult(handle, sessionId, record, { expectedRevisionId, knowledgeProof = null, appraisalProof = null } = {}) {
+    async recordTaskResult(handle, sessionId, record, { expectedRevisionId, knowledgeProof = null, appraisalProof = null, requestSnapshot = null } = {}) {
         if (!expectedRevisionId || typeof record.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(record.invocationId)) throw new TypeError('Task requires an invocation and revision anchor');
         const base = await this._current(handle, sessionId, expectedRevisionId);
         const deliveredRecord = record;
@@ -782,7 +782,9 @@ export class SessionCore {
             || record.definitionHash !== hashNativeDocument(task) || record.normalizedResultHash !== hashNativeDocument(payload)
             || !equalNativeDocuments(record.production, captureTaskProduction(base, task, assertTaskValue(record.production.input, task.inputSchema)))
             || record.promptProgramRef?.resourceId !== variant.prompt.resourceId || record.promptProgramRef?.revision !== variant.prompt.revision
-            || record.generationProfileRef?.resourceId !== variant.generation.resourceId || record.generationProfileRef?.revision !== variant.generation.revision
+            || !requestSnapshot || record.requestSnapshotHash !== hashNativeDocument(requestSnapshot)
+            || !equalNativeDocuments(record.generationProfileRef, requestSnapshot.generationProfileRef)
+            || record.runtimeRouteId !== requestSnapshot.runtimeRouteId
             || record.deliveryReceipt?.kind !== 'model_delivery')) throw new TypeError('Task production provenance required');
         if (task.interpretation) assertSemanticOutcome({ requestId: task.interpretation.id, interpretation: payload }, task.interpretation);
         if (base.states[TASK_STATE_NAMESPACE]?.records.some(item => item.invocationId === record.invocationId)) throw new TypeError('Duplicate Task invocation');

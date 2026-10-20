@@ -690,16 +690,19 @@ export class NativeGenerationHost {
             const choices = [];
             for (const route of routes) {
                 let error = null;
+                let effective;
                 try {
                     for (const task of uses) for (const variantId of selected.get(task.id)) {
                         const variant = task.variants.find(item => item.id === variantId);
-                        await this.execute(handle, { requestId: 'preflight:' + task.id, role: route.role.replace(/^role\./, ''),
+                        effective = await this.execute(handle, { requestId: 'preflight:' + task.id, role: route.role.replace(/^role\./, ''),
                             routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId },
                             outputContract: { name: 'atria_task', schema: variant.outputSchema } }, undefined, undefined,
                         { taskPlan: { task, variant, slot, payload: null }, scheduled: true, preflight: true, preflightPackage: opened });
                     }
                 } catch (cause) { error = cause.code || 'native_task_binding_route_invalid'; }
-                choices.push({ runtimeRouteId: route.runtimeRouteId, displayName: route.displayName, compatible: !error, error });
+                choices.push({ runtimeRouteId: route.runtimeRouteId, displayName: route.displayName, compatible: !error, error,
+                    ...(effective ? { modelName: effective.model.remoteModelId, outputTokens: effective.generation.output?.maxTokens ?? effective.model.limits.outputTokens,
+                        reasoning: effective.generation.reasoning ?? null } : {}) });
             }
             const binding = input.slotBindings?.[id];
             const validRef = binding?.scope === 'player' && isNativeId(binding.runtimeRouteId, 'runtimeRoute')
@@ -980,7 +983,7 @@ export class NativeGenerationHost {
                     generationProfileRef: result.snapshot.generationProfileRef, runtimeRouteId: result.snapshot.runtimeRouteId, deliveryReceipt };
                 const knowledgeProof = prepareKnowledgeAdoption(this.sessionCore, handle, snapshot, result.snapshot.contextPlan?.nativeSelection);
                 if (task.resultPolicy.sink === 'turn' || transient) return { record: immutable(record), knowledgeProof };
-                const adopt = () => this.sessionCore.recordTaskResult(handle, input.sessionId, record, { expectedRevisionId: input.revisionId, knowledgeProof,
+                const adopt = () => this.sessionCore.recordTaskResult(handle, input.sessionId, record, { expectedRevisionId: input.revisionId, knowledgeProof, requestSnapshot: result.snapshot,
                     appraisalProof: appraisal ? prepareAppraisalDelivery(this.sessionCore, handle, snapshot, task, variant, record, result.snapshot) : null });
                 const committed = await taskWork('adopt', { record, snapshot }, adopt);
                 return immutable({ record: committed.states.atri_task_results.records.at(-1), snapshot: committed });

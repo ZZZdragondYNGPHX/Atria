@@ -16,13 +16,12 @@ const intentions = {
 export function newPromptPreset(template = 'blank') {
     if (!PROMPT_TEMPLATES.some(([id]) => id === template)) throw new TypeError('Unknown Prompt template');
     const program = newPromptResource('core.prompt-program');
-    const generation = newPromptResource('core.generation-profile');
-    const entries = [{ resourceType: 'core.prompt-program', resource: program }, { resourceType: 'core.generation-profile', resource: generation }];
+    const entries = [{ resourceType: 'core.prompt-program', resource: program }];
     if (template !== 'blank') {
         const [name, body] = intentions[template];
-        program.displayName = name; generation.displayName = name + ' generation';
+        program.displayName = name;
         const provenance = [{ source: 'atria.template', ref: 'native.prompt.v1:' + template }];
-        program.provenance = provenance; generation.provenance = provenance;
+        program.provenance = provenance;
         const intention = { ...newPromptResource('core.prompt-module'), displayName: name + ' intent', textMode: 'literal', body,
             target: template === 'agent' ? 'agent.task' : 'system.foundation', provenance };
         entries.push({ resourceType: 'core.prompt-module', resource: intention });
