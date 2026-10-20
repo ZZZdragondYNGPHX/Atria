@@ -252,9 +252,11 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         if (host.hasRuntimeRepair?.()) button('Return to model setup', () => host.returnFromRuntimeRepair(), header);
         const title = node('h2', fmt(original && !fresh ? 'Edit ${0}' : 'New ${0}', [translateShellText(resourceLabels[section])]), header); title.tabIndex = -1;
         const form = node('form'); form.className = 'atri-runtime-form';
+        if (section === 'routes') form.classList.add('atri-api-preset-form');
         const identity = group(form, 'Identity');
         const name = field(identity, 'Display name', value.displayName); name.required = true;
-        details(identity, 'Details', value[ids[section]]);
+        if (section !== 'routes') details(identity, 'Details', value[ids[section]]);
+        else identity.querySelector('legend').remove();
         let serialize, readApi;
         if (section === 'connections') {
             let fields = group(form, 'Provider connection');

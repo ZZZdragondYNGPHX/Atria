@@ -25,6 +25,7 @@ export function getRuntimeEvidence() { return latestEvidence; }
 
 export function runtimeRemediation(code) {
     const actions = {
+        native_provider_unreachable: ['The provider model list could not be reached. Check the connection URL and network, or enter a model ID manually.', 'connections'],
         native_api_preset_invalid: ['Check the API preset connection, model, output budget and generation parameters.', 'routes'],
         native_generation_configuration_conflict: ['This API preset changed in another editor. Reload it before saving again.', 'routes'],
         generation_capability_unknown: ['This model has no confirmed support for a required option. Review the API preset capabilities or choose another model.', 'routes'],
@@ -52,7 +53,6 @@ export function runtimeRemediation(code) {
         native_provider_probe_unsupported: ['This endpoint does not offer a supported model-list check. You can enter a model ID manually.', null],
         native_provider_endpoint_invalid: ['Use an HTTP or HTTPS endpoint without embedded credentials, query parameters or fragments.', null],
         native_provider_authentication_failed: ['The provider rejected this Secret. Select another Secret or check its access permissions.', null],
-        native_provider_unreachable: ['Could not reach the provider. Check the endpoint and network, then retry.', null],
         native_provider_unavailable: ['The provider is temporarily unavailable. Try again.', null],
         native_provider_probe_cancelled: ['The connection check timed out or was cancelled. Try again.', null],
         native_provider_response_invalid: ['The provider returned an invalid model list. You can enter a model ID manually.', null],

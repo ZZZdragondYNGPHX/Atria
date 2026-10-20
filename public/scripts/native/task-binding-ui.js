@@ -12,7 +12,7 @@ export function taskBindingMessage(code) {
     if (code === 'generation_capability_unknown') return t('This route has no verified support for the capabilities required by this purpose.');
     if (code === 'native_generation_route_ambiguous') return t('Several primary routes match this role. Assign distinct roles or link alternatives as fallbacks.');
     if (code === 'native_generation_route_missing') return t('No route is configured for this role. Create a route with an exact Model, Generation and Prompt.');
-    if (code === 'native_task_binding_missing') return t('Choose an available player Runtime Route for this purpose.');
+    if (code === 'native_task_binding_missing') return t('Select an available API preset for this purpose.');
     return t('This API preset is unavailable. Check its connection, model and parameters in Runtime.');
 }
 
@@ -43,7 +43,13 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
     }
     let save; let report;
     const selected = slot => slot.routes.some(route => route.compatible && draft[slot.id]?.scope === 'player' && route.runtimeRouteId === draft[slot.id]?.runtimeRouteId);
-    function updateSave() { if (save) save.disabled = busy || !report.slots.every(selected) || (report.turnRoutes ?? []).some(route => route.error); }
+    function updateSave() {
+        const missing = report.slots.filter(slot => !selected(slot));
+        const missingTurns = (report.turnRoutes ?? []).some(route => route.error);
+        if (save) save.disabled = busy || Boolean(missing.length) || missingTurns;
+        if (!busy) status.textContent = missing.length ? fmt('This work needs ${0} model purposes configured before it can start: ${1}.', [missing.length, missing.map(slot => label(slot.id)).join(', ')])
+            : missingTurns ? t('Configure the required turn routes before continuing.') : t('Model purposes are ready. You can review your API presets before continuing.');
+    }
     function draw(next) {
         report = next; content.replaceChildren();
         status.setAttribute('role', 'status');
@@ -71,13 +77,17 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
                 routes: slot.routes.filter(route => route.compatible), value: draft[slot.id],
                 change: value => { if (value) draft[slot.id] = value; else delete draft[slot.id]; describe(); updateSave(); } });
             const summary = el(doc, 'p', 'workspace-hint', '', group);
+            let warning;
             function describe() {
                 const route = slot.routes.find(item => item.runtimeRouteId === draft[slot.id]?.runtimeRouteId);
                 summary.textContent = route?.modelName ? fmt('Model: ${0} · output budget: ${1}', [route.modelName, route.outputTokens]) : '';
+                if (route?.reasoning && Object.keys(route.reasoning).length) summary.textContent += ' · ' + fmt('Thinking: ${0}', [Object.values(route.reasoning).join(' / ')]);
+                if (warning) warning.hidden = selected(slot);
             }
             describe(); picker.select.addEventListener('change', describe);
             pickers.set(slot.id, picker);
-            if (slot.error) el(doc, 'p', 'workspace-hint', taskBindingMessage(slot.error), group);
+            if (slot.error) warning = el(doc, 'p', 'workspace-hint', taskBindingMessage(slot.error), group);
+            describe();
             for (const route of slot.routes.filter(route => !route.compatible)) el(doc, 'p', 'workspace-hint', route.displayName + ': ' + taskBindingMessage(route.error), group);
         }
         const common = report.slots[0]?.routes.filter(route => route.compatible && report.slots.every(slot => slot.routes.some(other => other.compatible && other.runtimeRouteId === route.runtimeRouteId))) ?? [];

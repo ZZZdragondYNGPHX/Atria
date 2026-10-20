@@ -32,8 +32,11 @@ export async function saveApiPreset(host, handle, input) {
         const capabilities = modelDraft.capabilities.filter(item => !item.binding || item.binding.pathFingerprint === pathFingerprint);
         for (const section of ['reasoning', 'cache']) {
             const capability = 'generation.' + section;
-            if (Object.keys(input.generation[section] ?? {}).length && !capabilities.some(item => item.capability === capability))
-                capabilities.push({ capability, state: 'supported', provenance: [{ kind: 'user-override', source: 'API preset generation parameters' }] });
+            const existing = capabilities.find(item => item.capability === capability);
+            if (Object.keys(input.generation[section] ?? {}).length && (!existing || existing.state === 'supported' && !existing.binding)) {
+                if (existing) capabilities.splice(capabilities.indexOf(existing), 1);
+                capabilities.push({ capability, state: 'supported', provenance: [...(existing?.provenance ?? []), { kind: 'user-override', source: 'API preset generation parameters' }] });
+            }
         }
         modelDraft = { ...modelDraft, capabilities: capabilities.map(item => item.provenance.some(source => source.kind === 'user-override') && !item.binding
             ? { ...item, binding: { schemaVersion: 1, pathFingerprint, observedAt: Date.now(), expiresAt: Number.MAX_SAFE_INTEGER, assurance: 'declared' } } : item) };
