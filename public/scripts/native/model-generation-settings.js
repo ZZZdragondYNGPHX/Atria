@@ -58,7 +58,7 @@ export function mountModelGenerationSettings({ document: doc, parent, modelForm,
     node('p', 'Edit the existing parameter scheme used by your routes. Model limits remain separate.', root).className = 'atri-runtime-help';
     const selection = node('div'); selection.className = 'atri-runtime-group';
     const pickerLabel = node('label', 'Generation configuration', selection);
-    const picker = node('select', undefined, pickerLabel); picker.setAttribute('aria-label', t('Generation configuration'));
+    const picker = node('select', undefined, pickerLabel); picker.name = 'generationConfiguration'; picker.autocomplete = 'off'; picker.setAttribute('aria-label', t('Generation configuration'));
     const refresh = node('button', 'Reload configurations', selection); refresh.type = 'button';
     const body = node('div');
     const feedback = node('div'); feedback.className = 'atri-runtime-status'; feedback.setAttribute('aria-live', 'polite');
@@ -76,7 +76,7 @@ export function mountModelGenerationSettings({ document: doc, parent, modelForm,
         native_generation_configuration_conflict: t('This route changed. Reload configurations before applying the revision.'),
         native_generation_configuration_invalid: t('The route could not use this configuration. Check its model limits and protocol settings.'),
     }[error.code] || error.message || String(error));
-    function error(error) { feedback.replaceChildren(); message(describe(error), true); }
+    function error(error) { feedback.replaceChildren(); const alert = message(describe(error), true); alert.tabIndex = -1; alert.focus(); }
     function assertModelSaved(applying) {
         if (!applying.length) return;
         const saved = configuration.models.find(item => item.modelProfileId === modelId), draft = readModel();
@@ -86,7 +86,7 @@ export function mountModelGenerationSettings({ document: doc, parent, modelForm,
     function controls(entry, draft = entry.resource) {
         selected = entry; pending = []; body.replaceChildren(); targets = [];
         const nameLabel = node('label', 'Configuration name', body);
-        const name = node('input', undefined, nameLabel); name.value = draft.displayName; name.required = true; name.setAttribute('aria-label', t('Configuration name'));
+        const name = node('input', undefined, nameLabel); name.name = 'generationConfigurationName'; name.autocomplete = 'off'; name.value = draft.displayName; name.required = true; name.setAttribute('aria-label', t('Configuration name'));
         const details = node('details', undefined, body); node('summary', 'Configuration revision', details); node('code', entry.ref.resourceId + ' · ' + entry.ref.revision, details);
         const fields = node('fieldset', undefined, body); fields.className = 'atri-runtime-group'; node('legend', 'Generation parameters', fields);
         let tracking = false;
@@ -100,7 +100,7 @@ export function mountModelGenerationSettings({ document: doc, parent, modelForm,
             const sameModel = route.modelProfileRef.modelProfileId === modelId;
             const label = node('label', undefined, owners);
             if (sameModel && entry.ref.scope === 'library') {
-                const input = node('input', undefined, label); input.type = 'checkbox'; input.checked = true;
+                const input = node('input', undefined, label); input.type = 'checkbox'; input.name = 'applyRoute'; input.value = route.runtimeRouteId; input.checked = true;
                 input.setAttribute('aria-label', fmt('Apply to route ${0}', [route.displayName]));
                 targets.push({ input, route, fingerprint: configuration.routeFingerprints?.[route.runtimeRouteId] });
             }
