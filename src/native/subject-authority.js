@@ -17,10 +17,11 @@ function expression(base, actorId) {
     assertNativeId(actorId, 'actor');
     if (!base.manifest.actors.some(item => item.actorId === actorId)) throw new TypeError('Subject expression unavailable');
 }
-function perspective(base, id, kind, templateId) {
+function perspective(base, id, kind, templateId, localRef) {
     if (templateId === undefined) return undefined;
     const view = base.manifest.runtime?.experienceContract?.informationRuntime?.views.find(view => view.id === templateId);
     if (kind !== 'person' || !view?.subjectScopeId || view.audience !== 'actor') throw new TypeError('Subject Perspective template unavailable');
+    if (view.subjectAvailability && localRef?.domainId !== view.subjectAvailability.domainId) throw new TypeError('Subject availability requires its original Domain reference');
     return { viewId: subjectPerspectiveId(id, templateId), templateId, scopeId: view.subjectScopeId };
 }
 
@@ -36,7 +37,7 @@ export function validateSubjects(base) {
         if (item.worldId !== null) assertNativeId(item.worldId, 'world');
         if (seen.has(item.subjectId)) throw new TypeError('Duplicate Subject identity');
         seen.add(item.subjectId);
-        if (item.perspective && !equalNativeDocuments(item.perspective, perspective(base, item.subjectId, item.kind, item.perspective.templateId))) throw new TypeError('Subject Perspective binding mismatch');
+        if (item.perspective && !equalNativeDocuments(item.perspective, perspective(base, item.subjectId, item.kind, item.perspective.templateId, item.localRef))) throw new TypeError('Subject Perspective binding mismatch');
         fields(item.origin, ['kind', 'packageVersionId', 'worldRevisionId', 'definitionId', 'entryPointId', 'authorityId', 'bindingId'], 'Subject origin');
         if (!['authored', 'emergent'].includes(item.origin.kind)) throw new TypeError('Invalid Subject origin');
         assertNativeId(item.origin.packageVersionId, 'packageVersion');
@@ -68,7 +69,7 @@ export function initialSubjects(base, worlds) {
         expression(base, definition.actorId);
         const origin = { kind: 'authored', packageVersionId: base.session.packageVersionId,
             ...(source.worldRevisionId ? { worldRevisionId: source.worldRevisionId } : { entryPointId: source.entryPointId }), definitionId: definition.id };
-        const id = subjectId(base.session.sessionId, origin), view = perspective(base, id, definition.kind, definition.perspective);
+        const id = subjectId(base.session.sessionId, origin), view = perspective(base, id, definition.kind, definition.perspective, definition.localRef);
         subjects.push({ subjectId: id, kind: definition.kind,
             worldId: source.worldId, origin, admission: null,
             ...(definition.actorId ? { actorId: definition.actorId } : {}), ...(definition.localRef ? { localRef: definition.localRef } : {}), ...(view ? { perspective: view } : {}) });
@@ -93,12 +94,12 @@ export function prepareSubjects(candidate, declarations, evaluate, context, auth
         if (explicitId && !existing) throw new TypeError('Subject is not present in this Revision');
         if (existing) {
             if (existing.kind !== item.kind || existing.worldId !== worldId || (localRef && !equalNativeDocuments(existing.localRef ?? null, localRef))) throw new TypeError('Subject binding mismatch');
-            if (item.perspective !== undefined) existing.perspective = perspective(candidate, existing.subjectId, existing.kind, item.perspective);
+            if (item.perspective !== undefined) existing.perspective = perspective(candidate, existing.subjectId, existing.kind, item.perspective, existing.localRef);
             refs[item.id] = existing.subjectId; continue;
         }
         const origin = { kind: 'emergent', packageVersionId: candidate.session.packageVersionId, authorityId, bindingId: item.id };
         const id = subjectId(candidate.session.sessionId, origin);
-        const view = perspective(candidate, id, item.kind, item.perspective);
+        const view = perspective(candidate, id, item.kind, item.perspective, localRef);
         if (!state.subjects.some(s => s.subjectId === id)) state.subjects.push({ subjectId: id, kind: item.kind, worldId, origin, admission: null,
             ...(localRef ? { localRef } : {}), ...(item.actorId ? { actorId: item.actorId } : {}), ...(view ? { perspective: view } : {}) });
         refs[item.id] = id;

@@ -11,13 +11,17 @@ const read = (value, path) => path.reduce((item, key) => item && Object.hasOwn(i
 const scopeState = (snapshot, id) => snapshot.states?.atri_lifecycle?.scopes?.[id];
 export function actorAvailability(snapshot, actorId) {
     const subject = snapshot.states[SUBJECT_NAMESPACE]?.subjects.find(subject => subject.subjectId === actorId && subject.kind === 'person' && subject.perspective);
-    const actor = subject ? { id: actorId, scopeId: subject.perspective.scopeId } : informationDefinition(snapshot)?.actors.find(actor => actor.id === actorId);
+    const view = subject && resolvePerspectiveView(snapshot, subject.perspective.viewId);
+    const actor = subject ? { id: actorId, scopeId: subject.perspective.scopeId,
+        ...(view?.subjectAvailability ? { availability: { ...view.subjectAvailability, recordId: subject.localRef?.recordId } } : {}) }
+        : informationDefinition(snapshot)?.actors.find(actor => actor.id === actorId);
     if (!actor) return { actorId, available: false, reason: 'undeclared' };
     const scope = scopeState(snapshot, actor.scopeId);
     if (scope?.status !== 'active') return { actorId, available: false, reason: 'scope_inactive' };
     const predicate = actor.availability;
     const record = predicate && snapshot.states.atri_lifecycle.domains[predicate.domainId]?.records.find(record => record.id === predicate.recordId);
-    const available = !predicate || (record?.status === 'active' && record.value[predicate.field] === true);
+    const available = (!subject || Boolean(view)) && (!predicate || ((!subject || subject.localRef?.domainId === predicate.domainId)
+        && record?.status === 'active' && record.value[predicate.field] === true));
     return { actorId, available, reason: available ? 'available' : 'unavailable', scopeId: actor.scopeId, scopeEpoch: scope.epoch };
 }
 
