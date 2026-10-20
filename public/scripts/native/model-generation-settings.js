@@ -76,7 +76,7 @@ export function mountModelGenerationSettings({ document: doc, parent, modelForm,
         native_generation_configuration_conflict: t('This route changed. Reload configurations before applying the revision.'),
         native_generation_configuration_invalid: t('The route could not use this configuration. Check its model limits and protocol settings.'),
     }[error.code] || error.message || String(error));
-    function error(error) { feedback.replaceChildren(); const alert = message(describe(error), true); alert.tabIndex = -1; alert.focus(); }
+    function error(error) { feedback.replaceChildren(); const alert = message(describe(error), true); alert.tabIndex = -1; (body.querySelector(':invalid') || alert).focus(); }
     function assertModelSaved(applying) {
         if (!applying.length) return;
         const saved = configuration.models.find(item => item.modelProfileId === modelId), draft = readModel();
@@ -114,6 +114,17 @@ export function mountModelGenerationSettings({ document: doc, parent, modelForm,
         if (entry.ref.scope !== 'library' || !entry.fresh && head?.currentRevision !== entry.ref.revision) {
             for (const control of [fields, name, save]) { control.dataset.readOnly = 'true'; control.disabled = true; }
             node('p', entry.ref.scope !== 'library' ? 'Edit this configuration in its original workspace.' : 'This is a pinned older revision. Reload configurations to edit the current version.', body);
+        }
+        if (entry.ref.scope !== 'library') {
+            const copy = node('button', 'Copy configuration to Library', body); copy.type = 'button';
+            copy.addEventListener('click', () => {
+                if (busy || !confirmAtriaDraftLeave(doc, root)) return;
+                const resource = { ...structuredClone(entry.resource), generationProfileId: createStudioNativeId('genprof'), revision: createStudioNativeId('rev') };
+                const ref = reference(resource);
+                resource.provenance = [...(resource.provenance || []), { source: 'atria.fork', ref: JSON.stringify({ source: entry.ref, baseRef: ref }) }];
+                picker.value = 'new'; controls({ ref, resource, fresh: true }); root.dataset.atriaDraftDirty = 'true';
+                feedback.replaceChildren(); message('A Library copy is ready. Save it to keep your parameter changes.');
+            });
         }
         if (targets.length) {
             const apply = node('button', 'Apply selected revision to checked routes', body); apply.type = 'button';
@@ -195,11 +206,11 @@ export function mountModelGenerationSettings({ document: doc, parent, modelForm,
                 if (head) preferred = { ...preferred, revision: head.currentRevision };
             }
             const bound = config.routes.filter(route => route.modelProfileRef.modelProfileId === modelId).map(route => key(route.generationProfileRef));
-            entries = resources.filter(item => item.ref.resourceType === TYPE && !item.archived && (bound.includes(key(item.ref)) || key(item.ref) === (preferred && key(preferred)) || item.ref.scope === 'library' && config.resources.some(root => root.resourceType === TYPE && root.resourceId === item.ref.resourceId && root.currentRevision === item.ref.revision)));
+            entries = resources.filter(item => item.ref.resourceType === TYPE && !item.archived && (item.ref.scope !== 'library' || bound.includes(key(item.ref)) || key(item.ref) === (preferred && key(preferred)) || config.resources.some(root => root.resourceType === TYPE && root.resourceId === item.ref.resourceId && root.currentRevision === item.ref.revision)));
             picker.replaceChildren();
-            for (const entry of entries) { const option = node('option', undefined, picker); option.value = key(entry.ref); option.textContent = entry.resource.displayName + ' · ' + entry.ref.revision.slice(-8); }
+            for (const entry of entries) { const option = node('option', undefined, picker); option.value = key(entry.ref); option.textContent = entry.resource.displayName + ' · ' + t({ library: 'Library', project: 'Project', package: 'Package' }[entry.ref.scope]) + ' · ' + entry.ref.revision.slice(-8); }
             const create = node('option', 'New generation configuration', picker); create.value = 'new';
-            const entry = entries.find(item => preferred && key(item.ref) === key(preferred)) || entries.find(item => bound.includes(key(item.ref))) || entries[0] || fresh();
+            const entry = entries.find(item => preferred && key(item.ref) === key(preferred)) || entries.find(item => bound.includes(key(item.ref))) || entries.find(item => item.ref.scope === 'library') || fresh();
             picker.value = entry.fresh ? 'new' : key(entry.ref); reloadRequired = false; controls(entry); committed();
             if (busy) setBusy(true);
             if (clearFeedback) feedback.replaceChildren();
