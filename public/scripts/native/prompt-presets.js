@@ -37,6 +37,8 @@ export function removePresetCategory(preset, categoryId) {
 export function mountPromptPresets({ document: doc, body, host, route }) {
     let disposed = false, sequence = 0, preset = null, section = null;
     let lastReceipt = null;
+    // Outline selection by stable identity, so it survives the revision a save creates.
+    let focus = null, focusBody = false;
     let categoryFilter = 'all', listPosition = null, closeMenu = () => {}, adoptionRefs = [];
     const editorFoldStates = new Map();
     let split = null, pane = null, detailPane = null, listToken = 0;
@@ -87,9 +89,15 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         if (!pane?.isConnected || !pane.childElementCount) void renderPresetList();
         main().replaceChildren(); node('p', 'Loading exact resources…');
         const value = await runtimeRequest('/presets/' + id); if (disposed || token !== sequence) return;
+        if (preset?.presetId !== value.presetId) { focus = null; focusBody = false; }
         preset = value; section = null; renderDetail(); markSelected();
     };
-    const create = async (value, importing = false) => { const result = await runtimeRequest('/presets', { method: 'POST', body: { preset: value, importing } }); await open(result.presetId); };
+    // A created or imported preset appears in the list at once, selected.
+    const create = async (value, importing = false) => {
+        const result = await runtimeRequest('/presets', { method: 'POST', body: { preset: value, importing } });
+        focusBody = !importing;
+        await renderPresetList(); await open(result.presetId);
+    };
     const exportPreset = value => {
         const data = { format: value.format, schemaVersion: 1, programId: value.programId, ...(value.programRevision ? { programRevision: value.programRevision } : {}), categories: value.categories, moduleCategories: value.moduleCategories, entries: value.entries, regexScripts: value.regexScripts || [] };
         const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
@@ -212,7 +220,8 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         if (!parent) body.replaceChildren(); const draft = clone(entry);
         const entries = preset.entries.map(e => ({ ...e, ref: entryRef(e) }));
         if (!editorFoldStates.has(idOf(entry))) editorFoldStates.set(idOf(entry), new Map());
-        mountPromptEditor({ document: doc, parent: parent || body, entry: { ...draft, ref: entryRef(draft) }, entries, foldState: editorFoldStates.get(idOf(entry)), librarySurface: true, presetSurface: true, onBack: () => { if (parent) section = null; renderDetail(); restoreListPosition(); }, onSave: async (resource, upgrade) => {
+        const inWorkbench = parent?.dataset.atriPromptWorkbench === 'true';
+        const editor = mountPromptEditor({ document: doc, parent: parent || body, entry: { ...draft, ref: entryRef(draft) }, entries, foldState: editorFoldStates.get(idOf(entry)), librarySurface: true, presetSurface: true, onBack: inWorkbench ? null : () => { if (parent) section = null; renderDetail(); restoreListPosition(); }, onSave: async (resource, upgrade) => {
             if (resource[PROMPT_TYPES[entry.resourceType][1]] !== idOf(entry)) throw new Error(tl('Cannot change resource identity.'));
             const next = clone(preset); const item = { resourceType: entry.resourceType, resource };
             if (fresh) next.entries.push(item); else next.entries[next.entries.findIndex(e => e.resourceType === entry.resourceType && idOf(e) === idOf(entry) && e.resource.revision === entry.resource.revision)] = item;
@@ -245,14 +254,108 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
             }
             await save(next);
         } });
+        // A text block that was just created opens ready for writing.
+        if (inWorkbench && focusBody) {
+            focusBody = false;
+            const text = editor.querySelector('textarea.atri-prompt-body');
+            if (text) { text.focus({ preventScroll: true }); text.scrollIntoView?.({ block: 'center' }); }
+        }
+        return editor;
+    }
+    // The program that defines this preset (its exact revision when pinned).
+    const mainProgram = (value = preset) => value.entries.find(e => e.resourceType === PROGRAM && idOf(e) === value.programId && (!value.programRevision || e.resource.revision === value.programRevision));
+    const moduleFor = ref => preset.entries.find(e => e.resourceType === MODULE && idOf(e) === ref.resourceId && e.resource.revision === ref.revision)
+        || preset.entries.find(e => e.resourceType === MODULE && idOf(e) === ref.resourceId);
+    const ANCHOR_SOURCES = { 'context.fact': 'Facts', 'context.history': 'History', 'context.input': 'Input', 'context.player-persona': 'Player persona', 'context.directive': 'Host instructions' };
+    async function addTextBlock(stageIndex) {
+        const next = clone(preset); const program = mainProgram(next);
+        const stage = program.resource.stages[stageIndex];
+        const module = newPromptResource(MODULE); module.displayName = tl('New text block'); module.stages = [stage.stageId];
+        next.entries.push({ resourceType: MODULE, resource: module });
+        const ref = resourceRef(MODULE, module, { scope: 'library' });
+        if (stage.entries) {
+            // New writing follows the stage's last text block, ahead of its context anchors.
+            const last = stage.entries.map(item => item.kind).lastIndexOf('module');
+            stage.entries.splice(last + 1, 0, { entryId: createStudioNativeId('step'), kind: 'module', moduleRef: ref });
+        } else stage.moduleRefs.push(ref);
+        focus = { type: MODULE, id: module.promptModuleId }; focusBody = true;
+        await save(next);
+    }
+    async function addStage() {
+        const next = clone(preset); const stages = mainProgram(next).resource.stages;
+        let index = stages.length + 1; while (stages.some(stage => stage.stageId === 'stage.step' + index)) index++;
+        stages.push({ stageId: 'stage.step' + index, moduleRefs: [] });
+        focus = { type: PROGRAM, id: next.programId };
+        await save(next);
+    }
+    // Outline (blueprint §6.4): the program's stages and entries in their stored order,
+    // then the preset's generation settings, Regex and module library.
+    function renderWorkbench(root) {
+        const program = mainProgram();
+        const layout = node('div', undefined, root); layout.className = 'atri-prompt-workbench';
+        const outline = node('nav', undefined, layout); outline.className = 'atri-prompt-outline'; outline.setAttribute('aria-label', tl('Prompt outline'));
+        const pane = node('section', undefined, layout); pane.className = 'atri-prompt-workbench__editor'; pane.dataset.atriPromptWorkbench = 'true';
+        const firstModule = program?.resource.stages.flatMap(stage => promptStageEntries(stage)).find(item => item.kind === 'module' && moduleFor(item.moduleRef));
+        if (!focus) focus = firstModule ? { type: MODULE, id: firstModule.moduleRef.resourceId } : { type: PROGRAM, id: preset.programId };
+        const select = next => { if (!confirmAtriaDraftLeave(doc, pane)) return; focus = next; renderDetail(); };
+        const item = (parent, label, target, { icon, meta, literalLabel = false } = {}) => {
+            const row = node('button', undefined, parent); row.type = 'button'; row.className = 'atri-prompt-outline__item';
+            if (icon) row.append(createAtriaIcon(doc, icon, { size: 15 }));
+            const text = node('span', undefined, row); text.textContent = literalLabel ? label : tl(label);
+            if (meta) { const small = node('small', undefined, row); small.textContent = meta; }
+            const current = target && focus?.type === target.type && focus.id === target.id;
+            row.setAttribute('aria-current', String(Boolean(current)));
+            if (target) row.addEventListener('click', () => select(target));
+            return row;
+        };
+        if (program?.resource.parentRef) {
+            const inherited = node('p', 'Inherits stages from its parent program. Inherited entries are edited through the program’s derive operations.', outline);
+            inherited.className = 'atri-prompt-outline__note';
+        }
+        (program?.resource.stages || []).forEach((stage, stageIndex) => {
+            const group = node('div', undefined, outline); group.className = 'atri-prompt-outline__stage';
+            item(group, formatProductText('Stage ${0}', [stageIndex + 1], undefined, 'atria.product.stageIndex'), { type: PROGRAM, id: preset.programId },
+                { icon: 'layers', meta: stage.stageId }).classList.add('atri-prompt-outline__stage-title');
+            for (const entry of promptStageEntries(stage)) {
+                if (entry.kind === 'module') {
+                    const module = moduleFor(entry.moduleRef);
+                    item(group, module?.resource.displayName || entry.moduleRef.resourceId, module ? { type: MODULE, id: idOf(module) } : null,
+                        { icon: 'document', literalLabel: true, meta: module ? undefined : tl('Not in this preset') });
+                } else {
+                    // Context anchors are filled by the Host at run time; they are configured on the stage.
+                    const sources = entry.accepts.map(kind => tl(ANCHOR_SOURCES[kind] || kind)).join(', ');
+                    item(group, formatProductText('Context: ${0}', [sources || tl('none')]), { type: PROGRAM, id: preset.programId }, { icon: 'link', literalLabel: true })
+                        .classList.add('atri-prompt-outline__anchor');
+                }
+            }
+            const add = node('button', 'Add text block', group); add.type = 'button'; add.className = 'atri-prompt-outline__add';
+            add.prepend(createAtriaIcon(doc, 'plus', { size: 14 }));
+            add.addEventListener('click', async () => { if (add.disabled || !confirmAtriaDraftLeave(doc, pane)) return; add.disabled = true; try { await addTextBlock(stageIndex); } catch (error) { add.disabled = false; fail(error); } });
+        });
+        if (program) {
+            const addStageButton = node('button', 'Add stage', outline); addStageButton.type = 'button'; addStageButton.className = 'atri-prompt-outline__add';
+            addStageButton.prepend(createAtriaIcon(doc, 'plus', { size: 14 }));
+            addStageButton.addEventListener('click', async () => { if (addStageButton.disabled || !confirmAtriaDraftLeave(doc, pane)) return; addStageButton.disabled = true; try { await addStage(); } catch (error) { addStageButton.disabled = false; fail(error); } });
+        }
+        const tools = node('div', undefined, outline); tools.className = 'atri-prompt-outline__tools';
+        const generation = preset.entries.find(e => e.resourceType === GENERATION);
+        if (generation) item(tools, 'Generation settings', { type: GENERATION, id: idOf(generation) }, { icon: 'tune' });
+        item(tools, 'Regex rules', null, { icon: 'braces', meta: String((preset.regexScripts || []).length) }).onclick = () => { if (confirmAtriaDraftLeave(doc, pane)) { section = 'regex'; renderDetail(); } };
+        item(tools, 'Module library', null, { icon: 'stack', meta: String(preset.entries.filter(e => e.resourceType === MODULE).length) }).onclick = () => { if (confirmAtriaDraftLeave(doc, pane)) { section = MODULE; renderDetail(); } };
+        const selected = preset.entries.find(e => e.resourceType === focus.type && idOf(e) === focus.id && (focus.type !== PROGRAM || e === program)) || program;
+        if (selected) edit(selected, false, pane);
     }
     function renderDetail() {
         if (disposed) return;
         closeMenu();
         main().replaceChildren(); const root = node('section'); root.className = 'atri-prompt-preset'; root.dataset.atriPromptPreset = preset.presetId;
         const nav = node('div', undefined, root); nav.className = 'atri-prompt-actions';
-        button(nav, 'Back to presets', () => { if (confirmAtriaDraftLeave(doc, body)) return list(); }).classList.add('atri-library-detail-close');
-        if (section) button(nav, 'Back to preset', () => { if (confirmAtriaDraftLeave(doc, body)) { section = null; renderDetail(); } });
+        // One way back: from a tool view to the outline, from the outline to all prompts.
+        const back = section
+            ? button(nav, 'Back to outline', () => { if (confirmAtriaDraftLeave(doc, body)) { section = null; renderDetail(); } })
+            : button(nav, 'All prompts', () => { if (confirmAtriaDraftLeave(doc, body)) return list(); });
+        back.classList.add('atri-library-detail-close', 'atri-prompt-back');
+        back.prepend(createAtriaIcon(doc, 'chevron-left', { size: 16 }));
         literal('h2', preset.entries.find(e => idOf(e) === preset.programId && (!preset.programRevision || e.resource.revision === preset.programRevision)).resource.displayName, root);
         root.dataset.atriPresetRevision = preset.revision;
         if (lastReceipt?.presetId === preset.presetId) {
@@ -267,13 +370,7 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
                 renderResourceReferenceRows({ document: doc, root: panel, references: unique, host });
             });
         }
-        if (!section) {
-            node('p', 'This preset owns its program, modules, generation settings and Regex rules. Changes affect only this preset.', root);
-            const cards = node('div', undefined, root); cards.className = 'atri-preset-sections';
-            for (const [type, label] of [[PROGRAM, 'Prompt Programs'], [MODULE, 'Prompt Modules'], [GENERATION, 'Generation Profiles']]) button(cards, label, () => { section = type; renderDetail(); });
-            button(cards, 'Preset Regex', () => { section = 'regex'; renderDetail(); });
-            return;
-        }
+        if (!section) { renderWorkbench(root); return; }
         if (section === 'regex') {
             node('h3', 'Preset Regex', root);
             const owner = preset;
@@ -327,6 +424,40 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         }
         if (!modules.length) node('p', preset.entries.some(e => e.resourceType === MODULE) ? 'No modules in this category.' : 'No modules yet. Create a module, then add it to the program.', root);
     }
+    // Template gallery (blueprint §4.5): a starting point per kind of writing; nothing runs.
+    const TEMPLATE_NOTES = {
+        blank: 'One stage and nothing written yet.',
+        skeleton: 'A neutral intent with places for facts, persona, history and the reader’s input.',
+        roleplay: 'Narrates scenes and voices characters, leaving the player’s choices to the player.',
+        writing: 'Writes requested passages in a steady voice, tense and viewpoint.',
+        agent: 'Completes tasks with the tools actually available and reports real results.',
+    };
+    function chooseTemplate(trigger) {
+        const dialog = doc.createElement('dialog'); dialog.className = 'atria-onboard atri-prompt-templates';
+        dialog.setAttribute('aria-labelledby', 'atri-prompt-templates-title');
+        const head = node('header', undefined, dialog); head.className = 'atria-onboard__head';
+        node('span', undefined, head).className = 'atria-onboard__spacer';
+        const close = node('button', undefined, head); close.type = 'button'; close.className = 'atria-onboard__close'; close.setAttribute('aria-label', tl('Close'));
+        close.append(createAtriaIcon(doc, 'close', { size: 18 }));
+        const title = node('h2', 'New prompt', dialog); title.className = 'atria-onboard__title'; title.id = 'atri-prompt-templates-title'; title.tabIndex = -1;
+        node('p', 'Start from a template. Everything it adds is ordinary, editable text.', dialog).className = 'atria-onboard__lead';
+        const grid = node('div', undefined, dialog); grid.className = 'atria-onboard__body atria-onboard__services';
+        const status = node('p', undefined, dialog); status.className = 'atria-onboard__status'; status.hidden = true;
+        const finish = () => { dialog.close(); dialog.remove(); if (trigger?.isConnected) trigger.focus({ preventScroll: true }); };
+        close.addEventListener('click', finish);
+        dialog.addEventListener('cancel', event => { event.preventDefault(); finish(); });
+        for (const [id, label] of PROMPT_TEMPLATES) {
+            const card = node('button', undefined, grid); card.type = 'button'; card.className = 'atria-onboard__service';
+            node('strong', label, card); node('span', TEMPLATE_NOTES[id], card);
+            card.addEventListener('click', async () => {
+                if (dialog.dataset.busy) return; dialog.dataset.busy = 'true'; card.setAttribute('aria-busy', 'true');
+                try { await create(newPromptPreset(id)); finish(); } catch (error) {
+                    status.hidden = false; status.dataset.tone = 'danger'; status.setAttribute('role', 'alert'); status.textContent = error.message;
+                } finally { delete dialog.dataset.busy; card.removeAttribute('aria-busy'); }
+            });
+        }
+        doc.body.append(dialog); dialog.showModal(); title.focus({ preventScroll: true });
+    }
     function emptyDetail() {
         main().replaceChildren();
         const empty = node('div'); empty.className = 'atri-library-resource-empty';
@@ -342,10 +473,11 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         pane.replaceChildren(); node('p', 'Loading exact resources…', pane);
         try {
             const presets = await runtimeRequest('/presets'); if (disposed || token !== listToken) return;
-            pane.replaceChildren(); const root = node('section', undefined, pane); root.className = 'atri-prompt-preset atri-prompt-preset-list'; node('h2', 'Prompt Presets', root);
-            const tools = node('div', undefined, root); tools.className = 'atri-prompt-actions';
-            const template = select(tools, 'Start from', PROMPT_TEMPLATES.map(([id, label]) => [id, tl(label)]), 'blank');
-            button(tools, 'New preset', () => create(newPromptPreset(template.value)));
+            pane.replaceChildren(); const root = node('section', undefined, pane); root.className = 'atri-prompt-preset atri-prompt-preset-list';
+            const head = node('header', undefined, root); head.className = 'atri-prompt-list-head';
+            node('h2', 'Prompts', head);
+            const newPrompt = button(head, 'New prompt', () => chooseTemplate(newPrompt));
+            newPrompt.classList.add('atri-library-button--primary'); newPrompt.prepend(createAtriaIcon(doc, 'plus', { size: 15 }));
             root.append(createAtriaFileDrop(doc, { label: 'Import preset', hint: 'Drop a preset .json here or choose one', accept: '.json,application/json',
                 onFile: async file => {
                     let parsed;

@@ -147,7 +147,8 @@
 .atri-prompt-preset-list > .atri-prompt-resource > button:first-of-type { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .atri-prompt-preset-list > .atri-prompt-resource:focus-within > button:first-of-type { position: static; width: auto; height: auto; clip-path: none; display: inline-flex; }
 .atri-library-resource-main > .atri-prompt-preset { position: relative; }
-.atri-library-resource-main > .atri-prompt-preset > .atri-prompt-actions:first-child { justify-content: flex-end; }
+.atri-library-resource-main > .atri-prompt-preset > .atri-prompt-actions:first-child { justify-content: flex-start; }
+.atri-library-resource-main > .atri-prompt-preset > .atri-prompt-actions:first-child > .atri-preset-menu-trigger { margin-left: auto; }
 .atri-library-resource-empty { display: grid; place-items: center; align-content: center; gap: 10px; min-height: 320px; color: var(--text-3); font-size: var(--fs-sm); text-align: center; }
 .atria-app-shell[data-atria-viewport="compact"] .atria-domain-workspace__body > .atria-native-library.atri-library-resource-split { grid-template-columns: minmax(0, 1fr); height: auto; }
 .atria-app-shell[data-atria-viewport="compact"] [data-atria-domain-workspace="library"] .atria-domain-workspace__body:has(> .atri-library-resource-split) { overflow: auto; }
@@ -472,3 +473,42 @@
     .atri-persona-picker .atri-library-grouped-list { grid-template-columns: 1fr; }
     .atri-persona-picker .atri-library-button, .atri-persona-picker .atri-library-field input { min-height: 44px; font-size: 16px; }
 }
+
+/* Prompt workbench (blueprint §6.4): outline beside the editor; writing comes first. */
+.atri-prompt-list-head { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; }
+.atri-prompt-list-head h2 { flex: 1; margin: 2px 4px 0; font: 600 var(--fs-lg)/1.25 var(--font-ui); }
+.atria-app-shell .atri-prompt-list-head .atri-library-button { display: inline-flex; align-items: center; gap: 6px; }
+.atri-prompt-preset .atri-prompt-back { display: inline-flex; align-items: center; gap: 4px; }
+.atri-prompt-workbench { display: grid; grid-template-columns: minmax(200px, 248px) minmax(0, 1fr); gap: 20px; align-items: start; min-width: 0; }
+.atri-prompt-outline { position: sticky; top: 0; display: grid; gap: 12px; align-content: start; max-height: calc(100dvh - 160px); overflow-y: auto; padding: 4px 2px 12px; }
+.atri-prompt-outline__stage { display: grid; gap: 1px; }
+.atri-prompt-outline__note { margin: 0; color: var(--text-3); font-size: var(--fs-xs); line-height: 1.5; }
+.atria-app-shell .atri-prompt-outline__item {
+    display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; padding: 5px 8px; border: 0; border-radius: var(--r-md);
+    background: transparent; box-shadow: none; color: var(--text-1); font: 500 var(--fs-sm)/1.3 var(--font-ui); text-align: left; cursor: pointer;
+}
+.atria-app-shell .atri-prompt-outline__item > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.atria-app-shell .atri-prompt-outline__item > small { flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-3); font: 400 var(--fs-xs)/1 var(--font-mono); }
+.atria-app-shell .atri-prompt-outline__item > .atria-icon { flex: none; color: var(--text-3); }
+.atria-app-shell .atri-prompt-outline__item:hover:not(:disabled) { background: var(--surface-hover); }
+.atria-app-shell .atri-prompt-outline__item[aria-current="true"] { position: relative; background: var(--surface-raised); box-shadow: var(--shadow-1), 0 0 0 1px var(--line-2); }
+.atria-app-shell .atri-prompt-outline__item[aria-current="true"]::before { content: ""; position: absolute; left: 0; top: 7px; bottom: 7px; width: 2px; border-radius: 2px; background: var(--tone-lumen); }
+.atria-app-shell .atri-prompt-outline__stage-title { color: var(--text-2); font-weight: 600; }
+.atria-app-shell .atri-prompt-outline__stage > .atri-prompt-outline__item:not(.atri-prompt-outline__stage-title) { padding-left: 22px; }
+/* Anchors are filled by the Host at run time: shown dotted, configured on the stage. */
+.atria-app-shell .atri-prompt-outline__anchor { color: var(--text-2); font-style: italic; }
+.atria-app-shell .atri-prompt-outline__anchor > .atria-icon { color: var(--tone-dai); }
+.atria-app-shell .atri-prompt-outline__add {
+    display: inline-flex; align-items: center; gap: 6px; justify-self: start; min-height: 28px; margin: 2px 0 0 18px; padding: 0 8px;
+    border: 0; border-radius: var(--r-sm); background: transparent; box-shadow: none; color: var(--tone-lapis); font: 550 var(--fs-xs)/1 var(--font-ui); cursor: pointer;
+}
+.atria-app-shell .atri-prompt-outline > .atri-prompt-outline__add { margin-left: 0; }
+.atria-app-shell .atri-prompt-outline__add:hover:not(:disabled) { background: var(--soft-lapis); }
+.atri-prompt-outline__tools { display: grid; gap: 1px; padding-top: 10px; border-top: 1px solid var(--line-2); }
+.atri-prompt-workbench__editor { min-width: 0; }
+.atria-app-shell .atri-prompt-workbench__editor textarea.atri-prompt-body { min-height: clamp(18rem, 45vh, 42rem); font: 400 var(--fs-lg)/1.7 var(--font-read); }
+@media (max-width: 959px) {
+    .atri-prompt-workbench { grid-template-columns: 1fr; }
+    .atri-prompt-outline { position: static; max-height: none; padding: 10px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface-panel); }
+}
+@media (pointer: coarse) { .atria-app-shell .atri-prompt-outline__item, .atria-app-shell .atri-prompt-outline__add { min-height: 44px; } }

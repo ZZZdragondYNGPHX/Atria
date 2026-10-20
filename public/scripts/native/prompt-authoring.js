@@ -240,7 +240,8 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
         const title = element(doc, 'h3', undefined, root); title.textContent = draft.displayName; title.tabIndex = -1;
         element(doc, 'p', presetSurface ? 'Save changes to this preset. Other presets and pinned sessions stay unchanged.' : librarySurface ? 'Save a new revision. Existing references keep their exact version.' : 'New exact revision · existing references stay pinned. Review changes before committing in Studio.', root);
         const toolbar = element(doc, 'div', undefined, root); toolbar.className = 'atri-prompt-actions';
-        action(doc, toolbar, 'Back to resources', () => { if (confirmAtriaDraftLeave(doc, root)) return onBack(); });
+        // Hosts with their own navigation (the preset outline) pass no onBack: one way back per screen.
+        if (onBack) action(doc, toolbar, 'Back to resources', () => { if (confirmAtriaDraftLeave(doc, root)) return onBack(); });
         const status = element(doc, 'div', undefined, root);
         const undoButton = action(doc, toolbar, 'Undo', undo); undoButton.disabled = history.length < 2;
         const redoButton = action(doc, toolbar, 'Redo', redo); redoButton.disabled = !future.length;
