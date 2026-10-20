@@ -535,7 +535,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 notice('Saved. Refreshing…', status);
                 data = await runtimeRequest('/configuration', { signal: controller.signal });
                 if (disposed || editorToken !== editorSequence) return;
-                renderList(); notice('Saved successfully. Exact route references remain pinned.'); root.querySelector('input')?.focus();
+                renderList(); notice(section === 'routes' ? 'API preset saved. Games using it will use these parameters on their next request.' : 'Saved successfully. Exact route references remain pinned.'); root.querySelector('input')?.focus();
                 void host.refreshSearch?.();
             } catch (error) {
                 if (!disposed && editorToken === editorSequence) {
