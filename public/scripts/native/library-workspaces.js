@@ -467,7 +467,6 @@ async function resourceDetail(doc, root, route, host, browseState = {}) {
 }
 
 async function resourceList(doc, root, knowledge, host, browseState, selectedId, refresh) {
-    const label = knowledge ? 'Knowledge Bases' : 'Worlds';
     const nav = el(doc, 'nav', 'atri-library-segments', undefined, root); nav.dataset.atriaWorldKnowledgeNav = 'true'; nav.setAttribute('aria-label', tl('Resource type'));
     for (const [key, text] of [['worlds', 'Worlds'], ['knowledge', 'Knowledge Bases']]) {
         const button = action(doc, nav, text, () => host.openLibrarySection(key)); button.setAttribute('aria-current', (knowledge ? key === 'knowledge' : key === 'worlds') ? 'page' : 'false');
@@ -490,8 +489,12 @@ async function resourceList(doc, root, knowledge, host, browseState, selectedId,
     const list = el(doc, 'div', 'atri-library-grouped-list', undefined, root); list.dataset[knowledge ? 'atriaKnowledgeLibrary' : 'atriaWorldLibrary'] = 'true';
     const render = () => {
         list.replaceChildren();
+        // "Mine" is one group of the list; installed originals follow as their own group,
+        // so an empty "mine" is a note, not an empty state for the whole page.
+        el(doc, 'h3', 'atri-library-group-title', tl(knowledge ? 'My Knowledge Bases' : 'My Worlds'), list);
         const matching = items.filter(item => (knowledge ? item.knowledgeBase : item.world).displayName.toLowerCase().includes(search.value.toLowerCase()));
-        if (!matching.length) state(doc, list, 'empty', items.length ? 'No matching resources' : 'No ' + label, items.length ? 'Try another search.' : 'Create a resource to get started.');
+        if (!items.length) el(doc, 'p', 'atri-library-meta', tl('None yet. Create one above, or copy an installed original below.'), list);
+        else if (!matching.length) state(doc, list, 'empty', 'No matching resources', 'Try another search.');
         for (const item of matching) {
             const resource = knowledge ? item.knowledgeBase : item.world;
             const row = el(doc, 'article', 'atri-library-row', undefined, list);

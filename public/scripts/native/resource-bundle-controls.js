@@ -1,6 +1,7 @@
 import { nativeStudioClient as client } from './studio-client.js';
-import { el, action, disclosure, field, feedback } from './library-ui.js';
+import { el, action, disclosure, feedback } from './library-ui.js';
 import { translateShellText as tl, formatShellText as fmt } from '../atria-shell/localization.js';
+import { createAtriaFileDrop } from '../atria-shell/components.js';
 
 export function resourceBundleExport(doc, parent, ref, name = '') {
     return action(doc, parent, 'Export Resource Bundle', async () => {
@@ -16,15 +17,17 @@ export function resourceBundleExport(doc, parent, ref, name = '') {
 export function mountResourceBundleImport({ document: doc, root, host, onReload }) {
     const section = disclosure(doc, root, 'Import Resource Bundle'); section.dataset.atriaResourceBundle = 'true';
     el(doc, 'p', '', tl('Review the exact resource and its dependencies before creating independent Library copies. Originals remain unchanged.'), section);
-    const file = field(doc, section, 'Resource Bundle file', '', 'file'); file.accept = '.atriabundle,.json,application/json';
-    const choose = action(doc, section, 'Choose Resource Bundle', () => file.click());
+    // Choosing a file only reviews it; nothing is written until "Import into Library".
+    const drop = createAtriaFileDrop(doc, { label: 'Choose Resource Bundle', hint: 'Drop a .atriabundle here or choose one', accept: '.atriabundle,.json,application/json',
+        maxBytes: 32 * 1024 * 1024, onFile: selected => reviewBundle(selected) });
+    section.append(drop);
     const filename = el(doc, 'p', 'atri-library-meta', '', section);
     const review = el(doc, 'div', 'atri-library-section', undefined, section);
+    const lock = locked => { drop.querySelector('button').disabled = locked; };
     let sequence = 0;
-    file.addEventListener('change', async () => {
-        const current = ++sequence, selected = file.files?.[0]; review.replaceChildren(); filename.textContent = selected?.name || ''; if (!selected) return;
+    async function reviewBundle(selected) {
+        const current = ++sequence; review.replaceChildren(); filename.textContent = selected?.name || ''; if (!selected) return;
         try {
-            if (selected.size > 32 * 1024 * 1024) throw new Error(tl('Resource Bundle must be smaller than 32 MB.'));
             const bundle = JSON.parse(await selected.text());
             const plan = await client.preflightResourceBundle(bundle); if (current !== sequence) return;
             el(doc, 'h4', '', tl('Review Resource Bundle'), review);
@@ -41,10 +44,10 @@ export function mountResourceBundleImport({ document: doc, root, host, onReload 
                 disclosure(doc, review, 'Conflict details', plan.conflicts); return;
             }
             const confirm = action(doc, review, 'Import into Library', async () => {
-                file.disabled = true; choose.disabled = true;
+                lock(true);
                 try {
                     const result = await client.importResourceBundle(bundle, plan.token);
-                    review.replaceChildren(); file.value = ''; filename.textContent = ''; void host?.refreshSearch?.();
+                    review.replaceChildren(); filename.textContent = ''; void host?.refreshSearch?.();
                     feedback(doc, review, tl('Resource Bundle imported into Library.'));
                     action(doc, review, 'Open imported resource', () => {
                         const ref = result.root;
@@ -59,14 +62,14 @@ export function mountResourceBundleImport({ document: doc, root, host, onReload 
                     review.querySelector('[data-atria-bundle-error]')?.remove();
                     const details = disclosure(doc, review, 'Details', { code: error.code, ...error.details }); details.dataset.atriaBundleError = 'true';
                     confirm.textContent = tl('Retry import');
-                } finally { file.disabled = false; choose.disabled = false; }
+                } finally { lock(false); }
             }, { primary: true });
         } catch (error) {
             if (current !== sequence) return;
             feedback(doc, review, tl('This Resource Bundle could not be reviewed. Check its format, exact dependencies and integrity.'), true);
             disclosure(doc, review, 'Details', error.message);
         }
-    });
+    }
     return section;
 }
 

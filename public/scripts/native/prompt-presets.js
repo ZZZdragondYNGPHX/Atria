@@ -7,6 +7,7 @@ import { newPromptResource, resourceRef, PROMPT_TYPES, mountPromptEditor } from 
 import { createStudioNativeId } from './studio-authoring.js';
 import { mountNativeRegexRules } from './regex-authoring.js';
 import { createAtriaIcon } from '../atria-shell/icons.js';
+import { createAtriaFileDrop } from '../atria-shell/components.js';
 import { PROMPT_TEMPLATES, newPromptPreset } from './prompt-templates.js';
 
 const PROGRAM = 'core.prompt-program', MODULE = 'core.prompt-module', GENERATION = 'core.generation-profile';
@@ -345,8 +346,12 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
             const tools = node('div', undefined, root); tools.className = 'atri-prompt-actions';
             const template = select(tools, 'Start from', PROMPT_TEMPLATES.map(([id, label]) => [id, tl(label)]), 'blank');
             button(tools, 'New preset', () => create(newPromptPreset(template.value)));
-            const file = field(root, 'Import preset'); file.type = 'file'; file.accept = '.json,application/json';
-            button(root, 'Import selected preset', async () => { if (!file.files?.length) { file.focus(); return; } await create(JSON.parse(await file.files[0].text()), true); });
+            root.append(createAtriaFileDrop(doc, { label: 'Import preset', hint: 'Drop a preset .json here or choose one', accept: '.json,application/json',
+                onFile: async file => {
+                    let parsed;
+                    try { parsed = JSON.parse(await file.text()); } catch { throw new Error(tl('This file is not valid preset JSON.')); }
+                    await create(parsed, true);
+                } }));
             if (!presets.length) node('p', 'No presets yet. Create a preset or import a file.', root);
             for (const preset of presets) {
                 const row = node('article', undefined, root); row.className = 'atri-prompt-resource atri-library-row'; row.dataset.atriPresetId = preset.presetId;
