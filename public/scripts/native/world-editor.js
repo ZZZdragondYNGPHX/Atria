@@ -3,13 +3,16 @@ import { nativeStudioClient } from './studio-client.js';
 import { nativeProductClient } from './product-client.js';
 import { knowledgeFormControls } from './knowledge-form-controls.js';
 import { el, action, disclosure } from './library-ui.js';
+import { mountAuthoredContentEditor } from './authored-content-editor.js';
+import { normalizeContentContext, normalizeContentAnnotations, normalizeKnowledgeDelivery } from './knowledge-contracts.js';
+import { subjectDefinitions } from '../../shared/native-subject-contract.js';
 
 const clone = value => structuredClone(value);
 const plain = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const typeOf = value => value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value;
 const empty = type => ({ string: '', number: 0, boolean: false, null: null, object: {}, array: [] })[type];
 const rootKeys = ['worldId', 'displayName', 'currentRevisionId', 'createdAt', 'updatedAt'];
-const contentKeys = ['schema', 'baseline', 'knowledgeBindingIds', 'assetIds', 'metadata'];
+const contentKeys = ['body', 'context', 'annotations', 'delivery', 'subjects', 'schema', 'baseline', 'knowledgeBindingIds', 'knowledgeBindings', 'assetIds', 'metadata'];
 
 // Pre-review UI guards; Project/Library services retain authoritative validation.
 export function validateWorldEditorValue(value, snapshot = false) {
@@ -30,13 +33,18 @@ export function validateWorldEditorValue(value, snapshot = false) {
         keys(value, ['world', 'revision'], 'World snapshot'); keys(value.world, rootKeys, 'world');
         id(value.world.worldId, 'world', 'world.worldId'); id(value.world.currentRevisionId, 'worldv', 'world.currentRevisionId');
         if (typeof value.world.displayName !== 'string' || !value.world.displayName.length || value.world.displayName.length > 256) throw new TypeError('world.displayName ' + fmt('Enter text between 1 and ${0} characters.', [256]));
-        keys(rev, [...contentKeys, 'worldId', 'worldRevisionId', 'createdAt'], 'revision');
+        keys(rev, [...contentKeys, 'worldId', 'worldRevisionId', 'createdAt', 'displayName'], 'revision');
         id(rev.worldId, 'world', 'revision.worldId'); id(rev.worldRevisionId, 'worldv', 'revision.worldRevisionId');
         if (rev.worldId !== value.world.worldId || rev.worldRevisionId !== value.world.currentRevisionId) throw new TypeError(tl('World snapshot identities and revision pin must match.'));
         for (const [object, names] of [[value.world, ['createdAt', 'updatedAt']], [rev, ['createdAt']]]) for (const key of names) {
             if (object[key] != null && (!Number.isSafeInteger(object[key]) || object[key] < 0)) throw new TypeError(key + ' ' + tl('Use a non-negative epoch-millisecond integer.'));
         }
     } else keys(rev, contentKeys, 'World content');
+    if (rev.body !== undefined && (typeof rev.body !== 'string' || rev.body.length > 262144)) throw new TypeError(tl('World text must contain at most 262144 characters.'));
+    normalizeContentContext(rev.context); normalizeContentAnnotations(rev.body ?? '', rev.annotations); normalizeKnowledgeDelivery(rev.delivery);
+    if (rev.subjects !== undefined) subjectDefinitions(rev.subjects);
+    if (rev.knowledgeBindings !== undefined && (!Array.isArray(rev.knowledgeBindings) || rev.knowledgeBindings.length !== rev.knowledgeBindingIds?.length
+        || rev.knowledgeBindings.some((binding, index) => binding.knowledgeBindingId !== rev.knowledgeBindingIds[index]))) throw new TypeError(tl('Fixed Binding snapshots must match the selected references.'));
     for (const key of ['schema', 'baseline', 'metadata']) if (rev[key] !== undefined && !plain(rev[key])) throw new TypeError(key + ' ' + tl('Use a JSON object.'));
     for (const [key, prefix] of [['knowledgeBindingIds', 'kbind'], ['assetIds', 'asset']]) {
         const values = rev[key] === undefined ? [] : rev[key];
@@ -56,11 +64,11 @@ export function mountWorldEditor({ document: doc, root, value, label = 'World re
     const toolbar = el(doc, 'div', 'atri-library-actions', undefined, shell);
     const body = el(doc, 'div', 'atri-knowledge-fields', undefined, shell);
     const status = el(doc, 'div', '', undefined, shell);
-    const { input, checkbox } = knowledgeFormControls(doc, render);
+    const { input, checkbox, renderTargets } = knowledgeFormControls(doc, render);
     let catalog = { bindings: [], assets: [] }, catalogComplete = false;
     const dependencySections = new Map();
     const local = () => ({
-        bindings: (projectSource?.knowledgeBindings || []).map(binding => ({ id: binding.knowledgeBindingId, name: binding.metadata?.displayName || binding.knowledgeBindingId, exact: binding.source.knowledgeRevisionId, source: 'project', state: 'ready' })),
+        bindings: (projectSource?.knowledgeBindings || []).map(binding => ({ id: binding.knowledgeBindingId, name: binding.metadata?.displayName || binding.knowledgeBindingId, exact: binding.source.knowledgeRevisionId, source: 'project', state: 'ready', binding })),
         assets: (projectSource?.assetFiles || []).map(item => ({ id: item.assetId, name: item.logicalName || item.path, source: item.path, state: 'ready' })),
     });
     function markDirty() { shell.dataset.atriaDraftDirty = String(JSON.stringify(draft) !== initialDraft || advanced && source !== JSON.stringify(draft, null, 2)); }
@@ -74,7 +82,8 @@ export function mountWorldEditor({ document: doc, root, value, label = 'World re
         validateWorldEditorValue(next, snapshot); validateTarget(next);
         const rev = snapshot ? next.revision : next;
         if (!projectSource) for (const [key, available] of [['knowledgeBindingIds', catalog.bindings], ['assetIds', catalog.assets]]) {
-            for (const id of rev[key] || []) if (!catalogComplete || !available.some(item => item.id === id && item.state === 'ready')) throw new TypeError(tl('Resolve unavailable dependencies before review.') + ' ' + id);
+            for (const id of rev[key] || []) if (!(key === 'knowledgeBindingIds' && rev.knowledgeBindings?.some(binding => binding.knowledgeBindingId === id))
+                && (!catalogComplete || !available.some(item => item.id === id && item.state === 'ready'))) throw new TypeError(tl('Resolve unavailable dependencies before review.') + ' ' + id);
         }
     }
     function properties(parent, object, path) {
@@ -99,7 +108,7 @@ export function mountWorldEditor({ document: doc, root, value, label = 'World re
         });
     }
     function structured(parent, key, title) {
-        const section = disclosure(doc, parent, title); section.open = true;
+        const section = disclosure(doc, parent, title);
         const rev = revision();
         if (rev?.[key] === undefined) {
             note(section, 'Not specified. Opening Fields does not add defaults.');
@@ -111,14 +120,21 @@ export function mountWorldEditor({ document: doc, root, value, label = 'World re
     function dependencies(section, key, items) {
         section.replaceChildren();
         const rev = revision(), selected = Array.isArray(rev?.[key]) ? rev[key] : [];
+        const frozen = key === 'knowledgeBindingIds' ? rev.knowledgeBindings ?? [] : [];
+        items = [...items, ...frozen.filter(binding => !items.some(item => item.id === binding.knowledgeBindingId)).map(binding => ({ id: binding.knowledgeBindingId, name: binding.metadata?.displayName || binding.knowledgeBindingId, exact: binding.source.knowledgeRevisionId, source: tl('Fixed in this World revision'), state: 'ready' }))];
         if (rev?.[key] !== undefined && !Array.isArray(rev[key])) note(section, 'Use Source to repair this reference array.');
         for (const item of items) {
             const row = el(doc, 'div', 'atri-library-version', undefined, section);
             const control = checkbox(row, item.name, selected.includes(item.id), checked => {
                 const ids = new Set(Array.isArray(rev[key]) ? rev[key] : []); if (checked) ids.add(item.id); else ids.delete(item.id); rev[key] = [...ids];
+                if (key === 'knowledgeBindingIds' && rev.knowledgeBindings) rev.knowledgeBindings = rev[key].map(id => frozen.find(binding => binding.knowledgeBindingId === id) ?? items.find(item => item.id === id)?.binding);
             });
             control.disabled = item.state !== 'ready' && !projectSource || rev?.[key] !== undefined && !Array.isArray(rev[key]);
-            note(row, [item.id, item.exact, item.source].filter(Boolean).join(' · '));
+            const captured = frozen.find(binding => binding.knowledgeBindingId === item.id);
+            note(row, [item.id, captured?.source.knowledgeRevisionId ?? item.exact, captured ? tl('Fixed in this World revision') : item.source].filter(Boolean).join(' · '));
+            if (captured && item.binding && JSON.stringify(captured) !== JSON.stringify(item.binding)) action(doc, row, 'Use current Library binding', () => {
+                rev.knowledgeBindings = rev.knowledgeBindings.map(binding => binding.knowledgeBindingId === item.id ? clone(item.binding) : binding); render();
+            });
             if (item.state !== 'ready') note(row, 'Dependency unavailable. Its declared reference is kept.');
             disclosure(doc, row, 'Details', { id: item.id, revision: item.exact, source: item.source, status: item.state });
         }
@@ -140,13 +156,20 @@ export function mountWorldEditor({ document: doc, root, value, label = 'World re
                 note(identity, 'Project edits do not publish Library revisions or change existing Sessions.');
             }
             if (plain(revision())) {
-                structured(body, 'baseline', 'World baseline'); structured(body, 'schema', 'World schema');
+                mountAuthoredContentEditor({ document: doc, root: body, value: revision(), key: 'body', label: 'World text', defaultUsage: 'background', maxLength: 262144 });
                 for (const [key, title, items] of [['knowledgeBindingIds', 'Knowledge bindings', catalog.bindings], ['assetIds', 'World assets', catalog.assets]]) {
-                    const section = disclosure(doc, body, title); section.open = true;
+                    const section = disclosure(doc, body, title);
                     const content = el(doc, 'div', '', undefined, section); dependencySections.set(key, content); dependencies(content, key, items);
                 }
-                note(body, 'Bindings retain their exact Knowledge source. A binding ID is not an immutable binding revision. Asset references retain their declared hash or project file.');
+                note(body, 'Saved Worlds keep their selected Binding configuration and exact Knowledge revision. Choose an update explicitly to use later Library changes.');
                 const advancedFields = disclosure(doc, body, 'Advanced World data');
+                structured(advancedFields, 'baseline', 'World baseline'); structured(advancedFields, 'schema', 'World schema');
+                const audience = disclosure(doc, advancedFields, 'World text audience');
+                if (revision().delivery) renderTargets(audience, revision().delivery);
+                else {
+                    note(audience, 'By default, only the narrator can read this text. Choose who may use it.');
+                    action(doc, audience, 'Configure audience', () => { revision().delivery = { target: 'narrator' }; render(); });
+                }
                 if (snapshot && plain(draft?.world)) {
                     for (const [object, key, name] of [[draft.world, 'worldId', 'world.worldId'], [draft.world, 'currentRevisionId', 'world.currentRevisionId'], [draft.revision, 'worldId', 'revision.worldId'], [draft.revision, 'worldRevisionId', 'revision.worldRevisionId']]) input(advancedFields, name, object[key], next => { object[key] = next; });
                     note(advancedFields, 'Use Source for timestamps and explicit identity changes. Both snapshot identities and the revision pin must agree; references and Sessions are not rewritten.');
@@ -173,7 +196,7 @@ export function mountWorldEditor({ document: doc, root, value, label = 'World re
         const bindingItems = projectSource ? (allowed || []).map(id => entries.find(item => item.resourceType === 'core.knowledge-binding' && item.resourceId === id) || { resourceId: id, displayName: id }) : entries.filter(item => item.resourceType === 'core.knowledge-binding');
         const results = await Promise.allSettled(bindingItems.map(async item => {
             const { binding } = await nativeProductClient.getKnowledgeBinding(item.resourceId);
-            return { id: item.resourceId, name: binding.metadata?.displayName || item.displayName, exact: binding.source.knowledgeRevisionId, source: binding.source.kind, state: 'ready' };
+            return { id: item.resourceId, name: binding.metadata?.displayName || item.displayName, exact: binding.source.knowledgeRevisionId, source: binding.source.kind, state: 'ready', binding };
         }));
         if (!current() || sequence !== loadSequence) return;
         catalog = {

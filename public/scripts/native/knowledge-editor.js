@@ -5,6 +5,7 @@ import { createStudioNativeId } from './studio-authoring.js';
 import { KNOWLEDGE_DELIVERY_POSITIONS, KNOWLEDGE_CONDITION_LOGIC, KNOWLEDGE_CONDITION_OPERATORS, validateKnowledgeEditorValue } from './knowledge-contracts.js';
 import { el, action, disclosure, feedback, confirmLibraryAction } from './library-ui.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
+import { mountAuthoredContentEditor } from './authored-content-editor.js';
 
 const clone = value => structuredClone(value);
 const entryName = (entry, index) => entry.metadata?.title || entry.metadata?.label || entry.content?.split('\n')[0].slice(0, 60) || tl('Knowledge entry') + ' ' + (index + 1);
@@ -125,7 +126,7 @@ export function mountKnowledgeEditor({ document: doc, root, value, initialEntryI
                 action(doc, tools, 'Delete entry', () => deleteSelectedEntry(), { danger: true });
                 checkbox(entryFields, 'Enabled', entry.enabled !== false, enabled => { entry.enabled = enabled; browser.refresh(); });
                 input(entryFields, 'Entry title', entry.metadata?.title || entry.metadata?.label || '', value => { (entry.metadata ||= {}).title = value; updateTitle(select, entry); });
-                input(entryFields, 'Entry content', entry.content, value => { entry.content = value; updateTitle(select, entry); }, 'textarea');
+                mountAuthoredContentEditor({ document: doc, root: entryFields, value: entry, onInput: () => updateTitle(select, entry) });
                 const discovery = group('Discovery'); const discoveryValue = sectionDraft(entry, 'discovery');
                 for (const [key, caption] of [['keywords', 'Keywords'], ['aliases', 'Aliases'], ['regex', 'Regular expressions']]) input(discovery, caption, (discoveryValue[key] || []).join('\n'), value => { discoveryValue[key] = lines(value); }, 'textarea');
                 el(doc, 'p', 'atri-library-meta', tl('Enter one discovery term per line. No terms means always eligible after applicability checks.'), discovery);

@@ -11,7 +11,8 @@ export function mountLibraryRevisionEditor({ document: doc, root, detail, knowle
     const revision = knowledge ? detail.selectedRevision : detail.currentRevision;
     const baseRevisionId = resource.currentRevisionId;
     const value = knowledge ? { entries: revision ? structuredClone(detail.entries) : entryAction === 'add' ? [] : [{ knowledgeEntryId: createStudioNativeId('kentry'), content: '' }], metadata: structuredClone(revision?.metadata || {}) }
-        : { schema: structuredClone(revision?.schema || {}), baseline: structuredClone(revision?.baseline || {}), knowledgeBindingIds: [...(revision?.knowledgeBindingIds || [])], assetIds: [...(revision?.assetIds || [])], metadata: structuredClone(revision?.metadata || {}) };
+        : { knowledgeBindingIds: [...(revision?.knowledgeBindingIds || [])], assetIds: [...(revision?.assetIds || [])], metadata: structuredClone(revision?.metadata || {}) };
+    if (!knowledge) for (const key of ['body', 'context', 'annotations', 'delivery', 'subjects', 'schema', 'baseline', 'knowledgeBindings']) if (revision?.[key] !== undefined) value[key] = structuredClone(revision[key]);
     if (knowledge && typeof entryEnabled === 'boolean') value.entries.find(entry => entry.knowledgeEntryId === initialEntryId).enabled = entryEnabled;
     if (knowledge && entryAction === 'add') {
         initialEntryId = createStudioNativeId('kentry');

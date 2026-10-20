@@ -94,6 +94,12 @@ export async function referenceRemediation(doc, parent, error, host) {
 export function worldParameterSummary(doc, root, revision) {
     if (!revision) return;
     const section = el(doc, 'section', 'atri-library-section', undefined, root);
+    if (revision.body) {
+        el(doc, 'h3', '', tl('World text'), section);
+        el(doc, 'p', 'atri-authored-reading', revision.body, section);
+        if (revision.annotations?.length) disclosure(doc, section, 'Meaning & passage annotations', revision.annotations);
+    }
+    if (revision.baseline === undefined && revision.schema === undefined) return;
     el(doc, 'h3', '', tl('World baseline'), section);
     const list = el(doc, 'dl', 'atri-knowledge-parameters', undefined, section);
     const visit = (value, path) => {

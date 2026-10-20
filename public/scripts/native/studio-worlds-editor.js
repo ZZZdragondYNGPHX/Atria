@@ -20,6 +20,7 @@ export function patchStudioWorlds(source, worldId, value, collection = false) {
         if (ids.has(id) || external.has(id)) throw new TypeError(t('Duplicate or attached World ID. Repair collection Source before review.') + ' ' + id);
         ids.add(id);
         for (const [key, declared] of [['knowledgeBindingIds', bindings], ['assetIds', assets]]) for (const ref of item.revision[key] || []) {
+            if (key === 'knowledgeBindingIds' && item.revision.knowledgeBindings?.some(binding => binding.knowledgeBindingId === ref)) continue;
             if (!declared.has(ref)) throw new TypeError(key + ' ' + t('References must be declared in the project before review:') + ' ' + ref);
         }
     }

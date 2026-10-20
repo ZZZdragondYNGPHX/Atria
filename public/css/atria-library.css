@@ -149,8 +149,8 @@
 .atri-library-resource-empty { display: grid; place-items: center; align-content: center; gap: 10px; min-height: 320px; color: var(--text-3); font-size: var(--fs-sm); text-align: center; }
 .atria-app-shell[data-atria-viewport="compact"] .atria-domain-workspace__body > .atria-native-library.atri-library-resource-split { grid-template-columns: minmax(0, 1fr); height: auto; }
 .atria-app-shell[data-atria-viewport="compact"] [data-atria-domain-workspace="library"] .atria-domain-workspace__body:has(> .atri-library-resource-split) { overflow: auto; }
-.atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-split:has(.atri-library-resource-main > .atri-library-heading) > .atri-library-resource-pane,
-.atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-split:not(:has(.atri-library-resource-main > .atri-library-heading)) > .atri-library-resource-main { display: none; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-split:has(.atri-library-resource-main > :is(.atri-library-heading, .atri-library-revision-editor)) > .atri-library-resource-pane,
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-split:not(:has(.atri-library-resource-main > :is(.atri-library-heading, .atri-library-revision-editor))) > .atri-library-resource-main { display: none; }
 .atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-pane { border-right: 0; background: transparent; padding: 14px 16px 96px; }
 .atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-main { padding: 14px 16px 96px; }
 .atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-pane .atri-library-row > button { opacity: 1; }
@@ -358,6 +358,11 @@
 .atri-knowledge-editor, .atri-knowledge-fields { display: grid; gap: 16px; min-width: 0; }
 .atri-knowledge-editor textarea { min-height: 96px; }
 .atri-knowledge-rule { display: grid; gap: 10px; padding-block: 12px; border-bottom: 1px solid var(--line-1); }
+.atri-authored-editor { display: grid; gap: 12px; min-width: 0; grid-column: 1 / -1; }
+.atri-authored-editor textarea.atri-authored-text { min-height: 14rem; resize: vertical; font-family: var(--font-read); line-height: 1.75; }
+.atri-authored-editor blockquote { margin: 0; padding-inline-start: 12px; border-inline-start: 2px solid var(--line-2); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-2); }
+.atri-world-editor > .atri-knowledge-fields { grid-template-columns: minmax(0, 1fr); }
+.atri-authored-reading { max-width: 75ch; white-space: pre-wrap; overflow-wrap: anywhere; font: 400 var(--fs-md)/1.75 var(--font-read); }
 .atri-knowledge-browser { min-width: 0; }
 .atri-knowledge-browser-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
 .atri-knowledge-browser-controls > label { flex: 1 1 160px; min-width: 0; }

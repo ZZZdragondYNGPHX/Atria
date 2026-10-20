@@ -392,7 +392,7 @@ function resourceEmpty(doc, main, knowledge) {
     el(doc, 'p', '', tl(knowledge ? 'Select a Knowledge Base to edit, or create a new one.' : 'Select a World to edit, or create a new one.'), empty);
 }
 
-async function resourceDetail(doc, root, route, host, browseState = {}) {
+async function resourceDetail(doc, root, route, host, browseState = {}, owner = root) {
     const child = String(route?.child?.id || '');
     const knowledge = child === 'knowledge' || child.startsWith('knowledge:');
     const target = child.startsWith('knowledge:entry:') ? JSON.parse(decodeURIComponent(child.slice(16))) : null;
@@ -420,15 +420,18 @@ async function resourceDetail(doc, root, route, host, browseState = {}) {
     resourceLibraryCopy(doc, revisionActions, { scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId: id, revision: resource.currentRevisionId }, host);
     const editRevision = (initialEntryId, entryEnabled, entryAction) => {
         const reload = async saved => {
+            // Successful publication already cleared the draft guard. Refresh
+            // the owning workspace so list heads and storage notices agree.
+            if (saved && host.refreshActive) { host.refreshActive(); return; }
             const next = doc.createElement('section');
-            await resourceDetail(doc, next, route, host, browseState);
-            if (!root.isConnected) return;
-            root.replaceChildren(...next.childNodes);
-            if (initialEntryId) [...root.querySelectorAll('[data-atria-knowledge-entry-id]')].find(row => row.dataset.atriaKnowledgeEntryId === initialEntryId)?.querySelector('summary')?.focus();
-            if (saved) feedback(doc, root, tl('Saved immutable Library revision.') + ' ' + (saved.worldRevisionId || saved.knowledgeRevisionId));
+            await resourceDetail(doc, next, route, host, browseState, owner);
+            if (!owner.isConnected) return;
+            owner.replaceChildren(...next.childNodes);
+            if (initialEntryId) [...owner.querySelectorAll('[data-atria-knowledge-entry-id]')].find(row => row.dataset.atriaKnowledgeEntryId === initialEntryId)?.querySelector('summary')?.focus();
+            if (saved) feedback(doc, owner, tl('Saved immutable Library revision.') + ' ' + (saved.worldRevisionId || saved.knowledgeRevisionId));
         };
-        root.replaceChildren();
-        mountLibraryRevisionEditor({ document: doc, root, detail, knowledge, initialEntryId, entryEnabled, entryAction, browseState, onClose: () => reload(), onSaved: reload });
+        owner.replaceChildren();
+        mountLibraryRevisionEditor({ document: doc, root: owner, detail, knowledge, initialEntryId, entryEnabled, entryAction, browseState, onClose: () => reload(), onSaved: reload });
     };
     action(doc, revisionActions, resource.currentRevisionId ? 'New revision' : 'Create first revision', () => editRevision(), { primary: true });
     const manage = disclosure(doc, root, 'Manage resource');
@@ -462,7 +465,7 @@ async function resourceDetail(doc, root, route, host, browseState = {}) {
         const bindings = section(doc, root, 'Bindings & references', 'atriaKnowledgeBindings');
         mountKnowledgeBindingManager({ document: doc, root: bindings, detail, host });
     }
-    mountLibraryRevisionHistory({ document: doc, root, detail, knowledge, host, onReload: async () => { root.replaceChildren(); await resourceDetail(doc, root, route, host, browseState); } });
+    mountLibraryRevisionHistory({ document: doc, root, detail, knowledge, host, onReload: async () => { owner.replaceChildren(); await resourceDetail(doc, owner, route, host, browseState); } });
     return;
 }
 

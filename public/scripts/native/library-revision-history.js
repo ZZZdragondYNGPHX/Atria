@@ -27,7 +27,7 @@ export function compareLibraryContent(before, after, knowledge = false) {
         }
         visit([...left.keys()], [...right.keys()], 'Entry order'); visit(before.metadata, after.metadata, 'metadata');
     } else {
-        for (const key of ['baseline', 'schema', 'metadata']) visit(before[key], after[key], key);
+        for (const key of ['body', 'context', 'annotations', 'delivery', 'subjects', 'baseline', 'schema', 'knowledgeBindings', 'metadata']) visit(before[key], after[key], key);
         for (const key of ['knowledgeBindingIds', 'assetIds']) {
             const left = new Set(before[key] || []), right = new Set(after[key] || []);
             for (const id of new Set([...left, ...right])) if (left.has(id) !== right.has(id)) changes.push({ path: key, before: left.has(id) ? id : undefined, after: right.has(id) ? id : undefined, kind: right.has(id) ? 'Added dependency' : 'Removed dependency' });

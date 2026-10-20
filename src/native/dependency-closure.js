@@ -254,7 +254,10 @@ export async function resolveProjectDependencyClosure({
             const vendored = packageBinding(binding), previous = bindings.get(binding.knowledgeBindingId);
             if (previous && hashNativeDocument(previous) !== hashNativeDocument(vendored)) throw new NativeDependencyError('native_knowledge_binding_dependency_conflict', {
                 worldId: snapshot.world.worldId, worldRevisionId: snapshot.revision.worldRevisionId, knowledgeBindingId: binding.knowledgeBindingId });
-            await loadLibraryKnowledge(binding.source.knowledgeBaseId, binding.source.knowledgeRevisionId);
+            if (!knowledge.has(keyKnowledge(binding.source.knowledgeBaseId, binding.source.knowledgeRevisionId))) {
+                if (binding.source.kind !== 'library') throw new NativeDependencyError('native_project_binding_source_missing', { knowledgeBindingId: binding.knowledgeBindingId });
+                await loadLibraryKnowledge(binding.source.knowledgeBaseId, binding.source.knowledgeRevisionId);
+            }
             bindings.set(binding.knowledgeBindingId, vendored);
         }
     };
