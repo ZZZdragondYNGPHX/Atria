@@ -17,6 +17,7 @@ import { mountPromptRuntimeControls } from './prompt-runtime-controls.js';
 import { NOVELAI_IMAGE_ENDPOINT, NOVELAI_IMAGE_ADAPTERS, officialNovelaiCapabilities, novelaiConnectionCapabilities } from '../../shared/novelai-illustration.js';
 import { assertComputeBudget } from '../../shared/native-compute-budget.js';
 import { connectionRequiresSecret } from '../../shared/native-connection-auth.js';
+import { mountModelGenerationSettings } from './model-generation-settings.js';
 
 const sectionLabels = { routes: 'Routes', models: 'Models', connections: 'Connections', retrieval: 'Retrieval', diagnostics: 'Diagnostics' };
 const resourceLabels = { routes: 'route', models: 'model', connections: 'connection' };
@@ -282,8 +283,6 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             notice('Use gateway compatibility when your provider rejects boolean or numeric tool enums. The game still validates action inputs.', compatibility);
             const responseMode = field(compatibility, 'Gateway response mode', value.options?.responseMode || (original ? 'generation-profile' : 'stream'),
                 [['generation-profile', 'Use generation profile'], ['stream', 'Always request streaming']]);
-            const minimumOutputTokens = number(compatibility, 'Minimum total output tokens', value.options?.minimumOutputTokens ?? (original ? 0 : generationDefaults.outputTokens), 0);
-            notice('For gateways that need streaming or a larger thinking budget. Zero keeps the generation profile budget; a positive value raises the sent limit, within the model output limit.', compatibility);
             const syncCompatibility = () => {
                 compatibility.hidden = adapter.value !== 'provider.openai-compatible';
                 imageFields.hidden = !NOVELAI_IMAGE_ADAPTERS.includes(adapter.value);
@@ -356,7 +355,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             notice('Credentials stay in the Secret store. Gemini and image Workflow/WebUI providers use the API base URL. WebUI/Forge optional Basic credentials are stored as username:password in a Secret.', fields);
             serialize = () => {
                 if (creating || !secret.value && !['provider.mcp', 'provider.a2a', 'provider.comfyui-image', 'provider.sd-webui-image', 'provider.forge-image'].includes(adapter.value)) throw Object.assign(new Error('Select a stored Secret'), { code: 'native_secret_selection_required' });
-                const options = { ...value.options }; for (const key of ['toolSchemaMode', 'responseMode', 'minimumOutputTokens']) delete options[key];
+                const options = { ...value.options }; for (const key of ['toolSchemaMode', 'responseMode']) delete options[key];
                 delete options.imageCapabilities;
                 if (NOVELAI_IMAGE_ADAPTERS.includes(adapter.value)) {
                     const imageOptions = adapter.value === 'provider.novelai-image-compatible' ? { imageCapabilities: JSON.parse(imageCapabilities.value) } : {};
@@ -367,9 +366,6 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 if (adapter.value === 'provider.openai-compatible') {
                     if (schemaMode.value !== 'json-schema') options.toolSchemaMode = schemaMode.value;
                     if (responseMode.value !== 'generation-profile') options.responseMode = responseMode.value;
-                    const minimum = Number(minimumOutputTokens.value);
-                    if (!Number.isSafeInteger(minimum) || minimum < 0) throw Object.assign(new Error('Invalid output budget'), { code: 'generation_adapter_output_budget' });
-                    if (minimum) options.minimumOutputTokens = minimum;
                 }
                 const result = { ...value, options, providerAdapter: adapter.value, transport: 'transport.http', endpoint: endpoint.value };
                 if (!secret.value && !connectionRequiresSecret(adapter.value)) delete result.secretRef;
@@ -418,10 +414,10 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 } catch (error) { if (!disposed && editorToken === editorSequence && version === discoveryVersion) { discoveryStatus.replaceChildren(); failure(error, discoveryStatus); } } finally { fetchModels.disabled = false; fetchModels.removeAttribute('aria-busy'); }
             }, discovery);
             connection.addEventListener('change', () => { discoveryVersion += 1; discovered = []; choices.replaceChildren(); choices.disabled = true; discoveryStatus.replaceChildren(); });
-            fields = group(form, 'Token budget');
+            fields = group(form, 'Model limits');
             const context = number(fields, 'Context tokens', value.limits?.contextTokens || generationDefaults.contextTokens, 1);
             const output = number(fields, 'Output token limit', value.limits?.outputTokens || generationDefaults.outputTokens, 1);
-            notice('Context tokens include the reserved output budget. The defaults provide 200,000 input tokens and 20,000 output tokens.', fields);
+            notice('The context limit includes input and reserved output. Generation parameters choose the actual output budget within these model limits.', fields);
             const budgetSources = { ...value.limitProvenance };
             for (const [key, input] of [['contextTokens', context], ['outputTokens', output]]) input.addEventListener('input', () => { budgetSources[key] = [{ kind: 'user-override', source: 'Runtime Models' }]; });
             const encoding = field(fields, 'Tokenizer encoding', value.tokenizer?.encoding || 'cl100k_base', [['cl100k_base', 'cl100k_base'], ['o200k_base', 'o200k_base']]);
@@ -608,12 +604,15 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             remove.className = 'atri-runtime-danger';
         }
         form.append(actions);
-        const save = node('button', 'Save', actions); save.type = 'submit';
+        const save = node('button', section === 'models' ? 'Save model' : 'Save', actions); save.type = 'submit';
         const sourceEditor = mountResourceSource({ document: doc, form, label: 'Runtime resource JSON', readFields: () => ({ ...serialize(), displayName: name.value }), identity: { [ids[section]]: value[ids[section]], scope: value.scope, schemaVersion: value.schemaVersion },
             onFields: parsed => { assertRuntimeEditorShape(parsed); return edit(parsed, fresh || !original, true); }, isCurrent: () => !disposed && editorToken === editorSequence && form.isConnected,
         });
         form.addEventListener('submit', async event => {
             event.preventDefault(); if (save.disabled) return;
+            if (section === 'models' && root.querySelector('.atri-model-generation[data-atria-draft-dirty="true"]')) {
+                status.replaceChildren(); notice('Save or discard generation parameter edits before saving the model.', status, true); return;
+            }
             const fields = [...form.querySelectorAll('input,textarea,select,button')];
             const disabled = fields.map(input => input.disabled); fields.forEach(input => input.disabled = true);
             status.replaceChildren(); notice('Saving…', status); save.setAttribute('aria-busy', 'true'); save.disabled = true; back.disabled = true; let saved = false;
@@ -639,6 +638,11 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             }
         });
         bindEditorKeyboard(back);
+        if (section === 'models') mountModelGenerationSettings({ document: doc, parent: form.parentElement, modelForm: form,
+            modelId: value.modelProfileId, readModel: () => sourceEditor.read(), signal: controller.signal,
+            isCurrent: () => !disposed && editorToken === editorSequence,
+            onChanged: async () => { data = await runtimeRequest('/configuration', { signal: controller.signal }); },
+        });
         title.focus();
     }
     function evidence(result, parent) {

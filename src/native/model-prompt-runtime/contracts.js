@@ -352,6 +352,8 @@ export function assertConnectionProfile(value) {
     const options = value.options === undefined
         ? {}
         : clone(object(value.options, 'ConnectionProfile.options'), 'ConnectionProfile.options');
+    // Retire the connection-level output floor from previously saved profiles.
+    delete options.minimumOutputTokens;
     assertNoSecretMaterial(networkPolicy, 'ConnectionProfile.networkPolicy');
     assertNoSecretMaterial(options, 'ConnectionProfile.options');
     return Object.freeze({

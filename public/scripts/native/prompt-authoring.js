@@ -64,13 +64,14 @@ function error(doc, parent, value) {
     void referenceRemediation(doc, parent, value);
 }
 
-function generationFields(doc, fields, draft, isTracking = () => false) {
+export function generationFields(doc, fields, draft, isTracking = () => false, { providerAdapter, outputLimit } = {}) {
     const numeric = (label, value, min, max, integer = false) => {
         const field = input(doc, fields, label, value); field.type = 'number'; field.min = min; field.step = integer ? '1' : 'any';
         if (max !== undefined) field.max = max;
         return field;
     };
-    const max = numeric('Maximum output tokens', draft.output?.maxTokens || generationDefaults.outputTokens, 1, undefined, true); max.required = true;
+    const defaultOutput = Math.min(generationDefaults.outputTokens, outputLimit?.() || Infinity);
+    const max = numeric('Maximum output tokens', draft.output?.maxTokens || defaultOutput, 1, undefined, true); max.required = true;
     let maxEdited = false; max.addEventListener('input', () => { maxEdited = true; });
     const temperature = numeric('Temperature', draft.sampling?.temperature ?? '', 0);
     const topP = numeric('Top P (optional)', draft.sampling?.topP ?? '', 0, 1);
@@ -89,16 +90,36 @@ function generationFields(doc, fields, draft, isTracking = () => false) {
         ['cache', 'mode', 'Cache mode (Anthropic)', [['ephemeral', 'Ephemeral']]],
         ['cache', 'ttl', 'Cache lifetime (Anthropic)', [['5m', '5 minutes'], ['1h', '1 hour']]],
     ];
-    const controls = definitions.map(([section, key, label, choices]) => ({ section, key,
-        field: choices ? select(doc, fields, label, [['', 'Default'], ...choices], draft[section]?.[key] || '') : input(doc, fields, label, draft[section]?.[key] || '') }));
+    const supported = {
+        'provider.openai-compatible': ['reasoning.effort', 'cache.key', 'cache.retention'],
+        'provider.openai-responses': ['reasoning.effort', 'cache.key', 'cache.retention'],
+        'provider.anthropic': ['reasoning.mode', 'reasoning.effort', 'cache.mode', 'cache.ttl'],
+        'provider.gemini': ['reasoning.level'],
+        'provider.raw-text': [],
+    }[providerAdapter];
+    const controls = definitions.filter(([section, key]) => !supported || supported.includes(section + '.' + key) || draft[section]?.[key] !== undefined).map(([section, key, label, choices]) => {
+        if (section === 'reasoning' && key === 'effort' && providerAdapter) choices = choices.filter(([value]) => providerAdapter === 'provider.anthropic' ? ['low', 'medium', 'high', 'max'].includes(value) : value !== 'max');
+        return { section, key, field: choices ? select(doc, fields, label, [['', 'Default'], ...choices], draft[section]?.[key] || '') : input(doc, fields, label, draft[section]?.[key] || '') };
+    });
     const budget = numeric('Thinking budget tokens (Anthropic / Gemini)', draft.reasoning?.budgetTokens ?? '', -1, undefined, true);
+    budget.parentElement.hidden = Boolean(providerAdapter && !['provider.anthropic', 'provider.gemini'].includes(providerAdapter) && draft.reasoning?.budgetTokens === undefined);
+    if (providerAdapter) {
+        for (const control of controls.filter(item => item.section === 'reasoning')) fields.insertBefore(control.field.parentElement, temperature.parentElement);
+        fields.insertBefore(budget.parentElement, temperature.parentElement);
+        const advanced = element(doc, 'details', undefined, fields); advanced.className = 'atri-generation-advanced';
+        element(doc, 'summary', 'Advanced generation parameters', advanced);
+        const contents = element(doc, 'div', undefined, advanced); contents.className = 'atri-runtime-group';
+        for (const field of [stop, tools, toolName, ...controls.filter(item => item.section === 'cache').map(item => item.field)]) contents.append(field.parentElement);
+    }
     return () => {
+        const limit = outputLimit?.();
+        if (limit) max.max = limit;
         for (const field of [max, temperature, topP, budget]) if (!field.checkValidity()) { if (!isTracking()) { field.reportValidity(); field.focus(); } throw new Error(translateShellText('Check the numeric limits.')); }
         let sequences;
         try { sequences = JSON.parse(stop.value); if (!Array.isArray(sequences) || sequences.some(item => typeof item !== 'string')) throw new Error(); } catch { if (!isTracking()) stop.focus(); throw new Error(translateShellText('Enter a JSON array of text strings.')); }
         const result = { output: { ...draft.output, maxTokens: Number(max.value) }, sampling: { ...draft.sampling }, streaming: { ...draft.streaming },
             stop: { ...draft.stop, sequences }, reasoning: { ...draft.reasoning }, cache: { ...draft.cache }, toolChoice: tools.value ? { ...draft.toolChoice, value: tools.value } : {} };
-        if (draft.output?.maxTokens === undefined && !maxEdited && Number(max.value) === generationDefaults.outputTokens) delete result.output.maxTokens;
+        if (draft.output?.maxTokens === undefined && !maxEdited && Number(max.value) === defaultOutput) delete result.output.maxTokens;
         if (draft.stop?.sequences === undefined && !sequences.length) delete result.stop.sequences;
         if (stream.value === '') delete result.streaming.enabled;
         else if (['true', 'false'].includes(stream.value)) result.streaming.enabled = stream.value === 'true';

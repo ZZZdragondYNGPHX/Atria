@@ -53,21 +53,18 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
         const schemaMode = connection.options.toolSchemaMode ?? 'json-schema';
         const outputSchemaMode = connection.options.responseSchemaMode ?? 'full';
         const responseMode = connection.options.responseMode ?? 'generation-profile';
-        const minimumOutputTokens = connection.options.minimumOutputTokens ?? 0;
         if (!['json-schema', 'string-enums'].includes(schemaMode) || (!messages && schemaMode !== 'json-schema')) throw new GenerationError('generation_adapter_control_unsupported');
         if (!['full', 'shape-only'].includes(outputSchemaMode) || (!messages && outputSchemaMode !== 'full')) throw new GenerationError('generation_adapter_control_unsupported');
-        if (!['generation-profile', 'stream'].includes(responseMode) || !Number.isSafeInteger(minimumOutputTokens) || minimumOutputTokens < 0
-            || (!messages && (responseMode !== 'generation-profile' || minimumOutputTokens !== 0))) throw new GenerationError('generation_adapter_control_unsupported');
-        if (Object.keys(connection.networkPolicy).length || Object.keys(connection.options).some(key => !['toolSchemaMode', 'responseSchemaMode', 'responseMode', 'minimumOutputTokens'].includes(key))
+        if (!['generation-profile', 'stream'].includes(responseMode)
+            || (!messages && responseMode !== 'generation-profile')) throw new GenerationError('generation_adapter_control_unsupported');
+        if (Object.keys(connection.networkPolicy).length || Object.keys(connection.options).some(key => !['toolSchemaMode', 'responseSchemaMode', 'responseMode'].includes(key))
             || Object.keys(model.messageFormat).length || Object.keys(model.providerHints).length) throw new GenerationError('generation_adapter_control_unsupported');
         const allowed = { sampling: ['temperature', 'topP'], output: ['maxTokens'], stop: ['sequences'], streaming: ['enabled'], toolChoice: ['value'] };
         if (messages) Object.assign(allowed, { reasoning: ['effort'], cache: ['key', 'retention'] });
         for (const [section, keys] of Object.entries(allowed)) {
             if (Object.keys(generation[section]).some(key => !keys.includes(key))) throw new GenerationError('generation_adapter_control_unsupported');
         }
-        const authoredMaxTokens = generation.output.maxTokens ?? reserve;
-        if (!Number.isSafeInteger(authoredMaxTokens) || authoredMaxTokens < 1) throw new GenerationError('generation_adapter_output_budget');
-        const maxTokens = Math.max(authoredMaxTokens, minimumOutputTokens);
+        const maxTokens = generation.output.maxTokens ?? reserve;
         if (!Number.isSafeInteger(maxTokens) || maxTokens < 1 || maxTokens > reserve) throw new GenerationError('generation_adapter_output_budget');
         const sequence = renderPromptMessages(promptIr);
         if (sequence.some(message => message.providerState)) throw new GenerationError('generation_adapter_prompt_unsupported');
