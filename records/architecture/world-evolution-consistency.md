@@ -536,6 +536,14 @@
 - 相关 6 个 JS ESLint、diff check 通过；原有效 Context 与作者资源闭包 11 项测试通过。localization.js 对 HEAD 的 215 项既有诊断新增 0 项，新增文案已补中文；全局本地化仍有既有其他页面缺失。
 - 真实浏览器中，合成编辑夹具验证匹配／不匹配预览、旧预览清除、正文 textarea identity／焦点与合成 IME 连续、条件进入 Review；实际隔离服务 Library 流程完成新 World→新修订→选择 baseline 字段→预览→Review→保存→重载重开，读回原修订精确绑定且 body／baseline 未被条件编辑改变。390×844 touch／reduced-motion 模拟视口无横向溢出，保存重开后技术引用默认折叠，布尔类型编辑可用。未宣称物理设备或完整游戏起点／受众预览；后者及执行关联、Task/V3 端到端继续实施。
 
+## Stage 52 — 动态个人 Task 的原 Host／HTTP／V3 端到端与发布修复（2026-10-20）
+
+- 复用原 Orchestration 测试夹具，在当前源码和隔离存储中实际安装含动态 Subject／个人视角／事项规则的 Package，创建原 Session 和任务专属 Plan／Binding，经 NativeGenerationHost、原 Compiler、原 Responses HTTP Provider、本机 HTTP 合成响应、V3 预算／Effect／输出控制器到原 Domain 结果采用。未使用真实外部模型、Secret 或付费服务。
+- 实验发现并修复两个实际接线问题：`experience.ready` 单独改变就绪标志时，原发布条件未触发 Simulation，开局已有事项不入队；本次 Task 采用后的派生命令又把刚完成的原 outbox intent 清理，V3 冷事实核对因此失败，整次采用回滚。修复均在原 SessionCore 发布流程：首次 ready 触发既有有界派生准备；仅把本次采用的原 intent 保留在其 immutable adoption Revision，供原 V3 精确核对，后续生命周期仍按原规则清理。未降低 Task／来源／哈希校验或另建证明 Store。
+- FsEngine／SqliteEngine 完整链通过：实际 wire 含个人获准资料及作品 Task Prompt，不含同伴资料、同伴 Subject ID 或私有事项账本；API generation 输出 512 保持正确，不受 Package 的 128 默认记录覆盖；Task 只写绑定个人记录，确定性规则随后完成原事项一次。下一次调度不重复发请求，后续原生命周期清理 outbox 后真实 Engine reopen 仍能冷读原 V3 输出事实，未重发模型。
+- 新增晚到结果实验：本机 HTTP 发送后，经原 Domain 更新本人的证据，原 Host 拒绝旧结果；个人值保留新证据，行动计数不增加、原事项仍 pending、无 Task 采用记录，而已发生的 20 tokens 仍在原账本。未把请求取消或模型结束等同于事项完成。
+- 此次 SessionCore 改动后动态世界相关 71 项合跑通过；新增晚到用例后本端到端文件 3 项通过。相关 ESLint 与 diff check 通过。作者执行关联／完整起点受众预览、离屏覆盖审计及最终 main 集成继续；整体任务未结束。
+
 ## Current state
 
-产品实施进行中，主体／时间读取、动态个人视角与获知、作者固定依赖、正文编辑、有效 Context 及显式资源采用已有接线；完整 NPC 行动、参与者／媒体与 Play 功能继续实施。当前功能设计、代码差距与待决问题见 [Plan 入口](../../plans/architecture/world-evolution-consistency/index.md)。
+产品实施进行中，主体／时间读取、动态个人视角与获知、作者固定依赖、正文编辑、有效 Context 及显式资源采用已有接线；作者执行关联与完整起点预览、离屏连续性和最终集成继续实施。当前功能设计、代码差距与待决问题见 [Plan 入口](../../plans/architecture/world-evolution-consistency/index.md)。
