@@ -77,6 +77,7 @@ export function normalizeContentAnnotations(content, value, { allowExecution = f
             if (!/^[a-f0-9]{64}$/.test(item.execution.digest ?? '')) throw new TypeError('World law execution requires an exact rule digest');
         }
         return Object.freeze({ ...item, context: normalizeContentContext(item.context),
+            ...(item.execution === undefined ? {} : { execution: Object.freeze({ ...item.execution }) }),
             ...(item.applicability === undefined ? {} : { applicability: normalizeKnowledgeApplicability(item.applicability) }) });
     }));
 }
