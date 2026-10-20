@@ -65,7 +65,12 @@ export function assertCognitionValue(source, value) {
 
 export function assertCognitionBasis(value) {
     if (!isPerspectiveIdentity(value.actor)) throw new TypeError('Invalid basis Actor');
-    fields(value.basis, ['viewId', 'anchor', 'sourceRefs'], 'Cognition basis');
+    fields(value.basis, ['viewId', 'anchor', 'sourceRefs', 'received'], 'Cognition basis');
+    if (value.basis.received !== undefined) {
+        fields(value.basis.received, ['revisionId', 'clockId', 'tick'], 'Personal acquisition');
+        if (!/^rev_[a-f0-9]{32}$/.test(value.basis.received.revisionId) || !/^[a-z][a-z0-9._-]{0,63}$/.test(value.basis.received.clockId)
+            || !integer(value.basis.received.tick)) throw new TypeError('Invalid personal acquisition');
+    }
     const { anchor, sourceRefs } = value.basis;
     fields(anchor, ['sessionId', 'packageVersionId', 'revisionId', 'branchId', 'scopeEpochs'], 'Cognition anchor');
     if (typeof value.basis.viewId !== 'string' || !anchor || !Object.entries({ sessionId: 'ses', packageVersionId: 'pkgv', revisionId: 'rev', branchId: 'br' })
@@ -101,6 +106,8 @@ export function projectCognitionItems(snapshot, projection, values) {
             && (value.commitmentIds ?? []).every(id => leaves.get(id)?.semantic === 'open_loop');
         if (isManagedMemory(source)) {
             assertMemoryValue(source, value);
+            const acquired = Boolean(value.basis.received && value.basis.anchor.sessionId === snapshot.session.sessionId
+                && value.basis.anchor.packageVersionId === snapshot.session.packageVersionId);
             const tick = snapshot.states.atri_lifecycle.clocks[source.memoryPolicy.clockId];
             const faded = value.role === 'detail' && tick - value.recordedAt >= source.memoryPolicy.fadeAfter;
             const exceptions = value.applicability.exceptionRefs;
@@ -108,8 +115,8 @@ export function projectCognitionItems(snapshot, projection, values) {
             const unknown = exceptions.some(ref => !leaves.has(ref.itemId));
             const goal = value.applicability.goalId;
             const goalCurrent = !goal || projection.items.some(plan => plan.semantic === 'intention' && plan.actorId === value.actor && plan.data.goalId === goal && evaluate(plan, depth + 1));
-            item.memory = { status: value.status === 'withdrawn' ? 'withdrawn' : current ? 'active' : 'stale', sourceCurrent: current,
-                applicability: !Object.hasOwn(item.data, 'applicability') ? 'unknown' : exception || value.applicability.until && tick >= value.applicability.until ? 'inapplicable' : unknown || !current || !goalCurrent ? 'unknown' : 'applicable',
+            item.memory = { status: value.status === 'withdrawn' ? 'withdrawn' : acquired || current ? 'active' : 'stale', sourceCurrent: current, acquired,
+                applicability: !Object.hasOwn(item.data, 'applicability') ? 'unknown' : exception || value.applicability.until && tick >= value.applicability.until ? 'inapplicable' : unknown || !acquired && !current || !goalCurrent ? 'unknown' : 'applicable',
                 ...(Object.hasOwn(item.data, 'clarity') && Object.hasOwn(item.data, 'role') && Object.hasOwn(item.data, 'recordedAt')
                     ? { clarity: protectedMemoryRoles.includes(value.role) ? 'clear' : faded && value.clarity === 'clear' ? 'blurred' : value.clarity } : {}),
                 ...(Object.hasOwn(item.data, 'use') && Object.hasOwn(item.data, 'role') && Object.hasOwn(item.data, 'recordedAt')

@@ -1,7 +1,7 @@
 import { hasPerspectiveIdentity, resolvePerspectiveView } from '../../public/shared/native-subject-contract.js';
 import { isCognitionSource, isAppraisalSource, assertCognitionValue, assertCognitionBasis, informationItemFingerprint } from '../../public/shared/native-cognition-runtime.js';
 import { hasInformationBasis, isManagedMemory, assertMemoryValue } from '../../public/shared/native-memory-contract.js';
-import { informationDefinition, projectInformation, refreshInformationCognition, assertInformationAnchor } from '../../public/shared/native-information-runtime.js';
+import { informationDefinition, projectInformation, refreshInformationCognition, assertInformationAnchor, actorAvailability } from '../../public/shared/native-information-runtime.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { validateHypothesisEvidence } from './tom-authority.js';
 import { INFORMATION_LIMITS } from '../../public/shared/native-information-contract.js';
@@ -23,6 +23,7 @@ export function rebindCognitionBranch(base, candidate) {
     for (const source of def.sources.filter(source => isCognitionSource(source) || hasInformationBasis(source))) {
         for (const record of states.atri_lifecycle.domains[source.domainId]?.records ?? []) {
             const basis = record.value.basis;
+            if (isManagedMemory(source) && basis?.received) continue;
             if (!basis || basis.anchor.branchId !== base.revision.branchId) continue;
             if (!views.has(basis.viewId)) views.set(basis.viewId, project(inherited, basis.viewId));
             const projection = views.get(basis.viewId), item = projection.items.find(item => item.sourceId === source.id && item.recordId === record.id);
@@ -61,6 +62,7 @@ export function rebindCognitionBranch(base, candidate) {
 // synthesize evidence, grant reads or adopt a model's World/Task claims.
 export function validateCognitionTransition(base, candidate, { taskId = null, appraisalEvidence = null } = {}) {
     const def = informationDefinition(base);
+    const acquisitions = [];
     let scans = 0;
     const projections = new Map();
     for (const source of (def?.sources ?? []).filter(source => isCognitionSource(source) || hasInformationBasis(source))) {
@@ -74,6 +76,18 @@ export function validateCognitionTransition(base, candidate, { taskId = null, ap
                 if (value.recordedAt > base.states.atri_lifecycle.clocks[source.memoryPolicy.clockId]) throw new TypeError('Memory time is in the future');
             }
             const previous = old.get(id);
+            if (value.basis.received !== undefined) {
+                if (!isManagedMemory(source) || !previous?.basis.received || hashNativeDocument(value.basis.received) !== hashNativeDocument(previous.basis.received)) throw new TypeError('Personal acquisition requires Host publication');
+                const expected = { ...previous, status: value.status, clarity: value.clarity, use: value.use, applicability: value.applicability };
+                if (hashNativeDocument(expected) !== hashNativeDocument(value)) throw new TypeError('Acquired content and disclosure version are immutable');
+                const subject = candidate.states.atri_subjects?.subjects.find(subject => subject.subjectId === value.actor);
+                const ownView = subject ? resolvePerspectiveView(candidate, subject.perspective?.viewId)
+                    : def.views.find(view => view.audience === 'actor' && view.actorId === value.actor && view.exposure.includes('context'));
+                if (!ownView?.sources.includes(source.id) || !actorAvailability(candidate, value.actor).available
+                    || candidate.states.atri_lifecycle.scopes[source.scopeId]?.status !== 'active') throw new TypeError('Personal Memory access unavailable');
+                continue;
+            }
+            if (previous?.basis.received) throw new TypeError('Personal acquisition cannot be removed');
             if (!taskId && previous && ['paused', 'cancelled', 'abandoned', 'withdrawn'].includes(value.status)
                 && hashNativeDocument({ ...previous, status: value.status }) === hashNativeDocument(value)) continue;
             if (isAppraisalSource(source)) {
@@ -123,6 +137,19 @@ export function validateCognitionTransition(base, candidate, { taskId = null, ap
                     || !value.basis.sourceRefs.some(ref => ref.itemId === itemId)) throw new TypeError('Cognition commitment unavailable');
             }
             if (value.expiresAt && value.expiresAt <= base.states.atri_lifecycle.logicalTime + 1) throw new TypeError('Cognition intention already expired');
+            if (isManagedMemory(source)) {
+                const domain = base.manifest.runtime.experienceContract.lifecycleRuntime.domains.find(domain => domain.id === source.domainId);
+                if (domain.recordSchema.properties.basis.properties.received) acquisitions.push({ domainId: source.domainId, recordId: id, clockId: source.memoryPolicy.clockId });
+            }
         }
+    }
+    return acquisitions;
+}
+
+// Called after evidence validation and only inside the original publication.
+export function publishMemoryAcquisitions(states, acquisitions, revisionId) {
+    for (const item of acquisitions) {
+        const record = states.atri_lifecycle.domains[item.domainId].records.find(record => record.id === item.recordId);
+        record.value.basis.received = { revisionId, clockId: item.clockId, tick: states.atri_lifecycle.clocks[item.clockId] };
     }
 }

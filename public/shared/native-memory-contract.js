@@ -8,6 +8,9 @@ export const isManagedMemory = source => source?.semantic === 'memory' && Boolea
 export const hasInformationBasis = source => isManagedMemory(source) || source?.causalBasis === true;
 export function memoryStateSchema(scopeIds = ['session']) {
     const basis = appraisalStateSchema(scopeIds).properties.basis;
+    // Optional until the original Host accepts the actual disclosed evidence.
+    // Text and source references stay in this same Memory record.
+    basis.properties.received = object({ revisionId: string(64), clockId: string(64), tick: { type: 'integer', minimum: 0 } });
     return object({ actor: string(64), text: string(12000), status: { ...string(32), enum: ['active', 'withdrawn'] }, recordedAt: { type: 'integer', minimum: 0 },
         role: { ...string(32), enum: ['detail', ...protectedMemoryRoles] }, clarity: { ...string(32), enum: ['clear', 'blurred', 'forgotten', 'reconstructed'] },
         use: { ...string(32), enum: ['willing', 'reluctant', 'unavailable'] }, basis,

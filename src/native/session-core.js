@@ -39,7 +39,7 @@ import { prepareTaskAuthority, validateTaskRecords } from './task-authority.js';
 import { checkpointHistory, retiredInvocation, validateHistory, prepareHistory } from './history-authority.js';
 import { queryHistory, historyMetrics } from '../../public/shared/native-history-runtime.js';
 import { initialLifecycle, lifecycleDefinition, validateLifecycle, prepareLifecycle, compactLifecycle, prepareDeclaredTaskResult } from './lifecycle-authority.js';
-import { validateCognitionTransition, rebindCognitionBranch } from './cognition-authority.js';
+import { validateCognitionTransition, rebindCognitionBranch, publishMemoryAcquisitions } from './cognition-authority.js';
 import { consumeAppraisalDelivery } from './appraisal-authority.js';
 import { fields } from '../../public/shared/native-values.js';
 import { applyContinuity, continuityDefinition, continuityDisplay, continuityEffects, projectContinuity, reconcileOwnership } from './continuity-authority.js';
@@ -513,9 +513,10 @@ export class SessionCore {
             }] } };
         }
         if (states.atri_lifecycle) {
-            validateCognitionTransition(base, { ...base, states }, { taskId: taskRecord?.kind === 'task' ? taskRecord.taskId : null,
+            const acquisitions = validateCognitionTransition(base, { ...base, states }, { taskId: taskRecord?.kind === 'task' ? taskRecord.taskId : null,
                 appraisalEvidence: taskRecord?.authorityReceipt?.decision === 'cognition.appraise' ? taskRecord.appraisalEvidence : null });
             states = cloneNativeDocument(states);
+            publishMemoryAcquisitions(states, acquisitions, revisionId);
             for (const item of states.atri_lifecycle.outbox) {
                 if (!base.states.atri_lifecycle?.outbox.some(previous => previous.invocationId === item.invocationId)) {
                     item.cause = { revisionId, branchId, invocationId: lifecycleReceipt?.invocationId ?? actionRequest?.idempotencyKey ?? taskRecord?.invocationId ?? null };
