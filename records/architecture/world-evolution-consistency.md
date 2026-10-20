@@ -2,7 +2,7 @@
 
 - Task ID: ARCH-DWE-01
 - Primary Workspace: docs
-- Status: Integration complete · task cleanup in progress
+- Status: Completed · implemented, integrated and pushed
 - Plan: [plans/architecture/world-evolution-consistency/index.md](../../plans/architecture/world-evolution-consistency/index.md)
 - Initiated: 2026-10-17
 
@@ -572,6 +572,13 @@
 - 隔离服务真实 Studio 流程完成选择机制→关联→Review→保存→重载→起点覆盖读取；实际读回固定 reference。1440×1000 桌面和 390×844 touch／reduced-motion 模拟视口无横向溢出，Enter 搜索、IME 守卫、只读操作不产生草稿、焦点与原按钮状态可用。按 Web Interface Guidelines 自检补充控件 name、状态播报和按钮间距；无新增动画。未请求真实模型或音图服务，未测试物理手机。
 - `b31c9401` 合入原 `origin/main`；中文文案冲突保留两边内容，合并源码树与合并前相同，原 API／Prompt 重构保留。主线 fast-forward 到 `c83f18bba110bacd528d13b1cd2bbda42b65236e`；首次 push 的 TLS 临时失败经普通重试成功，`ls-remote` 确认远端同一 SHA。产品实现与主线推送已完成，继续完成本任务分支清理与最终文档状态同步。
 
+## Stage 56 — 合并推送及任务清理完成（2026-10-20）
+
+- 主线本地及远端均为 `c83f18bba110bacd528d13b1cd2bbda42b65236e`；原主分支工作树干净，主仓库恢复目录也已同步该提交。没有更新另一个运行实例。
+- 已确认任务提交全部包含于 main，再将原任务源码工作树 detach 到该提交并删除本地／远端 `feat/dynamic-world`；远端读取仅返回 main，不再有该任务分支。忽略的本地测试留在原验证目录，未提交测试、缓存或机器配置。隔离 8017 验证服务与其浏览器页已关闭。
+- 同一 Record 和 Plan 入口同步本次实施与集成结果；原有其它文档修改和未跟踪设计模块原样保留，没有将其混入本次状态提交。不存在需删除的本任务 live HANDOFF。
+- 当前实施及交付已完成。实际能力和边界见 Stage 36～55；离屏结算依赖作品原规则，法则关联仅声明原动作覆盖，起点预览不执行初始化动作。真实服务商生成、音图输出和物理设备未作为本次验证结果。
+
 ## Current state
 
-WP-A～F 当前产品实施及 main 合并推送已完成；主体、历史、个人 Task、原资料采用、正文与条件／执行关联、起点预览和 Play 档案已有接线。分支清理与最终文档状态同步进行中；能力边界与验证见 Stage 55。
+已完成当前 WP-A～F 实施、main 合并推送与任务分支清理；main 为 `c83f18bb`。主体／历史／个人获知与 Task、固定作者依赖、正文条件及执行关联、起点预览、Play 档案／历史已接入原权威。91 个不同本地测试通过，验证范围和能力边界见 Stage 55～56。
