@@ -48,16 +48,20 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
     const environment = createAtriaShellEnvironment(root);
     let loadingSequence = 0; let editorSequence = 0;
     let canvas = root;
+    let compactDialog = null;
     function adaptEditor() {
         if (!activeEditor) return;
         const focused = doc.activeElement;
         if (environment.get().mode === 'compact') {
-            if (root.parentNode !== doc.body) {
-                doc.body.append(root);
-                const shell = doc.querySelector('.atria-app-shell');
-                if (shell) { const inert = shell.inert; shell.inert = true; restoreShell = () => { shell.inert = inert; restoreShell = () => {}; }; }
+            if (!compactDialog) {
+                // Keep the editor under the theme/component authority. The native
+                // top layer supplies modal isolation without moving outside it.
+                const dialog = doc.createElement('dialog'); compactDialog = dialog;
+                dialog.className = 'atri-runtime-modal'; dialog.setAttribute('aria-label', translateShellText('Runtime editor'));
+                body.append(dialog); dialog.append(root); dialog.showModal();
+                dialog.addEventListener('cancel', event => { event.preventDefault(); root.querySelector('.atri-runtime-editor-header > button:not(:disabled)')?.click(); });
+                restoreShell = () => { body.append(root); dialog.close(); dialog.remove(); compactDialog = null; restoreShell = () => {}; };
             }
-            root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-label', translateShellText('Runtime editor'));
         } else {
             restoreShell(); if (root.parentNode !== body) body.append(root);
             root.removeAttribute('role'); root.removeAttribute('aria-modal'); root.removeAttribute('aria-label');
@@ -102,7 +106,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
     function bindEditorKeyboard(back) {
         root.onkeydown = event => {
             if (event.defaultPrevented || event.isComposing || event.keyCode === 229) return;
-            if (event.key === 'Tab' && root.getAttribute('role') === 'dialog') {
+            if (event.key === 'Tab' && compactDialog?.open) {
                 const controls = [...root.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), summary')].filter(control => control.getClientRects().length);
                 const first = controls[0]; const last = controls.at(-1);
                 if (event.shiftKey && doc.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && doc.activeElement === last) { event.preventDefault(); first.focus(); }
