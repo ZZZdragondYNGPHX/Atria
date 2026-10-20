@@ -965,7 +965,8 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             ]);
             const profiles = await Promise.all(resources.filter(item => item.resourceType === 'core.generation-profile')
                 .map(item => host.library.getCurrent(handle, item.resourceType, item.resourceId)));
-            response.json({ connections, models, routes, resources, profiles: profiles.map(item => item.snapshot) });
+            response.json({ connections, models, routes, resources, profiles: profiles.map(item => item.snapshot),
+                routeFingerprints: Object.fromEntries(routes.map(route => [route.runtimeRouteId, hashNativeDocument(route)])) });
         } catch { response.status(500).json({ error: 'native_generation_configuration_unavailable' }); }
     });
     // Read-through catalog: exact P1 Library, Project source and installed Package authority.

@@ -1,18 +1,19 @@
 import { formatShellText as fmt, translateShellText as tl } from '../atria-shell/localization.js';
 const configurationListeners = new Set();
 export function onRuntimeConfigurationChanged(listener) { configurationListeners.add(listener); return () => configurationListeners.delete(listener); }
-export async function runtimeRequest(path = '/configuration', { method = 'GET', body, signal, onCommitted } = {}) {
+export async function runtimeRequest(path = '/configuration', { method = 'GET', body, signal, onCommitted, expectedFingerprint } = {}) {
     const headers = globalThis.Atria?.getContext?.()?.getRequestHeaders?.() || {};
     const response = await fetch('/api/native/generation' + path, {
-        method, signal, headers: { ...headers, 'Content-Type': 'application/json' },
+        method, signal, headers: { ...headers, 'Content-Type': 'application/json', ...(expectedFingerprint ? { 'If-Match': expectedFingerprint } : {}) },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
     const payload = await response.json();
     if (!response.ok) throw Object.assign(new Error(payload.message || payload.error || 'Runtime request failed'), { code: payload.error, details: payload.details });
-    if (method !== 'GET' && /^\/(presets|configuration)(\/|$)/.test(path)) {
+    if (method !== 'GET') await onCommitted?.(payload);
+    if (method !== 'GET' && (/^\/(presets|configuration)(\/|$)/.test(path) || /^\/resources(?:\/(?:revision|delete|archive))?$/.test(path))) {
         // A successful mutation can repaint its owner while dependent scopes
         // refresh. Still await all observers before resolving to the caller.
-        await Promise.all([Promise.resolve().then(() => onCommitted?.(payload)), ...[...configurationListeners].map(listener => Promise.resolve().then(listener))]);
+        await Promise.all([...configurationListeners].map(listener => Promise.resolve().then(listener)));
     }
     return payload;
 }
