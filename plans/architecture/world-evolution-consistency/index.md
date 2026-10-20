@@ -1,6 +1,6 @@
 # Atria 动态世界／知识重构（唯一入口）
 
-Task ID：`ARCH-DWE-01`。产品实施已启动，当前完成主体基础与事实时间读取的首批接线，整体功能仍在实施；实际结果见[同一 Record](../../../records/architecture/world-evolution-consistency.md)。
+Task ID：`ARCH-DWE-01`。产品实施已启动，主体／历史／个人获知、固定作者依赖、正文创作与有效 Context 已有接线，整体仍在实施；实际结果见[同一 Record](../../../records/architecture/world-evolution-consistency.md)。
 
 ## 要实现什么
 
