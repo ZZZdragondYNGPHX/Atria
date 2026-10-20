@@ -72,7 +72,7 @@ export function generationFields(doc, fields, draft, isTracking = () => false, {
         if (max !== undefined) field.max = max;
         return field;
     };
-    const max = numeric('Output budget', draft.output?.maxTokens ?? '', 1, undefined, true); max.placeholder = translateShellText('Follow model limit');
+    const max = numeric('Output budget', draft.output?.maxTokens ?? '', 1, outputLimit?.(), true); max.placeholder = translateShellText('Follow model limit');
     const temperature = numeric('Temperature', draft.sampling?.temperature ?? '', 0);
     const topP = numeric('Top P (optional)', draft.sampling?.topP ?? '', 0, 1);
     const stream = select(doc, fields, 'Streaming', [['', 'Default'], ['true', 'Enabled'], ['false', 'Disabled']], draft.streaming?.enabled === undefined ? '' : String(draft.streaming.enabled));
