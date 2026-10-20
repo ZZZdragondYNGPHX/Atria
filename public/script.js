@@ -2912,8 +2912,13 @@ export async function getCharacters() {
                 setCharacterId(newCharacterId);
                 await selectCharacterById(newCharacterId, { switchMenu: false });
             } else {
-                await Popup.show.text(t`ERROR: The active character is no longer available.`, t`The page will be refreshed to prevent data loss. Press "OK" to continue.`);
-                return location.reload();
+                // The native shell does not present legacy character chats, so a
+                // vanished card is not a user-facing event: drop the stale
+                // selection and its chat so nothing can be saved against it.
+                console.warn('Active legacy character is no longer available; selection cleared.', previousAvatar);
+                setCharacterId(undefined);
+                chat.splice(0, chat.length);
+                chat_metadata = {};
             }
         }
 

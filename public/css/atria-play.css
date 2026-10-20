@@ -126,7 +126,8 @@
 }
 .atria-app-shell .atria-native-play-actions__button:hover:not(:disabled),
 .atria-play-more summary:hover { background: var(--surface-hover); color: var(--text-1); }
-.atria-app-shell .atria-native-play-actions > .atria-native-play-actions__button:not(.atria-native-play-actions__button--save) { width: 32px; padding: 0; font-size: 0; gap: 0; }
+/* Tools keep their names on wide screens; they fold to icons (with tooltips) only when space runs out. */
+.atria-app-shell:is([data-atria-viewport="compact"], [data-atria-viewport="medium"]) .atria-native-play-actions > .atria-native-play-actions__button:not(.atria-native-play-actions__button--save) { width: 32px; padding: 0; font-size: 0; gap: 0; }
 .atria-play-more summary { width: 32px; padding: 0; }
 .atria-native-play-actions__divider { width: 1px; height: 16px; margin: 0 4px; background: var(--line-2); }
 .atria-play-more-actions__sep { height: 1px; margin: 4px 6px; background: var(--line-1); }

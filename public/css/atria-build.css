@@ -184,9 +184,21 @@ body.no-blur .atria-studio-topbar .atria-studio-actions { -webkit-backdrop-filte
 .atria-app-shell .atria-context-bar__actions > .atria-studio-actions > .atria-studio-tool--icon,
 .atria-app-shell .atria-context-bar__actions > .atria-studio-actions > details > summary { width: 32px; padding: 0; gap: 0; font-size: 0; }
 .atria-context-bar__actions > .atria-studio-actions > details { order: 10; }
+/* The project menu is named, not an icon: it leads the tools. */
+.atria-context-bar__actions > .atria-studio-actions > details.atria-studio-project-menu { order: -1; }
+.atria-app-shell .atria-context-bar__actions > .atria-studio-actions > details.atria-studio-project-menu > summary { width: auto; padding: 0 8px 0 10px; gap: 6px; font-size: var(--fs-sm); }
+.atria-studio-project-menu .atria-studio-layout-options { left: 0; right: auto; width: 200px; }
+.atria-app-shell .atria-studio-project-menu .atria-studio-layout-options > button {
+    display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px;
+    width: 100%; min-height: 34px; padding: 0 10px; border: 0; border-radius: var(--r-md);
+    background: transparent; box-shadow: none; color: var(--text-1); font: 500 var(--fs-md)/1.2 var(--font-ui); text-align: left;
+}
+.atria-app-shell .atria-studio-project-menu .atria-studio-layout-options > button:hover:not(:disabled) { background: var(--surface-hover); }
+.atria-app-shell .atria-studio-project-menu .atria-studio-layout-options > button > .atria-icon { flex: none; color: var(--text-2); }
 .atria-toolbar__leading > .atria-studio-topbar__revision { flex: none; margin-left: 6px; }
 .atria-app-shell[data-atria-viewport="compact"] .atria-toolbar__leading > .atria-studio-topbar__revision { display: none; }
-.atria-app-shell[data-atria-viewport="compact"] .atria-context-bar__actions > .atria-studio-actions > button.atria-studio-tool:not(.atria-studio-tool--icon) { width: 32px; padding: 0; gap: 0; font-size: 0; }
+.atria-app-shell:is([data-atria-viewport="compact"], [data-atria-viewport="medium"]) .atria-context-bar__actions > .atria-studio-actions > :is(button.atria-studio-tool, details.atria-studio-project-menu > summary) { width: 32px; padding: 0; gap: 0; font-size: 0; }
+.atria-app-shell:is([data-atria-viewport="compact"], [data-atria-viewport="medium"]) .atria-studio-project-menu > summary > .atria-icon:last-child { display: none; }
 
 .atria-studio-layout-menu { position: relative; }
 .atria-studio-layout-menu > summary { list-style: none; display: flex; align-items: center; gap: 6px; cursor: pointer; }

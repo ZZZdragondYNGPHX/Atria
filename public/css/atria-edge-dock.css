@@ -38,11 +38,11 @@ body.no-blur .atria-edge-dock-skin { -webkit-backdrop-filter: none; backdrop-fil
 #atria-app-shell .atria-edge-dock .atria-sidebar__footer { display: contents; }
 #atria-app-shell .atria-edge-dock .atria-sidebar__brand { display: none; }
 
-/* Domain items */
+/* Domain items: icon pill with its name always visible beneath (blueprint §5.1). */
 #atria-app-shell .atria-edge-dock .atria-shell-nav-button {
     --tint: var(--text-2);
-    position: relative; display: grid; place-items: center; flex: none;
-    width: var(--dock-size); height: var(--dock-size); min-width: 44px; min-height: 44px; padding: 0;
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; flex: none;
+    width: 62px; height: 58px; min-width: 44px; min-height: 44px; padding: 0;
     border: 0; border-radius: 13px; background: transparent; color: var(--text-2);
     transition: color var(--dur-1);
 }
@@ -52,61 +52,41 @@ body.no-blur .atria-edge-dock-skin { -webkit-backdrop-filter: none; backdrop-fil
 #atria-app-shell .atria-edge-dock [data-atria-domain=agents] { --tint: var(--dom-agents); }
 #atria-app-shell .atria-edge-dock [data-atria-domain=runtime] { --tint: var(--dom-runtime); }
 #atria-app-shell .atria-edge-dock .atria-shell-nav-icon {
-    width: var(--dock-size); height: var(--dock-size); border-radius: 13px; pointer-events: none;
+    width: 42px; height: 30px; border-radius: 15px; pointer-events: none;
     transition: transform 150ms var(--ease-settle), background-color var(--dur-1), box-shadow var(--dur-1);
     transform-origin: center;
 }
-#atria-app-shell .atria-edge-dock .atria-shell-nav-icon .atria-icon { width: 21px; height: 21px; stroke-width: 1.55; }
-#atria-app-shell .atria-edge-dock[data-edge=left] .atria-shell-nav-icon { transform-origin: 0 50%; }
-#atria-app-shell .atria-edge-dock[data-edge=right] .atria-shell-nav-icon { transform-origin: 100% 50%; }
-#atria-app-shell .atria-edge-dock[data-edge=top] .atria-shell-nav-icon { transform-origin: 50% 0; }
-#atria-app-shell .atria-edge-dock[data-edge=bottom] .atria-shell-nav-icon { transform-origin: 50% 100%; }
+#atria-app-shell .atria-edge-dock .atria-shell-nav-icon .atria-icon { width: 20px; height: 20px; stroke-width: 1.6; }
+#atria-app-shell .atria-edge-dock .atria-shell-nav-icon { transform-origin: 50% 70%; }
 #atria-app-shell .atria-edge-dock .atria-shell-nav-button:active .atria-shell-nav-icon { scale: .94; }
 #atria-app-shell .atria-edge-dock .atria-shell-nav-button.is-selected { color: var(--tint); background: transparent; }
 #atria-app-shell .atria-edge-dock .atria-shell-nav-button.is-selected .atria-shell-nav-icon {
     background: linear-gradient(180deg, color-mix(in srgb, var(--tint) 24%, transparent), color-mix(in srgb, var(--tint) 9%, transparent));
     box-shadow: inset 0 1px 0 color-mix(in srgb, var(--tint) 32%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--tint) 16%, transparent);
 }
-/* Current dot sits on the docked side. */
-#atria-app-shell .atria-edge-dock .atria-shell-nav-button.is-selected::after {
-    content: ""; display: block; position: absolute; width: 4px; height: 4px; border-radius: 50%; background: var(--tint);
-}
-#atria-app-shell .atria-edge-dock[data-edge=left] .is-selected::after { left: calc(-1 * var(--dock-pad) + 1px); top: 50%; margin-top: -2px; }
-#atria-app-shell .atria-edge-dock[data-edge=right] .is-selected::after { right: calc(-1 * var(--dock-pad) + 1px); left: auto; top: 50%; margin-top: -2px; }
-#atria-app-shell .atria-edge-dock[data-edge=top] .is-selected::after { top: calc(-1 * var(--dock-pad) + 1px); left: 50%; margin-left: -2px; }
-#atria-app-shell .atria-edge-dock[data-edge=bottom] .is-selected::after { bottom: calc(-1 * var(--dock-pad) + 1px); top: auto; left: 50%; margin-left: -2px; }
-
-/* Labels pop toward the content. */
+/* Names are always visible; the current domain is named in its tint (shape + text, not color alone). */
 #atria-app-shell .atria-edge-dock .atria-shell-nav-label {
-    display: block; position: absolute; z-index: 2; pointer-events: none; white-space: nowrap;
-    padding: 5px 9px; border-radius: 7px;
-    font: 550 var(--fs-xs)/1.2 var(--font-ui); color: var(--text-1);
-    background: var(--mat-glass-strong); border: 1px solid var(--glass-line); box-shadow: var(--glass-rim), var(--glass-shadow);
-    opacity: 0; transition: opacity var(--dur-1);
+    display: block; position: static; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;
+    font: 550 10.5px/1.15 var(--font-ui); letter-spacing: .01em; color: inherit;
 }
-#atria-app-shell .atria-edge-dock[data-edge=left] .atria-shell-nav-label { left: calc(100% + 14px); right: auto; top: 50%; bottom: auto; transform: translateY(-50%); }
-#atria-app-shell .atria-edge-dock[data-edge=right] .atria-shell-nav-label { right: calc(100% + 14px); left: auto; top: 50%; bottom: auto; transform: translateY(-50%); }
-#atria-app-shell .atria-edge-dock[data-edge=bottom] .atria-shell-nav-label { left: 50%; right: auto; top: auto; bottom: calc(100% + 14px); transform: translateX(-50%); }
-#atria-app-shell .atria-edge-dock[data-edge=top] .atria-shell-nav-label { left: 50%; right: auto; top: calc(100% + 14px); bottom: auto; transform: translateX(-50%); }
+#atria-app-shell .atria-edge-dock .is-selected .atria-shell-nav-label { color: var(--tint); font-weight: 650; }
 #atria-app-shell .atria-edge-dock .atria-shell-nav-button:focus-visible { box-shadow: none; }
 #atria-app-shell .atria-edge-dock .atria-shell-nav-button:focus-visible .atria-shell-nav-icon { box-shadow: var(--focus-ring); }
-#atria-app-shell .atria-edge-dock .atria-shell-nav-button:focus-visible .atria-shell-nav-label { opacity: 1; }
 @media (hover: hover) and (pointer: fine) {
     #atria-app-shell .atria-edge-dock .atria-shell-nav-button:hover { color: var(--text-1); }
     #atria-app-shell .atria-edge-dock .atria-shell-nav-button:hover:not(.is-selected) .atria-shell-nav-icon { background: color-mix(in srgb, var(--tint) 11%, transparent); }
     #atria-app-shell .atria-edge-dock .atria-shell-nav-button.is-selected:hover { color: var(--tint); }
-    #atria-app-shell .atria-edge-dock .atria-shell-nav-button:hover .atria-shell-nav-label { opacity: 1; transition-delay: .12s; }
 }
 
 /* Grip: drag to another edge; menu and arrow keys are the equivalent paths. */
 #atria-app-shell .atria-edge-dock .atria-edge-dock-grip {
     display: grid; place-items: center; flex: none; padding: 0; border: 0; border-radius: 9px;
-    width: var(--dock-size); height: 26px; min-height: 26px;
+    width: 100%; height: 22px; min-height: 22px;
     background: transparent; color: var(--text-4); cursor: grab; touch-action: none;
     user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
     transition: color var(--dur-1), background-color var(--dur-1);
 }
-#atria-app-shell .atria-edge-dock:is([data-edge=top], [data-edge=bottom]) .atria-edge-dock-grip { width: 26px; height: var(--dock-size); }
+#atria-app-shell .atria-edge-dock:is([data-edge=top], [data-edge=bottom]) .atria-edge-dock-grip { width: 22px; height: 58px; }
 #atria-app-shell .atria-edge-dock:is([data-edge=top], [data-edge=bottom]) .atria-edge-dock-grip .atria-icon { rotate: 90deg; }
 #atria-app-shell .atria-edge-dock .atria-edge-dock-grip:hover { color: var(--text-2); background: var(--surface-hover); }
 #atria-app-shell .atria-edge-dock .atria-edge-dock-grip:active { cursor: grabbing; color: var(--text-1); }
@@ -146,14 +126,8 @@ body.no-blur .atria-edge-dock-skin { -webkit-backdrop-filter: none; backdrop-fil
 /* Touch and compact: bottom Dock with labels; no grip, no magnification. */
 #atria-app-shell[data-atria-dock-input=touch] .atria-edge-dock .atria-edge-dock-grip { display: none; }
 #atria-app-shell[data-atria-viewport=compact] .atria-edge-dock { padding: 5px 6px; gap: 0; }
-#atria-app-shell[data-atria-viewport=compact] .atria-edge-dock .atria-shell-nav-button { width: auto; min-width: 60px; height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+#atria-app-shell[data-atria-viewport=compact] .atria-edge-dock .atria-shell-nav-button { width: auto; min-width: 60px; height: 52px; gap: 1px; }
 #atria-app-shell[data-atria-viewport=compact] .atria-edge-dock .atria-shell-nav-icon { width: 44px; height: 28px; border-radius: 14px; transform: none !important; }
-#atria-app-shell[data-atria-viewport=compact] .atria-edge-dock .atria-shell-nav-label {
-    position: static; opacity: 1; transform: none; padding: 0; background: none; border: 0; box-shadow: none;
-    font: 550 10.5px/1.1 var(--font-ui); color: inherit;
-}
-#atria-app-shell[data-atria-viewport=compact] .atria-edge-dock .is-selected::after { display: none; }
-#atria-app-shell[data-atria-viewport=compact] .atria-edge-dock .is-selected .atria-shell-nav-label { color: var(--tint); }
 @media (max-width: 359px) { #atria-app-shell[data-atria-viewport=compact] .atria-edge-dock .atria-shell-nav-button { min-width: 52px; } }
 @media (max-height: 470px) and (min-width: 720px) { #atria-app-shell .atria-edge-dock:not([data-edge=bottom]) { overflow-y: auto; scrollbar-width: none; } }
 

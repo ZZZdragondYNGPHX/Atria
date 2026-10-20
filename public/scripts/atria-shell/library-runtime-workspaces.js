@@ -26,9 +26,9 @@ export const LIBRARY_SECTIONS = Object.freeze([
     Object.freeze({ id: 'works', label: 'Works' }),
     Object.freeze({ id: 'games', label: 'My stories' }),
     Object.freeze({ id: 'worlds-knowledge', label: 'Worlds & Knowledge' }),
-    Object.freeze({ id: 'prompt-presets', label: 'Prompt Presets' }),
+    Object.freeze({ id: 'prompt-presets', label: 'Prompts' }),
     Object.freeze({ id: 'personas', label: 'Personas' }),
-    Object.freeze({ id: 'images', label: 'Image studio' }),
+    Object.freeze({ id: 'images', label: 'Images' }),
 ]);
 
 export const RUNTIME_SECTIONS = Object.freeze([

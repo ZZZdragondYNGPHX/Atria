@@ -15,9 +15,17 @@
     const RESUME_KEY = 'atria.startup.resume';
     const APPEARANCE_KEY = 'atria.startup.appearance';
     const UNFOLDED_MS = 1500;
-    const SEAL_HOLD_MS = 640;
-    // How long a resumed cover may wait for the reopened conversation.
-    const REOPEN_WAIT_MS = 3200;
+    const SEAL_HOLD_MS = 240;
+    // How long a resumed cover may wait for the reopened conversation once
+    // the app is ready; the cover never holds a ready app longer than this.
+    const REOPEN_WAIT_MS = 600;
+    // A deep link to another workspace is not a story resume.
+    const DEEP_LINK = (() => {
+        try {
+            const route = new URLSearchParams(window.location.search).get('atriaRoute');
+            return Boolean(route && route !== 'play');
+        } catch { return false; }
+    })();
     const motionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
     const reduced = Boolean(motionQuery?.matches);
     const started = performance.now();
@@ -89,7 +97,7 @@
         cover.dataset.appearance = 'light';
     }
 
-    const resume = (() => {
+    const resume = DEEP_LINK ? null : (() => {
         const value = read(RESUME_KEY);
         if (!value || value.v !== 1) return null;
         const work = clip(value.work, 120);
@@ -274,7 +282,7 @@
     const richness = memory ? Math.min(1, Math.log2(1 + memory.memories) / Math.log2(241)) : 0;
     const IGNITE_FROM = 300;
     const IGNITE_SPAN = 520 + 980 * richness;
-    const unfoldedMs = UNFOLDED_MS + 450 * richness;
+    const unfoldedMs = DEEP_LINK ? 0 : UNFOLDED_MS + 450 * richness;
 
     function rgb(name, fallback) {
         context.fillStyle = fallback;
@@ -650,6 +658,8 @@
     function dismiss() {
         if (readyAt) return;
         readyAt = performance.now();
+        // A deep link has no story to hand off to: fade straight to the target.
+        if (DEEP_LINK) fast = true;
         clearTimeout(stallTimer);
         // Startup is done for everything else: release the #preloader
         // contract immediately and let the cover finish on its own.

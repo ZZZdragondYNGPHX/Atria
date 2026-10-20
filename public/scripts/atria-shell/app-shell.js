@@ -222,10 +222,10 @@ export function createAtriaAppShell({
         element(documentRef, 'span', 'atria-toolbar-search__label', tl('Search')),
         searchKey,
     );
-    const menuButton = buttonElement(documentRef, 'atria-icon-button atria-toolbar__menu', tl('More'));
+    const menuButton = buttonElement(documentRef, 'atria-icon-button atria-toolbar__menu', tl('Atria menu'));
     menuButton.setAttribute('aria-haspopup', 'menu');
     menuButton.setAttribute('aria-expanded', 'false');
-    menuButton.append(createAtriaIcon(documentRef, 'more', { size: 18 }));
+    menuButton.append(createAtriaIcon(documentRef, 'grid', { size: 17 }));
     const accountButton = buttonElement(documentRef, 'atria-icon-button atria-toolbar__account', tl('Account'));
     accountButton.dataset.atriaUtility = 'account';
     accountButton.append(element(documentRef, 'span', 'atria-toolbar__avatar'));

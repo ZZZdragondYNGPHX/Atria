@@ -1611,25 +1611,36 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
         mountPaneResizer({ document: documentRef, root: shell, pane: activity, property: '--atri-studio-activity-height', label: 'Activity panel height', axis: 'y', side: 'start', min: 160,
             max: () => shell.clientHeight * .55, enabled: () => resizeEnabled() && state.activityOpen, onCollapse: () => { state.activityOpen = false; renderActivity(); updateMobile(); layoutSummary.focus(); } }),
     );
+    // Project actions share one named menu; panel toggles keep their names (blueprint §6.3).
+    const projectMenu = documentRef.createElement('details'); projectMenu.className = 'atria-studio-layout-menu atria-studio-project-menu';
+    const projectSummary = documentRef.createElement('summary'); projectSummary.textContent = t('Project'); projectSummary.tabIndex = 0; projectSummary.title = t('Project actions');
+    projectSummary.classList.add('atria-studio-tool');
+    const projectOptions = documentRef.createElement('div'); projectOptions.className = 'atria-studio-layout-options';
+    const projectActions = [['Validate', 'check-circle', runValidation], ['Preview', 'eye', runPreview], ['Simulate', 'run', runSimulation], ['Build', 'cube', () => runBuild({ download: false })]];
+    for (const [label, icon, run] of projectActions) {
+        const item = button(documentRef, label, run);
+        item.prepend(createAtriaIcon(documentRef, icon, { size: 16 }));
+        projectOptions.append(item);
+    }
+    projectOptions.addEventListener('click', () => { projectMenu.open = false; });
+    projectMenu.append(projectSummary, projectOptions);
+    projectSummary.prepend(createAtriaIcon(documentRef, 'cube', { size: 16 }));
+    projectSummary.append(createAtriaIcon(documentRef, 'chevron-down', { size: 14 }));
     topActions.append(
-        button(documentRef, 'Validate', runValidation),
-        button(documentRef, 'Preview', runPreview),
-        button(documentRef, 'Simulate', runSimulation),
+        projectMenu,
         button(documentRef, 'Inspector', () => { state.inspectorOpen = !state.inspectorOpen; state.aiOpen = false; if (environment.get().mode === 'compact') state.mobileView = 'editor'; updateMobile(); if (state.inspectorOpen) inspector.querySelector('button')?.focus(); }),
-        button(documentRef, 'Build', () => runBuild({ download: false })),
         button(documentRef, 'AI', () => {
             state.aiOpen = !state.aiOpen;
             state.inspectorOpen = false; state.mobileView = state.aiOpen ? 'ai' : 'editor'; updateMobile(); if (state.aiOpen) ai.querySelector('select,textarea')?.focus();
         }, { active: state.aiOpen }),
     );
 
-    const toolIcons = { Validate: 'check-circle', Preview: 'eye', Simulate: 'run', Inspector: 'panel-r', Build: 'cube', AI: 'sparkles' };
+    const toolIcons = { Inspector: 'panel-r', AI: 'sparkles' };
     for (const item of topActions.children) {
         const name = Object.keys(toolIcons).find(key => item.textContent === t(key));
         if (!name) continue;
         item.title = t(name);
         item.classList.add('atria-studio-tool');
-        if (name !== 'AI') item.classList.add('atria-studio-tool--icon');
         item.prepend(createAtriaIcon(documentRef, toolIcons[name], { size: 16 }));
     }
     layoutSummary.title = t('Workspace layout');
@@ -1648,6 +1659,7 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
     environment.subscribe(() => { updateMobile(); });
     function dismissTransient() {
         if (layoutMenu.open) { layoutMenu.open = false; layoutSummary.focus(); return true; }
+        if (projectMenu.open) { projectMenu.open = false; projectSummary.focus(); return true; }
         if (!state.aiOpen && !state.inspectorOpen && state.mobileView !== 'ai') return false;
         const label = state.inspectorOpen ? 'Inspector' : 'AI';
         state.aiOpen = false; state.inspectorOpen = false;

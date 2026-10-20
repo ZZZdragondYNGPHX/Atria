@@ -31,19 +31,20 @@ const ICONS = Object.freeze({
         ['circle', { cx: 12, cy: 18, r: 2.4 }],
         ['path', { d: 'M8.4 6h7.2M7.1 8.1l3.8 7.7M16.9 8.1l-3.8 7.7' }],
     ],
+    // Runtime routes a task to a model: two endpoints joined by a route.
     runtime: [
-        ['rect', { x: 6, y: 6, width: 12, height: 12, rx: 2.2 }],
-        ['rect', { x: 9.5, y: 9.5, width: 5, height: 5, rx: 1 }],
-        ['path', { d: 'M9 2.5V6M15 2.5V6M9 18v3.5M15 18v3.5M2.5 9H6M2.5 15H6M18 9h3.5M18 15h3.5' }],
+        ['circle', { cx: 6, cy: 18, r: 2.4 }],
+        ['circle', { cx: 18, cy: 6, r: 2.4 }],
+        ['path', { d: 'M8.4 18H14a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h5.6' }],
     ],
     search: [
         ['circle', { cx: 11, cy: 11, r: 6.5 }],
         ['path', { d: 'M20 20l-4.2-4.2' }],
     ],
+    // A gear, so Settings never shares the slider glyph used by story options (`tune`).
     settings: [
-        ['path', { d: 'M4 7h9M17 7h3M4 17h3M11 17h9' }],
-        ['circle', { cx: 15, cy: 7, r: 2 }],
-        ['circle', { cx: 9, cy: 17, r: 2 }],
+        ['path', { d: 'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z' }],
+        ['circle', { cx: 12, cy: 12, r: 3 }],
     ],
     plugins: [
         ['path', { d: 'M5 7a2 2 0 0 1 2-2h2.5a2.25 2.25 0 1 1 4.5 0H17a2 2 0 0 1 2 2v2.5a2.25 2.25 0 1 1 0 4.5V17a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2Z' }],
