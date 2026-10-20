@@ -1,4 +1,5 @@
 import { normalizeKnowledgeLifecycle, normalizeKnowledgeRelations, normalizeKnowledgeDiscovery, normalizeKnowledgeApplicability, normalizeKnowledgeDelivery, normalizeKnowledgeSelector, KNOWLEDGE_TARGET_KINDS } from '../../public/scripts/native/knowledge-contracts.js';
+import { subjectDefinitions } from '../../public/shared/native-subject-contract.js';
 import { assertNativeId } from './identity.js';
 import { normalizeKnowledgeEntryEnabled } from '../../public/scripts/native/knowledge-contracts.js';
 
@@ -144,6 +145,7 @@ export function assertWorldRevision(value) {
             'worldId',
             'schema',
             'baseline',
+            'subjects',
             'knowledgeBindingIds',
             'assetIds',
             'metadata',
@@ -156,6 +158,7 @@ export function assertWorldRevision(value) {
         worldId: assertNativeId(value.worldId, 'world', 'WorldRevision.worldId'),
         ...(value.schema === undefined ? {} : { schema: optionalJsonObject(value.schema, 'WorldRevision.schema') }),
         ...(value.baseline === undefined ? {} : { baseline: optionalJsonObject(value.baseline, 'WorldRevision.baseline') }),
+        ...(value.subjects === undefined ? {} : { subjects: subjectDefinitions(value.subjects) }),
         knowledgeBindingIds: uniqueNativeIds(
             value.knowledgeBindingIds,
             'knowledgeBinding',

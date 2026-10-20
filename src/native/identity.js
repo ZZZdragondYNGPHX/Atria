@@ -19,6 +19,7 @@ export const NATIVE_ID_FAMILIES = Object.freeze({
     package: 'pkg',
     packageVersion: 'pkgv',
     actor: 'actor',
+    subject: 'sub',
     entryPoint: 'entry',
     project: 'project',
     session: 'ses',

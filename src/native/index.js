@@ -6,6 +6,8 @@ export {
     parseNativeId,
 } from './identity.js';
 
+export { SUBJECT_NAMESPACE, SUBJECT_KINDS, subjectDefinitions } from '../../public/shared/native-subject-contract.js';
+
 export {
     ATRIA_PACKAGE_CAPABILITIES,
     ATRIA_PACKAGE_FORMAT,

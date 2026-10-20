@@ -1,4 +1,5 @@
 import { readTaskArtifact, markTaskArtifactConsumption } from './task-artifact-authority.js';
+import { prepareSubjects } from './subject-authority.js';
 import { runPackageComputation } from './package-computation.js';
 import { prepareLifetimes, validateLifetimes } from './lifetime-authority.js';
 import { lifetimePolicy } from '../../public/shared/native-lifetime-contract.js';
@@ -237,10 +238,14 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
     // Cases see only the public die, not a partially assigned outcome.
     const selected = transaction.resolution.cases.find(item => predicate(item.when, { args, reads, artifacts, resolution, ...(computed === undefined ? {} : { computed }) }));
     resolution.outcome = selected?.outcome ?? transaction.resolution.fallback;
-    const context = freeze({ args, reads, artifacts, resolution, ...(computed === undefined ? {} : { computed }) });
+    const resolved = { args, reads, artifacts, resolution, ...(computed === undefined ? {} : { computed }) };
+    const subjects = prepareSubjects(candidate, transaction.subjects, { template, predicate }, resolved, identity);
+    const context = freeze({ ...resolved, subjects });
     const rules = createRulesEngine(logic.rules, { onEvaluation: () => budget.rule() });
+    let applied = 0;
     for (const effect of transaction.effects) {
         if (effect.when !== undefined && !predicate(effect.when, context)) continue;
+        applied++;
         if (effect.kind === 'world.event') {
             const draft = { type: effect.type, payload: template(effect.payload, context), meta: { authorityId: identity } };
             const ruled = await rules.process([draft], { beforeState: world.getState(),
@@ -257,6 +262,7 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
         }
     }
 
+    if (Object.keys(subjects).length && !applied) throw new TypeError('Subject admission requires an applied Domain effect');
     const computationState = transaction.computation ? { args, beforeReads: reads, computed, resolution, seed: identity, artifacts } : null;
     await checkComputation(candidate, installed, contract, transaction, budget, computationState, execution);
     for (const item of consumed) markTaskArtifactConsumption(candidate, item, identity);

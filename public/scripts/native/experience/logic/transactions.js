@@ -1,4 +1,5 @@
 import { resourcePath } from '../../../../shared/native-frontend-contract.js';
+import { SUBJECT_ID_SCHEMA, subjectKind } from '../../../../shared/native-subject-contract.js';
 import { assertRunTransactions } from '../../../../shared/native-run-contract.js';
 import { LIFETIME_OPERATIONS } from '../../../../shared/native-lifetime-contract.js';
 import { HISTORY_OPERATIONS } from '../../../../shared/native-history-contract.js';
@@ -82,6 +83,26 @@ function budget(grants, effects, authority) {
     }
 }
 
+function subjects(raw = [], context, lifecycle) {
+    const properties = {};
+    list(raw, 16, item => {
+        fields(item, ['id', 'kind', 'worldId', 'subjectId', 'actorId', 'localRef', 'when'], 'Transaction Subject');
+        taskId(item.id); subjectKind(item.kind);
+        if (item.worldId !== undefined && item.worldId !== null && !/^world_[a-f0-9]{32}$/.test(item.worldId)) throw new TypeError('Invalid Subject World');
+        if (item.actorId !== undefined && !/^actor_[a-f0-9]{32}$/.test(item.actorId)) throw new TypeError('Invalid Subject Actor');
+        if (item.when !== undefined) predicate(item.when, context);
+        if (item.subjectId !== undefined) template(item.subjectId, SUBJECT_ID_SCHEMA, context);
+        if (item.localRef !== undefined) {
+            fields(item.localRef, ['domainId', 'recordId'], 'Subject local reference');
+            reference(lifecycle?.domains, item.localRef.domainId, 'Subject domain');
+            recordSelector(item.localRef.recordId, context);
+        }
+        properties[item.id] = SUBJECT_ID_SCHEMA;
+        return item;
+    }, 'Subjects');
+    return { ...emptySchema(), properties };
+}
+
 // Declaration-only IR. Nothing here reads Session state, evaluates mechanics,
 // invokes commands, publishes derived records, or installs transaction handlers.
 export function compileTransactionDeclarations(raw, options) {
@@ -105,7 +126,7 @@ export function compileTransactionDeclarations(raw, options) {
     // Count the entire hook, not just each publication in isolation.
     budget(publications.reduce((sum, item) => sum + item.reads.length, 0), publications.flatMap(item => item.effects), authority);
     const transactions = list(raw.transactions, LIMITS.transactions, transaction => {
-        fields(transaction, ['id', 'origin', 'verb', 'inputSchema', 'intent', 'reads', 'validators', 'resolution', 'effects', 'derivedPublications', 'receipt', 'history', 'lifetimes', 'computation', 'artifacts', 'savePointBefore'], 'Transaction');
+        fields(transaction, ['id', 'origin', 'verb', 'inputSchema', 'intent', 'reads', 'validators', 'resolution', 'effects', 'derivedPublications', 'receipt', 'history', 'lifetimes', 'computation', 'artifacts', 'savePointBefore', 'subjects'], 'Transaction');
         if (transaction.savePointBefore !== undefined && typeof transaction.savePointBefore !== 'boolean') throw new TypeError('Invalid pre-choice SavePoint declaration');
         taskId(transaction.id); taskId(transaction.verb);
         if (transaction.origin !== undefined && (transaction.origin !== 'simulation' || !contract.simulationRuntime)) throw new TypeError('Unknown or undeclared Transaction origin');
@@ -135,7 +156,9 @@ export function compileTransactionDeclarations(raw, options) {
             computed = { computed: objectSchema(transaction.computation.outputSchema) };
         }
         const result = resolution(transaction.resolution, { ...before, ...computed });
-        const context = { ...before, ...computed, resolution: result };
+        const resolved = { ...before, ...computed, resolution: result };
+        const context = { ...resolved, subjects: subjects(transaction.subjects, resolved, lifecycle) };
+        if (transaction.subjects?.length && !transaction.effects.length) throw new TypeError('Subject admission requires Domain effects');
         if (transaction.history !== undefined) {
             if (!Array.isArray(transaction.history) || transaction.history.length > 8) throw new TypeError('History commands');
             for (const h of transaction.history) {

@@ -1,0 +1,107 @@
+import { SUBJECT_NAMESPACE, subjectKind } from '../../public/shared/native-subject-contract.js';
+import { fields } from '../../public/shared/native-values.js';
+import { taskId } from '../../public/shared/native-task-contract.js';
+import { assertNativeId } from './identity.js';
+import { hashNativeDocument, equalNativeDocuments } from './repositories/common.js';
+
+function subjectId(sessionId, origin) {
+    return 'sub_' + hashNativeDocument({ sessionId, origin }).slice(0, 32);
+}
+function assertScope(base, worldId) {
+    if (worldId === null) return;
+    assertNativeId(worldId, 'world');
+    if (!base.states.atri_world_state?.worlds[worldId]) throw new TypeError('Subject World scope unavailable');
+}
+function expression(base, actorId) {
+    if (actorId === undefined) return;
+    assertNativeId(actorId, 'actor');
+    if (!base.manifest.actors.some(item => item.actorId === actorId)) throw new TypeError('Subject expression unavailable');
+}
+
+export function validateSubjects(base) {
+    const state = base.states[SUBJECT_NAMESPACE];
+    if (!state) return;
+    fields(state, ['schemaVersion', 'subjects'], 'Subject state');
+    if (state.schemaVersion !== 1 || !Array.isArray(state.subjects)) throw new TypeError('Invalid Subject state');
+    const seen = new Set(); const local = new Set();
+    for (const item of state.subjects) {
+        fields(item, ['subjectId', 'kind', 'worldId', 'origin', 'admission', 'actorId', 'localRef'], 'Subject');
+        assertNativeId(item.subjectId, 'subject'); subjectKind(item.kind); expression(base, item.actorId);
+        if (item.worldId !== null) assertNativeId(item.worldId, 'world');
+        if (seen.has(item.subjectId)) throw new TypeError('Duplicate Subject identity');
+        seen.add(item.subjectId);
+        fields(item.origin, ['kind', 'packageVersionId', 'worldRevisionId', 'definitionId', 'entryPointId', 'authorityId', 'bindingId'], 'Subject origin');
+        if (!['authored', 'emergent'].includes(item.origin.kind)) throw new TypeError('Invalid Subject origin');
+        assertNativeId(item.origin.packageVersionId, 'packageVersion');
+        if (item.origin.kind === 'authored') {
+            taskId(item.origin.definitionId);
+            if (item.origin.entryPointId !== undefined) assertNativeId(item.origin.entryPointId, 'entryPoint');
+            if (item.origin.worldRevisionId !== undefined) assertNativeId(item.origin.worldRevisionId, 'worldRevision');
+        } else {
+            if (typeof item.origin.authorityId !== 'string' || !item.origin.authorityId) throw new TypeError('Missing Subject authority');
+            taskId(item.origin.bindingId);
+        }
+        fields(item.admission, ['branchId', 'revisionId'], 'Subject admission');
+        assertNativeId(item.admission.branchId, 'branch'); assertNativeId(item.admission.revisionId, 'revision');
+        if (item.localRef) {
+            fields(item.localRef, ['domainId', 'recordId'], 'Subject local reference');
+            taskId(item.localRef.domainId); taskId(item.localRef.recordId);
+            const key = JSON.stringify([item.worldId, item.localRef.domainId, item.localRef.recordId]);
+            if (local.has(key)) throw new TypeError('Ambiguous Subject local reference');
+            local.add(key);
+        }
+    }
+}
+
+export function initialSubjects(base, worlds) {
+    const subjects = [];
+    const sources = [...worlds.map(world => ({ worldId: world.world.worldId, worldRevisionId: world.revision.worldRevisionId, definitions: world.revision.subjects ?? [] })),
+        { worldId: null, entryPointId: base.entryPoint.entryPointId, definitions: base.entryPoint.subjects ?? [] }];
+    for (const source of sources) for (const definition of source.definitions) {
+        expression(base, definition.actorId);
+        const origin = { kind: 'authored', packageVersionId: base.session.packageVersionId,
+            ...(source.worldRevisionId ? { worldRevisionId: source.worldRevisionId } : { entryPointId: source.entryPointId }), definitionId: definition.id };
+        subjects.push({ subjectId: subjectId(base.session.sessionId, origin), kind: definition.kind,
+            worldId: source.worldId, origin, admission: null,
+            ...(definition.actorId ? { actorId: definition.actorId } : {}), ...(definition.localRef ? { localRef: definition.localRef } : {}) });
+    }
+    return { schemaVersion: 1, subjects };
+}
+
+// Called only by the pinned transaction preparer. Its private candidate is
+// published with the original domain effects under the same Session CAS.
+export function prepareSubjects(candidate, declarations, evaluate, context, authorityId) {
+    if (!declarations?.length) return {};
+    const state = structuredClone(candidate.states[SUBJECT_NAMESPACE] ?? { schemaVersion: 1, subjects: [] });
+    const refs = {};
+    for (const item of declarations ?? []) {
+        if (item.when !== undefined && !evaluate.predicate(item.when, context)) continue;
+        const worldId = item.worldId ?? null;
+        assertScope(candidate, worldId); expression(candidate, item.actorId);
+        const localRef = item.localRef ? { domainId: item.localRef.domainId, recordId: taskId(evaluate.template(item.localRef.recordId, context)) } : null;
+        const explicitId = item.subjectId === undefined ? null : assertNativeId(evaluate.template(item.subjectId, context), 'subject');
+        const existing = explicitId ? state.subjects.find(s => s.subjectId === explicitId) : localRef
+            ? state.subjects.find(s => s.worldId === worldId && equalNativeDocuments(s.localRef ?? null, localRef)) : null;
+        if (explicitId && !existing) throw new TypeError('Subject is not present in this Revision');
+        if (existing) {
+            if (existing.kind !== item.kind || existing.worldId !== worldId || (localRef && !equalNativeDocuments(existing.localRef ?? null, localRef))) throw new TypeError('Subject binding mismatch');
+            refs[item.id] = existing.subjectId; continue;
+        }
+        const origin = { kind: 'emergent', packageVersionId: candidate.session.packageVersionId, authorityId, bindingId: item.id };
+        const id = subjectId(candidate.session.sessionId, origin);
+        if (!state.subjects.some(s => s.subjectId === id)) state.subjects.push({ subjectId: id, kind: item.kind, worldId, origin, admission: null,
+            ...(localRef ? { localRef } : {}), ...(item.actorId ? { actorId: item.actorId } : {}) });
+        refs[item.id] = id;
+    }
+    candidate.states[SUBJECT_NAMESPACE] = state;
+    return refs;
+}
+
+export function publishSubjects(base, states, revisionId, branchId) {
+    const state = states[SUBJECT_NAMESPACE];
+    if (!state) return states;
+    const next = { ...states, [SUBJECT_NAMESPACE]: { ...state, subjects: state.subjects.map(item => item.admission !== null ? item
+        : { ...item, admission: { revisionId, branchId } }) } };
+    validateSubjects({ ...base, states: next });
+    return next;
+}

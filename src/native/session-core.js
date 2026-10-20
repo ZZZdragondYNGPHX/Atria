@@ -1,3 +1,6 @@
+import { initialSubjects, publishSubjects, validateSubjects } from './subject-authority.js';
+import { assertValidWorldState } from '../../public/scripts/native/experience/world/schema.js';
+import { SUBJECT_NAMESPACE } from '../../public/shared/native-subject-contract.js';
 import { requestVisualWake } from './visual-events.js';
 import { captureTaskProduction } from './task-artifact-authority.js';
 import { adoptKnowledge } from './knowledge-authority.js';
@@ -207,6 +210,7 @@ export class SessionCore {
         if (snapshot.states[RUN_NAMESPACE]?.mode === 'ironman' && snapshot.states[RUN_NAMESPACE].status === 'dead') options = { ...options, skipPackageEdits: true, revisionId: snapshot.revision.revisionId };
         const { session } = snapshot;
         const installed = await this._openPackage(handle, session.packageId, session.packageVersionId, session.entryPointId);
+        validateSubjects({ ...snapshot, manifest: installed.manifest });
         validateTaskRecords({ ...snapshot, manifest: installed.manifest });
         validateLifecycle({ ...snapshot, manifest: installed.manifest });
         validateLifetimes({ ...snapshot, manifest: installed.manifest }, { complete: true });
@@ -318,6 +322,7 @@ export class SessionCore {
                 entryPoint: installed.entryPoint, knowledgeRepo: this._knowledge,
                 libraryBindingIds, sessionBindings, sessionKnowledge, packageBindingIds }),
         };
+        base.states[SUBJECT_NAMESPACE] = initialSubjects(base, selectedWorlds(base.states, base.manifest, base.entryPoint));
         if (personaState) base.states[PERSONA_NAMESPACE] = personaState;
         if (installed.manifest.runtime?.experienceContract?.storyStart) {
             base.states[RUN_NAMESPACE] = { schemaVersion: 1, mode: 'pending', status: 'pending', sequence: 0 };
@@ -468,6 +473,7 @@ export class SessionCore {
         validateLifetimes({ ...base, states }, { complete: true });
         validateWorldState(states, base.manifest, base.entryPoint);
         const revisionId = createNativeId('revision');
+        states = publishSubjects(base, states, revisionId, branchId);
         if (sharedPublication) for (const turn of Object.values(states.atri_shared?.turns ?? {})) {
             if (turn.expectedRevisionId === null || turn.expectedRevisionId === base.revision?.revisionId) turn.expectedRevisionId = revisionId;
         }
@@ -904,10 +910,15 @@ export class SessionCore {
         if (!expectedRevisionId) throw new TypeError('Expected Session revision is required');
         const base = await this._current(handle, sessionId, expectedRevisionId);
         const worlds = selectedWorlds({ atri_world_selection: worldSelection }, base.manifest, base.entryPoint);
+        if (Object.keys(base.states.atri_world_state.worlds).some(id => !worlds.some(world => world.world.worldId === id))) {
+            throw new TypeError('Removing a live World requires a supported Domain scope transition');
+        }
         const nextWorldState = initialWorldState(base.manifest, { ...base.entryPoint, initialStateOverlay: {} }, worldSelection);
+        if (!worlds.length || Object.hasOwn(base.states.atri_world_state, 'initialState')) nextWorldState.initialState = cloneNativeDocument(base.states.atri_world_state.initialState ?? {});
         for (const world of worlds) {
             const previous = base.states.atri_world_state.worlds[world.world.worldId];
-            if (previous?.worldRevisionId === world.revision.worldRevisionId) nextWorldState.worlds[world.world.worldId] = cloneNativeDocument(previous);
+            if (previous) nextWorldState.worlds[world.world.worldId].state = cloneNativeDocument(previous.state);
+            if (world.revision.schema) assertValidWorldState(nextWorldState.worlds[world.world.worldId].state, world.revision.schema);
         }
         const states = { ...base.states, atri_world_selection: worldSelection, atri_world_state: nextWorldState };
         delete states.atri_knowledge_runtime;

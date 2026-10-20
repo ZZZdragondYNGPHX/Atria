@@ -1,3 +1,4 @@
+import { subjectDefinitions } from '../../public/shared/native-subject-contract.js';
 import { materializeIllustrations, IMAGE_VERSION_NAMESPACE } from '../../public/shared/native-illustration-storage.js';
 import { PERSONA_NAMESPACE, assertPersonaState, assertPersonaIdentity, personaIdentity, personaAvatars } from './persona-contract.js';
 import { RUN_NAMESPACE, assertRunState, assertRunContinuation } from '../../public/shared/native-run-contract.js';
@@ -315,6 +316,7 @@ export function assertEntryPoint(value) {
         worldIds,
         knowledgeBindingIds,
     };
+    if (value.subjects !== undefined) result.subjects = subjectDefinitions(value.subjects);
     if (primaryActorId) result.primaryActorId = primaryActorId;
     if (primaryWorldId) result.primaryWorldId = primaryWorldId;
     for (const key of [
