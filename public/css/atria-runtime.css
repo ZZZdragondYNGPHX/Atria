@@ -142,3 +142,5 @@
 
 .atri-api-model-limits, .atri-api-advanced { min-width: 0; padding-top: 16px; border-top: 1px solid var(--line-1); }
 .atri-api-model-limits > summary, .atri-api-advanced > summary { color: var(--text-2); cursor: pointer; font-size: var(--fs-sm); }
+.atri-api-model-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.atri-api-preset-form { gap: 20px; }

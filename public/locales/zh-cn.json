@@ -11109,5 +11109,7 @@
     "Check the API preset connection, model, output budget and generation parameters.": "请检查 API 预设的连接、模型、输出预算和生成参数。",
     "This API preset changed in another editor. Reload it before saving again.": "此 API 预设已在其他页面改动，请重新加载后再保存。",
     "This model has no confirmed support for a required option. Review the API preset capabilities or choose another model.": "当前模型尚未确认支持所需选项，请检查 API 预设的模型能力或选择其他模型。",
-    "This model does not support a required option. Change the API preset parameters or choose another model.": "当前模型不支持所需选项，请修改 API 预设的参数或选择其他模型。"
+    "This model does not support a required option. Change the API preset parameters or choose another model.": "当前模型不支持所需选项，请修改 API 预设的参数或选择其他模型。",
+    "The provider model list could not be reached. Check the connection URL and network, or enter a model ID manually.": "无法访问服务商模型列表，请检查连接地址和网络，也可手动填写模型 ID。",
+    "Thinking: ${0}": "思考：${0}"
 }

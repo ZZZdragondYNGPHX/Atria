@@ -1,5 +1,5 @@
 import { generationFields, newPromptResource } from './prompt-authoring.js';
-import { runtimeRequest } from './runtime-client.js';
+import { runtimeRequest, runtimeRemediation } from './runtime-client.js';
 import { createStudioNativeId } from './studio-authoring.js';
 import { NATIVE_GENERATION_DEFAULTS as defaults } from '../../shared/native-generation-defaults.js';
 import { translateShellText as t } from '../atria-shell/localization.js';
@@ -17,24 +17,40 @@ export function mountApiPresetFields({ doc, form, data, resources, route, field,
     const connections = data.connections.filter(item => ['provider.openai-compatible', 'provider.openai-responses', 'provider.anthropic', 'provider.gemini', 'provider.raw-text'].includes(item.providerAdapter));
     const connection = field(modelFields, 'Connection', model.connectionProfileRef?.connectionProfileId || '',
         [['', 'Choose…'], ...connections.map(item => [item.connectionProfileId, item.displayName, true])]); connection.required = true;
-    button('Manage connections', () => host.openRuntimeSection('connections'), modelFields);
     const remote = field(modelFields, 'Remote model ID', model.remoteModelId); remote.required = true;
     const choices = field(modelFields, 'Available provider models', '', [['', 'Fetch models to choose…']]); choices.disabled = true;
+    choices.parentElement.hidden = true;
+    const actions = doc.createElement('div'); actions.className = 'atri-api-model-actions'; modelFields.append(actions);
     const feedback = doc.createElement('p'); feedback.className = 'atri-runtime-help'; feedback.setAttribute('role', 'status'); modelFields.append(feedback);
     let probeSequence = 0;
+    let probeController;
+    let discoveredModels = [];
     const fetch = button('Fetch models', async () => {
         if (!connection.value || fetch.disabled) { connection.reportValidity(); return; }
         const version = ++probeSequence, selected = data.connections.find(item => item.connectionProfileId === connection.value);
+        probeController?.abort(); probeController = new AbortController();
         fetch.disabled = true; fetch.setAttribute('aria-busy', 'true'); feedback.textContent = t('Fetching available models…');
+        feedback.setAttribute('role', 'status');
         try {
-            const result = await runtimeRequest('/connections/probe', { method: 'POST', body: selected, signal });
+            const result = await runtimeRequest('/connections/probe', { method: 'POST', body: selected, signal: AbortSignal.any([signal, probeController.signal]) });
             if (!isCurrent() || version !== probeSequence) return;
+            discoveredModels = result.models;
             choices.replaceChildren(); const empty = doc.createElement('option'); empty.textContent = t('Choose…'); empty.value = ''; choices.append(empty);
             for (const item of result.models) { const option = doc.createElement('option'); option.value = item.remoteModelId; option.textContent = item.displayName; choices.append(option); }
-            choices.disabled = !result.models.length; feedback.textContent = t('Choose a model. Fetching does not change saved configuration.');
-        } catch (error) { if (isCurrent() && version === probeSequence) { feedback.textContent = error.message; feedback.setAttribute('role', 'alert'); } } finally { fetch.disabled = false; fetch.removeAttribute('aria-busy'); }
-    }, modelFields);
-    choices.addEventListener('change', () => { if (choices.value) remote.value = choices.value; });
+            choices.parentElement.hidden = false; choices.disabled = !result.models.length; feedback.textContent = t('Choose a model. Fetching does not change saved configuration.');
+        } catch (error) { if (isCurrent() && version === probeSequence) { feedback.textContent = runtimeRemediation(error.code || error.message)[0]; feedback.setAttribute('role', 'alert'); } } finally { if (version === probeSequence) { fetch.disabled = false; fetch.removeAttribute('aria-busy'); } }
+    }, actions);
+    button('Manage connections', () => host.openRuntimeSection('connections'), actions);
+    choices.addEventListener('change', () => {
+        const item = discoveredModels.find(item => item.remoteModelId === choices.value); if (!item) return;
+        remote.value = item.remoteModelId;
+        if (item.limits?.contextTokens) context.value = item.limits.contextTokens;
+        if (item.limits?.outputTokens) output.value = item.limits.outputTokens;
+        model.limitProvenance = item.limitProvenance ?? {};
+        model.capabilities = item.capabilities ?? [];
+        for (const control of overrides) { control.value = model.capabilities.find(value => value.capability === control.capability); control.input.value = control.value?.state || ''; }
+        form.dispatchEvent(new doc.defaultView.Event('input', { bubbles: true }));
+    });
     const metadata = doc.createElement('details'); metadata.className = 'atri-api-model-limits';
     const summary = doc.createElement('summary'); summary.textContent = t('Model limits and capabilities'); metadata.append(summary); form.append(metadata);
     notice('These are model capabilities. The optional output budget below can request less.', metadata);
@@ -60,9 +76,11 @@ export function mountApiPresetFields({ doc, form, data, resources, route, field,
     let previousConnection = connection.value;
     connection.addEventListener('change', () => {
         try { generation = { ...generation, ...readGeneration() }; } catch { connection.value = previousConnection; return; }
-        previousConnection = connection.value; probeSequence++; choices.replaceChildren(); choices.disabled = true; feedback.textContent = ''; drawGeneration();
+        previousConnection = connection.value; probeSequence++; probeController?.abort(); fetch.disabled = false; fetch.removeAttribute('aria-busy');
+        choices.replaceChildren(); choices.disabled = true; choices.parentElement.hidden = true; feedback.textContent = ''; drawGeneration();
     });
     drawGeneration();
+    form.append(metadata);
     const reuse = doc.createElement('details'); reuse.className = 'atri-api-model-limits';
     const reuseTitle = doc.createElement('summary'); reuseTitle.textContent = t('Reuse saved configuration'); reuse.append(reuseTitle); form.append(reuse);
     notice('Copy saved values into this API preset. Saving does not change the original configuration.', reuse);
@@ -75,7 +93,8 @@ export function mountApiPresetFields({ doc, form, data, resources, route, field,
         for (const control of overrides) { control.value = item.capabilities.find(value => value.capability === control.capability); control.input.value = control.value?.state || ''; }
         connection.dispatchEvent(new doc.defaultView.Event('change')); form.dispatchEvent(new doc.defaultView.Event('input', { bubbles: true }));
     });
-    const savedGenerations = resources.filter(item => item.ref.scope === 'library' && item.ref.resourceType === 'core.generation-profile' && !item.archived);
+    const savedGenerations = data.profiles.filter(profile => !data.resources.find(item => item.resourceType === 'core.generation-profile' && item.resourceId === profile.generationProfileId)?.archived)
+        .map(resource => ({ resource }));
     const savedParameters = field(reuseFields, 'Saved generation parameters', '', [['', 'Choose…'], ...savedGenerations.map((item, index) => [String(index), item.resource.displayName, true])]);
     savedParameters.addEventListener('change', () => {
         if (!savedParameters.value) return;
