@@ -528,6 +528,14 @@
 - 浏览器实测原会话 More→世界档案→正式公开发言；同一真实浏览器中使用合成档案夹具验证授权字段、Tick 查询、140 链的继续分页、Enter 提交、过期／历史修订刷新及焦点。1440×1000 桌面和 390×844 touch／reduced-motion 模拟视口无横向溢出；修正窄屏底部导航遮挡来源末项。未测试物理移动设备或真实模型服务。按 Web Interface Guidelines 自检并修正标签／name、焦点恢复、末尾可达性；microinteractions 8 项诊断通过（10/10），无失败项；未新增动画。
 - Play 基础读取已接线；完整作者执行关联／起点预览、真实 Task／Orchestration 端到端与最终 main 集成仍待实施，整体任务继续。
 
+## Stage 51 — 正文片段的原状态条件表单与 baseline 预览（2026-10-20）
+
+- `603dd204`：World／Knowledge 正文的当前说法可在片段中展开状态绑定，复用原 applicability 的 provider、精确 path、类型化值、比较与 all／any，不再要求普通绑定只能编辑 Source。Knowledge Entry 与片段共用同一个条件表单，未新增判定器或规则存储；打开空表单不创建默认绑定。
+- World 表单按实际 World identity 枚举本草稿 baseline 的至多 128 个标量字段，作者可选择字段建立 exact state condition。Library 传入资源 identity，Studio 使用其现有 World snapshot identity；不靠显示名绑定。精确 provider／path 在来源详情中展开，未知字段可沿原手动条件编辑；新条件仍在 Review 时经过原共享 contract 校验。
+- 按需 baseline 预览复用原 `evaluateStateConditions` 与正文用途判定：当前匹配、历史用途、不可确认的来源说法明确区分。它只查看此 World baseline，不宣称已经计算 EntryPoint overlay、完整玩法或真实受众；修改输入立即清除旧预览。条件不执行动作、不修改起始值，法则文本没有因此自动获得可执行性。
+- 相关 6 个 JS ESLint、diff check 通过；原有效 Context 与作者资源闭包 11 项测试通过。localization.js 对 HEAD 的 215 项既有诊断新增 0 项，新增文案已补中文；全局本地化仍有既有其他页面缺失。
+- 真实浏览器中，合成编辑夹具验证匹配／不匹配预览、旧预览清除、正文 textarea identity／焦点与合成 IME 连续、条件进入 Review；实际隔离服务 Library 流程完成新 World→新修订→选择 baseline 字段→预览→Review→保存→重载重开，读回原修订精确绑定且 body／baseline 未被条件编辑改变。390×844 touch／reduced-motion 模拟视口无横向溢出，保存重开后技术引用默认折叠，布尔类型编辑可用。未宣称物理设备或完整游戏起点／受众预览；后者及执行关联、Task/V3 端到端继续实施。
+
 ## Current state
 
 产品实施进行中，主体／时间读取、动态个人视角与获知、作者固定依赖、正文编辑、有效 Context 及显式资源采用已有接线；完整 NPC 行动、参与者／媒体与 Play 功能继续实施。当前功能设计、代码差距与待决问题见 [Plan 入口](../../plans/architecture/world-evolution-consistency/index.md)。
