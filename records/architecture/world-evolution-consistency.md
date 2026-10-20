@@ -479,6 +479,15 @@
 - 隔离真实服务／浏览器完成测试作品安装与开局、作者资料编辑、My stories→Manage→Worlds & Knowledge 展示受影响对象、勾选采用并保存；API 回读确认勾选前修订不变，保存后世界／资料同时切换且可用更新消失。未触发真实模型请求。正文控件首次成功标注后收起重复新手说明；microinteractions 的 8 项诊断自检为 10/10，无新增动效。
 - 保留用户授权的并行模型参数改动 `31f706cf`、`80618f17`、`b4c27af6`、`70e0993b`、`312a6e14`：不恢复 minimumOutputTokens 或重复的生成参数权威。后续继续参与者／表达模板、NPC 行动及完整 Play 读取；整体尚未合入 main。
 
+## Stage 45 — 正式发言参与者、语音来源与固定 Host 合同（2026-10-19）
+
+- `1b407699`：原 Authority transaction 增加有界 `timeline.speech` 效果，Subject 接纳、业务效果、公开通信回执及发言在同一次 publication 提交；失败、过期或重复 finalize 不留下额外发言。私有读取不能直接成为公开发言，Simulation 不借此冒充现场通信。
+- Timeline 保留实际 Subject 与当时可选表达模板，公共投影只输出当次公开别名和逐消息不透明 handle；不暴露真身、别名等价映射或强制角色卡。Play 明确区分发言者与叙事者，原 Speech 管线可按已提交文字播放动态人物发言，并保留版本及分支新鲜度检查。
+- 固定 Package Bridge 对 schema 做精确匹配；保留原 conversation messages、presentation 与 history.query 合同，分别添加只读 conversation.participants 与 history.at 能力，均读取原 Timeline／Chronicle。内置雾灯旅舍 preflight 及隔离真实服务作品列表恢复 ready，generation/resources 返回 200。
+- 修复 Native Session 活跃或旧角色卡请求尚未返回时，getCharacters 用角色卡列表覆盖 Native 临时投影而反复弹出“活动角色不可用”的问题。浏览器显式调用后 Session／Revision 与投影保持不变。
+- 本地历史 5 项、正式发言 2 项验证通过，包含伪造 Draft 拒绝、原领域原子提交、重复 finalize、公共投影与别名篡改、Speech capture、存档往返与恢复前状态。相关 JS ESLint 与 diff check 通过。真实 Play 已确认独立 Speaker／公开别名与原叙事消息；模拟 390px 触摸／reduced-motion 无横向溢出。未生成真实音频、调用真实模型或验证物理设备。
+- 下一步继续原 Visual 的合法参与者接入及动态 NPC 行动；整体仍在实施，尚未合入 main。
+
 ## Current state
 
 产品实施进行中，主体／时间读取、动态个人视角与获知、作者固定依赖、正文编辑、有效 Context 及显式资源采用已有接线；完整 NPC 行动、参与者／媒体与 Play 功能继续实施。当前功能设计、代码差距与待决问题见 [Plan 入口](../../plans/architecture/world-evolution-consistency/index.md)。
