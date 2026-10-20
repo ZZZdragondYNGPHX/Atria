@@ -218,6 +218,7 @@ export function validateInformationState(snapshot) {
                 || !['witnessed', 'direct_message', 'told_by', 'public_broadcast', 'surveillance', 'rumor', 'inference'].includes(value[source.channelField]))) throw new TypeError('Invalid epistemic record');
             if (source.semantic === 'open_loop' && !['open', 'closed', 'superseded'].includes(value[source.statusField])) throw new TypeError('Invalid Open Loop status');
             if (isCognitionSource(source)) assertCognitionValue(source, value);
+            if (isCognitionSource(source) && value.deadline && !snapshot.manifest.runtime.experienceContract.lifecycleRuntime.clocks.some(clock => clock.id === value.deadline.clockId)) throw new TypeError('Cognition deadline requires a declared Domain Clock');
             if (hasInformationBasis(source)) assertCognitionBasis(value);
             if (isManagedMemory(source)) assertMemoryValue(source, value);
         }

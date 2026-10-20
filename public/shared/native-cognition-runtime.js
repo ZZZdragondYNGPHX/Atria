@@ -26,12 +26,20 @@ export function assertCognitionSource(source, domain) {
     if (source.actorField !== 'actor' || source.statusField !== 'status'
         || selectedFields.some(field => !source.fields.some(path => path.length === 1 && path[0] === field))) throw new TypeError('Cognition requires exact actor/status and selected plan fields');
     const properties = domain.recordSchema.properties;
+    if (properties.deadline && (properties.deadline.type !== 'object'
+        || properties.deadline.properties?.clockId?.type !== 'string' || properties.deadline.properties?.tick?.type !== 'integer'
+        || !properties.deadline.required?.includes('clockId') || !properties.deadline.required?.includes('tick')
+        || !source.fields.some(path => path.length === 1 && path[0] === 'deadline'))) throw new TypeError('Cognition deadline requires a selected Domain Clock and Tick');
     const types = { text: 'string', actor: 'string', status: 'string', goalId: 'string', commitmentIds: 'array', priority: 'integer', conflictKey: 'string', expiresAt: 'integer', basis: 'object' };
     if (Object.entries(types).some(([key, type]) => properties[key]?.type !== type || !domain.recordSchema.required.includes(key))
         || properties.commitmentIds.items?.type !== 'string') throw new TypeError('Cognition requires declared typed plan fields');
 }
 
 export function assertCognitionValue(source, value) {
+    if (value.deadline !== undefined) {
+        fields(value.deadline, ['clockId', 'tick'], 'Cognition game deadline');
+        if (!/^[a-z][a-z0-9._-]{0,63}$/.test(value.deadline.clockId) || !integer(value.deadline.tick)) throw new TypeError('Invalid cognition game deadline');
+    }
     if (isAppraisalSource(source)) {
         if (!statuses(source.semantic).includes(value.status) || !isPerspectiveIdentity(value.actor)
             || (source.semantic === 'theory_of_mind' ? !hypothesisShapeValid(source, value)
@@ -109,8 +117,13 @@ export function projectCognitionItems(snapshot, projection, values) {
         } else if (source.causalBasis) {
             item.causality = { sourceCurrent: current, status: current ? 'current' : 'stale' };
         } else {
+            const deadline = value.deadline;
+            const gameTick = deadline ? snapshot.states.atri_lifecycle.clocks[deadline.clockId] : null;
+            if (deadline && !integer(gameTick)) throw new TypeError('Cognition deadline Clock unavailable');
+            const expired = (value.expiresAt && snapshot.states.atri_lifecycle.logicalTime >= value.expiresAt)
+                || (deadline && gameTick >= deadline.tick);
             let status = ['paused', 'cancelled', 'abandoned', 'withdrawn'].includes(value.status) ? value.status
-                : ['active', 'proposed'].includes(value.status) && value.expiresAt && snapshot.states.atri_lifecycle.logicalTime >= value.expiresAt ? 'expired' : !current ? 'stale' : value.status;
+                : ['active', 'proposed'].includes(value.status) && expired ? 'expired' : !current ? 'stale' : value.status;
             item.cognition = { status, sourceCurrent: current, selection: status === 'active' && item.semantic === 'intention' ? selections.get(item.id) ?? 'current' : 'none' };
             if (item.semantic === 'theory_of_mind') {
                 const prediction = current && status === 'active' ? hypothesisObservation(source, value, leaves) : 'unknown';
