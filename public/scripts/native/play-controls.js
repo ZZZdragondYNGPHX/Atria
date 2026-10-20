@@ -404,12 +404,15 @@ export function mountNativePlayControls({
                     }
                 }
             }
-            // First steps stay visible until a model is connected and a story exists.
-            const begin = await renderBeforeYouBegin({ document: documentRef, root: content, works, host: globalThis.Atria?.shell?.getWorkspaceHost?.(), onChanged: renderLanding });
-            if (disposed || !content.isConnected) return;
-            if (begin.complete && sessions.length) begin.element.remove();
-            // One primary action per screen: while setup is incomplete, its next step leads.
-            else if (!begin.complete) browse.classList.remove('atria-play-primary');
+            // First steps stay visible until a model is connected and a story exists. They load
+            // beside the story list, never in front of it.
+            const beginSlot = documentRef.createElement('div'); content.append(beginSlot);
+            void renderBeforeYouBegin({ document: documentRef, root: beginSlot, works, host: globalThis.Atria?.shell?.getWorkspaceHost?.(), onChanged: renderLanding }).then(begin => {
+                if (disposed || !beginSlot.isConnected) return;
+                if (begin.complete && sessions.length) beginSlot.remove();
+                // One primary action per screen: while setup is incomplete, its next step leads.
+                else if (!begin.complete) browse.classList.remove('atria-play-primary');
+            }, () => beginSlot.remove());
             const section = (label, className) => {
                 const group = documentRef.createElement('section');
                 const heading = documentRef.createElement('h2'); heading.textContent = tl(label);

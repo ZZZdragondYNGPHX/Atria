@@ -22,6 +22,7 @@ export const MODEL_SERVICES = Object.freeze([
     { id: 'custom', name: 'Other compatible service', note: 'Any OpenAI-compatible endpoint', adapter: 'provider.openai-compatible', endpoint: '', custom: true },
 ]);
 
+const ENDPOINT_EXAMPLE = 'https://…/v1/chat/completions';
 const uid = prefix => prefix + '_' + crypto.randomUUID().replaceAll('-', '');
 const canonical = value => Array.isArray(value) ? '[' + value.map(canonical).join(',') + ']'
     : value && typeof value === 'object' ? '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}' : JSON.stringify(value);
@@ -119,7 +120,7 @@ export function openConnectModelWizard({ document: doc = globalThis.document, ho
             const endpoint = field(service.local ? 'Local address' : 'Endpoint URL', el('input', 'atria-onboard__input'),
                 'The full …/v1/chat/completions URL. No key, query or # in the address.');
             endpoint.type = 'url'; endpoint.value = state.endpoint; endpoint.dataset.autofocus = '';
-            endpoint.placeholder = 'https://…/v1/chat/completions';
+            endpoint.placeholder = ENDPOINT_EXAMPLE;
             endpoint.addEventListener('input', () => { state.endpoint = endpoint.value.trim(); sync(); });
             if (service.local) {
                 const presets = el('div', 'atria-onboard__chips', undefined, body);

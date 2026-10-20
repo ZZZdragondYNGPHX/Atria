@@ -67,15 +67,14 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
             if (slot.requiredCapabilities.length) el(doc, 'p', 'workspace-hint', fmt('Required capabilities: ${0}', [slot.requiredCapabilities.join(', ')]), group);
             // Invalid/stale/foreign refs are never handed to the picker as a selection.
             if (!selected(slot)) delete draft[slot.id];
-            // A single compatible route is suggested, never silently saved: Save still confirms it.
+            // Bindings stay explicit; a single compatible route is only named, never preselected.
             const compatible = slot.routes.filter(route => route.compatible);
-            const suggested = !draft[slot.id] && compatible.length === 1;
-            if (suggested) draft[slot.id] = { scope: 'player', runtimeRouteId: compatible[0].runtimeRouteId };
+            const suggested = !draft[slot.id] && compatible.length === 1 ? compatible[0] : null;
             const picker = mountRuntimeRoutePicker({ parent: group, label: label(slot.id), explicit: true,
                 routes: slot.routes.filter(route => route.compatible), value: draft[slot.id],
                 change: value => { if (value) draft[slot.id] = value; else delete draft[slot.id]; updateSave(); } });
             pickers.set(slot.id, picker);
-            if (suggested) el(doc, 'p', 'workspace-hint', t('Suggested: the only compatible route. Save to use it.'), group);
+            if (suggested) el(doc, 'p', 'workspace-hint', fmt('Only one route fits: ${0}. Choose it above to use it.', [suggested.displayName]), group);
             if (slot.error) el(doc, 'p', 'workspace-hint', taskBindingMessage(slot.error), group);
             for (const route of slot.routes.filter(route => !route.compatible)) el(doc, 'p', 'workspace-hint', route.displayName + ': ' + taskBindingMessage(route.error), group);
         }

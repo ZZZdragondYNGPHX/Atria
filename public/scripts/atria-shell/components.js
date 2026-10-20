@@ -382,26 +382,28 @@ export function createAtriaFileDrop(documentRef, {
         status.setAttribute('role', tone === 'danger' ? 'alert' : 'status');
     };
     const accepts = file => {
-        if (!accept) return true;
-        const name = file.name.toLowerCase();
-        return accept.split(',').map(item => item.trim().toLowerCase()).some(item => item.startsWith('.') ? name.endsWith(item) : item.endsWith('/*') ? file.type.startsWith(item.slice(0, -1)) : file.type === item);
+        const name = String(file.name || '').toLowerCase(), type = String(file.type || '');
+        // Without a name or type there is nothing to judge; the caller validates content.
+        if (!accept || (!name && !type)) return true;
+        return accept.split(',').map(item => item.trim().toLowerCase()).some(item => item.startsWith('.') ? name.endsWith(item) : item.endsWith('/*') ? type.startsWith(item.slice(0, -1)) : type === item);
     };
+    // A newer choice supersedes an older one; callers discard stale results by their own sequence.
+    let latest = 0;
     const take = async file => {
-        if (!file || zone.dataset.busy === 'true') return;
-        if (!accepts(file)) { report(`${translateShellText('This file type is not accepted here')}: ${file.name}`, 'danger'); return; }
-        if (maxBytes && file.size > maxBytes) { report(`${file.name} · ${formatAtriaBytes(file.size)} — ${translateShellText('larger than the limit of')} ${formatAtriaBytes(maxBytes)}`, 'danger'); return; }
-        zone.dataset.busy = 'true';
+        if (!file) return;
+        const label = file.name || translateShellText('Selected file');
+        if (!accepts(file)) { report(`${translateShellText('This file type is not accepted here')}: ${label}`, 'danger'); return; }
+        if (maxBytes && file.size > maxBytes) { report(`${label} · ${formatAtriaBytes(file.size)} — ${translateShellText('larger than the limit of')} ${formatAtriaBytes(maxBytes)}`, 'danger'); return; }
+        const attempt = ++latest;
         trigger.setAttribute('aria-busy', 'true');
-        report(`${translateShellText('Reading')} ${file.name}…`);
+        report(`${translateShellText('Reading')} ${label}…`);
         try {
             await onFile?.(file);
-            report('');
+            if (attempt === latest) report('');
         } catch (error) {
-            report(`${file.name}: ${error?.message || String(error)}`, 'danger');
+            if (attempt === latest) report(`${label}: ${error?.message || String(error)}`, 'danger');
         } finally {
-            delete zone.dataset.busy;
-            trigger.removeAttribute('aria-busy');
-            input.value = '';
+            if (attempt === latest) { trigger.removeAttribute('aria-busy'); input.value = ''; }
         }
     };
     trigger.addEventListener('click', () => input.click());
