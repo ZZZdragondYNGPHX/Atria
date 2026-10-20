@@ -23,7 +23,7 @@ function lookup(h, id) {
     return h.facts[id] ?? h.artifacts[id] ?? h.hooks[id] ?? (position ? h[position.tier][position.at] : h.anchors[id]);
 }
 export function queryHistory(snapshot, query = {}) {
-    fields(query, ['kind', 'facet', 'value', 'id', 'limit', 'cursor', 'memory'], 'Chronicle query');
+    fields(query, ['kind', 'facet', 'value', 'id', 'limit', 'cursor', 'memory', 'key', 'tick', 'clockId'], 'Chronicle query');
     const h = snapshot.states.atri_lifecycle?.history;
     if (!historyPolicy(snapshot) || !h) throw new TypeError('History is not declared');
     const limit = query.limit ?? 12;
@@ -33,6 +33,8 @@ export function queryHistory(snapshot, query = {}) {
     if (query.facet !== undefined && (!facets.includes(query.facet) || !['string', 'number'].includes(typeof query.value))) throw new TypeError('Chronicle facet');
     if (query.value !== undefined && query.facet === undefined) throw new TypeError('Chronicle facet required');
     if (query.id !== undefined && (typeof query.id !== 'string' || query.id.length > 128)) throw new TypeError('Chronicle id');
+    if (query.key !== undefined) return queryFactAt(snapshot, query);
+    if (query.tick !== undefined || query.clockId !== undefined) throw new TypeError('A temporal fact query requires its Domain key');
     const signature = JSON.stringify({ id: query.id, kind: query.kind, facet: query.facet, value: query.value, limit, memory: query.memory ?? false });
     let offset = 0;
     if (query.cursor !== undefined) {
@@ -69,6 +71,42 @@ export function queryHistory(snapshot, query = {}) {
     }
     return { schemaVersion: 1, anchor: { sessionId: snapshot.session.sessionId, revisionId: snapshot.revision.revisionId, branchId: snapshot.revision.branchId },
         items, scanned, indexScanned, next: offset < ids.length ? { revisionId: snapshot.revision.revisionId, signature, offset } : null };
+}
+
+// Follow the original domain-owned previous-value chain in bounded pages. No
+// replay, current-value inference or new history store is involved.
+function queryFactAt(snapshot, query) {
+    if (typeof query.key !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(query.key)
+        || ['id', 'facet', 'value', 'memory'].some(key => query[key] !== undefined)
+        || (query.kind !== undefined && query.kind !== 'fact')) throw new TypeError('Invalid fact query');
+    const policy = historyPolicy(snapshot), h = snapshot.states.atri_lifecycle.history;
+    const clockId = policy.clockId, now = snapshot.states.atri_lifecycle.clocks[clockId];
+    const tick = query.tick ?? now;
+    if (query.clockId !== undefined && query.clockId !== clockId) throw new TypeError('Fact query Clock mismatch');
+    if (!Number.isSafeInteger(tick) || tick < 0 || tick > now) throw new TypeError('Fact query Tick unavailable');
+    const signature = JSON.stringify({ key: query.key, tick, clockId });
+    let id = h.heads[query.key] ?? '';
+    if (query.cursor !== undefined) {
+        fields(query.cursor, ['revisionId', 'signature', 'factId'], 'Fact cursor');
+        if (query.cursor.revisionId !== snapshot.revision.revisionId || query.cursor.signature !== signature
+            || typeof query.cursor.factId !== 'string' || !/^history\.[1-9][0-9]*$/.test(query.cursor.factId)) throw new TypeError('Stale Fact cursor');
+        id = query.cursor.factId;
+    }
+    const items = []; let scanned = 0;
+    // A private current source never reveals even the existence of older rows.
+    if (h.facts[h.heads[query.key]]?.public) while (id && scanned++ < 128) {
+        const fact = h.facts[id];
+        if (!fact || fact.key !== query.key) throw new TypeError('Fact history unavailable');
+        if (fact.tick <= tick) {
+            if (fact.public) items.push({ ...structuredClone(fact), current: h.heads[query.key] === fact.id,
+                validFrom: fact.tick, ...(Object.hasOwn(fact, 'validUntil') ? { validUntil: fact.validUntil } : {}) });
+            id = ''; break;
+        }
+        id = fact.previousId;
+    } else id = '';
+    return { schemaVersion: 1, anchor: { sessionId: snapshot.session.sessionId, revisionId: snapshot.revision.revisionId, branchId: snapshot.revision.branchId },
+        clockId, tick, items, scanned: Math.min(scanned, 128), indexScanned: 0,
+        next: id ? { revisionId: snapshot.revision.revisionId, signature, factId: id } : null };
 }
 export function historyMetrics(snapshot) {
     const h = snapshot.states.atri_lifecycle?.history;

@@ -9,7 +9,7 @@ import { civil, instant, anniversary } from './native-lifetime-runtime.js';
 const S = maxLength => ({ type: 'string', maxLength });
 const O = (properties, required = Object.keys(properties)) => ({ type: 'object', properties, required, additionalProperties: false });
 const N = { type: 'integer', minimum: 0, maximum: Number.MAX_SAFE_INTEGER };
-export const CHRONICLE_QUERY = O({ id: S(128), kind: { ...S(16), enum: ['event', 'summary', 'fact', 'artifact', 'hook'] }, facet: { ...S(16), enum: ['year', 'actor', 'family', 'location', 'institution', 'case', 'claim', 'era', 'artifact'] }, value: S(128), cursor: S(2048) }, []);
+export const CHRONICLE_QUERY = O({ id: S(128), kind: { ...S(16), enum: ['event', 'summary', 'fact', 'artifact', 'hook'] }, facet: { ...S(16), enum: ['year', 'actor', 'family', 'location', 'institution', 'case', 'claim', 'era', 'artifact'] }, value: S(128), cursor: S(2048), key: S(128), tick: N, clockId: S(64) }, []);
 export const CHRONICLE_ROW = O({ id: S(128), label: S(512), kind: S(32), date: S(256), text: S(32768), source: S(8192), custody: S(8192), marked: { type: 'boolean' }, journaled: { type: 'boolean' }, clarity: S(16), refs: { type: 'array', maxItems: 64, items: O({ facet: S(32), value: S(128) }) }, refCount: N });
 export const CHRONICLE_PAGE = O({ revision: S(128), rows: { type: 'array', maxItems: 12, items: CHRONICLE_ROW }, next: S(2048) });
 export const WORLD_QUERY = O({ view: { ...S(16), enum: ['people', 'identity', 'delegation', 'regions', 'institutions', 'places', 'orientation', 'travel'] }, id: S(128), cursor: S(2048), transport: { ...S(16), enum: ['coach', 'rail', 'motor'] } }, ['view']);
@@ -27,7 +27,7 @@ function describe(value, prefix = '') {
     return Object.entries(value).map(([key, item]) => describe(item, prefix ? prefix + ' / ' + label(key) : label(key))).join('\n');
 }
 export function readChronicle(snapshot, input) {
-    const query = { ...input, limit: 12, memory: true };
+    const query = { ...input, limit: 12, ...(input.key === undefined ? { memory: true } : {}) };
     if (query.cursor) query.cursor = JSON.parse(query.cursor); else delete query.cursor;
     const page = queryHistory(snapshot, query);
     return { revision: page.anchor.revisionId, next: page.next ? JSON.stringify(page.next) : '', rows: page.items.map(item => {
@@ -38,7 +38,7 @@ export function readChronicle(snapshot, input) {
             text: item.kind === 'fact' ? describe(item.value) : item.content ?? item.summary ?? describe(item),
             source: describe({ id: item.id, ...(item.eventId ? { eventId: item.eventId } : {}), ...(item.previousId ? { previousId: item.previousId } : {}), ...(item.sourceId ? { sourceId: item.sourceId } : {}), ...(item.origin ? { origin: item.origin } : {}), ...(item.provenance ? { provenance: item.provenance } : {}) }),
             custody: describe({ ...(item.status ? { status: item.status } : {}), ...(item.holderId ? { holderId: item.holderId } : {}), ...(item.parentId ? { copyParent: item.parentId } : {}), ...(item.current !== undefined ? { currentFact: item.current } : {}), ...(item.count !== undefined ? { summarizedEvents: item.count } : {}), ...(item.provenanceCount !== undefined ? { provenanceLinks: item.provenanceCount, displayedLatestLinks: item.provenance.length } : {}), ...(item.transitions ? { transitions: item.transitions, transitionCount: item.transitionCount } : {}) }),
-            marked: item.memory.marked, journaled: item.memory.journaled, clarity: item.memory.clarity,
+            marked: item.memory?.marked ?? false, journaled: item.memory?.journaled ?? false, clarity: item.memory?.clarity ?? 'clear',
             refs: refs.slice(0, 64).map(ref => { const at = ref.indexOf(':'); return { facet: ref.slice(0, at), value: ref.slice(at + 1) }; }), refCount: refs.length };
     }) };
 }

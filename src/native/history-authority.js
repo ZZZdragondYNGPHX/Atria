@@ -105,9 +105,10 @@ export function prepareHistory(base, candidate, transaction, resolution, operati
         if (value === undefined || Buffer.byteLength(JSON.stringify(value)) > 8192) throw new TypeError('Missing or oversized canonical source');
         const previous = h.heads[source.id] ? h.facts[h.heads[source.id]] : null;
         if (previous && same(previous.value, value)) continue;
+        if (previous) previous.validUntil = clock;
         const factId = id(h);
         h.facts[factId] = { id: factId, kind: 'fact', key: source.id, label: source.label, value: copy(value), public: source.public,
-            tick: clock, year: event.year, refs: copy(source.refs), eventId: event.id, previousId: previous?.id ?? '',
+            tick: clock, validUntil: null, year: event.year, refs: copy(source.refs), eventId: event.id, previousId: previous?.id ?? '',
             provenance: { sessionId: base.session.sessionId, branchId: base.revision.branchId, sequence: chronology.sequence, source: source.domainId + '.' + source.recordId + '.' + source.path.join('.') } };
         h.heads[source.id] = factId;
         if (source.public) event.refs = [...new Set([...event.refs, ...source.refs])];
@@ -167,7 +168,8 @@ export function validateHistory(snapshot) {
         if (!source || fact.public !== source.public || fact.provenance.sessionId !== snapshot.session.sessionId
             || fact.provenance.source !== source.domainId + '.' + source.recordId + '.' + source.path.join('.')
             || !h.anchors[fact.eventId] || (fact.previousId && (!previous || previous.key !== fact.key || previous.tick > fact.tick
-                || Number(previous.id.split('.')[1]) >= Number(fact.id.split('.')[1])))) throw new TypeError('Canonical provenance');
+                || Number(previous.id.split('.')[1]) >= Number(fact.id.split('.')[1])))
+            || (fact.validUntil !== undefined && fact.validUntil !== null && (!Number.isSafeInteger(fact.validUntil) || fact.validUntil < fact.tick))) throw new TypeError('Canonical provenance');
     }
     for (const artifact of Object.values(h.artifacts)) {
         if (snapshot.states.atri_lifecycle.lifetimes && artifact.provenance.at(-1)?.holderId !== artifact.holderId) throw new TypeError('Artifact custody contradiction');
