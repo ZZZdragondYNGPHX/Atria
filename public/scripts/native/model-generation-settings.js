@@ -51,7 +51,7 @@ export function mountModelGenerationSettings({ document: doc, parent, modelForm,
     root.dataset.atriaDraftDirty = 'false';
     let sequence = 0, configuration, entries = [], selected = null, read, baseline = '', busy = false, targets = [], pending = [], reloadRequired = false, busyButton = null;
     const node = (tag, text, parent = root) => {
-        const el = doc.createElement(tag); if (text !== undefined) el.textContent = t(text); parent.append(el); return el;
+        const el = doc.createElement(tag); if (tag === 'button') el.className = 'atria-button'; if (text !== undefined) el.textContent = t(text); parent.append(el); return el;
     };
     const heading = node('h3', 'Generation parameters');
     heading.id = 'generation-settings-' + createStudioNativeId('view'); root.setAttribute('aria-labelledby', heading.id);
@@ -111,7 +111,7 @@ export function mountModelGenerationSettings({ document: doc, parent, modelForm,
         }
         if (!routes.some(route => route.modelProfileRef.modelProfileId === modelId)) node('p', 'No routes use this model and configuration yet. Select this scheme when creating a route.', owners);
         node('p', 'Only checked routes adopt the saved revision. Other routes keep their current settings.', owners);
-        const save = node('button', targets.length ? 'Save and apply to checked routes' : 'Save configuration revision', body); save.type = 'button'; save.className = 'atri-library-button atri-model-generation-save'; save.dataset.variant = 'primary';
+        const save = node('button', targets.length ? 'Save and apply to checked routes' : 'Save configuration revision', body); save.type = 'button'; save.className = 'atria-button atri-model-generation-save'; save.dataset.variant = 'primary';
         const head = configuration.resources.find(item => item.resourceType === TYPE && item.resourceId === entry.ref.resourceId);
         if (entry.ref.scope !== 'library' || !entry.fresh && head?.currentRevision !== entry.ref.revision) {
             for (const control of [fields, name, save]) { control.dataset.readOnly = 'true'; control.disabled = true; }
