@@ -3,8 +3,9 @@ const formats = ['provider.openai-compatible', 'provider.raw-text', 'provider.an
 
 // Non-generating, explicit-connection probe. Never follows provider-supplied URLs.
 export function prepareProviderDiscovery(connection) {
+    // Generation options do not apply to the model-list GET request.
     if (!formats.includes(connection.providerAdapter) || connection.transport !== 'transport.http'
-        || Object.keys(connection.options).length || Object.keys(connection.networkPolicy).length) fail('probe_unsupported');
+        || Object.keys(connection.networkPolicy).length) fail('probe_unsupported');
     const url = new URL(connection.endpoint);
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) fail('endpoint_invalid');
     const format = connection.providerAdapter.replace('provider.', '');
