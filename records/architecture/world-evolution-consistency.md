@@ -423,6 +423,23 @@
 - Plan 入口统一说明：WP-A～F 只表达功能依赖；恢复并授权实施后持续推进到整体完成，记录随实际工作更新，交付时集中说明结果。普通实现选择由执行者处理，必要自查限于实际改动与直接使用者。
 - 本次修改仅限上述文档与本任务交接，产品实施仍为 **Draft / Paused**。
 
+## Stage 38 — 产品实施启动（2026-10-19）
+
+- 当前任务正式进入产品实施，使用独立语义分支 `feat/dynamic-world`，起点 `main@d6657d68b`；主线与其它活跃任务工作树保持。
+- 正在落实 WP-A：在原 SessionState 接入受保护 Subject 身份、固定作者定义及 Authority Transaction 的运行时接纳，并由原 publication 填写提交来源。业务值仍由原领域持有，不新增 Store。
+- 实现提交 `c4769459`（误删前本地提交为 `27838292b`，后按保留源码重建）：WorldRevision／EntryPoint 可声明主体；固定 Authority Transaction 可按原 localRef／显式 Subject 复用身份或随效果接纳。`subjects.<binding>` 仅作为私有事务上下文进入领域效果，不自动进入安全回执。声明有条件且无实际效果时拒绝接纳。Host 同次填入正式 admission Branch／Revision，Generic Patch／删除均禁止主体区域。
+- 原修订 stateHeads 已自然纳入主体状态，真实 Turn 的主体／世界值／Receipt 原子提交、重复 finalize、回到接纳前 SavePoint、旧分支晚到结果拒绝、FS／SQLite 重载与完整 .atriasave 导出导入已验证。来源引用依原 Revision 图保留，无新增 Store／GC 服务。
+- 资源更新保留同 World 已发生状态和 Worldless overlay，并以所选 schema 核对；暂不支持的 live World 删除明确拒绝，避免丢失世界状态，后续仍需原领域 scope 转换。
+- 实际执行：7 项本地 Node 测试通过；9 个改动 JS 文件 ESLint、`git diff --check` 通过。测试与 fixture 仅在本地忽略目录，未提交。无真实模型／浏览器／设备证据。
+- 后续继续 WP-B 的有权历史读取与 WP-C～F 接线；上述结果不代表纯文字动态提案、NPC 行动或整体功能已完成。
+
+## Stage 39 — 事实时间读取与本地仓库恢复（2026-10-19）
+
+- 源码提交 `58f9a850`：原 History 前值链在变值时关闭旧值有效区间；原 queryHistory／Frontend Host 可按领域键、Clock 与 Tick 读取固定修订中的值，每页最多跟随 128 条链。游标固定 Revision／key／Tick，私有当前来源不披露旧记录；无 Clock／未来 Tick／错 Clock 不伪造历史。没有增加 Fact Store 或重放机制。
+- 历史本地验证 5 项通过，覆盖有效区间、固定修订、权限与游标、有界分页、原 Host 呈现及原 prepareHistory 不改旧快照。3 个改动 JS 的 ESLint 通过。WP-B 的纠错、其它领域时间／个人受众接线仍未整体完成。
+- 主仓库被用户误删后，按用户授权重新拉取，恢复误删前全部 13 个既有工作树的原分支／HEAD 注册（连同本任务现为 14 个），不覆盖其文件；共享依赖及 SQLite 原生二进制已恢复。源码重建提交与历史提交已推送 `origin/feat/dynamic-world`。旧文档误带原有内容的提交已撤回，所有设计草稿仍保留为未提交内容。
+- 重装依赖后动态世界 7 项与当时历史 4 项合跑通过；新增 Domain 历史验证后，历史 5 项通过。测试仅本地保留，不声称已完成真实模型／浏览器证据或 main 集成。
+
 ## Current state
 
-方案已整理，产品实施继续暂停；恢复状态见 Plan 入口。
+产品实施进行中，WP-A 主体基础、WP-B 时间读取已接入；后续功能继续。当前设计以本地 Plan 入口为准。
