@@ -49,7 +49,7 @@ export async function applyModelGeneration(ref, targets, { request = runtimeRequ
 export function mountModelGenerationSettings({ document: doc, parent, modelForm, modelId, readModel, signal, isCurrent, onChanged }) {
     const root = doc.createElement('section'); root.className = 'atri-model-generation'; parent.append(root);
     root.dataset.atriaDraftDirty = 'false';
-    let sequence = 0, configuration, entries = [], selected = null, read, baseline = '', busy = false, targets = [], pending = [], reloadRequired = false;
+    let sequence = 0, configuration, entries = [], selected = null, read, baseline = '', busy = false, targets = [], pending = [], reloadRequired = false, busyButton = null;
     const node = (tag, text, parent = root) => {
         const el = doc.createElement(tag); if (text !== undefined) el.textContent = t(text); parent.append(el); return el;
     };
@@ -65,8 +65,10 @@ export function mountModelGenerationSettings({ document: doc, parent, modelForm,
     const current = () => root.isConnected && isCurrent() && !signal.aborted;
     const message = (text, error = false) => { const el = node('p', text, feedback); el.setAttribute('role', error ? 'alert' : 'status'); return el; };
     function committed() { root.dataset.atriaDraftDirty = 'false'; root.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true })); }
-    function setBusy(value) {
+    function setBusy(value, action) {
         busy = value; root.dataset.atriaSavePending = String(value); root.setAttribute('aria-busy', String(value));
+        if (value && action) { busyButton = action; busyButton.setAttribute('aria-busy', 'true'); }
+        if (!value) { busyButton?.removeAttribute('aria-busy'); busyButton = null; }
         for (const control of root.querySelectorAll('button,input,select,textarea,fieldset')) control.disabled = value || control.dataset.readOnly === 'true';
         if (reloadRequired) body.querySelector('.atri-model-generation-save')?.setAttribute('disabled', '');
     }
@@ -109,7 +111,7 @@ export function mountModelGenerationSettings({ document: doc, parent, modelForm,
         }
         if (!routes.some(route => route.modelProfileRef.modelProfileId === modelId)) node('p', 'No routes use this model and configuration yet. Select this scheme when creating a route.', owners);
         node('p', 'Only checked routes adopt the saved revision. Other routes keep their current settings.', owners);
-        const save = node('button', targets.length ? 'Save and apply to checked routes' : 'Save configuration revision', body); save.type = 'button'; save.className = 'atri-model-generation-save';
+        const save = node('button', targets.length ? 'Save and apply to checked routes' : 'Save configuration revision', body); save.type = 'button'; save.className = 'atri-library-button atri-model-generation-save'; save.dataset.variant = 'primary';
         const head = configuration.resources.find(item => item.resourceType === TYPE && item.resourceId === entry.ref.resourceId);
         if (entry.ref.scope !== 'library' || !entry.fresh && head?.currentRevision !== entry.ref.revision) {
             for (const control of [fields, name, save]) { control.dataset.readOnly = 'true'; control.disabled = true; }
@@ -132,7 +134,7 @@ export function mountModelGenerationSettings({ document: doc, parent, modelForm,
                 if (busy || !current()) return;
                 if (root.dataset.atriaDraftDirty === 'true') { error(new Error(t('Save or discard parameter edits before applying an existing revision.'))); return; }
                 try { assertModelSaved(targets.filter(item => item.input.checked)); } catch (failure) { error(failure); return; }
-                feedback.replaceChildren(); message('Applying generation parameters…'); setBusy(true);
+                feedback.replaceChildren(); message('Applying generation parameters…'); setBusy(true, apply);
                 try {
                     const result = await applyModelGeneration(entry.ref, targets.filter(item => item.input.checked), { signal });
                     if (!current()) return;
@@ -156,7 +158,7 @@ export function mountModelGenerationSettings({ document: doc, parent, modelForm,
             const applying = targets.filter(item => item.input.checked);
             try { assertModelSaved(applying); } catch (failure) { error(failure); return; }
             value.revision = createStudioNativeId('rev');
-            feedback.replaceChildren(); message('Saving generation parameters…'); setBusy(true);
+            feedback.replaceChildren(); message('Saving generation parameters…'); setBusy(true, save);
             let published = false;
             try {
                 const saved = await publishModelGeneration(entry, value, { signal, onCommitted: () => { published = true; committed(); } });
@@ -182,7 +184,7 @@ export function mountModelGenerationSettings({ document: doc, parent, modelForm,
         const retry = node('button', 'Retry applying saved revision', feedback); retry.type = 'button';
         retry.addEventListener('click', async () => {
             if (busy || !current()) return;
-            setBusy(true);
+            setBusy(true, retry);
             try {
                 const result = await applyModelGeneration(ref, pending.length ? pending : failed, { signal });
                 if (!current()) return;

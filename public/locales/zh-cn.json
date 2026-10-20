@@ -11057,5 +11057,10 @@
     "The route could not use this configuration. Check its model limits and protocol settings.": "此路由无法使用该方案，请检查模型上限和协议参数。",
     "Save or discard generation parameter edits before saving the model.": "请先保存或放弃生成参数的改动，再保存模型。",
     "Copy configuration to Library": "将方案复制到个人库",
-    "A Library copy is ready. Save it to keep your parameter changes.": "已准备个人库副本，保存后即可保留参数改动。"
+    "A Library copy is ready. Save it to keep your parameter changes.": "已准备个人库副本，保存后即可保留参数改动。",
+    "Leave optional parameters at Default to use the provider defaults. Available thinking controls depend on the connection protocol and model.": "可选参数保留“默认”即可沿用服务商设置。可用的思考选项取决于连接协议和模型。",
+    "Thinking mode": "思考模式",
+    "Reasoning effort": "思考程度",
+    "Thinking level": "思考级别",
+    "Thinking budget tokens": "思考 token 预算"
 }
