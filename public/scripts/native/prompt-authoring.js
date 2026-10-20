@@ -82,7 +82,7 @@ export function generationFields(doc, fields, draft, isTracking = () => false, {
     const tools = select(doc, fields, 'Tool choice', [['', 'Host default'], ['auto', 'Auto'], ['none', 'None'], ['required', 'Required'], ['tool', 'Named tool']], draft.toolChoice?.value || '');
     const toolName = input(doc, fields, 'Tool name', draft.toolChoice?.name || '');
     const updateTool = () => { toolName.parentElement.hidden = tools.value !== 'tool'; }; tools.addEventListener('change', updateTool); updateTool();
-    element(doc, 'p', 'Use only controls supported by the selected route. OpenAI uses effort and cache key; Anthropic uses thinking mode and ephemeral cache; Gemini uses thinking budget or level. Unsupported combinations fail preview.', fields);
+    element(doc, 'p', providerAdapter ? 'Leave optional parameters at Default to use the provider defaults. Available thinking controls depend on the connection protocol and model.' : 'Use only controls supported by the selected route. OpenAI uses effort and cache key; Anthropic uses thinking mode and ephemeral cache; Gemini uses thinking budget or level. Unsupported combinations fail preview.', fields);
     const definitions = [
         ['reasoning', 'mode', 'Thinking mode (Anthropic)', [['adaptive', 'Adaptive'], ['enabled', 'Token budget'], ['disabled', 'Disabled']]],
         ['reasoning', 'effort', 'Reasoning effort (OpenAI / Anthropic adaptive)', ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'].map(item => [item, item])],
@@ -100,10 +100,11 @@ export function generationFields(doc, fields, draft, isTracking = () => false, {
         'provider.raw-text': [],
     }[providerAdapter];
     const controls = definitions.filter(([section, key]) => !supported || supported.includes(section + '.' + key) || draft[section]?.[key] !== undefined).map(([section, key, label, choices]) => {
+        if (providerAdapter && section === 'reasoning') label = { mode: 'Thinking mode', effort: 'Reasoning effort', level: 'Thinking level' }[key];
         if (section === 'reasoning' && key === 'effort' && providerAdapter) choices = choices.filter(([value]) => providerAdapter === 'provider.anthropic' ? ['low', 'medium', 'high', 'max'].includes(value) : value !== 'max');
         return { section, key, field: choices ? select(doc, fields, label, [['', 'Default'], ...choices], draft[section]?.[key] || '') : input(doc, fields, label, draft[section]?.[key] || '') };
     });
-    const budget = numeric('Thinking budget tokens (Anthropic / Gemini)', draft.reasoning?.budgetTokens ?? '', -1, undefined, true);
+    const budget = numeric(providerAdapter ? 'Thinking budget tokens' : 'Thinking budget tokens (Anthropic / Gemini)', draft.reasoning?.budgetTokens ?? '', -1, undefined, true);
     budget.parentElement.hidden = Boolean(providerAdapter && !['provider.anthropic', 'provider.gemini'].includes(providerAdapter) && draft.reasoning?.budgetTokens === undefined);
     if (providerAdapter) {
         for (const control of controls.filter(item => item.section === 'reasoning')) fields.insertBefore(control.field.parentElement, temperature.parentElement);
