@@ -28,6 +28,7 @@ import {
 } from './contracts.js';
 import { createNativeId, assertNativeId } from './identity.js';
 import { resolveSessionKnowledge, validateKnowledgeBindingSet, packageKnowledgeManifest, validateWorldKnowledgeBindings } from './session-knowledge.js';
+import { assertSpeechDraft, validateParticipants } from './participant-authority.js';
 import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument } from './repositories/common.js';
 import {
     SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE, RESERVED_SESSION_NAMESPACES,
@@ -211,6 +212,7 @@ export class SessionCore {
         const { session } = snapshot;
         const installed = await this._openPackage(handle, session.packageId, session.packageVersionId, session.entryPointId);
         validateSubjects({ ...snapshot, manifest: installed.manifest });
+        validateParticipants({ ...snapshot, manifest: installed.manifest });
         validateTaskRecords({ ...snapshot, manifest: installed.manifest });
         validateLifecycle({ ...snapshot, manifest: installed.manifest });
         validateLifetimes({ ...snapshot, manifest: installed.manifest }, { complete: true });
@@ -376,6 +378,7 @@ export class SessionCore {
     }
 
     _newEntry(base, draft, sequence = base.timeline.length, allowOutcomes = false) {
+        assertSpeechDraft(draft);
         if (Object.hasOwn(draft.metadata ?? {}, 'atri_player_identity')) throw personaFailure();
         const { entryDraft, projection, diagnostics } = normalizeMessageDraft(draft, allowOutcomes);
         if (draft.role === 'user') {
@@ -468,6 +471,7 @@ export class SessionCore {
         validateLifetimes({ ...base, states }, { complete: true });
         validateWorldState(states, base.manifest, base.entryPoint);
         validateWorldKnowledgeBindings(selectedWorlds(states, base.manifest, base.entryPoint), knowledge);
+        validateParticipants({ ...base, states, timeline });
         const revisionId = createNativeId('revision');
         states = publishSubjects(base, states, revisionId, branchId);
         if (sharedPublication) for (const turn of Object.values(states.atri_shared?.turns ?? {})) {
@@ -738,9 +742,10 @@ export class SessionCore {
                 && prepared.outcome === runPolicy.deathOutcome) {
                 candidate = { ...candidate, states: { ...candidate.states, [RUN_NAMESPACE]: { ...candidate.states[RUN_NAMESPACE], status: 'dead' } } };
             }
-            const { entry, variant } = this._newEntry(candidate, { role: 'assistant', envelope }, candidate.timeline.length, true);
-            return this._publish(handle, base, { states: candidate.states, timeline: [...candidate.timeline, entry],
-                entries: [...(player ? [player.entry] : []), entry], variants: [...(player ? [player.variant] : []), variant],
+            const spoken = (prepared.speeches ?? []).map((draft, index) => this._newEntry(candidate, draft, candidate.timeline.length + index));
+            const { entry, variant } = this._newEntry(candidate, { role: 'assistant', envelope }, candidate.timeline.length + spoken.length, true);
+            return this._publish(handle, base, { states: candidate.states, timeline: [...candidate.timeline, ...spoken.map(item => item.entry), entry],
+                entries: [...(player ? [player.entry] : []), ...spoken.map(item => item.entry), entry], variants: [...(player ? [player.variant] : []), ...spoken.map(item => item.variant), variant],
                 authorityPrepared: true, effectPolicy, ...publication, actionRequest: { ...request, assistantMessageId: entry.messageId },
                 taskRecord: { kind: 'turn', invocationId, fingerprint, requestHash, provenance, anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId,
                     outcomes: [], status: 'applied', authorityReceipt: { kind: 'authority', messageId: entry.messageId, authorityId: prepared.identity, inputHash: prepared.inputHash } } });

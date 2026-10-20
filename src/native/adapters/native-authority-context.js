@@ -10,6 +10,7 @@ export function emptyNativeContextPlan(request, resolved, source) {
 // observations; only the original finalizer can adopt their mechanical result.
 export function authorityContextItems(selected, snapshot, authorityContext) {
     return authorityContext ? selected.items.filter(item => item.id.startsWith('projection:') || item.kind === 'context.player-persona'
+        || item.id.startsWith('world:')
         || item.kind === 'context.history' || item.kind === 'context.input'
         || (informationDefinition(snapshot) && (item.id.startsWith('knowledge:') || item.id.startsWith('memory:')))) : selected.items;
 }
@@ -17,7 +18,7 @@ export function authorityContextItems(selected, snapshot, authorityContext) {
 export function appendAuthorityContext(items, authorityContext) {
     if (!authorityContext) return;
     const payload = authorityContext.mode === 'resolver' ? authorityContext.payload
-        : { instruction: 'Narrate only the frozen authority result. You have no mechanical write authority.', receipt: authorityContext.receipt };
+        : { instruction: 'Narrate only the frozen authority result. You have no mechanical write authority. Receipt communications are exact speaker messages published separately with this result; do not repeat them as new speech in the narrator prose.', receipt: authorityContext.receipt };
     items.push({ kind: 'context.input', id: 'authority-turn', content: JSON.stringify(authorityValue(payload)), provenance: [{ source: 'host.authority' }] });
     authorityValue(items);
 }

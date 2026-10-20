@@ -2847,6 +2847,7 @@ export function getCharacterSource(chId = this_chid) {
 }
 
 export async function getCharacters() {
+    if (nativeSessionRuntime.active) return;
     const primedCharacterPayload = primedCharacters;
     primedCharacters = null;
 
@@ -2872,6 +2873,9 @@ export async function getCharacters() {
         getData = await response.json();
     }
 
+    // A Native Session may open while the legacy catalog request is pending.
+    // Its transient character projection belongs to that Session, not this list.
+    if (nativeSessionRuntime.active) return;
     if (Array.isArray(getData)) {
         const previousAvatar = this_chid !== undefined ? characters[this_chid]?.avatar : null;
         // Snapshot every live chat pointer before the array is replaced.

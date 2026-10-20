@@ -34,7 +34,7 @@ export function mountSpeechControls({ document: doc, container, runtime, message
             const base = snapshot(), input = { sessionId: base.session.sessionId, revisionId: base.revision.revisionId };
             const current = () => { signal.throwIfAborted(); return snapshot(); };
             status.textContent = tl('Preparing audio…');
-            const description = await post('describe', input, signal); current();
+            const description = await post('describe', { ...input, messageId }, signal); current();
             const item = description.items.find(item => item.messageId === messageId && item.actorId === actorId);
             if (!item) throw new Error('native_speech_public_text_unavailable');
             if (!prepared) {

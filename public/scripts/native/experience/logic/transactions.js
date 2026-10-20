@@ -39,6 +39,16 @@ function effect(raw, context, lifecycle, reducers, authority, publication = fals
     const guard = ['when'];
     if (raw?.when !== undefined) predicate(raw.when, context);
     switch (raw?.kind) {
+        case 'timeline.speech': {
+            if (publication) throw new TypeError('Derived publication cannot speak');
+            fields(raw, ['kind', 'subjectId', 'displayName', 'content', ...guard], 'Transaction speech');
+            template(raw.subjectId, SUBJECT_ID_SCHEMA, context);
+            // Public speech uses the same explicit input/public outcome boundary
+            // as safe receipts; private reads and artifacts are not disclosure.
+            const publicContext = { args: context.args, resolution: context.resolution };
+            template(raw.displayName, { type: 'string', minLength: 1, maxLength: 256 }, publicContext);
+            template(raw.content, { type: 'string', minLength: 1, maxLength: 2048 }, publicContext); break;
+        }
         case 'world.event': {
             if (publication) throw new TypeError('Derived publication only supports typed App Commands');
             fields(raw, ['kind', 'type', 'payload', ...guard], 'Transaction World Event');
@@ -78,7 +88,7 @@ function budget(grants, effects, authority) {
     integer(grants, 0, authority.policy.maxReadGrants, 'read grants');
     integer(effects.length, 0, authority.policy.maxEffects, 'total effects');
     for (const [kind, max] of [['world.event', authority.policy.maxWorldEvents], ['app.command', authority.policy.maxAppCommands],
-        ['clock.advance', LIMITS.clockAdvances], ['workflow.transition', LIMITS.workflowTransitions]]) {
+        ['clock.advance', LIMITS.clockAdvances], ['workflow.transition', LIMITS.workflowTransitions], ['timeline.speech', 8]]) {
         integer(effects.filter(item => item.kind === kind).length, 0, max, kind);
     }
 }
@@ -179,6 +189,7 @@ export function compileTransactionDeclarations(raw, options) {
             }
         }
         effects(transaction.effects, context, lifecycle, raw.reducers ?? [], authority);
+        if (transaction.origin === 'simulation' && transaction.effects.some(effect => effect.kind === 'timeline.speech')) throw new TypeError('Offscreen communication must use its declared Domain');
         const clockIndex = transaction.effects.findIndex(effect => effect.kind === 'clock.advance');
         if (contract.simulationRuntime && clockIndex >= 0 && transaction.effects.slice(clockIndex + 1).some(effect => effect.kind === 'world.event')) throw new TypeError('Simulation clock must follow the player World effects');
         if (transaction.effects.some(item => item.kind === 'app.command' && outputs.includes(item.domainId))) throw new TypeError('Transaction cannot write derived publication output directly');

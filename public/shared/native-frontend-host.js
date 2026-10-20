@@ -1,7 +1,8 @@
-import { CHRONICLE_QUERY, CHRONICLE_PAGE, WORLD_QUERY, INTERVAL_QUERY, INTERVAL_RESULT } from './native-chronicle-host.js';
+import { CHRONICLE_QUERY, CHRONICLE_AT_QUERY, CHRONICLE_PAGE, WORLD_QUERY, INTERVAL_QUERY, INTERVAL_RESULT } from './native-chronicle-host.js';
 import { fields } from './native-frontend-contract.js';
 import { assertMessageProjection } from './native-message-contract.js';
 import { presentationText } from './native-processing-contract.js';
+import { publicParticipant } from './native-participant.js';
 
 const string = maxLength => ({ type: 'string', maxLength });
 export const hostObject = (properties = {}, required = Object.keys(properties)) => ({ type: 'object', properties, required, additionalProperties: false });
@@ -9,6 +10,7 @@ export const HOST_EMPTY = hostObject();
 const id = string(128), text = string(65536), number = { type: 'integer', minimum: 0, maximum: Number.MAX_SAFE_INTEGER };
 export const MESSAGE_SCHEMA = hostObject({ messageId: id, sequence: number, role: string(16), content: text, actorId: id, predecessorId: id, branchId: id, revisionId: id });
 export const MESSAGE_PRESENTATION_SCHEMA = hostObject({ ...MESSAGE_SCHEMA.properties, displayContent: text });
+export const PARTICIPANT_SCHEMA = hostObject({ messageId: id, sequence: number, participant: hostObject({ participantId: id, displayName: string(256), kind: { ...string(16), enum: ['speaker'] } }), branchId: id, revisionId: id });
 export const SESSION_SCHEMA = hostObject({ sessionId: id, branchId: id, revisionId: id, tailMessageId: id });
 export const EXPRESSION_STATUS_SCHEMA = hostObject({ status: { ...string(16), enum: ['ready', 'fallback'] }, actorId: id,
     intent: { ...string(16), enum: ['', 'inform', 'ask', 'reassure', 'decline', 'reflect'] }, reason: string(128), revisionId: id });
@@ -33,6 +35,7 @@ const targets = {
     'host.persona.openSelector': action(HOST_EMPTY, true),
     'host.world.view': { ...read(CHRONICLE_PAGE), inputSchema: WORLD_QUERY },
     'host.history.query': { ...read(CHRONICLE_PAGE), inputSchema: CHRONICLE_QUERY },
+    'host.history.at': { ...read(CHRONICLE_PAGE), inputSchema: CHRONICLE_AT_QUERY },
     'host.chronology.interval': { ...read(INTERVAL_RESULT), inputSchema: INTERVAL_QUERY },
     'host.media.resolve': { ...read(hostObject({ ref: MEDIA_REF_SCHEMA, status: { ...string(16), enum: ['available', 'denied', 'unavailable'] }, reasonCode: string(128) }), true), inputSchema: hostObject({ ref: MEDIA_REF_SCHEMA, type: { ...string(8), enum: ['image', 'audio', 'video'] } }) },
     'host.media.audioStatus': read(AUDIO_STATUS_SCHEMA, true),
@@ -45,6 +48,7 @@ const targets = {
     'host.presentation.announce': action(hostObject({ text: string(4096) }), true),
     'host.conversation.messages': read(MESSAGE_SCHEMA, false, true),
     'host.conversation.presentation': read(MESSAGE_PRESENTATION_SCHEMA, false, true),
+    'host.conversation.participants': read(PARTICIPANT_SCHEMA, false, true),
     'host.conversation.recent': { ...read({ type: 'array', items: MESSAGE_SCHEMA, maxItems: 32 }), inputSchema: hostObject({ beforeSequence: number }, []) },
     'host.tasks.presentation': { ...read({ type: 'array', maxItems: 32, items: hostObject({ invocationId: id, taskId: string(64), payloadJson: text }) }), inputSchema: hostObject({ taskId: string(64) }) },
     'host.conversation.status': read(SESSION_SCHEMA),
@@ -83,8 +87,12 @@ export function fixedHostTarget(target, blockSchema) {
 }
 export function projectConversation(snapshot) {
     return (snapshot.timeline ?? []).map((entry, sequence, all) => ({ messageId: entry.messageId, sequence: entry.sequence ?? sequence, role: entry.role,
-        content: entry.content, actorId: entry.actorId ?? '', predecessorId: all[sequence - 1]?.messageId ?? '',
+        content: entry.content, actorId: entry.participant ? '' : entry.actorId ?? '', predecessorId: all[sequence - 1]?.messageId ?? '',
         branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId }));
+}
+export function projectParticipants(snapshot) {
+    return (snapshot.timeline ?? []).filter(entry => entry.participant).map(entry => ({ messageId: entry.messageId, sequence: entry.sequence,
+        participant: publicParticipant(entry), branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId }));
 }
 export function projectPresentation(snapshot) {
     const processing = snapshot.manifest.runtime?.experienceContract?.processingRuntime;

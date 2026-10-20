@@ -1,5 +1,6 @@
 import { queryHistory } from './native-history-runtime.js';
 import { SUBJECT_NAMESPACE, hasPerspectiveIdentity, resolvePerspectiveView } from './native-subject-contract.js';
+import { publicParticipant } from './native-participant.js';
 import { INFORMATION_LIMITS, informationInteger } from './native-information-contract.js';
 import { isCognitionSource, assertCognitionValue, assertCognitionBasis, projectCognitionItems } from './native-cognition-runtime.js';
 import { hasInformationBasis, isManagedMemory, assertMemoryValue } from './native-memory-contract.js';
@@ -76,7 +77,11 @@ export function projectInformation(snapshot, viewId, { purpose = 'display', incl
             if (source.semantic === 'belief' && (!['known', 'believed', 'suspected', 'disputed'].includes(status)
                 || !['witnessed', 'direct_message', 'told_by', 'public_broadcast', 'surveillance', 'rumor', 'inference'].includes(value[source.channelField]))) throw new TypeError('Invalid epistemic record');
             const data = {};
-            for (const path of source.fields) { const selected = read(value, path); if (selected !== undefined) data[path.join('.')] = clone(selected); }
+            for (const path of source.fields) {
+                const selected = source.kind === 'timeline' && path[0] === 'participant' ? publicParticipant(value)
+                    : source.kind === 'timeline' && path[0] === 'actorId' && value.participant ? undefined : read(value, path);
+                if (selected !== undefined) data[path.join('.')] = clone(selected);
+            }
             const itemId = source.id + ':' + record.id;
             if (isCognitionSource(source)) { assertCognitionValue(source, value); cognitionValues.set(itemId, value); }
             if (hasInformationBasis(source)) { assertCognitionBasis(value); cognitionValues.set(itemId, value); }

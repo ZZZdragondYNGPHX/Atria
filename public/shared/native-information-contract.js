@@ -69,7 +69,7 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
             if (['domainId', 'actorField', 'statusField', 'channelField', 'participantsField'].some(key => source[key] !== undefined)
                 || source.semantic !== (source.kind === 'world' ? 'truth' : 'narrative')) throw new TypeError('Invalid source semantics');
             if (source.kind === 'world') reference(source.worldId);
-            else if (source.worldId !== undefined || paths.some(path => path.length !== 1 || !['content', 'role', 'actorId'].includes(path[0]))) throw new TypeError('Timeline projection only exposes canonical fields');
+            else if (source.worldId !== undefined || paths.some(path => path.length !== 1 || !['content', 'role', 'actorId', 'participant'].includes(path[0]))) throw new TypeError('Timeline projection only exposes canonical fields');
         }
         return { ...source, fields: paths };
     });

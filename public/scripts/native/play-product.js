@@ -10,6 +10,7 @@ import { renderSafeProse } from '../../shared/native-safe-prose.js';
 import { nativePlayGenerationBusy } from './play-generation.js';
 import { updateIllustrationSurface, releaseIllustrationSurface } from './illustration-surfaces.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
+import { publicParticipant } from '../../shared/native-participant.js';
 import {
     NATIVE_SESSION_LIFECYCLE,
     onNativeSessionLifecycle,
@@ -28,6 +29,7 @@ function activeRuntime() {
 function actorName(snapshot, entry) {
     if (entry?.role === 'user') return entry?.metadata?.atri_player_identity?.name || tl('You');
     if (entry?.role === 'system') return tl('System');
+    if (entry?.participant?.kind === 'speaker') return entry.participant.displayName;
     const actor = (snapshot?.manifest?.actors || []).find(item => item.actorId === entry?.actorId);
     return actor?.displayName || snapshot?.manifest?.name || 'Narrator';
 }
@@ -53,7 +55,7 @@ function messageNode(documentRef, snapshot, entry) {
     }
     const role = documentRef.createElement('span');
     role.className = 'atria-play-message__role';
-    role.textContent = tl(entry?.role === 'user' ? 'You' : entry?.role === 'system' ? 'System' : 'Narrator');
+    role.textContent = tl(entry?.role === 'user' ? 'You' : entry?.role === 'system' ? 'System' : entry?.participant?.kind === 'speaker' ? 'Speaker' : 'Narrator');
     role.hidden = role.textContent === name.textContent;
     const sequence = documentRef.createElement('span');
     sequence.className = 'atria-play-message__sequence';
@@ -372,13 +374,15 @@ export function mountAtriaPlayProduct({
         conversation.querySelector('.atria-play-conversation__empty')?.remove();
         entries.forEach((entry, index) => {
             const id = text(entry.messageId);
+            if (committedEntries.get(id)?.participant) entry = { ...entry, participant: publicParticipant(committedEntries.get(id)) };
             const node = existing.get(id) || messageNode(documentRef, snapshot, { ...committedEntries.get(id), ...entry });
             node.dataset.sequence = String(entry.sequence ?? window.from + index);
             node.setAttribute('aria-posinset', String(Number(node.dataset.sequence) + 1)); node.setAttribute('aria-setsize', String(window.total));
             existing.delete(id);
-            if (entry.role === 'assistant' && snapshot.manifest.runtime?.experienceContract?.informationRuntime?.narration?.expression) {
-                if (speechControls.has(id) && speechControls.get(id).actorId !== entry.actorId) { speechControls.get(id).dispose(); speechControls.delete(id); }
-                if (!speechControls.has(id)) speechControls.set(id, mountSpeechControls({ document: documentRef, container: node, runtime: activeRuntime, messageId: id, actorId: entry.actorId }));
+            if (entry.role === 'assistant' && (entry.participant?.kind === 'speaker' || snapshot.manifest.runtime?.experienceContract?.informationRuntime?.narration?.expression)) {
+                const speakerId = entry.participant?.participantId ?? (committedEntries.get(id)?.participant ? publicParticipant(committedEntries.get(id)).participantId : entry.actorId);
+                if (speechControls.has(id) && speechControls.get(id).actorId !== speakerId) { speechControls.get(id).dispose(); speechControls.delete(id); }
+                if (!speechControls.has(id)) speechControls.set(id, mountSpeechControls({ document: documentRef, container: node, runtime: activeRuntime, messageId: id, actorId: speakerId }));
                 speechControls.get(id).refresh();
             }
 

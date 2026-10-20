@@ -4,6 +4,7 @@ import { PERSONA_NAMESPACE, assertPersonaState, assertPersonaIdentity, personaId
 import { RUN_NAMESPACE, assertRunState, assertRunContinuation } from '../../public/shared/native-run-contract.js';
 import { TIMELINE_INDEX_NAMESPACE, timelineSelections } from '../../public/shared/native-timeline-index.js';
 import { assertInformationClosure } from '../../public/shared/native-information-contract.js';
+import { assertTimelineParticipant } from '../../public/shared/native-participant.js';
 import { assertMessageProjection, assertTurnEnvelope } from '../../public/shared/native-message-contract.js';
 export { assertMessageProjection, assertTurnEnvelope, assertConversationThread } from '../../public/shared/native-message-contract.js';
 
@@ -455,6 +456,7 @@ export function assertTimelineEntry(value) {
         role: text(value.role, 'TimelineEntry.role', { maxLength: 64 }),
         content: text(value.content == null ? '' : value.content, 'TimelineEntry.content', { allowEmpty: true, maxLength: 4 * 1024 * 1024 }),
         ...(value.actorId == null ? {} : { actorId: assertNativeId(value.actorId, 'actor', 'TimelineEntry.actorId') }),
+        ...(value.participant === undefined ? {} : { participant: assertTimelineParticipant(value.participant) }),
         variantIds,
         activeVariantId,
         metadata: value.metadata === undefined ? {} : cloneJson(plain(value.metadata, 'TimelineEntry.metadata'), 'TimelineEntry.metadata'),

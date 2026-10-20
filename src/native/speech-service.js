@@ -9,9 +9,20 @@ import { nativeTaskScheduler } from './task-scheduler.js';
 import { immutable, checkCancellation } from './model-prompt-runtime/execution-utils.js';
 import { selectNativeRuntimeRoute } from './adapters/generation-host.js';
 import { createLocalSpeechProvider } from './adapters/speech-provider.js';
+import { publicParticipant } from '../../public/shared/native-participant.js';
 
 const states = new WeakMap(), TTL = 600000;
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
+
+function participantSpeechPlan(base, entry) {
+    if (!entry?.participant || entry.role !== 'assistant') return null;
+    // timeline.speech is an explicit public Authority effect, unlike prose that
+    // merely quotes an NPC. Its committed alias/text are the playback grant.
+    const participant = publicParticipant(entry);
+    return { schemaVersion: 1, kind: 'expression_plan', mode: 'text', status: 'ready', actorId: participant.participantId,
+        anchor: { sessionId: base.session.sessionId, packageVersionId: base.session.packageVersionId, revisionId: base.revision.revisionId, branchId: base.revision.branchId, scopeEpochs: {} },
+        items: [{ id: 'speech:' + entry.messageId, recordId: entry.messageId, variantId: entry.activeVariantId, data: { content: entry.content, participant } }] };
+}
 
 // An explicit auxiliary consumer of an existing public Timeline message.
 // It produces an owned AssetStore file, never a World/Task result publication.
@@ -25,18 +36,20 @@ export class SpeechService {
     }
     voices(signal) { return this.provider.listVoices({ signal }); }
     async describe(handle, raw, { observe = false } = {}) {
-        fields(raw, ['sessionId', 'revisionId'], 'Speech description');
+        fields(raw, ['sessionId', 'revisionId', 'messageId'], 'Speech description');
+        if (raw.messageId !== undefined && (typeof raw.messageId !== 'string' || !/^msg_[a-f0-9]{32}$/.test(raw.messageId))) fail('native_speech_request_invalid');
         const base = await (observe ? this.host.sessionCore.observe(handle, raw.sessionId) : this.host.sessionCore.load(handle, raw.sessionId));
         if (base.revision.revisionId !== raw.revisionId) fail('native_speech_revision_conflict');
         let scanned = 0;
         const onScan = count => { scanned += count; if (scanned > 4096) fail('native_speech_scan_limit'); };
         const information = informationContext(base, { kind: 'narrator' }, undefined, { includeRollups: false, onScan });
         const plan = deriveExpressionPlan(base, information, { onScan });
-        if (plan?.status !== 'ready') return { items: [], revisionId: raw.revisionId };
         const items = [];
-        for (const item of plan.items) {
+        const candidates = [...(plan?.status === 'ready' ? plan.items.filter(item => !raw.messageId || item.recordId === raw.messageId) : []),
+            ...base.timeline.filter(entry => entry.participant && (!raw.messageId || entry.messageId === raw.messageId)).slice(-8).map(entry => participantSpeechPlan(base, entry).items[0])];
+        for (const item of candidates) {
             const captured = await this._capture(handle, { ...raw, itemId: item.id, voiceId: '', rate: 0, volume: 100 }, { observe });
-            if (!captured.fallback) items.push({ itemId: item.id, messageId: item.recordId, actorId: plan.actorId });
+            if (!captured.fallback && !items.some(value => value.messageId === item.recordId)) items.push({ itemId: item.id, messageId: item.recordId, actorId: captured.plan.actorId });
         }
         return { items, revisionId: raw.revisionId };
     }
@@ -48,21 +61,22 @@ export class SpeechService {
         await this.host.sessionCore.runs.assert(handle, input.sessionId, 'generate', input.revisionId);
         let scanned = 0;
         const onScan = count => { scanned += count; if (scanned > 4096) fail('native_speech_scan_limit'); };
-        const information = informationContext(base, { kind: 'narrator' }, undefined, { includeRollups: false, onScan });
-        const plan = deriveExpressionPlan(base, information, { onScan });
+        const direct = base.timeline.find(entry => entry.participant && 'speech:' + entry.messageId === input.itemId);
+        const information = direct ? null : informationContext(base, { kind: 'narrator' }, undefined, { includeRollups: false, onScan });
+        const plan = direct ? participantSpeechPlan(base, direct) : deriveExpressionPlan(base, information, { onScan });
         if (plan?.status !== 'ready') return { fallback: { status: 'fallback', reason: 'native_speech_public_text_unavailable' } };
         const item = plan.items.find(item => item.id === input.itemId);
-        const source = base.manifest.runtime.experienceContract.informationRuntime.sources.find(value => value.id === item?.sourceId);
+        const source = base.manifest.runtime?.experienceContract?.informationRuntime?.sources.find(value => value.id === item?.sourceId);
         const entry = base.timeline.find(value => value.messageId === item?.recordId);
-        if (source?.kind !== 'timeline' || !item?.variantId || entry?.role !== 'assistant' || entry.actorId !== plan.actorId
-            || item.data.actorId !== plan.actorId || item.data.content !== entry.content || item.variantId !== entry.activeVariantId
+        if ((!direct && (source?.kind !== 'timeline' || entry?.actorId !== plan.actorId || item?.data.actorId !== plan.actorId))
+            || !item?.variantId || entry?.role !== 'assistant' || item.data.content !== entry.content || item.variantId !== entry.activeVariantId
             || typeof entry.content !== 'string' || !entry.content.trim() || entry.content.length > 2048) {
             return { fallback: { status: 'fallback', reason: 'native_speech_public_text_unavailable' } };
         }
         const route = selectNativeRuntimeRoute(await this.host.persistence.listRuntimeRoutes(handle), 'role.narrator', input.routeRef);
         if (route.scope !== 'player') fail('native_speech_route_invalid');
         return { base, text: entry.content, plan, route, fingerprint: hash({ plan, item, route, voiceId: input.voiceId, rate: input.rate, volume: input.volume }),
-            items: base.timeline.length + Object.values(base.states.atri_lifecycle.domains).reduce((count, domain) => count + domain.records.length, 0) + 1,
+            items: base.timeline.length + Object.values(base.states.atri_lifecycle?.domains ?? {}).reduce((count, domain) => count + domain.records.length, 0) + 1,
             bytes: Buffer.byteLength(JSON.stringify({ base, input })) };
     }
     async _fresh(handle, input, captured) {

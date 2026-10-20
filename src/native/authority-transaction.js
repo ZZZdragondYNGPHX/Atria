@@ -1,5 +1,6 @@
 import { readTaskArtifact, markTaskArtifactConsumption } from './task-artifact-authority.js';
 import { prepareSubjects } from './subject-authority.js';
+import { prepareSpeechDraft } from './participant-authority.js';
 import { runPackageComputation } from './package-computation.js';
 import { prepareLifetimes, validateLifetimes } from './lifetime-authority.js';
 import { lifetimePolicy } from '../../public/shared/native-lifetime-contract.js';
@@ -247,11 +248,16 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
     const subjects = prepareSubjects(candidate, transaction.subjects, { template, predicate }, resolved, identity);
     const context = freeze({ ...resolved, subjects });
     const rules = createRulesEngine(logic.rules, { onEvaluation: () => budget.rule() });
-    let applied = 0;
+    let applied = 0; const speeches = [];
     for (const effect of transaction.effects) {
         if (effect.when !== undefined && !predicate(effect.when, context)) continue;
         applied++;
-        if (effect.kind === 'world.event') {
+        if (effect.kind === 'timeline.speech') {
+            budget.step();
+            const publicContext = { args, resolution };
+            speeches.push(prepareSpeechDraft(candidate, { subjectId: template(effect.subjectId, context),
+                displayName: template(effect.displayName, publicContext), content: template(effect.content, publicContext) }, identity));
+        } else if (effect.kind === 'world.event') {
             const draft = { type: effect.type, payload: template(effect.payload, context), meta: { authorityId: identity } };
             const ruled = await rules.process([draft], { beforeState: world.getState(),
                 project: events => world.simulateEventsInternal(events),
@@ -271,7 +277,7 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
     const computationState = transaction.computation ? { args, beforeReads: reads, computed, resolution, seed: identity, artifacts } : null;
     await checkComputation(candidate, installed, contract, transaction, budget, computationState, execution);
     for (const item of consumed) markTaskArtifactConsumption(candidate, item, identity);
-    return { resolution, computationState, execution, artifacts: consumed.map(item => item.evidence) };
+    return { resolution, computationState, execution, artifacts: consumed.map(item => item.evidence), speeches };
 }
 
 async function checkComputation(candidate, installed, contract, transaction, budget, state, evidence) {
@@ -353,9 +359,10 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest) {
         const projection = budget.typed(template(transaction.receipt.projection, { args, resolution }), transaction.receipt.schema);
         const receipt = bounded({ schemaVersion: 1, authorityId: identity, transactionId: transaction.id, verb: transaction.verb,
             anchor: request.anchor, playerMessageId: player.messageId, result: projection,
+            ...(executed.speeches.length ? { communications: executed.speeches.map(draft => ({ speaker: draft.participant.displayName, text: draft.content })) } : {}),
             ...(executed.execution.length ? { execution: executed.execution } : {}),
             ...(executed.artifacts.length ? { artifacts: executed.artifacts } : {}) }, transaction.receipt.maxBytes);
-        return freeze({ candidate, receipt, identity, inputHash, outcome: resolution.outcome, work: { ...budget.counts } });
+        return freeze({ candidate, receipt, identity, inputHash, outcome: resolution.outcome, speeches: executed.speeches, work: { ...budget.counts } });
     } catch (error) { throw failure('transaction preparation', authorityPublicRefusal(error)); }
 }
 

@@ -1,5 +1,6 @@
 import { projectActorDefinition, legacyActorText } from '../../shared/native-actor-profile.js';
 import { assertMessageProjection, assertTurnEnvelope } from '../../shared/native-message-contract.js';
+import { publicParticipant } from '../../shared/native-participant.js';
 // Runtime ABI only. No storage, filename lookup, latest-pointer resolution or host DOM.
 const copy = value => JSON.parse(JSON.stringify(value));
 const EXTRA_FIELDS = ['bias', 'reasoning', 'reasoning_duration', 'reasoning_type', 'token_count', 'api', 'model',
@@ -62,6 +63,7 @@ export function committedMessageFingerprint(message) {
         messageId: message?.atri_native?.messageId ?? null,
         role: runtimeRole(message),
         actorId: message?.atri_native?.actorId ?? null,
+        ...(message?.atri_native?.participant ? { participant: copy(message.atri_native.participant) } : {}),
         selectedVariantId: Number.isInteger(selected) ? ids[selected] ?? null : null,
         variantIds: [...ids],
         variants: swipes.map((content, position) => ({
@@ -128,7 +130,7 @@ function variantMessage(entry, variant, actors) {
             name: asset.title, title: asset.title, size: asset.size, type: asset.mediaType, created: asset.created });
     }
     if (extra.media?.length) { extra.media_index = 0; extra.inline_image = true; }
-    return { ...runtime, name: metadata.displayName || actors.find(actor => actor.actorId === entry.actorId)?.displayName
+    return { ...runtime, name: entry.participant?.displayName || metadata.displayName || actors.find(actor => actor.actorId === entry.actorId)?.displayName
         || (entry.role === 'user' ? 'User' : 'Narrator'),
     is_user: entry.role === 'user', is_system: entry.role === 'system', mes: variant.content,
     send_date: runtime.send_date ?? variant.createdAt, extra };
@@ -153,7 +155,8 @@ export function projectNativeSession(snapshot) {
             atri_native: {
                 messageId: entry.messageId,
                 variantIds: [...entry.variantIds],
-                actorId: entry.actorId ?? null,
+                actorId: entry.participant ? null : entry.actorId ?? null,
+                ...(entry.participant ? { participant: publicParticipant(entry) } : {}),
                 role: entry.role,
                 ...(activeVariant?.projection ? { projection: assertMessageProjection(activeVariant.projection, activeVariant.content) } : {}),
                 provenance: copy(activeVariant?.metadata?.provenance ?? null),
