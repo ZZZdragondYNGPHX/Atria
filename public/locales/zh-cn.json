@@ -11091,5 +11091,14 @@
     "Thinking mode": "思考模式",
     "Reasoning effort": "思考程度",
     "Thinking level": "思考级别",
-    "Thinking budget tokens": "思考 token 预算"
+    "Thinking budget tokens": "思考 token 预算",
+    "Updating a World keeps its committed state. Source updates create a new story revision; previous revisions and personal memories keep their original sources.": "更新世界会保留已发生的状态。采用新来源将创建新的故事修订；旧修订与个人获知仍保留原来源。",
+    "Edited Work sources available": "作品有已编辑的来源可用",
+    "Use these edited Work sources": "采用这些作品来源更新",
+    "Selected Worlds include their fixed Knowledge dependencies automatically.": "所选世界将自动包含其固定的资料依赖。",
+    "Dependent Worlds": "使用此资料的世界",
+    "Edit this Work source. Existing stories keep their resources until you choose an update.": "编辑此作品来源。已有故事继续使用原资源，直到你明确选择更新。",
+    "Saving creates a new Work version and new revisions of Worlds that use this source. Existing stories keep their resources until you choose an update.": "保存会创建新的作品版本，以及使用此资料的世界修订。已有故事继续使用原资源，直到你明确选择更新。",
+    "A selected World requires its fixed Knowledge configuration. Keep that source or select a World revision that uses the new source.": "所选世界需要其固定的资料配置。请保留该来源，或选择使用新来源的世界修订。",
+    "The available resource updates changed. Reopen resource choices and review the exact versions before saving.": "可用资源更新已变化，请重新打开资源选择并核对精确版本后保存。"
 }

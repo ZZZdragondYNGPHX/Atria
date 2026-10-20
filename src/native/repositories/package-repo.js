@@ -149,7 +149,7 @@ export class PackageRepo {
         });
     }
 
-    async publishKnowledgeEdit(handle, packageId, packageVersionId, { expectedCurrentVersionId, knowledgeBaseId, knowledgeRevisionId }) {
+    async publishKnowledgeEdit(handle, packageId, packageVersionId, { expectedCurrentVersionId, knowledgeBaseId, knowledgeRevisionId, snapshot, worldUpdates = [] }) {
         assertWritable();
         return this._engine.withTransaction(handle, async tx => {
             const rootKey = this._packageKey(handle, packageId), root = await getNativeDocument(tx, rootKey);
@@ -160,6 +160,10 @@ export class PackageRepo {
                 const next = cloneNativeDocument(record.doc); next.packageVersionId = packageVersionId;
                 next.resolved.knowledge.bindings = next.resolved.knowledge.bindings.map(binding => binding.source.kind === 'package' && binding.source.knowledgeBaseId === knowledgeBaseId
                     ? { ...binding, source: { ...binding.source, knowledgeRevisionId } } : binding);
+                if (snapshot && next.resolved.knowledge.bindings.some(binding => binding.source.kind === 'package' && binding.source.knowledgeBaseId === knowledgeBaseId)) {
+                    next.resolved.knowledge.snapshots = [...next.resolved.knowledge.snapshots.filter(item => item.kind !== 'package' || item.snapshot.knowledgeBase.knowledgeBaseId !== knowledgeBaseId), { kind: 'package', snapshot }];
+                }
+                next.resolved.worldSelection.worlds = next.resolved.worldSelection.worlds.map(world => worldUpdates.find(update => update.previousRevisionId === world.revision.worldRevisionId && update.snapshot.world.worldId === world.world.worldId)?.snapshot ?? world);
                 await putMutable(tx, record.key, next, { expectedIntegrity: record.integrity });
             }
             await putMutable(tx, rootKey, { ...root, currentVersionId: packageVersionId, updatedAt: Math.max(Date.now(), root.updatedAt || 0) });

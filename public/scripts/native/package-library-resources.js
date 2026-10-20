@@ -54,7 +54,7 @@ export async function mountPackageLibraryOriginal({ document: doc, root, ref, ho
         const reload = async () => { root.replaceChildren(); await mountPackageLibraryOriginal({ document: doc, root, ref, host }); };
         const edit = (initialEntryId, entryEnabled, entryAction) => {
             root.replaceChildren();
-            mountLibraryRevisionEditor({ document: doc, root, knowledge: true, detail: { ...snapshot, selectedRevision: snapshot.revision }, initialEntryId, entryEnabled, entryAction, onClose: reload, onSaved: async () => {
+            mountLibraryRevisionEditor({ document: doc, root, knowledge: true, detail: { ...snapshot, selectedRevision: snapshot.revision }, dependentWorlds: detail.dependentWorlds, initialEntryId, entryEnabled, entryAction, onClose: reload, onSaved: async () => {
                 const { nativeSessionRuntime } = await import('./session-runtime.js');
                 if (nativeSessionRuntime.snapshot?.session.packageId === ref.packageId) await nativeSessionRuntime.reload();
                 void host.refreshSearch?.(); await reload();

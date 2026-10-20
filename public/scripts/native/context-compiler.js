@@ -532,9 +532,11 @@ async function knowledgeItems(snapshot, target, memoryEvidence, options) {
 }
 
 function worldTextItems(snapshot, target, information, providers) {
-    const selected = new Set(snapshot.entryPoint?.worldIds ?? Object.keys(snapshot.states.atri_world_state?.worlds ?? {}));
+    const worlds = snapshot.worlds ?? snapshot.manifest.worlds ?? [];
+    const selected = new Set(snapshot.worlds ? worlds.map(item => item.world.worldId)
+        : snapshot.entryPoint?.worldIds ?? Object.keys(snapshot.states.atri_world_state?.worlds ?? {}));
     const granted = information ? new Set(information.worlds ?? []) : target.kind === 'narrator' ? selected : new Set();
-    return (snapshot.manifest.worlds ?? []).filter(item => selected.has(item.world.worldId) && granted.has(item.world.worldId)
+    return worlds.filter(item => selected.has(item.world.worldId) && granted.has(item.world.worldId)
         && item.revision.body && targetMatches(item.revision.delivery?.target ?? 'narrator', target)
         && (!item.revision.delivery?.visibility?.length || item.revision.delivery.visibility.includes(target.kind))).map(item => {
         const { world, revision } = item;

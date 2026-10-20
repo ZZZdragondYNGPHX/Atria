@@ -55,6 +55,7 @@ export function mountAuthoredContentEditor({ document: doc, root, value, key = '
         if (value.annotations?.some(note => start < note.end && end > note.start)) throw new Error(tl('This selection overlaps an existing annotation. Select that passage to edit its use.'));
         (value.annotations ??= []).push({ id: 'passage.' + crypto.randomUUID(), start, end, quote: area.value.slice(start, end), context: { usage: usage.value } });
         value.annotations.sort((a, b) => a.start - b.start); renderNotes();
+        description.hidden = true;
         list.querySelector('select')?.focus();
     });
     renderNotes();

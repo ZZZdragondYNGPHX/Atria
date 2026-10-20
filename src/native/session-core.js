@@ -27,7 +27,7 @@ import {
     NATIVE_RESOURCE_KINDS,
 } from './contracts.js';
 import { createNativeId, assertNativeId } from './identity.js';
-import { resolveSessionKnowledge, validateKnowledgeBindingSet, packageKnowledgeManifest } from './session-knowledge.js';
+import { resolveSessionKnowledge, validateKnowledgeBindingSet, packageKnowledgeManifest, validateWorldKnowledgeBindings } from './session-knowledge.js';
 import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument } from './repositories/common.js';
 import {
     SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE, RESERVED_SESSION_NAMESPACES,
@@ -222,6 +222,7 @@ export class SessionCore {
         if (snapshot.states[PERSONA_NAMESPACE]) assertPersonaState(snapshot.states[PERSONA_NAMESPACE]);
         const knowledge = validateKnowledgeBindingSet(snapshot.knowledge, installed.manifest, installed.entryPoint);
         const worlds = selectedWorlds(snapshot.states, installed.manifest, installed.entryPoint);
+        validateWorldKnowledgeBindings(worlds, knowledge);
         const base = { ...snapshot, knowledge, manifest: packageKnowledgeManifest(installed.manifest, knowledge), entryPoint: installed.entryPoint, worlds };
         if (snapshot.states.atri_game_regex) base.manifest = { ...base.manifest, processors: { ...base.manifest.processors, regex: normalizeNativeRegexScripts(snapshot.states.atri_game_regex.regexScripts) } };
         if (!options.revisionId && !options.skipPackageEdits) {
@@ -233,18 +234,6 @@ export class SessionCore {
                     if (error.code !== 'native_session_head_conflict' || options.retriedRegex) throw error;
                 }
                 return this.load(handle, sessionId, { ...options, retriedRegex: true });
-            }
-            const edits = await this._packages.currentKnowledgeEdits?.(handle, session.packageId, knowledge.bindings, session.packageVersionId) || [];
-            if (edits.length) {
-                const revisions = new Map(edits.map(item => [item.knowledgeBase.knowledgeBaseId, item.revision.knowledgeRevisionId]));
-                const next = { ...knowledge, bindings: knowledge.bindings.map(binding => binding.source.kind === 'package' && revisions.has(binding.source.knowledgeBaseId)
-                    ? { ...binding, source: { ...binding.source, knowledgeRevisionId: revisions.get(binding.source.knowledgeBaseId) } } : binding),
-                snapshots: [...knowledge.snapshots.filter(item => item.kind !== 'package' || !revisions.has(item.snapshot.knowledgeBase.knowledgeBaseId)), ...edits.map(snapshot => ({ kind: 'package', snapshot }))] };
-                const states = { ...base.states }; delete states.atri_knowledge_runtime;
-                try { return await this._publish(handle, { ...base, manifest: packageKnowledgeManifest(base.manifest, next) }, { knowledge: next, states }); } catch (error) {
-                    if (error.code === 'native_session_head_conflict' && !options.retriedKnowledge) return this.load(handle, sessionId, { ...options, retriedKnowledge: true });
-                    throw error;
-                }
             }
         }
         if (continuityDefinition(base)) {
@@ -323,6 +312,7 @@ export class SessionCore {
                 libraryBindingIds, sessionBindings, sessionKnowledge, packageBindingIds }),
         };
         base.states[SUBJECT_NAMESPACE] = initialSubjects(base, selectedWorlds(base.states, base.manifest, base.entryPoint));
+        validateWorldKnowledgeBindings(selectedWorlds(base.states, base.manifest, base.entryPoint), base.knowledge);
         if (personaState) base.states[PERSONA_NAMESPACE] = personaState;
         if (installed.manifest.runtime?.experienceContract?.storyStart) {
             base.states[RUN_NAMESPACE] = { schemaVersion: 1, mode: 'pending', status: 'pending', sequence: 0 };
@@ -477,6 +467,7 @@ export class SessionCore {
         await this._validateProjections(handle, { ...base, timeline }, variants);
         validateLifetimes({ ...base, states }, { complete: true });
         validateWorldState(states, base.manifest, base.entryPoint);
+        validateWorldKnowledgeBindings(selectedWorlds(states, base.manifest, base.entryPoint), knowledge);
         const revisionId = createNativeId('revision');
         states = publishSubjects(base, states, revisionId, branchId);
         if (sharedPublication) for (const turn of Object.values(states.atri_shared?.turns ?? {})) {
@@ -575,7 +566,7 @@ export class SessionCore {
         }
         if (taskRecord?.kind === 'turn') requestSessionMaintenance(this._sessions, handle, session.sessionId, this._packages._assetStore);
         const continuity = continuityDefinition(base) ? await this._continuity.load(handle, base.session.packageId) : null;
-        return loadRealm(this, handle, { ...snapshot, manifest: base.manifest, entryPoint: base.entryPoint,
+        return loadRealm(this, handle, { ...snapshot, manifest: packageKnowledgeManifest(base.manifest, documents[KNOWLEDGE_NAMESPACE]), entryPoint: base.entryPoint,
             ...(continuityDefinition(base) ? { externalEffects: continuityEffects(continuity, base.session.sessionId), continuityRevisionId: continuity?.revisionId ?? null, continuityViews: continuityDisplay(base, continuity) } : {}),
             worlds: selectedWorlds(states, base.manifest, base.entryPoint) });
     }
@@ -916,6 +907,7 @@ export class SessionCore {
         if (!expectedRevisionId) throw new TypeError('Expected Session revision is required');
         const base = await this._current(handle, sessionId, expectedRevisionId);
         const worlds = selectedWorlds({ atri_world_selection: worldSelection }, base.manifest, base.entryPoint);
+        validateWorldKnowledgeBindings(worlds, knowledge);
         if (Object.keys(base.states.atri_world_state.worlds).some(id => !worlds.some(world => world.world.worldId === id))) {
             throw new TypeError('Removing a live World requires a supported Domain scope transition');
         }
@@ -927,6 +919,12 @@ export class SessionCore {
             if (world.revision.schema) assertValidWorldState(nextWorldState.worlds[world.world.worldId].state, world.revision.schema);
         }
         const states = { ...base.states, atri_world_selection: worldSelection, atri_world_state: nextWorldState };
+        const added = worlds.filter(world => !Object.hasOwn(base.states.atri_world_state.worlds, world.world.worldId));
+        if (added.length) {
+            const existing = base.states[SUBJECT_NAMESPACE]?.subjects ?? [];
+            const introduced = initialSubjects({ ...base, states }, added).subjects.filter(subject => !existing.some(item => item.subjectId === subject.subjectId));
+            states[SUBJECT_NAMESPACE] = { schemaVersion: 1, subjects: [...existing, ...introduced] };
+        }
         delete states.atri_knowledge_runtime;
         return this._publish(handle, base, { states, knowledge });
     }

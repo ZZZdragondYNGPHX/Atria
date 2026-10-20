@@ -2,6 +2,8 @@ import { translateShellText as tl } from '../atria-shell/localization.js';
 import { sanitizeProductDetails } from './product-error-details.js';
 
 const messages = {
+    native_world_knowledge_dependency_conflict: 'A selected World requires its fixed Knowledge configuration. Keep that source or select a World revision that uses the new source.',
+    native_resource_setup_stale: 'The available resource updates changed. Reopen resource choices and review the exact versions before saving.',
     storage_quota_exceeded: 'There is not enough account quota for this operation. Export or permanently remove selected data first.',
     storage_usage_unavailable: 'Usage could not be measured. Refresh after storage becomes available.',
     native_processing_failed: 'A declared Processor failed. Open Diagnostics to inspect its stage and fixed source. No candidate was adopted.',

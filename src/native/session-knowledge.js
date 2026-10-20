@@ -4,16 +4,63 @@ import { equalNativeDocuments } from './repositories/common.js';
 
 const sourceKey = source => `${source.kind}:${source.knowledgeBaseId}@${source.knowledgeRevisionId}`;
 const snapshotKey = snapshot => `${snapshot.knowledgeBase.knowledgeBaseId}@${snapshot.revision.knowledgeRevisionId}`;
+const comparableBinding = binding => ({ ...binding, source: { ...binding.source, kind: 'session' } });
+
+export function validateWorldKnowledgeBindings(worlds, knowledge) {
+    for (const world of worlds) for (const fixed of world.revision.knowledgeBindings ?? []) {
+        const actual = knowledge.bindings.find(binding => binding.knowledgeBindingId === fixed.knowledgeBindingId);
+        if (!actual || !equalNativeDocuments(comparableBinding(actual), comparableBinding(fixed))) throw new NativeDependencyError('native_world_knowledge_dependency_conflict', {
+            worldId: world.world.worldId, worldRevisionId: world.revision.worldRevisionId, knowledgeBindingId: fixed.knowledgeBindingId });
+    }
+}
+
+/** Capture selected Worlds' declared sources in the existing Session snapshot. */
+export async function resolveWorldKnowledge({ handle, manifest, entryPoint, knowledge, worlds, knowledgeRepo }) {
+    const next = structuredClone(knowledge);
+    for (const world of worlds) for (const fixed of world.revision.knowledgeBindings ?? []) {
+        const actual = next.bindings.find(binding => binding.knowledgeBindingId === fixed.knowledgeBindingId);
+        if (actual) {
+            if (!equalNativeDocuments(comparableBinding(actual), comparableBinding(fixed))) throw new NativeDependencyError('native_world_knowledge_dependency_conflict', {
+                worldId: world.world.worldId, worldRevisionId: world.revision.worldRevisionId, knowledgeBindingId: fixed.knowledgeBindingId });
+            continue;
+        }
+        const packaged = manifest.knowledgeBindings.find(binding => binding.knowledgeBindingId === fixed.knowledgeBindingId
+            && equalNativeDocuments(comparableBinding(binding), comparableBinding(fixed)));
+        if (packaged) {
+            next.bindings.push(packaged);
+            if (next.packageBindingIds && !next.packageBindingIds.includes(packaged.knowledgeBindingId)) next.packageBindingIds.push(packaged.knowledgeBindingId);
+            continue;
+        }
+        let snapshot = next.snapshots.find(item => item.snapshot.knowledgeBase.knowledgeBaseId === fixed.source.knowledgeBaseId
+            && item.snapshot.revision.knowledgeRevisionId === fixed.source.knowledgeRevisionId)?.snapshot;
+        if (!snapshot && fixed.source.kind === 'library') {
+            const base = await knowledgeRepo.get(handle, fixed.source.knowledgeBaseId);
+            const revision = await knowledgeRepo.getRevision(handle, fixed.source.knowledgeBaseId, fixed.source.knowledgeRevisionId);
+            if (base && revision) snapshot = { knowledgeBase: { knowledgeBaseId: base.knowledgeBaseId, displayName: revision.displayName ?? base.knowledgeBaseId, currentRevisionId: revision.knowledgeRevisionId },
+                revision, entries: await knowledgeRepo.listEntries(handle, base.knowledgeBaseId, revision.knowledgeRevisionId) };
+        }
+        if (!snapshot) throw new NativeDependencyError('native_session_knowledge_missing', { source: fixed.source });
+        next.bindings.push({ ...fixed, source: { ...fixed.source, kind: 'session' } });
+        if (!next.snapshots.some(item => item.kind === 'session' && snapshotKey(item.snapshot) === snapshotKey(snapshot))) next.snapshots.push({ kind: 'session', snapshot });
+    }
+    // Keep original Package declaration order, including required World uses.
+    const byId = new Map(next.bindings.map(binding => [binding.knowledgeBindingId, binding]));
+    next.bindings = [...manifest.knowledgeBindings.filter(binding => byId.get(binding.knowledgeBindingId)?.source.kind === 'package'), ...next.bindings.filter(binding => binding.source.kind !== 'package')];
+    validateWorldKnowledgeBindings(worlds, next);
+    return validateKnowledgeBindingSet(next, manifest, entryPoint);
+}
 
 // A package edit is captured in the existing Session knowledge snapshot, so
 // historical revisions and portable saves do not need the newer installation.
 export function packageKnowledgeManifest(manifest, value) {
-    const replacements = new Map((value?.snapshots || []).filter(item => item.kind === 'package').map(item => {
+    const captured = (value?.snapshots || []).filter(item => item.kind === 'package');
+    const replacements = new Map(captured.map(item => {
         const snapshot = assertPackagedKnowledgeSnapshot(item.snapshot);
         const id = snapshot.knowledgeBase.knowledgeBaseId;
         if (!manifest.knowledge.some(original => original.knowledgeBase.knowledgeBaseId === id)) throw new TypeError('Package Knowledge identity cannot change');
         return [id, snapshot];
     }));
+    if (replacements.size !== captured.length) throw new TypeError('Conflicting Package Knowledge revisions');
     if (!replacements.size) return manifest;
     return { ...manifest,
         knowledge: manifest.knowledge.map(item => replacements.get(item.knowledgeBase.knowledgeBaseId) || item),

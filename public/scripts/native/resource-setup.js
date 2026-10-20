@@ -8,11 +8,24 @@ export async function mountResourceSetup({ document: doc, root, packageId, sessi
     root.replaceChildren();
     const panel = el(doc, 'section', 'atri-library-section atri-resource-setup', undefined, root);
     el(doc, 'h3', '', tl(sessionId ? 'Session Worlds & Knowledge' : 'New session defaults'), panel);
-    el(doc, 'p', '', tl(sessionId ? 'Unchanged World revisions keep their progress. Replaced Worlds start from their baseline. Timeline and previous revisions are kept.' : 'These choices apply to new sessions from this starting point. Existing sessions keep their own choices.'), panel);
+    el(doc, 'p', '', tl(sessionId ? 'Updating a World keeps its committed state. Source updates create a new story revision; previous revisions and personal memories keep their original sources.' : 'These choices apply to new sessions from this starting point. Existing sessions keep their own choices.'), panel);
     try {
         const setup = await client.getResourceSetup(packageId, { sessionId, entryPointId });
         const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
         const chosen = { worldRefs: [...setup.worldRefs], knowledgeRefs: [...setup.knowledgeRefs] };
+        let usePackageKnowledgeUpdate = false;
+        if (setup.packageKnowledgeUpdate) {
+            const update = el(doc, 'section', 'atri-library-section', undefined, panel);
+            el(doc, 'h4', '', tl('Edited Work sources available'), update);
+            for (const source of setup.packageKnowledgeUpdate.knowledge) el(doc, 'p', '', source.displayName, update);
+            for (const world of setup.packageKnowledgeUpdate.worlds) el(doc, 'p', '', tl('World') + ': ' + world.displayName, update);
+            const label = el(doc, 'label', 'atri-library-permissions', undefined, update);
+            const control = el(doc, 'input', '', undefined, label); control.type = 'checkbox'; control.name = 'use-edited-work-sources';
+            label.append(doc.createTextNode(tl('Use these edited Work sources')));
+            control.addEventListener('change', () => { usePackageKnowledgeUpdate = control.checked; });
+            disclosure(doc, update, 'Exact revision details', setup.packageKnowledgeUpdate);
+        }
+        el(doc, 'p', 'atri-library-meta', tl('Selected Worlds include their fixed Knowledge dependencies automatically.'), panel);
         const fields = el(doc, 'div', 'atri-resource-setup-fields', undefined, panel);
         const primaryLabel = el(doc, 'label', 'atri-library-field', tl('Primary World'), panel);
         const primary = el(doc, 'select', '', undefined, primaryLabel); primary.setAttribute('aria-label', tl('Primary World'));
@@ -66,14 +79,19 @@ export async function mountResourceSetup({ document: doc, root, packageId, sessi
         const result = el(doc, 'div', '', undefined, panel);
         action(doc, panel, 'Save resource choices', async () => {
             result.replaceChildren();
-            const { nativeSessionRuntime } = await import('./session-runtime.js');
-            const active = sessionId && nativeSessionRuntime.snapshot?.session.sessionId === sessionId;
-            if (active && (nativeSessionRuntime.generation || nativeSessionRuntime.host?.isGenerating?.())) throw new Error(tl('Stop generation before changing resource choices.'));
-            await client.saveResourceSetup(packageId, { ...chosen, primaryWorldId: primary.value || null, packageVersionId: setup.packageVersionId, entryPointId: setup.entryPointId, expectedIntegrity: setup.expectedIntegrity, expectedRevisionId: setup.expectedRevisionId, ...(sessionId ? { sessionId } : {}) });
-            if (active) await nativeSessionRuntime.reload();
-            feedback(doc, result, tl('Resource choices saved.'));
-            if (onSaved) await onSaved();
-            else await mountResourceSetup({ document: doc, root, packageId, sessionId, entryPointId, onSaved, host });
+            panel.dataset.atriaSavePending = 'true'; panel.inert = true;
+            try {
+                const { nativeSessionRuntime } = await import('./session-runtime.js');
+                const active = sessionId && nativeSessionRuntime.snapshot?.session.sessionId === sessionId;
+                if (active && (nativeSessionRuntime.generation || nativeSessionRuntime.host?.isGenerating?.())) throw new Error(tl('Stop generation before changing resource choices.'));
+                await client.saveResourceSetup(packageId, { ...chosen, primaryWorldId: primary.value || null, packageVersionId: setup.packageVersionId, entryPointId: setup.entryPointId, expectedIntegrity: setup.expectedIntegrity, expectedRevisionId: setup.expectedRevisionId,
+                    ...(usePackageKnowledgeUpdate ? { packageKnowledgeUpdateVersionId: setup.packageKnowledgeUpdate.packageVersionId } : {}), ...(sessionId ? { sessionId } : {}) });
+                if (active) await nativeSessionRuntime.reload();
+                panel.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
+                feedback(doc, result, tl('Resource choices saved.'));
+                if (onSaved) await onSaved();
+                else await mountResourceSetup({ document: doc, root, packageId, sessionId, entryPointId, onSaved, host });
+            } finally { panel.dataset.atriaSavePending = 'false'; panel.inert = false; }
         }, { primary: true });
     } catch (error) { feedback(doc, panel, libraryError(error), true); }
 }
