@@ -22,7 +22,8 @@ export async function saveApiPreset(host, handle, input) {
         const previousModel = current && await host.persistence.getModelProfile(handle, current.modelProfileRef.modelProfileId);
         if (hashNativeDocument(previousModel ?? null) !== input.expected.model) throw new ConflictError('native_generation_configuration_conflict');
         const others = (await host.persistence.listRuntimeRoutes(handle)).filter(route => route.runtimeRouteId !== current?.runtimeRouteId);
-        const ownModel = previousModel && !others.some(route => route.modelProfileRef.modelProfileId === previousModel.modelProfileId);
+        const ownModel = previousModel && !others.some(route => route.modelProfileRef.modelProfileId === previousModel.modelProfileId
+            || route.executionPolicy?.allowedModelProfileIds.includes(previousModel.modelProfileId));
         let modelDraft = assertModelProfile({ ...input.model,
             modelProfileId: ownModel ? previousModel.modelProfileId : createNativeId('modelProfile'), displayName: input.route.displayName });
         const connection = await host.persistence.getConnectionProfile(handle, modelDraft.connectionProfileRef.connectionProfileId);
