@@ -25,3 +25,9 @@
 - 顶栏空工具胶囊恢复隐藏（原规则嵌套 `:has()` 被浏览器整条丢弃）。
 - 验证：用本地模拟 OpenAI 兼容服务走通完整向导，服务端日志只有两次 `GET /v1/models`；停掉模拟服务后概览显示「无法访问」。中文界面与 390px 全屏层实测。`atria-shell` 85 套件中 83 通过，余下 `localization`／`product-localization-coverage` 两项在改动前基线同样失败（本轮已补齐自身文件的中文）；与改动相关的 `task-binding-ui`、`resource-bundle-controls`、`native-play-controls`、`workspace-host`、`library-runtime-workspaces` 均通过（后两者按新的默认概览更新了本地测试）。`provider-discovery` 新增本地用例通过；其「authenticated probe」一项在基线同样失败。测试文件仅本地保留。
 - 测试残留：本工作树本地数据中，向导试跑产生的 2 个模拟连接（服务端以恢复保留为由拒绝删除）与 3 个模拟密钥（产品无删除密钥接口，P-08）无法移除；占位叙事者路由已恢复原模型，其余模拟模型与测试预设已删除。
+
+## 2026-10-20 — 体验重构第 3 期：交接（进行中）
+
+- 源码 `6cd7d352`（WIP，已推送）。已完成：提示词列表「新建提示词」打开模板选择（空白／通用骨架／角色扮演／文学创作／Agent 任务），新建或导入后立即出现在列表并选中；预设详情改为「大纲 + 编辑器」：左侧按存储顺序列出 Stage、文本块与只读上下文锚点，以及生成参数、Regex、模块库；右侧沿用原 `mountPromptEditor`，默认打开第一个文本块；「添加文本块」「添加 Stage」就地创建、保存并聚焦正文；每个视图只有一个返回（大纲→「全部提示词」，工具视图→「返回大纲」）。正文输入框高度修正（原选择器优先级不足）。浏览器实测：模板新建、添加文本块、输入并保存修订、切换 Stage／生成参数／模块库均正常。
+- 未完成／下一步：① 本地测试 `tests/atria-shell/prompt-preset-receipt.test.js` 失败——它依赖已移除的四张分区卡片，需按新大纲更新（其余 8 个提示词相关套件通过）；② 手机宽度未验证大纲布局；③ 新文案（Prompts、New prompt、模板说明、Prompt outline、Add text block、Add stage、Context: ${0}、Back to outline、All prompts、Not in this preset、New text block、Inherits stages…）尚未补简体中文；④ Program 编辑器仍显示 Stage ID 输入与「选择精确模块」下拉（专家路径保留，可考虑收进折叠）；⑤ 未做 Record 外的蓝图更新。之后按蓝图 §9 进入第 4 期（世界与知识）。
+- 本机测试服务器（端口 8123）与模拟服务可直接停止；测试数据新增了一个「Roleplay / narrative」预设（含「New text block」），属本工作树本地数据。
