@@ -24,3 +24,14 @@ Removed the unused legacy `showLoader`, `hideLoader` and `isLoaderVisible` imple
 ## Delivery
 
 Implementation committed and integrated into local `main`; stable `D:/Dev/Atria` checkout fast-forwarded to the same implementation HEAD. No test assets were committed. Unrelated documentation edits remain untouched.
+
+## Follow-up: actual running clone and parallel task
+
+The user still observed the popup after the initial delivery. Codex's built-in browser directly reproduced the overlay. The earlier request-override verification did not establish that the running service used the updated repository.
+
+Tracing port 8000's Node process to its parent command identified `D:/Atria/Start.bat`. The actual service runs from the independent `D:/Atria` clone, still at `d6657d68`; it does not run from `D:/Dev/Atria`. Matching source bytes with a worktree alone was insufficient to identify the running directory.
+
+- Fast-forwarded the clean `D:/Atria` main checkout to `d7bea47b`. Direct HTTP retrieval then confirmed the updated startup code and absence of the old startup call.
+- Reloaded the actual service in Codex's built-in browser, without request overrides: Folios startup cover visible, no “Please wait…” modal, normal transition into `#atria-app-shell`, no captured page errors. Startup screenshot saved locally at `D:/Dev/Atria-worktrees/previews/startup-loader-fixed.png` (not committed).
+- At the user's explicit request, cherry-picked only the two startup fix commits into `feat/dynamic-world`: `d27f0a5e` and `5fca2e3d`, preserving the task's existing `1f4f21a0` commit. All three changed files passed `node --check`, targeted ESLint and `git diff --check`; the worktree was clean afterward.
+- Notified the existing chat “正式开始动态世界任务” (`01a15768-5215-7ae1-a707-7b7806bcfc13`) with the commits, scope, validation and actual runtime directory, as explicitly requested by the user.
