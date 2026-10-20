@@ -1,6 +1,7 @@
 import { formatAtriaDate } from './atria-shell/components.js';
 import { installStorageChangeListener } from './native/storage-change-events.js';
 import { translateShellText as tl } from './atria-shell/localization.js';
+import { forgetStartupResume } from './atria-shell/startup-resume.js';
 import { getRequestHeaders } from '../script.js';
 import { installFrontendLogging } from './logging/bootstrap.js';
 import { t } from './i18n.js';
@@ -634,6 +635,8 @@ async function logout() {
         headers: getRequestHeaders({ omitContentType: true }),
     });
     if (!response.ok) throw new Error(tl('Could not sign out. Try again.'));
+    // The startup cover reads device storage before the next account is known.
+    forgetStartupResume();
 
     // On an explicit logout stop auto login
     // to allow user to change username even

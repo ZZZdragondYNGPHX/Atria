@@ -9,29 +9,455 @@
     color: var(--atri-text-on-accent);
     font: 700 26px var(--atri-font-sans);
 }
-#preloader {
+/* Startup cover: Folios over a soft Constellation sky (atria-entry-startup.js).
+ * Styled by class: the element gives up #preloader as soon as startup ends
+ * and finishes its exit on its own. Colors come from the theme API, which the
+ * script overrides with the last resolved appearance. */
+#preloader.atri-startup-cover, .atri-startup-cover {
+    --startup-sheet: var(--atri-surface-1);
+    --startup-sheet-tint: var(--atri-surface-2);
+    --startup-rule: color-mix(in srgb, var(--atri-accent) 22%, transparent);
+    --startup-rule-strong: color-mix(in srgb, var(--atri-accent) 42%, transparent);
+    --startup-shadow: 0 22px 44px -14px rgb(60 44 20 / .18), 0 2px 8px rgb(60 44 20 / .06);
+    --startup-cinnabar: #bf4430;
+    position: fixed;
+    inset: 0;
+    z-index: 999999;
     display: grid;
     place-items: center;
+    overflow: hidden;
+    width: 100dvw;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
     background: var(--atri-canvas);
     color: var(--atri-text-primary);
     backdrop-filter: none;
-    font-family: var(--atri-font-sans);
+    font-family: var(--font-ui, var(--atri-font-sans));
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
 }
+.atri-startup-cover[data-appearance="dark"] {
+    --startup-rule: color-mix(in srgb, var(--atri-accent) 18%, transparent);
+    --startup-rule-strong: color-mix(in srgb, var(--atri-accent) 34%, transparent);
+    --startup-shadow: 0 1px 0 rgb(255 255 255 / .04) inset, 0 28px 60px -20px rgb(0 0 0 / .75);
+    --startup-cinnabar: #d5523e;
+    color-scheme: dark;
+}
+.atri-startup-sky {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+/* Paper grain over sky and sheets; also dithers the lamp gradient. */
+.atri-startup-cover::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: var(--grain);
+    opacity: .09;
+    pointer-events: none;
+}
+.atri-startup-cover[data-appearance="dark"]::after { opacity: .045; }
+
+/* Static first paint (no script): brand mark only. */
 .atri-startup {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 16px;
     padding: 24px;
+    max-width: 360px;
     text-align: center;
 }
 .atri-startup strong {
     font-size: 26px;
     letter-spacing: -.02em;
 }
-.atri-startup > span:last-child {
-    font-size: 13px;
+
+/* ── Desk: three accordion sheets (经折装) ─────────────────────────────── */
+.atri-startup-desk {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr);
+    align-items: stretch;
+    gap: 18px;
+    width: min(1080px, calc(100vw - 64px));
+    perspective: 1500px;
+    transform-style: preserve-3d;
+}
+.atri-startup-cover[data-mode="brand"] .atri-startup-desk {
+    grid-template-columns: minmax(0, 1fr);
+    width: min(440px, calc(100vw - 32px));
+}
+.atri-folio {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    min-height: 268px;
+    padding: 22px 22px 20px;
+    background: var(--startup-sheet);
+    border: 1px solid var(--startup-rule-strong);
+    box-shadow: var(--startup-shadow);
+    opacity: 0;
+    transition: transform 950ms cubic-bezier(.18, 1.12, .32, 1), opacity 600ms ease;
+}
+/* Registration corner ticks. */
+.atri-folio::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    pointer-events: none;
+    opacity: .75;
+    background:
+        linear-gradient(to right, var(--atri-accent) 7px, transparent 7px) 0 0 / 100% 1px no-repeat,
+        linear-gradient(to bottom, var(--atri-accent) 7px, transparent 7px) 0 0 / 1px 100% no-repeat,
+        linear-gradient(to left, var(--atri-accent) 7px, transparent 7px) 100% 0 / 100% 1px no-repeat,
+        linear-gradient(to bottom, var(--atri-accent) 7px, transparent 7px) 100% 0 / 1px 100% no-repeat,
+        linear-gradient(to right, var(--atri-accent) 7px, transparent 7px) 0 100% / 100% 1px no-repeat,
+        linear-gradient(to top, var(--atri-accent) 7px, transparent 7px) 0 100% / 1px 100% no-repeat,
+        linear-gradient(to left, var(--atri-accent) 7px, transparent 7px) 100% 100% / 100% 1px no-repeat,
+        linear-gradient(to top, var(--atri-accent) 7px, transparent 7px) 100% 100% / 1px 100% no-repeat;
+}
+.atri-folio--left { transform-origin: right center; transform: rotateY(68deg) translateX(40px) scale(.92); }
+.atri-folio--center { transform-origin: center; transform: translateZ(-60px) rotateX(14deg) scale(.94); }
+.atri-folio--right { transform-origin: left center; transform: rotateY(-68deg) translateX(-40px) scale(.92); }
+.atri-startup-cover:not([data-stage="gather"]) .atri-folio { opacity: 1; }
+.atri-startup-cover:not([data-stage="gather"]) .atri-folio--center { transform: none; transition-delay: 40ms; }
+.atri-startup-cover:not([data-stage="gather"]) .atri-folio--left { transform: rotateY(4deg); transition-delay: 200ms; }
+.atri-startup-cover:not([data-stage="gather"]) .atri-folio--right { transform: rotateY(-4deg); transition-delay: 340ms; }
+.atri-startup-cover[data-stage="leaving"] .atri-folio--left { transform: rotateY(58deg) translateX(30px) scale(.94); opacity: 0; transition-duration: 520ms, 380ms; transition-delay: 0ms; }
+.atri-startup-cover[data-stage="leaving"] .atri-folio--right { transform: rotateY(-58deg) translateX(-30px) scale(.94); opacity: 0; transition-duration: 520ms, 380ms; transition-delay: 0ms; }
+
+.atri-folio__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-bottom: 9px;
+    border-bottom: 1px solid var(--startup-rule);
+    font-family: var(--font-mono);
+    font-size: var(--fs-2xs, 10.5px);
+}
+.atri-folio__kicker {
+    overflow: hidden;
+    color: var(--atri-text-tertiary);
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.atri-folio__chip {
+    flex: none;
+    padding: 1px 6px;
+    border: 1px solid color-mix(in srgb, var(--atri-accent) 45%, transparent);
+    background: color-mix(in srgb, var(--atri-accent) 10%, transparent);
+    color: var(--atri-accent-text);
+    font-weight: 600;
+}
+.atri-folio__title {
+    margin: 0;
+    color: var(--atri-text-primary);
+    font: 600 19px/1.35 var(--font-read);
+    letter-spacing: -.005em;
+    overflow-wrap: anywhere;
+}
+.atri-folio--center .atri-folio__title {
+    font: 500 clamp(21px, 2vw, 25px)/1.25 var(--font-display);
+    letter-spacing: -.01em;
+}
+.atri-folio__title--brand {
+    font-size: 34px !important;
+    text-align: center;
+}
+.atri-folio__tagline {
+    margin: 0;
     color: var(--atri-text-secondary);
+    font: italic 14px/1.6 var(--font-read);
+    text-align: center;
+}
+.atri-startup-cover[data-mode="brand"] .atri-folio {
+    min-height: 0;
+    justify-content: center;
+    padding-block: 26px 34px;
+}
+.atri-folio__label, .atri-folio__ledger dt {
+    color: var(--atri-text-tertiary);
+    font: 500 var(--fs-2xs, 10.5px)/1.4 var(--font-mono);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+.atri-folio__cast {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid var(--startup-rule);
+}
+.atri-folio__chart {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    background: var(--startup-sheet-tint);
+}
+.atri-folio__chart-frame {
+    fill: none;
+    stroke: var(--startup-rule-strong);
+    stroke-dasharray: 3 3;
+}
+.atri-folio__chart-link {
+    stroke: var(--startup-rule-strong);
+    stroke-width: .8;
+}
+.atri-folio__chart-star { color: var(--atri-accent); fill: currentColor; }
+.atri-folio__chart-star--1 { color: var(--atri-info); }
+.atri-folio__chart-star--2 { color: var(--atri-committed); }
+.atri-folio__chart-star--3 { color: var(--atri-unknown); }
+.atri-folio__chart-halo { opacity: .16; }
+.atri-folio__chart-star text {
+    fill: var(--atri-text-secondary);
+    font: 500 11.5px var(--font-ui);
+}
+.atri-startup-cover:not([data-motion="reduced"]) .atri-folio__chart-halo {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: atri-startup-twinkle 2.6s ease-in-out infinite alternate;
+}
+.atri-folio__chart-star--1 .atri-folio__chart-halo { animation-delay: -.7s !important; }
+.atri-folio__chart-star--2 .atri-folio__chart-halo { animation-delay: -1.4s !important; }
+.atri-folio__chart-star--3 .atri-folio__chart-halo { animation-delay: -2s !important; }
+@keyframes atri-startup-twinkle {
+    from { opacity: .1; transform: scale(.8); }
+    to { opacity: .24; transform: scale(1.1); }
+}
+
+.atri-folio__passage {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    color: var(--atri-text-primary);
+    font: 14.5px/1.85 var(--font-read);
+}
+.atri-folio__line {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 5;
+    overflow-wrap: anywhere;
+}
+.atri-folio__line strong {
+    margin-right: .5em;
+    color: var(--atri-accent-text);
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+.atri-folio__speaker {
+    margin-bottom: -6px;
+    color: var(--atri-accent-text);
+    font: 600 12.5px/1.4 var(--font-ui);
+    letter-spacing: .02em;
+}
+.atri-folio__line--user {
+    -webkit-line-clamp: 2;
+    padding-left: 10px;
+    border-left: 2px solid var(--startup-rule-strong);
+    color: var(--atri-text-secondary);
+    font-style: italic;
+    font-size: 13.5px;
+}
+.atri-folio__dropcap {
+    float: left;
+    margin: 3px 8px 0 0;
+    color: var(--startup-cinnabar);
+    font: 700 36px/1 var(--font-read);
+}
+.atri-folio__empty {
+    margin: 0;
+    color: var(--atri-text-secondary);
+    font-style: italic;
+}
+
+.atri-folio__ledger {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+}
+.atri-folio__ledger div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--startup-rule);
+}
+.atri-folio__ledger dd {
+    margin: 0;
+    overflow: hidden;
+    color: var(--atri-text-primary);
+    font-size: 13.5px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+/* Stitched binding: the memories the sky is drawn from, named on paper. */
+.atri-folio__thread {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 10px;
+}
+.atri-folio__thread ol {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin: 0;
+    padding: 0 0 0 12px;
+    border-left: 1.5px dashed color-mix(in srgb, var(--atri-history, var(--atri-accent)) 70%, transparent);
+    list-style: none;
+}
+.atri-folio__thread li {
+    position: relative;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    color: var(--atri-text-secondary);
+    font: 12.5px/1.5 var(--font-read);
+    overflow-wrap: anywhere;
+}
+.atri-folio__thread li::before {
+    content: '';
+    position: absolute;
+    top: .55em;
+    left: -16.5px;
+    width: 6px;
+    height: 6px;
+    border-radius: 1.5px;
+    background: var(--atri-committed);
+    box-shadow: 0 0 0 2px var(--startup-sheet);
+}
+
+/* ── Seal strike ───────────────────────────────────────────────────────── */
+.atri-startup-seal {
+    position: absolute;
+    right: -16px;
+    bottom: -18px;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    padding: 4px;
+    border: 2px double rgb(255 252 245 / .85);
+    outline: 1.5px solid var(--startup-cinnabar);
+    background: color-mix(in srgb, var(--startup-cinnabar) 92%, transparent);
+    box-shadow: 0 8px 22px color-mix(in srgb, var(--startup-cinnabar) 34%, transparent);
+    color: #fffcf5;
+    font: 700 17px/1.05 var(--font-read);
+    letter-spacing: .04em;
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(1.5) rotate(-9deg);
+    transition: opacity 200ms ease, transform 440ms cubic-bezier(.22, 1.35, .36, 1);
+}
+.atri-startup-seal::after {
+    content: '';
+    position: absolute;
+    inset: -7px;
+    border: 1.5px solid var(--startup-cinnabar);
+    opacity: 0;
+}
+.atri-startup-cover[data-stage="sealed"] .atri-startup-seal,
+.atri-startup-cover[data-stage="leaving"] .atri-startup-seal {
+    opacity: 1;
+    transform: rotate(-4deg);
+}
+.atri-startup-cover[data-stage="sealed"] .atri-startup-seal::after {
+    animation: atri-startup-ripple 1.2s cubic-bezier(.16, 1, .3, 1) forwards;
+}
+@keyframes atri-startup-ripple {
+    from { opacity: .8; transform: scale(.9); }
+    to { opacity: 0; transform: scale(1.7); }
+}
+
+/* ── Status and stalled recovery ──────────────────────────────────────── */
+.atri-startup-foot {
+    position: absolute;
+    left: 50%;
+    bottom: max(28px, calc(env(safe-area-inset-bottom, 0px) + 20px));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: min(360px, calc(100vw - 32px));
+    text-align: center;
+    transform: translateX(-50%);
+}
+.atri-startup-status {
+    color: var(--atri-text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+    transition: opacity 300ms ease;
+}
+.atri-startup-cover[data-stage="gather"] .atri-startup-status { opacity: 0; }
+.atri-startup-retry {
+    border: 0;
+    border-radius: var(--atri-radius-md);
+    background: var(--atri-fill);
+    color: var(--atri-text-primary);
+    padding: 12px 20px;
+    font: inherit;
+    cursor: pointer;
+    min-height: 44px;
+    pointer-events: auto;
+}
+.atri-startup-retry:focus-visible {
+    outline: 2px solid var(--atri-accent-text);
+    outline-offset: 3px;
+}
+
+/* Phones: one sheet in front, the other two folded behind it as a stack. */
+@media (max-width: 760px) {
+    .atri-startup-desk {
+        grid-template-columns: minmax(0, 1fr);
+        width: min(440px, calc(100vw - 32px));
+    }
+    .atri-folio--left, .atri-folio--right {
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        overflow: hidden;
+    }
+    .atri-folio--left > *, .atri-folio--right > * { visibility: hidden; }
+    .atri-folio { min-height: 0; padding: 18px 18px 22px; }
+    .atri-folio__passage { font-size: 14px; }
+    .atri-startup-cover:not([data-stage="gather"]) .atri-folio--left { transform: translate(-9px, 10px) rotate(-3deg); opacity: .9; }
+    .atri-startup-cover:not([data-stage="gather"]) .atri-folio--right { transform: translate(9px, 6px) rotate(2.4deg); opacity: .9; }
+}
+@media (max-height: 560px) {
+    .atri-folio { min-height: 0; }
+    .atri-folio__line { -webkit-line-clamp: 3; }
+    .atri-startup-foot { bottom: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .atri-folio, .atri-startup-seal { transition: opacity 160ms ease; }
+    .atri-folio--left, .atri-folio--center, .atri-folio--right { transform: none; }
+    .atri-startup-cover:not([data-stage="gather"]) .atri-folio--left, .atri-startup-cover:not([data-stage="gather"]) .atri-folio--right,
+    .atri-startup-cover[data-stage="leaving"] .atri-folio--left, .atri-startup-cover[data-stage="leaving"] .atri-folio--right { transform: none; }
+    .atri-startup-seal, .atri-startup-cover[data-stage] .atri-startup-seal { transform: rotate(-4deg); }
+    .atri-startup-cover[data-stage="sealed"] .atri-startup-seal::after { animation: none; }
 }
 .atri-entry-progress {
     width: 100px;
@@ -413,28 +839,6 @@ html[data-atria-appearance] .popup .menu_button:active { transform: translateY(.
 }
 .atri-onboarding [hidden] {
     display: none;
-}
-.atri-startup {
-    max-width: 360px;
-}
-.atri-startup-status {
-    color: var(--atri-text-secondary);
-    font-size: 13px;
-    line-height: 1.5;
-}
-.atri-startup-retry {
-    border: 0;
-    border-radius: var(--atri-radius-md);
-    background: var(--atri-fill);
-    color: var(--atri-text-primary);
-    padding: 12px 20px;
-    font: inherit;
-    cursor: pointer;
-    min-height: 44px;
-}
-.atri-startup-retry:focus-visible {
-    outline: 2px solid var(--atri-accent-text);
-    outline-offset: 3px;
 }
 html[data-atria-appearance] #toast-container.toast-top-center, html[data-atria-appearance] #toast-container.toast-top-left, html[data-atria-appearance] #toast-container.toast-top-full-width {
     top: max(16px, var(--atri-safe-area-top));

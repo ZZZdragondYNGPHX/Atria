@@ -6,6 +6,15 @@ import { loader, getActiveLoaderHandles } from './action-loader.js';
  */
 let legacyLoaderHandle = null;
 
+/**
+ * Releases the static startup cover. The cover finishes its own exit
+ * animation, but #preloader is gone for every caller from this point.
+ */
+export function dismissStartupCover() {
+    if (globalThis.AtriaStartup?.dismiss) globalThis.AtriaStartup.dismiss();
+    else document.getElementById('preloader')?.remove();
+}
+
 export function isLoaderVisible() {
     return getActiveLoaderHandles().length > 0 || !!document.getElementById('preloader');
 }
@@ -59,7 +68,7 @@ export async function hideLoader({ immediate = false } = {}) {
     // #preloader is only the static first-paint cover from index.html.
     // Dismiss it as soon as startup explicitly asks to hide the loader;
     // its lifetime must not depend on Popup animation/handle bookkeeping.
-    document.getElementById('preloader')?.remove();
+    dismissStartupCover();
 
     if (!legacyLoaderHandle || !legacyLoaderHandle.isActive) {
         console.warn('There is no loader showing to hide');

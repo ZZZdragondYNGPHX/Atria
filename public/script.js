@@ -284,7 +284,7 @@ import {
     isPersonaPanelOpen,
 } from './scripts/personas.js';
 import { initBackgrounds, loadBackgroundSettings, background_settings } from './scripts/backgrounds.js';
-import { hideLoader, isLoaderVisible, showLoader } from './scripts/loader.js';
+import { dismissStartupCover, hideLoader, isLoaderVisible, showLoader } from './scripts/loader.js';
 import { loader } from './scripts/action-loader.js';
 import { initTextGenModels, initTextGenModelSelects } from './scripts/textgen-models.js';
 import { appendFileContent, hasPendingFileAttachment, populateFileAttachment, decodeStyleTags, encodeStyleTags, hideChatMessageRange, isExternalMediaAllowed, preserveNeutralChat, restoreNeutralChat, formatCreatorNotes, initChatUtilities, addDOMPurifyHooks } from './scripts/chats.js';
@@ -2162,7 +2162,7 @@ async function firstLoadInit() {
     // APP_READY is the final authority for the initial boot cover. The
     // static preloader must never survive beyond this boundary even if a
     // legacy loader handle was already cleaned up through another path.
-    document.getElementById('preloader')?.remove();
+    dismissStartupCover();
     clientStartupLogger.info('first-load.completed', 'Frontend first-load initialization completed', {}, { category: 'lifecycle', correlation: { startupSessionId: getClientStartupSessionId() } });
     clientUiLogger.info('app.ready', 'Atria UI reached APP_READY', {}, { category: 'lifecycle', correlation: { startupSessionId: getClientStartupSessionId() } });
     console.debug('[init] firstLoadInit complete');

@@ -15,6 +15,7 @@ import {
     onNativeSessionLifecycle,
 } from './session-lifecycle.js';
 import { createAtriaIcon } from '../atria-shell/icons.js';
+import { rememberStartupResume } from '../atria-shell/startup-resume.js';
 
 function text(value) {
     return String(value ?? '');
@@ -419,6 +420,9 @@ export function mountAtriaPlayProduct({
             hint.textContent = tl('Write your first action to begin.');
             empty.append(heading, hint);
             conversation.append(empty);
+        }
+        if (!runtime.history && !runtime.failed && !generating() && window.from + entries.length >= window.total) {
+            rememberStartupResume({ snapshot, entries, total: window.total, nameOf: entry => actorName(snapshot, entry) });
         }
 
         const writable = runtimeWritable(runtime) && snapshot.states?.atri_run?.status !== 'dead';

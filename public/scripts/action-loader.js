@@ -628,7 +628,9 @@ async function hideOverlay({ immediate = false } = {}) {
  */
 function yoinkPreloader() {
     if (preloaderYoinked) return;
-    document.getElementById('preloader')?.remove();
+    // loader.js#dismissStartupCover, inlined: loader.js already imports this module.
+    if (globalThis.AtriaStartup?.dismiss) globalThis.AtriaStartup.dismiss();
+    else document.getElementById('preloader')?.remove();
     preloaderYoinked = true;
 }
 

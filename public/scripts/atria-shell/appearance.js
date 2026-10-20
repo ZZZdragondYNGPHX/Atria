@@ -1,3 +1,5 @@
+import { rememberStartupAppearance } from './startup-resume.js';
+
 /**
  * Atria appearance resolver.
  *
@@ -137,6 +139,7 @@ export function installAtriaAppearance({
         }
         const chrome = windowRef.getComputedStyle?.(root).getPropertyValue('--atri-canvas').trim() || colors.canvas || ATRIA_CHROME_COLORS[next];
         themeMeta?.setAttribute('content', chrome);
+        if (service) rememberStartupAppearance(next, windowRef.getComputedStyle?.(root));
         try { windowRef.AtriaAndroid?.setSystemBarsColor?.(chrome, chrome); } catch { /* Browser theme stays usable without a platform bridge. */ }
         for (const listener of listeners) {
             try {
