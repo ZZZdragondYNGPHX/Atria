@@ -469,6 +469,16 @@
 - 在本任务源码启动隔离 `127.0.0.1:8017` 服务及独立本地测试数据，前端 webpack 成功；真实浏览器完成 World 创建、选段／归属／时间、保存、重开、修改后解除旧标注与第二次保存。API 回读确认旧修订原标注保留、新修订未错绑。
 - 1440px 与模拟 390px 页面无横向溢出；模拟窄屏正文可见、键盘 focus-visible 有焦点环，reduced-motion 下沿原组件。浏览器合成 composition／Enter 事件确认不重挂输入框、不丢焦点或误提交；不当作真实手机／输入法证据。执行文件 ESLint、diff check 通过。此处未运行真实模型生成，完整 NPC 行动、参与者／媒体、资源更新与历史纠错仍需继续接线。
 
+## Stage 44 — 显式资源采用与固定依赖的 Session 接线（2026-10-19）
+
+- `b6945b18`：移除普通 Session load 自动采纳 Package Knowledge 编辑并发布新修订的路径。原资源选择页面按需展示编辑后的精确资料及受影响 World，勾选后才经原 updateResources 创建 SessionRevision；来源已再更新时，旧选择明确拒绝并保留当前故事。
+- 已安装作品的明确资料编辑生成新的 PackageVersion 及相关 WorldRevision，保存固定 Binding 新配置与 World 来源祖先；旧作品修订和 Session 不变。原新游戏默认选择随该作者操作捕获同一组派生修订，World 参数仍原样保留。连续多次编辑保留世界来源链，不能借同一 ID 覆盖旧闭包。
+- 新选入 Library World 的固定资料沿原 Session Knowledge 快照自动接入，不再要求作者另建空绑定；可编辑 Binding 已删除仍读取精确资料。原 publication 在发布前核对 selected World 的固定配置，拒绝同 ID 隐藏覆写。同 World 升级保留业务状态，新增 World 才实例化其作者主体，Worldless 原状态保留；尚无领域 scope 转换时仍拒绝移除 live World。
+- 原 Context 改读 Session 实际所选 World 正文，避免继续使用初始 Package 正文。publication 返回的 Manifest 同步表达此次已捕获 Knowledge，普通重载、指定旧修订与存档往返保持各自原来源。未新增 Store、迁移引擎或后台模型。
+- 本地资源更新验证 5 项通过：FS／SQLite、普通读取无新增修订、显式采用、原状态／身份保留、旧修订与 SavePoint、携带新版资料的 .atriasave 往返、删除可编辑 Binding 后的 Library World、新 World 主体只实例化一次、连续两次编辑与旧选择拒绝。受影响的主体／个人获知／Simulation 合跑 20 项通过；相关 JS ESLint、diff check 通过。
+- 隔离真实服务／浏览器完成测试作品安装与开局、作者资料编辑、My stories→Manage→Worlds & Knowledge 展示受影响对象、勾选采用并保存；API 回读确认勾选前修订不变，保存后世界／资料同时切换且可用更新消失。未触发真实模型请求。正文控件首次成功标注后收起重复新手说明；microinteractions 的 8 项诊断自检为 10/10，无新增动效。
+- 保留用户授权的并行模型参数改动 `31f706cf`、`80618f17`、`b4c27af6`、`70e0993b`、`312a6e14`：不恢复 minimumOutputTokens 或重复的生成参数权威。后续继续参与者／表达模板、NPC 行动及完整 Play 读取；整体尚未合入 main。
+
 ## Current state
 
-产品实施进行中，主体／时间读取、动态个人视角与获知、作者固定依赖、正文编辑及有效 Context 已有接线；完整 NPC 行动、参与者／媒体与显式资源更新等继续实施。当前功能设计、代码差距与待决问题见 [Plan 入口](../../plans/architecture/world-evolution-consistency/index.md)。
+产品实施进行中，主体／时间读取、动态个人视角与获知、作者固定依赖、正文编辑、有效 Context 及显式资源采用已有接线；完整 NPC 行动、参与者／媒体与 Play 功能继续实施。当前功能设计、代码差距与待决问题见 [Plan 入口](../../plans/architecture/world-evolution-consistency/index.md)。
