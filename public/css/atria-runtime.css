@@ -136,6 +136,9 @@
 /* Medium and compact: list above, editor opens as the full-screen layer. */
 @media (max-width: 960px) { .atri-runtime-split { grid-template-columns: minmax(0, 1fr); } .atri-runtime-listpane { position: static; } }
 .atri-runtime[data-atria-viewport="compact"] .atri-runtime-detail { display: none; }
+.atri-runtime[data-atria-viewport="compact"][data-editor="split"] > :not(.atri-runtime-split),
+.atri-runtime[data-atria-viewport="compact"][data-editor="split"] .atri-runtime-listpane { display: none; }
+.atri-runtime[data-atria-viewport="compact"][data-editor="split"] .atri-runtime-detail { display: block; }
 .atri-runtime[data-atria-viewport="compact"] .atri-runtime-chain-card__hint { display: none; }
 .atri-runtime[data-atria-viewport="compact"] .atri-runtime-listpane .atri-runtime-toolbar { flex-direction: row; }
 .atria-app-shell[data-atria-viewport="compact"] .atri-runtime-row > button { opacity: 1; }
