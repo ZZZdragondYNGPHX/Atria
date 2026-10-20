@@ -100,7 +100,7 @@ function subjects(raw = [], context, lifecycle) {
         taskId(item.id); subjectKind(item.kind);
         if (item.perspective !== undefined) taskId(item.perspective);
         if (item.worldId !== undefined && item.worldId !== null && !/^world_[a-f0-9]{32}$/.test(item.worldId)) throw new TypeError('Invalid Subject World');
-        if (item.actorId !== undefined && !/^actor_[a-f0-9]{32}$/.test(item.actorId)) throw new TypeError('Invalid Subject Actor');
+        if (item.actorId !== undefined && item.actorId !== null && !/^actor_[a-f0-9]{32}$/.test(item.actorId)) throw new TypeError('Invalid Subject Actor');
         if (item.when !== undefined) predicate(item.when, context);
         if (item.subjectId !== undefined) template(item.subjectId, SUBJECT_ID_SCHEMA, context);
         if (item.localRef !== undefined) {

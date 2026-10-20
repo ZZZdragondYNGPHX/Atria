@@ -112,7 +112,7 @@ export function prepareSubjects(candidate, declarations, evaluate, context, auth
     for (const item of declarations ?? []) {
         if (item.when !== undefined && !evaluate.predicate(item.when, context)) continue;
         const worldId = item.worldId ?? null;
-        assertScope(candidate, worldId); expression(candidate, item.actorId);
+        assertScope(candidate, worldId); expression(candidate, item.actorId ?? undefined);
         const localRef = item.localRef ? { domainId: item.localRef.domainId, recordId: taskId(evaluate.template(item.localRef.recordId, context)) } : null;
         const explicitId = item.subjectId === undefined ? null : assertNativeId(evaluate.template(item.subjectId, context), 'subject');
         const existing = explicitId ? state.subjects.find(s => s.subjectId === explicitId) : localRef
@@ -120,6 +120,8 @@ export function prepareSubjects(candidate, declarations, evaluate, context, auth
         if (explicitId && !existing) throw new TypeError('Subject is not present in this Revision');
         if (existing) {
             if (existing.kind !== item.kind || existing.worldId !== worldId || (localRef && !equalNativeDocuments(existing.localRef ?? null, localRef))) throw new TypeError('Subject binding mismatch');
+            if (item.actorId === null) delete existing.actorId;
+            else if (item.actorId !== undefined) existing.actorId = item.actorId;
             if (item.perspective !== undefined) existing.perspective = perspective(candidate, existing.subjectId, existing.kind, item.perspective, existing.localRef);
             refs[item.id] = existing.subjectId; continue;
         }
