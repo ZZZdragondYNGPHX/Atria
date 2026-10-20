@@ -488,6 +488,14 @@
 - 本地历史 5 项、正式发言 2 项验证通过，包含伪造 Draft 拒绝、原领域原子提交、重复 finalize、公共投影与别名篡改、Speech capture、存档往返与恢复前状态。相关 JS ESLint 与 diff check 通过。真实 Play 已确认独立 Speaker／公开别名与原叙事消息；模拟 390px 触摸／reduced-motion 无横向溢出。未生成真实音频、调用真实模型或验证物理设备。
 - 下一步继续原 Visual 的合法参与者接入及动态 NPC 行动；整体仍在实施，尚未合入 main。
 
+## Stage 46 — 有来源的媒体参与者与分支读取（2026-10-20）
+
+- `f6c26d0b`：原插图标注卡可明确添加选中文字所属的正式发言者，不要求 ActorProfile；公开别名和逐消息 Participant handle 随原 draft／Visual IR／Gallery 保存，外观初始空白，可在本标注中填写。Visual 与 Prompt preparation 核对精确消息、别名及 handle，不从后台 Subject／表达模板复制外观或建立秘密别名等价关系。
+- 原插图 Context 保留实际公开发言者及合法历史，进入原 Prompt 预算；独立图片提供方仍消费原结构化协议。原 Visual state change／媒体引用沿 Participant handle 处理，仍不写 World。
+- 回归发现原提交顺序 parentRevisionId 不等于分支叙事祖先：SavePoint restore／branch switch 可使媒体读取误入另一条线。保持原 CAS／提交链合同，由原 SessionRepo 的既有 BranchGraph prior HEAD／forkRevisionId 读取正确上一故事修订；Visual source、原插图 ancestry 与 earliest context 共用该读取。
+- 本地相关合跑 23 项通过；扩展后的正式发言测试再次通过，验证媒体 IR 无 Subject 泄漏、错误别名／错误消息拒绝、保存恢复、旧线仍可读、新线不能引用撤销发言、切回旧线正确承接其 HEAD。相关 ESLint、diff check 通过。全量本地化检查报告原有其它页面 18 条缺译，新增按钮已补中文。
+- 隔离真实服务／浏览器完成选文→标注→添加发言者→填写外观→保存，模拟手机重开后数据持久、卡宽 356px／页面宽 390px 无横向溢出，annotation 中无 canonical Subject。未执行付费图片生成、模型请求或真实设备测试。后续继续动态 NPC 与世界读取；整体尚未合入 main。
+
 ## Current state
 
 产品实施进行中，主体／时间读取、动态个人视角与获知、作者固定依赖、正文编辑、有效 Context 及显式资源采用已有接线；完整 NPC 行动、参与者／媒体与 Play 功能继续实施。当前功能设计、代码差距与待决问题见 [Plan 入口](../../plans/architecture/world-evolution-consistency/index.md)。
