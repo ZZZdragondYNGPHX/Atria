@@ -4,8 +4,10 @@ import { createNativeSessionContextProvider } from '../model-prompt-runtime/cont
 import { immutable, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
 import { createPackageContextDerivation } from '../context-computation.js';
 import { processPackageText } from '../processing-runtime.js';
+import { subjectTaskContext } from '../subject-authority.js';
 
 export function nativeSessionContextOptions({ handle, snapshot, resolver, contextPackage = null, role, taskPlan = null, lanePlan = null, authorityContext = null }) {
+    const personalTask = subjectTaskContext(taskPlan);
     return {
         tokenScope: JSON.stringify([handle, snapshot.session.sessionId, snapshot.revision.branchId]),
         tokenizerFor: resolved => resolver.provider(resolved.connection.providerAdapter).contextTokenizer?.(resolved),
@@ -15,7 +17,9 @@ export function nativeSessionContextOptions({ handle, snapshot, resolver, contex
         personaAllowed: !snapshot.manifest.runtime?.experienceContract?.sharedRuntime && (taskPlan
             ? taskPlan.task.context.includes('player_persona') && !['background', 'maintenance'].includes(taskPlan.task.executionClass)
             : role === 'role.narrator'),
-        informationTaskId: authorityContext ? undefined : taskPlan?.task.id, memoryEvidence: lanePlan?.memoryEvidence ?? [], authorityTurn: Boolean(authorityContext),
+        informationTaskId: authorityContext || personalTask ? undefined : taskPlan?.task.id,
+        ...(personalTask ? { target: personalTask.audience } : {}),
+        memoryEvidence: lanePlan?.memoryEvidence ?? [], authorityTurn: Boolean(authorityContext),
     };
 }
 

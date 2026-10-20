@@ -5,6 +5,7 @@ import { informationDefinition, projectInformation, refreshInformationCognition,
 import { hashNativeDocument } from './repositories/common.js';
 import { validateHypothesisEvidence } from './tom-authority.js';
 import { INFORMATION_LIMITS } from '../../public/shared/native-information-contract.js';
+import { subjectTaskContext } from './subject-authority.js';
 
 // Only SessionCore's coherent branch recovery calls this. Keep the immutable
 // source Revision untouched; copy current evidence into the derived Branch in
@@ -60,8 +61,15 @@ export function rebindCognitionBranch(base, candidate) {
 
 // This guard runs inside the original Session publication. It does not publish,
 // synthesize evidence, grant reads or adopt a model's World/Task claims.
-export function validateCognitionTransition(base, candidate, { taskId = null, appraisalEvidence = null } = {}) {
+export function validateCognitionTransition(base, candidate, { taskId = null, taskInvocationId = null, appraisalEvidence = null } = {}) {
     const def = informationDefinition(base);
+    const pending = taskInvocationId && base.states.atri_lifecycle?.outbox.find(item => item.invocationId === taskInvocationId && item.taskId === taskId && item.status === 'pending');
+    const task = taskId && base.manifest.runtime.experienceContract.taskRuntime?.tasks.find(item => item.id === taskId);
+    const variant = pending && task?.variants.find(item => item.id === pending.variantId);
+    if (task?.variants.some(item => item.resultBinding?.subjectPerspective) && (!variant
+        || base.states.atri_lifecycle.scopes[pending.scopeId]?.status !== 'active'
+        || base.states.atri_lifecycle.scopes[pending.scopeId].epoch !== pending.scopeEpoch)) throw new TypeError('Personal cognition requires the original pending Task');
+    const personalTask = variant?.resultBinding?.subjectPerspective ? subjectTaskContext({ task, variant, intent: pending }) : null;
     const acquisitions = [];
     let scans = 0;
     const projections = new Map();
@@ -99,7 +107,8 @@ export function validateCognitionTransition(base, candidate, { taskId = null, ap
                 if (previousHash !== hashNativeDocument(previous ?? domain.initial)) throw new TypeError('Appraisal old state changed');
             }
             const view = resolvePerspectiveView(candidate, value.basis.viewId);
-            const audienceMatches = taskId ? view?.audience === 'task' && view.taskId === taskId : view?.audience === 'actor';
+            const audienceMatches = personalTask ? view?.id === personalTask.viewId && view.actorId === personalTask.audience.id
+                : taskId ? view?.audience === 'task' && view.taskId === taskId : view?.audience === 'actor';
             if (!audienceMatches || view.actorId !== value.actor || !view.exposure.includes('context')) throw new TypeError('Cognition update requires this Actor or exact Task context grant');
             if (previous && previous.actor !== value.actor) throw new TypeError('Cognition Actor is immutable');
             if (previous && isManagedMemory(source) && (previous.role !== value.role || previous.recordedAt !== value.recordedAt)) throw new TypeError('Memory protection and historical time are immutable');

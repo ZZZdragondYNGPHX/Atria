@@ -12,7 +12,8 @@ const relevanceSchema = { type: 'string', maxLength: 4, enum: ['hot', 'warm', 'c
 // targetTick is the requested interval end, not elapsed world state. It allows
 // a declared aggregate job to run once at the interval boundary. tick stays canonical.
 export function simulationContext(job, lifecycle) {
-    return { reads: readContext(reads(job.reads, lifecycle)), clock: { type: 'object', additionalProperties: false,
+    const grants = [...job.reads, ...(job.subject?.fields ? [{ id: 'subject', domainId: job.subject.domainId, recordId: 'bound', fields: job.subject.fields }] : [])];
+    return { reads: readContext(reads(grants, lifecycle)), clock: { type: 'object', additionalProperties: false,
         properties: { tick: simulationInstantSchema, targetTick: simulationInstantSchema, requestedTick: simulationInstantSchema }, required: ['tick', 'targetTick', 'requestedTick'] },
     ...(job.subject ? { subject: { type: 'object', additionalProperties: false, properties: {
         id: { type: 'string', maxLength: 64 }, recordId: { type: 'string', maxLength: 64 }, viewId: { type: 'string', maxLength: 128 },
@@ -40,13 +41,15 @@ export function assertSimulationRuntime(raw, lifecycle, tasks, authority, inform
         integer(job.priority, 0, 15, 'simulation priority');
         const context = simulationContext(job, lifecycle);
         if (job.subject !== undefined) {
-            fields(job.subject, ['id', 'domainId', 'perspective'], 'Simulation Subject');
+            fields(job.subject, ['id', 'domainId', 'perspective', 'fields'], 'Simulation Subject');
             const domain = reference(lifecycle.domains, job.subject.domainId, 'simulation Subject Domain');
             const view = reference(information?.views, job.subject.perspective, 'simulation Subject Perspective');
-            if (job.action?.kind !== 'transaction' || domain.scopeId !== job.scopeId || view.subjectScopeId !== job.scopeId
-                || view.audience !== 'actor' || view.subjectAvailability?.domainId !== domain.id) throw new TypeError('Simulation Subject requires its own available Perspective and Domain');
-            const { subject: _subject, ...selectionContext } = context;
+            if (!['transaction', 'task'].includes(job.action?.kind) || domain.scopeId !== job.scopeId || view.subjectScopeId !== job.scopeId
+                || view.audience !== 'actor' || !view.exposure.includes('context')
+                || view.subjectAvailability?.domainId !== domain.id) throw new TypeError('Simulation Subject requires its own available Perspective and Domain');
+            const selectionContext = simulationContext({ ...job, subject: undefined }, lifecycle);
             template(job.subject.id, { type: 'string', maxLength: 64 }, selectionContext);
+            if (job.subject.fields && job.reads.some(grant => grant.id === 'subject')) throw new TypeError('Simulation Subject read identifier is reserved');
         }
         if (job.reads.some(grant => reference(lifecycle.domains, grant.domainId, 'simulation read').scopeId !== job.scopeId
             || typeof grant.recordId !== 'string')) throw new TypeError('Simulation reads require static same-scope targets');
@@ -57,15 +60,23 @@ export function assertSimulationRuntime(raw, lifecycle, tasks, authority, inform
             const task = reference(tasks?.tasks, job.action.taskId, 'simulation Task');
             const variant = reference(task.variants, job.action.variantId, 'simulation Variant');
             const appraisal = variant.resultBinding?.kind === 'cognition.appraise';
+            const personal = Boolean(variant.resultBinding?.subjectPerspective);
+            if (Boolean(job.subject) !== personal) throw new TypeError('Subject Task must consume its bound personal Perspective');
             if (task.executionClass !== 'background' || task.queuePolicy !== 'fifo' || task.resultPolicy.sink !== 'app_command'
                 || task.resultPolicy.resultClass !== 'declared_app_command'
-                || (appraisal ? task.context.length !== 2 || !task.context.includes('input') || !task.context.includes('projection')
+                || (appraisal || personal ? task.context.length !== 2 || !task.context.includes('input') || !task.context.includes('projection')
                     : task.context.length !== 1 || task.context[0] !== 'input' || variant.resultBinding?.kind !== 'app.command')) throw new TypeError('Simulation Task requires isolated FIFO background intent binding');
             if (appraisal) {
                 if (appraisalTargets(variant.resultBinding).some(kind => reference(lifecycle.domains, variant.resultBinding[kind].domainId, 'simulation appraisal').scopeId !== job.scopeId)) throw new TypeError('Simulation appraisal requires same-scope targets');
-            } else if (reference(lifecycle.domains, variant.resultBinding.domainId, 'simulation intent').scopeId !== job.scopeId
+            } else if (personal) {
+                if (!job.subject || variant.resultBinding.kind !== 'app.command' || variant.resultBinding.domainId !== job.subject.domainId
+                    || variant.resultBinding.subjectPerspective !== job.subject.perspective) throw new TypeError('Subject Task must consume its bound personal Perspective');
+            } else if (job.subject || reference(lifecycle.domains, variant.resultBinding.domainId, 'simulation intent').scopeId !== job.scopeId
                 || typeof variant.resultBinding.recordId !== 'string') throw new TypeError('Simulation intent requires static same-scope target');
-            template(job.action.input, task.inputSchema, context);
+            // Host agenda reads select the matter; they do not grant its private
+            // contents to an NPC. Personal evidence comes from its projection.
+            const { reads: _reads, ...personalInput } = context;
+            template(job.action.input, task.inputSchema, personal ? personalInput : context);
         } else if (job.action?.kind === 'transaction') {
             fields(job.action, ['kind', 'transactionId', 'input'], 'Simulation Transaction');
             taskId(job.action.transactionId);

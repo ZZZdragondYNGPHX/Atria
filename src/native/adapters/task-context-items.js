@@ -3,6 +3,7 @@ export function selectNativeTaskContext(items, task) {
     return items.filter(item => {
         if (item.kind === 'context.player-persona') return context.includes('player_persona');
         if (item.id.startsWith('projection:')) return context.includes('projection');
+        if (item.id.startsWith('identity:subject:')) return context.includes('projection');
         if (item.id.startsWith('memory:')) return true;
         return item.kind === 'context.history' ? context.includes('history')
             : item.id.startsWith('knowledge:') ? context.includes('knowledge')

@@ -82,7 +82,8 @@ export async function readBackgroundTaskDelivery(tx, handle, root, effectId, dom
             || receipt?.kind !== 'authority' || receipt.baseRevisionId !== source.revisionId || receipt.committedRevisionId !== domainRef.revisionId) invalid();
         if (binding.kind === 'app.command') {
             if (receipt.decision !== 'app.command' || receipt.domainId !== binding.domainId || receipt.commandId !== binding.commandId
-                || receipt.recordId !== (binding.recordId ?? 'task-' + hash(input.invocationId).slice(0, 48))) invalid();
+                || receipt.recordId !== (binding.subjectPerspective ? queued.simulation?.subject?.recordId
+                    : binding.recordId ?? 'task-' + hash(input.invocationId).slice(0, 48))) invalid();
         } else if (receipt.decision !== 'schedule' || receipt.interactionId !== binding.interactionId) invalid();
     }
     // The queued intent was frozen before sending; only its terminal status changes.

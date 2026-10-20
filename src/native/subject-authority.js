@@ -43,6 +43,14 @@ export function resolveSimulationSubject(base, job, evaluate, context, budget) {
     return { id, recordId: selected.localRef.recordId, viewId: selected.perspective.viewId };
 }
 
+export function subjectTaskContext(taskPlan) {
+    const binding = taskPlan?.variant.resultBinding;
+    if (!binding?.subjectPerspective) return null;
+    const subject = taskPlan.intent?.simulation?.subject;
+    if (!subject?.id || !subject.recordId || !subject.viewId) throw new TypeError('Subject Task requires its original Host binding');
+    return { audience: { kind: 'actor', id: subject.id }, viewId: subject.viewId };
+}
+
 export function validateSubjects(base) {
     const state = base.states[SUBJECT_NAMESPACE];
     if (!state) return;

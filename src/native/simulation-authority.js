@@ -1,10 +1,10 @@
 import { nextAttentionTick } from './lifetime-authority.js';
 import { hashNativeDocument } from './repositories/common.js';
-import { privateReads, template, predicate, prepareSimulationStep } from './authority-transaction.js';
+import { simulationPrivateContext, template, predicate, prepareSimulationStep } from './authority-transaction.js';
 import { simulationInstantSchema } from '../../public/shared/native-simulation-contract.js';
 import { addOutbox } from './lifecycle-authority.js';
 import { captureAppraisalEvent } from './appraisal-authority.js';
-import { resolveSimulationSubject } from './subject-authority.js';
+import { projectInformation } from '../../public/shared/native-information-runtime.js';
 
 const relevanceSchema = { type: 'string', maxLength: 4, enum: ['hot', 'warm', 'cold'] };
 const compare = (a, b) => a.tick - b.tick || a.job.priority - b.job.priority || (a.job.id < b.job.id ? -1 : a.job.id > b.job.id ? 1 : 0);
@@ -12,14 +12,18 @@ function evaluate(base, contract, job, budget, targetTick = base.states.atri_lif
     const state = base.states.atri_lifecycle;
     budget.step();
     if (state.scopes[job.scopeId]?.status !== 'active') return null;
-    const reads = privateReads(base, contract, job.reads, {}, budget);
-    const context = { reads, clock: { tick: state.clocks[contract.simulationRuntime.clockId], targetTick, requestedTick } };
-    const subject = resolveSimulationSubject(base, job, template, context, budget);
-    if (subject === null) return null;
-    if (subject) context.subject = subject;
+    const context = simulationPrivateContext(base, contract, job, budget, state.clocks[contract.simulationRuntime.clockId], targetTick, requestedTick);
+    if (!context) return null;
+    const subject = context.subject;
     if (!predicate(job.enabled, context)) return null;
+    let evidenceHash;
+    if (subject && job.action.kind === 'task') {
+        const projection = projectInformation(base, subject.viewId, { purpose: 'context', onScan: count => budget.scan(count) });
+        budget.readValue(projection.items);
+        evidenceHash = hashNativeDocument(projection.items);
+    }
     return { job, context, tick: budget.typed(template(job.due, context), simulationInstantSchema),
-        relevance: budget.typed(template(job.relevance, context), relevanceSchema) };
+        relevance: budget.typed(template(job.relevance, context), relevanceSchema), ...(evidenceHash ? { evidenceHash } : {}) };
 }
 
 // Pure bounded preparation. The caller charges one declared clock advance (or
@@ -41,7 +45,7 @@ export async function prepareWorldSimulation(base, installed, untilTick, budget,
             .map(job => evaluate(candidate, contract, job, budget, untilTick, requestedTick)).filter(item => item && item.tick <= untilTick).sort(compare);
         if (!due.length) break;
         const next = due[0];
-        const occurrence = next.job.id + ':' + next.tick;
+        const occurrence = next.job.id + ':' + next.tick + (next.context.subject ? ':' + next.context.subject.id : '');
         if (occurrences.has(occurrence) || ++steps > simulation.policy.maxSteps) throw new TypeError('Simulation progress/work limit');
         occurrences.add(occurrence);
         const tick = Math.max(candidate.states.atri_lifecycle.clocks[simulation.clockId], next.tick);
@@ -59,7 +63,8 @@ export async function prepareWorldSimulation(base, installed, untilTick, budget,
                 .map(item => {
                     const task = contract.taskRuntime.tasks.find(task => task.id === item.job.action.taskId);
                     const input = budget.typed(template(item.job.action.input, item.context), task.inputSchema);
-                    return { ...item, input, inputHash: hashNativeDocument(input) };
+                    return { ...item, input, inputHash: hashNativeDocument(item.context.subject
+                        ? { input, subject: item.context.subject, evidenceHash: item.evidenceHash } : input) };
                 }).filter(item => {
                     const previous = state.automations['simulation:' + item.job.id];
                     if (!previous || previous.epoch !== state.scopes[item.job.scopeId].epoch || previous.cursor < item.tick || previous.inputHash !== item.inputHash) return true;
@@ -77,7 +82,8 @@ export async function prepareWorldSimulation(base, installed, untilTick, budget,
                 const queued = addOutbox(state, action, job.scopeId, 'simulation:' + occurrence);
                 const variant = task.variants.find(item => item.id === job.action.variantId);
                 if (variant.resultBinding?.kind === 'cognition.appraise') queued.appraisalEvent = captureAppraisalEvent(candidate, task, variant, input);
-                queued.simulation = { jobId: job.id, tick: untilTick, dueTick: tick, anchorRevisionId: base.revision.revisionId };
+                queued.simulation = { jobId: job.id, tick: untilTick, dueTick: tick, anchorRevisionId: base.revision.revisionId,
+                    ...(selected.context.subject ? { subject: selected.context.subject, evidenceHash: selected.evidenceHash } : {}) };
                 // This is an admission identity, never proof that the matter or
                 // its Domain action completed. New evidence can wake it at the
                 // same Tick; a cancelled attempt can retry on later game time.
@@ -98,6 +104,8 @@ export function simulationTaskCurrent(base, item, budget) {
         || job.scopeId !== item.scopeId || item.simulation.tick !== base.states.atri_lifecycle.clocks[simulation.clockId]) return false;
     const evaluated = evaluate(base, contract, job, budget);
     if (!evaluated || evaluated.relevance === 'cold' || evaluated.tick !== item.simulation.dueTick) return false;
+    if (hashNativeDocument(evaluated.context.subject ?? null) !== hashNativeDocument(item.simulation.subject ?? null)) return false;
+    if (evaluated.evidenceHash !== item.simulation.evidenceHash) return false;
     const task = contract.taskRuntime.tasks.find(task => task.id === job.action.taskId);
     const input = budget.typed(template(job.action.input, evaluated.context), task.inputSchema);
     return hashNativeDocument(input) === hashNativeDocument(item.input);

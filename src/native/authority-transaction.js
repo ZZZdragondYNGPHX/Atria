@@ -170,6 +170,19 @@ export function privateReads(candidate, contract, grants, args, budget) {
     }
     return freeze(result);
 }
+
+export function simulationPrivateContext(base, contract, job, budget, tick, targetTick, requestedTick) {
+    const reads = privateReads(base, contract, job.reads, {}, budget);
+    const context = { reads, clock: { tick, targetTick, requestedTick } };
+    const subject = resolveSimulationSubject(base, job, template, context, budget);
+    if (subject === null) return null;
+    if (subject) {
+        context.subject = subject;
+        if (job.subject.fields) context.reads = { ...reads, ...privateReads(base, contract, [{ id: 'subject', domainId: job.subject.domainId,
+            recordId: subject.recordId, fields: job.subject.fields }], {}, budget) };
+    }
+    return context;
+}
 async function applyLifecycle(candidate, installed, action, budget) {
     const prepared = await prepareLifecycle(candidate, installed, action, budget);
     Object.assign(candidate.states, prepared.states);
@@ -378,14 +391,11 @@ export async function prepareSimulationStep(base, installed, jobId, tick, budget
             || base.states.atri_lifecycle.clocks[simulation.clockId] !== tick) throw new TypeError('Invalid simulation invocation');
         const { candidate, logic, world } = await createTaskWorld(base, installed, null, budget);
         protectOutputs(logic, budget);
-        const reads = privateReads(candidate, contract, job.reads, {}, budget);
         budget.typed(targetTick, simulationInstantSchema);
         budget.typed(requestedTick, simulationInstantSchema);
         if (targetTick < tick || requestedTick < targetTick) throw new TypeError('Invalid simulation target');
-        const context = { reads, clock: { tick, targetTick, requestedTick } };
-        const subject = resolveSimulationSubject(candidate, job, template, context, budget);
-        if (subject === null) throw new TypeError('Unavailable simulation Subject');
-        if (subject) context.subject = subject;
+        const context = simulationPrivateContext(candidate, contract, job, budget, tick, targetTick, requestedTick);
+        if (!context) throw new TypeError('Unavailable simulation Subject');
         freeze(context);
         if (!predicate(job.enabled, context) || budget.typed(template(job.due, context), simulationInstantSchema) > tick) throw new TypeError('Stale simulation job');
         const transaction = logic.transactions.find(item => item.id === job.action.transactionId);

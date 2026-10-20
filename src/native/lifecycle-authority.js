@@ -10,6 +10,8 @@ import { LIFECYCLE_STATE_NAMESPACE as NS } from '../../public/shared/native-life
 import { hashNativeDocument } from './repositories/common.js';
 import { prepareTaskAuthority } from './task-authority.js';
 import { captureAppraisalEvent, prepareAppraisalCommands } from './appraisal-authority.js';
+import { subjectTaskContext } from './subject-authority.js';
+import { actorAvailability } from '../../public/shared/native-information-runtime.js';
 
 const copy = value => structuredClone(value);
 const integer = value => Number.isSafeInteger(value) && value >= 0;
@@ -190,7 +192,16 @@ export async function prepareDeclaredTaskResult(base, installed, queued, task, v
     if (domain.scopeId !== queued.scopeId || (mapping && mapping.taskId !== task.id)) throw new TypeError('Task result scope/binding mismatch');
     active(state, domain.scopeId);
     if (binding.kind === 'app.command') {
-        const action = { ...binding, recordId: binding.recordId ?? 'task-' + hashNativeDocument(record.invocationId).slice(0, 48), args: record.payload };
+        let recordId = binding.recordId ?? 'task-' + hashNativeDocument(record.invocationId).slice(0, 48);
+        if (binding.subjectPerspective) {
+            const context = subjectTaskContext({ variant, intent: queued });
+            const subject = base.states.atri_subjects?.subjects.find(item => item.subjectId === context.audience.id);
+            if (subject?.perspective?.templateId !== binding.subjectPerspective || subject.perspective.viewId !== context.viewId
+                || subject.localRef?.domainId !== domain.id || subject.localRef.recordId !== queued.simulation.subject.recordId
+                || !actorAvailability(base, subject.subjectId).available) throw new TypeError('Subject Task target is no longer available');
+            recordId = subject.localRef.recordId;
+        }
+        const action = { kind: binding.kind, domainId: binding.domainId, commandId: binding.commandId, recordId, args: record.payload };
         const prepared = await prepareLifecycle(base, installed, action, authority);
         return { states: prepared.states, authorityReceipt: { kind: 'authority', decision: 'app.command',
             domainId: action.domainId, commandId: action.commandId, recordId: action.recordId, baseRevisionId: base.revision.revisionId } };

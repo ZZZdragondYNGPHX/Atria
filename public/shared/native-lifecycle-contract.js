@@ -321,6 +321,7 @@ export function assertLifecycleRuntime(value, taskRuntime) {
         if (action?.kind !== 'task') return;
         const binding = tasks.tasks.find(task => task.id === action.taskId).variants.find(variant => variant.id === action.variantId).resultBinding;
         if (!binding) return;
+        if (binding.subjectPerspective) throw new TypeError('Subject Task requires a bound Simulation matter');
         if (binding.kind === 'cognition.appraise') {
             if (appraisalTargets(binding).some(kind => runtime.domains.find(item => item.id === binding[kind].domainId)?.scopeId !== scopeId)) throw new TypeError('Appraisal trigger and target scopes must match');
             return;

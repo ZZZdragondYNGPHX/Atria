@@ -886,6 +886,10 @@ export class NativeGenerationHost {
             if (!lifecycle?.ready || !intent || intent.status !== 'pending' || intent.taskId !== task.id || intent.variantId !== variant.id
                 || lifecycle.scopes[intent.scopeId]?.status !== 'active' || lifecycle.scopes[intent.scopeId].epoch !== intent.scopeEpoch
                 || !equalNativeDocuments(intent.input, payload)) fail('native_task_lifecycle_intent_required');
+            if (variant.resultBinding?.subjectPerspective) {
+                if (!intent.simulation?.subject || !this.turnOrchestration || !snapshot.manifest.runtime.experienceContract.generationBudget) fail('native_task_subject_context_unavailable');
+                taskPlan.intent = intent;
+            }
         }
         const captured = lanePlan ?? {};
         let ordinaryLifecycle = false;

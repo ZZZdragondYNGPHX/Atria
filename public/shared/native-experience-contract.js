@@ -135,6 +135,11 @@ export function assertNativeExperienceContract(value) {
     const storyStart = value.storyStart === undefined ? undefined : assertStoryStart(value.storyStart, authorityRuntime);
     const runPolicy = value.runPolicy === undefined ? undefined : assertRunPolicy(value.runPolicy, storyStart);
     const generationBudget = value.generationBudget === undefined ? undefined : assertGenerationBudget(value.generationBudget, lifecycleRuntime);
+    if (taskRuntime?.tasks.some(task => task.variants.some(variant => variant.resultBinding?.subjectPerspective)) && (!generationBudget || !simulationRuntime)) throw new TypeError('Subject Tasks require the bounded Simulation and generation budget');
+    for (const task of taskRuntime?.tasks ?? []) for (const variant of task.variants) {
+        if (variant.resultBinding?.subjectPerspective && !simulationRuntime.jobs.some(job => job.action.kind === 'task'
+            && job.action.taskId === task.id && job.action.variantId === variant.id && job.subject?.perspective === variant.resultBinding.subjectPerspective)) throw new TypeError('Subject Task requires its declared matter binding');
+    }
     return Object.freeze({ schemaVersion: ATRIA_EXPERIENCE_CONTRACT_VERSION, capabilities, dataResources,
         ...(storyStart === undefined ? {} : { storyStart }),
         ...(runPolicy === undefined ? {} : { runPolicy }),

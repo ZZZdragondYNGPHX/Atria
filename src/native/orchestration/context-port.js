@@ -24,6 +24,7 @@ import { prepareRpSkillContext, assertRpSkillContext } from './rp-skill-context.
 import { inspectSessionTurnOutput } from '../session-turn-output.js';
 import { NativeGenerationHost } from '../adapters/generation-host.js';
 import { NativeNarratorOrchestrationAuthority } from './native-turn-orchestration.js';
+import { subjectTaskContext } from '../subject-authority.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 const digest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
@@ -284,12 +285,16 @@ export class ContextPort {
             authorityContext = { mode: 'narrator', receipt: original.prepared.receipt };
             authorityDigest = hashNativeDocument({ candidate: snapshot, receipt: original.prepared.receipt, identity: original.prepared.identity });
         }
-        const information = readInformation ? informationContext(snapshot, request.audience, taskIdentity?.input.taskId, this.authorityTurn ? { includeRollups: false } : {}) : null;
+        const personalTask = subjectTaskContext(taskIdentity?.taskPlan);
+        const contextAudience = personalTask?.audience ?? request.audience;
+        const informationTaskId = personalTask ? undefined : taskIdentity?.input.taskId;
+        const information = readInformation ? informationContext(snapshot, contextAudience, informationTaskId, this.authorityTurn ? { includeRollups: false } : {}) : null;
         // Missing Information must not fall through to compiler's broad raw
         // history path. A declared, available context exposure is mandatory.
-        if (readInformation && (!information?.projection || (request.audience.kind === 'actor' && !actorAvailability(snapshot, request.audience.id).available)
+        if (readInformation && (!information?.projection || (contextAudience.kind === 'actor' && !actorAvailability(snapshot, contextAudience.id).available)
+            || personalTask && information.projection.viewId !== personalTask.viewId
             || information.projection.availability.some(item => !item.available))) fail('native_orchestration_context_audience_denied');
-        return { snapshot, information, authorityContext, authorityDigest, taskIdentity };
+        return { snapshot, information, authorityContext, authorityDigest, taskIdentity, contextAudience, informationTaskId };
     }
 
     // Short-lived actual compiler inputs, never a persisted snapshot or a
@@ -323,7 +328,8 @@ export class ContextPort {
         }
         const memoryDescriptor = this.memoryAuthority ? await NativeMemoryAuthority.prototype.contextDescriptor.call(this.memoryAuthority, handle, snapshot) : null;
         if (memoryDescriptor) this.#memoryDescriptors.set(hashNativeDocument(request), memoryDescriptor);
-        return { request, snapshot, authorityContext, contextOptions: this.contextOptions, compilationInputs: this.compilationInputs, memoryDescriptor, sessionGraphInputs: this.#sessionGraphInputs };
+        return { request, snapshot, authorityContext, contextOptions: this.contextOptions, compilationInputs: this.compilationInputs, memoryDescriptor, sessionGraphInputs: this.#sessionGraphInputs,
+            ...(taskIdentity ? { taskPlan: taskIdentity.taskPlan } : {}) };
     }
 
     async #resolverPackage(handle, snapshot) {
@@ -362,7 +368,7 @@ export class ContextPort {
 
     async compile(handle, input, retrieval) {
         const request = this.#request(handle, input);
-        const { snapshot, information, authorityDigest, resolver, modelContext, projectIdentity, projectCapture, projectDelegation, rpIdentity, taskIdentity, taskInputOnly, rpDelegation, sessionDelegation, parentResult, graphResults } = await this.#current(handle, request, 'compile');
+        const { snapshot, information, authorityDigest, resolver, modelContext, projectIdentity, projectCapture, projectDelegation, rpIdentity, taskIdentity, taskInputOnly, rpDelegation, sessionDelegation, parentResult, graphResults, contextAudience, informationTaskId } = await this.#current(handle, request, 'compile');
         if (sessionDelegation) {
             const { context: delegated } = sessionDelegation, ref = request.sourceBinding.sourceRef;
             const source = { kind: 'session', sessionId: ref.sessionId, branchId: ref.branchId, revisionId: ref.revisionId };
@@ -503,23 +509,23 @@ export class ContextPort {
         const descriptorKey = hashNativeDocument(request), expectedDescriptor = this.#memoryDescriptors.get(descriptorKey);
         this.#memoryDescriptors.delete(descriptorKey);
         const recall = this.memoryAuthority ? await NativeMemoryAuthority.prototype.recallContext.call(this.memoryAuthority, handle, {
-            snapshot, requester: request.audience, informationTaskId: taskIdentity?.input.taskId, tokenBudget: request.tokenBudget, countTokens: this.contextOptions.countTokens,
+            snapshot, requester: contextAudience, informationTaskId, tokenBudget: request.tokenBudget, countTokens: this.contextOptions.countTokens,
             expectedDescriptor, retrieval, assertCurrent: () => this.#current(handle, request, 'recall') }) : null;
         const memoryEvidence = recall?.evidence ?? (this.readMemoryEvidence ? await this.readMemoryEvidence({ handle, request, snapshot, information }) : this.contextOptions.memoryEvidence ?? []);
         let plan = await compileNativeContextPlan(snapshot, { ...this.contextOptions, ...request.tokenBudget,
-            target: taskIdentity ? { kind: 'narrator' } : request.audience, informationTaskId: taskIdentity?.input.taskId, memoryEvidence, authorityTurn: Boolean(this.authorityTurn) });
+            target: taskIdentity && !subjectTaskContext(taskIdentity.taskPlan) ? { kind: 'narrator' } : contextAudience, informationTaskId, memoryEvidence, authorityTurn: Boolean(this.authorityTurn) });
         if (this.#sessionGraphInputs) plan = { ...plan, included: [...plan.included,
             { contextItemId: 'native-session-graph-task', lane: 'runtime_system', content: JSON.stringify(this.#sessionGraphInputs.task), sourceRefs: [] },
             ...this.#sessionGraphInputs.results.map(item => ({ contextItemId: 'native-session-graph-result:' + (item.resultRef?.resultId ?? item.reviewReceiptRef?.receiptId ?? item.controlRef.attemptId),
                 lane: 'recent_raw', content: item.content, sourceRefs: item.sourceRefs }))] };
         // Asynchronous retrieval/derivation can outlive Source or grants.
         await this.#current(handle, request, 'compiled');
-        if (recall) await NativeMemoryAuthority.prototype.assertContextRecall.call(this.memoryAuthority, handle, recall.proof, snapshot, request.audience);
+        if (recall) await NativeMemoryAuthority.prototype.assertContextRecall.call(this.memoryAuthority, handle, recall.proof, snapshot, contextAudience);
         const proof = { sourceBindingDigest: request.sourceBinding.bindingDigest, grantDigest: request.grantDigest,
             audienceDigest: hashNativeDocument(request.audience), projectionDigest: hashNativeDocument(information.projection), authorityDigest };
         const context = immutable({ schemaVersion: 1, contextId: hashNativeDocument({ request, plan, proof }), request, plan,
             evidenceRefs: plan.included.flatMap(item => item.sourceRefs ?? []), currentnessProof: proof });
-        this.#contexts.set(context, { handle, request, proof, memoryProof: recall?.proof,
+        this.#contexts.set(context, { handle, request, proof, memoryProof: recall?.proof, memoryAudience: contextAudience,
             outputSnapshot: this.#nativeOutputQuota ? immutable(snapshot) : null,
             taskSnapshot: taskIdentity ? immutable(snapshot) : null,
             task: taskIdentity ? { request: taskIdentity.request, taskPlan: taskIdentity.taskPlan } : null });
@@ -586,7 +592,7 @@ export class ContextPort {
             if (hashNativeDocument({ candidate: original.prepared.candidate, receipt: original.prepared.receipt, identity: original.prepared.identity }) !== captured.proof.authorityDigest)
                 fail('native_orchestration_context_source_stale');
         }
-        if (captured.memoryProof) await NativeMemoryAuthority.prototype.assertContextRecall.call(this.memoryAuthority, handle, captured.memoryProof, snapshot, captured.request.audience);
+        if (captured.memoryProof) await NativeMemoryAuthority.prototype.assertContextRecall.call(this.memoryAuthority, handle, captured.memoryProof, snapshot, captured.memoryAudience ?? captured.request.audience);
         await check();
         return context.plan;
     }
@@ -611,7 +617,7 @@ export class ContextPort {
             return context.plan;
         }
         if (hashNativeDocument(information.projection) !== captured.proof.projectionDigest || authorityDigest !== captured.proof.authorityDigest) fail('native_orchestration_context_source_stale');
-        if (captured.memoryProof) await NativeMemoryAuthority.prototype.assertContextRecall.call(this.memoryAuthority, handle, captured.memoryProof, snapshot, captured.request.audience);
+        if (captured.memoryProof) await NativeMemoryAuthority.prototype.assertContextRecall.call(this.memoryAuthority, handle, captured.memoryProof, snapshot, captured.memoryAudience ?? captured.request.audience);
         return context.plan;
     }
 
@@ -624,7 +630,7 @@ export class ContextPort {
             || captured.request.sourceBinding.sourceAuthority !== 'native_session' || captured.request.audience.kind !== 'task')
             fail('native_orchestration_context_proof_invalid');
         if (captured.memoryProof) await NativeMemoryAuthority.prototype.assertContextRecall.call(this.memoryAuthority, handle,
-            captured.memoryProof, captured.taskSnapshot, captured.request.audience);
+            captured.memoryProof, captured.taskSnapshot, captured.memoryAudience ?? captured.request.audience);
     }
 
     /** Final RP publication checks Memory facts without consuming settled Graph

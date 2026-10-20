@@ -509,6 +509,7 @@ export class SessionCore {
         }
         if (states.atri_lifecycle) {
             const acquisitions = validateCognitionTransition(base, { ...base, states }, { taskId: taskRecord?.kind === 'task' ? taskRecord.taskId : null,
+                taskInvocationId: taskRecord?.kind === 'task' ? taskRecord.invocationId : null,
                 appraisalEvidence: taskRecord?.authorityReceipt?.decision === 'cognition.appraise' ? taskRecord.appraisalEvidence : null });
             states = cloneNativeDocument(states);
             publishMemoryAcquisitions(states, acquisitions, revisionId);

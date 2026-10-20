@@ -87,9 +87,13 @@ export function assertTaskRuntime(value) {
                 const binding = variant.resultBinding;
                 choice(binding.kind, ['app.command', 'interaction.schedule', 'cognition.appraise']);
                 if (binding.kind === 'app.command') {
-                    fields(binding, ['kind', 'domainId', 'commandId', 'recordId'], 'Task App binding');
+                    fields(binding, ['kind', 'domainId', 'commandId', 'recordId', 'subjectPerspective'], 'Task App binding');
                     taskId(binding.domainId); taskId(binding.commandId);
                     if (binding.recordId !== undefined) taskId(binding.recordId);
+                    if (binding.subjectPerspective !== undefined) {
+                        taskId(binding.subjectPerspective);
+                        if (binding.recordId !== undefined || context.length !== 2 || !context.includes('input') || !context.includes('projection')) throw new TypeError('Subject Task requires only personal projection/input and a Host-bound target');
+                    }
                 } else if (binding.kind === 'cognition.appraise') {
                     resultBinding = assertAppraisalBinding(binding);
                     if (!context.includes('projection')) throw new TypeError('Appraisal requires a projection consumer');
