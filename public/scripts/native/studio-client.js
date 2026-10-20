@@ -60,6 +60,7 @@ export const nativeStudioClient = Object.freeze({
     evaluateFrontend: (projectId, workspace, entryPointId) => request(`projects/${encode(projectId)}/frontend/evaluate`, { method: 'POST', body: { workspace, entryPointId } }),
     previewProcessing: (projectId, body) => request(`projects/${encode(projectId)}/processing/preview`, { method: 'POST', body }),
     readSource: (projectId, path) => request(`projects/${encode(projectId)}/source${query({ path })}`),
+    readLawMechanisms: (projectId, baseRevision) => request(`projects/${encode(projectId)}/law-mechanisms${query({ baseRevision })}`),
 
     getPackageLibraryResource: ref => request('resources/package-original', { method: 'POST', body: { ref } }),
     deleteLibraryRevision: ref => request('library/resources/revisions', { method: 'DELETE', body: { ref } }),

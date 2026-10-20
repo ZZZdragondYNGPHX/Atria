@@ -30,8 +30,8 @@ export function patchStudioWorlds(source, worldId, value, collection = false) {
     return next;
 }
 
-export function mountStudioWorldsEditor({ document, root, value, projectSource, onReview, collection, library, isCurrent }) {
+export function mountStudioWorldsEditor({ document, root, value, projectSource, projectRevision, onReview, collection, library, isCurrent }) {
     const validate = parsed => patchStudioWorlds(projectSource, value?.world?.worldId, parsed, collection);
     if (collection) return mountStudioValueEditor({ document, root, value, label: 'Worlds collection JSON', startSource: true, validate, onReview });
-    return mountWorldEditor({ document, root, value, label: 'Worlds resource JSON', projectSource, library, validate, onReview, isCurrent });
+    return mountWorldEditor({ document, root, value, label: 'Worlds resource JSON', projectSource, projectRevision, library, validate, onReview, isCurrent });
 }

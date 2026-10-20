@@ -1,4 +1,5 @@
 import { initialSubjects, publishSubjects, validateSubjects } from './subject-authority.js';
+import { assertPinnedWorldLawExecutions } from './world-law-execution.js';
 import { assertValidWorldState } from '../../public/scripts/native/experience/world/schema.js';
 import { SUBJECT_NAMESPACE } from '../../public/shared/native-subject-contract.js';
 import { requestVisualWake } from './visual-events.js';
@@ -195,6 +196,7 @@ export class SessionCore {
         const knowledge = validateKnowledgeBindingSet(snapshot.knowledge, installed.manifest, installed.entryPoint);
         const worlds = selectedWorlds(snapshot.states, installed.manifest, installed.entryPoint);
         validateWorldKnowledgeBindings(worlds, knowledge);
+        assertPinnedWorldLawExecutions(worlds, installed.manifest, installed.sourceFiles);
         const base = { ...snapshot, knowledge, manifest: packageKnowledgeManifest(installed.manifest, knowledge), entryPoint: installed.entryPoint, worlds };
         if (snapshot.states.atri_game_regex) base.manifest = { ...base.manifest, processors: { ...base.manifest.processors, regex: normalizeNativeRegexScripts(snapshot.states.atri_game_regex.regexScripts) } };
         if (!options.revisionId && !options.skipPackageEdits) {
@@ -892,6 +894,10 @@ export class SessionCore {
         const base = await this._current(handle, sessionId, expectedRevisionId);
         const worlds = selectedWorlds({ atri_world_selection: worldSelection }, base.manifest, base.entryPoint);
         validateWorldKnowledgeBindings(worlds, knowledge);
+        if (worlds.some(world => world.revision.annotations?.some(note => note.execution))) {
+            const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
+            assertPinnedWorldLawExecutions(worlds, installed.manifest, installed.sourceFiles);
+        }
         if (Object.keys(base.states.atri_world_state.worlds).some(id => !worlds.some(world => world.world.worldId === id))) {
             throw new TypeError('Removing a live World requires a supported Domain scope transition');
         }

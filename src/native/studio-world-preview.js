@@ -42,6 +42,19 @@ export async function readStudioWorldPreview(preview, input = {}) {
     if (!audiences.some(item => item.value === audience)) audiences.unshift(selected);
     const result = { previewId: preview.previewId, entryPointId: base.entryPoint.entryPointId, entryPointName: base.entryPoint.displayName,
         audience, audiences, audiencesTruncated: matched.length > 128, phase: 'before_initialization_actions', items: [], truncated: false };
+    // Author-only coverage inspector; separate from audience Context items.
+    const logicPath = base.entryPoint.runtime?.game?.logic ?? base.manifest.runtime?.game?.logic;
+    result.lawCoverage = []; result.lawCoverageTruncated = false;
+    let coverageCharacters = 0;
+    coverage: for (const world of base.worlds) for (const note of world.revision.annotations ?? []) {
+        if (note.context.usage !== 'law') continue;
+        const quote = note.quote.slice(0, 1200);
+        if (result.lawCoverage.length >= 128 || coverageCharacters + quote.length > 32768) { result.lawCoverageTruncated = true; break coverage; }
+        coverageCharacters += quote.length;
+        result.lawCoverage.push({ worldId: world.world.worldId, passageId: note.id, quote,
+            status: !note.execution ? 'text_only' : note.execution.logicPath === logicPath ? 'linked_action' : 'other_start',
+            ...(note.execution ? { transactionId: note.execution.transactionId, logicPath: note.execution.logicPath } : {}) });
+    }
     if (audience === 'player') {
         let characters = 0;
         for (const view of worldRecordSections(base).views) {

@@ -31,6 +31,26 @@ export function mountStudioWorldPreview({ document: doc, root, previewId, isCurr
             for (const audience of result.audiences) el(doc, 'option', '', ['narrator', 'player'].includes(audience.value) ? tl(audience.label) : audience.label, select).value = audience.value;
             select.value = result.audience;
             status.textContent = result.entryPointName;
+            if (result.lawCoverage?.length) {
+                const coverage = disclosure(doc, results, 'Execution coverage'); let coverageLoaded = false;
+                coverage.addEventListener('toggle', () => {
+                    if (!coverage.open || coverageLoaded) return;
+                    coverageLoaded = true;
+                    el(doc, 'p', 'atri-library-meta', tl('Author coverage inspector. These annotations are separate from the selected perspective’s readable context.'), coverage);
+                    let index = 0;
+                    const appendCoverage = () => {
+                        for (const item of result.lawCoverage.slice(index, index + 12)) {
+                            const row = disclosure(doc, coverage, item.quote);
+                            el(doc, 'p', '', tl(item.status === 'text_only' ? 'Text guidance only. No deterministic execution mechanism is linked.'
+                                : item.status === 'other_start' ? 'The linked action belongs to another starting point.' : 'Linked action available in this starting point. Coverage is limited to that action.'), row);
+                            if (item.transactionId) el(doc, 'p', 'atri-library-meta', item.transactionId + ' · ' + item.logicPath, row);
+                        }
+                        index += 12; moreCoverage.hidden = index >= result.lawCoverage.length;
+                    };
+                    const moreCoverage = action(doc, coverage, 'More records', appendCoverage); appendCoverage();
+                    if (result.lawCoverageTruncated) el(doc, 'p', '', tl('This view reached its display limit. More records may exist.'), coverage);
+                });
+            }
             if (result.audiencesTruncated) el(doc, 'p', '', tl('More perspectives exist. Search by the authored name.'), results);
             if (!result.items.length) el(doc, 'p', '', tl('No starting records are disclosed to this perspective.'), results);
             const entries = el(doc, 'div', '', undefined, results); let offset = 0;

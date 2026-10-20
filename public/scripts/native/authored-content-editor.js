@@ -4,11 +4,12 @@ import { translateShellText as tl } from '../atria-shell/localization.js';
 import { CONTENT_USAGES } from './knowledge-contracts.js';
 import { mountStateConditionEditor } from './state-condition-editor.js';
 import { authoredPassageApplicability } from './authored-content.js';
+import { mountLawExecutionEditor } from './law-execution-editor.js';
 
 const usageOptions = CONTENT_USAGES.map((id, index) => [id, ['Author background', 'Current claim', 'Historical account', 'Source claim', 'Personal belief', 'World law'][index]]);
 
 /** Edits only this detached author draft. Text entry never remounts the input. */
-export function mountAuthoredContentEditor({ document: doc, root, value, key = 'content', label = 'Entry content', defaultUsage = 'claim', maxLength = 4 * 1024 * 1024, stateFields = [], onInput = () => {} }) {
+export function mountAuthoredContentEditor({ document: doc, root, value, key = 'content', label = 'Entry content', defaultUsage = 'claim', maxLength = 4 * 1024 * 1024, stateFields = [], loadMechanisms = null, isCurrent = () => true, onInput = () => {} }) {
     const { input } = knowledgeFormControls(doc, () => {});
     const panel = el(doc, 'section', 'atri-authored-editor', undefined, root);
     const area = input(panel, label, value[key] ?? '', next => {
@@ -43,8 +44,13 @@ export function mountAuthoredContentEditor({ document: doc, root, value, key = '
         for (const note of value.annotations ?? []) {
             const row = el(doc, 'div', 'atri-knowledge-rule', undefined, list);
             el(doc, 'blockquote', '', note.quote, row);
-            const use = input(row, 'Passage use', note.context.usage, next => { note.context.usage = next; }, 'text', usageOptions); use.name = note.id + '-use';
+            const use = input(row, 'Passage use', note.context.usage, next => {
+                note.context.usage = next;
+                if (next !== 'law') delete note.execution;
+                onInput(); renderNotes(); list.querySelector('[name="' + note.id + '-use"]')?.focus();
+            }, 'text', usageOptions); use.name = note.id + '-use';
             contextText(row, note, 'attribution', 'Attribution'); contextText(row, note, 'time', 'Source time');
+            if (key === 'body' && note.context.usage === 'law') mountLawExecutionEditor({ document: doc, root: row, note, loadMechanisms, isCurrent, onInput });
             const binding = disclosure(doc, row, 'Current state binding'); let loaded = false;
             const clearPreview = () => binding.querySelector(':scope > .atri-library-feedback')?.remove();
             row.addEventListener('input', clearPreview); row.addEventListener('change', clearPreview);

@@ -1,5 +1,7 @@
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { WORLD_INFO_CONDITION_OPERATORS } from '../atri-world-info-state-conditions.js';
+import { resourcePath } from '../../shared/native-frontend-contract.js';
+import { taskId } from '../../shared/native-task-contract.js';
 
 export const KNOWLEDGE_CONDITION_OPERATORS = WORLD_INFO_CONDITION_OPERATORS;
 export const KNOWLEDGE_CONDITION_LOGIC = Object.freeze(['all', 'any']);
@@ -56,18 +58,24 @@ export function normalizeContentContext(value) {
 }
 
 /** Positions belong to this exact immutable source text, never a newer draft. */
-export function normalizeContentAnnotations(content, value) {
+export function normalizeContentAnnotations(content, value, { allowExecution = false } = {}) {
     if (value === undefined) return undefined;
     if (!Array.isArray(value) || value.length > 64) throw new TypeError('Content annotation budget');
     const ids = new Set(); let previousEnd = 0;
     return Object.freeze(value.map(item => {
-        object(item, 'Content annotation', ['id', 'start', 'end', 'quote', 'context', 'applicability']);
+        object(item, 'Content annotation', ['id', 'start', 'end', 'quote', 'context', 'applicability', ...(allowExecution ? ['execution'] : [])]);
         if (typeof item.id !== 'string' || !/^[a-z][A-Za-z0-9._:-]{0,127}$/.test(item.id) || ids.has(item.id)) throw new TypeError('Invalid annotation identity');
         ids.add(item.id);
         if (!Number.isSafeInteger(item.start) || !Number.isSafeInteger(item.end) || item.start < previousEnd || item.end <= item.start || item.end > content.length
             || typeof item.quote !== 'string' || item.quote !== content.slice(item.start, item.end)) throw new TypeError('Annotation must match its exact source text in order');
         previousEnd = item.end;
         if (!item.context) throw new TypeError('Annotation requires an explicit usage');
+        if (item.execution !== undefined) {
+            if (item.context.usage !== 'law') throw new TypeError('Execution association requires a World law passage');
+            object(item.execution, 'World law execution', ['logicPath', 'transactionId', 'digest']);
+            resourcePath(item.execution.logicPath); taskId(item.execution.transactionId);
+            if (!/^[a-f0-9]{64}$/.test(item.execution.digest ?? '')) throw new TypeError('World law execution requires an exact rule digest');
+        }
         return Object.freeze({ ...item, context: normalizeContentContext(item.context),
             ...(item.applicability === undefined ? {} : { applicability: normalizeKnowledgeApplicability(item.applicability) }) });
     }));

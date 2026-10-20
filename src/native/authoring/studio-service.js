@@ -16,6 +16,7 @@ import { buildProjectPackage, PackageInstaller } from '../package-composition.js
 import { validateAtriaProjectSource } from '../project-source.js';
 import { StudioPreviewHost } from '../studio-preview.js';
 import { readStudioWorldPreview } from '../studio-world-preview.js';
+import { readLawMechanisms } from '../world-law-execution.js';
 import { nativeProjectCommitPreviewVersion } from '../orchestration/native-project-commit-authority.js';
 import {
     LibraryAuthoringPlanner,
@@ -400,6 +401,18 @@ export class StudioService {
             contentHash: hashBytes(bytes),
             encoding: 'base64',
             content: bytes.toString('base64'),
+        });
+    }
+
+    async readLawMechanisms(handle, projectId, baseRevision) {
+        return this._queue(projectId, async () => {
+            const revision = await this._revisionUnlocked(handle, projectId);
+            if (revision.revision !== baseRevision) throw new ConflictError('native_project_revision_conflict');
+            const source = await this._project(handle, projectId), manifest = source.package;
+            const paths = [...new Set(manifest.entryPoints.map(entry => entry.runtime?.game?.logic ?? manifest.runtime?.game?.logic).filter(Boolean))];
+            const files = new Map();
+            for (const path of paths) files.set(path, await this._projects.readFile(handle, projectId, path));
+            return { revision: revision.revision, items: readLawMechanisms(manifest, files) };
         });
     }
 

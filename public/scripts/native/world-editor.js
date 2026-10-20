@@ -41,7 +41,7 @@ export function validateWorldEditorValue(value, snapshot = false) {
         }
     } else keys(rev, contentKeys, 'World content');
     if (rev.body !== undefined && (typeof rev.body !== 'string' || rev.body.length > 262144)) throw new TypeError(tl('World text must contain at most 262144 characters.'));
-    normalizeContentContext(rev.context); normalizeContentAnnotations(rev.body ?? '', rev.annotations); normalizeKnowledgeDelivery(rev.delivery);
+    normalizeContentContext(rev.context); normalizeContentAnnotations(rev.body ?? '', rev.annotations, { allowExecution: true }); normalizeKnowledgeDelivery(rev.delivery);
     if (rev.subjects !== undefined) subjectDefinitions(rev.subjects);
     if (rev.knowledgeBindings !== undefined && (!Array.isArray(rev.knowledgeBindings) || rev.knowledgeBindings.length !== rev.knowledgeBindingIds?.length
         || rev.knowledgeBindings.some((binding, index) => binding.knowledgeBindingId !== rev.knowledgeBindingIds[index]))) throw new TypeError(tl('Fixed Binding snapshots must match the selected references.'));
@@ -54,7 +54,7 @@ export function validateWorldEditorValue(value, snapshot = false) {
     json(value, 'World');
 }
 
-export function mountWorldEditor({ document: doc, root, value, worldId = null, label = 'World revision JSON', onReview, projectSource = null, library = null, validate: validateTarget = () => {}, isCurrent = () => true }) {
+export function mountWorldEditor({ document: doc, root, value, worldId = null, label = 'World revision JSON', onReview, projectSource = null, projectRevision = null, library = null, validate: validateTarget = () => {}, isCurrent = () => true }) {
     let draft = clone(value), source = '', advanced = false, disposed = false, loadSequence = 0;
     const snapshot = projectSource !== null;
     const initialDraft = JSON.stringify(draft);
@@ -166,7 +166,8 @@ export function mountWorldEditor({ document: doc, root, value, worldId = null, l
                         label: path.join(' / '), providerId: 'atri_world_state', path: ['worlds', identity, 'state', ...path], value });
                 };
                 if (identity) collect(revision().baseline);
-                mountAuthoredContentEditor({ document: doc, root: body, value: revision(), key: 'body', label: 'World text', defaultUsage: 'background', maxLength: 262144, stateFields });
+                mountAuthoredContentEditor({ document: doc, root: body, value: revision(), key: 'body', label: 'World text', defaultUsage: 'background', maxLength: 262144, stateFields,
+                    isCurrent: current, loadMechanisms: projectRevision ? () => nativeStudioClient.readLawMechanisms(projectSource.project.projectId, projectRevision) : null });
                 for (const [key, title, items] of [['knowledgeBindingIds', 'Knowledge bindings', catalog.bindings], ['assetIds', 'World assets', catalog.assets]]) {
                     const section = disclosure(doc, body, title);
                     const content = el(doc, 'div', '', undefined, section); dependencySections.set(key, content); dependencies(content, key, items);

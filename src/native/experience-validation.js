@@ -6,6 +6,7 @@ import { assertFrontendExperience, frontendFeatureAvailability } from '../../pub
 import { frontendTransactions } from './frontend/authority.js';
 import { validateFrontendGraph } from './frontend/graph.js';
 import { validateSchemaValue } from '../../public/scripts/native/experience/world/schema.js';
+import { assertWorldLawExecutions } from './world-law-execution.js';
 
 export function validateFrontendResources(manifest, files, assets) {
     for (const owner of [manifest, ...manifest.entryPoints]) {
@@ -60,6 +61,7 @@ export function validateExperienceResources(manifest, files, assets, { lower = f
         if (logic) logicPaths.add(logic);
         else if (contract?.authorityRuntime) throw new TypeError('Authority runtime requires pinned Game Logic v3 for each entry');
     }
+    const logicByPath = new Map();
     for (const path of logicPaths) {
         const bytes = files.get(path);
         if (!bytes) {
@@ -72,6 +74,7 @@ export function validateExperienceResources(manifest, files, assets, { lower = f
         if (raw.schemaVersion !== 2 && raw.schemaVersion !== 3 && raw.transactions === undefined && raw.derivedPublications === undefined && !hasAppMapping) continue;
         const lowered = raw.schemaVersion === 2 ? lowerDeclarativeMutations(raw) : raw;
         compileDeclarativeLogic(lowered, { data: {}, experienceContract: contract });
+        logicByPath.set(path, lowered);
         for (const transaction of lowered.transactions ?? []) {
             if (transaction.computation) compilePackageComputation(transaction.computation.source, files);
         }
@@ -83,6 +86,7 @@ export function validateExperienceResources(manifest, files, assets, { lower = f
         }
         if (lower) files.set(path, Buffer.from(JSON.stringify(lowered)));
     }
+    assertWorldLawExecutions(manifest.worlds, logicByPath, contract);
     for (const ref of manifest.runtime?.experienceContract?.dataResources ?? []) {
         const bytes = assets.get(ref.assetId);
         if (!bytes || bytes.length > 2 * 1024 * 1024) throw new TypeError('Missing or oversized Package Data');

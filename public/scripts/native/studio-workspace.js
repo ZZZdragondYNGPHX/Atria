@@ -542,7 +542,7 @@ function renderLibraryContentEditor(documentRef, body, state, stageProject, view
         state.collectionSelection[view] = worlds.findIndex(item => identity(item) === state[selectionKey]);
     }
     const sequence = state.editorSequence;
-    state[editorKey] = mount({ document: documentRef, root: body, value: collection ? worlds : world, projectSource: state.source, collection, library: state.supportFailures.some(item => item.source === 'library') ? null : state.library,
+    state[editorKey] = mount({ document: documentRef, root: body, value: collection ? worlds : world, projectSource: state.source, projectRevision: state.revision.revision, collection, library: state.supportFailures.some(item => item.source === 'library') ? null : state.library,
         isCurrent: () => !state.disposed && state.editorSequence === sequence,
         onReview: async parsed => {
             const accepted = await stageProject(patch(state.source, world && identity(world), parsed, collection), formatProductText(collection ? 'Update ${0} collection' : 'Update ${0} resource', [title]));

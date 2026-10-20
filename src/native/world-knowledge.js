@@ -174,7 +174,7 @@ export function assertWorldRevision(value) {
         ...(value.baseline === undefined ? {} : { baseline: optionalJsonObject(value.baseline, 'WorldRevision.baseline') }),
         ...(value.body === undefined ? {} : { body: text(value.body, 'WorldRevision.body', { allowEmpty: true, maxLength: 262144 }) }),
         ...(value.context === undefined ? {} : { context: normalizeContentContext(value.context) }),
-        ...(value.annotations === undefined ? {} : { annotations: normalizeContentAnnotations(value.body ?? '', value.annotations) }),
+        ...(value.annotations === undefined ? {} : { annotations: normalizeContentAnnotations(value.body ?? '', value.annotations, { allowExecution: true }) }),
         ...(value.delivery === undefined ? {} : { delivery: normalizeKnowledgeDelivery(value.delivery, 'WorldRevision.delivery') }),
         ...(value.displayName === undefined ? {} : { displayName: text(value.displayName, 'WorldRevision.displayName', { maxLength: 256 }) }),
         ...(value.knowledgeBindings === undefined ? {} : { knowledgeBindings: worldBindingSnapshots(value.knowledgeBindings, value.knowledgeBindingIds) }),

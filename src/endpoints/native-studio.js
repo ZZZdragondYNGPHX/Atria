@@ -236,6 +236,10 @@ export function createNativeStudioRouter(getServices = services, artifacts = nat
         res.json(await studio.readSource(handle, req.params.projectId, req.query.path));
     }));
 
+    router.get('/projects/:projectId/law-mechanisms', route(async (req, res, { studio }, handle) => {
+        res.set('Cache-Control', 'private, no-store').json(await studio.readLawMechanisms(handle, req.params.projectId, req.query.baseRevision));
+    }));
+
     router.put('/projects/:projectId/source', route(async (req, res, { studio }, handle) => {
         res.json(await studio.writeSource(handle, req.params.projectId, req.body || {}));
     }));

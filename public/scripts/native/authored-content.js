@@ -17,7 +17,7 @@ export function authoredPassageApplicability(note, providers = []) {
 
 export function renderAuthoredContent(content, { context, annotations, source, defaultUsage = 'claim', providers = [] } = {}) {
     const normalized = normalizeContentContext(context) ?? { usage: defaultUsage };
-    const notes = normalizeContentAnnotations(content, annotations) ?? [];
+    const notes = normalizeContentAnnotations(content, annotations, { allowExecution: !!source?.worldId }) ?? [];
     const describe = value => meanings[value.usage] + (value.attribution ? ' Attribution: ' + JSON.stringify(value.attribution) + '.' : '')
         + (value.time ? ' Source time: ' + JSON.stringify(value.time) + '.' : '');
     const declarations = notes.map(note => {
@@ -30,6 +30,8 @@ export function renderAuthoredContent(content, { context, annotations, source, d
                 ? 'Historical source statement; its declared current applicability no longer holds.'
                 : 'Source claim; current applicability is not established by readable evidence.';
         }
+        if (note.execution) statement += ' Linked Work transaction: ' + JSON.stringify(note.execution.transactionId)
+            + '. Coverage is limited to that transaction in its pinned Work logic; this association does not authorize any effect or prove universal enforcement.';
         return 'For the exact passage ' + JSON.stringify(note.quote) + ': ' + statement;
     });
     // Keep the complete source and its attribution, negations and conditionals.
