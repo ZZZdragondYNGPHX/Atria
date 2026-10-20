@@ -456,12 +456,17 @@ export class SessionCore {
             await this._continuity.load(handle, base.session.packageId), { publication: true, pendingIntentId });
         if (realmDefinition(base)) states = reconcileRealm(base, states,
             await this._sessions.realm.load(handle, base.session.packageId), { publication: true, pendingIntentId: pendingRealmIntentId });
+        const completedTask = taskRecord ? states.atri_lifecycle?.outbox.find(item => item.invocationId === taskRecord.invocationId) : null;
+        if (completedTask?.status === 'pending') {
+            states = cloneNativeDocument(states);
+            states.atri_lifecycle.outbox.find(item => item.invocationId === taskRecord.invocationId).status = 'completed';
+        }
         if (hasAuthorityTransactions(base) && !authorityPrepared && base.revision && states !== base.states
             && (!equalNativeDocuments(states.atri_lifecycle?.domains ?? null, base.states.atri_lifecycle?.domains ?? null)
                 || !equalNativeDocuments(states.atri_lifecycle?.clocks ?? null, base.states.atri_lifecycle?.clocks ?? null)
                 || !equalNativeDocuments(states.atri_world_state ?? null, base.states.atri_world_state ?? null))) {
             const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
-            states = (await prepareAuthorityPublications({ ...base, states }, installed, authorityBudget)).candidate.states;
+            states = (await prepareAuthorityPublications({ ...base, states }, installed, authorityBudget, { excludeJobId: completedTask?.simulation?.jobId ?? null })).candidate.states;
             if (base.states.atri_lifecycle?.ready && states.atri_lifecycle?.ready && states.atri_lifecycle.history) {
                 states = cloneNativeDocument(states);
                 prepareLifetimes(base, { ...base, states });

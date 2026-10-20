@@ -200,12 +200,17 @@ export async function createAuthorityPublicationBudget(base, installed) {
     return budget;
 }
 
-export async function prepareAuthorityPublications(base, installed, authority = null) {
+export async function prepareAuthorityPublications(base, installed, authority = null, { excludeJobId = null } = {}) {
     try {
         const contract = contractFor(base, installed); validateCandidate(base, contract);
         const budget = authority ?? budgetFor(contract.authorityRuntime.policy, 'derived-publication');
         const { candidate, logic } = await createTaskWorld(base, installed, null, budget);
         protectOutputs(logic, budget);
+        if (contract.simulationRuntime && candidate.states.atri_lifecycle?.ready) {
+            const { prepareWorldSimulation } = await import('./simulation-authority.js');
+            const reacted = await prepareWorldSimulation(candidate, installed, candidate.states.atri_lifecycle.clocks[contract.simulationRuntime.clockId], budget, { excludeJobId });
+            Object.assign(candidate.states, reacted.states);
+        }
         await publications(candidate, installed, contract, logic, budget);
         validateCandidate(candidate, contract);
         return freeze({ candidate, work: { ...budget.counts } });
@@ -319,6 +324,11 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest) {
         // Existing clock validation does not pump. Drain bounded due work privately
         // before projections; never dispatch queued Model Tasks in preparation.
         if (candidate.states.atri_lifecycle?.ready) await applyLifecycle(candidate, installed, { kind: 'pump' }, budget);
+        if (contract.simulationRuntime) {
+            const { prepareWorldSimulation } = await import('./simulation-authority.js');
+            const reacted = await prepareWorldSimulation(candidate, installed, candidate.states.atri_lifecycle.clocks[contract.simulationRuntime.clockId], budget);
+            Object.assign(candidate.states, reacted.states);
+        }
         const histories = (transaction.history ?? []).filter(h => h.when === undefined || predicate(h.when, { args, resolution }));
         if (histories.length > 1) throw new TypeError('Ambiguous history operation');
         const history = histories[0];
