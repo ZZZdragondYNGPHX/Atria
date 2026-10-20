@@ -1147,6 +1147,7 @@ export function createAtriaAppShell({
         }
         // Native modal frames own their Escape before the inspector or routes.
         if (documentRef.querySelector('dialog[open]')) return;
+        if (event.target?.closest?.('.atri-runtime[data-editor]')) return;
         const playMore = root.querySelector('.atria-play-more[open], .atria-game-recovery-panel[open]');
         if (playMore) {
             playMore.open = false;
