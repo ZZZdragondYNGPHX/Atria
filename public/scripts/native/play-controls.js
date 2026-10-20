@@ -17,6 +17,7 @@ import { mountSharedSessionPanel } from './shared-session-ui.js';
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { mountSessionAgentPanel } from './session-agent-panel.js';
 import { nativePlayGenerationBusy } from './play-generation.js';
+import { mountWorldRecords } from './world-records-ui.js';
 
 function actionButton(documentRef, label, handler, icon) {
     const node = documentRef.createElement('button');
@@ -498,6 +499,10 @@ export function mountNativePlayControls({
         void showTimeline();
     }, 'history');
     const context = actionButton(documentRef, 'Context', showContext, 'context');
+    const records = actionButton(documentRef, 'World records', () => {
+        openDrawer('World records'); drawerBody.replaceChildren();
+        experiencePanel = mountWorldRecords({ document: documentRef, root: drawerBody, getRuntime: activeRuntime });
+    }, 'book');
     const promptControls = actionButton(documentRef, 'Prompt choices', () => {
         openDrawer('Prompt choices'); drawerBody.replaceChildren();
         void mountPlayPromptControls(documentRef, drawerBody);
@@ -526,7 +531,7 @@ export function mountNativePlayControls({
     // Returning to the story list never cancels generation; the session stays open.
     recentStories.prepend(createAtriaIcon(documentRef, 'arrow-l', { size: 16 }));
     const separator = () => { const node = documentRef.createElement('div'); node.className = 'atria-play-more-actions__sep'; node.setAttribute('role', 'separator'); return node; };
-    moreActions.append(health, sharing, goals, separator(), quickSave, load, separator(), recentStories);
+    moreActions.append(records, health, sharing, goals, separator(), quickSave, load, separator(), recentStories);
     moreActions.addEventListener('click', () => {
         more.open = false;
         if (moreActions.contains(documentRef.activeElement)) moreLabel.focus();
@@ -614,11 +619,13 @@ export function mountNativePlayControls({
         const canWrite = writable();
         for (const [button, allowed] of drawerWrites) button.disabled = !allowed();
         historyPanel?.atriaHistory?.syncCapabilities();
+        experiencePanel?.sync?.();
         save.disabled = !canWrite;
         quickSave.disabled = !canWrite;
         load.disabled = !active;
         timeline.disabled = !active;
         context.disabled = !active;
+        records.disabled = !active;
     }
 
     const observer = new MutationObserver(sync);

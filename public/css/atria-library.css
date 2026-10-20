@@ -15,6 +15,16 @@
 .atri-library-field > input[type="file"] { white-space: normal; }
 .atri-library-field[hidden] { display: none; }
 .atri-library-details { min-width: 0; }
+.atria-world-records { display: grid; gap: 12px; min-width: 0; }
+.atria-world-records__entry { border-block-start: 1px solid var(--line-1); padding-block: 12px; overflow-wrap: anywhere; }
+.atria-native-play-drawer__body .atria-world-records__entry h4 { margin: 0 0 8px; font: 600 var(--fs-sm)/1.4 var(--font-ui); letter-spacing: normal; text-transform: none; color: var(--text-1); }
+.atria-world-records__text { white-space: pre-wrap; line-height: 1.6; }
+.atria-world-records__values { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 6px 12px; margin-block: 8px; overflow-wrap: anywhere; }
+.atria-world-records__values dt { color: var(--text-2); }
+.atria-world-records__values dd { margin: 0; white-space: pre-wrap; }
+.atria-world-records__query { display: grid; gap: 12px; margin-block: 12px; }
+.atria-world-records__query :where(input, select) { width: 100%; min-width: 0; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-world-records { padding-block-end: calc(84px + var(--atri-safe-area-bottom)); }
 .atri-library-details > summary { padding-block: 8px; overflow-wrap: anywhere; }
 .atri-library-details > pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; padding: 14px; border-radius: var(--r-md); border: 1px solid var(--line-1); background: var(--surface-panel); }
 
