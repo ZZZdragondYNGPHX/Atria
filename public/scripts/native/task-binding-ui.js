@@ -2,6 +2,7 @@ import { runtimeRequest } from './runtime-client.js';
 import { getTaskBindings, setTaskBinding } from './task-bindings.js';
 import { mountRuntimeRoutePicker } from './runtime-route-picker.js';
 import { el } from './library-ui.js';
+import { openConnectModelWizard } from './connect-model-wizard.js';
 import { translateShellText as t, formatShellText as fmt } from '../atria-shell/localization.js';
 
 const setups = new WeakMap();
@@ -66,10 +67,15 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
             if (slot.requiredCapabilities.length) el(doc, 'p', 'workspace-hint', fmt('Required capabilities: ${0}', [slot.requiredCapabilities.join(', ')]), group);
             // Invalid/stale/foreign refs are never handed to the picker as a selection.
             if (!selected(slot)) delete draft[slot.id];
+            // A single compatible route is suggested, never silently saved: Save still confirms it.
+            const compatible = slot.routes.filter(route => route.compatible);
+            const suggested = !draft[slot.id] && compatible.length === 1;
+            if (suggested) draft[slot.id] = { scope: 'player', runtimeRouteId: compatible[0].runtimeRouteId };
             const picker = mountRuntimeRoutePicker({ parent: group, label: label(slot.id), explicit: true,
                 routes: slot.routes.filter(route => route.compatible), value: draft[slot.id],
                 change: value => { if (value) draft[slot.id] = value; else delete draft[slot.id]; updateSave(); } });
             pickers.set(slot.id, picker);
+            if (suggested) el(doc, 'p', 'workspace-hint', t('Suggested: the only compatible route. Save to use it.'), group);
             if (slot.error) el(doc, 'p', 'workspace-hint', taskBindingMessage(slot.error), group);
             for (const route of slot.routes.filter(route => !route.compatible)) el(doc, 'p', 'workspace-hint', route.displayName + ': ' + taskBindingMessage(route.error), group);
         }
@@ -78,6 +84,13 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
             change: value => { if (!value) return; for (const slot of report.slots) { draft[slot.id] = value; pickers.get(slot.id).setValue(value); } updateSave(); } });
         if (report.slots.some(slot => !slot.routes.some(route => route.compatible))) el(doc, 'p', '', t('No compatible Runtime Route is available. Create or configure a route in Runtime, then return here.'), content);
         controls = el(doc, 'div', 'atri-library-actions', undefined, content);
+        // Most first runs only lack a model: connect one here and re-check, without leaving this story.
+        if (missingRoles.length || report.slots.some(slot => !slot.routes.some(route => route.compatible))) {
+            const connect = el(doc, 'button', 'atri-library-button atri-library-button--primary', t('Connect a model'), controls); connect.type = 'button';
+            connect.addEventListener('click', () => openConnectModelWizard({ document: doc, host, onDone: async () => {
+                if (!current()) return; const next = await check(draft); if (current()) { draw(next); heading.focus(); }
+            } }));
+        }
         button('Configure Runtime Routes', () => host?.openRuntimeRepair
             ? host.openRuntimeRepair('routes', async () => { if (!current()) return; const next = await check(draft); if (current()) { draw(next); heading.focus(); } })
             : host?.openRuntimeSection('routes'));
@@ -98,7 +111,7 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
             await onReady();
             if (current()) { controller.abort(); panel.remove(); }
         });
-        save.classList.add('atri-library-button--primary');
+        if (!controls.querySelector('.atri-library-button--primary')) save.classList.add('atri-library-button--primary');
         button('Cancel', () => { controller.abort(); panel.remove(); }); updateSave();
     }
     try {

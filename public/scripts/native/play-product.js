@@ -1,5 +1,7 @@
 import { markStartupReadiness } from './startup-readiness.js';
-import { runtimeRequest, onRuntimeConfigurationChanged } from './runtime-client.js';
+import { runtimeRequest, onRuntimeConfigurationChanged, runtimeRemediation } from './runtime-client.js';
+import { openConnectModelWizard } from './connect-model-wizard.js';
+import { isTaskBindingFailure, taskBindingMessage } from './task-binding-ui.js';
 import { mountSpeechControls } from './speech-controls.js';
 import { ConversationWindow } from './conversation-window.js';
 import { nativeAssetUrl } from './session-projection.js';
@@ -299,6 +301,28 @@ export function mountAtriaPlayProduct({
         runtimeError.append(message, action);
     };
     composerComponent.append(runtimeError);
+    // Setup problems are stated before the reader writes, with the one fix that applies (blueprint §6.1).
+    const setupNotice = documentRef.createElement('div');
+    setupNotice.className = 'atri-runtime-notice atria-play-setup-notice'; setupNotice.hidden = true;
+    setupNotice.setAttribute('role', 'status');
+    composerComponent.prepend(setupNotice);
+    let setupNoticeCode = null;
+    const paintSetupNotice = code => {
+        if (code === setupNoticeCode) return;
+        setupNoticeCode = code; setupNotice.replaceChildren(); setupNotice.hidden = !code;
+        if (!code) return;
+        const routeProblem = isTaskBindingFailure([code]);
+        const message = documentRef.createElement('p');
+        message.textContent = routeProblem ? taskBindingMessage(code) : (runtimeRemediation(code)[0] || tl('This story cannot be prepared yet. Check its model setup in Runtime.'));
+        const action = documentRef.createElement('button'); action.type = 'button';
+        action.className = 'atria-native-play-actions__button atria-play-primary';
+        const host = globalThis.Atria?.shell?.getWorkspaceHost?.();
+        action.textContent = tl(routeProblem ? 'Connect a model' : 'Open Runtime');
+        action.addEventListener('click', () => routeProblem
+            ? openConnectModelWizard({ document: documentRef, host, onDone: () => { resetPreparation(); render(); } })
+            : host?.openRuntimeSection?.('overview'));
+        setupNotice.append(message, action);
+    };
     documentRef.addEventListener('atria-native-runtime-error', showRuntimeError);
 
 
@@ -315,7 +339,7 @@ export function mountAtriaPlayProduct({
             window.clear(); resizeRows?.disconnect();
             clearSpeechControls(); renderedSession = null;
             draftText = '';
-            runtimeError.hidden = true;
+            runtimeError.hidden = true; paintSetupNotice(null);
             for (const body of conversation.querySelectorAll('.atria-play-message__body')) releaseIllustrationSurface(body);
             conversation.replaceChildren();
             composerStatus.textContent = '';
@@ -453,6 +477,7 @@ export function mountAtriaPlayProduct({
                     : generation.state === 'cancelling' ? 'Stopping…'
                         : generation.state === 'finalizing' ? 'Saving reply…' : generating() ? 'Generating…' : '');
         if (composerStatus.textContent !== statusText) composerStatus.textContent = statusText;
+        paintSetupNotice(writable && !generating() && !runtime.history ? preparationError || null : null);
         queueMicrotask(() => {
             if (!disposed && following) scrollToLatest();
         });

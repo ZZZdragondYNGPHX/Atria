@@ -18,8 +18,9 @@ import { NOVELAI_IMAGE_ENDPOINT, NOVELAI_IMAGE_ADAPTERS, officialNovelaiCapabili
 import { assertComputeBudget } from '../../shared/native-compute-budget.js';
 import { mountCredentialTargetReview } from './credential-target-review.js';
 import { connectionRequiresSecret } from '../../shared/native-connection-auth.js';
+import { renderRuntimeOverview } from './runtime-overview.js';
 
-const sectionLabels = { routes: 'Routes', models: 'Models', connections: 'Connections', retrieval: 'Retrieval', diagnostics: 'Diagnostics' };
+const sectionLabels = { overview: 'Overview', routes: 'Routes', models: 'Models', connections: 'Connections', retrieval: 'Retrieval', diagnostics: 'Diagnostics' };
 const resourceLabels = { routes: 'route', models: 'model', connections: 'connection' };
 const roleLabels = { illustration_prompt: 'Illustration prompt', intent_resolver: 'Intent resolver', event_interpreter: 'Event interpreter', orchestrator: 'Orchestrator', studio: 'Studio', memory: 'Memory', search: 'Search', narrator: 'Narrator', actor: 'Actor', summarizer: 'Summarizer', planner: 'Planner', critic: 'Critic', embedding: 'Embedding', reranker: 'Reranker', director: 'Director', authoring: 'Authoring' };
 const ids = { connections: 'connectionProfileId', models: 'modelProfileId', routes: 'runtimeRouteId' };
@@ -150,7 +151,8 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 content.replaceChildren();
                 const next = steps.find(step => !step.ready);
                 const missingCount = steps.filter(step => !step.ready).length;
-                chainState.textContent = missingCount ? fmt('${0} missing', [missingCount]) : translateShellText('Ready');
+                // Saved parts are not proof of a working request; the Overview checks that.
+                chainState.textContent = missingCount ? fmt('${0} missing', [missingCount]) : translateShellText('All parts saved');
                 chainState.dataset.state = missingCount ? 'missing' : 'ready';
                 chainTitle.dataset.state = chainState.dataset.state;
                 // Readiness chain (R02): each link shows shape, glyph and text;
@@ -767,7 +769,8 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const configuration = await runtimeRequest('/configuration', { signal: controller.signal });
             if (disposed || sequence !== loadingSequence) return;
             data = configuration;
-            if (section === 'diagnostics') diagnostics(); else { renderList(); deepLink(selectedRoute); }
+            if (section === 'overview') renderRuntimeOverview({ document: doc, root, data, host, signal: controller.signal, reload: load });
+            else if (section === 'diagnostics') diagnostics(); else { renderList(); deepLink(selectedRoute); }
         } catch (error) { if (!disposed && sequence === loadingSequence) { root.replaceChildren(); failure(error, root); button('Retry loading', load); } }
     }
     void load();

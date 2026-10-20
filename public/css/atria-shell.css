@@ -231,7 +231,7 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     backdrop-filter: blur(20px) saturate(1.6);
 }
 body.no-blur :is(.atria-toolbar__tools, .atria-toolbar__global) { -webkit-backdrop-filter: none; backdrop-filter: none; }
-.atria-toolbar__tools:has(> .atria-context-bar__actions:empty):has(> .atria-toolbar__status[hidden]):has(> .atria-toolbar__inspector[hidden]) { display: none; }
+.atria-toolbar__tools:not(:has(> .atria-context-bar__actions > :not([hidden]))):has(> .atria-toolbar__status[hidden]):has(> .atria-toolbar__inspector[hidden]) { display: none; }
 
 .atria-context-bar__actions { display: flex; align-items: center; gap: 2px; }
 .atria-context-bar__actions:empty { display: none; }

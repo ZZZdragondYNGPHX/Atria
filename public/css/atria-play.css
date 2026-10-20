@@ -368,3 +368,11 @@ dialog.atria-game-host-surface--transient::backdrop { background: var(--surface-
 }
 .atria-app-shell[data-atria-viewport="compact"] dialog[data-atria-game-host-surface="drawer"] { margin-bottom: max(8px, var(--atri-safe-area-bottom)); }
 .atria-app-shell[data-atria-keyboard="open"] dialog.atria-game-host-surface--transient { inset: max(12px, var(--atri-safe-area-top)) 0 auto; margin: 0 auto; }
+
+/* Setup notice above the Composer: the reason and the one fix, before anything is written. */
+.atria-play-setup-notice { display: flex; align-items: center; gap: 12px; margin: 0 0 8px; padding: 10px 12px; border-radius: var(--r-lg);
+    border: 1px solid color-mix(in srgb, var(--tone-amber) 40%, transparent); background: var(--soft-amber); color: var(--text-1); }
+.atria-play-setup-notice[hidden] { display: none; }
+.atria-play-setup-notice p { flex: 1; min-width: 0; margin: 0; font-size: var(--fs-sm); line-height: 1.5; }
+.atria-app-shell .atria-play-setup-notice .atria-native-play-actions__button { flex: none; width: auto; font-size: var(--fs-sm); padding: 0 12px; }
+@media (max-width: 719px) { .atria-play-setup-notice { flex-direction: column; align-items: stretch; } }

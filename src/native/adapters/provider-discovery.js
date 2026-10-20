@@ -1,10 +1,12 @@
 const fail = code => { throw Object.assign(new Error('native_provider_' + code), { code: 'native_provider_' + code }); };
 const formats = ['provider.openai-compatible', 'provider.raw-text', 'provider.anthropic', 'provider.gemini'];
+// Request-shaping options that only affect generation bodies, never the model list.
+const generationOnlyOptions = new Set(['responseMode', 'toolSchemaMode', 'minimumOutputTokens']);
 
 // Non-generating, explicit-connection probe. Never follows provider-supplied URLs.
 export function prepareProviderDiscovery(connection) {
     if (!formats.includes(connection.providerAdapter) || connection.transport !== 'transport.http'
-        || Object.keys(connection.options).length || Object.keys(connection.networkPolicy).length) fail('probe_unsupported');
+        || Object.keys(connection.options).some(key => !generationOnlyOptions.has(key)) || Object.keys(connection.networkPolicy).length) fail('probe_unsupported');
     const url = new URL(connection.endpoint);
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) fail('endpoint_invalid');
     const format = connection.providerAdapter.replace('provider.', '');

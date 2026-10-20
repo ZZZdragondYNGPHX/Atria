@@ -17,6 +17,7 @@ import { mountSharedSessionPanel } from './shared-session-ui.js';
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { mountSessionAgentPanel } from './session-agent-panel.js';
 import { nativePlayGenerationBusy } from './play-generation.js';
+import { renderBeforeYouBegin } from './before-you-begin.js';
 
 function actionButton(documentRef, label, handler, icon) {
     const node = documentRef.createElement('button');
@@ -403,6 +404,12 @@ export function mountNativePlayControls({
                     }
                 }
             }
+            // First steps stay visible until a model is connected and a story exists.
+            const begin = await renderBeforeYouBegin({ document: documentRef, root: content, works, host: globalThis.Atria?.shell?.getWorkspaceHost?.(), onChanged: renderLanding });
+            if (disposed || !content.isConnected) return;
+            if (begin.complete && sessions.length) begin.element.remove();
+            // One primary action per screen: while setup is incomplete, its next step leads.
+            else if (!begin.complete) browse.classList.remove('atria-play-primary');
             const section = (label, className) => {
                 const group = documentRef.createElement('section');
                 const heading = documentRef.createElement('h2'); heading.textContent = tl(label);

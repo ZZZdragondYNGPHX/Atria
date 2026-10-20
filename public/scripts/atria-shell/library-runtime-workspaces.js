@@ -32,6 +32,7 @@ export const LIBRARY_SECTIONS = Object.freeze([
 ]);
 
 export const RUNTIME_SECTIONS = Object.freeze([
+    Object.freeze({ id: 'overview', label: 'Overview' }),
     Object.freeze({ id: 'routes', label: 'Routes' }),
     Object.freeze({ id: 'models', label: 'Models' }),
     Object.freeze({ id: 'connections', label: 'Connections' }),
@@ -63,8 +64,8 @@ export function normalizeLibrarySection(route) {
 export function normalizeRuntimeSection(route) {
     const childId = String(route?.child?.id || '').trim();
     const id = childId.split(':')[0];
-    const aliases = { overview: 'routes', roles: 'routes', presets: 'profiles', capabilities: 'models' };
-    return sectionById(RUNTIME_SECTIONS, aliases[id] || id, 'routes').id;
+    const aliases = { roles: 'routes', presets: 'profiles', capabilities: 'models' };
+    return sectionById(RUNTIME_SECTIONS, aliases[id] || id, 'overview').id;
 }
 
 function buildDomainFrame(documentRef, {

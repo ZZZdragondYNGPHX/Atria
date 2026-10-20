@@ -648,10 +648,11 @@ export function createAtriaWorkspaceHost({
     function openRuntimeSection(section = 'routes', resourceId = '') {
         const requestedId = String(section || 'routes').trim().toLowerCase();
         if (requestedId === 'profiles' || requestedId === 'presets') return openLibrarySection('generation-profiles');
-        const aliases = { overview: 'routes', roles: 'routes', presets: 'profiles', capabilities: 'models' };
+        const aliases = { roles: 'routes', presets: 'profiles', capabilities: 'models' };
         const id = aliases[requestedId] || requestedId;
         const item = RUNTIME_SECTIONS.find(candidate => candidate.id === id) || RUNTIME_SECTIONS[0];
-        const child = item.id === 'routes' && !resourceId ? null : {
+        // Overview is the Runtime landing page; every other section is an explicit child.
+        const child = item.id === 'overview' && !resourceId ? null : {
             id: resourceId ? item.id + ':' + resourceId : item.id,
             label: item.label, kind: 'workspace',
         };

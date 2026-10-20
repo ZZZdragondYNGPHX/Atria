@@ -1,0 +1,150 @@
+/*
+ * First-run surfaces (blueprint §4): the Connect a model dialog and the
+ * "Before you begin" cards. The dialog lives on <body>, outside workspace
+ * scopes, so its controls are styled here from the semantic tokens.
+ */
+.atria-onboard {
+    width: min(560px, calc(100vw - 32px)); max-height: min(720px, calc(100dvh - 32px)); padding: 0;
+    display: flex; flex-direction: column; overflow: hidden;
+    border: 1px solid var(--line-2); border-radius: var(--r-2xl); background: var(--mat-overlay, var(--surface-panel)); color: var(--text-1);
+    box-shadow: var(--shadow-3); font: 400 var(--fs-md)/1.55 var(--font-ui);
+}
+.atria-onboard:not([open]) { display: none; }
+.atria-onboard::backdrop { background: var(--surface-scrim); -webkit-backdrop-filter: blur(6px) saturate(.9); backdrop-filter: blur(6px) saturate(.9); }
+.atria-onboard[open] { animation: atria-onboard-in var(--dur-3) var(--ease-settle) both; }
+@keyframes atria-onboard-in { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+
+.atria-onboard__head { display: flex; align-items: center; gap: 12px; padding: 18px 20px 0; }
+.atria-onboard__steps { display: flex; gap: 6px; margin: 0; padding: 0; list-style: none; flex: 1; min-width: 0; }
+.atria-onboard__steps li { display: flex; align-items: center; gap: 6px; color: var(--text-3); font: 550 var(--fs-xs)/1 var(--font-ui); }
+.atria-onboard__steps li + li::before { content: ""; width: 14px; height: 1px; background: var(--line-3); }
+.atria-onboard__steps li[data-state="current"] { color: var(--text-1); }
+.atria-onboard__steps li[data-state="done"] { color: var(--tone-jade); }
+.atria-onboard__close {
+    display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%;
+    background: transparent; color: var(--text-2); cursor: pointer;
+}
+.atria-onboard__close:hover { background: var(--surface-hover); color: var(--text-1); }
+.atria-onboard__title { margin: 14px 20px 4px; font: 600 var(--fs-2xl)/1.25 var(--font-ui); letter-spacing: -.01em; }
+.atria-onboard__lead { margin: 0 20px 14px; color: var(--text-2); }
+.atria-onboard__body { display: grid; gap: 14px; padding: 2px 20px 16px; overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+.atria-onboard__status { margin: 0 20px 10px; color: var(--text-2); font-size: var(--fs-sm); }
+.atria-onboard__status[data-tone="danger"] { color: var(--tone-vermilion); }
+.atria-onboard__foot { display: flex; align-items: center; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--line-2); }
+.atria-onboard__spacer { flex: 1; }
+
+.atria-onboard__button {
+    min-height: 36px; padding: 0 16px; border: 1px solid var(--line-2); border-radius: var(--r-md);
+    background: var(--surface-raised); color: var(--text-1); font: 550 var(--fs-md)/1 var(--font-ui); cursor: pointer;
+}
+.atria-onboard__button:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--line-3); }
+.atria-onboard__button--primary { border-color: transparent; background: var(--btn-primary-bg); color: var(--btn-primary-text); box-shadow: 0 0 0 1px var(--btn-primary-ring); }
+.atria-onboard__button--primary:hover:not(:disabled) { background: var(--btn-primary-bg); filter: brightness(1.06); }
+.atria-onboard__button:disabled { opacity: .45; cursor: not-allowed; }
+.atria-onboard__button[aria-busy="true"] { cursor: progress; }
+.atria-onboard :is(button, input, a, summary):focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* Service choice: a card grid; the checked card carries a ring and a heavier name. */
+.atria-onboard__services { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.atria-onboard__service, .atria-onboard__model {
+    display: grid; gap: 2px; min-height: 60px; padding: 10px 12px; text-align: left; cursor: pointer;
+    border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface-raised); color: var(--text-1);
+    transition: border-color var(--dur-1), background-color var(--dur-1);
+}
+.atria-onboard__service strong, .atria-onboard__model strong { font: 600 var(--fs-md)/1.3 var(--font-ui); overflow-wrap: anywhere; }
+.atria-onboard__service span, .atria-onboard__model span { color: var(--text-3); font-size: var(--fs-xs); overflow-wrap: anywhere; }
+.atria-onboard__service:hover, .atria-onboard__model:hover { border-color: var(--line-3); background: var(--surface-hover); }
+.atria-onboard__service[aria-checked="true"], .atria-onboard__model[aria-checked="true"] {
+    border-color: color-mix(in srgb, var(--tone-lumen) 70%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--tone-lumen) 60%, transparent); background: var(--soft-lumen);
+}
+.atria-onboard__models { display: grid; gap: 6px; max-height: 300px; overflow-y: auto; overscroll-behavior: contain; padding: 2px; }
+.atria-onboard__model { min-height: 48px; }
+
+.atria-onboard__field { display: grid; gap: 6px; }
+.atria-onboard__label { color: var(--text-2); font: 550 var(--fs-sm)/1.4 var(--font-ui); }
+.atria-onboard__hint { margin: 0; color: var(--text-3); font-size: var(--fs-xs); line-height: 1.5; }
+.atria-onboard__input {
+    width: 100%; min-height: 38px; box-sizing: border-box; padding: 8px 12px; border: 1px solid var(--line-2); border-radius: var(--r-md);
+    background: var(--surface-input); color: var(--text-1); font: 400 var(--fs-md)/1.4 var(--font-ui);
+}
+.atria-onboard__input:focus { outline: none; border-color: color-mix(in srgb, var(--tone-lapis) 70%, transparent); box-shadow: 0 0 0 3px var(--soft-lapis); }
+.atria-onboard__link { justify-self: start; color: var(--tone-lapis); font-size: var(--fs-sm); }
+.atria-onboard__chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.atria-onboard__chip { min-height: 30px; padding: 0 12px; border: 1px solid var(--line-2); border-radius: var(--r-pill); background: transparent; color: var(--text-2); cursor: pointer; }
+.atria-onboard__chip:hover { background: var(--surface-hover); color: var(--text-1); }
+
+/* Credential destination (R04 inline): amber card + an unchecked consent box. */
+.atria-onboard__destination {
+    display: flex; gap: 12px; padding: 14px; border-radius: var(--r-lg);
+    border: 1px solid color-mix(in srgb, var(--tone-amber) 40%, transparent); background: var(--soft-amber);
+}
+.atria-onboard__destination > div { display: grid; gap: 2px; min-width: 0; }
+.atria-onboard__destination strong { overflow-wrap: anywhere; }
+.atria-onboard__destination span { color: var(--text-2); font-size: var(--fs-xs); overflow-wrap: anywhere; }
+.atria-onboard__destination-icon { color: var(--tone-amber); flex: none; }
+.atria-onboard__mono { font-family: var(--font-mono); }
+.atria-onboard__consent { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; line-height: 1.5; }
+/* Consent is never pre-checked and must read as unchecked: empty box until ticked. */
+.atria-onboard__consent input {
+    appearance: none; flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; margin: 2px 0 0;
+    border: 1.5px solid var(--line-strong); border-radius: 5px; background: var(--surface-input); cursor: pointer;
+    transition: background-color var(--dur-1), border-color var(--dur-1);
+}
+.atria-onboard__consent input::before {
+    content: ""; width: 9px; height: 5px; border: 1.8px solid var(--text-inverse); border-top: 0; border-right: 0;
+    transform: rotate(-45deg) translate(1px, -1px) scale(0); transition: transform var(--dur-2) var(--ease-spring);
+}
+.atria-onboard__consent input:checked { background: var(--tone-lumen); border-color: var(--tone-lumen); }
+.atria-onboard__consent input:checked::before { transform: rotate(-45deg) translate(1px, -1px) scale(1); }
+.atria-onboard__consent input:disabled { opacity: .7; cursor: default; }
+@media (forced-colors: active) { .atria-onboard__consent input { border-color: CanvasText; } .atria-onboard__consent input:checked { background: Highlight; } }
+
+.atria-onboard__manual > summary { cursor: pointer; color: var(--text-2); font-size: var(--fs-sm); }
+.atria-onboard__manual[open] > .atria-onboard__input { margin-top: 8px; }
+
+.atria-onboard__receipt { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.atria-onboard__receipt li { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--r-md); background: var(--surface-raised); }
+.atria-onboard__receipt .atria-icon { color: var(--tone-jade); flex: none; }
+.atria-onboard__receipt-kind { min-width: 104px; color: var(--text-3); font-size: var(--fs-xs); }
+
+/* Phones: a full-screen layer, the primary action in the thumb zone. */
+@media (max-width: 719px) {
+    .atria-onboard { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; border: 0; }
+    .atria-onboard__services { grid-template-columns: 1fr; }
+    .atria-onboard__body { flex: 1; }
+    .atria-onboard__foot { padding-bottom: max(14px, env(safe-area-inset-bottom, 0px)); }
+    .atria-onboard__button { min-height: 44px; }
+    .atria-onboard__button--primary { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .atria-onboard[open] { animation: none; } }
+body.reduced-motion .atria-onboard[open] { animation: none; }
+
+/* Before you begin (Play landing): three numbered steps; done steps carry a check. */
+.atria-begin { display: grid; gap: 12px; margin: 0 0 28px; }
+.atria-begin__title { margin: 0; font: 600 var(--fs-lg)/1.3 var(--font-ui); }
+.atria-begin__steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.atria-begin__step {
+    display: flex; gap: 12px; padding: 16px; border-radius: var(--r-xl);
+    border: 1px solid var(--line-2); background: var(--surface-panel);
+}
+.atria-begin__step[data-done="true"] { background: transparent; }
+.atria-begin__mark {
+    flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+    border: 1.5px solid var(--line-strong); color: var(--text-2); font: 600 var(--fs-sm)/1 var(--font-ui);
+}
+.atria-begin__step[data-done="true"] .atria-begin__mark { border-color: color-mix(in srgb, var(--tone-jade) 60%, transparent); background: var(--soft-jade); color: var(--tone-jade); }
+.atria-begin__text { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.atria-begin__text h3 { margin: 0; font: 600 var(--fs-md)/1.3 var(--font-ui); }
+.atria-begin__text p { margin: 0; color: var(--text-2); font-size: var(--fs-sm); line-height: 1.55; }
+.atria-begin__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.atria-app-shell .atria-begin__button {
+    min-height: 32px; padding: 0 12px; border: 1px solid var(--line-2); border-radius: var(--r-md);
+    background: var(--surface-raised); color: var(--text-1); font: 550 var(--fs-sm)/1 var(--font-ui); cursor: pointer; box-shadow: none;
+}
+.atria-app-shell .atria-begin__button:hover { background: var(--surface-hover); border-color: var(--line-3); }
+.atria-app-shell .atria-begin__button--primary { border-color: transparent; background: var(--btn-primary-bg); color: var(--btn-primary-text); box-shadow: 0 0 0 1px var(--btn-primary-ring); }
+.atria-app-shell .atria-begin__button--primary:hover { background: var(--btn-primary-bg); filter: brightness(1.06); }
+.atria-app-shell .atria-begin__button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+@media (max-width: 959px) { .atria-begin__steps { grid-template-columns: 1fr; } }
+@media (pointer: coarse) { .atria-app-shell .atria-begin__button { min-height: 44px; } }
+.atria-onboard__title:focus { outline: none; }

@@ -135,3 +135,44 @@
 .atria-app-shell[data-atria-viewport="compact"] .atri-runtime-row > button { opacity: 1; }
 
 .atri-runtime[data-atria-viewport="compact"] .atri-runtime-group { grid-template-columns: minmax(0, 1fr); }
+
+/* Runtime overview (blueprint §4.3): one row per job; the seal says what is known. */
+.atri-runtime-overview__callout {
+    display: flex; align-items: center; gap: 16px; margin: 0 0 16px; padding: 18px 20px; border-radius: var(--r-xl);
+    border: 1px solid color-mix(in srgb, var(--tone-lumen) 35%, transparent); background: var(--soft-lumen);
+}
+.atri-runtime-overview__callout > div { flex: 1; min-width: 0; }
+.atri-runtime-overview__callout strong { display: block; font: 600 var(--fs-lg)/1.3 var(--font-ui); }
+.atri-runtime-overview__callout p { margin: 4px 0 0; color: var(--text-2); }
+.atri-runtime-overview__callout-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: var(--surface-raised); color: var(--tone-lumen); }
+.atri-runtime-overview__tasks { display: grid; gap: 8px; }
+.atri-runtime-overview__task {
+    display: grid; grid-template-columns: minmax(160px, 220px) minmax(0, 1fr) auto; align-items: center; gap: 8px 16px;
+    padding: 14px 16px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface-panel);
+}
+.atri-runtime-overview__task-head { display: grid; gap: 2px; }
+.atri-runtime-overview__task-head strong { font: 600 var(--fs-md)/1.3 var(--font-ui); }
+.atri-runtime-overview__tag { color: var(--text-3); font-size: var(--fs-xs); }
+.atri-runtime-overview__task-detail { display: grid; gap: 4px; min-width: 0; }
+.atri-runtime-overview__model { overflow-wrap: anywhere; }
+.atri-runtime-overview__task-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.atria-app-shell .atri-runtime-overview__primary { border-color: transparent; background: var(--btn-primary-bg); color: var(--btn-primary-text); box-shadow: 0 0 0 1px var(--btn-primary-ring); font-weight: 600; }
+.atria-app-shell .atri-runtime-overview__primary:hover:not(:disabled) { background: var(--btn-primary-bg); filter: brightness(1.06); }
+.atri-runtime-overview__seal {
+    justify-self: start; display: inline-flex; align-items: center; gap: 6px; min-height: 22px; padding: 2px 9px; border-radius: var(--r-sm);
+    border: 1px solid var(--line-3); color: var(--text-2); font: 550 var(--fs-xs)/1.3 var(--font-ui);
+}
+.atri-runtime-overview__seal[data-tone="ready"] { border-style: solid; border-color: color-mix(in srgb, var(--tone-jade) 45%, transparent); background: var(--soft-jade); color: var(--tone-jade); }
+.atri-runtime-overview__seal[data-tone="missing"] { border-style: dashed; border-color: color-mix(in srgb, var(--tone-vermilion) 45%, transparent); color: var(--tone-vermilion); }
+.atri-runtime-overview__seal[data-tone="error"] { border-color: color-mix(in srgb, var(--tone-vermilion) 45%, transparent); background: var(--soft-vermilion); color: var(--tone-vermilion); }
+.atri-runtime-overview__seal[data-tone="warning"] { border-color: color-mix(in srgb, var(--tone-amber) 45%, transparent); background: var(--soft-amber); color: var(--tone-amber); }
+.atri-runtime-overview__seal[data-tone="unknown"] { border-style: dotted; border-color: color-mix(in srgb, var(--tone-dai) 55%, transparent); color: var(--tone-dai); }
+.atri-runtime-overview__seal[data-tone="busy"] { color: var(--text-2); }
+.atri-runtime-overview__others { margin-top: 18px; }
+.atri-runtime-overview__others > summary { margin-bottom: 10px; }
+.atri-runtime-overview__manage { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 22px; color: var(--text-3); font-size: var(--fs-sm); }
+@media (max-width: 719px) {
+    .atri-runtime-overview__callout { flex-direction: column; align-items: stretch; }
+    .atri-runtime-overview__task { grid-template-columns: 1fr; }
+    .atri-runtime-overview__task-actions { justify-content: flex-start; }
+}
