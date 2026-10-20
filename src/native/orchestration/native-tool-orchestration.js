@@ -5,7 +5,6 @@ import { assertNativeId } from '../identity.js';
 import { NativeGenerationHost } from '../adapters/generation-host.js';
 import { McpService } from '../mcp-service.js';
 import { A2aService } from '../a2a-service.js';
-import { CredentialTargetAuthority } from '../model-prompt-runtime/credential-targets.js';
 import { hashNativeDocument as hash, putImmutable, withNativeResourceWrite, equalNativeDocuments as equal } from '../repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { createOrchestrationExecutionService } from './execution-service.js';
@@ -42,7 +41,6 @@ export class NativeToolOrchestrationAuthority {
         const service = this.execution;
         return this.#port ??= new ToolPort({ mcpService: this.mcp, a2aService: this.a2a,
             budgetPort: service.budgetPort, sourcePort: service.sourcePort, runs: service.runs, effects: service.effects,
-            credentialAuthority: new CredentialTargetAuthority({ persistence: this.host.persistence }),
             verifyDispatch: args => service.assertDispatch(args), readInput: async ({ inputRef }) => structuredClone(inputRef.input),
             authorizeTool: async args => {
                 const state = this.#state(args.handle, args.root.runId); await this.authorize(args);
@@ -279,7 +277,6 @@ export class NativeToolOrchestrationAuthority {
                 if (!output || output.completion.intent.effectId !== input.effectId) fail();
                 const { pin } = await this.#plan(handle, root.planRef), captured = await captureNativeTool(handle, pin.resourceRef, this.host);
                 if (pin.integrity !== hash(captured.descriptor) || !equal(captured.descriptor, output.completion.descriptor)) fail();
-                if (captured.captured?.policy.auth === 'secret') await this.port.credentialAuthority.assertConnection(handle, captured.captured.connection);
                 await budgetPort.assertCurrent(handle, root.budgetAuthorityRef, { tx });
                 await sourcePort.revalidate(handle, root.sourceBinding, { tx, root });
                 return { root, output, fence };

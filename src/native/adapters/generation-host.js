@@ -12,7 +12,6 @@ import { chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLoca
 import { previewPromptDraft } from '../model-prompt-runtime/draft-preview.js';
 import { assertPreviewDisclosure } from '../model-prompt-runtime/preview-disclosure.js';
 import { assertExactResourceRef } from '../model-prompt-runtime/contracts.js';
-import { CredentialTargetAuthority } from '../model-prompt-runtime/credential-targets.js';
 import { randomUUID } from 'node:crypto';
 import { processPackageText } from '../processing-runtime.js';
 import { prepareKnowledgeAdoption } from '../knowledge-authority.js';
@@ -303,10 +302,7 @@ export class NativeGenerationHost {
     async _controlledTurnConfiguration(handle, base, input) {
         const lanes = await this._turnLanes(handle, { ...base, timeline: [{ role: 'user', content: input.userInput }] }, input), capture = {};
         for (const lane of lanes) await this.executionResources(handle, lane, input.sessionId, capture);
-        const credentialAuthority = new CredentialTargetAuthority({ persistence: this.persistence });
-        const credentialTargets = await Promise.all(Object.values(capture.connections).map(connection => credentialAuthority.inspect(handle,
-            { connectionProfileId: connection.connectionProfileId })));
-        return { selectedRouteIds: lanes.map(route => route.runtimeRouteId), ...capture, credentialTargets,
+        return { selectedRouteIds: lanes.map(route => route.runtimeRouteId), ...capture,
             taskRuntime: base.manifest.runtime.experienceContract.taskRuntime, generationBudget: base.manifest.runtime.experienceContract.generationBudget ?? null,
             packageContentHash: base.session.packageContentHash, packageVersionId: base.session.packageVersionId, entryPointId: base.session.entryPointId,
             runtimeFingerprint: hashNativeDocument({ runtime: base.manifest.runtime, entryPointRuntime: base.entryPoint.runtime ?? null }) };
@@ -358,7 +354,6 @@ export class NativeGenerationHost {
 
     async _assertControlledTurn(handle, base, review) {
         const configuration = await this._controlledTurnConfiguration(handle, base, review.input);
-        if (configuration.credentialTargets.some(target => !target.authorized)) throw new GenerationError('native_credential_target_approval_required');
         if (base.revision.branchId !== review.branchId || hashNativeDocument(configuration) !== review.configurationFingerprint)
             throw new GenerationError('native_generation_review_stale');
     }
@@ -372,10 +367,9 @@ export class NativeGenerationHost {
         if (!route.executionPolicy?.computeBudget) fail('native_generation_budget_unavailable');
         const model = configuration.models.find(value => value.modelProfileId === route.modelProfileRef.modelProfileId);
         const connection = configuration.connections.find(value => value.connectionProfileId === route.connectionProfileRef.connectionProfileId);
-        const credentialTarget = await new CredentialTargetAuthority({ persistence: this.persistence }).inspect(handle, { connectionProfileId: connection.connectionProfileId });
         return { source: { sessionId: input.sessionId, revisionId: input.revisionId, branchId: base.revision.branchId, packageVersionId: base.session.packageVersionId },
             route, model, connection, configurationFingerprint: hashNativeDocument(configuration), budget: route.executionPolicy.computeBudget,
-            credentialTarget, economics: 'unknown', backgroundModel: 'suppressed', automaticResend: 'disabled' };
+            economics: 'unknown', backgroundModel: 'suppressed', automaticResend: 'disabled' };
     }
 
     async executeTurn(handle, input, signal, onChunk, { transaction = null, controlledReview = null } = {}) {
