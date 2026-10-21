@@ -22,6 +22,8 @@ export const PROMPT_TYPES = Object.freeze({
 });
 const clone = value => JSON.parse(JSON.stringify(value));
 export const exactKey = ref => JSON.stringify(ref, Object.keys(ref).sort());
+const CONTEXT_SOURCES = [['context.fact', 'Facts'], ['context.history', 'History'], ['context.input', 'Input'], ['context.player-persona', 'Player persona'], ['context.directive', 'Host instructions']];
+
 export function newPromptResource(type) {
     const [, id, prefix] = PROMPT_TYPES[type];
     return { schemaVersion: 1, [id]: createStudioNativeId(prefix), revision: createStudioNativeId('rev'), displayName: 'Untitled',
@@ -308,14 +310,16 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                     stageConditions.clear(); anchorConditions.clear(); tree.replaceChildren();
                     stages.forEach((stage, index) => {
                         if (!stageKeys.has(stage)) stageKeys.set(stage, 'stage:' + stage.stageId);
-                        const stageBox = fold(tree, stageKeys.get(stage), formatShellText('Stage ${0}', [index + 1], undefined, 'atria.product.stageIndex'), () => stage.stageId + ' · ' + formatShellText('${0} modules', [promptStageModuleRefs(stage).length]));
+                        const stageBox = fold(tree, stageKeys.get(stage), formatShellText('Stage ${0}', [index + 1], undefined, 'atria.product.stageIndex'), () => formatShellText('${0} modules', [promptStageModuleRefs(stage).length]));
                         if (!foldState.has(stageKeys.get(stage))) stageBox.open = true;
                         const row = element(doc, 'fieldset', undefined, stageBox);
-                        const id = input(doc, row, formatShellText('Stage ID ${0}', [index + 1], undefined, 'atria.product.stageIdIndex'), stage.stageId);
+                        // The stage ID and exact module choice are expert controls; new writing is added from the outline.
+                        const advanced = fold(row, stageKeys.get(stage) + ':advanced', 'Advanced', () => stage.stageId);
+                        const id = input(doc, advanced, formatShellText('Stage ID ${0}', [index + 1], undefined, 'atria.product.stageIdIndex'), stage.stageId);
                         id.addEventListener('input', () => {
                             stage.stageId = id.value;
                             const key = 'stage:' + stage.stageId; stageKeys.set(stage, key);
-                            stageBox.dataset.promptFold = key; conditionBox.dataset.promptFold = key + ':condition';
+                            stageBox.dataset.promptFold = key; conditionBox.dataset.promptFold = key + ':condition'; advanced.dataset.promptFold = key + ':advanced';
                         });
                         const conditionBox = fold(row, stageKeys.get(stage) + ':condition', 'Condition', () => conditionBox.querySelector('select')?.value ? translateShellText('Configured') : translateShellText('Always'));
                         stageConditions.set(stage, guarded(mountPromptCondition(doc, conditionBox, stage.condition), conditionBox));
@@ -329,13 +333,14 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                             line.dataset.promptEntry = item.entryId;
                             if (item.kind === 'module') {
                                 const ref = item.moduleRef; const module = availableEntries.find(entry => exactKey(entry.ref) === exactKey(ref));
-                                element(doc, 'span', (module?.resource.displayName || ref.resourceId) + ' · ' + (module?.resource.target || '') + ' · ' + ref.revision, line);
+                                // The exact revision stays available on hover; the row reads as the module's name.
+                                const name = element(doc, 'span', module?.resource.displayName || ref.resourceId, line); name.title = [module?.resource.target, ref.revision].filter(Boolean).join(' · ');
                             } else {
-                                const settings = fold(line, 'anchor-settings:' + stage.stageId + ':' + item.entryId, 'Context sources', () => item.accepts.join(', '));
+                                const settings = fold(line, 'anchor-settings:' + stage.stageId + ':' + item.entryId, 'Context sources', () => item.accepts.map(kind => translateShellText(CONTEXT_SOURCES.find(([value]) => value === kind)?.[1] || kind)).join(', '));
                                 const target = select(doc, settings, 'Anchor position', ['system.foundation', 'system.character', 'system.world', 'system.style', 'system.response', 'agent.task', 'agent.evidence', 'agent.constraints', 'context.before_history', 'context.after_history', 'context.before_input', 'context.after_input', 'response.post_history'].map(target => [target, target]), item.target);
                                 target.addEventListener('change', () => { item.target = target.value; });
                                 const accepts = element(doc, 'fieldset', undefined, settings); element(doc, 'legend', 'Context sources', accepts);
-                                for (const [kind, label] of [['context.fact', 'Facts'], ['context.history', 'History'], ['context.input', 'Input'], ['context.player-persona', 'Player persona'], ['context.directive', 'Host instructions']]) {
+                                for (const [kind, label] of CONTEXT_SOURCES) {
                                     const check = input(doc, accepts, label, ''); check.type = 'checkbox'; check.checked = item.accepts.includes(kind);
                                     check.addEventListener('change', () => { item.accepts = check.checked ? [...item.accepts, kind] : item.accepts.filter(value => value !== kind); });
                                 }
@@ -364,9 +369,9 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                             renderStages(index);
                         });
                         const choices = availableEntries.filter(item => item.ref.resourceType === 'core.prompt-module' && (entry.ref.scope !== 'library' || item.ref.scope === 'library') && item.ref.scope !== 'package');
-                        const picker = select(doc, row, formatShellText('Module for stage ${0}', [index + 1], undefined, 'atria.product.stageModuleIndex'), [['', 'Choose exact module…'], ...choices.map(item => [exactKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope, true])]);
+                        const picker = select(doc, advanced, formatShellText('Module for stage ${0}', [index + 1], undefined, 'atria.product.stageModuleIndex'), [['', 'Choose exact module…'], ...choices.map(item => [exactKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope, true])]);
                         picker.dataset.atriStageModulePicker = 'true';
-                        action(doc, row, 'Add module', () => {
+                        action(doc, advanced, 'Add module', () => {
                             if (!picker.value || promptStageModuleRefs(stage).some(v => exactKey(v) === picker.value)) return;
                             if (stage.entries) stage.entries.push({ entryId: createStudioNativeId('step'), kind: 'module', moduleRef: JSON.parse(picker.value) }); else stage.moduleRefs.push(JSON.parse(picker.value)); renderStages(index, picker);
                         });
@@ -384,7 +389,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                         if (picker) for (const [node] of scroll) {
                             if (node.isConnected && node.scrollHeight > node.clientHeight) node.scrollTop += picker.getBoundingClientRect().top - anchorTop;
                         }
-                    } else if (focusIndex !== undefined && focusedStage) { treeBox.open = true; focusedStage.open = true; focusedStage.querySelector('input')?.focus(); }
+                    } else if (focusIndex !== undefined && focusedStage) { treeBox.open = true; focusedStage.open = true; focusedStage.querySelector(':scope > summary')?.focus(); }
                 };
                 action(doc, treeBox, 'Add stage', () => { let index = stages.length + 1; while (stages.some(stage => stage.stageId === 'stage.step' + index)) index++; stages.push({ stageId: 'stage.step' + index, moduleRefs: [] }); renderStages(stages.length - 1); }); renderStages();
                 const directiveBox = fold(fields, 'response', 'Response Directive', () => directive.value.trim() ? translateShellText('Configured') : translateShellText('Not configured'));

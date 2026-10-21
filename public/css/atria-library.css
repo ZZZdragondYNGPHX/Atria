@@ -142,8 +142,7 @@
 .atri-prompt-preset-list > .atri-prompt-resource h3 { flex: 1; min-width: 0; margin: 0; font: 500 var(--fs-md)/1.3 var(--font-ui); }
 .atri-prompt-preset-list > .atri-prompt-resource[aria-current="true"] { position: relative; background: var(--surface-raised); box-shadow: var(--shadow-1), 0 0 0 1px var(--line-2); }
 .atri-prompt-preset-list > .atri-prompt-resource[aria-current="true"]::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 2px; border-radius: 2px; background: var(--tone-lumen); }
-.atri-prompt-preset-list > .atri-prompt-resource > button { display: none; }
-.atri-prompt-preset-list > .atri-prompt-resource:is(:hover, :focus-within) > button:not(:first-of-type) { display: inline-flex; min-height: 24px; padding: 0 7px; font-size: var(--fs-xs); }
+.atria-app-shell .atri-prompt-preset-list > .atri-prompt-resource > .atri-preset-menu-trigger { flex: 0 0 28px; width: 28px; min-height: 28px; margin: -4px -4px -4px 0; color: var(--text-3); }
 .atri-prompt-preset-list > .atri-prompt-resource > button:first-of-type { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .atri-prompt-preset-list > .atri-prompt-resource:focus-within > button:first-of-type { position: static; width: auto; height: auto; clip-path: none; display: inline-flex; }
 .atri-library-resource-main > .atri-prompt-preset { position: relative; }
@@ -152,8 +151,8 @@
 .atri-library-resource-empty { display: grid; place-items: center; align-content: center; gap: 10px; min-height: 320px; color: var(--text-3); font-size: var(--fs-sm); text-align: center; }
 .atria-app-shell[data-atria-viewport="compact"] .atria-domain-workspace__body > .atria-native-library.atri-library-resource-split { grid-template-columns: minmax(0, 1fr); height: auto; }
 .atria-app-shell[data-atria-viewport="compact"] [data-atria-domain-workspace="library"] .atria-domain-workspace__body:has(> .atri-library-resource-split) { overflow: auto; }
-.atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-split:has(.atri-library-resource-main > .atri-library-heading) > .atri-library-resource-pane,
-.atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-split:not(:has(.atri-library-resource-main > .atri-library-heading)) > .atri-library-resource-main { display: none; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-split:has(.atri-library-resource-main > :is(.atri-library-heading, .atri-prompt-preset)) > .atri-library-resource-pane,
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-split:not(:has(.atri-library-resource-main > :is(.atri-library-heading, .atri-prompt-preset))) > .atri-library-resource-main { display: none; }
 .atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-pane { border-right: 0; background: transparent; padding: 14px 16px 96px; }
 .atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-main { padding: 14px 16px 96px; }
 .atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-pane .atri-library-row > button { opacity: 1; }

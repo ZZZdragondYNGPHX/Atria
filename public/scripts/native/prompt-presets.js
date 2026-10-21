@@ -38,7 +38,7 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
     let disposed = false, sequence = 0, preset = null, section = null;
     let lastReceipt = null;
     // Outline selection by stable identity, so it survives the revision a save creates.
-    let focus = null, focusBody = false;
+    let focus = null, focusBody = false, revealEditor = false;
     let categoryFilter = 'all', listPosition = null, closeMenu = () => {}, adoptionRefs = [];
     const editorFoldStates = new Map();
     let split = null, pane = null, detailPane = null, listToken = 0;
@@ -297,13 +297,13 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         const pane = node('section', undefined, layout); pane.className = 'atri-prompt-workbench__editor'; pane.dataset.atriPromptWorkbench = 'true';
         const firstModule = program?.resource.stages.flatMap(stage => promptStageEntries(stage)).find(item => item.kind === 'module' && moduleFor(item.moduleRef));
         if (!focus) focus = firstModule ? { type: MODULE, id: firstModule.moduleRef.resourceId } : { type: PROGRAM, id: preset.programId };
-        const select = next => { if (!confirmAtriaDraftLeave(doc, pane)) return; focus = next; renderDetail(); };
-        const item = (parent, label, target, { icon, meta, literalLabel = false } = {}) => {
+        const select = next => { if (!confirmAtriaDraftLeave(doc, pane)) return; focus = next; revealEditor = true; renderDetail(); };
+        const item = (parent, label, target, { icon, meta, literalLabel = false, markCurrent = true } = {}) => {
             const row = node('button', undefined, parent); row.type = 'button'; row.className = 'atri-prompt-outline__item';
             if (icon) row.append(createAtriaIcon(doc, icon, { size: 15 }));
             const text = node('span', undefined, row); text.textContent = literalLabel ? label : tl(label);
             if (meta) { const small = node('small', undefined, row); small.textContent = meta; }
-            const current = target && focus?.type === target.type && focus.id === target.id;
+            const current = markCurrent && target && focus?.type === target.type && focus.id === target.id;
             row.setAttribute('aria-current', String(Boolean(current)));
             if (target) row.addEventListener('click', () => select(target));
             return row;
@@ -315,7 +315,7 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         (program?.resource.stages || []).forEach((stage, stageIndex) => {
             const group = node('div', undefined, outline); group.className = 'atri-prompt-outline__stage';
             item(group, formatProductText('Stage ${0}', [stageIndex + 1], undefined, 'atria.product.stageIndex'), { type: PROGRAM, id: preset.programId },
-                { icon: 'layers', meta: stage.stageId }).classList.add('atri-prompt-outline__stage-title');
+                { icon: 'layers' }).classList.add('atri-prompt-outline__stage-title');
             for (const entry of promptStageEntries(stage)) {
                 if (entry.kind === 'module') {
                     const module = moduleFor(entry.moduleRef);
@@ -324,7 +324,7 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
                 } else {
                     // Context anchors are filled by the Host at run time; they are configured on the stage.
                     const sources = entry.accepts.map(kind => tl(ANCHOR_SOURCES[kind] || kind)).join(', ');
-                    item(group, formatProductText('Context: ${0}', [sources || tl('none')]), { type: PROGRAM, id: preset.programId }, { icon: 'link', literalLabel: true })
+                    item(group, formatProductText('Context: ${0}', [sources || tl('none')]), { type: PROGRAM, id: preset.programId }, { icon: 'link', literalLabel: true, markCurrent: false })
                         .classList.add('atri-prompt-outline__anchor');
                 }
             }
@@ -344,6 +344,9 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         item(tools, 'Module library', null, { icon: 'stack', meta: String(preset.entries.filter(e => e.resourceType === MODULE).length) }).onclick = () => { if (confirmAtriaDraftLeave(doc, pane)) { section = MODULE; renderDetail(); } };
         const selected = preset.entries.find(e => e.resourceType === focus.type && idOf(e) === focus.id && (focus.type !== PROGRAM || e === program)) || program;
         if (selected) edit(selected, false, pane);
+        // Narrow layouts stack the outline above the editor; bring the chosen item's editor into view.
+        if (revealEditor && doc.defaultView.matchMedia?.('(max-width: 959px)').matches) pane.scrollIntoView?.({ block: 'start' });
+        revealEditor = false;
     }
     function renderDetail() {
         if (disposed) return;
@@ -490,14 +493,18 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
                 row.prepend(createAtriaIcon(doc, 'layers', { size: 16 }));
                 literal('h3', preset.displayName, row); button(row, 'Open preset', () => open(preset.presetId));
                 row.addEventListener('click', event => { if (!event.target.closest('button, details')) void open(preset.presetId).catch(fail); });
-                button(row, 'Export preset', async () => exportPreset(await runtimeRequest('/presets/' + preset.presetId)));
-                button(row, 'Delete preset', async () => {
-                    const { Popup, POPUP_TYPE } = await import('../popup.js');
-                    if (await new Popup(tl('Delete this preset and its Regex rules? Pinned Prompt history remains available.'), POPUP_TYPE.CONFIRM).show()) {
-                        await runtimeRequest('/presets/' + preset.presetId, { method: 'DELETE', body: { expectedRevision: preset.revision } });
-                        await list();
-                    }
-                }).classList.add('atri-library-button--danger');
+                // Row actions live in a menu that stays in place: hover-revealed buttons
+                // shifted under a tap and turned "open" into "export" on touch screens.
+                menu(row, 'Preset actions', [
+                    ['Export preset', async () => exportPreset(await runtimeRequest('/presets/' + preset.presetId))],
+                    ['Delete preset', async () => {
+                        const { Popup, POPUP_TYPE } = await import('../popup.js');
+                        if (await new Popup(tl('Delete this preset and its Regex rules? Pinned Prompt history remains available.'), POPUP_TYPE.CONFIRM).show()) {
+                            await runtimeRequest('/presets/' + preset.presetId, { method: 'DELETE', body: { expectedRevision: preset.revision } });
+                            await list();
+                        }
+                    }, true],
+                ]);
             }
             const existing = node('details', undefined, root); node('summary', 'Existing resources — migrate into an independent preset', existing);
             button(existing, 'Choose existing resources', async () => {
