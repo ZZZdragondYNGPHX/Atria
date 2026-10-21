@@ -39,6 +39,8 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
     let lastReceipt = null;
     // Outline selection by stable identity, so it survives the revision a save creates.
     let focus = null, focusBody = false, revealEditor = false;
+    // Editor view and Details panel persist while moving through the outline.
+    const workbenchState = { view: 'write', inspectorOpen: doc.defaultView?.matchMedia?.('(min-width: 1280px)').matches ?? true };
     let categoryFilter = 'all', listPosition = null, closeMenu = () => {}, adoptionRefs = [];
     const editorFoldStates = new Map();
     let split = null, pane = null, detailPane = null, listToken = 0;
@@ -221,7 +223,7 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         const entries = preset.entries.map(e => ({ ...e, ref: entryRef(e) }));
         if (!editorFoldStates.has(idOf(entry))) editorFoldStates.set(idOf(entry), new Map());
         const inWorkbench = parent?.dataset.atriPromptWorkbench === 'true';
-        const editor = mountPromptEditor({ document: doc, parent: parent || body, entry: { ...draft, ref: entryRef(draft) }, entries, foldState: editorFoldStates.get(idOf(entry)), librarySurface: true, presetSurface: true, onBack: inWorkbench ? null : () => { if (parent) section = null; renderDetail(); restoreListPosition(); }, onSave: async (resource, upgrade) => {
+        const editor = mountPromptEditor({ document: doc, parent: parent || body, entry: { ...draft, ref: entryRef(draft) }, entries, foldState: editorFoldStates.get(idOf(entry)), librarySurface: true, presetSurface: true, workbench: inWorkbench ? workbenchState : null, onBack: inWorkbench ? null : () => { if (parent) section = null; renderDetail(); restoreListPosition(); }, onSave: async (resource, upgrade) => {
             if (resource[PROMPT_TYPES[entry.resourceType][1]] !== idOf(entry)) throw new Error(tl('Cannot change resource identity.'));
             const next = clone(preset); const item = { resourceType: entry.resourceType, resource };
             if (fresh) next.entries.push(item); else next.entries[next.entries.findIndex(e => e.resourceType === entry.resourceType && idOf(e) === idOf(entry) && e.resource.revision === entry.resource.revision)] = item;

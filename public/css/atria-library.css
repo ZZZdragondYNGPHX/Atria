@@ -517,6 +517,32 @@
 .atria-app-shell .atri-prompt-outline__add:hover:not(:disabled) { background: var(--soft-lapis); }
 .atri-prompt-outline__tools { display: grid; gap: 1px; padding-top: 10px; border-top: 1px solid var(--line-2); }
 .atri-prompt-workbench__editor { min-width: 0; }
+/* Editor in the workbench: writing in the main column, Details panel beside it (blueprint §6.4). */
+.atri-prompt-editor[data-layout="workbench"] { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; min-width: 0; }
+.atri-prompt-editor[data-layout="workbench"][data-inspector-open="true"] { grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); }
+.atri-prompt-editor[data-layout="workbench"][data-inspector-open="false"] > .atri-prompt-editor__inspector { display: none; }
+.atri-prompt-editor__main { display: grid; align-content: start; gap: 12px; min-width: 0; }
+.atri-prompt-editor__main > .atri-prompt-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.atria-app-shell .atri-prompt-editor__main > .atri-prompt-actions > .atri-prompt-details-toggle { margin-left: auto; }
+.atri-prompt-views { flex: none; }
+.atri-prompt-editor__inspector { position: sticky; top: 12px; display: grid; align-content: start; gap: 2px; min-width: 0; max-height: calc(100dvh - 180px); overflow-y: auto; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface-panel); }
+.atri-prompt-editor__inspector > :is(details, section) { min-width: 0; border-top: 1px solid var(--line-1); padding-block: 8px; }
+.atri-prompt-editor__inspector > :first-child { border-top: 0; padding-top: 0; }
+.atri-prompt-editor__inspector :is(input, select, textarea) { max-width: 100%; }
+/* Quality and upgrade keep their own boxes elsewhere; in Details they read like the other folds. */
+.atria-app-shell .atri-prompt-editor__inspector > details:not(.atri-prompt-fold) { margin: 0; padding: 8px 0; border-width: 1px 0 0; border-style: solid; border-color: var(--line-1); border-radius: 0; background: transparent; box-shadow: none; }
+.atri-prompt-inspector-section > h4 { margin: 0 0 6px; color: var(--text-2); font: 600 var(--fs-sm)/1.3 var(--font-ui); }
+.atri-prompt-inspector-section > p { margin: 0 0 8px; color: var(--text-2); font-size: var(--fs-xs); line-height: 1.5; }
+.atri-prompt-inspector-section > ul { margin: 0; padding-left: 18px; color: var(--text-1); font-size: var(--fs-sm); line-height: 1.6; }
+/* Preview mode: the sample preview takes the main column, already open. */
+.atri-prompt-preview-area[hidden], .atri-prompt-write[hidden] { display: none; }
+.atri-prompt-preview-area > .atri-prompt-preview { padding: 0; border: 0; }
+.atria-app-shell .atri-prompt-preview-area > .atri-prompt-preview > summary { display: none; }
+@media (max-width: 1279px) {
+    /* Narrower screens stack Details under the writing instead of squeezing both. */
+    .atri-prompt-editor[data-layout="workbench"][data-inspector-open="true"] { grid-template-columns: minmax(0, 1fr); }
+    .atri-prompt-editor__inspector { position: static; max-height: none; }
+}
 .atria-app-shell .atri-prompt-workbench__editor textarea.atri-prompt-body { min-height: clamp(18rem, 45vh, 42rem); font: 400 var(--fs-lg)/1.7 var(--font-read); }
 @media (max-width: 959px) {
     .atri-prompt-workbench { grid-template-columns: 1fr; }

@@ -3,6 +3,10 @@ import { createStudioNativeId } from './studio-authoring.js';
 import { translateShellText as tl, formatShellText as fmt } from '../atria-shell/localization.js';
 
 const key = ref => JSON.stringify(ref, Object.keys(ref).sort());
+// A route whose Program or Generation profile belongs to an installed Work resolves only
+// inside that Work's stories, so a draft preview here cannot use it.
+const PACKAGE_BOUND = 'Your model routes use an installed Work’s prompt resources, which can be previewed only inside that Work. Connect a model in Runtime to get a route of your own.';
+const packageBound = route => [route.promptProgramRef, route.generationProfileRef].some(ref => ref?.scope === 'package');
 const idFields = { 'core.prompt-module': 'promptModuleId', 'core.prompt-program': 'promptProgramId', 'core.generation-profile': 'generationProfileId' };
 
 export function mountPromptSamplePreview({ document: doc, parent, entry, entries = [], readDependencies = () => [], readDraft, state }) {
@@ -114,7 +118,8 @@ export function mountPromptSamplePreview({ document: doc, parent, entry, entries
             if (!trial && JSON.stringify(readDraft()) !== identity) { state.notice = tl('The draft changed. Preview again to see the current text.'); return; }
             state.result = result; state.resultIdentity = identity; state.notice = tl(trial ? 'Trial finished.' : 'Preview ready. No model request sent.');
         } catch (error) {
-            if (state.sequence === generation) state.notice = error.name === 'AbortError' ? tl('Stopped. Provider usage may be unavailable.') : error.message;
+            if (state.sequence === generation) state.notice = error.name === 'AbortError' ? tl('Stopped. Provider usage may be unavailable.')
+                : error.code === 'native_generation_resource_owner' ? tl(PACKAGE_BOUND) : error.message;
         } finally { state.controller = null; state.refresh(); }
     }
     const preview = button('Preview sample', () => run(false));
@@ -123,7 +128,7 @@ export function mountPromptSamplePreview({ document: doc, parent, entry, entries
     state.refresh = () => {
         if (!root.isConnected) return;
         status.textContent = state.notice ?? '';
-        preview.disabled = trialButton.disabled = Boolean(state.controller) || !route.options.length;
+        preview.disabled = trialButton.disabled = Boolean(state.controller) || ![...route.options].some(option => !option.disabled);
         stop.disabled = !state.controller; renderResult();
     };
     preview.disabled = trialButton.disabled = true;
@@ -135,18 +140,24 @@ export function mountPromptSamplePreview({ document: doc, parent, entry, entries
             if (!root.isConnected) return;
             config = configuration; catalog = [...resources, ...entries.filter(item => item.ref.scope === 'project' && !resources.some(saved => key(saved.ref) === key(item.ref)))];
             route.replaceChildren(); baseline.replaceChildren(); baselineResource.replaceChildren();
-            for (const item of config.routes.filter(item => item.scope === 'player' && item.role !== 'role.illustration_prompt')) { const option = el('option', undefined, route); option.textContent = item.displayName; option.value = item.runtimeRouteId; }
+            for (const item of config.routes.filter(item => item.scope === 'player' && item.role !== 'role.illustration_prompt')) {
+                const option = el('option', undefined, route); option.value = item.runtimeRouteId;
+                option.disabled = packageBound(item);
+                option.textContent = option.disabled ? item.displayName + ' — ' + tl('uses an installed Work’s resources') : item.displayName;
+            }
             for (const [ref, title] of [[null, tl('Current resource')], ...catalog.filter(item => item.ref.resourceType === 'core.prompt-program' && item.ref.scope === 'library').map(item => [item.ref, item.resource.displayName + ' · ' + item.ref.revision])]) {
                 const option = el('option', undefined, baseline); option.textContent = title; option.value = ref ? JSON.stringify(ref) : '';
             }
             for (const [ref, title] of [[null, tl('Current resource')], ...catalog.filter(item => item.ref.resourceType === entry.ref.resourceType && item.ref.resourceId === entry.ref.resourceId && item.ref.scope === entry.ref.scope).map(item => [item.ref, item.ref.revision])]) {
                 const option = el('option', undefined, baselineResource); option.textContent = title; option.value = ref ? JSON.stringify(ref) : '';
             }
-            if ([...route.options].some(option => option.value === state.routeId)) route.value = state.routeId;
+            const usable = [...route.options].filter(option => !option.disabled);
+            if (usable.some(option => option.value === state.routeId)) route.value = state.routeId;
+            else if (usable.length) route.value = usable[0].value;
             if ([...baseline.options].some(option => option.value === state.baseline)) baseline.value = state.baseline;
             if ([...baselineResource.options].some(option => option.value === state.baselineResource)) baselineResource.value = state.baselineResource;
             if (!tokens.value) { const selected = config.routes.find(item => item.runtimeRouteId === route.value); tokens.value = selected?.executionPolicy?.computeBudget?.maxTokens ?? config.models.find(item => item.modelProfileId === selected?.modelProfileRef.modelProfileId)?.limits.contextTokens ?? ''; }
-            if (!state.controller) state.notice = tl(route.options.length ? 'Ready for a sample.' : 'Create a model route in Runtime to preview or try this sample.');
+            if (!state.controller) state.notice = tl(usable.length ? 'Ready for a sample.' : route.options.length ? PACKAGE_BOUND : 'Create a model route in Runtime to preview or try this sample.');
             state.refresh();
         } catch (error) { status.textContent = error.message; status.setAttribute('role', 'alert'); button('Retry sample routes', load); } finally { loading = false; }
     }

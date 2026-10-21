@@ -164,7 +164,7 @@ export function forkPromptClosure(entries, selected, { derive = false, scope = {
     return { entries: output, ref };
 }
 
-export function mountPromptEditor({ document: doc, parent, entry, entries, onSave, onBack, librarySurface = false, presetSurface = false, foldState = new Map() }) {
+export function mountPromptEditor({ document: doc, parent, entry, entries, onSave, onBack, librarySurface = false, presetSurface = false, foldState = new Map(), workbench = null }) {
     let draft = clone(entry.resource); let advanced = false; let submitted = false; let submitting = false;
     const initialDraft = JSON.stringify(draft);
     let renderVersion = 0; let jsonBuffer = null; let readActive = () => draft; let rawActive = () => jsonBuffer; let lastEdit = null;
@@ -172,6 +172,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
     const history = [{ draft: clone(draft), jsonBuffer, dependencies: [] }]; const future = [];
     const textSelections = new Map();
     const sampleState = {}, upgradeState = {}, qualityState = {};
+    let refreshFacts = () => {};
     const root = element(doc, 'section', undefined, parent); root.className = 'atri-prompt-editor';
     root.dataset.atriPromptEditor = 'true';
     if (librarySurface) root.dataset.atriLibraryEditor = 'true';
@@ -233,25 +234,84 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
         queueMicrotask(update);
         return section;
     }
+    // Tokens and Used by, in the Details panel. Counts come only from a preview run (the
+    // route's own tokenizer); nothing is estimated here.
+    function mountInspectorFacts() {
+        const side = root.querySelector(':scope > .atri-prompt-editor__inspector');
+        const section = label => {
+            const box = element(doc, 'section', undefined, side); box.className = 'atri-prompt-inspector-section';
+            element(doc, 'h4', label, box); return box;
+        };
+        const tokens = section('Tokens');
+        const tokenText = element(doc, 'p', undefined, tokens);
+        action(doc, tokens, 'Open preview', () => root.querySelector('[data-editor-view="preview"]')?.click());
+        const usedBy = section('Used by');
+        const id = entry.ref.resourceId;
+        if (entry.ref.resourceType === 'core.prompt-module') {
+            const lines = new Set();
+            for (const item of [...entries, ...upgradeDependencies].filter(candidate => candidate.ref.resourceType === 'core.prompt-program')) {
+                (item.resource.stages || []).forEach((stage, index) => {
+                    if (promptStageModuleRefs(stage).some(ref => ref.resourceId === id)) lines.add(item.resource.displayName + ' · ' + formatShellText('Stage ${0}', [index + 1], undefined, 'atria.product.stageIndex'));
+                });
+            }
+            if (!lines.size) element(doc, 'p', 'Not placed in a stage of this preset yet.', usedBy);
+            else { const list = element(doc, 'ul', undefined, usedBy); for (const line of lines) { const row = element(doc, 'li', undefined, list); row.textContent = line; } }
+        } else element(doc, 'p', entry.ref.resourceType === 'core.prompt-program' ? 'This preset’s program: the outline shows its stages and text blocks in order.' : 'Applies whenever this preset generates.', usedBy);
+        return () => {
+            if (!tokenText.isConnected) return;
+            const result = sampleState.result; const count = result?.candidate?.effective?.inputTokens;
+            let current = false; try { current = sampleState.resultIdentity === JSON.stringify(readActive()); } catch { /* Mid-edit JSON. */ }
+            tokenText.textContent = Number.isFinite(count)
+                ? formatShellText(current ? 'Input tokens in the last preview: ${0}' : 'An earlier preview counted ${0} input tokens. Preview again for the current text.', [count])
+                : translateShellText('Not counted yet. A preview counts input tokens with the selected route’s tokenizer.');
+        };
+    }
     function render() {
         const availableEntries = [...entries, ...upgradeDependencies];
         const version = ++renderVersion;
         rememberFolds();
         for (const node of root.querySelectorAll('textarea')) textSelections.set(node.getAttribute('aria-label'), [node.selectionStart, node.selectionEnd, node.scrollTop]);
         root.replaceChildren();
-        const title = element(doc, 'h3', undefined, root); title.textContent = draft.displayName; title.tabIndex = -1;
-        element(doc, 'p', presetSurface ? 'Save changes to this preset. Other presets and pinned sessions stay unchanged.' : librarySurface ? 'Save a new revision. Existing references keep their exact version.' : 'New exact revision · existing references stay pinned. Review changes before committing in Studio.', root);
-        const toolbar = element(doc, 'div', undefined, root); toolbar.className = 'atri-prompt-actions';
+        // Workbench layout (blueprint §6.4): the writing in a main column, everything about the
+        // resource in a Details panel beside it. Both stay inside root, so draft tracking, fold
+        // memory and the saving lock cover them. Elsewhere both names are root itself.
+        const main = workbench ? element(doc, 'div', undefined, root) : root;
+        const side = workbench ? element(doc, 'aside', undefined, root) : root;
+        if (workbench) {
+            root.dataset.layout = 'workbench'; root.dataset.inspectorOpen = String(workbench.inspectorOpen);
+            main.className = 'atri-prompt-editor__main';
+            side.className = 'atri-prompt-editor__inspector'; side.setAttribute('aria-label', translateShellText('Details'));
+        }
+        const title = element(doc, 'h3', undefined, main); title.textContent = draft.displayName; title.tabIndex = -1;
+        element(doc, 'p', presetSurface ? 'Save changes to this preset. Other presets and pinned sessions stay unchanged.' : librarySurface ? 'Save a new revision. Existing references keep their exact version.' : 'New exact revision · existing references stay pinned. Review changes before committing in Studio.', main);
+        const toolbar = element(doc, 'div', undefined, main); toolbar.className = 'atri-prompt-actions';
         // Hosts with their own navigation (the preset outline) pass no onBack: one way back per screen.
         if (onBack) action(doc, toolbar, 'Back to resources', () => { if (confirmAtriaDraftLeave(doc, root)) return onBack(); });
-        const status = element(doc, 'div', undefined, root);
+        const status = element(doc, 'div', undefined, main);
+        // Write | Preview: the sample preview gets the main column instead of a fold at the end.
+        let writeArea = main, previewArea = null;
+        const setView = id => {
+            if (!workbench) return;
+            workbench.view = id; writeArea.hidden = id !== 'write'; previewArea.hidden = id !== 'preview';
+            for (const button of toolbar.querySelectorAll('[data-editor-view]')) button.setAttribute('aria-pressed', String(button.dataset.editorView === id));
+            const details = previewArea.querySelector('details');
+            if (id === 'preview' && details && !details.open) details.open = true;
+        };
+        if (workbench) {
+            const views = element(doc, 'div', undefined, toolbar); views.className = 'atria-segmented atri-prompt-views';
+            views.setAttribute('role', 'group'); views.setAttribute('aria-label', translateShellText('Editor view'));
+            for (const [id, label] of [['write', 'Write'], ['preview', 'Preview']]) {
+                const button = action(doc, views, label, () => setView(id)); button.className = 'atria-segmented__item'; button.dataset.editorView = id;
+                button.setAttribute('aria-pressed', String(workbench.view === id));
+            }
+        }
         const undoButton = action(doc, toolbar, 'Undo', undo); undoButton.disabled = history.length < 2;
         const redoButton = action(doc, toolbar, 'Redo', redo); redoButton.disabled = !future.length;
         if (librarySurface) status.className = 'atri-prompt-editor-status';
         let read; let tracking = false;
         const trackDraft = event => queueMicrotask(() => {
             if (!root.isConnected || version !== renderVersion) return;
-            try { tracking = true; capture(event.type === 'input' ? event.target : null); read(); root.dataset.atriaDraftDirty = String(!submitted && isDirty()); } catch { root.dataset.atriaDraftDirty = 'true'; } finally { tracking = false; }
+            try { tracking = true; capture(event.type === 'input' ? event.target : null); read(); root.dataset.atriaDraftDirty = String(!submitted && isDirty()); refreshFacts(); } catch { root.dataset.atriaDraftDirty = 'true'; } finally { tracking = false; }
             undoButton.disabled = history.length < 2 || submitting || submitted; redoButton.disabled = !future.length || submitting || submitted;
         });
         root.oninput = trackDraft; root.onchange = trackDraft; root.onclick = trackDraft;
@@ -262,23 +322,32 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                 if (advanced) { advanced = false; render(); } else { status.replaceChildren(); error(doc, status, e); }
             }
         });
+        if (workbench) {
+            const details = action(doc, toolbar, 'Details', () => {
+                workbench.inspectorOpen = !workbench.inspectorOpen;
+                root.dataset.inspectorOpen = String(workbench.inspectorOpen); details.setAttribute('aria-expanded', String(workbench.inspectorOpen));
+            });
+            details.setAttribute('aria-expanded', String(workbench.inspectorOpen)); details.classList.add('atri-prompt-details-toggle');
+            writeArea = element(doc, 'div', undefined, main); writeArea.className = 'atri-prompt-write';
+            previewArea = element(doc, 'div', undefined, main); previewArea.className = 'atri-prompt-preview-area';
+        }
         if (advanced) {
-            const json = input(doc, root, 'Resource JSON — conditions, parameters, provenance', jsonBuffer ?? JSON.stringify(draft, null, 2), true);
+            const json = input(doc, writeArea, 'Resource JSON — conditions, parameters, provenance', jsonBuffer ?? JSON.stringify(draft, null, 2), true);
             json.className = 'atri-prompt-json'; read = () => jsonValue(json.value); rawActive = () => json.value;
         } else {
             const prompt = ['core.prompt-module', 'core.prompt-program'].includes(entry.ref.resourceType);
-            const identityBox = prompt ? fold(root, 'identity', 'Identity', () => name.value) : root;
+            const identityBox = prompt ? fold(side, 'identity', 'Identity', () => name.value) : side;
             const identity = librarySurface ? element(doc, 'div', undefined, identityBox) : identityBox;
             if (librarySurface) identity.className = 'atri-prompt-identity';
             const name = input(doc, identity, 'Display name', draft.displayName);
             if (librarySurface) name.addEventListener('input', () => { title.textContent = name.value || translateShellText('Untitled'); });
             const revision = input(doc, identity, 'Exact revision', draft.revision);
-            let fields = element(doc, 'div', undefined, root);
+            let fields = element(doc, 'div', undefined, writeArea);
             if (librarySurface) fields.className = 'atri-prompt-fields';
             let specific = () => ({});
             const sections = fields;
             if (entry.ref.resourceType === 'core.prompt-module') {
-                fields = fold(sections, 'module', 'Module settings', () => target.value);
+                fields = fold(workbench ? side : sections, 'module', 'Module settings', () => target.value);
                 const target = select(doc, fields, 'Semantic target', ['system.foundation', 'system.character', 'system.world', 'system.style', 'system.response', 'context.before_history', 'context.after_history', 'context.before_input', 'context.after_input', 'response.prefill', 'response.post_history', 'agent.task', 'agent.evidence', 'agent.constraints'].map(v => [v, v]), draft.target);
                 const stages = input(doc, fields, 'Stages (comma separated)', draft.stages.join(', '));
                 const body = input(doc, sections, 'Prompt body', draft.body, true); body.className = 'atri-prompt-body';
@@ -396,7 +465,8 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                 const directive = input(doc, directiveBox, 'Response Directive', draft.responseDirective?.body || '', true);
                 specific = () => { syncConditions(); const responseDirective = { ...draft.responseDirective, body: directive.value }; if (draft.responseDirective?.body === undefined && !directive.value) delete responseDirective.body; return { stages, responseDirective }; };
             } else specific = generationFields(doc, fields, draft, () => tracking);
-            fields = sections;
+            // Parameters, condition and derive describe the resource: in the workbench they sit in Details.
+            fields = workbench ? side : sections;
             const parameterBox = prompt ? fold(fields, 'parameters', 'Typed parameters', () => formatShellText('${0} parameters', [parameterBox.querySelectorAll('.atri-prompt-parameters > fieldset').length])) : null;
             const readParameters = prompt ? guarded(mountPromptParameters(doc, parameterBox, draft.parameters), parameterBox) : null;
             const conditionBox = entry.ref.resourceType === 'core.prompt-module' ? fold(fields, 'condition', 'Condition', () => conditionBox.querySelector('select')?.value ? translateShellText('Configured') : translateShellText('Always')) : null;
@@ -411,12 +481,19 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                 for (const key of ['parameters', 'condition', 'parentRef', 'derive', 'responseDirective']) if (draft[key] === undefined && (value[key] == null || typeof value[key] === 'object' && !Object.keys(value[key]).length)) delete value[key];
                 return value;
             };
-            const provenance = fold(root, 'provenance', 'System provenance (read-only)');
+            const provenance = fold(side, 'provenance', 'System provenance (read-only)');
             element(doc, 'pre', JSON.stringify(draft.provenance || [], null, 2), provenance);
         }
-        mountPromptSamplePreview({ document: doc, parent: root, entry, entries: availableEntries, readDependencies: () => upgradeDependencies, state: sampleState, readDraft: () => { if (jsonBuffer !== null) jsonValue(jsonBuffer); return readActive(); } });
-        mountPromptQuality({ document: doc, parent: root, state: qualityState });
-        mountPromptUpgrade({ document: doc, parent: root, entry, resource: draft, state: upgradeState,
+        const renderTokens = workbench ? mountInspectorFacts() : () => {};
+        mountPromptSamplePreview({ document: doc, parent: previewArea || root, entry, entries: availableEntries, readDependencies: () => upgradeDependencies, state: sampleState, readDraft: () => { if (jsonBuffer !== null) jsonValue(jsonBuffer); return readActive(); } });
+        if (workbench) {
+            // The token readout follows each preview run.
+            const refreshPreview = sampleState.refresh;
+            sampleState.refresh = () => { refreshPreview?.(); renderTokens(); };
+            setView(workbench.view);
+        }
+        mountPromptQuality({ document: doc, parent: side, state: qualityState });
+        mountPromptUpgrade({ document: doc, parent: side, entry, resource: draft, state: upgradeState,
             readDraft: () => { if (jsonBuffer !== null) jsonValue(jsonBuffer); return readActive(); }, applyDraft: (resource, { resources }) => {
                 capture();
                 if (presetSurface && entry.ref.resourceType === 'core.prompt-program') {
@@ -438,7 +515,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                 draft = clone(resource); jsonBuffer = null; lastEdit = null; future.length = 0;
                 history.push({ draft: clone(draft), jsonBuffer, dependencies: clone(upgradeDependencies) }); render(); root.dataset.atriaDraftDirty = String(isDirty());
             } });
-        const save = action(doc, root, librarySurface ? 'Save revision' : 'Review / save revision', async () => {
+        const save = action(doc, main, librarySurface ? 'Save revision' : 'Review / save revision', async () => {
             if (save.disabled || submitting || submitted || !root.isConnected) return; submitting = true; save.disabled = true; save.setAttribute('aria-busy', 'true'); status.replaceChildren();
             try {
                 rememberFolds(); const value = read(); if (!advanced && jsonBuffer !== null) jsonValue(jsonBuffer);
@@ -450,6 +527,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
         if (librarySurface) save.classList.add('atri-library-button', 'atri-library-button--primary');
         save.disabled = submitted;
         readActive = read;
+        refreshFacts = renderTokens; renderTokens();
         if (!advanced && jsonBuffer !== null) { try { jsonValue(jsonBuffer); } catch { element(doc, 'p', 'JSON contains an unfinished edit. Open Advanced editor to correct it before saving.', status).setAttribute('role', 'alert'); } }
         title.focus();
         for (const node of root.querySelectorAll('textarea')) {
