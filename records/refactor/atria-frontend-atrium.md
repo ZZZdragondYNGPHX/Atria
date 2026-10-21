@@ -39,3 +39,12 @@
 - Stage 显示名未做：Program 契约 `assertProgramStage` 只允许 `stageId/targets/moduleRefs/entries/condition/consumes/contextConsumers`，加显示名需后端契约改动，留作后续决定。Inspector（条件／Token／修订）与「预览 ▾」分段视图（蓝图 §6.4）未在本期实现。
 - 验证：1440×900 与 390×844 截图（`.playwright-mcp/p3-*.png`）；手机上 列表 → 预设 → 大纲 → 文本块正文 全程可用。`atria-shell` 85 套件 83 通过，余下 `localization`／`product-localization-coverage` 与改动前基线相同（失败内容不涉及本期文案）。
 - 下一步：蓝图 §9 第 4 期（世界与知识，W1–W6）。
+
+## 2026-10-20 — 体验重构第 4 期：世界与知识
+
+- 源码 `8f02eb67`。范围决定：第 3 期的 Inspector 与「预览 ▾」分段不做——条件、示例预览、Used By 已在编辑器内，新增只是搬位置，Provider Wire 层未接通；留作第 6 期可选。
+- W1：上期已修（「我的」为空只是组内说明）。W2：已安装原件改为普通行，整行可点、选中高亮，「精确修订详情」移到原件页。W3／K09：原件在列表旁打开（不再整页替换），历史色横幅说明只读原因，唯一出路「复制到书库」= 先审阅依赖闭包再创建副本（合并原「Create editable copy」与「Fork to Library」两个入口）；「打开作品」「导出」为次要，来源与精确修订放最后。自有 World/Knowledge 详情：唯一主动作「新修订」，其次「复制」「导出」，重命名／删除仍在末尾「管理资源」。W4：列表栏改为「搜索 + 新建」，名称表单按需展开（Esc／取消收起），「导入资源包」移到列表之后。W5：原件与知识条目深链改为可读 ID（`world:package:{pkg}:{pkgv}:{id}:{rev}`、`knowledge:entry:{kb}:{rev}:{entry}`），旧 JSON 链接仍可打开（新增 `library-route-ids.js` 与本地测试）。
+- W6 范围调整：World 修订契约只有 `schema/baseline/knowledgeBindingIds/assetIds/metadata`，主依据 K01–K11 也没有「法则」——蓝图 §6.2 的「法则与变化」两栏视图没有数据可画，未做（需要后端先有法则模型）。改为「设定」分段：baseline 按「路径 → 值」可读行显示，空修订／无修订有明确说明，schema 仅非空时显示，并写明「新修订成为当前版本；已在使用的故事、项目、绑定保留各自确切修订」（与修订编辑器保存说明一致）。修订历史为空时显示「还没有修订」。
+- 中文：新文案已补；「New World」原键属旧 World Info 界面（译「新世界书」），Native 改用独立键 `atria.product.newWorld`（「新建世界」）。
+- 验证：1440×900 与 390×844 截图（`.playwright-mcp/p4-*.png`）；实测原件行点击打开、可读 URL、复制审阅→取消（未写入）、新建 World → 详情 → 删除（测试数据已删除）。知识库原件本机无数据，仅单测覆盖。`atria-shell` 86 套件 84 通过，余下两项为既有基线失败且不涉及本期文案。
+- 下一步：第 5 期（工坊与智能体，N5、N6）。
