@@ -55,6 +55,18 @@ export class PlanRepository {
         })));
     }
 
+    async commandOutcome(handle, commandId) {
+        assertNativeId(commandId, 'orchestrationCommand');
+        return this.engine.withTransaction(handle, async tx => {
+            const record = (await tx.getResource(key(K.orchestrationCommand, handle, { commandId })))?.doc;
+            if (!record || !['plans.create', 'plans.save', 'plans.publish', 'plans.fork', 'plans.archive', 'plans.delete', 'bindings.save'].includes(record.operation)) return null;
+            if (record.operation === 'bindings.save') await this.authorize({ handle, operation: 'bindings.get', body: { sourceSelector: record.outcome.sourceSelector }, tx });
+            const outcome = Object.fromEntries(['planId', 'draftVersion', 'definitionHash', 'currentPlanRevisionId', 'planRef', 'bindingId', 'version', 'archived', 'deleted']
+                .filter(field => record.outcome[field] !== undefined).map(field => [field, record.outcome[field]]));
+            return { commandId, operation: record.operation, outcome };
+        });
+    }
+
     async create(handle, commandId, body) {
         assertObject(body, ['definition', 'dependencyPins', 'viewState'], 'create');
         cloneNativeDocument(body);

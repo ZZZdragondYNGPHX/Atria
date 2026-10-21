@@ -1,7 +1,7 @@
 import { getPersonaRepo } from '../storage/index.js';
 import { getUserDirectories } from '../users.js';
 import { ProjectStore } from '../native/project-store.js';
-import { cognitionDisclosure, inspectCognition } from '../native/cognition-inspection.js';
+import { cognitionDisclosure, inspectCognition, cognitionCatalog } from '../native/cognition-inspection.js';
 import { prepareHypothetical, hypotheticalCurrent } from '../native/hypothetical-authority.js';
 import { personaFields } from '../native/persona-contract.js';
 import { frontendBridgeService } from '../native/frontend/host-bridge.js';
@@ -195,29 +195,42 @@ export function createNativeSessionRouter(getServices = services) {
     router.post('/load', route(async (req, res, { core }, handle) => {
         res.json(await core.load(handle, req.body.sessionId, { revisionId: req.body.revisionId }));
     }));
+    router.post('/cognition/catalog', route(async (req, res, { core, projectStore }, handle) => {
+        fields(req.body, ['sessionId', 'revisionId']);
+        const snapshot = await core.observe(handle, req.body.sessionId, { revisionId: req.body.revisionId });
+        res.set('Cache-Control', 'private, no-store').json(await cognitionCatalog(snapshot, handle, projectStore));
+    }));
+    router.post('/lifecycle/commands', route(async (req, res, { core }, handle) => {
+        fields(req.body, ['sessionId']);
+        res.set('Cache-Control', 'private, no-store').json(await core.lifecycleCommands(handle, req.body.sessionId));
+    }));
+    router.post('/lifecycle/preflight', route(async (req, res, { core }, handle) => {
+        fields(req.body, ['sessionId', 'expectedRevisionId', 'action']);
+        res.set('Cache-Control', 'private, no-store').json(await core.preflightAppCommand(handle, req.body.sessionId, req.body.action, req.body));
+    }));
     router.post('/cognition/display', route(async (req, res, { core }, handle) => {
         fields(req.body, ['sessionId', 'revisionId', 'expectedAnchor']);
-        const snapshot = await core.load(handle, req.body.sessionId, { revisionId: req.body.revisionId, skipPackageEdits: true });
+        const snapshot = await core.observe(handle, req.body.sessionId, { revisionId: req.body.revisionId });
         res.set('Cache-Control', 'private, no-store').json(cognitionDisclosure(snapshot, req.body.expectedAnchor));
     }));
     router.post('/cognition/inspect', route(async (req, res, { core, projectStore }, handle) => {
         fields(req.body, ['sessionId', 'revisionId', 'viewId', 'expectedAnchor']);
-        const snapshot = await core.load(handle, req.body.sessionId, { revisionId: req.body.revisionId, skipPackageEdits: true });
+        const snapshot = await core.observe(handle, req.body.sessionId, { revisionId: req.body.revisionId });
         res.set('Cache-Control', 'private, no-store').json(await inspectCognition(snapshot, handle, projectStore, req.body));
     }));
     router.post('/hypothetical/prepare', route(async (req, res, { core }, handle) => {
         fields(req.body, ['sessionId', 'revisionId', 'request']);
-        const snapshot = await core.load(handle, req.body.sessionId, { skipPackageEdits: true });
+        const snapshot = await core.observe(handle, req.body.sessionId);
         if (snapshot.revision.revisionId !== req.body.revisionId) throw Object.assign(new TypeError('Hypothetical base changed'), { code: 'native_hypothetical_revision_conflict' });
         const installed = await core._openPackage(handle, snapshot.session.packageId, snapshot.session.packageVersionId, snapshot.session.entryPointId);
         const artifact = await prepareHypothetical(snapshot, installed, req.body.request);
-        const current = await core.load(handle, req.body.sessionId, { skipPackageEdits: true });
+        const current = await core.observe(handle, req.body.sessionId);
         if (!hypotheticalCurrent(current, installed, artifact)) throw Object.assign(new TypeError('Hypothetical base changed'), { code: 'native_hypothetical_revision_conflict' });
         res.set('Cache-Control', 'private, no-store').json(artifact);
     }));
     router.post('/hypothetical/current', route(async (req, res, { core }, handle) => {
         fields(req.body, ['sessionId', 'artifact']);
-        const snapshot = await core.load(handle, req.body.sessionId, { skipPackageEdits: true });
+        const snapshot = await core.observe(handle, req.body.sessionId);
         const installed = await core._openPackage(handle, snapshot.session.packageId, snapshot.session.packageVersionId, snapshot.session.entryPointId);
         res.set('Cache-Control', 'private, no-store').json({ current: hypotheticalCurrent(snapshot, installed, req.body.artifact) });
     }));

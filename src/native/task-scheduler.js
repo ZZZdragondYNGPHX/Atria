@@ -220,6 +220,10 @@ export class NativeTaskScheduler {
         if (operation.view.status !== 'completed' || operation.resultValue === undefined) throw failure('operation_result_unavailable');
         return immutable(operation.resultValue);
     }
+    findAuthoring(owner, key) {
+        const rows = [...this.operations.values()].filter(operation => operation.owner === owner && operation.view.anchor?.kind === 'authoring' && operation.key === key);
+        return rows.length ? this.project(owner, rows.at(-1).view.operationId) : null;
+    }
     cancel(owner, id, status = 'cancelled') {
         const operation = this.operations.get(id);
         if (!operation || operation.owner !== owner) throw failure('operation_not_found');

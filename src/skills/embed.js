@@ -1,5 +1,6 @@
 import AdmZip from 'adm-zip';
 import { createHash } from 'node:crypto';
+import { LIMITS } from './repository.js';
 
 /**
  * Embed payload pack / extract.
@@ -162,9 +163,10 @@ async function itemToFiles(item) {
                 throw new Error(`sha256 mismatch for ${item.name}`);
             }
         }
-        const zip = new AdmZip(buf);
-        return zip.getEntries()
-            .filter(e => !e.isDirectory)
+        const zip = new AdmZip(buf), entries = zip.getEntries().filter(e => !e.isDirectory);
+        if (entries.length > LIMITS.fileCount || entries.some(entry => entry.header.size > LIMITS.perFile)
+            || entries.reduce((sum, entry) => sum + entry.header.size, 0) > LIMITS.perSkill) throw new Error('Embedded Skill exceeds repository capacity');
+        return entries
             .map(e => ({
                 path: e.entryName,
                 encoding: 'base64',

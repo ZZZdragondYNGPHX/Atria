@@ -202,8 +202,20 @@ export class RunObservationService {
                             && !await tx.getResource({ kind: K.orchestrationCommand, handle, commandId: controlCommandId('effect.claim', effectId) })) resumable.push(effectId);
                     }
                 }
-                for (const id of root.pendingApprovalRefs) {
+                // Decisions remove rejected/consumed requests from the pending
+                // index. Metadata must still expose their original final state
+                // so observers never mistake a completed Review for a missing
+                // approval. Decision documents contain private authentication
+                // context and are deliberately excluded from this projection.
+                const approvalIds = new Set(root.pendingApprovalRefs);
+                for (const row of await tx.listResources({ kind: K.orchestrationRecord, handle, runId, recordType: 'approval' })) {
+                    if (row.key.recordId.startsWith('decision:')) continue;
+                    assertNativeId(row.key.recordId, 'orchestrationApproval');
+                    approvalIds.add(row.key.recordId);
+                }
+                for (const id of approvalIds) {
                     const approval = (await readApproval(tx, handle, root, id)).doc;
+                    if (approval.runId !== runId || approval.approvalId !== id) throw new TypeError('Invalid approval metadata owner');
                     if (!['R0', 'R1', 'R2', 'R3'].includes(approval.risk)) throw new TypeError('Invalid approval risk');
                     approvals.push({ approvalId: id, effectId: approval.effectId, status: approval.status, risk: approval.risk, expiresAt: approval.expiresAt,
                         reviewAvailable: this.review?.available(handle, root, approval) ?? false });
@@ -333,6 +345,16 @@ export class RunObservationService {
         return { runId: input.runId, collection: input.collection, versions: payload.versions, items,
             cursor: start + items.length < collection.length ? this.#remember({ handle, kind: 'details', scope, hostBootId: this.hostBootId,
                 hostGeneration, version: root.stateVersion, epoch: root.epoch, visibilityDigest, offset: start + items.length }) : null };
+    }
+
+    async commandOutcome(handle, commandId) {
+        assertNativeId(commandId, 'orchestrationCommand');
+        const command = await this.engine.withTransaction(handle, async tx => (await tx.getResource({ kind: K.orchestrationCommand, handle, commandId }))?.doc);
+        if (!command || typeof command.target !== 'string' || !command.target.startsWith('orun_')) return null;
+        const { payload } = await this.#view(handle, command.target);
+        return { commandId, operation: command.operation, outcome: { runId: command.target, status: payload.status,
+            versions: payload.versions, effects: payload.effects.map(effect => ({ effectId: effect.effectId, status: effect.status })),
+            approvals: payload.approvals.map(({ approvalId, effectId, status }) => ({ approvalId, effectId, status })) } };
     }
 
     async diagnostics(handle, input) {

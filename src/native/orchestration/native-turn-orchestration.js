@@ -294,6 +294,11 @@ export class NativeNarratorOrchestrationAuthority {
         return port;
     }
 
+    async inspectBinding({ handle, base }) {
+        const binding = await this.#binding(handle, base);
+        return binding ? { bindingId: binding.bindingId, version: binding.version, sourceSelector: binding.sourceSelector, planRef: binding.planRef } : null;
+    }
+
     async #binding(handle, base) {
         // No Binding means no V3 lifecycle, Run or ModelPort initialization.
         return this.engine.withTransaction(handle, async tx => {

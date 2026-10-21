@@ -46,7 +46,7 @@ export class PredictionService {
         fields(request, ['viewId', 'anchor', 'action', 'taskId', 'variantId', 'slotBindings', 'invocationId'], 'Prediction operation');
         if (typeof request.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(request.invocationId)
             || request.invocationId.startsWith('lc:')) fail('native_prediction_invocation_invalid');
-        const snapshot = await this.host.sessionCore.load(handle, input.sessionId);
+        const snapshot = await this.host.sessionCore.observe(handle, input.sessionId);
         if (snapshot.revision.revisionId !== input.revisionId) fail('native_prediction_revision_conflict');
         const runtime = snapshot.manifest.runtime.experienceContract.taskRuntime;
         const task = runtime?.tasks.find(item => item.id === request.taskId), variant = task?.variants.find(item => item.id === request.variantId);
@@ -137,7 +137,7 @@ export class PredictionService {
         fields(input, ['sessionId', 'artifact'], 'Prediction current request');
         const artifact = input.artifact;
         if (artifact?.kind !== 'hypothetical' || artifact.mode !== 'model_prediction' || artifact.baseAnchor?.sessionId !== input.sessionId) return { current: false };
-        const snapshot = await this.host.sessionCore.load(handle, input.sessionId);
+        const snapshot = await this.host.sessionCore.observe(handle, input.sessionId);
         const installed = await this.host.sessionCore._openPackage(handle, snapshot.session.packageId, snapshot.session.packageVersionId, snapshot.session.entryPointId);
         // This endpoint proves source freshness only; it never grants publication.
         return { current: hypotheticalCurrent(snapshot, installed, { ...artifact, mode: 'deterministic' }) };

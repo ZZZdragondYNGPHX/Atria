@@ -5,6 +5,8 @@ import { createSkillRepository } from '../skills/repository.js';
 import { encodeScopePath } from '../skills/scope.js';
 import { hashNativeDocument } from '../native/repositories/common.js';
 import { nativeMcpArtifacts } from '../native/mcp-artifacts.js';
+import { packEmbedPayload, parseEmbedPayload, computeEmbedItemHash, materializeFromEmbed } from '../skills/embed.js';
+import { buildBundledManifest, importBundledSkills } from '../skills/bundled.js';
 const keys = (value, allowed) => { if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !allowed.includes(key))) throw new TypeError('Invalid Native Skill request'); };
 const scope = value => { encodeScopePath(value); return value; };
 const commands = Object.freeze({ install: ['payload', 'conflictStrategy'], rename: ['toName'], move: ['toScope'],
@@ -135,6 +137,68 @@ export function createNativeSkillsRouter({ repository = req => createSkillReposi
         keys(i, ['scope', 'expectedInventoryHash', 'command', 'toScope']); scope(i.scope); if (i.toScope) scope(i.toScope);
         if (!/^[a-f0-9]{64}$/.test(i.expectedInventoryHash ?? '')) throw new TypeError('Exact scope hash required');
         return repo.writeScopeReviewed(i);
+    }));
+    const embedBinding = hashNativeDocument({ purpose: 'runtime-skill-embed' });
+    const embedPayload = (i, req, consume) => artifacts.withSource(req.user.profile.handle, i.artifactRef, 'skill-payload-upload', embedBinding,
+        async bytes => consume(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))));
+    const writable = value => { scope(value); if (value.kind === 'package') throw new TypeError('Package originals are read-only'); return value; };
+    const inventory = async (repo, selected) => ({ ...await repo.observeScope(selected), entries: new Map((await repo.list({ scope: selected })).map(row => [row.name, row.installedHash])) });
+    const reviewed = async (repo, selected, expected, incoming) => {
+        writable(selected); const current = await inventory(repo, selected);
+        if (current.inventoryHash !== expected) throw Object.assign(new Error('Skill inventory conflict'), { status: 409 });
+        const results = [];
+        return { results, repository: { install: async input => {
+            if (encodeScopePath(input.scope) !== encodeScopePath(selected)) throw new TypeError('Skill scope mismatch');
+            const plan = await repo.previewInstall(input);
+            if (incoming && incoming.get(plan.name) !== plan.incomingHash) throw Object.assign(new Error('Incoming Skill changed'), { status: 409 });
+            const result = await repo.writeReviewed({ scope: selected, name: plan.name, expectedInstalledHash: current.entries.get(plan.name) ?? null,
+                command: { kind: 'install', input: { payload: input.payload, conflictStrategy: input.conflictStrategy } } });
+            results.push({ name: plan.name, ...result }); return result;
+        } } };
+    };
+    const bundledView = async (repo, req) => {
+        const manifest = await buildBundledManifest({ defaultRoot: req.app.get('atriaDefaultRoot') });
+        return { manifest, manifestFingerprint: hashNativeDocument(manifest), ...await repo.observeScope({ kind: 'global' }) };
+    };
+    router.post('/bundled/preflight', route((repo, i, req) => { keys(i, []); return bundledView(repo, req); }));
+    router.post('/bundled/import', route(async (repo, i, req) => {
+        keys(i, ['expectedManifestFingerprint', 'expectedInventoryHash']);
+        const view = await bundledView(repo, req);
+        if (view.manifestFingerprint !== i.expectedManifestFingerprint) throw Object.assign(new Error('Bundled source conflict'), { status: 409 });
+        const check = await reviewed(repo, { kind: 'global' }, i.expectedInventoryHash, new Map(view.manifest.map(row => [row.name, row.installedHash])));
+        try { return { ok: true, ...await importBundledSkills({ defaultRoot: req.app.get('atriaDefaultRoot'), repository: check.repository }), results: check.results }; } catch (error) { return { ok: false, partial: check.results.length > 0, results: check.results, code: error.status === 409 ? 'native_skill_version_conflict' : 'native_skill_import_failed' }; }
+    }));
+    router.post('/embed/pack', route(async (repo, i, req) => {
+        keys(i, ['scope', 'names', 'mode', 'expectedInventoryHash', 'clientInstanceId']); scope(i.scope);
+        if (!Array.isArray(i.names) || !i.names.length || i.names.length > 32 || new Set(i.names).size !== i.names.length) throw new TypeError('Exact Skill selection required');
+        const before = await repo.observeScope(i.scope);
+        if (before.inventoryHash !== i.expectedInventoryHash) throw Object.assign(new Error('Skill inventory conflict'), { status: 409 });
+        const payload = await packEmbedPayload({ repository: repo, scope: i.scope, names: i.names, mode: i.mode });
+        if ((await repo.observeScope(i.scope)).inventoryHash !== before.inventoryHash) throw Object.assign(new Error('Skill source changed'), { status: 409 });
+        return artifacts.captureSkillEmbed(req.user.profile.handle, i.clientInstanceId, embedBinding, Buffer.from(JSON.stringify(payload)));
+    }));
+    router.post('/embed/staging', route((_repo, i, req) => {
+        keys(i, ['clientInstanceId', 'contentHash', 'totalBytes']); return artifacts.beginSource(req.user.profile.handle, i, 'skill-payload-upload', embedBinding);
+    }));
+    const embedView = (repo, i, req) => embedPayload(i, req, async payload => {
+        writable(i.targetScope); const items = await parseEmbedPayload(payload);
+        if (!items.length || items.length > 32 || new Set(items.map(item => item.name)).size !== items.length) throw new TypeError('Bounded unique embed selection required');
+        const rows = [];
+        for (const item of items) {
+            const existing = await repo.get(item.name, i.targetScope), incomingHash = await computeEmbedItemHash(item);
+            rows.push({ name: item.name, incomingHash, installedHash: existing?.installedHash ?? null, conflict: !existing ? 'new' : incomingHash === existing.installedHash ? 'same' : 'different' });
+        }
+        return { artifactRef: i.artifactRef, targetScope: i.targetScope, items: rows, ...await repo.observeScope(i.targetScope), invocationGranted: false };
+    });
+    router.post('/embed/preflight', route((repo, i, req) => { keys(i, ['artifactRef', 'targetScope']); return embedView(repo, i, req); }));
+    router.post('/embed/extract', route(async (repo, i, req) => {
+        keys(i, ['artifactRef', 'targetScope', 'expectedPreflightFingerprint', 'conflictStrategies']);
+        const view = await embedView(repo, i, req);
+        if (hashNativeDocument(view) !== i.expectedPreflightFingerprint) throw Object.assign(new Error('Embed target conflict'), { status: 409 });
+        const check = await reviewed(repo, i.targetScope, view.inventoryHash, new Map(view.items.map(row => [row.name, row.incomingHash])));
+        return embedPayload(i, req, async payload => {
+            try { return { ok: true, ...await materializeFromEmbed({ repository: check.repository, payload, targetScope: i.targetScope, conflictStrategies: i.conflictStrategies }), results: check.results }; } catch (error) { return { ok: false, partial: check.results.length > 0, results: check.results, failedAt: error.failedAt ?? null, code: 'native_skill_extract_failed' }; }
+        });
     }));
     return router;
 }

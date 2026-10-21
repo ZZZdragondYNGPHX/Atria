@@ -188,16 +188,26 @@ export class NativeProjectCommitAuthority {
             || graph.edges[0].condition !== 'always' || graph.edges[0].loopBack || graph.edges[0].maxVisits !== 1) fail();
         return { plan, graph, node, pin };
     }
-    async #prepare(handle, input) {
+    async #capturePreparation(handle, input) {
         fields(input, ['commandId', 'planRef', 'projectId', 'taskId', 'expectedSequence', 'expectedReviewHash', 'computeBudget'], 'Project commit request');
         assertNativeId(input.commandId, 'orchestrationCommand');
-        const replay = await this.#replay(handle, input); if (replay) return replay;
         const limits = assertComputeBudget(input.computeBudget); if (!limits.localWork) fail();
         const ref = { kind: 'native_project_commit', projectId: input.projectId, taskId: input.taskId };
         const descriptor = await readProjectCommitDescriptor(handle, ref, this.projectAgent);
         const task = await this.projectAgent.observeTask(handle, input.projectId, input.taskId);
         if (task.sequence !== input.expectedSequence || descriptor.reviewHash !== input.expectedReviewHash) fail();
         const { graph, node, pin } = await this.#plan(handle, input.planRef, ref, descriptor);
+        return { limits, ref, descriptor, graph, node, pin };
+    }
+    async preflight(handle, input) {
+        const { descriptor, pin, limits } = await this.#capturePreparation(handle, input);
+        return { schemaVersion: 1, hostBootId: this.engine.nativeHostLifecycle.hostBootId,
+            descriptor, descriptorIntegrity: pin.integrity, planRef: input.planRef,
+            expectedSequence: input.expectedSequence, computeBudget: limits, sent: false, prepared: false };
+    }
+    async #prepare(handle, input) {
+        const replay = await this.#replay(handle, input); if (replay) return replay;
+        const { limits, ref, descriptor, graph, node, pin } = await this.#capturePreparation(handle, input);
         const service = this.execution, sourceRequest = { domain: 'project', purpose: 'formal_commit', projectId: input.projectId, taskId: input.taskId,
             revision: descriptor.revision, executionFingerprint: descriptor.executionFingerprint, reviewHash: descriptor.reviewHash, requestHash: hash(input) };
         const root = await service.runs.start(handle, input.commandId, { planRef: input.planRef, sourceRequest, retentionPolicyRef: { policyId: 'native_project_commit' } });

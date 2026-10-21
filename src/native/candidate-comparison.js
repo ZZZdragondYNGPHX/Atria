@@ -176,7 +176,7 @@ export class CandidateComparisonService {
         fields(input, ['sessionId', 'comparisonId'], 'Comparison current request');
         const entry = this._entry(handle, input.sessionId, input.comparisonId);
         if (!entry.selected) return { current: false };
-        const base = await this.host.sessionCore.load(handle, input.sessionId);
+        const base = await this.host.sessionCore.observe(handle, input.sessionId);
         return { current: hypotheticalCurrent(base, await this._installed(handle, base), entry.selected.artifact) };
     }
     async feedback(handle, raw, signal) {

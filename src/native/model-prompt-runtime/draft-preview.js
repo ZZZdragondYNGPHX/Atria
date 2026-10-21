@@ -3,7 +3,8 @@ import { assertExactResourceRef } from './contracts.js';
 import { assertVersionedModelPromptResource, getVersionedModelPromptResourceIdentity } from './resources.js';
 import { checkCancellation, immutable } from './execution-utils.js';
 import { hashNativeDocument } from '../repositories/common.js';
-import { createAuthoringRun } from './authoring-sample.js';
+import { createAuthoringRun, captureAuthoringSample } from './authoring-sample.js';
+import { nativeTaskScheduler } from '../task-scheduler.js';
 
 const DRAFT_TYPES = new Set(['core.prompt-program', 'core.prompt-module', 'core.generation-profile']);
 const fail = code => { throw Object.assign(new Error(code), { code }); };
@@ -153,16 +154,29 @@ export async function previewPromptDraft(host, handle, value, signal) {
         } });
 }
 
-export async function tryAuthoringSample(host, handle, value, signal) {
+export function observeAuthoringSample(handle, input) {
+    fields(input, ['requestId', 'role', 'sample'], 'Author trial observation');
+    if (typeof input.requestId !== 'string' || !/^[A-Za-z0-9._:-]{1,256}$/.test(input.requestId)
+        || typeof input.role !== 'string' || !/^[a-z_]{1,64}$/.test(input.role)) fail('native_generation_request_invalid');
+    const sample = captureAuthoringSample(input.sample);
+    return nativeTaskScheduler.findAuthoring(handle, hashNativeDocument(sample) + ':role.' + input.role + ':' + input.requestId);
+}
+
+export async function tryAuthoringSample(host, handle, value, signal, onQueued) {
     const input = assertJsonDeclaration(value, 'Author trial', 1048576);
     fields(input, ['request', 'drafts', 'refs', 'limits', 'send'], 'Author trial');
     if (input.send !== true || !input.request?.sample) fail('native_generation_authoring_input_required');
+    const original = observeAuthoringSample(handle, { requestId: input.request.requestId, role: input.request.role, sample: input.request.sample });
+    if (original) return immutable({ operationId: original.operationId, sent: null, publication: 'unpublished', trial: { status: 'already_admitted' } });
     const authoringRun = createAuthoringRun(input.limits);
     const draftOverrides = prepareDraftOverrides(input.drafts ?? []);
     try {
-        const result = await host.execute(handle, { ...input.request, ...(input.refs ? { previewRefs: input.refs } : {}) }, signal, undefined,
-            { authoringRun, draftOverrides, retainResult: true });
-        return immutable({ response: { text: result.response.text, toolCalls: result.response.toolCalls ?? [], usage: result.response.usage ?? null },
+        let operationId;
+        const result = await host.execute(handle, { ...input.request, ...(input.refs ? { previewRefs: input.refs } : {}) }, signal, chunk => {
+            if (chunk.operationId) { operationId = chunk.operationId; onQueued?.({ operationId }); }
+        },
+        { authoringRun, draftOverrides, retainResult: true });
+        return immutable({ operationId, response: { text: result.response.text, toolCalls: result.response.toolCalls ?? [], usage: result.response.usage ?? null },
             routing: result.routing, sent: true, publication: 'unpublished', trial: { status: 'completed' } });
     } catch (error) {
         if (!authoringRun.compute.attempts.length) throw error;

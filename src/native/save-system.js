@@ -1,6 +1,6 @@
 import { illustrationManifest, IMAGE_VERSION_NAMESPACE } from '../../public/shared/native-illustration-storage.js';
 import { PERSONA_NAMESPACE, personaAvatars } from './persona-contract.js';
-import { runFailure } from './run-control.js';
+import { runFailure, assertRunAccess } from './run-control.js';
 import {
     ATRIA_SAVE_FORMAT,
     ATRIA_SAVE_SCHEMA_VERSION,
@@ -387,6 +387,21 @@ export class NativeSaveSystem {
         return buildAtriaSaveContainer({ ...built, password });
     }
 
+    async preflightImportTarget(handle, header) {
+        return this._sessions._engine.withTransaction(handle, async tx => {
+            try {
+                const control = await assertRunAccess(tx, handle, header.root.sessionId, 'import');
+                const existing = await this._sessions.get(handle, header.root.sessionId);
+                if (existing && header.scope !== 'resume') return { status: 'blocked', code: 'native_session_import_conflict' };
+                if (existing && (control?.mode !== 'ironman' || existing.headRevisionId !== header.root.revisionId)) return { status: 'blocked', code: 'native_run_resume_stale' };
+                return { status: 'requires_payload_validation', code: null, existing: Boolean(existing), resume: header.scope === 'resume' };
+            } catch (error) {
+                if (!error.code?.startsWith('native_run_')) throw error;
+                return { status: 'blocked', code: error.code };
+            }
+        });
+    }
+
     async preflightImport(handle, archive) {
         const preflight = preflightAtriaSaveContainer(archive);
         let installed;
@@ -492,6 +507,8 @@ export class NativeSaveSystem {
     }
 
     async _importSaveLocked(handle, inspected, { observe = false } = {}) {
+        const importability = await this.preflightImportTarget(handle, inspected.save);
+        if (importability.status === 'blocked') throw new ConflictError(importability.code);
         const installed = await this._requirePackage(handle, inspected.save.package);
         const save = this._embedImportedLibraryKnowledge(
             inspected.save,

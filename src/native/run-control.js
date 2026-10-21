@@ -163,6 +163,9 @@ export async function writeRunControl(tx, handle, sessionId, control) {
 
 export class RunControl {
     constructor(repo) { this.repo = repo; }
+    async observe(handle, sessionId) {
+        return this.repo._engine.withTransaction(handle, tx => readRunControl(tx, handle, sessionId));
+    }
     async status(handle, sessionId) {
         return this.repo.withRunLock(handle, sessionId, () => this.repo._engine.withTransaction(handle, async tx => {
             const value = await readRunControl(tx, handle, sessionId);

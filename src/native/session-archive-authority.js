@@ -44,14 +44,15 @@ export class NativeSessionArchiveAuthority {
         return this.artifacts.withSessionArchive(handle, ref, async archive => {
             const preflight = await this.product.preflightSaveImport(handle, archive);
             const existing = await this.product._saveSystem._sessions.get(handle, preflight.root.sessionId);
-            return { artifactRef: ref, preflight, targetSessionFingerprint: hashNativeDocument(existing), target: existing ? { sessionId: existing.sessionId, headRevisionId: existing.headRevisionId } : null,
+            const importability = await this.product._saveSystem.preflightImportTarget(handle, preflight);
+            return { artifactRef: ref, preflight, importability, targetSessionFingerprint: hashNativeDocument(existing), target: existing ? { sessionId: existing.sessionId, headRevisionId: existing.headRevisionId } : null,
                 effects: 'Native exact Save closure import; existing Session conflicts and Ironman rules remain authoritative' };
         });
     }
     async import(handle, input) {
         archiveFields(input, ['artifactRef', 'expectedPreflightFingerprint', 'passwordSecretRef'], 'Session Archive import');
         const view = await this.preflight(handle, input.artifactRef);
-        if (hashNativeDocument(view) !== input.expectedPreflightFingerprint || view.preflight.dependency.status !== 'ready') throw new ConflictError('native_save_preflight_conflict');
+        if (hashNativeDocument(view) !== input.expectedPreflightFingerprint || view.preflight.dependency.status !== 'ready' || view.importability.status === 'blocked') throw new ConflictError('native_save_preflight_conflict');
         if (view.preflight.protection.requiresPassword && input.passwordSecretRef === undefined) throw new ConflictError('native_save_trusted_password_required');
         if (!view.preflight.protection.requiresPassword && input.passwordSecretRef !== undefined) throw new ConflictError('native_save_password_ref_unnecessary');
         return this.artifacts.withSessionArchive(handle, input.artifactRef, async archive => {

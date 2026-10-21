@@ -1,4 +1,5 @@
 import { saveApiPreset } from '../native/model-prompt-runtime/api-presets.js';
+import { observeAuthoringSample } from '../native/model-prompt-runtime/draft-preview.js';
 import { createHostRouteResolver } from '../native/model-prompt-runtime/prompt-controls.js';
 import multer from 'multer';
 import { createImageRegistry, imageTargetFingerprint } from '../native/image-registry.js';
@@ -301,7 +302,11 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
                 if (result?.completion) { const { completion: _completion, ...ack } = result; return res.json(ack); }
                 return res.json(result);
             }
-            const goal = new AgentGoalService({ engine: host.persistence._engine, sessionCore: host.sessionCore, studio: host.studio, agent: host.agent, chatRepo: getChats() });
+            const core = ['context', 'associations'].includes(action) ? Object.create(host.sessionCore) : host.sessionCore;
+            if (core !== host.sessionCore) core.load = (owner, id) => host.sessionCore.observe(owner, id);
+            const agent = ['context', 'associations'].includes(action) ? Object.create(host.agent) : host.agent;
+            if (agent !== host.agent) agent.getTask = (owner, projectId, taskId) => host.agent.observeTask(owner, projectId, taskId);
+            const goal = new AgentGoalService({ engine: host.persistence._engine, sessionCore: core, studio: host.studio, agent, chatRepo: getChats() });
             res.json(await goal[action](handle, req.body));
         } catch (error) {
             res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : error?.name === 'NotFoundError' ? 404 : 400)
@@ -529,6 +534,14 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         res.set('Cache-Control', 'private, no-store');
         try { res.json(await new IllustrationImageService({ host: getHost() }).prepareAuthoring(handle, req.body)); } catch (error) { res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_visual_prepare_failed' }); }
     });
+    router.post('/authoring/images/page', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            fields(req.body, ['archived', 'offset', 'limit', 'expectedFingerprint'], 'Authoring image page');
+            res.json(await new IllustrationImageService({ host: getHost() }).authoringImagePage(handle, req.body));
+        } catch (error) { res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_visual_image_list_failed' }); }
+    });
     router.get('/authoring/images', async (req, res) => {
         const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
@@ -717,13 +730,13 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         }
     });
     const presets = host => new PromptPresetStore({ engine: host.library._engine });
-    for (const action of ['inspect', 'declare', 'prepare', 'check', 'checkRollback', 'apply', 'rollback']) router.post('/presets/:id/prompt-candidates/' + action, async (req, res) => {
+    for (const action of ['inspect', 'declare', 'prepare', 'check', 'checkRollback', 'apply', 'rollback', 'discard']) router.post('/presets/:id/prompt-candidates/' + action, async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
         try {
             const store = new PromptCandidateStore({ engine: getHost().library._engine });
-            const input = ['check', 'checkRollback', 'apply', 'rollback'].includes(action) ? req.body.candidateId : req.body;
+            const input = ['check', 'checkRollback', 'apply', 'rollback', 'discard'].includes(action) ? req.body.candidateId : req.body;
             res.json(await store[action](handle, req.params.id, input));
         } catch (error) {
             res.status(error.name === 'ConflictError' ? 409 : error.name === 'NotFoundError' ? 404 : error.code === 'storage_read_only' ? 503 : 400).json({ error: 'native_prompt_candidate_unavailable' });
@@ -845,7 +858,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
     router.delete('/configuration/:kind/:id', async (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);
-        try { response.json(await getHost().persistence.deleteProfile(handle, request.params.kind, request.params.id)); } catch (error) {
+        try { response.json(await getHost().persistence.deleteProfile(handle, request.params.kind, request.params.id, { expectedFingerprint: request.get('If-Match') })); } catch (error) {
             if (error.code === 'native_runtime_referenced') return response.status(409).json({ error: error.code, details: error.details });
             response.status(error.status || (error.name === 'ConflictError' ? 409 : 400)).json({ error: error.code || 'native_runtime_delete_failed' });
         }
@@ -1064,6 +1077,12 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             return response.sendStatus(404);
         } catch (error) { response.status(error.code === 'native_generation_configuration_conflict' ? 409 : 400).json({ error: ['native_runtime_fallback_role', 'native_generation_configuration_conflict'].includes(error.code) ? error.code : 'native_generation_configuration_invalid' }); }
     });
+    router.post('/authoring/observe', (request, response) => {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.sendStatus(401);
+        response.set('Cache-Control', 'private, no-store');
+        try { response.json(observeAuthoringSample(handle, request.body)); } catch { response.status(400).json({ error: 'native_generation_authoring_observation_invalid' }); }
+    });
     router.post(['/preview/draft', '/authoring/try'], async (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);
@@ -1073,11 +1092,13 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         response.on('close', abort);
         try {
             const host = getHost();
-            const result = await host[request.path === '/authoring/try' ? 'tryAuthoring' : 'previewDraft'](handle, request.body, controller.signal);
-            if (!controller.signal.aborted) response.json(result);
+            const result = await host[request.path === '/authoring/try' ? 'tryAuthoring' : 'previewDraft'](handle, request.body, controller.signal, ({ operationId }) => {
+                if (!response.headersSent) response.status(202).json({ operationId, publication: 'unpublished', recovery: 'Observe the original operation; never resend to recover a lost response.' });
+            });
+            if (!controller.signal.aborted && !response.headersSent) response.json(result);
         } catch (error) {
             const code = /^(native_generation_|generation_)[a-z_]+$/.test(error.code || '') ? error.code : 'native_generation_draft_invalid';
-            if (!controller.signal.aborted) response.status(code.includes('conflict') ? 409 : 400).json({ error: code });
+            if (!controller.signal.aborted && !response.headersSent) response.status(code.includes('conflict') ? 409 : 400).json({ error: code });
         } finally { response.off('close', abort); }
     });
     router.post(['/execute', '/preview', '/task', '/turn'], async (request, response) => {

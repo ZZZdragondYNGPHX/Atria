@@ -20,7 +20,7 @@ async function renameInstallDirectory(from, to) {
     }
 }
 
-const LIMITS = {
+export const LIMITS = {
     perFile: 4 * 1024 * 1024,         // 4 MB
     perSkill: 16 * 1024 * 1024,       // 16 MB
     fileCount: 100,

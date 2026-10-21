@@ -96,7 +96,8 @@ async function collectFilesAsPayload(rootDir) {
                 await recurse(relPath);
             } else if (e.isFile()) {
                 const buf = await fs.readFile(join(abs, e.name));
-                const isText = !buf.includes(0);
+                let isText = !buf.includes(0);
+                if (isText) { try { new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch { isText = false; } }
                 out.push(isText
                     ? { path: relPath, encoding: 'utf8', content: buf.toString('utf8') }
                     : { path: relPath, encoding: 'base64', content: buf.toString('base64') });

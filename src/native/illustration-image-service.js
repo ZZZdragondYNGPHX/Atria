@@ -103,6 +103,12 @@ export class IllustrationImageService {
         return (await this.store.list(handle, 'job')).filter(job => job.source.kind === 'authoring' && Boolean(job.galleryArchived) === archived)
             .sort((a, b) => b.createdAt - a.createdAt).map(job => ({ operation: publicJob(job), image: this.authoringImage(job) }));
     }
+    async authoringImagePage(handle, { archived = false, offset = 0, limit = 30, expectedFingerprint = null } = {}) {
+        if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100) visualError('invalid');
+        const rows = await this.authoringImages(handle, { archived }), fingerprint = hashNativeDocument(rows);
+        if (expectedFingerprint !== null && expectedFingerprint !== fingerprint) visualError('gallery_conflict');
+        return { items: rows.slice(offset, offset + limit), total: rows.length, fingerprint, nextOffset: offset + limit < rows.length ? offset + limit : null };
+    }
     authoringImage(job) {
         return job.status === 'published' ? { imageVersionId: job.imageVersionId, ...job.result, title: job.source.title,
             prompt: job.evidence.ir.prompt, negativePrompt: job.evidence.ir.negativePrompt, archived: Boolean(job.galleryArchived) } : null;

@@ -189,6 +189,11 @@ export class NativeGenerationHost {
         return this.projectCommitAuthority.prepare(handle, input);
     }
 
+    preflightProjectCommit(handle, input) {
+        if (!this.projectCommitAuthority) fail('native_orchestration_project_commit_unavailable');
+        return this.projectCommitAuthority.preflight(handle, input);
+    }
+
     dispatchProjectCommit(handle, input, target) {
         if (!this.projectCommitAuthority) fail('native_orchestration_project_commit_unavailable');
         return this.projectCommitAuthority.dispatch(handle, input, target);
@@ -303,6 +308,7 @@ export class NativeGenerationHost {
         const lanes = await this._turnLanes(handle, { ...base, timeline: [{ role: 'user', content: input.userInput }] }, input), capture = {};
         for (const lane of lanes) await this.executionResources(handle, lane, input.sessionId, capture);
         return { selectedRouteIds: lanes.map(route => route.runtimeRouteId), ...capture,
+            orchestrationBinding: this.turnOrchestration ? await this.turnOrchestration.inspectBinding({ handle, base }) : null,
             taskRuntime: base.manifest.runtime.experienceContract.taskRuntime, generationBudget: base.manifest.runtime.experienceContract.generationBudget ?? null,
             packageContentHash: base.session.packageContentHash, packageVersionId: base.session.packageVersionId, entryPointId: base.session.entryPointId,
             runtimeFingerprint: hashNativeDocument({ runtime: base.manifest.runtime, entryPointRuntime: base.entryPoint.runtime ?? null }) };
@@ -1005,8 +1011,8 @@ export class NativeGenerationHost {
         });
     }
 
-    async tryAuthoring(handle, input, signal) {
-        return tryAuthoringSample(this, handle, input, signal);
+    async tryAuthoring(handle, input, signal, onQueued) {
+        return tryAuthoringSample(this, handle, input, signal, onQueued);
     }
 
     async previewDraft(handle, input, signal) {
@@ -1136,6 +1142,8 @@ export class NativeGenerationHost {
         if (!preview && !scheduled) {
             const captured = {};
             const resources = await this.executionResources(handle, route, input.sessionId, captured);
+            if (authoringRun && nativeTaskScheduler.findAuthoring(handle, source.sampleId + ':' + role + ':' + input.requestId))
+                fail('native_generation_authoring_request_exists');
             let worker;
             const operation = nativeTaskScheduler.submit({ owner: handle, anchor: source, executionClass: 'interactive', resources, retry: false, retainResult,
                 timeoutMs: executionTimeout(captured),

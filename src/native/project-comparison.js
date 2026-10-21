@@ -26,7 +26,7 @@ export class ProjectComparisonService {
     }
 
     async _capture(handle, projectId, taskId) {
-        const task = await this.host.agent.getTask(handle, projectId, taskId);
+        const task = await this.host.agent.observeTask(handle, projectId, taskId);
         if (task.status !== 'planning' || task.workspace || task.review || task.operations.length || task.attempts.length) fail('native_project_comparison_task_unavailable');
         const snapshot = await this.host.studio._queue(projectId, async () => {
             await this.host.studio._assertBaseRevision(handle, projectId, task.baseRevision);
@@ -121,7 +121,7 @@ export class ProjectComparisonService {
 
     async outcome(handle, input) {
         const artifact = this._stored(handle, input);
-        const task = await this.host.agent.getTask(handle, artifact.projectId, artifact.taskId);
+        const task = await this.host.agent.observeTask(handle, artifact.projectId, artifact.taskId);
         if (!artifact.selected || task.status !== 'completed' || !task.workspace
             || operationsHash(task.workspace.operations) !== operationsHash(artifact.selected.workspace.operations)) return { status: 'pending', predictionError: 'not_measurable' };
         const receipt = task.changeSets.find(value => value.baseRevision === artifact.baseRevision && value.validation.status === 'passed' && value.resultingRevision);

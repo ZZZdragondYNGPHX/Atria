@@ -405,13 +405,15 @@ export class NativeModelPromptPersistence {
         });
     }
 
-    async deleteProfile(handle, kind, id) {
+    async deleteProfile(handle, kind, id, { expectedFingerprint } = {}) {
         const definitions = { connections: [NATIVE_RESOURCE_KINDS.connectionProfile, 'connectionProfileId'], models: [NATIVE_RESOURCE_KINDS.modelProfile, 'modelProfileId'], routes: [NATIVE_RESOURCE_KINDS.runtimeRoute, 'runtimeRouteId'] };
         if (!definitions[kind]) throw new TypeError('Unsupported Runtime resource');
         return withRuntimeWrite(handle, () => this._engine.withTransaction(handle, async tx => {
             assertWritable();
             const [resourceKind, idField] = definitions[kind]; const key = playerKey(resourceKind, handle, idField, id);
-            if (!await getNativeDocument(tx, key)) throw new NotFoundError('Runtime resource');
+            const current = await getNativeDocument(tx, key);
+            if (!current) throw new NotFoundError('Runtime resource');
+            if (expectedFingerprint !== undefined && hashNativeDocument(current) !== expectedFingerprint) throw new ConflictError('native_generation_configuration_conflict');
             if (kind === 'routes') {
                 const pinned = await orchestrationPinReferences(tx, handle, { runtimeRouteId: id });
                 if (pinned.length) throw new ConflictError('native_runtime_referenced', { usedBy: pinned });

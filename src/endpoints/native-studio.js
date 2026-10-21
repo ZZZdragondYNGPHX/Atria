@@ -316,6 +316,10 @@ export function createNativeStudioRouter(getServices = services, artifacts = nat
 
     const commitHost = async () => getGenerationHost ? getGenerationHost() : (await import('./native-generation.js')).getNativeGenerationHost();
     const commitTarget = req => ({ projectId: req.params.projectId, taskId: req.params.taskId });
+    router.post('/projects/:projectId/agent/tasks/:taskId/commit/preflight', route(async (req, res, _, handle) => {
+        assertObject(req.body, ['commandId', 'planRef', 'expectedSequence', 'expectedReviewHash', 'computeBudget'], 'Project commit preflight');
+        res.json(await (await commitHost()).preflightProjectCommit(handle, { ...req.body, ...commitTarget(req) }));
+    }));
     router.post('/projects/:projectId/agent/tasks/:taskId/commit/prepare', route(async (req, res, _, handle) => {
         assertObject(req.body, ['commandId', 'planRef', 'expectedSequence', 'expectedReviewHash', 'computeBudget'], 'Project commit request');
         res.json(await (await commitHost()).prepareProjectCommit(handle, { ...req.body, ...commitTarget(req) }));

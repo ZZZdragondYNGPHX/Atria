@@ -1,5 +1,7 @@
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { hashNativeDocument } from '../repositories/common.js';
+import { readApproval } from './effect-contracts.js';
+import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 
 
 /** Retention only: these references never make an uncommitted revision readable.
@@ -14,7 +16,21 @@ async function retentionRecords(tx, handle) {
     }
     for (const row of await tx.listResources({ kind: K.orchestrationRecord, handle })) {
         const checked = await tx.getResource(row.key), root = roots.get(row.key.runId);
-        if (!checked || !root || checked.doc.runId !== root.runId) throw new TypeError('Missing orchestration record retention owner');
+        if (!checked || !root) throw new TypeError('Missing orchestration record retention owner');
+        if (checked.doc.runId !== root.runId) {
+            // The original immutable approval decision has no top-level runId.
+            // Its key + canonical Approval record own that identity. Validate
+            // that original link instead of treating a valid decision as orphaned.
+            const decision = checked.doc;
+            if (row.key.recordType !== 'approval' || row.key.recordId !== 'decision:' + decision.approvalId) throw new TypeError('Mismatched orchestration record retention owner');
+            assertObject(decision, ['schemaVersion', 'decisionId', 'approvalId', 'bindingHash', 'principalRef', 'authenticationContextRef', 'decision', 'decidedAt', 'expiresAt', 'hostBootId', 'hostGeneration', 'epoch'], 'Approval decision retention');
+            const approval = (await readApproval(tx, handle, root, decision.approvalId)).doc;
+            const principal = { principalRef: decision.principalRef, authenticationContextRef: decision.authenticationContextRef };
+            if (decision.schemaVersion !== 1 || approval.runId !== root.runId || approval.decisionRef !== row.key.recordId
+                || decision.bindingHash !== approval.bindingHash || !['approve', 'reject'].includes(decision.decision)
+                || decision.principalRef?.handle !== handle || decision.authenticationContextRef?.authority !== 'native_user_reauthentication'
+                || decision.decisionId !== hashNativeDocument({ approvalId: decision.approvalId, decision: decision.decision, bindingHash: decision.bindingHash, principal })) throw new TypeError('Invalid approval decision retention owner');
+        }
         records.push({ ...checked, key: row.key });
     }
     return { roots, records };

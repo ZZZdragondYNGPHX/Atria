@@ -5,13 +5,14 @@ import { SpeechService } from './speech-service.js';
 import { serverBootId } from '../logging/startup-store.js';
 import { ConflictError, NotFoundError } from '../storage/errors.js';
 import { imageSize } from 'image-size';
+import { IllustrationImageService } from './illustration-image-service.js';
 
 const MiB = 1024 * 1024, digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const fields = value => value && typeof value === 'object' && !Array.isArray(value);
 const text = value => typeof value === 'string' && value.length > 0 && value.length <= 256 && !/[\u0000-\u001f\u007f]/.test(value);
 const fail = () => { throw new TypeError('Invalid Native media binary request'); };
-const limits = Object.freeze({ image: 32 * MiB, thumbnail: MiB, mask: 16 * MiB, audio: 16 * MiB });
-const purposes = Object.freeze({ image: 'media-image', thumbnail: 'media-thumbnail', mask: 'mask-raster', audio: 'speech-audio' });
+const limits = Object.freeze({ image: 32 * MiB, thumbnail: MiB, 'authoring-image': 32 * MiB, 'authoring-thumbnail': MiB, mask: 16 * MiB, audio: 16 * MiB });
+const purposes = Object.freeze({ image: 'media-image', thumbnail: 'media-thumbnail', 'authoring-image': 'media-image', 'authoring-thumbnail': 'media-thumbnail', mask: 'mask-raster', audio: 'speech-audio' });
 const refKeys = ['handleId', 'clientInstanceId', 'serverBootId', 'purpose', 'contentHash', 'totalBytes', 'sourceRevision'];
 const same = (a, b) => refKeys.every(key => a[key] === b[key]);
 
@@ -39,6 +40,17 @@ export class NativeMcpMediaAssets {
     async #resolve(owner, input) {
         if (this.resolveSource) return this.resolveSource(owner, input);
         const host = this.getHost(), media = new MediaStudio({ host });
+        if (input.kind.startsWith('authoring-')) {
+            const images = new IllustrationImageService({ host }), row = await images.store.read(owner, 'job', input.operationId), job = row.value;
+            if (job?.source.kind !== 'authoring' || job.status !== 'published' || job.imageVersionId !== input.imageVersionId
+                || job.result?.ref.contentHash !== input.contentHash) throw new ConflictError('native_media_binary_source_conflict');
+            const sourceScope = { kind: 'authoring', operationId: input.operationId, imageVersionId: input.imageVersionId, contentHash: input.contentHash };
+            if (input.kind === 'authoring-thumbnail') {
+                const asset = await images.assets.read(owner, job.result.ref.assetId), bytes = visualThumbnail(asset.bytes);
+                return { bytes, sourceRevision: row.revision, sourceScope, mediaType: 'image/png' };
+            }
+            return { ref: job.result.ref, sourceRevision: row.revision, sourceScope, assets: images.assets };
+        }
         if (input.kind === 'audio') {
             const observation = await new SpeechService({ host }).observe(owner, { operationId: input.operationId });
             if (!observation.current || observation.status !== 'completed' || !observation.artifact?.asset) throw new ConflictError('native_speech_source_conflict');
@@ -61,9 +73,10 @@ export class NativeMcpMediaAssets {
     }
     #validate(input) {
         if (!fields(input) || !Object.hasOwn(limits, input.kind) || !text(input.clientInstanceId)) fail();
-        const allowed = input.kind === 'audio' ? ['kind', 'clientInstanceId', 'operationId']
-            : input.kind === 'mask' ? ['kind', 'clientInstanceId', 'sessionId', 'branchId', 'draftId', 'expectedRevision']
-                : ['kind', 'clientInstanceId', 'sessionId', 'branchId', 'imageVersionId'];
+        const allowed = input.kind.startsWith('authoring-') ? ['kind', 'clientInstanceId', 'operationId', 'imageVersionId', 'contentHash']
+            : input.kind === 'audio' ? ['kind', 'clientInstanceId', 'operationId']
+                : input.kind === 'mask' ? ['kind', 'clientInstanceId', 'sessionId', 'branchId', 'draftId', 'expectedRevision']
+                    : ['kind', 'clientInstanceId', 'sessionId', 'branchId', 'imageVersionId'];
         if (Object.keys(input).sort().join(',') !== allowed.sort().join(',') || Object.values(input).some(value => !text(value))) fail();
     }
     async describe(owner, input) {

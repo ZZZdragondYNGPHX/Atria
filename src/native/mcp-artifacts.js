@@ -73,6 +73,11 @@ export class NativeMcpArtifacts {
             throw new ConflictError('native_artifact_purpose_conflict');
         return this.withBytes(owner, ref, consumer);
     }
+    captureSkillEmbed(owner, clientInstanceId, bindingHash, bytes) {
+        if (!Buffer.isBuffer(bytes) || !/^[a-f0-9]{64}$/.test(bindingHash ?? '')) invalid();
+        const item = this.#reserve(owner, clientInstanceId, digest(bytes), bytes.length, digest(bytes), { kind: 'skill-payload-upload', bindingHash });
+        bytes.copy(item.bytes); item.receivedBytes = bytes.length; item.state = 'complete'; return this.#metadata(item);
+    }
     captureSessionArchive(owner, clientInstanceId, sessionId, revisionId, saveId, bytes) {
         if (!identifier(sessionId) || !identifier(revisionId) || saveId !== null && !identifier(saveId) || !Buffer.isBuffer(bytes)) invalid();
         const item = this.#reserve(owner, clientInstanceId, digest(bytes), bytes.length, revisionId, { kind: 'session-archive', sessionId, revisionId, saveId });

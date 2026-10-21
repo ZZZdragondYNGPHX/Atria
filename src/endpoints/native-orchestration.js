@@ -24,7 +24,10 @@ const services = () => {
             resumeEffect: (handle, request) => host.resumeProjectCommit(handle, request),
             reconcileEffect: (handle, request) => host.turnOrchestration.reconcileEffect(handle, request) }); observationServices.set(engine, observations);
     }
-    return { ...createOrchestrationAuthoringService(engine, sources), observations, review, tools: host.toolOrchestration };
+    const authoring = createOrchestrationAuthoringService(engine, sources);
+    return { ...authoring, observations, review, tools: host.toolOrchestration, commands: {
+        get: async (handle, commandId) => await authoring.plans.commandOutcome(handle, commandId) ?? await observations.commandOutcome(handle, commandId),
+    } };
 };
 
 /** Original app auth + CSRF middleware precedes this Native namespace. */
@@ -55,6 +58,9 @@ export function createNativeOrchestrationRouter(getServices = services) {
             response.status(status).json({ schemaVersion: 1, error: error.code ?? (status === 400 ? 'native_orchestration_invalid_command' : 'native_orchestration_failed') });
         } finally { response.off('close', disconnected); }
     };
+    router.post('/commands/get', route(false, (commands, handle, input) => {
+        assertObject(input.body, ['commandId'], 'command outcome'); return commands.get(handle, input.body.commandId);
+    }, 'commands'));
     router.post('/plans/list', route(false, (plans, handle, input) => {
         const body = { ...input.body, archived: input.body?.archived ?? false };
         assertObject(body, ['cursor', 'limit', 'archived'], 'list');

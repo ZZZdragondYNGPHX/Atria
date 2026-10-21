@@ -33,3 +33,14 @@ export async function inspectCognition(snapshot, principal, projectStore, { view
     if (expectedAnchor) assertInformationAnchor(snapshot, expectedAnchor);
     return projectInformation(snapshot, viewId, { purpose: 'display', includeRollups: false });
 }
+
+export async function cognitionCatalog(snapshot, principal, projectStore) {
+    const disclosure = cognitionDisclosure(snapshot), views = Object.entries(disclosure.projection).map(([viewId, projection]) => ({ viewId, kind: 'player', anchor: projection.anchor }));
+    for (const viewId of informationDefinition(snapshot)?.inspection?.viewIds ?? []) {
+        try {
+            const projection = await inspectCognition(snapshot, principal, projectStore, { viewId });
+            views.push({ viewId, kind: 'inspection', anchor: projection.anchor });
+        } catch (error) { if (error.code !== 'native_cognition_inspection_denied') throw error; }
+    }
+    return { schemaVersion: 1, views, contextExposureGrantsDisplay: false };
+}

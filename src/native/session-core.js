@@ -608,6 +608,28 @@ export class SessionCore {
         return this._publish(handle, base, { timeline: [...base.timeline, entry], entries: [entry], variants: [variant], commitId, requestFingerprint, effectPolicy });
     }
 
+    async lifecycleCommands(handle, sessionId) {
+        const base = await this.observe(handle, sessionId), control = await this.runs.observe(handle, sessionId), definition = lifecycleDefinition(base);
+        return { sessionId, revisionId: base.revision.revisionId, directAllowed: !control?.mode,
+            reason: control?.mode ? 'native_run_direct_command_denied' : null,
+            commands: (definition?.domains ?? []).flatMap(domain => domain.commands.map(command => ({ domainId: domain.id, commandId: command.id,
+                scopeId: domain.scopeId, scopeActive: base.states.atri_lifecycle.scopes[domain.scopeId]?.status === 'active', argsSchema: command.argsSchema }))) };
+    }
+
+    async preflightAppCommand(handle, sessionId, action, { expectedRevisionId } = {}) {
+        const control = await this.runs.observe(handle, sessionId);
+        if (control?.mode) throw runFailure('native_run_direct_command_denied');
+        if (action?.kind !== 'app.command') throw new TypeError('Declared App Command required');
+        const base = await this.observe(handle, sessionId);
+        if (base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict', { sessionId });
+        const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
+        const budget = hasAuthorityTransactions(base) ? await createAuthorityPublicationBudget(base, installed) : null;
+        const prepared = await prepareLifecycle(base, installed, action, budget);
+        validateCognitionTransition(base, { ...base, states: prepared.states });
+        return { sessionId, revisionId: base.revision.revisionId, actionHash: hashNativeDocument(action),
+            statesChanged: !equalNativeDocuments(prepared.states, base.states), sent: false, published: false };
+    }
+
     async applyLifecycleCommand(handle, sessionId, command, { expectedRevisionId, hostProof = null } = {}) {
         const control = await this.runs.status(handle, sessionId);
         if (control?.mode) {
