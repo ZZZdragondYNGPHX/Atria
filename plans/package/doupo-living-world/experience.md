@@ -20,14 +20,14 @@ NPC 的计划和地区变化需要可被玩家发现：人物位置、库存变�
 
 地图、人物档案和历史信息展示哪些真实信息、哪些估计与传闻，需要与 [world-simulation.md](world-simulation.md) 的时间和个人所知一起设计。UI 不应要求玩家阅读内部事务、调度预算或模型配置才能游玩。
 
-## 尚未决定
+## D4 具体设计路由
 
-- 场景美术、镜头细节、地图尺度与移动反馈；已定空间与移动方向的展开见 [presentation.md](presentation.md)。
-- 功能按钮与自由文字的具体分工、是否提供意图建议。
-- 战斗行动结算粒度与中断；战术回合或分段交锋、按钮与文字共同操作、思考和输入暂停时间已经确认，见 [decisions.md](decisions.md)。
-- 具体出身、起点场所与首个个人目标；开局年代、多种出身和身份来源方向已经确认，细则见 [player-and-combat.md](player-and-combat.md)。
+- 场景美术、桌面布局、镜头与移动反馈的拟定方案见 [presentation.md](presentation.md)。
+- 按钮与文字使用共同规则；动作解释、歧义和复合意图的拟定方案见 [player-and-combat.md](player-and-combat.md)。
+- 行动时间与长时中断的拟定方案见 [world-simulation.md](world-simulation.md)。
+- 四类出身、起点与主角知识的拟定方案见 [player-and-combat.md](player-and-combat.md)。
 - 成长、死亡存档与活动优先级的基础方向已定，具体规则及恢复流程的展开见 [progression-and-consequences.md](progression-and-consequences.md)。
 - 首批地域、长期亲密关系/婚姻家庭与电脑质量优先方向已确认，具体内容及运行方式的展开见 [content-and-runtime.md](content-and-runtime.md)。
-- 地图与场景规模、资产数量、具体模型与等待目标；电脑为主要运行目标。
+- 场所与人物编制、负载与反馈目标见 [content-and-runtime.md](content-and-runtime.md)；最终模型、资产数量与实际性能由实施核实。
 
-以上在后续产品讨论展开时具体化，不从其它项目或历史草案继承。
+上述新增细则均供讨论，整体范围、贯通样本与实施顺序见 [production-plan.md](production-plan.md)，不从其它项目或历史草案继承确认。
