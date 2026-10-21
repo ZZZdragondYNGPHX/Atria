@@ -231,17 +231,25 @@ function displayNameFor(item, view) {
     return '';
 }
 
+// Project card (blueprint §6.3): the whole card opens the project; deletion lives behind
+// the card's actions control and keeps its own review (S22).
 function projectListCard(documentRef, record, host, onDeleted) {
     const project = record.project || record;
+    const open = () => host.openBuild(project.projectId, project.displayName);
     const row = documentRef.createElement('article'); row.className = 'atri-studio-project-row';
     row.dataset.atriaBuildProjectId = project.projectId;
-    const info = documentRef.createElement('div');
+    row.addEventListener('click', event => { if (!event.target.closest('button, details, input, a')) open(); });
+    const info = documentRef.createElement('div'); info.className = 'atri-studio-project-row__info';
     const title = documentRef.createElement('h3'); title.textContent = project.displayName;
     const meta = documentRef.createElement('p'); meta.textContent = t('Updated') + ' ' + formatTime(project.updatedAt || project.createdAt);
     info.append(title, meta);
-    row.append(info, button(documentRef, 'Open Project', () => host.openBuild(project.projectId, project.displayName), { primary: true }));
+    const footer = documentRef.createElement('div'); footer.className = 'atri-studio-project-row__footer';
+    footer.append(button(documentRef, 'Open Project', open, { primary: true }));
     const management = documentRef.createElement('details'); management.className = 'atri-studio-project-management';
-    const manage = documentRef.createElement('summary'); manage.textContent = t('Manage'); management.append(manage); row.append(management);
+    const manage = documentRef.createElement('summary'); manage.className = 'atri-studio-project-management__trigger'; manage.setAttribute('aria-label', t('Project actions')); manage.title = t('Project actions');
+    manage.append(createAtriaIcon(documentRef, 'more', { size: 18 }));
+    management.append(manage); footer.append(management);
+    row.append(info, footer);
     mountProjectDeletion({ document: documentRef, root: management, project, revision: record.revision?.revision, onDeleted: () => onDeleted(project.projectId) });
     return row;
 }
@@ -253,11 +261,18 @@ async function renderProjectList(documentRef, root, host) {
     const title = documentRef.createElement('h2'); title.textContent = header.firstElementChild.textContent; header.firstElementChild.replaceWith(title);
     root.append(header);
     const surface = documentRef.createElement('section'); surface.className = 'atri-studio-project-surface'; root.append(surface);
-    const creation = documentRef.createElement('details'); creation.className = 'atri-studio-details';
-    const newProject = documentRef.createElement('summary'); newProject.textContent = t('New Project');
+    // Toolbar: search beside the one primary "New project"; its name form opens on demand.
+    const toolbar = documentRef.createElement('div'); toolbar.className = 'atri-studio-project-toolbar';
+    const search = textInput(documentRef, '', 'Search projects'); search.type = 'search'; search.placeholder = t('Search projects');
+    const searchField = field(documentRef, 'Search projects', search); searchField.classList.add('atri-studio-project-search');
+    const creation = documentRef.createElement('form'); creation.className = 'atri-studio-project-create'; creation.hidden = true;
     const name = textInput(documentRef, '', 'Project name'); name.required = true; name.maxLength = 160;
     name.addEventListener('input', () => name.setCustomValidity(''));
-    creation.append(newProject, field(documentRef, 'Project name', name), button(documentRef, 'Create Project', async () => {
+    const newButton = button(documentRef, 'New Project', () => { creation.hidden = false; newButton.setAttribute('aria-expanded', 'true'); name.focus(); }, { primary: true });
+    newButton.prepend(createAtriaIcon(documentRef, 'plus', { size: 15 })); newButton.setAttribute('aria-expanded', 'false');
+    toolbar.append(searchField, newButton);
+    const closeCreation = () => { creation.hidden = true; name.value = ''; name.setCustomValidity(''); newButton.setAttribute('aria-expanded', 'false'); newButton.focus(); };
+    const create = button(documentRef, 'Create Project', async () => {
         if (!name.value.trim()) { name.setCustomValidity(t('Enter a project name.')); name.focus(); name.reportValidity(); return; }
         const projectId = createStudioNativeId('project');
         const source = {
@@ -271,10 +286,11 @@ async function renderProjectList(documentRef, root, host) {
             await nativeStudioClient.createProject(source);
             host.openBuild(projectId, source.project.displayName);
         } finally { creation.inert = false; }
-    }, { primary: true }));
-    surface.append(creation);
-    const search = textInput(documentRef, '', 'Search projects'); search.type = 'search';
-    surface.append(field(documentRef, 'Search projects', search));
+    }, { primary: true });
+    creation.append(field(documentRef, 'Project name', name), actionRow(documentRef, create, button(documentRef, 'Cancel', closeCreation)));
+    creation.addEventListener('submit', event => { event.preventDefault(); create.click(); });
+    creation.addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); closeCreation(); } });
+    surface.append(toolbar, creation);
     const list = documentRef.createElement('div'); list.className = 'atri-studio-project-list'; surface.append(list);
     const fill = () => {
         list.replaceChildren();
@@ -610,7 +626,8 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
     shell.dataset.atriaStudioWorkspace = projectId;
     root.replaceChildren(shell);
     const environment = createAtriaShellEnvironment(shell);
-    state.aiOpen = Boolean(initialTaskId) || environment.get().mode === 'expanded';
+    // Project Agent opens on request (the AI button) or when a task link points at it (blueprint §6.3).
+    state.aiOpen = Boolean(initialTaskId);
     if (initialTaskId) state.mobileView = 'ai';
     let inspectorSequence = 0;
 
@@ -1026,7 +1043,12 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
                 return stageProject(next, 'Update project overview');
             }, { primary: true })),
         );
-        mountProjectDeletion({ document: documentRef, root: body, project: state.source.project, revision: state.revision.revision,
+        // Danger zone (N5): deletion sits after a divider, apart from the form's Review Changes.
+        const danger = documentRef.createElement('section'); danger.className = 'atri-studio-danger-zone';
+        const dangerTitle = documentRef.createElement('h3'); dangerTitle.textContent = t('Delete this project');
+        const dangerNote = documentRef.createElement('p'); dangerNote.textContent = t('Removes the project source and its edit history. You review what is kept before anything is deleted.');
+        danger.append(dangerTitle, dangerNote); body.append(danger);
+        mountProjectDeletion({ document: documentRef, root: danger, project: state.source.project, revision: state.revision.revision,
             onDeleted: async () => {
                 try { await host.refreshSearch?.(); } catch { /* Search retries when next opened. */ }
                 host.openBuild();

@@ -17,18 +17,35 @@
 .atria-native-studio[data-atria-build-projects] > header { margin-bottom: 18px; }
 .atria-native-studio[data-atria-build-projects] > header :is(h2, h3) { margin: 0; font: 600 var(--fs-xl)/1.25 var(--font-ui); letter-spacing: -.01em; }
 .atria-native-studio[data-atria-build-projects] > header p { margin: 6px 0 0; color: var(--text-2); font-size: var(--fs-sm); }
-.atri-studio-project-surface { display: grid; gap: 14px; max-width: 880px; }
-.atri-studio-project-surface > label { margin-block: 4px; }
+.atri-studio-project-surface { display: grid; gap: 14px; max-width: 1080px; }
+.atri-studio-project-toolbar { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.atri-studio-project-toolbar > .atri-studio-project-search { flex: 1; min-width: 0; max-width: 360px; }
+.atri-studio-project-toolbar > .atri-studio-project-search > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.atri-studio-project-toolbar > button { flex: none; display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+.atri-studio-project-create { display: grid; gap: 8px; max-width: 480px; padding: 12px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface-raised); }
+.atri-studio-project-create[hidden] { display: none; }
 .atri-studio-project-surface .atria-studio-field { grid-template-columns: 1fr; gap: 6px; }
-.atri-studio-project-management { border: 0; padding: 0; }
-.atri-studio-project-management[open] { flex: 0 0 100%; }
-.atri-studio-project-list { display: grid; gap: 0; padding: 4px 16px; border: 1px solid var(--line-2); border-radius: var(--r-xl); background: var(--surface-panel); }
-.atri-studio-project-list:empty { display: none; }
-.atri-studio-project-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line-1); }
-.atri-studio-project-row:last-child { border-bottom: 0; }
-.atri-studio-project-row > div { min-width: 0; }
-.atri-studio-project-row h3 { margin: 0 0 4px; font: 600 var(--fs-md)/1.35 var(--font-ui); }
+/* Project cards: name and last update; the whole card opens the project. */
+.atri-studio-project-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.atri-studio-project-list > .atria-state-panel { grid-column: 1 / -1; }
+.atri-studio-project-row { display: grid; grid-template-rows: 1fr auto; gap: 18px; min-width: 0; min-height: 132px; padding: 16px; border: 1px solid var(--line-2); border-radius: var(--r-xl); background: var(--surface-panel); cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
+.atri-studio-project-row:hover { border-color: var(--line-3, var(--line-2)); box-shadow: var(--shadow-1); }
+.atri-studio-project-row__info { min-width: 0; }
+.atri-studio-project-row h3 { margin: 0 0 4px; overflow-wrap: anywhere; font: 600 var(--fs-md)/1.35 var(--font-ui); }
 .atri-studio-project-row p { margin: 0; color: var(--text-3); font-size: var(--fs-xs); }
+.atri-studio-project-row__footer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.atri-studio-project-management { margin-left: auto; border: 0; padding: 0; }
+.atri-studio-project-management > summary { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-md); color: var(--text-3); cursor: pointer; list-style: none; }
+.atri-studio-project-management > summary::-webkit-details-marker { display: none; }
+.atri-studio-project-management > summary:hover { background: var(--surface-hover); color: var(--text-1); }
+.atri-studio-project-management[open] { flex: 0 0 100%; display: grid; justify-items: end; }
+.atri-studio-project-management[open] > .atri-project-lifecycle { justify-self: stretch; }
+@media (prefers-reduced-motion: reduce) { .atri-studio-project-row { transition: none; } }
+/* Danger zone (N5): separated from the form above. */
+.atri-studio-danger-zone { display: grid; gap: 6px; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line-2); }
+.atri-studio-danger-zone > h3 { margin: 0; color: var(--text-1); font: 600 var(--fs-sm)/1.3 var(--font-ui); }
+.atri-studio-danger-zone > p { margin: 0; color: var(--text-3); font-size: var(--fs-xs); }
+.atri-studio-danger-zone > .atri-project-lifecycle { margin-top: 6px; }
 .atri-project-lifecycle { flex: 0 0 100%; min-width: 0; margin-top: 10px; }
 .atri-project-lifecycle h4 { overflow-wrap: anywhere; }
 

@@ -46,6 +46,14 @@
 .atria-memory-workspace .workspace-memory-toggle-card > span { display: grid; min-width: 0; }
 .atria-memory-workspace .workspace-memory-toggle-card strong { font: 500 var(--fs-md)/1.35 var(--font-ui); }
 .atria-memory-workspace .workspace-memory-toggle-card small { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.atria-memory-workspace .workspace-memory-toggle-card.is-disabled { cursor: default; }
+.atria-memory-workspace .workspace-memory-toggle-card.is-disabled strong { color: var(--text-3); }
+.atria-memory-workspace .workspace-memory-toggle-card.is-disabled input { opacity: .45; }
+/* Memory off: reason and the one way back, above the switches. */
+.atria-memory-workspace .workspace-memory-off { display: grid; gap: 4px; margin: 10px 0 4px; padding: 12px; border: 1px solid color-mix(in srgb, var(--tone-amber) 30%, var(--line-2)); border-radius: var(--r-lg); background: var(--soft-amber); }
+.atria-memory-workspace .workspace-memory-off strong { color: var(--text-1); font: 600 var(--fs-sm)/1.35 var(--font-ui); }
+.atria-memory-workspace .workspace-memory-off p { margin: 0; color: var(--text-2); font-size: var(--fs-xs); line-height: 1.5; }
+.atria-memory-workspace .workspace-memory-off__action { justify-self: start; margin-top: 6px; }
 
 /* Statistics: two-column tiles, numbers first. */
 .atria-memory-workspace .workspace-memory-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

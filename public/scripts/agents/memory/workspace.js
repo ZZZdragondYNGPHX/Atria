@@ -26,7 +26,7 @@ function recordEpisodeIds(record) {
 }
 
 
-function toggleCard({ host, el, label, description, checked, onChange }) {
+function toggleCard({ host, el, label, description, checked, onChange, disabled = false }) {
     const row = el('label', undefined, host);
     row.className = 'workspace-memory-toggle-card';
     const copy = el('span', undefined, row);
@@ -36,6 +36,8 @@ function toggleCard({ host, el, label, description, checked, onChange }) {
     input.type = 'checkbox';
     input.setAttribute('role', 'switch');
     input.checked = checked;
+    input.disabled = disabled;
+    if (disabled) row.classList.add('is-disabled');
     input.addEventListener('change', () => onChange(input.checked));
     return input;
 }
@@ -119,8 +121,18 @@ export function createMemoryWorkspace({ getContext }) {
         content.className = 'workspace-memory-content';
 
         if (!service) {
-            status.textContent = i18n('Memory OS is not available in this host.');
-            return () => controller.abort();
+            // Memory loads during startup; a deep link can open this page first.
+            status.textContent = i18n('Memory is starting…');
+            let attempts = 0, timer = 0, inner = null;
+            const retry = () => {
+                if (controller.signal.aborted) return;
+                const next = getContext();
+                if (next.getCapabilityApi?.('memory-graph')?.getWorkspacePorts?.(next)) { inner = renderMemory(parent, ui); return; }
+                if (++attempts >= 40) { status.textContent = i18n('Memory OS is not available in this host.'); return; }
+                timer = setTimeout(retry, 400);
+            };
+            timer = setTimeout(retry, 400);
+            return () => { controller.abort(); clearTimeout(timer); inner?.(); };
         }
 
         const settings = () => service.getStatus?.() || {
@@ -277,31 +289,44 @@ export function createMemoryWorkspace({ getContext }) {
             settingsDisposer = () => {};
             railBody.replaceChildren();
             const current = settings();
+            // When off, the banner below carries the state; the chip would only repeat it.
             const state = el('span', current.enabled ? 'Memory is available' : 'Memory is disabled', railBody);
+            state.hidden = !current.enabled;
             state.className = 'workspace-status-chip is-' + (current.enabled ? 'active' : 'disabled');
             railBody.append(status);
 
+            // Off is a state with a reason and a way back (status protocol 04). The other
+            // switches keep their values but do nothing until Memory is on, so they are disabled.
+            if (!current.enabled) {
+                const off = el('section', undefined, railBody);
+                off.className = 'workspace-memory-off';
+                el('strong', 'Memory is off', off);
+                el('p', 'Replies do not recall stored memories, and new conversation is not recorded.', off);
+                button(off, 'Turn on Memory', () => setControl('enabled', true)).className = 'workspace-memory-off__action';
+            }
             const controls = railSection('Switches');
             controls.classList.add('workspace-memory-control-grid');
             toggleCard({ host: controls, el, label: 'Memory', description: 'Keep memory active for this conversation.', checked: current.enabled,
                 onChange: value => void setControl('enabled', value) });
-            toggleCard({ host: controls, el, label: 'Recall', description: 'Inject relevant memories into replies.', checked: current.recallEnabled,
+            const dependent = !current.enabled;
+            toggleCard({ host: controls, el, label: 'Recall', description: 'Inject relevant memories into replies.', checked: current.recallEnabled, disabled: dependent,
                 onChange: value => void setControl('recallEnabled', value) });
-            toggleCard({ host: controls, el, label: 'Source writes', description: 'Allow extraction to add source-backed facts and relations.', checked: current.sourceWritesEnabled,
+            toggleCard({ host: controls, el, label: 'Source writes', description: 'Allow extraction to add source-backed facts and relations.', checked: current.sourceWritesEnabled, disabled: dependent,
                 onChange: value => void setControl('sourceWritesEnabled', value) });
-            toggleCard({ host: controls, el, label: 'Auto extraction', description: 'Extract new memories as chat progresses.', checked: current.autoExtractionEnabled,
+            toggleCard({ host: controls, el, label: 'Auto extraction', description: 'Extract new memories as chat progresses.', checked: current.autoExtractionEnabled, disabled: dependent,
                 onChange: value => void setControl('autoExtractionEnabled', value) });
-            toggleCard({ host: controls, el, label: 'Auto compression', description: 'Compact older memory using the schema.', checked: current.autoCompressionEnabled,
+            toggleCard({ host: controls, el, label: 'Auto compression', description: 'Compact older memory using the schema.', checked: current.autoCompressionEnabled, disabled: dependent,
                 onChange: value => void setControl('autoCompressionEnabled', value) });
 
             const metrics = railSection('Statistics');
             const grid = el('div', undefined, metrics);
             grid.className = 'workspace-memory-metrics';
-            metric({ host: grid, el, label: 'Entities', value: computed?.graph.entities.length || 0 });
-            metric({ host: grid, el, label: 'Relations', value: computed?.graph.relations.length || 0 });
-            metric({ host: grid, el, label: 'Facts', value: computed?.facts.length || 0 });
-            metric({ host: grid, el, label: 'Pending', value: computed?.graph.pending?.filter(item => item.status === 'pending').length || 0 });
-            metric({ host: grid, el, label: 'Episodes', value: snapshot ? Object.keys(snapshot.state.episodes || {}).length : 0 });
+            // Unknown is not zero: until a snapshot has loaded, counts read "—".
+            metric({ host: grid, el, label: 'Entities', value: computed ? computed.graph.entities.length : null });
+            metric({ host: grid, el, label: 'Relations', value: computed ? computed.graph.relations.length : null });
+            metric({ host: grid, el, label: 'Facts', value: computed ? computed.facts.length : null });
+            metric({ host: grid, el, label: 'Pending', value: computed ? computed.graph.pending?.filter(item => item.status === 'pending').length || 0 : null });
+            metric({ host: grid, el, label: 'Episodes', value: snapshot ? Object.keys(snapshot.state.episodes || {}).length : null });
             metric({ host: grid, el, label: 'This run recalls', value: getView?.().recalls?.length || 0 });
 
             const recent = getView?.().recalls || [];
