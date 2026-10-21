@@ -154,21 +154,31 @@ export function privateReads(candidate, contract, grants, args, budget) {
         const domain = contract.lifecycleRuntime.domains.find(item => item.id === grant.domainId);
         const state = candidate.states.atri_lifecycle;
         if (state.scopes[domain.scopeId]?.status !== 'active') throw new TypeError('Private read scope inactive');
-        const id = taskId(template(grant.recordId, { args }));
         const records = state.domains[domain.id].records;
         budget.read(records.length);
-        const record = records.find(item => item.id === id);
-        if (!record || record.scopeId !== domain.scopeId) throw new TypeError('Private read unavailable');
-        const selected = {};
-        for (const field of grant.fields) {
-            const parts = field.split('.'); let value = record.value; let output = selected;
-            for (const part of parts) {
-                if (!value || !Object.hasOwn(value, part)) throw new TypeError('Private field unavailable');
-                value = value[part];
+        const select = record => {
+            if (!record || record.scopeId !== domain.scopeId) throw new TypeError('Private read unavailable');
+            const selected = {};
+            for (const field of grant.fields) {
+                const parts = field.split('.'); let value = record.value; let output = selected;
+                for (const part of parts) {
+                    if (!value || !Object.hasOwn(value, part)) throw new TypeError('Private field unavailable');
+                    value = value[part];
+                }
+                for (const part of parts.slice(0, -1)) { output[part] ??= {}; output = output[part]; }
+                output[parts.at(-1)] = structuredClone(value);
             }
-            for (const part of parts.slice(0, -1)) { output[part] ??= {}; output = output[part]; }
-            output[parts.at(-1)] = structuredClone(value);
-        }
+            return selected;
+        };
+        let selected;
+        if (grant.collection) {
+            const where = grant.collection.where;
+            const matching = where ? records.filter(record => where.field.split('.').reduce((value, key) => value?.[key], record.value)
+                === template(where.equals, { args })) : records;
+            if (matching.length > grant.collection.maxItems) throw new TypeError('Private collection read limit');
+            selected = { records: [...matching].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+                .map(record => ({ id: record.id, value: select(record), ...(grant.collection.recordHash ? { hash: hashNativeDocument(record.value) } : {}) })) };
+        } else selected = select(records.find(item => item.id === taskId(template(grant.recordId, { args }))));
         budget.readValue(selected); result[grant.id] = selected;
     }
     return freeze(result);
@@ -248,7 +258,9 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
     let computed; const execution = [];
     if (transaction.computation) {
         budget.step();
-        const input = { args, reads, artifacts, seed: identity };
+        const input = { args, reads, artifacts, seed: identity, anchor: { ...snapshotAnchor(candidate),
+            scopeEpochs: Object.fromEntries(Object.entries(candidate.states.atri_lifecycle.scopes)
+                .filter(([, scope]) => scope.status === 'active').map(([id, scope]) => [id, scope.epoch])) } };
         const checked = await runPackageComputation(installed, transaction.computation.source, 'precondition', input);
         if (checked.value !== true) throw new TypeError('Domain precondition rejected');
         execution.push(checked.evidence);
@@ -300,8 +312,15 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
 async function checkComputation(candidate, installed, contract, transaction, budget, state, evidence) {
     if (!state) return;
     budget.step();
-    const reads = privateReads(candidate, contract, transaction.reads, state.args, budget);
-    const checked = await runPackageComputation(installed, transaction.computation.source, 'invariant', { ...state, reads });
+    const selected = transaction.computation.invariantReads;
+    const grants = selected === undefined ? transaction.reads : selected.map(selection => ({
+        ...transaction.reads.find(grant => grant.id === selection.id), fields: selection.fields,
+    }));
+    const reads = privateReads(candidate, contract, grants, state.args, budget);
+    const available = { ...state, reads };
+    const input = transaction.computation.invariantContext === undefined ? available
+        : Object.fromEntries(transaction.computation.invariantContext.map(key => [key, available[key]]));
+    const checked = await runPackageComputation(installed, transaction.computation.source, 'invariant', input);
     if (checked.value !== true) throw new TypeError('Domain invariant rejected');
     evidence.push(checked.evidence);
 }

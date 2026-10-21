@@ -161,7 +161,24 @@ export function compileTransactionDeclarations(raw, options) {
         validators(transaction.validators, before);
         let computed = {};
         if (transaction.computation !== undefined) {
-            fields(transaction.computation, ['source', 'outputSchema'], 'Transaction computation');
+            fields(transaction.computation, ['source', 'outputSchema', 'invariantContext', 'invariantReads'], 'Transaction computation');
+            if (transaction.computation.invariantReads !== undefined) {
+                list(transaction.computation.invariantReads, LIMITS.readGrants, selection => {
+                    fields(selection, ['id', 'fields'], 'Invariant read selection');
+                    const original = grants.find(grant => grant.id === selection.id);
+                    const declaration = transaction.reads.find(grant => grant.id === selection.id);
+                    if (!original || !Array.isArray(selection.fields) || selection.fields.some(field =>
+                        typeof field !== 'string' || !declaration.fields.some(allowed => field === allowed || field.startsWith(allowed + '.')))) throw new TypeError('Invariant read outside original grant');
+                    reads([{ ...declaration, fields: selection.fields }], lifecycle, input);
+                    return selection;
+                }, 'invariant reads');
+            }
+            if (transaction.computation.invariantContext !== undefined) {
+                const allowed = ['args', 'beforeReads', 'computed', 'resolution', 'seed', 'artifacts', 'reads'];
+                const selected = transaction.computation.invariantContext;
+                if (!Array.isArray(selected) || selected.length > allowed.length || new Set(selected).size !== selected.length
+                    || selected.some(key => !allowed.includes(key))) throw new TypeError('Invalid computation invariant context');
+            }
             resourcePath(transaction.computation.source);
             if (!/\.(js|ts)$/.test(transaction.computation.source)) throw new TypeError('Computation requires exact JS/TS source');
             computed = { computed: objectSchema(transaction.computation.outputSchema) };

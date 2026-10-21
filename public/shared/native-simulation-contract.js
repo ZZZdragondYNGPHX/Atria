@@ -52,7 +52,7 @@ export function assertSimulationRuntime(raw, lifecycle, tasks, authority, inform
             if (job.subject.fields && job.reads.some(grant => grant.id === 'subject')) throw new TypeError('Simulation Subject read identifier is reserved');
         }
         if (job.reads.some(grant => reference(lifecycle.domains, grant.domainId, 'simulation read').scopeId !== job.scopeId
-            || typeof grant.recordId !== 'string')) throw new TypeError('Simulation reads require static same-scope targets');
+            || !grant.collection && typeof grant.recordId !== 'string')) throw new TypeError('Simulation reads require static same-scope targets');
         predicate(job.enabled, context); template(job.due, simulationInstantSchema, context);
         template(job.relevance, relevanceSchema, context);
         if (job.action?.kind === 'task') {
@@ -103,7 +103,7 @@ export function assertSimulationTransactions(simulation, transactions, lifecycle
             const input = match && job.action.input[match[1]];
             return input?.formula === 'subject.recordId' && Object.keys(input).length === 1;
         };
-        if (tx.reads.some(grant => !allowed(grant.domainId, grant.recordId))
+        if (tx.reads.some(grant => !allowed(grant.domainId, grant.collection ? 'collection' : grant.recordId))
             || tx.effects.some(effect => effect.kind === 'app.command' && !allowed(effect.domainId, effect.recordId))) throw new TypeError('Simulation Transactions require static or bound Subject same-scope targets');
         template(job.action.input, tx.inputSchema, simulationContext(job, lifecycle));
     }

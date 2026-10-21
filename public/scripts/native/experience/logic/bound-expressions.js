@@ -25,10 +25,10 @@ function schemaAt(schema, parts) {
     }
     return schema;
 }
-function fieldPath(value) {
+function fieldPath(value, indices = false) {
     text(value, 256);
     const parts = value.split('.');
-    if (!parts.length || parts.length > 8 || parts.some(part => !/^[A-Za-z_][A-Za-z0-9_-]*$/.test(part) || BLOCKED.has(part))) throw new TypeError('Unsafe Transaction field path');
+    if (!parts.length || parts.length > 8 || parts.some(part => !/^[A-Za-z_][A-Za-z0-9_-]*$/.test(part) && !(indices && /^(0|[1-9][0-9]*)$/.test(part)) || BLOCKED.has(part))) throw new TypeError('Unsafe Transaction field path');
     return parts;
 }
 
@@ -96,7 +96,7 @@ export function template(value, schema, context) {
     if (value && typeof value === 'object' && !Array.isArray(value) && Object.hasOwn(value, 'computed')) {
         fields(value, ['computed'], 'Computed value reference');
         if (!context.computed || typeof value.computed !== 'string') throw new TypeError('Computed reference requires computation');
-        const selected = schemaAt(context.computed, fieldPath(value.computed));
+        const selected = schemaAt(context.computed, fieldPath(value.computed, true));
         if (JSON.stringify(compileDataSchema(selected)) !== JSON.stringify(compileDataSchema(schema))) throw new TypeError('Computed reference schema mismatch');
         return;
     }
@@ -123,15 +123,43 @@ export function recordSelector(value, context) {
 }
 export function reads(raw, lifecycle, args) {
     return list(raw, LIMITS.readGrants, grant => {
-        fields(grant, ['id', 'domainId', 'recordId', 'fields'], 'Transaction read grant');
+        fields(grant, ['id', 'domainId', 'recordId', 'collection', 'fields'], 'Transaction read grant');
         taskId(grant.id);
         const domain = reference(lifecycle?.domains, grant.domainId, 'read domain');
-        recordSelector(grant.recordId, args ? { args } : {});
+        if (grant.collection !== undefined) {
+            fields(grant.collection, ['maxItems', 'where', 'recordHash'], 'Transaction collection read');
+            if (grant.collection.recordHash !== undefined && typeof grant.collection.recordHash !== 'boolean') throw new TypeError('Invalid collection record hash policy');
+            integer(grant.collection.maxItems, 1, 256, 'collection records');
+            if (grant.recordId !== undefined) throw new TypeError('Collection read cannot select a record');
+        } else recordSelector(grant.recordId, args ? { args } : {});
         const schema = objectSchema(domain.recordSchema);
+        if (grant.collection?.where) {
+            fields(grant.collection.where, ['field', 'equals'], 'Transaction collection predicate');
+            const selected = schemaAt(schema, fieldPath(grant.collection.where.field));
+            if (['object', 'array'].includes(selected.type)) throw new TypeError('Collection predicate requires a scalar');
+            template(grant.collection.where.equals, selected, args ? { args } : {});
+        }
         const paths = list(grant.fields, LIMITS.readFields, field => {
             schemaAt(schema, fieldPath(field)); return field;
         }, 'read fields');
         if (!paths.length) throw new TypeError('Transaction read requires explicit fields');
+        if (grant.collection) {
+            const selected = { type: 'object', properties: {}, required: [], additionalProperties: false };
+            for (const path of paths) {
+                const parts = path.split('.'); let target = selected;
+                for (const [index, key] of parts.entries()) {
+                    if (!target.required.includes(key)) target.required.push(key);
+                    target.properties[key] ??= index === parts.length - 1 ? schemaAt(schema, parts)
+                        : { type: 'object', properties: {}, required: [], additionalProperties: false };
+                    target = target.properties[key];
+                }
+            }
+            return { ...grant, fields: ['records'], schema: { type: 'object', additionalProperties: false,
+                properties: { records: { type: 'array', maxItems: grant.collection.maxItems, items: {
+                    type: 'object', additionalProperties: false, required: ['id', 'value'],
+                    properties: { id: idSchema, value: selected, ...(grant.collection.recordHash ? { hash: { type: 'string', minLength: 64, maxLength: 64 } } : {}) },
+                } } }, required: ['records'] } };
+        }
         return { ...grant, schema };
     }, 'read grants');
 }

@@ -3,6 +3,7 @@ import { isCognitionSource, informationItemFingerprint } from '../../public/shar
 import { hashNativeDocument } from './repositories/common.js';
 import { appraisalTargets } from '../../public/shared/native-appraisal-contract.js';
 import { prepareHypothesisCommands } from './tom-authority.js';
+import { hasPerspectiveIdentity } from '../../public/shared/native-subject-contract.js';
 
 const proofs = new WeakMap();
 const domains = base => base.manifest.runtime.experienceContract.lifecycleRuntime.domains;
@@ -84,7 +85,7 @@ export async function prepareAppraisalCommands(base, task, variant, queued, reco
             || update.sourceItemIds.some(id => !leaves.has(id))) code = 'appraisal_source_denied';
         const cited = update.sourceItemIds.map(id => leaves.get(id)).filter(Boolean);
         if (update.kind === 'emotion' ? update.target !== '' : update.target === view.availability[0].actorId
-            || !base.manifest.actors.some(actor => actor.actorId === update.target) || !cited.some(item => contains(item.data, update.target))) code = 'appraisal_target_denied';
+            || !hasPerspectiveIdentity(base, update.target) || !cited.some(item => contains(item.data, update.target))) code = 'appraisal_target_denied';
         const actor = view.availability[0].actorId, key = update.kind + ':' + update.dimension + ':' + update.target;
         if (used.has(key)) code = 'appraisal_duplicate_target';
         const target = binding[update.kind], domain = domains(base).find(domain => domain.id === target.domainId);
