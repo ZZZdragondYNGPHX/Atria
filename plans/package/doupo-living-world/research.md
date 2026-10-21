@@ -164,7 +164,7 @@ NativeMemoryAuthority 的图与来源记录也进入 Session.states，但跨 Ses
 
 ## D4 验证安排与修补边界
 
-具体验证样本、通过依据及实施先后集中在 [制作稿](production-plan.md#框架验证与必要修补) 的 V1–V6，负载与性能候选见 [运行模块](content-and-runtime.md#制作负载与性能目标)。本节只补充源码证据与判断边界。
+具体验证样本、通过依据及实施先后集中在 [制作稿](production-plan.md#框架验证与必要修补) 的 V1–V7，负载与性能候选见 [运行模块](content-and-runtime.md#制作负载与性能目标)。本节只补充源码证据与判断边界。
 
 - 动态关系：在最新远端源码再次核实 `appraisal-authority.js:86-87` 的 manifest Actor 目标检查仍存在；Information 的人物校验已有 `hasPerspectiveIdentity` 路径，不应把所有动态身份能力都误判为缺失。优先验证身份、个人视角、关系评价接纳的整个链路，定位真实阻断位置。
 - 世界恢复：再次读取 `session-core.js` 的 SavePoint/restore 路径，精确 revision 与派生分支仍是可复用基础；未实际验证本局家庭、待办、记忆或迟到请求，不能把代码路径存在当作全部通过。
@@ -173,3 +173,5 @@ NativeMemoryAuthority 的图与来源记录也进入 Session.states，但跨 Ses
 - 运行身份：P0 要核实正在连接的实例、源码构建和 Package 版本；本轮没有建立该运行身份链，没有调用真实 Provider 或使用 Atria 工具报告游戏验证。
 
 验证实现与专用样本只在本地保留；提交 Record 保存环境中立的结果、实际版本与限制，不提交临时请求/响应、凭证或专用测试资产。普通实现选择不产生新审批，修补范围遵循 D06 与用户正式启动边界。
+
+v0.8 补充：用户确认的 NPC 人口上限是游戏世界规则，现有 Subject definitions、Information 扫描与 Simulation 工作预算属于不同技术约束，不能直接把其中任一数字当作人口上限。V7 需验证新增/死亡/迁徙的计数语义、并发接纳、事件平衡的长期效果，以及人口受限后历史和关系记录仍持续增长的负载；本轮未执行这些运行样本。

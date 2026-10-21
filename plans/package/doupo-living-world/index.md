@@ -2,7 +2,7 @@
 
 - Task ID: `package/doupo-living-world`
 - Primary Workspace: `package`；本 Bundle 位于 `docs`；必要的产品修补使用独立产品任务。
-- Status: Draft v0.7 — 完整制作稿已汇总，供整体讨论；尚未获正式制作授权。
+- Status: Draft v0.8 — 已确认先深后广及动态 NPC/人口上限/事件平衡方向，继续整体讨论；尚未获正式制作授权。
 - Updated: 2026-10-20
 - Source baseline: `main@f9a8a83827c8b3662c44e67e95c9ed84118baadd`；实施前重新核对实际 Git。
 - Record: [累计记录](../../../records/package/doupo-living-world.md)
@@ -17,7 +17,7 @@
 
 ## 当前状态
 
-- 已从交接恢复并核实最新 `origin/docs` 包含 `5e215cbe`；D01–D22 保持不变，v0.7 已汇总首批内容、出身、日常关系、婚姻家庭、探索竞争、成长战斗、UI/美术、数据职责、验证与实施顺序。
+- 已从交接恢复并核实最新 `origin/docs` 包含 `5e215cbe`；v0.7 完整制作稿基础上，v0.8 新增 D23 先做深生活与长期后果再扩大陆域、D24 动态 NPC/人口上限/事件平衡的确认，具体人口规则与验证安排已展开。
 - 已完成第一轮源码能力与一手外部材料调查，见 [research.md](research.md)。尚未进行目标游戏负载压测、真实模型质量验证或实际制作。
 - 新 Bundle 只根据当前对话建立，不从历史草案导入“已确认”条目；不恢复已有工作树中被删除的其它方案文件。
 - 后续每轮先将用户新确认的取舍和受影响的候选方案更新到本 Bundle，再继续讨论。版本变化写在本入口，已确认决定统一写入 decisions。
@@ -31,7 +31,7 @@
 | [decisions.md](decisions.md) | 当前对话已确认的跨模块决定 | 用户明确指令 |
 | [production-plan.md](production-plan.md) | D4 整体制作范围、贯通样本、数据职责、框架验证与实施顺序 | decisions；按主题链接领域模块 |
 | [experience.md](experience.md) | RPG 交互、文字输入、首个贯通体验候选 | decisions、world-simulation |
-| [world-simulation.md](world-simulation.md) | NPC 自主生活、时间推进、历史改写、时代演化候选及本轮待定项 | decisions、research |
+| [world-simulation.md](world-simulation.md) | NPC 自主生活、动态人口与事件平衡、时间推进、历史改写和时代演化 | decisions、research |
 | [player-and-combat.md](player-and-combat.md) | 自创角色开局、个人原著知识、出身内容与战斗细则 | decisions、experience、world-simulation |
 | [presentation.md](presentation.md) | 已定空间与移动方向的展开、交互与美术细节 | decisions、experience、research |
 | [progression-and-consequences.md](progression-and-consequences.md) | 已定成长深度、死亡存档和活动优先级的展开与验证要求 | decisions、player-and-combat、world-simulation、research |
@@ -47,7 +47,7 @@
 | D1 首轮调查 | 已完成初步能力调查与产品方向澄清 | index → research |
 | D2 世界自主性与时间 | 已确认基础方向；动作耗时与长时中断细节后续按需展开 | index → decisions → world-simulation |
 | D3 成长、战斗与内容 | 基础方向与首个活动优先级已定；具体数值、背景和内容后续按依赖展开 | index → decisions；按需读取 progression-and-consequences、player-and-combat 或 world-simulation |
-| D4 制作基线 | 当前；v0.7 完整制作稿已汇总，讨论拟定细节并等待正式启动 | index → decisions → content-and-runtime → production-plan；规则/成长按需读 player-and-combat、world-simulation、progression-and-consequences，UI 读 presentation，技术证据读 research；恢复时加 Record |
+| D4 制作基线 | 当前；v0.8 加入动态人口与扩展方向，讨论拟定细节并等待正式启动 | index → decisions → content-and-runtime → production-plan；本轮人口主题读 world-simulation，规则/成长按需读 player-and-combat、progression-and-consequences，UI 读 presentation，技术证据读 research；恢复时加 Record |
 | Implementation | 尚未授权启动；拟定 P0–P5 连续执行，先验证身份与读档再扩充内容 | 授权后 index → decisions → production-plan → research；再按实施主题加载领域模块和 Record |
 
 ## 实质设计变化
@@ -60,5 +60,6 @@
 - 2026-10-20，第七轮 v0.6：确认首批乌坦城生活与青山镇/魔兽山脉部分探索、亲密关系与婚姻家庭纳入长期玩法、电脑为主且模型交互质量优先。用户随后要求更新推送并换设备交接；最新选择已持久化，整体制作方案尚待汇总，未制作游戏或修补产品。
 
 - 2026-10-20，第八轮 v0.7：从 `docs@5e215cbef` 恢复，按 D4 路由汇总完整拟定制作稿。新增首批场所/人物编制与出身建议、日常关系和家庭全流程、探索竞争、时间与代际、成长和读档细则、桌面 UI/美术、数据职责与 V1–V6/P0–P5 验证实施顺序。上述细节供整体讨论，未新增产品确认项、未正式制作。按用户追加要求，仅同步本机 main 至最新远端；其它任务改动保留。
+- 2026-10-20，第九轮 v0.8：用户认可先做深三地生活与长期后果再扩大陆域，并补充动态生成 NPC、设置面向未来世界扩展的上限、通过事件平衡人口，记录为 D23–D24。世界模块提出计数口径、生成来源、事件调节、并发名额与恢复的候选细则，制作稿与负载安排同步加入人口验证；具体上限与阈值未冻结，仍未正式制作。
 
 仓库职责与执行生命周期遵循 [Repository Governance](../../../README.md)。
