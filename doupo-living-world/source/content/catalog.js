@@ -25,13 +25,13 @@ for (const region of ['wutan','qingshan','mountain']) {const ps=PLACES.filter(p=
 route('wutan.gate','qingshan.inn',72,1);route('qingshan.guild','mountain.camp',8,2);
 export const ITEMS = [
  {id:'food',name:'干粮',price:3,kind:'supply'}, {id:'herb',name:'常用药草',price:8,kind:'material'},
- {id:'redleaf',name:'赤叶药材',price:35,kind:'material'}, {id:'medicine',name:'基础疗伤散',price:22,kind:'medicine'},
+ {id:'redleaf',name:'赤叶药材',price:35,kind:'unique'}, {id:'medicine',name:'基础疗伤散',price:22,kind:'medicine'},
  {id:'manual',name:'黄阶基础功法抄本',price:75,kind:'manual'}, {id:'technique',name:'黄阶碎石掌抄本',price:60,kind:'manual'},
  {id:'formula',name:'基础疗伤散丹方',price:45,kind:'manual'}, {id:'relic',name:'支洞遗留的修炼札记',price:180,kind:'unique'},
 ];
 export const KINDS = ['create','move','approach','travel','talk','work','promise','deliver','buy','sell','gift','allocate',
  'investigate','gather','claim','train','learn','breakthrough','rest','refine','consume','attack','technique','guard','retreat','surrender',
- 'invite','confess','engage','marry','separate','conceive','care','teach','wait','continue','cancel','clarify'];
+ 'invite','confess','engage','marry','separate','conceive','care','teach','wait','continue','cancel','clarify','browse','recall'];
 // Each person has a livelihood, finite resources, an origin and a preference.
 // Canon characters are not automatically romance candidates or omniscient.
 export const CAST = [
