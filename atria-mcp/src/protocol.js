@@ -58,7 +58,8 @@ export function createApprovalProtocol({ getServer = () => null, instanceId = ra
                 || record.expiresAt !== state.expiresAt || record.reviewHash !== reviewHash || state.reviewHash !== reviewHash
                 || record.invocationHash !== invocationHash || state.invocationHash !== invocationHash
                 || record.principal !== identity || state.principal !== identity)
-                throw new Error('Approval continuation stale, replayed or bound to another operation/client.');
+                throw new Error('Approval continuation stale, replayed or bound to another operation/client.'
+                    + (record && record.reviewHash !== reviewHash ? ' Reviewed ' + (record.guardHash !== fingerprint(review.before ?? null) ? 'authority guard' : record.provenanceHash !== fingerprint(review.provenance ?? null) ? 'provenance' : 'operation') + ' changed; obtain a new review.' : ''));
             // Burn the nonce before interpreting untrusted responses. Decline,
             // malformed input and cancellation cannot be upgraded by a replay.
             pending.delete(state.nonce);
@@ -90,7 +91,8 @@ export function createApprovalProtocol({ getServer = () => null, instanceId = ra
                 requestedSchema: schema,
             }),
         } });
-        pending.set(nonce, { expiresAt, reviewHash, invocationHash, principal: identity });
+        pending.set(nonce, { expiresAt, reviewHash, invocationHash, principal: identity,
+            guardHash: fingerprint(review.before ?? null), provenanceHash: fingerprint(review.provenance ?? null) });
         throw new ApprovalRequired(result);
     };
     return {
