@@ -2,12 +2,12 @@
 
 - Task ID: `package/doupo-living-world`
 - Primary Workspace: `package`；BE 在 package 实施，必要原生接纳补充使用独立源码任务。
-- Status: v0.10 BE 阶段实现已保存；按用户要求推送换设备，完整后端尚未完成。
+- Status: v0.11 — 0.1.0-be.2首批后端验证构建/C2接口已交付，正式前端待集成；证据与容量边界见最新阶段。
 - Plan: [方案入口](../../plans/package/doupo-living-world/index.md)
 
 ## 当前结果
 
-已从 v0.9 准备进入 BE 实施。package 现有可构建、可安装的原生后端源，独立源码分支保存必要的接纳扩展。四类出身、十二场所、二十四名初始 NPC，以及生活/成长/关系/家庭等规则已有阶段代码；只有下文实测项目可算通过。完整恢复、跨年负载、人口并发、真实模型和正式 Bridge 接线仍未完成。用户要求推送换设备；正式前端仍由另一对话设计，后端完成后才由用户选择集成者。
+首批后端版本0.1.0-be.2已具备规则、原生确定性Bridge、模型任务与公开数据接口，发布可安装验证归档。真实家庭出生/完整恢复、取消/迟到任务、并发重试、50年纯规则和96人沙箱分页验证完成，豆包13次真实调用及质量修正已记录。源码已本地集成main；最终提交/远端核对见最新阶段。正式前端与美术留给后续集成，现有容量限制不等于无限世代支持。
 
 ## 阶段 D1–D4 — 调研、讨论与交接整理
 
@@ -178,3 +178,52 @@
 ### 其它任务保护
 
 docs 的 `plans/architecture/atria-frontend-audit/design-proposal/atria-visual-direction.html` 仍是原有未提交改动（67 行新增、35 行删除），没有纳入本任务提交。另已存在 FE 的隔离工作树/分支 `feat/doupo-living-world-design-reference`，本对话不编辑、提交或推送它；不触碰其它源码任务。
+
+## 阶段 BE2–BE6 — 0.1.0-be.2 首批后端交付
+
+- Date：2026-10-21；从 origin/package@b424c2a0 与 origin/feat/doupo-native-authority@6e44cf85 恢复；先核实 Git，使用隔离源码/资产工作树，docs 只修改本任务路径。原有 foglight-inn、world-evolution-consistency、旧 doupo-open-world 删除及 FE design-reference 均未纳入提交。
+- Source：`a9a914c66141daaf7ab9ae26119a506444d73698`，已本地 fast-forward 集成 main。Package：`38007d02d08f70d59e6ebbe0ad612f2d0570e463`，已 fast-forward 到长期 package 工作树，保留其全部无关 dirty changes。远端同步在交付末尾核对 refs。
+- 版本 `0.1.0-be.2`；Package ID `pkg_723cdd67122beffdac73f3dfe5c9f64e`；PackageVersion ID `pkgv_7c88452886975acbfe72d2af6c59b44f`。
+- 发布资产：`package:doupo-living-world/releases/doupo-living-world-0.1.0-be.2.atria`，55,261 bytes，SHA-256 `4992ccaefcda78de98ae04ae52c53f21b837c2a7750293b8dcd85decd38009cd`。这是可安装的首批后端验证构建，正式前端/美术未完成；容器不含私有配置或验证资产。
+
+### 实现与故障修正
+
+- 同一规则支持 doupo.act / choice / plan，复合最多四步、重大行动前原生自动保存；后段失败/取消保留已提交部分和逐段 spent，长期移动按实际格逐步推进。修炼斗气耗尽停止，伤重不能做工，服药有间隔；交易结果明确物品、数量与真实金币，时间另以分钟表达。
+- 确定性 Bridge binding 复用 SessionCore 原 authority prepare/publish、CAS、原生存档和 action receipts；不调用模型。生成宿主与确定性提交共享稳定机械锚点，失败重试不重抽随机数。实际编译 Bridge、并发重复、重开重试与恢复 epoch 样本已通过。
+- 关系历史增长曾在约13年超过 collection 256；改为先前授权的计划 ID 与指向玩家关系的显式并集，保留原记录 hash、全扫描计费及 scope 检查。96人同场景曾在 relationKey 哈希循环触发40ms沙箱中断；删除无用全场景键循环，只计划下一位到期NPC/实际评价所需键。没有提高全局执行、读取、schema或消息预算。
+- schema 最初264节点超原256限制；新生/迁入输出只携带真实差异字段，宿主沿既有人物默认值与真实 Subject 绑定发布，实际构建与出生通过。新生儿不再自带成人物资与功法；受孕花费计入消耗。
+- 唯一赤叶药材从普通商店/补货排除；玩家与NPC竞争同一归属。NPC家庭避开亲属，动态性别及子女成年后意愿生效；丧偶查找当前家庭；人口阈值有迁入/地区迁居，出生预留计入总上限。
+- 玩家投影对远方人物使用本人旧观察，不窥探远方秘密变化；已知死者保留档案。人物12条/消息8条分页，摘要192字符，recall 只读本人已知消息全文。NPC回应通过 acknowledge 发布并保存本人经历，不能直接读私有 Domain。
+- NPC个人投影新增真实 needitem/needqty（作者字段遵循 Information path 小写约束，公开人物仍为 needItem/needQty），模型提示从同一 ITEMS 目录生成已存在物品名称，不新增独立目录权威。
+
+### 实际本地验证
+
+运行环境为 Windows、Node 24.18.0、原生 QuickJS/FsEngine；使用本任务源码，不以未关联的8000端口或MCP实例证明运行。所有验证实现、fixture、诊断及请求响应只在本地临时工作空间。
+
+- 规则场景20项：四出身×两来源×男女16组合，加复合部分失败/停止、远方秘密不泄露和死亡规则。另7项针对性场景覆盖唯一物补货、斗气停止、服药间隔、复合累计耗时、移动取消、满额不迁入及同行补给/到达，均通过。
+- 50年纯规则模拟：18,300日、63,111次结算、95名历史人物、440条全历史关系；每步验证人物/世界/公开schema、时间增量与人口+预留不超过上限。它不等于完整 Native Host 运行50年。
+- 96名存活NPC的真实 QuickJS computation：历史信息/关系样本输入，全部移到玩家同场景，8页遍历96个不同key，零耗时；公开JSON峰值5,064 bytes，小于16KiB意图观察预算。这不是96个真实Subject的完整宿主长期压力验收。此前20年样本的96人沙箱输入约92KiB、输出约17KiB，也未提高预算。
+- 真实 Native Session 曾跨过旧256回执失败点：400日、614次提交，恢复到time=0通过。最终家庭重跑从照护/购买/履约/婚约/结婚、家庭分配、受孕预留到549,228分钟的出生，新生儿取得真实sub身份；读回158,955分钟存档后孩子、家庭子女项与预留均消失。
+- 真实 Bridge 编译并通过：非法执行模式/越权前向grant拒绝，公开screen读取，不配模型服务的内部continue，并发同key只提交一次，关闭重开后同key持久重试，旧revision与读档旧epoch拒绝。grant 独立样本通过默认交集/显式并集、重复ID、字段隔离、原记录hash、筛选前扫描计费、硬上限和scope失效。
+- 真实宿主任务配本地可控传输：NPC请求生成期间读档，迟到返回 operation_stale；世界/人物/个人信息恢复、关系内容恢复且锚点切到新分支，无未来对话/outbox。取消返回 operation_cancelled，不接纳回应、不额外推进时间。这些是任务生命周期证据，不算模型质量。
+- recall 样本：3页消息摘要、全文重读、他人私有记录拒绝，零耗时。构建产物重新安装、绑定24个Subject、创建、购买与闭合投影通过；测试末尾曾过早关闭engine引发维护writer警告，改为等待原调度器维护结束后重跑，正常退出无警告，未因此修改产品维护系统。
+- 修改的7个源码JS文件 eslint 与 diff whitespace 检查通过；新增作者说明不涉及执行代码。旧设备185/17项套件未在本机重新取得，不把历史数字当本轮通过；旧work count差异仍仅有原始main亦复现的历史证据，不据此声称本轮全量回归。
+
+### V6 真实模型：实际调用与质量
+
+用户本轮提供新的豆包配置和 MiMo 临时备用连接。密钥只存仓库外，未回显、写入Package或提交；GGchan保持停用，MiMo本轮未调用。所有本地实现和对应验证完成后才开始API。
+
+- 实际使用 Doubao-Seed-2.1-lite，经 Native Runtime Route、原生 HTTP provider、真实工具调用/JSON输出、NPC Subject投影与 Session接纳。测试路线使用显式cl100k_base估算和32768/2048预算包络，是本次配置而非Provider最大规格声明。
+- 首轮4次HTTP200，22,411个Provider报告Token；发现NPC编造目录外“陈艾草”任务、旁白把10分钟当作10金币。实际规则仍正确扣8金币，错误没有修改物资。修正个人需求投影、目录约束提示、分钟语义和交易结算文字后重测。
+- 修正后主链4次HTTP200，20,205 Token；包含一次旁白、一次NPC需求协商、一次自由文字购买工具选择、一次购买旁白。购买herb+1、gold55→47、spent10，旁白正确说8金币/10分钟；NPC只请求实际1份基础疗伤散，未发明药材/奖励。NPC未收到玩家原著记忆。
+- 附加质量场景5次HTTP200，22,614 Token：凭空索取万金/百份顶级丹药被clarify，资源/时钟不变；“先休息一天，再按当前报价买药草”被选择为doupo.plan，确定性后续形成rest1440分钟与buy10分钟两条成功结果；NPC对免费十份药及代定婚事明确refuse，资源不变。
+- 共13次真实请求，65,230个Provider报告Token（prompt49,447、completion15,783），包括首轮发现问题的4次；修正后的9次约11.0–31.0秒/次。没有配置重试或备用调用，固定本地传输不计入；Token含Provider报告的推理等字段，不能由max_tokens配置推断实际计费上限。本轮不估算费用。
+- 质量结论限于上述样本；文字表述仍是模型生成，不能保证永不误述。实际状态只由规则修改，NPC言语不自动形成奖励/婚约/物品。现有延迟不适合每个内部continue都触发模型；确定性binding解决该路径，正式等待/取消/流式观感仍需集成验证。
+
+### 接口与交付边界
+
+C2契约与容器内 integration/bridge.json、integration/screen.schema.json 已逐项覆盖F01–F12，README含新局、交易、任务接纳、分页和恢复说明。后端首批可供集成；正式AUI/Canvas/Controller、美术、真实浏览器和完整玩家流程尚未制作，由用户后续选择集成者。
+
+容量不是无限：人口默认96，个人信息grant128、关系grant256、家庭48、约定64、Domain4096、History4096项/2MiB。超限拒绝而非静默丢历史；追加大规模/无限世代需进一步容量设计。本轮证据不证明96人完整宿主长期运行、所有玩法分支穷尽、浏览器/UI完成或模型零幻觉。未引入独立审查、独立后端服务、平行身份或存档系统。
+
+最终同步：origin/main=a9a914c66141daaf7ab9ae26119a506444d73698，origin/package=38007d02d08f70d59e6ebbe0ad612f2d0570e463。已完成临时分支清理，消费并删除本任务旧HANDOFF；docs本次提交以此Record的最新git提交定位。其它任务改动保持未提交，未调用MiMo备用连接。

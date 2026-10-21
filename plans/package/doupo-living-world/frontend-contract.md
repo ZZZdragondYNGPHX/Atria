@@ -1,12 +1,12 @@
-# 前后端共用契约 — C0 语义与 C1 实施草稿
+# 前后端共用契约 — C0 语义与 C2 实际接口
 
-状态：C0 语义继续生效；2026-10-21 增补 C1 实际源码映射草稿。后端已有可安装的 Native 包源，但完整验收、正式前端绑定和真实模型均未完成。前端设计继续使用语义表；后续集成不能把本页草稿视为已全部验证的冻结接口。
+状态：C0 语义继续生效；C2 记录 0.1.0-be.2 的实际后端接口与证据边界。正式前端待集成。
 
 玩法权威归[领域模块](index.md#模块路由)，分工归 [execution-split.md](execution-split.md)。BE 核实真实能力后在本文件逐项补入实现映射和状态，形成可供集成使用的实际契约；无需为了 C0 另建通用 dispatcher、服务层或兼容双轨。
 
 ## 能力与界面覆盖表
 
-F01–F12 是本项目协作编号，涵盖首批范围。前端表现文档逐项映射；每项可有多个页面，不要求每项独占一屏。实际实施状态见末节 C1 映射；框架底座或规则代码存在不等于对应玩法已完整验证。
+F01–F12 是本项目协作编号，涵盖首批范围。前端表现文档逐项映射；每项可有多个页面，不要求每项独占一屏。实际实施状态见末节 C2 映射；框架底座或规则代码存在不等于对应玩法已完整验证。
 
 | ID | 能力 | 玩家视角所需数据 | 操作意图与结果语义 |
 | --- | --- | --- | --- |
@@ -59,50 +59,65 @@ F01–F12 是本项目协作编号，涵盖首批范围。前端表现文档逐�
 
 键盘/IME、可聚焦对象列表、缩放、弹层焦点、减少运动和等待期间的草稿属于 FE/集成验收；动作幂等、分支隔离、计数并发和路径可达性属于 BE 验证。双方都使用同一状态含义。
 
-## BE 实现时补齐的实际映射
+## C2 — 2026-10-21 后端实际接口
 
-当前实现状态：**F01–F12 已有不同程度的包源实现或 Native 映射；完整模型、负载、恢复与正式 Bridge/浏览器接线仍未完成。下述 C1 不构成后端完成声明。**
+游戏版本 `0.1.0-be.2`；Package ID `pkg_723cdd67122beffdac73f3dfe5c9f64e`，PackageVersion ID `pkgv_7c88452886975acbfe72d2af6c59b44f`。所需源码已本地集成 main，HEAD `a9a914c66141daaf7ab9ae26119a506444d73698`；资产与远端同步以 Record 的最终提交为准。C2 替代旧 C1 的实施映射，C0 语义继续生效。正式前端仍待集成。
 
-每项实现后补齐以下最小内容，可按实际代码把有关项合并记录，不为每个功能制造新服务：
+### 唯一声明与载入
 
-| 记录项 | 必填内容 |
-| --- | --- |
-| 实际能力 | F 编号、已实现/条件可用/待实现，和对应来源版本 |
-| 读取 | 包资源/投影/collection/任务观察的真实声明位置、公开 schema 和玩家范围 |
-| 写入 | 事务/command/task/Bridge 的真实 ID、输入约束、前置条件与提交边界 |
-| 结果与失败 | receipt/可见投影/任务输出、真实错误、观察/取消/重试方式 |
-| 示例与验证 | 最小内联输入输出和必要状态样本、实际验证结论；验证实现与私有数据不提交 |
+- `package:doupo-living-world/tools/build.mjs` 构建 Manifest、Game Logic、Task、Information、History、Bridge；`tools/schema.mjs` 为闭合 schema 权威。
+- 容器内 `integration/bridge.json` 是 Native frontend 的作者声明；`integration/screen.schema.json` 为 screen schema。正式前端 source index 引用该 Bridge，再经原编译器编译，不能直接把作者文件当编译产物。
+- 安装并授予 generation → SessionCore.create → experience.ready → bind0/1/2（各输入{}）→ act 创建角色。Subject 由原生绑定取得，目标参数使用人物 key，不用名字或推算身份。
+- `screen` binding 只读 dw_public，输出为数组 `{id,value:{screen:JSON字符串}}`；取 main 解码。Information view player/narrator 也只读 screen。严禁把所有 Domain 或 NPC 个人 view 送浏览器。
 
-契约更新由 BE 维护，并在 Record 标注版本和变化。前端 AI 可用 C0 示例做布局；新增数据或玩法需求列入其表现文档，不擅自声称后端支持。后续集成者以实际映射替换离线示例，再核对用户选定的设计版本。
+### 实际绑定与输入
 
-## C1 — 2026-10-21 实际源码映射草稿
-
-来源：package `b424c2a030a9774ad5b90cb438a5d9cd23fb50f7`，游戏版本 `0.1.0-be.1`；需要独立源码 `feat/doupo-native-authority@6e44cf85969fff3038eec5a16957b0919ff17521`，尚未合入 main。最终接口仍需继续验证。源码位置均以 `package:doupo-living-world/` 为前缀。
-
-- `tools/build.mjs` 生成真实 Manifest、Game Logic、Information/Task/History 声明并调用 Native 容器构建器；`tools/schema.mjs` 定义闭合 schema；`source/rules/engine.js` 是规则 computation。
-- 初始流程：PackageInstaller 安装 → SessionCore 创建 → `experience.ready` → `doupo.bind0/1/2`，输入均 `{}` → 创建角色。新局绑定取得实际 Subject ID，不在客户端猜 ID。
-- 玩家读取 Information view `player` 的 `screen:main`，`item.data.screen` 是 JSON 字符串；解析后按 `tools/schema.mjs` 的 `view` 读取。投影包含自己的状态、当前位置人物、已知地点、当前报价、线索、家庭、约定、operation、combat、result。禁止向浏览器传全部 Domain 或 NPC 私人投影。
-- 所有规则输入的闭合字段为 `{kind,target,item,qty,x,y,detail,text,steps}`。字符串未用填空串，qty/x/y 未用填 0，steps 未用填 `[]`。steps 最多四项，每项 `{kind,target,item,qty,x,y,detail}`；复合动作的完整性与自动保存边界仍须专项验证。
-- `doupo.choice` 处理 `travel/train/wait/rest/marry/conceive/attack/technique/work`，动作前原生自动保存；其它 kind 使用 `doupo.act`。二者复用同一 computation，`continue`/`cancel` 用 `doupo.act`。规则拒绝一般提交可见 `screen.result.code/text`，不消耗资源和时间；结构/来源/CAS 错误由 Native 拒绝。
-- 目标人物参数为 Native Subject 的稳定 `localRef.recordId`；可见人物的 `actor` 是真实 Subject ID。不要把名称作为提交目标，不复用死者 ID。
-- `operation.kind` 非空时继续或停止当前活动；`appraise` 表示已经发生的经历正在以本人获准的来源形成评价，继续不耗时间。真实耗时以 `screen.time` 和原生 world clock 为准，单位分钟。
-- 成功的 Bridge Action 仍返回原生 receipt，公开 payload 为 `{}`；随后重取投影。本 checkpoint 未交付正式 `.aui`/Controller/Canvas 或可直接使用的 Bridge binding ID。
-
-| 能力 | 已存在的落点 | 尚需完成的验证/接线 |
+| Binding | 输入 | 提交路径 |
 | --- | --- | --- |
-| F01 | catalog 的四出身；`kind:create`，target=出身，detail=native/transmigrator，text=姓名，item=male/female（空时默认 male） | 选项预览、正式新局入口、全部组合回归 |
-| F02 | PLACES、pathTo BFS、move/approach；自身 x/y 与可见人物 key/actor | 目标变化、历史人物查询、正式场景与输入接线 |
-| F03 | talk；Subject 个人 view；后台 `doupo.npc` 的 choice/text；`talk` detail=acknowledge 接纳已生成回应 | 真实 Provider、取消/迟到结果、回应后投影刷新、原结果保留 |
-| F04 | ROUTES；travel → operation/continue；生活与竞争在旅行期间推进 | 旅行风险、取消与长跳因果的完整回归 |
-| F05 | rank/xp/skills/资质/伤势；train/learn/breakthrough/rest/refine/consume | 数值校准、组合路线与所有失败分支 |
-| F06 | inventory、quotes；buy/sell/gift/allocate；detail 为当前 quote 文本 | 同时提交、分配守恒、补货长测 |
-| F07 | combat；attack/technique/guard/retreat/surrender | 分段、复合文字、死亡与恢复全流程 |
-| F08 | Native 个人评价；真实 needs/约定；engage/marry/separate/conceive/care/teach；家庭物资 | 家庭样本已到出生，恢复断言仍须重跑；NPC 意愿与长期细节未终验 |
-| F09 | 有来源的 clues；investigate/gather/claim；唯一资源与 NPC 竞争 | 过时线索、隐藏信息和多路径争夺回归 |
-| F10 | 原生 SavePoint/Branch；choice 前自动保存 | 完整世界恢复、后台迟到结果、前端缓存清理 |
-| F11 | 预留出生、动态 Subject、迁入、NPC 成家与生计；Native History checkpoint | 上限/并发、跨年世代、死者查询与负载；96 人默认值未经验证 |
-| F12 | Native CAS/receipt/Task；operation/continue/cancel | 解决内部 continue 经现有 Bridge 必调旁白的问题；宿主等待、停止与正式绑定 |
+| screen | {} | 公开快照读取，不耗时 |
+| act | doupo.act 的 schema | typed transaction + 旁白 |
+| choice | doupo.choice 的 schema | 相同规则，动作前自动保存 + 旁白 |
+| plan | doupo.plan 的 schema | 1–4 顺序步骤，动作前自动保存 + 旁白 |
+| bind0/1/2 | {} | 确定性身份初始化，不调用模型 |
+| continue/cancel | {} | 确定性后续结算/停止，不调用模型 |
+| acknowledge | {target:人物key} | 读取已生成回应，发布结果和本人经历，不调用模型 |
+| browse/clues | {qty:0起页码} | 已知人物/消息分页，不耗时、不调用模型 |
+| recall | {target:消息id} | 本人已知消息全文写入 result.text，越权或未知拒绝，不耗时 |
 
-当前可复现的最小创建输入：`doupo.act` + `{kind:"create",target:"apprentice",item:"male",qty:0,x:0,y:0,detail:"native",text:"云禾",steps:[]}`；后续按 operation 继续个人评价，再读取新投影。交易示例使用当前 `quotes` 的 item/quote 填写 buy，不能写死报价版本。
+规则输入所有字段必填：`{kind,target,item,qty,x,y,detail,text,steps}`，未用字符串为空、数字0、steps=[]。
 
-换设备后应先重建本地验证；测试 fixture/请求响应不随源码推送。API 依用户最新要求留到本地实现与验证完成后，GGchan 停用；不得导入旧配置的调用额度。
+- choice 的 kind：travel/train/wait/rest/marry/conceive/attack/technique/work；其它单步走 act。
+- plan 的 kind=plan，steps 1–4项，每项 `{kind,target,item,qty,x,y,detail}`。一次执行一个步骤，按 operation 继续；后段失败停止余项，已提交部分保留。result.steps 含 kind/code/text/spent/accepted，partial 标记已有部分成功后的失败/取消。
+- 创建示例：`{kind:"create",target:"apprentice",item:"female",qty:0,x:0,y:0,detail:"transmigrator",text:"云禾",steps:[]}`。出身 clan/apprentice/mercenary/wanderer，来源 native/transmigrator，性别 male/female（空为male）。
+- 购买示例：kind=buy、item=herb、qty=1、detail=当前 quotes 对应 quote 的整数文本。结果如 traded / “购入1份herb，支付8枚金币。”，spent=10（分钟）；失效报价 quote_changed 不扣资源。
+- talk 的 target 是接近后的人物 key，text 保留原话。宿主执行 doupo.npc 后台任务；完成后 acknowledge 同一人物，立即展示 result.text，再 continue 处理评价。NPC 回应全文可通过 clues 的 id → recall 重读。
+- 成功 Bridge Action 返回实际 receipt，公开 payload={}，随后重读 screen。所有提交携带 epoch/revision/idempotencyKey；同次重试保留原 key/revision。读档重开 Bridge，旧 epoch、目标与旧任务结果均失效。
+
+### 玩家字段与 F01–F12
+
+| 能力 | 实际数据/动作 | 本轮证据与集成边界 |
+| --- | --- | --- |
+| F01 | created/name/age/rank/inventory/skills；create | 四出身×两来源×男女共16组合通过；正式新局 UI 待接 |
+| F02 | place/x/y；people 的 key/actor/status/contact；move/approach | BFS 分段移动、取消保留路径；正式地图与目标反馈待接 |
+| F03 | result、clues/recall；talk、NPC任务、acknowledge | 真实模型意图/判断/旁白与本地迟到/取消；宿主任务观察和等待 UI 待接 |
+| F04 | known/operation；travel/invite | 真实时间、补给、同行、遇险规则；不以原著记忆作为可达或已发生事实 |
+| F05 | rank/qi/injury/skills；train/learn/breakthrough/rest/refine/consume | 斗气耗尽停止、服药间隔、条件拒绝；本版至斗师和基础疗伤散 |
+| F06 | inventory/gold/quotes/family；buy/sell/gift/allocate | 当前报价、库存/资金约束、唯一物不普通补货；真实文字购买结算通过 |
+| F07 | combat/hp/qi/injury；attack/technique/guard/retreat/surrender | 分段伤害/死亡/规则拒绝；模型不能代改伤亡，动画待接 |
+| F08 | family/promises、个人评价、可见 needItem/needQty；关系/家庭/照护/传授动作 | 真实 Session 履约→结婚→出生→读档通过；NPC 可拒绝，回应不代办婚姻或物资 |
+| F09 | 有来源/时点的 clues、opportunities；investigate/gather/claim/recall | 摘要8条一页、recall全文；陈旧线索不是远方实时真相 |
+| F10 | 原生 SavePoint/Branch | 世界/人物/关系/信息恢复，关系锚点更新；新生儿/预留与迟到任务隔离；UI 缓存清理待接 |
+| F11 | operation/family、已知人物档案；continue/cancel/browse | 50年规则模拟、NPC家庭/死亡/迁入、96人沙箱分页；没有96人完整宿主长期容量证据 |
+| F12 | Native Task/CAS/receipt/Bridge epoch；确定性 continue/cancel | 并发重复提交、重开重试、旧revision/epoch拒绝；正式退出/等待/生成取消 UI 待接 |
+
+人物每页12条，peoplePage/peoplePages/peopleTotal 只统计当前可见及已获知档案，不是世界人口。here 表示在场，last_known 是旧观察，deceased 是已知死亡；远方变动不穿透到旧档案。clues 每页8条，cluesPage/cluesPages 为页码，text 是192字符摘要，全文通过 recall；原著记忆仅对相应玩家可见。
+
+operation.kind 非空时继续或停止；appraise 是以本人经历形成评价，不耗时。time/at/spent 单位均为开局后分钟。取消不撤销已耗资源、路径和时间。任务取消与规则 cancel 是不同的现有控制；重试表达不能重做已提交交易。
+
+### 模型、负载与明确限制
+
+宿主路线：role.intent_resolver 使用包内 doupo.resolve；叙事槽 narrative 使用 doupo.narrate；npc 槽使用 doupo.npc（事件解释路线）。需要工具调用与 JSON schema。连接由用户私有配置提供；GGchan 停用，包中没有 endpoint/密钥。真实模型结果、延迟、Token 和失败修正见同一 Record，不把本地固定传输输出作为质量证据。
+
+规则读 live 人物，历史人物记录仍留 Domain/Revision；玩家从本人已获知的观察档案查询。96人同场景脚本沙箱8页通过，峰值公开JSON约5KiB。50年纯规则样本不是完整宿主50年运行；真实宿主已验证400日614次提交及家庭约一年流程。
+
+本版人口96（预留计入），同次只处理一个到期NPC，再结算后续时点，保证分段预算。现有明确容量：个人信息grant128条、关系grant256条、家庭48、约定64，Domain4096条，History4096项/2MiB；超限拒绝，不静默截断。上述证据不承诺无限世代/历史容量；扩容需追加负载和持久数据设计。正式 AUI/Controller/Canvas、美术、焦点/IME/移动端/浏览器与完整交互延迟验收仍归集成阶段。
